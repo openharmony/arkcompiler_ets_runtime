@@ -278,7 +278,7 @@ public:
     uintptr_t Allocate(size_t size, bool allowGC = true);
     uintptr_t Allocate(size_t size, MachineCodeDesc *desc, bool allowGC = true);
     inline void RecordLiveJitCode(MachineCode *obj);
-    uintptr_t JitFortAllocate(MachineCodeDesc *desc);
+    uintptr_t PUBLIC_API JitFortAllocate(MachineCodeDesc *desc);
 
     inline bool IsSweeping()
     {

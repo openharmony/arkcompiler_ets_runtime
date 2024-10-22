@@ -125,6 +125,7 @@ public:
     }
     void UpdatePassOptions(CompilationEnv *env);
 
+    static ARK_INLINE bool AllocFromFortAndCopy(CompilationEnv &compilationEnv, MachineCodeDesc &desc);
 private:
     JitCompilationOptions jitOptions_;
     CompilerLog log_;
@@ -132,5 +133,6 @@ private:
     PGOProfilerDecoder profilerDecoder_;
     PassOptions passOptions_;
 };
+
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_JIT_COMPILER_H

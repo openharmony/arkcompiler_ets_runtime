@@ -39,6 +39,14 @@ src_libmplphase = [
 
 ohos_static_library("libmplphase") {
   stack_protector_ret = false
+  if (enable_sanitize) {
+    sanitize = {
+      cfi = true
+      cfi_cross_dso = true
+      debug = false
+    }
+    branch_protector_ret = "pac_ret"
+  }
   configs = [ "${MAPLEALL_ROOT}:mapleallcompilecfg" ]
   sources = src_libmplphase
   include_dirs = include_libmplphase

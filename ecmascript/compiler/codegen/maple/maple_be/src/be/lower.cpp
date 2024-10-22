@@ -936,7 +936,12 @@ void CGLowerer::LowerCallStmt(StmtNode &stmt, StmtNode *&nextStmt, BlockNode &ne
     }
 
     if (newStmt->GetOpCode() == OP_call || newStmt->GetOpCode() == OP_icall || newStmt->GetOpCode() == OP_icallproto) {
-        newStmt = LowerCall(static_cast<CallNode &>(*newStmt), nextStmt, newBlk, retty, uselvar);
+        auto &callNode = static_cast<NaryStmtNode&>(*newStmt);
+        for (size_t i = 0; i < callNode.GetNopndSize(); ++i) {
+            BaseNode *newOpnd = LowerExpr(callNode, *callNode.GetNopndAt(i), newBlk);
+            callNode.SetOpnd(newOpnd, i);
+        }
+        newStmt = &callNode;
     }
     newStmt->SetSrcPos(stmt.GetSrcPos());
     newBlk.AddStatement(newStmt);
@@ -1809,143 +1814,6 @@ void CGLowerer::SplitCallArg(CallNode &callNode, BaseNode *newOpnd, size_t i, Bl
     }
 }
 
-StmtNode *CGLowerer::LowerCall(CallNode &callNode, StmtNode *&nextStmt, BlockNode &newBlk, MIRType *retTy, bool uselvar)
-{
-    /*
-     * nextStmt in-out
-     * call $foo(constval u32 128)
-     * dassign %jlt (dread agg %%retval)
-     */
-    bool isArrayStore = false;
-
-    if (callNode.GetOpCode() == OP_call) {
-        MIRFunction *calleeFunc = GlobalTables::GetFunctionTable().GetFunctionFromPuidx(callNode.GetPUIdx());
-        if ((calleeFunc->GetName() == "MCC_WriteRefField") && (callNode.Opnd(1)->GetOpCode() == OP_iaddrof)) {
-            IreadNode *addrExpr = static_cast<IreadNode *>(callNode.Opnd(1));
-            if (addrExpr->Opnd(0)->GetOpCode() == OP_array) {
-                isArrayStore = true;
-            }
-        }
-    }
-
-    for (size_t i = 0; i < callNode.GetNopndSize(); ++i) {
-        BaseNode *newOpnd = LowerExpr(callNode, *callNode.GetNopndAt(i), newBlk);
-#if TARGAARCH64 || TARGRISCV64 || TARGX86_64
-        callNode.SetOpnd(newOpnd, i);
-#else
-        SplitCallArg(callNode, newOpnd, i, newBlk);
-#endif
-    }
-
-    if (isArrayStore && checkLoadStore) {
-        bool needCheckStore = true;
-        MIRType *arrayElemType = GetArrayNodeType(*callNode.Opnd(0));
-        MIRType *valueRealType = GetArrayNodeType(*callNode.Opnd(kNodeThirdOpnd));
-        if ((arrayElemType != nullptr) && (valueRealType != nullptr) && (arrayElemType->GetKind() == kTypeClass) &&
-            static_cast<MIRClassType *>(arrayElemType)->IsFinal() && (valueRealType->GetKind() == kTypeClass) &&
-            static_cast<MIRClassType *>(valueRealType)->IsFinal() &&
-            valueRealType->GetTypeIndex() == arrayElemType->GetTypeIndex()) {
-            needCheckStore = false;
-        }
-
-        if (needCheckStore) {
-            MIRFunction *fn =
-                mirModule.GetMIRBuilder()->GetOrCreateFunction("MCC_Reflect_Check_Arraystore", TyIdx(PTY_void));
-            DEBUG_ASSERT(fn->GetFuncSymbol() != nullptr, "fn->GetFuncSymbol() should not be nullptr");
-            fn->GetFuncSymbol()->SetAppearsInCode(true);
-            beCommon.UpdateTypeTable(*fn->GetMIRFuncType());
-            fn->AllocSymTab();
-            MapleVector<BaseNode *> args(mirModule.GetMIRBuilder()->GetCurrentFuncCodeMpAllocator()->Adapter());
-            args.emplace_back(callNode.Opnd(0));
-            args.emplace_back(callNode.Opnd(kNodeThirdOpnd));
-            StmtNode *checkStoreStmt = mirModule.GetMIRBuilder()->CreateStmtCall(fn->GetPuidx(), args);
-            newBlk.AddStatement(checkStoreStmt);
-        }
-    }
-
-    DassignNode *dassignNode = nullptr;
-    if ((nextStmt != nullptr) && (nextStmt->GetOpCode() == OP_dassign)) {
-        dassignNode = static_cast<DassignNode *>(nextStmt);
-    }
-
-    /* if nextStmt is not a dassign stmt, return */
-    if (dassignNode == nullptr) {
-        return &callNode;
-    }
-
-    if (!uselvar && retTy && beCommon.GetTypeSize(retTy->GetTypeIndex().GetIdx()) <= k16ByteSize) {
-        /* return structure fitting in one or two regs. */
-        return &callNode;
-    }
-
-    MIRType *retType = nullptr;
-    if (callNode.op == OP_icall || callNode.op == OP_icallproto) {
-        if (retTy == nullptr) {
-            return &callNode;
-        } else {
-            retType = retTy;
-        }
-    }
-
-    if (retType == nullptr) {
-        MIRFunction *calleeFunc = GlobalTables::GetFunctionTable().GetFunctionFromPuidx(callNode.GetPUIdx());
-        retType = calleeFunc->GetReturnType();
-        if (calleeFunc->IsReturnStruct() && (retType->GetPrimType() == PTY_void)) {
-            MIRPtrType *pretType = static_cast<MIRPtrType *>((calleeFunc->GetNthParamType(0)));
-            CHECK_FATAL(pretType != nullptr, "nullptr is not expected");
-            retType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(pretType->GetPointedTyIdx());
-            CHECK_FATAL((retType->GetKind() == kTypeStruct) || (retType->GetKind() == kTypeUnion),
-                        "make sure retType is a struct type");
-        }
-    }
-
-    /* if return type is not of a struct, return */
-    if ((retType->GetKind() != kTypeStruct) && (retType->GetKind() != kTypeUnion)) {
-        return &callNode;
-    }
-    
-    DEBUG_ASSERT(mirModule.CurFunction() != nullptr, "curFunction should not be nullptr");
-    MIRSymbol *dsgnSt = mirModule.CurFunction()->GetLocalOrGlobalSymbol(dassignNode->GetStIdx());
-    CHECK_FATAL(dsgnSt->GetType()->IsStructType(), "expects a struct type");
-    MIRStructType *structTy = static_cast<MIRStructType *>(dsgnSt->GetType());
-    if (structTy == nullptr) {
-        return &callNode;
-    }
-
-    RegreadNode *regReadNode = nullptr;
-    if (dassignNode->Opnd(0)->GetOpCode() == OP_regread) {
-        regReadNode = static_cast<RegreadNode *>(dassignNode->Opnd(0));
-    }
-    if (regReadNode == nullptr || (regReadNode->GetRegIdx() != -kSregRetval0)) {
-        return &callNode;
-    }
-
-    MapleVector<BaseNode *> newNopnd(mirModule.CurFuncCodeMemPoolAllocator()->Adapter());
-    AddrofNode *addrofNode = mirModule.CurFuncCodeMemPool()->New<AddrofNode>(OP_addrof);
-    addrofNode->SetPrimType(GetLoweredPtrType());
-    addrofNode->SetStIdx(dsgnSt->GetStIdx());
-    addrofNode->SetFieldID(0);
-
-    if (callNode.op == OP_icall || callNode.op == OP_icallproto) {
-        auto ond = callNode.GetNopnd().begin();
-        newNopnd.emplace_back(*ond);
-        newNopnd.emplace_back(addrofNode);
-        for (++ond; ond != callNode.GetNopnd().end(); ++ond) {
-            newNopnd.emplace_back(*ond);
-        }
-    } else {
-        newNopnd.emplace_back(addrofNode);
-        for (auto *opnd : callNode.GetNopnd()) {
-            newNopnd.emplace_back(opnd);
-        }
-    }
-
-    callNode.SetNOpnd(newNopnd);
-    callNode.SetNumOpnds(static_cast<uint8>(newNopnd.size()));
-    CHECK_FATAL(nextStmt != nullptr, "nullptr is not expected");
-    nextStmt = nextStmt->GetNext();
-    return &callNode;
-}
 
 void CGLowerer::LowerTypePtr(BaseNode &node) const
 {
