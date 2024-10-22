@@ -1062,7 +1062,7 @@ function isArrayTest() {
   print(SendableArray.isArray(false));
   print(SendableArray.isArray(new SendableUint8Array(32)));
 }
-  
+
 function lastIndexOfTest() {
   let arr = SendableArray.from([1, 2, 3, 4, 2, 5]);
   print(arr.lastIndexOf(2));
@@ -1154,3 +1154,6 @@ forOf();
 sharedArrayConstructorTest()
 fromArrayConstructorTest()
 DefinePropertyTest()
+
+isArrayTest();
+lastIndexOfTest();

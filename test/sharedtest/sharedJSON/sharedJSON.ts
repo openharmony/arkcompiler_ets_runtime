@@ -264,6 +264,7 @@ function testASONMap() {
     print(map.get("text"));
     print(map.get("largeNumber"));
     print((typeof map.get("largeNumber") === "bigint"));
+    print(map.get("people"));
 
     let options2 = {
         bigIntMode: BigIntMode.DEFAULT,
@@ -286,6 +287,7 @@ function testASONMap() {
 
     let jsonText4 = '{}';
     let map4 = JSON.parseSendable(jsonText4, undefined, options2) as Map<string, object>;
+    print(map4);
 
     let jsonText5 = '{"x":1, "x":2, "x":3, "x":"你好", "a":4, "x":"你好", "a":2}';
     let map5 = JSON.parseSendable(jsonText5, undefined, options2) as Map<string, object>;
@@ -318,6 +320,15 @@ function testIndexASON()
     print(out3);
 }
 
+function testJSONBigIntZero() {
+    var opt = {
+        bigIntMode: BigIntMode.ALWAYS_PARSE_AS_BIGINT,
+    }
+    const str = '{"id":0, "bid":999}';
+    var obj = JSON.parseBigInt(str, undefined, opt);
+    print(obj.id);
+}
+
 testJSONParseSendable();
 jsonRepeatCall();
 testASONBigInt();
@@ -327,3 +338,4 @@ testJSONreviver();
 testJSONZeroDeci();
 testASONMap();
 testIndexASON();
+testJSONBigIntZero();
