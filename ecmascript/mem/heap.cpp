@@ -31,7 +31,6 @@
 #include "ecmascript/runtime_call_id.h"
 #include "ecmascript/jit/jit.h"
 #include "ecmascript/ohos/ohos_params.h"
-
 #if !WIN_OR_MAC_OR_IOS_PLATFORM
 #include "ecmascript/dfx/hprof/heap_profiler_interface.h"
 #include "ecmascript/dfx/hprof/heap_profiler.h"
@@ -45,7 +44,7 @@
 #endif
 
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT) && defined(PANDA_TARGET_OHOS) && defined(ENABLE_HISYSEVENT)
-#include "parameter.h"
+#include "parameters.h"
 #include "hisysevent.h"
 static constexpr uint32_t DEC_TO_INT = 100;
 static size_t g_threshold = OHOS::system::GetUintParameter<size_t>("persist.dfx.leak.threshold", 85);
