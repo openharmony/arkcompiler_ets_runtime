@@ -257,6 +257,7 @@ JSHandle<JSTaggedValue> SourceTextModule::ResolveExport(JSThread *thread, const 
     if (!indirectExportEntriesTv->IsUndefined()) {
         JSHandle<JSTaggedValue> resolution = ResolveIndirectExport(thread, indirectExportEntriesTv,
                                                                    exportName, module, resolveVector);
+        RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
         if (!resolution->IsUndefined()) {
             return resolution;
         }
@@ -285,6 +286,7 @@ JSHandle<JSTaggedValue> SourceTextModule::ResolveExport(JSThread *thread, const 
         moduleRequest.Update(ee->GetModuleRequest());
         JSHandle<JSTaggedValue> result = GetStarResolution(thread, exportName, moduleRequest,
                                                            module, starResolution, resolveVector);
+        RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
         if (result->IsString() || result->IsException()) {
             return result;
         }
@@ -729,6 +731,7 @@ void SourceTextModule::ModuleDeclarationEnvironmentSetup(JSThread *thread,
             CVector<std::pair<JSHandle<SourceTextModule>, JSHandle<JSTaggedValue>>> resolveVector;
             JSHandle<JSTaggedValue> resolution =
                 SourceTextModule::ResolveExport(thread, importedModule, importName, resolveVector);
+            RETURN_IF_ABRUPT_COMPLETION(thread);
             // ii. If resolution is null or "ambiguous", throw a SyntaxError exception.
             if (resolution->IsNull() || resolution->IsString()) {
                 CString requestMod = ModulePathHelper::ReformatPath(ConvertToString(moduleRequest.GetTaggedValue()));
@@ -825,6 +828,7 @@ void SourceTextModule::ModuleDeclarationArrayEnvironmentSetup(JSThread *thread,
         CVector<std::pair<JSHandle<SourceTextModule>, JSHandle<JSTaggedValue>>> resolveVector;
         JSHandle<JSTaggedValue> resolution =
             SourceTextModule::ResolveExport(thread, importedModule, importName, resolveVector);
+        RETURN_IF_ABRUPT_COMPLETION(thread);
         // ii. If resolution is null or "ambiguous", throw a SyntaxError exception.
         if (resolution->IsNull() || resolution->IsString()) {
             CString requestMod = ModulePathHelper::ReformatPath(ConvertToString(moduleRequest.GetTaggedValue()));
@@ -874,6 +878,7 @@ JSHandle<JSTaggedValue> SourceTextModule::GetModuleNamespace(JSThread *thread,
             JSHandle<JSTaggedValue> nameHandle = JSHandle<JSTaggedValue>::Cast(factory->NewFromStdString(name));
             JSHandle<JSTaggedValue> resolution =
                 SourceTextModule::ResolveExport(thread, module, nameHandle, resolveVector);
+            RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
             // ii. If resolution is a ResolvedBinding Record, append name to unambiguousNames.
             if (resolution->IsModuleBinding()) {
                 unambiguousNames->Set(thread, idx, nameHandle);
@@ -1717,6 +1722,7 @@ void SourceTextModule::CheckResolvedBinding(JSThread *thread, const JSHandle<Sou
         CVector<std::pair<JSHandle<SourceTextModule>, JSHandle<JSTaggedValue>>> resolveVector;
         JSHandle<JSTaggedValue> resolution =
             SourceTextModule::ResolveExport(thread, module, exportName, resolveVector);
+        RETURN_IF_ABRUPT_COMPLETION(thread);
         // b. If resolution is null or "ambiguous", throw a SyntaxError exception.
         if (resolution->IsNull() || resolution->IsString()) {
             CString requestMod = ModulePathHelper::ReformatPath(ConvertToString(ee->GetModuleRequest()));
@@ -1755,6 +1761,7 @@ void SourceTextModule::CheckResolvedIndexBinding(JSThread *thread, const JSHandl
         CVector<std::pair<JSHandle<SourceTextModule>, JSHandle<JSTaggedValue>>> resolveVector;
         JSHandle<JSTaggedValue> resolution =
             SourceTextModule::ResolveExport(thread, module, exportName, resolveVector);
+        RETURN_IF_ABRUPT_COMPLETION(thread);
         // b. If resolution is null or "ambiguous", throw a SyntaxError exception.
         if (resolution->IsNull() || resolution->IsString()) {
             CString requestMod = ModulePathHelper::ReformatPath(ConvertToString(ee->GetModuleRequest()));

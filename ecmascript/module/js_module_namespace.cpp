@@ -104,6 +104,8 @@ OperationResult ModuleNamespace::GetProperty(JSThread *thread, const JSHandle<JS
     // 6. Let binding be ! m.ResolveExport(P, « »).
     CVector<std::pair<JSHandle<SourceTextModule>, JSHandle<JSTaggedValue>>> resolveSet;
     JSHandle<JSTaggedValue> binding = SourceTextModule::ResolveExport(thread, mm, key, resolveSet);
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(
+        thread, OperationResult(thread, JSTaggedValue::Exception(), PropertyMetaData(false)));
     // 7. Assert: binding is a ResolvedBinding Record.
     // If resolution is null or "ambiguous", throw a SyntaxError exception.
     if (binding->IsNull() || binding->IsString()) {
@@ -358,6 +360,7 @@ bool ModuleNamespace::ValidateKeysAvailable(JSThread *thread, const JSHandle<Tag
         JSHandle<JSTaggedValue> key(thread, exports->Get(idx));
         CVector<std::pair<JSHandle<SourceTextModule>, JSHandle<JSTaggedValue>>> resolveSet;
         JSHandle<JSTaggedValue> binding = SourceTextModule::ResolveExport(thread, mm, key, resolveSet);
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
         // Adapter new module
         ASSERT(binding->IsResolvedBinding() || binding->IsResolvedIndexBinding());
         JSTaggedValue targetModule = JSTaggedValue::Undefined();
