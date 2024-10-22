@@ -31,6 +31,9 @@ declare_args() {
   # Set pgo profdata path.
   ets_runtime_feature_pgo_path = ""
 
+  # Enable -Bsymbolic to reduce overhead of intra-library calls.
+  ets_runtime_feature_enable_bsymbolic = true
+
   # Defaults for fort
   ets_runtime_support_jit_code_sign = false
   enable_jit_code_sign = false

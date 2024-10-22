@@ -18,7 +18,8 @@
           "ets_runtime_feature_enable_pgo",
           "ets_runtime_feature_pgo_path",
           "ets_runtime_feature_enable_list",
-          "ets_runtime_support_jit_code_sign"
+          "ets_runtime_support_jit_code_sign",
+          "ets_runtime_feature_enable_bsymbolic"
         ],
         "adapted_system_type": [
             "standard"
