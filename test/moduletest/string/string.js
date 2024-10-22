@@ -473,3 +473,49 @@ print(srcutf16.slice(0, 16)); // bytes == 2 * 16
 print(srcutf16.slice(0, 25)); // bytes > 16 && bytes % 16 != 0
 print(srcutf16.slice(0, 28)); // bytes == 7 * 8
 print(srcutf16.slice(0, 32)); // bytes == 4 * 16
+
+var str11;
+var result11;
+var re11 = /[Cz]/;
+var re12 = /([Cz])/;
+
+function createHaystack() {
+    let s = "abCdefgz";
+    for (let i = 0; i < 3; i++) s += s;
+    return s;
+}
+
+function SimpleSplit2() {
+  result11 = str11.split(re11);
+  if (result11.length != 17) {
+      print("fail!");
+  }
+}
+
+function Function1Replace(re) {
+  result11 = re[Symbol.replace](str11, String);
+  if (result11 != "abCdefgzabCdefgzabCdefgzabCdefgzabCdefgzabCdefgzabCdefgzabCdefgz") {
+      print("fail!");
+  }
+}
+
+str11 = createHaystack();
+
+function SimpleMatch1() {
+  result11 = str11.match(re11);
+  if (result11[0] != 'C') {
+      print("fail!");
+  }
+}
+
+for (let i = 0; i < 10; i++) {
+    SimpleMatch1();
+}
+
+for (let i = 0; i < 10; i++) {
+    SimpleSplit2();
+}
+
+for (let i = 0; i < 100; i++) {
+    Function1Replace(re12);
+}

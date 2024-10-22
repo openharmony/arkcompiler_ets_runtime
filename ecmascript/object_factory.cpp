@@ -3021,14 +3021,10 @@ JSHandle<TaggedArray> ObjectFactory::CopyArray(const JSHandle<TaggedArray> &old,
     JSHandle<TaggedArray> newArray(thread_, header);
     newArray->SetLength(newLength);
     newArray->SetExtraLength(old->GetExtraLength());
-
-    for (uint32_t i = 0; i < newLength; i++) {
-        JSTaggedValue value = old->Get(i);
-        if (old->GetClass()->IsMutantTaggedArray()) {
-            newArray->Set<false>(thread_, i, value);
-        } else {
-            newArray->Set(thread_, i, value);
-        }
+    if (old->GetClass()->IsMutantTaggedArray()) {
+        newArray->Copy<false>(thread_, 0, 0, *old, newLength);
+    } else {
+        newArray->Copy(thread_, 0, 0, *old, newLength);
     }
 
     return newArray;
