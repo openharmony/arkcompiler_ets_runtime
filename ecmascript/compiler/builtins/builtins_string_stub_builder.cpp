@@ -2320,11 +2320,11 @@ void BuiltinsStringStubBuilder::GetStringIterator(GateRef glue, GateRef thisValu
     DEFVARIABLE(result, VariableType::JS_POINTER(), Undefined());
 
     Label thisIsHeapObj(env);
-    BRANCH(TaggedIsHeapObject(thisValue), &thisIsHeapObj, slowPath);
+    Branch(TaggedIsHeapObject(thisValue), &thisIsHeapObj, slowPath);
     Bind(&thisIsHeapObj);
     {
         Label thisValueIsString(env);
-        BRANCH(IsString(thisValue), &thisValueIsString, slowPath);
+        Branch(IsString(thisValue), &thisValueIsString, slowPath);
         Bind(&thisValueIsString);
         GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
         GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
@@ -2355,16 +2355,16 @@ void BuiltinsStringStubBuilder::StringIteratorNext(GateRef glue, GateRef thisVal
     Label strIsHeapObj(env);
     Label strIsString(env);
     Label iterDone(env);
-    BRANCH(TaggedIsHeapObject(thisValue), &thisIsHeapObj, slowPath);
+    Branch(TaggedIsHeapObject(thisValue), &thisIsHeapObj, slowPath);
     Bind(&thisIsHeapObj);
-    BRANCH(TaggedIsStringIterator(thisValue), &thisIsStringIterator, slowPath);
+    Branch(TaggedIsStringIterator(thisValue), &thisIsStringIterator, slowPath);
     Bind(&thisIsStringIterator);
     GateRef str = Load(VariableType::JS_POINTER(), thisValue, IntPtr(JSStringIterator::ITERATED_STRING_OFFSET));
-    BRANCH(TaggedIsUndefined(str), &iterDone, &strNotUndefined);
+    Branch(TaggedIsUndefined(str), &iterDone, &strNotUndefined);
     Bind(&strNotUndefined);
-    BRANCH(TaggedIsHeapObject(str), &strIsHeapObj, slowPath);
+    Branch(TaggedIsHeapObject(str), &strIsHeapObj, slowPath);
     Bind(&strIsHeapObj);
-    BRANCH(TaggedIsString(str), &strIsString, slowPath);
+    Branch(TaggedIsString(str), &strIsString, slowPath);
     Bind(&strIsString);
     {
         Label getFirst(env);
@@ -2373,7 +2373,7 @@ void BuiltinsStringStubBuilder::StringIteratorNext(GateRef glue, GateRef thisVal
         GateRef position = Load(VariableType::INT32(), thisValue,
                                 IntPtr(JSStringIterator::STRING_ITERATOR_NEXT_INDEX_OFFSET));
         GateRef len = GetLengthFromString(str);
-        BRANCH(Int32GreaterThanOrEqual(position, len), &iterDone, &getFirst);
+        Branch(Int32GreaterThanOrEqual(position, len), &iterDone, &getFirst);
         Bind(&getFirst);
         FlatStringStubBuilder strFlat(this);
         strFlat.FlattenString(glue, str, &afterFlat);
@@ -2381,7 +2381,7 @@ void BuiltinsStringStubBuilder::StringIteratorNext(GateRef glue, GateRef thisVal
         StringInfoGateRef strInfo(&strFlat);
         GateRef first = StringAt(strInfo, position);
         GateRef canStoreAsUtf8 = IsASCIICharacter(first);
-        BRANCH(canStoreAsUtf8, &getStringFromSingleCharTable, slowPath);
+        Branch(canStoreAsUtf8, &getStringFromSingleCharTable, slowPath);
         Bind(&getStringFromSingleCharTable);
         GateRef singleCharTable = GetSingleCharTable(glue);
         GateRef firstStr = GetValueFromTaggedArray(singleCharTable, ZExtInt16ToInt32(first));

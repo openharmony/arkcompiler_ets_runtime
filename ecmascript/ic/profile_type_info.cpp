@@ -39,7 +39,7 @@ void ProfileTypeAccessor::AddElementHandler(JSHandle<JSTaggedValue> hclass, JSHa
 void ProfileTypeAccessor::AddWithoutKeyPoly(JSHandle<JSTaggedValue> hclass, JSHandle<JSTaggedValue> handler,
                                             uint32_t index, JSTaggedValue profileData) const
 {
-    ASSERT(profileTypeInfo_->GetIcSlot(index + 1).IsHole());
+    ASSERT(profileTypeInfo_->Get(index + 1).IsHole());
     JSHandle<TaggedArray> arr(thread_, profileData);
     const uint32_t step = 2;
     uint32_t newLen = arr->GetLength() + step;
