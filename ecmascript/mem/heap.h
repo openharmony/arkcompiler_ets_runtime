@@ -1114,11 +1114,13 @@ public:
     // Old
     inline TaggedObject *AllocateOldOrHugeObject(JSHClass *hclass);
     inline TaggedObject *AllocateOldOrHugeObject(JSHClass *hclass, size_t size);
+    inline TaggedObject *AllocateOldOrHugeObject(size_t size);
     // Non-movable
     inline TaggedObject *AllocateNonMovableOrHugeObject(JSHClass *hclass);
     inline TaggedObject *AllocateNonMovableOrHugeObject(JSHClass *hclass, size_t size);
     inline TaggedObject *AllocateClassClass(JSHClass *hclass, size_t size);
     // Huge
+    inline TaggedObject *AllocateHugeObject(size_t size);
     inline TaggedObject *AllocateHugeObject(JSHClass *hclass, size_t size);
     // Machine code
     inline TaggedObject *AllocateMachineCodeObject(JSHClass *hclass, size_t size, MachineCodeDesc *desc = nullptr);
@@ -1528,7 +1530,6 @@ public:
     }
 
 private:
-    inline TaggedObject *AllocateHugeObject(size_t size);
 
     static constexpr int MIN_JSDUMP_THRESHOLDS = 85;
     static constexpr int MAX_JSDUMP_THRESHOLDS = 95;

@@ -24,7 +24,7 @@ namespace panda::ecmascript::kungfu {
 class NTypeHCRLowering : public PassVisitor {
 public:
     NTypeHCRLowering(Circuit *circuit, RPOVisitor *visitor, PassContext *ctx, const CString &recordName,
-                     const MethodLiteral *methodLiteral, Chunk* chunk)
+                     const MethodLiteral *methodLiteral, bool enablePgoSpace, Chunk* chunk)
         : PassVisitor(circuit, chunk, visitor),
           circuit_(circuit),
           acc_(circuit),
@@ -35,6 +35,7 @@ public:
           recordName_(recordName),
           methodLiteral_(methodLiteral),
           profiling_(ctx->GetCompilerConfig()->IsProfiling()),
+          enablePgoSpace_(enablePgoSpace),
           traceBc_(ctx->GetCompilerConfig()->IsTraceBC()),
           glue_(acc_.GetGlueFromArgList()) {}
 
@@ -87,6 +88,7 @@ private:
     const MethodLiteral *methodLiteral_ {nullptr};
     panda_file::File::EntityId methodId_ {0};
     bool profiling_ {false};
+    bool enablePgoSpace_ {false};
     bool traceBc_ {false};
     GateRef glue_ {Circuit::NullGate()};
 };

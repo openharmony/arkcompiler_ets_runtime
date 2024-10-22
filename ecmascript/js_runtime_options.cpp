@@ -170,6 +170,7 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--compiler-enable-jit:                Enable jit: Default: 'false'\n"
     "--compiler-enable-osr:                Enable osr: Default: 'false'\n"
     "--compiler-enable-framework-aot:      Enable frame aot: Default: 'true'\n"
+    "--compiler-enable-pgo-space:          Enable pgo space used for compiler. Default: 'true'\n"
     "--compiler-jit-hotness-threshold:     Set hotness threshold for jit. Default: '2'\n"
     "--compiler-jit-call-threshold:        Set call threshold for jit. Default: '0'\n"
     "--compiler-osr-hotness-threshold:     Set hotness threshold for osr. Default: '2'\n"
@@ -331,6 +332,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"compiler-codesign-disable", required_argument, nullptr, OPTION_CODESIGN_DISABLE},
         {"compiler-enable-async-copytofort", required_argument, nullptr, OPTION_ENABLE_ASYNC_COPYTOFORT},
         {"compiler-pgo-force-dump", required_argument, nullptr, OPTION_COMPILER_PGO_FORCE_DUMP},
+        {"compiler-enable-pgo-space", required_argument, nullptr, OPTION_COMPILER_ENABLE_PGO_SPACE},
         {"async-load-abc", required_argument, nullptr, OPTION_ASYNC_LOAD_ABC},
         {"async-load-abc-test", required_argument, nullptr, OPTION_ASYNC_LOAD_ABC_TEST},
         {"compiler-enable-concurrent", required_argument, nullptr, OPTION_COMPILER_ENABLE_CONCURRENT},
@@ -1304,6 +1306,14 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 ret = ParseBoolParam(&argBool);
                 if (ret) {
                     SetPgoForceDump(argBool);
+                } else {
+                    return false;
+                }
+                break;
+            case OPTION_COMPILER_ENABLE_PGO_SPACE:
+                 ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetCompilerEnablePgoSpace(argBool);
                 } else {
                     return false;
                 }

@@ -203,6 +203,10 @@ GateRef NTypeHCRLowering::NewJSArrayLiteral(GateRef glue, GateRef gate, GateRef 
                                             uint32_t hintLength)
 {
     ElementsKind kind = acc_.GetArrayMetaDataAccessor(gate).GetElementsKind();
+    RegionSpaceFlag flag = RegionSpaceFlag::IN_YOUNG_SPACE;
+    if (enablePgoSpace_) {
+        flag = acc_.GetArrayMetaDataAccessor(gate).GetRegionSpaceFlag();
+    }
     GateRef hclass = Circuit::NullGate();
     if (!Elements::IsGeneric(kind)) {
         // At define point, we use initial array class without IsPrototype set.
@@ -224,7 +228,7 @@ GateRef NTypeHCRLowering::NewJSArrayLiteral(GateRef glue, GateRef gate, GateRef 
     GateRef size = builder_.IntPtr(arrayHC->GetObjectSize());
 
     builder_.StartAllocate();
-    GateRef array = builder_.HeapAlloc(glue, size, GateType::TaggedValue(), RegionSpaceFlag::IN_YOUNG_SPACE);
+    GateRef array = builder_.HeapAlloc(glue, size, GateType::TaggedValue(), flag);
     // initialization
     for (size_t offset = JSArray::SIZE; offset < arraySize; offset += JSTaggedValue::TaggedTypeSize()) {
         builder_.StoreConstOffset(VariableType::INT64(), array, offset, builder_.Undefined());

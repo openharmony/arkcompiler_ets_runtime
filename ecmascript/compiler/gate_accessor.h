@@ -396,6 +396,7 @@ public:
     void SetStringStatus(GateRef gate, uint32_t type);
     ElementsKind GetElementsKind(GateRef gate) const;
     void SetElementsKind(GateRef gate, ElementsKind kind);
+    RegionSpaceFlag GetRegionSpaceFlag(GateRef gate) const;
     size_t GetVirtualRegisterIndex(GateRef gate) const;
     bool TypedOpIsTypedArray(GateRef gate, TypedOpKind kind) const;
     TypedLoadOp GetTypedLoadOp(GateRef gate) const;
@@ -435,6 +436,8 @@ public:
     void TrySetPGOType(GateRef gate, PGOTypeRef type);
     uint32_t TryGetArrayElementsLength(GateRef gate) const;
     void TrySetArrayElementsLength(GateRef gate, uint32_t length);
+    RegionSpaceFlag TryGetRegionSpaceFlag(GateRef gate) const;
+    void TrySetRegionSpaceFlag(GateRef gate, RegionSpaceFlag length);
     ElementsKind TryGetElementsKind(GateRef gate) const;
     ElementsKind TryGetArrayElementsKind(GateRef gate) const;
     ElementsKind TryGetArrayElementsKindAfterTransition(GateRef gate) const;

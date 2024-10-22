@@ -1448,4 +1448,24 @@ JSTaggedValue BuiltinsArkTools::IterateFrame(EcmaRuntimeCallInfo *info)
 
     return JSTaggedValue::Undefined();
 }
+
+JSTaggedValue BuiltinsArkTools::InYoungSpace(EcmaRuntimeCallInfo *info)
+{
+    RETURN_IF_DISALLOW_ARKTOOLS(info->GetThread());
+    CHECK(info && info->GetArgsNumber() == 1);
+    JSHandle<JSTaggedValue> arg = info->GetCallArg(0);
+    CHECK(arg->IsHeapObject());
+    Region *region = Region::ObjectAddressToRange(arg->GetTaggedObject());
+    return JSTaggedValue(region->InYoungSpace());
+}
+
+JSTaggedValue BuiltinsArkTools::InOldSpace(EcmaRuntimeCallInfo *info)
+{
+    RETURN_IF_DISALLOW_ARKTOOLS(info->GetThread());
+    CHECK(info && info->GetArgsNumber() == 1);
+    JSHandle<JSTaggedValue> arg = info->GetCallArg(0);
+    CHECK(arg->IsHeapObject());
+    Region *region = Region::ObjectAddressToRange(arg->GetTaggedObject());
+    return JSTaggedValue(region->InOldSpace());
+}
 } // namespace panda::ecmascript::builtins

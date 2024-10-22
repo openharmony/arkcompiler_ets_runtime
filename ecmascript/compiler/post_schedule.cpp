@@ -78,12 +78,19 @@ bool PostSchedule::VisitHeapAlloc(GateRef gate, ControlFlowGraph &cfg, size_t bb
     int64_t flag = static_cast<int64_t>(acc_.TryGetValue(gate));
     ASSERT(flag == RegionSpaceFlag::IN_YOUNG_SPACE ||
            flag == RegionSpaceFlag::IN_SHARED_OLD_SPACE ||
-           flag == RegionSpaceFlag::IN_SHARED_NON_MOVABLE);
+           flag == RegionSpaceFlag::IN_SHARED_NON_MOVABLE ||
+           flag == RegionSpaceFlag::IN_OLD_SPACE);
     std::vector<GateRef> currentBBGates;
     std::vector<GateRef> successBBGates;
     std::vector<GateRef> failBBGates;
     std::vector<GateRef> endBBGates;
-    LoweringHeapAllocAndPrepareScheduleGate(gate, currentBBGates, successBBGates, failBBGates, endBBGates, flag);
+    if (flag == RegionSpaceFlag::IN_OLD_SPACE) {
+        LoweringHeapAllocate(gate, currentBBGates, successBBGates, failBBGates, endBBGates, flag);
+        ReplaceGateDirectly(currentBBGates, cfg, bbIdx, instIdx);
+        return false;
+    } else {
+        LoweringHeapAllocAndPrepareScheduleGate(gate, currentBBGates, successBBGates, failBBGates, endBBGates, flag);
+    }
 #ifdef ARK_ASAN_ON
     ReplaceGateDirectly(currentBBGates, cfg, bbIdx, instIdx);
     return false;
@@ -335,6 +342,8 @@ void PostSchedule::LoweringHeapAllocate(GateRef gate,
         id = RTSTUB_ID(AllocateInSOld);
     } else if (flag == RegionSpaceFlag::IN_SHARED_NON_MOVABLE) {
         id = RTSTUB_ID(AllocateInSNonMovable);
+    } else if (flag == RegionSpaceFlag::IN_OLD_SPACE) {
+        id = RTSTUB_ID(AllocateInOld);
     } else {
         ASSERT(flag == RegionSpaceFlag::IN_YOUNG_SPACE);
     }

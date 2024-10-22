@@ -310,27 +310,26 @@ TaggedObject *Heap::TryAllocateYoungGeneration(JSHClass *hclass, size_t size)
 TaggedObject *Heap::AllocateOldOrHugeObject(JSHClass *hclass)
 {
     size_t size = hclass->GetObjectSize();
-    TaggedObject *object = AllocateOldOrHugeObject(hclass, size);
-    if (object == nullptr) {
-        LOG_ECMA(FATAL) << "Heap::AllocateOldOrHugeObject:object is nullptr";
+    return AllocateOldOrHugeObject(hclass, size);
+}
+
+TaggedObject *Heap::AllocateOldOrHugeObject(size_t size)
+{
+    size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
+    TaggedObject *object = nullptr;
+    if (size > MAX_REGULAR_HEAP_OBJECT_SIZE) {
+        object = AllocateHugeObject(size);
+    } else {
+        object = reinterpret_cast<TaggedObject *>(oldSpace_->Allocate(size));
+        CHECK_OBJ_AND_THROW_OOM_ERROR(object, size, oldSpace_, "Heap::AllocateOldOrHugeObject");
     }
-#if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
-    OnAllocateEvent(GetEcmaVM(), object, size);
-#endif
     return object;
 }
 
 TaggedObject *Heap::AllocateOldOrHugeObject(JSHClass *hclass, size_t size)
 {
-    size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
-    TaggedObject *object = nullptr;
-    if (size > MAX_REGULAR_HEAP_OBJECT_SIZE) {
-        object = AllocateHugeObject(hclass, size);
-    } else {
-        object = reinterpret_cast<TaggedObject *>(oldSpace_->Allocate(size));
-        CHECK_OBJ_AND_THROW_OOM_ERROR(object, size, oldSpace_, "Heap::AllocateOldOrHugeObject");
-        object->SetClass(thread_, hclass);
-    }
+    auto object = AllocateOldOrHugeObject(size);
+    object->SetClass(thread_, hclass);
 #if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
     OnAllocateEvent(GetEcmaVM(), reinterpret_cast<TaggedObject*>(object), size);
 #endif

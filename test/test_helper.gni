@@ -1278,6 +1278,10 @@ template("host_aot_js_test_action") {
       _aot_compile_options_ += " --compiler-opt-loop-peeling=false"
     }
 
+    if (defined(invoker.is_enable_pgo_space) && invoker.is_enable_pgo_space) {
+      _aot_compile_options_ += " --compiler-enable-pgo-space=true"
+    }
+
     args = [
       "--script-file",
       rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime/ark_aot_compiler",
@@ -1555,6 +1559,10 @@ template("host_aot_js_test_action") {
         _aot_compile_options_ += " --compiler-opt-loop-peeling=false"
       }
 
+      if (defined(invoker.is_enable_pgo_space) && invoker.is_enable_pgo_space) {
+        _aot_compile_options_ += " --compiler-enable-pgo-space=true"
+      }
+
       _aot_compile_options_ += common_options
       args = [
         "--script-file",
@@ -1815,6 +1823,10 @@ template("host_aot_js_test_action") {
       if (defined(invoker.disable_opt_loop_peeling) &&
           invoker.disable_opt_loop_peeling) {
         _aot_compile_options_ += " --compiler-opt-loop-peeling=false"
+      }
+
+      if (defined(invoker.is_enable_pgo_space) && invoker.is_enable_pgo_space) {
+        _aot_compile_options_ += " --compiler-enable-pgo-space=true"
       }
 
       _aot_compile_options_ += common_options
@@ -2155,6 +2167,10 @@ template("host_aot_js_assert_test_action") {
     if (defined(invoker.is_enable_opt_loop_peeling) &&
         invoker.is_enable_opt_loop_peeling) {
       _aot_compile_options_ += " --compiler-opt-loop-peeling=true"
+    }
+
+    if (defined(invoker.is_enable_pgo_space) && invoker.is_enable_pgo_space) {
+      _aot_compile_options_ += " --compiler-enable-pgo-space=true"
     }
 
     if (defined(invoker.is_enable_opt_array_bounds_check_elimination) &&
@@ -2611,6 +2627,10 @@ template("host_aot_test_action") {
       _aot_compile_options_ += " --compiler-opt-loop-peeling=false"
     }
 
+    if (defined(invoker.is_enable_pgo_space) && invoker.is_enable_pgo_space) {
+      _aot_compile_options_ += " --compiler-enable-pgo-space=true"
+    }
+
     _aot_compile_options_ += common_options
     args = [
       "--script-file",
@@ -2699,6 +2719,10 @@ template("host_aot_test_action") {
     if (defined(invoker.disable_opt_loop_peeling) &&
         invoker.disable_opt_loop_peeling) {
       _aot_compile_options_ += " --compiler-opt-loop-peeling=false"
+    }
+
+    if (defined(invoker.is_enable_pgo_space) && invoker.is_enable_pgo_space) {
+      _aot_compile_options_ += " --compiler-enable-pgo-space=true"
     }
 
     _aot_compile_options_ += common_options
@@ -2790,6 +2814,7 @@ template("host_aot_test_action") {
         invoker.is_enable_trace_deopt) {
       _aot_run_options_ += " --compiler-trace-deopt=true"
     }
+
     args = [
       "--script-file",
       rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime/ark_js_vm",
@@ -3039,6 +3064,10 @@ template("host_aot_test_action") {
         _aot_compile_options_ += " --compiler-opt-loop-peeling=false"
       }
 
+      if (defined(invoker.is_enable_pgo_space) && invoker.is_enable_pgo_space) {
+        _aot_compile_options_ += " --compiler-enable-pgo-space=true"
+      }
+
       _aot_compile_options_ += common_options
       args = [
         "--script-file",
@@ -3129,6 +3158,10 @@ template("host_aot_test_action") {
       if (defined(invoker.disable_opt_loop_peeling) &&
           invoker.disable_opt_loop_peeling) {
         _aot_compile_options_ += " --compiler-opt-loop-peeling=false"
+      }
+
+      if (defined(invoker.is_enable_pgo_space) && invoker.is_enable_pgo_space) {
+        _aot_compile_options_ += " --compiler-enable-pgo-space=true"
       }
 
       _aot_compile_options_ += common_options
@@ -3460,6 +3493,10 @@ template("host_aot_test_action") {
         _aot_compile_options_ += " --compiler-opt-loop-peeling=false"
       }
 
+      if (defined(invoker.is_enable_pgo_space) && invoker.is_enable_pgo_space) {
+        _aot_compile_options_ += " --compiler-enable-pgo-space=true"
+      }
+
       _aot_compile_options_ += common_options
       args = [
         "--script-file",
@@ -3552,6 +3589,10 @@ template("host_aot_test_action") {
       if (defined(invoker.disable_opt_loop_peeling) &&
           invoker.disable_opt_loop_peeling) {
         _aot_compile_options_ += " --compiler-opt-loop-peeling=false"
+      }
+
+      if (defined(invoker.is_enable_pgo_space) && invoker.is_enable_pgo_space) {
+        _aot_compile_options_ += " --compiler-enable-pgo-space=true"
       }
 
       _aot_compile_options_ += common_options
@@ -3967,6 +4008,10 @@ template("host_aot_assert_test_action") {
       _aot_compile_options_ += " --compiler-opt-loop-peeling=true"
     }
 
+    if (defined(invoker.is_enable_pgo_space) && invoker.is_enable_pgo_space) {
+      _aot_compile_options_ += " --compiler-enable-pgo-space=true"
+    }
+
     if (defined(invoker.is_enable_opt_array_bounds_check_elimination) &&
         invoker.is_enable_opt_array_bounds_check_elimination) {
       _aot_compile_options_ +=
@@ -4055,6 +4100,10 @@ template("host_aot_assert_test_action") {
     if (defined(invoker.is_enable_opt_loop_peeling) &&
         invoker.is_enable_opt_loop_peeling) {
       _aot_compile_options_ += " --compiler-opt-loop-peeling=true"
+    }
+
+    if (defined(invoker.is_enable_pgo_space) && invoker.is_enable_pgo_space) {
+      _aot_compile_options_ += " --compiler-enable-pgo-space=true"
     }
 
     if (defined(invoker.is_enable_opt_array_bounds_check_elimination) &&

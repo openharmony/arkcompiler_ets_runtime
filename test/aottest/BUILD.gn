@@ -259,6 +259,7 @@ group("ark_aot_ts_test") {
     #"pgo_call_with_repetitive_method_id",
     "pgo_char_to_string_deopt",
     "pgo_on_heap",
+    "pgo_space_flag",
     "pgo_store_deopt",
     "pgo_track_type",
     "poplexenv",

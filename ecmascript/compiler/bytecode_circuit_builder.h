@@ -404,6 +404,11 @@ public:
         return pgoTypeRecorder_.GetElementsLength(gateAcc_.TryGetPcOffset(gate));
     }
 
+    RegionSpaceFlag GetRegionSpaceFlag(GateRef gate) const
+    {
+        return pgoTypeRecorder_.GetRegionSpaceFlag(gateAcc_.TryGetPcOffset(gate));
+    }
+
     bool ShouldPGOTypeInfer(GateRef gate) const
     {
         return jsGatesToByteCode_.find(gate) != jsGatesToByteCode_.end();

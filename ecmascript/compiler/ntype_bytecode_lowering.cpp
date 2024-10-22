@@ -203,7 +203,8 @@ void NTypeBytecodeLowering::LowerNTypedCreateEmptyArray(GateRef gate)
     AddProfiling(gate);
     ElementsKind kind = acc_.TryGetElementsKind(gate);
     uint32_t length = acc_.TryGetArrayElementsLength(gate);
-    GateRef array = builder_.CreateArray(kind, 0, builder_.Int64(length));
+    RegionSpaceFlag flag = acc_.TryGetRegionSpaceFlag(gate);
+    GateRef array = builder_.CreateArray(kind, 0, builder_.Int64(length), flag);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), array);
 }
 
@@ -223,9 +224,11 @@ void NTypeBytecodeLowering::LowerNTypedCreateArrayWithBuffer(GateRef gate)
     }
     AddProfiling(gate);
     ElementsKind kind = acc_.TryGetElementsKind(gate);
+    RegionSpaceFlag flag = acc_.TryGetRegionSpaceFlag(gate);
     GateRef cpIdGr = builder_.Int32(cpId);
     GateRef array =
-        builder_.CreateArrayWithBuffer(kind, ArrayMetaDataAccessor::Mode::CREATE, cpIdGr, index);
+        builder_.CreateArrayWithBuffer(kind, ArrayMetaDataAccessor::Mode::CREATE,
+                                       cpIdGr, index, flag);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), array);
 }
 

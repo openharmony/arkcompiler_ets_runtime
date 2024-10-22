@@ -288,6 +288,7 @@ void PGOProfiler::UpdateTrackSpaceFlag(TaggedObject *object, RegionSpaceFlag spa
     RegionSpaceFlag oldFlag = trackInfo->GetSpaceFlag();
     if (oldFlag == RegionSpaceFlag::IN_YOUNG_SPACE) {
         trackInfo->SetSpaceFlag(spaceFlag);
+        UpdateTrackInfo(JSTaggedValue(trackInfo));
     }
 }
 
@@ -296,6 +297,7 @@ void PGOProfiler::UpdateTrackInfo(JSTaggedValue trackInfoVal)
     if (trackInfoVal.IsHeapObject()) {
         auto trackInfo = TrackInfo::Cast(trackInfoVal.GetTaggedObject());
         auto func = trackInfo->GetCachedFunc();
+        auto thread = vm_->GetJSThread();
         if (!func.IsWeak()) {
             return;
         }
@@ -303,8 +305,12 @@ void PGOProfiler::UpdateTrackInfo(JSTaggedValue trackInfoVal)
         if (!object->GetClass()->IsJSFunction()) {
             return;
         }
-        auto profileTypeInfoVal = JSFunction::Cast(object)->GetProfileTypeInfo();
-        if (profileTypeInfoVal.IsUndefined()) {
+        JSFunction* function = JSFunction::Cast(object);
+        if (!function->HasProfileTypeInfo(thread)) {
+            return;
+        }
+        auto profileTypeInfoVal = function->GetProfileTypeInfo();
+        if (profileTypeInfoVal.IsUndefined() || !profileTypeInfoVal.IsTaggedArray()) {
             return;
         }
         auto profileTypeInfo = ProfileTypeInfo::Cast(profileTypeInfoVal.GetTaggedObject());
