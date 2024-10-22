@@ -106,15 +106,11 @@ public:
     }
 
     void SetMethodLog(const std::string &fileName, const std::string &methodName, AotMethodLogList *logList);
-    void SetStubLog(const std::string &stubName, MethodLogList *logList);
-    void AddCompiledMethod(const std::string& name, const CString& recordName);
-    void RemoveCompiledMethod(const std::string& name, const CString& recordName);
+    void SetStubLog(const std::string& stubName, MethodLogList* logList);
     void Print() const;
     void AddMethodTime(const std::string& name, uint32_t id, double time);
     void AddPassTime(const std::string& name, double time);
     int GetIndex();
-    void SetPGOMismatchResult(uint32_t &totalMethodCount, uint32_t &mismatchMethodCount,
-                              std::set<std::pair<std::string, CString>> &mismatchMethodSet);
 
     std::map<std::string, int> nameIndex_;
 
@@ -131,8 +127,6 @@ private:
     void PrintPassTime() const;
     void PrintMethodTime() const;
     void PrintTime() const;
-    void PrintCompiledMethod() const;
-    void PrintPGOMismatchedMethod() const;
 
     int idx_ {0};
     bool allMethod_ {false};
@@ -146,10 +140,6 @@ private:
     bool enableMethodLog_ {false};
     std::map<std::string, double> timePassMap_ {};
     std::map<std::pair<uint32_t, std::string>, double> timeMethodMap_ {};
-    std::set<std::pair<std::string, CString>> compiledMethodSet_ {};
-    uint32_t totalPGOMethodCount_ {0};
-    uint32_t mismatchPGOMethodCount_ {0};
-    std::set<std::pair<std::string, CString>> mismatchPGOMethodSet_ {};
 };
 
 class MethodLogList {

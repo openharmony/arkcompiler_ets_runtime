@@ -139,8 +139,6 @@ void CompilerLog::Print() const
     if (compilerLogTime_) {
         PrintTime();
     }
-    PrintPGOMismatchedMethod();
-    PrintCompiledMethod();
 }
 
 void CompilerLog::PrintPassTime() const
@@ -190,32 +188,6 @@ void CompilerLog::PrintTime() const
     PrintMethodTime();
 }
 
-void CompilerLog::PrintCompiledMethod() const
-{
-    LOG_COMPILER(INFO) << " ";
-    LOG_COMPILER(INFO) << " Total number of full compiled methods is: " << compiledMethodSet_.size();
-    for (auto it = compiledMethodSet_.begin(); it != compiledMethodSet_.end(); it++) {
-        LOG_COMPILER(INFO) << " method: " << std::setw(METHOD_LENS) << it->first
-                           << " in record: " << std::setw(RECORD_LENS) << it->second
-                           << " has been full compiled ";
-    }
-}
-
-void CompilerLog::PrintPGOMismatchedMethod() const
-{
-    if (totalPGOMethodCount_ == 0) {
-        return;
-    }
-    LOG_COMPILER(INFO) << " ";
-    LOG_COMPILER(INFO) << " Number of mismatched methods from ap file : " << mismatchPGOMethodCount_ << " / "
-                       << totalPGOMethodCount_;
-    for (const auto &it : mismatchPGOMethodSet_) {
-        LOG_COMPILER(INFO) << " method: " << std::setw(METHOD_LENS) << it.first
-                           << " in record: " << std::setw(RECORD_LENS) << it.second
-                           << " has not been found in abc, and will be abandoned.";
-    }
-}
-
 void CompilerLog::AddMethodTime(const std::string& name, uint32_t id, double time)
 {
     auto methodInfo = std::make_pair(id, name);
@@ -225,18 +197,6 @@ void CompilerLog::AddMethodTime(const std::string& name, uint32_t id, double tim
 void CompilerLog::AddPassTime(const std::string& name, double time)
 {
     timePassMap_[name] += time;
-}
-
-void CompilerLog::AddCompiledMethod(const std::string& name, const CString& recordName)
-{
-    auto info = std::make_pair(name, recordName);
-    compiledMethodSet_.insert(info);
-}
-
-void CompilerLog::RemoveCompiledMethod(const std::string& name, const CString& recordName)
-{
-    auto info = std::make_pair(name, recordName);
-    compiledMethodSet_.erase(info);
 }
 
 int CompilerLog::GetIndex()
@@ -306,14 +266,6 @@ void PGOTypeLogList::CollectGateTypeLogInfo(GateRef gate, bool isBinOp)
 void PGOTypeLogList::PrintPGOTypeLog()
 {
     LOG_COMPILER(INFO) << log_;
-}
-
-void CompilerLog::SetPGOMismatchResult(uint32_t &totalMethodCount, uint32_t &mismatchMethodCount,
-                                       std::set<std::pair<std::string, CString>> &mismatchMethodSet)
-{
-    totalPGOMethodCount_ = totalMethodCount;
-    mismatchPGOMethodCount_ = mismatchMethodCount;
-    mismatchPGOMethodSet_ = std::move(mismatchMethodSet);
 }
 
 } // namespace panda::ecmascript::kungfu
