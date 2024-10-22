@@ -418,14 +418,6 @@ bool EarlyElimination::CheckReplacement(GateRef lhs, GateRef rhs)
             }
             break;
         }
-        case OpCode::STABLE_ARRAY_CHECK: {
-            ArrayMetaDataAccessor lhsAccessor = acc_.GetArrayMetaDataAccessor(lhs);
-            ArrayMetaDataAccessor rhsAccessor = acc_.GetArrayMetaDataAccessor(rhs);
-            if (lhsAccessor.GetMode() != rhsAccessor.GetMode()) {
-                return false;
-            }
-            break;
-        }
         default:
             break;
     }

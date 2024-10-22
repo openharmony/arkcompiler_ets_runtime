@@ -120,11 +120,6 @@ void CombinedPassVisitor::VisitGraph()
     circuit_->AdvanceTime();
     orderCount_ = 0;
     Resize(circuit_->GetMaxGateId() + 1, -1);
-    GateRef returnList = acc_.GetReturnRoot();
-    auto uses = acc_.Uses(returnList);
-    for (auto useIt = uses.begin(); useIt != uses.end(); useIt++) {
-        PushChangedGate(*useIt);
-    }
     std::vector<GateRef> gateList;
     circuit_->GetAllGates(gateList);
     for (auto gate : gateList) {
@@ -133,6 +128,12 @@ void CombinedPassVisitor::VisitGraph()
             // For empty loop and no RETURN opcode
             VistDependSelectorForLoop(gate);
         }
+    }
+    // Visit gate needing to start from RETURN, otherwise it may lead to incomplete early elimination in some scenarios.
+    GateRef returnList = acc_.GetReturnRoot();
+    auto uses = acc_.Uses(returnList);
+    for (auto useIt = uses.begin(); useIt != uses.end(); useIt++) {
+        PushChangedGate(*useIt);
     }
 
     while (true) {

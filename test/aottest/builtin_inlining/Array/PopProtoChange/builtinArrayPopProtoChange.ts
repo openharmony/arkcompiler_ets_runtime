@@ -28,7 +28,7 @@ function prototypeChange(){
   var x = [0]
   x.length = 2
   var pop = x.pop()
-  //aot: [trace] Check Type: NotStableArray2
+  //aot: [trace] Check Type: NotStableArray1
   print(pop) //: 1
   Object.prototype.length =  2
 }

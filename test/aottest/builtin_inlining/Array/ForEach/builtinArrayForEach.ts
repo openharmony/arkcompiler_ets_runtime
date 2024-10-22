@@ -94,7 +94,7 @@ function testForeachEndHoleArray() {
         print(x)
     })
 }
-//aot: [trace] Check Type: NotStableArray2
+//aot: [trace] Check Type: InconsistentElementsKind
 //: 1
 //: 2
 //: 3
