@@ -661,6 +661,12 @@ void SharedHeap::ReclaimForAppSpawn()
 
 void SharedHeap::DumpHeapSnapshotBeforeOOM([[maybe_unused]]bool isFullGC, [[maybe_unused]]JSThread *thread)
 {
+#if defined(ECMASCRIPT_SUPPORT_SNAPSHOT) && defined(PANDA_TARGET_OHOS) && defined(ENABLE_HISYSEVENT)
+    if (!g_betaVersion && !g_developMode) {
+        LOG_GC(INFO) << "current device is not development or beta! do not dump";
+        return;
+    }
+#endif
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
 #if defined(ENABLE_DUMP_IN_FAULTLOG)
     EcmaVM *vm = thread->GetEcmaVM();
@@ -1513,6 +1519,12 @@ void BaseHeap::OnAllocateEvent([[maybe_unused]] EcmaVM *ecmaVm, [[maybe_unused]]
 
 void Heap::DumpHeapSnapshotBeforeOOM([[maybe_unused]] bool isFullGC)
 {
+#if defined(ECMASCRIPT_SUPPORT_SNAPSHOT) && defined(PANDA_TARGET_OHOS) && defined(ENABLE_HISYSEVENT)
+    if (!g_betaVersion && !g_developMode) {
+        LOG_GC(INFO) << "current device is not development or beta! do not dump";
+        return;
+    }
+#endif
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
 #if defined(ENABLE_DUMP_IN_FAULTLOG)
     if (ecmaVm_->GetHeapProfile() != nullptr) {
