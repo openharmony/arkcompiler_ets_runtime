@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-var shaderFastVs = `
+const shaderFastVs = `
 attribute vec3 position;
 attribute vec2 aTexCoord;
 attribute vec4 ext1;//x,y,sw,sh,
@@ -55,7 +55,7 @@ void main()
 }
 `;
 
-var shaderFastFs = `
+const shaderFastFs = `
 precision mediump float;
 
 varying vec2 TexCoord;

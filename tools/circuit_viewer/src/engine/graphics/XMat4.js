@@ -177,4 +177,4 @@ export class XMat4 {
   }
 }
 
-var tmpmat = new XMat4();
+let tmpmat = new XMat4();

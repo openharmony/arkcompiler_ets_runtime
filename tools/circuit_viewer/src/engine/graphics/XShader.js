@@ -73,7 +73,7 @@ export class XShader {
     return this.pUseingShader;
   }
   initShader(vss, fss) {
-    var vs = gl.createShader(gl.VERTEX_SHADER);
+    let vs = gl.createShader(gl.VERTEX_SHADER);
     gl.shaderSource(vs, vss);
     gl.compileShader(vs);
     if (!gl.getShaderParameter(vs, gl.COMPILE_STATUS)) {
@@ -83,7 +83,7 @@ export class XShader {
       return null;
     }
 
-    var fs = gl.createShader(gl.FRAGMENT_SHADER);
+    let fs = gl.createShader(gl.FRAGMENT_SHADER);
     gl.shaderSource(fs, fss);
     gl.compileShader(fs);
     if (!gl.getShaderParameter(fs, gl.COMPILE_STATUS)) {
@@ -93,7 +93,7 @@ export class XShader {
       return null;
     }
 
-    var ret = gl.createProgram();
+    let ret = gl.createProgram();
 
     gl.attachShader(ret, vs);
     gl.attachShader(ret, fs);

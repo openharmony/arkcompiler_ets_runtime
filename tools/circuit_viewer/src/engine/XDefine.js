@@ -31,7 +31,7 @@ export class Scr {
     Scr.height = h;
 
     if ('undefined' != typeof wx) {
-      var info = wx.getSystemInfoSync();
+      let info = wx.getSystemInfoSync();
       Scr.width = info.windowWidth;
       Scr.height = info.windowHeight;
     }

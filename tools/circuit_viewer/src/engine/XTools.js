@@ -60,7 +60,7 @@ export function iDistance(x, y) {
   return Math.sqrt(x * x + y * y);
 }
 
-export var timeMs = 0;
+export let timeMs = 0;
 export function freshTime() {
   let t = new Date();
   timeMs = t.getTime();
