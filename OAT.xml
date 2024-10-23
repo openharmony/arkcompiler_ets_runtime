@@ -74,6 +74,10 @@ Note:If the text contains special characters, please escape them according to th
                 <filteritem type="filepath" name="docs/figures/zh-cn_image_ark-ts-arch.png" desc="自造的二进制图片"/>
                 <filteritem type="filepath" name="tools/circuit_viewer/figures/.*.png" desc="自造的二进制图片"/>
                 <filteritem type="filepath" name="tools/circuit_viewer/dist/favicon.ico" desc="ico文件"/>
+                <filteritem type="filepath" name="tools/ap_file_viewer/src/img/.*.png" desc="自制ap图片"/>
+                <filteritem type="filepath" name="tools/ap_file_viewer/test/.*.ap" desc="ap测试文件"/>
+                <filteritem type="filepath" name="tools/ap_file_viewer/test/figures/.*.png" desc="自制测试readme图片"/>
+                <filteritem type="filepath" name="tools/ap_file_viewer/figures/.*.png" desc="自制readme图片"/>
             </filefilter>
             <filefilter name="copyrightPolicyFilter" desc="copyright文件头校验策略的过滤条件" >
             </filefilter>

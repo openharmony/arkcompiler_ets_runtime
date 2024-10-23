@@ -1,0 +1,32 @@
+{
+  "filterKeys": [
+    "moduleName",
+    "funcName",
+    "type",
+    "isRoot",
+    "apKind",
+    "apAbcId",
+    "apId",
+    "offset"
+  ],
+  "summaryTreeLevel": [
+    "ModuleName",
+    "->FunctionName",
+    "->Offset",
+    "->Type"
+  ],
+  "apTableTr": [
+    {
+      "is_root_column_td": "isRoot"
+    },
+    {
+      "kind_column_td": "apKind"
+    },
+    {
+      "abc_column_td": "apAbcId"
+    },
+    {
+      "typeid_column_td": "apId"
+    }
+  ]
+}
