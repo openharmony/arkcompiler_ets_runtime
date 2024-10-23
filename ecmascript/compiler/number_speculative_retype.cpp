@@ -275,6 +275,8 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
             return VisitOthersWithoutConvert(gate);
         case OpCode::ARRAY_INCLUDES_INDEXOF:
             return VisitArrayIncludesIndexOf(gate);
+        case OpCode::STRING_CHAR_CODE_AT:
+            return VisitStringCharCodeAt(gate);
         case OpCode::NUMBER_PARSE_INT:
         case OpCode::JS_BYTECODE:
         case OpCode::RUNTIME_CALL:
@@ -2141,6 +2143,23 @@ GateRef NumberSpeculativeRetype::VisitArrayIncludesIndexOf(GateRef gate)
     acc_.ReplaceValueIn(gate, ConvertToTagged(findElement), 2); //2:find element position
     acc_.ReplaceDependIn(gate, builder_.GetDepend());
     acc_.ReplaceStateIn(gate, builder_.GetState());
+    return Circuit::NullGate();
+}
+
+GateRef NumberSpeculativeRetype::VisitStringCharCodeAt(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    if (IsRetype()) {
+        return SetOutputType(gate, GateType::AnyType());
+    }
+    if (IsConvert()) {
+        GateRef thisValue = acc_.GetValueIn(gate, 0);
+        acc_.ReplaceValueIn(gate, ConvertToTagged(thisValue), 0);
+        GateRef pos = acc_.GetValueIn(gate, 1);
+        acc_.ReplaceValueIn(gate, CheckAndConvertToInt32(pos, GateType::IntType()), 1);
+        acc_.ReplaceStateIn(gate, builder_.GetState());
+        acc_.ReplaceDependIn(gate, builder_.GetDepend());
+    }
     return Circuit::NullGate();
 }
 

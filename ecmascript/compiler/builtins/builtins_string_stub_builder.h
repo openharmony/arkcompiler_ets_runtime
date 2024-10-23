@@ -49,6 +49,7 @@ BUILTINS_WITH_STRING_STUB_BUILDER(DECLARE_BUILTINS_SRRING_STUB_BUILDER)
         const StringInfoGateRef &stringInfoGate);
     GateRef FastSubUtf8String(GateRef glue, GateRef from, GateRef len, const StringInfoGateRef &stringInfoGate);
     GateRef FastSubUtf16String(GateRef glue, GateRef from, GateRef len, const StringInfoGateRef &stringInfoGate);
+    GateRef FastStringCharCodeAt(GateRef glue, GateRef thisValue, GateRef pos);
     GateRef GetSubstitution(GateRef glue, GateRef searchString, GateRef thisString,
         GateRef pos, GateRef replaceString);
     void CopyChars(GateRef glue, GateRef dst, GateRef source, GateRef sourceLength, GateRef size, VariableType type);
@@ -101,6 +102,7 @@ public:
     void GenerateCircuit() override {}
 
     void FlattenString(GateRef glue, GateRef str, Label *fastPath);
+    void FlattenStringWithIndex(GateRef glue, GateRef str, Variable *index, Label *fastPath);
     GateRef GetParentFromSlicedString(GateRef string)
     {
         GateRef offset = IntPtr(SlicedString::PARENT_OFFSET);

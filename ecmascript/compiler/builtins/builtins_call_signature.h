@@ -399,6 +399,7 @@ public:
         switch (builtinId) {
             case BuiltinsStubCSigns::ID::ArraySort:
             case BuiltinsStubCSigns::ID::StringFromCharCode:
+            case BuiltinsStubCSigns::ID::StringCharCodeAt:
             case BuiltinsStubCSigns::ID::StringSubstring:
             case BuiltinsStubCSigns::ID::StringSubStr:
             case BuiltinsStubCSigns::ID::StringSlice:
@@ -601,6 +602,8 @@ public:
                 return ConstantIndex::SET_ADD_INDEX;
             case BuiltinsStubCSigns::ID::StringLocaleCompare:
                 return ConstantIndex::LOCALE_COMPARE_FUNCTION_INDEX;
+            case BuiltinsStubCSigns::ID::StringCharCodeAt:
+                return ConstantIndex::STRING_CHAR_CODE_AT_INDEX;
             case BuiltinsStubCSigns::ID::StringSubstring:
                 return ConstantIndex::STRING_SUB_STRING_INDEX;
             case BuiltinsStubCSigns::ID::StringSubStr:
@@ -824,6 +827,7 @@ public:
             {NumberIsInteger, "Number.isInteger"},
             {NumberIsSafeInteger, "Number.isSafeInteger"},
             {NumberParseInt, "Number.parseInt"},
+            {StringCharCodeAt, "String.prototype.charCodeAt"},
             {StringSubstring, "String.prototype.substring"},
             {StringSubStr, "String.prototype.substr"},
             {StringSlice, "String.prototype.slice"},
@@ -928,6 +932,7 @@ public:
             {"mapDelete", MapDelete},
             {"setDelete", SetDelete},
             {"BigInt", BigIntConstructor},
+            {"charCodeAt", StringCharCodeAt},
             {"substring", StringSubstring},
             {"substr", StringSubStr},
             {"slice", StringSlice},

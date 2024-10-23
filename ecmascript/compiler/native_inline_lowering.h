@@ -47,6 +47,7 @@ private:
     enum IncludesOrIndexOf : uint8_t { INCLUDES = 0, INDEXOF };
     std::optional<std::pair<size_t, bool>> GetCallInfo(GateRef gate);
     void TryInlineStringFromCharCode(GateRef gate, size_t argc, bool skipThis);
+    void TryInlineStringCharCodeAt(GateRef gate, size_t argc, bool skipThis);
     void TryInlineStringSubstring(GateRef gate, size_t argc, bool skipThis);
     void TryInlineStringSubStr(GateRef gate, size_t argc, bool skipThis);
     void TryInlineStringSlice(GateRef gate, size_t argc, bool skipThis);

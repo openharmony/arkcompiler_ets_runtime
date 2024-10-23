@@ -61,6 +61,7 @@ namespace panda::ecmascript::kungfu {
     V(IndexCheck, INDEX_CHECK, GateFlags::CHECKABLE, 1, 1, 2)                                   \
     V(MonoLoadPropertyOnProto, MONO_LOAD_PROPERTY_ON_PROTO, GateFlags::CHECKABLE, 1, 1, 4)      \
     V(StringFromSingleCharCode, STRING_FROM_SINGLE_CHAR_CODE, GateFlags::NO_WRITE, 1, 1, 1)     \
+    V(StringCharCodeAt, STRING_CHAR_CODE_AT, GateFlags::NO_WRITE, 1, 1, 2)                      \
     V(StringSubstring, STRING_SUB_STRING, GateFlags::NO_WRITE, 1, 1, 3)                         \
     V(StringSubStr, STRING_SUB_STR, GateFlags::NO_WRITE, 1, 1, 3)                               \
     V(StringSlice, STRING_SLICE, GateFlags::NO_WRITE, 1, 1, 3)                                  \

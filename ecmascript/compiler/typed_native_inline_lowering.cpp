@@ -282,6 +282,9 @@ GateRef TypedNativeInlineLowering::VisitGate(GateRef gate)
         case OpCode::SET_CLEAR:
             LowerToBuiltinStub(gate, BuiltinsStubCSigns::SetClear);
             break;
+        case OpCode::STRING_CHAR_CODE_AT:
+            LowerStringCharCodeAt(gate);
+            break;
         case OpCode::STRING_SUB_STRING:
             LowerStringSubstring(gate);
             break;
@@ -2143,6 +2146,35 @@ GateRef TypedNativeInlineLowering::BuildTaggedPointerOverflowInt32(GateRef value
         builder_.CastInt64ToFloat64(builder_.ChangeTaggedPointerToInt64(value)));
     return builder_.BitOr(builder_.Int32LessThanOrEqual(intValue, builder_.Int32(INT32_MIN)),
                           builder_.Int32GreaterThanOrEqual(intValue, builder_.Int32(INT32_MAX)));
+}
+
+void TypedNativeInlineLowering::LowerStringCharCodeAt(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+
+    GateRef thisValue = acc_.GetValueIn(gate, 0); // 0: first argument
+    GateRef pos = acc_.GetValueIn(gate, 1); // 1: second argument
+    GateRef glue = acc_.GetGlueFromArgList();
+    DEFVALUE(result, (&builder_), VariableType::JS_ANY(), builder_.Undefined());
+    Label posIsValid(&builder_);
+    Label posNotValid(&builder_);
+    Label exit(&builder_);
+
+    GateRef strLen = builder_.GetLengthFromString(thisValue);
+    BRANCH_CIR(builder_.Int32UnsignedLessThan(pos, strLen), &posIsValid, &posNotValid);
+    builder_.Bind(&posIsValid);
+    {
+        BuiltinsStringStubBuilder stringBuilder(builder_.GetCurrentEnvironment());
+        result = stringBuilder.FastStringCharCodeAt(glue, thisValue, pos);
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&posNotValid);
+    {
+        result = builder_.DoubleToTaggedDoublePtr(builder_.Double(base::NAN_VALUE));
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&exit);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
 }
 
 void TypedNativeInlineLowering::LowerStringSubstring(GateRef gate)
