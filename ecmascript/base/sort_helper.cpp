@@ -568,8 +568,8 @@ void TimSort::CopyArray(JSHandle<TaggedArray> &src, int srcPos,
     DISALLOW_GARBAGE_COLLECTION;
     ASSERT(srcPos >= 0);
     ASSERT(dstPos >= 0);
-    ASSERT(srcPos <= src->GetLength() - length);
-    ASSERT(dstPos <= dst->GetLength() - length);
+    ASSERT(static_cast<int64_t>(srcPos) <= static_cast<int64_t>(src->GetLength() - length));
+    ASSERT(static_cast<int64_t>(dstPos) <= static_cast<int64_t>(dst->GetLength() - length));
 
     if (srcPos < dstPos) {
         int srcIdx = srcPos + length - 1;
