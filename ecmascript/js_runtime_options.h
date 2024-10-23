@@ -723,7 +723,7 @@ public:
             }
             if (!base::NumberHelper::StringToInt64(strEnd, inputEnd)) {
                 inputEnd = kungfu::BYTECODE_STUB_END_ID;
-                LOG_ECMA_IF(!strStart.empty(), INFO) << "when get end, strEnd is " << strEnd;
+                LOG_ECMA_IF(!strEnd.empty(), INFO) << "when get end, strEnd is " << strEnd;
             }
             int start = static_cast<int>(inputStart);
             int end = static_cast<int>(inputEnd);
