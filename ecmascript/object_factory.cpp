@@ -3295,17 +3295,8 @@ JSHandle<EcmaString> ObjectFactory::GetCompressedSubStringFromStringTable(const 
         return GetEmptyString();
     }
     auto *stringTable = vm_->GetEcmaStringTable();
-    return JSHandle<EcmaString>(thread_, stringTable->GetOrInternCompressedSubString(vm_, string, offset, utf8Len));
-}
-
-JSHandle<EcmaString> ObjectFactory::GetStringFromStringTableNonMovable(const uint8_t *utf8Data, uint32_t utf8Len) const
-{
-    NewObjectHook();
-    if (utf8Len == 0) {
-        return GetEmptyString();
-    }
-    auto stringTable = vm_->GetEcmaStringTable();
-    return JSHandle<EcmaString>(thread_, stringTable->CreateAndInternStringNonMovable(vm_, utf8Data, utf8Len));
+    return JSHandle<EcmaString>(thread_,
+        stringTable->GetOrInternStringFromCompressedSubString(vm_, string, offset, utf8Len));
 }
 
 JSHandle<EcmaString> ObjectFactory::GetStringFromStringTableReadOnly(const uint8_t *utf8Data, uint32_t utf8Len,
@@ -3316,8 +3307,8 @@ JSHandle<EcmaString> ObjectFactory::GetStringFromStringTableReadOnly(const uint8
         return GetEmptyString();
     }
     auto stringTable = vm_->GetEcmaStringTable();
-    return JSHandle<EcmaString>(thread_, stringTable->CreateAndInternStringReadOnly(vm_, utf8Data, utf8Len,
-                                                                                    canBeCompress));
+    return JSHandle<EcmaString>(thread_, stringTable->GetOrInternString(vm_, utf8Data, utf8Len, canBeCompress,
+                                                                        MemSpaceType::SHARED_READ_ONLY_SPACE));
 }
 
 JSHandle<EcmaString> ObjectFactory::GetStringFromStringTable(const uint16_t *utf16Data, uint32_t utf16Len,
@@ -3329,16 +3320,6 @@ JSHandle<EcmaString> ObjectFactory::GetStringFromStringTable(const uint16_t *utf
     }
     auto stringTable = vm_->GetEcmaStringTable();
     return JSHandle<EcmaString>(thread_, stringTable->GetOrInternString(vm_, utf16Data, utf16Len, canBeCompress));
-}
-
-JSHandle<EcmaString> ObjectFactory::GetStringFromStringTable(EcmaString *string) const
-{
-    ASSERT(string != nullptr);
-    if (EcmaStringAccessor(string).GetLength() == 0) {
-        return GetEmptyString();
-    }
-    auto stringTable = vm_->GetEcmaStringTable();
-    return JSHandle<EcmaString>(thread_, stringTable->GetOrInternString(vm_, string));
 }
 
 // NB! don't do special case for C0 80, it means '\u0000', so don't convert to UTF-8
@@ -3355,10 +3336,10 @@ EcmaString *ObjectFactory::GetRawStringFromStringTable(StringData sd, MemSpaceTy
     const uint8_t *mutf8Data = sd.data;
     if (canBeCompressed) {
         // This branch will use constant string, which has a pointer at the string in the pandafile.
-        return vm_->GetEcmaStringTable()->GetOrInternStringWithSpaceType(vm_, mutf8Data, utf16Len, true, type,
-                                                                         isConstantString, idOffset);
+        return vm_->GetEcmaStringTable()->GetOrInternString(vm_, mutf8Data, utf16Len, true, type,
+                                                            isConstantString, idOffset);
     }
-    return vm_->GetEcmaStringTable()->GetOrInternStringWithSpaceType(vm_, mutf8Data, utf16Len, type);
+    return vm_->GetEcmaStringTable()->GetOrInternString(vm_, mutf8Data, utf16Len, type);
 }
 
 // used in jit thread, which unsupport create jshandle
@@ -3375,10 +3356,10 @@ EcmaString *ObjectFactory::GetRawStringFromStringTableWithoutJSHandle(StringData
     const uint8_t *mutf8Data = sd.data;
     if (canBeCompressed) {
         // This branch will use constant string, which has a pointer at the string in the pandafile.
-        return vm_->GetEcmaStringTable()->GetOrInternStringWithSpaceType(vm_, mutf8Data, utf16Len, true, type,
-                                                                         isConstantString, idOffset);
+        return vm_->GetEcmaStringTable()->GetOrInternStringWithoutJSHandleForJit(vm_, mutf8Data, utf16Len, true, type,
+                                                                                 isConstantString, idOffset);
     }
-    return vm_->GetEcmaStringTable()->GetOrInternStringWithSpaceTypeWithoutJSHandle(vm_, mutf8Data, utf16Len, type);
+    return vm_->GetEcmaStringTable()->GetOrInternStringWithoutJSHandleForJit(vm_, mutf8Data, utf16Len, type);
 }
 
 JSHandle<PropertyBox> ObjectFactory::NewPropertyBox(const JSHandle<JSTaggedValue> &value)
@@ -4167,13 +4148,6 @@ JSHandle<EcmaString> ObjectFactory::NewFromASCIISkippingStringTable(std::string_
     ASSERT(EcmaStringAccessor::CanBeCompressed(utf8Data, data.length()));
     EcmaString *str = EcmaStringAccessor::CreateFromUtf8(vm_, utf8Data, data.length(), true);
     return JSHandle<EcmaString>(thread_, str);
-}
-
-JSHandle<EcmaString> ObjectFactory::NewFromASCIINonMovable(std::string_view data)
-{
-    auto utf8Data = reinterpret_cast<const uint8_t *>(data.data());
-    ASSERT(EcmaStringAccessor::CanBeCompressed(utf8Data, data.length()));
-    return GetStringFromStringTableNonMovable(utf8Data, data.length());
 }
 
 JSHandle<EcmaString> ObjectFactory::NewFromASCIIReadOnly(std::string_view data)

@@ -1330,7 +1330,7 @@ void SnapshotProcessor::DeserializeString(uintptr_t stringBegin, uintptr_t strin
             auto hashcode = EcmaStringAccessor(str).GetHashcode();
             RuntimeLockHolder locker(thread,
                 stringTable->stringTable_[EcmaStringTable::GetTableId(hashcode)].mutex_);
-            auto strFromTable = stringTable->GetStringWithHashThreadUnsafe(str, hashcode);
+            auto strFromTable = stringTable->GetStringThreadUnsafe(str, hashcode);
             if (strFromTable) {
                 deserializeStringVector_.emplace_back(thread, strFromTable);
             } else {
@@ -1552,9 +1552,9 @@ void SnapshotProcessor::RelocateSpaceObject(const JSPandaFile *jsPandaFile, Spac
             DeserializeField(objectHeader);
             if (builtinsDeserialize_ &&
                 (JSType(objType) >= JSType::STRING_FIRST && JSType(objType) <= JSType::STRING_LAST)) {
-                auto str = reinterpret_cast<EcmaString *>(begin);
+                EcmaString *str = reinterpret_cast<EcmaString *>(begin);
                 EcmaStringAccessor(str).ClearInternString();
-                stringTable->InsertStringIfNotExistThreadUnsafe(str);
+                stringTable->GetOrInternFlattenString(vm_, str);
                 if (JSType(objType) == JSType::CONSTANT_STRING) {
                     auto constantStr = ConstantString::Cast(str);
                     uint32_t id = constantStr->GetEntityIdU32();
