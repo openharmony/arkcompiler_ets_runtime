@@ -146,8 +146,8 @@
       panda::ecmascript::DynChunk::EmitChar*;
       panda::ecmascript::EcmaContext::FindConstpool*;
       panda::ecmascript::EcmaContext::FindOrCreateConstPool*;
-      panda::ecmascript::EcmaContext::FindOrCreateUnsharedConstpool*;
       panda::ecmascript::EcmaContext::FindUnsharedConstpool*;
+      panda::ecmascript::EcmaContext::FindOrCreateUnsharedConstpool*;
       panda::ecmascript::EcmaRuntimeStat::StartCount*;
       panda::ecmascript::EcmaRuntimeStat::StopCount*;
       panda::ecmascript::EcmaString::ComputeHashcode*;
@@ -331,7 +331,6 @@
       panda::ecmascript::kungfu::PGOTypeManager::GetHClassIndexByProfileType*;
       panda::ecmascript::kungfu::PGOTypeManager::InitAOTSnapshot*;
       panda::ecmascript::kungfu::PGOTypeManager::QueryHClass*;
-      panda::ecmascript::kungfu::PGOTypeManager::UpdateRecordElements*;
       panda::ecmascript::kungfu::PGOTypeManager::RecordElements*;
       panda::ecmascript::kungfu::PGOTypeManager::RecordAndGetHclassIndexForJIT*;
       panda::ecmascript::kungfu::PGOTypeManager::GetHolderHIndexByPGOObjectInfoType*;
@@ -347,6 +346,7 @@
       panda::ecmascript::kungfu::PGOTypeRecorder::GetTransitionElementsKindForUser*;
       panda::ecmascript::kungfu::PGOTypeRecorder::GetTransitionElementsKindsForUser*;
       panda::ecmascript::kungfu::PGOTypeRecorder::PGOTypeRecorder*;
+      panda::ecmascript::kungfu::PGOTypeRecorder::GetTransitionElementsKindsForUser*;
       panda::ecmascript::kungfu::ReviseData::Resolve*;
       panda::ecmascript::kungfu::SnapshotConstantPoolData::Record*;
       panda::ecmascript::ohos::DecrypRemoveKey*;

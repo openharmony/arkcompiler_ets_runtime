@@ -318,7 +318,6 @@ void JitTask::InstallCodeByCompilerTier(JSHandle<MachineCode> &machineCodeObj,
     JSHandle<Method> &methodHandle)
 {
     uintptr_t codeAddr = machineCodeObj->GetFuncAddr();
-    DumpJitCode(machineCodeObj, methodHandle);
     if (compilerTier_ == CompilerTier::FAST) {
         FuncEntryDes *funcEntryDes = reinterpret_cast<FuncEntryDes*>(machineCodeObj->GetFuncEntryDes());
         jsFunction_->SetCompiledFuncEntry(codeAddr, funcEntryDes->isFastCall_);

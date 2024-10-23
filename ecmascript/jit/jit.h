@@ -218,7 +218,7 @@ public:
     };
 
 private:
-    bool SupportJIT(JSHandle<JSFunction> &jsFunction, CompilerTier tier) const;
+    bool SupportJIT(JSHandle<JSFunction> &jsFunction, EcmaVM *vm, CompilerTier tier) const;
     bool initialized_ { false };
     bool fastJitEnable_ { false };
     bool baselineJitEnable_ { false };
@@ -226,6 +226,7 @@ private:
     bool isProfileNeedDump_ { true };
     uint32_t hotnessThreshold_ { 0 };
     std::string bundleName_;
+    bool isEnableAppPGO_ { true };
 
     std::unordered_map<JSThread*, ThreadTaskInfo> threadTaskInfo_;
     RecursiveMutex threadTaskInfoLock_;
