@@ -158,6 +158,19 @@ GateRef CircuitBuilder::EcmaStringCheck(GateRef gate)
     return ret;
 }
 
+GateRef CircuitBuilder::InternStringCheck(GateRef gate)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    auto frameState = acc_.FindNearestFrameState(currentDepend);
+    GateRef ret = GetCircuit()->NewGate(circuit_->InternStringCheck(),
+        MachineType::I1, {currentControl, currentDepend, gate, frameState}, GateType::NJSValue());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
 GateRef CircuitBuilder::EcmaMapCheck(GateRef gate)
 {
     auto currentLabel = env_->GetCurrentLabel();

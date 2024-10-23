@@ -83,6 +83,7 @@ namespace panda::ecmascript::kungfu {
     V(RemainderIsNegativeZero,         REMAINDERISNEGATIVEZERO)        \
     V(Int32Overflow1,                  INT32OVERFLOW1)                 \
     V(NotString1,                      NOTSTRING1)                     \
+    V(NotInternString1,                NOTINTERNSTRING1)               \
     V(InconsistentType1,               INCONSISTENTTYPE1)              \
     V(NotNull1,                        NOTNULL1)                       \
     V(NotNull2,                        NOTNULL2)                       \

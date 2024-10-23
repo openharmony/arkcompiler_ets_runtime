@@ -48,6 +48,7 @@ namespace panda::ecmascript::kungfu {
     V(BOOLEAN, BooleanType)            \
     V(VOID_TYPE, VoidType)             \
     V(STRING, StringType)              \
+    V(INTERN_STRING, InternStringType) \
     V(SYMBOL, SymbolType)              \
     V(NULL_TYPE, NullType)             \
     V(UNDEFINED, UndefinedType)        \

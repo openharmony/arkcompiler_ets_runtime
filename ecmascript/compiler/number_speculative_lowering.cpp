@@ -923,6 +923,10 @@ GateRef NumberSpeculativeLowering::GetConstDouble(double v)
 
 void NumberSpeculativeLowering::VisitStringBinaryOp(GateRef gate)
 {
+    if (acc_.IsInternStringType(gate)) {
+        VisitInternStringBinaryOp(gate);
+        return;
+    }
     TypedBinOp Op = acc_.GetTypedBinaryOp(gate);
     switch (Op) {
         case TypedBinOp::TYPED_EQ: {
@@ -937,6 +941,31 @@ void NumberSpeculativeLowering::VisitStringBinaryOp(GateRef gate)
             LOG_COMPILER(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
+}
+
+void NumberSpeculativeLowering::VisitInternStringBinaryOp(GateRef gate)
+{
+    TypedBinOp Op = acc_.GetTypedBinaryOp(gate);
+    GateRef left = acc_.GetValueIn(gate, 0);
+    GateRef right = acc_.GetValueIn(gate, 1);
+    DEFVALUE(result, (&builder_), VariableType::BOOL(), builder_.False());
+    switch (Op) {
+        case TypedBinOp::TYPED_STRICTEQ: {
+            result = builder_.Equal(left, right);
+            break;
+        }
+        case TypedBinOp::TYPED_STRICTNOTEQ: {
+            result = builder_.NotEqual(left, right);
+            break;
+        }
+        default: {
+            LOG_COMPILER(FATAL) << "this branch is unreachable";
+            UNREACHABLE();
+        }
+    }
+    acc_.SetMachineType(gate, MachineType::I1);
+    acc_.SetGateType(gate, GateType::NJSValue());
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
 }
 
 template<TypedBinOp Op>

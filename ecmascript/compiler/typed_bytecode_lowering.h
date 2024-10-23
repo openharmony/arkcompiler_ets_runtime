@@ -211,6 +211,9 @@ private:
     void DeleteBytecodeCount(EcmaOpcode op);
     void AddHitBytecodeCount();
 
+    GateRef InternStringCheck(GateRef gate);
+    template<TypedBinOp Op>
+    void SpeculateInternStrings(const BinOpTypeInfoAccessor& tacc);
     template<TypedBinOp Op>
     void SpeculateStrings(const BinOpTypeInfoAccessor& tacc);
     template<TypedBinOp Op>

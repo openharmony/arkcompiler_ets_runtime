@@ -2528,6 +2528,11 @@ inline GateRef StubBuilder::GetPropertiesAddrFromLayoutInfo(GateRef layout)
     return PtrAdd(layout, IntPtr(TaggedArray::DATA_OFFSET));
 }
 
+inline GateRef StubBuilder::IsInternalString(GateRef string)
+{
+    return env_->GetBuilder()->IsInternString(string);
+}
+
 inline GateRef StubBuilder::GetInt64OfTInt(GateRef x)
 {
     return env_->GetBuilder()->GetInt64OfTInt(x);

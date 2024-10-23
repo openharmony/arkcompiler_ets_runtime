@@ -125,6 +125,14 @@ public:
         return pgoType_.IsString();
     }
 
+    inline bool IsInternStringType() const
+    {
+        if (LeftOrRightIsUndefinedOrNull()) {
+            return false;
+        }
+        return pgoType_.IsInternString();
+    }
+
     inline bool IsNumberOrStringType() const
     {
         if (LeftOrRightIsUndefinedOrNull()) {

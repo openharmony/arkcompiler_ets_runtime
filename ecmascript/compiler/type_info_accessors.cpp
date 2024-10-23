@@ -35,6 +35,8 @@ ParamType TypeInfoAccessor::PGOSampleTypeToParamType() const
             return ParamType::DoubleType();
         } else if (sample->IsString()) {
             return ParamType::StringType();
+        } else if (sample->IsInternString()) {
+            return ParamType::InternStringType();
         } else if (sample->IsBigInt()) {
             return ParamType::BigIntType();
         } else if (sample->IsBoolean()) {

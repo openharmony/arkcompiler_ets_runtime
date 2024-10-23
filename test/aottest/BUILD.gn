@@ -171,6 +171,8 @@ group("ark_aot_ts_test") {
     "inline",
     "inline_array_exception",
     "instanceof",
+    "intern_string_strict_equal1",
+    "intern_string_strict_equal2",
     "isfalse",
     "isin",
     "isomorphism",

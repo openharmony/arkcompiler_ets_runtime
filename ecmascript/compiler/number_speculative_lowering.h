@@ -37,6 +37,7 @@ private:
     void VisitTypedBinaryOp(GateRef gate);
     void VisitNumberBinaryOp(GateRef gate);
     void VisitStringBinaryOp(GateRef gate);
+    void VisitInternStringBinaryOp(GateRef gate);
     void VisitTypedUnaryOp(GateRef gate);
     void VisitNumberNot(GateRef gate);
     void VisitTypedConditionJump(GateRef gate);

@@ -539,6 +539,12 @@ GateRef CircuitBuilder::IsUtf16String(GateRef string)
         Int32(EcmaString::STRING_UNCOMPRESSED));
 }
 
+GateRef CircuitBuilder::IsInternString(GateRef string)
+{
+    GateRef len = Load(VariableType::INT32(), string, IntPtr(EcmaString::MIX_LENGTH_OFFSET));
+    return Int32NotEqual(Int32And(len, Int32(EcmaString::STRING_INTERN_BIT)), Int32(0));
+}
+
 GateRef CircuitBuilder::GetGlobalObject(GateRef glue)
 {
     GateRef offset = IntPtr(JSThread::GlueData::GetGlobalObjOffset(cmpCfg_->Is32Bit()));

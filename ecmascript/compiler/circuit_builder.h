@@ -339,6 +339,7 @@ public:
     GateRef HasPendingException(GateRef glue); // shareir
     GateRef IsUtf8String(GateRef string);
     GateRef IsUtf16String(GateRef string);
+    GateRef IsInternString(GateRef string);
     GateRef LoadObjectFromConstPool(GateRef constPool, GateRef index);
     GateRef IsAccessorInternal(GateRef accessor);
 
@@ -515,6 +516,7 @@ public:
     GateRef ElementsKindCheck(GateRef receiver, ElementsKind kind, ArrayMetaDataAccessor::Mode mode);
     GateRef COWArrayCheck(GateRef gate);
     GateRef EcmaStringCheck(GateRef gate);
+    GateRef InternStringCheck(GateRef gate);
     GateRef EcmaMapCheck(GateRef gate);
     GateRef FlattenTreeStringCheck(GateRef gate);
     GateRef HClassStableArrayCheck(GateRef gate, GateRef frameState, ArrayMetaDataAccessor accessor);
