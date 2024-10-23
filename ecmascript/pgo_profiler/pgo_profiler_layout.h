@@ -142,6 +142,7 @@ public:
     virtual void Merge(const HClassLayoutDesc *from);
     virtual void InsertKeyAndDesc(const CString &key, const PGOHandler &handler) = 0;
     virtual bool UpdateKeyAndDesc(const CString &key, const PGOHandler &handler) = 0;
+    virtual bool IsRoot() const = 0;
 
     ProfileType GetProfileType() const
     {
@@ -205,6 +206,11 @@ public:
     void InsertKeyAndDesc(const CString &key, const PGOHandler &handler) override;
     bool UpdateKeyAndDesc(const CString &key, const PGOHandler &handler) override;
 
+    bool IsRoot() const override
+    {
+        return true;
+    }
+
     void SetObjectSize(uint32_t objSize)
     {
         objSize_ = objSize;
@@ -260,6 +266,11 @@ public:
     void Merge(const HClassLayoutDesc *from) override;
     void InsertKeyAndDesc(const CString &key, const PGOHandler &handler) override;
     bool UpdateKeyAndDesc(const CString &key, const PGOHandler &handler) override;
+
+    bool IsRoot() const override
+    {
+        return false;
+    }
 
     PropertyDesc GetPropertyDesc() const
     {
@@ -398,8 +409,8 @@ public:
         size_t size = sizeof(RootHClassLayoutDescInner);
         size += desc.GetChildSize() * sizeof(ProfileType);
         desc.IterateProps([&size] (const PropertyDesc &propDesc) {
-            auto key = propDesc.first;
-            size += static_cast<size_t>(PGOLayoutDescInfo::Size(key.size()));
+            auto keyLen = propDesc.first.size();
+            size += static_cast<size_t>(PGOLayoutDescInfo::Size(keyLen));
         });
         return size;
     }
@@ -546,6 +557,9 @@ public:
         auto rootLayout = desc.GetHClassLayoutDesc(desc.GetProfileType());
         if (rootLayout == nullptr) {
             return sizeof(PGOHClassTreeTemplate<SampleType>);
+        }
+        if (!rootLayout->IsRoot()) {
+            LOG_ECMA(ERROR) << "rootLayout is not RootHClassLayoutDesc!";
         }
         size_t size = sizeof(PGOHClassTreeTemplate<SampleType>) - sizeof(RootHClassLayoutDescInner);
         size += RootHClassLayoutDescInner::CaculateSize(*reinterpret_cast<const RootHClassLayoutDesc *>(rootLayout));
