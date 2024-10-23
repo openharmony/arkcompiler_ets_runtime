@@ -36,6 +36,24 @@ enum class StableArrayIndex {
 
 namespace panda::test {
 class JSStableArrayTest : public BaseTestWithScope<false> {
+public:
+    JSHandle<JSTaggedValue> CallJoin(JSHandle<TaggedArray> handleTagArr, std::string& sep, int64_t lengthArr) const
+    {
+        ObjectFactory* objFactory = thread->GetEcmaVM()->GetFactory();
+        JSHandle<JSArray> handleArr(JSArray::CreateArrayFromList(thread, handleTagArr));
+        auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+        ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+        ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
+        ecmaRuntimeCallInfo->SetCallArg(0,
+            JSHandle<JSTaggedValue>::Cast(objFactory->NewFromStdString(sep)).GetTaggedValue());
+        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+        JSHandle<JSTaggedValue> sepHandle = JSHandle<JSTaggedValue>::Cast(objFactory->NewFromStdString(sep));
+        JSHandle<EcmaString> sepStringHandle = JSTaggedValue::ToString(thread, sepHandle);
+        JSHandle<JSTaggedValue> handleTagValEcmaStrRet(thread,
+            JSStableArray::Join(thread, handleArr, sepStringHandle, lengthArr));
+        TestHelper::TearDownFrame(thread, prev);
+        return handleTagValEcmaStrRet;
+    }
 };
 
 /**
@@ -239,6 +257,7 @@ HWTEST_F_L0(JSStableArrayTest, Join_NumberElements_UndefinedSep)
 
     JSHandle<EcmaString> handleEcmaStrRet(handleTagValEcmaStrRet);
     EXPECT_STREQ(EcmaStringAccessor(handleEcmaStrRet).ToCString().c_str(), "0,1,2,3,4,5,6,7,8,9");
+    EXPECT_FALSE(EcmaStringAccessor(handleEcmaStrRet).IsTreeString());
 }
 
 /**
@@ -271,6 +290,7 @@ HWTEST_F_L0(JSStableArrayTest, Join_StringElements_UndefinedSep)
 
     JSHandle<EcmaString> handleEcmaStrRet(handleTagValEcmaStrRet);
     EXPECT_STREQ(EcmaStringAccessor(handleEcmaStrRet).ToCString().c_str(), "abc,abc,abc,abc,abc,abc,abc,abc,abc,abc");
+    EXPECT_FALSE(EcmaStringAccessor(handleEcmaStrRet).IsTreeString());
 }
 
 /**
@@ -302,6 +322,7 @@ HWTEST_F_L0(JSStableArrayTest, Join_NumberElements_DefinedSep)
 
     JSHandle<EcmaString> handleEcmaStrRet(handleTagValEcmaStrRet);
     EXPECT_STREQ(EcmaStringAccessor(handleEcmaStrRet).ToCString().c_str(), "0^1^2^3^4^5^6^7^8^9");
+    EXPECT_FALSE(EcmaStringAccessor(handleEcmaStrRet).IsTreeString());
 }
 
 /**
@@ -338,6 +359,157 @@ HWTEST_F_L0(JSStableArrayTest, Join_StringElements_DefinedSep)
     JSHandle<EcmaString> handleEcmaStrRet(handleTagValEcmaStrRet);
     EXPECT_STREQ(EcmaStringAccessor(handleEcmaStrRet).ToCString().c_str(),
         "a <> a <> a <> a <> a <> a <> a <> a <> a <> a");
+    EXPECT_FALSE(EcmaStringAccessor(handleEcmaStrRet).IsTreeString());
+}
+
+/**
+ * @tc.name: Join_StringElements_ManyTiny
+ * @tc.desc: Create a source Array whose elements are EcmaStrings and an EcmaRuntimeCallInfo, define the first arg of
+             the EcmaRuntimeCallInfo an EcmaString as the seperator, check whether the EcmaString returned through
+             calling Join function with the source Array and the EcmaRuntimeCallInfo is within expectations.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F_L0(JSStableArrayTest, Join_StringElements_ManyTiny)
+{
+    int32_t lengthArr = 256;
+    std::string sep = "";
+    // tiny string join should not use tree string.
+    ObjectFactory* objFactory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<TaggedArray> handleTagArr(objFactory->NewTaggedArray(lengthArr));
+    JSHandle<JSTaggedValue> handleTagValElementEcmaStr(objFactory->NewFromStdString("a"));
+    for (int i = 0; i < lengthArr; i++) {
+        handleTagArr->Set(thread, i, handleTagValElementEcmaStr.GetTaggedValue());
+    }
+    JSHandle<JSTaggedValue> handleTagValEcmaStrRet = CallJoin(handleTagArr, sep, lengthArr);
+    JSHandle<EcmaString> handleEcmaStrRet(handleTagValEcmaStrRet);
+    // 256 x a
+    EXPECT_STREQ(EcmaStringAccessor(handleEcmaStrRet).ToCString().c_str(),
+                 "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                 "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                 "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                 "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+    EXPECT_FALSE(EcmaStringAccessor(handleEcmaStrRet).IsTreeString());
+    sep = ",";
+    handleTagValEcmaStrRet = CallJoin(handleTagArr, sep, lengthArr);
+    JSHandle<EcmaString> handleEcmaStrRet2(handleTagValEcmaStrRet);
+    EXPECT_STREQ(EcmaStringAccessor(handleEcmaStrRet2).ToCString().c_str(),
+                 "a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,"
+                 "a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,"
+                 "a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,"
+                 "a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,"
+                 "a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,"
+                 "a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,"
+                 "a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,"
+                 "a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a");
+    EXPECT_FALSE(EcmaStringAccessor(handleEcmaStrRet2).IsTreeString());
+}
+
+/**
+ * @tc.name: Join_StringElements_ManyTiny
+ * @tc.desc: Create a source Array whose elements are EcmaStrings and an EcmaRuntimeCallInfo, define the first arg of
+             the EcmaRuntimeCallInfo an EcmaString as the seperator, check whether the EcmaString returned through
+             calling Join function with the source Array and the EcmaRuntimeCallInfo is within expectations.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F_L0(JSStableArrayTest, Join_StringElements_LargeString)
+{
+    int32_t lengthArr = 8;
+    std::string sep = "";
+    // large string should use tree string.
+    ObjectFactory* objFactory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<TaggedArray> handleTagArr(objFactory->NewTaggedArray(lengthArr));
+    // 32 x a
+    JSHandle<JSTaggedValue>
+        handleTagValElementEcmaStr(objFactory->NewFromStdString("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"));
+    for (int i = 0; i < lengthArr; i++) {
+        handleTagArr->Set(thread, i, handleTagValElementEcmaStr.GetTaggedValue());
+    }
+    JSHandle<JSTaggedValue> handleTagValEcmaStrRet = CallJoin(handleTagArr, sep, lengthArr);
+    JSHandle<EcmaString> handleEcmaStrRet(handleTagValEcmaStrRet);
+    EXPECT_STREQ(EcmaStringAccessor(handleEcmaStrRet).ToCString().c_str(),
+                 "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                 "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                 "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                 "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+    EXPECT_TRUE(EcmaStringAccessor(handleEcmaStrRet).IsTreeString());
+}
+
+/**
+* @tc.name: Join_StringElements_ManyTiny
+* @tc.desc: Create a source Array whose elements are EcmaStrings and an EcmaRuntimeCallInfo, define the first arg of
+         the EcmaRuntimeCallInfo an EcmaString as the seperator, check whether the EcmaString returned through
+         calling Join function with the source Array and the EcmaRuntimeCallInfo is within expectations.
+* @tc.type: FUNC
+* @tc.require:
+*/
+HWTEST_F_L0(JSStableArrayTest, Join_StringElements_LargeString2)
+{
+    int32_t lengthArr = 4;
+    std::string sep = ",";
+    // large string should use tree string.
+    ObjectFactory* objFactory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<TaggedArray> handleTagArr(objFactory->NewTaggedArray(lengthArr));
+    // 64 x a
+    JSHandle<JSTaggedValue> handleTagValElementEcmaStr(
+        objFactory->NewFromStdString("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"));
+    for (int i = 0; i < lengthArr; i++) {
+        handleTagArr->Set(thread, i, handleTagValElementEcmaStr.GetTaggedValue());
+    }
+    JSHandle<JSTaggedValue> handleTagValEcmaStrRet = CallJoin(handleTagArr, sep, lengthArr);
+
+    JSHandle<EcmaString> handleEcmaStrRet(handleTagValEcmaStrRet);
+    EXPECT_STREQ(EcmaStringAccessor(handleEcmaStrRet).ToCString().c_str(),
+                 "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa,"
+                 "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa,"
+                 "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa,"
+                 "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+    EXPECT_TRUE(EcmaStringAccessor(handleEcmaStrRet).IsTreeString());
+}
+
+/**
+* @tc.name: Join_StringElements_ManyTiny
+* @tc.desc: Create a source Array whose elements are EcmaStrings and an EcmaRuntimeCallInfo, define the first arg of
+         the EcmaRuntimeCallInfo an EcmaString as the seperator, check whether the EcmaString returned through
+         calling Join function with the source Array and the EcmaRuntimeCallInfo is within expectations.
+* @tc.type: FUNC
+* @tc.require:
+*/
+HWTEST_F_L0(JSStableArrayTest, Join_StringElements_LargeString3)
+{
+    int32_t lengthArr = 5;
+    std::string sep = ",";
+    // large string should use tree string.
+    ObjectFactory* objFactory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<TaggedArray> handleTagArr(objFactory->NewTaggedArray(lengthArr));
+    // 64 x a
+    JSHandle<JSTaggedValue> handleTagValElementEcmaStr0(
+        objFactory->NewFromStdString("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"));
+    handleTagArr->Set(thread, 0, handleTagValElementEcmaStr0.GetTaggedValue());
+    JSHandle<JSTaggedValue> handleTagValElementEcmaStr1(
+        objFactory->NewFromStdString("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"));
+    handleTagArr->Set(thread, 1, handleTagValElementEcmaStr1.GetTaggedValue());
+    JSHandle<JSTaggedValue> handleTagValElementEcmaStr2(
+        objFactory->NewFromStdString("cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"));
+    handleTagArr->Set(thread, 2, handleTagValElementEcmaStr2.GetTaggedValue());
+    JSHandle<JSTaggedValue> handleTagValElementEcmaStr3(
+        objFactory->NewFromStdString("dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"));
+    handleTagArr->Set(thread, 3, handleTagValElementEcmaStr3.GetTaggedValue());
+    JSHandle<JSTaggedValue> handleTagValElementEcmaStr4(
+        objFactory->NewFromStdString("eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"));
+    handleTagArr->Set(thread, 4, handleTagValElementEcmaStr4.GetTaggedValue());
+
+    JSHandle<JSTaggedValue> handleTagValEcmaStrRet = CallJoin(handleTagArr, sep, lengthArr);
+
+    JSHandle<EcmaString> handleEcmaStrRet(handleTagValEcmaStrRet);
+    EXPECT_STREQ(EcmaStringAccessor(handleEcmaStrRet).ToCString().c_str(),
+                 "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa,"
+                 "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb,"
+                 "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc,"
+                 "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd,"
+                 "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee");
+    EXPECT_TRUE(EcmaStringAccessor(handleEcmaStrRet).IsTreeString());
 }
 
 /**
