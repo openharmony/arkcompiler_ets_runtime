@@ -121,14 +121,6 @@ if(resvInstkLtBranch == nullptr) {
 }
 DEBUG_ASSERT(resvInstkLtBranch, "Reservation allocation for kLtBranch failed.");
 
-Reservation *resvInstkLtFpalu = new Reservation(kLtFpalu, 4, 2,
-                                GetUnitByUnitId(kUnitIdSlotS),
-                                GetUnitByUnitId(kUnitIdFpAluS));
-if(resvInstkLtFpalu == nullptr) {
-  maple::LogInfo::MapleLogger(maple::kLlErr) << "Reservation allocation for kLtFpalu failed." << std::endl;
-}
-DEBUG_ASSERT(resvInstkLtFpalu, "Reservation allocation for kLtFpalu failed.");
-
 Reservation *resvInstkLtFconst = new Reservation(kLtFconst, 2, 2,
                                  GetUnitByUnitId(kUnitIdSlotS),
                                  GetUnitByUnitId(kUnitIdFpAluS));
@@ -361,13 +353,3 @@ if(resvInstkLtTlsRel == nullptr) {
   maple::LogInfo::MapleLogger(maple::kLlErr) << "Reservation allocation for kLtTlsRel failed." << std::endl;
 }
 DEBUG_ASSERT(resvInstkLtTlsRel, "Reservation allocation for kLtTlsRel failed.");
-
-Reservation *resvInstkLtTlsCall = new Reservation(kLtTlsCall, 10, 4,
-                                  GetUnitByUnitId(kUnitIdSlotS),
-                                  GetUnitByUnitId(kUnitIdSlotDAgen),
-                                  GetUnitByUnitId(kUnitIdSlot0LdAgu),
-                                  GetUnitByUnitId(kUnitIdLdAgu));
-if(resvInstkLtTlsCall == nullptr) {
-  maple::LogInfo::MapleLogger(maple::kLlErr) << "Reservation allocation for kLtTlsCall failed." << std::endl;
-}
-DEBUG_ASSERT(resvInstkLtTlsCall, "Reservation allocation for kLtTlsCall failed.");
