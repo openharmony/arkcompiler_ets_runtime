@@ -21,6 +21,7 @@
 #include "ecmascript/compiler/pgo_type/pgo_type_manager.h"
 #include "ecmascript/dfx/vmstat/opt_code_profiler.h"
 #include "ecmascript/jit/jit.h"
+#include "ecmascript/jspandafile/abc_buffer_cache.h"
 #include "ecmascript/linked_hash_table.h"
 #include "ecmascript/module/module_logger.h"
 #include "ecmascript/platform/aot_crash_info.h"
@@ -100,6 +101,7 @@ bool EcmaContext::Initialize()
     moduleManager_ = new ModuleManager(vm_);
     ptManager_ = new kungfu::PGOTypeManager(vm_);
     optCodeProfiler_ = new OptCodeProfiler();
+    abcBufferCache_ = new AbcBufferCache();
     if (vm_->GetJSOptions().GetTypedOpProfiler()) {
         typedOpProfiler_ = new TypedOpProfiler();
     }
@@ -259,6 +261,10 @@ EcmaContext::~EcmaContext()
     if (functionProtoTransitionTable_ != nullptr) {
         delete functionProtoTransitionTable_;
         functionProtoTransitionTable_ = nullptr;
+    }
+    if (abcBufferCache_ != nullptr) {
+        delete abcBufferCache_;
+        abcBufferCache_ = nullptr;
     }
     // clear join stack
     joinStack_.clear();
