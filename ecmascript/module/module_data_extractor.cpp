@@ -18,8 +18,6 @@
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/module/module_data_extractor.h"
 
-#include "libpandafile/literal_data_accessor-inl.h"
-
 namespace panda::ecmascript {
 using StringData = panda_file::StringData;
 using BuiltinsJson = builtins::BuiltinsJson;

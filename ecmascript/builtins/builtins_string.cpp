@@ -1332,8 +1332,8 @@ std::pair<int32_t, bool> ProcessDigitCapture(const JSHandle<EcmaString> &replace
     if (peekIndex + 1 < replaceLength) {
         uint16_t nextPeek = EcmaStringAccessor(replacementFlat).Get(peekIndex + 1);
         if (nextPeek >= '0' && nextPeek <= '9') {
-            constexpr uint32_t TEN_BASE = 10;
-            uint32_t newScaledIndex = scaledIndex * TEN_BASE + (nextPeek - '0');
+            constexpr uint32_t tenBase = 10;
+            uint32_t newScaledIndex = scaledIndex * tenBase + (nextPeek - '0');
             if (newScaledIndex <= capturesLength) {
                 scaledIndex = newScaledIndex;
                 advance = 2;  // 2: 2 means from index needs to add two.

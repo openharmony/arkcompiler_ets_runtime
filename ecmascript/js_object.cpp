@@ -14,7 +14,6 @@
  */
 
 #include "ecmascript/js_object.h"
-
 #include "ecmascript/dfx/native_module_failure_info.h"
 #include "ecmascript/global_dictionary-inl.h"
 #include "ecmascript/ic/proto_change_details.h"
@@ -413,7 +412,7 @@ bool JSObject::AddElementInternal(JSThread *thread, const JSHandle<JSObject> &re
             JSObject::TryOptimizeAsFastElements(thread, receiver);
         }
     }
-
+    
     bool isDictionary = receiver->GetJSHClass()->IsDictionaryElement();
     TaggedArray *elements = TaggedArray::Cast(receiver->GetElements().GetTaggedObject());
     if (isDictionary) {

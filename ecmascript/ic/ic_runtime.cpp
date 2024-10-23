@@ -18,7 +18,6 @@
 #include "ecmascript/ic/ic_handler.h"
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/interpreter/slow_runtime_stub.h"
-#include "ecmascript/interpreter/slow_runtime_stub.h"
 #include "ecmascript/js_primitive_ref.h"
 #include "ecmascript/shared_objects/js_shared_array.h"
 

@@ -18,9 +18,6 @@
 #include "ecmascript/tagged_array.h"
 #include "ecmascript/tagged_array-inl.h"
 
-#include "ecmascript/mem/barriers.h"
-#include "ecmascript/js_thread.h"
-#include "ecmascript/mem/region.h"
 #include "ecmascript/object_factory.h"
 
 namespace panda::ecmascript {

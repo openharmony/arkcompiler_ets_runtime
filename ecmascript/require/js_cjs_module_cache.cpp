@@ -14,7 +14,6 @@
  */
 
 #include "ecmascript/require/js_cjs_module_cache.h"
-#include "ecmascript/tagged_array-inl.h"
 
 namespace panda::ecmascript {
 JSHandle<CjsModuleCache> CjsModuleCache::PutIfAbsentAndReset(const JSThread *thread,

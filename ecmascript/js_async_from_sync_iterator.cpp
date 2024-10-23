@@ -21,8 +21,6 @@
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/js_iterator.h"
 
-#include "libpandabase/macros.h"
-
 namespace panda::ecmascript {
 JSHandle<JSTaggedValue> JSAsyncFromSyncIterator::CreateAsyncFromSyncIterator(JSThread *thread,
     JSHandle<AsyncIteratorRecord> &syncIteratorRecord)
