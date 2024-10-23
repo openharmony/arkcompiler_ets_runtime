@@ -16,6 +16,7 @@
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 
 #include "ecmascript/checkpoint/thread_state_transition.h"
+#include "ecmascript/jspandafile/abc_buffer_cache.h"
 #include "ecmascript/jspandafile/js_pandafile_executor.h"
 #include "ecmascript/module/module_path_helper.h"
 #include "ecmascript/module/module_message_helper.h"
@@ -54,6 +55,9 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFile(JSThread *threa
             jsPandaFile = FindJSPandaFileWithChecksum(filename, pf->GetHeader()->checksum);
         } else {
             jsPandaFile = FindJSPandaFileUnlocked(filename);
+            if (jsPandaFile == nullptr) {
+                jsPandaFile = GenerateJSPandafileFromBufferCache(thread, filename, entryPoint);
+            }
         }
         if (jsPandaFile != nullptr) {
             return jsPandaFile;
@@ -586,6 +590,24 @@ bool JSPandaFileManager::CheckFilePath(JSThread *thread, const CString &fileName
         }
     }
     return true;
+}
+
+std::shared_ptr<JSPandaFile> JSPandaFileManager::GenerateJSPandafileFromBufferCache(
+    JSThread *thread, const CString &filename, std::string_view entryPoint)
+{
+    AbcBufferInfo bufferInfo =
+        thread->GetCurrentEcmaContext()->GetAbcBufferCache()->FindJSPandaFileInAbcBufferCache(filename);
+    if (bufferInfo.buffer_ == nullptr) {
+        return nullptr;
+    }
+    LOG_FULL(INFO) << "fileName was found in bufferFiles_.";
+    JSPandaFileManager *jsPandaFileManager = JSPandaFileManager::GetInstance();
+    if (bufferInfo.bufferType_ == AbcBufferType::SECURE_BUFFER) {
+        return jsPandaFileManager->LoadJSPandaFileSecure(
+            thread, filename, entryPoint, reinterpret_cast<uint8_t *>(bufferInfo.buffer_), bufferInfo.size_);
+    }
+    return jsPandaFileManager->LoadJSPandaFile(
+        thread, filename, entryPoint, bufferInfo.buffer_, bufferInfo.size_);
 }
 
 void *JSPandaFileManager::AllocateBuffer(size_t size)

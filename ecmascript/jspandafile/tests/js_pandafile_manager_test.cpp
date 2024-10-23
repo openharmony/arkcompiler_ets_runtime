@@ -19,6 +19,7 @@
 #include "libziparchive/zip_archive.h"
 
 #include "ecmascript/global_env.h"
+#include "ecmascript/jspandafile/abc_buffer_cache.h"
 #include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/jspandafile/program_object.h"
@@ -361,5 +362,27 @@ HWTEST_F_L0(JSPandaFileManagerTest, CheckFilePath)
     bool result = pfManager->CheckFilePath(thread, fileName);
     EXPECT_TRUE(result);
     pfManager->RemoveJSPandaFile(pf.get());
+}
+
+HWTEST_F_L0(JSPandaFileManagerTest, GetJSPandaFileByBufferFiles)
+{
+    JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
+    const char *fileName = "__JSPandaFileManagerTest3.abc";
+    const char *data = R"(
+        .function void foo() {}
+    )";
+    Parser parser;
+    auto res = parser.Parse(data);
+    std::unique_ptr<const File> pfPtr = pandasm::AsmEmitter::Emit(res.Value());
+    std::shared_ptr<JSPandaFile> pf = pfManager->NewJSPandaFile(pfPtr.release(), CString(fileName));
+    std::shared_ptr<JSPandaFile> jsPandaFile;
+    pfManager->AddJSPandaFile(pf);
+    AbcBufferCache *abcBufferCache = thread->GetCurrentEcmaContext()->GetAbcBufferCache();
+    abcBufferCache->AddAbcBufferToCache(CString(fileName), (void *)data, sizeof(data), AbcBufferType::NORMAL_BUFFER);
+    AbcBufferInfo bufferInfo = abcBufferCache->FindJSPandaFileInAbcBufferCache(CString(fileName));
+    EXPECT_TRUE(bufferInfo.buffer_ != nullptr);
+    abcBufferCache->DeleteAbcBufferFromCache(CString(fileName));
+    jsPandaFile = pfManager->LoadJSPandaFile(thread, CString(fileName), "");
+    EXPECT_TRUE(jsPandaFile != nullptr);
 }
 }  // namespace panda::test

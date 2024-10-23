@@ -64,6 +64,7 @@ class AOTFileManager;
 class QuickFixManager;
 class OptCodeProfiler;
 class TypedOpProfiler;
+class AbcBufferCache;
 struct CJSInfo;
 class FunctionProtoTransitionTable;
 class ModuleLogger;
@@ -136,6 +137,11 @@ public:
     ModuleManager *GetModuleManager() const
     {
         return moduleManager_;
+    }
+
+    AbcBufferCache *GetAbcBufferCache() const
+    {
+        return abcBufferCache_;
     }
 
     kungfu::PGOTypeManager *GetPTManager() const
@@ -691,6 +697,7 @@ private:
     ModuleManager *moduleManager_ {nullptr};
     kungfu::PGOTypeManager *ptManager_ {nullptr};
     AOTFileManager *aotFileManager_ {nullptr};
+    AbcBufferCache *abcBufferCache_ {nullptr};
 
     // for recording the transition of function prototype
     FunctionProtoTransitionTable *functionProtoTransitionTable_ {nullptr};

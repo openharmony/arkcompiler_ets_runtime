@@ -16,6 +16,7 @@
 #include "ecmascript/jspandafile/js_pandafile_executor.h"
 
 #include "ecmascript/js_file_path.h"
+#include "ecmascript/jspandafile/abc_buffer_cache.h"
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/module/module_path_helper.h"
 #include "ecmascript/checkpoint/thread_state_transition.h"
@@ -155,6 +156,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromBuffer(JSThread *t
         LOG_FULL(FATAL) << "Load current file's panda file failed. Current file is " << normalName;
 #endif
     }
+    AbcBufferCacheScope bufferScope(thread, normalName, buffer, size, AbcBufferType::NORMAL_BUFFER);
     auto vm = thread->GetEcmaVM();
 
     CString entry = entryPoint.data();
@@ -205,7 +207,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteModuleBuffer(
         LOG_FULL(FATAL) << "Load current file's panda file failed. Current file is " << name;
 #endif
     }
-
+    AbcBufferCacheScope bufferScope(thread, name, buffer, size, AbcBufferType::NORMAL_BUFFER);
     bool isBundle = jsPandaFile->IsBundlePack();
 
     // realEntry is used to record the original record, which is easy to throw when there are exceptions
@@ -332,6 +334,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromBufferSecure(JSThr
         LOG_FULL(FATAL) << "Load current file's panda file failed. Current file is " << normalName;
 #endif
     }
+    AbcBufferCacheScope bufferScope(thread, normalName, buffer, size, AbcBufferType::SECURE_BUFFER);
     auto vm = thread->GetEcmaVM();
 
     CString entry = entryPoint.data();
@@ -407,7 +410,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteModuleBufferSecure(JST
         LOG_FULL(FATAL) << "Load current file's panda file failed. Current file is " << name;
 #endif
     }
-
+    AbcBufferCacheScope bufferScope(thread, name, buffer, size, AbcBufferType::SECURE_BUFFER);
     // realEntry is used to record the original record, which is easy to throw when there are exceptions
     const CString realEntry = entry;
     if (vm->IsNormalizedOhmUrlPack()) {

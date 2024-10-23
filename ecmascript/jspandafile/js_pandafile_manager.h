@@ -113,6 +113,9 @@ private:
     std::shared_ptr<JSPandaFile> GetJSPandaFile(const panda_file::File *pf);
     std::shared_ptr<JSPandaFile> FindJSPandaFileWithChecksum(const CString &filename, uint32_t checksum);
     std::shared_ptr<JSPandaFile> FindJSPandaFileUnlocked(const CString &filename);
+    std::shared_ptr<JSPandaFile> GenerateJSPandafileFromBufferCache(JSThread *thread,
+                                                                    const CString &filename,
+                                                                    std::string_view entryPoint);
     void ObsoleteLoadedJSPandaFile(const CString &filename);
 
     static void *AllocateBuffer(size_t size);
