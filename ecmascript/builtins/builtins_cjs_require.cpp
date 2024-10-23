@@ -14,6 +14,9 @@
  */
 
 #include "ecmascript/builtins/builtins_cjs_require.h"
+#if ECMASCRIPT_ENABLE_CAST_CHECK
+#include "ecmascript/js_tagged_value-inl.h"
+#endif
 
 #include "ecmascript/base/builtins_base.h"
 #include "ecmascript/ecma_macros.h"
