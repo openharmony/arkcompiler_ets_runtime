@@ -98,7 +98,8 @@ HWTEST_F_L0(AtomicHelperTest, Atomic_Store_Load)
     JSHandle<JSTaggedValue> value0(thread, JSTaggedValue(-1)); // to uint32_t : 4294967295
     JSHandle<JSTaggedValue> value1(thread, JSTaggedValue(1));
 #ifdef PANDA_TARGET_MACOS
-    JSHandle<JSTaggedValue> value2(thread, static_cast<JSTaggedValue>(static_cast<uint32_t>(4294967295 + 1))); // to uint32_t : 0
+    JSHandle<JSTaggedValue> value2(thread,
+                    static_cast<JSTaggedValue>(static_cast<uint32_t>(4294967295 + 1))); // to uint32_t : 0
 #else
     JSHandle<JSTaggedValue> value2(thread, JSTaggedValue(4294967295 + 1));
 #endif

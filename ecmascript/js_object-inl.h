@@ -25,8 +25,8 @@
 #include "ecmascript/js_typed_array.h"
 #include "ecmascript/object_operator.h"
 #include "ecmascript/tagged_array-inl.h"
-#include "ecmascript/tagged_queue.h"
 #include "ecmascript/tagged_dictionary.h"
+#include "ecmascript/tagged_queue.h"
 
 namespace panda::ecmascript {
 inline void ECMAObject::SetCallable(bool flag)

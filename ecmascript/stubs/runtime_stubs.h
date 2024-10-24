@@ -157,6 +157,7 @@ public:
     static int32_t StringGetEnd(bool isUtf8, EcmaString *srcString, int32_t start, int32_t length, int32_t startIndex);
     static void CopyTypedArrayBuffer(JSTypedArray *srcArray, JSTypedArray *targetArray, int32_t srcStartPos,
                                      int32_t tarStartPos, int32_t count, int32_t elementSize);
+
     static inline uint32_t RuntimeGetBytecodePcOfstForBaseline(const JSHandle<JSFunction> &func, uintptr_t nativePc);
 private:
     static void DumpToStreamWithHint(std::ostream &out, std::string_view prompt, JSTaggedValue value);

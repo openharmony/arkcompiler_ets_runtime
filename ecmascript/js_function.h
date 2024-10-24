@@ -582,5 +582,4 @@ public:
 };
 
 }  // namespace panda::ecmascript
-
 #endif  // ECMASCRIPT_JSFUNCTION_H

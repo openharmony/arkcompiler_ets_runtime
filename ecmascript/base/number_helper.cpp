@@ -26,7 +26,6 @@
 #include "ecmascript/base/dtoa_helper.h"
 #include "ecmascript/base/string_helper.h"
 #include "ecmascript/builtins/builtins_number.h"
-#include "ecmascript/ecma_context.h"
 #include "ecmascript/ecma_string_table.h"
 #include "ecmascript/js_tagged_value-inl.h"
 
@@ -773,6 +772,7 @@ JSHandle<EcmaString> NumberHelper::DoubleToEcmaString(const JSThread *thread, do
     return factory->NewFromASCIISkippingStringTable(result);
 }
 
+
 // 7.1.12.1 ToString Applied to the Number Type
 JSHandle<EcmaString> NumberHelper::NumberToString(const JSThread *thread, JSTaggedValue number)
 {
@@ -784,7 +784,7 @@ JSHandle<EcmaString> NumberHelper::NumberToString(const JSThread *thread, JSTagg
     if (cacheResult != JSTaggedValue::Undefined()) {
         return JSHandle<EcmaString>::Cast(JSHandle<JSTaggedValue>(thread, cacheResult));
     }
-
+ 
     JSHandle<EcmaString> resultJSHandle;
     if (number.IsInt()) {
         int intVal = number.GetInt();
@@ -876,7 +876,7 @@ std::pair<bool, JSTaggedNumber> NumberHelper::FastStringToNumber(const uint8_t *
             }
             num = -num;
         } else {
-            if (num != 0 || (end - start == 1)) {
+            if ((num != 0) || (end - start == 1)) {
                 strAccessor.TryToSetIntegerHash(num);
             }
         }
