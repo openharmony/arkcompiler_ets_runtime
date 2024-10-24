@@ -16,3 +16,10 @@
 2
 6,2,3,4,5,6,7,8,9
 6,2,3,4,5,6,7,8,9
+[1,"new",5,"four"]
+[true,{"key":"value"},false,{"anotherKey":42},null,null]
+["replaced",3,4]
+[1,"new",3,null,5]
+["first",2,"third"]
+[null,"new value","hello"]
+[]

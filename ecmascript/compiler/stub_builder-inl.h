@@ -2336,6 +2336,13 @@ inline GateRef StubBuilder::GetDataPtrInTaggedArray(GateRef array)
     return PtrAdd(array, IntPtr(TaggedArray::DATA_OFFSET));
 }
 
+inline GateRef StubBuilder::GetDataPtrInTaggedArray(GateRef array, GateRef index)
+{
+    GateRef offset = PtrMul(ZExtInt32ToPtr(index), IntPtr(JSTaggedValue::TaggedTypeSize()));
+    GateRef dataOffset = PtrAdd(offset, IntPtr(TaggedArray::DATA_OFFSET));
+    return PtrAdd(array, dataOffset);
+}
+
 inline GateRef StubBuilder::GetUnsharedConstpoolIndex(GateRef constpool)
 {
     GateRef constPoolSize = GetLengthOfTaggedArray(constpool);

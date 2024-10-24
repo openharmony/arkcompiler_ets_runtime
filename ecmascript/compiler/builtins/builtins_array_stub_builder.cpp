@@ -3264,6 +3264,63 @@ void BuiltinsArrayStubBuilder::Splice(GateRef glue, GateRef thisValue, GateRef n
     }
 }
 
+void BuiltinsArrayStubBuilder::FastToSpliced(GateRef glue, GateRef thisValue, GateRef newArray, GateRef actualStart,
+                                             GateRef actualDeleteCount, GateRef insertCount, GateRef insertValue)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label copyBefore(env);
+    Label copyAfter(env);
+    Label insertArg(env);
+    Label exit(env);
+    GateRef srcElements = GetElementsArray(thisValue);
+    GateRef dstElements = GetElementsArray(newArray);
+    GateRef thisLength = GetLengthOfJSArray(thisValue);
+    BRANCH(Int32GreaterThan(actualStart, Int32(0)), &copyBefore, &insertArg);
+    Bind(&copyBefore);
+    {
+        GateRef srcStart = GetDataPtrInTaggedArray(srcElements);
+        GateRef dstStart = GetDataPtrInTaggedArray(dstElements);
+        ArrayCopyAndHoleToUndefined(glue, srcStart, dstStart, actualStart);
+        Jump(&insertArg);
+    }
+    Bind(&insertArg);
+    {
+        Label insert(env);
+        BRANCH(Int32GreaterThan(insertCount, Int32(0)), &insert, &copyAfter);
+        Bind(&insert);
+        {
+            SetValueToTaggedArray(VariableType::JS_ANY(), glue, dstElements, actualStart, insertValue);
+            Jump(&copyAfter);
+        }
+    }
+    Bind(&copyAfter);
+    {
+        Label canCopyAfter(env);
+        Label setLength(env);
+        GateRef oldIndex = Int32Add(actualStart, actualDeleteCount);
+        GateRef newIndex = Int32Add(actualStart, insertCount);
+        BRANCH(Int32LessThan(oldIndex, thisLength), &canCopyAfter, &setLength);
+        Bind(&canCopyAfter);
+        {
+            GateRef srcStart = GetDataPtrInTaggedArray(srcElements, oldIndex);
+            GateRef dstStart = GetDataPtrInTaggedArray(dstElements, newIndex);
+            GateRef afterLength = Int32Sub(thisLength, oldIndex);
+            ArrayCopyAndHoleToUndefined(glue, srcStart, dstStart, afterLength);
+            newIndex = Int32Add(newIndex, afterLength);
+            Jump(&setLength);
+        }
+        Bind(&setLength);
+        {
+            SetArrayLength(glue, newArray, newIndex);
+            Jump(&exit);
+        }
+    }
+    Bind(&exit);
+    env->SubCfgExit();
+}
+
 void BuiltinsArrayStubBuilder::ToSpliced(GateRef glue, GateRef thisValue, GateRef numArgs,
     Variable *result, Label *exit, Label *slowPath)
 {
@@ -3377,6 +3434,17 @@ void BuiltinsArrayStubBuilder::ToSpliced(GateRef glue, GateRef thisValue, GateRe
                     Label insertArg(env);
                     GateRef newArray = NewArray(glue, Int32(0));
                     GrowElementsCapacity(glue, newArray, *newLen);
+                    Label elementsKindToSpliced(env);
+                    Label fastToSpliced(env);
+                    BRANCH_UNLIKELY(IsEnableElementsKind(glue), &elementsKindToSpliced, &fastToSpliced);
+                    Bind(&fastToSpliced);
+                    {
+                        FastToSpliced(glue, thisValue, newArray, *actualStart, *actualDeleteCount, *insertCount,
+                                      GetCallArg2(numArgs));
+                        result->WriteVariable(newArray);
+                        Jump(exit);
+                    }
+                    Bind(&elementsKindToSpliced);
                     DEFVARIABLE(oldIndex, VariableType::INT32(), Int32(0));
                     DEFVARIABLE(newIndex, VariableType::INT32(), Int32(0));
                     BRANCH(Int32GreaterThan(*actualStart, Int32(0)), &copyBefore, &insertArg);

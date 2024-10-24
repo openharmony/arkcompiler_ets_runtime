@@ -10488,4 +10488,44 @@ void StubBuilder::ArrayCopy<CopyKind::Unknown>(GateRef glue, GateRef src, GateRe
     Bind(&exit);
     env->SubCfgExit();
 }
+
+void StubBuilder::ArrayCopyAndHoleToUndefined(GateRef glue, GateRef src, GateRef dst, GateRef length, MemoryAttribute mAttr)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label loopExit(env);
+    Label begin(env);
+    Label body(env);
+    Label endLoop(env);
+
+    DEFVARIABLE(index, VariableType::INT32(), Int32(0));
+    Jump(&begin);
+    LoopBegin(&begin);
+    {
+        BRANCH_LIKELY(Int32UnsignedLessThan(*index, length), &body, &loopExit);
+        Bind(&body);
+        {
+            GateRef offset = PtrMul(ZExtInt32ToPtr(*index), IntPtr(JSTaggedValue::TaggedTypeSize()));
+            GateRef value = Load(VariableType::JS_ANY(), src, offset);
+
+            Label isHole(env);
+            Label isNotHole(env);
+            BRANCH_UNLIKELY(TaggedIsHole(value), &isHole, &isNotHole);
+            Bind(&isHole);
+            {
+                Store(VariableType::JS_ANY(), glue, dst, offset, Undefined(), MemoryAttribute::NoBarrier());
+                Jump(&endLoop);
+            }
+            Bind(&isNotHole);
+            Store(VariableType::JS_ANY(), glue, dst, offset, value, mAttr);
+            Jump(&endLoop);
+        }
+    }
+    Bind(&endLoop);
+    index = Int32Add(*index, Int32(1));
+    LoopEnd(&begin);
+    Bind(&loopExit);
+    env->SubCfgExit();
+}
 }  // namespace panda::ecmascript::kungfu
