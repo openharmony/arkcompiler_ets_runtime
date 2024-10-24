@@ -460,6 +460,9 @@ JSTaggedValue Callback::RegisterCallback(ecmascript::EcmaRuntimeCallInfo *ecmaRu
     Local<JSValueRef> result;
     {
         ecmascript::ThreadNativeScope nativeScope(thread);
+#if ECMASCRIPT_ENABLE_INTERPRETER_ARKUINAITVE_TRACE
+        ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "ArkUI::NativeCallBack");
+#endif
         result = nativeFunc(jsiRuntimeCallInfo);
     }
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)

@@ -210,6 +210,9 @@ JSTaggedValue InterpreterAssembly::Execute(EcmaRuntimeCallInfo *info)
     ASSERT(info);
     JSThread *thread = info->GetThread();
     INTERPRETER_TRACE(thread, AsmExecute);
+#if ECMASCRIPT_ENABLE_INTERPRETER_ARKUINAITVE_TRACE
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "ArkCompiler::InterpreterAssembly::Execute");
+#endif
     // When the  function is jit-compiled, the Method object is reinstalled.
     // In this case, the AotWithCall field may be updated.
     // This causes a Construct that is not a ClassConstructor to call jit code.

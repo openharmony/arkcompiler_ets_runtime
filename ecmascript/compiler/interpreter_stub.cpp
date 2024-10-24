@@ -437,6 +437,11 @@ void InterpreterStubBuilder::DebugPrintInstruction()
     GateRef pc = PtrArgument(static_cast<size_t>(InterpreterHandlerInputs::PC));
     CallNGCRuntime(glue, RTSTUB_ID(DebugPrintInstruction), { glue, pc });
 #endif
+#if ECMASCRIPT_ENABLE_COLLECTING_OPCODES
+    GateRef opcodeGlue = PtrArgument(static_cast<size_t>(InterpreterHandlerInputs::GLUE));
+    GateRef opcodePc = PtrArgument(static_cast<size_t>(InterpreterHandlerInputs::PC));
+    CallNGCRuntime(opcodeGlue, RTSTUB_ID(CollectingOpcodes), { opcodeGlue, opcodePc });
+#endif
 }
 
 DECLARE_ASM_HANDLER(HandleLdnan)

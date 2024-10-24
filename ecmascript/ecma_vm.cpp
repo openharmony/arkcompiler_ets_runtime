@@ -561,6 +561,35 @@ JSHandle<JSTaggedValue> EcmaVM::GetEcmaUncaughtException() const
     return exceptionHandle;
 }
 
+#if ECMASCRIPT_ENABLE_COLLECTING_OPCODES
+void EcmaVM::PrintCollectedByteCode()
+{
+    std::unordered_map<BytecodeInstruction::Opcode, int> bytecodeStatsMap_ = bytecodeStatsStack_.top();
+    LOG_ECMA(ERROR) << "panda runtime stat:";
+    static constexpr int nameRightAdjustment = 45;
+    static constexpr int numberRightAdjustment = 12;
+    LOG_ECMA(ERROR) << std::right << std::setw(nameRightAdjustment) << "Hotness Function ByteCode"
+                   << std::setw(numberRightAdjustment) << "Count";
+    LOG_ECMA(ERROR) << "============================================================"
+                      << "=========================================================";
+    std::vector<std::pair<std::string, int>> bytecodeStatsVector;
+    for (auto& iter: bytecodeStatsMap_) {
+        bytecodeStatsVector.push_back(
+            std::make_pair(kungfu::GetEcmaOpcodeStr(static_cast<EcmaOpcode>(iter.first)), iter.second));
+    }
+    std::sort(bytecodeStatsVector.begin(), bytecodeStatsVector.end(),
+              [](std::pair<std::string, int> &a, std::pair<std::string, int> &b) {
+        return a.second > b.second;
+    });
+    for (size_t i = 0; i < bytecodeStatsVector.size(); ++i) {
+        LOG_ECMA(ERROR) << std::right << std::setw(nameRightAdjustment) << bytecodeStatsVector[i].first
+                       << std::setw(numberRightAdjustment) << bytecodeStatsVector[i].second;
+    }
+    LOG_ECMA(ERROR) << "============================================================"
+                      << "=========================================================";
+}
+#endif
+
 void EcmaVM::PrintAOTSnapShotStats()
 {
     static constexpr int nameRightAdjustment = 30;
