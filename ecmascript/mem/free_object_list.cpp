@@ -60,7 +60,7 @@ T *FreeObjectList<T>::Allocate(size_t size)
         lastType = type;
         FreeObjectSet<T> *current = sets_[type];
         while (current != nullptr) {
-            if (current->Available() < size) {
+            if (current->Available() < size || size > current->MaxAvailableFreeSize()) {
                 current = current->next_;
                 continue;
             }

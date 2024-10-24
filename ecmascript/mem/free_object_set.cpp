@@ -26,6 +26,7 @@ void FreeObjectSet<T>::Free(uintptr_t begin, size_t size)
     freeObject->SetNext(freeObject_);
     freeObject_ = freeObject;
     available_ += size;
+    maxAvailableFreeSize_ = std::max(maxAvailableFreeSize_, size);
 }
 
 template void FreeObjectSet<FreeObject>::Free(uintptr_t, size_t);
@@ -42,6 +43,7 @@ void FreeObjectSet<MemDesc>::Free(uintptr_t begin, size_t size)
     freeObject->SetNext(freeObject_);
     freeObject_ = freeObject;
     available_ += size;
+    maxAvailableFreeSize_ = std::max(maxAvailableFreeSize_, size);
 }
 
 template <typename T>
@@ -49,6 +51,7 @@ void FreeObjectSet<T>::Rebuild()
 {
     freeObject_ = T::Cast(INVALID_OBJPTR);
     available_ = 0;
+    maxAvailableFreeSize_ = 0;
     isAdded_ = 0;
     next_ = nullptr;
     prev_ = nullptr;
@@ -67,6 +70,7 @@ void FreeObjectSet<MemDesc>::Rebuild()
     }
     freeObject_ = MemDesc::Cast(INVALID_OBJPTR);
     available_ = 0;
+    maxAvailableFreeSize_ = 0;
     isAdded_ = 0;
     next_ = nullptr;
     prev_ = nullptr;
@@ -120,6 +124,8 @@ T *FreeObjectSet<T>::ObtainLargeFreeObject(size_t size)
         prevFreeObject = curFreeObject;
         curFreeObject = curFreeObject->GetNext();
     }
+    // When looking up suitable freeobject fails, available free size should update to a value less than size.
+    maxAvailableFreeSize_ = std::min(maxAvailableFreeSize_, size - sizeof(JSTaggedType));
     return T::Cast(INVALID_OBJPTR);
 }
 
