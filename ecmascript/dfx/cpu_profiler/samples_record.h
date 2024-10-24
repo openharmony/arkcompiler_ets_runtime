@@ -37,7 +37,6 @@ const int QUEUE_CAPACITY = 51; // the capacity of the circular queue is QUEUE_CA
 const size_t NAPI_CALL_SETP = 2; // 2: step size of the variable napiCallIdx in while loop
 const size_t PRE_IDX_RANGE = 5; // 5: length of variable preIdx looping backward
 const size_t SUB_LEN = 6; // 6: Truncate the path length
-const std::string JS_PATH = "entry/build/default/cache/default/default@CompileArkTS/esmodule/debug/";
 
 struct FrameInfo {
     int scriptId = 0;

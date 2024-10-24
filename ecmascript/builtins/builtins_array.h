@@ -114,7 +114,6 @@
 namespace panda::ecmascript::builtins {
 static constexpr uint8_t INDEX_TWO = 2;
 static constexpr uint8_t INDEX_THREE = 3;
-static const CString STRING_SEPERATOR = ",";
 class BuiltinsArray : public base::BuiltinsBase {
 public:
     // 22.1.1
