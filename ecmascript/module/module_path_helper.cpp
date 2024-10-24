@@ -17,41 +17,44 @@
 namespace panda::ecmascript {
 /*
  * This function use recordName, requestName to get baseFileName and entryPoint.
+ * The prefiex of "@bundle", "@package" represents the old path encoding format, while "@normalized" represents the
+ * unified format.
  */
 CString ModulePathHelper::ConcatFileNameWithMerge(JSThread *thread, const JSPandaFile *jsPandaFile,
     CString &baseFileName, CString recordName, CString requestName)
 {
-    if (thread->GetEcmaVM()->IsNormalizedOhmUrlPack() && !StringHelper::StringStartWith(requestName, PREFIX_BUNDLE) &&
-        !StringHelper::StringStartWith(requestName, PREFIX_PACKAGE)) {
-        return ConcatMergeFileNameToNormalized(thread, jsPandaFile, baseFileName, recordName, requestName);
+    if (StringHelper::StringStartWith(requestName, PREFIX_NORMALIZED_NOT_CROSS_HAP_FILE)) {
+        return requestName.substr(PREFIX_NORMALIZED_LEN);
     }
-
     if (StringHelper::StringStartWith(requestName, PREFIX_BUNDLE)) {
         return ParsePrefixBundle(thread, jsPandaFile, baseFileName, requestName, recordName);
-    } else if (StringHelper::StringStartWith(requestName, PREFIX_PACKAGE)) {
+    }
+    if (StringHelper::StringStartWith(requestName, PREFIX_PACKAGE)) {
         return requestName.substr(PREFIX_PACKAGE_LEN);
-    } else if (IsImportFile(requestName)) {
+    }
+    if (thread->GetEcmaVM()->IsNormalizedOhmUrlPack()) {
+        return ConcatMergeFileNameToNormalized(thread, jsPandaFile, baseFileName, recordName, requestName);
+    }
+    if (IsImportFile(requestName)) {
         // this branch save for require/dynamic import/old version sdk
         // load a relative pathName.
         // requestName: ./ || ./xxx/xxx.js || ../xxx/xxx.js || ./xxx/xxx
         return MakeNewRecord(thread, jsPandaFile, baseFileName, recordName, requestName);
-    } else if (StringHelper::StringStartWith(requestName, PREFIX_ETS)) {
+    }
+    if (StringHelper::StringStartWith(requestName, PREFIX_ETS)) {
         CString entryPoint = TranslateExpressionInputWithEts(thread, jsPandaFile, baseFileName, requestName);
         if (entryPoint.empty()) {
             THROW_MODULE_NOT_FOUND_ERROR_WITH_RETURN_VALUE(thread, requestName, recordName, entryPoint);
         }
         return entryPoint;
-    } else {
-        // this branch save for require/dynamic import/old version sdk
-        // requestName: requestPkgName
-        CString entryPoint = ParseThirdPartyPackage(jsPandaFile, recordName, requestName);
-        if (entryPoint.empty()) {
-            THROW_MODULE_NOT_FOUND_ERROR_WITH_RETURN_VALUE(thread, requestName, recordName, entryPoint);
-        }
-        return entryPoint;
     }
-    LOG_FULL(FATAL) << "this branch is unreachable";
-    UNREACHABLE();
+    // this branch save for require/dynamic import/old version sdk
+    // requestName: requestPkgName
+    CString entryPoint = ParseThirdPartyPackage(jsPandaFile, recordName, requestName);
+    if (entryPoint.empty()) {
+        THROW_MODULE_NOT_FOUND_ERROR_WITH_RETURN_VALUE(thread, requestName, recordName, entryPoint);
+    }
+    return entryPoint;
 }
 
 CString ModulePathHelper::ConcatMergeFileNameToNormalized(JSThread *thread, const JSPandaFile *jsPandaFile,

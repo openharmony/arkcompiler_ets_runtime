@@ -751,7 +751,7 @@ HWTEST_F_L0(EcmaModuleTest, ConcatFileNameWithMerge1)
     CString moduleRequestName = "@bundle:com.bundleName.test/moduleName/requestModuleName1";
     CString result = "com.bundleName.test/moduleName/requestModuleName1";
     CString entryPoint = ModulePathHelper::ConcatFileNameWithMerge(thread, pf.get(), baseFilename, moduleRecordName,
-                                                             moduleRequestName);
+                                                                   moduleRequestName);
     EXPECT_EQ(result, entryPoint);
 
     // Test cross application
@@ -759,6 +759,61 @@ HWTEST_F_L0(EcmaModuleTest, ConcatFileNameWithMerge1)
     CString newBaseFileName = "/data/storage/el1/bundle/com.bundleName.test/moduleName/moduleName/ets/modules.abc";
     ModulePathHelper::ConcatFileNameWithMerge(thread, pf.get(), baseFilename, moduleRecordName, moduleRequestName);
     EXPECT_EQ(baseFilename, newBaseFileName);
+}
+
+HWTEST_F_L0(EcmaModuleTest, ConcatFileNameWithMerge_Normalized)
+{
+    const CString baseFilename = "merge.abc";
+    CString baseFilename1 = baseFilename;
+    const char *data = R"(
+        .language ECMAScript
+        .function any func_main_0(any a0, any a1, any a2) {
+            ldai 1
+            return
+        }
+    )";
+    JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
+    Parser parser;
+    auto res = parser.Parse(data);
+    std::unique_ptr<const File> pfPtr = pandasm::AsmEmitter::Emit(res.Value());
+    std::shared_ptr<JSPandaFile> pf = pfManager->NewJSPandaFile(pfPtr.release(), baseFilename);
+    // Test moduleRequestName start with "@normalized"
+    CString moduleRecordName1 = "moduleTest1";
+    CString moduleRequestName1 = "@normalized:N&&&entryPath&version";
+    CString result1 = "&entryPath&version";
+    CString entryPoint1 = ModulePathHelper::ConcatFileNameWithMerge(thread, pf.get(), baseFilename1, moduleRecordName1,
+                                                                   moduleRequestName1);
+    EXPECT_EQ(result1, entryPoint1);
+    EXPECT_EQ(baseFilename1, baseFilename);
+
+    // Test cross application
+    CMap<CString, CMap<CString, CVector<CString>>> pkgList;
+    CMap<CString, CVector<CString>> entryList;
+    entryList["entry"] = {
+        "packageName", "entry",
+        "bundleName", "",
+        "moduleName", "",
+        "version", "",
+        "entryPath", "src/main/",
+        "isSO", "false"
+    };
+    entryList["har"] = {
+        "packageName", "har",
+        "bundleName", "",
+        "moduleName", "",
+        "version", "1.2.0",
+        "entryPath", "Index.ets",
+        "isSO", "false"
+    };
+    pkgList["entry"] = entryList;
+    instance->SetpkgContextInfoList(pkgList);
+    CString moduleRequestName2 = "@normalized:N&moduleName&bundleNameBB&entryPath&version";
+    CString result2 = "bundleNameBB&entryPath&version";
+    CString newBaseFileName2 = "/data/storage/el1/bundle/bundleNameBB/moduleName/moduleName/ets/modules.abc";
+    CString entryPoint2 = ModulePathHelper::ConcatFileNameWithMerge(thread, pf.get(), baseFilename1, moduleRecordName1,
+        moduleRequestName2);
+    EXPECT_EQ(entryPoint2, result2);
+    EXPECT_EQ(baseFilename1, newBaseFileName2);
 }
 
 HWTEST_F_L0(EcmaModuleTest, ConcatFileNameWithMerge2)
