@@ -114,11 +114,9 @@ public:
         }
     }
 #endif
-    bool GetJSPandaFile(const JSRuntimeOptions &runtimeOptions, std::shared_ptr<JSPandaFile> &pf) const
+    bool GetJSPandaFileinfo(const JSRuntimeOptions &runtimeOptions, std::string &hapPath,
+                            uint32_t &offset, uint32_t &size, std::string &realPath) const
     {
-        std::string hapPath;
-        uint32_t offset {};
-        uint32_t size {};
         if (Valid()) {
             hapPath = GetPath();
             offset = GetOffset();
@@ -133,9 +131,20 @@ public:
             LOG_ECMA(ERROR) << "buffer is empty in target compiler mode!";
             return false;
         }
-        std::string realPath;
         if (!RealPath(hapPath, realPath, false)) {
             LOG_ECMA(ERROR) << "realpath for hap path failed!";
+            return false;
+        }
+        return true;
+    }
+
+    bool GetJSPandaFile(const JSRuntimeOptions &runtimeOptions, std::shared_ptr<JSPandaFile> &pf) const
+    {
+        std::string hapPath;
+        uint32_t offset {};
+        uint32_t size {};
+        std::string realPath;
+        if (!GetJSPandaFileinfo(runtimeOptions, hapPath, offset, size, realPath)) {
             return false;
         }
 #if defined(CODE_ENCRYPTION_ENABLE)
