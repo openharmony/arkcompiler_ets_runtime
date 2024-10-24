@@ -1365,7 +1365,8 @@ public:
 
     bool GlobalNativeSizeLargerThanLimit() const
     {
-        return GetGlobalNativeSize() >= globalSpaceNativeLimit_;
+        size_t overshoot = InSensitiveStatus() ? nativeSizeOvershoot_ : 0;
+        return GetGlobalNativeSize() >= globalSpaceNativeLimit_ + overshoot;
     }
 
     bool GlobalNativeSizeLargerThanLimitForIdle() const
@@ -1636,6 +1637,7 @@ private:
     size_t globalSpaceNativeLimit_ {0};
     size_t nativeSizeTriggerGCThreshold_ {0};
     size_t incNativeSizeTriggerGC_ {0};
+    size_t nativeSizeOvershoot_ {0};
     size_t asyncClearNativePointerThreshold_ {0};
     size_t nativeSizeAfterLastGC_ {0};
     size_t nativeBindingSizeAfterLastGC_ {0};
