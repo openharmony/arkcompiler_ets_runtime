@@ -2070,6 +2070,11 @@ void Builtins::InitializeRegExp(const JSHandle<GlobalEnv> &env)
     // initialize RegExp.$1 .. $9 static and read-only attributes
     InitializeGlobalRegExp(regexpFunction);
 
+    // Set the [[Realm]] internal slot of F to the running execution context's Realm
+    JSHandle<LexicalEnv> lexicalEnv = factory_->NewLexicalEnv(0);
+    lexicalEnv->SetParentEnv(thread_, env.GetTaggedValue());
+    JSHandle<JSFunction>(regexpFunction)->SetLexicalEnv(thread_, lexicalEnv.GetTaggedValue());
+
     JSFunction::SetFunctionPrototypeOrInstanceHClass(thread_,
                                                      JSHandle<JSFunction>(regexpFunction),
                                                      regexpFuncInstanceHClass.GetTaggedValue());
@@ -2080,62 +2085,62 @@ void Builtins::InitializeRegExp(const JSHandle<GlobalEnv> &env)
     SetFunction(env, regPrototype, "test", RegExp::Test, FunctionLength::ONE);
     SetFunction(env, regPrototype, globalConstants->GetHandledToStringString(), RegExp::ToString,
                 FunctionLength::ZERO);
-    JSHandle<JSFunction>(execFunc)->SetLexicalEnv(thread_, env);
+    JSHandle<JSFunction>(execFunc)->SetLexicalEnv(thread_, lexicalEnv.GetTaggedValue());
 
     JSHandle<JSTaggedValue> flagsGetter = CreateGetter(env, RegExp::GetFlags, "flags", FunctionLength::ZERO);
     JSHandle<JSTaggedValue> flagsKey(globalConstants->GetHandledFlagsString());
     SetGetter(regPrototype, flagsKey, flagsGetter);
-    JSHandle<JSFunction>(flagsGetter)->SetLexicalEnv(thread_, env);
+    JSHandle<JSFunction>(flagsGetter)->SetLexicalEnv(thread_, lexicalEnv.GetTaggedValue());
 
     JSHandle<JSTaggedValue> sourceGetter = CreateGetter(env, RegExp::GetSource, "source", FunctionLength::ZERO);
     JSHandle<JSTaggedValue> sourceKey(globalConstants->GetHandledSourceString());
     SetGetter(regPrototype, sourceKey, sourceGetter);
-    JSHandle<JSFunction>(sourceGetter)->SetLexicalEnv(thread_, env);
+    JSHandle<JSFunction>(sourceGetter)->SetLexicalEnv(thread_, lexicalEnv.GetTaggedValue());
 
     JSHandle<JSTaggedValue> globalGetter = CreateGetter(env, RegExp::GetGlobal, "global", FunctionLength::ZERO);
     JSHandle<JSTaggedValue> globalKey(globalConstants->GetHandledGlobalString());
     SetGetter(regPrototype, globalKey, globalGetter);
-    JSHandle<JSFunction>(globalGetter)->SetLexicalEnv(thread_, env);
+    JSHandle<JSFunction>(globalGetter)->SetLexicalEnv(thread_, lexicalEnv.GetTaggedValue());
 
     JSHandle<JSTaggedValue> hasIndicesGetter =
         CreateGetter(env, RegExp::GetHasIndices, "hasIndices", FunctionLength::ZERO);
     JSHandle<JSTaggedValue> hasIndicesKey(factory_->NewFromASCIIReadOnly("hasIndices"));
     SetGetter(regPrototype, hasIndicesKey, hasIndicesGetter);
-    JSHandle<JSFunction>(hasIndicesGetter)->SetLexicalEnv(thread_, env);
+    JSHandle<JSFunction>(hasIndicesGetter)->SetLexicalEnv(thread_, lexicalEnv.GetTaggedValue());
 
     JSHandle<JSTaggedValue> ignoreCaseGetter =
         CreateGetter(env, RegExp::GetIgnoreCase, "ignoreCase", FunctionLength::ZERO);
     JSHandle<JSTaggedValue> ignoreCaseKey(factory_->NewFromASCIIReadOnly("ignoreCase"));
     SetGetter(regPrototype, ignoreCaseKey, ignoreCaseGetter);
-    JSHandle<JSFunction>(ignoreCaseGetter)->SetLexicalEnv(thread_, env);
+    JSHandle<JSFunction>(ignoreCaseGetter)->SetLexicalEnv(thread_, lexicalEnv.GetTaggedValue());
 
     JSHandle<JSTaggedValue> multilineGetter =
         CreateGetter(env, RegExp::GetMultiline, "multiline", FunctionLength::ZERO);
     JSHandle<JSTaggedValue> multilineKey(factory_->NewFromASCIIReadOnly("multiline"));
     SetGetter(regPrototype, multilineKey, multilineGetter);
-    JSHandle<JSFunction>(multilineGetter)->SetLexicalEnv(thread_, env);
+    JSHandle<JSFunction>(multilineGetter)->SetLexicalEnv(thread_, lexicalEnv.GetTaggedValue());
 
     JSHandle<JSTaggedValue> dotAllGetter = CreateGetter(env, RegExp::GetDotAll, "dotAll", FunctionLength::ZERO);
     JSHandle<JSTaggedValue> dotAllKey(factory_->NewFromASCIIReadOnly("dotAll"));
     SetGetter(regPrototype, dotAllKey, dotAllGetter);
-    JSHandle<JSFunction>(dotAllGetter)->SetLexicalEnv(thread_, env);
+    JSHandle<JSFunction>(dotAllGetter)->SetLexicalEnv(thread_, lexicalEnv.GetTaggedValue());
 
     JSHandle<JSTaggedValue> stickyGetter = CreateGetter(env, RegExp::GetSticky, "sticky", FunctionLength::ZERO);
     JSHandle<JSTaggedValue> stickyKey(globalConstants->GetHandledStickyString());
     SetGetter(regPrototype, stickyKey, stickyGetter);
-    JSHandle<JSFunction>(stickyGetter)->SetLexicalEnv(thread_, env);
+    JSHandle<JSFunction>(stickyGetter)->SetLexicalEnv(thread_, lexicalEnv.GetTaggedValue());
 
     JSHandle<JSTaggedValue> unicodeGetter = CreateGetter(env, RegExp::GetUnicode, "unicode", FunctionLength::ZERO);
     JSHandle<JSTaggedValue> unicodeKey(globalConstants->GetHandledUnicodeString());
     SetGetter(regPrototype, unicodeKey, unicodeGetter);
-    JSHandle<JSFunction>(unicodeGetter)->SetLexicalEnv(thread_, env);
+    JSHandle<JSFunction>(unicodeGetter)->SetLexicalEnv(thread_, lexicalEnv.GetTaggedValue());
 
     // Set RegExp [ @@species ]
     JSHandle<JSTaggedValue> speciesSymbol = env->GetSpeciesSymbol();
     JSHandle<JSTaggedValue> speciesGetter =
         CreateGetter(env, BuiltinsMap::Species, "[Symbol.species]", FunctionLength::ZERO);
     SetGetter(JSHandle<JSObject>(regexpFunction), speciesSymbol, speciesGetter);
-    JSHandle<JSFunction>(speciesGetter)->SetLexicalEnv(thread_, env);
+    JSHandle<JSFunction>(speciesGetter)->SetLexicalEnv(thread_, lexicalEnv.GetTaggedValue());
 
     // Set RegExp.prototype[@@split]
     JSHandle<JSTaggedValue> splitFunc = SetAndReturnFunctionAtSymbol(
