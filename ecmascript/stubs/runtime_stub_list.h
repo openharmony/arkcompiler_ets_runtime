@@ -238,7 +238,6 @@ namespace panda::ecmascript {
     V(UpdateArrayHClassAndMigrateArrayWithKind) \
     V(MigrateArrayWithKind)               \
     V(GetTaggedValueWithElementsKind)     \
-    V(TryRestoreElementsKind)             \
     V(RuntimeDump)                        \
     V(ForceGC)                            \
     V(NoticeThroughChainAndRefreshUser)   \
@@ -477,7 +476,6 @@ namespace panda::ecmascript {
     V(FunctionPrototypeBind)              \
     V(FunctionPrototypeCall)              \
     V(SetPrototypeTransition)             \
-    V(UpdateAOTHcAndTryResotreEleKind)    \
     V(GetSharedModule)
 
 #define RUNTIME_STUB_LIST(V)                     \

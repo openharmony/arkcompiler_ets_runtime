@@ -288,15 +288,15 @@ void JSHClass::AddProperty(const JSThread *thread, const JSHandle<JSObject> &obj
         if (newClass->IsTS()) {
             newClass->SetPrototype(thread, jshclass->GetPrototype());
         }
-        obj->SynchronizedSetClass(thread, newClass);
         // Because we currently only supports Fast ElementsKind
-        JSHandle<JSHClass> newHClass(thread, newClass);
-        TryRestoreElementsKind(thread, newHClass, obj);
+        RestoreElementsKindToGeneric(newClass);
+        obj->SynchronizedSetClass(thread, newClass);
 #if ECMASCRIPT_ENABLE_IC
         // The transition hclass from AOT, which does not have protochangemarker, needs to be reset here
+        JSHandle<JSHClass> newHClass = JSHandle<JSHClass>(thread, newClass);
         if (newClass->IsTS() && newClass->IsPrototype()) {
             if (JSHClass::IsNeedNotifyHclassChangedForAotTransition(thread, jshclass, key.GetTaggedValue())) {
-                JSHClass::EnableProtoChangeMarker(thread, JSHandle<JSHClass>(thread, newClass));
+                JSHClass::EnableProtoChangeMarker(thread, newHClass);
                 JSHClass::NotifyHclassChanged(thread, jshclass, newHClass, key.GetTaggedValue());
             } else {
                 JSHClass::RefreshUsers(thread, jshclass, newHClass);
@@ -309,14 +309,14 @@ void JSHClass::AddProperty(const JSThread *thread, const JSHandle<JSObject> &obj
         return;
     }
     JSHandle<JSHClass> newJsHClass = JSHClass::Clone(thread, jshclass);
+    RestoreElementsKindToGeneric(*newJsHClass);
     AddPropertyToNewHClass(thread, jshclass, newJsHClass, key, attr);
     // update hclass in object.
 #if ECMASCRIPT_ENABLE_IC
     JSHClass::NotifyHclassChanged(thread, jshclass, newJsHClass, key.GetTaggedValue());
 #endif
-    obj->SynchronizedSetClass(thread, *newJsHClass);
     // Because we currently only supports Fast ElementsKind
-    TryRestoreElementsKind(thread, newJsHClass, obj);
+    obj->SynchronizedSetClass(thread, *newJsHClass);
 }
 
 JSHandle<JSHClass> JSHClass::TransitionExtension(const JSThread *thread, const JSHandle<JSHClass> &jshclass)
@@ -488,8 +488,8 @@ void JSHClass::SetPrototypeTransition(JSThread *thread, const JSHandle<JSObject>
 {
     JSHandle<JSHClass> hclass(thread, object->GetJSHClass());
     auto newClass = SetPrototypeWithNotification(thread, hclass, proto);
+    RestoreElementsKindToGeneric(*newClass);
     object->SynchronizedSetClass(thread, *newClass);
-    JSHClass::TryRestoreElementsKind(thread, newClass, object);
     thread->NotifyStableArrayElementsGuardians(object, StableArrayChangeKind::PROTO);
     ObjectOperator::UpdateDetectorOnSetPrototype(thread, object.GetTaggedValue());
 }
@@ -574,8 +574,8 @@ void JSHClass::TransitionToDictionary(const JSThread *thread, const JSHandle<JSO
 #if ECMASCRIPT_ENABLE_IC
         JSHClass::NotifyHclassChanged(thread, JSHandle<JSHClass>(thread, obj->GetJSHClass()), newJsHClass);
 #endif
+        RestoreElementsKindToGeneric(*newJsHClass);
         obj->SynchronizedSetClass(thread, *newJsHClass);
-        TryRestoreElementsKind(thread, newJsHClass, obj);
     }
 }
 
@@ -631,6 +631,7 @@ void JSHClass::TransitionForRepChange(const JSThread *thread, const JSHandle<JSO
 
     // 1. Create hclass and copy layout
     JSHandle<JSHClass> newHClass = JSHClass::Clone(thread, oldHClass);
+    RestoreElementsKindToGeneric(*newHClass);
 
     JSHandle<LayoutInfo> oldLayout(thread, newHClass->GetLayout());
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
@@ -649,7 +650,6 @@ void JSHClass::TransitionForRepChange(const JSThread *thread, const JSHandle<JSO
 #endif
 
     receiver->SynchronizedSetClass(thread, *newHClass);
-    TryRestoreElementsKind(thread, newHClass, receiver);
     // 4. Maybe Transition And Maintain subtypeing check
 }
 

@@ -564,5 +564,9 @@ inline std::pair<JSHandle<TaggedArray>, JSHandle<TaggedArray>> JSObject::GetOwnE
     return std::make_pair(keyArray, elementArray);
 }
 
+inline bool JSObject::HasMutantTaggedArrayElements(const JSHandle<JSObject> &obj)
+{
+    return obj->GetElements().IsMutantTaggedArray();
+}
 }  //  namespace panda::ecmascript
 #endif  // ECMASCRIPT_JSOBJECT_INL_H
