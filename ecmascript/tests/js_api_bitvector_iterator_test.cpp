@@ -99,7 +99,7 @@ HWTEST_F_L0(JSAPIBitVectorIteratorTest, Next)
     }
     JSHandle<JSAPIBitVectorIterator> bitVectorIterator(thread, JSAPIBitVector::GetIteratorObj(thread, bitVector));
     JSHandle<JSTaggedValue> valueStr = thread->GlobalConstants()->GetHandledValueString();
-    uint32_t length = bitVector->GetLength().GetInt();
+    uint32_t length = bitVector->GetLength();
     for (uint32_t i = 0; i < length; i++) {
         auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
         ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());

@@ -147,7 +147,7 @@ HWTEST_F_L0(ContainersBitVectorTest, BitVectorConstructor)
     JSTaggedValue resultProto = JSObject::GetPrototype(JSHandle<JSObject>::Cast(bitVector));
     JSTaggedValue funcProto = newTarget->GetFunctionPrototype();
     ASSERT_EQ(resultProto, funcProto);
-    int length = bitVector->GetLength().GetInt();
+    int length = bitVector->GetLength();
     ASSERT_EQ(length, 10);
     objCallInfo->SetNewTarget(JSTaggedValue::Undefined());
     CONTAINERS_API_EXCEPTION_TEST(ContainersBitVector, BitVectorConstructor, objCallInfo);
@@ -173,7 +173,7 @@ HWTEST_F_L0(ContainersBitVectorTest, Push_001)
         JSTaggedValue result = ContainersBitVector::Push(callInfo);
         TestHelper::TearDownFrame(thread, prev);
         EXPECT_EQ(result, JSTaggedValue::True());
-        EXPECT_EQ(bitVector->GetLength().GetInt(), i + 1);
+        EXPECT_EQ(bitVector->GetLength(), i + 1);
     }
 }
 /**
@@ -197,7 +197,7 @@ HWTEST_F_L0(ContainersBitVectorTest, Pop_001)
         JSTaggedValue result = ContainersBitVector::Push(callInfo);
         TestHelper::TearDownFrame(thread, prev);
         EXPECT_EQ(result, JSTaggedValue::True());
-        EXPECT_EQ(bitVector->GetLength().GetInt(), i + 1);
+        EXPECT_EQ(bitVector->GetLength(), i + 1);
     }
     for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
         auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
@@ -229,7 +229,7 @@ HWTEST_F_L0(ContainersBitVectorTest, Has_001)
         JSTaggedValue result = ContainersBitVector::Push(callInfo);
         TestHelper::TearDownFrame(thread, prev);
         EXPECT_EQ(result, JSTaggedValue::True());
-        EXPECT_EQ(bitVector->GetLength().GetInt(), 1);
+        EXPECT_EQ(bitVector->GetLength(), 1);
     }
     {
         auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 10);
@@ -264,7 +264,7 @@ HWTEST_F_L0(ContainersBitVectorTest, Has_002)
         JSTaggedValue result = ContainersBitVector::Push(callInfo);
         TestHelper::TearDownFrame(thread, prev);
         EXPECT_EQ(result, JSTaggedValue::True());
-        EXPECT_EQ(bitVector->GetLength().GetInt(), 1);
+        EXPECT_EQ(bitVector->GetLength(), 1);
     }
     {
         auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 10);
@@ -322,7 +322,7 @@ HWTEST_F_L0(ContainersBitVectorTest, SetBitsByRange_001)
         JSTaggedValue result = ContainersBitVector::Push(callInfo);
         TestHelper::TearDownFrame(thread, prev);
         EXPECT_EQ(result, JSTaggedValue::True());
-        EXPECT_EQ(bitVector->GetLength().GetInt(), 1);
+        EXPECT_EQ(bitVector->GetLength(), 1);
     }
     {
         auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 10);
@@ -365,7 +365,7 @@ HWTEST_F_L0(ContainersBitVectorTest, SetBitsByRange_002)
         JSTaggedValue result = ContainersBitVector::Push(callInfo);
         TestHelper::TearDownFrame(thread, prev);
         EXPECT_EQ(result, JSTaggedValue::True());
-        EXPECT_EQ(bitVector->GetLength().GetInt(), 1);
+        EXPECT_EQ(bitVector->GetLength(), 1);
     }
     {
         auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 10);
@@ -457,7 +457,7 @@ HWTEST_F_L0(ContainersBitVectorTest, SetAllBits_001)
         JSTaggedValue result = ContainersBitVector::Push(callInfo);
         TestHelper::TearDownFrame(thread, prev);
         EXPECT_EQ(result, JSTaggedValue::True());
-        EXPECT_EQ(bitVector->GetLength().GetInt(), 1);
+        EXPECT_EQ(bitVector->GetLength(), 1);
     }
     {
         auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
@@ -581,7 +581,7 @@ HWTEST_F_L0(ContainersBitVectorTest, GetBitsByRange_001)
         JSTaggedValue result = ContainersBitVector::Push(callInfo);
         TestHelper::TearDownFrame(thread, prev);
         EXPECT_EQ(result, JSTaggedValue::True());
-        EXPECT_EQ(bitVector->GetLength().GetInt(), 1);
+        EXPECT_EQ(bitVector->GetLength(), 1);
     }
     {
         auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
@@ -619,7 +619,7 @@ HWTEST_F_L0(ContainersBitVectorTest, GetBitsByRange_002)
         JSTaggedValue result = ContainersBitVector::Push(callInfo);
         TestHelper::TearDownFrame(thread, prev);
         EXPECT_EQ(result, JSTaggedValue::True());
-        EXPECT_EQ(bitVector->GetLength().GetInt(), 1);
+        EXPECT_EQ(bitVector->GetLength(), 1);
     }
     {
         auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
@@ -700,7 +700,7 @@ HWTEST_F_L0(ContainersBitVectorTest, Resize_01)
         JSTaggedValue result = ContainersBitVector::Push(callInfo);
         TestHelper::TearDownFrame(thread, prev);
         EXPECT_EQ(result, JSTaggedValue::True());
-        EXPECT_EQ(bitVector->GetLength().GetInt(), i + 1);
+        EXPECT_EQ(bitVector->GetLength(), i + 1);
     }
     for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
         auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
@@ -711,7 +711,7 @@ HWTEST_F_L0(ContainersBitVectorTest, Resize_01)
         ContainersBitVector::Resize(callInfo);
         TestHelper::TearDownFrame(thread, prev);
     }
-    EXPECT_EQ(bitVector->GetLength().GetInt(), 5);
+    EXPECT_EQ(bitVector->GetLength(), 5);
 }
 /**
    * @tc.number: _BitVector_resize_Func_002
@@ -734,7 +734,7 @@ HWTEST_F_L0(ContainersBitVectorTest, Resize_02)
         JSTaggedValue result = ContainersBitVector::Push(callInfo);
         TestHelper::TearDownFrame(thread, prev);
         EXPECT_EQ(result, JSTaggedValue::True());
-        EXPECT_EQ(bitVector->GetLength().GetInt(), i + 1);
+        EXPECT_EQ(bitVector->GetLength(), i + 1);
     }
     for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
         auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
@@ -745,7 +745,7 @@ HWTEST_F_L0(ContainersBitVectorTest, Resize_02)
         ContainersBitVector::Resize(callInfo);
         TestHelper::TearDownFrame(thread, prev);
     }
-    EXPECT_EQ(bitVector->GetLength().GetInt(), 8);
+    EXPECT_EQ(bitVector->GetLength(), 8);
 }
 /**
    * @tc.number: _BitVector_resize_Func_003
@@ -768,7 +768,7 @@ HWTEST_F_L0(ContainersBitVectorTest, Resize_03)
         JSTaggedValue result = ContainersBitVector::Push(callInfo);
         TestHelper::TearDownFrame(thread, prev);
         EXPECT_EQ(result, JSTaggedValue::True());
-        EXPECT_EQ(bitVector->GetLength().GetInt(), i + 1);
+        EXPECT_EQ(bitVector->GetLength(), i + 1);
     }
     for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
         auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
@@ -779,7 +779,7 @@ HWTEST_F_L0(ContainersBitVectorTest, Resize_03)
         ContainersBitVector::Resize(callInfo);
         TestHelper::TearDownFrame(thread, prev);
     }
-    EXPECT_EQ(bitVector->GetLength().GetInt(), 10);
+    EXPECT_EQ(bitVector->GetLength(), 10);
     for (uint32_t i = 0; i < 2; i++) {
         auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
         callInfo->SetFunction(JSTaggedValue::Undefined());
@@ -811,7 +811,7 @@ HWTEST_F_L0(ContainersBitVectorTest, Resize_04)
         JSTaggedValue result = ContainersBitVector::Push(callInfo);
         TestHelper::TearDownFrame(thread, prev);
         EXPECT_EQ(result, JSTaggedValue::True());
-        EXPECT_EQ(bitVector->GetLength().GetInt(), i + 1);
+        EXPECT_EQ(bitVector->GetLength(), i + 1);
     }
     for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
         auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
@@ -846,7 +846,7 @@ HWTEST_F_L0(ContainersBitVectorTest, GetBitCountByRange_001)
         JSTaggedValue result = ContainersBitVector::Push(callInfo);
         TestHelper::TearDownFrame(thread, prev);
         EXPECT_EQ(result, JSTaggedValue::True());
-        EXPECT_EQ(bitVector->GetLength().GetInt(), 1);
+        EXPECT_EQ(bitVector->GetLength(), 1);
     }
     {
         auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 10);
@@ -881,7 +881,7 @@ HWTEST_F_L0(ContainersBitVectorTest, GetBitCountByRange_002)
         JSTaggedValue result = ContainersBitVector::Push(callInfo);
         TestHelper::TearDownFrame(thread, prev);
         EXPECT_EQ(result, JSTaggedValue::True());
-        EXPECT_EQ(bitVector->GetLength().GetInt(), 1);
+        EXPECT_EQ(bitVector->GetLength(), 1);
     }
     {
         auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 10);
@@ -974,7 +974,7 @@ HWTEST_F_L0(ContainersBitVectorTest, GetIndexOf_001)
         JSTaggedValue result = ContainersBitVector::Push(callInfo);
         TestHelper::TearDownFrame(thread, prev);
         EXPECT_EQ(result, JSTaggedValue::True());
-        EXPECT_EQ(bitVector->GetLength().GetInt(), 1);
+        EXPECT_EQ(bitVector->GetLength(), 1);
     }
     {
         auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 10);
@@ -1009,7 +1009,7 @@ HWTEST_F_L0(ContainersBitVectorTest, GetIndexOf_002)
         JSTaggedValue result = ContainersBitVector::Push(callInfo);
         TestHelper::TearDownFrame(thread, prev);
         EXPECT_EQ(result, JSTaggedValue::True());
-        EXPECT_EQ(bitVector->GetLength().GetInt(), 1);
+        EXPECT_EQ(bitVector->GetLength(), 1);
     }
     {
         auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 10);
@@ -1102,7 +1102,7 @@ HWTEST_F_L0(ContainersBitVectorTest, GetLastIndexOf_001)
         JSTaggedValue result = ContainersBitVector::Push(callInfo);
         TestHelper::TearDownFrame(thread, prev);
         EXPECT_EQ(result, JSTaggedValue::True());
-        EXPECT_EQ(bitVector->GetLength().GetInt(), 1);
+        EXPECT_EQ(bitVector->GetLength(), 1);
     }
     {
         auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 10);
@@ -1137,7 +1137,7 @@ HWTEST_F_L0(ContainersBitVectorTest, GetLastIndexOf_002)
         JSTaggedValue result = ContainersBitVector::Push(callInfo);
         TestHelper::TearDownFrame(thread, prev);
         EXPECT_EQ(result, JSTaggedValue::True());
-        EXPECT_EQ(bitVector->GetLength().GetInt(), 1);
+        EXPECT_EQ(bitVector->GetLength(), 1);
     }
     {
         auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 10);
@@ -1230,7 +1230,7 @@ HWTEST_F_L0(ContainersBitVectorTest, FlipBitByIndex_001)
         JSTaggedValue result = ContainersBitVector::Push(callInfo);
         TestHelper::TearDownFrame(thread, prev);
         EXPECT_EQ(result, JSTaggedValue::True());
-        EXPECT_EQ(bitVector->GetLength().GetInt(), 1);
+        EXPECT_EQ(bitVector->GetLength(), 1);
     }
     {
         auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
@@ -1272,7 +1272,7 @@ HWTEST_F_L0(ContainersBitVectorTest, FlipBitByIndex_2)
         JSTaggedValue result = ContainersBitVector::Push(callInfo);
         TestHelper::TearDownFrame(thread, prev);
         EXPECT_EQ(result, JSTaggedValue::True());
-        EXPECT_EQ(bitVector->GetLength().GetInt(), 1);
+        EXPECT_EQ(bitVector->GetLength(), 1);
     }
     {
         auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
@@ -1349,7 +1349,7 @@ HWTEST_F_L0(ContainersBitVectorTest, FlipBitsByRange_001)
         JSTaggedValue result = ContainersBitVector::Push(callInfo);
         TestHelper::TearDownFrame(thread, prev);
         EXPECT_EQ(result, JSTaggedValue::True());
-        EXPECT_EQ(bitVector->GetLength().GetInt(), 1);
+        EXPECT_EQ(bitVector->GetLength(), 1);
     }
     {
         auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 10);
@@ -1391,7 +1391,7 @@ HWTEST_F_L0(ContainersBitVectorTest, FlipBitsByRange_002)
         JSTaggedValue result = ContainersBitVector::Push(callInfo);
         TestHelper::TearDownFrame(thread, prev);
         EXPECT_EQ(result, JSTaggedValue::True());
-        EXPECT_EQ(bitVector->GetLength().GetInt(), 1);
+        EXPECT_EQ(bitVector->GetLength(), 1);
     }
     {
         auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 10);

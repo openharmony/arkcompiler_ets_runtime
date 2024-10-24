@@ -1488,7 +1488,7 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
             break;
         }
         case JSType::JS_API_BITVECTOR: {
-            JSAPIBitVector::Cast(*obj)->SetLength(thread_, JSTaggedValue(0));
+            JSAPIBitVector::Cast(*obj)->SetLength(0);
             JSAPIBitVector::Cast(*obj)->SetModRecord(0);
             break;
         }

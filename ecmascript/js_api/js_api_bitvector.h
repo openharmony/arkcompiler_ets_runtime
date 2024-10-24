@@ -72,15 +72,16 @@ public:
         const JSHandle<JSTaggedValue>& value);
     inline uint32_t GetSize() const
     {
-        return GetLength().GetInt();
+        return GetLength();
     }
 
-    static constexpr size_t LENGTH_OFFSET = JSObject::SIZE;
-    ACCESSORS(Length, LENGTH_OFFSET, NATIVE_POINTER_OFFSET);
-    ACCESSORS(NativePointer, NATIVE_POINTER_OFFSET, MOD_RECORD_OFFSET);
-    ACCESSORS_SYNCHRONIZED_PRIMITIVE_FIELD(ModRecord, uint32_t, MOD_RECORD_OFFSET, SIZE);
+    static constexpr size_t NATIVE_POINTER_OFFSET = JSObject::SIZE;
+    ACCESSORS(NativePointer, NATIVE_POINTER_OFFSET, LENGTH_OFFSET);
+    ACCESSORS_PRIMITIVE_FIELD(Length, int32_t, LENGTH_OFFSET, MOD_RECORD_OFFSET);
+    ACCESSORS_SYNCHRONIZED_PRIMITIVE_FIELD(ModRecord, uint32_t, MOD_RECORD_OFFSET, LAST_OFFSET);
+    DEFINE_ALIGN_SIZE(LAST_OFFSET);
 
-    DECL_VISIT_OBJECT_FOR_JS_OBJECT(JSObject, LENGTH_OFFSET, SIZE)
+    DECL_VISIT_OBJECT_FOR_JS_OBJECT(JSObject, NATIVE_POINTER_OFFSET, LENGTH_OFFSET);
     DECL_DUMP()
 
 private:
