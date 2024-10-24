@@ -703,6 +703,11 @@ inline GateRef StubBuilder::ElementsKindIsHeapKind(GateRef kind)
     return env_->GetBuilder()->ElementsKindIsHeapKind(kind);
 }
 
+inline GateRef StubBuilder::ElementsKindHasHole(GateRef kind)
+{
+    return env_->GetBuilder()->ElementsKindHasHole(kind);
+}
+
 inline GateRef StubBuilder::TaggedIsUndefined(GateRef x)
 {
     return env_->GetBuilder()->TaggedIsUndefined(x);

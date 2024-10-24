@@ -909,6 +909,7 @@ public:
     GateRef ElementsKindIsIntOrHoleInt(GateRef kind);
     GateRef ElementsKindIsNumOrHoleNum(GateRef kind);
     GateRef ElementsKindIsHeapKind(GateRef kind);
+    GateRef ElementsKindHasHole(GateRef kind);
     void MigrateArrayWithKind(GateRef glue, GateRef object, GateRef oldKind, GateRef newKind);
     GateRef MigrateFromRawValueToHeapValues(GateRef glue, GateRef object, GateRef needCOW, GateRef isIntKind);
     GateRef MigrateFromHeapValueToRawValue(GateRef glue, GateRef object, GateRef needCOW, GateRef isIntKind);

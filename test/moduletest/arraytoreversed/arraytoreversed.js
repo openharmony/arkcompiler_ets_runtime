@@ -39,3 +39,9 @@ var result1 = arr5.toReversed();
 print(result1);
 var result2 = arr6.toReversed();
 print(result2);
+
+const arrString = ["1","2", , "3"];
+print(arrString.indexOf(undefined));
+const arrString1 = arrString.toReversed();
+print(arrString.indexOf(undefined));
+print(arrString1.indexOf(undefined));
