@@ -26,8 +26,9 @@
     /* SharedArray.from ( items [ , mapfn [ , thisArg ] ] ) */ \
     V("from", From, 1, INVALID)                                \
     V("create", Create, 2, INVALID)                            \
-    /* SharedArray.isArray ( arg ) */                          \
+    /* SendableArray.isArray ( arg ) */                        \
     V("isArray", IsArray, 1, INVALID)                          \
+    // fixme(hzzhouzebin) Support later.
     // /* SharedArray.of ( ...items ) */                          \
     // V("of", Of, 0, INVALID)
 
@@ -211,6 +212,7 @@ private:
                                              const JSHandle<JSTaggedValue> &thisHandle);
     static JSTaggedValue LastIndexOfSlowPath(EcmaRuntimeCallInfo *argv, JSThread *thread,
                                              const JSHandle<JSTaggedValue> &thisObjVal, int64_t fromIndex);
+
 #define ARRAY_PROPERTIES_PAIR(name, func, length, id) \
     std::pair<std::string_view, bool>(name, false),
 

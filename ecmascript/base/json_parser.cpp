@@ -574,7 +574,10 @@ JSTaggedValue JsonParser<T>::ConvertToNumber(const std::string &str, bool negati
     }
     if (NumberHelper::IsSafeIntegerNumber(v)) {
         if (parseOptions_.bigIntMode == BigIntMode::ALWAYS_PARSE_AS_BIGINT) {
-            JSTaggedValue value =  BigInt::DoubleToBigInt(thread_, v);
+            if (v == 0.0) {
+                return BigInt::Int32ToBigInt(thread_, 0).GetTaggedValue();
+            }
+            JSTaggedValue value = BigInt::DoubleToBigInt(thread_, v);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
             if (value.IsBigInt()) {
                 return value;
