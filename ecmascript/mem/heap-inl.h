@@ -117,7 +117,9 @@ template<class Callback>
 void Heap::EnumerateNonNewSpaceRegions(const Callback &cb) const
 {
     oldSpace_->EnumerateRegions(cb);
-    oldSpace_->EnumerateCollectRegionSet(cb);
+    if (!isCSetClearing_.load(std::memory_order_acquire)) {
+        oldSpace_->EnumerateCollectRegionSet(cb);
+    }
     appSpawnSpace_->EnumerateRegions(cb);
     snapshotSpace_->EnumerateRegions(cb);
     nonMovableSpace_->EnumerateRegions(cb);
@@ -166,7 +168,9 @@ void Heap::EnumerateRegions(const Callback &cb) const
     edenSpace_->EnumerateRegions(cb);
     activeSemiSpace_->EnumerateRegions(cb);
     oldSpace_->EnumerateRegions(cb);
-    oldSpace_->EnumerateCollectRegionSet(cb);
+    if (!isCSetClearing_.load(std::memory_order_acquire)) {
+        oldSpace_->EnumerateCollectRegionSet(cb);
+    }
     appSpawnSpace_->EnumerateRegions(cb);
     snapshotSpace_->EnumerateRegions(cb);
     nonMovableSpace_->EnumerateRegions(cb);
@@ -624,6 +628,7 @@ void Heap::ReclaimRegions(TriggerGCType gcType)
         cachedSize = 0;
     } else if (gcType == TriggerGCType::OLD_GC) {
         oldSpace_->ReclaimCSet();
+        isCSetClearing_.store(false, std::memory_order_release);
     }
 
     inactiveSemiSpace_->ReclaimRegions(cachedSize);
