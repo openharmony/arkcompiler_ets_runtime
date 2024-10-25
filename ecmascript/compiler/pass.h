@@ -657,7 +657,8 @@ public:
         Chunk chunk(data->GetNativeAreaAllocator());
         CombinedPassVisitor visitor(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk);
         JSRuntimeOptions runtimeOption = data->GetPassContext()->GetCompilationEnv()->GetJSOptions();
-        EarlyElimination earlyElimination(data->GetCircuit(), &visitor, &chunk, runtimeOption.IsEnableMemoryAnalysis());
+        EarlyElimination earlyElimination(data->GetCircuit(), &visitor, &chunk,
+            runtimeOption.IsEnableMemoryAnalysis(), runtimeOption.IsEnableFrameStateElimination());
         visitor.AddPass(&earlyElimination);
         visitor.VisitGraph();
         visitor.PrintLog("early elimination");
