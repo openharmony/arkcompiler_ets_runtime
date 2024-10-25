@@ -1159,30 +1159,6 @@ bool SourceTextModule::IsEvaluatedModule(JSThread *thread, StateVisit &stateVisi
     return GetModuleEvaluatingType(thread, stateVisit, module) == ModuleStatus::EVALUATED;
 }
 
-bool SourceTextModule::IsEvaluatingModule(JSThread *thread, StateVisit &stateVisit,
-                                          const JSHandle<SourceTextModule> &module)
-{
-    auto state = GetModuleEvaluatingType(thread, stateVisit, module);
-    if (state == ModuleStatus::EVALUATING_ASYNC) {
-        LOG_FULL(INFO) << "EVALUATING_ASYNC state module appear.";
-    }
-    return state == ModuleStatus::EVALUATING || state == ModuleStatus::EVALUATING_ASYNC;
-}
-
-bool SourceTextModule::IsInstaniatedModule(JSThread *thread, StateVisit &stateVisit,
-                                           const JSHandle<SourceTextModule> &module)
-{
-    return GetModuleEvaluatingType(thread, stateVisit, module) == ModuleStatus::INSTANTIATED;
-}
-
-bool SourceTextModule::WaitModuleEvaluated([[maybe_unused]] JSThread *thread, StateVisit &stateVisit,
-                                           [[maybe_unused]] const JSHandle<SourceTextModule> &module)
-{
-    RuntimeLockHolder locker(thread, stateVisit.mutex);
-    stateVisit.cv.Wait(&stateVisit.mutex);
-    return true;
-}
-
 ModuleStatus SourceTextModule::GetModuleEvaluatingType(JSThread *thread, StateVisit &stateVisit,
                                                        const JSHandle<SourceTextModule> &module)
 {
@@ -1200,17 +1176,17 @@ int SourceTextModule::InnerModuleEvaluation(JSThread *thread, const JSHandle<Sou
         return SourceTextModule::InnerModuleEvaluationUnsafe(
             thread, moduleRecord, stack, index, buffer, size, executeFromJob);
     } else {
-        StateVisit stateVisit = SharedModuleManager::GetInstance()->findModuleMutexWithLock(thread, module);
-        if (IsInstaniatedModule(thread, stateVisit, module)) {
-            RuntimeLockHolder locker(thread, stateVisit.mutex);
+        StateVisit &stateVisit = SharedModuleManager::GetInstance()->findModuleMutexWithLock(thread, module);
+        if (module->GetStatus() == ModuleStatus::EVALUATING &&
+                stateVisit.threadId == thread->GetThreadId()) {
+            return index;
+        }
+        RuntimeLockHolder locker(thread, stateVisit.mutex);
+        if (module->GetStatus() == ModuleStatus::INSTANTIATED) {
             stateVisit.threadId = thread->GetThreadId();
             int idx = SourceTextModule::InnerModuleEvaluationUnsafe(
                 thread, moduleRecord, stack, index, buffer, size, executeFromJob);
-            stateVisit.cv.SignalAll();
             return idx;
-        } else if (IsEvaluatingModule(thread, stateVisit, module) &&
-            !(stateVisit.threadId != thread->GetThreadId())) {
-            WaitModuleEvaluated(thread, stateVisit, module);
         }
         return index;
     }
