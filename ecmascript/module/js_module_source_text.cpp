@@ -1456,6 +1456,11 @@ JSTaggedValue SourceTextModule::FindByExport(const JSTaggedValue &exportEntriesT
 void SourceTextModule::StoreModuleValue(JSThread *thread, int32_t index, const JSHandle<JSTaggedValue> &value)
 {
     JSHandle<SourceTextModule> module(thread, this);
+    if (UNLIKELY(IsSharedModule(module)) && !value->IsJSShared()) {
+        CString msg = "Export non-shared object form shared-module, module name is :" +
+                    module->GetEcmaModuleRecordNameString();
+        THROW_ERROR(thread, ErrorType::SYNTAX_ERROR, msg.c_str());
+    }
     JSTaggedValue localExportEntries = module->GetLocalExportEntries();
     ASSERT(localExportEntries.IsTaggedArray());
 
@@ -1481,6 +1486,11 @@ void SourceTextModule::StoreModuleValue(JSThread *thread, const JSHandle<JSTagge
                                         const JSHandle<JSTaggedValue> &value)
 {
     JSHandle<SourceTextModule> module(thread, this);
+    if (UNLIKELY(IsSharedModule(module)) && !value->IsJSShared()) {
+        CString msg = "Export non-shared object form shared-module, module name is :" +
+                    module->GetEcmaModuleRecordNameString();
+        THROW_ERROR(thread, ErrorType::SYNTAX_ERROR, msg.c_str());
+    }
     JSMutableHandle<JSTaggedValue> data(thread, module->GetNameDictionary());
     if (data->IsUndefined()) {
         data.Update(NameDictionary::Create(thread, DEFAULT_DICTIONART_CAPACITY));
