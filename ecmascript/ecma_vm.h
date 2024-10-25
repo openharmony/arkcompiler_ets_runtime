@@ -201,7 +201,6 @@ public:
     }
 
     void PUBLIC_API CheckThread() const;
-    JSThread *GetAndFastCheckJSThread() const;
     bool CheckSingleThread() const;
 
     ARK_INLINE bool GetThreadCheckStatus() const
@@ -821,7 +820,7 @@ public:
         aotSnapShotStatsMap_[tag] += count;
     }
 
-    void PrintAOTSnapShotStats();
+    void PUBLIC_API PrintAOTSnapShotStats();
 
 protected:
 

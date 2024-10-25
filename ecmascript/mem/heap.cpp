@@ -18,6 +18,10 @@
 
 #include "ecmascript/base/block_hook_scope.h"
 #include "ecmascript/checkpoint/thread_state_transition.h"
+#if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
+#include "ecmascript/dfx/cpu_profiler/cpu_profiler.h"
+#endif
+
 #include "ecmascript/mem/incremental_marker.h"
 #include "ecmascript/mem/partial_gc.h"
 #include "ecmascript/mem/parallel_evacuator.h"

@@ -473,19 +473,6 @@ void EcmaVM::CheckThread() const
     }
 }
 
-JSThread *EcmaVM::GetAndFastCheckJSThread() const
-{
-    if (thread_ == nullptr) {
-        LOG_FULL(FATAL) << "Fatal: ecma_vm has been destructed! vm address is: " << this;
-    }
-    if (thread_->GetThreadId() != JSThread::GetCurrentThreadId() && !thread_->IsCrossThreadExecutionEnable()) {
-        LOG_FULL(FATAL) << "Fatal: ecma_vm cannot run in multi-thread!"
-                                << " thread:" << thread_->GetThreadId()
-                                << " currentThread:" << JSThread::GetCurrentThreadId();
-    }
-    return thread_;
-}
-
 bool EcmaVM::CheckSingleThread() const
 {
     if (thread_ == nullptr) {
