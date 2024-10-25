@@ -1945,7 +1945,7 @@ void BuiltinsArrayStubBuilder::ToReversed(GateRef glue, GateRef thisValue, [[may
 
     Bind(&notChange);
     GateRef thisArrLen = GetArrayLength(thisValue);
-    GateRef receiver = NewArrayWithHClass(glue, *newHClass);
+    GateRef receiver = NewEmptyArrayWithHClass(glue, *newHClass);
     GrowElementsCapacity(glue, receiver, thisArrLen);
     SetArrayLength(glue, receiver, thisArrLen);
 
@@ -2530,8 +2530,12 @@ GateRef BuiltinsArrayStubBuilder::NewArray(GateRef glue, GateRef count)
     return res;
 }
 
-GateRef BuiltinsArrayStubBuilder::NewArrayWithHClass(GateRef glue, GateRef hclass)
+// new an empty array, the length is zero, but with specific hclass,
+GateRef BuiltinsArrayStubBuilder::NewEmptyArrayWithHClass(GateRef glue, GateRef hclass)
 {
+    #if ECMASCRIPT_ENABLE_ELEMENTSKIND_ALWAY_GENERIC
+    hclass = GetGlobalConstantValue(VariableType::JS_ANY(), glue, ConstantIndex::ELEMENT_HOLE_TAGGED_HCLASS_INDEX);
+    #endif
     // New an array with zero length.
     auto env = GetEnvironment();
     Label entry(env);
@@ -2541,7 +2545,7 @@ GateRef BuiltinsArrayStubBuilder::NewArrayWithHClass(GateRef glue, GateRef hclas
     Label setProperties(env);
     NewObjectStubBuilder newBuilder(this);
     newBuilder.SetParameters(glue, Int32(0));
-    result = newBuilder.NewJSArrayWithSize(hclass, Int32(0));
+    result = newBuilder.NewEmptyJSArrayWithHClass(hclass);
     BRANCH(TaggedIsException(*result), &exit, &setProperties);
     Bind(&setProperties);
     {
