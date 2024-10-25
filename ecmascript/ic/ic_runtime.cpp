@@ -401,31 +401,40 @@ JSTaggedValue StoreICRuntime::StoreMiss(JSHandle<JSTaggedValue> receiver, JSHand
             return SlowRuntimeStub::ThrowReferenceError(GetThread(), key.GetTaggedValue(), " is not defined");
         }
     }
+
     bool success = false;
+    // If op is Accessor, it may change the properties of receiver or receiver's proto,
+    // causing IC compute errors, so move SetPropertyForAccessor to be executed after UpdateStoreHandler.
+    bool isAccessor = false;
     if (isOwn) {
         bool enumerable = !(receiver->IsClassPrototype() || receiver->IsClassConstructor());
         PropertyDescriptor desc(thread_, value, true, enumerable, true);
         success = JSObject::DefineOwnProperty(thread_, &op, desc);
     } else {
-        success = JSObject::SetProperty(&op, value, true);
+        success = JSObject::SetPropertyForData(&op, value, &isAccessor);
     }
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
-    // ic-switch
-    if (!GetThread()->GetEcmaVM()->ICEnabled()) {
+
+    // IC Disable
+    if (!GetThread()->GetEcmaVM()->ICEnabled() || !op.IsFastMode()) {
         icAccessor_.SetAsMega();
-        return success ? JSTaggedValue::Undefined() : JSTaggedValue::Exception();
-    }
-    TraceIC(receiver, key);
-    // do not cache element
-    if (!op.IsFastMode()) {
-        icAccessor_.SetAsMega();
-        return success ? JSTaggedValue::Undefined() : JSTaggedValue::Exception();
-    }
-    if (success) {
-        UpdateStoreHandler(op, key, receiver);
+        if (!success) {
+            return JSTaggedValue::Exception();
+        }
+        if (isAccessor) {
+            return HandleAccesor(&op, value);
+        }
         return JSTaggedValue::Undefined();
     }
-    return JSTaggedValue::Exception();
+
+    TraceIC(receiver, key);
+    if (success) {
+        UpdateStoreHandler(op, key, receiver);
+    }
+    if (isAccessor) {
+        return HandleAccesor(&op, value);
+    }
+    return success ? JSTaggedValue::Undefined() : JSTaggedValue::Exception();
 }
 
 inline JSTaggedValue StoreICRuntime::CallPrivateSetter(JSHandle<JSTaggedValue> receiver, JSHandle<JSTaggedValue> key,
@@ -465,27 +474,43 @@ JSTaggedValue StoreICRuntime::StoreTypedArrayValueMiss(JSHandle<JSTaggedValue> r
     } else {
         UpdateReceiverHClass(JSHandle<JSTaggedValue>(GetThread(), JSHandle<JSObject>::Cast(receiver)->GetClass()));
         ObjectOperator op(GetThread(), receiver, key);
-        bool success = JSObject::SetProperty(&op, value, true);
-        if (op.GetValue().IsAccessor()) {
-            op = ObjectOperator(GetThread(), receiver, key);
-        }
-        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(GetThread());
-        // ic-switch
-        if (!GetThread()->GetEcmaVM()->ICEnabled()) {
+
+        // If op is Accessor, it may change the properties of receiver or receiver's proto,
+        // causing IC compute errors, so move SetPropertyForAccessor to be executed after UpdateStoreHandler.
+        bool isAccessor = false;
+        bool success = JSObject::SetPropertyForData(&op, value, &isAccessor);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
+
+        // IC Disable
+        if (!GetThread()->GetEcmaVM()->ICEnabled() || !op.IsFastMode()) {
             icAccessor_.SetAsMega();
-            return success ? JSTaggedValue::Undefined() : JSTaggedValue::Exception();
-        }
-        TraceIC(receiver, key);
-        // do not cache element
-        if (!op.IsFastMode()) {
-            icAccessor_.SetAsMega();
-            return success ? JSTaggedValue::Undefined() : JSTaggedValue::Exception();
-        }
-        if (success) {
-            UpdateStoreHandler(op, key, receiver);
+            if (!success) {
+                return JSTaggedValue::Exception();
+            }
+            if (isAccessor) {
+                return HandleAccesor(&op, value);
+            }
             return JSTaggedValue::Undefined();
         }
+
+        TraceIC(receiver, key);
+        if (success) {
+            UpdateStoreHandler(op, key, receiver);
+        }
+        if (isAccessor) {
+            return HandleAccesor(&op, value);
+        }
+        return success ? JSTaggedValue::Undefined() : JSTaggedValue::Exception();
+    }
+}
+
+JSTaggedValue StoreICRuntime::HandleAccesor(ObjectOperator *op, const JSHandle<JSTaggedValue> &value)
+{
+    bool success = JSObject::SetPropertyForAccessor(op, value);
+    if (thread_->HasPendingException()) {
+        icAccessor_.SetAsMega();
         return JSTaggedValue::Exception();
     }
+    return success ? JSTaggedValue::Undefined() : JSTaggedValue::Exception();
 }
 }  // namespace panda::ecmascript

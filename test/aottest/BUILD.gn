@@ -255,6 +255,7 @@ group("ark_aot_ts_test") {
     "pgo_profiletypeinfo",
     "pgo_call_deopt_js",
     "pgo_call_recursive_js",
+    "pgo_storemiss",
 
     #"pgo_call_with_repetitive_method_id",
     "pgo_char_to_string_deopt",
