@@ -691,6 +691,52 @@ JSHandle<JSFunction> ObjectFactory::CloneSFunction(JSHandle<JSFunction> func)
     return cloneFunc;
 }
 
+JSHandle<JSFunction> ObjectFactory::CreateJSFunctionFromTemplate(JSHandle<FunctionTemplate> funcTemp)
+{
+    NewObjectHook();
+    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
+    auto kind = funcTemp->GetFunctionKind();
+    JSHandle<JSHClass> jshclass;
+    if (kind == FunctionKind::NORMAL_FUNCTION ||
+        kind == FunctionKind::GETTER_FUNCTION ||
+        kind == FunctionKind::SETTER_FUNCTION) {
+        jshclass = JSHandle<JSHClass>::Cast(env->GetFunctionClassWithoutProto());
+    } else if (kind == FunctionKind::ASYNC_FUNCTION) {
+        jshclass = JSHandle<JSHClass>::Cast(env->GetAsyncFunctionClass());
+    } else {
+        jshclass = JSHandle<JSHClass>::Cast(env->GetGeneratorFunctionClass());
+    }
+    JSHandle<Method> method = JSHandle<Method>(thread_, funcTemp->GetMethod());
+    JSHandle<JSFunction> newFunc = NewJSFunctionByHClass(method, jshclass);
+
+    newFunc->SetLength(funcTemp->GetLength());
+    newFunc->SetModule(thread_, funcTemp->GetModule());
+    return newFunc;
+}
+
+JSHandle<JSFunction> ObjectFactory::CreateSFunctionFromTemplate(JSHandle<FunctionTemplate> funcTemp)
+{
+    NewObjectHook();
+    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
+    auto kind = funcTemp->GetFunctionKind();
+    JSHandle<JSHClass> jshclass;
+    if (kind == FunctionKind::NORMAL_FUNCTION ||
+        kind == FunctionKind::GETTER_FUNCTION ||
+        kind == FunctionKind::SETTER_FUNCTION) {
+        jshclass = JSHandle<JSHClass>::Cast(env->GetSFunctionClassWithoutProto());
+    } else if (kind == FunctionKind::ASYNC_FUNCTION) {
+        jshclass = JSHandle<JSHClass>::Cast(env->GetAsyncFunctionClass());
+    } else {
+        jshclass = JSHandle<JSHClass>::Cast(env->GetGeneratorFunctionClass());
+    }
+    JSHandle<Method> method(thread_, funcTemp->GetMethod());
+    JSHandle<JSFunction> newFunc = NewSFunctionByHClass(method, jshclass);
+
+    newFunc->SetLength(funcTemp->GetLength());
+    newFunc->SetModule(thread_, funcTemp->GetModule());
+    return newFunc;
+}
+
 JSHandle<JSFunction> ObjectFactory::CloneClassCtor(JSHandle<JSFunction> ctor, const JSHandle<JSTaggedValue> &lexenv,
                                                    bool canShareHClass)
 {
@@ -4885,6 +4931,21 @@ JSHandle<ProfileTypeInfoCell> ObjectFactory::NewProfileTypeInfoCell(const JSHand
     profileTypeInfoCell->SetHandle(thread_, JSTaggedValue::Undefined());
     profileTypeInfoCell->SetExtraInfoMap(thread_, JSTaggedValue::Undefined());
     return profileTypeInfoCell;
+}
+
+JSHandle<FunctionTemplate> ObjectFactory::NewFunctionTemplate(
+    const JSHandle<Method> &method, const JSHandle<JSTaggedValue> &module, int32_t length)
+{
+    NewObjectHook();
+    auto globalConstants = thread_->GlobalConstants();
+    TaggedObject *header = heap_->AllocateYoungOrHugeObject(
+        JSHClass::Cast(globalConstants->GetFunctionTemplateClass().GetTaggedObject()));
+    JSHandle<FunctionTemplate> funcTemp(thread_, header);
+    funcTemp->SetMethod(thread_, method);
+    funcTemp->SetModule(thread_, module);
+    funcTemp->SetRawProfileTypeInfo(thread_, globalConstants->GetEmptyProfileTypeInfoCell(), SKIP_BARRIER);
+    funcTemp->SetLength(length);
+    return funcTemp;
 }
 
 JSHandle<VTable> ObjectFactory::NewVTable(uint32_t length, JSTaggedValue initVal)

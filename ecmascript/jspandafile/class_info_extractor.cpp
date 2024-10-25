@@ -268,7 +268,7 @@ JSHandle<JSHClass> ClassInfoExtractor::CreateConstructorHClass(JSThread *thread,
                     if (LIKELY(properties->Get(NAME_INDEX).IsString())) {
                         attributes = PropertyAttributes::Default(false, false, true);
                     } else {
-                        ASSERT(properties->Get(NAME_INDEX).IsJSFunction());
+                        ASSERT(properties->Get(NAME_INDEX).IsFunctionTemplate());
                         attributes = PropertyAttributes::Default(true, false, true);
                     }
                     break;
@@ -311,29 +311,27 @@ void ClassInfoExtractor::CorrectConstructorHClass(JSThread *thread,
                                                   JSHandle<TaggedArray> &properties,
                                                   JSHClass *constructorHClass)
 {
-    if (LIKELY(!constructorHClass->IsDictionaryMode())) {
-        JSHandle<LayoutInfo> layout(thread, constructorHClass->GetLayout());
-        for (uint32_t index = 0; index < ClassInfoExtractor::STATIC_RESERVED_LENGTH; ++index) {
-            switch (index) {
-                case NAME_INDEX:
-                    if (UNLIKELY(properties->Get(NAME_INDEX).IsJSFunction())) {
-                        PropertyAttributes attr = layout->GetAttr(index);
-                        attr.SetWritable(true);
-                        layout->SetNormalAttr(thread, index, attr);
-                    }
-                    if (UNLIKELY(properties->Get(index).IsAccessor())) {
-                        PropertyAttributes attr = layout->GetAttr(index);
-                        attr.SetIsAccessor(true);
-                        layout->SetNormalAttr(thread, index, attr);
-                    }
-                    break;
-                default:
-                    if (UNLIKELY(properties->Get(index).IsAccessor())) {
-                        PropertyAttributes attr = layout->GetAttr(index);
-                        attr.SetIsAccessor(true);
-                        layout->SetNormalAttr(thread, index, attr);
-                    }
-                    break;
+    if (constructorHClass->IsDictionaryMode()) {
+        return;
+    }
+    JSHandle<LayoutInfo> layout(thread, constructorHClass->GetLayout());
+    for (uint32_t index = 0; index < ClassInfoExtractor::STATIC_RESERVED_LENGTH; ++index) {
+        if (index == NAME_INDEX) {
+            if (UNLIKELY(properties->Get(NAME_INDEX).IsFunctionTemplate())) {
+                PropertyAttributes attr = layout->GetAttr(index);
+                attr.SetWritable(true);
+                layout->SetNormalAttr(thread, index, attr);
+            }
+            if (UNLIKELY(properties->Get(index).IsAccessor())) {
+                PropertyAttributes attr = layout->GetAttr(index);
+                attr.SetIsAccessor(true);
+                layout->SetNormalAttr(thread, index, attr);
+            }
+        } else {
+            if (UNLIKELY(properties->Get(index).IsAccessor())) {
+                PropertyAttributes attr = layout->GetAttr(index);
+                attr.SetIsAccessor(true);
+                layout->SetNormalAttr(thread, index, attr);
             }
         }
     }
@@ -413,13 +411,9 @@ JSHandle<JSFunction> ClassHelper::DefineClassFromExtractor(JSThread *thread, con
     if (LIKELY(!prototypeHClass->IsDictionaryMode())) {
         for (uint32_t index = 0; index < nonStaticLength; ++index) {
             propValue.Update(nonStaticProperties->Get(index));
-            if (propValue->IsJSFunction()) {
-                auto literalFunc = JSHandle<JSFunction>::Cast(propValue);
-                JSHandle<JSFunction> propFunc = factory->CloneJSFunction(literalFunc);
-                JSFunction::UpdateProfileTypeInfoCell(thread, literalFunc, propFunc);
-                propFunc->SetHomeObject(thread, prototype);
-                propFunc->SetLexicalEnv(thread, lexenv);
-                propValue.Update(propFunc);
+            if (propValue->IsFunctionTemplate()) {
+                auto literalFunc = JSHandle<FunctionTemplate>::Cast(propValue);
+                propValue.Update(CreateJSFunctionFromTemplate(thread, literalFunc, prototype, lexenv));
             }
             prototype->SetPropertyInlinedProps(thread, index, propValue.GetTaggedValue());
         }
@@ -432,7 +426,7 @@ JSHandle<JSFunction> ClassHelper::DefineClassFromExtractor(JSThread *thread, con
     // non-static elements
     if (UNLIKELY(extractor->GetNonStaticWithElements())) {
         JSHandle<TaggedArray> nonStaticElements(thread, extractor->GetNonStaticElements());
-        ClassHelper::HandleElementsProperties(thread, prototype, nonStaticElements);
+        ClassHelper::HandleElementsProperties(thread, prototype, lexenv, nonStaticElements);
     }
 
     // static
@@ -441,13 +435,10 @@ JSHandle<JSFunction> ClassHelper::DefineClassFromExtractor(JSThread *thread, con
     if (LIKELY(!constructorHClass->IsDictionaryMode())) {
         for (uint32_t index = 0; index < staticLength; ++index) {
             propValue.Update(staticProperties->Get(index));
-            if (propValue->IsJSFunction()) {
-                auto literalFunc = JSHandle<JSFunction>::Cast(propValue);
-                JSHandle<JSFunction> propFunc = factory->CloneJSFunction(literalFunc);
-                JSFunction::UpdateProfileTypeInfoCell(thread, literalFunc, propFunc);
-                propFunc->SetHomeObject(thread, constructor);
-                propFunc->SetLexicalEnv(thread, lexenv);
-                propValue.Update(propFunc);
+            if (propValue->IsFunctionTemplate()) {
+                auto literalFunc = JSHandle<FunctionTemplate>::Cast(propValue);
+                propValue.Update(
+                    CreateJSFunctionFromTemplate(thread, literalFunc, JSHandle<JSObject>(constructor), lexenv));
             }
             JSHandle<JSObject>::Cast(constructor)->SetPropertyInlinedProps(thread, index, propValue.GetTaggedValue());
         }
@@ -460,7 +451,7 @@ JSHandle<JSFunction> ClassHelper::DefineClassFromExtractor(JSThread *thread, con
     // static elements
     if (UNLIKELY(extractor->GetStaticWithElements())) {
         JSHandle<TaggedArray> staticElements(thread, extractor->GetStaticElements());
-        ClassHelper::HandleElementsProperties(thread, JSHandle<JSObject>(constructor), staticElements);
+        ClassHelper::HandleElementsProperties(thread, JSHandle<JSObject>(constructor), lexenv, staticElements);
     }
 
     PropertyDescriptor ctorDesc(thread, JSHandle<JSTaggedValue>(constructor), true, false, true);
@@ -526,13 +517,9 @@ JSHandle<JSFunction> ClassHelper::DefineClassWithIHClass(JSThread *thread, const
     if (LIKELY(!prototype->GetJSHClass()->IsDictionaryMode())) {
         for (uint32_t index = 0; index < nonStaticLength; ++index) {
             propValue.Update(nonStaticProperties->Get(index));
-            if (propValue->IsJSFunction()) {
-                auto literalFunc = JSHandle<JSFunction>::Cast(propValue);
-                JSHandle<JSFunction> propFunc = factory->CloneJSFunction(literalFunc);
-                JSFunction::UpdateProfileTypeInfoCell(thread, literalFunc, propFunc);
-                propFunc->SetHomeObject(thread, prototype);
-                propFunc->SetLexicalEnv(thread, lexenv);
-                propValue.Update(propFunc);
+            if (propValue->IsFunctionTemplate()) {
+                auto literalFunc = JSHandle<FunctionTemplate>::Cast(propValue);
+                propValue.Update(CreateJSFunctionFromTemplate(thread, literalFunc, prototype, lexenv));
             }
             prototype->SetPropertyInlinedProps(thread, index, propValue.GetTaggedValue());
         }
@@ -545,7 +532,7 @@ JSHandle<JSFunction> ClassHelper::DefineClassWithIHClass(JSThread *thread, const
     // non-static elements
     if (UNLIKELY(extractor->GetNonStaticWithElements())) {
         JSHandle<TaggedArray> nonStaticElements(thread, extractor->GetNonStaticElements());
-        ClassHelper::HandleElementsProperties(thread, prototype, nonStaticElements);
+        ClassHelper::HandleElementsProperties(thread, prototype, lexenv, nonStaticElements);
     }
 
     // static
@@ -555,13 +542,10 @@ JSHandle<JSFunction> ClassHelper::DefineClassWithIHClass(JSThread *thread, const
     if (LIKELY(!constructorHClass->IsDictionaryMode())) {
         for (uint32_t index = 0; index < staticLength; ++index) {
             propValue.Update(staticProperties->Get(index));
-            if (propValue->IsJSFunction()) {
-                auto literalFunc = JSHandle<JSFunction>::Cast(propValue);
-                JSHandle<JSFunction> propFunc = factory->CloneJSFunction(literalFunc);
-                JSFunction::UpdateProfileTypeInfoCell(thread, literalFunc, propFunc);
-                propFunc->SetHomeObject(thread, constructor);
-                propFunc->SetLexicalEnv(thread, lexenv);
-                propValue.Update(propFunc);
+            if (propValue->IsFunctionTemplate()) {
+                auto literalFunc = JSHandle<FunctionTemplate>::Cast(propValue);
+                propValue.Update(
+                    CreateJSFunctionFromTemplate(thread, literalFunc, JSHandle<JSObject>(constructor), lexenv));
             }
             bool needCorrentIndex = index >= ClassInfoExtractor::STATIC_RESERVED_LENGTH;
             if (needCorrentIndex) {
@@ -580,7 +564,7 @@ JSHandle<JSFunction> ClassHelper::DefineClassWithIHClass(JSThread *thread, const
     // static elements
     if (UNLIKELY(extractor->GetStaticWithElements())) {
         JSHandle<TaggedArray> staticElements(thread, extractor->GetStaticElements());
-        ClassHelper::HandleElementsProperties(thread, JSHandle<JSObject>(constructor), staticElements);
+        ClassHelper::HandleElementsProperties(thread, JSHandle<JSObject>(constructor), lexenv, staticElements);
     }
 
     PropertyDescriptor ctorDesc(thread, JSHandle<JSTaggedValue>(constructor), true, false, true);
@@ -597,13 +581,25 @@ JSHandle<JSFunction> ClassHelper::DefineClassWithIHClass(JSThread *thread, const
     return constructor;
 }
 
+JSHandle<JSFunction> ClassHelper::CreateJSFunctionFromTemplate(JSThread *thread,
+                                                               const JSHandle<FunctionTemplate> &funcTemp,
+                                                               const JSHandle<JSObject> &homeObject,
+                                                               const JSHandle<JSTaggedValue> &lexenv)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<JSFunction> propFunc = factory->CreateJSFunctionFromTemplate(funcTemp);
+    JSFunction::UpdateProfileTypeInfoCell(thread, funcTemp, propFunc);
+    propFunc->SetHomeObject(thread, homeObject);
+    propFunc->SetLexicalEnv(thread, lexenv);
+    return propFunc;
+}
+
 JSHandle<NameDictionary> ClassHelper::BuildDictionaryProperties(JSThread *thread, const JSHandle<JSObject> &object,
                                                                 JSHandle<TaggedArray> &keys,
                                                                 JSHandle<TaggedArray> &properties,
                                                                 ClassPropertyType type,
                                                                 const JSHandle<JSTaggedValue> &lexenv)
 {
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     uint32_t length = keys->GetLength();
     ASSERT(length > PropertyAttributes::MAX_FAST_PROPS_CAPACITY);
     ASSERT(keys->GetLength() == properties->GetLength());
@@ -623,7 +619,7 @@ JSHandle<NameDictionary> ClassHelper::BuildDictionaryProperties(JSThread *thread
                     if (LIKELY(properties->Get(ClassInfoExtractor::NAME_INDEX).IsString())) {
                         attributes = PropertyAttributes::Default(false, false, true);
                     } else {
-                        ASSERT(properties->Get(ClassInfoExtractor::NAME_INDEX).IsJSFunction());
+                        ASSERT(properties->Get(ClassInfoExtractor::NAME_INDEX).IsFunctionTemplate());
                         attributes = PropertyAttributes::Default(true, false, true);
                     }
                     break;
@@ -639,11 +635,9 @@ JSHandle<NameDictionary> ClassHelper::BuildDictionaryProperties(JSThread *thread
         }
         propKey.Update(keys->Get(index));
         propValue.Update(properties->Get(index));
-        if (propValue->IsJSFunction()) {
-            JSHandle<JSFunction> propFunc = factory->CloneJSFunction(JSHandle<JSFunction>::Cast(propValue));
-            propFunc->SetHomeObject(thread, object);
-            propFunc->SetLexicalEnv(thread, lexenv);
-            propValue.Update(propFunc);
+        if (propValue->IsFunctionTemplate()) {
+            auto literalFunc = JSHandle<FunctionTemplate>::Cast(propValue);
+            propValue.Update(CreateJSFunctionFromTemplate(thread, literalFunc, object, lexenv));
         }
         JSHandle<NameDictionary> newDict = NameDictionary::PutIfAbsent(thread, dict, propKey, propValue, attributes);
         dict.Update(newDict);
@@ -684,20 +678,20 @@ bool ClassHelper::MatchFieldType(SharedFieldType fieldType, JSTaggedValue value)
 }
 
 void ClassHelper::HandleElementsProperties(JSThread *thread, const JSHandle<JSObject> &object,
-                                           JSHandle<TaggedArray> &elements)
+                                           const JSHandle<JSTaggedValue> &lexenv, JSHandle<TaggedArray> &elements)
 {
     JSMutableHandle<JSTaggedValue> elementsKey(thread, JSTaggedValue::Undefined());
     JSMutableHandle<JSTaggedValue> elementsValue(thread, JSTaggedValue::Undefined());
     for (uint32_t index = 0; index < elements->GetLength(); index += 2) {  // 2: key-value pair
         elementsKey.Update(elements->Get(index));
         elementsValue.Update(elements->Get(index + 1));
+        if (elementsValue->IsFunctionTemplate()) {
+            auto literalFunc = JSHandle<FunctionTemplate>::Cast(elementsValue);
+            elementsValue.Update(CreateJSFunctionFromTemplate(thread, literalFunc, object, lexenv));
+        }
+
         // class property attribute is not default, will transition to dictionary directly.
         JSObject::DefinePropertyByLiteral(thread, object, elementsKey, elementsValue, true);
-
-        if (elementsValue->IsJSFunction()) {
-            JSHandle<JSFunction> elementsFunc = JSHandle<JSFunction>::Cast(elementsValue);
-            elementsFunc->SetHomeObject(thread, object);
-        }
     }
 }
 
@@ -747,12 +741,10 @@ JSHandle<JSFunction> SendableClassDefiner::DefineSendableClassFromExtractor(JSTh
         for (uint32_t index = 0; index < nonStaticLength; ++index) {
             propValue.Update(nonStaticProperties->Get(index));
             // constructor don't need to clone
-            if (propValue->IsJSFunction() && index != ClassInfoExtractor::CONSTRUCTOR_INDEX) {
-                JSHandle<JSFunction> propFunc = factory->CloneSFunction(JSHandle<JSFunction>::Cast(propValue));
-                propFunc->SetHomeObject(thread, prototype);
-                propFunc->SetLexicalEnv(thread, constructor);
-                ASSERT(!propFunc->GetClass()->IsExtensible());
-                propValue.Update(propFunc);
+            if (propValue->IsFunctionTemplate() && index != ClassInfoExtractor::CONSTRUCTOR_INDEX) {
+                auto literalFunc = JSHandle<FunctionTemplate>::Cast(propValue);
+                propValue.Update(
+                    CreateSFunctionFromTemplate(thread, literalFunc, prototype, JSHandle<JSTaggedValue>(constructor)));
             } else if (propValue->IsAccessorData()) {
                 UpdateAccessorFunction(thread, propValue, JSHandle<JSTaggedValue>(prototype), constructor);
             }
@@ -775,12 +767,10 @@ JSHandle<JSFunction> SendableClassDefiner::DefineSendableClassFromExtractor(JSTh
     if (LIKELY(!constructorHClass->IsDictionaryMode())) {
         for (uint32_t index = 0; index < staticLength; ++index) {
             propValue.Update(staticProperties->Get(index));
-            if (propValue->IsJSFunction()) {
-                JSHandle<JSFunction> propFunc = factory->CloneSFunction(JSHandle<JSFunction>::Cast(propValue));
-                propFunc->SetHomeObject(thread, constructor);
-                propFunc->SetLexicalEnv(thread, constructor);
-                ASSERT(!propFunc->GetClass()->IsExtensible());
-                propValue.Update(propFunc);
+            if (propValue->IsFunctionTemplate()) {
+                auto literalFunc = JSHandle<FunctionTemplate>::Cast(propValue);
+                propValue.Update(CreateSFunctionFromTemplate(
+                    thread, literalFunc, JSHandle<JSObject>(constructor), JSHandle<JSTaggedValue>(constructor)));
             } else if (propValue->IsAccessorData()) {
                 UpdateAccessorFunction(thread, propValue, JSHandle<JSTaggedValue>(constructor), constructor);
             }
@@ -858,7 +848,6 @@ JSHandle<NameDictionary> SendableClassDefiner::BuildSendableDictionaryProperties
     const JSHandle<JSObject> &object, JSHandle<TaggedArray> &keys, JSHandle<TaggedArray> &properties,
     ClassPropertyType type, const JSHandle<JSFunction> &ctor)
 {
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     uint32_t length = keys->GetLength();
     ASSERT(keys->GetLength() == properties->GetLength());
 
@@ -880,12 +869,9 @@ JSHandle<NameDictionary> SendableClassDefiner::BuildSendableDictionaryProperties
             dict.Update(newDict);
             continue;
         }
-        if (propValue->IsJSFunction()) {
-            JSHandle<JSFunction> propFunc = factory->CloneSFunction(JSHandle<JSFunction>::Cast(propValue));
-            propFunc->SetHomeObject(thread, object);
-            propFunc->SetLexicalEnv(thread, ctor);
-            ASSERT(!propFunc->GetClass()->IsExtensible());
-            propValue.Update(propFunc);
+        if (propValue->IsFunctionTemplate()) {
+            auto literalFunc = JSHandle<FunctionTemplate>::Cast(propValue);
+            propValue.Update(CreateSFunctionFromTemplate(thread, literalFunc, object, JSHandle<JSTaggedValue>(ctor)));
         } else if (propValue->IsAccessorData()) {
             UpdateAccessorFunction(thread, propValue, JSHandle<JSTaggedValue>(object), ctor);
         }
@@ -893,6 +879,19 @@ JSHandle<NameDictionary> SendableClassDefiner::BuildSendableDictionaryProperties
         dict.Update(newDict);
     }
     return dict;
+}
+
+JSHandle<JSFunction> SendableClassDefiner::CreateSFunctionFromTemplate(JSThread *thread,
+                                                                       const JSHandle<FunctionTemplate> &funcTemp,
+                                                                       const JSHandle<JSObject> &homeObject,
+                                                                       const JSHandle<JSTaggedValue> &lexenv)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<JSFunction> propFunc = factory->CreateSFunctionFromTemplate(funcTemp);
+    propFunc->SetHomeObject(thread, homeObject);
+    propFunc->SetLexicalEnv(thread, lexenv);
+    ASSERT(!propFunc->GetClass()->IsExtensible());
+    return propFunc;
 }
 
 void SendableClassDefiner::AddFieldTypeToDict(JSThread *thread, const JSHandle<TaggedArray> &fieldTypeArray,
@@ -1079,24 +1078,19 @@ void SendableClassDefiner::UpdateAccessorFunction(JSThread *thread, const JSMuta
     const JSHandle<JSTaggedValue> &homeObject, const JSHandle<JSFunction> &ctor)
 {
     ASSERT(value->IsAccessorData());
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<AccessorData> accessor(value);
     auto getter = accessor->GetGetter();
-    if (getter.IsJSFunction()) {
-        JSHandle<JSFunction> func(thread, getter);
-        JSHandle<JSFunction> propFunc = factory->CloneSFunction(func);
-        propFunc->SetHomeObject(thread, homeObject);
-        propFunc->SetLexicalEnv(thread, ctor);
-        ASSERT(!propFunc->GetClass()->IsExtensible());
+    if (getter.IsFunctionTemplate()) {
+        auto funcTemp = JSHandle<FunctionTemplate>(thread, getter);
+        auto propFunc = CreateSFunctionFromTemplate(
+            thread, funcTemp, JSHandle<JSObject>(homeObject), JSHandle<JSTaggedValue>(ctor));
         accessor->SetGetter(thread, propFunc);
     }
     auto setter = accessor->GetSetter();
-    if (setter.IsJSFunction()) {
-        JSHandle<JSFunction> func(thread, setter);
-        JSHandle<JSFunction> propFunc = factory->CloneSFunction(func);
-        propFunc->SetHomeObject(thread, homeObject);
-        propFunc->SetLexicalEnv(thread, ctor);
-        ASSERT(!propFunc->GetClass()->IsExtensible());
+    if (setter.IsFunctionTemplate()) {
+        auto funcTemp = JSHandle<FunctionTemplate>(thread, setter);
+        auto propFunc = CreateSFunctionFromTemplate(
+            thread, funcTemp, JSHandle<JSObject>(homeObject), JSHandle<JSTaggedValue>(ctor));
         accessor->SetSetter(thread, propFunc);
     }
 }
@@ -1106,13 +1100,13 @@ bool SendableClassDefiner::TryUpdateExistValue(JSThread *thread, JSMutableHandle
 {
     bool needUpdateValue = true;
     if (existValue->IsAccessorData()) {
-        if (value->IsJSFunction() && JSHandle<JSFunction>(value)->IsGetterOrSetter()) {
+        if (value->IsFunctionTemplate() && JSHandle<FunctionTemplate>(value)->IsGetterOrSetter()) {
             JSHandle<AccessorData> accessor(existValue);
             UpdateValueToAccessor(thread, value, accessor);
             needUpdateValue = false;
         }
     } else {
-        if (value->IsJSFunction() && JSHandle<JSFunction>(value)->IsGetterOrSetter()) {
+        if (value->IsFunctionTemplate() && JSHandle<FunctionTemplate>(value)->IsGetterOrSetter()) {
             JSHandle<AccessorData> accessor = thread->GetEcmaVM()->GetFactory()->NewSAccessorData();
             UpdateValueToAccessor(thread, value, accessor);
         }
@@ -1122,7 +1116,7 @@ bool SendableClassDefiner::TryUpdateExistValue(JSThread *thread, JSMutableHandle
 
 void SendableClassDefiner::TryUpdateValue(JSThread *thread, JSMutableHandle<JSTaggedValue> &value)
 {
-    if (value->IsJSFunction() && JSHandle<JSFunction>(value)->IsGetterOrSetter()) {
+    if (value->IsFunctionTemplate() && JSHandle<FunctionTemplate>(value)->IsGetterOrSetter()) {
         JSHandle<AccessorData> accessor = thread->GetEcmaVM()->GetFactory()->NewSAccessorData();
         UpdateValueToAccessor(thread, value, accessor);
     }
@@ -1131,8 +1125,8 @@ void SendableClassDefiner::TryUpdateValue(JSThread *thread, JSMutableHandle<JSTa
 void SendableClassDefiner::UpdateValueToAccessor(JSThread *thread, JSMutableHandle<JSTaggedValue> &value,
                                                  JSHandle<AccessorData> &accessor)
 {
-    ASSERT(value->IsJSFunction() && JSHandle<JSFunction>(value)->IsGetterOrSetter());
-    if (JSHandle<JSFunction>(value)->IsGetter()) {
+    ASSERT(value->IsFunctionTemplate() && JSHandle<FunctionTemplate>(value)->IsGetterOrSetter());
+    if (JSHandle<FunctionTemplate>(value)->IsGetter()) {
         accessor->SetGetter(thread, value);
     } else {
         accessor->SetSetter(thread, value);

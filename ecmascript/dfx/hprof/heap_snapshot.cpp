@@ -271,6 +271,8 @@ CString *HeapSnapshot::GenerateNodeName(TaggedObject *entry)
             return GetString("JSFunctionBase");
         case JSType::JS_FUNCTION:
             return GetString(CString("JSFunction"));
+        case JSType::FUNCTION_TEMPLATE:
+            return GetString(CString("ArkInternalFunctionTemplate"));
         case JSType::JS_ERROR:
             return GetString("Error");
         case JSType::JS_EVAL_ERROR:

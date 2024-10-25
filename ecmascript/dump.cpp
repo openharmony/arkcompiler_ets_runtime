@@ -453,6 +453,8 @@ CString JSHClass::DumpJSType(JSType type)
         case JSType::PROFILE_TYPE_INFO_CELL_1:
         case JSType::PROFILE_TYPE_INFO_CELL_N:
             return "ProfileTypeInfoCell";
+        case JSType::FUNCTION_TEMPLATE:
+            return "FunctionTemplate";
         case JSType::VTABLE:
             return "VTable";
         case JSType::EXTRA_PROFILE_TYPE_INFO:
@@ -706,6 +708,9 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
         case JSType::PROFILE_TYPE_INFO_CELL_1:
         case JSType::PROFILE_TYPE_INFO_CELL_N:
             ProfileTypeInfoCell::Cast(obj)->Dump(os);
+            break;
+        case JSType::FUNCTION_TEMPLATE:
+            FunctionTemplate::Cast(obj)->Dump(os);
             break;
         case JSType::VTABLE:
             VTable::Cast(obj)->Dump(os);
@@ -1669,6 +1674,18 @@ void ProfileTypeInfoCell::Dump(std::ostream &os) const
     os << " - Handle: ";
     GetHandle().Dump(os);
     os << "\n";
+}
+
+void FunctionTemplate::Dump(std::ostream &os) const
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    os << " - Method: ";
+    GetMethod().Dump(os);
+    os << " - Module: ";
+    GetModule().Dump(os);
+    os << " - RawProfileTypeInfo: ";
+    GetRawProfileTypeInfo().Dump(os);
+    os << " - length : " << GetLength() << "\n";
 }
 
 void VTable::Dump(std::ostream &os) const
@@ -3956,6 +3973,9 @@ static void DumpObject(TaggedObject *obj, std::vector<Reference> &vec, bool isVm
         case JSType::PROFILE_TYPE_INFO_CELL_N:
             ProfileTypeInfoCell::Cast(obj)->DumpForSnapshot(vec);
             break;
+        case JSType::FUNCTION_TEMPLATE:
+            FunctionTemplate::Cast(obj)->DumpForSnapshot(vec);
+            break;
         case JSType::VTABLE:
             VTable::Cast(obj)->DumpForSnapshot(vec);
             break;
@@ -4817,6 +4837,14 @@ void ProfileTypeInfoCell::DumpForSnapshot(std::vector<Reference> &vec) const
 {
     vec.emplace_back(CString("Value"), GetValue());
     vec.emplace_back(CString("Handle"), GetHandle());
+}
+
+void FunctionTemplate::DumpForSnapshot(std::vector<Reference> &vec) const
+{
+    vec.emplace_back(CString("Method"), GetMethod());
+    vec.emplace_back(CString("Module"), GetModule());
+    vec.emplace_back(CString("RawProfileTypeInfo"), GetRawProfileTypeInfo());
+    vec.emplace_back(CString("Length"), JSTaggedValue(GetLength()));
 }
 
 void ExtraProfileTypeInfo::DumpForSnapshot(std::vector<Reference> &vec) const

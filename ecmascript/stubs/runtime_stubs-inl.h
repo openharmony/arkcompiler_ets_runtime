@@ -3228,14 +3228,18 @@ JSTaggedValue RuntimeStubs::RuntimeCreatePrivateProperty(JSThread *thread, JSTag
     // instace property number is hidden in the last index of literal buffer
     uint32_t instacePropertyCount = static_cast<uint32_t>(literalBuffer->Get(literalBufferLength - 1).GetInt());
     ASSERT(startIndex + count + literalBufferLength - (instacePropertyCount == 0) <= length);
+
+    JSMutableHandle<JSTaggedValue> literalValue(thread, JSTaggedValue::Undefined());
     for (uint32_t i = 0; i < literalBufferLength - 1; i++) {
-        JSTaggedValue literalValue = literalBuffer->Get(i);
-        if (LIKELY(literalValue.IsJSFunction())) {
-            JSFunction *func = JSFunction::Cast(literalValue.GetTaggedObject());
+        literalValue.Update(literalBuffer->Get(i));
+        if (LIKELY(literalValue->IsFunctionTemplate())) {
+            auto literalFunc = JSHandle<FunctionTemplate>::Cast(literalValue);
+            JSHandle<JSFunction> func = factory->CreateJSFunctionFromTemplate(literalFunc);
             func->SetLexicalEnv(thread, handleLexicalEnv.GetTaggedValue());
             func->SetModule(thread, handleModule.GetTaggedValue());
+            literalValue.Update(func);
         }
-        handleLexicalEnv->SetProperties(thread, startIndex + count + i, literalValue);
+        handleLexicalEnv->SetProperties(thread, startIndex + count + i, literalValue.GetTaggedValue());
     }
     if (instacePropertyCount > 0) {
         auto index = startIndex + count + literalBufferLength - 1;

@@ -78,7 +78,7 @@ void PatchLoader::ExecuteFuncOrPatchMain(
 
     // Resolve all patch module records.
     CMap<CString, JSHandle<JSTaggedValue>> moduleRecords {};
-    
+
     ModuleManager *moduleManager = context->GetModuleManager();
     CString fileName = jsPandaFile->GetJSPandaFileDesc();
     for (const auto &recordName : replacedRecordNames) {
@@ -198,8 +198,8 @@ Method *PatchLoader::GetPatchMethod(JSThread *thread,
         }
         TaggedArray *literalArray = TaggedArray::Cast(classLiteral->GetArray());
         JSTaggedValue value = literalArray->Get(thread, literalIndex);
-        ASSERT(value.IsJSFunctionBase());
-        JSFunctionBase *func = JSFunctionBase::Cast(value.GetTaggedObject());
+        ASSERT(value.IsFunctionTemplate());
+        FunctionTemplate *func = FunctionTemplate::Cast(value.GetTaggedObject());
         patchMethod = Method::Cast(func->GetMethod().GetTaggedObject());
     }
     return patchMethod;
@@ -245,15 +245,24 @@ void PatchLoader::UpdateJSFunction(JSThread *thread, PatchInfo &patchInfo)
     const Heap *heap = thread->GetEcmaVM()->GetHeap();
     heap->GetSweeper()->EnsureAllTaskFinished();
     heap->IterateOverObjects([&replacedPatchMethods, thread]([[maybe_unused]] TaggedObject *obj) {
-        JSFunction *function = nullptr;
         if (JSTaggedValue(obj).IsJSFunction()) {
-            function = JSFunction::Cast(obj);
+            JSFunction *function = JSFunction::Cast(obj);
             EntityId methodId = Method::Cast(function->GetMethod())->GetMethodId();
             if (replacedPatchMethods.count(methodId) > 0) {
                 JSHandle<JSTaggedValue> moduleRecord =
                     thread->GetCurrentEcmaContext()->FindPatchModule(replacedPatchMethods[methodId]);
                 function->SetModule(thread, moduleRecord.GetTaggedValue());
                 function->SetRawProfileTypeInfo(thread, thread->GlobalConstants()->GetEmptyProfileTypeInfoCell(),
+                                                SKIP_BARRIER);
+            }
+        } else if (JSTaggedValue(obj).IsFunctionTemplate()) {
+            auto funcTemp = FunctionTemplate::Cast(obj);
+            EntityId methodId = Method::Cast(funcTemp->GetMethod())->GetMethodId();
+            if (replacedPatchMethods.count(methodId) > 0) {
+                JSHandle<JSTaggedValue> moduleRecord =
+                    thread->GetCurrentEcmaContext()->FindPatchModule(replacedPatchMethods[methodId]);
+                funcTemp->SetModule(thread, moduleRecord.GetTaggedValue());
+                funcTemp->SetRawProfileTypeInfo(thread, thread->GlobalConstants()->GetEmptyProfileTypeInfoCell(),
                                                 SKIP_BARRIER);
             }
         }
@@ -265,8 +274,8 @@ void PatchLoader::UpdateModuleForColdPatch(JSThread *thread, EntityId methodId, 
     const Heap *heap = thread->GetEcmaVM()->GetHeap();
     heap->GetSweeper()->EnsureAllTaskFinished();
     heap->IterateOverObjects([methodId, &recordName, hasModule, thread]([[maybe_unused]] TaggedObject *obj) {
-        JSFunction *function = nullptr;
         if (JSTaggedValue(obj).IsJSFunction()) {
+            JSFunction *function = nullptr;
             function = JSFunction::Cast(obj);
             EntityId methodIdLoop = Method::Cast(function->GetMethod())->GetMethodId();
             if (methodId == methodIdLoop) {
@@ -276,6 +285,18 @@ void PatchLoader::UpdateModuleForColdPatch(JSThread *thread, EntityId methodId, 
                     function->SetModule(thread, moduleRecord.GetTaggedValue());
                 } else {
                     function->SetModule(thread, JSTaggedValue::Undefined());
+                }
+            }
+        } else if (JSTaggedValue(obj).IsFunctionTemplate()) {
+            auto funcTemp = FunctionTemplate::Cast(obj);
+            EntityId methodIdLoop = Method::Cast(funcTemp->GetMethod())->GetMethodId();
+            if (methodId == methodIdLoop) {
+                JSHandle<JSTaggedValue> moduleRecord =
+                thread->GetCurrentEcmaContext()->FindPatchModule(recordName);
+                if (hasModule) {
+                    funcTemp->SetModule(thread, moduleRecord.GetTaggedValue());
+                } else {
+                    funcTemp->SetModule(thread, JSTaggedValue::Undefined());
                 }
             }
         }
@@ -355,12 +376,12 @@ void PatchLoader::FindAndReplaceClassLiteral(JSThread *thread, const JSPandaFile
     uint32_t literalLength = literalArray->GetLength();
     for (uint32_t literalIndex = 0; literalIndex < literalLength; literalIndex++) {
         JSTaggedValue literalItem = literalArray->Get(thread, literalIndex);
-        if (!literalItem.IsJSFunctionBase()) {
+        if (!literalItem.IsFunctionTemplate()) {
             continue;
         }
 
         // Every record is the same in current class literal.
-        JSFunctionBase *func = JSFunctionBase::Cast(literalItem.GetTaggedObject());
+        FunctionTemplate *func = FunctionTemplate::Cast(literalItem.GetTaggedObject());
         Method *baseMethod = Method::Cast(func->GetMethod().GetTaggedObject());
         EntityId baseMethodId = baseMethod->GetMethodId();
         MethodLiteral *patchMethodLiteral =
