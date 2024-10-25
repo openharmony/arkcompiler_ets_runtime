@@ -182,7 +182,7 @@ private:
     ChunkDeque<GateRef> pendingList_;
     ChunkVector<GateRef> endStateList_;
     GateAccessor acc_;
-    GateRegion* currentRegion_;
+    GateRegion* currentRegion_ {nullptr};
     bool scheduleLIR_;
 };
 
