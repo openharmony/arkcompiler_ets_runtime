@@ -18,6 +18,7 @@
 #include "ecmascript/global_env.h"
 #include "ecmascript/object_factory-inl.h"
 #include "ecmascript/module/module_manager_helper.h"
+#include "ecmascript/module/module_path_helper.h"
 #include "ecmascript/module/js_module_deregister.h"
 #include "ecmascript/module/js_shared_module_manager.h"
 #include "ecmascript/shared_objects/js_shared_array.h"
@@ -104,8 +105,12 @@ OperationResult ModuleNamespace::GetProperty(JSThread *thread, const JSHandle<JS
     CVector<std::pair<JSHandle<SourceTextModule>, JSHandle<JSTaggedValue>>> resolveSet;
     JSHandle<JSTaggedValue> binding = SourceTextModule::ResolveExport(thread, mm, key, resolveSet);
     // 7. Assert: binding is a ResolvedBinding Record.
-    // Adapter new module
-    ASSERT(binding->IsModuleBinding());
+    // If resolution is null or "ambiguous", throw a SyntaxError exception.
+    if (binding->IsNull() || binding->IsString()) {
+        CString requestMod = ModulePathHelper::ReformatPath(mm->GetEcmaModuleFilenameString());
+        LOG_FULL(FATAL) << "Module: '" << requestMod << SourceTextModule::GetResolveErrorReason(binding) <<
+            ConvertToString(key.GetTaggedValue()) << ".";
+    }
     JSTaggedValue result;
     // 8. Let targetModule be binding.[[Module]].
     JSType type = binding->GetTaggedObject()->GetClass()->GetObjectType();
@@ -116,6 +121,10 @@ OperationResult ModuleNamespace::GetProperty(JSThread *thread, const JSHandle<JS
             // 9. Assert: targetModule is not undefined.
             ASSERT(!targetModule.IsUndefined());
             JSHandle<SourceTextModule> module(thread, targetModule);
+            // DFX: make sure lazy module is already evaluated.
+            if (module->GetStatus() == ModuleStatus::INSTANTIATED) {
+                LOG_FULL(ERROR) << "Module is not evaluated, module is :" << module->GetEcmaModuleRecordNameString();
+            }
             ModuleTypes moduleType = module->GetTypes();
             if (UNLIKELY(SourceTextModule::IsNativeModule(moduleType))) {
                 result = ModuleManagerHelper::GetModuleValue(thread, module, resolvedBind->GetBindingName());
@@ -132,6 +141,10 @@ OperationResult ModuleNamespace::GetProperty(JSThread *thread, const JSHandle<JS
             // 9. Assert: targetModule is not undefined.
             ASSERT(!targetModule.IsUndefined());
             JSHandle<SourceTextModule> module(thread, targetModule);
+            // DFX: make sure lazy module is already evaluated.
+            if (module->GetStatus() == ModuleStatus::INSTANTIATED) {
+                LOG_FULL(ERROR) << "Module is not evaluated, module is :" << module->GetEcmaModuleRecordNameString();
+            }
             ModuleTypes moduleType = module->GetTypes();
             if (UNLIKELY(SourceTextModule::IsNativeModule(moduleType))) {
                 result = ModuleManagerHelper::GetNativeOrCjsModuleValue(
