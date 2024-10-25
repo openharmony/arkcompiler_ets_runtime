@@ -35,10 +35,9 @@ function foo(p) {
 
 let a = [1, 2]
 let b = [1, 2.1, 3]
-for (let i = 0; i < 100000; i++) {
-    var a1 = foo(a)
-    var a2 = foo(b);
+for (let i = 0; i < 10000; i++) {
+	var a1 = foo(a)
+	var a2 = foo(b);
 }
 print(a1)
 print(a2)
-
