@@ -32,6 +32,7 @@ group("ark_jit_ts_test") {
     "ts_inline",
     "proxy_fast_call",
     "fuzz_exception",
+    "utf16key",
     "throw_error",
     "compiler_inline",
     "inc",

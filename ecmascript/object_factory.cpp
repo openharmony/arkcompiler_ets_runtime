@@ -3232,6 +3232,26 @@ EcmaString *ObjectFactory::GetRawStringFromStringTable(StringData sd, MemSpaceTy
     return vm_->GetEcmaStringTable()->GetOrInternStringWithSpaceType(vm_, mutf8Data, utf16Len, type);
 }
 
+// used in jit thread, which unsupport create jshandle
+EcmaString *ObjectFactory::GetRawStringFromStringTableWithoutJSHandle(StringData sd, MemSpaceType type,
+    bool isConstantString, uint32_t idOffset) const
+{
+    NewObjectHook();
+    uint32_t utf16Len = sd.utf16_length;
+    if (UNLIKELY(utf16Len == 0)) {
+        return *GetEmptyString();
+    }
+
+    bool canBeCompressed = sd.is_ascii;
+    const uint8_t *mutf8Data = sd.data;
+    if (canBeCompressed) {
+        // This branch will use constant string, which has a pointer at the string in the pandafile.
+        return vm_->GetEcmaStringTable()->GetOrInternStringWithSpaceType(vm_, mutf8Data, utf16Len, true, type,
+                                                                         isConstantString, idOffset);
+    }
+    return vm_->GetEcmaStringTable()->GetOrInternStringWithSpaceTypeWithoutJSHandle(vm_, mutf8Data, utf16Len, type);
+}
+
 JSHandle<PropertyBox> ObjectFactory::NewPropertyBox(const JSHandle<JSTaggedValue> &value)
 {
     NewObjectHook();

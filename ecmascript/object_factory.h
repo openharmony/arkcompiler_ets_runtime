@@ -953,6 +953,10 @@ private:
     EcmaString *PUBLIC_API GetRawStringFromStringTable(StringData sd,
                                                        MemSpaceType type = MemSpaceType::SHARED_OLD_SPACE,
                                                        bool isConstantString = false, uint32_t idOffset = 0) const;
+    EcmaString *GetRawStringFromStringTableWithoutJSHandle(StringData sd,
+                                                           MemSpaceType type = MemSpaceType::SHARED_OLD_SPACE,
+                                                           bool isConstantString = false,
+                                                           uint32_t idOffset = 0) const;
 
     JSHandle<EcmaString> GetStringFromStringTable(const uint16_t *utf16Data, uint32_t utf16Len,
                                                   bool canBeCompress) const;
