@@ -138,11 +138,7 @@ JSTaggedValue ModuleManager::GetModuleValueOutterInternal(int32_t index, JSTagge
         ResolvedBinding *binding = ResolvedBinding::Cast(resolvedBinding.GetTaggedObject());
         JSTaggedValue resolvedModule = binding->GetModule();
         JSHandle<SourceTextModule> module(thread, resolvedModule);
-        if (SourceTextModule::IsNativeModule(module->GetTypes())) {
-            return ModuleManagerHelper::UpdateBindingAndGetModuleValue(
-                thread, currentModuleHdl, module, index, binding->GetBindingName());
-        }
-        if (module->GetTypes() == ModuleTypes::CJS_MODULE) {
+        if (SourceTextModule::IsNativeModule(module->GetTypes()) || SourceTextModule::IsCjsModule(module->GetTypes())) {
             return ModuleManagerHelper::UpdateBindingAndGetModuleValue(
                 thread, currentModuleHdl, module, index, binding->GetBindingName());
         }
@@ -208,14 +204,14 @@ JSTaggedValue ModuleManager::GetLazyModuleValueOutterInternal(int32_t index, JST
         JSHandle<ResolvedBinding> binding(thread, resolvedBinding);
         JSTaggedValue resolvedModule = binding->GetModule();
         JSHandle<SourceTextModule> module(thread, resolvedModule);
-        ModuleStatus status = module->GetStatus();
         ModuleTypes moduleType = module->GetTypes();
         if (SourceTextModule::IsNativeModule(moduleType)) {
             SourceTextModule::EvaluateNativeModule(thread, module, moduleType);
             return ModuleManagerHelper::UpdateBindingAndGetModuleValue(
                 thread, currentModuleHdl, module, index, binding->GetBindingName());
         }
-        if (moduleType == ModuleTypes::CJS_MODULE) {
+        if (SourceTextModule::IsCjsModule(moduleType)) {
+            ModuleStatus status = module->GetStatus();
             if (status != ModuleStatus::EVALUATED) {
                 SourceTextModule::ModuleExecution(thread, module, nullptr, 0);
                 module->SetStatus(ModuleStatus::EVALUATED);
@@ -636,7 +632,7 @@ JSTaggedValue ModuleManager::GetModuleNamespaceInternal(int32_t index, JSTaggedV
         return SourceTextModule::Cast(requiredModuleST.GetTaggedValue())->GetModuleValue(thread, 0, false);
     }
     // if requiredModuleST is CommonJS
-    if (moduleType == ModuleTypes::CJS_MODULE) {
+    if (SourceTextModule::IsCjsModule(moduleType)) {
         CString cjsModuleName = SourceTextModule::GetModuleName(requiredModuleST.GetTaggedValue());
         JSHandle<JSTaggedValue> moduleNameHandle(thread->GetEcmaVM()->GetFactory()->NewFromUtf8(cjsModuleName));
         return CjsModule::SearchFromModuleCache(thread, moduleNameHandle).GetTaggedValue();
