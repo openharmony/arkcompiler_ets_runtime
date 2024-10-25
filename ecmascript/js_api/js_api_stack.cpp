@@ -213,7 +213,17 @@ bool JSAPIStack::SetProperty(JSThread *thread, const JSHandle<JSAPIStack> &obj,
                              const JSHandle<JSTaggedValue> &value)
 {
     int length = obj->GetTop() + 1;
-    int index = key->GetInt();
+    JSHandle<JSTaggedValue> indexKey = key;
+    if (indexKey->IsDouble()) {
+        // Math.floor(1) will produce TaggedDouble, we need to cast into TaggedInt
+        // For integer which is greater than INT32_MAX, it will remain TaggedDouble
+        indexKey = JSHandle<JSTaggedValue>(thread, JSTaggedValue::TryCastDoubleToInt32(indexKey->GetDouble()));
+    }
+    if (!indexKey->IsInt()) {
+        return false;
+    }
+    
+    int index = indexKey->GetInt();
     if (index < 0 || index >= length) {
         return false;
     }
