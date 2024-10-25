@@ -8839,6 +8839,9 @@ GateRef StubBuilder::ToNumber(GateRef glue, GateRef tagged)
     Label exit(env);
     Label isNumber(env);
     Label notNumber(env);
+    Label isUndefinedOrNull(env);
+    Label notUndefinedOrNull(env);
+    Label defaultLabel(env);
     DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
     BRANCH(TaggedIsNumber(tagged), &isNumber, &notNumber);
     Bind(&isNumber);
@@ -8847,6 +8850,44 @@ GateRef StubBuilder::ToNumber(GateRef glue, GateRef tagged)
         Jump(&exit);
     }
     Bind(&notNumber);
+    {
+        GateRef flag = LogicOrBuilder(env)
+            .Or(TaggedIsUndefined(tagged))
+            .Or(TaggedIsHole(tagged))
+            .Done();
+        BRANCH(flag, &isUndefinedOrNull, &notUndefinedOrNull);
+        Bind(&isUndefinedOrNull);
+        {
+            result = DoubleToTaggedDoublePtr(Double(base::NAN_VALUE));
+            Jump(&exit);
+        }
+        Bind(&notUndefinedOrNull);
+        {
+            Label isTrue(env);
+            Label notTrue(env);
+            BRANCH(TaggedIsTrue(tagged), &isTrue, &notTrue);
+            Bind(&isTrue);
+            {
+                result = DoubleToTaggedDoublePtr(Double(1));
+                Jump(&exit);
+            }
+            Bind(&notTrue);
+            {
+                Label isFlaseOrNull(env);
+                GateRef flag1 = LogicOrBuilder(env)
+                    .Or(TaggedIsFalse(tagged))
+                    .Or(TaggedIsNull(tagged))
+                    .Done();
+                BRANCH(flag1, &isFlaseOrNull, &defaultLabel);
+                Bind(&isFlaseOrNull);
+                {
+                    result = DoubleToTaggedDoublePtr(Double(0));
+                    Jump(&exit);
+                }
+            }
+        }
+    }
+    Bind(&defaultLabel);
     {
         result = CallRuntime(glue, RTSTUB_ID(ToNumber), { tagged });
         Jump(&exit);

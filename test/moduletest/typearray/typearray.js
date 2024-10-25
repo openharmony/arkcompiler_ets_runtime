@@ -1206,3 +1206,106 @@ print(target16);
 
 var target17 = new Int16Array(target16);
 print(target17);
+
+let uint8Array = new Uint8Array([233, -1, 4.48, 255, 275]);
+print(uint8Array[0]);
+print(uint8Array[1]);
+print(uint8Array[2]);
+print(uint8Array[3]);
+print(uint8Array[4]);
+
+try {
+    new Uint8Array([233, -1, Symbol('ss')]);
+} catch (e) {
+    print(e);
+}
+
+let int8Array = new Int8Array([2354.44, -128, -128.4, 12, -3212.84, 127]);
+print(int8Array[0]);
+print(int8Array[1]);
+print(int8Array[2]);
+print(int8Array[3]);
+print(int8Array[4]);
+print(int8Array[5]);
+
+try {
+    new Int8Array([2354.44, -43.4, 12, Symbol('kk'), -3212.84]);
+} catch (e) {
+    print(e);
+}
+
+let uint8ClampedArray = new Uint8ClampedArray([2354.44, -43.4, 12.6, -3212.84, 255]);
+print(uint8ClampedArray[0]);
+print(uint8ClampedArray[1]);
+print(uint8ClampedArray[2]);
+print(uint8ClampedArray[3]);
+print(uint8ClampedArray[4]);
+
+let int16Array = new Int16Array([2354.44, -32768, 12.6, -32768.84, -5893, 32767, 42767]);
+print(int16Array[0]);
+print(int16Array[1]);
+print(int16Array[2]);
+print(int16Array[3]);
+print(int16Array[4]);
+print(int16Array[5]);
+print(int16Array[6]);
+
+let uint16Array = new Uint16Array([2354.44, -42767, 12.6, -3212.84, 67535, 65535]);
+print(uint16Array[0]);
+print(uint16Array[1]);
+print(uint16Array[2]);
+print(uint16Array[3]);
+print(uint16Array[4]);
+print(uint16Array[5]);
+
+let int32Array = new Int32Array([2354.44, -2147483648, 12.6, -2147483648.84, -5893, 2147483647, 2347483647]);
+print(int32Array[0]);
+print(int32Array[1]);
+print(int32Array[2]);
+print(int32Array[3]);
+print(int32Array[4]);
+print(int32Array[5]);
+print(int32Array[6]);
+
+let uint32Array = new Uint32Array([2354.44, -2147483648, 12.6, -5893, 4294967295, 4394967295]);
+print(uint32Array[0]);
+print(uint32Array[1]);
+print(uint32Array[2]);
+print(uint32Array[3]);
+print(uint32Array[4]);
+print(uint32Array[5]);
+
+let float32Array = new Float32Array([2354.44, -2147483648, 12.6, -5893.3483, 4294967295, 4394967295.3201]);
+print(float32Array[0]);
+print(float32Array[1]);
+print(float32Array[2]);
+print(float32Array[3]);
+print(float32Array[4]);
+print(float32Array[5]);
+
+let float64Array = new Float64Array([2354.44, -2147483648, 12.6, -5893.3483, 4294967295, 4394967295.3201]);
+print(float64Array[0]);
+print(float64Array[1]);
+print(float64Array[2]);
+print(float64Array[3]);
+print(float64Array[4]);
+print(float64Array[5]);
+
+
+let aa = new Array(5000);
+for (let i = 0; i < 4900; i++) {
+    aa[i] = i;
+}
+let kk = new Int32Array(aa);
+print(kk[3]);
+print(kk[4911]);
+print(kk[4999]);
+
+let obj11 = {[Symbol.toPrimitive] : function (a) {
+    new Date();
+    return 111;
+}};
+
+let bb = new Int16Array([obj11, 302.32]);
+print(bb[0]);
+print(bb[1]);
