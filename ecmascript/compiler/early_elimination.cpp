@@ -362,8 +362,23 @@ bool EarlyElimination::CheckReplacement(GateRef lhs, GateRef rhs)
         case OpCode::TYPED_ARRAY_CHECK: {
             TypedArrayMetaDataAccessor lhsAccessor = acc_.GetTypedArrayMetaDataAccessor(lhs);
             TypedArrayMetaDataAccessor rhsAccessor = acc_.GetTypedArrayMetaDataAccessor(rhs);
-            if ((lhsAccessor.GetParamType() != rhsAccessor.GetParamType()) ||
-                (lhsAccessor.GetOnHeapMode() != rhsAccessor.GetOnHeapMode())) {
+            if ((lhsAccessor.GetParamType() != rhsAccessor.GetParamType())) {
+                return false;
+            }
+
+            OnHeapMode lMode = lhsAccessor.GetOnHeapMode();
+            OnHeapMode rMode = rhsAccessor.GetOnHeapMode();
+            // When the onheapmode types of the two checks are inconsistent and one type is none, the none type will be
+            // updated to another type. Because there is no side effect between the two checks, the onheapmode types are
+            // also consistent.
+            if (lMode != rMode) {
+                if (OnHeap::IsNone(lMode)) {
+                    acc_.UpdateOnHeapMode(lhs, rMode);
+                    return true;
+                } else if (OnHeap::IsNone(rMode)) {
+                    acc_.UpdateOnHeapMode(rhs, lMode);
+                    return true;
+                }
                 return false;
             }
             break;
