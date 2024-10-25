@@ -634,6 +634,7 @@ public:
     template<TriggerGCType gcType, GCReason gcReason>
     void CollectGarbage(JSThread *thread);
 
+    void CollectGarbageNearOOM(JSThread *thread);
     // Only means the main body of SharedGC is finished, i.e. if parallel_gc is enabled, this flags will be set
     // to true even if sweep_task and clear_task is running asynchronously
     void NotifyGCCompleted();            // In daemon thread
@@ -887,6 +888,7 @@ private:
     size_t growingStep_ {0};
     size_t incNativeSizeTriggerSharedCM_ {0};
     size_t incNativeSizeTriggerSharedGC_ {0};
+    size_t fragmentationLimitForSharedFullGC_ {0};
     std::atomic<size_t> nativeSizeAfterLastGC_ {0};
     bool inHeapProfiler_ {false};
     CVector<JSNativePointer *> sharedNativePointerList_;
