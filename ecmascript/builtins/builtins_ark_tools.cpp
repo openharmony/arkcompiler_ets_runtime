@@ -19,14 +19,6 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include "ecmascript/dfx/vmstat/opt_code_profiler.h"
-#include "ecmascript/ecma_context.h"
-#include "ecmascript/element_accessor-inl.h"
-#include "ecmascript/js_function.h"
-#include "ecmascript/base/string_helper.h"
-#include "ecmascript/js_tagged_value-inl.h"
-#include "ecmascript/mem/tagged_object-inl.h"
-#include "ecmascript/napi/include/dfx_jsnapi.h"
-#include "ecmascript/mem/clock_scope.h"
 #include "ecmascript/module/js_module_source_text.h"
 #include "ecmascript/property_detector-inl.h"
 #include "ecmascript/js_arraybuffer.h"

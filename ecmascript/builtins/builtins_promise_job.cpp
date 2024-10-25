@@ -15,22 +15,14 @@
 
 #include "ecmascript/builtins/builtins_promise_job.h"
 
-#include "ecmascript/ecma_macros.h"
-#include "ecmascript/global_env.h"
 #include "ecmascript/interpreter/interpreter.h"
-#include "ecmascript/js_function.h"
-#include "ecmascript/js_handle.h"
 #include "ecmascript/jspandafile/js_pandafile_executor.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/js_promise.h"
-#include "ecmascript/js_tagged_value.h"
 #include "ecmascript/module/js_dynamic_import.h"
 #include "ecmascript/module/js_module_deregister.h"
 #include "ecmascript/module/js_module_manager.h"
 #include "ecmascript/module/module_path_helper.h"
-#include "ecmascript/platform/file.h"
-#include "ecmascript/require/js_cjs_module.h"
-#include "libpandabase/macros.h"
 
 namespace panda::ecmascript::builtins {
 using JSRecordInfo = ecmascript::JSPandaFile::JSRecordInfo;

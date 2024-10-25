@@ -14,16 +14,11 @@
  */
 
 #include "ecmascript/builtins/builtins_weak_set.h"
-
-#include "ecmascript/ecma_vm.h"
-#include "ecmascript/global_env.h"
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_set_iterator.h"
-#include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/js_weak_container.h"
 #include "ecmascript/linked_hash_table.h"
-#include "ecmascript/object_factory.h"
 
 namespace panda::ecmascript::builtins {
 JSTaggedValue BuiltinsWeakSet::WeakSetConstructor(EcmaRuntimeCallInfo *argv)

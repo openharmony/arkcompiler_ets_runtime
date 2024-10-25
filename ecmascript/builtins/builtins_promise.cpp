@@ -14,25 +14,12 @@
  */
 
 #include "ecmascript/builtins/builtins_promise.h"
-
-#include "ecmascript/builtins/builtins_promise_handler.h"
 #include "ecmascript/builtins/builtins_promise_job.h"
-#include "ecmascript/ecma_runtime_call_info.h"
-#include "ecmascript/ecma_context.h"
-#include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/jobs/micro_job_queue.h"
 #include "ecmascript/js_array.h"
-#include "ecmascript/js_function.h"
-#include "ecmascript/js_handle.h"
 #include "ecmascript/js_iterator.h"
-#include "ecmascript/js_promise.h"
-#include "ecmascript/js_tagged_number.h"
-#include "ecmascript/js_tagged_value-inl.h"
-#include "ecmascript/js_thread.h"
-#include "ecmascript/mem/assert_scope.h"
-#include "ecmascript/object_factory.h"
 
 namespace panda::ecmascript::builtins {
 using BuiltinsPromiseJob = builtins::BuiltinsPromiseJob;

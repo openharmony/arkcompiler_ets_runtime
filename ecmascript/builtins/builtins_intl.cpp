@@ -16,9 +16,6 @@
 #include "ecmascript/builtins/builtins_intl.h"
 
 #include "ecmascript/intl/locale_helper.h"
-#include "ecmascript/js_array.h"
-#include "ecmascript/js_locale.h"
-#include "ecmascript/js_tagged_value.h"
 
 namespace panda::ecmascript::builtins {
 // 8.2.1 Intl.getCanonicalLocales ( locales )

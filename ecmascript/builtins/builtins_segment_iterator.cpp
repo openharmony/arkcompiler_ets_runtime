@@ -15,14 +15,7 @@
 
 #include "builtins_segment_iterator.h"
 
-#include "ecmascript/intl/locale_helper.h"
-#include "ecmascript/ecma_vm.h"
-#include "ecmascript/global_env.h"
-#include "ecmascript/js_intl.h"
-#include "ecmascript/js_locale.h"
-#include "ecmascript/js_object.h"
 #include "ecmascript/js_segment_iterator.h"
-#include "ecmascript/object_factory.h"
 
 namespace panda::ecmascript::builtins {
 // %SegmentIteratorPrototype%.next ( )

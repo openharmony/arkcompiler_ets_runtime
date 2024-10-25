@@ -18,14 +18,6 @@
 #include "ecmascript/js_tagged_value-inl.h"
 #endif
 
-#include "ecmascript/base/builtins_base.h"
-#include "ecmascript/ecma_macros.h"
-#include "ecmascript/global_env.h"
-#include "ecmascript/js_object-inl.h"
-#include "ecmascript/js_tagged_value-inl.h"
-#include "ecmascript/js_thread.h"
-#include "ecmascript/require/js_cjs_module.h"
-
 namespace panda::ecmascript::builtins {
 JSTaggedValue BuiltinsCjsRequire::CjsRequireConstructor(EcmaRuntimeCallInfo *argv)
 {

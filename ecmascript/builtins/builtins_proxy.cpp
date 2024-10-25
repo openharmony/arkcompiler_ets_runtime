@@ -14,13 +14,8 @@
  */
 
 #include "ecmascript/builtins/builtins_proxy.h"
-
-#include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_function.h"
-#include "ecmascript/js_tagged_value-inl.h"
-#include "ecmascript/object_factory.h"
-#include "ecmascript/tagged_array-inl.h"
 
 namespace panda::ecmascript::builtins {
 // 26.2.1.1 Proxy( [ value ] )

@@ -16,10 +16,7 @@
 #include "ecmascript/builtins/builtins_lazy_callback.h"
 
 #include "ecmascript/builtins/builtins.h"
-#include "ecmascript/global_dictionary-inl.h"
 #include "ecmascript/layout_info-inl.h"
-#include "ecmascript/tagged_dictionary.h"
-#include "ecmascript/ecma_macros.h"
 
 namespace panda::ecmascript::builtins {
 JSTaggedValue BuiltinsLazyCallback::Date(JSThread *thread, const JSHandle<JSObject> &obj)

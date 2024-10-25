@@ -15,20 +15,8 @@
 
 #include "ecmascript/builtins/builtins_json.h"
 
-#include "ecmascript/base/fast_json_stringifier.h"
-#include "ecmascript/base/json_helper.h"
 #include "ecmascript/base/json_parser.h"
 #include "ecmascript/base/json_stringifier.h"
-#include "ecmascript/base/number_helper.h"
-#include "ecmascript/ecma_vm.h"
-#include "ecmascript/global_env.h"
-#include "ecmascript/interpreter/slow_runtime_stub.h"
-#include "ecmascript/js_handle.h"
-#include "ecmascript/js_object.h"
-#include "ecmascript/js_primitive_ref.h"
-#include "ecmascript/js_tagged_value-inl.h"
-#include "ecmascript/js_tagged_value.h"
-#include "ecmascript/object_factory.h"
 
 namespace panda::ecmascript::builtins {
 namespace {

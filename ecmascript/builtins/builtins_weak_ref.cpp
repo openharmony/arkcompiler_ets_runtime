@@ -14,10 +14,7 @@
  */
 
 #include "ecmascript/builtins/builtins_weak_ref.h"
-
-#include "ecmascript/ecma_vm.h"
 #include "ecmascript/js_weak_ref.h"
-#include "ecmascript/object_factory-inl.h"
 
 namespace panda::ecmascript::builtins {
 JSTaggedValue BuiltinsWeakRef::WeakRefConstructor(EcmaRuntimeCallInfo *argv)

@@ -16,14 +16,7 @@
 #include "builtins_displaynames.h"
 
 #include "ecmascript/intl/locale_helper.h"
-#include "ecmascript/ecma_vm.h"
-#include "ecmascript/global_env.h"
 #include "ecmascript/js_displaynames.h"
-#include "ecmascript/js_intl.h"
-#include "ecmascript/js_locale.h"
-#include "ecmascript/js_object.h"
-#include "ecmascript/object_factory.h"
-
 namespace panda::ecmascript::builtins {
 // 12.2.1 Intl.DisplayNames ( [ locales [ , options ] ] )
 JSTaggedValue BuiltinsDisplayNames::DisplayNamesConstructor(EcmaRuntimeCallInfo *argv)

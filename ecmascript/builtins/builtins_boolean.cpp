@@ -14,10 +14,6 @@
  */
 
 #include "ecmascript/builtins/builtins_boolean.h"
-
-#include "ecmascript/builtins/builtins_errors.h"
-#include "ecmascript/ecma_macros.h"
-#include "ecmascript/global_env.h"
 #include "ecmascript/js_primitive_ref.h"
 
 namespace panda::ecmascript::builtins {

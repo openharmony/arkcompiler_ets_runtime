@@ -14,10 +14,7 @@
  */
 
 #include "ecmascript/builtins/builtins_async_generator.h"
-#include "ecmascript/accessor_data.h"
 #include "ecmascript/js_async_generator_object.h"
-#include "ecmascript/js_function.h"
-#include "ecmascript/js_tagged_value-inl.h"
 
 namespace panda::ecmascript::builtins {
 // ecma 27.6.1.1

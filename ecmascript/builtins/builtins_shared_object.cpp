@@ -15,8 +15,6 @@
 
 #include "ecmascript/builtins/builtins_shared_object.h"
 
-#include "ecmascript/ecma_vm.h"
-
 namespace panda::ecmascript::builtins {
 JSTaggedValue BuiltinsSharedObject::SharedObjectConstructor(EcmaRuntimeCallInfo *argv)
 {
