@@ -1075,6 +1075,60 @@ HWTEST_F_L0(EcmaModuleTest, SplitNormalizedRecordName)
     EXPECT_EQ(res[4], version);
 }
 
+HWTEST_F_L0(EcmaModuleTest, ConcatPreviewTestUnifiedOhmUrl)
+{
+    CString bundleName = "";
+    CString pkgName = "entry";
+    CString path = "/.test/testability/pages/Index";
+    CString version = "";
+    CString exceptOutUrl = "&entry/.test/testability/pages/Index&";
+    CString res = ModulePathHelper::ConcatPreviewTestUnifiedOhmUrl(bundleName, pkgName, path, version);
+    EXPECT_EQ(res, exceptOutUrl);
+}
+
+HWTEST_F_L0(EcmaModuleTest, NeedTranslateToNormalized)
+{
+    CString requestName = "@ohos:hilog";
+    bool res = ModulePathHelper::NeedTranslateToNormalized(requestName);
+    EXPECT_EQ(res, false);
+
+    requestName = "@app:com.example.myapplication/entry";
+    res = ModulePathHelper::NeedTranslateToNormalized(requestName);
+    EXPECT_EQ(res, false);
+
+    requestName = "@bundle:com.example.myapplication/library";
+    res = ModulePathHelper::NeedTranslateToNormalized(requestName);
+    EXPECT_EQ(res, false);
+
+    requestName = "@package:pkg_modules/.ohpm/json5@2.2.3/pkg_modules/json5/dist/index";
+    res = ModulePathHelper::NeedTranslateToNormalized(requestName);
+    EXPECT_EQ(res, false);
+
+    requestName = "@normalized:N&&&har/Index&1.0.0";
+    res = ModulePathHelper::NeedTranslateToNormalized(requestName);
+    EXPECT_EQ(res, false);
+
+    requestName = "json5";
+    res = ModulePathHelper::NeedTranslateToNormalized(requestName);
+    EXPECT_EQ(res, true);
+
+    requestName = "library";
+    res = ModulePathHelper::NeedTranslateToNormalized(requestName);
+    EXPECT_EQ(res, true);
+}
+
+HWTEST_F_L0(EcmaModuleTest, GetCurrentModuleName)
+{
+    ThreadNativeScope nativeScope(thread);
+    std::string baseFileName = MODULE_ABC_PATH "module_test_module_test_module.abc";
+    JSNApi::EnableUserUncaughtErrorHandler(instance);
+    JSNApi::Execute(instance, baseFileName, "module_test_module_test_module");
+    Local<ObjectRef> res = JSNApi::GetExportObject(instance, "module_test_module_test_module", "moduleName");
+    JSHandle<JSTaggedValue> result = JSNApiHelper::ToJSHandle(res);
+    CString moduleName = ConvertToString(result.GetTaggedValue());
+    EXPECT_EQ(moduleName, "");
+}
+
 HWTEST_F_L0(EcmaModuleTest, ModuleLogger) {
     ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
     JSHandle<SourceTextModule> module1 = objectFactory->NewSourceTextModule();
@@ -1190,60 +1244,6 @@ HWTEST_F_L0(EcmaModuleTest, MakeAppArgs2) {
     EXPECT_TRUE(res1 == "entry");
     EXPECT_TRUE(res2 == "true");
     EXPECT_TRUE(res3 == "@app:com.example.myapplication");
-}
-
-HWTEST_F_L0(EcmaModuleTest, ConcatPreviewTestUnifiedOhmUrl)
-{
-    CString bundleName = "";
-    CString pkgName = "entry";
-    CString path = "/.test/testability/pages/Index";
-    CString version = "";
-    CString exceptOutUrl = "&entry/.test/testability/pages/Index&";
-    CString res = ModulePathHelper::ConcatPreviewTestUnifiedOhmUrl(bundleName, pkgName, path, version);
-    EXPECT_EQ(res, exceptOutUrl);
-}
-
-HWTEST_F_L0(EcmaModuleTest, NeedTranslateToNormalized)
-{
-    CString requestName = "@ohos:hilog";
-    bool res = ModulePathHelper::NeedTranslateToNormalized(requestName);
-    EXPECT_EQ(res, false);
-
-    requestName = "@app:com.example.myapplication/entry";
-    res = ModulePathHelper::NeedTranslateToNormalized(requestName);
-    EXPECT_EQ(res, false);
-
-    requestName = "@bundle:com.example.myapplication/library";
-    res = ModulePathHelper::NeedTranslateToNormalized(requestName);
-    EXPECT_EQ(res, false);
-
-    requestName = "@package:pkg_modules/.ohpm/json5@2.2.3/pkg_modules/json5/dist/index";
-    res = ModulePathHelper::NeedTranslateToNormalized(requestName);
-    EXPECT_EQ(res, false);
-
-    requestName = "@normalized:N&&&har/Index&1.0.0";
-    res = ModulePathHelper::NeedTranslateToNormalized(requestName);
-    EXPECT_EQ(res, false);
-
-    requestName = "json5";
-    res = ModulePathHelper::NeedTranslateToNormalized(requestName);
-    EXPECT_EQ(res, true);
-
-    requestName = "library";
-    res = ModulePathHelper::NeedTranslateToNormalized(requestName);
-    EXPECT_EQ(res, true);
-}
-
-HWTEST_F_L0(EcmaModuleTest, GetCurrentModuleName)
-{
-    ThreadNativeScope nativeScope(thread);
-    std::string baseFileName = MODULE_ABC_PATH "module_test_module_test_module.abc";
-    JSNApi::EnableUserUncaughtErrorHandler(instance);
-    JSNApi::Execute(instance, baseFileName, "module_test_module_test_module");
-    Local<ObjectRef> res = JSNApi::GetExportObject(instance, "module_test_module_test_module", "moduleName");
-    JSHandle<JSTaggedValue> result = JSNApiHelper::ToJSHandle(res);
-    CString moduleName = ConvertToString(result.GetTaggedValue());
-    EXPECT_EQ(moduleName, "");
 }
 
 HWTEST_F_L0(EcmaModuleTest, ConcatHspFileNameCrossBundle)
