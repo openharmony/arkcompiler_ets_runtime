@@ -13,18 +13,29 @@
  * limitations under the License.
  */
 
-#include "ecmascript/mem/shared_heap/shared_gc.h"
+#include "ecmascript/mem/shared_heap/shared_full_gc.h"
 
+#include "ecmascript/checkpoint/thread_state_transition.h"
+#include "ecmascript/ecma_string_table.h"
+#include "ecmascript/ecma_vm.h"
+#include "ecmascript/mem/barriers-inl.h"
+#include "ecmascript/mem/gc_stats.h"
+#include "ecmascript/mem/mark_stack.h"
+#include "ecmascript/mem/mem.h"
+#include "ecmascript/mem/object_xray.h"
 #include "ecmascript/mem/shared_heap/shared_concurrent_marker.h"
 #include "ecmascript/mem/shared_heap/shared_concurrent_sweeper.h"
 #include "ecmascript/mem/shared_heap/shared_gc_marker-inl.h"
+#include "ecmascript/mem/slots.h"
+#include "ecmascript/mem/space-inl.h"
 #include "ecmascript/mem/verification.h"
+#include "ecmascript/mem/visitor.h"
 #include "ecmascript/runtime.h"
 
 namespace panda::ecmascript {
-void SharedGC::RunPhases()
+void SharedFullGC::RunPhases()
 {
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedGC::RunPhases"
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedFullGC::RunPhases"
         + std::to_string(static_cast<int>(sHeap_->GetEcmaGCStats()->GetGCReason()))
         + ";Sensitive" + std::to_string(static_cast<int>(sHeap_->GetSensitiveStatus()))
         + ";IsInBackground" + std::to_string(sHeap_->IsInBackground())
@@ -34,71 +45,65 @@ void SharedGC::RunPhases()
         + ";NonMov" + std::to_string(sHeap_->GetNonMovableSpace()->GetCommittedSize())
         + ";TotCommit" + std::to_string(sHeap_->GetCommittedSize()));
     TRACE_GC(GCStats::Scope::ScopeId::TotalGC, sHeap_->GetEcmaGCStats());
-    markingInProgress_ = sHeap_->CheckOngoingConcurrentMarking();
     Initialize();
     Mark();
-    if (UNLIKELY(sHeap_->ShouldVerifyHeap())) {
-        // verify mark
-        LOG_ECMA(DEBUG) << "start verify mark";
-        SharedHeapVerification(sHeap_, VerifyKind::VERIFY_SHARED_GC_MARK).VerifyMark(markingInProgress_);
-    }
     Sweep();
-    if (UNLIKELY(sHeap_->ShouldVerifyHeap())) {
-        // verify sweep
-        LOG_ECMA(DEBUG) << "start verify sweep";
-        SharedHeapVerification(sHeap_, VerifyKind::VERIFY_SHARED_GC_SWEEP).VerifySweep(markingInProgress_);
-    }
     Finish();
-    sHeap_->NotifyHeapAliveSizeAfterGC(sHeap_->GetHeapObjectSize());
-    sHeap_->ResetNativeSizeAfterLastGC();
 }
 
-void SharedGC::Initialize()
+void SharedFullGC::Initialize()
 {
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedGC::Initialize");
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedFullGC::Initialize");
     TRACE_GC(GCStats::Scope::ScopeId::Initialize, sHeap_->GetEcmaGCStats());
-    if (!markingInProgress_) {
-        sHeap_->Prepare(true);
-        sHeap_->GetAppSpawnSpace()->EnumerateRegions([](Region *current) {
-            current->ClearMarkGCBitset();
-        });
-        sHeap_->EnumerateOldSpaceRegions([](Region *current) {
-            ASSERT(current->InSharedSweepableSpace());
-            current->ResetAliveObject();
-        });
-        sWorkManager_->Initialize(TriggerGCType::SHARED_GC, SharedParallelMarkPhase::SHARED_MARK_TASK);
+    sHeap_->Prepare(true);
+    if (UNLIKELY(sHeap_->CheckOngoingConcurrentMarking())) {
+        // Concurrent shared mark should always trigger shared gc without moving.
+        sHeap_->GetConcurrentMarker()->Reset(true);
     }
+    sHeap_->GetAppSpawnSpace()->EnumerateRegions([](Region *current) {
+        current->ClearMarkGCBitset();
+    });
+    sHeap_->EnumerateOldSpaceRegions([](Region *current) {
+        ASSERT(current->InSharedSweepableSpace());
+        current->ResetAliveObject();
+    });
+    sWorkManager_->Initialize(TriggerGCType::SHARED_FULL_GC, SharedParallelMarkPhase::SHARED_COMPRESS_TASK);
 }
-void SharedGC::Mark()
+
+void SharedFullGC::Mark()
 {
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedGC::Mark");
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedFullGC::Mark");
     TRACE_GC(GCStats::Scope::ScopeId::Mark, sHeap_->GetEcmaGCStats());
-    if (markingInProgress_) {
-        sHeap_->GetConcurrentMarker()->ReMark();
-        return;
-    }
-    SharedGCMarker *marker = sHeap_->GetSharedGCMarker();
-    marker->MarkRoots(DAEMON_THREAD_INDEX, SharedMarkType::NOT_CONCURRENT_MARK);
+    SharedGCMovableMarker *marker = sHeap_->GetSharedGCMovableMarker();
+
+    marker->MarkRoots(DAEMON_THREAD_INDEX, SharedMarkType::NOT_CONCURRENT_MARK, VMRootVisitType::UPDATE_ROOT);
     marker->DoMark<SharedMarkType::NOT_CONCURRENT_MARK>(DAEMON_THREAD_INDEX);
     marker->MergeBackAndResetRSetWorkListHandler();
     sHeap_->WaitRunningTaskFinished();
 }
 
-void SharedGC::Sweep()
+void SharedFullGC::Sweep()
 {
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedGC::Sweep");
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedFullGC::Sweep");
     TRACE_GC(GCStats::Scope::ScopeId::Sweep, sHeap_->GetEcmaGCStats());
     UpdateRecordWeakReference();
-    WeakRootVisitor gcUpdateWeak = [](TaggedObject *header) -> TaggedObject* {
+    WeakRootVisitor gcUpdateWeak = [](TaggedObject *header) {
         Region *objectRegion = Region::ObjectAddressToRange(header);
-        if (UNLIKELY(objectRegion == nullptr)) {
-            LOG_GC(ERROR) << "SharedGC updateWeakReference: region is nullptr, header is " << header;
-            return nullptr;
+        if (!objectRegion) {
+            LOG_GC(ERROR) << "SharedFullGC updateWeakReference: region is nullptr, header is " << header;
+            return reinterpret_cast<TaggedObject *>(ToUintPtr(nullptr));
+        }
+        if (objectRegion->InSharedOldSpace()) {
+            MarkWord markWord(header);
+            if (markWord.IsForwardingAddress()) {
+                return markWord.ToForwardingAddress();
+            }
+            return reinterpret_cast<TaggedObject *>(ToUintPtr(nullptr));
         }
         if (!objectRegion->InSharedSweepableSpace() || objectRegion->Test(header)) {
             return header;
         }
-        return nullptr;
+        return reinterpret_cast<TaggedObject *>(ToUintPtr(nullptr));
     };
     auto stringTableCleaner = Runtime::GetInstance()->GetEcmaStringTable()->GetCleaner();
     stringTableCleaner->PostSweepWeakRefTask(gcUpdateWeak);
@@ -109,27 +114,30 @@ void SharedGC::Sweep()
         thread->IterateWeakEcmaGlobalStorage(gcUpdateWeak, GCKind::SHARED_GC);
         thread->GetEcmaVM()->ProcessSharedNativeDelete(gcUpdateWeak);
         const_cast<Heap*>(thread->GetEcmaVM()->GetHeap())->ResetTlab();
+        thread->ClearContextCachedConstantPool();
     });
 
     stringTableCleaner->JoinAndWaitSweepWeakRefTask(gcUpdateWeak);
-    sHeap_->GetSweeper()->Sweep(false);
-    sHeap_->GetSweeper()->PostTask(false);
+    sHeap_->GetSweeper()->Sweep(true);
+    sHeap_->GetSweeper()->PostTask(true);
 }
 
-void SharedGC::Finish()
+void SharedFullGC::Finish()
 {
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedGC::Finish");
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedFullGC::Finish");
     TRACE_GC(GCStats::Scope::ScopeId::Finish, sHeap_->GetEcmaGCStats());
-    sHeap_->Reclaim(TriggerGCType::SHARED_GC);
-    if (markingInProgress_) {
-        sHeap_->GetConcurrentMarker()->Reset(false);
+    sHeap_->SwapOldSpace();
+    sWorkManager_->Finish();
+    if (!isAppspawn_) {
+        sHeap_->Reclaim(TriggerGCType::SHARED_FULL_GC);
     } else {
-        sWorkManager_->Finish();
+        sHeap_->ReclaimForAppSpawn();
     }
+    
     sHeap_->GetSweeper()->TryFillSweptRegion();
 }
 
-void SharedGC::UpdateRecordWeakReference()
+void SharedFullGC::UpdateRecordWeakReference()
 {
     auto totalThreadCount = GCWorkerPool::GetCurrentTaskpool()->GetTotalThreadNum() + 1;
     for (uint32_t i = 0; i < totalThreadCount; i++) {
@@ -142,10 +150,20 @@ void SharedGC::UpdateRecordWeakReference()
             }
             ObjectSlot slot(ToUintPtr(obj));
             JSTaggedValue value(slot.GetTaggedType());
-            if (value.IsWeak()) {
-                auto header = value.GetTaggedWeakRef();
-                Region *objectRegion = Region::ObjectAddressToRange(header);
+            ASSERT(value.IsWeak());
+            auto header = value.GetTaggedWeakRef();
+            Region *objectRegion = Region::ObjectAddressToRange(header);
+            if (!objectRegion->InSharedOldSpace()) {
                 if (!objectRegion->Test(header)) {
+                    slot.Clear();
+                }
+            } else {
+                MarkWord markWord(header);
+                if (markWord.IsForwardingAddress()) {
+                    TaggedObject *dst = markWord.ToForwardingAddress();
+                    auto weakRef = JSTaggedValue(JSTaggedValue(dst).CreateAndGetWeakRef()).GetRawTaggedObject();
+                    slot.Update(weakRef);
+                } else {
                     slot.Clear();
                 }
             }
@@ -153,7 +171,13 @@ void SharedGC::UpdateRecordWeakReference()
     }
 }
 
-void SharedGC::ResetWorkManager(SharedGCWorkManager *sWorkManager)
+bool SharedFullGC::HasEvacuated(Region *region)
+{
+    auto marker = reinterpret_cast<SharedGCMovableMarker *>(sHeap_->GetSharedGCMovableMarker());
+    return marker->NeedEvacuate(region);
+}
+
+void SharedFullGC::ResetWorkManager(SharedGCWorkManager *sWorkManager)
 {
     sWorkManager_ = sWorkManager;
 }

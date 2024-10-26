@@ -52,12 +52,10 @@ public:
 
     void NewLexicalEnv(Variable *result, Label *exit, GateRef numSlots, GateRef parent);
     void NewJSObject(Variable *result, Label *exit, GateRef hclass, GateRef size);
-    void NewJSObject(Variable *result, Label *exit, GateRef hclass,
-                     MemoryAttribute mAttr = MemoryAttribute::Default());
-    void NewSObject(Variable *result, Label *exit, GateRef hclass,
-                    MemoryAttribute mAttr = MemoryAttribute::Default());
-    GateRef NewJSObject(GateRef glue, GateRef hclass, MemoryAttribute mAttr = MemoryAttribute::Default());
-    GateRef NewSObject(GateRef glue, GateRef hclass, MemoryAttribute mAttr = MemoryAttribute::Default());
+    void NewJSObject(Variable *result, Label *exit, GateRef hclass);
+    void NewSObject(Variable *result, Label *exit, GateRef hclass);
+    GateRef NewJSObject(GateRef glue, GateRef hclass);
+    GateRef NewSObject(GateRef glue, GateRef hclass);
     GateRef NewJSProxy(GateRef glue, GateRef target, GateRef handler);
     GateRef NewJSArray(GateRef glue, GateRef hclass);
     GateRef NewTaggedArray(GateRef glue, GateRef len);

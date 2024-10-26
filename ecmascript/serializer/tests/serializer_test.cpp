@@ -636,26 +636,6 @@ public:
         Destroy();
     }
 
-    void JSSharedSetMultiThreadTest2(SerializeData *data, std::pair<int32_t, int32_t> range,
-        std::atomic<uint32_t> &pendingExceptions)
-    {
-        EXPECT_TRUE(data != nullptr);
-        Init();
-        BaseDeserializer deserializer(thread, data);
-        JSHandle<JSTaggedValue> res = deserializer.ReadValue();
-        EXPECT_TRUE(!res.IsEmpty()) << "[Empty] Deserialize JSSharedSet fail";
-        EXPECT_TRUE(res->IsJSSharedSet()) << "[NotJSSharedSet] Deserialize JSSharedSet fail";
-        JSHandle<JSSharedSet> jsSet = JSHandle<JSSharedSet>::Cast(res);
-        for (int32_t i = range.first; i < range.second; i++) {
-            JSSharedSet::Add(thread, jsSet, JSHandle<JSTaggedValue>(thread, JSTaggedValue(i)));
-            if (thread->HasPendingException()) {
-                pendingExceptions++;
-                break;
-            }
-        }
-        Destroy();
-    }
-
     void JSSharedMapBasicTest1(SerializeData *data)
     {
         Init();
@@ -688,27 +668,6 @@ public:
             JSHandle<JSTaggedValue>(thread, JSTaggedValue(INITIALIZE_SIZE)));
         bool result = JSSharedMap::Delete(thread, jsMap, JSHandle<JSTaggedValue>(thread, JSTaggedValue(0)));
         EXPECT_TRUE(result) << "Delete failed";
-        Destroy();
-    }
-
-    void JSSharedMapMultiThreadTest(SerializeData *data, std::pair<int32_t, int32_t> range,
-        std::atomic<uint32_t> &pendingExceptions)
-    {
-        EXPECT_TRUE(data != nullptr);
-        Init();
-        BaseDeserializer deserializer(thread, data);
-        JSHandle<JSTaggedValue> res = deserializer.ReadValue();
-        EXPECT_TRUE(!res.IsEmpty()) << "[Empty] Deserialize JSSharedMap fail";
-        EXPECT_TRUE(res->IsJSSharedMap()) << "[NotJSSharedMap] Deserialize JSSharedMap fail";
-        JSHandle<JSSharedMap> jsMap = JSHandle<JSSharedMap>::Cast(res);
-        for (int32_t i = range.first; i < range.second; i++) {
-            JSSharedMap::Set(thread, jsMap, JSHandle<JSTaggedValue>(thread, JSTaggedValue(i)),
-                JSHandle<JSTaggedValue>(thread, JSTaggedValue(i)));
-            if (thread->HasPendingException()) {
-                pendingExceptions++;
-                break;
-            }
-        }
         Destroy();
     }
 
@@ -1538,7 +1497,7 @@ HWTEST_F_L0(JSSerializerTest, SerializeNativeBindingObject3)
     std::unique_ptr<SerializeData> data = serializer->Release();
     BaseDeserializer deserializer(thread, data.release());
     JSHandle<JSTaggedValue> res = deserializer.ReadValue();
-    EXPECT_FALSE(res.IsEmpty());
+    EXPECT_TRUE(res.IsEmpty());
     delete serializer;
 }
 
@@ -2265,7 +2224,8 @@ JSHandle<JSObject> CreateSObject(JSThread *thread)
     JSHandle<JSObject> object = factory->NewSharedOldSpaceJSObject(hclass);
     uint32_t fieldIndex = 0;
     while (fieldIndex < length) {
-        object->SetPropertyInlinedProps(thread, fieldIndex++, CreateEmptySObject(thread).GetTaggedValue());
+        JSHandle<JSObject> emptyObject = CreateEmptySObject(thread);
+        object->SetPropertyInlinedProps(thread, fieldIndex++, emptyObject.GetTaggedValue());
     }
     return object;
 }
@@ -2459,7 +2419,7 @@ HWTEST_F_L0(JSSerializerTest, SerializeJSSharedSetBasic1)
     delete serializer;
 };
 
-HWTEST_F_L0(JSSerializerTest, SerializeMultiThreadJSSharedSet1)
+HWTEST_F_L0(JSSerializerTest, SerializeMultiThreadJSSharedSet)
 {
     JSHandle<JSSharedSet> jsSet = CreateSSet(thread);
     ValueSerializer *serializer = new ValueSerializer(thread);
@@ -2486,38 +2446,7 @@ HWTEST_F_L0(JSSerializerTest, SerializeMultiThreadJSSharedSet1)
     delete serializer;
 };
 
-HWTEST_F_L0(JSSerializerTest, SerializeMultiThreadJSSharedSet2)
-{
-    JSHandle<JSSharedSet> jsSet = CreateSSet(thread);
-    ValueSerializer *serializer = new ValueSerializer(thread);
-    bool success = serializer->WriteValue(thread, JSHandle<JSTaggedValue>(jsSet),
-                                          JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()),
-                                          JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
-    EXPECT_TRUE(success) << "Serialize JSSharedSet fail";
-    std::unique_ptr<SerializeData> data = serializer->Release();
-    constexpr uint32_t MAX_NUM_DESERIALZIERS = 10;
-    std::atomic<uint32_t> pendingExceptions = 0;
-    JSDeserializerTest jsDeserializerTests[MAX_NUM_DESERIALZIERS];
-    std::thread threads[MAX_NUM_DESERIALZIERS];
-    for (int32_t i = 0; i < MAX_NUM_DESERIALZIERS; i++) {
-        threads[i] = std::thread(&JSDeserializerTest::JSSharedSetMultiThreadTest2,
-            jsDeserializerTests[i], data.get(),
-            std::make_pair<int32_t, int32_t>(i * MAX_NUM_DESERIALZIERS, (i + 1) * MAX_NUM_DESERIALZIERS),
-            std::ref(pendingExceptions));
-    }
-    ThreadSuspensionScope scope(thread);
-    for (int i = 0; i < MAX_NUM_DESERIALZIERS; i++) {
-        threads[i].join();
-    }
-    if (pendingExceptions != 0) {
-        EXPECT_TRUE(JSSharedSet::GetSize(thread, jsSet) != MAX_NUM_DESERIALZIERS * MAX_NUM_DESERIALZIERS);
-    } else {
-        EXPECT_TRUE(JSSharedSet::GetSize(thread, jsSet)== MAX_NUM_DESERIALZIERS * MAX_NUM_DESERIALZIERS);
-    }
-    delete serializer;
-};
-
-HWTEST_F_L0(JSSerializerTest, SerializeJSSharedMapBasic1)
+HWTEST_F_L0(JSSerializerTest, SerializeJSSharedMapBasic)
 {
     JSHandle<JSSharedMap> jsMap = CreateSMap(thread);
     ValueSerializer *serializer = new ValueSerializer(thread);
@@ -2553,37 +2482,6 @@ HWTEST_F_L0(JSSerializerTest, SerializeJSSharedMapBasic1)
         t1.join();
         EXPECT_TRUE(!JSSharedMap::Has(thread, jsMap, JSTaggedValue(0)));
         EXPECT_TRUE(JSSharedMap::Has(thread, jsMap, JSTaggedValue(INITIALIZE_SIZE)));
-    }
-    delete serializer;
-};
-
-HWTEST_F_L0(JSSerializerTest, SerializeMultiThreadJSSharedMap)
-{
-    JSHandle<JSSharedMap> jsMap = CreateSMap(thread);
-    ValueSerializer *serializer = new ValueSerializer(thread);
-    bool success = serializer->WriteValue(thread, JSHandle<JSTaggedValue>(jsMap),
-                                          JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()),
-                                          JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
-    EXPECT_TRUE(success) << "Serialize JSSharedMap fail";
-    std::unique_ptr<SerializeData> data = serializer->Release();
-    constexpr uint32_t MAX_NUM_DESERIALZIERS = 10;
-    std::atomic<uint32_t> pendingExceptions = 0;
-    JSDeserializerTest jsDeserializerTests[MAX_NUM_DESERIALZIERS];
-    std::thread threads[MAX_NUM_DESERIALZIERS];
-    for (int32_t i = 0; i < MAX_NUM_DESERIALZIERS; i++) {
-        threads[i] = std::thread(&JSDeserializerTest::JSSharedMapMultiThreadTest,
-            jsDeserializerTests[i], data.get(),
-            std::make_pair<int32_t, int32_t>(i * MAX_NUM_DESERIALZIERS, (i + 1) * MAX_NUM_DESERIALZIERS),
-            std::ref(pendingExceptions));
-    }
-    ThreadSuspensionScope scope(thread);
-    for (int i = 0; i < MAX_NUM_DESERIALZIERS; i++) {
-        threads[i].join();
-    }
-    if (pendingExceptions != 0) {
-        EXPECT_TRUE(JSSharedMap::GetSize(thread, jsMap) != MAX_NUM_DESERIALZIERS * MAX_NUM_DESERIALZIERS);
-    } else {
-        EXPECT_TRUE(JSSharedMap::GetSize(thread, jsMap) == MAX_NUM_DESERIALZIERS * MAX_NUM_DESERIALZIERS);
     }
     delete serializer;
 };

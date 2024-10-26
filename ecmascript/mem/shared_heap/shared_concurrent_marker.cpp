@@ -53,10 +53,10 @@ void SharedConcurrentMarker::Mark(TriggerGCType gcType, GCReason gcReason)
         ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedConcurrentMarker::Mark");
         CHECK_DAEMON_THREAD();
         // TODO: support shared runtime state
-        InitializeMarking();
         if (UNLIKELY(sHeap_->ShouldVerifyHeap())) {
             SharedHeapVerification(sHeap_, VerifyKind::VERIFY_PRE_SHARED_GC).VerifyAll();
         }
+        InitializeMarking();
     }
     // Daemon thread do not need to post task to GC_Thread
     ASSERT(!dThread_->IsInRunningState());
@@ -116,11 +116,14 @@ void SharedConcurrentMarker::InitializeMarking()
     dThread_->SetSharedMarkStatus(SharedMarkStatus::CONCURRENT_MARKING_OR_FINISHED);
 
     sHeapObjectSize_ = sHeap_->GetHeapObjectSize();
+    sHeap_->GetAppSpawnSpace()->EnumerateRegions([](Region *current) {
+        current->ClearMarkGCBitset();
+    });
     sHeap_->EnumerateOldSpaceRegions([](Region *current) {
         ASSERT(current->InSharedSweepableSpace());
         current->ResetAliveObject();
     });
-    sWorkManager_->Initialize();
+    sWorkManager_->Initialize(TriggerGCType::SHARED_GC, SharedParallelMarkPhase::SHARED_MARK_TASK);
     sHeap_->GetSharedGCMarker()->MarkRoots(DAEMON_THREAD_INDEX, SharedMarkType::CONCURRENT_MARK_INITIAL_MARK);
 }
 

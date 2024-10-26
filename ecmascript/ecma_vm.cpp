@@ -117,7 +117,10 @@ void EcmaVM::PreFork()
     heap_->GetReadOnlySpace()->SetReadOnly();
     heap_->DisableParallelGC();
     SetPostForked(false);
-    SharedHeap::GetInstance()->DisableParallelGC(thread_);
+
+    auto sHeap = SharedHeap::GetInstance();
+    sHeap->CompactHeapBeforeFork(thread_);
+    sHeap->DisableParallelGC(thread_);
 }
 
 void EcmaVM::PostFork()
@@ -627,6 +630,9 @@ void EcmaVM::ProcessSharedNativeDelete(const WeakRootVisitor &visitor)
                 std::make_pair(object->GetDeleter(), std::make_pair(object->GetExternalPointer(), object->GetData())));
             sharedIter = sharedNativePointerList_.erase(sharedIter);
         } else {
+            if (fwd != reinterpret_cast<TaggedObject *>(object)) {
+                *sharedIter = reinterpret_cast<JSNativePointer *>(fwd);
+            }
             ++sharedIter;
         }
     }
@@ -634,9 +640,6 @@ void EcmaVM::ProcessSharedNativeDelete(const WeakRootVisitor &visitor)
 
 void EcmaVM::ProcessReferences(const WeakRootVisitor &visitor)
 {
-    if (thread_->GetCurrentEcmaContext()->GetRegExpParserCache() != nullptr) {
-        thread_->GetCurrentEcmaContext()->GetRegExpParserCache()->Clear();
-    }
     // process native ref should be limited to OldGC or FullGC only
     if (!heap_->IsGeneralYoungGC()) {
         heap_->ResetNativeBindingSize();
