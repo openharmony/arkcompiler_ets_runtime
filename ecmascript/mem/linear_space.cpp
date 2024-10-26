@@ -47,10 +47,12 @@ uintptr_t LinearSpace::Allocate(size_t size, bool isPromoted)
         return object;
     }
     if (Expand(isPromoted)) {
-        if (!isPromoted && !localHeap_->NeedStopCollection()) {
-            localHeap_->TryTriggerIncrementalMarking();
-            localHeap_->TryTriggerIdleCollection();
-            localHeap_->TryTriggerConcurrentMarking();
+        if (!isPromoted) {
+            if (!localHeap_->NeedStopCollection() || localHeap_->IsNearGCInSensitive()) {
+                localHeap_->TryTriggerIncrementalMarking();
+                localHeap_->TryTriggerIdleCollection();
+                localHeap_->TryTriggerConcurrentMarking();
+            }
         }
         object = allocator_.Allocate(size);
     } else if (localHeap_->IsMarking() || !localHeap_->IsEmptyIdleTask()) {

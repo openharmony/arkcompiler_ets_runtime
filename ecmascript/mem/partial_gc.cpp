@@ -110,6 +110,9 @@ void PartialGC::Finish()
         heap_->GetSweeper()->TryFillSweptRegion();
         heap_->SetFullMarkRequestedState(false);
     }
+    if (heap_->IsNearGCInSensitive()) {
+        heap_->SetNearGCInSensitive(false);
+    }
 }
 
 void PartialGC::Mark()

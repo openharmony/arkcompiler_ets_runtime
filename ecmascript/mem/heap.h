@@ -1338,6 +1338,16 @@ public:
         return recordObjSizeBeforeSensitive_;
     }
 
+    void SetNearGCInSensitive(bool flag)
+    {
+        nearGCInSensitive_ = flag;
+    }
+
+    bool IsNearGCInSensitive()
+    {
+        return nearGCInSensitive_;
+    }
+
     bool CASSensitiveStatus(AppSensitiveStatus expect, AppSensitiveStatus status)
     {
         return smartGCStats_.sensitiveStatus_.compare_exchange_strong(expect, status, std::memory_order_seq_cst);
@@ -1752,6 +1762,8 @@ private:
     size_t recordNativeSize_ {0};
     // Record heap object size before enter sensitive status
     size_t recordObjSizeBeforeSensitive_ {0};
+    bool nearGCInSensitive_ {false};
+
     size_t pendingAsyncNativeCallbackSize_ {0};
     MemGrowingType memGrowingtype_ {MemGrowingType::HIGH_THROUGHPUT};
 
