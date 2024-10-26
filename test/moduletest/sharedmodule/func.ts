@@ -20,7 +20,7 @@
  * @tc.require: issue#I9BIE5
  */
 
-"shared module"
+"use shared"
 export class Test1 {
     value1:string;
     constructor(value1:string) {

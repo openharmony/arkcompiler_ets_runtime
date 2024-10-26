@@ -96,7 +96,7 @@ JSTaggedValue ModuleTools::ProcessModuleLoadInfo(JSThread *thread, JSHandle<Sour
     if (resolvedBinding.IsResolvedRecordIndexBinding()) {
         return GetModuleValueFromIndexBindingForLog(thread, currentModule, resolvedBinding, index);
     }
-    if (resolvedBinding.IsResolvedRecordBinding()) {
+    if (resolvedBinding.IsResolvedRecordBinding()) { // LCOV_EXCL_BR_LINE
         return GetModuleValueFromRecordBindingForLog(thread, currentModule, resolvedBinding, index);
     }
     LOG_ECMA(FATAL) << "Get module value failed, mistaken ResolvedBinding";

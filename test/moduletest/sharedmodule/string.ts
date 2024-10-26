@@ -22,7 +22,7 @@
 
 // @ts-nocheck
 declare function print(str: any): string;
-"shared module"
+"use shared"
 export var strA : string = "(This is strA!)";
 export var strB : string = "(This is strB!)";
 export function foo() {

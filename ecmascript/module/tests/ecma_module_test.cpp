@@ -3895,4 +3895,80 @@ HWTEST_F_L0(EcmaModuleTest, ModuleDeclarationArrayEnvironmentSetup2)
     SourceTextModule::ModuleDeclarationArrayEnvironmentSetup(thread, module);
     EXPECT_TRUE(!thread->HasPendingException());
 }
+
+HWTEST_F_L0(EcmaModuleTest, IsOhmUrl)
+{
+    CString ohmUrl = "@bundle:com.bundleName.test/moduleName/requestModuleName";
+    bool res = ModulePathHelper::IsOhmUrl(ohmUrl);
+    EXPECT_EQ(res, true);
+
+    ohmUrl = "@package:pkg_modules@entry.@hw-agconnect.hmcore";
+    res = ModulePathHelper::IsOhmUrl(ohmUrl);
+    EXPECT_EQ(res, true);
+
+    ohmUrl = "@normalized:N&&&har/Index&1.0.0";
+    res = ModulePathHelper::IsOhmUrl(ohmUrl);
+    EXPECT_EQ(res, true);
+
+    ohmUrl = "ets/Test";
+    res = ModulePathHelper::IsOhmUrl(ohmUrl);
+    EXPECT_EQ(res, false);
+}
+
+HWTEST_F_L0(EcmaModuleTest, CheckAndGetRecordName)
+{
+    CString recordName = "";
+    CString ohmUrl = "@bundle:com.bundleName.test/moduleName/requestModuleName";
+    bool res = ModulePathHelper::CheckAndGetRecordName(thread, ohmUrl, recordName);
+    EXPECT_EQ(res, true);
+
+    ohmUrl = "@package:pkg_modules@entry.@hw-agconnect.hmcore";
+    res = ModulePathHelper::CheckAndGetRecordName(thread, ohmUrl, recordName);
+    EXPECT_EQ(res, true);
+
+    ohmUrl = "@normalized:N&&&har/Index&1.0.0";
+    res = ModulePathHelper::CheckAndGetRecordName(thread, ohmUrl, recordName);
+    EXPECT_EQ(res, true);
+
+    ohmUrl = "ets/Test";
+    res = ModulePathHelper::CheckAndGetRecordName(thread, ohmUrl, recordName);
+    EXPECT_EQ(res, false);
+}
+
+HWTEST_F_L0(EcmaModuleTest, ValidateAbcPath)
+{
+    CString baseFileName = "/data/storage/el1/bundle/com.bundleName.test/moduleName/moduleName/ets/modules.abc";
+    bool res = ModulePathHelper::ValidateAbcPath(baseFileName, ValidateFilePath::ETS_MODULES);
+    EXPECT_EQ(res, true);
+
+    baseFileName = "";
+    res = ModulePathHelper::ValidateAbcPath(baseFileName, ValidateFilePath::ETS_MODULES);
+    EXPECT_EQ(res, false);
+}
+
+
+HWTEST_F_L0(EcmaModuleTest, ParseCrossModuleFile)
+{
+    CString baseFilename = "merge.abc";
+    const char *data = R"(
+        .language ECMAScript
+        .function any func_main_0(any a0, any a1, any a2) {
+            ldai 1
+            return
+        }
+    )";
+    JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
+    Parser parser;
+    auto res = parser.Parse(data);
+    std::unique_ptr<const File> pfPtr = pandasm::AsmEmitter::Emit(res.Value());
+    std::shared_ptr<JSPandaFile> pf = pfManager->NewJSPandaFile(pfPtr.release(), baseFilename);
+    CString requestPath = "moduleName/src/main/a/b/c";
+    ModulePathHelper::ParseCrossModuleFile(pf.get(), requestPath);
+    EXPECT_EQ(requestPath, "moduleName/src/main/a/b/c");
+
+    requestPath="moduleName/src";
+    ModulePathHelper::ParseCrossModuleFile(pf.get(), requestPath);
+    EXPECT_EQ(requestPath, "moduleName/src");
+}
+
 }  // namespace panda::test
