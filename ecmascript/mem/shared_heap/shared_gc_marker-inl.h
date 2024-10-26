@@ -173,6 +173,7 @@ inline void SharedGCMarkerBase::ProcessVisitorOfDoMark(uint32_t threadId)
     for (RSetWorkListHandler *handler : rSetHandlers_) {
         ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedGCMarker::ProcessRSet");
         handler->ProcessAll(visitor);
+        handler->GetHeap()->SetProcessingRset(false);
     }
 }
 
