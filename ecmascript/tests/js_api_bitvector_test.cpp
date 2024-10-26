@@ -233,6 +233,31 @@ HWTEST_F_L0(JSAPIBitVectorTest, Has_instance)
 }
 
 /**
+ * @tc.name: Has_Testboundary
+ * @tc.desc:
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F_L0(JSAPIBitVectorTest, Has_Testboundary)
+{
+    uint32_t increasedLength = 8;
+    JSHandle<JSAPIBitVector> bitVector(thread, CreateBitVector());
+    for (uint32_t i = 0; i < increasedLength; i++) {
+        JSHandle<JSTaggedValue> value(thread, JSTaggedValue(1));
+        JSAPIBitVector::Push(thread, bitVector, value);
+    }
+    JSHandle<JSTaggedValue> value(thread, JSTaggedValue(0));
+    JSHandle<JSTaggedValue> value1(thread, JSTaggedValue(7));
+    bool res = JSAPIBitVector::Has(thread, bitVector, value, value, value1);
+    EXPECT_FALSE(res);
+    JSHandle<JSTaggedValue> value2(thread, JSTaggedValue(1));
+    JSHandle<JSTaggedValue> value3(thread, JSTaggedValue(8));
+    JSAPIBitVector::Push(thread, bitVector, value2);
+    res = JSAPIBitVector::Has(thread, bitVector, value2, value, value3);
+    EXPECT_TRUE(res);
+}
+
+/**
  * @tc.name: SetBitsByRange
  * @tc.desc:
  * @tc.type: FUNC
