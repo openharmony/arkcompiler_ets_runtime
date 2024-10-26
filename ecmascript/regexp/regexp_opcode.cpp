@@ -110,14 +110,14 @@ RegExpOpCode *RegExpOpCode::GetRegExpOpCode(uint8_t opCode)
 }
 
 /* static */
-void RegExpOpCode::DumpRegExpOpCode(std::ostream &out, const DynChunk &buf)
+void RegExpOpCode::DumpRegExpOpCode(std::ostream &out, const DynChunk &buf, uint32_t size)
 {
     out << "OpCode:\t" << std::endl;
     uint32_t pc = RegExpParser::OP_START_OFFSET;
     do {
         RegExpOpCode *byteCode = GetRegExpOpCode(buf, pc);
         pc = byteCode->DumpOpCode(out, buf, pc);
-    } while (pc < buf.size_);
+    } while (pc < size);
 }
 
 uint32_t SaveStartOpCode::EmitOpCode(DynChunk *buf, uint32_t para) const

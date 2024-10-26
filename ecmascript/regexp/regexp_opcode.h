@@ -75,7 +75,7 @@ public:
     virtual ~RegExpOpCode() = default;
     static RegExpOpCode *GetRegExpOpCode(const DynChunk &buf, int pcOffset);
     static RegExpOpCode *GetRegExpOpCode(uint8_t opCode);
-    static void DumpRegExpOpCode(std::ostream &out, const DynChunk &buf);
+    static void DumpRegExpOpCode(std::ostream &out, const DynChunk &buf, uint32_t size);
     inline uint8_t GetSize() const
     {
         return size_;
