@@ -531,10 +531,16 @@ void MCRLowering::LowerCheckAndConvert(GateRef gate)
 void MCRLowering::LowerCheckFloat64AndConvert(GateRef gate, GateRef frameState, Label *exit)
 {
     GateRef value = acc_.GetValueIn(gate, 0);
+    ValueType dst = acc_.GetDstType(gate);
+    GateRef result = Circuit::NullGate();
 
-    GateRef result = ConvertFloat64ToInt32(value, exit);
-    GateRef check = builder_.DoubleEqual(builder_.ChangeInt32ToFloat64(result), value);
-    builder_.DeoptCheck(check, frameState, DeoptType::INT32OVERFLOW1);
+    if (dst == ValueType::INT32) {
+        result = ConvertFloat64ToInt32(value, exit);
+        GateRef check = builder_.DoubleEqual(builder_.ChangeInt32ToFloat64(result), value);
+        builder_.DeoptCheck(check, frameState, DeoptType::NOTINT7);
+    } else {
+        UNREACHABLE();
+    }
 
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
 }

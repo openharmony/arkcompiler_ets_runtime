@@ -27,6 +27,7 @@ namespace panda::ecmascript::kungfu {
     V(NotInt4,                         NOTINT4)                        \
     V(NotInt5,                         NOTINT5)                        \
     V(NotInt6,                         NOTINT6)                        \
+    V(NotInt7,                         NOTINT7)                        \
     V(NotDouble1,                      NOTDOUBLE1)                     \
     V(NotDouble2,                      NOTDOUBLE2)                     \
     V(NotDouble3,                      NOTDOUBLE3)                     \

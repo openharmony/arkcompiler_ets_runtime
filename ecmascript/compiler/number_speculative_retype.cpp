@@ -821,7 +821,7 @@ GateRef NumberSpeculativeRetype::VisitNumberNot(GateRef gate)
             valueType = GateType::DoubleType();
         }
         acc_.ReplaceValueIn(gate,
-            CheckAndConvertToInt32(value, valueType, ConvertSupport::ENABLE, OpType::SHIFT_AND_LOGICAL), 0);
+            CheckAndConvertToInt32(value, valueType, ConvertSupport::ENABLE, OpType::SHIFT_AND_LOGICAL, false), 0);
         acc_.ReplaceStateIn(gate, builder_.GetState());
         acc_.ReplaceDependIn(gate, builder_.GetDepend());
     }
@@ -1048,8 +1048,8 @@ void NumberSpeculativeRetype::ConvertForShiftAndLogicalOperator(GateRef gate, Ga
 {
     GateRef left = acc_.GetValueIn(gate, 0);
     GateRef right = acc_.GetValueIn(gate, 1);
-    GateRef cLeft = CheckAndConvertToInt32(left, leftType, ConvertSupport::ENABLE, OpType::SHIFT_AND_LOGICAL);
-    GateRef cRight = CheckAndConvertToInt32(right, rightType, ConvertSupport::ENABLE, OpType::SHIFT_AND_LOGICAL);
+    GateRef cLeft = CheckAndConvertToInt32(left, leftType, ConvertSupport::ENABLE, OpType::SHIFT_AND_LOGICAL, false);
+    GateRef cRight = CheckAndConvertToInt32(right, rightType, ConvertSupport::ENABLE, OpType::SHIFT_AND_LOGICAL, false);
 
     acc_.ReplaceValueIn(gate, cLeft, 0);
     acc_.ReplaceValueIn(gate, cRight, 1);
@@ -1159,7 +1159,7 @@ GateRef NumberSpeculativeRetype::CheckTaggedAndConvertToInt32(GateRef gate, Gate
 }
 
 GateRef NumberSpeculativeRetype::CheckAndConvertToInt32(GateRef gate, GateType gateType, ConvertSupport support,
-                                                        OpType type)
+                                                        OpType type, bool needCheckFloat64)
 {
     auto result = TryConvertConstant(gate, true);
     if (result != Circuit::NullGate()) {
@@ -1186,9 +1186,14 @@ GateRef NumberSpeculativeRetype::CheckAndConvertToInt32(GateRef gate, GateType g
             }
             break;
         }
-        case TypeInfo::FLOAT64:
-            result = builder_.CheckFloat64AndConvertToInt32(gate);
+        case TypeInfo::FLOAT64: {
+            if (needCheckFloat64) {
+                result = builder_.CheckFloat64ConvertToInt32Legally(gate);
+            } else {
+                result = builder_.ConvertFloat64ToInt32(gate);
+            }
             break;
+        }
         case TypeInfo::HOLE_INT:
             result = builder_.CheckHoleIntAndConvertToInt32(gate);
             break;
@@ -1428,8 +1433,10 @@ GateRef NumberSpeculativeRetype::VisitRangeCheckPredicate(GateRef gate)
         GateRef value1 = acc_.GetValueIn(gate, 1);
         GateType value0Type = acc_.GetGateType(value0);
         GateType value1Type = acc_.GetGateType(value1);
-        acc_.ReplaceValueIn(gate, CheckAndConvertToInt32(value0, value0Type), 0);
-        acc_.ReplaceValueIn(gate, CheckAndConvertToInt32(value1, value1Type), 1);
+        acc_.ReplaceValueIn(gate, CheckAndConvertToInt32(value0, value0Type, ConvertSupport::ENABLE, OpType::NORMAL,
+            false), 0);
+        acc_.ReplaceValueIn(gate, CheckAndConvertToInt32(value1, value1Type, ConvertSupport::ENABLE, OpType::NORMAL,
+            false), 1);
 
         acc_.ReplaceStateIn(gate, builder_.GetState());
         acc_.ReplaceDependIn(gate, builder_.GetDepend());
@@ -1453,8 +1460,10 @@ GateRef NumberSpeculativeRetype::VisitIndexCheck(GateRef gate)
         if (indexType.IsAnyType()) {
             indexType = GateType::IntType();
         }
-        acc_.ReplaceValueIn(gate, CheckAndConvertToInt32(receiver, receiverType), 0);
-        acc_.ReplaceValueIn(gate, CheckAndConvertToInt32(index, indexType), 1);
+        acc_.ReplaceValueIn(gate, CheckAndConvertToInt32(receiver, receiverType, ConvertSupport::ENABLE, OpType::NORMAL,
+            false), 0);
+        acc_.ReplaceValueIn(gate, CheckAndConvertToInt32(index, indexType, ConvertSupport::ENABLE, OpType::NORMAL,
+            false), 1);
 
         acc_.ReplaceStateIn(gate, builder_.GetState());
         acc_.ReplaceDependIn(gate, builder_.GetDepend());
@@ -1559,7 +1568,8 @@ GateRef NumberSpeculativeRetype::VisitStoreElement(GateRef gate)
             case TypedStoreOp::INT32ARRAY_STORE_ELEMENT:
             case TypedStoreOp::UINT32ARRAY_STORE_ELEMENT:
             case TypedStoreOp::ARRAY_STORE_INT_ELEMENT:
-                acc_.ReplaceValueIn(gate, CheckAndConvertToInt32(value, GateType::NumberType()), 2);   // 2: value idx
+                acc_.ReplaceValueIn(gate, CheckAndConvertToInt32(value, GateType::NumberType(), ConvertSupport::ENABLE,
+                    OpType::NORMAL, false), 2);   // 2: value idx
                 break;
             case TypedStoreOp::FLOAT32ARRAY_STORE_ELEMENT:
             case TypedStoreOp::FLOAT64ARRAY_STORE_ELEMENT:
