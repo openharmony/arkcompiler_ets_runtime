@@ -1182,7 +1182,7 @@ void LSRALinearScanRegAllocator::InsertCallerSave(Insn &insn, Operand &opnd, boo
     auto tmpReg = static_cast<regno_t>(intSpillRegSet[spillIdx] + firstIntReg);
     if (isDef) {
         Insn *nextInsn = insn.GetNext();
-        memOpnd = GetSpillMem(vRegNO, true, insn, tmpReg, isOutOfRange, regSize);
+        memOpnd = GetSpillMem(vRegNO, true, insn, regInfo->GetReservedSpillReg(), isOutOfRange, regSize);
         Insn *stInsn = regInfo->BuildStrInsn(regSize, spType, *phyOpnd, *memOpnd);
         comment = " SPILL for caller_save " + std::to_string(vRegNO);
         ++callerSaveSpillCount;
@@ -1311,7 +1311,7 @@ void LSRALinearScanRegAllocator::SpillOperand(Insn &insn, Operand &opnd, bool is
 
         ++spillCount;
         Insn *nextInsn = insn.GetNext();
-        memOpnd = GetSpillMem(regNO, true, insn, tmpReg, isOutOfRange, regSize);
+        memOpnd = GetSpillMem(regNO, true, insn, regInfo->GetReservedSpillReg(), isOutOfRange, regSize);
         Insn *stInsn = regInfo->BuildStrInsn(regSize, spType, *phyOpnd, *memOpnd);
         if (li->GetLastUse() == insn.GetId()) {
             regInfo->FreeSpillRegMem(regNO);
