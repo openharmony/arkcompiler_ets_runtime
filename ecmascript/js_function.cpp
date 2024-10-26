@@ -1154,9 +1154,11 @@ void JSFunction::InitializeForConcurrentFunction(JSThread *thread, JSHandle<JSFu
     }
     RETURN_IF_ABRUPT_COMPLETION(thread);
     ecmascript::SourceTextModule::Instantiate(thread, moduleRecord);
+    RETURN_IF_ABRUPT_COMPLETION(thread);
     JSHandle<ecmascript::SourceTextModule> module = JSHandle<ecmascript::SourceTextModule>::Cast(moduleRecord);
     module->SetStatus(ecmascript::ModuleStatus::INSTANTIATED);
     ecmascript::SourceTextModule::EvaluateForConcurrent(thread, module, method);
+    RETURN_IF_ABRUPT_COMPLETION(thread);
     if (!jsPandaFile->IsBundlePack() && func->IsSharedFunction()) {
         JSHandle<JSTaggedValue> sendableClassRecord = moduleManager->GenerateSendableFuncModule(moduleRecord);
         SourceTextModule::Cast(sendableClassRecord.GetTaggedValue())->SetSendableEnv(thread, sendableEnv);
