@@ -810,6 +810,7 @@ JSHandle<JSTaggedValue> ModuleManager::ExecuteNativeModule(JSThread *thread, con
         nativeModule->SetLoadingTypes(LoadingTypes::STABLE_MODULE);
         requiredModule.Update(nativeModule);
     }
+    AddResolveImportedModule(recordName, requiredModule.GetTaggedValue());
     return requiredModule;
 }
 
@@ -826,6 +827,7 @@ JSHandle<JSTaggedValue> ModuleManager::ExecuteJsonModule(JSThread *thread, const
                                                                                   recordName));
         moduleRecord->SetStatus(ModuleStatus::EVALUATED);
         requiredModule.Update(moduleRecord);
+        UpdateResolveImportedModule(recordName, moduleRecord.GetTaggedValue());
     }
     return requiredModule;
 }
@@ -848,9 +850,11 @@ JSHandle<JSTaggedValue> ModuleManager::ExecuteCjsModule(JSThread *thread, const 
             JSHandle<SourceTextModule>::Cast(ModuleDataExtractor::ParseCjsModule(thread, jsPandaFile));
         module->SetEcmaModuleRecordNameString(moduleRecord);
         requiredModule.Update(module);
+        AddResolveImportedModule(recordName, module.GetTaggedValue());
         JSPandaFileExecutor::Execute(thread, jsPandaFile, entryPoint);
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, requiredModule);
         module->SetStatus(ModuleStatus::EVALUATED);
+        UpdateResolveImportedModule(recordName, module.GetTaggedValue());
     }
     return requiredModule;
 }
