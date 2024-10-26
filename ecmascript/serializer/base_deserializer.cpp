@@ -33,6 +33,24 @@ namespace panda::ecmascript {
     case (uint8_t)SerializedObjectSpace::SHARED_NON_MOVABLE_SPACE:        \
     case (uint8_t)SerializedObjectSpace::SHARED_HUGE_SPACE
 
+BaseDeserializer::BaseDeserializer(JSThread *thread, SerializeData *data, void *hint)
+    : thread_(thread), heap_(const_cast<Heap *>(thread->GetEcmaVM()->GetHeap())), data_(data), engine_(hint)
+{
+    sheap_ = SharedHeap::GetInstance();
+    uint32_t index = data_->GetDataIndex();
+    if (index != 0) {
+        std::pair<JSTaggedType *, size_t> dataVectorPair = Runtime::GetInstance()->GetSerializeRootMapValue(thread_,
+            index);
+        if (dataVectorPair.first == nullptr) {
+            LOG_ECMA(FATAL) << "Unknown serializer root index: " << index;
+            UNREACHABLE();
+        }
+        // ValueVector is the pointer to the data from serialize vector and must be const.
+        valueVector_ = dataVectorPair.first;
+        vectorSize_ = dataVectorPair.second;
+    }
+}
+
 JSHandle<JSTaggedValue> BaseDeserializer::ReadValue()
 {
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "Deserialize dataSize: " + std::to_string(data_->Size()));
@@ -59,7 +77,7 @@ JSHandle<JSTaggedValue> BaseDeserializer::DeserializeJSTaggedValue()
 
     // initialize concurrent func here
     for (auto func : concurrentFunctions_) {
-        func->InitializeForConcurrentFunction(thread_);
+        JSFunction::InitializeForConcurrentFunction(thread_, func);
     }
     concurrentFunctions_.clear();
 
@@ -87,7 +105,7 @@ uintptr_t BaseDeserializer::DeserializeTaggedObject(SerializedObjectSpace space)
 {
     size_t objSize = data_->ReadUint32(position_);
     uintptr_t res = RelocateObjectAddr(space, objSize);
-    objectVector_.push_back(res);
+    objectVector_.push_back(static_cast<JSTaggedType>(res));
     DeserializeObjectField(res, res + objSize);
     return res;
 }
@@ -174,7 +192,8 @@ void BaseDeserializer::HandleNewObjectEncodeFlag(SerializedObjectSpace space,  u
         FunctionKind funcKind = func->GetFunctionKind();
         if (funcKind == FunctionKind::CONCURRENT_FUNCTION || object->GetClass()->IsJSSharedFunction()) {
             // defer initialize concurrent function
-            concurrentFunctions_.push_back(reinterpret_cast<JSFunction *>(object));
+            JSHandle<JSFunction> funcHandle(thread_, func);
+            concurrentFunctions_.push_back(funcHandle);
         }
         func->SetRawProfileTypeInfo(thread_, thread_->GlobalConstants()->GetEmptyProfileTypeInfoCell(), SKIP_BARRIER);
         func->SetWorkNodePointer(reinterpret_cast<uintptr_t>(nullptr));
@@ -242,10 +261,10 @@ size_t BaseDeserializer::ReadSingleEncodeData(uint8_t encodeFlag, uintptr_t objA
         }
         case (uint8_t)EncodeFlag::REFERENCE: {
             uint32_t valueIndex = data_->ReadUint32(position_);
-            uintptr_t valueAddr = objectVector_[valueIndex];
+            JSTaggedType valueAddr = objectVector_[valueIndex];
             UpdateMaybeWeak(slot, valueAddr, GetAndResetWeak());
             WriteBarrier<WriteBarrierType::DESERIALIZE>(thread_, reinterpret_cast<void *>(objAddr), fieldOffset,
-                                                        static_cast<JSTaggedType>(valueAddr));
+                                                        valueAddr);
             break;
         }
         case (uint8_t)EncodeFlag::WEAK: {
@@ -332,7 +351,16 @@ size_t BaseDeserializer::ReadSingleEncodeData(uint8_t encodeFlag, uintptr_t objA
             break;
         }
         case (uint8_t)EncodeFlag::SHARED_OBJECT: {
-            JSTaggedType value = data_->ReadJSTaggedType(position_);
+            uint32_t index = data_->ReadUint32(position_);
+            if (UNLIKELY(valueVector_ == nullptr)) {
+                LOG_ECMA(FATAL) << "Deserializer valueVector is nullptr.";
+                UNREACHABLE();
+            }
+            if (UNLIKELY(index >= vectorSize_)) {
+                LOG_ECMA(FATAL) << "Shared object index invalid, index: " << index << " vectorSize: " << vectorSize_;
+                UNREACHABLE();
+            }
+            JSTaggedType value = valueVector_[index];
             objectVector_.push_back(value);
             bool isErrorMsg = GetAndResetIsErrorMsg();
             if (isErrorMsg) {

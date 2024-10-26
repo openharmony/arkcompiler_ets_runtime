@@ -23,6 +23,9 @@ RuntimeLockHolder::RuntimeLockHolder(JSThread *thread, Mutex &mtx)
     if (mtx_.TryLock()) {
         return;
     }
+#ifndef NDEBUG
+    SharedHeap::GetInstance()->CollectGarbage<TriggerGCType::SHARED_FULL_GC, GCReason::OTHER>(thread_);
+#endif
     ThreadStateTransitionScope<JSThread, ThreadState::WAIT> ts(thread_);
     mtx.Lock();
 }

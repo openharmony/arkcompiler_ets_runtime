@@ -139,6 +139,7 @@
       panda::ecmascript::ConstantPool::GetStringFromCacheForJit*;
       panda::ecmascript::ConvertToStdString*;
       panda::ecmascript::ConvertToString*;
+      panda::ecmascript::DaemonThread::GetInstance*;
       panda::ecmascript::Deoptimizier::ComputeShift*;
       panda::ecmascript::Deoptimizier::DisplayItems*;
       panda::ecmascript::Deoptimizier::EncodeDeoptVregIndex*;

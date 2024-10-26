@@ -98,7 +98,19 @@ public:
         return stringTable_.get();
     }
 
-    uint32_t PushSerializationRoot([[maybe_unused]] JSThread *thread, std::vector<TaggedObject *> &rootSet)
+    inline std::pair<JSTaggedType *, size_t> GetSerializeRootMapValue([[maybe_unused]] JSThread *thread,
+        uint32_t dataIndex)
+    {
+        ASSERT(thread->IsInManagedState());
+        LockHolder lock(serializeLock_);
+        auto iter = serializeRootMap_.find(dataIndex);
+        if (iter == serializeRootMap_.end()) {
+            return std::make_pair(nullptr, 0);
+        }
+        return std::make_pair(iter->second.data(), iter->second.size());
+    }
+
+    uint32_t PushSerializationRoot([[maybe_unused]] JSThread *thread, std::vector<JSTaggedType> &rootSet)
     {
         ASSERT(thread->IsInManagedState());
         LockHolder lock(serializeLock_);
@@ -252,7 +264,7 @@ private:
     std::unique_ptr<HeapRegionAllocator> heapRegionAllocator_;
     // for stringTable.
     std::unique_ptr<EcmaStringTable> stringTable_;
-    std::unordered_map<uint32_t, std::vector<TaggedObject *>> serializeRootMap_;
+    std::unordered_map<uint32_t, std::vector<JSTaggedType>> serializeRootMap_;
     std::vector<uint32_t> serializeDataIndexVector_;
 
     // Shared constantpool cache

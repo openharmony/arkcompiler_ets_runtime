@@ -1112,12 +1112,12 @@ JSTaggedValue JSFunction::GetNativeFunctionExtraInfo() const
     return JSTaggedValue::Undefined();
 }
 
-void JSFunction::InitializeForConcurrentFunction(JSThread *thread)
+void JSFunction::InitializeForConcurrentFunction(JSThread *thread, JSHandle<JSFunction> &func)
 {
-    JSHandle<Method> method(thread, this->GetMethod());
-    JSTaggedValue sendableEnv = JSTaggedValue::Undefined();
-    if (this->IsSharedFunction() && !this->GetModule().IsUndefined()) {
-        sendableEnv = SourceTextModule::Cast(this->GetModule())->GetSendableEnv();
+    JSHandle<Method> method(thread, func->GetMethod());
+    JSMutableHandle<JSTaggedValue> sendableEnv(thread, JSTaggedValue::Undefined());
+    if (func->IsSharedFunction() && !func->GetModule().IsUndefined()) {
+        sendableEnv.Update(SourceTextModule::Cast(func->GetModule())->GetSendableEnv());
     }
     const JSPandaFile *jsPandaFile = method->GetJSPandaFile();
     if (jsPandaFile == nullptr) {
@@ -1154,12 +1154,12 @@ void JSFunction::InitializeForConcurrentFunction(JSThread *thread)
     JSHandle<ecmascript::SourceTextModule> module = JSHandle<ecmascript::SourceTextModule>::Cast(moduleRecord);
     module->SetStatus(ecmascript::ModuleStatus::INSTANTIATED);
     ecmascript::SourceTextModule::EvaluateForConcurrent(thread, module, method);
-    if (!jsPandaFile->IsBundlePack() && this->IsSharedFunction()) {
+    if (!jsPandaFile->IsBundlePack() && func->IsSharedFunction()) {
         JSHandle<JSTaggedValue> sendableClassRecord = moduleManager->GenerateSendableFuncModule(moduleRecord);
         SourceTextModule::Cast(sendableClassRecord.GetTaggedValue())->SetSendableEnv(thread, sendableEnv);
-        this->SetModule(thread, sendableClassRecord);
+        func->SetModule(thread, sendableClassRecord);
     } else {
-        this->SetModule(thread, moduleRecord);
+        func->SetModule(thread, moduleRecord);
     }
 
     // for debugger, to notify the script loaded and parsed which the concurrent function is in

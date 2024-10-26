@@ -34,6 +34,7 @@ SerializedObjectSpace BaseSerializer::GetSerializedObjectSpace(TaggedObject *obj
             return SerializedObjectSpace::MACHINE_CODE_SPACE;
         case RegionSpaceFlag::IN_HUGE_OBJECT_SPACE:
             return SerializedObjectSpace::HUGE_SPACE;
+        case RegionSpaceFlag::IN_SHARED_APPSPAWN_SPACE:
         case RegionSpaceFlag::IN_SHARED_OLD_SPACE:
             return SerializedObjectSpace::SHARED_OLD_SPACE;
         case RegionSpaceFlag::IN_SHARED_NON_MOVABLE:
@@ -96,9 +97,9 @@ bool BaseSerializer::SerializeRootObject(TaggedObject *object)
 void BaseSerializer::SerializeSharedObject(TaggedObject *object)
 {
     data_->WriteEncodeFlag(EncodeFlag::SHARED_OBJECT);
-    data_->WriteJSTaggedType(reinterpret_cast<JSTaggedType>(object));
+    data_->WriteUint32(sharedObjects_.size());
     referenceMap_.emplace(object, objectIndex_++);
-    sharedObjects_.emplace_back(object);
+    sharedObjects_.emplace_back(static_cast<JSTaggedType>(ToUintPtr(object)));
 }
 
 bool BaseSerializer::SerializeSpecialObjIndividually(JSType objectType, TaggedObject *root,
