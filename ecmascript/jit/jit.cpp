@@ -17,6 +17,7 @@
 #include "ecmascript/jit/jit_task.h"
 #include "ecmascript/dfx/vmstat/jit_warmup_profiler.h"
 #include "ecmascript/ohos/jit_tools.h"
+#include "ecmascript/checkpoint/thread_state_transition.h"
 
 namespace panda::ecmascript {
 void (*Jit::initJitCompiler_)(JSRuntimeOptions options) = nullptr;
@@ -570,6 +571,7 @@ void Jit::ClearTaskWithVm(EcmaVM *vm)
         taskQueue.clear();
 
         if (info.jitTaskCnt_.load() != 0) {
+            ThreadNativeScope threadNativeScope(vm->GetJSThread());
             info.jitTaskCntCv_.Wait(&threadTaskInfoLock_);
         }
     }

@@ -116,6 +116,7 @@ void Runtime::DestroyIfLastVm()
 {
     LockHolder lock(*vmCreationLock_);
     if (--vmCount_ <= 0) {
+        Jit::GetInstance()->Destroy();
         SharedModuleManager::GetInstance()->SharedNativeObjDestory();
         SharedHeap::GetInstance()->WaitAllTasksFinishedAfterAllJSThreadEliminated();
         DaemonThread::DestroyInstance();
@@ -124,7 +125,6 @@ void Runtime::DestroyIfLastVm()
         MemMapAllocator::GetInstance()->Finalize();
         PGOProfilerManager::GetInstance()->Destroy();
         SharedModuleManager::GetInstance()->Destroy();
-        Jit::GetInstance()->Destroy();
         ASSERT(instance_ != nullptr);
         delete instance_;
         instance_ = nullptr;

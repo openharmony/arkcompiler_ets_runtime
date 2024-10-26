@@ -84,6 +84,7 @@ public:
 
     void Destroy()
     {
+        WaitForJitTaskPoolReady();
         Taskpool::Destroy(threadId_);
     }
 
