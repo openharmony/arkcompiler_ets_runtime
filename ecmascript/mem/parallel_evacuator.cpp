@@ -325,84 +325,11 @@ void ParallelEvacuator::UpdateRoot()
                              VMRootVisitType::UPDATE_ROOT);
 }
 
-void ParallelEvacuator::UpdateRecordWeakReference()
-{
-    auto totalThreadCount = Taskpool::GetCurrentTaskpool()->GetTotalThreadNum() + 1;
-    for (uint32_t i = 0; i < totalThreadCount; i++) {
-        ProcessQueue *queue = heap_->GetWorkManager()->GetWeakReferenceQueue(i);
-
-        while (true) {
-            auto obj = queue->PopBack();
-            if (UNLIKELY(obj == nullptr)) {
-                break;
-            }
-            ObjectSlot slot(ToUintPtr(obj));
-            JSTaggedValue value(slot.GetTaggedType());
-            if (value.IsWeak()) {
-                UpdateWeakObjectSlot(value.GetTaggedWeakRef(), slot);
-            }
-        }
-    }
-}
-
-void ParallelEvacuator::UpdateWeakReference()
-{
-    MEM_ALLOCATE_AND_GC_TRACE(heap_->GetEcmaVM(), UpdateWeakReference);
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "GC::UpdateWeakReference");
-    UpdateRecordWeakReference();
-    bool isFullMark = heap_->IsConcurrentFullMark();
-    bool isEdenMark = heap_->IsEdenMark();
-    WeakRootVisitor gcUpdateWeak = [isFullMark, isEdenMark](TaggedObject *header) -> TaggedObject* {
-        Region *objectRegion = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(header));
-        if (UNLIKELY(objectRegion == nullptr)) {
-            LOG_GC(ERROR) << "PartialGC updateWeakReference: region is nullptr, header is " << header;
-            return nullptr;
-        }
-        // The weak object in shared heap is always alive during partialGC.
-        if (objectRegion->InSharedHeap()) {
-            return header;
-        }
-        if (isEdenMark) {
-            if (!objectRegion->InEdenSpace()) {
-                return header;
-            }
-            MarkWord markWord(header);
-            if (markWord.IsForwardingAddress()) {
-                return markWord.ToForwardingAddress();
-            }
-            return nullptr;
-        }
-        if (objectRegion->InGeneralNewSpaceOrCSet()) {
-            if (objectRegion->InNewToNewSet()) {
-                if (objectRegion->Test(header)) {
-                    return header;
-                }
-            } else {
-                MarkWord markWord(header);
-                if (markWord.IsForwardingAddress()) {
-                    return markWord.ToForwardingAddress();
-                }
-            }
-            return nullptr;
-        }
-        if (isFullMark) {
-            if (objectRegion->GetMarkGCBitset() == nullptr || !objectRegion->Test(header)) {
-                return nullptr;
-            }
-        }
-        return header;
-    };
-
-    heap_->GetEcmaVM()->GetJSThread()->IterateWeakEcmaGlobalStorage(gcUpdateWeak);
-    heap_->GetEcmaVM()->ProcessReferences(gcUpdateWeak);
-    heap_->GetEcmaVM()->GetJSThread()->UpdateJitCodeMapReference(gcUpdateWeak);
-}
-
 template<TriggerGCType gcType>
 void ParallelEvacuator::UpdateWeakReferenceOpt()
 {
-    MEM_ALLOCATE_AND_GC_TRACE(heap_->GetEcmaVM(), UpdateWeakReference);
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "GC::UpdateWeakReference");
+    MEM_ALLOCATE_AND_GC_TRACE(heap_->GetEcmaVM(), UpdateWeakReferenceOpt);
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "GC::UpdateWeakReferenceOpt");
     WeakRootVisitor gcUpdateWeak = [](TaggedObject *header) -> TaggedObject* {
         Region *objectRegion = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(header));
         ASSERT(objectRegion != nullptr);

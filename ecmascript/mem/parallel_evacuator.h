@@ -201,8 +201,6 @@ private:
 
     void UpdateReference();
     void UpdateRoot();
-    void UpdateWeakReference();
-    void UpdateRecordWeakReference();
     template<TriggerGCType gcType>
     void UpdateWeakReferenceOpt();
     template<bool IsEdenGC>
