@@ -73,6 +73,7 @@ public:
     static constexpr char PREFIX_NORMALIZED[] = "@normalized:";
     static constexpr char PREFIX_NORMALIZED_SO[] = "@normalized:Y";
     static constexpr char PREFIX_NORMALIZED_NOT_SO[] = "@normalized:N";
+    static constexpr char PREFIX_NORMALIZED_NOT_CROSS_HAP_FILE[] = "@normalized:N&&&";
     static constexpr char PREFIX_BUNDLE[] = "@bundle:";
     static constexpr char PREFIX_MODULE[] = "@module:";
     static constexpr char PREFIX_PACKAGE[] = "@package:";
@@ -107,6 +108,7 @@ public:
     static constexpr size_t PREFIX_BUNDLE_LEN = 8;
     static constexpr size_t PREFIX_MODULE_LEN = 8;
     static constexpr size_t PREFIX_PACKAGE_LEN = 9;
+    static constexpr size_t PREFIX_NORMALIZED_LEN = 15;
     static constexpr size_t PACKAGE_PATH_SEGMENT_LEN = 11;
     static constexpr size_t NATIVE_PREFIX_SIZE = 8;
     static constexpr size_t OHOS_PREFIX_SIZE = 6;
