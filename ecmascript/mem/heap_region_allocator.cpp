@@ -44,7 +44,9 @@ Region *HeapRegionAllocator::AllocateAlignedRegion(Space *space, size_t capacity
     if (mapMem == nullptr) { // LOCV_EXCL_BR_LINE
         if (thread != nullptr && thread->GetEcmaVM()->IsInitialized()) {
             Heap *localHeap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-            localHeap->DumpHeapSnapshotBeforeOOM();
+            if (!localHeap->InGC()) {
+                localHeap->DumpHeapSnapshotBeforeOOM();
+            }
             heap->ThrowOutOfMemoryErrorForDefault(thread, DEFAULT_REGION_SIZE,
                 "HeapRegionAllocator::AllocateAlignedRegion", false);
         }

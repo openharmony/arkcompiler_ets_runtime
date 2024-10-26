@@ -269,6 +269,16 @@ public:
         isVerifying_ = verifying;
     }
 
+    void SetGCState(bool inGC)
+    {
+        inGC_ = inGC;
+    }
+
+    bool InGC() const
+    {
+        return inGC_;
+    }
+
     void NotifyHeapAliveSizeAfterGC(size_t size)
     {
         heapAliveSizeAfterGC_ = size;
@@ -372,6 +382,7 @@ protected:
                 LOG_GC(FATAL) << "Recursion in HeapCollectGarbage(isShared=" << static_cast<int>(heapType_)
                               << ") Constructor, depth: " << heap_->recursionDepth_;
             }
+            heap_->SetGCState(true);
         }
         ~RecursionScope()
         {
@@ -379,6 +390,7 @@ protected:
                 LOG_GC(FATAL) << "Recursion in HeapCollectGarbage(isShared=" << static_cast<int>(heapType_)
                               << ") Destructor, depth: " << heap_->recursionDepth_;
             }
+            heap_->SetGCState(false);
         }
     private:
         BaseHeap *heap_ {nullptr};
@@ -416,6 +428,7 @@ protected:
     // ONLY used for heap verification.
     bool shouldVerifyHeap_ {false};
     bool isVerifying_ {false};
+    bool inGC_ {false};
     int32_t recursionDepth_ {0};
 #ifndef NDEBUG
     bool triggerCollectionOnNewObject_ {true};
