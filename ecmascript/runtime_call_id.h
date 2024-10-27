@@ -1243,7 +1243,7 @@ namespace panda::ecmascript {
     V(ParallelUpdateReference)       \
     V(WaitUpdateFinished)            \
     V(UpdateRoot)                    \
-    V(UpdateWeakReference)           \
+    V(UpdateWeakReferenceOpt)        \
     V(ParallelEvacuator)             \
     V(ParallelEvacuatorInitialize)   \
     V(ParallelEvacuatorFinalize)     \

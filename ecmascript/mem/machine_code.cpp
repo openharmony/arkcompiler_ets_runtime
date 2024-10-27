@@ -37,7 +37,9 @@ static bool SetPageProtect(uint8_t *textStart, size_t dataSize)
 static int MachineCodeCopyToCache([[maybe_unused]] const MachineCodeDesc &desc, [[maybe_unused]] uint8_t *pText)
 {
 #ifndef JIT_ENABLE_CODE_SIGN
-    if (memcpy_s(pText, desc.codeSizeAlign, reinterpret_cast<uint8_t*>(desc.codeAddr), desc.codeSize) != EOK) {
+    if (memcpy_s(pText, desc.codeSizeAlign, // LCOV_EXCL_BR_LINE
+        reinterpret_cast<uint8_t*>(desc.codeAddr),
+        desc.codeSize) != EOK) {
         LOG_JIT(ERROR) << "memcpy failed in CopyToCache";
         return false;
     }
@@ -50,9 +52,9 @@ bool MachineCode::SetText(const MachineCodeDesc &desc)
     uint8_t *textStart = reinterpret_cast<uint8_t*>(GetText());
     uint8_t *pText = textStart;
     if (desc.rodataSizeBeforeTextAlign != 0) {
-        if (memcpy_s(pText, desc.rodataSizeBeforeTextAlign,
+        if (memcpy_s(pText, desc.rodataSizeBeforeTextAlign, // LCOV_EXCL_BR_LINE
             reinterpret_cast<uint8_t*>(desc.rodataAddrBeforeText),
-            desc.rodataSizeBeforeText) != EOK) { // LCOV_EXCL_BR_LINE
+            desc.rodataSizeBeforeText) != EOK) {
             LOG_JIT(ERROR) << "memcpy fail in copy fast jit code";
             return false;
         }
@@ -66,9 +68,9 @@ bool MachineCode::SetText(const MachineCodeDesc &desc)
     }
     pText += desc.codeSizeAlign;
     if (desc.rodataSizeAfterTextAlign != 0) {
-        if (memcpy_s(pText, desc.rodataSizeAfterTextAlign,
+        if (memcpy_s(pText, desc.rodataSizeAfterTextAlign, // LCOV_EXCL_BR_LINE
             reinterpret_cast<uint8_t*>(desc.rodataAddrAfterText),
-            desc.rodataSizeAfterText) != EOK) { // LCOV_EXCL_BR_LINE
+            desc.rodataSizeAfterText) != EOK) {
             LOG_JIT(ERROR) << "memcpy fail in copy fast jit code";
             return false;
         }
@@ -80,9 +82,9 @@ bool MachineCode::SetNonText(const MachineCodeDesc &desc, EntityId methodId)
 {
     uint8_t *textStart = reinterpret_cast<uint8_t*>(GetText());
     uint8_t *stackmapAddr = GetStackMapOrOffsetTableAddress();
-    if (memcpy_s(stackmapAddr, desc.stackMapOrOffsetTableSize,
+    if (memcpy_s(stackmapAddr, desc.stackMapOrOffsetTableSize, // LCOV_EXCL_BR_LINE
                  reinterpret_cast<uint8_t*>(desc.stackMapOrOffsetTableAddr),
-                 desc.stackMapOrOffsetTableSize) != EOK) { // LCOV_EXCL_BR_LINE
+                 desc.stackMapOrOffsetTableSize) != EOK) {
         LOG_JIT(ERROR) << "memcpy fail in copy fast jit stackmap";
         return false;
     }
@@ -196,9 +198,9 @@ bool MachineCode::SetBaselineCodeData(const MachineCodeDesc &desc,
     pText += instrSizeAlign;
 
     uint8_t *stackmapAddr = GetStackMapOrOffsetTableAddress();
-    if (memcpy_s(stackmapAddr, desc.stackMapOrOffsetTableSize,
+    if (memcpy_s(stackmapAddr, desc.stackMapOrOffsetTableSize, // LCOV_EXCL_BR_LINE
                  reinterpret_cast<uint8_t*>(desc.stackMapOrOffsetTableAddr),
-                 desc.stackMapOrOffsetTableSize) != EOK) { // LCOV_EXCL_BR_LINE
+                 desc.stackMapOrOffsetTableSize) != EOK) {
         LOG_BASELINEJIT(ERROR) << "memcpy fail in copy fast baselineJIT offsetTable";
         return false;
     }
