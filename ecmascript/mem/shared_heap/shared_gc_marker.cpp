@@ -68,6 +68,7 @@ void SharedGCMarkerBase::CollectLocalVMRSet(EcmaVM *localVm)
     Heap *heap = const_cast<Heap*>(localVm->GetHeap());
     RSetWorkListHandler *handler = new RSetWorkListHandler(heap);
     heap->SetRSetWorkListHandler(handler);
+    heap->SetProcessingRset(true);
     rSetHandlers_.emplace_back(handler);
 }
 

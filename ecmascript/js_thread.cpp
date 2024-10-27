@@ -800,6 +800,11 @@ bool JSThread::CheckSafepoint()
     }
 #endif
     auto heap = const_cast<Heap *>(GetEcmaVM()->GetHeap());
+    // Do not trigger local gc during the shared gc processRset process.
+    if (heap->IsProcessingRset()) {
+        return false;
+    }
+
     // Handle exit app senstive scene
     heap->HandleExitHighSensitiveEvent();
 
