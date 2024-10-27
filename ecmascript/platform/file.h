@@ -71,8 +71,7 @@ void DPrintf(fd_t fd, const std::string &buffer);
 void Close(fd_t fd);
 void FSync(fd_t fd);
 MemMap PUBLIC_API FileMap(const char *fileName, int flag, int prot, int64_t offset = 0);
-MemMap PUBLIC_API FileMapForAlignAddress(const char *fileName, int flag, int prot,
-                                         int64_t offset, uint32_t offStart);
+MemMap PUBLIC_API FileMapForAlignAddressByFd(const fd_t fd, int prot, int64_t offset, uint32_t offStart);
 int PUBLIC_API FileUnMap(MemMap addr);
 CString ResolveFilenameFromNative(JSThread *thread, const CString &dirname, CString request);
 bool PUBLIC_API FileExist(const char *filename);

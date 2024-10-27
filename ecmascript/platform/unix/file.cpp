@@ -117,23 +117,19 @@ MemMap FileMap(const char *fileName, int flag, int prot, int64_t offset)
     return MemMap(addr, size);
 }
 
-MemMap FileMapForAlignAddress(const char *fileName, int flag, int prot,
-                              int64_t offset, uint32_t offStart)
+MemMap FileMapForAlignAddressByFd(const fd_t fd, int prot, int64_t offset, uint32_t offStart)
 {
-    fd_t fd = open(fileName, flag);
     if (fd == INVALID_FD) {
-        LOG_ECMA(ERROR) << fileName << " file open failed";
+        LOG_ECMA(ERROR) << fd << " fd open failed";
         return MemMap();
     }
 
     off_t size = lseek(fd, 0, SEEK_END);
     if (size <= 0) {
-        close(fd);
-        LOG_ECMA(ERROR) << fileName << " file is empty";
+        LOG_ECMA(ERROR) << fd << " fd is empty";
         return MemMap();
     }
     void *addr = mmap(nullptr, size + offset - offStart, prot, MAP_PRIVATE, fd, offStart);
-    close(fd);
     return MemMap(addr, size);
 }
 
