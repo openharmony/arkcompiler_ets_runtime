@@ -20,10 +20,11 @@
 #include "ecmascript/global_env_constants.h"
 #include "ecmascript/js_runtime_options.h"
 #include "ecmascript/js_thread.h"
-#include "ecmascript/platform/mutex.h"
 #include "ecmascript/mem/heap.h"
 #include "ecmascript/module/js_shared_module_manager.h"
 #include "ecmascript/mutator_lock.h"
+#include "ecmascript/platform/mutex.h"
+#include "ecmascript/serializer/serialize_chunk.h"
 
 #include "libpandabase/macros.h"
 
@@ -98,25 +99,25 @@ public:
         return stringTable_.get();
     }
 
-    inline std::pair<JSTaggedType *, size_t> GetSerializeRootMapValue([[maybe_unused]] JSThread *thread,
+    inline SerializationChunk *GetSerializeRootMapValue([[maybe_unused]] JSThread *thread,
         uint32_t dataIndex)
     {
         ASSERT(thread->IsInManagedState());
         LockHolder lock(serializeLock_);
         auto iter = serializeRootMap_.find(dataIndex);
         if (iter == serializeRootMap_.end()) {
-            return std::make_pair(nullptr, 0);
+            return nullptr;
         }
-        return std::make_pair(iter->second.data(), iter->second.size());
+        return iter->second.get();
     }
 
-    uint32_t PushSerializationRoot([[maybe_unused]] JSThread *thread, std::vector<JSTaggedType> &rootSet)
+    uint32_t PushSerializationRoot([[maybe_unused]] JSThread *thread, std::unique_ptr<SerializationChunk> chunk)
     {
         ASSERT(thread->IsInManagedState());
         LockHolder lock(serializeLock_);
         uint32_t index = GetSerializeDataIndex();
         ASSERT(serializeRootMap_.find(index) == serializeRootMap_.end());
-        serializeRootMap_.emplace(index, rootSet);
+        serializeRootMap_.emplace(index, std::move(chunk));
         return index;
     }
 
@@ -264,7 +265,7 @@ private:
     std::unique_ptr<HeapRegionAllocator> heapRegionAllocator_;
     // for stringTable.
     std::unique_ptr<EcmaStringTable> stringTable_;
-    std::unordered_map<uint32_t, std::vector<JSTaggedType>> serializeRootMap_;
+    std::unordered_map<uint32_t, std::unique_ptr<SerializationChunk>> serializeRootMap_;
     std::vector<uint32_t> serializeDataIndexVector_;
 
     // Shared constantpool cache

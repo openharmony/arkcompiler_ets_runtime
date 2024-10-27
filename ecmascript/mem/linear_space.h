@@ -29,10 +29,7 @@ public:
     void Stop();
     void ResetAllocator();
     void IterateOverObjects(const std::function<void(TaggedObject *object)> &objectVisitor) const;
-    void DecreaseSurvivalObjectSize(size_t objSize)
-    {
-        survivalObjectSize_ -= objSize;
-    }
+
     const uintptr_t *GetAllocationTopAddress()
     {
         return allocator_.GetTopAddress();

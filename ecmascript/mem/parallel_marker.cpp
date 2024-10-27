@@ -115,7 +115,6 @@ void NonMovableMarker::MarkJitCodeMap(uint32_t threadId)
 
 void NonMovableMarker::ProcessMarkStack(uint32_t threadId)
 {
-    TRACE_GC(GCStats::Scope::ScopeId::ProcessMarkStack, heap_->GetEcmaVM()->GetEcmaGCStats());
     bool isFullMark = heap_->IsConcurrentFullMark();
     auto cb = [&](ObjectSlot s, Region *rootRegion, bool needBarrier) {
         MarkValue(threadId, s, rootRegion, needBarrier);
@@ -156,7 +155,6 @@ void NonMovableMarker::ProcessMarkStack(uint32_t threadId)
 
 void NonMovableMarker::ProcessIncrementalMarkStack(uint32_t threadId, uint32_t markStepSize)
 {
-    TRACE_GC(GCStats::Scope::ScopeId::ProcessMarkStack, heap_->GetEcmaVM()->GetEcmaGCStats());
     bool isFullMark = heap_->IsConcurrentFullMark();
     uint32_t visitAddrNum = 0;
     auto cb = [&](ObjectSlot s, Region *rootRegion, bool needBarrier) {
@@ -208,7 +206,6 @@ void SemiGCMarker::Initialize()
 
 void SemiGCMarker::ProcessMarkStack(uint32_t threadId)
 {
-    TRACE_GC(GCStats::Scope::ScopeId::ProcessMarkStack, heap_->GetEcmaVM()->GetEcmaGCStats());
     auto cb = [&](ObjectSlot s, TaggedObject *root) { MarkValue(threadId, root, s); };
     EcmaObjectRangeVisitor visitor = [this, threadId, cb](TaggedObject *root, ObjectSlot start,
                                                           ObjectSlot end, VisitObjectArea area) {
@@ -230,7 +227,6 @@ void SemiGCMarker::ProcessMarkStack(uint32_t threadId)
 
 void CompressGCMarker::ProcessMarkStack(uint32_t threadId)
 {
-    TRACE_GC(GCStats::Scope::ScopeId::ProcessMarkStack, heap_->GetEcmaVM()->GetEcmaGCStats());
     auto cb = [&](ObjectSlot s, [[maybe_unused]] TaggedObject *root) { MarkValue(threadId, s); };
     EcmaObjectRangeVisitor visitor = [this, threadId, cb](TaggedObject *root, ObjectSlot start,
                                                           ObjectSlot end, VisitObjectArea area) {
