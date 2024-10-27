@@ -20,6 +20,7 @@
 #include "ecmascript/mem/concurrent_marker.h"
 #include "ecmascript/mem/partial_gc.h"
 #include "ecmascript/mem/incremental_marker.h"
+#include "ecmascript/mem/shared_heap/shared_concurrent_marker.h"
 #include "ecmascript/tests/ecma_test_common.h"
 
 using namespace panda;
@@ -448,6 +449,140 @@ HWTEST_F_L0(GCTest, TriggerIdleCollectionTest007)
     ASSERT_EQ(heap->GetIncrementalMarker()->GetIncrementalGCStates(), IncrementalGCStates::ROOT_SCAN);
     heap->GetIncrementalMarker()->TriggerIncrementalMark(1000);
     heap->TriggerIdleCollection(1000);
+}
+
+HWTEST_F_L0(GCTest, CheckAndTriggerSharedGCTest002)
+{
+    SharedHeap *heap = SharedHeap::GetInstance();
+    heap->GetOldSpace()->SetInitialCapacity(100);
+    ASSERT_EQ(heap->CheckAndTriggerSharedGC(thread), true);
+}
+
+HWTEST_F_L0(GCTest, CheckAndTriggerSharedGCTest003)
+{
+    SharedHeap *heap = SharedHeap::GetInstance();
+    heap->GetOldSpace()->SetInitialCapacity(100);
+    thread->SetSharedMarkStatus(SharedMarkStatus::CONCURRENT_MARKING_OR_FINISHED);
+    ASSERT_EQ(heap->CheckAndTriggerSharedGC(thread), true);
+}
+
+HWTEST_F_L0(GCTest, CheckAndTriggerSharedGCTest004)
+{
+    SharedHeap *heap = SharedHeap::GetInstance();
+    thread->SetSharedMarkStatus(SharedMarkStatus::CONCURRENT_MARKING_OR_FINISHED);
+    ASSERT_EQ(heap->CheckAndTriggerSharedGC(thread), false);
+}
+
+HWTEST_F_L0(GCTest, CheckHugeAndTriggerSharedGCTest003)
+{
+    SharedHeap *heap = SharedHeap::GetInstance();
+    heap->GetOldSpace()->SetInitialCapacity(100);
+    ASSERT_EQ(heap->CheckHugeAndTriggerSharedGC(thread, 1), false);
+}
+
+HWTEST_F_L0(GCTest, CheckHugeAndTriggerSharedGCTest004)
+{
+    SharedHeap *heap = SharedHeap::GetInstance();
+    heap->GetOldSpace()->SetInitialCapacity(100);
+    thread->SetSharedMarkStatus(SharedMarkStatus::CONCURRENT_MARKING_OR_FINISHED);
+    ASSERT_EQ(heap->CheckHugeAndTriggerSharedGC(thread, 1), false);
+}
+
+HWTEST_F_L0(GCTest, CheckHugeAndTriggerSharedGCTest005)
+{
+    SharedHeap *heap = SharedHeap::GetInstance();
+    thread->SetSharedMarkStatus(SharedMarkStatus::CONCURRENT_MARKING_OR_FINISHED);
+    ASSERT_EQ(heap->CheckHugeAndTriggerSharedGC(thread, 1), false);
+}
+
+HWTEST_F_L0(GCTest, CheckOngoingConcurrentMarkingTest001)
+{
+    SharedHeap *heap = SharedHeap::GetInstance();
+    heap->GetConcurrentMarker()->ConfigConcurrentMark(false);
+    ASSERT_EQ(heap->CheckOngoingConcurrentMarking(), false);
+}
+
+HWTEST_F_L0(GCTest, CheckOngoingConcurrentMarkingTest002)
+{
+    SharedHeap *heap = SharedHeap::GetInstance();
+    heap->GetConcurrentMarker()->ConfigConcurrentMark(true);
+    ASSERT_EQ(heap->CheckOngoingConcurrentMarking(), false);
+}
+
+HWTEST_F_L0(GCTest, SelectGCTypeTest001)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    heap->GetOldSpace()->SetInitialCapacity(100);
+    ASSERT_EQ(heap->SelectGCType(), OLD_GC);
+}
+
+HWTEST_F_L0(GCTest, SelectGCTypeTest002)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    heap->GetOldSpace()->SetMaximumCapacity(1000);
+    heap->GetOldSpace()->SetOvershootSize(1000);
+    heap->GetNewSpace()->IncreaseCommitted(100000);
+    ASSERT_EQ(heap->SelectGCType(), OLD_GC);
+}
+
+HWTEST_F_L0(GCTest, CollectGarbageTest004)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    thread->EnableCrossThreadExecution();
+    heap->CollectGarbage(TriggerGCType::EDEN_GC, GCReason::TRIGGER_BY_TASKPOOL);
+}
+
+HWTEST_F_L0(GCTest, CollectGarbageTest005)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    heap->SetOnSerializeEvent(true);
+    heap->CollectGarbage(TriggerGCType::EDEN_GC, GCReason::TRIGGER_BY_TASKPOOL);
+}
+
+HWTEST_F_L0(GCTest, CollectGarbageTest006)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    heap->SetOnSerializeEvent(true);
+    thread->EnableCrossThreadExecution();
+    heap->CollectGarbage(TriggerGCType::EDEN_GC, GCReason::TRIGGER_BY_TASKPOOL);
+}
+
+HWTEST_F_L0(GCTest, CollectGarbageTest007)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    heap->GetConcurrentMarker()->ConfigConcurrentMark(false);
+    heap->CollectGarbage(TriggerGCType::EDEN_GC, GCReason::TRIGGER_BY_TASKPOOL);
+}
+
+HWTEST_F_L0(GCTest, CollectGarbageTest008)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    heap->GetIncrementalMarker()->TriggerIncrementalMark(1000);
+    heap->CollectGarbage(TriggerGCType::YOUNG_GC, GCReason::TRIGGER_BY_TASKPOOL);
+}
+
+HWTEST_F_L0(GCTest, CollectGarbageTest009)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    heap->GetConcurrentMarker()->EnableConcurrentMarking(EnableConcurrentMarkType::REQUEST_DISABLE);
+    ASSERT_TRUE(heap->GetConcurrentMarker()->IsRequestDisabled());
+    heap->CollectGarbage(TriggerGCType::YOUNG_GC, GCReason::TRIGGER_BY_TASKPOOL);
+}
+
+HWTEST_F_L0(GCTest, AdjustBySurvivalRateTest001)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    heap->SetMarkType(MarkType::MARK_EDEN);
+    heap->AdjustBySurvivalRate(100);
+    heap->SetMarkType(MarkType::MARK_YOUNG);
+    heap->AdjustBySurvivalRate(100);
+}
+
+HWTEST_F_L0(GCTest, TryTriggerIdleCollectionTest007)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    heap->SetIdleTask(IdleTaskType::NO_TASK);
+    heap->TryTriggerIdleCollection();
 }
 
 } // namespace panda::test
