@@ -107,6 +107,38 @@ GateRef NewObjectStubBuilder::NewJSArrayWithSize(GateRef hclass, GateRef size)
     return result;
 }
 
+GateRef NewObjectStubBuilder::NewEmptyJSArrayWithHClass(GateRef hclass)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    Label exit(env);
+    env->SubCfgEntry(&entry);
+    GateRef result = NewJSObject(glue_, hclass);
+    Label enabledElementsKind(env);
+    Label initObj(env);
+    GateRef isElementsKindEnabled = IsEnableElementsKind(glue_);
+    DEFVARIABLE(array, VariableType::JS_ANY(), Undefined());
+    BRANCH_UNLIKELY(isElementsKindEnabled, &enabledElementsKind, &initObj);
+    Bind(&enabledElementsKind);
+    {
+        Label initMutantArray(env);
+        GateRef kind = GetElementsKindFromHClass(hclass);
+        GateRef needMutant = BitOr(ElementsKindIsIntOrHoleInt(kind), ElementsKindIsNumOrHoleNum(kind));
+        BRANCH_NO_WEIGHT(needMutant, &initMutantArray, &initObj);
+        Bind(&initMutantArray);
+        {
+            NewMutantTaggedArrayChecked(&array, Int32(0), &exit);
+        }
+    }
+    Bind(&initObj);
+    NewTaggedArrayChecked(&array, Int32(0), &exit);
+    Bind(&exit);
+    auto arrayRet = *array;
+    env->SubCfgExit();
+    SetElementsArray(VariableType::JS_POINTER(), glue_, result, arrayRet);
+    return result;
+}
+
 GateRef NewObjectStubBuilder::NewJSFunctionByHClass(GateRef glue,
     GateRef method, GateRef hclass, FunctionKind targetKind)
 {

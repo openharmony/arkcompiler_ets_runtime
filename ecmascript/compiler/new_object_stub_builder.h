@@ -78,6 +78,7 @@ public:
     void ExtendMutantArray(Variable *result, GateRef glue, GateRef elements, GateRef newLen, Label *exit,
                            RegionSpaceFlag spaceType = RegionSpaceFlag::IN_YOUNG_SPACE);
     GateRef NewJSArrayWithSize(GateRef hclass, GateRef size);
+    GateRef NewEmptyJSArrayWithHClass(GateRef hclass);
     GateRef NewJSForinIterator(GateRef glue, GateRef receiver, GateRef keys, GateRef cachedHclass);
     GateRef LoadHClassFromMethod(GateRef glue, GateRef method);
     GateRef LoadSHClassFromMethod(GateRef glue, GateRef method);
