@@ -1971,7 +1971,8 @@ void Heap::CheckAndTriggerTaskFinishedGC()
         nativeSizeOfTaskFinished - nativeSizeOfTaskBegin > std::max(TRIGGER_OLDGC_NATIVE_SIZE_LIMIT,
             TRIGGER_OLDGC_NATIVE_LIMIT_RATE * nativeSizeOfTaskBegin);
     if (objectSizeFlag || nativeSizeFlag) {
-        CollectGarbage(TriggerGCType::OLD_GC, GCReason::TRIGGER_BY_TASKPOOL);
+        panda::JSNApi::TriggerGC(GetEcmaVM(), panda::ecmascript::GCReason::TRIGGER_BY_TASKPOOL,
+            panda::JSNApi::TRIGGER_GC_TYPE::OLD_GC);
         RecordOrResetObjectSize(0);
         RecordOrResetNativeSize(0);
     }
