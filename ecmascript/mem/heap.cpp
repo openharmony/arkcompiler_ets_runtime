@@ -1719,7 +1719,7 @@ bool Heap::CheckAndTriggerHintGC(MemoryReduceDegree degree, GCReason reason)
             }
             return result;
         }
-        default:
+        default: // LCOV_EXCL_BR_LINE
             LOG_GC(INFO) << "HintGC invalid degree value: " << static_cast<int>(degree);
             break;
     }
