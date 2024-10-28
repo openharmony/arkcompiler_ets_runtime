@@ -200,7 +200,6 @@ public:
     {
         ctx_->GetBytecodeInfo().AddSkippedMethod(methodOffset_);
         methodInfo_->SetIsCompiled(false);
-        log_->RemoveCompiledMethod(methodName_, recordName_);
     }
 
 private:

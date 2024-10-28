@@ -27,7 +27,7 @@
 namespace panda::ecmascript::filesystem {
 bool CreateDirectory(const std::string& path)
 {
-    if (path.empty()) {
+    if (path.empty() || Exists(path)) {
         return true;
     }
     auto pos = path.find_last_of('/');

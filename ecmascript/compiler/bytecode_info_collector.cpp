@@ -119,8 +119,8 @@ void BytecodeInfoCollector::ProcessClasses()
             pfDecoder_.MatchAndMarkMethod(jsPandaFile_, *recordNamePtr, name.c_str(), methodId);
         });
     }
-    LOG_COMPILER(INFO) << "Total number of methods in file: " << jsPandaFile_->GetJSPandaFileDesc()
-                       << " is: " << methodIdx;
+    LOG_COMPILER(INFO) << "total number of methods in file " << jsPandaFile_->GetJSPandaFileDesc() << " is "
+                       << methodIdx;
 }
 
 void BytecodeInfoCollector::ProcessCurrMethod()

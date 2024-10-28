@@ -41,7 +41,7 @@ Runtime::~Runtime()
     LockHolder lock(constpoolLock_);
     auto iter = globalSharedConstpools_.begin();
     while (iter != globalSharedConstpools_.end()) {
-        LOG_ECMA(INFO) << "remove js pandafile by vm destruct, file:" << iter->first->GetJSPandaFileDesc();
+        LOG_ECMA(INFO) << "remove js pandafile by vm destruct, file: " << iter->first->GetJSPandaFileDesc();
         JSPandaFileManager::GetInstance()->RemoveJSPandaFile(iter->first);
         iter->second.clear();
         iter++;

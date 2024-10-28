@@ -508,6 +508,8 @@ public:
     static ConstantIndex GetConstantIndex(ID builtinId)
     {
         switch (builtinId) {
+            case BuiltinsStubCSigns::ID::NONE:
+                return ConstantIndex::INVALID;
             case BuiltinsStubCSigns::ID::MathAcos:
                 return ConstantIndex::MATH_ACOS_INDEX;
             case BuiltinsStubCSigns::ID::MathAcosh:
@@ -751,7 +753,7 @@ public:
             case BuiltinsStubCSigns::ID::GlobalDecodeURIComponent:
                 return ConstantIndex::GLOBAL_DECODE_URI_COMPONENT;
             default:
-                LOG_COMPILER(INFO) << "GetConstantIndex Invalid Id:" << builtinId;
+                LOG_COMPILER(DEBUG) << "GetConstantIndex Invalid Id:" << builtinId;
                 return ConstantIndex::INVALID;
         }
     }

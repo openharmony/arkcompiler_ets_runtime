@@ -369,6 +369,7 @@ bool PassManager::Compile(JSPandaFile *jsPandaFile, const std::string &fileName,
     compilerStats.SetCompilerMethodCount(cmpDriver.GetCompilerMethodCount());
     LOG_COMPILER(INFO) << collector.GetBytecodeInfo().GetSkippedMethodSize()
                        << " methods have been skipped";
+    LOG_COMPILER(INFO) << compilerStats.GetCompilerMethodCount() << " methods have been compiled";
     return true;
 }
 

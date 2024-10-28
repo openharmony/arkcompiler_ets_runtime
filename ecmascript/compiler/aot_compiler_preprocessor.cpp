@@ -463,14 +463,20 @@ void AotCompilerPreprocessor::GenerateMethodMap(CompilationOptions &cOptions)
             }
             auto methodId = methodLiteral->GetMethodId();
             const std::string methodName(MethodLiteral::GetMethodName(jsPandaFile, methodId));
-            bool isAotcompile = !IsSkipMethod(jsPandaFile, bytecodeInfo, MethodLiteral::GetRecordName(
-                jsPandaFile, EntityId(index)), methodLiteral, methodPcInfo, methodName, cOptions);
+            bool isAotCompile = !IsSkipMethod(jsPandaFile,
+                                              bytecodeInfo,
+                                              MethodLiteral::GetRecordName(jsPandaFile, EntityId(index)),
+                                              methodLiteral,
+                                              methodPcInfo,
+                                              methodName,
+                                              cOptions);
             bool isFastCall = methodLiteral->IsFastCall();
             CString fileDesc = jsPandaFile->GetNormalizedFileDesc();
             uint32_t offset = methodId.GetOffset();
-            callMethodFlagMap_.SetIsAotCompile(fileDesc, offset, isAotcompile);
+            callMethodFlagMap_.SetIsAotCompile(fileDesc, offset, isAotCompile);
             callMethodFlagMap_.SetIsFastCall(fileDesc, offset, isFastCall);
-            LOG_COMPILER(INFO) <<"!!!"<< fileDesc <<" "<< offset << " " << isAotcompile << " " << isFastCall;
+            LOG_COMPILER(INFO) << fileDesc << "->" << methodName << ", offset: " << offset
+                               << ", isAotCompile: " << isAotCompile << ", isFastCall: " << isFastCall;
         }
     }
 }

@@ -152,6 +152,9 @@ public:
 
     void PrintMergedCodeComment()
     {
+        if (codeStream_.str().empty()) {
+            return;
+        }
         LOG_COMPILER(INFO) << "\n" << codeStream_.str();
     }
 
