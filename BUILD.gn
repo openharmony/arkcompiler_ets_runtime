@@ -872,6 +872,7 @@ ecma_source = [
   "ecmascript/module/module_path_helper.cpp",
   "ecmascript/module/module_tools.cpp",
   "ecmascript/module/napi_module_loader.cpp",
+  "ecmascript/module/module_resolver.cpp",
   "ecmascript/mutator_lock.cpp",
   "ecmascript/napi/jsnapi.cpp",
   "ecmascript/napi/jsnapi_expo.cpp",

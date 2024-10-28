@@ -38,6 +38,7 @@
 #include "ecmascript/module/module_tools.h"
 #include "ecmascript/require/js_cjs_module.h"
 #include "ecmascript/module/module_manager_helper.h"
+#include "ecmascript/module/module_resolver.h"
 #include "ecmascript/ecma_vm.h"
 
 using namespace panda::ecmascript;
@@ -2381,7 +2382,7 @@ HWTEST_F_L0(EcmaModuleTest, HostResolveImportedModuleWithMerge)
 {
     ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
     JSHandle<SourceTextModule> module1 = objectFactory->NewSourceTextModule();
-
+    module1->SetEcmaModuleRecordNameString("test");
     JSHandle<SourceTextModule> module2 = objectFactory->NewSourceTextModule();
     CString recordName2 = "@ohos:hilog";
     module2->SetEcmaModuleRecordNameString(recordName2);
@@ -2389,17 +2390,17 @@ HWTEST_F_L0(EcmaModuleTest, HostResolveImportedModuleWithMerge)
 
     JSHandle<JSTaggedValue> nativeName = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("@ohos:hilog"));
     JSHandle<JSTaggedValue> res1 =
-        SourceTextModule::HostResolveImportedModuleWithMerge(thread, module1, nativeName, false);
+        ModuleResolver::HostResolveImportedModule(thread, module1, nativeName, false);
     EXPECT_TRUE(res1->IsSourceTextModule());
 
     thread->GetCurrentEcmaContext()->GetModuleManager()->AddResolveImportedModule(
         recordName2, module2.GetTaggedValue());
     JSHandle<JSTaggedValue> res2 =
-        SourceTextModule::HostResolveImportedModuleWithMerge(thread, module1, nativeName, false);
+        ModuleResolver::HostResolveImportedModule(thread, module1, nativeName, false);
     EXPECT_TRUE(res2->IsSourceTextModule());
 }
 
-HWTEST_F_L0(EcmaModuleTest, SourceTextModuleHostResolveImportedModule)
+HWTEST_F_L0(EcmaModuleTest, ModuleResolverHostResolveImportedModule)
 {
     ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
     JSHandle<SourceTextModule> module1 = objectFactory->NewSourceTextModule();
@@ -2413,7 +2414,7 @@ HWTEST_F_L0(EcmaModuleTest, SourceTextModuleHostResolveImportedModule)
     thread->GetCurrentEcmaContext()->GetModuleManager()->AddResolveImportedModule(
         recordName2, module2.GetTaggedValue());
     JSHandle<JSTaggedValue> res1 =
-        SourceTextModule::HostResolveImportedModule(thread, module1, nativeName, false);
+        ModuleResolver::HostResolveImportedModule(thread, module1, nativeName, false);
     EXPECT_TRUE(res1->IsSourceTextModule());
 }
 
@@ -3144,7 +3145,7 @@ HWTEST_F_L0(EcmaModuleTest, ReplaceModuleThroughFeature1)
     std::map<std::string, std::string> list;
     list.emplace(moduleName, moduleName);
     vm->SetMockModuleList(list);
-    CString res = SourceTextModule::ReplaceModuleThroughFeature(thread, moduleName);
+    CString res = ModuleResolver::ReplaceModuleThroughFeature(thread, moduleName);
     EXPECT_EQ(res, moduleName);
 }
 
@@ -3158,7 +3159,7 @@ HWTEST_F_L0(EcmaModuleTest, ReplaceModuleThroughFeature2)
     tmp.originalPath = "a";
     map.push_back(tmp);
     vm->SetHmsModuleList(map);
-    CString res = SourceTextModule::ReplaceModuleThroughFeature(thread, moduleName);
+    CString res = ModuleResolver::ReplaceModuleThroughFeature(thread, moduleName);
     EXPECT_EQ(res, moduleName);
 }
 

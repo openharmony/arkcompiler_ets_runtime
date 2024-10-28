@@ -18,6 +18,7 @@
 #include "ecmascript/jspandafile/js_pandafile_executor.h"
 #include "ecmascript/module/js_module_manager.h"
 #include "ecmascript/module/module_path_helper.h"
+#include "ecmascript/module/module_resolver.h"
 
 namespace panda::ecmascript {
 using PathHelper = base::PathHelper;
@@ -102,21 +103,12 @@ void ModuleDeregister::IncreaseRegisterCounts(JSThread *thread, JSHandle<SourceT
         for (size_t idx = 0; idx < requestedModulesLen; idx++) {
             required.Update(requestedModules->Get(idx));
             JSMutableHandle<SourceTextModule> requiredModule(thread, thread->GlobalConstants()->GetUndefined());
+            JSHandle<JSTaggedValue> requiredVal = ModuleResolver::HostResolveImportedModule(thread, module, required);
+            RETURN_IF_ABRUPT_COMPLETION(thread);
+            requiredModule.Update(JSHandle<SourceTextModule>::Cast(requiredVal));
             const CString moduleRecordName = module->GetEcmaModuleRecordNameString();
-            CString moduleName;
-            if (moduleRecordName.empty()) {
-                JSHandle<JSTaggedValue> requiredVal =
-                    SourceTextModule::HostResolveImportedModule(thread, module, required);
-                RETURN_IF_ABRUPT_COMPLETION(thread);
-                requiredModule.Update(JSHandle<SourceTextModule>::Cast(requiredVal));
-                moduleName = requiredModule->GetEcmaModuleFilenameString();
-            } else {
-                JSHandle<JSTaggedValue> requiredVal =
-                    SourceTextModule::HostResolveImportedModuleWithMerge(thread, module, required);
-                RETURN_IF_ABRUPT_COMPLETION(thread);
-                requiredModule.Update(JSHandle<SourceTextModule>::Cast(requiredVal));
-                moduleName = requiredModule->GetEcmaModuleRecordNameString();
-            }
+            CString moduleName =
+                moduleRecordName.empty() ? requiredModule->GetEcmaModuleFilenameString() : moduleRecordName;
             if (increaseModule.find(moduleName) != increaseModule.end()) {
                 LOG_FULL(DEBUG) << "Find module cyclical loading, stop increasing.";
                 requiredModule->SetLoadingTypes(LoadingTypes::STABLE_MODULE);
@@ -151,21 +143,12 @@ void ModuleDeregister::DecreaseRegisterCounts(JSThread *thread, JSHandle<SourceT
         for (size_t idx = 0; idx < requestedModulesLen; idx++) {
             required.Update(requestedModules->Get(idx));
             JSMutableHandle<SourceTextModule> requiredModule(thread, thread->GlobalConstants()->GetUndefined());
+            JSHandle<JSTaggedValue> requiredVal = ModuleResolver::HostResolveImportedModule(thread, module, required);
+            RETURN_IF_ABRUPT_COMPLETION(thread);
+            requiredModule.Update(JSHandle<SourceTextModule>::Cast(requiredVal));
             const CString moduleRecordName = module->GetEcmaModuleRecordNameString();
-            CString moduleName;
-            if (moduleRecordName.empty()) {
-                JSHandle<JSTaggedValue> requiredVal =
-                    SourceTextModule::HostResolveImportedModule(thread, module, required);
-                RETURN_IF_ABRUPT_COMPLETION(thread);
-                requiredModule.Update(JSHandle<SourceTextModule>::Cast(requiredVal));
-                moduleName = requiredModule->GetEcmaModuleFilenameString();
-            } else {
-                JSHandle<JSTaggedValue> requiredVal =
-                    SourceTextModule::HostResolveImportedModuleWithMerge(thread, module, required);
-                RETURN_IF_ABRUPT_COMPLETION(thread);
-                requiredModule.Update(JSHandle<SourceTextModule>::Cast(requiredVal));
-                moduleName = requiredModule->GetEcmaModuleRecordNameString();
-            }
+            CString moduleName =
+                moduleRecordName.empty() ? requiredModule->GetEcmaModuleFilenameString() : moduleRecordName;
             if (decreaseModule.find(moduleName) != decreaseModule.end()) {
                 LOG_FULL(DEBUG) << "Find module cyclical loading, stop increasing.";
                 requiredModule->SetLoadingTypes(LoadingTypes::STABLE_MODULE);
