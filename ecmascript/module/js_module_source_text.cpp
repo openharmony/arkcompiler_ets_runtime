@@ -1456,8 +1456,8 @@ JSTaggedValue SourceTextModule::FindByExport(const JSTaggedValue &exportEntriesT
 void SourceTextModule::StoreModuleValue(JSThread *thread, int32_t index, const JSHandle<JSTaggedValue> &value)
 {
     JSHandle<SourceTextModule> module(thread, this);
-    if (UNLIKELY(IsSharedModule(module)) && !value->IsJSShared()) {
-        CString msg = "Export non-shared object form shared-module, module name is :" +
+    if (UNLIKELY(IsSharedModule(module)) && !value->IsSharedType()) {
+        CString msg = "Export non-shared object from shared-module, module name is :" +
                     module->GetEcmaModuleRecordNameString();
         THROW_ERROR(thread, ErrorType::SYNTAX_ERROR, msg.c_str());
     }
@@ -1486,8 +1486,8 @@ void SourceTextModule::StoreModuleValue(JSThread *thread, const JSHandle<JSTagge
                                         const JSHandle<JSTaggedValue> &value)
 {
     JSHandle<SourceTextModule> module(thread, this);
-    if (UNLIKELY(IsSharedModule(module)) && !value->IsJSShared()) {
-        CString msg = "Export non-shared object form shared-module, module name is :" +
+    if (UNLIKELY(IsSharedModule(module)) && !value->IsSharedType()) {
+        CString msg = "Export non-shared object from shared-module, module name is :" +
                     module->GetEcmaModuleRecordNameString();
         THROW_ERROR(thread, ErrorType::SYNTAX_ERROR, msg.c_str());
     }

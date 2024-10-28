@@ -23,7 +23,7 @@
 // @ts-nocheck
 declare function print(str: any): string;
 
-import {foo} from "./string"
+import {strA, strB, numberC, booleanD,foo} from "./string"
 "use shared"
 
 export class A {
@@ -33,11 +33,13 @@ export class A {
     }
 }
 
-new A()
-
+new A();
+print(numberC);
+print(booleanD);
 import('./func').then(ns => {
     print(ns.h);
 }).then().catch((err) => {
     print(err);
 }
 )
+
