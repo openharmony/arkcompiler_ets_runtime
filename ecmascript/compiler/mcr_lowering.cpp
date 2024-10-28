@@ -506,7 +506,7 @@ void MCRLowering::LowerCheckAndConvert(GateRef gate)
             LowerCheckTaggedNumberAndConvert(gate, frameState, &exit);
             break;
         case ValueType::BOOL:
-            LowerCheckSupportAndConvert(gate, frameState);
+            LowerCheckSupportAndConvertBool(gate, frameState);
             break;
         case ValueType::TAGGED_NULL:
             LowerCheckNullAndConvert(gate, frameState);
@@ -627,7 +627,7 @@ void MCRLowering::LowerCheckTaggedNumberAndConvert(GateRef gate, GateRef frameSt
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
 }
 
-void MCRLowering::LowerCheckSupportAndConvert(GateRef gate, GateRef frameState)
+void MCRLowering::LowerCheckSupportAndConvertBool(GateRef gate, GateRef frameState)
 {
     ValueType dstType = acc_.GetDstType(gate);
     ASSERT(dstType == ValueType::INT32 || dstType == ValueType::FLOAT64);
@@ -635,6 +635,9 @@ void MCRLowering::LowerCheckSupportAndConvert(GateRef gate, GateRef frameState)
     GateRef value = acc_.GetValueIn(gate, 0);
 
     GateRef result = Circuit::NullGate();
+    if (acc_.GetMachineType(value) != MachineType::I1) {
+        UNREACHABLE();
+    }
     if (dstType == ValueType::INT32) {
         builder_.DeoptCheck(builder_.Boolean(support), frameState, DeoptType::NOTINT2);
         result = builder_.BooleanToInt32(value);
