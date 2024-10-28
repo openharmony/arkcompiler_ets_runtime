@@ -251,6 +251,7 @@ void CgFuncPM::EmitGlobalInfo(MIRModule &m) const
     cg->template Emit<CG::EmitterType::AsmEmitter>([](Emitter* emitter) {
         emitter->EmitGlobalVariable();
         emitter->CloseOutput();
+        emitter->WriteDebugCommentToFile();
     });
 }
 

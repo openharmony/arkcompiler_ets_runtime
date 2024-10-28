@@ -36,7 +36,7 @@ declare_args() {
   enable_jit_code_sign = false
   disable_fort_switch = false
 
-  enable_litecg_emit = false
+  enable_litecg_emit = true
 
   is_qemu_runtime = false
 
