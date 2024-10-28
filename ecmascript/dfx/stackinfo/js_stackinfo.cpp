@@ -13,22 +13,23 @@
  * limitations under the License.
  */
 
+
 #include <sys/time.h>
 
 #include "ecmascript/dfx/stackinfo/js_stackinfo.h"
-#include "ecmascript/jit/jit.h"
 #include "ecmascript/platform/aot_crash_info.h"
 #include "ecmascript/platform/os.h"
 #include "ecmascript/stubs/runtime_stubs-inl.h"
+#include "ecmascript/jit/jit.h"
 #if defined(PANDA_TARGET_OHOS)
 #include "ecmascript/extractortool/src/extractor.h"
 #endif
 #if defined(ENABLE_EXCEPTION_BACKTRACE)
 #include "ecmascript/platform/backtrace.h"
 #endif
-
 namespace panda::ecmascript {
 [[maybe_unused]] static bool g_needCheck = true;
+
 std::unordered_map<EntityId, std::string> JsStackInfo::nameMap;
 std::unordered_map<EntityId, std::vector<uint8>> JsStackInfo::machineCodeMap;
 
@@ -497,7 +498,7 @@ CVector<MethodInfo> JSStackTrace::ReadAllMethodInfos(std::shared_ptr<JSPandaFile
 {
     CVector<MethodInfo> result;
     if (jsPandaFile == nullptr) {
-        LOG_ECMA(ERROR) << "Failed to read all methods info.";
+        LOG_ECMA(ERROR) << "Read all methods info in file failed, file is nullptr.";
         return result;
     }
     const panda_file::File *pf = jsPandaFile->GetPandaFile();
@@ -1561,7 +1562,7 @@ bool ArkParseJSFileInfo([[maybe_unused]] uintptr_t byteCodePc, [[maybe_unused]] 
         extractor->CreateJSPandaFile();
     }
     ret = ArkParseJsFrameInfo(byteCodePc, methodId, mapBase, extractor->GetLoadOffset(),
-            extractor->GetData(), extractor->GetDataSize(), extractorptr, jsFunction);
+                              extractor->GetData(), extractor->GetDataSize(), extractorptr, jsFunction);
 #endif
     return ret;
 }
