@@ -1702,6 +1702,7 @@ void Builtins::InitializeMath(const JSHandle<GlobalEnv> &env, const JSHandle<JST
     // @@ToStringTag
     SetStringTagSymbol(env, mathObject, "Math");
     env->SetMathFunction(thread_, mathObject);
+    env->SetMathFunctionClass(thread_, JSHandle<JSHClass>(thread_, mathObject->GetJSHClass()));
 }
 
 void Builtins::InitializeJson(const JSHandle<GlobalEnv> &env, const JSHandle<JSTaggedValue> &objFuncPrototypeVal) const
