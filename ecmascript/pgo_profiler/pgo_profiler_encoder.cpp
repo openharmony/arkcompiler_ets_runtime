@@ -38,8 +38,11 @@ namespace panda::ecmascript::pgo {
 void PGOProfilerEncoder::Destroy()
 {
     LockHolder lock(mutex_);
-    pandaFileInfos_->Clear();
-    abcFilePool_->Clear();
+    {
+        WriteLockHolder rwLock(rwLock_);
+        pandaFileInfos_->Clear();
+        abcFilePool_->Clear();
+    }
     if (!isProfilingInitialized_) {
         return;
     }
@@ -130,6 +133,7 @@ void PGOProfilerEncoder::Merge(const PGORecordDetailInfos &recordInfos)
 
 void PGOProfilerEncoder::Merge(const PGOPandaFileInfos &pandaFileInfos)
 {
+    WriteLockHolder lock(rwLock_);
     return pandaFileInfos_->Merge(pandaFileInfos);
 }
 
@@ -166,7 +170,10 @@ void PGOProfilerEncoder::MergeWithExistProfile(PGOProfilerEncoder &runtimeEncode
 
     // copy abcFilePool from runtime to temp merger.
     ASSERT(abcFilePool_->GetPool()->Empty());
-    abcFilePool_->Copy(runtimeEncoder.abcFilePool_);
+    {
+        WriteLockHolder lock(rwLock_);
+        abcFilePool_->Copy(runtimeEncoder.abcFilePool_);
+    }
     if (!decoder.LoadFull(abcFilePool_)) {
         LOG_ECMA(ERROR) << "Fail to load ap: " << realOutPath_;
     } else {
