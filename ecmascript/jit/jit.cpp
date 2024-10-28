@@ -517,6 +517,21 @@ bool Jit::CheckJitCompileStatus(JSHandle<JSFunction> &jsFunction,
     return true;
 }
 
+uint32_t Jit::GetRunningTaskCnt(EcmaVM *vm)
+{
+    uint32_t cnt = 0;
+    JitTaskpool::GetCurrentTaskpool()->ForEachTask([&cnt, &vm](Task *task) {
+        JitTask::AsyncTask *asyncTask = static_cast<JitTask::AsyncTask*>(task);
+        if (asyncTask->GetHostVM() == vm) {
+            cnt ++;
+        }
+    });
+    LockHolder holder(threadTaskInfoLock_);
+    ThreadTaskInfo &info = threadTaskInfo_[vm->GetJSThread()];
+    auto &taskQueue = info.installJitTasks_;
+    return taskQueue.size() + cnt;
+}
+
 void Jit::InstallTasks(JSThread *jsThread)
 {
     LockHolder holder(threadTaskInfoLock_);
