@@ -350,7 +350,7 @@ void SparseSpace::DetachFreeObjectSet(Region *region)
 void SparseSpace::InvokeAllocationInspector(Address object, size_t size, size_t alignedSize)
 {
     ASSERT(size <= alignedSize);
-    if (LIKELY(!allocationCounter_.IsActive())) {
+    if (LIKELY(!allocationCounter_.IsActive())) { // LCOV_EXCL_BR_LINE
         return;
     }
     if (alignedSize >= allocationCounter_.NextBytes()) {

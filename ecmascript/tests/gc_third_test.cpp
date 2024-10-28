@@ -13,12 +13,17 @@
  * limitations under the License.
  */
 
+#include <chrono>
+#include <thread>
+
 #include "ecmascript/builtins/builtins_ark_tools.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/mem/full_gc.h"
 #include "ecmascript/object_factory-inl.h"
 #include "ecmascript/mem/concurrent_marker.h"
 #include "ecmascript/mem/partial_gc.h"
+#include "ecmascript/mem/sparse_space.h"
+#include "ecmascript/mem/mem_controller.h"
 #include "ecmascript/mem/incremental_marker.h"
 #include "ecmascript/mem/shared_heap/shared_concurrent_marker.h"
 #include "ecmascript/tests/ecma_test_common.h"
@@ -583,6 +588,103 @@ HWTEST_F_L0(GCTest, TryTriggerIdleCollectionTest007)
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
     heap->SetIdleTask(IdleTaskType::NO_TASK);
     heap->TryTriggerIdleCollection();
+}
+
+HWTEST_F_L0(GCTest, TryTriggerFullMarkBySharedLimitTest004)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    heap->GetConcurrentMarker()->ConfigConcurrentMark(true);
+    heap->TryTriggerFullMarkBySharedLimit();
+    heap->GetConcurrentMarker()->ConfigConcurrentMark(false);
+    heap->TryTriggerFullMarkBySharedLimit();
+}
+
+HWTEST_F_L0(GCTest, TriggerConcurrentMarkingTest002)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    heap->SetMarkType(MarkType::MARK_FULL);
+    heap->TriggerConcurrentMarking();
+    heap->SetMarkType(MarkType::MARK_EDEN);
+    heap->TriggerConcurrentMarking();
+}
+
+HWTEST_F_L0(GCTest, TriggerConcurrentMarkingTest003)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    heap->GetConcurrentMarker()->ConfigConcurrentMark(true);
+    heap->TriggerConcurrentMarking();
+    heap->GetConcurrentMarker()->ConfigConcurrentMark(false);
+    heap->TriggerConcurrentMarking();
+}
+
+HWTEST_F_L0(GCTest, TriggerIdleCollectionTest008)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    heap->TriggerIdleCollection(1000);
+    heap->ClearIdleTask();
+    heap->TriggerIdleCollection(1000);
+}
+
+HWTEST_F_L0(GCTest, TriggerIdleCollectionTest009)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    heap->SetIdleTask(IdleTaskType::YOUNG_GC);
+    heap->TriggerIdleCollection(5);
+}
+
+HWTEST_F_L0(GCTest, NotifyFinishColdStartTest002)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    heap->NotifyPostFork();
+    heap->NotifyFinishColdStart(true);
+}
+
+HWTEST_F_L0(GCTest, NeedStopCollectionTest004)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    heap->SetOnSerializeEvent(false);
+    heap->SetSensitiveStatus(AppSensitiveStatus::ENTER_HIGH_SENSITIVE);
+    ASSERT_EQ(heap->NeedStopCollection(), true);
+}
+
+HWTEST_F_L0(GCTest, TryToGetSuitableSweptRegionTest001)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    SparseSpace *space = heap->GetSpaceWithType(MemSpaceType::OLD_SPACE);
+    space->FinishFillSweptRegion();
+    ASSERT_EQ(space->TryToGetSuitableSweptRegion(100), nullptr);
+}
+
+HWTEST_F_L0(GCTest, CalculateGrowingFactorTest001)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    heap->SetMemGrowingType(MemGrowingType::CONSERVATIVE);
+    MemController *memController = new MemController(heap);
+    memController->CalculateGrowingFactor(0, 0);
+}
+
+HWTEST_F_L0(GCTest, CalculateGrowingFactorTest002)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    heap->SetMemGrowingType(MemGrowingType::PRESSURE);
+    MemController *memController = new MemController(heap);
+    memController->CalculateGrowingFactor(0, 0);
+}
+
+HWTEST_F_L0(GCTest, StartCalculationBeforeGCTest001)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    MemController *memController = new MemController(heap);
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    memController->StartCalculationBeforeGC();
+    memController->StopCalculationAfterGC(TriggerGCType::EDEN_GC);
+}
+
+HWTEST_F_L0(GCTest, StartCalculationBeforeGCTest002)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    MemController *memController = new MemController(heap);
+    memController->StopCalculationAfterGC(TriggerGCType::EDEN_GC);
 }
 
 } // namespace panda::test
