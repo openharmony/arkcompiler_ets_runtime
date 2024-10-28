@@ -1319,7 +1319,7 @@ void SnapshotProcessor::DeserializeString(uintptr_t stringBegin, uintptr_t strin
                 constantStr->SetConstantData(const_cast<uint8_t *>(stringData));
                 constantStr->SetRelocatedData(thread, JSTaggedValue::Undefined(), BarrierMode::SKIP_BARRIER);
             } else {
-                LOG_ECMA_MEM(FATAL) << "JSPandaFile is nullptr";
+                LOG_ECMA_MEM(FATAL) << "find JSPandaFile is nullptr";
             }
         } else {
             ASSERT(index == 0);
