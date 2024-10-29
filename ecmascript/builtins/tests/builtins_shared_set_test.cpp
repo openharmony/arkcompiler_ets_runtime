@@ -441,4 +441,42 @@ HWTEST_F_L0(BuiltinsSharedSetTest, KEY_AND_VALUE_Next)
     TestHelper::TearDownFrame(thread, prev);
 }
 
+HWTEST_F_L0(BuiltinsSharedSetTest, KeyNext)
+{
+    JSHandle<JSSharedSetIterator> setIterator;
+    JSHandle<JSSharedSet> jsSet(thread, CreateBuiltinsSharedSet(thread));
+    EXPECT_TRUE(*jsSet != nullptr);
+    JSHandle<JSTaggedValue> key(thread, JSTaggedValue(0));
+    JSSharedSet::Add(thread, jsSet, key);
+    JSHandle<JSTaggedValue> setIteratorValue =
+    JSSharedSetIterator::CreateSetIterator(thread, JSHandle<JSTaggedValue>(jsSet), IterationKind::KEY);
+    setIterator = JSHandle<JSSharedSetIterator>(setIteratorValue);
+    std::vector<JSTaggedValue> args{JSTaggedValue::Undefined()};
+    auto ecmaRuntimeCallInfo =
+        TestHelper::CreateEcmaRuntimeCallInfo(thread, args, 6, setIteratorValue.GetTaggedValue());
+    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    JSTaggedValue result = JSSharedSetIterator::Next(ecmaRuntimeCallInfo);
+    EXPECT_EQ(result.IsJSSharedSetIterator(), false);
+    TestHelper::TearDownFrame(thread, prev);
+}
+
+HWTEST_F_L0(BuiltinsSharedSetTest, ValueNext)
+{
+    JSHandle<JSSharedSetIterator> setIterator;
+    JSHandle<JSSharedSet> jsSet(thread, CreateBuiltinsSharedSet(thread));
+    EXPECT_TRUE(*jsSet != nullptr);
+    JSHandle<JSTaggedValue> key(thread, JSTaggedValue(0));
+    JSSharedSet::Add(thread, jsSet, key);
+    JSHandle<JSTaggedValue> setIteratorValue =
+    JSSharedSetIterator::CreateSetIterator(thread, JSHandle<JSTaggedValue>(jsSet), IterationKind::VALUE);
+    setIterator = JSHandle<JSSharedSetIterator>(setIteratorValue);
+    std::vector<JSTaggedValue> args{JSTaggedValue::Undefined()};
+    auto ecmaRuntimeCallInfo =
+        TestHelper::CreateEcmaRuntimeCallInfo(thread, args, 6, setIteratorValue.GetTaggedValue());
+    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    JSTaggedValue result = JSSharedSetIterator::Next(ecmaRuntimeCallInfo);
+    EXPECT_EQ(result.IsJSSharedSetIterator(), false);
+    TestHelper::TearDownFrame(thread, prev);
+}
+
 }  // namespace panda::test

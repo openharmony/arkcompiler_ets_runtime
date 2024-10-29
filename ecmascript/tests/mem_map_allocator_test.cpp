@@ -18,6 +18,7 @@
 
 #include "ecmascript/mem/mem_map_allocator.h"
 #include "ecmascript/mem/mem_common.h"
+#include "ecmascript/jit/jit.h"
 #include "ecmascript/tests/test_helper.h"
 
 using namespace panda::ecmascript;
@@ -54,6 +55,17 @@ HWTEST_F_L0(MemMapAllocatorTest, GetMemFromList)
 
     memMapFreeList.AddMemToList(mem3);
     memMapFreeList.Finalize();
+}
+
+HWTEST_F_L0(MemMapAllocatorTest, GetMemOverflow)
+{
+    Heap *heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    SemiSpace *space = heap->GetNewSpace();
+    MemMap mem = MemMapAllocator::GetInstance()->Allocate(thread->GetThreadId(), 2048_MB, DEFAULT_REGION_SIZE,
+                                                         ToSpaceTypeName(space->GetSpaceType()),
+                                                         false, true,
+                                                         Jit::GetInstance()->IsEnableJitFort());
+    EXPECT_EQ(mem.GetSize(), 0_MB);
 }
 
 }  // namespace panda::test
