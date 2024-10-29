@@ -40,6 +40,7 @@
 #include "ecmascript/jit/jit.h"
 #include "ecmascript/js_array_iterator.h"
 #include "ecmascript/js_map_iterator.h"
+#include "ecmascript/js_primitive_ref.h"
 #include "ecmascript/js_set_iterator.h"
 #include "ecmascript/js_string_iterator.h"
 #include "ecmascript/js_stable_array.h"

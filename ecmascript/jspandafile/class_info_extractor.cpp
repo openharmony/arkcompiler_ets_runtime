@@ -14,15 +14,15 @@
  */
 
 #include "ecmascript/jspandafile/class_info_extractor.h"
+
 #include "ecmascript/js_object-inl.h"
 #include "ecmascript/jspandafile/program_object.h"
-#include "ecmascript/object_fast_operator-inl.h"
-#include "ecmascript/layout_info.h"
 #include "ecmascript/shared_objects/js_sendable_arraybuffer.h"
 #include "ecmascript/shared_objects/js_shared_array.h"
 #include "ecmascript/shared_objects/js_shared_map.h"
 #include "ecmascript/shared_objects/js_shared_set.h"
 #include "ecmascript/shared_objects/js_shared_typed_array.h"
+#include "ecmascript/object_fast_operator-inl.h"
 
 namespace panda::ecmascript {
 void ClassInfoExtractor::BuildClassInfoExtractorFromLiteral(JSThread *thread, JSHandle<ClassInfoExtractor> &extractor,

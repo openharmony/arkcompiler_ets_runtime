@@ -18,7 +18,6 @@
 
 #include <cstdint>
 
-#include "ecmascript/js_tagged_value.h"
 #include "ecmascript/mem/visitor.h"
 #include "libpandabase/macros.h"
 
