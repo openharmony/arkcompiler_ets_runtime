@@ -176,3 +176,19 @@ gs
 gu
 dg
 g
+\/ ["/"]
+\/[a-z]*> ["/style>"]
+\/[a-z]*> ["/style>"]
+\/[a-z]*> ["/style>"]
+\\\/[a-z]*> ["\\/style>"]
+\\\/[a-z]*> ["\\/style>"]
+\\\/[a-z]*> ["\\/style>"]
+\\\/[a-z]*> ["\\/style>"]
+SyntaxError
+SyntaxError
+\[ ["["]
+\[ ["["]
+SyntaxError
+SyntaxError
+\\\[ ["\\["]
+\\\[ ["\\["]
