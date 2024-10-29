@@ -829,7 +829,7 @@ public:
         isWorker_ = isWorker;
     }
 
-    void SetIsRestrictedWorker(bool isRestrictedWorker)
+    inline void SetIsRestrictedWorker(bool isRestrictedWorker)
     {
         isRestrictedWorker_ = isRestrictedWorker;
     }
