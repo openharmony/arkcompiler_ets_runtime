@@ -87,6 +87,7 @@ bool EntryIdMap::Move(JSTaggedType oldAddr, JSTaggedType forwardAddr)
 
 void EntryIdMap::UpdateEntryIdMap(HeapSnapshot *snapshot)
 {
+    LOG_ECMA(INFO) << "EntryIdMap::UpdateEntryIdMap";
     if (snapshot == nullptr) {
         LOG_ECMA(FATAL) << "EntryIdMap::UpdateEntryIdMap:snapshot is nullptr";
         UNREACHABLE();
