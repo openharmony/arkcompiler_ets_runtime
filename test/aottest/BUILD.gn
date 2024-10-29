@@ -63,6 +63,7 @@ group("ark_aot_ts_test") {
     "array",
     "array_foreach_inline",
     "array_inline_exception",
+    "array_pop_inline",
     "ashr",
     "asyncgenerator",
     "asyncgeneratormultiloop",

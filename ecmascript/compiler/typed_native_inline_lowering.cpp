@@ -3647,6 +3647,7 @@ void TypedNativeInlineLowering::LowerArrayPop(GateRef gate)
     Label isCOWArray(&builder_);
     Label getElements(&builder_);
     Label indexLessCapacity(&builder_);
+    Label slowGetElement(&builder_);
     Label setArrayLength(&builder_);
     Label checkTrim(&builder_);
     Label needTrim(&builder_);
@@ -3677,13 +3678,31 @@ void TypedNativeInlineLowering::LowerArrayPop(GateRef gate)
         builder_.Bind(&indexLessCapacity);
         {
             GateRef result = builder_.GetValueFromTaggedArray(elements, index);
-            BRANCH_CIR(builder_.TaggedIsHole(result), &setArrayLength, &checkTrim);
+            BRANCH_CIR(builder_.TaggedIsHole(result), &slowGetElement, &checkTrim);
             builder_.Bind(&checkTrim);
             {
                 ret = result;
                 GateRef unused = builder_.Int32Sub(capacity, index);
                 BRANCH_CIR(
                     builder_.Int32GreaterThan(unused, builder_.Int32(TaggedArray::MAX_END_UNUSED)), &needTrim, &noTrim);
+            }
+            builder_.Bind(&slowGetElement);
+            {
+                Label hasException(&builder_);
+                Label notHasException(&builder_);
+                GateRef element = builder_.CallStub(glue, gate, CommonStubCSigns::GetPropertyByIndex,
+                                                    { glue, thisValue, index });
+                BRANCH_CIR(builder_.HasPendingException(glue), &hasException, &notHasException);
+                builder_.Bind(&hasException);
+                {
+                    ret = builder_.ExceptionConstant();
+                    builder_.Jump(&exit);
+                }
+                builder_.Bind(&notHasException);
+                {
+                    ret = element;
+                    builder_.Jump(&setArrayLength);
+                }
             }
         }
         builder_.Bind(&needTrim);
