@@ -21,6 +21,11 @@
 #include "ecmascript/mem/partial_gc.h"
 #include "ecmascript/tests/ecma_test_common.h"
 #include "ecmascript/napi/include/jsnapi_expo.h"
+#include "ecmascript/mem/free_object_list.h"
+#include "ecmascript/mem/gc_stats.h"
+#include "ecmascript/mem/free_object_set.h"
+#include "ecmascript/mem/shared_mem_controller.h"
+#include "ecmascript/mem/mem_controller_utils.h"
 
 using namespace panda;
 
@@ -316,4 +321,71 @@ HWTEST_F_L0(GCTest, NativeMemAllocInSensitive)
     }
     EXPECT_TRUE(heap->GetGlobalNativeSize() < 1 * 1024 * 1024* 1024); // 1GB
 }
+
+HWTEST_F_L0(GCTest, RecordAllocationForIdleTest001)
+{
+    SharedHeap *heap = SharedHeap::GetInstance();
+    SharedMemController *controller = new SharedMemController(heap);
+    controller->RecordAllocationForIdle();
+    controller->RecordAllocationForIdle();
+}
+
+HWTEST_F_L0(GCTest, RecordAllocationForIdleTest002)
+{
+    SharedHeap *heap = SharedHeap::GetInstance();
+    SharedMemController *controller = new SharedMemController(heap);
+    controller->RecordAllocationForIdle();
+    size_t before = heap->GetHeapObjectSize();
+    heap->ReclaimForAppSpawn();
+    size_t after = heap->GetHeapObjectSize();
+    ASSERT_NE(before, after);
+    controller->RecordAllocationForIdle();
+}
+
+HWTEST_F_L0(GCTest, PrintGCStatisticTest001)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    int prop = 1 << 15;
+    heap->GetEcmaVM()->GetJSOptions().SetArkProperties(prop);
+    ASSERT_EQ(heap->GetEcmaVM()->GetJSOptions().EnableGCTracer(), true);
+    GCStats *stats = new GCStats(heap);
+    stats->PrintGCStatistic();
+
+    prop = 1 << 14;
+    heap->GetEcmaVM()->GetJSOptions().SetArkProperties(prop);
+    ASSERT_EQ(heap->GetEcmaVM()->GetJSOptions().EnableGCTracer(), false);
+    stats->PrintGCStatistic();
+}
+
+HWTEST_F_L0(GCTest, GCReasonToStringTest001)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    GCStats *stats = new GCStats(heap);
+    ASSERT_EQ(strcmp(stats->GCReasonToString(GCReason::SWITCH_BACKGROUND), "Switch to background"), 0);
+    ASSERT_EQ(strcmp(stats->GCReasonToString(GCReason::EXTERNAL_TRIGGER), "Externally triggered"), 0);
+    ASSERT_EQ(strcmp(stats->GCReasonToString(GCReason::WORKER_DESTRUCTION), "Worker Destruction"), 0);
+    ASSERT_EQ(strcmp(stats->GCReasonToString(GCReason::TRIGGER_BY_ARKUI), "Trigger by ArkUI"), 0);
+    ASSERT_EQ(strcmp(stats->GCReasonToString(GCReason::TRIGGER_BY_ABILITY), "Trigger by AbilityRuntime"), 0);
+    ASSERT_EQ(strcmp(stats->GCReasonToString(GCReason::TRIGGER_BY_MEM_TOOLS), "Trigger by Mem tools"), 0);
+    ASSERT_EQ(strcmp(stats->GCReasonToString(GCReason::TRIGGER_BY_TASKPOOL), "Trigger by taskPool"), 0);
+}
+
+HWTEST_F_L0(GCTest, PrintGCMemoryStatisticTest001)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    heap->SetMarkType(MarkType::MARK_EDEN);
+    GCStats *stats = new GCStats(heap);
+    stats->RecordStatisticBeforeGC(TriggerGCType::EDEN_GC, GCReason::TRIGGER_BY_ARKUI);
+    stats->PrintGCMemoryStatistic();
+}
+
+HWTEST_F_L0(GCTest, PrintGCMemoryStatisticTest002)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    heap->SetMarkType(MarkType::MARK_YOUNG);
+    GCStats *stats = new GCStats(heap);
+    stats->RecordStatisticBeforeGC(TriggerGCType::YOUNG_GC, GCReason::TRIGGER_BY_ARKUI);
+    stats->PrintGCMemoryStatistic();
+}
+
 } // namespace panda::test

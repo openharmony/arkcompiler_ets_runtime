@@ -128,10 +128,10 @@ template <typename T>
 template <typename U>
 void FreeObjectList<T>::FreeImpl(U* region, uintptr_t start, size_t size, bool isAdd)
 {
-    if (UNLIKELY(start == 0)) {
+    if (UNLIKELY(start == 0)) { // LCOV_EXCL_BR_LINE
         return;
     }
-    if (UNLIKELY(size < MIN_SIZE)) {
+    if (UNLIKELY(size < MIN_SIZE)) { // LCOV_EXCL_BR_LINE
         region->IncreaseWasted(size);
         if (isAdd) {
             wasted_ += size;
@@ -145,7 +145,7 @@ void FreeObjectList<T>::FreeImpl(U* region, uintptr_t start, size_t size, bool i
     }
 
     auto set = region->GetFreeObjectSet(type);
-    if (set == nullptr) {
+    if (set == nullptr) { // LCOV_EXCL_BR_LINE
         LOG_FULL(FATAL) << "The set of region is nullptr";
         return;
     }

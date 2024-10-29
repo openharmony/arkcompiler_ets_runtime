@@ -426,7 +426,7 @@ void GCStats::RecordStatisticBeforeGC(TriggerGCType gcType, GCReason reason)
             IncreaseRecordData(RecordData::COMPRESS_TOTAL_COMMIT, compressCommitSize);
             break;
         }
-        default:
+        default: // LCOV_EXCL_BR_LINE
             break;
     }
 }
