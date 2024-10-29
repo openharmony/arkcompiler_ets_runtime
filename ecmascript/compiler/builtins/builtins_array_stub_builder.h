@@ -77,6 +77,8 @@ private:
         GateRef intialHClass, GateRef start);
     void DoReverse(GateRef glue, GateRef fromArray, GateRef toArray, bool holeToUndefined, bool getWithKind,
                    MemoryAttribute mAttr);
+    void FastToSpliced(GateRef glue, GateRef thisValue, GateRef newArray, GateRef actualStart,
+                       GateRef actualDeleteCount, GateRef insertCount, GateRef insertValue);
 };
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_BUILTINS_ARRAY_STUB_BUILDER_H

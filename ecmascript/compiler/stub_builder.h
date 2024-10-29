@@ -568,6 +568,7 @@ public:
     void ThrowTypeAndReturn(GateRef glue, int messageId, GateRef val);
     GateRef GetValueFromTaggedArray(GateRef elements, GateRef index);
     GateRef GetDataPtrInTaggedArray(GateRef array);
+    GateRef GetDataPtrInTaggedArray(GateRef array, GateRef index);
     GateRef GetUnsharedConstpoolIndex(GateRef constpool);
     GateRef GetUnsharedConstpoolFromGlue(GateRef glue, GateRef constpool);
     GateRef GetUnsharedConstpool(GateRef array, GateRef index);
@@ -910,6 +911,8 @@ public:
     GateRef ElementsKindIsNumOrHoleNum(GateRef kind);
     GateRef ElementsKindIsHeapKind(GateRef kind);
     GateRef ElementsKindHasHole(GateRef kind);
+    void ArrayCopyAndHoleToUndefined(GateRef glue, GateRef src, GateRef dst, GateRef length,
+                                     MemoryAttribute mAttr = MemoryAttribute::Default());
     void MigrateArrayWithKind(GateRef glue, GateRef object, GateRef oldKind, GateRef newKind);
     GateRef MigrateFromRawValueToHeapValues(GateRef glue, GateRef object, GateRef needCOW, GateRef isIntKind);
     GateRef MigrateFromHeapValueToRawValue(GateRef glue, GateRef object, GateRef needCOW, GateRef isIntKind);
