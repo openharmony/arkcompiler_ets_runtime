@@ -1746,6 +1746,7 @@ private:
     static bool IsSerializationTimeoutCheckEnabled(const EcmaVM *vm);
     static void GenerateTimeoutTraceIfNeeded(const EcmaVM *vm, std::chrono::system_clock::time_point &start,
                                      std::chrono::system_clock::time_point &end, bool isSerialization);
+    static void UpdateAOTCompileStatus(ecmascript::JSRuntimeOptions &jsOption, const RuntimeOption &option);
     template<typename T>
     friend class Global;
     template<typename T>
