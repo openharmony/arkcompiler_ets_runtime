@@ -65,7 +65,7 @@ void TaggedList<Derived>::CopyArray(const JSThread *thread, JSHandle<Derived> &t
     taggedList->SetElement(thread, TAIL_TABLE_INDEX, JSTaggedValue(tailTableIndex));
     taggedList->SetElement(thread, ELEMENTS_START_INDEX, JSTaggedValue::Hole());
     taggedList->SetElement(thread, ELEMENTS_START_INDEX + NEXT_PTR_OFFSET, JSTaggedValue(nextTailIndex));
-    if (std::is_same_v<TaggedDoubleList, Derived>) {
+    if constexpr (std::is_same_v<TaggedDoubleList, Derived>) {
         taggedList->SetElement(thread, ELEMENTS_START_INDEX + PREV_PTR_OFFSET, JSTaggedValue(tailTableIndex));
     }
     int srcDataIndex = GetElement(ELEMENTS_START_INDEX + NEXT_PTR_OFFSET).GetInt();
@@ -73,7 +73,7 @@ void TaggedList<Derived>::CopyArray(const JSThread *thread, JSHandle<Derived> &t
         int index = nextTailIndex + i * Derived::ENTRY_SIZE;
         taggedList->SetElement(thread, index, GetElement(srcDataIndex));
         taggedList->SetElement(thread, index + NEXT_PTR_OFFSET, JSTaggedValue(index + Derived::ENTRY_SIZE));
-        if (std::is_same_v<TaggedDoubleList, Derived>) {
+        if constexpr (std::is_same_v<TaggedDoubleList, Derived>) {
             taggedList->SetElement(thread, index + PREV_PTR_OFFSET,
                                    JSTaggedValue(ELEMENTS_START_INDEX + i * Derived::ENTRY_SIZE));
         }
@@ -224,7 +224,7 @@ void TaggedList<Derived>::RemoveNode(JSThread *thread, int prevDataIndex)
         if (dataIndex == tailTableIndex) {
             SetElement(thread, TAIL_TABLE_INDEX, JSTaggedValue(prevDataIndex));
         }
-        if (std::is_same_v<TaggedDoubleList, Derived>) {
+        if constexpr (std::is_same_v<TaggedDoubleList, Derived>) {
             SetElement(thread, nextDataIndex + PREV_PTR_OFFSET, JSTaggedValue(prevDataIndex));
         }
         SetElement(thread, dataIndex, JSTaggedValue::Hole());
