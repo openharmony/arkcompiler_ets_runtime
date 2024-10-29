@@ -115,7 +115,7 @@ private:
         bool canBeCompress, MemSpaceType type = MemSpaceType::SHARED_OLD_SPACE, bool isConstantString = false,
         uint32_t idOffset = 0);
     static EcmaString *CreateFromUtf8CompressedSubString(const EcmaVM *vm, const JSHandle<EcmaString> &string,
-        uint32_t offset, uint32_t utf8Len, MemSpaceType type = MemSpaceType::SEMI_SPACE);
+        uint32_t offset, uint32_t utf8Len, MemSpaceType type = MemSpaceType::SHARED_OLD_SPACE);
     static EcmaString *CreateUtf16StringFromUtf8(const EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf8Len,
         MemSpaceType type = MemSpaceType::SHARED_OLD_SPACE);
     static EcmaString *CreateFromUtf16(const EcmaVM *vm, const uint16_t *utf16Data, uint32_t utf16Len,
