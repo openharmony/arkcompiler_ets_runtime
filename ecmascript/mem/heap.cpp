@@ -1265,7 +1265,6 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
         oldSpace_->ResetCommittedOverSizeLimit();
         if (oldSpace_->CommittedSizeExceed()) {
             DumpHeapSnapshotBeforeOOM(false);
-            StatisticHeapDetail();
             ThrowOutOfMemoryError(thread_, oldSpace_->GetMergeSize(), " OldSpace::Merge");
         }
         oldSpace_->ResetMergeSize();
@@ -1379,7 +1378,6 @@ void Heap::CheckNonMovableSpaceOOM()
     if (nonMovableSpace_->GetHeapObjectSize() > MAX_NONMOVABLE_LIVE_OBJ_SIZE) {
         sweeper_->EnsureAllTaskFinished();
         DumpHeapSnapshotBeforeOOM(false);
-        StatisticHeapDetail();
         ThrowOutOfMemoryError(thread_, nonMovableSpace_->GetHeapObjectSize(), "Heap::CheckNonMovableSpaceOOM", true);
     }
 }
