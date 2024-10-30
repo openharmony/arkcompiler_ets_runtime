@@ -347,7 +347,7 @@ JSHandle<JSFunction> LiteralDataExtractor::DefineMethodInLiteral(JSThread *threa
     JSHandle<JSFunction> jsFunc = CreateJSFunctionInLiteral(vm, method, kind, classKind);
     JSHandle<JSTaggedValue> module = SharedModuleManager::GetInstance()->GenerateFuncModule(thread, jsPandaFile,
                                                                                             entryPoint, classKind);
-    if (module->GetTaggedObject()->GetClass()->IsSourceTextModule()) {
+    if (module->IsSourceTextModule()) {
         SourceTextModule::Cast(module->GetTaggedObject())->SetSendableEnv(thread, sendableEnv);
     }
 
