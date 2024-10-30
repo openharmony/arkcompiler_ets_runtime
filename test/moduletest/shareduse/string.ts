@@ -22,6 +22,11 @@
 
 // @ts-nocheck
 declare function print(str: any): string;
+"use shared"
+export var strA : string = "(This is strA!)";
+export var strB : string = "(This is strB!)";
+export var numberC : number = 100;
+export var booleanD : bool = false;
 export function foo() {
     'use sendable'
     print("foo");
