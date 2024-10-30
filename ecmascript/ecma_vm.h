@@ -164,9 +164,6 @@ public:
 
     bool PUBLIC_API IsEnablePGOProfiler() const;
     bool PUBLIC_API IsEnableElementsKind() const;
-    bool PUBLIC_API IsEnableForceIC() const;
-
-    void SetEnableForceIC(bool isEnableForceIC);
 
     bool Initialize();
     void InitializeForJit(JitThread *thread);

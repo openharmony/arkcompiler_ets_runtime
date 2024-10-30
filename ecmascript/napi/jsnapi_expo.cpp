@@ -20,7 +20,6 @@
 #include "ecmascript/base/json_stringifier.h"
 #include "ecmascript/base/typed_array_helper-inl.h"
 #include "ecmascript/builtins/builtins_object.h"
-#include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
 #include "ecmascript/dfx/cpu_profiler/cpu_profiler.h"
 #endif
@@ -5322,10 +5321,8 @@ void JSNApi::PostFork(EcmaVM *vm, const RuntimeOption &option)
     jsOption.SetEnableJIT(option.GetEnableJIT());
     jsOption.SetEnableBaselineJIT(option.GetEnableBaselineJIT());
     jsOption.SetMaxAotMethodSize(JSRuntimeOptions::MAX_APP_COMPILE_METHOD_SIZE);
-    jsOption.SetEnableForceIC(false);
     ecmascript::pgo::PGOProfilerManager::GetInstance()->SetBundleName(option.GetBundleName());
     ecmascript::pgo::PGOProfilerManager::GetInstance()->SetMaxAotMethodSize(jsOption.GetMaxAotMethodSize());
-    ecmascript::pgo::PGOProfilerManager::GetInstance()->SetEnableForceIC(jsOption.IsEnableForceIC());
     JSRuntimeOptions runtimeOptions;
     runtimeOptions.SetLogLevel(Log::LevelToString(Log::ConvertFromRuntime(option.GetLogLevel())));
     Log::Initialize(runtimeOptions);
