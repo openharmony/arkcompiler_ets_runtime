@@ -23,7 +23,7 @@
 #include "ecmascript/compiler/baseline/baseline_call_signature.h"
 #include "ecmascript/compiler/circuit.h"
 #include "ecmascript/compiler/call_signature.h"
-#include "ecmascript/compiler/common_stubs.h"
+#include "ecmascript/compiler/common_stub_csigns.h"
 #include "ecmascript/compiler/debug_info.h"
 #include "ecmascript/compiler/gate.h"
 #include "ecmascript/compiler/rt_call_signature.h"

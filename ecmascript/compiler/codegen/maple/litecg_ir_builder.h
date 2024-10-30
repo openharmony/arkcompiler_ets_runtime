@@ -23,7 +23,6 @@
 #include "ecmascript/compiler/gate.h"
 #include "ecmascript/compiler/stub_builder.h"
 #include "ecmascript/compiler/call_signature.h"
-#include "ecmascript/compiler/common_stubs.h"
 #include "ecmascript/compiler/interpreter_stub.h"
 #include "ecmascript/compiler/rt_call_signature.h"
 #include "ecmascript/compiler/ir_builder.h"
