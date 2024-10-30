@@ -570,6 +570,7 @@ private:
     V(CreateStringBySingleCharCode)             \
     V(FastStringEqual)                          \
     V(FastStringAdd)                            \
+    V(StringAdd)                                \
     V(DeleteObjectProperty)                     \
     V(Getpropiterator)                          \
     V(Getnextpropname)                          \

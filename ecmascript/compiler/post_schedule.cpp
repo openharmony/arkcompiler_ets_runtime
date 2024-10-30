@@ -291,11 +291,21 @@ void PostSchedule::LoweringHeapAllocAndPrepareScheduleGate(GateRef gate,
         }
         const CallSignature *cs = RuntimeStubCSigns::Get(RTSTUB_ID(CallRuntime));
         ASSERT(cs->IsRuntimeStub());
-        GateRef reseverdFrameArgs = circuit_->GetConstantGateWithoutCache(MachineType::I64, 0, GateType::NJSValue());
-        GateRef reseverdPc = circuit_->GetConstantGateWithoutCache(MachineType::I64, 0, GateType::NJSValue());
+        GateRef reseverdFrameArgs = Circuit::NullGate();
+        GateRef reseverdPc = Circuit::NullGate();
+        std::vector<GateRef> args { taggedSize };
+        // keep same with CircuitBuilder::Call: only when condition is true, we pass the other two args.
+        if (builder_.GetCircuit()->IsOptimizedOrFastJit()) {
+            reseverdFrameArgs = circuit_->GetConstantGateWithoutCache(MachineType::I64, 0, GateType::NJSValue());
+            reseverdPc = circuit_->GetConstantGateWithoutCache(MachineType::I64, 0, GateType::NJSValue());
+            args.push_back(reseverdFrameArgs);
+            args.push_back(reseverdPc);
+        }
+        // here in order to schedule all the intermediate value,
+        // frameargs and pcoffset are solved out from CircuitBuilder::Call,
+        // so hirGate must be NullGate to prevent duplicated operation.
         GateRef slowResult = builder_.Call(cs, glue, target, builder_.GetDepend(),
-                                           { taggedSize, reseverdFrameArgs, reseverdPc }, Circuit::NullGate(),
-                                           "Heap alloc");
+                                           args, Circuit::NullGate(), "Heap alloc");
         result = slowResult;
         builder_.Jump(&exit);
         {
@@ -304,8 +314,10 @@ void PostSchedule::LoweringHeapAllocAndPrepareScheduleGate(GateRef gate,
             PrepareToScheduleNewGate(slowResult, failBBGates);
             PrepareToScheduleNewGate(target, failBBGates);
             PrepareToScheduleNewGate(taggedSize, failBBGates);
-            PrepareToScheduleNewGate(reseverdFrameArgs, failBBGates);
-            PrepareToScheduleNewGate(reseverdPc, failBBGates);
+            if (builder_.GetCircuit()->IsOptimizedOrFastJit()) {
+                PrepareToScheduleNewGate(reseverdFrameArgs, failBBGates);
+                PrepareToScheduleNewGate(reseverdPc, failBBGates);
+            }
             PrepareToScheduleNewGate(taggedIntMask, failBBGates);
             PrepareToScheduleNewGate(ifTrue, failBBGates);
         }
@@ -350,18 +362,30 @@ void PostSchedule::LoweringHeapAllocate(GateRef gate,
     GateRef target = circuit_->GetConstantGateWithoutCache(MachineType::ARCH, id, GateType::NJSValue());
     const CallSignature *cs = RuntimeStubCSigns::Get(RTSTUB_ID(CallRuntime));
     ASSERT(cs->IsRuntimeStub());
-    GateRef reseverdFrameArgs = circuit_->GetConstantGateWithoutCache(MachineType::I64, 0, GateType::NJSValue());
-    GateRef reseverdPc = circuit_->GetConstantGateWithoutCache(MachineType::I64, 0, GateType::NJSValue());
-    GateRef result = builder_.Call(cs, glue, target, builder_.GetDepend(),
-                                   { taggedSize, reseverdFrameArgs, reseverdPc }, Circuit::NullGate(), "Heap alloc");
+    GateRef reseverdFrameArgs = Circuit::NullGate();
+    GateRef reseverdPc = Circuit::NullGate();
+    std::vector<GateRef> args { taggedSize };
+    // keep same with CircuitBuilder::Call: only when condition is true, we pass the other two args.
+    if (builder_.GetCircuit()->IsOptimizedOrFastJit()) {
+        reseverdFrameArgs = circuit_->GetConstantGateWithoutCache(MachineType::I64, 0, GateType::NJSValue());
+        reseverdPc = circuit_->GetConstantGateWithoutCache(MachineType::I64, 0, GateType::NJSValue());
+        args.push_back(reseverdFrameArgs);
+        args.push_back(reseverdPc);
+    }
+    // here in order to schedule all the intermediate value,
+    // frameargs and pcoffset are solved out from CircuitBuilder::Call,
+    // so hirGate must be NullGate to prevent duplicated operation.
+    GateRef result = builder_.Call(cs, glue, target, builder_.GetDepend(), args, Circuit::NullGate(), "Heap alloc");
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
 
     // Must keep the order of value-in/depend-in
     PrepareToScheduleNewGate(result, currentBBGates);
     PrepareToScheduleNewGate(target, currentBBGates);
     PrepareToScheduleNewGate(taggedSize, currentBBGates);
-    PrepareToScheduleNewGate(reseverdFrameArgs, currentBBGates);
-    PrepareToScheduleNewGate(reseverdPc, currentBBGates);
+    if (builder_.GetCircuit()->IsOptimizedOrFastJit()) {
+        PrepareToScheduleNewGate(reseverdFrameArgs, currentBBGates);
+        PrepareToScheduleNewGate(reseverdPc, currentBBGates);
+    }
     PrepareToScheduleNewGate(taggedIntMask, currentBBGates);
     return;
 }

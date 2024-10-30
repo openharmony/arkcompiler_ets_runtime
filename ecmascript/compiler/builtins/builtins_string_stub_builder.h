@@ -15,6 +15,7 @@
 
 #ifndef ECMASCRIPT_COMPILER_BUILTINS_STRING_STUB_BUILDER_H
 #define ECMASCRIPT_COMPILER_BUILTINS_STRING_STUB_BUILDER_H
+#include "ecmascript/compiler/gate.h"
 #include "ecmascript/compiler/stub_builder-inl.h"
 #include "ecmascript/compiler/builtins/builtins_stubs.h"
 
@@ -62,6 +63,12 @@ BUILTINS_WITH_STRING_STUB_BUILDER(DECLARE_BUILTINS_SRRING_STUB_BUILDER)
     GateRef GetSingleCharCodeByIndex(GateRef str, GateRef index);
     GateRef CreateStringBySingleCharCode(GateRef glue, GateRef charCode);
     GateRef CreateFromEcmaString(GateRef glue, GateRef index, const StringInfoGateRef &stringInfoGate);
+    GateRef IsFirstConcatInStringAdd(GateRef init, GateRef status);
+    GateRef ConcatIsInStringAdd(GateRef init, GateRef status);
+    GateRef StringAdd(GateRef glue, GateRef leftString, GateRef rightString, GateRef status);
+    GateRef AllocateLineString(GateRef glue, GateRef length, GateRef canBeCompressed);
+    GateRef AllocateSlicedString(GateRef glue, GateRef flatString, GateRef length, GateRef canBeCompressed);
+    GateRef IsSpecialSlicedString(GateRef obj);
     GateRef StringConcat(GateRef glue, GateRef leftString, GateRef rightString);
     GateRef EcmaStringTrim(GateRef glue, GateRef srcString, GateRef trimMode);
     GateRef EcmaStringTrimBody(GateRef glue, GateRef thisValue, StringInfoGateRef srcStringInfoGate,

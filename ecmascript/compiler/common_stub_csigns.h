@@ -110,6 +110,7 @@ namespace panda::ecmascript::kungfu {
     V(GetSingleCharCodeByIndex)       \
     V(FastStringEqual)                \
     V(FastStringAdd)                  \
+    V(StringAdd)                      \
     V(Definefunc)                     \
     V(DefineField)                    \
     V(ConvertCharToInt32)             \

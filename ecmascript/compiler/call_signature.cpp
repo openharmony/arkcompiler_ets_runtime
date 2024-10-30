@@ -2970,6 +2970,23 @@ DEF_CALL_SIGNATURE(FastStringAdd)
     callSign->SetCallConv(CallSignature::CallConv::CCallConv);
 }
 
+DEF_CALL_SIGNATURE(StringAdd)
+{
+    // 4 : 4 input parameters
+    CallSignature signature("StringAdd", 0, 4,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    *callSign = signature;
+    // 4 : 4 input parameters
+    std::array<VariableType, 4> params = {
+        VariableType::NATIVE_POINTER(),  // glue
+        VariableType::JS_ANY(),          // ecmaString1
+        VariableType::JS_ANY(),          // ecmaString2
+        VariableType::INT32(),           // stringadd status
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetCallConv(CallSignature::CallConv::CCallConv);
+}
+
 DEF_CALL_SIGNATURE(DeleteObjectProperty)
 {
     // 3 : 3 input parameters
