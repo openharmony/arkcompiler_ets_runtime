@@ -20,6 +20,7 @@
 #include "ecmascript/js_thread.h"
 
 #include "ecmascript/mem/mem_common.h"
+#include "ecmascript/mem/mem_controller_utils.h"
 #include "ecmascript/mem/heap.h"
 #include "ecmascript/mem/space.h"
 #include "ecmascript/object_factory.h"
@@ -180,4 +181,48 @@ HWTEST_F_L0(MemControllerTest, StopCalculationAfterGC)
     double markCompactSpeed = memController->CalculateMarkCompactSpeedPerMS();
     EXPECT_GE(markCompactSpeed, 0);
 }
+
+HWTEST_F_L0(MemControllerTest, MemControllerUtilsTest001)
+{
+    base::GCRingBuffer<BytesAndDuration, 10> buffer;
+    BytesAndDuration initial = {1_GB + 1, 1};
+    double timeMs = 1;
+    double result = MemControllerUtils::CalculateAverageSpeed(buffer, initial, timeMs);
+    EXPECT_GE(result, 1_GB);
+}
+
+HWTEST_F_L0(MemControllerTest, MemControllerUtilsTest002)
+{
+    base::GCRingBuffer<BytesAndDuration, 10> buffer;
+    BytesAndDuration initial = {0, 0};
+    double timeMs = 0;
+    double result = MemControllerUtils::CalculateAverageSpeed(buffer, initial, timeMs);
+    EXPECT_GE(result, 0);
+}
+
+HWTEST_F_L0(MemControllerTest, MemControllerUtilsTest003)
+{
+    base::GCRingBuffer<BytesAndDuration, 10> buffer;
+    BytesAndDuration initial = {1, 1_GB + 1};
+    double timeMs = 1;
+    double result = MemControllerUtils::CalculateAverageSpeed(buffer, initial, timeMs);
+    EXPECT_GE(result, 1);
+}
+
+HWTEST_F_L0(MemControllerTest, MemControllerUtilsTest004)
+{
+    base::GCRingBuffer<BytesAndDuration, 10> buffer;
+    BytesAndDuration initial = {1_GB / 2, 1};
+    double timeMs = 1;
+    double result = MemControllerUtils::CalculateAverageSpeed(buffer, initial, timeMs);
+    EXPECT_GE(result, 1_GB / 2);
+}
+
+HWTEST_F_L0(MemControllerTest, MemControllerUtilsTest005)
+{
+    base::GCRingBuffer<BytesAndDuration, 10> buffer;
+    double result = MemControllerUtils::CalculateAverageSpeed(buffer);
+    EXPECT_GE(result, 0);
+}
+
 }  // namespace panda::test
