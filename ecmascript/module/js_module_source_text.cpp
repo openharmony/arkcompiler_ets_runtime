@@ -558,6 +558,7 @@ int SourceTextModule::InnerModuleInstantiation(JSThread *thread, const JSHandle<
     if (status == ModuleStatus::INSTANTIATING ||
         status == ModuleStatus::INSTANTIATED ||
         status == ModuleStatus::EVALUATING_ASYNC ||
+        status == ModuleStatus::EVALUATING ||
         status == ModuleStatus::EVALUATED) {
         return index;
     }
