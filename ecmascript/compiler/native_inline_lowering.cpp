@@ -1785,7 +1785,7 @@ void NativeInlineLowering::TryInlineArrayPop(GateRef gate, size_t argc, Builtins
         AddTraceLogs(gate, id);
     }
     GateRef ret = builder_.ArrayPop(thisValue, acc_.GetFrameState(gate));
-    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
+    ReplaceGateWithPendingException(gate, ret);
 }
 
 void NativeInlineLowering::TryInlineArraySlice(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id, bool skipThis)
