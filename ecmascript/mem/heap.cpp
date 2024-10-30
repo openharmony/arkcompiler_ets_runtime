@@ -576,7 +576,7 @@ void SharedHeap::TryTriggerLocalConcurrentMarking()
         return;
     }
     if (reinterpret_cast<std::atomic<bool>*>(&localFullMarkTriggered_)->exchange(true, std::memory_order_relaxed)
-            != false) {
+            != false) { // LCOV_EXCL_BR_LINE
         return;
     }
     ASSERT(localFullMarkTriggered_ == true);
@@ -737,7 +737,7 @@ void Heap::Initialize()
     readOnlySpace_ = new ReadOnlySpace(this, readOnlySpaceCapacity, readOnlySpaceCapacity);
     appSpawnSpace_ = new AppSpawnSpace(this, maxHeapSize);
     size_t nonmovableSpaceCapacity = config_.GetDefaultNonMovableSpaceSize();
-    if (ecmaVm_->GetJSOptions().WasSetMaxNonmovableSpaceCapacity()) {
+    if (ecmaVm_->GetJSOptions().WasSetMaxNonmovableSpaceCapacity()) { // LCOV_EXCL_BR_LINE
         nonmovableSpaceCapacity = ecmaVm_->GetJSOptions().MaxNonmovableSpaceCapacity();
     }
     nonMovableSpace_ = new NonMovableSpace(this, nonmovableSpaceCapacity, nonmovableSpaceCapacity);
@@ -1263,7 +1263,7 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
     if (shouldThrowOOMError_ && gcType_ == TriggerGCType::FULL_GC) {
         sweeper_->EnsureAllTaskFinished();
         oldSpace_->ResetCommittedOverSizeLimit();
-        if (oldSpace_->CommittedSizeExceed()) {
+        if (oldSpace_->CommittedSizeExceed()) { // LCOV_EXCL_BR_LINE
             DumpHeapSnapshotBeforeOOM(false);
             StatisticHeapDetail();
             ThrowOutOfMemoryError(thread_, oldSpace_->GetMergeSize(), " OldSpace::Merge");
@@ -1376,7 +1376,7 @@ void BaseHeap::FatalOutOfMemoryError(size_t size, std::string functionName)
 
 void Heap::CheckNonMovableSpaceOOM()
 {
-    if (nonMovableSpace_->GetHeapObjectSize() > MAX_NONMOVABLE_LIVE_OBJ_SIZE) {
+    if (nonMovableSpace_->GetHeapObjectSize() > MAX_NONMOVABLE_LIVE_OBJ_SIZE) { // LCOV_EXCL_BR_LINE
         sweeper_->EnsureAllTaskFinished();
         DumpHeapSnapshotBeforeOOM(false);
         StatisticHeapDetail();

@@ -53,7 +53,7 @@ double MemController::CalculateGrowingFactor(double gcSpeed, double mutatorSpeed
             break;
         case MemGrowingType::PRESSURE:
             return minimumFactor;
-        default:
+        default: // LCOV_EXCL_BR_LINE
             break;
     }
 

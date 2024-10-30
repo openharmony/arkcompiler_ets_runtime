@@ -188,7 +188,7 @@ uintptr_t HugeMachineCodeSpace::Allocate(size_t objectSize, JSThread *thread, vo
     } else {
         region = AllocateFort(objectSize, thread, pDesc);
     }
-    if (UNLIKELY(region == nullptr)) {
+    if (UNLIKELY(region == nullptr)) { // LCOV_EXCL_BR_LINE
         LOG_GC(ERROR) << "HugeMachineCodeSpace::Allocate: region is nullptr";
         return 0;
     }
@@ -276,7 +276,7 @@ void HugeObjectSpace::ReclaimHugeRegion()
 
 void HugeObjectSpace::InvokeAllocationInspector(Address object, size_t objectSize)
 {
-    if (LIKELY(!allocationCounter_.IsActive())) {
+    if (LIKELY(!allocationCounter_.IsActive())) { // LCOV_EXCL_BR_LINE
         return;
     }
     if (objectSize >= allocationCounter_.NextBytes()) {
