@@ -202,8 +202,6 @@ public:
     BlockNode *LowerReturn(NaryStmtNode &retNode);
     void LowerEntry(MIRFunction &func);
 
-    StmtNode *LowerCall(CallNode &call, StmtNode *&stmt, BlockNode &block, MIRType *retty = nullptr,
-                        bool uselvar = false);
     void SplitCallArg(CallNode &callNode, BaseNode *newOpnd, size_t i, BlockNode &newBlk);
 
     void CleanupBranches(MIRFunction &func) const;

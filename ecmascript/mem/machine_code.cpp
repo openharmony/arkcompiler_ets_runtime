@@ -16,14 +16,8 @@
 #include "ecmascript/mem/machine_code.h"
 #include "ecmascript/compiler/aot_file/func_entry_des.h"
 #include "ecmascript/jit/jit.h"
-#ifdef JIT_ENABLE_CODE_SIGN
-#include "jit_buffer_integrity.h"
-#endif
 
 namespace panda::ecmascript {
-#ifdef JIT_ENABLE_CODE_SIGN
-using namespace OHOS::Security::CodeSign;
-#endif
 
 static bool SetPageProtect(uint8_t *textStart, size_t dataSize)
 {
@@ -37,31 +31,9 @@ static bool SetPageProtect(uint8_t *textStart, size_t dataSize)
     return true;
 }
 
-ARK_INLINE static int MachineCodeCopyToCache(const MachineCodeDesc &desc, uint8_t *pText)
+static int MachineCodeCopyToCache([[maybe_unused]] const MachineCodeDesc &desc, [[maybe_unused]] uint8_t *pText)
 {
-#ifdef JIT_ENABLE_CODE_SIGN
-    if ((uintptr_t)desc.codeSigner == 0) {
-        if (memcpy_s(pText, desc.codeSizeAlign, reinterpret_cast<uint8_t*>(desc.codeAddr), desc.codeSize) != EOK) {
-            LOG_JIT(ERROR) << "memcpy failed in CopyToCache";
-            return false;
-        }
-    } else {
-        LOG_JIT(DEBUG) << "Copy: "
-                       << std::hex << (uintptr_t)pText << " <- "
-                       << std::hex << (uintptr_t)desc.codeAddr << " size: " << desc.codeSize;
-        LOG_JIT(DEBUG) << "     codeSigner = " << std::hex << (uintptr_t)desc.codeSigner;
-        JitCodeSignerBase *signer =
-            reinterpret_cast<JitCodeSignerBase*>(desc.codeSigner);
-        int err = CopyToJitCode(signer, pText, reinterpret_cast<void*>(desc.codeAddr), desc.codeSize);
-        if (err != EOK) {
-            LOG_JIT(ERROR) << "     CopyToJitCode failed, err: " << err;
-            return false;
-        } else {
-            LOG_JIT(DEBUG) << "     CopyToJitCode success!!";
-        }
-        delete reinterpret_cast<JitCodeSignerBase*>(desc.codeSigner);
-    }
-#else
+#ifndef JIT_ENABLE_CODE_SIGN
     if (memcpy_s(pText, desc.codeSizeAlign, reinterpret_cast<uint8_t*>(desc.codeAddr), desc.codeSize) != EOK) {
         LOG_JIT(ERROR) << "memcpy failed in CopyToCache";
         return false;
