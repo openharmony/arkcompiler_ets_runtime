@@ -18,7 +18,7 @@ interface ArkTools{
 }
 class EventBusClass {
   public result: Object[] = [];
-
+  public holeIntArray: Object[] = [0, 1, 2, , 4, 5, 6];
   public addEventListener(): void {
       this.result.push({});
   }
@@ -43,3 +43,16 @@ function main(): void {
 }
 
 main();
+
+function testToReversed() {
+    let c = new EventBusClass();
+    let b = c.holeIntArray.toReversed();
+    // when pgo profiler is enabled, but elementsKind are not enabled, the array created in builtins are generic.
+    if (b.length == 7 && ArkTools.getElementsKind(b) == 31) {
+        print("testToReversed - success");
+    } else {
+        print("testToReversed - failed, expected: " + 31 + " , but get: " + ArkTools.getElementsKind(b));
+    }
+}
+
+testToReversed()
