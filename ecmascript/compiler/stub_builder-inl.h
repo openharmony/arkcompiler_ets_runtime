@@ -480,6 +480,17 @@ inline GateRef StubBuilder::DoubleMod(GateRef x, GateRef y)
 }
 
 // bit operation
+
+inline GateRef StubBuilder::Int16Or(GateRef x, GateRef y)
+{
+    return env_->GetBuilder()->Int16Or(x, y);
+}
+
+inline GateRef StubBuilder::Int16And(GateRef x, GateRef y)
+{
+    return env_->GetBuilder()->Int16And(x, y);
+}
+
 inline GateRef StubBuilder::Int32Or(GateRef x, GateRef y)
 {
     return env_->GetBuilder()->Int32Or(x, y);
@@ -558,6 +569,11 @@ inline GateRef StubBuilder::Int32Xor(GateRef x, GateRef y)
 inline GateRef StubBuilder::Int8LSR(GateRef x, GateRef y)
 {
     return env_->GetBuilder()->Int8LSR(x, y);
+}
+
+inline GateRef StubBuilder::Int16LSR(GateRef x, GateRef y)
+{
+    return env_->GetBuilder()->Int16LSR(x, y);
 }
 
 inline GateRef StubBuilder::Int64Not(GateRef x)
@@ -3128,6 +3144,12 @@ inline void StubBuilder::SetViewedArrayBufferOrByteArray(GateRef glue, GateRef t
 {
     GateRef offset = IntPtr(JSTypedArray::VIEWED_ARRAY_BUFFER_OFFSET);
     Store(VariableType::JS_ANY(), glue, typedArray, offset, data, mAttr);
+}
+
+inline GateRef StubBuilder::GetViewedArrayBufferOrByteArray(GateRef typedArray)
+{
+    GateRef offset = IntPtr(JSTypedArray::VIEWED_ARRAY_BUFFER_OFFSET);
+    return Load(VariableType::JS_ANY(), typedArray, offset);
 }
 
 inline void StubBuilder::SetByteLength(GateRef glue, GateRef typedArray, GateRef byteLength)

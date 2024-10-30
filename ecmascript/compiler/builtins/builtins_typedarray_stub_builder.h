@@ -68,6 +68,20 @@ public:
     void SetArrayBufferProperties(GateRef glue, GateRef typedArray,
                                   GateRef newByteLength, GateRef offset, GateRef arrayLength);
     GateRef GetOnHeapHclassFromType(GateRef glue, GateRef objHclass, const DataViewType arrayType);
+    void FastCopyElementFromArray(Variable *result, GateRef glue, GateRef array,
+        Label *exit, Label *slowPath, const DataViewType arrayType);
+    void FastCopyFromArrayToTypedArray(GateRef glue, GateRef array, Variable *result,
+        GateRef targetOffset, GateRef srcLength, Label *check, Label *slowPath,
+        const DataViewType arrayType, bool typedArrayFromCtor);
+    void CopyElementsToArrayBuffer(GateRef glue, GateRef srcLength, GateRef array,
+        GateRef buffer, GateRef targetByteIndex, const DataViewType arrayType, bool getWithKind);
+    void FastSetValueInBuffer(GateRef glue, GateRef buffer,
+        GateRef byteIndex, GateRef val, const DataViewType arrayType);
+    void SetValueInBufferForByte(GateRef glue, GateRef val, GateRef pointer, GateRef byteIndex);
+    template<typename T>
+    void SetValueInBufferForInteger(GateRef glue, GateRef val, GateRef pointer, GateRef byteIndex);
+    template<typename T>
+    void SetValueInBufferForFloat(GateRef glue, GateRef val, GateRef pointer, GateRef byteIndex);
 
 #define DECLARE_BUILTINS_TYPEDARRAY_STUB_BUILDER(method, ...)           \
     void method(GateRef glue, GateRef numArgs, GateRef end, Variable *result, Label *exit, Label *slowPath);

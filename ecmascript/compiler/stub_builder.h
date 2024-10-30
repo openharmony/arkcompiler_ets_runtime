@@ -228,6 +228,8 @@ public:
     GateRef Int64Div(GateRef x, GateRef y);
     GateRef IntPtrDiv(GateRef x, GateRef y);
     // bit operation
+    GateRef Int16Or(GateRef x, GateRef y);
+    GateRef Int16And(GateRef x, GateRef y);
     GateRef Int32Or(GateRef x, GateRef y);
     GateRef Int8And(GateRef x, GateRef y);
     GateRef Int8Xor(GateRef x, GateRef y);
@@ -250,6 +252,7 @@ public:
     GateRef Int64LSL(GateRef x, GateRef y);
     GateRef IntPtrLSL(GateRef x, GateRef y);
     GateRef Int8LSR(GateRef x, GateRef y);
+    GateRef Int16LSR(GateRef x, GateRef y);
     GateRef Int32LSR(GateRef x, GateRef y);
     GateRef Int64LSR(GateRef x, GateRef y);
     GateRef IntPtrLSR(GateRef x, GateRef y);
@@ -778,6 +781,7 @@ public:
     GateRef GetCallFieldFromMethod(GateRef method);
     GateRef GetSendableEnvFromModule(GateRef module);
     GateRef GetProtoOrHClass(GateRef function);
+    GateRef GetViewedArrayBufferOrByteArray(GateRef typedArray);
     GateRef IsSendableFunctionModule(GateRef module);
     inline GateRef GetBuiltinId(GateRef method);
     void SetLexicalEnvToFunction(GateRef glue, GateRef object, GateRef lexicalEnv,

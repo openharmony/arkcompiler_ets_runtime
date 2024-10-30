@@ -3146,7 +3146,8 @@ void BuiltinsTypedArrayStubBuilder::GenTypedArrayConstructor(GateRef glue, GateR
             Bind(&isEcmaObj);
             {
                 Label isArrayBuffer(env);
-                Branch(TaggedIsArrayBuffer(arg0), &isArrayBuffer, &slowPath);
+                Label notArrayBuffer(env);
+                Branch(TaggedIsArrayBuffer(arg0), &isArrayBuffer, &notArrayBuffer);
                 Bind(&isArrayBuffer);
                 {
                     Label createFromArrayBuffer(env);
@@ -3154,6 +3155,17 @@ void BuiltinsTypedArrayStubBuilder::GenTypedArrayConstructor(GateRef glue, GateR
                     BRANCH(HasPendingException(glue), &hasException, &createFromArrayBuffer);
                     Bind(&createFromArrayBuffer);
                     CreateFromArrayBuffer(&res, glue, numArgs, &exit, &slowPath, arrayType);
+                }
+                Bind(&notArrayBuffer);
+                {
+                    Label isStableJSArray(env);
+                    BRANCH(IsStableArray(LoadHClass(arg0)), &isStableJSArray, &slowPath);
+                    Bind(&isStableJSArray);
+                    Label createFromArray(env);
+                    res = AllocateTypedArray(glue, constructorName, func, newTarget, arrayType);
+                    BRANCH(HasPendingException(glue), &hasException, &createFromArray);
+                    Bind(&createFromArray);
+                    FastCopyElementFromArray(&res, glue, arg0, &exit, &slowPath, arrayType);
                 }
             }
             Bind(&hasException);
@@ -3383,6 +3395,225 @@ void BuiltinsTypedArrayStubBuilder::CreateFromArrayBuffer(Variable *result, Gate
     {
         result->WriteVariable(Exception());
         Jump(exit);
+    }
+}
+
+void BuiltinsTypedArrayStubBuilder::FastCopyElementFromArray(Variable *result, GateRef glue, GateRef array,
+    Label *exit, Label *slowPath, const DataViewType arrayType)
+{
+    auto env = GetEnvironment();
+    Label hasException(env);
+    Label allocateTypedArray(env);
+    Label copyElements(env);
+
+    GateRef len = Load(VariableType::INT32(), array, IntPtr(panda::ecmascript::JSArray::LENGTH_OFFSET));
+    GateRef elements = GetElementsArray(array);
+    BRANCH_UNLIKELY(Int32UnsignedLessThan(GetLengthOfTaggedArray(elements), len), slowPath, &allocateTypedArray);
+    Bind(&allocateTypedArray);
+    {
+        AllocateTypedArrayBuffer(glue, result->ReadVariable(), len, IntToTaggedInt(len), arrayType);
+        BRANCH(HasPendingException(glue), &hasException, &copyElements);
+    }
+    Bind(&copyElements);
+    {
+        Label check(env);
+        FastCopyFromArrayToTypedArray(glue, array, result, Int32(0), len, &check, slowPath, arrayType, true);
+        Bind(&check);
+        BRANCH(HasPendingException(glue), &hasException, exit);
+    }
+    Bind(&hasException);
+    {
+        result->WriteVariable(Exception());
+        Jump(exit);
+    }
+}
+
+void BuiltinsTypedArrayStubBuilder::FastCopyFromArrayToTypedArray(GateRef glue, GateRef array, Variable *result,
+    GateRef targetOffset, GateRef srcLength, Label *check, Label *slowPath,
+    const DataViewType arrayType, bool typedArrayFromCtor)
+{
+    if (arrayType == DataViewType::UINT8_CLAMPED || arrayType == DataViewType::BIGINT64
+        || arrayType == DataViewType::BIGUINT64) {
+        CallRuntime(glue, RTSTUB_ID(FastCopyFromArrayToTypedArray),
+            { result->ReadVariable(), IntToTaggedInt(srcLength), array });
+        Jump(check);
+        return;
+    }
+    auto env = GetEnvironment();
+    Label next(env);
+    Label setValue(env);
+    Label isTagged(env);
+    Label elementsKindEnabled(env);
+
+    GateRef buffer = GetViewedArrayBufferOrByteArray(result->ReadVariable());
+    if (!typedArrayFromCtor) {
+        BRANCH(IsDetachedBuffer(buffer), slowPath, &next);
+        Bind(&next);
+    }
+    GateRef targetByteOffset = GetByteOffset(result->ReadVariable());
+    GateRef elementSize = Int32(base::TypedArrayHelper::GetSizeFromType(arrayType));
+    if (!typedArrayFromCtor) {
+        GateRef targetLength = GetArrayLength(result->ReadVariable());
+        BRANCH_UNLIKELY(Int32GreaterThan(Int32Add(srcLength, targetOffset), targetLength), slowPath, &setValue);
+        Bind(&setValue);
+    }
+    GateRef targetByteIndex;
+    if (typedArrayFromCtor) {
+        targetByteIndex = Int32(0);
+    } else {
+        targetByteIndex = Int32Add(Int32Mul(targetOffset, elementSize), targetByteOffset);
+    }
+    BRANCH(IsEnableElementsKind(glue), &elementsKindEnabled, &isTagged);
+    Bind(&elementsKindEnabled);
+    {
+        CopyElementsToArrayBuffer(glue, srcLength, array, buffer, targetByteIndex, arrayType, true);
+        Jump(check);
+    }
+    Bind(&isTagged);
+    {
+        CopyElementsToArrayBuffer(glue, srcLength, array, buffer, targetByteIndex, arrayType, false);
+        Jump(check);
+    }
+}
+
+void BuiltinsTypedArrayStubBuilder::CopyElementsToArrayBuffer(GateRef glue, GateRef srcLength, GateRef array,
+    GateRef buffer, GateRef targetByteIndex, const DataViewType arrayType, bool getWithKind)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    DEFVARIABLE(i, VariableType::INT32(), Int32(0));
+    DEFVARIABLE(byteIndex, VariableType::INT32(), targetByteIndex);
+    Label loopHead(env);
+    Label loopEnd(env);
+    Label exit(env);
+    Label copyElement(env);
+    GateRef elementsArray = GetElementsArray(array);
+    GateRef elementSize = Int32(base::TypedArrayHelper::GetSizeFromType(arrayType));
+    Jump(&loopHead);
+    LoopBegin(&loopHead);
+    {
+        Label storeValue(env);
+        BRANCH(Int32UnsignedLessThan(*i, srcLength), &storeValue, &exit);
+        Bind(&storeValue);
+        {
+            GateRef value = getWithKind ? GetTaggedValueWithElementsKind(array, *i)
+                                        : GetValueFromTaggedArray(elementsArray, *i);
+            GateRef val = ToNumber(glue, value);
+            BRANCH(HasPendingException(glue), &exit, &copyElement);
+            Bind(&copyElement);
+            FastSetValueInBuffer(glue, buffer, *byteIndex, TaggedGetNumber(val), arrayType);
+            i = Int32Add(*i, Int32(1));
+            byteIndex = Int32Add(*byteIndex, elementSize);
+            Jump(&loopEnd);
+        }
+    }
+    Bind(&loopEnd);
+    LoopEnd(&loopHead, env, glue);
+
+    Bind(&exit);
+    env->SubCfgExit();
+}
+
+// don't consider LittleEndianToBigEndian, use it carefully
+void BuiltinsTypedArrayStubBuilder::FastSetValueInBuffer(GateRef glue, GateRef buffer,
+    GateRef byteIndex, GateRef val, const DataViewType arrayType)
+{
+    GateRef block = GetDataPointFromBuffer(buffer);
+    switch (arrayType) {
+        case DataViewType::UINT8:
+            SetValueInBufferForByte(glue, val, block, byteIndex);
+            break;
+        case DataViewType::INT8:
+            SetValueInBufferForByte(glue, val, block, byteIndex);
+            break;
+        case DataViewType::UINT16:
+            SetValueInBufferForInteger<uint16_t>(glue, val, block, byteIndex);
+            break;
+        case DataViewType::INT16:
+            SetValueInBufferForInteger<int16_t>(glue, val, block, byteIndex);
+            break;
+        case DataViewType::UINT32:
+            SetValueInBufferForInteger<uint32_t>(glue, val, block, byteIndex);
+            break;
+        case DataViewType::INT32:
+            SetValueInBufferForInteger<int32_t>(glue, val, block, byteIndex);
+            break;
+        case DataViewType::FLOAT32:
+            SetValueInBufferForFloat<float>(glue, val, block, byteIndex);
+            break;
+        case DataViewType::FLOAT64:
+            SetValueInBufferForFloat<double>(glue, val, block, byteIndex);
+            break;
+        default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
+            UNREACHABLE();
+    }
+}
+
+void BuiltinsTypedArrayStubBuilder::SetValueInBufferForByte(GateRef glue, GateRef val,
+    GateRef pointer, GateRef byteIndex)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+    Label setValue(env);
+    Label converse(env);
+    DEFVARIABLE(result, VariableType::INT8(), Int8(0));
+    BRANCH(DoubleIsNanOrInf(val), &setValue, &converse);
+    Bind(&converse);
+    {
+        result = TruncInt32ToInt8(DoubleToInt(glue, val));
+        Jump(&setValue);
+    }
+    Bind(&setValue);
+    {
+        Store(VariableType::INT8(), glue, pointer, byteIndex, *result);
+        Jump(&exit);
+    }
+    Bind(&exit);
+    env->SubCfgExit();
+}
+
+template<typename T>
+void BuiltinsTypedArrayStubBuilder::SetValueInBufferForInteger(GateRef glue, GateRef val,
+    GateRef pointer, GateRef byteIndex)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+    Label setValue(env);
+    Label converse(env);
+    DEFVARIABLE(result, VariableType::INT32(), Int32(0));
+    BRANCH(DoubleIsNanOrInf(val), &setValue, &converse);
+    Bind(&converse);
+    {
+        result = DoubleToInt(glue, val);
+        Jump(&setValue);
+    }
+    Bind(&setValue);
+    {
+        if constexpr (std::is_same_v<T, uint16_t> || std::is_same_v<T, int16_t>) {
+            Store(VariableType::INT16(), glue, pointer, byteIndex, TruncInt32ToInt16(*result));
+        } else {
+            Store(VariableType::INT32(), glue, pointer, byteIndex, *result);
+        }
+        Jump(&exit);
+    }
+    Bind(&exit);
+    env->SubCfgExit();
+}
+
+template<typename T>
+void BuiltinsTypedArrayStubBuilder::SetValueInBufferForFloat(GateRef glue, GateRef val,
+    GateRef pointer, GateRef byteIndex)
+{
+    if constexpr (std::is_same_v<T, float>) {
+        Store(VariableType::FLOAT32(), glue, pointer, byteIndex, TruncDoubleToFloat32(val));
+    } else {
+        Store(VariableType::FLOAT64(), glue, pointer, byteIndex, val);
     }
 }
 

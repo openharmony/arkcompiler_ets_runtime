@@ -79,9 +79,11 @@ class TSHCROptPass;
     V(BitAnd, And, MachineType::I1)                                       \
     V(Int8And, And, MachineType::I8)                                      \
     V(Int8Xor, Xor, MachineType::I8)                                      \
+    V(Int16And, And, MachineType::I16)                                    \
     V(Int32And, And, MachineType::I32)                                    \
     V(Int64And, And, MachineType::I64)                                    \
     V(BitOr, Or, MachineType::I1)                                         \
+    V(Int16Or, Or, MachineType::I16)                                      \
     V(Int32Or, Or, MachineType::I32)                                      \
     V(Int64Or, Or, MachineType::I64)                                      \
     V(Int32Xor, Xor, MachineType::I32)                                    \
@@ -90,6 +92,7 @@ class TSHCROptPass;
     V(Int32LSL, Lsl, MachineType::I32)                                    \
     V(Int64LSL, Lsl, MachineType::I64)                                    \
     V(Int8LSR, Lsr, MachineType::I8)                                      \
+    V(Int16LSR, Lsr, MachineType::I16)                                      \
     V(Int32LSR, Lsr, MachineType::I32)                                    \
     V(Int64LSR, Lsr, MachineType::I64)                                    \
     V(Int32ASR, Asr, MachineType::I32)                                    \
