@@ -1702,7 +1702,7 @@ JSTaggedValue BuiltinsSharedArray::Sort(EcmaRuntimeCallInfo *argv)
 
     // Array sort
     if (thisHandle->IsStableJSArray(thread) && callbackFnHandle->IsUndefined()) {
-        JSStableArray::Sort(thread, thisObjHandle, callbackFnHandle);
+        JSStableArray::Sort(thread, thisHandle, callbackFnHandle);
     } else {
         JSSharedArray::Sort(thread, JSHandle<JSTaggedValue>::Cast(thisObjHandle), callbackFnHandle);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
