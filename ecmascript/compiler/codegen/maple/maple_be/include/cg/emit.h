@@ -229,6 +229,7 @@ public:
     MIRAddroffuncConst *GetAddroffuncConst(const MIRSymbol &mirSymbol, MIRAggConst &aggConst);
     int64 GetFieldOffsetValue(const std::string &className, const MIRIntConst &intConst,
                               const std::map<GStrIdx, MIRType *> &strIdx2Type);
+    void WriteDebugCommentToFile();
 
     Emitter &Emit(int64 val)
     {
