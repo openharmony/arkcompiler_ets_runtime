@@ -1928,26 +1928,42 @@ void BuiltinsArrayStubBuilder::ToReversed(GateRef glue, GateRef thisValue, [[may
     Bind(&isStability);
     BRANCH(IsJsCOWArray(thisValue), slowPath, &notCOWArray);
     Bind(&notCOWArray);
-    Label newArrayIsTagged(env);
-    Label notChange(env);
+    Label ElementsKindEnabled(env);
+    Label ElementsKindDisabled(env);
+    Label next(env);
     GateRef isElementsKindEnabled = IsEnableElementsKind(glue);
-    DEFVARIABLE(newHClass, VariableType::JS_ANY(), LoadHClass(thisValue));
+    DEFVARIABLE(receiver, VariableType::JS_ANY(), Hole());
     GateRef kind = GetElementsKindFromHClass(LoadHClass(thisValue));
-    BRANCH_NO_WEIGHT(LogicAndBuilder(env).And(isElementsKindEnabled).And(ElementsKindHasHole(kind)).Done(),
-                     &newArrayIsTagged, &notChange);
-    Bind(&newArrayIsTagged);
-    {
-        // If the kind has hole, we know it must be transited to TAGGED kind;
-        // There will be no hole in the new array because hole will be converted to undefined.
-        newHClass = GetGlobalConstantValue(VariableType::JS_ANY(), glue, ConstantIndex::ELEMENT_TAGGED_HCLASS_INDEX);
-        Jump(&notChange);
-    }
-
-    Bind(&notChange);
     GateRef thisArrLen = GetArrayLength(thisValue);
-    GateRef receiver = NewEmptyArrayWithHClass(glue, *newHClass);
-    GrowElementsCapacity(glue, receiver, thisArrLen);
-    SetArrayLength(glue, receiver, thisArrLen);
+    BRANCH_UNLIKELY(isElementsKindEnabled, &ElementsKindEnabled, &ElementsKindDisabled);
+    Bind(&ElementsKindEnabled);
+    {
+        Label newArrayIsTagged(env);
+        Label reuseOldHClass(env);
+        BRANCH_NO_WEIGHT(ElementsKindHasHole(kind), &newArrayIsTagged, &reuseOldHClass);
+        Bind(&newArrayIsTagged);
+        {
+            // If the kind has hole, we know it must be transited to TAGGED kind;
+            // There will be no hole in the new array because hole will be converted to undefined.
+            GateRef newHClass = GetGlobalConstantValue(VariableType::JS_ANY(), glue,
+                                                       ConstantIndex::ELEMENT_TAGGED_HCLASS_INDEX);
+            receiver = NewEmptyArrayWithHClass(glue, newHClass);
+            Jump(&next);
+        }
+        Bind(&reuseOldHClass);
+        {
+            receiver = NewEmptyArrayWithHClass(glue, LoadHClass(thisValue));
+            Jump(&next);
+        }
+    }
+    Bind(&ElementsKindDisabled);
+    {
+        receiver = NewArray(glue, Int64(0));
+        Jump(&next);
+    }
+    Bind(&next);
+    GrowElementsCapacity(glue, *receiver, thisArrLen);
+    SetArrayLength(glue, *receiver, thisArrLen);
 
     Label afterReverse(env);
     Label isIntOrNumber(env);
@@ -1976,25 +1992,25 @@ void BuiltinsArrayStubBuilder::ToReversed(GateRef glue, GateRef thisValue, [[may
     {
         // The old array and new array are both TaggedArray, so load and store the element directly.
         // And barrier is needed.
-        DoReverse(glue, thisValue, receiver, true, false, MemoryAttribute::Default());
+        DoReverse(glue, thisValue, *receiver, true, false, MemoryAttribute::Default());
         Jump(&afterReverse);
     }
     Bind(&isIntOrNumber);
     {
         // The old array and new array are both MutantTaggedArray, so load and store the element directly.
         // And barrier is not needed.
-        DoReverse(glue, thisValue, receiver, false, false, MemoryAttribute::NoBarrier());
+        DoReverse(glue, thisValue, *receiver, false, false, MemoryAttribute::NoBarrier());
         Jump(&afterReverse);
     }
     Bind(&isHoleOrIntOrNumber);
     {
         // The old array is mutant, but new array is TaggedArray, so load the value from old array with
         // elements kind. And set it to new array directly, And barrier is not needed.
-        DoReverse(glue, thisValue, receiver, true, true, MemoryAttribute::NoBarrier());
+        DoReverse(glue, thisValue, *receiver, true, true, MemoryAttribute::NoBarrier());
         Jump(&afterReverse);
     }
     Bind(&afterReverse);
-    result->WriteVariable(receiver);
+    result->WriteVariable(*receiver);
     Jump(exit);
 }
 
