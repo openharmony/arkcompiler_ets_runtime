@@ -885,10 +885,6 @@ double JSDate::GetDateValue(double timeMs, uint8_t code, bool isLocal) const
 
 JSTaggedValue JSDate::SetDateValue(EcmaRuntimeCallInfo *argv, uint32_t code, bool isLocal) const
 {
-    // get date values.
-    std::array<int64_t, DATE_LENGTH> date = {0};
-    double timeMs = this->GetTimeValue().GetDouble();
-
     // get values from argv.
     uint32_t argc = argv->GetArgsNumber();
     if (argc == 0) {
@@ -898,17 +894,23 @@ JSTaggedValue JSDate::SetDateValue(EcmaRuntimeCallInfo *argv, uint32_t code, boo
     uint32_t firstValue = code & CODE_FLAG;
     uint32_t endValue = (code >> CODE_4_BIT) & CODE_FLAG;
     uint32_t count = endValue - firstValue;
-
     if (argc < count) {
         count = argc;
     }
-    if (std::isnan(timeMs) && firstValue == 0) {
-        timeMs = 0.0;
-        GetDateValues(timeMs, &date, false);
-    } else {
-        GetDateValues(timeMs, &date, isLocal);
-    }
 
+    // get date values.
+    double timeMs = this->GetTimeValue().GetDouble();
+    std::array<int64_t, DATE_LENGTH> date = {0};
+    bool isSelectLocal = isLocal;
+    // setUTCFullYear, setFullYear
+    if (std::isnan(timeMs) && (firstValue == 0)) {
+        timeMs = 0.0;
+        isSelectLocal = false;
+    }
+    if (!std::isnan(timeMs)) {
+        GetDateValues(timeMs, &date, isSelectLocal);
+    }
+    // When timeMs is NaN, the corresponding parameters still need to be obtained
     for (uint32_t i = 0; i < count; i++) {
         JSHandle<JSTaggedValue> value = base::BuiltinsBase::GetCallArg(argv, i);
         JSThread *thread = argv->GetThread();
@@ -919,6 +921,10 @@ JSTaggedValue JSDate::SetDateValue(EcmaRuntimeCallInfo *argv, uint32_t code, boo
             return JSTaggedValue(base::NAN_VALUE);
         }
         date[firstValue + i] = NumberHelper::TruncateDouble(temp);
+    }
+
+    if (std::isnan(timeMs)) {
+        return JSTaggedValue(base::NAN_VALUE);
     }
     // set date values.
     return JSTaggedValue(SetDateValues(&date, isLocal));
