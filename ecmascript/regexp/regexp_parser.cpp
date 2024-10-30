@@ -115,7 +115,7 @@ void RegExpParser::Parse()
     buffer_.PutU32(FLAGS_OFFSET, flags_);
     buffer_.PutU32(PREFILTER_OFFSET, expectedChar);
 #ifndef _NO_DEBUG_
-    RegExpOpCode::DumpRegExpOpCode(std::cout, buffer_);
+    RegExpOpCode::DumpRegExpOpCode(std::cout, buffer_, buffer.GetSize());
 #endif
 }
 
