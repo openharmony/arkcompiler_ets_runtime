@@ -33,3 +33,51 @@ let b = {x:2, y: 3}
 
 print(foo(a));
 print(foo(b));
+
+
+var originObject = {
+    func() {
+        return {
+            index: 0,
+            next() {
+                return {
+                    value: this.val,
+                    done: this.isDone
+                };
+            },
+            isDone: false,
+            get val() {
+                this.index++;
+                if (this.index > 7) {
+                    this.isDone = true;
+                }
+                return 1 << this.index;
+            }
+        };
+    },
+    0: "lighter",
+    1: "normal",
+    2: "regular",
+    3: "medium",
+    wode: 55,
+    "hhh": "wwww",
+    func1: function(a) {
+        print(a);
+    }
+};
+
+Object.keys(originObject).forEach(
+    function(key) {
+        print(key);
+        print(originObject[key]);
+    }
+);
+
+var funn =  originObject.func();
+
+Object.keys(funn).forEach(
+    function(key) {
+        print(key);
+        print(funn[key]);
+    }
+);

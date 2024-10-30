@@ -608,7 +608,8 @@ HWTEST_F_L0(HeapDumpTest, TestAllocationEvent)
     ecmaVm_->SetHeapProfile(mockHeapProfiler.profiler_);
 
     std::unordered_map<std::string, int> noTraceObjCheck =
-       {{"TaggedArray", 1}, {"AsyncFunction", 2}, {"LexicalEnv", 2}, {"Array", 3}, {"Function", 7}, {"Map", 1}};
+       {{"TaggedArray", 1}, {"AsyncFunction", 2}, {"LexicalEnv", 2}, {"Array", 3}, {"Function", 7}, {"Map", 1},
+       {"Object", 1}};
     bool pass = true;
     std::unordered_map<std::string, int> noTraceObj;
     for (auto o = ObjAfterExecute.begin(); o != ObjAfterExecute.end(); o++) {

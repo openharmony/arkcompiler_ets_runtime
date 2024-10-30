@@ -32,6 +32,16 @@ BUILTINS_WITH_FUNCTION_STUB_BUILDER(DECLARE_BUILTINS_FUNCTION_STUB_BUILDER)
 #undef DECLARE_BUILTINS_FUNCTION_STUB_BUILDER
 
     GateRef BuildArgumentsListFastElements(GateRef glue, GateRef arrayObj);
+
+    void InitializeJSFunction(GateRef glue, GateRef func, GateRef kind,
+                              FunctionKind getKind = FunctionKind::LAST_FUNCTION_KIND);
+
+    void InitializeSFunction(GateRef glue, GateRef func, GateRef kind,
+                             FunctionKind getKind = FunctionKind::LAST_FUNCTION_KIND);
+
+    void InitializeFunctionWithMethod(GateRef glue, GateRef func, GateRef method,
+                                      GateRef hclass);
+
 private:
     GateRef MakeArgListWithHole(GateRef glue, GateRef argv, GateRef length);
     GateRef NewTaggedArrayFromArgs(GateRef glue, GateRef startIndex, GateRef length, GateRef numArgs);
