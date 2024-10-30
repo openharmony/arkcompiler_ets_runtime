@@ -2345,13 +2345,19 @@ bool Heap::NeedStopCollection()
     if (OnStartupEvent() && !ObjectExceedMaxHeapSize()) {
         return true;
     }
-
-    if (GetRecordHeapObjectSizeBeforeSensitive() == 0) {
-        SetRecordHeapObjectSizeBeforeSensitive(GetHeapObjectSize());
+    size_t objSize = GetHeapObjectSize();
+    size_t recordSizeBeforeSensitive = GetRecordHeapObjectSizeBeforeSensitive();
+    if (recordSizeBeforeSensitive == 0) {
+        SetRecordHeapObjectSizeBeforeSensitive(objSize);
     }
 
-    if (GetHeapObjectSize() < GetRecordHeapObjectSizeBeforeSensitive() + config_.GetIncObjSizeThresholdInSensitive()
+    if (objSize < recordSizeBeforeSensitive + config_.GetIncObjSizeThresholdInSensitive()
         && !ObjectExceedMaxHeapSize()) {
+        if (!IsNearGCInSensitive() &&
+            objSize > (recordSizeBeforeSensitive + config_.GetIncObjSizeThresholdInSensitive())
+            * MIN_OBJECT_SURVIVAL_RATE) {
+            SetNearGCInSensitive(true);
+        }
         return true;
     }
 
