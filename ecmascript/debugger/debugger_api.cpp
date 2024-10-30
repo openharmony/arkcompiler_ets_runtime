@@ -26,6 +26,7 @@
 #include "ecmascript/js_api/js_api_lightweightmap.h"
 #include "ecmascript/js_api/js_api_lightweightset.h"
 #include "ecmascript/jobs/micro_job_queue.h"
+#include "ecmascript/module/module_resolver.h"
 
 namespace panda::ecmascript::tooling {
 using panda::ecmascript::base::ALLOW_BINARY;
@@ -748,12 +749,8 @@ void DebuggerApi::GetIndirectExportVariables(const EcmaVM *ecmaVm, Local<ObjectR
             JSHandle<JSTaggedValue> importModule;
             JSHandle<SourceTextModule> module = JSHandle<SourceTextModule>::Cast(currentModule);
             CString moduleRecordName = module->GetEcmaModuleRecordNameString();
-            if (moduleRecordName.empty()) {
-                importModule = SourceTextModule::HostResolveImportedModule(thread, module, moduleRequest);
-            } else {
-                importModule = SourceTextModule::HostResolveImportedModuleWithMerge(thread, module, moduleRequest);
-                RETURN_IF_ABRUPT_COMPLETION(thread);
-            }
+            importModule = ModuleResolver::HostResolveImportedModule(thread, module, moduleRequest);
+            RETURN_IF_ABRUPT_COMPLETION(thread);
             std::string importName = EcmaStringAccessor(ee->GetImportName()).ToStdString();
             Local<JSValueRef> value = GetModuleValue(ecmaVm, importModule, importName);
             PropertyAttribute descriptor(value, true, true, true);
@@ -789,12 +786,8 @@ void DebuggerApi::GetImportVariables(const EcmaVM *ecmaVm, Local<ObjectRef> &mod
             JSHandle<JSTaggedValue> importModule;
             JSHandle<SourceTextModule> module = JSHandle<SourceTextModule>::Cast(currentModule);
             CString moduleRecordName = module->GetEcmaModuleRecordNameString();
-            if (moduleRecordName.empty()) {
-                importModule = SourceTextModule::HostResolveImportedModule(thread, module, moduleRequest);
-            } else {
-                importModule = SourceTextModule::HostResolveImportedModuleWithMerge(thread, module, moduleRequest);
-                RETURN_IF_ABRUPT_COMPLETION(thread);
-            }
+            importModule = ModuleResolver::HostResolveImportedModule(thread, module, moduleRequest);
+            RETURN_IF_ABRUPT_COMPLETION(thread);
             Local<ObjectRef> importModuleObj = ObjectRef::New(ecmaVm);
             GetLocalExportVariables(ecmaVm, importModuleObj, importModule, true);
             Local<JSValueRef> variableName = JSNApiHelper::ToLocal<JSValueRef>(name);

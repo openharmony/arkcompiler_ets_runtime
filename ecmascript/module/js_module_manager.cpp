@@ -23,6 +23,7 @@
 #include "ecmascript/module/module_manager_helper.h"
 #include "ecmascript/module/module_path_helper.h"
 #include "ecmascript/module/module_tools.h"
+#include "ecmascript/module/module_resolver.h"
 #include "ecmascript/require/js_cjs_module.h"
 #ifdef PANDA_TARGET_WINDOWS
 #include <algorithm>
@@ -616,13 +617,8 @@ JSTaggedValue ModuleManager::GetModuleNamespaceInternal(int32_t index, JSTaggedV
     JSTaggedValue moduleName = TaggedArray::Cast(requestedModule.GetTaggedObject())->Get(index);
     CString moduleRecordName = module->GetEcmaModuleRecordNameString();
     JSHandle<JSTaggedValue> requiredModule;
-    if (moduleRecordName.empty()) {
-        requiredModule = SourceTextModule::HostResolveImportedModule(thread,
-            JSHandle<SourceTextModule>(thread, module), JSHandle<JSTaggedValue>(thread, moduleName));
-    } else {
-        requiredModule = SourceTextModule::HostResolveImportedModuleWithMerge(thread,
-            JSHandle<SourceTextModule>(thread, module), JSHandle<JSTaggedValue>(thread, moduleName));
-    }
+    requiredModule = ModuleResolver::HostResolveImportedModule(thread,
+        JSHandle<SourceTextModule>(thread, module), JSHandle<JSTaggedValue>(thread, moduleName));
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception());
     JSHandle<SourceTextModule> requiredModuleST = JSHandle<SourceTextModule>::Cast(requiredModule);
     ModuleLogger *moduleLogger = thread->GetCurrentEcmaContext()->GetModuleLogger();
