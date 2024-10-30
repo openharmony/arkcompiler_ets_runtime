@@ -17,7 +17,6 @@
 
 #include "ecmascript/containers/containers_errors.h"
 #include "ecmascript/interpreter/interpreter.h"
-#include "ecmascript/js_api/js_api_plain_array_iterator.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/object_factory.h"

@@ -16,7 +16,6 @@
 #include "ecmascript/js_api/js_api_list.h"
 
 #include "ecmascript/containers/containers_errors.h"
-#include "ecmascript/tagged_array-inl.h"
 
 namespace panda::ecmascript {
 using ContainerError = containers::ContainerError;

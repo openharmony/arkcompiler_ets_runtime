@@ -28,7 +28,6 @@
 #include "ecmascript/dfx/cpu_profiler/cpu_profiler.h"
 #endif
 #include "ecmascript/checkpoint/thread_state_transition.h"
-#include "ecmascript/debugger/js_debugger_manager.h"
 #include "ecmascript/interpreter/fast_runtime_stub-inl.h"
 #include "ecmascript/js_generator_object.h"
 #include "ecmascript/js_regexp.h"
@@ -54,7 +53,6 @@ extern "C" {
 } // namespace OHOS::ArkCompiler::Toolchain
 const std::string DEBUGGER_NAME = "PandaDebugger";
 #endif
-
 namespace panda {
 using ecmascript::ECMAObject;
 using ecmascript::EcmaString;

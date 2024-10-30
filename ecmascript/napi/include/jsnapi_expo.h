@@ -173,7 +173,7 @@ public:
 
     void ProcessAll()
     {
-        for (auto &iter : callBacks_) {
+        for (auto iter : callBacks_) {
             NativePointerCallback callback = iter.first;
             std::tuple<void*, void*, void*> &param = iter.second;
             if (callback != nullptr) {
@@ -557,7 +557,7 @@ public:
     bool IsJSSharedInt32Array(const EcmaVM *vm);
     bool IsJSSharedUint32Array(const EcmaVM *vm);
     bool IsJSSharedFloat32Array(const EcmaVM *vm);
-
+    
     bool IsGeneratorObject(const EcmaVM *vm);
     bool IsJSPrimitiveSymbol(const EcmaVM *vm);
 
@@ -1319,6 +1319,7 @@ public:
 
     inline uint32_t GetArgsNumber() const
     {
+        ECMA_ASSERT(numArgs_ >= FIRST_ARGS_INDEX);
         return numArgs_ - FIRST_ARGS_INDEX;
     }
 
