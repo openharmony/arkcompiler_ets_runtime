@@ -1746,16 +1746,6 @@ public:
         enableBranchProfiling_ = value;
     }
 
-    void SetTestAssert(bool value)
-    {
-        testAssert_ = value;
-    }
-
-    bool GetTestAssert() const
-    {
-        return testAssert_;
-    }
-
     void SetCompilerMethodsRange(arg_list_t* argListStr)
     {
         compileMethodsRange_.first = std::stoull((*argListStr)[0]);
@@ -1776,7 +1766,6 @@ public:
     {
         return compileCodegenOption_;
     }
-
     void SetOptCodeRange(std::string value)
     {
         optBCRange_ = std::move(value);
@@ -1785,6 +1774,16 @@ public:
     std::string GetOptCodeRange() const
     {
         return optBCRange_;
+    }
+
+    void SetTestAssert(bool value)
+    {
+        testAssert_ = value;
+    }
+
+    bool GetTestAssert() const
+    {
+        return testAssert_;
     }
 
     void SetEnableEscapeAnalysis(bool value)
