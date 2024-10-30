@@ -1899,7 +1899,7 @@ public:
     static int GetFunctionToFpDelta()
     {
         int slotOffset = static_cast<int>(Index::JSFuncIndex) - static_cast<int>(Index::TypeIndex);
-        return slotOffset * JSTaggedValue::TaggedTypeSize() + GetFrmaeTypeToFpDelta();
+        return slotOffset * static_cast<int>(JSTaggedValue::TaggedTypeSize()) + GetFrmaeTypeToFpDelta();
     }
 
     FrameType GetType() const
