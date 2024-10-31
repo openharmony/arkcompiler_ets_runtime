@@ -337,6 +337,7 @@ group("ark_aot_ts_test") {
     "webkit_call_convention",
     "func_profile_type_info",
     "sendable",
+    "retype_test",
   ]
 
   if (!is_debug) {

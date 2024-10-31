@@ -346,6 +346,7 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
         case OpCode::ARRAY_BUFFER_IS_VIEW:
         case OpCode::ARRAY_SORT:
         case OpCode::IS_CALLABLE_CHECK:
+        case OpCode::GET_EXCEPTION:
             return VisitOthers(gate);
         default:
             return Circuit::NullGate();
