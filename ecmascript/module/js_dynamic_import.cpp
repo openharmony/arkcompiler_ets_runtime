@@ -22,7 +22,7 @@
 #include "ecmascript/module/js_module_deregister.h"
 #include "ecmascript/module/js_module_manager.h"
 #include "ecmascript/module/module_data_extractor.h"
-#include "ecmascript/module/module_path_helper.h"
+#include "ecmascript/module/module_resolver.h"
 
 namespace panda::ecmascript {
 using PathHelper = base::PathHelper;
@@ -48,7 +48,7 @@ JSTaggedValue DynamicImport::ExecuteNativeOrJsonModule(JSThread *thread, const C
         if (moduleType != ModuleTypes::JSON_MODULE) {
             // nativeModule
             JSHandle<JSTaggedValue> nativeModuleHld =
-                moduleManager->ResolveNativeModule(specifierString, "", moduleType);
+                ModuleResolver::ResolveNativeModule(thread, specifierString, "", moduleType);
             moduleRecord = JSHandle<SourceTextModule>::Cast(nativeModuleHld);
             if (!SourceTextModule::LoadNativeModule(thread, moduleRecord, moduleType)) {
                 LOG_FULL(ERROR) << " dynamically loading native module" << specifierString << " failed";

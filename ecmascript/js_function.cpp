@@ -21,6 +21,7 @@
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/js_object-inl.h"
 #include "ecmascript/module/js_module_manager.h"
+#include "ecmascript/module/module_resolver.h"
 #include "ecmascript/object_factory-inl.h"
 #include "ecmascript/pgo_profiler/pgo_profiler.h"
 #include "ecmascript/require/js_require_manager.h"
@@ -1147,10 +1148,10 @@ void JSFunction::InitializeForConcurrentFunction(JSThread *thread, JSHandle<JSFu
     // check compileMode
     if (jsPandaFile->IsBundlePack()) {
         LOG_ECMA(DEBUG) << "CompileMode is jsbundle";
-        moduleRecord = moduleManager->HostResolveImportedModule(moduleName);
+        moduleRecord = ModuleResolver::HostResolveImportedModuleBundlePack(thread, moduleName);
     } else {
         LOG_ECMA(DEBUG) << "CompileMode is esmodule";
-        moduleRecord = moduleManager->HostResolveImportedModuleWithMerge(moduleName, recordName);
+        moduleRecord = ModuleResolver::HostResolveImportedModuleWithMerge(thread, moduleName, recordName);
     }
     RETURN_IF_ABRUPT_COMPLETION(thread);
     ecmascript::SourceTextModule::Instantiate(thread, moduleRecord);
