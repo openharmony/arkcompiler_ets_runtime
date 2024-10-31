@@ -800,14 +800,13 @@ bool JSThread::CheckSafepoint()
     }
 #endif
     auto heap = const_cast<Heap *>(GetEcmaVM()->GetHeap());
+    // Handle exit app senstive scene
+    heap->HandleExitHighSensitiveEvent();
+
     // Do not trigger local gc during the shared gc processRset process.
     if (heap->IsProcessingRset()) {
         return false;
     }
-
-    // Handle exit app senstive scene
-    heap->HandleExitHighSensitiveEvent();
-
     // After concurrent mark finish, should trigger gc here to avoid create much floating garbage
     // except in serialize or high sensitive event
     if (IsMarkFinished() && heap->GetConcurrentMarker()->IsTriggeredConcurrentMark()
