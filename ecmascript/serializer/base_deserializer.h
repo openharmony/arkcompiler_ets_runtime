@@ -189,7 +189,6 @@ private:
                 << sheap_->GetHugeObjectSpace()->GetCommittedSize();
         } else {
             if (dump) {
-                heap_->StatisticHeapDetail();
                 heap_->DumpHeapSnapshotBeforeOOM();
             }
             LOG_ECMA(FATAL) << "BaseDeserializer::OutOfMemory when deserialize obj size: " << size
