@@ -2157,10 +2157,9 @@ void Heap::ChangeGCParams(bool inBackground)
             SetMemGrowingType(MemGrowingType::CONSERVATIVE);
             LOG_GC(DEBUG) << "Heap Growing Type CONSERVATIVE";
         }
-        concurrentMarker_->EnableConcurrentMarking(EnableConcurrentMarkType::DISABLE);
-        sweeper_->EnableConcurrentSweep(EnableConcurrentSweepType::DISABLE);
-        maxMarkTaskCount_ = 1;
-        maxEvacuateTaskCount_ = 1;
+        maxMarkTaskCount_ = std::min<size_t>(ecmaVm_->GetJSOptions().GetGcThreadNum(),
+            (Taskpool::GetCurrentTaskpool()->GetTotalThreadNum() - 1) / 2);  // 2 means half.
+        maxEvacuateTaskCount_ = Taskpool::GetCurrentTaskpool()->GetTotalThreadNum() / 2; // 2 means half.
         Taskpool::GetCurrentTaskpool()->SetThreadPriority(PriorityMode::BACKGROUND);
     } else {
         LOG_GC(INFO) << "app is not inBackground";

@@ -352,7 +352,7 @@ HWTEST_F_L0(DFXJSNApiTests, DFXJSNApiForGCInfo)
 HWTEST_F_L0(DFXJSNApiTests, NotifyApplicationState)
 {
     auto heap = vm_->GetHeap();
-    auto concurrentMarker = heap->GetConcurrentMarker();
+    [[maybe_unused]] auto concurrentMarker = heap->GetConcurrentMarker();
     auto sweeper = heap->GetSweeper();
 
     DFXJSNApi::NotifyApplicationState(vm_, false);
@@ -363,8 +363,10 @@ HWTEST_F_L0(DFXJSNApiTests, NotifyApplicationState)
 
     const_cast<ecmascript::Heap *>(heap)->CollectGarbage(TriggerGCType::OLD_GC, GCReason::OTHER);
     DFXJSNApi::NotifyApplicationState(vm_, true);
-    EXPECT_TRUE(concurrentMarker->IsDisabled());
-    EXPECT_TRUE(sweeper->IsRequestDisabled() || sweeper->IsDisabled());
+#if !ECMASCRIPT_DISABLE_CONCURRENT_MARKING
+    EXPECT_TRUE(!concurrentMarker->IsDisabled());
+#endif
+    EXPECT_TRUE(!sweeper->IsDisabled());
 }
 
 HWTEST_F_L0(DFXJSNApiTests, NotifyMemoryPressure)
