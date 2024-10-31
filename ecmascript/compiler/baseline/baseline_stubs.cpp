@@ -1509,8 +1509,7 @@ void BaselineDefinefuncImm8Id16Imm8StubBuilder::GenerateCircuit()
 
     auto env = GetEnvironment();
     GateRef acc = GetAccFromFrame(frame);
-    NewObjectStubBuilder newBuilder(this);
-    GateRef result = newBuilder.NewJSFunction(glue, constpool, methodId);
+    GateRef result = DefineFunc(glue, constpool, methodId);
     Label notException(env);
     CHECK_EXCEPTION_WITH_JUMP_RETURN(result, &notException);
     Bind(&notException);
@@ -1540,8 +1539,7 @@ void BaselineDefinefuncImm16Id16Imm8StubBuilder::GenerateCircuit()
     auto env = GetEnvironment();
     GateRef acc = GetAccFromFrame(frame);
 
-    NewObjectStubBuilder newBuilder(this);
-    GateRef result = newBuilder.NewJSFunction(glue, constpool, methodId);
+    GateRef result = DefineFunc(glue, constpool, methodId);
     Label notException(env);
     CHECK_EXCEPTION_WITH_JUMP_RETURN(result, &notException);
     Bind(&notException);

@@ -4605,7 +4605,8 @@ DECLARE_ASM_HANDLER(HandleCreateobjectwithbufferImm8Id16)
     GateRef module = GetModuleFromFunction(currentFunc);
     GateRef result = GetObjectLiteralFromConstPool(glue, constpool, imm, module);
     GateRef currentEnv = GetEnvFromFrame(GetFrame(sp));
-    GateRef res = CallRuntime(glue, RTSTUB_ID(CreateObjectHavingMethod), { result, currentEnv });
+    NewObjectStubBuilder newBuilder(this);
+    GateRef res = newBuilder.CreateObjectHavingMethod(glue, result, currentEnv);
     callback.ProfileCreateObject(res);
     CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(CREATEOBJECTWITHBUFFER_IMM8_ID16));
 }
@@ -4617,7 +4618,8 @@ DECLARE_ASM_HANDLER(HandleCreateobjectwithbufferImm16Id16)
     GateRef module = GetModuleFromFunction(currentFunc);
     GateRef result = GetObjectLiteralFromConstPool(glue, constpool, imm, module);
     GateRef currentEnv = GetEnvFromFrame(GetFrame(sp));
-    GateRef res = CallRuntime(glue, RTSTUB_ID(CreateObjectHavingMethod), { result, currentEnv });
+    NewObjectStubBuilder newBuilder(this);
+    GateRef res = newBuilder.CreateObjectHavingMethod(glue, result, currentEnv);
     callback.ProfileCreateObject(res);
     CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(CREATEOBJECTWITHBUFFER_IMM16_ID16));
 }
@@ -4854,8 +4856,7 @@ DECLARE_ASM_HANDLER(HandleDefinefuncImm8Id16Imm8)
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
     GateRef methodId = ReadInst16_1(pc);
     GateRef length = ReadInst8_3(pc);
-    NewObjectStubBuilder newBuilder(this);
-    GateRef result = newBuilder.NewJSFunction(glue, constpool, ZExtInt16ToInt32(methodId));
+    GateRef result = DefineFunc(glue, constpool, ZExtInt16ToInt32(methodId));
     Label notException(env);
     CHECK_EXCEPTION_WITH_JUMP(result, &notException);
     Bind(&notException);
@@ -4900,8 +4901,7 @@ DECLARE_ASM_HANDLER(HandleDefinefuncImm16Id16Imm8)
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
     GateRef methodId = ReadInst16_2(pc);
     GateRef length = ReadInst8_4(pc);
-    NewObjectStubBuilder newBuilder(this);
-    GateRef result = newBuilder.NewJSFunction(glue, constpool, ZExtInt16ToInt32(methodId));
+    GateRef result = DefineFunc(glue, constpool, ZExtInt16ToInt32(methodId));
     Label notException(env);
     CHECK_EXCEPTION_WITH_JUMP(result, &notException);
     Bind(&notException);
@@ -5237,7 +5237,8 @@ DECLARE_ASM_HANDLER(HandleDeprecatedCreateobjecthavingmethodPrefImm16)
     GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
     GateRef module = GetModuleFromFunction(currentFunc);
     GateRef result = GetObjectLiteralFromConstPool(glue, constpool, imm, module);
-    GateRef res = CallRuntime(glue, RTSTUB_ID(CreateObjectHavingMethod), { result, acc });
+    NewObjectStubBuilder newBuilder(this);
+    GateRef res = newBuilder.CreateObjectHavingMethod(glue, result, acc);
     CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(DEPRECATED_CREATEOBJECTHAVINGMETHOD_PREF_IMM16));
 }
 
@@ -5501,8 +5502,7 @@ DECLARE_ASM_HANDLER(HandleDefinefuncImm8Id16Imm8ColdReload)
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
     GateRef methodId = ReadInst16_1(pc);
     GateRef length = ReadInst8_3(pc);
-    NewObjectStubBuilder newBuilder(this);
-    GateRef result = newBuilder.NewJSFunction(glue, constpool, ZExtInt16ToInt32(methodId));
+    GateRef result = DefineFunc(glue, constpool, ZExtInt16ToInt32(methodId));
     Label notException(env);
     CHECK_EXCEPTION_WITH_JUMP(result, &notException);
     Bind(&notException);
@@ -5531,8 +5531,7 @@ DECLARE_ASM_HANDLER(HandleDefinefuncImm16Id16Imm8ColdReload)
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
     GateRef methodId = ReadInst16_2(pc);
     GateRef length = ReadInst8_4(pc);
-    NewObjectStubBuilder newBuilder(this);
-    GateRef result = newBuilder.NewJSFunction(glue, constpool, ZExtInt16ToInt32(methodId));
+    GateRef result = DefineFunc(glue, constpool, ZExtInt16ToInt32(methodId));
     Label notException(env);
     CHECK_EXCEPTION_WITH_JUMP(result, &notException);
     Bind(&notException);
