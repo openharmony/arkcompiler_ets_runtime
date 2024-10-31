@@ -862,9 +862,10 @@ bool EcmaString::IsUtf8EqualsUtf16(const uint8_t *utf8Data, size_t utf8Len,
                         return false;
                     }
                     codePoint -= SURROGATE_RAIR_START;
-                    if (*utf16Data++ != static_cast<uint16_t>((codePoint >> OFFSET_10POS) | H_SURROGATE_START) ||
-                        *utf16Data++ != static_cast<uint16_t>((codePoint & 0x3FF) | L_SURROGATE_START)) {
-                            return false;
+                    if (*utf16Data++ != static_cast<uint16_t>((codePoint >> OFFSET_10POS) | H_SURROGATE_START)) {
+                        return false;
+                    } else if (*utf16Data++ != static_cast<uint16_t>((codePoint & 0x3FF) | L_SURROGATE_START)) {
+                        return false;
                     }
                 } else {
                     if (*utf16Data++ != static_cast<uint16_t>(codePoint)) {
