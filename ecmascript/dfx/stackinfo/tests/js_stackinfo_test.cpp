@@ -419,19 +419,28 @@ HWTEST_F_L0(JsStackInfoTest, TestBuildJsStackInfo)
  */
 HWTEST_F_L0(JsStackInfoTest, TestArkDestoryLocal)
 {
-    auto ret = ark_destory_local(); // Direct destruct without creating Pointers
+    auto ret = ark_destroy_local(); // Direct destruct without creating Pointers
+    EXPECT_TRUE(ret);
+    ret = ark_create_local(); // ref count = 1
+    ret = ark_create_local(); // ref count = 2
     EXPECT_TRUE(ret);
     auto trace = JSStackTrace::GetInstance();
     EXPECT_TRUE(trace != nullptr);
-    ret = ark_destory_local(); // destory
+    ret = ark_destroy_local(); // ref count = 1
+    trace = JSStackTrace::GetInstance();
+    EXPECT_TRUE(trace != nullptr);
+    ret = ark_destroy_local(); // ref count = 0
+    trace = JSStackTrace::GetInstance();
+    EXPECT_TRUE(trace == nullptr);
     EXPECT_TRUE(ret);
-    ret = ark_destory_local(); // multiple destory
+    ret = ark_destroy_local(); // multiple destory
     EXPECT_TRUE(ret);
 
     // Create and destruct multiple times within the process
+    ret = ark_create_local(); // ref count = 1
     trace = JSStackTrace::GetInstance();
     EXPECT_TRUE(trace != nullptr);
-    ret = ark_destory_local();
+    ret = ark_destroy_local();
     EXPECT_TRUE(ret);
 }
 
@@ -509,5 +518,78 @@ HWTEST_F_L0(JsStackInfoTest, TestStepArk__002)
     ASSERT_TRUE(step_ark(ctx, ReadMemFunc, &fp[8], &sp, &pc, nullptr, &isJsFrame));
     frame[9][2] = 100;
     ASSERT_TRUE(step_ark(ctx, ReadMemFunc, &fp[9], &sp, &pc, nullptr, &isJsFrame));
+}
+
+HWTEST_F_L0(JsStackInfoTest, TestLocalParseJsFrameInfo__001)
+{
+    const char *filename = "__JsStackInfoTest1.pa";
+    const char *pfdata = R"(
+        .function void foo() {
+            return
+        }
+    )";
+
+    auto pfManager = JSPandaFileManager::GetInstance();
+
+    pandasm::Parser parser1;
+    auto res = parser1.Parse(pfdata);
+    auto file = pandasm::AsmEmitter::Emit(res.Value());
+    auto jsPandaFile = pfManager->NewJSPandaFile(file.release(), CString(filename));
+    pfManager->AddJSPandaFile(jsPandaFile);
+    EXPECT_TRUE(jsPandaFile != nullptr);
+    auto methods = JSStackTrace::ReadAllMethodInfos(jsPandaFile);
+
+    uintptr_t byteCodePc = methods[0].codeBegin;
+    uintptr_t methodId = methods[0].methodId;
+    uintptr_t mapBase = reinterpret_cast<uintptr_t>(jsPandaFile->GetHeader());
+    uintptr_t loadOffset = 0;
+    JsFunction jsFunction;
+
+    // Incorrect invocation demonstration
+    auto ret = ark_parse_js_frame_info_local(byteCodePc, methodId, mapBase, loadOffset, &jsFunction);
+    EXPECT_TRUE(ret == -1);
+
+    // Correct invocation demonstration
+    ark_create_local();
+    ret = ark_parse_js_frame_info_local(byteCodePc, methodId, mapBase, loadOffset, &jsFunction);
+    EXPECT_TRUE(ret == 1);
+
+    ret = ark_parse_js_frame_info_local(byteCodePc, methodId, mapBase, loadOffset, &jsFunction);
+    EXPECT_TRUE(ret == 1);
+
+    ark_destroy_local();
+
+    pfManager->RemoveJSPandaFile(jsPandaFile.get());
+}
+
+HWTEST_F_L0(JsStackInfoTest, TestLocalParseJsFrameInfo__002)
+{
+    const char *filename = "__JsStackInfoTest1.pa";
+    const char *pfdata = R"(
+        .function void foo() {
+            return
+        }
+    )";
+
+    auto pfManager = JSPandaFileManager::GetInstance();
+
+    pandasm::Parser parser1;
+    auto res = parser1.Parse(pfdata);
+    auto file = pandasm::AsmEmitter::Emit(res.Value());
+    auto jsPandaFile = pfManager->NewJSPandaFile(file.release(), CString(filename));
+    EXPECT_TRUE(jsPandaFile != nullptr);
+    auto methods = JSStackTrace::ReadAllMethodInfos(jsPandaFile);
+
+    uintptr_t byteCodePc = methods[0].codeBegin;
+    uintptr_t methodId = methods[0].methodId;
+    uintptr_t mapBase = reinterpret_cast<uintptr_t>(jsPandaFile->GetHeader());
+    uintptr_t loadOffset = 0;
+    JsFunction jsFunction;
+
+    ark_create_local();
+    auto ret = ark_parse_js_frame_info_local(byteCodePc, methodId, mapBase, loadOffset, &jsFunction);
+    ark_destroy_local();
+    // pandafile manager can't find jsPandaFile
+    EXPECT_TRUE(ret == -1);
 }
 }  // namespace panda::test

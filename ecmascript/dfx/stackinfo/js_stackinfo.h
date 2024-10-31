@@ -114,21 +114,32 @@ class JSStackTrace {
 public:
     JSStackTrace() = default;
     ~JSStackTrace();
-    static JSStackTrace *GetInstance();
+    static JSStackTrace *GetInstance()
+    {
+        return trace_;
+    }
     static std::optional<MethodInfo> ReadMethodInfo(panda_file::MethodDataAccessor &mda);
     static CVector<MethodInfo> ReadAllMethodInfos(std::shared_ptr<JSPandaFile> jsPandaFile);
     static std::optional<CodeInfo> TranslateByteCodePc(uintptr_t realPc, const CVector<MethodInfo> &vec);
     bool GetJsFrameInfo(uintptr_t byteCodePc, uintptr_t methodId, uintptr_t mapBase,
                         uintptr_t loadOffset, JsFunction *jsFunction);
-    static void Destory();
+    static void AddReference();
+    static void ReleaseReference();
 private:
-    bool AddMethodInfos(uintptr_t mapBase);
+    std::shared_ptr<JSPandaFile> FindJSpandaFile(uintptr_t mapBase);
+    const CVector<MethodInfo> &FindMethodInfos(uintptr_t mapBase);
+    void SetJSpandaFile(uintptr_t mapBase, std::shared_ptr<JSPandaFile> pandafile);
+    void SetMethodInfos(uintptr_t mapBase, CVector<MethodInfo> &infos);
+    bool InitializeMethodInfo(uintptr_t mapBase);
 
-    CVector<MethodInfo> methodInfo_;
+    std::shared_mutex pfMutex_;
+    std::shared_mutex infosMutex_;
+    CVector<MethodInfo> methodInfo_; // empty vector
     std::unordered_map<uintptr_t, std::shared_ptr<JSPandaFile>> jsPandaFiles_;
     std::unordered_map<uintptr_t, CVector<MethodInfo>> methodInfos_;
     static JSStackTrace *trace_;
     static std::mutex mutex_;
+    static size_t count_;
 };
 
 class JSSymbolExtractor {
@@ -224,7 +235,8 @@ extern "C" int get_ark_native_frame_info(
     int pid, uintptr_t *pc, uintptr_t *fp, uintptr_t *sp, panda::ecmascript::JsFrame *jsFrame, size_t &size);
 extern "C" int ark_parse_js_frame_info_local(uintptr_t byteCodePc, uintptr_t methodId, uintptr_t mapBase,
     uintptr_t loadOffset, panda::ecmascript::JsFunction *jsFunction);
-extern "C" int ark_destory_local();
+extern "C" int ark_create_local();
+extern "C" int ark_destroy_local();
 // define in dfx_signal_handler.h
 typedef void(*ThreadInfoCallback)(char *buf, size_t len, void *ucontext);
 extern "C" void SetThreadInfoCallback(ThreadInfoCallback func) __attribute__((weak));
