@@ -342,7 +342,9 @@ private:
     {
         ASSERT(str1.Size() <= str2.Size());
         size_t size = str1.Size();
-        if (!std::is_same_v<T, T1>) {
+        if constexpr (std::is_same_v<T, T1>) {
+            return !memcmp(str1.data(), str2.data(), size * sizeof(T));
+        } else {
             for (size_t i = 0; i < size; i++) {
                 auto left = static_cast<uint16_t>(str1[i]);
                 auto right = static_cast<uint16_t>(str2[i]);
@@ -352,8 +354,6 @@ private:
             }
             return true;
         }
-
-        return !memcmp(str1.data(), str2.data(), size * sizeof(T));
     }
 
     // Converts utf8Data to utf16 and compare it with given utf16_data.

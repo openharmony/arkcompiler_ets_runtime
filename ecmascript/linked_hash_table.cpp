@@ -85,7 +85,7 @@ JSHandle<Derived> LinkedHashTable<Derived, HashObject>::InsertWeakRef(const JSTh
     JSTaggedValue weakKey(key->CreateAndGetWeakRef());
     newTable->SetKey(thread, entry, weakKey);
     // The ENTRY_VALUE_INDEX of LinkedHashSet is 0. SetValue will cause the overwitten key.
-    if (std::is_same_v<LinkedHashMap, Derived>) {
+    if constexpr (std::is_same_v<LinkedHashMap, Derived>) {
         newTable->SetValue(thread, entry, value.GetTaggedValue());
     }
     newTable->SetNumberOfElements(thread, newTable->NumberOfElements() + 1);
