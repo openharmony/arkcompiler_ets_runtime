@@ -108,7 +108,7 @@ uintptr_t EcmaHandleScope::NewHandle(JSThread *thread, JSTaggedType value)
             LOG_ECMA(INFO) << "New handle in scope count:" << context->handleScopeCount_
                             << ", time:" << totalSpentTime << "ms";
             std::ostringstream stack;
-            Backtrace(stack, true);
+            Backtrace(stack);
             LOG_ECMA(INFO) << stack.str();
         }
     }
@@ -146,7 +146,7 @@ uintptr_t EcmaHandleScope::NewPrimitiveHandle(JSThread *thread, JSTaggedType val
             LOG_ECMA(INFO) << "New primitiveHandle in scope count:" << context->primitiveScopeCount_
                             << ", time:" << totalSpentTime << "ms";
             std::ostringstream stack;
-            Backtrace(stack, true);
+            Backtrace(stack);
             LOG_ECMA(INFO) << stack.str();
         }
     }
