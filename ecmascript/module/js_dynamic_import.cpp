@@ -66,7 +66,7 @@ JSTaggedValue DynamicImport::ExecuteNativeOrJsonModule(JSThread *thread, const C
     }
 
     JSHandle<JSTaggedValue> moduleNamespace = SourceTextModule::GetModuleNamespace(thread,
-        JSHandle<SourceTextModule>(requiredModule));
+        JSHandle<SourceTextModule>::Cast(requiredModule));
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, BuiltinsPromiseJob::CatchException(thread, reject));
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     EcmaRuntimeCallInfo *info =
@@ -75,7 +75,6 @@ JSTaggedValue DynamicImport::ExecuteNativeOrJsonModule(JSThread *thread, const C
                                             undefined, undefined, 1);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, BuiltinsPromiseJob::CatchException(thread, reject));
     info->SetCallArg(moduleNamespace.GetTaggedValue());
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return JSFunction::Call(info);
 }
 }  // namespace panda::ecmascript
