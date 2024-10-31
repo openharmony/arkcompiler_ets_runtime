@@ -91,7 +91,7 @@ const char *GCStats::GCReasonToString(GCReason reason)
             return "Trigger by Mem tools";
         case GCReason::TRIGGER_BY_TASKPOOL:
             return "Trigger by taskPool";
-        default:
+        default: // LCOV_EXCL_BR_LINE
             return "Other";
     }
 }
@@ -269,7 +269,7 @@ void GCStats::PrintGCDurationStatistic()
                          << STATS_DESCRIPTION_FORMAT("Finish:")
                          << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::Finish]) << "ms";
             break;
-        default:
+        default: // LCOV_EXCL_BR_LINE
             break;
     }
 }
@@ -290,7 +290,7 @@ bool GCStats::CheckIfNeedPrint(GCType type)
         case GCType::COMPRESS_GC:
             gcCount = GetRecordData(RecordData::COMPRESS_COUNT);
             break;
-        default:
+        default: // LCOV_EXCL_BR_LINE
             break;
     }
 
@@ -380,7 +380,7 @@ void GCStats::PrintGCSummaryStatistic(GCType type)
                                      GetRecordData(RecordData::COMPRESS_TOTAL_COMMIT));
             break;
         }
-        default:
+        default: // LCOV_EXCL_BR_LINE
             break;
     }
 }
@@ -589,7 +589,7 @@ GCType GCStats::GetGCType(TriggerGCType gcType)
                 return GCType::PARTIAL_YOUNG_GC;
             case MarkType::MARK_FULL:
                 return GCType::PARTIAL_OLD_GC;
-            default:
+            default: // LCOV_EXCL_BR_LINE
                 return GCType::OTHER;
         }
     }
