@@ -947,11 +947,10 @@ private:
     Mutex mutex_;
     bool isEnableOsr_ {false};
     bool isJitCompileVM_ {false};
-
+    bool enableJitLogSkip_ = true;
+    
     // process StartRealTime
     int processStartRealtime_ = 0;
-
-    bool enableJitLogSkip_ = true;
 
 #if ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT
     // Stats for Thread-State-Transition and String-Table Locks
