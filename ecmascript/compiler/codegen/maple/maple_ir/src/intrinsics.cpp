@@ -66,6 +66,8 @@ MIRType *IntrinDesc::GetTypeFromArgTy(IntrinArgType argType) const
             return GlobalTables::GetTypeTable().GetTypeFromTyIdx(static_cast<TyIdx>(PTY_f32));
         case kArgTyF64:
             return GlobalTables::GetTypeTable().GetTypeFromTyIdx(static_cast<TyIdx>(PTY_f64));
+        case kArgTyDynany:
+            return GlobalTables::GetTypeTable().GetTypeFromTyIdx(static_cast<TyIdx>(PTY_dynany));
         default:
             return nullptr;
     }

@@ -146,7 +146,11 @@ void CGLowerer::LowerCallStmt(StmtNode &stmt, StmtNode *&nextStmt, BlockNode &ne
     StmtNode *newStmt = nullptr;
     if (stmt.GetOpCode() == OP_intrinsiccall) {
         auto &intrnNode = static_cast<IntrinsiccallNode &>(stmt);
-        newStmt = LowerIntrinsiccall(intrnNode, newBlk);
+        if (intrnNode.GetIntrinsic() == maple::INTRN_JS_PURE_CALL) {
+            newStmt = &stmt;
+        } else {
+            newStmt = LowerIntrinsiccall(intrnNode, newBlk);
+        }
     } else {
         /* We note the function has a user-defined (i.e., not an intrinsic) call. */
         DEBUG_ASSERT(GetCurrentFunc() != nullptr, "GetCurrentFunc should not be nullptr");
@@ -909,6 +913,7 @@ bool CGLowerer::IsIntrinsicCallHandledAtLowerLevel(MIRIntrinsicID intrinsic) con
         case INTRN_ADD_WITH_OVERFLOW:
         case INTRN_SUB_WITH_OVERFLOW:
         case INTRN_MUL_WITH_OVERFLOW:
+        case INTRN_JS_PURE_CALL:
             return true;
         default: {
             return false;

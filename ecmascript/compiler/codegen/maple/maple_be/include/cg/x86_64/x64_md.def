@@ -471,6 +471,7 @@ DEFINE_MOP(MOP_cmovoq_r_r, {&OpndDesc::Reg64IS,&OpndDesc::Reg64IDS},0,kLtAlu,"cm
 DEFINE_MOP(MOP_callq_l, {&OpndDesc::Lbl64,&OpndDesc::ListSrc,&OpndDesc::ListDest},ISCALL,kLtAlu,"callq","0",1)
 DEFINE_MOP(MOP_callq_m, {&OpndDesc::Mem64S,&OpndDesc::ListSrc,&OpndDesc::ListDest},ISCALL,kLtAlu,"callq","0",1)
 DEFINE_MOP(MOP_callq_r, {&OpndDesc::Reg64IS,&OpndDesc::ListSrc,&OpndDesc::ListDest},ISCALL,kLtAlu,"callq","0",1)
+DEFINE_MOP(MOP_pure_call, {&OpndDesc::Reg64IS,&OpndDesc::ListSrc,&OpndDesc::ListDest},ISCALL,kLtAlu,"pure_call","0",1)
 
 DEFINE_MOP(MOP_retq, {},CANTHROW,kLtBranch,"ret","",1)
 

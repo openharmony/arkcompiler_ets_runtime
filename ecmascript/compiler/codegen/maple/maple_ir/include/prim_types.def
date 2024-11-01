@@ -31,6 +31,7 @@
   PRIMTYPE(a64)
   PRIMTYPE(f32)
   PRIMTYPE(f64)
+  PRIMTYPE(dynany)
   PRIMTYPE(unknown)
 #endif // ~LOAD_ALGO_PRIMARY_TYPE
 
@@ -117,6 +118,11 @@ static const PrimitiveTypeProperty PTProperty_f32 = {
 
 static const PrimitiveTypeProperty PTProperty_f64 = {
   /*type=*/PTY_f64, /*isInteger=*/false, /*isUnsigned=*/false, /*isAddress=*/false, /*isFloat=*/true,
+  /*isPointer=*/false, /*isSimple=*/false
+};
+
+static const PrimitiveTypeProperty PTProperty_dynany = {
+  /*type=*/PTY_dynany, /*isInteger=*/false, /*isUnsigned=*/false, /*isAddress=*/false, /*isFloat=*/false,
   /*isPointer=*/false, /*isSimple=*/false
 };
 

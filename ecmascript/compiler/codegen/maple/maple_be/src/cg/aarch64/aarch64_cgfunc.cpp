@@ -4438,6 +4438,59 @@ void AArch64CGFunc::SelectOverFlowCall(const IntrinsiccallNode &intrnNode)
     }
 }
 
+RegOperand &AArch64CGFunc::LoadOpndIntoPhysicalRegister(const IntrinsiccallNode &intrnNode, uint32 index)
+{
+    auto &opnd = *intrnNode.Opnd(index);
+    auto ptyp = opnd.GetPrimType();
+    RegOperand &opndReg = LoadIntoRegister(*HandleExpr(intrnNode, opnd), ptyp);
+    AArch64reg regId;
+    switch (index - 1) {
+        case kFirstReg:
+            regId = static_cast<AArch64reg>(R0);
+            break;
+        case kSecondReg:
+            regId = static_cast<AArch64reg>(R1);
+            break;
+        case kThirdReg:
+            regId = static_cast<AArch64reg>(R2);
+            break;
+        case kFourthReg:
+            regId = static_cast<AArch64reg>(R3);
+            break;
+        case kFifthReg:
+            regId = static_cast<AArch64reg>(R4);
+            break;
+        case kSixthReg:
+            regId = static_cast<AArch64reg>(R5);
+            break;
+        default:
+            CHECK_FATAL_FALSE("Unreachable!");
+    }
+    RegOperand &realReg = GetOrCreatePhysicalRegisterOperand(regId, opndReg.GetSize(), GetRegTyFromPrimTy(ptyp));
+    GetCurBB()->AppendInsn(GetInsnBuilder()->BuildInsn(PickMovBetweenRegs(ptyp, ptyp), realReg, opndReg));
+    return realReg;
+}
+
+
+void AArch64CGFunc::SelectPureCall(const IntrinsiccallNode &intrnNode)
+{
+    DEBUG_ASSERT(intrnNode.NumOpnds() == 7, "must be 7 operands");  // must be 7 operands
+    // deal with parms
+    ListOperand *srcOpnds = CreateListOpnd(*GetFuncScopeAllocator());
+    auto &callee = *intrnNode.Opnd(0);
+    auto ptyp = callee.GetPrimType();
+    RegOperand &calleeReg = LoadIntoRegister(*HandleExpr(intrnNode, callee), ptyp);
+    uint32 i = 1;
+    for (; i < kSeventhReg; i++) {
+        srcOpnds->PushOpnd(LoadOpndIntoPhysicalRegister(intrnNode, i));
+    }
+    // R15 is used in asm call
+    srcOpnds->PushOpnd(GetOrCreatePhysicalRegisterOperand(static_cast<AArch64reg>(R15),
+    GetPointerSize() * kBitsPerByte, kRegTyInt));
+    Insn &callInsn = GetInsnBuilder()->BuildInsn(MOP_pure_call, calleeReg, *srcOpnds);
+    GetCurBB()->AppendInsn(callInsn);
+}
+
 void AArch64CGFunc::SelectIntrinsicCall(IntrinsiccallNode &intrinsiccallNode)
 {
     MIRIntrinsicID intrinsic = intrinsiccallNode.GetIntrinsic();
@@ -4449,6 +4502,10 @@ void AArch64CGFunc::SelectIntrinsicCall(IntrinsiccallNode &intrinsiccallNode)
     if (intrinsic == INTRN_ADD_WITH_OVERFLOW || intrinsic == INTRN_SUB_WITH_OVERFLOW ||
         intrinsic == INTRN_MUL_WITH_OVERFLOW) {
         SelectOverFlowCall(intrinsiccallNode);
+        return;
+    }
+    if (intrinsic == maple::INTRN_JS_PURE_CALL) {
+        SelectPureCall(intrinsiccallNode);
         return;
     }
 }
