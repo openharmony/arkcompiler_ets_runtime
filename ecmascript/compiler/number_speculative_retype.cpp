@@ -349,6 +349,7 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
         case OpCode::FINISH_ALLOCATE:
         case OpCode::IS_CALLABLE_CHECK:
         case OpCode::GET_EXCEPTION:
+        case OpCode::MATH_HCLASS_CONSISTENCY_CHECK:
             return VisitOthers(gate);
         default:
             return Circuit::NullGate();

@@ -96,6 +96,7 @@ GateRef EarlyElimination::VisitGate(GateRef gate)
         case OpCode::LOAD_BUILTIN_OBJECT:
         case OpCode::LOOK_UP_HOLDER:
         case OpCode::IS_CALLABLE_CHECK:
+        case OpCode::MATH_HCLASS_CONSISTENCY_CHECK:
             return TryEliminateGate(gate);
         case OpCode::STATE_SPLIT:
             if (enableFrameStateElimination_) {
