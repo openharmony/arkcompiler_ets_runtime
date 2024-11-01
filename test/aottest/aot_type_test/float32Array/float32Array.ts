@@ -19,3 +19,11 @@ declare function print(arg:any):string;
     typedArray[0] = 1;
     print(typedArray[0])
 }
+
+{
+    for (let i = 0; i < 1000; i++) {
+        new Float32Array(i);
+    }
+    let a = new Float32Array(68);
+    print(a[0]);
+}

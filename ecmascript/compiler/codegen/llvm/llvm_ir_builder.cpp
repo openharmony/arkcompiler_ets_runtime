@@ -90,6 +90,12 @@ LLVMIRBuilder::LLVMIRBuilder(const std::vector<std::vector<GateRef>> *schedule, 
     ASSERT(GlobalTargetBuilders().count(triple) && "unsupported target");
     targetBuilder_ = GlobalTargetBuilders()[triple]();
     ASMBarrierCall_ = targetBuilder_->GetASMBarrierCall(module);
+    const char* attrName = "no-builtin-memset";
+    const char* attrValue = "";
+    LLVMAddAttributeAtIndex(
+        function_,
+        LLVMAttributeFunctionIndex,
+        LLVMCreateStringAttribute(context_, attrName, strlen(attrName), attrValue, strlen(attrValue)));
 }
 
 LLVMMetadataRef LLVMIRBuilder::GetFunctionTypeMD(LLVMMetadataRef dFile)
