@@ -172,16 +172,6 @@ MAD::~MAD()
     allReservations.clear();
 }
 
-void MAD::InitUnits() const
-{
-#include "mplad_unit_define.def"
-}
-
-void MAD::InitReservation() const
-{
-#include "mplad_reservation_define.def"
-}
-
 void MAD::InitParallelism() const {
 #include "mplad_arch_define.def"
 }
