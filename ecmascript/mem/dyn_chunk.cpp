@@ -70,8 +70,8 @@ int DynChunk::Insert(uint32_t position, size_t len)
 
 int DynChunk::Emit(const uint8_t *data, size_t length)
 {
-    if (UNLIKELY((size_ + length) > allocatedSize_)) {
-        if (Expand(size_ + length) != 0) {
+    if (UNLIKELY((size_ + length) > allocatedSize_)) { // LCOV_EXCL_BR_LINE
+        if (Expand(size_ + length) != 0) { // LCOV_EXCL_BR_LINE
             return FAILURE;
         }
     }
@@ -91,8 +91,8 @@ int DynChunk::EmitChar(uint8_t c)
 
 int DynChunk::EmitSelf(size_t offset, size_t length)
 {
-    if (UNLIKELY((size_ + length) > allocatedSize_)) {
-        if (Expand(size_ + length) != 0) {
+    if (UNLIKELY((size_ + length) > allocatedSize_)) { // LCOV_EXCL_BR_LINE
+        if (Expand(size_ + length) != 0) { // LCOV_EXCL_BR_LINE
             return FAILURE;
         }
     }

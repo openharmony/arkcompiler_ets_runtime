@@ -26,6 +26,10 @@
 #include "ecmascript/mem/mem_controller.h"
 #include "ecmascript/mem/incremental_marker.h"
 #include "ecmascript/mem/shared_heap/shared_concurrent_marker.h"
+#include "ecmascript/mem/gc_key_stats.h"
+#include "ecmascript/mem/gc_stats.h"
+#include "ecmascript/mem/allocation_inspector.h"
+#include "ecmascript/dfx/hprof/heap_sampling.h"
 #include "ecmascript/tests/ecma_test_common.h"
 
 using namespace panda;
@@ -685,6 +689,61 @@ HWTEST_F_L0(GCTest, StartCalculationBeforeGCTest002)
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
     MemController *memController = new MemController(heap);
     memController->StopCalculationAfterGC(TriggerGCType::EDEN_GC);
+}
+
+HWTEST_F_L0(GCTest, DryTrunkExpandTest001)
+{
+    auto trunk = thread->GetEcmaVM()->GetChunk();
+    DynChunk *dynChunk = new DynChunk(trunk);
+    ASSERT_TRUE(dynChunk->GetAllocatedSize() < 1000);
+    dynChunk->SetError();
+    ASSERT_EQ(dynChunk->Expand(1000), -1);
+}
+
+HWTEST_F_L0(GCTest, DryTrunkInsertTest001)
+{
+    auto trunk = thread->GetEcmaVM()->GetChunk();
+    DynChunk *dynChunk = new DynChunk(trunk);
+    ASSERT_EQ(dynChunk->Insert(5, 5), -1);
+}
+
+HWTEST_F_L0(GCTest, DryTrunkInsertTest002)
+{
+    auto trunk = thread->GetEcmaVM()->GetChunk();
+    DynChunk *dynChunk = new DynChunk(trunk);
+    dynChunk->SetError();
+    ASSERT_EQ(dynChunk->Insert(0, 5), -1);
+}
+
+HWTEST_F_L0(GCTest, AdvanceAllocationInspectorTest001)
+{
+    auto counter = new AllocationCounter();
+    counter->AdvanceAllocationInspector(100);
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    auto profiler = new HeapSampling(thread->GetEcmaVM(), heap, 10, 3);
+    auto inspector = new AllocationInspector(heap, 10, profiler);
+    counter->AddAllocationInspector(inspector);
+    counter->AdvanceAllocationInspector(0);
+}
+
+HWTEST_F_L0(GCTest, InvokeAllocationInspectorTest001)
+{
+    auto counter = new AllocationCounter();
+    counter->InvokeAllocationInspector(10000, 100, 100);
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    auto profiler = new HeapSampling(thread->GetEcmaVM(), heap, 10, 3);
+    auto inspector = new AllocationInspector(heap, 10, profiler);
+    counter->AddAllocationInspector(inspector);
+    counter->InvokeAllocationInspector(10000, 100, 100);
+}
+
+HWTEST_F_L0(GCTest, AddGCStatsToKeyTest001)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    auto stats = new GCKeyStats(heap);
+    for (size_t i = 0; i < 200; i++) {
+        stats->AddGCStatsToKey();
+    }
 }
 
 } // namespace panda::test
