@@ -459,7 +459,7 @@ public:
                                                        const JSHandle<JSTaggedValue> &transIhc,
                                                        const JSHandle<JSTaggedValue> &transPhc);
     static JSHandle<JSHClass> TransitionProto(const JSThread *thread, const JSHandle<JSHClass> &jshclass,
-                                              const JSHandle<JSTaggedValue> &proto);
+                                              const JSHandle<JSTaggedValue> &proto, bool isChangeProto = false);
     static JSHClass *FindTransitionProtoForAOT(const JSThread *thread, const JSHandle<JSHClass> &jshclass,
                                                const JSHandle<JSTaggedValue> &proto);
     static JSHandle<JSHClass> TransProtoWithoutLayout(const JSThread *thread, const JSHandle<JSHClass> &jshclass,
@@ -2011,12 +2011,17 @@ public:
 
     static JSHandle<JSHClass> SetPrototypeWithNotification(const JSThread *thread,
                                                            const JSHandle<JSHClass> &hclass,
-                                                           const JSHandle<JSTaggedValue> &proto);
+                                                           const JSHandle<JSTaggedValue> &proto,
+                                                           bool isChangeProto = false);
     static void SetPrototypeTransition(JSThread *thread, const JSHandle<JSObject> &object,
-                                       const JSHandle<JSTaggedValue> &proto);
-    void SetPrototype(const JSThread *thread, JSTaggedValue proto);
-    void PUBLIC_API SetPrototype(const JSThread *thread, const JSHandle<JSTaggedValue> &proto);
-    static void OptimizePrototypeForIC(const JSThread *thread, const JSHandle<JSTaggedValue> &proto,
+                                       const JSHandle<JSTaggedValue> &proto,
+                                       bool isChangeProto = false);
+    void SetPrototype(const JSThread *thread, JSTaggedValue proto, bool isChangeProto = false);
+    void PUBLIC_API SetPrototype(const JSThread *thread,
+                                 const JSHandle<JSTaggedValue> &proto,
+                                 bool isChangeProto = false);
+    static void OptimizePrototypeForIC(const JSThread *thread,
+                                       const JSHandle<JSTaggedValue> &proto,
                                        bool isChangeProto = false);
     inline JSTaggedValue GetPrototype() const
     {

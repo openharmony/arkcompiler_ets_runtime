@@ -1242,7 +1242,7 @@ bool JSTaggedValue::GetOwnProperty(JSThread *thread, const JSHandle<JSTaggedValu
 }
 
 bool JSTaggedValue::SetPrototype(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
-                                 const JSHandle<JSTaggedValue> &proto)
+                                 const JSHandle<JSTaggedValue> &proto, bool isChangeProto)
 {
     if (obj->IsJSShared() || proto->IsJSShared()) {
         THROW_TYPE_ERROR_AND_RETURN(thread, GET_MESSAGE_STRING(SetProtoWithSendable), false);
@@ -1266,7 +1266,7 @@ bool JSTaggedValue::SetPrototype(JSThread *thread, const JSHandle<JSTaggedValue>
         }
     }
 
-    return JSObject::SetPrototype(thread, JSHandle<JSObject>(obj), proto);
+    return JSObject::SetPrototype(thread, JSHandle<JSObject>(obj), proto, isChangeProto);
 }
 
 JSTaggedValue JSTaggedValue::GetPrototype(JSThread *thread, const JSHandle<JSTaggedValue> &obj)

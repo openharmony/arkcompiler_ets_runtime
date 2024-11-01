@@ -483,7 +483,9 @@ public:
     static JSTaggedValue GetPrototype(JSTaggedValue obj);
 
     // [[SetPrototypeOf]]
-    static bool SetPrototype(JSThread *thread, const JSHandle<JSObject> &obj, const JSHandle<JSTaggedValue> &proto);
+    static bool SetPrototype(JSThread *thread, const JSHandle<JSObject> &obj,
+                             const JSHandle<JSTaggedValue> &proto,
+                             bool isChangeProto = false);
 
     // [[IsExtensible]]
     bool IsExtensible() const;
