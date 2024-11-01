@@ -12,6 +12,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <chrono>
+#include <thread>
 
 #include "ecmascript/builtins/builtins_ark_tools.h"
 #include "ecmascript/ecma_vm.h"
@@ -26,6 +28,7 @@
 #include "ecmascript/mem/free_object_set.h"
 #include "ecmascript/mem/shared_mem_controller.h"
 #include "ecmascript/mem/mem_controller_utils.h"
+#include "ecmascript/mem/mem_controller.h"
 
 using namespace panda;
 
@@ -386,6 +389,83 @@ HWTEST_F_L0(GCTest, PrintGCMemoryStatisticTest002)
     GCStats *stats = new GCStats(heap);
     stats->RecordStatisticBeforeGC(TriggerGCType::YOUNG_GC, GCReason::TRIGGER_BY_ARKUI);
     stats->PrintGCMemoryStatistic();
+}
+
+HWTEST_F_L0(GCTest, CheckIfNeedPrintTest001)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    heap->SetMarkType(MarkType::MARK_YOUNG);
+    GCStats *stats = new GCStats(heap);
+    stats->SetRecordData(RecordData::EDEN_COUNT, 1);
+    stats->PrintStatisticResult();
+}
+
+HWTEST_F_L0(GCTest, PrintGCSummaryStatisticTest001)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    heap->SetMarkType(MarkType::MARK_YOUNG);
+    GCStats *stats = new GCStats(heap);
+    stats->PrintStatisticResult();
+}
+
+HWTEST_F_L0(GCTest, RecordStatisticAfterGCTest001)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    heap->SetMarkType(MarkType::MARK_YOUNG);
+    GCStats *stats = new GCStats(heap);
+    stats->RecordStatisticBeforeGC(TriggerGCType::EDEN_GC, GCReason::TRIGGER_BY_ARKUI);
+    stats->SetRecordData(RecordData::EDEN_COUNT, 1);
+    stats->RecordStatisticAfterGC();
+}
+
+HWTEST_F_L0(GCTest, RecordStatisticAfterGCTest002)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    heap->SetMarkType(MarkType::MARK_EDEN);
+    GCStats *stats = new GCStats(heap);
+    stats->RecordStatisticBeforeGC(TriggerGCType::EDEN_GC, GCReason::TRIGGER_BY_ARKUI);
+    stats->SetRecordData(RecordData::EDEN_COUNT, 1);
+    stats->RecordStatisticAfterGC();
+}
+
+HWTEST_F_L0(GCTest, CalculateGrowingFactorTest001)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    heap->SetMemGrowingType(MemGrowingType::CONSERVATIVE);
+    auto controller = new MemController(heap);
+    controller->CalculateGrowingFactor(1, 1);
+}
+
+HWTEST_F_L0(GCTest, CalculateGrowingFactorTest002)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    heap->SetMemGrowingType(MemGrowingType::PRESSURE);
+    auto controller = new MemController(heap);
+    controller->CalculateGrowingFactor(1, 1);
+}
+
+HWTEST_F_L0(GCTest, CalculateGrowingFactorTest003)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    heap->SetMemGrowingType(MemGrowingType::CONSERVATIVE);
+    auto controller = new MemController(heap);
+    controller->CalculateGrowingFactor(1, 0);
+}
+
+HWTEST_F_L0(GCTest, StopCalculationAfterGCTest001)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    auto controller = new MemController(heap);
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    controller->StartCalculationBeforeGC();
+    controller->StopCalculationAfterGC(TriggerGCType::EDEN_GC);
+}
+
+HWTEST_F_L0(GCTest, RecordAllocationForIdleTest003)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    auto controller = new MemController(heap);
+    controller->RecordAllocationForIdle();
 }
 
 } // namespace panda::test
