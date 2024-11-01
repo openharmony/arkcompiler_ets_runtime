@@ -203,7 +203,10 @@ uintptr_t SharedSparseSpace::AllocateAfterSweepingCompleted([[maybe_unused]] JST
 void SharedSparseSpace::PrepareSweeping()
 {
     liveObjectSize_ = 0;
+    ASSERT(GetSweepingRegionSafe() == nullptr);
+    ASSERT(GetSweptRegionSafe() == nullptr);
     EnumerateRegions([this](Region *current) {
+        ASSERT(!current->IsGCFlagSet(RegionGCFlags::HAS_BEEN_SWEPT));
         IncreaseLiveObjectSize(current->AliveObject());
         current->ResetWasted();
         AddSweepingRegion(current);
