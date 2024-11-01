@@ -259,7 +259,7 @@ EcmaString *EcmaStringTable::GetOrInternCompressedSubString(EcmaVM *vm, const JS
         vm->IncreaseStringTableLockCount();
     }
 #endif
-    // utf8data may be moved after shared full gc, so reload utf8Data here.
+    // Utf8data may be moved after shared full gc, so reload utf8Data here.
     utf8Data = EcmaStringAccessor(string).GetDataUtf8() + offset;
     std::pair<EcmaString *, uint32_t> result = GetStringThreadUnsafe(utf8Data, utf8Len, true, hashcode);
     if (result.first != nullptr) {

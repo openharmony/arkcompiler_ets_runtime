@@ -5746,13 +5746,14 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
     HANDLE_OPCODE(STOWNBYINDEX_IMM8_V8_IMM16) {
         uint8_t v0 = READ_INST_8_1();
         uint16_t index = READ_INST_16_2();
+        JSTaggedValue receiver = GET_VREG_VALUE(v0);
         LOG_INST() << "intrinsics::stownbyindex"
                    << " v" << v0 << " imm" << index;
-        JSTaggedValue receiver = GET_VREG_VALUE(v0);
         // fast path
         if (receiver.IsHeapObject() && !receiver.IsClassConstructor() && !receiver.IsClassPrototype()) {
             SAVE_ACC();
             JSTaggedValue value = GET_ACC();
+            receiver = GET_VREG_VALUE(v0);
             // fast path
             JSTaggedValue res = FastRuntimeStub::SetPropertyByIndex<ObjectFastOperator::Status::UseOwn>
                                 (thread, receiver, index, value);
@@ -5775,9 +5776,9 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
     HANDLE_OPCODE(STOWNBYINDEX_IMM16_V8_IMM16) {
         uint8_t v0 = READ_INST_8_2();
         uint16_t index = READ_INST_16_3();
-        JSTaggedValue receiver = GET_VREG_VALUE(v0);
         LOG_INST() << "intrinsics::stownbyindex"
                    << " v" << v0 << " imm" << index;
+        JSTaggedValue receiver = GET_VREG_VALUE(v0);
         // fast path
         if (receiver.IsHeapObject() && !receiver.IsClassConstructor() && !receiver.IsClassPrototype()) {
             SAVE_ACC();

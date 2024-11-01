@@ -33,7 +33,6 @@
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/object_factory-inl.h"
 #include "ecmascript/runtime_call_id.h"
-#include "ecmascript/js_primitive_ref.h"
 
 namespace panda::ecmascript {
 JSTaggedValue ICRuntimeStub::LoadGlobalICByName(JSThread *thread, ProfileTypeInfo *profileTypeInfo,
