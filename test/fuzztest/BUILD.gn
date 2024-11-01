@@ -245,7 +245,6 @@ group("fuzztest") {
     "jsnapideserializevalue_fuzzer:fuzztest",
     "jsnapiexception_fuzzer:fuzztest",
     "jsnapiexceptions_fuzzer:fuzztest",
-    "jsnapifork_fuzzer:fuzztest",
     "jsnapihaspendingexception_fuzzer:fuzztest",
     "jsnapiinformation_fuzzer:fuzztest",
     "jsnapiisarrayiterator_fuzzer:fuzztest",
