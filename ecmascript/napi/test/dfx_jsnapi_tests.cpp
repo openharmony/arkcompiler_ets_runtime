@@ -22,6 +22,8 @@
 #include "ecmascript/mem/concurrent_sweeper.h"
 #include "ecmascript/napi/include/dfx_jsnapi.h"
 #include "ecmascript/tests/test_helper.h"
+#include "ecmascript/dfx/cpu_profiler/samples_record.h"
+#include "ecmascript/dfx/tracing/tracing.h"
 
 using namespace panda;
 using namespace panda::ecmascript;
@@ -440,5 +442,242 @@ HWTEST_F_L0(DFXJSNApiTests, NotifyHighSensitive)
     EXPECT_TRUE(heap->GetSensitiveStatus() == AppSensitiveStatus::ENTER_HIGH_SENSITIVE);
     DFXJSNApi::NotifyHighSensitive(vm_, false);
     EXPECT_TRUE(heap->GetSensitiveStatus() == AppSensitiveStatus::EXIT_HIGH_SENSITIVE);
+}
+
+HWTEST_F_L0(DFXJSNApiTests, GetGCCount)
+{
+    vm_->GetJSOptions().SetIsWorker(true);
+    size_t count = DFXJSNApi::GetGCCount(vm_);
+    ASSERT_EQ(count, vm_->GetEcmaGCStats()->GetGCCount());
+
+    vm_->GetJSOptions().SetIsWorker(false);
+    count = DFXJSNApi::GetGCCount(vm_);
+    ASSERT_EQ(count, vm_->GetEcmaGCStats()->GetGCCount() +
+        ecmascript::SharedHeap::GetInstance()->GetEcmaGCStats()->GetGCCount());
+}
+
+HWTEST_F_L0(DFXJSNApiTests, GetGCDuration)
+{
+    vm_->GetJSOptions().SetIsWorker(true);
+    size_t duration = DFXJSNApi::GetGCDuration(vm_);
+    ASSERT_EQ(duration, vm_->GetEcmaGCStats()->GetGCDuration());
+
+    vm_->GetJSOptions().SetIsWorker(false);
+    duration = DFXJSNApi::GetGCDuration(vm_);
+    ASSERT_EQ(duration, vm_->GetEcmaGCStats()->GetGCDuration() +
+        ecmascript::SharedHeap::GetInstance()->GetEcmaGCStats()->GetGCDuration());
+}
+
+HWTEST_F_L0(DFXJSNApiTests, GetAccumulatedAllocateSize)
+{
+    vm_->GetJSOptions().SetIsWorker(true);
+    size_t size = DFXJSNApi::GetAccumulatedAllocateSize(vm_);
+    ASSERT_EQ(size, vm_->GetEcmaGCStats()->GetAccumulatedAllocateSize());
+
+    vm_->GetJSOptions().SetIsWorker(false);
+    size = DFXJSNApi::GetAccumulatedAllocateSize(vm_);
+    ASSERT_EQ(size, vm_->GetEcmaGCStats()->GetAccumulatedAllocateSize() +
+        ecmascript::SharedHeap::GetInstance()->GetEcmaGCStats()->GetAccumulatedAllocateSize());
+}
+
+HWTEST_F_L0(DFXJSNApiTests, GetAccumulatedFreeSize)
+{
+    vm_->GetJSOptions().SetIsWorker(true);
+    size_t size = DFXJSNApi::GetAccumulatedFreeSize(vm_);
+    ASSERT_EQ(size, vm_->GetEcmaGCStats()->GetAccumulatedFreeSize());
+
+    vm_->GetJSOptions().SetIsWorker(false);
+    size = DFXJSNApi::GetAccumulatedFreeSize(vm_);
+    ASSERT_EQ(size, vm_->GetEcmaGCStats()->GetAccumulatedFreeSize() +
+        ecmascript::SharedHeap::GetInstance()->GetEcmaGCStats()->GetAccumulatedFreeSize());
+}
+
+HWTEST_F_L0(DFXJSNApiTests, StopCpuProfilerForColdStart)
+{
+#if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
+    ASSERT_FALSE(DFXJSNApi::StopCpuProfilerForColdStart(vm_));
+
+    vm_->GetJSOptions().SetArkProperties(ArkProperties::CPU_PROFILER_COLD_START_MAIN_THREAD);
+    ASSERT_TRUE(DFXJSNApi::StopCpuProfilerForColdStart(vm_));
+
+    vm_->GetJSOptions().SetArkProperties(ArkProperties::CPU_PROFILER_COLD_START_WORKER_THREAD);
+    ASSERT_TRUE(DFXJSNApi::StopCpuProfilerForColdStart(vm_));
+#else
+    ASSERT_FALSE(DFXJSNApi::StopCpuProfilerForColdStart(vm_));
+#endif
+}
+
+HWTEST_F_L0(DFXJSNApiTests, CpuProfilerSamplingAnyTime)
+{
+#if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
+    ASSERT_FALSE(DFXJSNApi::CpuProfilerSamplingAnyTime(vm_));
+#else
+    ASSERT_FALSE(DFXJSNApi::CpuProfilerSamplingAnyTime(vm_));
+#endif
+}
+
+HWTEST_F_L0(DFXJSNApiTests, StartCpuProfilerForFile)
+{
+    int interval = 32768;
+#if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
+    int illegalInterval = 0;
+    ASSERT_FALSE(DFXJSNApi::StartCpuProfilerForFile(vm_, "StartCpuProfilerForFile", illegalInterval));
+
+    ASSERT_FALSE(DFXJSNApi::StartCpuProfilerForFile(nullptr, "StartCpuProfilerForFile", interval));
+
+    ASSERT_FALSE(DFXJSNApi::StartCpuProfilerForFile(vm_, "StartCpuProfilerForFile", interval));
+#else
+    ASSERT_FALSE(DFXJSNApi::StartCpuProfilerForFile(vm_, "StartCpuProfilerForFile", interval));
+#endif
+}
+
+HWTEST_F_L0(DFXJSNApiTests, StartCpuProfilerForInfo)
+{
+    int interval = 32768;
+#if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
+    ASSERT_FALSE(DFXJSNApi::StartCpuProfilerForInfo(nullptr, interval));
+
+    int illegalInterval = 0;
+    ASSERT_FALSE(DFXJSNApi::StartCpuProfilerForInfo(vm_, illegalInterval));
+
+    ASSERT_TRUE(DFXJSNApi::StartCpuProfilerForInfo(vm_, interval));
+    ASSERT_NE(DFXJSNApi::StopCpuProfilerForInfo(vm_), nullptr);
+#else
+    ASSERT_FALSE(DFXJSNApi::StartCpuProfilerForInfo(vm_, interval));
+#endif
+}
+
+HWTEST_F_L0(DFXJSNApiTests, StopCpuProfilerForInfo)
+{
+#if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
+    ASSERT_EQ(DFXJSNApi::StopCpuProfilerForInfo(nullptr), nullptr);
+
+    vm_->SetProfiler(nullptr);
+    ASSERT_EQ(DFXJSNApi::StopCpuProfilerForInfo(vm_), nullptr);
+#else
+    ASSERT_EQ(DFXJSNApi::StopCpuProfilerForInfo(vm_), nullptr);
+#endif
+}
+
+HWTEST_F_L0(DFXJSNApiTests, SuspendVM)
+{
+#if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
+    ASSERT_FALSE(DFXJSNApi::SuspendVM(vm_));
+#else
+    ASSERT_FALSE(DFXJSNApi::SuspendVM(vm_));
+#endif
+}
+
+HWTEST_F_L0(DFXJSNApiTests, IsSuspended)
+{
+#if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
+    ASSERT_FALSE(DFXJSNApi::IsSuspended(vm_));
+#else
+    ASSERT_FALSE(DFXJSNApi::IsSuspended(vm_));
+#endif
+}
+
+HWTEST_F_L0(DFXJSNApiTests, CheckSafepoint)
+{
+#if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
+    ASSERT_FALSE(DFXJSNApi::CheckSafepoint(vm_));
+#else
+    ASSERT_FALSE(DFXJSNApi::CheckSafepoint(vm_));
+#endif
+}
+
+HWTEST_F_L0(DFXJSNApiTests, BuildJsStackInfoList_2)
+{
+    std::vector<ecmascript::JsFrameInfo> jsFrames;
+    uint32_t tid = vm_->GetAssociatedJSThread()->GetThreadId();
+    ASSERT_FALSE(DFXJSNApi::BuildJsStackInfoList(vm_, tid + 1, jsFrames));
+
+    ASSERT_FALSE(DFXJSNApi::BuildJsStackInfoList(vm_, tid, jsFrames));
+}
+
+HWTEST_F_L0(DFXJSNApiTests, StartProfiler)
+{
+    DFXJSNApi::ProfilerOption option;
+    option.profilerType = DFXJSNApi::ProfilerType::CPU_PROFILER;
+    DebuggerPostTask debuggerPostTask;
+    uint32_t tid = vm_->GetAssociatedJSThread()->GetThreadId();
+    int32_t instanceId = 1;
+    ASSERT_FALSE(DFXJSNApi::StartProfiler(nullptr, option, tid, instanceId, debuggerPostTask, true));
+
+    option.profilerType = DFXJSNApi::ProfilerType::HEAP_PROFILER;
+    ASSERT_FALSE(DFXJSNApi::StartProfiler(nullptr, option, tid, instanceId, debuggerPostTask, false));
+}
+
+HWTEST_F_L0(DFXJSNApiTests, SuspendVMById)
+{
+    uint32_t tid = vm_->GetAssociatedJSThread()->GetThreadId();
+    ASSERT_FALSE(DFXJSNApi::SuspendVMById(vm_, tid + 1));
+
+#if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
+    ASSERT_FALSE(DFXJSNApi::SuspendVMById(vm_, tid));
+#else
+    ASSERT_FALSE(DFXJSNApi::SuspendVMById(vm_, tid));
+#endif
+}
+
+HWTEST_F_L0(DFXJSNApiTests, StartTracing)
+{
+    std::string categories = "StartTracing";
+#if defined(ECMASCRIPT_SUPPORT_TRACING)
+    ASSERT_FALSE(DFXJSNApi::StartTracing(nullptr, categories));
+
+    vm_->SetTracing(nullptr);
+    ASSERT_TRUE(DFXJSNApi::StartTracing(vm_, categories));
+    ASSERT_NE(DFXJSNApi::StopTracing(vm_), nullptr);
+#else
+    ASSERT_FALSE(DFXJSNApi::StartTracing(vm_, categories));
+#endif
+}
+
+HWTEST_F_L0(DFXJSNApiTests, StopTracing)
+{
+#if defined(ECMASCRIPT_SUPPORT_TRACING)
+    ASSERT_EQ(DFXJSNApi::StopTracing(nullptr), nullptr);
+
+    vm_->SetTracing(nullptr);
+    ASSERT_EQ(DFXJSNApi::StopTracing(vm_), nullptr);
+#else
+    ASSERT_EQ(DFXJSNApi::StopTracing(vm_), nullptr);
+#endif
+}
+
+HWTEST_F_L0(DFXJSNApiTests, TranslateJSStackInfo)
+{
+    std::string resultUrl = "";
+    auto cb = [&resultUrl](std::string& url, int& line, int& column) -> bool {
+        line = 0;
+        column = 0;
+        if (url.find("TranslateJSStackInfo", 0) != std::string::npos) {
+            resultUrl = "true";
+            return true;
+        }
+        resultUrl = "false";
+        return false;
+    };
+
+    vm_->SetSourceMapTranslateCallback(nullptr);
+    std::string url = "TranslateJSStackInfo";
+    int32_t line = 0;
+    int32_t column = 0;
+    DFXJSNApi::TranslateJSStackInfo(vm_, url, line, column);
+
+    vm_->SetSourceMapTranslateCallback(cb);
+    url = "Translate";
+    DFXJSNApi::TranslateJSStackInfo(vm_, url, line, column);
+    ASSERT_STREQ(resultUrl.c_str(), "false");
+
+    url = "TranslateJSStackInfo";
+    DFXJSNApi::TranslateJSStackInfo(vm_, url, line, column);
+    ASSERT_STREQ(resultUrl.c_str(), "true");
+}
+
+HWTEST_F_L0(DFXJSNApiTests, GetCurrentThreadId)
+{
+    ASSERT_EQ(DFXJSNApi::GetCurrentThreadId(), JSThread::GetCurrentThreadId());
 }
 } // namespace panda::test

@@ -3670,7 +3670,11 @@ void FunctionRef::SetData(const EcmaVM *vm, void *data, NativePointerCallback de
     ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     JSHandle<JSTaggedValue> funcValue = JSNApiHelper::ToJSHandle(this);
     JSHandle<JSFunction> function(funcValue);
-    function->SetFunctionExtraInfo(thread, nullptr, deleter, data, 0);
+    if (function->IsJSShared()) {
+        function->SetSFunctionExtraInfo(thread, nullptr, deleter, data, 0);
+    } else {
+        function->SetFunctionExtraInfo(thread, nullptr, deleter, data, 0);
+    }
 }
 
 void* FunctionRef::GetData(const EcmaVM *vm)
@@ -4778,7 +4782,7 @@ bool JSNApi::StopDebugger([[maybe_unused]] int tid)
 #endif // ECMASCRIPT_SUPPORT_DEBUGGER
 }
 
-bool JSNApi::IsMixedDebugEnabled([[maybe_unused]] const EcmaVM *vm)
+bool JSNApi::IsMixedDebugEnabled(const EcmaVM *vm)
 {
 #if defined(ECMASCRIPT_SUPPORT_DEBUGGER)
     return vm->GetJsDebuggerManager()->IsMixedDebugEnabled();
@@ -4801,7 +4805,7 @@ bool JSNApi::IsDebugModeEnabled([[maybe_unused]] const EcmaVM *vm)
 #endif
 }
 
-void JSNApi::NotifyNativeCalling([[maybe_unused]] const EcmaVM *vm, [[maybe_unused]] const void *nativeAddress)
+void JSNApi::NotifyNativeCalling(const EcmaVM *vm, [[maybe_unused]] const void *nativeAddress)
 {
 #if defined(ECMASCRIPT_SUPPORT_DEBUGGER)
     CROSS_THREAD_AND_EXCEPTION_CHECK(vm);
@@ -4811,7 +4815,7 @@ void JSNApi::NotifyNativeCalling([[maybe_unused]] const EcmaVM *vm, [[maybe_unus
 #endif
 }
 
-void JSNApi::NotifyNativeReturn([[maybe_unused]] const EcmaVM *vm,  [[maybe_unused]] const void *nativeAddress)
+void JSNApi::NotifyNativeReturn(const EcmaVM *vm,  [[maybe_unused]] const void *nativeAddress)
 {
 #if defined(ECMASCRIPT_SUPPORT_DEBUGGER)
     CROSS_THREAD_AND_EXCEPTION_CHECK(vm);
@@ -4821,7 +4825,7 @@ void JSNApi::NotifyNativeReturn([[maybe_unused]] const EcmaVM *vm,  [[maybe_unus
 #endif
 }
 
-void JSNApi::NotifyLoadModule([[maybe_unused]] const EcmaVM *vm)
+void JSNApi::NotifyLoadModule(const EcmaVM *vm)
 {
 #if defined(ECMASCRIPT_SUPPORT_DEBUGGER)
     CROSS_THREAD_AND_EXCEPTION_CHECK(vm);
@@ -4952,10 +4956,7 @@ void JSNApi::LoadAotFile(EcmaVM *vm, const std::string &moduleName)
 
     std::string aotFileName;
     LoadAotFileInternal(vm, moduleName, aotFileName);
-    if (!thread->GetCurrentEcmaContext()->LoadAOTFiles(aotFileName)) {
-        return;
-    }
-    ecmascript::JSPandaFileExecutor::BindPreloadedPandaFilesToAOT(vm, moduleName);
+    thread->GetCurrentEcmaContext()->LoadAOTFiles(aotFileName);
 }
 
 #if defined(CROSS_PLATFORM) && defined(ANDROID_PLATFORM)
@@ -6068,7 +6069,7 @@ Local<WeakSetRef> WeakSetRef::New(const EcmaVM *vm)
     ecmascript::ThreadManagedScope managedScope(thread);
     ObjectFactory *factory = vm->GetJSThread()->GetEcmaVM()->GetFactory();
     JSHandle<GlobalEnv> env = vm->GetJSThread()->GetEcmaVM()->GetGlobalEnv();
-    JSHandle<JSTaggedValue> constructor = env->GetBuiltinsSetFunction();
+    JSHandle<JSTaggedValue> constructor = env->GetBuiltinsWeakSetFunction();
     JSHandle<JSWeakSet> weakSet =
         JSHandle<JSWeakSet>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor), constructor));
     JSHandle<LinkedHashSet> hashWeakSet = LinkedHashSet::Create(vm->GetJSThread());

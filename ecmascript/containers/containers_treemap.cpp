@@ -16,7 +16,6 @@
 #include "ecmascript/containers/containers_treemap.h"
 
 #include "ecmascript/containers/containers_errors.h"
-#include "ecmascript/ecma_vm.h"
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/js_api/js_api_tree_map.h"
 #include "ecmascript/js_api/js_api_tree_map_iterator.h"
