@@ -18,12 +18,28 @@
 #include "ecmascript/js_handle.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/tagged_array-inl.h"
+#include "ecmascript/mem/concurrent_marker.h"
+#include "ecmascript/mem/partial_gc.h"
 #include "ecmascript/tests/ecma_test_common.h"
 
 using namespace panda::ecmascript;
 
 namespace panda::test {
 class WeakRefOldGCTest : public BaseTestWithScope<false> {
+public:
+    void SetUp() override
+    {
+        JSRuntimeOptions options;
+        options.SetEnableEdenGC(true);
+        instance = JSNApi::CreateEcmaVM(options);
+        ASSERT_TRUE(instance != nullptr) << "Cannot create EcmaVM";
+        thread = instance->GetJSThread();
+        thread->ManagedCodeBegin();
+        scope = new EcmaHandleScope(thread);
+        auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+        heap->GetConcurrentMarker()->EnableConcurrentMarking(EnableConcurrentMarkType::ENABLE);
+        heap->GetSweeper()->EnableConcurrentSweep(EnableConcurrentSweepType::ENABLE);
+    }
 };
 
 static JSObject *JSObjectTestCreate(JSThread *thread)
@@ -97,5 +113,76 @@ HWTEST_F_L0(WeakRefOldGCTest, ObjectKeep)
     value = array.GetTaggedValue();
     value.CreateWeakRef();
     EXPECT_EQ(newObj1->GetElements(), value);
+}
+
+HWTEST_F_L0(WeakRefOldGCTest, WeakRefTest)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    std::vector<JSHandle<TaggedArray>> srcArrayHandleRecord;
+    std::vector<JSHandle<TaggedArray>> dstOldArrayHandleRecord;
+    std::vector<JSHandle<TaggedArray>> dstNewArrayHandleRecord;
+    for (int i = 0; i < 128; i++) {
+        JSHandle<TaggedArray> arrayHandle = factory->NewTaggedArray(64, JSTaggedValue::True(),
+                                                                    MemSpaceType::OLD_SPACE);
+        srcArrayHandleRecord.emplace_back(arrayHandle);
+    }
+    for (int i = 0; i < 128; i++) {
+        JSHandle<TaggedArray> arrayHandle = factory->NewTaggedArray(128, JSTaggedValue::True(),
+                                                                    MemSpaceType::OLD_SPACE);
+        dstOldArrayHandleRecord.emplace_back(arrayHandle);
+    }
+    for (int i = 0; i < 128; i++) {
+        JSHandle<TaggedArray> arrayHandle = factory->NewTaggedArray(128, JSTaggedValue::True(),
+                                                                    MemSpaceType::SEMI_SPACE);
+        dstNewArrayHandleRecord.emplace_back(arrayHandle);
+    }
+    for (auto it : srcArrayHandleRecord) {
+        uint32_t countIndex = 0;
+        std::random_device randomDevice;
+        std::shuffle(dstOldArrayHandleRecord.begin(), dstOldArrayHandleRecord.end(), std::mt19937(randomDevice()));
+        for (auto it2 : dstOldArrayHandleRecord) {
+            if (Region::ObjectAddressToRange(it2.GetTaggedValue().GetTaggedObject())->InGeneralOldSpace()) {
+                JSTaggedValue valueWeak = it2.GetTaggedValue().CreateAndGetWeakRef();
+                it->Set<true>(thread, countIndex, valueWeak);
+                if (++countIndex >= 40) {
+                    break;
+                }
+            }
+        }
+    }
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    if (heap->CheckOngoingConcurrentMarking()) {
+        heap->GetConcurrentMarker()->Reset();
+    }
+    heap->SetMarkType(MarkType::MARK_FULL);
+    heap->TriggerConcurrentMarking();
+    std::this_thread::sleep_for(std::chrono::seconds(3));
+    for (auto it : srcArrayHandleRecord) {
+        uint32_t countIndex = 0;
+        std::random_device randomDevice;
+        std::shuffle(dstNewArrayHandleRecord.begin(), dstNewArrayHandleRecord.end(), std::mt19937(randomDevice()));
+        for (auto it2 : dstNewArrayHandleRecord) {
+            if (Region::ObjectAddressToRange(it2.GetTaggedValue().GetTaggedObject())->InGeneralNewSpace()) {
+                JSTaggedValue valueWeak = it2.GetTaggedValue().CreateAndGetWeakRef();
+                it->Set<true>(thread, countIndex, valueWeak);
+                if (++countIndex >= 40) {
+                    break;
+                }
+            }
+        }
+    }
+    auto partialGc = heap->GetPartialGC();
+    partialGc->RunPhases();
+    for (auto it : dstOldArrayHandleRecord) {
+        EXPECT_TRUE(it.GetTaggedValue() != JSTaggedValue::Undefined());
+    }
+    for (auto it : dstNewArrayHandleRecord) {
+        EXPECT_TRUE(it.GetTaggedValue() != JSTaggedValue::Undefined());
+    }
+    for (auto it : srcArrayHandleRecord) {
+        for (uint32_t i = 0; i < 40; i++) {
+            EXPECT_TRUE(it->Get(i) != JSTaggedValue::Undefined());
+        }
+    }
 }
 }  // namespace panda::test
