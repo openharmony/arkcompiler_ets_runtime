@@ -441,6 +441,9 @@ void OldSpace::SelectCSet()
     if (localHeap_->IsMarking()) {
         localHeap_->GetEcmaGCStats()->RecordStatisticBeforeGC(TriggerGCType::OLD_GC, GCReason::OTHER);
     }
+    if (localHeap_->InSensitiveStatus()) {
+        return;
+    }
     CheckRegionSize();
     // 1、Select region which alive object larger than limit
     int64_t evacuateSizeLimit = 0;
