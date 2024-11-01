@@ -181,7 +181,7 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--test-assert:                        Set Assert Model. Default: 'false'\n"
     "--compiler-methods-range:             Enable aot compiler to compile only in-range methods."
     "                                      Default: '0:4294967295'\n"
-    "--compiler-codegen-options:           Compile options passed to codegen. Default: ''\n"
+    "--compiler-codegen-options:           Compile options passed to codegen. Default: ''\n\n"
     "--compiler-opt-escape-analysis:       Enable escape analysis for aot compiler. Default: 'true'\n"
     "--compiler-trace-escape-analysis:     Enable tracing escape analysis for aot compiler. Default: 'false'\n"
     "--compiler-opt-induction-variable:    Enable induciton variable analysis for aot compiler. Default: 'false'\n"

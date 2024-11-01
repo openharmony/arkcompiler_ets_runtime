@@ -15,3 +15,27 @@
 123
 2
 2.1
+1
+2
+3
+4
+5
+99.99
+ark
+-88.48
+brk
+-1024
+crk
+6666
+drk
+in 1 second,now,now,1 second ago
+in 1 minute,this minute,this minute,1 minute ago
+2
+ok
+1
+2
+3
+yes
+no
+4
+5
