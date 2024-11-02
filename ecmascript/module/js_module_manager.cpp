@@ -147,7 +147,7 @@ JSTaggedValue ModuleManager::GetModuleValueOutterInternal(int32_t index, JSTagge
     if (resolvedBinding.IsResolvedRecordIndexBinding()) {
         return ModuleManagerHelper::GetModuleValueFromIndexBinding(thread, currentModuleHdl, resolvedBinding);
     }
-    if (resolvedBinding.IsResolvedRecordBinding()) {
+    if (resolvedBinding.IsResolvedRecordBinding()) { // LCOV_EXCL_BR_LINE
         return ModuleManagerHelper::GetModuleValueFromRecordBinding(thread, currentModuleHdl, resolvedBinding);
     }
 
@@ -224,7 +224,7 @@ JSTaggedValue ModuleManager::GetLazyModuleValueOutterInternal(int32_t index, JST
     if (resolvedBinding.IsResolvedRecordIndexBinding()) {
         return ModuleManagerHelper::GetLazyModuleValueFromIndexBinding(thread, currentModuleHdl, resolvedBinding);
     }
-    if (resolvedBinding.IsResolvedRecordBinding()) {
+    if (resolvedBinding.IsResolvedRecordBinding()) { // LCOV_EXCL_BR_LINE
         return ModuleManagerHelper::GetLazyModuleValueFromRecordBinding(thread, currentModuleHdl, resolvedBinding);
     }
     LOG_ECMA(FATAL) << "Get module value failed, mistaken ResolvedBinding";

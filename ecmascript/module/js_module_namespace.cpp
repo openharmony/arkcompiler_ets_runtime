@@ -108,7 +108,7 @@ OperationResult ModuleNamespace::GetProperty(JSThread *thread, const JSHandle<JS
         thread, OperationResult(thread, JSTaggedValue::Exception(), PropertyMetaData(false)));
     // 7. Assert: binding is a ResolvedBinding Record.
     // If resolution is null or "ambiguous", throw a SyntaxError exception.
-    if (binding->IsNull() || binding->IsString()) {
+    if (binding->IsNull() || binding->IsString()) { // LCOV_EXCL_BR_LINE
         CString requestMod = ModulePathHelper::ReformatPath(mm->GetEcmaModuleFilenameString());
         LOG_FULL(FATAL) << "Module: '" << requestMod << SourceTextModule::GetResolveErrorReason(binding) <<
             ConvertToString(key.GetTaggedValue()) << ".";

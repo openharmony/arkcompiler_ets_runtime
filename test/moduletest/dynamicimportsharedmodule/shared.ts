@@ -21,7 +21,7 @@
  */
 
 declare function print(str: any): string;
-"shared module"
+"use shared"
 export {SingleCase};
 
 import("./func").then(m=>{
