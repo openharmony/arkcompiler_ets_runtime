@@ -140,6 +140,15 @@ inline void RSetWorkListHandler::MergeBackForAllItem()
     }
 }
 
+inline void RSetWorkListHandler::NotifyProcessRsetFinished()
+{
+    LockHolder lock(mutex_);
+    if (!processRsetFinished_) {
+        heap_->SetProcessingRset(false);
+        processRsetFinished_ = true;
+    }
+}
+
 inline bool RSetWorkListHandler::MergeBack()
 {
     ASSERT((JSThread::GetCurrent()->IsJSThread() && JSThread::GetCurrent()->IsInRunningState()) ||

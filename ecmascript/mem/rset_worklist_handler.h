@@ -62,6 +62,8 @@ public:
 
     inline void MergeBackForAllItem();
 
+    inline void NotifyProcessRsetFinished();
+
 private:
     inline void CollectRSetItemsInHeap(const Heap *heap);
 
@@ -83,6 +85,7 @@ private:
      * And thus WaitFinishedThenMergeBack should ONLY be called from the bound js thread in RUNNING state.
     */
     bool initialized_ {false};
+    bool processRsetFinished_ {false};
     std::vector<RSetItem> items_;
     std::atomic<int> nextItemIndex_ {-1};
     int remainItems_ {0};

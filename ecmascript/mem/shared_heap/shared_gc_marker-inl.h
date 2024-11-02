@@ -173,7 +173,7 @@ inline void SharedGCMarkerBase::ProcessVisitorOfDoMark(uint32_t threadId)
     for (RSetWorkListHandler *handler : rSetHandlers_) {
         ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedGCMarker::ProcessRSet");
         handler->ProcessAll(visitor);
-        handler->GetHeap()->SetProcessingRset(false);
+        handler->NotifyProcessRsetFinished();
     }
 }
 
@@ -220,6 +220,7 @@ inline void SharedGCMarkerBase::ProcessThenMergeBackRSetFromBoundJSThread(RSetWo
     ASSERT(JSThread::GetCurrent()->IsInRunningState());
     ProcessVisitor(handler);
     handler->WaitFinishedThenMergeBack();
+    handler->NotifyProcessRsetFinished();
 }
 
 void SharedGCMovableMarker::MarkObject(uint32_t threadId, TaggedObject *object, ObjectSlot &slot)
