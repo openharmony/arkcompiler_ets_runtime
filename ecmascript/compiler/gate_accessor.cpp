@@ -409,14 +409,23 @@ bool GateAccessor::HasNumberType(GateRef gate) const
     return false;
 }
 
-bool GateAccessor::HasStringType(GateRef gate) const
+bool GateAccessor::HasStringType(GateRef gate, bool onlyInternString) const
 {
     OpCode op = GetOpCode(gate);
     if (op == OpCode::TYPED_BINARY_OP) {
         TypedBinaryAccessor accessor(TryGetValue(gate));
-        return accessor.GetParamType().IsStringType();
+        bool isInternString = accessor.GetParamType().IsInternStringType();
+        if (onlyInternString) {
+            return isInternString;
+        }
+        return isInternString || accessor.GetParamType().IsStringType();
     }
     return false;
+}
+
+bool GateAccessor::IsInternStringType(GateRef gate) const
+{
+    return HasStringType(gate, true);
 }
 
 GlobalTSTypeRef GateAccessor::GetFuncGT(GateRef gate) const

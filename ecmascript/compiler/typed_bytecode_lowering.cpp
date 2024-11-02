@@ -363,6 +363,8 @@ void TypedBytecodeLowering::LowerTypedBinOp(GateRef gate)
     }
     if (tacc.HasNumberType()) {
         SpeculateNumbers<Op>(tacc);
+    } else if (tacc.IsInternStringType()) {
+        SpeculateInternStrings<Op>(tacc);
     } else if (tacc.IsStringType()) {
         SpeculateStrings<Op>(tacc);
     }
@@ -394,6 +396,47 @@ void TypedBytecodeLowering::LowerTypedEqOrNotEq(GateRef gate)
     } else {
         LowerTypedBinOp<Op>(gate);
     }
+}
+
+GateRef TypedBytecodeLowering::InternStringCheck(GateRef value)
+{
+    // Marking a string as an Intern String is a runtime behavior.
+    // The tag of Intern String in JIT process will not become invalid and can be used during compilation.
+    if (compilationEnv_->IsJitCompiler()) {
+        // We believe that the Intern String tag of a constant string will not change during interpreted execution,
+        // JIT compilation, and JIT code execution. Therefore, the check for the constant Intern String can be removed
+        // during JIT compilation.
+        JSTaggedValue stringObject = JSTaggedValue::Undefined();
+        if (acc_.GetOpCode(value) == OpCode::JS_BYTECODE && acc_.GetByteCodeOpcode(value) == EcmaOpcode::LDA_STR_ID16) {
+            uint16_t stringIndex = acc_.GetConstantValue(acc_.GetValueIn(value, 0));
+            auto methodOffset = acc_.TryGetMethodOffset(value);
+            stringObject = compilationEnv_->GetStringFromConstantPool(methodOffset, stringIndex);
+        }
+        if (stringObject.IsHeapObject()) {
+            EcmaString* ecmaString = EcmaString::Cast(stringObject.GetTaggedObject());
+            EcmaStringAccessor ecmaStringAccessor(ecmaString);
+            if (ecmaStringAccessor.IsInternString()) {
+                return builder_.True();
+            }
+        }
+    }
+    return builder_.InternStringCheck(value);
+}
+
+template<TypedBinOp Op>
+void TypedBytecodeLowering::SpeculateInternStrings(const BinOpTypeInfoAccessor &tacc)
+{
+    if (Op != TypedBinOp::TYPED_STRICTEQ && Op != TypedBinOp::TYPED_STRICTNOTEQ) {
+        SpeculateStrings<Op>(tacc);
+        return;
+    }
+    AddProfiling(tacc.GetGate());
+    GateRef left = tacc.GetLeftGate();
+    GateRef right = tacc.GetReightGate();
+    InternStringCheck(left);
+    InternStringCheck(right);
+    GateRef result = builder_.TypedBinaryOp<Op>(left, right, tacc.GetParamType());
+    acc_.ReplaceHirAndDeleteIfException(tacc.GetGate(), builder_.GetStateDepend(), result);
 }
 
 template<TypedBinOp Op>

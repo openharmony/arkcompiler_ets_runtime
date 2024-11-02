@@ -311,6 +311,7 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
         case OpCode::STRING_FROM_SINGLE_CHAR_CODE:
         case OpCode::ORDINARY_HAS_INSTANCE:
         case OpCode::ECMA_STRING_CHECK:
+        case OpCode::INTERN_STRING_CHECK:
         case OpCode::CREATE_ARGUMENTS:
         case OpCode::TAGGED_TO_INT64:
         case OpCode::TYPED_CALL_BUILTIN:
@@ -495,6 +496,8 @@ GateRef NumberSpeculativeRetype::VisitStringBinaryOp(GateRef gate)
     TypedBinOp op = acc_.GetTypedBinaryOp(gate);
     switch (op) {
         case TypedBinOp::TYPED_EQ:
+        case TypedBinOp::TYPED_STRICTEQ:
+        case TypedBinOp::TYPED_STRICTNOTEQ:
             return VisitStringCompare(gate);
         case TypedBinOp::TYPED_ADD:
             return VisitStringAdd(gate);

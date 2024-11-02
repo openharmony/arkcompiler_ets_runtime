@@ -92,7 +92,8 @@ public:
         UNDEFINED_OR_NULL = 0x1ULL << 4,
         SPECIAL = 0x1ULL << 5,
         BOOLEAN_OR_SPECIAL = BOOLEAN | SPECIAL,
-        STRING = 0x1ULL << 6,
+        INTERN_STRING = 0x1ULL << 9,
+        STRING = (0x1ULL << 6) | INTERN_STRING,
         NUMBER_OR_STRING = NUMBER | STRING,
         BIG_INT = 0x1ULL << 7,
         HEAP_OBJECT = 0x1ULL << 8,
@@ -175,6 +176,11 @@ public:
     static int32_t StringType()
     {
         return static_cast<int32_t>(Type::STRING);
+    }
+
+    static int32_t InternStringType()
+    {
+        return static_cast<int32_t>(Type::INTERN_STRING);
     }
 
     static int32_t NumberOrStringType()
@@ -364,6 +370,11 @@ public:
     bool IsString() const
     {
         return IsPrimitiveType() && GetPrimitiveType() == Type::STRING;
+    }
+
+    bool IsInternString() const
+    {
+        return IsPrimitiveType() && GetPrimitiveType() == Type::INTERN_STRING;
     }
 
     bool IsBigInt() const
@@ -1224,6 +1235,11 @@ public:
     bool IsString() const
     {
         return GetPGOSampleType()->IsString();
+    }
+
+    bool IsInternString() const
+    {
+        return GetPGOSampleType()->IsInternString();
     }
 
     bool IsHeapObject() const

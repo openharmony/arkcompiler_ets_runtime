@@ -57,6 +57,9 @@ GateRef TypedHCRLowering::VisitGate(GateRef gate)
         case OpCode::ECMA_STRING_CHECK:
             LowerEcmaStringCheck(gate);
             break;
+        case OpCode::INTERN_STRING_CHECK:
+            LowerInternStringCheck(gate);
+            break;
         case OpCode::ECMA_MAP_CHECK:
             LowerEcmaMapCheck(gate);
             break;
@@ -442,6 +445,19 @@ void TypedHCRLowering::LowerEcmaStringCheck(GateRef gate)
     GateRef isString = builder_.TaggedObjectIsString(receiver);
     builder_.DeoptCheck(isString, frameState, DeoptType::NOTSTRING1);
 
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
+}
+
+void TypedHCRLowering::LowerInternStringCheck(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef frameState = GetFrameState(gate);
+    GateRef receiver = acc_.GetValueIn(gate, 0);
+    builder_.HeapObjectCheck(receiver, frameState);
+    GateRef isString = builder_.TaggedObjectIsString(receiver);
+    builder_.DeoptCheck(isString, frameState, DeoptType::NOTSTRING1);
+    GateRef isInternString = builder_.IsInternString(receiver);
+    builder_.DeoptCheck(isInternString, frameState, DeoptType::NOTINTERNSTRING1);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 

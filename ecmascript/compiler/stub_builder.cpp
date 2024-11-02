@@ -2154,15 +2154,6 @@ GateRef StubBuilder::IsUtf8String(GateRef string)
         Int32(EcmaString::STRING_COMPRESSED));
 }
 
-GateRef StubBuilder::IsInternalString(GateRef string)
-{
-    // compressedStringsEnabled fixed to true constant
-    GateRef len = Load(VariableType::INT32(), string, IntPtr(EcmaString::MIX_LENGTH_OFFSET));
-    return Int32NotEqual(
-        Int32And(len, Int32(EcmaString::STRING_INTERN_BIT)),
-        Int32(0));
-}
-
 GateRef StubBuilder::IsDigit(GateRef ch)
 {
     return BitAnd(Int32LessThanOrEqual(ch, Int32('9')),
@@ -6431,12 +6422,12 @@ GateRef StubBuilder::FastStrictEqual(GateRef glue, GateRef left, GateRef right, 
     Label entry(env);
     env->SubCfgEntry(&entry);
     DEFVARIABLE(result, VariableType::BOOL(), False());
-    Label strictEqual(env);
     Label leftIsNumber(env);
     Label leftIsNotNumber(env);
     Label sameVariableCheck(env);
     Label stringEqualCheck(env);
     Label stringCompare(env);
+    Label updataPGOTypeWithInternString(env);
     Label bigIntEqualCheck(env);
     Label exit(env);
     BRANCH(TaggedIsNumber(left), &leftIsNumber, &leftIsNotNumber);
@@ -6501,14 +6492,51 @@ GateRef StubBuilder::FastStrictEqual(GateRef glue, GateRef left, GateRef right, 
     Bind(&leftIsNotNumber);
     BRANCH(TaggedIsNumber(right), &exit, &sameVariableCheck);
     Bind(&sameVariableCheck);
-    BRANCH(Equal(left, right), &strictEqual, &stringEqualCheck);
+    {
+        Label ifSameVariable(env);
+        BRANCH(Equal(left, right), &ifSameVariable, &stringEqualCheck);
+        Bind(&ifSameVariable);
+        {
+            result = True();
+            if (!callback.IsEmpty()) {
+                Label bothAreString(env);
+                Label updataPGOTypeWithAny(env);
+                BRANCH(TaggedIsString(left), &bothAreString, &updataPGOTypeWithAny);
+                Bind(&bothAreString);
+                {
+                    Label updataPGOTypeWithString(env);
+                    BRANCH(IsInternalString(left), &updataPGOTypeWithInternString, &updataPGOTypeWithString);
+                    Bind(&updataPGOTypeWithString);
+                    {
+                        callback.ProfileOpType(TaggedInt(PGOSampleType::StringType()));
+                        Jump(&exit);
+                    }
+                }
+                Bind(&updataPGOTypeWithAny);
+                {
+                    callback.ProfileOpType(TaggedInt(PGOSampleType::AnyType()));
+                    Jump(&exit);
+                }
+            } else {
+                Jump(&exit);
+            }
+        }
+    }
     Bind(&stringEqualCheck);
     BRANCH(BothAreString(left, right), &stringCompare, &bigIntEqualCheck);
     Bind(&stringCompare);
     {
-        callback.ProfileOpType(TaggedInt(PGOSampleType::StringType()));
-        result = FastStringEqual(glue, left, right);
-        Jump(&exit);
+        Label executeFastStringEqual(env);
+        BRANCH(LogicAndBuilder(env).And(IsInternalString(left)).And(IsInternalString(right)).Done(),
+               // if not same variable and both sides are intern strings,
+               // then the comparison result of the strings must be false.
+               &updataPGOTypeWithInternString, &executeFastStringEqual);
+        Bind(&executeFastStringEqual);
+        {
+            callback.ProfileOpType(TaggedInt(PGOSampleType::StringType()));
+            result = FastStringEqual(glue, left, right);
+            Jump(&exit);
+        }
     }
     Bind(&bigIntEqualCheck);
     {
@@ -6525,10 +6553,9 @@ GateRef StubBuilder::FastStrictEqual(GateRef glue, GateRef left, GateRef right, 
             Jump(&exit);
         }
     }
-    Bind(&strictEqual);
+    Bind(&updataPGOTypeWithInternString);
     {
-        callback.ProfileOpType(TaggedInt(PGOSampleType::AnyType()));
-        result = True();
+        callback.ProfileOpType(TaggedInt(PGOSampleType::InternStringType()));
         Jump(&exit);
     }
     Bind(&exit);

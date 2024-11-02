@@ -17,6 +17,8 @@ group("ark_jit_ts_test") {
     "arguments",
     "create_arguments",
     "function_reuse",
+    "intern_string_strict_equal_1",
+    "intern_string_strict_equal_2",
     "try_catch_empty",
     "ldobjbyname",
     "for_loop",

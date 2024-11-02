@@ -254,7 +254,8 @@ bool StringBuilderOptimizer::CheckStringAddUses(GateRef gate)
             return false;
         }
         // this gate has the following types of uses is valid
-        if (useOp == OpCode::ECMA_STRING_CHECK || acc_.IsFrameValues(use) || acc_.IsValueSelector(use)) {
+        if (useOp == OpCode::INTERN_STRING_CHECK || useOp == OpCode::ECMA_STRING_CHECK ||
+            acc_.IsFrameValues(use) || acc_.IsValueSelector(use)) {
             continue;
         }
         // all other uses are invalid
