@@ -398,11 +398,9 @@ JSTaggedValue BuiltinsSharedArray::Concat(EcmaRuntimeCallInfo *argv)
     int argc = static_cast<int>(argv->GetArgsNumber());
 
     // 1. Let O be ToObject(this value).
-    JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
-    if (!thisHandle->IsJSSharedArray()) {
-        auto error = ContainerError::BindError(thread, "The concat method cannot be bound.");
-        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
-    }
+    // thisHandle variable declare this Macro
+    ARRAY_CHECK_SHARED_ARRAY("The concat method cannot be bound.")
+
     JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
     [[maybe_unused]] ConcurrentApiScope<JSSharedArray> scope(thread, thisHandle);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -510,11 +508,9 @@ JSTaggedValue BuiltinsSharedArray::Entries(EcmaRuntimeCallInfo *argv)
     BUILTINS_API_TRACE(argv->GetThread(), SharedArray, Entries);
     JSThread *thread = argv->GetThread();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
-    JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
-    if (!thisHandle->IsJSSharedArray()) {
-        auto error = ContainerError::BindError(thread, "The entries method cannot be bound.");
-        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
-    }
+    // thisHandle variable declare this Macro
+    ARRAY_CHECK_SHARED_ARRAY("The entries method cannot be bound.")
+
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     // 1. Let O be ToObject(this value).
     // 2. ReturnIfAbrupt(O).
@@ -573,11 +569,9 @@ JSTaggedValue BuiltinsSharedArray::Every(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     // 1. Let O be ToObject(this value).
-    JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
-    if (!thisHandle->IsJSSharedArray()) {
-        auto error = ContainerError::BindError(thread, "The every method cannot be bound.");
-        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
-    }
+    // thisHandle variable declare this Macro
+    ARRAY_CHECK_SHARED_ARRAY("The every method cannot be bound.")
+
     JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
     // 2. ReturnIfAbrupt(O).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -626,11 +620,9 @@ JSTaggedValue BuiltinsSharedArray::Some(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     // 1. Let O be ToObject(this value).
-    JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
-    if (!thisHandle->IsJSSharedArray()) {
-        auto error = ContainerError::BindError(thread, "The some method cannot be bound.");
-        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
-    }
+    // thisHandle variable declare this Macro
+    ARRAY_CHECK_SHARED_ARRAY("The some method cannot be bound.")
+
     JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
     // 2. ReturnIfAbrupt(O).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -711,15 +703,13 @@ JSTaggedValue BuiltinsSharedArray::Fill(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     // 1. Let O be ToObject(this value).
-    JSHandle<JSTaggedValue> thisObjVal = GetThis(argv);
-    if (!thisObjVal->IsJSSharedArray()) {
-        auto error = ContainerError::BindError(thread, "The fill method cannot be bound.");
-        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
-    }
-    JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisObjVal);
-    [[maybe_unused]] ConcurrentApiScope<JSSharedArray, ModType::WRITE> scope(thread, thisObjVal);
+    // thisHandle variable declare this Macro
+    ARRAY_CHECK_SHARED_ARRAY("The fill method cannot be bound.")
+
+    JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
+    [[maybe_unused]] ConcurrentApiScope<JSSharedArray, ModType::WRITE> scope(thread, thisHandle);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    if (thisObjVal->IsJSSharedArray()) {
+    if (thisHandle->IsJSSharedArray()) {
         bool isDictionary = thisObjHandle->GetJSHClass()->IsDictionaryElement();
         if (isDictionary) {
             uint32_t length = JSSharedArray::Cast(*thisObjHandle)->GetLength();
@@ -738,8 +728,8 @@ JSTaggedValue BuiltinsSharedArray::Fill(EcmaRuntimeCallInfo *argv)
         auto error = ContainerError::ParamError(thread, "Parameter error.Only accept sendable value.");
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
-    if (thisObjVal->IsTypedArray() || thisObjVal->IsSharedTypedArray()) {
-        ContentType contentType = JSHandle<JSTypedArray>::Cast(thisObjVal)->GetContentType();
+    if (thisHandle->IsTypedArray() || thisHandle->IsSharedTypedArray()) {
+        ContentType contentType = JSHandle<JSTypedArray>::Cast(thisHandle)->GetContentType();
         if (contentType == ContentType::BigInt) {
             value = JSHandle<JSTaggedValue>(thread, JSTaggedValue::ToBigInt(thread, value));
         } else {
@@ -749,7 +739,7 @@ JSTaggedValue BuiltinsSharedArray::Fill(EcmaRuntimeCallInfo *argv)
     }
 
     // 3. Let len be ToLength(Get(O, "length")).
-    int64_t len = ArrayHelper::GetLength(thread, thisObjVal);
+    int64_t len = ArrayHelper::GetLength(thread, thisHandle);
     // 4. ReturnIfAbrupt(len).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
@@ -792,13 +782,13 @@ JSTaggedValue BuiltinsSharedArray::Fill(EcmaRuntimeCallInfo *argv)
     //   c. ReturnIfAbrupt(setStatus).
     //   d. Increase k by 1.
 
-    if (thisObjVal->IsStableJSArray(thread) && !startArg->IsJSObject() && !endArg->IsJSObject()) {
+    if (thisHandle->IsStableJSArray(thread) && !startArg->IsJSObject() && !endArg->IsJSObject()) {
         auto opResult = JSStableArray::Fill(thread, thisObjHandle, value, start, end, len);
         return opResult;
     }
 
-    if (thisObjVal->IsTypedArray() || thisObjVal->IsSharedTypedArray()) {
-        bool result = JSTypedArray::FastTypedArrayFill(thread, thisObjVal, value, start, end);
+    if (thisHandle->IsTypedArray() || thisHandle->IsSharedTypedArray()) {
+        bool result = JSTypedArray::FastTypedArrayFill(thread, thisHandle, value, start, end);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         if (result) {
             return thisObjHandle.GetTaggedValue();
@@ -809,7 +799,7 @@ JSTaggedValue BuiltinsSharedArray::Fill(EcmaRuntimeCallInfo *argv)
     JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
     while (k < end) {
         key.Update(JSTaggedValue(k));
-        JSSharedArray::FastSetPropertyByValue(thread, thisObjVal, key, value);
+        JSSharedArray::FastSetPropertyByValue(thread, thisHandle, key, value);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         k++;
     }
@@ -861,11 +851,9 @@ JSTaggedValue BuiltinsSharedArray::Filter(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     // 1. Let O be ToObject(this value).
-    JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
-    if (!thisHandle->IsJSSharedArray()) {
-        auto error = ContainerError::BindError(thread, "The filter method cannot be bound.");
-        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
-    }
+    // thisHandle variable declare this Macro
+    ARRAY_CHECK_SHARED_ARRAY("The filter method cannot be bound.")
+
     JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
     [[maybe_unused]] ConcurrentApiScope<JSSharedArray> scope(thread, thisHandle);
     // 2. ReturnIfAbrupt(O).
@@ -932,11 +920,9 @@ JSTaggedValue BuiltinsSharedArray::Find(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     // 1. Let O be ToObject(this value).
-    JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
-    if (!thisHandle->IsJSSharedArray()) {
-        auto error = ContainerError::BindError(thread, "The find method cannot be bound.");
-        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
-    }
+    // thisHandle variable declare this Macro
+    ARRAY_CHECK_SHARED_ARRAY("The find method cannot be bound.")
+
     JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
     [[maybe_unused]] ConcurrentApiScope<JSSharedArray> scope(thread, thisHandle);
     // 2. ReturnIfAbrupt(O).
@@ -999,11 +985,9 @@ JSTaggedValue BuiltinsSharedArray::FindIndex(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     // 1. Let O be ToObject(this value).
-    JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
-    if (!thisHandle->IsJSSharedArray()) {
-        auto error = ContainerError::BindError(thread, "The findIndex method cannot be bound.");
-        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
-    }
+    // thisHandle variable declare this Macro
+    ARRAY_CHECK_SHARED_ARRAY("The findIndex method cannot be bound.")
+
     JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
     [[maybe_unused]] ConcurrentApiScope<JSSharedArray> scope(thread, thisHandle);
     // 2. ReturnIfAbrupt(O).
@@ -1074,11 +1058,9 @@ JSTaggedValue BuiltinsSharedArray::ForEach(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     // 1. Let O be ToObject(this value).
-    JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
-    if (!thisHandle->IsJSSharedArray()) {
-        auto error = ContainerError::BindError(thread, "The forEach method cannot be bound.");
-        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
-    }
+    // thisHandle variable declare this Macro
+    ARRAY_CHECK_SHARED_ARRAY("The forEach method cannot be bound.")
+
     JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
     [[maybe_unused]] ConcurrentApiScope<JSSharedArray> scope(thread, thisHandle);
     // 2. ReturnIfAbrupt(O).
@@ -1191,11 +1173,9 @@ JSTaggedValue BuiltinsSharedArray::IndexOf(EcmaRuntimeCallInfo *argv)
     BUILTINS_API_TRACE(thread, SharedArray, IndexOf);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
-    JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
-    if (!thisHandle->IsJSSharedArray()) {
-        auto error = ContainerError::BindError(thread, "The indexOf method cannot be bound.");
-        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
-    }
+    // thisHandle variable declare this Macro
+    ARRAY_CHECK_SHARED_ARRAY("The indexOf method cannot be bound.")
+
     [[maybe_unused]] ConcurrentApiScope<JSSharedArray> scope(thread, thisHandle);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
@@ -1216,11 +1196,9 @@ JSTaggedValue BuiltinsSharedArray::Join(EcmaRuntimeCallInfo *argv)
     ASSERT(argv);
     JSThread *thread = argv->GetThread();
     BUILTINS_API_TRACE(argv->GetThread(), SharedArray, Join);
-    JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
-    if (!thisHandle->IsJSSharedArray()) {
-        auto error = ContainerError::BindError(thread, "The join method cannot be bound.");
-        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
-    }
+    // thisHandle variable declare this Macro
+    ARRAY_CHECK_SHARED_ARRAY("The join method cannot be bound.")
+
     [[maybe_unused]] ConcurrentApiScope<JSSharedArray> scope(thread, thisHandle);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     auto opResult = BuiltinsArray::Join(argv);
@@ -1233,11 +1211,9 @@ JSTaggedValue BuiltinsSharedArray::Keys(EcmaRuntimeCallInfo *argv)
     ASSERT(argv);
     JSThread *thread = argv->GetThread();
     BUILTINS_API_TRACE(argv->GetThread(), SharedArray, Keys);
-    JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
-    if (!thisHandle->IsJSSharedArray()) {
-        auto error = ContainerError::BindError(thread, "The keys method cannot be bound.");
-        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
-    }
+    // thisHandle variable declare this Macro
+    ARRAY_CHECK_SHARED_ARRAY("The keys method cannot be bound.")
+
     [[maybe_unused]] ConcurrentApiScope<JSSharedArray> scope(thread, thisHandle);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     auto opResult = BuiltinsArray::Keys(argv);
@@ -1253,11 +1229,9 @@ JSTaggedValue BuiltinsSharedArray::Map(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     // 1. Let O be ToObject(this value).
-    JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
-    if (!thisHandle->IsJSSharedArray()) {
-        auto error = ContainerError::BindError(thread, "The map method cannot be bound.");
-        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
-    }
+    // thisHandle variable declare this Macro
+    ARRAY_CHECK_SHARED_ARRAY("The map method cannot be bound.")
+
     JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
     [[maybe_unused]] ConcurrentApiScope<JSSharedArray> scope(thread, thisHandle);
     // 2. ReturnIfAbrupt(O).
@@ -1349,11 +1323,9 @@ JSTaggedValue BuiltinsSharedArray::Pop(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     // 1. Let O be ToObject(this value).
-    JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
-    if (!thisHandle->IsJSSharedArray()) {
-        auto error = ContainerError::BindError(thread, "The pop method cannot be bound.");
-        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
-    }
+    // thisHandle variable declare this Macro
+    ARRAY_CHECK_SHARED_ARRAY("The pop method cannot be bound.")
+
     JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
     [[maybe_unused]] ConcurrentApiScope<JSSharedArray, ModType::WRITE> scope(thread, thisHandle);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -1422,11 +1394,10 @@ JSTaggedValue BuiltinsSharedArray::Push(EcmaRuntimeCallInfo *argv)
     BUILTINS_API_TRACE(argv->GetThread(), SharedArray, Push);
     JSThread *thread = argv->GetThread();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
-    JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
-    if (!thisHandle->IsJSSharedArray()) {
-        auto error = ContainerError::BindError(thread, "The push method cannot be bound.");
-        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
-    }
+
+    // thisHandle variable declare this Macro
+    ARRAY_CHECK_SHARED_ARRAY("The push method cannot be bound.")
+
     [[maybe_unused]] ConcurrentApiScope<JSSharedArray, ModType::WRITE> scope(thread, thisHandle);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     if (thisHandle->IsStableJSArray(thread)) {
@@ -1522,11 +1493,9 @@ JSTaggedValue BuiltinsSharedArray::Reduce(EcmaRuntimeCallInfo *argv)
 
     uint32_t argc = argv->GetArgsNumber();
     // 1. Let O be ToObject(this value).
-    JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
-    if (!thisHandle->IsJSSharedArray()) {
-        auto error = ContainerError::BindError(thread, "The reduce method cannot be bound.");
-        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
-    }
+    // thisHandle variable declare this Macro
+    ARRAY_CHECK_SHARED_ARRAY("The reduce method cannot be bound.")
+
     JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
     [[maybe_unused]] ConcurrentApiScope<JSSharedArray> scope(thread, thisHandle);
     // 2. ReturnIfAbrupt(O).
@@ -1601,11 +1570,9 @@ JSTaggedValue BuiltinsSharedArray::Shift(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     // 1. Let O be ToObject(this value).
-    JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
-    if (!thisHandle->IsJSSharedArray()) {
-        auto error = ContainerError::BindError(thread, "The shift method cannot be bound.");
-        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
-    }
+    // thisHandle variable declare this Macro
+    ARRAY_CHECK_SHARED_ARRAY("The shift method cannot be bound.")
+
     JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
     [[maybe_unused]] ConcurrentApiScope<JSSharedArray, ModType::WRITE> scope(thread, thisHandle);
     // 2. ReturnIfAbrupt(O).
@@ -1695,11 +1662,9 @@ JSTaggedValue BuiltinsSharedArray::Slice(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     // 1. Let O be ToObject(this value).
-    JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
-    if (!thisHandle->IsJSSharedArray()) {
-        auto error = ContainerError::BindError(thread, "The slice method cannot be bound.");
-        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
-    }
+    // thisHandle variable declare this Macro
+    ARRAY_CHECK_SHARED_ARRAY("The slice method cannot be bound.")
+
     JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
     [[maybe_unused]] ConcurrentApiScope<JSSharedArray> scope(thread, thisHandle);
     // 2. ReturnIfAbrupt(O).
@@ -1829,11 +1794,9 @@ JSTaggedValue BuiltinsSharedArray::Sort(EcmaRuntimeCallInfo *argv)
     }
 
     // 2. Let obj be ToObject(this value).
-    JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
-    if (!thisHandle->IsJSSharedArray()) {
-        auto error = ContainerError::BindError(thread, "The sort method cannot be bound.");
-        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
-    }
+    // thisHandle variable declare this Macro
+    ARRAY_CHECK_SHARED_ARRAY("The sort method cannot be bound.")
+
     JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
     [[maybe_unused]] ConcurrentApiScope<JSSharedArray, ModType::WRITE> scope(thread, thisHandle);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -1858,11 +1821,9 @@ JSTaggedValue BuiltinsSharedArray::Splice(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     uint32_t argc = argv->GetArgsNumber();
     // 1. Let O be ToObject(this value).
-    JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
-    if (!thisHandle->IsJSSharedArray()) {
-        auto error = ContainerError::BindError(thread, "The splice method cannot be bound.");
-        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
-    }
+    // thisHandle variable declare this Macro
+    ARRAY_CHECK_SHARED_ARRAY("The splice method cannot be bound.")
+
     JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
     [[maybe_unused]] ConcurrentApiScope<JSSharedArray, ModType::WRITE> scope(
         thread, thisHandle);
@@ -2074,11 +2035,9 @@ JSTaggedValue BuiltinsSharedArray::ToString(EcmaRuntimeCallInfo *argv)
     auto ecmaVm = thread->GetEcmaVM();
 
     // 1. Let array be ToObject(this value).
-    JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
-    if (!thisHandle->IsJSSharedArray()) {
-        auto error = ContainerError::BindError(thread, "The toString method cannot be bound.");
-        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
-    }
+    // thisHandle variable declare this Macro
+    ARRAY_CHECK_SHARED_ARRAY("The toString method cannot be bound.")
+
     JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
     [[maybe_unused]] ConcurrentApiScope<JSSharedArray> scope(thread, thisHandle);
     // 2. ReturnIfAbrupt(array).
@@ -2122,11 +2081,9 @@ JSTaggedValue BuiltinsSharedArray::Unshift(EcmaRuntimeCallInfo *argv)
     int64_t argc = argv->GetArgsNumber();
 
     // 1. Let O be ToObject(this value).
-    JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
-    if (!thisHandle->IsJSSharedArray()) {
-        auto error = ContainerError::BindError(thread, "The unshift method cannot be bound.");
-        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
-    }
+    // thisHandle variable declare this Macro
+    ARRAY_CHECK_SHARED_ARRAY("The unshift method cannot be bound.")
+
     JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
     [[maybe_unused]] ConcurrentApiScope<JSSharedArray, ModType::WRITE> scope(thread, thisHandle);
     // 2. ReturnIfAbrupt(O).
@@ -2218,11 +2175,10 @@ JSTaggedValue BuiltinsSharedArray::Values(EcmaRuntimeCallInfo *argv)
     BUILTINS_API_TRACE(argv->GetThread(), SharedArray, Values);
     JSThread *thread = argv->GetThread();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
-    JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
-    if (!thisHandle->IsJSSharedArray()) {
-        auto error = ContainerError::BindError(thread, "The values method cannot be bound.");
-        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
-    }
+
+    // thisHandle variable declare this Macro
+    ARRAY_CHECK_SHARED_ARRAY("The values method cannot be bound.")
+
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     // 1. Let O be ToObject(this value).
     // 2. ReturnIfAbrupt(O).
@@ -2304,11 +2260,9 @@ JSTaggedValue BuiltinsSharedArray::Includes(EcmaRuntimeCallInfo *argv)
     JSThread *thread = argv->GetThread();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     // 1. Let O be ? ToObject(this value).
-    JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
-    if (!thisHandle->IsJSSharedArray()) {
-        auto error = ContainerError::BindError(thread, "The includes method cannot be bound.");
-        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
-    }
+    // thisHandle variable declare this Macro
+    ARRAY_CHECK_SHARED_ARRAY("The includes method cannot be bound.")
+
     JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
     [[maybe_unused]] ConcurrentApiScope<JSSharedArray> scope(thread, thisHandle);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -2380,11 +2334,9 @@ JSTaggedValue BuiltinsSharedArray::At(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     // 1. Let O be ToObject(this value).
-    JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
-    if (!thisHandle->IsJSSharedArray()) {
-        auto error = ContainerError::BindError(thread, "The at method cannot be bound.");
-        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
-    }
+    // thisHandle variable declare this Macro
+    ARRAY_CHECK_SHARED_ARRAY("The at method cannot be bound.")
+
     [[maybe_unused]] ConcurrentApiScope<JSSharedArray> scope(thread, thisHandle);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     if (thisHandle->IsStableJSArray(thread)) {
@@ -2440,11 +2392,10 @@ JSTaggedValue BuiltinsSharedArray::ShrinkTo(EcmaRuntimeCallInfo *argv)
         auto error = ContainerError::ParamError(thread, "Parameter error.Not enough parameter.");
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
-    JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
-    if (!thisHandle->IsJSSharedArray()) {
-        auto error = ContainerError::BindError(thread, "The ShrinkTo method cannot be bound.");
-        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
-    }
+
+    // thisHandle variable declare this Macro
+    ARRAY_CHECK_SHARED_ARRAY("The shrinkTo method cannot be bound.")
+
     JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
     [[maybe_unused]] ConcurrentApiScope<JSSharedArray, ModType::WRITE> scope(thread, thisHandle);
     JSHandle<JSTaggedValue> newLengthValue = GetCallArg(argv, 0);
@@ -2479,11 +2430,10 @@ JSTaggedValue BuiltinsSharedArray::ExtendTo(EcmaRuntimeCallInfo *argv)
         auto error = ContainerError::ParamError(thread, "Parameter error.Not enough parameters.");
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
-    JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
-    if (!thisHandle->IsJSSharedArray()) {
-        auto error = ContainerError::BindError(thread, "The ExtendTo method cannot be bound.");
-        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
-    }
+
+    // thisHandle variable declare this Macro
+    ARRAY_CHECK_SHARED_ARRAY("The extendTo method cannot be bound.")
+
     JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
     [[maybe_unused]] ConcurrentApiScope<JSSharedArray, ModType::WRITE> scope(thread, thisHandle);
     JSHandle<JSTaggedValue> newLengthValue = GetCallArg(argv, 0);
@@ -2571,11 +2521,9 @@ JSTaggedValue BuiltinsSharedArray::LastIndexOf(EcmaRuntimeCallInfo *argv)
     BUILTINS_API_TRACE(thread, SharedArray, LastIndexOf);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
-    JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
-    if (UNLIKELY(!thisHandle->IsJSSharedArray())) {
-        auto error = ContainerError::BindError(thread, "The lastIndexOf method cannot be bound.");
-        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
-    }
+    // thisHandle variable declare this Macro
+    ARRAY_CHECK_SHARED_ARRAY("The lastIndexOf method cannot be bound.")
+
     [[maybe_unused]] ConcurrentApiScope<JSSharedArray> scope(thread, thisHandle);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
