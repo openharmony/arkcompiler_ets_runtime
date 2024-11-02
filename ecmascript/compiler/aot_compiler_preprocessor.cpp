@@ -19,7 +19,7 @@
 #include "ecmascript/compiler/pass_manager.h"
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/js_runtime_options.h"
-#include "ecmascript/module/js_shared_module_manager.h"
+#include "ecmascript/module/module_resolver.h"
 #include "ecmascript/module/js_module_manager.h"
 #include "ecmascript/ohos/ohos_pgo_processor.h"
 #include "ecmascript/ohos/ohos_pkg_args.h"
@@ -334,12 +334,11 @@ void AotCompilerPreprocessor::ResolveModule(const JSPandaFile *jsPandaFile, cons
 {
     const auto &recordInfo = jsPandaFile->GetJSRecordInfo();
     JSThread *thread = vm_->GetJSThread();
-    SharedModuleManager *sharedModuleManager = SharedModuleManager::GetInstance();
     [[maybe_unused]] EcmaHandleScope scope(thread);
     for (auto info: recordInfo) {
         if (jsPandaFile->IsModule(info.second)) {
             auto recordName = info.first;
-            sharedModuleManager->ResolveImportedModuleWithMerge(thread, fileName.c_str(), recordName, false);
+            ModuleResolver::ResolveImportedModuleWithMerge(thread, fileName.c_str(), recordName, false);
             SharedModuleManager::GetInstance()->TransferSModule(thread);
         }
     }

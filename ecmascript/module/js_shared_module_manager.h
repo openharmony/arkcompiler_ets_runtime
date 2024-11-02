@@ -52,18 +52,14 @@ public:
 
     void Iterate(const RootVisitor &v);
 
-    JSHandle<JSTaggedValue> ResolveImportedModule(JSThread *thread, const CString &referencingModule,
-                                                  bool executeFromJob);
-
-    JSHandle<JSTaggedValue> PUBLIC_API ResolveImportedModuleWithMerge(JSThread *thread, const CString &fileName,
-                                                                      const CString &recordName, bool executeFromJob);
-
     StateVisit &findModuleMutexWithLock(JSThread *thread, const JSHandle<SourceTextModule> &module);
 
     bool SearchInSModuleManager(JSThread *thread, const CString &recordName);
 
     void InsertInSModuleManager(JSThread *thread, const CString &recordName,
         JSHandle<SourceTextModule> &moduleRecord);
+
+    JSHandle<SourceTextModule> GetSModule(JSThread *thread, const CString &recordName);
 
     void PUBLIC_API TransferSModule(JSThread *thread);
 
@@ -93,14 +89,9 @@ private:
     NO_COPY_SEMANTIC(SharedModuleManager);
     NO_MOVE_SEMANTIC(SharedModuleManager);
 
-    JSHandle<JSTaggedValue> ResolveSharedImportedModuleWithMerge(JSThread *thread, const CString &fileName,
-        const CString &recordName, const JSPandaFile *jsPandaFile, JSRecordInfo *recordInfo);
-
     bool SearchInSModuleManagerUnsafe(const CString &recordName);
 
     JSHandle<SourceTextModule> GetSModuleUnsafe(JSThread *thread, const CString &recordName);
-
-    JSHandle<SourceTextModule> GetSModule(JSThread *thread, const CString &recordName);
 
     static constexpr uint32_t DEAULT_DICTIONART_CAPACITY = 4;
     CUnorderedMap<CString, JSTaggedValue> resolvedSharedModules_;

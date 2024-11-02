@@ -22,6 +22,7 @@
 #include "ecmascript/napi/include/jsnapi.h"
 #include "ecmascript/patch/quick_fix_manager.h"
 #include "ecmascript/jspandafile/program_object.h"
+#include "ecmascript/module/module_resolver.h"
 
 using namespace panda::ecmascript;
 using namespace panda::panda_file;
@@ -180,9 +181,8 @@ HWTEST_F_L0(QuickFixTest, HotReload_Instantiate)
     EcmaContext *context = thread->GetCurrentEcmaContext();
     context->SetStageOfHotReload(StageOfHotReload::BEGIN_EXECUTE_PATCHMAIN);
 
-    ModuleManager *moduleManager = context->GetModuleManager();
-    JSHandle<JSTaggedValue> module =
-        moduleManager->HostResolveImportedModuleWithMergeForHotReload(patchFileName, replacedRecordName, false);
+    JSHandle<JSTaggedValue> module = ModuleResolver::HostResolveImportedModuleWithMergeForHotReload(thread,
+        patchFileName, replacedRecordName, false);
     EXPECT_FALSE(module->IsHole());
 
     JSHandle<Program> program =

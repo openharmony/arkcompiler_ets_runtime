@@ -72,17 +72,6 @@ public:
     bool IsInstantiatedModule(const CString &referencing);
     bool IsLocalModuleInstantiated(const CString &referencing);
 
-    JSHandle<JSTaggedValue> ResolveNativeModule(const CString &moduleRequest, const CString &baseFileName,
-        ModuleTypes moduleType);
-    JSHandle<JSTaggedValue> HostResolveImportedModule(const void *buffer, size_t size, const CString &filename);
-    JSHandle<JSTaggedValue> HostResolveImportedModule(const CString &referencingModule,
-        bool executeFromJob = false);
-    JSHandle<JSTaggedValue> PUBLIC_API HostResolveImportedModuleWithMerge(const CString &referencingModule,
-        const CString &recordName, bool executeFromJob = false);
-    JSHandle<JSTaggedValue> PUBLIC_API HostResolveImportedModuleWithMergeForHotReload(const CString &referencingModule,
-        const CString &recordName, bool executeFromJob = false);
-    JSHandle<JSTaggedValue> HostResolveImportedModule(const JSPandaFile *jsPandaFile, const CString &filename);
-
     JSHandle<JSTaggedValue> LoadNativeModule(JSThread *thread, const CString &key);
 
     JSHandle<JSTaggedValue> ExecuteNativeModuleMayThrowError(JSThread *thread, const CString &recordName);
@@ -101,7 +90,7 @@ public:
 
     JSHandle<JSTaggedValue> TryGetImportedModule(const CString& referencing);
     void Iterate(const RootVisitor &v);
-
+    void AddToInstantiatingSModuleList(const CString &record);
     ModuleExecuteMode GetExecuteMode() const
     {
         return isExecuteBuffer_.load(std::memory_order_acquire);
@@ -140,6 +129,10 @@ public:
             SourceTextModule::Cast(module)->DestoryEcmaModuleRecordNameString();
         }
     }
+    inline bool IsVMBundlePack()
+    {
+        return vm_->IsBundlePack();
+    }
 
 private:
     NO_COPY_SEMANTIC(ModuleManager);
@@ -156,17 +149,6 @@ private:
     void StoreModuleValueInternal(JSHandle<SourceTextModule> &currentModule,
                                   JSTaggedValue key, JSTaggedValue value);
     // deprecated end
-
-    JSHandle<JSTaggedValue> ResolveModule(JSThread *thread, const JSPandaFile *jsPandaFile,
-        bool executeFromJob = false);
-
-    JSHandle<JSTaggedValue> ResolveModuleWithMerge(JSThread *thread, const JSPandaFile *jsPandaFile,
-        const CString &recordName, bool executeFromJob = false);
-
-    JSHandle<JSTaggedValue> CommonResolveImportedModuleWithMerge(const CString &moduleFileName,
-        const CString &recordName, bool executeFromJob = false);
-
-    void AddToInstantiatingSModuleList(const CString &record);
 
     CVector<CString> GetInstantiatingSModuleList();
 
