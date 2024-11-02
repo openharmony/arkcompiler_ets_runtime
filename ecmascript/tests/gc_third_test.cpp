@@ -101,36 +101,39 @@ HWTEST_F_L0(GCTest, LargeOverShootSizeTest)
     EXPECT_FALSE(heap->GetNewSpace()->CommittedSizeIsLarge());
     heap->GetConcurrentMarker()->ConfigConcurrentMark(false);
     heap->NotifyHighSensitive(true);
+    size_t originalCapacity = heap->GetNewSpace()->GetInitialCapacity();
+    size_t originalOverShootSize = heap->GetNewSpace()->GetOvershootSize();
     {
         [[maybe_unused]] ecmascript::EcmaHandleScope baseScope(thread);
-        for (int i = 0; i < 500; i++) {
+        for (int i = 0; i < 300; i++) {
             [[maybe_unused]] JSHandle<TaggedArray> array = thread->GetEcmaVM()->GetFactory()->NewTaggedArray(
                 10 * 1024, JSTaggedValue::Hole(), MemSpaceType::SEMI_SPACE);
         }
+        size_t newYoungSize = heap->GetNewSpace()->GetCommittedSize();
+        EXPECT_TRUE(originalYoungSize < newYoungSize);
+
+        heap->NotifyHighSensitive(false);
+        heap->CollectGarbage(TriggerGCType::YOUNG_GC);
+        newYoungSize = heap->GetNewSpace()->GetCommittedSize();
+        size_t newOverShootSize = heap->GetNewSpace()->GetOvershootSize();
+        size_t newCapacity = heap->GetNewSpace()->GetInitialCapacity();
+        EXPECT_TRUE(originalYoungSize < newYoungSize);
+        EXPECT_TRUE(originalOverShootSize < newOverShootSize);
+        EXPECT_TRUE(0 < newOverShootSize);
+        EXPECT_TRUE(originalCapacity < newCapacity);
+        EXPECT_TRUE(heap->GetNewSpace()->GetMaximumCapacity() == newCapacity);
     }
-    size_t newYoungSize = heap->GetNewSpace()->GetCommittedSize();
-    size_t originalOverShootSize = heap->GetNewSpace()->GetOvershootSize();
-    EXPECT_TRUE(heap->GetNewSpace()->CommittedSizeIsLarge());
-    EXPECT_TRUE(originalYoungSize < newYoungSize);
-
-    heap->NotifyHighSensitive(false);
-    heap->CollectGarbage(TriggerGCType::YOUNG_GC);
-    newYoungSize = heap->GetNewSpace()->GetCommittedSize();
-    size_t newOverShootSize = heap->GetNewSpace()->GetOvershootSize();
-
-    EXPECT_TRUE(originalYoungSize < newYoungSize);
-    EXPECT_TRUE(originalOverShootSize < newOverShootSize);
-    EXPECT_TRUE(0 < newOverShootSize);
-
+    originalOverShootSize = heap->GetNewSpace()->GetOvershootSize();
     {
         [[maybe_unused]] ecmascript::EcmaHandleScope baseScope(thread);
         for (int i = 0; i < 2049; i++) {
             [[maybe_unused]] JSHandle<TaggedArray> array = thread->GetEcmaVM()->GetFactory()->NewTaggedArray(
-                1024, JSTaggedValue::Hole(), MemSpaceType::SEMI_SPACE);
+                10 * 1024, JSTaggedValue::Hole(), MemSpaceType::SEMI_SPACE);
         }
     }
     size_t newSize = heap->GetNewSpace()->GetCommittedSize();
     EXPECT_TRUE(originalYoungSize <= newSize);
+    EXPECT_TRUE(heap->GetNewSpace()->GetOvershootSize() < originalOverShootSize);
 }
 
 HWTEST_F_L0(GCTest, CheckAndTriggerSharedGCTest001)
