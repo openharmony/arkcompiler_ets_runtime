@@ -198,6 +198,7 @@ private:
     Chunk chunk_;
     std::unique_ptr<HeapSampling> heapSampling_ {nullptr};
     Mutex mutex_;
+    friend class HeapProfilerFriendTest;
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_DFX_HPROF_HEAP_PROFILER_H
