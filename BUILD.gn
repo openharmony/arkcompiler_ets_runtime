@@ -1369,7 +1369,8 @@ ohos_shared_library("libark_jsruntime_test") {
     output_extension = "so"
   }
 
-  subsystem_name = "test"
+  part_name = "ets_runtime"
+  subsystem_name = "arkcompiler"
 }
 
 ohos_prebuilt_etc("app_aot_jit_enable_list") {
