@@ -195,7 +195,7 @@ EdenSpace::~EdenSpace()
 void EdenSpace::Initialize()
 {
     auto region = AllocRegion();
-    if (UNLIKELY(region == nullptr)) {
+    if (UNLIKELY(region == nullptr)) { // LCOV_EXCL_BR_LINE
         LOG_GC(ERROR) << "EdenSpace::Initialize: region is nullptr";
         return;
     }
@@ -390,7 +390,7 @@ bool SemiSpace::SwapRegion(Region *region, SemiSpace *fromSpace)
 
     region->SetGCFlag(RegionGCFlags::IN_NEW_TO_NEW_SET);
 
-    if (UNLIKELY(heap_->ShouldVerifyHeap())) {
+    if (UNLIKELY(heap_->ShouldVerifyHeap())) { // LCOV_EXCL_BR_LINE
         region->ResetInactiveSemiSpace();
     }
 

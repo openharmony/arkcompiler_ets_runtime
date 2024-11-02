@@ -20,6 +20,7 @@
 #include "ecmascript/tests/test_helper.h"
 #include "ecmascript/mem/concurrent_marker.h"
 #include "ecmascript/mem/partial_gc.h"
+#include "ecmascript/mem/shared_heap/shared_concurrent_marker.h"
 
 using namespace panda::ecmascript;
 using namespace panda::ecmascript::base;
@@ -345,6 +346,72 @@ HWTEST_F_L0(IdleGCTriggerTest, ShouldCheckIdleOldGCTest001)
     heap->GetOldSpace()->IncreaseLiveObjectSize(5242889);
     IdleGCTrigger *trigger = new IdleGCTrigger(heap, sheap, thread);
     trigger->TryTriggerIdleGC(TRIGGER_IDLE_GC_TYPE::LOCAL_CONCURRENT_MARK);
+}
+
+HWTEST_F_L0(IdleGCTriggerTest, TryTriggerIdleGCTest014)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    SharedHeap *sheap = SharedHeap::GetInstance();
+    sheap->NotifyHeapAliveSizeAfterGC(0);
+    sheap->GetOldSpace()->SetInitialCapacity(10000);
+    sheap->GetOldSpace()->IncreaseLiveObjectSize(5242889);
+    IdleGCTrigger *trigger = new IdleGCTrigger(heap, sheap, thread);
+    trigger->TryTriggerIdleGC(TRIGGER_IDLE_GC_TYPE::SHARED_CONCURRENT_MARK);
+}
+
+HWTEST_F_L0(IdleGCTriggerTest, TryTriggerIdleGCTest015)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    SharedHeap *sheap = SharedHeap::GetInstance();
+    sheap->GetConcurrentMarker()->ConfigConcurrentMark(false);
+    IdleGCTrigger *trigger = new IdleGCTrigger(heap, sheap, thread);
+    trigger->TryTriggerIdleGC(TRIGGER_IDLE_GC_TYPE::SHARED_CONCURRENT_MARK);
+}
+
+HWTEST_F_L0(IdleGCTriggerTest, TryTriggerIdleGCTest016)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    SharedHeap *sheap = SharedHeap::GetInstance();
+    sheap->NotifyHeapAliveSizeAfterGC(1);
+    sheap->GetOldSpace()->IncreaseLiveObjectSize(5245000);
+    sheap->GetConcurrentMarker()->ConfigConcurrentMark(false);
+    IdleGCTrigger *trigger = new IdleGCTrigger(heap, sheap, thread);
+    trigger->TryTriggerIdleGC(TRIGGER_IDLE_GC_TYPE::SHARED_CONCURRENT_MARK);
+}
+
+HWTEST_F_L0(IdleGCTriggerTest, TryTriggerIdleGCTest017)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    SharedHeap *sheap = SharedHeap::GetInstance();
+    sheap->NotifyHeapAliveSizeAfterGC(1);
+    sheap->GetOldSpace()->IncreaseLiveObjectSize(5245000);
+    sheap->GetConcurrentMarker()->ConfigConcurrentMark(false);
+    sheap->SetSensitiveStatus(AppSensitiveStatus::ENTER_HIGH_SENSITIVE);
+    IdleGCTrigger *trigger = new IdleGCTrigger(heap, sheap, thread);
+    trigger->TryTriggerIdleGC(TRIGGER_IDLE_GC_TYPE::SHARED_CONCURRENT_MARK);
+}
+
+HWTEST_F_L0(IdleGCTriggerTest, TryTriggerIdleGCTest018)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    SharedHeap *sheap = SharedHeap::GetInstance();
+    sheap->NotifyHeapAliveSizeAfterGC(1);
+    sheap->GetOldSpace()->IncreaseLiveObjectSize(5245000);
+    sheap->GetConcurrentMarker()->ConfigConcurrentMark(false);
+    sheap->SetSensitiveStatus(AppSensitiveStatus::ENTER_HIGH_SENSITIVE);
+    IdleGCTrigger *trigger = new IdleGCTrigger(heap, sheap, thread);
+    trigger->TryTriggerIdleGC(TRIGGER_IDLE_GC_TYPE::SHARED_FULL_GC);
+}
+
+HWTEST_F_L0(IdleGCTriggerTest, TryTriggerIdleGCTest019)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    SharedHeap *sheap = SharedHeap::GetInstance();
+    sheap->NotifyHeapAliveSizeAfterGC(1);
+    sheap->GetConcurrentMarker()->ConfigConcurrentMark(false);
+    sheap->SetSensitiveStatus(AppSensitiveStatus::ENTER_HIGH_SENSITIVE);
+    IdleGCTrigger *trigger = new IdleGCTrigger(heap, sheap, thread);
+    trigger->TryTriggerIdleGC(TRIGGER_IDLE_GC_TYPE::SHARED_FULL_GC);
 }
 
 }  // namespace panda::test
