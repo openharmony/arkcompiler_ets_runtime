@@ -1318,9 +1318,19 @@ public:
     void InitializeBuiltinObject(const std::string& key);
     void InitializeBuiltinObject();
 
+    bool FullMarkRequest() const
+    {
+        return fullMarkRequest_;
+    }
+
     void SetFullMarkRequest()
     {
         fullMarkRequest_ = true;
+    }
+
+    void ResetFullMarkRequest()
+    {
+        fullMarkRequest_ = false;
     }
 
     inline bool IsThreadSafe() const
