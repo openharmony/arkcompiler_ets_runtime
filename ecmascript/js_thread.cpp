@@ -400,8 +400,8 @@ void JSThread::IterateHandleWithCheck(const RootVisitor &visitor, const RootRang
     }
 
     size_t globalCount = 0;
-    static const int JS_TYPE_LAST = static_cast<int>(JSType::TYPE_LAST);
-    int typeCount[JS_TYPE_LAST] = { 0 };
+    static const int JS_TYPE_SUM = static_cast<int>(JSType::TYPE_LAST) + 1;
+    int typeCount[JS_TYPE_SUM] = { 0 };
     int primitiveCount = 0;
     bool isStopObjectLeakCheck = EnableGlobalObjectLeakCheck() && !IsStartGlobalLeakCheck() && stackTraceFd_ > 0;
     bool isStopPrimitiveLeakCheck = EnableGlobalPrimitiveLeakCheck() && !IsStartGlobalLeakCheck() && stackTraceFd_ > 0;
@@ -450,7 +450,7 @@ void JSThread::IterateHandleWithCheck(const RootVisitor &visitor, const RootRang
     OPTIONAL_LOG(GetEcmaVM(), INFO) << "Global type Primitive count:" << primitiveCount;
     // Print global object type statistic.
     static const int MIN_COUNT_THRESHOLD = 50;
-    for (int i = 0; i < JS_TYPE_LAST; i++) {
+    for (int i = 0; i < JS_TYPE_SUM; i++) {
         if (typeCount[i] > MIN_COUNT_THRESHOLD) {
             OPTIONAL_LOG(GetEcmaVM(), INFO) << "Global type " << JSHClass::DumpJSType(JSType(i))
                                             << " count:" << typeCount[i];

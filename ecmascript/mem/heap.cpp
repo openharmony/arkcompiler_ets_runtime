@@ -1271,6 +1271,7 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
         oldSpace_->ResetCommittedOverSizeLimit();
         if (oldSpace_->CommittedSizeExceed()) { // LCOV_EXCL_BR_LINE
             DumpHeapSnapshotBeforeOOM(false);
+            StatisticHeapDetail();
             ThrowOutOfMemoryError(thread_, oldSpace_->GetMergeSize(), " OldSpace::Merge");
         }
         oldSpace_->ResetMergeSize();
@@ -1384,6 +1385,7 @@ void Heap::CheckNonMovableSpaceOOM()
     if (nonMovableSpace_->GetHeapObjectSize() > MAX_NONMOVABLE_LIVE_OBJ_SIZE) { // LCOV_EXCL_BR_LINE
         sweeper_->EnsureAllTaskFinished();
         DumpHeapSnapshotBeforeOOM(false);
+        StatisticHeapDetail();
         ThrowOutOfMemoryError(thread_, nonMovableSpace_->GetHeapObjectSize(), "Heap::CheckNonMovableSpaceOOM", true);
     }
 }
@@ -2561,14 +2563,14 @@ void Heap::StatisticHeapObject(TriggerGCType gcType) const
 void Heap::StatisticHeapDetail()
 {
     Prepare();
-    static const int JS_TYPE_LAST = static_cast<int>(JSType::TYPE_LAST);
-    int typeCount[JS_TYPE_LAST] = { 0 };
+    static const int JS_TYPE_SUM = static_cast<int>(JSType::TYPE_LAST) + 1;
+    int typeCount[JS_TYPE_SUM] = { 0 };
     static const int MIN_COUNT_THRESHOLD = 1000;
 
     nonMovableSpace_->IterateOverObjects([&typeCount] (TaggedObject *object) {
         typeCount[static_cast<int>(object->GetClass()->GetObjectType())]++;
     });
-    for (int i = 0; i < JS_TYPE_LAST; i++) {
+    for (int i = 0; i < JS_TYPE_SUM; i++) {
         if (typeCount[i] > MIN_COUNT_THRESHOLD) {
             LOG_ECMA(INFO) << "NonMovable space type " << JSHClass::DumpJSType(JSType(i))
                            << " count:" << typeCount[i];
@@ -2579,7 +2581,7 @@ void Heap::StatisticHeapDetail()
     oldSpace_->IterateOverObjects([&typeCount] (TaggedObject *object) {
         typeCount[static_cast<int>(object->GetClass()->GetObjectType())]++;
     });
-    for (int i = 0; i < JS_TYPE_LAST; i++) {
+    for (int i = 0; i < JS_TYPE_SUM; i++) {
         if (typeCount[i] > MIN_COUNT_THRESHOLD) {
             LOG_ECMA(INFO) << "Old space type " << JSHClass::DumpJSType(JSType(i))
                            << " count:" << typeCount[i];
@@ -2590,7 +2592,7 @@ void Heap::StatisticHeapDetail()
     activeSemiSpace_->IterateOverObjects([&typeCount] (TaggedObject *object) {
         typeCount[static_cast<int>(object->GetClass()->GetObjectType())]++;
     });
-    for (int i = 0; i < JS_TYPE_LAST; i++) {
+    for (int i = 0; i < JS_TYPE_SUM; i++) {
         if (typeCount[i] > MIN_COUNT_THRESHOLD) {
             LOG_ECMA(INFO) << "Active semi space type " << JSHClass::DumpJSType(JSType(i))
                            << " count:" << typeCount[i];
