@@ -24,81 +24,107 @@ try{
 }catch(e){}
 
 const v0 = []
-for(let i25 =  0;i25<1;i25++){
-    for(let i = 0;i<1;i++){
+for(let i25 = 0; i25 < 1; i25++){
+    for(let i = 0; i < 1; i++){
         i25 = v0.some(()=>{});
     }
 }
-for(let i25 =  0;i25<1;i25++){
-    for(let i = 0;i<1;i++){
+
+for(let i25 = 0; i25 < 1; i25++){
+    for(let i = 0; i < 1; i++){
         i25 = v0.pop();
     }
 }
-for(let i25 =  0;i25<1;i25++){
-    for(let i = 0;i<1;i++){
+
+for(let i25 = 0; i25 < 1; i25++){
+    for(let i = 0; i < 1; i++){
         i25 = v0.forEach(()=>{});
     }
 }
-for(let i25 =  0;i25<1;i25++){
-    for(let i = 0;i<1;i++){
+
+for(let i25 = 0; i25 < 1; i25++){
+    for(let i = 0; i < 1; i++){
         i25 = v0.find(()=>{});
     }
 }
-for(let i25 =  -1;i25<0;i25++){
-    for(let i = 0;i<1;i++){
+
+for(let i25 = -1; i25 < 0; i25++){
+    for(let i = 0; i < 1; i++){
         i25 = v0.findIndex(()=>{});
     }
 }
-for(let i25 =  0;i25<1;i25++){
-    for(let i = 0;i<1;i++){
+
+for(let i25 = 0; i25 < 1; i25++){
+    for(let i = 0; i < 1; i++){
         i25 = v0.every(()=>{});
     }
 }
 
-for(let i25 =  0;i25<1;i25++){
-    for(let i = 0;i<1;i++){
+for(let i25 = 0; i25 < 1; i25++){
+    for(let i = 0; i < 1; i++){
         i25 = v0.sort();
     }
 }
 const buffer = new ArrayBuffer(16);
-for(let i25 =  0;i25<1;i25++){
-    for(let i = 0;i<1;i++){
+for(let i25 = 0; i25 < 1; i25++){
+    for(let i = 0; i < 1; i++){
         i25 = ArrayBuffer.isView(buffer);
     }
 }
 const map = new Map([[1, 'one'], [2, 'two']]);
-for(let i25 =  0;i25<1;i25++){
-    for(let i = 0;i<1;i++){
+for(let i25 = 0; i25 < 1; i25++){
+    for(let i = 0; i < 1; i++){
         i25 = map.keys();
     }
 }
-for(let i25 =  0;i25<1;i25++){
-    for(let i = 0;i<1;i++){
+
+for(let i25 = 0; i25 < 1; i25++){
+    for(let i = 0; i < 1; i++){
         i25 = map.values();
     }
 }
 
-for(let i25 =  0;i25<1;i25++){
-    for(let i = 0;i<1;i++){
+for(let i25 = 0; i25 < 1; i25++){
+    for(let i = 0; i < 1; i++){
         i25 = map.entries();
     }
 }
 
 const set = new Set([1, 2, 2, 3]);
-for(let i25 =  0;i25<1;i25++){
-    for(let i = 0;i<1;i++){
+for(let i25 = 0; i25 < 1; i25++){
+    for(let i = 0; i < 1; i++){
         i25 = set.keys();
     }
 }
-for(let i25 =  0;i25<1;i25++){
-    for(let i = 0;i<1;i++){
+
+for(let i25 = 0; i25 < 1; i25++){
+    for(let i = 0; i < 1; i++){
         i25 = set.values();
     }
 }
 
-for(let i25 =  0;i25<1;i25++){
-    for(let i = 0;i<1;i++){
+for(let i25 = 0; i25 < 1; i25++){
+    for(let i = 0; i < 1; i++){
         i25 = set.entries();
+    }
+}
+
+let str = "sd-93u498thikefnow8y3-0rh1nalksfnwo8y3t19-3r8hoiefnw"
+for(let i25 = 0; i25 < 1; i25++){
+    for(let i = 0; i < 1; i++){
+        i25 = str.substring(0);
+    }
+}
+
+for(let i25 = 0; i25 < 1; i25++){
+    for(let i = 0; i < 1; i++){
+        i25 = str.substr(-0.01, 100)
+    }
+}
+
+for(let i25 = 0; i25 < 1; i25++){
+    for(let i = 0; i < 1; i++){
+        i25 =  str.slice(0)
     }
 }
 

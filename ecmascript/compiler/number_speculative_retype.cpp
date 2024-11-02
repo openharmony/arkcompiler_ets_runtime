@@ -272,6 +272,9 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
         case OpCode::MAP_ENTRIES:
         case OpCode::SET_ENTRIES:
         case OpCode::SET_VALUES:
+        case OpCode::STRING_SLICE:
+        case OpCode::STRING_SUB_STR:
+        case OpCode::STRING_SUB_STRING:
             return VisitOthersWithoutConvert(gate);
         case OpCode::ARRAY_INCLUDES_INDEXOF:
             return VisitArrayIncludesIndexOf(gate);
@@ -298,6 +301,7 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
         case OpCode::STORE_CONST_OFFSET:
         case OpCode::LEX_VAR_IS_HOLE_CHECK:
         case OpCode::TYPE_OF_CHECK:
+        case OpCode::TYPE_OF:
         case OpCode::ARRAY_CONSTRUCTOR:
         case OpCode::FLOAT32_ARRAY_CONSTRUCTOR:
         case OpCode::OBJECT_CONSTRUCTOR:
@@ -348,8 +352,22 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
         case OpCode::ARRAY_SORT:
         case OpCode::FINISH_ALLOCATE:
         case OpCode::IS_CALLABLE_CHECK:
+        case OpCode::IS_UNDEFINED_OR_HOLE_CHECK:
+        case OpCode::IS_NOT_UNDEFINED_OR_HOLE_CHECK:
+        case OpCode::ECMA_OBJECT_CHECK:
         case OpCode::GET_EXCEPTION:
             return VisitOthers(gate);
+        case OpCode::CALL:
+        case OpCode::BYTECODE_CALL:
+        case OpCode::DEBUGGER_BYTECODE_CALL:
+        case OpCode::BUILTINS_CALL_WITH_ARGV:
+        case OpCode::BUILTINS_CALL:
+        case OpCode::RUNTIME_CALL_WITH_ARGV:
+        case OpCode::BASELINE_CALL:
+        case OpCode::ASM_CALL_BARRIER:
+        case OpCode::CALL_OPTIMIZED:
+        case OpCode::FAST_CALL_OPTIMIZED:
+            UNREACHABLE();
         default:
             return Circuit::NullGate();
     }
