@@ -1197,18 +1197,6 @@ inline void StubBuilder::SetPropertiesArray(VariableType type, GateRef glue, Gat
     Store(type, glue, object, propertiesOffset, propsArray, mAttr);
 }
 
-inline GateRef StubBuilder::GetHash(GateRef object)
-{
-    GateRef hashOffset = IntPtr(ECMAObject::HASH_OFFSET);
-    return Load(VariableType::JS_ANY(), object, hashOffset);
-}
-
-inline void StubBuilder::SetHash(GateRef glue, GateRef object, GateRef hash)
-{
-    GateRef hashOffset = IntPtr(ECMAObject::HASH_OFFSET);
-    Store(VariableType::INT64(), glue, object, hashOffset, hash, MemoryAttribute::NoBarrier());
-}
-
 inline GateRef StubBuilder::GetLengthOfTaggedArray(GateRef array)
 {
     return Load(VariableType::INT32(), array, IntPtr(TaggedArray::LENGTH_OFFSET));
@@ -1219,9 +1207,15 @@ inline GateRef StubBuilder::GetLengthOfJSTypedArray(GateRef array)
     return Load(VariableType::INT32(), array, IntPtr(JSTypedArray::ARRAY_LENGTH_OFFSET));
 }
 
-inline GateRef StubBuilder::GetExtractLengthOfTaggedArray(GateRef array)
+inline GateRef StubBuilder::GetExtraLengthOfTaggedArray(GateRef array)
 {
     return Load(VariableType::INT32(), array, IntPtr(TaggedArray::EXTRA_LENGTH_OFFSET));
+}
+
+inline void StubBuilder::SetExtraLengthOfTaggedArray(GateRef glue, GateRef array, GateRef len)
+{
+    return Store(VariableType::INT32(), glue, array, IntPtr(TaggedArray::EXTRA_LENGTH_OFFSET),
+                 len, MemoryAttribute::NoBarrier());
 }
 
 inline GateRef StubBuilder::IsJSHClass(GateRef obj)
@@ -1455,6 +1449,12 @@ inline GateRef StubBuilder::IsNativeModuleFailureInfo(GateRef obj)
 {
     GateRef objectType = GetObjectType(LoadHClass(obj));
     return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::NATIVE_MODULE_FAILURE_INFO)));
+}
+
+inline GateRef StubBuilder::IsNativePointer(GateRef obj)
+{
+    GateRef objectType = GetObjectType(LoadHClass(obj));
+    return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::JS_NATIVE_POINTER)));
 }
 
 inline GateRef StubBuilder::IsModuleNamespace(GateRef obj)

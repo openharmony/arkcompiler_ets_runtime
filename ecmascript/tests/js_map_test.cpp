@@ -91,6 +91,73 @@ HWTEST_F_L0(JSMapTest, DeleteAndGet)
     EXPECT_EQ(map->GetSize(), 39);
 }
 
+HWTEST_F_L0(JSMapTest, DeleteAndGet2)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    // create jsMap
+    JSHandle<JSMap> map(thread, CreateMap());
+    JSHandle<JSTaggedValue> mapvalue(map);
+    JSHandle<TaggedArray> taggedArray = factory->NewTaggedArray(10);
+    int pointArr[10];
+    for (uint32_t i = 0; i < 10; i++) {
+        JSHandle<JSObject> obj = factory->NewEmptyJSObject(0);
+        auto *nativePointer = pointArr + i;
+        JSHandle<JSNativePointer> pointer = factory->NewJSNativePointer(nativePointer);
+        Barriers::SetObject<true>(thread, *obj, ECMAObject::HASH_OFFSET, pointer.GetTaggedValue().GetRawData());
+        taggedArray->Set(thread, i, obj);
+    }
+    thread->GetEcmaVM()->CollectGarbage(TriggerGCType::FULL_GC);
+    JSHandle<JSTaggedValue> setfunc =
+        JSObject::GetProperty(thread, mapvalue, thread->GlobalConstants()->GetHandledSetString()).GetValue();
+    JSHandle<JSTaggedValue> getfunc = thread->GlobalConstants()->GetHandledMapGet();
+    JSHandle<JSTaggedValue> deletefunc = thread->GlobalConstants()->GetHandledMapDelete();
+
+    for (int i = 0; i < 10; i++) {
+        JSHandle<JSTaggedValue> key(thread, taggedArray->Get(i));
+        JSHandle<JSTaggedValue> value(thread, JSTaggedValue(i));
+        auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
+        ecmaRuntimeCallInfo->SetFunction(setfunc.GetTaggedValue());
+        ecmaRuntimeCallInfo->SetThis(map.GetTaggedValue());
+        ecmaRuntimeCallInfo->SetCallArg(key.GetTaggedValue(), value.GetTaggedValue());
+        auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+        JSFunction::Call(ecmaRuntimeCallInfo);
+        TestHelper::TearDownFrame(thread, prev);
+        JSTaggedValue hashField =
+            JSTaggedValue(Barriers::GetValue<JSTaggedType>(key->GetTaggedObject(), ECMAObject::HASH_OFFSET));
+        EXPECT_TRUE(hashField.IsTaggedArray());
+    }
+    thread->GetEcmaVM()->CollectGarbage(TriggerGCType::FULL_GC);
+    for (int i = 0; i < 10; i++) {
+        JSHandle<JSTaggedValue> key(thread, taggedArray->Get(i));
+        auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+        ecmaRuntimeCallInfo->SetFunction(getfunc.GetTaggedValue());
+        ecmaRuntimeCallInfo->SetThis(map.GetTaggedValue());
+        ecmaRuntimeCallInfo->SetCallArg(key.GetTaggedValue());
+        auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+        auto res = JSFunction::Call(ecmaRuntimeCallInfo);
+        EXPECT_TRUE(res.GetInt() == i);
+        TestHelper::TearDownFrame(thread, prev);
+        JSTaggedValue hashField =
+            JSTaggedValue(Barriers::GetValue<JSTaggedType>(key->GetTaggedObject(), ECMAObject::HASH_OFFSET));
+        EXPECT_TRUE(hashField.IsTaggedArray());
+    }
+    thread->GetEcmaVM()->CollectGarbage(TriggerGCType::FULL_GC);
+    for (int i = 0; i < 10; i++) {
+        JSHandle<JSTaggedValue> key(thread, taggedArray->Get(i));
+        auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+        ecmaRuntimeCallInfo->SetFunction(deletefunc.GetTaggedValue());
+        ecmaRuntimeCallInfo->SetThis(map.GetTaggedValue());
+        ecmaRuntimeCallInfo->SetCallArg(key.GetTaggedValue());
+        auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+        auto res = JSFunction::Call(ecmaRuntimeCallInfo);
+        EXPECT_TRUE(res.IsTrue());
+        TestHelper::TearDownFrame(thread, prev);
+        JSTaggedValue hashField =
+            JSTaggedValue(Barriers::GetValue<JSTaggedType>(key->GetTaggedObject(), ECMAObject::HASH_OFFSET));
+        EXPECT_TRUE(hashField.IsTaggedArray());
+    }
+}
+
 HWTEST_F_L0(JSMapTest, Iterator)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
