@@ -314,7 +314,7 @@ JSTaggedValue BuiltinsSharedArray::From(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsSharedArray::Create(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
-    BUILTINS_API_TRACE(argv->GetThread(), SharedArray, From);
+    BUILTINS_API_TRACE(argv->GetThread(), SharedArray, Create);
     JSThread *thread = argv->GetThread();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     if (argv->GetArgsNumber() < COUNT_LENGTH_AND_INIT) {
@@ -404,7 +404,6 @@ JSTaggedValue BuiltinsSharedArray::Concat(EcmaRuntimeCallInfo *argv)
     JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
     [[maybe_unused]] ConcurrentApiScope<JSSharedArray> scope(thread, thisHandle);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    JSHandle<JSTaggedValue> thisObjVal(thisObjHandle);
 
     // 2. Let A be ArraySpeciesCreate(O, 0).
     uint32_t arrayLen = 0;
@@ -708,17 +707,6 @@ JSTaggedValue BuiltinsSharedArray::Fill(EcmaRuntimeCallInfo *argv)
 
     JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
     [[maybe_unused]] ConcurrentApiScope<JSSharedArray, ModType::WRITE> scope(thread, thisHandle);
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    if (thisHandle->IsJSSharedArray()) {
-        bool isDictionary = thisObjHandle->GetJSHClass()->IsDictionaryElement();
-        if (isDictionary) {
-            uint32_t length = JSSharedArray::Cast(*thisObjHandle)->GetLength();
-            uint32_t size = thisObjHandle->GetNumberOfElements();
-            if (length - size > JSObject::MAX_GAP) {
-                JSObject::TryOptimizeAsFastElements(thread, thisObjHandle);
-            }
-        }
-    }
 
     // 2. ReturnIfAbrupt(O).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -728,15 +716,6 @@ JSTaggedValue BuiltinsSharedArray::Fill(EcmaRuntimeCallInfo *argv)
         auto error = ContainerError::ParamError(thread, "Parameter error.Only accept sendable value.");
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
-    if (thisHandle->IsTypedArray() || thisHandle->IsSharedTypedArray()) {
-        ContentType contentType = JSHandle<JSTypedArray>::Cast(thisHandle)->GetContentType();
-        if (contentType == ContentType::BigInt) {
-            value = JSHandle<JSTaggedValue>(thread, JSTaggedValue::ToBigInt(thread, value));
-        } else {
-            value = JSHandle<JSTaggedValue>(thread, JSTaggedValue::ToNumber(thread, value));
-        }
-        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    }
 
     // 3. Let len be ToLength(Get(O, "length")).
     int64_t len = ArrayHelper::GetLength(thread, thisHandle);
@@ -745,10 +724,14 @@ JSTaggedValue BuiltinsSharedArray::Fill(EcmaRuntimeCallInfo *argv)
 
     // 5. Let relativeStart be ToInteger(start).
     JSHandle<JSTaggedValue> startArg = GetCallArg(argv, 1);
-    JSTaggedNumber argStartTemp = JSTaggedValue::ToInteger(thread, startArg);
-    // 6. ReturnIfAbrupt(relativeStart).
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    double argStart = argStartTemp.GetNumber();
+    double argStart = 0;
+    if (!startArg->IsUndefined()) {
+        JSTaggedNumber argStartTemp = JSTaggedValue::ToInteger(thread, startArg);
+        // 6. ReturnIfAbrupt(relativeStart).
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        argStart = argStartTemp.GetNumber();
+    }
+
     // 7. If relativeStart < 0, let k be max((len + relativeStart),0); else let k be min(relativeStart, len).
     int64_t start = 0;
     if (argStart < 0) {
@@ -785,14 +768,6 @@ JSTaggedValue BuiltinsSharedArray::Fill(EcmaRuntimeCallInfo *argv)
     if (thisHandle->IsStableJSArray(thread) && !startArg->IsJSObject() && !endArg->IsJSObject()) {
         auto opResult = JSStableArray::Fill(thread, thisObjHandle, value, start, end, len);
         return opResult;
-    }
-
-    if (thisHandle->IsTypedArray() || thisHandle->IsSharedTypedArray()) {
-        bool result = JSTypedArray::FastTypedArrayFill(thread, thisHandle, value, start, end);
-        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        if (result) {
-            return thisObjHandle.GetTaggedValue();
-        }
     }
 
     int64_t k = start;
