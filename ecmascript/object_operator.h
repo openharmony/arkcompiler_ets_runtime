@@ -99,7 +99,7 @@ public:
         IsFoundDictField::Set(flag, &metaData_);
     }
 
-    inline bool IsFoundDict()
+    inline bool IsFoundDict() const
     {
         return IsFoundDictField::Get(metaData_);
     }

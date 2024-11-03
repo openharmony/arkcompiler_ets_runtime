@@ -380,7 +380,8 @@ public:
     void SetHash(GateRef glue, GateRef object, GateRef hash);
     GateRef GetLengthOfTaggedArray(GateRef array);
     GateRef GetLengthOfJSTypedArray(GateRef array);
-    GateRef GetExtractLengthOfTaggedArray(GateRef array);
+    GateRef GetExtraLengthOfTaggedArray(GateRef array);
+    void SetExtraLengthOfTaggedArray(GateRef glue, GateRef array, GateRef len);
     // object operation
     GateRef IsJSHClass(GateRef obj);
     GateRef LoadHClass(GateRef object);
@@ -425,6 +426,7 @@ public:
     GateRef IsJSGlobalObject(GateRef obj);
     GateRef IsNativeModuleFailureInfo(GateRef obj);
     GateRef IsModuleNamespace(GateRef obj);
+    GateRef IsNativePointer(GateRef obj);
     GateRef IsSourceTextModule(GateRef obj);
     GateRef ObjIsSpecialContainer(GateRef obj);
     GateRef IsJSPrimitiveRef(GateRef obj);

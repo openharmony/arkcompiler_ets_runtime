@@ -407,7 +407,7 @@ GateRef StubBuilder::BinarySearch(GateRef glue, GateRef layoutInfo, GateRef key,
     env->SubCfgEntry(&subentry);
     DEFVARIABLE(low, VariableType::INT32(), Int32(0));
     Label exit(env);
-    GateRef elements = GetExtractLengthOfTaggedArray(layoutInfo);
+    GateRef elements = GetExtraLengthOfTaggedArray(layoutInfo);
     DEFVARIABLE(high, VariableType::INT32(), Int32Sub(elements, Int32(1)));
     DEFVARIABLE(result, VariableType::INT32(), Int32(-1));
     DEFVARIABLE(mid, VariableType::INT32(), Int32(-1));
@@ -8429,12 +8429,100 @@ void StubBuilder::CalcHashcodeForDouble(GateRef x, Variable *res, Label *exit)
     Jump(exit);
 }
 
+GateRef StubBuilder::GetHash(GateRef object)
+{
+    auto env = GetEnvironment();
+    Label subentry(env);
+    Label isHeapObject(env);
+    Label exit(env);
+    env->SubCfgEntry(&subentry);
+    GateRef hashOffset = IntPtr(ECMAObject::HASH_OFFSET);
+    GateRef value = Load(VariableType::JS_ANY(), object, hashOffset);
+    DEFVARIABLE(res, VariableType::INT32(), GetInt32OfTInt(value));
+    BRANCH(TaggedIsHeapObject(value), &isHeapObject, &exit);
+
+    Bind(&isHeapObject);
+    {
+        Label isTaggedArray(env);
+        Label notTaggedArray(env);
+        BRANCH(IsTaggedArray(value), &isTaggedArray, &notTaggedArray);
+        Bind(&isTaggedArray);
+        GateRef extlen = GetExtraLengthOfTaggedArray(value);
+        GateRef index = Int32Add(Int32(ECMAObject::HASH_INDEX), extlen);
+        res = GetInt32OfTInt(GetValueFromTaggedArray(value, index));
+        Jump(&exit);
+        Bind(&notTaggedArray);
+        res = Int32(0);
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *res;
+    env->SubCfgExit();
+    return ret;
+}
+
+void StubBuilder::SetHash(GateRef glue, GateRef object, GateRef hash)
+{
+    auto env = GetEnvironment();
+    Label subentry(env);
+    Label isHeapObject(env);
+    Label notHeapObject(env);
+    Label exit(env);
+    env->SubCfgEntry(&subentry);
+    GateRef hashOffset = IntPtr(ECMAObject::HASH_OFFSET);
+    GateRef value = Load(VariableType::JS_ANY(), object, hashOffset);
+    DEFVARIABLE(res, VariableType::JS_ANY(), object);
+    BRANCH(TaggedIsHeapObject(value), &isHeapObject, &notHeapObject);
+
+    Bind(&isHeapObject);
+    {
+        Label isTaggedArray(env);
+        Label notTaggedArray(env);
+        BRANCH(IsTaggedArray(value), &isTaggedArray, &notTaggedArray);
+        Bind(&isTaggedArray);
+        {
+            GateRef extlen = GetExtraLengthOfTaggedArray(value);
+            GateRef index = Int32Add(Int32(ECMAObject::HASH_INDEX), extlen);
+            SetValueToTaggedArray(VariableType::JS_ANY(), glue, value, index, IntToTaggedInt(hash));
+            Jump(&exit);
+        }
+        Bind(&notTaggedArray);
+        {
+            Label isNativePointer(env);
+            Label notNativePointer(env);
+            BRANCH(IsNativePointer(value), &isNativePointer, &notNativePointer);
+            Bind(&isNativePointer);
+            {
+                NewObjectStubBuilder newBuilder(this);
+                GateRef array = newBuilder.NewTaggedArray(glue, Int32(ECMAObject::RESOLVED_MAX_SIZE));
+                SetExtraLengthOfTaggedArray(glue, array, Int32(0));
+                SetValueToTaggedArray(VariableType::JS_ANY(), glue, array,
+                                      Int32(ECMAObject::HASH_INDEX), IntToTaggedInt(hash));
+                SetValueToTaggedArray(VariableType::JS_ANY(), glue, array,
+                                      Int32(ECMAObject::FUNCTION_EXTRA_INDEX), value);
+                Store(VariableType::JS_ANY(), glue, object, hashOffset, array);
+                Jump(&exit);
+            }
+            Bind(&notNativePointer);
+            FatalPrint(glue, { Int32(GET_MESSAGE_STRING_ID(ThisBranchIsUnreachable)) });
+            Jump(&exit);
+        }
+    }
+    Bind(&notHeapObject);
+    {
+        Store(VariableType::JS_ANY(), glue, object, hashOffset, IntToTaggedInt(hash), MemoryAttribute::NoBarrier());
+        Jump(&exit);
+    }
+    Bind(&exit);
+    env->SubCfgExit();
+}
+
 void StubBuilder::CalcHashcodeForObject(GateRef glue, GateRef value, Variable *res, Label *exit)
 {
     auto env = GetEnvironment();
 
     GateRef hash = GetHash(value);
-    *res = TruncInt64ToInt32(TaggedCastToIntPtr(hash));
+    *res = hash;
     Label calcHash(env);
     BRANCH(Int32Equal(**res, Int32(0)), &calcHash, exit);
     Bind(&calcHash);
@@ -8448,7 +8536,7 @@ void StubBuilder::CalcHashcodeForObject(GateRef glue, GateRef value, Variable *r
     GateRef k4 = Int64Mul(k3, Int64(base::GET_MULTIPLY));
     GateRef k5 = Int64LSR(k4, Int64(base::INT64_BITS - base::INT32_BITS));
     GateRef k6 = Int32And(TruncInt64ToInt32(k5), Int32(INT32_MAX));
-    SetHash(glue, value, IntToTaggedPtr(k6));
+    SetHash(glue, value, k6);
     *res = k6;
     Jump(exit);
 }
