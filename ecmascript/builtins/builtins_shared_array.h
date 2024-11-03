@@ -238,6 +238,13 @@ private:
                                               JSHandle<JSTaggedValue> &thisArgHandle,
                                               uint32_t &k);
 #undef ARRAY_PROPERTIES_PAIR
+
+#define ARRAY_CHECK_SHARED_ARRAY(errMsg)                                            \
+    JSHandle<JSTaggedValue> thisHandle = GetThis(argv);                             \
+    if (UNLIKELY(!thisHandle->IsJSSharedArray())) {                                 \
+        auto error = ContainerError::BindError(thread, errMsg);                     \
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception()); \
+    }
 };
 }  // namespace panda::ecmascript::builtins
 
