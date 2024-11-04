@@ -901,7 +901,7 @@ TaggedObject *SharedHeap::AllocateInSOldSpace(JSThread *thread, size_t size)
         object = reinterpret_cast<TaggedObject *>(sOldSpace_->TryAllocateAndExpand(thread, size, true));
         if (object == nullptr) {
             if (allowGC) {
-                CollectGarbage<TriggerGCType::SHARED_GC, GCReason::ALLOCATION_FAILED>(thread);
+                CollectGarbageNearOOM(thread);
             }
             object = reinterpret_cast<TaggedObject *>(sOldSpace_->TryAllocateAndExpand(thread, size, true));
         }

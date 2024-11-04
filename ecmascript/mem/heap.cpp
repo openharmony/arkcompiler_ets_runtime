@@ -151,6 +151,15 @@ bool SharedHeap::CheckHugeAndTriggerSharedGC(JSThread *thread, size_t size)
     return false;
 }
 
+void SharedHeap::CollectGarbageNearOOM(JSThread *thread)
+{
+    auto fragmentationSize = sOldSpace_->GetCommittedSize() - sOldSpace_->GetHeapObjectSize();
+    if (fragmentationSize >= fragmentationLimitForSharedFullGC_) {
+        CollectGarbage<TriggerGCType::SHARED_FULL_GC,  GCReason::ALLOCATION_FAILED>(thread);
+    } else {
+        CollectGarbage<TriggerGCType::SHARED_GC, GCReason::ALLOCATION_FAILED>(thread);
+    }
+}
 // Shared gc trigger
 void SharedHeap::AdjustGlobalSpaceAllocLimit()
 {
@@ -212,6 +221,7 @@ void SharedHeap::Initialize(NativeAreaAllocator *nativeAreaAllocator, HeapRegion
     growingStep_ = config_.GetSharedHeapLimitGrowingStep();
     incNativeSizeTriggerSharedCM_= config_.GetStepNativeSizeInc();
     incNativeSizeTriggerSharedGC_ = config_.GetMaxNativeSizeInc();
+    fragmentationLimitForSharedFullGC_ = config_.GetFragmentationLimitForSharedFullGC();
     dThread_ = dThread;
 }
 
