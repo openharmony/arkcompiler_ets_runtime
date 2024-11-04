@@ -1719,11 +1719,11 @@ GateRef NumberSpeculativeRetype::VisitNumberOrGlobalBuiltin(GateRef gate)
     if (type == TypeInfo::INT32) {
         GateRef result;
         if constexpr (IS_NAN) {
-            result = builder_.TaggedFalse();
+            result = builder_.Boolean(false);
         } else {
-            result = builder_.TaggedTrue();
+            result = builder_.Boolean(true);
         }
-        ResizeAndSetTypeInfo(result, TypeInfo::TAGGED);
+        ResizeAndSetTypeInfo(result, TypeInfo::INT1);
         acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
         return Circuit::NullGate();
     } else {
