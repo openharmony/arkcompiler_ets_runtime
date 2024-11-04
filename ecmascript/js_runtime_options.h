@@ -2068,7 +2068,7 @@ private:
     bool enableJITPGO_ {true};
     bool enableAOTPGO_ {true};
     bool enableProfileDump_ {true};
-    bool enableFrameworkAOT_ {true};
+    bool enableFrameworkAOT_ {false};
     uint32_t pgoHotnessThreshold_ {1};
     std::string pgoProfilerPath_ {""};
     uint32_t pgoSaveMinInterval_ {30};
