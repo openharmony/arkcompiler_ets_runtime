@@ -1523,7 +1523,7 @@ void InterpreterAssembly::HandleExpImm8V8(
         // fast path
         double doubleBase = base.IsInt() ? base.GetInt() : base.GetDouble();
         double doubleExponent = exponent.IsInt() ? exponent.GetInt() : exponent.GetDouble();
-        if (std::abs(doubleBase) == 1 && std::isinf(doubleExponent)) {
+        if ((std::abs(doubleBase) == 1 && std::isinf(doubleExponent)) || std::isnan(doubleExponent)) {
             SET_ACC(JSTaggedValue(base::NAN_VALUE));
         }
         bool baseZero = doubleBase == 0 &&

@@ -99,7 +99,7 @@ JSTaggedValue RuntimeStubs::RuntimeExp(JSThread *thread, JSTaggedValue base, JST
     }
     double doubleBase = valBase->GetNumber();
     double doubleExponent = valExponent->GetNumber();
-    if (std::abs(doubleBase) == 1 && std::isinf(doubleExponent)) {
+    if ((std::abs(doubleBase) == 1 && std::isinf(doubleExponent)) || std::isnan(doubleExponent)) {
         return JSTaggedValue(base::NAN_VALUE);
     }
     if (((doubleBase == 0) &&
