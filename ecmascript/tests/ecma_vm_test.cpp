@@ -90,4 +90,16 @@ HWTEST_F_L0(EcmaVMTest, CreateEcmaVMInTwoWays)
     t1.join();
     JSNApi::DestroyJSVM(ecmaVm1);
 }
+
+HWTEST_F_L0(EcmaVMTest, DumpExceptionObject)
+{
+    RuntimeOption option;
+    option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
+    EcmaVM *ecmaVm = JSNApi::CreateJSVM(option);
+    auto thread = ecmaVm->GetJSThread();
+    int arkProperties = thread->GetEcmaVM()->GetJSOptions().GetArkProperties();
+    ecmaVm->GetJSOptions().SetArkProperties(arkProperties | ArkProperties::EXCEPTION_BACKTRACE);
+    EXPECT_TRUE(ecmaVm->GetJSOptions().EnableExceptionBacktrace());
+    JSNApi::DestroyJSVM(ecmaVm);
+}
 }  // namespace panda::ecmascript

@@ -766,6 +766,7 @@ private:
         ASSERT_PRINT(v.IsInt(), "can not convert JSTaggedValue to Int :" << std::hex << v.GetRawData());
         return static_cast<uint64_t>(v.GetRawData() & (~TAG_INT));
     }
+    static void DumpExceptionObject(JSThread *thread, const JSHandle<JSTaggedValue> &obj);
 
     friend class PropertyAttributes;
     friend class ICRuntimeStub;
