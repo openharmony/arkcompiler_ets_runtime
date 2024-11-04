@@ -196,7 +196,8 @@ private:
                                    JSHandle<EcmaString> inputString, int32_t lastIndex);
     static JSTaggedValue RegExpSplitFast(JSThread *thread, const JSHandle<JSTaggedValue> regexp,
                                          JSHandle<JSTaggedValue> string, uint32_t limit, bool useCache);
-    static JSHandle<EcmaString> CreateStringFromResultArray(JSThread *thread, const JSHandle<TaggedArray> resultArray,
+    static JSHandle<EcmaString> CreateStringFromResultArray(JSThread *thread,
+        const CVector<JSHandle<JSTaggedValue>> &resultArray,
         const std::vector<uint64_t> &resultLengthArray, JSHandle<EcmaString> srcString,
         uint32_t resultStrLength, bool isUtf8);
 };

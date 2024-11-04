@@ -143,6 +143,8 @@ private:
         uint32_t length, bool compressed);
     static EcmaString *FastSubString(const EcmaVM *vm,
         const JSHandle<EcmaString> &src, uint32_t start, uint32_t length);
+    static bool SubStringIsUtf8(const EcmaVM *vm,
+        const JSHandle<EcmaString> &src, uint32_t start, uint32_t length);
     static EcmaString *GetSlicedString(const EcmaVM *vm,
         const JSHandle<EcmaString> &src, uint32_t start, uint32_t length);
     static EcmaString *GetSubString(const EcmaVM *vm,
@@ -1137,7 +1139,11 @@ public:
     {
         return EcmaString::FastSubString(vm, src, start, length);
     }
-
+    static bool SubStringIsUtf8(const EcmaVM *vm,
+        const JSHandle<EcmaString> &src, uint32_t start, uint32_t length)
+    {
+        return EcmaString::SubStringIsUtf8(vm, src, start, length);
+    }
     // get
     static EcmaString *GetSubString(const EcmaVM *vm,
         const JSHandle<EcmaString> &src, uint32_t start, uint32_t length)

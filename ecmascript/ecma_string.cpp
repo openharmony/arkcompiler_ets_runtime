@@ -185,6 +185,20 @@ EcmaString *EcmaString::GetSubString(const EcmaVM *vm,
     return FastSubString(vm, src, start, length);
 }
 
+bool EcmaString::SubStringIsUtf8(const EcmaVM *vm,
+    const JSHandle<EcmaString> &src, uint32_t start, uint32_t length)
+{
+    ASSERT((start + length) <= src->GetLength());
+    if (length == 0) {
+        return true;
+    }
+    if (src->IsUtf8()) {
+        return true;
+    }
+    FlatStringInfo srcFlat = FlattenAllString(vm, src);
+    return CanBeCompressed(srcFlat.GetDataUtf16() + start, length);
+}
+
 void EcmaString::WriteData(EcmaString *src, uint32_t start, uint32_t destSize, uint32_t length)
 {
     ASSERT(IsLineString() && !IsConstantString());
