@@ -719,10 +719,7 @@ DEF_RUNTIME_STUBS(RuntimeDump)
 
 void RuntimeStubs::Dump(JSTaggedType rawValue)
 {
-    std::ostringstream oss;
-    auto value = JSTaggedValue(rawValue);
-    value.Dump(oss);
-    LOG_ECMA(INFO) << "dump log for read-only crash " << oss.str();
+    DumpWithHint(reinterpret_cast<uintptr_t>(nullptr), rawValue);
 }
 
 void RuntimeStubs::DebugDump(JSTaggedType rawValue)
