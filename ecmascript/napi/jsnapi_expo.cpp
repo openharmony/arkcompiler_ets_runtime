@@ -148,8 +148,6 @@ namespace {
 constexpr std::string_view ENTRY_POINTER = "_GLOBAL::func_main_0";
 }
 
-int JSNApi::vmCount_ = 0;
-bool JSNApi::initialize_ = false;
 bool JSNApi::isForked_ = false;
 static Mutex *mutex = new panda::Mutex();
 StartIdleMonitorCallback JSNApi::startIdleMonitorCallback_ = nullptr;
