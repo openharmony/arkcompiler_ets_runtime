@@ -39,7 +39,7 @@ JSTaggedValue BuiltinsDate::DateConstructor(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> newTarget = GetNewTarget(argv);
     if (newTarget->IsUndefined()) {
         double now = JSDate::Now().GetDouble();
-        CString str = JSDate::ToDateString(now);
+        CString str = JSDate::ToDateString(thread, now);
         return GetTaggedString(thread, str.c_str());
     }
 

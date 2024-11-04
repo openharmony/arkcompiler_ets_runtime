@@ -40,6 +40,7 @@
 #endif
 
 namespace panda::ecmascript {
+class DateUtils;
 class EcmaContext;
 class EcmaVM;
 class EcmaHandleScope;
@@ -1474,7 +1475,10 @@ public:
         RegisterRTInterface(kungfu::RuntimeStubCSigns::ID_ASMFastWriteBarrier, asmCheckStub);
     }
 
-    
+    DateUtils *GetDateUtils() const
+    {
+        return dateUtils_;
+    }
 
 #ifndef NDEBUG
     inline void LaunchSuspendAll()
@@ -1620,6 +1624,7 @@ private:
     RecursiveMutex jitMutex_;
     bool machineCodeLowMemory_ {false};
     RecursiveMutex profileTypeAccessorLockMutex_;
+    DateUtils *dateUtils_ {nullptr};
 
 #ifndef NDEBUG
     MutatorLock::MutatorLockState mutatorLockState_ = MutatorLock::MutatorLockState::UNLOCKED;
