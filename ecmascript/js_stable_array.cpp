@@ -484,7 +484,8 @@ JSTaggedValue JSStableArray::Join(JSHandle<JSArray> receiver, EcmaRuntimeCallInf
     JSHandle<JSTaggedValue> sepHandle = base::BuiltinsBase::GetCallArg(argv, 0);
     int sep = ',';
     uint32_t sepLength = 1;
-    JSHandle<EcmaString> sepStringHandle;
+    const GlobalEnvConstants *globalConst = thread->GlobalConstants();
+    JSHandle<EcmaString> sepStringHandle = JSHandle<EcmaString>::Cast(globalConst->GetHandledCommaString());
     auto context = thread->GetCurrentEcmaContext();
     JSHandle<JSTaggedValue> receiverValue = JSHandle<JSTaggedValue>::Cast(receiver);
     if (!sepHandle->IsUndefined()) {
@@ -497,7 +498,6 @@ JSTaggedValue JSStableArray::Join(JSHandle<JSArray> receiver, EcmaRuntimeCallInf
         SetSepValue(sepStringHandle, sep, sepLength);
     }
     if (length == 0) {
-        const GlobalEnvConstants *globalConst = thread->GlobalConstants();
         context->JoinStackPopFastPath(receiverValue);
         return globalConst->GetEmptyString();
     }
@@ -505,7 +505,6 @@ JSTaggedValue JSStableArray::Join(JSHandle<JSArray> receiver, EcmaRuntimeCallInf
     uint64_t allocateLength = 0;
     bool isOneByte = (sep != JSStableArray::SeparatorFlag::MINUS_ONE) || EcmaStringAccessor(sepStringHandle).IsUtf8();
     JSMutableHandle<JSTaggedValue> elementHandle(thread, JSTaggedValue::Undefined());
-    const GlobalEnvConstants *globalConst = thread->GlobalConstants();
     uint32_t elementsLength = ElementAccessor::GetElementsLength(obj);
     uint32_t len = elementsLength > length ? length : elementsLength;
     if (elementsLength == 0 && length != 0) {

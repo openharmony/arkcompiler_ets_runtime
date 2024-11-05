@@ -30,3 +30,4 @@ NaN
 NaN
 NaN0
 true
+0
