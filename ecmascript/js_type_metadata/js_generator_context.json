@@ -1,0 +1,39 @@
+{
+    "name": "JS_GENERATOR_CONTEXT",
+    "offsets": [
+        {
+            "name": "RegsArray",
+            "offset": 0,
+            "size": 8
+        },
+        {
+            "name": "Method",
+            "offset": 8,
+            "size": 8
+        },
+        {
+            "name": "This",
+            "offset": 16,
+            "size": 8
+        },
+        {
+            "name": "Acc",
+            "offset": 24,
+            "size": 8
+        },
+        {
+            "name": "GeneratorObject",
+            "offset": 32,
+            "size": 8
+        },
+        {
+            "name": "LexicalEnv",
+            "offset": 40,
+            "size": 8
+        }
+    ],
+    "end_offset": 56,
+    "parents": [
+        "TAGGED_OBJECT"
+    ]
+}

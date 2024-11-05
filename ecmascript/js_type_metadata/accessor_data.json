@@ -1,0 +1,19 @@
+{
+    "name": "ACCESSOR_DATA",
+    "offsets": [
+        {
+            "name": "Getter",
+            "offset": 0,
+            "size": 8
+        },
+        {
+            "name": "Setter",
+            "offset": 8,
+            "size": 8
+        }
+    ],
+    "end_offset": 16,
+    "parents": [
+        "RECORD"
+    ]
+}

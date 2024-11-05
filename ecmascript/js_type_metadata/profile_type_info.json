@@ -1,0 +1,8 @@
+{
+    "name": "PROFILE_TYPE_INFO",
+    "offsets": [],
+    "end_offset": 0,
+    "parents": [
+        "TAGGED_ARRAY"
+    ]
+}

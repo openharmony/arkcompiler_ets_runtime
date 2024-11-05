@@ -1,0 +1,24 @@
+{
+    "name": "TAGGED_NODE",
+    "offsets": [
+        {
+            "name": "Hash",
+            "offset": 0,
+            "size": 8
+        },
+        {
+            "name": "Key",
+            "offset": 8,
+            "size": 8
+        },
+        {
+            "name": "Value",
+            "offset": 16,
+            "size": 8
+        }
+    ],
+    "end_offset": 24,
+    "parents": [
+        "TAGGED_OBJECT"
+    ]
+}

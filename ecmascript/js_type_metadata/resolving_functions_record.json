@@ -1,0 +1,19 @@
+{
+    "name": "RESOLVING_FUNCTIONS_RECORD",
+    "offsets": [
+        {
+            "name": "ResolveFunction",
+            "offset": 0,
+            "size": 8
+        },
+        {
+            "name": "RejectFunction",
+            "offset": 8,
+            "size": 8
+        }
+    ],
+    "end_offset": 16,
+    "parents": [
+        "RECORD"
+    ]
+}

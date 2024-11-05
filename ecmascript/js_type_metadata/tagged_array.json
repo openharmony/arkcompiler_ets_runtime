@@ -1,0 +1,20 @@
+{
+    "name": "TAGGED_ARRAY",
+    "offsets": [
+        {
+            "name": "Length",
+            "offset": 0,
+            "size": 4
+        },
+        {
+            "name": "Data",
+            "offset": 8,
+            "size": 8
+        }
+    ],
+    "end_offset": 0,
+    "parents": [
+        "TAGGED_OBJECT"
+    ],
+    "visit_type": "Array"
+}

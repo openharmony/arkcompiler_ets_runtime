@@ -1,0 +1,24 @@
+{
+    "name": "TRANS_WITH_PROTO_HANDLER",
+    "offsets": [
+        {
+            "name": "HandlerInfo",
+            "offset": 0,
+            "size": 8
+        },
+        {
+            "name": "TransitionHClass",
+            "offset": 8,
+            "size": 8
+        },
+        {
+            "name": "ProtoCell",
+            "offset": 16,
+            "size": 8
+        }
+    ],
+    "end_offset": 24,
+    "parents": [
+        "TAGGED_OBJECT"
+    ]
+}
