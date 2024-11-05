@@ -2503,7 +2503,12 @@ GateRef TypedNativeInlineLowering::NumberToInt32(GateRef gate)
         case MachineType::I32:
             return gate;
         case MachineType::F64:
-            return builder_.ChangeFloat64ToInt32(gate);
+            if (isLiteCG_) {
+                return builder_.ChangeFloat64ToInt32(gate);
+            } else {
+                GateRef glue = acc_.GetGlueFromArgList();
+                return builder_.DoubleToInt(glue, gate, base::INT32_BITS);
+            }
         case MachineType::I1:
             return builder_.ZExtInt1ToInt32(gate);
         default:
