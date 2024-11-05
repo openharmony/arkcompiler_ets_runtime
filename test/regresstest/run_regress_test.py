@@ -60,6 +60,19 @@ def parse_args():
                         help='Set a custom test timeout in seconds !!!\n')
     parser.add_argument('--processes', default=RegressTestConfig.DEFAULT_PROCESSES, type=int,
                         help='set number of processes to use. Default value: 1\n')
+    parser.add_argument('--stub-path',
+                        help="stub file for run in AOT modes")
+    parser.add_argument('--LD_LIBRARY_PATH', '--libs-dir',
+                        dest='ld_library_path', default=None, help='LD_LIBRARY_PATH')
+    parser.add_argument('--icu-path',
+                        dest='icu_path', help='icu-data-path')
+    parser.add_argument('--out-dir',
+                        default=None, help='target out dir')
+    parser = parse_args_run_mode(parser)
+    return parser.parse_args()
+
+
+def parse_args_run_mode(parser):
     parser.add_argument('--merge-abc-binary',
                         help="merge-abc's binary tool")
     parser.add_argument('--ark-tool',
@@ -74,14 +87,6 @@ def parse_args():
                         help="runs in litecg mode")
     parser.add_argument('--ark-frontend-binary',
                         help="ark frontend conversion binary tool")
-    parser.add_argument('--stub-path',
-                        help="stub file for run in AOT modes")
-    parser.add_argument('--LD_LIBRARY_PATH', '--libs-dir',
-                        dest='ld_library_path', default=None, help='LD_LIBRARY_PATH')
-    parser.add_argument('--icu-path',
-                        dest='icu_path', help='icu-data-path')
-    parser.add_argument('--out-dir',
-                        default=None, help='target out dir')
     parser.add_argument('--force-clone', action="store_true",
                         default=False, help='Force to clone tests folder')
     parser.add_argument('--ark-arch',
@@ -94,7 +99,10 @@ def parse_args():
                         help="the root path for qemu-aarch64 or qemu-arm")
     parser.add_argument('--disable-force-gc', action='store_true',
                         help="Run regress tests with close force-gc")
-    return parser.parse_args()
+    parser.add_argument('--compiler-opt-track-field', default=False, action='store',
+                        dest="compiler_opt_track_field",
+                        help='enable compiler opt track field. Default value: False\n')
+    return parser
 
 
 def check_ark_frontend_binary(args) -> bool:
@@ -676,6 +684,7 @@ class RegressTestAot(RegressTestStep):
             ".abc")
         ap_file = change_extension(abc_file, ".ap")
         aot_file = change_extension(abc_file, "")
+        compiler_opt_track_field = self.args.compiler_opt_track_field
         os.environ["LD_LIBRARY_PATH"] = self.args.ld_library_path
         if self.args.ark_arch == RegressTestConfig.ARK_ARCH_LIST[1]:
             aot_cmd = [
@@ -691,11 +700,10 @@ class RegressTestAot(RegressTestStep):
             self.args.ark_aot_tool,
             f"--aot-file={aot_file}",
         ]
-
         pgo = [
             "--compiler-opt-loop-peeling=true",
             "--compiler-fast-compile=false",
-            "--compiler-opt-track-field=true",
+            f"--compiler-opt-track-field={compiler_opt_track_field}",
             "--compiler-opt-inlining=true",
             "--compiler-max-inline-bytecodes=45",
             "--compiler-opt-level=2",
