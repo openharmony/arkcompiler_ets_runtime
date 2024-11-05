@@ -20,26 +20,10 @@
 #include "ecmascript/mem/sparse_space.h"
 
 namespace panda::ecmascript {
-#ifdef ECMASCRIPT_SUPPORT_HEAPSAMPLING
-#define CHECK_SOBJECT_AND_INC_OBJ_SIZE(size)                                            \
+#define CHECK_SOBJECT_NOT_NULL()                                                        \
     if (object != 0) {                                                                  \
-        IncreaseLiveObjectSize(size);                                                   \
-        if (sHeap_->IsReadyToConcurrentMark()) {                                        \
-            Region::ObjectAddressToRange(object)->IncreaseAliveObject(size);            \
-        }                                                                               \
-        InvokeAllocationInspector(object, size, size);                                  \
         return object;                                                                  \
     }
-#else
-#define CHECK_SOBJECT_AND_INC_OBJ_SIZE(size)                                            \
-    if (object != 0) {                                                                  \
-        IncreaseLiveObjectSize(size);                                                   \
-        if (heap_->IsReadyToConcurrentMark()) {                                         \
-            Region::ObjectAddressToRange(object)->IncreaseAliveObject(size);            \
-        }                                                                               \
-        return object;                                                                  \
-    }
-#endif
 
 class SharedHeap;
 class SharedLocalSpace;
@@ -127,6 +111,7 @@ private:
     uintptr_t TryAllocate(JSThread *thread, size_t size);
     // For sweeping
     uintptr_t AllocateAfterSweepingCompleted(JSThread *thread, size_t size);
+    void IncAllocSObjectSize(uintptr_t object, size_t size);
 
     Mutex lock_;
     Mutex allocateLock_;

@@ -251,9 +251,7 @@ void Runtime::IterateSerializeRoot(const RootVisitor &v)
 {
     LockHolder lock(serializeLock_);
     for (auto &it : serializeRootMap_) {
-        for (auto &rootObj : it.second) {
-            v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&rootObj)));
-        }
+        it.second->Iterate(v);
     }
 }
 

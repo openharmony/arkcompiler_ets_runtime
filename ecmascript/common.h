@@ -72,7 +72,6 @@ enum class RequestAotMode : uint8_t {
     V(ReMark)                            \
     V(Mark)                              \
     V(MarkRoots)                         \
-    V(ProcessMarkStack)                  \
     V(ProcessSharedGCRSetWorkList)       \
     V(Sweep)                             \
     V(ClearNativeObject)                 \

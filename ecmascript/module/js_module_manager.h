@@ -104,11 +104,11 @@ public:
 
     ModuleExecuteMode GetExecuteMode() const
     {
-        return isExecuteBuffer_;
+        return isExecuteBuffer_.load(std::memory_order_acquire);
     }
     inline void SetExecuteMode(ModuleExecuteMode mode)
     {
-        isExecuteBuffer_ = mode;
+        isExecuteBuffer_.store(mode, std::memory_order_release);
     }
 
     static CString PUBLIC_API GetRecordName(JSTaggedValue module);
@@ -182,7 +182,7 @@ private:
 
     EcmaVM *vm_ {nullptr};
     CUnorderedMap<CString, JSTaggedValue> resolvedModules_;
-    ModuleExecuteMode isExecuteBuffer_ {ModuleExecuteMode::ExecuteZipMode};
+    std::atomic<ModuleExecuteMode> isExecuteBuffer_ {ModuleExecuteMode::ExecuteZipMode};
     CVector<CString> InstantiatingSModuleList_;
 
     friend class EcmaVM;
