@@ -296,6 +296,7 @@ namespace panda::ecmascript {
     V(StOwnByValue)                             \
     V(LdSuperByValue)                           \
     V(StSuperByValue)                           \
+    V(StObjByValue)                             \
     V(LdObjByIndex)                             \
     V(StObjByIndex)                             \
     V(StOwnByIndex)                             \
