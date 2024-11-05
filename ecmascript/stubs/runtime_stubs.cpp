@@ -25,6 +25,7 @@
 #include "ecmascript/builtins/builtins_array.h"
 #include "ecmascript/builtins/builtins_arraybuffer.h"
 #include "ecmascript/js_stable_array.h"
+#include "ecmascript/builtins/builtins_arraybuffer.h"
 #include "ecmascript/builtins/builtins_bigint.h"
 #include "ecmascript/builtins/builtins_function.h"
 #include "ecmascript/builtins/builtins_iterator.h"
@@ -3924,6 +3925,107 @@ bool RuntimeStubs::IsFastRegExp(uintptr_t argGlue, JSTaggedValue thisValue)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> thisObjVal(thread, thisValue);
     return builtins::BuiltinsRegExp::IsFastRegExp(thread, thisObjVal);
+}
+
+template <typename T>
+static bool CompareFloat(T x, T y)
+{
+    if (x < y) {
+        return true;
+    }
+    if (x > y) {
+        return false;
+    }
+    if constexpr (!std::is_integral<T>::value) {
+        double doubleX = x, doubleY = y;
+        if (x == 0 && x == y) {
+            /* -0.0 is less than +0.0 */
+            return std::signbit(doubleX) && !std::signbit(doubleY);
+        }
+        if (!std::isnan(doubleX) && std::isnan(doubleY)) {
+            /* number is less than NaN */
+            return true;
+        }
+    }
+    return false;
+}
+
+void RuntimeStubs::SortTypedArray(JSTypedArray *typedArray)
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    JSHClass *hclass = typedArray->GetClass();
+    const JSType jsType = hclass->GetObjectType();
+    JSTaggedValue buffer = typedArray->GetViewedArrayBufferOrByteArray();
+    const uint32_t len = typedArray->GetArrayLength();
+    void *pointer = builtins::BuiltinsArrayBuffer::GetDataPointFromBuffer(buffer);
+    switch (jsType) {
+        case JSType::JS_INT8_ARRAY:
+            std::sort(static_cast<int8_t*>(pointer), static_cast<int8_t*>(pointer) + len);
+            break;
+        case JSType::JS_UINT8_ARRAY:
+        case JSType::JS_UINT8_CLAMPED_ARRAY:
+            std::sort(static_cast<uint8_t*>(pointer), static_cast<uint8_t*>(pointer) + len);
+            break;
+        case JSType::JS_INT16_ARRAY:
+            std::sort(static_cast<int16_t*>(pointer), static_cast<int16_t*>(pointer) + len);
+            break;
+        case JSType::JS_UINT16_ARRAY:
+            std::sort(static_cast<uint16_t*>(pointer), static_cast<uint16_t*>(pointer) + len);
+            break;
+        case JSType::JS_INT32_ARRAY:
+            std::sort(static_cast<int32_t*>(pointer), static_cast<int32_t*>(pointer) + len);
+            break;
+        case JSType::JS_UINT32_ARRAY:
+            std::sort(static_cast<uint32_t*>(pointer), static_cast<uint32_t*>(pointer) + len);
+            break;
+        case JSType::JS_FLOAT32_ARRAY:
+            std::sort(static_cast<float*>(pointer), static_cast<float*>(pointer) + len, CompareFloat<float>);
+            break;
+        case JSType::JS_FLOAT64_ARRAY:
+            std::sort(static_cast<double*>(pointer), static_cast<double*>(pointer) + len, CompareFloat<double>);
+            break;
+        default:
+            UNREACHABLE();
+    }
+}
+
+void RuntimeStubs::ReverseTypedArray(JSTypedArray *typedArray)
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    JSHClass *hclass = typedArray->GetClass();
+    const JSType jsType = hclass->GetObjectType();
+    JSTaggedValue buffer = typedArray->GetViewedArrayBufferOrByteArray();
+    const uint32_t len = typedArray->GetArrayLength();
+    void *pointer = builtins::BuiltinsArrayBuffer::GetDataPointFromBuffer(buffer);
+    switch (jsType) {
+        case JSType::JS_INT8_ARRAY:
+            std::reverse(static_cast<int8_t*>(pointer), static_cast<int8_t*>(pointer) + len);
+            break;
+        case JSType::JS_UINT8_ARRAY:
+        case JSType::JS_UINT8_CLAMPED_ARRAY:
+            std::reverse(static_cast<uint8_t*>(pointer), static_cast<uint8_t*>(pointer) + len);
+            break;
+        case JSType::JS_INT16_ARRAY:
+            std::reverse(static_cast<int16_t*>(pointer), static_cast<int16_t*>(pointer) + len);
+            break;
+        case JSType::JS_UINT16_ARRAY:
+            std::reverse(static_cast<uint16_t*>(pointer), static_cast<uint16_t*>(pointer) + len);
+            break;
+        case JSType::JS_INT32_ARRAY:
+            std::reverse(static_cast<int32_t*>(pointer), static_cast<int32_t*>(pointer) + len);
+            break;
+        case JSType::JS_UINT32_ARRAY:
+            std::reverse(static_cast<uint32_t*>(pointer), static_cast<uint32_t*>(pointer) + len);
+            break;
+        case JSType::JS_FLOAT32_ARRAY:
+            std::reverse(static_cast<float*>(pointer), static_cast<float*>(pointer) + len);
+            break;
+        case JSType::JS_FLOAT64_ARRAY:
+            std::reverse(static_cast<double*>(pointer), static_cast<double*>(pointer) + len);
+            break;
+        default:
+            UNREACHABLE();
+    }
 }
 
 DEF_RUNTIME_STUBS(ArrayForEachContinue)

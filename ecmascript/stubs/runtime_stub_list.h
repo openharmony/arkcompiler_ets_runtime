@@ -190,6 +190,8 @@ namespace panda::ecmascript {
     V(StringGetStart)                          \
     V(StringGetEnd)                            \
     V(ArrayTrim)                               \
+    V(SortTypedArray)                          \
+    V(ReverseTypedArray)                       \
     V(CopyTypedArrayBuffer)                    \
     V(IsFastRegExp)
 

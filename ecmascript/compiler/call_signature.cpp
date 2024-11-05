@@ -1835,6 +1835,32 @@ DEF_CALL_SIGNATURE(StringGetEnd)
     callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
 }
 
+DEF_CALL_SIGNATURE(ReverseTypedArray)
+{
+    CallSignature reverseTypedArray("ReverseTypedArray", 0, 1,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::VOID());
+    *callSign = reverseTypedArray;
+    std::array<VariableType, 1> params = {
+        VariableType::NATIVE_POINTER(),
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetGCLeafFunction(true);
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
+}
+
+DEF_CALL_SIGNATURE(SortTypedArray)
+{
+    CallSignature sortTypedArray("SortTypedArray", 0, 1,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::VOID());
+    *callSign = sortTypedArray;
+    std::array<VariableType, 1> params = {
+        VariableType::NATIVE_POINTER(),
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetGCLeafFunction(true);
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
+}
+
 DEF_CALL_SIGNATURE(IsFastRegExp)
 {
     // 3 : 3 input parameters

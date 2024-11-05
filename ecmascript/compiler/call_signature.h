@@ -633,6 +633,8 @@ private:
     V(ASMFastWriteBarrier)                           \
     V(ASMWriteBarrierWithEden)                       \
     V(VerifyBarrier)                                 \
+    V(SortTypedArray)                                \
+    V(ReverseTypedArray)                             \
     V(IsFastRegExp)
 
 #define DECL_CALL_SIGNATURE(name)                                  \
