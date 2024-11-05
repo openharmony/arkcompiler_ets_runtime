@@ -1322,8 +1322,8 @@ JSTaggedValue BuiltinsArkTools::JitCompileSync(EcmaRuntimeCallInfo *info)
         return JSTaggedValue::False();
     }
     JSHandle<JSFunction> jsFunction(thisValue);
-    Jit::Compile(thread->GetEcmaVM(), jsFunction, CompilerTier::FAST,
-                 MachineCode::INVALID_OSR_OFFSET, JitCompileMode::SYNC);
+    Jit::Compile(thread->GetEcmaVM(), jsFunction, CompilerTier::Tier::FAST,
+                 MachineCode::INVALID_OSR_OFFSET, JitCompileMode::Mode::SYNC);
     return JSTaggedValue::True();
 }
 
@@ -1338,8 +1338,8 @@ JSTaggedValue BuiltinsArkTools::JitCompileAsync(EcmaRuntimeCallInfo *info)
         return JSTaggedValue::False();
     }
     JSHandle<JSFunction> jsFunction(thisValue);
-    Jit::Compile(thread->GetEcmaVM(), jsFunction, CompilerTier::FAST,
-                 MachineCode::INVALID_OSR_OFFSET, JitCompileMode::ASYNC);
+    Jit::Compile(thread->GetEcmaVM(), jsFunction, CompilerTier::Tier::FAST,
+                 MachineCode::INVALID_OSR_OFFSET, JitCompileMode::Mode::ASYNC);
     return JSTaggedValue::True();
 }
 
@@ -1359,10 +1359,7 @@ JSTaggedValue BuiltinsArkTools::WaitJitCompileFinish(EcmaRuntimeCallInfo *info)
     if (!jit->IsEnableFastJit()) {
         return JSTaggedValue::False();
     }
-    if (jsFunction->GetMachineCode() == JSTaggedValue::Undefined()) {
-        return JSTaggedValue::False();
-    }
-    while (jsFunction->GetMachineCode() == JSTaggedValue::Hole()) {
+    while (!jsFunction->GetMachineCode().IsMachineCodeObject()) {
         // just spin check
         thread->CheckSafepoint();
     }

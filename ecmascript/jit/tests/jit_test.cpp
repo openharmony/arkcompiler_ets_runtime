@@ -76,7 +76,8 @@ HWTEST_F_L0(JitTest, NewJitTask)
     JSHandle<JSFunction> emptyHandle;
     CString methodName("methodName");
     std::shared_ptr<JitTask> jitTask = std::make_shared<JitTask>(thread_, compilerVm_->GetJSThreadNoCheck(),
-        jit_, emptyHandle, CompilerTier::FAST, methodName, 0, thread_->GetThreadId(), JitCompileMode::SYNC);
+        jit_, emptyHandle, CompilerTier(CompilerTier::Tier::FAST), methodName, 0,
+        JitCompileMode(JitCompileMode::Mode::SYNC));
     EXPECT_TRUE(jitTask->GetHostThread() == thread_);
 }
 }  // namespace panda::test

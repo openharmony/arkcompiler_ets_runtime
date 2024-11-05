@@ -100,9 +100,9 @@ class JitTask {
 public:
     JitTask(JSThread *hostThread, JSThread *compilerThread, Jit *jit,
         JSHandle<JSFunction> &jsFunction, CompilerTier tier, CString &methodName, int32_t offset,
-        uint32_t taskThreadId, JitCompileMode mode);
+        JitCompileMode mode);
     // for ut
-    JitTask(EcmaVM *hVm, EcmaVM *cVm, Jit *jit, uint32_t taskThreadId, JitCompileMode mode);
+    JitTask(EcmaVM *hVm, EcmaVM *cVm, Jit *jit, JitCompileMode mode);
     ~JitTask();
     void Optimize();
     void Finalize();
@@ -187,11 +187,6 @@ public:
         methodName_ = methodName;
     }
 
-    uint32_t GetTaskThreadId() const
-    {
-        return taskThreadId_;
-    }
-
     EcmaContext *GetEcmaContext() const
     {
         return ecmaContext_;
@@ -220,7 +215,7 @@ public:
     void WaitFinish();
     bool IsAsyncTask() const
     {
-        return jitCompileMode_ == JitCompileMode::ASYNC;
+        return jitCompileMode_.IsAsync();
     }
 
     void SetMainThreadCompilerTime(int time)
@@ -303,7 +298,6 @@ private:
     CompilerTier compilerTier_;
     CString methodName_;
     int32_t offset_;
-    uint32_t taskThreadId_;
     std::unique_ptr<SustainingJSHandle> sustainingJSHandle_;
     EcmaContext *ecmaContext_;
     JitCompileMode jitCompileMode_;

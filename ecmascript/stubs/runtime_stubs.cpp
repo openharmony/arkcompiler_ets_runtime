@@ -1593,7 +1593,7 @@ DEF_RUNTIME_STUBS(JitCompile)
     RUNTIME_STUBS_HEADER(JitCompile);
     JSHandle<JSFunction> thisFunc = GetHArg<JSFunction>(argv, argc, 0);  // 0: means the zeroth parameter
     JSTaggedValue offset = GetArg(argv, argc, 1);  // 1: means the first parameter
-    Jit::Compile(thread->GetEcmaVM(), thisFunc, CompilerTier::FAST, offset.GetInt(), JitCompileMode::ASYNC);
+    Jit::Compile(thread->GetEcmaVM(), thisFunc, CompilerTier::Tier::FAST, offset.GetInt(), JitCompileMode::Mode::ASYNC);
     return JSTaggedValue::Undefined().GetRawData();
 }
 
@@ -1601,8 +1601,8 @@ DEF_RUNTIME_STUBS(BaselineJitCompile)
 {
     RUNTIME_STUBS_HEADER(BaselineJitCompile);
     JSHandle<JSFunction> thisFunc = GetHArg<JSFunction>(argv, argc, 0);  // 0: means the zeroth parameter
-    Jit::Compile(thread->GetEcmaVM(), thisFunc, CompilerTier::BASELINE,
-                 MachineCode::INVALID_OSR_OFFSET, JitCompileMode::ASYNC);
+    Jit::Compile(thread->GetEcmaVM(), thisFunc, CompilerTier::Tier::BASELINE,
+                 MachineCode::INVALID_OSR_OFFSET, JitCompileMode::Mode::ASYNC);
     return JSTaggedValue::Undefined().GetRawData();
 }
 

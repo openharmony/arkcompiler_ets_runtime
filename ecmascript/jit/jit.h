@@ -25,18 +25,10 @@
 #include "ecmascript/compiler/compiler_log.h"
 #include "ecmascript/jit/jit_thread.h"
 #include "ecmascript/jit/jit_dfx.h"
+#include "ecmascript/jit/compile_decision.h"
 
 namespace panda::ecmascript {
 class JitTask;
-enum JitCompileMode {
-    SYNC = 0,
-    ASYNC
-};
-
-enum class CompilerTier : uint8_t {
-    BASELINE,
-    FAST,
-};
 
 struct ThreadTaskInfo {
     std::deque<std::shared_ptr<JitTask>> installJitTasks_;
@@ -67,8 +59,14 @@ public:
     void SetEnableAsyncCopyToFort(bool isEnableiAsyncCopyToFort);
     void Initialize();
 
-    static void Compile(EcmaVM *vm, JSHandle<JSFunction> &jsFunction, CompilerTier tier = CompilerTier::FAST,
-                        int32_t offset = MachineCode::INVALID_OSR_OFFSET, JitCompileMode mode = SYNC);
+    static void Compile(EcmaVM *vm, JSHandle<JSFunction> &jsFunction,
+                        CompilerTier::Tier tier = CompilerTier::Tier::FAST,
+                        int32_t offset = MachineCode::INVALID_OSR_OFFSET,
+                        JitCompileMode::Mode mode = JitCompileMode::Mode::SYNC)
+    {
+        Compile(vm, jsFunction, CompilerTier(tier), offset, JitCompileMode(mode));
+    }
+
     bool JitCompile(void *compiler, JitTask *jitTask);
     bool JitFinalize(void *compiler, JitTask *jitTask);
     void *CreateJitCompilerTask(JitTask *jitTask);
@@ -125,11 +123,11 @@ public:
 
     class TimeScope : public ClockScope {
     public:
-        explicit TimeScope(EcmaVM *vm, CString message, CompilerTier tier = CompilerTier::FAST, bool outPutLog = true,
+        explicit TimeScope(EcmaVM *vm, CString message, CompilerTier tier, bool outPutLog = true,
             bool isDebugLevel = false)
             : vm_(vm), message_(message), tier_(tier), outPutLog_(outPutLog), isDebugLevel_(isDebugLevel) {}
         explicit TimeScope(EcmaVM *vm)
-            : vm_(vm), message_(""), tier_(CompilerTier::FAST), outPutLog_(false), isDebugLevel_(true) {}
+            : vm_(vm), message_(""), tier_(CompilerTier::Tier::FAST), outPutLog_(false), isDebugLevel_(true) {}
         PUBLIC_API ~TimeScope();
     private:
         EcmaVM *vm_;
@@ -155,7 +153,7 @@ public:
 
         explicit JitLockHolder(const CompilationEnv *env, CString message) : thread_(nullptr),
             scope_(env->GetJSThread()->GetEcmaVM(),
-                "Jit Compile Pass: " + message + ", Time:", CompilerTier::FAST, false)
+                "Jit Compile Pass: " + message + ", Time:", CompilerTier::Tier::FAST, false)
         {
             if (env->IsJitCompiler()) {
                 JSThread *thread = env->GetJSThread();
@@ -227,7 +225,9 @@ public:
     };
 
 private:
-    bool SupportJIT(JSHandle<JSFunction> &jsFunction, EcmaVM *vm, CompilerTier tier) const;
+    void Compile(EcmaVM *vm, const CompileDecision &decision);
+    static void Compile(EcmaVM *vm, JSHandle<JSFunction> &jsFunction, CompilerTier tier,
+                        int32_t offset, JitCompileMode mode);
     bool initialized_ { false };
     bool fastJitEnable_ { false };
     bool baselineJitEnable_ { false };
@@ -254,8 +254,6 @@ private:
     static void*(*createJitCompilerTask_)(JitTask*);
     static void(*deleteJitCompile_)(void*);
     static void *libHandle_;
-    static bool CheckJitCompileStatus(JSHandle<JSFunction> &jsFunction,
-        const CString &methodName, CompilerTier tier);
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_JIT_H
