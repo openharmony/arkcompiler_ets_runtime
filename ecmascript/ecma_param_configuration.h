@@ -100,7 +100,7 @@ public:
             stepNativeSizeInc_ = 256_MB;
             nativeSizeOvershoot_ = 80_MB;
             maxNativeSizeInc_ = 768_MB;
-            fragmentationLimitForSharedFullGC_ = 10_MB;
+            fragmentationLimitForSharedFullGC_ = 5_MB;
         } else if (maxHeapSize_ < HIGH_MEMORY) { // 128_MB ~ 256_MB
             minSemiSpaceSize_ = 2_MB;
             maxSemiSpaceSize_ = 8_MB;
@@ -125,7 +125,7 @@ public:
             stepNativeSizeInc_ = 256_MB;
             nativeSizeOvershoot_ = 80_MB;
             maxNativeSizeInc_ = 768_MB;
-            fragmentationLimitForSharedFullGC_ = 10_MB;
+            fragmentationLimitForSharedFullGC_ = 5_MB;
         }  else { // 256_MB ~ 384_MB
             minSemiSpaceSize_ = 2_MB;
             maxSemiSpaceSize_ = 16_MB;
@@ -151,7 +151,7 @@ public:
             nativeSizeOvershoot_ = 100_MB;
             asyncClearNativePointerThreshold_ = 500_MB;
             maxNativeSizeInc_ = 1_GB;
-            fragmentationLimitForSharedFullGC_ = 10_MB;
+            fragmentationLimitForSharedFullGC_ = 5_MB;
         }
     }
 
