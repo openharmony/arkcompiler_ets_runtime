@@ -1006,6 +1006,8 @@ public:
     }
 };
 
+// FlatStringInfo holds an EcmaString* instead of a JSHandle. If a GC occurs during its usage period,
+// it may cause the pointer to become invalid, necessitating the pointer to be reset.
 class FlatStringInfo {
 public:
     FlatStringInfo(EcmaString *string, uint32_t startIndex, uint32_t length) : string_(string),
