@@ -951,6 +951,22 @@ JSTaggedValue BuiltinsSharedArray::Find(EcmaRuntimeCallInfo *argv)
     return JSTaggedValue::Undefined();
 }
 
+JSTaggedValue BuiltinsSharedArray::GetElementByKey(JSThread *thread, JSHandle<JSObject>& thisObjHandle, uint32_t index)
+{
+    JSTaggedValue val = ElementAccessor::Get(thisObjHandle, index);
+    if (val.IsHole()) {
+        JSHandle<JSTaggedValue> thisObjVal(thisObjHandle);
+        auto res = JSArray::FastGetPropertyByValue(thread, thisObjVal, index).GetTaggedValue();
+        if (res.IsHole()) {
+            return JSTaggedValue::Undefined();
+        } else {
+            return res;
+        }
+    }
+
+    return val;
+}
+
 // 22.1.3.9 Array.prototype.findIndex ( predicate [ , thisArg ] )
 JSTaggedValue BuiltinsSharedArray::FindIndex(EcmaRuntimeCallInfo *argv)
 {
@@ -980,9 +996,13 @@ JSTaggedValue BuiltinsSharedArray::FindIndex(EcmaRuntimeCallInfo *argv)
         THROW_TYPE_ERROR_AND_RETURN(thread, "the predicate is not callable.", JSTaggedValue::Exception());
     }
 
-    // 6. If thisArg was supplied, let T be thisArg; else let T be undefined.
-    JSHandle<JSTaggedValue> thisArgHandle = GetCallArg(argv, 1);
+    if (UNLIKELY(ElementAccessor::GetElementsLength(thisObjHandle) < len)) {
+        len = ElementAccessor::GetElementsLength(thisObjHandle);
+    }
 
+    const int32_t argsLength = 3; // 3: ?kValue, k, O?
+    JSMutableHandle<JSTaggedValue> kValue(thread, JSTaggedValue::Undefined());
+    uint32_t k = 0;
     // 7. Let k be 0.
     // 8. Repeat, while k < len
     //   a. Let Pk be ToString(k).
@@ -992,28 +1012,15 @@ JSTaggedValue BuiltinsSharedArray::FindIndex(EcmaRuntimeCallInfo *argv)
     //   e. ReturnIfAbrupt(testResult).
     //   f. If testResult is true, return k.
     //   g. Increase k by 1.
-    uint32_t k = 0;
-    JSTaggedValue callResult = GetTaggedBoolean(true);
-    if (thisObjVal->IsStableJSArray(thread)) {
-        callResult = JSStableArray::HandleFindIndexOfStable(thread, thisObjHandle, callbackFnHandle, thisArgHandle, k);
-        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        if (callResult.ToBoolean()) {
-            return GetTaggedDouble(k);
-        }
-    }
-    JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
-    JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
-    const uint32_t argsLength = 3; // 3: «kValue, k, O»
     while (k < len) {
-        JSHandle<JSTaggedValue> kValue = JSSharedArray::FastGetPropertyByValue(thread, thisObjVal, k);
-        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        key.Update(JSTaggedValue(k));
+        kValue.Update(BuiltinsSharedArray::GetElementByKey(thread, thisObjHandle, k));
         EcmaRuntimeCallInfo *info =
-            EcmaInterpreter::NewRuntimeCallInfo(thread, callbackFnHandle, thisArgHandle, undefined, argsLength);
+            EcmaInterpreter::NewRuntimeCallInfo(thread, callbackFnHandle.GetTaggedValue(),
+            JSTaggedValue::Undefined(), JSTaggedValue::Undefined(), argsLength);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        info->SetCallArg(kValue.GetTaggedValue(), key.GetTaggedValue(), thisObjVal.GetTaggedValue());
-        callResult = JSFunction::Call(info);
-        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        info->SetCallArg(kValue.GetTaggedValue(), JSTaggedValue(k), thisObjVal.GetTaggedValue());
+        auto callResult = JSFunction::Call(info);
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, callResult);
         if (callResult.ToBoolean()) {
             return GetTaggedDouble(k);
         }
