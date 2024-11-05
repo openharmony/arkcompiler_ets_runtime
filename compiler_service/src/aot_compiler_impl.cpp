@@ -193,6 +193,19 @@ void AotCompilerImpl::ExecuteInParentProcess(const pid_t childPid, int32_t &ret)
     }
 }
 
+bool AotCompilerImpl::VerifyCompilerModeAndPkgInfo(const std::unordered_map<std::string, std::string> &argsMap)
+{
+    auto targetCompilerMode = argsMap.find(ArgsIdx::TARGET_COMPILER_MODE);
+    if (targetCompilerMode == argsMap.end() || targetCompilerMode->second.empty()) {
+        return false;
+    }
+    auto compilerPkgInfo = argsMap.find(ArgsIdx::COMPILER_PKG_INFO);
+    if (compilerPkgInfo == argsMap.end() || compilerPkgInfo->second.empty()) {
+        return false;
+    }
+    return true;
+}
+
 int32_t AotCompilerImpl::EcmascriptAotCompiler(const std::unordered_map<std::string, std::string> &argsMap,
                                                std::vector<int16_t> &sigData)
 {
@@ -201,6 +214,10 @@ int32_t AotCompilerImpl::EcmascriptAotCompiler(const std::unordered_map<std::str
         return ERR_AOT_COMPILER_CONNECT_FAILED;
     }
     std::lock_guard<std::mutex> lock(mutex_);
+    if (!VerifyCompilerModeAndPkgInfo(argsMap)) {
+        LOG_SA(ERROR) << "aot compiler mode or pkginfo arguments error";
+        return ERR_AOT_COMPILER_PARAM_FAILED;
+    }
     if (argsMap.empty() || (PrepareArgs(argsMap) != ERR_OK)) {
         LOG_SA(ERROR) << "aot compiler arguments error";
         return ERR_AOT_COMPILER_PARAM_FAILED;

@@ -201,6 +201,11 @@ public:
         return pkgsArgs_.at(mainPkgName_);
     }
 
+    std::string GetMainPkgName() const
+    {
+        return mainPkgName_;
+    }
+
     const std::map<std::string, std::shared_ptr<OhosPkgArgs>> &GetPkgsArgs() const
     {
         return pkgsArgs_;

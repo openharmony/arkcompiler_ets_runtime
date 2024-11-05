@@ -60,6 +60,13 @@ public:
     constexpr static const char *const APP_IDENTIFIER = "appIdentifier";
 
     OhosPkgArgs() = default;
+    ~OhosPkgArgs()
+    {
+        if (GetPkgFd() != -1) {
+            close(GetPkgFd());
+            SetPkgFd(-1);
+        }
+    }
 
     static bool ParseArgs(AotCompilerPreprocessor &preProcessor, CompilationOptions &cOptions)
     {
@@ -97,6 +104,9 @@ public:
 #if defined(CODE_ENCRYPTION_ENABLE)
     void DecryptSetKey(int fd) const
     {
+        if (GetIsEncryptedBundle() <= 0) {
+            return;
+        }
         if (ohos::DecryptSetKey(fd, static_cast<int>(GetBundleUid())) < 0) {
             LOG_ECMA(ERROR) << "set key error!";
         }
@@ -108,13 +118,18 @@ public:
 
     void DecryptRemoveKey(int fd) const
     {
+        if (GetIsEncryptedBundle() <= 0) {
+            return;
+        }
         if (ohos::DecrypRemoveKey(fd, static_cast<int>(GetProcessUid())) < 0
          || ohos::DecrypRemoveKey(fd, static_cast<int>(GetBundleUid())) < 0) {
             LOG_ECMA(ERROR) << "remove key error!";
         }
     }
+
 #endif
-    bool GetJSPandaFile(const JSRuntimeOptions &runtimeOptions, std::shared_ptr<JSPandaFile> &pf) const
+    bool GetJSPandaFile(const JSRuntimeOptions &runtimeOptions, std::shared_ptr<JSPandaFile> &pf,
+        [[maybe_unused]] int HapVerifyFd) const
     {
         std::string hapPath;
         uint32_t offset {};
@@ -140,35 +155,28 @@ public:
         }
 #if defined(CODE_ENCRYPTION_ENABLE)
         int fd = open(DEV_APP_CRYPTO_PATH, O_RDONLY);
-        if (GetIsEncryptedBundle() > 0) {
-            DecryptSetKey(fd);
-        }
+        DecryptSetKey(fd);
         uint32_t offStart = offset;
         offStart &= -PAGE_SIZE;
-        MemMap fileMapMem = FileMapForAlignAddress(realPath.c_str(), FILE_RDONLY, PAGE_PROT_READ,
-                                                   offset, offStart);
+        MemMap fileMapMem = FileMapForAlignAddressByFd(HapVerifyFd, PAGE_PROT_READ, offset, offStart);
         offset = offset - offStart;
         if (fileMapMem.GetOriginAddr() == nullptr) {
-            LOG_ECMA(ERROR) << "File mmap failed";
             close(fd);
-            return false;
         }
 #else
         MemMap fileMapMem = FileMap(realPath.c_str(), FILE_RDONLY, PAGE_PROT_READ);
+#endif
         if (fileMapMem.GetOriginAddr() == nullptr) {
             LOG_ECMA(ERROR) << "File mmap failed";
             return false;
         }
-#endif
         uint8_t *buffer = reinterpret_cast<uint8_t *>(fileMapMem.GetOriginAddr()) + offset;
         JSPandaFileManager *jsPandaFileManager = JSPandaFileManager::GetInstance();
         pf = jsPandaFileManager->OpenJSPandaFileFromBuffer(buffer, size, GetFullName().c_str());
         FileUnMap(fileMapMem);
         fileMapMem.Reset();
 #if defined(CODE_ENCRYPTION_ENABLE)
-        if (GetIsEncryptedBundle() > 0) {
-            DecryptRemoveKey(fd);
-        }
+        DecryptRemoveKey(fd);
         close(fd);
 #endif
         return true;
@@ -367,6 +375,16 @@ public:
         pgoDir_ = pgoDir;
     }
 
+    void SetPkgFd(int fd)
+    {
+        pkgFd_ = fd;
+    }
+
+    int GetPkgFd() const
+    {
+        return pkgFd_;
+    }
+
     void GetPgoPaths(bool isEnableBaselinePgo, std::string &pgoPaths, bool &needMerge) const
     {
         // 1. collect runtime ap and merged ap
@@ -408,7 +426,6 @@ public:
         }
         return mergedAp;
     }
-
 private:
     static bool ParseProfilerPath(std::shared_ptr<OhosPkgArgs> &pkgArgs, AotCompilerPreprocessor &preProcessor,
                                   CompilationOptions &cOptions)
@@ -473,6 +490,7 @@ private:
     uint32_t bundleUid_ {INVALID_VALUE};
     uint32_t processUid_ {INVALID_VALUE};
     bool IsEncryptedBundle_{false};
+    int pkgFd_ {-1};
 };
 }  // namespace panda::ecmascript::kungfu
 #endif
