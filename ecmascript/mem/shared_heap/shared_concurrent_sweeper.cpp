@@ -29,10 +29,10 @@ void SharedConcurrentSweeper::PostTask(bool isFullGC)
     if (ConcurrentSweepEnabled()) {
         if (!isFullGC) {
             Taskpool::GetCurrentTaskpool()->PostTask(
-                std::make_unique<SweeperTask>(tid, this, SHARED_OLD_SPACE));
+                std::make_unique<SweeperTask>(tid, this, SHARED_OLD_SPACE, isFullGC));
         }
         Taskpool::GetCurrentTaskpool()->PostTask(
-            std::make_unique<SweeperTask>(tid, this, SHARED_NON_MOVABLE));
+            std::make_unique<SweeperTask>(tid, this, SHARED_NON_MOVABLE, isFullGC));
     }
 }
 
@@ -145,12 +145,12 @@ bool SharedConcurrentSweeper::SweeperTask::Run([[maybe_unused]] uint32_t threadI
 {
     if (type_ == SHARED_NON_MOVABLE) {
         sweeper_->AsyncSweepSpace(SHARED_NON_MOVABLE, false);
-        if (!sweeper_->isFullGC_) {
+        if (!isFullGC_) {
             sweeper_->AsyncSweepSpace(SHARED_OLD_SPACE, false);
         }
     } else {
         ASSERT(type_ == SHARED_OLD_SPACE);
-        if (!sweeper_->isFullGC_) {
+        if (!isFullGC_) {
             sweeper_->AsyncSweepSpace(SHARED_OLD_SPACE, false);
         }
         sweeper_->AsyncSweepSpace(SHARED_NON_MOVABLE, false);

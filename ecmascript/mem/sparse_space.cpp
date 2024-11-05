@@ -116,8 +116,11 @@ uintptr_t SparseSpace::AllocateAfterSweepingCompleted(size_t size)
 void SparseSpace::PrepareSweeping()
 {
     liveObjectSize_ = 0;
+    ASSERT(GetSweepingRegionSafe() == nullptr);
+    ASSERT(GetSweptRegionSafe() == nullptr);
     EnumerateRegions([this](Region *current) {
         if (!current->InCollectSet()) {
+            ASSERT(!current->IsGCFlagSet(RegionGCFlags::HAS_BEEN_SWEPT));
             if (UNLIKELY(localHeap_->ShouldVerifyHeap() &&
                 current->IsGCFlagSet(RegionGCFlags::HAS_BEEN_SWEPT))) { // LOCV_EXCL_BR_LINE
                 LOG_ECMA(FATAL) << "Region should not be swept before PrepareSweeping: " << current;

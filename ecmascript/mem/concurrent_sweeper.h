@@ -92,8 +92,8 @@ public:
 private:
     class SweeperTask : public Task {
     public:
-        SweeperTask(int32_t id, ConcurrentSweeper *sweeper, MemSpaceType type)
-            : Task(id), sweeper_(sweeper), type_(type) {};
+        SweeperTask(int32_t id, ConcurrentSweeper *sweeper, MemSpaceType type, MemSpaceType startSpaceType)
+            : Task(id), sweeper_(sweeper), type_(type), startSpaceType_(startSpaceType) {};
         ~SweeperTask() override = default;
         bool Run(uint32_t threadIndex) override;
 
@@ -103,6 +103,7 @@ private:
     private:
         ConcurrentSweeper *sweeper_;
         MemSpaceType type_;
+        MemSpaceType startSpaceType_;
     };
 
     void AsyncSweepSpace(MemSpaceType type, bool isMain);
