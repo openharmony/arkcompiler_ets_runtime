@@ -76,6 +76,11 @@ bool IdleGCTrigger::TryTriggerIdleLocalOldGC()
         !heap_->CheckCanTriggerConcurrentMarking()) {
         return true;
     }
+    if (heap_->GetJSThread()->FullMarkRequest() && !heap_->NeedStopCollection()) {
+        heap_->GetJSThread()->ResetFullMarkRequest();
+        PostIdleGCTask(TRIGGER_IDLE_GC_TYPE::LOCAL_CONCURRENT_MARK);
+        return true;
+    }
     if (CheckIdleOrHintOldGC<Heap>(heap_) && ReachIdleLocalOldGCThresholds() && !heap_->NeedStopCollection()) {
         PostIdleGCTask(TRIGGER_IDLE_GC_TYPE::LOCAL_CONCURRENT_MARK);
         return true;
