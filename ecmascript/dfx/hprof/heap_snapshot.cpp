@@ -1081,19 +1081,21 @@ void HeapSnapshot::FillEdges(bool isSimplify)
     }
 }
 
-void HeapSnapshot::FillEdgesForBinMod(RawHeapObjInfo *objInfo)
+void HeapSnapshot::FillEdgesForBinMod(char *newAddr, CUnorderedSet<uint64_t> *refSet)
 {
-    auto entryFrom = entryMap_.FindEntry(reinterpret_cast<JSTaggedType>(objInfo->newAddr));
+    auto entryFrom = entryMap_.FindEntry(reinterpret_cast<JSTaggedType>(newAddr));
     JSTaggedValue value(entryFrom->GetAddress());
     auto object = value.GetTaggedObject();
     std::vector<Reference> referenceResources;
     auto jsHclass = object->GetClass();
     if (jsHclass->IsJsGlobalEnv() || jsHclass->IsString()) {
         referenceResources.emplace_back("hclass", JSTaggedValue(jsHclass));
-        for (auto refAddr : objInfo->refSet) {
-            JSTaggedValue val(refAddr);
-            auto valTy = val.GetTaggedObject()->GetClass()->GetObjectType();
-            referenceResources.emplace_back(JSHClass::DumpJSType(valTy), val);
+        if (refSet != nullptr) {
+            for (auto refAddr : *refSet) {
+                JSTaggedValue val(refAddr);
+                auto valTy = val.GetTaggedObject()->GetClass()->GetObjectType();
+                referenceResources.emplace_back(JSHClass::DumpJSType(valTy), val);
+            }
         }
     } else {
         value.DumpForSnapshot(referenceResources, false);
@@ -1130,44 +1132,41 @@ void HeapSnapshot::FillEdgesForBinMod(RawHeapObjInfo *objInfo)
     }
 }
 
-void HeapSnapshot::AddSyntheticRootForBinMod(RawHeapObjInfo *objInfo, int &edgeOffset, Node *syntheticRoot)
-{
-    if (!objInfo->isRoot) {
-        return;
-    }
-    TaggedObject *root = reinterpret_cast<TaggedObject *>(objInfo->newAddr);
-    Node *rootNode = entryMap_.FindEntry(Node::NewAddress(root));
-    if (rootNode != nullptr) {
-        Edge *edge = Edge::NewEdge(chunk_,
-            EdgeType::SHORTCUT, syntheticRoot, rootNode, GetString("-subroot-"));
-        InsertEdgeAt(edgeOffset, edge);
-        edgeOffset++;
-        syntheticRoot->IncEdgeCount();
-    }
-}
-
-Node *HeapSnapshot::GenerateNodeForBinMod(TaggedObject *obj, RawHeapObjInfo *objInfo,
-                                          CUnorderedMap<uint64_t, const char *> &strTableIdMap)
-{
-    auto currNode = GenerateNode(JSTaggedValue(obj), objInfo->tInfo->objSize, false, false, true);
-    if (strTableIdMap.find(objInfo->tInfo->stringId) != strTableIdMap.end()
-        && strTableIdMap[objInfo->tInfo->stringId] != nullptr) {
-        if (currNode != nullptr) {
-            currNode->SetName(GetString(strTableIdMap[objInfo->tInfo->stringId]));
-        }
-    }
-    return currNode;
-}
-
-bool HeapSnapshot::BuildSnapshotForBinMod(CVector<RawHeapObjInfo *> &objInfoVec)
+void HeapSnapshot::GenerateNodeForBinMod(CUnorderedMap<uint64_t, NewAddr *> &objMap, CUnorderedSet<uint64_t> &rootSet,
+                                         CUnorderedMap<uint64_t, CString *> &strTableIdMap)
 {
     Node *syntheticRoot = Node::NewNode(chunk_, 1, nodeCount_, GetString("SyntheticRoot"),
                                         NodeType::SYNTHETIC, 0, 0, 0);
     InsertNodeAt(0, syntheticRoot);
     int edgeOffset = 0;
-    for (auto objInfo : objInfoVec) {
-        FillEdgesForBinMod(objInfo);
-        AddSyntheticRootForBinMod(objInfo, edgeOffset, syntheticRoot);
+    for (auto objItem : objMap) {
+        TaggedObject *obj = reinterpret_cast<TaggedObject *>(objItem.second->Data());
+        auto currNode = GenerateNode(JSTaggedValue(obj), objItem.second->objSize, false, false, false);
+        if (currNode == nullptr) {
+            continue;
+        }
+        if (strTableIdMap.find(objItem.first) != strTableIdMap.end()) {
+            currNode->SetName(strTableIdMap[objItem.first]);
+        }
+        if (rootSet.find(objItem.first) != rootSet.end()) {
+            Edge *edge = Edge::NewEdge(chunk_, EdgeType::SHORTCUT, syntheticRoot, currNode, GetString("-subroot-"));
+            InsertEdgeAt(edgeOffset, edge);
+            edgeOffset++;
+            syntheticRoot->IncEdgeCount();
+        }
+    }
+}
+
+bool HeapSnapshot::BuildSnapshotForBinMod(CUnorderedMap<uint64_t, NewAddr *> &objMap,
+                                          CUnorderedMap<uint64_t, CUnorderedSet<uint64_t>> &refSetMap)
+{
+    for (auto objItem : objMap) {
+        CUnorderedSet<uint64_t> *refSet = nullptr;
+        auto newAddr = reinterpret_cast<uint64_t>(objItem.second->Data());
+        if (refSetMap.find(newAddr) != refSetMap.end()) {
+            refSet = &refSetMap[newAddr];
+        }
+        FillEdgesForBinMod(objItem.second->Data(), refSet);
     }
     int reindex = 0;
     for (Node *node : nodes_) {
