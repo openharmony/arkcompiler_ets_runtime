@@ -87,7 +87,9 @@ void WorkManager::PushWorkNodeToGlobal(uint32_t threadId, bool postTask)
     WorkNode *&inNode = works_.at(threadId).inNode_;
     if (!inNode->IsEmpty()) {
         workStack_.Push(inNode);
-        inNode = AllocateWorkNode();
+        inNode = works_.at(threadId).cachedInNode_;
+        ASSERT(inNode != nullptr);
+        works_.at(threadId).cachedInNode_ = AllocateWorkNode();
         if (postTask && heap_->IsParallelGCEnabled() && heap_->CheckCanDistributeTask() &&
             !(heap_->IsMarking() && heap_->GetIncrementalMarker()->IsTriggeredIncrementalMark())) {
             heap_->PostParallelGCTask(parallelGCTaskPhase_);
@@ -162,6 +164,7 @@ void WorkManager::Initialize(TriggerGCType gcType, ParallelGCTaskPhase taskPhase
     for (uint32_t i = 0; i < threadNum_; i++) {
         WorkNodeHolder &holder = works_.at(i);
         holder.inNode_ = AllocateWorkNode();
+        holder.cachedInNode_ = AllocateWorkNode();
         holder.outNode_ = AllocateWorkNode();
         holder.weakQueue_ = new ProcessQueue();
         holder.weakQueue_->BeginMarking(continuousQueue_.at(i));
@@ -204,6 +207,7 @@ void SharedGCWorkManager::Initialize(TriggerGCType gcType, SharedParallelMarkPha
     for (uint32_t i = 0; i < threadNum_; i++) {
         SharedGCWorkNodeHolder &holder = works_.at(i);
         holder.inNode_ = AllocateWorkNode();
+        holder.cachedInNode_ = AllocateWorkNode();
         holder.outNode_ = AllocateWorkNode();
         holder.weakQueue_ = new ProcessQueue();
         holder.weakQueue_->BeginMarking(continuousQueue_.at(i));
@@ -270,7 +274,9 @@ void SharedGCWorkManager::PushWorkNodeToGlobal(uint32_t threadId, bool postTask)
     WorkNode *&inNode = works_.at(threadId).inNode_;
     if (!inNode->IsEmpty()) {
         workStack_.Push(inNode);
-        inNode = AllocateWorkNode();
+        inNode = works_.at(threadId).cachedInNode_;
+        ASSERT(inNode != nullptr);
+        works_.at(threadId).cachedInNode_ = AllocateWorkNode();
         if (postTask && sHeap_->IsParallelGCEnabled() && sHeap_->CheckCanDistributeTask()) {
             sHeap_->PostGCMarkingTask(sharedTaskPhase_);
         }
