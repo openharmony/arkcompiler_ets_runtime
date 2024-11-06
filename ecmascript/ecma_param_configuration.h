@@ -100,6 +100,7 @@ public:
             stepNativeSizeInc_ = 256_MB;
             nativeSizeOvershoot_ = 80_MB;
             maxNativeSizeInc_ = 768_MB;
+            fragmentationLimitForSharedFullGC_ = 5_MB;
         } else if (maxHeapSize_ < HIGH_MEMORY) { // 128_MB ~ 256_MB
             minSemiSpaceSize_ = 2_MB;
             maxSemiSpaceSize_ = 8_MB;
@@ -124,6 +125,7 @@ public:
             stepNativeSizeInc_ = 256_MB;
             nativeSizeOvershoot_ = 80_MB;
             maxNativeSizeInc_ = 768_MB;
+            fragmentationLimitForSharedFullGC_ = 5_MB;
         }  else { // 256_MB ~ 384_MB
             minSemiSpaceSize_ = 2_MB;
             maxSemiSpaceSize_ = 16_MB;
@@ -149,6 +151,7 @@ public:
             nativeSizeOvershoot_ = 100_MB;
             asyncClearNativePointerThreshold_ = 500_MB;
             maxNativeSizeInc_ = 1_GB;
+            fragmentationLimitForSharedFullGC_ = 5_MB;
         }
     }
 
@@ -267,6 +270,11 @@ public:
         return maxNativeSizeInc_;
     }
 
+    size_t GetFragmentationLimitForSharedFullGC() const
+    {
+        return fragmentationLimitForSharedFullGC_;
+    }
+
     uint32_t GetMaxStackSize() const
     {
         return maxStackSize_;
@@ -324,6 +332,7 @@ private:
     size_t asyncClearNativePointerThreshold_ {0};
     size_t maxNativeSizeInc_ {0};
     size_t maxJSSerializerSize_ {0};
+    size_t fragmentationLimitForSharedFullGC_ {0};
     uint32_t maxStackSize_ {0};
 };
 } // namespace panda::ecmascript
