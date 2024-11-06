@@ -17,7 +17,6 @@
 
 #include "ecmascript/ecma_string-inl.h"
 #include "ecmascript/runtime_lock.h"
-
 namespace panda::ecmascript {
 void EcmaStringTableCleaner::PostSweepWeakRefTask(const WeakRootVisitor &visitor)
 {

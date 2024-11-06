@@ -94,8 +94,8 @@ class IrToPicture {
   static toPicture(irList, type, isBlock) {
     let nodes = {};
     let entry = -1;
-    for (let ir of irList) { //用于生成图的所有节点
-      if (type === 0) { //仅控制流
+    for (let ir of irList) {//用于生成图的所有节点
+      if (type === 0) {//仅控制流
         if (this.nodeType(ir) !== 'control') {
           continue;
         }

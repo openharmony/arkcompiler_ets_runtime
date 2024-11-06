@@ -953,7 +953,7 @@ private:
     bool isEnableOsr_ {false};
     bool isJitCompileVM_ {false};
     bool enableJitLogSkip_ = true;
-    
+
     // process StartRealTime
     int processStartRealtime_ = 0;
 
