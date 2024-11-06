@@ -1,0 +1,24 @@
+{
+    "name": "IMPORTENTRY_RECORD",
+    "offsets": [
+        {
+            "name": "ModuleRequest",
+            "offset": 0,
+            "size": 8
+        },
+        {
+            "name": "ImportName",
+            "offset": 8,
+            "size": 8
+        },
+        {
+            "name": "LocalName",
+            "offset": 16,
+            "size": 8
+        }
+    ],
+    "end_offset": 24,
+    "parents": [
+        "RECORD"
+    ]
+}

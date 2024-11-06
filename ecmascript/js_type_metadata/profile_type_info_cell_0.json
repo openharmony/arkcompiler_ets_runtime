@@ -1,0 +1,24 @@
+{
+    "name": "PROFILE_TYPE_INFO_CELL_0",
+    "offsets": [
+        {
+            "name": "Value",
+            "offset": 0,
+            "size": 8
+        },
+        {
+            "name": "MachineCode",
+            "offset": 8,
+            "size": 8
+        },
+        {
+            "name": "Handle",
+            "offset": 16,
+            "size": 8
+        }
+    ],
+    "end_offset": 24,
+    "parents": [
+        "TAGGED_OBJECT"
+    ]
+}

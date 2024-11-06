@@ -1,0 +1,14 @@
+{
+    "name": "PROGRAM",
+    "offsets": [
+        {
+            "name": "MainFunction",
+            "offset": 0,
+            "size": 8
+        }
+    ],
+    "end_offset": 8,
+    "parents": [
+        "ECMA_OBJECT"
+    ]
+}

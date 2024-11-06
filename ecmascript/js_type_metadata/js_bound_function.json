@@ -1,0 +1,24 @@
+{
+    "name": "JS_BOUND_FUNCTION",
+    "offsets": [
+        {
+            "name": "BoundTarget",
+            "offset": 0,
+            "size": 8
+        },
+        {
+            "name": "BoundThis",
+            "offset": 8,
+            "size": 8
+        },
+        {
+            "name": "BoundArguments",
+            "offset": 16,
+            "size": 8
+        }
+    ],
+    "end_offset": 24,
+    "parents": [
+        "JS_FUNCTION"
+    ]
+}

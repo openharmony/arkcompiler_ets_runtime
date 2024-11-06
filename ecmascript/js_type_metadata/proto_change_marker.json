@@ -1,0 +1,8 @@
+{
+    "name": "PROTO_CHANGE_MARKER",
+    "offsets": [],
+    "end_offset": 8,
+    "parents": [
+        "TAGGED_OBJECT"
+    ]
+}

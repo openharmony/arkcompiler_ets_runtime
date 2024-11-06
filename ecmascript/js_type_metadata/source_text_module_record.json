@@ -1,0 +1,69 @@
+{
+    "name": "SOURCE_TEXT_MODULE_RECORD",
+    "offsets": [
+        {
+            "name": "Environment",
+            "offset": 0,
+            "size": 8
+        },
+        {
+            "name": "Namespace",
+            "offset": 8,
+            "size": 8
+        },
+        {
+            "name": "RequestedModules",
+            "offset": 16,
+            "size": 8
+        },
+        {
+            "name": "ImportEntries",
+            "offset": 24,
+            "size": 8
+        },
+        {
+            "name": "LocalExportEntries",
+            "offset": 32,
+            "size": 8
+        },
+        {
+            "name": "IndirectExportEntries",
+            "offset": 40,
+            "size": 8
+        },
+        {
+            "name": "StarExportEntries",
+            "offset": 48,
+            "size": 8
+        },
+        {
+            "name": "NameDictionary",
+            "offset": 56,
+            "size": 8
+        },
+        {
+            "name": "CycleRoot",
+            "offset": 64,
+            "size": 8
+        },
+        {
+            "name": "TopLevelCapability",
+            "offset": 72,
+            "size": 8
+        },
+        {
+            "name": "AsyncParentModules",
+            "offset": 80,
+            "size": 8
+        },
+        {
+            "name": "SendableEnv",
+            "offset": 88,
+            "size": 8
+        }
+    ],
+    "end_offset": 144,
+    "parents": [
+        "MODULE_RECORD"
+    ]
+}
