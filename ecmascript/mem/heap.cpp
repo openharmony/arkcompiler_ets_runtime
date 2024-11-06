@@ -1746,7 +1746,7 @@ void Heap::CalculateIdleDuration()
     }
 
     if (clearNativeObjSpeed != 0) {
-        idlePredictDuration_ += (float)GetEcmaVM()->GetNativePointerListSize() / clearNativeObjSpeed;
+        idlePredictDuration_ += (float)GetNativePointerListSize() / clearNativeObjSpeed;
     }
 
     // sweep and evacuate duration
