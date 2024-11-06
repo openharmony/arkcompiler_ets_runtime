@@ -246,14 +246,6 @@ JSTaggedValue LoadICRuntime::LoadMiss(JSHandle<JSTaggedValue> receiver, JSHandle
         return CallPrivateGetter(receiver, key);
     }
 
-    if (key->IsSymbol() && JSSymbol::Cast(key->GetTaggedObject())->IsPrivate()) {
-        PropertyDescriptor desc(thread_);
-        if (!JSTaggedValue::IsPropertyKey(key) ||
-            !JSTaggedValue::GetOwnProperty(thread_, receiver, key, desc)) {
-            THROW_TYPE_ERROR_AND_RETURN(thread_, "invalid or cannot find private key", JSTaggedValue::Exception());
-        }
-    }
-
     ObjectOperator op(GetThread(), receiver, key);
     auto result = JSHandle<JSTaggedValue>(thread_, JSObject::GetProperty(GetThread(), &op));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
@@ -375,21 +367,10 @@ JSTaggedValue StoreICRuntime::StoreMiss(JSHandle<JSTaggedValue> receiver, JSHand
     if (receiver->IsJSSharedArray()) {
         bool success = JSSharedArray::SetProperty(thread_, receiver, key, value, true, SCheckMode::CHECK);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
-        if (success) {
-            return JSTaggedValue::Undefined();
-        }
-        return JSTaggedValue::Exception();
+        return success ? JSTaggedValue::Undefined() : JSTaggedValue::Exception();
     }
     if (key->IsJSFunction()) { // key is a private setter
         return CallPrivateSetter(receiver, key, value);
-    }
-
-    if (key->IsSymbol() && JSSymbol::Cast(key->GetTaggedObject())->IsPrivate()) {
-        PropertyDescriptor desc(thread_);
-        if (!JSTaggedValue::IsPropertyKey(key) ||
-            !JSTaggedValue::GetOwnProperty(thread_, receiver, key, desc)) {
-            THROW_TYPE_ERROR_AND_RETURN(thread_, "invalid or cannot find private key", JSTaggedValue::Exception());
-        }
     }
 
     ObjectOperator op(GetThread(), receiver, key, isOwn ? OperatorType::OWN : OperatorType::PROTOTYPE_CHAIN);

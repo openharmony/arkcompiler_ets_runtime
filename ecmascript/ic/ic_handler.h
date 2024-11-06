@@ -216,18 +216,17 @@ public:
         AccessorBit::Set<uint64_t>(hasAccessor, &handler);
 
         if (!hasAccessor) {
-            if (op.GetReceiver()->IsString()) {
+            JSHandle<JSTaggedValue> receiver = op.GetReceiver();
+            if (receiver->IsString()) {
                 JSTaggedValue lenKey = thread->GlobalConstants()->GetLengthString();
-                EcmaString *proKey = nullptr;
-                if (op.GetKey()->IsString()) {
-                    proKey = EcmaString::Cast(op.GetKey()->GetTaggedObject());
-                }
+                JSHandle<JSTaggedValue> key = op.GetKey();
+                EcmaString *proKey = key->IsString() ? EcmaString::Cast(key->GetTaggedObject()) : nullptr;
                 if (EcmaStringAccessor::StringsAreEqual(proKey, EcmaString::Cast(lenKey.GetTaggedObject()))) {
                     KindBit::Set<uint64_t>(HandlerKind::STRING_LENGTH, &handler);
                 } else {
                     KindBit::Set<uint64_t>(HandlerKind::STRING, &handler);
                 }
-            } else if (op.GetReceiver()->IsNumber()) {
+            } else if (receiver->IsNumber()) {
                 KindBit::Set<uint64_t>(HandlerKind::NUMBER, &handler);
             } else {
                 KindBit::Set<uint64_t>(HandlerKind::FIELD, &handler);
@@ -259,7 +258,6 @@ public:
     {
         uint64_t handler = 0;
         KindBit::Set<uint64_t>(HandlerKind::ELEMENT, &handler);
-
         // To avoid logical errors and Deopt, temporarily skipping PGO Profiling.
         // logical errors:
         //     When accessing an element of an object, AOT does not have a chain-climbing operation,
@@ -267,11 +265,9 @@ public:
         // deopt:
         //     Currently there is no way to save the type of the key in pgo file, even if the type of the key
         //     is string, it will be treated as a number type by the AOT, leading to deopt at runtime.
-        if (op.GetReceiver() != op.GetHolder() ||
-            op.KeyFromStringType()) {
+        if (op.GetReceiver() != op.GetHolder() || op.KeyFromStringType()) {
             NeedSkipInPGODumpBit::Set<uint64_t>(true, &handler);
         }
-
         if (op.GetReceiver()->IsJSArray()) {
             IsJSArrayBit::Set<uint64_t>(true, &handler);
         }
@@ -301,13 +297,7 @@ public:
     {
         uint64_t handler = 0;
         JSHandle<JSObject> receiver = JSHandle<JSObject>::Cast(op.GetReceiver());
-        SSharedBit::Set<uint64_t>(op.GetReceiver()->IsJSShared(), &handler);
-        TaggedArray *array = TaggedArray::Cast(receiver->GetProperties().GetTaggedObject());
-        if (!array->IsDictionaryMode()) {
-            SFieldTypeBit::Set<uint64_t>(op.GetAttr().GetSharedFieldType(), &handler);
-        } else {
-            SFieldTypeBit::Set<uint64_t>(op.GetAttr().GetDictSharedFieldType(), &handler);
-        }
+        SFieldTypeBitSet(op, receiver, &handler);
         if (op.IsElement()) {
             SOutOfBoundsBit::Set<uint64_t>(op.GetElementOutOfBounds(), &handler);
             return StoreElement(thread, op.GetReceiver(), handler);
@@ -353,6 +343,17 @@ public:
         }
         return JSHandle<JSTaggedValue>(thread, JSTaggedValue::WrapUint64(handler));
     }
+
+    static inline void SFieldTypeBitSet(const ObjectOperator &op, JSHandle<JSObject> &receiver, uint64_t *handler)
+    {
+        SSharedBit::Set<uint64_t>(op.GetReceiver()->IsJSShared(), handler);
+        TaggedArray *array = TaggedArray::Cast(receiver->GetProperties().GetTaggedObject());
+        if (!array->IsDictionaryMode()) {
+            SFieldTypeBit::Set<uint64_t>(op.GetAttr().GetSharedFieldType(), handler);
+        } else {
+            SFieldTypeBit::Set<uint64_t>(op.GetAttr().GetDictSharedFieldType(), handler);
+        }
+    }
 };
 
 class TransitionHandler : public TaggedObject {
@@ -375,9 +376,7 @@ public:
     }
 
     static constexpr size_t HANDLER_INFO_OFFSET = TaggedObjectSize();
-
     ACCESSORS(HandlerInfo, HANDLER_INFO_OFFSET, TRANSITION_HCLASS_OFFSET)
-
     ACCESSORS(TransitionHClass, TRANSITION_HCLASS_OFFSET, SIZE)
 
     DECL_VISIT_OBJECT(HANDLER_INFO_OFFSET, SIZE)
@@ -456,14 +455,10 @@ public:
     }
 
     static constexpr size_t HANDLER_INFO_OFFSET = TaggedObjectSize();
-
     ACCESSORS(HandlerInfo, HANDLER_INFO_OFFSET, PROTO_CELL_OFFSET)
-
     ACCESSORS(ProtoCell, PROTO_CELL_OFFSET, HOLDER_OFFSET)
-
     ACCESSORS(Holder, HOLDER_OFFSET, ACCESSOR_JSFUNCTION_OFFSET)
     ACCESSORS(AccessorJSFunction, ACCESSOR_JSFUNCTION_OFFSET, ACCESSOR_METHOD_ID_OFFSET)
-
     ACCESSORS_PRIMITIVE_FIELD(AccessorMethodId, uint32_t, ACCESSOR_METHOD_ID_OFFSET, LAST_OFFSET)
 
     DEFINE_ALIGN_SIZE(LAST_OFFSET);
@@ -494,11 +489,8 @@ public:
     }
 
     static constexpr size_t HANDLER_INFO_OFFSET = TaggedObjectSize();
-
     ACCESSORS(HandlerInfo, HANDLER_INFO_OFFSET, TRANSITION_HCLASS_OFFSET)
-
     ACCESSORS(TransitionHClass, TRANSITION_HCLASS_OFFSET, PROTO_CELL_OFFSET)
-
     ACCESSORS(ProtoCell, PROTO_CELL_OFFSET, SIZE)
 
     DECL_VISIT_OBJECT(HANDLER_INFO_OFFSET, SIZE)
@@ -527,11 +519,8 @@ public:
     }
 
     static constexpr size_t HANDLER_INFO_OFFSET = TaggedObjectSize();
-
     ACCESSORS(HandlerInfo, HANDLER_INFO_OFFSET, PROTO_CELL_OFFSET)
-
     ACCESSORS(ProtoCell, PROTO_CELL_OFFSET, HOLDER_OFFSET)
-
     ACCESSORS(Holder, HOLDER_OFFSET, SIZE)
 
     DECL_VISIT_OBJECT(HANDLER_INFO_OFFSET, SIZE)
