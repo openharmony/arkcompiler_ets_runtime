@@ -124,6 +124,23 @@ public:
 
     bool ExecutePromisePendingJob();
 
+    bool IsInPendingJob() const
+    {
+        return pendingJobEnterCount > 0;
+    }
+
+    void AddPendingJobEnterCount()
+    {
+        ASSERT(pendingJobEnterCount < std::numeric_limits<uint64_t>::max());
+        ++pendingJobEnterCount;
+    }
+
+    void MinusPendingJobEnterCount()
+    {
+        ASSERT(IsInPendingJob());
+        --pendingJobEnterCount;
+    }
+
     static EcmaContext *ConstCast(const EcmaContext *context)
     {
         return const_cast<EcmaContext *>(context);
@@ -779,6 +796,8 @@ private:
     SustainingJSHandleList *sustainingJSHandleList_ {nullptr};
 
     bool hasKeptObjects_ {false};
+
+    uint64_t pendingJobEnterCount {0};
 
     friend class EcmaHandleScope;
     friend class JSPandaFileExecutor;

@@ -14,27 +14,11 @@
  */
 
 /*
- * @tc.name:importJson
- * @tc.desc:test import Json
+ * @tc.name:asyncUseLazyImport
+ * @tc.desc:test asyncUseLazyImport
  * @tc.type: FUNC
- * @tc.require: issueI5NO8G
+ * @tc.require: issue#IB2HNC
  */
-import lazy {h} from './H'
-import lazy {A} from "./A"
-import { aaa } from "./E"
-import lazy {func1} from './F'
-import lazy {dynamicLazySequence} from './dynamicLazySequence'
-import lazy {dynamicLazySequence2} from './dynamicLazySequence2'
-import {Test} from './asyncUseLazyImport'
 
-print("this is entry");
-func1();
-let myClass = new A();
-myClass.myMethod();
-aaa();
-print(h);
-import("./dynamicLazySequence").then((ns) => {
-    print(ns.dynamicLazySequence);
-})
-import("./dynamicLazySequence2");
-new Test().start()
+// @ts-nocheck
+export class TestLazy {}
