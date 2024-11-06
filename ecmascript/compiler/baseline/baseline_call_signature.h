@@ -347,7 +347,7 @@ DEFINE_PARAMETER_INDEX(BaselineStsuperbynameImm8Id16V8,
 DEFINE_PARAMETER_INDEX(BaselineStsuperbynameImm16Id16V8,
     GLUE, SP, ACC, RECEIVER, STRING_ID)
 DEFINE_PARAMETER_INDEX(BaselineLdlocalmodulevarImm8,
-    GLUE, INDEX)
+    GLUE, SP, INDEX)
 DEFINE_PARAMETER_INDEX(BaselineStconsttoglobalrecordImm16Id16,
     GLUE, SP, ACC, STRING_ID)
 DEFINE_PARAMETER_INDEX(BaselineStownbyvaluewithnamesetImm8V8V8,

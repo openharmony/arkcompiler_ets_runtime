@@ -1825,6 +1825,7 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(LDLOCALMODULEVAR_IMM8)
 
     std::vector<BaselineParameter> parameters;
     parameters.emplace_back(BaselineSpecialParameter::GLUE);
+    parameters.emplace_back(BaselineSpecialParameter::SP);
     parameters.emplace_back(index);
     GetBaselineAssembler().CallBuiltin(builtinAddress, parameters);
     GetBaselineAssembler().SaveResultIntoAcc();
