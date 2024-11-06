@@ -1251,7 +1251,9 @@ JSTaggedValue BuiltinsString::ReplaceAll(EcmaRuntimeCallInfo *argv)
                                           EcmaStringAccessor::FastSubString(ecmaVm, thisString, endOfLastMatch,
                                                                             pos - endOfLastMatch));
         accumulatedResult.Update(JSTaggedValue(EcmaStringAccessor::Concat(ecmaVm, accumulatedResult, prefixString)));
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         accumulatedResult.Update(JSTaggedValue(EcmaStringAccessor::Concat(ecmaVm, accumulatedResult, realReplaceStr)));
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         endOfLastMatch = pos + searchLength;
         pos = EcmaStringAccessor::IndexOf(ecmaVm, thisString, searchString, pos + advanceBy);
         thread->CheckSafepointIfSuspended();
@@ -1262,6 +1264,7 @@ JSTaggedValue BuiltinsString::ReplaceAll(EcmaRuntimeCallInfo *argv)
         JSHandle<EcmaString> suffixString(thread,
             EcmaStringAccessor::FastSubString(ecmaVm, thisString, endOfLastMatch, thisLen - endOfLastMatch));
         accumulatedResult.Update(JSTaggedValue(EcmaStringAccessor::Concat(ecmaVm, accumulatedResult, suffixString)));
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     }
 
     return accumulatedResult.GetTaggedValue();

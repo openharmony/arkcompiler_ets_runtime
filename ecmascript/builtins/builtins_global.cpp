@@ -369,6 +369,7 @@ EcmaString *BuiltinsGlobal::StringPad(JSThread *thread, const JSHandle<EcmaStrin
     JSHandle<EcmaString> stringFiller = vm->GetFactory()->NewFromStdString(std::string("\0"));
     for (uint32_t k = 0; k < repeatTimes; ++k) {
         p = EcmaStringAccessor::Concat(vm, stringFiller, fillString);
+        RETURN_VALUE_IF_ABRUPT(thread, *vm->GetFactory()->GetEmptyString());
         stringFiller = JSHandle<EcmaString>(thread, p);
     }
     JSHandle<EcmaString> truncatedStringFiller(thread,

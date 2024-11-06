@@ -65,3 +65,16 @@ try {
 } catch (e) {
     print(e)
 }
+
+let v28 = "bigint";
+const v29 = [v28, this];
+v29[268435439] = this;
+const v36 = `
+this.minimumFractionDigits = 5.1000848328408265;
+[a-zA-Z0-9]
+`;
+try {
+    const v41 = v36.replaceAll(0, v29);
+} catch (e) {
+    print(e);
+}

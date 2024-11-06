@@ -16,3 +16,4 @@ TypeError
 TypeError
 TypeError
 RangeError: Stack overflow!
+RangeError: Invalid string length
