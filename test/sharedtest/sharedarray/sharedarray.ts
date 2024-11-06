@@ -146,6 +146,13 @@ function index() {
 
 }
 
+class IndexClass {
+    idx: number;
+    constructor() {
+        this.idx = 1;
+    }
+}
+
 function fill() {
     print("Start Test fill")
     const array1 = new SendableArray<number>(1, 2, 3, 4);
@@ -157,6 +164,41 @@ function fill() {
 
     array1.fill(6);
     print(array1) // [6, 6, 6, 6]
+
+    array1.fill(1, true);
+    print(array1) // [6, 1, 1, 1]
+
+    array1.fill(2, null);
+    print(array1) // [2, 2, 2, 2]
+
+    array1.fill(3, undefined);
+    print(array1) // [3, 3, 3, 3]
+
+    array1.fill(4, 1.5, 3.5);
+    print(array1) // [3, 4, 4, 4]
+
+    array1.fill(5, "1.0", "3.5");
+    print(array1) // [3, 5, 5, 5]
+
+    let superCs = new SuperClass();
+    array1.fill(7, superCs, 4);
+    print(array1) // [7, 7, 7, 7]
+
+    let idxCs = new IndexClass();
+    array1.fill(8, idxCs, 4);
+    print(array1) // [8, 8, 8, 8]
+
+    array1.fill(10, null, -1);
+    print(array1) // [10, 10, 10, 8]
+
+    array1.fill(11, -3, -1);
+    print(array1) // [10, 11, 11, 11]
+
+    array1.fill(11, -3, -0.1);
+    print(array1) // [10, 11, 11, 11]
+
+    array1.fill(12, 3, 1);
+    print(array1) // [10, 11, 11, 11]
 }
 
 // remove

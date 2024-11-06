@@ -190,6 +190,7 @@ public:
         return Span<const std::pair<std::string_view, bool>>(ARRAY_FUNCTION_PROPERTIES);
     }
 private:
+    static inline JSTaggedValue GetElementByKey(JSThread *thread, JSHandle<JSObject>& thisObjHandle, uint32_t index);
     static JSTaggedValue PopInner(EcmaRuntimeCallInfo *argv, JSHandle<JSTaggedValue> &thisHandle,
                                   JSHandle<JSObject> &thisObjHandle);
 #define BUILTIN_SENDABLE_ARRAY_FUNCTION_ENTRY(name, method, length, id) \
