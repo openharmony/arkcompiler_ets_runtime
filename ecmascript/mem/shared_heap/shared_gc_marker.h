@@ -91,6 +91,11 @@ protected:
     SharedGCWorkManager *sWorkManager_ {nullptr};
 
 private:
+    // This method is called within the GCIterateThreadList method,
+    // so the thread lock problem does not need to be considered.
+    inline void NotifyThreadProcessRsetStart(JSThread *localThread);
+    inline void NotifyThreadProcessRsetFinished(JSThread *localThread);
+
     template<SharedMarkType markType>
     inline auto GenerateRSetVisitor(uint32_t threadId);
     inline void RecordObject(JSTaggedValue value, uint32_t threadId, void *mem);
