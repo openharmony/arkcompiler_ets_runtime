@@ -159,6 +159,8 @@ public:
     static void CopyTypedArrayBuffer(JSTypedArray *srcArray, JSTypedArray *targetArray, int32_t srcStartPos,
                                      int32_t tarStartPos, int32_t count, int32_t elementSize);
     static inline uint32_t RuntimeGetBytecodePcOfstForBaseline(const JSHandle<JSFunction> &func, uintptr_t nativePc);
+    static void ReverseTypedArray(JSTypedArray *typedArray);
+    static void SortTypedArray(JSTypedArray *typedArray);
 private:
     static void DumpToStreamWithHint(std::ostream &out, std::string_view prompt, JSTaggedValue value);
 

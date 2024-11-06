@@ -1,0 +1,33 @@
+# Copyright (c) 2023 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+Before reverse (Uint8Array): 10,255,0,128,200
+After reverse (Uint8Array): 200,128,0,255,10
+Before reverse (Int8Array): 10,-128,0,100,-50
+After reverse (Int8Array): -50,100,0,-128,10
+Before reverse (Uint16Array): 65535,0,256,1000,5000
+After reverse (Uint16Array): 5000,1000,256,0,65535
+Before reverse (Int16Array): 30000,-30000,0,5000,-10000
+After reverse (Int16Array): -10000,5000,0,-30000,30000
+Before reverse (Uint32Array): 4000000000,1000000,255,0,500000000
+After reverse (Uint32Array): 500000000,0,255,1000000,4000000000
+Before reverse (Int32Array): 2147483647,-2147483648,1000,-5000,0
+After reverse (Int32Array): 0,-5000,1000,-2147483648,2147483647
+Before reverse (Float32Array): 3.140000104904175,-1.5,0.5,-3.140000104904175,2.7100000381469727
+After reverse (Float32Array): 2.7100000381469727,-3.140000104904175,0.5,-1.5,3.140000104904175
+Before reverse (Float64Array): 1.234,-5.678,9.01,3.14159,2.718
+After reverse (Float64Array): 2.718,3.14159,9.01,-5.678,1.234
+Before reverse (BigUint64Array): 100000000000,255,5000000000,100000000
+After reverse (BigUint64Array): 100000000,5000000000,255,100000000000
+Before reverse (BigInt64Array): 5000000000,-5000000000,0,2000000000
+After reverse (BigInt64Array): 2000000000,0,-5000000000,5000000000
