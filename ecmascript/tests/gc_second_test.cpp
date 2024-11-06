@@ -308,7 +308,7 @@ HWTEST_F_L0(GCTest, AdjustCapacity)
     size = space->GetSurvivalObjectSize() / GROW_OBJECT_SURVIVAL_RATE - 1;
     size_t oldMaxCapacity = space->GetMaximumCapacity();
     space->SetMaximumCapacity(space->GetInitialCapacity());
-    EXPECT_FALSE(space->AdjustCapacity(size, thread));
+    EXPECT_TRUE(space->AdjustCapacity(size, thread));
     space->SetMaximumCapacity(oldMaxCapacity);
     EXPECT_TRUE(space->AdjustCapacity(size, thread));
 #endif

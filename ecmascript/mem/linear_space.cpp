@@ -446,19 +446,20 @@ bool SemiSpace::AdjustCapacity(size_t allocatedSizeSinceGC, JSThread *thread)
     if (allocatedSizeSinceGC <= initialCapacity_ * GROW_OBJECT_SURVIVAL_RATE / GROWING_FACTOR) {
         return false;
     }
+    size_t committedSize = GetCommittedSize();
     double curObjectSurvivalRate = static_cast<double>(survivalObjectSize_) / allocatedSizeSinceGC;
-    double initialObjectRate = static_cast<double>(survivalObjectSize_) / initialCapacity_;
-    if (curObjectSurvivalRate > GROW_OBJECT_SURVIVAL_RATE || initialObjectRate > GROW_OBJECT_SURVIVAL_RATE) {
-        if (GetCommittedSize() > maximumCapacity_
-            && GetHeapObjectSize() > GetCommittedSize() *  GROW_OBJECT_SURVIVAL_RATE) {
-            // Overshoot size is too large. Avoid heapObjectSize is too close to committed size.
-            AddOverShootSize(GetCommittedSize() * SHRINK_OBJECT_SURVIVAL_RATE);
-        }
-        if (initialCapacity_ >= maximumCapacity_) {
-            return false;
-        }
+    double committedSurvivalRate = static_cast<double>(committedSize) / initialCapacity_;
+    SetOverShootSize(0);
+    if (curObjectSurvivalRate > GROW_OBJECT_SURVIVAL_RATE || committedSurvivalRate > GROW_OBJECT_SURVIVAL_RATE) {
         size_t newCapacity = initialCapacity_ * GROWING_FACTOR;
+        while (committedSize >= newCapacity && newCapacity < maximumCapacity_) {
+            newCapacity = newCapacity * GROWING_FACTOR;
+        }
         SetInitialCapacity(std::min(newCapacity, maximumCapacity_));
+        if (committedSize >= initialCapacity_ * GROW_OBJECT_SURVIVAL_RATE) {
+            // Overshoot size is too large. Avoid heapObjectSize is too close to committed size.
+            SetOverShootSize(committedSize);
+        }
         if (newCapacity == maximumCapacity_) {
             localHeap_->GetJSObjectResizingStrategy()->UpdateGrowStep(
                 thread,
