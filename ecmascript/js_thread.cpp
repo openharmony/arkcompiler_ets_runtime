@@ -804,7 +804,7 @@ bool JSThread::CheckSafepoint()
     heap->HandleExitHighSensitiveEvent();
 
     // Do not trigger local gc during the shared gc processRset process.
-    if (heap->IsProcessingRset()) {
+    if (IsProcessingLocalToSharedRset()) {
         return false;
     }
     // After concurrent mark finish, should trigger gc here to avoid create much floating garbage

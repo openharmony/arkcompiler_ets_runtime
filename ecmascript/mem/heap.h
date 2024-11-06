@@ -1538,16 +1538,6 @@ public:
         return gcType_ == TriggerGCType::YOUNG_GC || gcType_ == TriggerGCType::EDEN_GC;
     }
 
-    bool IsProcessingRset() const
-    {
-        return isProcessingRset_;
-    }
-
-    void SetProcessingRset(bool processing)
-    {
-        isProcessingRset_ = processing;
-    }
-
     void EnableEdenGC();
 
     void TryEnableEdenGC();
@@ -1771,7 +1761,6 @@ private:
     bool fullMarkRequested_ {false};
     bool oldSpaceLimitAdjusted_ {false};
     bool enableIdleGC_ {false};
-    bool isProcessingRset_ {false};
     std::atomic_bool isCSetClearing_ {false};
     HeapMode mode_ { HeapMode::NORMAL };
 

@@ -1333,6 +1333,16 @@ public:
         fullMarkRequest_ = false;
     }
 
+    void SetProcessingLocalToSharedRset(bool processing)
+    {
+        processingLocalToSharedRset_ = processing;
+    }
+
+    bool IsProcessingLocalToSharedRset() const
+    {
+        return processingLocalToSharedRset_;
+    }
+
     inline bool IsThreadSafe() const
     {
         return IsMainThread() || HasSuspendRequest();
@@ -1611,6 +1621,8 @@ private:
     // Shared heap
     bool isMainThread_ {false};
     bool fullMarkRequest_ {false};
+    // Shared heap collect local heap Rset
+    bool processingLocalToSharedRset_ {false};
 
     // { ElementsKind, (hclass, hclassWithProto) }
     CMap<ElementsKind, std::pair<ConstantIndex, ConstantIndex>> arrayHClassIndexMap_;
