@@ -168,7 +168,9 @@ void Jit::SetEnableOrDisable(const JSRuntimeOptions &options, bool isEnableFastJ
 
             isApp_ = options.IsEnableAPPJIT();
             hotnessThreshold_ = options.GetJitHotnessThreshold();
-            initJitCompiler_(options);
+            if (initJitCompiler_ != nullptr) {
+                initJitCompiler_(options);
+            }
             bool enableCodeSign = !ohos::JitTools::GetCodeSignDisable(options.GetDisableCodeSign());
             bool shouldCompileMain =
                 options.IsEnableForceJitCompileMain() || options.IsEnableForceBaselineCompileMain();
@@ -240,6 +242,8 @@ void Jit::SetEnableAsyncCopyToFort(bool isEnableAsyncCopyToFort)
 
 void Jit::Initialize()
 {
+#if defined(OHOS_UNIT_TEST)
+#else
     static const std::string CREATEJITCOMPILETASK = "CreateJitCompilerTask";
     static const std::string JITCOMPILEINIT = "InitJitCompiler";
     static const std::string JITCOMPILE = "JitCompile";
@@ -284,6 +288,7 @@ void Jit::Initialize()
         LOG_JIT(ERROR) << "jit can't find symbol deleteJitCompile";
         return;
     }
+#endif
     initialized_= true;
     return;
 }
@@ -328,7 +333,9 @@ bool Jit::SupportJIT(JSHandle<JSFunction> &jsFunction, [[maybe_unused]] EcmaVM *
 
 void Jit::DeleteJitCompile(void *compiler)
 {
-    deleteJitCompile_(compiler);
+    if (deleteJitCompile_ != nullptr) {
+        deleteJitCompile_(compiler);
+    }
 }
 
 void Jit::CountInterpExecFuncs(JSHandle<JSFunction> &jsFunction)
@@ -534,7 +541,9 @@ bool Jit::JitFinalize(void *compiler, JitTask *jitTask)
 
 void *Jit::CreateJitCompilerTask(JitTask *jitTask)
 {
-    ASSERT(createJitCompilerTask_ != nullptr);
+    if (createJitCompilerTask_ == nullptr) {
+        return nullptr;
+    }
     return createJitCompilerTask_(jitTask);
 }
 

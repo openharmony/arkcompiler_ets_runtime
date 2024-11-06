@@ -106,7 +106,8 @@ public:
 
     // If you want to call once create, you can refer to BuiltinsMathTest for detail.
     static void CreateEcmaVMWithScope(EcmaVM *&instance, JSThread *&thread, EcmaHandleScope *&scope,
-        bool tryLoadStubFile = false, bool useCInterpreter = false, bool startManagedCode = true)
+        bool tryLoadStubFile = false, bool useCInterpreter = false, bool startManagedCode = true,
+        bool enableFastJit = false)
     {
         JSRuntimeOptions options;
         options.SetEnableForceGC(true);
@@ -115,6 +116,9 @@ public:
         }
         if (useCInterpreter) {
             options.SetEnableAsmInterpreter(false);
+        }
+        if (enableFastJit) {
+            options.SetEnableJIT(true);
         }
         instance = JSNApi::CreateEcmaVM(options);
         instance->SetEnableForceGC(true);
