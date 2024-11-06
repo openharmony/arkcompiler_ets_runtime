@@ -507,7 +507,7 @@ JSTaggedValue BuiltinsString::LastIndexOf(EcmaRuntimeCallInfo *argv)
     }
     pos = std::min(std::max(pos, 0), thisLen);
     int32_t res = EcmaStringAccessor::LastIndexOf(thread->GetEcmaVM(), thisHandle, searchHandle, pos);
-    if (res >= 0 && res < thisLen) {
+    if (res >= 0 && res <= thisLen) {
         return GetTaggedInt(res);
     }
     res = -1;
