@@ -112,10 +112,6 @@ void ParallelEvacuator::EvacuateSpace()
         GCStats::Scope sp2(GCStats::Scope::ScopeId::WaitFinish, heap_->GetEcmaVM()->GetEcmaGCStats());
         WaitFinished();
     }
-
-    if (heap_->GetJSThread()->IsPGOProfilerEnable()) {
-        UpdateTrackInfo();
-    }
 }
 
 bool ParallelEvacuator::EvacuateSpace(TlabAllocator *allocator, uint32_t threadIndex, uint32_t idOrder, bool isMain)
@@ -296,10 +292,14 @@ void ParallelEvacuator::UpdateReference()
         }
     }
     {
-        GCStats::Scope sp2(GCStats::Scope::ScopeId::ProceeWorkload, heap_->GetEcmaVM()->GetEcmaGCStats());\
+        GCStats::Scope sp2(GCStats::Scope::ScopeId::ProceeWorkload, heap_->GetEcmaVM()->GetEcmaGCStats());
         ProcessWorkloads(true);
     }
     WaitFinished();
+
+    if (heap_->GetJSThread()->IsPGOProfilerEnable()) {
+        UpdateTrackInfo();
+    }
 }
 
 void ParallelEvacuator::UpdateRoot()
