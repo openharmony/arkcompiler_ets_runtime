@@ -2431,11 +2431,17 @@ EcmaString *BuiltinsRegExp::EscapeRegExpPattern(JSThread *thread, const JSHandle
     if (srcStdStr.empty()) {
         srcStdStr = "(?:)";
     }
-    // "/" -> "\/"
-    srcStdStr = base::StringHelper::ReplaceAll(srcStdStr, "/", "\\/");
-    // "\\" -> "\"
-    srcStdStr = base::StringHelper::ReplaceAll(srcStdStr, "\\", "\\");
-
+    bool escapeChar = false;
+    for (int i = 0; i < srcStdStr.size(); i++) {
+        if (srcStdStr[i] == '\\') {
+            escapeChar=!escapeChar;
+        } else if (!escapeChar && srcStdStr[i]=='/') {
+            srcStdStr.insert(i, "\\");
+            i++;
+        } else {
+            escapeChar = false;
+        }
+    }
     return *factory->NewFromUtf8(srcStdStr);
 }
 

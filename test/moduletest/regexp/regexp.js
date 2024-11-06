@@ -726,3 +726,90 @@ print(res7.flags);
 const res8 = /abc/;
 res8.lastIndex = -1;
 print(res8.flags);
+
+{
+  let str = "<style>test</style>"
+  let reg = new RegExp("/");
+  print(reg.source,JSON.stringify(reg.exec(str)));
+  
+  reg = new RegExp("\/[a-z]*>");
+  print(reg.source,JSON.stringify(reg.exec(str)));
+  
+  reg = new RegExp("\\/[a-z]*>");
+  print(reg.source,JSON.stringify(reg.exec(str)));
+
+  reg = new RegExp("\\\/[a-z]*>");
+  print(reg.source,JSON.stringify(reg.exec(str)));
+
+  str="<style>test<\\\\/style>"
+  reg = new RegExp("\\\\/[a-z]*>");
+  print(reg.source,JSON.stringify(reg.exec(str)));
+  
+  reg = new RegExp("\\\\\/[a-z]*>");
+  print(reg.source,JSON.stringify(reg.exec(str)));
+  
+  reg = new RegExp("\\\\\\/[a-z]*>");
+  print(reg.source,JSON.stringify(reg.exec(str)));
+
+  reg = new RegExp("\\\\\\\/[a-z]*>");
+  print(reg.source,JSON.stringify(reg.exec(str)));
+}
+{
+  let str="\\\\\\\\[aaa"
+  try {
+    let pattern="[";
+    let reg = new RegExp(pattern);
+    print(pattern,JSON.stringify(reg.exec(str)))
+  } catch (e) {
+    print(e.name);
+  }
+  try {
+    let pattern="\[";
+    let reg = new RegExp(pattern);
+    print(pattern,JSON.stringify(reg.exec(str)))
+  } catch (e) {
+    print(e.name);
+  }
+  try {
+    let pattern="\\[";
+    let reg = new RegExp(pattern);
+    print(pattern,JSON.stringify(reg.exec(str)))
+  } catch (e) {
+    print(e.name);
+  }
+  try {
+    let pattern="\\\[";
+    let reg = new RegExp(pattern);
+    print(pattern,JSON.stringify(reg.exec(str)))
+  } catch (e) {
+    print(e.name);
+  }
+  try {
+    let pattern="\\\\[";
+    let reg = new RegExp(pattern);
+    print(pattern,JSON.stringify(reg.exec(str)))
+  } catch (e) {
+    print(e.name);
+  }
+  try {
+    let pattern="\\\\\[";
+    let reg = new RegExp(pattern);
+    print(pattern,JSON.stringify(reg.exec(str)))
+  } catch (e) {
+    print(e.name);
+  }
+  try {
+    let pattern="\\\\\\[";
+    let reg = new RegExp(pattern);
+    print(pattern,JSON.stringify(reg.exec(str)))
+  } catch (e) {
+    print(e.name);
+  }
+  try {
+    let pattern="\\\\\\\[";
+    let reg = new RegExp(pattern);
+    print(pattern,JSON.stringify(reg.exec(str)))
+  } catch (e) {
+    print(e.name);
+  }
+}
