@@ -44,14 +44,14 @@ bool IsUTF16LowSurrogate(uint16_t ch)
 }
 
 // Methods for decode utf16 to unicode
-uint32_t DecodeUTF16(uint16_t const *utf16, size_t len, size_t *index)
+uint32_t DecodeUTF16(uint16_t const *utf16, size_t len, size_t *index, bool cesu8)
 {
     uint16_t high = utf16[*index];
     if ((high & SURROGATE_MASK) != DECODE_LEAD_LOW || !IsUTF16HighSurrogate(high) || *index == len - 1) {
         return high;
     }
     uint16_t low = utf16[*index + 1];
-    if (!IsUTF16LowSurrogate(low)) {
+    if (!IsUTF16LowSurrogate(low) || cesu8) {
         return high;
     }
     (*index)++;
@@ -221,7 +221,7 @@ Utf8Char ConvertUtf16ToUtf8(uint16_t d0, uint16_t d1, bool modify, bool isWriteB
     return {UtfLength::FOUR, {ch0, ch1, ch2, ch3}};
 }
 
-size_t Utf16ToUtf8Size(const uint16_t *utf16, uint32_t length, bool modify, bool isGetBufferSize)
+size_t Utf16ToUtf8Size(const uint16_t *utf16, uint32_t length, bool modify, bool isGetBufferSize, bool cesu8)
 {
     size_t res = 1;  // zero byte
     // when utf16 data length is only 1 and code in 0xd800-0xdfff,
@@ -247,7 +247,7 @@ size_t Utf16ToUtf8Size(const uint16_t *utf16, uint32_t length, bool modify, bool
         } else if (utf16[i] < utf::HI_SURROGATE_MIN || utf16[i] > utf::HI_SURROGATE_MAX) {
             res += UtfLength::THREE;
         } else {
-            if (i < length - 1 &&
+            if (!cesu8 && i < length - 1 &&
                 utf16[i + 1] >= utf::LO_SURROGATE_MIN &&  // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
                 utf16[i + 1] <= utf::LO_SURROGATE_MAX) {  // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
                 res += UtfLength::FOUR;
@@ -261,7 +261,7 @@ size_t Utf16ToUtf8Size(const uint16_t *utf16, uint32_t length, bool modify, bool
 }
 
 size_t ConvertRegionUtf16ToUtf8(const uint16_t *utf16In, uint8_t *utf8Out, size_t utf16Len, size_t utf8Len,
-                                size_t start, bool modify, bool isWriteBuffer)
+                                size_t start, bool modify, bool isWriteBuffer, bool cesu8)
 {
     if (utf16In == nullptr || utf8Out == nullptr || utf8Len == 0) {
         return 0;
@@ -269,7 +269,7 @@ size_t ConvertRegionUtf16ToUtf8(const uint16_t *utf16In, uint8_t *utf8Out, size_
     size_t utf8Pos = 0;
     size_t end = start + utf16Len;
     for (size_t i = start; i < end; ++i) {
-        uint32_t codepoint = DecodeUTF16(utf16In, end, &i);
+        uint32_t codepoint = DecodeUTF16(utf16In, end, &i, cesu8);
         if (codepoint == 0) {
             if (isWriteBuffer) {
                 utf8Out[utf8Pos++] = 0x00U;

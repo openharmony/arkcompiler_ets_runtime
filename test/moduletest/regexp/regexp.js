@@ -19,6 +19,28 @@
  * @tc.type: FUNC
  * @tc.require: issueI5NO8G
  */
+{
+  let str = "😀";
+  let regexp = /[😀]/;
+  print(JSON.stringify(str.replace(regexp,"b")));
+}
+{
+  let str = "😀";
+  let regexp = /[😀]/g;
+  print(JSON.stringify(str.replace(regexp,"b")));
+}
+{
+  let str = "😀";
+  let regexp = /[😀]/u;
+  print(JSON.stringify(str.replace(regexp,"b")));
+}
+{
+  let str = "😀";
+  let regexp = /[\😀]/;
+  print(JSON.stringify(str.replace(regexp,"b")));
+}
+
+
 var reg = /[\x5d-\x7e]/i;
 var result = reg.test("a");
 print(result);
