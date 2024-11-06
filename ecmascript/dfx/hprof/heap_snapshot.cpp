@@ -634,6 +634,8 @@ NodeType HeapSnapshot::GenerateNodeType(TaggedObject *entry)
 
 void HeapSnapshot::FillNodes(bool isInFinish, bool isSimplify)
 {
+    LOG_ECMA(INFO) << "HeapSnapshot::FillNodes";
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "HeapSnapshot::FillNodes");
     // Iterate Heap Object
     auto heap = vm_->GetHeap();
     if (heap != nullptr) {
@@ -1039,6 +1041,8 @@ Node *HeapSnapshot::GenerateObjectNode(JSTaggedValue entry, size_t size, bool is
 
 void HeapSnapshot::FillEdges(bool isSimplify)
 {
+    LOG_ECMA(INFO) << "HeapSnapshot::FillEdges begin, nodeCount: " << nodeCount_;
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "HeapSnapshot::FillEdges");
     auto iter = nodes_.begin();
     size_t count = 0;
     while (count++ < nodes_.size()) {
@@ -1079,6 +1083,7 @@ void HeapSnapshot::FillEdges(bool isSimplify)
         }
         iter++;
     }
+    LOG_ECMA(INFO) << "HeapSnapshot::FillEdges exit, nodeCount: " << nodeCount_ << ", edgeCount: " << edgeCount_;
 }
 
 void HeapSnapshot::FillEdgesForBinMod(char *newAddr, CUnorderedSet<uint64_t> *refSet)
@@ -1257,6 +1262,8 @@ Edge *HeapSnapshot::InsertEdgeUnique(Edge *edge)
 
 void HeapSnapshot::AddSyntheticRoot()
 {
+    LOG_ECMA(INFO) << "HeapSnapshot::AddSyntheticRoot";
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "HeapSnapshot::AddSyntheticRoot");
     Node *syntheticRoot = Node::NewNode(chunk_, 1, nodeCount_, GetString("SyntheticRoot"),
                                         NodeType::SYNTHETIC, 0, 0, 0);
     InsertNodeAt(0, syntheticRoot);
