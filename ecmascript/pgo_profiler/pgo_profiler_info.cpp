@@ -777,6 +777,8 @@ bool PGORecordDetailInfos::ParseFromBinary(void *buffer, PGOProfilerHeader *cons
         ASSERT(methodInfos != nullptr);
         if (methodInfos->ParseFromBinary(chunk_.get(), *this, &addr)) {
             recordInfos_.emplace(recordType, methodInfos);
+        } else {
+            nativeAreaAllocator_.Delete(methodInfos);
         }
     }
 
@@ -1049,6 +1051,8 @@ void PGORecordSimpleInfos::ParseFromBinary(void *buffer, PGOProfilerHeader *cons
             // check record name, the default record name of the framework abc does not enter the aot compilation
             FrameworkHelper::GetRealRecordName(recordName);
             (methodIdsResult.first->second).emplace(recordName, methodIds);
+        } else {
+            nativeAreaAllocator_.Delete(methodIds);
         }
     }
 
