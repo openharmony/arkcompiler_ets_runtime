@@ -102,7 +102,7 @@ static const unsigned char firstByteMark[7] = {0x00, 0x00, 0xC0, 0xE0, 0xF0, 0xF
 
 uint32_t DecodeUTF16(uint16_t const *utf16, size_t len, size_t *index, bool cesu8 = false);
 
-size_t EncodeUTF8(uint32_t codepoint, uint8_t* utf8, size_t len, size_t index);
+size_t EncodeUTF8(uint32_t codepoint, uint8_t* utf8, size_t index, size_t size);
 
 uint32_t UTF16Decode(uint16_t lead, uint16_t trail);
 
