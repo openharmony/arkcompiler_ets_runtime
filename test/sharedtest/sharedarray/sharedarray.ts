@@ -318,6 +318,15 @@ function concat(): void {
     print(arr1);
     print(arr1[3]);
     print(arr1.length);
+
+    let nsArr = [1, , 4];
+    let arr2: SendableArray<number> = array.concat(1, nsArr[1], 5);
+    print(arr2);
+    print(arr2.length);
+
+    let arr3: SendableArray<number> = array.concat(1, arr1, 5, nsArr[1]);
+    print(arr3);
+    print(arr3.length);
 }
 
 function join(): void {
