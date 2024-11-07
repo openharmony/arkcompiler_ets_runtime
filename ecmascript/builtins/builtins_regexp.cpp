@@ -2432,7 +2432,7 @@ EcmaString *BuiltinsRegExp::EscapeRegExpPattern(JSThread *thread, const JSHandle
         srcStdStr = "(?:)";
     }
     bool escapeChar = false;
-    for (int i = 0; i < srcStdStr.size(); i++) {
+    for (size_t i = 0; i < srcStdStr.size(); i++) {
         if (srcStdStr[i] == '\\') {
             escapeChar=!escapeChar;
         } else if (!escapeChar && srcStdStr[i]=='/') {
