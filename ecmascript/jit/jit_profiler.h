@@ -66,6 +66,10 @@ public:
     {
         return bcOffsetPGODefOpTypeMap_;
     }
+    std::unordered_map<int32_t, bool> GetBoolMap()
+    {
+        return bcOffsetBoolMap_;
+    }
     void InitJITProfiler()
     {
         ptManager_ = vm_->GetJSThread()->GetCurrentEcmaContext()->GetPTManager();
@@ -161,6 +165,16 @@ private:
         }
     }
 
+    inline void SetBcOffsetBool(uint32_t offset, bool isInsufficientProfile = false)
+    {
+        bcOffsetBoolMap_[offset] = isInsufficientProfile;
+    }
+
+    inline bool IsIncompleteProfileTypeInfo();
+    inline bool SlotValueIsUndefined(uint32_t slotId);
+    inline void UpdateBcOffsetBool(uint32_t offset, uint32_t slotId);
+    inline void UpdateBcOffsetBoolWithNearSlotId(uint32_t offset, uint32_t slotId);
+
     void Clear();
 
     EcmaVM *vm_ { nullptr };
@@ -171,6 +185,7 @@ private:
     std::unordered_map<int32_t, const PGOSampleType*> bcOffsetPGOOpTypeMap_ {};
     std::unordered_map<int32_t, const PGORWOpType*> bcOffsetPGORwTypeMap_ {};
     std::unordered_map<int32_t, const PGODefineOpType*> bcOffsetPGODefOpTypeMap_{};
+    std::unordered_map<int32_t, bool> bcOffsetBoolMap_ {};
     RecursiveMutex mutex_;
     CompilationEnv *compilationEnv_ {nullptr};
     Chunk *chunk_ {nullptr};

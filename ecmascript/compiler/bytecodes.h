@@ -753,7 +753,7 @@ public:
 
     bool needFallThrough() const
     {
-        return !IsJump() && !IsReturn() && !IsThrow();
+        return !IsJump() && !IsReturn() && !IsThrow() && !IsInsufficientProfile();
     }
 
     bool IsGeneratorRelative() const
@@ -821,11 +821,19 @@ public:
         return metaData_.GetOpcode();
     }
 
+    inline bool IsInsufficientProfile() const
+    {
+        return isInsufficientProfile_;
+    }
+
     static void InitBytecodeInfo(BytecodeCircuitBuilder *builder,
         BytecodeInfo &info, const uint8_t* pc);
 
 private:
+    void SetInsufficientProfile(BytecodeCircuitBuilder *builder, const uint8_t *pc);
+
     BytecodeMetaData metaData_ { 0 };
+    bool isInsufficientProfile_ {false};
     friend class BytecodeCircuitBuilder;
 };
 

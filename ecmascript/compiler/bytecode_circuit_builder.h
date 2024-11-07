@@ -483,6 +483,8 @@ public:
 
     void RemoveUnreachableRegion();
 
+    void RemoveInsufficientProfileRegion();
+
     GateRef GetFrameArgs() const
     {
         return argAcc_.GetFrameArgs();
@@ -653,6 +655,7 @@ private:
     void BuildCircuitArgs();
     void BuildOSRArgs();
     std::vector<GateRef> CreateGateInList(const BytecodeInfo &info, const GateMetaData *meta);
+    GateRef NewDeopt(BytecodeRegion &bb);
     GateRef NewConst(const BytecodeInfo &info);
     void NewJSGate(BytecodeRegion &bb);
     void NewJump(BytecodeRegion &bbd);
@@ -669,8 +672,8 @@ private:
 
     void UpdateCFG();
     void CollectTryPredsInfo();
-    void ClearUnreachableRegion(ChunkVector<BytecodeRegion*>& pendingList);
-    void RemoveUnusedPredsInfo(BytecodeRegion& bb);
+    void ClearUnreachableRegion(ChunkVector<BytecodeRegion*>& pendingList, bool skipInsufficientProfile = false);
+    void RemoveUnusedPredsInfo(BytecodeRegion& bb, bool skipInsufficientProfile);
     void BuildCircuit();
     void PrintGraph();
     void PrintBBInfo();

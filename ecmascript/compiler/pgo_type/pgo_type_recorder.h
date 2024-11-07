@@ -43,6 +43,8 @@ public:
 
     PGOTypeRef PUBLIC_API GetPGOType(int32_t offset) const;
 
+    bool PUBLIC_API IsInsufficientProfile(int32_t offset) const;
+
     inline PGODefineOpType GetPGODefOpType(int32_t bcOffset) const
     {
         auto typeIter = bcOffsetPGODefOpTypeMap_.find(bcOffset);
@@ -74,6 +76,7 @@ public:
         bcOffsetPGOOpTypeMap_ = jitProfile->GetOpTypeMap();
         bcOffsetPGODefOpTypeMap_ = jitProfile->GetDefOpTypeMap();
         bcOffsetPGORwTypeMap_ = jitProfile->GetRwTypeMap();
+        bcOffsetBoolMap_ = jitProfile->GetBoolMap();
     }
 
     bool IsValidPt(ProfileType type) const;
@@ -83,6 +86,7 @@ private:
     std::unordered_map<int32_t, const PGOSampleType*> bcOffsetPGOOpTypeMap_ {};
     std::unordered_map<int32_t, const PGORWOpType*> bcOffsetPGORwTypeMap_ {};
     std::unordered_map<int32_t, const PGODefineOpType*> bcOffsetPGODefOpTypeMap_;
+    std::unordered_map<int32_t, bool> bcOffsetBoolMap_ {};
 };
 }  // panda::ecmascript::kungfu
 #endif // ECMASCRIPT_COMPILER_PGO_TYPE_PGO_TYPE_RECORD_H

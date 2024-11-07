@@ -585,6 +585,7 @@ void BytecodeInfo::InitBytecodeInfo(BytecodeCircuitBuilder *builder,
                                     BytecodeInfo &info, const uint8_t *pc)
 {
     auto opcode = info.GetOpcode();
+    info.SetInsufficientProfile(builder, pc);
     switch (opcode) {
         case EcmaOpcode::MOV_V4_V4: {
             uint16_t vdst = READ_INST_4_0();
@@ -1926,6 +1927,13 @@ void BytecodeInfo::InitBytecodeInfo(BytecodeCircuitBuilder *builder,
             UNREACHABLE();
             break;
         }
+    }
+}
+
+void BytecodeInfo::SetInsufficientProfile(BytecodeCircuitBuilder *builder, const uint8_t *pc)
+{
+    if (builder->IsJitCompile()) {
+        isInsufficientProfile_ = builder->GetPGOTypeRecorder()->IsInsufficientProfile(builder->GetPcOffset(pc));
     }
 }
 

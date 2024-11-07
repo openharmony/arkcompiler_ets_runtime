@@ -47,6 +47,8 @@ void JITProfiler::ProfileBytecode(JSThread *thread, const JSHandle<ProfileTypeIn
         auto opcode = bcIns.GetOpcode();
         auto bcOffset = bcIns.GetAddress() - pcStart;
         auto pc = bcIns.GetAddress();
+        // Assuming that the assembly interpreter has executed all bytecode.
+        SetBcOffsetBool(bcOffset);
         switch (opcode) {
             case EcmaOpcode::LDTHISBYNAME_IMM8_ID16:
             case EcmaOpcode::LDOBJBYNAME_IMM8_ID16: {
@@ -148,7 +150,6 @@ void JITProfiler::ProfileBytecode(JSThread *thread, const JSHandle<ProfileTypeIn
             case EcmaOpcode::OR2_IMM8_V8:
             case EcmaOpcode::XOR2_IMM8_V8:
             case EcmaOpcode::ASHR2_IMM8_V8:
-            case EcmaOpcode::EXP_IMM8_V8:
             case EcmaOpcode::NEG_IMM8:
             case EcmaOpcode::NOT_IMM8:
             case EcmaOpcode::INC_IMM8:
@@ -158,7 +159,18 @@ void JITProfiler::ProfileBytecode(JSThread *thread, const JSHandle<ProfileTypeIn
             case EcmaOpcode::LESS_IMM8_V8:
             case EcmaOpcode::LESSEQ_IMM8_V8:
             case EcmaOpcode::GREATER_IMM8_V8:
-            case EcmaOpcode::GREATEREQ_IMM8_V8:
+            case EcmaOpcode::GREATEREQ_IMM8_V8: {
+                Jit::JitLockHolder lock(thread);
+                if (!useRawProfileTypeInfo) {
+                    profileTypeInfo_ = *profileTypeInfo;
+                }
+                uint8_t slotId = READ_INST_8_0();
+                CHECK_SLOTID_BREAK(slotId);
+                ConvertOpType(slotId, bcOffset);
+                UpdateBcOffsetBool(bcOffset, slotId);
+                break;
+            }
+            case EcmaOpcode::EXP_IMM8_V8:
             case EcmaOpcode::STRICTNOTEQ_IMM8_V8:
             case EcmaOpcode::STRICTEQ_IMM8_V8:
             case EcmaOpcode::TONUMERIC_IMM8: {
@@ -189,6 +201,7 @@ void JITProfiler::ProfileBytecode(JSThread *thread, const JSHandle<ProfileTypeIn
                 uint8_t slotId = READ_INST_8_0();
                 CHECK_SLOTID_BREAK(slotId);
                 ConvertCall(slotId, bcOffset);
+                UpdateBcOffsetBool(bcOffset, slotId);
                 break;
             }
             case EcmaOpcode::CALLRUNTIME_CALLINIT_PREF_IMM8_V8: {
@@ -262,6 +275,7 @@ void JITProfiler::ProfileBytecode(JSThread *thread, const JSHandle<ProfileTypeIn
                 uint8_t slotId = READ_INST_8_0();
                 CHECK_SLOTID_BREAK(slotId);
                 ConvertCreateObject(slotId, bcOffset, traceId);
+                UpdateBcOffsetBool(bcOffset, slotId);
                 break;
             }
             case EcmaOpcode::CREATEOBJECTWITHBUFFER_IMM16_ID16:
@@ -275,6 +289,7 @@ void JITProfiler::ProfileBytecode(JSThread *thread, const JSHandle<ProfileTypeIn
                     static_cast<int32_t>(reinterpret_cast<uintptr_t>(pc) - reinterpret_cast<uintptr_t>(header));
                 uint16_t slotId = READ_INST_16_0();
                 ConvertCreateObject(slotId, bcOffset, traceId);
+                UpdateBcOffsetBool(bcOffset, slotId);
                 break;
             }
             case EcmaOpcode::GETITERATOR_IMM8: {
@@ -1045,11 +1060,45 @@ bool JITProfiler::IsJSHClassNotEqual(JSHClass *receiver, JSHClass *hold, JSHClas
             (exceptHoldHClass != hold && exceptPrototypeOfPrototypeHClass != hold));
 }
 
+bool JITProfiler::IsIncompleteProfileTypeInfo()
+{
+    if (profileTypeInfo_ == nullptr) {
+        return true;
+    }
+    // We may receive an incomplete profile typeinfo. During the execution of a larger function, when the upper part of
+    // the function is executed, profiltypeinfo has not yet been created. When profiltypeinfo is created and Jit is
+    // triggered, the first half of profiltypeinfo becomes empty.
+    return profileTypeInfo_->Get(0).IsUndefined();
+}
+
+bool JITProfiler::SlotValueIsUndefined(uint32_t slotId)
+{
+    return profileTypeInfo_->Get(slotId).IsUndefined();
+}
+
+void JITProfiler::UpdateBcOffsetBool(uint32_t offset, uint32_t slotId)
+{
+    if (IsIncompleteProfileTypeInfo()) {
+        return;
+    }
+    SetBcOffsetBool(offset, SlotValueIsUndefined(slotId));
+}
+
+void JITProfiler::UpdateBcOffsetBoolWithNearSlotId(uint32_t offset, uint32_t slotId)
+{
+    if (IsIncompleteProfileTypeInfo()) {
+        return;
+    }
+    bool isInsufficientPGO = SlotValueIsUndefined(slotId) && SlotValueIsUndefined(slotId + 1);
+    SetBcOffsetBool(offset, isInsufficientPGO);
+}
+
 void JITProfiler::Clear()
 {
     bcOffsetPGOOpTypeMap_.clear();
     bcOffsetPGODefOpTypeMap_.clear();
     bcOffsetPGORwTypeMap_.clear();
+    bcOffsetBoolMap_.clear();
     abcId_ = 0;
     profileTypeInfo_ = nullptr;
     methodId_ = (EntityId)0;

@@ -105,6 +105,11 @@ void BytecodeCircuitBuilder::CollectRegionInfo(uint32_t bcIndex)
             auto nextIndex = bcIndex + 1; // 1: next pc
             regionsInfo_.InsertHead(nextIndex);
         }
+    } else if (info.IsInsufficientProfile()) {
+        if (bcIndex != GetLastBcIndex()) {
+            auto nextIndex = bcIndex + 1; // 1: next pc
+            regionsInfo_.InsertSplit(nextIndex);
+        }
     }
 }
 
@@ -187,7 +192,6 @@ void BytecodeCircuitBuilder::PerformDFS(const std::vector<size_t> &immDom, size_
         }
     }
 }
-
 
 void BytecodeCircuitBuilder::ReducibilityCheck()
 {
@@ -372,11 +376,16 @@ void BytecodeCircuitBuilder::BuildRegions(const ExceptionInfo &byteCodeException
         CollectTryPredsInfo();
     }
     RemoveUnreachableRegion();
+    if (IsLogEnabled() && !IsPreAnalysis()) {
+        PrintGraph(std::string("Update CFG [" + methodName_ + "]").c_str());
+    }
+    frameStateBuilder_.AnalyzeLiveness();
+    RemoveInsufficientProfileRegion();
     if (NeedIrreducibleLoopCheck()) {
         ReducibilityCheck();
     }
     if (IsLogEnabled() && !IsPreAnalysis()) {
-        PrintGraph(std::string("Update CFG [" + methodName_ + "]").c_str());
+        PrintGraph(std::string("Update CFG With Profile [" + methodName_ + "]").c_str());
     }
     BuildCircuit();
 }
@@ -449,9 +458,12 @@ void BytecodeCircuitBuilder::CollectTryPredsInfo()
     }
 }
 
-void BytecodeCircuitBuilder::RemoveUnusedPredsInfo(BytecodeRegion& bb)
+void BytecodeCircuitBuilder::RemoveUnusedPredsInfo(BytecodeRegion& bb, bool skipInsufficientProfile)
 {
-    EnumerateBlock(bb, [&bb](const BytecodeInfo &bytecodeInfo) -> bool {
+    EnumerateBlock(bb, [&bb, &skipInsufficientProfile](const BytecodeInfo &bytecodeInfo) -> bool {
+        if (skipInsufficientProfile && bytecodeInfo.IsInsufficientProfile()) {
+            return true;
+        }
         if (bytecodeInfo.IsGeneral()) {
             ASSERT(bb.catches.size() == 1); // 1: cache size
             if (!bytecodeInfo.NoThrow()) {
@@ -462,7 +474,8 @@ void BytecodeCircuitBuilder::RemoveUnusedPredsInfo(BytecodeRegion& bb)
     });
 }
 
-void BytecodeCircuitBuilder::ClearUnreachableRegion(ChunkVector<BytecodeRegion*>& pendingList)
+void BytecodeCircuitBuilder::ClearUnreachableRegion(ChunkVector<BytecodeRegion*>& pendingList,
+                                                    bool skipInsufficientProfile)
 {
     auto bb = pendingList.back();
     pendingList.pop_back();
@@ -493,7 +506,7 @@ void BytecodeCircuitBuilder::ClearUnreachableRegion(ChunkVector<BytecodeRegion*>
         auto bbNext = *it;
         ASSERT(bbNext->numOfStatePreds >= 0);
         if (bbNext->numOfStatePreds != 0) {
-            RemoveUnusedPredsInfo(*bb);
+            RemoveUnusedPredsInfo(*bb, skipInsufficientProfile);
             bb->EraseThisBlock(bbNext->trys);
             if (bbNext->numOfStatePreds == 0) {
                 pendingList.emplace_back(bbNext);
@@ -533,6 +546,68 @@ void BytecodeCircuitBuilder::RemoveUnreachableRegion()
     }
     while (!pendingList.empty()) {
         ClearUnreachableRegion(pendingList);
+    }
+}
+
+void BytecodeCircuitBuilder::RemoveInsufficientProfileRegion()
+{
+    ChunkVector<BytecodeRegion*> pendingList(circuit_->chunk());
+    for (size_t i = 1; i < graph_.size(); i++) {
+        auto &curBlock = RegionAt(i);
+        const BytecodeInfo& lastBytecodeInfo = GetBytecodeInfo(curBlock.end);
+        // We believe that bytecode with insufficient profile has never been executed.
+        // If the last bytecode in the block has not been executed by the assembly interpreter,
+        // the benefits of compiling its subsequent bytecode are relatively small, for the following reasons:
+        //     1. Even if these bytecode are compiled, they are unlikely to be executed.
+        //     2. These bytecode are missing profile and cannot obtain high-quality machine code.
+        if (!lastBytecodeInfo.IsInsufficientProfile()) {
+            continue;
+        }
+        // 1. Disconnect from the successor.
+        // The last bytecode can only be one of JMP, THOW, or Unexecuted(InsufficientProfile), where JMP and THOW must
+        // have been executed. The Block split from Unexecuted(InsufficientProfile) has only one successor or none.
+        ASSERT(curBlock.succs.size() <= 1);
+        for (auto it = curBlock.succs.begin(); it != curBlock.succs.end(); it++) {
+            auto nextBlock = *it;
+            ASSERT(nextBlock->numOfStatePreds >= 0);
+            if (nextBlock->numOfStatePreds == 0) {
+                continue;
+            }
+            curBlock.EraseThisBlock(nextBlock->preds);
+            nextBlock->numOfStatePreds--;
+            if (nextBlock->numOfStatePreds == 0) {
+                pendingList.emplace_back(nextBlock);
+            }
+        }
+        curBlock.succs.clear();
+        // 2. Disconnect from the catch.
+        // If the bytecode has not been executed(InsufficientProfile), a deopt is generated.
+        // The assembly interpreter continues to handle the exception.
+        if (curBlock.catches.size() == 0 || lastBytecodeInfo.NoThrow()) {
+            continue;
+        }
+        ASSERT(curBlock.catches.size() == 1);
+        curBlock.catches.at(0)->numOfStatePreds--;
+        // Before lastBytecodeInfo, there may still be bytecode that throws an exception,
+        // which will determine whether the catchBlock can be removed from the catchs list of curBlock.
+        size_t numOfThrowBytecode = 0;
+        EnumerateBlock(curBlock, [&numOfThrowBytecode](const BytecodeInfo &bytecodeInfo) -> bool {
+            if (bytecodeInfo.IsGeneral() && !bytecodeInfo.NoThrow()) {
+                numOfThrowBytecode++;
+            }
+            return true;
+        });
+        // no other throw
+        if (numOfThrowBytecode == 1) {
+            curBlock.EraseThisBlock(curBlock.catches.at(0)->trys);
+            if (curBlock.catches.at(0)->numOfStatePreds == 0) {
+                pendingList.emplace_back(curBlock.catches.at(0));
+            }
+            curBlock.catches.clear();
+        }
+    }
+    while (!pendingList.empty()) {
+        ClearUnreachableRegion(pendingList, true);
     }
 }
 
@@ -678,6 +753,28 @@ void BytecodeCircuitBuilder::BuildOSRArgs()
     }
 
     BuildFrameArgs();
+}
+
+GateRef BytecodeCircuitBuilder::NewDeopt(BytecodeRegion &bb)
+{
+    ASSERT(bb.succs.empty());
+    auto &iterator = bb.GetBytecodeIterator();
+    GateRef state = frameStateBuilder_.GetCurrentState();
+    GateRef depend = frameStateBuilder_.GetCurrentDepend();
+    std::string comment = Deoptimizier::DisplayItems(DeoptType::INSUFFICIENTPROFILE);
+    GateRef type = circuit_->GetConstantGate(MachineType::I64, static_cast<int64_t>(DeoptType::INSUFFICIENTPROFILE),
+                                             GateType::NJSValue());
+    GateRef condition = circuit_->GetConstantGate(MachineType::I1, 0, GateType::NJSValue());
+    GateRef deopt = circuit_->NewGate(circuit_->DeoptCheck(), MachineType::I1,
+                                      {state, depend, condition, gateAcc_.FindNearestFrameState(depend), type},
+                                      GateType::NJSValue(), comment.c_str());
+    GateRef dependRelay = circuit_->NewGate(circuit_->DependRelay(), {deopt, depend});
+    GateRef undef =
+        circuit_->GetConstantGate(MachineType::I64, JSTaggedValue::VALUE_UNDEFINED, GateType::TaggedValue());
+    circuit_->NewGate(circuit_->Return(), {state, dependRelay, undef, circuit_->GetReturnRoot()});
+    byteCodeToJSGates_[iterator.Index()].emplace_back(deopt);
+    jsGatesToByteCode_[deopt] = iterator.Index();
+    return deopt;
 }
 
 std::vector<GateRef> BytecodeCircuitBuilder::CreateGateInList(
@@ -956,7 +1053,10 @@ void BytecodeCircuitBuilder::NewByteCode(BytecodeRegion &bb)
     }
     frameStateBuilder_.AdvanceToNextBc(bytecodeInfo, liveout, bcId);
     GateRef gate = Circuit::NullGate();
-    if (bytecodeInfo.IsSetConstant()) {
+    if (bytecodeInfo.IsInsufficientProfile()) {
+        // handle general ecma.* bytecodes
+        NewDeopt(bb);
+    } else if (bytecodeInfo.IsSetConstant()) {
         // handle bytecode command to get constants
         gate = NewConst(bytecodeInfo);
         byteCodeToJSGates_[iterator.Index()].emplace_back(gate);
