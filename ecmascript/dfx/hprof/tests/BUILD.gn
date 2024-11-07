@@ -230,6 +230,37 @@ host_unittest_action("HeapSamplingTest") {
   deps += hiviewdfx_deps
 }
 
+host_unittest_action("RawHeapTranslateTest") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "../rawheap_translate/metadata_parse.cpp",
+    "../rawheap_translate/utils.cpp",
+    "rawheap_translate_test.cpp",
+  ]
+
+  configs = [ "$js_root:ecma_test_config" ]
+
+  deps = [
+    "$ark_third_party_root/icu/icu4c:shared_icui18n",
+    "$ark_third_party_root/icu/icu4c:shared_icuuc",
+    "$js_root:libark_jsruntime_test",
+    sdk_libc_secshared_dep,
+  ]
+
+  cflags_cc = [ "-std=c++17" ]
+
+  external_deps = [
+    "bounds_checking_function:libsec_static",
+    "cJSON:cjson_static",
+  ]
+
+  # hiviewdfx libraries
+  external_deps += hiviewdfx_ext_deps
+  deps += hiviewdfx_deps
+}
+
 action("copy_metadata_for_test") {
   script = "$js_root/script/metadata_copy_for_test.py"
 
@@ -284,6 +315,7 @@ group("unittest") {
     ":HeapTrackerSecondTest",
     ":HeapTrackerThirdTest",
     ":JSMetadataTest",
+    ":RawHeapTranslateTest",
   ]
 }
 
@@ -298,6 +330,7 @@ group("host_unittest") {
     ":HeapTrackerSecondTestAction",
     ":HeapTrackerThirdTestAction",
     ":JSMetadataTestAction",
+    ":RawHeapTranslateTestAction",
   ]
   if (is_mac) {
     deps -= [
@@ -309,6 +342,7 @@ group("host_unittest") {
       ":HeapTrackerSecondTestAction",
       ":HeapTrackerThirdTestAction",
       ":JSMetadataTestAction",
+      ":RawHeapTranslateTestAction",
     ]
   }
 }
