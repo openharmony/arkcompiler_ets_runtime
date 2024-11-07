@@ -251,7 +251,8 @@
       panda::ecmascript::MethodLiteral::ParseFunctionName*;
       panda::ecmascript::ModuleManager::GetRecordName*;
       panda::ecmascript::ModuleManager::HostGetImportedModule*;
-      panda::ecmascript::ModuleManager::HostResolveImportedModuleWithMerge*;
+      panda::ecmascript::ModuleResolver::HostResolveImportedModuleWithMerge*;
+      panda::ecmascript::ModuleResolver::ResolveImportedModuleWithMerge*;
       panda::ecmascript::ModuleManagerHelper::GetModuleValue*;
       panda::ecmascript::ModuleManagerHelper::GetNativeModuleValue*;
       panda::ecmascript::ModuleManagerHelper::GetModuleValueFromIndexBinding*;
@@ -331,7 +332,6 @@
       panda::ecmascript::kungfu::ArkStackMapBuilder::Run*;
       panda::ecmascript::kungfu::PGOBCInfo::Record*;
       panda::ecmascript::SharedModuleManager::GetInstance*;
-      panda::ecmascript::SharedModuleManager::ResolveImportedModuleWithMerge*;
       panda::ecmascript::SharedModuleManager::TransferSModule*;
       panda::ecmascript::kungfu::PGOTypeManager::GetConstantPoolIDByMethodOffset*;
       panda::ecmascript::kungfu::PGOTypeManager::GetConstantPoolByMethodOffset*;
