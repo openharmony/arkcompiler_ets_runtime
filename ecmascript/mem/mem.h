@@ -95,8 +95,10 @@ static constexpr size_t IDLE_GC_YOUNG_SPACE = 3_MB;
 static constexpr double LOW_ALLOCATION_RATE_PER_MS = 10;
 static constexpr double IDLE_SPACE_SIZE_LIMIT_RATE = 0.8f;
 static constexpr double IDLE_SPACE_SIZE_MIN_INC_RATIO = 1.1f;
+static constexpr double IDLE_FRAGMENT_SIZE_RATIO = 0.1f;
 static constexpr size_t IDLE_SPACE_SIZE_MIN_INC_STEP = 5_MB;
 static constexpr size_t IDLE_SPACE_SIZE_MIN_INC_STEP_FULL = 1_MB;
+static constexpr size_t IDLE_MIN_EXPECT_RECLAIM_SIZE = 1_MB;
 
 using TaggedType = uint64_t;
 static constexpr uint32_t TAGGED_TYPE_SIZE = sizeof(TaggedType);

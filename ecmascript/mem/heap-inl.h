@@ -769,7 +769,7 @@ void SharedHeap::TryTriggerConcurrentMarking(JSThread *thread)
     }
 }
 
-void SharedHeap::CollectGarbageFinish(bool inDaemon)
+void SharedHeap::CollectGarbageFinish(bool inDaemon, TriggerGCType gcType)
 {
     if (inDaemon) {
         ASSERT(JSThread::GetCurrent() == dThread_);
@@ -783,8 +783,8 @@ void SharedHeap::CollectGarbageFinish(bool inDaemon)
         smartGCStats_.forceGC_ = false;
     }
     localFullMarkTriggered_ = false;
-    // Record alive object size after shared gc
-    NotifyHeapAliveSizeAfterGC(GetHeapObjectSize());
+    // Record alive object size after shared gc and other stats
+    UpdateHeapStatsAfterGC(gcType);
     // Adjust shared gc trigger threshold
     AdjustGlobalSpaceAllocLimit();
     GetEcmaGCStats()->RecordStatisticAfterGC();

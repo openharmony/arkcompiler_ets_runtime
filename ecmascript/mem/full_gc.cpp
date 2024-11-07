@@ -61,7 +61,6 @@ void FullGC::RunPhases()
         LOG_ECMA(DEBUG) << "start verify post fullgc";
         Verification(heap_, VerifyKind::VERIFY_SHARED_RSET_POST_FULL_GC).VerifyAll();
     }
-    heap_->NotifyHeapAliveSizeAfterGC(heap_->GetHeapObjectSize());
 }
 
 void FullGC::RunPhasesForAppSpawn()
