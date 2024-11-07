@@ -2896,11 +2896,11 @@ JSHandle<EcmaString> BuiltinsRegExp::CreateStringFromResultArray(JSThread *threa
 {
     JSHandle<EcmaString> result = JSHandle<EcmaString>(thread,
         EcmaStringAccessor::CreateLineString(thread->GetEcmaVM(), resultStrLength, isUtf8));
-    FlatStringInfo resultInfo = FlatStringInfo(*result, 0, resultStrLength);
     FlatStringInfo flatStrInfo = EcmaStringAccessor::FlattenAllString(thread->GetEcmaVM(), srcString);
     if (EcmaStringAccessor(srcString).IsTreeString()) { // use flattenedString as srcString
         srcString = JSHandle<EcmaString>(thread, flatStrInfo.GetString());
     }
+    FlatStringInfo resultInfo = FlatStringInfo(*result, 0, resultStrLength);
     uint32_t nextPos = 0;
     uint32_t resultArrayLength = resultArray->GetLength();
     for (int i = 0; i < static_cast<int>(resultArrayLength); i++) {
