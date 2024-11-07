@@ -1097,6 +1097,17 @@ function SomeTest(): void {
 
     const hasNegativeNumber = numbers.some(num => num < 0); // 2:  Whether there are negative numbers in the array
     print(hasNegativeNumber); // should be false
+
+    let nsArr = [1, , 3];
+    const numbers1 = new SendableArray<number>(nsArr[1], 2, 3, 4, 5);
+    print(numbers1.some(num => num < 0)); // should be false
+    print(numbers1.some(num => num < 0 || num === undefined)); // should be true
+    print(numbers1.some(num => num)); // should be true
+
+    const numbers2 = new SendableArray<number>(null, undefined, 3, 4, 5);
+    print(numbers2.some(num => num < 0)); // should be false
+    print(numbers2.some(num => num < 0 || num === undefined)); // should be true
+    print(numbers2.some(num => num)); // should be true
 }
 
 function EveryTest(): void {
@@ -1108,10 +1119,19 @@ function EveryTest(): void {
 
     const allEven = numbers.every((num) => num % 2 === 0); // Check if all the elements in the array are even
     print(allEven); // should be false
+
+    let nsArr = [1, , 3, 5];
+    const numbers1 = new SendableArray<number>(nsArr[0], nsArr[1], undefined, 4, 5);
+    const allPositive1 = numbers1.every((num) => num > 0);
+    print(allPositive1); // should be false
+
+    const allPositive2 = numbers1.every((num) => num > 0 || num == undefined);
+    print(allPositive2); // should be true
 }
 
 function isArrayTest() {
   // print true
+  print("Start Test isArrayTest")
   print(SendableArray.isArray(new SendableArray()));
   print(SendableArray.isArray(new SendableArray('a', 'b', 'c', 'd')));
   print(SendableArray.isArray(new SendableArray(3)));
@@ -1132,6 +1152,7 @@ function isArrayTest() {
 }
 
 function lastIndexOfTest() {
+  print("Start Test lastIndexOf")
   let arr = SendableArray.from([1, 2, 3, 4, 2, 5]);
   print(arr.lastIndexOf(2));
 

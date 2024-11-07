@@ -285,9 +285,18 @@ defineProperty to array failed. err: TypeError: Cannot define property, code: un
 Start Test SomeTest
 true
 false
+false
+true
+true
+false
+true
+true
 Start Test EveryTest
 true
 false
+false
+true
+Start Test isArrayTest
 true
 true
 true
@@ -303,6 +312,7 @@ false
 false
 false
 false
+Start Test lastIndexOf
 4
 0
 5
