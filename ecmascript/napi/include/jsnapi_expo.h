@@ -1845,5 +1845,13 @@ public:
     static bool HasCachedString(const EcmaVM *vm, uint32_t propertyIndex);
     static Local<StringRef> GetCachedString(const EcmaVM *vm, uint32_t propertyIndex);
 };
+
+#ifdef PANDA_JS_ETS_HYBRID_MODE
+class ECMA_PUBLIC_API HandshakeHelper final {
+public:
+    static void DoHandshake(EcmaVM *vm, void *stsiface, void **ecmaiface);
+};
+#endif  // PANDA_JS_ETS_HYBRID_MODE
+
 }
 #endif

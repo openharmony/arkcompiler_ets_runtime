@@ -18,6 +18,10 @@
 
 #include <mutex>
 
+#ifdef PANDA_JS_ETS_HYBRID_MODE
+#include "ecmascript/cross_vm/cross_vm_operator.h"
+#endif  // PANDA_JS_ETS_HYBRID_MODE
+
 #include "ecmascript/base/config.h"
 #include "ecmascript/builtins/builtins_method_index.h"
 #include "ecmascript/js_runtime_options.h"
@@ -820,6 +824,13 @@ public:
     void PrintCollectedByteCode();
 #endif
 
+#ifdef PANDA_JS_ETS_HYBRID_MODE
+    CrossVMOperator& GetCrossVMOperator()
+    {
+        return crossVMOperator_;
+    }
+#endif  // PANDA_JS_ETS_HYBRID_MODE
+
 protected:
 
     void PrintJSErrorInfo(const JSHandle<JSTaggedValue> &exceptionInfo) const;
@@ -947,6 +958,10 @@ private:
     int processStartRealtime_ = 0;
 
     bool enableJitLogSkip_ = true;
+
+#ifdef PANDA_JS_ETS_HYBRID_MODE
+    CrossVMOperator crossVMOperator_;
+#endif // PANDA_JS_ETS_HYBRID_MODE
 
 #if ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT
     // Stats for Thread-State-Transition and String-Table Locks

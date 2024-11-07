@@ -6409,4 +6409,13 @@ bool ExternalStringCache::HasCachedString([[maybe_unused]] const EcmaVM *vm, uin
     ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return instance->HasCachedString(propertyIndex);
 }
+
+#ifdef PANDA_JS_ETS_HYBRID_MODE
+void HandshakeHelper::DoHandshake([[maybe_unused]] EcmaVM *vm, void *stsIface, void **ecmaIface)
+{
+    ecmascript::CrossVMOperator::DoHandshake(vm, stsIface, ecmaIface);
+}
+#endif  // PANDA_JS_ETS_HYBRID_MODE
+
+
 } // namespace panda
