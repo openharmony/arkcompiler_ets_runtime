@@ -518,6 +518,13 @@ HWTEST_F_L0(EcmaStringAccessorTest, WriteToFlatUtf8)
         EXPECT_EQ(arrayU8CompCopyTo[i], arrayU16CompCopyFrom[i]);
     }
     EXPECT_EQ(arrayU8CompCopyTo[lengthReturnU16Comp - 1], 0U);
+
+    uint8_t buffer[200] = {0};
+    std::string str(
+        "您订单尾号为：1442的车辆提车点已由重庆市渝北区龙兴镇新能源办公大楼变更为重庆市江北区鱼嘴镇永和路39号2屋208室，请携带好相关材料按照预约时间前往提车点提车2,如有296ss");
+    JSHandle<EcmaString> ecmaStr = thread->GetEcmaVM()->GetFactory()->NewFromStdString(str);
+    uint32_t len = EcmaStringAccessor(ecmaStr).WriteToFlatUtf8(buffer, 198, true);
+    EXPECT_EQ(len, 197);
 }
 
 /*
