@@ -91,6 +91,7 @@ group("ark_aot_ts_test") {
     "compiler_test",
     "constpool",
     "construct_deopt_frame_stack_overflow",
+    "construct_deopt_frame_stack_overflow2",
     "continue_from_finally",
     "copyrestargs",
     "createarray_meta_data",

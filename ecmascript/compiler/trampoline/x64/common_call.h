@@ -202,7 +202,7 @@ private:
         Register op1, Register op2, Label *stackOverflow);
     static void ThrowStackOverflowExceptionAndReturn(ExtendedAssembler *assembler, Register glue, Register fp,
         Register op);
-    static void ThrowStackOverflowExceptionAndReturnToAotFrame(ExtendedAssembler *assembler, Register glue,
+    static void ThrowStackOverflowExceptionAndReturnToAsmInterpBridgeFrame(ExtendedAssembler *assembler, Register glue,
         Register fp, Register op);
     static void HasPendingException(ExtendedAssembler *assembler, Register threadRegister);
     static void PushCallThis(ExtendedAssembler *assembler, JSCallMode mode,
