@@ -917,8 +917,11 @@ public:
     GateRef ElementsKindIsNumOrHoleNum(GateRef kind);
     GateRef ElementsKindIsHeapKind(GateRef kind);
     GateRef ElementsKindHasHole(GateRef kind);
-    void ArrayCopyAndHoleToUndefined(GateRef glue, GateRef src, GateRef dst, GateRef length,
-                                     MemoryAttribute mAttr = MemoryAttribute::Default());
+    // dstAddr/srcAddr is the address will be copied to/from.
+    // It can be a derived pointer point to the middle of an object.
+    // Note: dstObj is the object address for dstAddr, it must point to the head of an object.
+    void ArrayCopyAndHoleToUndefined(GateRef glue, GateRef srcAddr, GateRef dstObj, GateRef dstAddr,
+                                     GateRef length, MemoryAttribute mAttr = MemoryAttribute::Default());
     void MigrateArrayWithKind(GateRef glue, GateRef object, GateRef oldKind, GateRef newKind);
     GateRef MigrateFromRawValueToHeapValues(GateRef glue, GateRef object, GateRef needCOW, GateRef isIntKind);
     GateRef MigrateFromHeapValueToRawValue(GateRef glue, GateRef object, GateRef needCOW, GateRef isIntKind);
@@ -1048,8 +1051,12 @@ public:
         // Unknown means all the kinds above are possible, it will select the suitable one in runtime.
         Unknown,
     };
+    // dstAddr/srcAddr is the address will be copied to/from.
+    // It can be a derived pointer point to the middle of an object.
+    //
+    // Note: dstObj is the object address for dstAddr, it must point to the head of an object.
     template <OverlapKind kind>
-    void ArrayCopy(GateRef glue, GateRef src, GateRef dst, GateRef length,
+    void ArrayCopy(GateRef glue, GateRef srcAddr, GateRef dstObj, GateRef dstAddr, GateRef length,
                    MemoryAttribute mAttr = MemoryAttribute::Default());
 protected:
     static constexpr int LOOP_UNROLL_FACTOR = 2;

@@ -49,7 +49,7 @@ HWTEST_F_L0(BarrierTest, YoungToYoungBatchCopy)
 
     JSTaggedValue* to = reinterpret_cast<JSTaggedValue*>(ToUintPtr(dstArray->GetData()));
     JSTaggedValue* from = reinterpret_cast<JSTaggedValue*>(ToUintPtr(srcArray->GetData()));
-    Barriers::CopyObject<true, false>(thread, to, from, arrayLength);
+    Barriers::CopyObject<true, false>(thread, *dstArray, to, from, arrayLength);
 
     // young to young, all the bitset should not be changed.
     dstRegion->IterateAllNewToEdenBits([&NewToEdenBeforeCopy](void* mem) {
@@ -112,7 +112,7 @@ HWTEST_F_L0(BarrierTest, BatchCopyNoBarrier)
     JSTaggedValue* to2 = reinterpret_cast<JSTaggedValue*>(ToUintPtr(dstArray2->GetData()));
     JSTaggedValue* from2 = reinterpret_cast<JSTaggedValue*>(ToUintPtr(srcArray->GetData()));
     // barrier should also work for no heap value
-    Barriers::CopyObject<true, false>(thread, to2, from2, arrayLength);
+    Barriers::CopyObject<true, false>(thread, *dstArray, to2, from2, arrayLength);
     // check
     for (uint32_t i = 0; i < arrayLength; i++) {
         EXPECT_EQ(dstArray2->Get(thread, i), srcArray->Get(thread, i));
@@ -146,7 +146,7 @@ HWTEST_F_L0(BarrierTest, LocalToShareBatchCopy)
 
     JSTaggedValue* to = reinterpret_cast<JSTaggedValue*>(ToUintPtr(dstArray->GetData()));
     JSTaggedValue* from = reinterpret_cast<JSTaggedValue*>(ToUintPtr(srcArray->GetData()));
-    Barriers::CopyObject<true, false>(thread, to, from, arrayLength);
+    Barriers::CopyObject<true, false>(thread, *dstArray, to, from, arrayLength);
 
     std::set<uintptr_t> LocalToShareSlot;
     for (uint32_t i = 0; i < arrayLength; i++) {
@@ -202,7 +202,7 @@ HWTEST_F_L0(BarrierTest, LocalToReadOnlyShareBatchCopy)
 
     JSTaggedValue* to = reinterpret_cast<JSTaggedValue*>(ToUintPtr(dstArray->GetData()));
     JSTaggedValue* from = reinterpret_cast<JSTaggedValue*>(ToUintPtr(srcArray->GetData()));
-    Barriers::CopyObject<true, false>(thread, to, from, arrayLength);
+    Barriers::CopyObject<true, false>(thread, *dstArray, to, from, arrayLength);
 
     std::set<uintptr_t> LocalToShareSlot;
     for (uint32_t i = 0; i < arrayLength; i++) {
@@ -256,7 +256,7 @@ HWTEST_F_L0(BarrierTest, LocalToShareMixBatchCopy)
 
     JSTaggedValue* to = reinterpret_cast<JSTaggedValue*>(ToUintPtr(dstArray->GetData()));
     JSTaggedValue* from = reinterpret_cast<JSTaggedValue*>(ToUintPtr(srcArray->GetData()));
-    Barriers::CopyObject<true, false>(thread, to, from, arrayLength);
+    Barriers::CopyObject<true, false>(thread, *dstArray, to, from, arrayLength);
 
     std::set<uintptr_t> LocalToShareSlot;
     for (uint32_t i = 0; i < arrayLength; i++) {
@@ -324,7 +324,7 @@ HWTEST_F_L0(BarrierTest, OldToNewBatchCopy)
 
     JSTaggedValue* to = reinterpret_cast<JSTaggedValue*>(ToUintPtr(dstArray->GetData()));
     JSTaggedValue* from = reinterpret_cast<JSTaggedValue*>(ToUintPtr(srcArray->GetData()));
-    Barriers::CopyObject<true, false>(thread, to, from, arrayLength);
+    Barriers::CopyObject<true, false>(thread, *dstArray, to, from, arrayLength);
 
     // young to young, all the bitset should not be changed.
     dstRegion->IterateAllNewToEdenBits([&OldToNewSlot, &OldToNewBeforeCopy, &dstArray, arrayLength](void* mem) {
