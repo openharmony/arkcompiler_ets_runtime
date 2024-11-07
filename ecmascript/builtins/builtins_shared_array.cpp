@@ -385,7 +385,8 @@ JSTaggedValue BuiltinsSharedArray::Species(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
     BUILTINS_API_TRACE(argv->GetThread(), SharedArray, Species);
-    return BuiltinsArray::Species(argv);
+    // 1. Return the this value.
+    return GetThis(argv).GetTaggedValue();
 }
 
 // 22.1.3.1 Array.prototype.concat ( ...arguments )
@@ -418,8 +419,8 @@ JSTaggedValue BuiltinsSharedArray::Concat(EcmaRuntimeCallInfo *argv)
     // 3. Let n be 0.
     int64_t n = 0;
     JSMutableHandle<JSTaggedValue> ele(thread, JSTaggedValue::Undefined());
-    JSMutableHandle<JSTaggedValue> fromKey(thread, JSTaggedValue::Undefined());
     JSMutableHandle<JSTaggedValue> toKey(thread, JSTaggedValue::Undefined());
+    JSMutableHandle<JSTaggedValue> kValue(thread, JSTaggedValue::Undefined());
     // 4. Prepend O to items.
     // 5. For each element E of items, do
     for (int i = -1; i < argc; i++) {
@@ -436,50 +437,7 @@ JSTaggedValue BuiltinsSharedArray::Concat(EcmaRuntimeCallInfo *argv)
         bool isSpreadable = ArrayHelper::IsConcatSpreadable(thread, ele);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         // b. If spreadable is true, then
-        if (isSpreadable) {
-            // i. Let k be 0.
-            // ii. Let len be ? LengthOfArrayLike(E).
-            // iii. If n + len > 253 - 1, throw a TypeError exception.
-            int64_t len = ArrayHelper::GetArrayLength(thread, ele);
-            int64_t k = 0;
-            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-            if (n + len > base::MAX_SAFE_INTEGER) {
-                THROW_TYPE_ERROR_AND_RETURN(thread, "out of range.", JSTaggedValue::Exception());
-            }
-
-            if (ele->IsStableJSArray(thread)) {
-                JSStableArray::Concat(thread, newArrayHandle, JSHandle<JSObject>::Cast(ele), k, n);
-                RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-            }
-            // iv. Repeat, while k < len,
-            while (k < len) {
-                // 1. Let P be ToString(k).
-                // 2. Let exists be HasProperty(E, P).
-                // 3. If exists is true, then
-                fromKey.Update(JSTaggedValue::ToString(thread, JSTaggedValue(k)));
-                toKey.Update(JSTaggedValue(n));
-                bool exists = JSTaggedValue::HasProperty(thread, ele, fromKey);
-                RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-                if (exists) {
-                    // a. Let subElement be Get(E, P).
-                    JSHandle<JSTaggedValue> fromValHandle =
-                        JSSharedArray::FastGetPropertyByValue(thread, ele, fromKey);
-                    if (!fromValHandle->IsSharedType()) {
-                        auto error = ContainerError::ParamError(thread, "Parameter error.Only accept sendable value.");
-                        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
-                    }
-                    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-                    // b. Perform ? CreateDataPropertyOrThrow(A, ! ToString(𝔽(n)), subElement).
-                    JSObject::CreateDataPropertyOrThrow(thread, newArrayHandle, toKey, fromValHandle, SCheckMode::SKIP);
-                    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-                }
-                // 4. Set n to n + 1.
-                // 5. Set k to k + 1.
-                n++;
-                k++;
-            }
-        //c. Else
-        } else {
+        if (!isSpreadable) {
             // ii. If n ≥ 253 - 1, throw a TypeError exception.
             if (n >= base::MAX_SAFE_INTEGER) {
                 THROW_TYPE_ERROR_AND_RETURN(thread, "out of range.", JSTaggedValue::Exception());
@@ -489,6 +447,35 @@ JSTaggedValue BuiltinsSharedArray::Concat(EcmaRuntimeCallInfo *argv)
             JSObject::CreateDataPropertyOrThrow(thread, newArrayHandle, n, ele, SCheckMode::SKIP);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             n++;
+            continue;
+        }
+
+        // i. Let k be 0.
+        // ii. Let len be ? LengthOfArrayLike(E).
+        // iii. If n + len > 253 - 1, throw a TypeError exception.
+        int64_t len = ArrayHelper::GetArrayLength(thread, ele);
+        int64_t k = 0;
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        if (n + len > base::MAX_SAFE_INTEGER) {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "out of range.", JSTaggedValue::Exception());
+        }
+
+        JSHandle<JSObject> eleObj = JSTaggedValue::ToObject(thread, ele);
+        while (k < len) {
+            toKey.Update(JSTaggedValue(n));
+            kValue.Update(BuiltinsSharedArray::GetElementByKey(thread, eleObj, k));
+
+            if (!kValue->IsSharedType()) {
+                auto error = ContainerError::ParamError(thread, "Parameter error.Only accept sendable value.");
+                THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+            }
+
+            if (!kValue->IsHole()) {
+                JSObject::CreateDataPropertyOrThrow(thread, newArrayHandle, toKey, kValue, SCheckMode::SKIP);
+                RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            }
+            n++;
+            k++;
         }
     }
     // 6. Perform ? Set(A, "length", 𝔽(n), true).
@@ -956,7 +943,8 @@ JSTaggedValue BuiltinsSharedArray::GetElementByKey(JSThread *thread, JSHandle<JS
     JSTaggedValue val = ElementAccessor::Get(thisObjHandle, index);
     if (val.IsHole()) {
         JSHandle<JSTaggedValue> thisObjVal(thisObjHandle);
-        auto res = JSArray::FastGetPropertyByValue(thread, thisObjVal, index).GetTaggedValue();
+        // dependent on Prototype, SharedArray have not Prototype，Can be optimized
+        auto res = JSSharedArray::FastGetPropertyByValue(thread, thisObjVal, index).GetTaggedValue();
         if (res.IsHole()) {
             return JSTaggedValue::Undefined();
         } else {
