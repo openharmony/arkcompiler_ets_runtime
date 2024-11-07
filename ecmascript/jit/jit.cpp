@@ -38,6 +38,7 @@ void Jit::SetJitEnablePostFork(EcmaVM *vm, const std::string &bundleName)
     bool jitEnable = ohos::JitTools::GetJitEscapeDisable() || !AotCrashInfo::IsJitEscape();
     jitEnable &= ohos::EnableAotJitListHelper::GetInstance()->IsEnableJit(bundleName);
     jitEnable &= !vm->GetJSOptions().GetAOTHasException();
+    jitEnable &= ohos::JitTools::IsSupportJitCodeSigner();
     if (jitEnable) {
         bool isEnableFastJit = options.IsEnableJIT() && options.GetEnableAsmInterpreter();
         bool isEnableBaselineJit = options.IsEnableBaselineJIT() && options.GetEnableAsmInterpreter();
