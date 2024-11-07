@@ -285,6 +285,7 @@ group("ark_aot_ts_test") {
     "stlettoglobalrecord",
     "stobjbyindex",
     "stobjbyname",
+    "stobjbyname1",
     "stobjbyvalue",
     "stownbyindex",
     "stownbyname",

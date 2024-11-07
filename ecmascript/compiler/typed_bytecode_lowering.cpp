@@ -805,7 +805,8 @@ void TypedBytecodeLowering::LowerTypedStObjByName(GateRef gate)
                                                       value);
             } else {
                 builder_.MonoStoreProperty(tacc.GetReceiver(), plrGate, unsharedConstPool, holderHClassIndex, value,
-                                           builder_.TruncInt64ToInt32(tacc.GetKey()), frameState);
+                                           builder_.TruncInt64ToInt32(tacc.GetKey()),
+                                           builder_.Boolean(tacc.IsPrototypeHclass(0)), frameState);
             }
         } else if (tacc.IsReceiverEqHolder(0)) {
             BuildNamedPropertyAccess(gate, tacc.GetReceiver(), tacc.GetReceiver(),
@@ -829,9 +830,10 @@ void TypedBytecodeLowering::LowerTypedStObjByName(GateRef gate)
         }
         if (tacc.IsReceiverNoEqNewHolder(i)) {
             builder_.ProtoChangeMarkerCheck(tacc.GetReceiver(), frameState);
-            auto prototype = builder_.LoadConstOffset(VariableType::JS_ANY(), receiverHC, JSHClass::PROTOTYPE_OFFSET);
             if (tacc.IsHolderEqNewHolder(i)) {
                 // lookup from receiver for holder
+                auto prototype = builder_.LoadConstOffset(VariableType::JS_ANY(), receiverHC,
+                                                          JSHClass::PROTOTYPE_OFFSET);
                 auto holderHC = builder_.GetHClassGateFromIndex(gate, tacc.GetAccessInfo(i).HClassIndex());
                 DEFVALUE(current, (&builder_), VariableType::JS_ANY(), prototype);
                 Label loopHead(&builder_);
@@ -854,52 +856,7 @@ void TypedBytecodeLowering::LowerTypedStObjByName(GateRef gate)
                                          tacc.GetAccessInfo(i).Plr());
                 builder_.Jump(&exit);
             } else {
-                // transition happened
-                Label notProto(&builder_);
-                Label isProto(&builder_);
-                auto newHolderHC = builder_.GetHClassGateFromIndex(gate, tacc.GetAccessInfo(i).HClassIndex());
-                builder_.StoreConstOffset(VariableType::JS_ANY(), newHolderHC, JSHClass::PROTOTYPE_OFFSET, prototype);
-                builder_.Branch(builder_.IsProtoTypeHClass(receiverHC), &isProto, &notProto,
-                    BranchWeight::ONE_WEIGHT, BranchWeight::DEOPT_WEIGHT, "isProtoTypeHClass");
-                builder_.Bind(&isProto);
-                GateRef propKey = builder_.GetObjectByIndexFromConstPool(
-                    glue_, gate, frameState, builder_.TruncInt64ToInt32(tacc.GetKey()), ConstPoolType::STRING);
-                builder_.CallRuntime(glue_, RTSTUB_ID(UpdateAOTHClass), Gate::InvalidGateRef,
-                    { receiverHC, newHolderHC, propKey }, gate);
-                builder_.Jump(&notProto);
-                builder_.Bind(&notProto);
-                MemoryAttribute mAttr = MemoryAttribute::NeedBarrierAndAtomic();
-                builder_.StoreConstOffset(VariableType::JS_ANY(), tacc.GetReceiver(),
-                    TaggedObject::HCLASS_OFFSET, newHolderHC, mAttr);
-                if (!tacc.GetAccessInfo(i).Plr().IsInlinedProps()) {
-                    auto properties = builder_.LoadConstOffset(VariableType::JS_ANY(), tacc.GetReceiver(),
-                                                               JSObject::PROPERTIES_OFFSET);
-                    auto capacity =
-                        builder_.LoadConstOffset(VariableType::INT32(), properties, TaggedArray::LENGTH_OFFSET);
-                    auto index = builder_.Int32(tacc.GetAccessInfo(i).Plr().GetOffset());
-                    Label needExtend(&builder_);
-                    Label notExtend(&builder_);
-                    BRANCH_CIR(builder_.Int32UnsignedLessThan(index, capacity), &notExtend, &needExtend);
-                    builder_.Bind(&notExtend);
-                    {
-                        BuildNamedPropertyAccess(gate, tacc.GetReceiver(), tacc.GetReceiver(),
-                            tacc.GetValue(), tacc.GetAccessInfo(i).Plr());
-                        builder_.Jump(&exit);
-                    }
-                    builder_.Bind(&needExtend);
-                    {
-                        builder_.CallRuntime(glue_,
-                            RTSTUB_ID(PropertiesSetValue),
-                            Gate::InvalidGateRef,
-                            { tacc.GetReceiver(), tacc.GetValue(), properties, builder_.Int32ToTaggedInt(capacity),
-                            builder_.Int32ToTaggedInt(index) }, gate);
-                        builder_.Jump(&exit);
-                    }
-                } else {
-                    BuildNamedPropertyAccess(gate, tacc.GetReceiver(), tacc.GetReceiver(),
-                        tacc.GetValue(), tacc.GetAccessInfo(i).Plr());
-                    builder_.Jump(&exit);
-                }
+                TypedStObjByNameTransition(gate, receiverHC, frameState, exit, tacc, i);
             }
         } else if (tacc.IsReceiverEqHolder(i)) {
             // Local
@@ -919,6 +876,58 @@ void TypedBytecodeLowering::LowerTypedStObjByName(GateRef gate)
     builder_.Bind(&exit);
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), Circuit::NullGate());
     DeleteConstDataIfNoUser(tacc.GetKey());
+}
+
+void TypedBytecodeLowering::TypedStObjByNameTransition(GateRef gate, GateRef receiverHC, GateRef frameState,
+                                                       Label &exit, StoreObjByNameTypeInfoAccessor &tacc, size_t i)
+{
+    Label notProto(&builder_);
+    Label isProto(&builder_);
+    auto newHolderHC = builder_.GetHClassGateFromIndex(gate, tacc.GetAccessInfo(i).HClassIndex());
+    if (compilationEnv_->IsAotCompiler()) {
+        auto prototype = builder_.LoadConstOffset(VariableType::JS_ANY(), receiverHC, JSHClass::PROTOTYPE_OFFSET);
+        builder_.StoreConstOffset(VariableType::JS_ANY(), newHolderHC, JSHClass::PROTOTYPE_OFFSET, prototype);
+    }
+    if (!tacc.IsPrototypeHclass(i)) {
+        builder_.DeoptCheck(builder_.BoolNot(builder_.IsProtoTypeHClass(receiverHC)), frameState,
+                            DeoptType::PROTOTYPECHANGED2);
+    } else {
+        builder_.Branch(builder_.IsProtoTypeHClass(receiverHC), &isProto, &notProto,
+                        BranchWeight::ONE_WEIGHT, BranchWeight::DEOPT_WEIGHT, "isProtoTypeHClass");
+        builder_.Bind(&isProto);
+        GateRef propKey =
+            builder_.GetObjectByIndexFromConstPool(glue_, gate, frameState,
+                                                   builder_.TruncInt64ToInt32(tacc.GetKey()), ConstPoolType::STRING);
+        builder_.CallRuntime(glue_, RTSTUB_ID(UpdateAOTHClass), Gate::InvalidGateRef,
+                             { receiverHC, newHolderHC, propKey }, gate);
+        builder_.Jump(&notProto);
+        builder_.Bind(&notProto);
+    }
+    MemoryAttribute mAttr = MemoryAttribute::NeedBarrierAndAtomic();
+    builder_.StoreConstOffset(VariableType::JS_ANY(), tacc.GetReceiver(), TaggedObject::HCLASS_OFFSET,
+                              newHolderHC, mAttr);
+    if (!tacc.GetAccessInfo(i).Plr().IsInlinedProps()) {
+        auto properties = builder_.LoadConstOffset(VariableType::JS_ANY(), tacc.GetReceiver(),
+                                                   JSObject::PROPERTIES_OFFSET);
+        auto capacity = builder_.LoadConstOffset(VariableType::INT32(), properties, TaggedArray::LENGTH_OFFSET);
+        auto index = builder_.Int32(tacc.GetAccessInfo(i).Plr().GetOffset());
+        Label needExtend(&builder_);
+        Label notExtend(&builder_);
+        BRANCH_CIR(builder_.Int32UnsignedLessThan(index, capacity), &notExtend, &needExtend);
+        builder_.Bind(&notExtend);
+        BuildNamedPropertyAccess(gate, tacc.GetReceiver(), tacc.GetReceiver(), tacc.GetValue(),
+                                 tacc.GetAccessInfo(i).Plr());
+        builder_.Jump(&exit);
+        builder_.Bind(&needExtend);
+        builder_.CallRuntime(glue_, RTSTUB_ID(PropertiesSetValue), Gate::InvalidGateRef,
+                             { tacc.GetReceiver(), tacc.GetValue(), properties, builder_.Int32ToTaggedInt(capacity),
+                               builder_.Int32ToTaggedInt(index) }, gate);
+        builder_.Jump(&exit);
+    } else {
+        BuildNamedPropertyAccess(gate, tacc.GetReceiver(), tacc.GetReceiver(), tacc.GetValue(),
+                                 tacc.GetAccessInfo(i).Plr());
+        builder_.Jump(&exit);
+    }
 }
 
 void TypedBytecodeLowering::LowerTypedStOwnByName(GateRef gate)
