@@ -287,6 +287,28 @@ public:
         return heapAliveSizeAfterGC_;
     }
 
+    void UpdateHeapStatsAfterGC(TriggerGCType gcType)
+    {
+        if (gcType == TriggerGCType::EDEN_GC || gcType == TriggerGCType::YOUNG_GC) {
+            return;
+        }
+        heapAliveSizeAfterGC_ = GetHeapObjectSize();
+        fragmentSizeAfterGC_ = GetCommittedSize() - GetHeapObjectSize();
+        if (gcType == TriggerGCType::FULL_GC || gcType == TriggerGCType::SHARED_FULL_GC) {
+            heapBasicLoss_ = fragmentSizeAfterGC_;
+        }
+    }
+
+    size_t GetFragmentSizeAfterGC() const
+    {
+        return fragmentSizeAfterGC_;
+    }
+
+    size_t GetHeapBasicLoss() const
+    {
+        return heapBasicLoss_;
+    }
+
     size_t GetGlobalSpaceAllocLimit() const
     {
         return globalSpaceAllocLimit_;
@@ -357,9 +379,6 @@ protected:
     };
 
     static constexpr double TRIGGER_SHARED_CONCURRENT_MARKING_OBJECT_LIMIT_RATE = 0.75;
-    static constexpr size_t IDLE_GC_SMALL_SIZE_LIMIT = 100_MB;
-    static constexpr size_t IDLE_GC_SMALL_INCREASE_SIZE = 5_MB;
-    static constexpr size_t IDLE_GC_LARGE_INCREASE_SIZE = 10_MB;
 
     const EcmaParamConfiguration config_;
     MarkType markType_ {MarkType::MARK_YOUNG};
@@ -372,6 +391,8 @@ protected:
     size_t heapAliveSizeAfterGC_ {0};
     size_t globalSpaceAllocLimit_ {0};
     size_t globalSpaceConcurrentMarkLimit_ {0};
+    size_t heapBasicLoss_ {1_MB};
+    size_t fragmentSizeAfterGC_ {0};
     // parallel marker task count.
     uint32_t runningTaskCount_ {0};
     uint32_t maxMarkTaskCount_ {0};
@@ -779,7 +800,7 @@ public:
 
 private:
     void ProcessAllGCListeners();
-    inline void CollectGarbageFinish(bool inDaemon);
+    inline void CollectGarbageFinish(bool inDaemon, TriggerGCType gcType);
     
     void MoveOldSpaceToAppspawn();
 

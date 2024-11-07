@@ -15,6 +15,8 @@
 
 #include "ecmascript/mem/idle_gc_trigger.h"
 
+#include <algorithm>
+
 #include "ecmascript/mem/mem_controller.h"
 #include "ecmascript/mem/concurrent_marker.h"
 #include "ecmascript/mem/heap-inl.h"
@@ -27,7 +29,7 @@ void IdleGCTrigger::NotifyVsyncIdleStart()
 
 void IdleGCTrigger::NotifyLooperIdleStart([[maybe_unused]] int64_t timestamp, [[maybe_unused]] int idleTime)
 {
-    LOG_GC(DEBUG) << "IdleGCTrigger: recv once looper idle time";
+    LOG_ECMA_IF(optionalLogEnabled_, DEBUG) << "IdleGCTrigger: recv once looper idle time";
     idleState_.store(true);
     if (!TryTriggerIdleLocalOldGC()) {
         TryTriggerIdleSharedOldGC();
@@ -162,8 +164,9 @@ bool IdleGCTrigger::ShouldCheckIdleOldGC(const T *baseHeap) const
     }
     size_t expectHeapSize = std::max(static_cast<size_t>(heapAliveSizeAfterGC * IDLE_SPACE_SIZE_MIN_INC_RATIO),
         heapAliveSizeAfterGC + IDLE_SPACE_SIZE_MIN_INC_STEP);
-    LOG_GC(DEBUG) << "IdleGCTrigger: old gc check heapAliveSizeAfterGC = " << heapAliveSizeAfterGC
-        << " expectHeapSize = " << expectHeapSize << " heapObjectSize = " << baseHeap->GetHeapObjectSize();
+    LOG_ECMA_IF(optionalLogEnabled_, DEBUG) << "IdleGCTrigger: check old GC heapAliveSizeAfterGC:"
+        << heapAliveSizeAfterGC << ";expectHeapSize" << expectHeapSize
+        << " heapObjectSize" << baseHeap->GetHeapObjectSize();
     return baseHeap->GetHeapObjectSize() >= expectHeapSize;
 }
 
@@ -173,9 +176,30 @@ bool IdleGCTrigger::ShouldCheckIdleFullGC(const T *baseHeap) const
     size_t heapAliveSizeAfterGC = baseHeap->GetHeapAliveSizeAfterGC();
     size_t expectHeapSize = std::max(static_cast<size_t>(heapAliveSizeAfterGC * IDLE_SPACE_SIZE_MIN_INC_RATIO),
         heapAliveSizeAfterGC + IDLE_SPACE_SIZE_MIN_INC_STEP_FULL);
-    LOG_GC(DEBUG) << "IdleGCTrigger: full gc check heapAliveSizeAfterGC = " << heapAliveSizeAfterGC
-        << " expectHeapSize = " << expectHeapSize << " heapObjectSize = " << baseHeap->GetHeapObjectSize();
-    return baseHeap->GetHeapObjectSize() >= expectHeapSize;
+    LOG_GC(DEBUG) << "IdleGCTrigger: check full GC heapAliveSizeAfterGC:" << heapAliveSizeAfterGC
+        << ";expectHeapSize:" << expectHeapSize << ";heapObjectSize:" << baseHeap->GetHeapObjectSize();
+    if (baseHeap->GetHeapObjectSize() >= expectHeapSize) {
+        return true;
+    }
+    size_t fragmentSizeAfterGC = baseHeap->GetFragmentSizeAfterGC();
+    size_t heapBasicLoss = baseHeap->GetHeapBasicLoss();
+    if (fragmentSizeAfterGC <= heapBasicLoss) {
+        return false;
+    }
+    size_t fragmentSize = fragmentSizeAfterGC - heapBasicLoss;
+    size_t expectFragmentSize = std::max(static_cast<size_t>((baseHeap->GetCommittedSize() - heapBasicLoss) *
+        IDLE_FRAGMENT_SIZE_RATIO), IDLE_MIN_EXPECT_RECLAIM_SIZE);
+    LOG_GC(DEBUG) << "IdleGCTrigger: check full GC fragmentSizeAfterGC:" << fragmentSizeAfterGC
+        << ";heapBasicLoss:" << heapBasicLoss << ";expectFragmentSize" << expectFragmentSize;
+    return fragmentSize >= expectFragmentSize;
+}
+
+bool IdleGCTrigger::CheckIdleYoungGC() const
+{
+    auto newSpace = heap_->GetNewSpace();
+    LOG_GC(DEBUG) << "IdleGCTrigger: check young GC semi Space size since gc:"
+        << newSpace->GetAllocatedSizeSinceGC(newSpace->GetTop());
+    return newSpace->GetAllocatedSizeSinceGC(newSpace->GetTop()) > IDLE_MIN_EXPECT_RECLAIM_SIZE;
 }
 
 void IdleGCTrigger::TryTriggerIdleGC(TRIGGER_IDLE_GC_TYPE gcType)
@@ -192,6 +216,9 @@ void IdleGCTrigger::TryTriggerIdleGC(TRIGGER_IDLE_GC_TYPE gcType)
             if (ShouldCheckIdleFullGC<Heap>(heap_) && !heap_->NeedStopCollection()) {
                 LOG_GC(INFO) << "IdleGCTrigger: trigger " << GetGCTypeName(gcType);
                 heap_->CollectGarbage(TriggerGCType::FULL_GC, GCReason::IDLE);
+            } else if (CheckIdleYoungGC() && !heap_->NeedStopCollection()) {
+                LOG_GC(INFO) << "IdleGCTrigger: trigger young gc";
+                heap_->CollectGarbage(TriggerGCType::YOUNG_GC, GCReason::IDLE);
             }
             break;
         case TRIGGER_IDLE_GC_TYPE::SHARED_GC:

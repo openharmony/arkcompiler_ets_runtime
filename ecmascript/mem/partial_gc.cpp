@@ -65,9 +65,6 @@ void PartialGC::RunPhases()
     if (mainThreadInForeground && needAjustGCThreadPrio) {
         GCWorkerPool::GetCurrentTaskpool()->SetThreadPriority(PriorityMode::FOREGROUND);
     }
-    if (heap_->IsConcurrentFullMark()) {
-        heap_->NotifyHeapAliveSizeAfterGC(heap_->GetHeapObjectSize());
-    }
 }
 
 void PartialGC::Initialize()

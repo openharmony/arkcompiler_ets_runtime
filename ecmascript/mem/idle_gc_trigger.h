@@ -37,10 +37,11 @@ class IdleGCTrigger {
 using TRIGGER_IDLE_GC_TYPE = panda::JSNApi::TRIGGER_IDLE_GC_TYPE;
 using Clock = std::chrono::high_resolution_clock;
 public:
-    explicit IdleGCTrigger(Heap *heap, SharedHeap *sHeap, JSThread *thread)
+    explicit IdleGCTrigger(Heap *heap, SharedHeap *sHeap, JSThread *thread, bool logEnable = false)
         : heap_(heap),
         sHeap_(sHeap),
-        thread_(thread) {};
+        thread_(thread),
+        optionalLogEnabled_(logEnable) {};
     virtual ~IdleGCTrigger() = default;
 
     bool IsIdleState() const
@@ -102,6 +103,7 @@ public:
     bool ReachIdleSharedGCThresholds();
     void TryPostHandleMarkFinished();
     void TryTriggerIdleGC(TRIGGER_IDLE_GC_TYPE gcType);
+    bool CheckIdleYoungGC() const;
     template<class T>
     bool ShouldCheckIdleOldGC(const T *baseHeap) const;
     template<class T>
@@ -113,6 +115,7 @@ private:
     Heap *heap_ {nullptr};
     SharedHeap *sHeap_ {nullptr};
     JSThread *thread_ {nullptr};
+    bool optionalLogEnabled_ {false};
 
     std::atomic<bool> idleState_ {false};
     uint8_t gcTaskPostedState_ {0};
