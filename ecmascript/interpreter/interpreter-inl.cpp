@@ -5752,8 +5752,8 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         // fast path
         if (receiver.IsHeapObject() && !receiver.IsClassConstructor() && !receiver.IsClassPrototype()) {
             SAVE_ACC();
-            JSTaggedValue value = GET_ACC();
             receiver = GET_VREG_VALUE(v0);
+            JSTaggedValue value = GET_ACC();
             // fast path
             JSTaggedValue res = FastRuntimeStub::SetPropertyByIndex<ObjectFastOperator::Status::UseOwn>
                                 (thread, receiver, index, value);

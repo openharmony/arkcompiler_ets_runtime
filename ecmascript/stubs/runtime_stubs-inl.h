@@ -951,7 +951,6 @@ JSTaggedValue RuntimeStubs::RuntimeCreateClassWithBuffer(JSThread *thread,
     } else {
         cls = ClassHelper::DefineClassFromExtractor(thread, base, extractor, lexenv);
     }
-
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     RuntimeSetClassInheritanceRelationship(thread, JSHandle<JSTaggedValue>(cls), base);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);

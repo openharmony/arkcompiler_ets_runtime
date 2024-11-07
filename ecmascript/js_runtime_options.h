@@ -1945,7 +1945,6 @@ public:
     {
         return aotHasException_;
     }
-
 public:
     static constexpr int32_t MAX_APP_COMPILE_METHOD_SIZE = 4_KB;
 
