@@ -59,7 +59,7 @@ namespace OHOS {
         std::shared_ptr<JSPandaFile> pf;
         OhosPkgArgs pkgArgs;
 
-        pkgArgs.GetJSPandaFile(runtimeOptions, pf);
+        pkgArgs.GetJSPandaFile(runtimeOptions, pf, 0);
     }
 }
 

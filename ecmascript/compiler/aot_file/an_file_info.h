@@ -52,7 +52,7 @@ public:
         return it->second;
     }
 
-    void TryRemoveAnFile(const char *filename);
+    bool TryRemoveAnFile(const char *filename);
 
     void AlignTextSec(uint32_t alignSize)
     {

@@ -33,6 +33,9 @@ const std::string BUNDLE_GID = "BundleGid";
 const std::string AN_FILE_NAME = "anFileName";
 const std::string APP_SIGNATURE = "appIdentifier";
 const std::string ABC_PATH = "ABC-Path";
+const std::string TARGET_COMPILER_MODE = "target-compiler-mode";
+const std::string COMPILER_PKG_INFO = "compiler-pkg-info";
+
 } // namespace ArgsIdx
 
 namespace Symbols {

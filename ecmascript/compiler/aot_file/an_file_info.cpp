@@ -27,7 +27,10 @@ bool AnFileInfo::Save(const std::string &filename, Triple triple)
         return false;
     }
     const char *rawPath = realPath.c_str();
-    TryRemoveAnFile(rawPath);
+    if (!TryRemoveAnFile(rawPath)) {
+        LOG_COMPILER(ERROR) << "unlink an file fail";
+        return false;
+    };
 
     std::ofstream file(rawPath, std::ofstream::binary);
     SetStubNum(entries_.size());
@@ -119,14 +122,16 @@ bool AnFileInfo::Load(const std::string &filename, [[maybe_unused]] std::functio
 }
 #endif
 
-void AnFileInfo::TryRemoveAnFile(const char *filename)
+bool AnFileInfo::TryRemoveAnFile(const char *filename)
 {
     if (!FileExist(filename)) {
-        return;
+        return true;
     }
     if (Unlink(filename) == -1) {
         LOG_COMPILER(ERROR) << "remove " << filename << " failed and errno is " << errno;
+        return false;
     }
+    return true;
 }
 
 void AnFileInfo::ParseFunctionEntrySection(ModuleSectionDes &des)

@@ -61,6 +61,7 @@ private:
     void ResetState();
     void PauseAotCompiler();
     void AllowAotCompiler();
+    bool VerifyCompilerModeAndPkgInfo(const std::unordered_map<std::string, std::string> &argsMap);
 
     AotCompilerImpl() = default;
     ~AotCompilerImpl() = default;
