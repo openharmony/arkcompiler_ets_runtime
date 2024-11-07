@@ -28,7 +28,7 @@ using namespace panda;
 using namespace panda::ecmascript;
 
 namespace OHOS {
-void PrimitiveRefGetValueFuzztest([[maybe_unused]]const uint8_t *data, size_t size)
+void PrimitiveRefGetValueFuzzTest([[maybe_unused]]const uint8_t *data, size_t size)
 {
     RuntimeOption option;
     option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
@@ -56,6 +56,6 @@ void PrimitiveRefGetValueFuzztest([[maybe_unused]]const uint8_t *data, size_t si
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 {
     // Run your code on data.
-    OHOS::PrimitiveRefGetValueFuzztest(data, size);
+    OHOS::PrimitiveRefGetValueFuzzTest(data, size);
     return 0;
 }
