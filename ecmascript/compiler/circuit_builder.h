@@ -514,6 +514,7 @@ public:
     // **************************** Middle IR ****************************
     GateRef EcmaObjectCheck(GateRef gate);
     GateRef HeapObjectCheck(GateRef gate, GateRef frameState);
+    GateRef MathHClassConsistencyCheck(GateRef receiver);
     GateRef HeapObjectIsEcmaObjectCheck(GateRef gate, GateRef frameState);
     GateRef ProtoChangeMarkerCheck(GateRef gate, GateRef frameState = Gate::InvalidGateRef);
     GateRef StableArrayCheck(GateRef gate, ElementsKind kind, ArrayMetaDataAccessor::Mode mode);

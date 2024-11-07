@@ -1095,10 +1095,7 @@ bool TypedBytecodeLowering::TryLowerTypedLdobjBynameFromGloablBuiltin(GateRef ga
             return false;
         }
         AddProfiling(gate);
-        GateRef receiverHClass = builder_.LoadHClassByConstOffset(receiver);
-        GateRef cond = builder_.Equal(
-            receiverHClass, builder_.GetGlobalEnvObj(builder_.GetGlobalEnv(), GlobalEnv::MATH_FUNCTION_CLASS_INDEX));
-        builder_.DeoptCheck(cond, acc_.GetFrameState(gate), DeoptType::INCONSISTENTHCLASS14);
+        builder_.MathHClassConsistencyCheck(receiver);
         GateRef plrGate = builder_.Int32(plr.GetData());
         GateRef result = builder_.LoadProperty(receiver, plrGate, plr.IsFunction());
         acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
