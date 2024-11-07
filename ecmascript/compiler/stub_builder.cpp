@@ -5826,7 +5826,7 @@ void StubBuilder::FastSetPropertyByName(GateRef glue, GateRef obj, GateRef key, 
     }
     Bind(&slowPath);
     {
-        result = CallRuntime(glue, RTSTUB_ID(StoreICByValue), { obj, *keyVar, value, IntToTaggedInt(Int32(0)) });
+        result = CallRuntime(glue, RTSTUB_ID(StObjByValue), { obj, *keyVar, value });
         Jump(&exit);
     }
     Bind(&exit);
