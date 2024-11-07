@@ -806,6 +806,10 @@ void Heap::ProcessSharedGCRSetWorkList()
         ASSERT(thread_->IsSharedConcurrentMarkingOrFinished());
         ASSERT(this == sharedGCData_.rSetWorkListHandler_->GetHeap());
         sHeap_->GetSharedGCMarker()->ProcessThenMergeBackRSetFromBoundJSThread(sharedGCData_.rSetWorkListHandler_);
+        // The current thread may end earlier than the deamon thread.
+        // To ensure the accuracy of the state range, set true is executed on js thread and deamon thread.
+        // Reentrant does not cause exceptions because all the values are set to false.
+        thread_->SetProcessingLocalToSharedRset(false);
         ASSERT(sharedGCData_.rSetWorkListHandler_ == nullptr);
     }
 }

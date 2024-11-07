@@ -23,7 +23,7 @@
 #include "ecmascript/mem/heap.h"
 
 namespace panda::ecmascript {
-inline RSetWorkListHandler::RSetWorkListHandler(Heap *heap) : heap_(heap)
+inline RSetWorkListHandler::RSetWorkListHandler(Heap *heap, JSThread *thread) : heap_(heap), ownerThread_(thread)
 {
     CollectRSetItemsInHeap(heap);
 }

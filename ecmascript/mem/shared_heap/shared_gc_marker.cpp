@@ -66,8 +66,9 @@ void SharedGCMarkerBase::CollectLocalVMRSet(EcmaVM *localVm)
 {
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedGCMarkerBase::CollectLocalVMRSet");
     Heap *heap = const_cast<Heap*>(localVm->GetHeap());
-    RSetWorkListHandler *handler = new RSetWorkListHandler(heap);
+    RSetWorkListHandler *handler = new RSetWorkListHandler(heap, localVm->GetJSThreadNoCheck());
     heap->SetRSetWorkListHandler(handler);
+    NotifyThreadProcessRsetStart(handler->GetOwnerThreadUnsafe());
     rSetHandlers_.emplace_back(handler);
 }
 

@@ -22,6 +22,7 @@
 #include "ecmascript/mem/heap-inl.h"
 #include "ecmascript/mem/region-inl.h"
 #include "ecmascript/mem/tlab_allocator-inl.h"
+#include "ecmascript/runtime.h"
 
 namespace panda::ecmascript {
 inline void SharedGCMarker::MarkObject(uint32_t threadId, TaggedObject *object, [[maybe_unused]] ObjectSlot &slot)
@@ -173,6 +174,9 @@ inline void SharedGCMarkerBase::ProcessVisitorOfDoMark(uint32_t threadId)
     for (RSetWorkListHandler *handler : rSetHandlers_) {
         ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedGCMarker::ProcessRSet");
         handler->ProcessAll(visitor);
+        // To ensure the accuracy of the state range, notify finished is executed on js thread and deamon thread.
+        // Reentrant does not cause exceptions because all the values are set to false.
+        NotifyThreadProcessRsetFinished(handler->GetOwnerThreadUnsafe());
     }
 }
 
@@ -219,6 +223,25 @@ inline void SharedGCMarkerBase::ProcessThenMergeBackRSetFromBoundJSThread(RSetWo
     ASSERT(JSThread::GetCurrent()->IsInRunningState());
     ProcessVisitor(handler);
     handler->WaitFinishedThenMergeBack();
+}
+
+inline void SharedGCMarkerBase::NotifyThreadProcessRsetStart(JSThread *localThread)
+{
+    // This method is called within the GCIterateThreadList method,
+    // so the thread lock problem does not need to be considered.
+    ASSERT(localThread != nullptr);
+    localThread->SetProcessingLocalToSharedRset(true);
+}
+
+inline void SharedGCMarkerBase::NotifyThreadProcessRsetFinished(JSThread *localThread)
+{
+    // The localThread may have been released or reused.
+    Runtime::GetInstance()->GCIterateThreadList([localThread](JSThread *thread) {
+        if (localThread == thread) {
+            thread->SetProcessingLocalToSharedRset(false);
+            return;
+        }
+    });
 }
 
 void SharedGCMovableMarker::MarkObject(uint32_t threadId, TaggedObject *object, ObjectSlot &slot)

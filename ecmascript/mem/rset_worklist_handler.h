@@ -40,7 +40,7 @@ private:
 
 class RSetWorkListHandler {
 public:
-    explicit RSetWorkListHandler(Heap *heap);
+    explicit RSetWorkListHandler(Heap *heap, JSThread *thread);
     ~RSetWorkListHandler() = default;
 
     inline void Initialize();
@@ -62,6 +62,11 @@ public:
 
     inline void MergeBackForAllItem();
 
+    JSThread *GetOwnerThreadUnsafe() const
+    {
+        return ownerThread_;
+    }
+
 private:
     inline void CollectRSetItemsInHeap(const Heap *heap);
 
@@ -71,6 +76,8 @@ private:
     inline bool TryMergeBack();
 
     Heap *heap_ {nullptr};
+    // The thread is not guaranteed to be alive. The caller must ensure that the thread is alive.
+    JSThread *ownerThread_ {nullptr};
     /**
      * This value represent whether there are some items to process, this is set to true in Initialize when collecting
      * the RSet in heap(call from daemon thread in SuspendAll), and use CAS to set to false when try to merge back and
