@@ -16,6 +16,7 @@ group("ark_jit_ts_test") {
   test_list = [
     "arguments",
     "create_arguments",
+    "deopt",
     "function_reuse",
     "intern_string_strict_equal_1",
     "intern_string_strict_equal_2",
