@@ -133,6 +133,7 @@ private:
 struct WorkNodeHolder {
     WorkNode *inNode_ {nullptr};
     WorkNode *outNode_ {nullptr};
+    WorkNode *cachedInNode_ {nullptr};
     ProcessQueue *weakQueue_ {nullptr};
     std::vector<SlotNeedUpdate> pendingUpdateSlots_;
     TlabAllocator *allocator_ {nullptr};
@@ -264,6 +265,7 @@ private:
 
 struct SharedGCWorkNodeHolder {
     WorkNode *inNode_ {nullptr};
+    WorkNode *cachedInNode_ {nullptr};
     WorkNode *outNode_ {nullptr};
     ProcessQueue *weakQueue_ {nullptr};
     SharedTlabAllocator *allocator_ {nullptr};
