@@ -99,6 +99,7 @@ public:
 private:
     inline JSTaggedValue CallPrivateSetter(JSHandle<JSTaggedValue> receiver, JSHandle<JSTaggedValue> key,
                                            JSHandle<JSTaggedValue> value);
+    JSTaggedValue HandleAccesor(ObjectOperator *op, const JSHandle<JSTaggedValue> &value);
 };
 }  // namespace panda::ecmascript
 

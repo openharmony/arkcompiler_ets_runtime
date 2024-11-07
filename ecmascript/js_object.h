@@ -789,6 +789,8 @@ private:
 
     static JSTaggedValue GetProperty(JSThread *thread, ObjectOperator *op);
     static bool SetProperty(ObjectOperator *op, const JSHandle<JSTaggedValue> &value, bool mayThrow);
+    static bool SetPropertyForData(ObjectOperator *op, const JSHandle<JSTaggedValue> &value, bool *isAccessor);
+    static bool SetPropertyForAccessor(ObjectOperator *op, const JSHandle<JSTaggedValue> &value);
     static void DeletePropertyInternal(JSThread *thread, const JSHandle<JSObject> &obj,
                                        const JSHandle<JSTaggedValue> &key, uint32_t index);
     int FindProperty(const JSHandle<JSTaggedValue> &key);

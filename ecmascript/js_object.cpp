@@ -1037,6 +1037,51 @@ bool JSObject::SetProperty(ObjectOperator *op, const JSHandle<JSTaggedValue> &va
     return CallSetter(thread, *accessor, receiver, value, mayThrow);
 }
 
+bool JSObject::SetPropertyForData(ObjectOperator *op, const JSHandle<JSTaggedValue> &value, bool *isAccessor)
+{
+    JSThread *thread = op->GetThread();
+    op->UpdateDetector();
+
+    JSHandle<JSTaggedValue> receiver = op->GetReceiver();
+    JSHandle<JSTaggedValue> holder = op->GetHolder();
+    if (holder->IsJSProxy()) {
+        if (op->IsElement()) {
+            JSHandle<JSTaggedValue> key(thread, JSTaggedValue(op->GetElementIndex()));
+            return JSProxy::SetProperty(thread, JSHandle<JSProxy>::Cast(holder), key, value, receiver, true);
+        }
+        return JSProxy::SetProperty(thread, JSHandle<JSProxy>::Cast(holder), op->GetKey(), value, receiver, true);
+    }
+
+    // When op is not found and is not set extra attributes
+    if (!op->IsFound() && op->IsPrimitiveAttr()) {
+        op->SetAsDefaultAttr();
+    }
+
+    bool isInternalAccessor = false;
+    if (op->IsAccessorDescriptor()) {
+        JSTaggedValue ret = ShouldGetValueFromBox(op);
+        isInternalAccessor = AccessorData::Cast(ret.GetTaggedObject())->IsInternal();
+    }
+
+    // 5. If IsDataDescriptor(ownDesc) is true, then
+    if (!op->IsAccessorDescriptor() || isInternalAccessor) {
+        return SetPropertyForDataDescriptor(op, value, receiver, true, isInternalAccessor);
+    }
+    // 6. Assert: IsAccessorDescriptor(ownDesc) is true.
+    ASSERT(op->IsAccessorDescriptor());
+    *isAccessor = true;
+    return true;
+}
+
+bool JSObject::SetPropertyForAccessor(ObjectOperator *op, const JSHandle<JSTaggedValue> &value)
+{
+    JSThread *thread = op->GetThread();
+    JSHandle<JSTaggedValue> receiver = op->GetReceiver();
+    JSTaggedValue ret = JSObject::ShouldGetValueFromBox(op);
+    AccessorData *accessor = AccessorData::Cast(ret.GetTaggedObject());
+    return JSObject::CallSetter(thread, *accessor, receiver, value, true);
+}
+
 bool JSObject::CallSetter(JSThread *thread, const AccessorData &accessor, const JSHandle<JSTaggedValue> &receiver,
                           const JSHandle<JSTaggedValue> &value, bool mayThrow)
 {
