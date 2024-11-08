@@ -15,13 +15,13 @@
 
 #include "ecmascript/ic/ic_runtime.h"
 #include "ecmascript/ic/ic_handler.h"
+#include "ecmascript/dfx/stackinfo/js_stackinfo.h"
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/interpreter/slow_runtime_stub.h"
 #include "ecmascript/js_primitive_ref.h"
 #include "ecmascript/shared_objects/js_shared_array.h"
 
 namespace panda::ecmascript {
-#define TRACE_IC 0  // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 
 void ICRuntime::UpdateLoadHandler(const ObjectOperator &op, JSHandle<JSTaggedValue> key,
                                   JSHandle<JSTaggedValue> receiver)
@@ -152,25 +152,6 @@ void ICRuntime::UpdateStoreHandler(const ObjectOperator &op, JSHandle<JSTaggedVa
     }
 }
 
-void ICRuntime::TraceIC([[maybe_unused]] JSHandle<JSTaggedValue> receiver,
-                        [[maybe_unused]] JSHandle<JSTaggedValue> key) const
-{
-#if TRACE_IC
-    auto kind = ICKindToString(GetICKind());
-    auto state = ProfileTypeAccessor::ICStateToString(icAccessor_.GetICState());
-    if (key->IsString()) {
-        auto keyStrHandle = JSHandle<EcmaString>::Cast(key);
-        LOG_ECMA(ERROR) << kind << " miss key is: " << EcmaStringAccessor(keyStrHandle).ToCString()
-                            << ", receiver is " << receiver->GetTaggedObject()->GetClass()->IsDictionaryMode()
-                            << ", state is " << state;
-    } else {
-        LOG_ECMA(ERROR) << kind << " miss " << ", state is "
-                            << ", receiver is " << receiver->GetTaggedObject()->GetClass()->IsDictionaryMode()
-                            << state;
-    }
-#endif
-}
-
 JSTaggedValue LoadICRuntime::LoadValueMiss(JSHandle<JSTaggedValue> receiver, JSHandle<JSTaggedValue> key)
 {
     JSTaggedValue::RequireObjectCoercible(thread_, receiver, "Cannot load property of null or undefined");
@@ -210,7 +191,7 @@ JSTaggedValue LoadICRuntime::LoadValueMiss(JSHandle<JSTaggedValue> receiver, JSH
             icAccessor_.SetAsMega();
             return result.GetTaggedValue();
         }
-        TraceIC(receiver, key);
+        TraceIC(GetThread(), receiver, key);
         // do not cache element
         if (!op.IsFastMode()) {
             icAccessor_.SetAsMega();
@@ -261,7 +242,7 @@ JSTaggedValue LoadICRuntime::LoadMiss(JSHandle<JSTaggedValue> receiver, JSHandle
         icAccessor_.SetAsMega();
         return result.GetTaggedValue();
     }
-    TraceIC(receiver, key);
+    TraceIC(GetThread(), receiver, key);
     // do not cache element
     if (!op.IsFastMode()) {
         icAccessor_.SetAsMega();
@@ -320,7 +301,7 @@ JSTaggedValue LoadICRuntime::LoadTypedArrayValueMiss(JSHandle<JSTaggedValue> rec
             icAccessor_.SetAsMega();
             return result.GetTaggedValue();
         }
-        TraceIC(receiver, key);
+        TraceIC(GetThread(), receiver, key);
         // do not cache element
         if (!op.IsFastMode()) {
             icAccessor_.SetAsMega();
@@ -408,7 +389,7 @@ JSTaggedValue StoreICRuntime::StoreMiss(JSHandle<JSTaggedValue> receiver, JSHand
         return JSTaggedValue::Undefined();
     }
 
-    TraceIC(receiver, key);
+    TraceIC(GetThread(), receiver, key);
     if (success) {
         UpdateStoreHandler(op, key, receiver);
     }
@@ -474,7 +455,7 @@ JSTaggedValue StoreICRuntime::StoreTypedArrayValueMiss(JSHandle<JSTaggedValue> r
             return JSTaggedValue::Undefined();
         }
 
-        TraceIC(receiver, key);
+        TraceIC(GetThread(), receiver, key);
         if (success) {
             UpdateStoreHandler(op, key, receiver);
         }
@@ -493,5 +474,57 @@ JSTaggedValue StoreICRuntime::HandleAccesor(ObjectOperator *op, const JSHandle<J
         return JSTaggedValue::Exception();
     }
     return success ? JSTaggedValue::Undefined() : JSTaggedValue::Exception();
+}
+
+void ICRuntime::TraceIC([[maybe_unused]] JSThread *thread,
+                        [[maybe_unused]] JSHandle<JSTaggedValue> receiver,
+                        [[maybe_unused]] JSHandle<JSTaggedValue> key) const
+{
+#if ECMASCRIPT_ENABLE_TRACE_IC
+    // If BackTrace affects IC, can choose not to execute it.
+    std::string strTraceIC = "Miss Func BackTrace: ";
+    std::vector<JsFrameInfo> jsStackInfo = JsStackInfo::BuildJsStackInfo(thread, true);
+    if (jsStackInfo.empty()) {
+        strTraceIC += "empty";
+    } else {
+        JsFrameInfo jsFrameInfo = jsStackInfo.front();
+        size_t pos = jsFrameInfo.pos.find(':', 0);
+        if (pos != CString::npos) {
+            int lineNumber = std::stoi(jsFrameInfo.pos.substr(0, pos));
+            int columnNumber = std::stoi(jsFrameInfo.pos.substr(pos + 1));
+            auto sourceMapcb = thread->GetEcmaVM()->GetSourceMapTranslateCallback();
+            if (sourceMapcb != nullptr && !jsFrameInfo.fileName.empty()) {
+                sourceMapcb(jsFrameInfo.fileName, lineNumber, columnNumber);
+            }
+        }
+        strTraceIC += "funcName: " + jsFrameInfo.functionName + ", url: " +
+            jsFrameInfo.fileName + ":" + jsFrameInfo.pos;
+    }
+    LOG_ECMA(ERROR) << strTraceIC;
+
+    auto kind = ICKindToString(GetICKind());
+    bool primitiveIc = false;
+    if (receiver->IsNumber() || receiver->IsString()) {
+        primitiveIc = true;
+    }
+    auto state = ProfileTypeAccessor::ICStateToString(icAccessor_.GetICState());
+    if (key->IsString()) {
+        auto keyStrHandle = JSHandle<EcmaString>::Cast(key);
+        LOG_ECMA(ERROR) << kind << " miss, key is: " << EcmaStringAccessor(keyStrHandle).ToCString()
+                        << ", icstate is: " << state
+                        << ", slotid is: " << GetSlotId();
+    } else {
+        LOG_ECMA(ERROR) << kind << " miss, "
+                        << ", icstate is " << state
+                        << ", slotid is:" << GetSlotId();
+    }
+    if (primitiveIc) {
+        LOG_ECMA(ERROR) << "primitiveIc ";
+    } else {
+        JSHClass *jshclass = receiver->GetTaggedObject()->GetClass();
+        LOG_ECMA(ERROR) << "receiver DictionaryMode is: " << jshclass->IsDictionaryMode()
+                        << ", hclass is: "<< std::hex << jshclass;
+    }
+#endif
 }
 }  // namespace panda::ecmascript
