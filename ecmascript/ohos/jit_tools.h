@@ -94,6 +94,14 @@ public:
         return value;
     }
 
+    static bool IsSupportJitCodeSigner()
+    {
+    #ifdef JIT_ENABLE_CODE_SIGN
+        return OHOS::Security::CodeSign::IsSupportJitCodeSigner();
+    #endif
+        return false;
+    }
+
     static bool GetEnableJitFort(bool value)
     {
     #ifdef GET_PARAMETER_FOR_JIT
