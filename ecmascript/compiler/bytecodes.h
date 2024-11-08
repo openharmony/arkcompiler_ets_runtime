@@ -247,6 +247,34 @@ private:
     explicit BytecodeMetaData(uint64_t value) : value_(value) {}
 
     static BytecodeMetaData InitBytecodeMetaData(const uint8_t *pc);
+    static void InitBytecodeFlags(EcmaOpcode &opcode, uint32_t &flags);
+    static void InitBytecodeKind(EcmaOpcode &opcode, BytecodeKind &kind);
+
+    static void InitNoSideEffectFlag(EcmaOpcode &opcode, uint32_t &flags);
+    static void InitNoGCFlag(EcmaOpcode &opcode, uint32_t &flags);
+    static void InitNoThrowFlag(EcmaOpcode &opcode, uint32_t &flags);
+    static void InitReadThisObjectFlag(EcmaOpcode &opcode, uint32_t &flags);
+    static void InitSupportDeoptFlag(EcmaOpcode &opcode, uint32_t &flags);
+    static void InitReadACCFlag(EcmaOpcode &opcode, uint32_t &flags);
+    static void InitDebuggerFlag(EcmaOpcode &opcode, uint32_t &flags);
+    static void InitReadFuncFlag(EcmaOpcode &opcode, uint32_t &flags);
+    static void InitWriteEnvFlag(EcmaOpcode &opcode, uint32_t &flags);
+    static void InitReadEnvFlag(EcmaOpcode &opcode, uint32_t &flags);
+    static void InitReadNewTargetFlag(EcmaOpcode &opcode, uint32_t &flags);
+    static void InitReadArgcFlag(EcmaOpcode &opcode, uint32_t &flags);
+
+    static bool InitMovKind(EcmaOpcode &opcode, BytecodeKind &kind);
+    static bool InitSetConstantKind(EcmaOpcode &opcode, BytecodeKind &kind);
+    static bool InitCallBCKind(EcmaOpcode &opcode, BytecodeKind &kind);
+    static bool InitRetrunKind(EcmaOpcode &opcode, BytecodeKind &kind);
+    static bool InitSuspendKind(EcmaOpcode &opcode, BytecodeKind &kind);
+    static bool InitResumeKind(EcmaOpcode &opcode, BytecodeKind &kind);
+    static bool InitDiscardedKind(EcmaOpcode &opcode, BytecodeKind &kind);
+    static bool InitThrowKind(EcmaOpcode &opcode, BytecodeKind &kind);
+    static bool InitConditionJumpKind(EcmaOpcode &opcode, BytecodeKind &kind);
+    static bool InitJumpIMMKind(EcmaOpcode &opcode, BytecodeKind &kind);
+    static bool InitGeneratorResolveKind(EcmaOpcode &opcode, BytecodeKind &kind);
+    static bool InitAccessorKind(EcmaOpcode &opcode, BytecodeKind &kind);
 
     static size_t GetVRegCount(const BytecodeInstruction &inst);
 
