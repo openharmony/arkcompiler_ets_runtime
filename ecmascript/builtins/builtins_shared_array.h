@@ -233,11 +233,9 @@ private:
         BUILTIN_SHARED_ARRAY_FUNCTIONS(ARRAY_PROPERTIES_PAIR)
         std::pair<std::string_view, bool>("[Symbol.species]", true),
     };
-    static JSTaggedValue CheckElementForEvery(JSThread *thread,
-                                              JSHandle<JSTaggedValue> &thisObjVal,
-                                              JSHandle<JSTaggedValue> &callbackFnHandle,
-                                              JSHandle<JSTaggedValue> &thisArgHandle,
-                                              uint32_t &k);
+    static JSTaggedValue CheckElementMeetReq(JSThread *thread,
+                                             JSHandle<JSTaggedValue> &thisObjVal,
+                                             JSHandle<JSTaggedValue> &callbackFnHandle, bool isSome);
 #undef ARRAY_PROPERTIES_PAIR
 
 #define ARRAY_CHECK_SHARED_ARRAY(errMsg)                                            \
