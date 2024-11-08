@@ -690,6 +690,8 @@ void SharedHeap::DumpHeapSnapshotBeforeOOM([[maybe_unused]]bool isFullGC, [[mayb
     if (appfreezeCallback_ != nullptr && appfreezeCallback_(getprocpid())) {
         LOG_ECMA(INFO) << " DumpHeapSnapshotBeforeOOM Success. ";
     }
+    vm->GetEcmaGCKeyStats()->SendSysEventBeforeDump("OOMDump", GetEcmaParamConfiguration().GetMaxHeapSize(),
+                                                    GetHeapObjectSize());
     DumpSnapShotOption dumpOption;
     dumpOption.dumpFormat = DumpFormat::BINARY;
     dumpOption.isVmMode = true;
