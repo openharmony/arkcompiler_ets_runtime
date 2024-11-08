@@ -177,9 +177,9 @@ public:
         JSHandle<JSTaggedValue> &thisObjVal, int64_t k, int64_t len, JSMutableHandle<JSTaggedValue> &accumulator,
         JSHandle<JSTaggedValue> &callbackFnHandle);
 
-    static JSTaggedValue FilterUnStableJSArray(JSThread *thread, JSHandle<JSTaggedValue> &thisArgHandle,
-        JSHandle<JSTaggedValue> &thisObjVal, int64_t k, int64_t len, uint32_t toIndex,
-        JSHandle<JSObject> newArrayHandle, JSHandle<JSTaggedValue> &callbackFnHandle);
+    static JSTaggedValue FilterArray(JSThread *thread, JSHandle<JSTaggedValue> &thisArgHandle,
+        JSHandle<JSTaggedValue> &thisObjVal, JSHandle<JSObject> newArrayHandle,
+        JSHandle<JSTaggedValue> &callbackFnHandle);
 
     static Span<const std::pair<std::string_view, bool>> GetPrototypeProperties()
     {
