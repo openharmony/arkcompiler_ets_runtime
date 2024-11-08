@@ -1329,6 +1329,10 @@ void X64Emitter::EmitInsn(Insn &insn, uint32 funcUniqueId)
             }
             break;
         }
+        case x64::MOP_pure_call: {
+            assmbler.Call(kQ, TransferReg(opnd0));
+            break;
+        }
         case x64::MOP_callq_l: {
             assmbler.Call(kQ, TransferFuncName(opnd0));
             if (insn.GetStackMap() != nullptr) {

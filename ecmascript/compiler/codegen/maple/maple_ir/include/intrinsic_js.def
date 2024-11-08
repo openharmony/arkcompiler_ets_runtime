@@ -20,3 +20,5 @@ DEF_MIR_INTRINSIC(SUB_WITH_OVERFLOW,\
                   "__sub_with_overflow", kArgTyI32, kArgTyI32, kArgTyI32)
 DEF_MIR_INTRINSIC(MUL_WITH_OVERFLOW,\
                   "__mul_with_overflow", kArgTyI32, kArgTyI32, kArgTyI32)
+DEF_MIR_INTRINSIC(JS_PURE_CALL,\
+                  "__jsop_purecall", kArgTyDynany, kArgTyDynany, kArgTyDynany, kArgTyDynany, kArgTyDynany, kArgTyDynany, kArgTyDynany, kArgTyDynany)

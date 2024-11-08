@@ -138,6 +138,10 @@ constexpr uint32 kFirstReg = 0;
 constexpr uint32 kSecondReg = 1;
 constexpr uint32 kThirdReg = 2;
 constexpr uint32 kFourthReg = 3;
+constexpr uint32 kFifthReg = 4;
+constexpr uint32 kSixthReg = 5;
+constexpr uint32 kSeventhReg = 6;
+
 
 /* inline asm operand designations */
 constexpr uint32 kAsmStringOpnd = 0;

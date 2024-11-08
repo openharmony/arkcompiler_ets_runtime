@@ -466,6 +466,7 @@ static void InitHandleStmtFactory()
     RegisterFactoryFunction<HandleStmtFactory>(OP_goto, HandleGoto);
     RegisterFactoryFunction<HandleStmtFactory>(OP_intrinsiccall, HandleIntrinCall);
     RegisterFactoryFunction<HandleStmtFactory>(OP_intrinsiccallassigned, HandleIntrinCall);
+    RegisterFactoryFunction<HandleStmtFactory>(OP_intrinsiccallwithtype, HandleIntrinCall);
     RegisterFactoryFunction<HandleStmtFactory>(OP_rangegoto, HandleRangeGoto);
     RegisterFactoryFunction<HandleStmtFactory>(OP_brfalse, HandleCondbr);
     RegisterFactoryFunction<HandleStmtFactory>(OP_brtrue, HandleCondbr);

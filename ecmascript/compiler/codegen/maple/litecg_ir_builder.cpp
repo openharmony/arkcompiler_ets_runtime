@@ -543,6 +543,10 @@ void LiteCGIRBuilder::HandleBB(const std::vector<GateRef> &bb, std::unordered_se
                 HandleInitVreg(gate);
                 InsertUsedOpcodeSet(usedOpcodeSet, OpCode::INITVREG);
                 break;
+            case OpCode::ASM_CALL_BARRIER:
+                HandleCall(gate);
+                InsertUsedOpcodeSet(usedOpcodeSet, OpCode::ASM_CALL_BARRIER);
+                break;
             default:
                 if (illegalOpHandlers_.find(acc_.GetOpCode(gate)) == illegalOpHandlers_.end()) {
                     LOG_COMPILER(FATAL) << "can't process opcode: " << acc_.GetOpCode(gate) << std::endl;
@@ -886,8 +890,7 @@ void LiteCGIRBuilder::InitializeHandlers()
                           OpCode::LOOP_EXIT,
                           OpCode::START_ALLOCATE,
                           OpCode::FINISH_ALLOCATE,
-                          OpCode::FRAME_VALUES,
-                          OpCode::ASM_CALL_BARRIER};
+                          OpCode::FRAME_VALUES};
 }
 
 void LiteCGIRBuilder::HandleReturnVoid([[maybe_unused]] GateRef gate)
@@ -1478,7 +1481,8 @@ void LiteCGIRBuilder::HandleCall(GateRef gate)
     OpCode callOp = acc_.GetOpCode(gate);
     if (callOp == OpCode::CALL || callOp == OpCode::NOGC_RUNTIME_CALL || callOp == OpCode::BUILTINS_CALL ||
         callOp == OpCode::BUILTINS_CALL_WITH_ARGV || callOp == OpCode::CALL_OPTIMIZED ||
-        callOp == OpCode::FAST_CALL_OPTIMIZED || callOp == OpCode::BASELINE_CALL) {
+        callOp == OpCode::FAST_CALL_OPTIMIZED || callOp == OpCode::BASELINE_CALL ||
+        callOp == OpCode::ASM_CALL_BARRIER) {
         VisitCall(gate, ins, callOp);
     } else {
         LOG_ECMA(FATAL) << "this branch is unreachable";
@@ -1533,6 +1537,12 @@ void LiteCGIRBuilder::VisitCall(GateRef gate, const std::vector<GateRef> &inList
         Expr rtbaseoffset = lmirBuilder_->Add(glue.GetType(), glue, rtoffset);
         callee = GetFunction(bb, glue, calleeDescriptor, rtbaseoffset);
         kind = GetCallExceptionKind(index, op);
+    } else if (op == OpCode::ASM_CALL_BARRIER) {
+        const size_t index = acc_.GetConstantValue(inList[targetIndex]);
+        calleeDescriptor = RuntimeStubCSigns::Get(index);
+        Expr rtoffset = GetRTStubOffset(glue, index);
+        Expr rtbaseoffset = lmirBuilder_->Add(glue.GetType(), glue, rtoffset);
+        callee = GetFunction(bb, glue, calleeDescriptor, rtbaseoffset);
     } else {
         ASSERT(op == OpCode::BUILTINS_CALL || op == OpCode::BUILTINS_CALL_WITH_ARGV);
         Expr opcodeOffset = GetExprFromGate(inList[targetIndex]);
@@ -1580,6 +1590,12 @@ void LiteCGIRBuilder::VisitCall(GateRef gate, const std::vector<GateRef> &inList
     LiteCGType *returnType = lmirBuilder_->LiteCGGetFuncReturnType(calleeFuncType);
     bool returnVoid = (returnType == lmirBuilder_->voidType);
     PregIdx returnPregIdx = returnVoid ? -1 : lmirBuilder_->CreatePreg(returnType);
+    if (op == OpCode::ASM_CALL_BARRIER) {
+        if (!returnVoid)  LOG_JIT(INFO) << "barrier has return use\n";
+        Stmt &pureCall = lmirBuilder_->PureCall(callee, params);
+        lmirBuilder_->AppendStmt(bb, pureCall);
+        return;
+    }
     Stmt &callNode =
         returnVoid ? lmirBuilder_->ICall(callee, params) : lmirBuilder_->ICall(callee, params, returnPregIdx);
     if (kind == CallExceptionKind::HAS_PC_OFFSET) {
