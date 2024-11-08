@@ -108,6 +108,7 @@ Local<JSValueRef> EcmaModuleTest::MockRequireNapiException(JsiRuntimeCallInfo *r
     JSNApi::ThrowException(vm, error);
     return message;
 }
+
 /*
  * Feature: Module
  * Function: AddImportEntry
@@ -2710,16 +2711,17 @@ HWTEST_F_L0(EcmaModuleTest, InnerModuleInstantiation)
     EXPECT_EQ(index, 2);
 }
 
-HWTEST_F_L0(EcmaModuleTest, InnerModuleInstantiation_ReEnter)
+HWTEST_F_L0(EcmaModuleTest, InnerModuleInstantiation_ReEnterTest)
 {
     auto vm = thread->GetEcmaVM();
     ObjectFactory *objectFactory = vm->GetFactory();
-    JSHandle<SourceTextModule> module = objectFactory->NewSourceTextModule();
+    JSHandle<SourceTextModule> module = objectFactory->NewSSourceTextModule();
     module->SetEcmaModuleFilenameString("modules.abc");
     module->SetEcmaModuleRecordNameString("b");
     module->SetTypes(ModuleTypes::ECMA_MODULE);
     module->SetStatus(ModuleStatus::EVALUATING);
     module->SetIsNewBcVersion(true);
+    module->SetSharedType(SharedTypes::SHARED_MODULE);
     CVector<JSHandle<SourceTextModule>> stack;
     int index = SourceTextModule::InnerModuleInstantiation(thread, JSHandle<ModuleRecord>::Cast(module), stack, 1, 0);
     EXPECT_EQ(index, 1);

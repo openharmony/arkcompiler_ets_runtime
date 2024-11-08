@@ -558,8 +558,11 @@ int SourceTextModule::InnerModuleInstantiation(JSThread *thread, const JSHandle<
     if (status == ModuleStatus::INSTANTIATING ||
         status == ModuleStatus::INSTANTIATED ||
         status == ModuleStatus::EVALUATING_ASYNC ||
-        status == ModuleStatus::EVALUATING ||
         status == ModuleStatus::EVALUATED) {
+        return index;
+    }
+    if (SourceTextModule::IsSharedModule(module) && status == ModuleStatus::EVALUATING) {
+        LOG_FULL(INFO) << "circular dependency occurred of shared-module";
         return index;
     }
     // 3. Assert: module.[[Status]] is "uninstantiated".
