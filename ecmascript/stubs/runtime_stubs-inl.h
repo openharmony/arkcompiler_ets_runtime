@@ -1018,7 +1018,7 @@ JSTaggedValue RuntimeStubs::RuntimeCreateSharedClass(JSThread *thread,
     JSHandle<ConstantPool> constpoolHandle = JSHandle<ConstantPool>::Cast(constpool);
 
     JSHandle<JSTaggedValue> sendableEnv(thread, JSTaggedValue::Undefined());
-    if (module->GetTaggedObject()->GetClass()->IsSourceTextModule()) {
+    if (module->IsSourceTextModule()) {
         JSHandle<SourceTextModule> moduleRecord = JSHandle<SourceTextModule>::Cast(module);
         sendableEnv = JSHandle<JSTaggedValue>(thread, moduleRecord->GetSendableEnv());
     }
@@ -1041,8 +1041,10 @@ JSTaggedValue RuntimeStubs::RuntimeCreateSharedClass(JSThread *thread,
         SendableClassDefiner::DefineSendableClassFromExtractor(thread, extractor, staticFieldArray);
     ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
     JSHandle<JSTaggedValue> sendableClsModule = moduleManager->GenerateSendableFuncModule(module);
-    JSHandle<SourceTextModule> sendableClsModuleRecord(sendableClsModule);
-    sendableClsModuleRecord->SetSendableEnv(thread, sendableEnv);
+    if (sendableClsModule->IsSourceTextModule()) {
+        JSHandle<SourceTextModule> sendableClsModuleRecord(sendableClsModule);
+        sendableClsModuleRecord->SetSendableEnv(thread, sendableEnv);
+    }
     cls->SetModule(thread, sendableClsModule.GetTaggedValue());
     RuntimeSetClassConstructorLength(thread, cls.GetTaggedValue(), JSTaggedValue(length));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -2292,8 +2294,11 @@ JSTaggedValue RuntimeStubs::RuntimeDefinefunc(JSThread *thread, const JSHandle<J
         result = factory->NewJSSendableFunction(methodHandle);
         ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
         JSHandle<JSTaggedValue> sendableFuncModule = moduleManager->GenerateSendableFuncModule(module);
-        JSHandle<SourceTextModule> sendableFuncModuleRecord(sendableFuncModule);
-        sendableFuncModuleRecord->SetSendableEnv(thread, JSHandle<SourceTextModule>::Cast(module)->GetSendableEnv());
+        if (module->IsSourceTextModule()) {
+            JSHandle<SourceTextModule> sendableFuncModuleRecord(sendableFuncModule);
+            sendableFuncModuleRecord->SetSendableEnv(
+                thread, JSHandle<SourceTextModule>::Cast(module)->GetSendableEnv());
+        }
         result->SetModule(thread, sendableFuncModule.GetTaggedValue());
     } else {
         result = factory->NewJSFunction(methodHandle);
