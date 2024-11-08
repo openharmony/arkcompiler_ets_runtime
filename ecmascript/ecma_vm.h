@@ -863,7 +863,7 @@ private:
     CString moduleName_;
     CList<CString> deregisterModuleList_;
     CMap<CString, CString> mockModuleList_;
-    CMap<CString, HmsMap> hmsModuleList_;
+    std::map<CString, HmsMap> hmsModuleList_;
     CMap<CString, CString> pkgNameList_;
     CMap<CString, CMap<CString, CVector<CString>>> pkgContextInfoList_;
     CMap<CString, CString> pkgAliasList_;
