@@ -192,3 +192,14 @@ SyntaxError
 SyntaxError
 \\\[ ["\\["]
 \\\[ ["\\["]
+ab.defgzabCdefgzabCdefgzabCdefgzabCdefgzabCdefgzabCdefgzabCdefgz
+ab.defgzabCdefgzabCdefgzabCdefgzabCdefgzabCdefgzabCdefgzabCdefgz
+abCdefgxyzabCdefgzabCdefgzabCdefgzabCdefgzabCdefgzabCdefgzabCdefgz
+abxyzdefgzabCdefgzabCdefgzabCdefgzabCdefgzabCdefgzabCdefgzabCdefgz
+abxCyzdefgzabCdefgzabCdefgzabCdefgzabCdefgzabCdefgzabCdefgzabCdefgz
+abxCyzdefgzabCdefgzabCdefgzabCdefgzabCdefgzabCdefgzabCdefgzabCdefgz
+abCdefgzabCdefgzabCdefgzabCdefgzabCdefgzabCdefgzabCdefgzabCdefgz
+abCdefgzabCdefgzabCdefgzabCdefgzabCdefgzabCdefgzabCdefgzabCdefgz
+utf83这要替换"!
+3这要替换"!
+abcdefg3higk"!
