@@ -892,6 +892,8 @@ public:
     JSHandle<SendableEnv> NewSendableEnv(int numSlots);
     JSHandle<JSFunction> NewJSSendableFunction(const JSHandle<Method> &methodHandle);
 
+    void SetCodeEntryToFunctionFromMethod(const JSHandle<JSFunction> &func, const JSHandle<Method> &mothed);
+
 private:
     friend class GlobalEnv;
     friend class GlobalEnvConstants;

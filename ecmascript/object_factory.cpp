@@ -1942,6 +1942,12 @@ JSHandle<JSHClass> ObjectFactory::CreateDefaultClassConstructorHClass(JSHClass *
     return defaultHclass;
 }
 
+void ObjectFactory::SetCodeEntryToFunctionFromMethod(const JSHandle<JSFunction> &func, const JSHandle<Method> &mothed)
+{
+    uintptr_t entry = mothed->GetCodeEntryOrLiteral();
+    func->SetCodeEntry(entry);
+}
+
 JSHandle<JSFunction> ObjectFactory::NewJSFunctionByHClass(const JSHandle<Method> &method,
                                                           const JSHandle<JSHClass> &clazz,
                                                           MemSpaceType type)
@@ -1969,6 +1975,8 @@ JSHandle<JSFunction> ObjectFactory::NewJSFunctionByHClass(const JSHandle<Method>
     if (method->IsAotWithCallField()) {
         thread_->GetEcmaVM()->GetAOTFileManager()->
             SetAOTFuncEntry(method->GetJSPandaFile(), *function, *method);
+    } else {
+        SetCodeEntryToFunctionFromMethod(function, method);
     }
     return function;
 }
