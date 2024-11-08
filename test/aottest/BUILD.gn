@@ -303,7 +303,9 @@ group("ark_aot_ts_test") {
     "sub",
     "supercall",
     "supercallspread",
-    "supercallforward",
+
+    #"supercallforward",
+    "supercallforward_in_api14",
     "suspendgenerator",
     "suspendgeneratorbranch",
     "suspendgeneratorfor",
