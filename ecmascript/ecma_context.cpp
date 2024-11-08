@@ -341,11 +341,11 @@ Expected<JSTaggedValue, bool> EcmaContext::CommonInvokeEcmaEntrypoint(const JSPa
             EcmaRuntimeStatScope runtimeStatScope(vm_);
             result = InvokeEcmaAotEntrypoint(func, global, jsPandaFile, entryPoint);
         } else if (vm_->GetJSOptions().IsEnableForceJitCompileMain()) {
-            Jit::Compile(vm_, func, CompilerTier::FAST);
+            Jit::Compile(vm_, func, CompilerTier::Tier::FAST);
             EcmaRuntimeStatScope runtimeStatScope(vm_);
             result = JSFunction::InvokeOptimizedEntrypoint(thread_, func, global, nullptr);
         } else if (vm_->GetJSOptions().IsEnableForceBaselineCompileMain()) {
-            Jit::Compile(vm_, func, CompilerTier::BASELINE);
+            Jit::Compile(vm_, func, CompilerTier::Tier::BASELINE);
             EcmaRuntimeCallInfo *info =
                 EcmaInterpreter::NewRuntimeCallInfo(thread_, JSHandle<JSTaggedValue>(func), global, undefined, 0);
             EcmaRuntimeStatScope runtimeStatScope(vm_);

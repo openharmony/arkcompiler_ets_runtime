@@ -298,40 +298,6 @@ Jit::~Jit()
 {
 }
 
-bool Jit::SupportJIT(JSHandle<JSFunction> &jsFunction, [[maybe_unused]] EcmaVM *vm, CompilerTier tier) const
-{
-    Method *method = Method::Cast(jsFunction->GetMethod().GetTaggedObject());
-    if (jsFunction.GetTaggedValue().IsJSSharedFunction()) {
-        LOG_JIT(DEBUG) << "method does not support compile shared function:" <<
-            method->GetRecordNameStr() + "." + method->GetMethodName();
-        return false;
-    }
-
-    FunctionKind kind = method->GetFunctionKind();
-    switch (kind) {
-        case FunctionKind::NORMAL_FUNCTION:
-        case FunctionKind::GETTER_FUNCTION:
-        case FunctionKind::SETTER_FUNCTION:
-        case FunctionKind::ARROW_FUNCTION:
-        case FunctionKind::BASE_CONSTRUCTOR:
-        case FunctionKind::CLASS_CONSTRUCTOR:
-        case FunctionKind::DERIVED_CONSTRUCTOR:
-        case FunctionKind::NONE_FUNCTION:
-            return true;
-        default:
-            break;
-    }
-    std::stringstream msgStr;
-    msgStr << "method does not support jit:" << method->GetRecordNameStr() + "." + method->GetMethodName() <<
-     ", kind:" << static_cast<int>(kind);
-    if (tier == CompilerTier::BASELINE) {
-        LOG_BASELINEJIT(DEBUG) << msgStr.str();
-    } else {
-        LOG_JIT(DEBUG) << msgStr.str();
-    }
-    return false;
-}
-
 void Jit::DeleteJitCompile(void *compiler)
 {
     if (deleteJitCompile_ != nullptr) {
@@ -353,86 +319,53 @@ void Jit::CountInterpExecFuncs(JSHandle<JSFunction> &jsFunction)
 }
 
 void Jit::Compile(EcmaVM *vm, JSHandle<JSFunction> &jsFunction, CompilerTier tier,
-                  int32_t offset, JitCompileMode mode)
+                  int32_t osrOffset, JitCompileMode mode)
 {
     auto jit = Jit::GetInstance();
-    if ((!jit->IsEnableBaselineJit() && tier == CompilerTier::BASELINE) ||
-        (!jit->IsEnableFastJit() && tier == CompilerTier::FAST)) {
+    if ((!jit->IsEnableBaselineJit() && tier.IsBaseLine()) ||
+        (!jit->IsEnableFastJit() && tier.IsFast())) {
         return;
     }
 
-    if (!vm->IsEnableOsr() && offset != MachineCode::INVALID_OSR_OFFSET) {
+    if (!vm->IsEnableOsr() && osrOffset != MachineCode::INVALID_OSR_OFFSET) {
         return;
     }
 
-    Method *method = Method::Cast(jsFunction->GetMethod().GetTaggedObject());
-    auto jSPandaFile = method->GetJSPandaFile();
-    ASSERT(jSPandaFile != nullptr);
-    CString fileDesc = jSPandaFile->GetJSPandaFileDesc();
-    CString methodName = fileDesc + ":" + method->GetRecordNameStr() + "." + CString(method->GetMethodName());
-    uint32_t codeSize = method->GetCodeSize();
-    CString methodInfo = methodName + ", bytecode size:" + ToCString(codeSize);
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, ConvertToStdString("JIT::Compile:" + methodInfo));
-
-    uint32_t maxSize = 9000;
-    if (vm->GetJSOptions().IsEnableJitFastCompile()) {
-        maxSize = 15; // 15 is method codesize threshold during fast compiling
-    }
-    if (codeSize > maxSize && !(vm->GetJSOptions().IsEnableForceJitCompileMain() && mode == SYNC)) {
-        if (tier == CompilerTier::BASELINE) {
-            LOG_BASELINEJIT(DEBUG) << "skip jit task, as too large:" << methodInfo;
-        } else {
-            LOG_JIT(DEBUG) << "skip jit task, as too large:" << methodInfo;
-        }
-
+    CompileDecision compileDecision(vm, jsFunction, tier, osrOffset, mode);
+    if (!compileDecision.Decision()) {
         return;
     }
-    if (vm->IsEnableOsr() && offset != MachineCode::INVALID_OSR_OFFSET && method->HasCatchBlock()) {
-        LOG_JIT(DEBUG) << "skip jit task, as osr does not support catch blocks: " << methodInfo;
-        return;
-    }
+
+    jit->Compile(vm, compileDecision);
+}
+
+void Jit::Compile(EcmaVM *vm, const CompileDecision &decision)
+{
+    auto tier = decision.GetTier();
+    auto jsFunction = decision.GetJsFunction();
+    auto methodInfo = decision.GetMethodInfo();
+    auto methodName = decision.GetMethodName();
+    auto osrOffset = decision.GetOsrOffset();
+    auto mode = decision.GetCompileMode();
 
     CString msg = "compile method:" + methodInfo + ", in work thread";
     TimeScope scope(vm, msg, tier, true, true);
-    if (vm->GetJSThread()->IsMachineCodeLowMemory()) {
-        if (tier == CompilerTier::BASELINE) {
-            LOG_BASELINEJIT(DEBUG) << "skip jit task, as low code memory:" << methodInfo;
-        } else {
-            LOG_JIT(DEBUG) << "skip jit task, as low code memory:" << methodInfo;
-        }
 
-        return;
-    }
-    if (!jit->SupportJIT(jsFunction, vm, tier)) {
-        return;
-    }
-    bool needCompile = jit->CheckJitCompileStatus(jsFunction, methodName, tier);
-    if (!needCompile) {
-        return;
-    }
-
-    // using hole value to indecate compiling. todo: reset when failed
-    if (tier == CompilerTier::FAST) {
-        jsFunction->SetMachineCode(vm->GetJSThread(), JSTaggedValue::Hole());
-        jit->GetJitDfx()->SetTriggerCount(false);
-    } else {
-        ASSERT(tier == CompilerTier::BASELINE);
-        jsFunction->SetBaselineCode(vm->GetJSThread(), JSTaggedValue::Hole());
-        jit->GetJitDfx()->SetTriggerCount(true);
-    }
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, ConvertToStdString("JIT::Compile:" + methodInfo));
+    jsFunction->SetJitCompilingFlag(true);
+    GetJitDfx()->SetTriggerCount(tier);
 
     {
         JitTaskpool::GetCurrentTaskpool()->WaitForJitTaskPoolReady();
         EcmaVM *compilerVm = JitTaskpool::GetCurrentTaskpool()->GetCompilerVm();
         std::shared_ptr<JitTask> jitTask = std::make_shared<JitTask>(vm->GetJSThread(),
             // avoid check fail when enable multi-thread check
-            compilerVm->GetJSThreadNoCheck(),
-            jit, jsFunction, tier, methodName, offset, vm->GetJSThread()->GetThreadId(), mode);
+            compilerVm->GetJSThreadNoCheck(), this, jsFunction, tier, methodName, osrOffset, mode);
 
         jitTask->PrepareCompile();
         JitTaskpool::GetCurrentTaskpool()->PostTask(
             std::make_unique<JitTask::AsyncTask>(jitTask, vm->GetJSThread()->GetThreadId()));
-        if (mode == SYNC) {
+        if (mode.IsSync()) {
             // sync mode, also compile in taskpool as litecg unsupport parallel compile,
             // wait task compile finish then install code
             jitTask->WaitFinish();
@@ -440,7 +373,7 @@ void Jit::Compile(EcmaVM *vm, JSHandle<JSFunction> &jsFunction, CompilerTier tie
         }
         int spendTime = scope.TotalSpentTimeInMicroseconds();
         jitTask->SetMainThreadCompilerTime(spendTime);
-        jit->GetJitDfx()->RecordSpentTimeAndPrintStatsLogInJsThread(spendTime);
+        GetJitDfx()->RecordSpentTimeAndPrintStatsLogInJsThread(spendTime);
     }
 }
 
@@ -456,45 +389,6 @@ void Jit::RequestInstallCode(std::shared_ptr<JitTask> jitTask)
     // set
     jitTask->GetHostThread()->SetInstallMachineCode(true);
     jitTask->GetHostThread()->SetCheckSafePointStatus();
-}
-
-bool Jit::CheckJitCompileStatus(JSHandle<JSFunction> &jsFunction,
-                                const CString &methodName, CompilerTier tier)
-{
-    if (tier == CompilerTier::FAST &&
-        jsFunction->GetMachineCode() == JSTaggedValue::Hole()) {
-        LOG_JIT(DEBUG) << "skip method, as it compiling:" << methodName;
-#if ECMASCRIPT_ENABLE_JIT_WARMUP_PROFILER
-        auto &profMap = JitWarmupProfiler::GetInstance()->profMap_;
-        if (profMap.find(methodName) != profMap.end()) {
-            profMap.erase(methodName);
-        }
-#endif
-        return false;
-    }
-
-    if (tier == CompilerTier::BASELINE &&
-        jsFunction->GetBaselineCode() == JSTaggedValue::Hole()) {
-        LOG_BASELINEJIT(DEBUG) << "skip method, as it compiling:" << methodName;
-        return false;
-    }
-
-    if (tier == CompilerTier::FAST && jsFunction->IsCompiledCode()) {
-        JSTaggedValue machineCode = jsFunction->GetMachineCode();
-        if (machineCode.IsMachineCodeObject() &&
-            MachineCode::Cast(machineCode.GetTaggedObject())->GetOSROffset() == MachineCode::INVALID_OSR_OFFSET) {
-            LOG_JIT(DEBUG) << "skip method, as it has been jit compiled:" << methodName;
-            return false;
-        }
-        return true;
-    }
-
-    if (tier == CompilerTier::BASELINE &&
-        jsFunction->GetBaselineCode() != JSTaggedValue::Undefined()) {
-        LOG_BASELINEJIT(DEBUG) << "skip method, as it has been jit compiled:" << methodName;
-        return false;
-    }
-    return true;
 }
 
 uint32_t Jit::GetRunningTaskCnt(EcmaVM *vm)
@@ -631,23 +525,13 @@ Jit::TimeScope::~TimeScope()
         return;
     }
     if (isDebugLevel_) {
-        if (tier_ == CompilerTier::BASELINE) {
-            LOG_BASELINEJIT(DEBUG) << message_ << ": " << TotalSpentTime() << "ms";
-            return;
-        }
-        ASSERT(tier_ == CompilerTier::FAST);
-        LOG_JIT(DEBUG) << message_ << ": " << TotalSpentTime() << "ms";
+        LOG_JIT(DEBUG) << tier_ << message_ << ": " << TotalSpentTime() << "ms";
     } else {
-        if (tier_ == CompilerTier::BASELINE) {
-            LOG_BASELINEJIT(INFO) << message_ << ": " << TotalSpentTime() << "ms";
-            return;
-        }
-        ASSERT(tier_ == CompilerTier::FAST);
         auto bundleName = vm_->GetBundleName();
         if (vm_->GetEnableJitLogSkip() && bundleName != "" && message_.find(bundleName) == std::string::npos) {
             return;
         }
-        LOG_JIT(INFO) << message_ << ": " << TotalSpentTime() << "ms";
+        LOG_JIT(INFO) << tier_ << message_ << ": " << TotalSpentTime() << "ms";
     }
 }
 }  // namespace panda::ecmascript

@@ -116,7 +116,7 @@ JitCompilerTask *JitCompilerTask::CreateJitCompilerTask(JitTask *jitTask)
 
 bool JitCompilerTask::Compile()
 {
-    if (compilerTier_ == CompilerTier::BASELINE) {
+    if (compilerTier_.IsBaseLine()) {
         auto baselineCompiler = new (std::nothrow) BaselineCompiler(jitCompilationEnv_->GetHostThread()->GetEcmaVM(),
             jitCompilationEnv_.get());
         if (baselineCompiler == nullptr) {
@@ -164,7 +164,7 @@ bool JitCompilerTask::Finalize(JitTask *jitTask)
     if (jitTask == nullptr) {
         return false;
     }
-    if (compilerTier_ == CompilerTier::BASELINE) {
+    if (compilerTier_.IsBaseLine()) {
         return baselineCompiler_->CollectMemoryCodeInfos(jitTask->GetMachineCodeDesc());
     }
     jitCodeGenerator_->JitCreateLitecgModule();

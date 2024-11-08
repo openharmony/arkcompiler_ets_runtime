@@ -25,6 +25,7 @@
 #include "ecmascript/object_factory-inl.h"
 #include "ecmascript/pgo_profiler/pgo_profiler.h"
 #include "ecmascript/require/js_require_manager.h"
+#include "ecmascript/ic/profile_type_info.h"
 
 namespace panda::ecmascript {
 void JSFunction::InitializeJSFunction(JSThread *thread, const JSHandle<JSFunction> &func, FunctionKind kind)
@@ -1205,6 +1206,15 @@ void JSFunction::SetJitCompiledFuncEntry(JSThread *thread, JSHandle<MachineCode>
 
     SetMachineCode(thread, machineCode);
     SetCompiledFuncEntry(codeEntry, isFastCall);
+}
+
+void JSFunction::SetJitHotnessCnt(uint16_t cnt)
+{
+    JSTaggedValue profileTypeInfoVal = GetProfileTypeInfo();
+    if (!profileTypeInfoVal.IsUndefined()) {
+        ProfileTypeInfo *profileTypeInfo = ProfileTypeInfo::Cast(profileTypeInfoVal.GetTaggedObject());
+        profileTypeInfo->SetJitHotnessCnt(cnt);
+    }
 }
 
 void JSFunctionBase::ClearCompiledCodeFlags()

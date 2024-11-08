@@ -126,6 +126,19 @@ public:
         return TaskConcurrentFuncFlagBit::Decode(bitField);
     }
 
+    void SetJitCompilingFlag(bool value)
+    {
+        uint32_t bitField = GetBitField();
+        uint32_t newValue = JitCompilingFlagBit::Update(bitField, value);
+        SetBitField(newValue);
+    }
+
+    bool IsJitCompiling() const
+    {
+        uint32_t bitField = GetBitField();
+        return JitCompilingFlagBit::Decode(bitField);
+    }
+
     JSTaggedValue GetFunctionExtraInfo() const;
 
     /* compiled code flag field */
@@ -134,6 +147,7 @@ public:
     static constexpr uint32_t COMPILED_CODE_FASTCALL_BITS = 0x3; // 0x3U: compiled code and fastcall bit field
 
     using TaskConcurrentFuncFlagBit = IsFastCallBit::NextFlag;     // offset 2
+    using JitCompilingFlagBit = TaskConcurrentFuncFlagBit::NextFlag; // offset 3
 
     static constexpr size_t METHOD_OFFSET = JSObject::SIZE;
     ACCESSORS(Method, METHOD_OFFSET, CODE_ENTRY_OFFSET)
@@ -332,6 +346,7 @@ public:
     }
 
     void SetJitCompiledFuncEntry(JSThread *thread, JSHandle<MachineCode> &machineCode, bool isFastCall);
+    void SetJitHotnessCnt(uint16_t cnt);
 
     static void InitializeForConcurrentFunction(JSThread *thread, JSHandle<JSFunction> &func);
 
