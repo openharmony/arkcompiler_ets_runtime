@@ -1461,6 +1461,7 @@ host_unittest_action("EcmaVm_054_Test") {
 
   sources = [
     # test file
+    "heap_helper_test.cpp",
     "machine_code_test.cpp",
   ]
 

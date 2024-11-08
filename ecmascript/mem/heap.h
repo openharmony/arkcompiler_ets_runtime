@@ -31,6 +31,7 @@
 namespace panda::test {
 class GCTest_CallbackTask_Test;
 class HProfTestHelper;
+class HeapTestHelper;
 }
 
 namespace panda::ecmascript {
@@ -1829,6 +1830,7 @@ private:
 
     friend panda::test::HProfTestHelper;
     friend panda::test::GCTest_CallbackTask_Test;
+    friend panda::test::HeapTestHelper;
 };
 }  // namespace panda::ecmascript
 
