@@ -1041,6 +1041,11 @@
             <option name="push" value="test/test/libark_jsruntime_test.so -> /data/test" src="out"/>
         </preparer>
     </target>
+    <target name="RawHeapTranslateTest">
+        <preparer>
+            <option name="push" value="test/test/libark_jsruntime_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
     <target name="CircuitOptimizerTest">
 	<preparer>
             <option name="push" value="test/test/libark_jsruntime_test.so -> /data/test" src="out"/>
