@@ -325,15 +325,6 @@ TypedArrayMetaDataAccessor GateAccessor::GetTypedArrayMetaDataAccessor(GateRef g
     return TypedArrayMetaDataAccessor(gatePtr->GetOneParameterMetaData()->GetValue());
 }
 
-void GateAccessor::UpdateOnHeapMode(GateRef gate, OnHeapMode onHeapMode)
-{
-    ASSERT(GetOpCode(gate) == OpCode::TYPED_ARRAY_CHECK);
-    Gate *gatePtr = circuit_->LoadGatePtr(gate);
-    TypedArrayMetaDataAccessor accessor = GetTypedArrayMetaDataAccessor(gate);
-    uint64_t value = accessor.UpdateOnHeapMode(onHeapMode);
-    const_cast<OneParameterMetaData *>(gatePtr->GetOneParameterMetaData())->SetValue(value);
-}
-
 LoadElementAccessor GateAccessor::GetLoadElementAccessor(GateRef gate) const
 {
     ASSERT(GetOpCode(gate) == OpCode::LOAD_ELEMENT);
