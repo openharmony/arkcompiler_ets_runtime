@@ -770,6 +770,7 @@ JSTaggedValue JSTaggedValue::ToPrimitive(JSThread *thread, const JSHandle<JSTagg
             if (!valueResult.IsECMAObject()) {
                 return valueResult;
             }
+            DumpExceptionObject(thread, tagged);
             THROW_TYPE_ERROR_AND_RETURN(thread, "Cannot convert object to primitive value",
                 JSTaggedValue::Exception());
         } else {
@@ -806,6 +807,7 @@ JSTaggedValue JSTaggedValue::OrdinaryToPrimitive(JSThread *thread, const JSHandl
             }
         }
     }
+    DumpExceptionObject(thread, tagged);
     THROW_TYPE_ERROR_AND_RETURN(thread, "Cannot convert a illegal value to a Primitive", JSTaggedValue::Undefined());
 }
 
@@ -862,6 +864,7 @@ JSHandle<EcmaString> JSTaggedValue::ToString(JSThread *thread, const JSHandle<JS
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSHandle<EcmaString>(emptyStr));
         return ToString(thread, primValue);
     }
+    DumpExceptionObject(thread, tagged);
     // Already Include Symbol
     THROW_TYPE_ERROR_AND_RETURN(thread, "Cannot convert a illegal value to a String", JSHandle<EcmaString>(emptyStr));
 }
@@ -1799,4 +1802,14 @@ bool JSTaggedValue::SetJSAPIProperty(JSThread *thread, const JSHandle<JSTaggedVa
     THROW_TYPE_ERROR_AND_RETURN(thread, "Cannot set property on Container", false);
 }
 
+void JSTaggedValue::DumpExceptionObject(JSThread *thread, const JSHandle<JSTaggedValue> &obj)
+{
+    if (thread->GetEcmaVM()->GetJSOptions().EnableExceptionBacktrace()) {
+        std::ostringstream oss;
+        obj->Dump(oss);
+        std::regex reg("0x[0-9a-fA-F]+");
+        std::string sensitiveStr = std::regex_replace(oss.str(), reg, "");
+        LOG_ECMA(ERROR) << "DumpExceptionObject: " << sensitiveStr;
+    }
+}
 }  // namespace panda::ecmascript
