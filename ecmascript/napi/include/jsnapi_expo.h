@@ -1753,8 +1753,6 @@ public:
     static bool IsMultiThreadCheckEnabled(const EcmaVM *vm);
     static uint32_t GetCurrentThreadId();
 private:
-    static int vmCount_;
-    static bool initialize_;
     static bool isForked_;
     static bool CreateRuntime(const RuntimeOption &option);
     static bool DestroyRuntime();
