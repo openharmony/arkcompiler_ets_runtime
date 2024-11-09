@@ -250,7 +250,7 @@ bool QuickFixManager::IsQuickFixCausedException(JSThread *thread,
     CUnorderedSet<CString> methodNames = ParseStackInfo(stackInfo);
 
     // check whether the methodNames contains a patch method name.
-    CUnorderedMap<uint32_t, MethodLiteral *> patchMethodLiterals = patchFile->GetMethodLiteralMap();
+    std::unordered_map<uint32_t, MethodLiteral *> patchMethodLiterals = patchFile->GetMethodLiteralMap();
     for (const auto &item : patchMethodLiterals) {
         MethodLiteral *patch = item.second;
         auto methodId = patch->GetMethodId();
