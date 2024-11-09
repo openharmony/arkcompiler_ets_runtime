@@ -103,10 +103,10 @@ HWTEST_F_L0(JSMapTest, DeleteAndGet2)
         JSHandle<JSObject> obj = factory->NewEmptyJSObject(0);
         auto *nativePointer = pointArr + i;
         JSHandle<JSNativePointer> pointer = factory->NewJSNativePointer(nativePointer);
-        Barriers::SetPrimitive<JSTaggedType>(*obj, ECMAObject::HASH_OFFSET, pointer.GetTaggedValue().GetRawData());
+        Barriers::SetObject<true>(thread, *obj, ECMAObject::HASH_OFFSET, pointer.GetTaggedValue().GetRawData());
         taggedArray->Set(thread, i, obj);
     }
-
+    thread->GetEcmaVM()->CollectGarbage(TriggerGCType::FULL_GC);
     JSHandle<JSTaggedValue> setfunc =
         JSObject::GetProperty(thread, mapvalue, thread->GlobalConstants()->GetHandledSetString()).GetValue();
     JSHandle<JSTaggedValue> getfunc = thread->GlobalConstants()->GetHandledMapGet();
