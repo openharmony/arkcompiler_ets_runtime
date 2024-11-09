@@ -17,24 +17,15 @@
 
 #include "ecmascript/platform/os.h"
 
-#if defined(ENABLE_FFRT_INTERFACES)
-#include "ffrt_inner.h"
-#include "c/executor_task.h"
-#endif
-
 namespace panda::ecmascript {
 Taskpool *Taskpool::GetCurrentTaskpool()
 {
-#if defined(ENABLE_FFRT_INTERFACES)
-    static Taskpool *taskpool = new FFRTTaskpool();
-#else
-    static Taskpool *taskpool = new ThreadedTaskpool();
-#endif
+    static Taskpool *taskpool = new Taskpool();
     return taskpool;
 }
 
-void ThreadedTaskpool::InitializeWithHooks(int32_t threadNum,
-    const std::function<void(os::thread::native_handle_type)> prologueHook,
+void Taskpool::Initialize(int threadNum,
+    std::function<void(os::thread::native_handle_type)> prologueHook,
     const std::function<void(os::thread::native_handle_type)> epilogueHook)
 {
     LockHolder lock(mutex_);
@@ -43,7 +34,7 @@ void ThreadedTaskpool::InitializeWithHooks(int32_t threadNum,
     }
 }
 
-void ThreadedTaskpool::Destroy(int32_t id)
+void Taskpool::Destroy(int32_t id)
 {
     ASSERT(id != 0);
     LockHolder lock(mutex_);
@@ -58,7 +49,7 @@ void ThreadedTaskpool::Destroy(int32_t id)
     }
 }
 
-void ThreadedTaskpool::TerminateTask(int32_t id, TaskType type)
+void Taskpool::TerminateTask(int32_t id, TaskType type)
 {
     if (isInitialized_ <= 0) {
         return;
@@ -66,7 +57,7 @@ void ThreadedTaskpool::TerminateTask(int32_t id, TaskType type)
     runner_->TerminateTask(id, type);
 }
 
-uint32_t ThreadedTaskpool::TheMostSuitableThreadNum(uint32_t threadNum) const
+uint32_t Taskpool::TheMostSuitableThreadNum(uint32_t threadNum) const
 {
     if (threadNum > 0) {
         return std::min<uint32_t>(threadNum, MAX_TASKPOOL_THREAD_NUM);
@@ -78,7 +69,7 @@ uint32_t ThreadedTaskpool::TheMostSuitableThreadNum(uint32_t threadNum) const
     return MIN_TASKPOOL_THREAD_NUM;     // At least MIN_TASKPOOL_THREAD_NUM GC threads, and 1 extra daemon thread.
 }
 
-void ThreadedTaskpool::ForEachTask(const std::function<void(Task*)> &f)
+void Taskpool::ForEachTask(const std::function<void(Task*)> &f)
 {
     if (isInitialized_ <= 0) {
         return;
@@ -86,108 +77,10 @@ void ThreadedTaskpool::ForEachTask(const std::function<void(Task*)> &f)
     runner_->ForEachTask(f);
 }
 
-GCWorkerPool *GCWorkerPool::GetCurrentTaskpool()
+bool Taskpool::IsDaemonThreadOrInThreadPool(std::thread::id id) const
 {
-    static GCWorkerPool *taskpool = new GCWorkerPool();
-    return taskpool;
+    DaemonThread *dThread = DaemonThread::GetInstance();
+    return IsInThreadPool(id) || (dThread != nullptr
+        && dThread->GetThreadId() == JSThread::GetCurrentThreadId());
 }
-
-#if defined(ENABLE_FFRT_INTERFACES)
-void FFRTTaskpool::TerminateTask(int32_t id, TaskType type)
-{
-    LockHolder lock(mutex_);
-    for (auto &[task, handler] : cancellableTasks_) {
-        if (id != ALL_TASK_ID && id != task->GetId()) {
-            continue;
-        }
-        if (type != TaskType::ALL && type != task->GetTaskType()) {
-            continue;
-        }
-
-        // Return non-zero if the task is doing or has finished, so calling terminated is meaningless.
-        if (ffrt::skip(handler) == 0) {
-            task->Terminated();
-        }
-    }
-}
-
-void FFRTTaskpool::Destroy(int32_t id)
-{
-    TerminateTask(id, TaskType::ALL);
-}
-
-uint32_t FFRTTaskpool::TheMostSuitableThreadNum(uint32_t threadNum) const
-{
-    if (threadNum > 0) {
-        return std::min<uint32_t>(threadNum, MAX_TASKPOOL_THREAD_NUM);
-    }
-    uint32_t numOfThreads = std::min<uint32_t>(NumberOfCpuCore() / 2, MAX_TASKPOOL_THREAD_NUM);
-    return std::max<uint32_t>(numOfThreads, MIN_TASKPOOL_THREAD_NUM);
-}
-
-bool FFRTTaskpool::IsInThreadPool() const
-{
-    auto tid = ffrt::this_task::get_id();
-    LockHolder lock(mutex_);
-    return ffrtTaskIds_.find(tid) != ffrtTaskIds_.end();
-}
-
-void FFRTTaskpool::PostTask(std::unique_ptr<Task> task)
-{
-    constexpr uint32_t FFRT_TASK_STACK_SIZE = 8 * 1024 * 1024; // 8MB
-
-    ffrt::task_attr taskAttr;
-    ffrt_task_attr_init(&taskAttr);
-    ffrt_task_attr_set_name(&taskAttr, "Ark_FFRTTaskpool_Task");
-    ffrt_task_attr_set_qos(&taskAttr, ffrt_qos_user_initiated);
-    ffrt_task_attr_set_stack_size(&taskAttr, FFRT_TASK_STACK_SIZE);
-
-    if (LIKELY(!task->IsCancellable())) {
-        SubmitNonCancellableTask(std::move(task), taskAttr);
-    } else {
-        SubmitCancellableTask(std::move(task), taskAttr);
-    }
-}
-
-void FFRTTaskpool::SubmitNonCancellableTask(std::unique_ptr<Task> task, const ffrt::task_attr &taskAttr)
-{
-    auto ffrtTask = [this, task = task.release()]() {
-        auto tid = ffrt::this_task::get_id();
-        {
-            LockHolder lock(mutex_);
-            ffrtTaskIds_.insert(tid);
-        }
-        task->Run(tid);
-        delete task;
-        LockHolder lock(mutex_);
-        if (auto iter = ffrtTaskIds_.find(tid); LIKELY(iter != ffrtTaskIds_.end())) {
-            ffrtTaskIds_.erase(iter);
-        }
-    };
-    ffrt::submit(ffrtTask, {}, {}, taskAttr);
-}
-
-void FFRTTaskpool::SubmitCancellableTask(std::unique_ptr<Task> task, const ffrt::task_attr &taskAttr)
-{
-    std::shared_ptr<Task> sTask(std::move(task));
-    auto ffrtTask = [this, sTask]() {
-        auto tid = ffrt::this_task::get_id();
-        {
-            LockHolder lock(mutex_);
-            ffrtTaskIds_.insert(tid);
-        }
-        sTask->Run(tid);
-        LockHolder lock(mutex_);
-        cancellableTasks_.erase(sTask);
-        if (auto iter = ffrtTaskIds_.find(tid); LIKELY(iter != ffrtTaskIds_.end())) {
-            ffrtTaskIds_.erase(iter);
-        }
-    };
-    // When the ffrtTask is being scheduled, it may not hold the same potential lock as ffrt::submit_h;
-    // So it is safe to lock before ffrt::submit_h.
-    LockHolder lock(mutex_);
-    ffrt::task_handle handler = ffrt::submit_h(ffrtTask, {}, {}, taskAttr);
-    cancellableTasks_.emplace(sTask, std::move(handler));
-}
-#endif
 }  // namespace panda::ecmascript

@@ -403,7 +403,7 @@ void PGOProfiler::StartPGODump()
 
 void PGOProfiler::DispatchPGODumpTask()
 {
-    GCWorkerPool::GetCurrentTaskpool()->PostTask(
+    Taskpool::GetCurrentTaskpool()->PostTask(
         std::make_unique<PGOProfilerTask>(this, vm_->GetJSThread()->GetThreadId()));
 }
 
