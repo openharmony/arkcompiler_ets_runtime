@@ -690,11 +690,6 @@ public:
         return OnHeapModeBits::Get(bitField_);
     }
 
-    uint64_t UpdateOnHeapMode(OnHeapMode mode)
-    {
-        return OnHeapModeBits::Update(bitField_, mode);
-    }
-
     bool IsAccessElement() const
     {
         return ModeBits::Get(bitField_) == Mode::ACCESS_ELEMENT;

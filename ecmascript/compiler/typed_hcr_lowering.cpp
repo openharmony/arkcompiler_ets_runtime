@@ -418,24 +418,21 @@ void TypedHCRLowering::LowerTypedArrayCheck(GateRef gate)
     GateRef glueGlobalEnv = builder_.GetGlobalEnv();
     GateRef receiver = acc_.GetValueIn(gate, 0);
     builder_.HeapObjectCheck(receiver, frameState);
-    GateRef receiverHClass = builder_.LoadHClassByConstOffset(receiver);
+    GateRef receiverHClass = builder_.LoadHClass(receiver);
+    GateRef rootHclass = builder_.GetGlobalEnvObj(glueGlobalEnv, typedArrayRootHclassIndex);
+    GateRef rootOnHeapHclass = builder_.GetGlobalEnvObj(glueGlobalEnv, typedArrayRootHclassOnHeapIndex);
+    GateRef check1 = builder_.Equal(receiverHClass, rootHclass);
+    GateRef check2 = builder_.Equal(receiverHClass, rootOnHeapHclass);
+    builder_.DeoptCheck(builder_.BitOr(check1, check2), frameState, deoptType);
 
     OnHeapMode onHeapMode = accessor.GetOnHeapMode();
-    if (OnHeap::IsOnHeap(onHeapMode)) {
-        GateRef rootOnHeapHclass = builder_.GetGlobalEnvObj(glueGlobalEnv, typedArrayRootHclassOnHeapIndex);
-        GateRef check = builder_.Equal(receiverHClass, rootOnHeapHclass);
-        builder_.DeoptCheck(check, frameState, deoptType);
-    } else if (OnHeap::IsNotOnHeap(onHeapMode)) {
-        GateRef rootHclass = builder_.GetGlobalEnvObj(glueGlobalEnv, typedArrayRootHclassIndex);
-        GateRef check = builder_.Equal(receiverHClass, rootHclass);
-        builder_.DeoptCheck(check, frameState, deoptType);
-    } else {
-        GateRef rootHclass = builder_.GetGlobalEnvObj(glueGlobalEnv, typedArrayRootHclassIndex);
-        GateRef rootOnHeapHclass = builder_.GetGlobalEnvObj(glueGlobalEnv, typedArrayRootHclassOnHeapIndex);
-        GateRef check1 = builder_.Equal(receiverHClass, rootHclass);
-        GateRef check2 = builder_.Equal(receiverHClass, rootOnHeapHclass);
-        builder_.DeoptCheck(builder_.BitOr(check1, check2), frameState, deoptType);
+    if (accessor.IsAccessElement() && !OnHeap::IsNone(onHeapMode)) {
+        GateRef profilingOnHeap = builder_.Boolean(OnHeap::ToBoolean(onHeapMode));
+        GateRef runtimeOnHeap = builder_.IsOnHeap(receiverHClass);
+        GateRef onHeapCheck = builder_.Equal(profilingOnHeap, runtimeOnHeap);
+        builder_.DeoptCheck(onHeapCheck, frameState, DeoptType::INCONSISTENTONHEAP1);
     }
+
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
@@ -471,7 +468,7 @@ void TypedHCRLowering::LowerEcmaMapCheck(GateRef gate)
     GateRef receiver = acc_.GetValueIn(gate, 0);
     builder_.HeapObjectCheck(receiver, frameState);
 
-    GateRef hclass = builder_.LoadHClassByConstOffset(receiver);
+    GateRef hclass = builder_.LoadHClass(receiver);
 
     size_t mapHclassIndex = GlobalEnv::MAP_CLASS_INDEX;
     GateRef glueGlobalEnv = builder_.GetGlobalEnv();
@@ -626,16 +623,9 @@ void TypedHCRLowering::BuiltinInstanceHClassCheck(Environment *env, GateRef gate
             auto iter = arrayHClassIndexMap.find(kind);
             ASSERT(iter != arrayHClassIndexMap.end());
             GateRef receiverHClass = builder_.LoadHClassByConstOffset(receiver);
-            // If the Elements kind is Generic, hclass comparison is required. Other kinds can ensure that hclass has
-            // not been modified.
             ihcMatches = LogicOrBuilder(env)
                 .Or(builder_.Equal(receiverHClass, builder_.GetGlobalConstantValue(iter->second.first)))
                 .Or(builder_.Equal(receiverHClass, builder_.GetGlobalConstantValue(iter->second.second)))
-                .Done();
-            GateRef elementsKind = builder_.GetElementsKindByHClass(receiverHClass);
-            ihcMatches = LogicOrBuilder(env)
-                .Or(ihcMatches)
-                .Or(builder_.NotEqual(elementsKind, builder_.Int32(static_cast<size_t>(ElementsKind::GENERIC))))
                 .Done();
         } else {
             GateRef receiverHClass = builder_.LoadHClassByConstOffset(receiver);
@@ -1222,7 +1212,7 @@ GateRef TypedHCRLowering::BuildTypedArrayLoadElement(GateRef receiver, GateRef o
     DEFVALUE(data, (&builder_), VariableType::JS_ANY(), builder_.Undefined());
     DEFVALUE(result, (&builder_), type, builder_.Double(0));
 
-    GateRef isOnHeap = builder_.IsOnHeap(builder_.LoadHClassByConstOffset(receiver));
+    GateRef isOnHeap = builder_.IsOnHeap(builder_.LoadHClass(receiver));
     BRANCH_CIR(isOnHeap, isByteArray, isArrayBuffer);
     builder_.Bind(isByteArray);
     {
@@ -1404,7 +1394,7 @@ void TypedHCRLowering::BuildTypedArrayStoreElement(GateRef receiver, GateRef off
 {
     GateRef byteArrayOrArrayBuffer = builder_.LoadConstOffset(VariableType::JS_POINTER(), receiver,
                                                               JSTypedArray::VIEWED_ARRAY_BUFFER_OFFSET);
-    GateRef isOnHeap = builder_.IsOnHeap(builder_.LoadHClassByConstOffset(receiver));
+    GateRef isOnHeap = builder_.IsOnHeap(builder_.LoadHClass(receiver));
     DEFVALUE(data, (&builder_), VariableType::JS_ANY(), builder_.Undefined());
     BRANCH_CIR(isOnHeap, isByteArray, isArrayBuffer);
     builder_.Bind(isByteArray);
@@ -1606,9 +1596,10 @@ void TypedHCRLowering::LowerJSInlineTargetTypeCheck(GateRef gate)
     GateRef frameState = GetFrameState(gate);
     auto func = acc_.GetValueIn(gate, 0);
     builder_.HeapObjectCheck(func, frameState);
-    GateRef isFunction = builder_.IsJSFunction(func);
-    builder_.DeoptCheck(isFunction, frameState, DeoptType::NOTJSFUNCTION);
-    GateRef check = builder_.Equal(builder_.GetMethodId(func), acc_.GetValueIn(gate, 1));
+    GateRef check = LogicAndBuilder(&env)
+        .And(builder_.IsJSFunction(func))
+        .And(builder_.Equal(builder_.GetMethodId(func), acc_.GetValueIn(gate, 1)))
+        .Done();
     builder_.DeoptCheck(check, frameState, DeoptType::INLINEFAIL1);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
@@ -1657,7 +1648,7 @@ void TypedHCRLowering::LowerGetSuperConstructor(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
     GateRef ctor = acc_.GetValueIn(gate, 0);
-    GateRef hclass = builder_.LoadHClassByConstOffset(ctor);
+    GateRef hclass = builder_.LoadHClass(ctor);
     GateRef superCtor = builder_.LoadConstOffset(VariableType::JS_ANY(), hclass, JSHClass::PROTOTYPE_OFFSET);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), superCtor);
 }
@@ -1733,7 +1724,7 @@ void TypedHCRLowering::LowerLookupHolder(GateRef gate)
 
     builder_.LoopBegin(&loopHead);
     builder_.DeoptCheck(builder_.TaggedIsNotNull(*holder), frameState, DeoptType::INCONSISTENTHCLASS13);
-    auto curHC = builder_.LoadHClassByConstOffset(*holder);
+    auto curHC = builder_.LoadHClass(*holder);
     BRANCH_CIR(builder_.Equal(curHC, holderHC), &exit, &lookUpProto);
 
     builder_.Bind(&lookUpProto);
@@ -1796,7 +1787,7 @@ void TypedHCRLowering::LowerPrototypeCheck(GateRef gate)
     auto expectedReceiverHC = builder_.LoadHClassFromConstpool(unsharedConstPool, hclassIndex);
 
     auto prototype = builder_.LoadConstOffset(VariableType::JS_ANY(), expectedReceiverHC, JSHClass::PROTOTYPE_OFFSET);
-    auto protoHClass = builder_.LoadHClassByConstOffset(prototype);
+    auto protoHClass = builder_.LoadHClass(prototype);
     auto marker = builder_.LoadConstOffset(VariableType::JS_ANY(), protoHClass, JSHClass::PROTO_CHANGE_MARKER_OFFSET);
     builder_.DeoptCheck(builder_.TaggedIsNotNull(marker), frameState, DeoptType::PROTOTYPECHANGED1);
     auto check = LogicAndBuilder(&env)
@@ -2577,7 +2568,7 @@ void TypedHCRLowering::LowerOrdinaryHasInstance(GateRef gate, GateRef glue)
                     }
                     builder_.Bind(&objectNotIsJsProxy);
                     {
-                        GateRef objHClass = builder_.LoadHClassByConstOffset(*object);
+                        GateRef objHClass = builder_.LoadHClass(*object);
                         object = builder_.LoadPrototype(objHClass);
                         builder_.Jump(&shouldContinue);
                     }

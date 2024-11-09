@@ -624,7 +624,6 @@ public:
 
     TypedBinOp GetRevCompareOpForTypedBinOp(TypedBinOp op);
     TypedBinOp GetSwapCompareOpForTypedBinOp(TypedBinOp op);
-    void UpdateOnHeapMode(GateRef gate, OnHeapMode onHeapMode);
 
 private:
     const GateMetaData *GetMetaData(GateRef gate) const;
