@@ -364,7 +364,7 @@ Expected<JSTaggedValue, bool> EcmaContext::CommonInvokeEcmaEntrypoint(const JSPa
         }
     }
     if (thread_->HasPendingException()) {
-#ifdef PANDA_TARGET_OHOS
+#if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE)
         return result;
 #else
         return Unexpected(false);
@@ -397,7 +397,7 @@ Expected<JSTaggedValue, bool> EcmaContext::InvokeEcmaEntrypoint(const JSPandaFil
     JSHandle<JSFunction> func(thread_, program->GetMainFunction());
     Expected<JSTaggedValue, bool> result = CommonInvokeEcmaEntrypoint(jsPandaFile, entryPoint, func, executeFromJob);
 
-#ifdef PANDA_TARGET_OHOS
+#if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE)
     if (thread_->HasPendingException()) {
         HandleUncaughtException();
     }
