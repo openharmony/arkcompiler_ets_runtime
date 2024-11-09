@@ -103,6 +103,7 @@ public:
     void TryPostHandleMarkFinished();
     void TryTriggerIdleGC(TRIGGER_IDLE_GC_TYPE gcType);
     bool CheckIdleYoungGC() const;
+    bool CheckLocalBindingNativeTriggerFullGC() const;
     template<class T>
     bool CheckIdleOrHintOldGC(const T *baseHeap) const
     {

@@ -59,6 +59,7 @@ enum class GCReason : uint8_t {
     TRIGGER_BY_MEM_TOOLS,
     TRIGGER_BY_TASKPOOL,
     HINT_GC,
+    IDLE_NATIVE,
     OTHER
 };
 
