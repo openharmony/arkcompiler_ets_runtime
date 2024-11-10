@@ -901,7 +901,7 @@ DEF_RUNTIME_STUBS(Exp)
         // fast path
         double doubleBase = baseValue.IsInt() ? baseValue.GetInt() : baseValue.GetDouble();
         double doubleExponent = exponentValue.IsInt() ? exponentValue.GetInt() : exponentValue.GetDouble();
-        if (std::abs(doubleBase) == 1 && std::isinf(doubleExponent)) {
+        if ((std::abs(doubleBase) == 1 && std::isinf(doubleExponent)) || std::isnan(doubleExponent)) {
             return JSTaggedValue(base::NAN_VALUE).GetRawData();
         }
         if ((doubleBase == 0 &&

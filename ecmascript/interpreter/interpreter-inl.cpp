@@ -2177,8 +2177,9 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
             // fast path
             double doubleBase = base.IsInt() ? base.GetInt() : base.GetDouble();
             double doubleExponent = exponent.IsInt() ? exponent.GetInt() : exponent.GetDouble();
-            if (std::abs(doubleBase) == 1 && std::isinf(doubleExponent)) {
+            if ((std::abs(doubleBase) == 1 && std::isinf(doubleExponent)) || std::isnan(doubleExponent)) {
                 SET_ACC(JSTaggedValue(base::NAN_VALUE));
+                DISPATCH(EXP_IMM8_V8);
             }
             bool baseZero = doubleBase == 0 &&
                             (base::bit_cast<uint64_t>(doubleBase) & base::DOUBLE_SIGN_MASK) == base::DOUBLE_SIGN_MASK;
