@@ -168,7 +168,7 @@ class PendingJob;
 class TransitionHandler;
 class PrototypeHandler;
 class TransWithProtoHandler;
-class StoreTSHandler;
+class StoreAOTHandler;
 class PropertyBox;
 class ProtoChangeMarker;
 class ProtoChangeDetails;
@@ -225,7 +225,7 @@ public:
 
     JSHandle<TransWithProtoHandler> NewTransWithProtoHandler();
 
-    JSHandle<StoreTSHandler> NewStoreTSHandler();
+    JSHandle<StoreAOTHandler> NewStoreAOTHandler();
 
     JSHandle<JSObject> NewEmptyJSObject(uint32_t inlinedProps = JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS);
 

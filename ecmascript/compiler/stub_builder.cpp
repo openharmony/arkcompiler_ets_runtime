@@ -1331,10 +1331,10 @@ void StubBuilder::JSHClassAddProperty(GateRef glue, GateRef receiver, GateRef ke
     BRANCH(Equal(newClass, Undefined()), &notFindHClass, &findHClass);
     Bind(&findHClass);
     {
-        GateRef isTSHClass = IsTSHClass(newClass);
+        GateRef isAOTHClass = IsAOTHClass(newClass);
         Label setPrototype(env);
         Label endSetPrototypeCheck(env);
-        Branch(isTSHClass, &setPrototype, &endSetPrototypeCheck);
+        Branch(isAOTHClass, &setPrototype, &endSetPrototypeCheck);
         Bind(&setPrototype);
         {
             GateRef prototype = GetPrototypeFromHClass(hclass);
@@ -1349,7 +1349,7 @@ void StubBuilder::JSHClassAddProperty(GateRef glue, GateRef receiver, GateRef ke
         Label needUpdateAOTHClass(env);
         Label normalNotify(env);
         Label endUpdate(env);
-        GateRef updateCondition = LogicAndBuilder(env).And(isTSHClass).And(IsProtoTypeHClass(newClass)).Done();
+        GateRef updateCondition = LogicAndBuilder(env).And(isAOTHClass).And(IsProtoTypeHClass(newClass)).Done();
         Branch(updateCondition, &needUpdateAOTHClass, &normalNotify);
         Bind(&needUpdateAOTHClass);
         {
@@ -2878,8 +2878,8 @@ GateRef StubBuilder::StoreICWithHandler(GateRef glue, GateRef receiver, GateRef 
     Label handlerNotPrototypeHandler(env);
     Label handlerIsPropertyBox(env);
     Label handlerNotPropertyBox(env);
-    Label handlerIsStoreTSHandler(env);
-    Label handlerNotStoreTSHandler(env);
+    Label handlerIsStoreAOTHandler(env);
+    Label handlerNotStoreAOTHandler(env);
     Label aotHandlerInfoIsField(env);
     Label aotHandlerInfoNotField(env);
     Label cellHasChanged(env);
@@ -2983,15 +2983,15 @@ GateRef StubBuilder::StoreICWithHandler(GateRef glue, GateRef receiver, GateRef 
         }
         Bind(&handlerNotPropertyBox);
         {
-            BRANCH(TaggedIsStoreTSHandler(*handler), &handlerIsStoreTSHandler, &handlerNotStoreTSHandler);
-            Bind(&handlerIsStoreTSHandler);
+            BRANCH(TaggedIsStoreAOTHandler(*handler), &handlerIsStoreAOTHandler, &handlerNotStoreAOTHandler);
+            Bind(&handlerIsStoreAOTHandler);
             {
                 GateRef cellValue = GetProtoCell(*handler);
                 BRANCH(GetHasChanged(cellValue), &cellHasChanged, &aotCellNotChanged);
                 Bind(&aotCellNotChanged);
                 {
-                    holder = GetStoreTSHandlerHolder(*handler);
-                    handler = GetStoreTSHandlerHandlerInfo(*handler);
+                    holder = GetStoreAOTHandlerHolder(*handler);
+                    handler = GetStoreAOTHandlerHandlerInfo(*handler);
                     GateRef handlerInfo = GetInt64OfTInt(*handler);
                     BRANCH(IsField(handlerInfo), &aotHandlerInfoIsField, &aotHandlerInfoNotField);
                     Bind(&aotHandlerInfoIsField);
@@ -3007,7 +3007,7 @@ GateRef StubBuilder::StoreICWithHandler(GateRef glue, GateRef receiver, GateRef 
                     }
                 }
             }
-            Bind(&handlerNotStoreTSHandler);
+            Bind(&handlerNotStoreAOTHandler);
             Jump(&exit);
         }
         Bind(&cellHasChanged);
@@ -3701,8 +3701,8 @@ void StubBuilder::CopyAllHClass(GateRef glue, GateRef dstHClass, GateRef srcHCla
 {
     auto env = GetEnvironment();
     Label entry(env);
-    Label isTS(env);
-    Label isNotTS(env);
+    Label isAOT(env);
+    Label isNotAOT(env);
     env->SubCfgEntry(&entry);
     auto proto = GetPrototypeFromHClass(srcHClass);
     SetPrototypeToHClass(VariableType::JS_POINTER(), glue, dstHClass, proto);
@@ -3718,13 +3718,13 @@ void StubBuilder::CopyAllHClass(GateRef glue, GateRef dstHClass, GateRef srcHCla
                       dstHClass,
                       GetLayoutFromHClass(srcHClass),
                       MemoryAttribute::NeedBarrierAndAtomic());
-    BRANCH(IsTSHClass(srcHClass), &isTS, &isNotTS);
-    Bind(&isTS);
+    BRANCH(IsAOTHClass(srcHClass), &isAOT, &isNotAOT);
+    Bind(&isAOT);
     {
-        SetIsTS(glue, dstHClass, False());
-        Jump(&isNotTS);
+        SetIsAOT(glue, dstHClass, False());
+        Jump(&isNotAOT);
     }
-    Bind(&isNotTS);
+    Bind(&isNotAOT);
     env->SubCfgExit();
     return;
 }
@@ -4081,10 +4081,10 @@ GateRef StubBuilder::CheckHClassForRep(GateRef hclass, GateRef value)
     Label subEntry(env);
     env->SubCfgEntry(&subEntry);
     Label exit(env);
-    Label isTSHClass(env);
+    Label isAOTHClass(env);
     DEFVARIABLE(result, VariableType::BOOL(), Boolean(true));
-    Branch(IsTSHClass(hclass), &isTSHClass, &exit);
-    Bind(&isTSHClass);
+    Branch(IsAOTHClass(hclass), &isAOTHClass, &exit);
+    Bind(&isAOTHClass);
     {
         GateRef propNums = GetNumberOfPropsFromHClass(hclass);
         GateRef last = Int32Sub(propNums, Int32(1));
@@ -4710,14 +4710,14 @@ GateRef StubBuilder::SetPropertyByName(GateRef glue, GateRef receiver, GateRef k
                     }
                     Bind(&writable);
                     {
-                        Label isTS(env);
-                        Label notTS(env);
-                        BRANCH(IsTSHClass(hclass), &isTS, &notTS);
-                        Bind(&isTS);
+                        Label isAOT(env);
+                        Label notAOT(env);
+                        BRANCH(IsAOTHClass(hclass), &isAOT, &notAOT);
+                        Bind(&isAOT);
                         {
                             GateRef attrVal = JSObjectGetProperty(*holder, hclass, attr);
                             Label attrValIsHole(env);
-                            BRANCH(TaggedIsHole(attrVal), &attrValIsHole, &notTS);
+                            BRANCH(TaggedIsHole(attrVal), &attrValIsHole, &notAOT);
                             Bind(&attrValIsHole);
                             {
                                 Label storeReceiverHoleEntry(env);
@@ -4739,7 +4739,7 @@ GateRef StubBuilder::SetPropertyByName(GateRef glue, GateRef receiver, GateRef k
                                 }
                             }
                         }
-                        Bind(&notTS);
+                        Bind(&notAOT);
                         Label holdEqualsRecv(env);
                         if (useOwn || defineSemantics) {
                             BRANCH(Equal(*holder, receiver), &holdEqualsRecv, &ifEnd);
@@ -4990,14 +4990,14 @@ GateRef StubBuilder::DefinePropertyByName(GateRef glue, GateRef receiver, GateRe
                     Jump(&exit);
                     Bind(&writable);
                     {
-                        Label isTS(env);
-                        Label notTS(env);
-                        BRANCH(IsTSHClass(hclass), &isTS, &notTS);
-                        Bind(&isTS);
+                        Label isAOT(env);
+                        Label notAOT(env);
+                        BRANCH(IsAOTHClass(hclass), &isAOT, &notAOT);
+                        Bind(&isAOT);
                         {
                             GateRef attrVal = JSObjectGetProperty(*holder, hclass, attr);
                             Label attrValIsHole(env);
-                            BRANCH(TaggedIsHole(attrVal), &attrValIsHole, &notTS);
+                            BRANCH(TaggedIsHole(attrVal), &attrValIsHole, &notAOT);
                             Bind(&attrValIsHole);
                             {
                                 Label storeReceiverHoleEntry(env);
@@ -5013,7 +5013,7 @@ GateRef StubBuilder::DefinePropertyByName(GateRef glue, GateRef receiver, GateRe
                                 }
                             }
                         }
-                        Bind(&notTS);
+                        Bind(&notAOT);
                         Label holdEqualsRecv(env);
                         BRANCH(Equal(*holder, receiver), &holdEqualsRecv, &ifEnd);
                         Bind(&holdEqualsRecv);

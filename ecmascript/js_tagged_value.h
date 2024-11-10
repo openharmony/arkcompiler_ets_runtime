@@ -662,7 +662,7 @@ public:
     bool IsPrototypeHandler() const;
     bool IsTransitionHandler() const;
     bool IsTransWithProtoHandler() const;
-    bool IsStoreTSHandler() const;
+    bool IsStoreAOTHandler() const;
     bool IsPropertyBox() const;
     bool IsProtoChangeMarker() const;
     bool IsProtoChangeDetails() const;

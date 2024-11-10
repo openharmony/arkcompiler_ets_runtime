@@ -177,7 +177,7 @@ public:
 
     static JSTaggedValue DumpHClass(EcmaRuntimeCallInfo *info);
 
-    // return whether the hclass used for object is created by static ts type
+    // return whether the hclass used for object is created by AOT
     static JSTaggedValue IsTSHClass(EcmaRuntimeCallInfo *info);
 
     static JSTaggedValue GetHClass(EcmaRuntimeCallInfo *info);

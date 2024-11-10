@@ -394,8 +394,8 @@ public:
     using HasConstructorBits = IsStableElementsBit::NextFlag;                                     // 21
     using IsClassConstructorOrPrototypeBit = HasConstructorBits::NextFlag;                        // 22
     using IsNativeBindingObjectBit = IsClassConstructorOrPrototypeBit::NextFlag;                  // 23
-    using IsTSBit = IsNativeBindingObjectBit::NextFlag;                                           // 24
-    using LevelBit = IsTSBit::NextField<uint32_t, LEVEL_BTTFIELD_NUM>;                            // 25-29
+    using IsAOTBit = IsNativeBindingObjectBit::NextFlag;                                          // 24
+    using LevelBit = IsAOTBit::NextField<uint32_t, LEVEL_BTTFIELD_NUM>;                           // 25-29
     using IsJSFunctionBit = LevelBit::NextFlag;                                                   // 30
     using IsOnHeap = IsJSFunctionBit::NextFlag;                                                   // 31
     using IsJSSharedBit = IsOnHeap::NextFlag;                                                     // 32
@@ -587,9 +587,9 @@ public:
         IsDictionaryBit::Set<uint32_t>(flag, GetBitFieldAddr());
     }
 
-    inline void SetTS(bool flag) const
+    inline void SetAOT(bool flag) const
     {
-        IsTSBit::Set<uint32_t>(flag, GetBitFieldAddr());
+        IsAOTBit::Set<uint32_t>(flag, GetBitFieldAddr());
     }
 
     inline void SetIsJSFunction(bool flag) const
@@ -1419,7 +1419,7 @@ public:
         return GetObjectType() == JSType::TRANS_WITH_PROTO_HANDLER;
     }
 
-    inline bool IsStoreTSHandler() const
+    inline bool IsStoreAOTHandler() const
     {
         return GetObjectType() == JSType::STORE_TS_HANDLER;
     }
@@ -1511,11 +1511,11 @@ public:
         return IsDictionaryBit::Decode(bits);
     }
 
-    // created from TypeScript Types
-    inline bool IsTS() const
+    // created from AOT
+    inline bool IsAOT() const
     {
         uint32_t bits = GetBitField();
-        return IsTSBit::Decode(bits);
+        return IsAOTBit::Decode(bits);
     }
 
     inline bool IsJSFunctionFromBitField() const

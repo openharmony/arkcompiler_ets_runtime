@@ -1734,7 +1734,7 @@ void ObjectFactory::InitializeExtraProperties(const JSHandle<JSHClass> &hclass,
     auto paddr = reinterpret_cast<uintptr_t>(obj) + hclass->GetObjectSize();
     // The object which created by AOT speculative hclass, should be initialized as hole, means does not exist,
     // to follow ECMA spec.
-    JSTaggedType initVal = hclass->IsTS() ? JSTaggedValue::VALUE_HOLE : JSTaggedValue::VALUE_UNDEFINED;
+    JSTaggedType initVal = hclass->IsAOT() ? JSTaggedValue::VALUE_HOLE : JSTaggedValue::VALUE_UNDEFINED;
     for (uint32_t i = 0; i < inobjPropCount; ++i) {
         paddr -= JSTaggedValue::TaggedTypeSize();
         *reinterpret_cast<JSTaggedType *>(paddr) = initVal;
@@ -3810,9 +3810,8 @@ EcmaString *ObjectFactory::InternString(const JSHandle<JSTaggedValue> &key)
 JSHandle<TransitionHandler> ObjectFactory::NewTransitionHandler()
 {
     NewObjectHook();
-    TransitionHandler *handler =
-        TransitionHandler::Cast(heap_->AllocateYoungOrHugeObject(
-            JSHClass::Cast(thread_->GlobalConstants()->GetTransitionHandlerClass().GetTaggedObject())));
+    TransitionHandler *handler = TransitionHandler::Cast(heap_->AllocateYoungOrHugeObject(
+        JSHClass::Cast(thread_->GlobalConstants()->GetTransitionHandlerClass().GetTaggedObject())));
     handler->SetHandlerInfo(thread_, JSTaggedValue::Undefined());
     handler->SetTransitionHClass(thread_, JSTaggedValue::Undefined());
     return JSHandle<TransitionHandler>(thread_, handler);
@@ -3846,13 +3845,13 @@ JSHandle<TransWithProtoHandler> ObjectFactory::NewTransWithProtoHandler()
     return handler;
 }
 
-JSHandle<StoreTSHandler> ObjectFactory::NewStoreTSHandler()
+JSHandle<StoreAOTHandler> ObjectFactory::NewStoreAOTHandler()
 {
     NewObjectHook();
-    StoreTSHandler *header =
-        StoreTSHandler::Cast(heap_->AllocateYoungOrHugeObject(
-            JSHClass::Cast(thread_->GlobalConstants()->GetStoreTSHandlerClass().GetTaggedObject())));
-    JSHandle<StoreTSHandler> handler(thread_, header);
+    StoreAOTHandler *header =
+        StoreAOTHandler::Cast(heap_->AllocateYoungOrHugeObject(
+            JSHClass::Cast(thread_->GlobalConstants()->GetStoreAOTHandlerClass().GetTaggedObject())));
+    JSHandle<StoreAOTHandler> handler(thread_, header);
     handler->SetHandlerInfo(thread_, JSTaggedValue::Undefined());
     handler->SetProtoCell(thread_, JSTaggedValue::Undefined());
     handler->SetHolder(thread_, JSTaggedValue::Undefined());

@@ -437,7 +437,7 @@ GateRef CircuitBuilder::TaggedIsTransitionHandler(GateRef x)
     return LogicAndBuilder(env_).And(TaggedIsHeapObject(x)).And(IsJsType(x, JSType::TRANSITION_HANDLER)).Done();
 }
 
-GateRef CircuitBuilder::TaggedIsStoreTSHandler(GateRef x)
+GateRef CircuitBuilder::TaggedIsStoreAOTHandler(GateRef x)
 {
     return LogicAndBuilder(env_).And(TaggedIsHeapObject(x)).And(IsJsType(x, JSType::STORE_TS_HANDLER)).Done();
 }

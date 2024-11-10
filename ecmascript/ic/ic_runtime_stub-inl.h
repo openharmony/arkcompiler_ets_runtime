@@ -256,7 +256,7 @@ ARK_INLINE JSTaggedValue ICRuntimeStub::StoreICWithHandler(JSThread *thread, JST
     if (handler.IsPropertyBox()) {
         return StoreGlobal(thread, value, handler);
     }
-    if (handler.IsStoreTSHandler()) {
+    if (handler.IsStoreAOTHandler()) {
         return StoreWithTS(thread, receiver, value, handler);
     }
     return JSTaggedValue::Undefined();
@@ -288,16 +288,16 @@ JSTaggedValue ICRuntimeStub::StoreWithTS(JSThread *thread, JSTaggedValue receive
                                          JSTaggedValue value, JSTaggedValue handler)
 {
     INTERPRETER_TRACE(thread, StoreWithAOT);
-    ASSERT(handler.IsStoreTSHandler());
-    StoreTSHandler *storeTSHandler = StoreTSHandler::Cast(handler.GetTaggedObject());
-    auto cellValue = storeTSHandler->GetProtoCell();
+    ASSERT(handler.IsStoreAOTHandler());
+    StoreAOTHandler *storeAOTHandler = StoreAOTHandler::Cast(handler.GetTaggedObject());
+    auto cellValue = storeAOTHandler->GetProtoCell();
     ASSERT(cellValue.IsProtoChangeMarker());
     ProtoChangeMarker *cell = ProtoChangeMarker::Cast(cellValue.GetTaggedObject());
     if (cell->GetHasChanged()) {
         return JSTaggedValue::Hole();
     }
-    auto holder = storeTSHandler->GetHolder();
-    JSTaggedValue handlerInfo = storeTSHandler->GetHandlerInfo();
+    auto holder = storeAOTHandler->GetHolder();
+    JSTaggedValue handlerInfo = storeAOTHandler->GetHandlerInfo();
     auto handlerInfoInt = JSTaggedValue::UnwrapToUint64(handlerInfo);
     if (HandlerBase::IsField(handlerInfoInt)) {
         StoreField(thread, JSObject::Cast(receiver.GetTaggedObject()), value, handlerInfoInt);

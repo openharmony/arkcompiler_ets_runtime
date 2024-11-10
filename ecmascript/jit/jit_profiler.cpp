@@ -544,8 +544,8 @@ void JITProfiler::HandleOtherTypes(ApEntityId &abcId, int32_t &bcOffset,
         HandleOtherTypesPrototypeHandler(abcId, bcOffset, hclass, secondValue, slotId);
     } else if (secondValue.IsPropertyBox()) {
         // StoreGlobal
-    } else if (secondValue.IsStoreTSHandler()) {
-        HandleStoreTSHandler(abcId, bcOffset, hclass, secondValue);
+    } else if (secondValue.IsStoreAOTHandler()) {
+        HandleStoreAOTHandler(abcId, bcOffset, hclass, secondValue);
     }
 }
 
@@ -604,17 +604,17 @@ void JITProfiler::HandleOtherTypesPrototypeHandler(ApEntityId &abcId, int32_t &b
     AddObjectInfo(abcId, bcOffset, hclass, holderHClass, holderHClass, accessorMethodId);
 }
 
-void JITProfiler::HandleStoreTSHandler(ApEntityId &abcId, int32_t &bcOffset,
-                                       JSHClass *hclass, JSTaggedValue &secondValue)
+void JITProfiler::HandleStoreAOTHandler(ApEntityId &abcId, int32_t &bcOffset,
+                                        JSHClass *hclass, JSTaggedValue &secondValue)
 {
-    StoreTSHandler *storeTSHandler = StoreTSHandler::Cast(secondValue.GetTaggedObject());
-    auto cellValue = storeTSHandler->GetProtoCell();
+    StoreAOTHandler *storeAOTHandler = StoreAOTHandler::Cast(secondValue.GetTaggedObject());
+    auto cellValue = storeAOTHandler->GetProtoCell();
     ASSERT(cellValue.IsProtoChangeMarker());
     ProtoChangeMarker *cell = ProtoChangeMarker::Cast(cellValue.GetTaggedObject());
     if (cell->GetHasChanged()) {
         return;
     }
-    auto holder = storeTSHandler->GetHolder();
+    auto holder = storeAOTHandler->GetHolder();
     auto holderHClass = holder.GetTaggedObject()->GetClass();
     AddObjectInfo(abcId, bcOffset, hclass, holderHClass, holderHClass);
 }

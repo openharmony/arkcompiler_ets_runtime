@@ -286,7 +286,7 @@ public:
     GateRef TaggedIsJSGlobalObject(GateRef x);
     GateRef TaggedIsWeak(GateRef x);
     GateRef TaggedIsPrototypeHandler(GateRef x);
-    GateRef TaggedIsStoreTSHandler(GateRef x);
+    GateRef TaggedIsStoreAOTHandler(GateRef x);
     GateRef TaggedIsTransWithProtoHandler(GateRef x);
     GateRef TaggedIsTransitionHandler(GateRef x);
     GateRef TaggedIsString(GateRef obj);
@@ -491,8 +491,8 @@ public:
     GateRef GetProtoCell(GateRef object);
     GateRef GetPrototypeHandlerHolder(GateRef object);
     GateRef GetPrototypeHandlerHandlerInfo(GateRef object);
-    GateRef GetStoreTSHandlerHolder(GateRef object);
-    GateRef GetStoreTSHandlerHandlerInfo(GateRef object);
+    GateRef GetStoreAOTHandlerHolder(GateRef object);
+    GateRef GetStoreAOTHandlerHandlerInfo(GateRef object);
     inline GateRef GetLengthOfJSArray(GateRef array);
     inline GateRef GetPrototype(GateRef glue, GateRef object);
     GateRef GetHasChanged(GateRef object);
@@ -550,7 +550,7 @@ public:
     void SetTransitionsToHClass(VariableType type, GateRef glue, GateRef hClass, GateRef transition);
     void SetParentToHClass(VariableType type, GateRef glue, GateRef hClass, GateRef parent);
     void SetIsProtoTypeToHClass(GateRef glue, GateRef hClass, GateRef value);
-    inline void SetIsTS(GateRef glue, GateRef hClass, GateRef value);
+    inline void SetIsAOT(GateRef glue, GateRef hClass, GateRef value);
     GateRef IsProtoTypeHClass(GateRef hClass);
     void SetPropertyInlinedProps(GateRef glue, GateRef obj, GateRef hClass,
                                  GateRef value, GateRef attrOffset, VariableType type = VariableType::JS_ANY(),
@@ -562,7 +562,7 @@ public:
     void IncNumberOfProps(GateRef glue, GateRef hClass);
     GateRef GetNumberOfPropsFromHClass(GateRef hClass);
     GateRef HasDeleteProperty(GateRef hClass);
-    GateRef IsTSHClass(GateRef hClass);
+    GateRef IsAOTHClass(GateRef hClass);
     void SetNumberOfPropsToHClass(GateRef glue, GateRef hClass, GateRef value);
     void SetElementsKindToTrackInfo(GateRef glue, GateRef trackInfo, GateRef elementsKind);
     void SetSpaceFlagToTrackInfo(GateRef glue, GateRef trackInfo, GateRef spaceFlag);

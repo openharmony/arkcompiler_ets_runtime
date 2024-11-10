@@ -497,19 +497,19 @@ public:
     DECL_DUMP()
 };
 
-class StoreTSHandler : public TaggedObject {
+class StoreAOTHandler : public TaggedObject {
 public:
-    static StoreTSHandler *Cast(TaggedObject *object)
+    static StoreAOTHandler *Cast(TaggedObject *object)
     {
-        ASSERT(JSTaggedValue(object).IsStoreTSHandler());
-        return static_cast<StoreTSHandler *>(object);
+        ASSERT(JSTaggedValue(object).IsStoreAOTHandler());
+        return static_cast<StoreAOTHandler *>(object);
     }
 
     static inline JSHandle<JSTaggedValue> StoreAOT(const JSThread *thread, const ObjectOperator &op,
                                                    const JSHandle<JSHClass> &hclass)
     {
         ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-        JSHandle<StoreTSHandler> handler = factory->NewStoreTSHandler();
+        JSHandle<StoreAOTHandler> handler = factory->NewStoreAOTHandler();
         JSHandle<JSTaggedValue> handlerInfo = StoreHandler::StoreProperty(thread, op);
         handler->SetHandlerInfo(thread, handlerInfo);
         handler->SetHolder(thread, op.GetHolder());

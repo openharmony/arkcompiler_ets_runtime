@@ -1081,9 +1081,9 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 break;
             }
             case JSType::STORE_TS_HANDLER: {
-                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), StoreTSHandler::SIZE, 3U);
-                JSHandle<StoreTSHandler> storeTSHandler = factory->NewStoreTSHandler();
-                DUMP_FOR_HANDLE(storeTSHandler);
+                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), StoreAOTHandler::SIZE, 3U);
+                JSHandle<StoreAOTHandler> storeAOTHandler = factory->NewStoreAOTHandler();
+                DUMP_FOR_HANDLE(storeAOTHandler);
                 break;
             }
             case JSType::PROPERTY_BOX: {

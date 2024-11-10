@@ -183,7 +183,7 @@ bool JSFunction::PrototypeSetter(JSThread *thread, const JSHandle<JSObject> &sel
         JSHandle<JSHClass> newClass = JSHClass::SetPrototypeWithNotification(thread, hclass, value);
         func->SetProtoOrHClass(thread, newClass);
         // Forbide to profile for changing the function prototype after an instance of the function has been created
-        if (!hclass->IsTS() && thread->GetEcmaVM()->IsEnablePGOProfiler()) {
+        if (!hclass->IsAOT() && thread->GetEcmaVM()->IsEnablePGOProfiler()) {
             EntityId ctorMethodId = Method::Cast(func->GetMethod().GetTaggedObject())->GetMethodId();
             thread->GetEcmaVM()->GetPGOProfiler()->InsertSkipCtorMethodIdSafe(ctorMethodId);
         }

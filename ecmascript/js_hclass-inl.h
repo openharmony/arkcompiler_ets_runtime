@@ -180,7 +180,7 @@ inline void JSHClass::RestoreElementsKindToGeneric(JSHClass *newJsHClass)
 
 inline JSHClass *JSHClass::CheckHClassForRep(JSHClass *hclass, const Representation &rep)
 {
-    if (!hclass->IsTS()) {
+    if (!hclass->IsAOT()) {
         return hclass;
     }
     if (rep == Representation::NONE) {

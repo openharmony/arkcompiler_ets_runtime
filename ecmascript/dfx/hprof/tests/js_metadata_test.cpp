@@ -991,10 +991,10 @@ public:
                 SourceTextModule::SIZE - SourceTextModule::SOURCE_TEXT_MODULE_OFFSET}},
             {JSType::STAR_EXPORTENTRY_RECORD, {StarExportEntry::STAR_EXPORT_ENTRY_OFFSET,
                                                StarExportEntry::SIZE - StarExportEntry::STAR_EXPORT_ENTRY_OFFSET}},
-            {JSType::STORE_TS_HANDLER, {StoreTSHandler::HANDLER_INFO_OFFSET,
-                                        StoreTSHandler::PROTO_CELL_OFFSET,
-                                        StoreTSHandler::HOLDER_OFFSET,
-                                        StoreTSHandler::SIZE - StoreTSHandler::HANDLER_INFO_OFFSET}},
+            {JSType::STORE_TS_HANDLER, {StoreAOTHandler::HANDLER_INFO_OFFSET,
+                                        StoreAOTHandler::PROTO_CELL_OFFSET,
+                                        StoreAOTHandler::HOLDER_OFFSET,
+                                        StoreAOTHandler::SIZE - StoreAOTHandler::HANDLER_INFO_OFFSET}},
             {JSType::SYMBOL, {JSSymbol::DESCRIPTION_OFFSET,
                               JSSymbol::SIZE - JSSymbol::DESCRIPTION_OFFSET}},
             {JSType::TAGGED_ARRAY, {TaggedArray::LENGTH_OFFSET, TaggedArray::DATA_OFFSET,
@@ -1718,9 +1718,9 @@ public:
                 SourceTextModule::SENDABLE_ENV_OFFSET - SourceTextModule::ASYNC_PARENT_MODULES_OFFSET,
                 SourceTextModule::EVALUATION_ERROR_OFFSET - SourceTextModule::SENDABLE_ENV_OFFSET}},
             {JSType::STAR_EXPORTENTRY_RECORD, {StarExportEntry::SIZE - StarExportEntry::STAR_EXPORT_ENTRY_OFFSET}},
-            {JSType::STORE_TS_HANDLER, {StoreTSHandler::PROTO_CELL_OFFSET - StoreTSHandler::HANDLER_INFO_OFFSET,
-                                        StoreTSHandler::HOLDER_OFFSET - StoreTSHandler::PROTO_CELL_OFFSET,
-                                        StoreTSHandler::SIZE - StoreTSHandler::HOLDER_OFFSET}},
+            {JSType::STORE_TS_HANDLER, {StoreAOTHandler::PROTO_CELL_OFFSET - StoreAOTHandler::HANDLER_INFO_OFFSET,
+                                        StoreAOTHandler::HOLDER_OFFSET - StoreAOTHandler::PROTO_CELL_OFFSET,
+                                        StoreAOTHandler::SIZE - StoreAOTHandler::HOLDER_OFFSET}},
             {JSType::SYMBOL, {JSSymbol::HASHFIELD_OFFSET - JSSymbol::DESCRIPTION_OFFSET}},
             {JSType::TAGGED_ARRAY, {
                 TaggedArray::EXTRA_LENGTH_OFFSET - TaggedArray::LENGTH_OFFSET, TaggedArray::LENGTH_OFFSET}},
@@ -4357,7 +4357,7 @@ HWTEST_F_L0(JSMetadataTest, TestStarExportentryRecordMetadata)
     ASSERT_TRUE(tester.Test(JSType::STAR_EXPORTENTRY_RECORD, metadata));
 }
 
-HWTEST_F_L0(JSMetadataTest, TestStoreTsHandlerMetadata)
+HWTEST_F_L0(JSMetadataTest, TestStoreAOTHandlerMetadata)
 {
     JSMetadataTestHelper tester {};
     std::string metadataFilePath = METADATA_SOURCE_FILE_DIR"store_ts_handler.json";
