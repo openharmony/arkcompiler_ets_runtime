@@ -235,13 +235,13 @@ void BuiltinsArrayStubBuilder::Unshift(GateRef glue, GateRef thisValue, GateRef 
             BRANCH_NO_WEIGHT(isIntOrNumberKind, &isIntOrNumber, &isTagged);
             Bind(&isIntOrNumber);
             {
-                ArrayCopy<MustOverlap>(glue, arrayStart, moveTo, TruncInt64ToInt32(thisLen),
+                ArrayCopy<MustOverlap>(glue, arrayStart, elements, moveTo, TruncInt64ToInt32(thisLen),
                                        MemoryAttribute::NoBarrier());
                 Jump(&afterCopy);
             }
             Bind(&isTagged);
             {
-                ArrayCopy<MustOverlap>(glue, arrayStart, moveTo, TruncInt64ToInt32(thisLen));
+                ArrayCopy<MustOverlap>(glue, arrayStart, elements, moveTo, TruncInt64ToInt32(thisLen));
                 Jump(&afterCopy);
             }
             Bind(&afterCopy);
@@ -3302,7 +3302,7 @@ void BuiltinsArrayStubBuilder::FastToSpliced(GateRef glue, GateRef thisValue, Ga
     {
         GateRef srcStart = GetDataPtrInTaggedArray(srcElements);
         GateRef dstStart = GetDataPtrInTaggedArray(dstElements);
-        ArrayCopyAndHoleToUndefined(glue, srcStart, dstStart, actualStart);
+        ArrayCopyAndHoleToUndefined(glue, srcStart, dstElements, dstStart, actualStart);
         Jump(&insertArg);
     }
     Bind(&insertArg);
@@ -3327,7 +3327,7 @@ void BuiltinsArrayStubBuilder::FastToSpliced(GateRef glue, GateRef thisValue, Ga
             GateRef srcStart = GetDataPtrInTaggedArray(srcElements, oldIndex);
             GateRef dstStart = GetDataPtrInTaggedArray(dstElements, newIndex);
             GateRef afterLength = Int32Sub(thisLength, oldIndex);
-            ArrayCopyAndHoleToUndefined(glue, srcStart, dstStart, afterLength);
+            ArrayCopyAndHoleToUndefined(glue, srcStart, dstElements, dstStart, afterLength);
             newIndex = Int32Add(newIndex, afterLength);
             Jump(&setLength);
         }

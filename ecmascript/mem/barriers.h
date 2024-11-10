@@ -48,9 +48,18 @@ public:
     template<bool needWriteBarrier = true>
     static void SetObject(const JSThread *thread, void *obj, size_t offset, JSTaggedType value);
 
+    // dstAddr/srcAddr is the address will be copied to/from.
+    // It can be a derived pointer point to the middle of an object.
+    //
+    // Note: dstObj is the object address for dstAddr, it must point to the head of an object.
     template<bool needWriteBarrier, bool maybeOverlap>
-    static void CopyObject(const JSThread *thread, JSTaggedValue* dst, JSTaggedValue* src, size_t count);
+    static void CopyObject(const JSThread *thread, const TaggedObject *dstObj, JSTaggedValue *dstAddr,
+                           JSTaggedValue *srcAddr, size_t count);
 
+    // dstAddr/srcAddr is the address will be copied to/from.
+    // It can be a derived pointer point to the middle of an object.
+    //
+    // Note: dstObj is the object address for dstAddr, it must point to the head of an object.
     template<bool maybeOverlap>
     static void CopyObjectPrimitive(JSTaggedValue* dst, JSTaggedValue* src, size_t count);
     static void SynchronizedSetClass(const JSThread *thread, void *obj, JSTaggedType value);
