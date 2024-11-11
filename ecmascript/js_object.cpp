@@ -2910,11 +2910,12 @@ void ECMAObject::SetHash(const JSThread *thread, int32_t hash, const JSHandle<EC
             TaggedArray *array = TaggedArray::Cast(value.GetTaggedObject());
             array->Set(thread, array->GetExtraLength() + HASH_INDEX, JSTaggedValue(hash));
         } else if (value.IsNativePointer()) { // FunctionExtraInfo
+            JSHandle<JSTaggedValue> nativePointer(thread, value);
             JSHandle<TaggedArray> newArray =
                 thread->GetEcmaVM()->GetFactory()->NewTaggedArray(RESOLVED_MAX_SIZE);
             newArray->SetExtraLength(0);
             newArray->Set(thread, HASH_INDEX, JSTaggedValue(hash));
-            newArray->Set(thread, FUNCTION_EXTRA_INDEX, value);
+            newArray->Set(thread, FUNCTION_EXTRA_INDEX, nativePointer.GetTaggedValue());
             Barriers::SetObject<true>(thread, *obj, HASH_OFFSET, newArray.GetTaggedValue().GetRawData());
         } else {
             LOG_ECMA(FATAL) << "this branch is unreachable";
