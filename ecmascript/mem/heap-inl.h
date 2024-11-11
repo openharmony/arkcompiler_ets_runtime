@@ -41,7 +41,7 @@ namespace panda::ecmascript {
         size_t oomOvershootSize = vm->GetEcmaParamConfiguration().GetOutOfMemoryOvershootSize();            \
         (space)->IncreaseOutOfMemoryOvershootSize(oomOvershootSize);                                        \
         if ((space)->IsOOMDumpSpace()) {                                                                    \
-            DumpHeapSnapshotBeforeOOM();                                                                    \
+            DumpHeapSnapshotBeforeOOM(false);                                                               \
         }                                                                                                   \
         StatisticHeapDetail();                                                                              \
         ThrowOutOfMemoryError(GetJSThread(), size, message);                                                \
@@ -52,7 +52,7 @@ namespace panda::ecmascript {
     if (UNLIKELY((object) == nullptr)) {                                                                    \
         size_t oomOvershootSize = GetEcmaParamConfiguration().GetOutOfMemoryOvershootSize();                \
         (space)->IncreaseOutOfMemoryOvershootSize(oomOvershootSize);                                        \
-        DumpHeapSnapshotBeforeOOM(true, thread);                                                            \
+        DumpHeapSnapshotBeforeOOM(false, thread);                                                           \
         ThrowOutOfMemoryError(thread, size, message);                                                       \
         (object) = reinterpret_cast<TaggedObject *>((space)->Allocate(thread, size));                       \
     }
@@ -436,7 +436,7 @@ TaggedObject *Heap::AllocateHugeObject(size_t size)
             // if allocate huge object OOM, temporarily increase space size to avoid vm crash
             size_t oomOvershootSize = config_.GetOutOfMemoryOvershootSize();
             oldSpace_->IncreaseOutOfMemoryOvershootSize(oomOvershootSize);
-            DumpHeapSnapshotBeforeOOM();
+            DumpHeapSnapshotBeforeOOM(false);
             StatisticHeapDetail();
             object = reinterpret_cast<TaggedObject *>(hugeObjectSpace_->Allocate(size, thread_));
             ThrowOutOfMemoryError(thread_, size, "Heap::AllocateHugeObject");
@@ -924,7 +924,7 @@ TaggedObject *SharedHeap::AllocateHugeObject(JSThread *thread, size_t size)
             // if allocate huge object OOM, temporarily increase space size to avoid vm crash
             size_t oomOvershootSize = config_.GetOutOfMemoryOvershootSize();
             sHugeObjectSpace_->IncreaseOutOfMemoryOvershootSize(oomOvershootSize);
-            DumpHeapSnapshotBeforeOOM(true, thread);
+            DumpHeapSnapshotBeforeOOM(false, thread);
             ThrowOutOfMemoryError(thread, size, "SharedHeap::AllocateHugeObject");
             object = reinterpret_cast<TaggedObject *>(sHugeObjectSpace_->Allocate(thread, size));
             if (UNLIKELY(object == nullptr)) {
