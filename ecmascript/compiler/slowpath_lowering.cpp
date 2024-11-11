@@ -1619,7 +1619,7 @@ void SlowPathLowering::LowerCreateObjectWithBuffer(GateRef gate)
     GateRef obj = builder_.GetObjectFromConstPool(glue_, gate, sharedConstPool, unsharedConstPool, module,
                                                   builder_.TruncInt64ToInt32(index), ConstPoolType::OBJECT_LITERAL);
     GateRef lexEnv = acc_.GetValueIn(gate, 1);
-    GateRef result = LowerCallRuntime(gate, RTSTUB_ID(CreateObjectHavingMethod), { obj, lexEnv }, true);
+    GateRef result = builder_.CallStub(glue_, gate, CommonStubCSigns::CreateObjectHavingMethod, {glue_, obj, lexEnv});
     ReplaceHirWithValue(gate, result);
 }
 

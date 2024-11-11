@@ -351,6 +351,18 @@ void NewLexicalEnvStubBuilder::GenerateCircuit()
     Return(*result);
 }
 
+void CreateObjectHavingMethodStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef obj = TaggedArgument(1);
+    GateRef env = Int32Argument(2); /* 2 : 3rd parameter is index */
+
+    NewObjectStubBuilder newBuilder(this);
+    newBuilder.SetParameters(glue, 0);
+    GateRef result = newBuilder.CreateObjectHavingMethod(glue, obj, env);
+    Return(result);
+}
+
 void CopyRestArgsStubBuilder::GenerateCircuit()
 {
     DEFVARIABLE(arrayObj, VariableType::JS_ANY(), Undefined());

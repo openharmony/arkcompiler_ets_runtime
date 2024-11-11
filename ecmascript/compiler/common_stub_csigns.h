@@ -88,6 +88,7 @@ namespace panda::ecmascript::kungfu {
     V(ConstructorCheck)               \
     V(CreateEmptyArray)               \
     V(CreateArrayWithBuffer)          \
+    V(CreateObjectHavingMethod)       \
     V(NewJSObject)                    \
     V(JsBoundCallInternal)            \
     V(CreateStringBySingleCharCode)   \
