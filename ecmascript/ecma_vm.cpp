@@ -130,7 +130,6 @@ void EcmaVM::PostFork()
     RandomGenerator::InitRandom(GetAssociatedJSThread());
     heap_->SetHeapMode(HeapMode::SHARE);
     GetAssociatedJSThread()->PostFork();
-    GCWorkerPool::GetCurrentTaskpool()->Initialize();
     Taskpool::GetCurrentTaskpool()->Initialize();
     SetPostForked(true);
     LOG_ECMA(INFO) << "multi-thread check enabled: " << GetThreadCheckStatus();
@@ -263,7 +262,6 @@ bool EcmaVM::Initialize()
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "EcmaVM::Initialize");
     stringTable_ = Runtime::GetInstance()->GetEcmaStringTable();
     InitializePGOProfiler();
-    GCWorkerPool::GetCurrentTaskpool()->Initialize();
     Taskpool::GetCurrentTaskpool()->Initialize();
 #ifndef PANDA_TARGET_WINDOWS
     RuntimeStubs::Initialize(thread_);
@@ -348,7 +346,6 @@ EcmaVM::~EcmaVM()
     // clear c_address: c++ pointer delete
     ClearBufferData();
     heap_->WaitAllTasksFinished();
-    GCWorkerPool::GetCurrentTaskpool()->Destroy(thread_->GetThreadId());
     Taskpool::GetCurrentTaskpool()->Destroy(thread_->GetThreadId());
 
     if (pgoProfiler_ != nullptr) {
@@ -463,13 +460,12 @@ JSHandle<GlobalEnv> EcmaVM::GetGlobalEnv() const
 
 void EcmaVM::CheckThread() const
 {
+    // Exclude GC thread
     if (thread_ == nullptr) {
         LOG_FULL(FATAL) << "Fatal: ecma_vm has been destructed! vm address is: " << this;
         UNREACHABLE();
     }
-    // Exclude the threads in GCWorkerPool and Taskpool
-    if (!(GCWorkerPool::GetCurrentTaskpool()->IsDaemonThreadOrInThreadPool() ||
-        Taskpool::GetCurrentTaskpool()->IsInThreadPool()) &&
+    if (!Taskpool::GetCurrentTaskpool()->IsDaemonThreadOrInThreadPool(std::this_thread::get_id()) &&
         thread_->GetThreadId() != JSThread::GetCurrentThreadId() && !thread_->IsCrossThreadExecutionEnable()) {
             LOG_FULL(FATAL) << "Fatal: ecma_vm cannot run in multi-thread!"
                                 << " thread:" << thread_->GetThreadId()

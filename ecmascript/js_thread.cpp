@@ -17,6 +17,7 @@
 
 #include "ecmascript/runtime.h"
 #include "ecmascript/debugger/js_debugger_manager.h"
+#include "ecmascript/js_date.h"
 #include "ecmascript/js_object-inl.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/runtime_call_id.h"
@@ -128,6 +129,7 @@ JSThread::JSThread(EcmaVM *vm) : id_(os::thread::GetCurrentThreadId()), vm_(vm)
     }
     vmThreadControl_ = new VmThreadControl(this);
     SetBCStubStatus(BCStubStatus::NORMAL_BC_STUB);
+    dateUtils_ = new DateUtils();
 }
 
 JSThread::JSThread(EcmaVM *vm, ThreadType threadType) : id_(os::thread::GetCurrentThreadId()),
@@ -178,6 +180,10 @@ JSThread::~JSThread()
     // DaemonThread will be unregistered when the binding std::thread release.
     if (!IsDaemonThread()) {
         UnregisterThread(this);
+    }
+    if (dateUtils_ != nullptr) {
+        delete dateUtils_;
+        dateUtils_ = nullptr;
     }
 }
 

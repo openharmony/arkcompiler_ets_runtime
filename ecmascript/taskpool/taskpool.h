@@ -29,49 +29,22 @@ public:
     PUBLIC_API static Taskpool *GetCurrentTaskpool();
 
     Taskpool() = default;
-    virtual ~Taskpool() = default;
-
-    NO_COPY_SEMANTIC(Taskpool);
-    NO_MOVE_SEMANTIC(Taskpool);
-
-    virtual void Initialize(int32_t threadNum = DEFAULT_TASKPOOL_THREAD_NUM) = 0;
-
-    virtual void PostTask(std::unique_ptr<Task> task) = 0;
-
-    virtual void Destroy(int32_t id) = 0;
-
-    // Terminate a task of a specified type
-    virtual void TerminateTask(int32_t id, TaskType type = TaskType::ALL) = 0;
-
-    virtual uint32_t GetTotalThreadNum() const = 0;
-
-    virtual bool IsInThreadPool() const = 0;
-
-private:
-    virtual uint32_t TheMostSuitableThreadNum(uint32_t threadNum) const = 0;
-};
-
-class ThreadedTaskpool : public Taskpool {
-public:
-    ThreadedTaskpool() = default;
-    ~ThreadedTaskpool()
+    PUBLIC_API ~Taskpool()
     {
         LockHolder lock(mutex_);
         runner_->TerminateThread();
         isInitialized_ = 0;
     }
 
-    NO_COPY_SEMANTIC(ThreadedTaskpool);
-    NO_MOVE_SEMANTIC(ThreadedTaskpool);
+    NO_COPY_SEMANTIC(Taskpool);
+    NO_MOVE_SEMANTIC(Taskpool);
 
-    void Initialize(int32_t threadNum = DEFAULT_TASKPOOL_THREAD_NUM) override
-    {
-        InitializeWithHooks(threadNum, nullptr, nullptr);
-    }
+    void Initialize(int threadNum = DEFAULT_TASKPOOL_THREAD_NUM,
+        std::function<void(os::thread::native_handle_type)> prologueHook = nullptr,
+        const std::function<void(os::thread::native_handle_type)> epilogueHook = nullptr);
+    void Destroy(int32_t id);
 
-    void Destroy(int32_t id) override;
-
-    void PostTask(std::unique_ptr<Task> task) override
+    void PostTask(std::unique_ptr<Task> task) const
     {
         if (isInitialized_ > 0) {
             runner_->PostTask(std::move(task));
@@ -79,95 +52,33 @@ public:
     }
 
     // Terminate a task of a specified type
-    void TerminateTask(int32_t id, TaskType type = TaskType::ALL) override;
+    void TerminateTask(int32_t id, TaskType type = TaskType::ALL);
 
-    uint32_t GetTotalThreadNum() const override
+    uint32_t GetTotalThreadNum() const
     {
         return runner_->GetTotalThreadNum();
     }
+
+    bool IsInThreadPool(std::thread::id id) const
+    {
+        return runner_->IsInThreadPool(id);
+    }
+
+    bool PUBLIC_API IsDaemonThreadOrInThreadPool(std::thread::id id) const;
 
     void SetThreadPriority(PriorityMode mode)
     {
         runner_->SetQosPriority(mode);
     }
 
-    bool IsInThreadPool() const override
-    {
-        std::thread::id id = std::this_thread::get_id();
-        return runner_->IsInThreadPool(id);
-    }
-
     void ForEachTask(const std::function<void(Task*)> &f);
 
-protected:
-    void InitializeWithHooks(int32_t threadNum,
-        const std::function<void(os::thread::native_handle_type)> prologueHook,
-        const std::function<void(os::thread::native_handle_type)> epilogueHook);
-
 private:
-    uint32_t TheMostSuitableThreadNum(uint32_t threadNum) const override;
+    virtual uint32_t TheMostSuitableThreadNum(uint32_t threadNum) const;
 
     std::unique_ptr<Runner> runner_;
     volatile int isInitialized_ = 0;
     Mutex mutex_;
 };
-
-class GCWorkerPool : public ThreadedTaskpool {
-public:
-    PUBLIC_API static GCWorkerPool *GetCurrentTaskpool();
-
-    GCWorkerPool() = default;
-    ~GCWorkerPool() = default;
-
-    NO_COPY_SEMANTIC(GCWorkerPool);
-    NO_MOVE_SEMANTIC(GCWorkerPool);
-
-    bool IsDaemonThreadOrInThreadPool() const
-    {
-        DaemonThread *dThread = DaemonThread::GetInstance();
-        return IsInThreadPool() || (dThread != nullptr
-            && dThread->GetThreadId() == JSThread::GetCurrentThreadId());
-    }
-};
-
-#if defined(ENABLE_FFRT_INTERFACES)
-class FFRTTaskpool : public Taskpool {
-public:
-    FFRTTaskpool() = default;
-    ~FFRTTaskpool() = default;
-
-    NO_COPY_SEMANTIC(FFRTTaskpool);
-    NO_MOVE_SEMANTIC(FFRTTaskpool);
-
-    void Initialize(int32_t threadNum = DEFAULT_TASKPOOL_THREAD_NUM) override
-    {
-        totalThreadNum_ = TheMostSuitableThreadNum(threadNum);
-    }
-
-    void Destroy(int32_t id) override;
-
-    uint32_t GetTotalThreadNum() const override
-    {
-        return totalThreadNum_;
-    }
-
-    void PostTask(std::unique_ptr<Task> task) override;
-
-    void TerminateTask(int32_t id, TaskType type = TaskType::ALL) override;
-
-    bool IsInThreadPool() const override;
-
-private:
-    uint32_t TheMostSuitableThreadNum(uint32_t threadNum) const override;
-
-    void SubmitNonCancellableTask(std::unique_ptr<Task> task, const ffrt::task_attr &taskAttr);
-    void SubmitCancellableTask(std::unique_ptr<Task> task, const ffrt::task_attr &taskAttr);
-
-    mutable Mutex mutex_;
-    std::unordered_map<std::shared_ptr<Task>, ffrt::task_handle> cancellableTasks_ {};
-    std::atomic<uint32_t> totalThreadNum_ {0};
-    std::unordered_multiset<uint32_t> ffrtTaskIds_ {};
-};
-#endif
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_PALTFORM_PLATFORM_H

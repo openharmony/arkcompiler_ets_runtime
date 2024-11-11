@@ -22,9 +22,9 @@ void EcmaStringTableCleaner::PostSweepWeakRefTask(const WeakRootVisitor &visitor
 {
     StartSweepWeakRefTask();
     iter_ = std::make_shared<std::atomic<uint32_t>>(0U);
-    const uint32_t postTaskCount = GCWorkerPool::GetCurrentTaskpool()->GetTotalThreadNum();
+    const uint32_t postTaskCount = Taskpool::GetCurrentTaskpool()->GetTotalThreadNum();
     for (uint32_t i = 0U; i < postTaskCount; ++i) {
-        GCWorkerPool::GetCurrentTaskpool()->PostTask(std::make_unique<SweepWeakRefTask>(iter_, this, visitor));
+        Taskpool::GetCurrentTaskpool()->PostTask(std::make_unique<SweepWeakRefTask>(iter_, this, visitor));
     }
 }
 
