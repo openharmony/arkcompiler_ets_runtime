@@ -34,8 +34,10 @@ JSTaggedValue ContainersBitVector::BitVectorConstructor(EcmaRuntimeCallInfo* arg
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     JSHandle<JSTaggedValue> constructor = GetConstructor(argv);
+    ASSERT(constructor->IsJSSharedFunction() && constructor.GetTaggedValue().IsInSharedHeap());
     JSHandle<JSAPIBitVector> obj =
         JSHandle<JSAPIBitVector>(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor), newTarget));
+    ASSERT(obj.GetTaggedValue().IsInSharedHeap());
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     JSHandle<JSTaggedValue> length = GetCallArg(argv, 0);
@@ -54,8 +56,9 @@ JSTaggedValue ContainersBitVector::BitVectorConstructor(EcmaRuntimeCallInfo* arg
         std::bitset<JSAPIBitVector::BIT_SET_LENGTH> initBitSet;
         newBitSetVector->resize(capacity, initBitSet);
     }
-    JSHandle<JSNativePointer> pointer = factory->NewJSNativePointer(newBitSetVector,
-                                                                    ContainersBitVector::FreeBitsetVectorPointer);
+    JSHandle<JSNativePointer> pointer = factory->NewSJSNativePointer(newBitSetVector,
+                                                                     ContainersBitVector::FreeBitsetVectorPointer,
+                                                                     newBitSetVector);
     obj->SetNativePointer(thread, pointer);
     obj->SetLength(length->GetInt());
     return obj.GetTaggedValue();

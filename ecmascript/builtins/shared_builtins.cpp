@@ -25,6 +25,9 @@
 #include "ecmascript/builtins/builtins_shared_map.h"
 #include "ecmascript/builtins/builtins_shared_set.h"
 #include "ecmascript/builtins/builtins_shared_typedarray.h"
+#include "ecmascript/containers/containers_bitvector.h"
+#include "ecmascript/containers/containers_private.h"
+#include "ecmascript/js_api/js_api_bitvector.h"
 #include "ecmascript/shared_objects/js_shared_array.h"
 #include "ecmascript/shared_objects/js_sendable_arraybuffer.h"
 #include "ecmascript/shared_objects/js_shared_map.h"
@@ -46,6 +49,7 @@ using BuiltinsSharedMap = builtins::BuiltinsSharedMap;
 using BuiltinsSharedArray = builtins::BuiltinsSharedArray;
 using BuiltinsSharedTypedArray = builtins::BuiltinsSharedTypedArray;
 using BuiltinsSendableArrayBuffer = builtins::BuiltinsSendableArrayBuffer;
+using ContainersBitVector = containers::ContainersBitVector;
 
 void Builtins::InitializeSObjectAndSFunction(const JSHandle<GlobalEnv> &env) const
 {
@@ -572,6 +576,35 @@ JSHandle<JSHClass> Builtins::CreateSMapFunctionHClass(const JSHandle<JSFunction>
     return sobjPrototypeHClass;
 }
 
+JSHandle<JSHClass> Builtins::CreateBitVectorFunctionHClass(const JSHandle<JSFunction> &sFuncPrototype) const
+{
+    uint32_t index = 0;
+    auto env = vm_->GetGlobalEnv();
+    PropertyAttributes attributes = PropertyAttributes::Default(false, false, false);
+    attributes.SetIsInlinedProps(true);
+    attributes.SetRepresentation(Representation::TAGGED);
+    auto properties = ContainersBitVector::GetFunctionProperties();
+    uint32_t length = properties.size();
+    JSHandle<JSTaggedValue> keyString;
+    JSHandle<LayoutInfo> layout = factory_->CreateSLayoutInfo(length);
+    for (const auto &[key, isAccessor] : properties) {
+        attributes.SetOffset(index);
+        attributes.SetIsAccessor(isAccessor);
+        if (key == "[Symbol.species]") {
+            keyString = env->GetSpeciesSymbol();
+        } else {
+            keyString = JSHandle<JSTaggedValue>(factory_->NewFromUtf8ReadOnly(key));
+        }
+        layout->AddKey(thread_, index++, keyString.GetTaggedValue(), attributes);
+    }
+    JSHandle<JSHClass> sobjPrototypeHClass =
+        factory_->NewSEcmaHClass(JSSharedFunction::SIZE, length, JSType::JS_SHARED_FUNCTION,
+                                 JSHandle<JSTaggedValue>(sFuncPrototype), JSHandle<JSTaggedValue>(layout));
+    sobjPrototypeHClass->SetConstructor(true);
+    sobjPrototypeHClass->SetCallable(true);
+    return sobjPrototypeHClass;
+}
+
 JSHandle<JSHClass> Builtins::CreateSFunctionPrototypeHClass(const JSHandle<JSTaggedValue> &sObjPrototypeVal) const
 {
     uint32_t index = 0;
@@ -689,6 +722,37 @@ JSHandle<JSHClass> Builtins::CreateSMapPrototypeHClass(const JSHandle<JSObject> 
                                  JSHandle<JSTaggedValue>(sObjPrototype),
                                  JSHandle<JSTaggedValue>(layout));
     return sMapPrototypeHClass;
+}
+
+JSHandle<JSHClass> Builtins::CreateBitVectorPrototypeHClass(const JSHandle<JSObject> &sObjPrototype) const
+{
+    uint32_t index = 0;
+    auto env = vm_->GetGlobalEnv();
+    PropertyAttributes attributes = PropertyAttributes::Default(false, false, false);
+    attributes.SetIsInlinedProps(true);
+    attributes.SetRepresentation(Representation::TAGGED);
+    auto properties = ContainersBitVector::GetPrototypeProperties();
+    uint32_t length = properties.size();
+    ASSERT(length == ContainersBitVector::GetNumPrototypeInlinedProperties());
+    JSHandle<LayoutInfo> layout = factory_->CreateSLayoutInfo(length);
+    JSHandle<JSTaggedValue> keyString;
+    for (const auto &[key, isAccessor] : properties) {
+        attributes.SetOffset(index);
+        attributes.SetIsAccessor(isAccessor);
+        if (key == "[Symbol.iterator]") {
+            keyString = env->GetIteratorSymbol();
+        } else if (key == "[Symbol.toStringTag]") {
+            keyString = env->GetToStringTagSymbol();
+        } else {
+            keyString = JSHandle<JSTaggedValue>(factory_->NewFromUtf8ReadOnly(key));
+        }
+        layout->AddKey(thread_, index++, keyString.GetTaggedValue(), attributes);
+    }
+    JSHandle<JSHClass> sBitVectorPrototypeHClass =
+        factory_->NewSEcmaHClass(JSSharedObject::SIZE, length, JSType::JS_SHARED_OBJECT,
+                                 JSHandle<JSTaggedValue>(sObjPrototype),
+                                 JSHandle<JSTaggedValue>(layout));
+    return sBitVectorPrototypeHClass;
 }
 
 JSHandle<JSHClass> Builtins::CreateSArrayPrototypeHClass(const JSHandle<JSObject> &sObjPrototype) const
@@ -982,6 +1046,56 @@ void Builtins::InitializeSharedArray(const JSHandle<GlobalEnv> &env, const JSHan
     env->SetSharedArrayFunction(thread_, arrayFunction);
     env->SetSharedArrayPrototype(thread_, arrFuncPrototype);
 }
+
+void Builtins::InitializeSharedBitVector(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &sObjPrototype,
+                                         const JSHandle<JSFunction> &sFuncPrototype) const
+{
+    [[maybe_unused]] EcmaHandleScope scope(thread_);
+    auto globalConst = const_cast<GlobalEnvConstants*>(thread_->GlobalConstants());
+    // BitVector.prototype
+    JSHandle<JSHClass> prototypeHClass = CreateBitVectorPrototypeHClass(sObjPrototype);
+    JSHandle<JSObject> bitVectorFuncPrototype = factory_->NewSharedOldSpaceJSObjectWithInit(prototypeHClass);
+    JSHandle<JSTaggedValue> bitVectorFuncPrototypeValue(bitVectorFuncPrototype);
+
+    // BitVector.prototype_or_hclass
+    auto emptySLayout = globalConst->GetHandledEmptySLayoutInfo();
+    JSHandle<JSHClass> bitVectorInstanceClass =
+        factory_->NewSEcmaHClass(JSAPIBitVector::SIZE, 0,
+            JSType::JS_API_BITVECTOR, bitVectorFuncPrototypeValue, emptySLayout);
+    
+    // BitVector.hclass
+    JSHandle<JSHClass> bitVectorFuncHClass = CreateBitVectorFunctionHClass(sFuncPrototype);
+    bitVectorFuncHClass->SetExtensible(false);
+    
+    // BitVector() = new Function()
+    JSHandle<JSFunction> bitVectorFunction =
+        factory_->NewSFunctionByHClass(reinterpret_cast<void *>(ContainersBitVector::BitVectorConstructor),
+                                       bitVectorFuncHClass, FunctionKind::BUILTIN_CONSTRUCTOR);
+    InitializeSCtor(bitVectorInstanceClass, bitVectorFunction, "BitVector", FunctionLength::ONE);
+    // BitVector.prototype
+    int32_t protoFieldIndex = 0;
+    bitVectorFuncPrototype->SetPropertyInlinedProps(thread_, protoFieldIndex++, bitVectorFunction.GetTaggedValue());
+    for (const base::BuiltinFunctionEntry &entry: ContainersBitVector::GetBitVectorPrototypeFunctions()) {
+        SetSFunction(env, bitVectorFuncPrototype, entry.GetName(), entry.GetEntrypoint(), protoFieldIndex++,
+                     entry.GetLength(), entry.GetBuiltinStubId());
+    }
+    // @@StringTag
+    JSHandle<JSTaggedValue> strTag(factory_->NewFromUtf8ReadOnly("BitVector"));
+    bitVectorFuncPrototype->SetPropertyInlinedProps(thread_, protoFieldIndex++, strTag.GetTaggedValue());
+
+    JSHandle<JSTaggedValue> sizeGetter = CreateSGetterSetter(env, ContainersBitVector::GetSize, "size",
+        FunctionLength::ZERO);
+    JSHandle<JSTaggedValue> lengthGetter = CreateSGetterSetter(env, ContainersBitVector::GetSize, "length",
+        FunctionLength::ZERO);
+    SetSAccessor(bitVectorFuncPrototype, protoFieldIndex++, sizeGetter, globalConst->GetHandledUndefined());
+    SetSAccessor(bitVectorFuncPrototype, protoFieldIndex++, lengthGetter, globalConst->GetHandledUndefined());
+
+    SetSFunction(env, bitVectorFuncPrototype, "[Symbol.iterator]",
+                 ContainersBitVector::GetIteratorObj, protoFieldIndex++, FunctionLength::ONE);
+    env->SetBitVectorPrototype(thread_, bitVectorFuncPrototype);
+    env->SetBitVectorFunction(thread_, bitVectorFunction);
+}
+
 
 // todo: remove sendableName when refactor
 #define BUILTIN_SHARED_TYPED_ARRAY_DEFINE_INITIALIZE(Type, ctorName, TYPE, bytesPerElement, sendableName)       \
