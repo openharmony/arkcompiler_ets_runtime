@@ -227,6 +227,13 @@ config("ark_jsruntime_public_config") {
     "$js_root",
     "$js_root/ecmascript/napi/include",
   ]
+
+  defines = []
+
+  if (ark_js_hybrid) {
+    defines += [ "PANDA_JS_ETS_HYBRID_MODE" ]
+    include_dirs += [ "$arkplatform_root" ]
+  }
 }
 
 intl_sources = []
@@ -1259,6 +1266,14 @@ ohos_source_set("libark_jsruntime_static") {
   } else {
     deps += [ "$ark_root/libpandafile:arkfile_header_deps" ]
     all_dependent_configs = [ ":ark_jsruntime_public_config" ]
+  }
+
+  if (ark_js_hybrid) {
+    if (is_arkui_x) {
+      deps += [ "$arkplatform_root:libarkplatform" ]
+    } else {
+      external_deps += [ "runtime_core:libarkplatform" ]
+    }
   }
 
   public_configs = [ "$js_root:ark_jsruntime_public_config" ]
