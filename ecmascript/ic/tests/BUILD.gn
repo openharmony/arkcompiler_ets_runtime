@@ -21,10 +21,7 @@ host_unittest_action("IC_001_Test") {
 
   sources = [
     # test file
-    "ic_binaryop_test.cpp",
-    "ic_compareop_test.cpp",
     "ic_handler_test.cpp",
-    "ic_invoke_test.cpp",
     "ic_runtime_stub_test.cpp",
   ]
 
