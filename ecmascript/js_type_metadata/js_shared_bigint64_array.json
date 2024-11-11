@@ -1,7 +1,7 @@
 {
     "name": "JS_SHARED_BIGINT64_ARRAY",
     "offsets": [],
-    "end_offset": 4,
+    "end_offset": 8,
     "parents": [
         "JS_TYPED_ARRAY"
     ]
