@@ -220,6 +220,7 @@ bool RawHeapTranslate::ReadRootTable(std::ifstream &file, uint32_t offset, uint3
     }
 
     auto syntheticRoot = std::make_shared<Node>(Node(0));
+    syntheticRoot->nodeId = 1;  // 1: means root node
     syntheticRoot->type = 9;  // 9: means SYNTHETIC node type
     syntheticRoot->strId = strTable_->InsertStrAndGetStringId("SyntheticRoot");
     nodes_.insert(nodes_.begin(), syntheticRoot);
@@ -290,10 +291,13 @@ void RawHeapTranslate::FillNodesAndBuildEdges()
         }
         auto hclass = result.value();
         FillNodes(node, hclass->data);
-        if (hclass->nodeId == node->nodeId || meta_->IsString(hclass->data)) {
+        if (hclass->nodeId == node->nodeId) {
             continue;
         }
         CreateEdge(node, hclass, EdgeType::DEFAULT, hclassStrId);
+        if (meta_->IsString(hclass->data)) {
+            continue;
+        }
         BuildEdges(node, hclass->data);
     }
     LOG_INFO("RawHeapTranslate::FillNodesAndBuildEdges: build edges finish!");
@@ -326,11 +330,7 @@ void RawHeapTranslate::BuildEdges(const std::shared_ptr<Node> &from, char *hclas
             BuildFieldsEdges(from, metadata, offset);
             return;
         }
-        if (meta_->IsDictionaryMode(hclass)) {
-            BuildDictionaryEdges(from, metadata, offset);
-        } else {
-            BuildArrayEdges(from, metadata, offset);
-        }
+        BuildArrayEdges(from, metadata, offset);
     };
     uint32_t baseOffset = 0;
     meta_->VisitObjectBody(typeName, visitor, baseOffset);
@@ -439,7 +439,7 @@ void RawHeapTranslate::BuildJSObjectInlEdges(const std::shared_ptr<Node> &from, 
 
     StringId strId = strTable_->InsertStrAndGetStringId("InlineProperty");
     uint32_t propOffset = offset;
-    while (propOffset + sizeof(uint64_t) < from->size) {
+    while (propOffset + sizeof(uint64_t) <= from->size) {
         uint64_t addr = ByteToU64(from->data + propOffset);
         propOffset += sizeof(uint64_t);
         auto result = FindNodeFromAddr(addr, nullptr);
@@ -543,7 +543,7 @@ void RawHeapTranslate::CheckAndRemoveWeak(uint64_t &addr, EdgeType *type)
 {
     if ((addr & TAG_WEAK_MASK) == TAG_WEAK) {
         addr &= (~TAG_WEAK);
-        if (!type) {
+        if (type != nullptr) {
             *type = EdgeType::WEAK;
         }
     }

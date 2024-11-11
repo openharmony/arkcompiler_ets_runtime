@@ -36,6 +36,9 @@ namespace rawheap_translate {
 #define MAX_FILE_SIZE (4 * 1024 * 1024 * 1024ULL) // 4 * 1024 * 1024 * 1024 : file size bigger than 4GB
 #define MAX_OBJ_SIZE (MAX_FILE_SIZE >> 1)
 
+static const int MAJOR_VERSION_INDEX = 0;
+static const int MINOR_VERSION_INDEX = 1;
+static const int BUILD_VERSION_INDEX = 2;
 static const int VERSION[3] = {1, 0, 0};
 
 bool CheckVersion(const std::string &version);
