@@ -422,6 +422,7 @@ private:
     V(SetSValueWithBarrier)                     \
     V(NewLexicalEnv)                            \
     V(CopyRestArgs)                             \
+    V(CreateObjectHavingMethod)                 \
     V(GetUnmappedArgs)                          \
     V(GetCallSpreadArgs)                        \
     V(NewThisObjectChecked)                     \
