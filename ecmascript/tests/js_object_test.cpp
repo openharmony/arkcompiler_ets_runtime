@@ -1255,9 +1255,9 @@ HWTEST_F_L0(JSObjectTest, NativePointerField)
     ECMAObject::SetHash(thread, 87, JSHandle<ECMAObject>::Cast(obj));
     EXPECT_TRUE(obj->GetHash() == 87);
 
-    obj->SetNativePointerFieldCount(thread, 1);
+    ECMAObject::SetNativePointerFieldCount(thread, obj, 1);
     char array[] = "Hello World!";
-    obj->SetNativePointerField(thread, 0, array, nullptr, nullptr);
+    ECMAObject::SetNativePointerField(thread, obj, 0, array, nullptr, nullptr);
     int32_t count = obj->GetNativePointerFieldCount();
     EXPECT_TRUE(count == 1);
     void *pointer = obj->GetNativePointerField(0);

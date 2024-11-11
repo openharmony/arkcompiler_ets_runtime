@@ -177,7 +177,7 @@ JSHandle<TaggedArray> ModuleNamespace::OwnPropertyKeys(JSThread *thread, const J
     JSHandle<ModuleNamespace> moduleNamespace = JSHandle<ModuleNamespace>::Cast(obj);
     JSHandle<JSTaggedValue> exports(thread, moduleNamespace->GetExports());
     JSHandle<TaggedArray> exportsArray = JSArray::ToTaggedArray(thread, exports);
-    if (!moduleNamespace->ValidateKeysAvailable(thread, exportsArray)) {
+    if (!ModuleNamespace::ValidateKeysAvailable(thread, moduleNamespace, exportsArray)) {
         return exportsArray;
     }
 
@@ -196,7 +196,7 @@ JSHandle<TaggedArray> ModuleNamespace::OwnEnumPropertyKeys(JSThread *thread, con
     JSHandle<ModuleNamespace> moduleNamespace = JSHandle<ModuleNamespace>::Cast(obj);
     JSHandle<JSTaggedValue> exports(thread, moduleNamespace->GetExports());
     JSHandle<TaggedArray> exportsArray = JSArray::ToTaggedArray(thread, exports);
-    if (!moduleNamespace->ValidateKeysAvailable(thread, exportsArray)) {
+    if (!ModuleNamespace::ValidateKeysAvailable(thread, moduleNamespace, exportsArray)) {
         return exportsArray;
     }
 
@@ -351,9 +351,10 @@ bool ModuleNamespace::DeleteProperty(JSThread *thread, const JSHandle<JSTaggedVa
     return true;
 }
 
-bool ModuleNamespace::ValidateKeysAvailable(JSThread *thread, const JSHandle<TaggedArray> &exports)
+// static
+bool ModuleNamespace::ValidateKeysAvailable(JSThread *thread, const JSHandle<ModuleNamespace> &moduleNamespace,
+                                            const JSHandle<TaggedArray> &exports)
 {
-    JSHandle<ModuleNamespace> moduleNamespace(thread, this);
     JSHandle<SourceTextModule> mm(thread, moduleNamespace->GetModule());
     uint32_t exportsLength = exports->GetLength();
     for (uint32_t idx = 0; idx < exportsLength; idx++) {

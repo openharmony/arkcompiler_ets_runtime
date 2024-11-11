@@ -210,7 +210,7 @@ HWTEST_F_L0(EcmaModuleTest, StoreModuleValue)
 
     JSHandle<JSTaggedValue> storeKey = JSHandle<JSTaggedValue>::Cast(objFactory->NewFromUtf8(localName));
     JSHandle<JSTaggedValue> valueHandle = JSHandle<JSTaggedValue>::Cast(objFactory->NewFromUtf8(value));
-    module->StoreModuleValue(thread, storeKey, valueHandle);
+    SourceTextModule::StoreModuleValue(thread, module, storeKey, valueHandle);
 
     JSHandle<JSTaggedValue> loadKey = JSHandle<JSTaggedValue>::Cast(objFactory->NewFromUtf8(localName));
     JSTaggedValue loadValue = module->GetModuleValue(thread, loadKey.GetTaggedValue(), false);
@@ -242,7 +242,7 @@ HWTEST_F_L0(EcmaModuleTest, GetModuleValue)
     SourceTextModule::AddLocalExportEntry(thread, moduleExport, localExportEntry, 0, 1);
     // store module value
     JSHandle<JSTaggedValue> exportValueHandle = JSHandle<JSTaggedValue>::Cast(objFactory->NewFromUtf8(exportValue));
-    moduleExport->StoreModuleValue(thread, exportLocalNameHandle, exportValueHandle);
+    SourceTextModule::StoreModuleValue(thread, moduleExport, exportLocalNameHandle, exportValueHandle);
 
     JSTaggedValue importDefaultValue =
         moduleExport->GetModuleValue(thread, exportLocalNameHandle.GetTaggedValue(), false);
@@ -288,11 +288,11 @@ HWTEST_F_L0(EcmaModuleTest, FindByExport)
 
     JSHandle<JSTaggedValue> storeKey = JSHandle<JSTaggedValue>::Cast(objFactory->NewFromUtf8(localName1));
     JSHandle<JSTaggedValue> valueHandle = JSHandle<JSTaggedValue>::Cast(objFactory->NewFromUtf8(value));
-    module->StoreModuleValue(thread, storeKey, valueHandle);
+    SourceTextModule::StoreModuleValue(thread, module, storeKey, valueHandle);
 
     JSHandle<JSTaggedValue> storeKey2 = JSHandle<JSTaggedValue>::Cast(objFactory->NewFromUtf8(localName2));
     JSHandle<JSTaggedValue> valueHandle2 = JSHandle<JSTaggedValue>::Cast(objFactory->NewFromUtf8(value2));
-    module->StoreModuleValue(thread, storeKey2, valueHandle2);
+    SourceTextModule::StoreModuleValue(thread, module, storeKey2, valueHandle2);
 
     // FindByExport cannot find key from exportEntries, returns Hole()
     JSHandle<JSTaggedValue> loadKey1 = JSHandle<JSTaggedValue>::Cast(objFactory->NewFromUtf8(localName3));
@@ -1635,8 +1635,8 @@ HWTEST_F_L0(EcmaModuleTest, StoreModuleValue2)
     JSHandle<JSTaggedValue> storeKey = JSHandle<JSTaggedValue>::Cast(objFactory->NewFromUtf8(localName));
     JSHandle<JSTaggedValue> valueHandle = JSHandle<JSTaggedValue>::Cast(objFactory->NewFromUtf8(value));
     JSHandle<JSTaggedValue> valueHandle1 = JSHandle<JSTaggedValue>::Cast(objFactory->NewFromUtf8(value2));
-    module->StoreModuleValue(thread, storeKey, valueHandle);
-    module->StoreModuleValue(thread, index, valueHandle1);
+    SourceTextModule::StoreModuleValue(thread, module, storeKey, valueHandle);
+    SourceTextModule::StoreModuleValue(thread, module, index, valueHandle1);
     JSHandle<JSTaggedValue> loadKey = JSHandle<JSTaggedValue>::Cast(objFactory->NewFromUtf8(localName));
     JSTaggedValue loadValue = module->GetModuleValue(thread, loadKey.GetTaggedValue(), false);
     JSTaggedValue loadValue1 = module->GetModuleValue(thread, index, false);
@@ -2042,7 +2042,7 @@ HWTEST_F_L0(EcmaModuleTest, ProcessModuleLoadInfoForESM)
     JSHandle<TaggedArray> localExportEntries = objectFactory->NewTaggedArray(1);
     localExportEntries->Set(thread, 0, localExportEntry);
     module2->SetLocalExportEntries(thread, localExportEntries);
-    module2->StoreModuleValue(thread, 0, val);
+    SourceTextModule::StoreModuleValue(thread, module2, 0, val);
     module2->SetStatus(ModuleStatus::EVALUATED);
     ModuleLogger *moduleLogger = new ModuleLogger(thread->GetEcmaVM());
     thread->GetCurrentEcmaContext()->SetModuleLogger(moduleLogger);
@@ -2090,7 +2090,7 @@ HWTEST_F_L0(EcmaModuleTest, ProcessModuleLoadInfoForCJS)
     JSHandle<TaggedArray> localExportEntries = objectFactory->NewTaggedArray(1);
     localExportEntries->Set(thread, 0, localExportEntry);
     module2->SetLocalExportEntries(thread, localExportEntries);
-    module2->StoreModuleValue(thread, 0, val);
+    SourceTextModule::StoreModuleValue(thread, module2, 0, val);
     module2->SetTypes(ModuleTypes::CJS_MODULE);
     module2->SetStatus(ModuleStatus::EVALUATED);
     JSHandle<CjsModule> moduleCjs = objectFactory->NewCjsModule();
@@ -2142,7 +2142,7 @@ HWTEST_F_L0(EcmaModuleTest, ProcessModuleLoadInfoForNativeModule)
     JSHandle<TaggedArray> localExportEntries = objectFactory->NewTaggedArray(1);
     localExportEntries->Set(thread, 0, localExportEntry);
     module2->SetLocalExportEntries(thread, localExportEntries);
-    module2->StoreModuleValue(thread, 0, val);
+    SourceTextModule::StoreModuleValue(thread, module2, 0, val);
     module2->SetTypes(ModuleTypes::NATIVE_MODULE);
     module2->SetStatus(ModuleStatus::EVALUATED);
 
@@ -2186,7 +2186,7 @@ HWTEST_F_L0(EcmaModuleTest, ResolvedBindingForLog)
     JSHandle<TaggedArray> localExportEntries = objectFactory->NewTaggedArray(1);
     localExportEntries->Set(thread, 0, localExportEntry);
     module2->SetLocalExportEntries(thread, localExportEntries);
-    module2->StoreModuleValue(thread, 0, val);
+    SourceTextModule::StoreModuleValue(thread, module2, 0, val);
     module2->SetStatus(ModuleStatus::EVALUATED);
     ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
     moduleManager->AddResolveImportedModule(recordName2, module2.GetTaggedValue());
@@ -2459,7 +2459,7 @@ HWTEST_F_L0(EcmaModuleTest, ResolveNativeStarExport)
     JSHandle<TaggedArray> localExportEntries = objectFactory->NewTaggedArray(1);
     localExportEntries->Set(thread, 0, localExportEntry);
     module->SetLocalExportEntries(thread, localExportEntries);
-    module->StoreModuleValue(thread, 0, val);
+    SourceTextModule::StoreModuleValue(thread, module, 0, val);
     module->SetTypes(ModuleTypes::NATIVE_MODULE);
 
     JSHandle<JSTaggedValue> res1 = SourceTextModule::ResolveNativeStarExport(thread, module, val);
@@ -2491,7 +2491,7 @@ HWTEST_F_L0(EcmaModuleTest, LoadNativeModuleImpl)
     JSHandle<TaggedArray> localExportEntries = objectFactory->NewTaggedArray(1);
     localExportEntries->Set(thread, 0, localExportEntry);
     module->SetLocalExportEntries(thread, localExportEntries);
-    module->StoreModuleValue(thread, 0, val);
+    SourceTextModule::StoreModuleValue(thread, module, 0, val);
     module->SetTypes(ModuleTypes::NATIVE_MODULE);
     ModuleLogger *moduleLogger = new ModuleLogger(vm);
     thread->GetCurrentEcmaContext()->SetModuleLogger(moduleLogger);
@@ -2526,7 +2526,7 @@ HWTEST_F_L0(EcmaModuleTest, LoadNativeModuleMayThrowError1)
     localExportEntries->Set(thread, 0, localExportEntry);
     module->SetEcmaModuleRecordNameString("@app:bundleName/moduleName/lib*.so");
     module->SetLocalExportEntries(thread, localExportEntries);
-    module->StoreModuleValue(thread, 0, val);
+    SourceTextModule::StoreModuleValue(thread, module, 0, val);
     module->SetTypes(ModuleTypes::NATIVE_MODULE);
     Local<JSValueRef> requireNapi = StringRef::NewFromUtf8(vm, "requireNapi");
     Local<ObjectRef> globalObject = JSNApi::GetGlobalObject(vm);
@@ -2547,7 +2547,7 @@ HWTEST_F_L0(EcmaModuleTest, LoadNativeModuleMayThrowError2)
     localExportEntries->Set(thread, 0, localExportEntry);
     module->SetEcmaModuleRecordNameString("@app:bundleName/moduleName/lib*.so");
     module->SetLocalExportEntries(thread, localExportEntries);
-    module->StoreModuleValue(thread, 0, val);
+    SourceTextModule::StoreModuleValue(thread, module, 0, val);
     module->SetTypes(ModuleTypes::NATIVE_MODULE);
     Local<JSValueRef> requireNapi = StringRef::NewFromUtf8(vm, "requireNapi");
     Local<ObjectRef> globalObject = JSNApi::GetGlobalObject(vm);
@@ -2568,7 +2568,7 @@ HWTEST_F_L0(EcmaModuleTest, LoadNativeModuleMayThrowError3)
     localExportEntries->Set(thread, 0, localExportEntry);
     module->SetEcmaModuleRecordNameString("@app:bundleName/moduleName/lib*.so");
     module->SetLocalExportEntries(thread, localExportEntries);
-    module->StoreModuleValue(thread, 0, val);
+    SourceTextModule::StoreModuleValue(thread, module, 0, val);
     module->SetTypes(ModuleTypes::NATIVE_MODULE);
     Local<JSValueRef> requireNapi = StringRef::NewFromUtf8(vm, "requireNapi");
     Local<ObjectRef> globalObject = JSNApi::GetGlobalObject(vm);
@@ -2589,7 +2589,7 @@ HWTEST_F_L0(EcmaModuleTest, LoadNativeModuleMayThrowError4)
     localExportEntries->Set(thread, 0, localExportEntry);
     module->SetEcmaModuleRecordNameString("@app:bundleName/moduleName/lib*.so");
     module->SetLocalExportEntries(thread, localExportEntries);
-    module->StoreModuleValue(thread, 0, val);
+    SourceTextModule::StoreModuleValue(thread, module, 0, val);
     module->SetTypes(ModuleTypes::NATIVE_MODULE);
     Local<JSValueRef> requireNapi = StringRef::NewFromUtf8(vm, "requireNapi");
     Local<ObjectRef> globalObject = JSNApi::GetGlobalObject(vm);
@@ -2610,7 +2610,7 @@ HWTEST_F_L0(EcmaModuleTest, LoadNativeModule1)
     localExportEntries->Set(thread, 0, localExportEntry);
     module->SetEcmaModuleRecordNameString("@app:bundleName/moduleName/lib*.so");
     module->SetLocalExportEntries(thread, localExportEntries);
-    module->StoreModuleValue(thread, 0, val);
+    SourceTextModule::StoreModuleValue(thread, module, 0, val);
     module->SetTypes(ModuleTypes::NATIVE_MODULE);
     Local<JSValueRef> requireNapi = StringRef::NewFromUtf8(vm, "requireNapi");
     Local<ObjectRef> globalObject = JSNApi::GetGlobalObject(vm);
@@ -2631,7 +2631,7 @@ HWTEST_F_L0(EcmaModuleTest, LoadNativeModule2)
     localExportEntries->Set(thread, 0, localExportEntry);
     module->SetEcmaModuleRecordNameString("@app:bundleName/moduleName/lib*.so");
     module->SetLocalExportEntries(thread, localExportEntries);
-    module->StoreModuleValue(thread, 0, val);
+    SourceTextModule::StoreModuleValue(thread, module, 0, val);
     module->SetTypes(ModuleTypes::NATIVE_MODULE);
     Local<JSValueRef> requireNapi = StringRef::NewFromUtf8(vm, "requireNapi");
     Local<ObjectRef> globalObject = JSNApi::GetGlobalObject(vm);
@@ -2663,7 +2663,7 @@ HWTEST_F_L0(EcmaModuleTest, EvaluateNativeModule2)
     localExportEntries->Set(thread, 0, localExportEntry);
     module->SetEcmaModuleRecordNameString("@app:bundleName/moduleName/lib*.so");
     module->SetLocalExportEntries(thread, localExportEntries);
-    module->StoreModuleValue(thread, 0, val);
+    SourceTextModule::StoreModuleValue(thread, module, 0, val);
     module->SetTypes(ModuleTypes::NATIVE_MODULE);
     module->SetStatus(ModuleStatus::INSTANTIATED);
     Local<JSValueRef> requireNapi = StringRef::NewFromUtf8(vm, "requireNapi");
@@ -2685,7 +2685,7 @@ HWTEST_F_L0(EcmaModuleTest, EvaluateNativeModule3)
     localExportEntries->Set(thread, 0, localExportEntry);
     module->SetEcmaModuleRecordNameString("@app:bundleName/moduleName/lib*.so");
     module->SetLocalExportEntries(thread, localExportEntries);
-    module->StoreModuleValue(thread, 0, val);
+    SourceTextModule::StoreModuleValue(thread, module, 0, val);
     module->SetTypes(ModuleTypes::NATIVE_MODULE);
     module->SetStatus(ModuleStatus::INSTANTIATED);
     Local<JSValueRef> requireNapi = StringRef::NewFromUtf8(vm, "requireNapi");
@@ -2831,7 +2831,7 @@ HWTEST_F_L0(EcmaModuleTest, LoadNativeModule)
     localExportEntries->Set(thread, 0, localExportEntry);
     module->SetEcmaModuleRecordNameString("@app:bundleName/moduleName/lib*.so");
     module->SetLocalExportEntries(thread, localExportEntries);
-    module->StoreModuleValue(thread, 0, val);
+    SourceTextModule::StoreModuleValue(thread, module, 0, val);
     module->SetTypes(ModuleTypes::NATIVE_MODULE);
     ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
     JSHandle<JSTaggedValue> res = moduleManager->LoadNativeModule(
@@ -2852,7 +2852,7 @@ HWTEST_F_L0(EcmaModuleTest, ExecuteNativeModuleMayThrowError)
     localExportEntries->Set(thread, 0, localExportEntry);
     module->SetEcmaModuleRecordNameString(recordName);
     module->SetLocalExportEntries(thread, localExportEntries);
-    module->StoreModuleValue(thread, 0, val);
+    SourceTextModule::StoreModuleValue(thread, module, 0, val);
     module->SetTypes(ModuleTypes::NATIVE_MODULE);
     module->SetStatus(ModuleStatus::EVALUATED);
     ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
@@ -2880,7 +2880,7 @@ HWTEST_F_L0(EcmaModuleTest, ExecuteNativeModule)
     localExportEntries->Set(thread, 0, localExportEntry);
     module->SetEcmaModuleRecordNameString(recordName);
     module->SetLocalExportEntries(thread, localExportEntries);
-    module->StoreModuleValue(thread, 0, val);
+    SourceTextModule::StoreModuleValue(thread, module, 0, val);
     module->SetTypes(ModuleTypes::NATIVE_MODULE);
     
     ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
@@ -2906,7 +2906,7 @@ HWTEST_F_L0(EcmaModuleTest, ExecuteNativeModule2)
     localExportEntries->Set(thread, 0, localExportEntry);
     module->SetEcmaModuleRecordNameString(recordName);
     module->SetLocalExportEntries(thread, localExportEntries);
-    module->StoreModuleValue(thread, 0, val);
+    SourceTextModule::StoreModuleValue(thread, module, 0, val);
     module->SetTypes(ModuleTypes::NATIVE_MODULE);
     
     ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
@@ -3138,7 +3138,7 @@ HWTEST_F_L0(EcmaModuleTest, GetLazyModuleValueFromRecordBinding)
     JSHandle<TaggedArray> localExportEntries = objectFactory->NewTaggedArray(1);
     localExportEntries->Set(thread, 0, localExportEntry);
     module2->SetLocalExportEntries(thread, localExportEntries);
-    module2->StoreModuleValue(thread, 0, val);
+    SourceTextModule::StoreModuleValue(thread, module2, 0, val);
     module2->SetStatus(ModuleStatus::EVALUATED);
     module2->SetTypes(ModuleTypes::NATIVE_MODULE);
     ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
@@ -3335,7 +3335,7 @@ HWTEST_F_L0(EcmaModuleTest, StoreModuleValue4)
     localExportEntries->Set(thread, 0, localExportEntry);
     module->SetLocalExportEntries(thread, localExportEntries);
     module->SetSharedType(SharedTypes::SHARED_MODULE);
-    module->StoreModuleValue(thread, 0, val);
+    SourceTextModule::StoreModuleValue(thread, module, 0, val);
     EXPECT_TRUE(!thread->HasPendingException());
 }
 
@@ -3865,7 +3865,7 @@ HWTEST_F_L0(EcmaModuleTest, ResolveNativeStarExport2)
     JSHandle<TaggedArray> localExportEntries = objectFactory->NewTaggedArray(1);
     localExportEntries->Set(thread, 0, localExportEntry);
     module->SetLocalExportEntries(thread, localExportEntries);
-    module->StoreModuleValue(thread, 0, val);
+    SourceTextModule::StoreModuleValue(thread, module, 0, val);
     module->SetTypes(ModuleTypes::NATIVE_MODULE);
 
     int arkProperties = thread->GetEcmaVM()->GetJSOptions().GetArkProperties();
@@ -3885,7 +3885,7 @@ HWTEST_F_L0(EcmaModuleTest, LoadNativeModuleImpl2)
     JSHandle<TaggedArray> localExportEntries = objectFactory->NewTaggedArray(1);
     localExportEntries->Set(thread, 0, localExportEntry);
     module->SetLocalExportEntries(thread, localExportEntries);
-    module->StoreModuleValue(thread, 0, val);
+    SourceTextModule::StoreModuleValue(thread, module, 0, val);
     module->SetTypes(ModuleTypes::NATIVE_MODULE);
     ModuleLogger *moduleLogger = new ModuleLogger(vm);
     thread->GetCurrentEcmaContext()->SetModuleLogger(moduleLogger);
@@ -3915,7 +3915,7 @@ HWTEST_F_L0(EcmaModuleTest, LoadNativeModule3)
     localExportEntries->Set(thread, 0, localExportEntry);
     module->SetEcmaModuleRecordNameString("@app:bundleName/moduleName/lib*.so");
     module->SetLocalExportEntries(thread, localExportEntries);
-    module->StoreModuleValue(thread, 0, val);
+    SourceTextModule::StoreModuleValue(thread, module, 0, val);
     module->SetTypes(ModuleTypes::NATIVE_MODULE);
     Local<JSValueRef> requireNapi = StringRef::NewFromUtf8(vm, "requireNapi");
     Local<ObjectRef> globalObject = JSNApi::GetGlobalObject(vm);

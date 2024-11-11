@@ -385,11 +385,11 @@ public:
     }
 
     void* GetNativePointerField(int32_t index) const;
-    void SetNativePointerField(const JSThread *thread, int32_t index, void *nativePointer,
-                               const NativePointerCallback &callBack, void *data, size_t nativeBindingsize = 0,
-                               Concurrent isConcurrent = Concurrent::NO);
+    static void SetNativePointerField(const JSThread *thread, const JSHandle<JSObject> &obj, int32_t index,
+                                      void *nativePointer, const NativePointerCallback &callBack, void *data,
+                                      size_t nativeBindingsize = 0, Concurrent isConcurrent = Concurrent::NO);
     int32_t GetNativePointerFieldCount() const;
-    void SetNativePointerFieldCount(const JSThread *thread, int32_t count);
+    static void SetNativePointerFieldCount(const JSThread *thread, const JSHandle<JSObject> &obj, int32_t count);
 
     DECL_VISIT_OBJECT(HASH_OFFSET, SIZE);
 
@@ -605,7 +605,8 @@ public:
                                       const JSHandle<JSTaggedValue> &receiver,
                                       const JSHandle<JSTaggedValue> &value, bool mayThrow = false);
 
-    void FillElementsWithHoles(const JSThread *thread, uint32_t start, uint32_t end);
+    static void FillElementsWithHoles(const JSThread *thread, const JSHandle<JSObject> &obj,
+                                      uint32_t start, uint32_t end);
 
     JSHClass *GetJSHClass() const
     {

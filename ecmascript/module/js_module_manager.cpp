@@ -254,7 +254,7 @@ void ModuleManager::StoreModuleValueInternal(JSHandle<SourceTextModule> &current
     }
     JSThread *thread = vm_->GetJSThread();
     JSHandle<JSTaggedValue> valueHandle(thread, value);
-    currentModule->StoreModuleValue(thread, index, valueHandle);
+    SourceTextModule::StoreModuleValue(thread, currentModule, index, valueHandle);
 }
 
 JSTaggedValue ModuleManager::GetModuleValueInner(JSTaggedValue key)
@@ -342,7 +342,7 @@ void ModuleManager::StoreModuleValueInternal(JSHandle<SourceTextModule> &current
     JSThread *thread = vm_->GetJSThread();
     JSHandle<JSTaggedValue> keyHandle(thread, key);
     JSHandle<JSTaggedValue> valueHandle(thread, value);
-    currentModule->StoreModuleValue(thread, keyHandle, valueHandle);
+    SourceTextModule::StoreModuleValue(thread, currentModule, keyHandle, valueHandle);
 }
 JSHandle<SourceTextModule> ModuleManager::GetImportedModule(const CString &referencing)
 {
@@ -610,7 +610,7 @@ JSHandle<JSTaggedValue> ModuleManager::ExecuteNativeModuleMayThrowError(JSThread
         JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
     nativeModule->SetStatus(ModuleStatus::EVALUATED);
     nativeModule->SetLoadingTypes(LoadingTypes::STABLE_MODULE);
-    nativeModule->StoreModuleValue(thread, 0, JSNApiHelper::ToJSHandle(exportObject));
+    SourceTextModule::StoreModuleValue(thread, nativeModule, 0, JSNApiHelper::ToJSHandle(exportObject));
     AddResolveImportedModule(recordName, moduleRecord.GetTaggedValue());
     return JSNApiHelper::ToJSHandle(exportObject);
 }

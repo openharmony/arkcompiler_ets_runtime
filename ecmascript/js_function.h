@@ -312,10 +312,11 @@ public:
                !ProfileTypeInfoCell::Cast(GetRawProfileTypeInfo())->GetValue().IsUndefined();
     }
 
-    void SetFunctionExtraInfo(JSThread *thread, void *nativeFunc, const NativePointerCallback &deleter,
-                              void *data, size_t nativeBindingsize = 0, Concurrent isConcurrent = Concurrent::NO);
-    void SetSFunctionExtraInfo(JSThread *thread, void *nativeFunc, const NativePointerCallback &deleter,
-                               void *data, size_t nativeBindingsize = 0);
+    static void SetFunctionExtraInfo(JSThread *thread, const JSHandle<JSFunction> &func, void *nativeFunc,
+                                     const NativePointerCallback &deleter, void *data, size_t nativeBindingsize = 0,
+                                     Concurrent isConcurrent = Concurrent::NO);
+    static void SetSFunctionExtraInfo(JSThread *thread, const JSHandle<JSFunction> &func, void *nativeFunc,
+                                      const NativePointerCallback &deleter, void *data, size_t nativeBindingsize = 0);
     static void SetProfileTypeInfo(const JSThread *thread, const JSHandle<JSFunction> &func,
                                    const JSHandle<JSTaggedValue> &value, BarrierMode mode = WRITE_BARRIER);
     static void UpdateProfileTypeInfoCell(JSThread *thread, JSHandle<FunctionTemplate> literalFunc,

@@ -222,7 +222,7 @@ void JSSharedArray::SetCapacity(JSThread *thread, const JSHandle<JSObject> &arra
     if (newLen <= capacity) {
         // judge if need to cut down the array size, else fill the unused tail with holes
         CheckAndCopyArray(thread, JSHandle<JSSharedArray>(array));
-        array->FillElementsWithHoles(thread, newLen, oldLen < capacity ? oldLen : capacity);
+        JSObject::FillElementsWithHoles(thread, array, newLen, oldLen < capacity ? oldLen : capacity);
     }
     if (newLen > capacity) {
         JSObject::GrowElementsCapacity(thread, array, newLen, isNew);

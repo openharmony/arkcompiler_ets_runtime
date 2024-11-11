@@ -45,16 +45,16 @@ inline bool JSObject::IsExtensible() const
     return GetJSHClass()->IsExtensible();
 }
 
-inline void JSObject::FillElementsWithHoles(const JSThread *thread, uint32_t start, uint32_t end)
+// static
+inline void JSObject::FillElementsWithHoles(const JSThread *thread, const JSHandle<JSObject> &obj,
+                                            uint32_t start, uint32_t end)
 {
     if (start >= end) {
         return;
     }
-
     JSHandle<JSTaggedValue> holeHandle(thread, JSTaggedValue::Hole());
-    JSHandle<JSObject> thisObj(thread, this);
     for (uint32_t i = start; i < end; i++) {
-        ElementAccessor::Set(thread, thisObj, i, holeHandle, false);
+        ElementAccessor::Set(thread, obj, i, holeHandle, false);
     }
 }
 
