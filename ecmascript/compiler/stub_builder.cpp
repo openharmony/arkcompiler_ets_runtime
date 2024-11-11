@@ -6693,6 +6693,41 @@ GateRef StubBuilder::FastEqual(GateRef glue, GateRef left, GateRef right, Profil
             }
             Bind(&rightIsNotUndefinedOrNull);
             {
+                Label bothString(env);
+                Label eitherNotString(env);
+                Label isHeapObject(env);
+                Label notHeapObject(env);
+                BRANCH(BitAnd(TaggedIsHeapObject(left), TaggedIsHeapObject(right)), &isHeapObject, &notHeapObject);
+                Bind(&isHeapObject);
+                {
+                    Label typeEqual(env);
+                    GateRef leftType = GetObjectType(LoadHClass(left));
+                    GateRef rightType = GetObjectType(LoadHClass(right));
+                    BRANCH(Equal(leftType, rightType), &typeEqual, &notHeapObject);
+                    Bind(&typeEqual);
+                    {
+                        Label eitherNotString1(env);
+                        Label bothBigInt(env);
+                        Label eitherNotBigInt(env);
+                        BRANCH(BothAreString(left, right), &bothString, &eitherNotString1);
+                        Bind(&eitherNotString1);
+                        BRANCH(BitAnd(TaggedIsBigInt(left),TaggedIsBigInt(right)), &bothBigInt, &eitherNotBigInt);
+                        Bind(&bothBigInt);
+                        {
+                            callback.ProfileOpType(TaggedInt(PGOSampleType::BigIntType()));
+                            result =BooleanToTaggedBooleanPtr(CallNGCRuntime(glue, 
+                                                                RTSTUB_ID(BigIntEquals), {left, right}));
+                            Jump(&exit);
+                        }
+                        Bind(&eitherNotBigInt);
+                        {
+                            callback.ProfileOpType(TaggedInt(PGOSampleType::AnyType()));
+                            result = TaggedFalse();
+                            Jump(&exit);
+                        }
+                    }
+                }
+                Bind(&notHeapObject);
                 Label leftIsUndefinedOrNull(env);
                 Label leftIsNotUndefinedOrNull(env);
                 BRANCH(TaggedIsUndefinedOrNull(right), &leftIsUndefinedOrNull, &leftIsNotUndefinedOrNull);
@@ -6724,26 +6759,24 @@ GateRef StubBuilder::FastEqual(GateRef glue, GateRef left, GateRef right, Profil
                     }
                     Bind(&leftNotBoolOrRightNotSpecial);
                     {
-                        Label bothString(env);
-                        Label eitherNotString(env);
                         BRANCH(BothAreString(left, right), &bothString, &eitherNotString);
-                        Bind(&bothString);
-                        {
-                            callback.ProfileOpType(TaggedInt(PGOSampleType::StringType()));
-                            Label stringEqual(env);
-                            Label stringNotEqual(env);
-                            BRANCH(FastStringEqual(glue, left, right), &stringEqual, &stringNotEqual);
-                            Bind(&stringEqual);
-                            result = TaggedTrue();
-                            Jump(&exit);
-                            Bind(&stringNotEqual);
-                            result = TaggedFalse();
-                            Jump(&exit);
-                        }
-                        Bind(&eitherNotString);
-                        callback.ProfileOpType(TaggedInt(PGOSampleType::AnyType()));
+                    }
+                    Bind(&bothString);
+                    {
+                        callback.ProfileOpType(TaggedInt(PGOSampleType::StringType()));
+                        Label stringEqual(env);
+                        Label stringNotEqual(env);
+                        BRANCH(FastStringEqual(glue, left, right), &stringEqual, &stringNotEqual);
+                        Bind(&stringEqual);
+                        result = TaggedTrue();
+                        Jump(&exit);
+                        Bind(&stringNotEqual);
+                        result = TaggedFalse();
                         Jump(&exit);
                     }
+                    Bind(&eitherNotString);
+                    callback.ProfileOpType(TaggedInt(PGOSampleType::AnyType()));
+                    Jump(&exit);
                 }
             }
         }

@@ -2033,3 +2033,35 @@ try {
 } catch (e) {
     print(e instanceof TypeError);
 }
+
+// find index object
+let findIndexArray = new Array(4);
+const obj0 = { ["obj0"]: 0 };
+const obj1 = { ["obj1"]: 1 };
+const obj2 = { ["obj2"]: 2 };
+const obj3 = { ["obj3"]: 3 };
+findIndexArray[0] = obj0;
+findIndexArray[1] = obj1;
+findIndexArray[2] = obj2;
+findIndexArray[3] = obj3;
+print(findIndexArray.findIndex(element => element == obj1));
+print(findIndexArray.findIndex(element => element == { ["obj3"]: 3 }));
+
+// find index bigint
+findIndexArray = new Array(4);
+findIndexArray[0] = 1n;
+findIndexArray[1] = 2n;
+findIndexArray[2] = 3n;
+findIndexArray[3] = 4n;
+print(findIndexArray.findIndex(element => element == 2n));
+print(findIndexArray.findIndex(element => element == 0n));
+
+
+// find index string
+findIndexArray = new Array(4);
+findIndexArray[0] = "a";
+findIndexArray[1] = "b";
+findIndexArray[2] = "c";
+findIndexArray[3] = "d";
+print(findIndexArray.findIndex(element => element == "b"));
+print(findIndexArray.findIndex(element => element == "e"));
