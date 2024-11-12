@@ -244,6 +244,8 @@ JSHandle<JSFunction> ObjectFactory::NewSFunctionByHClass(const JSHandle<Method> 
     if (method->IsAotWithCallField()) {
         thread_->GetEcmaVM()->GetAOTFileManager()->
             SetAOTFuncEntry(method->GetJSPandaFile(), *function, *method);
+    } else {
+        SetCodeEntryToFunctionFromMethod(function, method);
     }
     return function;
 }
