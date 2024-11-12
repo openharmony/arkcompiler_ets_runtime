@@ -623,10 +623,10 @@ bool PGORecordDetailInfos::AddDefine(
     PGOHClassTreeDesc descInfo(type.GetProfileType());
     auto iter = hclassTreeDescInfos_.find(descInfo);
     if (iter == hclassTreeDescInfos_.end()) {
-        descInfo.SetProtoPt(type.GetProtoTypePt());
+        descInfo.SetProtoPt(type.GetPrototypePt());
         hclassTreeDescInfos_.emplace(descInfo);
     } else {
-        const_cast<PGOHClassTreeDesc &>(*iter).SetProtoPt(type.GetProtoTypePt());
+        const_cast<PGOHClassTreeDesc &>(*iter).SetProtoPt(type.GetPrototypePt());
     }
     return true;
 }

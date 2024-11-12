@@ -2151,7 +2151,9 @@ void Builtins::InitializeArray(const JSHandle<GlobalEnv> &env, const JSHandle<JS
     // Arraybase.prototype
     JSHandle<JSHClass> arrBaseFuncInstanceHClass = factory_->CreateJSArrayInstanceClass(
         objFuncPrototypeVal, BuiltinsArray::GetNumPrototypeInlinedProperties());
-
+    // Since we don't want the operations on the array prototype to go through the IR code.
+    // Specially we set the bit of the array prototype to true.
+    arrBaseFuncInstanceHClass->SetIsJSArrayPrototypeModified(true);
     // Array.prototype
     JSHandle<JSObject> arrFuncPrototype = factory_->NewJSObjectWithInit(arrBaseFuncInstanceHClass);
     JSHandle<JSArray>::Cast(arrFuncPrototype)->SetLength(FunctionLength::ZERO);

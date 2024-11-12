@@ -7985,7 +7985,7 @@ HWTEST_F_L0(JSNApiSplTest, FunctionRef_GetFunctionPrototype)
     Local<FunctionRef> setLocal = JSNApiHelper::ToLocal<FunctionRef>(set);
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        [[maybe_unused]] Local<JSValueRef> funcProtoType = setLocal->GetFunctionPrototype(vm_);
+        [[maybe_unused]] Local<JSValueRef> funcPrototype = setLocal->GetFunctionPrototype(vm_);
     }
     gettimeofday(&g_endTime, nullptr);
     TEST_TIME(FunctionRef::GetFunctionPrototype);

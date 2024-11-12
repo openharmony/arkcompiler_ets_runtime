@@ -179,7 +179,6 @@ void BuiltinsArrayStubBuilder::Unshift(GateRef glue, GateRef thisValue, GateRef 
     Label afterCopy(env);
     Label grow(env);
     Label setValue(env);
-    Label matchCls(env);
     Label numEqual2(env);
     Label numEqual3(env);
     Label threeArgs(env);
@@ -190,9 +189,6 @@ void BuiltinsArrayStubBuilder::Unshift(GateRef glue, GateRef thisValue, GateRef 
     Bind(&isJsArray);
     BRANCH(IsStableJSArray(glue, thisValue), &isStableJsArray, slowPath);
     Bind(&isStableJsArray);
-    GateRef arrayCls = LoadHClass(thisValue);
-    ElementsKindHclassCompare(glue, arrayCls, &matchCls, slowPath);
-    Bind(&matchCls);
     BRANCH(Int64GreaterThan(numArgs, IntPtr(0)), &numNotEqualZero, slowPath);
     Bind(&numNotEqualZero);
     GateRef thisLen = ZExtInt32ToInt64(GetArrayLength(thisValue));
@@ -832,7 +828,6 @@ void BuiltinsArrayStubBuilder::ForEach([[maybe_unused]] GateRef glue, GateRef th
 {
     auto env = GetEnvironment();
     Label thisExists(env);
-    Label matchCls(env);
     Label isHeapObject(env);
     Label isGeneric(env);
     Label isJsArray(env);
@@ -852,9 +847,6 @@ void BuiltinsArrayStubBuilder::ForEach([[maybe_unused]] GateRef glue, GateRef th
     Bind(&isStability);
     BRANCH(IsJsCOWArray(thisValue), slowPath, &notCOWArray);
     Bind(&notCOWArray);
-    GateRef arrayCls = LoadHClass(thisValue);
-    ElementsKindHclassCompare(glue, arrayCls, &matchCls, slowPath);
-    Bind(&matchCls);
     Label arg0HeapObject(env);
     Label callable(env);
     Label thisIsStable(env);
@@ -3066,7 +3058,6 @@ void BuiltinsArrayStubBuilder::Splice(GateRef glue, GateRef thisValue, GateRef n
     Label isJsArray(env);
     Label isStability(env);
     Label defaultConstr(env);
-    Label matchCls(env);
     Label isGeneric(env);
     BRANCH(TaggedIsHeapObject(thisValue), &isHeapObject, slowPath);
     Bind(&isHeapObject);
@@ -3080,8 +3071,6 @@ void BuiltinsArrayStubBuilder::Splice(GateRef glue, GateRef thisValue, GateRef n
     BRANCH(IsJsCOWArray(thisValue), slowPath, &notCOWArray);
     Bind(&notCOWArray);
     GateRef arrayCls = LoadHClass(thisValue);
-    ElementsKindHclassCompare(glue, arrayCls, &matchCls, slowPath);
-    Bind(&matchCls);
     GateRef arrayLen = GetArrayLength(thisValue);
     Label lessThreeArg(env);
 
@@ -3349,7 +3338,6 @@ void BuiltinsArrayStubBuilder::ToSpliced(GateRef glue, GateRef thisValue, GateRe
     Label isJsArray(env);
     Label isStability(env);
     Label defaultConstr(env);
-    Label matchCls(env);
     Label isGeneric(env);
     BRANCH(TaggedIsHeapObject(thisValue), &isHeapObject, slowPath);
     Bind(&isHeapObject);
@@ -3362,9 +3350,6 @@ void BuiltinsArrayStubBuilder::ToSpliced(GateRef glue, GateRef thisValue, GateRe
     Label notCOWArray(env);
     BRANCH(IsJsCOWArray(thisValue), slowPath, &notCOWArray);
     Bind(&notCOWArray);
-    GateRef arrayCls = LoadHClass(thisValue);
-    ElementsKindHclassCompare(glue, arrayCls, &matchCls, slowPath);
-    Bind(&matchCls);
     GateRef thisLen = GetArrayLength(thisValue);
     Label lessThreeArg(env);
     DEFVARIABLE(actualStart, VariableType::INT32(), Int32(0));
@@ -3581,7 +3566,6 @@ void BuiltinsArrayStubBuilder::CopyWithin(GateRef glue, GateRef thisValue, GateR
     Label isStability(env);
     Label isGeneric(env);
     Label notCOWArray(env);
-    Label matchCls(env);
     BRANCH(TaggedIsUndefinedOrNull(thisValue), slowPath, &thisExists);
     Bind(&thisExists);
     BRANCH(TaggedIsHeapObject(thisValue), &isHeapObject, slowPath);
@@ -3594,9 +3578,6 @@ void BuiltinsArrayStubBuilder::CopyWithin(GateRef glue, GateRef thisValue, GateR
     Bind(&isStability);
     BRANCH(IsJsCOWArray(thisValue), slowPath, &notCOWArray);
     Bind(&notCOWArray);
-    GateRef arrayCls = LoadHClass(thisValue);
-    ElementsKindHclassCompare(glue, arrayCls, &matchCls, slowPath);
-    Bind(&matchCls);
     DEFVARIABLE(startPos, VariableType::INT64(), Int64(0));
     DEFVARIABLE(endPos, VariableType::INT64(), Int64(0));
     Label targetTagExists(env);
@@ -3797,7 +3778,6 @@ void BuiltinsArrayStubBuilder::Some(GateRef glue, GateRef thisValue, GateRef num
     Label isStability(env);
     Label notCOWArray(env);
     Label equalCls(env);
-    Label matchCls(env);
     Label isGeneric(env);
     BRANCH(TaggedIsUndefinedOrNull(thisValue), slowPath, &thisExists);
     Bind(&thisExists);
@@ -3811,9 +3791,6 @@ void BuiltinsArrayStubBuilder::Some(GateRef glue, GateRef thisValue, GateRef num
     Bind(&isStability);
     BRANCH(IsJsCOWArray(thisValue), slowPath, &notCOWArray);
     Bind(&notCOWArray);
-    GateRef arrayCls = LoadHClass(thisValue);
-    ElementsKindHclassCompare(glue, arrayCls, &matchCls, slowPath);
-    Bind(&matchCls);
     Label arg0HeapObject(env);
     Label callable(env);
     Label thisIsStable(env);
@@ -4000,7 +3977,6 @@ void BuiltinsArrayStubBuilder::Every(GateRef glue, GateRef thisValue, GateRef nu
     Label equalCls(env);
     Label arg0HeapObject(env);
     Label callable(env);
-    Label matchCls(env);
     Label isGeneric(env);
     BRANCH(TaggedIsUndefinedOrNull(thisValue), slowPath, &thisExists);
     Bind(&thisExists);
@@ -4014,9 +3990,6 @@ void BuiltinsArrayStubBuilder::Every(GateRef glue, GateRef thisValue, GateRef nu
     Bind(&isStability);
     BRANCH(IsJsCOWArray(thisValue), slowPath, &notCOWArray);
     Bind(&notCOWArray);
-    GateRef arrayCls = LoadHClass(thisValue);
-    ElementsKindHclassCompare(glue, arrayCls, &matchCls, slowPath);
-    Bind(&matchCls);
     GateRef callbackFnHandle = GetCallArg0(numArgs);
     BRANCH(TaggedIsHeapObject(callbackFnHandle), &arg0HeapObject, slowPath);
     Bind(&arg0HeapObject);
@@ -4187,7 +4160,6 @@ void BuiltinsArrayStubBuilder::ReduceRight(GateRef glue, GateRef thisValue, Gate
     Label isStability(env);
     Label notCOWArray(env);
     Label equalCls(env);
-    Label matchCls(env);
     Label isGeneric(env);
     BRANCH(TaggedIsUndefinedOrNull(thisValue), slowPath, &thisExists);
     Bind(&thisExists);
@@ -4201,9 +4173,6 @@ void BuiltinsArrayStubBuilder::ReduceRight(GateRef glue, GateRef thisValue, Gate
     Bind(&isStability);
     BRANCH(IsJsCOWArray(thisValue), slowPath, &notCOWArray);
     Bind(&notCOWArray);
-    GateRef arrayCls = LoadHClass(thisValue);
-    ElementsKindHclassCompare(glue, arrayCls, &matchCls, slowPath);
-    Bind(&matchCls);
     DEFVARIABLE(thisLen, VariableType::INT32(), Int32(0));
     DEFVARIABLE(accumulator, VariableType::JS_ANY(), Undefined());
     DEFVARIABLE(k, VariableType::INT32(), Int32(0));
@@ -4391,7 +4360,6 @@ void BuiltinsArrayStubBuilder::FindLastIndex(GateRef glue, GateRef thisValue, Ga
     Label notCOWArray(env);
     Label equalCls(env);
     Label isGeneric(env);
-    Label matchCls(env);
     BRANCH(TaggedIsUndefinedOrNull(thisValue), slowPath, &thisExists);
     Bind(&thisExists);
     BRANCH(TaggedIsHeapObject(thisValue), &isHeapObject, slowPath);
@@ -4404,9 +4372,6 @@ void BuiltinsArrayStubBuilder::FindLastIndex(GateRef glue, GateRef thisValue, Ga
     Bind(&isStability);
     BRANCH(IsJsCOWArray(thisValue), slowPath, &notCOWArray);
     Bind(&notCOWArray);
-    GateRef arrayCls = LoadHClass(thisValue);
-    ElementsKindHclassCompare(glue, arrayCls, &matchCls, slowPath);
-    Bind(&matchCls);
     Label arg0HeapObject(env);
     Label callable(env);
     Label thisIsStable(env);
@@ -4582,7 +4547,6 @@ void BuiltinsArrayStubBuilder::FindLast(GateRef glue, GateRef thisValue, GateRef
     Label isStability(env);
     Label notCOWArray(env);
     Label equalCls(env);
-    Label matchCls(env);
     Label isGeneric(env);
     BRANCH(TaggedIsUndefinedOrNull(thisValue), slowPath, &thisExists);
     Bind(&thisExists);
@@ -4596,9 +4560,6 @@ void BuiltinsArrayStubBuilder::FindLast(GateRef glue, GateRef thisValue, GateRef
     Bind(&isStability);
     BRANCH(IsJsCOWArray(thisValue), slowPath, &notCOWArray);
     Bind(&notCOWArray);
-    GateRef arrayCls = LoadHClass(thisValue);
-    ElementsKindHclassCompare(glue, arrayCls, &matchCls, slowPath);
-    Bind(&matchCls);
     Label arg0HeapObject(env);
     Label callable(env);
     Label thisIsStable(env);
@@ -4971,7 +4932,6 @@ void BuiltinsArrayStubBuilder::FlatMap(GateRef glue, GateRef thisValue, GateRef 
     Label isStability(env);
     Label notCOWArray(env);
     Label equalCls(env);
-    Label matchCls(env);
     Label isGeneric(env);
     BRANCH(TaggedIsUndefinedOrNull(thisValue), slowPath, &thisExists);
     Bind(&thisExists);
@@ -4985,9 +4945,6 @@ void BuiltinsArrayStubBuilder::FlatMap(GateRef glue, GateRef thisValue, GateRef 
     Bind(&isStability);
     BRANCH(IsJsCOWArray(thisValue), slowPath, &notCOWArray);
     Bind(&notCOWArray);
-    GateRef arrayCls = LoadHClass(thisValue);
-    ElementsKindHclassCompare(glue, arrayCls, &matchCls, slowPath);
-    Bind(&matchCls);
     Label arg0HeapObject(env);
     Label callable(env);
     Label thisIsStable(env);

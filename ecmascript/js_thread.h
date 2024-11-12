@@ -84,8 +84,6 @@ enum class BCStubStatus: uint8_t {
     JIT_PROFILE_BC_STUB,
 };
 
-enum class StableArrayChangeKind { PROTO, NOT_PROTO };
-
 enum ThreadType : uint8_t {
     JS_THREAD,
     JIT_THREAD,
@@ -339,11 +337,11 @@ public:
         return ctorHclassEntries_;
     }
 
-    void NotifyStableArrayElementsGuardians(JSHandle<JSObject> receiver, StableArrayChangeKind changeKind);
+    void NotifyArrayPrototypeChangedGuardians(JSHandle<JSObject> receiver);
 
-    bool IsStableArrayElementsGuardiansInvalid() const
+    bool IsArrayPrototypeChangedGuardiansInvalid() const
     {
-        return !glueData_.stableArrayElementsGuardians_;
+        return !glueData_.arrayPrototypeChangedGuardians_;
     }
 
     void ResetGuardians();
@@ -966,7 +964,7 @@ public:
             BcStubEntriesIndex = 0,
             ExceptionIndex,
             GlobalObjIndex,
-            StableArrayElementsGuardiansIndex,
+            ArrayElementsGuardiansIndex,
             CurrentFrameIndex,
             LeaveFrameIndex,
             LastFpIndex,
@@ -1019,9 +1017,9 @@ public:
             return GetOffset<static_cast<size_t>(Index::GlobalObjIndex)>(isArch32);
         }
 
-        static size_t GetStableArrayElementsGuardiansOffset(bool isArch32)
+        static size_t GetArrayElementsGuardiansOffset(bool isArch32)
         {
-            return GetOffset<static_cast<size_t>(Index::StableArrayElementsGuardiansIndex)>(isArch32);
+            return GetOffset<static_cast<size_t>(Index::ArrayElementsGuardiansIndex)>(isArch32);
         }
 
         static size_t GetGlobalConstOffset(bool isArch32)
@@ -1243,7 +1241,7 @@ public:
         alignas(EAS) BCStubEntries bcStubEntries_ {};
         alignas(EAS) JSTaggedValue exception_ {JSTaggedValue::Hole()};
         alignas(EAS) JSTaggedValue globalObject_ {JSTaggedValue::Hole()};
-        alignas(EAS) bool stableArrayElementsGuardians_ {true};
+        alignas(EAS) bool arrayPrototypeChangedGuardians_ {true};
         alignas(EAS) JSTaggedType *currentFrame_ {nullptr};
         alignas(EAS) JSTaggedType *leaveFrame_ {nullptr};
         alignas(EAS) JSTaggedType *lastFp_ {nullptr};

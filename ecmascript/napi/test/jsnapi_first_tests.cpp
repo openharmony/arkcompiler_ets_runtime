@@ -579,13 +579,13 @@ HWTEST_F_L0(JSNApiTests, DeleteProperty)
 
 /**
  * @tc.number: ffi_interface_api_011
- * @tc.name: GetProtoType
+ * @tc.name: GetPrototype
  * @tc.desc:Verify that the GetPrototype method correctly returns the prototype of the function or object,
  * and verify that the returned prototype is of an object type.
  * @tc.type: FUNC
  * @tc.require:  parameter
  */
-HWTEST_F_L0(JSNApiTests, GetProtoType)
+HWTEST_F_L0(JSNApiTests, GetPrototype)
 {
     LocalScope scope(vm_);
     Local<FunctionRef> function = FunctionRef::New(vm_, nullptr);

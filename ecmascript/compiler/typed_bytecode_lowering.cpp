@@ -889,11 +889,11 @@ void TypedBytecodeLowering::TypedStObjByNameTransition(GateRef gate, GateRef rec
         builder_.StoreConstOffset(VariableType::JS_ANY(), newHolderHC, JSHClass::PROTOTYPE_OFFSET, prototype);
     }
     if (!tacc.IsPrototypeHclass(i)) {
-        builder_.DeoptCheck(builder_.BoolNot(builder_.IsProtoTypeHClass(receiverHC)), frameState,
+        builder_.DeoptCheck(builder_.BoolNot(builder_.IsPrototypeHClass(receiverHC)), frameState,
                             DeoptType::PROTOTYPECHANGED2);
     } else {
-        builder_.Branch(builder_.IsProtoTypeHClass(receiverHC), &isProto, &notProto,
-                        BranchWeight::ONE_WEIGHT, BranchWeight::DEOPT_WEIGHT, "isProtoTypeHClass");
+        builder_.Branch(builder_.IsPrototypeHClass(receiverHC), &isProto, &notProto,
+                        BranchWeight::ONE_WEIGHT, BranchWeight::DEOPT_WEIGHT, "isPrototypeHClass");
         builder_.Bind(&isProto);
         GateRef propKey =
             builder_.GetObjectByIndexFromConstPool(glue_, gate, frameState,

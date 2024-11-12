@@ -162,8 +162,9 @@ function forEachCase4() {
     }
     Object.setPrototypeOf(arr2, notArray)
 
-    //aot: [trace] Check Type: NotStableArray1
+    //aot: [trace] aot inline builtin: Array.prototype.foreach, caller function name:#*#forEachCase4@builtinArrayForEach
     print(arr1.forEach(x => x == 1)); //: undefined
+    //aot: [trace] aot inline function name: #*@4*#forEach@builtinArrayForEach caller function name: #*#forEachCase4@builtinArrayForEach
     //aot: [trace] aot inline function name: #*@4*#^1@builtinArrayForEach caller function name: #*@4*#forEach@builtinArrayForEach
     print(arr2.forEach(x => x == 1)); //: false
 }

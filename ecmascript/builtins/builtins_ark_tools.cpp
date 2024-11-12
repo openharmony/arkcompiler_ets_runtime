@@ -151,6 +151,20 @@ JSTaggedValue BuiltinsArkTools::IsSlicedString(EcmaRuntimeCallInfo *info)
     return GetTaggedBoolean(str->IsSlicedString());
 }
 
+JSTaggedValue BuiltinsArkTools::IsStableJsArray(EcmaRuntimeCallInfo *info)
+{
+    [[maybe_unused]] DisallowGarbageCollection noGc;
+    ASSERT(info);
+    JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+
+    ASSERT(info->GetArgsNumber() == 1);
+    JSHandle<JSTaggedValue> object = GetCallArg(info, 0);
+    return (object->IsStableJSArray(thread)) ?
+        GetTaggedBoolean(true) : GetTaggedBoolean(false);
+}
+
 JSTaggedValue BuiltinsArkTools::IsNotHoleProperty(EcmaRuntimeCallInfo *info)
 {
     [[maybe_unused]] DisallowGarbageCollection noGc;

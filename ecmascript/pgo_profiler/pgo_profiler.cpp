@@ -1267,8 +1267,8 @@ void PGOProfiler::TryDumpProtoTransitionType(JSHClass *hclass)
         return;
     }
     JSTaggedValue phc1Root = JSHClass::FindProtoRootHClass(ihc1);
-    auto transitionProtoType = GetProfileType(JSHClass::Cast(phc1Root.GetTaggedObject()), true);
-    if (!transitionProtoType.IsRootType()) {
+    auto transitionPrototype = GetProfileType(JSHClass::Cast(phc1Root.GetTaggedObject()), true);
+    if (!transitionPrototype.IsRootType()) {
         LOG_ECMA(DEBUG) << "Set as the prototype of a function again after transition happened for this prototype!";
         return;
     }
@@ -1300,7 +1300,7 @@ void PGOProfiler::TryDumpProtoTransitionType(JSHClass *hclass)
     PGOProtoTransitionType protoTransitionType(ihc0RootType);
     protoTransitionType.SetBaseType(baseRootType, baseType);
     protoTransitionType.SetTransitionType(transitionType);
-    protoTransitionType.SetTransitionProtoPt(transitionProtoType);
+    protoTransitionType.SetTransitionProtoPt(transitionPrototype);
 
     recordInfos_->GetProtoTransitionPool()->Add(protoTransitionType);
 }
@@ -1375,7 +1375,7 @@ void PGOProfiler::DumpDefineClass(ApEntityId abcId, const CString &recordName, E
             if (!prototypeType.IsRootType()) {
                 LOG_ECMA(DEBUG) << "The profileType of prototype root hclass was not found.";
             } else {
-                objDefType.SetProtoTypePt(prototypeType);
+                objDefType.SetPrototypePt(prototypeType);
                 recordInfos_->AddRootLayout(JSTaggedType(prototypeRootHClass), prototypeType);
             }
         }

@@ -859,7 +859,7 @@ public:
     {
         type_ = PGOProfileType(context, from.GetProfileType());
         ctorPt_ = PGOProfileType(context, from.GetCtorPt());
-        protoPt_ = PGOProfileType(context, from.GetProtoTypePt());
+        protoPt_ = PGOProfileType(context, from.GetPrototypePt());
         kind_ = from.GetElementsKind();
         elementsLength_ = from.GetElementsLength();
         spaceFlag_ = from.GetSpaceFlag();
@@ -923,12 +923,12 @@ public:
         return ctorPt_;
     }
 
-    void SetProtoTypePt(PGOProfileType type)
+    void SetPrototypePt(PGOProfileType type)
     {
         protoPt_ = type;
     }
 
-    PGOProfileType GetProtoTypePt() const
+    PGOProfileType GetPrototypePt() const
     {
         return protoPt_;
     }

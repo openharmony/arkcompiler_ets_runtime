@@ -11,7 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-[trace] Check Type: ProtoTypeChanged2
+[trace] Check Type: PrototypeChanged2
 [trace] Check Type: InconsistentHClass8
 [trace] Check Type: InconsistentHClass13
 [trace] Check Type: InconsistentHClass8

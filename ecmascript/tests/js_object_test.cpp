@@ -343,7 +343,7 @@ HWTEST_F_L0(JSObjectTest, HasProperty)
     EXPECT_FALSE(flag);
 }
 
-HWTEST_F_L0(JSObjectTest, HasPropertyWithProtoType)
+HWTEST_F_L0(JSObjectTest, HasPropertyWithPrototype)
 {
     JSHandle<JSObject> nullHandle(thread, JSTaggedValue::Null());
     JSHandle<JSObject> grandfather = JSObject::ObjectCreate(thread, nullHandle);

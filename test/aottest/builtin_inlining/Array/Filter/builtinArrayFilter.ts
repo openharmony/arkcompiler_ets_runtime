@@ -155,8 +155,9 @@ function filterCase4() {
     }
     Object.setPrototypeOf(arr2, notArray)
 
-    //aot: [trace] Check Type: NotStableArray1
+    //aot: [trace] aot inline builtin: Array.prototype.filter, caller function name:#*#filterCase4@builtinArrayFilter
     print(arr1.filter(x => x == 1)); //: 1
+    //aot: [trace] aot inline function name: #*@3*#filter@builtinArrayFilter caller function name: #*#filterCase4@builtinArrayFilter
     //aot: [trace] aot inline function name: #*@3*#^1@builtinArrayFilter caller function name: #*@3*#filter@builtinArrayFilter
     print(arr2.filter(x => x == 1)); //: false
 }
@@ -170,7 +171,7 @@ function filterCase5() {
         return x(1)
     }
 
-    //aot: [trace] Check Type: NotStableArray1
+    //aot: [trace] aot inline function name: #*@4*#@builtinArrayFilter caller function name: #*#filterCase5@builtinArrayFilter
     //aot: [trace] aot inline function name: #*@4*#^1@builtinArrayFilter caller function name: #*@4*#@builtinArrayFilter
     print(arr1.filter(x => x == 1)); //: true
 }
