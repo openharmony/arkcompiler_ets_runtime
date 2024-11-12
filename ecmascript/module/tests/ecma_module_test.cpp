@@ -522,6 +522,12 @@ HWTEST_F_L0(EcmaModuleTest, TranstaleExpressionInput)
     CString requestPath = "@arkui-x.test/moduleName/requestModuleName";
     ModulePathHelper::TranstaleExpressionInput(pf.get(), requestPath);
     EXPECT_EQ(requestPath, "@ohos:test/moduleName/requestModuleName");
+
+    requestPath = "@ohos.app:@native.system.app";
+    CString fieldName = requestPath;
+    pf->InsertNpmEntries(requestPath, fieldName);
+    ModulePathHelper::TranstaleExpressionInput(pf.get(), requestPath);
+    EXPECT_EQ(requestPath, "@ohos:app:@native.system.app");
 }
 
 HWTEST_F_L0(EcmaModuleTest, ParseFileNameToVMAName2)
@@ -756,6 +762,13 @@ HWTEST_F_L0(EcmaModuleTest, ConcatFileNameWithMerge1)
                                                                    moduleRequestName);
     EXPECT_EQ(result, entryPoint);
 
+    // Test moduleRequestName start with "@package:"
+    moduleRequestName = "@package:test";
+    result = "test";
+    entryPoint = ModulePathHelper::ConcatFileNameWithMerge(thread, pf.get(), baseFilename, moduleRecordName,
+                                                           moduleRequestName);
+    EXPECT_EQ(result, entryPoint);
+
     // Test cross application
     moduleRecordName = "@bundle:com.bundleName1.test/moduleName/requestModuleName1";
     CString newBaseFileName = "/data/storage/el1/bundle/com.bundleName.test/moduleName/moduleName/ets/modules.abc";
@@ -927,6 +940,37 @@ HWTEST_F_L0(EcmaModuleTest, ConcatFileNameWithMerge4)
     delete info;
     recordInfo.erase(moduleRecordName);
     recordInfo.erase(result);
+}
+
+HWTEST_F_L0(EcmaModuleTest, ConcatFileNameWithMerge5)
+{
+    instance->SetBundleName("com.example.myapplication");
+    CString baseFilename = "merge.abc";
+    const char *data = R"(
+        .language ECMAScript
+        .function any func_main_0(any a0, any a1, any a2) {
+            ldai 1
+            return
+        }
+    )";
+    JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
+    Parser parser;
+    auto res = parser.Parse(data);
+    std::unique_ptr<const File> pfPtr = pandasm::AsmEmitter::Emit(res.Value());
+    std::shared_ptr<JSPandaFile> pf = pfManager->NewJSPandaFile(pfPtr.release(), baseFilename);
+
+    CString baseFileName = "/data/storage/el1/bundle/entry/ets/modules.abc";
+    CString requestName = "ets/Test";
+    CString recordName = "com.example.myapplication/entry/ets/pages/Index";
+    CString expectRes = "com.example.myapplication/entry/ets/Test";
+    CString result = ModulePathHelper::ConcatFileNameWithMerge(thread, pf.get(), baseFileName, recordName,
+                                                               requestName);
+    EXPECT_EQ(result, "");
+
+    pf->InsertJSRecordInfo(expectRes);
+    result = ModulePathHelper::ConcatFileNameWithMerge(thread, pf.get(), baseFileName, recordName,
+                                                       requestName);
+    EXPECT_EQ(result, expectRes);
 }
 
 
@@ -1702,6 +1746,11 @@ HWTEST_F_L0(EcmaModuleTest, ParseNormalizedOhmUrl)
     EXPECT_EQ(res, expectRes);
     EXPECT_EQ(baseFileName, exceptBaseFileName);
 
+    requestName = "@normalized:N&&har/src/main/page/Test&1.0.0";
+    res = ModulePathHelper::ParseNormalizedOhmUrl(thread, baseFileName, recordName, requestName);
+    EXPECT_TRUE((thread)->HasPendingException());
+    EXPECT_EQ(res, requestName);
+
     baseFileName = "/data/storage/el1/bundle/entry/ets/modules.abc";
     requestName = "@normalized:N&hsp&&hsp/src/main/page/Test&1.0.0";
     expectRes = "&hsp/src/main/page/Test&1.0.0";
@@ -1723,6 +1772,12 @@ HWTEST_F_L0(EcmaModuleTest, ParseNormalizedOhmUrl)
     requestName = "@normalized:N&&&har/src/main/page/Test&1.0.0";
     CString res4 = ModulePathHelper::ParseNormalizedOhmUrl(thread, baseFileName, recordName, requestName);
     EXPECT_EQ(baseFileName, "");
+    
+    baseFileName = "/data/storage/el1/bundle/entry/ets/modules.abc";
+    requestName = "@normalized:N&&com.example.application&hsp/src/main/page/Test&1.0.0";
+    expectRes = "com.example.application&hsp/src/main/page/Test&1.0.0";
+    CString res5 = ModulePathHelper::ParseNormalizedOhmUrl(thread, baseFileName, recordName, requestName);
+    EXPECT_EQ(res5, expectRes);
 }
 
 HWTEST_F_L0(EcmaModuleTest, GetModuleNameWithBaseFile)
@@ -4015,6 +4070,22 @@ HWTEST_F_L0(EcmaModuleTest, ValidateAbcPath)
     baseFileName = "";
     res = ModulePathHelper::ValidateAbcPath(baseFileName, ValidateFilePath::ETS_MODULES);
     EXPECT_EQ(res, false);
+
+    baseFileName = "/data/storage/el1/bundle1/com.bundleName.test";
+    res = ModulePathHelper::ValidateAbcPath(baseFileName, ValidateFilePath::ETS_MODULES);
+    EXPECT_EQ(res, false);
+
+    baseFileName = "/data/storage/el1/bundle/";
+    res = ModulePathHelper::ValidateAbcPath(baseFileName, ValidateFilePath::ETS_MODULES);
+    EXPECT_EQ(res, false);
+
+    baseFileName = "/data/storage/el1/bundle/com.bundleName.test/moduleName/moduleName/ets/modules.ab";
+    res = ModulePathHelper::ValidateAbcPath(baseFileName, ValidateFilePath::ETS_MODULES);
+    EXPECT_EQ(res, false);
+
+    baseFileName = "/data/storage/el1/bundle/com.bundleName.test/moduleName/moduleName/ets/modules.ab";
+    res = ModulePathHelper::ValidateAbcPath(baseFileName, ValidateFilePath::ABC);
+    EXPECT_EQ(res, false);
 }
 
 
@@ -4040,6 +4111,16 @@ HWTEST_F_L0(EcmaModuleTest, ParseCrossModuleFile)
     requestPath="moduleName/src";
     ModulePathHelper::ParseCrossModuleFile(pf.get(), requestPath);
     EXPECT_EQ(requestPath, "moduleName/src");
+
+    requestPath="moduleName/src";
+    pf->InsertNpmEntries("moduleName", "/src");
+    ModulePathHelper::ParseCrossModuleFile(pf.get(), requestPath);
+    EXPECT_EQ(requestPath, "/src");
+
+    requestPath="moduleName/src/main/a/b/c";
+    pf->InsertNpmEntries("moduleName", "/src/main/a/b/c");
+    ModulePathHelper::ParseCrossModuleFile(pf.get(), requestPath);
+    EXPECT_EQ(requestPath, "/a/b/c");
 }
 
 }  // namespace panda::test

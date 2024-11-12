@@ -384,6 +384,12 @@ public:
         jsRecordInfo_.insert({recordName, info});
     }
 
+    // note : it only uses in TDD
+    void InsertNpmEntries(const CString &recordName, const CString &fieldName)
+    {
+        npmEntries_.insert({recordName, fieldName});
+    }
+
     const CUnorderedMap<CString, JSRecordInfo*> &GetJSRecordInfo() const
     {
         return jsRecordInfo_;
