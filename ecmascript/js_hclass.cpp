@@ -157,6 +157,7 @@ bool JSHClass::IsJSTypeShared(JSType type)
         case JSType::JS_SHARED_OBJECT:
         case JSType::JS_SHARED_FUNCTION:
         case JSType::JS_SHARED_ASYNC_FUNCTION:
+        case JSType::JS_API_BITVECTOR:
         case JSType::JS_SHARED_SET:
         case JSType::JS_SHARED_MAP:
         case JSType::JS_SHARED_ARRAY:
