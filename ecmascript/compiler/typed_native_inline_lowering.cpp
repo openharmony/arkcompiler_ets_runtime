@@ -1992,12 +1992,14 @@ void TypedNativeInlineLowering::LowerNumberParseInt(GateRef gate)
     builder_.Bind(&slowPath);
     {
         GateRef glue = acc_.GetGlueFromArgList();
-        result = builder_.CallRuntime(glue, RTSTUB_ID(ParseInt), Gate::InvalidGateRef, { msg, arg2 }, gate);
+        // this may return exception
+        result = builder_.CallRuntime(glue, RTSTUB_ID(ParseInt), Gate::InvalidGateRef, {msg, arg2}, gate);
         builder_.Jump(&exit);
     }
 
     builder_.Bind(&exit);
-    acc_.ReplaceGate(gate, builder_.GetStateDepend(), *result);
+    ReplaceGateWithPendingException(
+        gate, acc_.GetGlueFromArgList(), builder_.GetState(), builder_.GetDepend(), *result);
 }
 
 void TypedNativeInlineLowering::LowerNumberParseFloat(GateRef gate)
