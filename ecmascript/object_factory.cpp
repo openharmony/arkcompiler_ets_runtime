@@ -1666,7 +1666,7 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
             CjsRequire::Cast(*obj)->SetParent(thread_, JSTaggedValue::Undefined());
             break;
         default:
-            LOG_ECMA(FATAL) << "this branch is unreachable";
+            LOG_ECMA(FATAL) << "this branch is unreachable, type: " << static_cast<size_t>(type);
             UNREACHABLE();
     }
 }
