@@ -1476,6 +1476,11 @@ public:
         return nativeBindingSize_;
     }
 
+    size_t GetNativeBindingSizeAfterLastGC() const
+    {
+        return nativeBindingSizeAfterLastGC_;
+    }
+
     size_t GetGlobalNativeSize() const
     {
         return GetNativeBindingSize() + nativeAreaAllocator_->GetNativeMemoryUsage();
