@@ -960,22 +960,23 @@ void JSFunction::SetFunctionLength(const JSThread *thread, JSTaggedValue length)
     SetPropertyInlinedProps(thread, LENGTH_INLINE_PROPERTY_INDEX, length);
 }
 
-void JSFunction::SetFunctionExtraInfo(JSThread *thread, void *nativeFunc, const NativePointerCallback &deleter,
-                                      void *data, size_t nativeBindingsize, Concurrent isConcurrent)
+// static
+void JSFunction::SetFunctionExtraInfo(JSThread *thread, const JSHandle<JSFunction> &func, void *nativeFunc,
+                                      const NativePointerCallback &deleter, void *data, size_t nativeBindingsize,
+                                      Concurrent isConcurrent)
 {
-    JSTaggedType hashField = Barriers::GetValue<JSTaggedType>(this, HASH_OFFSET);
+    JSTaggedType hashField = Barriers::GetValue<JSTaggedType>(*func, HASH_OFFSET);
     EcmaVM *vm = thread->GetEcmaVM();
     JSHandle<JSTaggedValue> value(thread, JSTaggedValue(hashField));
-    JSHandle<ECMAObject> obj(thread, this);
     JSHandle<JSNativePointer> pointer = vm->GetFactory()->NewJSNativePointer(nativeFunc, deleter, data,
         false, nativeBindingsize, isConcurrent);
-    if (!obj->HasHash()) {
-        Barriers::SetObject<true>(thread, *obj, HASH_OFFSET, pointer.GetTaggedValue().GetRawData());
+    if (!func->HasHash()) {
+        Barriers::SetObject<true>(thread, *func, HASH_OFFSET, pointer.GetTaggedValue().GetRawData());
         return;
     }
     if (value->IsHeapObject()) {
         if (value->IsJSNativePointer()) {
-            Barriers::SetObject<true>(thread, *obj, HASH_OFFSET, pointer.GetTaggedValue().GetRawData());
+            Barriers::SetObject<true>(thread, *func, HASH_OFFSET, pointer.GetTaggedValue().GetRawData());
             return;
         }
         JSHandle<TaggedArray> array(value);
@@ -991,33 +992,33 @@ void JSFunction::SetFunctionExtraInfo(JSThread *thread, void *nativeFunc, const 
             }
             newArray->Set(thread, nativeFieldCount + HASH_INDEX, array->Get(nativeFieldCount + HASH_INDEX));
             newArray->Set(thread, nativeFieldCount + FUNCTION_EXTRA_INDEX, pointer);
-            Barriers::SetObject<true>(thread, *obj, HASH_OFFSET, newArray.GetTaggedValue().GetRawData());
+            Barriers::SetObject<true>(thread, *func, HASH_OFFSET, newArray.GetTaggedValue().GetRawData());
         }
     } else {
         JSHandle<TaggedArray> newArray = vm->GetFactory()->NewTaggedArray(RESOLVED_MAX_SIZE);
         newArray->SetExtraLength(0);
         newArray->Set(thread, HASH_INDEX, value);
         newArray->Set(thread, FUNCTION_EXTRA_INDEX, pointer);
-        Barriers::SetObject<true>(thread, *obj, HASH_OFFSET, newArray.GetTaggedValue().GetRawData());
+        Barriers::SetObject<true>(thread, *func, HASH_OFFSET, newArray.GetTaggedValue().GetRawData());
     }
 }
 
-void JSFunction::SetSFunctionExtraInfo(
-    JSThread *thread, void *nativeFunc, const NativePointerCallback &deleter, void *data, size_t nativeBindingsize)
+// static
+void JSFunction::SetSFunctionExtraInfo(JSThread *thread, const JSHandle<JSFunction> &func, void *nativeFunc,
+                                       const NativePointerCallback &deleter, void *data, size_t nativeBindingsize)
 {
-    JSTaggedType hashField = Barriers::GetValue<JSTaggedType>(this, HASH_OFFSET);
+    JSTaggedType hashField = Barriers::GetValue<JSTaggedType>(*func, HASH_OFFSET);
     EcmaVM *vm = thread->GetEcmaVM();
     JSHandle<JSTaggedValue> value(thread, JSTaggedValue(hashField));
-    JSHandle<ECMAObject> obj(thread, this);
     JSHandle<JSNativePointer> pointer =
         vm->GetFactory()->NewSJSNativePointer(nativeFunc, deleter, data, false, nativeBindingsize);
-    if (!obj->HasHash()) {
-        Barriers::SetObject<true>(thread, *obj, HASH_OFFSET, pointer.GetTaggedValue().GetRawData());
+    if (!func->HasHash()) {
+        Barriers::SetObject<true>(thread, *func, HASH_OFFSET, pointer.GetTaggedValue().GetRawData());
         return;
     }
     if (value->IsHeapObject()) {
         if (value->IsJSNativePointer()) {
-            Barriers::SetObject<true>(thread, *obj, HASH_OFFSET, pointer.GetTaggedValue().GetRawData());
+            Barriers::SetObject<true>(thread, *func, HASH_OFFSET, pointer.GetTaggedValue().GetRawData());
             return;
         }
         JSHandle<TaggedArray> array(value);
@@ -1034,14 +1035,14 @@ void JSFunction::SetSFunctionExtraInfo(
             }
             newArray->Set(thread, nativeFieldCount + HASH_INDEX, array->Get(nativeFieldCount + HASH_INDEX));
             newArray->Set(thread, nativeFieldCount + FUNCTION_EXTRA_INDEX, pointer);
-            Barriers::SetObject<true>(thread, *obj, HASH_OFFSET, newArray.GetTaggedValue().GetRawData());
+            Barriers::SetObject<true>(thread, *func, HASH_OFFSET, newArray.GetTaggedValue().GetRawData());
         }
     } else {
         JSHandle<TaggedArray> newArray = vm->GetFactory()->NewSTaggedArrayWithoutInit(RESOLVED_MAX_SIZE);
         newArray->SetExtraLength(0);
         newArray->Set(thread, HASH_INDEX, value);
         newArray->Set(thread, FUNCTION_EXTRA_INDEX, pointer);
-        Barriers::SetObject<true>(thread, *obj, HASH_OFFSET, newArray.GetTaggedValue().GetRawData());
+        Barriers::SetObject<true>(thread, *func, HASH_OFFSET, newArray.GetTaggedValue().GetRawData());
     }
 }
 

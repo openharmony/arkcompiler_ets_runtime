@@ -242,7 +242,7 @@ void JSArray::SetCapacity(JSThread *thread, const JSHandle<JSObject> &array,
     if (newLen <= capacity) {
         // judge if need to cut down the array size, else fill the unused tail with holes
         CheckAndCopyArray(thread, JSHandle<JSArray>(array));
-        array->FillElementsWithHoles(thread, newLen, oldLen < capacity ? oldLen : capacity);
+        JSObject::FillElementsWithHoles(thread, array, newLen, oldLen < capacity ? oldLen : capacity);
     }
     if (JSObject::ShouldTransToDict(oldLen, newLen)) {
         JSObject::ElementsToDictionary(thread, array);

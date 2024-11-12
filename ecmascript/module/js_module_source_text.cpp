@@ -389,12 +389,12 @@ bool SourceTextModule::LoadNativeModule(JSThread *thread, const JSHandle<SourceT
         return false;
     }
     if (UNLIKELY(exportObject->IsNativeModuleFailureInfoObject(vm))) {
-        requiredModule->StoreModuleValue(thread, 0, JSNApiHelper::ToJSHandle(exportObject));
+        SourceTextModule::StoreModuleValue(thread, requiredModule, 0, JSNApiHelper::ToJSHandle(exportObject));
         LOG_FULL(ERROR) << "loading fails, NativeModuleErrorObject is returned";
         return false;
     }
     ASSERT(!thread->HasPendingException());
-    requiredModule->StoreModuleValue(thread, 0, JSNApiHelper::ToJSHandle(exportObject));
+    SourceTextModule::StoreModuleValue(thread, requiredModule, 0, JSNApiHelper::ToJSHandle(exportObject));
     return true;
 }
 
@@ -1358,9 +1358,10 @@ JSTaggedValue SourceTextModule::FindByExport(const JSTaggedValue &exportEntriesT
     return JSTaggedValue::Hole();
 }
 
-void SourceTextModule::StoreModuleValue(JSThread *thread, int32_t index, const JSHandle<JSTaggedValue> &value)
+// static
+void SourceTextModule::StoreModuleValue(JSThread *thread, const JSHandle<SourceTextModule> &module, int32_t index,
+                                        const JSHandle<JSTaggedValue> &value)
 {
-    JSHandle<SourceTextModule> module(thread, this);
     if (UNLIKELY(IsSharedModule(module)) && !value->IsSharedType()) {
         CString msg = "Export non-shared object from shared-module, module name is :" +
                     module->GetEcmaModuleRecordNameString();
@@ -1386,11 +1387,11 @@ void SourceTextModule::StoreModuleValue(JSThread *thread, int32_t index, const J
     arr->Set(thread, index, value);
 }
 
-//  discard instructions won't consider shared-module.
-void SourceTextModule::StoreModuleValue(JSThread *thread, const JSHandle<JSTaggedValue> &key,
-                                        const JSHandle<JSTaggedValue> &value)
+// static
+// discard instructions won't consider shared-module.
+void SourceTextModule::StoreModuleValue(JSThread *thread, const JSHandle<SourceTextModule> &module,
+                                        const JSHandle<JSTaggedValue> &key, const JSHandle<JSTaggedValue> &value)
 {
-    JSHandle<SourceTextModule> module(thread, this);
     if (UNLIKELY(IsSharedModule(module)) && !value->IsSharedType()) {
         CString msg = "Export non-shared object from shared-module, module name is :" +
                     module->GetEcmaModuleRecordNameString();

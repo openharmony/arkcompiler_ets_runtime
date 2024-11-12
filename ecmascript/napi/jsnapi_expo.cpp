@@ -2948,7 +2948,7 @@ void ObjectRef::SetNativePointerFieldCount(const EcmaVM *vm, int32_t count)
     // So we need do special value check before use it.
     DCHECK_SPECIAL_VALUE(this);
     JSHandle<JSObject> object(JSNApiHelper::ToJSHandle(this));
-    object->SetNativePointerFieldCount(thread, count);
+    ECMAObject::SetNativePointerFieldCount(thread, object, count);
 }
 
 int32_t ObjectRef::GetNativePointerFieldCount(const EcmaVM *vm)
@@ -2980,7 +2980,7 @@ void ObjectRef::SetNativePointerField(const EcmaVM *vm, int32_t index, void *nat
     // So we need do special value check before use it.
     DCHECK_SPECIAL_VALUE(this);
     JSHandle<JSObject> object(JSNApiHelper::ToJSHandle(this));
-    object->SetNativePointerField(thread, index, nativePointer, callBack, data, nativeBindingsize);
+    ECMAObject::SetNativePointerField(thread, object, index, nativePointer, callBack, data, nativeBindingsize);
 }
 
 void ObjectRef::SetConcurrentNativePointerField(const EcmaVM *vm, int32_t index, void *nativePointer,
@@ -2992,7 +2992,8 @@ void ObjectRef::SetConcurrentNativePointerField(const EcmaVM *vm, int32_t index,
     // So we need do special value check before use it.
     DCHECK_SPECIAL_VALUE(this);
     JSHandle<JSObject> object(JSNApiHelper::ToJSHandle(this));
-    object->SetNativePointerField(thread, index, nativePointer, callBack, data, nativeBindingsize, Concurrent::YES);
+    ECMAObject::SetNativePointerField(thread, object, index, nativePointer, callBack, data,
+                                      nativeBindingsize, Concurrent::YES);
 }
 
 // -------------------------------- NativePointerRef ------------------------------------
@@ -3285,7 +3286,8 @@ Local<FunctionRef> FunctionRef::New(EcmaVM *vm, FunctionCallback nativeFunc,
     ObjectFactory *factory = vm->GetFactory();
     JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
     JSHandle<JSFunction> current(factory->NewJSFunction(env, reinterpret_cast<void *>(Callback::RegisterCallback)));
-    current->SetFunctionExtraInfo(thread, reinterpret_cast<void *>(nativeFunc), deleter, data, nativeBindingsize);
+    JSFunction::SetFunctionExtraInfo(thread, current, reinterpret_cast<void *>(nativeFunc),
+                                     deleter, data, nativeBindingsize);
     current->SetCallNapi(callNapi);
     return JSNApiHelper::ToLocal<FunctionRef>(JSHandle<JSTaggedValue>(current));
 }
@@ -3298,8 +3300,8 @@ Local<FunctionRef> FunctionRef::NewConcurrent(EcmaVM *vm, FunctionCallback nativ
     ObjectFactory *factory = vm->GetFactory();
     JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
     JSHandle<JSFunction> current(factory->NewJSFunction(env, reinterpret_cast<void *>(Callback::RegisterCallback)));
-    current->SetFunctionExtraInfo(thread, reinterpret_cast<void *>(nativeFunc), deleter,
-                                  data, nativeBindingsize, Concurrent::YES);
+    JSFunction::SetFunctionExtraInfo(thread, current, reinterpret_cast<void *>(nativeFunc), deleter,
+                                     data, nativeBindingsize, Concurrent::YES);
     current->SetCallNapi(callNapi);
     return JSNApiHelper::ToLocal<FunctionRef>(JSHandle<JSTaggedValue>(current));
 }
@@ -3312,7 +3314,7 @@ Local<FunctionRef> FunctionRef::New(EcmaVM *vm, InternalFunctionCallback nativeF
     ObjectFactory *factory = vm->GetFactory();
     JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
     JSHandle<JSFunction> current(factory->NewJSFunction(env, reinterpret_cast<void *>(nativeFunc)));
-    current->SetFunctionExtraInfo(thread, nullptr, deleter, data, nativeBindingsize);
+    JSFunction::SetFunctionExtraInfo(thread, current, nullptr, deleter, data, nativeBindingsize);
     current->SetCallNapi(callNapi);
     return JSNApiHelper::ToLocal<FunctionRef>(JSHandle<JSTaggedValue>(current));
 }
@@ -3329,7 +3331,7 @@ Local<FunctionRef> FunctionRef::NewSendable(EcmaVM *vm,
     ObjectFactory *factory = vm->GetFactory();
     JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
     JSHandle<JSFunction> current(factory->NewSFunction(env, reinterpret_cast<void *>(nativeFunc)));
-    current->SetSFunctionExtraInfo(thread, nullptr, deleter, data, nativeBindingsize);
+    JSFunction::SetSFunctionExtraInfo(thread, current, nullptr, deleter, data, nativeBindingsize);
     current->SetCallNapi(callNapi);
     return JSNApiHelper::ToLocal<FunctionRef>(JSHandle<JSTaggedValue>(current));
 }
@@ -3342,7 +3344,7 @@ Local<FunctionRef> FunctionRef::NewConcurrent(EcmaVM *vm, InternalFunctionCallba
     ObjectFactory *factory = vm->GetFactory();
     JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
     JSHandle<JSFunction> current(factory->NewJSFunction(env, reinterpret_cast<void *>(nativeFunc)));
-    current->SetFunctionExtraInfo(thread, nullptr, deleter, data, nativeBindingsize, Concurrent::YES);
+    JSFunction::SetFunctionExtraInfo(thread, current, nullptr, deleter, data, nativeBindingsize, Concurrent::YES);
     current->SetCallNapi(callNapi);
     return JSNApiHelper::ToLocal<FunctionRef>(JSHandle<JSTaggedValue>(current));
 }
@@ -3381,7 +3383,8 @@ Local<FunctionRef> FunctionRef::NewClassFunction(EcmaVM *vm, FunctionCallback na
         factory->NewJSFunctionByHClass(reinterpret_cast<void *>(Callback::RegisterCallback),
         hclass, ecmascript::FunctionKind::CLASS_CONSTRUCTOR);
     InitClassFunction(vm, current, callNapi);
-    current->SetFunctionExtraInfo(thread, reinterpret_cast<void *>(nativeFunc), deleter, data, nativeBindingsize);
+    JSFunction::SetFunctionExtraInfo(thread, current, reinterpret_cast<void *>(nativeFunc),
+                                     deleter, data, nativeBindingsize);
     Local<FunctionRef> result = JSNApiHelper::ToLocal<FunctionRef>(JSHandle<JSTaggedValue>(current));
     return scope.Escape(result);
 }
@@ -3399,7 +3402,7 @@ Local<FunctionRef> FunctionRef::NewConcurrentClassFunction(EcmaVM *vm, InternalF
         factory->NewJSFunctionByHClass(reinterpret_cast<void *>(nativeFunc),
         hclass, ecmascript::FunctionKind::CLASS_CONSTRUCTOR);
     InitClassFunction(vm, current, callNapi);
-    current->SetFunctionExtraInfo(thread, nullptr, deleter, data, nativeBindingsize, Concurrent::YES);
+    JSFunction::SetFunctionExtraInfo(thread, current, nullptr, deleter, data, nativeBindingsize, Concurrent::YES);
     Local<FunctionRef> result = JSNApiHelper::ToLocal<FunctionRef>(JSHandle<JSTaggedValue>(current));
     return scope.Escape(result);
 }
@@ -3417,7 +3420,7 @@ Local<FunctionRef> FunctionRef::NewClassFunction(EcmaVM *vm, InternalFunctionCal
         factory->NewJSFunctionByHClass(reinterpret_cast<void *>(nativeFunc),
         hclass, ecmascript::FunctionKind::CLASS_CONSTRUCTOR);
     InitClassFunction(vm, current, callNapi);
-    current->SetFunctionExtraInfo(thread, nullptr, deleter, data, nativeBindingsize);
+    JSFunction::SetFunctionExtraInfo(thread, current, nullptr, deleter, data, nativeBindingsize);
     Local<FunctionRef> result = JSNApiHelper::ToLocal<FunctionRef>(JSHandle<JSTaggedValue>(current));
     return scope.Escape(result);
 }
@@ -3459,7 +3462,7 @@ Local<FunctionRef> FunctionRef::NewSendableClassFunction(const EcmaVM *vm,
     constructor->SetProtoOrHClass(thread, prototype);
     constructor->SetLexicalEnv(thread, constructor);
     constructor->SetCallNapi(callNapi);
-    constructor->SetSFunctionExtraInfo(thread, nullptr, deleter, data, nativeBindingSize);
+    JSFunction::SetSFunctionExtraInfo(thread, constructor, nullptr, deleter, data, nativeBindingSize);
 
     JSHClass *parentIHClass{nullptr};
     if (hasParent) {
@@ -3750,9 +3753,9 @@ void FunctionRef::SetData(const EcmaVM *vm, void *data, NativePointerCallback de
     JSHandle<JSTaggedValue> funcValue = JSNApiHelper::ToJSHandle(this);
     JSHandle<JSFunction> function(funcValue);
     if (function->IsJSShared()) {
-        function->SetSFunctionExtraInfo(thread, nullptr, deleter, data, 0);
+        JSFunction::SetSFunctionExtraInfo(thread, function, nullptr, deleter, data, 0);
     } else {
-        function->SetFunctionExtraInfo(thread, nullptr, deleter, data, 0);
+        JSFunction::SetFunctionExtraInfo(thread, function, nullptr, deleter, data, 0);
     }
 }
 

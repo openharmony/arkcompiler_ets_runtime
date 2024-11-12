@@ -122,7 +122,7 @@ JSHandle<JSTaggedValue> ModuleDataExtractor::ParseJsonModule(JSThread *thread, c
         defaultName, LocalExportEntry::LOCAL_DEFAULT_INDEX, SharedTypes::UNSENDABLE_MODULE);
     SourceTextModule::AddLocalExportEntry(thread, moduleRecord, localExportEntry, 0, 1); // 1 means len
     JSTaggedValue jsonData = JsonParse(thread, jsPandaFile, recordName);
-    moduleRecord->StoreModuleValue(thread, 0, JSHandle<JSTaggedValue>(thread, jsonData)); // index = 0
+    SourceTextModule::StoreModuleValue(thread, moduleRecord, 0, JSHandle<JSTaggedValue>(thread, jsonData)); // index = 0
 
     moduleRecord->SetEcmaModuleFilenameString(moduleFilename);
 
@@ -149,7 +149,7 @@ JSHandle<JSTaggedValue> ModuleDataExtractor::ParseNativeModule(JSThread *thread,
     moduleRecord->SetTypes(moduleType);
     moduleRecord->SetIsNewBcVersion(true);
     moduleRecord->SetStatus(ModuleStatus::INSTANTIATED);
-    moduleRecord->StoreModuleValue(thread, 0, thread->GlobalConstants()->GetHandledUndefined());
+    SourceTextModule::StoreModuleValue(thread, moduleRecord, 0, thread->GlobalConstants()->GetHandledUndefined());
 
     return JSHandle<JSTaggedValue>::Cast(moduleRecord);
 }

@@ -2971,17 +2971,18 @@ void *ECMAObject::GetNativePointerField(int32_t index) const
     return nullptr;
 }
 
-void ECMAObject::SetNativePointerField(const JSThread *thread, int32_t index, void *nativePointer,
-    const NativePointerCallback &callBack, void *data, size_t nativeBindingsize, Concurrent isConcurrent)
+// static
+void ECMAObject::SetNativePointerField(const JSThread *thread, const JSHandle<JSObject> &obj, int32_t index,
+                                       void *nativePointer, const NativePointerCallback &callBack, void *data,
+                                       size_t nativeBindingsize, Concurrent isConcurrent)
 {
-    JSTaggedType hashField = Barriers::GetValue<JSTaggedType>(this, HASH_OFFSET);
+    JSTaggedType hashField = Barriers::GetValue<JSTaggedType>(*obj, HASH_OFFSET);
     JSTaggedValue value(hashField);
     if (value.IsTaggedArray()) {
         JSHandle<TaggedArray> array(thread, value);
         if (static_cast<int32_t>(array->GetExtraLength()) > index) {
             EcmaVM *vm = thread->GetEcmaVM();
             JSHandle<JSTaggedValue> current = JSHandle<JSTaggedValue>(thread, array->Get(thread, index));
-            JSHandle<JSTaggedValue> obj(thread, this);
             if (!current->IsHole() && nativePointer == nullptr) {
                 // Try to remove native pointer if exists.
                 vm->RemoveFromNativePointerList(*JSHandle<JSNativePointer>(current));
@@ -3011,14 +3012,14 @@ int32_t ECMAObject::GetNativePointerFieldCount() const
     return len;
 }
 
-void ECMAObject::SetNativePointerFieldCount(const JSThread *thread, int32_t count)
+// static
+void ECMAObject::SetNativePointerFieldCount(const JSThread *thread, const JSHandle<JSObject> &obj, int32_t count)
 {
     if (count == 0) {
         return;
     }
-    JSTaggedType hashField = Barriers::GetValue<JSTaggedType>(this, HASH_OFFSET);
+    JSTaggedType hashField = Barriers::GetValue<JSTaggedType>(*obj, HASH_OFFSET);
     JSHandle<JSTaggedValue> value(thread, JSTaggedValue(hashField));
-    JSHandle<ECMAObject> obj(thread, this);
     JSHandle<JSTaggedValue> object(obj);
     bool isShared = object->IsJSShared();
     if (value->IsHeapObject()) {
