@@ -240,7 +240,7 @@ int32_t AotCompilerImpl::EcmascriptAotCompiler(const std::unordered_map<std::str
 #ifdef CODE_SIGN_ENABLE
     if (!allowAotCompiler_) {
         LOG_SA(ERROR) << "aot compiler is not allowed now";
-        return ERR_AOT_COMPILER_CONNECT_FAILED;
+        return ERR_AOT_COMPILER_CALL_CANCELLED;
     }
     if (!VerifyCompilerModeAndPkgInfo(argsMap)) {
         LOG_SA(ERROR) << "aot compiler mode or pkginfo arguments error";
