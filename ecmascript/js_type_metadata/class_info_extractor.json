@@ -37,7 +37,7 @@
             "size": 8
         }
     ],
-    "end_offset": 60,
+    "end_offset": 64,
     "parents": [
         "TAGGED_OBJECT"
     ]

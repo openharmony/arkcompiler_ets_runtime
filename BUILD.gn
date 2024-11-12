@@ -23,6 +23,7 @@ group("ark_js_packages") {
     ":libark_jsruntime",
     "ecmascript/compiler:stub.an",
     "ecmascript/dfx/hprof:ark_js_heap_snapshot_tool",
+    "ecmascript/dfx/hprof/rawheap_translate:rawheap_translator",
     "ecmascript/js_vm:ark_js_vm",
     "ecmascript/quick_fix:quick_fix",
   ]
@@ -1455,7 +1456,7 @@ js_type_metadata_sources = [
   "ecmascript/js_type_metadata/js_async_function.json",
   "ecmascript/js_type_metadata/js_async_generator_function.json",
   "ecmascript/js_type_metadata/js_async_generator_object.json",
-  "ecmascript/js_type_metadata/js_async_generator_resume_next_return_processor_rst_ftn.json",
+  "ecmascript/js_type_metadata/js_async_generator_resume_next.json",
   "ecmascript/js_type_metadata/js_async_module_fulfilled_function.json",
   "ecmascript/js_type_metadata/js_async_module_rejected_function.json",
   "ecmascript/js_type_metadata/js_asynciterator.json",
