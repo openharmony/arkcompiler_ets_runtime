@@ -32,8 +32,15 @@ int Main(const int argc, const char **argv)
     }
 
     int newArgc = 1;
-    std::string rawheapPath = argv[newArgc];
-    if (!EndsWith(rawheapPath, ".rawheap")) {
+    std::string rawheapPathOrVersionCheck = argv[newArgc];
+    if (rawheapPathOrVersionCheck == "-V" || rawheapPathOrVersionCheck == "-v") {
+        std::cout << VERSION[MAJOR_VERSION_INDEX]
+                  << '.' << VERSION[MINOR_VERSION_INDEX]
+                  << '.' << VERSION[BUILD_VERSION_INDEX] << std::endl;
+        return 0;
+    }
+
+    if (!EndsWith(rawheapPathOrVersionCheck, ".rawheap")) {
         LOG_ERROR("The second argument must be rawheap file!\n" + RAWHEAP_TRANSLATE_HELPER);
         return -1;
     }
@@ -52,7 +59,7 @@ int Main(const int argc, const char **argv)
 
     LOG_INFO("Main: start to translate rawheap!");
     RawHeapTranslate translate;
-    if (!translate.Translate(rawheapPath)) {
+    if (!translate.Translate(rawheapPathOrVersionCheck)) {
         return -1;
     }
 

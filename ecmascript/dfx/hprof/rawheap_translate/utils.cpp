@@ -41,10 +41,13 @@ bool CheckVersion(const std::string &version)
         return false;
     }
 
-    // index of result means version of metadata
-    if (result[0] > VERSION[0] ||
-        (result[0] == VERSION[0] && result[1] > VERSION[1]) ||
-        (result[0] == VERSION[0] && result[1] == VERSION[1] && result[2] > VERSION[2])) {
+    bool majorVersionCheckFalse = result[MAJOR_VERSION_INDEX] > VERSION[MAJOR_VERSION_INDEX];
+    bool minorVersionCheckFalse = result[MAJOR_VERSION_INDEX] == VERSION[MAJOR_VERSION_INDEX] &&
+                                  result[MINOR_VERSION_INDEX] > VERSION[MINOR_VERSION_INDEX];
+    bool buildVersionCheckFalse = result[MAJOR_VERSION_INDEX] == VERSION[MAJOR_VERSION_INDEX] &&
+                                  result[MINOR_VERSION_INDEX] == VERSION[MINOR_VERSION_INDEX] &&
+                                  result[BUILD_VERSION_INDEX] > VERSION[BUILD_VERSION_INDEX];
+    if (majorVersionCheckFalse || minorVersionCheckFalse || buildVersionCheckFalse) {
         std::ostringstream oss;
         oss << "The rawheap file's version " << version;
         oss << " is not matched the current rawheap translator, please use the newest version of the translator!";
