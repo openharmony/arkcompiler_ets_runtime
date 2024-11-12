@@ -136,3 +136,15 @@ v4[3] = v4;
 v0[1] = v0;
 v3.splice(0, 0);
 print(v3.length);
+
+class C3 {
+  constructor() {
+      for (let i = 0; i < 1000; i++) {}
+      let v6 = new Proxy(this, {
+          defineProperty: () => {}
+      });
+      v6.h = 4;
+      print("v6");
+  }
+}
+new C3(); 

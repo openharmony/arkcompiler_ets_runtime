@@ -340,9 +340,9 @@ JSTaggedValue StoreICRuntime::StoreMiss(JSHandle<JSTaggedValue> receiver, JSHand
     }
     if (!receiver->IsJSObject() || receiver->HasOrdinaryGet()) {
         icAccessor_.SetAsMega();
-        bool success = JSTaggedValue::SetProperty(GetThread(), receiver, key, value, true);
+        JSTaggedValue::SetProperty(GetThread(), receiver, key, value, true);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
-        return success ? JSTaggedValue::Undefined() : JSTaggedValue::Exception();
+        return JSTaggedValue::Undefined();
     }
     if (receiver->IsTypedArray() || receiver->IsSharedTypedArray()) {
         return StoreTypedArrayValueMiss(receiver, key, value);
