@@ -486,7 +486,6 @@ private:
     V(ResumeCaughtFrameAndDispatch)             \
     V(ResumeUncaughtFrameAndReturn)             \
     V(ResumeRspAndRollback)                     \
-    V(StringsAreEquals)                         \
     V(BigIntEquals)                             \
     V(BigIntSameValueZero)                      \
     V(CallBigIntAsIntN)                         \
@@ -508,7 +507,6 @@ private:
     V(InsertLocalToShareRSet)                   \
     V(SetBitAtomic)                             \
     V(DoubleToInt)                              \
-    V(DoubleToLength)                           \
     V(FloatMod)                                 \
     V(FloatAcos)                                \
     V(FloatAcosh)                               \
@@ -536,13 +534,10 @@ private:
     V(FloatPow)                                 \
     V(FloatCeil)                                \
     V(CallDateNow)                              \
-    V(NumberIsFinite)                           \
-    V(FindElementWithCache)                     \
     V(UpdateFieldType)                          \
     V(MarkingBarrier)                           \
     V(MarkingBarrierWithEden)                   \
     V(SharedGCMarkingBarrier)                   \
-    V(StoreBarrier)                             \
     V(CallArg0)                                 \
     V(CallArg1)                                 \
     V(CallArgs2)                                \
@@ -555,7 +550,6 @@ private:
     V(JSFunctionEntry)                          \
     V(OptimizedFastCallEntry)                   \
     V(JSProxyCallInternalWithArgV)              \
-    V(CreateArrayFromList)                      \
     V(JSObjectGetMethod)                        \
     V(JsProxyCallInternal)                      \
     V(JsBoundCallInternal)                      \

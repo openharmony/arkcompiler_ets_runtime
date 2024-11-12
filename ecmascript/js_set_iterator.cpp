@@ -79,7 +79,7 @@ JSTaggedValue JSSetIterator::NextInternal(JSThread *thread, JSHandle<JSTaggedVal
 
 void JSSetIterator::Update(const JSThread *thread)
 {
-    [[maybe_unused]] DisallowGarbageCollection noGc;
+    DISALLOW_GARBAGE_COLLECTION;
     JSTaggedValue iteratedSet = GetIteratedSet();
     if (iteratedSet.IsUndefined()) {
         return;

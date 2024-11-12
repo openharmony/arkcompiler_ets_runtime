@@ -95,9 +95,6 @@ public:
     static void MarkingBarrierWithEden([[maybe_unused]] uintptr_t argGlue,
         uintptr_t object, size_t offset, TaggedObject *value);
     static void SharedGCMarkingBarrier([[maybe_unused]] uintptr_t argGlue, TaggedObject *value);
-    static void StoreBarrier([[maybe_unused]] uintptr_t argGlue,
-        uintptr_t object, size_t offset, TaggedObject *value);
-    static JSTaggedType CreateArrayFromList([[maybe_unused]] uintptr_t argGlue, int32_t argc, JSTaggedValue *argvPtr);
     static JSTaggedType GetActualArgvNoGC(uintptr_t argGlue);
     static void InsertNewToEdenRSet([[maybe_unused]] uintptr_t argGlue, uintptr_t object, size_t offset);
     static void InsertOldToNewRSet([[maybe_unused]] uintptr_t argGlue, uintptr_t object, size_t offset);
@@ -105,7 +102,6 @@ public:
     static void SetBitAtomic(GCBitset::GCBitsetWord *word, GCBitset::GCBitsetWord mask,
                              GCBitset::GCBitsetWord oldValue);
     static int32_t DoubleToInt(double x, size_t bits);
-    static JSTaggedType DoubleToLength(double x);
     static double FloatMod(double x, double y);
     static double FloatAcos(double x);
     static double FloatAcosh(double x);
@@ -131,12 +127,8 @@ public:
     static double FloatPow(double base, double exp);
     static double FloatCbrt(double x);
     static double FloatCeil(double x);
-    static bool NumberIsFinite(double x);
     static double CallDateNow();
-    static int32_t FindElementWithCache(uintptr_t argGlue, JSTaggedType hclass,
-                                        JSTaggedType key, int32_t num);
     static void UpdateFieldType(JSTaggedType hclass, uint64_t value);
-    static bool StringsAreEquals(EcmaString *str1, EcmaString *str2);
     static bool BigIntEquals(JSTaggedType left, JSTaggedType right);
     static bool BigIntSameValueZero(JSTaggedType key, JSTaggedType other);
     static JSTaggedValue JSHClassFindProtoTransitions(JSHClass *cls, JSTaggedValue key, JSTaggedValue proto);

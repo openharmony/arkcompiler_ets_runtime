@@ -22,24 +22,23 @@ PatchErrorCode PatchLoader::LoadPatchInternal(JSThread *thread, const JSPandaFil
                                               const JSPandaFile *patchFile, PatchInfo &patchInfo,
                                               const CMap<uint32_t, CString> &baseClassInfo)
 {
-    DISALLOW_GARBAGE_COLLECTION;
     EcmaVM *vm = thread->GetEcmaVM();
-
-    // hot reload and hot patch only support merge-abc file.
-    if (baseFile->IsBundlePack() || patchFile->IsBundlePack()) {
-        LOG_ECMA(ERROR) << "base or patch is not merge abc!";
-        return PatchErrorCode::PACKAGE_NOT_ESMODULE;
+    {
+        DISALLOW_GARBAGE_COLLECTION;
+        // hot reload and hot patch only support merge-abc file.
+        if (baseFile->IsBundlePack() || patchFile->IsBundlePack()) {
+            LOG_ECMA(ERROR) << "base or patch is not merge abc!";
+            return PatchErrorCode::PACKAGE_NOT_ESMODULE;
+        }
+        // Generate patchInfo for hot reload, hot patch and cold patch.
+        patchInfo = PatchLoader::GeneratePatchInfo(patchFile);
+        if (!thread->GetCurrentEcmaContext()->HasCachedConstpool(baseFile)) {
+            LOG_ECMA(INFO) << "cold patch!";
+            vm->GetJsDebuggerManager()->GetHotReloadManager()->NotifyPatchLoaded(baseFile, patchFile);
+            return PatchErrorCode::SUCCESS;
+        }
     }
-
-    // Generate patchInfo for hot reload, hot patch and cold patch.
-    patchInfo = PatchLoader::GeneratePatchInfo(patchFile);
-
-    if (!thread->GetCurrentEcmaContext()->HasCachedConstpool(baseFile)) {
-        LOG_ECMA(INFO) << "cold patch!";
-        vm->GetJsDebuggerManager()->GetHotReloadManager()->NotifyPatchLoaded(baseFile, patchFile);
-        return PatchErrorCode::SUCCESS;
-    }
-
+    
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     // store base constpool in global object for avoid gc.

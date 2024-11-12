@@ -657,6 +657,7 @@ DEF_RUNTIME_STUBS(RuntimeDump)
 
 void RuntimeStubs::Dump(JSTaggedType rawValue)
 {
+    DISALLOW_GARBAGE_COLLECTION;
     std::ostringstream oss;
     auto value = JSTaggedValue(rawValue);
     value.Dump(oss);
@@ -665,11 +666,13 @@ void RuntimeStubs::Dump(JSTaggedType rawValue)
 
 void RuntimeStubs::DebugDump(JSTaggedType rawValue)
 {
+    DISALLOW_GARBAGE_COLLECTION;
     DebugDumpWithHint(reinterpret_cast<uintptr_t>(nullptr), rawValue);
 }
 
 void RuntimeStubs::DumpWithHint(uintptr_t hintStrAddress, JSTaggedType rawValue)
 {
+    DISALLOW_GARBAGE_COLLECTION;
     const char *origHintStr = reinterpret_cast<const char*>(hintStrAddress); // May be nullptr
     const char *hintStr = (origHintStr == nullptr) ? "" : origHintStr;
     DumpToStreamWithHint(std::cout, hintStr, JSTaggedValue(rawValue));
@@ -678,6 +681,7 @@ void RuntimeStubs::DumpWithHint(uintptr_t hintStrAddress, JSTaggedType rawValue)
 
 void RuntimeStubs::DebugDumpWithHint(uintptr_t hintStrAddress, JSTaggedType rawValue)
 {
+    DISALLOW_GARBAGE_COLLECTION;
     const char *origHintStr = reinterpret_cast<const char*>(hintStrAddress); // May be nullptr
     const char *hintStr = (origHintStr == nullptr) ? "" : origHintStr;
     // The immediate lambda expression call is not evaluated when the logger is unabled.
@@ -3124,35 +3128,6 @@ DEF_RUNTIME_STUBS(DecodeURIComponent)
     return result.GetRawData();
 }
 
-JSTaggedType RuntimeStubs::CreateArrayFromList([[maybe_unused]] uintptr_t argGlue, int32_t argc,
-                                               JSTaggedValue *argvPtr)
-{
-    auto thread = JSThread::GlueToJSThread(argGlue);
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<TaggedArray> taggedArray = factory->NewTaggedArray(argc - NUM_MANDATORY_JSFUNC_ARGS);
-    for (int index = NUM_MANDATORY_JSFUNC_ARGS; index < argc; ++index) {
-        taggedArray->Set(thread, index - NUM_MANDATORY_JSFUNC_ARGS, argvPtr[index]);
-    }
-    JSHandle<JSArray> arrHandle = JSArray::CreateArrayFromList(thread, taggedArray);
-    return arrHandle.GetTaggedValue().GetRawData();
-}
-
-int32_t RuntimeStubs::FindElementWithCache(uintptr_t argGlue, JSTaggedType hclass,
-                                           JSTaggedType key, int32_t num)
-{
-    auto thread = JSThread::GlueToJSThread(argGlue);
-    auto cls = reinterpret_cast<JSHClass *>(hclass);
-    JSTaggedValue propKey = JSTaggedValue(key);
-    auto layoutInfo = LayoutInfo::Cast(cls->GetLayout().GetTaggedObject());
-    PropertiesCache *cache = thread->GetPropertiesCache();
-    int index = cache->Get(cls, propKey);
-    if (index == PropertiesCache::NOT_FOUND) {
-        index = layoutInfo->BinarySearch(propKey, num);
-        cache->Set(cls, propKey, index);
-    }
-    return index;
-}
-
 void RuntimeStubs::UpdateFieldType(JSTaggedType hclass, uint64_t value)
 {
     auto cls = reinterpret_cast<JSHClass *>(hclass);
@@ -3162,6 +3137,7 @@ void RuntimeStubs::UpdateFieldType(JSTaggedType hclass, uint64_t value)
 
 JSTaggedType RuntimeStubs::GetActualArgvNoGC(uintptr_t argGlue)
 {
+    DISALLOW_GARBAGE_COLLECTION;
     auto thread = JSThread::GlueToJSThread(argGlue);
     JSTaggedType *current = const_cast<JSTaggedType *>(thread->GetLastLeaveFrame());
     FrameIterator it(current, thread);
@@ -3302,11 +3278,6 @@ double RuntimeStubs::FloatPow(double base, double exp)
     return std::pow(base, exp);
 }
 
-bool RuntimeStubs::NumberIsFinite(double x)
-{
-    return std::isfinite(x);
-}
-
 double RuntimeStubs::CallDateNow()
 {
     // time from now is in ms.
@@ -3321,18 +3292,6 @@ double RuntimeStubs::CallDateNow()
 int32_t RuntimeStubs::DoubleToInt(double x, size_t bits)
 {
     return base::NumberHelper::DoubleToInt(x, bits);
-}
-
-JSTaggedType RuntimeStubs::DoubleToLength(double x)
-{
-    double length = base::NumberHelper::TruncateDouble(x);
-    if (length < 0.0) {
-        return JSTaggedNumber(static_cast<double>(0)).GetRawData();
-    }
-    if (length > SAFE_NUMBER) {
-        return JSTaggedNumber(static_cast<double>(SAFE_NUMBER)).GetRawData();
-    }
-    return JSTaggedNumber(length).GetRawData();
 }
 
 void RuntimeStubs::InsertNewToEdenRSet([[maybe_unused]] uintptr_t argGlue,
@@ -3424,52 +3383,21 @@ void RuntimeStubs::SharedGCMarkingBarrier([[maybe_unused]] uintptr_t argGlue, Ta
     Barriers::UpdateShared(thread, value, valueRegion);
 }
 
-void RuntimeStubs::StoreBarrier([[maybe_unused]] uintptr_t argGlue,
-    uintptr_t object, size_t offset, TaggedObject *value)
-{
-    uintptr_t slotAddr = object + offset;
-    Region *objectRegion = Region::ObjectAddressToRange(object);
-    Region *valueRegion = Region::ObjectAddressToRange(value);
-    auto thread = JSThread::GlueToJSThread(argGlue);
-#if ECMASCRIPT_ENABLE_BARRIER_CHECK
-    if (!thread->GetEcmaVM()->GetHeap()->IsAlive(JSTaggedValue(value).GetHeapObject())) {
-        LOG_FULL(FATAL) << "RuntimeStubs::StoreBarrier checked value:" << value << " is invalid!";
-    }
-#endif
-    if (objectRegion->InGeneralOldSpace() && valueRegion->InGeneralNewSpace()) {
-        // Should align with '8' in 64 and 32 bit platform
-        ASSERT((slotAddr % static_cast<uint8_t>(MemAlignment::MEM_ALIGN_OBJECT)) == 0);
-        objectRegion->InsertOldToNewRSet(slotAddr);
-    } else if (!objectRegion->InSharedHeap() && valueRegion->InSharedSweepableSpace()) {
-        objectRegion->InsertLocalToShareRSet(slotAddr);
-    } else if (valueRegion->InEdenSpace() && objectRegion->InYoungSpace()) {
-        objectRegion->InsertNewToEdenRSet(slotAddr);
-    }
-    if (!valueRegion->InSharedHeap() && thread->IsConcurrentMarkingOrFinished()) {
-        Barriers::Update(thread, slotAddr, objectRegion, value, valueRegion);
-    }
-    if (valueRegion->InSharedSweepableSpace() && thread->IsSharedConcurrentMarkingOrFinished()) {
-        Barriers::UpdateShared(thread, value, valueRegion);
-    }
-}
-
-bool RuntimeStubs::StringsAreEquals(EcmaString *str1, EcmaString *str2)
-{
-    return EcmaStringAccessor::StringsAreEqualDiffUtfEncoding(str1, str2);
-}
-
 bool RuntimeStubs::BigIntEquals(JSTaggedType left, JSTaggedType right)
 {
+    DISALLOW_GARBAGE_COLLECTION;
     return BigInt::Equal(JSTaggedValue(left), JSTaggedValue(right));
 }
 
 bool RuntimeStubs::BigIntSameValueZero(JSTaggedType left, JSTaggedType right)
 {
+    DISALLOW_GARBAGE_COLLECTION;
     return BigInt::SameValueZero(JSTaggedValue(left), JSTaggedValue(right));
 }
 
 JSTaggedValue RuntimeStubs::JSHClassFindProtoTransitions(JSHClass *cls, JSTaggedValue key, JSTaggedValue proto)
 {
+    DISALLOW_GARBAGE_COLLECTION;
     return JSTaggedValue(cls->FindProtoTransitions(key, proto));
 }
 
@@ -3487,17 +3415,20 @@ JSTaggedValue RuntimeStubs::NumberHelperStringToDouble(EcmaString *numberString)
 
 JSTaggedValue RuntimeStubs::GetStringToListCacheArray(uintptr_t argGlue)
 {
+    DISALLOW_GARBAGE_COLLECTION;
     auto thread = JSThread::GlueToJSThread(argGlue);
     return thread->GetCurrentEcmaContext()->GetStringToListResultCache().GetTaggedValue();
 }
 
 double RuntimeStubs::TimeClip(double time)
 {
+    DISALLOW_GARBAGE_COLLECTION;
     return JSDate::TimeClip(time);
 }
 
 double RuntimeStubs::SetDateValues(double year, double month, double day)
 {
+    DISALLOW_GARBAGE_COLLECTION;
     if (std::isnan(year) || !std::isfinite(year) || std::isnan(month) || !std::isfinite(month) || std::isnan(day) ||
         !std::isfinite(day)) {
         return base::NAN_VALUE;
@@ -3712,6 +3643,7 @@ DEF_RUNTIME_STUBS(HClassCloneWithAddProto)
 
 void RuntimeStubs::StartCallTimer(uintptr_t argGlue, JSTaggedType func, bool isAot)
 {
+    DISALLOW_GARBAGE_COLLECTION;
     auto thread =  JSThread::GlueToJSThread(argGlue);
     JSTaggedValue callTarget(func);
     Method *method = Method::Cast(JSFunction::Cast(callTarget)->GetMethod());
@@ -3726,6 +3658,7 @@ void RuntimeStubs::StartCallTimer(uintptr_t argGlue, JSTaggedType func, bool isA
 
 void RuntimeStubs::EndCallTimer(uintptr_t argGlue, JSTaggedType func)
 {
+    DISALLOW_GARBAGE_COLLECTION;
     auto thread =  JSThread::GlueToJSThread(argGlue);
     JSTaggedValue callTarget(func);
     Method *method = Method::Cast(JSFunction::Cast(callTarget)->GetMethod());

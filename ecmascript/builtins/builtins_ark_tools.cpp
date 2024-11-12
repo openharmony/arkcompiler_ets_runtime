@@ -153,7 +153,7 @@ JSTaggedValue BuiltinsArkTools::IsSlicedString(EcmaRuntimeCallInfo *info)
 
 JSTaggedValue BuiltinsArkTools::IsStableJsArray(EcmaRuntimeCallInfo *info)
 {
-    [[maybe_unused]] DisallowGarbageCollection noGc;
+    DISALLOW_GARBAGE_COLLECTION;
     ASSERT(info);
     JSThread *thread = info->GetThread();
     RETURN_IF_DISALLOW_ARKTOOLS(thread);
@@ -167,7 +167,7 @@ JSTaggedValue BuiltinsArkTools::IsStableJsArray(EcmaRuntimeCallInfo *info)
 
 JSTaggedValue BuiltinsArkTools::IsNotHoleProperty(EcmaRuntimeCallInfo *info)
 {
-    [[maybe_unused]] DisallowGarbageCollection noGc;
+    DISALLOW_GARBAGE_COLLECTION;
     ASSERT(info);
     JSThread *thread = info->GetThread();
     RETURN_IF_DISALLOW_ARKTOOLS(thread);
@@ -187,7 +187,7 @@ JSTaggedValue BuiltinsArkTools::IsNotHoleProperty(EcmaRuntimeCallInfo *info)
 
 JSTaggedValue BuiltinsArkTools::HiddenStackSourceFile(EcmaRuntimeCallInfo *info)
 {
-    [[maybe_unused]] DisallowGarbageCollection noGc;
+    DISALLOW_GARBAGE_COLLECTION;
     ASSERT(info);
     JSThread *thread = info->GetThread();
     RETURN_IF_DISALLOW_ARKTOOLS(thread);

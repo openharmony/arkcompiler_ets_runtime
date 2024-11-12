@@ -412,7 +412,6 @@ SharedFieldType ObjectOperator::GetSharedFieldType() const
 
 void ObjectOperator::ToPropertyDescriptor(PropertyDescriptor &desc) const
 {
-    DISALLOW_GARBAGE_COLLECTION;
     if (!IsFound()) {
         return;
     }
