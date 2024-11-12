@@ -28,6 +28,7 @@ public:
     static JSTaggedValue GetFirst(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue GetLast(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue Insert(EcmaRuntimeCallInfo *argv);
+    static JSTaggedValue InsertByIndex(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue AddFirst(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue Clear(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue Clone(EcmaRuntimeCallInfo *argv);
@@ -46,6 +47,11 @@ public:
     static JSTaggedValue ConvertToArray(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue ForEach(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue GetIteratorObj(EcmaRuntimeCallInfo *argv);
+
+private:
+    static JSTaggedValue InsertIntoLinkedList(JSThread *thread,
+    JSHandle<JSTaggedValue> self, JSHandle<JSTaggedValue> value,
+    JSHandle<JSTaggedValue> index);
 };
 }  // namespace panda::ecmascript::containers
 #endif  // ECMASCRIPT_CONTAINERS_CONTAINERS_LINKED_LIST_H
