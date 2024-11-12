@@ -30,7 +30,7 @@ bool DoSomethingInterestingWithMyAPI(const char* data, size_t size)
     std::vector<int16_t> sigData;
     size_t offset = 0;
     // check if there is enough data
-    if (offset + sizeof(int16_t) > size) {
+    if (offset + sizeof(int16_t) >= size) {
         return false;
     }
     uint8_t numberOfArgs = static_cast<uint8_t>(data[offset]);
@@ -39,25 +39,25 @@ bool DoSomethingInterestingWithMyAPI(const char* data, size_t size)
     offset += sizeof(uint8_t);
     for (uint8_t i = 0; i < numberOfArgs && offset < size; ++i) {
         // read the key length
-        if (offset + sizeof(int16_t) > size) {
+        if (offset + sizeof(int16_t) >= size) {
             break;
         }
         uint8_t keyLength = static_cast<uint8_t>(data[offset]);
         offset += sizeof(uint8_t);
         // read the key
-        if (offset + keyLength > size) {
+        if (offset + keyLength >= size) {
             break;
         }
         std::string key(&data[offset], keyLength);
         offset += keyLength;
         // read the value length
-        if (offset + sizeof(uint8_t) > size) {
+        if (offset + sizeof(uint8_t) >= size) {
             break;
         }
         uint8_t valueLength = static_cast<uint8_t>(data[offset]);
         offset += sizeof(uint8_t);
         // read the value
-        if (offset + valueLength > size) {
+        if (offset + valueLength >= size) {
             break;
         }
         std::string value(&data[offset], valueLength);
@@ -66,7 +66,7 @@ bool DoSomethingInterestingWithMyAPI(const char* data, size_t size)
     }
 
     // parse sigData
-    while (offset + sizeof(int16_t) <= size) {
+    while (offset + sizeof(int16_t) < size) {
         int16_t signalValue;
         std::copy_n(&data[offset], sizeof(int16_t), &signalValue);
         sigData.push_back(signalValue);
