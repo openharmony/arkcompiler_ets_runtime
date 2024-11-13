@@ -39,6 +39,7 @@ public:
 
     // Writes the chunk of data into the stream
     virtual bool WriteChunk(char *data, int32_t size) = 0;
+    virtual bool WriteBinBlock(char *data, int32_t size) = 0;
     virtual bool Good() = 0;
     virtual void UpdateHeapStats(HeapStat* data, int32_t count) = 0;
     virtual void UpdateLastSeenObjectId(int32_t lastSeenObjectId, int64_t timeStampUs) = 0;

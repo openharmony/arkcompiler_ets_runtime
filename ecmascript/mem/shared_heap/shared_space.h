@@ -191,6 +191,8 @@ public:
         EnumerateRegions(cb);
     }
 
+    void IterateOverObjects(const std::function<void(TaggedObject *object)> &visitor) const;
+
     void ClearReadOnly()
     {
         auto cb = [](Region *region) {

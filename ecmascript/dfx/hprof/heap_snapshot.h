@@ -31,6 +31,8 @@
 #include "ecmascript/mem/c_containers.h"
 #include "ecmascript/dfx/hprof/file_stream.h"
 #include "ecmascript/interpreter/frame_handler.h"
+#include "ecmascript/mem/object_xray.h"
+#include "ecmascript/object_fast_operator.h"
 
 namespace panda::ecmascript {
 class EntryIdMap;
@@ -389,6 +391,15 @@ struct Reference {
     ReferenceType type_ {ReferenceType::DEFAULT};
 };
 
+class EntryVisitor {
+public:
+    NO_MOVE_SEMANTIC(EntryVisitor);
+    NO_COPY_SEMANTIC(EntryVisitor);
+    EntryVisitor() = default;
+    ~EntryVisitor() = default;
+    static CString ConvertKey(JSTaggedValue key);
+};
+
 class HeapSnapshot {
 public:
     static constexpr int SEQ_STEP = 2;
@@ -491,18 +502,35 @@ public:
         return stringTable_;
     }
 
+    bool BuildSnapshotForBinMod(CUnorderedMap<uint64_t, NewAddr *> &objMap,
+                                CUnorderedMap<uint64_t, CUnorderedSet<uint64_t>> &refSetMap);
+    void GenerateNodeForBinMod(CUnorderedMap<uint64_t, NewAddr *> &objMap, CUnorderedSet<uint64_t> &rootSetMap,
+                               CUnorderedMap<uint64_t, CString *> &strTableIdMap);
+
+    StringId GenerateStringId(TaggedObject *obj)
+    {
+        JSTaggedValue entry(obj);
+        if (entry.IsOnlyJSObject()) {
+            return stringTable_->InsertStrAndGetStringId(ParseObjectName(obj));
+        }
+        if (entry.IsJSFunction()) {
+            return stringTable_->InsertStrAndGetStringId(ParseFunctionName(obj));
+        }
+        return 1; // 1 : invalid id
+    }
+
 private:
     void FillNodes(bool isInFinish = false, bool isSimplify = false);
     Node *GenerateNode(JSTaggedValue entry, size_t size = 0,
-                       bool isInFinish = false, bool isSimplify = false);
-    Node *HandleStringNode(JSTaggedValue &entry, size_t &size, bool &isInFinish);
+                       bool isInFinish = false, bool isSimplify = false, bool isBinMod = false);
+    Node *HandleStringNode(JSTaggedValue &entry, size_t &size, bool &isInFinish, bool isBinMod);
     Node *HandleFunctionNode(JSTaggedValue &entry, size_t &size, bool &isInFinish);
     Node *HandleObjectNode(JSTaggedValue &entry, size_t &size, bool &isInFinish);
     Node *HandleBaseClassNode(size_t size, bool idExist, NodeId &sequenceId,
                               TaggedObject* obj, JSTaggedType &addr);
     CString GeneratePrimitiveNameString(JSTaggedValue &entry);
     Node *GeneratePrivateStringNode(size_t size);
-    Node *GenerateStringNode(JSTaggedValue entry, size_t size, bool isInFinish = false);
+    Node *GenerateStringNode(JSTaggedValue entry, size_t size, bool isInFinish = false, bool isBinMod = false);
     Node *GenerateFunctionNode(JSTaggedValue entry, size_t size, bool isInFinish = false);
     Node *GenerateObjectNode(JSTaggedValue entry, size_t size, bool isInFinish = false);
     void FillEdges(bool isSimplify = false);
@@ -514,6 +542,7 @@ private:
     void EraseNodeUnique(Node *node);
     Edge *InsertEdgeUnique(Edge *edge);
     void AddSyntheticRoot();
+    void FillEdgesForBinMod(char *newAddr, CUnorderedSet<uint64_t> *refSet);
     Node *InsertNodeAt(size_t pos, Node *node);
     Edge *InsertEdgeAt(size_t pos, Edge *edge);
 
@@ -542,13 +571,5 @@ private:
     Chunk *chunk_ {nullptr};
 };
 
-class EntryVisitor {
-public:
-    NO_MOVE_SEMANTIC(EntryVisitor);
-    NO_COPY_SEMANTIC(EntryVisitor);
-    EntryVisitor() = default;
-    ~EntryVisitor() = default;
-    static CString ConvertKey(JSTaggedValue key);
-};
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_DFX_HPROF_HEAP_SNAPSHOT_H

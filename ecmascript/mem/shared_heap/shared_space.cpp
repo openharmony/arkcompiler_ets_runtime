@@ -546,6 +546,39 @@ uintptr_t SharedReadOnlySpace::Allocate(JSThread *thread, size_t size)
     return object;
 }
 
+void SharedReadOnlySpace::IterateOverObjects(const std::function<void(TaggedObject *object)> &visitor) const
+{
+    size_t size = allocator_.Available();
+    if (size != 0) {
+        FreeObject::FillFreeObject(heap_, allocator_.GetTop(), size);
+    }
+    EnumerateRegions([&](Region *region) {
+        if (region->InCollectSet()) {
+            return;
+        }
+        uintptr_t curPtr = region->GetBegin();
+        uintptr_t endPtr = region->GetEnd();
+        while (curPtr < endPtr) {
+            auto freeObject = FreeObject::Cast(curPtr);
+            size_t objSize;
+            // If curPtr is freeObject, It must to mark unpoison first.
+            ASAN_UNPOISON_MEMORY_REGION(freeObject, TaggedObject::TaggedObjectSize());
+            if (!freeObject->IsFreeObject()) {
+                auto obj = reinterpret_cast<TaggedObject *>(curPtr);
+                visitor(obj);
+                objSize = obj->GetClass()->SizeFromJSHClass(obj);
+            } else {
+                freeObject->AsanUnPoisonFreeObject();
+                objSize = freeObject->Available();
+                freeObject->AsanPoisonFreeObject();
+            }
+            curPtr += objSize;
+            CHECK_OBJECT_SIZE(objSize);
+        }
+        CHECK_REGION_END(curPtr, endPtr);
+    });
+}
+
 SharedHugeObjectSpace::SharedHugeObjectSpace(BaseHeap *heap, HeapRegionAllocator *heapRegionAllocator,
                                              size_t initialCapacity, size_t maximumCapacity)
     : Space(heap, heapRegionAllocator, MemSpaceType::SHARED_HUGE_OBJECT_SPACE, initialCapacity, maximumCapacity)

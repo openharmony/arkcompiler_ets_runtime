@@ -22,6 +22,7 @@ group("ark_js_packages") {
   deps += [
     ":libark_jsruntime",
     "ecmascript/compiler:stub.an",
+    "ecmascript/dfx/hprof:ark_js_heap_snapshot_tool",
     "ecmascript/js_vm:ark_js_vm",
     "ecmascript/quick_fix:quick_fix",
   ]
@@ -77,6 +78,7 @@ group("ark_js_host_linux_tools_packages") {
   deps = []
 
   deps += [
+    "ecmascript/dfx/hprof:ark_js_heap_snapshot_tool(${host_toolchain})",
     "ecmascript/js_vm:ark_js_vm(${host_toolchain})",
     "ecmascript/quick_fix:quick_fix(${host_toolchain})",
   ]

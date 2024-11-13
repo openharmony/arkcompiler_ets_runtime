@@ -56,6 +56,10 @@ public:
     {
         return true;
     }
+    bool WriteBinBlock(char *data, int32_t size) override
+    {
+        return WriteChunk(data, size);
+    }
     bool Good() override
     {
         return testStream_.good();

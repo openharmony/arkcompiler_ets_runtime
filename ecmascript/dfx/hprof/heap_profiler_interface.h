@@ -54,6 +54,7 @@ public:
                                   Progress *progress = nullptr) = 0;
     // Provide an internal interface for oom dump.
     virtual void DumpHeapSnapshot(const DumpSnapShotOption &dumpOption) = 0;
+    virtual bool GenerateHeapSnapshot(std::string &inputFilePath, std::string &outputPath) = 0;
 
     virtual bool StartHeapTracking(double timeInterval, bool isVmMode = true, Stream *stream = nullptr,
                                    bool traceAllocation = false, bool newThread = true) = 0;
