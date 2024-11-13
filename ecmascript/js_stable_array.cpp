@@ -14,7 +14,7 @@
  */
 
 #include "ecmascript/js_stable_array.h"
-
+#include "ecmascript/base/sort_helper.h"
 #include "ecmascript/base/typed_array_helper-inl.h"
 #include "ecmascript/interpreter/fast_runtime_stub-inl.h"
 
@@ -1672,11 +1672,108 @@ JSTaggedValue JSStableArray::Slice(JSThread *thread, JSHandle<JSObject> thisObjH
     return arrayObj.GetTaggedValue();
 }
 
-JSTaggedValue JSStableArray::Sort(JSThread *thread, const JSHandle<JSObject> &thisObj,
+JSHandle<TaggedArray> JSStableArray::SortIndexedProperties(JSThread *thread, const JSHandle<JSTaggedValue> &thisObjVal,
+                                                           int64_t len, const JSHandle<JSTaggedValue> &callbackFnHandle,
+                                                           base::HolesType holes)
+{
+    JSHandle<JSObject> thisObj(thread, thisObjVal.GetTaggedValue());
+    JSHandle<TaggedArray> elements(thread, thisObj->GetElements());
+    ElementsKind kind = thisObj->GetClass()->GetElementsKind();
+    if (!elements->GetClass()->IsMutantTaggedArray()) {
+        kind = ElementsKind::GENERIC;
+    }
+    // 1. fill elements into items.
+    JSHandle<TaggedArray> items(thread->GetEcmaVM()->GetFactory()->NewTaggedArray(len));
+    bool kRead = false;
+    int64_t tmp = 0;
+    for (int k = 0; k < len; k++) {
+        JSTaggedValue kValue = ElementAccessor::FastGet(elements, k, kind);
+        if (holes == base::HolesType::SKIP_HOLES) {
+            kRead = (kValue != JSTaggedValue::Hole());
+        } else {
+            ASSERT(holes == base::HolesType::READ_THROUGH_HOLES);
+            kRead = true;
+        }
+        if (kRead) {
+            RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, items);
+            items->Set(thread, tmp++, kValue);
+        }
+    }
+    // 2. trim
+    if (len > tmp) {
+        items->Trim(thread, tmp);
+    }
+    // 3. Sort items using an implementation-defined sequence of calls to SortCompare.
+    // If any such call returns an abrupt completion,
+    // stop before performing any further calls to SortCompare and return that Completion Record.
+    base::TimSort::Sort(thread, items, callbackFnHandle);
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, items);
+    // 4. Return items.
+    return items;
+}
+
+JSTaggedValue JSStableArray::CopySortedListToReceiver(JSThread *thread, const JSHandle<JSTaggedValue> &thisObjVal,
+                                                      JSHandle<TaggedArray> sortedList, uint32_t len)
+{
+    // 6. Let itemCount be the number of elements in sortedList.
+    uint32_t itemCount = sortedList->GetLength();
+
+    // grow elements if len > newLength.
+    JSHandle<JSObject> thisObj(thisObjVal);
+    uint32_t newLength = std::max(JSHandle<JSArray>::Cast(thisObjVal)->GetArrayLength(), itemCount);
+    TaggedArray *elements = TaggedArray::Cast(thisObj->GetElements().GetTaggedObject());
+    if (newLength > ElementAccessor::GetElementsLength(thisObj)) {
+        elements = *JSObject::GrowElementsCapacity(thread, thisObj, newLength, true);
+    }
+
+    JSMutableHandle<JSTaggedValue> valueHandle(thread, JSTaggedValue::Undefined());
+    bool needTransition = true;
+    // 7. Let j be 0.
+    // 8. Repeat, while j < itemCount,
+    //     a. Perform ! Set(obj, ! ToString((j)), sortedList[j], true).
+    //     b. Set j to j + 1.
+    for (int j = 0; j < itemCount; j++) {
+        valueHandle.Update(sortedList->Get(j));
+        ElementAccessor::Set(thread, thisObj, j, valueHandle, needTransition);
+    }
+    // 9. NOTE: The call to SortIndexedProperties in step 5 uses SKIP-HOLES.The remaining indices are deleted to
+    // preserve the number of holes that were detected and excluded from the sort.
+    // 10. Repeat, while j < len,
+    //       a. Perform ? DeletePropertyOrThrow(obj, ! ToString((j))).
+    //       b. Set j to j + 1.
+    valueHandle.Update(JSTaggedValue::Hole());
+    for (int j = itemCount; j < len; j++) {
+        ElementAccessor::Set(thread, thisObj, j, valueHandle, needTransition);
+    }
+    JSHandle<JSArray>::Cast(thisObj)->SetArrayLength(thread, newLength);
+    return thisObj.GetTaggedValue();
+}
+
+JSTaggedValue JSStableArray::Sort(JSThread *thread, const JSHandle<JSTaggedValue> &thisObjVal,
                                   const JSHandle<JSTaggedValue> &callbackFnHandle)
 {
-    JSArray::SortElementsByObject(thread, thisObj, callbackFnHandle);
-    return thisObj.GetTaggedValue();
+    // 3. Let len be ?LengthOfArrayLike(obj).
+    uint32_t len = JSHandle<JSArray>::Cast(thisObjVal)->GetArrayLength();
+    // ReturnIfAbrupt(len).
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    // If len is 0 or 1, no need to sort
+    if (len == 0 || len == 1) {
+        return thisObjVal.GetTaggedValue();
+    }
+    if (callbackFnHandle->IsUndefined()) {
+        JSArray::SortElementsByObject(thread, JSHandle<JSObject>::Cast(thisObjVal), callbackFnHandle);
+        return thisObjVal.GetTaggedValue();
+    }
+    JSHandle<TaggedArray> sortedList = JSStableArray::SortIndexedProperties(
+        thread, thisObjVal, len, callbackFnHandle, base::HolesType::SKIP_HOLES);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    if (thisObjVal->IsStableJSArray(thread)) {
+        CopySortedListToReceiver(thread, thisObjVal, sortedList, len);
+    } else {
+        JSArray::CopySortedListToReceiver(thread, thisObjVal, sortedList, len);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    }
+    return thisObjVal.GetTaggedValue();
 }
 
 JSTaggedValue JSStableArray::Fill(JSThread *thread, const JSHandle<JSObject> &thisObj,

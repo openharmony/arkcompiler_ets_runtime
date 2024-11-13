@@ -18,6 +18,7 @@
 
 #include "ecmascript/compiler/aot_snapshot/aot_snapshot_constants.h"
 #include "ecmascript/js_file_path.h"
+#include "ecmascript/message_string.h"
 #include "ecmascript/ohos/framework_helper.h"
 #include "ecmascript/ohos/ohos_preload_app_info.h"
 #include "ecmascript/snapshot/mem/snapshot.h"

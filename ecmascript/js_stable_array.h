@@ -16,6 +16,7 @@
 #ifndef ECMASCRIPT_JS_STABLE_ARRAY_H
 #define ECMASCRIPT_JS_STABLE_ARRAY_H
 
+#include "ecmascript/base/array_helper.h"
 #include "ecmascript/base/typed_array_helper.h"
 #include "ecmascript/js_array.h"
 #include "ecmascript/js_dataview.h"
@@ -86,9 +87,13 @@ public:
                                 JSHandle<JSTaggedValue> callbackFnHandle,
                                 JSMutableHandle<JSTaggedValue> accumulator, int64_t &k, int64_t &len);
     static JSTaggedValue Slice(JSThread *thread, JSHandle<JSObject> thisObjHandle, int64_t &k, int64_t &count);
-
-    static JSTaggedValue Sort(JSThread *thread, const JSHandle<JSObject> &thisObj,
+    static JSHandle<TaggedArray> SortIndexedProperties(JSThread *thread, const JSHandle<JSTaggedValue> &thisObj,
+                                                       int64_t len, const JSHandle<JSTaggedValue> &callbackFnHandle,
+                                                       base::HolesType holes);
+    static JSTaggedValue Sort(JSThread *thread, const JSHandle<JSTaggedValue> &thisObjVal,
                               const JSHandle<JSTaggedValue> &callbackFnHandle);
+    static JSTaggedValue CopySortedListToReceiver(JSThread *thread, const JSHandle<JSTaggedValue> &thisObjVal,
+                                                  JSHandle<TaggedArray> sortedList, uint32_t len);
     static JSTaggedValue Fill(JSThread *thread, const JSHandle<JSObject> &thisObj,
                               const JSHandle<JSTaggedValue> &value,
                               int64_t start, int64_t end, int64_t len);

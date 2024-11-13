@@ -510,29 +510,11 @@ bool JSArray::TryFastCreateDataProperty(JSThread *thread, const JSHandle<JSObjec
     return true;
 }
 
-// ecma2024 23.1.3.20 Array.prototype.sort(comparefn)
-JSTaggedValue JSArray::Sort(JSThread *thread, const JSHandle<JSTaggedValue> &obj, const JSHandle<JSTaggedValue> &fn)
+JSTaggedValue JSArray::CopySortedListToReceiver(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
+                                                JSHandle<TaggedArray> sortedList, uint32_t len)
 {
-    ASSERT(fn->IsUndefined() || fn->IsCallable());
-    // 3. Let len be ?LengthOfArrayLike(obj).
-    int64_t len = ArrayHelper::GetArrayLength(thread, obj);
-    // ReturnIfAbrupt(len).
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    // If len is 0 or 1, no need to sort
-    if (len == 0 || len == 1) {
-        return obj.GetTaggedValue();
-    }
-
-    // 4. Let SortCompare be a new Abstract Closure with parameters (x, y) that captures comparefn and performs
-    // the following steps when called:
-    //    a. Return ? CompareArrayElements(x, y, comparefn).
-    // 5. Let sortedList be ? SortIndexedProperties(O, len, SortCompare, SKIP-HOLES).
-    JSHandle<TaggedArray> sortedList =
-        ArrayHelper::SortIndexedProperties(thread, obj, len, fn, base::HolesType::SKIP_HOLES);
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     // 6. Let itemCount be the number of elements in sortedList.
     uint32_t itemCount = sortedList->GetLength();
-
     // 7. Let j be 0.
     uint32_t j = 0;
     // 8. Repeat, while j < itemCount,
@@ -556,7 +538,31 @@ JSTaggedValue JSArray::Sort(JSThread *thread, const JSHandle<JSTaggedValue> &obj
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         ++j;
     }
+    return obj.GetTaggedValue();
+}
 
+// ecma2024 23.1.3.20 Array.prototype.sort(comparefn)
+JSTaggedValue JSArray::Sort(JSThread *thread, const JSHandle<JSTaggedValue> &obj, const JSHandle<JSTaggedValue> &fn)
+{
+    ASSERT(fn->IsUndefined() || fn->IsCallable());
+    // 3. Let len be ?LengthOfArrayLike(obj).
+    int64_t len = ArrayHelper::GetArrayLength(thread, obj);
+    // ReturnIfAbrupt(len).
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    // If len is 0 or 1, no need to sort
+    if (len == 0 || len == 1) {
+        return obj.GetTaggedValue();
+    }
+
+    // 4. Let SortCompare be a new Abstract Closure with parameters (x, y) that captures comparefn and performs
+    // the following steps when called:
+    //    a. Return ? CompareArrayElements(x, y, comparefn).
+    // 5. Let sortedList be ? SortIndexedProperties(O, len, SortCompare, SKIP-HOLES).
+    JSHandle<TaggedArray> sortedList =
+        ArrayHelper::SortIndexedProperties(thread, obj, len, fn, base::HolesType::SKIP_HOLES);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    JSArray::CopySortedListToReceiver(thread, obj, sortedList, len);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return obj.GetTaggedValue();
 }
 

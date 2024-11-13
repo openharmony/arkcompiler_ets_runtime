@@ -2374,12 +2374,12 @@ JSTaggedValue BuiltinsArray::Sort(EcmaRuntimeCallInfo *argv)
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     // Array sort
-    if (thisHandle->IsStableJSArray(thread) && callbackFnHandle->IsUndefined()) {
-        JSStableArray::Sort(thread, thisObjHandle, callbackFnHandle);
+    if (thisHandle->IsStableJSArray(thread)) {
+        JSStableArray::Sort(thread, thisHandle, callbackFnHandle);
     } else {
         JSArray::Sort(thread, JSHandle<JSTaggedValue>::Cast(thisObjHandle), callbackFnHandle);
-        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     }
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return thisObjHandle.GetTaggedValue();
 }
 
