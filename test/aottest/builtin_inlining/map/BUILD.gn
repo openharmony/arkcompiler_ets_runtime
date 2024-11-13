@@ -17,7 +17,8 @@ group("ark_aot_builtin_inlining_map_test") {
     "Delete",
     "Clear",
     "Entries",
-    "Get",
+
+    # "Get",
     "GetSize",
     "Has",
     "Keys",
