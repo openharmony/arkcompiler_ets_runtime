@@ -652,16 +652,18 @@ void SharedHeap::DumpHeapSnapshotBeforeOOM([[maybe_unused]]bool isFullGC, [[mayb
 #if defined(ENABLE_DUMP_IN_FAULTLOG)
     EcmaVM *vm = thread->GetEcmaVM();
     if (vm->GetHeapProfile() != nullptr) {
-        LOG_FULL(INFO) << "GetHeapProfile nullptr";
+        LOG_ECMA(ERROR) << "SharedHeap::DumpHeapSnapshotBeforeOOM, HeapProfile is nullptr";
         return;
     }
     // Filter appfreeze when dump.
-    LOG_ECMA(INFO) << " DumpHeapSnapshotBeforeOOM, isFullGC" << isFullGC;
+    LOG_ECMA(INFO) << "SharedHeap::DumpHeapSnapshotBeforeOOM, isFullGC = " << isFullGC;
     base::BlockHookScope blockScope;
     HeapProfilerInterface *heapProfile = HeapProfilerInterface::GetInstance(vm);
     if (appfreezeCallback_ != nullptr && appfreezeCallback_(getprocpid())) {
-        LOG_ECMA(INFO) << " DumpHeapSnapshotBeforeOOM Success. ";
+        LOG_ECMA(INFO) << "SharedHeap::DumpHeapSnapshotBeforeOOM, appfreezeCallback_ success. ";
     }
+    vm->GetEcmaGCKeyStats()->SendSysEventBeforeDump("OOMDump", GetEcmaParamConfiguration().GetMaxHeapSize(),
+                                                    GetHeapObjectSize());
     DumpSnapShotOption dumpOption;
     dumpOption.dumpFormat = DumpFormat::JSON;
     dumpOption.isVmMode = true;
@@ -1517,14 +1519,15 @@ void Heap::DumpHeapSnapshotBeforeOOM([[maybe_unused]] bool isFullGC)
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
 #if defined(ENABLE_DUMP_IN_FAULTLOG)
     if (ecmaVm_->GetHeapProfile() != nullptr) {
+        LOG_ECMA(ERROR) << "Heap::DumpHeapSnapshotBeforeOOM, HeapProfile is nullptr";
         return;
     }
     // Filter appfreeze when dump.
-    LOG_ECMA(INFO) << " DumpHeapSnapshotBeforeOOM, isFullGC" << isFullGC;
+    LOG_ECMA(INFO) << " Heap::DumpHeapSnapshotBeforeOOM, isFullGC = " << isFullGC;
     base::BlockHookScope blockScope;
     HeapProfilerInterface *heapProfile = HeapProfilerInterface::GetInstance(ecmaVm_);
     if (appfreezeCallback_ != nullptr && appfreezeCallback_(getprocpid())) {
-        LOG_ECMA(INFO) << " DumpHeapSnapshotBeforeOOM Success. ";
+        LOG_ECMA(INFO) << "Heap::DumpHeapSnapshotBeforeOOM, appfreezeCallback_ success. ";
     }
 #ifdef ENABLE_HISYSEVENT
     GetEcmaGCKeyStats()->SendSysEventBeforeDump("OOMDump", GetHeapLimitSize(), GetLiveObjectSize());

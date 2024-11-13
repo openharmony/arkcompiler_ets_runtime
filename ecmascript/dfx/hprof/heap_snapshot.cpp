@@ -204,7 +204,7 @@ void HeapSnapshot::MoveNode(uintptr_t address, TaggedObject *forwardAddress, siz
             node->SetName(GenerateNodeName(forwardAddress));
         }
         if (JSTaggedValue(forwardAddress).IsString()) {
-            node->SetSelfSize(EcmaStringAccessor(forwardAddress).GetFlatStringSize());
+            node->SetSelfSize(forwardAddress->GetClass()->SizeFromJSHClass(forwardAddress));
         } else {
             node->SetSelfSize(size);
         }
@@ -942,8 +942,8 @@ Node *HeapSnapshot::GenerateStringNode(JSTaggedValue entry, size_t size, bool is
     }
     // Allocation Event will generate string node for "".
     // When we need to serialize and isFinish is true, the nodeName will be given the actual string content.
-    auto originStr = static_cast<EcmaString *>(entry.GetTaggedObject());
-    size_t selfsize = (size != 0) ? size : EcmaStringAccessor(originStr).GetFlatStringSize();
+    size_t selfsize = (size != 0) ? size :
+        entry.GetTaggedObject()->GetClass()->SizeFromJSHClass(entry.GetTaggedObject());
     const CString *nodeName = &EMPTY_STRING;
     if (isInFinish) {
         nodeName = GetString(EntryVisitor::ConvertKey(entry));
@@ -965,8 +965,8 @@ Node *HeapSnapshot::GeneratePrivateStringNode(size_t size)
         return privateStringNode_;
     }
     JSTaggedValue stringValue = vm_->GetJSThread()->GlobalConstants()->GetStringString();
-    auto originStr = static_cast<EcmaString *>(stringValue.GetTaggedObject());
-    size_t selfsize = (size != 0) ? size : EcmaStringAccessor(originStr).GetFlatStringSize();
+    size_t selfsize = (size != 0) ? size :
+        stringValue.GetTaggedObject()->GetClass()->SizeFromJSHClass(stringValue.GetTaggedObject());
     CString strContent;
     strContent.append(EntryVisitor::ConvertKey(stringValue));
     JSTaggedType addr = stringValue.GetRawData();
