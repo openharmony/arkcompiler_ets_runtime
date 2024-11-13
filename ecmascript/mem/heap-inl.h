@@ -355,6 +355,7 @@ TaggedObject *Heap::AllocateReadOnlyOrHugeObject(JSHClass *hclass, size_t size)
     } else {
         object = reinterpret_cast<TaggedObject *>(readOnlySpace_->Allocate(size));
         CHECK_OBJ_AND_THROW_OOM_ERROR(object, size, readOnlySpace_, "Heap::AllocateReadOnlyOrHugeObject");
+        ASSERT(object != nullptr);
         object->SetClass(thread_, hclass);
     }
 #if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
