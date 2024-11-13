@@ -1000,6 +1000,12 @@ bool JSValueRef::IsVector(const EcmaVM *vm)
     return JSNApiHelper::ToJSTaggedValue(this).IsJSAPIVector();
 }
 
+bool JSValueRef::IsBitVector(const EcmaVM *vm)
+{
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
+    return JSNApiHelper::ToJSTaggedValue(this).IsJSAPIBitVector();
+}
+
 bool JSValueRef::IsSendableObject(const EcmaVM *vm)
 {
     ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());

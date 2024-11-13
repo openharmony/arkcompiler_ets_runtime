@@ -601,6 +601,7 @@ public:
     bool IsTreeMap(const EcmaVM *vm);
     bool IsTreeSet(const EcmaVM *vm);
     bool IsVector(const EcmaVM *vm);
+    bool IsBitVector(const EcmaVM *vm);
     bool IsSendableObject(const EcmaVM *vm);
     bool IsJSShared(const EcmaVM *vm);
     bool IsSharedArray(const EcmaVM *vm);

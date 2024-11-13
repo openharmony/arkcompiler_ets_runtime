@@ -1534,6 +1534,7 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
             break;
         }
         case JSType::JS_API_BITVECTOR: {
+            JSAPIBitVector::Cast(*obj)->SetNativePointer(thread_, JSTaggedValue::Undefined());
             JSAPIBitVector::Cast(*obj)->SetLength(0);
             JSAPIBitVector::Cast(*obj)->SetModRecord(0);
             break;
@@ -4548,7 +4549,7 @@ JSHandle<JSAPIVectorIterator> ObjectFactory::NewJSAPIVectorIterator(const JSHand
 JSHandle<JSAPIBitVector> ObjectFactory::NewJSAPIBitVector(uint32_t capacity)
 {
     NewObjectHook();
-    JSHandle<JSFunction> builtinObj(thread_, thread_->GlobalConstants()->GetBitVectorFunction());
+    JSHandle<JSFunction> builtinObj(thread_->GetEcmaVM()->GetGlobalEnv()->GetBitVectorFunction());
     JSHandle<JSAPIBitVector> obj = JSHandle<JSAPIBitVector>(NewJSObjectByConstructor(builtinObj));
     uint32_t taggedArrayCapacity = (capacity >> JSAPIBitVector::TAGGED_VALUE_BIT_SIZE) + 1;
     auto *newBitSetVector = new std::vector<std::bitset<JSAPIBitVector::BIT_SET_LENGTH>>();
@@ -4563,7 +4564,8 @@ JSHandle<JSAPIBitVectorIterator> ObjectFactory::NewJSAPIBitVectorIterator(const 
 {
     NewObjectHook();
     const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
-    JSHandle<JSTaggedValue> proto(thread_, globalConst->GetBitVectorIteratorPrototype());
+    JSHandle<GlobalEnv> env = thread_->GetEcmaVM()->GetGlobalEnv();
+    JSHandle<JSTaggedValue> proto(env->GetBitVectorIteratorPrototype());
     JSHandle<JSHClass> hclassHandle(globalConst->GetHandledJSAPIBitVectorIteratorClass());
     hclassHandle->SetPrototype(thread_, proto);
     JSHandle<JSAPIBitVectorIterator> iter(NewJSObject(hclassHandle));
