@@ -194,7 +194,7 @@ void SparseSpace::SortSweepingRegion()
 {
     // Sweep low alive object size at first
     std::sort(sweepingList_.begin(), sweepingList_.end(), [](Region *first, Region *second) {
-        return first->AliveObject() < second->AliveObject();
+        return first->AliveObject() > second->AliveObject();
     });
 }
 
@@ -227,15 +227,6 @@ Region *SparseSpace::GetSweptRegionSafe()
     return region;
 }
 
-void SparseSpace::FreeRegionFromSpace(Region *region)
-{
-    region->ResetSwept();
-    region->MergeOldToNewRSetForCS();
-    region->MergeLocalToShareRSetForCS();
-    RemoveRegion(region);
-    DecreaseLiveObjectSize(region->AliveObject());
-}
-
 Region *SparseSpace::TryToGetSuitableSweptRegion(size_t size)
 {
     if (sweepState_ != SweepState::SWEEPING) {
@@ -248,7 +239,6 @@ Region *SparseSpace::TryToGetSuitableSweptRegion(size_t size)
     for (auto iter = sweptList_.begin(); iter != sweptList_.end(); iter++) {
         if (allocator_->MatchFreeObjectSet(*iter, size)) {
             Region *region = *iter;
-            FreeRegionFromSpace(region);
             sweptList_.erase(iter);
             return region;
         }
@@ -374,7 +364,6 @@ Region *OldSpace::TrySweepToGetSuitableRegion(size_t size)
         // and return for local space to use
         // otherwise, we add region to sweptList_.
         if (allocator_->MatchFreeObjectSet(availableRegion, size)) {
-            FreeRegionFromSpace(availableRegion);
             return availableRegion;
         } else {
             AddSweptRegionSafe(availableRegion);
@@ -385,25 +374,39 @@ Region *OldSpace::TrySweepToGetSuitableRegion(size_t size)
 
 Region *OldSpace::TryToGetExclusiveRegion(size_t size)
 {
-    LockHolder lock(lock_);
-    uintptr_t result = allocator_->LookupSuitableFreeObject(size);
-    if (result != 0) {
-        // Remove region from global old space
-        Region *region = Region::ObjectAddressToRange(result);
-        RemoveRegion(region);
-        allocator_->DetachFreeObjectSet(region);
-        DecreaseLiveObjectSize(region->AliveObject());
-        return region;
-    }
     if (sweepState_ == SweepState::SWEEPING) {
         Region *availableRegion = nullptr;
         availableRegion = TryToGetSuitableSweptRegion(size);
-        if (availableRegion != nullptr) {
-            return availableRegion;
+        if (availableRegion == nullptr) {
+            availableRegion = TrySweepToGetSuitableRegion(size);
         }
-        return TrySweepToGetSuitableRegion(size);
+        if (availableRegion) {
+            FreeRegionFromSpace(availableRegion);
+        }
+        return availableRegion;
+    } else {
+        LockHolder lock(lock_);
+        uintptr_t result = allocator_->LookupSuitableFreeObject(size);
+        if (result != 0) {
+            // Remove region from global old space
+            Region *region = Region::ObjectAddressToRange(result);
+            RemoveRegion(region);
+            allocator_->DetachFreeObjectSet(region);
+            DecreaseLiveObjectSize(region->AliveObject());
+            return region;
+        }
     }
     return nullptr;
+}
+
+void OldSpace::FreeRegionFromSpace(Region *region)
+{
+    region->ResetSwept();
+    region->MergeOldToNewRSetForCS();
+    region->MergeLocalToShareRSetForCS();
+    LockHolder holder(lock_);
+    RemoveRegion(region);
+    DecreaseLiveObjectSize(region->AliveObject());
 }
 
 void OldSpace::Merge(LocalSpace *localSpace)
