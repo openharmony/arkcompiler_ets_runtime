@@ -16,6 +16,7 @@
 #ifndef ECMASCRIPT_COMPILER_CALL_STUB_BUILDER_H
 #define ECMASCRIPT_COMPILER_CALL_STUB_BUILDER_H
 
+#include <cstddef>
 #include "ecmascript/compiler/profiler_operation.h"
 #include "ecmascript/compiler/stub_builder.h"
 
@@ -106,6 +107,36 @@ struct JSCallArgs {
         CallThisArgvWithReturnArgs callThisArgvWithReturnArgs;
     };
 };
+
+class CallCoStubBuilder : public StubBuilder {
+public:
+    explicit CallCoStubBuilder(StubBuilder *parent, EcmaOpcode op)
+        : StubBuilder(parent)
+    {
+        this->op_ = op;
+    }
+    ~CallCoStubBuilder() override = default;
+    NO_MOVE_SEMANTIC(CallCoStubBuilder);
+    NO_COPY_SEMANTIC(CallCoStubBuilder);
+    void GenerateCircuit() override {}
+    void PrepareArgs(std::vector<GateRef> &args, std::vector<GateRef> &argsFastCall);
+    GateRef CallStubDispatch();
+    std::tuple<bool, size_t, size_t> GetOpInfo();
+    static void LowerFastCall(GateRef gate, GateRef glue, CircuitBuilder &builder, GateRef func, GateRef argc,
+                              const std::vector<GateRef> &args, const std::vector<GateRef> &fastCallArgs,
+                              Variable *result, Label *exit, bool isNew);
+ 
+ private:
+    GateRef glue_ { Circuit::NullGate() };
+    GateRef actualArgc_ { Circuit::NullGate() };
+    GateRef actualArgv_ { Circuit::NullGate() };
+    GateRef func_ { Circuit::NullGate() };
+    GateRef newTarget_ { Circuit::NullGate() };
+    GateRef hirGate_ { Circuit::NullGate() };
+    EcmaOpcode op_;
+    GateRef thisObj_ { Circuit::NullGate() };
+};
+
 
 class CallStubBuilder : public StubBuilder {
 public:

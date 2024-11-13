@@ -114,6 +114,14 @@ namespace panda::ecmascript::kungfu {
     V(StringAdd)                      \
     V(Definefunc)                     \
     V(DefineField)                    \
+    V(CallArg0Stub)                   \
+    V(CallArg1Stub)                   \
+    V(CallArg2Stub)                   \
+    V(CallArg3Stub)                   \
+    V(CallThis0Stub)                  \
+    V(CallThis1Stub)                  \
+    V(CallThis2Stub)                  \
+    V(CallThis3Stub)                  \
     V(ConvertCharToInt32)             \
     V(ConvertCharToDouble)            \
     V(DeleteObjectProperty)           \

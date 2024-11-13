@@ -2567,6 +2567,134 @@ DEF_CALL_SIGNATURE(SharedGCMarkingBarrier)
     callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
 }
 
+DEF_CALL_SIGNATURE(CallArg0Stub)
+{
+    // 2 : 2 input parameters
+    CallSignature callArg0Stub("callArg0Stub", 0, 2,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    *callSign = callArg0Stub;
+    // 2 : 2 input parameters
+    std::array<VariableType, 2> params = {
+        VariableType::NATIVE_POINTER(),     // glue
+        VariableType::JS_ANY(),             // func
+    };
+    callSign->SetParameters(params.data());
+}
+
+DEF_CALL_SIGNATURE(CallArg1Stub)
+{
+    // 3 : 3 input parameters
+    CallSignature callArg1Stub("callArg1Stub", 0, 3,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    *callSign = callArg1Stub;
+    // 3 : 3 input parameters
+    std::array<VariableType, 3> params = {
+        VariableType::NATIVE_POINTER(),     // glue
+        VariableType::JS_ANY(),             // func
+        VariableType::JS_ANY()              // a0
+    };
+    callSign->SetParameters(params.data());
+}
+
+DEF_CALL_SIGNATURE(CallArg2Stub)
+{
+    // 4 : 4 input parameters
+    CallSignature callArg2Stub("callArg2Stub", 0, 4,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    *callSign = callArg2Stub;
+    // 4 : 4 input parameters
+    std::array<VariableType, 4> params = {
+        VariableType::NATIVE_POINTER(),     // glue
+        VariableType::JS_ANY(),             // func
+        VariableType::JS_ANY(),             // a0
+        VariableType::JS_ANY()              // a1
+    };
+    callSign->SetParameters(params.data());
+}
+
+DEF_CALL_SIGNATURE(CallArg3Stub)
+{
+    // 5 : 5 input parameters
+    CallSignature callArg3Stub("callArg3Stub", 0, 5,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    *callSign = callArg3Stub;
+    // 5 : 5 input parameters
+    std::array<VariableType, 5> params = {
+        VariableType::NATIVE_POINTER(),     // glue
+        VariableType::JS_ANY(),             // func
+        VariableType::JS_ANY(),             // a0
+        VariableType::JS_ANY(),             // a1
+        VariableType::JS_ANY()              // a2
+    };
+    callSign->SetParameters(params.data());
+}
+
+DEF_CALL_SIGNATURE(CallThis0Stub)
+{
+    // 3 : 3 input parameters
+    CallSignature callThis0Stub("callThis0Stub", 0, 3,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    *callSign = callThis0Stub;
+    // 3 : 3 input parameters
+    std::array<VariableType, 3> params = {
+        VariableType::NATIVE_POINTER(),     // glue
+        VariableType::JS_ANY(),             // func
+        VariableType::JS_ANY(),             // this
+    };
+    callSign->SetParameters(params.data());
+}
+
+DEF_CALL_SIGNATURE(CallThis1Stub)
+{
+    // 4 : 4 input parameters
+    CallSignature callThis1Stub("callThis1Stub", 0, 4,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    *callSign = callThis1Stub;
+    // 4 : 4 input parameters
+    std::array<VariableType, 4> params = {
+        VariableType::NATIVE_POINTER(),     // glue
+        VariableType::JS_ANY(),             // func
+        VariableType::JS_ANY(),             // this
+        VariableType::JS_ANY()              // a0
+    };
+    callSign->SetParameters(params.data());
+}
+
+DEF_CALL_SIGNATURE(CallThis2Stub)
+{
+    // 5 : 5 input parameters
+    CallSignature callThis2Stub("callThis2Stub", 0, 5,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    *callSign = callThis2Stub;
+    // 5 : 5 input parameters
+    std::array<VariableType, 5> params = {
+        VariableType::NATIVE_POINTER(),     // glue
+        VariableType::JS_ANY(),             // func
+        VariableType::JS_ANY(),             // this
+        VariableType::JS_ANY(),             // a0
+        VariableType::JS_ANY()              // a1
+    };
+    callSign->SetParameters(params.data());
+}
+
+DEF_CALL_SIGNATURE(CallThis3Stub)
+{
+    // 6 : 6 input parameters
+    CallSignature callThis3Stub("callThis3Stub", 0, 6,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    *callSign = callThis3Stub;
+    // 6 : 6 input parameters
+    std::array<VariableType, 6> params = {
+        VariableType::NATIVE_POINTER(),     // glue
+        VariableType::JS_ANY(),             // func
+        VariableType::JS_ANY(),             // this
+        VariableType::JS_ANY(),             // a0
+        VariableType::JS_ANY(),             // a1
+        VariableType::JS_ANY()              // a2
+    };
+    callSign->SetParameters(params.data());
+}
+
 DEF_CALL_SIGNATURE(CallArg0)
 {
     // 2 : 2 input parameters
