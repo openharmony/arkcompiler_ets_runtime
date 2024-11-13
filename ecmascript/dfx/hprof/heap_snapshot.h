@@ -540,6 +540,7 @@ private:
     CVector<uint32_t> traceNodeIndex_;
     EntryIdMap* entryIdMap_;
     Chunk *chunk_ {nullptr};
+    friend class HeapSnapShotFriendTest;
 };
 
 class EntryVisitor {

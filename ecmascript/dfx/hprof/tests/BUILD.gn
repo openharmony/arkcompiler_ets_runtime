@@ -21,6 +21,7 @@ test_js_path = "//arkcompiler/ets_runtime/ecmascript/dfx/hprof/tests/js_files/"
 test_js_files = [
   "heapdump",
   "allocation",
+  "heap_snapshot",
 ]
 
 foreach(file, test_js_files) {
@@ -46,6 +47,44 @@ host_unittest_action("HeapDumpTest") {
   sources = [
     # test file
     "heap_dump_test.cpp",
+  ]
+
+  configs = [ "../../../../:ecma_test_config" ]
+
+  deps = [
+    "$ark_third_party_root/icu/icu4c:shared_icui18n",
+    "$ark_third_party_root/icu/icu4c:shared_icuuc",
+    "../../../../:libark_jsruntime_test",
+    sdk_libc_secshared_dep,
+  ]
+
+  foreach(file, test_js_files) {
+    deps += [ ":gen_${file}_abc" ]
+  }
+
+  if (is_ohos && is_standard_system) {
+    test_abc_dir = "/data/test/"
+  } else {
+    test_abc_dir = rebase_path(target_out_dir + "/abc_files/")
+  }
+
+  test_js_dir = rebase_path(test_js_path)
+  defines = [
+    "HPROF_TEST_JS_FILES_DIR=\"${test_js_dir}\"",
+    "HPROF_TEST_ABC_FILES_DIR=\"${test_abc_dir}\"",
+  ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("HeapSnapShotTest") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "heap_snapshot_test.cpp",
   ]
 
   configs = [ "../../../../:ecma_test_config" ]
@@ -195,6 +234,7 @@ group("unittest") {
     ":HProfTest",
     ":HeapDumpTest",
     ":HeapSamplingTest",
+    ":HeapSnapShotTest",
     ":HeapTrackerFirstTest",
     ":HeapTrackerSecondTest",
     ":HeapTrackerThirdTest",
@@ -207,6 +247,7 @@ group("host_unittest") {
     ":HProfTestAction",
     ":HeapDumpTestAction",
     ":HeapSamplingTestAction",
+    ":HeapSnapShotTestAction",
     ":HeapTrackerFirstTestAction",
     ":HeapTrackerSecondTestAction",
     ":HeapTrackerThirdTestAction",
@@ -216,6 +257,7 @@ group("host_unittest") {
       ":HProfTestAction",
       ":HeapDumpTestAction",
       ":HeapSamplingTestAction",
+      ":HeapSnapShotTestAction",
       ":HeapTrackerFirstTestAction",
       ":HeapTrackerSecondTestAction",
       ":HeapTrackerThirdTestAction",
