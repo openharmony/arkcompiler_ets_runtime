@@ -1,0 +1,8 @@
+{
+    "name": "MUTANT_TAGGED_ARRAY",
+    "offsets": [],
+    "end_offset": 0,
+    "parents": [
+        "TAGGED_ARRAY"
+    ]
+}

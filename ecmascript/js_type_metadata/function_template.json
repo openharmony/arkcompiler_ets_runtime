@@ -1,0 +1,24 @@
+{
+    "name": "FUNCTION_TEMPLATE",
+    "offsets": [
+        {
+            "name": "Method",
+            "offset": 0,
+            "size": 8
+        },
+        {
+            "name": "Module",
+            "offset": 8,
+            "size": 8
+        },
+        {
+            "name": "RawProfileTypeInfo",
+            "offset": 16,
+            "size": 8
+        }
+    ],
+    "end_offset": 32,
+    "parents": [
+        "TAGGED_OBJECT"
+    ]
+}

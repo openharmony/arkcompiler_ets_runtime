@@ -1,0 +1,19 @@
+{
+    "name": "RESOLVEDBINDING_RECORD",
+    "offsets": [
+        {
+            "name": "Module",
+            "offset": 0,
+            "size": 8
+        },
+        {
+            "name": "BindingName",
+            "offset": 8,
+            "size": 8
+        }
+    ],
+    "end_offset": 16,
+    "parents": [
+        "RECORD"
+    ]
+}

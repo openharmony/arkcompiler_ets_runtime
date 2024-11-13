@@ -1,0 +1,19 @@
+{
+    "name": "ASYNC_ITERATOR_RECORD",
+    "offsets": [
+        {
+            "name": "Iterator",
+            "offset": 0,
+            "size": 8
+        },
+        {
+            "name": "NextMethod",
+            "offset": 8,
+            "size": 8
+        }
+    ],
+    "end_offset": 24,
+    "parents": [
+        "RECORD"
+    ]
+}

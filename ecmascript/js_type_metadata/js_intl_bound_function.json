@@ -1,0 +1,24 @@
+{
+    "name": "JS_INTL_BOUND_FUNCTION",
+    "offsets": [
+        {
+            "name": "NumberFormat",
+            "offset": 0,
+            "size": 8
+        },
+        {
+            "name": "DateTimeFormat",
+            "offset": 8,
+            "size": 8
+        },
+        {
+            "name": "Collator",
+            "offset": 16,
+            "size": 8
+        }
+    ],
+    "end_offset": 24,
+    "parents": [
+        "JS_FUNCTION"
+    ]
+}

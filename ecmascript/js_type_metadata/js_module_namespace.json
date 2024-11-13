@@ -1,0 +1,24 @@
+{
+    "name": "JS_MODULE_NAMESPACE",
+    "offsets": [
+        {
+            "name": "Module",
+            "offset": 0,
+            "size": 8
+        },
+        {
+            "name": "Exports",
+            "offset": 8,
+            "size": 8
+        },
+        {
+            "name": "DeregisterProcession",
+            "offset": 16,
+            "size": 8
+        }
+    ],
+    "end_offset": 24,
+    "parents": [
+        "JS_OBJECT"
+    ]
+}

@@ -1,0 +1,19 @@
+{
+    "name": "TREE_STRING",
+    "offsets": [
+        {
+            "name": "First",
+            "offset": 0,
+            "size": 8
+        },
+        {
+            "name": "Second",
+            "offset": 8,
+            "size": 8
+        }
+    ],
+    "end_offset": 16,
+    "parents": [
+        "ECMA_STRING"
+    ]
+}

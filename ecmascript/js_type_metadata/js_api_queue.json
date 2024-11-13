@@ -1,0 +1,14 @@
+{
+    "name": "JS_API_QUEUE",
+    "offsets": [
+        {
+            "name": "Length",
+            "offset": 0,
+            "size": 8
+        }
+    ],
+    "end_offset": 16,
+    "parents": [
+        "JS_OBJECT"
+    ]
+}

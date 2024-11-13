@@ -1,0 +1,8 @@
+{
+    "name": "JS_SHARED_INT16_ARRAY",
+    "offsets": [],
+    "end_offset": 8,
+    "parents": [
+        "JS_TYPED_ARRAY"
+    ]
+}

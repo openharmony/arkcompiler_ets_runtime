@@ -1,0 +1,24 @@
+{
+    "name": "JS_API_LIGHT_WEIGHT_MAP",
+    "offsets": [
+        {
+            "name": "Hashes",
+            "offset": 0,
+            "size": 8
+        },
+        {
+            "name": "Keys",
+            "offset": 8,
+            "size": 8
+        },
+        {
+            "name": "Values",
+            "offset": 16,
+            "size": 8
+        }
+    ],
+    "end_offset": 32,
+    "parents": [
+        "JS_OBJECT"
+    ]
+}

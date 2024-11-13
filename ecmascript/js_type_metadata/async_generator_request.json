@@ -1,0 +1,19 @@
+{
+    "name": "ASYNC_GENERATOR_REQUEST",
+    "offsets": [
+        {
+            "name": "Completion",
+            "offset": 0,
+            "size": 8
+        },
+        {
+            "name": "Capability",
+            "offset": 8,
+            "size": 8
+        }
+    ],
+    "end_offset": 16,
+    "parents": [
+        "RECORD"
+    ]
+}
