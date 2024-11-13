@@ -45,6 +45,8 @@ Region *HeapRegionAllocator::AllocateAlignedRegion(Space *space, size_t capacity
         if (thread != nullptr && thread->GetEcmaVM()->IsInitialized()) {
             Heap *localHeap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
             if (!localHeap->InGC()) {
+                LOG_ECMA_MEM(INFO)
+                    << "HeapRegionAllocator::AllocateAlignedRegion, is inGC and not DumpHeapSnapshotBeforeOOM";
                 localHeap->DumpHeapSnapshotBeforeOOM();
             }
             heap->ThrowOutOfMemoryErrorForDefault(thread, DEFAULT_REGION_SIZE,
