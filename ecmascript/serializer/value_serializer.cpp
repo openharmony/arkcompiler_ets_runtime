@@ -27,6 +27,7 @@ bool ValueSerializer::CheckObjectCanSerialize(TaggedObject *object, bool &findSh
         return true;
     }
     switch (type) {
+        case JSType::JS_PRIMITIVE_REF:
         case JSType::JS_ERROR:
         case JSType::JS_EVAL_ERROR:
         case JSType::JS_RANGE_ERROR:
