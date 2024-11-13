@@ -94,25 +94,19 @@ public:
 
     int FindElementWithCache(const JSThread *thread, JSHClass *cls, JSTaggedValue key, int propertiesNumber);
     int BinarySearch(JSTaggedValue key, int propertiesNumber);
-    void GetAllKeys(const JSThread *thread, int end, int offset, TaggedArray *keyArray,
-                    const JSHandle<JSObject> object);
+    void GetAllKeys(const JSThread *thread, int end, int offset, TaggedArray *keyArray);
     void GetAllKeysForSerialization(int end, std::vector<JSTaggedValue> &keyVector);
     void GetAllKeysByFilter(const JSThread *thread, uint32_t numberOfProps, uint32_t &keyArrayEffectivelength,
-        TaggedArray *keyArray, const JSHandle<JSObject> object, uint32_t filter);
-    std::pair<uint32_t, uint32_t> GetNumOfEnumKeys(int end, const JSObject *object) const;
+                            TaggedArray *keyArray, uint32_t filter);
+    std::pair<uint32_t, uint32_t> GetNumOfEnumKeys(int end) const;
     void GetAllEnumKeys(JSThread *thread, int end, int offset, JSHandle<TaggedArray> keyArray, uint32_t *keys,
-                        JSHandle<TaggedQueue> shadowQueue, const JSHandle<JSObject> object,
-                        int32_t lastLength);
-    void GetAllEnumKeys(JSThread *thread, int end, int offset, JSHandle<TaggedArray> keyArray, uint32_t *keys,
-                        const JSHandle<JSObject> object);
+                        JSHandle<TaggedQueue> shadowQueue, int32_t lastLength);
+    void GetAllEnumKeys(JSThread *thread, int end, int offset, JSHandle<TaggedArray> keyArray, uint32_t *keys);
 
     void DumpFieldIndexByPGO(int index, pgo::HClassLayoutDesc* desc);
     bool UpdateFieldIndexByPGO(int index, pgo::HClassLayoutDesc* desc);
     CString GetSymbolKeyString(JSTaggedValue key);
     DECL_DUMP()
-
-private:
-    bool IsUninitializedProperty(const JSObject* object, uint32_t index) const;
 };
 }  // namespace panda::ecmascript
 

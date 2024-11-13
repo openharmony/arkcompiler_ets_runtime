@@ -785,9 +785,9 @@ inline GateRef StubBuilder::TaggedIsPrototypeHandler(GateRef x)
     return env_->GetBuilder()->TaggedIsPrototypeHandler(x);
 }
 
-inline GateRef StubBuilder::TaggedIsStoreTSHandler(GateRef x)
+inline GateRef StubBuilder::TaggedIsStoreAOTHandler(GateRef x)
 {
-    return env_->GetBuilder()->TaggedIsStoreTSHandler(x);
+    return env_->GetBuilder()->TaggedIsStoreAOTHandler(x);
 }
 
 inline GateRef StubBuilder::TaggedIsTransWithProtoHandler(GateRef x)
@@ -1735,15 +1735,15 @@ inline GateRef StubBuilder::GetPrototypeHandlerHandlerInfo(GateRef object)
     return Load(VariableType::JS_ANY(), object, handlerInfoOffset);
 }
 
-inline GateRef StubBuilder::GetStoreTSHandlerHolder(GateRef object)
+inline GateRef StubBuilder::GetStoreAOTHandlerHolder(GateRef object)
 {
-    GateRef holderOffset = IntPtr(StoreTSHandler::HOLDER_OFFSET);
+    GateRef holderOffset = IntPtr(StoreAOTHandler::HOLDER_OFFSET);
     return Load(VariableType::JS_ANY(), object, holderOffset);
 }
 
-inline GateRef StubBuilder::GetStoreTSHandlerHandlerInfo(GateRef object)
+inline GateRef StubBuilder::GetStoreAOTHandlerHandlerInfo(GateRef object)
 {
-    GateRef handlerInfoOffset = IntPtr(StoreTSHandler::HANDLER_INFO_OFFSET);
+    GateRef handlerInfoOffset = IntPtr(StoreAOTHandler::HANDLER_INFO_OFFSET);
     return Load(VariableType::JS_ANY(), object, handlerInfoOffset);
 }
 
@@ -2173,15 +2173,15 @@ inline void StubBuilder::SetIsProtoTypeToHClass(GateRef glue, GateRef hClass, Ga
     SetBitFieldToHClass(glue, hClass, newVal);
 }
 
-inline void StubBuilder::SetIsTS(GateRef glue, GateRef hClass, GateRef value)
+inline void StubBuilder::SetIsAOT(GateRef glue, GateRef hClass, GateRef value)
 {
     GateRef oldValue = ZExtInt1ToInt32(value);
     GateRef bitfield = GetBitFieldFromHClass(hClass);
     GateRef mask = Int32LSL(
-        Int32((1LU << JSHClass::IsTSBit::SIZE) - 1),
-        Int32(JSHClass::IsTSBit::START_BIT));
+        Int32((1LU << JSHClass::IsAOTBit::SIZE) - 1),
+        Int32(JSHClass::IsAOTBit::START_BIT));
     GateRef newVal = Int32Or(Int32And(bitfield, Int32Not(mask)),
-        Int32LSL(oldValue, Int32(JSHClass::IsTSBit::START_BIT)));
+        Int32LSL(oldValue, Int32(JSHClass::IsAOTBit::START_BIT)));
     SetBitFieldToHClass(glue, hClass, newVal);
 }
 
@@ -2246,12 +2246,12 @@ inline GateRef StubBuilder::HasDeleteProperty(GateRef hClass)
     return env_->GetBuilder()->HasDeleteProperty(hClass);
 }
 
-inline GateRef StubBuilder::IsTSHClass(GateRef hClass)
+inline GateRef StubBuilder::IsAOTHClass(GateRef hClass)
 {
     GateRef bitfield = Load(VariableType::INT32(), hClass, IntPtr(JSHClass::BIT_FIELD_OFFSET));
     return Int32NotEqual(Int32And(Int32LSR(bitfield,
-        Int32(JSHClass::IsTSBit::START_BIT)),
-        Int32((1LU << JSHClass::IsTSBit::SIZE) - 1)),
+        Int32(JSHClass::IsAOTBit::START_BIT)),
+        Int32((1LU << JSHClass::IsAOTBit::SIZE) - 1)),
         Int32(0));
 }
 

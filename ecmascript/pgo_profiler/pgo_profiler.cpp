@@ -1105,13 +1105,13 @@ bool PGOProfiler::DumpICByNameWithHandler(ApEntityId abcId, const CString &recor
         auto accessorMethodId = prototypeHandler->GetAccessorMethodId();
         return AddObjectInfo(
             abcId, recordName, methodId, bcOffset, hclass, holderHClass, holderHClass, accessorMethodId);
-    } else if (secondValue.IsStoreTSHandler()) {
-        StoreTSHandler *storeTSHandler = StoreTSHandler::Cast(secondValue.GetTaggedObject());
-        auto cellValue = storeTSHandler->GetProtoCell();
+    } else if (secondValue.IsStoreAOTHandler()) {
+        StoreAOTHandler *storeAOTHandler = StoreAOTHandler::Cast(secondValue.GetTaggedObject());
+        auto cellValue = storeAOTHandler->GetProtoCell();
         if (CheckProtoChangeMarker(cellValue)) {
             return false;
         }
-        auto holder = storeTSHandler->GetHolder();
+        auto holder = storeAOTHandler->GetHolder();
         auto holderHClass = holder.GetTaggedObject()->GetClass();
         return AddObjectInfo(abcId, recordName, methodId, bcOffset, hclass, holderHClass, holderHClass);
     }

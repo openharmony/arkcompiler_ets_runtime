@@ -117,7 +117,6 @@ void GetAllKeysCommon(JSThread *thread, bool enumKeys = false)
     PropertyAttributes defaultAttr = PropertyAttributes::Default();
     JSHandle<JSTaggedValue> key3(factory->NewFromASCII("3"));
 
-    JSHandle<JSObject> objectHandle = factory->NewEmptyJSObject();
     JSHandle<TaggedArray> keyArray = factory->NewTaggedArray(infoLength);
     JSHandle<LayoutInfo> layoutInfoHandle = factory->CreateLayoutInfo(infoLength);
     EXPECT_TRUE(*layoutInfoHandle != nullptr);
@@ -138,11 +137,11 @@ void GetAllKeysCommon(JSThread *thread, bool enumKeys = false)
     }
     if (enumKeys) {
         uint32_t keys = 0;
-        layoutInfoHandle->GetAllEnumKeys(thread, infoLength, 0, keyArray, &keys, objectHandle); // 0: offset
+        layoutInfoHandle->GetAllEnumKeys(thread, infoLength, 0, keyArray, &keys); // 0: offset
         EXPECT_EQ(keyArray->Get(0), key3.GetTaggedValue());
         EXPECT_EQ(keys, 1U);
     } else {
-        layoutInfoHandle->GetAllKeys(thread, infoLength, 0, *keyArray, objectHandle); // 0: offset
+        layoutInfoHandle->GetAllKeys(thread, infoLength, 0, *keyArray); // 0: offset
         layoutInfoHandle->GetAllKeysForSerialization(infoLength, keyVector);
         EXPECT_EQ(keyArray->GetLength(), keyVector.size());
 

@@ -571,7 +571,7 @@ CString *HeapSnapshot::GenerateNodeName(TaggedObject *entry)
             case JSType::TRANS_WITH_PROTO_HANDLER:
                 return GetString("TransWithProtoHandler");
             case JSType::STORE_TS_HANDLER:
-                return GetString("StoreTSHandler");
+                return GetString("StoreAOTHandler");
             case JSType::PROTO_CHANGE_MARKER:
                 return GetString("ProtoChangeMarker");
             case JSType::MARKER_CELL:

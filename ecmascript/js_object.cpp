@@ -487,7 +487,7 @@ void JSObject::GetAllKeys(const JSThread *thread, const JSHandle<JSObject> &obj,
         int end = static_cast<int>(obj->GetJSHClass()->NumberOfProps());
         if (end > 0) {
             LayoutInfo::Cast(obj->GetJSHClass()->GetLayout().GetTaggedObject())
-                ->GetAllKeys(thread, end, offset, *keyArray, obj);
+                ->GetAllKeys(thread, end, offset, *keyArray);
         }
         return;
     }
@@ -511,7 +511,7 @@ void JSObject::GetAllKeysByFilter(const JSThread *thread, const JSHandle<JSObjec
         uint32_t numberOfProps = obj->GetJSHClass()->NumberOfProps();
         if (numberOfProps > 0) {
             LayoutInfo::Cast(obj->GetJSHClass()->GetLayout().GetTaggedObject())->
-                GetAllKeysByFilter(thread, numberOfProps, keyArrayEffectivelength, *keyArray, obj, filter);
+                GetAllKeysByFilter(thread, numberOfProps, keyArrayEffectivelength, *keyArray, filter);
         }
         return;
     }
@@ -569,7 +569,7 @@ JSHandle<TaggedArray> JSObject::GetAllEnumKeys(JSThread *thread, const JSHandle<
             int end = static_cast<int>(jsHclass->NumberOfProps());
             JSHandle<TaggedArray> keyArray = factory->NewTaggedArray(numOfKeys + EnumCache::ENUM_CACHE_HEADER_SIZE);
             LayoutInfo::Cast(jsHclass->GetLayout().GetTaggedObject())
-                ->GetAllEnumKeys(thread, end, EnumCache::ENUM_CACHE_HEADER_SIZE, keyArray, keys, obj);
+                ->GetAllEnumKeys(thread, end, EnumCache::ENUM_CACHE_HEADER_SIZE, keyArray, keys);
             JSObject::SetEnumCacheKind(thread, *keyArray, EnumCacheKind::ONLY_OWN_KEYS);
             if (!JSTaggedValue(jsHclass).IsInSharedHeap()) {
                 jsHclass->SetEnumCache(thread, keyArray.GetTaggedValue());
@@ -596,7 +596,7 @@ uint32_t JSObject::GetAllEnumKeys(JSThread *thread, const JSHandle<JSObject> &ob
         int end = static_cast<int>(jsHclass->NumberOfProps());
         if (end > 0) {
             LayoutInfo::Cast(jsHclass->GetLayout().GetTaggedObject())
-                ->GetAllEnumKeys(thread, end, offset, keyArray, &keys, obj);
+                ->GetAllEnumKeys(thread, end, offset, keyArray, &keys);
         }
         return keys;
     }
@@ -779,7 +779,7 @@ std::pair<uint32_t, uint32_t> JSObject::GetNumberOfEnumKeys() const
         int end = static_cast<int>(GetJSHClass()->NumberOfProps());
         if (end > 0) {
             LayoutInfo *layout = LayoutInfo::Cast(GetJSHClass()->GetLayout().GetTaggedObject());
-            return layout->GetNumOfEnumKeys(end, this);
+            return layout->GetNumOfEnumKeys(end);
         }
         return std::make_pair(0, 0);
     }
@@ -1710,7 +1710,7 @@ void JSObject::CollectEnumKeysAlongProtoChain(JSThread *thread, const JSHandle<J
         int end = static_cast<int>(jsHclass->NumberOfProps());
         if (end > 0) {
             LayoutInfo::Cast(jsHclass->GetLayout().GetTaggedObject())
-                ->GetAllEnumKeys(thread, end, *keys, keyArray, keys, shadowQueue, obj, lastLength);
+                ->GetAllEnumKeys(thread, end, *keys, keyArray, keys, shadowQueue, lastLength);
         }
         return;
     }
@@ -2766,7 +2766,7 @@ JSHandle<JSObject> JSObject::CreateObjectFromProperties(const JSThread *thread, 
             hclass = factory->GetObjectLiteralHClass(properties, propsLen);
             isLiteral = true;
         }
-        if (hclass->IsTS()) {
+        if (hclass->IsAOT()) {
             if (CheckPropertiesForRep(properties, propsLen, hclass)) {
                 return CreateObjectFromPropertiesByIHClass(thread, properties, propsLen, hclass);
             } else if (!isLiteral) {

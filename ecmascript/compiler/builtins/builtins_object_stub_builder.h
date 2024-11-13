@@ -42,8 +42,7 @@ BUILTINS_WITH_OBJECT_STUB_BUILDER(DECLARE_BUILTINS_OBJECT_STUB_BUILDER)
                         GateRef hir = Circuit::NullGate());
 
 private:
-    GateRef GetNumKeysFromLayoutInfo(GateRef object, GateRef end, GateRef layoutInfo);
-    GateRef IsUninitializedProperty(GateRef object, GateRef index, GateRef layoutInfo);
+    GateRef GetNumKeysFromLayoutInfo(GateRef end, GateRef layoutInfo);
     GateRef GetNumKeysFromDictionary(GateRef array);
     GateRef CopyFromEnumCache(GateRef glue, GateRef elements);
     GateRef GetAllEnumKeys(GateRef glue, GateRef obj);
@@ -55,7 +54,7 @@ private:
     GateRef TestIntegrityLevel(GateRef glue, GateRef obj, GateRef level, Label *slowPath);
     GateRef ObjectSetPrototype(GateRef glue, GateRef obj, GateRef proto);
     GateRef IsNotSlowObjectKey(GateRef obj);
-    void LayoutInfoGetAllEnumKeys(GateRef end, GateRef offset, GateRef array, GateRef object, GateRef layoutInfo);
+    void LayoutInfoGetAllEnumKeys(GateRef end, GateRef offset, GateRef array, GateRef layoutInfo);
     void AssignEnumElementProperty(Variable *res, Label *funcExit, GateRef toAssign, GateRef source);
     void LayoutInfoAssignAllEnumProperty(Variable *res, Label *funcExit, GateRef toAssign, GateRef source);
     void NameDictionaryAssignAllEnumProperty(Variable *res, Label *funcExit, GateRef toAssign, GateRef source,

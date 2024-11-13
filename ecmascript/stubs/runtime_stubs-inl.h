@@ -1142,7 +1142,7 @@ JSTaggedValue RuntimeStubs::RuntimeSetClassInheritanceRelationship(JSThread *thr
 
     // ctor -> hclass -> EnableProtoChangeMarker
     auto constructor = JSFunction::Cast(ctor.GetTaggedValue().GetTaggedObject());
-    if (constructor->GetClass()->IsTS()) {
+    if (constructor->GetClass()->IsAOT()) {
         JSHClass::EnableProtoChangeMarker(thread, JSHandle<JSHClass>(thread, constructor->GetClass()));
         // prototype -> hclass -> EnableProtoChangeMarker
         JSHClass::EnableProtoChangeMarker(thread,
@@ -1155,13 +1155,13 @@ JSTaggedValue RuntimeStubs::RuntimeSetClassInheritanceRelationship(JSThread *thr
     JSTaggedValue protoOrHClass = JSHandle<JSFunction>(ctor)->GetProtoOrHClass();
     if (protoOrHClass.IsJSHClass()) {
         JSHClass *ihc = JSHClass::Cast(protoOrHClass.GetTaggedObject());
-        if (ihc->IsTS()) {
+        if (ihc->IsAOT()) {
             JSHandle<JSHClass> ihcHandle(thread, ihc);
             JSHClass::EnableProtoChangeMarker(thread, ihcHandle);
         }
     } else {
         JSHandle<JSObject> protoHandle(thread, protoOrHClass);
-        if (protoHandle->GetJSHClass()->IsTS()) {
+        if (protoHandle->GetJSHClass()->IsAOT()) {
             JSHClass::EnablePHCProtoChangeMarker(thread, JSHandle<JSHClass>(thread, protoHandle->GetJSHClass()));
         }
     }
@@ -2563,7 +2563,7 @@ JSTaggedValue RuntimeStubs::RuntimeDefineGetterSetterByValue(JSThread *thread, c
     JSObject::DefineOwnProperty(thread, obj, propKey, desc);
     auto holderTraHClass = obj->GetJSHClass();
     if (receiverHClass != holderTraHClass) {
-        if (holderTraHClass->IsTS()) {
+        if (holderTraHClass->IsAOT()) {
             JSHandle<JSHClass> phcHandle(thread, holderTraHClass);
             JSHClass::EnablePHCProtoChangeMarker(thread, phcHandle);
         }

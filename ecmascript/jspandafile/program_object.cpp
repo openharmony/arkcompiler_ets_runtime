@@ -172,7 +172,7 @@ void ConstantPool::MergeObjectLiteralHClassCache(EcmaVM *vm, const JSHandle<JSTa
         }
         auto curValue = curCachedArray->Get(i);
         // If already merged, stop to merge.
-        if (curValue.IsJSHClass() && JSHClass::Cast(curValue.GetTaggedObject())->IsTS()) {
+        if (curValue.IsJSHClass() && JSHClass::Cast(curValue.GetTaggedObject())->IsAOT()) {
             break;
         }
         JSHClass::Cast(newValue.GetTaggedObject())->SetPrototype(thread, prototype);

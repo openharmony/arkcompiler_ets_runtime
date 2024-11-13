@@ -28,8 +28,7 @@ void LayoutInfo::Initialize(const JSThread *thread, int num)
     }
 }
 
-void LayoutInfo::GetAllKeys(const JSThread *thread, int end, int offset, TaggedArray *keyArray,
-                            const JSHandle<JSObject> object)
+void LayoutInfo::GetAllKeys(const JSThread *thread, int end, int offset, TaggedArray *keyArray)
 {
     ASSERT(end <= NumberOfElements());
     ASSERT_PRINT(offset + end <= static_cast<int>(keyArray->GetLength()),
@@ -40,9 +39,6 @@ void LayoutInfo::GetAllKeys(const JSThread *thread, int end, int offset, TaggedA
     for (int i = 0; i < end; i++) {
         JSTaggedValue key = GetKey(i);
         if (key.IsString()) {
-            if (IsUninitializedProperty(*object, i)) {
-                continue;
-            }
             keyArray->Set(thread, enumKeys + offset, key);
             enumKeys++;
         }
@@ -59,7 +55,7 @@ void LayoutInfo::GetAllKeys(const JSThread *thread, int end, int offset, TaggedA
     }
 }
 void LayoutInfo::GetAllKeysByFilter(const JSThread *thread, uint32_t numberOfProps, uint32_t &keyArrayEffectivelength,
-                                    TaggedArray *keyArray, const JSHandle<JSObject> object, uint32_t filter)
+                                    TaggedArray *keyArray, uint32_t filter)
 {
     ASSERT(numberOfProps <= static_cast<uint32_t>(NumberOfElements()));
     ASSERT_PRINT(keyArrayEffectivelength + numberOfProps <= keyArray->GetLength(),
@@ -70,9 +66,6 @@ void LayoutInfo::GetAllKeysByFilter(const JSThread *thread, uint32_t numberOfPro
     for (uint32_t i = 0; i < numberOfProps; i++) {
         JSTaggedValue key = GetKey(static_cast<int>(i));
         if (key.IsString() && !(filter & NATIVE_KEY_SKIP_STRINGS)) {
-            if (IsUninitializedProperty(*object, i)) {
-                continue;
-            }
             PropertyAttributes attr = GetAttr(static_cast<int>(i));
             bool bIgnore = FilterHelper::IgnoreKeyByFilter<PropertyAttributes>(attr, filter);
             if (bIgnore) {
@@ -111,7 +104,7 @@ void LayoutInfo::GetAllKeysForSerialization(int end, std::vector<JSTaggedValue> 
     }
 }
 
-std::pair<uint32_t, uint32_t> LayoutInfo::GetNumOfEnumKeys(int end, const JSObject *object) const
+std::pair<uint32_t, uint32_t> LayoutInfo::GetNumOfEnumKeys(int end) const
 {
     ASSERT(end <= NumberOfElements());
     uint32_t enumKeys = 0;
@@ -119,9 +112,6 @@ std::pair<uint32_t, uint32_t> LayoutInfo::GetNumOfEnumKeys(int end, const JSObje
     for (int i = 0; i < end; i++) {
         JSTaggedValue key = GetKey(i);
         if (!key.IsString()) {
-            continue;
-        }
-        if (IsUninitializedProperty(object, i)) {
             continue;
         }
         if (GetAttr(i).IsEnumerable()) {
@@ -134,8 +124,7 @@ std::pair<uint32_t, uint32_t> LayoutInfo::GetNumOfEnumKeys(int end, const JSObje
 }
 
 void LayoutInfo::GetAllEnumKeys(JSThread *thread, int end, int offset, JSHandle<TaggedArray> keyArray,
-                                uint32_t *keys, JSHandle<TaggedQueue> shadowQueue, const JSHandle<JSObject> object,
-                                int32_t lastLength)
+                                uint32_t *keys, JSHandle<TaggedQueue> shadowQueue, int32_t lastLength)
 {
     ASSERT(end <= NumberOfElements());
     ASSERT_PRINT(offset <= static_cast<int>(keyArray->GetLength()),
@@ -145,9 +134,6 @@ void LayoutInfo::GetAllEnumKeys(JSThread *thread, int end, int offset, JSHandle<
     for (int i = 0; i < end; i++) {
         keyHandle.Update(GetKey(i));
         if (!keyHandle->IsString()) {
-            continue;
-        }
-        if (IsUninitializedProperty(*object, i)) {
             continue;
         }
         if (GetAttr(i).IsEnumerable()) {
@@ -164,8 +150,7 @@ void LayoutInfo::GetAllEnumKeys(JSThread *thread, int end, int offset, JSHandle<
     *keys += enumKeys;
 }
 
-void LayoutInfo::GetAllEnumKeys(JSThread *thread, int end, int offset, JSHandle<TaggedArray> keyArray,
-                                uint32_t *keys, const JSHandle<JSObject> object)
+void LayoutInfo::GetAllEnumKeys(JSThread *thread, int end, int offset, JSHandle<TaggedArray> keyArray, uint32_t *keys)
 {
     ASSERT(end <= NumberOfElements());
     ASSERT_PRINT(offset <= static_cast<int>(keyArray->GetLength()),
@@ -175,25 +160,11 @@ void LayoutInfo::GetAllEnumKeys(JSThread *thread, int end, int offset, JSHandle<
     for (int i = 0; i < end; i++) {
         keyHandle.Update(GetKey(i));
         if (keyHandle->IsString() && GetAttr(i).IsEnumerable()) {
-            if (IsUninitializedProperty(*object, i)) {
-                continue;
-            }
             keyArray->Set(thread, enumKeys + offset, keyHandle);
             enumKeys++;
         }
     }
     *keys += enumKeys;
-}
-
-bool LayoutInfo::IsUninitializedProperty(const JSObject *object, uint32_t index) const
-{
-    PropertyAttributes attr = GetAttr(index);
-    if (!attr.IsInlinedProps()) {
-        return false;
-    }
-
-    JSTaggedValue val = object->GetPropertyInlinedPropsWithRep(attr.GetOffset(), attr);
-    return val.IsHole();
 }
 
 CString LayoutInfo::GetSymbolKeyString(JSTaggedValue key)
@@ -214,7 +185,7 @@ CString LayoutInfo::GetSymbolKeyString(JSTaggedValue key)
     if (str != "method") {
         return "";
     }
-    return str + '_' + ToCString(id);
+    return str.append("_").append(ToCString(id));
 }
 
 void LayoutInfo::DumpFieldIndexByPGO(int index, pgo::HClassLayoutDesc* desc)

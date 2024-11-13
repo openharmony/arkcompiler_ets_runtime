@@ -45,7 +45,7 @@ void ICRuntime::UpdateLoadHandler(const ObjectOperator &op, JSHandle<JSTaggedVal
     // When a transition occurs without the shadow property, AOT does not trigger the
     // notifyprototypechange behavior, so for the case where the property does not
     // exist and the Hclass is AOT, IC needs to be abandoned.
-    if (hclass->IsTS() && !op.IsFound()) {
+    if (hclass->IsAOT() && !op.IsFound()) {
         return;
     }
     if (op.IsElement()) {

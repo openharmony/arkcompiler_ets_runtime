@@ -431,10 +431,10 @@ void NewObjectStubBuilder::NewJSObject(Variable *result, Label *exit, GateRef hc
     {
         StoreHClass(glue_, result->ReadVariable(), hclass);
         DEFVARIABLE(initValue, VariableType::JS_ANY(), Undefined());
-        Label isTS(env);
+        Label isAOT(env);
         Label initialize(env);
-        BRANCH(IsTSHClass(hclass), &isTS, &initialize);
-        Bind(&isTS);
+        BRANCH(IsAOTHClass(hclass), &isAOT, &initialize);
+        Bind(&isAOT);
         {
             // The object which created by AOT speculative hclass, should be initialized as hole, means does not exist,
             // to follow ECMA spec.
@@ -474,10 +474,10 @@ void NewObjectStubBuilder::NewSObject(Variable *result, Label *exit, GateRef hcl
     {
         StoreHClass(glue_, result->ReadVariable(), hclass);
         DEFVARIABLE(initValue, VariableType::JS_ANY(), Undefined());
-        Label isTS(env);
+        Label isAOT(env);
         Label initialize(env);
-        BRANCH(IsTSHClass(hclass), &isTS, &initialize);
-        Bind(&isTS);
+        BRANCH(IsAOTHClass(hclass), &isAOT, &initialize);
+        Bind(&isAOT);
         {
             // The object which created by AOT speculative hclass, should be initialized as hole, means does not exist,
             // to follow ECMA spec.

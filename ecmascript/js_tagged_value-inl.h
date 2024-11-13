@@ -978,9 +978,9 @@ inline bool JSTaggedValue::IsTransWithProtoHandler() const
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsTransWithProtoHandler();
 }
 
-inline bool JSTaggedValue::IsStoreTSHandler() const
+inline bool JSTaggedValue::IsStoreAOTHandler() const
 {
-    return IsHeapObject() && GetTaggedObject()->GetClass()->IsStoreTSHandler();
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsStoreAOTHandler();
 }
 
 inline bool JSTaggedValue::IsPropertyBox() const

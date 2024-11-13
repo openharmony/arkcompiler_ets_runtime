@@ -662,7 +662,7 @@ static void DumpHClass(const JSHClass *jshclass, std::ostream &os, bool withDeta
     os << "| ElementsKind :" << Elements::GetString(jshclass->GetElementsKind());
     os << "| NumberOfProps :" << std::dec << jshclass->NumberOfProps();
     os << "| InlinedProperties :" << std::dec << jshclass->GetInlinedProperties();
-    os << "| IsTS :" << std::boolalpha << jshclass->IsTS();
+    os << "| IsAOT :" << std::boolalpha << jshclass->IsAOT();
     os << "| Level :" << std::dec << static_cast<int>(jshclass->GetLevel());
     os << "\n";
 }
@@ -1002,7 +1002,7 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
             TransWithProtoHandler::Cast(obj)->Dump(os);
             break;
         case JSType::STORE_TS_HANDLER:
-            StoreTSHandler::Cast(obj)->Dump(os);
+            StoreAOTHandler::Cast(obj)->Dump(os);
             break;
         case JSType::PROPERTY_BOX:
             PropertyBox::Cast(obj)->Dump(os);
@@ -3227,7 +3227,7 @@ void TransWithProtoHandler::Dump(std::ostream &os) const
     os << "\n";
 }
 
-void StoreTSHandler::Dump(std::ostream &os) const
+void StoreAOTHandler::Dump(std::ostream &os) const
 {
     os << " - HandlerInfo: ";
     GetHandlerInfo().Dump(os);
@@ -4460,7 +4460,7 @@ static void DumpObject(TaggedObject *obj, std::vector<Reference> &vec, bool isVm
                 TransWithProtoHandler::Cast(obj)->DumpForSnapshot(vec);
                 break;
             case JSType::STORE_TS_HANDLER:
-                StoreTSHandler::Cast(obj)->DumpForSnapshot(vec);
+                StoreAOTHandler::Cast(obj)->DumpForSnapshot(vec);
                 break;
             case JSType::PROTOTYPE_HANDLER:
                 PrototypeHandler::Cast(obj)->DumpForSnapshot(vec);
@@ -5626,7 +5626,7 @@ void TransWithProtoHandler::DumpForSnapshot(std::vector<Reference> &vec) const
     vec.emplace_back(CString("ProtoCell"), GetProtoCell());
 }
 
-void StoreTSHandler::DumpForSnapshot(std::vector<Reference> &vec) const
+void StoreAOTHandler::DumpForSnapshot(std::vector<Reference> &vec) const
 {
     vec.emplace_back(CString("HandlerInfo"), GetHandlerInfo());
     vec.emplace_back(CString("ProtoCell"), GetProtoCell());

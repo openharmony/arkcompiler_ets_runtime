@@ -372,7 +372,7 @@ JSTaggedValue ObjectFastOperator::TrySetPropertyByNameThroughCacheAtLocal(JSThre
                 THROW_TYPE_ERROR_AND_RETURN(thread, GET_MESSAGE_STRING(SetReadOnlyProperty),
                                             JSTaggedValue::Exception());
             }
-            if (hclass->IsTS()) {
+            if (hclass->IsAOT()) {
                 auto attrVal = JSObject::Cast(receiver)->GetProperty(hclass, attr);
                 if (attrVal.IsHole()) {
                     return JSTaggedValue::Hole();
@@ -455,7 +455,7 @@ JSTaggedValue ObjectFastOperator::SetPropertyByName(JSThread *thread, JSTaggedVa
                     THROW_TYPE_ERROR_AND_RETURN(thread, GET_MESSAGE_STRING(SetReadOnlyProperty),
                                                 JSTaggedValue::Exception());
                 }
-                if (hclass->IsTS()) {
+                if (hclass->IsAOT()) {
                     auto attrVal = JSObject::Cast(holder)->GetProperty(hclass, attr);
                     if (attrVal.IsHole()) {
                         if (receiverHoleEntry == -1 && holder == receiver) {
