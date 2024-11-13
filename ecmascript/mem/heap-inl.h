@@ -534,6 +534,16 @@ uintptr_t Heap::AllocateSnapshotSpace(size_t size)
 TaggedObject *Heap::AllocateSharedNonMovableSpaceFromTlab(JSThread *thread, size_t size)
 {
     ASSERT(!thread->IsJitThread());
+    if (GetEcmaVM()->GetThreadCheckStatus()) {
+        if (thread->IsJitThread()) {
+            LOG_ECMA(FATAL) << "jit thread not allowed";
+        }
+        if (thread->GetThreadId() != JSThread::GetCurrentThreadId()) {
+            LOG_FULL(FATAL) << "Fatal: ecma_vm cannot run in multi-thread!"
+                            << "thread:" << thread->GetThreadId()
+                            << " currentThread:" << JSThread::GetCurrentThreadId();
+        }
+    }
     size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
     TaggedObject *object = reinterpret_cast<TaggedObject*>(sNonMovableTlab_->Allocate(size));
     if (object != nullptr) {
@@ -561,6 +571,16 @@ TaggedObject *Heap::AllocateSharedNonMovableSpaceFromTlab(JSThread *thread, size
 TaggedObject *Heap::AllocateSharedOldSpaceFromTlab(JSThread *thread, size_t size)
 {
     ASSERT(!thread->IsJitThread());
+    if (GetEcmaVM()->GetThreadCheckStatus()) {
+        if (thread->IsJitThread()) {
+            LOG_ECMA(FATAL) << "jit thread not allowed";
+        }
+        if (thread->GetThreadId() != JSThread::GetCurrentThreadId()) {
+            LOG_FULL(FATAL) << "Fatal: ecma_vm cannot run in multi-thread!"
+                            << "thread:" << thread->GetThreadId()
+                            << " currentThread:" << JSThread::GetCurrentThreadId();
+        }
+    }
     size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
     TaggedObject *object = reinterpret_cast<TaggedObject*>(sOldTlab_->Allocate(size));
     if (object != nullptr) {
