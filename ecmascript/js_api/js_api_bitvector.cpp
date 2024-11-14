@@ -359,7 +359,7 @@ JSTaggedValue JSAPIBitVector::FlipBitByIndex(JSThread* thread, const JSHandle<JS
 {
     [[maybe_unused]] ConcurrentApiScope<JSAPIBitVector, ModType::WRITE> scope(thread,
         JSHandle<JSTaggedValue>::Cast(bitVector));
-    if (index >= bitVector->GetLength()) {
+    if (index >= bitVector->GetLength() || index < 0) {
         std::ostringstream oss;
         oss << "The value of \"index\" is out of range. It must be >= 0 && <= " << (bitVector->GetLength() - 1)
             << ". Received value is: " << index;
