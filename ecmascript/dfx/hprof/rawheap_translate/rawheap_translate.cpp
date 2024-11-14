@@ -21,16 +21,15 @@
 namespace rawheap_translate {
 bool RawHeapTranslate::Translate(const std::string &rawheapPath)
 {
-    int fileSize = 0;
+    uint32_t fileSize = 0;
     std::ifstream rawheapFile;
     if (!FileCheckAndOpenBinary(rawheapPath, rawheapFile, fileSize)) {
         return false;
     }
 
-    uint32_t endOffset = static_cast<uint32_t>(fileSize);
     std::vector<uint32_t> sections;
-    if (!ParseMetaData(rawheapFile, endOffset) ||
-        !ReadSectionInfo(rawheapFile, endOffset, sections) ||
+    if (!ParseMetaData(rawheapFile, fileSize) ||
+        !ReadSectionInfo(rawheapFile, fileSize, sections) ||
         !ReadVersion(rawheapFile, 0, sections[0]) ||
         !ReadObjTableBySection(rawheapFile, sections) ||
         !ReadStringTable(rawheapFile, sections[2], sections[3]) ||  // 2: str offset, 3: str size
@@ -70,6 +69,7 @@ bool RawHeapTranslate::ReadMetaDataJson(std::ifstream &file, uint32_t &offset, c
 
     cJSON *object = cJSON_ParseWithOpts(metaJson.data(), nullptr, true);
     if (!object) {
+        LOG_ERROR("RawHeapTranslate::ReadMetaDataJson: json format error!");
         return false;
     }
     
@@ -119,7 +119,7 @@ bool RawHeapTranslate::ReadObjTableBySection(std::ifstream &file, const std::vec
     LOG_INFO("RawHeapTranslate::Translate: start to read objects");
     // 4: index of obj table section start from 4
     // 2: step is 2
-    for (int secIndex = 4; secIndex < sections.size(); secIndex += 2) {
+    for (size_t secIndex = 4; secIndex < sections.size(); secIndex += 2) {
         uint32_t offset = sections[secIndex];
         uint32_t size = sections[secIndex + 1];
         if (!ReadObjTable(file, offset, size)) {
@@ -228,7 +228,7 @@ bool RawHeapTranslate::ReadRootTable(std::ifstream &file, uint32_t offset, uint3
     EdgeType type = EdgeType::SHORTCUT;
 
     char *addr = roots.data();
-    for (int i = 0; i < rootNum; i++) {
+    for (uint32_t i = 0; i < rootNum; i++) {
         uint64_t rootAddr = ByteToU64(addr);
         addr += sizeof(uint64_t);
         auto rootNode = nodesMap_.find(rootAddr);
@@ -325,7 +325,7 @@ void RawHeapTranslate::BuildEdges(const std::shared_ptr<Node> &from, char *hclas
     }
 
     std::string typeName = meta_->GetTypeNameFromHClass(hclass);
-    auto visitor = [&from, &hclass, this] (std::shared_ptr<MetaData> &metadata, int offset) {
+    auto visitor = [&from, this] (std::shared_ptr<MetaData> &metadata, int offset) {
         if (!metadata->IsArray()) {
             BuildFieldsEdges(from, metadata, offset);
             return;
@@ -481,7 +481,7 @@ bool RawHeapTranslate::ByteToAddrTableItem(
     }
     table.resize(objNum);
     char *item = tableByte.data();
-    for (int i = 0; i < objNum; i++) {
+    for (uint32_t i = 0; i < objNum; i++) {
         table[i].addr = ByteToU64(item);
         item += sizeof(uint64_t);
 

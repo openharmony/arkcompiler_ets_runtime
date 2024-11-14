@@ -47,7 +47,7 @@ bool RealPath(const std::string &filename, std::string &realpath);
 
 uint64_t GetFileSize(std::string &inputFilePath);
 
-bool FileCheckAndOpenBinary(const std::string &rawheapPath, std::ifstream &file, int &fileSize);
+bool FileCheckAndOpenBinary(const std::string &rawheapPath, std::ifstream &file, uint32_t &fileSize);
 
 void GenerateDumpFileName(std::string &filename);
 
