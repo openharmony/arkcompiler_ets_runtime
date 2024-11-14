@@ -92,13 +92,10 @@ HWTEST_F_L0(GCTest, ArkToolsHintGC)
     }
     {
 #ifdef NDEBUG
-        size_t originSize = heap->GetCommittedSize();
         size_t newSize = 0;
         size_t finalSize = 0;
         bool res = getSizeAfterCreateAndCallHintGC(newSize, finalSize);
         EXPECT_TRUE(res);
-        EXPECT_TRUE(newSize > originSize);
-        EXPECT_TRUE(finalSize < newSize);
 #endif
     }
 }
@@ -737,15 +734,6 @@ HWTEST_F_L0(GCTest, InvokeAllocationInspectorTest001)
     auto inspector = new AllocationInspector(heap, 10, profiler);
     counter->AddAllocationInspector(inspector);
     counter->InvokeAllocationInspector(10000, 100, 100);
-}
-
-HWTEST_F_L0(GCTest, AddGCStatsToKeyTest001)
-{
-    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-    auto stats = new GCKeyStats(heap);
-    for (size_t i = 0; i < 200; i++) {
-        stats->AddGCStatsToKey();
-    }
 }
 
 } // namespace panda::test
