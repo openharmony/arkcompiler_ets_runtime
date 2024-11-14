@@ -478,6 +478,7 @@ bool JSArray::FastSetPropertyByValue(JSThread *thread, const JSHandle<JSTaggedVa
 bool JSArray::TryFastCreateDataProperty(JSThread *thread, const JSHandle<JSObject> &obj, uint32_t index,
                                         const JSHandle<JSTaggedValue> &value,  SCheckMode sCheckMode)
 {
+#if ENABLE_NEXT_OPTIMIZATION
     JSHandle<JSTaggedValue> objVal(obj);
     if (!objVal->IsStableJSArray(thread)) {
         // if JSArray is DictionaryMode goto slowPath
@@ -508,6 +509,9 @@ bool JSArray::TryFastCreateDataProperty(JSThread *thread, const JSHandle<JSObjec
     
     TaggedArray::Cast(obj->GetElements())->Set(thread, index, value);
     return true;
+#else
+    return JSObject::CreateDataPropertyOrThrow(thread, obj, index, value, sCheckMode);
+#endif
 }
 
 JSTaggedValue JSArray::CopySortedListToReceiver(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
