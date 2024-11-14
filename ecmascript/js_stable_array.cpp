@@ -1732,7 +1732,7 @@ JSTaggedValue JSStableArray::CopySortedListToReceiver(JSThread *thread, const JS
     // 8. Repeat, while j < itemCount,
     //     a. Perform ! Set(obj, ! ToString((j)), sortedList[j], true).
     //     b. Set j to j + 1.
-    for (int j = 0; j < itemCount; j++) {
+    for (uint32_t j = 0; j < itemCount; j++) {
         valueHandle.Update(sortedList->Get(j));
         ElementAccessor::Set(thread, thisObj, j, valueHandle, needTransition);
     }
@@ -1742,7 +1742,7 @@ JSTaggedValue JSStableArray::CopySortedListToReceiver(JSThread *thread, const JS
     //       a. Perform ? DeletePropertyOrThrow(obj, ! ToString((j))).
     //       b. Set j to j + 1.
     valueHandle.Update(JSTaggedValue::Hole());
-    for (int j = itemCount; j < len; j++) {
+    for (uint32_t j = itemCount; j < len; j++) {
         ElementAccessor::Set(thread, thisObj, j, valueHandle, needTransition);
     }
     JSHandle<JSArray>::Cast(thisObj)->SetArrayLength(thread, newLength);
