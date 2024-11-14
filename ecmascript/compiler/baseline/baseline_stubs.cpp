@@ -3970,7 +3970,7 @@ void BaselineNewobjrangeImm16Imm8V8StubBuilder::GenerateCircuit()
         Bind(&ctorNotBase);
         {
             GateRef argv = PtrAdd(sp, PtrMul(
-                    PtrAdd(firstArgRegIdx, firstArgOffset), IntPtr(8))); // 8: skip function
+                PtrAdd(firstArgRegIdx, firstArgOffset), IntPtr(8))); // 8: skip function
             GateRef jumpSize = IntPtr(-BytecodeInstruction::Size(BytecodeInstruction::Format::IMM16_IMM8_V8));
             METHOD_ENTRY_ENV_DEFINED(ctor);
             JSCallArgs callArgs(JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV);
