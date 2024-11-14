@@ -1179,6 +1179,51 @@ function lastIndexOfTest() {
   print(arrWithUndefined.lastIndexOf(undefined));
 }
 
+function ofTest() {
+    print("Start Test ofTest")
+    let arr = SendableArray.of(1, 2, 3, 4, 2, 5);
+    print(arr);
+
+    arr = SendableArray.of();
+    print(arr);
+  
+    arr = SendableArray.of.call({}, 1,2,3,4,5);
+    print(arr);
+
+    try {
+        arr = SendableArray.of([1,2,3,4,5]);
+    } catch (err) {
+        print("Create SendableArray failed. err: " + err + ", code: " + err.code);
+    }
+
+    try {
+        arr = SendableArray.of.call(Array, 1,2,3,4,5);
+    } catch (err) {
+        print("Create SendableArray failed. err: " + err + ", code: " + err.code);
+    }
+}
+
+function copyWithinTest() {
+    print("Start Test copyWithin")
+    let arr = new SendableArray(1, 2, 3, 4, 2, 5);
+    print(arr);
+
+    try {
+        arr.copyWithin();
+    } catch (err) {
+        print("copyWithin SendableArray failed. err: " + err + ", code: " + err.code);
+    }
+
+    arr.copyWithin(1);
+    print(arr);
+  
+    arr.copyWithin(2, 3);
+    print(arr);
+
+    arr.copyWithin(3, -4, -2);
+    print(arr);
+}
+
 at()
 
 entries()
@@ -1257,3 +1302,5 @@ SomeTest()
 EveryTest()
 isArrayTest();
 lastIndexOfTest();
+ofTest();
+copyWithinTest();

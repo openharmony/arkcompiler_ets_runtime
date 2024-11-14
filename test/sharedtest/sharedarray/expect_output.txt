@@ -324,3 +324,15 @@ Start Test lastIndexOf
 -1
 -1
 2
+Start Test ofTest
+1,2,3,4,2,5
+
+1,2,3,4,5
+Create SendableArray failed. err: BusinessError: Parameter error.Only accept sendable value., code: 401
+Create SendableArray failed. err: TypeError: Failed to create Object., code: undefined
+Start Test copyWithin
+1,2,3,4,2,5
+copyWithin SendableArray failed. err: BusinessError: Target index cannot be undefined., code: 10200011
+1,1,2,3,4,2
+1,1,3,4,2,2
+1,1,3,3,4,2

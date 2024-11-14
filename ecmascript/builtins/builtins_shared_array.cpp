@@ -884,6 +884,16 @@ JSTaggedValue BuiltinsSharedArray::GetElementByKey(JSThread *thread, JSHandle<JS
     return val;
 }
 
+void BuiltinsSharedArray::SetElementValue(JSThread *thread, JSHandle<JSObject> arrHandle, uint32_t key,
+                                          const JSHandle<JSTaggedValue> &value)
+{
+    if (UNLIKELY(!value->IsSharedType())) {
+        auto error = ContainerError::ParamError(thread, "Parameter error.Only accept sendable value.");
+        THROW_NEW_ERROR_AND_RETURN(thread, error);
+    }
+    ElementAccessor::Set(thread, arrHandle, key, value, false);
+}
+
 // 22.1.3.9 Array.prototype.findIndex ( predicate [ , thisArg ] )
 JSTaggedValue BuiltinsSharedArray::FindIndex(EcmaRuntimeCallInfo *argv)
 {
@@ -2431,6 +2441,182 @@ JSTaggedValue BuiltinsSharedArray::LastIndexOf(EcmaRuntimeCallInfo *argv)
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     return LastIndexOfSlowPath(argv, thread, thisHandle);
+}
+
+// Array.of ( ...items )
+JSTaggedValue BuiltinsSharedArray::Of(EcmaRuntimeCallInfo *argv)
+{
+    ASSERT(argv);
+    BUILTINS_API_TRACE(argv->GetThread(), SharedArray, Of);
+    JSThread *thread = argv->GetThread();
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+    const GlobalEnvConstants *globalConst = thread->GlobalConstants();
+
+    // 1. Let len be the actual number of arguments passed to this function.
+    uint32_t argc = argv->GetArgsNumber();
+
+    // 3. Let C be the this value.
+    // thisHandle variable declare this Macro
+    JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
+
+    // 4. If IsConstructor(C) is true, then
+    //   a. Let A be Construct(C, «len»).
+    // 5. Else,
+    //   a. Let A be ArrayCreate(len).
+    // 6. ReturnIfAbrupt(A).
+    JSHandle<JSTaggedValue> newArray;
+    if (thisHandle->IsConstructor()) {
+        JSHandle<JSTaggedValue> undefined = globalConst->GetHandledUndefined();
+        EcmaRuntimeCallInfo *info =
+            EcmaInterpreter::NewRuntimeCallInfo(thread, thisHandle, undefined, undefined, 1);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        info->SetCallArg(JSTaggedValue(argc));
+        JSTaggedValue taggedArray = JSFunction::Construct(info);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        newArray = JSHandle<JSTaggedValue>(thread, taggedArray);
+    } else {
+        newArray = JSSharedArray::ArrayCreate(thread, JSTaggedNumber(argc));
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    }
+
+    if (!newArray->IsJSSharedArray()) {
+        THROW_TYPE_ERROR_AND_RETURN(thread, "Failed to create Object.", JSTaggedValue::Exception());
+    }
+
+    JSHandle<JSObject> newArrayHandle(newArray);
+    TaggedArray *elements = TaggedArray::Cast(newArrayHandle->GetElements().GetTaggedObject());
+    if (UNLIKELY(argc > ElementAccessor::GetElementsLength(newArrayHandle))) {
+        elements = *JSObject::GrowElementsCapacity(thread, JSHandle<JSObject>::Cast(newArrayHandle), argc, true);
+    }
+
+    // 7. Let k be 0.
+    // 8. Repeat, while k < len
+    //   a. Let kValue be items[k].
+    //   b. Let Pk be ToString(k).
+    //   c. Let defineStatus be CreateDataPropertyOrThrow(A,Pk, kValue).
+    //   d. ReturnIfAbrupt(defineStatus).
+    //   e. Increase k by 1.
+    for (uint32_t k = 0; k < argc; k++) {
+        JSHandle<JSTaggedValue> value = argv->GetCallArg(k);
+        BuiltinsSharedArray::SetElementValue(thread, newArrayHandle, k, value);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    }
+    JSSharedArray::Cast(*newArrayHandle)->SetArrayLength(thread, argc);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+
+    return newArrayHandle.GetTaggedValue();
+}
+
+uint64_t BuiltinsSharedArray::ConvertTagValueToInteger(JSThread *thread, JSHandle<JSTaggedValue>& number, int64_t len)
+{
+    JSTaggedNumber targetTemp = JSTaggedValue::ToInteger(thread, number);
+    double target = targetTemp.GetNumber();
+    // If relativeTarget < 0, let to be max((len + relativeTarget),0); else let to be min(relativeTarget, len).
+    if (target < 0) {
+        return target + len > 0 ? static_cast<uint64_t>(target + len) : 0;
+    } else {
+        return target < len ? static_cast<uint64_t>(target) : len;
+    }
+}
+
+uint64_t BuiltinsSharedArray::GetNumberArgVal(JSThread *thread, EcmaRuntimeCallInfo *argv, uint32_t idx, int64_t len,
+                                              int64_t defVal)
+{
+    JSHandle<JSTaggedValue> argValue = GetCallArg(argv, idx);
+
+    return argValue->IsUndefined() ? defVal : BuiltinsSharedArray::ConvertTagValueToInteger(thread, argValue, len);
+}
+
+uint64_t BuiltinsSharedArray::GetNumberArgValThrow(JSThread *thread, EcmaRuntimeCallInfo *argv, uint32_t idx,
+                                                   int64_t len, const char* err)
+{
+    JSHandle<JSTaggedValue> argValue = GetCallArg(argv, idx);
+    if (UNLIKELY(argValue->IsUndefined())) {
+        auto error = ContainerError::BindError(thread, err);
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, 0);
+    }
+
+    return BuiltinsSharedArray::ConvertTagValueToInteger(thread, argValue, len);
+}
+
+// Array.prototype.copyWithin (target, start [ , end ] )
+JSTaggedValue BuiltinsSharedArray::CopyWithin(EcmaRuntimeCallInfo *argv)
+{
+    ASSERT(argv);
+    BUILTINS_API_TRACE(argv->GetThread(), SharedArray, CopyWithin);
+    JSThread *thread = argv->GetThread();
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+
+    // 1. Let O be ToObject(this value).
+    // 3. Let C be the this value.
+    // thisHandle variable declare this Macro
+    ARRAY_CHECK_SHARED_ARRAY("The CopyWithin method cannot be bound.")
+
+    JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
+    // 2. ReturnIfAbrupt(O).
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+
+    // 3. Let len be ToLength(Get(O, "length")).
+    int64_t len = ArrayHelper::GetLength(thread, thisHandle);
+    // 4. ReturnIfAbrupt(len).
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+
+    int64_t copyTo = GetNumberArgValThrow(thread, argv, 0, len, "Target index cannot be undefined.");
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+
+    // 5. Let relativeStart be ToInteger(start).
+    int64_t copyFrom = GetNumberArgVal(thread, argv, 1, len, 0);
+    // 6. ReturnIfAbrupt(relativeStart).
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+
+    // 7. If end is undefined, let relativeEnd be len; else let relativeEnd be ToInteger(end).
+    int64_t copyEnd = GetNumberArgVal(thread, argv, 2, len, len);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+
+    // 14. Let count be min(final-from, len-to).
+    int64_t count = std::min(copyEnd - copyFrom, len - copyTo);
+
+    // 15. If from<to and to<from+count
+    //   a. Let direction be -1.
+    //   b. Let from be from + count -1.
+    //   c. Let to be to + count -1.
+    // 16. Else,
+    //   a. Let direction = 1.
+    int64_t direction = 1;
+    if (copyFrom < copyTo && copyTo < copyFrom + count) {
+        direction = -1;
+        copyFrom = copyFrom + count - 1;
+        copyTo = copyTo + count - 1;
+    }
+
+    // 17. Repeat, while count > 0
+    //   a. Let fromKey be ToString(from).
+    //   b. Let toKey be ToString(to).
+    //   c. Let fromPresent be HasProperty(O, fromKey).
+    //   d. ReturnIfAbrupt(fromPresent).
+    //   e. If fromPresent is true, then
+    //     i. Let fromVal be Get(O, fromKey).
+    //     ii. ReturnIfAbrupt(fromVal).
+    //     iii. Let setStatus be Set(O, toKey, fromVal, true).
+    //     iv. ReturnIfAbrupt(setStatus).
+    //   f. Else fromPresent is false,
+    //     i. Let deleteStatus be DeletePropertyOrThrow(O, toKey).
+    //     ii. ReturnIfAbrupt(deleteStatus).
+    //   g. Let from be from + direction.
+    //   h. Let to be to + direction.
+    //   i. Let count be count − 1.
+    JSMutableHandle<JSTaggedValue> kValue(thread, JSTaggedValue::Undefined());
+    while (count > 0) {
+        kValue.Update(BuiltinsSharedArray::GetElementByKey(thread, thisObjHandle, copyFrom));
+        BuiltinsSharedArray::SetElementValue(thread, thisObjHandle, copyTo, kValue);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        copyFrom = copyFrom + direction;
+        copyTo = copyTo + direction;
+        count--;
+    }
+
+    // 18. Return O.
+    return thisObjHandle.GetTaggedValue();
 }
 
 }  // namespace panda::ecmascript::builtins
