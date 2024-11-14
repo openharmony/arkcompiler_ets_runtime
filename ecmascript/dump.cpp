@@ -45,44 +45,6 @@ static constexpr uint32_t DUMP_TYPE_OFFSET = 12;
 static constexpr uint32_t DUMP_PROPERTY_OFFSET = 20;
 static constexpr uint32_t DUMP_ELEMENT_OFFSET = 2;
 
-static bool HasEdge(std::vector<Reference> &vec, JSTaggedValue toValue)
-{
-    for (auto &ref : vec) {
-        if (ref.value_ == toValue) {
-            return true;
-        }
-    }
-    return false;
-}
-
-static void AddAnonymousEdge(TaggedObject *obj, std::vector<Reference> &vec)
-{
-    auto hclass = obj->GetClass();
-    if (hclass == nullptr) {
-        return;
-    }
-    ObjectXRay::VisitObjectBody<VisitType::SNAPSHOT_VISIT>(obj, hclass,
-        [&vec]([[maybe_unused]]TaggedObject *root, ObjectSlot start, ObjectSlot end, VisitObjectArea area) {
-            if (area != VisitObjectArea::NORMAL) {
-                return;
-            }
-            uint32_t cnt = 0;
-            for (auto slot = start; slot != end; slot++) {
-                JSTaggedValue toValue = JSTaggedValue(slot.GetTaggedType());
-                if (!toValue.IsHeapObject()) {
-                    continue;
-                }
-                if (HasEdge(vec, toValue)) {
-                    continue;
-                }
-                std::string name = "anonymous-slot" + std::to_string(cnt);
-                cnt += 1;
-                vec.emplace_back(ConvertToString(name), toValue);
-            }
-        }
-    );
-}
-
 CString JSHClass::DumpJSType(JSType type)
 {
     switch (type) {
@@ -4480,8 +4442,6 @@ static void DumpObject(TaggedObject *obj, std::vector<Reference> &vec, bool isVm
     } else {
         vec.pop_back();
     }
-
-    AddAnonymousEdge(obj, vec);
 }
 
 static inline void EcmaStringToStd(CString &res, EcmaString *str)
