@@ -1631,7 +1631,12 @@ void AsmInterpreterCall::PushVregs(ExtendedAssembler *assembler,
             __ Cmp(tempRegister, Immediate(JSTaggedValue::VALUE_HOLE));
             __ B(Condition::EQ, &baselineCodeUndefined);
 
-            __ Ldr(tempRegister, MemoryOperand(tempRegister, MachineCode::FUNCADDR_OFFSET));
+            if (MachineCode::FUNCADDR_OFFSET % 8 == 0) { // 8: imm in 64-bit ldr insn must be a multiple of 8
+                __ Ldr(tempRegister, MemoryOperand(tempRegister, MachineCode::FUNCADDR_OFFSET));
+            } else {
+                ASSERT(MachineCode::FUNCADDR_OFFSET < 256); // 256: imm in ldur insn must be in the range -256 to 255
+                __ Ldur(tempRegister, MemoryOperand(tempRegister, MachineCode::FUNCADDR_OFFSET));
+            }
             if (glue != X19) {
                 __ Mov(X19, glue);
             }
