@@ -592,7 +592,9 @@ void BaseDeserializer::AllocateMultiRegion(SparseSpace *space, size_t spaceObjSi
     size_t regionNum = regionAlignedSize / Region::GetRegionAvailableSize();
     while (regionNum > 1) { // 1: one region have allocated before
         std::vector<size_t> regionRemainSizeVector = data_->GetRegionRemainSizeVector();
-        space->ResetTopPointer(space->GetCurrentRegion()->GetEnd() - regionRemainSizeVector[regionRemainSizeIndex_++]);
+        auto regionAliveObjSize = Region::GetRegionAvailableSize() - regionRemainSizeVector[regionRemainSizeIndex_++];
+        space->GetCurrentRegion()->IncreaseAliveObject(regionAliveObjSize);
+        space->ResetTopPointer(space->GetCurrentRegion()->GetBegin() + regionAliveObjSize);
         if (!space->Expand()) {
             DeserializeFatalOutOfMemory(spaceObjSize);
         }
@@ -602,6 +604,7 @@ void BaseDeserializer::AllocateMultiRegion(SparseSpace *space, size_t spaceObjSi
         regionNum--;
     }
     size_t lastRegionRemainSize = regionAlignedSize - spaceObjSize;
+    space->GetCurrentRegion()->IncreaseAliveObject(Region::GetRegionAvailableSize() - lastRegionRemainSize);
     space->ResetTopPointer(space->GetCurrentRegion()->GetEnd() - lastRegionRemainSize);
 }
 
