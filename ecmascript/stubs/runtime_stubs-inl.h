@@ -584,7 +584,6 @@ JSTaggedValue RuntimeStubs::RuntimeGetIteratorNext(JSThread *thread, const JSHan
     ASSERT(method->IsCallable());
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, method, obj, undefined, 0);
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSTaggedValue ret = JSFunction::Call(info);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     if (!ret.IsECMAObject()) {
@@ -1544,7 +1543,6 @@ JSTaggedValue RuntimeStubs::RuntimeLdPrivateProperty(JSThread *thread, JSTaggedV
         JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
         // 0: getter has 0 arg
         EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, handleKey, handleObj, undefined, 0);
-        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         JSTaggedValue resGetter = JSFunction::Call(info);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         return resGetter;
@@ -2676,6 +2674,7 @@ JSTaggedValue RuntimeStubs::RuntimeCallBigIntAsIntN(JSThread *thread, JSTaggedVa
 {
     auto biginteger = JSHandle<BigInt>(thread, bigint);
     JSTaggedNumber bitness = JSTaggedValue::ToNumber(thread, bits);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return BigInt::AsintN(thread, bitness, biginteger);
 }
 
@@ -2683,6 +2682,7 @@ JSTaggedValue RuntimeStubs::RuntimeCallBigIntAsUintN(JSThread *thread, JSTaggedV
 {
     auto biginteger = JSHandle<BigInt>(thread, bigint);
     JSTaggedNumber bitness = JSTaggedValue::ToNumber(thread, bits);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return BigInt::AsUintN(thread, bitness, biginteger);
 }
 

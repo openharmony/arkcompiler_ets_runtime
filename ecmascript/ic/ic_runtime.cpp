@@ -285,7 +285,6 @@ inline JSTaggedValue LoadICRuntime::CallPrivateGetter(JSHandle<JSTaggedValue> re
     JSHandle<JSTaggedValue> undefined = thread_->GlobalConstants()->GetHandledUndefined();
     EcmaRuntimeCallInfo* info =
         EcmaInterpreter::NewRuntimeCallInfo(thread_, key, receiver, undefined, 0); // 0: getter has 0 argument
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
     JSTaggedValue resGetter = JSFunction::Call(info);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
     return resGetter;
@@ -304,7 +303,9 @@ JSTaggedValue LoadICRuntime::LoadTypedArrayValueMiss(JSHandle<JSTaggedValue> rec
         }
         UpdateTypedArrayHandler(receiver);
         JSHandle<JSTaggedValue> indexHandle(GetThread(), numericIndex);
-        uint32_t index = static_cast<uint32_t>(JSTaggedValue::ToInteger(GetThread(), indexHandle).ToInt32());
+        JSTaggedNumber integerValue = JSTaggedValue::ToInteger(GetThread(), indexHandle);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(GetThread());
+        uint32_t index = static_cast<uint32_t>(integerValue.ToInt32());
         JSType type = receiver->GetTaggedObject()->GetClass()->GetObjectType();
         return JSTypedArray::FastGetPropertyByIndex(GetThread(), receiver.GetTaggedValue(), index, type);
     } else {
@@ -448,7 +449,9 @@ JSTaggedValue StoreICRuntime::StoreTypedArrayValueMiss(JSHandle<JSTaggedValue> r
         }
         UpdateTypedArrayHandler(receiver);
         JSHandle<JSTaggedValue> indexHandle(GetThread(), numericIndex);
-        uint32_t index = static_cast<uint32_t>(JSTaggedValue::ToInteger(GetThread(), indexHandle).ToInt32());
+        JSTaggedNumber integerValue = JSTaggedValue::ToInteger(GetThread(), indexHandle);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(GetThread());
+        uint32_t index = static_cast<uint32_t>(integerValue.ToInt32());
         JSType type = receiver->GetTaggedObject()->GetClass()->GetObjectType();
         return JSTypedArray::FastSetPropertyByIndex(GetThread(), receiver.GetTaggedValue(), index,
                                                     value.GetTaggedValue(), type);
