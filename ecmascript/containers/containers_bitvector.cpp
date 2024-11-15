@@ -51,7 +51,7 @@ JSTaggedValue ContainersBitVector::BitVectorConstructor(EcmaRuntimeCallInfo* arg
 
     auto* newBitSetVector = new std::vector<std::bitset<JSAPIBitVector::BIT_SET_LENGTH>>();
     if (!length->IsZero()) {
-        int32_t capacity = (length->GetInt() / JSAPIBitVector::BIT_SET_LENGTH) + 1;
+        int32_t capacity = std::max(0, (length->GetInt() / JSAPIBitVector::BIT_SET_LENGTH) + 1);
 
         std::bitset<JSAPIBitVector::BIT_SET_LENGTH> initBitSet;
         newBitSetVector->resize(capacity, initBitSet);
@@ -60,7 +60,7 @@ JSTaggedValue ContainersBitVector::BitVectorConstructor(EcmaRuntimeCallInfo* arg
                                                                      ContainersBitVector::FreeBitsetVectorPointer,
                                                                      newBitSetVector);
     obj->SetNativePointer(thread, pointer);
-    obj->SetLength(length->GetInt());
+    obj->SetLength(std::max(0, length->GetInt()));
     return obj.GetTaggedValue();
 }
 
