@@ -957,7 +957,7 @@ GateRef BuiltinsObjectStubBuilder::CopyFromEnumCache(GateRef glue, GateRef eleme
     Bind(&afterLenCon);
     GateRef array = newBuilder.NewTaggedArray(glue, *newLen);
     Store(VariableType::INT32(), glue, array, IntPtr(TaggedArray::LENGTH_OFFSET), *newLen);
-    GateRef oldExtractLen = GetExtractLengthOfTaggedArray(elements);
+    GateRef oldExtractLen = GetExtraLengthOfTaggedArray(elements);
     Store(VariableType::INT32(), glue, array, IntPtr(TaggedArray::EXTRA_LENGTH_OFFSET), oldExtractLen);
     Label loopHead(env);
     Label loopEnd(env);
