@@ -243,12 +243,16 @@ namespace panda::ecmascript::kungfu {
 // NEXT_AOT_AND_BUILTINS_STUB_LIST: List of functions that is optimized for Next
 #if ENABLE_NEXT_OPTIMIZATION
     #define NEXT_AOT_AND_BUILTINS_STUB_LIST(V)             \
-        V(ArrayIteratorProtoNext)
+        V(ArrayIteratorProtoNext)                          \
+        V(MapIteratorProtoNext)                            \
+        V(SetIteratorProtoNext)
     #define NEXT_AOT_BUILTINS_STUB_LIST(V)
 #else
     #define NEXT_AOT_AND_BUILTINS_STUB_LIST(V)
     #define NEXT_AOT_BUILTINS_STUB_LIST(V)                 \
-        V(ArrayIteratorProtoNext)
+        V(ArrayIteratorProtoNext)                          \
+        V(MapIteratorProtoNext)                            \
+        V(SetIteratorProtoNext)
 #endif
 
 #define AOT_AND_BUILTINS_STUB_LIST(V)               \
@@ -260,9 +264,7 @@ namespace panda::ecmascript::kungfu {
 #define AOT_BUILTINS_STUB_LIST(V)                       \
     V(JsonStringify)                                    \
     V(MapProtoIterator)                                 \
-    V(MapIteratorProtoNext)                             \
     V(SetProtoIterator)                                 \
-    V(SetIteratorProtoNext)                             \
     V(StringProtoIterator)                              \
     V(ArrayProtoIterator)                               \
     V(TypeArrayProtoIterator)                           \
@@ -394,6 +396,8 @@ public:
         return (BuiltinsStubCSigns::ID::StringLocaleCompare == builtinId) ||
                (BuiltinsStubCSigns::ID::StringIteratorProtoNext == builtinId) ||
                (BuiltinsStubCSigns::ID::ArrayIteratorProtoNext == builtinId) ||
+               (BuiltinsStubCSigns::ID::MapIteratorProtoNext == builtinId) ||
+               (BuiltinsStubCSigns::ID::SetIteratorProtoNext == builtinId) ||
                (BuiltinsStubCSigns::ID::ArraySort == builtinId) ||
                (BuiltinsStubCSigns::ID::GlobalDecodeURIComponent == builtinId) ||
                ((BuiltinsStubCSigns::ID::TYPED_BUILTINS_FIRST <= builtinId) &&

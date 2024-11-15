@@ -36,8 +36,6 @@ public:
 BUILTINS_WITH_OBJECT_STUB_BUILDER(DECLARE_BUILTINS_OBJECT_STUB_BUILDER)
 #undef DECLARE_BUILTINS_OBJECT_STUB_BUILDER
 
-    GateRef CreateListFromArrayLike(GateRef glue, GateRef arrayObj);
-    GateRef CreateArrayFromList(GateRef glue, GateRef elements);
     void HasOwnProperty(Variable *result, Label *exit, Label *slowPath, GateRef thisValue, GateRef prop,
                         GateRef hir = Circuit::NullGate());
 

@@ -453,11 +453,11 @@ void BuiltinLowering::LowerIteratorNext(GateRef gate, BuiltinsStubCSigns::ID id)
     GateRef result = Circuit::NullGate();
     switch (id) {
         case BUILTINS_STUB_ID(MapIteratorProtoNext): {
-            result = LowerCallRuntime(glue, gate, RTSTUB_ID(MapIteratorNext), { thisObj }, true);
+            result = builder_.CallStub(glue, gate, CommonStubCSigns::MapIteratorNext, { glue, thisObj });
             break;
         }
         case BUILTINS_STUB_ID(SetIteratorProtoNext): {
-            result = LowerCallRuntime(glue, gate, RTSTUB_ID(SetIteratorNext), { thisObj }, true);
+            result = builder_.CallStub(glue, gate, CommonStubCSigns::SetIteratorNext, { glue, thisObj });
             break;
         }
         case BUILTINS_STUB_ID(StringIteratorProtoNext): {
