@@ -2796,9 +2796,12 @@ void Emitter::EmitHexUnsigned(uint64 num)
 void Emitter::WriteDebugCommentToFile()
 {
 #ifdef ARK_LITECG_DEBUG
-    std::ofstream file(DEFAULT_PATH.c_str(), std::ios::app);
+    struct stat buffer;
+    std::string filePath = cg->GetCGOptions().GetEmitAotCodeCommentFile();
+    std::string outputFile = stat(filePath.c_str(), &buffer) == 0 ? filePath : DEFAULT_PATH;
+    std::ofstream file(outputFile.c_str(), std::ios::app);
     if (!file.is_open()) {
-        std::cerr << DEFAULT_PATH << " Unable to open file for writing." << std::endl;
+        std::cerr << outputFile << " Unable to open file for writing." << std::endl;
         return;
     }
 

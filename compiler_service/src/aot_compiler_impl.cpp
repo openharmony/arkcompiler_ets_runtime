@@ -35,6 +35,9 @@
 #ifdef CODE_SIGN_ENABLE
 #include "local_code_sign_kit.h"
 #endif
+#ifdef ENABLE_COMPILER_SERVICE_GET_PARAMETER
+#include "base/startup/init/interfaces/innerkits/include/syspara/parameters.h"
+#endif
 #include "system_ability_definition.h"
 
 namespace OHOS::ArkCompiler {
@@ -96,6 +99,13 @@ int32_t AotCompilerImpl::PrepareArgs(const std::unordered_map<std::string, std::
             hapArgs_.argVector.emplace_back(Symbols::PREFIX + argPair.first + Symbols::EQ + argPair.second);
         }
     }
+#ifdef ENABLE_COMPILER_SERVICE_GET_PARAMETER
+    bool enableAotCodeComment = OHOS::system::GetBoolParameter("ark.aot.code_comment.enable", false);
+    if (enableAotCodeComment) {
+        hapArgs_.argVector.emplace_back(Symbols::PREFIX + ArgsIdx::COMPILER_ENABLE_AOT_CODE_COMMENT +
+            Symbols::EQ + "true");
+    }
+#endif
     hapArgs_.argVector.emplace_back(abcPath);
     return ERR_OK;
 }

@@ -22,6 +22,7 @@
 #include <map>
 #include <array>
 #include <sstream>
+#include <sys/stat.h>
 #include "isa.h"
 #include "asm_info.h"
 #include "cg.h"

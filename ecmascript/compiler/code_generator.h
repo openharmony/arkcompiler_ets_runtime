@@ -166,8 +166,21 @@ public:
     {
         return codeInfo_;
     }
+
+    void SetAotCodeCommentFile(const std::string &aotCodeCommentFile)
+    {
+        litecgCodeCommentFile_ = aotCodeCommentFile;
+    }
+
+    const std::string &GetAotCodeCommentFile() const
+    {
+        return litecgCodeCommentFile_;
+    }
+
 protected:
     CodeInfo codeInfo_;
+private:
+    std::string litecgCodeCommentFile_ = "";
 };
 
 class CodeGeneratorImpl {

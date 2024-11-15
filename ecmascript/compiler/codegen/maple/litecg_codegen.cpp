@@ -113,6 +113,7 @@ void LiteCGAssembler::Run(const CompilerLog &log, [[maybe_unused]] bool fastComp
     liteCG.SetupLiteCGEmitMemoryManager(&codeInfo_, isJit ? AllocateCodeSectionOnDemand : AllocateCodeSection,
                                         SaveFunc2Addr, SaveFunc2FPtoPrevSPDelta, SaveFunc2CalleeOffsetInfo,
                                         SavePC2DeoptInfo, SavePC2CallSiteInfo);
+    liteCG.SetAotCodeCommentFile(GetAotCodeCommentFile());
 #ifdef JIT_ENABLE_CODE_SIGN
     isJit &= JitFort::IsResourceAvailable();
     if (isJit) {

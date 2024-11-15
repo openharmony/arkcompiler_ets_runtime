@@ -197,7 +197,9 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--async-load-abc-test:                Enable asynchronous load abc test. Default: 'false'\n"
     "--compiler-enable-concurrent:         Enable concurrent compile(only support in ark_stub_compiler).\n"
     "                                      Default: 'true'\n"
-    "--compiler-opt-frame-state-elimination: Enable frame state elimination. Default: 'true'\n\n";
+    "--compiler-opt-frame-state-elimination: Enable frame state elimination. Default: 'true'\n"
+    "--compiler-enable-aot-code-comment    Enable generate aot_code_comment.txt file during compilation.\n"
+    "                                      Default : 'false'\n\n";
 
 bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
 {
@@ -338,6 +340,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"compiler-enable-concurrent", required_argument, nullptr, OPTION_COMPILER_ENABLE_CONCURRENT},
         {"compiler-opt-frame-state-elimination", required_argument, nullptr,
             OPTION_COMPILER_OPT_FRAME_STATE_ELIMINATION},
+        {"compiler-enable-aot-code-comment", required_argument, nullptr, OPTION_COMPILER_ENABLE_AOT_CODE_COMMENT},
         {nullptr, 0, nullptr, 0},
     };
 
@@ -1311,9 +1314,17 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 }
                 break;
             case OPTION_COMPILER_ENABLE_PGO_SPACE:
-                 ret = ParseBoolParam(&argBool);
+                ret = ParseBoolParam(&argBool);
                 if (ret) {
                     SetCompilerEnablePgoSpace(argBool);
+                } else {
+                    return false;
+                }
+                break;
+            case OPTION_COMPILER_ENABLE_AOT_CODE_COMMENT:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetEnableAotCodeComment(argBool);
                 } else {
                     return false;
                 }

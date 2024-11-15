@@ -332,6 +332,16 @@ public:
         ehExclusiveFile = ehExclusive;
     }
 
+    void SetEmitAotCodeCommentFile(const std::string &aotCodeCommentFile)
+    {
+        aotCodeCommentFilePath = aotCodeCommentFile;
+    }
+
+    const std::string &GetEmitAotCodeCommentFile() const
+    {
+        return aotCodeCommentFilePath;
+    }
+
     static std::unordered_set<std::string> &GetDumpPhases()
     {
         return dumpPhases;
@@ -887,6 +897,7 @@ private:
     std::string ehExclusiveFile;
     /* we don't do exception handling in this list */
     std::vector<std::string> ehExclusiveFunctionName;
+    std::string aotCodeCommentFilePath = "";
 
     static std::string targetArch;
     static std::unordered_set<std::string> dumpPhases;
