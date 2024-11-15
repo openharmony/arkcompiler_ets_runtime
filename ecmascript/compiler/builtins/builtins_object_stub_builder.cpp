@@ -25,148 +25,6 @@
 #include "ecmascript/tagged_dictionary.h"
 
 namespace panda::ecmascript::kungfu {
-GateRef BuiltinsObjectStubBuilder::CreateListFromArrayLike(GateRef glue, GateRef arrayObj)
-{
-    auto env = GetEnvironment();
-    Label entry(env);
-    env->SubCfgEntry(&entry);
-    DEFVARIABLE(res, VariableType::JS_ANY(), Hole());
-    DEFVARIABLE(index, VariableType::INT32(), Int32(0));
-    Label exit(env);
-
-    // 3. If Type(obj) is Object, throw a TypeError exception.
-    Label targetIsHeapObject(env);
-    Label targetIsEcmaObject(env);
-    Label targetNotEcmaObject(env);
-    BRANCH(TaggedIsHeapObject(arrayObj), &targetIsHeapObject, &targetNotEcmaObject);
-    Bind(&targetIsHeapObject);
-    BRANCH(TaggedObjectIsEcmaObject(arrayObj), &targetIsEcmaObject, &targetNotEcmaObject);
-    Bind(&targetNotEcmaObject);
-    {
-        GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(TargetTypeNotObject));
-        CallRuntime(glue, RTSTUB_ID(ThrowTypeError), { IntToTaggedInt(taggedId) });
-        Jump(&exit);
-    }
-    Bind(&targetIsEcmaObject);
-    {
-        Label targetIsTypeArray(env);
-        Label targetNotTypeArray(env);
-        BRANCH(IsTypedArray(arrayObj), &targetIsTypeArray, &targetNotTypeArray);
-        Bind(&targetIsTypeArray);
-        {
-            GateRef int32Len = GetLengthOfJSTypedArray(arrayObj);
-            NewObjectStubBuilder newBuilder(this);
-            GateRef array = newBuilder.NewTaggedArray(glue, int32Len);
-            BuiltinsTypedArrayStubBuilder arrayStubBuilder(this);
-            arrayStubBuilder.FastCopyElementToArray(glue, arrayObj, array);
-            // c. ReturnIfAbrupt(next).
-            Label isPendingException2(env);
-            Label noPendingException2(env);
-            BRANCH(HasPendingException(glue), &isPendingException2, &noPendingException2);
-            Bind(&isPendingException2);
-            {
-                Jump(&exit);
-            }
-            Bind(&noPendingException2);
-            {
-                res = array;
-                Jump(&exit);
-            }
-        }
-        Bind(&targetNotTypeArray);
-        // 4. Let len be ToLength(Get(obj, "length")).
-        GateRef lengthString = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
-                                                      ConstantIndex::LENGTH_STRING_INDEX);
-        GateRef value = FastGetPropertyByName(glue, arrayObj, lengthString, ProfileOperation());
-        GateRef number = ToLength(glue, value);
-        // 5. ReturnIfAbrupt(len).
-        Label isPendingException1(env);
-        Label noPendingException1(env);
-        BRANCH(HasPendingException(glue), &isPendingException1, &noPendingException1);
-        Bind(&isPendingException1);
-        {
-            Jump(&exit);
-        }
-        Bind(&noPendingException1);
-        {
-            Label indexInRange(env);
-            Label indexOutRange(env);
-
-            GateRef doubleLen = GetDoubleOfTNumber(number);
-            BRANCH(DoubleGreaterThan(doubleLen, Double(JSObject::MAX_ELEMENT_INDEX)), &indexOutRange, &indexInRange);
-            Bind(&indexOutRange);
-            {
-                GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(LenGreaterThanMax));
-                CallRuntime(glue, RTSTUB_ID(ThrowTypeError), { IntToTaggedInt(taggedId) });
-                Jump(&exit);
-            }
-            Bind(&indexInRange);
-            {
-                // 8. Repeat while index < len
-                GateRef int32Length = DoubleToInt(glue, doubleLen);
-                NewObjectStubBuilder newBuilder(this);
-                GateRef array = newBuilder.NewTaggedArray(glue, int32Length);
-                Label loopHead(env);
-                Label loopEnd(env);
-                Label afterLoop(env);
-                Label isPendingException3(env);
-                Label noPendingException3(env);
-                Label storeValue(env);
-                Jump(&loopHead);
-                LoopBegin(&loopHead);
-                {
-                    BRANCH(Int32UnsignedLessThan(*index, int32Length), &storeValue, &afterLoop);
-                    Bind(&storeValue);
-                    {
-                        GateRef next = FastGetPropertyByIndex(glue, arrayObj, *index, ProfileOperation());
-                        // c. ReturnIfAbrupt(next).
-                        BRANCH(HasPendingException(glue), &isPendingException3, &noPendingException3);
-                        Bind(&isPendingException3);
-                        {
-                            Jump(&exit);
-                        }
-                        Bind(&noPendingException3);
-                        SetValueToTaggedArray(VariableType::JS_ANY(), glue, array, *index, next);
-                        index = Int32Add(*index, Int32(1));
-                        Jump(&loopEnd);
-                    }
-                }
-                Bind(&loopEnd);
-                LoopEnd(&loopHead, env, glue);
-                Bind(&afterLoop);
-                {
-                    res = array;
-                    Jump(&exit);
-                }
-            }
-        }
-    }
-    Bind(&exit);
-    GateRef ret = *res;
-    env->SubCfgExit();
-    return ret;
-}
-GateRef BuiltinsObjectStubBuilder::CreateArrayFromList(GateRef glue, GateRef elements)
-{
-    auto env = GetEnvironment();
-    DEFVARIABLE(result, VariableType::JS_POINTER(), Undefined());
-    GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
-    GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
-    auto arrayFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, GlobalEnv::ARRAY_FUNCTION_INDEX);
-    GateRef accessor = GetGlobalConstantValue(VariableType::JS_ANY(), glue, ConstantIndex::ARRAY_LENGTH_ACCESSOR);
-    GateRef intialHClass = Load(VariableType::JS_ANY(), arrayFunc, IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
-    NewObjectStubBuilder newBuilder(this);
-    newBuilder.SetParameters(glue, 0);
-    GateRef len = GetLengthOfTaggedArray(elements);
-    result = newBuilder.NewJSObject(glue, intialHClass);
-    SetPropertyInlinedProps(glue, *result, intialHClass, accessor, Int32(JSArray::LENGTH_INLINE_PROPERTY_INDEX));
-    SetArrayLength(glue, *result, len);
-    SetExtensibleToBitfield(glue, *result, true);
-    SetElementsArray(VariableType::JS_POINTER(), glue_, *result, elements);
-    auto res = *result;
-    return res;
-}
-
 void BuiltinsObjectStubBuilder::ToString(Variable *result, Label *exit, Label *slowPath)
 {
     auto env = GetEnvironment();
@@ -218,7 +76,6 @@ void BuiltinsObjectStubBuilder::ToString(Variable *result, Label *exit, Label *s
         }
     }
 }
-
 
 void BuiltinsObjectStubBuilder::Create(Variable *result, Label *exit, Label *slowPath)
 {
@@ -1163,6 +1020,7 @@ GateRef BuiltinsObjectStubBuilder::IsNotSlowObjectKey(GateRef obj)
 void BuiltinsObjectStubBuilder::Keys(Variable *result, Label *exit, Label *slowPath)
 {
     auto env = GetEnvironment();
+    NewObjectStubBuilder newBuilder(this);
     GateRef msg = GetCallArg0(numArgs_);
     // 1. Let obj be ToObject(O).
     GateRef obj = ToObject(glue_, msg);
@@ -1188,7 +1046,7 @@ void BuiltinsObjectStubBuilder::Keys(Variable *result, Label *exit, Label *slowP
         Bind(&hasKeyAndEle);
         {
             GateRef allKeys = AppendSkipHole(glue_, elementArray, keyArray, Int32Add(lengthOfKeys, lengthOfElements));
-            *result = CreateArrayFromList(glue_, allKeys);
+            *result = newBuilder.CreateArrayFromList(glue_, allKeys);
             Jump(exit);
         }
         Bind(&nonKeyAndEle);
@@ -1198,7 +1056,7 @@ void BuiltinsObjectStubBuilder::Keys(Variable *result, Label *exit, Label *slowP
             BRANCH(Int32NotEqual(lengthOfKeys, Int32(0)), &hasKey, &nonKey);
             Bind(&hasKey);
             {
-                *result = CreateArrayFromList(glue_, keyArray);
+                *result = newBuilder.CreateArrayFromList(glue_, keyArray);
                 Jump(exit);
             }
             Bind(&nonKey);
@@ -1208,13 +1066,13 @@ void BuiltinsObjectStubBuilder::Keys(Variable *result, Label *exit, Label *slowP
                 BRANCH(Int32NotEqual(lengthOfElements, Int32(0)), &hasEle, &nonEle);
                 Bind(&hasEle);
                 {
-                    *result = CreateArrayFromList(glue_, elementArray);
+                    *result = newBuilder.CreateArrayFromList(glue_, elementArray);
                     Jump(exit);
                 }
                 Bind(&nonEle);
                 {
                     GateRef emptyArray = GetEmptyArray(glue_);
-                    *result = CreateArrayFromList(glue_, emptyArray);
+                    *result = newBuilder.CreateArrayFromList(glue_, emptyArray);
                     Jump(exit);
                 }
             }
@@ -1516,7 +1374,7 @@ void BuiltinsObjectStubBuilder::GetOwnPropertyNames(Variable *result, Label *exi
                         }
                         Bind(&setResult);
                         {
-                            *result = CreateArrayFromList(glue_, keyArray);
+                            *result = newBuilder.CreateArrayFromList(glue_, keyArray);
                             Jump(exit);
                         }
                     }
@@ -1624,7 +1482,7 @@ void BuiltinsObjectStubBuilder::GetOwnPropertySymbols(Variable *result, Label *e
                         }
                         Bind(&setResult);
                         {
-                            *result = CreateArrayFromList(glue_, keyArray);
+                            *result = newBuilder.CreateArrayFromList(glue_, keyArray);
                             Jump(exit);
                         }
                     }
@@ -1795,6 +1653,7 @@ void BuiltinsObjectStubBuilder::Entries(Variable* result, Label* exit, Label* sl
     Label noPendingException(env);
     GateRef msg = GetCallArg0(numArgs_);
     GateRef obj = ToObject(glue_, msg);
+    NewObjectStubBuilder newBuilder(this);
     BRANCH(HasPendingException(glue_), &isPendingException, &noPendingException);
     Bind(&isPendingException);
     {
@@ -1824,7 +1683,7 @@ void BuiltinsObjectStubBuilder::Entries(Variable* result, Label* exit, Label* sl
                 {
                     GateRef allEntries = AppendSkipHole(glue_, elementArray, propertyArray,
                         Int32Add(elementLen, propertyLen));
-                    *result = CreateArrayFromList(glue_, allEntries);
+                    *result = newBuilder.CreateArrayFromList(glue_, allEntries);
                     Jump(exit);
                 }
                 Bind(&nonKeyAndEle);
@@ -1834,7 +1693,7 @@ void BuiltinsObjectStubBuilder::Entries(Variable* result, Label* exit, Label* sl
                     BRANCH(Int32NotEqual(propertyLen, Int32(0)), &hasKey, &nonKey);
                     Bind(&hasKey);
                     {
-                        *result = CreateArrayFromList(glue_, propertyArray);
+                        *result = newBuilder.CreateArrayFromList(glue_, propertyArray);
                         Jump(exit);
                     }
                     Bind(&nonKey);
@@ -1844,13 +1703,13 @@ void BuiltinsObjectStubBuilder::Entries(Variable* result, Label* exit, Label* sl
                         BRANCH(Int32NotEqual(elementLen, Int32(0)), &hasEle, &nonEle);
                         Bind(&hasEle);
                         {
-                            *result = CreateArrayFromList(glue_, elementArray);
+                            *result = newBuilder.CreateArrayFromList(glue_, elementArray);
                             Jump(exit);
                         }
                         Bind(&nonEle);
                         {
                             GateRef emptyArray = GetEmptyArray(glue_);
-                            *result = CreateArrayFromList(glue_, emptyArray);
+                            *result = newBuilder.CreateArrayFromList(glue_, emptyArray);
                             Jump(exit);
                         }
                     }
@@ -1901,12 +1760,11 @@ GateRef BuiltinsObjectStubBuilder::GetEnumElementEntries(GateRef glue, GateRef o
             BRANCH(TaggedIsHole(value), &loopEnd, &notHole);
             Bind(&notHole);
             {
-                NewObjectStubBuilder newBuilderProp(this);
-                GateRef arrayProp = newBuilderProp.NewTaggedArray(glue, Int32(2));
+                GateRef arrayProp = newBuilder.NewTaggedArray(glue, Int32(2));
                 GateRef str = IntToEcmaString(glue, *idx);
                 SetValueToTaggedArray(VariableType::JS_ANY(), glue, arrayProp, Int32(0), str);
                 SetValueToTaggedArray(VariableType::JS_ANY(), glue, arrayProp, Int32(1), value);
-                GateRef propArray = CreateArrayFromList(glue, arrayProp);
+                GateRef propArray = newBuilder.CreateArrayFromList(glue, arrayProp);
                 SetValueToTaggedArray(VariableType::JS_ANY(), glue, numElementArray, *pos, propArray);
                 pos = Int32Add(*pos, Int32(1));
                 Jump(&loopEnd);
@@ -1955,8 +1813,7 @@ GateRef BuiltinsObjectStubBuilder::GetEnumPropertyEntries(GateRef glue, GateRef 
     {
         BRANCH(Int32LessThan(*idx, len), &LoopNext, &loopExit);
         Bind(&LoopNext);
-        NewObjectStubBuilder newBuilderProp(this);
-        GateRef arrayProp = newBuilderProp.NewTaggedArray(glue, Int32(2));
+        GateRef arrayProp = newBuilder.NewTaggedArray(glue, Int32(2)); // 2: length of array to store [key, value] is 2
         GateRef key = GetKeyFromLayoutInfo(layout, *idx);
         GateRef attr = GetPropAttrFromLayoutInfo(layout, *idx);
         GateRef value = JSObjectGetProperty(obj, cls, attr);
@@ -1968,7 +1825,7 @@ GateRef BuiltinsObjectStubBuilder::GetEnumPropertyEntries(GateRef glue, GateRef 
             {
                 SetValueToTaggedArray(VariableType::JS_ANY(), glue, arrayProp, Int32(0), key);
                 SetValueToTaggedArray(VariableType::JS_ANY(), glue, arrayProp, Int32(1), value);
-                GateRef propArray = CreateArrayFromList(glue, arrayProp);
+                GateRef propArray = newBuilder.CreateArrayFromList(glue, arrayProp);
                 SetValueToTaggedArray(VariableType::JS_ANY(), glue, allEnumArray, *length, propArray);
                 length = Int32Add(*length, Int32(1));
                 Jump(&loopEnd);

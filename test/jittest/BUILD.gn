@@ -23,6 +23,7 @@ group("ark_jit_ts_test") {
     "try_catch_empty",
     "ldobjbyname",
     "for_loop",
+    "for_of",
     "typed_array",
     "while_loop",
     "exception",

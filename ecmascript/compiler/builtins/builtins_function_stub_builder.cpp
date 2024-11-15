@@ -60,8 +60,8 @@ void BuiltinsFunctionStubBuilder::PrototypeApply(GateRef glue, GateRef thisValue
                 BRANCH(TaggedIsHole(elements), &targetIsHole, &targetNotHole);
                 Bind(&targetIsHole);
                 {
-                    BuiltinsObjectStubBuilder objectStubBuilder(this);
-                    GateRef argList = objectStubBuilder.CreateListFromArrayLike(glue, arrayObj);
+                    NewObjectStubBuilder newBuilder(this);
+                    GateRef argList = newBuilder.CreateListFromArrayLike(glue, arrayObj);
                     // 4. ReturnIfAbrupt(argList).
                     Label isPendingException(env);
                     Label noPendingException(env);

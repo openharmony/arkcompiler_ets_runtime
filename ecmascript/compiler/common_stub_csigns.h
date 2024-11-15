@@ -121,6 +121,8 @@ namespace panda::ecmascript::kungfu {
     V(StringIteratorNext)             \
     V(VerifyBarrier)                  \
     V(ArrayIteratorNext)              \
+    V(MapIteratorNext)                \
+    V(SetIteratorNext)                \
     V(GetIterator)                    \
     V(GrowElementsCapacity)
 
