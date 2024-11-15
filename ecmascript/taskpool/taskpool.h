@@ -51,6 +51,13 @@ public:
         }
     }
 
+    void PostDelayedTask(std::unique_ptr<Task> task, uint64_t delayMilliseconds) const
+    {
+        if (isInitialized_ > 0) {
+            runner_->PostDelayedTask(std::move(task), delayMilliseconds);
+        }
+    }
+
     // Terminate a task of a specified type
     void TerminateTask(int32_t id, TaskType type = TaskType::ALL);
 
