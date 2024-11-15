@@ -34,19 +34,8 @@ void JSNApiGetAndClearUncaughtExceptionFuzzTest(const uint8_t *data, size_t size
     Local<StringRef> message = StringRef::NewFromUtf8(vm, (char *)data, (int)size);
     Local<JSValueRef> error = Exception::Error(vm, message);
     JSNApi::ThrowException(vm, error);
-    JSNApi::GetAndClearUncaughtException(vm);
-    JSNApi::DestroyJSVM(vm);
-}
-
-void JSNApiPrintExceptionInfoFuzzTest([[maybe_unused]]const uint8_t *data, size_t size)
-{
-    RuntimeOption option;
-    option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
-    EcmaVM *vm = JSNApi::CreateJSVM(option);
-    if (size <= 0) {
-        return;
-    }
     JSNApi::PrintExceptionInfo(vm);
+    JSNApi::GetAndClearUncaughtException(vm);
     JSNApi::DestroyJSVM(vm);
 }
 
@@ -71,7 +60,6 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 {
     // Run your code on data.
     OHOS::JSNApiGetAndClearUncaughtExceptionFuzzTest(data, size);
-    OHOS::JSNApiPrintExceptionInfoFuzzTest(data, size);
     OHOS::JSNApiThrowExceptionFuzzTest(data, size);
     return 0;
 }
