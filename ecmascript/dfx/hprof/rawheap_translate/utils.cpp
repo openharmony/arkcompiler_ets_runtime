@@ -94,7 +94,7 @@ uint64_t GetFileSize(std::string &inputFilePath)
     return 0;
 }
 
-bool FileCheckAndOpenBinary(const std::string &rawheapPath, std::ifstream &file, int &fileSize)
+bool FileCheckAndOpenBinary(const std::string &rawheapPath, std::ifstream &file, uint32_t &fileSize)
 {
     std::string realpath {};
     if (!RealPath(rawheapPath, realpath)) {
@@ -102,12 +102,13 @@ bool FileCheckAndOpenBinary(const std::string &rawheapPath, std::ifstream &file,
         return false;
     }
 
-    fileSize = GetFileSize(realpath);
-    if (fileSize == 0 || fileSize > MAX_FILE_SIZE) {
-        LOG_ERROR("file size > 4GB, unsupported!");
+    uint64_t size = GetFileSize(realpath);
+    if (size == 0 || size >= MAX_FILE_SIZE) {
+        LOG_ERROR("file size >= 4GB or size = 0, unsupported!");
         return false;
     }
 
+    fileSize = static_cast<uint32_t>(size);
     file.open(realpath, std::ios::binary);
     return true;
 }
