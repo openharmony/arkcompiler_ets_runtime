@@ -710,7 +710,7 @@ JSTaggedValue BuiltinsSharedArray::FilterArray(JSThread *thread, JSHandle<JSTagg
     JSMutableHandle<JSTaggedValue> toIndexHandle(thread, JSTaggedValue::Undefined());
     int64_t k = 0;
     // 3. Let len be ToLength(Get(O, "length")).
-    uint64_t len = static_cast<uint64_t>(ArrayHelper::GetArrayLength(thread, thisObjVal));
+    int64_t len = ArrayHelper::GetArrayLength(thread, thisObjVal);
     // 4. ReturnIfAbrupt(len).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     uint32_t toIndex = 0;
