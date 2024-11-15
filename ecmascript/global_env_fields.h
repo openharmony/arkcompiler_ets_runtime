@@ -135,6 +135,8 @@
     V(JSTaggedValue, BuiltinsWeakRefFunction, BUILTINS_WEAK_REF_FUNCTION_INDEX)                     \
     V(JSTaggedValue, BuiltinsFinalizationRegistryFunction,                                          \
         BUILTINS_FINALIZATION_REGISTRY_FUNCTION_INDEX)                                              \
+    V(JSTaggedValue, BitVectorPrototype, BITVECTOR_PROTOTYPE_INDEX)                                 \
+    V(JSTaggedValue, BitVectorFunction, BITVECTOR_FUNCTION_INDEX)                                   \
     V(JSTaggedValue, MapPrototype, MAP_PROTOTYPE_INDEX)                                             \
     V(JSTaggedValue, MathFunction, MATH_FUNCTION_INDEX)                                             \
     V(JSTaggedValue, MathFunctionClass, MATH_FUNCTION_CLASS_INDEX)                                  \
@@ -167,6 +169,7 @@
     V(JSTaggedValue, StringIteratorClass, STRING_ITERATOR_CLASS_INDEX)                              \
     V(JSTaggedValue, AsyncFromSyncIterator, ASYNC_FROM_SYNC_ITERATOR_INDEX)                         \
     V(JSTaggedValue, MapIteratorPrototype, MAP_ITERATOR_PROTOTYPE_INDEX)                            \
+    V(JSTaggedValue, BitVectorIteratorPrototype, BITVECTOR_ITERATOR_PROTOTYPE_INDEX)                \
     V(JSTaggedValue, SharedMapIteratorPrototype, SHARED_MAP_ITERATOR_PROTOTYPE_INDEX)               \
     V(JSTaggedValue, SetIteratorPrototype, SET_ITERATOR_PROTOTYPE_INDEX)                            \
     V(JSTaggedValue, SharedSetIteratorPrototype, SHARED_SET_ITERATOR_PROTOTYPE_INDEX)               \
