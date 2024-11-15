@@ -147,7 +147,6 @@ void JSHClass::InitializeWithDefaultValue(const JSThread *thread, uint32_t size,
     SetProtoChangeMarker(thread, JSTaggedValue::Null());
     SetProtoChangeDetails(thread, JSTaggedValue::Null());
     SetEnumCache(thread, JSTaggedValue::Null());
-    SetLevel(0);
 }
 
 bool JSHClass::IsJSTypeShared(JSType type)
@@ -492,7 +491,10 @@ void JSHClass::SetPrototypeTransition(JSThread *thread, const JSHandle<JSObject>
     auto newClass = SetPrototypeWithNotification(thread, hclass, proto, isChangeProto);
     RestoreElementsKindToGeneric(*newClass);
     object->SynchronizedSetClass(thread, *newClass);
-    thread->NotifyStableArrayElementsGuardians(object, StableArrayChangeKind::PROTO);
+    if (object->IsJSArray()) {
+        thread->NotifyArrayPrototypeChangedGuardians(object);
+        newClass->SetIsJSArrayPrototypeModified(true);
+    }
     ObjectOperator::UpdateDetectorOnSetPrototype(thread, object.GetTaggedValue());
 }
 

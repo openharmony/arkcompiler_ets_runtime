@@ -565,7 +565,7 @@ CString *HeapSnapshot::GenerateNodeName(TaggedObject *entry)
             case JSType::GLOBAL_ENV:
                 return GetString("GlobalEnv");
             case JSType::PROTOTYPE_HANDLER:
-                return GetString("ProtoTypeHandler");
+                return GetString("PrototypeHandler");
             case JSType::TRANSITION_HANDLER:
                 return GetString("TransitionHandler");
             case JSType::TRANS_WITH_PROTO_HANDLER:

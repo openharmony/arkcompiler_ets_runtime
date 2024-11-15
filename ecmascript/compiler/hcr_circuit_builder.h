@@ -90,7 +90,7 @@ GateRef CircuitBuilder::IsCallable(GateRef obj)
     return IsCallableFromBitField(bitfield);
 }
 
-GateRef CircuitBuilder::IsProtoTypeHClass(GateRef hClass)
+GateRef CircuitBuilder::IsPrototypeHClass(GateRef hClass)
 {
     GateRef bitfield = LoadConstOffset(VariableType::INT32(), hClass, JSHClass::BIT_FIELD_OFFSET);
     return TruncInt32ToInt1(Int32And(Int32LSR(bitfield,
@@ -297,6 +297,16 @@ GateRef CircuitBuilder::IsStableElements(GateRef hClass)
     return NotEqual(Int32And(Int32LSR(bitfield,
         Int32(JSHClass::IsStableElementsBit::START_BIT)),
         Int32((1LU << JSHClass::IsStableElementsBit::SIZE) - 1)),
+        Int32(0));
+}
+
+GateRef CircuitBuilder::IsJSArrayPrototypeModified(GateRef hClass)
+{
+    GateRef bitfieldOffset = Int32(JSHClass::BIT_FIELD_OFFSET);
+    GateRef bitfield = Load(VariableType::INT32(), hClass, bitfieldOffset);
+    return NotEqual(Int32And(Int32LSR(bitfield,
+        Int32(JSHClass::IsJSArrayPrototypeModifiedBit::START_BIT)),
+        Int32((1LU << JSHClass::IsJSArrayPrototypeModifiedBit::SIZE) - 1)),
         Int32(0));
 }
 

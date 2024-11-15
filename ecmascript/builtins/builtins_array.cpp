@@ -52,10 +52,20 @@ JSTaggedValue BuiltinsArray::ArrayConstructor(EcmaRuntimeCallInfo *argv)
     // In NewJSObjectByConstructor(), will get prototype.
     // 5. ReturnIfAbrupt(proto).
 
+    auto CheckAndSetPrototypeModified = [] (JSThread* thread, const JSHandle<JSObject>& newArrayHandle) {
+        if (!JSArray::IsProtoNotChangeJSArray(thread, newArrayHandle)) {
+            newArrayHandle->GetJSHClass()->SetIsJSArrayPrototypeModified(true);
+        }
+    };
+
     // 22.1.1.1 Array ( )
     if (argc == 0) {
         // 6. Return ArrayCreate(0, proto).
-        return JSArray::ArrayCreate(thread, JSTaggedNumber(0), newTarget).GetTaggedValue();
+        auto arrayHandle = JSArray::ArrayCreate(thread, JSTaggedNumber(0), newTarget);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        auto newArrayHandle = JSHandle<JSObject>::Cast(arrayHandle);
+        CheckAndSetPrototypeModified(thread, newArrayHandle);
+        return newArrayHandle.GetTaggedValue();
     }
 
     // 22.1.1.2 Array(len)
@@ -88,6 +98,7 @@ JSTaggedValue BuiltinsArray::ArrayConstructor(EcmaRuntimeCallInfo *argv)
         JSArray::SetCapacity(thread, newArrayHandle, 0, newLen, true);
 
         // 11. Return array.
+        CheckAndSetPrototypeModified(thread, newArrayHandle);
         return newArrayHandle.GetTaggedValue();
     }
 
@@ -149,6 +160,7 @@ JSTaggedValue BuiltinsArray::ArrayConstructor(EcmaRuntimeCallInfo *argv)
     // 11. Assert: the value of array’s length property is numberOfArgs.
     // 12. Return array.
     JSArray::Cast(*newArrayHandle)->SetArrayLength(thread, argc);
+    CheckAndSetPrototypeModified(thread, newArrayHandle);
     return newArrayHandle.GetTaggedValue();
 }
 
@@ -869,12 +881,16 @@ JSTaggedValue BuiltinsArray::Fill(EcmaRuntimeCallInfo *argv)
     } else {
         end = argEnd < len ? argEnd : len;
     }
+
+    if (start < end) {
+        thread->NotifyArrayPrototypeChangedGuardians(thisObjHandle);
+    }
+    
     // 11. Repeat, while k < final
     //   a. Let Pk be ToString(k).
     //   b. Let setStatus be Set(O, Pk, value, true).
     //   c. ReturnIfAbrupt(setStatus).
     //   d. Increase k by 1.
-
     if (thisObjVal->IsStableJSArray(thread) && !startArg->IsJSObject() && !endArg->IsJSObject()) {
         return JSStableArray::Fill(thread, thisObjHandle, value, start, end, len);
     }
@@ -1651,26 +1667,28 @@ JSTaggedValue BuiltinsArray::Push(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
     // 1. Let O be ToObject(this value).
     JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
+    // 2. Let argCount be the number of elements in items.
+    uint32_t argc = argv->GetArgsNumber();
+    if (argc > 0) {
+        thread->NotifyArrayPrototypeChangedGuardians(thisObjHandle);
+    }
     if (thisHandle->IsStableJSArray(thread) && JSObject::IsArrayLengthWritable(thread, thisObjHandle)) {
         return JSStableArray::Push(JSHandle<JSArray>::Cast(thisHandle), argv);
     }
-    // 6. Let argCount be the number of elements in items.
-    uint32_t argc = argv->GetArgsNumber();
-
-    // 2. ReturnIfAbrupt(O).
+    // 3. ReturnIfAbrupt(O).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSTaggedValue> thisObjVal(thisObjHandle);
 
-    // 3. Let len be ToLength(Get(O, "length")).
+    // 4. Let len be ToLength(Get(O, "length")).
     int64_t len = ArrayHelper::GetArrayLength(thread, thisObjVal);
-    // 4. ReturnIfAbrupt(len).
+    // 5. ReturnIfAbrupt(len).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    // 7. If len + argCount > 253-1, throw a TypeError exception.
+    // 6. If len + argCount > 253-1, throw a TypeError exception.
     if ((len + static_cast<int64_t>(argc)) > base::MAX_SAFE_INTEGER) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "out of range.", JSTaggedValue::Exception());
     }
 
-    // 8. Repeat, while items is not empty
+    // 7. Repeat, while items is not empty
     //   a. Remove the first element from items and let E be the value of the element.
     //   b. Let setStatus be Set(O, ToString(len), E, true).
     //   c. ReturnIfAbrupt(setStatus).
@@ -1686,14 +1704,14 @@ JSTaggedValue BuiltinsArray::Push(EcmaRuntimeCallInfo *argv)
         len++;
     }
 
-    // 9. Let setStatus be Set(O, "length", len, true).
+    // 8. Let setStatus be Set(O, "length", len, true).
     JSHandle<JSTaggedValue> lengthKey = thread->GlobalConstants()->GetHandledLengthString();
     key.Update(JSTaggedValue(len));
     JSTaggedValue::SetProperty(thread, thisObjVal, lengthKey, key, true);
-    // 10. ReturnIfAbrupt(setStatus).
+    // 9. ReturnIfAbrupt(setStatus).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
-    // 11. Return len.
+    // 10. Return len.
     return GetTaggedDouble(len);
 }
 
@@ -2436,6 +2454,7 @@ JSTaggedValue BuiltinsArray::Splice(EcmaRuntimeCallInfo *argv)
     //   c. ReturnIfAbrupt(dc).
     //   d. Let actualDeleteCount be min(max(dc,0), len – actualStart).
     if (argc > 1) {
+        thread->NotifyArrayPrototypeChangedGuardians(thisObjHandle);
         insertCount = argc - 2;  // 2:2 means there are two arguments before the insert items.
         JSHandle<JSTaggedValue> msg1 = GetCallArg(argv, 1);
         JSTaggedNumber argDeleteCount = JSTaggedValue::ToInteger(thread, msg1);
@@ -2734,19 +2753,16 @@ JSTaggedValue BuiltinsArray::Unshift(EcmaRuntimeCallInfo *argv)
 
     // 5. Let argCount be the number of actual arguments.
     int64_t argc = argv->GetArgsNumber();
-
     // 1. Let O be ToObject(this value).
     JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
     JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
     // 2. ReturnIfAbrupt(O).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSTaggedValue> thisObjVal(thisObjHandle);
-
     // 3. Let len be ToLength(Get(O, "length")).
     int64_t len = ArrayHelper::GetArrayLength(thread, thisObjVal);
     // 4. ReturnIfAbrupt(len).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-
     // 6. If argCount > 0, then
     //   a. If len+ argCount > 253-1, throw a TypeError exception.
     //   b. Let k be len.
@@ -2768,6 +2784,7 @@ JSTaggedValue BuiltinsArray::Unshift(EcmaRuntimeCallInfo *argv)
         if (len + argc > base::MAX_SAFE_INTEGER) {
             THROW_TYPE_ERROR_AND_RETURN(thread, "out of range.", JSTaggedValue::Exception());
         }
+        thread->NotifyArrayPrototypeChangedGuardians(thisObjHandle);
         JSMutableHandle<JSTaggedValue> fromKey(thread, JSTaggedValue::Undefined());
         JSMutableHandle<JSTaggedValue> toKey(thread, JSTaggedValue::Undefined());
         int64_t k = len;

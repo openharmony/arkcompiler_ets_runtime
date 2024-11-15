@@ -45,6 +45,7 @@ public:
                                   const PropertyDescriptor &desc);
 
     static bool IsLengthString(JSThread *thread, const JSHandle<JSTaggedValue> &key);
+    static bool IsProtoNotChangeJSArray(JSThread *thread, const JSHandle<JSObject> &obj);
     // ecma6 7.3 Operations on Objects
     static JSHandle<JSArray> CreateArrayFromList(JSThread *thread, const JSHandle<TaggedArray> &elements);
     static JSHandle<JSArray> CreateArrayFromList(JSThread *thread, const JSHandle<JSTaggedValue> &newtarget,

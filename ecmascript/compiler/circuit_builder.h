@@ -472,6 +472,7 @@ public:
     inline GateRef IsStableArguments(GateRef hClass);
     inline GateRef IsStableArray(GateRef hClass);
     inline GateRef IsDictionaryElement(GateRef hClass);
+    inline GateRef IsJSArrayPrototypeModified(GateRef hClass);
     inline GateRef IsClassConstructor(GateRef object);
     inline GateRef IsClassConstructorWithBitField(GateRef bitfield);
     inline GateRef IsConstructor(GateRef object);
@@ -481,7 +482,7 @@ public:
     inline GateRef IsJSObject(GateRef obj);
     inline GateRef IsCallable(GateRef obj);
     inline GateRef IsCallableFromBitField(GateRef bitfield);
-    inline GateRef IsProtoTypeHClass(GateRef hclass);
+    inline GateRef IsPrototypeHClass(GateRef hclass);
     inline GateRef IsJsProxy(GateRef obj);
     GateRef IsJSHClass(GateRef obj);
     inline void StoreHClass(GateRef glue, GateRef object, GateRef hClass);

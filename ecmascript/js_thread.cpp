@@ -564,9 +564,9 @@ void JSThread::ShrinkHandleStorage(int prevIndex)
     GetCurrentEcmaContext()->ShrinkHandleStorage(prevIndex);
 }
 
-void JSThread::NotifyStableArrayElementsGuardians(JSHandle<JSObject> receiver, StableArrayChangeKind changeKind)
+void JSThread::NotifyArrayPrototypeChangedGuardians(JSHandle<JSObject> receiver)
 {
-    if (!glueData_.stableArrayElementsGuardians_) {
+    if (!glueData_.arrayPrototypeChangedGuardians_) {
         return;
     }
     if (!receiver->GetJSHClass()->IsPrototype() && !receiver->IsJSArray()) {
@@ -575,17 +575,14 @@ void JSThread::NotifyStableArrayElementsGuardians(JSHandle<JSObject> receiver, S
     auto env = GetEcmaVM()->GetGlobalEnv();
     if (receiver.GetTaggedValue() == env->GetObjectFunctionPrototype().GetTaggedValue() ||
         receiver.GetTaggedValue() == env->GetArrayPrototype().GetTaggedValue()) {
-        glueData_.stableArrayElementsGuardians_ = false;
+        glueData_.arrayPrototypeChangedGuardians_ = false;
         return;
-    }
-    if (changeKind == StableArrayChangeKind::PROTO && receiver->IsJSArray()) {
-        glueData_.stableArrayElementsGuardians_ = false;
     }
 }
 
 void JSThread::ResetGuardians()
 {
-    glueData_.stableArrayElementsGuardians_ = true;
+    glueData_.arrayPrototypeChangedGuardians_ = true;
 }
 
 void JSThread::SetInitialBuiltinHClass(

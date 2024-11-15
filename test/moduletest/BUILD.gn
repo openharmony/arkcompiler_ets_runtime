@@ -262,6 +262,10 @@ group("ark_asm_test") {
     "allocatearraybuffer",
     "allocatesizeoverflow",
     "array",
+    "arraypushproto",
+    "arrayspliceproto",
+    "arrayunshiftproto",
+    "arrayfillproto",
     "arrayfindlast",
     "arrayfill",
     "arrayflat",
@@ -271,6 +275,7 @@ group("ark_asm_test") {
     "arrayforeach",
     "arrayjoin",
     "arraymap",
+    "arraystablecheck",
 
     # (issue 18938)
     #"arraypop",

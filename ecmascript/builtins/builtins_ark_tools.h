@@ -85,6 +85,7 @@
     V("isSmi",                                     IsSmi,                                     1, INVALID)     \
     V("createPrivateSymbol",                       CreatePrivateSymbol,                       1, INVALID)     \
     V("isArray",                                   IsArray,                                   1, INVALID)     \
+    V("isStableJsArray",                           IsStableJsArray,                           1, INVALID)     \
     V("createDataProperty",                        CreateDataProperty,                        3, INVALID)     \
     V("functionGetInferredName",                   FunctionGetInferredName,                   1, INVALID)     \
     V("stringLessThan",                            StringLessThan,                            2, INVALID)     \
@@ -183,6 +184,8 @@ public:
     static JSTaggedValue GetHClass(EcmaRuntimeCallInfo *info);
 
     static JSTaggedValue IsSlicedString(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue IsStableJsArray(EcmaRuntimeCallInfo *info);
 
     static JSTaggedValue IsNotHoleProperty(EcmaRuntimeCallInfo *info);
 

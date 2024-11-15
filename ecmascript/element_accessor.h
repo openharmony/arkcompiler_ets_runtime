@@ -38,7 +38,6 @@ public:
                         const JSHandle<T> &value, ElementsKind kind);
     static bool IsDictionaryMode(JSHandle<JSObject> receiver);
     static bool IsDictionaryMode(JSObject *receiver);
-
     static uint32_t GetElementsLength(JSHandle<JSObject> receiver);
     static uint32_t GetElementsLength(JSObject *receiver);
 

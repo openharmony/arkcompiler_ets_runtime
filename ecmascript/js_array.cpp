@@ -774,4 +774,20 @@ void JSArray::CheckAndCopyArray(const JSThread *thread, JSHandle<JSArray> obj)
         obj->SetProperties(thread, newProps.GetTaggedValue());
     }
 }
+
+//static
+bool JSArray::IsProtoNotChangeJSArray(JSThread *thread, const JSHandle<JSObject> &obj)
+{
+    if (obj->IsJSArray()) {
+        if (obj->GetJSHClass()->GetElementsKind() != ElementsKind::GENERIC) {
+            return true;
+        }
+        JSTaggedValue arrayProtoValue = obj->GetJSHClass()->GetProto();
+        JSTaggedValue genericArrayHClass = thread->GlobalConstants()->GetElementHoleTaggedClass();
+        JSTaggedValue genericArrayProtoValue = \
+            JSHClass::Cast(genericArrayHClass.GetTaggedObject())->GetProto();
+        return genericArrayProtoValue == arrayProtoValue;
+    }
+    return false;
+}
 }  // namespace panda::ecmascript

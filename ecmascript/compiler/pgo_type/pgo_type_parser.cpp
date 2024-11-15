@@ -49,7 +49,7 @@ bool ClassParser::RecordTypeInfo(const PGODefineOpType &defType, const PGOTypeLo
     }
     PGOSampleType ctorSampleType(ctorPt);
 
-    auto protoPt = defType.GetProtoTypePt();
+    auto protoPt = defType.GetPrototypePt();
     if (protoPt.IsNone()) {
         return false;
     }
@@ -136,7 +136,7 @@ bool FunctionParser::RecordTypeInfo(const PGODefineOpType &defType, const PGOTyp
     }
     PGOSampleType ctorSampleType(ctorPt);
 
-    auto protoPt = defType.GetProtoTypePt();
+    auto protoPt = defType.GetPrototypePt();
     if (protoPt.IsNone()) {
         return false;
     }

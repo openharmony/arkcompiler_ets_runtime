@@ -395,10 +395,10 @@ public:
     using IsClassConstructorOrPrototypeBit = HasConstructorBits::NextFlag;                        // 22
     using IsNativeBindingObjectBit = IsClassConstructorOrPrototypeBit::NextFlag;                  // 23
     using IsAOTBit = IsNativeBindingObjectBit::NextFlag;                                          // 24
-    using LevelBit = IsAOTBit::NextField<uint32_t, LEVEL_BTTFIELD_NUM>;                           // 25-29
-    using IsJSFunctionBit = LevelBit::NextFlag;                                                   // 30
-    using IsOnHeap = IsJSFunctionBit::NextFlag;                                                   // 31
-    using IsJSSharedBit = IsOnHeap::NextFlag;                                                     // 32
+    using IsJSArrayPrototypeModifiedBit = IsAOTBit::NextFlag;                                     // 25
+    using IsJSFunctionBit = IsJSArrayPrototypeModifiedBit::NextFlag;                              // 26
+    using IsOnHeap = IsJSFunctionBit::NextFlag;                                                   // 27
+    using IsJSSharedBit = IsOnHeap::NextFlag;                                                     // 28
     using BitFieldLastBit = IsJSSharedBit;
     static_assert(BitFieldLastBit::START_BIT + BitFieldLastBit::SIZE <= sizeof(uint32_t) * BITS_PER_BYTE, "Invalid");
 
@@ -585,6 +585,11 @@ public:
     inline void SetIsDictionaryMode(bool flag) const
     {
         IsDictionaryBit::Set<uint32_t>(flag, GetBitFieldAddr());
+    }
+
+    inline void SetIsJSArrayPrototypeModified(bool flag) const
+    {
+        IsJSArrayPrototypeModifiedBit::Set<uint32_t>(flag, GetBitFieldAddr());
     }
 
     inline void SetAOT(bool flag) const
@@ -1511,6 +1516,12 @@ public:
         return IsDictionaryBit::Decode(bits);
     }
 
+    inline bool IsJSArrayPrototypeModifiedFromBitField() const
+    {
+        uint32_t bits = GetBitField();
+        return IsJSArrayPrototypeModifiedBit::Decode(bits);
+    }
+
     // created from AOT
     inline bool IsAOT() const
     {
@@ -1792,19 +1803,6 @@ public:
     {
         uint32_t bits = GetBitField();
         return ElementsKindBits::Decode(bits);
-    }
-
-    inline void SetLevel(uint8_t level)
-    {
-        uint32_t bits = GetBitField();
-        uint32_t newVal = LevelBit::Update(bits, level);
-        SetBitField(newVal);
-    }
-
-    inline uint8_t GetLevel() const
-    {
-        uint32_t bits = GetBitField();
-        return LevelBit::Decode(bits);
     }
 
     inline void SetIsDictionaryElement(bool value)

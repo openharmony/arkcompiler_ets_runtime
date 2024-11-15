@@ -399,6 +399,7 @@ public:
     GateRef IsDictionaryMode(GateRef object);
     GateRef IsDictionaryModeByHClass(GateRef hClass);
     GateRef IsDictionaryElement(GateRef hClass);
+    GateRef IsJSArrayPrototypeModified(GateRef hClass);
     GateRef IsStableElements(GateRef hClass);
     GateRef HasConstructorByHClass(GateRef hClass);
     GateRef HasConstructor(GateRef object);
@@ -549,9 +550,9 @@ public:
     void SetEnumCacheToHClass(VariableType type, GateRef glue, GateRef hClass, GateRef key);
     void SetTransitionsToHClass(VariableType type, GateRef glue, GateRef hClass, GateRef transition);
     void SetParentToHClass(VariableType type, GateRef glue, GateRef hClass, GateRef parent);
-    void SetIsProtoTypeToHClass(GateRef glue, GateRef hClass, GateRef value);
+    void SetIsPrototypeToHClass(GateRef glue, GateRef hClass, GateRef value);
     inline void SetIsAOT(GateRef glue, GateRef hClass, GateRef value);
-    GateRef IsProtoTypeHClass(GateRef hClass);
+    GateRef IsPrototypeHClass(GateRef hClass);
     void SetPropertyInlinedProps(GateRef glue, GateRef obj, GateRef hClass,
                                  GateRef value, GateRef attrOffset, VariableType type = VariableType::JS_ANY(),
                                  MemoryAttribute mAttr = MemoryAttribute::Default());
@@ -845,7 +846,7 @@ public:
     GateRef GetGlobalOwnProperty(GateRef glue, GateRef receiver, GateRef key, ProfileOperation callback);
     GateRef AddElementInternal(GateRef glue, GateRef receiver, GateRef index, GateRef value, GateRef attr);
     GateRef ShouldTransToDict(GateRef capcity, GateRef index);
-    void NotifyStableArrayElementsGuardians(GateRef glue, GateRef receiver);
+    void NotifyArrayPrototypeChangedGuardians(GateRef glue, GateRef receiver);
     GateRef GrowElementsCapacity(GateRef glue, GateRef receiver, GateRef capacity);
 
     inline GateRef GetObjectFromConstPool(GateRef constpool, GateRef index);

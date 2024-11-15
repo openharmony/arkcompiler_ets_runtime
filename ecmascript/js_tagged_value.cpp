@@ -353,13 +353,14 @@ bool JSTaggedValue::IsJSCOWArray() const
 bool JSTaggedValue::IsStableJSArray(JSThread *thread) const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsStableJSArray() &&
-           !thread->IsStableArrayElementsGuardiansInvalid();
+           !thread->IsArrayPrototypeChangedGuardiansInvalid() &&
+           !GetTaggedObject()->GetClass()->IsJSArrayPrototypeModifiedFromBitField();
 }
 
 bool JSTaggedValue::IsStableJSArguments(JSThread *thread) const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsStableJSArguments() &&
-           !thread->IsStableArrayElementsGuardiansInvalid();
+           !thread->IsArrayPrototypeChangedGuardiansInvalid();
 }
 
 bool JSTaggedValue::IsTaggedArray() const
@@ -385,7 +386,7 @@ bool JSTaggedValue::IsGeneratorContext() const
 bool JSTaggedValue::HasStableElements(JSThread *thread) const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsStableElements() &&
-           !thread->IsStableArrayElementsGuardiansInvalid();
+           !thread->IsArrayPrototypeChangedGuardiansInvalid();
 }
 
 bool JSTaggedValue::WithinInt32() const

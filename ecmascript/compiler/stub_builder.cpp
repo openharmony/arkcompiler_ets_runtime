@@ -1349,7 +1349,7 @@ void StubBuilder::JSHClassAddProperty(GateRef glue, GateRef receiver, GateRef ke
         Label needUpdateAOTHClass(env);
         Label normalNotify(env);
         Label endUpdate(env);
-        GateRef updateCondition = LogicAndBuilder(env).And(isAOTHClass).And(IsProtoTypeHClass(newClass)).Done();
+        GateRef updateCondition = LogicAndBuilder(env).And(isAOTHClass).And(IsPrototypeHClass(newClass)).Done();
         Branch(updateCondition, &needUpdateAOTHClass, &normalNotify);
         Bind(&needUpdateAOTHClass);
         {
@@ -3849,7 +3849,7 @@ GateRef StubBuilder::AddElementInternal(GateRef glue, GateRef receiver, GateRef 
     }
     Bind(&notArray);
     {
-        NotifyStableArrayElementsGuardians(glue, receiver);
+        NotifyArrayPrototypeChangedGuardians(glue, receiver);
         GateRef hclass = LoadHClass(receiver);
         GateRef elements = GetElementsArray(receiver);
         Label isDicMode(env);
@@ -3991,35 +3991,35 @@ GateRef StubBuilder::ShouldTransToDict(GateRef capacity, GateRef index)
     return ret;
 }
 
-void StubBuilder::NotifyStableArrayElementsGuardians(GateRef glue, GateRef receiver)
+void StubBuilder::NotifyArrayPrototypeChangedGuardians(GateRef glue, GateRef receiver)
 {
     auto env = GetEnvironment();
     Label subEntry(env);
     env->SubCfgEntry(&subEntry);
     Label exit(env);
     GateRef guardiansOffset =
-                IntPtr(JSThread::GlueData::GetStableArrayElementsGuardiansOffset(env->Is32Bit()));
+                IntPtr(JSThread::GlueData::GetArrayElementsGuardiansOffset(env->Is32Bit()));
     GateRef guardians = Load(VariableType::BOOL(), glue, guardiansOffset);
     Label isGuardians(env);
     BRANCH(Equal(guardians, True()), &isGuardians, &exit);
     Bind(&isGuardians);
     {
         GateRef hclass = LoadHClass(receiver);
-        Label isProtoType(env);
-        BRANCH(BitOr(IsProtoTypeHClass(hclass), IsJsArray(receiver)), &isProtoType, &exit);
-        Bind(&isProtoType);
+        Label isPrototype(env);
+        BRANCH(BitOr(IsPrototypeHClass(hclass), IsJsArray(receiver)), &isPrototype, &exit);
+        Bind(&isPrototype);
         {
-            Label isEnvProtoType(env);
+            Label isEnvPrototype(env);
             GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
             GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
-            GateRef isEnvProtoTypeCheck = LogicOrBuilder(env)
+            GateRef isEnvPrototypeCheck = LogicOrBuilder(env)
                 .Or(Equal(GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv,
                                             GlobalEnv::OBJECT_FUNCTION_PROTOTYPE_INDEX), receiver))
                 .Or(Equal(GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv,
                                             GlobalEnv::ARRAY_PROTOTYPE_INDEX), receiver))
                 .Done();
-            BRANCH(isEnvProtoTypeCheck, &isEnvProtoType, &exit);
-            Bind(&isEnvProtoType);
+            BRANCH(isEnvPrototypeCheck, &isEnvPrototype, &exit);
+            Bind(&isEnvPrototype);
             Store(VariableType::BOOL(), glue, glue, guardiansOffset, False());
             Jump(&exit);
         }
@@ -5347,15 +5347,15 @@ void StubBuilder::NotifyHClassChanged(GateRef glue, GateRef oldHClass, GateRef n
     Label entry(env);
     env->SubCfgEntry(&entry);
     Label exit(env);
-    Label isProtoType(env);
-    BRANCH(IsProtoTypeHClass(oldHClass), &isProtoType, &exit);
-    Bind(&isProtoType);
+    Label isPrototype(env);
+    BRANCH(IsPrototypeHClass(oldHClass), &isPrototype, &exit);
+    Bind(&isPrototype);
     {
         Label notEqualHClass(env);
         BRANCH(Equal(oldHClass, newHClass), &exit, &notEqualHClass);
         Bind(&notEqualHClass);
         {
-            SetIsProtoTypeToHClass(glue, newHClass, True());
+            SetIsPrototypeToHClass(glue, newHClass, True());
             CallRuntime(glue, RTSTUB_ID(NoticeThroughChainAndRefreshUser), { oldHClass, newHClass });
             Jump(&exit);
         }
@@ -9208,7 +9208,7 @@ GateRef StubBuilder::HasStableElements(GateRef glue, GateRef obj)
         Bind(&targetIsStableElements);
         {
             GateRef guardiansOffset =
-                IntPtr(JSThread::GlueData::GetStableArrayElementsGuardiansOffset(env->Is32Bit()));
+                IntPtr(JSThread::GlueData::GetArrayElementsGuardiansOffset(env->Is32Bit()));
             result = Load(VariableType::BOOL(), glue, guardiansOffset);
             Jump(&exit);
         }
@@ -9237,7 +9237,7 @@ GateRef StubBuilder::IsStableJSArguments(GateRef glue, GateRef obj)
         Bind(&targetIsStableArguments);
         {
             GateRef guardiansOffset =
-                IntPtr(JSThread::GlueData::GetStableArrayElementsGuardiansOffset(env->Is32Bit()));
+                IntPtr(JSThread::GlueData::GetArrayElementsGuardiansOffset(env->Is32Bit()));
             result = Load(VariableType::BOOL(), glue, guardiansOffset);
             Jump(&exit);
         }
@@ -9257,19 +9257,23 @@ GateRef StubBuilder::IsStableJSArray(GateRef glue, GateRef obj)
     Label exit(env);
     Label targetIsHeapObject(env);
     Label targetIsStableArray(env);
-
     BRANCH(TaggedIsHeapObject(obj), &targetIsHeapObject, &exit);
     Bind(&targetIsHeapObject);
     {
-        GateRef jsHclass = LoadHClass(obj);
-        BRANCH(IsStableArray(jsHclass), &targetIsStableArray, &exit);
+        GateRef jsHClass = LoadHClass(obj);
+        BRANCH(IsStableArray(jsHClass), &targetIsStableArray, &exit);
         Bind(&targetIsStableArray);
         {
-            GateRef guardiansOffset =
-                IntPtr(JSThread::GlueData::GetStableArrayElementsGuardiansOffset(env->Is32Bit()));
-            GateRef guardians = Load(VariableType::BOOL(), glue, guardiansOffset);
-            result.WriteVariable(guardians);
-            Jump(&exit);
+            Label isPrototypeNotModified(env);
+            BRANCH(IsJSArrayPrototypeModified(jsHClass), &exit, &isPrototypeNotModified);
+            Bind(&isPrototypeNotModified);
+            {
+                GateRef guardiansOffset =
+                    IntPtr(JSThread::GlueData::GetArrayElementsGuardiansOffset(env->Is32Bit()));
+                GateRef guardians = Load(VariableType::BOOL(), glue, guardiansOffset);
+                result.WriteVariable(guardians);
+                Jump(&exit);
+            }
         }
     }
     Bind(&exit);

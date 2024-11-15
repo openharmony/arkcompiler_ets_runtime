@@ -404,7 +404,7 @@ bool JSObject::AddElementInternal(JSThread *thread, const JSHandle<JSObject> &re
             }
         }
     }
-    thread->NotifyStableArrayElementsGuardians(receiver, StableArrayChangeKind::NOT_PROTO);
+    thread->NotifyArrayPrototypeChangedGuardians(receiver);
 
     // check whether to convert to dictionary
     if (receiver->GetJSHClass()->IsDictionaryElement() && receiver->IsJSArray()) {

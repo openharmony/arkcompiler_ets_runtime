@@ -1313,6 +1313,11 @@ inline GateRef StubBuilder::IsDictionaryElement(GateRef hClass)
     return env_->GetBuilder()->IsDictionaryElement(hClass);
 }
 
+inline GateRef StubBuilder::IsJSArrayPrototypeModified(GateRef hClass)
+{
+    return env_->GetBuilder()->IsJSArrayPrototypeModified(hClass);
+}
+
 inline GateRef StubBuilder::IsClassConstructorFromBitField(GateRef bitfield)
 {
     // decode
@@ -2161,7 +2166,7 @@ inline void StubBuilder::SetParentToHClass(VariableType type, GateRef glue, Gate
     Store(type, glue, hClass, offset, parent);
 }
 
-inline void StubBuilder::SetIsProtoTypeToHClass(GateRef glue, GateRef hClass, GateRef value)
+inline void StubBuilder::SetIsPrototypeToHClass(GateRef glue, GateRef hClass, GateRef value)
 {
     GateRef oldValue = ZExtInt1ToInt32(value);
     GateRef bitfield = GetBitFieldFromHClass(hClass);
@@ -2185,7 +2190,7 @@ inline void StubBuilder::SetIsAOT(GateRef glue, GateRef hClass, GateRef value)
     SetBitFieldToHClass(glue, hClass, newVal);
 }
 
-inline GateRef StubBuilder::IsProtoTypeHClass(GateRef hClass)
+inline GateRef StubBuilder::IsPrototypeHClass(GateRef hClass)
 {
     GateRef bitfield = GetBitFieldFromHClass(hClass);
     return TruncInt32ToInt1(Int32And(Int32LSR(bitfield,

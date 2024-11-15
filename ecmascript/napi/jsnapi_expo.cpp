@@ -3674,9 +3674,9 @@ bool FunctionRef::Inherit(const EcmaVM *vm, Local<FunctionRef> parent)
         return false;
     }
     // Set this.Prototype.__proto__ to parent.Prototype
-    JSHandle<JSTaggedValue> parentProtoType(thread, JSFunction::PrototypeGetter(thread, parentHandle));
-    JSHandle<JSTaggedValue> thisProtoType(thread, JSFunction::PrototypeGetter(thread, thisHandle));
-    return JSObject::SetPrototype(thread, JSHandle<JSObject>::Cast(thisProtoType), parentProtoType);
+    JSHandle<JSTaggedValue> parentPrototype(thread, JSFunction::PrototypeGetter(thread, parentHandle));
+    JSHandle<JSTaggedValue> thisPrototype(thread, JSFunction::PrototypeGetter(thread, thisHandle));
+    return JSObject::SetPrototype(thread, JSHandle<JSObject>::Cast(thisPrototype), parentPrototype);
 }
 
 void FunctionRef::SetName(const EcmaVM *vm, Local<StringRef> name)
