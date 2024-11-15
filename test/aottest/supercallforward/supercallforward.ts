@@ -244,7 +244,7 @@ function runChildCornerCase(ctor: Function, replacement: any) {
             new ctor();
         } catch (e) {
             print(ctor.name);
-            print(e);
+            print(e.name);
         }
     }
     assert_true(ArkTools.isAOTCompiled(ctor));

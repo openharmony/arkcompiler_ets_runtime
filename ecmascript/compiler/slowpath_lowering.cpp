@@ -1827,7 +1827,8 @@ void SlowPathLowering::LowerSuperCallSpread(GateRef gate)
     }
     builder_.Bind(&slowPath);
     {
-        result = LowerCallRuntime(gate, RTSTUB_ID(OptSuperCallSpread), { func, *newTarget, array });
+        GateRef argsTaggedArray = builder_.CallStub(glue_, gate, CommonStubCSigns::GetCallSpreadArgs, {glue_, array});
+        result = LowerCallRuntime(gate, RTSTUB_ID(OptSuperCallSpread), {func, *newTarget, argsTaggedArray});
         builder_.Jump(&replaceGate);
     }
     builder_.Bind(&replaceGate);

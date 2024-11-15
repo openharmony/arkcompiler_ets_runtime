@@ -12,9 +12,9 @@
 # limitations under the License.
 
 ChildNull
-TypeError: Super constructor is not a constructor
+TypeError
 ChildObj
-TypeError: Super constructor is not a constructor
+TypeError
 ChildArrow
-TypeError: Super constructor is not a constructor
+TypeError
 success
