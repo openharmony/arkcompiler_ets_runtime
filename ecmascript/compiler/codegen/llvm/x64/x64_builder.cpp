@@ -53,8 +53,7 @@ public:
     }
 };
 
-class X64TargetBuilderRegistry
-{
+class X64TargetBuilderRegistry {
 public:
     X64TargetBuilderRegistry()
     {

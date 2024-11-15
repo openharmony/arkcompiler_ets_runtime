@@ -564,7 +564,7 @@ bool UnreachBBPattern::Optimize(BB &curBB)
             isRemoved = false;
         }
 
-        /* flush after remove; */
+        /* flush after remove */
         for (BB *bb : curBB.GetSuccs()) {
             bb->RemovePreds(curBB);
             cgFunc->GetTheCFG()->FlushUnReachableStatusAndRemoveRelations(*bb, *cgFunc);

@@ -1017,7 +1017,6 @@ public:
     inline GateRef GetAccessorHasChanged(GateRef obj);
     inline GateRef ComputeTaggedTypedArraySize(GateRef elementSize, GateRef length);
     GateRef ChangeTaggedPointerToInt64(GateRef x);
-    GateRef GetLastLeaveFrame(GateRef glue);
     inline GateRef GetPropertiesCache(GateRef glue);
     GateRef GetIndexFromPropertiesCache(GateRef glue, GateRef cache, GateRef cls, GateRef key,
                                         GateRef hir = Circuit::NullGate());
@@ -1033,6 +1032,7 @@ public:
                        FunctionKind targetKind = FunctionKind::LAST_FUNCTION_KIND);
     GateRef BinarySearch(GateRef glue, GateRef layoutInfo, GateRef key, GateRef propsNum,
                          GateRef hir = Circuit::NullGate());
+    GateRef GetLastLeaveFrame(GateRef glue);
     void UpdateProfileTypeInfoCellToFunction(GateRef glue, GateRef function,
                                              GateRef profileTypeInfo, GateRef slotId);
     GateRef Loadlocalmodulevar(GateRef glue, GateRef index, GateRef module);

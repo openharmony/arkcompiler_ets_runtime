@@ -369,7 +369,7 @@ ImmOperand *EnhanceStrLdrAArch64::GetInsnAddOrSubNewOffset(Insn &insn, ImmOperan
     } else {
         auto &immOpnd = static_cast<ImmOperand &>(insn.GetOperand(kInsnThirdOpnd));
         auto &shiftOpnd = static_cast<BitShiftOperand &>(insn.GetOperand(kInsnFourthOpnd));
-        CHECK_FATAL(shiftOpnd.GetShiftAmount() == 12, "invalid shiftAmount");
+        CHECK_FATAL(shiftOpnd.GetShiftAmount() == 12, "invalid shiftAmount"); // 12: invalid shiftAmount
         val = (immOpnd.GetValue() << shiftOpnd.GetShiftAmount());
     }
 

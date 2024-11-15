@@ -292,43 +292,6 @@ GateRef AccessObjectStubBuilder::DeprecatedLoadObjByValue(GateRef glue, GateRef 
     return ret;
 }
 
-GateRef AccessObjectStubBuilder::StoreObjByValue(GateRef glue, GateRef receiver, GateRef key, GateRef value,
-                                                 GateRef profileTypeInfo, GateRef slotId, ProfileOperation callback)
-{
-    auto env = GetEnvironment();
-    Label entry(env);
-    env->SubCfgEntry(&entry);
-    Label exit(env);
-    Label tryFastPath(env);
-    Label slowPath(env);
-    Label tryPreDump(env);
-
-    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
-    ICStubBuilder builder(this);
-    builder.SetParameters(glue, receiver, profileTypeInfo, value, slotId, key, callback);
-    builder.StoreICByValue(&result, &tryFastPath, &tryPreDump, &exit);
-    Bind(&tryFastPath);
-    {
-        result = SetPropertyByValue(glue, receiver, key, value, false, callback);
-        BRANCH(TaggedIsHole(*result), &slowPath, &exit);
-    }
-    Bind(&tryPreDump);
-    {
-        callback.TryPreDump();
-        Jump(&slowPath);
-    }
-    Bind(&slowPath);
-    {
-        result = CallRuntime(
-            glue, RTSTUB_ID(StoreICByValue), {profileTypeInfo, receiver, key, value, IntToTaggedInt(slotId)});
-        Jump(&exit);
-    }
-    Bind(&exit);
-    auto ret = *result;
-    env->SubCfgExit();
-    return ret;
-}
-
 GateRef AccessObjectStubBuilder::StoreOwnByIndex(GateRef glue, GateRef receiver, GateRef index, GateRef value,
                                                  GateRef profileTypeInfo, GateRef slotId, ProfileOperation callback)
 {
@@ -368,6 +331,43 @@ GateRef AccessObjectStubBuilder::StoreOwnByIndex(GateRef glue, GateRef receiver,
         result = CallRuntime(glue,
                              RTSTUB_ID(StoreOwnICByValue),
                              {profileTypeInfo, receiver, IntToTaggedInt(index), value, IntToTaggedInt(slotId)});
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef AccessObjectStubBuilder::StoreObjByValue(GateRef glue, GateRef receiver, GateRef key, GateRef value,
+                                                 GateRef profileTypeInfo, GateRef slotId, ProfileOperation callback)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+    Label tryFastPath(env);
+    Label slowPath(env);
+    Label tryPreDump(env);
+
+    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
+    ICStubBuilder builder(this);
+    builder.SetParameters(glue, receiver, profileTypeInfo, value, slotId, key, callback);
+    builder.StoreICByValue(&result, &tryFastPath, &tryPreDump, &exit);
+    Bind(&tryFastPath);
+    {
+        result = SetPropertyByValue(glue, receiver, key, value, false, callback);
+        BRANCH(TaggedIsHole(*result), &slowPath, &exit);
+    }
+    Bind(&tryPreDump);
+    {
+        callback.TryPreDump();
+        Jump(&slowPath);
+    }
+    Bind(&slowPath);
+    {
+        result = CallRuntime(
+            glue, RTSTUB_ID(StoreICByValue), {profileTypeInfo, receiver, key, value, IntToTaggedInt(slotId)});
         Jump(&exit);
     }
     Bind(&exit);

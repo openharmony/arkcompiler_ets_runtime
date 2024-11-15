@@ -1475,7 +1475,7 @@ private:
     // a dynamic memory block that needs reference
     // count; the bitvector's size is given by
     // BlockSize2BitvectorSize(frameSize)
-    // uint16 numlabels; // removed. label table size
+    // uint16 numlabels // removed. label table size
     // StmtNode **lbl2stmt // lbl2stmt table, removed
     // to hold unmangled class and function names
     MeFunction *meFunc = nullptr;
