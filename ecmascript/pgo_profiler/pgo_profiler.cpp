@@ -414,7 +414,7 @@ void PGOProfiler::DispatchPGODumpTask()
         std::make_unique<PGOProfilerTask>(this, vm_->GetJSThread()->GetThreadId()));
 }
 
-PGOProfiler::State PGOProfiler::GetState()
+PGOProfiler::State PGOProfiler::GetState() const
 {
     return state_.load(std::memory_order_acquire);
 }
@@ -448,7 +448,7 @@ void PGOProfiler::WaitPGODumpFinish()
         return;
     }
     LockHolder lock(mutex_);
-    while (GetState() == State::START) {
+    while (GetState() == State::START || GetState() == State::MERGE) {
         WaitingPGODump();
     }
 }
@@ -690,6 +690,7 @@ void PGOProfiler::MergeProfilerAndDispatchAsyncSaveTask(bool force)
         LOG_ECMA(DEBUG) << "Sample: post task to save profiler";
         {
             ClockScope start;
+            SetState(State::MERGE);
             PGOProfilerManager::GetInstance()->Merge(this);
             if (PGOTrace::GetInstance()->IsEnable()) {
                 PGOTrace::GetInstance()->SetMergeTime(start.TotalSpentTime());

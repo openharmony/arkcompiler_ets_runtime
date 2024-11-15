@@ -702,10 +702,10 @@ bool PGORecordDetailInfos::IsDumped(ProfileType rootType, ProfileType curType) c
 
 void PGORecordDetailInfos::Merge(const PGORecordDetailInfos &recordInfos)
 {
-    CMap<ProfileType, PGOMethodInfoMap *> methodInfos = recordInfos.recordInfos_;
-    for (auto iter = methodInfos.begin(); iter != methodInfos.end(); iter++) {
-        auto recordType = iter->first;
-        auto fromMethodInfos = iter->second;
+    const auto& methodInfos = recordInfos.recordInfos_;
+    for (auto& iter: methodInfos) {
+        auto recordType = iter.first;
+        auto fromMethodInfos = iter.second;
 
         auto recordInfosIter = recordInfos_.find(recordType);
         PGOMethodInfoMap *toMethodInfos = nullptr;
@@ -723,10 +723,8 @@ void PGORecordDetailInfos::Merge(const PGORecordDetailInfos &recordInfos)
     recordPool_->Merge(*recordInfos.recordPool_);
     protoTransitionPool_->Merge(*recordInfos.protoTransitionPool_);
     // Merge global layout desc infos to global method info map
-    std::set<PGOHClassTreeDesc> hclassTreeDescInfos = recordInfos.hclassTreeDescInfos_;
-    for (auto info = hclassTreeDescInfos.begin(); info != hclassTreeDescInfos.end();
-         info++) {
-        auto &fromInfo = *info;
+    const auto& hclassTreeDescInfos = recordInfos.hclassTreeDescInfos_;
+    for (auto& fromInfo: hclassTreeDescInfos) {
         auto result = hclassTreeDescInfos_.find(fromInfo);
         if (result == hclassTreeDescInfos_.end()) {
             PGOHClassTreeDesc descInfo(fromInfo.GetProfileType());
