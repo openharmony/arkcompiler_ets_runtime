@@ -2368,14 +2368,15 @@ bool Heap::NeedStopCollection()
     size_t objSize = GetHeapObjectSize();
     size_t recordSizeBeforeSensitive = GetRecordHeapObjectSizeBeforeSensitive();
     if (recordSizeBeforeSensitive == 0) {
-        SetRecordHeapObjectSizeBeforeSensitive(objSize);
+        recordSizeBeforeSensitive = objSize;
+        SetRecordHeapObjectSizeBeforeSensitive(recordSizeBeforeSensitive);
     }
 
     if (objSize < recordSizeBeforeSensitive + config_.GetIncObjSizeThresholdInSensitive()
         && !ObjectExceedMaxHeapSize()) {
         if (!IsNearGCInSensitive() &&
             objSize > (recordSizeBeforeSensitive + config_.GetIncObjSizeThresholdInSensitive())
-            * MIN_OBJECT_SURVIVAL_RATE) {
+            * MIN_SENSITIVE_OBJECT_SURVIVAL_RATE) {
             SetNearGCInSensitive(true);
         }
         return true;

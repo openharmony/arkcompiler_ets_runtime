@@ -67,6 +67,7 @@ static constexpr size_t DEFAULT_REGION_MASK = DEFAULT_REGION_SIZE - 1;
 static constexpr size_t DEFAULT_MARK_STACK_SIZE = 4_KB;
 
 static constexpr double MIN_OBJECT_SURVIVAL_RATE = 0.75;
+static constexpr double MIN_SENSITIVE_OBJECT_SURVIVAL_RATE = 0.9;
 static constexpr double GROW_OBJECT_SURVIVAL_RATE = 0.8;
 static constexpr double SHRINK_OBJECT_SURVIVAL_RATE = 0.2;
 static constexpr double LOW_ALLOCATION_SPEED_PER_MS = 1000;
