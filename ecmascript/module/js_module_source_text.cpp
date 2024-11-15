@@ -1285,7 +1285,6 @@ void SourceTextModule::AddStarExportEntry(JSThread *thread, const JSHandle<Sourc
 
 JSTaggedValue SourceTextModule::GetModuleValue(JSThread *thread, int32_t index, bool isThrow)
 {
-    DISALLOW_GARBAGE_COLLECTION;
     JSTaggedValue dictionary = GetNameDictionary();
     if (dictionary.IsUndefined()) {
         if (isThrow) {
@@ -1300,7 +1299,6 @@ JSTaggedValue SourceTextModule::GetModuleValue(JSThread *thread, int32_t index, 
 
 JSTaggedValue SourceTextModule::GetModuleValue(JSThread *thread, JSTaggedValue key, bool isThrow)
 {
-    DISALLOW_GARBAGE_COLLECTION;
     JSTaggedValue dictionary = GetNameDictionary();
     if (dictionary.IsUndefined()) {
         if (isThrow) {

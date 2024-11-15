@@ -87,7 +87,7 @@ JSTaggedValue JSMapIterator::NextInternal(JSThread *thread, JSHandle<JSTaggedVal
 
 void JSMapIterator::Update(const JSThread *thread)
 {
-    [[maybe_unused]] DisallowGarbageCollection noGc;
+    DISALLOW_GARBAGE_COLLECTION;
     JSTaggedValue iteratedMap = GetIteratedMap();
     if (iteratedMap.IsUndefined()) {
         return;

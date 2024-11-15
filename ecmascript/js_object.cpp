@@ -393,9 +393,7 @@ bool JSObject::AddElementInternal(JSThread *thread, const JSHandle<JSObject> &re
         }
     }
     if (receiver->IsJSSArray()) {
-        DISALLOW_GARBAGE_COLLECTION;
-        JSSharedArray *arr = JSSharedArray::Cast(*receiver);
-        uint32_t oldLength = arr->GetArrayLength();
+        uint32_t oldLength = JSSharedArray::Cast(*receiver)->GetArrayLength();
         if (index >= oldLength) {
             JSHandle<JSTaggedValue> newLength(thread, JSTaggedValue(static_cast<uint32_t>(index + 1)));
             JSSharedArray::LengthSetter(thread, receiver, newLength);
@@ -2878,7 +2876,7 @@ void JSObject::AddAccessor(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
 
 bool JSObject::UpdatePropertyInDictionary(const JSThread *thread, JSTaggedValue key, JSTaggedValue value)
 {
-    [[maybe_unused]] DisallowGarbageCollection noGc;
+    DISALLOW_GARBAGE_COLLECTION;
     NameDictionary *dict = NameDictionary::Cast(GetProperties().GetTaggedObject());
     int entry = dict->FindEntry(key);
     if (entry == -1) {

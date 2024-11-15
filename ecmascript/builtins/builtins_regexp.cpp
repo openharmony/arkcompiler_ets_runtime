@@ -52,8 +52,6 @@ JSTaggedValue BuiltinsRegExp::RegExpConstructor(EcmaRuntimeCallInfo *argv)
     } else {
         auto ecmaVm = thread->GetEcmaVM();
         JSHandle<GlobalEnv> env = ecmaVm->GetGlobalEnv();
-        // disable gc
-        [[maybe_unused]] DisallowGarbageCollection noGc;
         // 4.a Let newTarget be the active function object.
         newTarget = env->GetRegExpFunction();
         JSHandle<JSTaggedValue> constructorString = globalConst->GetHandledConstructorString();
@@ -94,8 +92,6 @@ JSTaggedValue BuiltinsRegExp::RegExpConstructor(EcmaRuntimeCallInfo *argv)
     } else if (patternIsRegExp) {
         JSHandle<JSTaggedValue> sourceString(globalConst->GetHandledSourceString());
         JSHandle<JSTaggedValue> flagsString(globalConst->GetHandledFlagsString());
-        // disable gc
-        [[maybe_unused]] DisallowGarbageCollection noGc;
         // 6.a Let P be Get(pattern, "source").
         patternTemp = JSObject::GetProperty(thread, pattern, sourceString).GetValue();
         // 6.b ReturnIfAbrupt(P).

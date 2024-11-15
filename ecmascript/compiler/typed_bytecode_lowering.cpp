@@ -578,7 +578,6 @@ void TypedBytecodeLowering::DeleteConstDataIfNoUser(GateRef gate)
 
 void TypedBytecodeLowering::LowerTypedLdObjByName(GateRef gate)
 {
-    DISALLOW_GARBAGE_COLLECTION;
     LoadObjByNameTypeInfoAccessor tacc(compilationEnv_, circuit_, gate, chunk_);
 
     if (TryLowerTypedLdobjBynameFromGloablBuiltin(gate)) {
@@ -680,7 +679,6 @@ void TypedBytecodeLowering::LowerTypedLdObjByName(GateRef gate)
 
 void TypedBytecodeLowering::LowerTypedLdPrivateProperty(GateRef gate)
 {
-    DISALLOW_GARBAGE_COLLECTION;
     LoadPrivatePropertyTypeInfoAccessor tacc(compilationEnv_, circuit_, gate, chunk_);
 
     if (tacc.HasIllegalType()) {
@@ -718,7 +716,6 @@ void TypedBytecodeLowering::LowerTypedLdPrivateProperty(GateRef gate)
 
 void TypedBytecodeLowering::LowerTypedStPrivateProperty(GateRef gate)
 {
-    DISALLOW_GARBAGE_COLLECTION;
     StorePrivatePropertyTypeInfoAccessor tacc(compilationEnv_, circuit_, gate, chunk_);
 
     if (tacc.HasIllegalType()) {
@@ -757,7 +754,6 @@ void TypedBytecodeLowering::LowerTypedStPrivateProperty(GateRef gate)
 
 void TypedBytecodeLowering::LowerTypedStObjByName(GateRef gate)
 {
-    DISALLOW_GARBAGE_COLLECTION;
     StoreObjByNameTypeInfoAccessor tacc(compilationEnv_, circuit_, gate, chunk_);
     if (tacc.TypesIsEmpty() || tacc.HasIllegalType()) {
         return;
@@ -2294,7 +2290,6 @@ void TypedBytecodeLowering::LowerTypedTryLdGlobalByName(GateRef gate)
     if (!enableLoweringBuiltin_) {
         return;
     }
-    DISALLOW_GARBAGE_COLLECTION;
     LoadGlobalObjByNameTypeInfoAccessor tacc(compilationEnv_, circuit_, gate);
     JSTaggedValue key = tacc.GetKeyTaggedValue();
     if (key.IsUndefined()) {
@@ -2382,7 +2377,6 @@ void TypedBytecodeLowering::LowerTypedStOwnByValue(GateRef gate)
 
 void TypedBytecodeLowering::LowerCreateObjectWithBuffer(GateRef gate)
 {
-    DISALLOW_GARBAGE_COLLECTION;
     CreateObjWithBufferTypeInfoAccessor tacc(compilationEnv_, circuit_, gate, recordName_, chunk_);
     if (!tacc.CanOptimize()) {
         return;

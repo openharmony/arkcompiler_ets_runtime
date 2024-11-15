@@ -81,30 +81,30 @@ bool JSTaggedValue::ToBoolean() const
 
 JSTaggedNumber JSTaggedValue::ToNumber(JSThread *thread, JSTaggedValue tagged)
 {
-    DISALLOW_GARBAGE_COLLECTION;
-    if (tagged.IsInt() || tagged.IsDouble()) {
-        return JSTaggedNumber(tagged);
-    }
-
-    switch (tagged.GetRawData()) {
-        case JSTaggedValue::VALUE_UNDEFINED:
-        case JSTaggedValue::VALUE_HOLE: {
-            return JSTaggedNumber(base::NAN_VALUE);
+    {
+        DISALLOW_GARBAGE_COLLECTION;
+        if (tagged.IsInt() || tagged.IsDouble()) {
+            return JSTaggedNumber(tagged);
         }
-        case JSTaggedValue::VALUE_TRUE: {
-            return JSTaggedNumber(1);
+        switch (tagged.GetRawData()) {
+            case JSTaggedValue::VALUE_UNDEFINED:
+            case JSTaggedValue::VALUE_HOLE: {
+                return JSTaggedNumber(base::NAN_VALUE);
+            }
+            case JSTaggedValue::VALUE_TRUE: {
+                return JSTaggedNumber(1);
+            }
+            case JSTaggedValue::VALUE_FALSE:
+            case JSTaggedValue::VALUE_NULL: {
+                return JSTaggedNumber(0);
+            }
+            default: {
+                break;
+            }
         }
-        case JSTaggedValue::VALUE_FALSE:
-        case JSTaggedValue::VALUE_NULL: {
-            return JSTaggedNumber(0);
+        if (tagged.IsString()) {
+            return StringToNumber(tagged);
         }
-        default: {
-            break;
-        }
-    }
-
-    if (tagged.IsString()) {
-        return StringToNumber(tagged);
     }
     if (tagged.IsECMAObject()) {
         JSHandle<JSTaggedValue>taggedHandle(thread, tagged);

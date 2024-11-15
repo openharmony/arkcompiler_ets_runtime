@@ -59,7 +59,7 @@ namespace panda::ecmascript {
 std::pair<JSTaggedValue, bool> ObjectFastOperator::HasOwnProperty(JSThread *thread,
                                                                   JSTaggedValue receiver, JSTaggedValue key)
 {
-    [[maybe_unused]] DisallowGarbageCollection noGc;
+    DISALLOW_GARBAGE_COLLECTION;
     if (!receiver.IsHeapObject() || !(receiver.IsRegularObject())) {
         return std::make_pair(JSTaggedValue::Hole(), false);
     }

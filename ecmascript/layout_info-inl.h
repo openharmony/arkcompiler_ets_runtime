@@ -217,7 +217,6 @@ template<bool checkDuplicateKeys /* = false*/>
 void LayoutInfo::AddKey(const JSThread *thread, [[maybe_unused]] int index, const JSTaggedValue &key,
                         const PropertyAttributes &attr)
 {
-    DISALLOW_GARBAGE_COLLECTION;
     int number = NumberOfElements();
     ASSERT(attr.GetOffset() == static_cast<uint32_t>(number));
     ASSERT(number + 1 <= GetPropertiesCapacity());

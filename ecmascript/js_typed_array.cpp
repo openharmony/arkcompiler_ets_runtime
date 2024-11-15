@@ -690,7 +690,6 @@ JSTaggedValue JSTypedArray::FastGetPropertyByIndex(JSThread *thread, const JSTag
         return JSTaggedValue::Undefined();
     }
 
-    DISALLOW_GARBAGE_COLLECTION;
     // Let length be the value of O’s [[ArrayLength]] internal slot.
     // If arrLen < 0 or index ≥ length, return undefined.
     uint32_t arrLen = typedarrayObj->GetArrayLength();

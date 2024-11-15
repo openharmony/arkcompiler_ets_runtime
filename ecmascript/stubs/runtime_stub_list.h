@@ -141,9 +141,7 @@ namespace panda::ecmascript {
     V(MarkingBarrier)                          \
     V(MarkingBarrierWithEden)                  \
     V(SharedGCMarkingBarrier)                  \
-    V(StoreBarrier)                            \
     V(DoubleToInt)                             \
-    V(DoubleToLength)                          \
     V(FloatMod)                                \
     V(FloatAcos)                               \
     V(FloatAcosh)                              \
@@ -170,11 +168,7 @@ namespace panda::ecmascript {
     V(FloatPow)                                \
     V(FloatCeil)                               \
     V(CallDateNow)                             \
-    V(NumberIsFinite)                          \
-    V(FindElementWithCache)                    \
     V(UpdateFieldType)                         \
-    V(CreateArrayFromList)                     \
-    V(StringsAreEquals)                        \
     V(BigIntEquals)                            \
     V(TimeClip)                                \
     V(SetDateValues)                           \
