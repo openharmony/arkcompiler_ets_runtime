@@ -341,6 +341,11 @@ ohos_shared_library("libark_jsoptimizer") {
   ]
 
   external_deps = [ "bounds_checking_function:libsec_shared" ]
+  if (!is_arkui_x) {
+    external_deps += [ "runtime_core:libarkfile_static" ]
+  } else {
+    deps += [ "$ark_root/libpandafile:libarkfile_static" ]
+  }
 
   defines = []
   if (run_with_asan) {
