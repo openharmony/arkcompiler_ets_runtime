@@ -819,10 +819,11 @@ JSTaggedValue ObjectFastOperator::FastGetPropertyByValue(JSThread *thread, JSTag
                                                          SCheckMode sCheckMode)
 {
     INTERPRETER_TRACE(thread, FastGetPropertyByValue);
+    JSHandle<JSTaggedValue> receiverHandler(thread, receiver);
+    JSHandle<JSTaggedValue> keyHandler(thread, key);
     JSTaggedValue result = ObjectFastOperator::GetPropertyByValue(thread, receiver, key);
     if (result.IsHole()) {
-        return JSTaggedValue::GetProperty(thread, JSHandle<JSTaggedValue>(thread, receiver),
-            JSHandle<JSTaggedValue>(thread, key), sCheckMode).GetValue().GetTaggedValue();
+        return JSTaggedValue::GetProperty(thread, receiverHandler, keyHandler, sCheckMode).GetValue().GetTaggedValue();
     }
     return result;
 }
