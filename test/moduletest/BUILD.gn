@@ -164,7 +164,9 @@ group("ark_js_moduletest") {
     "typedarrayfill",
     "typedarrayfilter",
     "typedarrayfindlast",
-    "typedarrayfrom",
+
+    #"typedarrayfrom",
+    "typedarrayfrom_in_api14",
     "typedarraynan",
     "typedarrayreverse",
     "typedarraysort",
@@ -380,7 +382,9 @@ group("ark_asm_test") {
     "typedarrayfill",
     "typedarrayfilter",
     "typedarrayfindlast",
-    "typedarrayfrom",
+
+    #"typedarrayfrom",
+    "typedarrayfrom_in_api14",
     "typedarraynan",
     "typedarrayreverse",
     "typedarraysort",
@@ -567,7 +571,9 @@ group("ark_asm_single_step_test") {
     "typedarrayfill",
     "typedarrayfilter",
     "typedarrayfindlast",
-    "typedarrayfrom",
+
+    #"typedarrayfrom",
+    "typedarrayfrom_in_api14",
     "typedarraynan",
     "typedarrayreverse",
     "typedarraysort",

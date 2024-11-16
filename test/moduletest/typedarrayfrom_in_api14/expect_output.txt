@@ -11,10 +11,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-ChildNull
-TypeError
-ChildObj
-TypeError
-ChildArrow
-TypeError
-success
+get value
+0
+TypeError: this value is not a map iterator
+generator next
+2
+get value
+0
+get value
+0
+TypeError: obj is not Callable
