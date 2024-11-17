@@ -77,8 +77,18 @@ private:
         GateRef intialHClass, GateRef start);
     void DoReverse(GateRef glue, GateRef fromArray, GateRef toArray, bool holeToUndefined, bool getWithKind,
                    MemoryAttribute mAttr);
+    GateRef DoReverse(GateRef glue, GateRef thisValue, GateRef receiver, GateRef receiverState, Variable *result,
+                      Label *exit);
     void FastToSpliced(GateRef glue, GateRef thisValue, GateRef newArray, GateRef actualStart,
                        GateRef actualDeleteCount, GateRef insertCount, GateRef insertValue);
+    void ToSplicedOptimised(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *result, Label *exit,
+                            Label *slowPath);
+    void UnshiftOptimised(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *result, Label *exit,
+                          Label *slowPath);
+    GateRef DoSortOptimised(GateRef glue, GateRef receiver, GateRef receiverState, Variable *result, Label *exit,
+                            Label *slowPath, GateRef hir);
+    void ToReversedOptimised(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *result, Label *exit,
+                             Label *slowPath);
 };
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_BUILTINS_ARRAY_STUB_BUILDER_H
