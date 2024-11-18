@@ -23,6 +23,7 @@ bool HeapSnapshotJSONSerializer::Serialize(HeapSnapshot *snapshot, Stream *strea
 {
     // Serialize Node/Edge/String-Table
     LOG_ECMA(INFO) << "HeapSnapshotJSONSerializer::Serialize begin";
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "HeapSnapshotJSONSerializer::Serialize");
     ASSERT(snapshot->GetNodes() != nullptr && snapshot->GetEdges() != nullptr &&
            snapshot->GetEcmaStringTable() != nullptr);
     auto writer = new StreamWriter(stream);
@@ -84,6 +85,8 @@ void HeapSnapshotJSONSerializer::SerializeSnapshotHeader(HeapSnapshot *snapshot,
 
 void HeapSnapshotJSONSerializer::SerializeNodes(HeapSnapshot *snapshot, StreamWriter *writer)
 {
+    LOG_ECMA(INFO) << "HeapSnapshotJSONSerializer::SerializeNodes";
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "HeapSnapshotJSONSerializer::SerializeNodes");
     const CList<Node *> *nodes = snapshot->GetNodes();
     const StringHashMap *stringTable = snapshot->GetEcmaStringTable();
     ASSERT(nodes != nullptr);
@@ -119,6 +122,8 @@ void HeapSnapshotJSONSerializer::SerializeNodes(HeapSnapshot *snapshot, StreamWr
 
 void HeapSnapshotJSONSerializer::SerializeEdges(HeapSnapshot *snapshot, StreamWriter *writer)
 {
+    LOG_ECMA(INFO) << "HeapSnapshotJSONSerializer::SerializeEdges";
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "HeapSnapshotJSONSerializer::SerializeEdges");
     const CList<Edge *> *edges = snapshot->GetEdges();
     const StringHashMap *stringTable = snapshot->GetEcmaStringTable();
     ASSERT(edges != nullptr);
@@ -241,6 +246,8 @@ void HeapSnapshotJSONSerializer::SerializeLocations(StreamWriter *writer)
 
 void HeapSnapshotJSONSerializer::SerializeStringTable(HeapSnapshot *snapshot, StreamWriter *writer)
 {
+    LOG_ECMA(INFO) << "HeapSnapshotJSONSerializer::SerializeStringTable";
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "HeapSnapshotJSONSerializer::SerializeStringTable");
     const StringHashMap *stringTable = snapshot->GetEcmaStringTable();
     ASSERT(stringTable != nullptr);
     writer->WriteString("\"strings\":[\"<dummy>\",\n");
