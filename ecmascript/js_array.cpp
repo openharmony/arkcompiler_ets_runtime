@@ -260,9 +260,19 @@ void JSArray::SetCapacity(JSThread *thread, const JSHandle<JSObject> &array,
         }
 #if ECMASCRIPT_ENABLE_ELEMENTSKIND_ALWAY_GENERIC
         ElementsKind newKind = ElementsKind::GENERIC;
-        #else
+#else
+        // 1.When elementsKind is NONE, means thisArray is empty,
+        // so we don't need to traverse the elements to transform elementskind.
+        // 2.Make sure array is already created.
+        // 3.Make sure newLen > 0 for avoid making empty array elementsKind to HOLE accidently.
+        // ASSERT: If an array's elementsKind is NONE, its length must be zero.
+        if (Elements::IsNone(oldKind) && !isNew && newLen > 0) {
+            ASSERT(oldLen == 0);
+            JSHClass::TransitToElementsKindUncheck(thread, array, ElementsKind::HOLE);
+            return;
+        }
         ElementsKind newKind = ElementsKind::NONE;
-        #endif
+#endif
         for (uint32_t i = 0; i < newLen; ++i) {
             JSTaggedValue val = ElementAccessor::Get(array, i);
             newKind = Elements::ToElementsKind(val, newKind);
