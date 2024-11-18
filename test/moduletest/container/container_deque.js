@@ -168,5 +168,15 @@ if (globalThis["ArkPrivate"] != undefined) {
     v22 = new C11()
     v22[2295334561] = 0
     print(v22.length)
+    class C44 extends Deque{
+        constructor(a) {
+            super()
+            super[a] = 11
+            const o10 = {
+                ...this
+            }
+        }
+    }
+    new C44(38062)
 }
 export let dequeRes = "Test Deque done";
