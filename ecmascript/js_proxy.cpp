@@ -74,12 +74,12 @@ JSTaggedValue JSProxy::GetPrototype(JSThread *thread, const JSHandle<JSProxy> &p
     EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, trap, handler, undefined, 1);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     info->SetCallArg(targetHandle.GetTaggedValue());
-    JSTaggedValue handlerProto = JSFunction::Call(info);
+    JSHandle<JSTaggedValue> handlerProto(thread, JSFunction::Call(info));
 
     // 9. ReturnIfAbrupt(handlerProto).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     // 10. If Type(handlerProto) is neither Object nor Null, throw a TypeError exception.
-    if (!handlerProto.IsECMAObject() && !handlerProto.IsNull()) {
+    if (!handlerProto->IsECMAObject() && !handlerProto->IsNull()) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "JSProxy::GetPrototype: Type(handlerProto) is neither Object nor Null",
                                     JSTaggedValue::Exception());
     }
@@ -87,7 +87,7 @@ JSTaggedValue JSProxy::GetPrototype(JSThread *thread, const JSHandle<JSProxy> &p
     // 12. ReturnIfAbrupt(extensibleTarget).
     // 13. If extensibleTarget is true, return handlerProto.
     if (targetHandle->IsExtensible(thread)) {
-        return handlerProto;
+        return handlerProto.GetTaggedValue();
     }
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
@@ -96,12 +96,12 @@ JSTaggedValue JSProxy::GetPrototype(JSThread *thread, const JSHandle<JSProxy> &p
     // 15. ReturnIfAbrupt(targetProto).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     // 16. If SameValue(handlerProto, targetProto) is false, throw a TypeError exception.
-    if (!JSTaggedValue::SameValue(handlerProto, targetProto)) {
+    if (!JSTaggedValue::SameValue(handlerProto.GetTaggedValue(), targetProto)) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "JSProxy::GetPrototype: SameValue(handlerProto, targetProto) is false",
                                     JSTaggedValue::Exception());
     }
     // 17. Return handlerProto.
-    return handlerProto;
+    return handlerProto.GetTaggedValue();
 }
 
 // ES6 9.5.2 [[SetPrototypeOf]] (V)
