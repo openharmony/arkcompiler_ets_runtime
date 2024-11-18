@@ -28,6 +28,7 @@
     V("create", Create, 2, INVALID)                            \
     /* SendableArray.isArray ( arg ) */                        \
     V("isArray", IsArray, 1, INVALID)                          \
+    V("of", Of, 1, INVALID)                                    \
     // fixme(hzzhouzebin) Support later.
     // /* SharedArray.of ( ...items ) */                          \
     // V("of", Of, 0, INVALID)
@@ -89,7 +90,8 @@
     /* SharedArray.prototype.some ( callbackfn [ , thisArg ] ) */                \
     V("some", Some, 1, INVALID)                                                  \
     /* SendableArray.prototype.lastIndexOf ( searchElement [ , fromIndex ] ) */  \
-    V("lastIndexOf", LastIndexOf, 1, INVALID)
+    V("lastIndexOf", LastIndexOf, 1, INVALID)                                    \
+    V("copyWithin", CopyWithin, 2, INVALID)                                      \
     // fixme(hzzhouzebin) Support later.
     // /* SharedArray.prototype.with ( index, value ) */                            \
     // V("with", With, 2, INVALID)                                                  \
@@ -98,7 +100,6 @@
     // /* SharedArray.prototype.reverse ( ) */                                      \
     // V("reverse", Reverse, 0, INVALID)                                            \
     // /* SharedArray.prototype.copyWithin ( target, start [ , end ] ) */           \
-    // V("copyWithin", CopyWithin, 2, INVALID)                                      \
     // /* SharedArray.prototype.findLast ( predicate [ , thisArg ] ) */             \
     // V("findLast", FindLast, 1, INVALID)                                          \
     // /* SharedArray.prototype.findLastIndex ( predicate [ , thisArg ] ) */        \
@@ -151,6 +152,8 @@ public:
     static JSTaggedValue Every(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue Some(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue LastIndexOf(EcmaRuntimeCallInfo *argv);
+    static JSTaggedValue Of(EcmaRuntimeCallInfo *argv);
+    static JSTaggedValue CopyWithin(EcmaRuntimeCallInfo *argv);
 
     // Excluding the '@@' internal properties
     static Span<const base::BuiltinFunctionEntry> GetSharedArrayFunctions()
@@ -189,6 +192,16 @@ public:
     {
         return Span<const std::pair<std::string_view, bool>>(ARRAY_FUNCTION_PROPERTIES);
     }
+
+    static inline uint64_t ConvertTagValueToInteger(JSThread *thread, JSHandle<JSTaggedValue>& number, int64_t len);
+    static inline uint64_t GetNumberArgVal(JSThread *thread, EcmaRuntimeCallInfo *argv, uint32_t idx, int64_t len,
+                                           int64_t defVal);
+    static inline uint64_t GetNumberArgValThrow(JSThread *thread, EcmaRuntimeCallInfo *argv, uint32_t idx,
+                                                int64_t len, const char* err);
+
+    static inline void SetElementValue(JSThread *thread, JSHandle<JSObject> arrHandle, uint32_t key,
+                                       const JSHandle<JSTaggedValue> &value);
+
 private:
     static inline JSTaggedValue GetElementByKey(JSThread *thread, JSHandle<JSObject>& thisObjHandle, uint32_t index);
     static JSTaggedValue PopInner(EcmaRuntimeCallInfo *argv, JSHandle<JSTaggedValue> &thisHandle,

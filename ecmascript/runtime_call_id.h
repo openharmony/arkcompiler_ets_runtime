@@ -318,6 +318,8 @@ namespace panda::ecmascript {
     V(SharedArray, Every)                     \
     V(SharedArray, Some)                      \
     V(SharedArray, LastIndexOf)               \
+    V(SharedArray, Of)                        \
+    V(SharedArray, CopyWithin)                \
     V(ArrayBuffer, Constructor)               \
     V(ArrayBuffer, Slice)                     \
     V(ArrayBuffer, Species)                   \
