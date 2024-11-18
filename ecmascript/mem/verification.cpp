@@ -120,7 +120,7 @@ void VerifyObjectVisitor::VerifyObjectSlotLegal(ObjectSlot slot, TaggedObject *o
             LogErrorForObjSlot(heap_, "Heap verify detected an invalid value.",
                 object, slot, value.GetTaggedWeakRef());
         }
-        if (!heap_->IsAlive(value.GetTaggedWeakRef())) {
+        if (!heap_->IsAlive(value.GetTaggedWeakRef()) && failCount_ != nullptr) {
             LogErrorForObjSlot(heap_, "Heap verify detected a dead weak object.",
                 object, slot, value.GetTaggedWeakRef());
             ++(*failCount_);
@@ -139,7 +139,7 @@ void VerifyObjectVisitor::VerifyHeapObjectSlotLegal(ObjectSlot slot,
         LogErrorForObjSlot(heap_, "Heap verify detected an invalid value.",
             object, slot, slotValue.GetTaggedObject());
     }
-    if (!heap_->IsAlive(slotValue.GetTaggedObject())) {
+    if (!heap_->IsAlive(slotValue.GetTaggedObject()) && failCount_ != nullptr) {
         LogErrorForObjSlot(heap_, "Heap verify detected a dead object.",
             object, slot, slotValue.GetTaggedObject());
         ++(*failCount_);
@@ -417,7 +417,7 @@ void VerifyObjectVisitor::operator()(TaggedObject *obj, JSTaggedValue value)
 
     TaggedObject *object = value.GetRawTaggedObject();
     auto region = Region::ObjectAddressToRange(object);
-    if (region->InGeneralOldSpace()) { // LCOV_EXCL_START
+    if (region->InGeneralOldSpace() && failCount_ != nullptr) { // LCOV_EXCL_START
         LOG_GC(ERROR) << "Heap object(" << slot.GetTaggedType() << ") old to new rset fail: value("
                       << slot.GetTaggedObject() << "/"
                       << JSHClass::DumpJSType(slot.GetTaggedObject()->GetClass()->GetObjectType())
