@@ -1189,6 +1189,7 @@ namespace panda::ecmascript {
     V(LinkedList, GetFirst)                   \
     V(LinkedList, GetLast)                    \
     V(LinkedList, Insert)                     \
+    V(LinkedList, InsertByIndex)              \
     V(LinkedList, AddFirst)                   \
     V(LinkedList, Clear)                      \
     V(LinkedList, Clone)                      \
