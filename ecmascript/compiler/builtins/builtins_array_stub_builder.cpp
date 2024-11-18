@@ -1135,7 +1135,8 @@ void BuiltinsArrayStubBuilder::ArrayIteratorNext(GateRef glue, GateRef thisValue
             GateRef elements = newBuilder.NewTaggedArray(glue, Int32(2)); // 2: length of array
             SetValueToTaggedArray(VariableType::JS_ANY(), glue, elements, Int32(0), IntToTaggedPtr(index)); // 0: key
             SetValueToTaggedArray(VariableType::JS_ANY(), glue, elements, Int32(1), *iterValue); // 1: value
-            iterValue = newBuilder.CreateArrayFromList(glue, elements);
+            iterValue = newBuilder.CreateArrayFromList(glue, elements,
+                Int32(static_cast<int32_t>(ElementsKind::TAGGED)));
             Jump(&createIterResult);
         }
     }
@@ -1297,6 +1298,9 @@ void BuiltinsArrayStubBuilder::Pop(GateRef glue, GateRef thisValue,
 void BuiltinsArrayStubBuilder::Slice(GateRef glue, GateRef thisValue, GateRef numArgs,
     Variable *result, Label *exit, Label *slowPath)
 {
+#if ENABLE_NEXT_OPTIMIZATION
+    SliceOptimised(glue, thisValue, numArgs, result, exit, slowPath);
+#else
     auto env = GetEnvironment();
     Label isHeapObject(env);
     Label isJsArray(env);
@@ -1529,6 +1533,7 @@ void BuiltinsArrayStubBuilder::Slice(GateRef glue, GateRef thisValue, GateRef nu
             }
         }
     }
+#endif
 }
 
 void BuiltinsArrayStubBuilder::Sort(GateRef glue, GateRef thisValue,

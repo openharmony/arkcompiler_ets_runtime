@@ -136,7 +136,7 @@ public:
     GateRef NewProfileTypeInfoCell(GateRef glue, GateRef value);
     GateRef GetElementSizeFromType(GateRef glue, GateRef type);
     GateRef GetOnHeapHClassFromType(GateRef glue, GateRef type);
-    GateRef CreateArrayFromList(GateRef glue, GateRef elements);
+    GateRef CreateArrayFromList(GateRef glue, GateRef elements, GateRef kind);
     GateRef CreateListFromArrayLike(GateRef glue, GateRef arrayObj);
     void CreateJSIteratorResult(GateRef glue, Variable *res, GateRef value, GateRef done, Label *exit);
 

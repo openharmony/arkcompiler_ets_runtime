@@ -2735,28 +2735,23 @@ GateRef NewObjectStubBuilder::GetOnHeapHClassFromType(GateRef glue, GateRef type
     return ret;
 }
 
-GateRef NewObjectStubBuilder::CreateArrayFromList(GateRef glue, GateRef elements)
+GateRef NewObjectStubBuilder::CreateArrayFromList(GateRef glue, GateRef elements, GateRef kind)
 {
     auto env = GetEnvironment();
-    DEFVARIABLE(result, VariableType::JS_POINTER(), Undefined());
-    GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
-    GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
-    auto arrayFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, GlobalEnv::ARRAY_FUNCTION_INDEX);
+    Label entry(env);
+    env->SubCfgEntry(&entry);
     GateRef accessor = GetGlobalConstantValue(VariableType::JS_ANY(), glue, ConstantIndex::ARRAY_LENGTH_ACCESSOR);
-    GateRef intialHClass = Load(VariableType::JS_ANY(), arrayFunc, IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
-    SetParameters(glue, 0);
+    GateRef intialHClass = GetElementsKindHClass(glue, kind);
     GateRef len = GetLengthOfTaggedArray(elements);
-    result = NewJSObject(glue, intialHClass);
-    Store(VariableType::JS_POINTER(), glue, *result,
-          IntPtr(JSArray::GetInlinedPropertyOffset(JSArray::LENGTH_INLINE_PROPERTY_INDEX)), accessor,
-          MemoryAttribute::NoBarrier());
-    SetArrayLength(glue, *result, len);
-    SetExtensibleToBitfield(glue, *result, true);
-    SetElementsArray(VariableType::JS_POINTER(), glue_, *result, elements);
-    auto res = *result;
-    return res;
+    GateRef result = NewJSObject(glue, intialHClass);
+    SetPropertyInlinedProps(glue, result, intialHClass, accessor, Int32(JSArray::LENGTH_INLINE_PROPERTY_INDEX));
+    SetArrayLength(glue, result, len);
+    SetExtensibleToBitfield(glue, result, true);
+    SetElementsArray(VariableType::JS_POINTER(), glue, result, elements);
+    auto ret = result;
+    env->SubCfgExit();
+    return ret;
 }
-
 GateRef NewObjectStubBuilder::CreateListFromArrayLike(GateRef glue, GateRef arrayObj)
 {
     auto env = GetEnvironment();
