@@ -1619,7 +1619,6 @@ RegOperand *LSRALinearScanRegAllocator::GetReplaceOpnd(Insn &insn, Operand &opnd
     if (regInfo->IsCalleeSavedReg(regNO)) {
         cgFunc->AddtoCalleeSaved(regNO);
     }
-
     if (li->IsShouldSave() || li->GetStackSlot() == kSpilled) {
         spillIdx = isDef ? 0 : spillIdx;
         if (li->IsShouldSave()) {

@@ -320,6 +320,7 @@ void LiveAnalysis::ProcessCondOpnd(BB &bb) const
 /* dump the current info of def/use/livein/liveout */
 void LiveAnalysis::Dump() const
 {
+    CHECK_FATAL(cgFunc != nullptr, "nullptr check");
     MIRSymbol *funcSt = GlobalTables::GetGsymTable().GetSymbolFromStidx(cgFunc->GetFunction().GetStIdx().Idx());
     DEBUG_ASSERT(funcSt != nullptr, "null ptr check");
     LogInfo::MapleLogger() << "\n---------  liveness for " << funcSt->GetName() << "  iteration ";

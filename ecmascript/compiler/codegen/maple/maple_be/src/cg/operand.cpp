@@ -165,6 +165,7 @@ bool MemOperand::Less(const Operand &right) const
 
             RegOperand *baseReg = GetBaseRegister();
             RegOperand *rbaseReg = rightOpnd->GetBaseRegister();
+            CHECK_FATAL(baseReg != nullptr, "nullptr check");
             int32 nRet = baseReg->RegCompare(*rbaseReg);
             if (nRet == 0) {
                 Operand *ofstOpnd = GetOffsetOperand();
@@ -182,6 +183,7 @@ bool MemOperand::Less(const Operand &right) const
             }
             RegOperand *indexReg = GetIndexRegister();
             const RegOperand *rindexReg = rightOpnd->GetIndexRegister();
+            CHECK_FATAL(indexReg != nullptr, "nullptr check");
             return indexReg->Less(*rindexReg);
         }
         case kAddrModeLiteral: {
