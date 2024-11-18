@@ -351,7 +351,6 @@ JSHandle<JSFunction> LiteralDataExtractor::DefineMethodInLiteral(JSThread *threa
     if (module->IsSourceTextModule()) {
         SourceTextModule::Cast(module->GetTaggedObject())->SetSendableEnv(thread, sendableEnv);
     }
-
     jsFunc->SetModule(thread, module.GetTaggedValue());
     jsFunc->SetLength(length);
     return jsFunc;
@@ -423,7 +422,7 @@ void LiteralDataExtractor::ExtractObjectDatas(JSThread *thread, const JSPandaFil
         bool flag = false;
         switch (tag) {
             case LiteralTag::INTEGER: {
-                jt = JSTaggedValue(static_cast<int32_t>(std::get<uint32_t>(value)));
+                jt = JSTaggedValue(std::get<uint32_t>(value));
                 break;
             }
             case LiteralTag::DOUBLE: {
