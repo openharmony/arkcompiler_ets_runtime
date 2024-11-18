@@ -684,8 +684,9 @@ void NativeInlineLowering::TryInlineNumberParseInt(GateRef gate, size_t argc, bo
     if (EnableTrace()) {
         AddTraceLogs(gate, id);
     }
+    // this may return exception
     GateRef ret = builder_.NumberParseInt(arg, radix);
-    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
+    acc_.ReplaceGate(gate, builder_.GetStateDepend(), ret);
 }
 
 void NativeInlineLowering::TryInlineNumberIsSafeInteger(GateRef gate, size_t argc, bool skipThis)

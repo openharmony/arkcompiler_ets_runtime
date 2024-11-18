@@ -1249,7 +1249,7 @@ template("host_aot_js_test_action") {
 
     if (defined(invoker.is_enable_native_inline) &&
         invoker.is_enable_native_inline) {
-      _aot_compile_options_ += " --compiler-enable-native-inline"
+      _aot_compile_options_ += " --compiler-enable-native-inline=true"
     }
 
     if (defined(invoker.is_enable_opt_loop_peeling) &&
@@ -1530,7 +1530,7 @@ template("host_aot_js_test_action") {
 
       if (defined(invoker.is_enable_native_inline) &&
           invoker.is_enable_native_inline) {
-        _aot_compile_options_ += " --compiler-enable-native-inline"
+        _aot_compile_options_ += " --compiler-enable-native-inline=true"
       }
 
       if (defined(invoker.is_enable_opt_loop_peeling) &&
@@ -1804,7 +1804,7 @@ template("host_aot_js_test_action") {
 
       if (defined(invoker.is_enable_native_inline) &&
           invoker.is_enable_native_inline) {
-        _aot_compile_options_ += " --compiler-enable-native-inline"
+        _aot_compile_options_ += " --compiler-enable-native-inline=true"
       }
 
       if (defined(invoker.is_enable_opt_loop_peeling) &&
@@ -2173,7 +2173,7 @@ template("host_aot_js_assert_test_action") {
 
     if (defined(invoker.is_enable_native_inline) &&
         invoker.is_enable_native_inline) {
-      _aot_compile_options_ += " --compiler-enable-native-inline"
+      _aot_compile_options_ += " --compiler-enable-native-inline=true"
     }
 
     if (defined(invoker.is_enable_opt_loop_peeling) &&
@@ -2614,7 +2614,7 @@ template("host_aot_test_action") {
 
     if (defined(invoker.is_enable_native_inline) &&
         invoker.is_enable_native_inline) {
-      _aot_compile_options_ += " --compiler-enable-native-inline"
+      _aot_compile_options_ += " --compiler-enable-native-inline=true"
     }
 
     if (defined(invoker.is_enable_opt_loop_peeling) &&
@@ -2708,7 +2708,7 @@ template("host_aot_test_action") {
 
     if (defined(invoker.is_enable_native_inline) &&
         invoker.is_enable_native_inline) {
-      _aot_compile_options_ += " --compiler-enable-native-inline"
+      _aot_compile_options_ += " --compiler-enable-native-inline=true"
     }
 
     if (defined(invoker.is_enable_opt_loop_peeling) &&
@@ -3051,7 +3051,7 @@ template("host_aot_test_action") {
 
       if (defined(invoker.is_enable_native_inline) &&
           invoker.is_enable_native_inline) {
-        _aot_compile_options_ += " --compiler-enable-native-inline"
+        _aot_compile_options_ += " --compiler-enable-native-inline=true"
       }
 
       if (defined(invoker.is_enable_opt_loop_peeling) &&
@@ -3147,7 +3147,7 @@ template("host_aot_test_action") {
 
       if (defined(invoker.is_enable_native_inline) &&
           invoker.is_enable_native_inline) {
-        _aot_compile_options_ += " --compiler-enable-native-inline"
+        _aot_compile_options_ += " --compiler-enable-native-inline=true"
       }
 
       if (defined(invoker.is_enable_opt_loop_peeling) &&
@@ -3480,7 +3480,7 @@ template("host_aot_test_action") {
 
       if (defined(invoker.is_enable_native_inline) &&
           invoker.is_enable_native_inline) {
-        _aot_compile_options_ += " --compiler-enable-native-inline"
+        _aot_compile_options_ += " --compiler-enable-native-inline=true"
       }
 
       if (defined(invoker.is_enable_opt_loop_peeling) &&
@@ -3578,7 +3578,7 @@ template("host_aot_test_action") {
 
       if (defined(invoker.is_enable_native_inline) &&
           invoker.is_enable_native_inline) {
-        _aot_compile_options_ += " --compiler-enable-native-inline"
+        _aot_compile_options_ += " --compiler-enable-native-inline=true"
       }
 
       if (defined(invoker.is_enable_opt_loop_peeling) &&
@@ -4016,7 +4016,7 @@ template("host_aot_assert_test_action") {
 
     if (defined(invoker.is_enable_native_inline) &&
         invoker.is_enable_native_inline) {
-      _aot_compile_options_ += " --compiler-enable-native-inline"
+      _aot_compile_options_ += " --compiler-enable-native-inline=true"
     }
 
     if (defined(invoker.is_enable_opt_loop_peeling) &&
@@ -4110,7 +4110,7 @@ template("host_aot_assert_test_action") {
 
     if (defined(invoker.is_enable_native_inline) &&
         invoker.is_enable_native_inline) {
-      _aot_compile_options_ += " --compiler-enable-native-inline"
+      _aot_compile_options_ += " --compiler-enable-native-inline=true"
     }
 
     if (defined(invoker.is_enable_opt_loop_peeling) &&
