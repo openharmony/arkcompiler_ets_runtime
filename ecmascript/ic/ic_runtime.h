@@ -57,7 +57,12 @@ public:
         return icAccessor_.GetKind();
     }
 
-    void TraceIC(JSHandle<JSTaggedValue> receiver, JSHandle<JSTaggedValue> key) const;
+    uint32_t GetSlotId() const
+    {
+        return icAccessor_.GetSlotId();
+    }
+
+    void TraceIC(JSThread *thread, JSHandle<JSTaggedValue> receiver, JSHandle<JSTaggedValue> key) const;
 
 protected:
     JSThread *thread_;
