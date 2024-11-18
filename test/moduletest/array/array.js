@@ -2065,3 +2065,10 @@ findIndexArray[2] = "c";
 findIndexArray[3] = "d";
 print(findIndexArray.findIndex(element => element == "b"));
 print(findIndexArray.findIndex(element => element == "e"));
+
+// slice
+let sliceArray = [0, 1, 2, 3, 4, 5];
+print(sliceArray.slice(0));
+print(sliceArray.slice(-1));
+print(sliceArray.slice(1, 4));
+print(sliceArray.slice(1, 10));

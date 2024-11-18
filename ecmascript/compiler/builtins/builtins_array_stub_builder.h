@@ -85,6 +85,8 @@ private:
                             Label *slowPath);
     void UnshiftOptimised(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *result, Label *exit,
                           Label *slowPath);
+    void SliceOptimised(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *result, Label *exit,
+                          Label *slowPath);
     GateRef DoSortOptimised(GateRef glue, GateRef receiver, GateRef receiverState, Variable *result, Label *exit,
                             Label *slowPath, GateRef hir);
     void ToReversedOptimised(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *result, Label *exit,

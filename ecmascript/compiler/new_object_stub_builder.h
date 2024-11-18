@@ -136,6 +136,8 @@ public:
     GateRef NewProfileTypeInfoCell(GateRef glue, GateRef value);
     GateRef GetElementSizeFromType(GateRef glue, GateRef type);
     GateRef GetOnHeapHClassFromType(GateRef glue, GateRef type);
+    GateRef CreateArrayFromList(GateRef glue, GateRef elements, GateRef kind);
+
 private:
     static constexpr int MAX_TAGGED_ARRAY_LENGTH = 50;
     GateRef LoadTrackInfo(GateRef glue, GateRef jsFunc, TraceIdInfo traceIdInfo,

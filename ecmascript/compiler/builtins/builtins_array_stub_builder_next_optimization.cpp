@@ -828,4 +828,240 @@ void BuiltinsArrayStubBuilder::ToSplicedOptimised(GateRef glue, GateRef thisValu
         }
     }
 }
+
+void BuiltinsArrayStubBuilder::SliceOptimised(GateRef glue, GateRef thisValue, GateRef numArgs,
+    Variable *result, Label *exit, Label *slowPath)
+{
+    auto env = GetEnvironment();
+    Label isHeapObject(env);
+    Label isJsArray(env);
+    Label noConstructor(env);
+    BRANCH(TaggedIsHeapObject(thisValue), &isHeapObject, slowPath);
+    Bind(&isHeapObject);
+    BRANCH(IsJsArray(thisValue), &isJsArray, slowPath);
+    Bind(&isJsArray);
+    BRANCH(HasConstructor(thisValue), slowPath, &noConstructor);
+    Bind(&noConstructor);
+
+    Label thisIsEmpty(env);
+    Label thisNotEmpty(env);
+    // Fast path if:
+    // (1) this is an empty array with constructor not reset (see ArraySpeciesCreate for details);
+    // (2) no arguments exist
+    JsArrayRequirements req;
+    req.defaultConstructor = true;
+    BRANCH(IsJsArrayWithLengthLimit(glue, thisValue, MAX_LENGTH_ZERO, req), &thisIsEmpty, &thisNotEmpty);
+    Bind(&thisIsEmpty);
+    {
+        Label noArgs(env);
+        GateRef numArgsAsInt32 = TruncPtrToInt32(numArgs);
+        BRANCH(Int32Equal(numArgsAsInt32, Int32(0)), &noArgs, slowPath);
+        // Creates a new empty array on fast path
+        Bind(&noArgs);
+        NewObjectStubBuilder newBuilder(this);
+        result->WriteVariable(newBuilder.CreateEmptyArray(glue));
+        Jump(exit);
+    }
+    Bind(&thisNotEmpty);
+    {
+        Label stableJSArray(env);
+        Label arrayLenNotZero(env);
+
+        GateRef isThisStableJSArray = IsStableJSArray(glue, thisValue);
+        BRANCH(isThisStableJSArray, &stableJSArray, slowPath);
+        Bind(&stableJSArray);
+
+        GateRef msg0 = GetCallArg0(numArgs);
+        GateRef msg1 = GetCallArg1(numArgs);
+        GateRef thisArrLen = ZExtInt32ToInt64(GetArrayLength(thisValue));
+        Label msg0Int(env);
+        BRANCH(TaggedIsInt(msg0), &msg0Int, slowPath);
+        Bind(&msg0Int);
+        DEFVARIABLE(start, VariableType::INT64(), Int64(0));
+        DEFVARIABLE(end, VariableType::INT64(), thisArrLen);
+
+        GateRef argStart = SExtInt32ToInt64(TaggedGetInt(msg0));
+        Label arg0LessZero(env);
+        Label arg0NotLessZero(env);
+        Label startDone(env);
+        BRANCH(Int64LessThan(argStart, Int64(0)), &arg0LessZero, &arg0NotLessZero);
+        Bind(&arg0LessZero);
+        {
+            Label tempGreaterZero(env);
+            Label tempNotGreaterZero(env);
+            GateRef tempStart = Int64Add(argStart, thisArrLen);
+            BRANCH(Int64GreaterThan(tempStart, Int64(0)), &tempGreaterZero, &tempNotGreaterZero);
+            Bind(&tempGreaterZero);
+            {
+                start = tempStart;
+                Jump(&startDone);
+            }
+            Bind(&tempNotGreaterZero);
+            {
+                Jump(&startDone);
+            }
+        }
+        Bind(&arg0NotLessZero);
+        {
+            Label argLessLen(env);
+            Label argNotLessLen(env);
+            BRANCH(Int64LessThan(argStart, thisArrLen), &argLessLen, &argNotLessLen);
+            Bind(&argLessLen);
+            {
+                start = argStart;
+                Jump(&startDone);
+            }
+            Bind(&argNotLessLen);
+            {
+                start = thisArrLen;
+                Jump(&startDone);
+            }
+        }
+        Bind(&startDone);
+        {
+            Label endDone(env);
+            Label msg1Def(env);
+            BRANCH(TaggedIsUndefined(msg1), &endDone, &msg1Def);
+            Bind(&msg1Def);
+            {
+                Label msg1Int(env);
+                BRANCH(TaggedIsInt(msg1), &msg1Int, slowPath);
+                Bind(&msg1Int);
+                {
+                    GateRef argEnd = SExtInt32ToInt64(TaggedGetInt(msg1));
+                    Label arg1LessZero(env);
+                    Label arg1NotLessZero(env);
+                    BRANCH(Int64LessThan(argEnd, Int64(0)), &arg1LessZero, &arg1NotLessZero);
+                    Bind(&arg1LessZero);
+                    {
+                        Label tempGreaterZero(env);
+                        Label tempNotGreaterZero(env);
+                        GateRef tempEnd = Int64Add(argEnd, thisArrLen);
+                        BRANCH(Int64GreaterThan(tempEnd, Int64(0)), &tempGreaterZero, &tempNotGreaterZero);
+                        Bind(&tempGreaterZero);
+                        {
+                            end = tempEnd;
+                            Jump(&endDone);
+                        }
+                        Bind(&tempNotGreaterZero);
+                        {
+                            end = Int64(0);
+                            Jump(&endDone);
+                        }
+                    }
+                    Bind(&arg1NotLessZero);
+                    {
+                        Label argLessLen(env);
+                        Label argNotLessLen(env);
+                        BRANCH(Int64LessThan(argEnd, thisArrLen), &argLessLen, &argNotLessLen);
+                        Bind(&argLessLen);
+                        {
+                            end = argEnd;
+                            Jump(&endDone);
+                        }
+                        Bind(&argNotLessLen);
+                        {
+                            end = thisArrLen;
+                            Jump(&endDone);
+                        }
+                    }
+                }
+            }
+            Bind(&endDone);
+            {
+                DEFVARIABLE(count, VariableType::INT64(), Int64(0));
+                GateRef tempCnt = Int64Sub(*end, *start);
+                Label tempCntGreaterOrEqualZero(env);
+                Label tempCntDone(env);
+                BRANCH(Int64LessThan(tempCnt, Int64(0)), &tempCntDone, &tempCntGreaterOrEqualZero);
+                Bind(&tempCntGreaterOrEqualZero);
+                {
+                    count = tempCnt;
+                    Jump(&tempCntDone);
+                }
+                Bind(&tempCntDone);
+                {
+                    Label notOverFlow(env);
+                    BRANCH(Int64GreaterThan(*count, Int64(JSObject::MAX_GAP)), slowPath, &notOverFlow);
+                    Bind(&notOverFlow);
+                    {
+                        Label needBarrier(env);
+                        Label noBarrier(env);
+                        Label elementsKindEnabled(env);
+                        Label notElementsKindEnabled(env);
+
+                        Label jumpCopyExit(env);
+                        GateRef isElementsKindEnabled = IsEnableElementsKind(glue);
+                        BRANCH_NO_WEIGHT(isElementsKindEnabled, &elementsKindEnabled, &notElementsKindEnabled);
+                        Bind(&elementsKindEnabled);
+                        {
+                            GateRef newArray = NewArray(glue, *count);
+                            DEFVARIABLE(idx, VariableType::INT64(), Int64(0));
+                            Label loopHead(env);
+                            Label loopEnd(env);
+                            Label next(env);
+                            Label loopExit(env);
+                            Jump(&loopHead);
+                            LoopBegin(&loopHead);
+                            {
+                                BRANCH(Int64LessThan(*idx, *count), &next, &loopExit);
+                                Bind(&next);
+                                GateRef ele = GetTaggedValueWithElementsKind(thisValue, Int64Add(*idx, *start));
+                                SetValueWithElementsKind(glue, newArray, ele, *idx, Boolean(true),
+                                                         Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                                Jump(&loopEnd);
+                            }
+                            Bind(&loopEnd);
+                            idx = Int64Add(*idx, Int64(1));
+                            LoopEnd(&loopHead, env, glue);
+                            Bind(&loopExit);
+                            result->WriteVariable(newArray);
+                            Jump(exit);
+                        }
+                        Bind(&notElementsKindEnabled);
+                        {
+                            DEFVARIABLE(computeKind, VariableType::INT32(), Int32(0));
+                            Label isEnableForArray(env);
+                            Label notEnableForArray(env);
+                            GateRef elementsKindForArray = True();
+                            BRANCH(elementsKindForArray, &isEnableForArray, &notEnableForArray);
+                            Bind(&isEnableForArray);
+                            {
+                                computeKind = ComputeTaggedArrayElementKind(thisValue, *start, *end);
+                                Jump(&notEnableForArray);
+                            }
+                            Bind(&notEnableForArray);
+                            GateRef kind = *computeKind;
+                            GateRef elements = GetElementsArray(thisValue);
+                            NewObjectStubBuilder newBuilder(this);
+                            newBuilder.SetGlue(glue);
+                            GateRef destElements = newBuilder.NewTaggedArray(glue, TruncInt64ToInt32(*count));
+                            GateRef sourceStart = GetDataPtrInTaggedArray(elements, *start);
+                            GateRef dest = GetDataPtrInTaggedArray(destElements);
+                            GateRef barrier = NeedBarrier(kind);
+                            BRANCH_NO_WEIGHT(barrier, &needBarrier, &noBarrier);
+                            Bind(&needBarrier);
+                            {
+                                ArrayCopy<NotOverlap>(glue, sourceStart, destElements, dest,
+                                    TruncInt64ToInt32(*count), true);
+                                Jump(&jumpCopyExit);
+                            }
+                            Bind(&noBarrier);
+                            {
+                                ArrayCopy<NotOverlap>(glue, sourceStart, destElements, dest,
+                                    TruncInt64ToInt32(*count), false);
+                                Jump(&jumpCopyExit);
+                            }
+                            Bind(&jumpCopyExit);
+                            GateRef array = newBuilder.CreateArrayFromList(glue, destElements, kind);
+                            result->WriteVariable(array);
+                            Jump(exit);
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 } // namespace panda::ecmascript::kungfu

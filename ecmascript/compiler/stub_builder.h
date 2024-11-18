@@ -1040,7 +1040,12 @@ public:
     GateRef GetArgumentsElements(GateRef glue, GateRef argvTaggedArray, GateRef argv);
     void TryToJitReuseCompiledFunc(GateRef glue, GateRef jsFunc, GateRef profileTypeInfoCell);
     GateRef GetIsFastCall(GateRef machineCode);
-
+    // compute new elementKind from sub elements
+    GateRef ComputeTaggedArrayElementKind(GateRef array, GateRef offset, GateRef end);
+    GateRef GetElementsKindHClass(GateRef glue, GateRef elementKind);
+    GateRef FixElementsKind(GateRef oldElement);
+    GateRef NeedBarrier(GateRef kind);
+    
     enum OverlapKind {
         // NotOverlap means the source and destination memory are not overlap,
         // or overlap but the start of source is larger than destination.
@@ -1062,6 +1067,10 @@ public:
                    bool needBarrier);
 protected:
     static constexpr int LOOP_UNROLL_FACTOR = 2;
+    static constexpr int ELEMENTS_KIND_HCLASS_NUM = 12;
+    static int64_t ELEMENTS_KIND_HCLASS_CASES[ELEMENTS_KIND_HCLASS_NUM];
+    static ConstantIndex ELEMENTS_KIND_HCLASS_INDEX[ELEMENTS_KIND_HCLASS_NUM];
+
 private:
     using BinaryOperation = std::function<GateRef(Environment*, GateRef, GateRef)>;
     template<OpCode Op>

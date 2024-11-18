@@ -1140,6 +1140,9 @@ void BuiltinsArrayStubBuilder::Pop(GateRef glue, GateRef thisValue,
 void BuiltinsArrayStubBuilder::Slice(GateRef glue, GateRef thisValue, GateRef numArgs,
     Variable *result, Label *exit, Label *slowPath)
 {
+#if ENABLE_NEXT_OPTIMIZATION
+    SliceOptimised(glue, thisValue, numArgs, result, exit, slowPath);
+#else
     auto env = GetEnvironment();
     Label isHeapObject(env);
     Label isJsArray(env);
@@ -1371,6 +1374,7 @@ void BuiltinsArrayStubBuilder::Slice(GateRef glue, GateRef thisValue, GateRef nu
             }
         }
     }
+#endif
 }
 
 void BuiltinsArrayStubBuilder::Sort(GateRef glue, GateRef thisValue,
