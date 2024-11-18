@@ -90,6 +90,7 @@ JSTaggedValue BuiltinsAsyncFromSyncIterator::Throw(EcmaRuntimeCallInfo *argv)
         JSHandle<JSTaggedValue> reject(thread, pcap->GetReject());
         EcmaRuntimeCallInfo *info =
             EcmaInterpreter::NewRuntimeCallInfo(thread, reject, undefinedValue, undefinedValue, 1);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         info->SetCallArg(iterResult.GetTaggedValue());
         return pcap->GetPromise();
     }
@@ -98,7 +99,6 @@ JSTaggedValue BuiltinsAsyncFromSyncIterator::Throw(EcmaRuntimeCallInfo *argv)
     if (value->IsNull()) {
         EcmaRuntimeCallInfo *callInfo =
             EcmaInterpreter::NewRuntimeCallInfo(thread, throwResult, syncIterator, undefinedValue, 0);
-        RETURN_REJECT_PROMISE_IF_ABRUPT(thread, throwResult, pcap);
         ret = JSFunction::Call(callInfo);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     } else {
@@ -119,6 +119,7 @@ JSTaggedValue BuiltinsAsyncFromSyncIterator::Throw(EcmaRuntimeCallInfo *argv)
         JSHandle<JSTaggedValue> reject(thread, pcap->GetReject());
         EcmaRuntimeCallInfo *info =
             EcmaInterpreter::NewRuntimeCallInfo(thread, reject, undefinedValue, undefinedValue, 1);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         info->SetCallArg(resolutionError.GetTaggedValue());
         JSFunction::Call(info);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -167,6 +168,7 @@ JSTaggedValue BuiltinsAsyncFromSyncIterator::Return(EcmaRuntimeCallInfo *argv)
         JSHandle<JSTaggedValue> resolve(thread, pcap->GetResolve());
         EcmaRuntimeCallInfo *info =
             EcmaInterpreter::NewRuntimeCallInfo(thread, resolve, undefinedValue, undefinedValue, 1);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         info->SetCallArg(its.GetTaggedValue());
         JSHandle<JSObject> promise(thread, pcap->GetPromise());
         return promise.GetTaggedValue();
@@ -176,7 +178,6 @@ JSTaggedValue BuiltinsAsyncFromSyncIterator::Return(EcmaRuntimeCallInfo *argv)
     if (value->IsNull()) {
         EcmaRuntimeCallInfo *callInfo =
             EcmaInterpreter::NewRuntimeCallInfo(thread, returnResult, syncIterator, undefinedValue, 0);
-        RETURN_REJECT_PROMISE_IF_ABRUPT(thread, returnResult, pcap);
         ret = JSFunction::Call(callInfo);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     } else {
@@ -197,6 +198,7 @@ JSTaggedValue BuiltinsAsyncFromSyncIterator::Return(EcmaRuntimeCallInfo *argv)
         JSHandle<JSTaggedValue> reject(thread, pcap->GetReject());
         EcmaRuntimeCallInfo *info =
             EcmaInterpreter::NewRuntimeCallInfo(thread, reject, undefinedValue, undefinedValue, 1);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         info->SetCallArg(rstErr.GetTaggedValue());
         JSFunction::Call(info);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);

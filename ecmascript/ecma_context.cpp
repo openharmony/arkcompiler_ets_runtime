@@ -467,10 +467,6 @@ void EcmaContext::CJSExecution(JSHandle<JSFunction> &func, JSHandle<JSTaggedValu
                                                 JSHandle<JSTaggedValue>(func),
                                                 thisArg, undefined, 5); // 5 : argument numbers
         RETURN_IF_ABRUPT_COMPLETION(thread_);
-        if (info == nullptr) {
-            LOG_ECMA(ERROR) << "CJSExecution Stack overflow!";
-            return;
-        }
         info->SetCallArg(cjsInfo.exportsHdl.GetTaggedValue(),
             cjsInfo.requireHdl.GetTaggedValue(),
             cjsInfo.moduleHdl.GetTaggedValue(),

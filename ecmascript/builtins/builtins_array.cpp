@@ -2739,7 +2739,6 @@ JSTaggedValue BuiltinsArray::ToString(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     EcmaRuntimeCallInfo *info =
         EcmaInterpreter::NewRuntimeCallInfo(thread, callbackFnHandle, thisObjVal, undefined, 0);
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return JSFunction::Call(info);
 }
 
