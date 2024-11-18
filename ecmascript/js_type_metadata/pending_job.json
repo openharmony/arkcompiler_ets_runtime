@@ -1,0 +1,19 @@
+{
+    "name": "PENDING_JOB",
+    "offsets": [
+        {
+            "name": "Job",
+            "offset": 0,
+            "size": 8
+        },
+        {
+            "name": "Arguments",
+            "offset": 8,
+            "size": 8
+        }
+    ],
+    "end_offset": 16,
+    "parents": [
+        "RECORD"
+    ]
+}

@@ -1,0 +1,19 @@
+{
+    "name": "EXTRA_PROFILE_TYPE_INFO",
+    "offsets": [
+        {
+            "name": "ReceiverObject",
+            "offset": 0,
+            "size": 8
+        },
+        {
+            "name": "HolderObject",
+            "offset": 8,
+            "size": 8
+        }
+    ],
+    "end_offset": 16,
+    "parents": [
+        "TAGGED_OBJECT"
+    ]
+}

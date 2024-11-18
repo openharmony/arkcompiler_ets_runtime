@@ -1,0 +1,14 @@
+{
+    "name": "JS_API_LIST_ITERATOR",
+    "offsets": [
+        {
+            "name": "IteratedList",
+            "offset": 0,
+            "size": 8
+        }
+    ],
+    "end_offset": 16,
+    "parents": [
+        "JS_OBJECT"
+    ]
+}

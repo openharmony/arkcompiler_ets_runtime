@@ -1,0 +1,14 @@
+{
+    "name": "JS_PROMISE_VALUE_THUNK_OR_THROWER_FUNCTION",
+    "offsets": [
+        {
+            "name": "Result",
+            "offset": 0,
+            "size": 8
+        }
+    ],
+    "end_offset": 8,
+    "parents": [
+        "JS_FUNCTION"
+    ]
+}

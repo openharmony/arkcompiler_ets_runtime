@@ -120,7 +120,12 @@ void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm,
     }
 
     // Write in faultlog for heap leak.
-    int32_t fd = RequestFileDescriptor(static_cast<int32_t>(FaultLoggerType::JS_HEAP_SNAPSHOT));
+    int32_t fd;
+    if (dumpOption.isDumpOOM && dumpOption.dumpFormat == DumpFormat::BINARY) {
+        fd = RequestFileDescriptor(static_cast<int32_t>(FaultLoggerType::JS_RAW_SNAPSHOT));
+    } else {
+        fd = RequestFileDescriptor(static_cast<int32_t>(FaultLoggerType::JS_HEAP_SNAPSHOT));
+    }
     if (fd < 0) {
         LOG_ECMA(ERROR) << "Write FD failed, fd" << fd;
         return;
@@ -205,6 +210,18 @@ void DFXJSNApi::DumpHeapSnapshotWithVm([[maybe_unused]] const EcmaVM *vm,
     }
 #endif
 #endif
+}
+
+void DFXJSNApi::GenerateHeapSnapshotByBinFile([[maybe_unused]] const EcmaVM *vm,
+                                              [[maybe_unused]] std::string &inputFilePath,
+                                              [[maybe_unused]] std::string &outputPath)
+{
+#if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
+    auto *heapProfile = ecmascript::HeapProfilerInterface::GetInstance(const_cast<EcmaVM *>(vm));
+    heapProfile->GenerateHeapSnapshot(inputFilePath, outputPath);
+#else
+    LOG_ECMA(ERROR) << "Not support GenerateHeapSnapshotByBinFile";
+#endif // ECMASCRIPT_SUPPORT_SNAPSHOT
 }
 
 // tid = 0: TriggerGC all vm; tid != 0: TriggerGC tid vm

@@ -1,0 +1,14 @@
+{
+    "name": "JS_ASYNC_FROM_SYNC_ITER_UNWARP_FUNCTION",
+    "offsets": [
+        {
+            "name": "Done",
+            "offset": 0,
+            "size": 8
+        }
+    ],
+    "end_offset": 8,
+    "parents": [
+        "JS_FUNCTION"
+    ]
+}

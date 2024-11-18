@@ -1,0 +1,29 @@
+{
+    "name": "JS_ASYNC_GENERATOR_OBJECT",
+    "offsets": [
+        {
+            "name": "GeneratorContext",
+            "offset": 0,
+            "size": 8
+        },
+        {
+            "name": "AsyncGeneratorQueue",
+            "offset": 8,
+            "size": 8
+        },
+        {
+            "name": "GeneratorBrand",
+            "offset": 16,
+            "size": 8
+        },
+        {
+            "name": "ResumeResult",
+            "offset": 24,
+            "size": 8
+        }
+    ],
+    "end_offset": 40,
+    "parents": [
+        "JS_OBJECT"
+    ]
+}

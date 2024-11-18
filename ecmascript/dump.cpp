@@ -4474,6 +4474,7 @@ static void DumpObject(TaggedObject *obj, std::vector<Reference> &vec, bool isVm
     } else {
         vec.pop_back();
     }
+
     AddAnonymousEdge(obj, vec);
 }
 

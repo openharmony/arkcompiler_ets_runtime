@@ -1,0 +1,19 @@
+{
+    "name": "JS_PROMISE_FINALLY_FUNCTION",
+    "offsets": [
+        {
+            "name": "Constructor",
+            "offset": 0,
+            "size": 8
+        },
+        {
+            "name": "OnFinally",
+            "offset": 8,
+            "size": 8
+        }
+    ],
+    "end_offset": 16,
+    "parents": [
+        "JS_FUNCTION"
+    ]
+}

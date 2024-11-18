@@ -1,0 +1,24 @@
+{
+    "name": "JS_RELATIVE_TIME_FORMAT",
+    "offsets": [
+        {
+            "name": "Locale",
+            "offset": 0,
+            "size": 8
+        },
+        {
+            "name": "NumberingSystem",
+            "offset": 8,
+            "size": 8
+        },
+        {
+            "name": "IcuField",
+            "offset": 16,
+            "size": 8
+        }
+    ],
+    "end_offset": 32,
+    "parents": [
+        "JS_OBJECT"
+    ]
+}

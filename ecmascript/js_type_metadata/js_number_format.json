@@ -1,0 +1,69 @@
+{
+    "name": "JS_NUMBER_FORMAT",
+    "offsets": [
+        {
+            "name": "Locale",
+            "offset": 0,
+            "size": 8
+        },
+        {
+            "name": "NumberingSystem",
+            "offset": 8,
+            "size": 8
+        },
+        {
+            "name": "Currency",
+            "offset": 16,
+            "size": 8
+        },
+        {
+            "name": "Unit",
+            "offset": 24,
+            "size": 8
+        },
+        {
+            "name": "MinimumIntegerDigits",
+            "offset": 32,
+            "size": 8
+        },
+        {
+            "name": "MinimumFractionDigits",
+            "offset": 40,
+            "size": 8
+        },
+        {
+            "name": "MaximumFractionDigits",
+            "offset": 48,
+            "size": 8
+        },
+        {
+            "name": "MinimumSignificantDigits",
+            "offset": 56,
+            "size": 8
+        },
+        {
+            "name": "MaximumSignificantDigits",
+            "offset": 64,
+            "size": 8
+        },
+        {
+            "name": "UseGrouping",
+            "offset": 72,
+            "size": 8
+        },
+        {
+            "name": "BoundFormat",
+            "offset": 80,
+            "size": 8
+        },
+        {
+            "name": "IcuField",
+            "offset": 88,
+            "size": 8
+        }
+    ],
+    "end_offset": 104,
+    "parents": [
+        "JS_OBJECT"
+    ]
+}

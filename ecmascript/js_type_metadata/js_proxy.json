@@ -1,0 +1,29 @@
+{
+    "name": "JS_PROXY",
+    "offsets": [
+        {
+            "name": "Target",
+            "offset": 0,
+            "size": 8
+        },
+        {
+            "name": "Handler",
+            "offset": 8,
+            "size": 8
+        },
+        {
+            "name": "Method",
+            "offset": 16,
+            "size": 8
+        },
+        {
+            "name": "PrivateField",
+            "offset": 24,
+            "size": 8
+        }
+    ],
+    "end_offset": 40,
+    "parents": [
+        "ECMA_OBJECT"
+    ]
+}

@@ -1,0 +1,14 @@
+{
+    "name": "PROTOTYPE_INFO",
+    "offsets": [
+        {
+            "name": "ChangeListener",
+            "offset": 0,
+            "size": 8
+        }
+    ],
+    "end_offset": 16,
+    "parents": [
+        "TAGGED_OBJECT"
+    ]
+}
