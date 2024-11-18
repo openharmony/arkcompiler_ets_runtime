@@ -45,7 +45,6 @@ public:
      * Get string by its hash key
      */
     std::string GetStringByKey(StringKey key) const;
-    std::pair<uint64_t, std::string> GetStringAndIdPair(StringKey key) const;
     StringId InsertStrAndGetStringId(const std::string &cstrArg);
     size_t GetCapcity() const
     {
