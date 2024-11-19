@@ -34,6 +34,7 @@ TEST(GetTypeFromArgTy_FUNC, t01)
     for (int i = 0; i < n; i++)
     {
         mirtype_ptr = IntrinDesc_struc.GetTypeFromArgTy(input_ls[i]);
+        ASSERT_TRUE(mirtype_ptr != nullptr);
         mirtype_ptr->GetPrimType();
     }
 }
