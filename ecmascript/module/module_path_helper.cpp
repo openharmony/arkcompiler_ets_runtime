@@ -81,14 +81,17 @@ CString ModulePathHelper::ConcatMergeFileNameToNormalized(JSThread *thread, cons
 
 /*
  * Before: requestName: ../xxx1/xxx2 || ./xxx1
- * After:  &entryPath&version
+ * After:  1.&entryPath&version
+ *         2.bundleName&entryPath&version
  */
 CString ModulePathHelper::ConcatImportFileNormalizedOhmurlWithRecordName(JSThread *thread,
     const JSPandaFile *jsPandaFile, CString &baseFileName, const CString &recordName, const CString &requestName)
 {
     CString entryPoint;
     CVector<CString> res = SplitNormalizedRecordName(recordName);
-    CString path = PathHelper::NORMALIZED_OHMURL_TAG + res[NORMALIZED_IMPORT_PATH_INDEX];
+    CString path = res[NORMALIZED_BUNDLE_NAME_INDEX];
+    path += PathHelper::NORMALIZED_OHMURL_TAG;
+    path += res[NORMALIZED_IMPORT_PATH_INDEX];
     CString version = res[NORMALIZED_VERSION_INDEX];
     CString moduleRequestName = requestName;
     moduleRequestName = RemoveSuffix(moduleRequestName);
