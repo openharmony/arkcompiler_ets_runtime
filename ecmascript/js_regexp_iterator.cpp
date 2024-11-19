@@ -56,7 +56,7 @@ JSTaggedValue JSRegExpIterator::Next(EcmaRuntimeCallInfo *argv)
 
     // 9. Let match be ? RegExpExec(R, S).
     JSMutableHandle<JSTaggedValue> match(thread, JSTaggedValue::Undefined());
-    bool isFastPath = BuiltinsRegExp::IsFastRegExp(thread, regexp);
+    bool isFastPath = BuiltinsRegExp::IsFastRegExp(thread, regexp.GetTaggedValue());
     if (isFastPath) {
         match.Update(BuiltinsRegExp::RegExpBuiltinExec(thread, regexp, inputStr, isFastPath, true));
     } else {

@@ -155,7 +155,7 @@ JSTaggedValue BuiltinsRegExp::Exec(EcmaRuntimeCallInfo *argv)
     }
 
     bool useCache = true;
-    bool isFastPath = IsFastRegExp(thread, thisObj);
+    bool isFastPath = IsFastRegExp(thread, thisObj.GetTaggedValue());
     JSHandle<RegExpExecResultCache> cacheTable(thread->GetCurrentEcmaContext()->GetRegExpCache());
     if (!isFastPath || cacheTable->GetLargeStrCount() == 0 || cacheTable->GetConflictCount() == 0) {
         useCache = false;
@@ -186,7 +186,7 @@ JSTaggedValue BuiltinsRegExp::Test(EcmaRuntimeCallInfo *argv)
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSTaggedValue> string = JSHandle<JSTaggedValue>::Cast(stringHandle);
     // test fast path
-    if (IsFastRegExp(thread, thisObj)) {
+    if (IsFastRegExp(thread, thisObj.GetTaggedValue())) {
         return RegExpTestFast(thread, thisObj, string, true);
     }
 
@@ -198,19 +198,20 @@ JSTaggedValue BuiltinsRegExp::Test(EcmaRuntimeCallInfo *argv)
     return GetTaggedBoolean(!matchResult.IsNull());
 }
 
-bool BuiltinsRegExp::IsFastRegExp(JSThread *thread, JSHandle<JSTaggedValue> regexp,
+bool BuiltinsRegExp::IsFastRegExp(JSThread *thread, JSTaggedValue regexp,
                                   RegExpSymbol symbolTag)
 {
+    DISALLOW_GARBAGE_COLLECTION;
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
-    JSHClass *hclass = JSHandle<JSObject>::Cast(regexp)->GetJSHClass();
+    JSHClass *hclass = JSObject::Cast(regexp)->GetJSHClass();
     JSHClass *originHClass = JSHClass::Cast(globalConst->GetJSRegExpClass().GetTaggedObject());
     // regexp instance hclass
     if (hclass != originHClass) {
         return false;
     }
     // lastIndex type is Int
-    JSTaggedValue lastIndex = JSHandle<JSObject>::Cast(regexp)->GetPropertyInlinedProps(LAST_INDEX_OFFSET);
+    JSTaggedValue lastIndex = JSObject::Cast(regexp)->GetPropertyInlinedProps(LAST_INDEX_OFFSET);
     if (!lastIndex.IsInt() || lastIndex.GetInt() < 0) {
         return false;
     }
@@ -325,7 +326,7 @@ JSTaggedValue BuiltinsRegExp::ToString(EcmaRuntimeCallInfo *argv)
     JSMutableHandle<JSTaggedValue> getFlags(thread, JSTaggedValue::Undefined());
     JSHandle<EcmaString> sourceStrHandle;
     JSHandle<EcmaString> flagsStrHandle;
-    if (IsFastRegExp(thread, thisObj)) {
+    if (IsFastRegExp(thread, thisObj.GetTaggedValue())) {
         JSHandle<JSRegExp> regexp(thread, JSRegExp::Cast(thisObj->GetTaggedObject()));
         // 3. Let pattern be ToString(Get(R, "source")).
         getSource.Update(regexp->GetOriginalSource());
@@ -369,7 +370,7 @@ JSTaggedValue BuiltinsRegExp::GetFlags(EcmaRuntimeCallInfo *argv)
     }
     // 3. Let result be the empty String.
     // 4. ~ 19.
-    if (!IsFastRegExp(thread, thisObj)) {
+    if (!IsFastRegExp(thread, thisObj.GetTaggedValue())) {
         return GetAllFlagsInternal(thread, thisObj);
     }
     uint8_t flagsBits = static_cast<uint8_t>(JSRegExp::Cast(thisObj->GetTaggedObject())->GetOriginalFlags().GetInt());
@@ -598,7 +599,7 @@ JSTaggedValue BuiltinsRegExp::Match(EcmaRuntimeCallInfo *argv)
         // 2. If Type(rx) is not Object, throw a TypeError exception.
         THROW_TYPE_ERROR_AND_RETURN(thread, "this is not Object", JSTaggedValue::Exception());
     }
-    bool isFastPath = IsFastRegExp(thread, thisObj);
+    bool isFastPath = IsFastRegExp(thread, thisObj.GetTaggedValue());
     return RegExpMatch(thread, thisObj, string, isFastPath);
 }
 
@@ -746,7 +747,7 @@ JSTaggedValue BuiltinsRegExp::MatchAll(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> inputString = GetCallArg(argv, 0);
     JSHandle<EcmaString> stringHandle = JSTaggedValue::ToString(thread, inputString);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    bool isFastPath = IsFastRegExp(thread, thisObj);
+    bool isFastPath = IsFastRegExp(thread, thisObj.GetTaggedValue());
     return RegExpMatchAll(thread, thisObj, stringHandle, isFastPath);
 }
 
@@ -1017,7 +1018,7 @@ JSTaggedValue BuiltinsRegExp::ReplaceInternal(JSThread *thread,
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     bool isGlobal = false;
     bool fullUnicode = false;
-    bool isFastPath = IsFastRegExp(thread, thisObj);
+    bool isFastPath = IsFastRegExp(thread, thisObj.GetTaggedValue());
     if (isFastPath) {
         isGlobal = GetOriginalFlag(thread, thisObj, RegExpParser::FLAG_GLOBAL);
         fullUnicode = GetOriginalFlag(thread, thisObj, RegExpParser::FLAG_UTF16);
@@ -1354,7 +1355,7 @@ JSTaggedValue BuiltinsRegExp::RegExpSearch(JSThread *thread,
                                            const JSHandle<JSTaggedValue> regexp,
                                            const JSHandle<JSTaggedValue> string)
 {
-    bool isFastPath = IsFastRegExp(thread, regexp);
+    bool isFastPath = IsFastRegExp(thread, regexp.GetTaggedValue());
     if (isFastPath) {
         return RegExpSearchFast(thread, regexp, string);
     }
@@ -1644,7 +1645,7 @@ JSTaggedValue BuiltinsRegExp::Split(EcmaRuntimeCallInfo *argv)
         // 2. If Type(rx) is not Object, throw a TypeError exception.
         THROW_TYPE_ERROR_AND_RETURN(thread, "this is not Object", JSTaggedValue::Exception());
     }
-    bool isFastPath = IsFastRegExp(thread, thisObj);
+    bool isFastPath = IsFastRegExp(thread, thisObj.GetTaggedValue());
     return RegExpSplit(thread, thisObj, jsString, limit, isFastPath);
 }
 

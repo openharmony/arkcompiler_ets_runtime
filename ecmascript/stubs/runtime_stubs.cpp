@@ -3867,11 +3867,8 @@ void RuntimeStubs::ArrayTrim(uintptr_t argGlue, TaggedArray *array, int64_t newL
 
 bool RuntimeStubs::IsFastRegExp(uintptr_t argGlue, JSTaggedValue thisValue)
 {
-    DISALLOW_GARBAGE_COLLECTION;
     auto thread = JSThread::GlueToJSThread(argGlue);
-    [[maybe_unused]] EcmaHandleScope handleScope(thread);
-    JSHandle<JSTaggedValue> thisObjVal(thread, thisValue);
-    return builtins::BuiltinsRegExp::IsFastRegExp(thread, thisObjVal);
+    return builtins::BuiltinsRegExp::IsFastRegExp(thread, thisValue);
 }
 
 template <typename T>

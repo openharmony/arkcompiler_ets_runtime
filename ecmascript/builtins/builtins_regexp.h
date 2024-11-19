@@ -90,7 +90,7 @@ public:
                                          JSHandle<JSTaggedValue> string,
                                          JSHandle<JSTaggedValue> inputReplaceValue);
     static JSTaggedValue GetAllFlagsInternal(JSThread *thread, JSHandle<JSTaggedValue> &thisObj);
-    static bool IsFastRegExp(JSThread *thread, JSHandle<JSTaggedValue> regexp,
+    static bool IsFastRegExp(JSThread *thread, JSTaggedValue regexp,
                              RegExpSymbol symbolTag = RegExpSymbol::UNKNOWN);
     static bool GetFlag(JSThread *thread, const JSHandle<JSTaggedValue> regexp, uint32_t flag, bool isFastPath);
     static bool GetOriginalFlag(JSThread *thread, const JSHandle<JSTaggedValue> regexp, uint32_t flag);
