@@ -65,6 +65,9 @@ void StreamWriter::EndOfStream()
         fileStream_ << str;
         current_ = 0;
     }
+    if (fileStream_.is_open()) {
+        fileStream_.close();
+    }
 }
 
 bool HeapSnapshotJSONSerializer::Serialize(RawHeapTranslate *snapshot, StreamWriter *writer)

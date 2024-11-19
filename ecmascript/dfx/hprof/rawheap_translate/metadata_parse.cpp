@@ -18,10 +18,10 @@
 namespace rawheap_translate {
 bool Meta::Parse(const cJSON *object)
 {
-    return ParseTypeEnums(object) &&
+    return ParseVersion(object) &&
+           ParseTypeEnums(object) &&
            ParseTypeList(object) &&
            ParseTypeLayout(object) &&
-           ParseVersion(object) &&
            SetObjTypeBitFieldOffset() &&
            SetNativatePointerBindingSizeOffset();
 }
