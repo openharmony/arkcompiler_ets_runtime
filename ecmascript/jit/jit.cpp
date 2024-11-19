@@ -531,7 +531,7 @@ Jit::TimeScope::~TimeScope()
         if (vm_->GetEnableJitLogSkip() && bundleName != "" && message_.find(bundleName) == std::string::npos) {
             return;
         }
-        LOG_JIT(INFO) << tier_ << message_ << ": " << TotalSpentTime() << "ms";
+        LOG_JIT(INFO) << tier_ << message_ << ", compile time: " << TotalSpentTime() << "ms";
     }
 }
 }  // namespace panda::ecmascript

@@ -417,6 +417,14 @@ bool JitTask::AsyncTask::Run([[maybe_unused]] uint32_t threadIndex)
         if (jitTask_->IsAsyncTask()) {
             jitTask_->jit_->RequestInstallCode(jitTask_);
         }
+
+        MachineCodeDesc codeDesc = jitTask_->GetMachineCodeDesc();
+        size_t instrSize = codeDesc.codeSizeAlign + codeDesc.rodataSizeBeforeTextAlign
+                           + codeDesc.rodataSizeAfterTextAlign;
+        CString sizeInfo = ": text size: ";
+        sizeInfo.append(std::to_string(instrSize)).append("bytes");
+        scope.appendMessage(sizeInfo);
+
         int compilerTime = scope.TotalSpentTimeInMicroseconds();
         JitDfx::GetInstance()->RecordSpentTimeAndPrintStatsLogInJitThread(compilerTime, jitTask_->methodName_,
             jitTask_->compilerTier_.IsBaseLine(), jitTask_->mainThreadCompileTime_);
