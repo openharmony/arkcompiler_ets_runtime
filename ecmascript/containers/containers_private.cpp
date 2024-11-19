@@ -1094,9 +1094,7 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeLinkedList(JSThread *thread
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(linkedListFuncPrototype), constructorKey, linkedListFunction);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
     SetFrozenFunction(thread, linkedListFuncPrototype, "add", ContainersLinkedList::Add, FuncLength::ONE);
-    SetFrozenFunction(thread, linkedListFuncPrototype, "insert", ContainersLinkedList::Insert, FuncLength::TWO);
-    SetFrozenFunction(thread, linkedListFuncPrototype, "insertByIndex", ContainersLinkedList::InsertByIndex,
-                      FuncLength::TWO);
+    SetFrozenFunction(thread, linkedListFuncPrototype, "insert", ContainersLinkedList::Insert, FuncLength::ONE);
     SetFrozenFunction(thread, linkedListFuncPrototype, "clear", ContainersLinkedList::Clear, FuncLength::ONE);
     SetFrozenFunction(thread, linkedListFuncPrototype, "clone", ContainersLinkedList::Clone, FuncLength::ONE);
     SetFrozenFunction(thread, linkedListFuncPrototype, "removeFirst", ContainersLinkedList::RemoveFirst,
