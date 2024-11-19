@@ -40,6 +40,7 @@ void CfiInsn::Dump() const
 {
 #ifdef ARK_LITECG_DEBUG
     MOperator mOp = GetMachineOpcode();
+    CHECK_FATAL(mOp <= kOpCfiLast, "check overflow");
     CfiDescr &cfiDescr = cfiDescrTable[mOp];
     LogInfo::MapleLogger() << "CFI " << cfiDescr.name;
     for (uint32 i = 0; i < static_cast<uint32>(cfiDescr.opndCount); ++i) {

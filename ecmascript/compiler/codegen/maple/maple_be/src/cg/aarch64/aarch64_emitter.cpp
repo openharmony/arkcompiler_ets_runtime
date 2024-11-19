@@ -1615,6 +1615,7 @@ void AArch64AsmEmitter::EmitAArch64CfiInsn(Emitter &emitter, const Insn &insn) c
 {
 #ifdef ARK_LITECG_DEBUG
     MOperator mOp = insn.GetMachineOpcode();
+    CHECK_FATAL(mOp <= cfi::kOpCfiLast, "check overflow");
     CfiDescr &cfiDescr = cfiDescrTable[mOp];
     (void)emitter.Emit("\t").Emit(cfiDescr.name);
     for (uint32 i = 0; i < cfiDescr.opndCount; ++i) {

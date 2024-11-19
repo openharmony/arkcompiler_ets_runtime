@@ -30,6 +30,7 @@ void X64MoveRegArgs::CollectRegisterArgs(std::map<uint32, X64reg> &argsList, std
                                          std::map<uint32, X64reg> &pairReg, std::vector<uint32> &numFpRegs,
                                          std::vector<uint32> &fpSize) const
 {
+    CHECK_FATAL(cgFunc != nullptr, "nullptr check");
     X64CGFunc *x64CGFunc = static_cast<X64CGFunc *>(cgFunc);
     uint32 numFormal = static_cast<uint32>(x64CGFunc->GetFunction().GetFormalCount());
     numFpRegs.resize(numFormal);

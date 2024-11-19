@@ -31,6 +31,7 @@ using namespace maple;
  */
 uint32 MemLayout::FindLargestActualArea(int32 &aggCopySize)
 {
+    CHECK_FATAL(mirFunction != nullptr, "nullptr check");
     StmtNode *stmt = mirFunction->GetBody()->GetFirst();
     if (stmt == nullptr) {
         return 0;

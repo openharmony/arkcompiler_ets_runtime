@@ -29,6 +29,7 @@ using namespace maple;
 uint32 AArch64MemLayout::ComputeStackSpaceRequirementForCall(StmtNode &stmt, int32 &aggCopySize, bool isIcall)
 {
     /* instantiate a parm locator */
+    CHECK_FATAL(cgFunc != nullptr, "nullptr check");
     CCImpl &parmLocator = *static_cast<AArch64CGFunc *>(cgFunc)->GetOrCreateLocator(CCImpl::GetCallConvKind(stmt));
     uint32 sizeOfArgsToStkPass = 0;
     uint32 i = 0;
@@ -78,6 +79,7 @@ void AArch64MemLayout::LayoutFormalParams()
         AArch64SymbolAlloc *symLoc = memAllocator->GetMemPool()->New<AArch64SymbolAlloc>();
         SetSymAllocInfo(stIndex, *symLoc);
         MIRType *ty = GlobalTables::GetTypeTable().GetTypeFromTyIdx(mirFunction->GetFormalDefVec()[i].formalTyIdx);
+        CHECK_FATAL(ty != nullptr, "nullptr check");
         uint32 ptyIdx = ty->GetTypeIndex();
         parmLocator.LocateNextParm(*ty, ploc, i == 0, mirFunction->GetMIRFuncType());
         if (ploc.reg0 != kRinvalid) { /* register */

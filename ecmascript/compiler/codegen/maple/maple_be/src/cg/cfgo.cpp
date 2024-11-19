@@ -587,7 +587,7 @@ bool CgCfgo::PhaseRun(maplebe::CGFunc &f)
 {
     auto *loopInfo = GET_ANALYSIS(CgLoopAnalysis, f);
     CFGOptimizer *cfgOptimizer = f.GetCG()->CreateCFGOptimizer(*GetPhaseMemPool(), f, *loopInfo);
-    DEBUG_ASSERT(cfgOptimizer != nullptr, "nullptr check");
+    CHECK_FATAL(cfgOptimizer != nullptr, "nullptr check");
     if (f.IsAfterRegAlloc()) {
         cfgOptimizer->SetPhase(kCfgoPostRegAlloc);
     }
