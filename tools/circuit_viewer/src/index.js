@@ -26,8 +26,8 @@ canvas.height = window.innerHeight;
 
 function myDraw() {
   if (
-    canvas.width != window.innerWidth - sideWidth ||
-    canvas.height != window.innerHeight
+    canvas.width !== window.innerWidth - sideWidth ||
+    canvas.height !== window.innerHeight
   ) {
     canvas.width = window.innerWidth - sideWidth;
     canvas.height = window.innerHeight;
