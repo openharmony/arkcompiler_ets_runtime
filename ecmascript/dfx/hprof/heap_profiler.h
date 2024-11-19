@@ -126,7 +126,7 @@ public:
      * dump the specific snapshot in target format
      */
     bool DumpHeapSnapshot(Stream *stream, const DumpSnapShotOption &dumpOption, Progress *progress = nullptr) override;
-    void DumpHeapSnapshot(const DumpSnapShotOption &dumpOption) override;
+    void DumpHeapSnapshotForOOM(const DumpSnapShotOption &dumpOption, bool fromSharedGC = false) override;
     void AddSnapshot(HeapSnapshot *snapshot);
 
     bool StartHeapTracking(double timeInterval, bool isVmMode = true, Stream *stream = nullptr,
@@ -160,6 +160,7 @@ private:
      */
     bool ForceFullGC(const EcmaVM *vm);
     void ForceSharedGC();
+    void DumpHeapSnapshotFromSharedGC(Stream *stream, const DumpSnapShotOption &dumpOption);
 
     /**
      * make a new heap snapshot and put it into a container eg, vector

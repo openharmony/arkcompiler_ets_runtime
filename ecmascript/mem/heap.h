@@ -126,6 +126,12 @@ enum class VerifyKind {
     VERIFY_END,
 };
 
+enum class SharedHeapOOMSource {
+    NORMAL_ALLOCATION,
+    DESERIALIZE,
+    SHARED_GC,
+};
+
 class BaseHeap {
 public:
     BaseHeap(const EcmaParamConfiguration &config) : config_(config) {}
@@ -242,12 +248,17 @@ public:
     {
         shouldThrowOOMError_ = shouldThrow;
     }
-    
+
+    void ShouldForceThrowOOMError()
+    {
+        shouldForceThrowOOMError_ = true;
+    }
+
     void SetCanThrowOOMError(bool canThrow)
     {
         canThrowOOMError_ = canThrow;
     }
-    
+
     bool CanThrowOOMError()
     {
         return canThrowOOMError_;
@@ -424,6 +435,9 @@ protected:
     bool clearTaskFinished_ {true};
     bool inBackground_ {false};
     bool shouldThrowOOMError_ {false};
+    // Diffs from `shouldThrowOOMError_`, this is set due to allocating region failed during GC, and thus make
+    // MemMapAllocator infinite to complete this GC. After GC, if this flag is set, we MUST throw OOM force.
+    bool shouldForceThrowOOMError_ {false};
     bool canThrowOOMError_ {true};
     bool oldGCRequested_ {false};
     // ONLY used for heap verification.
@@ -825,7 +839,7 @@ public:
 
     inline void MergeToOldSpaceSync(SharedLocalSpace *localSpace);
 
-    void DumpHeapSnapshotBeforeOOM(bool isFullGC, JSThread *thread);
+    void DumpHeapSnapshotBeforeOOM(bool isFullGC, JSThread *thread, SharedHeapOOMSource source);
 
     inline void ProcessSharedNativeDelete(const WeakRootVisitor& visitor);
     inline void PushToSharedNativePointerList(JSNativePointer* pointer);
@@ -845,7 +859,7 @@ public:
 
 private:
     void ProcessAllGCListeners();
-    inline void CollectGarbageFinish(bool inDaemon, TriggerGCType gcType);
+    void CollectGarbageFinish(bool inDaemon, TriggerGCType gcType);
     
     void MoveOldSpaceToAppspawn();
 

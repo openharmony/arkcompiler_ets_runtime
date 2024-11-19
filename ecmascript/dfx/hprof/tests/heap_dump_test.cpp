@@ -545,9 +545,9 @@ public:
         return profiler_->DumpHeapSnapshot(stream, dumpOption, progress);
     }
 
-    void DumpHeapSnapshot(const DumpSnapShotOption &dumpOption) override
+    void DumpHeapSnapshotForOOM(const DumpSnapShotOption &dumpOption, bool fromSharedGC = false) override
     {
-        profiler_->DumpHeapSnapshot(dumpOption);
+        profiler_->DumpHeapSnapshotForOOM(dumpOption, fromSharedGC);
     }
 
     bool GenerateHeapSnapshot(std::string &inputFilePath, std::string &outputPath) override

@@ -277,6 +277,12 @@ public:
 
     void CacheOrFree(void *mem, size_t size, bool isRegular, size_t cachedSize);
 
+    // This is only used when allocating region failed during GC, since it's unsafe to do HeapDump or throw OOM,
+    // just make MemMapAllocator infinite to complete this GC, this will temporarily lead that all JSThread could
+    // always AllcationRegion success, breaking the global region limit, but thread calling this will soon complete
+    // GC and then fatal.
+    void TransferToInfiniteModeForGC();
+
 private:
     void InitializeRegularRegionMap(size_t alignment);
     void InitializeHugeRegionMap(size_t alignment);

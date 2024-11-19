@@ -608,16 +608,25 @@ void AppSpawnSpace::IterateOverMarkedObjects(const std::function<void(TaggedObje
     });
 }
 
+void LocalSpace::ForceExpandInGC()
+{
+    JSThread *thread = localHeap_->GetJSThread();
+    Region *region = heapRegionAllocator_->AllocateAlignedRegion(this, DEFAULT_REGION_SIZE, thread, localHeap_);
+    region->SetLocalHeap(reinterpret_cast<uintptr_t>(localHeap_));
+    AddRegion(region);
+    allocator_->AddFree(region);
+}
+
 uintptr_t LocalSpace::Allocate(size_t size, bool isExpand)
 {
     auto object = allocator_->Allocate(size);
     if (object == 0 && isExpand) {
-        if (Expand()) {
-            object = allocator_->Allocate(size);
-        } else {
-            localHeap_->ThrowOutOfMemoryErrorForDefault(localHeap_->GetJSThread(), size,
-                " LocalSpace::Allocate", false);
+        if (!Expand()) {
+            ForceExpandInGC();
+            localHeap_->ShouldThrowOOMError(true);
         }
+        object = allocator_->Allocate(size);
+        ASSERT(object != 0);
     }
     if (object != 0) {
         Region::ObjectAddressToRange(object)->IncreaseAliveObject(size);

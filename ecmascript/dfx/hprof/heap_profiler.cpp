@@ -153,7 +153,8 @@ void HeapProfiler::UpdateHeapObjects(HeapSnapshot *snapshot)
     snapshot->UpdateNodes();
 }
 
-void HeapProfiler::DumpHeapSnapshot([[maybe_unused]] const DumpSnapShotOption &dumpOption)
+void HeapProfiler::DumpHeapSnapshotForOOM([[maybe_unused]] const DumpSnapShotOption &dumpOption,
+                                          [[maybe_unused]] bool fromSharedGC)
 {
 #if defined(ENABLE_DUMP_IN_FAULTLOG)
     // Write in faultlog for heap leak.
@@ -168,8 +169,25 @@ void HeapProfiler::DumpHeapSnapshot([[maybe_unused]] const DumpSnapShotOption &d
         return;
     }
     FileDescriptorStream stream(fd);
-    DumpHeapSnapshot(&stream, dumpOption);
+    if (!fromSharedGC) {
+        DumpHeapSnapshot(&stream, dumpOption);
+    } else {
+        DumpHeapSnapshotFromSharedGC(&stream, dumpOption);
+    }
 #endif
+}
+
+void HeapProfiler::DumpHeapSnapshotFromSharedGC(Stream *stream, const DumpSnapShotOption &dumpOption)
+{
+    base::BlockHookScope blockScope;
+    const_cast<Heap*>(vm_->GetHeap())->Prepare();
+    SharedHeap::GetInstance()->Prepare(true);
+    Runtime::GetInstance()->GCIterateThreadList([&](JSThread *thread) {
+        ASSERT(!thread->IsInRunningState());
+        const_cast<Heap*>(thread->GetEcmaVM()->GetHeap())->FillBumpPointerForTlab();
+    });
+    BinaryDump(stream, dumpOption);
+    stream->EndOfStream();
 }
 
 bool HeapProfiler::DoDump(Stream *stream, Progress *progress, const DumpSnapShotOption &dumpOption)

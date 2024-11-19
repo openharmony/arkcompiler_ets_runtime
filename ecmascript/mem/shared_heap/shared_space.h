@@ -177,6 +177,8 @@ public:
     bool AddRegionToList(Region *region);
     void FreeBumpPoint();
     void Stop();
+private:
+    void ForceExpandInSharedGC(JSThread *thread);
 };
 
 class SharedReadOnlySpace : public Space {
