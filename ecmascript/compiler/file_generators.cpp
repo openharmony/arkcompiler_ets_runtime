@@ -203,7 +203,7 @@ void Module::CollectFuncEntryInfo(std::map<uintptr_t, std::string> &addr2name, A
     }
     aotInfo.UpdateCurTextSecOffset(textSize);
     if (rodataSizeAfterText != 0) {
-        aotInfo.AlignTextSec(AOTFileInfo::DATA_SEC_ALIGN);
+        aotInfo.AlignTextSec(AOTFileInfo::RODATA_SEC_ALIGN);
         aotInfo.UpdateCurTextSecOffset(rodataSizeAfterText);
     }
 }
@@ -267,7 +267,7 @@ void Module::CollectFuncEntryInfoByLiteCG(std::map<uintptr_t, std::string> &addr
     }
     aotInfo.UpdateCurTextSecOffset(textSize);
     if (rodataSizeAfterText != 0) {
-        aotInfo.AlignTextSec(AOTFileInfo::DATA_SEC_ALIGN);
+        aotInfo.AlignTextSec(AOTFileInfo::RODATA_SEC_ALIGN);
         aotInfo.UpdateCurTextSecOffset(rodataSizeAfterText);
     }
 }
@@ -434,7 +434,7 @@ uint64_t AOTFileGenerator::RollbackTextSize(Module *module)
         textStart = aotInfo_.GetCurTextSecOffset() - textSize;
     } else {
         textStart = aotInfo_.GetCurTextSecOffset() - textSize - rodataSizeAfterText;
-        textStart = AlignDown(textStart, AOTFileInfo::DATA_SEC_ALIGN);
+        textStart = AlignDown(textStart, AOTFileInfo::RODATA_SEC_ALIGN);
     }
     return textStart;
 }
