@@ -634,7 +634,7 @@ static void DumpClass(TaggedObject *obj, std::ostream &os)
     DumpHClass(JSHClass::Cast(obj), os, true);
 }
 
-static void DumpObject(TaggedObject *obj, std::ostream &os)
+static void DumpObject(TaggedObject *obj, std::ostream &os, bool isPrivacy)
 {
     DISALLOW_GARBAGE_COLLECTION;
     auto jsHclass = obj->GetClass();
@@ -703,7 +703,7 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
         case JSType::JS_TERMINATION_ERROR:
         case JSType::JS_ARGUMENTS:
             needDumpHClass = true;
-            JSObject::Cast(obj)->Dump(os);
+            JSObject::Cast(obj)->Dump(os, isPrivacy);
             break;
         case JSType::JS_FUNCTION_BASE:
             needDumpHClass = true;
@@ -1306,14 +1306,14 @@ void JSTaggedValue::DumpTaggedValueType(std::ostream &os) const
     }
 }
 
-void JSTaggedValue::Dump(std::ostream &os) const
+void JSTaggedValue::Dump(std::ostream &os, bool isPrivacy) const
 {
     DumpTaggedValue(os);
     os << "\n";
 
     if (IsHeapObject()) {
         TaggedObject *obj = IsWeak() ? GetTaggedWeakRef() : GetTaggedObject();
-        DumpObject(obj, os);
+        DumpObject(obj, os, isPrivacy);
     }
 }
 
@@ -1333,17 +1333,19 @@ void JSThread::DumpStack()
     handler.DumpStack(std::cout);
 }
 
-void NumberDictionary::Dump(std::ostream &os) const
+void NumberDictionary::Dump(std::ostream &os, bool isPrivacy) const
 {
     DISALLOW_GARBAGE_COLLECTION;
     int size = Size();
     for (int hashIndex = 0; hashIndex < size; hashIndex++) {
         JSTaggedValue key(GetKey(hashIndex));
         if (!key.IsUndefined() && !key.IsHole()) {
-            JSTaggedValue val(GetValue(hashIndex));
             os << std::right << std::setw(DUMP_PROPERTY_OFFSET)
                << static_cast<uint32_t>(JSTaggedNumber(key).GetNumber()) << ": ";
-            val.DumpTaggedValue(os);
+            if (!isPrivacy) {
+                JSTaggedValue val(GetValue(hashIndex));
+                val.DumpTaggedValue(os);
+            }
             os << " ";
             DumpAttr(GetAttributes(hashIndex), false, os);
             os << "\n";
@@ -1351,18 +1353,20 @@ void NumberDictionary::Dump(std::ostream &os) const
     }
 }
 
-void NameDictionary::Dump(std::ostream &os) const
+void NameDictionary::Dump(std::ostream &os, bool isPrivacy) const
 {
     DISALLOW_GARBAGE_COLLECTION;
     int size = Size();
     for (int hashIndex = 0; hashIndex < size; hashIndex++) {
         JSTaggedValue key(GetKey(hashIndex));
         if (!key.IsUndefined() && !key.IsHole()) {
-            JSTaggedValue val(GetValue(hashIndex));
             os << std::right << std::setw(DUMP_PROPERTY_OFFSET);
             DumpPropertyKey(key, os);
             os << ": ";
-            val.DumpTaggedValue(os);
+            if (!isPrivacy) {
+                JSTaggedValue val(GetValue(hashIndex));
+                val.DumpTaggedValue(os);
+            }
             os << " ";
             DumpAttr(GetAttributes(hashIndex), false, os);
             os << "\n";
@@ -1370,18 +1374,20 @@ void NameDictionary::Dump(std::ostream &os) const
     }
 }
 
-void GlobalDictionary::Dump(std::ostream &os) const
+void GlobalDictionary::Dump(std::ostream &os, bool isPrivacy) const
 {
     DISALLOW_GARBAGE_COLLECTION;
     int size = Size();
     for (int hashIndex = 0; hashIndex < size; hashIndex++) {
         JSTaggedValue key(GetKey(hashIndex));
         if (!key.IsUndefined() && !key.IsHole()) {
-            JSTaggedValue val(GetValue(hashIndex));
             os << std::right << std::setw(DUMP_PROPERTY_OFFSET);
             DumpPropertyKey(key, os);
             os << " : ";
-            val.DumpTaggedValue(os);
+            if (!isPrivacy) {
+                JSTaggedValue val(GetValue(hashIndex));
+                val.DumpTaggedValue(os);
+            }
             os << " ";
             DumpAttr(GetAttributes(hashIndex), false, os);
             os << "\n";
@@ -1506,7 +1512,7 @@ void TaggedSingleList::Dump(std::ostream &os) const
     }
 }
 
-void JSObject::Dump(std::ostream &os) const
+void JSObject::Dump(std::ostream &os, bool isPrivacy) const
 {
     DISALLOW_GARBAGE_COLLECTION;
     JSHClass *jshclass = GetJSHClass();
@@ -1529,7 +1535,7 @@ void JSObject::Dump(std::ostream &os) const
     } else {
         NumberDictionary *dict = NumberDictionary::Cast(elements);
         os << " <NumberDictionary[" << std::dec << dict->EntriesCount() << "]>\n";
-        dict->Dump(os);
+        dict->Dump(os, isPrivacy);
     }
 
     TaggedArray *properties = TaggedArray::Cast(GetProperties().GetTaggedObject());
@@ -1537,7 +1543,7 @@ void JSObject::Dump(std::ostream &os) const
     if (IsJSGlobalObject()) {
         GlobalDictionary *dict = GlobalDictionary::Cast(properties);
         os << " <GlobalDictionary[" << std::dec << dict->EntriesCount() << "]>\n";
-        dict->Dump(os);
+        dict->Dump(os, isPrivacy);
         return;
     }
 
@@ -1563,7 +1569,9 @@ void JSObject::Dump(std::ostream &os) const
             } else {
                 val = properties->Get(i - static_cast<int>(jshclass->GetInlinedProperties()));
             }
-            val.DumpTaggedValue(os);
+            if (!isPrivacy) {
+                val.DumpTaggedValue(os);
+            }
             os << ") ";
             DumpAttr(attr, true, os);
             os << "\n";
@@ -1571,7 +1579,7 @@ void JSObject::Dump(std::ostream &os) const
     } else {
         NameDictionary *dict = NameDictionary::Cast(properties);
         os << " <NameDictionary[" << std::dec << dict->EntriesCount() << "]>\n";
-        dict->Dump(os);
+        dict->Dump(os, isPrivacy);
     }
 }
 
