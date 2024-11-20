@@ -777,7 +777,7 @@ DEF_CALL_SIGNATURE(TryStoreICByValue)
 
 #define SETVALUEBARRIER_CALL_ARGS_SIGNATURE_COMMON(name)                    \
     /* 6 : 4 input parameters + 2 fake parameter */                         \
-    CallSignature signature("#name", 0, 6,                                  \
+    CallSignature signature(#name, 0, 6,                                    \
         ArgumentsOrder::DEFAULT_ORDER, VariableType::VOID());               \
     *callSign = signature;                                                  \
     /* 6 : 4 input parameters + 2 fake parameter */                         \
@@ -3031,4 +3031,62 @@ DEF_CALL_SIGNATURE(CreateJSTypedArrayValues)
     callSign->SetParameters(params.data());
     callSign->SetCallConv(CallSignature::CallConv::CCallConv);
 }
+
+#define CREATE_RSET_SIGNATURE_COMMON(name)                                  \
+    CallSignature signature(#name, 0, 1,                                    \
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::NATIVE_POINTER());     \
+    *callSign = signature;                                                  \
+    std::array<VariableType, 1> params = {                                  \
+        VariableType::NATIVE_POINTER(),                                     \
+    };                                                                      \
+    callSign->SetParameters(params.data());                                 \
+    callSign->SetGCLeafFunction(true);                                      \
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC)
+
+DEF_CALL_SIGNATURE(CreateLocalToShare)
+{
+    CREATE_RSET_SIGNATURE_COMMON(CreateLocalToShare);
+}
+
+DEF_CALL_SIGNATURE(CreateOldToNew)
+{
+    CREATE_RSET_SIGNATURE_COMMON(CreateOldToNew);
+}
+
+#undef CREATE_RSET_SIGNATURE_COMMON
+
+DEF_CALL_SIGNATURE(BatchBarrier)
+{
+    constexpr size_t paramCount = 4;
+    CallSignature signature("BatchBarrier", 0, paramCount, ArgumentsOrder::DEFAULT_ORDER, VariableType::VOID());
+    *callSign = signature;
+    std::array<VariableType, paramCount> params = {
+        VariableType::NATIVE_POINTER(),
+        VariableType::NATIVE_POINTER(),
+        VariableType::NATIVE_POINTER(),
+        VariableType::INT32(),
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetGCLeafFunction(true);
+    callSign->SetCallConv(CallSignature::CallConv::CCallConv);;
+}
+
+DEF_CALL_SIGNATURE(ObjectCopy)
+{
+    constexpr size_t paramCount = 3;
+    // 3 : 3 input parameters
+    CallSignature ArrayCopy("ObjectCopy", 0, paramCount,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::VOID());
+    *callSign = ArrayCopy;
+    // 3 : 3 input parameters
+    std::array<VariableType, paramCount> params = {
+        VariableType::NATIVE_POINTER(),
+        VariableType::NATIVE_POINTER(),
+        VariableType::INT32()
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetGCLeafFunction(true);
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
+}
+
 }  // namespace panda::ecmascript::kungfu

@@ -153,6 +153,7 @@ public:
     static inline uint32_t RuntimeGetBytecodePcOfstForBaseline(const JSHandle<JSFunction> &func, uintptr_t nativePc);
     static void ReverseTypedArray(JSTypedArray *typedArray);
     static void SortTypedArray(JSTypedArray *typedArray);
+    static void ObjectCopy(JSTaggedType *dst, JSTaggedType *src, uint32_t count);
 private:
     static void DumpToStreamWithHint(std::ostream &out, std::string_view prompt, JSTaggedValue value);
 
@@ -529,6 +530,8 @@ private:
                                                      const JSHandle<EcmaString> &str, std::u16string &sStr);
     static inline bool IsFastRegExp(uintptr_t argGlue, JSTaggedValue thisValue);
 
+    static inline RememberedSet* CreateLocalToShare(Region *region);
+    static inline RememberedSet* CreateOldToNew(Region *region);
     static inline uint8_t GetValueFromTwoHex(uint8_t front, uint8_t behind);
     friend class SlowRuntimeStub;
 };

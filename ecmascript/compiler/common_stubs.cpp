@@ -15,6 +15,7 @@
 
 #include "ecmascript/compiler/common_stubs.h"
 
+#include "ecmascript/compiler/barrier_stub_builder.h"
 #include "ecmascript/base/number_helper.h"
 #include "ecmascript/compiler/access_object_stub_builder.h"
 #include "ecmascript/compiler/builtins/builtins_string_stub_builder.h"
@@ -1282,6 +1283,17 @@ void SameValueStubBuilder::GenerateCircuit()
     GateRef right = TaggedArgument(2U);
     GateRef result = SameValue(glue, left, right);
     Return(result);
+}
+
+void BatchBarrierStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef dstObj = PtrArgument(1);
+    GateRef dstAddr = PtrArgument(2);
+    GateRef taggedValueCount = TaggedArgument(3);
+    BarrierStubBuilder barrierBuilder(this, glue, dstObj, dstAddr, taggedValueCount);
+    barrierBuilder.DoBatchBarrier();
+    Return();
 }
 
 CallSignature CommonStubCSigns::callSigns_[CommonStubCSigns::NUM_OF_STUBS];

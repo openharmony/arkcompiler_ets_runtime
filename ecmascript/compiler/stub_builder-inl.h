@@ -3605,6 +3605,11 @@ inline GateRef StubBuilder::AlignUp(GateRef x, GateRef alignment)
     return IntPtrAnd(x1, IntPtrNot(PtrSub(alignment, IntPtr(1))));
 }
 
+inline GateRef StubBuilder::AlignDown(GateRef x, GateRef alignment)
+{
+    return IntPtrAnd(x, IntPtrNot(PtrSub(alignment, IntPtr(1))));
+}
+
 inline void StubBuilder::SetLength(GateRef glue, GateRef str, GateRef length, bool compressed)
 {
     GateRef len = Int32LSL(length, Int32(EcmaString::STRING_LENGTH_SHIFT_COUNT));

@@ -980,6 +980,7 @@ private:
 
     friend class Snapshot;
     friend class SnapshotProcessor;
+    friend class RuntimeStubs;
 };
 }  // namespace ecmascript
 }  // namespace panda

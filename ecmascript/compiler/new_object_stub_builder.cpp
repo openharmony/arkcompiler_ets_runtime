@@ -898,13 +898,13 @@ GateRef NewObjectStubBuilder::CopyArray(GateRef glue, GateRef elements, GateRef 
             Bind(&copyToTaggedArray);
             {
                 ArrayCopy<NotOverlap>(glue, GetDataPtrInTaggedArray(elements), *array, GetDataPtrInTaggedArray(*array),
-                                      newLen);
+                                      newLen, true);
                 Jump(&afterCopy);
             }
             Bind(&copyToMutantTaggedArray);
             {
                 ArrayCopy<NotOverlap>(glue, GetDataPtrInTaggedArray(elements), *array, GetDataPtrInTaggedArray(*array),
-                                      newLen, MemoryAttribute::NoBarrier());
+                                      newLen, false);
                 Jump(&afterCopy);
             }
             Bind(&afterCopy);
