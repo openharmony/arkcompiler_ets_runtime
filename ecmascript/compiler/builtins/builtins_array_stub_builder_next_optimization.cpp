@@ -90,13 +90,12 @@ void BuiltinsArrayStubBuilder::UnshiftOptimised(GateRef glue, GateRef thisValue,
             BRANCH_NO_WEIGHT(isIntOrNumberKind, &isIntOrNumber, &isTagged);
             Bind(&isIntOrNumber);
             {
-                ArrayCopy<MustOverlap>(glue, arrayStart, elements, moveTo, TruncInt64ToInt32(thisLen),
-                                       MemoryAttribute::NoBarrier());
+                ArrayCopy<MustOverlap>(glue, arrayStart, elements, moveTo, TruncInt64ToInt32(thisLen), false);
                 Jump(&afterCopy);
             }
             Bind(&isTagged);
             {
-                ArrayCopy<MustOverlap>(glue, arrayStart, elements, moveTo, TruncInt64ToInt32(thisLen));
+                ArrayCopy<MustOverlap>(glue, arrayStart, elements, moveTo, TruncInt64ToInt32(thisLen), true);
                 Jump(&afterCopy);
             }
             Bind(&afterCopy);

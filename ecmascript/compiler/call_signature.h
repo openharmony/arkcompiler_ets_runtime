@@ -638,7 +638,11 @@ private:
     V(ArrayIteratorNext)                             \
     V(MapIteratorNext)                               \
     V(SetIteratorNext)                               \
-    V(GetIterator)
+    V(GetIterator)                                   \
+    V(CreateLocalToShare)                            \
+    V(CreateOldToNew)                                \
+    V(BatchBarrier)                                  \
+    V(ObjectCopy)
 
 
 #define DECL_CALL_SIGNATURE(name)                                  \
