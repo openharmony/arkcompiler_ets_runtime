@@ -55,7 +55,6 @@ class VmThreadControl;
 class GlobalEnvConstants;
 enum class ElementsKind : uint8_t;
 
-// NOTE: remove
 class MachineCode;
 using JitCodeVector = std::vector<std::tuple<MachineCode*, std::string, uintptr_t>>;
 using JitCodeMapVisitor = std::function<void(std::map<JSTaggedType, JitCodeVector*>&)>;
@@ -904,7 +903,7 @@ public:
     {
         glueData_.taskInfo_ = taskInfo;
     }
-    
+
     uintptr_t GetTaskInfo() const
     {
         return glueData_.taskInfo_;

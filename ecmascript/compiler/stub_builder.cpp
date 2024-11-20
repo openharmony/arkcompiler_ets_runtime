@@ -3946,7 +3946,7 @@ GateRef StubBuilder::ShouldTransToDict(GateRef capacity, GateRef index)
         Label isLessThanMax(env);
         Label notLessThanMax(env);
         BRANCH(Int32LessThanOrEqual(Int32Sub(index, capacity),
-                                    Int32(JSObject::MAX_GAP)), &isLessThanMax, &notLessThanMax);
+            Int32(JSObject::MAX_GAP)), &isLessThanMax, &notLessThanMax);
         Bind(&isLessThanMax);
         {
             Label isLessThanInt32Max(env);
