@@ -31,6 +31,10 @@ void StubFileInfo::Save(const std::string &filename, Triple triple)
     }
 
     std::ofstream file(realPath.c_str(), std::ofstream::binary);
+    if (!file.is_open()) {
+        LOG_ECMA(FATAL) << "Failed to open file : " << realPath.c_str();
+        UNREACHABLE();
+    }
     ASSERT(GetCodeUnitsNum() == ASMSTUB_MODULE_NUM);
     SetStubNum(entries_.size());
     ModuleSectionDes &des = des_[0];
