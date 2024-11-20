@@ -350,7 +350,8 @@ JSHandle<EcmaString> JSDisplayNames::CanonicalCodeForDisplayNames(JSThread *thre
                 width = UDATPG_NARROW;
                 break;
             default:
-                break;
+                LOG_ECMA(FATAL) << "this branch is unreachable";
+                UNREACHABLE();
         }
         std::string datetimeCode = intl::LocaleHelper::ConvertToStdString(code);
         UDateTimePatternField field = StringToUDateTimePatternField(datetimeCode.c_str());

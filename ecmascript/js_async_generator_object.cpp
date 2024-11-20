@@ -70,7 +70,7 @@ JSTaggedValue JSAsyncGeneratorObject::AsyncGeneratorResolve(JSThread *thread,
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     info->SetCallArg(its.GetTaggedValue());
     [[maybe_unused]] JSTaggedValue res = JSFunction::Call(info);
-    if ((thread)->HasPendingException()) {
+    if (thread->HasPendingException()) {
         [[maybe_unused]] JSType errorType = thread->GetException().GetTaggedObject()->GetClass()->GetObjectType();
         ASSERT(errorType == JSType::JS_RANGE_ERROR);
         thread->ClearException();
