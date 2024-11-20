@@ -1964,9 +1964,8 @@ void TypedHCRLowering::LowerArrayConstructor(GateRef gate, GateRef glue)
         builder_.Bind(&argIsDouble);
         {
             Label validDoubleLength(&builder_);
-            Label GetDoubleToIntValue(&builder_);
             GateRef doubleLength = builder_.GetDoubleOfTDouble(arg0);
-            GateRef doubleToInt = builder_.DoubleToInt(doubleLength, &GetDoubleToIntValue);
+            GateRef doubleToInt = builder_.TruncDoubleToInt(glue, doubleLength, base::INT32_BITS);
             GateRef intToDouble = builder_.CastInt64ToFloat64(builder_.SExtInt32ToInt64(doubleToInt));
             GateRef doubleEqual = builder_.DoubleEqual(doubleLength, intToDouble);
             GateRef doubleLEMaxLen =
@@ -2061,9 +2060,8 @@ void TypedHCRLowering::ConvertFloat32ArrayConstructorLength(GateRef len, Variabl
         builder_.Bind(&argIsDouble);
         {
             Label validDoubleLength(&builder_);
-            Label GetDoubleToIntValue(&builder_);
             GateRef doubleLength = builder_.GetDoubleOfTDouble(len);
-            GateRef doubleToInt = builder_.DoubleToInt(doubleLength, &GetDoubleToIntValue);
+            GateRef doubleToInt = builder_.TruncDoubleToInt(acc_.GetGlueFromArgList(), doubleLength, base::INT32_BITS);
             GateRef intToDouble = builder_.CastInt64ToFloat64(builder_.SExtInt32ToInt64(doubleToInt));
             GateRef doubleEqual = builder_.DoubleEqual(doubleLength, intToDouble);
             GateRef doubleLEMaxLen =
@@ -3027,7 +3025,7 @@ void TypedHCRLowering::LowerStringFromSingleCharCode(GateRef gate, GateRef glue)
         builder_.Bind(&notInt);
         {
             value = builder_.TruncInt32ToInt16(
-                builder_.DoubleToInt(glue, builder_.GetDoubleOfTDouble(codePointValue), base::INT16_BITS));
+                builder_.TruncDoubleToInt(glue, builder_.GetDoubleOfTDouble(codePointValue), base::INT16_BITS));
             builder_.Jump(&newObj);
         }
         builder_.Bind(&newObj);
