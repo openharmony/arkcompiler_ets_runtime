@@ -4098,6 +4098,7 @@ bool JSNApi::InitForConcurrentFunction(EcmaVM *vm, Local<JSValueRef> function, v
         LOG_ECMA(ERROR) << "Function is not concurrent";
         return false;
     }
+    transFunc->SetFunctionExtraInfo(thread, nullptr, nullptr, taskInfo);
     transFunc->SetTaskConcurrentFuncFlag(1); // 1 : concurrent function flag
     thread->SetTaskInfo(reinterpret_cast<uintptr_t>(taskInfo));
     thread->SetIsInConcurrentScope(true);
