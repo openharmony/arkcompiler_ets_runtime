@@ -57,7 +57,7 @@ void JSAPILightWeightMap::ReplaceValue(const JSThread *thread, const JSHandle<JS
                                        int32_t index, const JSHandle<JSTaggedValue> &value, AccossorsKind kind)
 {
     JSHandle<TaggedArray> array = GetArrayByKind(thread, lightWeightMap, kind);
-    ASSERT(0 <= index || index < static_cast<int32_t>(lightWeightMap->GetSize()));
+    ASSERT(0 <= index && index < static_cast<int32_t>(lightWeightMap->GetSize()));
     array->Set(thread, index, value.GetTaggedValue());
 }
 
