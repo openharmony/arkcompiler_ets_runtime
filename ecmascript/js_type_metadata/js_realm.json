@@ -1,0 +1,19 @@
+{
+    "name": "JS_REALM",
+    "offsets": [
+        {
+            "name": "Value",
+            "offset": 0,
+            "size": 8
+        },
+        {
+            "name": "GlobalEnv",
+            "offset": 8,
+            "size": 8
+        }
+    ],
+    "end_offset": 16,
+    "parents": [
+        "JS_OBJECT"
+    ]
+}

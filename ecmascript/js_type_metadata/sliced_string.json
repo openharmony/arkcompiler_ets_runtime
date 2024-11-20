@@ -1,0 +1,14 @@
+{
+    "name": "SLICED_STRING",
+    "offsets": [
+        {
+            "name": "Parent",
+            "offset": 0,
+            "size": 8
+        }
+    ],
+    "end_offset": 16,
+    "parents": [
+        "ECMA_STRING"
+    ]
+}

@@ -1,0 +1,19 @@
+{
+    "name": "JS_INT8_ARRAY",
+    "offsets": [
+        {
+            "name": "ViewedArrayBufferOrByteArray",
+            "offset": 0,
+            "size": 8
+        },
+        {
+            "name": "TypedArrayName",
+            "offset": 8,
+            "size": 8
+        }
+    ],
+    "end_offset": 32,
+    "parents": [
+        "JS_OBJECT"
+    ]
+}

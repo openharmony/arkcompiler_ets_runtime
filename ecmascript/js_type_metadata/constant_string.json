@@ -1,0 +1,14 @@
+{
+    "name": "CONSTANT_STRING",
+    "offsets": [
+        {
+            "name": "RelocatedData",
+            "offset": 0,
+            "size": 8
+        }
+    ],
+    "end_offset": 24,
+    "parents": [
+        "ECMA_STRING"
+    ]
+}

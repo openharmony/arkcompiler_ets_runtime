@@ -12,7 +12,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
+#include <fcntl.h>
+#include <unistd.h>
 #include <chrono>
 #include "ecmascript/dfx/hprof/heap_snapshot.h"
 #include "ecmascript/dfx/hprof/heap_profiler.h"
@@ -99,6 +100,31 @@ public:
         return heapProfile->GetIdCount();
     }
 
+    bool GenerateRawHeapSnashot(const std::string &filePath)
+    {
+        HeapProfilerInterface *heapProfile = HeapProfilerInterface::GetInstance(instance);
+        DumpSnapShotOption dumpOption;
+        dumpOption.dumpFormat = DumpFormat::BINARY;
+        dumpOption.isDumpOOM = true;
+        fstream outputString(filePath, std::ios::out);
+        outputString.close();
+        outputString.clear();
+        int fd = open(filePath.c_str(), O_RDWR | O_CREAT);
+        FileDescriptorStream stream(fd);
+        auto ret = heapProfile->DumpHeapSnapshot(&stream, dumpOption);
+        stream.EndOfStream();
+        return ret;
+    }
+
+    bool DecodeRawHeapSnashot(std::string &inputPath, std::string &outputPath)
+    {
+        HeapProfilerInterface *heapProfile = HeapProfilerInterface::GetInstance(instance);
+        fstream outputString(outputPath, std::ios::out);
+        outputString.close();
+        outputString.clear();
+        auto ret = heapProfile->GenerateHeapSnapshot(inputPath, outputPath);
+        return ret;
+    }
     bool MatchHeapDumpString(const std::string &filePath, std::string targetStr)
     {
         std::string line;
@@ -110,7 +136,8 @@ public:
                 return true;
             }
         }
-        GTEST_LOG_(INFO) << "_______________" << targetStr << std::to_string(lineNum) <<"_______________ not found";
+        GTEST_LOG_(ERROR) << "file: " << filePath.c_str() << ", target:" << targetStr.c_str()
+                          << ", line:" << std::to_string(lineNum) <<"not found";
         return false;  // Lost the Line
     }
 
@@ -520,6 +547,11 @@ public:
     void DumpHeapSnapshot(const DumpSnapShotOption &dumpOption) override
     {
         profiler_->DumpHeapSnapshot(dumpOption);
+    }
+
+    bool GenerateHeapSnapshot(std::string &inputFilePath, std::string &outputPath) override
+    {
+        return profiler_->GenerateHeapSnapshot(inputFilePath, outputPath);
     }
 
     bool StartHeapTracking(double timeInterval, bool isVmMode = true, Stream *stream = nullptr,
@@ -1060,5 +1092,47 @@ HWTEST_F_L0(HeapDumpTest, TestHeapDumpGenerateNodeName9)
     ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_9.heapsnapshot", "\"LinkedList\""));
     ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_9.heapsnapshot", "\"PlainArray\""));
     ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_9.heapsnapshot", "\"PlainArrayIterator\""));
+}
+
+HWTEST_F_L0(HeapDumpTest, TestHeapDumpBinaryDump)
+{
+    ObjectFactory *factory = ecmaVm_->GetFactory();
+    HeapDumpTestHelper tester(ecmaVm_);
+    // PROMISE_ITERATOR_RECORD
+    tester.NewPromiseIteratorRecord();
+    // PROMISE_RECORD
+    factory->NewPromiseRecord();
+    // JS_ARRAY_BUFFER
+    factory->NewJSArrayBuffer(10);
+    // JS_SHARED_ARRAY_BUFFER
+    factory->NewJSSharedArrayBuffer(10);
+    // PROMISE_REACTIONS
+    factory->NewPromiseReaction();
+    // PROMISE_CAPABILITY
+    factory->NewPromiseCapability();
+    // RESOLVING_FUNCTIONS_RECORD
+    factory->NewResolvingFunctionsRecord();
+    // JS_PROMISE
+    JSHandle<JSTaggedValue> proto = ecmaVm_->GetGlobalEnv()->GetFunctionPrototype();
+    tester.NewObject(JSPromise::SIZE, JSType::JS_PROMISE, proto);
+    // ASYNC_GENERATOR_REQUEST
+    factory->NewAsyncGeneratorRequest();
+    // JS_WEAK_SET
+    tester.NewJSWeakSet();
+    // JS_WEAK_MAP
+    tester.NewJSWeakMap();
+    std::string rawHeapPath("test_binary_dump.raw");
+    bool ret = tester.GenerateRawHeapSnashot(rawHeapPath);
+    ASSERT_TRUE(ret);
+    std::ifstream file(rawHeapPath, std::ios::binary);
+    std::string content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+    ASSERT_TRUE(content.size() > 0);
+    auto u64Ptr = reinterpret_cast<const uint64_t *>(content.c_str());
+    ASSERT_TRUE(u64Ptr[1] > 0);
+    std::string snapshotPath("test_binary_dump.heapsnapshot");
+    tester.DecodeRawHeapSnashot(rawHeapPath, snapshotPath);
+    ASSERT_TRUE(tester.MatchHeapDumpString(snapshotPath, "\"SharedArrayBuffer\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString(snapshotPath, "\"WeakSet\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString(snapshotPath, "\"WeakMap\""));
 }
 }

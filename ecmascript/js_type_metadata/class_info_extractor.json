@@ -1,0 +1,44 @@
+{
+    "name": "CLASS_INFO_EXTRACTOR",
+    "offsets": [
+        {
+            "name": "NonStaticKeys",
+            "offset": 0,
+            "size": 8
+        },
+        {
+            "name": "NonStaticProperties",
+            "offset": 8,
+            "size": 8
+        },
+        {
+            "name": "NonStaticElements",
+            "offset": 16,
+            "size": 8
+        },
+        {
+            "name": "StaticKeys",
+            "offset": 24,
+            "size": 8
+        },
+        {
+            "name": "StaticProperties",
+            "offset": 32,
+            "size": 8
+        },
+        {
+            "name": "StaticElements",
+            "offset": 40,
+            "size": 8
+        },
+        {
+            "name": "ConstructorMethod",
+            "offset": 48,
+            "size": 8
+        }
+    ],
+    "end_offset": 64,
+    "parents": [
+        "TAGGED_OBJECT"
+    ]
+}

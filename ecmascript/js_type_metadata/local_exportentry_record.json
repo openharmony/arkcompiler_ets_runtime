@@ -1,0 +1,19 @@
+{
+    "name": "LOCAL_EXPORTENTRY_RECORD",
+    "offsets": [
+        {
+            "name": "ExportName",
+            "offset": 0,
+            "size": 8
+        },
+        {
+            "name": "LocalName",
+            "offset": 8,
+            "size": 8
+        }
+    ],
+    "end_offset": 24,
+    "parents": [
+        "RECORD"
+    ]
+}

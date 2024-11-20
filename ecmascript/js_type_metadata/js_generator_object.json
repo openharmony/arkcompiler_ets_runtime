@@ -1,0 +1,19 @@
+{
+    "name": "JS_GENERATOR_OBJECT",
+    "offsets": [
+        {
+            "name": "GeneratorContext",
+            "offset": 0,
+            "size": 8
+        },
+        {
+            "name": "ResumeResult",
+            "offset": 8,
+            "size": 8
+        }
+    ],
+    "end_offset": 32,
+    "parents": [
+        "JS_OBJECT"
+    ]
+}

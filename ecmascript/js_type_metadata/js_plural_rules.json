@@ -1,0 +1,49 @@
+{
+    "name": "JS_PLURAL_RULES",
+    "offsets": [
+        {
+            "name": "Locale",
+            "offset": 0,
+            "size": 8
+        },
+        {
+            "name": "MinimumIntegerDigits",
+            "offset": 8,
+            "size": 8
+        },
+        {
+            "name": "MinimumFractionDigits",
+            "offset": 16,
+            "size": 8
+        },
+        {
+            "name": "MaximumFractionDigits",
+            "offset": 24,
+            "size": 8
+        },
+        {
+            "name": "MinimumSignificantDigits",
+            "offset": 32,
+            "size": 8
+        },
+        {
+            "name": "MaximumSignificantDigits",
+            "offset": 40,
+            "size": 8
+        },
+        {
+            "name": "IcuPR",
+            "offset": 48,
+            "size": 8
+        },
+        {
+            "name": "IcuNF",
+            "offset": 56,
+            "size": 8
+        }
+    ],
+    "end_offset": 72,
+    "parents": [
+        "JS_OBJECT"
+    ]
+}

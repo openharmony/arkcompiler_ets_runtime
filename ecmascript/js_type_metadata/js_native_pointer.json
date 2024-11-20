@@ -1,0 +1,14 @@
+{
+    "name": "JS_NATIVE_POINTER",
+    "offsets": [
+        {
+            "name": "BindingSize",
+            "offset": 24,
+            "size": 8
+        }
+    ],
+    "end_offset": 40,
+    "parents": [
+        "TAGGED_OBJECT"
+    ]
+}

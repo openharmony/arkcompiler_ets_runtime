@@ -1,0 +1,14 @@
+{
+    "name": "CLASS_LITERAL",
+    "offsets": [
+        {
+            "name": "Array",
+            "offset": 0,
+            "size": 8
+        }
+    ],
+    "end_offset": 16,
+    "parents": [
+        "TAGGED_OBJECT"
+    ]
+}

@@ -75,6 +75,42 @@ private:
     CUnorderedMap<JSTaggedType, NodeId> idMap_ {};
 };
 
+struct AddrTableItem {
+    uint64_t addr;
+    uint64_t id;
+    uint32_t objSize;
+    uint32_t offset; // offset to the file
+};
+
+#define PER_GROUP_MEM_SIZE (128 * 1024 * 1024) // 128 MB
+#define HEAD_NUM_PER_GROUP (PER_GROUP_MEM_SIZE / sizeof(AddrTableItem))
+#define VERSION_ID_SIZE 8
+#define MAX_FILE_SIZE (4 * 1024 * 1024 * 1024ULL) // 4 * 1024 * 1024 * 1024 : file size bigger than 4GB
+#define MAX_OBJ_SIZE (MAX_FILE_SIZE >> 1)
+
+struct NewAddr {
+    char *data;
+    uint32_t objSize;
+
+    NewAddr(uint32_t actSize, uint32_t objSize) : objSize(objSize)
+    {
+        if (actSize == 0 || actSize > MAX_OBJ_SIZE) {
+            LOG_ECMA(ERROR) << "ark raw heap decode abnormal obj size=" << actSize;
+            data = nullptr;
+            return;
+        }
+        data = new char[actSize];
+    }
+    ~NewAddr()
+    {
+        delete[] data;
+    }
+    char *Data()
+    {
+        return data;
+    }
+};
+
 class HeapProfiler : public HeapProfilerInterface {
 public:
     NO_MOVE_SEMANTIC(HeapProfiler);
@@ -116,6 +152,7 @@ public:
     {
         return const_cast<StringHashMap *>(&stringTable_);
     }
+    bool GenerateHeapSnapshot(std::string &inputFilePath, std::string &outputPath) override;
 
 private:
     /**
@@ -135,6 +172,14 @@ private:
     void UpdateHeapObjects(HeapSnapshot *snapshot);
     void ClearSnapshot();
     void FillIdMap();
+    bool BinaryDump(Stream *stream, const DumpSnapShotOption &dumpOption);
+    uint32_t WriteToBinFile(Stream *stream, char *objTab, uint32_t objNum,
+                            CVector<std::pair<char *, uint32_t>> &memBuf);
+    uint32_t CopyObjectMem2Buf(char *objTable, uint32_t objNum, CVector<std::pair<char *, uint32_t>> &memBufVec);
+    uint32_t GenObjTable(CUnorderedMap<char *, uint32_t> &headerMap, HeapSnapshot *snapshot,
+                         CUnorderedMap<uint64_t, CVector<uint64_t>> &strIdMapObjVec);
+    uint32_t GenRootTable(Stream *stream);
+    bool DumpRawHeap(Stream *stream, uint32_t &fileOffset, CVector<uint32_t> &secIndexVec);
 
     const size_t MAX_NUM_HPROF = 5;  // ~10MB
     const EcmaVM *vm_;

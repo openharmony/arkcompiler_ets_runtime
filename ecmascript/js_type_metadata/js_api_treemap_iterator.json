@@ -1,0 +1,19 @@
+{
+    "name": "JS_API_TREEMAP_ITERATOR",
+    "offsets": [
+        {
+            "name": "IteratedMap",
+            "offset": 0,
+            "size": 8
+        },
+        {
+            "name": "Entries",
+            "offset": 8,
+            "size": 8
+        }
+    ],
+    "end_offset": 24,
+    "parents": [
+        "JS_OBJECT"
+    ]
+}

@@ -1,0 +1,19 @@
+{
+    "name": "PROMISE_REACTIONS",
+    "offsets": [
+        {
+            "name": "PromiseCapability",
+            "offset": 0,
+            "size": 8
+        },
+        {
+            "name": "Handler",
+            "offset": 8,
+            "size": 8
+        }
+    ],
+    "end_offset": 24,
+    "parents": [
+        "RECORD"
+    ]
+}

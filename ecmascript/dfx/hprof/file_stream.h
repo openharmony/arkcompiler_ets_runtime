@@ -41,6 +41,10 @@ public:
 
     // Writes the chunk of data into the stream
     bool WriteChunk(char* data, int32_t size) override;
+    bool WriteBinBlock(char *data, int32_t size) override
+    {
+        return WriteChunk(data, size);
+    }
     bool Good() override;
     void UpdateHeapStats([[maybe_unused]] HeapStat* data, [[maybe_unused]] int32_t count) override
     {
@@ -72,6 +76,7 @@ public:
 
     // Writes the chunk of data into the stream
     bool WriteChunk(char *data, int32_t size) override;
+    bool WriteBinBlock(char *data, int32_t size) override;
     bool Good() override;
     void UpdateHeapStats([[maybe_unused]] HeapStat* data, [[maybe_unused]] int32_t count) override
     {

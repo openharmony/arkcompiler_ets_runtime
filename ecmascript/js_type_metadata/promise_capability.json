@@ -1,0 +1,24 @@
+{
+    "name": "PROMISE_CAPABILITY",
+    "offsets": [
+        {
+            "name": "Promise",
+            "offset": 0,
+            "size": 8
+        },
+        {
+            "name": "Resolve",
+            "offset": 8,
+            "size": 8
+        },
+        {
+            "name": "Reject",
+            "offset": 16,
+            "size": 8
+        }
+    ],
+    "end_offset": 24,
+    "parents": [
+        "RECORD"
+    ]
+}

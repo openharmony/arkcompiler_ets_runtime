@@ -1,0 +1,29 @@
+{
+    "name": "JS_REG_EXP",
+    "offsets": [
+        {
+            "name": "ByteCodeBuffer",
+            "offset": 0,
+            "size": 8
+        },
+        {
+            "name": "OriginalSource",
+            "offset": 8,
+            "size": 8
+        },
+        {
+            "name": "OriginalFlags",
+            "offset": 16,
+            "size": 8
+        },
+        {
+            "name": "GroupName",
+            "offset": 24,
+            "size": 8
+        }
+    ],
+    "end_offset": 40,
+    "parents": [
+        "JS_OBJECT"
+    ]
+}

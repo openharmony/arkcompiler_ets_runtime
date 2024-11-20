@@ -1,0 +1,14 @@
+{
+    "name": "STAR_EXPORTENTRY_RECORD",
+    "offsets": [
+        {
+            "name": "ModuleRequest",
+            "offset": 0,
+            "size": 8
+        }
+    ],
+    "end_offset": 8,
+    "parents": [
+        "RECORD"
+    ]
+}

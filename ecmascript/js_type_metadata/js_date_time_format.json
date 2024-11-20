@@ -1,0 +1,49 @@
+{
+    "name": "JS_DATE_TIME_FORMAT",
+    "offsets": [
+        {
+            "name": "Locale",
+            "offset": 0,
+            "size": 8
+        },
+        {
+            "name": "Calendar",
+            "offset": 8,
+            "size": 8
+        },
+        {
+            "name": "NumberingSystem",
+            "offset": 16,
+            "size": 8
+        },
+        {
+            "name": "TimeZone",
+            "offset": 24,
+            "size": 8
+        },
+        {
+            "name": "LocaleIcu",
+            "offset": 32,
+            "size": 8
+        },
+        {
+            "name": "SimpleDateTimeFormatIcu",
+            "offset": 40,
+            "size": 8
+        },
+        {
+            "name": "Iso8601",
+            "offset": 48,
+            "size": 8
+        },
+        {
+            "name": "BoundFormat",
+            "offset": 56,
+            "size": 8
+        }
+    ],
+    "end_offset": 72,
+    "parents": [
+        "JS_OBJECT"
+    ]
+}
