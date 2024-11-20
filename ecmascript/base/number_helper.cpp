@@ -830,6 +830,13 @@ int64_t NumberHelper::DoubleToInt64(double d)
     return static_cast<int64_t>(d);
 }
 
+uint64_t NumberHelper::DoubleToUInt64(double d)
+{
+    ASSERT(d <= static_cast<double>(std::numeric_limits<uint64_t>::max()) &&
+           d >= static_cast<double>(std::numeric_limits<uint64_t>::min()));
+    return static_cast<uint64_t>(d);
+}
+
 bool NumberHelper::IsDigitalString(const uint8_t *start, const uint8_t *end)
 {
     int len = end - start;
