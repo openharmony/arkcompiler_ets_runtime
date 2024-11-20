@@ -22,7 +22,7 @@
 #include "ecmascript/mem/jit_fort_memdesc.h"
 
 namespace panda::ecmascript {
-using SetType = int32_t;
+using SetType = int8_t;
 
 class FreeObject;
 
