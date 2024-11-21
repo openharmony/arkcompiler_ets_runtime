@@ -2392,11 +2392,19 @@ JSTaggedValue BuiltinsArray::Sort(EcmaRuntimeCallInfo *argv)
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     // Array sort
+#if ENABLE_NEXT_OPTIMIZATION
     if (thisHandle->IsStableJSArray(thread)) {
         JSStableArray::Sort(thread, thisHandle, callbackFnHandle);
     } else {
         JSArray::Sort(thread, JSHandle<JSTaggedValue>::Cast(thisObjHandle), callbackFnHandle);
     }
+#else
+    if (thisHandle->IsStableJSArray(thread) && callbackFnHandle->IsUndefined()) {
+        JSArray::SortElementsByObject(thread, thisObjHandle, callbackFnHandle);
+    } else {
+        JSArray::Sort(thread, JSHandle<JSTaggedValue>::Cast(thisObjHandle), callbackFnHandle);
+    }
+#endif
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return thisObjHandle.GetTaggedValue();
 }
