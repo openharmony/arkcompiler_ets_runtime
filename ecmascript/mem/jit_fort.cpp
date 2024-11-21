@@ -51,11 +51,17 @@ JitFort::~JitFort()
 {
     constexpr size_t numRegions = JIT_FORT_REG_SPACE_MAX / DEFAULT_REGION_SIZE;
     for (size_t i = 0; i < numRegions; i++) {
-        regions_[i]->DestroyFreeObjectSets();
-        delete regions_[i];
+        if (regions_[i] != nullptr) {
+            regions_[i]->DestroyFreeObjectSets();
+            delete regions_[i];
+        }
     }
-    delete allocator_;
-    delete memDescPool_;
+    if (allocator_ != nullptr) {
+        delete allocator_;
+    }
+    if (memDescPool_ != nullptr) {
+        delete memDescPool_;
+    }
     PageUnmap(jitFortMem_);
 }
 
