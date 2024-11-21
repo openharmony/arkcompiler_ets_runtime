@@ -88,9 +88,15 @@ public:
             return false;
         }
         for (const auto& pkg : cPreprocessor.GetPkgsArgs()) {
-            fd_t fd = open(pkg.second->GetPath().c_str(), FILE_RDONLY);
+            std::string realPath;
+            if (!RealPath(pkg.second->GetPath().c_str(), realPath, true)) {
+                LOG_ECMA(ERROR) << "Fail to get realPath: " << pkg.second->GetPath().c_str();
+                dlclose(handle);
+                return false;
+            }
+            fd_t fd = open(realPath.c_str(), FILE_RDONLY);
             if (fd == INVALID_FD) {
-                LOG_ECMA(ERROR) << pkg.second->GetPath().c_str() << " file open failed";
+                LOG_ECMA(ERROR) << realPath.c_str() << " file open failed";
                 dlclose(handle);
                 return false;
             }
