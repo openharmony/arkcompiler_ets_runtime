@@ -1343,6 +1343,45 @@ HWTEST_F_L0(EcmaModuleTest, ConcatNotSoNormalizedOhmurl)
     EXPECT_EQ(outFileName, exceptOutFileName);
 }
 
+HWTEST_F_L0(EcmaModuleTest, TransformToNormalizedOhmUrl2)
+{
+    CString inputFileName = "/data/storage/el1/bundle/hsp/ets/modules.abc";
+    CString outBaseFileName = "/data/storage/el1/bundle/com.example.application/hsp/hsp/ets/modules.abc";
+    CString entryPoint = "com.example.myapplication/hsp/ets/pages/Index";
+    CString res = ModulePathHelper::TransformToNormalizedOhmUrl(instance, inputFileName, outBaseFileName, entryPoint);
+    EXPECT_EQ(res, "com.example.myapplication/hsp/ets/pages/Index");
+}
+
+HWTEST_F_L0(EcmaModuleTest, TransformToNormalizedOhmUrl3)
+{
+    // currentModuleName.size() is 0
+    CString inputFileName = "/data/storage/el1/bundle";
+    CString outBaseFileName = "/data/storage/el1/bundle";
+    CString entryPoint = "com.example.myapplication/entry@har/ets/pages/Index";
+    CString res = ModulePathHelper::TransformToNormalizedOhmUrl(instance, inputFileName, outBaseFileName, entryPoint);
+    EXPECT_EQ(res, "com.example.myapplication/entry@har/ets/pages/Index");
+
+    // pkgname.size() is 0
+    CMap<CString, CString> list;
+    list["har"] = "";
+    instance->SetPkgNameList(list);
+    inputFileName = "/data/storage/el1/bundle/entry/ets/modules.abc";
+    outBaseFileName = "/data/storage/el1/bundle/entry/ets/modules.abc";
+    entryPoint = "com.example.myapplication/entry@har/ets/pages/Index";
+    res = ModulePathHelper::TransformToNormalizedOhmUrl(instance, inputFileName, outBaseFileName, entryPoint);
+    EXPECT_EQ(res, entryPoint);
+
+    // oldEntryPoint equal ENTRY_MAIN_FUNCTION
+    entryPoint = "_GLOBAL::func_main_0";
+    res = ModulePathHelper::TransformToNormalizedOhmUrl(instance, inputFileName, outBaseFileName, entryPoint);
+    EXPECT_EQ(res, "_GLOBAL::func_main_0");
+
+    // oldEntryPoint is not equal ENTRY_MAIN_FUNCTION but start with &
+    entryPoint = "&test";
+    res = ModulePathHelper::TransformToNormalizedOhmUrl(instance, inputFileName, outBaseFileName, entryPoint);
+    EXPECT_EQ(res, "&test");
+}
+
 HWTEST_F_L0(EcmaModuleTest, TranslateExpressionToNormalized)
 {
     instance->SetBundleName("com.example.myapplication");
@@ -1599,676 +1638,6 @@ HWTEST_F_L0(EcmaModuleTest, NeedTranslateToNormalized)
     requestName = "library";
     res = ModulePathHelper::NeedTranslateToNormalized(requestName);
     EXPECT_EQ(res, true);
-}
-
-HWTEST_F_L0(EcmaModuleTest, ModuleLogger) {
-    ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<SourceTextModule> module1 = objectFactory->NewSourceTextModule();
-    CString baseFileName = "modules.abc";
-    module1->SetEcmaModuleFilenameString(baseFileName);
-    CString recordName1 = "a";
-    module1->SetEcmaModuleRecordNameString(recordName1);
-    JSHandle<SourceTextModule> module2 = objectFactory->NewSourceTextModule();
-    module2->SetEcmaModuleFilenameString(baseFileName);
-    CString recordName2 = "b";
-    module2->SetEcmaModuleRecordNameString(recordName2);
-    JSHandle<JSTaggedValue> moduleRequest = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("c"));
-    JSHandle<JSTaggedValue> importName = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("ccc"));
-    JSHandle<JSTaggedValue> localName = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("ccc"));
-    JSHandle<ImportEntry> importEntry = objectFactory->NewImportEntry(moduleRequest, importName,
-                                                                      localName, SharedTypes::UNSENDABLE_MODULE);
-    SourceTextModule::AddImportEntry(thread, module2, importEntry, 0, 1);
-    JSHandle<SourceTextModule> module3 = objectFactory->NewSourceTextModule();
-    module2->SetEcmaModuleFilenameString(baseFileName);
-    CString recordName3 = "c";
-    module2->SetEcmaModuleRecordNameString(recordName3);
-    ModuleLogger *moduleLogger = new ModuleLogger(thread->GetEcmaVM());
-    moduleLogger->SetStartTime(recordName1);
-    moduleLogger->SetEndTime(recordName1);
-    moduleLogger->SetStartTime(recordName2);
-    moduleLogger->SetEndTime(recordName2);
-    moduleLogger->SetStartTime(recordName3);
-    moduleLogger->InsertEntryPointModule(module1);
-    moduleLogger->InsertParentModule(module1, module2);
-    moduleLogger->InsertModuleLoadInfo(module2, module3, -1);
-    moduleLogger->InsertModuleLoadInfo(module2, module3, 0);
-    moduleLogger->PrintModuleLoadInfo();
-    Local<JSValueRef> nativeFunc = SourceTextModule::GetRequireNativeModuleFunc(thread->GetEcmaVM(),
-                                                                                module3->GetTypes());
-    bool isFunc = nativeFunc->IsFunction(thread->GetEcmaVM());
-    EXPECT_EQ(isFunc, false);
-}
-
-HWTEST_F_L0(EcmaModuleTest, GetRequireNativeModuleFunc) {
-    ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<SourceTextModule> module = objectFactory->NewSourceTextModule();
-    uint16_t registerNum = module->GetRegisterCounts();
-    module->SetStatus(ecmascript::ModuleStatus::INSTANTIATED);
-    module->SetRegisterCounts(registerNum);
-    Local<JSValueRef> nativeFunc = SourceTextModule::GetRequireNativeModuleFunc(thread->GetEcmaVM(),
-                                                                                module->GetTypes());
-    bool isFunc = nativeFunc->IsFunction(thread->GetEcmaVM());
-    EXPECT_EQ(isFunc, false);
-}
-
-/*
- * Feature: Module
- * Function: StoreModuleValue
- * SubFunction: StoreModuleValue/GetModuleValue
- * FunctionPoints: store a module export item in module
- * CaseDescription: Simulated implementation of "export foo as bar", set foo as "hello world",
- *                  use "import bar" in same js file
- */
-HWTEST_F_L0(EcmaModuleTest, StoreModuleValue2)
-{
-    ObjectFactory* objFactory = thread->GetEcmaVM()->GetFactory();
-    CString localName = "foo";
-    CString exportName = "bar";
-    CString value = "hello world";
-    CString value2 = "hello world1";
-    int32_t index = 1;
-
-    JSHandle<JSTaggedValue> localNameHandle = JSHandle<JSTaggedValue>::Cast(objFactory->NewFromUtf8(localName));
-    JSHandle<JSTaggedValue> exportNameHandle = JSHandle<JSTaggedValue>::Cast(objFactory->NewFromUtf8(exportName));
-    JSHandle<LocalExportEntry> localExportEntry =
-        objFactory->NewLocalExportEntry(exportNameHandle, localNameHandle, LocalExportEntry::LOCAL_DEFAULT_INDEX,
-                                        SharedTypes::UNSENDABLE_MODULE);
-    JSHandle<SourceTextModule> module = objFactory->NewSourceTextModule();
-    SourceTextModule::AddLocalExportEntry(thread, module, localExportEntry, 0, 1);
-
-    JSHandle<JSTaggedValue> storeKey = JSHandle<JSTaggedValue>::Cast(objFactory->NewFromUtf8(localName));
-    JSHandle<JSTaggedValue> valueHandle = JSHandle<JSTaggedValue>::Cast(objFactory->NewFromUtf8(value));
-    JSHandle<JSTaggedValue> valueHandle1 = JSHandle<JSTaggedValue>::Cast(objFactory->NewFromUtf8(value2));
-    SourceTextModule::StoreModuleValue(thread, module, storeKey, valueHandle);
-    SourceTextModule::StoreModuleValue(thread, module, index, valueHandle1);
-    JSHandle<JSTaggedValue> loadKey = JSHandle<JSTaggedValue>::Cast(objFactory->NewFromUtf8(localName));
-    JSTaggedValue loadValue = module->GetModuleValue(thread, loadKey.GetTaggedValue(), false);
-    JSTaggedValue loadValue1 = module->GetModuleValue(thread, index, false);
-    EXPECT_EQ(valueHandle.GetTaggedValue(), loadValue);
-    EXPECT_EQ(valueHandle1.GetTaggedValue(), loadValue1);
-}
-
-HWTEST_F_L0(EcmaModuleTest, MakeAppArgs1) {
-    std::vector<Local<JSValueRef>> arguments;
-    CString soPath = "@normalized:Y&&&libentry.so&";
-    CString moduleName = "entry";
-    CString requestName = "@normalized:";
-    arguments.emplace_back(StringRef::NewFromUtf8(thread->GetEcmaVM(), soPath.c_str()));
-    SourceTextModule::MakeAppArgs(thread->GetEcmaVM(), arguments, soPath, moduleName, requestName);
-    std::string res1 = arguments[0]->ToString(thread->GetEcmaVM())->ToString(thread->GetEcmaVM());
-    std::string res2 = arguments[1]->ToString(thread->GetEcmaVM())->ToString(thread->GetEcmaVM());
-    std::string res3 = arguments[2]->ToString(thread->GetEcmaVM())->ToString(thread->GetEcmaVM());
-    EXPECT_TRUE(res1 == "entry");
-    EXPECT_TRUE(res2 == "true");
-    EXPECT_TRUE(res3 == "/entry");
-}
-
-HWTEST_F_L0(EcmaModuleTest, MakeAppArgs2) {
-    std::vector<Local<JSValueRef>> arguments;
-    CString soPath = "@app:com.example.myapplication/entry";
-    CString moduleName = "entry";
-    CString requestName = "@app:";
-    arguments.emplace_back(StringRef::NewFromUtf8(thread->GetEcmaVM(), soPath.c_str()));
-    SourceTextModule::MakeAppArgs(thread->GetEcmaVM(), arguments, soPath, moduleName, requestName);
-    std::string res1 = arguments[0]->ToString(thread->GetEcmaVM())->ToString(thread->GetEcmaVM());
-    std::string res2 = arguments[1]->ToString(thread->GetEcmaVM())->ToString(thread->GetEcmaVM());
-    std::string res3 = arguments[2]->ToString(thread->GetEcmaVM())->ToString(thread->GetEcmaVM());
-    EXPECT_TRUE(res1 == "entry");
-    EXPECT_TRUE(res2 == "true");
-    EXPECT_TRUE(res3 == "@app:com.example.myapplication");
-}
-
-HWTEST_F_L0(EcmaModuleTest, ConcatHspFileNameCrossBundle)
-{
-    CString bundleName = "com.example.application";
-    CString moduleName = "entry";
-    CString expectRes = "/data/storage/el1/bundle/com.example.application/entry/entry/ets/modules.abc";
-    CString res = ModulePathHelper::ConcatHspFileNameCrossBundle(bundleName, moduleName);
-    EXPECT_EQ(res, expectRes);
-}
-
-HWTEST_F_L0(EcmaModuleTest, ConcatHspFileName)
-{
-    CString moduleName = "entry";
-    CString expectRes = "/data/storage/el1/bundle/entry/ets/modules.abc";
-    CString res = ModulePathHelper::ConcatHspFileName(moduleName);
-    EXPECT_EQ(res, expectRes);
-}
-
-HWTEST_F_L0(EcmaModuleTest, ParseNormalizedOhmUrl)
-{
-    CString baseFileName = "/data/storage/el1/bundle/entry/ets/modules.abc";
-    CString recordName = "&har/Index&1.0.0";
-    CString requestName = "@normalized:N&&&har/src/main/page/Test&1.0.0";
-    CString expectRes = "&har/src/main/page/Test&1.0.0";
-    CString exceptBaseFileName = "/data/storage/el1/bundle/entry/ets/modules.abc";
-    CString res = ModulePathHelper::ParseNormalizedOhmUrl(thread, baseFileName, recordName, requestName);
-    EXPECT_EQ(res, expectRes);
-    EXPECT_EQ(baseFileName, exceptBaseFileName);
-
-    requestName = "@normalized:N&&har/src/main/page/Test&1.0.0";
-    res = ModulePathHelper::ParseNormalizedOhmUrl(thread, baseFileName, recordName, requestName);
-    EXPECT_TRUE((thread)->HasPendingException());
-    EXPECT_EQ(res, requestName);
-
-    baseFileName = "/data/storage/el1/bundle/entry/ets/modules.abc";
-    requestName = "@normalized:N&hsp&&hsp/src/main/page/Test&1.0.0";
-    expectRes = "&hsp/src/main/page/Test&1.0.0";
-    exceptBaseFileName = "/data/storage/el1/bundle/hsp/ets/modules.abc";
-    CString res2 = ModulePathHelper::ParseNormalizedOhmUrl(thread, baseFileName, recordName, requestName);
-    EXPECT_EQ(res2, expectRes);
-    EXPECT_EQ(baseFileName, exceptBaseFileName);
-
-    baseFileName = "/data/storage/el1/bundle/entry/ets/modules.abc";
-    requestName = "@normalized:N&hsp&com.example.application&hsp/src/main/page/Test&1.0.0";
-    exceptBaseFileName = "/data/storage/el1/bundle/com.example.application/hsp/hsp/ets/modules.abc";
-    expectRes = "com.example.application&hsp/src/main/page/Test&1.0.0";
-    CString res3 = ModulePathHelper::ParseNormalizedOhmUrl(thread, baseFileName, recordName, requestName);
-    EXPECT_EQ(res3, expectRes);
-    EXPECT_EQ(baseFileName, exceptBaseFileName);
-
-    baseFileName = "";
-    recordName = "&har/Index&1.0.0";
-    requestName = "@normalized:N&&&har/src/main/page/Test&1.0.0";
-    CString res4 = ModulePathHelper::ParseNormalizedOhmUrl(thread, baseFileName, recordName, requestName);
-    EXPECT_EQ(baseFileName, "");
-    
-    baseFileName = "/data/storage/el1/bundle/entry/ets/modules.abc";
-    requestName = "@normalized:N&&com.example.application&hsp/src/main/page/Test&1.0.0";
-    expectRes = "com.example.application&hsp/src/main/page/Test&1.0.0";
-    CString res5 = ModulePathHelper::ParseNormalizedOhmUrl(thread, baseFileName, recordName, requestName);
-    EXPECT_EQ(res5, expectRes);
-}
-
-HWTEST_F_L0(EcmaModuleTest, GetModuleNameWithBaseFile)
-{
-    CString baseFileName = "/data/storage/el1/bundle/entry/ets/modules.abc";
-    CString expectRes = "entry";
-    CString res = ModulePathHelper::GetModuleNameWithBaseFile(baseFileName);
-    EXPECT_EQ(res, expectRes);
-
-    baseFileName = "/data/storage/el1/bundle/com.example.application/hsp/hsp/ets/modules.abc";
-    expectRes = "hsp";
-    res = ModulePathHelper::GetModuleNameWithBaseFile(baseFileName);
-    EXPECT_EQ(res, expectRes);
-}
-
-HWTEST_F_L0(EcmaModuleTest, GetBundleNameWithRecordName)
-{
-    CString recordName = "com.example.myapplication/library";
-    CString expectRes = "com.example.myapplication";
-    CString res = ModulePathHelper::GetBundleNameWithRecordName(instance, recordName);
-    EXPECT_EQ(res, expectRes);
-
-    CMap<CString, CMap<CString, CVector<CString>>> list;
-    CMap<CString, CVector<CString>> childList;
-    list["hsp"] = childList;
-    instance->SetpkgContextInfoList(list);
-
-    recordName = "&hsp&com.example.application&hsp/src/main/page/Test&1.0.0";
-    expectRes = "com.example.application";
-    res = ModulePathHelper::GetBundleNameWithRecordName(instance, recordName);
-    EXPECT_EQ(res, expectRes);
-
-    instance->SetBundleName("com.example1.application");
-    recordName = "&har/src/main/page/Test&1.0.0";
-    expectRes = "com.example1.application";
-    res = ModulePathHelper::GetBundleNameWithRecordName(instance, recordName);
-    EXPECT_EQ(res, expectRes);
-}
-
-HWTEST_F_L0(EcmaModuleTest, TransformToNormalizedOhmUrl)
-{
-    CMap<CString, CMap<CString, CVector<CString>>> pkgList;
-    CMap<CString, CVector<CString>> entryList;
-    entryList["entry"] = {
-        "packageName", "entry",
-        "bundleName", "",
-        "moduleName", "",
-        "version", "",
-        "entryPath", "src/main/",
-        "isSO", "false"
-    };
-    entryList["har"] = {
-        "packageName", "har",
-        "bundleName", "",
-        "moduleName", "",
-        "version", "1.2.0",
-        "entryPath", "",
-        "isSO", "false"
-    };
-    pkgList["entry"] = entryList;
-    CMap<CString, CVector<CString>> ohosTestList;
-    ohosTestList["ohosTest"] = {
-        "packageName", "ohosTest",
-        "bundleName", "",
-        "moduleName", "",
-        "version", "",
-        "entryPath", "src/",
-        "isSO", "false"
-    };
-    pkgList["ohosTest"] = ohosTestList;
-    instance->SetpkgContextInfoList(pkgList);
-
-    CString inputFileName = "/data/storage/el1/bundle/entry/ets/modules.abc";
-    CString outBaseFileName = "";
-    CString entryPoint = "ENTRY_MAIN_FUNCTION";
-    CString res = ModulePathHelper::TransformToNormalizedOhmUrl(instance, inputFileName, outBaseFileName, entryPoint);
-    EXPECT_EQ(res, "ENTRY_MAIN_FUNCTION");
-
-    outBaseFileName = "/data/storage/el1/bundle/entry/ets/modules.abc";
-    entryPoint = "com.example.myapplication/entry@har/ets/pages/Index";
-    res = ModulePathHelper::TransformToNormalizedOhmUrl(instance, inputFileName, outBaseFileName, entryPoint);
-    EXPECT_EQ(res, "&har/src/main/ets/pages/Index&1.2.0");
-
-    outBaseFileName = "/data/storage/el1/bundle/ohosTest/ets/modules.abc";
-    entryPoint = "com.example.myapplication/ohosTest/ets/pages/Index";
-    res = ModulePathHelper::TransformToNormalizedOhmUrl(instance, inputFileName, outBaseFileName, entryPoint);
-    EXPECT_EQ(res, "&ohosTest/src/ets/pages/Index&");
-
-    outBaseFileName = "/data/storage/el1/bundle/entry/.test/ets/modules.abc";
-    entryPoint = "com.example.myapplication/entry/.test/ets/pages/Index";
-    res = ModulePathHelper::TransformToNormalizedOhmUrl(instance, inputFileName, outBaseFileName, entryPoint);
-    EXPECT_EQ(res, "&entry/.test/ets/pages/Index&");
-}
-
-HWTEST_F_L0(EcmaModuleTest, TransformToNormalizedOhmUrl2)
-{
-    CString inputFileName = "/data/storage/el1/bundle/hsp/ets/modules.abc";
-    CString outBaseFileName = "/data/storage/el1/bundle/com.example.application/hsp/hsp/ets/modules.abc";
-    CString entryPoint = "com.example.myapplication/hsp/ets/pages/Index";
-    CString res = ModulePathHelper::TransformToNormalizedOhmUrl(instance, inputFileName, outBaseFileName, entryPoint);
-    EXPECT_EQ(res, "com.example.myapplication/hsp/ets/pages/Index");
-}
-
-HWTEST_F_L0(EcmaModuleTest, TransformToNormalizedOhmUrl3)
-{
-    // currentModuleName.size() is 0
-    CString inputFileName = "/data/storage/el1/bundle";
-    CString outBaseFileName = "/data/storage/el1/bundle";
-    CString entryPoint = "com.example.myapplication/entry@har/ets/pages/Index";
-    CString res = ModulePathHelper::TransformToNormalizedOhmUrl(instance, inputFileName, outBaseFileName, entryPoint);
-    EXPECT_EQ(res, "com.example.myapplication/entry@har/ets/pages/Index");
-
-    // pkgname.size() is 0
-    CMap<CString, CString> list;
-    list["har"] = "";
-    instance->SetPkgNameList(list);
-    inputFileName = "/data/storage/el1/bundle/entry/ets/modules.abc";
-    outBaseFileName = "/data/storage/el1/bundle/entry/ets/modules.abc";
-    entryPoint = "com.example.myapplication/entry@har/ets/pages/Index";
-    res = ModulePathHelper::TransformToNormalizedOhmUrl(instance, inputFileName, outBaseFileName, entryPoint);
-    EXPECT_EQ(res, entryPoint);
-
-    // oldEntryPoint equal ENTRY_MAIN_FUNCTION
-    entryPoint = "_GLOBAL::func_main_0";
-    res = ModulePathHelper::TransformToNormalizedOhmUrl(instance, inputFileName, outBaseFileName, entryPoint);
-    EXPECT_EQ(res, "_GLOBAL::func_main_0");
-
-    // oldEntryPoint is not equal ENTRY_MAIN_FUNCTION but start with &
-    entryPoint = "&test";
-    res = ModulePathHelper::TransformToNormalizedOhmUrl(instance, inputFileName, outBaseFileName, entryPoint);
-    EXPECT_EQ(res, "&test");
-}
-
-HWTEST_F_L0(EcmaModuleTest, TranslateExpressionInputWithEts)
-{
-    instance->SetBundleName("com.example.myapplication");
-    CString baseFilename = "merge.abc";
-    const char *data = R"(
-        .language ECMAScript
-        .function any func_main_0(any a0, any a1, any a2) {
-            ldai 1
-            return
-        }
-    )";
-    JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
-    Parser parser;
-    auto res = parser.Parse(data);
-    std::unique_ptr<const File> pfPtr = pandasm::AsmEmitter::Emit(res.Value());
-    std::shared_ptr<JSPandaFile> pf = pfManager->NewJSPandaFile(pfPtr.release(), baseFilename);
-
-    CString baseFileName = "/data/storage/el1/bundle/entry/ets/modules.abc";
-    CString requestName = "ets/Test";
-    CString recordName = "com.example.myapplication/entry/ets/pages/Index";
-    CString expectRes = "com.example.myapplication/entry/ets/Test";
-    CString result = ModulePathHelper::TranslateExpressionInputWithEts(thread, pf.get(), baseFileName, requestName);
-    EXPECT_EQ(result, "");
-
-    pf->InsertJSRecordInfo(expectRes);
-    result = ModulePathHelper::TranslateExpressionInputWithEts(thread, pf.get(), baseFileName, requestName);
-    EXPECT_EQ(result, expectRes);
-}
-
-HWTEST_F_L0(EcmaModuleTest, ReviseLoadedModuleCount1) {
-    CString moduleName = "testModule";
-    ModuleDeregister::ReviseLoadedModuleCount(thread, moduleName);
-    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
-    bool res = moduleManager->IsLocalModuleLoaded(moduleName);
-    EXPECT_EQ(res, false);
-}
-
-HWTEST_F_L0(EcmaModuleTest, IncreaseRegisterCounts)
-{
-    std::string baseFileName = MODULE_ABC_PATH "module_test_module_test_C.abc";
-    JSNApi::EnableUserUncaughtErrorHandler(instance);
-    bool result = JSNApi::Execute(instance, baseFileName, "module_test_module_test_C");
-    EXPECT_TRUE(result);
-    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
-    JSHandle<SourceTextModule> module = moduleManager->HostGetImportedModule("module_test_module_test_C");
-    ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<SourceTextModule> module2 = objectFactory->NewSourceTextModule();
-    std::set<CString> increaseModule;
-
-    ModuleDeregister::IncreaseRegisterCounts(thread, module, increaseModule);
-    EXPECT_EQ(module->GetRequestedModules().IsUndefined(), false);
-
-    module->SetRegisterCounts(INT8_MAX);
-    ModuleDeregister::IncreaseRegisterCounts(thread, module, increaseModule);
-    EXPECT_EQ(module->GetRequestedModules().IsUndefined(), false);
-
-    module2->SetRegisterCounts(INT8_MAX);
-    ModuleDeregister::IncreaseRegisterCounts(thread, module2, increaseModule);
-    EXPECT_EQ(module2->GetRequestedModules().IsUndefined(), true);
-
-    module2->SetLoadingTypes(LoadingTypes::STABLE_MODULE);
-    ModuleDeregister::IncreaseRegisterCounts(thread, module2, increaseModule);
-    bool res = module2->GetLoadingTypes() == LoadingTypes::STABLE_MODULE;
-    EXPECT_EQ(res, true);
-}
-
-HWTEST_F_L0(EcmaModuleTest, DecreaseRegisterCounts)
-{
-    std::string baseFileName = MODULE_ABC_PATH "module_test_module_test_C.abc";
-    JSNApi::EnableUserUncaughtErrorHandler(instance);
-    bool result = JSNApi::Execute(instance, baseFileName, "module_test_module_test_C");
-    EXPECT_TRUE(result);
-    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
-    JSHandle<SourceTextModule> module = moduleManager->HostGetImportedModule("module_test_module_test_C");
-    ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<SourceTextModule> module2 = objectFactory->NewSourceTextModule();
-    std::set<CString> decreaseModule;
-
-    ModuleDeregister::DecreaseRegisterCounts(thread, module, decreaseModule);
-    bool res1 = module->GetLoadingTypes() != LoadingTypes::DYNAMITC_MODULE;
-    EXPECT_EQ(res1, true);
-
-    module->SetRegisterCounts(INT8_MAX);
-    ModuleDeregister::DecreaseRegisterCounts(thread, module, decreaseModule);
-    EXPECT_EQ(module->GetRequestedModules().IsUndefined(), false);
-
-    module2->SetLoadingTypes(LoadingTypes::DYNAMITC_MODULE);
-    ModuleDeregister::DecreaseRegisterCounts(thread, module2, decreaseModule);
-    bool res2 = module2->GetLoadingTypes() != LoadingTypes::DYNAMITC_MODULE;
-    EXPECT_EQ(res2, false);
-}
-
-HWTEST_F_L0(EcmaModuleTest, GetSendableModuleValueImpl) {
-    ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<SourceTextModule> module1 = objectFactory->NewSourceTextModule();
-    SharedModuleManager* manager1 = SharedModuleManager::GetInstance();
-    int32_t index = 2;
-    JSTaggedValue currentModule1 = module1.GetTaggedValue();
-    JSTaggedValue res1 = manager1->GetSendableModuleValueImpl(
-        thread, index, currentModule1);
-    EXPECT_EQ(res1, thread->GlobalConstants()->GetUndefined());
-
-    SharedModuleManager* manager2 = SharedModuleManager::GetInstance();
-    std::string baseFileName = MODULE_ABC_PATH "module_test_module_test_C.abc";
-    JSNApi::EnableUserUncaughtErrorHandler(instance);
-    bool result = JSNApi::Execute(instance, baseFileName, "module_test_module_test_C");
-    EXPECT_TRUE(result);
-    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
-    JSHandle<SourceTextModule> module2 = moduleManager->HostGetImportedModule("module_test_module_test_C");
-    JSTaggedValue currentModule2 = module2.GetTaggedValue();
-    JSTaggedValue res2 = manager2->GetSendableModuleValueImpl(
-        thread, index, currentModule2);
-    EXPECT_NE(res2, thread->GlobalConstants()->GetUndefined());
-}
-
-HWTEST_F_L0(EcmaModuleTest, GetLazySendableModuleValueImpl) {
-    ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<SourceTextModule> module1 = objectFactory->NewSourceTextModule();
-    SharedModuleManager* manager1 = SharedModuleManager::GetInstance();
-    int32_t index = 2;
-    JSTaggedValue currentModule1 = module1.GetTaggedValue();
-    JSTaggedValue res1 = manager1->GetLazySendableModuleValueImpl(
-        thread, index, currentModule1);
-    EXPECT_EQ(res1, thread->GlobalConstants()->GetUndefined());
-}
-
-HWTEST_F_L0(EcmaModuleTest, ResolveImportedModuleWithMerge) {
-    std::string baseFileName = MODULE_ABC_PATH "module_test_module_test_C.abc";
-    JSNApi::EnableUserUncaughtErrorHandler(instance);
-    bool result = JSNApi::Execute(instance, baseFileName, "module_test_module_test_C");
-    EXPECT_TRUE(result);
-    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
-    JSHandle<SourceTextModule> module = moduleManager->HostGetImportedModule("module_test_module_test_C");
-    module->SetSharedType(SharedTypes::SHARED_MODULE);
-
-    CString recordName2 = "testModule";
-    bool executeFromJob = false;
-    JSHandle<JSTaggedValue> res = ModuleResolver::ResolveImportedModuleWithMerge(
-        thread, baseFileName.c_str(), recordName2, executeFromJob);
-    EXPECT_EQ(res.GetTaggedValue(), JSTaggedValue::Exception());
-}
-
-HWTEST_F_L0(EcmaModuleTest, ResolveImportedModuleWithMerge2) {
-    CString moduleName1;
-    CString recordName1;
-
-    bool executeFromJob = false;
-    JSHandle<JSTaggedValue> res = ModuleResolver::ResolveImportedModuleWithMerge(
-        thread, moduleName1, recordName1, executeFromJob);
-    EXPECT_EQ(res.GetTaggedValue(), JSTaggedValue::Exception());
-}
-
-HWTEST_F_L0(EcmaModuleTest, IsInstantiatedSModule) {
-    SharedModuleManager* manager1 = SharedModuleManager::GetInstance();
-    std::string baseFileName = MODULE_ABC_PATH "module_test_module_test_C.abc";
-    JSNApi::EnableUserUncaughtErrorHandler(instance);
-    bool result = JSNApi::Execute(instance, baseFileName, "module_test_module_test_C");
-    EXPECT_TRUE(result);
-    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
-    JSHandle<SourceTextModule> module = moduleManager->HostGetImportedModule("module_test_module_test_C");
-    bool res = manager1->IsInstantiatedSModule(thread, module);
-    EXPECT_EQ(res, true);
-}
-
-HWTEST_F_L0(EcmaModuleTest, ProcessModuleLoadInfoForESM)
-{
-    ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<SourceTextModule> module1 = objectFactory->NewSourceTextModule();
-    CString baseFileName = "modules.abc";
-    module1->SetEcmaModuleFilenameString(baseFileName);
-    CString recordName1 = "a";
-    module1->SetEcmaModuleRecordNameString(recordName1);
-    JSHandle<JSTaggedValue> val = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("val"));
-    JSHandle<ImportEntry> importEntry =
-        objectFactory->NewImportEntry(val, val, val, SharedTypes::UNSENDABLE_MODULE);
-    SourceTextModule::AddImportEntry(thread, module1, importEntry, 0, 1);
-
-    JSHandle<SourceTextModule> module2 = objectFactory->NewSourceTextModule();
-    module2->SetEcmaModuleFilenameString(baseFileName);
-    CString recordName2 = "b";
-    module2->SetEcmaModuleRecordNameString(recordName2);
-    JSHandle<LocalExportEntry> localExportEntry =
-        objectFactory->NewLocalExportEntry(val, val, 0, SharedTypes::UNSENDABLE_MODULE);
-    JSHandle<TaggedArray> localExportEntries = objectFactory->NewTaggedArray(1);
-    localExportEntries->Set(thread, 0, localExportEntry);
-    module2->SetLocalExportEntries(thread, localExportEntries);
-    SourceTextModule::StoreModuleValue(thread, module2, 0, val);
-    module2->SetStatus(ModuleStatus::EVALUATED);
-    ModuleLogger *moduleLogger = new ModuleLogger(thread->GetEcmaVM());
-    thread->GetCurrentEcmaContext()->SetModuleLogger(moduleLogger);
-    // test ResolvedIndexBinding
-    JSHandle<ResolvedIndexBinding> indexBinding =
-        objectFactory->NewResolvedIndexBindingRecord(module2, 0);
-    JSTaggedValue res1 = ModuleTools::ProcessModuleLoadInfo(thread, module1, indexBinding.GetTaggedValue(), 0);
-    EXPECT_EQ(res1, val.GetTaggedValue());
-
-    JSTaggedValue res2 = ModuleTools::ProcessModuleNameSpaceLoadInfo(thread, module1, module2);
-    EXPECT_NE(res2, JSTaggedValue::Exception());
-
-    // test HotReload
-    thread->GetCurrentEcmaContext()->SetStageOfHotReload(StageOfHotReload::LOAD_END_EXECUTE_PATCHMAIN);
-    JSTaggedValue res3 = ModuleTools::ProcessModuleLoadInfo(thread, module1, indexBinding.GetTaggedValue(), 0);
-    EXPECT_EQ(res3, val.GetTaggedValue());
-
-    thread->GetCurrentEcmaContext()->AddPatchModule(recordName2, JSHandle<JSTaggedValue>::Cast(module2));
-    JSTaggedValue res4 = ModuleTools::ProcessModuleLoadInfo(thread, module1, indexBinding.GetTaggedValue(), 0);
-    EXPECT_EQ(res4, val.GetTaggedValue());
-
-    thread->GetCurrentEcmaContext()->SetModuleLogger(nullptr);
-    delete moduleLogger;
-}
-
-HWTEST_F_L0(EcmaModuleTest, ProcessModuleLoadInfoForCJS)
-{
-    ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<SourceTextModule> module1 = objectFactory->NewSourceTextModule();
-    CString baseFileName = "modules.abc";
-    module1->SetEcmaModuleFilenameString(baseFileName);
-    CString recordName1 = "a";
-    module1->SetEcmaModuleRecordNameString(recordName1);
-    JSHandle<JSTaggedValue> val = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("val"));
-    JSHandle<ImportEntry> importEntry =
-        objectFactory->NewImportEntry(val, val, val, SharedTypes::UNSENDABLE_MODULE);
-    SourceTextModule::AddImportEntry(thread, module1, importEntry, 0, 1);
-
-    JSHandle<SourceTextModule> module2 = objectFactory->NewSourceTextModule();
-    module2->SetEcmaModuleFilenameString(baseFileName);
-    CString recordName2 = "cjs";
-    module2->SetEcmaModuleRecordNameString(recordName2);
-    JSHandle<LocalExportEntry> localExportEntry =
-        objectFactory->NewLocalExportEntry(val, val, 0, SharedTypes::UNSENDABLE_MODULE);
-    JSHandle<TaggedArray> localExportEntries = objectFactory->NewTaggedArray(1);
-    localExportEntries->Set(thread, 0, localExportEntry);
-    module2->SetLocalExportEntries(thread, localExportEntries);
-    SourceTextModule::StoreModuleValue(thread, module2, 0, val);
-    module2->SetTypes(ModuleTypes::CJS_MODULE);
-    module2->SetStatus(ModuleStatus::EVALUATED);
-    JSHandle<CjsModule> moduleCjs = objectFactory->NewCjsModule();
-    JSHandle<JSTaggedValue> recordName2Hdl =
-        JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8(recordName2.c_str()));
-    JSHandle<JSTaggedValue> baseFileNameHdl =
-        JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8(baseFileName.c_str()));
-    CjsModule::InitializeModule(thread, moduleCjs, recordName2Hdl, baseFileNameHdl);
-    CjsModule::PutIntoCache(thread, moduleCjs, recordName2Hdl);
-
-    JSHandle<TaggedArray> envRec = objectFactory->NewTaggedArray(1);
-    JSHandle<JSTaggedValue> resolution =
-        JSHandle<JSTaggedValue>::Cast(objectFactory->NewResolvedBindingRecord(module2, val));
-    envRec->Set(thread, 0, resolution);
-    module1->SetEnvironment(thread, envRec);
-
-    ModuleLogger *moduleLogger = new ModuleLogger(thread->GetEcmaVM());
-    thread->GetCurrentEcmaContext()->SetModuleLogger(moduleLogger);
-
-    // test ResolvedBinding
-    JSTaggedValue res1 = ModuleTools::ProcessModuleNameSpaceLoadInfo(thread, module1, module2);
-    EXPECT_NE(res1, JSTaggedValue::Exception());
-
-    JSTaggedValue res2 = ModuleTools::ProcessModuleLoadInfo(thread, module1, resolution.GetTaggedValue(), 0);
-    EXPECT_EQ(res2, JSTaggedValue::Exception());
-    thread->GetCurrentEcmaContext()->SetModuleLogger(nullptr);
-    delete moduleLogger;
-}
-
-HWTEST_F_L0(EcmaModuleTest, ProcessModuleLoadInfoForNativeModule)
-{
-    ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<SourceTextModule> module1 = objectFactory->NewSourceTextModule();
-    CString baseFileName = "modules.abc";
-    module1->SetEcmaModuleFilenameString(baseFileName);
-    CString recordName1 = "a";
-    module1->SetEcmaModuleRecordNameString(recordName1);
-    JSHandle<JSTaggedValue> val = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("val"));
-    JSHandle<ImportEntry> importEntry =
-        objectFactory->NewImportEntry(val, val, val, SharedTypes::UNSENDABLE_MODULE);
-    SourceTextModule::AddImportEntry(thread, module1, importEntry, 0, 1);
-
-    JSHandle<SourceTextModule> module2 = objectFactory->NewSourceTextModule();
-    module2->SetEcmaModuleFilenameString(baseFileName);
-    CString recordName2 = "nativeModule";
-    module2->SetEcmaModuleRecordNameString(recordName2);
-    JSHandle<LocalExportEntry> localExportEntry =
-        objectFactory->NewLocalExportEntry(val, val, 0, SharedTypes::UNSENDABLE_MODULE);
-    JSHandle<TaggedArray> localExportEntries = objectFactory->NewTaggedArray(1);
-    localExportEntries->Set(thread, 0, localExportEntry);
-    module2->SetLocalExportEntries(thread, localExportEntries);
-    SourceTextModule::StoreModuleValue(thread, module2, 0, val);
-    module2->SetTypes(ModuleTypes::NATIVE_MODULE);
-    module2->SetStatus(ModuleStatus::EVALUATED);
-
-    JSHandle<TaggedArray> envRec = objectFactory->NewTaggedArray(1);
-    JSHandle<JSTaggedValue> resolution = JSHandle<JSTaggedValue>::Cast(
-        objectFactory->NewResolvedBindingRecord(module2, val));
-    envRec->Set(thread, 0, resolution);
-    module1->SetEnvironment(thread, envRec);
-
-    ModuleLogger *moduleLogger = new ModuleLogger(thread->GetEcmaVM());
-    thread->GetCurrentEcmaContext()->SetModuleLogger(moduleLogger);
-
-    JSTaggedValue res1 = ModuleTools::ProcessModuleLoadInfo(thread, module1, resolution.GetTaggedValue(), 0);
-    EXPECT_EQ(res1, JSTaggedValue::Exception());
-
-    JSTaggedValue res2 = ModuleTools::ProcessModuleNameSpaceLoadInfo(thread, module1, module2);
-    EXPECT_NE(res2, JSTaggedValue::Exception());
-    thread->GetCurrentEcmaContext()->SetModuleLogger(nullptr);
-    delete moduleLogger;
-}
-
-HWTEST_F_L0(EcmaModuleTest, ResolvedBindingForLog)
-{
-    ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<SourceTextModule> module1 = objectFactory->NewSourceTextModule();
-    CString baseFileName = "modules.abc";
-    module1->SetEcmaModuleFilenameString(baseFileName);
-    CString recordName1 = "a";
-    module1->SetEcmaModuleRecordNameString(recordName1);
-    JSHandle<JSTaggedValue> val = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("val"));
-    JSHandle<ImportEntry> importEntry =
-        objectFactory->NewImportEntry(val, val, val, SharedTypes::UNSENDABLE_MODULE);
-    SourceTextModule::AddImportEntry(thread, module1, importEntry, 0, 1);
-
-    JSHandle<SourceTextModule> module2 = objectFactory->NewSourceTextModule();
-    module2->SetEcmaModuleFilenameString(baseFileName);
-    CString recordName2 = "b";
-    module2->SetEcmaModuleRecordNameString(recordName2);
-    JSHandle<LocalExportEntry> localExportEntry =
-        objectFactory->NewLocalExportEntry(val, val, 0, SharedTypes::UNSENDABLE_MODULE);
-    JSHandle<TaggedArray> localExportEntries = objectFactory->NewTaggedArray(1);
-    localExportEntries->Set(thread, 0, localExportEntry);
-    module2->SetLocalExportEntries(thread, localExportEntries);
-    SourceTextModule::StoreModuleValue(thread, module2, 0, val);
-    module2->SetStatus(ModuleStatus::EVALUATED);
-    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
-    moduleManager->AddResolveImportedModule(recordName2, module2.GetTaggedValue());
-
-    ModuleLogger *moduleLogger = new ModuleLogger(thread->GetEcmaVM());
-    thread->GetCurrentEcmaContext()->SetModuleLogger(moduleLogger);
-    // test ResolvedRecordIndexBinding
-    JSHandle<EcmaString> recordNameHdl = objectFactory->NewFromUtf8(recordName2);
-    JSHandle<EcmaString> baseFileNameHdl = objectFactory->NewFromUtf8(baseFileName);
-    JSHandle<ResolvedRecordIndexBinding> recordIndexBinding =
-        objectFactory->NewSResolvedRecordIndexBindingRecord(recordNameHdl, baseFileNameHdl, 0);
-    JSTaggedValue res1 = ModuleTools::ProcessModuleLoadInfo(thread, module1, recordIndexBinding.GetTaggedValue(), 0);
-    EXPECT_EQ(res1, val.GetTaggedValue());
-
-    // test ResolvedRecordBinding
-    JSHandle<ResolvedRecordBinding> nameBinding =
-        objectFactory->NewSResolvedRecordBindingRecord(recordNameHdl, val);
-    JSTaggedValue res2 = ModuleTools::ProcessModuleLoadInfo(thread, module1, nameBinding.GetTaggedValue(), 0);
-    EXPECT_EQ(res2, JSTaggedValue::Exception());
-    thread->GetCurrentEcmaContext()->SetModuleLogger(nullptr);
-    delete moduleLogger;
-}
-
-HWTEST_F_L0(EcmaModuleTest, ToStringWithPrecision)
-{
-    std::string res = ModuleLogger::ToStringWithPrecision(4.550, 3);
-    EXPECT_EQ(res, "4.55");
 }
 
 HWTEST_F_L0(EcmaModuleTest, GetCurrentModuleName)
@@ -2766,22 +2135,6 @@ HWTEST_F_L0(EcmaModuleTest, InnerModuleInstantiation)
     EXPECT_EQ(index, 2);
 }
 
-HWTEST_F_L0(EcmaModuleTest, InnerModuleInstantiation_ReEnterTest)
-{
-    auto vm = thread->GetEcmaVM();
-    ObjectFactory *objectFactory = vm->GetFactory();
-    JSHandle<SourceTextModule> module = objectFactory->NewSSourceTextModule();
-    module->SetEcmaModuleFilenameString("modules.abc");
-    module->SetEcmaModuleRecordNameString("b");
-    module->SetTypes(ModuleTypes::ECMA_MODULE);
-    module->SetStatus(ModuleStatus::EVALUATING);
-    module->SetIsNewBcVersion(true);
-    module->SetSharedType(SharedTypes::SHARED_MODULE);
-    CVector<JSHandle<SourceTextModule>> stack;
-    int index = SourceTextModule::InnerModuleInstantiation(thread, JSHandle<ModuleRecord>::Cast(module), stack, 1, 0);
-    EXPECT_EQ(index, 1);
-}
-
 HWTEST_F_L0(EcmaModuleTest, ModuleDeclarationEnvironmentSetup)
 {
     auto vm = thread->GetEcmaVM();
@@ -2969,6 +2322,654 @@ HWTEST_F_L0(EcmaModuleTest, ExecuteNativeModule2)
     EXPECT_NE(res.GetTaggedValue(), JSTaggedValue::Undefined());
 }
 
+HWTEST_F_L0(EcmaModuleTest, ModuleLogger) {
+    ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<SourceTextModule> module1 = objectFactory->NewSourceTextModule();
+    CString baseFileName = "modules.abc";
+    module1->SetEcmaModuleFilenameString(baseFileName);
+    CString recordName1 = "a";
+    module1->SetEcmaModuleRecordNameString(recordName1);
+    JSHandle<SourceTextModule> module2 = objectFactory->NewSourceTextModule();
+    module2->SetEcmaModuleFilenameString(baseFileName);
+    CString recordName2 = "b";
+    module2->SetEcmaModuleRecordNameString(recordName2);
+    JSHandle<JSTaggedValue> moduleRequest = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("c"));
+    JSHandle<JSTaggedValue> importName = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("ccc"));
+    JSHandle<JSTaggedValue> localName = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("ccc"));
+    JSHandle<ImportEntry> importEntry = objectFactory->NewImportEntry(moduleRequest, importName,
+                                                                      localName, SharedTypes::UNSENDABLE_MODULE);
+    SourceTextModule::AddImportEntry(thread, module2, importEntry, 0, 1);
+    JSHandle<SourceTextModule> module3 = objectFactory->NewSourceTextModule();
+    module2->SetEcmaModuleFilenameString(baseFileName);
+    CString recordName3 = "c";
+    module2->SetEcmaModuleRecordNameString(recordName3);
+    ModuleLogger *moduleLogger = new ModuleLogger(thread->GetEcmaVM());
+    moduleLogger->SetStartTime(recordName1);
+    moduleLogger->SetEndTime(recordName1);
+    moduleLogger->SetStartTime(recordName2);
+    moduleLogger->SetEndTime(recordName2);
+    moduleLogger->SetStartTime(recordName3);
+    moduleLogger->InsertEntryPointModule(module1);
+    moduleLogger->InsertParentModule(module1, module2);
+    moduleLogger->InsertModuleLoadInfo(module2, module3, -1);
+    moduleLogger->InsertModuleLoadInfo(module2, module3, 0);
+    moduleLogger->PrintModuleLoadInfo();
+    Local<JSValueRef> nativeFunc = SourceTextModule::GetRequireNativeModuleFunc(thread->GetEcmaVM(),
+                                                                                module3->GetTypes());
+    bool isFunc = nativeFunc->IsFunction(thread->GetEcmaVM());
+    EXPECT_EQ(isFunc, false);
+}
+
+HWTEST_F_L0(EcmaModuleTest, GetRequireNativeModuleFunc) {
+    ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<SourceTextModule> module = objectFactory->NewSourceTextModule();
+    uint16_t registerNum = module->GetRegisterCounts();
+    module->SetStatus(ecmascript::ModuleStatus::INSTANTIATED);
+    module->SetRegisterCounts(registerNum);
+    Local<JSValueRef> nativeFunc = SourceTextModule::GetRequireNativeModuleFunc(thread->GetEcmaVM(),
+                                                                                module->GetTypes());
+    bool isFunc = nativeFunc->IsFunction(thread->GetEcmaVM());
+    EXPECT_EQ(isFunc, false);
+}
+
+/*
+ * Feature: Module
+ * Function: StoreModuleValue
+ * SubFunction: StoreModuleValue/GetModuleValue
+ * FunctionPoints: store a module export item in module
+ * CaseDescription: Simulated implementation of "export foo as bar", set foo as "hello world",
+ *                  use "import bar" in same js file
+ */
+HWTEST_F_L0(EcmaModuleTest, StoreModuleValue2)
+{
+    ObjectFactory* objFactory = thread->GetEcmaVM()->GetFactory();
+    CString localName = "foo";
+    CString exportName = "bar";
+    CString value = "hello world";
+    CString value2 = "hello world1";
+    int32_t index = 1;
+
+    JSHandle<JSTaggedValue> localNameHandle = JSHandle<JSTaggedValue>::Cast(objFactory->NewFromUtf8(localName));
+    JSHandle<JSTaggedValue> exportNameHandle = JSHandle<JSTaggedValue>::Cast(objFactory->NewFromUtf8(exportName));
+    JSHandle<LocalExportEntry> localExportEntry =
+        objFactory->NewLocalExportEntry(exportNameHandle, localNameHandle, LocalExportEntry::LOCAL_DEFAULT_INDEX,
+                                        SharedTypes::UNSENDABLE_MODULE);
+    JSHandle<SourceTextModule> module = objFactory->NewSourceTextModule();
+    SourceTextModule::AddLocalExportEntry(thread, module, localExportEntry, 0, 1);
+
+    JSHandle<JSTaggedValue> storeKey = JSHandle<JSTaggedValue>::Cast(objFactory->NewFromUtf8(localName));
+    JSHandle<JSTaggedValue> valueHandle = JSHandle<JSTaggedValue>::Cast(objFactory->NewFromUtf8(value));
+    JSHandle<JSTaggedValue> valueHandle1 = JSHandle<JSTaggedValue>::Cast(objFactory->NewFromUtf8(value2));
+    SourceTextModule::StoreModuleValue(thread, module, storeKey, valueHandle);
+    SourceTextModule::StoreModuleValue(thread, module, index, valueHandle1);
+    JSHandle<JSTaggedValue> loadKey = JSHandle<JSTaggedValue>::Cast(objFactory->NewFromUtf8(localName));
+    JSTaggedValue loadValue = module->GetModuleValue(thread, loadKey.GetTaggedValue(), false);
+    JSTaggedValue loadValue1 = module->GetModuleValue(thread, index, false);
+    EXPECT_EQ(valueHandle.GetTaggedValue(), loadValue);
+    EXPECT_EQ(valueHandle1.GetTaggedValue(), loadValue1);
+}
+
+HWTEST_F_L0(EcmaModuleTest, MakeAppArgs1) {
+    std::vector<Local<JSValueRef>> arguments;
+    CString soPath = "@normalized:Y&&&libentry.so&";
+    CString moduleName = "entry";
+    CString requestName = "@normalized:";
+    arguments.emplace_back(StringRef::NewFromUtf8(thread->GetEcmaVM(), soPath.c_str()));
+    SourceTextModule::MakeAppArgs(thread->GetEcmaVM(), arguments, soPath, moduleName, requestName);
+    std::string res1 = arguments[0]->ToString(thread->GetEcmaVM())->ToString(thread->GetEcmaVM());
+    std::string res2 = arguments[1]->ToString(thread->GetEcmaVM())->ToString(thread->GetEcmaVM());
+    std::string res3 = arguments[2]->ToString(thread->GetEcmaVM())->ToString(thread->GetEcmaVM());
+    EXPECT_TRUE(res1 == "entry");
+    EXPECT_TRUE(res2 == "true");
+    EXPECT_TRUE(res3 == "/entry");
+}
+
+HWTEST_F_L0(EcmaModuleTest, MakeAppArgs2) {
+    std::vector<Local<JSValueRef>> arguments;
+    CString soPath = "@app:com.example.myapplication/entry";
+    CString moduleName = "entry";
+    CString requestName = "@app:";
+    arguments.emplace_back(StringRef::NewFromUtf8(thread->GetEcmaVM(), soPath.c_str()));
+    SourceTextModule::MakeAppArgs(thread->GetEcmaVM(), arguments, soPath, moduleName, requestName);
+    std::string res1 = arguments[0]->ToString(thread->GetEcmaVM())->ToString(thread->GetEcmaVM());
+    std::string res2 = arguments[1]->ToString(thread->GetEcmaVM())->ToString(thread->GetEcmaVM());
+    std::string res3 = arguments[2]->ToString(thread->GetEcmaVM())->ToString(thread->GetEcmaVM());
+    EXPECT_TRUE(res1 == "entry");
+    EXPECT_TRUE(res2 == "true");
+    EXPECT_TRUE(res3 == "@app:com.example.myapplication");
+}
+
+HWTEST_F_L0(EcmaModuleTest, ConcatHspFileNameCrossBundle)
+{
+    CString bundleName = "com.example.application";
+    CString moduleName = "entry";
+    CString expectRes = "/data/storage/el1/bundle/com.example.application/entry/entry/ets/modules.abc";
+    CString res = ModulePathHelper::ConcatHspFileNameCrossBundle(bundleName, moduleName);
+    EXPECT_EQ(res, expectRes);
+}
+
+HWTEST_F_L0(EcmaModuleTest, ConcatHspFileName)
+{
+    CString moduleName = "entry";
+    CString expectRes = "/data/storage/el1/bundle/entry/ets/modules.abc";
+    CString res = ModulePathHelper::ConcatHspFileName(moduleName);
+    EXPECT_EQ(res, expectRes);
+}
+
+HWTEST_F_L0(EcmaModuleTest, ParseNormalizedOhmUrl)
+{
+    CString baseFileName = "/data/storage/el1/bundle/entry/ets/modules.abc";
+    CString recordName = "&har/Index&1.0.0";
+    CString requestName = "@normalized:N&&&har/src/main/page/Test&1.0.0";
+    CString expectRes = "&har/src/main/page/Test&1.0.0";
+    CString exceptBaseFileName = "/data/storage/el1/bundle/entry/ets/modules.abc";
+    CString res = ModulePathHelper::ParseNormalizedOhmUrl(thread, baseFileName, recordName, requestName);
+    EXPECT_EQ(res, expectRes);
+    EXPECT_EQ(baseFileName, exceptBaseFileName);
+
+    requestName = "@normalized:N&&har/src/main/page/Test&1.0.0";
+    res = ModulePathHelper::ParseNormalizedOhmUrl(thread, baseFileName, recordName, requestName);
+    EXPECT_TRUE((thread)->HasPendingException());
+    EXPECT_EQ(res, requestName);
+
+    baseFileName = "/data/storage/el1/bundle/entry/ets/modules.abc";
+    requestName = "@normalized:N&hsp&&hsp/src/main/page/Test&1.0.0";
+    expectRes = "&hsp/src/main/page/Test&1.0.0";
+    exceptBaseFileName = "/data/storage/el1/bundle/hsp/ets/modules.abc";
+    CString res2 = ModulePathHelper::ParseNormalizedOhmUrl(thread, baseFileName, recordName, requestName);
+    EXPECT_EQ(res2, expectRes);
+    EXPECT_EQ(baseFileName, exceptBaseFileName);
+
+    baseFileName = "/data/storage/el1/bundle/entry/ets/modules.abc";
+    requestName = "@normalized:N&hsp&com.example.application&hsp/src/main/page/Test&1.0.0";
+    exceptBaseFileName = "/data/storage/el1/bundle/com.example.application/hsp/hsp/ets/modules.abc";
+    expectRes = "com.example.application&hsp/src/main/page/Test&1.0.0";
+    CString res3 = ModulePathHelper::ParseNormalizedOhmUrl(thread, baseFileName, recordName, requestName);
+    EXPECT_EQ(res3, expectRes);
+    EXPECT_EQ(baseFileName, exceptBaseFileName);
+
+    baseFileName = "";
+    recordName = "&har/Index&1.0.0";
+    requestName = "@normalized:N&&&har/src/main/page/Test&1.0.0";
+    CString res4 = ModulePathHelper::ParseNormalizedOhmUrl(thread, baseFileName, recordName, requestName);
+    EXPECT_EQ(baseFileName, "");
+    
+    baseFileName = "/data/storage/el1/bundle/entry/ets/modules.abc";
+    requestName = "@normalized:N&&com.example.application&hsp/src/main/page/Test&1.0.0";
+    expectRes = "com.example.application&hsp/src/main/page/Test&1.0.0";
+    CString res5 = ModulePathHelper::ParseNormalizedOhmUrl(thread, baseFileName, recordName, requestName);
+    EXPECT_EQ(res5, expectRes);
+}
+
+HWTEST_F_L0(EcmaModuleTest, GetModuleNameWithBaseFile)
+{
+    CString baseFileName = "/data/storage/el1/bundle/entry/ets/modules.abc";
+    CString expectRes = "entry";
+    CString res = ModulePathHelper::GetModuleNameWithBaseFile(baseFileName);
+    EXPECT_EQ(res, expectRes);
+
+    baseFileName = "/data/storage/el1/bundle/com.example.application/hsp/hsp/ets/modules.abc";
+    expectRes = "hsp";
+    res = ModulePathHelper::GetModuleNameWithBaseFile(baseFileName);
+    EXPECT_EQ(res, expectRes);
+}
+
+
+HWTEST_F_L0(EcmaModuleTest, GetBundleNameWithRecordName)
+{
+    CString recordName = "com.example.myapplication/library";
+    CString expectRes = "com.example.myapplication";
+    CString res = ModulePathHelper::GetBundleNameWithRecordName(instance, recordName);
+    EXPECT_EQ(res, expectRes);
+
+    CMap<CString, CMap<CString, CVector<CString>>> list;
+    CMap<CString, CVector<CString>> childList;
+    list["hsp"] = childList;
+    instance->SetpkgContextInfoList(list);
+
+    recordName = "&hsp&com.example.application&hsp/src/main/page/Test&1.0.0";
+    expectRes = "com.example.application";
+    res = ModulePathHelper::GetBundleNameWithRecordName(instance, recordName);
+    EXPECT_EQ(res, expectRes);
+
+    instance->SetBundleName("com.example1.application");
+    recordName = "&har/src/main/page/Test&1.0.0";
+    expectRes = "com.example1.application";
+    res = ModulePathHelper::GetBundleNameWithRecordName(instance, recordName);
+    EXPECT_EQ(res, expectRes);
+}
+
+HWTEST_F_L0(EcmaModuleTest, InnerModuleInstantiation_ReEnterTest)
+{
+    auto vm = thread->GetEcmaVM();
+    ObjectFactory *objectFactory = vm->GetFactory();
+    JSHandle<SourceTextModule> module = objectFactory->NewSSourceTextModule();
+    module->SetEcmaModuleFilenameString("modules.abc");
+    module->SetEcmaModuleRecordNameString("b");
+    module->SetTypes(ModuleTypes::ECMA_MODULE);
+    module->SetStatus(ModuleStatus::EVALUATING);
+    module->SetIsNewBcVersion(true);
+    module->SetSharedType(SharedTypes::SHARED_MODULE);
+    CVector<JSHandle<SourceTextModule>> stack;
+    int index = SourceTextModule::InnerModuleInstantiation(thread, JSHandle<ModuleRecord>::Cast(module), stack, 1, 0);
+    EXPECT_EQ(index, 1);
+}
+
+HWTEST_F_L0(EcmaModuleTest, TransformToNormalizedOhmUrl)
+{
+    CMap<CString, CMap<CString, CVector<CString>>> pkgList;
+    CMap<CString, CVector<CString>> entryList;
+    entryList["entry"] = {
+        "packageName", "entry",
+        "bundleName", "",
+        "moduleName", "",
+        "version", "",
+        "entryPath", "src/main/",
+        "isSO", "false"
+    };
+    entryList["har"] = {
+        "packageName", "har",
+        "bundleName", "",
+        "moduleName", "",
+        "version", "1.2.0",
+        "entryPath", "",
+        "isSO", "false"
+    };
+    pkgList["entry"] = entryList;
+    CMap<CString, CVector<CString>> ohosTestList;
+    ohosTestList["ohosTest"] = {
+        "packageName", "ohosTest",
+        "bundleName", "",
+        "moduleName", "",
+        "version", "",
+        "entryPath", "src/",
+        "isSO", "false"
+    };
+    pkgList["ohosTest"] = ohosTestList;
+    instance->SetpkgContextInfoList(pkgList);
+
+    CString inputFileName = "/data/storage/el1/bundle/entry/ets/modules.abc";
+    CString outBaseFileName = "";
+    CString entryPoint = "ENTRY_MAIN_FUNCTION";
+    CString res = ModulePathHelper::TransformToNormalizedOhmUrl(instance, inputFileName, outBaseFileName, entryPoint);
+    EXPECT_EQ(res, "ENTRY_MAIN_FUNCTION");
+
+    outBaseFileName = "/data/storage/el1/bundle/entry/ets/modules.abc";
+    entryPoint = "com.example.myapplication/entry@har/ets/pages/Index";
+    res = ModulePathHelper::TransformToNormalizedOhmUrl(instance, inputFileName, outBaseFileName, entryPoint);
+    EXPECT_EQ(res, "&har/src/main/ets/pages/Index&1.2.0");
+
+    outBaseFileName = "/data/storage/el1/bundle/ohosTest/ets/modules.abc";
+    entryPoint = "com.example.myapplication/ohosTest/ets/pages/Index";
+    res = ModulePathHelper::TransformToNormalizedOhmUrl(instance, inputFileName, outBaseFileName, entryPoint);
+    EXPECT_EQ(res, "&ohosTest/src/ets/pages/Index&");
+
+    outBaseFileName = "/data/storage/el1/bundle/entry/.test/ets/modules.abc";
+    entryPoint = "com.example.myapplication/entry/.test/ets/pages/Index";
+    res = ModulePathHelper::TransformToNormalizedOhmUrl(instance, inputFileName, outBaseFileName, entryPoint);
+    EXPECT_EQ(res, "&entry/.test/ets/pages/Index&");
+}
+
+HWTEST_F_L0(EcmaModuleTest, TranslateExpressionInputWithEts)
+{
+    instance->SetBundleName("com.example.myapplication");
+    CString baseFilename = "merge.abc";
+    const char *data = R"(
+        .language ECMAScript
+        .function any func_main_0(any a0, any a1, any a2) {
+            ldai 1
+            return
+        }
+    )";
+    JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
+    Parser parser;
+    auto res = parser.Parse(data);
+    std::unique_ptr<const File> pfPtr = pandasm::AsmEmitter::Emit(res.Value());
+    std::shared_ptr<JSPandaFile> pf = pfManager->NewJSPandaFile(pfPtr.release(), baseFilename);
+
+    CString baseFileName = "/data/storage/el1/bundle/entry/ets/modules.abc";
+    CString requestName = "ets/Test";
+    CString recordName = "com.example.myapplication/entry/ets/pages/Index";
+    CString expectRes = "com.example.myapplication/entry/ets/Test";
+    CString result = ModulePathHelper::TranslateExpressionInputWithEts(thread, pf.get(), baseFileName, requestName);
+    EXPECT_EQ(result, "");
+
+    pf->InsertJSRecordInfo(expectRes);
+    result = ModulePathHelper::TranslateExpressionInputWithEts(thread, pf.get(), baseFileName, requestName);
+    EXPECT_EQ(result, expectRes);
+}
+
+HWTEST_F_L0(EcmaModuleTest, ReviseLoadedModuleCount1) {
+    CString moduleName = "testModule";
+    ModuleDeregister::ReviseLoadedModuleCount(thread, moduleName);
+    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+    bool res = moduleManager->IsLocalModuleLoaded(moduleName);
+    EXPECT_EQ(res, false);
+}
+
+HWTEST_F_L0(EcmaModuleTest, IncreaseRegisterCounts)
+{
+    std::string baseFileName = MODULE_ABC_PATH "module_test_module_test_C.abc";
+    JSNApi::EnableUserUncaughtErrorHandler(instance);
+    bool result = JSNApi::Execute(instance, baseFileName, "module_test_module_test_C");
+    EXPECT_TRUE(result);
+    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+    JSHandle<SourceTextModule> module = moduleManager->HostGetImportedModule("module_test_module_test_C");
+    ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<SourceTextModule> module2 = objectFactory->NewSourceTextModule();
+    std::set<CString> increaseModule;
+
+    ModuleDeregister::IncreaseRegisterCounts(thread, module, increaseModule);
+    EXPECT_EQ(module->GetRequestedModules().IsUndefined(), false);
+
+    module->SetRegisterCounts(INT8_MAX);
+    ModuleDeregister::IncreaseRegisterCounts(thread, module, increaseModule);
+    EXPECT_EQ(module->GetRequestedModules().IsUndefined(), false);
+
+    module2->SetRegisterCounts(INT8_MAX);
+    ModuleDeregister::IncreaseRegisterCounts(thread, module2, increaseModule);
+    EXPECT_EQ(module2->GetRequestedModules().IsUndefined(), true);
+
+    module2->SetLoadingTypes(LoadingTypes::STABLE_MODULE);
+    ModuleDeregister::IncreaseRegisterCounts(thread, module2, increaseModule);
+    bool res = module2->GetLoadingTypes() == LoadingTypes::STABLE_MODULE;
+    EXPECT_EQ(res, true);
+}
+
+HWTEST_F_L0(EcmaModuleTest, DecreaseRegisterCounts)
+{
+    std::string baseFileName = MODULE_ABC_PATH "module_test_module_test_C.abc";
+    JSNApi::EnableUserUncaughtErrorHandler(instance);
+    bool result = JSNApi::Execute(instance, baseFileName, "module_test_module_test_C");
+    EXPECT_TRUE(result);
+    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+    JSHandle<SourceTextModule> module = moduleManager->HostGetImportedModule("module_test_module_test_C");
+    ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<SourceTextModule> module2 = objectFactory->NewSourceTextModule();
+    std::set<CString> decreaseModule;
+
+    ModuleDeregister::DecreaseRegisterCounts(thread, module, decreaseModule);
+    bool res1 = module->GetLoadingTypes() != LoadingTypes::DYNAMITC_MODULE;
+    EXPECT_EQ(res1, true);
+
+    module->SetRegisterCounts(INT8_MAX);
+    ModuleDeregister::DecreaseRegisterCounts(thread, module, decreaseModule);
+    EXPECT_EQ(module->GetRequestedModules().IsUndefined(), false);
+
+    module2->SetLoadingTypes(LoadingTypes::DYNAMITC_MODULE);
+    ModuleDeregister::DecreaseRegisterCounts(thread, module2, decreaseModule);
+    bool res2 = module2->GetLoadingTypes() != LoadingTypes::DYNAMITC_MODULE;
+    EXPECT_EQ(res2, false);
+}
+
+HWTEST_F_L0(EcmaModuleTest, GetSendableModuleValueImpl) {
+    ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<SourceTextModule> module1 = objectFactory->NewSourceTextModule();
+    SharedModuleManager* manager1 = SharedModuleManager::GetInstance();
+    int32_t index = 2;
+    JSTaggedValue currentModule1 = module1.GetTaggedValue();
+    JSTaggedValue res1 = manager1->GetSendableModuleValueImpl(
+        thread, index, currentModule1);
+    EXPECT_EQ(res1, thread->GlobalConstants()->GetUndefined());
+
+    SharedModuleManager* manager2 = SharedModuleManager::GetInstance();
+    std::string baseFileName = MODULE_ABC_PATH "module_test_module_test_C.abc";
+    JSNApi::EnableUserUncaughtErrorHandler(instance);
+    bool result = JSNApi::Execute(instance, baseFileName, "module_test_module_test_C");
+    EXPECT_TRUE(result);
+    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+    JSHandle<SourceTextModule> module2 = moduleManager->HostGetImportedModule("module_test_module_test_C");
+    JSTaggedValue currentModule2 = module2.GetTaggedValue();
+    JSTaggedValue res2 = manager2->GetSendableModuleValueImpl(
+        thread, index, currentModule2);
+    EXPECT_NE(res2, thread->GlobalConstants()->GetUndefined());
+}
+
+HWTEST_F_L0(EcmaModuleTest, GetLazySendableModuleValueImpl) {
+    ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<SourceTextModule> module1 = objectFactory->NewSourceTextModule();
+    SharedModuleManager* manager1 = SharedModuleManager::GetInstance();
+    int32_t index = 2;
+    JSTaggedValue currentModule1 = module1.GetTaggedValue();
+    JSTaggedValue res1 = manager1->GetLazySendableModuleValueImpl(
+        thread, index, currentModule1);
+    EXPECT_EQ(res1, thread->GlobalConstants()->GetUndefined());
+}
+
+HWTEST_F_L0(EcmaModuleTest, ResolveImportedModuleWithMerge) {
+    std::string baseFileName = MODULE_ABC_PATH "module_test_module_test_C.abc";
+    JSNApi::EnableUserUncaughtErrorHandler(instance);
+    bool result = JSNApi::Execute(instance, baseFileName, "module_test_module_test_C");
+    EXPECT_TRUE(result);
+    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+    JSHandle<SourceTextModule> module = moduleManager->HostGetImportedModule("module_test_module_test_C");
+    module->SetSharedType(SharedTypes::SHARED_MODULE);
+
+    CString recordName2 = "testModule";
+    bool executeFromJob = false;
+    JSHandle<JSTaggedValue> res = ModuleResolver::ResolveImportedModuleWithMerge(
+        thread, baseFileName.c_str(), recordName2, executeFromJob);
+    EXPECT_EQ(res.GetTaggedValue(), JSTaggedValue::Exception());
+}
+
+HWTEST_F_L0(EcmaModuleTest, ResolveImportedModuleWithMerge2) {
+    CString moduleName1;
+    CString recordName1;
+
+    bool executeFromJob = false;
+    JSHandle<JSTaggedValue> res = ModuleResolver::ResolveImportedModuleWithMerge(
+        thread, moduleName1, recordName1, executeFromJob);
+    EXPECT_EQ(res.GetTaggedValue(), JSTaggedValue::Exception());
+}
+
+HWTEST_F_L0(EcmaModuleTest, IsInstantiatedSModule) {
+    SharedModuleManager* manager1 = SharedModuleManager::GetInstance();
+    std::string baseFileName = MODULE_ABC_PATH "module_test_module_test_C.abc";
+    JSNApi::EnableUserUncaughtErrorHandler(instance);
+    bool result = JSNApi::Execute(instance, baseFileName, "module_test_module_test_C");
+    EXPECT_TRUE(result);
+    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+    JSHandle<SourceTextModule> module = moduleManager->HostGetImportedModule("module_test_module_test_C");
+    bool res = manager1->IsInstantiatedSModule(thread, module);
+    EXPECT_EQ(res, true);
+}
+
+HWTEST_F_L0(EcmaModuleTest, ProcessModuleLoadInfoForESM)
+{
+    ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<SourceTextModule> module1 = objectFactory->NewSourceTextModule();
+    CString baseFileName = "modules.abc";
+    module1->SetEcmaModuleFilenameString(baseFileName);
+    CString recordName1 = "a";
+    module1->SetEcmaModuleRecordNameString(recordName1);
+    JSHandle<JSTaggedValue> val = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("val"));
+    JSHandle<ImportEntry> importEntry =
+        objectFactory->NewImportEntry(val, val, val, SharedTypes::UNSENDABLE_MODULE);
+    SourceTextModule::AddImportEntry(thread, module1, importEntry, 0, 1);
+
+    JSHandle<SourceTextModule> module2 = objectFactory->NewSourceTextModule();
+    module2->SetEcmaModuleFilenameString(baseFileName);
+    CString recordName2 = "b";
+    module2->SetEcmaModuleRecordNameString(recordName2);
+    JSHandle<LocalExportEntry> localExportEntry =
+        objectFactory->NewLocalExportEntry(val, val, 0, SharedTypes::UNSENDABLE_MODULE);
+    JSHandle<TaggedArray> localExportEntries = objectFactory->NewTaggedArray(1);
+    localExportEntries->Set(thread, 0, localExportEntry);
+    module2->SetLocalExportEntries(thread, localExportEntries);
+    SourceTextModule::StoreModuleValue(thread, module2, 0, val);
+    module2->SetStatus(ModuleStatus::EVALUATED);
+    ModuleLogger *moduleLogger = new ModuleLogger(thread->GetEcmaVM());
+    thread->GetCurrentEcmaContext()->SetModuleLogger(moduleLogger);
+    // test ResolvedIndexBinding
+    JSHandle<ResolvedIndexBinding> indexBinding =
+        objectFactory->NewResolvedIndexBindingRecord(module2, 0);
+    JSTaggedValue res1 = ModuleTools::ProcessModuleLoadInfo(thread, module1, indexBinding.GetTaggedValue(), 0);
+    EXPECT_EQ(res1, val.GetTaggedValue());
+
+    JSTaggedValue res2 = ModuleTools::ProcessModuleNameSpaceLoadInfo(thread, module1, module2);
+    EXPECT_NE(res2, JSTaggedValue::Exception());
+
+    // test HotReload
+    thread->GetCurrentEcmaContext()->SetStageOfHotReload(StageOfHotReload::LOAD_END_EXECUTE_PATCHMAIN);
+    JSTaggedValue res3 = ModuleTools::ProcessModuleLoadInfo(thread, module1, indexBinding.GetTaggedValue(), 0);
+    EXPECT_EQ(res3, val.GetTaggedValue());
+
+    thread->GetCurrentEcmaContext()->AddPatchModule(recordName2, JSHandle<JSTaggedValue>::Cast(module2));
+    JSTaggedValue res4 = ModuleTools::ProcessModuleLoadInfo(thread, module1, indexBinding.GetTaggedValue(), 0);
+    EXPECT_EQ(res4, val.GetTaggedValue());
+
+    thread->GetCurrentEcmaContext()->SetModuleLogger(nullptr);
+    delete moduleLogger;
+}
+
+HWTEST_F_L0(EcmaModuleTest, ProcessModuleLoadInfoForCJS)
+{
+    ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<SourceTextModule> module1 = objectFactory->NewSourceTextModule();
+    CString baseFileName = "modules.abc";
+    module1->SetEcmaModuleFilenameString(baseFileName);
+    CString recordName1 = "a";
+    module1->SetEcmaModuleRecordNameString(recordName1);
+    JSHandle<JSTaggedValue> val = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("val"));
+    JSHandle<ImportEntry> importEntry =
+        objectFactory->NewImportEntry(val, val, val, SharedTypes::UNSENDABLE_MODULE);
+    SourceTextModule::AddImportEntry(thread, module1, importEntry, 0, 1);
+
+    JSHandle<SourceTextModule> module2 = objectFactory->NewSourceTextModule();
+    module2->SetEcmaModuleFilenameString(baseFileName);
+    CString recordName2 = "cjs";
+    module2->SetEcmaModuleRecordNameString(recordName2);
+    JSHandle<LocalExportEntry> localExportEntry =
+        objectFactory->NewLocalExportEntry(val, val, 0, SharedTypes::UNSENDABLE_MODULE);
+    JSHandle<TaggedArray> localExportEntries = objectFactory->NewTaggedArray(1);
+    localExportEntries->Set(thread, 0, localExportEntry);
+    module2->SetLocalExportEntries(thread, localExportEntries);
+    SourceTextModule::StoreModuleValue(thread, module2, 0, val);
+    module2->SetTypes(ModuleTypes::CJS_MODULE);
+    module2->SetStatus(ModuleStatus::EVALUATED);
+    JSHandle<CjsModule> moduleCjs = objectFactory->NewCjsModule();
+    JSHandle<JSTaggedValue> recordName2Hdl =
+        JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8(recordName2.c_str()));
+    JSHandle<JSTaggedValue> baseFileNameHdl =
+        JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8(baseFileName.c_str()));
+    CjsModule::InitializeModule(thread, moduleCjs, recordName2Hdl, baseFileNameHdl);
+    CjsModule::PutIntoCache(thread, moduleCjs, recordName2Hdl);
+
+    JSHandle<TaggedArray> envRec = objectFactory->NewTaggedArray(1);
+    JSHandle<JSTaggedValue> resolution =
+        JSHandle<JSTaggedValue>::Cast(objectFactory->NewResolvedBindingRecord(module2, val));
+    envRec->Set(thread, 0, resolution);
+    module1->SetEnvironment(thread, envRec);
+
+    ModuleLogger *moduleLogger = new ModuleLogger(thread->GetEcmaVM());
+    thread->GetCurrentEcmaContext()->SetModuleLogger(moduleLogger);
+
+    // test ResolvedBinding
+    JSTaggedValue res1 = ModuleTools::ProcessModuleNameSpaceLoadInfo(thread, module1, module2);
+    EXPECT_NE(res1, JSTaggedValue::Exception());
+
+    JSTaggedValue res2 = ModuleTools::ProcessModuleLoadInfo(thread, module1, resolution.GetTaggedValue(), 0);
+    EXPECT_EQ(res2, JSTaggedValue::Exception());
+    thread->GetCurrentEcmaContext()->SetModuleLogger(nullptr);
+    delete moduleLogger;
+}
+
+HWTEST_F_L0(EcmaModuleTest, ProcessModuleLoadInfoForNativeModule)
+{
+    ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<SourceTextModule> module1 = objectFactory->NewSourceTextModule();
+    CString baseFileName = "modules.abc";
+    module1->SetEcmaModuleFilenameString(baseFileName);
+    CString recordName1 = "a";
+    module1->SetEcmaModuleRecordNameString(recordName1);
+    JSHandle<JSTaggedValue> val = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("val"));
+    JSHandle<ImportEntry> importEntry =
+        objectFactory->NewImportEntry(val, val, val, SharedTypes::UNSENDABLE_MODULE);
+    SourceTextModule::AddImportEntry(thread, module1, importEntry, 0, 1);
+
+    JSHandle<SourceTextModule> module2 = objectFactory->NewSourceTextModule();
+    module2->SetEcmaModuleFilenameString(baseFileName);
+    CString recordName2 = "nativeModule";
+    module2->SetEcmaModuleRecordNameString(recordName2);
+    JSHandle<LocalExportEntry> localExportEntry =
+        objectFactory->NewLocalExportEntry(val, val, 0, SharedTypes::UNSENDABLE_MODULE);
+    JSHandle<TaggedArray> localExportEntries = objectFactory->NewTaggedArray(1);
+    localExportEntries->Set(thread, 0, localExportEntry);
+    module2->SetLocalExportEntries(thread, localExportEntries);
+    SourceTextModule::StoreModuleValue(thread, module2, 0, val);
+    module2->SetTypes(ModuleTypes::NATIVE_MODULE);
+    module2->SetStatus(ModuleStatus::EVALUATED);
+
+    JSHandle<TaggedArray> envRec = objectFactory->NewTaggedArray(1);
+    JSHandle<JSTaggedValue> resolution = JSHandle<JSTaggedValue>::Cast(
+        objectFactory->NewResolvedBindingRecord(module2, val));
+    envRec->Set(thread, 0, resolution);
+    module1->SetEnvironment(thread, envRec);
+
+    ModuleLogger *moduleLogger = new ModuleLogger(thread->GetEcmaVM());
+    thread->GetCurrentEcmaContext()->SetModuleLogger(moduleLogger);
+
+    JSTaggedValue res1 = ModuleTools::ProcessModuleLoadInfo(thread, module1, resolution.GetTaggedValue(), 0);
+    EXPECT_EQ(res1, JSTaggedValue::Exception());
+
+    JSTaggedValue res2 = ModuleTools::ProcessModuleNameSpaceLoadInfo(thread, module1, module2);
+    EXPECT_NE(res2, JSTaggedValue::Exception());
+    thread->GetCurrentEcmaContext()->SetModuleLogger(nullptr);
+    delete moduleLogger;
+}
+
+HWTEST_F_L0(EcmaModuleTest, ResolvedBindingForLog)
+{
+    ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<SourceTextModule> module1 = objectFactory->NewSourceTextModule();
+    CString baseFileName = "modules.abc";
+    module1->SetEcmaModuleFilenameString(baseFileName);
+    CString recordName1 = "a";
+    module1->SetEcmaModuleRecordNameString(recordName1);
+    JSHandle<JSTaggedValue> val = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("val"));
+    JSHandle<ImportEntry> importEntry =
+        objectFactory->NewImportEntry(val, val, val, SharedTypes::UNSENDABLE_MODULE);
+    SourceTextModule::AddImportEntry(thread, module1, importEntry, 0, 1);
+
+    JSHandle<SourceTextModule> module2 = objectFactory->NewSourceTextModule();
+    module2->SetEcmaModuleFilenameString(baseFileName);
+    CString recordName2 = "b";
+    module2->SetEcmaModuleRecordNameString(recordName2);
+    JSHandle<LocalExportEntry> localExportEntry =
+        objectFactory->NewLocalExportEntry(val, val, 0, SharedTypes::UNSENDABLE_MODULE);
+    JSHandle<TaggedArray> localExportEntries = objectFactory->NewTaggedArray(1);
+    localExportEntries->Set(thread, 0, localExportEntry);
+    module2->SetLocalExportEntries(thread, localExportEntries);
+    SourceTextModule::StoreModuleValue(thread, module2, 0, val);
+    module2->SetStatus(ModuleStatus::EVALUATED);
+    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+    moduleManager->AddResolveImportedModule(recordName2, module2.GetTaggedValue());
+
+    ModuleLogger *moduleLogger = new ModuleLogger(thread->GetEcmaVM());
+    thread->GetCurrentEcmaContext()->SetModuleLogger(moduleLogger);
+    // test ResolvedRecordIndexBinding
+    JSHandle<EcmaString> recordNameHdl = objectFactory->NewFromUtf8(recordName2);
+    JSHandle<EcmaString> baseFileNameHdl = objectFactory->NewFromUtf8(baseFileName);
+    JSHandle<ResolvedRecordIndexBinding> recordIndexBinding =
+        objectFactory->NewSResolvedRecordIndexBindingRecord(recordNameHdl, baseFileNameHdl, 0);
+    JSTaggedValue res1 = ModuleTools::ProcessModuleLoadInfo(thread, module1, recordIndexBinding.GetTaggedValue(), 0);
+    EXPECT_EQ(res1, val.GetTaggedValue());
+
+    // test ResolvedRecordBinding
+    JSHandle<ResolvedRecordBinding> nameBinding =
+        objectFactory->NewSResolvedRecordBindingRecord(recordNameHdl, val);
+    JSTaggedValue res2 = ModuleTools::ProcessModuleLoadInfo(thread, module1, nameBinding.GetTaggedValue(), 0);
+    EXPECT_EQ(res2, JSTaggedValue::Exception());
+    thread->GetCurrentEcmaContext()->SetModuleLogger(nullptr);
+    delete moduleLogger;
+}
+
+HWTEST_F_L0(EcmaModuleTest, ToStringWithPrecision)
+{
+    std::string res = ModuleLogger::ToStringWithPrecision(4.550, 3);
+    EXPECT_EQ(res, "4.55");
+}
+
 HWTEST_F_L0(EcmaModuleTest, GetResolvedRecordIndexBindingModule)
 {
     ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
@@ -3053,7 +3054,6 @@ HWTEST_F_L0(EcmaModuleTest, GetLazyModuleValueFromRecordBindingTest)
     CString recordName1 = "module_unexecute_C";
     module1->SetEcmaModuleRecordNameString(recordName1);
     JSHandle<JSTaggedValue> val = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("default"));
-
 
     // test GetLazyModuleValueFromRecordBinding
     JSHandle<EcmaString> recordNameHdl = objectFactory->NewFromUtf8(recordName1);
