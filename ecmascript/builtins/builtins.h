@@ -71,6 +71,7 @@ private:
                                      kungfu::BuiltinsStubCSigns::ID builtinId =
                                      kungfu::BuiltinsStubCSigns::INVALID) const;
 
+    void InitializeNapiHClass(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &objFuncClass) const;
     void InitializePropertyDetector(const JSHandle<GlobalEnv> &env, bool lazyInit) const;
 
     void SetLazyAccessor(const JSHandle<JSObject> &object, const JSHandle<JSTaggedValue> &key,

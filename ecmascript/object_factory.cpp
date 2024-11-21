@@ -1053,6 +1053,19 @@ JSHandle<JSObject> ObjectFactory::NewJSAggregateError()
     return NewJSObjectByConstructor(constructor);
 }
 
+JSHandle<JSObject> ObjectFactory::CreateNapiObject()
+{
+    JSHandle<GlobalEnv> globalEnv = vm_->GetGlobalEnv();
+    JSHandle<JSFunction> constructor(globalEnv->GetObjectFunction());
+    JSHandle<JSHClass> ihc(globalEnv->GetObjectFunctionNapiClass());
+    if (globalEnv->GetTaggedObjectFunctionTsNapiClass().IsJSHClass()) {
+        ihc = JSHandle<JSHClass>(globalEnv->GetObjectFunctionTsNapiClass());
+    }
+    JSHandle<JSObject> jsObject(NewJSObjectWithInit(ihc));
+    JSHandle<JSTaggedValue> object(jsObject);
+    return jsObject;
+}
+
 JSHandle<JSObject> ObjectFactory::NewJSObjectByConstructor(JSHandle<GlobalEnv> env,
     const JSHandle<JSFunction> &constructor, uint32_t inlinedProps)
 {

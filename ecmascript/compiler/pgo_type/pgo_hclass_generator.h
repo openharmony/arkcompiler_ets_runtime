@@ -29,7 +29,7 @@ public:
     bool FindHClassLayoutDesc(PGOSampleType type) const;
     // The hclass of object literal needs to be created from cached
     bool GenerateHClass(PGOSampleType type, bool isCache) const;
-    bool GenerateIHClass(PGOSampleType type, const JSHandle<JSObject> &prototype) const;
+    bool GenerateIHClass(PGOSampleType type, const JSHandle<JSTaggedValue> &prototype) const;
 
 private:
     void CaculateMaxNumOfObj(

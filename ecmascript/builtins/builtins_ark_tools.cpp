@@ -1479,4 +1479,12 @@ JSTaggedValue BuiltinsArkTools::InOldSpace(EcmaRuntimeCallInfo *info)
     Region *region = Region::ObjectAddressToRange(arg->GetTaggedObject());
     return JSTaggedValue(region->InOldSpace());
 }
+
+JSTaggedValue BuiltinsArkTools::CreateNapiObject(EcmaRuntimeCallInfo *msg)
+{
+    JSThread *thread = msg->GetThread();
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<JSObject> jsObject(factory->CreateNapiObject());
+    return jsObject.GetTaggedValue();
+}
 } // namespace panda::ecmascript::builtins
