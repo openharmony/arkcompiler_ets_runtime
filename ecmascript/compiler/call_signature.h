@@ -577,11 +577,11 @@ private:
     V(JSMapValues)                              \
     V(JSSetHas)                                 \
     V(JSSetAdd)                                 \
-    V(JSMapDelete)                              \
-    V(JSSetDelete)                              \
     V(CreateJSTypedArrayEntries)                \
     V(CreateJSTypedArrayKeys)                   \
     V(CreateJSTypedArrayValues)                 \
+    V(JSMapDelete)                              \
+    V(JSSetDelete)                              \
     V(JSSetEntries)                             \
     V(JSHClassFindProtoTransitions)             \
     V(NumberHelperStringToDouble)               \
@@ -592,8 +592,8 @@ private:
     V(StringGetStart)                           \
     V(StringGetEnd)                             \
     V(ArrayTrim)                                \
-    V(OptimizedFastJmp)                         \
     V(CopyTypedArrayBuffer)                     \
+    V(OptimizedFastJmp)                         \
     V(CallArg0AndDispatchFromBaseline)          \
     V(CallArg1AndDispatchFromBaseline)          \
     V(CallArgs2AndDispatchFromBaseline)         \

@@ -343,7 +343,7 @@ GateRef ProfilerStubBuilder::TryGetBuiltinFunctionId(GateRef target)
     Label exit(env);
 
     DEFVARIABLE(functionId, VariableType::INT32(), Int32(PGO_BUILTINS_STUB_ID(NONE)));
-
+    
     BRANCH(IsJSFunction(target), &targetIsFunction, &exit);
     Bind(&targetIsFunction);
     {
@@ -800,7 +800,7 @@ GateRef ProfilerStubBuilder::GetSlotID(const SlotIDInfo &slotInfo)
         auto result = Int16Add(hight, ZExtInt8ToInt16(low));
         return ZExtInt16ToInt32(result);
     } else if (format == SlotIDFormat::PREF_IMM8) {
-        return ZExtInt8ToInt32(Load(VariableType::INT8(), pc, IntPtr(2)));
+        return ZExtInt8ToInt32(Load(VariableType::INT8(), pc, IntPtr(2))); // 2 : skip 1 byte of bytecode
     }
     return ZExtInt8ToInt32(Load(VariableType::INT8(), pc, IntPtr(1)));
 }

@@ -592,7 +592,7 @@ void BuiltinsArrayStubBuilder::Filter(GateRef glue, GateRef thisValue, GateRef n
     Bind(&notEmptyArray);
     BRANCH(Int64GreaterThan(len, Int64(JSObject::MAX_GAP)), slowPath, &notOverFlow);
     Bind(&notOverFlow);
-
+    
     GateRef argHandle = GetCallArg1(numArgs);
     GateRef newArray = NewArray(glue, len);
     GateRef lengthOffset = IntPtr(JSArray::LENGTH_OFFSET);
@@ -3524,7 +3524,7 @@ void BuiltinsArrayStubBuilder::CopyWithin(GateRef glue, GateRef thisValue, GateR
     Bind(&afterCallArg1);
     {
         endPos = thisLen;
-        BRANCH(Int64GreaterThanOrEqual(IntPtr(2), numArgs), &afterCallArg2, &endTagExists);
+        BRANCH(Int64GreaterThanOrEqual(IntPtr(2), numArgs), &afterCallArg2, &endTagExists); //2: 2 parameters
         Bind(&endTagExists);
         {
             GateRef endTag = GetCallArg2(numArgs);

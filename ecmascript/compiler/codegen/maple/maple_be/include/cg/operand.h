@@ -907,7 +907,7 @@ class MemOperand : public OperandVisitable<MemOperand> {
 public:
     enum AArch64AddressingMode : uint8 {
         kAddrModeUndef,
-        /* AddrMode_BO, base, offset. EA = [base] + offset; */
+        /* AddrMode_BO, base, offset. EA = [base] + offset */
         kAddrModeBOi, /* INTACT: EA = [base]+immediate */
         /*
          * PRE: base += immediate, EA = [base]
@@ -1367,7 +1367,7 @@ public:
     uint32 ShiftAmount() const
     {
         uint32 scale = extend & 0xF;
-        /* 8 is 1 << 3, 4 is 1 << 2, 2 is 1 << 1, 1 is 1 << 0; */
+        /* 8 is 1 << 3, 4 is 1 << 2, 2 is 1 << 1, 1 is 1 << 0 */
         return (scale == 8) ? 3 : ((scale == 4) ? 2 : ((scale == 2) ? 1 : 0));
     }
 
