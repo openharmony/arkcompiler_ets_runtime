@@ -94,9 +94,11 @@ public:
     void PUBLIC_API CreatePGOType(BytecodeInfoCollector &collector);
 
 private:
+    void GenerateHClassForNapiType(ProfileType rootType, const PGOHClassGenerator &generator);
     void GenerateHClassForClassType(ProfileType rootType, ProfileType protoPt, const PGOHClassGenerator &generator,
                                     bool isCache);
     void GenerateHClassForPrototype(ProfileType rootType, const PGOHClassGenerator &generator, bool isCache);
+    bool SkipGenerateHClass(PGOTypeRecorder typeRecorder, ProfileType rootType, bool isCache);
 
     const PGOProfilerDecoder &decoder_;
     PGOTypeManager *ptManager_;

@@ -18,6 +18,7 @@
 #include "ecmascript/builtins/builtins.h"
 #include "ecmascript/builtins/builtins_regexp.h"
 #include "ecmascript/builtins/builtins_number.h"
+#include "ecmascript/compiler/aot_constantpool_patcher.h"
 #include "ecmascript/compiler/pgo_type/pgo_type_manager.h"
 #include "ecmascript/dfx/vmstat/opt_code_profiler.h"
 #include "ecmascript/jit/jit.h"
@@ -303,6 +304,12 @@ Expected<JSTaggedValue, bool> EcmaContext::CommonInvokeEcmaEntrypoint(const JSPa
     ASSERT(thread_->IsInManagedState());
     JSHandle<JSTaggedValue> global = GlobalEnv::Cast(globalEnv_.GetTaggedObject())->GetJSGlobalObject();
     JSHandle<JSTaggedValue> undefined = thread_->GlobalConstants()->GetHandledUndefined();
+    if (vm_->IsEnablePGOProfiler()) {
+        JSHandle<JSFunction> objectFunction(GlobalEnv::Cast(globalEnv_.GetTaggedObject())->GetObjectFunction());
+        JSHandle<JSHClass> protoOrHClass(GlobalEnv::Cast(globalEnv_.GetTaggedObject())->GetObjectFunctionNapiClass());
+        vm_->GetPGOProfiler()->ProfileNapiRootHClass(
+            objectFunction.GetTaggedType(), protoOrHClass.GetTaggedType(), pgo::ProfileType::Kind::NapiId);
+    }
     CString entry = entryPoint.data();
     JSRecordInfo *recordInfo = nullptr;
     bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(entry, &recordInfo);
@@ -669,6 +676,8 @@ JSHandle<ConstantPool> EcmaContext::FindOrCreateConstPool(const JSPandaFile *jsP
         JSHandle<ConstantPool> newConstpool = ConstantPool::CreateUnSharedConstPool(vm_, jsPandaFile, id);
         JSHandle<ConstantPool> newSConstpool;
         if (jsPandaFile->IsLoadedAOT()) {
+            // worker thread is not active.
+            AotConstantpoolPatcher::SetObjectFunctionFromConstPool(thread_, newConstpool);
             newSConstpool = ConstantPool::CreateSharedConstPoolForAOT(vm_, newConstpool, index);
         } else {
             newSConstpool = ConstantPool::CreateSharedConstPool(vm_, jsPandaFile, id, index);

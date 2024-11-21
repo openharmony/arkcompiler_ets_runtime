@@ -104,6 +104,27 @@ void PGOProfiler::ProfileClassRootHClass(JSTaggedType ctor, JSTaggedType rootHcV
     SetRootProfileType(rootHc, abcId, entityId, kind);
 }
 
+void PGOProfiler::ProfileNapiRootHClass(JSTaggedType ctor, JSTaggedType rootHcValue, ProfileType::Kind kind)
+{
+    if (!isEnable_) {
+        return;
+    }
+
+    auto ctorValue = JSTaggedValue(ctor);
+    if (!ctorValue.IsJSFunction()) {
+        return;
+    }
+    auto ctorFunc = JSFunction::Cast(ctorValue.GetTaggedObject());
+    auto ctorMethodValue = ctorFunc->GetMethod();
+    if (!ctorMethodValue.IsMethod()) {
+        return;
+    }
+    auto entityId = Method::Cast(ctorMethodValue)->GetMethodId().GetOffset();
+    auto rootHc = JSHClass::Cast(JSTaggedValue(rootHcValue).GetTaggedObject());
+    auto abcId = GetMethodAbcId(ctorFunc);
+    SetRootProfileType(rootHc, abcId, entityId, kind);
+}
+
 void PGOProfiler::ProfileProtoTransitionClass(JSHandle<JSFunction> func,
                                               JSHandle<JSHClass> hclass,
                                               JSHandle<JSTaggedValue> proto)
