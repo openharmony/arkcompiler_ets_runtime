@@ -90,7 +90,7 @@ foreach(filename, _test_js_file_name_) {
   }
 }
 
-module_output_path = "arkcompiler/ets_runtime"
+module_output_path = "ets_runtime"
 
 host_unittest_action("JSPandaFileTest") {
   module_out_path = module_output_path

@@ -14,7 +14,7 @@
 import("//arkcompiler/ets_runtime/js_runtime_config.gni")
 import("//arkcompiler/ets_runtime/test/test_helper.gni")
 
-module_output_path = "arkcompiler/ets_runtime"
+module_output_path = "ets_runtime"
 
 host_unittest_action("mapleallUT") {
   rtti_compile_flag = false
