@@ -198,4 +198,10 @@ void MemMapAllocator::AdapterSuitablePoolCapacity()
     capacity_ = std::min<size_t>(physicalSize * DEFAULT_CAPACITY_RATE, MAX_MEM_POOL_CAPACITY);
     LOG_GC(INFO) << "Ark Auto adapter memory pool capacity:" << capacity_;
 }
+
+void MemMapAllocator::TransferToInfiniteModeForGC()
+{
+    capacity_ = std::numeric_limits<size_t>::max();
+    LOG_GC(INFO) << "MemMapAllocator transfer to infinite mode:" << capacity_;
+}
 }  // namespace panda::ecmascript

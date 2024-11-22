@@ -61,6 +61,12 @@ private:
     NO_COPY_SEMANTIC(HeapRegionAllocator);
     NO_MOVE_SEMANTIC(HeapRegionAllocator);
 
+    // Can not throw OOM during GC, so just make MemMapAllocator infinite to make allocating region always
+    // success to complete this GC, and then do HeapDump and Fatal.
+    // This will temporarily lead that all JSThread could always AllcationRegion success,
+    // breaking the global region limit, but thread calling this will soon complete GC and then fatal.
+    void TemporarilyEnsureAllocateionAlwaysSuccess(BaseHeap *heap);
+
     std::atomic<size_t> annoMemoryUsage_ {0};
     std::atomic<size_t> maxAnnoMemoryUsage_ {0};
 };

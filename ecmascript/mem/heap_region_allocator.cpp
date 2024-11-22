@@ -37,23 +37,31 @@ Region *HeapRegionAllocator::AllocateAlignedRegion(Space *space, size_t capacity
         flags == RegionSpaceFlag::IN_HUGE_MACHINE_CODE_SPACE);
     auto tid = thread ? thread->GetThreadId() : JSThread::GetCurrentThreadId();
     auto pool = MemMapAllocator::GetInstance()->Allocate(tid, capacity, DEFAULT_REGION_SIZE,
-                                                         ToSpaceTypeName(space->GetSpaceType()),
-                                                         isRegular, isMachineCode,
-                                                         Jit::GetInstance()->IsEnableJitFort());
+        ToSpaceTypeName(space->GetSpaceType()), isRegular, isMachineCode, Jit::GetInstance()->IsEnableJitFort());
     void *mapMem = pool.GetMem();
     if (mapMem == nullptr) { // LOCV_EXCL_BR_LINE
-        if (thread != nullptr && thread->GetEcmaVM()->IsInitialized()) {
-            Heap *localHeap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-            if (!localHeap->InGC()) {
-                LOG_ECMA_MEM(INFO)
-                    << "HeapRegionAllocator::AllocateAlignedRegion, is inGC and not DumpHeapSnapshotBeforeOOM";
-                localHeap->DumpHeapSnapshotBeforeOOM();
+        if (heap->InGC()) {
+            // Donot crash in GC.
+            TemporarilyEnsureAllocateionAlwaysSuccess(heap);
+            pool = MemMapAllocator::GetInstance()->Allocate(tid, capacity, DEFAULT_REGION_SIZE,
+                ToSpaceTypeName(space->GetSpaceType()), isRegular, isMachineCode,
+                Jit::GetInstance()->IsEnableJitFort());
+            mapMem = pool.GetMem();
+            if (mapMem == nullptr) {
+                // This should not happen
+                LOG_ECMA_MEM(FATAL) << "pool is empty in GC unexpectedly";
+                UNREACHABLE();
             }
-            heap->ThrowOutOfMemoryErrorForDefault(thread, DEFAULT_REGION_SIZE,
-                "HeapRegionAllocator::AllocateAlignedRegion", false);
+        } else {
+            if (thread != nullptr && thread->GetEcmaVM()->IsInitialized()) {
+                Heap *localHeap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+                localHeap->DumpHeapSnapshotBeforeOOM();
+                heap->ThrowOutOfMemoryErrorForDefault(thread, DEFAULT_REGION_SIZE,
+                    "HeapRegionAllocator::AllocateAlignedRegion", false);
+            }
+            LOG_ECMA_MEM(FATAL) << "pool is empty " << annoMemoryUsage_.load(std::memory_order_relaxed);
+            UNREACHABLE();
         }
-        LOG_ECMA_MEM(FATAL) << "pool is empty " << annoMemoryUsage_.load(std::memory_order_relaxed);
-        UNREACHABLE();
     }
 #if ECMASCRIPT_ENABLE_ZAP_MEM
     if (memset_s(mapMem, capacity, 0, capacity) != EOK) { // LOCV_EXCL_BR_LINE
@@ -94,5 +102,12 @@ void HeapRegionAllocator::FreeRegion(Region *region, size_t cachedSize)
 #endif
     MemMapAllocator::GetInstance()->CacheOrFree(ToVoidPtr(allocateBase),
                                                 size, isRegular, cachedSize);
+}
+
+void HeapRegionAllocator::TemporarilyEnsureAllocateionAlwaysSuccess(BaseHeap *heap)
+{
+    // Make MemMapAllocator infinite, and record to Dump&Fatal when GC completed.
+    heap->ShouldForceThrowOOMError();
+    MemMapAllocator::GetInstance()->TransferToInfiniteModeForGC();
 }
 }  // namespace panda::ecmascript

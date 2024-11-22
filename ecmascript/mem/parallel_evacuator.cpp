@@ -196,7 +196,7 @@ void ParallelEvacuator::EvacuateRegion(TlabAllocator *allocator, Region *region,
                 edenToYoungSize += size;
             }
         }
-        LOG_ECMA_IF(address == 0, FATAL) << "Evacuate object failed:" << size;
+        ASSERT(address != 0);
 
         if (memcpy_s(ToVoidPtr(address), size, ToVoidPtr(ToUintPtr(mem)), size) != EOK) { // LOCV_EXCL_BR_LINE
             LOG_FULL(FATAL) << "memcpy_s failed";

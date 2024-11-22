@@ -52,7 +52,7 @@ namespace panda::ecmascript {
     if (UNLIKELY((object) == nullptr)) {                                                                    \
         size_t oomOvershootSize = GetEcmaParamConfiguration().GetOutOfMemoryOvershootSize();                \
         (space)->IncreaseOutOfMemoryOvershootSize(oomOvershootSize);                                        \
-        DumpHeapSnapshotBeforeOOM(false, thread);                                                           \
+        DumpHeapSnapshotBeforeOOM(false, thread, SharedHeapOOMSource::NORMAL_ALLOCATION);                   \
         ThrowOutOfMemoryError(thread, size, message);                                                       \
         (object) = reinterpret_cast<TaggedObject *>((space)->Allocate(thread, size));                       \
     }
@@ -782,29 +782,6 @@ void SharedHeap::TryTriggerConcurrentMarking(JSThread *thread)
     }
 }
 
-void SharedHeap::CollectGarbageFinish(bool inDaemon, TriggerGCType gcType)
-{
-    if (inDaemon) {
-        ASSERT(JSThread::GetCurrent() == dThread_);
-#ifndef NDEBUG
-        ASSERT(dThread_->HasLaunchedSuspendAll());
-#endif
-        dThread_->FinishRunningTask();
-        NotifyGCCompleted();
-        // Update to forceGC_ is in DaemeanSuspendAll, and protected by the Runtime::mutatorLock_,
-        // so do not need lock.
-        smartGCStats_.forceGC_ = false;
-    }
-    localFullMarkTriggered_ = false;
-    // Record alive object size after shared gc and other stats
-    UpdateHeapStatsAfterGC(gcType);
-    // Adjust shared gc trigger threshold
-    AdjustGlobalSpaceAllocLimit();
-    GetEcmaGCStats()->RecordStatisticAfterGC();
-    GetEcmaGCStats()->PrintGCStatistic();
-    ProcessAllGCListeners();
-}
-
 TaggedObject *SharedHeap::AllocateNonMovableOrHugeObject(JSThread *thread, JSHClass *hclass)
 {
     size_t size = hclass->GetObjectSize();
@@ -945,7 +922,7 @@ TaggedObject *SharedHeap::AllocateHugeObject(JSThread *thread, size_t size)
             // if allocate huge object OOM, temporarily increase space size to avoid vm crash
             size_t oomOvershootSize = config_.GetOutOfMemoryOvershootSize();
             sHugeObjectSpace_->IncreaseOutOfMemoryOvershootSize(oomOvershootSize);
-            DumpHeapSnapshotBeforeOOM(false, thread);
+            DumpHeapSnapshotBeforeOOM(false, thread, SharedHeapOOMSource::NORMAL_ALLOCATION);
             ThrowOutOfMemoryError(thread, size, "SharedHeap::AllocateHugeObject");
             object = reinterpret_cast<TaggedObject *>(sHugeObjectSpace_->Allocate(thread, size));
             if (UNLIKELY(object == nullptr)) {

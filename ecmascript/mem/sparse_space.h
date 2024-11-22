@@ -261,6 +261,8 @@ public:
     bool AddRegionToList(Region *region);
     void FreeBumpPoint();
     void Stop();
+private:
+    void ForceExpandInGC();
 };
 
 class MachineCode;

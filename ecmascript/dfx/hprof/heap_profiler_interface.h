@@ -43,6 +43,10 @@ class HeapProfilerInterface {
 public:
     static HeapProfilerInterface *GetInstance(EcmaVM *vm);
     static void Destroy(EcmaVM *vm);
+    // This is only used in OOM in SharedGC, since daemon thread does not have EcmaVM, so create a new instance
+    // to dump main JSThread.
+    static HeapProfilerInterface *CreateNewInstance(const EcmaVM *vm);
+    static void DestroyInstance(HeapProfilerInterface *heapProfiler);
 
     HeapProfilerInterface() = default;
     virtual ~HeapProfilerInterface() = default;
@@ -53,7 +57,9 @@ public:
     virtual bool DumpHeapSnapshot(Stream *stream, const DumpSnapShotOption &dumpOption,
                                   Progress *progress = nullptr) = 0;
     // Provide an internal interface for oom dump.
-    virtual void DumpHeapSnapshot(const DumpSnapShotOption &dumpOption) = 0;
+    // If `fromSharedGC` is set, means that OOM happened during SharedGC, and should do Dump then Fatal at once
+    // SharedGC complete, caller Must call this during `SuspendAll`.
+    virtual void DumpHeapSnapshotForOOM(const DumpSnapShotOption &dumpOption, bool fromSharedGC = false) = 0;
     virtual bool GenerateHeapSnapshot(std::string &inputFilePath, std::string &outputPath) = 0;
 
     virtual bool StartHeapTracking(double timeInterval, bool isVmMode = true, Stream *stream = nullptr,
