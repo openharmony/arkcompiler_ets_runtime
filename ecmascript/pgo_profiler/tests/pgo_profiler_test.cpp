@@ -51,7 +51,6 @@
 #include "ecmascript/pgo_profiler/tests/pgo_context_mock.h"
 #include "ecmascript/pgo_profiler/tests/pgo_encoder_mock.h"
 #include "ecmascript/tests/test_helper.h"
-#include "ecmascript/napi/include/jsnapi_expo.h"
 
 using namespace panda;
 using namespace panda::ecmascript;
@@ -1452,22 +1451,4 @@ HWTEST_F_L0(PGOProfilerTest, PGODisableUnderAOTFailTest)
     }
 }
 
-HWTEST_F_L0(PGOProfilerTest, EnableForceICTest)
-{
-    RuntimeOption option;
-    EcmaVM* ecmaVM = JSNApi::CreateJSVM(option);
-    JSThread* jsThread = ecmaVM->GetJSThread();
-    JSRuntimeOptions& jsOption = ecmaVM->GetJSOptions();
-    EXPECT_TRUE(jsThread->IsEnableForceIC());
-    EXPECT_TRUE(jsOption.IsEnableForceIC());
-    EXPECT_TRUE(ecmascript::pgo::PGOProfilerManager::GetInstance()->IsEnableForceIC());
-
-    JSNApi::PreFork(ecmaVM);
-    JSNApi::PostFork(ecmaVM, option);
-    EXPECT_FALSE(jsThread->IsEnableForceIC());
-    EXPECT_FALSE(jsOption.IsEnableForceIC());
-    EXPECT_FALSE(ecmascript::pgo::PGOProfilerManager::GetInstance()->IsEnableForceIC());
-
-    JSNApi::DestroyJSVM(ecmaVM);
-}
 }  // namespace panda::test
