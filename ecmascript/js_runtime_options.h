@@ -216,6 +216,7 @@ enum CommandValues {
     OPTION_OPEN_ARK_TOOLS,
     OPTION_COMPILER_OPT_FRAME_STATE_ELIMINATION,
     OPTION_COMPILER_ENABLE_PGO_SPACE,
+    OPTION_COMPILER_ENABLE_AOT_CODE_COMMENT,
 };
 static_assert(OPTION_SPLIT_ONE == 64); // add new option at the bottom, DO NOT modify this value
 static_assert(OPTION_SPLIT_TWO == 128); // add new option at the bottom, DO NOT modify this value
@@ -1965,6 +1966,16 @@ public:
         return enablePgoSpace_;
     }
 
+    void SetEnableAotCodeComment(bool value)
+    {
+        enableAotCodeComment_ = value;
+    }
+
+    bool IsEnableAotCodeComment() const
+    {
+        return enableAotCodeComment_;
+    }
+
 public:
     static constexpr int32_t MAX_APP_COMPILE_METHOD_SIZE = 4_KB;
 
@@ -2126,6 +2137,7 @@ private:
     bool enableTypedOpProfiler_ {false};
     bool enableBranchProfiling_ {true};
     bool enablePgoSpace_ {false};
+    bool enableAotCodeComment_ {false};
     bool testAssert_ {false};
     std::pair<uint32_t, uint32_t> compileMethodsRange_ {0, UINT32_MAX};
     arg_list_t compileCodegenOption_ {{""}};

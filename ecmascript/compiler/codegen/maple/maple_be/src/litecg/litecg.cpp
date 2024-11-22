@@ -83,6 +83,11 @@ LiteCG &LiteCG::SetupLiteCGEmitMemoryManager(
     return *this;
 }
 
+void LiteCG::SetAotCodeCommentFile(const std::string &aotCodeCommentFile)
+{
+    cgOptions->SetEmitAotCodeCommentFile(aotCodeCommentFile);
+}
+
 void LiteCG::DoCG(bool isJit)
 {
     bool timePhases = cgOptions->IsEnableTimePhases();

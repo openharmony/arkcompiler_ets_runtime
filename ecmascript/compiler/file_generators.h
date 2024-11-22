@@ -83,7 +83,8 @@ public:
         return std::make_tuple(addrBeforeText, sizeBeforeText, addrAfterText, sizeAfterText);
     }
 
-    void RunAssembler(const CompilerLog &log, bool fastCompileMode, bool isJit = false);
+    void RunAssembler(const CompilerLog &log, bool fastCompileMode, bool isJit = false,
+                      const std::string &filename = "");
 
     void DisassemblerFunc(std::map<uintptr_t, std::string> &addr2name, uint64_t textOffset, const CompilerLog &log,
                           const MethodLogList &logList, std::ostringstream &codeStream);
@@ -221,6 +222,19 @@ public:
     bool GetMemoryCodeInfos(MachineCodeDesc &machineCodeDesc);
     void JitCreateLitecgModule();
     bool isAArch64() const;
+
+    bool CreateAOTCodeCommentFile(const std::string &filename);
+
+    const std::string &GetAotCodeCommentFile() const
+    {
+        return aotCodeCommentFile_;
+    }
+
+    void SetAotCodeCommentFile(const std::string &filename)
+    {
+        aotCodeCommentFile_ = filename;
+    }
+
 private:
     // collect aot component info
     void CollectCodeInfo(Module *module, uint32_t moduleIdx);
@@ -236,6 +250,7 @@ private:
     std::map<uint32_t, uint32_t> methodToEntryIndexMap_ {};
     const bool useLiteCG_;
     CodeInfo::CodeSpaceOnDemand jitCodeSpace_ {};
+    std::string aotCodeCommentFile_ = "";
 };
 
 enum class StubFileKind {
