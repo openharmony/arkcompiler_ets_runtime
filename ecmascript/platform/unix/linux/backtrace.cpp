@@ -21,8 +21,7 @@
 #include "ecmascript/mem/mem.h"
 
 namespace panda::ecmascript {
-static const int MAX_STACK_SIZE = 256;
-static const int FRAMES_LEN = 16;
+static const int MAX_STACK_SIZE = 16;
 
 void Backtrace(std::ostringstream &stack, [[maybe_unused]] bool enableCache)
 {
@@ -35,7 +34,7 @@ void Backtrace(std::ostringstream &stack, [[maybe_unused]] bool enableCache)
     }
 
     stack << "=====================Backtrace========================";
-    for (int i = 0; i < FRAMES_LEN; ++i) {
+    for (int i = 0; i < framesLen; ++i) {
         if (stackList[i] == nullptr) {
             break;
         }
