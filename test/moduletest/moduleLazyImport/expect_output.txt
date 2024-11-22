@@ -30,3 +30,30 @@ this is dynamicLazySequence
 this is dynamicSubFile
 this is dynamicLazySequence2
 dynamicSubFile
+ Test start
+ onBindRawData start 1 1
+ onBindRawData start 1 2
+ onBindRawData start 2 1
+ onBindRawData start 2 2
+ onBindRawData end 1 1
+ onBindRawData end 1 2
+ onBindRawData end 2 1
+ onBindRawData end 2 2
+ onBindRawData start 1 4
+ onBindRawData start 1 5
+ onBindRawData start 2 4
+ onBindRawData start 2 5
+ onBindRawData end 1 4
+ onBindRawData end 1 5
+ onBindRawData end 2 4
+ onBindRawData end 2 5
+ onBindRawData start 1 7
+ onBindRawData start 1 8
+ onBindRawData start 2 7
+ onBindRawData start 2 8
+ onBindRawData end 1 7
+ onBindRawData end 1 8
+ onBindRawData end 2 7
+ onBindRawData end 2 8
+ Test end     at start (asyncUseLazyImport.ts:31:1)
+

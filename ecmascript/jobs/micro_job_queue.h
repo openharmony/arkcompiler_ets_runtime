@@ -23,7 +23,13 @@
 #include "ecmascript/tagged_array.h"
 
 namespace panda::ecmascript::job {
-
+class MicroJobScope {
+public:
+    explicit MicroJobScope(JSThread *thread);
+    ~MicroJobScope();
+private:
+    JSThread *thread_;
+};
 class MicroJobQueue final : public Record {
 public:
     static MicroJobQueue *Cast(TaggedObject *object)

@@ -181,7 +181,7 @@ JSTaggedValue ModuleManager::GetLazyModuleValueOutterInternal(int32_t index, JST
     if (resolvedBinding.IsResolvedIndexBinding()) {
         JSHandle<ResolvedIndexBinding> binding(thread, resolvedBinding);
         JSTaggedValue resolvedModule = binding->GetModule();
-        JSHandle<SourceTextModule> module(thread, resolvedModule);
+        JSMutableHandle<SourceTextModule> module(thread, resolvedModule);
         ASSERT(resolvedModule.IsSourceTextModule());
         // Support for only modifying var value of HotReload.
         // Cause patchFile exclude the record of importing modifying var. Can't reresolve moduleRecord.
@@ -191,13 +191,12 @@ JSTaggedValue ModuleManager::GetLazyModuleValueOutterInternal(int32_t index, JST
                 context->FindPatchModule(module->GetEcmaModuleRecordNameString());
             if (!resolvedModuleOfHotReload->IsHole()) {
                 resolvedModule = resolvedModuleOfHotReload.GetTaggedValue();
-                JSHandle<SourceTextModule> moduleOfHotReload(thread, resolvedModule);
-                SourceTextModule::Evaluate(thread, moduleOfHotReload, nullptr);
-                RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception());
-                return ModuleManagerHelper::GetModuleValue(thread, moduleOfHotReload, binding->GetIndex());
+                module.Update(resolvedModule);
             }
         }
-        SourceTextModule::Evaluate(thread, module, nullptr);
+        if (module->GetStatus() != ModuleStatus::EVALUATED) {
+            SourceTextModule::Evaluate(thread, module, nullptr, 0, context->IsInPendingJob());
+        }
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception());
         return ModuleManagerHelper::GetModuleValue(thread, module, binding->GetIndex());
     }
