@@ -863,6 +863,7 @@ public:
                MemoryAttribute mAttr = MemoryAttribute::Default());
     void StoreWithoutBarrier(VariableType type, GateRef addr, GateRef value,
                              MemoryAttribute mAttr = MemoryAttribute::Default());
+    GateRef ThreeInt64Min(GateRef first, GateRef second, GateRef third);
 
     // cast operation
     inline GateRef Int16ToBigEndianInt16(GateRef x);

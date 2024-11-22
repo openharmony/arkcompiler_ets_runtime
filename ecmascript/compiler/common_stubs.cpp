@@ -1328,6 +1328,18 @@ void BatchBarrierStubBuilder::GenerateCircuit()
     Return();
 }
 
+void MoveBarrierInRegionStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef dstObj = PtrArgument(1);
+    GateRef dstAddr = PtrArgument(2);
+    GateRef count = Int32Argument(3);
+    GateRef srcAddr = PtrArgument(4);
+    BarrierStubBuilder barrierBuilder(this, glue, dstObj, dstAddr, count);
+    barrierBuilder.DoMoveBarrierInRegion(srcAddr);
+    Return();
+}
+
 CallSignature CommonStubCSigns::callSigns_[CommonStubCSigns::NUM_OF_STUBS];
 
 void CommonStubCSigns::Initialize()

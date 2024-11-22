@@ -929,6 +929,7 @@ public:
     // Note: dstObj is the object address for dstAddr, it must point to the head of an object.
     void ArrayCopyAndHoleToUndefined(GateRef glue, GateRef srcAddr, GateRef dstObj, GateRef dstAddr,
                                      GateRef length, MemoryAttribute mAttr = MemoryAttribute::Default());
+    GateRef ThreeInt64Min(GateRef first, GateRef second, GateRef third);
     void MigrateArrayWithKind(GateRef glue, GateRef object, GateRef oldKind, GateRef newKind);
     GateRef MigrateFromRawValueToHeapValues(GateRef glue, GateRef object, GateRef needCOW, GateRef isIntKind);
     GateRef MigrateFromHeapValueToRawValue(GateRef glue, GateRef object, GateRef needCOW, GateRef isIntKind);

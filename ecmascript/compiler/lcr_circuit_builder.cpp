@@ -328,4 +328,32 @@ GateRef CircuitBuilder::DoubleInRangeInt32(GateRef x)
     env_->SubCfgExit();
     return ret;
 }
+
+GateRef CircuitBuilder::ThreeInt64Min(GateRef first, GateRef second, GateRef third)
+{
+    Label entry(env_);
+    env_->SubCfgEntry(&entry);
+    Label exit(env_);
+    DEFVALUE(min, env_, VariableType::INT64(), first);
+    Label useSecond(env_);
+    Label next(env_);
+    Branch(Int64GreaterThan(*min, second), &useSecond, &next);
+    Bind(&useSecond);
+    {
+        min = second;
+        Jump(&next);
+    }
+    Bind(&next);
+    Label useThird(env_);
+    Branch(Int64GreaterThan(*min, third), &useThird, &exit);
+    Bind(&useThird);
+    {
+        min = third;
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *min;
+    env_->SubCfgExit();
+    return ret;
+}
 }
