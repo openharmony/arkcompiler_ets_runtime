@@ -129,6 +129,9 @@ public:
         explicit TimeScope(EcmaVM *vm)
             : vm_(vm), message_(""), tier_(CompilerTier::Tier::FAST), outPutLog_(false), isDebugLevel_(true) {}
         PUBLIC_API ~TimeScope();
+
+        void appendMessage(const CString& value) { message_ += value; }
+
     private:
         EcmaVM *vm_;
         CString message_;
