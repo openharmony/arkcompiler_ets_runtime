@@ -22,16 +22,7 @@ std::string StringHashMap::GetStringByKey(StringKey key) const
     if (it != hashmap_.end()) {
         return it->second;
     }
-    return nullptr;
-}
-
-std::pair<uint64_t, std::string> StringHashMap::GetStringAndIdPair(StringKey key) const
-{
-    auto it = hashmap_.find(key);
-    if (it != hashmap_.end()) {
-        return {indexMap_.at(key), it->second};
-    }
-    return {1, nullptr};  // 1 : invalid id
+    return "";
 }
 
 StringId StringHashMap::InsertStrAndGetStringId(const std::string &str)

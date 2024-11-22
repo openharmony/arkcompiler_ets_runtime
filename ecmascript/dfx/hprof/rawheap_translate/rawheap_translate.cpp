@@ -228,6 +228,7 @@ bool RawHeapTranslate::ReadRootTable(std::ifstream &file, uint32_t offset, uint3
     EdgeType type = EdgeType::SHORTCUT;
 
     char *addr = roots.data();
+    std::vector<std::shared_ptr<Edge>> rootEdges;
     for (uint32_t i = 0; i < rootNum; i++) {
         uint64_t rootAddr = ByteToU64(addr);
         addr += sizeof(uint64_t);
@@ -236,10 +237,11 @@ bool RawHeapTranslate::ReadRootTable(std::ifstream &file, uint32_t offset, uint3
             continue;
         }
         auto edge = std::make_shared<Edge>(Edge(type, syntheticRoot, rootNode->second, edgeStrId));
-        edges_.insert(edges_.begin(), edge);
+        rootEdges.emplace_back(edge);
         syntheticRoot->edgeCount++;
     }
 
+    edges_.insert(edges_.begin(), rootEdges.begin(), rootEdges.end());
     LOG_INFO("RawHeapTranslate::ReadRootTable: find root obj " + std::to_string(rootNum));
     return true;
 }
