@@ -716,7 +716,12 @@ public:
 
     DECL_VISIT_OBJECT_FOR_JS_OBJECT(ECMAObject, PROPERTIES_OFFSET, SIZE)
 
-    DECL_DUMP()
+    void Dump(std::ostream &os, bool isPrivacy = false) const DUMP_API_ATTR;
+    void Dump() const DUMP_API_ATTR
+    {
+        Dump(std::cout);
+    }
+    void DumpForSnapshot(std::vector<Reference> &vec) const;
     static const CString ExtractConstructorAndRecordName(JSThread *thread, TaggedObject *obj, bool noAllocate = false,
                                                          bool *isCallGetter = nullptr);
 

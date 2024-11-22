@@ -771,7 +771,6 @@ JSTaggedValue JSTaggedValue::ToPrimitive(JSThread *thread, const JSHandle<JSTagg
             if (!valueResult.IsECMAObject()) {
                 return valueResult;
             }
-            DumpExceptionObject(thread, tagged);
             THROW_TYPE_ERROR_AND_RETURN(thread, "Cannot convert object to primitive value",
                 JSTaggedValue::Exception());
         } else {
@@ -1263,6 +1262,7 @@ bool JSTaggedValue::SetPrototype(JSThread *thread, const JSHandle<JSTaggedValue>
 JSTaggedValue JSTaggedValue::GetPrototype(JSThread *thread, const JSHandle<JSTaggedValue> &obj)
 {
     if (!obj->IsECMAObject()) {
+        DumpExceptionObject(thread, obj);
         THROW_TYPE_ERROR_AND_RETURN(thread, "Can not get Prototype on non ECMA Object", JSTaggedValue::Exception());
     }
     if (obj->IsJSProxy()) {
@@ -1807,7 +1807,7 @@ void JSTaggedValue::DumpExceptionObject(JSThread *thread, const JSHandle<JSTagge
 {
     if (thread->GetEcmaVM()->GetJSOptions().EnableExceptionBacktrace()) {
         std::ostringstream oss;
-        obj->Dump(oss);
+        obj->Dump(oss, true);
         std::regex reg("0x[0-9a-fA-F]+");
         std::string sensitiveStr = std::regex_replace(oss.str(), reg, "");
         LOG_ECMA(ERROR) << "DumpExceptionObject: " << sensitiveStr;

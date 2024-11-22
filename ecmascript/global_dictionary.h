@@ -85,7 +85,12 @@ public:
     static bool inline CompKey(const std::pair<JSTaggedValue, uint32_t> &a,
                                const std::pair<JSTaggedValue, uint32_t> &b);
 
-    DECL_DUMP()
+    void Dump(std::ostream &os, bool isPrivacy = false) const DUMP_API_ATTR;
+    void Dump() const DUMP_API_ATTR
+    {
+        Dump(std::cout);
+    }
+    void DumpForSnapshot(std::vector<Reference> &vec) const;
 
 public:
     static constexpr int ENTRY_KEY_INDEX = 0;
