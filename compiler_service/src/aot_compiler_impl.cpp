@@ -362,22 +362,32 @@ void AotCompilerImpl::HandlePowerDisconnected()
 {
     LOG_SA(INFO) << "AotCompilerImpl::HandlePowerDisconnected";
     PauseAotCompiler();
-    std::thread([]() {
+    std::thread t([]() {
         (void)AotCompilerImpl::GetInstance().StopAotCompiler();
         sleep(30);  // wait for 30 seconds
         AotCompilerImpl::GetInstance().AllowAotCompiler();
-    }).detach();
+    });
+    if (t.joinable()) {
+        t.detach();
+    } else {
+        LOG_SA(ERROR) << "Failed to create thread for AotCompilerImpl::HandlePowerDisconnected";
+    }
 }
 
 void AotCompilerImpl::HandleScreenOn()
 {
     LOG_SA(INFO) << "AotCompilerImpl::HandleScreenOn";
     PauseAotCompiler();
-    std::thread([]() {
+    std::thread t([]() {
         (void)AotCompilerImpl::GetInstance().StopAotCompiler();
         sleep(40);  // wait for 40 seconds
         AotCompilerImpl::GetInstance().AllowAotCompiler();
-    }).detach();
+    });
+    if (t.joinable()) {
+        t.detach();
+    } else {
+        LOG_SA(ERROR) << "Failed to create thread for AotCompilerImpl::HandleScreenOn";
+    }
 }
 
 void AotCompilerImpl::HandleThermalLevelChanged(const int32_t level)
