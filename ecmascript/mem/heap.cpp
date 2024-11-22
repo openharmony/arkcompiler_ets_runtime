@@ -728,8 +728,9 @@ void SharedHeap::DumpHeapSnapshotBeforeOOM([[maybe_unused]]bool isFullGC, [[mayb
     // Filter appfreeze when dump.
     LOG_ECMA(INFO) << "SharedHeap::DumpHeapSnapshotBeforeOOM, isFullGC = " << isFullGC;
     base::BlockHookScope blockScope;
-    if (appfreezeCallback_ != nullptr && appfreezeCallback_(getprocpid())) {
-        LOG_ECMA(INFO) << "SharedHeap::DumpHeapSnapshotBeforeOOM, appfreezeCallback_ success. ";
+    AppFreezeFilterCallback appfreezeCallback = Runtime::GetInstance()->GetAppFreezeFilterCallback();
+    if (appfreezeCallback != nullptr && appfreezeCallback(getprocpid())) {
+        LOG_ECMA(INFO) << "SharedHeap::DumpHeapSnapshotBeforeOOM, appfreezeCallback success. ";
     }
     vm->GetEcmaGCKeyStats()->SendSysEventBeforeDump("OOMDump", GetEcmaParamConfiguration().GetMaxHeapSize(),
                                                     GetHeapObjectSize());
@@ -1405,13 +1406,6 @@ void BaseHeap::SetMachineCodeOutOfMemoryError(JSThread *thread, size_t size, std
     thread->SetException(error.GetTaggedValue());
 }
 
-void BaseHeap::SetAppFreezeFilterCallback(AppFreezeFilterCallback cb)
-{
-    if (cb != nullptr) {
-        appfreezeCallback_ = cb;
-    }
-}
-
 void BaseHeap::ThrowOutOfMemoryErrorForDefault(JSThread *thread, size_t size, std::string functionName,
     bool NonMovableObjNearOOM)
 { // LCOV_EXCL_START
@@ -1604,8 +1598,9 @@ void Heap::DumpHeapSnapshotBeforeOOM([[maybe_unused]] bool isFullGC)
     LOG_ECMA(INFO) << " Heap::DumpHeapSnapshotBeforeOOM, isFullGC = " << isFullGC;
     base::BlockHookScope blockScope;
     HeapProfilerInterface *heapProfile = HeapProfilerInterface::GetInstance(ecmaVm_);
-    if (appfreezeCallback_ != nullptr && appfreezeCallback_(getprocpid())) {
-        LOG_ECMA(INFO) << "Heap::DumpHeapSnapshotBeforeOOM, appfreezeCallback_ success. ";
+    AppFreezeFilterCallback appfreezeCallback = Runtime::GetInstance()->GetAppFreezeFilterCallback();
+    if (appfreezeCallback != nullptr && appfreezeCallback(getprocpid())) {
+        LOG_ECMA(INFO) << "Heap::DumpHeapSnapshotBeforeOOM, appfreezeCallback success. ";
     }
 #ifdef ENABLE_HISYSEVENT
     GetEcmaGCKeyStats()->SendSysEventBeforeDump("OOMDump", GetHeapLimitSize(), GetLiveObjectSize());
@@ -2779,7 +2774,8 @@ void Heap::ThresholdReachedDump()
             g_lastHeapDumpTime = GetCurrentTickMillseconds();
             base::BlockHookScope blockScope;
             HeapProfilerInterface *heapProfile = HeapProfilerInterface::GetInstance(ecmaVm_);
-            if (appfreezeCallback_ != nullptr && appfreezeCallback_(getprocpid())) {
+            AppFreezeFilterCallback appfreezeCallback = Runtime::GetInstance()->GetAppFreezeFilterCallback();
+            if (appfreezeCallback != nullptr && appfreezeCallback(getprocpid())) {
                 LOG_ECMA(INFO) << "ThresholdReachedDump and avoid freeze success.";
             } else {
                 LOG_ECMA(WARN) << "ThresholdReachedDump but avoid freeze failed.";

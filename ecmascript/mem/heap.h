@@ -358,7 +358,6 @@ public:
     void ThrowOutOfMemoryError(JSThread *thread, size_t size, std::string functionName,
         bool NonMovableObjNearOOM = false);
     void SetMachineCodeOutOfMemoryError(JSThread *thread, size_t size, std::string functionName);
-    void SetAppFreezeFilterCallback(AppFreezeFilterCallback cb);
 
 #ifndef NDEBUG
     bool TriggerCollectionOnNewObjectEnabled() const
@@ -431,7 +430,6 @@ protected:
     ConditionVariable waitTaskFinishedCV_;
     Mutex waitClearTaskFinishedMutex_;
     ConditionVariable waitClearTaskFinishedCV_;
-    AppFreezeFilterCallback appfreezeCallback_ {nullptr};
     bool clearTaskFinished_ {true};
     bool inBackground_ {false};
     bool shouldThrowOOMError_ {false};
