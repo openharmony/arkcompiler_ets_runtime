@@ -125,7 +125,8 @@ namespace panda::ecmascript::kungfu {
     V(GetIterator)                    \
     V(GrowElementsCapacity)           \
     V(BatchBarrier)                   \
-    V(VerifyBarrier)
+    V(VerifyBarrier)                  \
+    V(MoveBarrierInRegion)
 
 #define COMMON_STUB_ID_LIST(V)          \
     COMMON_STUB_LIST(V)

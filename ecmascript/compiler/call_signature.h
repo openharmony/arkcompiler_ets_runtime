@@ -635,15 +635,15 @@ private:
     V(SortTypedArray)                                \
     V(ReverseTypedArray)                             \
     V(IsFastRegExp)                                  \
-    V(ArrayIteratorNext)                             \
     V(MapIteratorNext)                               \
     V(SetIteratorNext)                               \
-    V(GetIterator)                                   \
     V(CreateLocalToShare)                            \
     V(CreateOldToNew)                                \
     V(BatchBarrier)                                  \
-    V(ObjectCopy)
-
+    V(ObjectCopy)                                    \
+    V(ArrayIteratorNext)                             \
+    V(GetIterator)                                   \
+    V(MoveBarrierInRegion)
 
 #define DECL_CALL_SIGNATURE(name)                                  \
 class name##CallSignature final {                                  \

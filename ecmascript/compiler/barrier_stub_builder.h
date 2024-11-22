@@ -35,6 +35,8 @@ public:
     void GenerateCircuit() override {}
 
     void DoBatchBarrier();
+
+    void DoMoveBarrierInRegion(GateRef srcAddr);
 private:
     enum BitSetSelect {
         LocalToShared = 0b1,
@@ -46,6 +48,13 @@ private:
     void BarrierBatchBitSet(uint8_t select);
     void FlushBatchBitSet(uint8_t bitSetSelect, GateRef quadIdx,
                           Variable &localToShareBitSetVar, Variable &oldToNewBitSetVar, Label *next);
+    GateRef IsLocalToShareSwapped(GateRef region);
+    GateRef IsOldToNewSwapped(GateRef region);
+    void BitSetRangeMove(GateRef srcBitSet, GateRef dstBitSet, GateRef srcStart, GateRef dstStart, GateRef length);
+    void BitSetRangeMoveForward(GateRef srcBitSet, GateRef dstBitSet, GateRef srcStart, GateRef dstStart,
+                                GateRef length);
+    void BitSetRangeMoveBackward(GateRef srcBitSet, GateRef dstBitSet, GateRef srcStart, GateRef dstStart,
+                                 GateRef length);
     const GateRef glue_;
     const GateRef dstAddr_;
     const GateRef slotCount_;
@@ -55,7 +64,13 @@ private:
     static constexpr int64_t BIT_PER_QUAD_LOG2 = 6;
     static constexpr int64_t BYTE_PER_QUAD_LOG2 = 3;
     static constexpr int64_t BIT_PER_QUAD = 64;
+    static constexpr int64_t ALL_ONE_MASK = -1;
     static constexpr size_t FLUSH_RANGE = GCBitset::BIT_PER_WORD * GCBitset::BIT_PER_BYTE;
+
+    static constexpr int8_t LOCAL_TO_SHARE_SWAPPED_MASK =
+        static_cast<int8_t>(RSetSwapFlag::LOCAL_TO_SHARE_SWAPPED_MASK) |
+        static_cast<int8_t>(RSetSwapFlag::LOCAL_TO_SHARE_COLLECTED_MASK);
+    static constexpr int8_t OLD_TO_NEW_SWAPPED_MASK = static_cast<int8_t>(RSetSwapFlag::OLD_TO_NEW_SWAPPED_MASK);
 };
 }
 

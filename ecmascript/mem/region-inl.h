@@ -66,6 +66,7 @@ ARK_NOINLINE RememberedSet* Region::CreateOldToNewRememberedSet()
     if (packedData_.oldToNewSet_ == nullptr) {
         if (sweepingOldToNewRSet_ != nullptr && IsGCFlagSet(RegionGCFlags::HAS_BEEN_SWEPT)) {
             packedData_.oldToNewSet_ = sweepingOldToNewRSet_;
+            ClearRSetSwapFlag(RSetSwapFlag::OLD_TO_NEW_SWAPPED_MASK);
             sweepingOldToNewRSet_ = nullptr;
         } else {
             packedData_.oldToNewSet_ = CreateRememberedSet();
@@ -88,6 +89,7 @@ ARK_NOINLINE RememberedSet* Region::CreateLocalToShareRememberedSet()
     if (packedData_.localToShareSet_ == nullptr) {
         if (sweepingLocalToShareRSet_ != nullptr && IsGCFlagSet(RegionGCFlags::HAS_BEEN_SWEPT)) {
             packedData_.localToShareSet_ = sweepingLocalToShareRSet_;
+            ClearRSetSwapFlag(RSetSwapFlag::LOCAL_TO_SHARE_SWAPPED_MASK);
             sweepingLocalToShareRSet_ = nullptr;
         } else {
             packedData_.localToShareSet_ = CreateRememberedSet();
@@ -117,6 +119,7 @@ inline void Region::MergeLocalToShareRSetForCS()
         DeleteSweepingLocalToShareRSet();
         sweepingLocalToShareRSet_ = nullptr;
     }
+    ClearRSetSwapFlag(RSetSwapFlag::LOCAL_TO_SHARE_SWAPPED_MASK);
 }
 
 inline void Region::MergeOldToNewRSetForCS()
@@ -132,6 +135,7 @@ inline void Region::MergeOldToNewRSetForCS()
         DeleteSweepingOldToNewRSet();
         sweepingOldToNewRSet_ = nullptr;
     }
+    ClearRSetSwapFlag(RSetSwapFlag::OLD_TO_NEW_SWAPPED_MASK);
 }
 
 inline void Region::MergeLocalToShareRSetForCM(RememberedSet *set)
@@ -142,6 +146,7 @@ inline void Region::MergeLocalToShareRSetForCM(RememberedSet *set)
         packedData_.localToShareSet_->Merge(set);
         nativeAreaAllocator_->Free(set, set->Size());
     }
+    ClearRSetSwapFlag(RSetSwapFlag::LOCAL_TO_SHARE_COLLECTED_MASK);
 }
 
 inline GCBitset *Region::GetMarkGCBitset() const
@@ -251,10 +256,13 @@ inline bool Region::HasLocalToShareRememberedSet() const
     return packedData_.localToShareSet_ != nullptr;
 }
 
-inline RememberedSet *Region::ExtractLocalToShareRSet()
+inline RememberedSet *Region::CollectLocalToShareRSet()
 {
     RememberedSet *set = packedData_.localToShareSet_;
     packedData_.localToShareSet_ = nullptr;
+    if (set != nullptr) {
+        SetRSetSwapFlag(RSetSwapFlag::LOCAL_TO_SHARE_COLLECTED_MASK);
+    }
     return set;
 }
 
@@ -494,6 +502,18 @@ inline void Region::DeleteSweepingOldToNewRSet()
 inline uint8_t Region::GetRegionSpaceFlag()
 {
     return packedData_.flags_.spaceFlag_;
+}
+
+inline void Region::SetRSetSwapFlag(RSetSwapFlag mask)
+{
+    ASSERT(((packedData_.RSetSwapFlag_ & static_cast<uint8_t>(mask)) == 0) && "RSetSwapFlag should be 0");
+    packedData_.RSetSwapFlag_ |= static_cast<uint8_t>(mask);
+}
+
+inline void Region::ClearRSetSwapFlag(RSetSwapFlag mask)
+{
+    ASSERT(((packedData_.RSetSwapFlag_ & static_cast<uint8_t>(mask)) != 0) && "RSetSwapFlag should not be 0");
+    packedData_.RSetSwapFlag_ &= ~static_cast<uint8_t>(mask);
 }
 
 template <Region::RegionSpaceKind kind>

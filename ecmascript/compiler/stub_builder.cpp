@@ -10924,8 +10924,8 @@ void StubBuilder::ArrayCopy<CopyKind::MustOverlap>(GateRef glue, GateRef srcAddr
     CallNGCRuntime(glue, RTSTUB_ID(ObjectCopy),
                    {TaggedCastToIntPtr(dstAddr), TaggedCastToIntPtr(srcAddr), taggedValueCount});
     if (needBarrier) {
-        CallCommonStub(glue, CommonStubCSigns::BatchBarrier,
-                       {glue, TaggedCastToIntPtr(dstObj), TaggedCastToIntPtr(dstAddr), taggedValueCount});
+        CallCommonStub(glue, CommonStubCSigns::MoveBarrierInRegion,
+                 {glue, TaggedCastToIntPtr(dstObj), TaggedCastToIntPtr(dstAddr), taggedValueCount, TaggedCastToIntPtr(srcAddr)});
     }
     Jump(&exit);
     Bind(&exit);
@@ -11032,4 +11032,9 @@ ConstantIndex StubBuilder::ELEMENTS_KIND_HCLASS_INDEX[ELEMENTS_KIND_HCLASS_NUM] 
     ConstantIndex::ELEMENT_HOLE_OBJECT_HCLASS_INDEX,
     ConstantIndex::ELEMENT_HOLE_TAGGED_HCLASS_INDEX
 };
+
+GateRef StubBuilder::ThreeInt64Min(GateRef first, GateRef second, GateRef third)
+{
+    return env_->GetBuilder()->ThreeInt64Min(first, second, third);
+}
 }  // namespace panda::ecmascript::kungfu
