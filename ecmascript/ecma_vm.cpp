@@ -788,6 +788,15 @@ void EcmaVM::TriggerConcurrentCallback(JSTaggedValue result, JSTaggedValue hint)
     }
 
     void *taskInfo = reinterpret_cast<void*>(thread_->GetTaskInfo());
+    if (UNLIKELY(taskInfo == nullptr)) {
+        JSTaggedValue extraInfoValue = functionInfo->GetFunctionExtraInfo();
+        if (!extraInfoValue.IsJSNativePointer()) {
+            LOG_ECMA(INFO) << "FunctionExtraInfo is not JSNativePointer";
+            return;
+        }
+        JSHandle<JSNativePointer> extraInfo(thread_, extraInfoValue);
+        taskInfo = extraInfo->GetData();
+    }
     // clear the taskInfo when return, which can prevent the callback to get it
     thread_->SetTaskInfo(reinterpret_cast<uintptr_t>(nullptr));
     auto localResultRef = JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread_, result));
