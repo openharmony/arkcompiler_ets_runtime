@@ -60,6 +60,8 @@ DtoaHelper::DiyFp DtoaHelper::GetCachedPowerByIndex(size_t index)
         -24,   3,     30,    56,    83,    109,   136,   162,   189,   216,  242,  269,  295,  322,  348,
         375,   402,   428,   455,   481,   508,   534,   561,   588,   614,  641,  667,  694,  720,  747,
         774,   800,   827,   853,   880,   907,   933,   960,   986,   1013, 1039, 1066};
+    ASSERT_PRINT(index < sizeof(kCachedPowers_F) / sizeof(kCachedPowers_F[0]) &&
+                 index < sizeof(kCachedPowers_E) / sizeof(kCachedPowers_E[0]), "invalid index: " << index);
     return DtoaHelper::DiyFp(kCachedPowers_F[index], kCachedPowers_E[index]);
 }
 
