@@ -68,16 +68,6 @@ if (globalThis["ArkPrivate"] != undefined) {
     }
     map.set("test linkedlist insert:", res);
 
-    list.insertByIndex(777, 3);
-    testArray.splice(3, 0, 777);
-    res = true;
-    for(let i = 0; i < testArray.length; i++) {
-        if (list[i] !== testArray[i]) {
-            res = false;
-        }
-    }
-    map.set("test linkedlist insertByIndex", res);
-
     list.set(5, 888);
     testArray[5] = 888;
     res = true;
@@ -210,16 +200,6 @@ if (globalThis["ArkPrivate"] != undefined) {
         }
     }
     map.set("test linkedlist insert:", res);
-
-    proxy.insertByIndex(777, 3);
-    testArray2.splice(3, 0, 777);
-    res = true;
-    for(let i = 0; i < testArray2.length; i++) {
-        if (proxy[i] !== testArray2[i]) {
-            res = false;
-        }
-    }
-    map.set("test linkedlist insertByIndex:", res);
 
     proxy.set(5, 888);
     testArray2[5] = 888;
@@ -425,15 +405,6 @@ if (globalThis["ArkPrivate"] != undefined) {
     myList1.get(Math.floor(1.5));
     myList1.set(Math.floor(1.5), 888);
     myList1.removeByIndex(Math.floor(1.5));
-
-    let myList2 = new LinkedList();
-    myList2.add(1);
-    myList2.add(2);
-    myList2.add(3);
-    myList2.insertByIndex(999, Math.floor(1.5));
-    myList2.get(Math.floor(1.5));
-    myList2.set(Math.floor(1.5), 888);
-    myList2.removeByIndex(Math.floor(1.5));
 
     if (mList.getLast() != 3 ||
        ("convertToArray = " + mList.convertToArray()) != "convertToArray = 1,2,3") {
