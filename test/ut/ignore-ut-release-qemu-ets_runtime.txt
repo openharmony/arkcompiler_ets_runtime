@@ -1,0 +1,2 @@
+# Known failure list for ut - release - qemu - ets_runtime
+
