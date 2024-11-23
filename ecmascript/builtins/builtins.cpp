@@ -1196,7 +1196,8 @@ void Builtins::SetErrorWithRealm(const JSHandle<GlobalEnv> &realm, const JSType 
             realm->SetTerminationErrorFunction(thread_, nativeErrorFunction);
             break;
         default:
-            break;
+            LOG_ECMA(FATAL) << "this branch is unreachable, errorTag: " << static_cast<size_t>(errorTag);
+            UNREACHABLE();
     }
     PropertyDescriptor descriptor(thread_, nativeErrorFunction, true, false, true);
     JSObject::DefineOwnProperty(thread_, globalObject, nameString, descriptor);

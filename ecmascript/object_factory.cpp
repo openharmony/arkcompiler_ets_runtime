@@ -2280,7 +2280,8 @@ JSHandle<JSPrimitiveRef> ObjectFactory::NewJSPrimitiveRef(PrimitiveType type, co
             function = env->GetBigIntFunction();
             break;
         default:
-            break;
+            LOG_ECMA(FATAL) << "this branch is unreachable, type: " << static_cast<size_t>(type);
+            UNREACHABLE();
     }
     JSHandle<JSFunction> funcHandle(function);
     return factory->NewJSPrimitiveRef(funcHandle, object);
