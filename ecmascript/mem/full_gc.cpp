@@ -187,6 +187,7 @@ void FullGC::Finish()
         heap_->Resume(FULL_GC);
     }
     heap_->GetSweeper()->TryFillSweptRegion();
+    heap_->SetFullMarkRequestedState(false);
 }
 
 bool FullGC::HasEvacuated(Region *region)
