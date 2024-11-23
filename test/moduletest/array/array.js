@@ -2065,3 +2065,12 @@ findIndexArray[2] = "c";
 findIndexArray[3] = "d";
 print(findIndexArray.findIndex(element => element == "b"));
 print(findIndexArray.findIndex(element => element == "e"));
+
+{
+    Array.prototype.__proto__ = null;
+    var vp = Array.prototype;
+    vp.map(function(vp) {});
+    vp.filter(function(vp) {});
+    print("succ");
+    Array.prototype.__proto__ = Object.prototype;
+}

@@ -536,9 +536,7 @@ void BuiltinsArrayStubBuilder::Filter(GateRef glue, GateRef thisValue, GateRef n
     Label defaultConstr(env);
     BRANCH(TaggedIsHeapObject(thisValue), &isHeapObject, slowPath);
     Bind(&isHeapObject);
-    GateRef thisValueAndProtoIsJSArray = LogicAndBuilder(env).And(IsJsArray(thisValue))
-        .And(IsJsArray(StubBuilder::GetPrototype(glue, thisValue))).Done();
-    BRANCH(thisValueAndProtoIsJSArray, &isJsArray, slowPath);
+    BRANCH(IsJsArray(thisValue), &isJsArray, slowPath);
     Bind(&isJsArray);
     BRANCH(HasConstructor(thisValue), slowPath, &defaultConstr);
     Bind(&defaultConstr);
@@ -699,9 +697,7 @@ void BuiltinsArrayStubBuilder::Map(GateRef glue, GateRef thisValue, GateRef numA
     Label defaultConstr(env);
     BRANCH(TaggedIsHeapObject(thisValue), &isHeapObject, slowPath);
     Bind(&isHeapObject);
-    GateRef thisValueAndProtoIsJSArray = LogicAndBuilder(env).And(IsJsArray(thisValue))
-        .And(IsJsArray(StubBuilder::GetPrototype(glue, thisValue))).Done();
-    BRANCH(thisValueAndProtoIsJSArray, &isJsArray, slowPath);
+    BRANCH(IsJsArray(thisValue), &isJsArray, slowPath);
     Bind(&isJsArray);
     BRANCH(HasConstructor(thisValue), slowPath, &defaultConstr);
     Bind(&defaultConstr);
