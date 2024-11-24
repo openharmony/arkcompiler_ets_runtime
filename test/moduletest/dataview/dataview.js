@@ -82,3 +82,30 @@ second.setFloat64(0, Infinity);
 print(second.getInt32(0));
 second.setFloat64(0, 27, true);
 print(second.getInt32(0));
+
+let ab = new ArrayBuffer(0x100);
+try {
+    let dv1 = new DataView(ab, 0x10, 0xfffffff8);
+} catch(e) {
+    print(e)
+}
+try {
+    let dv2 = new DataView(ab, -1, 0xfffffff8);
+} catch(e) {
+    print(e)
+}
+try {
+    let dv3 = new DataView(ab, 2**53, 0xfffffff8);
+} catch(e) {
+    print(e)
+}
+try {
+    let dv4 = new DataView(ab, 0x10, -1);
+} catch(e) {
+    print(e)
+}
+try {
+    let dv5 = new DataView(ab, 0x10, 2**53);
+} catch(e) {
+    print(e)
+}

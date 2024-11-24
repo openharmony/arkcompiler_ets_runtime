@@ -34,3 +34,8 @@ TypeError: Cannot convert a BigInt value to a number
 1076565114
 2146435072
 0
+RangeError: offset + viewByteLen > bufByteLen
+RangeError: integerIndex < 0 or integerIndex > SAFE_NUMBER
+RangeError: integerIndex < 0 or integerIndex > SAFE_NUMBER
+RangeError: integerIndex < 0 or integerIndex > SAFE_NUMBER
+RangeError: integerIndex < 0 or integerIndex > SAFE_NUMBER
