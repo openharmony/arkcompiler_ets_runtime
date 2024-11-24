@@ -119,6 +119,7 @@ namespace panda::ecmascript::kungfu {
     V(DeleteObjectProperty)           \
     V(SameValue)                      \
     V(StringIteratorNext)             \
+    V(BatchBarrier)                   \
     V(VerifyBarrier)
 
 #define COMMON_STUB_ID_LIST(V)          \

@@ -3871,6 +3871,16 @@ bool RuntimeStubs::IsFastRegExp(uintptr_t argGlue, JSTaggedValue thisValue)
     return builtins::BuiltinsRegExp::IsFastRegExp(thread, thisValue);
 }
 
+RememberedSet* RuntimeStubs::CreateLocalToShare(Region* region)
+{
+    return region->CreateLocalToShareRememberedSet();
+}
+
+RememberedSet* RuntimeStubs::CreateOldToNew(Region* region)
+{
+    return region->CreateOldToNewRememberedSet();
+}
+
 template <typename T>
 static bool CompareFloat(T x, T y)
 {
@@ -4172,6 +4182,12 @@ DEF_RUNTIME_STUBS(GetAllFlagsInternal)
     }
     JSHandle<EcmaString> flagsString = factory->NewFromUtf8(std::string_view(strFlags));
     return flagsString.GetTaggedValue().GetRawData();
+}
+
+void RuntimeStubs::ObjectCopy(JSTaggedType *dst, JSTaggedType *src, uint32_t count)
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    std::copy_n(src, count, dst);
 }
 
 void RuntimeStubs::Initialize(JSThread *thread)

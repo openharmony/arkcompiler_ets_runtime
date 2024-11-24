@@ -630,7 +630,12 @@ private:
     V(VerifyBarrier)                                 \
     V(SortTypedArray)                                \
     V(ReverseTypedArray)                             \
-    V(IsFastRegExp)
+    V(IsFastRegExp)                                  \
+    V(CreateLocalToShare)                            \
+    V(CreateOldToNew)                                \
+    V(BatchBarrier)                                  \
+    V(ObjectCopy)
+
 
 #define DECL_CALL_SIGNATURE(name)                                  \
 class name##CallSignature final {                                  \

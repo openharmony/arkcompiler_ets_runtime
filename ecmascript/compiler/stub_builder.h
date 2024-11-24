@@ -985,6 +985,7 @@ public:
     GateRef ComputeSizeUtf8(GateRef length);
     GateRef ComputeSizeUtf16(GateRef length);
     GateRef AlignUp(GateRef x, GateRef alignment);
+    GateRef AlignDown(GateRef x, GateRef alignment);
     inline void SetLength(GateRef glue, GateRef str, GateRef length, bool compressed);
     inline void SetLength(GateRef glue, GateRef str, GateRef length, GateRef isCompressed);
     void Assert(int messageId, int line, GateRef glue, GateRef condition, Label *nextLabel);
@@ -1057,8 +1058,8 @@ public:
     //
     // Note: dstObj is the object address for dstAddr, it must point to the head of an object.
     template <OverlapKind kind>
-    void ArrayCopy(GateRef glue, GateRef srcAddr, GateRef dstObj, GateRef dstAddr, GateRef length,
-                   MemoryAttribute mAttr = MemoryAttribute::Default());
+    void ArrayCopy(GateRef glue, GateRef srcAddr, GateRef dstObj, GateRef dstAddr, GateRef taggedValueCount,
+                   bool needBarrier);
 protected:
     static constexpr int LOOP_UNROLL_FACTOR = 2;
 private:

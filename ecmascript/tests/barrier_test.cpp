@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include "ecmascript/js_array.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/tests/test_helper.h"
 
@@ -346,5 +347,76 @@ HWTEST_F_L0(BarrierTest, OldToNewBatchCopy)
     for (uint32_t i = 0; i < arrayLength; i++) {
         EXPECT_EQ(dstArray->Get(thread, i), srcArray->Get(thread, i));
     }
+}
+
+HWTEST_F_L0(BarrierTest, LocalToShareUnshift)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    uint32_t arrayLength = 40;
+    JSHandle<TaggedArray> array = factory->NewTaggedArray(arrayLength);
+    for (uint32_t i = 0; i < arrayLength; i++) {
+        JSHandle<EcmaString> str = factory->NewFromStdString(std::to_string(i) + "_" + std::to_string(i));
+        // string longer than 1 will be in sweepable shared heap
+        array->Set(thread, i, str);
+    }
+    JSHandle<JSArray> jsArray = JSArray::CreateArrayFromList(thread, array);
+
+    JSHandle<EcmaString> unshiftStr = factory->NewFromStdString("unshift");
+    auto unshiftFunc = JSTaggedValue::GetProperty(thread, JSHandle<JSTaggedValue>(jsArray),
+                                                  JSHandle<JSTaggedValue>(unshiftStr)).GetValue();
+    EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, unshiftFunc.GetTaggedValue(),
+                                                                    jsArray.GetTaggedValue(),
+                                                                    thread->GlobalConstants()->GetUndefined(), 1);
+    info->SetCallArg(thread->GlobalConstants()->GetUndefined());
+    EcmaInterpreter::Execute(info);
+
+    array = JSHandle<TaggedArray>(thread, jsArray->GetElements());
+    Region *dstRegion = Region::ObjectAddressToRange(array.GetObject<TaggedArray>());
+    std::set<uintptr_t> LocalToShareSlot;
+    for (uint32_t i = 1; i < arrayLength + 1; i++) {
+        LocalToShareSlot.insert(ToUintPtr(array->GetData() + i));
+    }
+    dstRegion->IterateAllLocalToShareBits([&LocalToShareSlot](void *mem) {
+        LocalToShareSlot.erase(ToUintPtr(mem));
+        return true;
+    });
+
+    EXPECT_TRUE(LocalToShareSlot.empty());
+}
+
+HWTEST_F_L0(BarrierTest, UnshiftBarrierMoveForward)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    uint32_t arrayLength = 3;
+    JSHandle<TaggedArray> array = factory->NewTaggedArray(arrayLength);
+    for (uint32_t i = 0; i < arrayLength; i++) {
+        JSHandle<EcmaString> str = factory->NewFromStdString(std::to_string(i) + "_" + std::to_string(i));
+        // string longer than 1 will be in sweepable shared heap
+        array->Set(thread, i, str);
+    }
+    JSHandle<JSArray> jsArray = JSArray::CreateArrayFromList(thread, array);
+
+    JSHandle<EcmaString> unshiftStr = factory->NewFromStdString("unshift");
+    auto unshiftFunc = JSTaggedValue::GetProperty(thread, JSHandle<JSTaggedValue>(jsArray),
+                                                  JSHandle<JSTaggedValue>(unshiftStr)).GetValue();
+    EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, unshiftFunc.GetTaggedValue(),
+                                                                    jsArray.GetTaggedValue(),
+                                                                    thread->GlobalConstants()->GetUndefined(), 3);
+    info->SetCallArg(thread->GlobalConstants()->GetUndefined(), thread->GlobalConstants()->GetUndefined(),
+                     thread->GlobalConstants()->GetUndefined());
+    EcmaInterpreter::Execute(info);
+
+    array = JSHandle<TaggedArray>(thread, jsArray->GetElements());
+    Region *dstRegion = Region::ObjectAddressToRange(array.GetObject<TaggedArray>());
+    std::set<uintptr_t> LocalToShareSlot;
+    for (uint32_t i = 3; i < arrayLength + 3; i++) {
+        LocalToShareSlot.insert(ToUintPtr(array->GetData() + i));
+    }
+    dstRegion->IterateAllLocalToShareBits([&LocalToShareSlot](void *mem) {
+        LocalToShareSlot.erase(ToUintPtr(mem));
+        return true;
+    });
+
+    EXPECT_TRUE(LocalToShareSlot.empty());
 }
 } // namespace panda::ecmascript
