@@ -1683,6 +1683,14 @@ testCases.forEach(({ array, target }) => {
     let singleElementArr = [1];
     singleElementArr.push(2);
     print(singleElementArr);
+
+    var ve = [''];
+    try {
+        for (var item in ve) {
+            var vee = ve[item];
+            Array.prototype.push.call(vee[item],[,,]);
+        }
+    } catch(e) { print(e); }
 }
 
 /*
