@@ -663,6 +663,14 @@ int JSTaggedValue::IntLexicographicCompare(JSTaggedValue x, JSTaggedValue y)
     return res;
 }
 
+int JSTaggedValue::DoubleLexicographicCompare(JSTaggedValue x, JSTaggedValue y)
+{
+    ASSERT(x.IsDouble() && y.IsDouble());
+    CString xStr = base::NumberHelper::DoubleToCString(x.GetDouble());
+    CString yStr = base::NumberHelper::DoubleToCString(y.GetDouble());
+    return xStr.compare(yStr);
+}
+
 ComparisonResult JSTaggedValue::Compare(JSThread *thread, const JSHandle<JSTaggedValue> &x,
                                         const JSHandle<JSTaggedValue> &y)
 {

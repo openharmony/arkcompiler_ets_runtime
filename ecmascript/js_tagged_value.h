@@ -702,6 +702,7 @@ public:
     static ComparisonResult Compare(JSThread *thread, const JSHandle<JSTaggedValue> &x,
                                     const JSHandle<JSTaggedValue> &y);
     static int IntLexicographicCompare(JSTaggedValue x, JSTaggedValue y);
+    static int DoubleLexicographicCompare(JSTaggedValue x, JSTaggedValue y);
     static ComparisonResult StrictNumberCompare(double x, double y);
     static bool StrictNumberEquals(double x, double y);
     static bool StrictIntEquals(int x, int y);

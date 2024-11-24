@@ -69,6 +69,10 @@ static const double POWERS_OF_TEN[] = {
     10000000000000000000000.0 // 10^22
 };
 static const int POWERS_OF_TEN_SIZE = 23;
+const CString NumberHelper::NAN_STR = "NaN";
+const CString NumberHelper::ZERO_STR = "0";
+const CString NumberHelper::MINUS_INFINITY_STR = "-Infinity";
+const CString NumberHelper::INFINITY_STR = "Infinity";
 
 static inline uint8_t ToDigit(uint8_t c)
 {
@@ -692,34 +696,30 @@ JSHandle<EcmaString> NumberHelper::IntToEcmaString(const JSThread *thread, int n
     return factory->NewFromASCII(ToCString(number));
 }
 
-JSHandle<EcmaString> NumberHelper::DoubleToEcmaString(const JSThread *thread, double d)
+CString NumberHelper::DoubleToCString(double d)
 {
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     if (std::isnan(d)) {
-        return JSHandle<EcmaString>::Cast(thread->GlobalConstants()->GetHandledNanCapitalString());
+        return NumberHelper::NAN_STR;
     }
     if (d == 0.0) {
-        return JSHandle<EcmaString>::Cast(thread->GlobalConstants()->GetHandledZeroString());
+        return NumberHelper::ZERO_STR;
     }
-    if (d >= INT32_MIN + 1 && d <= INT32_MAX && d == static_cast<double>(static_cast<int32_t>(d))) {
-        return factory->NewFromASCII(IntToString(static_cast<int32_t>(d)));
-    }
-
     if (std::isinf(d)) {
-        return d < 0 ? JSHandle<EcmaString>::Cast(thread->GlobalConstants()->GetHandledMinusInfinityCapitalString())
-                     : JSHandle<EcmaString>::Cast(thread->GlobalConstants()->GetHandledInfinityCapitalString());
+        if (d < 0) {
+            return NumberHelper::MINUS_INFINITY_STR;
+        } else {
+            return NumberHelper::INFINITY_STR;
+        }
     }
-
-    char buffer[JS_DTOA_BUF_SIZE] = {0};
     bool isNeg = false;
-
     if (d < 0) {
         isNeg = true;
         d = -d;
     }
     ASSERT(d > 0);
     constexpr int startIdx = 8;
-    char *result = buffer + startIdx;
+    char buff[JS_DTOA_BUF_SIZE] = {0};
+    char *result = buff + startIdx;
     int n; // decimal point
     int k; // length
     DtoaHelper::Dtoa(d, result, &n, &k); //Fast Double To Ascii.
@@ -769,7 +769,7 @@ JSHandle<EcmaString> NumberHelper::DoubleToEcmaString(const JSThread *thread, do
         --result;
         result[0] = '-';
     }
-    return factory->NewFromASCIISkippingStringTable(result);
+    return result;
 }
 
 // 7.1.12.1 ToString Applied to the Number Type
@@ -793,7 +793,8 @@ JSHandle<EcmaString> NumberHelper::NumberToString(const JSThread *thread, JSTagg
             resultJSHandle = IntToEcmaString(thread, intVal);
         }
     } else {
-        resultJSHandle = DoubleToEcmaString(thread, number.GetDouble());
+        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+        resultJSHandle = factory->NewFromASCIISkippingStringTable(DoubleToCString(number.GetDouble()));
     }
 
     cacheTable->SetCachedResult(thread, entry, number, resultJSHandle);
