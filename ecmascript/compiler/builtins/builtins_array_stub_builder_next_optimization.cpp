@@ -239,24 +239,22 @@ GateRef BuiltinsArrayStubBuilder::DoSortOptimised(GateRef glue, GateRef receiver
                 }
                 Bind(&afterGettingmiddleValue);
                 {
-                    Label isInt(env);
-                    Label notInt(env);
+                    Label intOrDouble(env);
+                    Label notIntAndDouble(env);
                     Label exchangeIndex(env);
                     GateRef middleVal = *middleValue;
                     GateRef presentVal = *presentValue;
                     DEFVARIABLE(compareResult, VariableType::INT32(), Int32(0));
-                    GateRef intBool = LogicAndBuilder(env)
-                                      .And(TaggedIsInt(middleVal))
-                                      .And(TaggedIsInt(presentVal))
-                                      .Done();
-                    BRANCH(intBool, &isInt, &notInt);
-                    Bind(&isInt);
+                    GateRef intDoubleCheck = BitOr(BitAnd(TaggedIsInt(middleVal), TaggedIsInt(presentVal)),
+                                                   BitAnd(TaggedIsDouble(middleVal), TaggedIsDouble(presentVal)));
+                    BRANCH(intDoubleCheck, &intOrDouble, &notIntAndDouble);
+                    Bind(&intOrDouble);
                     {
                         compareResult =
                             CallNGCRuntime(glue, RTSTUB_ID(FastArraySort), {*middleValue, *presentValue});
                         Jump(&exchangeIndex);
                     }
-                    Bind(&notInt);
+                    Bind(&notIntAndDouble);
                     {
                         Label isString(env);
                         GateRef strBool = LogicAndBuilder(env)
@@ -267,9 +265,7 @@ GateRef BuiltinsArrayStubBuilder::DoSortOptimised(GateRef glue, GateRef receiver
                         Bind(&isString);
                         {
                             compareResult = CallNGCRuntime(glue,
-                                                           RTSTUB_ID(FastArraySortString), {
-                                                               glue, *middleValue, *presentValue
-                                                           });
+                                RTSTUB_ID(FastArraySortString), {glue, *middleValue, *presentValue});
                             Jump(&exchangeIndex);
                         }
                     }
