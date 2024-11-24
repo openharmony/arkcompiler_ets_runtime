@@ -103,7 +103,13 @@ JSPandaFile::~JSPandaFile()
     methodLiteralMap_.clear();
     ClearNameMap();
     if (methodLiterals_ != nullptr) {
-        JSPandaFileManager::FreeBuffer(methodLiterals_);
+        if (isBundlePack_) {
+            JSPandaFileManager::FreeBuffer(methodLiterals_);
+        } else {
+            auto size = AlignUp(sizeof(MethodLiteral) * numMethods_, PageSize());
+            PageClearTag(methodLiterals_, size);
+            PageUnmap(MemMap(methodLiterals_, size));
+        }
         methodLiterals_ = nullptr;
     }
 }
@@ -220,8 +226,10 @@ void JSPandaFile::InitializeMergedPF()
             delete info;
         }
     }
+    auto size = AlignUp(sizeof(MethodLiteral) * numMethods_, PageSize());
     methodLiterals_ =
-        static_cast<MethodLiteral *>(JSPandaFileManager::AllocateBuffer(sizeof(MethodLiteral) * numMethods_));
+        static_cast<MethodLiteral *>(PageMap(size, PAGE_PROT_READWRITE).GetMem());
+    PageTag(methodLiterals_, size, PageTagType::METHOD_LITERAL);
     methodLiteralMap_.reserve(numMethods_);
 }
 
