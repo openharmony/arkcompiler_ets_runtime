@@ -379,7 +379,7 @@ void ElfBuilder::MergeTextSections(std::ofstream &file,
         curInfo.textSize = curSecSize;
         curSecOffset += curSecSize;
         if (rodataSizeAfterText != 0) {
-            curSecOffset = AlignUp(curSecOffset, AOTFileInfo::DATA_SEC_ALIGN);
+            curSecOffset = AlignUp(curSecOffset, AOTFileInfo::RODATA_SEC_ALIGN);
             file.seekp(curSecOffset);
             file.write(reinterpret_cast<char *>(rodataAddrAfterText), rodataSizeAfterText);
             curInfo.rodataSizeAfterText = rodataSizeAfterText;

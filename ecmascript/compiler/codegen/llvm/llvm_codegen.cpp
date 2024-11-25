@@ -221,8 +221,10 @@ uint8_t *CodeInfo::AllocaDataSectionImp(uintptr_t size, const char *sectionName,
                                                : (this->*allocaInNotReqSecBuffer)(size, AOTFileInfo::PAGE_ALIGN);
             alreadyPageAlign_ = true;
         } else {
-            addr = curSec.isSequentialAOTSec() ? (this->*allocaInReqSecBuffer)(size, AOTFileInfo::DATA_SEC_ALIGN)
-                                               : (this->*allocaInNotReqSecBuffer)(size, AOTFileInfo::DATA_SEC_ALIGN);
+            uint32_t alignedSize = curSec.InRodataSection() ? AOTFileInfo::RODATA_SEC_ALIGN
+                                                            : AOTFileInfo::DATA_SEC_ALIGN;
+            addr = curSec.isSequentialAOTSec() ? (this->*allocaInReqSecBuffer)(size, alignedSize)
+                                               : (this->*allocaInNotReqSecBuffer)(size, alignedSize);
         }
     } else {
         addr = curSec.isSequentialAOTSec() ? (this->*allocaInReqSecBuffer)(size, 0)

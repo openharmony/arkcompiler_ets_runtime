@@ -36,6 +36,7 @@ public:
     virtual ~AOTFileInfo() = default;
 
     static constexpr uint32_t TEXT_SEC_ALIGN = 16;
+    static constexpr uint32_t RODATA_SEC_ALIGN = 16;
     static constexpr uint32_t DATA_SEC_ALIGN = 8;
     static constexpr uint32_t PAGE_ALIGN = 4096;
 

@@ -293,7 +293,7 @@ void ElfReader::SeparateTextSections(std::vector<ModuleSectionDes> &des,
         des[i].SetSecAddrAndSize(ElfSecName::TEXT, secAddr + secOffset, textSize);
         secOffset += textSize;
         if (rodataSizeAfterText != 0) {
-            secOffset = AlignUp(secOffset, AOTFileInfo::DATA_SEC_ALIGN);
+            secOffset = AlignUp(secOffset, AOTFileInfo::RODATA_SEC_ALIGN);
             secOffset += rodataSizeAfterText;
         }
     }
@@ -365,7 +365,7 @@ void ElfReader::SeparateTextSections(BinaryBufferParser &parser,
         des[i].SetSecAddrAndSize(ElfSecName::TEXT, secAddr + secOffset, textSize);
         secOffset += textSize;
         if (rodataSizeAfterText != 0) {
-            secOffset = AlignUp(secOffset, AOTFileInfo::DATA_SEC_ALIGN);
+            secOffset = AlignUp(secOffset, AOTFileInfo::RODATA_SEC_ALIGN);
             parser.ParseBuffer(reinterpret_cast<void *>(secAddr + secOffset), rodataSizeAfterText,
                                curShOffset + secOffset);
             secOffset += rodataSizeAfterText;
