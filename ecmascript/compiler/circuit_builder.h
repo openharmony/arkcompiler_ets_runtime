@@ -450,6 +450,8 @@ public:
                           GateRef hirGate);
     GateRef CallStub(GateRef glue, GateRef hirGate, int index, const std::vector<GateRef> &args,
                      const char* comment = nullptr);
+    GateRef CallCommonStub(GateRef glue, GateRef hirGate, int index, const std::vector<GateRef> &args,
+                           const char *comment = nullptr);
     GateRef CallBuiltinRuntime(GateRef glue, GateRef depend, const std::vector<GateRef> &args, bool isNew = false);
     GateRef CallBuiltinRuntimeWithNewTarget(GateRef glue, GateRef depend, const std::vector<GateRef> &args);
     GateRef Call(const CallSignature* cs, GateRef glue, GateRef target, GateRef depend,

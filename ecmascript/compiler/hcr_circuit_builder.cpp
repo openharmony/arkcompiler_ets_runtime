@@ -73,6 +73,24 @@ GateRef CircuitBuilder::CallStub(GateRef glue, GateRef hirGate, int index, const
     return result;
 }
 
+GateRef CircuitBuilder::CallCommonStub(GateRef glue, GateRef hirGate, int index, const std::vector<GateRef> &args,
+                                       const char *comment)
+{
+    const CallSignature *cs = CommonStubCSigns::Get(index);
+    ASSERT(cs->IsCommonStub());
+    GateRef target = IntPtr(index);
+    auto label = GetCurrentLabel();
+    auto depend = label->GetDepend();
+    GateRef result;
+    if (GetCircuit()->IsOptimizedOrFastJit()) {
+        ASSERT(hirGate != Circuit::NullGate());
+        result = Call(cs, glue, target, depend, args, hirGate, comment);
+    } else {
+        result = Call(cs, glue, target, depend, args, Circuit::NullGate(), comment);
+    }
+    return result;
+}
+
 GateRef CircuitBuilder::CallBuiltinRuntime(GateRef glue, GateRef depend, const std::vector<GateRef> &args, bool isNew)
 {
     ASSERT(!GetCircuit()->IsOptimizedOrFastJit());
