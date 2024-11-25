@@ -10090,10 +10090,9 @@ void StubBuilder::MigrateArrayWithKind(GateRef glue, GateRef object, GateRef old
     env->SubCfgEntry(&entryPass);
     Label exit(env);
 
-    Label elementsKindOn(env);
-    GateRef isElementsKindEnabled = IsEnableElementsKind(glue);
-    BRANCH(isElementsKindEnabled, &elementsKindOn, &exit);
-    Bind(&elementsKindOn);
+    Label mutantArrayOn(env);
+    BRANCH(IsEnableMutantArray(glue), &mutantArrayOn, &exit);
+    Bind(&mutantArrayOn);
 
     DEFVARIABLE(newElements, VariableType::JS_ANY(), Undefined());
     Label doMigration(env);

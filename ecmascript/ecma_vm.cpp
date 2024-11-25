@@ -229,6 +229,11 @@ bool EcmaVM::IsEnablePGOProfiler() const
     return options_.GetEnableAsmInterpreter() && options_.IsEnablePGOProfiler();
 }
 
+bool EcmaVM::IsEnableMutantArray() const
+{
+    return options_.GetEnableAsmInterpreter() && options_.IsEnableMutantArray();
+}
+
 bool EcmaVM::IsEnableElementsKind() const
 {
     return options_.GetEnableAsmInterpreter() && options_.IsEnableElementsKind();

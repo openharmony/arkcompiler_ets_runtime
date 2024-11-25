@@ -78,8 +78,7 @@ GateRef NewObjectStubBuilder::NewJSArrayWithSize(GateRef hclass, GateRef size)
     Label enabledElementsKind(env);
     Label notEmptyArray(env);
     Label initObj(env);
-    GateRef isElementsKindEnabled = IsEnableElementsKind(glue_);
-    BRANCH(isElementsKindEnabled, &enabledElementsKind, &initObj);
+    BRANCH(IsEnableElementsKind(glue_), &enabledElementsKind, &initObj);
     Bind(&enabledElementsKind);
     {
         // For new Array(Len), the elementsKind should be Hole
@@ -115,12 +114,11 @@ GateRef NewObjectStubBuilder::NewEmptyJSArrayWithHClass(GateRef hclass)
     Label exit(env);
     env->SubCfgEntry(&entry);
     GateRef result = NewJSObject(glue_, hclass);
-    Label enabledElementsKind(env);
+    Label enabledMutantArray(env);
     Label initObj(env);
-    GateRef isElementsKindEnabled = IsEnableElementsKind(glue_);
     DEFVARIABLE(array, VariableType::JS_ANY(), Undefined());
-    BRANCH_UNLIKELY(isElementsKindEnabled, &enabledElementsKind, &initObj);
-    Bind(&enabledElementsKind);
+    BRANCH_UNLIKELY(IsEnableMutantArray(glue_), &enabledMutantArray, &initObj);
+    Bind(&enabledMutantArray);
     {
         Label initMutantArray(env);
         GateRef kind = GetElementsKindFromHClass(hclass);

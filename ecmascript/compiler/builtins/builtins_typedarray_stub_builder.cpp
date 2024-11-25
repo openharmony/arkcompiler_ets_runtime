@@ -3403,7 +3403,7 @@ void BuiltinsTypedArrayStubBuilder::FastCopyFromArrayToTypedArray(GateRef glue, 
     Label next(env);
     Label setValue(env);
     Label isTagged(env);
-    Label elementsKindEnabled(env);
+    Label mutantArrayEnabled(env);
 
     GateRef buffer = GetViewedArrayBufferOrByteArray(result->ReadVariable());
     if (!typedArrayFromCtor) {
@@ -3423,8 +3423,8 @@ void BuiltinsTypedArrayStubBuilder::FastCopyFromArrayToTypedArray(GateRef glue, 
     } else {
         targetByteIndex = Int32Add(Int32Mul(targetOffset, elementSize), targetByteOffset);
     }
-    BRANCH(IsEnableElementsKind(glue), &elementsKindEnabled, &isTagged);
-    Bind(&elementsKindEnabled);
+    BRANCH(IsEnableMutantArray(glue), &mutantArrayEnabled, &isTagged);
+    Bind(&mutantArrayEnabled);
     {
         CopyElementsToArrayBuffer(glue, srcLength, array, buffer, targetByteIndex, arrayType, true);
         Jump(check);
