@@ -239,12 +239,12 @@ namespace panda::ecmascript::kungfu {
     V(BigInt64ArrayConstructor)                     \
     V(BigUint64ArrayConstructor)
 
-#define AOT_AND_BUILTINS_STUB_LIST(V)               \
-    V(StringLocaleCompare)                                \
-    V(StringIteratorProtoNext)                   \
+#define AOT_AND_BUILTINS_STUB_LIST(V)  \
+    V(StringLocaleCompare)             \
+    V(StringIteratorProtoNext)         \
     V(ArraySort)
 
-#define AOT_BUILTINS_STUB_LIST(V)                   \
+#define AOT_BUILTINS_STUB_LIST(V)                       \
     V(JsonStringify)                                    \
     V(MapProtoIterator)                                 \
     V(MapIteratorProtoNext)                             \
@@ -338,6 +338,7 @@ public:
         AOT_BUILTINS_INLINE_LIST(DEF_STUB_ID)
 #undef DEF_STUB_ID_DYN
 #undef DEF_STUB_ID
+        NUM_OF_BUILTINS_ID,
         BUILTINS_CONSTRUCTOR_STUB_FIRST = BooleanConstructor,
         TYPED_BUILTINS_FIRST = JsonStringify,
         TYPED_BUILTINS_LAST = IteratorProtoReturn,

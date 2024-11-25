@@ -19,6 +19,7 @@
 #include <set>
 
 #include "ecmascript/base/aligned_struct.h"
+#include "ecmascript/compiler/builtins/builtins_call_signature.h"
 #include "ecmascript/js_function_kind.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/mem/c_string.h"
@@ -228,6 +229,10 @@ public:
     using EmptyBit = HasDebuggerStmtBit::NextField<uint8_t, EMPTY_BITS>; // offset 14-29
     using IsSharedBit = EmptyBit::NextFlag; // offset 30
     using CanTypedCall = IsSharedBit::NextFlag; // offset 31
+
+    // one placeholder 0xffff (INVALID) in kungfu::BuiltinsStubCSigns::ID
+    static_assert(static_cast<size_t>(kungfu::BuiltinsStubCSigns::ID::NUM_OF_BUILTINS_ID) < (1 << BUILTINID_NUM_BITS));
+    static_assert(static_cast<size_t>(FunctionKind::LAST_FUNCTION_KIND) <= (1 << FUNCTION_KIND_NUM_BITS));
 
     inline NO_THREAD_SANITIZE void SetHotnessCounter(int16_t counter)
     {
