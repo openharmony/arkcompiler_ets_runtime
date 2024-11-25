@@ -10553,8 +10553,8 @@ void StubBuilder::ArrayCopy<CopyKind::NotOverlap>(GateRef glue, GateRef srcAddr,
     CallNGCRuntime(glue, RTSTUB_ID(ObjectCopy),
                    {TaggedCastToIntPtr(dstAddr), TaggedCastToIntPtr(srcAddr), taggedValueCount});
     if (needBarrier) {
-        CallStub(glue, CommonStubCSigns::BatchBarrier,
-                 {glue, TaggedCastToIntPtr(dstObj), TaggedCastToIntPtr(dstAddr), taggedValueCount});
+        CallCommonStub(glue, CommonStubCSigns::BatchBarrier,
+                       {glue, TaggedCastToIntPtr(dstObj), TaggedCastToIntPtr(dstAddr), taggedValueCount});
     }
     Jump(&exit);
     Bind(&exit);
@@ -10572,8 +10572,8 @@ void StubBuilder::ArrayCopy<CopyKind::MustOverlap>(GateRef glue, GateRef srcAddr
     CallNGCRuntime(glue, RTSTUB_ID(ObjectCopy),
                    {TaggedCastToIntPtr(dstAddr), TaggedCastToIntPtr(srcAddr), taggedValueCount});
     if (needBarrier) {
-        CallStub(glue, CommonStubCSigns::BatchBarrier,
-                 {glue, TaggedCastToIntPtr(dstObj), TaggedCastToIntPtr(dstAddr), taggedValueCount});
+        CallCommonStub(glue, CommonStubCSigns::BatchBarrier,
+                       {glue, TaggedCastToIntPtr(dstObj), TaggedCastToIntPtr(dstAddr), taggedValueCount});
     }
     Jump(&exit);
     Bind(&exit);

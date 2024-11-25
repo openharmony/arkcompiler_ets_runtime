@@ -291,6 +291,14 @@ inline GateRef StubBuilder::CallStub(GateRef glue, int index, const std::initial
     return result;
 }
 
+inline GateRef StubBuilder::CallCommonStub(GateRef glue, int index, const std::initializer_list<GateRef>& args)
+{
+    SavePcIfNeeded(glue);
+    const std::string name = CommonStubCSigns::GetName(index);
+    GateRef result = env_->GetBuilder()->CallCommonStub(glue, Circuit::NullGate(), index, args, name.c_str());
+    return result;
+}
+
 inline GateRef StubBuilder::CallBuiltinRuntime(GateRef glue, const std::initializer_list<GateRef>& args, bool isNew)
 {
     return env_->GetBuilder()->CallBuiltinRuntime(glue, Gate::InvalidGateRef, args, isNew);
