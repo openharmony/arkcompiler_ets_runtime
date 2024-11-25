@@ -111,7 +111,8 @@ private:
 
     void InitializeSymbolWithRealm(const JSHandle<GlobalEnv> &realm, const JSHandle<JSHClass> &objFuncInstanceHClass);
 
-    void InitializeArray(const JSHandle<GlobalEnv> &env, const JSHandle<JSTaggedValue> &objFuncPrototypeVal) const;
+    void InitializeArray(const JSHandle<GlobalEnv> &env, const JSHandle<JSTaggedValue> &objFuncPrototypeVal,
+                         bool isRealm) const;
 
     JSHandle<JSObject> InitializeArrayPrototype(JSHandle<JSHClass> &arrBaseFuncInstanceHClass) const;
     

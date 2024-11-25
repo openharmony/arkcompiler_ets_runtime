@@ -741,7 +741,7 @@ bool JSHClass::TransitToElementsKind(const JSThread *thread, const JSHandle<JSOb
         return false;
     }
 
-    if (!thread->GetEcmaVM()->IsEnableElementsKind()) {
+    if (!thread->GetEcmaVM()->IsEnableMutantArray()) {
         // Update TrackInfo
         if (!thread->IsPGOProfilerEnable()) {
             return true;

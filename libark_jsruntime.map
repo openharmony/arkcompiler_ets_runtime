@@ -163,6 +163,7 @@
       panda::ecmascript::EcmaStringAccessor::ToStdString*;
       panda::ecmascript::EcmaVM::CheckThread*;
       panda::ecmascript::EcmaVM::GetGlobalEnv*;
+      panda::ecmascript::EcmaVM::IsEnableMutantArray*;
       panda::ecmascript::EcmaVM::IsEnableElementsKind*;
       panda::ecmascript::EcmaVM::IsEnablePGOProfiler*;
       panda::ecmascript::EcmaVM::IsEnableJit*;

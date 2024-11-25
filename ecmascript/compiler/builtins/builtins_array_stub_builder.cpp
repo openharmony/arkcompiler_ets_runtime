@@ -1995,9 +1995,9 @@ void BuiltinsArrayStubBuilder::Reverse(GateRef glue, GateRef thisValue, [[maybe_
     Label isInt(env);
     Label isNotInt(env);
     Label notFastKind(env);
-    GateRef isElementsKindEnabled = IsEnableElementsKind(glue);
+    GateRef isMutantArrayEnabled = IsEnableMutantArray(glue);
     GateRef checkIntKind = LogicAndBuilder(env)
-        .And(isElementsKindEnabled)
+        .And(isMutantArrayEnabled)
         .And(Int32GreaterThanOrEqual(kind, Int32(static_cast<int32_t>(ElementsKind::INT))))
         .And(Int32LessThanOrEqual(kind, Int32(static_cast<int32_t>(ElementsKind::HOLE_INT))))
         .Done();
@@ -2011,7 +2011,7 @@ void BuiltinsArrayStubBuilder::Reverse(GateRef glue, GateRef thisValue, [[maybe_
         Label isNumber(env);
         Label isNotNumber(env);
         GateRef checkNumberKind = LogicAndBuilder(env)
-            .And(isElementsKindEnabled)
+            .And(isMutantArrayEnabled)
             .And(Int32GreaterThanOrEqual(kind, Int32(static_cast<int32_t>(ElementsKind::NUMBER))))
             .And(Int32LessThanOrEqual(kind, Int32(static_cast<int32_t>(ElementsKind::HOLE_NUMBER))))
             .Done();

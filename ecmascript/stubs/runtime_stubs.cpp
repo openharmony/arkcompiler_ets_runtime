@@ -589,7 +589,7 @@ DEF_RUNTIME_STUBS(UpdateHClassForElementsKind)
         return JSTaggedValue::Hole().GetRawData();
     }
 
-    if (!thread->GetEcmaVM()->IsEnableElementsKind()) {
+    if (!thread->GetEcmaVM()->IsEnableMutantArray()) {
         // Update TrackInfo
         if (!thread->IsPGOProfilerEnable()) {
             return JSTaggedValue::Hole().GetRawData();
