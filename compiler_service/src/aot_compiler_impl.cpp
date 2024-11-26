@@ -104,6 +104,8 @@ int32_t AotCompilerImpl::PrepareArgs(const std::unordered_map<std::string, std::
     if (enableAotCodeComment) {
         hapArgs_.argVector.emplace_back(Symbols::PREFIX + ArgsIdx::COMPILER_ENABLE_AOT_CODE_COMMENT +
             Symbols::EQ + "true");
+        hapArgs_.argVector.emplace_back(Symbols::PREFIX + ArgsIdx::COMPILER_LOG_OPT +
+            Symbols::EQ + "allasm");
     }
 #endif
     hapArgs_.argVector.emplace_back(abcPath);
