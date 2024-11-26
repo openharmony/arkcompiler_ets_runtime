@@ -3,6 +3,9 @@
 # Issue #17903
 regresstest/ark-regress/mjsunit/regress/regress-95113.js
 
+# Issue #19413
+regresstest/ark-regress/mjsunit/regress/regress-4595.js
+
 # Issue #17901
 regresstest/ark-regress/mjsunit/compiler/regress-crbug-1226264.js
 regresstest/ark-regress/mjsunit/regress/regress-reflect-construct.js
