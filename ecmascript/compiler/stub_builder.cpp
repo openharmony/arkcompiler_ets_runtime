@@ -10540,6 +10540,160 @@ GateRef StubBuilder::GetArgumentsElements(GateRef glue, GateRef argvTaggedArray,
     return ret;
 }
 
+GateRef StubBuilder::ComputeTaggedArrayElementKind(GateRef array, GateRef offset, GateRef end)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+    DEFVARIABLE(result, VariableType::INT32(), Int32(0));
+    GateRef elements = GetElementsArray(array);
+    GateRef kind = GetElementsKindFromHClass(LoadHClass(array));
+    Label fastCompute(env);
+    Label slowCompute(env);
+    GateRef checkType = LogicOrBuilder(env)
+                        .Or(Int32Equal(kind, Int32(static_cast<uint32_t>(ElementsKind::NONE))))
+                        .Or(Int32Equal(kind, Int32(static_cast<uint32_t>(ElementsKind::INT))))
+                        .Or(Int32Equal(kind, Int32(static_cast<uint32_t>(ElementsKind::STRING))))
+                        .Or(Int32Equal(kind, Int32(static_cast<uint32_t>(ElementsKind::OBJECT))))
+                        .Or(Int32Equal(kind, Int32(static_cast<uint32_t>(ElementsKind::HOLE))))
+                        .Done();
+    BRANCH(checkType, &fastCompute, &slowCompute);
+    Bind(&fastCompute);
+    {
+        result = kind;
+        Jump(&exit);
+    }
+    Bind(&slowCompute);
+    Label loopHead(env);
+    Label loopEnd(env);
+    Label doLoop(env);
+    Label loopExit(env);
+    DEFVARIABLE(i, VariableType::INT64(), offset);
+    GateRef generic = Int32(static_cast<uint32_t>(ElementsKind::GENERIC));
+    Jump(&loopHead);
+    LoopBegin(&loopHead);
+    {
+        GateRef checkType2 = BitAnd(Int64LessThan(*i, end), Int32LessThan(*result, generic));
+        BRANCH(checkType2, &doLoop, &loopExit);
+        Bind(&doLoop);
+        GateRef value = GetValueFromTaggedArray(elements, *i);
+        result = Int32Or(TaggedToElementKind(value), *result);
+        i = Int64Add(*i, Int64(1));
+        Jump(&loopEnd);
+    }
+    Bind(&loopEnd);
+    LoopEnd(&loopHead);
+    Bind(&loopExit);
+    result = FixElementsKind(*result);
+    Jump(&exit);
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef StubBuilder::GetElementsKindHClass(GateRef glue, GateRef elementKind)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+    Label defaultLabel(env);
+    DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
+    Label labelBuffer[ELEMENTS_KIND_HCLASS_NUM] = {
+        Label(env), Label(env), Label(env), Label(env),
+        Label(env), Label(env), Label(env), Label(env),
+        Label(env), Label(env), Label(env), Label(env)
+    };
+    Switch(elementKind, &defaultLabel, ELEMENTS_KIND_HCLASS_CASES, labelBuffer, ELEMENTS_KIND_HCLASS_NUM);
+    for (int i = 0 ; i < ELEMENTS_KIND_HCLASS_NUM; i++) {
+        Bind(&labelBuffer[i]);
+        result = GetGlobalConstantValue(VariableType::JS_ANY(), glue, ELEMENTS_KIND_HCLASS_INDEX[i]);
+        Jump(&exit);
+    }
+    Bind(&defaultLabel);
+    {
+        FatalPrint(glue, {Int32(GET_MESSAGE_STRING_ID(ThisBranchIsUnreachable))});
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef StubBuilder::FixElementsKind(GateRef oldElement)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+    Label defaultFix(env);
+    Label holeFix(env);
+    DEFVARIABLE(result, VariableType::INT32(), Int32(0));
+    GateRef checkType = LogicOrBuilder(env)
+                        .Or(Int32Equal(oldElement, Int32(static_cast<uint32_t>(ElementsKind::NONE))))
+                        .Or(Int32Equal(oldElement, Int32(static_cast<uint32_t>(ElementsKind::INT))))
+                        .Or(Int32Equal(oldElement, Int32(static_cast<uint32_t>(ElementsKind::NUMBER))))
+                        .Or(Int32Equal(oldElement, Int32(static_cast<uint32_t>(ElementsKind::STRING))))
+                        .Or(Int32Equal(oldElement, Int32(static_cast<uint32_t>(ElementsKind::OBJECT))))
+                        .Or(Int32Equal(oldElement, Int32(static_cast<uint32_t>(ElementsKind::HOLE))))
+                        .Or(Int32Equal(oldElement, Int32(static_cast<uint32_t>(ElementsKind::HOLE_INT))))
+                        .Or(Int32Equal(oldElement, Int32(static_cast<uint32_t>(ElementsKind::HOLE_NUMBER))))
+                        .Or(Int32Equal(oldElement, Int32(static_cast<uint32_t>(ElementsKind::HOLE_STRING))))
+                        .Or(Int32Equal(oldElement, Int32(static_cast<uint32_t>(ElementsKind::HOLE_OBJECT))))
+                        .Done();
+    BRANCH(checkType, &defaultFix, &holeFix);
+    Bind(&holeFix);
+    {
+        Label isHole(env);
+        Label isTagged(env);
+        BRANCH(Int32Equal(oldElement, Int32(static_cast<uint32_t>(ElementsKind::HOLE))),
+               &isHole, &isTagged);
+        Bind(&isHole);
+        {
+            result = Int32(static_cast<uint32_t>(ElementsKind::HOLE_TAGGED));
+            Jump(&exit);
+        }
+        Bind(&isTagged);
+        {
+            result = Int32(static_cast<uint32_t>(ElementsKind::TAGGED));
+            Jump(&exit);
+        }
+    }
+    Bind(&defaultFix);
+    {
+        result = oldElement;
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef StubBuilder::NeedBarrier(GateRef kind){
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    DEFVARIABLE(result, VariableType::BOOL(), True());
+    GateRef isInt = LogicAndBuilder(env)
+                    .And(Int32GreaterThanOrEqual(kind, Int32(static_cast<int32_t>(ElementsKind::INT))))
+                    .And(Int32LessThanOrEqual(kind, Int32(static_cast<int32_t>(ElementsKind::HOLE_INT))))
+                    .Done();
+    GateRef isNumber = LogicAndBuilder(env)
+                       .And(Int32GreaterThanOrEqual(kind, Int32(static_cast<int32_t>(ElementsKind::NUMBER))))
+                       .And(Int32LessThanOrEqual(kind, Int32(static_cast<int32_t>(ElementsKind::HOLE_NUMBER))))
+                       .Done();
+    GateRef check = LogicOrBuilder(env).Or(isInt).Or(isNumber)
+                    .Or(Int32Equal(kind, Int32(static_cast<int32_t>(ElementsKind::HOLE)))).Done();
+    result = BoolNot(check);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
 using CopyKind = StubBuilder::OverlapKind;
 
 template <>
@@ -10650,4 +10804,34 @@ void StubBuilder::ArrayCopyAndHoleToUndefined(GateRef glue, GateRef srcAddr, Gat
     Bind(&loopExit);
     env->SubCfgExit();
 }
+
+int64_t StubBuilder::ELEMENTS_KIND_HCLASS_CASES[ELEMENTS_KIND_HCLASS_NUM] = {
+    static_cast<int64_t>(ElementsKind::NONE),
+    static_cast<int64_t>(ElementsKind::INT),
+    static_cast<int64_t>(ElementsKind::NUMBER),
+    static_cast<int64_t>(ElementsKind::STRING),
+    static_cast<int64_t>(ElementsKind::OBJECT),
+    static_cast<int64_t>(ElementsKind::TAGGED),
+    static_cast<int64_t>(ElementsKind::HOLE),
+    static_cast<int64_t>(ElementsKind::HOLE_INT),
+    static_cast<int64_t>(ElementsKind::HOLE_NUMBER),
+    static_cast<int64_t>(ElementsKind::HOLE_STRING),
+    static_cast<int64_t>(ElementsKind::HOLE_OBJECT),
+    static_cast<int64_t>(ElementsKind::HOLE_TAGGED)
+};
+
+ConstantIndex StubBuilder::ELEMENTS_KIND_HCLASS_INDEX[ELEMENTS_KIND_HCLASS_NUM] = {
+    ConstantIndex::ELEMENT_NONE_HCLASS_INDEX,
+    ConstantIndex::ELEMENT_INT_HCLASS_INDEX,
+    ConstantIndex::ELEMENT_NUMBER_HCLASS_INDEX,
+    ConstantIndex::ELEMENT_STRING_HCLASS_INDEX,
+    ConstantIndex::ELEMENT_OBJECT_HCLASS_INDEX,
+    ConstantIndex::ELEMENT_TAGGED_HCLASS_INDEX,
+    ConstantIndex::ELEMENT_HOLE_HCLASS_INDEX,
+    ConstantIndex::ELEMENT_HOLE_INT_HCLASS_INDEX,
+    ConstantIndex::ELEMENT_HOLE_NUMBER_HCLASS_INDEX,
+    ConstantIndex::ELEMENT_HOLE_STRING_HCLASS_INDEX,
+    ConstantIndex::ELEMENT_HOLE_OBJECT_HCLASS_INDEX,
+    ConstantIndex::ELEMENT_HOLE_TAGGED_HCLASS_INDEX
+};
 }  // namespace panda::ecmascript::kungfu
