@@ -1778,7 +1778,7 @@ JSTaggedValue JSStableArray::Sort(JSThread *thread, const JSHandle<JSTaggedValue
 
 JSTaggedValue JSStableArray::Fill(JSThread *thread, const JSHandle<JSObject> &thisObj,
                                   const JSHandle<JSTaggedValue> &value, int64_t start,
-                                  int64_t end, int64_t len)
+                                  int64_t end)
 {
     JSArray::CheckAndCopyArray(thread, JSHandle<JSArray>::Cast(thisObj));
     uint32_t length = ElementAccessor::GetElementsLength(thisObj);
@@ -1802,26 +1802,14 @@ JSTaggedValue JSStableArray::Fill(JSThread *thread, const JSHandle<JSObject> &th
                 elements->Set(thread, idx, value);
             }
         }
-        return thisObj.GetTaggedValue();
     } else {
-        if (thisObj->GetElements().IsMutantTaggedArray()) {
-            ElementsKind kind = thisObj->GetClass()->GetElementsKind();
-            JSHandle<MutantTaggedArray> newElements = thread->GetEcmaVM()->GetFactory()->NewMutantTaggedArray(len);
-            JSTaggedValue migratedValue = JSTaggedValue(ElementAccessor::ConvertTaggedValueWithElementsKind(
-                value.GetTaggedValue(), kind));
-            for (int64_t idx = start; idx < end; idx++) {
-                newElements->Set<false>(thread, idx, migratedValue);
-            }
-            thisObj->SetElements(thread, newElements);
-        } else {
-            JSHandle<TaggedArray> newElements = thread->GetEcmaVM()->GetFactory()->NewTaggedArray(len);
-            for (int64_t idx = start; idx < end; idx++) {
-                newElements->Set(thread, idx, value);
-            }
-            thisObj->SetElements(thread, newElements);
-        }
-        return thisObj.GetTaggedValue();
+        LOG_ECMA(FATAL) << "this branch is unreachable";
+        UNREACHABLE();
     }
+    if (JSHandle<JSArray>::Cast(thisObj)->GetArrayLength() < end) {
+        JSHandle<JSArray>::Cast(thisObj)->SetArrayLength(thread, end);
+    }
+    return thisObj.GetTaggedValue();
 }
 
 JSTaggedValue JSStableArray::HandleFindLastOfStable(JSThread *thread, JSHandle<JSObject> thisObjHandle,
