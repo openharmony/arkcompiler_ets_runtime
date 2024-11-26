@@ -5468,6 +5468,17 @@ uintptr_t JSNApi::GetGlobalHandleAddr(const EcmaVM *vm, uintptr_t localAddress)
     return thread->NewGlobalHandle(value);
 }
 
+uintptr_t JSNApi::GetXRefGlobalHandleAddr(const EcmaVM *vm, uintptr_t localAddress)
+{
+    if (localAddress == 0) {
+        return 0;
+    }
+    CROSS_THREAD_CHECK(vm);
+    ecmascript::ThreadManagedScope scope(thread);
+    JSTaggedType value = *(reinterpret_cast<JSTaggedType *>(localAddress));
+    return thread->NewXRefGlobalHandle(value);
+}
+
 int JSNApi::GetStartRealTime(const EcmaVM *vm)
 {
     ecmascript::ThreadManagedScope scope(vm->GetJSThread());
@@ -5549,6 +5560,16 @@ void JSNApi::DisposeGlobalHandleAddr(const EcmaVM *vm, uintptr_t addr)
     CROSS_THREAD_CHECK(vm);
     ecmascript::ThreadManagedScope scope(thread);
     thread->DisposeGlobalHandle(addr);
+}
+
+void JSNApi::DisposeXRefGlobalHandleAddr(const EcmaVM *vm, uintptr_t addr)
+{
+    if (addr == 0 || !reinterpret_cast<ecmascript::Node *>(addr)->IsUsing()) {
+        return;
+    }
+    CROSS_THREAD_CHECK(vm);
+    ecmascript::ThreadManagedScope scope(thread);
+    thread->DisposeXRefGlobalHandle(addr);
 }
 
 void *JSNApi::SerializeValue(const EcmaVM *vm, Local<JSValueRef> value, Local<JSValueRef> transfer,

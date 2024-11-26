@@ -1435,6 +1435,7 @@ host_unittest_action("EcmaVm_053_Test") {
   sources = [
     # test file
     "barrier_test.cpp",
+    "ecma_global_storage_test.cpp",
   ]
 
   configs = [
