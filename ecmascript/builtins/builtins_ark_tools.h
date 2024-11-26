@@ -134,7 +134,8 @@
     V("clearFunctionFeedback",                     ClearFunctionFeedback,                     1, INVALID)     \
     V("inYoungSpace",                              InYoungSpace,                              1, INVALID)     \
     V("inOldSpace",                                InOldSpace,                                1, INVALID)     \
-    V("createNapiObject",                          CreateNapiObject,                          0, INVALID)
+    V("createNapiObject",                          CreateNapiObject,                          0, INVALID)     \
+    V("hasConstructor",                            HasConstructor,                            1, INVALID)     \
 
 #define BUILTIN_ARK_TOOLS_FUNCTIONS_JITCOMPILE(V)                                                             \
     V("jitCompileSync",                            JitCompileSync,                            1, INVALID)     \
@@ -199,6 +200,8 @@ public:
     static JSTaggedValue IsTreeString(EcmaRuntimeCallInfo *info);
 
     static JSTaggedValue IsStableJsArray(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue HasConstructor(EcmaRuntimeCallInfo *info);
 
     static JSTaggedValue IsNotHoleProperty(EcmaRuntimeCallInfo *info);
 

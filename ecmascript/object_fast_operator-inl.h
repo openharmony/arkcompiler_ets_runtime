@@ -907,10 +907,6 @@ PropertyAttributes ObjectFastOperator::AddPropertyByName(JSThread *thread, JSHan
 {
     INTERPRETER_TRACE(thread, AddPropertyByName);
 
-    if ((objHandle->IsJSArray() || objHandle->IsTypedArray()) &&
-        keyHandle.GetTaggedValue() == thread->GlobalConstants()->GetConstructorString()) {
-        objHandle->GetJSHClass()->SetHasConstructor(true);
-    }
     int32_t nextInlinedPropsIndex = objHandle->GetJSHClass()->GetNextInlinedPropsIndex();
     if (nextInlinedPropsIndex >= 0) {
         attr.SetOffset(nextInlinedPropsIndex);

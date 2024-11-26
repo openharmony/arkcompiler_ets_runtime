@@ -177,6 +177,20 @@ JSTaggedValue BuiltinsArkTools::IsStableJsArray(EcmaRuntimeCallInfo *info)
         GetTaggedBoolean(true) : GetTaggedBoolean(false);
 }
 
+JSTaggedValue BuiltinsArkTools::HasConstructor(EcmaRuntimeCallInfo *info)
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    ASSERT(info);
+    JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+
+    ASSERT(info->GetArgsNumber() == 1);
+    JSHandle<JSTaggedValue> object = GetCallArg(info, 0);
+    return (object->IsHeapObject() && object->GetHeapObject()->GetClass()->HasConstructor()) ?
+        GetTaggedBoolean(true) : GetTaggedBoolean(false);
+}
+
 JSTaggedValue BuiltinsArkTools::IsNotHoleProperty(EcmaRuntimeCallInfo *info)
 {
     DISALLOW_GARBAGE_COLLECTION;

@@ -633,7 +633,6 @@ public:
     void JSObjectSetProperty(GateRef glue, GateRef obj, GateRef hClass, GateRef attr, GateRef key, GateRef value);
     GateRef ShouldCallSetter(GateRef receiver, GateRef holder, GateRef accessor, GateRef attr);
     GateRef CallSetterHelper(GateRef glue, GateRef holder, GateRef accessor,  GateRef value, ProfileOperation callback);
-    GateRef SetHasConstructorCondition(GateRef glue, GateRef receiver, GateRef key);
     GateRef AddPropertyByName(GateRef glue, GateRef receiver, GateRef key, GateRef value, GateRef propertyAttributes,
         ProfileOperation callback);
     GateRef IsUtf16String(GateRef string);

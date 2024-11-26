@@ -625,6 +625,8 @@ static void DumpHClass(const JSHClass *jshclass, std::ostream &os, bool withDeta
     os << "| NumberOfProps :" << std::dec << jshclass->NumberOfProps();
     os << "| InlinedProperties :" << std::dec << jshclass->GetInlinedProperties();
     os << "| IsAOT :" << std::boolalpha << jshclass->IsAOT();
+    os << "| HasCtor :" << std::boolalpha << jshclass->HasConstructor();
+    os << "| IsStable :" << std::boolalpha << jshclass->IsStableElements();
     os << "\n";
 }
 

@@ -3122,7 +3122,7 @@ JSTaggedValue BuiltinsArray::With(EcmaRuntimeCallInfo *argv)
     // ReturnIfAbrupt(A).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSObject> newArrayHandle(thread, newArray);
-    if (thisHandle->IsStableJSArray(thread) && !thisObjHandle->GetJSHClass()->HasConstructor()) {
+    if (thisHandle->IsStableJSArray(thread)) {
         return JSStableArray::With(thread, JSHandle<JSArray>::Cast(thisHandle), len, actualIndex, value);
     }
     // 8. Let k be 0.
@@ -3268,7 +3268,7 @@ JSTaggedValue BuiltinsArray::ToSpliced(EcmaRuntimeCallInfo *argv)
     if (newLen > base::MAX_SAFE_INTEGER) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "out of range.", JSTaggedValue::Exception());
     }
-    if (thisHandle->IsStableJSArray(thread) && !thisObjHandle->GetJSHClass()->HasConstructor()) {
+    if (thisHandle->IsStableJSArray(thread)) {
         return JSStableArray::ToSpliced(JSHandle<JSArray>::Cast(thisHandle), argv, argc, actualStart,
                                         actualSkipCount, newLen);
     }
@@ -3497,7 +3497,7 @@ JSTaggedValue BuiltinsArray::ToReversed(EcmaRuntimeCallInfo *argv)
     int64_t len = ArrayHelper::GetLength(thread, thisObjVal);
     // ReturnIfAbrupt(len).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    if (thisHandle->IsStableJSArray(thread) && !thisObjHandle->GetJSHClass()->HasConstructor()) {
+    if (thisHandle->IsStableJSArray(thread)) {
         return JSStableArray::ToReversed(thread, JSHandle<JSArray>::Cast(thisHandle), len);
     }
     // 3. Let A be ? ArrayCreate(len).

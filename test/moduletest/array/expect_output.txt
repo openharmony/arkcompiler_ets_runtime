@@ -582,3 +582,5 @@ undefined true
 1,b false
 undefined true
 Test passed
+false
+false

@@ -201,15 +201,7 @@ bool JSTypedArray::DefineOwnProperty(JSThread *thread, const JSHandle<JSTaggedVa
         }
     }
     // 4. Return OrdinaryDefineOwnProperty(O, P, Desc).
-    bool result = JSObject::OrdinaryDefineOwnProperty(thread, JSHandle<JSObject>::Cast(typedarrayObj), key, desc);
-    if (result) {
-        JSTaggedValue constructorKey = thread->GlobalConstants()->GetConstructorString();
-        if (key.GetTaggedValue() == constructorKey) {
-            typedarrayObj->GetJSHClass()->SetHasConstructor(true);
-            return true;
-        }
-    }
-    return result;
+    return JSObject::OrdinaryDefineOwnProperty(thread, JSHandle<JSObject>::Cast(typedarrayObj), key, desc);
 }
 
 // 9.4.5.4 [[Get]] ( P, Receiver )

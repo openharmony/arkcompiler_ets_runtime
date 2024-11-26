@@ -2165,3 +2165,13 @@ print(sliceArray.slice(1, 10));
         }
     }      
 }
+
+
+let x1 = new Array(10);
+let x2 = new Array(1,2,3,undefined);
+let x3 = new Array();
+
+x1.constructor = null
+
+print(ArkTools.hasConstructor(x2));
+print(ArkTools.hasConstructor(x3));
