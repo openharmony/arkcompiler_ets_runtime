@@ -178,3 +178,19 @@ function arrayInit(array, value) {
     }
 
 }
+{
+  print([0, 0, 0, 0, 0].fill());
+  print([0, 0, 0, 0, 0].fill(8));
+  print([0, 0, 0, 0, 0].fill(8, 1));
+  print([0, 0, 0, 0, 0].fill(8, 10));
+  print([0, 0, 0, 0, 0].fill(8, -5));
+  print([0, 0, 0, 0, 0].fill(8, 1, 4));
+  print([0, 0, 0, 0, 0].fill(8, 1, -1));
+  print([0, 0, 0, 0, 0].fill(8, 1, 42));
+  print([0, 0, 0, 0, 0].fill(8, -3, 42));
+  print([0, 0, 0, 0, 0].fill(8, -3, 4));
+  print([0, 0, 0, 0, 0].fill(8, -2, -1));
+  print([0, 0, 0, 0, 0].fill(8, -1, -3));
+  print([0, 0, 0, 0, 0].fill(8, undefined, 4));
+  print([ ,  ,  ,  , 0].fill(8, 1, 3));
+}

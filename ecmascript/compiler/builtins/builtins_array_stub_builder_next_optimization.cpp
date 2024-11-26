@@ -1624,4 +1624,230 @@ void BuiltinsArrayStubBuilder::DoConcat(GateRef glue, GateRef thisValue, GateRef
         Jump(exit);
     }
 }
+
+void BuiltinsArrayStubBuilder::FillOptimised(GateRef glue, GateRef thisValue, GateRef numArgs,
+                                             Variable *result, Label *exit, Label *slowPath)
+{
+    auto env = GetEnvironment();
+    Label isHeapObject(env);
+    Label isJsArray(env);
+    Label isStability(env);
+    BRANCH(TaggedIsHeapObject(thisValue), &isHeapObject, slowPath);
+    Bind(&isHeapObject);
+    BRANCH(IsJsArray(thisValue), &isJsArray, slowPath);
+    Bind(&isJsArray);
+    BRANCH(IsStableJSArray(glue, thisValue), &isStability, slowPath);
+    Bind(&isStability);
+    Label notCOWArray(env);
+    BRANCH(IsJsCOWArray(thisValue), slowPath, &notCOWArray);
+    Bind(&notCOWArray);
+    GateRef arrayCls = LoadHClass(thisValue);
+    // 1. Let O be ToObject(this value).
+    // 2 ReturnIfAbrupt(O).
+    Label hasException(env);
+    Label proNotCOWArray(env);
+    GateRef prop = GetPropertiesFromJSObject(thisValue);
+    BRANCH(IsCOWArray(prop), slowPath, &proNotCOWArray);
+    Bind(&proNotCOWArray);
+    // 3. Let len be ToLength(Get(O,"length")).
+    GateRef value = GetCallArg0(numArgs);
+    GateRef thisArrLen = GetLengthOfJSArray(thisValue);
+    Label isDict(env);
+    Label notDict(env);
+    BRANCH(IsDictionaryElement(arrayCls), &isDict, &notDict);
+    Bind(&isDict);
+    {
+        GateRef size = GetNumberOfElements(thisValue);
+        BRANCH(Int32GreaterThan(Int32Sub(thisArrLen, size),
+            TruncInt64ToInt32(IntPtr(JSObject::MAX_GAP))), slowPath, &notDict);
+    }
+    Bind(&notDict);
+    Label startArgIsNumber(env);
+    // 5. let relativeStart be ToInteger(start).
+    GateRef startArg = GetCallArg1(numArgs);
+    // 6 ReturnIfAbrupt(relativeStart).
+    BRANCH(TaggedIsNumber(startArg), &startArgIsNumber, slowPath);
+    Bind(&startArgIsNumber);
+    GateRef argStart = NumberGetInt(glue, ToNumber(glue, startArg));
+    Label notHasException3(env);
+    BRANCH(HasPendingException(glue), &hasException, &notHasException3);
+    Bind(&notHasException3);
+    // 7. If relativeStart < 0, let k be max((len + relativeStart),0); else let k be min(relativeStart, len).
+    DEFVARIABLE(start, VariableType::INT32(), Int32(0));
+    Label maxStart(env);
+    Label minStart(env);
+    Label startExit(env);
+    BRANCH(Int32LessThan(argStart, Int32(0)), &maxStart, &minStart);
+    Bind(&maxStart);
+    {
+        GateRef tempStart = Int32Add(argStart, thisArrLen);
+        Label bind1(env);
+        BRANCH(Int32GreaterThan(tempStart, Int32(0)), &bind1, &startExit);
+        Bind(&bind1);
+        {
+            start = tempStart;
+            Jump(&startExit);
+        }
+    }
+    Bind(&minStart);
+    {
+        Label bind1(env);
+        Label bind2(env);
+        BRANCH(Int32LessThan(argStart, thisArrLen), &bind1, &bind2);
+        Bind(&bind1);
+        {
+            start = argStart;
+            Jump(&startExit);
+        }
+        Bind(&bind2);
+        {
+            start = thisArrLen;
+            Jump(&startExit);
+        }
+    }
+    Bind(&startExit);
+    Label endArgIsNumber(env);
+    // 8. If end is undefined, let relativeEnd be len; else let relativeEnd be ToInteger(end).
+    GateRef endArg = GetCallArg2(numArgs);
+    BRANCH(TaggedIsNumber(endArg), &endArgIsNumber, slowPath);
+    Bind(&endArgIsNumber);
+    DEFVARIABLE(argEnd, VariableType::INT32(), Int32(0));
+    Label endArgIsUndefined(env);
+    Label endArgNotUndefined(env);
+    Label next1(env);
+    BRANCH(TaggedIsUndefined(endArg), &endArgIsUndefined, &endArgNotUndefined);
+    Bind(&endArgIsUndefined);
+    {
+        argEnd = thisArrLen;
+        Jump(&next1);
+    }
+    Bind(&endArgNotUndefined);
+    {
+        argEnd = NumberGetInt(glue, ToNumber(glue, endArg));
+        // 9. ReturnIfAbrupt(relativeEnd).
+        BRANCH(HasPendingException(glue), &hasException, &next1);
+    }
+    Bind(&next1);
+
+    // 10. If relativeEnd < 0, let final be max((len + relativeEnd),0); else let final be min(relativeEnd, len).
+    DEFVARIABLE(end, VariableType::INT32(), Int32(0));
+    Label maxEnd(env);
+    Label minEnd(env);
+    Label endExit(env);
+    BRANCH(Int32LessThan(*argEnd, Int32(0)), &maxEnd, &minEnd);
+    Bind(&maxEnd);
+    {
+        GateRef tempEnd = Int32Add(*argEnd, thisArrLen);
+        Label bind1(env);
+        Label bind2(env);
+        BRANCH(Int32GreaterThan(tempEnd, Int32(0)), &bind1, &endExit);
+        Bind(&bind1);
+        {
+            end = tempEnd;
+            Jump(&endExit);
+        }
+    }
+    Bind(&minEnd);
+    {
+        Label bind1(env);
+        Label bind2(env);
+        BRANCH(Int32LessThan(*argEnd, thisArrLen), &bind1, &bind2);
+        Bind(&bind1);
+        {
+            end = *argEnd;
+            Jump(&endExit);
+        }
+        Bind(&bind2);
+        {
+            end = thisArrLen;
+            Jump(&endExit);
+        }
+    }
+    Bind(&endExit);
+    {
+        Label defaultElements(env);
+        Label startFill(env);
+        Label fatal(env);
+        GateRef elementKind = GetElementsKindFromHClass(arrayCls);
+        TransitToElementsKind(glue, thisValue, value, elementKind);
+        DEFVARIABLE(migratedValue, VariableType::JS_ANY(), value);
+        DEFVARIABLE(elements, VariableType::JS_ANY(), GetElementsArray(thisValue));
+        GateRef mutant = IsMutantTaggedArray(*elements);
+        GateRef elementLen = GetLengthOfTaggedArray(*elements);
+        BRANCH(Int32GreaterThanOrEqual(elementLen, *end), &defaultElements, &fatal);
+        Bind(&defaultElements);
+        {
+            Label isMutant(env);
+            BRANCH(mutant, &isMutant, &startFill);
+            Bind(&isMutant);
+            {
+                migratedValue = ConvertTaggedValueWithElementsKind(glue, value, elementKind);
+                Jump(&startFill);
+            }
+        }
+        Bind(&fatal);
+        {
+            FatalPrint(glue, {Int32(GET_MESSAGE_STRING_ID(ThisBranchIsUnreachable))});
+            Jump(exit);
+        }
+        Bind(&startFill);
+        Label noBarrier(env);
+        Label needBarrier(env);
+        Label needRevise(env);
+        Label noRevise(env);
+        Label startLessEnd(env);
+        Label barrierExit(env);
+        BRANCH(Int32LessThan(*start, *end), &startLessEnd, &noRevise);
+        Bind(&startLessEnd);
+        {
+            GateRef count = Int32Sub(*end, *start);
+            BRANCH(mutant, &noBarrier, &needBarrier);
+            Bind(&noBarrier);
+            {
+                FastFill(glue, *elements, *start, count, *migratedValue, false);
+                Jump(&barrierExit);
+            }
+            Bind(&needBarrier);
+            {
+                FastFill(glue, *elements, *start, count, *migratedValue, true);
+                Jump(&barrierExit);
+            }
+            Bind(&barrierExit);
+            SetElementsArray(VariableType::JS_POINTER(), glue, thisValue, *elements);
+            GateRef arrLen = GetLengthOfJSArray(thisValue);
+            BRANCH(Int32LessThan(arrLen, *end), &needRevise, &noRevise);
+            Bind(&needRevise);
+            {
+                SetArrayLength(glue, thisValue, *end);
+                Jump(&noRevise);
+            }
+        }
+        Bind(&noRevise);
+        result->WriteVariable(thisValue);
+        Jump(exit);
+    }
+    Bind(&hasException);
+    {
+        result->WriteVariable(Exception());
+        Jump(exit);
+    }
+}
+
+void BuiltinsArrayStubBuilder::FastFill(GateRef glue, GateRef element, GateRef start, GateRef count,
+                                        GateRef value, bool needBarrier)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+    GateRef dstAddr = GetDataPtrInTaggedArray(element, start);
+    CallNGCRuntime(glue, RTSTUB_ID(FillObject), {TaggedCastToIntPtr(dstAddr), value, count});
+    if (needBarrier) {
+        CallCommonStub(glue, CommonStubCSigns::BatchBarrier,
+            {glue, TaggedCastToIntPtr(element), TaggedCastToIntPtr(dstAddr), count});
+    }
+    Jump(&exit);
+    Bind(&exit);
+    env->SubCfgExit();
+}
 } // namespace panda::ecmascript::kungfu

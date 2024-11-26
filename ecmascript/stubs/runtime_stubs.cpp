@@ -4035,6 +4035,12 @@ void RuntimeStubs::FinishObjSizeTracking(JSHClass *cls)
     }
 }
 
+void RuntimeStubs::FillObject(JSTaggedType *dst, JSTaggedType value, uint32_t count)
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    std::fill_n(dst, count, value);
+}
+
 DEF_RUNTIME_STUBS(ArrayForEachContinue)
 {
     RUNTIME_STUBS_HEADER(ArrayForEachContinue);

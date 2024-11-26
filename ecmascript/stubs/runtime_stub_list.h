@@ -193,7 +193,8 @@ namespace panda::ecmascript {
     V(IsFastRegExp)                            \
     V(CreateLocalToShare)                      \
     V(CreateOldToNew)                          \
-    V(ObjectCopy)
+    V(ObjectCopy)                              \
+    V(FillObject)
 
 #define RUNTIME_STUB_WITH_GC_LIST(V)            \
     V(AddElementInternal)                       \

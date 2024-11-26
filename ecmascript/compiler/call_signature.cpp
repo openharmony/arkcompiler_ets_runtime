@@ -1876,6 +1876,24 @@ DEF_CALL_SIGNATURE(SortTypedArray)
     callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
 }
 
+DEF_CALL_SIGNATURE(FillObject)
+{
+    constexpr size_t paramCount = 3;
+    // 3 : 3 input parameters
+    CallSignature ObjectFill("FillObject", 0, paramCount,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::VOID());
+    *callSign = ObjectFill;
+    // 3 : 3 input parameters
+    std::array<VariableType, paramCount> params = {
+        VariableType::NATIVE_POINTER(),
+        VariableType::JS_ANY(),
+        VariableType::INT32()
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetGCLeafFunction(true);
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
+}
+
 DEF_CALL_SIGNATURE(IsFastRegExp)
 {
     // 3 : 3 input parameters

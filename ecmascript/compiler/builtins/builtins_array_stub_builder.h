@@ -126,6 +126,9 @@ private:
                          Label *slowPath);
     void DoConcat(GateRef glue, GateRef thisValue, GateRef arg0, Variable *result, Label *exit, GateRef thisLen,
                   GateRef argLen, GateRef sumArrayLen);
+    void FillOptimised(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *result, Label *exit,
+                       Label *slowPath);
+    void FastFill(GateRef glue, GateRef element, GateRef start, GateRef count, GateRef value, bool needBarrier);
 };
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_BUILTINS_ARRAY_STUB_BUILDER_H

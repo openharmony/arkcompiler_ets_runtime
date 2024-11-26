@@ -683,7 +683,7 @@ JSTaggedValue BuiltinsSharedArray::Fill(EcmaRuntimeCallInfo *argv)
     //   d. Increase k by 1.
 
     if (thisHandle->IsStableJSArray(thread) && !startArg->IsJSObject() && !endArg->IsJSObject()) {
-        auto opResult = JSStableArray::Fill(thread, thisObjHandle, value, start, end, len);
+        auto opResult = JSStableArray::Fill(thread, thisObjHandle, value, start, end);
         return opResult;
     }
 
