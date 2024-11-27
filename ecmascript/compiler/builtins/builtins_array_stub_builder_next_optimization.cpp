@@ -380,8 +380,8 @@ GateRef BuiltinsArrayStubBuilder::DoSortOptimised(GateRef glue, GateRef receiver
 }
 
 GateRef BuiltinsArrayStubBuilder::DoSortOptimisedFast(GateRef glue, GateRef receiver,
-    [[maybe_unused]] Variable *result, [[maybe_unused]] Label *exit,
-    Label *slowPath, [[maybe_unused]] GateRef hir)
+    Variable *result, Label *exit,
+    [[maybe_unused]] Label *slowPath, GateRef hir)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -391,6 +391,7 @@ GateRef BuiltinsArrayStubBuilder::DoSortOptimisedFast(GateRef glue, GateRef rece
     DEFVARIABLE(presentValue, VariableType::JS_ANY(), Undefined());
     DEFVARIABLE(middleValue, VariableType::JS_ANY(), Undefined());
     DEFVARIABLE(previousValue, VariableType::JS_ANY(), Undefined());
+    DEFVARIABLE(presentVal, VariableType::JS_ANY(), Undefined());
     GateRef elements = GetElementsArray(receiver);
     Label loopHead(env);
     Label loopEnd(env);
@@ -405,6 +406,7 @@ GateRef BuiltinsArrayStubBuilder::DoSortOptimisedFast(GateRef glue, GateRef rece
         DEFVARIABLE(endIndex, VariableType::INT64(), *i);
         Label afterGettingpresentValue(env);
         presentValue = GetValueFromTaggedArray(elements, TruncInt64ToInt32(*i));
+        presentVal = *presentValue;
         Jump(&afterGettingpresentValue);
         Bind(&afterGettingpresentValue);
         {
@@ -424,14 +426,60 @@ GateRef BuiltinsArrayStubBuilder::DoSortOptimisedFast(GateRef glue, GateRef rece
                 Jump(&afterGettingmiddleValue);
                 Bind(&afterGettingmiddleValue);
                 {
+                    Label hasException(env);
                     Label intOrDouble(env);
                     Label notIntAndDouble(env);
                     Label exchangeIndex(env);
-                    GateRef middleVal = *middleValue;
-                    GateRef presentVal = *presentValue;
                     DEFVARIABLE(compareResult, VariableType::INT32(), Int32(0));
-                    GateRef intDoubleCheck = BitOr(BitAnd(TaggedIsInt(middleVal), TaggedIsInt(presentVal)),
-                                                   BitAnd(TaggedIsDouble(middleVal), TaggedIsDouble(presentVal)));
+
+                    Label middleIsHole(env);
+                    Label presentIsHole(env);
+                    Label middleNotHole(env);
+                    Label presentNotHole(env);
+                    Label notHole(env);
+                    Label middleIsUndefined(env);
+                    Label presentIsUndefined(env);
+                    Label middleNotUndefined(env);
+                    Label presentNotUndefined(env);
+                    Label notUndefined(env);
+                    BRANCH(TaggedIsHole(*middleValue), &middleIsHole, &middleNotHole);
+                    Bind(&middleIsHole);
+                    {
+                        Label presentNotHole0(env);
+                        BRANCH(TaggedIsHole(*presentValue), &exchangeIndex, &presentNotHole0);
+                        Bind(&presentNotHole0);
+                        compareResult = Int32(1);
+                        Jump(&exchangeIndex);
+                    }
+                    Bind(&middleNotHole);
+                    BRANCH(TaggedIsHole(*presentValue), &presentIsHole, &presentNotHole);
+                    Bind(&presentIsHole);
+                    {
+                        compareResult = Int32(-1);
+                        Jump(&exchangeIndex);
+                    }
+                    Bind(&presentNotHole);
+                    BRANCH(TaggedIsUndefined(*middleValue), &middleIsUndefined, &middleNotUndefined);
+                    Bind(&middleIsUndefined);
+                    {
+                        Label presentNotUndefined0(env);
+                        BRANCH(TaggedIsUndefined(*presentValue), &exchangeIndex, &presentNotUndefined0);
+                        Bind(&presentNotUndefined0);
+                        compareResult = Int32(1);
+                        Jump(&exchangeIndex);
+                    }
+                    Bind(&middleNotUndefined);
+                    BRANCH(TaggedIsUndefined(*presentValue), &presentIsUndefined, &presentNotUndefined);
+                    Bind(&presentIsUndefined);
+                    {
+                        compareResult = Int32(-1);
+                        Jump(&exchangeIndex);
+                    }
+                    Bind(&presentNotUndefined);
+                    GateRef intDoubleCheck = BitOr(BitAnd(TaggedIsInt(*middleValue),
+                                                          TaggedIsInt(*presentValue)),
+                                                   BitAnd(TaggedIsDouble(*middleValue),
+                                                          TaggedIsDouble(*presentValue)));
                     BRANCH(intDoubleCheck, &intOrDouble, &notIntAndDouble);
                     Bind(&intOrDouble);
                     {
@@ -440,20 +488,27 @@ GateRef BuiltinsArrayStubBuilder::DoSortOptimisedFast(GateRef glue, GateRef rece
                         Jump(&exchangeIndex);
                     }
                     Bind(&notIntAndDouble);
+                    Label middleIsString(env);
+                    Label middleNotString(env);
+                    Label presentIsString(env);
+                    Label presentNotString(env);
+                    BRANCH(TaggedIsString(*middleValue), &middleIsString, &middleNotString);
+                    Bind(&middleNotString);
                     {
-                        Label isString(env);
-                        GateRef strBool = LogicAndBuilder(env)
-                                          .And(TaggedIsString(middleVal))
-                                          .And(TaggedIsString(presentVal))
-                                          .Done();
-                        BRANCH(strBool, &isString, slowPath);
-                        Bind(&isString);
-                        {
-                            compareResult = CallNGCRuntime(glue,
-                                RTSTUB_ID(FastArraySortString), {glue, *middleValue, *presentValue});
-                            Jump(&exchangeIndex);
-                        }
+                        middleValue = JSTaggedValueToString(glue, *middleValue, hir);
+                        BRANCH(HasPendingException(glue), &hasException, &middleIsString);
                     }
+                    Bind(&middleIsString);
+                    BRANCH(TaggedIsString(*presentValue), &presentIsString, &presentNotString);
+                    Bind(&presentNotString);
+                    {
+                        presentValue = JSTaggedValueToString(glue, *presentValue, hir);
+                        BRANCH(HasPendingException(glue), &hasException, &presentIsString);
+                    }
+                    Bind(&presentIsString);
+                    compareResult = CallNGCRuntime(glue, RTSTUB_ID(FastArraySortString),
+                                                   { glue, *middleValue, *presentValue });
+                    Jump(&exchangeIndex);
                     Bind(&exchangeIndex);
                     {
                         Label less0(env);
@@ -470,6 +525,11 @@ GateRef BuiltinsArrayStubBuilder::DoSortOptimisedFast(GateRef glue, GateRef rece
                             beginIndex = Int64Add(*beginIndex, Int64(1));
                             Jump(&loopEnd1);
                         }
+                    }
+                    Bind(&hasException);
+                    {
+                        result->WriteVariable(Exception());
+                        Jump(exit);
                     }
                 }
             }
@@ -506,7 +566,7 @@ GateRef BuiltinsArrayStubBuilder::DoSortOptimisedFast(GateRef glue, GateRef rece
                 LoopEnd(&loopHead2);
                 Bind(&loopExit2);
                 SetValueToTaggedArray(VariableType::JS_ANY(), glue, elements, TruncInt64ToInt32(*endIndex),
-                                      *presentValue);
+                                      *presentVal);
                 Jump(&loopEnd);
             }
         }

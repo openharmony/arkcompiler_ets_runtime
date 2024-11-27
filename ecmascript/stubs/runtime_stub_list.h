@@ -495,8 +495,8 @@ namespace panda::ecmascript {
     V(GetCollationValueFromIcuCollator)         \
     V(DecodeURIComponent)                       \
     V(GetAllFlagsInternal)                      \
-    V(GetNativePcOfstForBaseline)
-
+    V(GetNativePcOfstForBaseline)               \
+    V(NumberBigIntNativePointerToString)
 
 #define RUNTIME_STUB_LIST(V)                     \
     RUNTIME_ASM_STUB_LIST(V)                     \

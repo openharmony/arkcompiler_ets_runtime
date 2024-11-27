@@ -926,6 +926,11 @@ inline GateRef StubBuilder::TaggedIsBoolean(GateRef x)
     return env_->GetBuilder()->TaggedIsBoolean(x);
 }
 
+inline GateRef StubBuilder::TaggedIsNativePointer(GateRef x)
+{
+    return env_->GetBuilder()->TaggedIsNativePointer(x);
+}
+
 inline GateRef StubBuilder::TaggedGetInt(GateRef x)
 {
     return env_->GetBuilder()->TaggedGetInt(x);

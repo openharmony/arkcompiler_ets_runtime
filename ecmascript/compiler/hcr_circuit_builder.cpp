@@ -199,7 +199,6 @@ GateRef CircuitBuilder::CallBCHandler(GateRef glue, GateRef target, const std::v
 GateRef CircuitBuilder::CallBuiltin(GateRef glue, GateRef target, const std::vector<GateRef> &args,
                                     const char* comment)
 {
-    ASSERT(!GetCircuit()->IsOptimizedOrFastJit());
     const CallSignature *cs = BuiltinsStubCSigns::BuiltinsCSign();
     ASSERT(cs->IsBuiltinsStub());
     auto label = GetCurrentLabel();
