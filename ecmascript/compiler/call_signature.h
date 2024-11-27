@@ -647,7 +647,8 @@ private:
     V(GetIterator)                                   \
     V(MoveBarrierInRegion)                           \
     V(FillObject)                                    \
-    V(MoveBarrierCrossRegion)
+    V(MoveBarrierCrossRegion)                        \
+    V(ReverseArray)
 
 
 #define DECL_CALL_SIGNATURE(name)                                  \

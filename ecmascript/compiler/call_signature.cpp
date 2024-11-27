@@ -1863,6 +1863,23 @@ DEF_CALL_SIGNATURE(ReverseTypedArray)
     callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
 }
 
+DEF_CALL_SIGNATURE(ReverseArray)
+{
+    constexpr size_t paramCount = 2;
+    // 3 : 3 input parameters
+    CallSignature ArrayReverse("ReverseArray", 0, paramCount,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::VOID());
+    *callSign = ArrayReverse;
+    // 3 : 3 input parameters
+    std::array<VariableType, paramCount> params = {
+        VariableType::NATIVE_POINTER(),
+        VariableType::INT32()
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetGCLeafFunction(true);
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
+}
+
 DEF_CALL_SIGNATURE(SortTypedArray)
 {
     CallSignature sortTypedArray("SortTypedArray", 0, 1,

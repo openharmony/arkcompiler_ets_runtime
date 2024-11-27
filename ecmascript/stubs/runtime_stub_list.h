@@ -197,7 +197,8 @@ namespace panda::ecmascript {
     V(CreateLocalToShare)                      \
     V(CreateOldToNew)                          \
     V(ObjectCopy)                              \
-    V(FillObject)
+    V(FillObject)                              \
+    V(ReverseArray)
 
 #define RUNTIME_STUB_WITH_GC_LIST(V)            \
     V(AddElementInternal)                       \

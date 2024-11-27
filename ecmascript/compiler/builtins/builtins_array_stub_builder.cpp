@@ -2000,6 +2000,9 @@ void BuiltinsArrayStubBuilder::Reduce(GateRef glue, GateRef thisValue, GateRef n
 void BuiltinsArrayStubBuilder::Reverse(GateRef glue, GateRef thisValue, [[maybe_unused]] GateRef numArgs,
     Variable *result, Label *exit, Label *slowPath)
 {
+#if ENABLE_NEXT_OPTIMIZATION
+    ReverseOptimised(glue, thisValue, result, exit, slowPath);
+#else
     auto env = GetEnvironment();
     Label isHeapObject(env);
     Label isJsArray(env);
@@ -2056,6 +2059,7 @@ void BuiltinsArrayStubBuilder::Reverse(GateRef glue, GateRef thisValue, [[maybe_
             FastReverse(glue, thisValue, thisArrLen, ElementsKind::TAGGED, result, exit);
         }
     }
+#endif
 }
 
 void BuiltinsArrayStubBuilder::FastReverse(GateRef glue, GateRef thisValue, GateRef len,
