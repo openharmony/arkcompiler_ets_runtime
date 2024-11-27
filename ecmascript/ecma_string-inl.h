@@ -413,7 +413,11 @@ void EcmaString::WriteToFlat(EcmaString *src, Char *buf, uint32_t maxLength)
                     length -= firstLength;
                 } else {
                     // first string is longer.  So recurse over second.
-                    if (secondLength > 0) {
+                    // if src{first:A,second:B} is half flat to {first:A+B,second:empty} by another thread
+                    // but the other thread didn't end, and this thread get  {first:A+B,second:B}
+                    // it may cause write buffer overflower in line 424, buf + firstLength is overflower.
+                    // so use 'length > firstLength' instead of 'secondLength > 0'
+                    if (length > firstLength) {
                         if (secondLength == 1) {
                             buf[firstLength] = static_cast<Char>(second->At<false>(0));
                         } else if ((second->IsLineOrConstantString()) && second->IsUtf8()) {
@@ -421,10 +425,10 @@ void EcmaString::WriteToFlat(EcmaString *src, Char *buf, uint32_t maxLength)
                         } else {
                             WriteToFlat(second, buf + firstLength, maxLength - firstLength);
                         }
+                        length -= secondLength;
                     }
                     maxLength = firstLength;
                     src = first;
-                    length -= secondLength;
                 }
                 continue;
             }
