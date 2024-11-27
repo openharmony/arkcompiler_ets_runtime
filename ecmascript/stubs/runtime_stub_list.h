@@ -504,7 +504,8 @@ namespace panda::ecmascript {
     V(GetAllFlagsInternal)                      \
     V(SlowSharedObjectStoreBarrier)             \
     V(GetNativePcOfstForBaseline)               \
-    V(AotCallBuiltinTrace)
+    V(AotCallBuiltinTrace)                      \
+    V(NumberBigIntNativePointerToString)
 
 #define RUNTIME_STUB_LIST(V)                     \
     RUNTIME_ASM_STUB_LIST(V)                     \

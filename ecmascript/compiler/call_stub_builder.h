@@ -225,7 +225,7 @@ private:
     std::vector<GateRef> PrepareBasicArgsForAsmInterpreter();
     std::vector<GateRef> PrepareAppendArgsForAsmInterpreter();
 
-    void CallFastBuiltin(Label* notFastBuiltins, Label *exit);
+    void CallFastBuiltin(Label* notFastBuiltins, Label *exit, GateRef hir = Circuit::NullGate());
     std::vector<GateRef> PrepareArgsForFastBuiltin();
     std::vector<GateRef> PrepareBasicArgsForFastBuiltin();
     std::vector<GateRef> PrepareAppendArgsForFastBuiltin();

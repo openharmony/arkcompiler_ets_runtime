@@ -97,3 +97,18 @@ undefined
 1,2,4,,
 0,1.1,2.1,3.1
 1.1,2.1,4.1,,
+[object Object],[object Object],[object Object],[object Object],[object Object]
+false,null,true,undefined,undefined
+1,2,3,4,5
+1,2,3,4,5
+1,2,3,4,5
+-1,2,3,4,5
+Symbol.toPrimitive
+Cannot convert object to primitive value
+toString
+-1,2,3,4,5
+valueOf
+Cannot convert a illegal value to a Primitive
+Cannot convert a illegal value to a String
+Fri Dec 13 2019 14:48:00 GMT+0800,Sat Dec 14 2019 14:48:00 GMT+0800,Thu Dec 12 2019 14:48:00 GMT+0800,Tue Dec 10 2019 14:48:00 GMT+0800,Wed Dec 11 2019 14:48:00 GMT+0800
+1575960480000,1576046880000,1576133280000,1576219680000,1576306080000

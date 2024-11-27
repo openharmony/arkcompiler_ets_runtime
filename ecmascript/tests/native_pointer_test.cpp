@@ -48,4 +48,22 @@ HWTEST_F_L0(NativePointerTest, Print)
     // run cpp methed 'Print'
     ASSERT_EQ(Method::Cast(target.GetTaggedValue().GetTaggedObject()), jsFunction->GetCallTarget());
 }
+
+HWTEST_F_L0(NativePointerTest, ToString)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    size_t length = 4;
+    uint8_t *data = static_cast<uint8_t *>(thread->GetEcmaVM()->GetNativeAreaAllocator()->AllocateBuffer(length));
+    if (memset_s(data, length, 0, length) != EOK) {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
+        UNREACHABLE();
+    }
+    std::stringstream expected;
+    void *formBuffer = thread->GetEcmaVM()->GetNativeAreaAllocator()->AllocateBuffer(length);
+    JSHandle<JSNativePointer> fromNativePointer =
+        factory->NewJSNativePointer(formBuffer, nullptr, reinterpret_cast<void *>(data));
+    expected << "[External: " << std::hex << formBuffer << "]";
+    EcmaStringAccessor actual = EcmaStringAccessor(fromNativePointer->ToString(thread));
+    EXPECT_EQ(actual.ToCString().c_str(), expected.str());
+}
 }  // namespace panda::test

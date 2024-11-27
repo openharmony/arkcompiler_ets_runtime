@@ -3838,6 +3838,26 @@ DEF_RUNTIME_STUBS(NumberToString)
         argKeys)).GetTaggedValue().GetRawData();
 }
 
+DEF_RUNTIME_STUBS(NumberBigIntNativePointerToString)
+{
+    RUNTIME_STUBS_HEADER(NumberBigIntNativePointerToString);
+    JSTaggedValue argKeys = GetArg(argv, argc, 0);
+    if (argKeys.IsNumber()) {
+        return JSHandle<JSTaggedValue>::Cast(base::NumberHelper::NumberToString(thread,
+            argKeys)).GetTaggedValue().GetRawData();
+    }
+    JSHandle<JSTaggedValue> tagged(thread, argKeys);
+    if (tagged->IsBigInt()) {
+        JSHandle<BigInt> taggedValue(tagged);
+        return BigInt::ToString(thread, taggedValue).GetTaggedValue().GetRawData();
+    }
+    if (tagged->IsNativePointer()) {
+        JSHandle<JSNativePointer> taggedValue(tagged);
+        return taggedValue->ToString(thread).GetTaggedValue().GetRawData();
+    }
+    return JSTaggedValue::Undefined().GetRawData();
+}
+
 DEF_RUNTIME_STUBS(IntToString)
 {
     RUNTIME_STUBS_HEADER(IntToString);

@@ -929,6 +929,11 @@ inline GateRef StubBuilder::TaggedIsBoolean(GateRef x)
     return env_->GetBuilder()->TaggedIsBoolean(x);
 }
 
+inline GateRef StubBuilder::TaggedIsNativePointer(GateRef x)
+{
+    return env_->GetBuilder()->TaggedIsNativePointer(x);
+}
+
 inline GateRef StubBuilder::TaggedGetInt(GateRef x)
 {
     return env_->GetBuilder()->TaggedGetInt(x);
@@ -3639,10 +3644,11 @@ inline GateRef StubBuilder::HasPendingException(GateRef glue)
     return TaggedIsNotHole(exception);
 }
 
-inline GateRef StubBuilder::DispatchBuiltins(GateRef glue, GateRef builtinsId, const std::vector<GateRef>& args)
+inline GateRef StubBuilder::DispatchBuiltins(GateRef glue, GateRef builtinsId, const std::vector<GateRef>& args,
+                                             GateRef hir)
 {
     GateRef target = PtrMul(ZExtInt32ToPtr(builtinsId), IntPtrSize());
-    return env_->GetBuilder()->CallBuiltin(glue, target, args);
+    return env_->GetBuilder()->CallBuiltin(glue, target, args, hir);
 }
 
 inline GateRef StubBuilder::DispatchBuiltinsWithArgv(GateRef glue, GateRef builtinsId, const std::vector<GateRef>& args)

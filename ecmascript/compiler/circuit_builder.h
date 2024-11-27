@@ -468,6 +468,7 @@ public:
     GateRef CallBCDebugger(GateRef glue, GateRef target, const std::vector<GateRef> &args,
                            const char* comment = nullptr);
     GateRef CallBuiltin(GateRef glue, GateRef target, const std::vector<GateRef> &args,
+                        GateRef hir = Circuit::NullGate(),
                         const char* comment = nullptr);
     GateRef CallBuiltinWithArgv(GateRef glue, GateRef target, const std::vector<GateRef> &args,
                                 const char* comment = nullptr);
@@ -759,6 +760,7 @@ public:
     inline GateRef TaggedIsNull(GateRef x);
     inline GateRef TaggedIsNotNull(GateRef x);
     inline GateRef TaggedIsBoolean(GateRef x);
+    inline GateRef TaggedIsNativePointer(GateRef x);
     inline GateRef TaggedIsBigInt(GateRef obj);
     inline GateRef TaggedIsString(GateRef obj);
     inline GateRef TaggedIsStringIterator(GateRef obj);

@@ -279,6 +279,7 @@ public:
     GateRef TaggedIsTrue(GateRef x);
     GateRef TaggedIsFalse(GateRef x);
     GateRef TaggedIsBoolean(GateRef x);
+    GateRef TaggedIsNativePointer(GateRef x);
     GateRef TaggedGetInt(GateRef x);
     GateRef NumberGetInt(GateRef glue, GateRef x);
     GateRef TaggedGetNumber(GateRef x);
@@ -726,8 +727,10 @@ public:
     GateRef GetPropertyByIndex(GateRef glue, GateRef receiver, GateRef index,
                                ProfileOperation callback, GateRef hir = Circuit::NullGate());
     GateRef GetPropertyByName(GateRef glue, GateRef receiver, GateRef key,
-                              ProfileOperation callback, GateRef isInternal, bool canUseIsInternal = false);
-    GateRef FastGetPropertyByName(GateRef glue, GateRef obj, GateRef key, ProfileOperation callback);
+                              ProfileOperation callback, GateRef isInternal,
+                              bool canUseIsInternal = false, GateRef hir = Circuit::NullGate());
+    GateRef FastGetPropertyByName(GateRef glue, GateRef obj, GateRef key,
+                                    ProfileOperation callback, GateRef hir = Circuit::NullGate());
     GateRef FastGetPropertyByIndex(GateRef glue, GateRef obj, GateRef index,
                                    ProfileOperation callback, GateRef hir = Circuit::NullGate());
     GateRef GetPropertyByValue(GateRef glue, GateRef receiver, GateRef keyValue, ProfileOperation callback);
@@ -960,8 +963,9 @@ public:
     GateRef SetTypeArrayPropertyByName(GateRef glue, GateRef receiver, GateRef holder, GateRef key, GateRef value,
                                        GateRef jsType);
     GateRef TryStringOrSymbolToElementIndex(GateRef glue, GateRef key);
-    inline GateRef DispatchBuiltins(GateRef glue, GateRef builtinsId, const std::vector<GateRef>& args);
-    inline GateRef DispatchBuiltinsWithArgv(GateRef glue, GateRef builtinsId, const std::vector<GateRef>& args);
+    inline GateRef DispatchBuiltins(GateRef glue, GateRef builtinsId, const std::vector<GateRef>& args,
+                                    GateRef hir = Circuit::NullGate());
+    inline GateRef DispatchBuiltinsWithArgv(GateRef glue, GateRef builtinsId, const std::vector<GateRef> &args);
     GateRef ComputeSizeUtf8(GateRef length);
     GateRef ComputeSizeUtf16(GateRef length);
     GateRef AlignUp(GateRef x, GateRef alignment);
@@ -1036,6 +1040,14 @@ public:
     GateRef GetElementsKindHClass(GateRef glue, GateRef elementKind);
     GateRef FixElementsKind(GateRef oldElement);
     GateRef NeedBarrier(GateRef kind);
+    GateRef JSTaggedValueToString(GateRef glue, GateRef val, GateRef hir = Circuit::NullGate());
+    GateRef SpecialToString(GateRef glue, GateRef specialVal);
+    GateRef ToPrimitive(GateRef glue, GateRef value, PreferredPrimitiveType type,
+                        GateRef hir = Circuit::NullGate());
+    GateRef GetPrimitiveTypeString(GateRef glue, PreferredPrimitiveType type);
+    GateRef OrdinaryToPrimitive(GateRef glue, GateRef value,
+                                PreferredPrimitiveType type, GateRef hir = Circuit::NullGate());
+    GateRef CallFunction(GateRef glue, GateRef func);
 
     enum CopyKind {
         SameArray,
@@ -1052,6 +1064,9 @@ protected:
     static constexpr int ELEMENTS_KIND_HCLASS_NUM = 12;
     static int64_t ELEMENTS_KIND_HCLASS_CASES[ELEMENTS_KIND_HCLASS_NUM];
     static ConstantIndex ELEMENTS_KIND_HCLASS_INDEX[ELEMENTS_KIND_HCLASS_NUM];
+    static constexpr int SPECIAL_VALUE_NUM = 5;
+    static int64_t SPECIAL_VALUE[SPECIAL_VALUE_NUM];
+    static ConstantIndex SPECIAL_STRING_INDEX[SPECIAL_VALUE_NUM];
 
 private:
     using BinaryOperation = std::function<GateRef(Environment*, GateRef, GateRef)>;

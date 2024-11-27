@@ -21,6 +21,8 @@
 #include "ecmascript/mem/tagged_object.h"
 #include "ecmascript/mem/visitor.h"
 #include "ecmascript/mem/native_area_allocator.h"
+#include "ecmascript/ecma_string.h"
+#include "ecmascript/js_handle.h"
 
 namespace panda::ecmascript {
 // Used for the requirement of ACE that wants to associated a registered C++ resource with a JSObject.
@@ -38,6 +40,8 @@ public:
 
     void Detach();
 
+    JSHandle<EcmaString> ToString(JSThread *thread);
+    
     static constexpr size_t POINTER_OFFSET = TaggedObjectSize();
     ACCESSORS_NATIVE_FIELD(ExternalPointer, void, POINTER_OFFSET, DELETER_OFFSET);
     ACCESSORS_PRIMITIVE_FIELD(Deleter, NativePointerCallback, DELETER_OFFSET, DATA_OFFSET)

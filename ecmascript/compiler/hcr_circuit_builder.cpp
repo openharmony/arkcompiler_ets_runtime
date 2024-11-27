@@ -197,14 +197,19 @@ GateRef CircuitBuilder::CallBCHandler(GateRef glue, GateRef target, const std::v
 }
 
 GateRef CircuitBuilder::CallBuiltin(GateRef glue, GateRef target, const std::vector<GateRef> &args,
-                                    const char* comment)
+                                    GateRef hir, const char* comment)
 {
-    ASSERT(!GetCircuit()->IsOptimizedOrFastJit());
     const CallSignature *cs = BuiltinsStubCSigns::BuiltinsCSign();
     ASSERT(cs->IsBuiltinsStub());
     auto label = GetCurrentLabel();
     auto depend = label->GetDepend();
-    GateRef result = Call(cs, glue, target, depend, args, Circuit::NullGate(), comment);
+    GateRef result;
+    if (GetCircuit()->IsOptimizedOrFastJit()) {
+        ASSERT(hir != Circuit::NullGate());
+        result = Call(cs, glue, target, depend, args, hir, comment);
+    } else {
+        result = Call(cs, glue, target, depend, args, Circuit::NullGate(), comment);
+    }
     return result;
 }
 
