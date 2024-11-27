@@ -219,9 +219,16 @@ Local<JSValueRef> JSON::Stringify(const EcmaVM *vm, Local<JSValueRef> json)
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     auto constants = thread->GlobalConstants();
+#if ENABLE_NEXT_OPTIMIZATION
+    JsonStringifier *stringify = thread->GetJsonStringifier();
+    JSHandle<JSTaggedValue> str = stringify->Stringify(
+        JSNApiHelper::ToJSHandle(json), constants->GetHandledUndefined(), constants->GetHandledUndefined());
+    stringify->StringifyReset();
+#else
     JsonStringifier stringifier(thread);
     JSHandle<JSTaggedValue> str = stringifier.Stringify(
         JSNApiHelper::ToJSHandle(json), constants->GetHandledUndefined(), constants->GetHandledUndefined());
+#endif
     RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
     return JSNApiHelper::ToLocal<JSValueRef>(str);
 }

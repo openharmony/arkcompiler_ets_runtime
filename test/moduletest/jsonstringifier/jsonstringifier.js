@@ -257,3 +257,18 @@ try {
 } catch (err) {
     print(err);
 }
+
+function testStringifyUseCache() {
+  const obj = {
+    name: 'arkjson',
+    status: 6,
+    working: true
+  };
+  let str1 = JSON.stringify(obj);
+  print("StringifyUseCache1: " + str1);
+  obj.status = 11;
+  obj.working = false;
+  let str2 = JSON.stringify(obj);
+  print("StringifyUseCache2: " + str2);
+}
+testStringifyUseCache();

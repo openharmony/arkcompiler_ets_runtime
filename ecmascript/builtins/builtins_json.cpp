@@ -197,9 +197,15 @@ JSTaggedValue BuiltinsJson::StringifyWithTransformType(EcmaRuntimeCallInfo *argv
     JSHandle<JSTaggedValue> handleValue(thread, value);
     JSHandle<JSTaggedValue> handleReplacer(thread, replacer);
     JSHandle<JSTaggedValue> handleGap(thread, gap);
+#if ENABLE_NEXT_OPTIMIZATION
+    panda::ecmascript::base::JsonStringifier *stringify = thread->GetJsonStringifier();
+    stringify->SetTransformType(transformType);
+    JSHandle<JSTaggedValue> result = stringify->Stringify(handleValue, handleReplacer, handleGap);
+    stringify->StringifyReset();
+#else
     panda::ecmascript::base::JsonStringifier stringifier(thread, transformType);
     JSHandle<JSTaggedValue> result = stringifier.Stringify(handleValue, handleReplacer, handleGap);
-
+#endif
     return result.GetTaggedValue();
 }
 }  // namespace panda::ecmascript::builtins

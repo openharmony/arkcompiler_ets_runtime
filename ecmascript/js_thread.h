@@ -55,6 +55,10 @@ class VmThreadControl;
 class GlobalEnvConstants;
 enum class ElementsKind : uint8_t;
 
+namespace base {
+class JsonStringifier;
+}
+
 // NOTE: remove
 class MachineCode;
 using JitCodeVector = std::vector<std::tuple<MachineCode*, std::string, uintptr_t>>;
@@ -1498,6 +1502,8 @@ public:
         return dateUtils_;
     }
 
+    base::JsonStringifier *GetJsonStringifier();
+
 #ifndef NDEBUG
     inline void LaunchSuspendAll()
     {
@@ -1645,6 +1651,7 @@ private:
     bool machineCodeLowMemory_ {false};
     RecursiveMutex profileTypeAccessorLockMutex_;
     DateUtils *dateUtils_ {nullptr};
+    base::JsonStringifier *jsonStringifier_ {nullptr};
 
 #ifndef NDEBUG
     MutatorLock::MutatorLockState mutatorLockState_ = MutatorLock::MutatorLockState::UNLOCKED;
