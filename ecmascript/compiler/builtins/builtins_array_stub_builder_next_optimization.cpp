@@ -2059,4 +2059,45 @@ void BuiltinsArrayStubBuilder::FastFill(GateRef glue, GateRef element, GateRef s
     Bind(&exit);
     env->SubCfgExit();
 }
+
+void BuiltinsArrayStubBuilder::ReverseOptimised(GateRef glue, GateRef thisValue, Variable *result,
+    Label *exit, Label *slowPath)
+{
+    auto env = GetEnvironment();
+    Label isHeapObject(env);
+    Label isJsArray(env);
+    Label isStability(env);
+    Label defaultConstr(env);
+    Label notCOWArray(env);
+    BRANCH(TaggedIsHeapObject(thisValue), &isHeapObject, slowPath);
+    Bind(&isHeapObject);
+    BRANCH(IsJsArray(thisValue), &isJsArray, slowPath);
+    Bind(&isJsArray);
+    BRANCH(HasConstructor(thisValue), slowPath, &defaultConstr);
+    Bind(&defaultConstr);
+    BRANCH(IsStableJSArray(glue, thisValue), &isStability, slowPath);
+    Bind(&isStability);
+    BRANCH(IsJsCOWArray(thisValue), slowPath, &notCOWArray);
+    Bind(&notCOWArray);
+
+    GateRef thisLen = GetArrayLength(thisValue);
+    GateRef hclass = LoadHClass(thisValue);
+    GateRef kind = GetElementsKindFromHClass(hclass);
+    Label shouldBarrier(env);
+    Label noBarrier(env);
+    Label afterReverse(env);
+    GateRef element = GetElementsArray(thisValue);
+    GateRef dstAddr = GetDataPtrInTaggedArray(element);
+    CallNGCRuntime(glue, RTSTUB_ID(ReverseArray), {TaggedCastToIntPtr(dstAddr), thisLen});
+    BRANCH(NeedBarrier(kind), &shouldBarrier, &afterReverse);
+    Bind(&shouldBarrier);
+    {
+        CallCommonStub(glue, CommonStubCSigns::BatchBarrier,
+            {glue, TaggedCastToIntPtr(element), TaggedCastToIntPtr(dstAddr), thisLen});
+        Jump(&afterReverse);
+    }
+    Bind(&afterReverse);
+    result->WriteVariable(thisValue);
+    Jump(exit);
+}
 } // namespace panda::ecmascript::kungfu
