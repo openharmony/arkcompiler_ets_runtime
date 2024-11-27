@@ -51,6 +51,7 @@ const std::string sourceMapData =
         "CAAA,CAAA,CAAA,CAAA;;;;QAAJ,CAAI,CAAA,CAAA,CAAA,CAAA,CAAA,CAAA,CAAA,CAAA,CAAA,CAAA,CAAA;QADN,CAAM,CAAA,CAAA,"
         "CAAA,CAAA,CAAA,CAAA,CAAA,CAAA,CAAA,CAAA,CAAA,CAAA,CAAA;QADR,CAAG,CAAA,CAAA,CAAA,CAAA,CAAA,CAAA,CAAA,CAAA,CAAA,"
         "CAAA;AASJ,CAAA,CAAA,CAAA,CAAA,CAAA,CAAA;;;;;;;;\"\n"
+        "    \"entry-package-info\": \"entry|1.0.0\n"
         "  }\n"
         "}";
 const std::string sourceMapDataWithoutSources =
@@ -62,6 +63,7 @@ const std::string sourceMapDataWithoutSources =
         "    \"names\": [],\n"
         "    \"mappings\": \";MAEO,CAAK,CAAA,CAAA,CAAA,CAAA,CAAA,CAAA,CAAA,CAAA,CAAA,CAAA,CAAA,CAAA,"
         "CAAA,CAAA,CAAA,CAAA,CAAA,CAAA,CAAA,CAAA,CAAA,CAAA;\"\n"
+        "    \"entry-package-info\": \"entry|1.0.0\n"
         "  }\n"
         "}";
 const std::string sourceMapDataWithShortMappings =
@@ -74,6 +76,7 @@ const std::string sourceMapDataWithShortMappings =
         "    ],\n"
         "    \"names\": [],\n"
         "    \"mappings\": \"\n"
+        "    \"entry-package-info\": \"entry|1.0.0\n"
         "  }\n"
         "}";
 const std::string sourceMapDataWithInvalidMappings1 =
@@ -86,6 +89,7 @@ const std::string sourceMapDataWithInvalidMappings1 =
         "    ],\n"
         "    \"names\": [],\n"
         "    \"mappings\": pA;\n"
+        "    \"entry-package-info\": \"entry|1.0.0\n"
         "  }\n"
         "}";
 const std::string sourceMapDataWithInvalidMappings2 =
@@ -98,6 +102,7 @@ const std::string sourceMapDataWithInvalidMappings2 =
         "    ],\n"
         "    \"names\": [],\n"
         "    \"mappings\": pAq;ABCD;abcd;0123;0+/-;\n"
+        "    \"entry-package-info\": \"entry|1.0.0\n"
         "  }\n"
         "}";
 const std::string sourceMapDataWithInvalidMappings3 =
@@ -110,6 +115,7 @@ const std::string sourceMapDataWithInvalidMappings3 =
         "    ],\n"
         "    \"names\": [],\n"
         "    \"mappings\": X;\n"
+        "    \"entry-package-info\": \"entry|1.0.0\n"
         "  }\n"
         "}";
 const std::string sourceMapDataWithInvalidMappings4 =
@@ -122,6 +128,7 @@ const std::string sourceMapDataWithInvalidMappings4 =
         "    ],\n"
         "    \"names\": [],\n"
         "    \"mappings\": A;\n"
+        "    \"entry-package-info\": \"entry|1.0.0\n"
         "  }\n"
         "}";
 const std::string sourceMapDataWithInvalidMappings5 =
@@ -134,6 +141,7 @@ const std::string sourceMapDataWithInvalidMappings5 =
         "    ],\n"
         "    \"names\": [],\n"
         "    \"mappings\": ;\n"
+        "    \"entry-package-info\": \"entry|1.0.0\n"
         "  }\n"
         "}";
 const std::string sourceMapDataWithJsSources =
@@ -146,6 +154,60 @@ const std::string sourceMapDataWithJsSources =
         "    ],\n"
         "    \"names\": [],\n"
         "    \"mappings\": ;\n"
+        "    \"entry-package-info\": \"entry|1.0.0\n"
+        "  }\n"
+        "}";
+const std::string sourceMapData1 =
+        "{\n"
+        "  \"entry/src/main/ets/pages/Index.ts\": {\n"
+        "    \"version\": 3,\n"
+        "    \"file\": \"Index.ets\",\n"
+        "    \"sources\": [\n"
+        "      \"entry/src/main/ets/pages/Index.ets\"\n"
+        "    ],\n"
+        "    \"names\": [],\n"
+        "    \"mappings\": ;\n"
+        "    \"entry-package-info\": \"entry|1.0.0\n"
+        "    \"package-info\": \"library|1.0.0\n"
+        "  }\n"
+        "}";
+const std::string sourceMapData2 =
+        "{\n"
+        "  \"entry/src/main/ets/pages/Index.ts\": {\n"
+        "    \"version\": 3,\n"
+        "    \"file\": \"Index.ets\",\n"
+        "    \"sources\": [\n"
+        "      \"entry/src/main/ets/pages/Index.ets\"\n"
+        "    ],\n"
+        "    \"names\": [],\n"
+        "    \"mappings\": ;\n"
+        "    \"entry-package-info\": \"entry|1.0.0\n"
+        "  }\n"
+        "}";
+const std::string sourceMapData3 =
+        "{\n"
+        "  \"entry/src/main/ets/pages/Index.ts\": {\n"
+        "    \"version\": 3,\n"
+        "    \"file\": \"Index.ets\",\n"
+        "    \"sources\": [\n"
+        "      \"entry/src/main/ets/pages/Index.ets\"\n"
+        "    ],\n"
+        "    \"names\": [],\n"
+        "    \"mappings\": ;\n"
+        "    \"package-info\": \"library|1.0.0\n"
+        "  }\n"
+        "}";
+const std::string sourceMapData4 =
+        "{\n"
+        "  \"entry/src/main/ets/pages/Index.ts\": {\n"
+        "    \"version\": 3,\n"
+        "    \"file\": \"Index.ets\",\n"
+        "    \"sources\": [\n"
+        "      \"entry/src/main/ets/pages/Index.ets\"\n"
+        "    ],\n"
+        "    \"names\": [],\n"
+        "    \"mappings\": \";MAEO,CAAK,CAAA,CAAA,CAAA,CAAA,CAAA,CAAA,CAAA,CAAA,CAAA,CAAA,CAAA,CAAA,"
+        "CAAA,CAAA,CAAA,CAAA,CAAA,CAAA,CAAA,CAAA,CAAA,CAAA;\"\n"
         "  }\n"
         "}";
 
@@ -192,9 +254,9 @@ public:
         return sourceMap.VlqRevCode(vStr, ans);
     }
 
-    bool TranslateUrlPositionBySourceMap(std::string &url, int &line, int &column)
+    bool TranslateUrlPositionBySourceMap(std::string &url, int &line, int &column, std::string& packageName)
     {
-        return sourceMap.TranslateUrlPositionBySourceMap(url, line, column);
+        return sourceMap.TranslateUrlPositionBySourceMap(url, line, column, packageName);
     }
 
     bool GetLineAndColumnNumbers(int &line, int &column, SourceMapData &targetMap, bool& isReplaces)
@@ -256,70 +318,71 @@ HWTEST_F_L0(SourceMapTest, TranslateUrlPositionBySourceMapTest)
     SourceMap sourceMap;
     int line = 10, column = 5;
     std::string url = "test.js";
+    std::string packageName;
     // if url contains ".js" returns true
-    EXPECT_FALSE(sourceMap.TranslateUrlPositionBySourceMap(url, line, column));
+    EXPECT_FALSE(sourceMap.TranslateUrlPositionBySourceMap(url, line, column, packageName));
 
     // if it can't find sources which match url after init, returns false and throw Translate failed
     // e.g. 1. sourceMapData is valid, but url is not valid;
     sourceMap = TestInit(sourceMapData);
     url = "entry/src/main/ets/pages/Index1.ts";
-    EXPECT_FALSE(sourceMap.TranslateUrlPositionBySourceMap(url, line, column));
+    EXPECT_FALSE(sourceMap.TranslateUrlPositionBySourceMap(url, line, column, packageName));
 
     // e.g. 2. sourceMapData is not valid
     sourceMap = TestInit("testInvalidSourceMapData");
     url = "entry/src/main/ets/pages/Index.ts";
-    EXPECT_FALSE(sourceMap.TranslateUrlPositionBySourceMap(url, line, column));
+    EXPECT_FALSE(sourceMap.TranslateUrlPositionBySourceMap(url, line, column, packageName));
 
     sourceMap = TestInit(sourceMapDataWithoutSources);
     url = "entry/src/main/ets/pages/Index.ts";
-    EXPECT_TRUE(sourceMap.TranslateUrlPositionBySourceMap(url, line, column));
+    EXPECT_TRUE(sourceMap.TranslateUrlPositionBySourceMap(url, line, column, packageName));
 
     // if mappings is too short(<18), it will throw translate failed
     sourceMap = TestInit(sourceMapDataWithShortMappings);
     url = "entry/src/main/ets/pages/Index.ts";
-    EXPECT_FALSE(sourceMap.TranslateUrlPositionBySourceMap(url, line, column));
+    EXPECT_FALSE(sourceMap.TranslateUrlPositionBySourceMap(url, line, column, packageName));
 
     sourceMap = TestInit(sourceMapData);
     url = "entry/src/main/ets/pages/Index.ts";
-    EXPECT_TRUE(sourceMap.TranslateUrlPositionBySourceMap(url, line, column));
+    EXPECT_TRUE(sourceMap.TranslateUrlPositionBySourceMap(url, line, column, packageName));
 
     // if sourceMapData was used twice, sourceMap should cache url/modularMap
-    EXPECT_FALSE(sourceMap.TranslateUrlPositionBySourceMap(url, line, column));
+    EXPECT_FALSE(sourceMap.TranslateUrlPositionBySourceMap(url, line, column, packageName));
 
     sourceMap = TestInit(sourceMapDataWithInvalidMappings1);
     url = "entry/src/main/ets/pages/Index.ts";
-    EXPECT_FALSE(sourceMap.TranslateUrlPositionBySourceMap(url, line, column));
+    EXPECT_FALSE(sourceMap.TranslateUrlPositionBySourceMap(url, line, column, packageName));
 
     sourceMap = TestInit(sourceMapDataWithInvalidMappings2);
     url = "entry/src/main/ets/pages/Index.ts";
-    EXPECT_FALSE(sourceMap.TranslateUrlPositionBySourceMap(url, line, column));
+    EXPECT_FALSE(sourceMap.TranslateUrlPositionBySourceMap(url, line, column, packageName));
 
     sourceMap = TestInit(sourceMapDataWithInvalidMappings3);
     url = "entry/src/main/ets/pages/Index.ts";
-    EXPECT_FALSE(sourceMap.TranslateUrlPositionBySourceMap(url, line, column));
+    EXPECT_FALSE(sourceMap.TranslateUrlPositionBySourceMap(url, line, column, packageName));
 
     sourceMap = TestInit(sourceMapDataWithInvalidMappings4);
     url = "entry/src/main/ets/pages/Index.ts";
-    EXPECT_FALSE(sourceMap.TranslateUrlPositionBySourceMap(url, line, column));
+    EXPECT_FALSE(sourceMap.TranslateUrlPositionBySourceMap(url, line, column, packageName));
 
     sourceMap = TestInit(sourceMapDataWithInvalidMappings5);
     url = "entry/src/main/ets/pages/Index.ts";
-    EXPECT_FALSE(sourceMap.TranslateUrlPositionBySourceMap(url, line, column));
+    EXPECT_FALSE(sourceMap.TranslateUrlPositionBySourceMap(url, line, column, packageName));
 
     sourceMap = TestInit(sourceMapData);
     url = "entry/src/main/ets/pages/Index.ts";
     line = 0, column = 5;
-    EXPECT_FALSE(sourceMap.TranslateUrlPositionBySourceMap(url, line, column));
+    EXPECT_FALSE(sourceMap.TranslateUrlPositionBySourceMap(url, line, column, packageName));
 
     sourceMap = TestInit(sourceMapData);
     url = "entry/src/main/ets/pages/Index.ts";
     line = 5, column = 0;
-    EXPECT_FALSE(sourceMap.TranslateUrlPositionBySourceMap(url, line, column));
+    EXPECT_FALSE(sourceMap.TranslateUrlPositionBySourceMap(url, line, column, packageName));
 
     // if sourceMapData is valid and url is end by ".js", it should return true
     url = "entry/src/main/ets/pages/Index.js";
     sourceMap = TestInit(sourceMapDataWithJsSources);
-    EXPECT_TRUE(sourceMap.TranslateUrlPositionBySourceMap(url, line, column));
+    EXPECT_TRUE(sourceMap.TranslateUrlPositionBySourceMap(url, line, column, packageName));
 }
 
 HWTEST_F_L0(SourceMapTest, Base64CharToIntTest)
@@ -338,19 +401,9 @@ void PrintSourceMapData(const SourceMapData &data)
     std::cout << "URL: " << data.url_ << std::endl;
     std::cout << "Now Position: (" << data.nowPos_.afterRow << ", " << data.nowPos_.afterColumn << ")" << std::endl;
 
-    std::cout << "Files:" << std::endl;
-    for (const auto &file: data.files_) {
-        std::cout << "- " << file << std::endl;
-    }
-
     std::cout << "Sources:" << std::endl;
     for (const auto &source: data.sources_) {
         std::cout << "- " << source << std::endl;
-    }
-
-    std::cout << "Names:" << std::endl;
-    for (const auto &name: data.names_) {
-        std::cout << "- " << name << std::endl;
     }
 
     std::cout << "Mappings:" << std::endl;
@@ -518,5 +571,49 @@ HWTEST_F_L0(SourceMapTest, GetLineAndColumnNumbersTest)
     EXPECT_EQ(line, 99);
     EXPECT_EQ(column, 99);
     EXPECT_FALSE(isReplaces);
+}
+
+HWTEST_F_L0(SourceMapTest, TranslateUrlPositionBySourceMapTest1)
+{
+    SourceMap sourceMap;
+    int line = 10, column = 5;
+    std::string url = "entry/src/main/ets/pages/Index.ts";
+    sourceMap = TestInit(sourceMapData1);
+    std::string packageName;
+    EXPECT_FALSE(sourceMap.TranslateUrlPositionBySourceMap(url, line, column, packageName));
+    EXPECT_TRUE(packageName == "library");
+}
+
+HWTEST_F_L0(SourceMapTest, TranslateUrlPositionBySourceMapTest2)
+{
+    SourceMap sourceMap;
+    int line = 10, column = 5;
+    std::string url = "entry/src/main/ets/pages/Index.ts";
+    std::string packageName;
+    sourceMap = TestInit(sourceMapData2);
+    EXPECT_FALSE(sourceMap.TranslateUrlPositionBySourceMap(url, line, column, packageName));
+    EXPECT_TRUE(packageName == "entry");
+}
+
+HWTEST_F_L0(SourceMapTest, TranslateUrlPositionBySourceMapTest3)
+{
+    SourceMap sourceMap;
+    int line = 10, column = 5;
+    std::string url = "entry/src/main/ets/pages/Index.ts";
+    std::string packageName;
+    sourceMap = TestInit(sourceMapData3);
+    EXPECT_FALSE(sourceMap.TranslateUrlPositionBySourceMap(url, line, column, packageName));
+    EXPECT_TRUE(packageName == "library");
+}
+
+HWTEST_F_L0(SourceMapTest, TranslateUrlPositionBySourceMapTest4)
+{
+    SourceMap sourceMap;
+    int line = 10, column = 5;
+    std::string url = "entry/src/main/ets/pages/Index.ts";
+    std::string packageName;
+    sourceMap = TestInit(sourceMapData4);
+    EXPECT_TRUE(sourceMap.TranslateUrlPositionBySourceMap(url, line, column, packageName));
+    EXPECT_TRUE(packageName.empty());
 }
 }

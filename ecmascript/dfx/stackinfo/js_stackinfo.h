@@ -42,6 +42,7 @@ void ParseJsFrameInfo(JSPandaFile *jsPandaFile, DebugInfoExtractor *debugExtract
 
 static constexpr uint16_t URL_MAX = 1024;
 static constexpr uint16_t FUNCTIONNAME_MAX = 1024;
+static constexpr uint16_t PACKAGENAME_MAX = 1024;
 
 struct JsFrameInfo {
     std::string functionName;
@@ -52,6 +53,7 @@ struct JsFrameInfo {
 
 struct JsFunction {
     char functionName[FUNCTIONNAME_MAX];
+    char packageName[PACKAGENAME_MAX];
     char url[URL_MAX];
     int32_t line;
     int32_t column;
@@ -105,6 +107,7 @@ struct ArkUnwindParam {
 
 struct JsFrame {
     char functionName[FUNCTIONNAME_MAX];
+    char packageName[PACKAGENAME_MAX];
     char url[URL_MAX];
     int32_t line;
     int32_t column;
