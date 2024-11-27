@@ -2742,4 +2742,49 @@ GateRef NewObjectStubBuilder::CreateArrayFromList(GateRef glue, GateRef elements
     env->SubCfgExit();
     return ret;
 }
+
+void NewObjectStubBuilder::CreateJSIteratorResult(GateRef glue, Variable *res, GateRef value, GateRef done, Label *exit)
+{
+    auto env = GetEnvironment();
+    GateRef iterResultClass = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
+                                                     ConstantIndex::ITERATOR_RESULT_CLASS);
+    Label afterNew(env);
+    SetParameters(glue, 0);
+    NewJSObject(res, &afterNew, iterResultClass);
+    Bind(&afterNew);
+    Store(VariableType::JS_POINTER(), glue, res->ReadVariable(),
+          IntPtr(JSIterator::GetInlinedPropertyOffset(JSIterator::VALUE_INLINE_PROPERTY_INDEX)), value);
+    Store(VariableType::JS_POINTER(), glue, res->ReadVariable(),
+          IntPtr(JSIterator::GetInlinedPropertyOffset(JSIterator::DONE_INLINE_PROPERTY_INDEX)), done);
+
+    Jump(exit);
+}
+
+void NewObjectStubBuilder::CreateJSIteratorResultForEntry(GateRef glue, Variable *res, GateRef key, GateRef value,
+                                                          Label *exit)
+{
+    auto env = GetEnvironment();
+    SetParameters(glue, 0);
+
+    // create array with length 2 (key, value)
+    GateRef elements = NewTaggedArray(glue, Int32(2)); // 2: length of array
+    SetValueToTaggedArray(VariableType::JS_ANY(), glue, elements, Int32(0), key); // 0: index of key
+    SetValueToTaggedArray(VariableType::JS_ANY(), glue, elements, Int32(1), value); // 1: index of value
+
+    GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
+    GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
+    auto arrayFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, GlobalEnv::ARRAY_FUNCTION_INDEX);
+    GateRef accessor = GetGlobalConstantValue(VariableType::JS_ANY(), glue, ConstantIndex::ARRAY_LENGTH_ACCESSOR);
+    GateRef intialHClass = Load(VariableType::JS_ANY(), arrayFunc, IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
+    GateRef arr = NewJSObject(glue, intialHClass);
+    GateRef lengthOffset = IntPtr(JSArray::LENGTH_OFFSET);
+    StoreWithoutBarrier(VariableType::INT32(), arr, lengthOffset, Int32(2)); // 2: length of array
+    Store(VariableType::JS_POINTER(), glue, arr,
+          IntPtr(JSArray::GetInlinedPropertyOffset(JSArray::LENGTH_INLINE_PROPERTY_INDEX)), accessor,
+          MemoryAttribute::NoBarrier());
+    SetExtensibleToBitfield(glue, arr, true);
+    SetElementsArray(VariableType::JS_POINTER(), glue, arr, elements);
+    CreateJSIteratorResult(glue, res, arr, TaggedFalse(), exit);
+}
+
 }  // namespace panda::ecmascript::kungfu

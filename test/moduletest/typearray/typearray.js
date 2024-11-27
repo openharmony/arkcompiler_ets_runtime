@@ -753,14 +753,14 @@ function typedArraysEqual(typedArr1, typedArr2) {
     Uint8Array,
     Uint8ClampedArray
 ].forEach(function(ctor, i) {
-    if (testTypeArray1(ctor)) {
+    if (testTypeArray6(ctor)) {
         print(ctor.name + " test success !!!")
     } else {
         print(ctor.name + " test fail !!!")
     }
 });
   
-function testTypeArray1(ctor) {
+function testTypeArray6(ctor) {
     let obj = new ctor([2]);
     let result = obj.map(function (num) {
         return num * 2;
@@ -1309,3 +1309,21 @@ let obj11 = {[Symbol.toPrimitive] : function (a) {
 let bb = new Int16Array([obj11, 302.32]);
 print(bb[0]);
 print(bb[1]);
+var typedArrForTestIter1 = new Uint32Array([1,2,3,4]);
+
+for (let typedArrEle of typedArrForTestIter1) {
+    print(typedArrEle);
+}
+
+var typedArrForTestIter2 = new Uint32Array([1,2,3,4]);
+var iterForTypedArrKey = typedArrForTestIter2.keys();
+for (let typedArrEle of iterForTypedArrKey) {
+    print(typedArrEle);
+}
+
+var typedArrForTestIter2 = new Uint32Array([1,2,3,4]);
+var iterForTypedArrEntry = typedArrForTestIter2.entries();
+for (let typedArrEle of iterForTypedArrEntry) {
+    print(typedArrEle);
+    print(typedArrEle.length)
+}

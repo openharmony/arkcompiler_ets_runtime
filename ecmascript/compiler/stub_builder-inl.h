@@ -682,6 +682,11 @@ inline GateRef StubBuilder::TaggedIsArrayBuffer(GateRef obj)
     return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::JS_ARRAY_BUFFER)));
 }
 
+inline GateRef StubBuilder::TaggedIsArrayIterator(GateRef obj)
+{
+    return env_->GetBuilder()->TaggedIsArrayIterator(obj);
+}
+
 inline GateRef StubBuilder::BothAreString(GateRef x, GateRef y)
 {
     return env_->GetBuilder()->BothAreString(x, y);
@@ -1843,9 +1848,14 @@ inline void StubBuilder::SetCachedHclassOfForInIterator(GateRef glue, GateRef it
     env_->GetBuilder()->SetCachedHclassOfForInIterator(glue, iter, hclass);
 }
 
-inline void StubBuilder::IncreaseInteratorIndex(GateRef glue, GateRef iter, GateRef index)
+inline void StubBuilder::IncreaseIteratorIndex(GateRef glue, GateRef iter, GateRef index)
 {
-    env_->GetBuilder()->IncreaseInteratorIndex(glue, iter, index);
+    env_->GetBuilder()->IncreaseIteratorIndex(glue, iter, index);
+}
+
+inline void StubBuilder::IncreaseArrayIteratorIndex(GateRef glue, GateRef iter, GateRef index)
+{
+    env_->GetBuilder()->IncreaseArrayIteratorIndex(glue, iter, index);
 }
 
 inline void StubBuilder::SetNextIndexOfArrayIterator(GateRef glue, GateRef iter, GateRef nextIndex)
@@ -1861,6 +1871,11 @@ inline void StubBuilder::SetIteratedArrayOfArrayIterator(GateRef glue, GateRef i
 inline void StubBuilder::SetBitFieldOfArrayIterator(GateRef glue, GateRef iter, GateRef kind)
 {
     env_->GetBuilder()->SetBitFieldOfArrayIterator(glue, iter, kind);
+}
+
+inline GateRef StubBuilder::GetArrayIterationKind(GateRef iter)
+{
+    return env_->GetBuilder()->GetArrayIterationKind(iter);
 }
 
 inline GateRef StubBuilder::IsField(GateRef attr)

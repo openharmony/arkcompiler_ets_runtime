@@ -634,7 +634,9 @@ private:
     V(CreateLocalToShare)                            \
     V(CreateOldToNew)                                \
     V(BatchBarrier)                                  \
-    V(ObjectCopy)
+    V(ObjectCopy)                                    \
+    V(ArrayIteratorNext)                             \
+    V(GetIterator)
 
 
 #define DECL_CALL_SIGNATURE(name)                                  \
