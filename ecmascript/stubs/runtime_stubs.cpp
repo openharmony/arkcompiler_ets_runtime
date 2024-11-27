@@ -736,6 +736,29 @@ void RuntimeStubs::DebugPrintInstruction([[maybe_unused]] uintptr_t argGlue, con
     LOG_INTERPRETER(DEBUG) << inst;
 }
 
+void RuntimeStubs::CollectingOpcodes([[maybe_unused]] uintptr_t argGlue, const uint8_t *pc)
+{
+#if ECMASCRIPT_ENABLE_COLLECTING_OPCODES
+    BytecodeInstruction inst(pc);
+    auto thread = JSThread::GlueToJSThread(argGlue);
+    auto vm = thread->GetEcmaVM();
+    auto opcode = inst.GetOpcode();
+    std::stack<std::unordered_map<BytecodeInstruction::Opcode, int>> &bytecodeStatsStack_ =
+            vm->GetBytecodeStatsStack();
+    if (bytecodeStatsStack_.empty()) {
+        return;
+    }
+    std::unordered_map<BytecodeInstruction::Opcode, int> &bytecodeStatsMap_ = bytecodeStatsStack_.top();
+    auto foundInst = bytecodeStatsMap_.find(opcode);
+    if (foundInst != bytecodeStatsMap_.end()) {
+        ++foundInst->second;
+    } else {
+        bytecodeStatsMap_[opcode] = 1;
+    }
+    LOG_INTERPRETER(DEBUG) << inst;
+#endif
+}
+
 void RuntimeStubs::DebugOsrEntry([[maybe_unused]] uintptr_t argGlue, const uint8_t *codeEntry)
 {
     LOG_JIT(DEBUG) << "[OSR]: Enter OSR Code: " << reinterpret_cast<const void*>(codeEntry);

@@ -86,6 +86,7 @@ public:
     static void DebugPrint(int fmtMessageId, ...);
     static void DebugPrintCustom(uintptr_t fmt, ...);
     static void DebugPrintInstruction([[maybe_unused]] uintptr_t argGlue, const uint8_t *pc);
+    static void CollectingOpcodes([[maybe_unused]] uintptr_t argGlue, const uint8_t *pc);
     static void DebugOsrEntry([[maybe_unused]] uintptr_t argGlue, const uint8_t *codeEntry);
     static void Comment(uintptr_t argStr);
     static void FatalPrint(int fmtMessageId, ...);

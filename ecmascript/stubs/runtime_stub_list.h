@@ -129,6 +129,7 @@ namespace panda::ecmascript {
     V(DebugPrint)                              \
     V(DebugPrintCustom)                        \
     V(DebugPrintInstruction)                   \
+    V(CollectingOpcodes)                       \
     V(DebugOsrEntry)                           \
     V(Comment)                                 \
     V(FatalPrint)                              \

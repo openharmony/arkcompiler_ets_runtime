@@ -29,6 +29,7 @@
 #include "ecmascript/napi/include/dfx_jsnapi.h"
 #include "ecmascript/napi/include/jsnapi.h"
 #include "ecmascript/taskpool/taskpool.h"
+#include "libpandafile/bytecode_instruction-inl.h"
 
 namespace panda {
 class JSNApi;
@@ -805,6 +806,20 @@ public:
 
     void PUBLIC_API PrintAOTSnapShotStats();
 
+#if ECMASCRIPT_ENABLE_COLLECTING_OPCODES
+    void SetBytecodeStatsStack(std::unordered_map<BytecodeInstruction::Opcode, int> &bytecodeStatsMap)
+    {
+        bytecodeStatsStack_.push(bytecodeStatsMap);
+    }
+
+    std::stack<std::unordered_map<BytecodeInstruction::Opcode, int>>& GetBytecodeStatsStack()
+    {
+        return bytecodeStatsStack_;
+    }
+
+    void PrintCollectedByteCode();
+#endif
+
 protected:
 
     void PrintJSErrorInfo(const JSHandle<JSTaggedValue> &exceptionInfo) const;
@@ -941,6 +956,10 @@ private:
     int enterJsiNativeScopeCount_ = 0;
     int updateThreadStateTransCount_ = 0;
     int stringTableLockCount_ = 0;
+#endif
+
+#if ECMASCRIPT_ENABLE_COLLECTING_OPCODES
+    std::stack<std::unordered_map<BytecodeInstruction::Opcode, int>> bytecodeStatsStack_;
 #endif
 };
 }  // namespace ecmascript

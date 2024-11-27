@@ -637,6 +637,38 @@ JSTaggedValue BuiltinsArkTools::TimeInUs([[maybe_unused]] EcmaRuntimeCallInfo *i
     return JSTaggedValue(scope.GetCurTime());
 }
 
+#if ECMASCRIPT_ENABLE_COLLECTING_OPCODES
+JSTaggedValue BuiltinsArkTools::StartCollectingOpcodes([[maybe_unused]] EcmaRuntimeCallInfo *info)
+{
+    std::unordered_map<BytecodeInstruction::Opcode, int> bytecodeStatsMap;
+    [[maybe_unused]] JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
+    EcmaVM *vm = thread->GetEcmaVM();
+    vm->SetBytecodeStatsStack(bytecodeStatsMap);
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+    JSHandle<EcmaString> str = JSTaggedValue::ToString(thread, GetCallArg(info, 0));
+    auto msg = EcmaStringAccessor(str).ToCString();
+    LOG_ECMA(ERROR) << msg.c_str();
+    return JSTaggedValue::Undefined();
+}
+
+JSTaggedValue BuiltinsArkTools::StopCollectingOpcodes([[maybe_unused]] EcmaRuntimeCallInfo *info)
+{
+    [[maybe_unused]] JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
+    EcmaVM *vm = thread->GetEcmaVM();
+    vm->PrintCollectedByteCode();
+    std::stack<std::unordered_map<BytecodeInstruction::Opcode, int>> &bytecodeStatsStack_ =
+            vm->GetBytecodeStatsStack();
+    bytecodeStatsStack_.pop();
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+    JSHandle<EcmaString> str = JSTaggedValue::ToString(thread, GetCallArg(info, 0));
+    auto msg = EcmaStringAccessor(str).ToCString();
+    LOG_ECMA(ERROR) << msg.c_str();
+    return JSTaggedValue::Undefined();
+}
+#endif
+
 #if ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT
 JSTaggedValue BuiltinsArkTools::StartScopeLockStats(EcmaRuntimeCallInfo *info)
 {

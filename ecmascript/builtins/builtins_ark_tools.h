@@ -156,12 +156,21 @@
 #define BUILTIN_ARK_TOOLS_FUNCTIONS_CPUPROFILER(V) // Nothing
 #endif
 
+#if ECMASCRIPT_ENABLE_COLLECTING_OPCODES
+#define BUILTIN_ARK_TOOLS_FUNCTIONS_COLLECTING_OPCODES(V)                                 \
+    V("startCollectingOpcodes",         StartCollectingOpcodes,         1, INVALID)       \
+    V("stopCollectingOpcodes",          StopCollectingOpcodes,          1, INVALID)
+#else
+#define BUILTIN_ARK_TOOLS_FUNCTIONS_COLLECTING_OPCODES(V) // Nothing
+#endif
+
 #define BUILTIN_ARK_TOOLS_FUNCTIONS(V)                  \
     BUILTIN_ARK_TOOLS_FUNCTIONS_COMMON(V)               \
     BUILTIN_ARK_TOOLS_FUNCTIONS_CPUPROFILER(V)          \
     BUILTIN_ARK_TOOLS_FUNCTIONS_REGRESS(V)              \
     BUILTIN_ARK_TOOLS_FUNCTIONS_SCOPE_LOCK_STATS(V)     \
-    BUILTIN_ARK_TOOLS_FUNCTIONS_JITCOMPILE(V)
+    BUILTIN_ARK_TOOLS_FUNCTIONS_JITCOMPILE(V)           \
+    BUILTIN_ARK_TOOLS_FUNCTIONS_COLLECTING_OPCODES(V)
 
 namespace panda::ecmascript::builtins {
 class BuiltinsArkTools : public base::BuiltinsBase {
@@ -249,6 +258,12 @@ public:
     static JSTaggedValue IsSymbolIteratorDetectorValid(EcmaRuntimeCallInfo *info);
 
     static JSTaggedValue TimeInUs(EcmaRuntimeCallInfo *info);
+
+#if ECMASCRIPT_ENABLE_COLLECTING_OPCODES
+    static JSTaggedValue StartCollectingOpcodes([[maybe_unused]] EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue StopCollectingOpcodes([[maybe_unused]] EcmaRuntimeCallInfo *info);
+#endif
 
 #if ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT
     static JSTaggedValue StartScopeLockStats(EcmaRuntimeCallInfo *info);
