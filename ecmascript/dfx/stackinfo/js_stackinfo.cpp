@@ -617,14 +617,17 @@ void ParseJsFrameInfo(JSPandaFile *jsPandaFile, DebugInfoExtractor *debugExtract
         columnNumber = 0;
     }
 
+    std::string packageName;
     if (sourceMap != nullptr) {
-        sourceMap->TranslateUrlPositionBySourceMap(url, lineNumber, columnNumber);
+        sourceMap->TranslateUrlPositionBySourceMap(url, lineNumber, columnNumber, packageName);
     }
 
     size_t urlSize = url.size() + 1;
     size_t nameSize = name.size() + 1;
+    size_t packageNameSize = packageName.size() + 1;
     if (strcpy_s(jsFrame.url, urlSize, url.c_str()) != EOK ||
-        strcpy_s(jsFrame.functionName, nameSize, name.c_str()) != EOK) {
+        strcpy_s(jsFrame.functionName, nameSize, name.c_str()) != EOK ||
+        strcpy_s(jsFrame.packageName, packageNameSize, packageName.c_str()) != EOK) {
         LOG_ECMA(FATAL) << "jsFrame strcpy_s failed";
         UNREACHABLE();
     }
@@ -678,10 +681,13 @@ bool ArkTranslateJsFrameInfo(uint8_t *data, size_t dataSize, JsFunction *jsFunct
 {
     SourceMap sourceMap;
     std::string strUrl = jsFunction->url;
+    std::string packageName;
     sourceMap.Init(data, dataSize);
-    bool ret = sourceMap.TranslateUrlPositionBySourceMap(strUrl, jsFunction->line, jsFunction->column);
+    bool ret = sourceMap.TranslateUrlPositionBySourceMap(strUrl, jsFunction->line, jsFunction->column, packageName);
     size_t strUrlSize = strUrl.size() + 1;
-    if (strcpy_s(jsFunction->url, strUrlSize, strUrl.c_str()) != EOK) {
+    size_t packageNameSize = packageName.size() + 1;
+    if (strcpy_s(jsFunction->url, strUrlSize, strUrl.c_str()) != EOK ||
+        strcpy_s(jsFunction->packageName, packageNameSize, packageName.c_str()) != EOK) {
         LOG_FULL(FATAL) << "strcpy_s failed";
         UNREACHABLE();
     }

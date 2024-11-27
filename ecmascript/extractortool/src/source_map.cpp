@@ -42,12 +42,15 @@ static constexpr int32_t DIGIT_NUM = 64;
 const std::string MEGER_SOURCE_MAP_PATH = "ets/sourceMaps.map";
 static const CString FLAG_SOURCES = "    \"sources\":";
 static const CString FLAG_MAPPINGS = "    \"mappings\": \"";
+static const CString FLAG_ENTRY_PACKAGE_INFO = "    \"entry-package-info\": \"";
+static const CString FLAG_PACKAGE_INFO = "    \"package-info\": \"";
 static const CString FLAG_END = "  }";
 
 static constexpr size_t FLAG_MAPPINGS_LEN = 17;
 static constexpr size_t REAL_SOURCE_SIZE = 7;
 static constexpr size_t REAL_URL_INDEX = 3;
-static constexpr size_t REAL_SOURCE_INDEX = 7;
+static constexpr size_t FLAG_ENTRY_PACKAGE_INFO_SIZE = 27;
+static constexpr size_t FLAG_PACKAGE_INFO_SIZE = 21;
 } // namespace
 
 #if defined(PANDA_TARGET_OHOS)
@@ -137,6 +140,16 @@ void SourceMap::SplitSourceMap(const std::string& sourceMapData)
 
         if (base::StringHelper::StringStartWith(tmp.c_str(), FLAG_MAPPINGS)) {
             mappings_.emplace(url, tmp);
+            continue;
+        }
+
+        if (base::StringHelper::StringStartWith(tmp.c_str(), FLAG_ENTRY_PACKAGE_INFO)) {
+            entryPackageInfo_.emplace(url, tmp);
+            continue;
+        }
+
+        if (base::StringHelper::StringStartWith(tmp.c_str(), FLAG_PACKAGE_INFO)) {
+            packageInfo_.emplace(url, tmp);
             continue;
         }
 
@@ -334,20 +347,51 @@ bool SourceMap::VlqRevCode(const std::string& vStr, std::vector<int32_t>& ans)
     return true;
 };
 
-bool SourceMap::TranslateUrlPositionBySourceMap(std::string& url, int& line, int& column)
+void SourceMap::GetPackageName(std::string& url, std::string& packageName)
+{
+    auto iterData = packageName_.find(url);
+    if (iterData != packageName_.end()) {
+        packageName = iterData->second;
+        return;
+    }
+    std::string entryPackageInfo = entryPackageInfo_[url];
+    std::string packageInfo = packageInfo_[url];
+    if (!packageInfo.empty()) {
+        auto last = packageInfo.rfind('|');
+        if (last == std::string::npos) {
+            LOG_ECMA(ERROR) << "packageInfo can't find fisrt |";
+            return;
+        }
+        packageName = packageInfo.substr(FLAG_PACKAGE_INFO_SIZE, last - FLAG_PACKAGE_INFO_SIZE);
+        packageName_.emplace(url, packageName);
+        return;
+    }
+    if (!entryPackageInfo.empty()) {
+        auto last = entryPackageInfo.rfind('|');
+        if (last == std::string::npos) {
+            LOG_ECMA(ERROR) << "entryPackageInfo can't find fisrt |";
+            return;
+        }
+        packageName = entryPackageInfo.substr(FLAG_ENTRY_PACKAGE_INFO_SIZE, last - FLAG_ENTRY_PACKAGE_INFO_SIZE);
+        packageName_.emplace(url, packageName);
+    }
+}
+
+bool SourceMap::TranslateUrlPositionBySourceMap(std::string& url, int& line, int& column, std::string& packageName)
 {
     std::string tmp = sources_[url];
     if (tmp.empty() || tmp.size() < REAL_SOURCE_SIZE + 1) {
         LOG_ECMA(ERROR) << "Translate failed, url: " << url;
         return false;
     }
-    tmp = tmp.substr(REAL_SOURCE_INDEX, tmp.size() - REAL_SOURCE_SIZE - 1);
+    tmp = tmp.substr(REAL_SOURCE_SIZE, tmp.size() - REAL_SOURCE_SIZE - 1);
     if (url.rfind(".js") != std::string::npos) {
         url = tmp;
         return true;
     }
     bool isReplaces = true;
     bool ret = false;
+    GetPackageName(url, packageName);
     auto iterData = sourceMaps_.find(url);
     if (iterData != sourceMaps_.end()) {
         if (iterData->second == nullptr) {
