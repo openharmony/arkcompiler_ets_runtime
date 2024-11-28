@@ -26,9 +26,7 @@ group("ark_js_moduletest") {
     "arrayfrom",
     "arrayjoin",
     "arraymap",
-
-    # (issue 18938)
-    #"arraypop",
+    "arraypop",
     "arraytoreversed",
     "arraytospliced",
     "arraywith",
@@ -278,10 +276,8 @@ group("ark_asm_test") {
     "arrayforeach",
     "arrayjoin",
     "arraymap",
+    "arraypop",
     "arraystablecheck",
-
-    # (issue 18938)
-    #"arraypop",
     "arraysort",
     "arrayspread",
     "arrayprotochange",
@@ -353,7 +349,6 @@ group("ark_asm_test") {
     "multiprotoic",
     "negintmin",
     "newobjdynrange",
-    "number",
     "objectcloneproperties",
     "objecthasownproperty",
     "objectkeys",
@@ -486,9 +481,7 @@ group("ark_asm_single_step_test") {
     "arrayforeach",
     "arrayjoin",
     "arraymap",
-
-    # (issue 18938)
-    #"arraypop",
+    "arraypop",
     "arrayprotochange",
     "arrayshift",
     "arrayslice",
@@ -545,6 +538,7 @@ group("ark_asm_single_step_test") {
     "multiprotoic",
     "negintmin",
     "newobjdynrange",
+    "number",
     "objectcloneproperties",
     "objecthasownproperty",
     "objectkeys",
