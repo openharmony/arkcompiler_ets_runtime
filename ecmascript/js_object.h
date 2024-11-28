@@ -751,7 +751,7 @@ public:
     bool UpdatePropertyInDictionary(const JSThread *thread, JSTaggedValue key, JSTaggedValue value);
     static bool ShouldTransToDict(uint32_t capacity, uint32_t index);
     static bool ShouldTransToFastElements(JSThread *thread, TaggedArray *elements, uint32_t capacity, uint32_t index);
-    static bool ShouldOptimizeAsFastElements(const JSThread *thread, JSHandle<JSObject> obj);
+    static bool AttributesUnchanged(const JSThread *thread, const JSHandle<JSObject> &obj);
     static JSHandle<TaggedArray> GrowElementsCapacity(const JSThread *thread, const JSHandle<JSObject> &obj,
                                                       uint32_t capacity, bool highGrowth = false, bool isNew = false);
 
@@ -774,7 +774,6 @@ public:
 
     static void PUBLIC_API TryMigrateToGenericKindForJSObject(const JSThread *thread, const JSHandle<JSObject> &obj,
                                                   const ElementsKind oldKind);
-protected:
     static void ElementsToDictionary(const JSThread *thread, JSHandle<JSObject> obj);
 
 private:

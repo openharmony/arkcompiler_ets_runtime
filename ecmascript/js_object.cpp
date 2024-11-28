@@ -248,7 +248,8 @@ void JSObject::ElementsToDictionary(const JSThread *thread, JSHandle<JSObject> o
     TryMigrateToGenericKindForJSObject(thread, obj, oldKind);
 }
 
-inline bool JSObject::ShouldOptimizeAsFastElements(const JSThread *thread, JSHandle<JSObject> obj)
+bool JSObject::AttributesUnchanged(const JSThread *thread,
+                                   const JSHandle<JSObject> &obj)
 {
     JSHandle<NumberDictionary> elements(thread, obj->GetElements());
     uint32_t size = static_cast<uint32_t>(elements->Size());
@@ -268,7 +269,7 @@ inline bool JSObject::ShouldOptimizeAsFastElements(const JSThread *thread, JSHan
 void JSObject::TryOptimizeAsFastElements(const JSThread *thread, JSHandle<JSObject> obj)
 {
     ASSERT(obj->GetJSHClass()->IsDictionaryElement() && obj->IsJSArray());
-    if (ShouldOptimizeAsFastElements(thread, obj)) {
+    if (AttributesUnchanged(thread, obj)) {
         uint32_t length = JSArray::Cast(*obj)->GetLength();
         JSHandle<NumberDictionary> elements(thread, obj->GetElements());
         uint32_t size = static_cast<uint32_t>(elements->Size());

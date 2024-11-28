@@ -59,6 +59,6 @@ group("host_unittest") {
   }
 
   if (is_mac) {
-    deps -= [ ":JIT_001_TestAction" ]
+    deps = [ ":JIT_001_TestAction" ]
   }
 }

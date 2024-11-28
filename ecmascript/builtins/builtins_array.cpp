@@ -19,6 +19,7 @@
 
 #include "ecmascript/base/typed_array_helper-inl.h"
 #include "ecmascript/interpreter/interpreter.h"
+#include "ecmascript/js_array.h"
 #include "ecmascript/js_map_iterator.h"
 #include "ecmascript/js_stable_array.h"
 #include "ecmascript/object_fast_operator-inl.h"
@@ -517,6 +518,7 @@ JSTaggedValue BuiltinsArray::Concat(EcmaRuntimeCallInfo *argv)
     JSMutableHandle<JSTaggedValue> ele(thread, JSTaggedValue::Undefined());
     JSMutableHandle<JSTaggedValue> fromKey(thread, JSTaggedValue::Undefined());
     JSMutableHandle<JSTaggedValue> toKey(thread, JSTaggedValue::Undefined());
+    JSMutableHandle<JSTaggedValue> valHandle(thread, JSTaggedValue::Undefined());
     // 4. Prepend O to items.
     // 5. For each element E of items, do
     for (int i = -1; i < argc; i++) {
@@ -544,6 +546,14 @@ JSTaggedValue BuiltinsArray::Concat(EcmaRuntimeCallInfo *argv)
                 JSStableArray::Concat(thread, newArrayHandle, JSHandle<JSObject>::Cast(ele), k, n);
                 RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             }
+            #if ENABLE_NEXT_OPTIMIZATION
+                else if (JSArray::IsProtoNotModifiedDictionaryJSArray(thread, JSHandle<JSObject>::Cast(ele))) {
+                    JSArray::FastConcatDictionaryArray(thread, JSHandle<JSObject>::Cast(ele), newArrayHandle,
+                                                       valHandle, toKey, n);
+                    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+                    continue;
+                }
+            #endif
             // iv. Repeat, while k < len,
             while (k < len) {
                 // 1. Let P be ToString(k).
