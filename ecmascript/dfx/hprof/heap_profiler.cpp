@@ -484,21 +484,35 @@ void ClearObjMem(CUnorderedMap<uint64_t, NewAddr *> &objMap)
     objMap.clear();
 }
 
-bool HeapProfiler::GenerateHeapSnapshot(std::string &inputFilePath, std::string &outputPath)
+static bool GetValidFileSize(std::string &inputFilePath, uint64_t &fileSize)
 {
-    LOG_ECMA(INFO) << "ark raw heap decode start target=" << outputPath;
-    uint64_t fileSize = GetFileSize(inputFilePath);
+    fileSize = GetFileSize(inputFilePath);
     if (fileSize == 0) {
         LOG_ECMA(ERROR) << "ark raw heap decode get file size=0";
         return false;
     }
-    std::ifstream file(inputFilePath, std::ios::binary);
-    if (!file.is_open()) {
-        LOG_ECMA(ERROR) << "ark raw heap decode file failed:" << inputFilePath.c_str();
-        return false;
-    }
     if (fileSize > MAX_FILE_SIZE) {
         LOG_ECMA(ERROR) << "ark raw heap decode get file size > 4GB, unsupported";
+        return false;
+    }
+    return true;
+}
+
+bool HeapProfiler::GenerateHeapSnapshot(std::string &inputFilePath, std::string &outputPath)
+{
+    LOG_ECMA(INFO) << "ark raw heap decode start target=" << outputPath;
+    std::string realPath;
+    if (!RealPath(inputFilePath, realPath)) {
+        LOG_ECMA(ERROR) << "get real path failed:" << inputFilePath;
+        return false;
+    }
+    uint64_t fileSize;
+    if (!GetValidFileSize(realPath, fileSize)) {
+        return false;
+    }
+    std::ifstream file(realPath, std::ios::binary);
+    if (!file.is_open()) {
+        LOG_ECMA(ERROR) << "ark raw heap decode file failed:" << realPath;
         return false;
     }
     CVector<uint32_t> sections = GetSectionInfo(file, fileSize);
@@ -679,7 +693,7 @@ uint32_t HeapProfiler::CopyObjectMem2Buf(char *objTable, uint32_t objNum,
                                          CVector<std::pair<char *, uint32_t>> &memBufMap)
 {
     char *currMemBuf = nullptr;
-    auto currSize = 0;
+    uint32_t currSize = 0;
     uint32_t totalSize = 0;
     uint32_t curOffset = objNum * sizeof(AddrTableItem);
     auto objHeaders = reinterpret_cast<AddrTableItem *>(objTable);
@@ -771,7 +785,7 @@ uint32_t HeapProfiler::GenObjTable(CUnorderedMap<char *, uint32_t> &headerMap, H
 uint32_t HeapProfiler::GenRootTable(Stream *stream)
 {
     auto roots = GetRootObjects(vm_);
-    auto rootSecHeadSize = 8; // 8 : root num 、 unit size
+    uint32_t rootSecHeadSize = 8; // 8 : root num 、 unit size
     auto rootSecSize = roots.size() * (sizeof(TaggedObject *)) + rootSecHeadSize;
     auto memBuf = chunk_.NewArray<char>(rootSecSize);
     uint32_t *rootHeader = reinterpret_cast<uint32_t *>(memBuf);

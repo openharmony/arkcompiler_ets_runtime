@@ -23,12 +23,12 @@ namespace rawheap_translate {
 struct MetaData;
 using JSType = uint8_t;
 using NodeType = uint8_t;
-using ObjRangeVisitor = std::function<void(std::shared_ptr<MetaData> &, int)>;
+using ObjRangeVisitor = std::function<void(std::shared_ptr<MetaData> &, uint32_t)>;
 
 struct Field {
     std::string name;
-    int offset;
-    int size;
+    uint32_t offset;
+    uint32_t size;
 
     Field() : offset(0), size(0) {}
 };
@@ -36,7 +36,7 @@ struct Field {
 struct MetaData {
     std::string name;
     std::vector<std::shared_ptr<Field>> fields;
-    int endOffset;
+    uint32_t endOffset;
     std::vector<std::string> parents;
     std::string visitType;
 
@@ -50,11 +50,11 @@ struct MetaData {
 
 struct Layout {
     std::string name;
-    int keyIndex;
-    int valueIndex;
-    int detailIndex;
-    int entrySize;
-    int headerSize;
+    uint32_t keyIndex;
+    uint32_t valueIndex;
+    uint32_t detailIndex;
+    uint32_t entrySize;
+    uint32_t headerSize;
 
     Layout() : keyIndex(0), valueIndex(0), detailIndex(0), entrySize(0), headerSize(0) {}
 };
@@ -99,8 +99,8 @@ private:
     static bool GetArray(const cJSON *json, const char *key, cJSON **value);
     static bool GetString(const cJSON *json, const char *key, std::string &value);
     static bool GetString(const cJSON *json, std::string &value);
-    static bool GetInt(const cJSON *json, const char *key, int &value);
-    static bool GetInt(const cJSON *json, int &value);
+    static bool GetUInt32(const cJSON *json, const char *key, uint32_t &value);
+    static bool GetUInt32(const cJSON *json, uint32_t &value);
 
     static constexpr NodeType DEFAULT_NODETYPE = 8;
 
