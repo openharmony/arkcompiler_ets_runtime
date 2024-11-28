@@ -475,6 +475,11 @@ private:
     V(CallSetter)                               \
     V(CallContainersArgs2)                      \
     V(CallContainersArgs3)                      \
+    V(CallGetterToBaseline)                     \
+    V(CallSetterToBaseline)                     \
+    V(CallContainersArgs2ToBaseline)            \
+    V(CallContainersArgs3ToBaseline)            \
+    V(CallReturnWithArgvToBaseline)             \
     V(JSCallWithArgV)                           \
     V(JSFastCallWithArgV)                       \
     V(JSFastCallWithArgVAndPushArgv)            \
