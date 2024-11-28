@@ -1350,4 +1350,89 @@ HWTEST_F_L0(JSNApiTests, SetExecuteMode)
     ecmascript::ModuleExecuteMode res2 = moduleManager->GetExecuteMode();
     EXPECT_EQ(res2, ecmascript::ModuleExecuteMode::ExecuteBufferMode);
 }
+
+HWTEST_F_L0(JSNApiTests, ToEcmaObject)
+{
+    LocalScope scope(vm_);
+    Local<ObjectRef> res = ObjectRef::New(vm_);
+    res->ToEcmaObject(vm_);
+    ASSERT_TRUE(res->IsObject(vm_));
+}
+
+HWTEST_F_L0(JSNApiTests, GetValueInt64)
+{
+    LocalScope scope(vm_);
+    bool isNumber = true;
+    int32_t input = 4;
+    Local<IntegerRef> res = IntegerRef::New(vm_, input);
+    res->ToBigInt(vm_);
+    ASSERT_TRUE(res->GetValueInt64(isNumber));
+    res->ToNumber(vm_);
+    ASSERT_TRUE(res->GetValueInt64(isNumber));
+    isNumber = false;
+    ASSERT_TRUE(res->GetValueInt64(isNumber));
+}
+
+HWTEST_F_L0(JSNApiTests, GetDataViewInfo)
+{
+    LocalScope scope(vm_);
+    Local<JSValueRef> key = StringRef::NewFromUtf8(vm_, "TestKey");
+    bool isDataView = false;
+    key->GetDataViewInfo(vm_, isDataView, nullptr, nullptr, nullptr, nullptr);
+    ASSERT_FALSE(isDataView);
+    isDataView = true;
+    key->GetDataViewInfo(vm_, isDataView, nullptr, nullptr, nullptr, nullptr);
+    ASSERT_FALSE(isDataView);
+}
+
+HWTEST_F_L0(JSNApiTests, TryGetArrayLength)
+{
+    LocalScope scope(vm_);
+    int32_t length = 4;
+    Local<JSValueRef> tag = ArrayRef::New(vm_, length);
+    EXPECT_FALSE(tag->IsArrayIterator(vm_));
+    uint32_t arrayLength = 4; // define array length
+    bool isArrayOrSharedArray = true;
+    tag->TryGetArrayLength(vm_, &isArrayOrSharedArray, &arrayLength);
+    ASSERT_TRUE(isArrayOrSharedArray);
+}
+
+HWTEST_F_L0(JSNApiTests, ByteLength002)
+{
+    LocalScope scope(vm_);
+    const int32_t length = 4; // define array length
+    Local<ArrayBufferRef> array = ArrayBufferRef::New(vm_, length);
+    int32_t arrayLen = array->ByteLength(vm_);
+    EXPECT_EQ(length, arrayLen);
+}
+
+HWTEST_F_L0(JSNApiTests, SetData)
+{
+    LocalScope scope(vm_);
+    Local<FunctionRef> functioncallback = FunctionRef::New(vm_, FunctionCallback);
+    struct Data {
+        int32_t length;
+    };
+    const int32_t length = 15;
+    Data *data = new Data();
+    data->length = length;
+    functioncallback->SetData(vm_, data);
+}
+
+HWTEST_F_L0(JSNApiTests, GetData)
+{
+    LocalScope scope(vm_);
+    Local<FunctionRef> functioncallback = FunctionRef::New(vm_, FunctionCallback);
+    functioncallback->GetData(vm_);
+}
+
+HWTEST_F_L0(JSNApiTests, GetData002)
+{
+    LocalScope scope(vm_);
+    int32_t argvLength = 10;
+    auto ecmaRuntimeCallInfo =
+        TestHelper::CreateEcmaRuntimeCallInfo(vm_->GetJSThread(), JSTaggedValue::Undefined(), argvLength);
+    JsiRuntimeCallInfo *jsiRuntimeCallInfo = reinterpret_cast<JsiRuntimeCallInfo *>(ecmaRuntimeCallInfo);
+    jsiRuntimeCallInfo->GetData();
+}
 } // namespace panda::test
