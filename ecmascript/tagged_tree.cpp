@@ -433,7 +433,7 @@ JSHandle<Derived> TaggedTree<Derived>::Insert(JSThread *thread, JSHandle<Derived
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSHandle<Derived>(thread, JSTaggedValue::Exception()));
         if (res == ComparisonResult::EQUAL) {
             newTree->SetValue(thread, parentIndex, value.GetTaggedValue());
-            return tree;
+            return newTree;
         } else if (res == ComparisonResult::LESS) {
             JSTaggedValue child = newTree->GetLeftChild(parentIndex);
             if (child.IsHole()) {
