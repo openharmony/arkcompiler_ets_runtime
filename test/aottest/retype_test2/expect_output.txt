@@ -11,15 +11,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-1
-true
-2
-left shift result:  2  right shift result:  0
-true
-left shift result:  4  right shift result:  1
--2
-true
--3
-true
-[trace] Check Type: NotInt7
+isAOTCompiled: true
 true

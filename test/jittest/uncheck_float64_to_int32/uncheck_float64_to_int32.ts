@@ -50,3 +50,17 @@ f3(1.1);
 ArkTools.jitCompileAsync(f3);
 print(ArkTools.waitJitCompileFinish(f3));
 f3(2.2);
+
+// Test scenario: No deopt check when performing conversions between int32 and float64.
+function f4(x) {
+    if (x++ < -1) {
+        x++;  
+    }
+    return x
+}
+
+f4(-200);
+f4(12345678912345);
+ArkTools.jitCompileAsync(f4);
+print(ArkTools.waitJitCompileFinish(f4));
+print(f4(-12345678912345) == -12345678912343);
