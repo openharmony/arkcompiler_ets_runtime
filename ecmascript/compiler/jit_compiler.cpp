@@ -276,11 +276,11 @@ bool JitFinalize(void *compilerTask, JitTask *jitTask)
     return jitCompilerTask->Finalize(jitTask);
 }
 
-void DeleteJitCompile(void *handle)
+void DeleteJitCompilerTask(void *compilerTask)
 {
-    if (handle == nullptr) {
+    if (compilerTask == nullptr) {
         return;
     }
-    delete reinterpret_cast<JitCompilerTask*>(handle);
+    delete reinterpret_cast<JitCompilerTask*>(compilerTask);
 }
 }  // namespace panda::ecmascript::kungfu

@@ -121,6 +121,8 @@ void EcmaVM::PreFork()
     auto sHeap = SharedHeap::GetInstance();
     sHeap->CompactHeapBeforeFork(thread_);
     sHeap->DisableParallelGC(thread_);
+
+    Jit::GetInstance()->PreFork();
 }
 
 void EcmaVM::PostFork()

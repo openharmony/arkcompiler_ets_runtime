@@ -26,6 +26,7 @@
 #include "ecmascript/jit/jit_thread.h"
 #include "ecmascript/jit/jit_dfx.h"
 #include "ecmascript/jit/compile_decision.h"
+#include "ecmascript/jit/jit_resources.h"
 
 namespace panda::ecmascript {
 class JitTask;
@@ -44,6 +45,7 @@ public:
     ~Jit();
     static PUBLIC_API Jit *GetInstance();
     void SetJitEnablePostFork(EcmaVM *vm, const std::string &bundleName);
+    void PreFork();
     void ConfigJit(EcmaVM *vm);
     void SwitchProfileStubs(EcmaVM *vm);
     void ConfigOptions(EcmaVM *vm) const;
@@ -57,7 +59,6 @@ public:
     void SetDisableCodeSign(bool isEnableCodeSign);
     bool PUBLIC_API IsEnableAsyncCopyToFort() const;
     void SetEnableAsyncCopyToFort(bool isEnableiAsyncCopyToFort);
-    void Initialize();
 
     static void Compile(EcmaVM *vm, JSHandle<JSFunction> &jsFunction,
                         CompilerTier::Tier tier = CompilerTier::Tier::FAST,
@@ -75,7 +76,7 @@ public:
         return initialized_;
     }
 
-    void DeleteJitCompile(void *compiler);
+    void DeleteJitCompilerTask(void *compiler);
 
     void RequestInstallCode(std::shared_ptr<JitTask> jitTask);
     void InstallTasks(JSThread *jsThread);
@@ -231,6 +232,8 @@ private:
     void Compile(EcmaVM *vm, const CompileDecision &decision);
     static void Compile(EcmaVM *vm, JSHandle<JSFunction> &jsFunction, CompilerTier tier,
                         int32_t offset, JitCompileMode mode);
+    void CreateJitResources();
+    bool IsLibResourcesResolved() const;
     bool initialized_ { false };
     bool fastJitEnable_ { false };
     bool baselineJitEnable_ { false };
@@ -249,14 +252,8 @@ private:
     Mutex setEnableLock_;
 
     JitDfx *jitDfx_ { nullptr };
+    std::unique_ptr<JitResources> jitResources_;
     static constexpr int MIN_CODE_SPACE_SIZE = 1_KB;
-
-    static void (*initJitCompiler_)(JSRuntimeOptions);
-    static bool(*jitCompile_)(void*, JitTask*);
-    static bool(*jitFinalize_)(void*, JitTask*);
-    static void*(*createJitCompilerTask_)(JitTask*);
-    static void(*deleteJitCompile_)(void*);
-    static void *libHandle_;
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_JIT_H
