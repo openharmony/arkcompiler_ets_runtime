@@ -3445,7 +3445,6 @@ Local<FunctionRef> FunctionRef::NewSendableClassFunction(const EcmaVM *vm,
     EscapeLocalScope scope(vm);
     ObjectFactory *factory = vm->GetFactory();
 
-    bool hasParent = !parent->IsNull();
     JSNapiSendable sendable(thread, infos, name);
     JSHandle<JSHClass> prototypeHClass = JSHClass::CreateSPrototypeHClass(thread, sendable.GetNonStaticDescs());
     JSHandle<JSObject> prototype = factory->NewSharedOldSpaceJSObject(prototypeHClass);
@@ -3457,7 +3456,15 @@ Local<FunctionRef> FunctionRef::NewSendableClassFunction(const EcmaVM *vm,
     JSObject::SetSProperties(thread, prototype, sendable.GetNonStaticDescs());
     JSObject::SetSProperties(thread, JSHandle<JSObject>::Cast(constructor), sendable.GetStaticDescs());
 
-    if (hasParent) {
+    if (parent->IsHole()) {
+        JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
+        prototypeHClass->SetPrototype(thread, env->GetSObjectFunctionPrototype());
+        constructorHClass->SetPrototype(thread, env->GetSFunctionPrototype());
+    } else if (parent->IsNull()) {
+        JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
+        prototypeHClass->SetPrototype(thread, JSTaggedValue::Null());
+        constructorHClass->SetPrototype(thread, env->GetSFunctionPrototype());
+    } else {
         auto parentPrototype = parent->GetFunctionPrototype(vm);
         prototypeHClass->SetPrototype(thread, JSNApiHelper::ToJSHandle(parentPrototype));
         constructorHClass->SetPrototype(thread, JSNApiHelper::ToJSHandle(parent));
@@ -3470,7 +3477,7 @@ Local<FunctionRef> FunctionRef::NewSendableClassFunction(const EcmaVM *vm,
     JSFunction::SetSFunctionExtraInfo(thread, constructor, nullptr, deleter, data, nativeBindingSize);
 
     JSHClass *parentIHClass{nullptr};
-    if (hasParent) {
+    if (!parent->IsHole() && !parent->IsNull()) {
         JSHandle<JSFunction> parentHandle(JSNApiHelper::ToJSHandle(parent));
         parentIHClass = reinterpret_cast<JSHClass *>(parentHandle->GetProtoOrHClass().GetTaggedObject());
     }
