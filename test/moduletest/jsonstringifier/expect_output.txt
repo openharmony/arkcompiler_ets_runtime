@@ -42,3 +42,5 @@ true
 TypeError
 true
 TypeError: stack contains value, usually caused by circular structure
+StringifyUseCache1: {"name":"arkjson","status":6,"working":true}
+StringifyUseCache2: {"name":"arkjson","status":11,"working":false}

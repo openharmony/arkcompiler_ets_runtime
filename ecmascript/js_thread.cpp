@@ -17,6 +17,7 @@
 
 #include "ecmascript/runtime.h"
 #include "ecmascript/debugger/js_debugger_manager.h"
+#include "ecmascript/base/json_stringifier.h"
 #include "ecmascript/js_date.h"
 #include "ecmascript/js_object-inl.h"
 #include "ecmascript/js_tagged_value.h"
@@ -186,6 +187,10 @@ JSThread::~JSThread()
     if (dateUtils_ != nullptr) {
         delete dateUtils_;
         dateUtils_ = nullptr;
+    }
+    if (jsonStringifier_ != nullptr) {
+        delete jsonStringifier_;
+        jsonStringifier_ = nullptr;
     }
 }
 
@@ -1320,6 +1325,14 @@ void JSThread::PostFork()
         ASSERT(currentThread == this);
         ASSERT(GetState() == ThreadState::NATIVE);
     }
+}
+
+base::JsonStringifier *JSThread::GetJsonStringifier()
+{
+    if (jsonStringifier_ == nullptr) {
+        jsonStringifier_ = new base::JsonStringifier(this);
+    }
+    return jsonStringifier_;
 }
 #ifndef NDEBUG
 bool JSThread::IsInManagedState() const

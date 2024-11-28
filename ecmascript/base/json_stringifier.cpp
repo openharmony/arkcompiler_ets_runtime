@@ -29,6 +29,7 @@
 
 namespace panda::ecmascript::base {
 constexpr int GAP_MAX_LEN = 10;
+constexpr size_t MAX_STRINGIFY_SIZE = 4096;
 using TransformType = base::JsonHelper::TransformType;
 
 JSHandle<JSTaggedValue> JsonStringifier::Stringify(const JSHandle<JSTaggedValue> &value,
@@ -1153,6 +1154,27 @@ bool JsonStringifier::CheckStackPushSameValue(JSHandle<JSTaggedValue> value)
         THROW_TYPE_ERROR_AND_RETURN(thread_, "stack contains value, usually caused by circular structure", true);
     }
     return false;
+}
+
+void JsonStringifier::StringifyReset()
+{
+    gap_.clear();
+    indent_.clear();
+    stack_.clear();
+    propList_.clear();
+    ShrinkCapacity(result_);
+    handleValue_.Update(JSTaggedValue::Undefined());
+    handleKey_.Update(JSTaggedValue::Undefined());
+    transformType_ = TransformType::NORMAL;
+}
+
+template <typename T>
+void JsonStringifier::ShrinkCapacity(T& container)
+{
+    if (container.capacity() > MAX_STRINGIFY_SIZE) {
+        container.shrink_to_fit();
+    }
+    container.clear();
 }
 
 }  // namespace panda::ecmascript::base

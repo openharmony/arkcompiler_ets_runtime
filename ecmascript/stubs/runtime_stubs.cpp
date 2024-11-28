@@ -3699,8 +3699,14 @@ DEF_RUNTIME_STUBS(FastStringify)
     RUNTIME_STUBS_HEADER(FastStringify);
     JSHandle<JSTaggedValue> value = GetHArg<JSTaggedValue>(argv, argc, 0);
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
+#if ENABLE_NEXT_OPTIMIZATION
+    base::JsonStringifier *jsonStringifier = thread->GetJsonStringifier();
+    JSHandle<JSTaggedValue> result = jsonStringifier->Stringify(value, undefined, undefined);
+    jsonStringifier->StringifyReset();
+#else
     base::JsonStringifier jsonStringifier(thread);
     JSHandle<JSTaggedValue> result = jsonStringifier.Stringify(value, undefined, undefined);
+#endif
     return result.GetTaggedValue().GetRawData();
 }
 

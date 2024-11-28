@@ -39,6 +39,16 @@ public:
     JSHandle<JSTaggedValue> Stringify(const JSHandle<JSTaggedValue> &value, const JSHandle<JSTaggedValue> &replacer,
                                       const JSHandle<JSTaggedValue> &gap);
 
+    void SetTransformType(TransformType type)
+    {
+        transformType_ = type;
+    }
+
+    void StringifyReset();
+
+    template <typename T>
+    static void ShrinkCapacity(T& container);
+
 private:
     void AddDeduplicateProp(const JSHandle<JSTaggedValue> &property);
 
