@@ -248,6 +248,26 @@ try {
   print(err.message.includes("circular structure"));
 }
 
+const specialString = '"Hello\nWorld\\tThis is a test string with special characters: \u00A9 \u00AE "';
+const nestedObj = {
+  level1: {
+    level2: {
+      level3: {
+        message: specialString,
+        number: 42,
+        truthy: true,
+        anotherObj: {
+          key: 'value'
+        },
+        array: [1, 'two', false, { nested: 'object' }]
+      }
+    }
+  }
+};
+print(JSON.stringify(nestedObj, null, 2));
+print(JSON.stringify(nestedObj, null, " "));
+print("succ");
+
 try {
     let arkPrivate = globalThis.ArkPrivate;
     var List = arkPrivate.Load(arkPrivate.List);

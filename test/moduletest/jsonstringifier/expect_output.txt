@@ -41,4 +41,49 @@ true
 {"a":"a","b":"b"}
 TypeError
 true
+{
+  "level1": {
+    "level2": {
+      "level3": {
+        "message": "\"Hello\nWorld\\tThis is a test string with special characters: © ® \"",
+        "number": 42,
+        "truthy": true,
+        "anotherObj": {
+          "key": "value"
+        },
+        "array": [
+          1,
+          "two",
+          false,
+          {
+            "nested": "object"
+          }
+        ]
+      }
+    }
+  }
+}
+{
+ "level1": {
+  "level2": {
+   "level3": {
+    "message": "\"Hello\nWorld\\tThis is a test string with special characters: © ® \"",
+    "number": 42,
+    "truthy": true,
+    "anotherObj": {
+     "key": "value"
+    },
+    "array": [
+     1,
+     "two",
+     false,
+     {
+      "nested": "object"
+     }
+    ]
+   }
+  }
+ }
+}
+succ
 TypeError: stack contains value, usually caused by circular structure
