@@ -31,6 +31,11 @@
 #include "ecmascript/platform/mutex.h"
 
 namespace panda::ecmascript {
+enum RegionEvacuateType {
+    REGION_NEW_TO_NEW,
+    REGION_NEW_TO_OLD,
+    OBJECT_EVACUATE,
+};
 class ParallelEvacuator {
 public:
     explicit ParallelEvacuator(Heap *heap) : heap_(heap) {}
@@ -38,6 +43,14 @@ public:
     void Initialize();
     void Finalize();
     void Evacuate();
+    void SweepNewToOldRegions();
+
+    template<TriggerGCType gcType, bool needUpdateLocalToShare>
+    static inline void UpdateNewObjectSlot(ObjectSlot &slot);
+    static inline void UpdateObjectSlotValue(JSTaggedValue value, ObjectSlot &slot);
+
+    template<typename Callback>
+    static inline bool VisitBodyInObj(TaggedObject *root, ObjectSlot start, ObjectSlot end, Callback callback);
 
     size_t GetPromotedSize() const
     {
@@ -82,7 +95,7 @@ private:
     public:
         Workload(ParallelEvacuator *evacuator, Region *region) : evacuator_(evacuator), region_(region) {};
         virtual ~Workload() = default;
-        virtual bool Process(bool isMain) = 0;
+        virtual bool Process(bool isMain, uint32_t threadIndex) = 0;
         inline Region *GetRegion() const
         {
             return region_;
@@ -128,7 +141,7 @@ private:
     public:
         EvacuateWorkload(ParallelEvacuator *evacuator, Region *region) : Workload(evacuator, region) {}
         ~EvacuateWorkload() override = default;
-        bool Process(bool isMain) override;
+        bool Process(bool isMain, uint32_t threadIndex) override;
     };
 
     class UpdateRSetWorkload : public Workload {
@@ -136,7 +149,7 @@ private:
         UpdateRSetWorkload(ParallelEvacuator *evacuator, Region *region, bool isEdenGC)
             : Workload(evacuator, region), isEdenGC_(isEdenGC) {}
         ~UpdateRSetWorkload() override = default;
-        bool Process(bool isMain) override;
+        bool Process(bool isMain, uint32_t threadIndex) override;
     private:
         bool isEdenGC_;
     };
@@ -145,7 +158,7 @@ private:
     public:
         UpdateNewToEdenRSetWorkload(ParallelEvacuator *evacuator, Region *region) : Workload(evacuator, region) {}
         ~UpdateNewToEdenRSetWorkload() override = default;
-        bool Process(bool isMain) override;
+        bool Process(bool isMain, uint32_t threadIndex) override;
     };
 
     class UpdateNewRegionWorkload : public Workload {
@@ -153,7 +166,7 @@ private:
         UpdateNewRegionWorkload(ParallelEvacuator *evacuator, Region *region, bool isYoungGC)
             : Workload(evacuator, region), isYoungGC_(isYoungGC) {}
         ~UpdateNewRegionWorkload() override = default;
-        bool Process(bool isMain) override;
+        bool Process(bool isMain, uint32_t threadIndex) override;
     private:
         bool isYoungGC_;
     };
@@ -163,7 +176,17 @@ private:
         UpdateAndSweepNewRegionWorkload(ParallelEvacuator *evacuator, Region *region, bool isYoungGC)
             : Workload(evacuator, region), isYoungGC_(isYoungGC) {}
         ~UpdateAndSweepNewRegionWorkload() override = default;
-        bool Process(bool isMain) override;
+        bool Process(bool isMain, uint32_t threadIndex) override;
+    private:
+        bool isYoungGC_;
+    };
+
+    class UpdateNewToOldEvacuationWorkload : public Workload {
+    public:
+        UpdateNewToOldEvacuationWorkload(ParallelEvacuator *evacuator, Region *region, bool isYoungGC)
+            : Workload(evacuator, region), isYoungGC_(isYoungGC) {}
+        ~UpdateNewToOldEvacuationWorkload() override = default;
+        bool Process(bool isMain, uint32_t threadIndex) override;
     private:
         bool isYoungGC_;
     };
@@ -180,7 +203,7 @@ private:
 
     void UpdateTrackInfo();
 
-    bool ProcessWorkloads(bool isMain = false);
+    bool ProcessWorkloads(bool isMain = false, uint32_t threadIndex = 0);
 
     void EvacuateSpace();
     bool EvacuateSpace(TlabAllocator *allocation, uint32_t threadIndex, uint32_t idOrder, bool isMain = false);
@@ -191,8 +214,9 @@ private:
     template<bool SetEdenObject>
     inline void SetObjectRSet(ObjectSlot slot, Region *region);
 
-    inline bool IsWholeRegionEvacuate(Region *region);
-    inline bool WholeRegionEvacuate(Region *region);
+    void ProcessFromSpaceEvacuation();
+    inline RegionEvacuateType SelectRegionEvacuateType(Region *region);
+    inline bool TryWholeRegionEvacuate(Region *region, RegionEvacuateType type);
     void VerifyValue(TaggedObject *object, ObjectSlot slot);
     void VerifyHeapObject(TaggedObject *object);
 
@@ -209,19 +233,16 @@ private:
     void UpdateAndSweepNewRegionReference(Region *region);
     template<TriggerGCType gcType, bool needUpdateLocalToShare>
     void UpdateNewObjectField(TaggedObject *object, JSHClass *cls);
+    template<TriggerGCType gcType>
+    void UpdateNewToOldEvacuationReference(Region *region, uint32_t threadIndex);
 
-    template<typename Callback>
-    inline bool VisitBodyInObj(TaggedObject *root, ObjectSlot start, ObjectSlot end, Callback callback);
     inline bool UpdateForwardedOldToNewObjectSlot(TaggedObject *object, ObjectSlot &slot, bool isWeak);
     template<bool IsEdenGC>
     inline bool UpdateOldToNewObjectSlot(ObjectSlot &slot);
     inline bool UpdateNewToEdenObjectSlot(ObjectSlot &slot);
     inline void UpdateObjectSlot(ObjectSlot &slot);
     inline void UpdateWeakObjectSlot(TaggedObject *object, ObjectSlot &slot);
-    template<TriggerGCType gcType, bool needUpdateLocalToShare>
-    inline void UpdateNewObjectSlot(ObjectSlot &slot);
     inline void UpdateCrossRegionObjectSlot(ObjectSlot &slot);
-    inline void UpdateObjectSlotValue(JSTaggedValue value, ObjectSlot &slot);
 
     inline int CalculateEvacuationThreadNum();
     inline int CalculateUpdateThreadNum();
@@ -232,6 +253,7 @@ private:
 
     uintptr_t waterLine_ = 0;
     std::unordered_set<JSTaggedType> arrayTrackInfoSets_[MAX_TASKPOOL_THREAD_NUM + 1];
+    bool hasNewToOldRegions_ {false};
     uint32_t evacuateTaskNum_ = 0;
     std::atomic_int parallel_ = 0;
     Mutex mutex_;

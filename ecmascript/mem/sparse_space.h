@@ -49,6 +49,7 @@ enum class SweepState : uint8_t {
 
 namespace panda::ecmascript {
 class LocalSpace;
+class SemiSpace;
 
 class SparseSpace : public Space {
 public:
@@ -168,6 +169,11 @@ public:
     void CheckRegionSize();
     void RevertCSet();
     void ReclaimCSet();
+
+    bool SwapRegion(Region *region, SemiSpace *fromSpace);
+
+    void PrepareSweepNewToOldRegions();
+    void SweepNewToOldRegions();
 
     unsigned long GetSelectedRegionNumber() const
     {

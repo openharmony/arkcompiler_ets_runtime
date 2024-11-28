@@ -550,6 +550,52 @@ void OldSpace::ReclaimCSet()
     collectRegionSet_.clear();
 }
 
+bool OldSpace::SwapRegion(Region *region, SemiSpace *fromSpace)
+{
+    if (committedSize_ + region->GetCapacity() > maximumCapacity_) {
+        return false;
+    }
+    fromSpace->RemoveRegion(region);
+    region->InitializeFreeObjectSets();
+    region->ResetRegionFlag(RegionSpaceFlag::IN_OLD_SPACE, RegionGCFlags::IN_NEW_TO_OLD_SET);
+
+    regionList_.AddNodeToFront(region);
+    IncreaseCommitted(region->GetCapacity());
+    IncreaseObjectSize(region->GetSize());
+    IncreaseLiveObjectSize(region->AliveObject());
+    return true;
+}
+
+void OldSpace::PrepareSweepNewToOldRegions()
+{
+    EnumerateRegions([this](Region *current) {
+        if (current->InNewToOldSet()) {
+            ASSERT(!current->IsGCFlagSet(RegionGCFlags::HAS_BEEN_SWEPT));
+            if (UNLIKELY(localHeap_->ShouldVerifyHeap() &&
+                current->IsGCFlagSet(RegionGCFlags::HAS_BEEN_SWEPT))) { // LOCV_EXCL_BR_LINE
+                LOG_ECMA(FATAL) << "Region should not be swept before PrepareSweeping: " << current;
+            }
+            current->ResetWasted();
+            current->SwapOldToNewRSetForCS();
+            current->SwapLocalToShareRSetForCS();
+            current->ClearGCFlag(RegionGCFlags::IN_NEW_TO_OLD_SET);
+            AddSweepingRegion(current);
+        }
+    });
+    sweepState_ = SweepState::SWEEPING;
+}
+
+void OldSpace::SweepNewToOldRegions()
+{
+    EnumerateRegions([this](Region *current) {
+        if (current->InNewToOldSet()) {
+            current->ResetWasted();
+            current->ClearGCFlag(RegionGCFlags::IN_NEW_TO_OLD_SET);
+            FreeRegion(current);
+        }
+    });
+}
+
 LocalSpace::LocalSpace(Heap *heap, size_t initialCapacity, size_t maximumCapacity)
     : SparseSpace(heap, LOCAL_SPACE, initialCapacity, maximumCapacity) {}
 

@@ -3274,6 +3274,33 @@ host_unittest_action("GC_MemMapAllocator_Test") {
   deps += hiviewdfx_deps
 }
 
+host_unittest_action("GC_NewToOldPromotion_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "gc_region_promotion_test.cpp",
+  ]
+
+  configs = [
+    "../../:asm_interp_enable_config",
+    "../../:ecma_test_config",
+  ]
+
+  deps = [ "../../:libark_jsruntime_test" ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+    "runtime_core:libarkverifier",
+    "zlib:libz",
+  ]
+  deps += hiviewdfx_deps
+}
+
 host_unittest_action("Sendable_SharedObjectFactory_Test") {
   module_out_path = module_output_path
 
@@ -3385,6 +3412,7 @@ group("unittest") {
     ":GC_MachineCode_Test",
     ":GC_MemController_Test",
     ":GC_MemMapAllocator_Test",
+    ":GC_NewToOldPromotion_Test",
     ":GC_ReadOnlySpace_Test",
     ":GC_Second_Test",
     ":GC_Third_Test",
@@ -3524,6 +3552,7 @@ group("host_unittest") {
     ":GC_MachineCode_TestAction",
     ":GC_MemController_TestAction",
     ":GC_MemMapAllocator_TestAction",
+    ":GC_NewToOldPromotion_TestAction",
     ":GC_ReadOnlySpace_TestAction",
     ":GC_Second_TestAction",
     ":GC_Third_TestAction",
@@ -3659,6 +3688,7 @@ group("host_unittest") {
       ":GC_MachineCode_TestAction",
       ":GC_MemController_TestAction",
       ":GC_MemMapAllocator_TestAction",
+      ":GC_NewToOldPromotion_TestAction",
       ":GC_ReadOnlySpace_TestAction",
       ":GC_Second_TestAction",
       ":GC_Third_TestAction",

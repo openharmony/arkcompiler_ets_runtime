@@ -45,6 +45,7 @@ public:
 
     void PostTask(bool fullGC = false);
     void Sweep(bool fullGC = false);
+    void SweepNewToOldRegions();
 
     void WaitAllTaskFinished();
     // Help to finish sweeping task. It can be called through js thread

@@ -140,8 +140,8 @@ public:
         vm->GetJSThread()->IterateJitCodeMap(updater);
     }
 
-    template<VisitType visitType>
-    static inline void VisitObjectBody(TaggedObject *object, JSHClass *klass, const EcmaObjectRangeVisitor &visitor)
+    template<VisitType visitType, typename Callback>
+    static inline void VisitObjectBody(TaggedObject *object, JSHClass *klass, Callback &&visitor)
     {
         // handle body
         JSType type = klass->GetObjectType();

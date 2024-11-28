@@ -386,7 +386,6 @@ uintptr_t SemiSpace::AllocateSync(size_t size)
 
 bool SemiSpace::SwapRegion(Region *region, SemiSpace *fromSpace)
 {
-    LockHolder lock(lock_);
     if (committedSize_ + region->GetCapacity() > maximumCapacity_ + overShootSize_) {
         return false;
     }

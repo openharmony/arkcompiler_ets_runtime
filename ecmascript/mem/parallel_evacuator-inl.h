@@ -26,30 +26,33 @@
 namespace panda::ecmascript {
 // Move regions with a survival rate of more than 75% to new space
 // Move regions when young space overshoot size is larger than max capacity.
-bool ParallelEvacuator::IsWholeRegionEvacuate(Region *region)
+RegionEvacuateType ParallelEvacuator::SelectRegionEvacuateType(Region *region)
 {
-    if ((static_cast<double>(region->AliveObject()) / region->GetSize()) > MIN_OBJECT_SURVIVAL_RATE &&
-        !region->HasAgeMark()) {
-        return true;
+    double aliveRate = static_cast<double>(region->AliveObject()) / region->GetSize();
+    if (UNLIKELY(region->HasAgeMark())) {
+        return RegionEvacuateType::OBJECT_EVACUATE;
+    } else if (region->BelowAgeMark()) {
+        if (aliveRate >= MIN_OBJECT_SURVIVAL_RATE) {
+            return RegionEvacuateType::REGION_NEW_TO_OLD;
+        }
+        return RegionEvacuateType::OBJECT_EVACUATE;
     }
-    if (heap_->GetFromSpaceDuringEvacuation()->CommittedSizeIsLarge() && !region->HasAgeMark()) {
-        return true;
+    if (aliveRate >= MIN_OBJECT_SURVIVAL_RATE || heap_->GetFromSpaceDuringEvacuation()->CommittedSizeIsLarge()) {
+        return RegionEvacuateType::REGION_NEW_TO_NEW;
     }
-    return false;
+    return RegionEvacuateType::OBJECT_EVACUATE;
 }
 
-bool ParallelEvacuator::WholeRegionEvacuate(Region *region)
+bool ParallelEvacuator::TryWholeRegionEvacuate(Region *region, RegionEvacuateType type)
 {
-    if (region->IsFreshRegion()) {
-        ASSERT(region->InYoungSpace());
-        return heap_->MoveYoungRegionSync(region);
+    switch (type) {
+        case RegionEvacuateType::REGION_NEW_TO_NEW:
+            return heap_->MoveYoungRegion(region);
+        case RegionEvacuateType::REGION_NEW_TO_OLD:
+            return heap_->MoveYoungRegionToOld(region);
+        default:
+            return false;
     }
-    bool isInYoung = region->InYoungSpace();
-    bool isBelowAgeMark = region->BelowAgeMark();
-    if (isInYoung && !isBelowAgeMark && IsWholeRegionEvacuate(region) && heap_->MoveYoungRegionSync(region)) {
-        return true;
-    }
-    return false;
 }
 
 template <typename Callback>
@@ -151,6 +154,10 @@ bool ParallelEvacuator::UpdateOldToNewObjectSlot(ObjectSlot &slot)
             if (value.IsWeakForHeapObject()) {
                 slot.Clear();
             }
+        } else if (valueRegion->InNewToOldSet()) {
+            if (value.IsWeakForHeapObject() && !valueRegion->Test(object)) {
+                slot.Clear();
+            }
         }
     }
     return false;
@@ -210,6 +217,10 @@ void ParallelEvacuator::UpdateNewObjectSlot(ObjectSlot &slot)
         }
         if constexpr (gcType == TriggerGCType::YOUNG_GC) {
             if (!objectRegion->InGeneralNewSpace()) {
+                if (value.IsWeakForHeapObject() && objectRegion->InNewToOldSet() &&
+                    !objectRegion->Test(value.GetRawData())) {
+                    slot.Clear();
+                }
                 return;
             }
         } else if constexpr (gcType == TriggerGCType::OLD_GC) {
@@ -300,7 +311,11 @@ void ParallelEvacuator::SetObjectRSet(ObjectSlot slot, Region *region)
     } else {
         if (valueRegion->InGeneralNewSpace()) {
             region->InsertOldToNewRSet(slot.SlotAddress());
-        }  else if (valueRegion->InSharedSweepableSpace()) {
+        } else if (valueRegion->InNewToOldSet()) {
+            if (JSTaggedValue(value).IsWeakForHeapObject() && !valueRegion->Test(value)) {
+                slot.Clear();
+            }
+        } else if (valueRegion->InSharedSweepableSpace()) {
             region->InsertLocalToShareRSet(slot.SlotAddress());
         } else if (valueRegion->InCollectSet()) {
             region->InsertCrossRegionRSet(slot.SlotAddress());
@@ -360,6 +375,8 @@ TaggedObject* ParallelEvacuator::UpdateAddressAfterEvacation(TaggedObject *oldAd
                 return markWord.ToForwardingAddress();
             }
         }
+        return nullptr;
+    } else if (objectRegion->InNewToOldSet() && !objectRegion->Test(oldAddress)) {
         return nullptr;
     }
     if (heap_->IsConcurrentFullMark()) {
