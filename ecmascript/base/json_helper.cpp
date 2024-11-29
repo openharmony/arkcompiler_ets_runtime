@@ -53,9 +53,6 @@ bool JsonHelper::IsFastValueToQuotedString(const CString& str)
     return true;
 }
 
-// String values are wrapped in QUOTATION MARK (") code units. The code units " and \ are escaped with \ prefixes.
-// Control characters code units are replaced with escape sequences \uHHHH, or with the shorter forms,
-// \b (BACKSPACE), \f (FORM FEED), \n (LINE FEED), \r (CARRIAGE RETURN), \t (CHARACTER TABULATION).
 void JsonHelper::AppendValueToQuotedString(const CString& str, CString& output)
 {
     output += "\"";
@@ -101,6 +98,60 @@ void JsonHelper::AppendValueToQuotedString(const CString& str, CString& output)
                     str[i + 2] <= ALONE_SURROGATE_3B_THIRD_END) {   // 2: The second character after ch
                     auto unicodeRes = utf_helper::ConvertUtf8ToUnicodeChar(
                         reinterpret_cast<const uint8_t*>(str.c_str() + i), 3); // 3: Parse 3 characters
+                    AppendUnicodeEscape(static_cast<int>(unicodeRes.first), output);
+                    i += 2; // 2 : Skip 2 characters
+                    break;
+                }
+                [[fallthrough]];
+            default:
+                if (ch > 0 && ch < CODE_SPACE) {
+                    AppendUnicodeEscape(static_cast<int>(ch), output);
+                } else {
+                    output += ch;
+                }
+        }
+    }
+    output += "\"";
+}
+
+void JsonHelper::AppendValueToQuotedString(const Span<const uint8_t>& sp, CString& output)
+{
+    output += "\"";
+    for (uint32_t i = 0; i < sp.size(); ++i) {
+        const char ch = static_cast<char>(sp[i]);
+        switch (ch) {
+            case '\"':
+                output += "\\\"";
+                break;
+            case '\\':
+                output += "\\\\";
+                break;
+            case '\b':
+                output += "\\b";
+                break;
+            case '\f':
+                output += "\\f";
+                break;
+            case '\n':
+                output += "\\n";
+                break;
+            case '\r':
+                output += "\\r";
+                break;
+            case '\t':
+                output += "\\t";
+                break;
+            case ZERO_FIRST:
+                output += "\\u0000";
+                ++i;
+                break;
+            case ALONE_SURROGATE_3B_FIRST:
+                if (i + 2 < sp.size() && // 2: Check 2 more characters
+                    static_cast<char>(sp[i + 1]) >= ALONE_SURROGATE_3B_SECOND_START && // 1: The 1st character after ch
+                    static_cast<char>(sp[i + 1]) <= ALONE_SURROGATE_3B_SECOND_END && // 1: The 1st character after ch
+                    static_cast<char>(sp[i + 2]) >= ALONE_SURROGATE_3B_THIRD_START && // 2: The 2nd character after ch
+                    static_cast<char>(sp[i + 2]) <= ALONE_SURROGATE_3B_THIRD_END) {   // 2: The 2nd character after ch
+                    auto unicodeRes = utf_helper::ConvertUtf8ToUnicodeChar(sp.data() + i, 3); // 3: Parse 3 characters
                     AppendUnicodeEscape(static_cast<int>(unicodeRes.first), output);
                     i += 2; // 2 : Skip 2 characters
                     break;
