@@ -49,6 +49,9 @@ void BuiltinsArrayStubBuilder::ElementsKindHclassCompare(GateRef glue, GateRef a
 void BuiltinsArrayStubBuilder::With(GateRef glue, GateRef thisValue, GateRef numArgs,
     Variable *result, Label *exit, Label *slowPath)
 {
+#if ENABLE_NEXT_OPTIMIZATION
+    WithOptimised(glue, thisValue, numArgs, result, exit, slowPath);
+#else
     auto env = GetEnvironment();
     DEFVARIABLE(relativeIndex, VariableType::INT64(), Int64(0));
     DEFVARIABLE(actualIndex, VariableType::INT64(), Int64(0));
@@ -164,6 +167,7 @@ void BuiltinsArrayStubBuilder::With(GateRef glue, GateRef thisValue, GateRef num
             }
         }
     }
+#endif
 }
 
 void BuiltinsArrayStubBuilder::Unshift(GateRef glue, GateRef thisValue, GateRef numArgs,

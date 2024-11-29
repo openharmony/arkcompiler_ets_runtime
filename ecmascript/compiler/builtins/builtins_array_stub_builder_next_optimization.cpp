@@ -1755,6 +1755,201 @@ void BuiltinsArrayStubBuilder::ShiftOptimised(GateRef glue, GateRef thisValue,
     }
 }
 
+GateRef BuiltinsArrayStubBuilder::CalEleKindForNewArrayNoHole(GateRef thisValue, GateRef thisLen,
+                                                              GateRef actualIndex, GateRef insertVal)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+
+    DEFVARIABLE(result, VariableType::INT32(), Int32(0));
+    GateRef beforePartEleKind = ComputeTaggedArrayElementKind(thisValue, Int64(0), actualIndex);
+    GateRef afterPartEleKind = ComputeTaggedArrayElementKind(thisValue, Int64Add(actualIndex, Int64(1)), thisLen);
+    result = Int32Or(beforePartEleKind, TaggedToElementKind(insertVal));
+    result = FixElementsKind(Int32Or(*result, afterPartEleKind));
+
+    Label haveHole(env);
+    GateRef isHaveHole = Int32Equal(Int32(1), Int32And(*result, Int32(static_cast<int32_t>(ElementsKind::HOLE))));
+    BRANCH(isHaveHole, &haveHole, &exit);
+    Bind(&haveHole);
+    {
+        result = Int32(static_cast<int32_t>(ElementsKind::TAGGED));
+        Jump(&exit);
+    }
+
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+void BuiltinsArrayStubBuilder::FastArrayWith(GateRef glue, GateRef thisValue, GateRef newArray,
+                                             GateRef actualIndex, GateRef insertValue, GateRef newArrEleKind)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+    // copy elements before actualIndex
+    GateRef srcElements = GetElementsArray(thisValue);
+    GateRef dstElements = GetElementsArray(newArray);
+    GateRef srcStart = GetDataPtrInTaggedArray(srcElements);
+    GateRef dstStart = GetDataPtrInTaggedArray(dstElements);
+    ArrayCopyAndHoleToUndefined(glue, srcElements, srcStart, dstElements,
+                                dstStart, actualIndex, NeedBarrier(newArrEleKind));
+    // set insertValue in new array
+    SetValueToTaggedArray(VariableType::JS_ANY(), glue, dstElements, actualIndex, insertValue);
+    // copy elements before actualIndex
+    GateRef copyAfterIdx = Int32Add(actualIndex, Int32(1));
+    srcStart = GetDataPtrInTaggedArray(srcElements, copyAfterIdx);
+    dstStart = GetDataPtrInTaggedArray(dstElements, copyAfterIdx);
+    GateRef thisLength = GetLengthOfJSArray(thisValue);
+    ArrayCopyAndHoleToUndefined(glue, srcElements, srcStart, dstElements, dstStart,
+                                Int32Sub(thisLength, copyAfterIdx), NeedBarrier(newArrEleKind));
+
+    SetArrayLength(glue, newArray, thisLength);
+    Jump(&exit);
+    Bind(&exit);
+    env->SubCfgExit();
+}
+
+void BuiltinsArrayStubBuilder::WithOptimised(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *result,
+                                             Label *exit, Label *slowPath)
+{
+    auto env = GetEnvironment();
+    DEFVARIABLE(relativeIndex, VariableType::INT64(), Int64(0));
+    DEFVARIABLE(actualIndex, VariableType::INT64(), Int64(0));
+    Label isHeapObject(env);
+    Label isJsArray(env);
+    Label isStableArray(env);
+    Label defaultConstr(env);
+    BRANCH(TaggedIsHeapObject(thisValue), &isHeapObject, slowPath);
+    Bind(&isHeapObject);
+    BRANCH(IsJsArray(thisValue), &isJsArray, slowPath);
+    Bind(&isJsArray);
+    BRANCH(HasConstructor(thisValue), slowPath, &defaultConstr);
+    Bind(&defaultConstr);
+    BRANCH(IsStableJSArray(glue, thisValue), &isStableArray, slowPath);
+    Bind(&isStableArray);
+    // don't check COW array, "With" won't modify original array.
+
+    GateRef thisLen = ZExtInt32ToInt64(GetArrayLength(thisValue));
+    GateRef index = GetCallArg0(numArgs);
+    Label taggedIsInt(env);
+    BRANCH(TaggedIsInt(index), &taggedIsInt, slowPath);
+    Bind(&taggedIsInt);
+    {
+        relativeIndex = GetInt64OfTInt(index);
+        DEFVARIABLE(value, VariableType::JS_ANY(), Undefined());
+        Label twoArg(env);
+        Label ifOneArg(env);
+        Label getIndex(env);
+        // 2 : means there are two args
+        BRANCH(Int64Equal(numArgs, IntPtr(2)), &twoArg, &ifOneArg);
+        Bind(&twoArg);
+        {
+            value = GetCallArg1(numArgs);
+            Jump(&getIndex);
+        }
+        Bind(&ifOneArg);
+        {
+            // 1 : means there are only one arg
+            BRANCH(Int64Equal(numArgs, IntPtr(1)), &getIndex, slowPath);
+        }
+        Bind(&getIndex);
+        {
+            Label indexGreaterOrEqualZero(env);
+            Label indexLessZero(env);
+            Label next(env);
+            Label notOutOfRange(env);
+            BRANCH(Int64GreaterThanOrEqual(*relativeIndex, Int64(0)), &indexGreaterOrEqualZero, &indexLessZero);
+            Bind(&indexGreaterOrEqualZero);
+            {
+                actualIndex = *relativeIndex;
+                Jump(&next);
+            }
+            Bind(&indexLessZero);
+            {
+                actualIndex = Int64Add(thisLen, *relativeIndex);
+                Jump(&next);
+            }
+            Bind(&next);
+            {
+                BRANCH(BitOr(Int64GreaterThanOrEqual(*actualIndex, thisLen), Int64LessThan(*actualIndex, Int64(0))),
+                    slowPath, &notOutOfRange);
+                Bind(&notOutOfRange);
+                {
+                    Label enableMutantArrayWith(env);
+                    Label fastArrayWith(env);
+                    BRANCH_UNLIKELY(IsEnableMutantArray(glue), &enableMutantArrayWith, &fastArrayWith);
+                    Bind(&fastArrayWith);
+                    {
+                        NewObjectStubBuilder newBuilder(this);
+                        GateRef destElements = newBuilder.NewTaggedArray(glue, TruncInt64ToInt32(thisLen));
+                        GateRef newArrayEleKind = CalEleKindForNewArrayNoHole(thisValue, thisLen,
+                                                                              *actualIndex, *value);
+                        GateRef newArray = newBuilder.CreateArrayFromList(glue, destElements, newArrayEleKind);
+                        FastArrayWith(glue, thisValue, newArray, TruncInt64ToInt32(*actualIndex),
+                                      *value, newArrayEleKind);
+                        result->WriteVariable(newArray);
+                        Jump(exit);
+                    }
+                    Bind(&enableMutantArrayWith);
+                    GateRef newArray = NewArray(glue, Int32(0));
+                    GrowElementsCapacity(glue, newArray, TruncInt64ToInt32(thisLen));
+                    DEFVARIABLE(k, VariableType::INT64(), Int64(0));
+                    Label loopHead(env);
+                    Label loopEnd(env);
+                    Label loopExit(env);
+                    Label loopNext(env);
+                    Label replaceIndex(env);
+                    Label notReplaceIndex(env);
+                    Jump(&loopHead);
+                    LoopBegin(&loopHead);
+                    {
+                        BRANCH(Int64LessThan(*k, thisLen), &loopNext, &loopExit);
+                        Bind(&loopNext);
+                        BRANCH(Int64Equal(*k, *actualIndex), &replaceIndex, &notReplaceIndex);
+                        Bind(&replaceIndex);
+                        {
+                            SetValueWithElementsKind(glue, newArray, *value, *k, Boolean(true),
+                                Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                            Jump(&loopEnd);
+                        }
+                        Bind(&notReplaceIndex);
+                        {
+                            GateRef ele = GetTaggedValueWithElementsKind(glue, thisValue, *k);
+                            Label eleIsHole(env);
+                            Label eleNotHole(env);
+                            BRANCH(TaggedIsHole(ele), &eleIsHole, &eleNotHole);
+                            Bind(&eleIsHole);
+                            {
+                                SetValueWithElementsKind(glue, newArray, Undefined(), *k, Boolean(true),
+                                    Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                                Jump(&loopEnd);
+                            }
+                            Bind(&eleNotHole);
+                            {
+                                SetValueWithElementsKind(glue, newArray, ele, *k, Boolean(true),
+                                    Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                                Jump(&loopEnd);
+                            }
+                        }
+                    }
+                    Bind(&loopEnd);
+                    k = Int64Add(*k, Int64(1));
+                    LoopEnd(&loopHead);
+                    Bind(&loopExit);
+                    SetArrayLength(glue, newArray, thisLen);
+                    result->WriteVariable(newArray);
+                    Jump(exit);
+                }
+            }
+        }
+    }
+}
+
 void BuiltinsArrayStubBuilder::ConcatOptimised(GateRef glue, GateRef thisValue, GateRef numArgs,
                                                Variable *result, Label *exit, Label *slowPath)
 {
