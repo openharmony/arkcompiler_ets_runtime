@@ -33,7 +33,7 @@ void MemMapAllocator::InitializeRegularRegionMap([[maybe_unused]] size_t alignme
             i * STEP_INCREASE_MEM_MAP_ADDR);
         MemMap memMap = PageMap(initialRegularObjectCapacity, PAGE_PROT_NONE, alignment, addr);
         if (ToUintPtr(memMap.GetMem()) >= ToUintPtr(addr)) {
-            PageTag(memMap.GetMem(), memMap.GetSize(), PageTagType::MEMPOOL_CACHE);
+            PageTag(memMap.GetMem(), memMap.GetSize(), PageTagType::HEAP);
             PageRelease(memMap.GetMem(), memMap.GetSize());
             memMapPool_.InsertMemMap(memMap);
             memMapPool_.SplitMemMapToCache(memMap);
@@ -57,7 +57,7 @@ void MemMapAllocator::InitializeHugeRegionMap(size_t alignment)
             i * STEP_INCREASE_MEM_MAP_ADDR);
         MemMap memMap = PageMap(initialHugeObjectCapacity, PAGE_PROT_NONE, alignment, addr);
         if (ToUintPtr(memMap.GetMem()) >= ToUintPtr(addr) || i == MEM_MAP_RETRY_NUM) {
-            PageTag(memMap.GetMem(), memMap.GetSize(), PageTagType::MEMPOOL_CACHE);
+            PageTag(memMap.GetMem(), memMap.GetSize(), PageTagType::HEAP);
             PageRelease(memMap.GetMem(), memMap.GetSize());
             memMapFreeList_.Initialize(memMap, capacity_);
             break;
@@ -69,7 +69,7 @@ void MemMapAllocator::InitializeHugeRegionMap(size_t alignment)
     }
 #else
     MemMap hugeMemMap = PageMap(initialHugeObjectCapacity, PAGE_PROT_NONE, alignment);
-    PageTag(hugeMemMap.GetMem(), hugeMemMap.GetSize(), PageTagType::MEMPOOL_CACHE);
+    PageTag(hugeMemMap.GetMem(), hugeMemMap.GetSize(), PageTagType::HEAP);
     PageRelease(hugeMemMap.GetMem(), hugeMemMap.GetSize());
     memMapFreeList_.Initialize(hugeMemMap, capacity_);
 #endif
@@ -103,7 +103,8 @@ static bool PageProtectMem(bool machineCodeSpace, void *mem, size_t size, [[mayb
 }
 
 MemMap MemMapAllocator::Allocate(const uint32_t threadId, size_t size, size_t alignment,
-                                 const std::string &spaceName, bool regular, bool isMachineCode, bool isEnableJitFort)
+                                 const std::string &spaceName, bool regular, bool isMachineCode, bool isEnableJitFort,
+                                 bool shouldPageTag)
 {
     MemMap mem;
     PageTagType type = isMachineCode ? PageTagType::MACHINE_CODE : PageTagType::HEAP;
@@ -115,7 +116,9 @@ MemMap MemMapAllocator::Allocate(const uint32_t threadId, size_t size, size_t al
             if (!res) {
                 return MemMap();
             }
-            PageTag(mem.GetMem(), size, type, spaceName, threadId);
+            if (shouldPageTag) {
+                PageTag(mem.GetMem(), size, type, spaceName, threadId);
+            }
             return mem;
         }
         if (UNLIKELY(memMapTotalSize_ + size > capacity_)) {
@@ -129,7 +132,9 @@ MemMap MemMapAllocator::Allocate(const uint32_t threadId, size_t size, size_t al
             if (!res) {
                 return MemMap();
             }
-            PageTag(mem.GetMem(), size, type, spaceName, threadId);
+            if (shouldPageTag) {
+                PageTag(mem.GetMem(), size, type, spaceName, threadId);
+            }
             return mem;
         }
         mem = PageMap(REGULAR_REGION_MMAP_SIZE, PAGE_PROT_NONE, alignment);
@@ -147,19 +152,22 @@ MemMap MemMapAllocator::Allocate(const uint32_t threadId, size_t size, size_t al
         if (!res) {
             return MemMap();
         }
-        PageTag(mem.GetMem(), mem.GetSize(), type, spaceName, threadId);
+        if (shouldPageTag) {
+            PageTag(mem.GetMem(), mem.GetSize(), type, spaceName, threadId);
+        }
         memMapTotalSize_ += mem.GetSize();
     }
     return mem;
 }
 
-void MemMapAllocator::CacheOrFree(void *mem, size_t size, bool isRegular, size_t cachedSize)
+void MemMapAllocator::CacheOrFree(void *mem, size_t size, bool isRegular, size_t cachedSize, bool shouldPageTag)
 {
+    // Clear ThreadId tag and tag the mem with ARKTS HEAP.
+    if (shouldPageTag) {
+        PageTag(mem, size, PageTagType::HEAP);
+    }
     if (isRegular && !memMapPool_.IsRegularCommittedFull(cachedSize)) {
         // Cache regions to accelerate allocation.
-        // Clear ThreadId tag and tag the mem with ARKTS HEAP.
-        PageClearTag(mem, size);
-        PageTag(mem, size, PageTagType::HEAP);
         memMapPool_.AddMemToCommittedCache(mem, size);
         return;
     }
@@ -180,7 +188,6 @@ void MemMapAllocator::CacheOrFree(void *mem, size_t size, bool isRegular, size_t
 void MemMapAllocator::Free(void *mem, size_t size, bool isRegular)
 {
     memMapTotalSize_ -= size;
-    PageTag(mem, size, PageTagType::MEMPOOL_CACHE);
     if (!PageProtect(mem, size, PAGE_PROT_NONE)) { // LCOV_EXCL_BR_LINE
         return;
     }

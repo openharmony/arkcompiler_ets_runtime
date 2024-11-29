@@ -27,7 +27,9 @@ class Space;
 
 class HeapRegionAllocator {
 public:
+    // For `Runtime::heapRegionAllocator_`, since it's for SharedHeap, so do not need enable PageTag threadId.
     HeapRegionAllocator() = default;
+    HeapRegionAllocator(JSRuntimeOptions &option);
     virtual ~HeapRegionAllocator() = default;
 
     Region *AllocateAlignedRegion(Space *space, size_t capacity, JSThread* thread, BaseHeap *heap,
@@ -67,8 +69,12 @@ private:
     // breaking the global region limit, but thread calling this will soon complete GC and then fatal.
     void TemporarilyEnsureAllocateionAlwaysSuccess(BaseHeap *heap);
 
+    bool AllocateRegionShouldPageTag(Space *space) const;
+    bool FreeRegionShouldPageTag(Region *region) const;
+
     std::atomic<size_t> annoMemoryUsage_ {0};
     std::atomic<size_t> maxAnnoMemoryUsage_ {0};
+    bool enablePageTagThreadId_ {false};
 };
 }  // namespace panda::ecmascript
 
