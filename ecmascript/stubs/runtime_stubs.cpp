@@ -3317,6 +3317,11 @@ int32_t RuntimeStubs::DoubleToInt(double x, size_t bits)
     return base::NumberHelper::DoubleToInt(x, bits);
 }
 
+int32_t RuntimeStubs::SaturateTruncDoubleToInt32(double x)
+{
+    return base::NumberHelper::SaturateTruncDoubleToInt32(x);
+}
+
 void RuntimeStubs::InsertNewToEdenRSet([[maybe_unused]] uintptr_t argGlue,
     uintptr_t object, size_t offset)
 {

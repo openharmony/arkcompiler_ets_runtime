@@ -1147,13 +1147,21 @@ int32_t NumberHelper::DoubleToInt(double d, size_t bits)
 
 int32_t NumberHelper::DoubleInRangeInt32(double d)
 {
-    if (d > INT_MAX) {
+    if (d >= static_cast<double>(INT_MAX)) {
         return INT_MAX;
     }
-    if (d < INT_MIN) {
+    if (d <= static_cast<double>(INT_MIN)) {
         return INT_MIN;
     }
     return base::NumberHelper::DoubleToInt(d, base::INT32_BITS);
+}
+
+int32_t NumberHelper::SaturateTruncDoubleToInt32(double d)
+{
+    if (std::isnan(d) || d == -base::POSITIVE_INFINITY) {
+        return 0;
+    }
+    return base::NumberHelper::DoubleInRangeInt32(d);
 }
 
 JSTaggedValue NumberHelper::StringToBigInt(JSThread *thread, JSHandle<JSTaggedValue> strVal)

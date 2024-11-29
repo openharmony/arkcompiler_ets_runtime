@@ -2013,7 +2013,7 @@ TypeInfo NumberSpeculativeRetype::GetNumberInputTypeInfo(GateRef gate, bool skip
     }
 }
 
-void NumberSpeculativeRetype::SetNewInputForMathImul(GateRef gate, int idx, Label *exit)
+void NumberSpeculativeRetype::SetNewInputForMathImul(GateRef gate, int idx)
 {
     GateRef input = acc_.GetValueIn(gate, idx);
     auto type = GetNumberInputTypeInfo(input);
@@ -2022,7 +2022,7 @@ void NumberSpeculativeRetype::SetNewInputForMathImul(GateRef gate, int idx, Labe
     } else {
         ASSERT(type == TypeInfo::FLOAT64);
         input = CheckAndConvertToFloat64(input, GateType::NumberType(), ConvertToNumber::BOOL_ONLY);
-        input = builder_.DoubleToInt(input, exit);
+        input = builder_.TruncDoubleToInt(acc_.GetGlueFromArgList(), input, base::INT32_BITS);
     }
     ResizeAndSetTypeInfo(input, TypeInfo::INT32);
     acc_.ReplaceValueIn(gate, input, idx);
@@ -2037,11 +2037,8 @@ GateRef NumberSpeculativeRetype::VisitMathImul(GateRef gate)
     Environment env(gate, circuit_, &builder_);
     ASSERT(acc_.GetNumValueIn(gate) == 2U);
 
-    Label exit1(&builder_);
-    Label exit2(&builder_);
-
-    SetNewInputForMathImul(gate, 0, &exit1);
-    SetNewInputForMathImul(gate, 1, &exit2);
+    SetNewInputForMathImul(gate, 0);
+    SetNewInputForMathImul(gate, 1);
 
     acc_.SetGateType(gate, GateType::NJSValue());
     acc_.SetMachineType(gate, MachineType::I32);

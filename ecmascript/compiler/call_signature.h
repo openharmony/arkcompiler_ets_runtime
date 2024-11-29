@@ -508,6 +508,7 @@ private:
     V(InsertLocalToShareRSet)                   \
     V(SetBitAtomic)                             \
     V(DoubleToInt)                              \
+    V(SaturateTruncDoubleToInt32)            \
     V(FloatMod)                                 \
     V(FloatAcos)                                \
     V(FloatAcosh)                               \
