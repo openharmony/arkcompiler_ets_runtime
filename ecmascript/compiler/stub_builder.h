@@ -397,6 +397,8 @@ public:
     void StoreBuiltinHClass(GateRef glue, GateRef object, GateRef hClass);
     void StorePrototype(GateRef glue, GateRef hclass, GateRef prototype);
     void CopyAllHClass(GateRef glue, GateRef dstHClass, GateRef scrHClass);
+    void FuncCompare(GateRef glue, GateRef Function,
+                     Label *matchFunc, Label *slowPath, size_t funcIndex);
     GateRef GetObjectType(GateRef hClass);
     GateRef IsDictionaryMode(GateRef object);
     GateRef IsDictionaryModeByHClass(GateRef hClass);
