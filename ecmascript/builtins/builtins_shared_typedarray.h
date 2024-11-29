@@ -92,6 +92,8 @@
     V("includes",       Includes,       1, INVALID)                                     \
     /* %TypedArray%.prototype.indexOf ( searchElement [ , fromIndex ] ) */              \
     V("indexOf",        IndexOf,        1, INVALID)                                     \
+    /* %TypedArray%.prototype.lastIndexOf ( searchElement [ , fromIndex ] ) */          \
+    V("lastIndexOf",    LastIndexOf,    1, INVALID)                                     \
     /* %TypedArray%.prototype.join ( separator ) */                                     \
     V("join",           Join,           1, INVALID)                                     \
     /* %TypedArray%.prototype.keys ( ) */                                               \
@@ -100,6 +102,8 @@
     V("map",            Map,            1, INVALID)                                     \
     /* %TypedArray%.prototype.reduce ( callbackfn [ , initialValue ] ) */               \
     V("reduce",         Reduce,         1, INVALID)                                     \
+    /* %TypedArray%.prototype.reduceRight ( callbackfn [ , initialValue ] ) */          \
+    V("reduceRight",    ReduceRight,    1, INVALID)                                     \
     /* %TypedArray%.prototype.reverse ( ) */                                            \
     V("reverse",        Reverse,        0, INVALID)                                     \
     /* %TypedArray%.prototype.set ( source [ , offset ] ) */                            \
@@ -154,11 +158,13 @@ public:
     static JSTaggedValue FindIndex(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue ForEach(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue IndexOf(EcmaRuntimeCallInfo *argv);
+    static JSTaggedValue LastIndexOf(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue Join(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue Keys(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue GetLength(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue Map(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue Reduce(EcmaRuntimeCallInfo *argv);
+    static JSTaggedValue ReduceRight(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue Reverse(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue Set(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue Slice(EcmaRuntimeCallInfo *argv);

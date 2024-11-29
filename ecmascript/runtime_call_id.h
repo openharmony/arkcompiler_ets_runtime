@@ -891,7 +891,9 @@ namespace panda::ecmascript {
     V(SharedTypedArray, Find)                 \
     V(SharedTypedArray, FindIndex)            \
     V(SharedTypedArray, IndexOf)              \
+    V(SharedTypedArray, LastIndexOf)          \
     V(SharedTypedArray, Reduce)               \
+    V(SharedTypedArray, ReduceRight)          \
     V(SharedTypedArray, Reverse)              \
     V(SharedTypedArray, Some)                 \
     V(SharedTypedArray, ToLocaleString)       \
