@@ -15,6 +15,7 @@
 
 #include "ecmascript/builtins/builtins_regexp.h"
 #include "ecmascript/builtins/builtins_regexp-inl.h"
+#include "ecmascript/checkpoint/thread_state_transition.h"
 
 #include <cmath>
 
@@ -1799,7 +1800,23 @@ bool BuiltinsRegExp::RegExpExecInternal(JSThread *thread, const JSHandle<JSTagge
     } else {
         strBuffer = flatStrInfo.GetDataUtf8();
     }
-    bool isSuccess = Matcher(thread, regexp, strBuffer, stringLength, lastIndex, isUtf16);
+    bool isSuccess = false;
+    JSTaggedValue regexpSource = JSRegExp::Cast(regexp->GetTaggedObject())->GetOriginalSource();
+    uint32_t regexpLength = EcmaStringAccessor(regexpSource).GetLength();
+    if (UNLIKELY(regexpLength > MIN_REGEXP_PATTERN_LENGTH_EXECUTE_WITH_OFFHEAP_STRING && stringLength > 0)) {
+        size_t utf8Len = LineEcmaString::DataSize(flatStrInfo.GetString());
+        ASSERT(utf8Len > 0);
+        uint8_t *offHeapString = new uint8_t[utf8Len];
+        if (memcpy_s(offHeapString, utf8Len, strBuffer, utf8Len) != EOK) {
+            LOG_FULL(FATAL) << "memcpy_s failed";
+            UNREACHABLE();
+        }
+        isSuccess = Matcher(thread, regexp, offHeapString, stringLength, lastIndex, isUtf16,
+            StringSource::OFFHEAP_STRING);
+        delete[] offHeapString;
+    } else {
+        isSuccess = Matcher(thread, regexp, strBuffer, stringLength, lastIndex, isUtf16, StringSource::ONHEAP_STRING);
+    }
     if (isSuccess) {
         JSHandle<RegExpGlobalResult> globalTable(thread->GetCurrentEcmaContext()->GetRegExpGlobalResult());
         globalTable->ResetDollar(thread);
@@ -1811,7 +1828,7 @@ bool BuiltinsRegExp::RegExpExecInternal(JSThread *thread, const JSHandle<JSTagge
 // NOLINTNEXTLINE(readability-non-const-parameter)
 bool BuiltinsRegExp::Matcher(JSThread *thread, const JSHandle<JSTaggedValue> regexp,
                              const uint8_t *buffer, size_t length, int32_t lastIndex,
-                             bool isUtf16)
+                             bool isUtf16, StringSource source)
 {
     BUILTINS_API_TRACE(thread, RegExp, Matcher);
     // get bytecode
@@ -1824,7 +1841,16 @@ bool BuiltinsRegExp::Matcher(JSThread *thread, const JSHandle<JSTaggedValue> reg
     if (lastIndex < 0) {
         lastIndex = 0;
     }
-    bool ret = executor.Execute(buffer, lastIndex, static_cast<uint32_t>(length), bytecodeBuffer, isUtf16);
+    bool ret = false;
+    if (UNLIKELY(source == StringSource::OFFHEAP_STRING)) {
+#ifndef NDEBUG
+        SharedHeap::GetInstance()->PostGCTaskForTest<TriggerGCType::SHARED_FULL_GC, GCReason::OTHER>(thread);
+#endif
+        ThreadNativeScope scope(thread);
+        ret = executor.Execute(buffer, lastIndex, static_cast<uint32_t>(length), bytecodeBuffer, isUtf16);
+    } else {
+        ret = executor.Execute(buffer, lastIndex, static_cast<uint32_t>(length), bytecodeBuffer, isUtf16);
+    }
     if (ret) {
         executor.GetResult(thread);
     }

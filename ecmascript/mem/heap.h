@@ -666,6 +666,9 @@ public:
 
     template<TriggerGCType gcType, GCReason gcReason>
     void CollectGarbage(JSThread *thread);
+    
+    template<TriggerGCType gcType, GCReason gcReason>
+    void PostGCTaskForTest(JSThread *thread);
 
     void CollectGarbageNearOOM(JSThread *thread);
     // Only means the main body of SharedGC is finished, i.e. if parallel_gc is enabled, this flags will be set

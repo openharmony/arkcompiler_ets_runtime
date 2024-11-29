@@ -1020,6 +1020,24 @@ void SharedHeap::CollectGarbage(JSThread *thread)
     WaitGCFinished(thread);
 }
 
+template<TriggerGCType gcType, GCReason gcReason>
+void SharedHeap::PostGCTaskForTest(JSThread *thread)
+{
+    ASSERT(gcType == TriggerGCType::SHARED_GC || gcType == TriggerGCType::SHARED_FULL_GC);
+#ifndef NDEBUG
+    ASSERT(!thread->HasLaunchedSuspendAll());
+#endif
+    if (dThread_->IsRunning()) {
+        // Some UT may run without Daemon Thread.
+        LockHolder lock(waitGCFinishedMutex_);
+        if (dThread_->CheckAndPostTask(TriggerCollectGarbageTask<gcType, gcReason>(thread))) {
+            ASSERT(gcFinished_);
+            gcFinished_ = false;
+        }
+        ASSERT(!gcFinished_);
+    }
+}
+
 static void SwapBackAndPop(CVector<JSNativePointer*>& vec, CVector<JSNativePointer*>::iterator& iter)
 {
     *iter = vec.back();

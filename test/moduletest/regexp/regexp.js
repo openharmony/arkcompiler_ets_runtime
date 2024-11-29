@@ -878,3 +878,17 @@ print(res8.flags);
   newStr1 = str1.replace(regexp, "$1" );
   print(newStr1);
 }
+
+{
+  let s1 = 'abc';
+  let s2 = '\ud834\udf06';
+  let reg = new RegExp(s1.repeat(10000));
+  let str = s1.repeat(10000);
+  let res = str.replace(reg, s2);
+  print(res == s2);
+
+  reg = new RegExp(s2.repeat(10000));
+  str = s2.repeat(10000);
+  res = str.replace(reg, s1);
+  print(res == s1);
+}
