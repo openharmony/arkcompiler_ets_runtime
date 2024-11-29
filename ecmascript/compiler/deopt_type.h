@@ -40,6 +40,7 @@ namespace panda::ecmascript::kungfu {
     V(NotHeapObject1,                  NOTHEAPOBJECT1)                 \
     V(NotStableArray1,                 NOTSARRAY1)                     \
     V(NotStableArray2,                 NOTSARRAY2)                     \
+    V(NotStableArray3,                 NOTSARRAY3)                     \
     V(ElementsKindMismatchedAtLoad,    ELEMENSKINDMISMATCHEDATLOAD)    \
     V(ElementsKindMismatchedAtStore,   ELEMENSKINDMISMATCHEDATSTORE)   \
     V(InconsistentElementsKind,        INCONSISTENTELEMENTSKIND)       \

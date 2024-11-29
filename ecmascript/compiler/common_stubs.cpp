@@ -17,8 +17,10 @@
 
 #include "ecmascript/base/number_helper.h"
 #include "ecmascript/compiler/access_object_stub_builder.h"
+#include "ecmascript/compiler/builtins/builtins_array_stub_builder.h"
 #include "ecmascript/compiler/builtins/builtins_string_stub_builder.h"
 #include "ecmascript/compiler/builtins/linked_hashtable_stub_builder.h"
+#include "ecmascript/compiler/circuit_builder.h"
 #include "ecmascript/compiler/codegen/llvm/llvm_ir_builder.h"
 #include "ecmascript/compiler/interpreter_stub.h"
 #include "ecmascript/compiler/new_object_stub_builder.h"
@@ -1274,6 +1276,18 @@ void JSSetAddStubBuilder::GenerateCircuit()
     builder.Store(VariableType::JS_ANY(), glue, obj, IntPtr(JSSet::LINKED_SET_OFFSET), newTable);
     Return(obj);
 }
+
+void GrowElementsCapacityStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef thisValue = TaggedArgument(1);
+    GateRef newLength = Int32Argument(2U);
+    DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
+    BuiltinsArrayStubBuilder builder(this);
+    result = builder.GrowElementsCapacity(glue, thisValue, newLength);
+    Return(*result);
+}
+
 
 void SameValueStubBuilder::GenerateCircuit()
 {

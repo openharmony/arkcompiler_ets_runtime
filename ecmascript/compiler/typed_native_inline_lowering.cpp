@@ -34,6 +34,7 @@
 #include "ecmascript/compiler/type_info_accessors.h"
 #include "ecmascript/compiler/variable_type.h"
 #include "ecmascript/global_env.h"
+#include "ecmascript/interpreter/interpreter-inl.h"
 #include "ecmascript/jit/jit.h"
 #include "ecmascript/js_array_iterator.h"
 #include "ecmascript/js_arraybuffer.h"
@@ -359,6 +360,9 @@ GateRef TypedNativeInlineLowering::VisitGate(GateRef gate)
             break;
         case OpCode::ARRAY_POP:
             LowerArrayPop(gate);
+            break;
+        case OpCode::ARRAY_PUSH:
+            LowerArrayPush(gate);
             break;
         case OpCode::ARRAY_SLICE:
             LowerArraySlice(gate);
@@ -3680,6 +3684,44 @@ void TypedNativeInlineLowering::LowerArrayPop(GateRef gate)
     }
     builder_.Bind(&exit);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *ret);
+}
+
+void TypedNativeInlineLowering::LowerArrayPush(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    Label grow(&builder_);
+    Label setValue(&builder_);
+    Label setLength(&builder_);
+    Label exit(&builder_);
+    BuiltinsArrayStubBuilder arrayBuilder(&env);
+    GateRef thisValue = acc_.GetValueIn(gate, 0);
+    GateRef value = acc_.GetValueIn(gate, 1);
+    GateRef oldLength = builder_.GetLengthOfJSArray(thisValue);
+    GateRef glue = acc_.GetGlueFromArgList();
+    DEFVALUE(ret, (&builder_), VariableType::JS_ANY(), builder_.Int32ToTaggedPtr(thisValue));
+    DEFVALUE(elements, (&builder_), VariableType::JS_ANY(), builder_.UndefineConstant());
+    GateRef newLength = builder_.Int32Add(oldLength, builder_.Int32(1));
+    elements = builder_.GetElementsArray(thisValue);
+    GateRef capacity = builder_.GetLengthOfTaggedArray(*elements);
+    BRANCH_CIR(builder_.Int32GreaterThan(newLength, capacity), &grow, &setValue);
+    builder_.Bind(&grow);
+    {
+        elements = builder_.CallStub(glue, gate, CommonStubCSigns::GrowElementsCapacity, {glue, thisValue, newLength});
+        builder_.Jump(&setValue);
+    }
+    builder_.Bind(&setValue);
+    {
+        arrayBuilder.FastSetValueWithElementsKind(glue, thisValue, *elements, value, oldLength, ElementsKind::NONE);
+        builder_.Jump(&setLength);
+    }
+    builder_.Bind(&setLength);
+    {
+        arrayBuilder.SetArrayLength(glue, thisValue, newLength);
+        ret = arrayBuilder.IntToTaggedPtr(newLength);
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&exit);
+    ReplaceGateWithPendingException(gate, glue, builder_.GetState(), builder_.GetDepend(), *ret);
 }
 
 void TypedNativeInlineLowering::LowerArraySlice(GateRef gate)

@@ -1893,14 +1893,14 @@ void BuiltinsArrayStubBuilder::FastReverse(GateRef glue, GateRef thisValue, Gate
             if (kind == ElementsKind::INT || kind == ElementsKind::NUMBER) {
                 GateRef lower = GetValueFromMutantTaggedArray(elements, *i);
                 GateRef upper = GetValueFromMutantTaggedArray(elements, *j);
-                FastSetValueWithElementsKind(glue, elements, upper, *i, kind);
-                FastSetValueWithElementsKind(glue, elements, lower, *j, kind);
+                FastSetValueWithElementsKind(glue, thisValue, elements, upper, *i, kind);
+                FastSetValueWithElementsKind(glue, thisValue, elements, lower, *j, kind);
                 Jump(&loopEnd);
             } else {
                 GateRef lower = GetValueFromTaggedArray(elements, *i);
                 GateRef upper = GetValueFromTaggedArray(elements, *j);
-                FastSetValueWithElementsKind(glue, elements, upper, *i, kind);
-                FastSetValueWithElementsKind(glue, elements, lower, *j, kind);
+                FastSetValueWithElementsKind(glue, thisValue, elements, upper, *i, kind);
+                FastSetValueWithElementsKind(glue, thisValue, elements, lower, *j, kind);
                 Jump(&loopEnd);
             }
         }
@@ -2400,6 +2400,101 @@ void BuiltinsArrayStubBuilder::FindIndex(GateRef glue, GateRef thisValue, GateRe
     }
 }
 
+#if ENABLE_NEXT_OPTIMIZATION
+void BuiltinsArrayStubBuilder::Push(GateRef glue, GateRef thisValue,
+    GateRef numArgs, Variable *result, Label *exit, Label *slowPath)
+{
+    auto env = GetEnvironment();
+    Label isStability(env);
+    Label setLength(env);
+    Label smallArgs(env);
+    Label checkSmallArgs(env);
+    Label isLengthWritable(env);
+
+    BRANCH(IsStableJSArray(glue, thisValue), &isStability, slowPath);
+    Bind(&isStability);
+    BRANCH(IsArrayLengthWritable(glue, thisValue), &isLengthWritable, slowPath);
+    Bind(&isLengthWritable);
+    GateRef oldLength = GetArrayLength(thisValue);
+    *result = IntToTaggedPtr(oldLength);
+    BRANCH(Int32Equal(ChangeIntPtrToInt32(numArgs), Int32(0)), exit, &checkSmallArgs);
+    Bind(&checkSmallArgs);
+    // now unsupport more than 2 args
+    BRANCH(Int32LessThanOrEqual(ChangeIntPtrToInt32(numArgs), Int32(2)), &smallArgs, slowPath);
+    Bind(&smallArgs);
+
+    GateRef elementsKindEnabled = IsEnableElementsKind(glue);
+    GateRef newLength = Int32Add(oldLength, ChangeIntPtrToInt32(numArgs));
+
+    DEFVARIABLE(elements, VariableType::JS_ANY(), GetElementsArray(thisValue));
+    GateRef capacity = GetLengthOfTaggedArray(*elements);
+    Label grow(env);
+    Label setValue(env);
+    BRANCH(Int32GreaterThan(newLength, capacity), &grow, &setValue);
+    Bind(&grow);
+    {
+        elements = GrowElementsCapacity(glue, thisValue, newLength);
+        Jump(&setValue);
+    }
+    Bind(&setValue);
+    {
+        Label oneArg(env);
+        Label twoArg(env);
+        DEFVARIABLE(index, VariableType::INT32(), Int32(0));
+        DEFVARIABLE(value, VariableType::JS_ANY(), Undefined());
+        BRANCH(Int64Equal(numArgs, IntPtr(1)), &oneArg, &twoArg); // 1 one arg
+        Bind(&oneArg);
+        {
+            value = GetCallArg0(numArgs);
+            index = Int32Add(oldLength, Int32(0)); // 0 slot index
+            Label slowSet(env);
+            Label fastSet(env);
+            BRANCH(elementsKindEnabled, &slowSet, &fastSet);
+            Bind(&slowSet);
+            {
+                SetValueWithElementsKind(glue, thisValue, *value, *index, Boolean(true),
+                                         Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                Jump(&setLength);
+            }
+            Bind(&fastSet);
+            {
+                FastSetValueWithElementsKind(glue, thisValue, *elements, *value, *index, ElementsKind::NONE, true);
+                Jump(&setLength);
+            }
+        }
+        Bind(&twoArg);
+        {
+            DEFVARIABLE(index2, VariableType::INT32(), Int32(0));
+            DEFVARIABLE(value2, VariableType::JS_ANY(), Undefined());
+            value = GetCallArg0(numArgs);
+            index = Int32Add(oldLength, Int32(0)); // 0 slot index
+            value2 = GetCallArg1(numArgs);
+            index2 = Int32Add(oldLength, Int32(1)); // 1 slot index
+            Label slowSet(env);
+            Label fastSet(env);
+            BRANCH(elementsKindEnabled, &slowSet, &fastSet);
+            Bind(&slowSet);
+            {
+                SetValueWithElementsKind(glue, thisValue, *value, *index, Boolean(true),
+                                         Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                SetValueWithElementsKind(glue, thisValue, *value2, *index2, Boolean(true),
+                                         Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                Jump(&setLength);
+            }
+            Bind(&fastSet);
+            {
+                FastSetValueWithElementsKind(glue, thisValue, *elements, *value, *index, ElementsKind::NONE, true);
+                FastSetValueWithElementsKind(glue, thisValue, *elements, *value2, *index2, ElementsKind::NONE, true);
+                Jump(&setLength);
+            }
+        }
+    }
+    Bind(&setLength);
+    SetArrayLength(glue, thisValue, newLength);
+    result->WriteVariable(IntToTaggedPtr(newLength));
+    Jump(exit);
+}
+#else
 void BuiltinsArrayStubBuilder::Push(GateRef glue, GateRef thisValue,
     GateRef numArgs, Variable *result, Label *exit, Label *slowPath)
 {
@@ -2475,7 +2570,7 @@ void BuiltinsArrayStubBuilder::Push(GateRef glue, GateRef thisValue,
     result->WriteVariable(IntToTaggedPtr(newLength));
     Jump(exit);
 }
-
+#endif
 GateRef BuiltinsArrayStubBuilder::IsConcatSpreadable(GateRef glue, GateRef obj)
 {
     auto env = GetEnvironment();

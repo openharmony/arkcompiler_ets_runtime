@@ -24,7 +24,7 @@
 #include "ecmascript/js_thread.h"
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/message_string.h"
-
+#include "ecmascript/compiler/builtins/builtins_string_stub_builder.h"
 namespace panda::ecmascript::kungfu {
 
 GateRef MCRLowering::VisitGate(GateRef gate)
@@ -373,7 +373,8 @@ StateDepend MCRLowering::LowerConvert(StateDepend stateDepend, GateRef gate)
         case ValueType::CHAR: {
             GateRef glue = acc_.GetGlueFromArgList();
             if (dstType == ValueType::ECMA_STRING) {
-                result = builder_.CallStub(glue, gate, CommonStubCSigns::CreateStringBySingleCharCode, { glue, value });
+                BuiltinsStringStubBuilder builder(&env);
+                result = builder.CreateStringBySingleCharCode(glue, value);
             } else if (dstType == ValueType::INT32) {
                 result = builder_.CallStub(glue, gate, CommonStubCSigns::ConvertCharToInt32, { glue, value });
             } else {

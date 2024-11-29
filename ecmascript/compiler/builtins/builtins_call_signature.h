@@ -18,6 +18,7 @@
 
 #include "ecmascript/base/config.h"
 #include "ecmascript/compiler/call_signature.h"
+#include "ecmascript/global_env_constants.h"
 
 namespace panda::ecmascript::kungfu {
 
@@ -453,6 +454,7 @@ public:
             case BuiltinsStubCSigns::ID::ArrayEvery:
             case BuiltinsStubCSigns::ID::ArrayPop:
             case BuiltinsStubCSigns::ID::ArraySlice:
+            case BuiltinsStubCSigns::ID::ArrayPush:
                 return true;
             default:
                 return false;
@@ -749,6 +751,8 @@ public:
                 return ConstantIndex::ARRAY_EVERY_INDEX;
             case BuiltinsStubCSigns::ID::ArrayPop:
                 return ConstantIndex::ARRAY_POP_INDEX;
+            case BuiltinsStubCSigns::ID::ArrayPush:
+                return ConstantIndex::ARRAY_PUSH_INDEX;
             case BuiltinsStubCSigns::ID::ArraySlice:
                 return ConstantIndex::ARRAY_SLICE_INDEX;
             case BuiltinsStubCSigns::ID::GlobalDecodeURIComponent:
@@ -862,6 +866,7 @@ public:
             {ArrayMap, "Array.prototype.map"},
             {ArrayEvery, "Array.prototype.every"},
             {ArrayPop, "Array.prototype.pop"},
+            {ArrayPush, "Array.prototype.push"},
             {ArraySlice, "Array.prototype.slice"},
             {DataViewGetInt8, "DataView.prototype.GetInt8"},
             {DataViewGetUint8, "DataView.prototype.GetUint8"},
@@ -966,6 +971,7 @@ public:
             {"map", ArrayMap},
             {"every", ArrayEvery},
             {"pop", ArrayPop},
+            {"push", ArrayPush},
             {"slice", ArraySlice},
             {"getUint8", DataViewGetUint8},
             {"getInt8", DataViewGetInt8},

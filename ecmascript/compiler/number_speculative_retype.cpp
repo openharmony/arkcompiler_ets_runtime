@@ -342,6 +342,7 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
         case OpCode::BUILTIN_PROTOTYPE_HCLASS_CHECK:
         case OpCode::FLATTEN_TREE_STRING_CHECK:
         case OpCode::ARRAY_POP:
+        case OpCode::ARRAY_PUSH:
         case OpCode::ARRAY_SOME:
         case OpCode::ARRAY_EVERY:
         case OpCode::ARRAY_FOR_EACH:

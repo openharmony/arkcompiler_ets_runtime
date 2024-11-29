@@ -806,6 +806,7 @@ public:
         GateRef thisValue, GateRef callBackFn, GateRef usingThis, GateRef callIDRef, uint32_t pcOffset);
     GateRef ArrayEvery(GateRef thisValue, GateRef callBackFn, GateRef usingThis, uint32_t pcOffset);
     GateRef ArrayPop(GateRef thisValue, GateRef frameState);
+    GateRef ArrayPush(GateRef thisValue, GateRef value);
     GateRef ArraySlice(GateRef thisValue, GateRef startIndex, GateRef endIndex, GateRef frameState);
     GateRef ToNumber(GateRef gate, GateRef value, GateRef glue);
     GateRef StringToNumber(GateRef gate, GateRef value, GateRef radix, GateRef glue);
