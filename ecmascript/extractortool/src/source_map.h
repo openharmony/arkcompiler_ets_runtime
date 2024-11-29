@@ -52,9 +52,7 @@ public:
 
     std::string url_;
     SourceMapInfo nowPos_;
-    std::vector<std::string> files_;
     std::vector<std::string> sources_;
-    std::vector<std::string> names_;
     std::vector<std::string> mappings_;
     std::vector<SourceMapInfo> afterPos_;
 
@@ -73,7 +71,7 @@ public:
     void Init(const std::string& hapPath);
 #endif
     void Init(uint8_t *data, size_t dataSize);
-    bool TranslateUrlPositionBySourceMap(std::string& url, int& line, int& column);
+    bool TranslateUrlPositionBySourceMap(std::string& url, int& line, int& column, std::string& packageName);
 
 private:
     void SplitSourceMap(const std::string& sourceMapData);
@@ -85,6 +83,7 @@ private:
     void GetPosInfo(const std::string& temp, int32_t start, std::string& line, std::string& column);
     bool GetLineAndColumnNumbers(int& line, int& column, SourceMapData& targetMap, bool& isReplaces);
     uint32_t Base64CharToInt(char charCode);
+    void GetPackageName(std::string& url, std::string& packageName);
     friend class SourceMapFriend;
 #if defined(PANDA_TARGET_OHOS)
     bool ReadSourceMapData(const std::string& hapPath, std::string& content);
@@ -94,6 +93,9 @@ private:
     std::unordered_map<std::string, std::string> sources_;
     std::unordered_map<std::string, std::string> mappings_;
     std::unordered_map<std::string, std::shared_ptr<SourceMapData>> sourceMaps_;
+    std::unordered_map<std::string, std::string> entryPackageInfo_;
+    std::unordered_map<std::string, std::string> packageInfo_;
+    std::unordered_map<std::string, std::string> packageName_;
 };
 } // namespace panda
 } // namespace ecmascript
