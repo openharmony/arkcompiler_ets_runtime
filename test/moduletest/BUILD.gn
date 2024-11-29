@@ -17,6 +17,7 @@ group("ark_js_moduletest") {
     "addelementinternal",
     "allocatearraybuffer",
     "array",
+    "arrayderived",
     "arrayfindlast",
     "arrayflat",
     "arrayflatmap",
