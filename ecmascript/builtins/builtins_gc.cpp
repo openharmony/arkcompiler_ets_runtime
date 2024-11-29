@@ -194,7 +194,7 @@ JSTaggedValue BuiltinsGc::AllocateArrayObject(EcmaRuntimeCallInfo *info)
         sizeInBytes = 0;
     }
 
-    uint32_t numElements = sizeInBytes / sizeof(TaggedType);
+    uint32_t numElements = static_cast<uint32_t>(sizeInBytes / sizeof(TaggedType));
     auto array = factory->NewJSArray();
 
     if (numElements > 0) {
