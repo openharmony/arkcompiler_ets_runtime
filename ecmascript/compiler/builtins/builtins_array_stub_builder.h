@@ -67,6 +67,12 @@ BUILTINS_WITH_ARRAY_STUB_BUILDER(DECLARE_BUILTINS_ARRAY_STUB_BUILDER)
 private:
     static constexpr uint32_t MAX_LENGTH_ZERO = 0;
     static constexpr uint32_t MAX_LENGTH_ONE = 1;
+    static constexpr uint32_t ONE_ARGS = 1;
+    static constexpr uint32_t TWO_ARGS = 2;
+    static constexpr uint32_t THREE_ARGS = 3;
+    static constexpr uint32_t Index0 = 0;
+    static constexpr uint32_t Index1 = 1;
+    static constexpr uint32_t Index2 = 2;
     struct JsArrayRequirements {
         bool stable = false;
         bool defaultConstructor = false;
