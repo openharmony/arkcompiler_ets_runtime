@@ -32,6 +32,16 @@ public:
         return !(mode == OnHeapMode::ON_HEAP || mode == OnHeapMode::NOT_ON_HEAP);
     }
 
+    static bool IsOnHeap(OnHeapMode mode)
+    {
+        return mode == OnHeapMode::ON_HEAP;
+    }
+
+    static bool IsNotOnHeap(OnHeapMode mode)
+    {
+        return mode == OnHeapMode::NOT_ON_HEAP;
+    }
+
     static OnHeapMode Merge(OnHeapMode first, OnHeapMode second)
     {
         if (IsNone(first) || IsNone(second) || (first != second)) {
