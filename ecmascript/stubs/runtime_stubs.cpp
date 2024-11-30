@@ -3823,7 +3823,15 @@ DEF_RUNTIME_STUBS(ParseInt)
 int RuntimeStubs::FastArraySort(JSTaggedType x, JSTaggedType y)
 {
     DISALLOW_GARBAGE_COLLECTION;
-    return JSTaggedValue::IntLexicographicCompare(JSTaggedValue(x), JSTaggedValue(y));
+    JSTaggedValue xValue = JSTaggedValue(x);
+    JSTaggedValue yValue = JSTaggedValue(y);
+    if (xValue.IsInt() && yValue.IsInt()) {
+        return JSTaggedValue::IntLexicographicCompare(xValue, yValue);
+    }
+    if (xValue.IsDouble() && yValue.IsDouble()) {
+        return JSTaggedValue::DoubleLexicographicCompare(xValue, yValue);
+    }
+    return -1;
 }
 
 int RuntimeStubs::FastArraySortString(uintptr_t argGlue, JSTaggedValue x, JSTaggedValue y)
