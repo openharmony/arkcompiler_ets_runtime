@@ -2118,12 +2118,13 @@ DEF_CALL_SIGNATURE(BaselineStsuperbynameImm16Id16V8)
 
 DEF_CALL_SIGNATURE(BaselineLdlocalmodulevarImm8)
 {
-    // 2 : 2 input parameters
-    CallSignature signature("BaselineLdlocalmodulevarImm8", 0, 2,
+    // 3 : 3 input parameters
+    CallSignature signature("BaselineLdlocalmodulevarImm8", 0, 3,
         ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
     *callSign = signature;
-    // 2 : 2 input parameters
-    std::array<VariableType, 2> params = {
+    // 3 : 3 input parameters
+    std::array<VariableType, 3> params = {
+        VariableType::NATIVE_POINTER(),
         VariableType::NATIVE_POINTER(),
         VariableType::INT8(),
     };
