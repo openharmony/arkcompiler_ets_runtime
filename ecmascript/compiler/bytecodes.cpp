@@ -29,334 +29,80 @@ BytecodeMetaData BytecodeMetaData::InitBytecodeMetaData(const uint8_t *pc)
         flags |= BytecodeFlags::WRITE_ACC;
     }
 
-    switch (inst.GetOpcode()) {
-        case EcmaOpcode::GETPROPITERATOR:
-        case EcmaOpcode::TYPEOF_IMM8:
-        case EcmaOpcode::TYPEOF_IMM16:
-        case EcmaOpcode::LDSYMBOL:
-        case EcmaOpcode::LDGLOBAL:
-        case EcmaOpcode::LDBIGINT_ID16:
-        case EcmaOpcode::LDEXTERNALMODULEVAR_IMM8:
-        case EcmaOpcode::WIDE_LDEXTERNALMODULEVAR_PREF_IMM16:
-        case EcmaOpcode::GETMODULENAMESPACE_IMM8:
-        case EcmaOpcode::WIDE_GETMODULENAMESPACE_PREF_IMM16:
-        case EcmaOpcode::ISTRUE:
-        case EcmaOpcode::ISFALSE:
-        case EcmaOpcode::CALLRUNTIME_ISTRUE_PREF_IMM8:
-        case EcmaOpcode::CALLRUNTIME_ISFALSE_PREF_IMM8:
-        case EcmaOpcode::LDGLOBALVAR_IMM16_ID16:
-        case EcmaOpcode::LDOBJBYINDEX_IMM8_IMM16:
-        case EcmaOpcode::LDOBJBYINDEX_IMM16_IMM16:
-        case EcmaOpcode::WIDE_LDOBJBYINDEX_PREF_IMM32:
-        case EcmaOpcode::LDLEXVAR_IMM4_IMM4:
-        case EcmaOpcode::LDLEXVAR_IMM8_IMM8:
-        case EcmaOpcode::WIDE_LDLEXVAR_PREF_IMM16_IMM16:
-        case EcmaOpcode::CALLRUNTIME_LDSENDABLEVAR_PREF_IMM4_IMM4:
-        case EcmaOpcode::CALLRUNTIME_LDSENDABLEVAR_PREF_IMM8_IMM8:
-        case EcmaOpcode::CALLRUNTIME_WIDELDSENDABLEVAR_PREF_IMM16_IMM16:
-        case EcmaOpcode::WIDE_LDPATCHVAR_PREF_IMM16:
-        case EcmaOpcode::LDLOCALMODULEVAR_IMM8:
-        case EcmaOpcode::WIDE_LDLOCALMODULEVAR_PREF_IMM16:
-        case EcmaOpcode::LDA_STR_ID16:
-        case EcmaOpcode::CALLRUNTIME_LDSENDABLECLASS_PREF_IMM16:
-            flags |= BytecodeFlags::NO_SIDE_EFFECTS;
+    EcmaOpcode opcode = inst.GetOpcode();
+    InitBytecodeFlags(opcode, flags);
+    InitBytecodeKind(opcode, kind);
+
+    if (kind == BytecodeKind::GENERAL ||
+        kind == BytecodeKind::THROW_BC ||
+        kind == BytecodeKind::RESUME ||
+        kind == BytecodeKind::SUSPEND ||
+        kind == BytecodeKind::GENERATOR_RESOLVE ||
+        kind == BytecodeKind::CALL_BC ||
+        kind == BytecodeKind::ACCESSOR_BC) {
+        flags |= BytecodeFlags::GENERAL_BC;
+    }
+    auto size = inst.GetSize();
+    auto vregCount = GetVRegCount(inst);
+    uint64_t value = SizeField::Encode(size) | KindField::Encode(kind) |
+                     FlagsField::Encode(static_cast<BytecodeFlags>(flags)) |
+                     OpcodeField::Encode(inst.GetOpcode()) | VRegCountField::Encode(vregCount);
+    return BytecodeMetaData(value);
+}
+
+void BytecodeMetaData::InitBytecodeFlags(EcmaOpcode &opcode, uint32_t &flags)
+{
+    InitNoSideEffectFlag(opcode, flags);
+    InitNoGCFlag(opcode, flags);
+    InitNoThrowFlag(opcode, flags);
+    InitReadThisObjectFlag(opcode, flags);
+    InitSupportDeoptFlag(opcode, flags);
+    InitReadACCFlag(opcode, flags);
+    InitDebuggerFlag(opcode, flags);
+    InitReadFuncFlag(opcode, flags);
+    InitWriteEnvFlag(opcode, flags);
+    InitReadEnvFlag(opcode, flags);
+    InitReadNewTargetFlag(opcode, flags);
+    InitReadArgcFlag(opcode, flags);
+}
+
+void BytecodeMetaData::InitReadArgcFlag(EcmaOpcode &opcode, uint32_t &flags)
+{
+    switch (opcode) {
+        case EcmaOpcode::GETUNMAPPEDARGS:
+        case EcmaOpcode::COPYRESTARGS_IMM8:
+        case EcmaOpcode::WIDE_COPYRESTARGS_PREF_IMM16:
+            flags |= BytecodeFlags::READ_ARGC;
             break;
         default:
             break;
     }
+}
 
-    switch (inst.GetOpcode()) {
-        case EcmaOpcode::MOV_V4_V4:
-        case EcmaOpcode::MOV_V8_V8:
-        case EcmaOpcode::MOV_V16_V16:
-        case EcmaOpcode::STA_V8:
-        case EcmaOpcode::LDA_V8:
-        case EcmaOpcode::LDHOLE:
-        case EcmaOpcode::LDAI_IMM32:
-        case EcmaOpcode::FLDAI_IMM64:
-        case EcmaOpcode::LDFUNCTION:
-        case EcmaOpcode::TYPEOF_IMM8:
-        case EcmaOpcode::TYPEOF_IMM16:
-        case EcmaOpcode::LDNAN:
-        case EcmaOpcode::LDINFINITY:
-        case EcmaOpcode::LDUNDEFINED:
-        case EcmaOpcode::LDNULL:
-        case EcmaOpcode::LDTRUE:
-        case EcmaOpcode::LDFALSE:
-        case EcmaOpcode::LDSYMBOL:
-        case EcmaOpcode::LDGLOBAL:
-        case EcmaOpcode::LDBIGINT_ID16:
-        case EcmaOpcode::LDLEXVAR_IMM4_IMM4:
-        case EcmaOpcode::LDLEXVAR_IMM8_IMM8:
-        case EcmaOpcode::WIDE_LDLEXVAR_PREF_IMM16_IMM16:
-        case EcmaOpcode::CALLRUNTIME_LDSENDABLEVAR_PREF_IMM4_IMM4:
-        case EcmaOpcode::CALLRUNTIME_LDSENDABLEVAR_PREF_IMM8_IMM8:
-        case EcmaOpcode::CALLRUNTIME_WIDELDSENDABLEVAR_PREF_IMM16_IMM16:
-        case EcmaOpcode::WIDE_LDPATCHVAR_PREF_IMM16:
-        case EcmaOpcode::LDA_STR_ID16:
-        case EcmaOpcode::CALLRUNTIME_LDSENDABLECLASS_PREF_IMM16:
-        case EcmaOpcode::RETURN:
-        case EcmaOpcode::RETURNUNDEFINED:
-            flags |= BytecodeFlags::NO_GC;
-            break;
-        default:
-            break;
-    }
-
-    switch (inst.GetOpcode()) {
-        case EcmaOpcode::MOV_V4_V4:
-        case EcmaOpcode::MOV_V8_V8:
-        case EcmaOpcode::MOV_V16_V16:
-        case EcmaOpcode::STA_V8:
-        case EcmaOpcode::LDA_V8:
-        case EcmaOpcode::LDNAN:
-        case EcmaOpcode::LDINFINITY:
-        case EcmaOpcode::LDUNDEFINED:
-        case EcmaOpcode::LDNULL:
-        case EcmaOpcode::LDTRUE:
-        case EcmaOpcode::LDFALSE:
-        case EcmaOpcode::LDHOLE:
-        case EcmaOpcode::LDAI_IMM32:
-        case EcmaOpcode::FLDAI_IMM64:
-        case EcmaOpcode::LDFUNCTION:
-        case EcmaOpcode::LDA_STR_ID16:
-        case EcmaOpcode::TYPEOF_IMM8:
-        case EcmaOpcode::TYPEOF_IMM16:
-        case EcmaOpcode::ISTRUE:
-        case EcmaOpcode::ISFALSE:
-        case EcmaOpcode::CALLRUNTIME_ISTRUE_PREF_IMM8:
-        case EcmaOpcode::CALLRUNTIME_ISFALSE_PREF_IMM8:
-        case EcmaOpcode::JEQZ_IMM8:
-        case EcmaOpcode::JEQZ_IMM16:
-        case EcmaOpcode::JEQZ_IMM32:
-        case EcmaOpcode::JNEZ_IMM8:
-        case EcmaOpcode::JNEZ_IMM16:
-        case EcmaOpcode::JNEZ_IMM32:
-        case EcmaOpcode::JMP_IMM8:
-        case EcmaOpcode::JMP_IMM16:
-        case EcmaOpcode::JMP_IMM32:
-        case EcmaOpcode::STMODULEVAR_IMM8:
-        case EcmaOpcode::WIDE_STMODULEVAR_PREF_IMM16:
-        case EcmaOpcode::LDEXTERNALMODULEVAR_IMM8:
-        case EcmaOpcode::WIDE_LDEXTERNALMODULEVAR_PREF_IMM16:
-        case EcmaOpcode::NEWLEXENV_IMM8:
-        case EcmaOpcode::WIDE_NEWLEXENV_PREF_IMM16:
-        case EcmaOpcode::CALLRUNTIME_NEWSENDABLEENV_PREF_IMM8:
-        case EcmaOpcode::CALLRUNTIME_WIDENEWSENDABLEENV_PREF_IMM16:
-        case EcmaOpcode::POPLEXENV:
-        case EcmaOpcode::NEWLEXENVWITHNAME_IMM8_ID16:
-        case EcmaOpcode::WIDE_NEWLEXENVWITHNAME_PREF_IMM16_ID16:
-        case EcmaOpcode::ASYNCFUNCTIONENTER:
-        case EcmaOpcode::SETGENERATORSTATE_IMM8:
-        case EcmaOpcode::GETRESUMEMODE:
-        case EcmaOpcode::RESUMEGENERATOR:
-        case EcmaOpcode::RETURN:
-        case EcmaOpcode::RETURNUNDEFINED:
-        case EcmaOpcode::LDLEXVAR_IMM4_IMM4:
-        case EcmaOpcode::LDLEXVAR_IMM8_IMM8:
-        case EcmaOpcode::WIDE_LDLEXVAR_PREF_IMM16_IMM16:
-        case EcmaOpcode::CALLRUNTIME_LDSENDABLEVAR_PREF_IMM4_IMM4:
-        case EcmaOpcode::CALLRUNTIME_LDSENDABLEVAR_PREF_IMM8_IMM8:
-        case EcmaOpcode::CALLRUNTIME_WIDELDSENDABLEVAR_PREF_IMM16_IMM16:
-        case EcmaOpcode::STLEXVAR_IMM4_IMM4:
-        case EcmaOpcode::STLEXVAR_IMM8_IMM8:
-        case EcmaOpcode::WIDE_STLEXVAR_PREF_IMM16_IMM16:
-        case EcmaOpcode::CALLRUNTIME_STSENDABLEVAR_PREF_IMM4_IMM4:
-        case EcmaOpcode::CALLRUNTIME_STSENDABLEVAR_PREF_IMM8_IMM8:
-        case EcmaOpcode::CALLRUNTIME_WIDESTSENDABLEVAR_PREF_IMM16_IMM16:
-        case EcmaOpcode::STRICTNOTEQ_IMM8_V8:
-        case EcmaOpcode::STRICTEQ_IMM8_V8:
-        case EcmaOpcode::CREATEEMPTYARRAY_IMM8:
-        case EcmaOpcode::CREATEEMPTYARRAY_IMM16:
-        case EcmaOpcode::CREATEEMPTYOBJECT:
-        case EcmaOpcode::CREATEARRAYWITHBUFFER_IMM8_ID16:
-        case EcmaOpcode::CREATEARRAYWITHBUFFER_IMM16_ID16:
-        case EcmaOpcode::CREATEITERRESULTOBJ_V8_V8:
-        case EcmaOpcode::DEFINEFUNC_IMM8_ID16_IMM8:
-        case EcmaOpcode::DEFINEFUNC_IMM16_ID16_IMM8:
-        case EcmaOpcode::DEFINEMETHOD_IMM8_ID16_IMM8:
-        case EcmaOpcode::DEFINEMETHOD_IMM16_ID16_IMM8:
-        case EcmaOpcode::CALLRUNTIME_LDSENDABLECLASS_PREF_IMM16:
-        case EcmaOpcode::DEBUGGER:
-        case EcmaOpcode::NOP:
-            flags |= BytecodeFlags::NO_THROW;
-            break;
-        default:
-            break;
-    }
-
-    switch (inst.GetOpcode()) {
-        case EcmaOpcode::MOV_V4_V4:
-        case EcmaOpcode::MOV_V8_V8:
-        case EcmaOpcode::MOV_V16_V16:
-        case EcmaOpcode::STA_V8:
-        case EcmaOpcode::LDA_V8:
-            kind = BytecodeKind::MOV;
-            flags |= BytecodeFlags::NO_SIDE_EFFECTS;
-            break;
-        case EcmaOpcode::LDNAN:
-        case EcmaOpcode::LDINFINITY:
-        case EcmaOpcode::LDUNDEFINED:
-        case EcmaOpcode::LDNULL:
-        case EcmaOpcode::LDTRUE:
-        case EcmaOpcode::LDFALSE:
-        case EcmaOpcode::LDHOLE:
-        case EcmaOpcode::LDAI_IMM32:
-        case EcmaOpcode::FLDAI_IMM64:
-        case EcmaOpcode::LDFUNCTION:
-            kind = BytecodeKind::SET_CONSTANT;
-            flags |= BytecodeFlags::NO_SIDE_EFFECTS;
-            break;
-        case EcmaOpcode::LDTHISBYVALUE_IMM8:
-        case EcmaOpcode::LDTHISBYVALUE_IMM16:
-        case EcmaOpcode::STTHISBYVALUE_IMM8_V8:
-        case EcmaOpcode::STTHISBYVALUE_IMM16_V8:
-            flags |= BytecodeFlags::READ_THIS_OBJECT;
-            break;
-        case EcmaOpcode::LDTHISBYNAME_IMM8_ID16:
-        case EcmaOpcode::LDTHISBYNAME_IMM16_ID16:
-        case EcmaOpcode::STTHISBYNAME_IMM8_ID16:
-        case EcmaOpcode::STTHISBYNAME_IMM16_ID16:
-            flags |= BytecodeFlags::READ_THIS_OBJECT;
-            [[fallthrough]];
-        case EcmaOpcode::ADD2_IMM8_V8:
-        case EcmaOpcode::SUB2_IMM8_V8:
-        case EcmaOpcode::MUL2_IMM8_V8:
-        case EcmaOpcode::DIV2_IMM8_V8:
-        case EcmaOpcode::EQ_IMM8_V8:
-        case EcmaOpcode::NOTEQ_IMM8_V8:
-        case EcmaOpcode::LESS_IMM8_V8:
-        case EcmaOpcode::LESSEQ_IMM8_V8:
-        case EcmaOpcode::GREATER_IMM8_V8:
-        case EcmaOpcode::GREATEREQ_IMM8_V8:
-        case EcmaOpcode::STRICTEQ_IMM8_V8:
-        case EcmaOpcode::STRICTNOTEQ_IMM8_V8:
-        case EcmaOpcode::TONUMERIC_IMM8:
-        case EcmaOpcode::ISTRUE:
-        case EcmaOpcode::ISFALSE:
-        case EcmaOpcode::CALLRUNTIME_ISTRUE_PREF_IMM8:
-        case EcmaOpcode::CALLRUNTIME_ISFALSE_PREF_IMM8:
-        case EcmaOpcode::INC_IMM8:
-        case EcmaOpcode::DEC_IMM8:
-        case EcmaOpcode::NEG_IMM8:
-        case EcmaOpcode::NOT_IMM8:
-        case EcmaOpcode::MOD2_IMM8_V8:
-        case EcmaOpcode::SHL2_IMM8_V8:
-        case EcmaOpcode::SHR2_IMM8_V8:
-        case EcmaOpcode::ASHR2_IMM8_V8:
-        case EcmaOpcode::AND2_IMM8_V8:
-        case EcmaOpcode::OR2_IMM8_V8:
-        case EcmaOpcode::XOR2_IMM8_V8:
-        case EcmaOpcode::LDOBJBYNAME_IMM8_ID16:
-        case EcmaOpcode::LDOBJBYNAME_IMM16_ID16:
-        case EcmaOpcode::STOBJBYNAME_IMM8_ID16_V8:
-        case EcmaOpcode::STOBJBYNAME_IMM16_ID16_V8:
-        case EcmaOpcode::LDOBJBYINDEX_IMM8_IMM16:
-        case EcmaOpcode::LDOBJBYINDEX_IMM16_IMM16:
-        case EcmaOpcode::WIDE_LDOBJBYINDEX_PREF_IMM32:
-        case EcmaOpcode::STOBJBYINDEX_IMM8_V8_IMM16:
-        case EcmaOpcode::STOBJBYINDEX_IMM16_V8_IMM16:
-        case EcmaOpcode::WIDE_STOBJBYINDEX_PREF_V8_IMM32:
-        case EcmaOpcode::LDOBJBYVALUE_IMM8_V8:
-        case EcmaOpcode::LDOBJBYVALUE_IMM16_V8:
-        case EcmaOpcode::STOBJBYVALUE_IMM8_V8_V8:
-        case EcmaOpcode::STOBJBYVALUE_IMM16_V8_V8:
+void BytecodeMetaData::InitReadNewTargetFlag(EcmaOpcode &opcode, uint32_t &flags)
+{
+    switch (opcode) {
         case EcmaOpcode::SUPERCALLTHISRANGE_IMM8_IMM8_V8:
         case EcmaOpcode::WIDE_SUPERCALLTHISRANGE_PREF_IMM16_V8:
-        case EcmaOpcode::LDPRIVATEPROPERTY_IMM8_IMM16_IMM16:
-        case EcmaOpcode::STPRIVATEPROPERTY_IMM8_IMM16_IMM16_V8:
-        case EcmaOpcode::TESTIN_IMM8_IMM16_IMM16:
-        case EcmaOpcode::DEFINEFIELDBYNAME_IMM8_ID16_V8:
-        case EcmaOpcode::DEFINEPROPERTYBYNAME_IMM8_ID16_V8:
-        case EcmaOpcode::CALLRUNTIME_DEFINEFIELDBYVALUE_PREF_IMM8_V8_V8:
-        case EcmaOpcode::CALLRUNTIME_DEFINEFIELDBYINDEX_PREF_IMM8_IMM32_V8:
-        case EcmaOpcode::CALLRUNTIME_TOPROPERTYKEY_PREF_NONE:
-        case EcmaOpcode::CALLRUNTIME_CREATEPRIVATEPROPERTY_PREF_IMM16_ID16:
-        case EcmaOpcode::CALLRUNTIME_DEFINEPRIVATEPROPERTY_PREF_IMM8_IMM16_IMM16_V8:
-            flags |= BytecodeFlags::SUPPORT_DEOPT;
-            break;
-        case EcmaOpcode::CALLTHIS1_IMM8_V8_V8:
-        case EcmaOpcode::CALLARG0_IMM8:
-        case EcmaOpcode::CALLARG1_IMM8_V8:
-        case EcmaOpcode::CALLARGS2_IMM8_V8_V8:
-        case EcmaOpcode::CALLARGS3_IMM8_V8_V8_V8:
-        case EcmaOpcode::CALLRANGE_IMM8_IMM8_V8:
-        case EcmaOpcode::CALLTHIS0_IMM8_V8:
-        case EcmaOpcode::CALLTHIS2_IMM8_V8_V8_V8:
-        case EcmaOpcode::CALLTHIS3_IMM8_V8_V8_V8_V8:
-        case EcmaOpcode::CALLTHISRANGE_IMM8_IMM8_V8:
-        case EcmaOpcode::CALLRUNTIME_CALLINIT_PREF_IMM8_V8:
-        case EcmaOpcode::NEWOBJRANGE_IMM8_IMM8_V8:
-        case EcmaOpcode::NEWOBJRANGE_IMM16_IMM8_V8:
-        case EcmaOpcode::WIDE_NEWOBJRANGE_PREF_IMM16_V8:
-            flags |= BytecodeFlags::SUPPORT_DEOPT;
-            kind = BytecodeKind::CALL_BC;
-            break;
-        case EcmaOpcode::RETURN:
-            flags |= BytecodeFlags::READ_ACC;
-            [[fallthrough]];
-        case EcmaOpcode::RETURNUNDEFINED:
-            flags |= BytecodeFlags::NO_SIDE_EFFECTS;
-            kind = BytecodeKind::RETURN_BC;
-            break;
-        case EcmaOpcode::SUSPENDGENERATOR_V8:
-            flags |= BytecodeFlags::READ_THIS_OBJECT;
-            U_FALLTHROUGH;
-        case EcmaOpcode::DEPRECATED_SUSPENDGENERATOR_PREF_V8_V8:
-            kind = BytecodeKind::SUSPEND;
-            break;
-        case EcmaOpcode::RESUMEGENERATOR:
-            kind = BytecodeKind::RESUME;
-            break;
-        case EcmaOpcode::DEBUGGER:
-            flags |= BytecodeFlags::DEBUGGER_STMT;
-            break;
-        case EcmaOpcode::NOP:
-            kind = BytecodeKind::DISCARDED;
-            flags |= BytecodeFlags::NO_SIDE_EFFECTS;
-            break;
-        case EcmaOpcode::THROW_PREF_NONE:
-        case EcmaOpcode::THROW_NOTEXISTS_PREF_NONE:
-        case EcmaOpcode::THROW_PATTERNNONCOERCIBLE_PREF_NONE:
-        case EcmaOpcode::THROW_DELETESUPERPROPERTY_PREF_NONE:
-        case EcmaOpcode::THROW_CONSTASSIGNMENT_PREF_V8:
-            kind = BytecodeKind::THROW_BC;
-            break;
-        case EcmaOpcode::JEQZ_IMM8:
-        case EcmaOpcode::JEQZ_IMM16:
-        case EcmaOpcode::JEQZ_IMM32:
-        case EcmaOpcode::JNEZ_IMM8:
-        case EcmaOpcode::JNEZ_IMM16:
-        case EcmaOpcode::JNEZ_IMM32:
-            kind = BytecodeKind::CONDITIONAL_JUMP;
-            flags |= BytecodeFlags::NO_SIDE_EFFECTS;
-            break;
-        case EcmaOpcode::JMP_IMM8:
-        case EcmaOpcode::JMP_IMM16:
-        case EcmaOpcode::JMP_IMM32:
-            kind = BytecodeKind::JUMP_IMM;
-            flags |= BytecodeFlags::NO_SIDE_EFFECTS;
-            break;
-        case EcmaOpcode::CALLRUNTIME_NOTIFYCONCURRENTRESULT_PREF_NONE:
-            flags |= BytecodeFlags::READ_FUNC;
-            break;
-        case EcmaOpcode::ASYNCGENERATORRESOLVE_V8_V8_V8:
-            flags |= BytecodeFlags::READ_THIS_OBJECT;
-            flags |= BytecodeFlags::READ_ACC;
-            kind = BytecodeKind::GENERATOR_RESOLVE;
+        case EcmaOpcode::SUPERCALLARROWRANGE_IMM8_IMM8_V8:
+        case EcmaOpcode::WIDE_SUPERCALLARROWRANGE_PREF_IMM16_V8:
+        case EcmaOpcode::SUPERCALLSPREAD_IMM8_V8:
+        case EcmaOpcode::CALLRUNTIME_SUPERCALLFORWARDALLARGS_PREF_V8:
+            flags |= BytecodeFlags::READ_NEWTARGET;
             break;
         default:
             break;
     }
+}
 
-    switch (inst.GetOpcode()) {
+void BytecodeMetaData::InitReadEnvFlag(EcmaOpcode &opcode, uint32_t &flags)
+{
+    switch (opcode) {
         case EcmaOpcode::NEWLEXENV_IMM8:
         case EcmaOpcode::WIDE_NEWLEXENV_PREF_IMM16:
         case EcmaOpcode::NEWLEXENVWITHNAME_IMM8_ID16:
         case EcmaOpcode::WIDE_NEWLEXENVWITHNAME_PREF_IMM16_ID16:
         case EcmaOpcode::POPLEXENV:
-            flags |= BytecodeFlags::WRITE_ENV;
-            [[fallthrough]];
         case EcmaOpcode::LDLEXVAR_IMM4_IMM4:
         case EcmaOpcode::LDLEXVAR_IMM8_IMM8:
         case EcmaOpcode::WIDE_LDLEXVAR_PREF_IMM16_IMM16:
@@ -379,8 +125,27 @@ BytecodeMetaData BytecodeMetaData::InitBytecodeMetaData(const uint8_t *pc)
         default:
             break;
     }
+}
 
-    switch (inst.GetOpcode()) {
+void BytecodeMetaData::InitWriteEnvFlag(EcmaOpcode &opcode, uint32_t &flags)
+{
+    switch (opcode) {
+        case EcmaOpcode::NEWLEXENV_IMM8:
+        case EcmaOpcode::WIDE_NEWLEXENV_PREF_IMM16:
+        case EcmaOpcode::NEWLEXENVWITHNAME_IMM8_ID16:
+        case EcmaOpcode::WIDE_NEWLEXENVWITHNAME_PREF_IMM16_ID16:
+        case EcmaOpcode::POPLEXENV:
+            flags |= BytecodeFlags::WRITE_ENV;
+            break;
+        default:
+            break;
+    }
+}
+
+void BytecodeMetaData::InitReadFuncFlag(EcmaOpcode &opcode, uint32_t &flags)
+{
+    switch (opcode) {
+        case EcmaOpcode::CALLRUNTIME_NOTIFYCONCURRENTRESULT_PREF_NONE:
         case EcmaOpcode::SUSPENDGENERATOR_V8:
         case EcmaOpcode::RESUMEGENERATOR:
         case EcmaOpcode::TRYLDGLOBALBYNAME_IMM8_ID16:
@@ -482,29 +247,374 @@ BytecodeMetaData BytecodeMetaData::InitBytecodeMetaData(const uint8_t *pc)
         case EcmaOpcode::CALLRUNTIME_WIDELDLAZYMODULEVAR_PREF_IMM16:
         case EcmaOpcode::CALLRUNTIME_LDLAZYSENDABLEMODULEVAR_PREF_IMM8:
         case EcmaOpcode::CALLRUNTIME_WIDELDLAZYSENDABLEMODULEVAR_PREF_IMM16:
-            flags |= BytecodeFlags::READ_FUNC;
-            break;
         case EcmaOpcode::SUPERCALLTHISRANGE_IMM8_IMM8_V8:
         case EcmaOpcode::WIDE_SUPERCALLTHISRANGE_PREF_IMM16_V8:
             flags |= BytecodeFlags::READ_FUNC;
-            flags |= BytecodeFlags::READ_NEWTARGET;
             break;
-        case EcmaOpcode::SUPERCALLARROWRANGE_IMM8_IMM8_V8:
-        case EcmaOpcode::WIDE_SUPERCALLARROWRANGE_PREF_IMM16_V8:
-        case EcmaOpcode::SUPERCALLSPREAD_IMM8_V8:
-        case EcmaOpcode::CALLRUNTIME_SUPERCALLFORWARDALLARGS_PREF_V8:
-            flags |= BytecodeFlags::READ_NEWTARGET;
-            break;
-        case EcmaOpcode::GETUNMAPPEDARGS:
-        case EcmaOpcode::COPYRESTARGS_IMM8:
-        case EcmaOpcode::WIDE_COPYRESTARGS_PREF_IMM16:
-            flags |= BytecodeFlags::READ_ARGC;
-            [[fallthrough]];
         default:
             break;
     }
+}
 
-    switch (inst.GetOpcode()) {
+void BytecodeMetaData::InitDebuggerFlag(EcmaOpcode &opcode, uint32_t &flags)
+{
+    switch (opcode) {
+        case EcmaOpcode::DEBUGGER:
+            flags |= BytecodeFlags::DEBUGGER_STMT;
+            break;
+        default:
+            break;
+    }
+}
+
+void BytecodeMetaData::InitReadACCFlag(EcmaOpcode &opcode, uint32_t &flags)
+{
+    switch (opcode) {
+        case EcmaOpcode::RETURN:
+        case EcmaOpcode::ASYNCGENERATORRESOLVE_V8_V8_V8:
+            flags |= BytecodeFlags::READ_ACC;
+            break;
+        default:
+            break;
+    }
+}
+
+void BytecodeMetaData::InitSupportDeoptFlag(EcmaOpcode &opcode, uint32_t &flags)
+{
+    switch (opcode) {
+        case EcmaOpcode::LDTHISBYNAME_IMM8_ID16:
+        case EcmaOpcode::LDTHISBYNAME_IMM16_ID16:
+        case EcmaOpcode::STTHISBYNAME_IMM8_ID16:
+        case EcmaOpcode::STTHISBYNAME_IMM16_ID16:
+        case EcmaOpcode::ADD2_IMM8_V8:
+        case EcmaOpcode::SUB2_IMM8_V8:
+        case EcmaOpcode::MUL2_IMM8_V8:
+        case EcmaOpcode::DIV2_IMM8_V8:
+        case EcmaOpcode::EQ_IMM8_V8:
+        case EcmaOpcode::NOTEQ_IMM8_V8:
+        case EcmaOpcode::LESS_IMM8_V8:
+        case EcmaOpcode::LESSEQ_IMM8_V8:
+        case EcmaOpcode::GREATER_IMM8_V8:
+        case EcmaOpcode::GREATEREQ_IMM8_V8:
+        case EcmaOpcode::STRICTEQ_IMM8_V8:
+        case EcmaOpcode::STRICTNOTEQ_IMM8_V8:
+        case EcmaOpcode::TONUMERIC_IMM8:
+        case EcmaOpcode::ISTRUE:
+        case EcmaOpcode::ISFALSE:
+        case EcmaOpcode::CALLRUNTIME_ISTRUE_PREF_IMM8:
+        case EcmaOpcode::CALLRUNTIME_ISFALSE_PREF_IMM8:
+        case EcmaOpcode::INC_IMM8:
+        case EcmaOpcode::DEC_IMM8:
+        case EcmaOpcode::NEG_IMM8:
+        case EcmaOpcode::NOT_IMM8:
+        case EcmaOpcode::MOD2_IMM8_V8:
+        case EcmaOpcode::SHL2_IMM8_V8:
+        case EcmaOpcode::SHR2_IMM8_V8:
+        case EcmaOpcode::ASHR2_IMM8_V8:
+        case EcmaOpcode::AND2_IMM8_V8:
+        case EcmaOpcode::OR2_IMM8_V8:
+        case EcmaOpcode::XOR2_IMM8_V8:
+        case EcmaOpcode::LDOBJBYNAME_IMM8_ID16:
+        case EcmaOpcode::LDOBJBYNAME_IMM16_ID16:
+        case EcmaOpcode::STOBJBYNAME_IMM8_ID16_V8:
+        case EcmaOpcode::STOBJBYNAME_IMM16_ID16_V8:
+        case EcmaOpcode::LDOBJBYINDEX_IMM8_IMM16:
+        case EcmaOpcode::LDOBJBYINDEX_IMM16_IMM16:
+        case EcmaOpcode::WIDE_LDOBJBYINDEX_PREF_IMM32:
+        case EcmaOpcode::STOBJBYINDEX_IMM8_V8_IMM16:
+        case EcmaOpcode::STOBJBYINDEX_IMM16_V8_IMM16:
+        case EcmaOpcode::WIDE_STOBJBYINDEX_PREF_V8_IMM32:
+        case EcmaOpcode::LDOBJBYVALUE_IMM8_V8:
+        case EcmaOpcode::LDOBJBYVALUE_IMM16_V8:
+        case EcmaOpcode::STOBJBYVALUE_IMM8_V8_V8:
+        case EcmaOpcode::STOBJBYVALUE_IMM16_V8_V8:
+        case EcmaOpcode::SUPERCALLTHISRANGE_IMM8_IMM8_V8:
+        case EcmaOpcode::WIDE_SUPERCALLTHISRANGE_PREF_IMM16_V8:
+        case EcmaOpcode::LDPRIVATEPROPERTY_IMM8_IMM16_IMM16:
+        case EcmaOpcode::STPRIVATEPROPERTY_IMM8_IMM16_IMM16_V8:
+        case EcmaOpcode::TESTIN_IMM8_IMM16_IMM16:
+        case EcmaOpcode::DEFINEFIELDBYNAME_IMM8_ID16_V8:
+        case EcmaOpcode::DEFINEPROPERTYBYNAME_IMM8_ID16_V8:
+        case EcmaOpcode::CALLRUNTIME_DEFINEFIELDBYVALUE_PREF_IMM8_V8_V8:
+        case EcmaOpcode::CALLRUNTIME_DEFINEFIELDBYINDEX_PREF_IMM8_IMM32_V8:
+        case EcmaOpcode::CALLRUNTIME_TOPROPERTYKEY_PREF_NONE:
+        case EcmaOpcode::CALLRUNTIME_CREATEPRIVATEPROPERTY_PREF_IMM16_ID16:
+        case EcmaOpcode::CALLRUNTIME_DEFINEPRIVATEPROPERTY_PREF_IMM8_IMM16_IMM16_V8:
+        case EcmaOpcode::CALLTHIS1_IMM8_V8_V8:
+        case EcmaOpcode::CALLARG0_IMM8:
+        case EcmaOpcode::CALLARG1_IMM8_V8:
+        case EcmaOpcode::CALLARGS2_IMM8_V8_V8:
+        case EcmaOpcode::CALLARGS3_IMM8_V8_V8_V8:
+        case EcmaOpcode::CALLRANGE_IMM8_IMM8_V8:
+        case EcmaOpcode::CALLTHIS0_IMM8_V8:
+        case EcmaOpcode::CALLTHIS2_IMM8_V8_V8_V8:
+        case EcmaOpcode::CALLTHIS3_IMM8_V8_V8_V8_V8:
+        case EcmaOpcode::CALLTHISRANGE_IMM8_IMM8_V8:
+        case EcmaOpcode::CALLRUNTIME_CALLINIT_PREF_IMM8_V8:
+        case EcmaOpcode::NEWOBJRANGE_IMM8_IMM8_V8:
+        case EcmaOpcode::NEWOBJRANGE_IMM16_IMM8_V8:
+        case EcmaOpcode::WIDE_NEWOBJRANGE_PREF_IMM16_V8:
+            flags |= BytecodeFlags::SUPPORT_DEOPT;
+            break;
+        default:
+            break;
+    }
+}
+
+void BytecodeMetaData::InitReadThisObjectFlag(EcmaOpcode &opcode, uint32_t &flags)
+{
+    switch (opcode) {
+        case EcmaOpcode::LDTHISBYVALUE_IMM8:
+        case EcmaOpcode::LDTHISBYVALUE_IMM16:
+        case EcmaOpcode::STTHISBYVALUE_IMM8_V8:
+        case EcmaOpcode::STTHISBYVALUE_IMM16_V8:
+        case EcmaOpcode::LDTHISBYNAME_IMM8_ID16:
+        case EcmaOpcode::LDTHISBYNAME_IMM16_ID16:
+        case EcmaOpcode::STTHISBYNAME_IMM8_ID16:
+        case EcmaOpcode::STTHISBYNAME_IMM16_ID16:
+        case EcmaOpcode::SUSPENDGENERATOR_V8:
+        case EcmaOpcode::DEPRECATED_SUSPENDGENERATOR_PREF_V8_V8:
+        case EcmaOpcode::ASYNCGENERATORRESOLVE_V8_V8_V8:
+            flags |= BytecodeFlags::READ_THIS_OBJECT;
+            break;
+        default:
+            break;
+    }
+}
+
+void BytecodeMetaData::InitNoSideEffectFlag(EcmaOpcode &opcode, uint32_t &flags)
+{
+    switch (opcode) {
+        case EcmaOpcode::GETPROPITERATOR:
+        case EcmaOpcode::TYPEOF_IMM8:
+        case EcmaOpcode::TYPEOF_IMM16:
+        case EcmaOpcode::LDSYMBOL:
+        case EcmaOpcode::LDGLOBAL:
+        case EcmaOpcode::LDBIGINT_ID16:
+        case EcmaOpcode::LDEXTERNALMODULEVAR_IMM8:
+        case EcmaOpcode::WIDE_LDEXTERNALMODULEVAR_PREF_IMM16:
+        case EcmaOpcode::GETMODULENAMESPACE_IMM8:
+        case EcmaOpcode::WIDE_GETMODULENAMESPACE_PREF_IMM16:
+        case EcmaOpcode::ISTRUE:
+        case EcmaOpcode::ISFALSE:
+        case EcmaOpcode::CALLRUNTIME_ISTRUE_PREF_IMM8:
+        case EcmaOpcode::CALLRUNTIME_ISFALSE_PREF_IMM8:
+        case EcmaOpcode::LDGLOBALVAR_IMM16_ID16:
+        case EcmaOpcode::LDOBJBYINDEX_IMM8_IMM16:
+        case EcmaOpcode::LDOBJBYINDEX_IMM16_IMM16:
+        case EcmaOpcode::WIDE_LDOBJBYINDEX_PREF_IMM32:
+        case EcmaOpcode::LDLEXVAR_IMM4_IMM4:
+        case EcmaOpcode::LDLEXVAR_IMM8_IMM8:
+        case EcmaOpcode::WIDE_LDLEXVAR_PREF_IMM16_IMM16:
+        case EcmaOpcode::CALLRUNTIME_LDSENDABLEVAR_PREF_IMM4_IMM4:
+        case EcmaOpcode::CALLRUNTIME_LDSENDABLEVAR_PREF_IMM8_IMM8:
+        case EcmaOpcode::CALLRUNTIME_WIDELDSENDABLEVAR_PREF_IMM16_IMM16:
+        case EcmaOpcode::WIDE_LDPATCHVAR_PREF_IMM16:
+        case EcmaOpcode::LDLOCALMODULEVAR_IMM8:
+        case EcmaOpcode::WIDE_LDLOCALMODULEVAR_PREF_IMM16:
+        case EcmaOpcode::LDA_STR_ID16:
+        case EcmaOpcode::CALLRUNTIME_LDSENDABLECLASS_PREF_IMM16:
+        case EcmaOpcode::MOV_V4_V4:
+        case EcmaOpcode::MOV_V8_V8:
+        case EcmaOpcode::MOV_V16_V16:
+        case EcmaOpcode::STA_V8:
+        case EcmaOpcode::LDA_V8:
+        case EcmaOpcode::LDNAN:
+        case EcmaOpcode::LDINFINITY:
+        case EcmaOpcode::LDUNDEFINED:
+        case EcmaOpcode::LDNULL:
+        case EcmaOpcode::LDTRUE:
+        case EcmaOpcode::LDFALSE:
+        case EcmaOpcode::LDHOLE:
+        case EcmaOpcode::LDAI_IMM32:
+        case EcmaOpcode::FLDAI_IMM64:
+        case EcmaOpcode::LDFUNCTION:
+        case EcmaOpcode::RETURN:
+        case EcmaOpcode::RETURNUNDEFINED:
+        case EcmaOpcode::NOP:
+        case EcmaOpcode::JEQZ_IMM8:
+        case EcmaOpcode::JEQZ_IMM16:
+        case EcmaOpcode::JEQZ_IMM32:
+        case EcmaOpcode::JNEZ_IMM8:
+        case EcmaOpcode::JNEZ_IMM16:
+        case EcmaOpcode::JNEZ_IMM32:
+        case EcmaOpcode::JMP_IMM8:
+        case EcmaOpcode::JMP_IMM16:
+        case EcmaOpcode::JMP_IMM32:
+            flags |= BytecodeFlags::NO_SIDE_EFFECTS;
+            break;
+        default:
+            break;
+    }
+}
+
+void BytecodeMetaData::InitNoGCFlag(EcmaOpcode &opcode, uint32_t &flags)
+{
+    switch (opcode) {
+        case EcmaOpcode::MOV_V4_V4:
+        case EcmaOpcode::MOV_V8_V8:
+        case EcmaOpcode::MOV_V16_V16:
+        case EcmaOpcode::STA_V8:
+        case EcmaOpcode::LDA_V8:
+        case EcmaOpcode::LDHOLE:
+        case EcmaOpcode::LDAI_IMM32:
+        case EcmaOpcode::FLDAI_IMM64:
+        case EcmaOpcode::LDFUNCTION:
+        case EcmaOpcode::TYPEOF_IMM8:
+        case EcmaOpcode::TYPEOF_IMM16:
+        case EcmaOpcode::LDNAN:
+        case EcmaOpcode::LDINFINITY:
+        case EcmaOpcode::LDUNDEFINED:
+        case EcmaOpcode::LDNULL:
+        case EcmaOpcode::LDTRUE:
+        case EcmaOpcode::LDFALSE:
+        case EcmaOpcode::LDSYMBOL:
+        case EcmaOpcode::LDGLOBAL:
+        case EcmaOpcode::LDBIGINT_ID16:
+        case EcmaOpcode::LDLEXVAR_IMM4_IMM4:
+        case EcmaOpcode::LDLEXVAR_IMM8_IMM8:
+        case EcmaOpcode::WIDE_LDLEXVAR_PREF_IMM16_IMM16:
+        case EcmaOpcode::CALLRUNTIME_LDSENDABLEVAR_PREF_IMM4_IMM4:
+        case EcmaOpcode::CALLRUNTIME_LDSENDABLEVAR_PREF_IMM8_IMM8:
+        case EcmaOpcode::CALLRUNTIME_WIDELDSENDABLEVAR_PREF_IMM16_IMM16:
+        case EcmaOpcode::WIDE_LDPATCHVAR_PREF_IMM16:
+        case EcmaOpcode::LDA_STR_ID16:
+        case EcmaOpcode::CALLRUNTIME_LDSENDABLECLASS_PREF_IMM16:
+        case EcmaOpcode::RETURN:
+        case EcmaOpcode::RETURNUNDEFINED:
+            flags |= BytecodeFlags::NO_GC;
+            break;
+        default:
+            break;
+    }
+}
+
+void BytecodeMetaData::InitNoThrowFlag(EcmaOpcode &opcode, uint32_t &flags)
+{
+    switch (opcode) {
+        case EcmaOpcode::MOV_V4_V4:
+        case EcmaOpcode::MOV_V8_V8:
+        case EcmaOpcode::MOV_V16_V16:
+        case EcmaOpcode::STA_V8:
+        case EcmaOpcode::LDA_V8:
+        case EcmaOpcode::LDNAN:
+        case EcmaOpcode::LDINFINITY:
+        case EcmaOpcode::LDUNDEFINED:
+        case EcmaOpcode::LDNULL:
+        case EcmaOpcode::LDTRUE:
+        case EcmaOpcode::LDFALSE:
+        case EcmaOpcode::LDHOLE:
+        case EcmaOpcode::LDAI_IMM32:
+        case EcmaOpcode::FLDAI_IMM64:
+        case EcmaOpcode::LDFUNCTION:
+        case EcmaOpcode::LDA_STR_ID16:
+        case EcmaOpcode::TYPEOF_IMM8:
+        case EcmaOpcode::TYPEOF_IMM16:
+        case EcmaOpcode::ISTRUE:
+        case EcmaOpcode::ISFALSE:
+        case EcmaOpcode::CALLRUNTIME_ISTRUE_PREF_IMM8:
+        case EcmaOpcode::CALLRUNTIME_ISFALSE_PREF_IMM8:
+        case EcmaOpcode::JEQZ_IMM8:
+        case EcmaOpcode::JEQZ_IMM16:
+        case EcmaOpcode::JEQZ_IMM32:
+        case EcmaOpcode::JNEZ_IMM8:
+        case EcmaOpcode::JNEZ_IMM16:
+        case EcmaOpcode::JNEZ_IMM32:
+        case EcmaOpcode::JMP_IMM8:
+        case EcmaOpcode::JMP_IMM16:
+        case EcmaOpcode::JMP_IMM32:
+        case EcmaOpcode::STMODULEVAR_IMM8:
+        case EcmaOpcode::WIDE_STMODULEVAR_PREF_IMM16:
+        case EcmaOpcode::LDEXTERNALMODULEVAR_IMM8:
+        case EcmaOpcode::WIDE_LDEXTERNALMODULEVAR_PREF_IMM16:
+        case EcmaOpcode::NEWLEXENV_IMM8:
+        case EcmaOpcode::WIDE_NEWLEXENV_PREF_IMM16:
+        case EcmaOpcode::CALLRUNTIME_NEWSENDABLEENV_PREF_IMM8:
+        case EcmaOpcode::CALLRUNTIME_WIDENEWSENDABLEENV_PREF_IMM16:
+        case EcmaOpcode::POPLEXENV:
+        case EcmaOpcode::NEWLEXENVWITHNAME_IMM8_ID16:
+        case EcmaOpcode::WIDE_NEWLEXENVWITHNAME_PREF_IMM16_ID16:
+        case EcmaOpcode::ASYNCFUNCTIONENTER:
+        case EcmaOpcode::SETGENERATORSTATE_IMM8:
+        case EcmaOpcode::GETRESUMEMODE:
+        case EcmaOpcode::RESUMEGENERATOR:
+        case EcmaOpcode::RETURN:
+        case EcmaOpcode::RETURNUNDEFINED:
+        case EcmaOpcode::LDLEXVAR_IMM4_IMM4:
+        case EcmaOpcode::LDLEXVAR_IMM8_IMM8:
+        case EcmaOpcode::WIDE_LDLEXVAR_PREF_IMM16_IMM16:
+        case EcmaOpcode::CALLRUNTIME_LDSENDABLEVAR_PREF_IMM4_IMM4:
+        case EcmaOpcode::CALLRUNTIME_LDSENDABLEVAR_PREF_IMM8_IMM8:
+        case EcmaOpcode::CALLRUNTIME_WIDELDSENDABLEVAR_PREF_IMM16_IMM16:
+        case EcmaOpcode::STLEXVAR_IMM4_IMM4:
+        case EcmaOpcode::STLEXVAR_IMM8_IMM8:
+        case EcmaOpcode::WIDE_STLEXVAR_PREF_IMM16_IMM16:
+        case EcmaOpcode::CALLRUNTIME_STSENDABLEVAR_PREF_IMM4_IMM4:
+        case EcmaOpcode::CALLRUNTIME_STSENDABLEVAR_PREF_IMM8_IMM8:
+        case EcmaOpcode::CALLRUNTIME_WIDESTSENDABLEVAR_PREF_IMM16_IMM16:
+        case EcmaOpcode::STRICTNOTEQ_IMM8_V8:
+        case EcmaOpcode::STRICTEQ_IMM8_V8:
+        case EcmaOpcode::CREATEEMPTYARRAY_IMM8:
+        case EcmaOpcode::CREATEEMPTYARRAY_IMM16:
+        case EcmaOpcode::CREATEEMPTYOBJECT:
+        case EcmaOpcode::CREATEARRAYWITHBUFFER_IMM8_ID16:
+        case EcmaOpcode::CREATEARRAYWITHBUFFER_IMM16_ID16:
+        case EcmaOpcode::CREATEITERRESULTOBJ_V8_V8:
+        case EcmaOpcode::DEFINEFUNC_IMM8_ID16_IMM8:
+        case EcmaOpcode::DEFINEFUNC_IMM16_ID16_IMM8:
+        case EcmaOpcode::DEFINEMETHOD_IMM8_ID16_IMM8:
+        case EcmaOpcode::DEFINEMETHOD_IMM16_ID16_IMM8:
+        case EcmaOpcode::CALLRUNTIME_LDSENDABLECLASS_PREF_IMM16:
+        case EcmaOpcode::DEBUGGER:
+        case EcmaOpcode::NOP:
+            flags |= BytecodeFlags::NO_THROW;
+            break;
+        default:
+            break;
+    }
+}
+
+void BytecodeMetaData::InitBytecodeKind(EcmaOpcode &opcode, BytecodeKind &kind)
+{
+    if (InitMovKind(opcode, kind)) {
+        return;
+    }
+    if (InitSetConstantKind(opcode, kind)) {
+        return;
+    }
+    if (InitCallBCKind(opcode, kind)) {
+        return;
+    }
+    if (InitRetrunKind(opcode, kind)) {
+        return;
+    }
+    if (InitSuspendKind(opcode, kind)) {
+        return;
+    }
+    if (InitResumeKind(opcode, kind)) {
+        return;
+    }
+    if (InitDiscardedKind(opcode, kind)) {
+        return;
+    }
+    if (InitThrowKind(opcode, kind)) {
+        return;
+    }
+    if (InitConditionJumpKind(opcode, kind)) {
+        return;
+    }
+    if (InitJumpIMMKind(opcode, kind)) {
+        return;
+    }
+    if (InitGeneratorResolveKind(opcode, kind)) {
+        return;
+    }
+    InitAccessorKind(opcode, kind);
+}
+
+bool BytecodeMetaData::InitAccessorKind(EcmaOpcode &opcode, BytecodeKind &kind)
+{
+    switch (opcode) {
         case EcmaOpcode::LDOBJBYNAME_IMM8_ID16:
         case EcmaOpcode::LDOBJBYNAME_IMM16_ID16:
         case EcmaOpcode::LDTHISBYNAME_IMM8_ID16:
@@ -516,26 +626,182 @@ BytecodeMetaData BytecodeMetaData::InitBytecodeMetaData(const uint8_t *pc)
         case EcmaOpcode::DEFINEFIELDBYNAME_IMM8_ID16_V8:
         case EcmaOpcode::DEFINEPROPERTYBYNAME_IMM8_ID16_V8:
             kind = BytecodeKind::ACCESSOR_BC;
-            break;
+            return true;
         default:
-            break;
+            return false;
     }
+    return false;
+}
 
-    if (kind == BytecodeKind::GENERAL ||
-        kind == BytecodeKind::THROW_BC ||
-        kind == BytecodeKind::RESUME ||
-        kind == BytecodeKind::SUSPEND ||
-        kind == BytecodeKind::GENERATOR_RESOLVE ||
-        kind == BytecodeKind::CALL_BC ||
-        kind == BytecodeKind::ACCESSOR_BC) {
-        flags |= BytecodeFlags::GENERAL_BC;
+bool BytecodeMetaData::InitGeneratorResolveKind(EcmaOpcode &opcode, BytecodeKind &kind)
+{
+    switch (opcode) {
+        case EcmaOpcode::ASYNCGENERATORRESOLVE_V8_V8_V8:
+            kind = BytecodeKind::GENERATOR_RESOLVE;
+            return true;
+        default:
+            return false;
     }
-    auto size = inst.GetSize();
-    auto vregCount = GetVRegCount(inst);
-    uint64_t value = SizeField::Encode(size) | KindField::Encode(kind) |
-                     FlagsField::Encode(static_cast<BytecodeFlags>(flags)) |
-                     OpcodeField::Encode(inst.GetOpcode()) | VRegCountField::Encode(vregCount);
-    return BytecodeMetaData(value);
+    return false;
+}
+
+bool BytecodeMetaData::InitJumpIMMKind(EcmaOpcode &opcode, BytecodeKind &kind)
+{
+    switch (opcode) {
+        case EcmaOpcode::JMP_IMM8:
+        case EcmaOpcode::JMP_IMM16:
+        case EcmaOpcode::JMP_IMM32:
+            kind = BytecodeKind::JUMP_IMM;
+            return true;
+        default:
+            return false;
+    }
+    return false;
+}
+
+bool BytecodeMetaData::InitConditionJumpKind(EcmaOpcode &opcode, BytecodeKind &kind)
+{
+    switch (opcode) {
+        case EcmaOpcode::JEQZ_IMM8:
+        case EcmaOpcode::JEQZ_IMM16:
+        case EcmaOpcode::JEQZ_IMM32:
+        case EcmaOpcode::JNEZ_IMM8:
+        case EcmaOpcode::JNEZ_IMM16:
+        case EcmaOpcode::JNEZ_IMM32:
+            kind = BytecodeKind::CONDITIONAL_JUMP;
+            return true;
+        default:
+            return false;
+    }
+    return false;
+}
+
+bool BytecodeMetaData::InitThrowKind(EcmaOpcode &opcode, BytecodeKind &kind)
+{
+    switch (opcode) {
+        case EcmaOpcode::THROW_PREF_NONE:
+        case EcmaOpcode::THROW_NOTEXISTS_PREF_NONE:
+        case EcmaOpcode::THROW_PATTERNNONCOERCIBLE_PREF_NONE:
+        case EcmaOpcode::THROW_DELETESUPERPROPERTY_PREF_NONE:
+        case EcmaOpcode::THROW_CONSTASSIGNMENT_PREF_V8:
+            kind = BytecodeKind::THROW_BC;
+            return true;
+        default:
+            return false;
+    }
+    return false;
+}
+
+bool BytecodeMetaData::InitDiscardedKind(EcmaOpcode &opcode, BytecodeKind &kind)
+{
+    switch (opcode) {
+        case EcmaOpcode::NOP:
+            kind = BytecodeKind::DISCARDED;
+            return true;
+        default:
+            return false;
+    }
+    return false;
+}
+
+bool BytecodeMetaData::InitMovKind(EcmaOpcode &opcode, BytecodeKind &kind)
+{
+    switch (opcode) {
+        case EcmaOpcode::MOV_V4_V4:
+        case EcmaOpcode::MOV_V8_V8:
+        case EcmaOpcode::MOV_V16_V16:
+        case EcmaOpcode::STA_V8:
+        case EcmaOpcode::LDA_V8:
+            kind = BytecodeKind::MOV;
+            return true;
+        default:
+            return false;
+    }
+    return false;
+}
+
+bool BytecodeMetaData::InitSetConstantKind(EcmaOpcode &opcode, BytecodeKind &kind)
+{
+    switch (opcode) {
+        case EcmaOpcode::LDNAN:
+        case EcmaOpcode::LDINFINITY:
+        case EcmaOpcode::LDUNDEFINED:
+        case EcmaOpcode::LDNULL:
+        case EcmaOpcode::LDTRUE:
+        case EcmaOpcode::LDFALSE:
+        case EcmaOpcode::LDHOLE:
+        case EcmaOpcode::LDAI_IMM32:
+        case EcmaOpcode::FLDAI_IMM64:
+        case EcmaOpcode::LDFUNCTION:
+            kind = BytecodeKind::SET_CONSTANT;
+            return true;
+        default:
+            return false;
+    }
+    return false;
+}
+
+bool BytecodeMetaData::InitCallBCKind(EcmaOpcode &opcode, BytecodeKind &kind)
+{
+    switch (opcode) {
+        case EcmaOpcode::CALLTHIS1_IMM8_V8_V8:
+        case EcmaOpcode::CALLARG0_IMM8:
+        case EcmaOpcode::CALLARG1_IMM8_V8:
+        case EcmaOpcode::CALLARGS2_IMM8_V8_V8:
+        case EcmaOpcode::CALLARGS3_IMM8_V8_V8_V8:
+        case EcmaOpcode::CALLRANGE_IMM8_IMM8_V8:
+        case EcmaOpcode::CALLTHIS0_IMM8_V8:
+        case EcmaOpcode::CALLTHIS2_IMM8_V8_V8_V8:
+        case EcmaOpcode::CALLTHIS3_IMM8_V8_V8_V8_V8:
+        case EcmaOpcode::CALLTHISRANGE_IMM8_IMM8_V8:
+        case EcmaOpcode::CALLRUNTIME_CALLINIT_PREF_IMM8_V8:
+        case EcmaOpcode::NEWOBJRANGE_IMM8_IMM8_V8:
+        case EcmaOpcode::NEWOBJRANGE_IMM16_IMM8_V8:
+        case EcmaOpcode::WIDE_NEWOBJRANGE_PREF_IMM16_V8:
+            kind = BytecodeKind::CALL_BC;
+            return true;
+        default:
+            return false;
+    }
+    return false;
+}
+
+bool BytecodeMetaData::InitRetrunKind(EcmaOpcode &opcode, BytecodeKind &kind)
+{
+    switch (opcode) {
+        case EcmaOpcode::RETURN:
+        case EcmaOpcode::RETURNUNDEFINED:
+            kind = BytecodeKind::RETURN_BC;
+            return true;
+        default:
+            return false;
+    }
+    return false;
+}
+
+bool BytecodeMetaData::InitSuspendKind(EcmaOpcode &opcode, BytecodeKind &kind)
+{
+    switch (opcode) {
+        case EcmaOpcode::SUSPENDGENERATOR_V8:
+        case EcmaOpcode::DEPRECATED_SUSPENDGENERATOR_PREF_V8_V8:
+            kind = BytecodeKind::SUSPEND;
+            return true;
+        default:
+            return false;
+    }
+    return false;
+}
+
+bool BytecodeMetaData::InitResumeKind(EcmaOpcode &opcode, BytecodeKind &kind)
+{
+    switch (opcode) {
+        case EcmaOpcode::RESUMEGENERATOR:
+            kind = BytecodeKind::RESUME;
+            return true;
+        default:
+            return false;
+    }
+    return false;
 }
 
 // static
