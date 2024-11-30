@@ -1429,6 +1429,11 @@ JSTaggedValue RuntimeStubs::RuntimeLdSendableExternalModuleVar(JSThread *thread,
     return SharedModuleManager::GetInstance()->GetSendableModuleValue(thread, index, jsFunc);
 }
 
+JSTaggedValue RuntimeStubs::RuntimeLdSendableLocalModuleVar(JSThread* thread, int32_t index, JSTaggedValue jsFunc)
+{
+    return SharedModuleManager::GetInstance()->GetSendableModuleValueInner(thread, index, jsFunc);
+}
+
 JSTaggedValue RuntimeStubs::RuntimeLdExternalModuleVar(JSThread *thread, int32_t index, JSTaggedValue jsFunc)
 {
     return thread->GetCurrentEcmaContext()->GetModuleManager()->GetModuleValueOutter(index, jsFunc);

@@ -3321,6 +3321,20 @@ void InterpreterAssembly::HandleCallRuntimeWideLdsendableexternalmodulevarPrefIm
     DISPATCH(CALLRUNTIME_WIDELDSENDABLEEXTERNALMODULEVAR_PREF_IMM16);
 }
 
+void InterpreterAssembly::HandleCallRuntimeWideLdsendablelocalmodulevarPrefImm16(
+    JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
+    JSTaggedValue acc, int16_t hotnessCounter)
+{
+    int32_t index = READ_INST_16_1();
+    JSTaggedValue thisFunc = GetFunction(sp);
+    LOG_INST() << "intrinsics::ldsendablelocalmodulevar index:" << index;
+
+    JSTaggedValue moduleVar = SlowRuntimeStub::LdSendableLocalModuleVar(thread, index, thisFunc);
+    INTERPRETER_RETURN_IF_ABRUPT(moduleVar);
+    SET_ACC(moduleVar);
+    DISPATCH(CALLRUNTIME_WIDELDSENDABLELOCALMODULEVAR_PREF_IMM16);
+}
+
 void InterpreterAssembly::HandleWideLdlocalmodulevarPrefImm16(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)

@@ -42,6 +42,8 @@ public:
         resolvedSharedModules_.clear();
     }
 
+    JSTaggedValue GetSendableModuleValueInner(JSThread *thread, int32_t index, JSTaggedValue jsFunc);
+
     JSTaggedValue GetSendableModuleValue(JSThread *thread, int32_t index, JSTaggedValue jsFunc);
 
     JSTaggedValue GetSendableModuleValueImpl(JSThread *thread, int32_t index, JSTaggedValue currentModule) const;

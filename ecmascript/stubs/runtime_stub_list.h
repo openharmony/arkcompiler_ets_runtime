@@ -324,6 +324,7 @@ namespace panda::ecmascript {
     V(LdExternalModuleVarByIndex)               \
     V(LdExternalModuleVarByIndexWithModule)     \
     V(LdSendableExternalModuleVarByIndex)       \
+    V(LdSendableLocalModuleVarByIndex)          \
     V(LdLazyExternalModuleVarByIndex)           \
     V(LdLazySendableExternalModuleVarByIndex)   \
     V(LdLocalModuleVarByIndexOnJSFunc)          \
