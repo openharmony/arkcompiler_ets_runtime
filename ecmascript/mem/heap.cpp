@@ -57,6 +57,7 @@ static constexpr uint64_t HEAP_DUMP_REPORT_INTERVAL = 24 * 3600 * 1000;
 static bool g_betaVersion = OHOS::system::GetParameter("const.logsystem.versiontype", "unknown") == "beta";
 static bool g_developMode = (OHOS::system::GetParameter("persist.hiview.leak_detector", "unknown") == "enable") ||
                             (OHOS::system::GetParameter("persist.hiview.leak_detector", "unknown") == "true");
+static bool g_futVersion = OHOS::system::GetIntParameter("const.product.dfx.fans.stage", 0) == 1;
 #endif
 
 namespace panda::ecmascript {
@@ -702,7 +703,7 @@ void SharedHeap::DumpHeapSnapshotBeforeOOM([[maybe_unused]]bool isFullGC, [[mayb
                                            [[maybe_unused]] SharedHeapOOMSource source)
 {
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT) && defined(PANDA_TARGET_OHOS) && defined(ENABLE_HISYSEVENT)
-    if (!g_betaVersion && !g_developMode) {
+    if (!g_betaVersion && !g_developMode && !g_futVersion) {
         LOG_ECMA(INFO)
             << "SharedHeap::DumpHeapSnapshotBeforeOOM, current device is not development or beta! do not dump";
         return;
@@ -1588,7 +1589,7 @@ void BaseHeap::OnAllocateEvent([[maybe_unused]] EcmaVM *ecmaVm, [[maybe_unused]]
 void Heap::DumpHeapSnapshotBeforeOOM([[maybe_unused]] bool isFullGC)
 {
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT) && defined(PANDA_TARGET_OHOS) && defined(ENABLE_HISYSEVENT)
-    if (!g_betaVersion && !g_developMode) {
+    if (!g_betaVersion && !g_developMode && !g_futVersion) {
         LOG_ECMA(INFO)
             << "Heap::DumpHeapSnapshotBeforeOOM, current device is not development or beta! do not dump";
         return;
