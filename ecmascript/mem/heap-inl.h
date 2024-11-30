@@ -496,7 +496,7 @@ TaggedObject *Heap::AllocateMachineCodeObject(JSHClass *hclass, size_t size, Mac
 
     // Jit Fort enabled
     ASSERT(GetEcmaVM()->GetJSOptions().GetEnableJitFort());
-    if (!GetEcmaVM()->GetJSOptions().GetEnableAsyncCopyToFort() || !desc->isAsyncCompileMode) {
+    if (!GetEcmaVM()->GetJSOptions().GetEnableAsyncCopyToFort()) {
         desc->instructionsAddr = 0;
         if (size <= MAX_REGULAR_HEAP_OBJECT_SIZE) {
             // for non huge code cache obj, allocate fort space before allocating the code object
