@@ -235,6 +235,8 @@ void BytecodeMetaData::InitReadFuncFlag(EcmaOpcode &opcode, uint32_t &flags)
         case EcmaOpcode::CALLRUNTIME_DEFINESENDABLECLASS_PREF_IMM16_ID16_ID16_IMM16_V8:
         case EcmaOpcode::CALLRUNTIME_LDSENDABLEEXTERNALMODULEVAR_PREF_IMM8:
         case EcmaOpcode::CALLRUNTIME_WIDELDSENDABLEEXTERNALMODULEVAR_PREF_IMM16:
+        case EcmaOpcode::CALLRUNTIME_LDSENDABLELOCALMODULEVAR_PREF_IMM8:
+        case EcmaOpcode::CALLRUNTIME_WIDELDSENDABLELOCALMODULEVAR_PREF_IMM16:
         case EcmaOpcode::CALLRUNTIME_STSENDABLEVAR_PREF_IMM4_IMM4:
         case EcmaOpcode::CALLRUNTIME_STSENDABLEVAR_PREF_IMM8_IMM8:
         case EcmaOpcode::CALLRUNTIME_WIDESTSENDABLEVAR_PREF_IMM16_IMM16:
@@ -1507,6 +1509,16 @@ void BytecodeInfo::InitBytecodeInfo(BytecodeCircuitBuilder *builder,
             break;
         }
         case EcmaOpcode::CALLRUNTIME_WIDELDSENDABLEEXTERNALMODULEVAR_PREF_IMM16: {
+            int32_t index = READ_INST_16_1();
+            info.inputs.emplace_back(Immediate(index));
+            break;
+        }
+        case EcmaOpcode::CALLRUNTIME_LDSENDABLELOCALMODULEVAR_PREF_IMM8: {
+            int32_t index = READ_INST_8_1();
+            info.inputs.emplace_back(Immediate(index));
+            break;
+        }
+        case EcmaOpcode::CALLRUNTIME_WIDELDSENDABLELOCALMODULEVAR_PREF_IMM16: {
             int32_t index = READ_INST_16_1();
             info.inputs.emplace_back(Immediate(index));
             break;

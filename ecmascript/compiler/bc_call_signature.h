@@ -397,7 +397,9 @@ namespace panda::ecmascript::kungfu {
     T(HandleCallRuntimeWideLdLazyModuleVarPrefImm16)                      \
     T(HandleCallRuntimeLdLazySendableModuleVarPrefImm8)                   \
     T(HandleCallRuntimeWideLdLazySendableModuleVarPrefImm16)              \
-    T(HandleCallRuntimeSuperCallForwardAllArgsV8)
+    T(HandleCallRuntimeSuperCallForwardAllArgsV8)                         \
+    T(HandleCallRuntimeLdsendablelocalmodulevarImm8)                      \
+    T(HandleCallRuntimeWideLdsendablelocalmodulevarPrefImm16)
 
 #define ASM_INTERPRETER_BC_HELPER_STUB_LIST(V)          \
     V(SingleStepDebugging)                              \

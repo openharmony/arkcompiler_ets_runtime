@@ -347,6 +347,8 @@ namespace panda::ecmascript::kungfu {
     V(CALLRUNTIME_WIDELDLAZYMODULEVAR_PREF_IMM16)                          \
     V(CALLRUNTIME_LDLAZYSENDABLEMODULEVAR_PREF_IMM8)                       \
     V(CALLRUNTIME_WIDELDLAZYSENDABLEMODULEVAR_PREF_IMM16)                  \
+    V(CALLRUNTIME_LDSENDABLELOCALMODULEVAR_PREF_IMM8)                      \
+    V(CALLRUNTIME_WIDELDSENDABLELOCALMODULEVAR_PREF_IMM16)                 \
 
 inline std::string GetEcmaOpcodeStr(EcmaOpcode opcode)
 {
