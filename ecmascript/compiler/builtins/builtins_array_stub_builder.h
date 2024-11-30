@@ -59,7 +59,7 @@ BUILTINS_WITH_ARRAY_STUB_BUILDER(DECLARE_BUILTINS_ARRAY_STUB_BUILDER)
 
     GateRef CalculatePositionWithLength(GateRef position, GateRef length);
 
-    GateRef DoSort(GateRef glue, GateRef receiver, GateRef receiverState,
+    GateRef DoSort(GateRef glue, GateRef receiver, bool isToSorted,
         Variable *result, Label *exit, Label *slowPath, GateRef hir = Circuit::NullGate());
 
     void FastReverse(GateRef glue, GateRef thisValue, GateRef len,
@@ -93,6 +93,8 @@ private:
     void SliceOptimised(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *result, Label *exit,
                           Label *slowPath);
     GateRef DoSortOptimised(GateRef glue, GateRef receiver, GateRef receiverState, Variable *result, Label *exit,
+                            Label *slowPath, GateRef hir);
+    GateRef DoSortOptimisedFast(GateRef glue, GateRef receiver, Variable *result, Label *exit,
                             Label *slowPath, GateRef hir);
     void ToReversedOptimised(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *result, Label *exit,
                              Label *slowPath);

@@ -509,3 +509,22 @@ print(sortNumber7[6]);
     ];
     print(array1.toSorted());
 }
+
+{
+    // double sort need barrier
+    let arrayInt = new Array(3,2,1,0);
+    print(arrayInt.sort());
+    let arrayHoleInt = new Array(4);
+    arrayHoleInt[1] = 4;
+    arrayHoleInt[3] = 2;
+    arrayHoleInt[4] = 1;
+    print(arrayHoleInt.sort());
+
+    let arrayNumber = new Array(3.1, 2.1, 1.1, 0);
+    print(arrayNumber.sort());
+    let arrayHoleNumber = new Array(4);
+    arrayHoleNumber[1] = 4.1;
+    arrayHoleNumber[3] = 2.1;
+    arrayHoleNumber[4] = 1.1;
+    print(arrayHoleNumber.sort());
+}
