@@ -1564,7 +1564,7 @@ void BuiltinsArrayStubBuilder::SortAfterArgs(GateRef glue, GateRef thisValue,
     Bind(&notCOWArray);
     BRANCH(TaggedIsUndefined(callbackFnHandle), &argUndefined, slowPath);
     Bind(&argUndefined);
-    result->WriteVariable(DoSort(glue, thisValue, Boolean(false), result, exit, slowPath, hir));
+    result->WriteVariable(DoSort(glue, thisValue, false, result, exit, slowPath, hir));
     Jump(exit);
 }
 
@@ -1615,15 +1615,41 @@ void BuiltinsArrayStubBuilder::ToSorted(GateRef glue, GateRef thisValue,
     i = Int64Add(*i, Int64(1));
     LoopEnd(&loopHead);
     Bind(&loopExit);
-    result->WriteVariable(DoSort(glue, receiver, Boolean(true), result, exit, slowPath));
+    result->WriteVariable(DoSort(glue, receiver, true, result, exit, slowPath));
     Jump(exit);
 }
 
-GateRef BuiltinsArrayStubBuilder::DoSort(GateRef glue, GateRef receiver, GateRef receiverState,
+GateRef BuiltinsArrayStubBuilder::DoSort(GateRef glue, GateRef receiver, bool isToSorted,
     Variable *result, Label *exit, Label *slowPath, GateRef hir)
 {
 #if ENABLE_NEXT_OPTIMIZATION
-    return DoSortOptimised(glue, receiver, receiverState, result, exit, slowPath, hir);
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit1(env);
+    Label fastPath(env);
+    Label slowPath1(env);
+    DEFVARIABLE(res, VariableType::JS_ANY(), Undefined());
+    if (isToSorted) {
+        res = DoSortOptimised(glue, receiver, Boolean(true), result, exit, slowPath, hir);
+        Jump(&exit1);
+    } else {
+        BRANCH(IsEnableMutantArray(glue), &slowPath1, &fastPath);
+        Bind(&slowPath1);
+        {
+            res = DoSortOptimised(glue, receiver, Boolean(false), result, exit, slowPath, hir);
+            Jump(&exit1);
+        }
+        Bind(&fastPath);
+        {
+            res = DoSortOptimisedFast(glue, receiver, result, exit, slowPath, hir);
+            Jump(&exit1);
+        }
+    }
+    Bind(&exit1);
+    auto ret = *res;
+    env->SubCfgExit();
+    return ret;
 #else
     auto env = GetEnvironment();
     Label entry(env);

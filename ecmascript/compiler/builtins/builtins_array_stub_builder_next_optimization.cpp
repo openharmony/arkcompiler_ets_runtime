@@ -391,6 +391,146 @@ GateRef BuiltinsArrayStubBuilder::DoSortOptimised(GateRef glue, GateRef receiver
     return receiver;
 }
 
+GateRef BuiltinsArrayStubBuilder::DoSortOptimisedFast(GateRef glue, GateRef receiver,
+    [[maybe_unused]] Variable *result, [[maybe_unused]] Label *exit,
+    Label *slowPath, [[maybe_unused]] GateRef hir)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    GateRef len = ZExtInt32ToInt64(GetArrayLength(receiver));
+    DEFVARIABLE(i, VariableType::INT64(), Int64(1));
+    DEFVARIABLE(presentValue, VariableType::JS_ANY(), Undefined());
+    DEFVARIABLE(middleValue, VariableType::JS_ANY(), Undefined());
+    DEFVARIABLE(previousValue, VariableType::JS_ANY(), Undefined());
+    GateRef elements = GetElementsArray(receiver);
+    Label loopHead(env);
+    Label loopEnd(env);
+    Label next(env);
+    Label loopExit(env);
+    Jump(&loopHead);
+    LoopBegin(&loopHead);
+    {
+        BRANCH(Int64LessThan(*i, len), &next, &loopExit);
+        Bind(&next);
+        DEFVARIABLE(beginIndex, VariableType::INT64(), Int64(0));
+        DEFVARIABLE(endIndex, VariableType::INT64(), *i);
+        Label afterGettingpresentValue(env);
+        presentValue = GetValueFromTaggedArray(elements, TruncInt64ToInt32(*i));
+        Jump(&afterGettingpresentValue);
+        Bind(&afterGettingpresentValue);
+        {
+            Label loopHead1(env);
+            Label loopEnd1(env);
+            Label next1(env);
+            Label loopExit1(env);
+            Jump(&loopHead1);
+            LoopBegin(&loopHead1);
+            {
+                Label afterGettingmiddleValue(env);
+                BRANCH(Int64LessThan(*beginIndex, *endIndex), &next1, &loopExit1);
+                Bind(&next1);
+                GateRef sum = Int64Add(*beginIndex, *endIndex);
+                GateRef middleIndex = Int64Div(sum, Int64(2)); // 2 : half
+                middleValue = GetValueFromTaggedArray(elements, TruncInt64ToInt32(middleIndex));
+                Jump(&afterGettingmiddleValue);
+                Bind(&afterGettingmiddleValue);
+                {
+                    Label intOrDouble(env);
+                    Label notIntAndDouble(env);
+                    Label exchangeIndex(env);
+                    GateRef middleVal = *middleValue;
+                    GateRef presentVal = *presentValue;
+                    DEFVARIABLE(compareResult, VariableType::INT32(), Int32(0));
+                    GateRef intDoubleCheck = BitOr(BitAnd(TaggedIsInt(middleVal), TaggedIsInt(presentVal)),
+                                                   BitAnd(TaggedIsDouble(middleVal), TaggedIsDouble(presentVal)));
+                    BRANCH(intDoubleCheck, &intOrDouble, &notIntAndDouble);
+                    Bind(&intOrDouble);
+                    {
+                        compareResult =
+                            CallNGCRuntime(glue, RTSTUB_ID(FastArraySort), {*middleValue, *presentValue});
+                        Jump(&exchangeIndex);
+                    }
+                    Bind(&notIntAndDouble);
+                    {
+                        Label isString(env);
+                        GateRef strBool = LogicAndBuilder(env)
+                                          .And(TaggedIsString(middleVal))
+                                          .And(TaggedIsString(presentVal))
+                                          .Done();
+                        BRANCH(strBool, &isString, slowPath);
+                        Bind(&isString);
+                        {
+                            compareResult = CallNGCRuntime(glue,
+                                RTSTUB_ID(FastArraySortString), {glue, *middleValue, *presentValue});
+                            Jump(&exchangeIndex);
+                        }
+                    }
+                    Bind(&exchangeIndex);
+                    {
+                        Label less0(env);
+                        Label greater0(env);
+                        BRANCH(Int32LessThanOrEqual(*compareResult, Int32(0)), &less0, &greater0);
+                        Bind(&greater0);
+                        {
+                            endIndex = middleIndex;
+                            Jump(&loopEnd1);
+                        }
+                        Bind(&less0);
+                        {
+                            beginIndex = middleIndex;
+                            beginIndex = Int64Add(*beginIndex, Int64(1));
+                            Jump(&loopEnd1);
+                        }
+                    }
+                }
+            }
+            Bind(&loopEnd1);
+            LoopEnd(&loopHead1);
+            Bind(&loopExit1);
+            Label shouldCopy(env);
+            GateRef isGreater0 = Int64GreaterThanOrEqual(*endIndex, Int64(0));
+            GateRef lessI = Int64LessThan(*endIndex, *i);
+            BRANCH(BitAnd(isGreater0, lessI), &shouldCopy, &loopEnd);
+            Bind(&shouldCopy);
+            {
+                DEFVARIABLE(j, VariableType::INT64(), *i);
+                Label loopHead2(env);
+                Label loopEnd2(env);
+                Label next2(env);
+                Label loopExit2(env);
+                Label receiverIsNew(env);
+                Label receiverIsOrigin(env);
+                Label receiverIsNew2(env);
+                Label receiverIsOrigin2(env);
+                Jump(&loopHead2);
+                LoopBegin(&loopHead2);
+                {
+                    BRANCH(Int64GreaterThan(*j, *endIndex), &next2, &loopExit2);
+                    Bind(&next2);
+                    previousValue = GetValueFromTaggedArray(elements, TruncInt64ToInt32(Int64Sub(*j, Int64(1))));
+                    SetValueToTaggedArray(VariableType::JS_ANY(), glue, elements, TruncInt64ToInt32(*j),
+                                          *previousValue);
+                    Jump(&loopEnd2);
+                }
+                Bind(&loopEnd2);
+                j = Int64Sub(*j, Int64(1));
+                LoopEnd(&loopHead2);
+                Bind(&loopExit2);
+                SetValueToTaggedArray(VariableType::JS_ANY(), glue, elements, TruncInt64ToInt32(*endIndex),
+                                      *presentValue);
+                Jump(&loopEnd);
+            }
+        }
+    }
+    Bind(&loopEnd);
+    i = Int64Add(*i, Int64(1));
+    LoopEnd(&loopHead);
+    Bind(&loopExit);
+    env->SubCfgExit();
+    return receiver;
+}
+
 void BuiltinsArrayStubBuilder::ToReversedOptimised(GateRef glue, GateRef thisValue, [[maybe_unused]] GateRef numArgs,
                                           Variable *result, Label *exit, Label *slowPath)
 {
