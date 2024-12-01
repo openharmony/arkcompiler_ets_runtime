@@ -62,7 +62,7 @@ public:
         return type == TransformType::SENDABLE || type == TransformType::BIGINT;
     }
 
-    static inline void AppendUnicodeEscape(int ch, CString& output)
+    static inline void AppendUnicodeEscape(uint32_t ch, CString& output)
     {
         static constexpr char HEX_DIGIT[] = "0123456789abcdef";
         output += "\\u";

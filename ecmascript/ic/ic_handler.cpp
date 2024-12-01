@@ -41,7 +41,8 @@ JSHandle<JSTaggedValue> LoadHandler::LoadProperty(const JSThread *thread, const 
             JSTaggedValue lenKey = thread->GlobalConstants()->GetLengthString();
             JSHandle<JSTaggedValue> key = op.GetKey();
             EcmaString *proKey = key->IsString() ? EcmaString::Cast(key->GetTaggedObject()) : nullptr;
-            if (EcmaStringAccessor::StringsAreEqual(proKey, EcmaString::Cast(lenKey.GetTaggedObject()))) {
+            if (proKey != nullptr &&
+                EcmaStringAccessor::StringsAreEqual(proKey, EcmaString::Cast(lenKey.GetTaggedObject()))) {
                 KindBit::Set<uint64_t>(HandlerKind::STRING_LENGTH, &handler);
             } else {
                 KindBit::Set<uint64_t>(HandlerKind::STRING, &handler);

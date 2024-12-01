@@ -809,6 +809,7 @@ bool EcmaString::StringsAreEqual(const EcmaVM *vm, const JSHandle<EcmaString> &s
 /* static */
 bool EcmaString::StringsAreEqual(EcmaString *str1, EcmaString *str2)
 {
+    ASSERT(str1 != nullptr && str2 != nullptr);
     if (str1 == str2) {
         return true;
     }

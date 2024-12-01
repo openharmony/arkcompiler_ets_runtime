@@ -101,14 +101,15 @@ void JsonHelper::AppendValueToQuotedString(const CString& str, CString& output)
                     str[i + 2] <= ALONE_SURROGATE_3B_THIRD_END) {   // 2: The second character after ch
                     auto unicodeRes = utf_helper::ConvertUtf8ToUnicodeChar(
                         reinterpret_cast<const uint8_t*>(str.c_str() + i), 3); // 3: Parse 3 characters
-                    AppendUnicodeEscape(static_cast<int>(unicodeRes.first), output);
+                    ASSERT(unicodeRes.first != utf_helper::INVALID_UTF8);
+                    AppendUnicodeEscape(static_cast<uint32_t>(unicodeRes.first), output);
                     i += 2; // 2 : Skip 2 characters
                     break;
                 }
                 [[fallthrough]];
             default:
                 if (ch > 0 && ch < CODE_SPACE) {
-                    AppendUnicodeEscape(static_cast<int>(ch), output);
+                    AppendUnicodeEscape(static_cast<uint32_t>(ch), output);
                 } else {
                     output += ch;
                 }
