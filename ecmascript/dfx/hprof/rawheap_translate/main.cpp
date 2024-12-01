@@ -54,7 +54,10 @@ int Main(const int argc, const char **argv)
             return -1;
         }
     } else {
-        GenerateDumpFileName(outputPath);
+        if (!GenerateDumpFileName(outputPath)) {
+            LOG_ERROR("Generate dump file name failed!\n");
+            return -1;
+        }
     }
 
     LOG_INFO("Main: start to translate rawheap!");

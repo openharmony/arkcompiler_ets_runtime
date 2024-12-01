@@ -327,7 +327,7 @@ void RawHeapTranslate::BuildEdges(const std::shared_ptr<Node> &from, char *hclas
     }
 
     std::string typeName = meta_->GetTypeNameFromHClass(hclass);
-    auto visitor = [&from, this] (std::shared_ptr<MetaData> &metadata, int offset) {
+    auto visitor = [&from, this] (std::shared_ptr<MetaData> &metadata, uint32_t offset) {
         if (!metadata->IsArray()) {
             BuildFieldsEdges(from, metadata, offset);
             return;
@@ -340,7 +340,7 @@ void RawHeapTranslate::BuildEdges(const std::shared_ptr<Node> &from, char *hclas
 }
 
 void RawHeapTranslate::BuildFieldsEdges(
-    const std::shared_ptr<Node> &from, const std::shared_ptr<MetaData> &metadata, int offset)
+    const std::shared_ptr<Node> &from, const std::shared_ptr<MetaData> &metadata, uint32_t offset)
 {
     for (const auto &field : metadata->fields) {
         if (field->size != sizeof(uint64_t) || offset + sizeof(uint64_t) > from->size) {
@@ -372,7 +372,7 @@ void RawHeapTranslate::BuildGlobalEnvEdges(const std::shared_ptr<Node> &from)
 }
 
 void RawHeapTranslate::BuildArrayEdges(
-    const std::shared_ptr<Node> &from, const std::shared_ptr<MetaData> &metadata, int offset)
+    const std::shared_ptr<Node> &from, const std::shared_ptr<MetaData> &metadata, uint32_t offset)
 {
     auto lengthField = FindFieldInMetaData(metadata, "Length");
     auto dataField = FindFieldInMetaData(metadata, "Data");
@@ -402,7 +402,7 @@ void RawHeapTranslate::BuildArrayEdges(
 }
 
 void RawHeapTranslate::BuildDictionaryEdges(
-    const std::shared_ptr<Node> &from, const std::shared_ptr<MetaData> &metadata, int offset)
+    const std::shared_ptr<Node> &from, const std::shared_ptr<MetaData> &metadata, uint32_t offset)
 {
     auto lengthField = FindFieldInMetaData(metadata, "Length");
     auto dataField = FindFieldInMetaData(metadata, "Data");
