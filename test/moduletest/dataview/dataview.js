@@ -109,3 +109,10 @@ try {
 } catch(e) {
     print(e)
 }
+
+try {
+    var dv6 = new DataView(ab, 64, 14);
+    dv6.setFloat64(0x7fffffff, +254, true);
+} catch(e) {
+    print(e)
+}

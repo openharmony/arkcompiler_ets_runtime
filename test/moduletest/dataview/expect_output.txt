@@ -39,3 +39,4 @@ RangeError: integerIndex < 0 or integerIndex > SAFE_NUMBER
 RangeError: integerIndex < 0 or integerIndex > SAFE_NUMBER
 RangeError: integerIndex < 0 or integerIndex > SAFE_NUMBER
 RangeError: integerIndex < 0 or integerIndex > SAFE_NUMBER
+RangeError: getIndex +elementSize > viewSize

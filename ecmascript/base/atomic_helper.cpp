@@ -63,32 +63,27 @@ uint32_t AtomicHelper::ValidateAtomicAccess(JSThread *thread, const JSHandle<JST
     // 2. Let length be typedArray.[[ArrayLength]].
     JSHandle<JSObject> typedArrayObj(typedArray);
     JSHandle<JSTypedArray> srcObj(typedArray);
-    int32_t length = static_cast<int32_t>(srcObj->GetArrayLength());
+    uint32_t length = srcObj->GetArrayLength();
 
     // 3. Let accessIndex be ? ToIndex(requestIndex).
     JSTaggedNumber accessIndex = JSTaggedValue::ToIndex(thread, requestIndex);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, 0);
-    int32_t index = base::NumberHelper::DoubleInRangeInt32(accessIndex.GetNumber());
-
-    // 4. Assert: accessIndex ≥ 0.
-    ASSERT(index >= 0);
-
-    // 5. If accessIndex ≥ length, throw a RangeError exception.
+    uint64_t index = base::NumberHelper::DoubleToUInt64(accessIndex.GetNumber());
+    // 4. If accessIndex ≥ length, throw a RangeError exception.
     if (index >= length) {
         THROW_RANGE_ERROR_AND_RETURN(thread, "Index is overflow.", 0);
     }
 
-    // 6. Let arrayTypeName be typedArray.[[TypedArrayName]].
-    // 7. Let elementSize be the Element Size value specified in Table 60 for arrayTypeName.
-    // 8. Let offset be typedArray.[[ByteOffset]].
+    // 5. Let arrayTypeName be typedArray.[[TypedArrayName]].
+    // 6. Let elementSize be the Element Size value specified in Table 60 for arrayTypeName.
+    // 7. Let offset be typedArray.[[ByteOffset]].
     JSHandle<JSTaggedValue> arrayTypeName(thread, JSTypedArray::Cast(*typedArrayObj)->GetTypedArrayName());
     DataViewType elementType = JSTypedArray::GetTypeFromName(thread, arrayTypeName);
     uint32_t elementSize = TypedArrayHelper::GetSizeFromType(elementType);
     uint32_t offset = srcObj->GetByteOffset();
-    // 9. Return (accessIndex × elementSize) + offset.
-    ASSERT((static_cast<size_t>(index) * static_cast<size_t>(elementSize) +
-        static_cast<size_t>(offset)) <= static_cast<size_t>(UINT32_MAX));
-    uint32_t allOffset = static_cast<uint32_t>(index) * elementSize + offset;
+    // 8. Return (accessIndex × elementSize) + offset.
+    ASSERT(index * elementSize + offset <= UINT32_MAX);
+    uint32_t allOffset = static_cast<uint32_t>(index * elementSize + offset);
     return allOffset;
 }
 
