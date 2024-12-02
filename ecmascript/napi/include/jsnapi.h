@@ -472,6 +472,17 @@ Global<T>::Global(const EcmaVM *vm, const Global<S> &current) : vm_(vm)
     }
 }
 
+
+template<typename T>
+template<typename S>
+void Global<T>::CreateXRefGloablReference(const EcmaVM *vm, const Local<S> &current)
+{
+    vm_ = vm;
+    if (!current.IsEmpty()) {
+        address_ = JSNApi::GetXRefGlobalHandleAddr(vm_, reinterpret_cast<uintptr_t>(*current));
+    }
+}
+
 template<typename T>
 CopyableGlobal<T>::CopyableGlobal(const EcmaVM *vm, const Local<T> &current) : vm_(vm)
 {
@@ -573,6 +584,16 @@ void Global<T>::FreeGlobalHandleAddr()
         return;
     }
     JSNApi::DisposeGlobalHandleAddr(vm_, address_);
+    address_ = 0;
+}
+
+template<typename T>
+void Global<T>::FreeXRefGlobalHandleAddr()
+{
+    if (address_ == 0) {
+        return;
+    }
+    JSNApi::DisposeXRefGlobalHandleAddr(vm_, address_);
     address_ = 0;
 }
 
