@@ -350,22 +350,21 @@ JSTaggedValue BuiltinsDataView::GetViewValue(JSThread *thread, const JSHandle<JS
         THROW_TYPE_ERROR_AND_RETURN(thread, "view is not dataview", JSTaggedValue::Exception());
     }
 
-    int32_t indexInt = 0;
+    uint64_t index = 0;
     if (requestIndex->IsInt()) {
         // fast get index if requestIndex is int
-        indexInt = requestIndex->GetInt();
+        auto indexInt = requestIndex->GetInt();
+        if (indexInt < 0) {
+            THROW_RANGE_ERROR_AND_RETURN(thread, "getIndex < 0", JSTaggedValue::Exception());
+        }
+        index = static_cast<uint64_t>(indexInt);
     } else {
-        // 3. Let numberIndex be ToNumber(requestIndex).
-        JSTaggedNumber numberIndex = JSTaggedValue::ToNumber(thread, requestIndex);
+        // 3. Let numberIndex be ToIndex(requestIndex).
+        JSTaggedNumber numberIndex = JSTaggedValue::ToIndex(thread, requestIndex);
         // 5. ReturnIfAbrupt(getIndex).
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        indexInt = base::NumberHelper::DoubleInRangeInt32(numberIndex.GetNumber());
+        index = base::NumberHelper::DoubleToUInt64(numberIndex.GetNumber());
     }
-    // 6. If numberIndex ≠ getIndex or getIndex < 0, throw a RangeError exception.
-    if (indexInt < 0) {
-        THROW_RANGE_ERROR_AND_RETURN(thread, "getIndex < 0", JSTaggedValue::Exception());
-    }
-    uint32_t index = static_cast<uint32_t>(indexInt);
     // 7. Let isLittleEndian be ToBoolean(isLittleEndian).
     bool isLittleEndian = false;
     if (littleEndian->IsUndefined()) {
@@ -391,7 +390,7 @@ JSTaggedValue BuiltinsDataView::GetViewValue(JSThread *thread, const JSHandle<JS
         THROW_RANGE_ERROR_AND_RETURN(thread, "getIndex +elementSize > viewSize", JSTaggedValue::Exception());
     }
     // 14. Let bufferIndex be getIndex + viewOffset.
-    uint32_t bufferIndex = index + offset;
+    uint32_t bufferIndex = static_cast<uint32_t>(index + offset);
     // 15. Return GetValueFromBuffer(buffer, bufferIndex, type, isLittleEndian).
     return BuiltinsArrayBuffer::GetValueFromBuffer(thread, buffer, bufferIndex, type, isLittleEndian);
 }
@@ -411,20 +410,21 @@ JSTaggedValue BuiltinsDataView::SetViewValue(JSThread *thread, const JSHandle<JS
     if (!view->IsDataView()) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "view is not dataview", JSTaggedValue::Exception());
     }
-    int64_t index = 0;
+    uint64_t index = 0;
     if (requestIndex->IsInt()) {
         // fast get index if requestIndex is int
-        index = requestIndex->GetInt();
+        auto indexInt = requestIndex->GetInt();
+        // If numberIndex ≠ getIndex or getIndex < 0, throw a RangeError exception.
+        if (indexInt < 0) {
+            THROW_RANGE_ERROR_AND_RETURN(thread, "getIndex < 0", JSTaggedValue::Exception());
+        }
+        index = static_cast<uint64_t>(indexInt);
     } else {
         // 3. Let numberIndex be ToNumber(requestIndex).
         JSTaggedNumber numberIndex = JSTaggedValue::ToIndex(thread, requestIndex);
         // 5. ReturnIfAbrupt(getIndex).
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        index = base::NumberHelper::DoubleInRangeInt32(numberIndex.GetNumber());
-    }
-    // 6. If numberIndex ≠ getIndex or getIndex < 0, throw a RangeError exception.
-    if (index < 0) {
-        THROW_RANGE_ERROR_AND_RETURN(thread, "getIndex < 0", JSTaggedValue::Exception());
+        index = base::NumberHelper::DoubleToUInt64(numberIndex.GetNumber());
     }
     JSMutableHandle<JSTaggedValue> numValueHandle = JSMutableHandle<JSTaggedValue>(thread, value);
     if (!value->IsNumber()) {
@@ -452,11 +452,11 @@ JSTaggedValue BuiltinsDataView::SetViewValue(JSThread *thread, const JSHandle<JS
     // 12. Let elementSize be the Number value of the Element Size value specified in Table 49 for Element Type type.
     uint32_t elementSize = JSDataView::GetElementSize(type);
     // 13. If getIndex +elementSize > viewSize, throw a RangeError exception.
-    if (static_cast<uint32_t>(index) + elementSize > size) {
+    if (index + elementSize > size) {
         THROW_RANGE_ERROR_AND_RETURN(thread, "getIndex +elementSize > viewSize", JSTaggedValue::Exception());
     }
     // 14. Let bufferIndex be getIndex + viewOffset.
-    uint32_t bufferIndex = static_cast<uint32_t>(index) + offset;
+    uint32_t bufferIndex = static_cast<uint32_t>(index + offset);
     // 15. Return SetValueFromBuffer(buffer, bufferIndex, type, value, isLittleEndian).
     return BuiltinsArrayBuffer::SetValueInBuffer(thread, buffer, bufferIndex, type, numValueHandle, isLittleEndian);
 }
