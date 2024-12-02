@@ -22,7 +22,6 @@
 #include "ecmascript/js_object-inl.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/runtime_call_id.h"
-#include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
 
 #if !defined(PANDA_TARGET_WINDOWS) && !defined(PANDA_TARGET_MACOS) && !defined(PANDA_TARGET_IOS)
 #include <sys/resource.h>
@@ -99,7 +98,6 @@ JSThread *JSThread::Create(EcmaVM *vm)
     jsThread->glueData_.stackLimit_ = GetAsmStackLimit();
     jsThread->glueData_.stackStart_ = GetCurrentStackPosition();
     jsThread->glueData_.isEnableElementsKind_ = vm->IsEnableElementsKind();
-    jsThread->glueData_.isEnableForceIC_ = ecmascript::pgo::PGOProfilerManager::GetInstance()->IsEnableForceIC();
     jsThread->SetThreadId();
 
     RegisterThread(jsThread);
@@ -215,16 +213,6 @@ void JSThread::SetException(JSTaggedValue exception)
 void JSThread::ClearException()
 {
     glueData_.exception_ = JSTaggedValue::Hole();
-}
-
-void JSThread::SetEnableForceIC(bool isEnableForceIC)
-{
-    glueData_.isEnableForceIC_ = isEnableForceIC;
-}
-
-bool JSThread::IsEnableForceIC() const
-{
-    return glueData_.isEnableForceIC_;
 }
 
 JSTaggedValue JSThread::GetCurrentLexenv() const

@@ -242,7 +242,6 @@ group("ark_aot_ts_test") {
     "pgo_forof_set",
     "pgo_forof_string",
     "pgo_forof_typed_array",
-    "pgo_force_ic",
     "pgo_function_prototype",
     "pgo_gettersetter",
     "pgo_extrainfomap_expand",

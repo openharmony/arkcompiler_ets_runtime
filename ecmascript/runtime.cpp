@@ -60,7 +60,6 @@ void Runtime::CreateIfFirstVm(const JSRuntimeOptions &options)
         MemMapAllocator::GetInstance()->Initialize(ecmascript::DEFAULT_REGION_SIZE);
         PGOProfilerManager::GetInstance()->Initialize(options.GetPGOProfilerPath(),
                                                       options.GetPGOHotnessThreshold());
-        PGOProfilerManager::GetInstance()->SetEnableForceIC(options.IsEnableForceIC());
         ASSERT(instance_ == nullptr);
         instance_ = new Runtime();
         SharedHeap::CreateNewInstance();
