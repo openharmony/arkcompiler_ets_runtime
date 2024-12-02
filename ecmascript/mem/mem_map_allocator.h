@@ -57,8 +57,8 @@ public:
         ASSERT(size == REGULAR_MMAP_SIZE);
         LockHolder lock(lock_);
         if (!memMapCache_.empty()) {
-            MemMap mem = memMapCache_.front();
-            memMapCache_.pop_front();
+            MemMap mem = memMapCache_.back();
+            memMapCache_.pop_back();
             return mem;
         }
         return MemMap();
@@ -273,9 +273,9 @@ public:
 
     MemMap Allocate(const uint32_t threadId, size_t size, size_t alignment,
                     const std::string &spaceName, bool regular, bool isMachineCode,
-                    bool isEnableJitFort);
+                    bool isEnableJitFort, bool shouldPageTag);
 
-    void CacheOrFree(void *mem, size_t size, bool isRegular, size_t cachedSize);
+    void CacheOrFree(void *mem, size_t size, bool isRegular, size_t cachedSize, bool shouldPageTag);
 
 private:
     void InitializeRegularRegionMap(size_t alignment);
