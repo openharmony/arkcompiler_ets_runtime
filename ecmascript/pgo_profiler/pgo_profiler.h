@@ -76,6 +76,8 @@ public:
                                    int32_t pcOffset);
     void ProfileClassRootHClass(JSTaggedType ctor, JSTaggedType rootHcValue,
                                 ProfileType::Kind kind = ProfileType::Kind::ClassId);
+    void ProfileNapiRootHClass(JSTaggedType ctor, JSTaggedType rootHcValue,
+        ProfileType::Kind kind = ProfileType::Kind::NapiId);
     void UpdateRootProfileTypeSafe(JSHClass* oldHClass, JSHClass* newHClass);
 
     void InitJITProfiler();

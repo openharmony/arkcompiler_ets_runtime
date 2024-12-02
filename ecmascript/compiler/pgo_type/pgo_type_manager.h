@@ -164,6 +164,7 @@ private:
     void GenConstantIndexInfo();
     void GenProtoTransitionInfo();
 
+    bool IsNapiIhc(ProfileType rootType, ProfileType childType);
     uint32_t GetSymbolCountFromHClassData();
 
     // opt to std::unordered_map

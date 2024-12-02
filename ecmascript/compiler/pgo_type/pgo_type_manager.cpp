@@ -126,16 +126,22 @@ void PGOTypeManager::GenSymbolInfo()
     aotSnapshot_.StoreSymbolInfo(symbolInfo);
 }
 
+bool PGOTypeManager::IsNapiIhc(ProfileType rootType, ProfileType childType)
+{
+    // If the rootType is NapiType and the childType is root, it must be napi object's ihc.
+    return rootType.IsNapiType() && childType.IsRootType();
+}
+
 void PGOTypeManager::GenHClassInfo()
 {
-    uint32_t count = 1; // For object literal hclass cache
+    uint32_t count = 2; // For object literal hclass cache and Napi root type.
     for (auto& root: hcData_) {
         count += root.second.size();
     }
 
     ObjectFactory* factory = thread_->GetEcmaVM()->GetFactory();
     JSHandle<TaggedArray> hclassInfo = factory->NewTaggedArray(count);
-    uint32_t pos = 0;
+    uint32_t pos = 1; // 1: the first one is the napi object's ihc.
     profileTyperToHClassIndex_.clear();
     for (auto& root: hcData_) {
         ProfileType rootType = root.first;
@@ -143,8 +149,13 @@ void PGOTypeManager::GenHClassInfo()
             ProfileType childType = child.first;
             JSTaggedType hclass = child.second;
             ProfileTyper key = std::make_pair(rootType, childType);
-            profileTyperToHClassIndex_.emplace(key, pos);
-            hclassInfo->Set(thread_, pos++, JSTaggedValue(hclass));
+            if (IsNapiIhc(rootType, childType)) {
+                profileTyperToHClassIndex_.emplace(key, 0);
+                hclassInfo->Set(thread_, 0, JSTaggedValue(hclass));
+            } else {
+                profileTyperToHClassIndex_.emplace(key, pos);
+                hclassInfo->Set(thread_, pos++, JSTaggedValue(hclass));
+            }
         }
     }
     // The cache of Object literal serializes to last index of AOTHClassInfo.

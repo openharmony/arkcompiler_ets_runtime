@@ -36,6 +36,7 @@ class File;
 }  // namespace panda_file
 
 namespace ecmascript {
+class AotConstantpoolPatcher;
 class GlobalEnv;
 class ObjectFactory;
 class EcmaRuntimeStat;
@@ -288,6 +289,8 @@ public:
 
     JSHandle<ConstantPool> PUBLIC_API FindOrCreateConstPool(const JSPandaFile *jsPandaFile,
                                                             panda_file::File::EntityId id);
+    void SetPrototypeForTransitions(JSTaggedValue trans, JSTaggedValue proto);
+    void SetObjectFunctionFromConstPool(JSHandle<ConstantPool> newConstPool);
     void CreateAllConstpool(const JSPandaFile *jsPandaFile);
 
     void HandleUncaughtException(JSTaggedValue exception);
