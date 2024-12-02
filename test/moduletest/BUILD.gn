@@ -429,6 +429,7 @@ group("ark_asm_test") {
       "multiconstpoolconstructor",
       "multiconstpoolfunc",
       "multiconstpoolobj",
+      "throwerrorrelease",
     ]
 
     foreach(test, release_test_list) {
