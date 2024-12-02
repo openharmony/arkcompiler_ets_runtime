@@ -16,7 +16,6 @@
 #include "ecmascript/ecma_vm.h"
 
 #include "ecmascript/builtins/builtins_ark_tools.h"
-#include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
 #ifdef ARK_SUPPORT_INTL
 #include "ecmascript/builtins/builtins_collator.h"
 #include "ecmascript/builtins/builtins_date_time_format.h"
@@ -210,7 +209,6 @@ void EcmaVM::ResetPGOProfiler()
         PGOProfilerManager::GetInstance()->Reset(pgoProfiler_, isEnablePGOProfiler);
         thread_->SetPGOProfilerEnable(isEnablePGOProfiler);
         thread_->CheckOrSwitchPGOStubs();
-        thread_->SetEnableForceIC(ecmascript::pgo::PGOProfilerManager::GetInstance()->IsEnableForceIC());
     }
 }
 

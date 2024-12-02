@@ -297,10 +297,6 @@ public:
 
     void ClearException();
 
-    void SetEnableForceIC(bool isEnableForceIC);
-
-    bool IsEnableForceIC() const;
-
     void SetGlobalObject(JSTaggedValue globalObject)
     {
         glueData_.globalObject_ = globalObject;
@@ -962,7 +958,6 @@ public:
                                                  base::AlignedPointer,
                                                  base::AlignedPointer,
                                                  base::AlignedUint32,
-                                                 base::AlignedBool,
                                                  base::AlignedBool> {
         enum class Index : size_t {
             BcStubEntriesIndex = 0,
@@ -1006,7 +1001,6 @@ public:
             StateAndFlagsIndex,
             TaskInfoIndex,
             IsEnableElementsKindIndex,
-            IsEnableForceIC,
             NumOfMembers
         };
         static_assert(static_cast<size_t>(Index::NumOfMembers) == NumOfTypes);
@@ -1237,11 +1231,6 @@ public:
             return GetOffset<static_cast<size_t>(Index::IsEnableElementsKindIndex)>(isArch32);
         }
 
-        static size_t GetIsEnableForceICOffSet(bool isArch32)
-        {
-            return GetOffset<static_cast<size_t>(Index::IsEnableForceIC)>(isArch32);
-        }
-
         alignas(EAS) BCStubEntries bcStubEntries_ {};
         alignas(EAS) JSTaggedValue exception_ {JSTaggedValue::Hole()};
         alignas(EAS) JSTaggedValue globalObject_ {JSTaggedValue::Hole()};
@@ -1283,7 +1272,6 @@ public:
         alignas(EAS) ThreadStateAndFlags stateAndFlags_ {};
         alignas(EAS) uintptr_t taskInfo_ {0};
         alignas(EAS) bool isEnableElementsKind_ {false};
-        alignas(EAS) bool isEnableForceIC_ {true};
     };
     STATIC_ASSERT_EQ_ARCH(sizeof(GlueData), GlueData::SizeArch32, GlueData::SizeArch64);
 
