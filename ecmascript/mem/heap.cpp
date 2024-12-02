@@ -674,10 +674,10 @@ void SharedHeap::MoveOldSpaceToAppspawn()
 #ifdef ECMASCRIPT_SUPPORT_HEAPSAMPLING
     sAppSpawnSpace_->SwapAllocationCounter(sOldSpace_);
 #endif
-    auto threadId = Runtime::GetInstance()->GetMainThread()->GetThreadId();
     sOldSpace_->EnumerateRegions([&](Region *region) {
         region->SetRegionSpaceFlag(RegionSpaceFlag::IN_SHARED_APPSPAWN_SPACE);
-        PageTag(region, region->GetCapacity(), PageTagType::HEAP, region->GetSpaceTypeName(), threadId);
+        // Region in SharedHeap do not need PageTag threadId.
+        PageTag(region, region->GetCapacity(), PageTagType::HEAP, region->GetSpaceTypeName());
         sAppSpawnSpace_->AddRegion(region);
         sAppSpawnSpace_->IncreaseLiveObjectSize(region->AliveObject());
     });
@@ -761,6 +761,7 @@ Heap::Heap(EcmaVM *ecmaVm)
 
 void Heap::Initialize()
 {
+    enablePageTagThreadId_ = ecmaVm_->GetJSOptions().EnablePageTagThreadId();
     memController_ = new MemController(this);
     nativeAreaAllocator_ = ecmaVm_->GetNativeAreaAllocator();
     heapRegionAllocator_ = ecmaVm_->GetHeapRegionAllocator();

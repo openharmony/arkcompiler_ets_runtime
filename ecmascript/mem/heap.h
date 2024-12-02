@@ -334,6 +334,11 @@ public:
         return shouldVerifyHeap_;
     }
 
+    bool EnablePageTagThreadId() const
+    {
+        return enablePageTagThreadId_;
+    }
+
     void ThrowOutOfMemoryErrorForDefault(JSThread *thread, size_t size, std::string functionName,
         bool NonMovableObjNearOOM = false);
 
@@ -443,6 +448,7 @@ protected:
     // ONLY used for heap verification.
     bool shouldVerifyHeap_ {false};
     bool isVerifying_ {false};
+    bool enablePageTagThreadId_ {false};
     bool inGC_ {false};
     int32_t recursionDepth_ {0};
 #ifndef NDEBUG

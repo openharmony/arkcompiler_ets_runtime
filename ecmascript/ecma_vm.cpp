@@ -165,7 +165,7 @@ void EcmaVM::PostFork()
 
 EcmaVM::EcmaVM(JSRuntimeOptions options, EcmaParamConfiguration config)
     : nativeAreaAllocator_(std::make_unique<NativeAreaAllocator>()),
-      heapRegionAllocator_(std::make_unique<HeapRegionAllocator>()),
+      heapRegionAllocator_(std::make_unique<HeapRegionAllocator>(options)),
       chunk_(nativeAreaAllocator_.get()),
       ecmaParamConfiguration_(std::move(config))
 {

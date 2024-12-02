@@ -21,6 +21,11 @@
 namespace panda::ecmascript {
 constexpr size_t PANDA_POOL_ALIGNMENT_IN_BYTES = 256_KB;
 
+HeapRegionAllocator::HeapRegionAllocator(JSRuntimeOptions &option)
+{
+    enablePageTagThreadId_ = option.EnablePageTagThreadId();
+}
+
 Region *HeapRegionAllocator::AllocateAlignedRegion(Space *space, size_t capacity, JSThread* thread, BaseHeap *heap,
                                                    bool isFresh)
 {
@@ -35,9 +40,14 @@ Region *HeapRegionAllocator::AllocateAlignedRegion(Space *space, size_t capacity
         flags != RegionSpaceFlag::IN_SHARED_HUGE_OBJECT_SPACE);
     bool isMachineCode = (flags == RegionSpaceFlag::IN_MACHINE_CODE_SPACE ||
         flags == RegionSpaceFlag::IN_HUGE_MACHINE_CODE_SPACE);
-    auto tid = thread ? thread->GetThreadId() : JSThread::GetCurrentThreadId();
+    JSThread::ThreadId tid = 0;
+    bool shouldPageTag = AllocateRegionShouldPageTag(space);
+    if (enablePageTagThreadId_) {
+        tid = thread ? thread->GetThreadId() : JSThread::GetCurrentThreadId();
+    }
     auto pool = MemMapAllocator::GetInstance()->Allocate(tid, capacity, DEFAULT_REGION_SIZE,
-        ToSpaceTypeName(space->GetSpaceType()), isRegular, isMachineCode, Jit::GetInstance()->IsEnableJitFort());
+        ToSpaceTypeName(space->GetSpaceType()), isRegular, isMachineCode, Jit::GetInstance()->IsEnableJitFort(),
+        shouldPageTag);
     void *mapMem = pool.GetMem();
     if (mapMem == nullptr) { // LOCV_EXCL_BR_LINE
         if (heap->InGC()) {
@@ -45,7 +55,7 @@ Region *HeapRegionAllocator::AllocateAlignedRegion(Space *space, size_t capacity
             TemporarilyEnsureAllocateionAlwaysSuccess(heap);
             pool = MemMapAllocator::GetInstance()->Allocate(tid, capacity, DEFAULT_REGION_SIZE,
                 ToSpaceTypeName(space->GetSpaceType()), isRegular, isMachineCode,
-                Jit::GetInstance()->IsEnableJitFort());
+                Jit::GetInstance()->IsEnableJitFort(), shouldPageTag);
             mapMem = pool.GetMem();
             if (mapMem == nullptr) {
                 // This should not happen
@@ -90,6 +100,7 @@ void HeapRegionAllocator::FreeRegion(Region *region, size_t cachedSize)
     bool isRegular = !region->InHugeObjectSpace() && !region->InHugeMachineCodeSpace() &&
         !region->InSharedHugeObjectSpace();
     auto allocateBase = region->GetAllocateBase();
+    bool shouldPageTag = FreeRegionShouldPageTag(region);
 
     DecreaseAnnoMemoryUsage(size);
     region->Invalidate();
@@ -101,7 +112,7 @@ void HeapRegionAllocator::FreeRegion(Region *region, size_t cachedSize)
     }
 #endif
     MemMapAllocator::GetInstance()->CacheOrFree(ToVoidPtr(allocateBase),
-                                                size, isRegular, cachedSize);
+                                                size, isRegular, cachedSize, shouldPageTag);
 }
 
 void HeapRegionAllocator::TemporarilyEnsureAllocateionAlwaysSuccess(BaseHeap *heap)
@@ -109,5 +120,24 @@ void HeapRegionAllocator::TemporarilyEnsureAllocateionAlwaysSuccess(BaseHeap *he
     // Make MemMapAllocator infinite, and record to Dump&Fatal when GC completed.
     heap->ShouldForceThrowOOMError();
     MemMapAllocator::GetInstance()->TransferToInfiniteModeForGC();
+}
+
+bool HeapRegionAllocator::AllocateRegionShouldPageTag(Space *space) const
+{
+    if (enablePageTagThreadId_) {
+        return true;
+    }
+    MemSpaceType type = space->GetSpaceType();
+    // Both LocalSpace and OldSpace belong to OldSpace.
+    return type != MemSpaceType::OLD_SPACE && type != MemSpaceType::LOCAL_SPACE;
+}
+
+bool HeapRegionAllocator::FreeRegionShouldPageTag(Region *region) const
+{
+    if (enablePageTagThreadId_) {
+        return true;
+    }
+    // There is no LocalSpace tag in region.
+    return !region->InOldSpace();
 }
 }  // namespace panda::ecmascript

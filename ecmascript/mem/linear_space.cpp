@@ -177,8 +177,12 @@ EdenSpace::EdenSpace(Heap *heap, size_t initialCapacity, size_t maximumCapacity)
 {
     size_t memSize = AlignUp(maximumCapacity_, DEFAULT_REGION_SIZE);
     memMap_ = PageMap(memSize, PAGE_PROT_READWRITE, DEFAULT_REGION_SIZE);
+    JSThread::ThreadId threadId = 0;
+    if (heap->EnablePageTagThreadId()) {
+        threadId = heap->GetJSThread()->GetThreadId();
+    }
     PageTag(memMap_.GetMem(), memMap_.GetSize(), PageTagType::HEAP, ToSpaceTypeName(MemSpaceType::EDEN_SPACE),
-            localHeap_->GetJSThread()->GetThreadId());
+            threadId);
     auto mem = ToUintPtr(memMap_.GetMem());
     auto count = memMap_.GetSize() / DEFAULT_REGION_SIZE;
     while (count-- > 0) {

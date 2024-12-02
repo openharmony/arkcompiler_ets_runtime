@@ -62,7 +62,8 @@ enum ArkProperties {
     DISABLE_SHARED_CONCURRENT_MARK = 1 << 22,
     ENABLE_ESM_TRACE = 1 << 24,
     ENABLE_MODULE_LOG = 1 << 25,
-    ENABLE_SERIALIZATION_TIMEOUT_CHECK = 1 << 26
+    ENABLE_SERIALIZATION_TIMEOUT_CHECK = 1 << 26,
+    ENABLE_PAGETAG_THREAD_ID = 1 << 27,
 };
 
 // asm interpreter control parsed option
@@ -632,6 +633,11 @@ public:
     bool EnableSerializationTimeoutCheck() const
     {
         return (static_cast<uint32_t>(arkProperties_) & ArkProperties::ENABLE_SERIALIZATION_TIMEOUT_CHECK) != 0;
+    }
+
+    bool EnablePageTagThreadId() const
+    {
+        return (static_cast<uint32_t>(arkProperties_) & ArkProperties::ENABLE_PAGETAG_THREAD_ID) != 0;
     }
 
     bool WasSetMaxNonmovableSpaceCapacity() const
