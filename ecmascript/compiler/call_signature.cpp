@@ -3124,4 +3124,20 @@ DEF_CALL_SIGNATURE(ObjectCopy)
     callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
 }
 
+DEF_CALL_SIGNATURE(MoveBarrierInRegion)
+{
+    constexpr size_t paramCount = 5;
+    CallSignature signature("MoveBarrierInRegion", 0, paramCount, ArgumentsOrder::DEFAULT_ORDER, VariableType::VOID());
+    *callSign = signature;
+    std::array<VariableType, paramCount> params = {
+        VariableType::NATIVE_POINTER(),
+        VariableType::NATIVE_POINTER(),
+        VariableType::NATIVE_POINTER(),
+        VariableType::INT32(),
+        VariableType::NATIVE_POINTER(),
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetGCLeafFunction(true);
+    callSign->SetCallConv(CallSignature::CallConv::CCallConv);;
+}
 }  // namespace panda::ecmascript::kungfu
