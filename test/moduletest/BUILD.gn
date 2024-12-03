@@ -102,6 +102,7 @@ group("ark_js_moduletest") {
     "globalrecord",
     "globalthis",
     "helloworld",
+    "includesindexof",
     "instanceofic",
     "intl",
     "jsonparser",
