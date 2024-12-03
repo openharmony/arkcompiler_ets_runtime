@@ -35,7 +35,6 @@ void BuiltinsArrayStubBuilder::UnshiftOptimised(GateRef glue, GateRef thisValue,
     Label notOverRange(env);
     Label numNotEqualZero(env);
     Label numLessThanOrEqualThree(env);
-    Label afterCopy(env);
     Label grow(env);
     Label setValue(env);
     Label numEqual2(env);
@@ -67,26 +66,14 @@ void BuiltinsArrayStubBuilder::UnshiftOptimised(GateRef glue, GateRef thisValue,
     }
     Bind(&setValue);
     {
+        Label directAdd(env);
+        Label mutantArrayEnabled(env);
         GateRef elements = GetElementsArray(thisValue);
         GateRef arrayStart = GetDataPtrInTaggedArray(elements);
         GateRef moveTo = PtrAdd(arrayStart, PtrMul(numArgs, IntPtr(JSTaggedValue::TaggedTypeSize())));
-        Label needBarrier(env);
-        Label noBarrier(env);
         GateRef kind = GetElementsKindFromHClass(LoadHClass(thisValue));
-        BRANCH_NO_WEIGHT(NeedBarrier(kind), &needBarrier, &noBarrier);
-        Bind(&noBarrier);
-        {
-            ArrayCopy<MustOverlap>(glue, arrayStart, elements, moveTo, TruncInt64ToInt32(thisLen), false);
-            Jump(&afterCopy);
-        }
-        Bind(&needBarrier);
-        {
-            ArrayCopy<MustOverlap>(glue, arrayStart, elements, moveTo, TruncInt64ToInt32(thisLen), true);
-            Jump(&afterCopy);
-        }
-        Bind(&afterCopy);
-        Label directAdd(env);
-        Label mutantArrayEnabled(env);
+        ArrayCopy(glue, elements, arrayStart, elements, moveTo, TruncInt64ToInt32(thisLen),
+                  NeedBarrier(kind), SameArray);
         BRANCH_UNLIKELY(IsEnableMutantArray(glue), &mutantArrayEnabled, &directAdd);
         Bind(&directAdd);
         {
@@ -598,7 +585,7 @@ void BuiltinsArrayStubBuilder::FastToSpliced(GateRef glue, GateRef thisValue, Ga
     {
         GateRef srcStart = GetDataPtrInTaggedArray(srcElements);
         GateRef dstStart = GetDataPtrInTaggedArray(dstElements);
-        ArrayCopyAndHoleToUndefined(glue, srcStart, dstElements, dstStart, actualStart);
+        ArrayCopyAndHoleToUndefined(glue, srcElements, srcStart, dstElements, dstStart, actualStart, Boolean(true));
         Jump(&insertArg);
     }
     Bind(&insertArg);
@@ -623,7 +610,7 @@ void BuiltinsArrayStubBuilder::FastToSpliced(GateRef glue, GateRef thisValue, Ga
             GateRef srcStart = GetDataPtrInTaggedArray(srcElements, oldIndex);
             GateRef dstStart = GetDataPtrInTaggedArray(dstElements, newIndex);
             GateRef afterLength = Int32Sub(thisLength, oldIndex);
-            ArrayCopyAndHoleToUndefined(glue, srcStart, dstElements, dstStart, afterLength);
+            ArrayCopyAndHoleToUndefined(glue, srcElements, srcStart, dstElements, dstStart, afterLength, Boolean(true));
             newIndex = Int32Add(newIndex, afterLength);
             Jump(&setLength);
         }
@@ -1023,12 +1010,8 @@ void BuiltinsArrayStubBuilder::SliceOptimised(GateRef glue, GateRef thisValue, G
                     BRANCH(Int64GreaterThan(*count, Int64(JSObject::MAX_GAP)), slowPath, &notOverFlow);
                     Bind(&notOverFlow);
                     {
-                        Label needBarrier(env);
-                        Label noBarrier(env);
                         Label mutantArrayEnabled(env);
                         Label notMutantArrayEnabled(env);
-
-                        Label jumpCopyExit(env);
                         BRANCH_NO_WEIGHT(IsEnableMutantArray(glue), &mutantArrayEnabled, &notMutantArrayEnabled);
                         Bind(&mutantArrayEnabled);
                         {
@@ -1075,21 +1058,8 @@ void BuiltinsArrayStubBuilder::SliceOptimised(GateRef glue, GateRef thisValue, G
                             GateRef destElements = newBuilder.NewTaggedArray(glue, TruncInt64ToInt32(*count));
                             GateRef sourceStart = GetDataPtrInTaggedArray(elements, *start);
                             GateRef dest = GetDataPtrInTaggedArray(destElements);
-                            GateRef barrier = NeedBarrier(kind);
-                            BRANCH_NO_WEIGHT(barrier, &needBarrier, &noBarrier);
-                            Bind(&needBarrier);
-                            {
-                                ArrayCopy<NotOverlap>(glue, sourceStart, destElements, dest,
-                                    TruncInt64ToInt32(*count), true);
-                                Jump(&jumpCopyExit);
-                            }
-                            Bind(&noBarrier);
-                            {
-                                ArrayCopy<NotOverlap>(glue, sourceStart, destElements, dest,
-                                    TruncInt64ToInt32(*count), false);
-                                Jump(&jumpCopyExit);
-                            }
-                            Bind(&jumpCopyExit);
+                            ArrayCopy(glue, elements, sourceStart, destElements, dest,
+                                      TruncInt64ToInt32(*count), NeedBarrier(kind), DifferentArray);
                             GateRef array = newBuilder.CreateArrayFromList(glue, destElements, kind);
                             result->WriteVariable(array);
                             Jump(exit);
@@ -1164,60 +1134,18 @@ void BuiltinsArrayStubBuilder::ConcatOptimised(GateRef glue, GateRef thisValue, 
                                 GateRef kind2 = GetElementsKindFromHClass(LoadHClass(arg0));
                                 GateRef tmpKind = Int32Or(kind1, kind2);
                                 GateRef newKind = FixElementsKind(tmpKind);
-                                Label shouldBarrier(env);
-                                Label noBarrier(env);
-                                Label shouldBarrier1(env);
-                                Label noBarrier1(env);
-                                Label shouldBarrier2(env);
-                                Label noBarrier2(env);
-                                Label afterThisCopy(env);
-                                Label afterConcat(env);
                                 GateRef thisElements = GetElementsArray(thisValue);
                                 GateRef argElements = GetElementsArray(arg0);
                                 NewObjectStubBuilder newBuilder(this);
                                 GateRef newElements = newBuilder.NewTaggedArray(glue, TruncInt64ToInt32(sumArrayLen));
                                 GateRef dst1 = GetDataPtrInTaggedArray(newElements);
                                 GateRef dst2 = PtrAdd(dst1, PtrMul(thisLen, IntPtr(JSTaggedValue::TaggedTypeSize())));
-                                BRANCH(NeedBarrier(newKind), &shouldBarrier, &noBarrier);
-                                Bind(&shouldBarrier);
-                                {
-                                    BRANCH(NeedBarrier(kind1), &shouldBarrier1, &noBarrier1);
-                                    Bind(&shouldBarrier1);
-                                    {
-                                        ArrayCopy<NotOverlap>(glue, GetDataPtrInTaggedArray(thisElements),
-                                            newElements, dst1, TruncInt64ToInt32(thisLen), true);
-                                        Jump(&afterThisCopy);
-                                    }
-                                    Bind(&noBarrier1);
-                                    {
-                                        ArrayCopy<NotOverlap>(glue, GetDataPtrInTaggedArray(thisElements),
-                                            newElements, dst1, TruncInt64ToInt32(thisLen), false);
-                                        Jump(&afterThisCopy);
-                                    }
-                                    Bind(&afterThisCopy);
-                                    BRANCH(NeedBarrier(kind2), &shouldBarrier2, &noBarrier2);
-                                    Bind(&shouldBarrier2);
-                                    {
-                                        ArrayCopy<NotOverlap>(glue, GetDataPtrInTaggedArray(argElements),
-                                            newElements, dst2, TruncInt64ToInt32(argLen), true);
-                                        Jump(&afterConcat);
-                                    }
-                                    Bind(&noBarrier2);
-                                    {
-                                        ArrayCopy<NotOverlap>(glue, GetDataPtrInTaggedArray(argElements),
-                                            newElements, dst2, TruncInt64ToInt32(argLen), false);
-                                        Jump(&afterConcat);
-                                    }
-                                }
-                                Bind(&noBarrier);
-                                {
-                                    ArrayCopy<NotOverlap>(glue, GetDataPtrInTaggedArray(thisElements), newElements,
-                                        dst1, TruncInt64ToInt32(thisLen), false);
-                                    ArrayCopy<NotOverlap>(glue, GetDataPtrInTaggedArray(argElements), newElements,
-                                        dst2, TruncInt64ToInt32(argLen), false);
-                                    Jump(&afterConcat);
-                                }
-                                Bind(&afterConcat);
+                                ArrayCopy(glue, thisElements, GetDataPtrInTaggedArray(thisElements),
+                                          newElements, dst1, TruncInt64ToInt32(thisLen), NeedBarrier(kind1),
+                                          DifferentArray);
+                                ArrayCopy(glue, argElements, GetDataPtrInTaggedArray(argElements),
+                                          newElements, dst2, TruncInt64ToInt32(argLen), NeedBarrier(kind2),
+                                          DifferentArray);
                                 GateRef array = newBuilder.CreateArrayFromList(glue, newElements, newKind);
                                 result->WriteVariable(array);
                                 Jump(exit);

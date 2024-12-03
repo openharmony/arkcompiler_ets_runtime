@@ -929,8 +929,8 @@ public:
     // dstAddr/srcAddr is the address will be copied to/from.
     // It can be a derived pointer point to the middle of an object.
     // Note: dstObj is the object address for dstAddr, it must point to the head of an object.
-    void ArrayCopyAndHoleToUndefined(GateRef glue, GateRef srcAddr, GateRef dstObj, GateRef dstAddr,
-                                     GateRef length, MemoryAttribute mAttr = MemoryAttribute::Default());
+    void ArrayCopyAndHoleToUndefined(GateRef glue, GateRef srcObj, GateRef srcAddr, GateRef dstObj,
+                                     GateRef dstAddr, GateRef length, GateRef needBarrier);
     GateRef ThreeInt64Min(GateRef first, GateRef second, GateRef third);
     void MigrateArrayWithKind(GateRef glue, GateRef object, GateRef oldKind, GateRef newKind);
     GateRef MigrateFromRawValueToHeapValues(GateRef glue, GateRef object, GateRef needCOW, GateRef isIntKind);
@@ -1056,26 +1056,16 @@ public:
     GateRef GetElementsKindHClass(GateRef glue, GateRef elementKind);
     GateRef FixElementsKind(GateRef oldElement);
     GateRef NeedBarrier(GateRef kind);
-    
-    enum OverlapKind {
-        // NotOverlap means the source and destination memory are not overlap,
-        // or overlap but the start of source is larger than destination.
-        // then we will copy the memory from left to right.
-        NotOverlap,
-        // MustOverlap mean the source and destination memory are overlap,
-        // and the start of source is lesser than destination.
-        // then we will copy the memory from right to left.
-        MustOverlap,
-        // Unknown means all the kinds above are possible, it will select the suitable one in runtime.
-        Unknown,
+
+    enum CopyKind {
+        SameArray,
+        DifferentArray,
     };
     // dstAddr/srcAddr is the address will be copied to/from.
     // It can be a derived pointer point to the middle of an object.
-    //
     // Note: dstObj is the object address for dstAddr, it must point to the head of an object.
-    template <OverlapKind kind>
-    void ArrayCopy(GateRef glue, GateRef srcAddr, GateRef dstObj, GateRef dstAddr, GateRef taggedValueCount,
-                   bool needBarrier);
+    void ArrayCopy(GateRef glue, GateRef srcObj, GateRef srcAddr, GateRef dstObj, GateRef dstAddr,
+                   GateRef taggedValueCount, GateRef needBarrier, CopyKind copyKind);
 protected:
     static constexpr int LOOP_UNROLL_FACTOR = 2;
     static constexpr int ELEMENTS_KIND_HCLASS_NUM = 12;
