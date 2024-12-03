@@ -258,7 +258,7 @@ size_t BaseDeserializer::ReadSingleEncodeData(uint8_t encodeFlag, uintptr_t objA
         }
         case (uint8_t)EncodeFlag::REFERENCE: {
             uint32_t valueIndex = data_->ReadUint32(position_);
-            JSTaggedType valueAddr = objectVector_[valueIndex];
+            JSTaggedType valueAddr = objectVector_.at(valueIndex);
             UpdateMaybeWeak(slot, valueAddr, GetAndResetWeak());
             WriteBarrier<WriteBarrierType::DESERIALIZE>(thread_, reinterpret_cast<void *>(objAddr), fieldOffset,
                                                         valueAddr);
