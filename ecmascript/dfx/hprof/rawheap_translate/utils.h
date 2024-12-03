@@ -49,7 +49,7 @@ uint64_t GetFileSize(std::string &inputFilePath);
 
 bool FileCheckAndOpenBinary(const std::string &rawheapPath, std::ifstream &file, uint32_t &fileSize);
 
-void GenerateDumpFileName(std::string &filename);
+bool GenerateDumpFileName(std::string &filename);
 
 bool EndsWith(const std::string &str, const std::string &suffix);
 

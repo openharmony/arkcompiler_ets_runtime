@@ -19,7 +19,7 @@
 #include "ecmascript/dfx/hprof/rawheap_translate/utils.h"
 
 namespace rawheap_translate {
-using StringKey = uint32_t;
+using StringKey = size_t;
 using StringId = uint32_t;
 
 // An Implementation for Native StringTable without Auto Mem-Management

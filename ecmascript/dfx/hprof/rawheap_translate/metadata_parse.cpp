@@ -171,8 +171,8 @@ bool Meta::ParseTypeEnums(const cJSON *json)
     cJSON *typeEnums = cJSON_GetObjectItem(json, "type_enum");
     auto visit = [&typeEnums, this] (const cJSON *item, int index) {
         std::string name = item->string;
-        int edgeType = 0;
-        if (GetInt(typeEnums, name.c_str(), edgeType)) {
+        uint32_t edgeType = 0;
+        if (GetUInt32(typeEnums, name.c_str(), edgeType)) {
             enumsVec_.push_back(name);
             enumsMapJSType_.emplace(name, static_cast<JSType>(index));
             enumsMapNodeType_.emplace(name, static_cast<uint8_t>(edgeType));
@@ -202,9 +202,9 @@ bool Meta::ParseTypeList(const cJSON *json)
 
     auto offsetVisitor = [&curField] (const cJSON *item, [[maybe_unused]] int index) {
         auto field = std::make_shared<Field>();
-        if (GetInt(item, "offset", field->offset) &&
+        if (GetUInt32(item, "offset", field->offset) &&
             GetString(item, "name", field->name) &&
-            GetInt(item, "size", field->size)) {
+            GetUInt32(item, "size", field->size)) {
             curField->push_back(field);
         }
     };
@@ -223,7 +223,7 @@ bool Meta::ParseTypeList(const cJSON *json)
         IterateJSONArray(fields, offsetVisitor);
         IterateJSONArray(parents, parentVisitor);
 
-        if (GetString(item, "name", metadata->name) && GetInt(item, "end_offset", metadata->endOffset)) {
+        if (GetString(item, "name", metadata->name) && GetUInt32(item, "end_offset", metadata->endOffset)) {
             metadata_.emplace(metadata->name, metadata);
         }
 
@@ -242,11 +242,11 @@ bool Meta::ParseTypeLayout(const cJSON *json)
     cJSON *dictLayout = cJSON_GetObjectItem(object, "Dictionary_layout");
     auto layout = std::make_shared<Layout>();
     GetString(dictLayout, "name", layout->name);
-    GetInt(dictLayout, "key_index", layout->keyIndex);
-    GetInt(dictLayout, "value_index", layout->valueIndex);
-    GetInt(dictLayout, "detail_index", layout->detailIndex);
-    GetInt(dictLayout, "entry_size", layout->entrySize);
-    GetInt(dictLayout, "header_size", layout->headerSize);
+    GetUInt32(dictLayout, "key_index", layout->keyIndex);
+    GetUInt32(dictLayout, "value_index", layout->valueIndex);
+    GetUInt32(dictLayout, "detail_index", layout->detailIndex);
+    GetUInt32(dictLayout, "entry_size", layout->entrySize);
+    GetUInt32(dictLayout, "header_size", layout->headerSize);
     layout_.emplace(layout->name, layout);
     LOG_INFO("Meta::ParseTypeLayout: parse type layout, size=" + std::to_string(layout_.size()));
 
@@ -324,21 +324,24 @@ bool Meta::GetString(const cJSON *json, std::string &value)
     return true;
 }
 
-bool Meta::GetInt(const cJSON *json, const char *key, int &value)
+bool Meta::GetUInt32(const cJSON *json, const char *key, uint32_t &value)
 {
     cJSON *item = cJSON_GetObjectItem(json, key);
     if (item == nullptr) {
         return false;
     }
-    return GetInt(item, value);
+    return GetUInt32(item, value);
 }
 
-bool Meta::GetInt(const cJSON *json, int &value)
+bool Meta::GetUInt32(const cJSON *json, uint32_t &value)
 {
     if (cJSON_IsNumber(json) == 0) {
         return false;
     }
-    value = static_cast<int>(json->valuedouble);
+    if (json->valuedouble < 0 || json->valuedouble > static_cast<double>(UINT32_MAX)) {
+        return false;
+    }
+    value = static_cast<uint32_t>(json->valuedouble);
     return true;
 }
 }  // namespace rawheap_translate
