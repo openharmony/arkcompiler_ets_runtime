@@ -22,7 +22,7 @@
 namespace panda::ecmascript {
 void SharedFullGC::RunPhases()
 {
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedFullGC::RunPhases"
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedFullGC::RunPhases;Reason"
         + std::to_string(static_cast<int>(sHeap_->GetEcmaGCStats()->GetGCReason()))
         + ";Sensitive" + std::to_string(static_cast<int>(sHeap_->GetSensitiveStatus()))
         + ";IsInBackground" + std::to_string(sHeap_->IsInBackground())
@@ -30,7 +30,10 @@ void SharedFullGC::RunPhases()
         + ";Old" + std::to_string(sHeap_->GetOldSpace()->GetCommittedSize())
         + ";huge" + std::to_string(sHeap_->GetHugeObjectSpace()->GetCommittedSize())
         + ";NonMov" + std::to_string(sHeap_->GetNonMovableSpace()->GetCommittedSize())
-        + ";TotCommit" + std::to_string(sHeap_->GetCommittedSize()));
+        + ";TotCommit" + std::to_string(sHeap_->GetCommittedSize())
+        + ";NativeBindingSize" + std::to_string(sHeap_->GetNativeSizeAfterLastGC())
+        + ";NativeLimitGC" + std::to_string(sHeap_->GetNativeSizeTriggerSharedGC())
+        + ";NativeLimitCM" + std::to_string(sHeap_->GetNativeSizeTriggerSharedCM()));
     TRACE_GC(GCStats::Scope::ScopeId::TotalGC, sHeap_->GetEcmaGCStats());
     Initialize();
     Mark();
