@@ -27,6 +27,7 @@ group("ark_js_moduletest") {
     "arrayjoin",
     "arraymap",
     "getiterator",
+    "includesindexof",
 
     # (issue 18938)
     #"arraypop",
