@@ -1634,18 +1634,7 @@ void BuiltinsArrayStubBuilder::SliceOptimised(GateRef glue, GateRef thisValue, G
                         }
                         Bind(&notMutantArrayEnabled);
                         {
-                            DEFVARIABLE(computeKind, VariableType::INT32(), Int32(0));
-                            Label isEnableForArray(env);
-                            Label notEnableForArray(env);
-                            GateRef elementsKindForArray = True();
-                            BRANCH(elementsKindForArray, &isEnableForArray, &notEnableForArray);
-                            Bind(&isEnableForArray);
-                            {
-                                computeKind = ComputeTaggedArrayElementKind(thisValue, *start, *end);
-                                Jump(&notEnableForArray);
-                            }
-                            Bind(&notEnableForArray);
-                            GateRef kind = *computeKind;
+                            GateRef kind = ComputeTaggedArrayElementKind(thisValue, *start, *end);
                             GateRef elements = GetElementsArray(thisValue);
                             NewObjectStubBuilder newBuilder(this);
                             newBuilder.SetGlue(glue);
@@ -1657,6 +1646,106 @@ void BuiltinsArrayStubBuilder::SliceOptimised(GateRef glue, GateRef thisValue, G
                             GateRef array = newBuilder.CreateArrayFromList(glue, destElements, kind);
                             result->WriteVariable(array);
                             Jump(exit);
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+void BuiltinsArrayStubBuilder::ShiftOptimised(GateRef glue, GateRef thisValue,
+    [[maybe_unused]] GateRef numArgs, Variable *result, Label *exit, Label *slowPath)
+{
+    auto env = GetEnvironment();
+    Label isHeapObject(env);
+    Label stableJSArray(env);
+    Label isDefaultConstructor(env);
+    BRANCH(TaggedIsHeapObject(thisValue), &isHeapObject, slowPath);
+    Bind(&isHeapObject);
+    BRANCH(HasConstructor(thisValue), slowPath, &isDefaultConstructor);
+    Bind(&isDefaultConstructor);
+    BRANCH(IsStableJSArray(glue, thisValue), &stableJSArray, slowPath);
+    Bind(&stableJSArray);
+    {
+        Label isLengthWritable(env);
+        BRANCH(IsArrayLengthWritable(glue, thisValue), &isLengthWritable, slowPath);
+        Bind(&isLengthWritable);
+        {
+            GateRef thisLen = ZExtInt32ToInt64(GetArrayLength(thisValue));
+            Label lengthNotZero(env);
+            BRANCH(Int64Equal(thisLen, Int64(0)), exit, &lengthNotZero);
+            Bind(&lengthNotZero);
+            {
+                Label isJsCOWArray(env);
+                Label getElements(env);
+                BRANCH(IsJsCOWArray(thisValue), &isJsCOWArray, &getElements);
+                Bind(&isJsCOWArray);
+                {
+                    NewObjectStubBuilder newBuilder(this);
+                    GateRef elements = GetElementsArray(thisValue);
+                    GateRef capacity = GetLengthOfTaggedArray(elements);
+                    GateRef newElements = newBuilder.CopyArray(glue, elements, capacity, capacity);
+                    SetElementsArray(VariableType::JS_POINTER(), glue, thisValue, newElements);
+                    Jump(&getElements);
+                }
+                Bind(&getElements);
+                {
+                    GateRef enableMutant = IsEnableMutantArray(glue);
+                    GateRef elements = GetElementsArray(thisValue);
+                    GateRef capacity = ZExtInt32ToInt64(GetLengthOfTaggedArray(elements));
+                    GateRef index = Int64Sub(thisLen, Int64(1));
+                    Label enableMutantArray(env);
+                    Label disableMutantArray(env);
+                    Label elementExit(env);
+                    Label copyExit(env);
+                    DEFVARIABLE(element, VariableType::JS_ANY(), Hole());
+                    BRANCH(enableMutant, &enableMutantArray, &disableMutantArray);
+                    Bind(&enableMutantArray);
+                    {
+                        element = GetTaggedValueWithElementsKind(thisValue, Int64(0));
+                        Jump(&elementExit);
+                    }
+                    Bind(&disableMutantArray);
+                    {
+                        element = GetValueFromTaggedArray(elements, Int64(0));
+                        Jump(&elementExit);
+                    }
+                    Bind(&elementExit);
+                    GateRef kind = GetElementsKindFromHClass(LoadHClass(thisValue));
+                    GateRef dest = GetDataPtrInTaggedArray(elements);
+                    GateRef start = PtrAdd(dest, IntPtr(JSTaggedValue::TaggedTypeSize()));
+                    ArrayCopy(glue, elements, start, elements, dest,
+                              TruncInt64ToInt32(index), NeedBarrier(kind), SameArray);
+                    Jump(&copyExit);
+                    Bind(&copyExit);
+                    {
+                        Label noTrim(env);
+                        Label needTrim(env);
+                        Label setNewLen(env);
+                        GateRef unused = Int64Sub(capacity, index);
+                        BRANCH(Int64GreaterThan(unused, Int64(TaggedArray::MAX_END_UNUSED)), &needTrim, &noTrim);
+                        Bind(&needTrim);
+                        {
+                            CallNGCRuntime(glue, RTSTUB_ID(ArrayTrim), {glue, elements, index});
+                            Jump(&setNewLen);
+                        }
+                        Bind(&noTrim);
+                        {
+                            SetValueToTaggedArray(VariableType::JS_ANY(), glue, elements,
+                                                  TruncInt64ToInt32(index), Hole(), MemoryAttribute::NoBarrier());
+                            Jump(&setNewLen);
+                        }
+                        Bind(&setNewLen);
+                        {
+                            GateRef lengthOffset = IntPtr(JSArray::LENGTH_OFFSET);
+                            Store(VariableType::INT32(), glue, thisValue, lengthOffset, index);
+                            Label isNotHole(env);
+                            BRANCH(TaggedIsHole(*element), exit, &isNotHole);
+                            Bind(&isNotHole);
+                            {
+                                result->WriteVariable(*element);
+                                Jump(exit);
+                            }
                         }
                     }
                 }

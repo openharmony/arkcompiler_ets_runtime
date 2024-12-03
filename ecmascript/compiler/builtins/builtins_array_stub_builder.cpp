@@ -309,6 +309,9 @@ void BuiltinsArrayStubBuilder::Unshift(GateRef glue, GateRef thisValue, GateRef 
 void BuiltinsArrayStubBuilder::Shift(GateRef glue, GateRef thisValue,
     [[maybe_unused]] GateRef numArgs, Variable *result, Label *exit, Label *slowPath)
 {
+#if ENABLE_NEXT_OPTIMIZATION
+    ShiftOptimised(glue, thisValue, numArgs, result, exit, slowPath);
+#else
     auto env = GetEnvironment();
     Label isHeapObject(env);
     Label stableJSArray(env);
@@ -417,6 +420,7 @@ void BuiltinsArrayStubBuilder::Shift(GateRef glue, GateRef thisValue,
             }
         }
     }
+#endif
 }
 
 void BuiltinsArrayStubBuilder::Concat(GateRef glue, GateRef thisValue, GateRef numArgs,
