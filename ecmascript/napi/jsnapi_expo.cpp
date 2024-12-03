@@ -1059,11 +1059,7 @@ bool JSValueRef::IsHeapObject()
 void *JSValueRef::GetNativePointerValue(const EcmaVM* vm, bool &isNativePointer)
 {
     ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
-    if (IsJSShared(vm)) {
-        return GetNativePointerValueImpl(vm, isNativePointer);
-    } else {
-        return GetNativePointerValueImpl(vm, isNativePointer);
-    }
+    return GetNativePointerValueImpl(vm, isNativePointer);
 }
 
 // private
