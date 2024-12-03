@@ -109,6 +109,8 @@ private:
     void PopOptimised(GateRef glue, GateRef thisValue,
                       GateRef numArgs, Variable *result, Label *exit, Label *slowPath);
     void ReverseOptimised(GateRef glue, GateRef thisValue, Variable *result, Label *exit, Label *slowPath);
+    void ShiftOptimised(GateRef glue, GateRef thisValue,
+                        GateRef numArgs, Variable *result, Label *exit, Label *slowPath);
 };
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_BUILTINS_ARRAY_STUB_BUILDER_H

@@ -2161,3 +2161,14 @@ print(y.pop()); //: 7
 print(y.pop()); //: 6
 print(y.pop()); //: 5
 print(y);
+// shift
+var shiftArray = new Array(10)
+for (let i = 0; i < shiftArray.length; i++) {
+    shiftArray[i] = i
+}
+print(shiftArray.shift()); //: 0
+print(shiftArray.shift()); //: 1
+print(shiftArray.shift()); //: 2
+print(shiftArray.shift()); //: 3
+print(shiftArray.shift()); //: 4
+print(shiftArray);
