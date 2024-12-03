@@ -45,6 +45,9 @@ public:
     void SetLinked(GateRef jsThis, GateRef newTable);
 
 private:
+    template <typename IteratorType>
+    friend class BuiltinsCollectionIteratorStubBuilder;
+
     GateRef IsKey(GateRef key)
     {
         return TaggedIsNotHole(key);

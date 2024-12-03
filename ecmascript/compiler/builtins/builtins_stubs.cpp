@@ -29,6 +29,7 @@
 #include "ecmascript/compiler/builtins/containers_vector_stub_builder.h"
 #include "ecmascript/compiler/builtins/containers_stub_builder.h"
 #include "ecmascript/compiler/builtins/builtins_collator_stub_builder.h"
+#include "ecmascript/compiler/builtins/builtins_collection_iterator_stub_builder.h"
 #include "ecmascript/compiler/builtins/builtins_collection_stub_builder.h"
 #include "ecmascript/compiler/builtins/builtins_object_stub_builder.h"
 #include "ecmascript/compiler/codegen/llvm/llvm_ir_builder.h"
@@ -365,23 +366,43 @@ DECLARE_BUILTINS(stubName)                                                      
     Return(*res);                                                                                   \
 }
 
+// map and set iterator stub function
+#define DECLARE_BUILTINS_COLLECTION_ITERATOR_STUB_BUILDER(stubName, method, type, retDefaultValue)             \
+DECLARE_BUILTINS(stubName)                                                                                     \
+{                                                                                                              \
+    (void) nativeCode;                                                                                         \
+    (void) func;                                                                                               \
+    (void) newTarget;                                                                                          \
+    auto env = GetEnvironment();                                                                               \
+    DEFVARIABLE(res, VariableType::JS_ANY(), retDefaultValue);                                                 \
+    Label exit(env);                                                                                           \
+    BuiltinsCollectionIteratorStubBuilder<JS##type> builder(this, glue, thisValue, numArgs);                   \
+    builder.method(&res, &exit);                                                                               \
+    Bind(&exit);                                                                                               \
+    Return(*res);                                                                                              \
+}
+
 #if ENABLE_NEXT_OPTIMIZATION
-    #define NEXT_AOT_AND_BUILTINS_STUB_LIST_WITH_METHOD(V)                                        \
-        V(ArrayIteratorProtoNext,  ArrayIteratorNext, Array, Undefined())
+    #define NEXT_AOT_AND_BUILTINS_STUB_LIST_WITH_METHOD(V, D)                                        \
+        V(ArrayIteratorProtoNext,  ArrayIteratorNext,   Array,            Undefined())               \
+        D(MapIteratorProtoNext,    Next,                MapIterator,      Undefined())               \
+        D(SetIteratorProtoNext,    Next,                SetIterator,      Undefined())
 #else
-    #define NEXT_AOT_AND_BUILTINS_STUB_LIST_WITH_METHOD(V)
+    #define NEXT_AOT_AND_BUILTINS_STUB_LIST_WITH_METHOD(V, D)
 #endif
 
-#define AOT_AND_BUILTINS_STUB_LIST_WITH_METHOD(V)                                                 \
-    V(StringLocaleCompare,              LocaleCompare,      String, Undefined())                  \
-    V(StringIteratorProtoNext,  StringIteratorNext, String, Undefined())                          \
-    V(ArraySort,           Sort,               Array,  Undefined())                               \
-    NEXT_AOT_AND_BUILTINS_STUB_LIST_WITH_METHOD(V)
+#define AOT_AND_BUILTINS_STUB_LIST_WITH_METHOD(V, D)                                              \
+    V(StringLocaleCompare,           LocaleCompare,        String,   Undefined())                 \
+    V(StringIteratorProtoNext,       StringIteratorNext,   String,   Undefined())                 \
+    V(ArraySort,                     Sort,                 Array,    Undefined())                 \
+    NEXT_AOT_AND_BUILTINS_STUB_LIST_WITH_METHOD(V, D)
 
-AOT_AND_BUILTINS_STUB_LIST_WITH_METHOD(DECLARE_AOT_AND_BUILTINS_STUB_BUILDER)
+AOT_AND_BUILTINS_STUB_LIST_WITH_METHOD(DECLARE_AOT_AND_BUILTINS_STUB_BUILDER,
+                                       DECLARE_BUILTINS_COLLECTION_ITERATOR_STUB_BUILDER)
 #undef NEXT_AOT_AND_BUILTINS_STUB_LIST_WITH_METHOD
 #undef AOT_AND_BUILTINS_STUB_LIST
 #undef DECLARE_AOT_AND_BUILTINS_STUB_BUILDER
+#undef DECLARE_BUILTINS_COLLECTION_ITERATOR_STUB_BUILDER
 
 // containers stub function
 #define DECLARE_BUILTINS_WITH_CONTAINERS_STUB_BUILDER(funcName, type, method, methodType, resultVariableType)   \

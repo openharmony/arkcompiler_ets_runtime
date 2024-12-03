@@ -641,9 +641,12 @@ private:
     V(BatchBarrier)                                  \
     V(ObjectCopy)                                    \
     V(ArrayIteratorNext)                             \
+    V(MapIteratorNext)                               \
+    V(SetIteratorNext)                               \
     V(GetIterator)                                   \
     V(MoveBarrierInRegion)                           \
     V(FillObject)
+
 
 
 #define DECL_CALL_SIGNATURE(name)                                  \

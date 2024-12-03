@@ -66,7 +66,9 @@ namespace panda::ecmascript {
     V(DefineFieldField, "DefineField: obj is not Object")                                    \
     V(IsNotPropertyKey, "key is not a property key")                                         \
     V(CreateDataPropertyFailed, "failed to create data property")                            \
-    V(ValueIsNonSObject, "value is not a shared object")
+    V(ValueIsNonSObject, "value is not a shared object")                                     \
+    V(MapIteratorTypeError, "this value is not a map iterator")                              \
+    V(SetIteratorTypeError, "this value is not a set iterator")
 
 #define DEBUG_CHECK_MESSAGE_STRING_LIST(V)                                                   \
     V(IsCallable)                                                                            \
