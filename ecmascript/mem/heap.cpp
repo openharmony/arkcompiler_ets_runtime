@@ -1628,6 +1628,8 @@ void Heap::RecomputeLimits()
     globalSpaceNativeLimit_ = memController_->CalculateAllocLimit(GetGlobalNativeSize(), MIN_HEAP_SIZE,
                                                                   MAX_GLOBAL_NATIVE_LIMIT, newSpaceCapacity,
                                                                   growingFactor);
+    globalSpaceNativeLimit_ = std::max(globalSpaceNativeLimit_, GetGlobalNativeSize()
+                                        + config_.GetMinNativeLimitGrowingStep());
     OPTIONAL_LOG(ecmaVm_, INFO) << "RecomputeLimits oldSpaceAllocLimit_: " << newOldSpaceLimit
         << " globalSpaceAllocLimit_: " << globalSpaceAllocLimit_
         << " globalSpaceNativeLimit_:" << globalSpaceNativeLimit_;
