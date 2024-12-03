@@ -105,6 +105,7 @@ group("ark_aot_ts_test") {
     "createobjectwithbuffer",
     "createobjectwithexcludedkeys",
     "createregexpwithliteral",
+    "dataview_native_inline",
     "dec",
     "default_supers",
     "defineasyncfunc",
