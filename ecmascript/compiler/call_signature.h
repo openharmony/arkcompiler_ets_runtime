@@ -642,7 +642,9 @@ private:
     V(ObjectCopy)                                    \
     V(ArrayIteratorNext)                             \
     V(GetIterator)                                   \
-    V(MoveBarrierInRegion)
+    V(MoveBarrierInRegion)                           \
+    V(FillObject)
+
 
 #define DECL_CALL_SIGNATURE(name)                                  \
 class name##CallSignature final {                                  \

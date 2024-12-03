@@ -2952,6 +2952,9 @@ GateRef BuiltinsArrayStubBuilder::CreateSpliceDeletedArray(GateRef glue, GateRef
 void BuiltinsArrayStubBuilder::Fill(GateRef glue, GateRef thisValue, GateRef numArgs,
     Variable *result, Label *exit, Label *slowPath)
 {
+#if ENABLE_NEXT_OPTIMIZATION
+    FillOptimised(glue, thisValue, numArgs, result, exit, slowPath);
+#else
     auto env = GetEnvironment();
     Label isHeapObject(env);
     Label isJsArray(env);
@@ -3082,17 +3085,6 @@ void BuiltinsArrayStubBuilder::Fill(GateRef glue, GateRef thisValue, GateRef num
         }
     }
     Bind(&endExit);
-    // 11. Repeat, while k < final
-    //   a. Let Pk be ToString(k).
-    //   b. Let setStatus be Set(O, Pk, value, true).
-    //   c. ReturnIfAbrupt(setStatus).
-    //   d. Increase k by 1.
-    Label argNotJsObj(env);
-    GateRef check = LogicOrBuilder(env)
-        .Or(TaggedIsObject(startArg))
-        .Or(TaggedIsObject(endArg)).Done();
-    BRANCH(check, slowPath, &argNotJsObj);
-    Bind(&argNotJsObj);
     {
         Label newElements(env);
         Label defaultElements(env);
@@ -3135,6 +3127,8 @@ void BuiltinsArrayStubBuilder::Fill(GateRef glue, GateRef thisValue, GateRef num
         Bind(&startFill);
         Label noBarrier(env);
         Label needBarrier(env);
+        Label needRevise(env);
+        Label noRevise(env);
         Label barrierExit(env);
         BRANCH(mutant, &noBarrier, &needBarrier);
         Bind(&noBarrier);
@@ -3182,6 +3176,14 @@ void BuiltinsArrayStubBuilder::Fill(GateRef glue, GateRef thisValue, GateRef num
         }
         Bind(&barrierExit);
         SetElementsArray(VariableType::JS_POINTER(), glue, thisValue, *elements);
+        GateRef arrLen = GetLengthOfJSArray(thisValue);
+        BRANCH(Int32LessThan(arrLen, *end), &needRevise, &noRevise);
+        Bind(&needRevise);
+        {
+            SetArrayLength(glue, thisValue, *end);
+            Jump(&noRevise);
+        }
+        Bind(&noRevise);
         result->WriteVariable(thisValue);
         Jump(exit);
     }
@@ -3190,6 +3192,7 @@ void BuiltinsArrayStubBuilder::Fill(GateRef glue, GateRef thisValue, GateRef num
         result->WriteVariable(Exception());
         Jump(exit);
     }
+#endif
 }
 
 void BuiltinsArrayStubBuilder::Splice(GateRef glue, GateRef thisValue, GateRef numArgs,
