@@ -1208,6 +1208,10 @@ void BuiltinsArrayStubBuilder::LastIndexOf([[maybe_unused]] GateRef glue, GateRe
 void BuiltinsArrayStubBuilder::Pop(GateRef glue, GateRef thisValue,
     [[maybe_unused]] GateRef numArgs, Variable *result, Label *exit, Label *slowPath)
 {
+#if ENABLE_NEXT_OPTIMIZATION
+    PopOptimised(glue, thisValue, numArgs, result, exit, slowPath);
+#else
+{
     auto env = GetEnvironment();
     Label isHeapObject(env);
     Label stableJSArray(env);
@@ -1297,6 +1301,7 @@ void BuiltinsArrayStubBuilder::Pop(GateRef glue, GateRef thisValue,
         result->WriteVariable(*element);
         Jump(exit);
     }
+#endif
 }
 
 void BuiltinsArrayStubBuilder::Slice(GateRef glue, GateRef thisValue, GateRef numArgs,
