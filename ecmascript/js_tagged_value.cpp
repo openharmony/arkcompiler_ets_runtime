@@ -1460,8 +1460,11 @@ bool JSTaggedValue::ToArrayLength(JSThread *thread, const JSHandle<JSTaggedValue
 
 JSHandle<JSTaggedValue> JSTaggedValue::ToPrototypeOrObj(JSThread *thread, const JSHandle<JSTaggedValue> &obj)
 {
+    if (obj->IsECMAObject()) {
+        return obj;
+    }
+    
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-
     if (obj->IsNumber()) {
         return JSHandle<JSTaggedValue>(thread,
                                        env->GetNumberFunction().GetObject<JSFunction>()->GetFunctionPrototype());
