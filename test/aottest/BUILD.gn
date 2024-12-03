@@ -360,6 +360,7 @@ group("ark_aot_ts_test") {
     "retype_isnan",
     "inline_abs",
     "retype_test",
+    "retype_test2",
     "retype_unreachable_test",
   ]
 
