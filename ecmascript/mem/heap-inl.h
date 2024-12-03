@@ -41,7 +41,7 @@ namespace panda::ecmascript {
         size_t oomOvershootSize = vm->GetEcmaParamConfiguration().GetOutOfMemoryOvershootSize();            \
         (space)->IncreaseOutOfMemoryOvershootSize(oomOvershootSize);                                        \
         if ((space)->IsOOMDumpSpace()) {                                                                    \
-            DumpHeapSnapshotBeforeOOM();                                                                    \
+            DumpHeapSnapshotBeforeOOM(false);                                                               \
         }                                                                                                   \
         StatisticHeapDetail();                                                                              \
         ThrowOutOfMemoryError(GetJSThread(), size, message);                                                \
@@ -52,7 +52,7 @@ namespace panda::ecmascript {
     if (UNLIKELY((object) == nullptr)) {                                                                    \
         size_t oomOvershootSize = GetEcmaParamConfiguration().GetOutOfMemoryOvershootSize();                \
         (space)->IncreaseOutOfMemoryOvershootSize(oomOvershootSize);                                        \
-        DumpHeapSnapshotBeforeOOM(true, thread);                                                            \
+        DumpHeapSnapshotBeforeOOM(false, thread, SharedHeapOOMSource::NORMAL_ALLOCATION);                   \
         ThrowOutOfMemoryError(thread, size, message);                                                       \
         (object) = reinterpret_cast<TaggedObject *>((space)->Allocate(thread, size));                       \
     }
@@ -355,6 +355,7 @@ TaggedObject *Heap::AllocateReadOnlyOrHugeObject(JSHClass *hclass, size_t size)
     } else {
         object = reinterpret_cast<TaggedObject *>(readOnlySpace_->Allocate(size));
         CHECK_OBJ_AND_THROW_OOM_ERROR(object, size, readOnlySpace_, "Heap::AllocateReadOnlyOrHugeObject");
+        ASSERT(object != nullptr);
         object->SetClass(thread_, hclass);
     }
 #if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
@@ -436,7 +437,7 @@ TaggedObject *Heap::AllocateHugeObject(size_t size)
             // if allocate huge object OOM, temporarily increase space size to avoid vm crash
             size_t oomOvershootSize = config_.GetOutOfMemoryOvershootSize();
             oldSpace_->IncreaseOutOfMemoryOvershootSize(oomOvershootSize);
-            DumpHeapSnapshotBeforeOOM();
+            DumpHeapSnapshotBeforeOOM(false);
             StatisticHeapDetail();
             object = reinterpret_cast<TaggedObject *>(hugeObjectSpace_->Allocate(size, thread_));
             ThrowOutOfMemoryError(thread_, size, "Heap::AllocateHugeObject");
@@ -495,7 +496,7 @@ TaggedObject *Heap::AllocateMachineCodeObject(JSHClass *hclass, size_t size, Mac
 
     // Jit Fort enabled
     ASSERT(GetEcmaVM()->GetJSOptions().GetEnableJitFort());
-    if (!GetEcmaVM()->GetJSOptions().GetEnableAsyncCopyToFort() || !desc->isAsyncCompileMode) {
+    if (!GetEcmaVM()->GetJSOptions().GetEnableAsyncCopyToFort()) {
         desc->instructionsAddr = 0;
         if (size <= MAX_REGULAR_HEAP_OBJECT_SIZE) {
             // for non huge code cache obj, allocate fort space before allocating the code object
@@ -534,6 +535,16 @@ uintptr_t Heap::AllocateSnapshotSpace(size_t size)
 TaggedObject *Heap::AllocateSharedNonMovableSpaceFromTlab(JSThread *thread, size_t size)
 {
     ASSERT(!thread->IsJitThread());
+    if (GetEcmaVM()->GetThreadCheckStatus()) {
+        if (thread->IsJitThread()) {
+            LOG_ECMA(FATAL) << "jit thread not allowed";
+        }
+        if (thread->GetThreadId() != JSThread::GetCurrentThreadId() && !thread->IsCrossThreadExecutionEnable()) {
+            LOG_FULL(FATAL) << "Fatal: ecma_vm cannot run in multi-thread!"
+                            << "thread:" << thread->GetThreadId()
+                            << " currentThread:" << JSThread::GetCurrentThreadId();
+        }
+    }
     size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
     TaggedObject *object = reinterpret_cast<TaggedObject*>(sNonMovableTlab_->Allocate(size));
     if (object != nullptr) {
@@ -561,6 +572,16 @@ TaggedObject *Heap::AllocateSharedNonMovableSpaceFromTlab(JSThread *thread, size
 TaggedObject *Heap::AllocateSharedOldSpaceFromTlab(JSThread *thread, size_t size)
 {
     ASSERT(!thread->IsJitThread());
+    if (GetEcmaVM()->GetThreadCheckStatus()) {
+        if (thread->IsJitThread()) {
+            LOG_ECMA(FATAL) << "jit thread not allowed";
+        }
+        if (thread->GetThreadId() != JSThread::GetCurrentThreadId() && !thread->IsCrossThreadExecutionEnable()) {
+            LOG_FULL(FATAL) << "Fatal: ecma_vm cannot run in multi-thread!"
+                            << "thread:" << thread->GetThreadId()
+                            << " currentThread:" << JSThread::GetCurrentThreadId();
+        }
+    }
     size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
     TaggedObject *object = reinterpret_cast<TaggedObject*>(sOldTlab_->Allocate(size));
     if (object != nullptr) {
@@ -761,29 +782,6 @@ void SharedHeap::TryTriggerConcurrentMarking(JSThread *thread)
     }
 }
 
-void SharedHeap::CollectGarbageFinish(bool inDaemon, TriggerGCType gcType)
-{
-    if (inDaemon) {
-        ASSERT(JSThread::GetCurrent() == dThread_);
-#ifndef NDEBUG
-        ASSERT(dThread_->HasLaunchedSuspendAll());
-#endif
-        dThread_->FinishRunningTask();
-        NotifyGCCompleted();
-        // Update to forceGC_ is in DaemeanSuspendAll, and protected by the Runtime::mutatorLock_,
-        // so do not need lock.
-        smartGCStats_.forceGC_ = false;
-    }
-    localFullMarkTriggered_ = false;
-    // Record alive object size after shared gc and other stats
-    UpdateHeapStatsAfterGC(gcType);
-    // Adjust shared gc trigger threshold
-    AdjustGlobalSpaceAllocLimit();
-    GetEcmaGCStats()->RecordStatisticAfterGC();
-    GetEcmaGCStats()->PrintGCStatistic();
-    ProcessAllGCListeners();
-}
-
 TaggedObject *SharedHeap::AllocateNonMovableOrHugeObject(JSThread *thread, JSHClass *hclass)
 {
     size_t size = hclass->GetObjectSize();
@@ -924,7 +922,7 @@ TaggedObject *SharedHeap::AllocateHugeObject(JSThread *thread, size_t size)
             // if allocate huge object OOM, temporarily increase space size to avoid vm crash
             size_t oomOvershootSize = config_.GetOutOfMemoryOvershootSize();
             sHugeObjectSpace_->IncreaseOutOfMemoryOvershootSize(oomOvershootSize);
-            DumpHeapSnapshotBeforeOOM(true, thread);
+            DumpHeapSnapshotBeforeOOM(false, thread, SharedHeapOOMSource::NORMAL_ALLOCATION);
             ThrowOutOfMemoryError(thread, size, "SharedHeap::AllocateHugeObject");
             object = reinterpret_cast<TaggedObject *>(sHugeObjectSpace_->Allocate(thread, size));
             if (UNLIKELY(object == nullptr)) {
@@ -1020,6 +1018,24 @@ void SharedHeap::CollectGarbage(JSThread *thread)
     ASSERT(!gcFinished_);
     SetForceGC(true);
     WaitGCFinished(thread);
+}
+
+template<TriggerGCType gcType, GCReason gcReason>
+void SharedHeap::PostGCTaskForTest(JSThread *thread)
+{
+    ASSERT(gcType == TriggerGCType::SHARED_GC || gcType == TriggerGCType::SHARED_FULL_GC);
+#ifndef NDEBUG
+    ASSERT(!thread->HasLaunchedSuspendAll());
+#endif
+    if (dThread_->IsRunning()) {
+        // Some UT may run without Daemon Thread.
+        LockHolder lock(waitGCFinishedMutex_);
+        if (dThread_->CheckAndPostTask(TriggerCollectGarbageTask<gcType, gcReason>(thread))) {
+            ASSERT(gcFinished_);
+            gcFinished_ = false;
+        }
+        ASSERT(!gcFinished_);
+    }
 }
 
 static void SwapBackAndPop(CVector<JSNativePointer*>& vec, CVector<JSNativePointer*>::iterator& iter)

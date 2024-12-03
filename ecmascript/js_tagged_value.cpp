@@ -81,30 +81,30 @@ bool JSTaggedValue::ToBoolean() const
 
 JSTaggedNumber JSTaggedValue::ToNumber(JSThread *thread, JSTaggedValue tagged)
 {
-    DISALLOW_GARBAGE_COLLECTION;
-    if (tagged.IsInt() || tagged.IsDouble()) {
-        return JSTaggedNumber(tagged);
-    }
-
-    switch (tagged.GetRawData()) {
-        case JSTaggedValue::VALUE_UNDEFINED:
-        case JSTaggedValue::VALUE_HOLE: {
-            return JSTaggedNumber(base::NAN_VALUE);
+    {
+        DISALLOW_GARBAGE_COLLECTION;
+        if (tagged.IsInt() || tagged.IsDouble()) {
+            return JSTaggedNumber(tagged);
         }
-        case JSTaggedValue::VALUE_TRUE: {
-            return JSTaggedNumber(1);
+        switch (tagged.GetRawData()) {
+            case JSTaggedValue::VALUE_UNDEFINED:
+            case JSTaggedValue::VALUE_HOLE: {
+                return JSTaggedNumber(base::NAN_VALUE);
+            }
+            case JSTaggedValue::VALUE_TRUE: {
+                return JSTaggedNumber(1);
+            }
+            case JSTaggedValue::VALUE_FALSE:
+            case JSTaggedValue::VALUE_NULL: {
+                return JSTaggedNumber(0);
+            }
+            default: {
+                break;
+            }
         }
-        case JSTaggedValue::VALUE_FALSE:
-        case JSTaggedValue::VALUE_NULL: {
-            return JSTaggedNumber(0);
+        if (tagged.IsString()) {
+            return StringToNumber(tagged);
         }
-        default: {
-            break;
-        }
-    }
-
-    if (tagged.IsString()) {
-        return StringToNumber(tagged);
     }
     if (tagged.IsECMAObject()) {
         JSHandle<JSTaggedValue>taggedHandle(thread, tagged);
@@ -353,13 +353,14 @@ bool JSTaggedValue::IsJSCOWArray() const
 bool JSTaggedValue::IsStableJSArray(JSThread *thread) const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsStableJSArray() &&
-           !thread->IsStableArrayElementsGuardiansInvalid();
+           !thread->IsArrayPrototypeChangedGuardiansInvalid() &&
+           !GetTaggedObject()->GetClass()->IsJSArrayPrototypeModifiedFromBitField();
 }
 
 bool JSTaggedValue::IsStableJSArguments(JSThread *thread) const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsStableJSArguments() &&
-           !thread->IsStableArrayElementsGuardiansInvalid();
+           !thread->IsArrayPrototypeChangedGuardiansInvalid();
 }
 
 bool JSTaggedValue::IsTaggedArray() const
@@ -385,7 +386,7 @@ bool JSTaggedValue::IsGeneratorContext() const
 bool JSTaggedValue::HasStableElements(JSThread *thread) const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsStableElements() &&
-           !thread->IsStableArrayElementsGuardiansInvalid();
+           !thread->IsArrayPrototypeChangedGuardiansInvalid();
 }
 
 bool JSTaggedValue::WithinInt32() const
@@ -806,6 +807,7 @@ JSTaggedValue JSTaggedValue::OrdinaryToPrimitive(JSThread *thread, const JSHandl
             }
         }
     }
+    DumpExceptionObject(thread, tagged);
     THROW_TYPE_ERROR_AND_RETURN(thread, "Cannot convert a illegal value to a Primitive", JSTaggedValue::Undefined());
 }
 
@@ -862,6 +864,7 @@ JSHandle<EcmaString> JSTaggedValue::ToString(JSThread *thread, const JSHandle<JS
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSHandle<EcmaString>(emptyStr));
         return ToString(thread, primValue);
     }
+    DumpExceptionObject(thread, tagged);
     // Already Include Symbol
     THROW_TYPE_ERROR_AND_RETURN(thread, "Cannot convert a illegal value to a String", JSHandle<EcmaString>(emptyStr));
 }
@@ -1259,6 +1262,7 @@ bool JSTaggedValue::SetPrototype(JSThread *thread, const JSHandle<JSTaggedValue>
 JSTaggedValue JSTaggedValue::GetPrototype(JSThread *thread, const JSHandle<JSTaggedValue> &obj)
 {
     if (!obj->IsECMAObject()) {
+        DumpExceptionObject(thread, obj);
         THROW_TYPE_ERROR_AND_RETURN(thread, "Can not get Prototype on non ECMA Object", JSTaggedValue::Exception());
     }
     if (obj->IsJSProxy()) {
@@ -1799,4 +1803,14 @@ bool JSTaggedValue::SetJSAPIProperty(JSThread *thread, const JSHandle<JSTaggedVa
     THROW_TYPE_ERROR_AND_RETURN(thread, "Cannot set property on Container", false);
 }
 
+void JSTaggedValue::DumpExceptionObject(JSThread *thread, const JSHandle<JSTaggedValue> &obj)
+{
+    if (thread->GetEcmaVM()->GetJSOptions().EnableExceptionBacktrace()) {
+        std::ostringstream oss;
+        obj->Dump(oss, true);
+        std::regex reg("0x[0-9a-fA-F]+");
+        std::string sensitiveStr = std::regex_replace(oss.str(), reg, "");
+        LOG_ECMA(ERROR) << "DumpExceptionObject: " << sensitiveStr;
+    }
+}
 }  // namespace panda::ecmascript

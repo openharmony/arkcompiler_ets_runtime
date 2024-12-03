@@ -14,6 +14,7 @@
  */
 
 #include "ecmascript/dfx/hprof/heap_profiler_interface.h"
+#include "ecmascript/dfx/hprof/heap_profiler.h"
 
 #include "ecmascript/ecma_vm.h"
 
@@ -26,5 +27,15 @@ HeapProfilerInterface *HeapProfilerInterface::GetInstance(EcmaVM *vm)
 void HeapProfilerInterface::Destroy(EcmaVM *vm)
 {
     vm->DeleteHeapProfile();
+}
+
+HeapProfilerInterface *HeapProfilerInterface::CreateNewInstance(const EcmaVM *vm)
+{
+    return new HeapProfiler(vm);
+}
+
+void HeapProfilerInterface::DestroyInstance(HeapProfilerInterface *heapProfiler)
+{
+    delete heapProfiler;
 }
 }  // namespace panda::ecmascript

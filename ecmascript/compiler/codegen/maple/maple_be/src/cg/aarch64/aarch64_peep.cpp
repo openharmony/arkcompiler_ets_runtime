@@ -369,7 +369,7 @@ ImmOperand *EnhanceStrLdrAArch64::GetInsnAddOrSubNewOffset(Insn &insn, ImmOperan
     } else {
         auto &immOpnd = static_cast<ImmOperand &>(insn.GetOperand(kInsnThirdOpnd));
         auto &shiftOpnd = static_cast<BitShiftOperand &>(insn.GetOperand(kInsnFourthOpnd));
-        CHECK_FATAL(shiftOpnd.GetShiftAmount() == 12, "invalid shiftAmount");
+        CHECK_FATAL(shiftOpnd.GetShiftAmount() == 12, "invalid shiftAmount"); // 12: invalid shiftAmount
         val = (immOpnd.GetValue() << shiftOpnd.GetShiftAmount());
     }
 
@@ -673,6 +673,7 @@ void CombineContiLoadAndStorePattern::Run(BB &bb, Insn &insn)
     }
 
     auto *curMemOpnd = static_cast<MemOperand *>(insn.GetMemOpnd());
+    CHECK_FATAL(curMemOpnd != nullptr, "nullptr check");
     DEBUG_ASSERT(curMemOpnd->GetAddrMode() == MemOperand::kAddrModeBOi, "invalid continues mem insn");
     OfstOperand *curOfstOpnd = curMemOpnd->GetOffsetImmediate();
     int64 curOfstVal = curOfstOpnd ? curOfstOpnd->GetOffsetValue() : 0;

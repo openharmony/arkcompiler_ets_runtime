@@ -193,6 +193,7 @@ private:
     void LowerArraySome(GateRef gate);
     void LowerArrayEvery(GateRef gate);
     void LowerArrayPop(GateRef gate);
+    void LowerArrayPush(GateRef gate);
     void LowerArraySlice(GateRef gate);
     void CheckAndCalcuSliceIndex(GateRef length,
                                  GateRef startHandler,

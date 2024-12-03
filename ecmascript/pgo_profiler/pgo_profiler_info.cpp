@@ -623,10 +623,10 @@ bool PGORecordDetailInfos::AddDefine(
     PGOHClassTreeDesc descInfo(type.GetProfileType());
     auto iter = hclassTreeDescInfos_.find(descInfo);
     if (iter == hclassTreeDescInfos_.end()) {
-        descInfo.SetProtoPt(type.GetProtoTypePt());
+        descInfo.SetProtoPt(type.GetPrototypePt());
         hclassTreeDescInfos_.emplace(descInfo);
     } else {
-        const_cast<PGOHClassTreeDesc &>(*iter).SetProtoPt(type.GetProtoTypePt());
+        const_cast<PGOHClassTreeDesc &>(*iter).SetProtoPt(type.GetPrototypePt());
     }
     return true;
 }
@@ -702,10 +702,10 @@ bool PGORecordDetailInfos::IsDumped(ProfileType rootType, ProfileType curType) c
 
 void PGORecordDetailInfos::Merge(const PGORecordDetailInfos &recordInfos)
 {
-    CMap<ProfileType, PGOMethodInfoMap *> methodInfos = recordInfos.recordInfos_;
-    for (auto iter = methodInfos.begin(); iter != methodInfos.end(); iter++) {
-        auto recordType = iter->first;
-        auto fromMethodInfos = iter->second;
+    const auto& methodInfos = recordInfos.recordInfos_;
+    for (auto& iter: methodInfos) {
+        auto recordType = iter.first;
+        auto fromMethodInfos = iter.second;
 
         auto recordInfosIter = recordInfos_.find(recordType);
         PGOMethodInfoMap *toMethodInfos = nullptr;
@@ -723,10 +723,8 @@ void PGORecordDetailInfos::Merge(const PGORecordDetailInfos &recordInfos)
     recordPool_->Merge(*recordInfos.recordPool_);
     protoTransitionPool_->Merge(*recordInfos.protoTransitionPool_);
     // Merge global layout desc infos to global method info map
-    std::set<PGOHClassTreeDesc> hclassTreeDescInfos = recordInfos.hclassTreeDescInfos_;
-    for (auto info = hclassTreeDescInfos.begin(); info != hclassTreeDescInfos.end();
-         info++) {
-        auto &fromInfo = *info;
+    const auto& hclassTreeDescInfos = recordInfos.hclassTreeDescInfos_;
+    for (auto& fromInfo: hclassTreeDescInfos) {
         auto result = hclassTreeDescInfos_.find(fromInfo);
         if (result == hclassTreeDescInfos_.end()) {
             PGOHClassTreeDesc descInfo(fromInfo.GetProfileType());
@@ -777,6 +775,8 @@ bool PGORecordDetailInfos::ParseFromBinary(void *buffer, PGOProfilerHeader *cons
         ASSERT(methodInfos != nullptr);
         if (methodInfos->ParseFromBinary(chunk_.get(), *this, &addr)) {
             recordInfos_.emplace(recordType, methodInfos);
+        } else {
+            nativeAreaAllocator_.Delete(methodInfos);
         }
     }
 
@@ -1049,6 +1049,8 @@ void PGORecordSimpleInfos::ParseFromBinary(void *buffer, PGOProfilerHeader *cons
             // check record name, the default record name of the framework abc does not enter the aot compilation
             FrameworkHelper::GetRealRecordName(recordName);
             (methodIdsResult.first->second).emplace(recordName, methodIds);
+        } else {
+            nativeAreaAllocator_.Delete(methodIds);
         }
     }
 

@@ -124,22 +124,6 @@ GateRef InstructionCombine::VisitConvert(GateRef gate)
                 }
                 break;
             }
-        case OpCode::INT64_TO_TAGGED:
-            {
-                GateMatcher in(acc_.GetValueIn(gate, 0), circuit_);
-                if (in.IsTaggedToInt64()) {
-                    return in.ValueIn(0);
-                }
-                break;
-            }
-        case OpCode::SIGNED_INT_TO_FLOAT:
-            {
-                GateMatcher in(acc_.GetValueIn(gate, 0), circuit_);
-                if (in.IsFloatToSignedInt()) {
-                    return in.ValueIn(0);
-                }
-                break;
-            }
         case OpCode::FLOAT_TO_SIGNED_INT:
             {
                 GateMatcher in(acc_.GetValueIn(gate, 0), circuit_);
@@ -148,8 +132,9 @@ GateRef InstructionCombine::VisitConvert(GateRef gate)
                 }
                 break;
             }
+        case OpCode::INT64_TO_TAGGED:
+        case OpCode::SIGNED_INT_TO_FLOAT:
         case OpCode::UNSIGNED_FLOAT_TO_INT:
-            break;
         case OpCode::BITCAST:
         case OpCode::ZEXT:
         case OpCode::SEXT:

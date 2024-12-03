@@ -74,7 +74,7 @@ class ObjectFactory;
     V(JSTaggedValue, PrototypeHandlerClass, PROTOTYPE_HANDLER_CLASS_INDEX, ecma_roots_class)                          \
     V(JSTaggedValue, TransitionHandlerClass, TRANSITION_HANDLER_CLASS_INDEX, ecma_roots_class)                        \
     V(JSTaggedValue, TransWithProtoHandlerClass, TRANS_WITH_PROTO_HANDLER_CLASS_INDEX, ecma_roots_class)              \
-    V(JSTaggedValue, StoreTSHandlerClass, STORE_TS_HANDLER_CLASS_INDEX, ecma_roots_class)                             \
+    V(JSTaggedValue, StoreAOTHandlerClass, STORE_TS_HANDLER_CLASS_INDEX, ecma_roots_class)                             \
     V(JSTaggedValue, PropertyBoxClass, PROPERTY_BOX_CLASS_INDEX, ecma_roots_class)                                    \
     V(JSTaggedValue, ProgramClass, PROGRAM_CLASS_INDEX, ecma_roots_class)                                             \
     V(JSTaggedValue, ImportEntryClass, IMPORT_ENTRY_CLASS_INDEX, ecma_roots_class)                                    \
@@ -289,6 +289,7 @@ class ObjectFactory;
     V(JSTaggedValue, ArraySome, ARRAY_SOME_INDEX, ecma_roots_builtins)                                  \
     V(JSTaggedValue, ArrayEvery, ARRAY_EVERY_INDEX, ecma_roots_builtins)                                \
     V(JSTaggedValue, ArrayPop, ARRAY_POP_INDEX, ecma_roots_builtins)                                    \
+    V(JSTaggedValue, ArrayPush, ARRAY_PUSH_INDEX, ecma_roots_builtins)                                    \
     V(JSTaggedValue, ArraySlice, ARRAY_SLICE_INDEX, ecma_roots_builtins)                                \
     V(JSTaggedValue, GloablDecodeURIComponent, GLOBAL_DECODE_URI_COMPONENT, ecma_roots_builtins)
 
@@ -649,8 +650,6 @@ class ObjectFactory;
     V(JSTaggedValue, TreeSetIteratorPrototype, TREESET_ITERATOR_PROTOTYPE_INDEX, TreeSetIterator)           \
     V(JSTaggedValue, VectorFunction, VECTOR_FUNCTION_INDEX, VectorFunction)                                 \
     V(JSTaggedValue, VectorIteratorPrototype, VECTOR_ITERATOR_PROTOTYPE_INDEX, VectorIterator)              \
-    V(JSTaggedValue, BitVectorFunction, BITVECTOR_FUNCTION_INDEX, BitVectorFunction)                        \
-    V(JSTaggedValue, BitVectorIteratorPrototype, BITVECTOR_ITERATOR_PROTOTYPE_INDEX, BitVectorIterator)     \
     V(JSTaggedValue, QueueIteratorPrototype, QUEUE_ITERATOR_PROTOTYPE_INDEX, QueueIterator)                 \
     V(JSTaggedValue, PlainArrayIteratorPrototype, PLAIN_ARRAY_ITERATOR_PROTOTYPE_INDEX, PlainArrayIterator) \
     V(JSTaggedValue, PlainArrayFunction, PLAIN_ARRAY_FUNCTION_INDEX, PlainArrayFunction)                    \

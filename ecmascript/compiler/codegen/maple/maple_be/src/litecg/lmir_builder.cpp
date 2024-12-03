@@ -455,6 +455,16 @@ Stmt &LMIRBuilder::Call(Function &func, Args &args_, PregIdx pregIdx)
     return *mirBuilder.CreateStmtCallRegassigned(func.GetPuidx(), args, pregIdx, OP_callassigned);
 }
 
+Stmt &LMIRBuilder::PureCall(Expr funcAddr, Args &args_, Var *result)
+{
+    MapleVector<BaseNode *> args(mirBuilder.GetCurrentFuncCodeMpAllocator()->Adapter());
+    args.push_back(funcAddr.GetNode());
+    for (const auto &arg : args_) {
+        args.emplace_back(arg.GetNode());
+    }
+    return *mirBuilder.CreateStmtIntrinsicCall(MIRIntrinsicID::INTRN_JS_PURE_CALL, args);
+}
+
 Stmt &LMIRBuilder::ICall(Expr funcAddr, Args &args_, Var *result)
 {
     MapleVector<BaseNode *> args(mirBuilder.GetCurrentFuncCodeMpAllocator()->Adapter());
@@ -486,8 +496,6 @@ Stmt &LMIRBuilder::IntrinsicCall(IntrinsicId func_, Args &args_, PregIdx retPreg
     for (const auto &arg : args_) {
         args.emplace_back(arg.GetNode());
     }
-
-    // need to fix the type for IntrinsicId
     auto func = static_cast<MIRIntrinsicID>(func_);
     return *mirBuilder.CreateStmtIntrinsicCallAssigned(func, args, retPregIdx1, retPregIdx2);
 }

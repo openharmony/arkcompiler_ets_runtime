@@ -139,3 +139,9 @@ print(Object.prototype.isPrototypeOf.call(object, object));
     print(err)
   }
 }
+
+const v7 = new Proxy(Reflect, Reflect);
+const v9 = new Proxy(v7, Reflect);
+for (const v10 in v9) {
+}
+print("test proxy getPrototype success!");

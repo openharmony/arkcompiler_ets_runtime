@@ -472,6 +472,7 @@ public:
     inline GateRef IsStableArguments(GateRef hClass);
     inline GateRef IsStableArray(GateRef hClass);
     inline GateRef IsDictionaryElement(GateRef hClass);
+    inline GateRef IsJSArrayPrototypeModified(GateRef hClass);
     inline GateRef IsClassConstructor(GateRef object);
     inline GateRef IsClassConstructorWithBitField(GateRef bitfield);
     inline GateRef IsConstructor(GateRef object);
@@ -481,7 +482,7 @@ public:
     inline GateRef IsJSObject(GateRef obj);
     inline GateRef IsCallable(GateRef obj);
     inline GateRef IsCallableFromBitField(GateRef bitfield);
-    inline GateRef IsProtoTypeHClass(GateRef hclass);
+    inline GateRef IsPrototypeHClass(GateRef hclass);
     inline GateRef IsJsProxy(GateRef obj);
     GateRef IsJSHClass(GateRef obj);
     inline void StoreHClass(GateRef glue, GateRef object, GateRef hClass);
@@ -514,6 +515,7 @@ public:
     // **************************** Middle IR ****************************
     GateRef EcmaObjectCheck(GateRef gate);
     GateRef HeapObjectCheck(GateRef gate, GateRef frameState);
+    GateRef MathHClassConsistencyCheck(GateRef receiver);
     GateRef HeapObjectIsEcmaObjectCheck(GateRef gate, GateRef frameState);
     GateRef ProtoChangeMarkerCheck(GateRef gate, GateRef frameState = Gate::InvalidGateRef);
     GateRef StableArrayCheck(GateRef gate, ElementsKind kind, ArrayMetaDataAccessor::Mode mode);
@@ -670,7 +672,7 @@ public:
     GateRef MonoStorePropertyLookUpProto(GateRef receiver, GateRef plrGate, GateRef jsFunc, size_t hclassIndex,
                                          GateRef value);
     GateRef MonoStoreProperty(GateRef receiver, GateRef plrGate, GateRef jsFunc, size_t hclassIndex,
-                              GateRef value, GateRef keyIndex, GateRef frameState);
+                              GateRef value, GateRef keyIndex, GateRef isProto, GateRef frameState);
     GateRef TypedCreateObjWithBuffer(std::vector<GateRef> &valueIn);
     template<TypedLoadOp Op>
     GateRef ConvertJSArrayHoleAsUndefined(GateRef receiver);
@@ -704,7 +706,7 @@ public:
     inline GateRef TaggedIsWeak(GateRef x);
     inline GateRef TaggedIsPrototypeHandler(GateRef x);
     inline GateRef TaggedIsTransitionHandler(GateRef x);
-    inline GateRef TaggedIsStoreTSHandler(GateRef x);
+    inline GateRef TaggedIsStoreAOTHandler(GateRef x);
     inline GateRef TaggedIsTransWithProtoHandler(GateRef x);
     inline GateRef TaggedIsUndefinedOrNull(GateRef x);
     inline GateRef TaggedIsUndefinedOrNullOrHole(GateRef x);
@@ -804,6 +806,7 @@ public:
         GateRef thisValue, GateRef callBackFn, GateRef usingThis, GateRef callIDRef, uint32_t pcOffset);
     GateRef ArrayEvery(GateRef thisValue, GateRef callBackFn, GateRef usingThis, uint32_t pcOffset);
     GateRef ArrayPop(GateRef thisValue, GateRef frameState);
+    GateRef ArrayPush(GateRef thisValue, GateRef value);
     GateRef ArraySlice(GateRef thisValue, GateRef startIndex, GateRef endIndex, GateRef frameState);
     GateRef ToNumber(GateRef gate, GateRef value, GateRef glue);
     GateRef StringToNumber(GateRef gate, GateRef value, GateRef radix, GateRef glue);
@@ -869,8 +872,9 @@ public:
     inline GateRef GetDoubleOfTDouble(GateRef x);
     inline GateRef GetBooleanOfTBoolean(GateRef x);
     GateRef GetDoubleOfTNumber(GateRef x);
-    GateRef DoubleToInt(GateRef x, Label *exit);
-    GateRef DoubleToInt(GateRef glue, GateRef x, size_t typeBits);
+    GateRef TruncDoubleToInt(GateRef glue, GateRef x, size_t typeBits);
+    GateRef DoubleToIntOverflowCheck(GateRef x, size_t typeBits);
+    GateRef SaturateTruncDoubleToInt32(GateRef glue, GateRef x);
     GateRef DoubleCheckINFInRangeInt32(GateRef x);
     GateRef DoubleInRangeInt32(GateRef x);
     inline GateRef Int32ToTaggedPtr(GateRef x);

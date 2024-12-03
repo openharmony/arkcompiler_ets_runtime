@@ -56,8 +56,7 @@ public:
     }
 };
 
-class Aarch64TargetBuilderRegistry
-{
+class Aarch64TargetBuilderRegistry {
 public:
     Aarch64TargetBuilderRegistry()
     {

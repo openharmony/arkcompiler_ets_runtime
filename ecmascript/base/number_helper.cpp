@@ -830,6 +830,13 @@ int64_t NumberHelper::DoubleToInt64(double d)
     return static_cast<int64_t>(d);
 }
 
+uint64_t NumberHelper::DoubleToUInt64(double d)
+{
+    ASSERT(d <= static_cast<double>(std::numeric_limits<uint64_t>::max()) &&
+           d >= static_cast<double>(std::numeric_limits<uint64_t>::min()));
+    return static_cast<uint64_t>(d);
+}
+
 bool NumberHelper::IsDigitalString(const uint8_t *start, const uint8_t *end)
 {
     int len = end - start;
@@ -1140,13 +1147,21 @@ int32_t NumberHelper::DoubleToInt(double d, size_t bits)
 
 int32_t NumberHelper::DoubleInRangeInt32(double d)
 {
-    if (d > INT_MAX) {
+    if (d >= static_cast<double>(INT_MAX)) {
         return INT_MAX;
     }
-    if (d < INT_MIN) {
+    if (d <= static_cast<double>(INT_MIN)) {
         return INT_MIN;
     }
     return base::NumberHelper::DoubleToInt(d, base::INT32_BITS);
+}
+
+int32_t NumberHelper::SaturateTruncDoubleToInt32(double d)
+{
+    if (std::isnan(d) || d == -base::POSITIVE_INFINITY) {
+        return 0;
+    }
+    return base::NumberHelper::DoubleInRangeInt32(d);
 }
 
 JSTaggedValue NumberHelper::StringToBigInt(JSThread *thread, JSHandle<JSTaggedValue> strVal)

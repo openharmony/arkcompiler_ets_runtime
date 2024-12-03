@@ -111,7 +111,7 @@ private:
                                      JSHClass *hclass, JSTaggedValue &secondValue);
     void HandleOtherTypesPrototypeHandler(ApEntityId &abcId, int32_t &bcOffset,
                                           JSHClass *hclass, JSTaggedValue &secondValue, uint32_t slotId);
-    void HandleStoreTSHandler(ApEntityId &abcId, int32_t &bcOffset,
+    void HandleStoreAOTHandler(ApEntityId &abcId, int32_t &bcOffset,
                               JSHClass *hclass, JSTaggedValue &secondValue);
     void ConvertICByNameWithPoly(ApEntityId abcId, int32_t bcOffset, JSTaggedValue cacheValue, BCType type,
                                  uint32_t slotId);

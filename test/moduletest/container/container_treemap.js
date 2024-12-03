@@ -197,4 +197,23 @@ if (globalThis["ArkPrivate"] != undefined) {
     map.set("b", "bv");
     map.set("c", "cv");
     print("Test TreeMap set After Clear Success")
+    
+    let growMap = new fastmap();
+    const keyStr = 'KEY_TEST_MAP';
+    growMap.set(keyStr,21)
+    growMap.set(keyStr,68)
+    growMap.remove(keyStr)
+    growMap.set(keyStr,23)
+    growMap.remove(keyStr)
+    growMap.set(keyStr,86)
+    growMap.remove(keyStr)
+    growMap.set(keyStr,37)
+    growMap.remove(keyStr)
+    growMap.set(keyStr,33)
+    growMap.remove(keyStr)
+    growMap.set(keyStr,34)
+    growMap.remove(keyStr)
+    growMap.set(keyStr,64)
+    growMap.set(keyStr,100)
+    print(growMap.get(keyStr))
 }

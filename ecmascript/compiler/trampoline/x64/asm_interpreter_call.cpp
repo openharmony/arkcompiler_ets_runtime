@@ -1854,6 +1854,12 @@ void AsmInterpreterCall::ThrowStackOverflowExceptionAndReturn(ExtendedAssembler 
     __ Pushq(static_cast<int64_t>(FrameType::ASM_BRIDGE_FRAME)); // set frame type
     __ Leaq(Operand(rsp, FRAME_SLOT_SIZE), rbp); // skip frame type
 
+    Label callRuntime;
+    // 16 bytes align check
+    __ Testq(0x8, rsp);
+    __ Jnz(&callRuntime);
+    __ PushAlignBytes();
+    __ Bind(&callRuntime);
     __ Pushq(r10); // caller save
     __ Pushq(0); // argc
     __ Pushq(kungfu::RuntimeStubCSigns::ID_ThrowStackOverflowException); // runtime id
@@ -1863,13 +1869,13 @@ void AsmInterpreterCall::ThrowStackOverflowExceptionAndReturn(ExtendedAssembler 
     __ Callq(r10); // call CallRuntime
     __ Addq(2 * FRAME_SLOT_SIZE, rsp); // 2: skip argc and runtime_id
     __ Popq(r10);
-    __ Addq(FRAME_SLOT_SIZE, rsp); // skip frame type
+    __ Movq(rbp, rsp);
     __ Popq(rbp);
     __ Ret();
 }
 
-void AsmInterpreterCall::ThrowStackOverflowExceptionAndReturnToAotFrame(ExtendedAssembler *assembler, Register glue,
-    Register fp, Register op)
+void AsmInterpreterCall::ThrowStackOverflowExceptionAndReturnToAsmInterpBridgeFrame(ExtendedAssembler *assembler,
+    Register glue, Register fp, Register op)
 {
     if (fp != rsp) {
         __ Movq(fp, rsp);
@@ -1884,6 +1890,12 @@ void AsmInterpreterCall::ThrowStackOverflowExceptionAndReturnToAotFrame(Extended
     __ Pushq(static_cast<int64_t>(FrameType::ASM_BRIDGE_FRAME)); // set frame type
     __ Leaq(Operand(rsp, FRAME_SLOT_SIZE), rbp); // skip frame type
 
+    Label callRuntime;
+    // 16 bytes align check
+    __ Testq(0x8, rsp);
+    __ Jnz(&callRuntime);
+    __ PushAlignBytes();
+    __ Bind(&callRuntime);
     __ Pushq(r10); // caller save
     __ Pushq(0); // argc
     __ Pushq(kungfu::RuntimeStubCSigns::ID_ThrowStackOverflowException); // runtime id
@@ -1893,10 +1905,13 @@ void AsmInterpreterCall::ThrowStackOverflowExceptionAndReturnToAotFrame(Extended
     __ Callq(r10); // call CallRuntime
     __ Addq(2 * FRAME_SLOT_SIZE, rsp); // 2: skip argc and runtime_id
     __ Popq(r10);
-    __ Addq(FRAME_SLOT_SIZE, rsp); // skip frame type
-    __ Popq(rbp);
     __ Movq(rbp, rsp);
-    __ Movq(Operand(rbp, -2 * FRAME_SLOT_SIZE), rbp); // 2: skip returnAddr and frameType in AsmBridgeFrame
+    __ Popq(rbp);
+
+    // Base on PushAsmInterpBridgeFrame, need to skip AsmInterpBridgeFrame size, callee Save Registers(5)
+    // and PushAlignBytes(1)
+    int32_t skipNum = AsmInterpretedBridgeFrame::GetSize(false) / FRAME_SLOT_SIZE + 5 + 1;
+    __ Leaq(Operand(rbp, -skipNum * FRAME_SLOT_SIZE), rsp);
     __ Ret();
 }
 

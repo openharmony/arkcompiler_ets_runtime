@@ -158,7 +158,6 @@ JSHandle<TaggedArray> JSAPIQueue::OwnKeys(JSThread *thread, const JSHandle<JSAPI
     uint32_t length = obj->GetLength().GetArrayLength();
 
     JSHandle<TaggedArray> oldElements(thread, obj->GetElements());
-    ASSERT(!oldElements->IsDictionaryMode());
     uint32_t oldCapacity = oldElements->GetLength();
     uint32_t newCapacity = ComputeCapacity(oldCapacity);
     uint32_t front = obj->GetFront();

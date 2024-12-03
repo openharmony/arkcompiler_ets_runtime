@@ -40,6 +40,7 @@
 #endif
 
 namespace panda::ecmascript {
+class DateUtils;
 class EcmaContext;
 class EcmaVM;
 class EcmaHandleScope;
@@ -54,7 +55,6 @@ class VmThreadControl;
 class GlobalEnvConstants;
 enum class ElementsKind : uint8_t;
 
-// NOTE: remove
 class MachineCode;
 using JitCodeVector = std::vector<std::tuple<MachineCode*, std::string, uintptr_t>>;
 using JitCodeMapVisitor = std::function<void(std::map<JSTaggedType, JitCodeVector*>&)>;
@@ -82,8 +82,6 @@ enum class BCStubStatus: uint8_t {
     PROFILE_BC_STUB,
     JIT_PROFILE_BC_STUB,
 };
-
-enum class StableArrayChangeKind { PROTO, NOT_PROTO };
 
 enum ThreadType : uint8_t {
     JS_THREAD,
@@ -294,10 +292,6 @@ public:
 
     void ClearException();
 
-    void SetEnableForceIC(bool isEnableForceIC);
-
-    bool IsEnableForceIC() const;
-
     void SetGlobalObject(JSTaggedValue globalObject)
     {
         glueData_.globalObject_ = globalObject;
@@ -338,11 +332,11 @@ public:
         return ctorHclassEntries_;
     }
 
-    void NotifyStableArrayElementsGuardians(JSHandle<JSObject> receiver, StableArrayChangeKind changeKind);
+    void NotifyArrayPrototypeChangedGuardians(JSHandle<JSObject> receiver);
 
-    bool IsStableArrayElementsGuardiansInvalid() const
+    bool IsArrayPrototypeChangedGuardiansInvalid() const
     {
-        return !glueData_.stableArrayElementsGuardians_;
+        return !glueData_.arrayPrototypeChangedGuardians_;
     }
 
     void ResetGuardians();
@@ -905,7 +899,7 @@ public:
     {
         glueData_.taskInfo_ = taskInfo;
     }
-    
+
     uintptr_t GetTaskInfo() const
     {
         return glueData_.taskInfo_;
@@ -959,13 +953,12 @@ public:
                                                  base::AlignedPointer,
                                                  base::AlignedPointer,
                                                  base::AlignedUint32,
-                                                 base::AlignedBool,
                                                  base::AlignedBool> {
         enum class Index : size_t {
             BcStubEntriesIndex = 0,
             ExceptionIndex,
             GlobalObjIndex,
-            StableArrayElementsGuardiansIndex,
+            ArrayElementsGuardiansIndex,
             CurrentFrameIndex,
             LeaveFrameIndex,
             LastFpIndex,
@@ -1003,7 +996,6 @@ public:
             StateAndFlagsIndex,
             TaskInfoIndex,
             IsEnableElementsKindIndex,
-            IsEnableForceIC,
             NumOfMembers
         };
         static_assert(static_cast<size_t>(Index::NumOfMembers) == NumOfTypes);
@@ -1018,9 +1010,9 @@ public:
             return GetOffset<static_cast<size_t>(Index::GlobalObjIndex)>(isArch32);
         }
 
-        static size_t GetStableArrayElementsGuardiansOffset(bool isArch32)
+        static size_t GetArrayElementsGuardiansOffset(bool isArch32)
         {
-            return GetOffset<static_cast<size_t>(Index::StableArrayElementsGuardiansIndex)>(isArch32);
+            return GetOffset<static_cast<size_t>(Index::ArrayElementsGuardiansIndex)>(isArch32);
         }
 
         static size_t GetGlobalConstOffset(bool isArch32)
@@ -1234,15 +1226,10 @@ public:
             return GetOffset<static_cast<size_t>(Index::IsEnableElementsKindIndex)>(isArch32);
         }
 
-        static size_t GetIsEnableForceICOffSet(bool isArch32)
-        {
-            return GetOffset<static_cast<size_t>(Index::IsEnableForceIC)>(isArch32);
-        }
-
         alignas(EAS) BCStubEntries bcStubEntries_ {};
         alignas(EAS) JSTaggedValue exception_ {JSTaggedValue::Hole()};
         alignas(EAS) JSTaggedValue globalObject_ {JSTaggedValue::Hole()};
-        alignas(EAS) bool stableArrayElementsGuardians_ {true};
+        alignas(EAS) bool arrayPrototypeChangedGuardians_ {true};
         alignas(EAS) JSTaggedType *currentFrame_ {nullptr};
         alignas(EAS) JSTaggedType *leaveFrame_ {nullptr};
         alignas(EAS) JSTaggedType *lastFp_ {nullptr};
@@ -1280,7 +1267,6 @@ public:
         alignas(EAS) ThreadStateAndFlags stateAndFlags_ {};
         alignas(EAS) uintptr_t taskInfo_ {0};
         alignas(EAS) bool isEnableElementsKind_ {false};
-        alignas(EAS) bool isEnableForceIC_ {true};
     };
     STATIC_ASSERT_EQ_ARCH(sizeof(GlueData), GlueData::SizeArch32, GlueData::SizeArch64);
 
@@ -1318,9 +1304,29 @@ public:
     void InitializeBuiltinObject(const std::string& key);
     void InitializeBuiltinObject();
 
+    bool FullMarkRequest() const
+    {
+        return fullMarkRequest_;
+    }
+
     void SetFullMarkRequest()
     {
         fullMarkRequest_ = true;
+    }
+
+    void ResetFullMarkRequest()
+    {
+        fullMarkRequest_ = false;
+    }
+
+    void SetProcessingLocalToSharedRset(bool processing)
+    {
+        processingLocalToSharedRset_ = processing;
+    }
+
+    bool IsProcessingLocalToSharedRset() const
+    {
+        return processingLocalToSharedRset_;
     }
 
     inline bool IsThreadSafe() const
@@ -1474,7 +1480,10 @@ public:
         RegisterRTInterface(kungfu::RuntimeStubCSigns::ID_ASMFastWriteBarrier, asmCheckStub);
     }
 
-    
+    DateUtils *GetDateUtils() const
+    {
+        return dateUtils_;
+    }
 
 #ifndef NDEBUG
     inline void LaunchSuspendAll()
@@ -1601,6 +1610,8 @@ private:
     // Shared heap
     bool isMainThread_ {false};
     bool fullMarkRequest_ {false};
+    // Shared heap collect local heap Rset
+    bool processingLocalToSharedRset_ {false};
 
     // { ElementsKind, (hclass, hclassWithProto) }
     CMap<ElementsKind, std::pair<ConstantIndex, ConstantIndex>> arrayHClassIndexMap_;
@@ -1620,6 +1631,7 @@ private:
     RecursiveMutex jitMutex_;
     bool machineCodeLowMemory_ {false};
     RecursiveMutex profileTypeAccessorLockMutex_;
+    DateUtils *dateUtils_ {nullptr};
 
 #ifndef NDEBUG
     MutatorLock::MutatorLockState mutatorLockState_ = MutatorLock::MutatorLockState::UNLOCKED;

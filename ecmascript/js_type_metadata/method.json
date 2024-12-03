@@ -1,0 +1,14 @@
+{
+    "name": "METHOD",
+    "offsets": [
+        {
+            "name": "ConstantPool",
+            "offset": 0,
+            "size": 8
+        }
+    ],
+    "end_offset": 48,
+    "parents": [
+        "TAGGED_OBJECT"
+    ]
+}

@@ -1196,7 +1196,8 @@ void Builtins::SetErrorWithRealm(const JSHandle<GlobalEnv> &realm, const JSType 
             realm->SetTerminationErrorFunction(thread_, nativeErrorFunction);
             break;
         default:
-            break;
+            LOG_ECMA(FATAL) << "this branch is unreachable, errorTag: " << static_cast<size_t>(errorTag);
+            UNREACHABLE();
     }
     PropertyDescriptor descriptor(thread_, nativeErrorFunction, true, false, true);
     JSObject::DefineOwnProperty(thread_, globalObject, nameString, descriptor);
@@ -2151,7 +2152,9 @@ void Builtins::InitializeArray(const JSHandle<GlobalEnv> &env, const JSHandle<JS
     // Arraybase.prototype
     JSHandle<JSHClass> arrBaseFuncInstanceHClass = factory_->CreateJSArrayInstanceClass(
         objFuncPrototypeVal, BuiltinsArray::GetNumPrototypeInlinedProperties());
-
+    // Since we don't want the operations on the array prototype to go through the IR code.
+    // Specially we set the bit of the array prototype to true.
+    arrBaseFuncInstanceHClass->SetIsJSArrayPrototypeModified(true);
     // Array.prototype
     JSHandle<JSObject> arrFuncPrototype = factory_->NewJSObjectWithInit(arrBaseFuncInstanceHClass);
     JSHandle<JSArray>::Cast(arrFuncPrototype)->SetLength(FunctionLength::ZERO);

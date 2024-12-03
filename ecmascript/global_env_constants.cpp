@@ -199,7 +199,7 @@ void GlobalEnvConstants::InitSharedRootsClasses(ObjectFactory *factory)
     SetConstant(ConstantIndex::TRANS_WITH_PROTO_HANDLER_CLASS_INDEX,
         factory->NewSEcmaReadOnlyHClass(hClass, TransWithProtoHandler::SIZE, JSType::TRANS_WITH_PROTO_HANDLER));
     SetConstant(ConstantIndex::STORE_TS_HANDLER_CLASS_INDEX,
-        factory->NewSEcmaReadOnlyHClass(hClass, StoreTSHandler::SIZE, JSType::STORE_TS_HANDLER));
+        factory->NewSEcmaReadOnlyHClass(hClass, StoreAOTHandler::SIZE, JSType::STORE_TS_HANDLER));
     SetConstant(ConstantIndex::PROPERTY_BOX_CLASS_INDEX,
         factory->NewSEcmaReadOnlyHClass(hClass, PropertyBox::SIZE, JSType::PROPERTY_BOX));
     SetConstant(ConstantIndex::PROGRAM_CLASS_INDEX,

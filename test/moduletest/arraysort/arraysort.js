@@ -376,3 +376,110 @@ print("sort Test Success!");
     array1[0] = `g`;
     print(array1.toSorted());
 }
+
+// Test sort if array has hole
+function HoleSort()
+{
+  let sortNumber= [];
+  for (let i = 0; i < 10; i++) {
+    sortNumber.push(parseInt(i));
+  }
+  sortNumber[100] = parseInt(100);
+  print(sortNumber.length);
+  print(sortNumber);
+
+  sortNumber.sort((a, b) => {
+    return a < b;
+  });
+
+  print(sortNumber.length);
+  print(sortNumber);
+}
+
+HoleSort();
+
+let sortNumber = [0,3,2,,4,5,6];
+sortNumber.sort((a,b) => {
+    sortNumber[10000] = 1;
+    return a-b;
+});
+print(sortNumber.length);
+print(sortNumber);
+
+let sortNumber2 = [0,3,2,,4,5,6];
+sortNumber2.sort((a,b) => {
+    sortNumber2[3] = 1;
+    return a-b;
+});
+print(sortNumber2.length);
+print(sortNumber2);
+
+let sortNumber3 = [0,3,2,,4,5,6];
+sortNumber3.sort((a,b) => {
+    sortNumber3 = 1;    // stlexvar
+    return a-b;
+});
+print(sortNumber3.length);
+print(sortNumber3[0]);
+print(sortNumber3[2]);
+print(sortNumber3[4]);
+print(sortNumber3[6]);
+
+let sortNumber4 = [0,3,2,,4,5,6];
+sortNumber4.sort((a,b) => {
+    sortNumber4.push(1);
+    return a-b;
+});
+print(sortNumber4.length);
+print(sortNumber4[0]);
+print(sortNumber4[2]);
+print(sortNumber4[4]);
+print(sortNumber4[6]);
+
+let sortNumber5 = [-1, 2, 4, 1, 0];
+sortNumber5.sort((x, y) => {
+    Object.defineProperty(sortNumber5, '2', {
+        get() {
+            print("get second element:");
+            return this.value;
+        },
+        set(newValue) {
+            print("set second element:", newValue);
+            this.value = newValue;
+        }
+    });
+    return x - y;
+})
+print(sortNumber5.length);
+print(sortNumber5.value);
+print(sortNumber5);
+
+let sortNumber6 = [-1, 2, 4, 1, 0];
+sortNumber6.sort((x, y) => {
+    Object.defineProperty(sortNumber6, '100', {
+        get() {
+            print("get 10000th element:");
+            return this.value;
+        },
+        set(newValue) {
+            print("set 10000th element:", newValue);
+            this.value = newValue;
+        },
+        configurable: true  // 允许重新定义
+    });
+    return x - y;
+})
+print(sortNumber6.length);
+print(sortNumber6.value);
+print(sortNumber6);
+
+let sortNumber7 = [0,3,2,,4,5,6];
+sortNumber7.sort((a,b) => {
+    sortNumber7.pop();
+    return a-b;
+});
+print(sortNumber7.length);
+print(sortNumber7[0]);
+print(sortNumber7[2]);
+print(sortNumber7[4]);
+print(sortNumber7[6]);

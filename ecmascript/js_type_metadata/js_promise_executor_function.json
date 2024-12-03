@@ -1,0 +1,14 @@
+{
+    "name": "JS_PROMISE_EXECUTOR_FUNCTION",
+    "offsets": [
+        {
+            "name": "Capability",
+            "offset": 0,
+            "size": 8
+        }
+    ],
+    "end_offset": 8,
+    "parents": [
+        "JS_FUNCTION"
+    ]
+}

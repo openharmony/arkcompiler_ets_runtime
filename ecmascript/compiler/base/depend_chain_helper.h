@@ -64,7 +64,7 @@ public:
         head_ = other->head_;
         size_ = other->size_;
     }
-
+    
     GateRef GetHeadGate()
     {
         return head_->gate;

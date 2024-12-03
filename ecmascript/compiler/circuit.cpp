@@ -37,7 +37,7 @@ Circuit::Circuit(NativeAreaAllocator* allocator, DebugInfo* debugInfo, const cha
       , allGates_(chunk())
 #endif
 {
-    if (funcName != nullptr && debugInfo_->IsEnable()) {
+    if (funcName != nullptr && debugInfo_ != nullptr && debugInfo_->IsEnable()) {
         debugInfo_->AddFuncDebugInfo(funcName);
     }
     space_ = panda::ecmascript::PageMap(CIRCUIT_SPACE, PAGE_PROT_READWRITE).GetMem();

@@ -99,7 +99,7 @@ JSTaggedValue RuntimeStubs::RuntimeExp(JSThread *thread, JSTaggedValue base, JST
     }
     double doubleBase = valBase->GetNumber();
     double doubleExponent = valExponent->GetNumber();
-    if (std::abs(doubleBase) == 1 && std::isinf(doubleExponent)) {
+    if ((std::abs(doubleBase) == 1 && std::isinf(doubleExponent)) || std::isnan(doubleExponent)) {
         return JSTaggedValue(base::NAN_VALUE);
     }
     if (((doubleBase == 0) &&
@@ -584,7 +584,6 @@ JSTaggedValue RuntimeStubs::RuntimeGetIteratorNext(JSThread *thread, const JSHan
     ASSERT(method->IsCallable());
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, method, obj, undefined, 0);
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSTaggedValue ret = JSFunction::Call(info);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     if (!ret.IsECMAObject()) {
@@ -602,7 +601,7 @@ JSTaggedValue RuntimeStubs::RuntimeSetObjectWithProto(JSThread *thread, const JS
     if (UNLIKELY(proto->IsJSShared())) {
         THROW_TYPE_ERROR_AND_RETURN(thread, GET_MESSAGE_STRING(SetProtoWithSendable), JSTaggedValue::Exception());
     }
-    JSObject::SetPrototype(thread, obj, proto);
+    JSObject::SetPrototype(thread, obj, proto, true);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return JSTaggedValue::True();
 }
@@ -1142,7 +1141,7 @@ JSTaggedValue RuntimeStubs::RuntimeSetClassInheritanceRelationship(JSThread *thr
 
     // ctor -> hclass -> EnableProtoChangeMarker
     auto constructor = JSFunction::Cast(ctor.GetTaggedValue().GetTaggedObject());
-    if (constructor->GetClass()->IsTS()) {
+    if (constructor->GetClass()->IsAOT()) {
         JSHClass::EnableProtoChangeMarker(thread, JSHandle<JSHClass>(thread, constructor->GetClass()));
         // prototype -> hclass -> EnableProtoChangeMarker
         JSHClass::EnableProtoChangeMarker(thread,
@@ -1155,13 +1154,13 @@ JSTaggedValue RuntimeStubs::RuntimeSetClassInheritanceRelationship(JSThread *thr
     JSTaggedValue protoOrHClass = JSHandle<JSFunction>(ctor)->GetProtoOrHClass();
     if (protoOrHClass.IsJSHClass()) {
         JSHClass *ihc = JSHClass::Cast(protoOrHClass.GetTaggedObject());
-        if (ihc->IsTS()) {
+        if (ihc->IsAOT()) {
             JSHandle<JSHClass> ihcHandle(thread, ihc);
             JSHClass::EnableProtoChangeMarker(thread, ihcHandle);
         }
     } else {
         JSHandle<JSObject> protoHandle(thread, protoOrHClass);
-        if (protoHandle->GetJSHClass()->IsTS()) {
+        if (protoHandle->GetJSHClass()->IsAOT()) {
             JSHClass::EnablePHCProtoChangeMarker(thread, JSHandle<JSHClass>(thread, protoHandle->GetJSHClass()));
         }
     }
@@ -1544,7 +1543,6 @@ JSTaggedValue RuntimeStubs::RuntimeLdPrivateProperty(JSThread *thread, JSTaggedV
         JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
         // 0: getter has 0 arg
         EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, handleKey, handleObj, undefined, 0);
-        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         JSTaggedValue resGetter = JSFunction::Call(info);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         return resGetter;
@@ -2563,7 +2561,7 @@ JSTaggedValue RuntimeStubs::RuntimeDefineGetterSetterByValue(JSThread *thread, c
     JSObject::DefineOwnProperty(thread, obj, propKey, desc);
     auto holderTraHClass = obj->GetJSHClass();
     if (receiverHClass != holderTraHClass) {
-        if (holderTraHClass->IsTS()) {
+        if (holderTraHClass->IsAOT()) {
             JSHandle<JSHClass> phcHandle(thread, holderTraHClass);
             JSHClass::EnablePHCProtoChangeMarker(thread, phcHandle);
         }
@@ -2676,6 +2674,7 @@ JSTaggedValue RuntimeStubs::RuntimeCallBigIntAsIntN(JSThread *thread, JSTaggedVa
 {
     auto biginteger = JSHandle<BigInt>(thread, bigint);
     JSTaggedNumber bitness = JSTaggedValue::ToNumber(thread, bits);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return BigInt::AsintN(thread, bitness, biginteger);
 }
 
@@ -2683,6 +2682,7 @@ JSTaggedValue RuntimeStubs::RuntimeCallBigIntAsUintN(JSThread *thread, JSTaggedV
 {
     auto biginteger = JSHandle<BigInt>(thread, bigint);
     JSTaggedNumber bitness = JSTaggedValue::ToNumber(thread, bits);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return BigInt::AsUintN(thread, bitness, biginteger);
 }
 

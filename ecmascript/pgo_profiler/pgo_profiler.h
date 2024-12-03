@@ -121,21 +121,21 @@ private:
         LOAD,
     };
 
-    void ProfileBytecode(ApEntityId abcId, const CString& recordName, JSTaggedValue funcValue);
-
     enum class State : uint8_t {
+        MERGE,
         STOP,
         PAUSE,
         START,
         FORCE_SAVE,
         FORCE_SAVE_PAUSE,
     };
-
     static std::string StateToString(State state)
     {
         switch (state) {
             case State::STOP:
                 return "STOP";
+            case State::MERGE:
+                return "MERGE";
             case State::PAUSE:
                 return "PAUSE";
             case State::START:
@@ -148,8 +148,7 @@ private:
                 return "UNKNOWN";
         }
     }
-
-    State GetState();
+    State GetState() const;
     void SetState(State state);
     void NotifyGC(std::string tag = "");
     void NotifyAll(std::string tag = "");
@@ -160,6 +159,7 @@ private:
     bool IsGCWaiting();
     void DispatchPGODumpTask();
 
+    void ProfileBytecode(ApEntityId abcId, const CString& recordName, JSTaggedValue funcValue);
     void DumpICByName(ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset, uint32_t slotId,
                       ProfileTypeInfo *profileTypeInfo, BCType type);
     void DumpICByValue(ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset,

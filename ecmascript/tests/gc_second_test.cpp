@@ -29,6 +29,7 @@
 #include "ecmascript/mem/shared_mem_controller.h"
 #include "ecmascript/mem/mem_controller_utils.h"
 #include "ecmascript/mem/mem_controller.h"
+#include "ecmascript/mem/incremental_marker.h"
 
 using namespace panda;
 
@@ -307,7 +308,7 @@ HWTEST_F_L0(GCTest, AdjustCapacity)
     size = space->GetSurvivalObjectSize() / GROW_OBJECT_SURVIVAL_RATE - 1;
     size_t oldMaxCapacity = space->GetMaximumCapacity();
     space->SetMaximumCapacity(space->GetInitialCapacity());
-    EXPECT_FALSE(space->AdjustCapacity(size, thread));
+    EXPECT_TRUE(space->AdjustCapacity(size, thread));
     space->SetMaximumCapacity(oldMaxCapacity);
     EXPECT_TRUE(space->AdjustCapacity(size, thread));
 #endif
@@ -466,6 +467,86 @@ HWTEST_F_L0(GCTest, RecordAllocationForIdleTest003)
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
     auto controller = new MemController(heap);
     controller->RecordAllocationForIdle();
+}
+
+HWTEST_F_L0(GCTest, TryTriggerIdleCollectionTest001)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    heap->SetIdleTask(IdleTaskType::YOUNG_GC);
+    heap->TryTriggerIdleCollection();
+}
+
+HWTEST_F_L0(GCTest, WaitAllTasksFinishedTest001)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    heap->GetJSThread()->SetMarkStatus(MarkStatus::MARKING);
+    heap->WaitAllTasksFinished();
+}
+
+HWTEST_F_L0(GCTest, WaitAllTasksFinishedTest002)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    heap->GetJSThread()->SetMarkStatus(MarkStatus::MARKING);
+    heap->GetConcurrentMarker()->Mark();
+    heap->WaitAllTasksFinished();
+}
+
+HWTEST_F_L0(GCTest, ChangeGCParamsTest001)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    heap->GetOldSpace()->IncreaseLiveObjectSize(2098000);
+    heap->ChangeGCParams(true);
+}
+
+HWTEST_F_L0(GCTest, ChangeGCParamsTest002)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    heap->GetOldSpace()->IncreaseLiveObjectSize(2098000);
+    heap->GetOldSpace()->IncreaseCommitted(31457300);
+    heap->ChangeGCParams(true);
+}
+
+HWTEST_F_L0(GCTest, ChangeGCParamsTest003)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    auto sHeap = SharedHeap::GetInstance();
+    sHeap->GetOldSpace()->IncreaseLiveObjectSize(2098000);
+    heap->ChangeGCParams(true);
+}
+
+HWTEST_F_L0(GCTest, ChangeGCParamsTest004)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    heap->SetMemGrowingType(MemGrowingType::HIGH_THROUGHPUT);
+    heap->ChangeGCParams(true);
+}
+
+HWTEST_F_L0(GCTest, IncrementMarkerTest001)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    heap->GetIncrementalMarker()->TriggerIncrementalMark(100);
+    heap->GetIncrementalMarker()->TriggerIncrementalMark(100);
+}
+
+HWTEST_F_L0(GCTest, IncrementMarkerTest002)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    heap->GetIncrementalMarker()->TriggerIncrementalMark(0);
+}
+
+HWTEST_F_L0(GCTest, IncrementMarkerTest003)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    heap->GetIncrementalMarker()->SetMarkingFinished(true);
+    heap->GetIncrementalMarker()->TriggerIncrementalMark(100);
+}
+
+HWTEST_F_L0(GCTest, IncrementMarkerTest004)
+{
+    thread->GetEcmaVM()->GetJSOptions().SetArkProperties(0);
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    heap->GetIncrementalMarker()->SetMarkingFinished(true);
+    heap->GetIncrementalMarker()->TriggerIncrementalMark(100);
 }
 
 } // namespace panda::test

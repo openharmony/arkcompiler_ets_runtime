@@ -16,6 +16,7 @@
 #ifndef ECMASCRIPT_JS_STABLE_ARRAY_H
 #define ECMASCRIPT_JS_STABLE_ARRAY_H
 
+#include "ecmascript/base/array_helper.h"
 #include "ecmascript/base/typed_array_helper.h"
 #include "ecmascript/js_array.h"
 #include "ecmascript/js_dataview.h"
@@ -26,7 +27,9 @@
 namespace panda::ecmascript {
 class JSStableArray {
 public:
+#if !ENABLE_NEXT_OPTIMIZATION
     enum SeparatorFlag : int { MINUS_ONE = -1, MINUS_TWO = -2 };
+#endif
     static JSTaggedValue Push(JSHandle<JSArray> receiver, EcmaRuntimeCallInfo *argv);
     static JSTaggedValue Push(JSHandle<JSSharedArray> receiver, EcmaRuntimeCallInfo *argv);
     static JSTaggedValue Pop(JSHandle<JSArray> receiver, EcmaRuntimeCallInfo *argv);
@@ -84,9 +87,13 @@ public:
                                 JSHandle<JSTaggedValue> callbackFnHandle,
                                 JSMutableHandle<JSTaggedValue> accumulator, int64_t &k, int64_t &len);
     static JSTaggedValue Slice(JSThread *thread, JSHandle<JSObject> thisObjHandle, int64_t &k, int64_t &count);
-
-    static JSTaggedValue Sort(JSThread *thread, const JSHandle<JSObject> &thisObj,
+    static JSHandle<TaggedArray> SortIndexedProperties(JSThread *thread, const JSHandle<JSTaggedValue> &thisObj,
+                                                       int64_t len, const JSHandle<JSTaggedValue> &callbackFnHandle,
+                                                       base::HolesType holes);
+    static JSTaggedValue Sort(JSThread *thread, const JSHandle<JSTaggedValue> &thisObjVal,
                               const JSHandle<JSTaggedValue> &callbackFnHandle);
+    static JSTaggedValue CopySortedListToReceiver(JSThread *thread, const JSHandle<JSTaggedValue> &thisObjVal,
+                                                  JSHandle<TaggedArray> sortedList, uint32_t len);
     static JSTaggedValue Fill(JSThread *thread, const JSHandle<JSObject> &thisObj,
                               const JSHandle<JSTaggedValue> &value,
                               int64_t start, int64_t end, int64_t len);
@@ -100,7 +107,6 @@ public:
                                                    JSHandle<JSTaggedValue> thisArgHandle, int64_t &k);
 
 private:
-    static void SetSepValue(JSHandle<EcmaString> sepStringHandle, int &sep, uint32_t &sepLength);
     enum class IndexOfType {
         IndexOf,
         LastIndexOf
@@ -138,15 +144,37 @@ private:
     static void HandleArray(JSHandle<JSObject> &newArrayHandle, uint32_t &actualDeleteCount,
                             JSThread *thread, uint32_t &start, JSHandle<JSObject> &thisObjHandle,
                             JSHandle<JSTaggedValue> &holeHandle);
-    static JSTaggedValue JoinUseTreeString(const JSThread* thread, JSHandle<JSTaggedValue> receiverValue,
-                                       JSHandle<EcmaString> sepStringHandle, int sep,
-                                       CVector<JSHandle<EcmaString>>& vec);
+
+#if !ENABLE_NEXT_OPTIMIZATION
+    static void SetSepValue(JSHandle<EcmaString> sepStringHandle, int &sep, uint32_t &sepLength);
+    static JSTaggedValue JoinUseTreeString(const JSThread *thread,
+                                           const JSHandle<JSTaggedValue> receiverValue,
+                                           const JSHandle<EcmaString> sepStringHandle, const int sep,
+                                           CVector<JSHandle<EcmaString>> &vec);
     inline static bool WorthUseTreeString(int sep, size_t allocateLength, uint32_t len);
+#endif
 
     // Allocate object larger than 256 need liner search in the free object list,
     // so try to use tree string when the join result is larger than 256.
     static constexpr size_t TREE_STRING_THRESHOLD = 256;
     static constexpr size_t NUM_2 = 2;
+
+#if ENABLE_NEXT_OPTIMIZATION
+    // When Array length is no more than 64, use array (stack memory) instead of vector to store the elements.
+    static constexpr size_t USE_STACK_MEMORY_THRESHOLD = 64;
+    inline static bool WorthUseTreeString(uint32_t sepLength, size_t allocateLength, uint32_t len);
+    template <typename Container>
+    static void ProcessElements(JSThread *thread, JSHandle<JSTaggedValue> receiverValue, uint32_t len,
+                                Container &arrElements, bool &isOneByte, uint64_t &allocateLength);
+    template <typename Container>
+    static JSTaggedValue DoStableArrayJoin(JSThread *thread, JSHandle<JSTaggedValue> receiverValue, uint32_t len,
+                                           Container &arrElements, bool &isOneByte, uint32_t sep,
+                                           uint32_t sepLength, JSHandle<EcmaString> sepStringHandle);
+    template <typename Container>
+    static JSTaggedValue JoinUseTreeString(const JSThread *thread, JSHandle<JSTaggedValue> receiverValue,
+                                           JSHandle<EcmaString> sepStringHandle, uint32_t sepLength,
+                                           Container &arrElements, int elemNum);
+#endif
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_JS_STABLE_ARRAY_H

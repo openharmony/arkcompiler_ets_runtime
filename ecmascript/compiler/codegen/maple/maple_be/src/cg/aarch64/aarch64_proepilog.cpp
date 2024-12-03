@@ -116,8 +116,11 @@ void AArch64GenProEpilog::AppendInstructionPushSingle(CGFunc &cgFunc, AArch64reg
 
     MemOperand *aarchMemO1 = static_cast<MemOperand *>(o1);
     uint32 dataSize = GetPointerBitSize();
-    if (aarchMemO1->GetMemVaryType() == kNotVary && aarchCGFunc.IsImmediateOffsetOutOfRange(*aarchMemO1, dataSize)) {
-        o1 = &aarchCGFunc.SplitOffsetWithAddInstruction(*aarchMemO1, dataSize, R16);
+    if (aarchMemO1 != nullptr) {
+        if (aarchMemO1->GetMemVaryType() == kNotVary &&
+            aarchCGFunc.IsImmediateOffsetOutOfRange(*aarchMemO1, dataSize)) {
+            o1 = &aarchCGFunc.SplitOffsetWithAddInstruction(*aarchMemO1, dataSize, R16);
+        }
     }
 
     Insn &pushInsn = cgFunc.GetInsnBuilder()->BuildInsn(mOp, o0, *o1);

@@ -42,7 +42,7 @@ foreach(file, test_js_files) {
   }
 }
 
-module_output_path = "arkcompiler/ets_runtime"
+module_output_path = "ets_runtime"
 
 host_unittest_action("ThreadTerminationTest") {
   module_out_path = module_output_path

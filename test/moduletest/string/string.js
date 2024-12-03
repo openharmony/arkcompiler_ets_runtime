@@ -519,3 +519,10 @@ for (let i = 0; i < 10; i++) {
 for (let i = 0; i < 100; i++) {
     Function1Replace(re12);
 }
+
+{
+    print();
+    let str = "abcde";
+    print(str.lastIndexOf(""))
+    print(str.indexOf(""))
+}

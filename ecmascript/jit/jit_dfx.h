@@ -22,6 +22,7 @@
 
 #include "ecmascript/log.h"
 #include "ecmascript/mem/c_string.h"
+#include "ecmascript/jit/compile_decision.h"
 
 namespace panda::ecmascript {
 using Clock = std::chrono::high_resolution_clock;
@@ -140,9 +141,9 @@ public:
         return jitEventParams.singleTimeOnJitThread_.load() / CONVERT_TO_MILLISECOND;
     }
 
-    void SetTriggerCount(bool isBaselineJit)
+    void SetTriggerCount(CompilerTier tier)
     {
-        if (isBaselineJit) {
+        if (tier.IsBaseLine()) {
             jitEventParams.totalBaselineJitTimes_.fetch_add(1);
         } else {
             jitEventParams.totalFastoptJitTimes_.fetch_add(1);

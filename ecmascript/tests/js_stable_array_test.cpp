@@ -37,19 +37,31 @@ enum class StableArrayIndex {
 namespace panda::test {
 class JSStableArrayTest : public BaseTestWithScope<false> {
 public:
-    JSHandle<JSTaggedValue> CallJoin(JSHandle<TaggedArray> handleTagArr, std::string& sep, int64_t lengthArr) const
+    JSHandle<JSTaggedValue> CallJoin(JSHandle<TaggedArray> handleTagArr, JSTaggedValue sepValue) const
     {
-        ObjectFactory* objFactory = thread->GetEcmaVM()->GetFactory();
         JSHandle<JSArray> handleArr(JSArray::CreateArrayFromList(thread, handleTagArr));
         auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
         ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
         ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
-        ecmaRuntimeCallInfo->SetCallArg(0,
-            JSHandle<JSTaggedValue>::Cast(objFactory->NewFromStdString(sep)).GetTaggedValue());
+        ecmaRuntimeCallInfo->SetCallArg(0, sepValue);
         [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
         JSHandle<JSTaggedValue> handleTagValEcmaStrRet(thread, JSStableArray::Join(handleArr, ecmaRuntimeCallInfo));
         TestHelper::TearDownFrame(thread, prev);
         return handleTagValEcmaStrRet;
+    }
+
+    // tests for sep is Undefined
+    JSHandle<JSTaggedValue> CallJoin(JSHandle<TaggedArray> handleTagArr, int64_t lengthArr) const
+    {
+        JSTaggedValue sepValue = JSTaggedValue::Undefined();
+        return CallJoin(handleTagArr, sepValue);
+    }
+
+    JSHandle<JSTaggedValue> CallJoin(JSHandle<TaggedArray> handleTagArr, std::string& sep, int64_t lengthArr) const
+    {
+        ObjectFactory* objFactory = thread->GetEcmaVM()->GetFactory();
+        JSTaggedValue sepValue = JSHandle<JSTaggedValue>::Cast(objFactory->NewFromStdString(sep)).GetTaggedValue();
+        return CallJoin(handleTagArr, sepValue);
     }
 };
 
@@ -498,6 +510,178 @@ HWTEST_F_L0(JSStableArrayTest, Join_StringElements_LargeString3)
                  "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc,"
                  "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd,"
                  "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee");
+    EXPECT_TRUE(EcmaStringAccessor(handleEcmaStrRet).IsTreeString());
+}
+
+/**
+ * @tc.name: Join_StringElements_Stack
+ * @tc.desc: Use stack to store the preprocessed elements of the source Array.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F_L0(JSStableArrayTest, Join_StringElements_Stack)
+{
+    int32_t lengthArr = 32;
+    // tiny string join should not use tree string.
+    ObjectFactory *objFactory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<TaggedArray> handleTagArr(objFactory->NewTaggedArray(lengthArr));
+    JSHandle<JSTaggedValue> handleTagValElementEcmaStr(objFactory->NewFromStdString("a"));
+    for (int i = 0; i < lengthArr; i++) {
+        handleTagArr->Set(thread, i, handleTagValElementEcmaStr.GetTaggedValue());
+    }
+    // sep is Undefined
+    JSHandle<JSTaggedValue> handleTagValEcmaStrRet = CallJoin(handleTagArr, lengthArr);
+    JSHandle<EcmaString> handleEcmaStrRet(handleTagValEcmaStrRet);
+    // 32 x a
+    EXPECT_STREQ(EcmaStringAccessor(handleEcmaStrRet).ToCString().c_str(),
+                "a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a");
+    EXPECT_FALSE(EcmaStringAccessor(handleEcmaStrRet).IsTreeString());
+}
+
+/**
+ * @tc.name: Join_StringElements_Stack1
+ * @tc.desc: Use stack to store the preprocessed elements of the source Array.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F_L0(JSStableArrayTest, Join_StringElements_Stack1)
+{
+    int32_t lengthArr = 4;
+    // large string should use tree string.
+    ObjectFactory *objFactory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<TaggedArray> handleTagArr(objFactory->NewTaggedArray(lengthArr));
+    // 64 x a
+    JSHandle<JSTaggedValue> handleTagValElementEcmaStr(
+        objFactory->NewFromStdString("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"));
+    for (int i = 0; i < lengthArr; i++) {
+        handleTagArr->Set(thread, i, handleTagValElementEcmaStr.GetTaggedValue());
+    }
+    // sep is Undefined
+    JSHandle<JSTaggedValue> handleTagValEcmaStrRet = CallJoin(handleTagArr, lengthArr);
+    JSHandle<EcmaString> handleEcmaStrRet(handleTagValEcmaStrRet);
+    EXPECT_STREQ(EcmaStringAccessor(handleEcmaStrRet).ToCString().c_str(),
+                 "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa,"
+                 "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa,"
+                 "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa,"
+                 "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+    EXPECT_TRUE(EcmaStringAccessor(handleEcmaStrRet).IsTreeString());
+}
+
+/**
+ * @tc.name: Join_StringElements_Vector
+ * @tc.desc: Use vector to store the preprocessed elements of the source Array.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F_L0(JSStableArrayTest, Join_StringElements_Vector)
+{
+    int32_t lengthArr = 128;
+    // tiny string join should not use tree string.
+    ObjectFactory *objFactory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<TaggedArray> handleTagArr(objFactory->NewTaggedArray(lengthArr));
+    JSHandle<JSTaggedValue> handleTagValElementEcmaStr(objFactory->NewFromStdString("a"));
+    for (int i = 0; i < lengthArr; i++) {
+        handleTagArr->Set(thread, i, handleTagValElementEcmaStr.GetTaggedValue());
+    }
+    // sep is Undefined
+    JSHandle<JSTaggedValue> handleTagValEcmaStrRet = CallJoin(handleTagArr, lengthArr);
+    JSHandle<EcmaString> handleEcmaStrRet(handleTagValEcmaStrRet);
+    // 128 x a
+    EXPECT_STREQ(EcmaStringAccessor(handleEcmaStrRet).ToCString().c_str(),
+                 "a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,"
+                 "a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,"
+                 "a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,"
+                 "a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a");
+    EXPECT_FALSE(EcmaStringAccessor(handleEcmaStrRet).IsTreeString());
+}
+
+/**
+ * @tc.name: Join_StringElements_Vector1
+ * @tc.desc: Use vector to store the preprocessed elements of the source Array.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F_L0(JSStableArrayTest, Join_StringElements_Vector1)
+{
+    int32_t lengthArr = 65;
+    std::string sep = "";
+    // large string should use tree string.
+    ObjectFactory *objFactory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<TaggedArray> handleTagArr(objFactory->NewTaggedArray(lengthArr));
+    // 40 x a
+    JSHandle<JSTaggedValue> handleTagValElementEcmaStr(
+        objFactory->NewFromStdString("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"));
+    for (int i = 0; i < lengthArr; i++) {
+        handleTagArr->Set(thread, i, handleTagValElementEcmaStr.GetTaggedValue());
+    }
+    JSHandle<JSTaggedValue> handleTagValEcmaStrRet = CallJoin(handleTagArr, sep, lengthArr);
+    JSHandle<EcmaString> handleEcmaStrRet(handleTagValEcmaStrRet);
+    EXPECT_STREQ(EcmaStringAccessor(handleEcmaStrRet).ToCString().c_str(),
+                 "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                 "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                 "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                 "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                 "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                 "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                 "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                 "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                 "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                 "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                 "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                 "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                 "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                 "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                 "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                 "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                 "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                 "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                 "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                 "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                 "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                 "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                 "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                 "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                 "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                 "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                 "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                 "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                 "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                 "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                 "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                 "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                 "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                 "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                 "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                 "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                 "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                 "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                 "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                 "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                 "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                 "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                 "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                 "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                 "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                 "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                 "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                 "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                 "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                 "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                 "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                 "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                 "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                 "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                 "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                 "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                 "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                 "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                 "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                 "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                 "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                 "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                 "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                 "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                 "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
     EXPECT_TRUE(EcmaStringAccessor(handleEcmaStrRet).IsTreeString());
 }
 

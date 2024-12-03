@@ -43,6 +43,7 @@ private:
     void LowerIsMarkerCellValid(GateRef gate);
     void LowerIsSpecificObjectType(GateRef gate);
     void LowerHClassStableArrayCheck(GateRef gate);
+    void LowerMathHClassConsistencyCheck(GateRef gate);
     void LowerGetConstPool(GateRef gate);
     void LowerGetUnsharedConstpool(GateRef gate);
     void LowerLoadConstOffset(GateRef gate);
@@ -52,7 +53,7 @@ private:
     void LowerCheckAndConvert(GateRef gate);
     void LowerCheckUInt32AndConvert(GateRef gate, GateRef frameState);
     void LowerCheckTaggedIntAndConvert(GateRef gate, GateRef frameState);
-    void LowerCheckTaggedDoubleAndConvert(GateRef gate, GateRef frameState, Label *exit);
+    void LowerCheckTaggedDoubleAndConvert(GateRef gate, GateRef frameState);
     void LowerCheckTaggedNumberAndConvert(GateRef gate, GateRef frameState, Label *exit);
     void LowerCheckTaggedBoolAndConvert(GateRef gate, GateRef frameState);
     void LowerCheckSpecialHoleAndConvert(GateRef gate, GateRef frameState);
@@ -82,7 +83,7 @@ private:
     void LowerMigrateFromHoleNumberToHoleInt(GateRef gate);
     void LowerHeapObjectIsEcmaObject(GateRef gate);
     void LowerIsCallableCheck(GateRef gate);
-    void LowerCheckFloat64AndConvert(GateRef gate, GateRef frameState, Label *exit);
+    void LowerCheckFloat64AndConvert(GateRef gate, GateRef frameState);
     void LowerStringAdd(GateRef gate);
 
     GateRef ConvertSpecialHoleIntToTagged(GateRef gate, Label* exit);
@@ -93,11 +94,11 @@ private:
     GateRef ConvertInt32ToTaggedInt(GateRef gate);
     GateRef ConvertUInt32ToTaggedNumber(GateRef gate, Label *exit);
     GateRef ConvertFloat64ToBool(GateRef gate);
-    GateRef ConvertFloat64ToInt32(GateRef gate, Label *exit);
+    GateRef ConvertFloat64ToInt32(GateRef glue, GateRef gate);
     GateRef ConvertFloat64ToTaggedDouble(GateRef gate);
     GateRef ConvertTaggedIntToInt32(GateRef gate);
     GateRef ConvertTaggedIntToFloat64(GateRef gate);
-    GateRef ConvertTaggedDoubleToInt32(GateRef gate, Label *exit);
+    GateRef ConvertTaggedDoubleToInt32(GateRef glue, GateRef gate);
     GateRef ConvertTaggedDoubleToFloat64(GateRef gate);
     GateRef ConvertTaggedNumberToBool(GateRef gate, Label *exit);
     GateRef ConvertTaggedNumberToInt32(GateRef gate, Label *exit);

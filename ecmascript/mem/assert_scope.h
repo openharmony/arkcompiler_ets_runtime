@@ -119,10 +119,6 @@ using AllowLocalToShareWeakRefHandle = AssertScopeT<AssertType::LOCAL_TO_SHARE_W
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define CHECK_NO_GC ASSERT_PRINT(AllowGarbageCollection::IsAllowed(), "disallow execute garbage collection.")
-// Some checks failed, need to check and fix
-#undef CHECK_NO_GC
-// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define CHECK_NO_GC static_cast<void>(0)
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define CHECK_NO_HEAP_ALLOC ASSERT_PRINT(AllowHeapAlloc::IsAllowed(), "disallow execute heap alloc.")

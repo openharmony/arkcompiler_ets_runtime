@@ -1,0 +1,8 @@
+{
+    "name": "RECORD",
+    "offsets": [],
+    "end_offset": 0,
+    "parents": [
+        "TAGGED_OBJECT"
+    ]
+}

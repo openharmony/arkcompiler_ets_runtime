@@ -151,7 +151,7 @@ public:
         methodLiteralMap_.emplace(methodLiteral->GetMethodId().GetOffset(), methodLiteral);
     }
 
-    const CUnorderedMap<uint32_t, MethodLiteral *> &GetMethodLiteralMap() const
+    const std::unordered_map<uint32_t, MethodLiteral *> &GetMethodLiteralMap() const
     {
         return methodLiteralMap_;
     }
@@ -384,6 +384,12 @@ public:
         jsRecordInfo_.insert({recordName, info});
     }
 
+    // note : it only uses in TDD
+    void InsertNpmEntries(const CString &recordName, const CString &fieldName)
+    {
+        npmEntries_.insert({recordName, fieldName});
+    }
+
     const CUnorderedMap<CString, JSRecordInfo*> &GetJSRecordInfo() const
     {
         return jsRecordInfo_;
@@ -475,8 +481,8 @@ private:
     CString hapPath_;
     uint32_t constpoolIndex_ {0};
     uint32_t checksum_ {0};
-    CUnorderedMap<uint32_t, MethodLiteral *> methodLiteralMap_;
-    CUnorderedMap<uint32_t, panda_file::File::StringData> methodNameMap_;
+    std::unordered_map<uint32_t, MethodLiteral *> methodLiteralMap_;
+    std::unordered_map<uint32_t, panda_file::File::StringData> methodNameMap_;
     CUnorderedMap<uint32_t, CString> recordNameMap_;
     Mutex methodNameMapMutex_;
     Mutex recordNameMapMutex_;

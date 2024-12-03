@@ -200,7 +200,6 @@ JSHandle<TaggedArray> JSAPIDeque::OwnKeys(JSThread *thread, const JSHandle<JSAPI
     uint32_t length = deque->GetSize();
 
     JSHandle<TaggedArray> oldElements(thread, deque->GetElements());
-    ASSERT(!oldElements->IsDictionaryMode());
     uint32_t oldCapacity = oldElements->GetLength();
     uint32_t newCapacity = ComputeCapacity(oldCapacity);
     uint32_t firstIndex = deque->GetFirst();

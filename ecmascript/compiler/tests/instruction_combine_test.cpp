@@ -1283,10 +1283,13 @@ HWTEST_F_L0(InstructionCombineTests, ConvertTest)
         auto x = b.Arguments(1);
         EXPECT_EQ(instcombie.VisitGate(b.ChangeFloat64ToInt32(b.ChangeInt32ToFloat64(x))), x);
     }
-
     {
         auto x = b.Arguments(2);
-        EXPECT_EQ(instcombie.VisitGate(b.ChangeInt32ToFloat64(b.ChangeFloat64ToInt32(x))), x);
+        EXPECT_NE(instcombie.VisitGate(b.ChangeInt32ToFloat64(b.ChangeFloat64ToInt32(x))), x);
+    }
+    {
+        auto x = b.Arguments(3);
+        EXPECT_NE(instcombie.VisitGate(b.Int64ToTaggedPtr(b.ChangeTaggedPointerToInt64(x))), x);
     }
 }
 } // namespace panda::test

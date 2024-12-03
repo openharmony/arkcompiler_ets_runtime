@@ -618,6 +618,8 @@ private:
     bool GenerateCompareWithZeroInstruction(Opcode jmpOp, Opcode cmpOp, bool is64Bits, PrimType primType,
                                             LabelOperand &targetOpnd, Operand &opnd0);
     void SelectOverFlowCall(const IntrinsiccallNode &intrnNode);
+    RegOperand &LoadOpndIntoPhysicalRegister(const IntrinsiccallNode &intrnNode, uint32 index);
+    void SelectPureCall(const IntrinsiccallNode &intrnNode);
 
     /* Helper functions for translating complex Maple IR instructions/inrinsics */
     void SelectDassign(StIdx stIdx, FieldID fieldId, PrimType rhsPType, Operand &opnd0);

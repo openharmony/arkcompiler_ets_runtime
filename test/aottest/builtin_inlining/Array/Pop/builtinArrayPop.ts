@@ -169,8 +169,9 @@ function popCase4() {
   }
   Object.setPrototypeOf(arr2, notArray)
 
-  //aot: [trace] Check Type: NotStableArray1
+  //aot: [trace] aot inline builtin: Array.prototype.pop, caller function name:#*#popCase4@builtinArrayPop
   print(arr1.pop(1)); //: 2
+  //aot: [trace] aot inline function name: #*@3*#pop@builtinArrayPop caller function name: #*#popCase4@builtinArrayPop
   print(arr2.pop(1)); //: -100
 }
 popCase4()
@@ -183,7 +184,6 @@ function popCase5() {
       return x
   }
 
-  //aot: [trace] Check Type: NotStableArray1
   print(arr1.pop(1)); //: 1
 }
 popCase5()

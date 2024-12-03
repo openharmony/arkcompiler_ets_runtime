@@ -112,3 +112,8 @@ const element = {
 };
 const arr_join = [element, ,'c'];
 print("abc" == arr_join.join(''));
+
+const v9 = new Int16Array(128);
+const v10 = new Int8Array(128);
+v9[11] = [v9, v10];
+print(v9[11]);

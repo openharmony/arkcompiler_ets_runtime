@@ -24,7 +24,10 @@ namespace panda::ecmascript {
 JitCompilationEnv::JitCompilationEnv(EcmaVM *jitVm, EcmaVM *jsVm, JSHandle<JSFunction> &jsFunction)
     : CompilationEnv(jitVm), hostThread_(jsVm->GetJSThreadNoCheck()), jsFunction_(jsFunction)
 {
-    ptManager_ = hostThread_->GetCurrentEcmaContext()->GetPTManager();
+    if (hostThread_ != nullptr && hostThread_->GetCurrentEcmaContext() != nullptr &&
+        hostThread_->GetCurrentEcmaContext()->GetPTManager() != nullptr) {
+        ptManager_ = hostThread_->GetCurrentEcmaContext()->GetPTManager();
+    }
     Method *method = Method::Cast(jsFunction->GetMethod().GetTaggedObject());
     jsPandaFile_ = const_cast<JSPandaFile*>(method->GetJSPandaFile());
     methodLiteral_ = method->GetMethodLiteral();

@@ -31,6 +31,8 @@ const std::string GetPageTagString(PageTagType type, const std::string &spaceNam
             return std::string(CODE_TAG).append(std::to_string(threadId));
         case PageTagType::MEMPOOL_CACHE:
             return "ArkTS MemPoolCache";
+        case PageTagType::METHOD_LITERAL:
+            return "ArkTS MethodLiteral";
         default: {
             LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
@@ -47,6 +49,8 @@ const char *GetPageTagString(PageTagType type)
             return CODE_TAG;
         case PageTagType::MEMPOOL_CACHE:
             return "ArkTS MemPoolCache";
+        case PageTagType::METHOD_LITERAL:
+            return "ArkTS MethodLiteral";
         default: {
             LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();

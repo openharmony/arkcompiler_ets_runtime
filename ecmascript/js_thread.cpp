@@ -17,10 +17,10 @@
 
 #include "ecmascript/runtime.h"
 #include "ecmascript/debugger/js_debugger_manager.h"
+#include "ecmascript/js_date.h"
 #include "ecmascript/js_object-inl.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/runtime_call_id.h"
-#include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
 
 #if !defined(PANDA_TARGET_WINDOWS) && !defined(PANDA_TARGET_MACOS) && !defined(PANDA_TARGET_IOS)
 #include <sys/resource.h>
@@ -97,7 +97,6 @@ JSThread *JSThread::Create(EcmaVM *vm)
     jsThread->glueData_.stackLimit_ = GetAsmStackLimit();
     jsThread->glueData_.stackStart_ = GetCurrentStackPosition();
     jsThread->glueData_.isEnableElementsKind_ = vm->IsEnableElementsKind();
-    jsThread->glueData_.isEnableForceIC_ = ecmascript::pgo::PGOProfilerManager::GetInstance()->IsEnableForceIC();
     jsThread->SetThreadId();
 
     RegisterThread(jsThread);
@@ -130,6 +129,7 @@ JSThread::JSThread(EcmaVM *vm) : id_(os::thread::GetCurrentThreadId()), vm_(vm)
     }
     vmThreadControl_ = new VmThreadControl(this);
     SetBCStubStatus(BCStubStatus::NORMAL_BC_STUB);
+    dateUtils_ = new DateUtils();
 }
 
 JSThread::JSThread(EcmaVM *vm, ThreadType threadType) : id_(os::thread::GetCurrentThreadId()),
@@ -181,6 +181,10 @@ JSThread::~JSThread()
     if (!IsDaemonThread()) {
         UnregisterThread(this);
     }
+    if (dateUtils_ != nullptr) {
+        delete dateUtils_;
+        dateUtils_ = nullptr;
+    }
 }
 
 ThreadId JSThread::GetCurrentThreadId()
@@ -204,16 +208,6 @@ void JSThread::SetException(JSTaggedValue exception)
 void JSThread::ClearException()
 {
     glueData_.exception_ = JSTaggedValue::Hole();
-}
-
-void JSThread::SetEnableForceIC(bool isEnableForceIC)
-{
-    glueData_.isEnableForceIC_ = isEnableForceIC;
-}
-
-bool JSThread::IsEnableForceIC() const
-{
-    return glueData_.isEnableForceIC_;
 }
 
 JSTaggedValue JSThread::GetCurrentLexenv() const
@@ -558,9 +552,9 @@ void JSThread::ShrinkHandleStorage(int prevIndex)
     GetCurrentEcmaContext()->ShrinkHandleStorage(prevIndex);
 }
 
-void JSThread::NotifyStableArrayElementsGuardians(JSHandle<JSObject> receiver, StableArrayChangeKind changeKind)
+void JSThread::NotifyArrayPrototypeChangedGuardians(JSHandle<JSObject> receiver)
 {
-    if (!glueData_.stableArrayElementsGuardians_) {
+    if (!glueData_.arrayPrototypeChangedGuardians_) {
         return;
     }
     if (!receiver->GetJSHClass()->IsPrototype() && !receiver->IsJSArray()) {
@@ -569,17 +563,14 @@ void JSThread::NotifyStableArrayElementsGuardians(JSHandle<JSObject> receiver, S
     auto env = GetEcmaVM()->GetGlobalEnv();
     if (receiver.GetTaggedValue() == env->GetObjectFunctionPrototype().GetTaggedValue() ||
         receiver.GetTaggedValue() == env->GetArrayPrototype().GetTaggedValue()) {
-        glueData_.stableArrayElementsGuardians_ = false;
+        glueData_.arrayPrototypeChangedGuardians_ = false;
         return;
-    }
-    if (changeKind == StableArrayChangeKind::PROTO && receiver->IsJSArray()) {
-        glueData_.stableArrayElementsGuardians_ = false;
     }
 }
 
 void JSThread::ResetGuardians()
 {
-    glueData_.stableArrayElementsGuardians_ = true;
+    glueData_.arrayPrototypeChangedGuardians_ = true;
 }
 
 void JSThread::SetInitialBuiltinHClass(
@@ -804,7 +795,7 @@ bool JSThread::CheckSafepoint()
     heap->HandleExitHighSensitiveEvent();
 
     // Do not trigger local gc during the shared gc processRset process.
-    if (heap->IsProcessingRset()) {
+    if (IsProcessingLocalToSharedRset()) {
         return false;
     }
     // After concurrent mark finish, should trigger gc here to avoid create much floating garbage

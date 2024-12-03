@@ -17,5 +17,6 @@ host_aot_test_action("builtin_math1") {
   deps = []
   is_only_typed_path = true
   is_enable_trace_deopt = true
+  is_enable_typed_op_profiler = true
   log_option = " --log-info=trace"
 }

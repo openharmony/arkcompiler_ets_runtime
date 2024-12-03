@@ -282,7 +282,6 @@ private:
 #undef BUILTIN_STRING_FUNCTION_ENTRY
 
     static JSTaggedValue Pad(EcmaRuntimeCallInfo *argv, bool isStart);
-    static int32_t ConvertDoubleToInt(double d);
     static JSTaggedValue CreateArrayFromString(JSThread *thread, EcmaVM *ecmaVm,
         const JSHandle<EcmaString> &thisString, uint32_t thisLength, uint32_t lim = UINT32_MAX - 1);
     static JSTaggedValue CreateArrayBySplitString(JSThread *thread, EcmaVM *ecmaVm,

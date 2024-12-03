@@ -117,7 +117,7 @@ bool InductionVariableAnalysis::IsLessOrGreaterCmp(GateRef gate) const
 
 bool InductionVariableAnalysis::TryGetLoopTimes(const GraphLinearizer::LoopInfo& loop, int32_t& loopTimes) const
 {
-    if (loop.loopExits->size() > 1) {
+    if (loop.loopExits == nullptr || loop.loopExits->size() > 1) {
         return false;
     }
     ASSERT(loop.loopExits->size() == 1);

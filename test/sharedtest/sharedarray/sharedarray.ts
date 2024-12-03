@@ -146,6 +146,13 @@ function index() {
 
 }
 
+class IndexClass {
+    idx: number;
+    constructor() {
+        this.idx = 1;
+    }
+}
+
 function fill() {
     print("Start Test fill")
     const array1 = new SendableArray<number>(1, 2, 3, 4);
@@ -157,6 +164,41 @@ function fill() {
 
     array1.fill(6);
     print(array1) // [6, 6, 6, 6]
+
+    array1.fill(1, true);
+    print(array1) // [6, 1, 1, 1]
+
+    array1.fill(2, null);
+    print(array1) // [2, 2, 2, 2]
+
+    array1.fill(3, undefined);
+    print(array1) // [3, 3, 3, 3]
+
+    array1.fill(4, 1.5, 3.5);
+    print(array1) // [3, 4, 4, 4]
+
+    array1.fill(5, "1.0", "3.5");
+    print(array1) // [3, 5, 5, 5]
+
+    let superCs = new SuperClass();
+    array1.fill(7, superCs, 4);
+    print(array1) // [7, 7, 7, 7]
+
+    let idxCs = new IndexClass();
+    array1.fill(8, idxCs, 4);
+    print(array1) // [8, 8, 8, 8]
+
+    array1.fill(10, null, -1);
+    print(array1) // [10, 10, 10, 8]
+
+    array1.fill(11, -3, -1);
+    print(array1) // [10, 11, 11, 11]
+
+    array1.fill(11, -3, -0.1);
+    print(array1) // [10, 11, 11, 11]
+
+    array1.fill(12, 3, 1);
+    print(array1) // [10, 11, 11, 11]
 }
 
 // remove
@@ -276,6 +318,15 @@ function concat(): void {
     print(arr1);
     print(arr1[3]);
     print(arr1.length);
+
+    let nsArr = [1, , 4];
+    let arr2: SendableArray<number> = array.concat(1, nsArr[1], 5);
+    print(arr2);
+    print(arr2.length);
+
+    let arr3: SendableArray<number> = array.concat(1, arr1, 5, nsArr[1]);
+    print(arr3);
+    print(arr3.length);
 }
 
 function join(): void {
@@ -1055,6 +1106,17 @@ function SomeTest(): void {
 
     const hasNegativeNumber = numbers.some(num => num < 0); // 2:  Whether there are negative numbers in the array
     print(hasNegativeNumber); // should be false
+
+    let nsArr = [1, , 3];
+    const numbers1 = new SendableArray<number>(nsArr[1], 2, 3, 4, 5);
+    print(numbers1.some(num => num < 0)); // should be false
+    print(numbers1.some(num => num < 0 || num === undefined)); // should be true
+    print(numbers1.some(num => num)); // should be true
+
+    const numbers2 = new SendableArray<number>(null, undefined, 3, 4, 5);
+    print(numbers2.some(num => num < 0)); // should be false
+    print(numbers2.some(num => num < 0 || num === undefined)); // should be true
+    print(numbers2.some(num => num)); // should be true
 }
 
 function EveryTest(): void {
@@ -1066,10 +1128,19 @@ function EveryTest(): void {
 
     const allEven = numbers.every((num) => num % 2 === 0); // Check if all the elements in the array are even
     print(allEven); // should be false
+
+    let nsArr = [1, , 3, 5];
+    const numbers1 = new SendableArray<number>(nsArr[0], nsArr[1], undefined, 4, 5);
+    const allPositive1 = numbers1.every((num) => num > 0);
+    print(allPositive1); // should be false
+
+    const allPositive2 = numbers1.every((num) => num > 0 || num == undefined);
+    print(allPositive2); // should be true
 }
 
 function isArrayTest() {
   // print true
+  print("Start Test isArrayTest")
   print(SendableArray.isArray(new SendableArray()));
   print(SendableArray.isArray(new SendableArray('a', 'b', 'c', 'd')));
   print(SendableArray.isArray(new SendableArray(3)));
@@ -1090,6 +1161,7 @@ function isArrayTest() {
 }
 
 function lastIndexOfTest() {
+  print("Start Test lastIndexOf")
   let arr = SendableArray.from([1, 2, 3, 4, 2, 5]);
   print(arr.lastIndexOf(2));
 
@@ -1105,6 +1177,51 @@ function lastIndexOfTest() {
 
   let arrWithUndefined = SendableArray.from([1, 2, undefined, 4]);
   print(arrWithUndefined.lastIndexOf(undefined));
+}
+
+function ofTest() {
+    print("Start Test ofTest")
+    let arr = SendableArray.of(1, 2, 3, 4, 2, 5);
+    print(arr);
+
+    arr = SendableArray.of();
+    print(arr);
+  
+    arr = SendableArray.of.call({}, 1,2,3,4,5);
+    print(arr);
+
+    try {
+        arr = SendableArray.of([1,2,3,4,5]);
+    } catch (err) {
+        print("Create SendableArray failed. err: " + err + ", code: " + err.code);
+    }
+
+    try {
+        arr = SendableArray.of.call(Array, 1,2,3,4,5);
+    } catch (err) {
+        print("Create SendableArray failed. err: " + err + ", code: " + err.code);
+    }
+}
+
+function copyWithinTest() {
+    print("Start Test copyWithin")
+    let arr = new SendableArray(1, 2, 3, 4, 2, 5);
+    print(arr);
+
+    try {
+        arr.copyWithin();
+    } catch (err) {
+        print("copyWithin SendableArray failed. err: " + err + ", code: " + err.code);
+    }
+
+    arr.copyWithin(1);
+    print(arr);
+  
+    arr.copyWithin(2, 3);
+    print(arr);
+
+    arr.copyWithin(3, -4, -2);
+    print(arr);
 }
 
 at()
@@ -1185,3 +1302,5 @@ SomeTest()
 EveryTest()
 isArrayTest();
 lastIndexOfTest();
+ofTest();
+copyWithinTest();

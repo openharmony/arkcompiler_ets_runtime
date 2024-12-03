@@ -24,6 +24,7 @@ bool HeapSnapshotJSONSerializer::Serialize(HeapSnapshot *snapshot, Stream *strea
 {
     // Serialize Node/Edge/String-Table
     LOG_ECMA(INFO) << "HeapSnapshotJSONSerializer::Serialize begin";
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "HeapSnapshotJSONSerializer::Serialize");
     ASSERT(snapshot->GetNodes() != nullptr && snapshot->GetEdges() != nullptr &&
            snapshot->GetEcmaStringTable() != nullptr);
     auto writer = new StreamWriter(stream);
@@ -45,49 +46,61 @@ bool HeapSnapshotJSONSerializer::Serialize(HeapSnapshot *snapshot, Stream *strea
     return true;
 }
 
-void HeapSnapshotJSONSerializer::DumpStringTable(HeapSnapshot *snapshot, Stream *stream)
+/*
+4 byte: str_num
+4 byte: unuse
 {
-    const StringHashMap *stringTable = snapshot->GetEcmaStringTable();
+4 byte: string size
+4 byte: obj_num
+[8 byte: obj adrr] * obj_num
+string contents
+} * str_num
+*/
+uint32_t HeapSnapshotJSONSerializer::DumpStringTable(StringHashMap *stringTable, Stream *stream,
+                                                     CUnorderedMap<uint64_t, CVector<uint64_t>> &strIdMapObjVec)
+{
     ASSERT(stringTable != nullptr);
-    size_t size5MB = 5 * 1024 * 1024;
-    char *buf = new char[size5MB]; // 5MB buf use for string dump
-    auto strNum = stringTable->GetCapcity();
-    auto ret = memcpy_s(buf, size5MB, &strNum, sizeof(size_t));
-    if (ret != EOK) {
-        delete[] buf;
-        LOG_ECMA(ERROR) << "DumpStringTable: memcpy_s failed, strNum=" << strNum;
-        return;
-    }
-    size_t offset = sizeof(size_t);
+    size_t bufSize = 8 * 1024 * 1024; // 8MB buf use for string dump
+    char *buf = new char[bufSize];
+    uint32_t secHead[] = {stringTable->GetCapcity(), 0};
+    *reinterpret_cast<uint64_t *>(buf) = *reinterpret_cast<uint64_t *>(secHead);
+    uint32_t secTotalSize = sizeof(secHead);
+    size_t offset = sizeof(secHead);
     for (auto key : stringTable->GetOrderedKeyStorage()) {
         auto [strId, str] = stringTable->GetStringAndIdPair(key);
-        const char *s = str->data();
-        auto currLen = str->size() + 1;
-        if (currLen + sizeof(uint64_t) > size5MB) {
+        auto objVec = strIdMapObjVec[strId];
+        uint32_t objVecSize = objVec.size() * sizeof(uint64_t);
+        uint32_t strHead[] = {str->size(), objVec.size()};
+        auto currLen = sizeof(strHead) + objVecSize + str->size() + 1;
+        if (offset + currLen > bufSize) {
             stream->WriteBinBlock(buf, offset);
             offset = 0;
-            delete[] buf;
-            size5MB = currLen + sizeof(uint64_t);
-            buf = new char[size5MB];
+            if (currLen > bufSize) {
+                delete[] buf;
+                bufSize = currLen;
+                buf = new char[bufSize];
+            }
         }
-        if (offset + currLen + sizeof(uint64_t) > size5MB) {
-            stream->WriteBinBlock(buf, offset);
-            offset = 0;
-        }
-        auto strIdPtr = reinterpret_cast<uint64_t *>(buf + offset);
-        *strIdPtr = strId;
-        ret = memcpy_s(buf + offset + sizeof(uint64_t), size5MB - offset, s, currLen);
-        if (ret != EOK) {
-            delete[] buf;
+        *reinterpret_cast<uint64_t *>(buf + offset) = *reinterpret_cast<uint64_t *>(strHead);
+        offset += sizeof(strHead);
+        if (memcpy_s(buf + offset, bufSize - offset, reinterpret_cast<void *>(objVec.data()), objVecSize) != EOK) {
             LOG_ECMA(ERROR) << "DumpStringTable: memcpy_s failed";
-            return;
+            break;
         }
-        offset += currLen + sizeof(uint64_t);
+        offset += objVecSize;
+        if (memcpy_s(buf + offset, bufSize - offset, str->data(), str->size() + 1) != EOK) {
+            LOG_ECMA(ERROR) << "DumpStringTable: memcpy_s failed";
+            break;
+        }
+        offset += str->size() + 1;
+        secTotalSize += currLen;
     }
-    if (offset > 0) {
-        stream->WriteBinBlock(buf, offset);
+    auto padding = (8 - secTotalSize % 8) % 8;
+    if (offset + padding > 0) {
+        stream->WriteBinBlock(buf, offset + padding);
     }
     delete[] buf;
+    return secTotalSize + padding;
 }
 
 void HeapSnapshotJSONSerializer::SerializeSnapshotHeader(HeapSnapshot *snapshot, StreamWriter *writer)
@@ -130,6 +143,8 @@ void HeapSnapshotJSONSerializer::SerializeSnapshotHeader(HeapSnapshot *snapshot,
 
 void HeapSnapshotJSONSerializer::SerializeNodes(HeapSnapshot *snapshot, StreamWriter *writer)
 {
+    LOG_ECMA(INFO) << "HeapSnapshotJSONSerializer::SerializeNodes";
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "HeapSnapshotJSONSerializer::SerializeNodes");
     const CList<Node *> *nodes = snapshot->GetNodes();
     const StringHashMap *stringTable = snapshot->GetEcmaStringTable();
     ASSERT(nodes != nullptr);
@@ -165,6 +180,8 @@ void HeapSnapshotJSONSerializer::SerializeNodes(HeapSnapshot *snapshot, StreamWr
 
 void HeapSnapshotJSONSerializer::SerializeEdges(HeapSnapshot *snapshot, StreamWriter *writer)
 {
+    LOG_ECMA(INFO) << "HeapSnapshotJSONSerializer::SerializeEdges";
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "HeapSnapshotJSONSerializer::SerializeEdges");
     const CList<Edge *> *edges = snapshot->GetEdges();
     const StringHashMap *stringTable = snapshot->GetEcmaStringTable();
     ASSERT(edges != nullptr);
@@ -287,6 +304,8 @@ void HeapSnapshotJSONSerializer::SerializeLocations(StreamWriter *writer)
 
 void HeapSnapshotJSONSerializer::SerializeStringTable(HeapSnapshot *snapshot, StreamWriter *writer)
 {
+    LOG_ECMA(INFO) << "HeapSnapshotJSONSerializer::SerializeStringTable";
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "HeapSnapshotJSONSerializer::SerializeStringTable");
     const StringHashMap *stringTable = snapshot->GetEcmaStringTable();
     ASSERT(stringTable != nullptr);
     writer->WriteString("\"strings\":[\"<dummy>\",\n");

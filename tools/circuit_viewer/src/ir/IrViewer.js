@@ -694,7 +694,7 @@ class IrViewer {
     this.offx_ = (-this.scrollX_.getBarOff()) * this.dragScoll.ww - this.dragScoll.x1;
   }
 
-  checkMsgAndDrapSelect_(msg, x, y){
+  checkMsgAndDrapSelect_(msg, x, y) {
     if (msg === 3 && this.drapSelect_) {
       let nodes = this.visable_.nodes;
       for (let k of this.selectPoint_) {
@@ -705,7 +705,7 @@ class IrViewer {
     }
   }
 
-  checkDrapBackground_(msg, x, y){
+  checkDrapBackground_(msg, x, y) {
     if (this.drapBackground_) {
       if (msg === 2) {
         this.offx_ -= this.drapBackground_.x - x;
@@ -715,9 +715,10 @@ class IrViewer {
       }
       return true;
     }
+    return false;
   }
 
-  checkDrapSelect_(msg, x, y){
+  checkDrapSelect_(msg, x, y) {
     if (this.drapSelect_) {
       if (msg === 2) {
         if (Math.abs(this.drapSelect_.x - x) > 10 ||
@@ -732,9 +733,10 @@ class IrViewer {
       }
       return true;
     }
+    return false;
   }
 
-  checkSearchInput(msg, x, y){
+  checkSearchInput(msg, x, y) {
     if (this.searchInput) {
       if (XTools.InRect(x, y, ...this.searchInput.pos)) {
         if (this.searchInput.btnUp.onTouch(msg, x, y)) {
@@ -759,10 +761,12 @@ class IrViewer {
         }
         return true;
       }
+      return false;
     }
+    return false;
   }
 
-  checkMsg(msg, x, y){
+  checkMsg(msg, x, y) {
     if (msg === 1) {
       let nodes = this.visable_.nodes;
       for (let k in nodes) {
@@ -790,6 +794,7 @@ class IrViewer {
       }
       this.selectPoint_ = [];
     }
+    return false;
   }
 
   onTouch(msg, x, y) {

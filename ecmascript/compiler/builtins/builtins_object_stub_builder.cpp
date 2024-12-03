@@ -760,7 +760,7 @@ void BuiltinsObjectStubBuilder::HasOwnProperty(Variable *result, Label *exit, La
     }
 }
 
-GateRef BuiltinsObjectStubBuilder::GetNumKeysFromLayoutInfo(GateRef object, GateRef end, GateRef layoutInfo)
+GateRef BuiltinsObjectStubBuilder::GetNumKeysFromLayoutInfo(GateRef end, GateRef layoutInfo)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -773,7 +773,6 @@ GateRef BuiltinsObjectStubBuilder::GetNumKeysFromLayoutInfo(GateRef object, Gate
     Label loopEnd(env);
     Label iLessEnd(env);
     Label isString(env);
-    Label initializedProp(env);
     Label isEnumerable(env);
     Jump(&loopHead);
     LoopBegin(&loopHead);
@@ -784,8 +783,6 @@ GateRef BuiltinsObjectStubBuilder::GetNumKeysFromLayoutInfo(GateRef object, Gate
             GateRef key = GetKey(layoutInfo, *i);
             BRANCH(TaggedIsString(key), &isString, &loopEnd);
             Bind(&isString);
-            BRANCH(IsUninitializedProperty(object, *i, layoutInfo), &loopEnd, &initializedProp);
-            Bind(&initializedProp);
             BRANCH(IsEnumerable(GetAttr(layoutInfo, *i)), &isEnumerable, &loopEnd);
             Bind(&isEnumerable);
             result = Int32Add(*result, Int32(1));
@@ -795,52 +792,6 @@ GateRef BuiltinsObjectStubBuilder::GetNumKeysFromLayoutInfo(GateRef object, Gate
         i = Int32Add(*i, Int32(1));
         LoopEnd(&loopHead, env, glue_);
     }
-    Bind(&exit);
-    auto ret = *result;
-    env->SubCfgExit();
-    return ret;
-}
-
-GateRef BuiltinsObjectStubBuilder::IsUninitializedProperty(GateRef object, GateRef index, GateRef layoutInfo)
-{
-    auto env = GetEnvironment();
-    Label entry(env);
-    env->SubCfgEntry(&entry);
-    Label exit(env);
-    DEFVARIABLE(value, VariableType::JS_ANY(), Undefined());
-    DEFVARIABLE(result, VariableType::BOOL(), False());
-
-    Label inlinedProp(env);
-    GateRef attr = GetAttr(layoutInfo, index);
-    GateRef rep = GetRepInPropAttr(attr);
-    GateRef hclass = LoadHClass(object);
-    BRANCH(IsInlinedProperty(attr), &inlinedProp, &exit);
-    Bind(&inlinedProp);
-    {
-        value = GetPropertyInlinedProps(object, hclass, index);
-        result = TaggedIsHole(*value);
-        Label nonDoubleToTagged(env);
-        Label doubleToTagged(env);
-        BRANCH(IsDoubleRepInPropAttr(rep), &doubleToTagged, &nonDoubleToTagged);
-        Bind(&doubleToTagged);
-        {
-            value = TaggedPtrToTaggedDoublePtr(*value);
-            result = TaggedIsHole(*value);
-            Jump(&exit);
-        }
-        Bind(&nonDoubleToTagged);
-        {
-            Label intToTagged(env);
-            BRANCH(IsIntRepInPropAttr(rep), &intToTagged, &exit);
-            Bind(&intToTagged);
-            {
-                value = TaggedPtrToTaggedIntPtr(*value);
-                result = TaggedIsHole(*value);
-                Jump(&exit);
-            }
-        }
-    }
-
     Bind(&exit);
     auto ret = *result;
     env->SubCfgExit();
@@ -864,7 +815,6 @@ GateRef BuiltinsObjectStubBuilder::GetNumKeysFromDictionary(GateRef array)
     Label afterLoop(env);
     Label iLessSize(env);
     Label isString(env);
-    Label initializedProp(env);
     Label isEnumerable(env);
 
     Jump(&loopHead);
@@ -895,8 +845,7 @@ GateRef BuiltinsObjectStubBuilder::GetNumKeysFromDictionary(GateRef array)
     return ret;
 }
 
-void BuiltinsObjectStubBuilder::LayoutInfoGetAllEnumKeys(GateRef end, GateRef offset,
-                                                         GateRef array, GateRef object, GateRef layoutInfo)
+void BuiltinsObjectStubBuilder::LayoutInfoGetAllEnumKeys(GateRef end, GateRef offset, GateRef array, GateRef layoutInfo)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -909,7 +858,6 @@ void BuiltinsObjectStubBuilder::LayoutInfoGetAllEnumKeys(GateRef end, GateRef of
     Label afterLoop(env);
     Label iLessEnd(env);
     Label isEnumerable(env);
-    Label initializedProp(env);
     Jump(&loopHead);
     LoopBegin(&loopHead);
     {
@@ -921,8 +869,6 @@ void BuiltinsObjectStubBuilder::LayoutInfoGetAllEnumKeys(GateRef end, GateRef of
             BRANCH(LogicAndBuilder(env).And(TaggedIsString(key)).And(IsEnumerable(GetAttr(layoutInfo, iVal))).Done(),
                 &isEnumerable, &loopEnd);
             Bind(&isEnumerable);
-            BRANCH(IsUninitializedProperty(object, *i, layoutInfo), &loopEnd, &initializedProp);
-            Bind(&initializedProp);
             SetValueToTaggedArray(VariableType::JS_ANY(), glue_, array, Int32Add(*enumKeys, offset), key);
             enumKeys = Int32Add(*enumKeys, Int32(1));
             Jump(&loopEnd);
@@ -966,7 +912,7 @@ GateRef BuiltinsObjectStubBuilder::CopyFromEnumCache(GateRef glue, GateRef eleme
     Bind(&afterLenCon);
     GateRef array = newBuilder.NewTaggedArray(glue, *newLen);
     Store(VariableType::INT32(), glue, array, IntPtr(TaggedArray::LENGTH_OFFSET), *newLen);
-    GateRef oldExtractLen = GetExtractLengthOfTaggedArray(elements);
+    GateRef oldExtractLen = GetExtraLengthOfTaggedArray(elements);
     Store(VariableType::INT32(), glue, array, IntPtr(TaggedArray::EXTRA_LENGTH_OFFSET), oldExtractLen);
     Label loopHead(env);
     Label loopEnd(env);
@@ -1036,7 +982,7 @@ GateRef BuiltinsObjectStubBuilder::GetAllEnumKeys(GateRef glue, GateRef obj)
             Label isOnlyOwnKeys(env);
             Label notOnlyOwnKeys(env);
             GateRef layout = GetLayoutFromHClass(hclass);
-            GateRef numOfKeys = GetNumKeysFromLayoutInfo(obj, num, layout);
+            GateRef numOfKeys = GetNumKeysFromLayoutInfo(num, layout);
             // JSObject::GetAllEnumKeys
             GateRef enumCache = GetEnumCacheFromHClass(hclass);
             GateRef kind = GetEnumCacheKind(glue, enumCache);
@@ -1057,7 +1003,7 @@ GateRef BuiltinsObjectStubBuilder::GetAllEnumKeys(GateRef glue, GateRef obj)
                 NewObjectStubBuilder newBuilder(this);
                 GateRef keyArray = newBuilder.NewTaggedArray(glue,
                     Int32Add(numOfKeys, Int32(static_cast<int32_t>(EnumCache::ENUM_CACHE_HEADER_SIZE))));
-                LayoutInfoGetAllEnumKeys(num, Int32(EnumCache::ENUM_CACHE_HEADER_SIZE), keyArray, obj, layout);
+                LayoutInfoGetAllEnumKeys(num, Int32(EnumCache::ENUM_CACHE_HEADER_SIZE), keyArray, layout);
                 SetValueToTaggedArray(VariableType::JS_ANY(), glue, keyArray,
                     Int32(EnumCache::ENUM_CACHE_KIND_OFFSET),
                     IntToTaggedInt(Int32(static_cast<int32_t>(EnumCacheKind::ONLY_OWN_KEYS))));
@@ -1814,15 +1760,10 @@ GateRef BuiltinsObjectStubBuilder::GetAllPropertyKeys(GateRef glue, GateRef obj,
             BRANCH(Int32UnsignedLessThan(*i, number), &next, &loopExit);
             Bind(&next);
             {
-                Label checkString(env);
                 Label checkSymbol(env);
                 Label setValue(env);
                 GateRef key = GetKey(layout, *i);
-                BRANCH(TaggedIsString(key), &checkString, &checkSymbol);
-                Bind(&checkString);
-                {
-                    BRANCH(IsUninitializedProperty(obj, *i, layout), &checkSymbol, &setValue);
-                }
+                BRANCH(TaggedIsString(key), &setValue, &checkSymbol);
                 Bind(&checkSymbol);
                 {
                     BRANCH(TaggedIsSymbol(key), &setValue, &loopEnd);

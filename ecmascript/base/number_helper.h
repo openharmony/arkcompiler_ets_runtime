@@ -168,6 +168,7 @@ public:
     static JSHandle<EcmaString> NumberToString(const JSThread *thread, JSTaggedValue number);
     static double PUBLIC_API TruncateDouble(double d);
     static int64_t DoubleToInt64(double d);
+    static uint64_t DoubleToUInt64(double d);
     static bool IsDigitalString(const uint8_t *start, const uint8_t *end);
     static int StringToInt(const uint8_t *start, const uint8_t *end);
     static std::pair<bool, JSTaggedNumber> FastStringToNumber(const uint8_t *start,
@@ -175,6 +176,7 @@ public:
     static double StringToDouble(const uint8_t *start, const uint8_t *end, uint8_t radix, uint32_t flags = NO_FLAGS);
     static int32_t DoubleToInt(double d, size_t bits);
     static int32_t PUBLIC_API DoubleInRangeInt32(double d);
+    static int32_t PUBLIC_API SaturateTruncDoubleToInt32(double d);
     static JSTaggedValue StringToNumber(EcmaString *string, int32_t radix);
     static JSTaggedValue StringToDoubleWithRadix(const uint8_t *start, const uint8_t *end, int radix, bool *negative);
     static CString IntToString(int number);

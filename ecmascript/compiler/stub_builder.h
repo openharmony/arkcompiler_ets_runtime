@@ -286,7 +286,7 @@ public:
     GateRef TaggedIsJSGlobalObject(GateRef x);
     GateRef TaggedIsWeak(GateRef x);
     GateRef TaggedIsPrototypeHandler(GateRef x);
-    GateRef TaggedIsStoreTSHandler(GateRef x);
+    GateRef TaggedIsStoreAOTHandler(GateRef x);
     GateRef TaggedIsTransWithProtoHandler(GateRef x);
     GateRef TaggedIsTransitionHandler(GateRef x);
     GateRef TaggedIsString(GateRef obj);
@@ -380,7 +380,8 @@ public:
     void SetHash(GateRef glue, GateRef object, GateRef hash);
     GateRef GetLengthOfTaggedArray(GateRef array);
     GateRef GetLengthOfJSTypedArray(GateRef array);
-    GateRef GetExtractLengthOfTaggedArray(GateRef array);
+    GateRef GetExtraLengthOfTaggedArray(GateRef array);
+    void SetExtraLengthOfTaggedArray(GateRef glue, GateRef array, GateRef len);
     // object operation
     GateRef IsJSHClass(GateRef obj);
     GateRef LoadHClass(GateRef object);
@@ -398,6 +399,7 @@ public:
     GateRef IsDictionaryMode(GateRef object);
     GateRef IsDictionaryModeByHClass(GateRef hClass);
     GateRef IsDictionaryElement(GateRef hClass);
+    GateRef IsJSArrayPrototypeModified(GateRef hClass);
     GateRef IsStableElements(GateRef hClass);
     GateRef HasConstructorByHClass(GateRef hClass);
     GateRef HasConstructor(GateRef object);
@@ -425,6 +427,7 @@ public:
     GateRef IsJSGlobalObject(GateRef obj);
     GateRef IsNativeModuleFailureInfo(GateRef obj);
     GateRef IsModuleNamespace(GateRef obj);
+    GateRef IsNativePointer(GateRef obj);
     GateRef IsSourceTextModule(GateRef obj);
     GateRef ObjIsSpecialContainer(GateRef obj);
     GateRef IsJSPrimitiveRef(GateRef obj);
@@ -444,6 +447,7 @@ public:
     GateRef IsConfigable(GateRef attr);
     GateRef IsDefaultAttribute(GateRef attr);
     GateRef IsArrayLengthWritable(GateRef glue, GateRef receiver);
+    GateRef IsArrayLengthWritableForNonDictMode(GateRef receiver);
     GateRef IsAccessor(GateRef attr);
     GateRef IsInlinedProperty(GateRef attr);
     GateRef IsField(GateRef attr);
@@ -489,8 +493,8 @@ public:
     GateRef GetProtoCell(GateRef object);
     GateRef GetPrototypeHandlerHolder(GateRef object);
     GateRef GetPrototypeHandlerHandlerInfo(GateRef object);
-    GateRef GetStoreTSHandlerHolder(GateRef object);
-    GateRef GetStoreTSHandlerHandlerInfo(GateRef object);
+    GateRef GetStoreAOTHandlerHolder(GateRef object);
+    GateRef GetStoreAOTHandlerHandlerInfo(GateRef object);
     inline GateRef GetLengthOfJSArray(GateRef array);
     inline GateRef GetPrototype(GateRef glue, GateRef object);
     GateRef GetHasChanged(GateRef object);
@@ -547,9 +551,9 @@ public:
     void SetEnumCacheToHClass(VariableType type, GateRef glue, GateRef hClass, GateRef key);
     void SetTransitionsToHClass(VariableType type, GateRef glue, GateRef hClass, GateRef transition);
     void SetParentToHClass(VariableType type, GateRef glue, GateRef hClass, GateRef parent);
-    void SetIsProtoTypeToHClass(GateRef glue, GateRef hClass, GateRef value);
-    inline void SetIsTS(GateRef glue, GateRef hClass, GateRef value);
-    GateRef IsProtoTypeHClass(GateRef hClass);
+    void SetIsPrototypeToHClass(GateRef glue, GateRef hClass, GateRef value);
+    inline void SetIsAOT(GateRef glue, GateRef hClass, GateRef value);
+    GateRef IsPrototypeHClass(GateRef hClass);
     void SetPropertyInlinedProps(GateRef glue, GateRef obj, GateRef hClass,
                                  GateRef value, GateRef attrOffset, VariableType type = VariableType::JS_ANY(),
                                  MemoryAttribute mAttr = MemoryAttribute::Default());
@@ -560,7 +564,7 @@ public:
     void IncNumberOfProps(GateRef glue, GateRef hClass);
     GateRef GetNumberOfPropsFromHClass(GateRef hClass);
     GateRef HasDeleteProperty(GateRef hClass);
-    GateRef IsTSHClass(GateRef hClass);
+    GateRef IsAOTHClass(GateRef hClass);
     void SetNumberOfPropsToHClass(GateRef glue, GateRef hClass, GateRef value);
     void SetElementsKindToTrackInfo(GateRef glue, GateRef trackInfo, GateRef elementsKind);
     void SetSpaceFlagToTrackInfo(GateRef glue, GateRef trackInfo, GateRef spaceFlag);
@@ -587,8 +591,8 @@ public:
     GateRef UpdateSOutOfBoundsForHandler(GateRef handlerInfo);
     void RestoreElementsKindToGeneric(GateRef glue, GateRef jsHClass);
     GateRef GetTaggedValueWithElementsKind(GateRef receiver, GateRef index);
-    void FastSetValueWithElementsKind(GateRef glue, GateRef elements, GateRef rawValue,
-                                      GateRef index, ElementsKind kind);
+    void FastSetValueWithElementsKind(GateRef glue, GateRef receiver, GateRef elements, GateRef rawValue,
+                                      GateRef index, ElementsKind kind, bool needTransition = false);
     GateRef SetValueWithElementsKind(GateRef glue, GateRef receiver, GateRef rawValue, GateRef index,
                                      GateRef needTransition, GateRef extraKind);
     GateRef CopyJSArrayToTaggedArrayArgs(GateRef glue, GateRef srcObj);
@@ -843,7 +847,7 @@ public:
     GateRef GetGlobalOwnProperty(GateRef glue, GateRef receiver, GateRef key, ProfileOperation callback);
     GateRef AddElementInternal(GateRef glue, GateRef receiver, GateRef index, GateRef value, GateRef attr);
     GateRef ShouldTransToDict(GateRef capcity, GateRef index);
-    void NotifyStableArrayElementsGuardians(GateRef glue, GateRef receiver);
+    void NotifyArrayPrototypeChangedGuardians(GateRef glue, GateRef receiver);
     GateRef GrowElementsCapacity(GateRef glue, GateRef receiver, GateRef capacity);
 
     inline GateRef GetObjectFromConstPool(GateRef constpool, GateRef index);
@@ -915,8 +919,11 @@ public:
     GateRef ElementsKindIsNumOrHoleNum(GateRef kind);
     GateRef ElementsKindIsHeapKind(GateRef kind);
     GateRef ElementsKindHasHole(GateRef kind);
-    void ArrayCopyAndHoleToUndefined(GateRef glue, GateRef src, GateRef dst, GateRef length,
-                                     MemoryAttribute mAttr = MemoryAttribute::Default());
+    // dstAddr/srcAddr is the address will be copied to/from.
+    // It can be a derived pointer point to the middle of an object.
+    // Note: dstObj is the object address for dstAddr, it must point to the head of an object.
+    void ArrayCopyAndHoleToUndefined(GateRef glue, GateRef srcAddr, GateRef dstObj, GateRef dstAddr,
+                                     GateRef length, MemoryAttribute mAttr = MemoryAttribute::Default());
     void MigrateArrayWithKind(GateRef glue, GateRef object, GateRef oldKind, GateRef newKind);
     GateRef MigrateFromRawValueToHeapValues(GateRef glue, GateRef object, GateRef needCOW, GateRef isIntKind);
     GateRef MigrateFromHeapValueToRawValue(GateRef glue, GateRef object, GateRef needCOW, GateRef isIntKind);
@@ -1011,7 +1018,6 @@ public:
     inline GateRef GetAccessorHasChanged(GateRef obj);
     inline GateRef ComputeTaggedTypedArraySize(GateRef elementSize, GateRef length);
     GateRef ChangeTaggedPointerToInt64(GateRef x);
-    GateRef GetLastLeaveFrame(GateRef glue);
     inline GateRef GetPropertiesCache(GateRef glue);
     GateRef GetIndexFromPropertiesCache(GateRef glue, GateRef cache, GateRef cls, GateRef key,
                                         GateRef hir = Circuit::NullGate());
@@ -1027,6 +1033,7 @@ public:
                        FunctionKind targetKind = FunctionKind::LAST_FUNCTION_KIND);
     GateRef BinarySearch(GateRef glue, GateRef layoutInfo, GateRef key, GateRef propsNum,
                          GateRef hir = Circuit::NullGate());
+    GateRef GetLastLeaveFrame(GateRef glue);
     void UpdateProfileTypeInfoCellToFunction(GateRef glue, GateRef function,
                                              GateRef profileTypeInfo, GateRef slotId);
     GateRef Loadlocalmodulevar(GateRef glue, GateRef index, GateRef module);
@@ -1046,8 +1053,12 @@ public:
         // Unknown means all the kinds above are possible, it will select the suitable one in runtime.
         Unknown,
     };
+    // dstAddr/srcAddr is the address will be copied to/from.
+    // It can be a derived pointer point to the middle of an object.
+    //
+    // Note: dstObj is the object address for dstAddr, it must point to the head of an object.
     template <OverlapKind kind>
-    void ArrayCopy(GateRef glue, GateRef src, GateRef dst, GateRef length,
+    void ArrayCopy(GateRef glue, GateRef srcAddr, GateRef dstObj, GateRef dstAddr, GateRef length,
                    MemoryAttribute mAttr = MemoryAttribute::Default());
 protected:
     static constexpr int LOOP_UNROLL_FACTOR = 2;

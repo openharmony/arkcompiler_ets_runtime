@@ -63,6 +63,7 @@ public:
 #endif
     void DumpCGIR();
     void DoCG(bool isJit = false);
+    void SetAotCodeCommentFile(const std::string &aotCodeCommentFile);
 
 private:
     Module &module;

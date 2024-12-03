@@ -57,6 +57,7 @@ static constexpr uint64_t HEAP_DUMP_REPORT_INTERVAL = 24 * 3600 * 1000;
 static bool g_betaVersion = OHOS::system::GetParameter("const.logsystem.versiontype", "unknown") == "beta";
 static bool g_developMode = (OHOS::system::GetParameter("persist.hiview.leak_detector", "unknown") == "enable") ||
                             (OHOS::system::GetParameter("persist.hiview.leak_detector", "unknown") == "true");
+static bool g_futVersion = OHOS::system::GetIntParameter("const.product.dfx.fans.stage", 0) == 1;
 #endif
 
 namespace panda::ecmascript {
@@ -607,6 +608,36 @@ size_t SharedHeap::VerifyHeapObjects(VerifyKind verifyKind) const
     return failCount;
 }
 
+void SharedHeap::CollectGarbageFinish(bool inDaemon, TriggerGCType gcType)
+{
+    if (inDaemon) {
+        ASSERT(JSThread::GetCurrent() == dThread_);
+#ifndef NDEBUG
+        ASSERT(dThread_->HasLaunchedSuspendAll());
+#endif
+        dThread_->FinishRunningTask();
+        NotifyGCCompleted();
+        // Update to forceGC_ is in DaemeanSuspendAll, and protected by the Runtime::mutatorLock_,
+        // so do not need lock.
+        smartGCStats_.forceGC_ = false;
+    }
+    localFullMarkTriggered_ = false;
+    // Record alive object size after shared gc and other stats
+    UpdateHeapStatsAfterGC(gcType);
+    // Adjust shared gc trigger threshold
+    AdjustGlobalSpaceAllocLimit();
+    GetEcmaGCStats()->RecordStatisticAfterGC();
+    GetEcmaGCStats()->PrintGCStatistic();
+    ProcessAllGCListeners();
+    if (shouldThrowOOMError_ || shouldForceThrowOOMError_) {
+        // LocalHeap could do FullGC later instead of Fatal at once if only set `shouldThrowOOMError_` because there
+        // is kind of partial compress GC in LocalHeap, but SharedHeap differs.
+        DumpHeapSnapshotBeforeOOM(false, Runtime::GetInstance()->GetMainThread(), SharedHeapOOMSource::SHARED_GC);
+        LOG_GC(FATAL) << "SharedHeap OOM";
+        UNREACHABLE();
+    }
+}
+
 bool SharedHeap::IsReadyToConcurrentMark() const
 {
     return dThread_->IsReadyToConcurrentMark();
@@ -643,10 +674,10 @@ void SharedHeap::MoveOldSpaceToAppspawn()
 #ifdef ECMASCRIPT_SUPPORT_HEAPSAMPLING
     sAppSpawnSpace_->SwapAllocationCounter(sOldSpace_);
 #endif
-    auto threadId = Runtime::GetInstance()->GetMainThread()->GetThreadId();
     sOldSpace_->EnumerateRegions([&](Region *region) {
         region->SetRegionSpaceFlag(RegionSpaceFlag::IN_SHARED_APPSPAWN_SPACE);
-        PageTag(region, region->GetCapacity(), PageTagType::HEAP, region->GetSpaceTypeName(), threadId);
+        // Region in SharedHeap do not need PageTag threadId.
+        PageTag(region, region->GetCapacity(), PageTagType::HEAP, region->GetSpaceTypeName());
         sAppSpawnSpace_->AddRegion(region);
         sAppSpawnSpace_->IncreaseLiveObjectSize(region->AliveObject());
     });
@@ -668,28 +699,41 @@ void SharedHeap::ReclaimForAppSpawn()
     sHugeObjectSpace_->EnumerateRegions(cb);
 }
 
-void SharedHeap::DumpHeapSnapshotBeforeOOM([[maybe_unused]]bool isFullGC, [[maybe_unused]]JSThread *thread)
+void SharedHeap::DumpHeapSnapshotBeforeOOM([[maybe_unused]]bool isFullGC, [[maybe_unused]]JSThread *thread,
+                                           [[maybe_unused]] SharedHeapOOMSource source)
 {
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT) && defined(PANDA_TARGET_OHOS) && defined(ENABLE_HISYSEVENT)
-    if (!g_betaVersion && !g_developMode) {
-        LOG_GC(INFO) << "current device is not development or beta! do not dump";
+    if (!g_betaVersion && !g_developMode && !g_futVersion) {
+        LOG_ECMA(INFO)
+            << "SharedHeap::DumpHeapSnapshotBeforeOOM, current device is not development or beta! do not dump";
         return;
     }
 #endif
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
 #if defined(ENABLE_DUMP_IN_FAULTLOG)
     EcmaVM *vm = thread->GetEcmaVM();
-    if (vm->GetHeapProfile() != nullptr) {
-        LOG_FULL(INFO) << "GetHeapProfile nullptr";
-        return;
+    HeapProfilerInterface *heapProfile = nullptr;
+    if (source == SharedHeapOOMSource::SHARED_GC) {
+#ifndef NDEBUG
+        // If OOM during SharedGC, use main JSThread and create a new HeapProfile instancre to dump when GC completed.
+        ASSERT(thread == Runtime::GetInstance()->GetMainThread() && JSThread::GetCurrent()->HasLaunchedSuspendAll());
+#endif
+        heapProfile = HeapProfilerInterface::CreateNewInstance(vm);
+    } else {
+        if (vm->GetHeapProfile() != nullptr) {
+            LOG_ECMA(ERROR) << "SharedHeap::DumpHeapSnapshotBeforeOOM, HeapProfile is nullptr";
+            return;
+        }
+        heapProfile = HeapProfilerInterface::GetInstance(vm);
     }
     // Filter appfreeze when dump.
-    LOG_ECMA(INFO) << " DumpHeapSnapshotBeforeOOM, isFullGC" << isFullGC;
+    LOG_ECMA(INFO) << "SharedHeap::DumpHeapSnapshotBeforeOOM, isFullGC = " << isFullGC;
     base::BlockHookScope blockScope;
-    HeapProfilerInterface *heapProfile = HeapProfilerInterface::GetInstance(vm);
     if (appfreezeCallback_ != nullptr && appfreezeCallback_(getprocpid())) {
-        LOG_ECMA(INFO) << " DumpHeapSnapshotBeforeOOM Success. ";
+        LOG_ECMA(INFO) << "SharedHeap::DumpHeapSnapshotBeforeOOM, appfreezeCallback_ success. ";
     }
+    vm->GetEcmaGCKeyStats()->SendSysEventBeforeDump("OOMDump", GetEcmaParamConfiguration().GetMaxHeapSize(),
+                                                    GetHeapObjectSize());
     DumpSnapShotOption dumpOption;
     dumpOption.dumpFormat = DumpFormat::BINARY;
     dumpOption.isVmMode = true;
@@ -700,8 +744,13 @@ void SharedHeap::DumpHeapSnapshotBeforeOOM([[maybe_unused]]bool isFullGC, [[mayb
     dumpOption.isSync = true;
     dumpOption.isBeforeFill = false;
     dumpOption.isDumpOOM = true;
-    heapProfile->DumpHeapSnapshot(dumpOption);
-    HeapProfilerInterface::Destroy(vm);
+    if (source == SharedHeapOOMSource::SHARED_GC) {
+        heapProfile->DumpHeapSnapshotForOOM(dumpOption, true);
+        HeapProfilerInterface::DestroyInstance(heapProfile);
+    } else {
+        heapProfile->DumpHeapSnapshotForOOM(dumpOption);
+        HeapProfilerInterface::Destroy(vm);
+    }
 #endif // ENABLE_DUMP_IN_FAULTLOG
 #endif // ECMASCRIPT_SUPPORT_SNAPSHOT
 }
@@ -712,6 +761,7 @@ Heap::Heap(EcmaVM *ecmaVm)
 
 void Heap::Initialize()
 {
+    enablePageTagThreadId_ = ecmaVm_->GetJSOptions().EnablePageTagThreadId();
     memController_ = new MemController(this);
     nativeAreaAllocator_ = ecmaVm_->GetNativeAreaAllocator();
     heapRegionAllocator_ = ecmaVm_->GetHeapRegionAllocator();
@@ -833,6 +883,10 @@ void Heap::ProcessSharedGCRSetWorkList()
         ASSERT(thread_->IsSharedConcurrentMarkingOrFinished());
         ASSERT(this == sharedGCData_.rSetWorkListHandler_->GetHeap());
         sHeap_->GetSharedGCMarker()->ProcessThenMergeBackRSetFromBoundJSThread(sharedGCData_.rSetWorkListHandler_);
+        // The current thread may end earlier than the deamon thread.
+        // To ensure the accuracy of the state range, set true is executed on js thread and deamon thread.
+        // Reentrant does not cause exceptions because all the values are set to false.
+        thread_->SetProcessingLocalToSharedRset(false);
         ASSERT(sharedGCData_.rSetWorkListHandler_ == nullptr);
     }
 }
@@ -1267,15 +1321,22 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
     }
     // OOMError object is not allowed to be allocated during gc process, so throw OOMError after gc
     if (shouldThrowOOMError_ && gcType_ == TriggerGCType::FULL_GC) {
-        sweeper_->EnsureAllTaskFinished();
         oldSpace_->ResetCommittedOverSizeLimit();
         if (oldSpace_->CommittedSizeExceed()) { // LCOV_EXCL_BR_LINE
+            sweeper_->EnsureAllTaskFinished();
             DumpHeapSnapshotBeforeOOM(false);
             StatisticHeapDetail();
             ThrowOutOfMemoryError(thread_, oldSpace_->GetMergeSize(), " OldSpace::Merge");
         }
         oldSpace_->ResetMergeSize();
         shouldThrowOOMError_ = false;
+    }
+    // Allocate region failed during GC, MUST throw OOM here
+    if (shouldForceThrowOOMError_) {
+        sweeper_->EnsureAllTaskFinished();
+        DumpHeapSnapshotBeforeOOM(false);
+        StatisticHeapDetail();
+        ThrowOutOfMemoryError(thread_, DEFAULT_REGION_SIZE, " HeapRegionAllocator::AllocateAlignedRegion");
     }
     // Update record heap object size after gc if in sensitive status
     if (GetSensitiveStatus() == AppSensitiveStatus::ENTER_HIGH_SENSITIVE) {
@@ -1529,22 +1590,24 @@ void BaseHeap::OnAllocateEvent([[maybe_unused]] EcmaVM *ecmaVm, [[maybe_unused]]
 void Heap::DumpHeapSnapshotBeforeOOM([[maybe_unused]] bool isFullGC)
 {
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT) && defined(PANDA_TARGET_OHOS) && defined(ENABLE_HISYSEVENT)
-    if (!g_betaVersion && !g_developMode) {
-        LOG_GC(INFO) << "current device is not development or beta! do not dump";
+    if (!g_betaVersion && !g_developMode && !g_futVersion) {
+        LOG_ECMA(INFO)
+            << "Heap::DumpHeapSnapshotBeforeOOM, current device is not development or beta! do not dump";
         return;
     }
 #endif
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
 #if defined(ENABLE_DUMP_IN_FAULTLOG)
     if (ecmaVm_->GetHeapProfile() != nullptr) {
+        LOG_ECMA(ERROR) << "Heap::DumpHeapSnapshotBeforeOOM, HeapProfile is nullptr";
         return;
     }
     // Filter appfreeze when dump.
-    LOG_ECMA(INFO) << " DumpHeapSnapshotBeforeOOM, isFullGC" << isFullGC;
+    LOG_ECMA(INFO) << " Heap::DumpHeapSnapshotBeforeOOM, isFullGC = " << isFullGC;
     base::BlockHookScope blockScope;
     HeapProfilerInterface *heapProfile = HeapProfilerInterface::GetInstance(ecmaVm_);
     if (appfreezeCallback_ != nullptr && appfreezeCallback_(getprocpid())) {
-        LOG_ECMA(INFO) << " DumpHeapSnapshotBeforeOOM Success. ";
+        LOG_ECMA(INFO) << "Heap::DumpHeapSnapshotBeforeOOM, appfreezeCallback_ success. ";
     }
 #ifdef ENABLE_HISYSEVENT
     GetEcmaGCKeyStats()->SendSysEventBeforeDump("OOMDump", GetHeapLimitSize(), GetLiveObjectSize());
@@ -1561,7 +1624,7 @@ void Heap::DumpHeapSnapshotBeforeOOM([[maybe_unused]] bool isFullGC)
     dumpOption.isSync = true;
     dumpOption.isBeforeFill = false;
     dumpOption.isDumpOOM = true;
-    heapProfile->DumpHeapSnapshot(dumpOption);
+    heapProfile->DumpHeapSnapshotForOOM(dumpOption);
     HeapProfilerInterface::Destroy(ecmaVm_);
 #endif // ENABLE_DUMP_IN_FAULTLOG
 #endif // ECMASCRIPT_SUPPORT_SNAPSHOT
@@ -1658,6 +1721,8 @@ void Heap::RecomputeLimits()
     globalSpaceNativeLimit_ = memController_->CalculateAllocLimit(GetGlobalNativeSize(), MIN_HEAP_SIZE,
                                                                   MAX_GLOBAL_NATIVE_LIMIT, newSpaceCapacity,
                                                                   growingFactor);
+    globalSpaceNativeLimit_ = std::max(globalSpaceNativeLimit_, GetGlobalNativeSize()
+                                        + config_.GetMinNativeLimitGrowingStep());
     OPTIONAL_LOG(ecmaVm_, INFO) << "RecomputeLimits oldSpaceAllocLimit_: " << newOldSpaceLimit
         << " globalSpaceAllocLimit_: " << globalSpaceAllocLimit_
         << " globalSpaceNativeLimit_:" << globalSpaceNativeLimit_;
@@ -2359,14 +2424,15 @@ bool Heap::NeedStopCollection()
     size_t objSize = GetHeapObjectSize();
     size_t recordSizeBeforeSensitive = GetRecordHeapObjectSizeBeforeSensitive();
     if (recordSizeBeforeSensitive == 0) {
-        SetRecordHeapObjectSizeBeforeSensitive(objSize);
+        recordSizeBeforeSensitive = objSize;
+        SetRecordHeapObjectSizeBeforeSensitive(recordSizeBeforeSensitive);
     }
 
     if (objSize < recordSizeBeforeSensitive + config_.GetIncObjSizeThresholdInSensitive()
         && !ObjectExceedMaxHeapSize()) {
         if (!IsNearGCInSensitive() &&
             objSize > (recordSizeBeforeSensitive + config_.GetIncObjSizeThresholdInSensitive())
-            * MIN_OBJECT_SURVIVAL_RATE) {
+            * MIN_SENSITIVE_OBJECT_SURVIVAL_RATE) {
             SetNearGCInSensitive(true);
         }
         return true;
@@ -2732,7 +2798,7 @@ void Heap::ThresholdReachedDump()
             dumpOption.isSync = false;
             dumpOption.isBeforeFill = false;
             dumpOption.isDumpOOM = true; // aim's to do binary dump
-            heapProfile->DumpHeapSnapshot(dumpOption);
+            heapProfile->DumpHeapSnapshotForOOM(dumpOption);
             hasOOMDump_ = false;
             HeapProfilerInterface::Destroy(ecmaVm_);
         }

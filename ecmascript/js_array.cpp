@@ -242,7 +242,7 @@ void JSArray::SetCapacity(JSThread *thread, const JSHandle<JSObject> &array,
     if (newLen <= capacity) {
         // judge if need to cut down the array size, else fill the unused tail with holes
         CheckAndCopyArray(thread, JSHandle<JSArray>(array));
-        array->FillElementsWithHoles(thread, newLen, oldLen < capacity ? oldLen : capacity);
+        JSObject::FillElementsWithHoles(thread, array, newLen, oldLen < capacity ? oldLen : capacity);
     }
     if (JSObject::ShouldTransToDict(oldLen, newLen)) {
         JSObject::ElementsToDictionary(thread, array);
@@ -260,9 +260,19 @@ void JSArray::SetCapacity(JSThread *thread, const JSHandle<JSObject> &array,
         }
 #if ECMASCRIPT_ENABLE_ELEMENTSKIND_ALWAY_GENERIC
         ElementsKind newKind = ElementsKind::GENERIC;
-        #else
+#else
+        // 1.When elementsKind is NONE, means thisArray is empty,
+        // so we don't need to traverse the elements to transform elementskind.
+        // 2.Make sure array is already created.
+        // 3.Make sure newLen > 0 for avoid making empty array elementsKind to HOLE accidently.
+        // ASSERT: If an array's elementsKind is NONE, its length must be zero.
+        if (Elements::IsNone(oldKind) && !isNew && newLen > 0) {
+            ASSERT(oldLen == 0);
+            JSHClass::TransitToElementsKindUncheck(thread, array, ElementsKind::HOLE);
+            return;
+        }
         ElementsKind newKind = ElementsKind::NONE;
-        #endif
+#endif
         for (uint32_t i = 0; i < newLen; ++i) {
             JSTaggedValue val = ElementAccessor::Get(array, i);
             newKind = Elements::ToElementsKind(val, newKind);
@@ -401,6 +411,19 @@ bool JSArray::IsLengthString(JSThread *thread, const JSHandle<JSTaggedValue> &ke
     return key.GetTaggedValue() == thread->GlobalConstants()->GetLengthString();
 }
 
+// static
+// Check whether the element of the array is dictionary element,
+// proto of the array has not been modified
+// the element of the array prototype has not been modified
+// the attribute of the array has not been modified
+bool JSArray::IsProtoNotModifiedDictionaryJSArray(JSThread *thread, const JSHandle<JSObject> &obj)
+{
+    return obj->GetJSHClass()->IsDictionaryElement() &&
+           !thread->IsArrayPrototypeChangedGuardiansInvalid() &&
+           !obj->GetClass()->IsJSArrayPrototypeModifiedFromBitField() &&
+           JSObject::AttributesUnchanged(thread, obj);
+}
+
 // ecma6 7.3 Operations on Objects
 JSHandle<JSArray> JSArray::CreateArrayFromList(JSThread *thread, const JSHandle<TaggedArray> &elements)
 {
@@ -478,6 +501,7 @@ bool JSArray::FastSetPropertyByValue(JSThread *thread, const JSHandle<JSTaggedVa
 bool JSArray::TryFastCreateDataProperty(JSThread *thread, const JSHandle<JSObject> &obj, uint32_t index,
                                         const JSHandle<JSTaggedValue> &value,  SCheckMode sCheckMode)
 {
+#if ENABLE_NEXT_OPTIMIZATION
     JSHandle<JSTaggedValue> objVal(obj);
     if (!objVal->IsStableJSArray(thread)) {
         // if JSArray is DictionaryMode goto slowPath
@@ -508,31 +532,16 @@ bool JSArray::TryFastCreateDataProperty(JSThread *thread, const JSHandle<JSObjec
     
     TaggedArray::Cast(obj->GetElements())->Set(thread, index, value);
     return true;
+#else
+    return JSObject::CreateDataPropertyOrThrow(thread, obj, index, value, sCheckMode);
+#endif
 }
 
-// ecma2024 23.1.3.20 Array.prototype.sort(comparefn)
-JSTaggedValue JSArray::Sort(JSThread *thread, const JSHandle<JSTaggedValue> &obj, const JSHandle<JSTaggedValue> &fn)
+JSTaggedValue JSArray::CopySortedListToReceiver(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
+                                                JSHandle<TaggedArray> sortedList, uint32_t len)
 {
-    ASSERT(fn->IsUndefined() || fn->IsCallable());
-    // 3. Let len be ?LengthOfArrayLike(obj).
-    int64_t len = ArrayHelper::GetArrayLength(thread, obj);
-    // ReturnIfAbrupt(len).
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    // If len is 0 or 1, no need to sort
-    if (len == 0 || len == 1) {
-        return obj.GetTaggedValue();
-    }
-
-    // 4. Let SortCompare be a new Abstract Closure with parameters (x, y) that captures comparefn and performs
-    // the following steps when called:
-    //    a. Return ? CompareArrayElements(x, y, comparefn).
-    // 5. Let sortedList be ? SortIndexedProperties(O, len, SortCompare, SKIP-HOLES).
-    JSHandle<TaggedArray> sortedList =
-        ArrayHelper::SortIndexedProperties(thread, obj, len, fn, base::HolesType::SKIP_HOLES);
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     // 6. Let itemCount be the number of elements in sortedList.
     uint32_t itemCount = sortedList->GetLength();
-
     // 7. Let j be 0.
     uint32_t j = 0;
     // 8. Repeat, while j < itemCount,
@@ -556,7 +565,31 @@ JSTaggedValue JSArray::Sort(JSThread *thread, const JSHandle<JSTaggedValue> &obj
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         ++j;
     }
+    return obj.GetTaggedValue();
+}
 
+// ecma2024 23.1.3.20 Array.prototype.sort(comparefn)
+JSTaggedValue JSArray::Sort(JSThread *thread, const JSHandle<JSTaggedValue> &obj, const JSHandle<JSTaggedValue> &fn)
+{
+    ASSERT(fn->IsUndefined() || fn->IsCallable());
+    // 3. Let len be ?LengthOfArrayLike(obj).
+    int64_t len = ArrayHelper::GetArrayLength(thread, obj);
+    // ReturnIfAbrupt(len).
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    // If len is 0 or 1, no need to sort
+    if (len == 0 || len == 1) {
+        return obj.GetTaggedValue();
+    }
+
+    // 4. Let SortCompare be a new Abstract Closure with parameters (x, y) that captures comparefn and performs
+    // the following steps when called:
+    //    a. Return ? CompareArrayElements(x, y, comparefn).
+    // 5. Let sortedList be ? SortIndexedProperties(O, len, SortCompare, SKIP-HOLES).
+    JSHandle<TaggedArray> sortedList =
+        ArrayHelper::SortIndexedProperties(thread, obj, len, fn, base::HolesType::SKIP_HOLES);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    JSArray::CopySortedListToReceiver(thread, obj, sortedList, len);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return obj.GetTaggedValue();
 }
 
@@ -583,6 +616,45 @@ void JSArray::SortElementsByMergeSort(JSThread *thread, const JSHandle<TaggedArr
     SortElementsByMergeSort(thread, elements, fn, startIdx, middleIdx);
     SortElementsByMergeSort(thread, elements, fn, middleIdx + 1, endIdx);
     MergeSortedElements(thread, elements, fn, startIdx, middleIdx, endIdx);
+}
+
+
+JSTaggedValue JSArray::FastConcatDictionaryArray(JSThread *thread, JSHandle<JSObject> obj,
+    JSHandle<JSObject> &newArrayHandle, JSMutableHandle<JSTaggedValue> &fromValHandle,
+    JSMutableHandle<JSTaggedValue> &toKey, int64_t &n)
+{
+    bool isArrayHandleDictionary = newArrayHandle->GetJSHClass()->IsDictionaryElement();
+    if (!isArrayHandleDictionary) {
+        JSObject::ElementsToDictionary(thread, newArrayHandle);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    }
+    ASSERT(newArrayHandle->GetJSHClass()->IsDictionaryElement());
+    JSHandle<JSTaggedValue> objVal(obj);
+    int64_t len = base::ArrayHelper::GetArrayLength(thread, objVal);
+    JSHandle<NumberDictionary> elements(thread, obj->GetElements());
+    uint32_t size = static_cast<uint32_t>(elements->Size());
+    JSMutableHandle<NumberDictionary> dict(thread, newArrayHandle->GetElements());
+    auto attr = PropertyAttributes(PropertyAttributes::GetDefaultAttributes());
+    for (uint32_t hashIndex = 0; hashIndex < size; hashIndex++) {
+        JSTaggedValue key = elements->GetKey(hashIndex);
+        if (key.IsUndefined() || key.IsHole()) {
+            continue;
+        }
+        ASSERT(key.IsInt());
+        uint32_t uintKey = static_cast<uint32_t>(key.GetInt());
+        if (uintKey < len) {
+            JSTaggedValue value = elements->GetValue(hashIndex);
+            toKey.Update(JSTaggedValue(n + uintKey));
+            fromValHandle.Update(value);
+            JSHandle<NumberDictionary> newDict = \
+                NumberDictionary::PutIfAbsent(thread, dict, toKey, fromValHandle, attr);
+            dict.Update(newDict);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        }
+    }
+    newArrayHandle->SetElements(thread, dict);
+    n += len;
+    return JSTaggedValue(true);
 }
 
 void JSArray::MergeSortedElements(JSThread *thread, const JSHandle<TaggedArray> &elements,
@@ -763,5 +835,21 @@ void JSArray::CheckAndCopyArray(const JSThread *thread, JSHandle<JSArray> obj)
             JSTaggedValue::Hole(), MemSpaceType::SEMI_SPACE);
         obj->SetProperties(thread, newProps.GetTaggedValue());
     }
+}
+
+// static
+bool JSArray::IsProtoNotChangeJSArray(JSThread *thread, const JSHandle<JSObject> &obj)
+{
+    if (obj->IsJSArray()) {
+        if (obj->GetJSHClass()->GetElementsKind() != ElementsKind::GENERIC) {
+            return true;
+        }
+        JSTaggedValue arrayProtoValue = JSObject::GetPrototype(obj);
+        JSTaggedValue genericArrayHClass = thread->GlobalConstants()->GetElementHoleTaggedClass();
+        JSTaggedValue genericArrayProtoValue = \
+            JSHClass::Cast(genericArrayHClass.GetTaggedObject())->GetProto();
+        return genericArrayProtoValue == arrayProtoValue;
+    }
+    return false;
 }
 }  // namespace panda::ecmascript

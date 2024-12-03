@@ -122,6 +122,16 @@ public:
                                         const JSHandle<EcmaString> &string1, const JSHandle<EcmaString> &string2,
                                         CompareStringsOption csOption = CompareStringsOption::NONE);
 
+    static JSTaggedValue FastCachedCompareStrings(JSThread *thread, JSHandle<JSTaggedValue> locales,
+                                                  const JSHandle<EcmaString> &string1,
+                                                  const JSHandle<EcmaString> &string2,
+                                                  CompareStringsOption csOption = CompareStringsOption::NONE);
+
+    static JSTaggedValue SlowCompareStrings(const icu::Collator *icuCollator,
+                                            EcmaString* flatString1,
+                                            EcmaString* flatString2,
+                                            int processedUntil);
+
 private:
     static CaseFirstOption StringToCaseFirstOption(const std::string &str);
 

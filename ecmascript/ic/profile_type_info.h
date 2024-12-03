@@ -476,6 +476,11 @@ public:
         return kind_;
     }
 
+    uint32_t GetSlotId() const
+    {
+        return slotId_;
+    }
+
 private:
     JSThread* thread_;
     JSHandle<ProfileTypeInfo> profileTypeInfo_;

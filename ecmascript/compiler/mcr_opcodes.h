@@ -46,6 +46,7 @@ namespace panda::ecmascript::kungfu {
     V(FlattenTreeStringCheck, FLATTEN_TREE_STRING_CHECK, GateFlags::CHECKABLE, 1, 1, 1)         \
     V(HeapObjectCheck, HEAP_OBJECT_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                        \
     V(EcmaObjectCheck, ECMA_OBJECT_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                        \
+    V(MathHClassConsistencyCheck, MATH_HCLASS_CONSISTENCY_CHECK, GateFlags::CHECKABLE, 1, 1, 1) \
     V(ProtoChangeMarkerCheck, PROTO_CHANGE_MARKER_CHECK, GateFlags::CHECKABLE, 1, 1, 1)         \
     V(LookUpHolder, LOOK_UP_HOLDER, GateFlags::CHECKABLE, 1, 1, 3)                              \
     V(LoadGetter, LOAD_GETTER, GateFlags::NO_WRITE, 0, 1, 2)                                    \
@@ -165,6 +166,7 @@ namespace panda::ecmascript::kungfu {
     V(ArrayIncludesIndexOf, ARRAY_INCLUDES_INDEXOF, GateFlags::NO_WRITE,  1, 1, 5)              \
     V(ArrayIteratorBuiltin, ARRAY_ITERATOR_BUILTIN, GateFlags::NONE_FLAG,  1, 1, 2)             \
     V(ArrayPop, ARRAY_POP, GateFlags::NONE_FLAG, 1, 1, 2)                                       \
+    V(ArrayPush, ARRAY_PUSH, GateFlags::NONE_FLAG, 1, 1, 2)                                     \
     V(ArraySlice, ARRAY_SLICE, GateFlags::NONE_FLAG, 1, 1, 4)                                   \
     V(ArraySort, ARRAY_SORT, GateFlags::NONE_FLAG, 1, 1, 2)                                     \
     MCR_BINARY_GATE_META_DATA_CACHE_LIST(V)
@@ -211,7 +213,7 @@ namespace panda::ecmascript::kungfu {
 #define MCR_GATE_META_DATA_LIST_WITH_BOOL(V)                                                                 \
     V(LoadProperty, LOAD_PROPERTY, GateFlags::NO_WRITE, 1, 1, 2)                                             \
     V(MonoStorePropertyLookUpProto, MONO_STORE_PROPERTY_LOOK_UP_PROTO, GateFlags::HAS_FRAME_STATE, 1, 1, 5)  \
-    V(MonoStoreProperty, MONO_STORE_PROPERTY, GateFlags::HAS_FRAME_STATE, 1, 1, 6)
+    V(MonoStoreProperty, MONO_STORE_PROPERTY, GateFlags::HAS_FRAME_STATE, 1, 1, 7)
 
 #define MCR_GATE_META_DATA_LIST_WITH_GATE_TYPE(V)                                          \
     V(PrimitiveTypeCheck, PRIMITIVE_TYPE_CHECK, GateFlags::CHECKABLE, 1, 1, 1)             \

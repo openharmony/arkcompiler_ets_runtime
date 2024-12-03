@@ -49,7 +49,7 @@ bool ClassParser::RecordTypeInfo(const PGODefineOpType &defType, const PGOTypeLo
     }
     PGOSampleType ctorSampleType(ctorPt);
 
-    auto protoPt = defType.GetProtoTypePt();
+    auto protoPt = defType.GetPrototypePt();
     if (protoPt.IsNone()) {
         return false;
     }
@@ -136,7 +136,7 @@ bool FunctionParser::RecordTypeInfo(const PGODefineOpType &defType, const PGOTyp
     }
     PGOSampleType ctorSampleType(ctorPt);
 
-    auto protoPt = defType.GetProtoTypePt();
+    auto protoPt = defType.GetPrototypePt();
     if (protoPt.IsNone()) {
         return false;
     }
@@ -260,8 +260,10 @@ void PGOTypeParser::GenerateHClassForPrototype(ProfileType rootType, const PGOHC
         auto phc = ptManager_->QueryHClass(rootType, rootType);
         auto thread = ptManager_->GetJSThread();
         JSHandle<JSHClass> phclass(thread, phc);
-        JSHandle<JSObject> prototype = thread->GetEcmaVM()->GetFactory()->NewJSObjectWithInit(phclass);
-        ptManager_->RecordHClass(classType, classType, prototype.GetTaggedType());
+        if (!phc.IsUndefined()) {
+            JSHandle<JSObject> prototype = thread->GetEcmaVM()->GetFactory()->NewJSObjectWithInit(phclass);
+            ptManager_->RecordHClass(classType, classType, prototype.GetTaggedType());
+        }
     }
 }
 }  // namespace panda::ecmascript

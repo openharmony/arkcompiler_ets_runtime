@@ -35,6 +35,9 @@
 #ifdef CODE_SIGN_ENABLE
 #include "local_code_sign_kit.h"
 #endif
+#ifdef ENABLE_COMPILER_SERVICE_GET_PARAMETER
+#include "base/startup/init/interfaces/innerkits/include/syspara/parameters.h"
+#endif
 #include "system_ability_definition.h"
 
 namespace OHOS::ArkCompiler {
@@ -96,6 +99,15 @@ int32_t AotCompilerImpl::PrepareArgs(const std::unordered_map<std::string, std::
             hapArgs_.argVector.emplace_back(Symbols::PREFIX + argPair.first + Symbols::EQ + argPair.second);
         }
     }
+#ifdef ENABLE_COMPILER_SERVICE_GET_PARAMETER
+    bool enableAotCodeComment = OHOS::system::GetBoolParameter("ark.aot.code_comment.enable", false);
+    if (enableAotCodeComment) {
+        hapArgs_.argVector.emplace_back(Symbols::PREFIX + ArgsIdx::COMPILER_ENABLE_AOT_CODE_COMMENT +
+            Symbols::EQ + "true");
+        hapArgs_.argVector.emplace_back(Symbols::PREFIX + ArgsIdx::COMPILER_LOG_OPT +
+            Symbols::EQ + "allasm");
+    }
+#endif
     hapArgs_.argVector.emplace_back(abcPath);
     return ERR_OK;
 }
@@ -240,7 +252,7 @@ int32_t AotCompilerImpl::EcmascriptAotCompiler(const std::unordered_map<std::str
 #ifdef CODE_SIGN_ENABLE
     if (!allowAotCompiler_) {
         LOG_SA(ERROR) << "aot compiler is not allowed now";
-        return ERR_AOT_COMPILER_CONNECT_FAILED;
+        return ERR_AOT_COMPILER_CALL_CANCELLED;
     }
     if (!VerifyCompilerModeAndPkgInfo(argsMap)) {
         LOG_SA(ERROR) << "aot compiler mode or pkginfo arguments error";
@@ -362,22 +374,32 @@ void AotCompilerImpl::HandlePowerDisconnected()
 {
     LOG_SA(INFO) << "AotCompilerImpl::HandlePowerDisconnected";
     PauseAotCompiler();
-    std::thread([]() {
+    std::thread t([]() {
         (void)AotCompilerImpl::GetInstance().StopAotCompiler();
         sleep(30);  // wait for 30 seconds
         AotCompilerImpl::GetInstance().AllowAotCompiler();
-    }).detach();
+    });
+    if (t.joinable()) {
+        t.detach();
+    } else {
+        LOG_SA(ERROR) << "Failed to create thread for AotCompilerImpl::HandlePowerDisconnected";
+    }
 }
 
 void AotCompilerImpl::HandleScreenOn()
 {
     LOG_SA(INFO) << "AotCompilerImpl::HandleScreenOn";
     PauseAotCompiler();
-    std::thread([]() {
+    std::thread t([]() {
         (void)AotCompilerImpl::GetInstance().StopAotCompiler();
         sleep(40);  // wait for 40 seconds
         AotCompilerImpl::GetInstance().AllowAotCompiler();
-    }).detach();
+    });
+    if (t.joinable()) {
+        t.detach();
+    } else {
+        LOG_SA(ERROR) << "Failed to create thread for AotCompilerImpl::HandleScreenOn";
+    }
 }
 
 void AotCompilerImpl::HandleThermalLevelChanged(const int32_t level)

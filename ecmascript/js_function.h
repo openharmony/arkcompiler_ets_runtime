@@ -126,6 +126,19 @@ public:
         return TaskConcurrentFuncFlagBit::Decode(bitField);
     }
 
+    void SetJitCompilingFlag(bool value)
+    {
+        uint32_t bitField = GetBitField();
+        uint32_t newValue = JitCompilingFlagBit::Update(bitField, value);
+        SetBitField(newValue);
+    }
+
+    bool IsJitCompiling() const
+    {
+        uint32_t bitField = GetBitField();
+        return JitCompilingFlagBit::Decode(bitField);
+    }
+
     JSTaggedValue GetFunctionExtraInfo() const;
 
     /* compiled code flag field */
@@ -134,6 +147,7 @@ public:
     static constexpr uint32_t COMPILED_CODE_FASTCALL_BITS = 0x3; // 0x3U: compiled code and fastcall bit field
 
     using TaskConcurrentFuncFlagBit = IsFastCallBit::NextFlag;     // offset 2
+    using JitCompilingFlagBit = TaskConcurrentFuncFlagBit::NextFlag; // offset 3
 
     static constexpr size_t METHOD_OFFSET = JSObject::SIZE;
     ACCESSORS(Method, METHOD_OFFSET, CODE_ENTRY_OFFSET)
@@ -312,10 +326,11 @@ public:
                !ProfileTypeInfoCell::Cast(GetRawProfileTypeInfo())->GetValue().IsUndefined();
     }
 
-    void SetFunctionExtraInfo(JSThread *thread, void *nativeFunc, const NativePointerCallback &deleter,
-                              void *data, size_t nativeBindingsize = 0, Concurrent isConcurrent = Concurrent::NO);
-    void SetSFunctionExtraInfo(JSThread *thread, void *nativeFunc, const NativePointerCallback &deleter,
-                               void *data, size_t nativeBindingsize = 0);
+    static void SetFunctionExtraInfo(JSThread *thread, const JSHandle<JSFunction> &func, void *nativeFunc,
+                                     const NativePointerCallback &deleter, void *data, size_t nativeBindingsize = 0,
+                                     Concurrent isConcurrent = Concurrent::NO);
+    static void SetSFunctionExtraInfo(JSThread *thread, const JSHandle<JSFunction> &func, void *nativeFunc,
+                                      const NativePointerCallback &deleter, void *data, size_t nativeBindingsize = 0);
     static void SetProfileTypeInfo(const JSThread *thread, const JSHandle<JSFunction> &func,
                                    const JSHandle<JSTaggedValue> &value, BarrierMode mode = WRITE_BARRIER);
     static void UpdateProfileTypeInfoCell(JSThread *thread, JSHandle<FunctionTemplate> literalFunc,
@@ -332,6 +347,7 @@ public:
     }
 
     void SetJitCompiledFuncEntry(JSThread *thread, JSHandle<MachineCode> &machineCode, bool isFastCall);
+    void SetJitHotnessCnt(uint16_t cnt);
 
     static void InitializeForConcurrentFunction(JSThread *thread, JSHandle<JSFunction> &func);
 

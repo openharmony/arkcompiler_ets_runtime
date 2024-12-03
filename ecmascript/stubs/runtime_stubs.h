@@ -86,6 +86,7 @@ public:
     static void DebugPrint(int fmtMessageId, ...);
     static void DebugPrintCustom(uintptr_t fmt, ...);
     static void DebugPrintInstruction([[maybe_unused]] uintptr_t argGlue, const uint8_t *pc);
+    static void CollectingOpcodes([[maybe_unused]] uintptr_t argGlue, const uint8_t *pc);
     static void DebugOsrEntry([[maybe_unused]] uintptr_t argGlue, const uint8_t *codeEntry);
     static void Comment(uintptr_t argStr);
     static void FatalPrint(int fmtMessageId, ...);
@@ -95,9 +96,6 @@ public:
     static void MarkingBarrierWithEden([[maybe_unused]] uintptr_t argGlue,
         uintptr_t object, size_t offset, TaggedObject *value);
     static void SharedGCMarkingBarrier([[maybe_unused]] uintptr_t argGlue, TaggedObject *value);
-    static void StoreBarrier([[maybe_unused]] uintptr_t argGlue,
-        uintptr_t object, size_t offset, TaggedObject *value);
-    static JSTaggedType CreateArrayFromList([[maybe_unused]] uintptr_t argGlue, int32_t argc, JSTaggedValue *argvPtr);
     static JSTaggedType GetActualArgvNoGC(uintptr_t argGlue);
     static void InsertNewToEdenRSet([[maybe_unused]] uintptr_t argGlue, uintptr_t object, size_t offset);
     static void InsertOldToNewRSet([[maybe_unused]] uintptr_t argGlue, uintptr_t object, size_t offset);
@@ -105,7 +103,7 @@ public:
     static void SetBitAtomic(GCBitset::GCBitsetWord *word, GCBitset::GCBitsetWord mask,
                              GCBitset::GCBitsetWord oldValue);
     static int32_t DoubleToInt(double x, size_t bits);
-    static JSTaggedType DoubleToLength(double x);
+    static int32_t SaturateTruncDoubleToInt32(double x);
     static double FloatMod(double x, double y);
     static double FloatAcos(double x);
     static double FloatAcosh(double x);
@@ -131,12 +129,8 @@ public:
     static double FloatPow(double base, double exp);
     static double FloatCbrt(double x);
     static double FloatCeil(double x);
-    static bool NumberIsFinite(double x);
     static double CallDateNow();
-    static int32_t FindElementWithCache(uintptr_t argGlue, JSTaggedType hclass,
-                                        JSTaggedType key, int32_t num);
     static void UpdateFieldType(JSTaggedType hclass, uint64_t value);
-    static bool StringsAreEquals(EcmaString *str1, EcmaString *str2);
     static bool BigIntEquals(JSTaggedType left, JSTaggedType right);
     static bool BigIntSameValueZero(JSTaggedType key, JSTaggedType other);
     static JSTaggedValue JSHClassFindProtoTransitions(JSHClass *cls, JSTaggedValue key, JSTaggedValue proto);
@@ -159,6 +153,8 @@ public:
     static void CopyTypedArrayBuffer(JSTypedArray *srcArray, JSTypedArray *targetArray, int32_t srcStartPos,
                                      int32_t tarStartPos, int32_t count, int32_t elementSize);
     static inline uint32_t RuntimeGetBytecodePcOfstForBaseline(const JSHandle<JSFunction> &func, uintptr_t nativePc);
+    static void ReverseTypedArray(JSTypedArray *typedArray);
+    static void SortTypedArray(JSTypedArray *typedArray);
 private:
     static void DumpToStreamWithHint(std::ostream &out, std::string_view prompt, JSTaggedValue value);
 

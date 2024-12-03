@@ -23,7 +23,7 @@
 #include "ecmascript/mem/heap.h"
 
 namespace panda::ecmascript {
-inline RSetWorkListHandler::RSetWorkListHandler(Heap *heap) : heap_(heap)
+inline RSetWorkListHandler::RSetWorkListHandler(Heap *heap, JSThread *thread) : heap_(heap), ownerThread_(thread)
 {
     CollectRSetItemsInHeap(heap);
 }
@@ -137,15 +137,6 @@ inline void RSetWorkListHandler::MergeBackForAllItem()
     ASSERT(remainItems_ == 0);
     for (RSetItem &item : items_) {
         item.MergeBack();
-    }
-}
-
-inline void RSetWorkListHandler::NotifyProcessRsetFinished()
-{
-    LockHolder lock(mutex_);
-    if (!processRsetFinished_) {
-        heap_->SetProcessingRset(false);
-        processRsetFinished_ = true;
     }
 }
 

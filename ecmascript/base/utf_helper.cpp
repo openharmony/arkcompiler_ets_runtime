@@ -98,12 +98,8 @@ inline size_t UTF8Length(uint32_t codepoint)
 }
 
 // Methods for encode unicode to unicode
-size_t EncodeUTF8(uint32_t codepoint, uint8_t* utf8, size_t len, size_t index)
+size_t EncodeUTF8(uint32_t codepoint, uint8_t* utf8, size_t index, size_t size)
 {
-    size_t size = UTF8Length(codepoint);
-    if (index + size > len) {
-        return 0;
-    }
     for (size_t j = size - 1; j > 0; j--) {
         uint8_t cont = ((codepoint | byteMark) & byteMask);
         utf8[index + j] = cont;
@@ -282,7 +278,11 @@ size_t ConvertRegionUtf16ToUtf8(const uint16_t *utf16In, uint8_t *utf8Out, size_
             }
             continue;
         }
-        utf8Pos += EncodeUTF8(codepoint, utf8Out, utf8Len, utf8Pos);
+        size_t size = UTF8Length(codepoint);
+        if (utf8Pos + size > utf8Len) {
+            break;
+        }
+        utf8Pos += EncodeUTF8(codepoint, utf8Out, utf8Pos, size);
     }
     return utf8Pos;
 }
@@ -309,7 +309,11 @@ size_t DebuggerConvertRegionUtf16ToUtf8(const uint16_t *utf16In, uint8_t *utf8Ou
             }
             continue;
         }
-        utf8Pos += EncodeUTF8(codepoint, utf8Out, utf8Len, utf8Pos);
+        size_t size = UTF8Length(codepoint);
+        if (utf8Pos + size > utf8Len) {
+            break;
+        }
+        utf8Pos += EncodeUTF8(codepoint, utf8Out, utf8Pos, size);
     }
     return utf8Pos;
 }

@@ -147,7 +147,6 @@ void JSHClass::InitializeWithDefaultValue(const JSThread *thread, uint32_t size,
     SetProtoChangeMarker(thread, JSTaggedValue::Null());
     SetProtoChangeDetails(thread, JSTaggedValue::Null());
     SetEnumCache(thread, JSTaggedValue::Null());
-    SetLevel(0);
 }
 
 bool JSHClass::IsJSTypeShared(JSType type)
@@ -157,6 +156,7 @@ bool JSHClass::IsJSTypeShared(JSType type)
         case JSType::JS_SHARED_OBJECT:
         case JSType::JS_SHARED_FUNCTION:
         case JSType::JS_SHARED_ASYNC_FUNCTION:
+        case JSType::JS_API_BITVECTOR:
         case JSType::JS_SHARED_SET:
         case JSType::JS_SHARED_MAP:
         case JSType::JS_SHARED_ARRAY:
@@ -229,8 +229,8 @@ JSHandle<JSHClass> JSHClass::Clone(const JSThread *thread, const JSHandle<JSHCla
     // reuse Attributes first.
     newJsHClass->SetLayout(thread, jshclass->GetLayout());
 
-    if (jshclass->IsTS()) {
-        newJsHClass->SetTS(false);
+    if (jshclass->IsAOT()) {
+        newJsHClass->SetAOT(false);
     }
 
     return newJsHClass;
@@ -285,7 +285,7 @@ void JSHClass::AddProperty(const JSThread *thread, const JSHandle<JSObject> &obj
     JSHClass *newClass = jshclass->FindTransitions(key.GetTaggedValue(), metadata, rep);
     if (newClass != nullptr) {
         // The transition hclass from AOT, which does not have a prototype, needs to be reset here.
-        if (newClass->IsTS()) {
+        if (newClass->IsAOT()) {
             newClass->SetPrototype(thread, jshclass->GetPrototype());
         }
         // Because we currently only supports Fast ElementsKind
@@ -294,7 +294,7 @@ void JSHClass::AddProperty(const JSThread *thread, const JSHandle<JSObject> &obj
 #if ECMASCRIPT_ENABLE_IC
         // The transition hclass from AOT, which does not have protochangemarker, needs to be reset here
         JSHandle<JSHClass> newHClass = JSHandle<JSHClass>(thread, newClass);
-        if (newClass->IsTS() && newClass->IsPrototype()) {
+        if (newClass->IsAOT() && newClass->IsPrototype()) {
             if (JSHClass::IsNeedNotifyHclassChangedForAotTransition(thread, jshclass, key.GetTaggedValue())) {
                 JSHClass::EnableProtoChangeMarker(thread, newHClass);
                 JSHClass::NotifyHclassChanged(thread, jshclass, newHClass, key.GetTaggedValue());
@@ -390,7 +390,7 @@ JSHClass *JSHClass::FindTransitionProtoForAOT(const JSThread *thread, const JSHa
         return nullptr;
     }
     JSHandle<JSHClass> baseIhc(thread, proto->GetTaggedObject()->GetClass());
-    if (!jshclass->IsTS() || !baseIhc->IsTS()) {
+    if (!jshclass->IsAOT() || !baseIhc->IsAOT()) {
         return nullptr;
     }
     auto transitionTable = thread->GetCurrentEcmaContext()->GetFunctionProtoTransitionTable();
@@ -491,7 +491,10 @@ void JSHClass::SetPrototypeTransition(JSThread *thread, const JSHandle<JSObject>
     auto newClass = SetPrototypeWithNotification(thread, hclass, proto, isChangeProto);
     RestoreElementsKindToGeneric(*newClass);
     object->SynchronizedSetClass(thread, *newClass);
-    thread->NotifyStableArrayElementsGuardians(object, StableArrayChangeKind::PROTO);
+    if (object->IsJSArray()) {
+        thread->NotifyArrayPrototypeChangedGuardians(object);
+        newClass->SetIsJSArrayPrototypeModified(true);
+    }
     ObjectOperator::UpdateDetectorOnSetPrototype(thread, object.GetTaggedValue());
 }
 
@@ -512,7 +515,7 @@ void JSHClass::OptimizePrototypeForIC(const JSThread *thread, const JSHandle<JST
         // Situations for clone proto hclass:
         // 1: unshared non-ts hclass
         // 2: no matter whether hclass is ts or not when set function prototype
-        if ((!hclass->IsTS() && !hclass->IsJSShared()) || isChangeProto) {
+        if ((!hclass->IsAOT() && !hclass->IsJSShared()) || isChangeProto) {
             // The local IC and on-proto IC are different, because the former don't need to notify the whole
             // prototype-chain or listen the changes of prototype chain, but the latter do. Therefore, when
             // an object becomes a prototype object at the first time, we need to copy its hidden class in
@@ -929,7 +932,7 @@ void JSHClass::NotifyHclassChanged(const JSThread *thread, JSHandle<JSHClass> ol
     // it will not have IsPrototype bit set as true.
     //
     // Good neww is our AOT hclass can not be shared, hence we can set newHclass IsPrototype as true at here.
-    if (newHclass->IsTS() && !newHclass->IsPrototype()) {
+    if (newHclass->IsAOT() && !newHclass->IsPrototype()) {
         newHclass->SetIsPrototype(true);
     }
     JSHClass::NoticeThroughChain(thread, oldHclass, addedKey);
@@ -1113,7 +1116,7 @@ void JSHClass::RefreshUsers(const JSThread *thread, const JSHandle<JSHClass> &ol
 PropertyLookupResult JSHClass::LookupPropertyInAotHClass(const JSThread *thread, JSHClass *hclass, JSTaggedValue key)
 {
     DISALLOW_GARBAGE_COLLECTION;
-    ASSERT(hclass->IsTS());
+    ASSERT(hclass->IsAOT());
 
     PropertyLookupResult result;
     if (hclass->IsDictionaryMode()) {
@@ -1287,7 +1290,7 @@ JSHandle<JSHClass> JSHClass::CreateRootHClassFromPGO(const JSThread* thread,
     });
     hclass->SetLayout(thread, layout);
     hclass->SetNumberOfProps(numOfProps);
-    hclass->SetTS(true);
+    hclass->SetAOT(true);
     return hclass;
 }
 
@@ -1304,7 +1307,7 @@ JSHandle<JSHClass> JSHClass::CreateRootHClassWithCached(const JSThread* thread,
     JSHandle<LayoutInfo> layout = factory->CreateLayoutInfo(maxNum, MemSpaceType::SEMI_SPACE, GrowMode::KEEP);
     hclass->SetPrototype(thread, JSTaggedValue::Null());
     hclass->SetLayout(thread, layout);
-    hclass->SetTS(true);
+    hclass->SetAOT(true);
     rootDesc->IterateProps([thread, factory, &index, &hclass](const pgo::PropertyDesc& propDesc) {
         auto& cstring = propDesc.first;
         auto& handler = propDesc.second;
@@ -1320,7 +1323,7 @@ JSHandle<JSHClass> JSHClass::CreateRootHClassWithCached(const JSThread* thread,
         JSHandle<JSHClass> child = SetPropertyOfObjHClass(thread, hclass, key, attributes, rep);
         child->SetParent(thread, hclass);
         child->SetPrototype(thread, JSTaggedValue::Null());
-        child->SetTS(true);
+        child->SetAOT(true);
         hclass = child;
     });
     return hclass;
@@ -1337,7 +1340,7 @@ JSHandle<JSHClass> JSHClass::CreateChildHClassFromPGO(const JSThread* thread,
     uint32_t numOfProps = parent->NumberOfProps();
 
     JSHandle<JSHClass> newJsHClass = JSHClass::Clone(thread, parent);
-    newJsHClass->SetTS(true);
+    newJsHClass->SetAOT(true);
     ASSERT(newJsHClass->GetInlinedProperties() >= (numOfProps + 1));
     uint32_t offset = numOfProps;
     {

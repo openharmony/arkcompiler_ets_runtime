@@ -1,0 +1,19 @@
+{
+    "name": "JS_CJS_REQUIRE",
+    "offsets": [
+        {
+            "name": "Cache",
+            "offset": 0,
+            "size": 8
+        },
+        {
+            "name": "Parent",
+            "offset": 8,
+            "size": 8
+        }
+    ],
+    "end_offset": 16,
+    "parents": [
+        "JS_OBJECT"
+    ]
+}

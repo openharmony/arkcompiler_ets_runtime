@@ -1,0 +1,29 @@
+{
+    "name": "JS_CJS_MODULE",
+    "offsets": [
+        {
+            "name": "Id",
+            "offset": 0,
+            "size": 8
+        },
+        {
+            "name": "Path",
+            "offset": 8,
+            "size": 8
+        },
+        {
+            "name": "Exports",
+            "offset": 16,
+            "size": 8
+        },
+        {
+            "name": "Filename",
+            "offset": 24,
+            "size": 8
+        }
+    ],
+    "end_offset": 40,
+    "parents": [
+        "JS_OBJECT"
+    ]
+}

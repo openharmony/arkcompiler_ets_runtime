@@ -378,12 +378,70 @@ void X64MPIsel::SelectOverFlowCall(const IntrinsiccallNode &intrnNode)
     return;
 }
 
+void X64MPIsel::SelectPureCall(const IntrinsiccallNode &intrnNode)
+{
+    DEBUG_ASSERT(intrnNode.NumOpnds() == 7, "must be 7 operands");  // must be 7 operands
+    ListOperand &srcOpnds = cgFunc->GetOpndBuilder()->CreateList();
+    auto &callee = *intrnNode.Opnd(0);
+    auto ptyp = callee.GetPrimType();
+    RegOperand &calleeReg = SelectCopy2Reg(*HandleExpr(intrnNode, callee), ptyp);
+    uint32 i = 1;
+    for (; i < kSeventhReg; i++) {
+        srcOpnds.PushOpnd(LoadOpndIntoPhysicalRegister(intrnNode, i));
+    }
+    // R11 is used in asm call
+    srcOpnds.PushOpnd(cgFunc->GetOpndBuilder()->CreatePReg(x64::R11, GetPrimTypeBitSize(PTY_i64), kRegTyInt));
+    MOperator mOp = x64::MOP_pure_call;
+    Insn &callInsn = cgFunc->GetInsnBuilder()->BuildInsn(mOp, X64CG::kMd[mOp]);
+    callInsn.AddOpndChain(calleeReg);
+    callInsn.AddOpndChain(srcOpnds);
+    cgFunc->GetCurBB()->AppendInsn(callInsn);
+    return;
+}
+
+RegOperand &X64MPIsel::LoadOpndIntoPhysicalRegister(const IntrinsiccallNode &intrnNode, uint32 index)
+{
+    auto &opnd = *intrnNode.Opnd(index);
+    auto ptyp = opnd.GetPrimType();
+    RegOperand &opndReg = SelectCopy2Reg(*HandleExpr(intrnNode, opnd), ptyp);
+    PRegNo regId;
+    switch (index - 1) {
+        case kFirstReg:
+            regId = x64::RDI;
+            break;
+        case kSecondReg:
+            regId = x64::RSI;
+            break;
+        case kThirdReg:
+            regId = x64::RDX;
+            break;
+        case kFourthReg:
+            regId = x64::RCX;
+            break;
+        case kFifthReg:
+            regId = x64::R8;
+            break;
+        case kSixthReg:
+            regId = x64::R9;
+            break;
+        default:
+            CHECK_FATAL_FALSE("Unreachable!");
+    }
+    RegOperand &realReg = cgFunc->GetOpndBuilder()->CreatePReg(regId, GetPrimTypeBitSize(PTY_i64), kRegTyInt);
+    SelectCopy(realReg, opndReg, ptyp, ptyp);
+    return realReg;
+}
+
 void X64MPIsel::SelectIntrinsicCall(IntrinsiccallNode &intrinsiccallNode)
 {
     MIRIntrinsicID intrinsic = intrinsiccallNode.GetIntrinsic();
     if (intrinsic == INTRN_ADD_WITH_OVERFLOW || intrinsic == INTRN_SUB_WITH_OVERFLOW ||
         intrinsic == INTRN_MUL_WITH_OVERFLOW) {
         SelectOverFlowCall(intrinsiccallNode);
+        return;
+    }
+    if (intrinsic == maple::INTRN_JS_PURE_CALL) {
+        SelectPureCall(intrinsiccallNode);
         return;
     }
 

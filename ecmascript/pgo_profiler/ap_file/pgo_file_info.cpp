@@ -33,11 +33,13 @@ bool PGOProfilerHeader::BuildFromLegacy(void *buffer, PGOProfilerHeader **header
     Build(header, desSize);
     // copy header base.
     if (memcpy_s(*header, sizeof(FileHeaderBase), inHeader, sizeof(FileHeaderBase)) != EOK) {
+        LOG_ECMA(FATAL) << "PGOProfilerHeader BuildFromLegacy copy header base memcpy failed!";
         UNREACHABLE();
     }
     // skip elastic header field, and copy section info from incoming buffer.
     auto sectionSize = desSize - sizeof(FileHeaderElastic);
     if (memcpy_s(&((*header)->sectionNumber_), sectionSize, &(inHeader->GetSectionNumber()), sectionSize) != EOK) {
+        LOG_ECMA(FATAL) << "PGOProfilerHeader BuildFromLegacy copy section info memcpy failed!";
         UNREACHABLE();
     }
     return true;
@@ -56,6 +58,7 @@ bool PGOProfilerHeader::BuildFromElastic(void *buffer, size_t bufferSize, PGOPro
     }
     Build(header, desSize);
     if (memcpy_s(*header, desSize, inHeader, desSize) != EOK) {
+        LOG_ECMA(FATAL) << "PGOProfilerHeader BuildFromElastic  memcpy failed!";
         UNREACHABLE();
     }
     return true;

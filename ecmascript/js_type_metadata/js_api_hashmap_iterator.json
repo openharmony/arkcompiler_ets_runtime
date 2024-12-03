@@ -1,0 +1,24 @@
+{
+    "name": "JS_API_HASHMAP_ITERATOR",
+    "offsets": [
+        {
+            "name": "IteratedHashMap",
+            "offset": 0,
+            "size": 8
+        },
+        {
+            "name": "TaggedQueue",
+            "offset": 8,
+            "size": 8
+        },
+        {
+            "name": "CurrentNodeResult",
+            "offset": 16,
+            "size": 8
+        }
+    ],
+    "end_offset": 32,
+    "parents": [
+        "JS_OBJECT"
+    ]
+}

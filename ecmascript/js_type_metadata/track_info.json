@@ -1,0 +1,19 @@
+{
+    "name": "TRACK_INFO",
+    "offsets": [
+        {
+            "name": "CachedHClass",
+            "offset": 0,
+            "size": 8
+        },
+        {
+            "name": "CachedFunc",
+            "offset": 8,
+            "size": 8
+        }
+    ],
+    "end_offset": 24,
+    "parents": [
+        "TAGGED_OBJECT"
+    ]
+}

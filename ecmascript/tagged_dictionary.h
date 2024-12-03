@@ -84,7 +84,12 @@ public:
     {
         return a.GetDictionaryOrder() < b.GetDictionaryOrder();
     }
-    DECL_DUMP()
+    void Dump(std::ostream &os, bool isPrivacy = false) const DUMP_API_ATTR;
+    void Dump() const DUMP_API_ATTR
+    {
+        Dump(std::cout);
+    }
+    void DumpForSnapshot(std::vector<Reference> &vec) const;
 
     static constexpr int ENTRY_KEY_INDEX = 0;
     static constexpr int ENTRY_VALUE_INDEX = 1;
@@ -139,7 +144,12 @@ public:
         ASSERT(a.IsNumber() && b.IsNumber());
         return a.GetNumber() < b.GetNumber();
     }
-    DECL_DUMP()
+    void Dump(std::ostream &os, bool isPrivacy = false) const DUMP_API_ATTR;
+    void Dump() const DUMP_API_ATTR
+    {
+        Dump(std::cout);
+    }
+    void DumpForSnapshot(std::vector<Reference> &vec) const;
 
     static constexpr int ENTRY_KEY_INDEX = 0;
     static constexpr int ENTRY_VALUE_INDEX = 1;

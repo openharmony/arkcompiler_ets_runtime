@@ -76,11 +76,7 @@ if (is_standard_system) {
       ]
 
       # Add dynamic library "libshared_libz"
-      zlib_path =
-          get_label_info("//third_party/zlib:shared_libz", "root_out_dir")
-      deps += [ "//third_party/zlib:shared_libz" ]
-      sources +=
-          [ zlib_path + "/thirdparty/zlib/libshared_libz${dylib_suffix}" ]
+      external_deps = [ "zlib:shared_libz" ]
 
       # Set the output directory for all dynamic libraries.
       outputs = [ target_out_dir + "/ets/build-tools/ets-loader/bin/ark/build-win/bin/{{source_file_part}}" ]
@@ -157,11 +153,7 @@ if (is_standard_system) {
       ]
 
       # Add dynamic library "libshared_libz"
-      zlib_path =
-          get_label_info("//third_party/zlib:shared_libz", "root_out_dir")
-      deps += [ "//third_party/zlib:shared_libz" ]
-      sources +=
-          [ zlib_path + "/thirdparty/zlib/libshared_libz${dylib_suffix}" ]
+      external_deps = [ "zlib:shared_libz" ]
 
       # Set the output directory for all dynamic libraries.
       outputs = [ target_out_dir + "/ets/build-tools/ets-loader/bin/ark/build/bin/{{source_file_part}}" ]
@@ -223,11 +215,7 @@ if (is_standard_system) {
       ]
 
       # Add dynamic library "libshared_libz"
-      zlib_path =
-          get_label_info("//third_party/zlib:shared_libz", "root_out_dir")
-      deps += [ "//third_party/zlib:shared_libz" ]
-      sources +=
-          [ zlib_path + "/thirdparty/zlib/libshared_libz${dylib_suffix}" ]
+      external_deps = [ "zlib:shared_libz" ]
 
       # Add dynamic library "hilog"
       hilog_path = get_label_info("$hilog_root:libhilog", "root_out_dir")

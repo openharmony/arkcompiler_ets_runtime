@@ -240,6 +240,21 @@ public:
         Destroy();
     }
 
+    void PrimitiveTest(SerializeData* data)
+    {
+        Init();
+
+        BaseDeserializer deserializer(thread, data);
+        JSHandle<JSTaggedValue> objValue = deserializer.ReadValue();
+        ecmaVm->CollectGarbage(TriggerGCType::YOUNG_GC);
+        ecmaVm->CollectGarbage(TriggerGCType::OLD_GC);
+
+        EXPECT_FALSE(objValue.IsEmpty());
+        EXPECT_TRUE(objValue->IsJSObject());
+
+        Destroy();
+    }
+
     void JSErrorTest1(SerializeData* data)
     {
         Init();
@@ -1368,7 +1383,6 @@ HWTEST_F_L0(JSSerializerTest, SerializeBigInt)
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj), JSHandle<JSTaggedValue>(key2),
                           JSHandle<JSTaggedValue>(bigInt2));
 
-
     ValueSerializer *serializer = new ValueSerializer(thread);
     bool success = serializer->WriteValue(thread, JSHandle<JSTaggedValue>(obj),
                                           JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()),
@@ -1381,6 +1395,51 @@ HWTEST_F_L0(JSSerializerTest, SerializeBigInt)
     t1.join();
     delete serializer;
 };
+
+HWTEST_F_L0(JSSerializerTest, SerializePrimitive)
+{
+    ObjectFactory *factory = ecmaVm->GetFactory();
+    JSHandle<JSObject> obj = factory->NewEmptyJSObject();
+    JSHandle<EcmaString> keyInt(factory->NewFromASCII("int"));
+    JSHandle<EcmaString> keyDouble(factory->NewFromASCII("double"));
+    JSHandle<EcmaString> keyBoolean(factory->NewFromASCII("boolean"));
+    JSHandle<EcmaString> keyString(factory->NewFromASCII("string"));
+
+    int32_t intValue = 42;
+    double doubleValue = 3.14159;
+    bool booleanValue = true;
+    JSHandle<EcmaString> stringValue(factory->NewFromASCII("Hello World"));
+
+    JSHandle<JSPrimitiveRef> intPrimitive = factory->NewJSPrimitiveRef(
+        PrimitiveType::PRIMITIVE_NUMBER, JSHandle<JSTaggedValue>(thread, JSTaggedValue(intValue)));
+    JSHandle<JSPrimitiveRef> doublePrimitive = factory->NewJSPrimitiveRef(
+        PrimitiveType::PRIMITIVE_NUMBER, JSHandle<JSTaggedValue>(thread, JSTaggedValue(doubleValue)));
+    JSHandle<JSPrimitiveRef> booleanPrimitive = factory->NewJSPrimitiveRef(
+        PrimitiveType::PRIMITIVE_BOOLEAN, JSHandle<JSTaggedValue>(thread, JSTaggedValue(booleanValue)));
+    JSHandle<JSPrimitiveRef> stringPrimitive = factory->NewJSPrimitiveRef(
+        PrimitiveType::PRIMITIVE_STRING, JSHandle<JSTaggedValue>(stringValue));
+
+    JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj), JSHandle<JSTaggedValue>(keyInt),
+                        JSHandle<JSTaggedValue>(intPrimitive));
+    JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj), JSHandle<JSTaggedValue>(keyDouble),
+                        JSHandle<JSTaggedValue>(doublePrimitive));
+    JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj), JSHandle<JSTaggedValue>(keyBoolean),
+                        JSHandle<JSTaggedValue>(booleanPrimitive));
+    JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj), JSHandle<JSTaggedValue>(keyString),
+                        JSHandle<JSTaggedValue>(stringPrimitive));
+
+    ValueSerializer *serializer = new ValueSerializer(thread);
+    bool success = serializer->WriteValue(thread, JSHandle<JSTaggedValue>(obj),
+                                          JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()),
+                                          JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
+    EXPECT_TRUE(success) << "Serialize primitive types failed";
+    std::unique_ptr<SerializeData> data = serializer->Release();
+    JSDeserializerTest jsDeserializerTest;
+    std::thread t1(&JSDeserializerTest::PrimitiveTest, jsDeserializerTest, data.release());
+    ThreadSuspensionScope scope(thread);
+    t1.join();
+    delete serializer;
+}
 
 static void* Detach(void *param1, void *param2, void *hint, void *detachData)
 {

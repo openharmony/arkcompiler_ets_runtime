@@ -27,14 +27,20 @@ TEST(GetTypeFromArgTy_FUNC, t01)
 {
     struct IntrinDesc IntrinDesc_struc;
     IntrinArgType input_ls[] = {kArgTyVoid, kArgTyI8, kArgTyI16, kArgTyI32, kArgTyI64, kArgTyU8,
-                                kArgTyU16, kArgTyU32, kArgTyU64, kArgTyU1, kArgTyPtr, kArgTyRef,
+                                kArgTyU16, kArgTyU32, kArgTyU64, kArgTyU1,
                                 kArgTyA64, kArgTyF32, kArgTyF64};
+    PrimType res_ls[] = {
+            PTY_void, PTY_i8, PTY_i16, PTY_i32, PTY_i64, PTY_u8,
+            PTY_u16, PTY_u32, PTY_u64, PTY_u1,
+            PTY_a64, PTY_f32, PTY_f64
+    };
     MIRType *mirtype_ptr;
     int n = sizeof(input_ls) / sizeof(input_ls[0]);
     for (int i = 0; i < n; i++)
     {
         mirtype_ptr = IntrinDesc_struc.GetTypeFromArgTy(input_ls[i]);
-        mirtype_ptr->GetPrimType();
+        ASSERT_TRUE(mirtype_ptr != nullptr);
+        EXPECT_EQ(mirtype_ptr->GetPrimType(), res_ls[i]);
     }
 }
 }  // namespace

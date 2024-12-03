@@ -116,3 +116,76 @@ function testProto2() {
 
 print(ArkTools.isAOTCompiled(testProto2));
 testProto2();
+
+function testEmptyArrNotDic(){
+  let arr = [];
+  arr.length = 1024;
+  print(ArkTools.getElementsKind(arr));
+}
+print(ArkTools.isAOTCompiled(testEmptyArrNotDic));
+testEmptyArrNotDic();
+
+
+function testEmptyArrDic(){
+  let arr = [];
+  arr.length = 1025
+  print(ArkTools.getElementsKind(arr));
+}
+print(ArkTools.isAOTCompiled(testEmptyArrDic));
+testEmptyArrDic();
+
+
+function testArrayStOwnByIndex(){
+  let arr = [,,,,,,,,,,,,1];
+  print(ArkTools.getElementsKind(arr));
+}
+print(ArkTools.isAOTCompiled(testArrayStOwnByIndex));
+testArrayStOwnByIndex();
+
+
+function testEmptyArrayHasLength(){
+  let arr = [,,,,,,];
+  print(ArkTools.getElementsKind(arr));
+  arr.length = 3
+  print(ArkTools.getElementsKind(arr));
+}
+print(ArkTools.isAOTCompiled(testEmptyArrayHasLength));
+testEmptyArrayHasLength();
+
+
+function testCutArrayToEmptyThanExtend(){
+  let arr = [1,2,3,4]
+  arr.length = 0;
+  print(ArkTools.getElementsKind(arr));
+  arr.length = 3;
+  print(ArkTools.getElementsKind(arr));
+  arr.length = 0;
+  print(ArkTools.getElementsKind(arr));
+}
+print(ArkTools.isAOTCompiled(testCutArrayToEmptyThanExtend));
+testCutArrayToEmptyThanExtend();
+
+
+function testNewEmptyArrayCut(){
+  let arr = new Array(10)
+  print(ArkTools.getElementsKind(arr));
+  arr.length = 0;
+  print(ArkTools.getElementsKind(arr));
+}
+print(ArkTools.isAOTCompiled(testNewEmptyArrayCut));
+testNewEmptyArrayCut();
+
+function testNoneToNone(){
+  let arr = [];
+  print(ArkTools.getElementsKind(arr));
+  arr.length = 0;
+  print(ArkTools.getElementsKind(arr));
+  arr.length = 1000;
+  print(ArkTools.getElementsKind(arr));
+  arr.length = 0;
+  print(ArkTools.getElementsKind(arr));
+  arr.length = 0;
+  print(ArkTools.getElementsKind(arr));
+}
+print(ArkTools.isAOTCompiled(testNoneToNone));
+testNoneToNone();

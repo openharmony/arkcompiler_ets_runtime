@@ -116,7 +116,7 @@ private:
         bool canBeCompress, MemSpaceType type = MemSpaceType::SHARED_OLD_SPACE, bool isConstantString = false,
         uint32_t idOffset = 0);
     static EcmaString *CreateFromUtf8CompressedSubString(const EcmaVM *vm, const JSHandle<EcmaString> &string,
-        uint32_t offset, uint32_t utf8Len, MemSpaceType type = MemSpaceType::SEMI_SPACE);
+        uint32_t offset, uint32_t utf8Len, MemSpaceType type = MemSpaceType::SHARED_OLD_SPACE);
     static EcmaString *CreateUtf16StringFromUtf8(const EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf8Len,
         MemSpaceType type = MemSpaceType::SHARED_OLD_SPACE);
     static EcmaString *CreateFromUtf16(const EcmaVM *vm, const uint16_t *utf16Data, uint32_t utf16Len,
@@ -142,6 +142,8 @@ private:
     static EcmaString *CopyStringToOldSpace(const EcmaVM *vm, const JSHandle<EcmaString> &original,
         uint32_t length, bool compressed);
     static EcmaString *FastSubString(const EcmaVM *vm,
+        const JSHandle<EcmaString> &src, uint32_t start, uint32_t length);
+    static bool SubStringIsUtf8(const EcmaVM *vm,
         const JSHandle<EcmaString> &src, uint32_t start, uint32_t length);
     static EcmaString *GetSlicedString(const EcmaVM *vm,
         const JSHandle<EcmaString> &src, uint32_t start, uint32_t length);
@@ -1006,6 +1008,8 @@ public:
     }
 };
 
+// FlatStringInfo holds an EcmaString* instead of a JSHandle. If a GC occurs during its usage period,
+// it may cause the pointer to become invalid, necessitating the pointer to be reset.
 class FlatStringInfo {
 public:
     FlatStringInfo(EcmaString *string, uint32_t startIndex, uint32_t length) : string_(string),
@@ -1137,7 +1141,11 @@ public:
     {
         return EcmaString::FastSubString(vm, src, start, length);
     }
-
+    static bool SubStringIsUtf8(const EcmaVM *vm,
+        const JSHandle<EcmaString> &src, uint32_t start, uint32_t length)
+    {
+        return EcmaString::SubStringIsUtf8(vm, src, start, length);
+    }
     // get
     static EcmaString *GetSubString(const EcmaVM *vm,
         const JSHandle<EcmaString> &src, uint32_t start, uint32_t length)

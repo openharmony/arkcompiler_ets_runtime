@@ -1,0 +1,19 @@
+{
+    "name": "JS_PROMISE_REACTIONS_FUNCTION",
+    "offsets": [
+        {
+            "name": "Promise",
+            "offset": 0,
+            "size": 8
+        },
+        {
+            "name": "AlreadyResolved",
+            "offset": 8,
+            "size": 8
+        }
+    ],
+    "end_offset": 16,
+    "parents": [
+        "JS_FUNCTION"
+    ]
+}

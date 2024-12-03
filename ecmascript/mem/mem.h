@@ -67,6 +67,7 @@ static constexpr size_t DEFAULT_REGION_MASK = DEFAULT_REGION_SIZE - 1;
 static constexpr size_t DEFAULT_MARK_STACK_SIZE = 4_KB;
 
 static constexpr double MIN_OBJECT_SURVIVAL_RATE = 0.75;
+static constexpr double MIN_SENSITIVE_OBJECT_SURVIVAL_RATE = 0.9;
 static constexpr double GROW_OBJECT_SURVIVAL_RATE = 0.8;
 static constexpr double SHRINK_OBJECT_SURVIVAL_RATE = 0.2;
 static constexpr double LOW_ALLOCATION_SPEED_PER_MS = 1000;
@@ -96,9 +97,11 @@ static constexpr double LOW_ALLOCATION_RATE_PER_MS = 10;
 static constexpr double IDLE_SPACE_SIZE_LIMIT_RATE = 0.8f;
 static constexpr double IDLE_SPACE_SIZE_MIN_INC_RATIO = 1.1f;
 static constexpr double IDLE_FRAGMENT_SIZE_RATIO = 0.1f;
+static constexpr double IDLE_BINDING_NATIVE_MIN_INC_RATIO = 0.2f;
 static constexpr size_t IDLE_SPACE_SIZE_MIN_INC_STEP = 5_MB;
 static constexpr size_t IDLE_SPACE_SIZE_MIN_INC_STEP_FULL = 1_MB;
 static constexpr size_t IDLE_MIN_EXPECT_RECLAIM_SIZE = 1_MB;
+static constexpr size_t IDLE_BINDING_NATIVE_MIN_INC_SIZE = 10_MB;
 
 using TaggedType = uint64_t;
 static constexpr uint32_t TAGGED_TYPE_SIZE = sizeof(TaggedType);

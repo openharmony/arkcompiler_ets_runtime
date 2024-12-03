@@ -116,26 +116,27 @@ template <Region::RegionSpaceKind kind>
 ARK_NOINLINE bool BatchBitSet(const JSThread* thread, Region* objectRegion, JSTaggedValue* dst, size_t count);
 
 template <bool needWriteBarrier, bool maybeOverlap>
-void Barriers::CopyObject(const JSThread* thread, JSTaggedValue* dst, JSTaggedValue* src, size_t count)
+void Barriers::CopyObject(const JSThread *thread, const TaggedObject *dstObj, JSTaggedValue *dstAddr,
+                          JSTaggedValue *srcAddr, size_t count)
 {
     // NOTE: The logic in CopyObject should be synced with WriteBarrier.
     // if any new feature/bugfix be added in CopyObject, it should also be added to WriteBarrier.
 
     // step 1. copy from src to dst directly.
-    CopyObjectPrimitive<maybeOverlap>(dst, src, count);
+    CopyObjectPrimitive<maybeOverlap>(dstAddr, srcAddr, count);
     if constexpr (!needWriteBarrier) {
         return;
     }
     // step 2. According to object region, update the corresponding bit set batch.
-    Region* objectRegion = Region::ObjectAddressToRange(ToUintPtr(dst));
+    Region* objectRegion = Region::ObjectAddressToRange(ToUintPtr(dstObj));
     if (!objectRegion->InSharedHeap()) {
         bool allValueNotHeap = false;
         if (objectRegion->InYoungSpace()) {
-            allValueNotHeap = BatchBitSet<Region::InYoung>(thread, objectRegion, dst, count);
+            allValueNotHeap = BatchBitSet<Region::InYoung>(thread, objectRegion, dstAddr, count);
         } else if (objectRegion->InGeneralOldSpace()) {
-            allValueNotHeap = BatchBitSet<Region::InGeneralOld>(thread, objectRegion, dst, count);
+            allValueNotHeap = BatchBitSet<Region::InGeneralOld>(thread, objectRegion, dstAddr, count);
         } else {
-            allValueNotHeap = BatchBitSet<Region::Other>(thread, objectRegion, dst, count);
+            allValueNotHeap = BatchBitSet<Region::Other>(thread, objectRegion, dstAddr, count);
         }
         if (allValueNotHeap) {
             return;
@@ -148,14 +149,14 @@ void Barriers::CopyObject(const JSThread* thread, JSTaggedValue* dst, JSTaggedVa
         return;
     }
     for (uint32_t i = 0; i < count; i++) {
-        JSTaggedValue taggedValue = *(dst + i);
+        JSTaggedValue taggedValue = *(dstAddr + i);
         if (!taggedValue.IsHeapObject()) {
             continue;
         }
         Region* valueRegion = Region::ObjectAddressToRange(taggedValue.GetTaggedObject());
         ASSERT(!objectRegion->InSharedHeap() || valueRegion->InSharedHeap());
         if (marking && !valueRegion->InSharedHeap()) {
-            const uintptr_t slotAddr = ToUintPtr(dst) + JSTaggedValue::TaggedTypeSize() * i;
+            const uintptr_t slotAddr = ToUintPtr(dstAddr) + JSTaggedValue::TaggedTypeSize() * i;
             Barriers::Update(thread, slotAddr, objectRegion, taggedValue.GetTaggedObject(), valueRegion);
             // NOTE: ConcurrentMarking and SharedConcurrentMarking can be enabled at the same time, but a specific
             // value can't be "not shared heap" and "in SharedSweepableSpace" at the same time. So using "if - else if"

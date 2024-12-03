@@ -248,7 +248,8 @@ void JSObject::ElementsToDictionary(const JSThread *thread, JSHandle<JSObject> o
     TryMigrateToGenericKindForJSObject(thread, obj, oldKind);
 }
 
-inline bool JSObject::ShouldOptimizeAsFastElements(const JSThread *thread, JSHandle<JSObject> obj)
+bool JSObject::AttributesUnchanged(const JSThread *thread,
+                                   const JSHandle<JSObject> &obj)
 {
     JSHandle<NumberDictionary> elements(thread, obj->GetElements());
     uint32_t size = static_cast<uint32_t>(elements->Size());
@@ -268,7 +269,7 @@ inline bool JSObject::ShouldOptimizeAsFastElements(const JSThread *thread, JSHan
 void JSObject::TryOptimizeAsFastElements(const JSThread *thread, JSHandle<JSObject> obj)
 {
     ASSERT(obj->GetJSHClass()->IsDictionaryElement() && obj->IsJSArray());
-    if (ShouldOptimizeAsFastElements(thread, obj)) {
+    if (AttributesUnchanged(thread, obj)) {
         uint32_t length = JSArray::Cast(*obj)->GetLength();
         JSHandle<NumberDictionary> elements(thread, obj->GetElements());
         uint32_t size = static_cast<uint32_t>(elements->Size());
@@ -393,9 +394,7 @@ bool JSObject::AddElementInternal(JSThread *thread, const JSHandle<JSObject> &re
         }
     }
     if (receiver->IsJSSArray()) {
-        DISALLOW_GARBAGE_COLLECTION;
-        JSSharedArray *arr = JSSharedArray::Cast(*receiver);
-        uint32_t oldLength = arr->GetArrayLength();
+        uint32_t oldLength = JSSharedArray::Cast(*receiver)->GetArrayLength();
         if (index >= oldLength) {
             JSHandle<JSTaggedValue> newLength(thread, JSTaggedValue(static_cast<uint32_t>(index + 1)));
             JSSharedArray::LengthSetter(thread, receiver, newLength);
@@ -404,7 +403,7 @@ bool JSObject::AddElementInternal(JSThread *thread, const JSHandle<JSObject> &re
             }
         }
     }
-    thread->NotifyStableArrayElementsGuardians(receiver, StableArrayChangeKind::NOT_PROTO);
+    thread->NotifyArrayPrototypeChangedGuardians(receiver);
 
     // check whether to convert to dictionary
     if (receiver->GetJSHClass()->IsDictionaryElement() && receiver->IsJSArray()) {
@@ -487,7 +486,7 @@ void JSObject::GetAllKeys(const JSThread *thread, const JSHandle<JSObject> &obj,
         int end = static_cast<int>(obj->GetJSHClass()->NumberOfProps());
         if (end > 0) {
             LayoutInfo::Cast(obj->GetJSHClass()->GetLayout().GetTaggedObject())
-                ->GetAllKeys(thread, end, offset, *keyArray, obj);
+                ->GetAllKeys(thread, end, offset, *keyArray);
         }
         return;
     }
@@ -511,7 +510,7 @@ void JSObject::GetAllKeysByFilter(const JSThread *thread, const JSHandle<JSObjec
         uint32_t numberOfProps = obj->GetJSHClass()->NumberOfProps();
         if (numberOfProps > 0) {
             LayoutInfo::Cast(obj->GetJSHClass()->GetLayout().GetTaggedObject())->
-                GetAllKeysByFilter(thread, numberOfProps, keyArrayEffectivelength, *keyArray, obj, filter);
+                GetAllKeysByFilter(thread, numberOfProps, keyArrayEffectivelength, *keyArray, filter);
         }
         return;
     }
@@ -569,7 +568,7 @@ JSHandle<TaggedArray> JSObject::GetAllEnumKeys(JSThread *thread, const JSHandle<
             int end = static_cast<int>(jsHclass->NumberOfProps());
             JSHandle<TaggedArray> keyArray = factory->NewTaggedArray(numOfKeys + EnumCache::ENUM_CACHE_HEADER_SIZE);
             LayoutInfo::Cast(jsHclass->GetLayout().GetTaggedObject())
-                ->GetAllEnumKeys(thread, end, EnumCache::ENUM_CACHE_HEADER_SIZE, keyArray, keys, obj);
+                ->GetAllEnumKeys(thread, end, EnumCache::ENUM_CACHE_HEADER_SIZE, keyArray, keys);
             JSObject::SetEnumCacheKind(thread, *keyArray, EnumCacheKind::ONLY_OWN_KEYS);
             if (!JSTaggedValue(jsHclass).IsInSharedHeap()) {
                 jsHclass->SetEnumCache(thread, keyArray.GetTaggedValue());
@@ -596,7 +595,7 @@ uint32_t JSObject::GetAllEnumKeys(JSThread *thread, const JSHandle<JSObject> &ob
         int end = static_cast<int>(jsHclass->NumberOfProps());
         if (end > 0) {
             LayoutInfo::Cast(jsHclass->GetLayout().GetTaggedObject())
-                ->GetAllEnumKeys(thread, end, offset, keyArray, &keys, obj);
+                ->GetAllEnumKeys(thread, end, offset, keyArray, &keys);
         }
         return keys;
     }
@@ -779,7 +778,7 @@ std::pair<uint32_t, uint32_t> JSObject::GetNumberOfEnumKeys() const
         int end = static_cast<int>(GetJSHClass()->NumberOfProps());
         if (end > 0) {
             LayoutInfo *layout = LayoutInfo::Cast(GetJSHClass()->GetLayout().GetTaggedObject());
-            return layout->GetNumOfEnumKeys(end, this);
+            return layout->GetNumOfEnumKeys(end);
         }
         return std::make_pair(0, 0);
     }
@@ -1035,6 +1034,51 @@ bool JSObject::SetProperty(ObjectOperator *op, const JSHandle<JSTaggedValue> &va
     JSTaggedValue ret = ShouldGetValueFromBox(op);
     AccessorData *accessor = AccessorData::Cast(ret.GetTaggedObject());
     return CallSetter(thread, *accessor, receiver, value, mayThrow);
+}
+
+bool JSObject::SetPropertyForData(ObjectOperator *op, const JSHandle<JSTaggedValue> &value, bool *isAccessor)
+{
+    JSThread *thread = op->GetThread();
+    op->UpdateDetector();
+
+    JSHandle<JSTaggedValue> receiver = op->GetReceiver();
+    JSHandle<JSTaggedValue> holder = op->GetHolder();
+    if (holder->IsJSProxy()) {
+        if (op->IsElement()) {
+            JSHandle<JSTaggedValue> key(thread, JSTaggedValue(op->GetElementIndex()));
+            return JSProxy::SetProperty(thread, JSHandle<JSProxy>::Cast(holder), key, value, receiver, true);
+        }
+        return JSProxy::SetProperty(thread, JSHandle<JSProxy>::Cast(holder), op->GetKey(), value, receiver, true);
+    }
+
+    // When op is not found and is not set extra attributes
+    if (!op->IsFound() && op->IsPrimitiveAttr()) {
+        op->SetAsDefaultAttr();
+    }
+
+    bool isInternalAccessor = false;
+    if (op->IsAccessorDescriptor()) {
+        JSTaggedValue ret = ShouldGetValueFromBox(op);
+        isInternalAccessor = AccessorData::Cast(ret.GetTaggedObject())->IsInternal();
+    }
+
+    // 5. If IsDataDescriptor(ownDesc) is true, then
+    if (!op->IsAccessorDescriptor() || isInternalAccessor) {
+        return SetPropertyForDataDescriptor(op, value, receiver, true, isInternalAccessor);
+    }
+    // 6. Assert: IsAccessorDescriptor(ownDesc) is true.
+    ASSERT(op->IsAccessorDescriptor());
+    *isAccessor = true;
+    return true;
+}
+
+bool JSObject::SetPropertyForAccessor(ObjectOperator *op, const JSHandle<JSTaggedValue> &value)
+{
+    JSThread *thread = op->GetThread();
+    JSHandle<JSTaggedValue> receiver = op->GetReceiver();
+    JSTaggedValue ret = JSObject::ShouldGetValueFromBox(op);
+    AccessorData *accessor = AccessorData::Cast(ret.GetTaggedObject());
+    return JSObject::CallSetter(thread, *accessor, receiver, value, true);
 }
 
 bool JSObject::CallSetter(JSThread *thread, const AccessorData &accessor, const JSHandle<JSTaggedValue> &receiver,
@@ -1665,7 +1709,7 @@ void JSObject::CollectEnumKeysAlongProtoChain(JSThread *thread, const JSHandle<J
         int end = static_cast<int>(jsHclass->NumberOfProps());
         if (end > 0) {
             LayoutInfo::Cast(jsHclass->GetLayout().GetTaggedObject())
-                ->GetAllEnumKeys(thread, end, *keys, keyArray, keys, shadowQueue, obj, lastLength);
+                ->GetAllEnumKeys(thread, end, *keys, keyArray, keys, shadowQueue, lastLength);
         }
         return;
     }
@@ -2627,7 +2671,7 @@ JSHandle<JSForInIterator> JSObject::EnumerateObjectProperties(JSThread *thread, 
 
     JSMutableHandle<JSTaggedValue> keys(thread, JSTaggedValue::Undefined());
     JSMutableHandle<JSTaggedValue> cachedHclass(thread, JSTaggedValue::Undefined());
-    if (object->IsNull() || object->IsUndefined()) {
+    if (object->IsNull() || object->IsUndefined() || object->IsJSNativePointer()) {
         JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
         ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
         keys.Update(factory->EmptyArray());
@@ -2721,7 +2765,7 @@ JSHandle<JSObject> JSObject::CreateObjectFromProperties(const JSThread *thread, 
             hclass = factory->GetObjectLiteralHClass(properties, propsLen);
             isLiteral = true;
         }
-        if (hclass->IsTS()) {
+        if (hclass->IsAOT()) {
             if (CheckPropertiesForRep(properties, propsLen, hclass)) {
                 return CreateObjectFromPropertiesByIHClass(thread, properties, propsLen, hclass);
             } else if (!isLiteral) {
@@ -2833,7 +2877,7 @@ void JSObject::AddAccessor(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
 
 bool JSObject::UpdatePropertyInDictionary(const JSThread *thread, JSTaggedValue key, JSTaggedValue value)
 {
-    [[maybe_unused]] DisallowGarbageCollection noGc;
+    DISALLOW_GARBAGE_COLLECTION;
     NameDictionary *dict = NameDictionary::Cast(GetProperties().GetTaggedObject());
     int entry = dict->FindEntry(key);
     if (entry == -1) {
@@ -2865,11 +2909,12 @@ void ECMAObject::SetHash(const JSThread *thread, int32_t hash, const JSHandle<EC
             TaggedArray *array = TaggedArray::Cast(value.GetTaggedObject());
             array->Set(thread, array->GetExtraLength() + HASH_INDEX, JSTaggedValue(hash));
         } else if (value.IsNativePointer()) { // FunctionExtraInfo
+            JSHandle<JSTaggedValue> nativePointer(thread, value);
             JSHandle<TaggedArray> newArray =
                 thread->GetEcmaVM()->GetFactory()->NewTaggedArray(RESOLVED_MAX_SIZE);
             newArray->SetExtraLength(0);
             newArray->Set(thread, HASH_INDEX, JSTaggedValue(hash));
-            newArray->Set(thread, FUNCTION_EXTRA_INDEX, value);
+            newArray->Set(thread, FUNCTION_EXTRA_INDEX, nativePointer.GetTaggedValue());
             Barriers::SetObject<true>(thread, *obj, HASH_OFFSET, newArray.GetTaggedValue().GetRawData());
         } else {
             LOG_ECMA(FATAL) << "this branch is unreachable";
@@ -2925,17 +2970,18 @@ void *ECMAObject::GetNativePointerField(int32_t index) const
     return nullptr;
 }
 
-void ECMAObject::SetNativePointerField(const JSThread *thread, int32_t index, void *nativePointer,
-    const NativePointerCallback &callBack, void *data, size_t nativeBindingsize, Concurrent isConcurrent)
+// static
+void ECMAObject::SetNativePointerField(const JSThread *thread, const JSHandle<JSObject> &obj, int32_t index,
+                                       void *nativePointer, const NativePointerCallback &callBack, void *data,
+                                       size_t nativeBindingsize, Concurrent isConcurrent)
 {
-    JSTaggedType hashField = Barriers::GetValue<JSTaggedType>(this, HASH_OFFSET);
+    JSTaggedType hashField = Barriers::GetValue<JSTaggedType>(*obj, HASH_OFFSET);
     JSTaggedValue value(hashField);
     if (value.IsTaggedArray()) {
         JSHandle<TaggedArray> array(thread, value);
         if (static_cast<int32_t>(array->GetExtraLength()) > index) {
             EcmaVM *vm = thread->GetEcmaVM();
             JSHandle<JSTaggedValue> current = JSHandle<JSTaggedValue>(thread, array->Get(thread, index));
-            JSHandle<JSTaggedValue> obj(thread, this);
             if (!current->IsHole() && nativePointer == nullptr) {
                 // Try to remove native pointer if exists.
                 vm->RemoveFromNativePointerList(*JSHandle<JSNativePointer>(current));
@@ -2965,14 +3011,14 @@ int32_t ECMAObject::GetNativePointerFieldCount() const
     return len;
 }
 
-void ECMAObject::SetNativePointerFieldCount(const JSThread *thread, int32_t count)
+// static
+void ECMAObject::SetNativePointerFieldCount(const JSThread *thread, const JSHandle<JSObject> &obj, int32_t count)
 {
     if (count == 0) {
         return;
     }
-    JSTaggedType hashField = Barriers::GetValue<JSTaggedType>(this, HASH_OFFSET);
+    JSTaggedType hashField = Barriers::GetValue<JSTaggedType>(*obj, HASH_OFFSET);
     JSHandle<JSTaggedValue> value(thread, JSTaggedValue(hashField));
-    JSHandle<ECMAObject> obj(thread, this);
     JSHandle<JSTaggedValue> object(obj);
     bool isShared = object->IsJSShared();
     if (value->IsHeapObject()) {

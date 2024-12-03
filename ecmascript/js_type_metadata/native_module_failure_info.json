@@ -1,0 +1,14 @@
+{
+    "name": "NATIVE_MODULE_FAILURE_INFO",
+    "offsets": [
+        {
+            "name": "ArkNativeModuleFailureInfo",
+            "offset": 0,
+            "size": 8
+        }
+    ],
+    "end_offset": 8,
+    "parents": [
+        "JS_OBJECT"
+    ]
+}

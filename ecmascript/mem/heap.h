@@ -31,6 +31,7 @@
 namespace panda::test {
 class GCTest_CallbackTask_Test;
 class HProfTestHelper;
+class HeapTestHelper;
 }
 
 namespace panda::ecmascript {
@@ -123,6 +124,12 @@ enum class VerifyKind {
     VERIFY_SHARED_GC_MARK,
     VERIFY_SHARED_GC_SWEEP,
     VERIFY_END,
+};
+
+enum class SharedHeapOOMSource {
+    NORMAL_ALLOCATION,
+    DESERIALIZE,
+    SHARED_GC,
 };
 
 class BaseHeap {
@@ -241,12 +248,17 @@ public:
     {
         shouldThrowOOMError_ = shouldThrow;
     }
-    
+
+    void ShouldForceThrowOOMError()
+    {
+        shouldForceThrowOOMError_ = true;
+    }
+
     void SetCanThrowOOMError(bool canThrow)
     {
         canThrowOOMError_ = canThrow;
     }
-    
+
     bool CanThrowOOMError()
     {
         return canThrowOOMError_;
@@ -320,6 +332,11 @@ public:
     bool ShouldVerifyHeap() const
     {
         return shouldVerifyHeap_;
+    }
+
+    bool EnablePageTagThreadId() const
+    {
+        return enablePageTagThreadId_;
     }
 
     void ThrowOutOfMemoryErrorForDefault(JSThread *thread, size_t size, std::string functionName,
@@ -423,11 +440,15 @@ protected:
     bool clearTaskFinished_ {true};
     bool inBackground_ {false};
     bool shouldThrowOOMError_ {false};
+    // Diffs from `shouldThrowOOMError_`, this is set due to allocating region failed during GC, and thus make
+    // MemMapAllocator infinite to complete this GC. After GC, if this flag is set, we MUST throw OOM force.
+    bool shouldForceThrowOOMError_ {false};
     bool canThrowOOMError_ {true};
     bool oldGCRequested_ {false};
     // ONLY used for heap verification.
     bool shouldVerifyHeap_ {false};
     bool isVerifying_ {false};
+    bool enablePageTagThreadId_ {false};
     bool inGC_ {false};
     int32_t recursionDepth_ {0};
 #ifndef NDEBUG
@@ -610,6 +631,11 @@ public:
         return sOldSpace_;
     }
 
+    SharedOldSpace *GetCompressSpace() const
+    {
+        return sCompressSpace_;
+    }
+
     SharedNonMovableSpace *GetNonMovableSpace() const
     {
         return sNonMovableSpace_;
@@ -646,6 +672,9 @@ public:
 
     template<TriggerGCType gcType, GCReason gcReason>
     void CollectGarbage(JSThread *thread);
+    
+    template<TriggerGCType gcType, GCReason gcReason>
+    void PostGCTaskForTest(JSThread *thread);
 
     void CollectGarbageNearOOM(JSThread *thread);
     // Only means the main body of SharedGC is finished, i.e. if parallel_gc is enabled, this flags will be set
@@ -819,7 +848,7 @@ public:
 
     inline void MergeToOldSpaceSync(SharedLocalSpace *localSpace);
 
-    void DumpHeapSnapshotBeforeOOM(bool isFullGC, JSThread *thread);
+    void DumpHeapSnapshotBeforeOOM(bool isFullGC, JSThread *thread, SharedHeapOOMSource source);
 
     inline void ProcessSharedNativeDelete(const WeakRootVisitor& visitor);
     inline void PushToSharedNativePointerList(JSNativePointer* pointer);
@@ -839,7 +868,7 @@ public:
 
 private:
     void ProcessAllGCListeners();
-    inline void CollectGarbageFinish(bool inDaemon, TriggerGCType gcType);
+    void CollectGarbageFinish(bool inDaemon, TriggerGCType gcType);
     
     void MoveOldSpaceToAppspawn();
 
@@ -953,6 +982,11 @@ public:
     OldSpace *GetOldSpace() const
     {
         return oldSpace_;
+    }
+
+    OldSpace *GetCompressSpace() const
+    {
+        return compressSpace_;
     }
 
     NonMovableSpace *GetNonMovableSpace() const
@@ -1465,6 +1499,11 @@ public:
         return nativeBindingSize_;
     }
 
+    size_t GetNativeBindingSizeAfterLastGC() const
+    {
+        return nativeBindingSizeAfterLastGC_;
+    }
+
     size_t GetGlobalNativeSize() const
     {
         return GetNativeBindingSize() + nativeAreaAllocator_->GetNativeMemoryUsage();
@@ -1526,16 +1565,6 @@ public:
     bool IsGeneralYoungGC() const
     {
         return gcType_ == TriggerGCType::YOUNG_GC || gcType_ == TriggerGCType::EDEN_GC;
-    }
-
-    bool IsProcessingRset() const
-    {
-        return isProcessingRset_;
-    }
-
-    void SetProcessingRset(bool processing)
-    {
-        isProcessingRset_ = processing;
     }
 
     void EnableEdenGC();
@@ -1761,7 +1790,6 @@ private:
     bool fullMarkRequested_ {false};
     bool oldSpaceLimitAdjusted_ {false};
     bool enableIdleGC_ {false};
-    bool isProcessingRset_ {false};
     std::atomic_bool isCSetClearing_ {false};
     HeapMode mode_ { HeapMode::NORMAL };
 
@@ -1819,6 +1847,7 @@ private:
 
     friend panda::test::HProfTestHelper;
     friend panda::test::GCTest_CallbackTask_Test;
+    friend panda::test::HeapTestHelper;
 };
 }  // namespace panda::ecmascript
 

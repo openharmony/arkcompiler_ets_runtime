@@ -203,7 +203,10 @@ uintptr_t SharedSparseSpace::AllocateAfterSweepingCompleted([[maybe_unused]] JST
 void SharedSparseSpace::PrepareSweeping()
 {
     liveObjectSize_ = 0;
+    ASSERT(GetSweepingRegionSafe() == nullptr);
+    ASSERT(GetSweptRegionSafe() == nullptr);
     EnumerateRegions([this](Region *current) {
+        ASSERT(!current->IsGCFlagSet(RegionGCFlags::HAS_BEEN_SWEPT));
         IncreaseLiveObjectSize(current->AliveObject());
         current->ResetWasted();
         AddSweepingRegion(current);
@@ -484,14 +487,24 @@ void SharedLocalSpace::Stop()
     }
 }
 
+void SharedLocalSpace::ForceExpandInSharedGC(JSThread *thread)
+{
+    Region *region = heapRegionAllocator_->AllocateAlignedRegion(this, DEFAULT_REGION_SIZE, thread, sHeap_);
+    AddRegion(region);
+    allocator_->AddFree(region);
+}
+
 uintptr_t SharedLocalSpace::Allocate(size_t size, bool isExpand)
 {
     auto object = allocator_->Allocate(size);
-    if (object == 0) {
+    if (object == 0 && isExpand) {
         // Shared Full GC will compress all regions and cannot recognize all threads' region.
-        if (isExpand && Expand(Runtime::GetInstance()->GetMainThread())) {
-            object = allocator_->Allocate(size);
+        if (!Expand(Runtime::GetInstance()->GetMainThread())) {
+            ForceExpandInSharedGC(Runtime::GetInstance()->GetMainThread());
+            sHeap_->ShouldThrowOOMError(true);
         }
+        object = allocator_->Allocate(size);
+        ASSERT(object != 0);
     }
     if (object != 0) {
         Region::ObjectAddressToRange(object)->IncreaseAliveObject(size);

@@ -15,6 +15,7 @@
 
 #include "ecmascript/jspandafile/class_info_extractor.h"
 
+#include "ecmascript/js_api/js_api_bitvector.h"
 #include "ecmascript/js_object-inl.h"
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/shared_objects/js_sendable_arraybuffer.h"
@@ -1179,6 +1180,8 @@ std::pair<uint32_t, uint32_t> SendableClassDefiner::GetSizeAndMaxInlineByType(JS
             return { JSSharedSet::SIZE, JSSharedSet::MAX_INLINE };
         case JSType::JS_SENDABLE_ARRAY_BUFFER:
             return { JSSendableArrayBuffer::SIZE, JSSendableArrayBuffer::MAX_INLINE };
+        case JSType::JS_API_BITVECTOR:
+            return { JSAPIBitVector::SIZE, JSAPIBitVector::MAX_INLINE };
         default:
             if (JSType::JS_SHARED_TYPED_ARRAY_FIRST < type && type <= JSType::JS_SHARED_TYPED_ARRAY_LAST) {
                 return { JSSharedTypedArray::SIZE, JSSharedTypedArray::MAX_INLINE };

@@ -180,11 +180,6 @@ public:
         return constantIndexInfo_;
     }
 
-    JSTaggedValue GetProtoTransTableInfo() const
-    {
-        return protoTransTableInfo_;
-    }
-
     JSTaggedValue GetObjectLiteralHClassCache() const
     {
         if (hclassInfo_.IsTaggedArray()) {
@@ -193,6 +188,11 @@ public:
             return hclassInfoArr->Get(hclassInfoArr->GetLength() - 1);
         }
         return JSTaggedValue::Undefined();
+    }
+
+    JSTaggedValue GetProtoTransTableInfo() const
+    {
+        return protoTransTableInfo_;
     }
 
     void StoreHClassInfo(JSHandle<TaggedArray> info)

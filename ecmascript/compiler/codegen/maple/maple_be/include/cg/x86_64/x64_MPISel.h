@@ -55,7 +55,8 @@ private:
     void SelectOverFlowCall(const IntrinsiccallNode &intrnNode);
     void SelectParmList(StmtNode &naryNode, ListOperand &srcOpnds, uint32 &fpNum);
     void SelectMpy(Operand &resOpnd, Operand &opnd0, Operand &opnd1, PrimType primType);
-
+    void SelectPureCall(const IntrinsiccallNode &intrnNode);
+    RegOperand &LoadOpndIntoPhysicalRegister(const IntrinsiccallNode &intrnNode, uint32 index);
     /* lt/le in float is replaced by gt/ge on swaped operands */
     void SelectCmp(Operand &opnd0, Operand &opnd1, PrimType primType, bool isSwap = false);
     void SelectCmpFloatEq(RegOperand &resOpnd, Operand &opnd0, Operand &opnd1, PrimType primResType,

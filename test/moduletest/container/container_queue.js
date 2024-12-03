@@ -162,5 +162,15 @@ if (globalThis["ArkPrivate"] != undefined) {
     } catch (error) {
         print(error)
     }
+    class C4 extends Queue{
+        constructor(a) {
+            super()
+            super[a] = 11
+            const o10 = {
+                ...this
+            }
+        }
+    }
+    new C4(38062)
 }
 export let queueRes = "Test Queue done";

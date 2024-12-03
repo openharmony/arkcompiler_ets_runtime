@@ -1,0 +1,14 @@
+{
+    "name": "LINKED_NODE",
+    "offsets": [
+        {
+            "name": "Next",
+            "offset": 0,
+            "size": 8
+        }
+    ],
+    "end_offset": 8,
+    "parents": [
+        "TAGGED_NODE"
+    ]
+}

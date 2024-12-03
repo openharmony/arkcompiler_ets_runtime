@@ -450,51 +450,7 @@ void BuiltinsTypedArrayStubBuilder::Reverse(GateRef glue, GateRef thisValue, [[m
     GateRef buffer = GetViewedArrayBuffer(thisValue);
     BRANCH(IsDetachedBuffer(buffer), slowPath, &notDetached);
     Bind(&notDetached);
-
-    DEFVARIABLE(thisArrLen, VariableType::INT64(), ZExtInt32ToInt64(GetArrayLength(thisValue)));
-    GateRef middle = Int64Div(*thisArrLen, Int64(2));
-    DEFVARIABLE(lower, VariableType::INT64(), Int64(0));
-    Label loopHead(env);
-    Label loopEnd(env);
-    Label loopNext(env);
-    Label loopExit(env);
-    Jump(&loopHead);
-    LoopBegin(&loopHead);
-    {
-        BRANCH(Int64NotEqual(*lower, middle), &loopNext, &loopExit);
-        Bind(&loopNext);
-        {
-            DEFVARIABLE(upper, VariableType::INT64(), Int64Sub(Int64Sub(*thisArrLen, *lower), Int64(1)));
-            Label hasException0(env);
-            Label hasException1(env);
-            Label notHasException0(env);
-            GateRef lowerValue = FastGetPropertyByIndex(glue, thisValue,
-                TruncInt64ToInt32(*lower), arrayType);
-            GateRef upperValue = FastGetPropertyByIndex(glue, thisValue,
-                TruncInt64ToInt32(*upper), arrayType);
-            BRANCH(HasPendingException(glue), &hasException0, &notHasException0);
-            Bind(&hasException0);
-            {
-                result->WriteVariable(Exception());
-                Jump(exit);
-            }
-            Bind(&notHasException0);
-            {
-                StoreTypedArrayElement(glue, thisValue, *lower, upperValue, arrayType);
-                StoreTypedArrayElement(glue, thisValue, *upper, lowerValue, arrayType);
-                BRANCH(HasPendingException(glue), &hasException1, &loopEnd);
-                Bind(&hasException1);
-                {
-                    result->WriteVariable(Exception());
-                    Jump(exit);
-                }
-            }
-        }
-    }
-    Bind(&loopEnd);
-    lower = Int64Add(*lower, Int64(1));
-    LoopEnd(&loopHead);
-    Bind(&loopExit);
+    CallNGCRuntime(glue, RTSTUB_ID(ReverseTypedArray), {thisValue});
     result->WriteVariable(thisValue);
     Jump(exit);
 }
@@ -2137,7 +2093,11 @@ void BuiltinsTypedArrayStubBuilder::Sort(
     GateRef callbackFnHandle = GetCallArg0(numArgs);
     BRANCH(TaggedIsUndefined(callbackFnHandle), &argUndefined, slowPath);
     Bind(&argUndefined);
-    DoSort(glue, thisValue, result, exit, slowPath);
+    Label notDetached(env);
+    GateRef buffer = GetViewedArrayBuffer(thisValue);
+    BRANCH(IsDetachedBuffer(buffer), slowPath, &notDetached);
+    Bind(&notDetached);
+    CallNGCRuntime(glue, RTSTUB_ID(SortTypedArray), {thisValue});
     result->WriteVariable(thisValue);
     Jump(exit);
 }

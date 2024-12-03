@@ -129,6 +129,7 @@ namespace panda::ecmascript {
     V(DebugPrint)                              \
     V(DebugPrintCustom)                        \
     V(DebugPrintInstruction)                   \
+    V(CollectingOpcodes)                       \
     V(DebugOsrEntry)                           \
     V(Comment)                                 \
     V(FatalPrint)                              \
@@ -141,9 +142,8 @@ namespace panda::ecmascript {
     V(MarkingBarrier)                          \
     V(MarkingBarrierWithEden)                  \
     V(SharedGCMarkingBarrier)                  \
-    V(StoreBarrier)                            \
     V(DoubleToInt)                             \
-    V(DoubleToLength)                          \
+    V(SaturateTruncDoubleToInt32)           \
     V(FloatMod)                                \
     V(FloatAcos)                               \
     V(FloatAcosh)                              \
@@ -170,11 +170,7 @@ namespace panda::ecmascript {
     V(FloatPow)                                \
     V(FloatCeil)                               \
     V(CallDateNow)                             \
-    V(NumberIsFinite)                          \
-    V(FindElementWithCache)                    \
     V(UpdateFieldType)                         \
-    V(CreateArrayFromList)                     \
-    V(StringsAreEquals)                        \
     V(BigIntEquals)                            \
     V(TimeClip)                                \
     V(SetDateValues)                           \
@@ -190,6 +186,8 @@ namespace panda::ecmascript {
     V(StringGetStart)                          \
     V(StringGetEnd)                            \
     V(ArrayTrim)                               \
+    V(SortTypedArray)                          \
+    V(ReverseTypedArray)                       \
     V(CopyTypedArrayBuffer)                    \
     V(IsFastRegExp)
 
@@ -296,6 +294,7 @@ namespace panda::ecmascript {
     V(StOwnByValue)                             \
     V(LdSuperByValue)                           \
     V(StSuperByValue)                           \
+    V(StObjByValue)                             \
     V(LdObjByIndex)                             \
     V(StObjByIndex)                             \
     V(StOwnByIndex)                             \

@@ -25,18 +25,11 @@
 #include "ecmascript/compiler/compiler_log.h"
 #include "ecmascript/jit/jit_thread.h"
 #include "ecmascript/jit/jit_dfx.h"
+#include "ecmascript/jit/compile_decision.h"
+#include "ecmascript/jit/jit_resources.h"
 
 namespace panda::ecmascript {
 class JitTask;
-enum JitCompileMode {
-    SYNC = 0,
-    ASYNC
-};
-
-enum class CompilerTier : uint8_t {
-    BASELINE,
-    FAST,
-};
 
 struct ThreadTaskInfo {
     std::deque<std::shared_ptr<JitTask>> installJitTasks_;
@@ -52,6 +45,7 @@ public:
     ~Jit();
     static PUBLIC_API Jit *GetInstance();
     void SetJitEnablePostFork(EcmaVM *vm, const std::string &bundleName);
+    void PreFork();
     void ConfigJit(EcmaVM *vm);
     void SwitchProfileStubs(EcmaVM *vm);
     void ConfigOptions(EcmaVM *vm) const;
@@ -65,10 +59,15 @@ public:
     void SetDisableCodeSign(bool isEnableCodeSign);
     bool PUBLIC_API IsEnableAsyncCopyToFort() const;
     void SetEnableAsyncCopyToFort(bool isEnableiAsyncCopyToFort);
-    void Initialize();
 
-    static void Compile(EcmaVM *vm, JSHandle<JSFunction> &jsFunction, CompilerTier tier = CompilerTier::FAST,
-                        int32_t offset = MachineCode::INVALID_OSR_OFFSET, JitCompileMode mode = SYNC);
+    static void Compile(EcmaVM *vm, JSHandle<JSFunction> &jsFunction,
+                        CompilerTier::Tier tier = CompilerTier::Tier::FAST,
+                        int32_t offset = MachineCode::INVALID_OSR_OFFSET,
+                        JitCompileMode::Mode mode = JitCompileMode::Mode::SYNC)
+    {
+        Compile(vm, jsFunction, CompilerTier(tier), offset, JitCompileMode(mode));
+    }
+
     bool JitCompile(void *compiler, JitTask *jitTask);
     bool JitFinalize(void *compiler, JitTask *jitTask);
     void *CreateJitCompilerTask(JitTask *jitTask);
@@ -77,7 +76,7 @@ public:
         return initialized_;
     }
 
-    void DeleteJitCompile(void *compiler);
+    void DeleteJitCompilerTask(void *compiler);
 
     void RequestInstallCode(std::shared_ptr<JitTask> jitTask);
     void InstallTasks(JSThread *jsThread);
@@ -125,12 +124,15 @@ public:
 
     class TimeScope : public ClockScope {
     public:
-        explicit TimeScope(EcmaVM *vm, CString message, CompilerTier tier = CompilerTier::FAST, bool outPutLog = true,
+        explicit TimeScope(EcmaVM *vm, CString message, CompilerTier tier, bool outPutLog = true,
             bool isDebugLevel = false)
             : vm_(vm), message_(message), tier_(tier), outPutLog_(outPutLog), isDebugLevel_(isDebugLevel) {}
         explicit TimeScope(EcmaVM *vm)
-            : vm_(vm), message_(""), tier_(CompilerTier::FAST), outPutLog_(false), isDebugLevel_(true) {}
+            : vm_(vm), message_(""), tier_(CompilerTier::Tier::FAST), outPutLog_(false), isDebugLevel_(true) {}
         PUBLIC_API ~TimeScope();
+
+        void appendMessage(const CString& value) { message_ += value; }
+
     private:
         EcmaVM *vm_;
         CString message_;
@@ -155,7 +157,7 @@ public:
 
         explicit JitLockHolder(const CompilationEnv *env, CString message) : thread_(nullptr),
             scope_(env->GetJSThread()->GetEcmaVM(),
-                "Jit Compile Pass: " + message + ", Time:", CompilerTier::FAST, false)
+                "Jit Compile Pass: " + message + ", Time:", CompilerTier::Tier::FAST, false)
         {
             if (env->IsJitCompiler()) {
                 JSThread *thread = env->GetJSThread();
@@ -227,7 +229,11 @@ public:
     };
 
 private:
-    bool SupportJIT(JSHandle<JSFunction> &jsFunction, EcmaVM *vm, CompilerTier tier) const;
+    void Compile(EcmaVM *vm, const CompileDecision &decision);
+    static void Compile(EcmaVM *vm, JSHandle<JSFunction> &jsFunction, CompilerTier tier,
+                        int32_t offset, JitCompileMode mode);
+    void CreateJitResources();
+    bool IsLibResourcesResolved() const;
     bool initialized_ { false };
     bool fastJitEnable_ { false };
     bool baselineJitEnable_ { false };
@@ -246,16 +252,8 @@ private:
     Mutex setEnableLock_;
 
     JitDfx *jitDfx_ { nullptr };
+    std::unique_ptr<JitResources> jitResources_;
     static constexpr int MIN_CODE_SPACE_SIZE = 1_KB;
-
-    static void (*initJitCompiler_)(JSRuntimeOptions);
-    static bool(*jitCompile_)(void*, JitTask*);
-    static bool(*jitFinalize_)(void*, JitTask*);
-    static void*(*createJitCompilerTask_)(JitTask*);
-    static void(*deleteJitCompile_)(void*);
-    static void *libHandle_;
-    static bool CheckJitCompileStatus(JSHandle<JSFunction> &jsFunction,
-        const CString &methodName, CompilerTier tier);
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_JIT_H

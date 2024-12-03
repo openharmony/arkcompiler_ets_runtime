@@ -1,0 +1,6 @@
+{
+    "string_first": "LINE_STRING",
+    "string_last": "TREE_STRING",
+    "js_object_first": "JS_OBJECT",
+    "js_object_last": "JS_GLOBAL_OBJECT"
+}

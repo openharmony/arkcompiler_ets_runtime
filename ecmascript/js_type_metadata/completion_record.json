@@ -1,0 +1,14 @@
+{
+    "name": "COMPLETION_RECORD",
+    "offsets": [
+        {
+            "name": "Value",
+            "offset": 0,
+            "size": 8
+        }
+    ],
+    "end_offset": 16,
+    "parents": [
+        "RECORD"
+    ]
+}

@@ -28,14 +28,15 @@ ConcurrentSweeper::ConcurrentSweeper(Heap *heap, EnableConcurrentSweepType type)
 void ConcurrentSweeper::PostTask(bool fullGC)
 {
     if (ConcurrentSweepEnabled()) {
+        auto tid = heap_->GetJSThread()->GetThreadId();
         if (!fullGC) {
             Taskpool::GetCurrentTaskpool()->PostTask(
-                std::make_unique<SweeperTask>(heap_->GetJSThread()->GetThreadId(), this, OLD_SPACE));
+                std::make_unique<SweeperTask>(tid, this, OLD_SPACE, startSpaceType_));
         }
         Taskpool::GetCurrentTaskpool()->PostTask(
-            std::make_unique<SweeperTask>(heap_->GetJSThread()->GetThreadId(), this, NON_MOVABLE));
+            std::make_unique<SweeperTask>(tid, this, NON_MOVABLE, startSpaceType_));
         Taskpool::GetCurrentTaskpool()->PostTask(
-            std::make_unique<SweeperTask>(heap_->GetJSThread()->GetThreadId(), this, MACHINE_CODE_SPACE));
+            std::make_unique<SweeperTask>(tid, this, MACHINE_CODE_SPACE, startSpaceType_));
     }
 }
 
@@ -160,9 +161,9 @@ void ConcurrentSweeper::ClearRSetInRange(Region *current, uintptr_t freeStart, u
 
 bool ConcurrentSweeper::SweeperTask::Run([[maybe_unused]] uint32_t threadIndex)
 {
-    uint32_t sweepTypeNum = FREE_LIST_NUM - sweeper_->startSpaceType_;
-    for (size_t i = sweeper_->startSpaceType_; i < FREE_LIST_NUM; i++) {
-        auto type = static_cast<MemSpaceType>(((i + type_) % sweepTypeNum) + sweeper_->startSpaceType_);
+    uint32_t sweepTypeNum = FREE_LIST_NUM - startSpaceType_;
+    for (size_t i = startSpaceType_; i < FREE_LIST_NUM; i++) {
+        auto type = static_cast<MemSpaceType>(((i + type_) % sweepTypeNum) + startSpaceType_);
         sweeper_->AsyncSweepSpace(type, false);
     }
     return true;

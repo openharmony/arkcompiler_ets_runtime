@@ -50,6 +50,7 @@ private:
     bool SerializeJSONObject(const JSHandle<JSTaggedValue> &value, const JSHandle<JSTaggedValue> &replacer);
 
     bool SerializeJSArray(const JSHandle<JSTaggedValue> &value, const JSHandle<JSTaggedValue> &replacer);
+    
     bool SerializeJSProxy(const JSHandle<JSTaggedValue> &object, const JSHandle<JSTaggedValue> &replacer);
 
     void SerializePrimitiveRef(const JSHandle<JSTaggedValue> &primitiveRef);

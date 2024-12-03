@@ -34,6 +34,7 @@
 #include "ecmascript/compiler/type_info_accessors.h"
 #include "ecmascript/compiler/variable_type.h"
 #include "ecmascript/global_env.h"
+#include "ecmascript/interpreter/interpreter-inl.h"
 #include "ecmascript/jit/jit.h"
 #include "ecmascript/js_array_iterator.h"
 #include "ecmascript/js_arraybuffer.h"
@@ -359,6 +360,9 @@ GateRef TypedNativeInlineLowering::VisitGate(GateRef gate)
             break;
         case OpCode::ARRAY_POP:
             LowerArrayPop(gate);
+            break;
+        case OpCode::ARRAY_PUSH:
+            LowerArrayPush(gate);
             break;
         case OpCode::ARRAY_SLICE:
             LowerArraySlice(gate);
@@ -1992,12 +1996,14 @@ void TypedNativeInlineLowering::LowerNumberParseInt(GateRef gate)
     builder_.Bind(&slowPath);
     {
         GateRef glue = acc_.GetGlueFromArgList();
-        result = builder_.CallRuntime(glue, RTSTUB_ID(ParseInt), Gate::InvalidGateRef, { msg, arg2 }, gate);
+        // this may return exception
+        result = builder_.CallRuntime(glue, RTSTUB_ID(ParseInt), Gate::InvalidGateRef, {msg, arg2}, gate);
         builder_.Jump(&exit);
     }
 
     builder_.Bind(&exit);
-    acc_.ReplaceGate(gate, builder_.GetStateDepend(), *result);
+    ReplaceGateWithPendingException(
+        gate, acc_.GetGlueFromArgList(), builder_.GetState(), builder_.GetDepend(), *result);
 }
 
 void TypedNativeInlineLowering::LowerNumberParseFloat(GateRef gate)
@@ -2205,19 +2211,8 @@ void TypedNativeInlineLowering::LowerStringSubstring(GateRef gate)
         builder_.Jump(&next);
         builder_.Bind(&startTagNotInt);
         {
-            Label slowPath(&builder_);
-            Label fastPath(&builder_);
-            BRANCH_CIR(BuildTaggedPointerOverflowInt32(startTag), &slowPath, &fastPath);
-            builder_.Bind(&slowPath);
-            {
-                start = length;
-                builder_.Jump(&next);
-            }
-            builder_.Bind(&fastPath);
-            {
-                start = builder_.DoubleToInt(glue, builder_.GetDoubleOfTDouble(startTag), base::INT32_BITS);
-                builder_.Jump(&next);
-            }
+            start = builder_.SaturateTruncDoubleToInt32(glue, builder_.GetDoubleOfTDouble(startTag));
+            builder_.Jump(&next);
         }
     } else {
         start = NumberToInt32(startTag);
@@ -2232,19 +2227,8 @@ void TypedNativeInlineLowering::LowerStringSubstring(GateRef gate)
             builder_.Jump(&countStart);
             builder_.Bind(&endTagNotInt);
             {
-                Label slowPath(&builder_);
-                Label fastPath(&builder_);
-                BRANCH_CIR(BuildTaggedPointerOverflowInt32(endTag), &slowPath, &fastPath);
-                builder_.Bind(&slowPath);
-                {
-                    end = length;
-                    builder_.Jump(&countStart);
-                }
-                builder_.Bind(&fastPath);
-                {
-                    end = builder_.DoubleToInt(glue, builder_.GetDoubleOfTDouble(endTag), base::INT32_BITS);
-                    builder_.Jump(&countStart);
-                }
+                end = builder_.SaturateTruncDoubleToInt32(glue, builder_.GetDoubleOfTDouble(endTag));
+                builder_.Jump(&countStart);
             }
         } else {
             end = NumberToInt32(endTag);
@@ -2295,19 +2279,8 @@ void TypedNativeInlineLowering::LowerStringSubStr(GateRef gate)
         builder_.Jump(&next);
         builder_.Bind(&intStartNotInt);
         {
-            Label slowPath(&builder_);
-            Label fastPath(&builder_);
-            BRANCH_CIR(BuildTaggedPointerOverflowInt32(intStart), &slowPath, &fastPath);
-            builder_.Bind(&slowPath);
-            {
-                start = length;
-                builder_.Jump(&next);
-            }
-            builder_.Bind(&fastPath);
-            {
-                start = builder_.DoubleToInt(glue, builder_.GetDoubleOfTDouble(intStart), base::INT32_BITS);
-                builder_.Jump(&next);
-            }
+            start = builder_.SaturateTruncDoubleToInt32(glue, builder_.GetDoubleOfTDouble(intStart));
+            builder_.Jump(&next);
         }
     } else {
         start = NumberToInt32(intStart);
@@ -2322,19 +2295,8 @@ void TypedNativeInlineLowering::LowerStringSubStr(GateRef gate)
             builder_.Jump(&countStart);
             builder_.Bind(&lengthTagNotInt);
             {
-                Label slowPath(&builder_);
-                Label fastPath(&builder_);
-                BRANCH_CIR(BuildTaggedPointerOverflowInt32(lengthTag), &slowPath, &fastPath);
-                builder_.Bind(&slowPath);
-                {
-                    end = length;
-                    builder_.Jump(&countStart);
-                }
-                builder_.Bind(&fastPath);
-                {
-                    end = builder_.DoubleToInt(glue, builder_.GetDoubleOfTDouble(lengthTag), base::INT32_BITS);
-                    builder_.Jump(&countStart);
-                }
+                end = builder_.SaturateTruncDoubleToInt32(glue, builder_.GetDoubleOfTDouble(lengthTag));
+                builder_.Jump(&countStart);
             }
         } else {
             end = NumberToInt32(lengthTag);
@@ -2411,19 +2373,8 @@ void TypedNativeInlineLowering::LowerStringSlice(GateRef gate)
         builder_.Jump(&next);
         builder_.Bind(&startTagNotInt);
         {
-            Label slowPath(&builder_);
-            Label fastPath(&builder_);
-            BRANCH_CIR(BuildTaggedPointerOverflowInt32(startTag), &slowPath, &fastPath);
-            builder_.Bind(&slowPath);
-            {
-                start = length;
-                builder_.Jump(&next);
-            }
-            builder_.Bind(&fastPath);
-            {
-                start = builder_.DoubleToInt(glue, builder_.GetDoubleOfTDouble(startTag), base::INT32_BITS);
-                builder_.Jump(&next);
-            }
+            start = builder_.SaturateTruncDoubleToInt32(glue, builder_.GetDoubleOfTDouble(startTag));
+            builder_.Jump(&next);
         }
     } else {
         start = NumberToInt32(startTag);
@@ -2437,7 +2388,7 @@ void TypedNativeInlineLowering::LowerStringSlice(GateRef gate)
             end = builder_.GetInt32OfTInt(endTag);
             builder_.Jump(&countStart);
             builder_.Bind(&endTagNotInt);
-            end = builder_.DoubleToInt(glue, builder_.GetDoubleOfTDouble(endTag), base::INT32_BITS);
+            end = builder_.SaturateTruncDoubleToInt32(glue, builder_.GetDoubleOfTDouble(endTag));
             builder_.Jump(&countStart);
         } else {
             end = NumberToInt32(endTag);
@@ -2503,7 +2454,12 @@ GateRef TypedNativeInlineLowering::NumberToInt32(GateRef gate)
         case MachineType::I32:
             return gate;
         case MachineType::F64:
-            return builder_.ChangeFloat64ToInt32(gate);
+            if (isLiteCG_) {
+                return builder_.ChangeFloat64ToInt32(gate);
+            } else {
+                GateRef glue = acc_.GetGlueFromArgList();
+                return builder_.SaturateTruncDoubleToInt32(glue, gate);
+            }
         case MachineType::I1:
             return builder_.ZExtInt1ToInt32(gate);
         default:
@@ -3728,6 +3684,44 @@ void TypedNativeInlineLowering::LowerArrayPop(GateRef gate)
     }
     builder_.Bind(&exit);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *ret);
+}
+
+void TypedNativeInlineLowering::LowerArrayPush(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    Label grow(&builder_);
+    Label setValue(&builder_);
+    Label setLength(&builder_);
+    Label exit(&builder_);
+    BuiltinsArrayStubBuilder arrayBuilder(&env);
+    GateRef thisValue = acc_.GetValueIn(gate, 0);
+    GateRef value = acc_.GetValueIn(gate, 1);
+    GateRef oldLength = builder_.GetLengthOfJSArray(thisValue);
+    GateRef glue = acc_.GetGlueFromArgList();
+    DEFVALUE(ret, (&builder_), VariableType::JS_ANY(), builder_.Int32ToTaggedPtr(thisValue));
+    DEFVALUE(elements, (&builder_), VariableType::JS_ANY(), builder_.UndefineConstant());
+    GateRef newLength = builder_.Int32Add(oldLength, builder_.Int32(1));
+    elements = builder_.GetElementsArray(thisValue);
+    GateRef capacity = builder_.GetLengthOfTaggedArray(*elements);
+    BRANCH_CIR(builder_.Int32GreaterThan(newLength, capacity), &grow, &setValue);
+    builder_.Bind(&grow);
+    {
+        elements = builder_.CallStub(glue, gate, CommonStubCSigns::GrowElementsCapacity, {glue, thisValue, newLength});
+        builder_.Jump(&setValue);
+    }
+    builder_.Bind(&setValue);
+    {
+        arrayBuilder.FastSetValueWithElementsKind(glue, thisValue, *elements, value, oldLength, ElementsKind::NONE);
+        builder_.Jump(&setLength);
+    }
+    builder_.Bind(&setLength);
+    {
+        arrayBuilder.SetArrayLength(glue, thisValue, newLength);
+        ret = arrayBuilder.IntToTaggedPtr(newLength);
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&exit);
+    ReplaceGateWithPendingException(gate, glue, builder_.GetState(), builder_.GetDepend(), *ret);
 }
 
 void TypedNativeInlineLowering::LowerArraySlice(GateRef gate)

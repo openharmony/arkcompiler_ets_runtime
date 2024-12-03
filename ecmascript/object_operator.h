@@ -99,7 +99,7 @@ public:
         IsFoundDictField::Set(flag, &metaData_);
     }
 
-    inline bool IsFoundDict()
+    inline bool IsFoundDict() const
     {
         return IsFoundDictField::Get(metaData_);
     }
@@ -155,16 +155,6 @@ public:
     inline void SetIsTransition(bool flag)
     {
         IsTransitionField::Set(flag, &metaData_);
-    }
-
-    inline bool IsTSHClass() const
-    {
-        return IsTSHClassField::Get(metaData_);
-    }
-
-    inline void SetIsTSHClass(bool flag)
-    {
-        IsTSHClassField::Set(flag, &metaData_);
     }
 
     inline PropertyAttributes GetAttr() const
@@ -332,19 +322,14 @@ public:
     void DefineGetter(const JSHandle<JSTaggedValue> &value);
 
 private:
-    static constexpr uint64_t ATTR_LENGTH = 5;
-    static constexpr uint64_t INDEX_LENGTH = 32;
-
     using IsFastModeField = BitField<bool, 0, 1>;
     using IsOnPrototypeField = IsFastModeField::NextFlag;  // 1: on prototype
     using HasReceiverField = IsOnPrototypeField::NextFlag;
     using IsTransitionField = HasReceiverField::NextFlag;
-    using IsTSHClassField = IsTransitionField::NextFlag;
     // found dictionary obj between receriver and holder
-    using IsFoundDictField = IsTSHClassField::NextFlag;
+    using IsFoundDictField = IsTransitionField::NextFlag;
 
     void UpdateHolder();
-    void UpdateIsTSHClass();
     void StartLookUp(OperatorType type);
     void StartGlobalLookUp(OperatorType type);
     void HandleKey(const JSHandle<JSTaggedValue> &key);

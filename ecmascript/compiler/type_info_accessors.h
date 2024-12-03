@@ -1369,6 +1369,7 @@ public:
         virtual bool IsHolderEqNewHolder(size_t index) const = 0;
         virtual void FetchPGORWTypesDual() = 0;
         virtual bool GenerateObjectAccessInfo() = 0;
+        virtual bool IsPrototypeHclass(size_t index) const = 0;
     };
 
     class AotAccessorStrategy : public AccessorStrategy {
@@ -1409,6 +1410,17 @@ public:
             return std::get<HclassIndex::Holder>(parent_.types_[index]) ==
                    std::get<HclassIndex::HolderTra>(parent_.types_[index]);
         }
+
+        bool IsPrototypeHclass(size_t index) const override
+        {
+            ProfileTyper recv = std::get<HclassIndex::Reciver>(parent_.types_[index]);
+            JSTaggedValue hclass = parent_.ptManager_->QueryHClass(recv.first, recv.second);
+            if (!hclass.IsJSHClass()) {
+                return false;
+            }
+            return JSHClass::Cast(hclass.GetTaggedObject())->IsPrototype();
+        }
+
         void FetchPGORWTypesDual() override;
         bool GenerateObjectAccessInfo() override;
 
@@ -1451,6 +1463,12 @@ public:
         {
             return parent_.jitTypes_[index].GetHolderHclass() == parent_.jitTypes_[index].GetHolderTraHclass();
         }
+
+        bool IsPrototypeHclass(size_t index) const override
+        {
+            return parent_.jitTypes_[index].GetReceiverHclass()->IsPrototype();
+        }
+
         void FetchPGORWTypesDual() override;
         bool GenerateObjectAccessInfo() override;
 
@@ -1490,6 +1508,11 @@ public:
     bool IsHolderEqNewHolder(size_t index) const
     {
         return strategy_->IsHolderEqNewHolder(index);
+    }
+
+    bool IsPrototypeHclass(size_t index) const
+    {
+        return strategy_->IsPrototypeHclass(index);
     }
 
     GateRef GetValue() const

@@ -16,6 +16,7 @@
 #include "ecmascript/napi/jsnapi_helper.h"
 #include "ecmascript/tests/test_helper.h"
 #include "gtest/gtest.h"
+#include "jsnapi_expo.h"
 
 using namespace panda::ecmascript;
 
@@ -164,7 +165,7 @@ Local<FunctionRef> GetNewSendableClassFunction(
 HWTEST_F_L0(JSNApiTests, NewSendableClassFunction)
 {
     LocalScope scope(vm_);
-    Local<FunctionRef> constructor = GetNewSendableClassFunction(vm_, FunctionRef::Null(vm_));
+    Local<FunctionRef> constructor = GetNewSendableClassFunction(vm_, JSValueRef::Hole(vm_));
 
     ASSERT_EQ("name", constructor->GetName(vm_)->ToString(vm_));
     ASSERT_TRUE(constructor->IsFunction(vm_));
@@ -187,7 +188,7 @@ HWTEST_F_L0(JSNApiTests, NewSendableClassFunction)
 HWTEST_F_L0(JSNApiTests, NewSendableClassFunctionProperties)
 {
     LocalScope scope(vm_);
-    Local<FunctionRef> constructor = GetNewSendableClassFunction(vm_, FunctionRef::Null(vm_));
+    Local<FunctionRef> constructor = GetNewSendableClassFunction(vm_, JSValueRef::Hole(vm_));
     Local<ObjectRef> prototype = constructor->GetFunctionPrototype(vm_);
 
     ASSERT_EQ("static", constructor->Get(vm_, staticKey)->ToString(vm_)->ToString(vm_));
@@ -221,7 +222,7 @@ HWTEST_F_L0(JSNApiTests, NewSendableClassFunctionProperties)
 HWTEST_F_L0(JSNApiTests, NewSendableClassFunctionDictProperties)
 {
     LocalScope scope(vm_);
-    Local<FunctionRef> constructor = GetNewSendableClassFunction(vm_, FunctionRef::Null(vm_), true);
+    Local<FunctionRef> constructor = GetNewSendableClassFunction(vm_, JSValueRef::Hole(vm_), true);
     Local<ObjectRef> prototype = constructor->GetFunctionPrototype(vm_);
 
     ASSERT_EQ("static", constructor->Get(vm_, staticKey)->ToString(vm_)->ToString(vm_));
@@ -255,10 +256,9 @@ HWTEST_F_L0(JSNApiTests, NewSendableClassFunctionDictProperties)
 HWTEST_F_L0(JSNApiTests, NewSendableClassFunctionInstance)
 {
     LocalScope scope(vm_);
-    Local<FunctionRef> constructor = GetNewSendableClassFunction(vm_, FunctionRef::Null(vm_));
-    Local<JSValueRef> argv[1] = {NumberRef::New(vm_, 0)};
-    Local<ObjectRef> obj = constructor->Constructor(vm_, argv, 0);
-    Local<ObjectRef> obj0 = constructor->Constructor(vm_, argv, 0);
+    Local<FunctionRef> constructor = GetNewSendableClassFunction(vm_, JSValueRef::Hole(vm_));
+    Local<ObjectRef> obj = constructor->Constructor(vm_, nullptr, 0);
+    Local<ObjectRef> obj0 = constructor->Constructor(vm_, nullptr, 0);
 
     ASSERT_TRUE(JSFunction::InstanceOf(thread_, JSNApiHelper::ToJSHandle(obj), JSNApiHelper::ToJSHandle(constructor)));
     ASSERT_TRUE(JSFunction::InstanceOf(thread_, JSNApiHelper::ToJSHandle(obj0), JSNApiHelper::ToJSHandle(constructor)));
@@ -298,10 +298,9 @@ HWTEST_F_L0(JSNApiTests, NewSendableClassFunctionInstance)
 HWTEST_F_L0(JSNApiTests, NewSendableClassFunctionDictInstance)
 {
     LocalScope scope(vm_);
-    Local<FunctionRef> constructor = GetNewSendableClassFunction(vm_, FunctionRef::Null(vm_), true);
-    Local<JSValueRef> argv[1] = {NumberRef::New(vm_, 0)};
-    Local<ObjectRef> obj = constructor->Constructor(vm_, argv, 0);
-    Local<ObjectRef> obj0 = constructor->Constructor(vm_, argv, 0);
+    Local<FunctionRef> constructor = GetNewSendableClassFunction(vm_, JSValueRef::Hole(vm_), true);
+    Local<ObjectRef> obj = constructor->Constructor(vm_, nullptr, 0);
+    Local<ObjectRef> obj0 = constructor->Constructor(vm_, nullptr, 0);
 
     ASSERT_TRUE(JSFunction::InstanceOf(thread_, JSNApiHelper::ToJSHandle(obj), JSNApiHelper::ToJSHandle(constructor)));
     ASSERT_TRUE(JSFunction::InstanceOf(thread_, JSNApiHelper::ToJSHandle(obj0), JSNApiHelper::ToJSHandle(constructor)));
@@ -341,14 +340,12 @@ HWTEST_F_L0(JSNApiTests, NewSendableClassFunctionDictInstance)
 HWTEST_F_L0(JSNApiTests, NewSendableClassFunctionInherit)
 {
     LocalScope scope(vm_);
-    Local<FunctionRef> parent = GetNewSendableClassFunction(vm_, FunctionRef::Null(vm_), false, false, true);
+    Local<FunctionRef> parent = GetNewSendableClassFunction(vm_, JSValueRef::Hole(vm_), false, false, true);
     Local<FunctionRef> constructor = GetNewSendableClassFunction(vm_, parent);
-    Local<JSValueRef> argv[1] = {NumberRef::New(vm_, 0)};
-    Local<ObjectRef> obj = constructor->Constructor(vm_, argv, 0);
-    Local<ObjectRef> obj0 = constructor->Constructor(vm_, argv, 0);
+    Local<ObjectRef> obj = constructor->Constructor(vm_, nullptr, 0);
 
+    ASSERT_TRUE(JSFunction::InstanceOf(thread_, JSNApiHelper::ToJSHandle(obj), JSNApiHelper::ToJSHandle(constructor)));
     ASSERT_TRUE(JSFunction::InstanceOf(thread_, JSNApiHelper::ToJSHandle(obj), JSNApiHelper::ToJSHandle(parent)));
-    ASSERT_TRUE(JSFunction::InstanceOf(thread_, JSNApiHelper::ToJSHandle(obj0), JSNApiHelper::ToJSHandle(parent)));
 
     // set parent instance property on instance
     Local<StringRef> parentInstanceKey = StringRef::NewFromUtf8(vm_, "parentInstance");
@@ -368,14 +365,12 @@ HWTEST_F_L0(JSNApiTests, NewSendableClassFunctionInherit)
 HWTEST_F_L0(JSNApiTests, NewSendableClassFunctionDictInherit)
 {
     LocalScope scope(vm_);
-    Local<FunctionRef> parent = GetNewSendableClassFunction(vm_, FunctionRef::Null(vm_), true, false, true);
+    Local<FunctionRef> parent = GetNewSendableClassFunction(vm_, JSValueRef::Hole(vm_), true, false, true);
     Local<FunctionRef> constructor = GetNewSendableClassFunction(vm_, parent);
-    Local<JSValueRef> argv[1] = {NumberRef::New(vm_, 0)};
-    Local<ObjectRef> obj = constructor->Constructor(vm_, argv, 0);
-    Local<ObjectRef> obj0 = constructor->Constructor(vm_, argv, 0);
+    Local<ObjectRef> obj = constructor->Constructor(vm_, nullptr, 0);
 
+    ASSERT_TRUE(JSFunction::InstanceOf(thread_, JSNApiHelper::ToJSHandle(obj), JSNApiHelper::ToJSHandle(constructor)));
     ASSERT_TRUE(JSFunction::InstanceOf(thread_, JSNApiHelper::ToJSHandle(obj), JSNApiHelper::ToJSHandle(parent)));
-    ASSERT_TRUE(JSFunction::InstanceOf(thread_, JSNApiHelper::ToJSHandle(obj0), JSNApiHelper::ToJSHandle(parent)));
 
     // set parent instance property on instance
     Local<StringRef> parentInstanceKey = StringRef::NewFromUtf8(vm_, "parentInstance");
@@ -395,11 +390,11 @@ HWTEST_F_L0(JSNApiTests, NewSendableClassFunctionDictInherit)
 HWTEST_F_L0(JSNApiTests, NewSendableClassFunctionInheritWithDuplicatedKey)
 {
     LocalScope scope(vm_);
-    Local<FunctionRef> parent = GetNewSendableClassFunction(vm_, FunctionRef::Null(vm_), false, false, true);
+    Local<FunctionRef> parent = GetNewSendableClassFunction(vm_, JSValueRef::Hole(vm_), false, false, true);
     Local<FunctionRef> constructor = GetNewSendableClassFunction(vm_, parent, false, true);
-    Local<JSValueRef> argv[1] = {NumberRef::New(vm_, 0)};
-    Local<ObjectRef> obj = constructor->Constructor(vm_, argv, 0);
+    Local<ObjectRef> obj = constructor->Constructor(vm_, nullptr, 0);
 
+    ASSERT_TRUE(JSFunction::InstanceOf(thread_, JSNApiHelper::ToJSHandle(obj), JSNApiHelper::ToJSHandle(constructor)));
     ASSERT_TRUE(JSFunction::InstanceOf(thread_, JSNApiHelper::ToJSHandle(obj), JSNApiHelper::ToJSHandle(parent)));
 
     // set duplicated instance property on instance
@@ -443,7 +438,7 @@ HWTEST_F_L0(JSNApiTests, NewSendableClassFunctionFunction)
     infos.staticPropertiesInfo.attributes.push_back(PropertyAttribute(func, true, true, true));
 
     Local<FunctionRef> constructor = FunctionRef::NewSendableClassFunction(
-        vm_, FunctionCallback, nullptr, nullptr, StringRef::NewFromUtf8(vm_, "name"), infos, FunctionRef::Null(vm_));
+        vm_, FunctionCallback, nullptr, nullptr, StringRef::NewFromUtf8(vm_, "name"), infos, JSValueRef::Hole(vm_));
 
     Local<FunctionRef> staticValue = constructor->Get(vm_, staticKey);
     ASSERT_TRUE(staticValue->IsFunction(vm_));
@@ -486,13 +481,25 @@ HWTEST_F_L0(JSNApiTests, NewSendableClassFunctionGetterSetter)
     infos.staticPropertiesInfo.attributes.push_back(PropertyAttribute(staticValue, true, true, true));
 
     Local<FunctionRef> constructor = FunctionRef::NewSendableClassFunction(
-        vm_, FunctionCallback, nullptr, nullptr, StringRef::NewFromUtf8(vm_, "name"), infos, FunctionRef::Null(vm_));
+        vm_, FunctionCallback, nullptr, nullptr, StringRef::NewFromUtf8(vm_, "name"), infos, JSValueRef::Hole(vm_));
 
     ASSERT_EQ("getterSetter", constructor->Get(vm_, getterSetter)->ToString(vm_)->ToString(vm_));
     ASSERT_EQ("getterSetter", constructor->Get(vm_, staticKey)->ToString(vm_)->ToString(vm_));
     constructor->Set(vm_, staticKey, StringRef::NewFromUtf8(vm_, "getterSetter0"));
     ASSERT_EQ("getterSetter0", constructor->Get(vm_, getterSetter)->ToString(vm_)->ToString(vm_));
     ASSERT_EQ("getterSetter0", constructor->Get(vm_, staticKey)->ToString(vm_)->ToString(vm_));
+}
+
+HWTEST_F_L0(JSNApiTests, NewSendableClassFunctionStringify)
+{
+    LocalScope scope(vm_);
+
+    FunctionRef::SendablePropertiesInfos infos;
+    Local<FunctionRef> constructor = FunctionRef::NewSendableClassFunction(
+        vm_, FunctionCallback, nullptr, nullptr, StringRef::NewFromUtf8(vm_, "name"), infos, JSValueRef::Hole(vm_));
+
+    Local<ObjectRef> obj = constructor->Constructor(vm_, nullptr, 0);
+    ASSERT_EQ("[object Object]", obj->ToString(vm_)->ToString(vm_));
 }
 
 HWTEST_F_L0(JSNApiTests, NewObjectWithProperties)

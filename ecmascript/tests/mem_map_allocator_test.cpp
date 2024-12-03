@@ -64,7 +64,7 @@ HWTEST_F_L0(MemMapAllocatorTest, GetMemOverflow)
     MemMap mem = MemMapAllocator::GetInstance()->Allocate(thread->GetThreadId(), 2048_MB, DEFAULT_REGION_SIZE,
                                                          ToSpaceTypeName(space->GetSpaceType()),
                                                          false, true,
-                                                         Jit::GetInstance()->IsEnableJitFort());
+                                                         Jit::GetInstance()->IsEnableJitFort(), true);
     EXPECT_EQ(mem.GetSize(), 0_MB);
 }
 

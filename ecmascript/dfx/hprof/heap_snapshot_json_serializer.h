@@ -23,6 +23,7 @@
 #include "ecmascript/dfx/hprof/file_stream.h"
 #include "ecmascript/mem/c_containers.h"
 #include "ecmascript/mem/c_string.h"
+#include "ecmascript/dfx/hprof/string_hashmap.h"
 
 #include "securec.h"
 
@@ -111,7 +112,8 @@ public:
     NO_MOVE_SEMANTIC(HeapSnapshotJSONSerializer);
     NO_COPY_SEMANTIC(HeapSnapshotJSONSerializer);
     static bool Serialize(HeapSnapshot *snapshot, Stream *stream);
-    static void DumpStringTable(HeapSnapshot *snapshot, Stream *stream);
+    static uint32_t DumpStringTable(StringHashMap *stringTable, Stream *stream,
+                                CUnorderedMap<uint64_t, CVector<uint64_t>> &strIdMapObjVec);
 
 private:
     static constexpr char ASCII_US = 31;

@@ -212,26 +212,7 @@ namespace panda::ecmascript {
     V(LdSuperByValue)                \
     V(StSuperByValue)                \
     V(ThrowDeleteSuperProperty)      \
-    V(ModWithTSType)                 \
-    V(MulWithTSType)                 \
-    V(SubWithTSType)                 \
-    V(DivWithTSType)                 \
-    V(AddWithTSType)                 \
-    V(GetBitOPDate)                  \
-    V(ShlWithTSType)                 \
-    V(ShrWithTSType)                 \
-    V(AshrWithTSType)                \
-    V(AndWithTSType)                 \
-    V(OrWithTSType)                  \
-    V(XorWithTSType)                 \
-    V(EqualWithIC)                   \
-    V(NotEqualWithIC)                \
-    V(Compare)                       \
-    V(LessWithIC)                    \
-    V(LessEqWithIC)                  \
-    V(GreaterWithIC)                 \
     V(SetPropertyByName)             \
-    V(GreaterEqWithIC)               \
     V(LdBigInt)                      \
     V(Tonumeric)                     \
     V(CreateAsyncGeneratorObj)       \
@@ -337,6 +318,8 @@ namespace panda::ecmascript {
     V(SharedArray, Every)                     \
     V(SharedArray, Some)                      \
     V(SharedArray, LastIndexOf)               \
+    V(SharedArray, Of)                        \
+    V(SharedArray, CopyWithin)                \
     V(ArrayBuffer, Constructor)               \
     V(ArrayBuffer, Slice)                     \
     V(ArrayBuffer, Species)                   \

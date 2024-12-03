@@ -18,6 +18,9 @@
 #include "ecmascript/object_factory.h"
 #include "ecmascript/tests/test_helper.h"
 #include "ecmascript/global_env.h"
+#include "ecmascript/js_primitive_ref.h"
+#include "ecmascript/js_symbol.h"
+#include "ecmascript/js_tagged_value-inl.h"
 
 using namespace panda::ecmascript;
 using namespace panda::ecmascript::base;
@@ -82,4 +85,55 @@ HWTEST_F_L0(EcmaContextTest, SwitchCurrentContext)
     EXPECT_EQ(contextVector.size(), 2);  // 3: size of contexts.
     EcmaContext::CheckAndDestroy(thread, context1);
 }
+
+HWTEST_F_L0(EcmaContextTest, CStringTest001)
+{
+        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+        JSHandle<EcmaString> testString = factory->NewFromASCII("bar2bazJavaScriptbaz");
+        CString str = ConvertToString(EcmaString::Cast(testString.GetObject<EcmaString>()),
+                                                        StringConvertedUsage::LOGICOPERATION, false);
+        EXPECT_EQ(str, CString("bar2bazJavaScriptbaz"));
+}
+
+HWTEST_F_L0(EcmaContextTest, CStringTest002)
+{
+        CString str = ConvertToString(nullptr, StringConvertedUsage::LOGICOPERATION, false);
+        EXPECT_EQ(str, CString(""));
+}
+
+HWTEST_F_L0(EcmaContextTest, CStringTest003)
+{
+        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+        JSHandle<EcmaString> testString = factory->NewFromASCII("test");
+        EcmaString *ecmaString = EcmaString::Cast(testString.GetObject<EcmaString>());
+        JSTaggedValue key = JSTaggedValue(ecmaString);
+        CString str = ConvertToString(key);
+        EXPECT_EQ(str, CString("test"));
+}
+
+HWTEST_F_L0(EcmaContextTest, CStringTest004)
+{
+        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+        JSHandle<JSSymbol> symbol = factory->NewPublicSymbolWithChar("bbb");
+        JSHandle<JSTaggedValue> value5(symbol);
+        JSTaggedValue key =
+            JSTaggedValue(JSHandle<JSPrimitiveRef>::Cast(JSTaggedValue::ToObject(thread, value5))->GetValue());
+        CString str = ConvertToString(key);
+        EXPECT_EQ(str, CString("bbb"));
+}
+
+HWTEST_F_L0(EcmaContextTest, CStringTest005)
+{
+        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+        JSHandle<JSSymbol> symbol = factory->NewPublicSymbolWithChar("");
+        symbol->SetDescription(thread, JSTaggedValue::Undefined());
+        symbol->SetFlags(0);
+        symbol->SetHashField(0);
+        JSHandle<JSTaggedValue> value5(symbol);
+        JSTaggedValue key =
+            JSTaggedValue(JSHandle<JSPrimitiveRef>::Cast(JSTaggedValue::ToObject(thread, value5))->GetValue());
+        CString str = ConvertToString(key);
+        EXPECT_EQ(str, CString("Symbol()"));
+}
+
 }  // namespace panda::test

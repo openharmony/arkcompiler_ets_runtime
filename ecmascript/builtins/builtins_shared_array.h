@@ -28,6 +28,7 @@
     V("create", Create, 2, INVALID)                            \
     /* SendableArray.isArray ( arg ) */                        \
     V("isArray", IsArray, 1, INVALID)                          \
+    V("of", Of, 1, INVALID)                                    \
     // fixme(hzzhouzebin) Support later.
     // /* SharedArray.of ( ...items ) */                          \
     // V("of", Of, 0, INVALID)
@@ -89,7 +90,8 @@
     /* SharedArray.prototype.some ( callbackfn [ , thisArg ] ) */                \
     V("some", Some, 1, INVALID)                                                  \
     /* SendableArray.prototype.lastIndexOf ( searchElement [ , fromIndex ] ) */  \
-    V("lastIndexOf", LastIndexOf, 1, INVALID)
+    V("lastIndexOf", LastIndexOf, 1, INVALID)                                    \
+    V("copyWithin", CopyWithin, 2, INVALID)                                      \
     // fixme(hzzhouzebin) Support later.
     // /* SharedArray.prototype.with ( index, value ) */                            \
     // V("with", With, 2, INVALID)                                                  \
@@ -98,7 +100,6 @@
     // /* SharedArray.prototype.reverse ( ) */                                      \
     // V("reverse", Reverse, 0, INVALID)                                            \
     // /* SharedArray.prototype.copyWithin ( target, start [ , end ] ) */           \
-    // V("copyWithin", CopyWithin, 2, INVALID)                                      \
     // /* SharedArray.prototype.findLast ( predicate [ , thisArg ] ) */             \
     // V("findLast", FindLast, 1, INVALID)                                          \
     // /* SharedArray.prototype.findLastIndex ( predicate [ , thisArg ] ) */        \
@@ -151,6 +152,8 @@ public:
     static JSTaggedValue Every(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue Some(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue LastIndexOf(EcmaRuntimeCallInfo *argv);
+    static JSTaggedValue Of(EcmaRuntimeCallInfo *argv);
+    static JSTaggedValue CopyWithin(EcmaRuntimeCallInfo *argv);
 
     // Excluding the '@@' internal properties
     static Span<const base::BuiltinFunctionEntry> GetSharedArrayFunctions()
@@ -177,9 +180,9 @@ public:
         JSHandle<JSTaggedValue> &thisObjVal, int64_t k, int64_t len, JSMutableHandle<JSTaggedValue> &accumulator,
         JSHandle<JSTaggedValue> &callbackFnHandle);
 
-    static JSTaggedValue FilterUnStableJSArray(JSThread *thread, JSHandle<JSTaggedValue> &thisArgHandle,
-        JSHandle<JSTaggedValue> &thisObjVal, int64_t k, int64_t len, uint32_t toIndex,
-        JSHandle<JSObject> newArrayHandle, JSHandle<JSTaggedValue> &callbackFnHandle);
+    static JSTaggedValue FilterArray(JSThread *thread, JSHandle<JSTaggedValue> &thisArgHandle,
+        JSHandle<JSTaggedValue> &thisObjVal, JSHandle<JSObject> newArrayHandle,
+        JSHandle<JSTaggedValue> &callbackFnHandle);
 
     static Span<const std::pair<std::string_view, bool>> GetPrototypeProperties()
     {
@@ -189,7 +192,18 @@ public:
     {
         return Span<const std::pair<std::string_view, bool>>(ARRAY_FUNCTION_PROPERTIES);
     }
+
+    static inline uint64_t ConvertTagValueToInteger(JSThread *thread, JSHandle<JSTaggedValue>& number, int64_t len);
+    static inline uint64_t GetNumberArgVal(JSThread *thread, EcmaRuntimeCallInfo *argv, uint32_t idx, int64_t len,
+                                           int64_t defVal);
+    static inline uint64_t GetNumberArgValThrow(JSThread *thread, EcmaRuntimeCallInfo *argv, uint32_t idx,
+                                                int64_t len, const char* err);
+
+    static inline void SetElementValue(JSThread *thread, JSHandle<JSObject> arrHandle, uint32_t key,
+                                       const JSHandle<JSTaggedValue> &value);
+
 private:
+    static inline JSTaggedValue GetElementByKey(JSThread *thread, JSHandle<JSObject>& thisObjHandle, uint32_t index);
     static JSTaggedValue PopInner(EcmaRuntimeCallInfo *argv, JSHandle<JSTaggedValue> &thisHandle,
                                   JSHandle<JSObject> &thisObjHandle);
 #define BUILTIN_SENDABLE_ARRAY_FUNCTION_ENTRY(name, method, length, id) \
@@ -232,11 +246,9 @@ private:
         BUILTIN_SHARED_ARRAY_FUNCTIONS(ARRAY_PROPERTIES_PAIR)
         std::pair<std::string_view, bool>("[Symbol.species]", true),
     };
-    static JSTaggedValue CheckElementForEvery(JSThread *thread,
-                                              JSHandle<JSTaggedValue> &thisObjVal,
-                                              JSHandle<JSTaggedValue> &callbackFnHandle,
-                                              JSHandle<JSTaggedValue> &thisArgHandle,
-                                              uint32_t &k);
+    static JSTaggedValue CheckElementMeetReq(JSThread *thread,
+                                             JSHandle<JSTaggedValue> &thisObjVal,
+                                             JSHandle<JSTaggedValue> &callbackFnHandle, bool isSome);
 #undef ARRAY_PROPERTIES_PAIR
 
 #define ARRAY_CHECK_SHARED_ARRAY(errMsg)                                            \

@@ -91,6 +91,7 @@ public:
             oldSpaceMaxOvershootSize_ = 8_MB;
             outOfMemoryOvershootSize_ = 2_MB;
             minAllocLimitGrowingStep_ = 2_MB;
+            minNativeLimitGrowingStep_ = 16_MB;
             minGrowingStep_ = 4_MB;
             maxStackSize_ = 128_KB;
             maxJSSerializerSize_ = 8_MB;
@@ -100,7 +101,7 @@ public:
             stepNativeSizeInc_ = 256_MB;
             nativeSizeOvershoot_ = 80_MB;
             maxNativeSizeInc_ = 768_MB;
-            fragmentationLimitForSharedFullGC_ = 10_MB;
+            fragmentationLimitForSharedFullGC_ = 5_MB;
         } else if (maxHeapSize_ < HIGH_MEMORY) { // 128_MB ~ 256_MB
             minSemiSpaceSize_ = 2_MB;
             maxSemiSpaceSize_ = 8_MB;
@@ -116,6 +117,7 @@ public:
             oldSpaceMaxOvershootSize_ = 16_MB;
             outOfMemoryOvershootSize_ = 2_MB;
             minAllocLimitGrowingStep_ = 4_MB;
+            minNativeLimitGrowingStep_ = 32_MB;
             minGrowingStep_ = 8_MB;
             maxStackSize_ = 128_KB;
             maxJSSerializerSize_ = 16_MB;
@@ -125,7 +127,7 @@ public:
             stepNativeSizeInc_ = 256_MB;
             nativeSizeOvershoot_ = 80_MB;
             maxNativeSizeInc_ = 768_MB;
-            fragmentationLimitForSharedFullGC_ = 10_MB;
+            fragmentationLimitForSharedFullGC_ = 5_MB;
         }  else { // 256_MB ~ 384_MB
             minSemiSpaceSize_ = 2_MB;
             maxSemiSpaceSize_ = 16_MB;
@@ -141,6 +143,7 @@ public:
             oldSpaceMaxOvershootSize_ = 16_MB;
             outOfMemoryOvershootSize_ = 2_MB;
             minAllocLimitGrowingStep_ = 8_MB;
+            minNativeLimitGrowingStep_ = 64_MB;
             minGrowingStep_ = 16_MB;
             maxStackSize_ = 128_KB;
             maxJSSerializerSize_ = 16_MB;
@@ -151,7 +154,7 @@ public:
             nativeSizeOvershoot_ = 100_MB;
             asyncClearNativePointerThreshold_ = 500_MB;
             maxNativeSizeInc_ = 1_GB;
-            fragmentationLimitForSharedFullGC_ = 10_MB;
+            fragmentationLimitForSharedFullGC_ = 5_MB;
         }
     }
 
@@ -228,6 +231,11 @@ public:
     size_t GetMinAllocLimitGrowingStep() const
     {
         return minAllocLimitGrowingStep_;
+    }
+
+    size_t GetMinNativeLimitGrowingStep() const
+    {
+        return minNativeLimitGrowingStep_;
     }
 
     size_t GetMinGrowingStep() const
@@ -323,6 +331,7 @@ private:
     size_t oldSpaceMaxOvershootSize_ {0};
     size_t outOfMemoryOvershootSize_ {0};
     size_t minAllocLimitGrowingStep_ {0};
+    size_t minNativeLimitGrowingStep_ {0};
     size_t minGrowingStep_ {0};
     size_t sharedHeapLimitGrowingFactor_ {0};
     size_t sharedHeapLimitGrowingStep_ {0};

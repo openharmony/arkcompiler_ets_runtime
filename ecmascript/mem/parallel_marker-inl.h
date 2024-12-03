@@ -279,20 +279,12 @@ inline uintptr_t MovableMarker::AllocateDstSpace(uint32_t threadId, size_t size,
     uintptr_t forwardAddress = 0;
     if (shouldPromote) {
         forwardAddress = workManager_->GetTlabAllocator(threadId)->Allocate(size, COMPRESS_SPACE);
-        if (UNLIKELY(forwardAddress == 0)) {
-            LOG_ECMA_MEM(FATAL) << "EvacuateObject alloc failed: "
-                                << " size: " << size;
-            UNREACHABLE();
-        }
+        ASSERT(forwardAddress != 0);
     } else {
         forwardAddress = workManager_->GetTlabAllocator(threadId)->Allocate(size, SEMI_SPACE);
         if (UNLIKELY(forwardAddress == 0)) {
             forwardAddress = workManager_->GetTlabAllocator(threadId)->Allocate(size, COMPRESS_SPACE);
-            if (UNLIKELY(forwardAddress == 0)) {
-                LOG_ECMA_MEM(FATAL) << "EvacuateObject alloc failed: "
-                                    << " size: " << size;
-                UNREACHABLE();
-            }
+            ASSERT(forwardAddress != 0);
             shouldPromote = true;
         }
     }

@@ -15,13 +15,13 @@
 
 #include "ecmascript/ic/ic_runtime.h"
 #include "ecmascript/ic/ic_handler.h"
+#include "ecmascript/dfx/stackinfo/js_stackinfo.h"
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/interpreter/slow_runtime_stub.h"
 #include "ecmascript/js_primitive_ref.h"
 #include "ecmascript/shared_objects/js_shared_array.h"
 
 namespace panda::ecmascript {
-#define TRACE_IC 0  // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 
 void ICRuntime::UpdateLoadHandler(const ObjectOperator &op, JSHandle<JSTaggedValue> key,
                                   JSHandle<JSTaggedValue> receiver)
@@ -45,7 +45,7 @@ void ICRuntime::UpdateLoadHandler(const ObjectOperator &op, JSHandle<JSTaggedVal
     // When a transition occurs without the shadow property, AOT does not trigger the
     // notifyprototypechange behavior, so for the case where the property does not
     // exist and the Hclass is AOT, IC needs to be abandoned.
-    if (hclass->IsTS() && !op.IsFound()) {
+    if (hclass->IsAOT() && !op.IsFound()) {
         return;
     }
     if (op.IsElement()) {
@@ -152,25 +152,6 @@ void ICRuntime::UpdateStoreHandler(const ObjectOperator &op, JSHandle<JSTaggedVa
     }
 }
 
-void ICRuntime::TraceIC([[maybe_unused]] JSHandle<JSTaggedValue> receiver,
-                        [[maybe_unused]] JSHandle<JSTaggedValue> key) const
-{
-#if TRACE_IC
-    auto kind = ICKindToString(GetICKind());
-    auto state = ProfileTypeAccessor::ICStateToString(icAccessor_.GetICState());
-    if (key->IsString()) {
-        auto keyStrHandle = JSHandle<EcmaString>::Cast(key);
-        LOG_ECMA(ERROR) << kind << " miss key is: " << EcmaStringAccessor(keyStrHandle).ToCString()
-                            << ", receiver is " << receiver->GetTaggedObject()->GetClass()->IsDictionaryMode()
-                            << ", state is " << state;
-    } else {
-        LOG_ECMA(ERROR) << kind << " miss " << ", state is "
-                            << ", receiver is " << receiver->GetTaggedObject()->GetClass()->IsDictionaryMode()
-                            << state;
-    }
-#endif
-}
-
 JSTaggedValue LoadICRuntime::LoadValueMiss(JSHandle<JSTaggedValue> receiver, JSHandle<JSTaggedValue> key)
 {
     JSTaggedValue::RequireObjectCoercible(thread_, receiver, "Cannot load property of null or undefined");
@@ -210,7 +191,7 @@ JSTaggedValue LoadICRuntime::LoadValueMiss(JSHandle<JSTaggedValue> receiver, JSH
             icAccessor_.SetAsMega();
             return result.GetTaggedValue();
         }
-        TraceIC(receiver, key);
+        TraceIC(GetThread(), receiver, key);
         // do not cache element
         if (!op.IsFastMode()) {
             icAccessor_.SetAsMega();
@@ -246,14 +227,6 @@ JSTaggedValue LoadICRuntime::LoadMiss(JSHandle<JSTaggedValue> receiver, JSHandle
         return CallPrivateGetter(receiver, key);
     }
 
-    if (key->IsSymbol() && JSSymbol::Cast(key->GetTaggedObject())->IsPrivate()) {
-        PropertyDescriptor desc(thread_);
-        if (!JSTaggedValue::IsPropertyKey(key) ||
-            !JSTaggedValue::GetOwnProperty(thread_, receiver, key, desc)) {
-            THROW_TYPE_ERROR_AND_RETURN(thread_, "invalid or cannot find private key", JSTaggedValue::Exception());
-        }
-    }
-
     ObjectOperator op(GetThread(), receiver, key);
     auto result = JSHandle<JSTaggedValue>(thread_, JSObject::GetProperty(GetThread(), &op));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
@@ -269,7 +242,7 @@ JSTaggedValue LoadICRuntime::LoadMiss(JSHandle<JSTaggedValue> receiver, JSHandle
         icAccessor_.SetAsMega();
         return result.GetTaggedValue();
     }
-    TraceIC(receiver, key);
+    TraceIC(GetThread(), receiver, key);
     // do not cache element
     if (!op.IsFastMode()) {
         icAccessor_.SetAsMega();
@@ -293,7 +266,6 @@ inline JSTaggedValue LoadICRuntime::CallPrivateGetter(JSHandle<JSTaggedValue> re
     JSHandle<JSTaggedValue> undefined = thread_->GlobalConstants()->GetHandledUndefined();
     EcmaRuntimeCallInfo* info =
         EcmaInterpreter::NewRuntimeCallInfo(thread_, key, receiver, undefined, 0); // 0: getter has 0 argument
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
     JSTaggedValue resGetter = JSFunction::Call(info);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
     return resGetter;
@@ -312,7 +284,9 @@ JSTaggedValue LoadICRuntime::LoadTypedArrayValueMiss(JSHandle<JSTaggedValue> rec
         }
         UpdateTypedArrayHandler(receiver);
         JSHandle<JSTaggedValue> indexHandle(GetThread(), numericIndex);
-        uint32_t index = static_cast<uint32_t>(JSTaggedValue::ToInteger(GetThread(), indexHandle).ToInt32());
+        JSTaggedNumber integerValue = JSTaggedValue::ToInteger(GetThread(), indexHandle);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(GetThread());
+        uint32_t index = static_cast<uint32_t>(integerValue.ToInt32());
         JSType type = receiver->GetTaggedObject()->GetClass()->GetObjectType();
         return JSTypedArray::FastGetPropertyByIndex(GetThread(), receiver.GetTaggedValue(), index, type);
     } else {
@@ -328,7 +302,7 @@ JSTaggedValue LoadICRuntime::LoadTypedArrayValueMiss(JSHandle<JSTaggedValue> rec
             icAccessor_.SetAsMega();
             return result.GetTaggedValue();
         }
-        TraceIC(receiver, key);
+        TraceIC(GetThread(), receiver, key);
         // do not cache element
         if (!op.IsFastMode()) {
             icAccessor_.SetAsMega();
@@ -348,9 +322,9 @@ JSTaggedValue StoreICRuntime::StoreMiss(JSHandle<JSTaggedValue> receiver, JSHand
     }
     if (!receiver->IsJSObject() || receiver->HasOrdinaryGet()) {
         icAccessor_.SetAsMega();
-        bool success = JSTaggedValue::SetProperty(GetThread(), receiver, key, value, true);
+        JSTaggedValue::SetProperty(GetThread(), receiver, key, value, true);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
-        return success ? JSTaggedValue::Undefined() : JSTaggedValue::Exception();
+        return JSTaggedValue::Undefined();
     }
     if (receiver->IsTypedArray() || receiver->IsSharedTypedArray()) {
         return StoreTypedArrayValueMiss(receiver, key, value);
@@ -375,21 +349,10 @@ JSTaggedValue StoreICRuntime::StoreMiss(JSHandle<JSTaggedValue> receiver, JSHand
     if (receiver->IsJSSharedArray()) {
         bool success = JSSharedArray::SetProperty(thread_, receiver, key, value, true, SCheckMode::CHECK);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
-        if (success) {
-            return JSTaggedValue::Undefined();
-        }
-        return JSTaggedValue::Exception();
+        return success ? JSTaggedValue::Undefined() : JSTaggedValue::Exception();
     }
     if (key->IsJSFunction()) { // key is a private setter
         return CallPrivateSetter(receiver, key, value);
-    }
-
-    if (key->IsSymbol() && JSSymbol::Cast(key->GetTaggedObject())->IsPrivate()) {
-        PropertyDescriptor desc(thread_);
-        if (!JSTaggedValue::IsPropertyKey(key) ||
-            !JSTaggedValue::GetOwnProperty(thread_, receiver, key, desc)) {
-            THROW_TYPE_ERROR_AND_RETURN(thread_, "invalid or cannot find private key", JSTaggedValue::Exception());
-        }
     }
 
     ObjectOperator op(GetThread(), receiver, key, isOwn ? OperatorType::OWN : OperatorType::PROTOTYPE_CHAIN);
@@ -401,31 +364,40 @@ JSTaggedValue StoreICRuntime::StoreMiss(JSHandle<JSTaggedValue> receiver, JSHand
             return SlowRuntimeStub::ThrowReferenceError(GetThread(), key.GetTaggedValue(), " is not defined");
         }
     }
+
     bool success = false;
+    // If op is Accessor, it may change the properties of receiver or receiver's proto,
+    // causing IC compute errors, so move SetPropertyForAccessor to be executed after UpdateStoreHandler.
+    bool isAccessor = false;
     if (isOwn) {
         bool enumerable = !(receiver->IsClassPrototype() || receiver->IsClassConstructor());
         PropertyDescriptor desc(thread_, value, true, enumerable, true);
         success = JSObject::DefineOwnProperty(thread_, &op, desc);
     } else {
-        success = JSObject::SetProperty(&op, value, true);
+        success = JSObject::SetPropertyForData(&op, value, &isAccessor);
     }
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
-    // ic-switch
-    if (!GetThread()->GetEcmaVM()->ICEnabled()) {
+
+    // IC Disable
+    if (!GetThread()->GetEcmaVM()->ICEnabled() || !op.IsFastMode()) {
         icAccessor_.SetAsMega();
-        return success ? JSTaggedValue::Undefined() : JSTaggedValue::Exception();
-    }
-    TraceIC(receiver, key);
-    // do not cache element
-    if (!op.IsFastMode()) {
-        icAccessor_.SetAsMega();
-        return success ? JSTaggedValue::Undefined() : JSTaggedValue::Exception();
-    }
-    if (success) {
-        UpdateStoreHandler(op, key, receiver);
+        if (!success) {
+            return JSTaggedValue::Exception();
+        }
+        if (isAccessor) {
+            return HandleAccesor(&op, value);
+        }
         return JSTaggedValue::Undefined();
     }
-    return JSTaggedValue::Exception();
+
+    TraceIC(GetThread(), receiver, key);
+    if (success) {
+        UpdateStoreHandler(op, key, receiver);
+    }
+    if (isAccessor) {
+        return HandleAccesor(&op, value);
+    }
+    return success ? JSTaggedValue::Undefined() : JSTaggedValue::Exception();
 }
 
 inline JSTaggedValue StoreICRuntime::CallPrivateSetter(JSHandle<JSTaggedValue> receiver, JSHandle<JSTaggedValue> key,
@@ -458,34 +430,104 @@ JSTaggedValue StoreICRuntime::StoreTypedArrayValueMiss(JSHandle<JSTaggedValue> r
         }
         UpdateTypedArrayHandler(receiver);
         JSHandle<JSTaggedValue> indexHandle(GetThread(), numericIndex);
-        uint32_t index = static_cast<uint32_t>(JSTaggedValue::ToInteger(GetThread(), indexHandle).ToInt32());
+        JSTaggedNumber integerValue = JSTaggedValue::ToInteger(GetThread(), indexHandle);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(GetThread());
+        uint32_t index = static_cast<uint32_t>(integerValue.ToInt32());
         JSType type = receiver->GetTaggedObject()->GetClass()->GetObjectType();
         return JSTypedArray::FastSetPropertyByIndex(GetThread(), receiver.GetTaggedValue(), index,
                                                     value.GetTaggedValue(), type);
     } else {
         UpdateReceiverHClass(JSHandle<JSTaggedValue>(GetThread(), JSHandle<JSObject>::Cast(receiver)->GetClass()));
         ObjectOperator op(GetThread(), receiver, key);
-        bool success = JSObject::SetProperty(&op, value, true);
-        if (op.GetValue().IsAccessor()) {
-            op = ObjectOperator(GetThread(), receiver, key);
-        }
-        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(GetThread());
-        // ic-switch
-        if (!GetThread()->GetEcmaVM()->ICEnabled()) {
+
+        // If op is Accessor, it may change the properties of receiver or receiver's proto,
+        // causing IC compute errors, so move SetPropertyForAccessor to be executed after UpdateStoreHandler.
+        bool isAccessor = false;
+        bool success = JSObject::SetPropertyForData(&op, value, &isAccessor);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
+
+        // IC Disable
+        if (!GetThread()->GetEcmaVM()->ICEnabled() || !op.IsFastMode()) {
             icAccessor_.SetAsMega();
-            return success ? JSTaggedValue::Undefined() : JSTaggedValue::Exception();
-        }
-        TraceIC(receiver, key);
-        // do not cache element
-        if (!op.IsFastMode()) {
-            icAccessor_.SetAsMega();
-            return success ? JSTaggedValue::Undefined() : JSTaggedValue::Exception();
-        }
-        if (success) {
-            UpdateStoreHandler(op, key, receiver);
+            if (!success) {
+                return JSTaggedValue::Exception();
+            }
+            if (isAccessor) {
+                return HandleAccesor(&op, value);
+            }
             return JSTaggedValue::Undefined();
         }
+
+        TraceIC(GetThread(), receiver, key);
+        if (success) {
+            UpdateStoreHandler(op, key, receiver);
+        }
+        if (isAccessor) {
+            return HandleAccesor(&op, value);
+        }
+        return success ? JSTaggedValue::Undefined() : JSTaggedValue::Exception();
+    }
+}
+
+JSTaggedValue StoreICRuntime::HandleAccesor(ObjectOperator *op, const JSHandle<JSTaggedValue> &value)
+{
+    bool success = JSObject::SetPropertyForAccessor(op, value);
+    if (thread_->HasPendingException()) {
+        icAccessor_.SetAsMega();
         return JSTaggedValue::Exception();
     }
+    return success ? JSTaggedValue::Undefined() : JSTaggedValue::Exception();
+}
+
+void ICRuntime::TraceIC([[maybe_unused]] JSThread *thread,
+                        [[maybe_unused]] JSHandle<JSTaggedValue> receiver,
+                        [[maybe_unused]] JSHandle<JSTaggedValue> key) const
+{
+#if ECMASCRIPT_ENABLE_TRACE_IC
+    // If BackTrace affects IC, can choose not to execute it.
+    std::string strTraceIC = "Miss Func BackTrace: ";
+    std::vector<JsFrameInfo> jsStackInfo = JsStackInfo::BuildJsStackInfo(thread, true);
+    if (jsStackInfo.empty()) {
+        strTraceIC += "empty";
+    } else {
+        JsFrameInfo jsFrameInfo = jsStackInfo.front();
+        size_t pos = jsFrameInfo.pos.find(':', 0);
+        if (pos != CString::npos) {
+            int lineNumber = std::stoi(jsFrameInfo.pos.substr(0, pos));
+            int columnNumber = std::stoi(jsFrameInfo.pos.substr(pos + 1));
+            auto sourceMapcb = thread->GetEcmaVM()->GetSourceMapTranslateCallback();
+            if (sourceMapcb != nullptr && !jsFrameInfo.fileName.empty()) {
+                sourceMapcb(jsFrameInfo.fileName, lineNumber, columnNumber);
+            }
+        }
+        strTraceIC += "funcName: " + jsFrameInfo.functionName + ", url: " +
+            jsFrameInfo.fileName + ":" + jsFrameInfo.pos;
+    }
+    LOG_ECMA(ERROR) << strTraceIC;
+
+    auto kind = ICKindToString(GetICKind());
+    bool primitiveIc = false;
+    if (receiver->IsNumber() || receiver->IsString()) {
+        primitiveIc = true;
+    }
+    auto state = ProfileTypeAccessor::ICStateToString(icAccessor_.GetICState());
+    if (key->IsString()) {
+        auto keyStrHandle = JSHandle<EcmaString>::Cast(key);
+        LOG_ECMA(ERROR) << kind << " miss, key is: " << EcmaStringAccessor(keyStrHandle).ToCString()
+                        << ", icstate is: " << state
+                        << ", slotid is: " << GetSlotId();
+    } else {
+        LOG_ECMA(ERROR) << kind << " miss, "
+                        << ", icstate is " << state
+                        << ", slotid is:" << GetSlotId();
+    }
+    if (primitiveIc) {
+        LOG_ECMA(ERROR) << "primitiveIc ";
+    } else {
+        JSHClass *jshclass = receiver->GetTaggedObject()->GetClass();
+        LOG_ECMA(ERROR) << "receiver DictionaryMode is: " << jshclass->IsDictionaryMode()
+                        << ", hclass is: "<< std::hex << jshclass;
+    }
+#endif
 }
 }  // namespace panda::ecmascript

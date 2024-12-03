@@ -17,8 +17,8 @@ const { X2DFast } = require('../graphics/X2DFast');
 
 class XScroll {
   constructor(options) {
-    if (options['type']) {
-      this.type_ = options['type'];
+    if (options.type) {
+      this.type_ = options.type;
     }
     else {
       this.type_ = 'right';

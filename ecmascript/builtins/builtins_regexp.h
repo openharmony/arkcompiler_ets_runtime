@@ -90,7 +90,7 @@ public:
                                          JSHandle<JSTaggedValue> string,
                                          JSHandle<JSTaggedValue> inputReplaceValue);
     static JSTaggedValue GetAllFlagsInternal(JSThread *thread, JSHandle<JSTaggedValue> &thisObj);
-    static bool IsFastRegExp(JSThread *thread, JSHandle<JSTaggedValue> regexp,
+    static bool IsFastRegExp(JSThread *thread, JSTaggedValue regexp,
                              RegExpSymbol symbolTag = RegExpSymbol::UNKNOWN);
     static bool GetFlag(JSThread *thread, const JSHandle<JSTaggedValue> regexp, uint32_t flag, bool isFastPath);
     static bool GetOriginalFlag(JSThread *thread, const JSHandle<JSTaggedValue> regexp, uint32_t flag);
@@ -145,6 +145,13 @@ public:
     V(REPLACE, Replace)
 
 private:
+    // Execution with a huge RegExp pattern may cost much time and block other thread SuspendAll, so copy an
+    // OffHeap string and pass it to RegExpExecutor, thus we could transition to native before we do this execution.
+    enum class StringSource {
+        ONHEAP_STRING,
+        OFFHEAP_STRING,
+    };
+    static constexpr uint32_t MIN_REGEXP_PATTERN_LENGTH_EXECUTE_WITH_OFFHEAP_STRING = 4000;
     static constexpr uint32_t MIN_REPLACE_STRING_LENGTH = 1000;
     static constexpr uint32_t MAX_SPLIT_LIMIT = 0xFFFFFFFFu;
     static constexpr uint32_t REGEXP_GLOBAL_ARRAY_SIZE = 9;
@@ -160,7 +167,7 @@ private:
     using ReplacePositionField = ReplaceLengthField::NextField<uint32_t, REPLACE_POSITION_BITS>; // 60
 
     static bool Matcher(JSThread *thread, const JSHandle<JSTaggedValue> regexp,
-                        const uint8_t *buffer, size_t length, int32_t lastindex, bool isUtf16);
+                        const uint8_t *buffer, size_t length, int32_t lastindex, bool isUtf16, StringSource source);
 
     static JSTaggedValue GetFlagsInternal(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
                                           const JSHandle<JSTaggedValue> &constructor, const uint8_t mask);
@@ -196,7 +203,8 @@ private:
                                    JSHandle<EcmaString> inputString, int32_t lastIndex);
     static JSTaggedValue RegExpSplitFast(JSThread *thread, const JSHandle<JSTaggedValue> regexp,
                                          JSHandle<JSTaggedValue> string, uint32_t limit, bool useCache);
-    static JSHandle<EcmaString> CreateStringFromResultArray(JSThread *thread, const JSHandle<TaggedArray> resultArray,
+    static JSHandle<EcmaString> CreateStringFromResultArray(JSThread *thread,
+        const CVector<JSHandle<JSTaggedValue>> &resultArray,
         const std::vector<uint64_t> &resultLengthArray, JSHandle<EcmaString> srcString,
         uint32_t resultStrLength, bool isUtf8);
 };

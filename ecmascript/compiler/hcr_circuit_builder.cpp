@@ -589,7 +589,7 @@ GateRef CircuitBuilder::IsStabelArray(GateRef glue, GateRef obj)
         Bind(&targetIsStableArray);
         {
             GateRef guardiansOffset =
-                IntPtr(JSThread::GlueData::GetStableArrayElementsGuardiansOffset(false));
+                IntPtr(JSThread::GlueData::GetArrayElementsGuardiansOffset(false));
             result = Load(VariableType::BOOL(), glue, guardiansOffset);
             Jump(&exit);
         }

@@ -272,6 +272,9 @@ AAA
 true
 true
 1234
+regexp.exec succ
+match result: support@example.com
+match start index: 14
 builtins regexp end
 builtins object begin
 true

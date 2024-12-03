@@ -45,10 +45,16 @@ public:
                                   const PropertyDescriptor &desc);
 
     static bool IsLengthString(JSThread *thread, const JSHandle<JSTaggedValue> &key);
+    static bool IsProtoNotChangeJSArray(JSThread *thread, const JSHandle<JSObject> &obj);
+    static bool IsProtoNotModifiedDictionaryJSArray(JSThread *thread, const JSHandle<JSObject> &obj);
     // ecma6 7.3 Operations on Objects
     static JSHandle<JSArray> CreateArrayFromList(JSThread *thread, const JSHandle<TaggedArray> &elements);
     static JSHandle<JSArray> CreateArrayFromList(JSThread *thread, const JSHandle<JSTaggedValue> &newtarget,
                                                  const JSHandle<TaggedArray> &elements);
+    static JSTaggedValue FastConcatDictionaryArray(JSThread *thread, JSHandle<JSObject> obj,
+        JSHandle<JSObject> &newArrayHandle, JSMutableHandle<JSTaggedValue> &fromValHandle,
+        JSMutableHandle<JSTaggedValue> &toKey, int64_t &n);
+    
     // use first inlined property slot for array length
     inline uint32_t GetArrayLength() const
     {
@@ -109,6 +115,8 @@ public:
                                           SCheckMode sCheckMode = SCheckMode::CHECK);
 
     static JSTaggedValue Sort(JSThread *thread, const JSHandle<JSTaggedValue> &obj, const JSHandle<JSTaggedValue> &fn);
+    static JSTaggedValue CopySortedListToReceiver(JSThread *thread, const JSHandle<JSTaggedValue> &thisObjVal,
+                                                  JSHandle<TaggedArray> sortedList, uint32_t len);
     static bool IncludeInSortedValue(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
                                      const JSHandle<JSTaggedValue> &value);
     static JSHandle<TaggedArray> ToTaggedArray(JSThread *thread, const JSHandle<JSTaggedValue> &obj);

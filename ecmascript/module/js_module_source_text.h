@@ -345,10 +345,12 @@ public:
                                      ModuleTypes moduleType);
 
     JSTaggedValue GetModuleValue(JSThread *thread, int32_t index, bool isThrow);
-    void StoreModuleValue(JSThread *thread, int32_t index, const JSHandle<JSTaggedValue> &value);
+    static void StoreModuleValue(JSThread *thread, const JSHandle<SourceTextModule> &module, int32_t index,
+                                 const JSHandle<JSTaggedValue> &value);
 
     JSTaggedValue GetModuleValue(JSThread *thread, JSTaggedValue key, bool isThrow);
-    void StoreModuleValue(JSThread *thread, const JSHandle<JSTaggedValue> &key, const JSHandle<JSTaggedValue> &value);
+    static void StoreModuleValue(JSThread *thread, const JSHandle<SourceTextModule> &module,
+                                 const JSHandle<JSTaggedValue> &key, const JSHandle<JSTaggedValue> &value);
 
     static JSTaggedValue GetValueFromExportObject(JSThread *thread, JSHandle<JSTaggedValue> &exportObject,
         int32_t index);

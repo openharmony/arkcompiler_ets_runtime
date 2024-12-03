@@ -1,0 +1,14 @@
+{
+    "name": "JS_API_LINKED_LIST",
+    "offsets": [
+        {
+            "name": "DoubleList",
+            "offset": 0,
+            "size": 8
+        }
+    ],
+    "end_offset": 8,
+    "parents": [
+        "JS_OBJECT"
+    ]
+}

@@ -112,10 +112,6 @@ void ParallelEvacuator::EvacuateSpace()
         GCStats::Scope sp2(GCStats::Scope::ScopeId::WaitFinish, heap_->GetEcmaVM()->GetEcmaGCStats());
         WaitFinished();
     }
-
-    if (heap_->GetJSThread()->IsPGOProfilerEnable()) {
-        UpdateTrackInfo();
-    }
 }
 
 bool ParallelEvacuator::EvacuateSpace(TlabAllocator *allocator, uint32_t threadIndex, uint32_t idOrder, bool isMain)
@@ -200,7 +196,7 @@ void ParallelEvacuator::EvacuateRegion(TlabAllocator *allocator, Region *region,
                 edenToYoungSize += size;
             }
         }
-        LOG_ECMA_IF(address == 0, FATAL) << "Evacuate object failed:" << size;
+        ASSERT(address != 0);
 
         if (memcpy_s(ToVoidPtr(address), size, ToVoidPtr(ToUintPtr(mem)), size) != EOK) { // LOCV_EXCL_BR_LINE
             LOG_FULL(FATAL) << "memcpy_s failed";
@@ -296,10 +292,14 @@ void ParallelEvacuator::UpdateReference()
         }
     }
     {
-        GCStats::Scope sp2(GCStats::Scope::ScopeId::ProceeWorkload, heap_->GetEcmaVM()->GetEcmaGCStats());\
+        GCStats::Scope sp2(GCStats::Scope::ScopeId::ProceeWorkload, heap_->GetEcmaVM()->GetEcmaGCStats());
         ProcessWorkloads(true);
     }
     WaitFinished();
+
+    if (heap_->GetJSThread()->IsPGOProfilerEnable()) {
+        UpdateTrackInfo();
+    }
 }
 
 void ParallelEvacuator::UpdateRoot()

@@ -20,3 +20,6 @@ left shift result:  4  right shift result:  1
 -2
 true
 -3
+true
+[trace] Check Type: NotInt7
+true

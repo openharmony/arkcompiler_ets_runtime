@@ -27,6 +27,7 @@ bool ValueSerializer::CheckObjectCanSerialize(TaggedObject *object, bool &findSh
         return true;
     }
     switch (type) {
+        case JSType::JS_PRIMITIVE_REF:
         case JSType::JS_ERROR:
         case JSType::JS_EVAL_ERROR:
         case JSType::JS_RANGE_ERROR:
@@ -62,6 +63,7 @@ bool ValueSerializer::CheckObjectCanSerialize(TaggedObject *object, bool &findSh
         case JSType::JS_OBJECT:
         case JSType::JS_ASYNC_FUNCTION:  // means CONCURRENT_FUNCTION
             return true;
+        case JSType::JS_API_BITVECTOR:
         case JSType::JS_SHARED_SET:
         case JSType::JS_SHARED_MAP:
         case JSType::JS_SENDABLE_ARRAY_BUFFER:

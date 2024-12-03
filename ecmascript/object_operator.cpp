@@ -94,18 +94,6 @@ void ObjectOperator::UpdateHolder()
     }
 }
 
-void ObjectOperator::UpdateIsTSHClass()
-{
-    if (!holder_->IsECMAObject()) {
-        SetIsTSHClass(false);
-        return;
-    }
-    auto hclass = JSHandle<JSObject>::Cast(holder_)->GetClass();
-    if (hclass->IsTS()) {
-        SetIsTSHClass(true);
-    }
-}
-
 void ObjectOperator::StartLookUp(OperatorType type)
 {
     UpdateHolder();
@@ -424,7 +412,6 @@ SharedFieldType ObjectOperator::GetSharedFieldType() const
 
 void ObjectOperator::ToPropertyDescriptor(PropertyDescriptor &desc) const
 {
-    DISALLOW_GARBAGE_COLLECTION;
     if (!IsFound()) {
         return;
     }
@@ -487,7 +474,6 @@ void ObjectOperator::LookupProperty()
         if (holder_->IsJSProxy()) {
             return;
         }
-        UpdateIsTSHClass();
         LookupPropertyInHolder();
         if (IsFound()) {
             return;
@@ -966,7 +952,6 @@ void ObjectOperator::ResetState()
     SetAttr(0);
     SetIsOnPrototype(false);
     SetHasReceiver(false);
-    SetIsTSHClass(false);
 }
 
 void ObjectOperator::ResetStateForAddProperty()
@@ -1076,7 +1061,6 @@ void ObjectOperator::AddPropertyInternal(const JSHandle<JSTaggedValue> &value)
         }
         uint32_t index = attr.IsInlinedProps() ? attr.GetOffset() :
                 attr.GetOffset() - obj->GetJSHClass()->GetInlinedProperties();
-        SetIsTSHClass(true);
         SetIsOnPrototype(false);
         SetFound(index, value.GetTaggedValue(), attr.GetValue(), true);
         return;

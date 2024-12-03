@@ -431,10 +431,10 @@ void NewObjectStubBuilder::NewJSObject(Variable *result, Label *exit, GateRef hc
     {
         StoreHClass(glue_, result->ReadVariable(), hclass);
         DEFVARIABLE(initValue, VariableType::JS_ANY(), Undefined());
-        Label isTS(env);
+        Label isAOT(env);
         Label initialize(env);
-        BRANCH(IsTSHClass(hclass), &isTS, &initialize);
-        Bind(&isTS);
+        BRANCH(IsAOTHClass(hclass), &isAOT, &initialize);
+        Bind(&isAOT);
         {
             // The object which created by AOT speculative hclass, should be initialized as hole, means does not exist,
             // to follow ECMA spec.
@@ -449,7 +449,8 @@ void NewObjectStubBuilder::NewJSObject(Variable *result, Label *exit, GateRef hc
         Bind(&afterInitialize);
         auto emptyArray = GetGlobalConstantValue(
             VariableType::JS_POINTER(), glue_, ConstantIndex::EMPTY_ARRAY_OBJECT_INDEX);
-        SetHash(glue_, result->ReadVariable(), Int64(JSTaggedValue(0).GetRawData()));
+        GateRef hashOffset = IntPtr(ECMAObject::HASH_OFFSET);
+        Store(VariableType::INT64(), glue_, result->ReadVariable(), hashOffset, Int64(JSTaggedValue(0).GetRawData()));
         SetPropertiesArray(VariableType::INT64(),
                            glue_, result->ReadVariable(), emptyArray, MemoryAttribute::NoBarrier());
         SetElementsArray(VariableType::INT64(),
@@ -473,10 +474,10 @@ void NewObjectStubBuilder::NewSObject(Variable *result, Label *exit, GateRef hcl
     {
         StoreHClass(glue_, result->ReadVariable(), hclass);
         DEFVARIABLE(initValue, VariableType::JS_ANY(), Undefined());
-        Label isTS(env);
+        Label isAOT(env);
         Label initialize(env);
-        BRANCH(IsTSHClass(hclass), &isTS, &initialize);
-        Bind(&isTS);
+        BRANCH(IsAOTHClass(hclass), &isAOT, &initialize);
+        Bind(&isAOT);
         {
             // The object which created by AOT speculative hclass, should be initialized as hole, means does not exist,
             // to follow ECMA spec.
@@ -491,7 +492,8 @@ void NewObjectStubBuilder::NewSObject(Variable *result, Label *exit, GateRef hcl
         Bind(&afterInitialize);
         auto emptyArray = GetGlobalConstantValue(
             VariableType::JS_POINTER(), glue_, ConstantIndex::EMPTY_ARRAY_OBJECT_INDEX);
-        SetHash(glue_, result->ReadVariable(), Int64(JSTaggedValue(0).GetRawData()));
+        GateRef hashOffset = IntPtr(ECMAObject::HASH_OFFSET);
+        Store(VariableType::INT64(), glue_, result->ReadVariable(), hashOffset, Int64(JSTaggedValue(0).GetRawData()));
         SetPropertiesArray(VariableType::INT64(),
                            glue_, result->ReadVariable(), emptyArray, MemoryAttribute::NoBarrier());
         SetElementsArray(VariableType::INT64(),
@@ -585,7 +587,8 @@ void NewObjectStubBuilder::NewJSObject(Variable *result, Label *exit, GateRef hc
     Bind(&afterInitialize);
     auto emptyArray = GetGlobalConstantValue(
         VariableType::JS_POINTER(), glue_, ConstantIndex::EMPTY_ARRAY_OBJECT_INDEX);
-    SetHash(glue_, result->ReadVariable(), Int64(JSTaggedValue(0).GetRawData()));
+    GateRef hashOffset = IntPtr(ECMAObject::HASH_OFFSET);
+    Store(VariableType::INT64(), glue_, result->ReadVariable(), hashOffset, Int64(JSTaggedValue(0).GetRawData()));
     SetPropertiesArray(VariableType::INT64(),
                        glue_, result->ReadVariable(), emptyArray, MemoryAttribute::NoBarrier());
     SetElementsArray(VariableType::INT64(),
@@ -784,7 +787,7 @@ void NewObjectStubBuilder::ExtendArray(Variable *res, GateRef glue, GateRef elem
     }
     Bind(&afterAllocate);
     Store(VariableType::INT32(), glue, *array, IntPtr(TaggedArray::LENGTH_OFFSET), newLen);
-    GateRef oldExtractLen = GetExtractLengthOfTaggedArray(elements);
+    GateRef oldExtractLen = GetExtraLengthOfTaggedArray(elements);
     Store(VariableType::INT32(), glue, *array, IntPtr(TaggedArray::EXTRA_LENGTH_OFFSET), oldExtractLen);
     GateRef oldL = GetLengthOfTaggedArray(elements);
     Label loopHead(env);
@@ -885,7 +888,7 @@ GateRef NewObjectStubBuilder::CopyArray(GateRef glue, GateRef elements, GateRef 
             }
             Bind(&afterInitializeElements);
             Store(VariableType::INT32(), glue, *array, IntPtr(TaggedArray::LENGTH_OFFSET), newLen);
-            GateRef oldExtractLen = GetExtractLengthOfTaggedArray(elements);
+            GateRef oldExtractLen = GetExtraLengthOfTaggedArray(elements);
             Store(VariableType::INT32(), glue, *array, IntPtr(TaggedArray::EXTRA_LENGTH_OFFSET), oldExtractLen);
             Label afterCopy(env);
 
@@ -894,14 +897,14 @@ GateRef NewObjectStubBuilder::CopyArray(GateRef glue, GateRef elements, GateRef 
             BRANCH(checkIsMutantTaggedArray, &copyToMutantTaggedArray, &copyToTaggedArray);
             Bind(&copyToTaggedArray);
             {
-                ArrayCopy<NotOverlap>(glue, GetDataPtrInTaggedArray(elements), GetDataPtrInTaggedArray(*array),
+                ArrayCopy<NotOverlap>(glue, GetDataPtrInTaggedArray(elements), *array, GetDataPtrInTaggedArray(*array),
                                       newLen);
                 Jump(&afterCopy);
             }
             Bind(&copyToMutantTaggedArray);
             {
-                ArrayCopy<NotOverlap>(glue, GetDataPtrInTaggedArray(elements), GetDataPtrInTaggedArray(*array), newLen,
-                                      MemoryAttribute::NoBarrier());
+                ArrayCopy<NotOverlap>(glue, GetDataPtrInTaggedArray(elements), *array, GetDataPtrInTaggedArray(*array),
+                                      newLen, MemoryAttribute::NoBarrier());
                 Jump(&afterCopy);
             }
             Bind(&afterCopy);
@@ -1211,6 +1214,7 @@ GateRef NewObjectStubBuilder::EnumerateObjectProperties(GateRef glue, GateRef ob
     Label empty(env);
     Label tryGetEnumCache(env);
     Label cacheHit(env);
+    Label checkNativePointer(env);
     BRANCH(TaggedIsString(obj), &isString, &isNotString);
     Bind(&isString);
     {
@@ -1223,7 +1227,9 @@ GateRef NewObjectStubBuilder::EnumerateObjectProperties(GateRef glue, GateRef ob
         Jump(&afterObjectTransform);
     }
     Bind(&afterObjectTransform);
-    BRANCH(TaggedIsUndefinedOrNull(*object), &empty, &tryGetEnumCache);
+    BRANCH(TaggedIsUndefinedOrNull(*object), &empty, &checkNativePointer);
+    Bind(&checkNativePointer);
+    BRANCH(IsNativePointer(*object), &empty, &tryGetEnumCache);
     Bind(&tryGetEnumCache);
     GateRef enumCache = TryGetEnumCache(glue, *object);
     BRANCH(TaggedIsUndefined(enumCache), &slowpath, &cacheHit);
@@ -2088,7 +2094,8 @@ void NewObjectStubBuilder::CreateJSCollectionIterator(
     Bind(&noException);
     {
         StoreBuiltinHClass(glue_, result->ReadVariable(), iteratorHClass);
-        SetHash(glue_, result->ReadVariable(), Int64(JSTaggedValue(0).GetRawData()));
+        GateRef hashOffset = IntPtr(ECMAObject::HASH_OFFSET);
+        Store(VariableType::INT64(), glue_, result->ReadVariable(), hashOffset, Int64(JSTaggedValue(0).GetRawData()));
         auto emptyArray = GetGlobalConstantValue(
             VariableType::JS_POINTER(), glue_, ConstantIndex::EMPTY_ARRAY_OBJECT_INDEX);
         SetPropertiesArray(VariableType::INT64(), glue_, result->ReadVariable(), emptyArray);
@@ -2143,7 +2150,8 @@ void NewObjectStubBuilder::CreateJSTypedArrayIterator(Variable *result, Label *e
     Bind(&noException);
     {
         StoreBuiltinHClass(glue_, result->ReadVariable(), iteratorHClass);
-        SetHash(glue_, result->ReadVariable(), Int64(JSTaggedValue(0).GetRawData()));
+        GateRef hashOffset = IntPtr(ECMAObject::HASH_OFFSET);
+        Store(VariableType::INT64(), glue_, result->ReadVariable(), hashOffset, Int64(JSTaggedValue(0).GetRawData()));
         auto emptyArray = GetGlobalConstantValue(
             VariableType::JS_POINTER(), glue_, ConstantIndex::EMPTY_ARRAY_OBJECT_INDEX);
         SetPropertiesArray(VariableType::INT64(), glue_, result->ReadVariable(), emptyArray);

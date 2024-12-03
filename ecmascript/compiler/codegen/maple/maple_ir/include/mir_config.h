@@ -35,7 +35,6 @@
 //                   3: with normal warning information
 //                   4: with normal information
 //                   5: with everything
-//
 #ifndef MIR_DEBUG_LEVEL
 #define MIR_DEBUG_LEVEL 0
 #endif  // MIR_DEBUG_LEVEL

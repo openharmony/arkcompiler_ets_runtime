@@ -1,0 +1,29 @@
+{
+    "name": "PROTOTYPE_HANDLER",
+    "offsets": [
+        {
+            "name": "HandlerInfo",
+            "offset": 0,
+            "size": 8
+        },
+        {
+            "name": "ProtoCell",
+            "offset": 8,
+            "size": 8
+        },
+        {
+            "name": "Holder",
+            "offset": 16,
+            "size": 8
+        },
+        {
+            "name": "AccessorJSFunction",
+            "offset": 24,
+            "size": 8
+        }
+    ],
+    "end_offset": 40,
+    "parents": [
+        "TAGGED_OBJECT"
+    ]
+}

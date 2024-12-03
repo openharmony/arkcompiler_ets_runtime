@@ -54,6 +54,8 @@ print(str.substring(-100, undefined));
 
 print(str.substring(num1, num4));
 
+print(str.substring(-9007199254740992));
+
 print(str.substr(0));
 
 print(str.substr(-0.01));

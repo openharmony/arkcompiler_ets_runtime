@@ -437,6 +437,11 @@ void InterpreterStubBuilder::DebugPrintInstruction()
     GateRef pc = PtrArgument(static_cast<size_t>(InterpreterHandlerInputs::PC));
     CallNGCRuntime(glue, RTSTUB_ID(DebugPrintInstruction), { glue, pc });
 #endif
+#if ECMASCRIPT_ENABLE_COLLECTING_OPCODES
+    GateRef opcodeGlue = PtrArgument(static_cast<size_t>(InterpreterHandlerInputs::GLUE));
+    GateRef opcodePc = PtrArgument(static_cast<size_t>(InterpreterHandlerInputs::PC));
+    CallNGCRuntime(opcodeGlue, RTSTUB_ID(CollectingOpcodes), { opcodeGlue, opcodePc });
+#endif
 }
 
 DECLARE_ASM_HANDLER(HandleLdnan)
@@ -4927,6 +4932,10 @@ DECLARE_ASM_HANDLER(HandleDefinemethodImm8Id16Imm8)
         GetMethodFromConstPool(glue, constpool, ZExtInt16ToInt32(methodId)));
     result = CallRuntime(glue, RTSTUB_ID(DefineMethod), { *result, acc, Int8ToTaggedInt(length),
         lexEnv, GetModule(sp) });
+#if ECMASCRIPT_ENABLE_IC
+    GateRef slotId = ZExtInt8ToInt32(ReadInst8_0(pc));
+    UpdateProfileTypeInfoCellToFunction(glue, *result, profileTypeInfo, slotId);
+#endif
     Label notException(env);
     CHECK_EXCEPTION_WITH_JUMP(*result, &notException);
     Bind(&notException);
@@ -4947,6 +4956,10 @@ DECLARE_ASM_HANDLER(HandleDefinemethodImm16Id16Imm8)
         GetMethodFromConstPool(glue, constpool, ZExtInt16ToInt32(methodId)));
     result = CallRuntime(glue, RTSTUB_ID(DefineMethod), { *result, acc, Int8ToTaggedInt(length),
         lexEnv, GetModule(sp) });
+#if ECMASCRIPT_ENABLE_IC
+    GateRef slotId = ZExtInt16ToInt32(ReadInst16_0(pc));
+    UpdateProfileTypeInfoCellToFunction(glue, *result, profileTypeInfo, slotId);
+#endif
     Label notException(env);
     CHECK_EXCEPTION_WITH_JUMP(*result, &notException);
     Bind(&notException);

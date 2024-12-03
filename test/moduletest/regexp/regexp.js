@@ -726,3 +726,169 @@ print(res7.flags);
 const res8 = /abc/;
 res8.lastIndex = -1;
 print(res8.flags);
+
+{
+  let str = "<style>test</style>"
+  let reg = new RegExp("/");
+  print(reg.source,JSON.stringify(reg.exec(str)));
+  
+  reg = new RegExp("\/[a-z]*>");
+  print(reg.source,JSON.stringify(reg.exec(str)));
+  
+  reg = new RegExp("\\/[a-z]*>");
+  print(reg.source,JSON.stringify(reg.exec(str)));
+
+  reg = new RegExp("\\\/[a-z]*>");
+  print(reg.source,JSON.stringify(reg.exec(str)));
+
+  str="<style>test<\\\\/style>"
+  reg = new RegExp("\\\\/[a-z]*>");
+  print(reg.source,JSON.stringify(reg.exec(str)));
+  
+  reg = new RegExp("\\\\\/[a-z]*>");
+  print(reg.source,JSON.stringify(reg.exec(str)));
+  
+  reg = new RegExp("\\\\\\/[a-z]*>");
+  print(reg.source,JSON.stringify(reg.exec(str)));
+
+  reg = new RegExp("\\\\\\\/[a-z]*>");
+  print(reg.source,JSON.stringify(reg.exec(str)));
+}
+{
+  let str="\\\\\\\\[aaa"
+  try {
+    let pattern="[";
+    let reg = new RegExp(pattern);
+    print(pattern,JSON.stringify(reg.exec(str)))
+  } catch (e) {
+    print(e.name);
+  }
+  try {
+    let pattern="\[";
+    let reg = new RegExp(pattern);
+    print(pattern,JSON.stringify(reg.exec(str)))
+  } catch (e) {
+    print(e.name);
+  }
+  try {
+    let pattern="\\[";
+    let reg = new RegExp(pattern);
+    print(pattern,JSON.stringify(reg.exec(str)))
+  } catch (e) {
+    print(e.name);
+  }
+  try {
+    let pattern="\\\[";
+    let reg = new RegExp(pattern);
+    print(pattern,JSON.stringify(reg.exec(str)))
+  } catch (e) {
+    print(e.name);
+  }
+  try {
+    let pattern="\\\\[";
+    let reg = new RegExp(pattern);
+    print(pattern,JSON.stringify(reg.exec(str)))
+  } catch (e) {
+    print(e.name);
+  }
+  try {
+    let pattern="\\\\\[";
+    let reg = new RegExp(pattern);
+    print(pattern,JSON.stringify(reg.exec(str)))
+  } catch (e) {
+    print(e.name);
+  }
+  try {
+    let pattern="\\\\\\[";
+    let reg = new RegExp(pattern);
+    print(pattern,JSON.stringify(reg.exec(str)))
+  } catch (e) {
+    print(e.name);
+  }
+  try {
+    let pattern="\\\\\\\[";
+    let reg = new RegExp(pattern);
+    print(pattern,JSON.stringify(reg.exec(str)))
+  } catch (e) {
+    print(e.name);
+  }
+}
+
+{
+  Object.defineProperty(RegExp.prototype, "global", {
+    value: false
+  })
+  let str1;
+  let result;
+  const re1 = /[Cz]/;
+  const re2 = /[Cz]/g;
+  const re3 = /([Cz])/;
+  const re4 = /([Cz])/g;
+
+  function createHaystack() {
+    let s = "abCdefgz";
+    for (let i = 0; i < 3; i++) s += s;
+    return s;
+  }
+  str1 = createHaystack();
+  function String1Replace(re) {
+    result = re[Symbol.replace](str1, ".");
+  }
+  function String2Replace(re) {
+    result = re[Symbol.replace](str1, "xyz");
+  }
+  function String3Replace(re) {
+    result = re[Symbol.replace](str1, "x$1yz");
+  }
+  function Function1Replace(re) {
+    result = re[Symbol.replace](str1, String);
+  }
+  String1Replace(re1);
+  print(result);
+  String1Replace(re2);
+  print(result);
+  String2Replace(re2);
+  print(result);
+  String2Replace(re1);
+  print(result);
+  String3Replace(re3);
+  print(result);
+  String3Replace(re4);
+  print(result);
+  Function1Replace(re3);
+  print(result);
+  Function1Replace(re4);
+  print(result);
+
+  // subStringIsUtf8 branch canbecompressed
+  str1 = 'utf83c这要替换"!';
+  let regexp = /([0-9])([a-z])/g
+  let newStr1 = str1.replace(regexp, "$1" );
+  print(newStr1);
+
+  // subStringIsUtf8 branch length=0;
+  str1 = '3c这要替换"!';
+  regexp = /([0-9])([a-z])/g
+  newStr1 = str1.replace(regexp, "$1" );
+  print(newStr1);
+
+  // subStringIsUtf8 branch src isUtf8;
+  str1 = 'abcdefg3chigk"!';
+  regexp = /([0-9])([a-z])/g
+  newStr1 = str1.replace(regexp, "$1" );
+  print(newStr1);
+}
+
+{
+  let s1 = 'abc';
+  let s2 = '\ud834\udf06';
+  let reg = new RegExp(s1.repeat(10000));
+  let str = s1.repeat(10000);
+  let res = str.replace(reg, s2);
+  print(res == s2);
+
+  reg = new RegExp(s2.repeat(10000));
+  str = s2.repeat(10000);
+  res = str.replace(reg, s1);
+  print(res == s1);
+}

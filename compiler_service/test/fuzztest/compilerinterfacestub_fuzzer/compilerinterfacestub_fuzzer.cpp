@@ -31,7 +31,6 @@ constexpr int DATA_THREE = 3;
 constexpr size_t OFFSET_ONE = 8;
 constexpr size_t OFFSET_TWO = 16;
 constexpr size_t OFFSET_THREE = 24;
-constexpr size_t FOO_MAX_LEN = 1024;
 constexpr size_t MESSAGE_SIZE = MIN_TRANSACTION_ID + 4; // 4 code methods OnRemoteRequest
 constexpr size_t U32_AT_SIZE = 4;
 static AotCompilerService compilerService(AOT_COMPILER_SERVICE_ID, false);
@@ -66,11 +65,6 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
     }
 
     if (size < OHOS::U32_AT_SIZE) {
-        return 0;
-    }
-
-    /* Validate the length of size */
-    if (size > OHOS::FOO_MAX_LEN) {
         return 0;
     }
 

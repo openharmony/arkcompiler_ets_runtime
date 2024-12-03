@@ -429,7 +429,10 @@ OperationResult JSTypedArray::IntegerIndexedElementGet(JSThread *thread, const J
     // arrayTypeName.
     uint32_t elementSize = TypedArrayHelper::GetElementSize(typedarrayObj);
     // 12. Let indexedPosition = (index × elementSize) + offset.
-    uint32_t k = static_cast<uint32_t>(JSTaggedValue::ToInteger(thread, indexHandle).ToInt32());
+    JSTaggedNumber integerValue = JSTaggedValue::ToInteger(thread, indexHandle);
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(
+        thread, OperationResult(thread, JSTaggedValue::Exception(), PropertyMetaData(false)));
+    uint32_t k = static_cast<uint32_t>(integerValue.ToInt32());
     uint32_t byteIndex = k * elementSize + offset;
     // 13. Let elementType be the String value of the Element Type value in Table 49 for arrayTypeName.
     DataViewType elementType = TypedArrayHelper::GetType(typedarrayObj);
@@ -628,7 +631,9 @@ bool JSTypedArray::IntegerIndexedElementSet(JSThread *thread, const JSHandle<JST
         // arrayTypeName.
         uint32_t elementSize = TypedArrayHelper::GetElementSize(typedarrayObj);
         // 9. Let indexedPosition = (index × elementSize) + offset.
-        uint32_t k = JSTaggedValue::ToInteger(thread, indexHandle).ToUint32();
+        JSTaggedNumber integerValue = JSTaggedValue::ToInteger(thread, indexHandle);
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
+        uint32_t k = integerValue.ToUint32();
         uint32_t byteIndex = k * elementSize + offset;
         // 10. Let elementType be the String value of the Element Type value in Table 49 for arrayTypeName.
         DataViewType elementType = TypedArrayHelper::GetType(typedarrayObj);
@@ -690,7 +695,6 @@ JSTaggedValue JSTypedArray::FastGetPropertyByIndex(JSThread *thread, const JSTag
         return JSTaggedValue::Undefined();
     }
 
-    DISALLOW_GARBAGE_COLLECTION;
     // Let length be the value of O’s [[ArrayLength]] internal slot.
     // If arrLen < 0 or index ≥ length, return undefined.
     uint32_t arrLen = typedarrayObj->GetArrayLength();

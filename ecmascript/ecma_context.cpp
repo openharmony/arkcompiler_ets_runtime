@@ -341,11 +341,11 @@ Expected<JSTaggedValue, bool> EcmaContext::CommonInvokeEcmaEntrypoint(const JSPa
             EcmaRuntimeStatScope runtimeStatScope(vm_);
             result = InvokeEcmaAotEntrypoint(func, global, jsPandaFile, entryPoint);
         } else if (vm_->GetJSOptions().IsEnableForceJitCompileMain()) {
-            Jit::Compile(vm_, func, CompilerTier::FAST);
+            Jit::Compile(vm_, func, CompilerTier::Tier::FAST);
             EcmaRuntimeStatScope runtimeStatScope(vm_);
             result = JSFunction::InvokeOptimizedEntrypoint(thread_, func, global, nullptr);
         } else if (vm_->GetJSOptions().IsEnableForceBaselineCompileMain()) {
-            Jit::Compile(vm_, func, CompilerTier::BASELINE);
+            Jit::Compile(vm_, func, CompilerTier::Tier::BASELINE);
             EcmaRuntimeCallInfo *info =
                 EcmaInterpreter::NewRuntimeCallInfo(thread_, JSHandle<JSTaggedValue>(func), global, undefined, 0);
             EcmaRuntimeStatScope runtimeStatScope(vm_);
@@ -364,7 +364,7 @@ Expected<JSTaggedValue, bool> EcmaContext::CommonInvokeEcmaEntrypoint(const JSPa
         }
     }
     if (thread_->HasPendingException()) {
-#ifdef PANDA_TARGET_OHOS
+#if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE)
         return result;
 #else
         return Unexpected(false);
@@ -397,7 +397,7 @@ Expected<JSTaggedValue, bool> EcmaContext::InvokeEcmaEntrypoint(const JSPandaFil
     JSHandle<JSFunction> func(thread_, program->GetMainFunction());
     Expected<JSTaggedValue, bool> result = CommonInvokeEcmaEntrypoint(jsPandaFile, entryPoint, func, executeFromJob);
 
-#ifdef PANDA_TARGET_OHOS
+#if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE)
     if (thread_->HasPendingException()) {
         HandleUncaughtException();
     }
@@ -467,10 +467,6 @@ void EcmaContext::CJSExecution(JSHandle<JSFunction> &func, JSHandle<JSTaggedValu
                                                 JSHandle<JSTaggedValue>(func),
                                                 thisArg, undefined, 5); // 5 : argument numbers
         RETURN_IF_ABRUPT_COMPLETION(thread_);
-        if (info == nullptr) {
-            LOG_ECMA(ERROR) << "CJSExecution Stack overflow!";
-            return;
-        }
         info->SetCallArg(cjsInfo.exportsHdl.GetTaggedValue(),
             cjsInfo.requireHdl.GetTaggedValue(),
             cjsInfo.moduleHdl.GetTaggedValue(),

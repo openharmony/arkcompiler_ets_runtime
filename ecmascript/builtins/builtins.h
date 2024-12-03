@@ -48,6 +48,9 @@ public:
     void Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread, bool lazyInit = false, bool isRealm = false);
     void InitializeForSnapshot(JSThread *thread);
 
+    void InitializeSharedBitVector(const JSHandle<GlobalEnv> &env,
+                                   const JSHandle<JSObject> &sObjPrototype,
+                                   const JSHandle<JSFunction> &sFuncPrototype) const;
 private:
     JSThread *thread_{nullptr};
     ObjectFactory *factory_{nullptr};
@@ -443,7 +446,9 @@ private:
     JSHandle<JSHClass> CreateSSetPrototypeHClass(const JSHandle<JSObject> &sObjPrototype) const;
     JSHandle<JSHClass> CreateSSetFunctionHClass(const JSHandle<JSFunction> &sFuncPrototype) const;
     JSHandle<JSHClass> CreateSMapPrototypeHClass(const JSHandle<JSObject> &sObjPrototype) const;
+    JSHandle<JSHClass> CreateBitVectorPrototypeHClass(const JSHandle<JSObject> &sObjPrototype) const;
     JSHandle<JSHClass> CreateSMapFunctionHClass(const JSHandle<JSFunction> &sFuncPrototype) const;
+    JSHandle<JSHClass> CreateBitVectorFunctionHClass(const JSHandle<JSFunction> &sFuncPrototype) const;
     JSHandle<JSHClass> CreateSArrayPrototypeHClass(const JSHandle<JSObject> &sObjPrototype) const;
     JSHandle<JSHClass> CreateSArrayFunctionHClass(const JSHandle<JSFunction> &sFuncPrototype) const;
     JSHandle<JSHClass> CreateSTypedArrayPrototypeHClass(const JSHandle<JSObject> &sObjPrototype) const;

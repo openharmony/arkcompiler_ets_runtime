@@ -1534,6 +1534,7 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
             break;
         }
         case JSType::JS_API_BITVECTOR: {
+            JSAPIBitVector::Cast(*obj)->SetNativePointer(thread_, JSTaggedValue::Undefined());
             JSAPIBitVector::Cast(*obj)->SetLength(0);
             JSAPIBitVector::Cast(*obj)->SetModRecord(0);
             break;
@@ -1666,7 +1667,7 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
             CjsRequire::Cast(*obj)->SetParent(thread_, JSTaggedValue::Undefined());
             break;
         default:
-            LOG_ECMA(FATAL) << "this branch is unreachable";
+            LOG_ECMA(FATAL) << "this branch is unreachable, type: " << static_cast<size_t>(type);
             UNREACHABLE();
     }
 }
@@ -1734,7 +1735,7 @@ void ObjectFactory::InitializeExtraProperties(const JSHandle<JSHClass> &hclass,
     auto paddr = reinterpret_cast<uintptr_t>(obj) + hclass->GetObjectSize();
     // The object which created by AOT speculative hclass, should be initialized as hole, means does not exist,
     // to follow ECMA spec.
-    JSTaggedType initVal = hclass->IsTS() ? JSTaggedValue::VALUE_HOLE : JSTaggedValue::VALUE_UNDEFINED;
+    JSTaggedType initVal = hclass->IsAOT() ? JSTaggedValue::VALUE_HOLE : JSTaggedValue::VALUE_UNDEFINED;
     for (uint32_t i = 0; i < inobjPropCount; ++i) {
         paddr -= JSTaggedValue::TaggedTypeSize();
         *reinterpret_cast<JSTaggedType *>(paddr) = initVal;
@@ -1942,6 +1943,12 @@ JSHandle<JSHClass> ObjectFactory::CreateDefaultClassConstructorHClass(JSHClass *
     return defaultHclass;
 }
 
+void ObjectFactory::SetCodeEntryToFunctionFromMethod(const JSHandle<JSFunction> &func, const JSHandle<Method> &mothed)
+{
+    uintptr_t entry = mothed->GetCodeEntryOrLiteral();
+    func->SetCodeEntry(entry);
+}
+
 JSHandle<JSFunction> ObjectFactory::NewJSFunctionByHClass(const JSHandle<Method> &method,
                                                           const JSHandle<JSHClass> &clazz,
                                                           MemSpaceType type)
@@ -1969,6 +1976,8 @@ JSHandle<JSFunction> ObjectFactory::NewJSFunctionByHClass(const JSHandle<Method>
     if (method->IsAotWithCallField()) {
         thread_->GetEcmaVM()->GetAOTFileManager()->
             SetAOTFuncEntry(method->GetJSPandaFile(), *function, *method);
+    } else {
+        SetCodeEntryToFunctionFromMethod(function, method);
     }
     return function;
 }
@@ -2271,7 +2280,8 @@ JSHandle<JSPrimitiveRef> ObjectFactory::NewJSPrimitiveRef(PrimitiveType type, co
             function = env->GetBigIntFunction();
             break;
         default:
-            break;
+            LOG_ECMA(FATAL) << "this branch is unreachable, type: " << static_cast<size_t>(type);
+            UNREACHABLE();
     }
     JSHandle<JSFunction> funcHandle(function);
     return factory->NewJSPrimitiveRef(funcHandle, object);
@@ -3802,9 +3812,8 @@ EcmaString *ObjectFactory::InternString(const JSHandle<JSTaggedValue> &key)
 JSHandle<TransitionHandler> ObjectFactory::NewTransitionHandler()
 {
     NewObjectHook();
-    TransitionHandler *handler =
-        TransitionHandler::Cast(heap_->AllocateYoungOrHugeObject(
-            JSHClass::Cast(thread_->GlobalConstants()->GetTransitionHandlerClass().GetTaggedObject())));
+    TransitionHandler *handler = TransitionHandler::Cast(heap_->AllocateYoungOrHugeObject(
+        JSHClass::Cast(thread_->GlobalConstants()->GetTransitionHandlerClass().GetTaggedObject())));
     handler->SetHandlerInfo(thread_, JSTaggedValue::Undefined());
     handler->SetTransitionHClass(thread_, JSTaggedValue::Undefined());
     return JSHandle<TransitionHandler>(thread_, handler);
@@ -3838,13 +3847,13 @@ JSHandle<TransWithProtoHandler> ObjectFactory::NewTransWithProtoHandler()
     return handler;
 }
 
-JSHandle<StoreTSHandler> ObjectFactory::NewStoreTSHandler()
+JSHandle<StoreAOTHandler> ObjectFactory::NewStoreAOTHandler()
 {
     NewObjectHook();
-    StoreTSHandler *header =
-        StoreTSHandler::Cast(heap_->AllocateYoungOrHugeObject(
-            JSHClass::Cast(thread_->GlobalConstants()->GetStoreTSHandlerClass().GetTaggedObject())));
-    JSHandle<StoreTSHandler> handler(thread_, header);
+    StoreAOTHandler *header =
+        StoreAOTHandler::Cast(heap_->AllocateYoungOrHugeObject(
+            JSHClass::Cast(thread_->GlobalConstants()->GetStoreAOTHandlerClass().GetTaggedObject())));
+    JSHandle<StoreAOTHandler> handler(thread_, header);
     handler->SetHandlerInfo(thread_, JSTaggedValue::Undefined());
     handler->SetProtoCell(thread_, JSTaggedValue::Undefined());
     handler->SetHolder(thread_, JSTaggedValue::Undefined());
@@ -4531,7 +4540,7 @@ JSHandle<JSAPIVectorIterator> ObjectFactory::NewJSAPIVectorIterator(const JSHand
 JSHandle<JSAPIBitVector> ObjectFactory::NewJSAPIBitVector(uint32_t capacity)
 {
     NewObjectHook();
-    JSHandle<JSFunction> builtinObj(thread_, thread_->GlobalConstants()->GetBitVectorFunction());
+    JSHandle<JSFunction> builtinObj(thread_->GetEcmaVM()->GetGlobalEnv()->GetBitVectorFunction());
     JSHandle<JSAPIBitVector> obj = JSHandle<JSAPIBitVector>(NewJSObjectByConstructor(builtinObj));
     uint32_t taggedArrayCapacity = (capacity >> JSAPIBitVector::TAGGED_VALUE_BIT_SIZE) + 1;
     auto *newBitSetVector = new std::vector<std::bitset<JSAPIBitVector::BIT_SET_LENGTH>>();
@@ -4546,7 +4555,8 @@ JSHandle<JSAPIBitVectorIterator> ObjectFactory::NewJSAPIBitVectorIterator(const 
 {
     NewObjectHook();
     const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
-    JSHandle<JSTaggedValue> proto(thread_, globalConst->GetBitVectorIteratorPrototype());
+    JSHandle<GlobalEnv> env = thread_->GetEcmaVM()->GetGlobalEnv();
+    JSHandle<JSTaggedValue> proto(env->GetBitVectorIteratorPrototype());
     JSHandle<JSHClass> hclassHandle(globalConst->GetHandledJSAPIBitVectorIteratorClass());
     hclassHandle->SetPrototype(thread_, proto);
     JSHandle<JSAPIBitVectorIterator> iter(NewJSObject(hclassHandle));

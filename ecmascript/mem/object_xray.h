@@ -498,7 +498,7 @@ public:
                 TransWithProtoHandler::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::STORE_TS_HANDLER:
-                StoreTSHandler::Cast(object)->VisitRangeSlot<visitType>(visitor);
+                StoreAOTHandler::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::PROPERTY_BOX:
                 PropertyBox::Cast(object)->VisitRangeSlot<visitType>(visitor);

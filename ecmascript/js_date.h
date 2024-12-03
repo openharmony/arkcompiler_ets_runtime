@@ -71,21 +71,24 @@ static constexpr char DEL = 127;
 
 class DateUtils {
 public:
-    static void TransferTimeToDate(int64_t timeMs, std::array<int64_t, DATE_LENGTH> *date);
+    explicit DateUtils() = default;
+    virtual ~DateUtils() = default;
+
+    void TransferTimeToDate(int64_t timeMs, std::array<int64_t, DATE_LENGTH> *date);
+    // return the year, update days.
+    void GetYearFromDays(std::array<int64_t, DATE_LENGTH> *date);
     static int64_t Mod(int64_t a, int b);
     static bool IsLeap(int64_t year);
     static int64_t GetDaysInYear(int64_t year);
     static int64_t GetDaysFromYear(int64_t year);
-    // return the year, update days.
-    static void GetYearFromDays(std::array<int64_t, DATE_LENGTH> *date);
     static int64_t FloorDiv(int64_t a, int64_t b);
 
 private:
-    static bool isCached_;
-    static int preSumDays_;
-    static int preDays_;
-    static int preMonth_;
-    static int preYear_;
+    bool isCached_ {false};
+    int preSumDays_ {0};
+    int preDays_ {0};
+    int preMonth_ {0};
+    int preYear_ {0};
 };
 class JSDate : public JSObject {
 public:
@@ -133,7 +136,7 @@ public:
 
     // 20.4.4.35
     JSTaggedValue ToDateString(JSThread *thread) const;
-    static CString ToDateString(double timeMs);
+    static CString ToDateString(JSThread *thread, double timeMs);
 
     // 20.4.4.36
     JSTaggedValue ToISOString(JSThread *thread) const;
@@ -151,7 +154,7 @@ public:
     JSTaggedValue ValueOf() const;
 
     JSTaggedValue SetDateValue(EcmaRuntimeCallInfo *argv, uint32_t code, bool isLocal) const;
-    double GetDateValue(double timeMs, uint8_t code, bool isLocal) const;
+    double GetDateValue(JSThread *thread, double timeMs, uint8_t code, bool isLocal) const;
     static JSTaggedValue GetTimeFromString(const char *str, int len);
 
     static constexpr double MAX_DOUBLE = std::numeric_limits<double>::max();
@@ -165,13 +168,13 @@ public:
     static constexpr int MAX_DAYS_MONTH = 31;
     static double SetDateValues(const std::array<int64_t, DATE_LENGTH> *date, bool isLocal);
     static double SetDateValues(int64_t year, int64_t month, int64_t day);
-    static void GetDateValues(double timeMs, std::array<int64_t, DATE_LENGTH> *date, bool isLocal);
+    static void GetDateValues(JSThread *thread, double timeMs, std::array<int64_t, DATE_LENGTH> *date, bool isLocal);
     static CString StrToTargetLength(const CString &str, int length);
     static void AppendStrToTargetLength(const CString &str, int length, CString &target);
     DECL_DUMP()
 
 private:
-    bool GetThisDateValues(std::array<int64_t, DATE_LENGTH> *date, bool isLocal) const;
+    bool GetThisDateValues(JSThread *thread, std::array<int64_t, DATE_LENGTH> *date, bool isLocal) const;
     CString GetLocaleTimeStr(const std::array<int64_t, DATE_LENGTH> &fields) const;
     CString GetLocaleDateStr(const std::array<int64_t, DATE_LENGTH> &fields) const;
     static int64_t MathMod(int64_t a, int b);

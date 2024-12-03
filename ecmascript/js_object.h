@@ -385,11 +385,11 @@ public:
     }
 
     void* GetNativePointerField(int32_t index) const;
-    void SetNativePointerField(const JSThread *thread, int32_t index, void *nativePointer,
-                               const NativePointerCallback &callBack, void *data, size_t nativeBindingsize = 0,
-                               Concurrent isConcurrent = Concurrent::NO);
+    static void SetNativePointerField(const JSThread *thread, const JSHandle<JSObject> &obj, int32_t index,
+                                      void *nativePointer, const NativePointerCallback &callBack, void *data,
+                                      size_t nativeBindingsize = 0, Concurrent isConcurrent = Concurrent::NO);
     int32_t GetNativePointerFieldCount() const;
-    void SetNativePointerFieldCount(const JSThread *thread, int32_t count);
+    static void SetNativePointerFieldCount(const JSThread *thread, const JSHandle<JSObject> &obj, int32_t count);
 
     DECL_VISIT_OBJECT(HASH_OFFSET, SIZE);
 
@@ -605,7 +605,8 @@ public:
                                       const JSHandle<JSTaggedValue> &receiver,
                                       const JSHandle<JSTaggedValue> &value, bool mayThrow = false);
 
-    void FillElementsWithHoles(const JSThread *thread, uint32_t start, uint32_t end);
+    static void FillElementsWithHoles(const JSThread *thread, const JSHandle<JSObject> &obj,
+                                      uint32_t start, uint32_t end);
 
     JSHClass *GetJSHClass() const
     {
@@ -715,7 +716,12 @@ public:
 
     DECL_VISIT_OBJECT_FOR_JS_OBJECT(ECMAObject, PROPERTIES_OFFSET, SIZE)
 
-    DECL_DUMP()
+    void Dump(std::ostream &os, bool isPrivacy = false) const DUMP_API_ATTR;
+    void Dump() const DUMP_API_ATTR
+    {
+        Dump(std::cout);
+    }
+    void DumpForSnapshot(std::vector<Reference> &vec) const;
     static const CString ExtractConstructorAndRecordName(JSThread *thread, TaggedObject *obj, bool noAllocate = false,
                                                          bool *isCallGetter = nullptr);
 
@@ -745,7 +751,7 @@ public:
     bool UpdatePropertyInDictionary(const JSThread *thread, JSTaggedValue key, JSTaggedValue value);
     static bool ShouldTransToDict(uint32_t capacity, uint32_t index);
     static bool ShouldTransToFastElements(JSThread *thread, TaggedArray *elements, uint32_t capacity, uint32_t index);
-    static bool ShouldOptimizeAsFastElements(const JSThread *thread, JSHandle<JSObject> obj);
+    static bool AttributesUnchanged(const JSThread *thread, const JSHandle<JSObject> &obj);
     static JSHandle<TaggedArray> GrowElementsCapacity(const JSThread *thread, const JSHandle<JSObject> &obj,
                                                       uint32_t capacity, bool highGrowth = false, bool isNew = false);
 
@@ -768,7 +774,6 @@ public:
 
     static void PUBLIC_API TryMigrateToGenericKindForJSObject(const JSThread *thread, const JSHandle<JSObject> &obj,
                                                   const ElementsKind oldKind);
-protected:
     static void ElementsToDictionary(const JSThread *thread, JSHandle<JSObject> obj);
 
 private:
@@ -789,6 +794,8 @@ private:
 
     static JSTaggedValue GetProperty(JSThread *thread, ObjectOperator *op);
     static bool SetProperty(ObjectOperator *op, const JSHandle<JSTaggedValue> &value, bool mayThrow);
+    static bool SetPropertyForData(ObjectOperator *op, const JSHandle<JSTaggedValue> &value, bool *isAccessor);
+    static bool SetPropertyForAccessor(ObjectOperator *op, const JSHandle<JSTaggedValue> &value);
     static void DeletePropertyInternal(JSThread *thread, const JSHandle<JSObject> &obj,
                                        const JSHandle<JSTaggedValue> &key, uint32_t index);
     int FindProperty(const JSHandle<JSTaggedValue> &key);

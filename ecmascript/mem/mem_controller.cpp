@@ -21,6 +21,7 @@
 namespace panda::ecmascript {
 MemController::MemController(Heap *heap) : heap_(heap), allocTimeMs_(GetSystemTimeInMs())
 {
+    ASSERT(heap != nullptr);
     minAllocLimitGrowingStep_ = heap->GetEcmaVM()->GetEcmaParamConfiguration().GetMinAllocLimitGrowingStep();
 }
 
@@ -209,6 +210,7 @@ void MemController::StopCalculationAfterGC(TriggerGCType gcType)
 
 void MemController::RecordAfterConcurrentMark(MarkType markType, const ConcurrentMarker *marker)
 {
+    ASSERT(marker != nullptr);
     double duration = marker->GetDuration();
     if (markType == MarkType::MARK_FULL) {
         recordedConcurrentMarks_.Push(MakeBytesAndDuration(marker->GetHeapObjectSize(), duration));

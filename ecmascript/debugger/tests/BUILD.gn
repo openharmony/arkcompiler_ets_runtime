@@ -22,7 +22,7 @@ test_js_files = [
   "patch/index",
 ]
 
-module_output_path = "arkcompiler/ets_runtime"
+module_output_path = "ets_runtime"
 
 foreach(file, test_js_files) {
   es2abc_gen_abc("gen_${file}_abc") {

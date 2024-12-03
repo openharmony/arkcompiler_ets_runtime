@@ -116,8 +116,11 @@ uintptr_t SparseSpace::AllocateAfterSweepingCompleted(size_t size)
 void SparseSpace::PrepareSweeping()
 {
     liveObjectSize_ = 0;
+    ASSERT(GetSweepingRegionSafe() == nullptr);
+    ASSERT(GetSweptRegionSafe() == nullptr);
     EnumerateRegions([this](Region *current) {
         if (!current->InCollectSet()) {
+            ASSERT(!current->IsGCFlagSet(RegionGCFlags::HAS_BEEN_SWEPT));
             if (UNLIKELY(localHeap_->ShouldVerifyHeap() &&
                 current->IsGCFlagSet(RegionGCFlags::HAS_BEEN_SWEPT))) { // LOCV_EXCL_BR_LINE
                 LOG_ECMA(FATAL) << "Region should not be swept before PrepareSweeping: " << current;
@@ -605,16 +608,25 @@ void AppSpawnSpace::IterateOverMarkedObjects(const std::function<void(TaggedObje
     });
 }
 
+void LocalSpace::ForceExpandInGC()
+{
+    JSThread *thread = localHeap_->GetJSThread();
+    Region *region = heapRegionAllocator_->AllocateAlignedRegion(this, DEFAULT_REGION_SIZE, thread, localHeap_);
+    region->SetLocalHeap(reinterpret_cast<uintptr_t>(localHeap_));
+    AddRegion(region);
+    allocator_->AddFree(region);
+}
+
 uintptr_t LocalSpace::Allocate(size_t size, bool isExpand)
 {
     auto object = allocator_->Allocate(size);
     if (object == 0 && isExpand) {
-        if (Expand()) {
-            object = allocator_->Allocate(size);
-        } else {
-            localHeap_->ThrowOutOfMemoryErrorForDefault(localHeap_->GetJSThread(), size,
-                " LocalSpace::Allocate", false);
+        if (!Expand()) {
+            ForceExpandInGC();
+            localHeap_->ShouldThrowOOMError(true);
         }
+        object = allocator_->Allocate(size);
+        ASSERT(object != 0);
     }
     if (object != 0) {
         Region::ObjectAddressToRange(object)->IncreaseAliveObject(size);

@@ -111,7 +111,7 @@ public:
     {
     #ifdef CODE_SIGN_ENABLE
         if (!allowAotCompiler_) {
-            return ERR_AOT_COMPILER_CONNECT_FAILED;
+            return ERR_AOT_COMPILER_CALL_CANCELLED;
         }
         if (argsMap.empty() || (PrepareArgs(argsMap) != ERR_OK)) {
             return ERR_AOT_COMPILER_PARAM_FAILED;
@@ -557,7 +557,7 @@ HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_022, TestSize.Level0)
 #ifdef CODE_SIGN_ENABLE
     aotImplMock.PauseAotCompilerMock();
     ret = aotImplMock.EcmascriptAotCompiler(argsMap, sigData);
-    EXPECT_EQ(ret, ERR_AOT_COMPILER_CONNECT_FAILED);
+    EXPECT_EQ(ret, ERR_AOT_COMPILER_CALL_CANCELLED);
 
     aotImplMock.AllowAotCompilerMock();
     ret = aotImplMock.EcmascriptAotCompiler(argsMap, sigData);

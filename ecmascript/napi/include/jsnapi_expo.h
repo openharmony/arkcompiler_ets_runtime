@@ -602,6 +602,7 @@ public:
     bool IsTreeMap(const EcmaVM *vm);
     bool IsTreeSet(const EcmaVM *vm);
     bool IsVector(const EcmaVM *vm);
+    bool IsBitVector(const EcmaVM *vm);
     bool IsSendableObject(const EcmaVM *vm);
     bool IsJSShared(const EcmaVM *vm);
     bool IsSharedArray(const EcmaVM *vm);
@@ -1753,8 +1754,6 @@ public:
     static bool IsMultiThreadCheckEnabled(const EcmaVM *vm);
     static uint32_t GetCurrentThreadId();
 private:
-    static int vmCount_;
-    static bool initialize_;
     static bool isForked_;
     static bool CreateRuntime(const RuntimeOption &option);
     static bool DestroyRuntime();

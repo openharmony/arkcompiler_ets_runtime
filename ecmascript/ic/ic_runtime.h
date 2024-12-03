@@ -57,7 +57,12 @@ public:
         return icAccessor_.GetKind();
     }
 
-    void TraceIC(JSHandle<JSTaggedValue> receiver, JSHandle<JSTaggedValue> key) const;
+    uint32_t GetSlotId() const
+    {
+        return icAccessor_.GetSlotId();
+    }
+
+    void TraceIC(JSThread *thread, JSHandle<JSTaggedValue> receiver, JSHandle<JSTaggedValue> key) const;
 
 protected:
     JSThread *thread_;
@@ -99,6 +104,7 @@ public:
 private:
     inline JSTaggedValue CallPrivateSetter(JSHandle<JSTaggedValue> receiver, JSHandle<JSTaggedValue> key,
                                            JSHandle<JSTaggedValue> value);
+    JSTaggedValue HandleAccesor(ObjectOperator *op, const JSHandle<JSTaggedValue> &value);
 };
 }  // namespace panda::ecmascript
 

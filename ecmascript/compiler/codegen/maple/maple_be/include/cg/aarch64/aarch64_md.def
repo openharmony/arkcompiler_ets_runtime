@@ -893,6 +893,11 @@ DEFINE_MOP(MOP_arrayclass_cache_ldr, {&OpndDesc::Reg64ID,&OpndDesc::LiteralSrc},
 DEFINE_MOP(MOP_clinit_tail, {&OpndDesc::Reg64IS},ISATOMIC|CANTHROW|ISINTRINSIC,kLtClinitTail,"intrinsic_clinit_tail","0",2)
 
 /*
+ * blr xt
+ */
+DEFINE_MOP(MOP_pure_call, {&OpndDesc::Reg64IS, &OpndDesc::ListSrc},0,kLtBranch,"pure_call","0",1,kBranchReg,0xd63f0000)
+
+/*
  * intrinsic Unsafe.getAndAddInt
  * intrinsic_get_add_int w0, xt, wt, ws, x1, x2, w3, label
  * add    xt, x1, x2

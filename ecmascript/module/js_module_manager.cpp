@@ -181,7 +181,7 @@ JSTaggedValue ModuleManager::GetLazyModuleValueOutterInternal(int32_t index, JST
     if (resolvedBinding.IsResolvedIndexBinding()) {
         JSHandle<ResolvedIndexBinding> binding(thread, resolvedBinding);
         JSTaggedValue resolvedModule = binding->GetModule();
-        JSHandle<SourceTextModule> module(thread, resolvedModule);
+        JSMutableHandle<SourceTextModule> module(thread, resolvedModule);
         ASSERT(resolvedModule.IsSourceTextModule());
         // Support for only modifying var value of HotReload.
         // Cause patchFile exclude the record of importing modifying var. Can't reresolve moduleRecord.
@@ -191,13 +191,12 @@ JSTaggedValue ModuleManager::GetLazyModuleValueOutterInternal(int32_t index, JST
                 context->FindPatchModule(module->GetEcmaModuleRecordNameString());
             if (!resolvedModuleOfHotReload->IsHole()) {
                 resolvedModule = resolvedModuleOfHotReload.GetTaggedValue();
-                JSHandle<SourceTextModule> moduleOfHotReload(thread, resolvedModule);
-                SourceTextModule::Evaluate(thread, moduleOfHotReload, nullptr);
-                RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception());
-                return ModuleManagerHelper::GetModuleValue(thread, moduleOfHotReload, binding->GetIndex());
+                module.Update(resolvedModule);
             }
         }
-        SourceTextModule::Evaluate(thread, module, nullptr);
+        if (module->GetStatus() != ModuleStatus::EVALUATED) {
+            SourceTextModule::Evaluate(thread, module, nullptr, 0, context->IsInPendingJob());
+        }
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception());
         return ModuleManagerHelper::GetModuleValue(thread, module, binding->GetIndex());
     }
@@ -254,7 +253,7 @@ void ModuleManager::StoreModuleValueInternal(JSHandle<SourceTextModule> &current
     }
     JSThread *thread = vm_->GetJSThread();
     JSHandle<JSTaggedValue> valueHandle(thread, value);
-    currentModule->StoreModuleValue(thread, index, valueHandle);
+    SourceTextModule::StoreModuleValue(thread, currentModule, index, valueHandle);
 }
 
 JSTaggedValue ModuleManager::GetModuleValueInner(JSTaggedValue key)
@@ -342,7 +341,7 @@ void ModuleManager::StoreModuleValueInternal(JSHandle<SourceTextModule> &current
     JSThread *thread = vm_->GetJSThread();
     JSHandle<JSTaggedValue> keyHandle(thread, key);
     JSHandle<JSTaggedValue> valueHandle(thread, value);
-    currentModule->StoreModuleValue(thread, keyHandle, valueHandle);
+    SourceTextModule::StoreModuleValue(thread, currentModule, keyHandle, valueHandle);
 }
 JSHandle<SourceTextModule> ModuleManager::GetImportedModule(const CString &referencing)
 {
@@ -610,7 +609,7 @@ JSHandle<JSTaggedValue> ModuleManager::ExecuteNativeModuleMayThrowError(JSThread
         JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
     nativeModule->SetStatus(ModuleStatus::EVALUATED);
     nativeModule->SetLoadingTypes(LoadingTypes::STABLE_MODULE);
-    nativeModule->StoreModuleValue(thread, 0, JSNApiHelper::ToJSHandle(exportObject));
+    SourceTextModule::StoreModuleValue(thread, nativeModule, 0, JSNApiHelper::ToJSHandle(exportObject));
     AddResolveImportedModule(recordName, moduleRecord.GetTaggedValue());
     return JSNApiHelper::ToJSHandle(exportObject);
 }

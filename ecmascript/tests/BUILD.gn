@@ -14,7 +14,7 @@
 import("//arkcompiler/ets_runtime/js_runtime_config.gni")
 import("//arkcompiler/ets_runtime/test/test_helper.gni")
 
-module_output_path = "arkcompiler/ets_runtime"
+module_output_path = "ets_runtime"
 
 host_unittest_action("EcmaVm_001_Test") {
   module_out_path = module_output_path
@@ -1461,6 +1461,7 @@ host_unittest_action("EcmaVm_054_Test") {
 
   sources = [
     # test file
+    "heap_helper_test.cpp",
     "machine_code_test.cpp",
   ]
 

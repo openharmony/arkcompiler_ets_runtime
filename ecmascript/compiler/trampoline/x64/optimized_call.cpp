@@ -1406,7 +1406,7 @@ void OptimizedCall::DeoptEnterAsmInterp(ExtendedAssembler *assembler)
     {
         [[maybe_unused]] TempRegisterScope scope(assembler);
         Register temp = __ TempRegister();
-        AsmInterpreterCall::ThrowStackOverflowExceptionAndReturnToAotFrame(assembler,
+        AsmInterpreterCall::ThrowStackOverflowExceptionAndReturnToAsmInterpBridgeFrame(assembler,
             glueRegister, rsp, temp);
     }
 }

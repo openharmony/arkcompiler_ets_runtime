@@ -76,6 +76,11 @@ bool IdleGCTrigger::TryTriggerIdleLocalOldGC()
         !heap_->CheckCanTriggerConcurrentMarking()) {
         return true;
     }
+    if (heap_->GetJSThread()->FullMarkRequest() && !heap_->NeedStopCollection()) {
+        heap_->GetJSThread()->ResetFullMarkRequest();
+        PostIdleGCTask(TRIGGER_IDLE_GC_TYPE::LOCAL_CONCURRENT_MARK);
+        return true;
+    }
     if (CheckIdleOrHintOldGC<Heap>(heap_) && ReachIdleLocalOldGCThresholds() && !heap_->NeedStopCollection()) {
         PostIdleGCTask(TRIGGER_IDLE_GC_TYPE::LOCAL_CONCURRENT_MARK);
         return true;
@@ -161,6 +166,21 @@ bool IdleGCTrigger::CheckIdleYoungGC() const
     return newSpace->GetAllocatedSizeSinceGC(newSpace->GetTop()) > IDLE_MIN_EXPECT_RECLAIM_SIZE;
 }
 
+bool IdleGCTrigger::CheckLocalBindingNativeTriggerFullGC() const
+{
+    size_t nativeBindingSize = heap_->GetNativeBindingSize();
+    size_t nativeBindingSizeLastGC = heap_->GetNativeBindingSizeAfterLastGC();
+    if (nativeBindingSize <= nativeBindingSizeLastGC) {
+        return false;
+    }
+    size_t expectIncrementalNative = std::max(IDLE_BINDING_NATIVE_MIN_INC_SIZE,
+        static_cast<size_t>(nativeBindingSizeLastGC * IDLE_BINDING_NATIVE_MIN_INC_RATIO));
+    size_t incrementalNative = nativeBindingSize - nativeBindingSizeLastGC;
+    LOG_GC(DEBUG) << "IdleGCTrigger: check full GC expectIncrementalNative:" << expectIncrementalNative
+        << ";incrementalNative:" << incrementalNative;
+    return incrementalNative > expectIncrementalNative;
+}
+
 void IdleGCTrigger::TryTriggerIdleGC(TRIGGER_IDLE_GC_TYPE gcType)
 {
     LOG_GC(DEBUG) << "IdleGCTrigger: recv once notify of " << GetGCTypeName(gcType);
@@ -169,6 +189,9 @@ void IdleGCTrigger::TryTriggerIdleGC(TRIGGER_IDLE_GC_TYPE gcType)
             if (CheckIdleOrHintFullGC<Heap>(heap_) && !heap_->NeedStopCollection()) {
                 LOG_GC(INFO) << "IdleGCTrigger: trigger " << GetGCTypeName(gcType);
                 heap_->CollectGarbage(TriggerGCType::FULL_GC, GCReason::IDLE);
+            } else if (CheckLocalBindingNativeTriggerFullGC() && !heap_->NeedStopCollection()) {
+                LOG_GC(INFO) << "IdleGCTrigger: trigger local full GC by native binding size.";
+                heap_->CollectGarbage(TriggerGCType::FULL_GC, GCReason::IDLE_NATIVE);
             } else if (CheckIdleYoungGC() && !heap_->NeedStopCollection()) {
                 LOG_GC(INFO) << "IdleGCTrigger: trigger young gc";
                 heap_->CollectGarbage(TriggerGCType::YOUNG_GC, GCReason::IDLE);

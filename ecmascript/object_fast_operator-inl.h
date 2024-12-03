@@ -59,7 +59,7 @@ namespace panda::ecmascript {
 std::pair<JSTaggedValue, bool> ObjectFastOperator::HasOwnProperty(JSThread *thread,
                                                                   JSTaggedValue receiver, JSTaggedValue key)
 {
-    [[maybe_unused]] DisallowGarbageCollection noGc;
+    DISALLOW_GARBAGE_COLLECTION;
     if (!receiver.IsHeapObject() || !(receiver.IsRegularObject())) {
         return std::make_pair(JSTaggedValue::Hole(), false);
     }
@@ -372,7 +372,7 @@ JSTaggedValue ObjectFastOperator::TrySetPropertyByNameThroughCacheAtLocal(JSThre
                 THROW_TYPE_ERROR_AND_RETURN(thread, GET_MESSAGE_STRING(SetReadOnlyProperty),
                                             JSTaggedValue::Exception());
             }
-            if (hclass->IsTS()) {
+            if (hclass->IsAOT()) {
                 auto attrVal = JSObject::Cast(receiver)->GetProperty(hclass, attr);
                 if (attrVal.IsHole()) {
                     return JSTaggedValue::Hole();
@@ -455,7 +455,7 @@ JSTaggedValue ObjectFastOperator::SetPropertyByName(JSThread *thread, JSTaggedVa
                     THROW_TYPE_ERROR_AND_RETURN(thread, GET_MESSAGE_STRING(SetReadOnlyProperty),
                                                 JSTaggedValue::Exception());
                 }
-                if (hclass->IsTS()) {
+                if (hclass->IsAOT()) {
                     auto attrVal = JSObject::Cast(holder)->GetProperty(hclass, attr);
                     if (attrVal.IsHole()) {
                         if (receiverHoleEntry == -1 && holder == receiver) {
@@ -821,10 +821,11 @@ JSTaggedValue ObjectFastOperator::FastGetPropertyByValue(JSThread *thread, JSTag
                                                          SCheckMode sCheckMode)
 {
     INTERPRETER_TRACE(thread, FastGetPropertyByValue);
+    JSHandle<JSTaggedValue> receiverHandler(thread, receiver);
+    JSHandle<JSTaggedValue> keyHandler(thread, key);
     JSTaggedValue result = ObjectFastOperator::GetPropertyByValue(thread, receiver, key);
     if (result.IsHole()) {
-        return JSTaggedValue::GetProperty(thread, JSHandle<JSTaggedValue>(thread, receiver),
-            JSHandle<JSTaggedValue>(thread, key), sCheckMode).GetValue().GetTaggedValue();
+        return JSTaggedValue::GetProperty(thread, receiverHandler, keyHandler, sCheckMode).GetValue().GetTaggedValue();
     }
     return result;
 }

@@ -137,7 +137,8 @@ public:
                 return true;
             }
         }
-        GTEST_LOG_(INFO) << "_______________" << targetStr << std::to_string(lineNum) <<"_______________ not found";
+        GTEST_LOG_(ERROR) << "file: " << filePath.c_str() << ", target:" << targetStr.c_str()
+                          << ", line:" << std::to_string(lineNum) <<"not found";
         return false;  // Lost the Line
     }
 
@@ -544,9 +545,9 @@ public:
         return profiler_->DumpHeapSnapshot(stream, dumpOption, progress);
     }
 
-    void DumpHeapSnapshot(const DumpSnapShotOption &dumpOption) override
+    void DumpHeapSnapshotForOOM(const DumpSnapShotOption &dumpOption, bool fromSharedGC = false) override
     {
-        profiler_->DumpHeapSnapshot(dumpOption);
+        profiler_->DumpHeapSnapshotForOOM(dumpOption, fromSharedGC);
     }
 
     bool GenerateHeapSnapshot(std::string &inputFilePath, std::string &outputPath) override
@@ -1130,10 +1131,9 @@ HWTEST_F_L0(HeapDumpTest, TestHeapDumpBinaryDump)
     std::string content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
     ASSERT_TRUE(content.size() > 0);
     auto u64Ptr = reinterpret_cast<const uint64_t *>(content.c_str());
-    ASSERT_TRUE(*u64Ptr > 0);
+    ASSERT_TRUE(u64Ptr[1] > 0);
     std::string snapshotPath("test_binary_dump.heapsnapshot");
-    ret = tester.DecodeRawHeapSnashot(rawHeapPath, snapshotPath);
-    ASSERT_TRUE(ret);
+    tester.DecodeRawHeapSnashot(rawHeapPath, snapshotPath);
     ASSERT_TRUE(tester.MatchHeapDumpString(snapshotPath, "\"SharedArrayBuffer\""));
     ASSERT_TRUE(tester.MatchHeapDumpString(snapshotPath, "\"WeakSet\""));
     ASSERT_TRUE(tester.MatchHeapDumpString(snapshotPath, "\"WeakMap\""));

@@ -174,7 +174,7 @@ private:
     {
         if (isShared) {
             if (dump) {
-                sheap_->DumpHeapSnapshotBeforeOOM(true, thread_);
+                sheap_->DumpHeapSnapshotBeforeOOM(false, thread_, SharedHeapOOMSource::DESERIALIZE);
             }
             LOG_ECMA(FATAL) << "BaseDeserializer::OutOfMemory when deserialize shared obj size: " << size
                 << ", old space heap object size: "
@@ -190,7 +190,7 @@ private:
         } else {
             if (dump) {
                 heap_->StatisticHeapDetail();
-                heap_->DumpHeapSnapshotBeforeOOM();
+                heap_->DumpHeapSnapshotBeforeOOM(false);
             }
             LOG_ECMA(FATAL) << "BaseDeserializer::OutOfMemory when deserialize obj size: " << size
                 << ", old space heap object size: "

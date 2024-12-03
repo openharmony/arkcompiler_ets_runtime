@@ -25,11 +25,6 @@
 
 namespace panda::ecmascript {
 using NumberHelper = base::NumberHelper;
-bool DateUtils::isCached_ = false;
-int DateUtils::preSumDays_ = 0;
-int DateUtils::preDays_ = 0;
-int DateUtils::preMonth_ = 0;
-int DateUtils::preYear_ = 0;
 static const std::array<CString, WEEKDAY> WEEK_DAY_NAME = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
 static const std::array<CString, MOUTH_PER_YEAR> MONTH_NAME  = {
     "Jan", "Feb", "Mar", "Apr", "May", "Jun",
@@ -652,13 +647,13 @@ void JSDate::AppendStrToTargetLength(const CString &str, int length, CString &ta
     }
 }
 
-bool JSDate::GetThisDateValues(std::array<int64_t, DATE_LENGTH> *date, bool isLocal) const
+bool JSDate::GetThisDateValues(JSThread *thread, std::array<int64_t, DATE_LENGTH> *date, bool isLocal) const
 {
     double timeMs = this->GetTimeValue().GetDouble();
     if (std::isnan(timeMs)) {
         return false;
     }
-    GetDateValues(timeMs, date, isLocal);
+    GetDateValues(thread, timeMs, date, isLocal);
     return true;
 }
 
@@ -666,7 +661,7 @@ bool JSDate::GetThisDateValues(std::array<int64_t, DATE_LENGTH> *date, bool isLo
 JSTaggedValue JSDate::ToDateString(JSThread *thread) const
 {
     std::array<int64_t, DATE_LENGTH> fields = {0};
-    if (!GetThisDateValues(&fields, true)) {
+    if (!GetThisDateValues(thread, &fields, true)) {
         return JSTaggedValue(base::NAN_VALUE);
     }
     CString str;
@@ -683,13 +678,13 @@ JSTaggedValue JSDate::ToDateString(JSThread *thread) const
 }
 
 // static
-CString JSDate::ToDateString(double timeMs)
+CString JSDate::ToDateString(JSThread *thread, double timeMs)
 {
     if (std::isnan(timeMs)) {
         return "Invalid Date";
     }
     std::array<int64_t, DATE_LENGTH> fields = {0};
-    GetDateValues(timeMs, &fields, true);
+    GetDateValues(thread, timeMs, &fields, true);
     CString localTime;
     int localMin = 0;
     localMin = GetLocalOffsetFromOS(timeMs, true);
@@ -725,7 +720,7 @@ CString JSDate::ToDateString(double timeMs)
 JSTaggedValue JSDate::ToISOString(JSThread *thread) const
 {
     std::array<int64_t, DATE_LENGTH> fields = {0};
-    if (!GetThisDateValues(&fields, false)) {
+    if (!GetThisDateValues(thread, &fields, false)) {
         return JSTaggedValue(base::NAN_VALUE);
     }
     CString year = ToCString(fields[YEAR]);
@@ -760,7 +755,7 @@ JSTaggedValue JSDate::ToString(JSThread *thread) const
 {
     int localMin = 0;
     std::array<int64_t, DATE_LENGTH> fields = {0};
-    if (!GetThisDateValues(&fields, true)) {
+    if (!GetThisDateValues(thread, &fields, true)) {
         return JSTaggedValue(base::NAN_VALUE);
     }
     CString localTime;
@@ -799,7 +794,7 @@ JSTaggedValue JSDate::ToTimeString(JSThread *thread) const
 {
     int localMin = 0;
     std::array<int64_t, DATE_LENGTH> fields = {0};
-    if (!GetThisDateValues(&fields, true)) {
+    if (!GetThisDateValues(thread, &fields, true)) {
         return JSTaggedValue(base::NAN_VALUE);
     }
     CString localTime;
@@ -829,7 +824,7 @@ JSTaggedValue JSDate::ToTimeString(JSThread *thread) const
 JSTaggedValue JSDate::ToUTCString(JSThread *thread) const
 {
     std::array<int64_t, DATE_LENGTH> fields = {0};
-    if (!GetThisDateValues(&fields, false)) {
+    if (!GetThisDateValues(thread, &fields, false)) {
         return JSTaggedValue(base::NAN_VALUE);
     }
     CString str;
@@ -860,7 +855,7 @@ JSTaggedValue JSDate::ValueOf() const
 }
 
 // static
-void JSDate::GetDateValues(double timeMs, std::array<int64_t, DATE_LENGTH> *date, bool isLocal)
+void JSDate::GetDateValues(JSThread *thread, double timeMs, std::array<int64_t, DATE_LENGTH> *date, bool isLocal)
 {
     int64_t tz = 0;
     int64_t timeMsInt = static_cast<int64_t>(timeMs);
@@ -869,17 +864,17 @@ void JSDate::GetDateValues(double timeMs, std::array<int64_t, DATE_LENGTH> *date
         timeMsInt += tz * MS_PER_SECOND * SEC_PER_MINUTE;
     }
 
-    DateUtils::TransferTimeToDate(timeMsInt, date);
+    thread->GetDateUtils()->TransferTimeToDate(timeMsInt, date);
     (*date)[TIMEZONE] = -tz;
 }
 
-double JSDate::GetDateValue(double timeMs, uint8_t code, bool isLocal) const
+double JSDate::GetDateValue(JSThread *thread, double timeMs, uint8_t code, bool isLocal) const
 {
     if (std::isnan(timeMs)) {
         return base::NAN_VALUE;
     }
     std::array<int64_t, DATE_LENGTH> date = {0};
-    GetDateValues(timeMs, &date, isLocal);
+    GetDateValues(thread, timeMs, &date, isLocal);
     return static_cast<double>(date[code]);
 }
 
@@ -907,13 +902,13 @@ JSTaggedValue JSDate::SetDateValue(EcmaRuntimeCallInfo *argv, uint32_t code, boo
         timeMs = 0.0;
         isSelectLocal = false;
     }
+    JSThread *thread = argv->GetThread();
     if (!std::isnan(timeMs)) {
-        GetDateValues(timeMs, &date, isSelectLocal);
+        GetDateValues(thread, timeMs, &date, isSelectLocal);
     }
     // When timeMs is NaN, the corresponding parameters still need to be obtained
     for (uint32_t i = 0; i < count; i++) {
         JSHandle<JSTaggedValue> value = base::BuiltinsBase::GetCallArg(argv, i);
-        JSThread *thread = argv->GetThread();
         JSTaggedNumber res = JSTaggedValue::ToNumber(thread, value);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         double temp = res.GetNumber();

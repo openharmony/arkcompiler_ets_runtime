@@ -31,8 +31,7 @@ uint32_t JitTaskpool::TheMostSuitableThreadNum([[maybe_unused]]uint32_t threadNu
 }
 
 JitTask::JitTask(JSThread *hostThread, JSThread *compilerThread, Jit *jit, JSHandle<JSFunction> &jsFunction,
-    CompilerTier tier, CString &methodName, int32_t offset, uint32_t taskThreadId,
-    JitCompileMode mode)
+    CompilerTier tier, CString &methodName, int32_t offset, JitCompileMode mode)
     : hostThread_(hostThread),
     compilerThread_(compilerThread),
     jit_(jit),
@@ -42,7 +41,6 @@ JitTask::JitTask(JSThread *hostThread, JSThread *compilerThread, Jit *jit, JSHan
     compilerTier_(tier),
     methodName_(methodName),
     offset_(offset),
-    taskThreadId_(taskThreadId),
     ecmaContext_(nullptr),
     jitCompileMode_(mode),
     runState_(RunState::INIT)
@@ -306,13 +304,14 @@ void JitTask::InstallCode()
             heap->GetMachineCodeSpace()->MarkJitFortMemInstalled(machineCodeObj.GetObject<MachineCode>());
         }
     }
+    jsFunction_->SetJitCompilingFlag(false);
 }
 
 void JitTask::InstallCodeByCompilerTier(JSHandle<MachineCode> &machineCodeObj,
     JSHandle<Method> &methodHandle)
 {
     uintptr_t codeAddr = machineCodeObj->GetFuncAddr();
-    if (compilerTier_ == CompilerTier::FAST) {
+    if (compilerTier_.IsFast()) {
         jsFunction_->SetCompiledFuncEntry(codeAddr, machineCodeObj->GetIsFastCall());
         methodHandle->SetDeoptThreshold(hostThread_->GetEcmaVM()->GetJSOptions().GetDeoptThreshold());
         jsFunction_->SetMachineCode(hostThread_, machineCodeObj);
@@ -327,7 +326,7 @@ void JitTask::InstallCodeByCompilerTier(JSHandle<MachineCode> &machineCodeObj,
         }
 #endif
     } else {
-        ASSERT(compilerTier_ == CompilerTier::BASELINE);
+        ASSERT(compilerTier_.IsBaseLine());
         methodHandle->SetDeoptThreshold(hostThread_->GetEcmaVM()->GetJSOptions().GetDeoptThreshold());
         jsFunction_->SetBaselineCode(hostThread_, machineCodeObj);
         LOG_BASELINEJIT(DEBUG) <<"Install baseline jit machine code:" << GetMethodName();
@@ -377,7 +376,7 @@ void JitTask::CloneProfileTypeInfo()
 JitTask::~JitTask()
 {
     ReleaseSustainingJSHandle();
-    jit_->DeleteJitCompile(compilerTask_);
+    jit_->DeleteJitCompilerTask(compilerTask_);
     jit_->DecJitTaskCnt(hostThread_);
 }
 
@@ -418,9 +417,17 @@ bool JitTask::AsyncTask::Run([[maybe_unused]] uint32_t threadIndex)
         if (jitTask_->IsAsyncTask()) {
             jitTask_->jit_->RequestInstallCode(jitTask_);
         }
+
+        MachineCodeDesc codeDesc = jitTask_->GetMachineCodeDesc();
+        size_t instrSize = codeDesc.codeSizeAlign + codeDesc.rodataSizeBeforeTextAlign
+                           + codeDesc.rodataSizeAfterTextAlign;
+        CString sizeInfo = ": text size: ";
+        sizeInfo.append(std::to_string(instrSize)).append("bytes");
+        scope.appendMessage(sizeInfo);
+
         int compilerTime = scope.TotalSpentTimeInMicroseconds();
         JitDfx::GetInstance()->RecordSpentTimeAndPrintStatsLogInJitThread(compilerTime, jitTask_->methodName_,
-            jitTask_->compilerTier_ == CompilerTier::BASELINE, jitTask_->mainThreadCompileTime_);
+            jitTask_->compilerTier_.IsBaseLine(), jitTask_->mainThreadCompileTime_);
     }
     return true;
 }

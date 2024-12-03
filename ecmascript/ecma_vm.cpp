@@ -16,7 +16,6 @@
 #include "ecmascript/ecma_vm.h"
 
 #include "ecmascript/builtins/builtins_ark_tools.h"
-#include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
 #ifdef ARK_SUPPORT_INTL
 #include "ecmascript/builtins/builtins_collator.h"
 #include "ecmascript/builtins/builtins_date_time_format.h"
@@ -122,6 +121,8 @@ void EcmaVM::PreFork()
     auto sHeap = SharedHeap::GetInstance();
     sHeap->CompactHeapBeforeFork(thread_);
     sHeap->DisableParallelGC(thread_);
+
+    Jit::GetInstance()->PreFork();
 }
 
 void EcmaVM::PostFork()
@@ -164,7 +165,7 @@ void EcmaVM::PostFork()
 
 EcmaVM::EcmaVM(JSRuntimeOptions options, EcmaParamConfiguration config)
     : nativeAreaAllocator_(std::make_unique<NativeAreaAllocator>()),
-      heapRegionAllocator_(std::make_unique<HeapRegionAllocator>()),
+      heapRegionAllocator_(std::make_unique<HeapRegionAllocator>(options)),
       chunk_(nativeAreaAllocator_.get()),
       ecmaParamConfiguration_(std::move(config))
 {
@@ -210,7 +211,6 @@ void EcmaVM::ResetPGOProfiler()
         PGOProfilerManager::GetInstance()->Reset(pgoProfiler_, isEnablePGOProfiler);
         thread_->SetPGOProfilerEnable(isEnablePGOProfiler);
         thread_->CheckOrSwitchPGOStubs();
-        thread_->SetEnableForceIC(ecmascript::pgo::PGOProfilerManager::GetInstance()->IsEnableForceIC());
     }
 }
 
@@ -561,6 +561,35 @@ JSHandle<JSTaggedValue> EcmaVM::GetEcmaUncaughtException() const
     return exceptionHandle;
 }
 
+#if ECMASCRIPT_ENABLE_COLLECTING_OPCODES
+void EcmaVM::PrintCollectedByteCode()
+{
+    std::unordered_map<BytecodeInstruction::Opcode, int> bytecodeStatsMap_ = bytecodeStatsStack_.top();
+    LOG_ECMA(ERROR) << "panda runtime stat:";
+    static constexpr int nameRightAdjustment = 45;
+    static constexpr int numberRightAdjustment = 12;
+    LOG_ECMA(ERROR) << std::right << std::setw(nameRightAdjustment) << "Hotness Function ByteCode"
+                   << std::setw(numberRightAdjustment) << "Count";
+    LOG_ECMA(ERROR) << "============================================================"
+                      << "=========================================================";
+    std::vector<std::pair<std::string, int>> bytecodeStatsVector;
+    for (auto& iter: bytecodeStatsMap_) {
+        bytecodeStatsVector.push_back(
+            std::make_pair(kungfu::GetEcmaOpcodeStr(static_cast<EcmaOpcode>(iter.first)), iter.second));
+    }
+    std::sort(bytecodeStatsVector.begin(), bytecodeStatsVector.end(),
+              [](std::pair<std::string, int> &a, std::pair<std::string, int> &b) {
+        return a.second > b.second;
+    });
+    for (size_t i = 0; i < bytecodeStatsVector.size(); ++i) {
+        LOG_ECMA(ERROR) << std::right << std::setw(nameRightAdjustment) << bytecodeStatsVector[i].first
+                       << std::setw(numberRightAdjustment) << bytecodeStatsVector[i].second;
+    }
+    LOG_ECMA(ERROR) << "============================================================"
+                      << "=========================================================";
+}
+#endif
+
 void EcmaVM::PrintAOTSnapShotStats()
 {
     static constexpr int nameRightAdjustment = 30;
@@ -790,6 +819,15 @@ void EcmaVM::TriggerConcurrentCallback(JSTaggedValue result, JSTaggedValue hint)
     }
 
     void *taskInfo = reinterpret_cast<void*>(thread_->GetTaskInfo());
+    if (UNLIKELY(taskInfo == nullptr)) {
+        JSTaggedValue extraInfoValue = functionInfo->GetFunctionExtraInfo();
+        if (!extraInfoValue.IsJSNativePointer()) {
+            LOG_ECMA(INFO) << "FunctionExtraInfo is not JSNativePointer";
+            return;
+        }
+        JSHandle<JSNativePointer> extraInfo(thread_, extraInfoValue);
+        taskInfo = extraInfo->GetData();
+    }
     // clear the taskInfo when return, which can prevent the callback to get it
     thread_->SetTaskInfo(reinterpret_cast<uintptr_t>(nullptr));
     auto localResultRef = JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread_, result));

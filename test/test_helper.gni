@@ -1249,7 +1249,7 @@ template("host_aot_js_test_action") {
 
     if (defined(invoker.is_enable_native_inline) &&
         invoker.is_enable_native_inline) {
-      _aot_compile_options_ += " --compiler-enable-native-inline"
+      _aot_compile_options_ += " --compiler-enable-native-inline=true"
     }
 
     if (defined(invoker.is_enable_opt_loop_peeling) &&
@@ -1530,7 +1530,7 @@ template("host_aot_js_test_action") {
 
       if (defined(invoker.is_enable_native_inline) &&
           invoker.is_enable_native_inline) {
-        _aot_compile_options_ += " --compiler-enable-native-inline"
+        _aot_compile_options_ += " --compiler-enable-native-inline=true"
       }
 
       if (defined(invoker.is_enable_opt_loop_peeling) &&
@@ -1613,6 +1613,10 @@ template("host_aot_js_test_action") {
           " --aot-file=" + rebase_path(_test_aot_arg_litecg_) +
           " --asm-interpreter=true" + " --entry-point=${_target_name_}"
 
+      _icu_data_path_options_ =
+          " --icu-data-path=" + rebase_path("//third_party/icu/ohos_icu4j/data")
+      _aot_run_options_ += _icu_data_path_options_
+
       if (defined(invoker.is_enable_enableArkTools) &&
           invoker.is_enable_enableArkTools) {
         _aot_run_options_ += " --enable-ark-tools=true"
@@ -1681,6 +1685,10 @@ template("host_aot_js_test_action") {
       _aot_run_options_ =
           " --aot-file=" + rebase_path(_test_aot_arg_litecg_) +
           " --asm-interpreter=true" + " --entry-point=${_target_name_}"
+
+      _icu_data_path_options_ =
+          " --icu-data-path=" + rebase_path("//third_party/icu/ohos_icu4j/data")
+      _aot_run_options_ += _icu_data_path_options_
 
       if (defined(invoker.is_enable_enableArkTools) &&
           invoker.is_enable_enableArkTools) {
@@ -1796,7 +1804,7 @@ template("host_aot_js_test_action") {
 
       if (defined(invoker.is_enable_native_inline) &&
           invoker.is_enable_native_inline) {
-        _aot_compile_options_ += " --compiler-enable-native-inline"
+        _aot_compile_options_ += " --compiler-enable-native-inline=true"
       }
 
       if (defined(invoker.is_enable_opt_loop_peeling) &&
@@ -1879,6 +1887,10 @@ template("host_aot_js_test_action") {
       _aot_run_options_ =
           " --aot-file=" + rebase_path(_test_aot_arg_litecg_) +
           " --asm-interpreter=true" + " --entry-point=${_target_name_}"
+
+      _icu_data_path_options_ =
+          " --icu-data-path=" + rebase_path("//third_party/icu/ohos_icu4j/data")
+      _aot_run_options_ += _icu_data_path_options_
 
       if (defined(invoker.is_enable_enableArkTools) &&
           invoker.is_enable_enableArkTools) {
@@ -2161,7 +2173,7 @@ template("host_aot_js_assert_test_action") {
 
     if (defined(invoker.is_enable_native_inline) &&
         invoker.is_enable_native_inline) {
-      _aot_compile_options_ += " --compiler-enable-native-inline"
+      _aot_compile_options_ += " --compiler-enable-native-inline=true"
     }
 
     if (defined(invoker.is_enable_opt_loop_peeling) &&
@@ -2395,7 +2407,6 @@ template("host_aot_test_action") {
   _test_aot_arg_slowpath_ = "$target_out_dir/slowpath/${_target_name_}"
   _test_aot_log_level = "info"
   _test_expect_path_ = "${_src_dir_}/expect_output.txt"
-  _test_slowpath_expect_path_ = _test_expect_path_
   _test_pgo_expect_path_ = "${_src_dir_}/pgo_expect_output.txt"
   _is_test_llvm_only_ = TEST_LLVM_ONLY
   if (!TEST_LLVM_ONLY && defined(invoker.is_test_llvm_only) &&
@@ -2404,10 +2415,6 @@ template("host_aot_test_action") {
   }
   if (defined(invoker.use_one_expect_path) && invoker.use_one_expect_path) {
     _test_pgo_expect_path_ = _test_expect_path_
-  }
-  if (defined(invoker.use_distinct_slowpath_expect_path) &&
-      invoker.use_distinct_slowpath_expect_path) {
-    _test_slowpath_expect_path_ = "${_src_dir_}/slowpath_expect_output.txt"
   }
   if (target_cpu == "x64" ||
       (ark_standalone_build && run_with_qemu && host_os == "linux" &&
@@ -2427,7 +2434,6 @@ template("host_aot_test_action") {
   if (defined(invoker.gen_expect_output) && invoker.gen_expect_output) {
     _test_expect_path_ = "$target_out_dir/expect_output.txt"
     _test_pgo_expect_path_ = "$target_out_dir/pgo_expect_output.txt"
-    _test_slowpath_expect_path_ = _test_expect_path_
 
     action("${_target_name_}GenExpectOutput") {
       script = "$js_root/script/gen_expect_output.sh"
@@ -2513,6 +2519,10 @@ template("host_aot_test_action") {
         " --enable-pgo-profiler=true" + " --compiler-pgo-profiler-path=" +
         rebase_path(_test_profiler_path_)
 
+    _icu_data_path_options_ =
+        " --icu-data-path=" + rebase_path("//third_party/icu/ohos_icu4j/data")
+    _aot_run_options_ += _icu_data_path_options_
+
     if (defined(invoker.is_enable_enableArkTools) &&
         invoker.is_enable_enableArkTools) {
       _aot_run_options_ += " --enable-ark-tools=true"
@@ -2520,9 +2530,6 @@ template("host_aot_test_action") {
     }
     if (defined(invoker.log_option)) {
       _aot_run_options_ += invoker.log_option
-    }
-    if (defined(invoker.is_enable_force_ic) && !invoker.is_enable_force_ic) {
-      _aot_run_options_ += " --enable-force-ic=false"
     }
     _aot_run_options_ += common_options
     args = [
@@ -2598,7 +2605,7 @@ template("host_aot_test_action") {
 
     if (defined(invoker.is_enable_native_inline) &&
         invoker.is_enable_native_inline) {
-      _aot_compile_options_ += " --compiler-enable-native-inline"
+      _aot_compile_options_ += " --compiler-enable-native-inline=true"
     }
 
     if (defined(invoker.is_enable_opt_loop_peeling) &&
@@ -2692,7 +2699,7 @@ template("host_aot_test_action") {
 
     if (defined(invoker.is_enable_native_inline) &&
         invoker.is_enable_native_inline) {
-      _aot_compile_options_ += " --compiler-enable-native-inline"
+      _aot_compile_options_ += " --compiler-enable-native-inline=true"
     }
 
     if (defined(invoker.is_enable_opt_loop_peeling) &&
@@ -2968,7 +2975,7 @@ template("host_aot_test_action") {
       "--timeout-limit",
       "${_timeout_}",
       "--expect-file",
-      rebase_path(_test_slowpath_expect_path_),
+      rebase_path(_test_expect_path_),
       "--env-path",
       rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime:" +
           rebase_path(_root_out_dir_) + "/${_icu_path_}:" +
@@ -3035,7 +3042,7 @@ template("host_aot_test_action") {
 
       if (defined(invoker.is_enable_native_inline) &&
           invoker.is_enable_native_inline) {
-        _aot_compile_options_ += " --compiler-enable-native-inline"
+        _aot_compile_options_ += " --compiler-enable-native-inline=true"
       }
 
       if (defined(invoker.is_enable_opt_loop_peeling) &&
@@ -3131,7 +3138,7 @@ template("host_aot_test_action") {
 
       if (defined(invoker.is_enable_native_inline) &&
           invoker.is_enable_native_inline) {
-        _aot_compile_options_ += " --compiler-enable-native-inline"
+        _aot_compile_options_ += " --compiler-enable-native-inline=true"
       }
 
       if (defined(invoker.is_enable_opt_loop_peeling) &&
@@ -3391,7 +3398,7 @@ template("host_aot_test_action") {
         "--timeout-limit",
         "${_timeout_}",
         "--expect-file",
-        rebase_path(_test_slowpath_expect_path_),
+        rebase_path(_test_expect_path_),
         "--env-path",
         rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime:" +
             rebase_path(_root_out_dir_) + "/${_icu_path_}:" +
@@ -3464,7 +3471,7 @@ template("host_aot_test_action") {
 
       if (defined(invoker.is_enable_native_inline) &&
           invoker.is_enable_native_inline) {
-        _aot_compile_options_ += " --compiler-enable-native-inline"
+        _aot_compile_options_ += " --compiler-enable-native-inline=true"
       }
 
       if (defined(invoker.is_enable_opt_loop_peeling) &&
@@ -3562,7 +3569,7 @@ template("host_aot_test_action") {
 
       if (defined(invoker.is_enable_native_inline) &&
           invoker.is_enable_native_inline) {
-        _aot_compile_options_ += " --compiler-enable-native-inline"
+        _aot_compile_options_ += " --compiler-enable-native-inline=true"
       }
 
       if (defined(invoker.is_enable_opt_loop_peeling) &&
@@ -4000,7 +4007,7 @@ template("host_aot_assert_test_action") {
 
     if (defined(invoker.is_enable_native_inline) &&
         invoker.is_enable_native_inline) {
-      _aot_compile_options_ += " --compiler-enable-native-inline"
+      _aot_compile_options_ += " --compiler-enable-native-inline=true"
     }
 
     if (defined(invoker.is_enable_opt_loop_peeling) &&
@@ -4094,7 +4101,7 @@ template("host_aot_assert_test_action") {
 
     if (defined(invoker.is_enable_native_inline) &&
         invoker.is_enable_native_inline) {
-      _aot_compile_options_ += " --compiler-enable-native-inline"
+      _aot_compile_options_ += " --compiler-enable-native-inline=true"
     }
 
     if (defined(invoker.is_enable_opt_loop_peeling) &&

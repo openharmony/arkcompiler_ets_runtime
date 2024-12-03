@@ -71,4 +71,18 @@ var str8 = "Test1234"
 print(regexp.test(str8));
 print(RegExp.$1);
 
+var v1 = "()|()|".repeat(512);
+new RegExp(v1).exec("");
+print("regexp.exec succ");
+
+const emailRegex = /(\w+)@(\w+)\.(\w+)/;
+const testString = "Contact me at support@example.com for assistance.";
+const match = emailRegex.exec(testString);
+if (match) {
+    print("match result:", match[0]);
+    print("match start index:", match.index);
+} else {
+    print("no match");
+}
+
 print("builtins regexp end");

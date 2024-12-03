@@ -25,6 +25,7 @@
 #include "ecmascript/builtins/builtins_array.h"
 #include "ecmascript/builtins/builtins_arraybuffer.h"
 #include "ecmascript/js_stable_array.h"
+#include "ecmascript/builtins/builtins_arraybuffer.h"
 #include "ecmascript/builtins/builtins_bigint.h"
 #include "ecmascript/builtins/builtins_function.h"
 #include "ecmascript/builtins/builtins_iterator.h"
@@ -280,8 +281,8 @@ void RuntimeStubs::CopyTypedArrayBuffer(JSTypedArray *srcArray, JSTypedArray *ta
     }
     JSTaggedValue srcBuffer = srcArray->GetViewedArrayBufferOrByteArray();
     JSTaggedValue targetBuffer = targetArray->GetViewedArrayBufferOrByteArray();
-    uint32_t srcByteIndex = static_cast<uint32_t>(srcStartPos * elementSize + srcArray->GetByteOffset());
-    uint32_t targetByteIndex = static_cast<uint32_t>(tarStartPos * elementSize + targetArray->GetByteOffset());
+    uint32_t srcByteIndex = static_cast<uint32_t>(srcStartPos * elementSize) + srcArray->GetByteOffset();
+    uint32_t targetByteIndex = static_cast<uint32_t>(tarStartPos * elementSize) + targetArray->GetByteOffset();
     uint8_t *srcBuf = (uint8_t *)builtins::BuiltinsArrayBuffer::GetDataPointFromBuffer(srcBuffer, srcByteIndex);
     uint8_t *targetBuf = (uint8_t *)builtins::BuiltinsArrayBuffer::GetDataPointFromBuffer(targetBuffer,
                                                                                           targetByteIndex);
@@ -656,6 +657,7 @@ DEF_RUNTIME_STUBS(RuntimeDump)
 
 void RuntimeStubs::Dump(JSTaggedType rawValue)
 {
+    DISALLOW_GARBAGE_COLLECTION;
     std::ostringstream oss;
     auto value = JSTaggedValue(rawValue);
     value.Dump(oss);
@@ -664,11 +666,13 @@ void RuntimeStubs::Dump(JSTaggedType rawValue)
 
 void RuntimeStubs::DebugDump(JSTaggedType rawValue)
 {
+    DISALLOW_GARBAGE_COLLECTION;
     DebugDumpWithHint(reinterpret_cast<uintptr_t>(nullptr), rawValue);
 }
 
 void RuntimeStubs::DumpWithHint(uintptr_t hintStrAddress, JSTaggedType rawValue)
 {
+    DISALLOW_GARBAGE_COLLECTION;
     const char *origHintStr = reinterpret_cast<const char*>(hintStrAddress); // May be nullptr
     const char *hintStr = (origHintStr == nullptr) ? "" : origHintStr;
     DumpToStreamWithHint(std::cout, hintStr, JSTaggedValue(rawValue));
@@ -677,6 +681,7 @@ void RuntimeStubs::DumpWithHint(uintptr_t hintStrAddress, JSTaggedType rawValue)
 
 void RuntimeStubs::DebugDumpWithHint(uintptr_t hintStrAddress, JSTaggedType rawValue)
 {
+    DISALLOW_GARBAGE_COLLECTION;
     const char *origHintStr = reinterpret_cast<const char*>(hintStrAddress); // May be nullptr
     const char *hintStr = (origHintStr == nullptr) ? "" : origHintStr;
     // The immediate lambda expression call is not evaluated when the logger is unabled.
@@ -729,6 +734,29 @@ void RuntimeStubs::DebugPrintInstruction([[maybe_unused]] uintptr_t argGlue, con
 {
     BytecodeInstruction inst(pc);
     LOG_INTERPRETER(DEBUG) << inst;
+}
+
+void RuntimeStubs::CollectingOpcodes([[maybe_unused]] uintptr_t argGlue, const uint8_t *pc)
+{
+#if ECMASCRIPT_ENABLE_COLLECTING_OPCODES
+    BytecodeInstruction inst(pc);
+    auto thread = JSThread::GlueToJSThread(argGlue);
+    auto vm = thread->GetEcmaVM();
+    auto opcode = inst.GetOpcode();
+    std::stack<std::unordered_map<BytecodeInstruction::Opcode, int>> &bytecodeStatsStack_ =
+            vm->GetBytecodeStatsStack();
+    if (bytecodeStatsStack_.empty()) {
+        return;
+    }
+    std::unordered_map<BytecodeInstruction::Opcode, int> &bytecodeStatsMap_ = bytecodeStatsStack_.top();
+    auto foundInst = bytecodeStatsMap_.find(opcode);
+    if (foundInst != bytecodeStatsMap_.end()) {
+        ++foundInst->second;
+    } else {
+        bytecodeStatsMap_[opcode] = 1;
+    }
+    LOG_INTERPRETER(DEBUG) << inst;
+#endif
 }
 
 void RuntimeStubs::DebugOsrEntry([[maybe_unused]] uintptr_t argGlue, const uint8_t *codeEntry)
@@ -900,7 +928,7 @@ DEF_RUNTIME_STUBS(Exp)
         // fast path
         double doubleBase = baseValue.IsInt() ? baseValue.GetInt() : baseValue.GetDouble();
         double doubleExponent = exponentValue.IsInt() ? exponentValue.GetInt() : exponentValue.GetDouble();
-        if (std::abs(doubleBase) == 1 && std::isinf(doubleExponent)) {
+        if ((std::abs(doubleBase) == 1 && std::isinf(doubleExponent)) || std::isnan(doubleExponent)) {
             return JSTaggedValue(base::NAN_VALUE).GetRawData();
         }
         if ((doubleBase == 0 &&
@@ -1369,6 +1397,15 @@ DEF_RUNTIME_STUBS(GetArrayLiteralFromCache)
         thread, cp, index.GetInt(), module.GetTaggedValue()).GetRawData();
 }
 
+DEF_RUNTIME_STUBS(StObjByValue)
+{
+    RUNTIME_STUBS_HEADER(StObjByValue);
+    JSHandle<JSTaggedValue> receiver = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> key = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
+    JSHandle<JSTaggedValue> value = GetHArg<JSTaggedValue>(argv, argc, 2);  // 2: means the second parameter
+    return RuntimeStObjByValue(thread, receiver, key, value).GetRawData();
+}
+
 DEF_RUNTIME_STUBS(LdObjByIndex)
 {
     RUNTIME_STUBS_HEADER(LdObjByIndex);
@@ -1592,7 +1629,7 @@ DEF_RUNTIME_STUBS(JitCompile)
     RUNTIME_STUBS_HEADER(JitCompile);
     JSHandle<JSFunction> thisFunc = GetHArg<JSFunction>(argv, argc, 0);  // 0: means the zeroth parameter
     JSTaggedValue offset = GetArg(argv, argc, 1);  // 1: means the first parameter
-    Jit::Compile(thread->GetEcmaVM(), thisFunc, CompilerTier::FAST, offset.GetInt(), JitCompileMode::ASYNC);
+    Jit::Compile(thread->GetEcmaVM(), thisFunc, CompilerTier::Tier::FAST, offset.GetInt(), JitCompileMode::Mode::ASYNC);
     return JSTaggedValue::Undefined().GetRawData();
 }
 
@@ -1600,8 +1637,8 @@ DEF_RUNTIME_STUBS(BaselineJitCompile)
 {
     RUNTIME_STUBS_HEADER(BaselineJitCompile);
     JSHandle<JSFunction> thisFunc = GetHArg<JSFunction>(argv, argc, 0);  // 0: means the zeroth parameter
-    Jit::Compile(thread->GetEcmaVM(), thisFunc, CompilerTier::BASELINE,
-                 MachineCode::INVALID_OSR_OFFSET, JitCompileMode::ASYNC);
+    Jit::Compile(thread->GetEcmaVM(), thisFunc, CompilerTier::Tier::BASELINE,
+                 MachineCode::INVALID_OSR_OFFSET, JitCompileMode::Mode::ASYNC);
     return JSTaggedValue::Undefined().GetRawData();
 }
 
@@ -3114,35 +3151,6 @@ DEF_RUNTIME_STUBS(DecodeURIComponent)
     return result.GetRawData();
 }
 
-JSTaggedType RuntimeStubs::CreateArrayFromList([[maybe_unused]] uintptr_t argGlue, int32_t argc,
-                                               JSTaggedValue *argvPtr)
-{
-    auto thread = JSThread::GlueToJSThread(argGlue);
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<TaggedArray> taggedArray = factory->NewTaggedArray(argc - NUM_MANDATORY_JSFUNC_ARGS);
-    for (int index = NUM_MANDATORY_JSFUNC_ARGS; index < argc; ++index) {
-        taggedArray->Set(thread, index - NUM_MANDATORY_JSFUNC_ARGS, argvPtr[index]);
-    }
-    JSHandle<JSArray> arrHandle = JSArray::CreateArrayFromList(thread, taggedArray);
-    return arrHandle.GetTaggedValue().GetRawData();
-}
-
-int32_t RuntimeStubs::FindElementWithCache(uintptr_t argGlue, JSTaggedType hclass,
-                                           JSTaggedType key, int32_t num)
-{
-    auto thread = JSThread::GlueToJSThread(argGlue);
-    auto cls = reinterpret_cast<JSHClass *>(hclass);
-    JSTaggedValue propKey = JSTaggedValue(key);
-    auto layoutInfo = LayoutInfo::Cast(cls->GetLayout().GetTaggedObject());
-    PropertiesCache *cache = thread->GetPropertiesCache();
-    int index = cache->Get(cls, propKey);
-    if (index == PropertiesCache::NOT_FOUND) {
-        index = layoutInfo->BinarySearch(propKey, num);
-        cache->Set(cls, propKey, index);
-    }
-    return index;
-}
-
 void RuntimeStubs::UpdateFieldType(JSTaggedType hclass, uint64_t value)
 {
     auto cls = reinterpret_cast<JSHClass *>(hclass);
@@ -3152,6 +3160,7 @@ void RuntimeStubs::UpdateFieldType(JSTaggedType hclass, uint64_t value)
 
 JSTaggedType RuntimeStubs::GetActualArgvNoGC(uintptr_t argGlue)
 {
+    DISALLOW_GARBAGE_COLLECTION;
     auto thread = JSThread::GlueToJSThread(argGlue);
     JSTaggedType *current = const_cast<JSTaggedType *>(thread->GetLastLeaveFrame());
     FrameIterator it(current, thread);
@@ -3292,11 +3301,6 @@ double RuntimeStubs::FloatPow(double base, double exp)
     return std::pow(base, exp);
 }
 
-bool RuntimeStubs::NumberIsFinite(double x)
-{
-    return std::isfinite(x);
-}
-
 double RuntimeStubs::CallDateNow()
 {
     // time from now is in ms.
@@ -3313,16 +3317,9 @@ int32_t RuntimeStubs::DoubleToInt(double x, size_t bits)
     return base::NumberHelper::DoubleToInt(x, bits);
 }
 
-JSTaggedType RuntimeStubs::DoubleToLength(double x)
+int32_t RuntimeStubs::SaturateTruncDoubleToInt32(double x)
 {
-    double length = base::NumberHelper::TruncateDouble(x);
-    if (length < 0.0) {
-        return JSTaggedNumber(static_cast<double>(0)).GetRawData();
-    }
-    if (length > SAFE_NUMBER) {
-        return JSTaggedNumber(static_cast<double>(SAFE_NUMBER)).GetRawData();
-    }
-    return JSTaggedNumber(length).GetRawData();
+    return base::NumberHelper::SaturateTruncDoubleToInt32(x);
 }
 
 void RuntimeStubs::InsertNewToEdenRSet([[maybe_unused]] uintptr_t argGlue,
@@ -3414,52 +3411,21 @@ void RuntimeStubs::SharedGCMarkingBarrier([[maybe_unused]] uintptr_t argGlue, Ta
     Barriers::UpdateShared(thread, value, valueRegion);
 }
 
-void RuntimeStubs::StoreBarrier([[maybe_unused]] uintptr_t argGlue,
-    uintptr_t object, size_t offset, TaggedObject *value)
-{
-    uintptr_t slotAddr = object + offset;
-    Region *objectRegion = Region::ObjectAddressToRange(object);
-    Region *valueRegion = Region::ObjectAddressToRange(value);
-    auto thread = JSThread::GlueToJSThread(argGlue);
-#if ECMASCRIPT_ENABLE_BARRIER_CHECK
-    if (!thread->GetEcmaVM()->GetHeap()->IsAlive(JSTaggedValue(value).GetHeapObject())) {
-        LOG_FULL(FATAL) << "RuntimeStubs::StoreBarrier checked value:" << value << " is invalid!";
-    }
-#endif
-    if (objectRegion->InGeneralOldSpace() && valueRegion->InGeneralNewSpace()) {
-        // Should align with '8' in 64 and 32 bit platform
-        ASSERT((slotAddr % static_cast<uint8_t>(MemAlignment::MEM_ALIGN_OBJECT)) == 0);
-        objectRegion->InsertOldToNewRSet(slotAddr);
-    } else if (!objectRegion->InSharedHeap() && valueRegion->InSharedSweepableSpace()) {
-        objectRegion->InsertLocalToShareRSet(slotAddr);
-    } else if (valueRegion->InEdenSpace() && objectRegion->InYoungSpace()) {
-        objectRegion->InsertNewToEdenRSet(slotAddr);
-    }
-    if (!valueRegion->InSharedHeap() && thread->IsConcurrentMarkingOrFinished()) {
-        Barriers::Update(thread, slotAddr, objectRegion, value, valueRegion);
-    }
-    if (valueRegion->InSharedSweepableSpace() && thread->IsSharedConcurrentMarkingOrFinished()) {
-        Barriers::UpdateShared(thread, value, valueRegion);
-    }
-}
-
-bool RuntimeStubs::StringsAreEquals(EcmaString *str1, EcmaString *str2)
-{
-    return EcmaStringAccessor::StringsAreEqualDiffUtfEncoding(str1, str2);
-}
-
 bool RuntimeStubs::BigIntEquals(JSTaggedType left, JSTaggedType right)
 {
+    DISALLOW_GARBAGE_COLLECTION;
     return BigInt::Equal(JSTaggedValue(left), JSTaggedValue(right));
 }
 
 bool RuntimeStubs::BigIntSameValueZero(JSTaggedType left, JSTaggedType right)
 {
+    DISALLOW_GARBAGE_COLLECTION;
     return BigInt::SameValueZero(JSTaggedValue(left), JSTaggedValue(right));
 }
 
 JSTaggedValue RuntimeStubs::JSHClassFindProtoTransitions(JSHClass *cls, JSTaggedValue key, JSTaggedValue proto)
 {
+    DISALLOW_GARBAGE_COLLECTION;
     return JSTaggedValue(cls->FindProtoTransitions(key, proto));
 }
 
@@ -3477,17 +3443,20 @@ JSTaggedValue RuntimeStubs::NumberHelperStringToDouble(EcmaString *numberString)
 
 JSTaggedValue RuntimeStubs::GetStringToListCacheArray(uintptr_t argGlue)
 {
+    DISALLOW_GARBAGE_COLLECTION;
     auto thread = JSThread::GlueToJSThread(argGlue);
     return thread->GetCurrentEcmaContext()->GetStringToListResultCache().GetTaggedValue();
 }
 
 double RuntimeStubs::TimeClip(double time)
 {
+    DISALLOW_GARBAGE_COLLECTION;
     return JSDate::TimeClip(time);
 }
 
 double RuntimeStubs::SetDateValues(double year, double month, double day)
 {
+    DISALLOW_GARBAGE_COLLECTION;
     if (std::isnan(year) || !std::isfinite(year) || std::isnan(month) || !std::isfinite(month) || std::isnan(day) ||
         !std::isfinite(day)) {
         return base::NAN_VALUE;
@@ -3702,6 +3671,7 @@ DEF_RUNTIME_STUBS(HClassCloneWithAddProto)
 
 void RuntimeStubs::StartCallTimer(uintptr_t argGlue, JSTaggedType func, bool isAot)
 {
+    DISALLOW_GARBAGE_COLLECTION;
     auto thread =  JSThread::GlueToJSThread(argGlue);
     JSTaggedValue callTarget(func);
     Method *method = Method::Cast(JSFunction::Cast(callTarget)->GetMethod());
@@ -3716,6 +3686,7 @@ void RuntimeStubs::StartCallTimer(uintptr_t argGlue, JSTaggedType func, bool isA
 
 void RuntimeStubs::EndCallTimer(uintptr_t argGlue, JSTaggedType func)
 {
+    DISALLOW_GARBAGE_COLLECTION;
     auto thread =  JSThread::GlueToJSThread(argGlue);
     JSTaggedValue callTarget(func);
     Method *method = Method::Cast(JSFunction::Cast(callTarget)->GetMethod());
@@ -3892,6 +3863,10 @@ DEF_RUNTIME_STUBS(LocaleCompareCacheable)
     JSHandle<JSTaggedValue> locales = GetHArg<JSTaggedValue>(argv, argc, 0); // 0: means the zeroth parameter
     JSHandle<EcmaString> thisHandle = GetHArg<EcmaString>(argv, argc, 1);    // 1: means the first parameter
     JSHandle<EcmaString> thatHandle = GetHArg<EcmaString>(argv, argc, 2);    // 2: means the second parameter
+#if ENABLE_NEXT_OPTIMIZATION
+    const CompareStringsOption csOption = JSCollator::CompareStringsOptionFor(thread, locales);
+    JSTaggedValue result = JSCollator::FastCachedCompareStrings(thread, locales, thisHandle, thatHandle, csOption);
+#else
     auto collator = JSCollator::GetCachedIcuCollator(thread, locales);
     JSTaggedValue result = JSTaggedValue::Undefined();
     if (collator != nullptr) {
@@ -3899,6 +3874,7 @@ DEF_RUNTIME_STUBS(LocaleCompareCacheable)
             thread, locales);
         result = JSCollator::CompareStrings(thread, collator, thisHandle, thatHandle, csOption);
     }
+#endif
     return result.GetRawData();
 }
 
@@ -3919,11 +3895,109 @@ void RuntimeStubs::ArrayTrim(uintptr_t argGlue, TaggedArray *array, int64_t newL
 
 bool RuntimeStubs::IsFastRegExp(uintptr_t argGlue, JSTaggedValue thisValue)
 {
-    DISALLOW_GARBAGE_COLLECTION;
     auto thread = JSThread::GlueToJSThread(argGlue);
-    [[maybe_unused]] EcmaHandleScope handleScope(thread);
-    JSHandle<JSTaggedValue> thisObjVal(thread, thisValue);
-    return builtins::BuiltinsRegExp::IsFastRegExp(thread, thisObjVal);
+    return builtins::BuiltinsRegExp::IsFastRegExp(thread, thisValue);
+}
+
+template <typename T>
+static bool CompareFloat(T x, T y)
+{
+    if (x < y) {
+        return true;
+    }
+    if (x > y) {
+        return false;
+    }
+    if constexpr (!std::is_integral<T>::value) {
+        double doubleX = x, doubleY = y;
+        if (x == 0 && x == y) {
+            /* -0.0 is less than +0.0 */
+            return std::signbit(doubleX) && !std::signbit(doubleY);
+        }
+        if (!std::isnan(doubleX) && std::isnan(doubleY)) {
+            /* number is less than NaN */
+            return true;
+        }
+    }
+    return false;
+}
+
+void RuntimeStubs::SortTypedArray(JSTypedArray *typedArray)
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    JSHClass *hclass = typedArray->GetClass();
+    const JSType jsType = hclass->GetObjectType();
+    JSTaggedValue buffer = typedArray->GetViewedArrayBufferOrByteArray();
+    const uint32_t len = typedArray->GetArrayLength();
+    void *pointer = builtins::BuiltinsArrayBuffer::GetDataPointFromBuffer(buffer);
+    switch (jsType) {
+        case JSType::JS_INT8_ARRAY:
+            std::sort(static_cast<int8_t*>(pointer), static_cast<int8_t*>(pointer) + len);
+            break;
+        case JSType::JS_UINT8_ARRAY:
+        case JSType::JS_UINT8_CLAMPED_ARRAY:
+            std::sort(static_cast<uint8_t*>(pointer), static_cast<uint8_t*>(pointer) + len);
+            break;
+        case JSType::JS_INT16_ARRAY:
+            std::sort(static_cast<int16_t*>(pointer), static_cast<int16_t*>(pointer) + len);
+            break;
+        case JSType::JS_UINT16_ARRAY:
+            std::sort(static_cast<uint16_t*>(pointer), static_cast<uint16_t*>(pointer) + len);
+            break;
+        case JSType::JS_INT32_ARRAY:
+            std::sort(static_cast<int32_t*>(pointer), static_cast<int32_t*>(pointer) + len);
+            break;
+        case JSType::JS_UINT32_ARRAY:
+            std::sort(static_cast<uint32_t*>(pointer), static_cast<uint32_t*>(pointer) + len);
+            break;
+        case JSType::JS_FLOAT32_ARRAY:
+            std::sort(static_cast<float*>(pointer), static_cast<float*>(pointer) + len, CompareFloat<float>);
+            break;
+        case JSType::JS_FLOAT64_ARRAY:
+            std::sort(static_cast<double*>(pointer), static_cast<double*>(pointer) + len, CompareFloat<double>);
+            break;
+        default:
+            UNREACHABLE();
+    }
+}
+
+void RuntimeStubs::ReverseTypedArray(JSTypedArray *typedArray)
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    JSHClass *hclass = typedArray->GetClass();
+    const JSType jsType = hclass->GetObjectType();
+    JSTaggedValue buffer = typedArray->GetViewedArrayBufferOrByteArray();
+    const uint32_t len = typedArray->GetArrayLength();
+    void *pointer = builtins::BuiltinsArrayBuffer::GetDataPointFromBuffer(buffer);
+    switch (jsType) {
+        case JSType::JS_INT8_ARRAY:
+            std::reverse(static_cast<int8_t*>(pointer), static_cast<int8_t*>(pointer) + len);
+            break;
+        case JSType::JS_UINT8_ARRAY:
+        case JSType::JS_UINT8_CLAMPED_ARRAY:
+            std::reverse(static_cast<uint8_t*>(pointer), static_cast<uint8_t*>(pointer) + len);
+            break;
+        case JSType::JS_INT16_ARRAY:
+            std::reverse(static_cast<int16_t*>(pointer), static_cast<int16_t*>(pointer) + len);
+            break;
+        case JSType::JS_UINT16_ARRAY:
+            std::reverse(static_cast<uint16_t*>(pointer), static_cast<uint16_t*>(pointer) + len);
+            break;
+        case JSType::JS_INT32_ARRAY:
+            std::reverse(static_cast<int32_t*>(pointer), static_cast<int32_t*>(pointer) + len);
+            break;
+        case JSType::JS_UINT32_ARRAY:
+            std::reverse(static_cast<uint32_t*>(pointer), static_cast<uint32_t*>(pointer) + len);
+            break;
+        case JSType::JS_FLOAT32_ARRAY:
+            std::reverse(static_cast<float*>(pointer), static_cast<float*>(pointer) + len);
+            break;
+        case JSType::JS_FLOAT64_ARRAY:
+            std::reverse(static_cast<double*>(pointer), static_cast<double*>(pointer) + len);
+            break;
+        default:
+            UNREACHABLE();
+    }
 }
 
 DEF_RUNTIME_STUBS(ArrayForEachContinue)

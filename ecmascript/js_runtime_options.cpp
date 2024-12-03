@@ -134,7 +134,6 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--enable-pgo-profiler:                Enable pgo profiler to sample jsfunction call and output to file. "
                                            "Default: 'false'\n"
     "--enable-elements-kind:               Enable elementsKind sampling and usage. Default: 'false'\n"
-    "--enable-force-ic:                    Enable force ic for pgo. Default: 'true'\n"
     "--compiler-pgo-hotness-threshold:     Set hotness threshold for pgo in aot compiler. Default: '2'\n"
     "--compiler-pgo-profiler-path:         The pgo file output dir or the pgo file dir of AOT compiler. Default: ''\n"
     "--compiler-pgo-save-min-interval:     Set the minimum time interval for automatically saving profile, "
@@ -197,7 +196,9 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--async-load-abc-test:                Enable asynchronous load abc test. Default: 'false'\n"
     "--compiler-enable-concurrent:         Enable concurrent compile(only support in ark_stub_compiler).\n"
     "                                      Default: 'true'\n"
-    "--compiler-opt-frame-state-elimination: Enable frame state elimination. Default: 'true'\n\n";
+    "--compiler-opt-frame-state-elimination: Enable frame state elimination. Default: 'true'\n"
+    "--compiler-enable-aot-code-comment    Enable generate aot_code_comment.txt file during compilation.\n"
+    "                                      Default : 'false'\n\n";
 
 bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
 {
@@ -276,7 +277,6 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"enable-print-execute-time", required_argument, nullptr, OPTION_PRINT_EXECUTE_TIME},
         {"enable-pgo-profiler", required_argument, nullptr, OPTION_ENABLE_PGO_PROFILER},
         {"enable-elements-kind", required_argument, nullptr, OPTION_ENABLE_ELEMENTSKIND},
-        {"enable-force-ic", required_argument, nullptr, OPTION_ENABLE_FORCE_IC},
         {"compiler-pgo-profiler-path", required_argument, nullptr, OPTION_COMPILER_PGO_PROFILER_PATH},
         {"compiler-pgo-hotness-threshold", required_argument, nullptr, OPTION_COMPILER_PGO_HOTNESS_THRESHOLD},
         {"compiler-pgo-save-min-interval", required_argument, nullptr, OPTION_COMPILER_PGO_SAVE_MIN_INTERVAL},
@@ -338,6 +338,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"compiler-enable-concurrent", required_argument, nullptr, OPTION_COMPILER_ENABLE_CONCURRENT},
         {"compiler-opt-frame-state-elimination", required_argument, nullptr,
             OPTION_COMPILER_OPT_FRAME_STATE_ELIMINATION},
+        {"compiler-enable-aot-code-comment", required_argument, nullptr, OPTION_COMPILER_ENABLE_AOT_CODE_COMMENT},
         {nullptr, 0, nullptr, 0},
     };
 
@@ -731,14 +732,6 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 ret = ParseBoolParam(&argBool);
                 if (ret) {
                     SetEnableElementsKind(argBool);
-                } else {
-                    return false;
-                }
-                break;
-            case OPTION_ENABLE_FORCE_IC:
-                ret = ParseBoolParam(&argBool);
-                if (ret) {
-                    SetEnableForceIC(argBool);
                 } else {
                     return false;
                 }
@@ -1311,9 +1304,17 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 }
                 break;
             case OPTION_COMPILER_ENABLE_PGO_SPACE:
-                 ret = ParseBoolParam(&argBool);
+                ret = ParseBoolParam(&argBool);
                 if (ret) {
                     SetCompilerEnablePgoSpace(argBool);
+                } else {
+                    return false;
+                }
+                break;
+            case OPTION_COMPILER_ENABLE_AOT_CODE_COMMENT:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetEnableAotCodeComment(argBool);
                 } else {
                     return false;
                 }

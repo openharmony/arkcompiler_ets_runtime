@@ -14,7 +14,7 @@
  */
 
 #include "ecmascript/js_stable_array.h"
-
+#include "ecmascript/base/sort_helper.h"
 #include "ecmascript/base/typed_array_helper-inl.h"
 #include "ecmascript/interpreter/fast_runtime_stub-inl.h"
 
@@ -417,6 +417,199 @@ JSTaggedValue JSStableArray::Shift(JSHandle<JSArray> receiver, EcmaRuntimeCallIn
     return result->IsHole() ? JSTaggedValue::Undefined() : result.GetTaggedValue();
 }
 
+#if ENABLE_NEXT_OPTIMIZATION
+bool JSStableArray::WorthUseTreeString(uint32_t sepLength, size_t allocateLength, uint32_t len)
+{
+    if (allocateLength >= TREE_STRING_THRESHOLD) {
+        // if sepLength is 0, means all the elements in treeString is len -1;
+        // otherwise, the num of elements is (len-1)(string in vector) + (len -1)(num of seps)
+        size_t treeStringElementNum = (sepLength == 0) ? (len - 1) : (2 * (len - 1));
+
+        if (treeStringElementNum * TreeEcmaString::SIZE <= allocateLength) {
+            // heuristic: if tree string uses less memory than linestring, it is worth.
+            // In other words, we hope tree string can work for the large strings join.
+            return true;
+        }
+    }
+    return false;
+}
+
+template <typename Container>
+JSTaggedValue JSStableArray::JoinUseTreeString(const JSThread *thread, const JSHandle<JSTaggedValue> receiverValue,
+                                               const JSHandle<EcmaString> sepStringHandle, uint32_t sepLength,
+                                               Container &arrElements, int elemNum)
+{
+    // Do not concat the elements one by one, it will make the tree string unbalanced. Concat each element with its
+    // right neighbor first level by level, then the tree string will be balanced as possible.
+    if (sepLength != 0) {
+        for (int k = 0; k < elemNum - 1; k++) {
+            arrElements[k] = JSHandle<EcmaString>(
+                thread, EcmaStringAccessor::Concat(thread->GetEcmaVM(), arrElements[k], sepStringHandle));
+            RETURN_EXCEPTION_AND_POP_JOINSTACK(thread, receiverValue);
+        }
+    }
+
+    while (elemNum > 1) {
+        size_t newNum = (elemNum + 1) / NUM_2;
+        for (size_t i = 0; i < elemNum / NUM_2; ++i) {
+            arrElements[i] = JSHandle<EcmaString>(
+                    thread,
+                    EcmaStringAccessor::Concat(thread->GetEcmaVM(), arrElements[NUM_2 * i], arrElements[NUM_2 * i + 1])
+                );
+            RETURN_EXCEPTION_AND_POP_JOINSTACK(thread, receiverValue);
+        }
+        if (elemNum % NUM_2 == 1) {
+            arrElements[newNum - 1] = arrElements[elemNum - 1];
+        }
+        elemNum = newNum;
+    }
+    thread->GetCurrentEcmaContext()->JoinStackPopFastPath(receiverValue);
+    return arrElements[0].GetTaggedValue();
+}
+
+template <typename Container>
+void JSStableArray::ProcessElements(JSThread *thread, JSHandle<JSTaggedValue> receiverValue, uint32_t len,
+                                    Container &arrElements, bool &isOneByte, uint64_t &allocateLength)
+{
+    JSMutableHandle<JSTaggedValue> elementHandle(thread, JSTaggedValue::Undefined());
+    JSHandle<JSObject> obj(thread, receiverValue.GetTaggedValue());
+    JSTaggedValue element = JSTaggedValue::Undefined();
+    for (uint32_t k = 0; k < len; k++) {
+        element = ElementAccessor::Get(obj, k);
+        if (element.IsHole() && JSTaggedValue::HasProperty(thread, receiverValue, k)) {
+            element = JSArray::FastGetPropertyByValue(thread, receiverValue, k).GetTaggedValue();
+            RETURN_IF_ABRUPT_COMPLETION(thread);
+        }
+        if (!element.IsUndefinedOrNull() && !element.IsHole()) {
+            if (!element.IsString()) {
+                elementHandle.Update(element);
+                JSHandle<EcmaString> strElement = JSTaggedValue::ToString(thread, elementHandle);
+                RETURN_IF_ABRUPT_COMPLETION(thread);
+                element = strElement.GetTaggedValue();
+            }
+            auto nextStr = EcmaString::Cast(element.GetTaggedObject());
+            arrElements[k] = JSHandle<EcmaString>(thread, nextStr);
+            isOneByte = isOneByte & EcmaStringAccessor(nextStr).IsUtf8();
+            allocateLength += EcmaStringAccessor(nextStr).GetLength();
+        } else {
+            arrElements[k] = JSHandle<EcmaString>(thread->GlobalConstants()->GetHandledEmptyString());
+        }
+    }
+}
+
+template <typename Container>
+JSTaggedValue JSStableArray::DoStableArrayJoin(JSThread *thread, JSHandle<JSTaggedValue> receiverValue, uint32_t len,
+                                               Container &arrElements, bool &isOneByte, uint32_t sep,
+                                               uint32_t sepLength, JSHandle<EcmaString> sepStringHandle)
+{
+    auto context = thread->GetCurrentEcmaContext();
+    uint64_t allocateLength = 0;
+    ProcessElements(thread, receiverValue, len, arrElements, isOneByte, allocateLength);
+    RETURN_EXCEPTION_AND_POP_JOINSTACK(thread, receiverValue);
+
+    if (len > 0) {
+        allocateLength += static_cast<uint64_t>(sepLength) * (len - 1);
+    }
+    if (allocateLength > EcmaString::MAX_STRING_LENGTH) {
+        context->JoinStackPopFastPath(receiverValue);
+        THROW_RANGE_ERROR_AND_RETURN(thread, "Invalid string length", JSTaggedValue::Exception());
+    }
+    if (WorthUseTreeString(sepLength, allocateLength, len)) {
+        return JoinUseTreeString(thread, receiverValue, sepStringHandle, sepLength, arrElements, len);
+    }
+
+    // 5. Let R be the empty String.
+    auto newString =
+        EcmaStringAccessor::CreateLineString(thread->GetEcmaVM(), static_cast<size_t>(allocateLength), isOneByte);
+    int current = 0;
+    DISALLOW_GARBAGE_COLLECTION;
+    // 6. Repeat, while k < len
+    for (uint32_t k = 0; k < len; k++) {
+        // a. If k > 0, set R to the string-concatenation of R and sep.
+        if (k > 0) {
+            if (sepLength == 1) {
+                EcmaStringAccessor(newString).Set(current, static_cast<uint16_t>(sep));
+            } else if (sepLength > 1) {
+                EcmaStringAccessor::ReadData(newString, *sepStringHandle, current,
+                                             allocateLength - static_cast<uint32_t>(current), sepLength);
+            }
+            current += static_cast<int>(sepLength);
+        }
+        // b. Let element be ? Get(O, ToString(𝔽(k))).
+        JSHandle<EcmaString> nextStr = arrElements[k];
+
+        // c. Set R to the string-concatenation of R and S
+        int nextLength = static_cast<int>(EcmaStringAccessor(nextStr).GetLength());
+        EcmaStringAccessor::ReadData(newString, *nextStr, current, allocateLength - static_cast<uint32_t>(current),
+                                     nextLength);
+        current += nextLength;
+    }
+    ASSERT_PRINT(isOneByte == EcmaStringAccessor::CanBeCompressed(newString),
+                 "isOneByte does not match the real value!");
+    context->JoinStackPopFastPath(receiverValue);
+    // return R
+    return JSTaggedValue(newString);
+}
+
+JSTaggedValue JSStableArray::Join(JSHandle<JSArray> receiver, EcmaRuntimeCallInfo *argv)
+{
+    JSThread *thread = argv->GetThread();
+    const GlobalEnvConstants *globalConst = thread->GlobalConstants();
+    auto context = thread->GetCurrentEcmaContext();
+
+    // 1. Let O be ToObject(this.value)
+    JSHandle<JSTaggedValue> receiverValue = JSHandle<JSTaggedValue>::Cast(receiver);
+    JSHandle<JSObject> obj(thread, receiverValue.GetTaggedValue());
+
+    // 2. Let len be ToLength(Get(O, "length"))
+    uint32_t len = receiver->GetArrayLength();
+
+    int sep = ',';
+    uint32_t sepLength = 1;
+    JSHandle<JSTaggedValue> sepHandle = base::BuiltinsBase::GetCallArg(argv, 0);
+    JSHandle<EcmaString> sepStringHandle;
+    if (sepHandle->IsUndefined()) {
+        // 3. If separator is undefined, let sep be ",".
+        sepHandle = globalConst->GetHandledCommaString();
+        sepStringHandle = JSTaggedValue::ToString(thread, sepHandle);
+        RETURN_EXCEPTION_AND_POP_JOINSTACK(thread, receiverValue);
+    } else {
+        // 4. Else, let sep be ? ToString(separator).
+        sepStringHandle = JSTaggedValue::ToString(thread, sepHandle);
+        RETURN_EXCEPTION_AND_POP_JOINSTACK(thread, receiverValue);
+        sepLength = EcmaStringAccessor(sepStringHandle).GetLength();
+        if (sepLength == 1) {
+            sep = EcmaStringAccessor(sepStringHandle).Get(0);
+        }
+    }
+
+    bool isOneByte = EcmaStringAccessor(sepStringHandle).IsUtf8();
+
+    // Fastpath should put after parsing "sep". Error may occur if sep cannout be transformed to string,
+    // which should be handled before fastpath return.
+    if (len == 0) {
+        context->JoinStackPopFastPath(receiverValue);
+        return globalConst->GetEmptyString();
+    }
+
+    if (len == 1) {
+        // sep unused, set isOneByte to default(true)
+        isOneByte = true;
+    }
+
+    // Use stack memory if the number of elements is less than USE_STACK_MEMORY_THRESHOLD.
+    // arr can be faster then vector.
+    if (len <= USE_STACK_MEMORY_THRESHOLD) {
+        std::array<JSHandle<EcmaString>, USE_STACK_MEMORY_THRESHOLD> arr;
+        return DoStableArrayJoin(thread, receiverValue, len, arr, isOneByte, sep, sepLength, sepStringHandle);
+    } else {
+        CVector<JSHandle<EcmaString>> vec(len);
+        return DoStableArrayJoin(thread, receiverValue, len, vec, isOneByte, sep, sepLength, sepStringHandle);
+    }
+}
+#endif
+
+#if !ENABLE_NEXT_OPTIMIZATION
 void JSStableArray::SetSepValue(JSHandle<EcmaString> sepStringHandle, int &sep, uint32_t &sepLength)
 {
     if (EcmaStringAccessor(sepStringHandle).IsUtf8() && EcmaStringAccessor(sepStringHandle).GetLength() == 1) {
@@ -446,17 +639,18 @@ bool JSStableArray::WorthUseTreeString(int sep, size_t allocateLength, uint32_t 
     return false;
 }
 
-JSTaggedValue JSStableArray::JoinUseTreeString(const JSThread* thread, const JSHandle<JSTaggedValue> receiverValue,
+JSTaggedValue JSStableArray::JoinUseTreeString(const JSThread *thread,
+                                               const JSHandle<JSTaggedValue> receiverValue,
                                                const JSHandle<EcmaString> sepStringHandle, const int sep,
-                                               CVector<JSHandle<EcmaString>>& vec)
+                                               CVector<JSHandle<EcmaString>> &vec)
 {
     // Do not concat the elements one by one, it will make the tree string unbalanced. Concat each element with its
     // right neighbor first level by level, then the tree string will be balanced as possible.
     if (sep != JSStableArray::SeparatorFlag::MINUS_TWO) {
         auto last = std::prev(vec.end());
         for (auto iter = vec.begin(); iter != last; ++iter) {
-            *iter = JSHandle<EcmaString>(
-                thread, EcmaStringAccessor::Concat(thread->GetEcmaVM(), *iter, sepStringHandle));
+            *iter =
+                JSHandle<EcmaString>(thread, EcmaStringAccessor::Concat(thread->GetEcmaVM(), *iter, sepStringHandle));
             RETURN_EXCEPTION_AND_POP_JOINSTACK(thread, receiverValue);
         }
     }
@@ -484,7 +678,8 @@ JSTaggedValue JSStableArray::Join(JSHandle<JSArray> receiver, EcmaRuntimeCallInf
     JSHandle<JSTaggedValue> sepHandle = base::BuiltinsBase::GetCallArg(argv, 0);
     int sep = ',';
     uint32_t sepLength = 1;
-    JSHandle<EcmaString> sepStringHandle;
+    const GlobalEnvConstants *globalConst = thread->GlobalConstants();
+    JSHandle<EcmaString> sepStringHandle = JSHandle<EcmaString>::Cast(globalConst->GetHandledCommaString());
     auto context = thread->GetCurrentEcmaContext();
     JSHandle<JSTaggedValue> receiverValue = JSHandle<JSTaggedValue>::Cast(receiver);
     if (!sepHandle->IsUndefined()) {
@@ -497,7 +692,6 @@ JSTaggedValue JSStableArray::Join(JSHandle<JSArray> receiver, EcmaRuntimeCallInf
         SetSepValue(sepStringHandle, sep, sepLength);
     }
     if (length == 0) {
-        const GlobalEnvConstants *globalConst = thread->GlobalConstants();
         context->JoinStackPopFastPath(receiverValue);
         return globalConst->GetEmptyString();
     }
@@ -505,7 +699,6 @@ JSTaggedValue JSStableArray::Join(JSHandle<JSArray> receiver, EcmaRuntimeCallInf
     uint64_t allocateLength = 0;
     bool isOneByte = (sep != JSStableArray::SeparatorFlag::MINUS_ONE) || EcmaStringAccessor(sepStringHandle).IsUtf8();
     JSMutableHandle<JSTaggedValue> elementHandle(thread, JSTaggedValue::Undefined());
-    const GlobalEnvConstants *globalConst = thread->GlobalConstants();
     uint32_t elementsLength = ElementAccessor::GetElementsLength(obj);
     uint32_t len = elementsLength > length ? length : elementsLength;
     if (elementsLength == 0 && length != 0) {
@@ -552,7 +745,7 @@ JSTaggedValue JSStableArray::Join(JSHandle<JSArray> receiver, EcmaRuntimeCallInf
         return JoinUseTreeString(thread, receiverValue, sepStringHandle, sep, vec);
     }
     auto newString =
-    EcmaStringAccessor::CreateLineString(thread->GetEcmaVM(), static_cast<size_t>(allocateLength), isOneByte);
+        EcmaStringAccessor::CreateLineString(thread->GetEcmaVM(), static_cast<size_t>(allocateLength), isOneByte);
     int current = 0;
     DISALLOW_GARBAGE_COLLECTION;
     for (uint32_t k = 0; k < len; k++) {
@@ -561,21 +754,22 @@ JSTaggedValue JSStableArray::Join(JSHandle<JSArray> receiver, EcmaRuntimeCallInf
                 EcmaStringAccessor(newString).Set(current, static_cast<uint16_t>(sep));
             } else if (sep != JSStableArray::SeparatorFlag::MINUS_TWO) {
                 EcmaStringAccessor::ReadData(newString, *sepStringHandle, current,
-                    allocateLength - static_cast<uint32_t>(current), sepLength);
+                                             allocateLength - static_cast<uint32_t>(current), sepLength);
             }
             current += static_cast<int>(sepLength);
         }
         JSHandle<EcmaString> nextStr = vec[k];
         int nextLength = static_cast<int>(EcmaStringAccessor(nextStr).GetLength());
-        EcmaStringAccessor::ReadData(newString, *nextStr, current,
-            allocateLength - static_cast<uint32_t>(current), nextLength);
+        EcmaStringAccessor::ReadData(newString, *nextStr, current, allocateLength - static_cast<uint32_t>(current),
+                                     nextLength);
         current += nextLength;
     }
-    ASSERT_PRINT(
-        isOneByte == EcmaStringAccessor::CanBeCompressed(newString), "isOneByte does not match the real value!");
+    ASSERT_PRINT(isOneByte == EcmaStringAccessor::CanBeCompressed(newString),
+                 "isOneByte does not match the real value!");
     context->JoinStackPopFastPath(receiverValue);
     return JSTaggedValue(newString);
 }
+#endif
 
 JSTaggedValue JSStableArray::HandleFindIndexOfStable(JSThread *thread, JSHandle<JSObject> thisObjHandle,
                                                      JSHandle<JSTaggedValue> callbackFnHandle,
@@ -1478,11 +1672,108 @@ JSTaggedValue JSStableArray::Slice(JSThread *thread, JSHandle<JSObject> thisObjH
     return arrayObj.GetTaggedValue();
 }
 
-JSTaggedValue JSStableArray::Sort(JSThread *thread, const JSHandle<JSObject> &thisObj,
+JSHandle<TaggedArray> JSStableArray::SortIndexedProperties(JSThread *thread, const JSHandle<JSTaggedValue> &thisObjVal,
+                                                           int64_t len, const JSHandle<JSTaggedValue> &callbackFnHandle,
+                                                           base::HolesType holes)
+{
+    JSHandle<JSObject> thisObj(thread, thisObjVal.GetTaggedValue());
+    JSHandle<TaggedArray> elements(thread, thisObj->GetElements());
+    ElementsKind kind = thisObj->GetClass()->GetElementsKind();
+    if (!elements->GetClass()->IsMutantTaggedArray()) {
+        kind = ElementsKind::GENERIC;
+    }
+    // 1. fill elements into items.
+    JSHandle<TaggedArray> items(thread->GetEcmaVM()->GetFactory()->NewTaggedArray(len));
+    bool kRead = false;
+    int64_t tmp = 0;
+    for (int k = 0; k < len; k++) {
+        JSTaggedValue kValue = ElementAccessor::FastGet(elements, k, kind);
+        if (holes == base::HolesType::SKIP_HOLES) {
+            kRead = (kValue != JSTaggedValue::Hole());
+        } else {
+            ASSERT(holes == base::HolesType::READ_THROUGH_HOLES);
+            kRead = true;
+        }
+        if (kRead) {
+            RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, items);
+            items->Set(thread, tmp++, kValue);
+        }
+    }
+    // 2. trim
+    if (len > tmp) {
+        items->Trim(thread, tmp);
+    }
+    // 3. Sort items using an implementation-defined sequence of calls to SortCompare.
+    // If any such call returns an abrupt completion,
+    // stop before performing any further calls to SortCompare and return that Completion Record.
+    base::TimSort::Sort(thread, items, callbackFnHandle);
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, items);
+    // 4. Return items.
+    return items;
+}
+
+JSTaggedValue JSStableArray::CopySortedListToReceiver(JSThread *thread, const JSHandle<JSTaggedValue> &thisObjVal,
+                                                      JSHandle<TaggedArray> sortedList, uint32_t len)
+{
+    // 6. Let itemCount be the number of elements in sortedList.
+    uint32_t itemCount = sortedList->GetLength();
+
+    // grow elements if len > newLength.
+    JSHandle<JSObject> thisObj(thisObjVal);
+    uint32_t newLength = std::max(JSHandle<JSArray>::Cast(thisObjVal)->GetArrayLength(), itemCount);
+    TaggedArray *elements = TaggedArray::Cast(thisObj->GetElements().GetTaggedObject());
+    if (newLength > ElementAccessor::GetElementsLength(thisObj)) {
+        elements = *JSObject::GrowElementsCapacity(thread, thisObj, newLength, true);
+    }
+
+    JSMutableHandle<JSTaggedValue> valueHandle(thread, JSTaggedValue::Undefined());
+    bool needTransition = true;
+    // 7. Let j be 0.
+    // 8. Repeat, while j < itemCount,
+    //     a. Perform ! Set(obj, ! ToString((j)), sortedList[j], true).
+    //     b. Set j to j + 1.
+    for (uint32_t j = 0; j < itemCount; j++) {
+        valueHandle.Update(sortedList->Get(j));
+        ElementAccessor::Set(thread, thisObj, j, valueHandle, needTransition);
+    }
+    // 9. NOTE: The call to SortIndexedProperties in step 5 uses SKIP-HOLES.The remaining indices are deleted to
+    // preserve the number of holes that were detected and excluded from the sort.
+    // 10. Repeat, while j < len,
+    //       a. Perform ? DeletePropertyOrThrow(obj, ! ToString((j))).
+    //       b. Set j to j + 1.
+    valueHandle.Update(JSTaggedValue::Hole());
+    for (uint32_t j = itemCount; j < len; j++) {
+        ElementAccessor::Set(thread, thisObj, j, valueHandle, needTransition);
+    }
+    JSHandle<JSArray>::Cast(thisObj)->SetArrayLength(thread, newLength);
+    return thisObj.GetTaggedValue();
+}
+
+JSTaggedValue JSStableArray::Sort(JSThread *thread, const JSHandle<JSTaggedValue> &thisObjVal,
                                   const JSHandle<JSTaggedValue> &callbackFnHandle)
 {
-    JSArray::SortElementsByObject(thread, thisObj, callbackFnHandle);
-    return thisObj.GetTaggedValue();
+    // 3. Let len be ?LengthOfArrayLike(obj).
+    uint32_t len = JSHandle<JSArray>::Cast(thisObjVal)->GetArrayLength();
+    // ReturnIfAbrupt(len).
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    // If len is 0 or 1, no need to sort
+    if (len == 0 || len == 1) {
+        return thisObjVal.GetTaggedValue();
+    }
+    if (callbackFnHandle->IsUndefined()) {
+        JSArray::SortElementsByObject(thread, JSHandle<JSObject>::Cast(thisObjVal), callbackFnHandle);
+        return thisObjVal.GetTaggedValue();
+    }
+    JSHandle<TaggedArray> sortedList = JSStableArray::SortIndexedProperties(
+        thread, thisObjVal, len, callbackFnHandle, base::HolesType::SKIP_HOLES);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    if (thisObjVal->IsStableJSArray(thread)) {
+        CopySortedListToReceiver(thread, thisObjVal, sortedList, len);
+    } else {
+        JSArray::CopySortedListToReceiver(thread, thisObjVal, sortedList, len);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    }
+    return thisObjVal.GetTaggedValue();
 }
 
 JSTaggedValue JSStableArray::Fill(JSThread *thread, const JSHandle<JSObject> &thisObj,

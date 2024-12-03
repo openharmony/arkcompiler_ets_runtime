@@ -414,7 +414,7 @@ void PGOProfiler::DispatchPGODumpTask()
         std::make_unique<PGOProfilerTask>(this, vm_->GetJSThread()->GetThreadId()));
 }
 
-PGOProfiler::State PGOProfiler::GetState()
+PGOProfiler::State PGOProfiler::GetState() const
 {
     return state_.load(std::memory_order_acquire);
 }
@@ -448,7 +448,7 @@ void PGOProfiler::WaitPGODumpFinish()
         return;
     }
     LockHolder lock(mutex_);
-    while (GetState() == State::START) {
+    while (GetState() == State::START || GetState() == State::MERGE) {
         WaitingPGODump();
     }
 }
@@ -690,6 +690,7 @@ void PGOProfiler::MergeProfilerAndDispatchAsyncSaveTask(bool force)
         LOG_ECMA(DEBUG) << "Sample: post task to save profiler";
         {
             ClockScope start;
+            SetState(State::MERGE);
             PGOProfilerManager::GetInstance()->Merge(this);
             if (PGOTrace::GetInstance()->IsEnable()) {
                 PGOTrace::GetInstance()->SetMergeTime(start.TotalSpentTime());
@@ -1105,13 +1106,13 @@ bool PGOProfiler::DumpICByNameWithHandler(ApEntityId abcId, const CString &recor
         auto accessorMethodId = prototypeHandler->GetAccessorMethodId();
         return AddObjectInfo(
             abcId, recordName, methodId, bcOffset, hclass, holderHClass, holderHClass, accessorMethodId);
-    } else if (secondValue.IsStoreTSHandler()) {
-        StoreTSHandler *storeTSHandler = StoreTSHandler::Cast(secondValue.GetTaggedObject());
-        auto cellValue = storeTSHandler->GetProtoCell();
+    } else if (secondValue.IsStoreAOTHandler()) {
+        StoreAOTHandler *storeAOTHandler = StoreAOTHandler::Cast(secondValue.GetTaggedObject());
+        auto cellValue = storeAOTHandler->GetProtoCell();
         if (CheckProtoChangeMarker(cellValue)) {
             return false;
         }
-        auto holder = storeTSHandler->GetHolder();
+        auto holder = storeAOTHandler->GetHolder();
         auto holderHClass = holder.GetTaggedObject()->GetClass();
         return AddObjectInfo(abcId, recordName, methodId, bcOffset, hclass, holderHClass, holderHClass);
     }
@@ -1267,8 +1268,8 @@ void PGOProfiler::TryDumpProtoTransitionType(JSHClass *hclass)
         return;
     }
     JSTaggedValue phc1Root = JSHClass::FindProtoRootHClass(ihc1);
-    auto transitionProtoType = GetProfileType(JSHClass::Cast(phc1Root.GetTaggedObject()), true);
-    if (!transitionProtoType.IsRootType()) {
+    auto transitionPrototype = GetProfileType(JSHClass::Cast(phc1Root.GetTaggedObject()), true);
+    if (!transitionPrototype.IsRootType()) {
         LOG_ECMA(DEBUG) << "Set as the prototype of a function again after transition happened for this prototype!";
         return;
     }
@@ -1300,7 +1301,7 @@ void PGOProfiler::TryDumpProtoTransitionType(JSHClass *hclass)
     PGOProtoTransitionType protoTransitionType(ihc0RootType);
     protoTransitionType.SetBaseType(baseRootType, baseType);
     protoTransitionType.SetTransitionType(transitionType);
-    protoTransitionType.SetTransitionProtoPt(transitionProtoType);
+    protoTransitionType.SetTransitionProtoPt(transitionPrototype);
 
     recordInfos_->GetProtoTransitionPool()->Add(protoTransitionType);
 }
@@ -1375,7 +1376,7 @@ void PGOProfiler::DumpDefineClass(ApEntityId abcId, const CString &recordName, E
             if (!prototypeType.IsRootType()) {
                 LOG_ECMA(DEBUG) << "The profileType of prototype root hclass was not found.";
             } else {
-                objDefType.SetProtoTypePt(prototypeType);
+                objDefType.SetPrototypePt(prototypeType);
                 recordInfos_->AddRootLayout(JSTaggedType(prototypeRootHClass), prototypeType);
             }
         }

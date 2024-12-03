@@ -203,7 +203,7 @@ void Module::CollectFuncEntryInfo(std::map<uintptr_t, std::string> &addr2name, A
     }
     aotInfo.UpdateCurTextSecOffset(textSize);
     if (rodataSizeAfterText != 0) {
-        aotInfo.AlignTextSec(AOTFileInfo::DATA_SEC_ALIGN);
+        aotInfo.AlignTextSec(AOTFileInfo::RODATA_SEC_ALIGN);
         aotInfo.UpdateCurTextSecOffset(rodataSizeAfterText);
     }
 }
@@ -267,7 +267,7 @@ void Module::CollectFuncEntryInfoByLiteCG(std::map<uintptr_t, std::string> &addr
     }
     aotInfo.UpdateCurTextSecOffset(textSize);
     if (rodataSizeAfterText != 0) {
-        aotInfo.AlignTextSec(AOTFileInfo::DATA_SEC_ALIGN);
+        aotInfo.AlignTextSec(AOTFileInfo::RODATA_SEC_ALIGN);
         aotInfo.UpdateCurTextSecOffset(rodataSizeAfterText);
     }
 }
@@ -320,8 +320,13 @@ uintptr_t Module::GetSectionAddr(ElfSecName sec) const
     return assembler_->GetSectionAddr(sec);
 }
 
-void Module::RunAssembler(const CompilerLog &log, bool fastCompileMode, bool isJit)
+void Module::RunAssembler(const CompilerLog &log, bool fastCompileMode, bool isJit, const std::string &filename)
 {
+    if (!IsLLVM()) {
+        assembler_->SetAotCodeCommentFile(filename);
+    } else {
+        assembler_->SetAotCodeCommentFile("");
+    }
     assembler_->Run(log, fastCompileMode, isJit);
 }
 
@@ -434,7 +439,7 @@ uint64_t AOTFileGenerator::RollbackTextSize(Module *module)
         textStart = aotInfo_.GetCurTextSecOffset() - textSize;
     } else {
         textStart = aotInfo_.GetCurTextSecOffset() - textSize - rodataSizeAfterText;
-        textStart = AlignDown(textStart, AOTFileInfo::DATA_SEC_ALIGN);
+        textStart = AlignDown(textStart, AOTFileInfo::RODATA_SEC_ALIGN);
     }
     return textStart;
 }
@@ -592,7 +597,7 @@ void AOTFileGenerator::CompileLatestModuleThenDestroy(bool isJit)
     {
         TimeScope timescope("LLVMIROpt", const_cast<CompilerLog *>(log_));
         bool fastCompileMode = compilationEnv_->GetJSOptions().GetFastAOTCompileMode();
-        latestModule->RunAssembler(*(log_), fastCompileMode, isJit);
+        latestModule->RunAssembler(*(log_), fastCompileMode, isJit, GetAotCodeCommentFile());
     }
     {
         TimeScope timescope("LLVMCodeGen", const_cast<CompilerLog *>(log_));
@@ -802,6 +807,52 @@ bool AOTFileGenerator::SaveSnapshotFile()
         return false;
     }
     SetSecurityLabel(aiPath.c_str());
+    return true;
+}
+
+bool AOTFileGenerator::CreateAOTCodeCommentFile(const std::string &filename)
+{
+    if (!CreateDirIfNotExist(filename)) {
+        LOG_COMPILER(ERROR) << "Fail to access dir: " << filename;
+        return false;
+    }
+
+    std::string realPath;
+    if (!panda::ecmascript::RealPath(filename, realPath, false)) {
+        LOG_COMPILER(ERROR) << "Fail to get realPath: " << filename;
+        return false;
+    }
+
+    auto index = realPath.find_last_of('/');
+    if (index == std::string::npos) {
+        LOG_COMPILER(ERROR) << "Path: " << realPath << " is illegal";
+        return false;
+    }
+
+    std::string aotCodeCommentFile = realPath.substr(0, index) + "/aot_code_comment.txt";
+    SetAotCodeCommentFile(aotCodeCommentFile);
+    if (FileExist(aotCodeCommentFile.c_str())) {
+        if (Unlink(aotCodeCommentFile.c_str()) == -1) {
+            SetAotCodeCommentFile("");
+            LOG_COMPILER(ERROR) << "remove " << aotCodeCommentFile << " failed and errno is " << errno;
+            return false;
+        }
+    }
+
+    std::ofstream file(aotCodeCommentFile.c_str(), std::ofstream::app);
+    if (!file.is_open()) {
+        SetAotCodeCommentFile("");
+        LOG_COMPILER(ERROR) << "Failed to create " << aotCodeCommentFile;
+        return false;
+    }
+    file.close();
+
+    if (!panda::ecmascript::SetFileModeAsDefault(aotCodeCommentFile)) {
+        SetAotCodeCommentFile("");
+        Unlink(aotCodeCommentFile.c_str());
+        LOG_COMPILER(ERROR) << "Fail to set file mode: " << aotCodeCommentFile;
+        return false;
+    }
     return true;
 }
 }  // namespace panda::ecmascript::kungfu

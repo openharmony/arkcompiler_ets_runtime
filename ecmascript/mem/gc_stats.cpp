@@ -433,6 +433,7 @@ void GCStats::RecordStatisticBeforeGC(TriggerGCType gcType, GCReason reason)
 
 void GCStats::RecordStatisticAfterGC()
 {
+    ASSERT(heap_ != nullptr);
     SetRecordData(RecordData::END_OBJ_SIZE, heap_->GetHeapObjectSize());
     SetRecordData(RecordData::END_COMMIT_SIZE, heap_->GetCommittedSize());
 

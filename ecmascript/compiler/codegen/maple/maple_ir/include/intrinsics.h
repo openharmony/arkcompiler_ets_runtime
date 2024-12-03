@@ -37,7 +37,8 @@ enum IntrinArgType {
     kArgTyA64,
     kArgTyF32,
     kArgTyF64,
-    kArgTyF128
+    kArgTyF128,
+    kArgTyDynany
 };
 
 class MIRType;    // circular dependency exists, no other choice

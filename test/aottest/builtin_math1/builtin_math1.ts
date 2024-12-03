@@ -13,5 +13,22 @@
  * limitations under the License.
  */
 
+declare var ArkTools:any;
+declare function print(arg:any):string;
+
+function Test1() {
+    const LOOP_NUM = 10;
+    for (let i = 0; i < LOOP_NUM; i ++) {
+        let sr = Math.sin(i);
+        let cr = Math.cos(i);
+        let pr = Math.pow(2, i);
+    }
+}
+
+Test1();
+
+ArkTools.clearTypedOpProfiler();
+print(ArkTools.isAOTDeoptimized(Test1));
+
 Object.defineProperty(Math, 1, {});
 print(Math.abs(1));

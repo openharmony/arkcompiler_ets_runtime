@@ -342,19 +342,19 @@
     }
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define GET_DATE_VALUE(name, code, isLocal)                                                       \
-    static JSTaggedValue name(EcmaRuntimeCallInfo *argv)                                          \
-    {                                                                                             \
-        ASSERT(argv);                                                                             \
-        JSThread *thread = argv->GetThread();                                                     \
-        [[maybe_unused]] EcmaHandleScope handleScope(thread);                                     \
-        JSHandle<JSTaggedValue> msg = GetThis(argv);                                              \
-        if (!msg->IsDate()) {                                                                     \
-            THROW_TYPE_ERROR_AND_RETURN(thread, "Not a Date Object", JSTaggedValue::Exception()); \
-        }                                                                                         \
-        JSHandle<JSDate> jsDate(msg);                                                             \
-        double result = jsDate->GetDateValue(jsDate->GetTimeValue().GetDouble(), code, isLocal);  \
-        return GetTaggedDouble(result);                                                           \
+#define GET_DATE_VALUE(name, code, isLocal)                                                                 \
+    static JSTaggedValue name(EcmaRuntimeCallInfo *argv)                                                    \
+    {                                                                                                       \
+        ASSERT(argv);                                                                                       \
+        JSThread *thread = argv->GetThread();                                                               \
+        [[maybe_unused]] EcmaHandleScope handleScope(thread);                                               \
+        JSHandle<JSTaggedValue> msg = GetThis(argv);                                                        \
+        if (!msg->IsDate()) {                                                                               \
+            THROW_TYPE_ERROR_AND_RETURN(thread, "Not a Date Object", JSTaggedValue::Exception());           \
+        }                                                                                                   \
+        JSHandle<JSDate> jsDate(msg);                                                                       \
+        double result = jsDate->GetDateValue(thread, jsDate->GetTimeValue().GetDouble(), code, isLocal);    \
+        return GetTaggedDouble(result);                                                                     \
     }
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)

@@ -118,6 +118,22 @@ GateRef CircuitBuilder::StableArrayCheck(GateRef gate, ElementsKind kind, ArrayM
     return ret;
 }
 
+GateRef CircuitBuilder::MathHClassConsistencyCheck(GateRef receiver)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    GateRef frameState = acc_.FindNearestFrameState(receiver);
+
+    GateRef ret = GetCircuit()->NewGate(circuit_->MathHClassConsistencyCheck(),
+        MachineType::I1, {currentControl, currentDepend, receiver, frameState},
+        GateType::NJSValue());
+
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
 GateRef CircuitBuilder::ElementsKindCheck(GateRef receiver, ElementsKind kind, ArrayMetaDataAccessor::Mode mode)
 {
     // If elements kind is hole, no ElementsKindCheck is required.
@@ -1675,14 +1691,15 @@ GateRef CircuitBuilder::MonoStorePropertyLookUpProto(GateRef receiver, GateRef p
 }
 
 GateRef CircuitBuilder::MonoStoreProperty(GateRef receiver, GateRef plrGate, GateRef unsharedConstPool,
-                                          size_t hclassIndex, GateRef value, GateRef keyIndex, GateRef frameState)
+                                          size_t hclassIndex, GateRef value, GateRef keyIndex, GateRef isProto,
+                                          GateRef frameState)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
     auto ret = GetCircuit()->NewGate(circuit_->MonoStoreProperty(false), MachineType::I64,
                                      {currentControl, currentDepend, receiver, plrGate, Int32(hclassIndex),
-                                      unsharedConstPool, value, keyIndex, frameState},
+                                      unsharedConstPool, value, keyIndex, isProto, frameState},
                                      GateType::AnyType());
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);
@@ -1982,6 +1999,20 @@ GateRef CircuitBuilder::ArrayPop(GateRef thisValue, GateRef frameState)
     GateRef ret = GetCircuit()->NewGate(circuit_->ArrayPop(),
                                         MachineType::I64,
                                         {currentControl, currentDepend, thisValue, frameState},
+                                        GateType::AnyType());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
+GateRef CircuitBuilder::ArrayPush(GateRef thisValue, GateRef value)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    GateRef ret = GetCircuit()->NewGate(circuit_->ArrayPush(),
+                                        MachineType::I64,
+                                        {currentControl, currentDepend, thisValue, value},
                                         GateType::AnyType());
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);

@@ -662,7 +662,7 @@ public:
     bool IsPrototypeHandler() const;
     bool IsTransitionHandler() const;
     bool IsTransWithProtoHandler() const;
-    bool IsStoreTSHandler() const;
+    bool IsStoreAOTHandler() const;
     bool IsPropertyBox() const;
     bool IsProtoChangeMarker() const;
     bool IsProtoChangeDetails() const;
@@ -714,7 +714,7 @@ public:
 
     void DumpTaggedValue(std::ostream &os) const DUMP_API_ATTR;
     void DumpTaggedValueType(std::ostream &os) const DUMP_API_ATTR;
-    void Dump(std::ostream &os) const DUMP_API_ATTR;
+    void Dump(std::ostream &os, bool isPrivacy = false) const DUMP_API_ATTR;
     void D() const DUMP_API_ATTR;
     void DumpForSnapshot(std::vector<Reference> &vec, bool isVmMode = true) const;
     static void DV(JSTaggedType val) DUMP_API_ATTR;
@@ -766,6 +766,7 @@ private:
         ASSERT_PRINT(v.IsInt(), "can not convert JSTaggedValue to Int :" << std::hex << v.GetRawData());
         return static_cast<uint64_t>(v.GetRawData() & (~TAG_INT));
     }
+    static void DumpExceptionObject(JSThread *thread, const JSHandle<JSTaggedValue> &obj);
 
     friend class PropertyAttributes;
     friend class ICRuntimeStub;

@@ -155,8 +155,8 @@ HWTEST_F_L0(ICRunTimeTest, TraceIC)
     JSHandle<ProfileTypeInfo> handleProfileTypeInfo = factory->NewProfileTypeInfo(arrayLength);
 
     ICRuntime icRuntime(thread, handleProfileTypeInfo, 4, ICKind::NamedGlobalLoadIC);  // 4: means the NamedGlobalLoadIC
-    icRuntime.TraceIC(handleReceiver, handleKeyWithString);
-    icRuntime.TraceIC(handleReceiver, handleKeyWithElement);
+    icRuntime.TraceIC(thread, handleReceiver, handleKeyWithString);
+    icRuntime.TraceIC(thread, handleReceiver, handleKeyWithElement);
 }
 
 HWTEST_F_L0(ICRunTimeTest, StoreMiss)

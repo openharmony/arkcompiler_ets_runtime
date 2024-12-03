@@ -24,6 +24,7 @@ group("ark_aot_builtin_inlining_Array_test") {
     "IndexOf",
     "Keys",
     "Pop",
+    "Push",
     "PopProtoChange",
     "Values",
   ]

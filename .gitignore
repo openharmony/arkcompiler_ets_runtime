@@ -15,3 +15,5 @@ tags
 *.abc
 *.ll
 *.m
+test/regresstest/__pycache__/
+test/regresstest/ark-regress/

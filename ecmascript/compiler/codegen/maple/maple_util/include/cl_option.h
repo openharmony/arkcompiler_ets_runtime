@@ -102,7 +102,7 @@ using OptionCategoryRefWrp = std::reference_wrapper<OptionCategory>;
 class OptionWrp {
 public:
     template <typename T>
-    /* implicit */ OptionWrp(T v) : val(v)
+    OptionWrp(T v) : val(v) /* implicit */
     {
     }
 
@@ -227,7 +227,7 @@ public:
     /* Conversation operator is needed to use the option like this:
      * strding test = option1; or int dig = option2 - here will be implicit conversation.
      */
-    /*implicit*/ operator T()
+    operator T() /*implicit*/
     {
         return GetValue();
     }

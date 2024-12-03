@@ -43,7 +43,7 @@ JSSet *CreateJSSet(JSThread *thread)
     return JSSet::Cast(set.GetTaggedValue().GetTaggedObject());
 }
 
-void SetIteratorRefGetFuzztest([[maybe_unused]]const uint8_t *data, size_t size)
+void SetIteratorRefGetFuzzTest([[maybe_unused]]const uint8_t *data, size_t size)
 {
     RuntimeOption option;
     option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
@@ -74,6 +74,6 @@ void SetIteratorRefGetFuzztest([[maybe_unused]]const uint8_t *data, size_t size)
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 {
     // Run your code on data.
-    OHOS::SetIteratorRefGetFuzztest(data, size);
+    OHOS::SetIteratorRefGetFuzzTest(data, size);
     return 0;
 }

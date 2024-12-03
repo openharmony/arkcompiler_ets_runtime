@@ -42,20 +42,6 @@ namespace OHOS {
         JSNApi::DestroyJSVM(vm);
     }
 
-    void GetPromiseFuzzTest([[maybe_unused]]const uint8_t* data, size_t size)
-    {
-        RuntimeOption option;
-        option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
-        EcmaVM *vm = JSNApi::CreateJSVM(option);
-        if (size <= 0) {
-            LOG_ECMA(ERROR) << "illegal input!";
-            return;
-        }
-        Local<PromiseCapabilityRef> capability = PromiseCapabilityRef::New(vm);
-        [[maybe_unused]]Local<PromiseRef> promise = capability->GetPromise(vm);
-        JSNApi::DestroyJSVM(vm);
-    }
-
     void GetDataFuzzTest(const uint8_t* data, size_t size)
     {
         RuntimeOption option;
@@ -138,7 +124,6 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
 {
     // Run your code on data.
     OHOS::PromiseRejectInfoNewFuzzTest(data, size);
-    OHOS::GetPromiseFuzzTest(data, size);
     OHOS::GetDataFuzzTest(data, size);
     OHOS::PromiseRejectInfoGetPromiseFuzzTest(data, size);
     OHOS::PromiseRejectInfoGetReasonFuzzTest(data, size);

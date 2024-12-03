@@ -25,6 +25,7 @@ import { aaa } from "./E"
 import lazy {func1} from './F'
 import lazy {dynamicLazySequence} from './dynamicLazySequence'
 import lazy {dynamicLazySequence2} from './dynamicLazySequence2'
+import {Test} from './asyncUseLazyImport'
 
 print("this is entry");
 func1();
@@ -36,3 +37,4 @@ import("./dynamicLazySequence").then((ns) => {
     print(ns.dynamicLazySequence);
 })
 import("./dynamicLazySequence2");
+new Test().start()

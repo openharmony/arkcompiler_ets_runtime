@@ -77,6 +77,7 @@ static inline std::string ToSpaceTypeName(MemSpaceType type)
 {
     switch (type) {
         case OLD_SPACE:
+        case LOCAL_SPACE:
             return "old space";
         case NON_MOVABLE:
             return "non movable space";
@@ -92,8 +93,6 @@ static inline std::string ToSpaceTypeName(MemSpaceType type)
             return "snapshot space";
         case COMPRESS_SPACE:
             return "compress space";
-        case LOCAL_SPACE:
-            return "local space";
         case READ_ONLY_SPACE:
             return "read only space";
         case APPSPAWN_SPACE:
@@ -103,6 +102,7 @@ static inline std::string ToSpaceTypeName(MemSpaceType type)
         case SHARED_NON_MOVABLE:
             return "shared non movable space";
         case SHARED_OLD_SPACE:
+        case SHARED_LOCAL_SPACE:
             return "shared old space";
         case SHARED_READ_ONLY_SPACE:
             return "shared read only space";
@@ -110,8 +110,6 @@ static inline std::string ToSpaceTypeName(MemSpaceType type)
             return "shared huge object space";
         case SHARED_COMPRESS_SPACE:
             return "compress space";
-        case SHARED_LOCAL_SPACE:
-            return "shared local space";
         case SHARED_APPSPAWN_SPACE:
             return "shared appspawn space";
         default:

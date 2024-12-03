@@ -1,0 +1,24 @@
+{
+    "name": "JS_FORIN_ITERATOR",
+    "offsets": [
+        {
+            "name": "Object",
+            "offset": 0,
+            "size": 8
+        },
+        {
+            "name": "CachedHclass",
+            "offset": 8,
+            "size": 8
+        },
+        {
+            "name": "Keys",
+            "offset": 16,
+            "size": 8
+        }
+    ],
+    "end_offset": 32,
+    "parents": [
+        "JS_OBJECT"
+    ]
+}

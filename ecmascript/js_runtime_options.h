@@ -62,7 +62,8 @@ enum ArkProperties {
     DISABLE_SHARED_CONCURRENT_MARK = 1 << 22,
     ENABLE_ESM_TRACE = 1 << 24,
     ENABLE_MODULE_LOG = 1 << 25,
-    ENABLE_SERIALIZATION_TIMEOUT_CHECK = 1 << 26
+    ENABLE_SERIALIZATION_TIMEOUT_CHECK = 1 << 26,
+    ENABLE_PAGETAG_THREAD_ID = 1 << 27,
 };
 
 // asm interpreter control parsed option
@@ -141,8 +142,9 @@ enum CommandValues {
     OPTION_COMPILER_PGO_HOTNESS_THRESHOLD,
     OPTION_COMPILER_PGO_SAVE_MIN_INTERVAL,
     OPTION_ENABLE_PGO_PROFILER,
-    OPTION_PRINT_EXECUTE_TIME,
+    OPTION_INVALID,
     OPTION_SPLIT_ONE,
+    OPTION_PRINT_EXECUTE_TIME,
     OPTION_ENABLE_EDEN_GC,
     OPTION_COMPILER_DEVICE_STATE,
     OPTION_COMPILER_VERIFY_VTABLE,
@@ -205,8 +207,8 @@ enum CommandValues {
     OPTION_COMPILER_FORCE_BASELINEJIT_COMPILE_MAIN,
     OPTION_ENABLE_AOT_CRASH_ESCAPE,
     OPTION_COMPILER_ENABLE_JIT_FAST_COMPILE,
-    OPTION_COMPILER_BASELINE_PGO,
     OPTION_SPLIT_TWO,
+    OPTION_COMPILER_BASELINE_PGO,
     OPTION_ASYNC_LOAD_ABC,
     OPTION_ASYNC_LOAD_ABC_TEST,
     OPTION_PGO_TRACE,
@@ -215,9 +217,10 @@ enum CommandValues {
     OPTION_COMPILER_OPT_STRING,
     OPTION_OPEN_ARK_TOOLS,
     OPTION_COMPILER_OPT_FRAME_STATE_ELIMINATION,
-    OPTION_ENABLE_FORCE_IC,
     OPTION_COMPILER_ENABLE_PGO_SPACE,
+    OPTION_COMPILER_ENABLE_AOT_CODE_COMMENT,
 };
+static_assert(OPTION_INVALID == 63); // Placeholder for invalid options
 static_assert(OPTION_SPLIT_ONE == 64); // add new option at the bottom, DO NOT modify this value
 static_assert(OPTION_SPLIT_TWO == 128); // add new option at the bottom, DO NOT modify this value
 
@@ -630,6 +633,11 @@ public:
     bool EnableSerializationTimeoutCheck() const
     {
         return (static_cast<uint32_t>(arkProperties_) & ArkProperties::ENABLE_SERIALIZATION_TIMEOUT_CHECK) != 0;
+    }
+
+    bool EnablePageTagThreadId() const
+    {
+        return (static_cast<uint32_t>(arkProperties_) & ArkProperties::ENABLE_PAGETAG_THREAD_ID) != 0;
     }
 
     bool WasSetMaxNonmovableSpaceCapacity() const
@@ -1084,16 +1092,6 @@ public:
     bool IsEnableElementsKind() const
     {
         return enableElementsKind_;
-    }
-
-    void SetEnableForceIC(bool value)
-    {
-        enableForceIC_ = value;
-    }
-
-    bool IsEnableForceIC() const
-    {
-        return enableForceIC_;
     }
 
     void SetEnablePGOProfiler(bool value)
@@ -1965,7 +1963,7 @@ public:
     {
         return aotHasException_;
     }
-    
+
     void SetCompilerEnablePgoSpace(bool value)
     {
         enablePgoSpace_ = value;
@@ -1974,6 +1972,16 @@ public:
     bool IsCompilerEnablePgoSpace() const
     {
         return enablePgoSpace_;
+    }
+
+    void SetEnableAotCodeComment(bool value)
+    {
+        enableAotCodeComment_ = value;
+    }
+
+    bool IsEnableAotCodeComment() const
+    {
+        return enableAotCodeComment_;
     }
 
 public:
@@ -2072,7 +2080,6 @@ private:
     bool enableValueNumbering_ {true};
     bool enableOptString_ {true};
     bool enableElementsKind_ {false};
-    bool enableForceIC_ {true};
     bool enableInstrcutionCombine {true};
     bool enableNewValueNumbering_ {true};
     bool enableOptInlining_ {true};
@@ -2138,6 +2145,7 @@ private:
     bool enableTypedOpProfiler_ {false};
     bool enableBranchProfiling_ {true};
     bool enablePgoSpace_ {false};
+    bool enableAotCodeComment_ {false};
     bool testAssert_ {false};
     std::pair<uint32_t, uint32_t> compileMethodsRange_ {0, UINT32_MAX};
     arg_list_t compileCodegenOption_ {{""}};

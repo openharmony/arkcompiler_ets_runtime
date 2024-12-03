@@ -13,7 +13,10 @@
 
 group("ark_aot_builtin_inlining_String_test") {
   testonly = true
-  test_list = [ "CharCodeAt" ]
+  test_list = [
+    "CharCodeAt",
+    "LocaleCompare",
+  ]
 
   deps = []
   foreach(test, test_list) {

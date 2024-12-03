@@ -313,7 +313,7 @@ void NTypeHCRLowering::LowerStoreModuleVar(GateRef gate, GateRef glue)
     builder_.Bind(&exit);
     GateRef dataOffset = builder_.Int32(TaggedArray::DATA_OFFSET);
     GateRef indexOffset = builder_.Int32Mul(index, builder_.Int32(JSTaggedValue::TaggedTypeSize()));
-    GateRef offset = builder_.Int32Add(indexOffset, dataOffset);
+    GateRef offset = builder_.ZExtInt32ToPtr(builder_.Int32Add(indexOffset, dataOffset));
     builder_.Store(VariableType::JS_ANY(), glue_, *array, offset, value);
     ReplaceGateWithPendingException(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }

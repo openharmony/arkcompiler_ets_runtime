@@ -402,6 +402,10 @@ void AArch64AsmEmitter::EmitAArch64Insn(maplebe::Emitter &emitter, Insn &insn) c
             EmitSyncLockTestSet(emitter, insn);
             return;
         }
+        case MOP_pure_call: {
+            EmitPureCall(emitter, insn);
+            return;
+        }
         default:
             break;
     }
@@ -1529,6 +1533,18 @@ void AArch64AsmEmitter::EmitSyncLockTestSet(Emitter &emitter, const Insn &insn) 
 #endif
 }
 
+void AArch64AsmEmitter::EmitPureCall(Emitter &emitter, const Insn &insn) const
+{
+#ifdef ARK_LITECG_DEBUG
+    const InsnDesc *md = &AArch64CG::kMd[insn.GetMachineOpcode()];
+    auto *callee = &insn.GetOperand(kInsnFirstOpnd);
+    A64OpndEmitVisitor calleeVisitor(emitter, md->opndMD[kInsnFirstOpnd]);
+    (void)emitter.Emit("\t").Emit("blr").Emit("\t");
+    callee->Accept(calleeVisitor);
+    (void)emitter.Emit("\n");
+#endif
+}
+
 void AArch64AsmEmitter::EmitCheckThrowPendingException(Emitter &emitter, Insn &insn) const
 {
 #ifdef ARK_LITECG_DEBUG
@@ -1599,6 +1615,7 @@ void AArch64AsmEmitter::EmitAArch64CfiInsn(Emitter &emitter, const Insn &insn) c
 {
 #ifdef ARK_LITECG_DEBUG
     MOperator mOp = insn.GetMachineOpcode();
+    CHECK_FATAL(mOp <= cfi::kOpCfiLast, "check overflow");
     CfiDescr &cfiDescr = cfiDescrTable[mOp];
     (void)emitter.Emit("\t").Emit(cfiDescr.name);
     for (uint32 i = 0; i < cfiDescr.opndCount; ++i) {

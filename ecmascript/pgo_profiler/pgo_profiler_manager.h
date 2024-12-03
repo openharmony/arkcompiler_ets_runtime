@@ -279,16 +279,6 @@ public:
         return maxAotMethodSize_ != 0 && methodSize > maxAotMethodSize_;
     }
 
-    bool IsEnableForceIC() const
-    {
-        return isEnableForceIC_;
-    }
-
-    void SetEnableForceIC(bool isEnableForceIC)
-    {
-        isEnableForceIC_ = isEnableForceIC;
-    }
-
 private:
     bool InitializeData()
     {
@@ -310,7 +300,6 @@ private:
     os::memory::Mutex *mutex_ = new os::memory::Mutex();
     std::set<std::shared_ptr<PGOProfiler>> profilers_;
     bool isApFileCompatible_ {true};
-    bool isEnableForceIC_ {true};
     uint32_t maxAotMethodSize_ {0};
 };
 } // namespace panda::ecmascript::pgo

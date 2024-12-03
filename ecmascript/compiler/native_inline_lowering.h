@@ -38,6 +38,7 @@ public:
           methodName_(name),
           nocheck_(ctx->GetCompilationEnv()->GetJSOptions().IsCompilerNoCheck()),
           traceInline_(ctx->GetCompilationEnv()->GetJSOptions().GetTraceInline()),
+          enableElementsKind_(ctx->GetCompilationEnv()->GetJSOptions().IsEnableElementsKind()),
           compilationEnv_(ctx->GetCompilationEnv()),
           chunk_(chunk) {}
     ~NativeInlineLowering() = default;
@@ -110,6 +111,7 @@ private:
     void TryInlineArraySome(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id, bool skipThis);
     void TryInlineArrayEvery(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id, bool skipThis);
     void TryInlineArrayPop(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id, bool skipThis);
+    void TryInlineArrayPush(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id, bool skipThis);
     void TryInlineArraySlice(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id, bool skipThis);
     void TryInlineArraySort(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id, bool skipThis);
 
@@ -142,6 +144,7 @@ private:
     std::string methodName_;
     bool nocheck_;
     bool traceInline_;
+    bool enableElementsKind_;
     const CompilationEnv *compilationEnv_ {nullptr};
     Chunk* chunk_ {nullptr};
 };

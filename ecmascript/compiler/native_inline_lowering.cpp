@@ -16,6 +16,7 @@
 #include "ecmascript/builtins/builtins_number.h"
 #include "ecmascript/builtins/builtins_string.h"
 #include "ecmascript/base/number_helper.h"
+#include "ecmascript/compiler/builtins/builtins_call_signature.h"
 #include "ecmascript/compiler/circuit.h"
 #include "ecmascript/compiler/circuit_builder-inl.h"
 #include "ecmascript/compiler/circuit_builder_helper.h"
@@ -383,6 +384,9 @@ void NativeInlineLowering::RunNativeInlineLowering()
             case BuiltinsStubCSigns::ID::ArrayPop:
                 TryInlineArrayPop(gate, argc, id, skipThis);
                 break;
+            case BuiltinsStubCSigns::ID::ArrayPush:
+                TryInlineArrayPush(gate, argc, id, skipThis);
+                break;
             case BuiltinsStubCSigns::ID::ArraySlice:
                 TryInlineArraySlice(gate, argc, id, skipThis);
                 break;
@@ -684,8 +688,9 @@ void NativeInlineLowering::TryInlineNumberParseInt(GateRef gate, size_t argc, bo
     if (EnableTrace()) {
         AddTraceLogs(gate, id);
     }
+    // this may return exception
     GateRef ret = builder_.NumberParseInt(arg, radix);
-    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
+    acc_.ReplaceGate(gate, builder_.GetStateDepend(), ret);
 }
 
 void NativeInlineLowering::TryInlineNumberIsSafeInteger(GateRef gate, size_t argc, bool skipThis)
@@ -1536,11 +1541,11 @@ void NativeInlineLowering::TryInlineArrayIterator(GateRef gate, BuiltinsStubCSig
     if (!Uncheck()) {
         builder_.CallTargetCheck(gate, tacc.GetFunc(), builder_.IntPtr(static_cast<int64_t>(id)), {tacc.GetThisObj()});
     }
+    GateRef thisObj = acc_.GetValueIn(gate, 0);
+    builder_.EcmaObjectCheck(thisObj);
     if (EnableTrace()) {
         AddTraceLogs(gate, id);
     }
-    GateRef thisObj = acc_.GetValueIn(gate, 0);
-    builder_.EcmaObjectCheck(thisObj);
     GateRef CallIDRef = builder_.Int32(static_cast<int32_t>(id));
     GateRef ret = builder_.ArrayIteratorBuiltin(thisObj, CallIDRef);
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
@@ -1655,7 +1660,7 @@ void NativeInlineLowering::TryInlineArrayFilter(GateRef gate, size_t argc, Built
         ret = builder_.ArrayFilter(thisValue, callBackFn, builder_.UndefineConstant(), frameState, pcOffset);
     } else {
         ret = builder_.ArrayFilter(
-            thisValue, callBackFn, acc_.GetValueIn(gate, 2), frameState, pcOffset); //2: provide usingThis
+            thisValue, callBackFn, acc_.GetValueIn(gate, 2), frameState, pcOffset); // 2: provide usingThis
     }
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), ret);
 }
@@ -1787,6 +1792,30 @@ void NativeInlineLowering::TryInlineArrayPop(GateRef gate, size_t argc, Builtins
     GateRef ret = builder_.ArrayPop(thisValue, acc_.GetFrameState(gate));
     ReplaceGateWithPendingException(gate, ret);
 }
+
+void NativeInlineLowering::TryInlineArrayPush(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id, bool skipThis)
+{
+    // To ensure that the Inline code is as small as possible,
+    // FastPath only processes the case when the number of elements to push equals 1
+    // and elementsKinds is not enabled.
+    if (!skipThis || argc != 1 || enableElementsKind_) {
+        return;
+    }
+    Environment env(gate, circuit_, &builder_);
+    if (!Uncheck()) {
+        builder_.CallTargetCheck(gate, acc_.GetValueIn(gate, argc + 1), builder_.IntPtr(static_cast<int64_t>(id)));
+    }
+    GateRef thisValue = acc_.GetValueIn(gate, 0);
+    ElementsKind kind = acc_.TryGetArrayElementsKind(thisValue);
+    if (EnableTrace()) {
+        AddTraceLogs(gate, id);
+    }
+    builder_.StableArrayCheck(thisValue, kind, ArrayMetaDataAccessor::Mode::CALL_BUILTIN_METHOD);
+    builder_.BuiltinPrototypeHClassCheck(thisValue, BuiltinTypeId::ARRAY, kind, false);
+    GateRef ret = builder_.ArrayPush(thisValue, acc_.GetValueIn(gate, 1));
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), ret);
+}
+
 
 void NativeInlineLowering::TryInlineArraySlice(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id, bool skipThis)
 {

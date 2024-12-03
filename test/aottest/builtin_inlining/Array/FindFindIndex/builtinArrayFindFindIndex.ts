@@ -214,9 +214,9 @@ function findIndexCase3() {
     findIndex: true_findIndex
   }
 
-  print(marr.findIndex(x => x == 1)); //aot: [trace] Check Type: NotStableArray1
+  print(marr.findIndex(x => x == 1)); //aot: [trace] aot inline builtin: Array.prototype.findIndex, caller function name:#*#findIndexCase3@builtinArrayFindFindIndex
                                       //: 0
-
+  //aot: [trace] Check Type: BuiltinInstanceHClassMismatch
   Object.setPrototypeOf(marr, mimicArray)
 
   print(marr.findIndex(x => x == 1)); //: 0
@@ -235,9 +235,9 @@ function findCase4() {
     }
   }
   Object.setPrototypeOf(arr2, notArray)
-
-  //aot: [trace] Check Type: NotStableArray1
+  //aot: [trace] aot inline builtin: Array.prototype.find, caller function name:#*#findCase4@builtinArrayFindFindIndex
   print(arr1.find(x => x == 1)); //: 1
+  //aot: [trace] aot inline function name: #*@6*#find@builtinArrayFindFindIndex caller function name: #*#findCase4@builtinArrayFindFindIndex
   //aot: [trace] aot inline function name: #*@6*#^1@builtinArrayFindFindIndex caller function name: #*@6*#find@builtinArrayFindFindIndex
   print(arr2.find(x => x == 1)); //: false
 }
@@ -252,8 +252,9 @@ function findIndexCase4() {
   }
   Object.setPrototypeOf(arr2, notArray)
 
-  //aot: [trace] Check Type: NotStableArray1
+  //aot: [trace] aot inline builtin: Array.prototype.findIndex, caller function name:#*#findIndexCase4@builtinArrayFindFindIndex
   print(arr1.findIndex(x => x == 1)); //: 0
+  //aot: [trace] aot inline function name: #*@7*#findIndex@builtinArrayFindFindIndex caller function name: #*#findIndexCase4@builtinArrayFindFindIndex
   //aot: [trace] aot inline function name: #*@7*#^1@builtinArrayFindFindIndex caller function name: #*@7*#findIndex@builtinArrayFindFindIndex
   print(arr2.findIndex(x => x == 1)); //: false
 }
@@ -268,7 +269,7 @@ function findCase5() {
     return x(1)
   }
 
-  //aot: [trace] Check Type: NotStableArray1
+  //aot: [trace] aot inline function name: #*@8*#@builtinArrayFindFindIndex caller function name: #*#findCase5@builtinArrayFindFindIndex
   //aot: [trace] aot inline function name: #*@8*#^1@builtinArrayFindFindIndex caller function name: #*@8*#@builtinArrayFindFindIndex
   print(arr1.find(x => x == 1)); //: true
 }
@@ -279,7 +280,7 @@ function findIndexCase5() {
     return x(1)
   }
 
-  //aot: [trace] Check Type: NotStableArray1
+  //aot: [trace] aot inline function name: #*@9*#@builtinArrayFindFindIndex caller function name: #*#findIndexCase5@builtinArrayFindFindIndex
   //aot: [trace] aot inline function name: #*@9*#^1@builtinArrayFindFindIndex caller function name: #*@9*#@builtinArrayFindFindIndex
   print(arr1.findIndex(x => x == 1));  //: true
 }
