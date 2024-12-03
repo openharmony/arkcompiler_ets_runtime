@@ -289,6 +289,81 @@ void BarrierStubBuilder::FlushBatchBitSet(uint8_t bitSetSelect, GateRef quadIdx,
     Jump(next);
 }
 
+void BarrierStubBuilder::DoMoveBarrierCrossRegion(GateRef srcAddr, GateRef srcObj)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+    Label handleMark(env);
+    Label handleBitSet(env);
+    Label doMove(env);
+    BRANCH_NO_WEIGHT(Int32Equal(slotCount_, Int32(0)), &exit, &doMove);
+    Bind(&doMove);
+    BRANCH_NO_WEIGHT(InSharedHeap(objectRegion_), &handleMark, &handleBitSet);
+    Bind(&handleBitSet);
+    {
+        GateRef srcRegion = ObjectAddressToRange(srcObj);
+        Label batchBarrier(env);
+        Label srcNotInSharedHeap(env);
+        // copy shared array to local heap, there is no bitset can be copied, do batch barrier for dst object.
+        BRANCH_UNLIKELY(InSharedHeap(srcRegion), &batchBarrier, &srcNotInSharedHeap);
+        Bind(&srcNotInSharedHeap);
+        {
+            GateRef sameKind = LogicOrBuilder(env)
+                               .Or(BitAnd(InYoungGeneration(objectRegion_), InYoungGeneration(srcRegion)))
+                               .Or(BitAnd(InGeneralOldGeneration(objectRegion_), InGeneralOldGeneration(srcRegion)))
+                               .Done();
+            Label sameRegionKind(env);
+            Label crossRegion(env);
+            BRANCH_NO_WEIGHT(sameKind, &sameRegionKind, &crossRegion);
+            Bind(&sameRegionKind);
+            {
+                // dst and src are in same kind region, copy the bitset of them.
+                DoMoveBarrierSameRegionKind(srcAddr, srcRegion, CrossRegion);
+                Jump(&handleMark);
+            }
+            Bind(&crossRegion);
+            {
+                Label copyLocalToShare(env);
+                BRANCH_UNLIKELY(IsLocalToShareSwapped(srcRegion), &batchBarrier, &copyLocalToShare);
+                Bind(&copyLocalToShare);
+                {
+                    // dst and src are in different kind region, localToShare bitset can be copied unconditionally,
+                    GateRef srcBitStartIdx = Int64LSR(Int64Sub(srcAddr, srcRegion), Int64(TAGGED_TYPE_SIZE_LOG));
+                    GateRef dstBitStartIdx = Int64LSR(Int64Sub(dstAddr_, objectRegion_), Int64(TAGGED_TYPE_SIZE_LOG));
+
+                    GateRef localToShareOffset = IntPtr(Region::PackedData::GetLocalToShareSetOffset(env->Is32Bit()));
+                    GateRef localToShareBitSetAddr =
+                        GetBitSetDataAddr(objectRegion_, localToShareOffset, RTSTUB_ID(CreateLocalToShare));
+                    GateRef srcLocalToShareBitSetAddr =
+                        GetBitSetDataAddr(srcRegion, localToShareOffset, RTSTUB_ID(CreateLocalToShare));
+                    BitSetRangeMoveForward(srcLocalToShareBitSetAddr, localToShareBitSetAddr, srcBitStartIdx,
+                                           dstBitStartIdx, ZExtInt32ToInt64(slotCount_));
+                    Label inOld(env);
+                    BRANCH_NO_WEIGHT(InYoungGeneration(objectRegion_), &handleMark, &inOld);
+                    Bind(&inOld);
+                    {
+                        // copy young object to old region, do BarrierBatchBitSet bitset for oldToNew bitset.
+                        BarrierBatchBitSet(OldToNew);
+                        Jump(&handleMark);
+                    }
+                }
+            }
+        }
+        Bind(&batchBarrier);
+        {
+            DoBatchBarrierInternal();
+            Jump(&handleMark);
+        }
+    }
+    Bind(&handleMark);
+    HandleMark();
+    Jump(&exit);
+    Bind(&exit);
+    env->SubCfgExit();
+}
+
 void BarrierStubBuilder::DoMoveBarrierInRegion(GateRef srcAddr)
 {
     auto env = GetEnvironment();
@@ -303,114 +378,149 @@ void BarrierStubBuilder::DoMoveBarrierInRegion(GateRef srcAddr)
     BRANCH_NO_WEIGHT(InSharedHeap(objectRegion_), &handleMark, &handleBitSet);
     Bind(&handleBitSet);
     {
-        Label inYoung(env);
-        Label inOld(env);
-        Label copyBitSet(env);
-
-        DEFVARIABLE(dstBitSetAddr, VariableType::NATIVE_POINTER(), IntPtr(0));
-        DEFVARIABLE(dstBitSetAddr2, VariableType::NATIVE_POINTER(), IntPtr(0));
-
-        GateRef localToShareOffset = IntPtr(Region::PackedData::GetLocalToShareSetOffset(env->Is32Bit()));
-        GateRef localToShareBitSetAddr =
-            GetBitSetDataAddr(objectRegion_, localToShareOffset, RTSTUB_ID(CreateLocalToShare));
-
-        GateRef localToShareSwapped = IsLocalToShareSwapped(objectRegion_);
-        BRANCH_NO_WEIGHT(InYoungGeneration(objectRegion_), &inYoung, &inOld);
-        Bind(&inYoung);
-        {
-            Label batchBarrier(env);
-            Label copyLocalToShare(env);
-            BRANCH_UNLIKELY(localToShareSwapped, &batchBarrier, &copyLocalToShare);
-            Bind(&batchBarrier);
-            {
-                // slowpath, localToShareRSet is swapped, it can't be copied, just set the bitset bit by bit.
-                BarrierBatchBitSet(LocalToShared);
-                Jump(&handleMark);
-            }
-            Bind(&copyLocalToShare);
-            {
-                dstBitSetAddr = localToShareBitSetAddr;
-                Jump(&copyBitSet);
-            }
-        }
-        Bind(&inOld);
-        {
-            GateRef oldToNewOffset = IntPtr(Region::PackedData::GetOldToNewSetOffset(env->Is32Bit()));
-            GateRef oldToNewBitSetAddr = GetBitSetDataAddr(objectRegion_, oldToNewOffset, RTSTUB_ID(CreateOldToNew));
-            // CreateOldToNew may change the RSetFlag, so load it again.
-            GateRef oldToNewSwapped = IsOldToNewSwapped(objectRegion_);
-            Label batchBarrier(env);
-            Label tryBatchBarrier(env);
-            Label copyBoth(env);
-            // both localToShareSwapped and oldToNewSwapped are not swapped.
-            BRANCH_LIKELY(BitAnd(BoolNot(localToShareSwapped), BoolNot(oldToNewSwapped)), &copyBoth, &tryBatchBarrier);
-            Bind(&copyBoth);
-            {
-                dstBitSetAddr = localToShareBitSetAddr;
-                dstBitSetAddr2 = oldToNewBitSetAddr;
-                Jump(&copyBitSet);
-            }
-            Bind(&tryBatchBarrier);
-            {
-                Label copyOne(env);
-                BRANCH_UNLIKELY(BitAnd(localToShareSwapped, oldToNewSwapped), &batchBarrier, &copyOne);
-                Bind(&batchBarrier);
-                {
-                    // slowpath, localToShareRSet and oldToNewRSet are swapped,
-                    // it can't be copied, just set the bitset bit by bit.
-                    BarrierBatchBitSet(LocalToShared | OldToNew);
-                    Jump(&handleMark);
-                }
-                Bind(&copyOne);
-                {
-                    Label localToShareBatchBarrier(env);
-                    Label oldToNewBatchBarrier(env);
-                    BRANCH_NO_WEIGHT(localToShareSwapped, &localToShareBatchBarrier, &oldToNewBatchBarrier);
-                    Bind(&localToShareBatchBarrier);
-                    {
-                        // slowpath, localToShareRSet is swapped, it can't be copied, just set the bitset bit by bit.
-                        // And copy oldToNewRSet.
-                        BarrierBatchBitSet(LocalToShared);
-                        dstBitSetAddr = oldToNewBitSetAddr;
-                        Jump(&copyBitSet);
-                    }
-                    Bind(&oldToNewBatchBarrier);
-                    {
-                        // slowpath, oldToNewRSet is swapped, it can't be copied, just set the bitset bit by bit.
-                        // And copy localToShareRSet.
-                        BarrierBatchBitSet(OldToNew);
-                        dstBitSetAddr = localToShareBitSetAddr;
-                        Jump(&copyBitSet);
-                    }
-                }
-            }
-        }
-        Bind(&copyBitSet);
-        {
-            GateRef srcBitStartIdx = Int64LSR(Int64Sub(srcAddr, objectRegion_), Int64(TAGGED_TYPE_SIZE_LOG));
-            GateRef dstBitStartIdx = Int64LSR(Int64Sub(dstAddr_, objectRegion_), Int64(TAGGED_TYPE_SIZE_LOG));
-            Label begin(env);
-            Label endLoop(env);
-            Label next(env);
-            Jump(&begin);
-            LoopBegin(&begin);
-            {
-                BitSetRangeMove(*dstBitSetAddr, *dstBitSetAddr, srcBitStartIdx, dstBitStartIdx, slotCount_);
-                BRANCH_UNLIKELY(IntPtrEqual(*dstBitSetAddr2, IntPtr(0)), &handleMark, &next);
-                Bind(&next);
-                {
-                    dstBitSetAddr = *dstBitSetAddr2;
-                    dstBitSetAddr2 = IntPtr(0);
-                    Jump(&endLoop);
-                }
-            }
-            Bind(&endLoop);
-            LoopEnd(&begin);
-        }
+        DoMoveBarrierSameRegionKind(srcAddr, objectRegion_, InSameRegion);
+        Jump(&handleMark);
     }
     Bind(&handleMark);
     HandleMark();
     Jump(&exit);
+    Bind(&exit);
+    env->SubCfgExit();
+}
+
+void BarrierStubBuilder::DoMoveBarrierSameRegionKind(GateRef srcAddr, GateRef srcRegion, RegionKind regionKind)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+    Label inYoung(env);
+    Label inOld(env);
+    Label copyBitSet(env);
+
+    DEFVARIABLE(dstBitSetAddr, VariableType::NATIVE_POINTER(), IntPtr(0));
+    DEFVARIABLE(dstBitSetAddr2, VariableType::NATIVE_POINTER(), IntPtr(0));
+    DEFVARIABLE(srcBitSetAddr, VariableType::NATIVE_POINTER(), IntPtr(0));
+    DEFVARIABLE(srcBitSetAddr2, VariableType::NATIVE_POINTER(), IntPtr(0));
+
+    GateRef localToShareOffset = IntPtr(Region::PackedData::GetLocalToShareSetOffset(env->Is32Bit()));
+    GateRef localToShareBitSetAddr =
+        GetBitSetDataAddr(objectRegion_, localToShareOffset, RTSTUB_ID(CreateLocalToShare));
+    GateRef srcLocalToShareBitSetAddr = Gate::InvalidGateRef;
+    if (regionKind == InSameRegion) {
+        srcLocalToShareBitSetAddr = localToShareBitSetAddr;
+    } else {
+        ASSERT(regionKind == CrossRegion);
+        srcLocalToShareBitSetAddr = GetBitSetDataAddr(srcRegion, localToShareOffset, RTSTUB_ID(CreateLocalToShare));
+    }
+    GateRef localToShareSwapped = IsLocalToShareSwapped(srcRegion);
+    BRANCH_NO_WEIGHT(InYoungGeneration(objectRegion_), &inYoung, &inOld);
+    Bind(&inYoung);
+    {
+        Label batchBarrier(env);
+        Label copyLocalToShare(env);
+        BRANCH_UNLIKELY(localToShareSwapped, &batchBarrier, &copyLocalToShare);
+        Bind(&batchBarrier);
+        {
+            // slowpath, localToShareRSet is swapped, it can't be copied, just set the bitset bit by bit.
+            BarrierBatchBitSet(LocalToShared);
+            Jump(&exit);
+        }
+        Bind(&copyLocalToShare);
+        {
+            dstBitSetAddr = localToShareBitSetAddr;
+            srcBitSetAddr = srcLocalToShareBitSetAddr;
+            Jump(&copyBitSet);
+        }
+    }
+    Bind(&inOld);
+    {
+        GateRef oldToNewOffset = IntPtr(Region::PackedData::GetOldToNewSetOffset(env->Is32Bit()));
+        GateRef oldToNewBitSetAddr = GetBitSetDataAddr(objectRegion_, oldToNewOffset, RTSTUB_ID(CreateOldToNew));
+        GateRef srcOldToNewBitSetAddr = GetBitSetDataAddr(srcRegion, oldToNewOffset, RTSTUB_ID(CreateOldToNew));
+        // CreateOldToNew may change the RSetFlag, so load it again.
+        GateRef oldToNewSwapped = IsOldToNewSwapped(srcRegion);
+        Label batchBarrier(env);
+        Label tryBatchBarrier(env);
+        Label copyBoth(env);
+        // both localToShareSwapped and oldToNewSwapped are not swapped.
+        BRANCH_LIKELY(BitAnd(BoolNot(localToShareSwapped), BoolNot(oldToNewSwapped)), &copyBoth, &tryBatchBarrier);
+        Bind(&copyBoth);
+        {
+            dstBitSetAddr = localToShareBitSetAddr;
+            srcBitSetAddr = srcLocalToShareBitSetAddr;
+            dstBitSetAddr2 = oldToNewBitSetAddr;
+            srcBitSetAddr2 = srcOldToNewBitSetAddr;
+            Jump(&copyBitSet);
+        }
+        Bind(&tryBatchBarrier);
+        {
+            Label copyOne(env);
+            BRANCH_UNLIKELY(BitAnd(localToShareSwapped, oldToNewSwapped), &batchBarrier, &copyOne);
+            Bind(&batchBarrier);
+            {
+                // slowpath, localToShareRSet and oldToNewRSet are swapped,
+                // it can't be copied, just set the bitset bit by bit.
+                BarrierBatchBitSet(LocalToShared | OldToNew);
+                Jump(&exit);
+            }
+            Bind(&copyOne);
+            {
+                Label localToShareBatchBarrier(env);
+                Label oldToNewBatchBarrier(env);
+                BRANCH_NO_WEIGHT(localToShareSwapped, &localToShareBatchBarrier, &oldToNewBatchBarrier);
+                Bind(&localToShareBatchBarrier);
+                {
+                    // slowpath, localToShareRSet is swapped, it can't be copied, just set the bitset bit by bit.
+                    // And copy oldToNewRSet.
+                    BarrierBatchBitSet(LocalToShared);
+                    dstBitSetAddr = oldToNewBitSetAddr;
+                    srcBitSetAddr = srcOldToNewBitSetAddr;
+                    Jump(&copyBitSet);
+                }
+                Bind(&oldToNewBatchBarrier);
+                {
+                    // slowpath, oldToNewRSet is swapped, it can't be copied, just set the bitset bit by bit.
+                    // And copy localToShareRSet.
+                    BarrierBatchBitSet(OldToNew);
+                    dstBitSetAddr = localToShareBitSetAddr;
+                    srcBitSetAddr = srcLocalToShareBitSetAddr;
+                    Jump(&copyBitSet);
+                }
+            }
+        }
+    }
+    Bind(&copyBitSet);
+    {
+        GateRef srcBitStartIdx = Int64LSR(Int64Sub(srcAddr, srcRegion), Int64(TAGGED_TYPE_SIZE_LOG));
+        GateRef dstBitStartIdx = Int64LSR(Int64Sub(dstAddr_, objectRegion_), Int64(TAGGED_TYPE_SIZE_LOG));
+        Label begin(env);
+        Label endLoop(env);
+        Label next(env);
+        Jump(&begin);
+        LoopBegin(&begin);
+        {
+            if (regionKind == InSameRegion) {
+                BitSetRangeMove(*srcBitSetAddr, *dstBitSetAddr, srcBitStartIdx, dstBitStartIdx,
+                                ZExtInt32ToInt64(slotCount_));
+            } else {
+                ASSERT(regionKind == CrossRegion);
+                BitSetRangeMoveForward(*srcBitSetAddr, *dstBitSetAddr, srcBitStartIdx, dstBitStartIdx,
+                                       ZExtInt32ToInt64(slotCount_));
+            }
+            BRANCH_UNLIKELY(IntPtrEqual(*dstBitSetAddr2, IntPtr(0)), &exit, &next);
+            Bind(&next);
+            {
+                dstBitSetAddr = *dstBitSetAddr2;
+                srcBitSetAddr = *srcBitSetAddr2;
+                dstBitSetAddr2 = IntPtr(0);
+                srcBitSetAddr2 = IntPtr(0);
+                Jump(&endLoop);
+            }
+        }
+        Bind(&endLoop);
+        LoopEnd(&begin);
+    }
     Bind(&exit);
     env->SubCfgExit();
 }

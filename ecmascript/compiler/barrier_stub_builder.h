@@ -34,6 +34,8 @@ public:
 
     void GenerateCircuit() override {}
 
+    void DoMoveBarrierCrossRegion(GateRef srcAddr, GateRef srcRegion);
+
     void DoBatchBarrier();
 
     void DoMoveBarrierInRegion(GateRef srcAddr);
@@ -42,6 +44,12 @@ private:
         LocalToShared = 0b1,
         OldToNew = 0b10,
     };
+
+    enum RegionKind {
+        InSameRegion,
+        CrossRegion,
+    };
+
     GateRef GetBitSetDataAddr(GateRef objectRegion, GateRef loadOffset, int32_t createFunID);
     void HandleMark();
     void DoBatchBarrierInternal();
@@ -55,6 +63,7 @@ private:
                                 GateRef length);
     void BitSetRangeMoveBackward(GateRef srcBitSet, GateRef dstBitSet, GateRef srcStart, GateRef dstStart,
                                  GateRef length);
+    void DoMoveBarrierSameRegionKind(GateRef srcAddr, GateRef srcRegion, RegionKind regionKind);
     const GateRef glue_;
     const GateRef dstAddr_;
     const GateRef slotCount_;
