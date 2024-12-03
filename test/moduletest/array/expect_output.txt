@@ -580,3 +580,9 @@ undefined true
 1,b false
 undefined true
 Test passed
+9
+8
+7
+6
+5
+0,1,2,3,4

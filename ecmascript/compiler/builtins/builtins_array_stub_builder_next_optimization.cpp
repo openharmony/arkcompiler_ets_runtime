@@ -867,6 +867,110 @@ void BuiltinsArrayStubBuilder::ToSplicedOptimised(GateRef glue, GateRef thisValu
     }
 }
 
+void BuiltinsArrayStubBuilder::PopOptimised(GateRef glue, GateRef thisValue,
+    [[maybe_unused]] GateRef numArgs, Variable *result, Label *exit, Label *slowPath)
+{
+    auto env = GetEnvironment();
+    Label isHeapObject(env);
+    Label stableJSArray(env);
+    Label isDeufaltConstructor(env);
+    BRANCH(TaggedIsHeapObject(thisValue), &isHeapObject, slowPath);
+    Bind(&isHeapObject);
+    BRANCH(HasConstructor(thisValue), slowPath, &isDeufaltConstructor);
+    Bind(&isDeufaltConstructor);
+    BRANCH(IsStableJSArray(glue, thisValue), &stableJSArray, slowPath);
+    Bind(&stableJSArray);
+
+    Label isLengthWritable(env);
+    BRANCH(IsArrayLengthWritable(glue, thisValue), &isLengthWritable, slowPath);
+    Bind(&isLengthWritable);
+    GateRef thisLen = ZExtInt32ToInt64(GetArrayLength(thisValue));
+    Label notZeroLen(env);
+    BRANCH(Int64Equal(thisLen, Int64(0)), exit, &notZeroLen);
+    Bind(&notZeroLen);
+    Label isJsCOWArray(env);
+    Label getElements(env);
+    BRANCH(IsJsCOWArray(thisValue), &isJsCOWArray, &getElements);
+    Bind(&isJsCOWArray);
+    {
+        NewObjectStubBuilder newBuilder(this);
+        GateRef elements = GetElementsArray(thisValue);
+        GateRef capacity = GetLengthOfTaggedArray(elements);
+        GateRef newElements = newBuilder.CopyArray(glue, elements, capacity, capacity);
+        SetElementsArray(VariableType::JS_POINTER(), glue, thisValue, newElements);
+        Jump(&getElements);
+    }
+    Bind(&getElements);
+    GateRef elements = GetElementsArray(thisValue);
+    GateRef capacity = ZExtInt32ToInt64(GetLengthOfTaggedArray(elements));
+    GateRef index = Int64Sub(thisLen, Int64(1));
+
+    Label inRange(env);
+    Label trimCheck(env);
+    Label noTrimCheck(env);
+    Label setNewLen(env);
+
+    GateRef enableMutant = IsEnableMutantArray(glue);
+    DEFVARIABLE(element, VariableType::JS_ANY(), Hole());
+    BRANCH(Int64LessThan(index, capacity), &inRange, &trimCheck);
+    Bind(&inRange);
+    {
+        Label enableMutantArray(env);
+        Label disableMutantArray(env);
+        BRANCH(enableMutant, &enableMutantArray, &disableMutantArray);
+        Bind(&enableMutantArray);
+        {
+            element = GetTaggedValueWithElementsKind(thisValue, index);
+            Jump(&trimCheck);
+        }
+        Bind(&disableMutantArray);
+        {
+            element = GetValueFromTaggedArray(elements, TruncInt64ToInt32(index));
+            Jump(&trimCheck);
+        }
+    }
+    Bind(&trimCheck);
+    // ShouldTrim check
+    // (oldLength - newLength > MAX_END_UNUSED)
+    Label noTrim(env);
+    Label needTrim(env);
+    GateRef unused = Int64Sub(capacity, index);
+    BRANCH(Int64GreaterThan(unused, Int64(TaggedArray::MAX_END_UNUSED)), &needTrim, &noTrim);
+    Bind(&needTrim);
+    {
+        CallNGCRuntime(glue, RTSTUB_ID(ArrayTrim), {glue, elements, index});
+        Jump(&setNewLen);
+    }
+    Bind(&noTrim);
+    {
+        Label enableMutantArray(env);
+        Label disableMutantArray(env);
+        BRANCH(enableMutant, &enableMutantArray, &disableMutantArray);
+        Bind(&enableMutantArray);
+        {
+            SetValueWithElementsKind(glue, thisValue, Hole(), index, Boolean(false),
+                                     Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+            Jump(&setNewLen);
+        }
+        Bind(&disableMutantArray);
+        {
+            SetValueToTaggedArray(VariableType::JS_ANY(), glue, elements,
+                                  TruncInt64ToInt32(index), Hole(), MemoryAttribute::NoBarrier());
+            Jump(&setNewLen);
+        }
+    }
+    Bind(&setNewLen);
+    GateRef lengthOffset = IntPtr(JSArray::LENGTH_OFFSET);
+    Store(VariableType::INT32(), glue, thisValue, lengthOffset, TruncInt64ToInt32(index));
+    Label isNotHole(env);
+    BRANCH(TaggedIsHole(*element), exit, &isNotHole);
+    Bind(&isNotHole);
+    {
+        result->WriteVariable(*element);
+        Jump(exit);
+    }
+}
+
 void BuiltinsArrayStubBuilder::SliceOptimised(GateRef glue, GateRef thisValue, GateRef numArgs,
     Variable *result, Label *exit, Label *slowPath)
 {
