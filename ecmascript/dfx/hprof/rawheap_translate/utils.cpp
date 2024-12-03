@@ -113,12 +113,16 @@ bool FileCheckAndOpenBinary(const std::string &rawheapPath, std::ifstream &file,
     return true;
 }
 
-void GenerateDumpFileName(std::string &filename)
+bool GenerateDumpFileName(std::string &filename)
 {
-    filename = "hprof_";
     std::time_t t = std::time(nullptr);
     struct tm *now = localtime(&t);
+    if (now == nullptr) {
+        LOG_ERROR("Failed to converting time to local time!");
+        return false;
+    }
 
+    filename = "hprof_";
     const int timeStart = 1900;  // 1900: means the start of timestamp
     filename += std::to_string(now->tm_year + timeStart);
     filename += '-' + std::to_string(now->tm_mon + 1);
@@ -127,6 +131,7 @@ void GenerateDumpFileName(std::string &filename)
     filename += '-' + std::to_string(now->tm_min);
     filename += '-' + std::to_string(now->tm_sec);
     filename += ".heapsnapshot";
+    return true;
 }
 
 bool EndsWith(const std::string &str, const std::string &suffix)

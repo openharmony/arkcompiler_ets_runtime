@@ -130,10 +130,12 @@ private:
     void FillNodesAndBuildEdges();
     void FillNodes(const std::shared_ptr<Node> &node, char *hclass);
     void BuildEdges(const std::shared_ptr<Node> &from, char *hclass);
-    void BuildFieldsEdges(const std::shared_ptr<Node> &from, const std::shared_ptr<MetaData> &metadata, int offset);
+    void BuildFieldsEdges(
+        const std::shared_ptr<Node> &from, const std::shared_ptr<MetaData> &metadata, uint32_t offset);
     void BuildGlobalEnvEdges(const std::shared_ptr<Node> &from);
-    void BuildArrayEdges(const std::shared_ptr<Node> &from, const std::shared_ptr<MetaData> &metadata, int offset);
-    void BuildDictionaryEdges(const std::shared_ptr<Node> &from, const std::shared_ptr<MetaData> &metadata, int offset);
+    void BuildArrayEdges(const std::shared_ptr<Node> &from, const std::shared_ptr<MetaData> &metadata, uint32_t offset);
+    void BuildDictionaryEdges(
+        const std::shared_ptr<Node> &from, const std::shared_ptr<MetaData> &metadata, uint32_t offset);
     void BuildJSObjectInlEdges(const std::shared_ptr<Node> &from, char *hclass, uint32_t offset);
     void CreateEdge(const std::shared_ptr<Node> &from, const std::shared_ptr<Node> &to, EdgeType type, uint32_t index);
     void SetNodeStringId(char *addr, uint32_t size, StringId strId);
