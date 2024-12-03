@@ -113,7 +113,7 @@ void Meta::VisitObjectBody(const std::string &name, const ObjRangeVisitor &visit
 
 bool Meta::SetObjTypeBitFieldOffset()
 {
-    auto visitor = [this] (std::shared_ptr<MetaData> &metadata, int offset) {
+    auto visitor = [this] (std::shared_ptr<MetaData> &metadata, uint32_t offset) {
         for (const auto &field : metadata->fields) {
             if (field->name == "BitField") {
                 objTypeBitFieldOffset_ = offset + field->offset;
@@ -129,7 +129,7 @@ bool Meta::SetObjTypeBitFieldOffset()
 
 bool Meta::SetNativatePointerBindingSizeOffset()
 {
-    auto visitor = [this] (std::shared_ptr<MetaData> &metadata, int offset) {
+    auto visitor = [this] (std::shared_ptr<MetaData> &metadata, uint32_t offset) {
         for (const auto &field : metadata->fields) {
             if (field->name == "BindingSize") {
                 nativatePointerBindingSizeOffset_ = offset + field->offset;
