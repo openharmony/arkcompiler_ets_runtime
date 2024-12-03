@@ -21,17 +21,42 @@
 #include <sstream>
 
 namespace panda::ecmascript::base {
-constexpr unsigned char CODE_SPACE = 0x20;
-constexpr char ZERO_FIRST = static_cast<char>(0xc0); // \u0000 => c0 80
-constexpr char ALONE_SURROGATE_3B_FIRST = static_cast<char>(0xed);
-constexpr char ALONE_SURROGATE_3B_SECOND_START = static_cast<char>(0xa0);
-constexpr char ALONE_SURROGATE_3B_SECOND_END = static_cast<char>(0xbf);
-constexpr char ALONE_SURROGATE_3B_THIRD_START = static_cast<char>(0x80);
-constexpr char ALONE_SURROGATE_3B_THIRD_END = static_cast<char>(0xbf);
+constexpr uint8_t CODE_SPACE = 0x20;
+constexpr uint8_t ZERO_FIRST = 0xc0; // \u0000 => c0 80
+constexpr uint8_t ALONE_SURROGATE_3B_FIRST = 0xed;
+constexpr uint8_t ALONE_SURROGATE_3B_SECOND_START = 0xa0;
+constexpr uint8_t ALONE_SURROGATE_3B_SECOND_END = 0xbf;
+constexpr uint8_t ALONE_SURROGATE_3B_THIRD_START = 0x80;
+constexpr uint8_t ALONE_SURROGATE_3B_THIRD_END = 0xbf;
 
 bool JsonHelper::IsFastValueToQuotedString(const CString& str)
 {
-    for (const auto ch : str) {
+    for (const auto item : str) {
+        const auto ch = static_cast<uint8_t>(item);
+        switch (ch) {
+            case '\"':
+            case '\\':
+            case '\b':
+            case '\f':
+            case '\n':
+            case '\r':
+            case '\t':
+            case ZERO_FIRST:
+            case ALONE_SURROGATE_3B_FIRST:
+                return false;
+            default:
+                if (ch > 0 && ch < CODE_SPACE) {
+                    return false;
+                }
+                break;
+        }
+    }
+    return true;
+}
+
+bool JsonHelper::IsFastValueToQuotedString(const Span<const uint8_t>& sp)
+{
+    for (const auto ch : sp) {
         switch (ch) {
             case '\"':
             case '\\':
@@ -63,7 +88,7 @@ void JsonHelper::AppendValueToQuotedString(const CString& str, CString& output)
         return;
     }
     for (uint32_t i = 0; i < str.size(); ++i) {
-        auto ch = str[i];
+        const auto ch = static_cast<uint8_t>(str[i]);
         switch (ch) {
             case '\"':
                 output += "\\\"";
@@ -92,20 +117,21 @@ void JsonHelper::AppendValueToQuotedString(const CString& str, CString& output)
                 break;
             case ALONE_SURROGATE_3B_FIRST:
                 if (i + 2 < str.size() && // 2: Check 2 more characters
-                    str[i + 1] >= ALONE_SURROGATE_3B_SECOND_START && // 1: The first character after ch
-                    str[i + 1] <= ALONE_SURROGATE_3B_SECOND_END && // 1: The first character after ch
-                    str[i + 2] >= ALONE_SURROGATE_3B_THIRD_START && // 2: The second character after ch
-                    str[i + 2] <= ALONE_SURROGATE_3B_THIRD_END) {   // 2: The second character after ch
+                    static_cast<uint8_t>(str[i + 1]) >= ALONE_SURROGATE_3B_SECOND_START && // 1: 1th character after ch
+                    static_cast<uint8_t>(str[i + 1]) <= ALONE_SURROGATE_3B_SECOND_END && // 1: 1th character after ch
+                    static_cast<uint8_t>(str[i + 2]) >= ALONE_SURROGATE_3B_THIRD_START && // 2: 2nd character after ch
+                    static_cast<uint8_t>(str[i + 2]) <= ALONE_SURROGATE_3B_THIRD_END) {   // 2: 2nd character after ch
                     auto unicodeRes = utf_helper::ConvertUtf8ToUnicodeChar(
                         reinterpret_cast<const uint8_t*>(str.c_str() + i), 3); // 3: Parse 3 characters
-                    AppendUnicodeEscape(static_cast<int>(unicodeRes.first), output);
+                    ASSERT(unicodeRes.first != utf_helper::INVALID_UTF8);
+                    AppendUnicodeEscape(static_cast<uint32_t>(unicodeRes.first), output);
                     i += 2; // 2 : Skip 2 characters
                     break;
                 }
                 [[fallthrough]];
             default:
-                if (ch > 0 && ch < CODE_SPACE) {
-                    AppendUnicodeEscape(static_cast<int>(ch), output);
+                if (ch < CODE_SPACE) {
+                    AppendUnicodeEscape(static_cast<uint32_t>(ch), output);
                 } else {
                     output += ch;
                 }
@@ -117,8 +143,14 @@ void JsonHelper::AppendValueToQuotedString(const CString& str, CString& output)
 void JsonHelper::AppendValueToQuotedString(const Span<const uint8_t>& sp, CString& output)
 {
     output += "\"";
+    bool isFast = IsFastValueToQuotedString(sp); // fast mode
+    if (isFast) {
+        output.append(reinterpret_cast<const char*>(sp.data()), sp.size());
+        output += "\"";
+        return;
+    }
     for (uint32_t i = 0; i < sp.size(); ++i) {
-        const char ch = static_cast<char>(sp[i]);
+        const auto ch = sp[i];
         switch (ch) {
             case '\"':
                 output += "\\\"";
@@ -147,19 +179,20 @@ void JsonHelper::AppendValueToQuotedString(const Span<const uint8_t>& sp, CStrin
                 break;
             case ALONE_SURROGATE_3B_FIRST:
                 if (i + 2 < sp.size() && // 2: Check 2 more characters
-                    static_cast<char>(sp[i + 1]) >= ALONE_SURROGATE_3B_SECOND_START && // 1: The 1st character after ch
-                    static_cast<char>(sp[i + 1]) <= ALONE_SURROGATE_3B_SECOND_END && // 1: The 1st character after ch
-                    static_cast<char>(sp[i + 2]) >= ALONE_SURROGATE_3B_THIRD_START && // 2: The 2nd character after ch
-                    static_cast<char>(sp[i + 2]) <= ALONE_SURROGATE_3B_THIRD_END) {   // 2: The 2nd character after ch
+                    sp[i + 1] >= ALONE_SURROGATE_3B_SECOND_START && // 1: 1st character after ch
+                    sp[i + 1] <= ALONE_SURROGATE_3B_SECOND_END && // 1: 1st character after ch
+                    sp[i + 2] >= ALONE_SURROGATE_3B_THIRD_START && // 2: 2nd character after ch
+                    sp[i + 2] <= ALONE_SURROGATE_3B_THIRD_END) {   // 2: 2nd character after ch
                     auto unicodeRes = utf_helper::ConvertUtf8ToUnicodeChar(sp.data() + i, 3); // 3: Parse 3 characters
-                    AppendUnicodeEscape(static_cast<int>(unicodeRes.first), output);
+                    ASSERT(unicodeRes.first != utf_helper::INVALID_UTF8);
+                    AppendUnicodeEscape(static_cast<uint32_t>(unicodeRes.first), output);
                     i += 2; // 2 : Skip 2 characters
                     break;
                 }
                 [[fallthrough]];
             default:
-                if (ch > 0 && ch < CODE_SPACE) {
-                    AppendUnicodeEscape(static_cast<int>(ch), output);
+                if (ch < CODE_SPACE) {
+                    AppendUnicodeEscape(static_cast<uint32_t>(ch), output);
                 } else {
                     output += ch;
                 }

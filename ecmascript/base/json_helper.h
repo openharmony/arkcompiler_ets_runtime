@@ -63,7 +63,7 @@ public:
         return type == TransformType::SENDABLE || type == TransformType::BIGINT;
     }
 
-    static inline void AppendUnicodeEscape(int ch, CString& output)
+    static inline void AppendUnicodeEscape(uint32_t ch, CString& output)
     {
         static constexpr char HEX_DIGIT[] = "0123456789abcdef";
         output += "\\u";
@@ -74,6 +74,7 @@ public:
     }
 
     static bool IsFastValueToQuotedString(const CString& str);
+    static bool IsFastValueToQuotedString(const Span<const uint8_t>& sp);
     
     // String values are wrapped in QUOTATION MARK (") code units. The code units " and \ are escaped with \ prefixes.
     // Control characters code units are replaced with escape sequences \uHHHH, or with the shorter forms,
