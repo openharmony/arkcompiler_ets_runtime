@@ -4174,7 +4174,7 @@ DEF_RUNTIME_STUBS(GetAllFlagsInternal)
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
 
     JSHandle<JSTaggedValue> value = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
-    int64 bigFlagsStr = value->GetInt();
+    uint64_t bigFlagsStr = static_cast<uint64_t>(value->GetInt());
     std::string strFlags = "";
     strFlags.reserve(RegExpParser::FLAG_NUM);
     if (bigFlagsStr & RegExpParser::FLAG_HASINDICES) {
