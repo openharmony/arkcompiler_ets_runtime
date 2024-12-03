@@ -1689,7 +1689,7 @@ JSTaggedValue BuiltinsString::CreateArrayFromString(JSThread *thread, EcmaVM *ec
     if (lim == UINT32_MAX - 1) {
         JSHandle<StringSplitResultCache> cacheTable(thread->GetCurrentEcmaContext()->GetStringSplitResultCache());
         JSTaggedValue cacheResult = StringSplitResultCache::FindCachedResult(thread, cacheTable, thisString,
-            seperatorString, isOneByte);
+            seperatorString);
         if (cacheResult != JSTaggedValue::Undefined()) {
             JSHandle<JSTaggedValue> resultArray(JSArray::CreateArrayFromList(thread,
                 JSHandle<TaggedArray>(thread, cacheResult)));
@@ -2390,7 +2390,7 @@ JSTaggedValue StringSplitResultCache::CreateCacheTable(const JSThread *thread)
 
 JSTaggedValue StringSplitResultCache::FindCachedResult(const JSThread *thread,
     const JSHandle<StringSplitResultCache> &cache, const JSHandle<EcmaString> &thisString,
-    const JSHandle<EcmaString> &pattern, bool isOneByte)
+    const JSHandle<EcmaString> &pattern)
 {
     uint32_t hash = EcmaStringAccessor(thisString).GetHashcode();
     uint32_t entry = hash & (CACHE_SIZE - 1);
@@ -2405,16 +2405,7 @@ JSTaggedValue StringSplitResultCache::FindCachedResult(const JSThread *thread,
 
     if (EcmaStringAccessor::StringsAreEqual(thread->GetEcmaVM(), thisString, cacheStringHandle) &&
         EcmaStringAccessor::StringsAreEqual(thread->GetEcmaVM(), pattern, cachePatternHandle)) {
-        JSHandle<TaggedArray> cacheArray(thread, cache->Get(index + ARRAY_INDEX));
-        uint32_t arrayLength = cacheArray->GetLength();
-        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-        JSHandle<TaggedArray> copyArray;
-        if (isOneByte) {
-            copyArray = factory->NewAndCopyTaggedArraySkipBarrier(cacheArray, arrayLength, arrayLength);
-        } else {
-            copyArray = factory->NewAndCopyTaggedArray(cacheArray, arrayLength, arrayLength);
-        }
-        return copyArray.GetTaggedValue();
+        return cache->Get(index + ARRAY_INDEX);
     }
     return JSTaggedValue::Undefined();
 }
@@ -2426,7 +2417,7 @@ void StringSplitResultCache::SetCachedResult(const JSThread *thread, const JSHan
     // clone to cache array
     uint32_t arrayLength = resultArray->GetLength();
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<TaggedArray> newElements(factory->NewTaggedArray(arrayLength));
+    JSHandle<TaggedArray> newElements(factory->NewCOWTaggedArray(arrayLength));
     for (uint32_t i = 0; i < arrayLength; i++) {
         newElements->Set(thread, i, resultArray->Get(i));
     }
