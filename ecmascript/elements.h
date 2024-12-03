@@ -37,18 +37,18 @@ namespace panda::ecmascript {
     V(HOLE_TAGGED)
 
 enum class ElementsKind : uint8_t {
-    NONE = 0x00UL,
-    HOLE = 0x01UL,
-    INT = 0x1UL << 1,      // 2
-    NUMBER = (0x1UL << 2) | INT, // 6
-    STRING = 0x1UL << 3,   // 8
-    OBJECT = 0x1UL << 4,   // 16
-    TAGGED = 0x1EUL,       // 30
-    HOLE_INT = HOLE | INT,
-    HOLE_NUMBER = HOLE | NUMBER,
-    HOLE_STRING = HOLE | STRING,
-    HOLE_OBJECT = HOLE | OBJECT,
-    HOLE_TAGGED = HOLE | TAGGED,
+    NONE = 0x00UL,                                  // 0
+    HOLE = 0x01UL,                                  // 1
+    INT = 0x1UL << 1,                               // 2
+    NUMBER = (0x1UL << 2) | INT,                    // 6
+    STRING = 0x1UL << 3,                            // 8
+    OBJECT = 0x1UL << 4,                            // 16
+    TAGGED = 0x1EUL,                                // 30
+    HOLE_INT = HOLE | INT,                          // 3
+    HOLE_NUMBER = HOLE | NUMBER,                    // 7
+    HOLE_STRING = HOLE | STRING,                    // 9
+    HOLE_OBJECT = HOLE | OBJECT,                    // 17
+    HOLE_TAGGED = HOLE | TAGGED,                    // 31
     GENERIC = HOLE_TAGGED,
     DICTIONARY = HOLE_TAGGED,
 };

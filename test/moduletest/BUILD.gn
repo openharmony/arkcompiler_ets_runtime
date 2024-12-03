@@ -26,6 +26,7 @@ group("ark_js_moduletest") {
     "arrayfrom",
     "arrayjoin",
     "arraymap",
+    "getiterator",
 
     # (issue 18938)
     #"arraypop",

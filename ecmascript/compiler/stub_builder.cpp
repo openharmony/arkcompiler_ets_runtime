@@ -21,8 +21,10 @@
 #include "ecmascript/compiler/stub_builder-inl.h"
 #include "ecmascript/compiler/assembler_module.h"
 #include "ecmascript/compiler/access_object_stub_builder.h"
+#include "ecmascript/compiler/builtins/builtins_array_stub_builder.h"
 #include "ecmascript/compiler/builtins/builtins_string_stub_builder.h"
 #include "ecmascript/compiler/builtins/builtins_typedarray_stub_builder.h"
+#include "ecmascript/compiler/builtins/builtins_collection_stub_builder.h"
 #include "ecmascript/compiler/interpreter_stub.h"
 #include "ecmascript/compiler/new_object_stub_builder.h"
 #include "ecmascript/compiler/profiler_stub_builder.h"
@@ -8637,6 +8639,119 @@ GateRef StubBuilder::CalIteratorKey(GateRef glue)
     return iteratorKey;
 }
 
+void StubBuilder::FuncCompare(GateRef glue, GateRef Function,
+                              Label *matchFunc, Label *slowPath, size_t funcIndex)
+{
+    auto env = GetEnvironment();
+    GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
+    GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
+    GateRef globalRecord = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, funcIndex);
+    BRANCH(Equal(globalRecord, Function), matchFunc, slowPath);
+}
+
+#if ENABLE_NEXT_OPTIMIZATION
+GateRef StubBuilder::GetIterator(GateRef glue, GateRef obj, ProfileOperation callback)
+{
+    auto env = GetEnvironment();
+    Label entryPass(env);
+    Label exit(env);
+    env->SubCfgEntry(&entryPass);
+    DEFVARIABLE(result, VariableType::JS_ANY(), Exception());
+    DEFVARIABLE(taggedId, VariableType::INT32(), Int32(0));
+
+    Label isPendingException(env);
+    Label noPendingException(env);
+    Label isHeapObject(env);
+    Label objIsCallable(env);
+    Label throwError(env);
+    Label callExit(env);
+    Label isMap(env);
+    Label isNotMap(env);
+    Label slowPath(env);
+    Label isSet(env);
+    Label isNotSet(env);
+    Label isArray(env);
+    Label objIsHeapObject(env);
+    GateRef iteratorKey = CalIteratorKey(glue);
+    result = FastGetPropertyByName(glue, obj, iteratorKey, ProfileOperation());
+    BRANCH(HasPendingException(glue), &isPendingException, &noPendingException);
+    Bind(&isPendingException);
+    {
+        result = Exception();
+        Jump(&exit);
+    }
+    Bind(&noPendingException);
+    BRANCH(TaggedIsHeapObject(obj), &objIsHeapObject, &slowPath);
+    Bind(&objIsHeapObject);
+    GateRef hclass = LoadHClass(obj);
+    GateRef jsType = GetObjectType(hclass);
+    BRANCH(Int32Equal(jsType, Int32(static_cast<int32_t>(JSType::JS_MAP))), &isMap, &isNotMap);
+    Bind(&isMap);
+    {
+        Label matchMapFunc(env);
+        FuncCompare(glue, *result, &matchMapFunc, &slowPath, GlobalEnv::MAP_PROTO_ENTRIES_FUNCTION_INDEX);
+        Bind(&matchMapFunc);
+        {
+            BuiltinsCollectionStubBuilder<JSMap> collectionStubBuilder(this, glue, obj, Int32(0));
+            collectionStubBuilder.Entries(&result, &exit, &slowPath);
+        }
+    }
+    Bind(&isNotMap);
+    BRANCH(Int32Equal(jsType, Int32(static_cast<int32_t>(JSType::JS_SET))), &isSet, &isNotSet);
+    Bind(&isSet);
+    {
+        Label matchSetFunc(env);
+        FuncCompare(glue, *result, &matchSetFunc, &slowPath, GlobalEnv::SET_PROTO_VALUES_FUNCTION_INDEX);
+        Bind(&matchSetFunc);
+        {
+            BuiltinsCollectionStubBuilder<JSSet> collectionStubBuilder(this, glue, obj, Int32(0));
+            collectionStubBuilder.Values(&result, &exit, &slowPath);
+        }
+    }
+    Bind(&isNotSet);
+    BRANCH(Int32Equal(jsType, Int32(static_cast<int32_t>(JSType::JS_ARRAY))), &isArray, &slowPath);
+    Bind(&isArray);
+    {
+        Label matchArrayFunc(env);
+        FuncCompare(glue, *result, &matchArrayFunc, &slowPath, GlobalEnv::ARRAY_PROTO_VALUES_FUNCTION_INDEX);
+        Bind(&matchArrayFunc);
+        {
+            BuiltinsArrayStubBuilder arrayStubBuilder(this);
+            arrayStubBuilder.Values(glue, obj, Int32(0), &result, &exit, &slowPath);
+        }
+    }
+    Bind(&slowPath);
+    callback.ProfileGetIterator(*result);
+    BRANCH(TaggedIsHeapObject(*result), &isHeapObject, &throwError);
+    Bind(&isHeapObject);
+    BRANCH(IsCallable(*result), &objIsCallable, &throwError);
+    Bind(&objIsCallable);
+    {
+        JSCallArgs callArgs(JSCallMode::CALL_GETTER);
+        callArgs.callGetterArgs = { obj };
+        CallStubBuilder callBuilder(this, glue, *result, Int32(0), 0, &result, Circuit::NullGate(), callArgs,
+            ProfileOperation());
+        if (env->IsBaselineBuiltin()) {
+            callBuilder.JSCallDispatchForBaseline(&callExit);
+            Bind(&callExit);
+        } else {
+            result = callBuilder.JSCallDispatch();
+        }
+        Jump(&exit);
+    }
+    Bind(&throwError);
+    {
+        taggedId = Int32(GET_MESSAGE_STRING_ID(ObjIsNotCallable));
+        CallRuntime(glue, RTSTUB_ID(ThrowTypeError), { IntToTaggedInt(*taggedId) });
+        result = Exception();
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+#else
 GateRef StubBuilder::GetIterator(GateRef glue, GateRef obj, ProfileOperation callback)
 {
     auto env = GetEnvironment();
@@ -8692,6 +8807,7 @@ GateRef StubBuilder::GetIterator(GateRef glue, GateRef obj, ProfileOperation cal
     env->SubCfgExit();
     return ret;
 }
+#endif
 
 GateRef StubBuilder::TryStringOrSymbolToElementIndex(GateRef glue, GateRef key)
 {
