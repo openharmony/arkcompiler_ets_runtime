@@ -145,6 +145,13 @@ public:
     V(REPLACE, Replace)
 
 private:
+    // Execution with a huge RegExp pattern may cost much time and block other thread SuspendAll, so copy an
+    // OffHeap string and pass it to RegExpExecutor, thus we could transition to native before we do this execution.
+    enum class StringSource {
+        ONHEAP_STRING,
+        OFFHEAP_STRING,
+    };
+    static constexpr uint32_t MIN_REGEXP_PATTERN_LENGTH_EXECUTE_WITH_OFFHEAP_STRING = 4000;
     static constexpr uint32_t MIN_REPLACE_STRING_LENGTH = 1000;
     static constexpr uint32_t MAX_SPLIT_LIMIT = 0xFFFFFFFFu;
     static constexpr uint32_t REGEXP_GLOBAL_ARRAY_SIZE = 9;
@@ -160,7 +167,7 @@ private:
     using ReplacePositionField = ReplaceLengthField::NextField<uint32_t, REPLACE_POSITION_BITS>; // 60
 
     static bool Matcher(JSThread *thread, const JSHandle<JSTaggedValue> regexp,
-                        const uint8_t *buffer, size_t length, int32_t lastindex, bool isUtf16);
+                        const uint8_t *buffer, size_t length, int32_t lastindex, bool isUtf16, StringSource source);
 
     static JSTaggedValue GetFlagsInternal(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
                                           const JSHandle<JSTaggedValue> &constructor, const uint8_t mask);
