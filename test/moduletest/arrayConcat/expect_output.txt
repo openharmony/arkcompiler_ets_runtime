@@ -23,3 +23,5 @@ length
 1, 2, 3, undefined, 5
 0
 proxy defineproperty success!
+1,2,j,9999,,23,sss,2,j,,,,test
+foo,bar

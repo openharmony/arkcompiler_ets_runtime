@@ -1060,4 +1060,214 @@ void BuiltinsArrayStubBuilder::SliceOptimised(GateRef glue, GateRef thisValue, G
     }
 }
 
+void BuiltinsArrayStubBuilder::ConcatOptimised(GateRef glue, GateRef thisValue, GateRef numArgs,
+                                               Variable *result, Label *exit, Label *slowPath)
+{
+    auto env = GetEnvironment();
+    Label isHeapObject(env);
+    Label isJsArray(env);
+    BRANCH(TaggedIsHeapObject(thisValue), &isHeapObject, slowPath);
+    Bind(&isHeapObject);
+    BRANCH(IsJsArray(thisValue), &isJsArray, slowPath);
+    Bind(&isJsArray);
+    {
+        Label isExtensible(env);
+        BRANCH(HasConstructor(thisValue), slowPath, &isExtensible);
+        Bind(&isExtensible);
+        {
+            Label numArgsOne(env);
+            BRANCH(Int64Equal(numArgs, IntPtr(1)), &numArgsOne, slowPath);
+            Bind(&numArgsOne);
+            {
+                GateRef arg0 = GetCallArg0(numArgs);
+                Label allStableJsArray(env);
+                GateRef isAllStableJsArray = LogicAndBuilder(env).And(IsStableJSArray(glue, thisValue))
+                    .And(IsStableJSArray(glue, arg0)).Done();
+                BRANCH(isAllStableJsArray, &allStableJsArray, slowPath);
+                Bind(&allStableJsArray);
+                {
+                    GateRef maxArrayIndex = Int64(TaggedArray::MAX_ARRAY_INDEX);
+                    GateRef thisLen = ZExtInt32ToInt64(GetArrayLength(thisValue));
+                    GateRef argLen = ZExtInt32ToInt64(GetArrayLength(arg0));
+                    GateRef sumArrayLen = Int64Add(argLen, thisLen);
+                    Label isEmptyArray(env);
+                    Label notEmptyArray(env);
+                    BRANCH(Int64Equal(sumArrayLen, Int64(0)), &isEmptyArray, &notEmptyArray);
+                    Bind(&isEmptyArray);
+                    {
+                        NewObjectStubBuilder newBuilder(this);
+                        result->WriteVariable(newBuilder.CreateEmptyArray(glue));
+                        Jump(exit);
+                    }
+                    Bind(&notEmptyArray);
+                    Label notOverFlow(env);
+                    BRANCH(Int64GreaterThan(sumArrayLen, maxArrayIndex), slowPath, &notOverFlow);
+                    Bind(&notOverFlow);
+                    {
+                        Label spreadable(env);
+                        GateRef isAllConcatSpreadable = LogicAndBuilder(env).And(IsConcatSpreadable(glue, thisValue))
+                            .And(IsConcatSpreadable(glue, arg0)).Done();
+                        BRANCH(isAllConcatSpreadable, &spreadable, slowPath);
+                        Bind(&spreadable);
+                        {
+                            Label enabledElementsKind(env);
+                            Label disableElementsKind(env);
+                            BRANCH(IsEnableElementsKind(glue), &enabledElementsKind, &disableElementsKind);
+                            Bind(&enabledElementsKind);
+                            {
+                                DoConcat(glue, thisValue, arg0, result, exit, thisLen, argLen, sumArrayLen);
+                            }
+                            Bind(&disableElementsKind);
+                            {
+                                GateRef kind1 = GetElementsKindFromHClass(LoadHClass(thisValue));
+                                GateRef kind2 = GetElementsKindFromHClass(LoadHClass(arg0));
+                                GateRef tmpKind = Int32Or(kind1, kind2);
+                                GateRef newKind = FixElementsKind(tmpKind);
+                                Label shouldBarrier(env);
+                                Label noBarrier(env);
+                                Label shouldBarrier1(env);
+                                Label noBarrier1(env);
+                                Label shouldBarrier2(env);
+                                Label noBarrier2(env);
+                                Label afterThisCopy(env);
+                                Label afterConcat(env);
+                                GateRef thisElements = GetElementsArray(thisValue);
+                                GateRef argElements = GetElementsArray(arg0);
+                                NewObjectStubBuilder newBuilder(this);
+                                GateRef newElements = newBuilder.NewTaggedArray(glue, TruncInt64ToInt32(sumArrayLen));
+                                GateRef dst1 = GetDataPtrInTaggedArray(newElements);
+                                GateRef dst2 = PtrAdd(dst1, PtrMul(thisLen, IntPtr(JSTaggedValue::TaggedTypeSize())));
+                                BRANCH(NeedBarrier(newKind), &shouldBarrier, &noBarrier);
+                                Bind(&shouldBarrier);
+                                {
+                                    BRANCH(NeedBarrier(kind1), &shouldBarrier1, &noBarrier1);
+                                    Bind(&shouldBarrier1);
+                                    {
+                                        ArrayCopy<NotOverlap>(glue, GetDataPtrInTaggedArray(thisElements),
+                                            newElements, dst1, TruncInt64ToInt32(thisLen), true);
+                                        Jump(&afterThisCopy);
+                                    }
+                                    Bind(&noBarrier1);
+                                    {
+                                        ArrayCopy<NotOverlap>(glue, GetDataPtrInTaggedArray(thisElements),
+                                            newElements, dst1, TruncInt64ToInt32(thisLen), false);
+                                        Jump(&afterThisCopy);
+                                    }
+                                    Bind(&afterThisCopy);
+                                    BRANCH(NeedBarrier(kind2), &shouldBarrier2, &noBarrier2);
+                                    Bind(&shouldBarrier2);
+                                    {
+                                        ArrayCopy<NotOverlap>(glue, GetDataPtrInTaggedArray(argElements),
+                                            newElements, dst2, TruncInt64ToInt32(argLen), true);
+                                        Jump(&afterConcat);
+                                    }
+                                    Bind(&noBarrier2);
+                                    {
+                                        ArrayCopy<NotOverlap>(glue, GetDataPtrInTaggedArray(argElements),
+                                            newElements, dst2, TruncInt64ToInt32(argLen), false);
+                                        Jump(&afterConcat);
+                                    }
+                                }
+                                Bind(&noBarrier);
+                                {
+                                    ArrayCopy<NotOverlap>(glue, GetDataPtrInTaggedArray(thisElements), newElements,
+                                        dst1, TruncInt64ToInt32(thisLen), false);
+                                    ArrayCopy<NotOverlap>(glue, GetDataPtrInTaggedArray(argElements), newElements,
+                                        dst2, TruncInt64ToInt32(argLen), false);
+                                    Jump(&afterConcat);
+                                }
+                                Bind(&afterConcat);
+                                GateRef array = newBuilder.CreateArrayFromList(glue, newElements, newKind);
+                                result->WriteVariable(array);
+                                Jump(exit);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+void BuiltinsArrayStubBuilder::DoConcat(GateRef glue, GateRef thisValue, GateRef arg0, Variable *result, Label *exit,
+                                        GateRef thisLen, GateRef argLen, GateRef sumArrayLen)
+{
+    auto env = GetEnvironment();
+    Label setProperties(env);
+    GateRef glueGlobalEnvOffset =
+        IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
+    GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
+    auto arrayFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv,
+        GlobalEnv::ARRAY_FUNCTION_INDEX);
+    GateRef intialHClass = Load(VariableType::JS_ANY(), arrayFunc,
+        IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
+    NewObjectStubBuilder newBuilder(this);
+    newBuilder.SetParameters(glue, 0);
+    GateRef newArray = newBuilder.NewJSArrayWithSize(intialHClass, sumArrayLen);
+    BRANCH(TaggedIsException(newArray), exit, &setProperties);
+    Bind(&setProperties);
+    {
+        GateRef lengthOffset = IntPtr(JSArray::LENGTH_OFFSET);
+        Store(VariableType::INT32(), glue, newArray, lengthOffset,
+            TruncInt64ToInt32(sumArrayLen));
+        GateRef accessor = GetGlobalConstantValue(VariableType::JS_ANY(), glue,
+            ConstantIndex::ARRAY_LENGTH_ACCESSOR);
+        SetPropertyInlinedProps(glue, newArray, intialHClass, accessor,
+            Int32(JSArray::LENGTH_INLINE_PROPERTY_INDEX));
+        SetExtensibleToBitfield(glue, newArray, true);
+        DEFVARIABLE(i, VariableType::INT64(), Int64(0));
+        DEFVARIABLE(j, VariableType::INT64(), Int64(0));
+        DEFVARIABLE(k, VariableType::INT64(), Int64(0));
+        Label loopHead(env);
+        Label loopEnd(env);
+        Label next(env);
+        Label loopExit(env);
+        Jump(&loopHead);
+        LoopBegin(&loopHead);
+        {
+            BRANCH(Int64LessThan(*i, thisLen), &next, &loopExit);
+            Bind(&next);
+            GateRef ele = GetTaggedValueWithElementsKind(thisValue, *i);
+            #if ECMASCRIPT_ENABLE_ELEMENTSKIND_ALWAY_GENERIC
+            SetValueWithElementsKind(glue, newArray, ele, *j, Boolean(true),
+                Int32(static_cast<uint32_t>(ElementsKind::GENERIC)));
+            #else
+            SetValueWithElementsKind(glue, newArray, ele, *j, Boolean(true),
+                Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+            #endif
+            Jump(&loopEnd);
+        }
+        Bind(&loopEnd);
+        i = Int64Add(*i, Int64(1));
+        j = Int64Add(*j, Int64(1));
+        LoopEnd(&loopHead, env, glue);
+        Bind(&loopExit);
+        Label loopHead1(env);
+        Label loopEnd1(env);
+        Label next1(env);
+        Label loopExit1(env);
+        Jump(&loopHead1);
+        LoopBegin(&loopHead1);
+        {
+            BRANCH(Int64LessThan(*k, argLen), &next1, &loopExit1);
+            Bind(&next1);
+            GateRef ele = GetTaggedValueWithElementsKind(arg0, *k);
+            #if ECMASCRIPT_ENABLE_ELEMENTSKIND_ALWAY_GENERIC
+            SetValueWithElementsKind(glue, newArray, ele, *j, Boolean(true),
+                                     Int32(static_cast<uint32_t>(ElementsKind::GENERIC)));
+            #else
+            SetValueWithElementsKind(glue, newArray, ele, *j, Boolean(true),
+                                     Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+            #endif
+            Jump(&loopEnd1);
+        }
+        Bind(&loopEnd1);
+        k = Int64Add(*k, Int64(1));
+        j = Int64Add(*j, Int64(1));
+        LoopEnd(&loopHead1);
+        Bind(&loopExit1);
+        result->WriteVariable(newArray);
+        Jump(exit);
+    }
+}
 } // namespace panda::ecmascript::kungfu
