@@ -109,6 +109,7 @@ using SearchHapPathCallBack = std::function<bool(const std::string moduleName, s
 using DeviceDisconnectCallback = std::function<bool()>;
 using UncatchableErrorHandler = std::function<void(panda::TryCatch&)>;
 using OnAllErrorCallback = std::function<void(Local<ObjectRef> value, void *data)>;
+using StopPreLoadSoCallback = std::function<void()>;
 
 class EcmaVM {
 public:
@@ -377,6 +378,16 @@ public:
     void* GetOnAllData()
     {
         return onAllErrorData_;
+    }
+    
+    void SetStopPreLoadSoCallback(const StopPreLoadSoCallback &cb)
+    {
+        stopPreLoadSoCallback_ = cb;
+    }
+
+    StopPreLoadSoCallback GetStopPreLoadSoCallback() const
+    {
+        return stopPreLoadSoCallback_;
     }
 
     void TriggerConcurrentCallback(JSTaggedValue result, JSTaggedValue hint);
@@ -897,6 +908,7 @@ private:
     CMap<CString, CString> pkgNameList_;
     CMap<CString, CMap<CString, CVector<CString>>> pkgContextInfoList_;
     CMap<CString, CString> pkgAliasList_;
+    StopPreLoadSoCallback stopPreLoadSoCallback_ {nullptr};
     NativePtrGetter nativePtrGetter_ {nullptr};
     SourceMapCallback sourceMapCallback_ {nullptr};
     SourceMapTranslateCallback sourceMapTranslateCallback_ {nullptr};
