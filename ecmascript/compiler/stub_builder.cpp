@@ -10806,11 +10806,10 @@ GateRef StubBuilder::FixElementsKind(GateRef oldElement)
     BRANCH(checkType, &defaultFix, &holeFix);
     Bind(&holeFix);
     {
-        Label isHole(env);
+        Label hasHole(env);
         Label isTagged(env);
-        BRANCH(Int32Equal(oldElement, Int32(static_cast<uint32_t>(ElementsKind::HOLE))),
-               &isHole, &isTagged);
-        Bind(&isHole);
+        BRANCH(ElementsKindHasHole(oldElement), &hasHole, &isTagged);
+        Bind(&hasHole);
         {
             result = Int32(static_cast<uint32_t>(ElementsKind::HOLE_TAGGED));
             Jump(&exit);

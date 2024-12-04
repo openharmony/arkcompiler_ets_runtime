@@ -67,70 +67,106 @@ void BuiltinsArrayStubBuilder::UnshiftOptimised(GateRef glue, GateRef thisValue,
     }
     Bind(&setValue);
     {
-        Label elementsKindEnabled(env);
         GateRef elements = GetElementsArray(thisValue);
         GateRef arrayStart = GetDataPtrInTaggedArray(elements);
         GateRef moveTo = PtrAdd(arrayStart, PtrMul(numArgs, IntPtr(JSTaggedValue::TaggedTypeSize())));
-        GateRef isElementsKindEnabled = IsEnableElementsKind(glue);
-        Label isIntOrNumber(env);
-        Label isTagged(env);
-        BRANCH_NO_WEIGHT(isElementsKindEnabled, &elementsKindEnabled, &isTagged);
-        Bind(&elementsKindEnabled);
+        Label needBarrier(env);
+        Label noBarrier(env);
+        GateRef kind = GetElementsKindFromHClass(LoadHClass(thisValue));
+        BRANCH_NO_WEIGHT(NeedBarrier(kind), &needBarrier, &noBarrier);
+        Bind(&noBarrier);
         {
-            GateRef kind = GetElementsKindFromHClass(LoadHClass(thisValue));
-            GateRef isInt = LogicAndBuilder(env)
-                            .And(Int32GreaterThanOrEqual(kind, Int32(static_cast<int32_t>(ElementsKind::INT))))
-                            .And(Int32LessThanOrEqual(kind, Int32(static_cast<int32_t>(ElementsKind::HOLE_INT))))
-                            .Done();
-            GateRef isNumber = LogicAndBuilder(env)
-                               .And(Int32GreaterThanOrEqual(kind, Int32(static_cast<int32_t>(ElementsKind::NUMBER))))
-                               .And(Int32LessThanOrEqual(kind, Int32(static_cast<int32_t>(ElementsKind::HOLE_NUMBER))))
-                               .Done();
-            GateRef isIntOrNumberKind = LogicOrBuilder(env).Or(isInt).Or(isNumber).Done();
-            BRANCH_NO_WEIGHT(isIntOrNumberKind, &isIntOrNumber, &isTagged);
-            Bind(&isIntOrNumber);
+            ArrayCopy<MustOverlap>(glue, arrayStart, elements, moveTo, TruncInt64ToInt32(thisLen), false);
+            Jump(&afterCopy);
+        }
+        Bind(&needBarrier);
+        {
+            ArrayCopy<MustOverlap>(glue, arrayStart, elements, moveTo, TruncInt64ToInt32(thisLen), true);
+            Jump(&afterCopy);
+        }
+        Bind(&afterCopy);
+        Label directAdd(env);
+        Label elementsKindEnabled(env);
+        GateRef isElementsKindEnabled = IsEnableElementsKind(glue);
+        BRANCH_UNLIKELY(isElementsKindEnabled, &elementsKindEnabled, &directAdd);
+        Bind(&directAdd);
+        {
+            GateRef arg0 = GetCallArg0(numArgs);
+            GateRef arg1 = GetCallArg1(numArgs);
+            GateRef arg2 = GetCallArg2(numArgs);
+            DEFVARIABLE(newKind, VariableType::INT32(), kind);
+            Label migrateElementsKind(env);
+            int64_t argCount[THREE_ARGS] = {ONE_ARGS, TWO_ARGS, THREE_ARGS};
+            Label labels[THREE_ARGS] = {Label(env), Label(env), Label(env)};
+            Switch(numArgs, slowPath, argCount, labels, THREE_ARGS);
+            Bind(&labels[Index2]);
             {
-                ArrayCopy<MustOverlap>(glue, arrayStart, elements, moveTo, TruncInt64ToInt32(thisLen), false);
-                Jump(&afterCopy);
+                newKind = Int32Or(TaggedToElementKind(arg0), *newKind);
+                newKind = Int32Or(TaggedToElementKind(arg1), *newKind);
+                newKind = Int32Or(TaggedToElementKind(arg2), *newKind);
+                SetValueToTaggedArray(VariableType::JS_ANY(), glue, elements, Int32(Index0), arg0);
+                SetValueToTaggedArray(VariableType::JS_ANY(), glue, elements, Int32(Index1), arg1);
+                SetValueToTaggedArray(VariableType::JS_ANY(), glue, elements, Int32(Index2), arg2);
+                Jump(&migrateElementsKind);
             }
-            Bind(&isTagged);
+            Bind(&labels[Index1]);
             {
-                ArrayCopy<MustOverlap>(glue, arrayStart, elements, moveTo, TruncInt64ToInt32(thisLen), true);
-                Jump(&afterCopy);
+                newKind = Int32Or(TaggedToElementKind(arg0), *newKind);
+                newKind = Int32Or(TaggedToElementKind(arg1), *newKind);
+                SetValueToTaggedArray(VariableType::JS_ANY(), glue, elements, Int32(Index0), arg0);
+                SetValueToTaggedArray(VariableType::JS_ANY(), glue, elements, Int32(Index1), arg1);
+                Jump(&migrateElementsKind);
             }
-            Bind(&afterCopy);
+            Bind(&labels[Index0]);
             {
-                GateRef value0 = GetCallArg0(numArgs);
-                // 0 : the first Element position
-                SetValueWithElementsKind(glue, thisValue, value0, Int64(0), Boolean(false),
-                                         Int32(static_cast<uint32_t>(ElementsKind::NONE)));
-                // 2 : the second param
-                BRANCH(Int64GreaterThanOrEqual(numArgs, IntPtr(2)), &numEqual2, &numEqual3);
-                Bind(&numEqual2);
+                newKind = Int32Or(TaggedToElementKind(arg0), *newKind);
+                SetValueToTaggedArray(VariableType::JS_ANY(), glue, elements, Int32(Index0), arg0);
+                Jump(&migrateElementsKind);
+            }
+            Bind(&migrateElementsKind);
+            {
+                newKind = FixElementsKind(*newKind);
+                Label needTransition(env);
+                BRANCH_UNLIKELY(Int32NotEqual(*newKind, kind), &needTransition, &final);
+                Bind(&needTransition);
                 {
-                    GateRef value1 = GetCallArg1(numArgs);
-                    // 1 : the second Element position
-                    SetValueWithElementsKind(glue, thisValue, value1, Int64(1), Boolean(false),
-                                             Int32(static_cast<uint32_t>(ElementsKind::NONE)));
-                    Jump(&numEqual3);
-                }
-                Bind(&numEqual3);
-                {
-                    // 3 : the third param
-                    BRANCH(Int64Equal(numArgs, IntPtr(3)), &threeArgs, &final);
-                    Bind(&threeArgs);
-                    GateRef value2 = GetCallArg2(numArgs);
-                    // 2 : the third Element position
-                    SetValueWithElementsKind(glue, thisValue, value2, Int64(2), Boolean(false),
-                                             Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                    CallRuntime(glue, RTSTUB_ID(UpdateHClassForElementsKind), { thisValue, *newKind });
                     Jump(&final);
                 }
-                Bind(&final);
-                {
-                    SetArrayLength(glue, thisValue, newLen);
-                    result->WriteVariable(IntToTaggedPtr(newLen));
-                    Jump(exit);
-                }
+            }
+        }
+        Bind(&elementsKindEnabled);
+        {
+            GateRef value0 = GetCallArg0(numArgs);
+            // 0 : the first Element position
+            SetValueWithElementsKind(glue, thisValue, value0, Int64(Index0), Boolean(false),
+                                     Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+            // 2 : the second param
+            BRANCH(Int64GreaterThanOrEqual(numArgs, IntPtr(TWO_ARGS)), &numEqual2, &numEqual3);
+            Bind(&numEqual2);
+            {
+                GateRef value1 = GetCallArg1(numArgs);
+                // 1 : the second Element position
+                SetValueWithElementsKind(glue, thisValue, value1, Int64(Index1), Boolean(false),
+                                         Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                Jump(&numEqual3);
+            }
+            Bind(&numEqual3);
+            {
+                // 3 : the third param
+                BRANCH(Int64Equal(numArgs, IntPtr(THREE_ARGS)), &threeArgs, &final);
+                Bind(&threeArgs);
+                GateRef value2 = GetCallArg2(numArgs);
+                // 2 : the third Element position
+                SetValueWithElementsKind(glue, thisValue, value2, Int64(Index2), Boolean(false),
+                                         Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                Jump(&final);
+            }
+            Bind(&final);
+            {
+                SetArrayLength(glue, thisValue, newLen);
+                result->WriteVariable(IntToTaggedPtr(newLen));
+                Jump(exit);
             }
         }
     }
