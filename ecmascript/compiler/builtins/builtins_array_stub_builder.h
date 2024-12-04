@@ -130,6 +130,8 @@ private:
     void NumberLoop(GateRef elements, GateRef fromIndex, GateRef searchElement, GateRef thisLen, MethodKind mk,
                     Variable *result, Label *exit);
     void NaNLoop(GateRef elements, GateRef fromIndex, GateRef thisLen, Variable *result, Label *exit);
+    void CopyWithinOptimised(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *result, Label *exit,
+                             Label *slowPath);
 };
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_BUILTINS_ARRAY_STUB_BUILDER_H
