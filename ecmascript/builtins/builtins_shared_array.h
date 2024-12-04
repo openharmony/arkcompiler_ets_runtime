@@ -182,7 +182,7 @@ public:
         return GetSharedArrayPrototypeFunctions().Size() + 4;
     }
     static JSTaggedValue ReduceUnStableJSArray(JSThread *thread, JSHandle<JSTaggedValue> &thisHandle,
-        JSHandle<JSTaggedValue> &thisObjVal, int64_t k, int64_t len, JSMutableHandle<JSTaggedValue> &accumulator,
+        JSHandle<JSObject> &thisObjHandle, int64_t k, int64_t len, JSMutableHandle<JSTaggedValue> &accumulator,
         JSHandle<JSTaggedValue> &callbackFnHandle);
 
     static JSTaggedValue FilterArray(JSThread *thread, JSHandle<JSTaggedValue> &thisArgHandle,
