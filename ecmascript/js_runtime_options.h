@@ -213,6 +213,7 @@ enum CommandValues {
     OPTION_PGO_TRACE,
     OPTION_COMPILER_PGO_FORCE_DUMP,
     OPTION_COMPILER_ENABLE_CONCURRENT,
+    OPTION_COMPILER_ENABLE_STORE_BARRIER_OPT,
     OPTION_COMPILER_OPT_STRING,
     OPTION_OPEN_ARK_TOOLS,
     OPTION_COMPILER_OPT_FRAME_STATE_ELIMINATION,
@@ -1957,6 +1958,16 @@ public:
         return concurrentCompile;
     }
 
+    void SetStoreBarrierOpt(bool value)
+    {
+        storeBarrierOpt_ = value;
+    }
+
+    bool IsStoreBarrierOpt() const
+    {
+        return storeBarrierOpt_;
+    }
+
     void SetAOTHasException(bool value)
     {
         aotHasException_ = value;
@@ -2174,6 +2185,7 @@ private:
     bool concurrentCompile {true};
     bool aotHasException_ {false};
     bool enableInlinePropertyOptimization_ {NEXT_OPTIMIZATION_BOOL};
+    bool storeBarrierOpt_ {true};
 };
 } // namespace panda::ecmascript
 
