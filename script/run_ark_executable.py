@@ -23,10 +23,11 @@ Description: run script
 
 import argparse
 import os
-import stat
 import subprocess
 import sys
 import time
+import zipfile
+from io import StringIO
 
 
 def get_env_path_from_rsp(script_file: str) -> list:
@@ -120,15 +121,15 @@ def process_open(args: object) -> [str, object]:
 
 
 def generate_stub_code_comment(out_str:str):
-    flags = os.O_WRONLY | os.O_CREAT
-    mode = stat.S_IWUSR | stat.S_IRUSR
     dir_path = './gen/arkcompiler/ets_runtime/'
     if not os.path.exists(dir_path):
         return
-    file_path = dir_path + 'stub_code_comment.txt'
-    fd = os.open(file_path, flags, mode)
-    with os.fdopen(fd, "w") as code_comment_file:
-        code_comment_file.write(out_str)
+    zip_path = dir_path + 'stub_code_comment.zip'
+    memory_file = StringIO()
+    memory_file.write(out_str)
+    memory_file.seek(0)
+    with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+        zip_file.writestr('stub_code_comment.txt', memory_file.getvalue())
 
 
 def judge_output(args: object):

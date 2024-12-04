@@ -542,7 +542,7 @@ action("gen_stub_file") {
   ]
   outputs = [ "$stub_file_gen_dir/stub.an" ]
   if (is_ohos) {
-    outputs += [ "$stub_file_gen_dir/stub_code_comment.txt" ]
+    outputs += [ "$stub_file_gen_dir/stub_code_comment.zip" ]
   }
 }
 
