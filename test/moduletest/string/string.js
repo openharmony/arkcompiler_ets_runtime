@@ -526,3 +526,12 @@ for (let i = 0; i < 100; i++) {
     print(str.lastIndexOf(""))
     print(str.indexOf(""))
 }
+
+try {
+    let concatStr = 'c';
+    for (let i = 0; i < (0x3fffff0);i++) {
+        concatStr += "AAAAA" + concatStr + "BBBBBBBB";
+    }
+} catch(e) {
+    print(e);
+}
