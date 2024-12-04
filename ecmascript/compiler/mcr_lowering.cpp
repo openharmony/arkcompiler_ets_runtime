@@ -540,21 +540,21 @@ void MCRLowering::LowerCheckAndConvert(GateRef gate)
             LowerCheckSpecialHoleAndConvert(gate, frameState);
             break;
         case ValueType::FLOAT64:
-            LowerCheckFloat64AndConvert(gate, frameState, &exit);
+            LowerCheckFloat64AndConvert(gate, frameState);
             break;
         default:
             UNREACHABLE();
     }
 }
 
-void MCRLowering::LowerCheckFloat64AndConvert(GateRef gate, GateRef frameState, Label *exit)
+void MCRLowering::LowerCheckFloat64AndConvert(GateRef gate, GateRef frameState)
 {
     GateRef value = acc_.GetValueIn(gate, 0);
     ValueType dst = acc_.GetDstType(gate);
     GateRef result = Circuit::NullGate();
 
     if (dst == ValueType::INT32) {
-        result = ConvertFloat64ToInt32(value, exit);
+        result = builder_.ChangeFloat64ToInt32(value);
         GateRef check = builder_.DoubleEqual(builder_.ChangeInt32ToFloat64(result), value);
         builder_.DeoptCheck(check, frameState, DeoptType::NOTINT7);
     } else {
