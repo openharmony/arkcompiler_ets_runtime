@@ -589,6 +589,7 @@ private:
     V(CreateJSTypedArrayValues)                 \
     V(JSSetEntries)                             \
     V(JSHClassFindProtoTransitions)             \
+    V(FinishObjSizeTracking)                    \
     V(NumberHelperStringToDouble)               \
     V(GetStringToListCacheArray)                \
     V(FastArraySort)                            \

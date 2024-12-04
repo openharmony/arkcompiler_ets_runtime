@@ -132,11 +132,17 @@ public:
     void IterateEntryValue(Callback callback)
     {
         auto number = EntriesCount();
-        for (int entry = 0; entry < number; entry++) {
+        int size = Size();
+        int hasIteratedNum = 0;
+        for (int entry = 0; entry < size; entry++) {
             JSTaggedValue ret = GetValue(entry);
             if (ret.IsWeak()) {
                 auto next = ret.GetTaggedWeakRef();
                 callback(JSHClass::Cast(next));
+                hasIteratedNum++;
+                if (hasIteratedNum >= number) {
+                    return;
+                }
             }
         }
     }

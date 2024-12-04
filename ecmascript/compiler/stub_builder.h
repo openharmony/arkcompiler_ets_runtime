@@ -563,6 +563,9 @@ public:
     GateRef GetPropertyInlinedProps(GateRef obj, GateRef hClass,
         GateRef index);
     GateRef GetInlinedPropOffsetFromHClass(GateRef hclass, GateRef attrOffset);
+    inline GateRef IsObjSizeTrackingInProgress(GateRef hclass);
+    inline GateRef GetConstructionCounter(GateRef hclass);
+    inline void SetConstructionCounter(GateRef glue, GateRef hclass, GateRef count);
 
     void IncNumberOfProps(GateRef glue, GateRef hClass);
     GateRef GetNumberOfPropsFromHClass(GateRef hClass);

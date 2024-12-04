@@ -181,6 +181,7 @@ namespace panda::ecmascript {
     V(EndCallTimer)                            \
     V(BigIntSameValueZero)                     \
     V(JSHClassFindProtoTransitions)            \
+    V(FinishObjSizeTracking)                   \
     V(NumberHelperStringToDouble)              \
     V(GetStringToListCacheArray)               \
     V(FastArraySort)                           \

@@ -26,6 +26,7 @@
 #define BUILTIN_ARK_TOOLS_FUNCTIONS_COMMON(V)                                             \
     V("compareHClass",                  CompareHClass,                  2, INVALID)       \
     V("dumpHClass",                     DumpHClass,                     1, INVALID)       \
+    V("getInlinedPropertiesCount",      GetInlinedPropertiesCount,      1, INVALID)       \
     V("excutePendingJob",               ExcutePendingJob,               0, INVALID)       \
     V("forceFullGC",                    ForceFullGC,                    0, INVALID)       \
     V("getHClass",                      GetHClass,                      1, INVALID)       \
@@ -178,6 +179,8 @@ public:
     static JSTaggedValue CompareHClass(EcmaRuntimeCallInfo *info);
 
     static JSTaggedValue DumpHClass(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue GetInlinedPropertiesCount(EcmaRuntimeCallInfo *info);
 
     // return whether the hclass used for object is created by AOT
     static JSTaggedValue IsTSHClass(EcmaRuntimeCallInfo *info);

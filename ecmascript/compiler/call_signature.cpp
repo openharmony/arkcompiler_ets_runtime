@@ -1658,6 +1658,20 @@ DEF_CALL_SIGNATURE(JSHClassFindProtoTransitions)
     callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
 }
 
+DEF_CALL_SIGNATURE(FinishObjSizeTracking)
+{
+    // 1 : 1 input parameters
+    CallSignature finishObjSizeTracking("FinishObjSizeTracking", 0, 1,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    *callSign = finishObjSizeTracking;
+    std::array<VariableType, 1> params = { // 1 : 1 input parameters
+        VariableType::JS_POINTER(),
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetGCLeafFunction(true);
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
+}
+
 DEF_CALL_SIGNATURE(NumberHelperStringToDouble)
 {
     // 1 : 1 input parameters
