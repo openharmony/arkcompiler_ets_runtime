@@ -327,8 +327,6 @@ void Runtime::ProcessNativeDeleteInSharedGC(const WeakRootVisitor &visitor)
                 if (fwd == nullptr) {
                     int32_t constpoolIndex =
                         ConstantPool::Cast(constpoolVal.GetTaggedObject())->GetUnsharedConstpoolIndex();
-                    ASSERT(0 <= constpoolIndex && constpoolIndex != ConstantPool::CONSTPOOL_TYPE_FLAG &&
-                        constpoolIndex < UNSHARED_CONSTANTPOOL_COUNT);
                     EraseUnusedConstpool(iterator->first, constpoolIter->first, constpoolIndex);
                     constpoolIter = constpools.erase(constpoolIter);
                     // when shared constpool is not referenced by any objects,

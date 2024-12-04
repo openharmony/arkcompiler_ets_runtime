@@ -588,10 +588,34 @@ GateRef CircuitBuilder::GetConstPoolFromFunction(GateRef jsFunc)
 
 GateRef CircuitBuilder::GetUnsharedConstpoolFromGlue(GateRef glue, GateRef constpool)
 {
+    Label entryPass(env_);
+    SubCfgEntry(&entryPass);
+    DEFVALUE(result, env_, VariableType::JS_ANY(), Hole());
+    Label canGetUnsharedCp(env_);
+    Label exit(env_);
     GateRef unshareIdx = GetUnsharedConstpoolIndex(constpool);
-    GateRef unshareCpOffset = static_cast<int32_t>(JSThread::GlueData::GetUnSharedConstpoolsOffset(env_->Is32Bit()));
-    GateRef unshareCpAddr = Load(VariableType::NATIVE_POINTER(), glue, IntPtr(unshareCpOffset));
-    return GetUnsharedConstpool(unshareCpAddr, unshareIdx);
+    GateRef unsharedCpArrayLen = GetUnsharedConstpoolArrayLen(glue);
+    GateRef indexLessThanUnsharedCpArrayLen = Int32LessThan(TaggedGetInt(unshareIdx), unsharedCpArrayLen);
+    BRANCH_CIR2(indexLessThanUnsharedCpArrayLen, &canGetUnsharedCp, &exit);
+    Bind(&canGetUnsharedCp);
+    {
+        GateRef unshareCpOffset =
+            static_cast<int32_t>(JSThread::GlueData::GetUnSharedConstpoolsOffset(env_->Is32Bit()));
+        GateRef unshareCpAddr = Load(VariableType::NATIVE_POINTER(), glue, IntPtr(unshareCpOffset));
+        result = GetUnsharedConstpool(unshareCpAddr, unshareIdx);
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    SubCfgExit();
+    return ret;
+}
+
+GateRef CircuitBuilder::GetUnsharedConstpoolArrayLen(GateRef glue)
+{
+    GateRef unshareCpArrayLenOffset = static_cast<int32_t>(
+        JSThread::GlueData::GetUnSharedConstpoolsArrayLenOffset(env_->Is32Bit()));
+    return Load(VariableType::INT32(), glue, IntPtr(unshareCpArrayLenOffset));
 }
 
 GateRef CircuitBuilder::GetUnsharedConstpoolIndex(GateRef constpool)
