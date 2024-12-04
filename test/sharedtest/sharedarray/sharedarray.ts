@@ -298,6 +298,12 @@ function push(): void {
     let array: SendableArray<number> = new SendableArray<number>(1, 3, 5);
     array.push(2, 4, 6);
     print("Elements pushed: " + array);
+    let array1 = new SendableArray<number>();
+    array1.push(1);
+    array1.push(2);
+    array1.push(3);
+    array1.push(7, 8, 9);
+    print("Elements pushed: " + array1);
 }
 
 function concat(): void {
