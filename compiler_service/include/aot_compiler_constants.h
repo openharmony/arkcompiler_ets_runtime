@@ -112,6 +112,7 @@ std::unordered_set<std::string> AotArgsSet {
     "compiler-target-triple",
     "enable-print-execute-time",
     "enable-pgo-profiler",
+    "enable-mutant-array",
     "enable-elements-kind",
     "compiler-pgo-profiler-path",
     "compiler-pgo-hotness-threshold",

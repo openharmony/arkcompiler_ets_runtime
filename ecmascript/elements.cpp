@@ -193,7 +193,7 @@ void Elements::HandleOtherKindMigration(const JSThread *thread, const JSHandle<J
 void Elements::MigrateArrayWithKind(const JSThread *thread, const JSHandle<JSObject> &object,
                                     const ElementsKind oldKind, const ElementsKind newKind)
 {
-    if (!thread->GetEcmaVM()->IsEnableElementsKind()) {
+    if (!thread->GetEcmaVM()->IsEnableMutantArray()) {
         return;
     }
 

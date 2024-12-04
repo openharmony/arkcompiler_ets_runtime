@@ -163,6 +163,7 @@ public:
     void DisablePGOProfilerWithAOTFile(const std::string &aotFileName);
 
     bool PUBLIC_API IsEnablePGOProfiler() const;
+    bool PUBLIC_API IsEnableMutantArray() const;
     bool PUBLIC_API IsEnableElementsKind() const;
 
     bool Initialize();

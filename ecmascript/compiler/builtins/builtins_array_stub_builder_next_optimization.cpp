@@ -86,9 +86,8 @@ void BuiltinsArrayStubBuilder::UnshiftOptimised(GateRef glue, GateRef thisValue,
         }
         Bind(&afterCopy);
         Label directAdd(env);
-        Label elementsKindEnabled(env);
-        GateRef isElementsKindEnabled = IsEnableElementsKind(glue);
-        BRANCH_UNLIKELY(isElementsKindEnabled, &elementsKindEnabled, &directAdd);
+        Label mutantArrayEnabled(env);
+        BRANCH_UNLIKELY(IsEnableMutantArray(glue), &mutantArrayEnabled, &directAdd);
         Bind(&directAdd);
         {
             GateRef arg0 = GetCallArg0(numArgs);
@@ -135,7 +134,7 @@ void BuiltinsArrayStubBuilder::UnshiftOptimised(GateRef glue, GateRef thisValue,
                 }
             }
         }
-        Bind(&elementsKindEnabled);
+        Bind(&mutantArrayEnabled);
         {
             GateRef value0 = GetCallArg0(numArgs);
             // 0 : the first Element position
@@ -411,15 +410,15 @@ void BuiltinsArrayStubBuilder::ToReversedOptimised(GateRef glue, GateRef thisVal
     Bind(&isStability);
     BRANCH(IsJsCOWArray(thisValue), slowPath, &notCOWArray);
     Bind(&notCOWArray);
-    Label ElementsKindEnabled(env);
-    Label ElementsKindDisabled(env);
+    Label MutantArrayEnabled(env);
+    Label MutantArrayDisabled(env);
     Label next(env);
-    GateRef isElementsKindEnabled = IsEnableElementsKind(glue);
+    GateRef isMutantArrayEnabled = IsEnableMutantArray(glue);
     DEFVARIABLE(receiver, VariableType::JS_ANY(), Hole());
     GateRef kind = GetElementsKindFromHClass(LoadHClass(thisValue));
     GateRef thisArrLen = GetArrayLength(thisValue);
-    BRANCH_UNLIKELY(isElementsKindEnabled, &ElementsKindEnabled, &ElementsKindDisabled);
-    Bind(&ElementsKindEnabled);
+    BRANCH_UNLIKELY(isMutantArrayEnabled, &MutantArrayEnabled, &MutantArrayDisabled);
+    Bind(&MutantArrayEnabled);
     {
         Label newArrayIsTagged(env);
         Label reuseOldHClass(env);
@@ -430,32 +429,32 @@ void BuiltinsArrayStubBuilder::ToReversedOptimised(GateRef glue, GateRef thisVal
             // There will be no hole in the new array because hole will be converted to undefined.
             GateRef newHClass = GetGlobalConstantValue(VariableType::JS_ANY(), glue,
                                                        ConstantIndex::ELEMENT_TAGGED_HCLASS_INDEX);
-            receiver = NewEmptyArrayWithHClass(glue, newHClass);
+            receiver = NewEmptyArrayWithHClass(glue, newHClass, thisArrLen);
             Jump(&next);
         }
         Bind(&reuseOldHClass);
         {
-            receiver = NewEmptyArrayWithHClass(glue, LoadHClass(thisValue));
+            receiver = NewEmptyArrayWithHClass(glue, LoadHClass(thisValue), thisArrLen);
             Jump(&next);
         }
     }
-    Bind(&ElementsKindDisabled);
+    Bind(&MutantArrayDisabled);
     {
-        receiver = NewArray(glue, Int64(0));
+        NewObjectStubBuilder newBuilder(this);
+        GateRef destElements = newBuilder.NewTaggedArray(glue, thisArrLen);
+        receiver = newBuilder.CreateArrayFromList(glue, destElements,
+                                                  Int32(static_cast<int32_t>(ElementsKind::TAGGED)));
         Jump(&next);
     }
     Bind(&next);
-    GrowElementsCapacity(glue, *receiver, thisArrLen);
-    SetArrayLength(glue, *receiver, thisArrLen);
-
     Label afterReverse(env);
     Label isIntOrNumber(env);
     Label notIntOrNumber(env);
     Label isTagged(env);
     Label isHoleOrIntOrNumber(env);
-    Label elementsKindEnabled(env);
-    BRANCH_NO_WEIGHT(isElementsKindEnabled, &elementsKindEnabled, &isTagged);
-    Bind(&elementsKindEnabled);
+    Label mutantArrayEnabled(env);
+    BRANCH_NO_WEIGHT(isMutantArrayEnabled, &mutantArrayEnabled, &isTagged);
+    Bind(&mutantArrayEnabled);
     {
         GateRef intOrNumber = LogicOrBuilder(env)
                               .Or(Int32Equal(kind, Int32(static_cast<int32_t>(ElementsKind::INT))))
@@ -552,7 +551,7 @@ void BuiltinsArrayStubBuilder::DoReverse(GateRef glue, GateRef fromArray, GateRe
 
 
 // new an empty array, the length is zero, but with specific hclass,
-GateRef BuiltinsArrayStubBuilder::NewEmptyArrayWithHClass(GateRef glue, GateRef hclass)
+GateRef BuiltinsArrayStubBuilder::NewEmptyArrayWithHClass(GateRef glue, GateRef hclass, GateRef newArrayLen)
 {
 #if ECMASCRIPT_ENABLE_ELEMENTSKIND_ALWAY_GENERIC
     hclass = GetGlobalConstantValue(VariableType::JS_ANY(), glue, ConstantIndex::ELEMENT_HOLE_TAGGED_HCLASS_INDEX);
@@ -575,6 +574,8 @@ GateRef BuiltinsArrayStubBuilder::NewEmptyArrayWithHClass(GateRef glue, GateRef 
     }
     Bind(&exit);
     auto res = *result;
+    GrowElementsCapacity(glue, res, newArrayLen);
+    SetArrayLength(glue, res, newArrayLen);
     env->SubCfgExit();
     return res;
 }
@@ -743,19 +744,24 @@ void BuiltinsArrayStubBuilder::ToSplicedOptimised(GateRef glue, GateRef thisValu
                 {
                     Label copyBefore(env);
                     Label insertArg(env);
-                    GateRef newArray = NewArray(glue, Int32(0));
-                    GrowElementsCapacity(glue, newArray, *newLen);
-                    Label elementsKindToSpliced(env);
+                    Label mutantArrayToSpliced(env);
                     Label fastToSpliced(env);
-                    BRANCH_UNLIKELY(IsEnableElementsKind(glue), &elementsKindToSpliced, &fastToSpliced);
+                    BRANCH_UNLIKELY(IsEnableMutantArray(glue), &mutantArrayToSpliced, &fastToSpliced);
                     Bind(&fastToSpliced);
                     {
+                        NewObjectStubBuilder newBuilder(this);
+                        GateRef destElements = newBuilder.NewTaggedArray(glue, *newLen);
+                        GateRef newArray =
+                            newBuilder.CreateArrayFromList(glue, destElements,
+                                Int32(static_cast<int32_t>(ElementsKind::TAGGED)));
                         FastToSpliced(glue, thisValue, newArray, *actualStart, *actualDeleteCount, *insertCount,
                                       GetCallArg2(numArgs));
                         result->WriteVariable(newArray);
                         Jump(exit);
                     }
-                    Bind(&elementsKindToSpliced);
+                    Bind(&mutantArrayToSpliced);
+                    GateRef newArray = NewArray(glue, Int32(0));
+                    GrowElementsCapacity(glue, newArray, *newLen);
                     DEFVARIABLE(oldIndex, VariableType::INT32(), Int32(0));
                     DEFVARIABLE(newIndex, VariableType::INT32(), Int32(0));
                     BRANCH(Int32GreaterThan(*actualStart, Int32(0)), &copyBefore, &insertArg);
@@ -1019,13 +1025,12 @@ void BuiltinsArrayStubBuilder::SliceOptimised(GateRef glue, GateRef thisValue, G
                     {
                         Label needBarrier(env);
                         Label noBarrier(env);
-                        Label elementsKindEnabled(env);
-                        Label notElementsKindEnabled(env);
+                        Label mutantArrayEnabled(env);
+                        Label notMutantArrayEnabled(env);
 
                         Label jumpCopyExit(env);
-                        GateRef isElementsKindEnabled = IsEnableElementsKind(glue);
-                        BRANCH_NO_WEIGHT(isElementsKindEnabled, &elementsKindEnabled, &notElementsKindEnabled);
-                        Bind(&elementsKindEnabled);
+                        BRANCH_NO_WEIGHT(IsEnableMutantArray(glue), &mutantArrayEnabled, &notMutantArrayEnabled);
+                        Bind(&mutantArrayEnabled);
                         {
                             GateRef newArray = NewArray(glue, *count);
                             DEFVARIABLE(idx, VariableType::INT64(), Int64(0));
@@ -1050,7 +1055,7 @@ void BuiltinsArrayStubBuilder::SliceOptimised(GateRef glue, GateRef thisValue, G
                             result->WriteVariable(newArray);
                             Jump(exit);
                         }
-                        Bind(&notElementsKindEnabled);
+                        Bind(&notMutantArrayEnabled);
                         {
                             DEFVARIABLE(computeKind, VariableType::INT32(), Int32(0));
                             Label isEnableForArray(env);
