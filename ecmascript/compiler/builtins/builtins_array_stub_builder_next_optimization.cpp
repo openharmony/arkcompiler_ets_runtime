@@ -1151,14 +1151,14 @@ void BuiltinsArrayStubBuilder::ConcatOptimised(GateRef glue, GateRef thisValue, 
                         BRANCH(isAllConcatSpreadable, &spreadable, slowPath);
                         Bind(&spreadable);
                         {
-                            Label enabledElementsKind(env);
-                            Label disableElementsKind(env);
-                            BRANCH(IsEnableElementsKind(glue), &enabledElementsKind, &disableElementsKind);
-                            Bind(&enabledElementsKind);
+                            Label enabledMutantArray(env);
+                            Label disableMutantArray(env);
+                            BRANCH(IsEnableMutantArray(glue), &enabledMutantArray, &disableMutantArray);
+                            Bind(&enabledMutantArray);
                             {
                                 DoConcat(glue, thisValue, arg0, result, exit, thisLen, argLen, sumArrayLen);
                             }
-                            Bind(&disableElementsKind);
+                            Bind(&disableMutantArray);
                             {
                                 GateRef kind1 = GetElementsKindFromHClass(LoadHClass(thisValue));
                                 GateRef kind2 = GetElementsKindFromHClass(LoadHClass(arg0));

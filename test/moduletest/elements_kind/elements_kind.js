@@ -1272,7 +1272,7 @@ function test92() {
     const num2 = [4, 5, 6];
 
     const a = num1.concat(num2);
-    if (a.length == 6 && ArkTools.getElementsKind(a) == HOLEINT) {
+    if (a.length == 6 && ArkTools.getElementsKind(a) == PACKEDINT) {
         print("test92 - success");
     } else {
         print("test92 - failed");
@@ -1284,7 +1284,7 @@ function test93() {
     const num2 = [4.4, 5.5, 6.6];
 
     const a = num1.concat(num2);
-    if (a.length == 6 && ArkTools.getElementsKind(a) == HOLENUMBER) {
+    if (a.length == 6 && ArkTools.getElementsKind(a) == PACKEDNUMBER) {
         print("test93 - success");
     } else {
         print("test93 - failed");
