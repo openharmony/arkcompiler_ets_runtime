@@ -191,3 +191,4 @@ native Func toString test Success!
 
 5
 0
+RangeError: Invalid string length
