@@ -775,6 +775,10 @@ void SlowPathLowering::Lower(GateRef gate)
         case EcmaOpcode::CALLRUNTIME_WIDELDSENDABLEEXTERNALMODULEVAR_PREF_IMM16:
             LowerSendableExternalModule(gate);
             break;
+        case EcmaOpcode::CALLRUNTIME_LDSENDABLELOCALMODULEVAR_PREF_IMM8:
+        case EcmaOpcode::CALLRUNTIME_WIDELDSENDABLELOCALMODULEVAR_PREF_IMM16:
+            LowerSendableLocalModule(gate);
+            break;
         case EcmaOpcode::CALLRUNTIME_NEWSENDABLEENV_PREF_IMM8:
         case EcmaOpcode::CALLRUNTIME_WIDENEWSENDABLEENV_PREF_IMM16:
             LowerNewSendableEnv(gate);
@@ -3823,6 +3827,16 @@ void SlowPathLowering::LowerSendableExternalModule(GateRef gate)
     GateRef index = builder_.ToTaggedInt(acc_.GetValueIn(gate, 0));
     GateRef result = LowerCallRuntime(gate,
         RTSTUB_ID(LdSendableExternalModuleVarByIndex), {index, jsFunc}, true);
+    ReplaceHirWithValue(gate, result);
+}
+
+void SlowPathLowering::LowerSendableLocalModule(GateRef gate)
+{
+    ASSERT(acc_.GetNumValueIn(gate) == 1);
+    GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
+    GateRef index = builder_.ToTaggedInt(acc_.GetValueIn(gate, 0));
+    GateRef result = LowerCallRuntime(gate,
+        RTSTUB_ID(LdSendableLocalModuleVarByIndex), {index, jsFunc}, true);
     ReplaceHirWithValue(gate, result);
 }
 

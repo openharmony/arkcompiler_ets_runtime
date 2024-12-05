@@ -297,6 +297,7 @@ private:
         JSHandle<JSTaggedValue> moduleHdl);
     static inline JSTaggedValue RuntimeLdSendableExternalModuleVar(JSThread *thread, int32_t index,
                                                                    JSTaggedValue jsFunc);
+    static inline JSTaggedValue RuntimeLdSendableLocalModuleVar(JSThread *thread, int32_t index, JSTaggedValue jsFunc);
     static inline JSTaggedValue RuntimeLdExternalModuleVar(JSThread *thread, int32_t index,
                                                            JSTaggedValue jsFunc);
     static inline JSTaggedValue RuntimeLdLazySendableExternalModuleVar(JSThread *thread, int32_t index,

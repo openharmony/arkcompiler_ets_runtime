@@ -1887,6 +1887,14 @@ DEF_RUNTIME_STUBS(LdSendableExternalModuleVarByIndex)
     return RuntimeLdSendableExternalModuleVar(thread, index.GetInt(), jsFunc).GetRawData();
 }
 
+DEF_RUNTIME_STUBS(LdSendableLocalModuleVarByIndex)
+{
+    RUNTIME_STUBS_HEADER(LdSendableLocalModuleVarByIndex);
+    JSTaggedValue index = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
+    JSTaggedValue jsFunc = GetArg(argv, argc, 1); // 1: means the first parameter
+    return RuntimeLdSendableLocalModuleVar(thread, index.GetInt(), jsFunc).GetRawData();
+}
+
 DEF_RUNTIME_STUBS(LdLazyExternalModuleVarByIndex)
 {
     RUNTIME_STUBS_HEADER(LdLazyExternalModuleVarByIndex);

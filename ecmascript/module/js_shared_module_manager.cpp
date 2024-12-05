@@ -40,6 +40,29 @@ void SharedModuleManager::Iterate(const RootVisitor &v)
     }
 }
 
+JSTaggedValue SharedModuleManager::GetSendableModuleValueInner(JSThread* thread, int32_t index, JSTaggedValue jsFunc)
+{
+    ModuleManager* moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+    JSTaggedValue currentModule = JSFunction::Cast(jsFunc.GetTaggedObject())->GetModule();
+    if (currentModule.IsUndefined()) { // LCOV_EXCL_BR_LINE
+        LOG_FULL(FATAL) << "GetSendableModuleValueInner currentModule is undefined";
+    }
+    if (!SourceTextModule::IsSendableFunctionModule(currentModule)) {
+        return SourceTextModule::Cast(currentModule)->GetModuleValue(thread, index, false);
+    }
+    CString referenceName = SourceTextModule::GetModuleName(currentModule);
+    JSHandle<SourceTextModule> currentModuleHdl = moduleManager->GetImportedModule(referenceName);
+    if (currentModuleHdl->GetStatus() > ModuleStatus::INSTANTIATED) {
+        return currentModuleHdl->GetModuleValue(thread, index, false);
+    }
+    auto isMergedAbc = !currentModuleHdl->GetEcmaModuleRecordNameString().empty();
+    CString fileName = currentModuleHdl->GetEcmaModuleFilenameString();
+    if (!JSPandaFileExecutor::LazyExecuteModule(thread, referenceName, fileName, isMergedAbc)) { // LCOV_EXCL_BR_LINE
+        LOG_ECMA(FATAL) << "GetSendableModuleValueInner LazyExecuteModule failed";
+    }
+    return currentModuleHdl->GetModuleValue(thread, index, false);
+}
+
 JSTaggedValue SharedModuleManager::GetSendableModuleValue(JSThread *thread, int32_t index, JSTaggedValue jsFunc)
 {
     JSTaggedValue currentModule = JSFunction::Cast(jsFunc.GetTaggedObject())->GetModule();

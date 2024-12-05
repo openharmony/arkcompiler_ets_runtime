@@ -1041,7 +1041,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
     constexpr size_t numOps = 0x100;
     constexpr size_t numThrowOps = 10;
     constexpr size_t numWideOps = 20;
-    constexpr size_t numCallRuntimeOps = 26;
+    constexpr size_t numCallRuntimeOps = 28;
     constexpr size_t numDeprecatedOps = 47;
 
     static std::array<const void *, numOps> instDispatchTable {
@@ -7626,6 +7626,26 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         INTERPRETER_RETURN_IF_ABRUPT(moduleVar);
         SET_ACC(moduleVar);
         DISPATCH(CALLRUNTIME_WIDELDSENDABLEEXTERNALMODULEVAR_PREF_IMM16);
+    }
+    HANDLE_OPCODE(CALLRUNTIME_LDSENDABLELOCALMODULEVAR_PREF_IMM8) {
+        int32_t index = READ_INST_8_1();
+        JSTaggedValue funcObj = GetFunction(sp);
+        LOG_INST() << "intrinsics::ldsendablelocalmodulevar index:" << index;
+
+        JSTaggedValue moduleVar = SlowRuntimeStub::LdSendableLocalModuleVar(thread, index, funcObj);
+        INTERPRETER_RETURN_IF_ABRUPT(moduleVar);
+        SET_ACC(moduleVar);
+        DISPATCH(CALLRUNTIME_LDSENDABLELOCALMODULEVAR_PREF_IMM8);
+    }
+    HANDLE_OPCODE(CALLRUNTIME_WIDELDSENDABLELOCALMODULEVAR_PREF_IMM16) {
+        int32_t index = READ_INST_16_1();
+        JSTaggedValue funcObj = GetFunction(sp);
+        LOG_INST() << "intrinsics::ldsendablelocalmodulevar index:" << index;
+
+        JSTaggedValue moduleVar = SlowRuntimeStub::LdSendableLocalModuleVar(thread, index, funcObj);
+        INTERPRETER_RETURN_IF_ABRUPT(moduleVar);
+        SET_ACC(moduleVar);
+        DISPATCH(CALLRUNTIME_WIDELDSENDABLELOCALMODULEVAR_PREF_IMM16);
     }
     HANDLE_OPCODE(CALLRUNTIME_NEWSENDABLEENV_PREF_IMM8) {
         uint8_t numVars = READ_INST_8_1();
