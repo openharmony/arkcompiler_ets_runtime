@@ -1327,3 +1327,12 @@ for (let typedArrEle of iterForTypedArrEntry) {
     print(typedArrEle);
     print(typedArrEle.length)
 }
+
+function testReflectSet(ctor) {
+    print(Reflect.set({}, 4294967284, {}, new ctor()));
+    print(Reflect.set({}, 4294967284, 123, new ctor()));
+}
+
+typedArrayConstructors.forEach(function(ctor) {
+    testReflectSet(ctor);
+});

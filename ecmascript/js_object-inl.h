@@ -244,6 +244,11 @@ inline bool JSObject::IsTypedArray() const
     return GetJSHClass()->IsTypedArray();
 }
 
+inline bool JSObject::IsSharedTypedArray() const
+{
+    return GetJSHClass()->IsJSSharedTypedArray();
+}
+
 std::pair<bool, JSTaggedValue> JSObject::ConvertValueWithRep(PropertyAttributes attr, JSTaggedValue value)
 {
     if (attr.IsDoubleRep()) {

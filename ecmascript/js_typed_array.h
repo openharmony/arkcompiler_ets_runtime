@@ -93,6 +93,7 @@ public:
                                          JSTaggedValue index, const JSHandle<JSTaggedValue> &value);
     // s12 10.4.5.9 IsValidIntegerIndex ( O, index )
     static bool IsValidIntegerIndex(const JSHandle<JSTaggedValue> &typedArray, JSTaggedValue index);
+    static bool IsValidIntegerIndex(const JSHandle<JSTaggedValue> &typedArray, uint32_t index);
     static JSTaggedValue FastGetPropertyByIndex(JSThread *thread, const JSTaggedValue typedarray, uint32_t index,
                                                 JSType jsType);
     static JSTaggedValue PUBLIC_API FastSetPropertyByIndex(JSThread *thread, const JSTaggedValue typedarray,
@@ -115,6 +116,9 @@ public:
     static const uint32_t MAX_TYPED_ARRAY_INDEX = MAX_ELEMENT_INDEX;
     DECL_DUMP()
     DECL_VISIT_OBJECT_FOR_JS_OBJECT(JSObject, VIEWED_ARRAY_BUFFER_OFFSET, BYTE_LENGTH_OFFSET)
+
+private:
+    static inline bool IsArrayBufferDetached(JSTaggedValue buffer);
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_JS_TYPED_ARRAY_H

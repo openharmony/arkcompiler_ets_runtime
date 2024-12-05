@@ -435,7 +435,7 @@ HWTEST_F_L0(ObjectOperatorTest, ReLookupPropertyInReceiver_003)
     EXPECT_FALSE(objectOperator2.IsFastMode());
 }
 
-HWTEST_F_L0(ObjectOperatorTest, LookupProperty)
+HWTEST_F_L0(ObjectOperatorTest, LookupProperty_001)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSTaggedValue> handleKey(thread, JSTaggedValue(1));
@@ -446,9 +446,32 @@ HWTEST_F_L0(ObjectOperatorTest, LookupProperty)
     JSHandle<JSObject> handleObject1 = JSObject::ObjectCreate(thread, handleObject);
 
     ObjectOperator objectOperator(thread, handleObject1, handleKey);
+    // lookup for key is element
     objectOperator.LookupProperty();
     EXPECT_TRUE(objectOperator.IsOnPrototype());
     EXPECT_EQ(objectOperator.GetIndex(), 1U);
+    EXPECT_EQ(objectOperator.GetAttr().GetPropertyMetaData(), 7);
+    EXPECT_EQ(objectOperator.GetValue().GetInt(), 2);
+    EXPECT_TRUE(objectOperator.IsFastMode());
+}
+
+HWTEST_F_L0(ObjectOperatorTest, LookupProperty_002)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<JSTaggedValue> handleKey1(thread, JSTaggedValue(1));
+    JSHandle<JSTaggedValue> handleValue1(thread, JSTaggedValue(1));
+    JSHandle<JSTaggedValue> handleKey2(factory->NewFromASCII("key2"));
+    JSHandle<JSTaggedValue> handleValue2(thread, JSTaggedValue(2));
+    JSHandle<JSTaggedValue> objFunc(thread, JSObjectTestCreate(thread));
+    JSHandle<JSObject> handleObject = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(objFunc), objFunc);
+    JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(handleObject), handleKey1, handleValue1);
+    JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(handleObject), handleKey2, handleValue2);
+    JSHandle<JSObject> handleObject1 = JSObject::ObjectCreate(thread, handleObject);
+    ObjectOperator objectOperator(thread, handleObject1, handleKey2);
+    // lookup for key is not element
+    objectOperator.LookupProperty();
+    EXPECT_TRUE(objectOperator.IsOnPrototype());
+    EXPECT_EQ(objectOperator.GetIndex(), 0U);
     EXPECT_EQ(objectOperator.GetAttr().GetPropertyMetaData(), 7);
     EXPECT_EQ(objectOperator.GetValue().GetInt(), 2);
     EXPECT_TRUE(objectOperator.IsFastMode());
