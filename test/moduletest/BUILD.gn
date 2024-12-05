@@ -212,12 +212,7 @@ group("ark_js_moduletest") {
   }
 
   if (!is_debug) {
-    release_test_list = [
-      "multiconstpoolclass",
-      "multiconstpoolconstructor",
-      "multiconstpoolfunc",
-      "multiconstpoolobj",
-    ]
+    release_test_list = []
 
     foreach(test, release_test_list) {
       deps += [
@@ -245,6 +240,10 @@ group("ark_js_assert_moduletest") {
       "hugearray",
       "hugeictest",
       "multiconstpoolarray",
+      "multiconstpoolclass",
+      "multiconstpoolconstructor",
+      "multiconstpoolfunc",
+      "multiconstpoolobj",
     ]
 
     foreach(test, release_test_assert_list) {
@@ -421,16 +420,7 @@ group("ark_asm_test") {
   }
 
   if (!is_debug) {
-    release_test_list = [
-      "asmstackoverflow",
-      "arrayRelease",
-      "supercallRelease",
-      "multiconstpoolclass",
-      "multiconstpoolconstructor",
-      "multiconstpoolfunc",
-      "multiconstpoolobj",
-      "throwerrorrelease",
-    ]
+    release_test_list = [ "throwerrorrelease" ]
 
     foreach(test, release_test_list) {
       deps += [
@@ -455,9 +445,16 @@ group("ark_asm_assert_test") {
 
   if (!is_debug) {
     release_test_assert_list = [
+      "asmstackoverflow",
+      "arrayRelease",
       "hugearray",
       "hugeictest",
+      "supercallRelease",
       "multiconstpoolarray",
+      "multiconstpoolclass",
+      "multiconstpoolconstructor",
+      "multiconstpoolfunc",
+      "multiconstpoolobj",
     ]
 
     foreach(test, release_test_assert_list) {
@@ -607,15 +604,7 @@ group("ark_asm_single_step_test") {
     }
   }
   if (!is_debug) {
-    release_test_list = [
-      "asmstackoverflow",
-      "arrayRelease",
-      "supercallRelease",
-      "multiconstpoolclass",
-      "multiconstpoolconstructor",
-      "multiconstpoolfunc",
-      "multiconstpoolobj",
-    ]
+    release_test_list = []
 
     foreach(test, release_test_list) {
       deps += [
@@ -638,7 +627,16 @@ group("ark_asm_single_step_assert_test") {
     }
   }
   if (!is_debug) {
-    release_test_assert_list = [ "multiconstpoolarray" ]
+    release_test_assert_list = [
+      "asmstackoverflow",
+      "arrayRelease",
+      "supercallRelease",
+      "multiconstpoolarray",
+      "multiconstpoolclass",
+      "multiconstpoolconstructor",
+      "multiconstpoolfunc",
+      "multiconstpoolobj",
+    ]
 
     foreach(test, release_test_assert_list) {
       deps += [

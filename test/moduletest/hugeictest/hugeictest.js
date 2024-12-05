@@ -53241,4 +53241,7 @@ for (let i = 0; i < 100; i++) {
   ldobjbyvalue_65535(obj);
   ldobjbyvalue_65536(obj);
 }
-print("huge ic test success");
+
+assert_equal(value, "huge ic test success");
+
+test_end();

@@ -49,6 +49,8 @@ std::string GetHelper()
     return str;
 }
 
+static bool g_testEnd = false;
+
 bool IsEqual(EcmaVM *vm, Local<JSValueRef> jsArg0, Local<JSValueRef> jsArg1)
 {
     if (jsArg0->IsStrictEquals(vm, jsArg1)) {
@@ -70,6 +72,13 @@ bool IsEqual(EcmaVM *vm, Local<JSValueRef> jsArg0, Local<JSValueRef> jsArg1)
         return true;
     }
     return false;
+}
+
+Local<JSValueRef> TestEnd(JsiRuntimeCallInfo *runtimeInfo)
+{
+    EcmaVM *vm = runtimeInfo->GetVM();
+    g_testEnd = true;
+    return JSValueRef::Undefined(vm);
 }
 
 Local<JSValueRef> AssertEqual(JsiRuntimeCallInfo *runtimeInfo)
@@ -152,6 +161,8 @@ bool ExecutePandaFile(EcmaVM *vm, JSRuntimeOptions &runtimeOptions, std::string 
         globalObj->Set(vm, StringRef::NewFromUtf8(vm, "assert_true"), assertTrue);
         Local<FunctionRef> assertUnreachable = FunctionRef::New(vm, AssertUnreachable);
         globalObj->Set(vm, StringRef::NewFromUtf8(vm, "assert_unreachable"), assertUnreachable);
+        Local<FunctionRef> testEnd = FunctionRef::New(vm, TestEnd);
+        globalObj->Set(vm, StringRef::NewFromUtf8(vm, "test_end"), testEnd);
     }
     if (runtimeOptions.WasAOTOutputFileSet()) {
         JSNApi::LoadAotFile(vm, "");
@@ -164,6 +175,9 @@ bool ExecutePandaFile(EcmaVM *vm, JSRuntimeOptions &runtimeOptions, std::string 
             ret = false;
             break;
         }
+    }
+    if (runtimeOptions.GetTestAssert() && !g_testEnd) {
+        LOG_ECMA(FATAL) << "this test didn't run to the end normally.";
     }
     auto totalTime = execute.TotalSpentTime();
     if (runtimeOptions.IsEnableContext()) {
