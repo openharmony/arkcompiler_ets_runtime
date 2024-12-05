@@ -1096,12 +1096,14 @@ if (is_mingw) {
       "ecmascript/platform/unix/linux/os.cpp",
       "ecmascript/platform/unix/ohos/backtrace.cpp",
       "ecmascript/platform/common/log.cpp",
+      "ecmascript/platform/unix/ohos/memory.cpp",
     ]
   } else if (is_linux) {
     ecma_platform_source += [
       "ecmascript/platform/unix/linux/os.cpp",
       "ecmascript/platform/unix/linux/backtrace.cpp",
       "ecmascript/platform/common/log.cpp",
+      "ecmascript/platform/unix/linux/memory.cpp",
     ]
   } else {
     print("Invalid os!")

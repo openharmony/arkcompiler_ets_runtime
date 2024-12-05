@@ -28,6 +28,8 @@
 #include "ecmascript/mem/mem_controller.h"
 #include "ecmascript/mem/clock_scope.h"
 #include "ecmascript/napi/include/jsnapi.h"
+#include "ecmascript/platform/os.h"
+
 
 namespace panda::ecmascript {
 void BlockSignals()
@@ -178,6 +180,7 @@ bool ExecutePandaFile(EcmaVM *vm, JSRuntimeOptions &runtimeOptions, std::string 
 
 int Main(const int argc, const char **argv)
 {
+    InitializeMallocConfig();
     auto startTime =
         std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch())
             .count();
