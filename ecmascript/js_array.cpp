@@ -951,7 +951,6 @@ bool JSArray::IsProtoNotChangeJSArray(JSThread *thread, const JSHandle<JSObject>
     return false;
 }
 
-
 JSHandle<JSHClass> JSArray::CreateJSArrayPrototypeClass(const JSThread *thread, ObjectFactory *factory,
                                                         JSHandle<JSTaggedValue> proto, uint32_t inlinedProps)
 {
@@ -1012,4 +1011,26 @@ JSHandle<JSHClass> JSArray::CreateJSArrayFunctionClass(const JSThread *thread, O
     }
     return arrayFunctionClass;
 }
-} // namespace panda::ecmascript
+
+void JSArray::UpdateTrackInfo(const JSThread *thread)
+{
+    JSTaggedValue trackInfoVal = GetTrackInfo();
+    if (trackInfoVal.IsHeapObject() && trackInfoVal.IsWeak()) {
+        TrackInfo *trackInfo = TrackInfo::Cast(trackInfoVal.GetWeakReferentUnChecked());
+        ElementsKind oldKind = trackInfo->GetElementsKind();
+        if (Elements::IsGeneric(oldKind)) {
+            return;
+        }
+
+        JSHClass *hclass = GetJSHClass();
+        ElementsKind newKind = hclass->GetElementsKind();
+        trackInfo->SetElementsKind(newKind);
+        const GlobalEnvConstants *globalConst = thread->GlobalConstants();
+        // Since trackInfo is only used at define point,
+        // we update cachedHClass with initial array hclass which does not have IsPrototype set.
+        ConstantIndex constantId = thread->GetArrayHClassIndexMap().at(newKind).first;
+        JSTaggedValue cachedHClass = globalConst->GetGlobalConstantObject(static_cast<size_t>(constantId));
+        trackInfo->SetCachedHClass(thread, cachedHClass);
+    }
+}
+}  // namespace panda::ecmascript

@@ -589,13 +589,16 @@ DEF_RUNTIME_STUBS(UpdateHClassForElementsKind)
         return JSTaggedValue::Hole().GetRawData();
     }
 
-    if (!thread->GetEcmaVM()->IsEnableMutantArray()) {
-        // Update TrackInfo
-        if (!thread->IsPGOProfilerEnable()) {
-            return JSTaggedValue::Hole().GetRawData();
-        }
-        auto trackInfoVal = JSHandle<JSArray>(receiver)->GetTrackInfo();
-        thread->GetEcmaVM()->GetPGOProfiler()->UpdateTrackElementsKind(trackInfoVal, kind);
+    // Update TrackInfo
+    JSHandle<JSArray>(receiver)->UpdateTrackInfo(thread);
+
+    if (!thread->IsPGOProfilerEnable()) {
+        return JSTaggedValue::Hole().GetRawData();
+    }
+    JSTaggedValue trackInfoVal = JSHandle<JSArray>(receiver)->GetTrackInfo();
+    if (trackInfoVal.IsHeapObject() && trackInfoVal.IsWeak()) {
+        TrackInfo *trackInfo = TrackInfo::Cast(trackInfoVal.GetWeakReferentUnChecked());
+        thread->GetEcmaVM()->GetPGOProfiler()->UpdateTrackInfo(JSTaggedValue(trackInfo));
     }
     return JSTaggedValue::Hole().GetRawData();
 }
