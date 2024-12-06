@@ -269,7 +269,7 @@ void SharedSparseSpace::SortSweepingRegion()
 {
     // Sweep low alive object size at first
     std::sort(sweepingList_.begin(), sweepingList_.end(), [](Region *first, Region *second) {
-        return first->AliveObject() < second->AliveObject();
+        return first->AliveObject() > second->AliveObject();
     });
 }
 

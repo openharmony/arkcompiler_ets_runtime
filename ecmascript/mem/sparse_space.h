@@ -81,7 +81,6 @@ public:
     Region *GetSweepingRegionSafe();
     void AddSweptRegionSafe(Region *region);
     Region *GetSweptRegionSafe();
-    void FreeRegionFromSpace(Region *region);
     Region *TryToGetSuitableSweptRegion(size_t size);
 
     void FreeRegion(Region *current, bool isMain = true);
@@ -222,6 +221,8 @@ private:
     static constexpr unsigned long long PARTIAL_GC_MAX_COLLECT_REGION_RATE = 2_MB;
     static constexpr unsigned long long PARTIAL_GC_INITIAL_COLLECT_REGION_SIZE = 24;
     static constexpr size_t PARTIAL_GC_MIN_COLLECT_REGION_SIZE = 5;
+
+    void FreeRegionFromSpace(Region *region);
 
     CVector<Region *> collectRegionSet_;
     Mutex lock_;
