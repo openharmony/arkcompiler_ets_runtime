@@ -17,6 +17,7 @@
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_array.h"
+#include <ecmascript/builtins/builtins_array.h>
 #include "ecmascript/js_array_iterator.h"
 #include "ecmascript/js_handle.h"
 #include "ecmascript/js_hclass.h"
@@ -203,5 +204,31 @@ HWTEST_F_L0(JSArrayTest, COWArray)
         JSTaggedValue value2 = TaggedArray::Cast(array->GetElements().GetTaggedObject())->Get(i);
         EXPECT_EQ(value1.GetRawData(), value2.GetRawData());
     }
+}
+
+HWTEST_F_L0(JSArrayTest, TrackInfo)
+{
+    auto constants = thread->GlobalConstants();
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<TaggedArray> values(factory->NewTaggedArray(5));
+    for (int i = 0; i < 5; i++) {
+        values->Set(thread, i, JSTaggedValue(i));
+    }
+    JSHandle<JSArray> array(JSArray::CreateArrayFromList(thread, values));
+    auto intHClassIdx = thread->GetArrayHClassIndexMap().at(ElementsKind::INT).first;
+    auto hClass = JSHClass::Cast(constants->GetGlobalConstantObject(static_cast<size_t>(intHClassIdx)).GetHeapObject());
+    array->SynchronizedSetClass(thread, hClass);
+    auto trackInfoHclass = JSHandle<JSHClass>::Cast(constants->GetHandledTrackInfoClass());
+    auto trackInfo = TrackInfo::Cast(factory->NewObject(trackInfoHclass));
+    trackInfo->SetCachedHClass(thread, constants->GetUndefined());
+    trackInfo->SetElementsKind(ElementsKind::INT);
+    array->SetTrackInfo(thread, JSTaggedValue(trackInfo).CreateAndGetWeakRef());
+    auto obj = JSHandle<JSObject>::Cast(array);
+    auto floatHandle = JSHandle<JSTaggedValue>(thread, JSTaggedValue(10.1));
+    ASSERT_TRUE(JSHClass::TransitToElementsKind(thread, obj, floatHandle, ElementsKind::NONE));
+    auto numberHClassIdx = thread->GetArrayHClassIndexMap().at(ElementsKind::NUMBER).first;
+    ASSERT_EQ(trackInfo->GetCachedHClass(),
+              constants->GetGlobalConstantObject(static_cast<size_t>(numberHClassIdx)));
+    ASSERT_EQ(trackInfo->GetElementsKind(), ElementsKind::NUMBER);
 }
 }  // namespace panda::test
