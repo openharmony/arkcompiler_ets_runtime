@@ -888,28 +888,10 @@ GateRef NewObjectStubBuilder::CopyArray(GateRef glue, GateRef elements, GateRef 
             Store(VariableType::INT32(), glue, *array, IntPtr(TaggedArray::LENGTH_OFFSET), newLen);
             GateRef oldExtractLen = GetExtraLengthOfTaggedArray(elements);
             Store(VariableType::INT32(), glue, *array, IntPtr(TaggedArray::EXTRA_LENGTH_OFFSET), oldExtractLen);
-            Label afterCopy(env);
-
-            Label copyToTaggedArray(env);
-            Label copyToMutantTaggedArray(env);
-            BRANCH(checkIsMutantTaggedArray, &copyToMutantTaggedArray, &copyToTaggedArray);
-            Bind(&copyToTaggedArray);
-            {
-                ArrayCopy<NotOverlap>(glue, GetDataPtrInTaggedArray(elements), *array, GetDataPtrInTaggedArray(*array),
-                                      newLen, true);
-                Jump(&afterCopy);
-            }
-            Bind(&copyToMutantTaggedArray);
-            {
-                ArrayCopy<NotOverlap>(glue, GetDataPtrInTaggedArray(elements), *array, GetDataPtrInTaggedArray(*array),
-                                      newLen, false);
-                Jump(&afterCopy);
-            }
-            Bind(&afterCopy);
-            {
-                result = *array;
-                Jump(&exit);
-            }
+            ArrayCopy(glue, elements, GetDataPtrInTaggedArray(elements), *array,
+                      GetDataPtrInTaggedArray(*array), newLen, BoolNot(checkIsMutantTaggedArray), DifferentArray);
+            result = *array;
+            Jump(&exit);
         }
     }
     Bind(&exit);

@@ -10851,11 +10851,9 @@ GateRef StubBuilder::NeedBarrier(GateRef kind){
     return ret;
 }
 
-using CopyKind = StubBuilder::OverlapKind;
 
-template <>
-void StubBuilder::ArrayCopy<CopyKind::NotOverlap>(GateRef glue, GateRef srcAddr, GateRef dstObj,
-                                                  GateRef dstAddr, GateRef taggedValueCount, bool needBarrier)
+void StubBuilder::ArrayCopy(GateRef glue, GateRef srcObj, GateRef srcAddr, GateRef dstObj,
+                            GateRef dstAddr, GateRef taggedValueCount, GateRef needBarrier, CopyKind copyKind)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -10863,72 +10861,41 @@ void StubBuilder::ArrayCopy<CopyKind::NotOverlap>(GateRef glue, GateRef srcAddr,
     Label exit(env);
     CallNGCRuntime(glue, RTSTUB_ID(ObjectCopy),
                    {TaggedCastToIntPtr(dstAddr), TaggedCastToIntPtr(srcAddr), taggedValueCount});
-    if (needBarrier) {
-        CallCommonStub(glue, CommonStubCSigns::BatchBarrier,
-                       {glue, TaggedCastToIntPtr(dstObj), TaggedCastToIntPtr(dstAddr), taggedValueCount});
-    }
-    Jump(&exit);
-    Bind(&exit);
-    env->SubCfgExit();
-}
-
-template <>
-void StubBuilder::ArrayCopy<CopyKind::MustOverlap>(GateRef glue, GateRef srcAddr, GateRef dstObj,
-                                                   GateRef dstAddr, GateRef taggedValueCount, bool needBarrier)
-{
-    auto env = GetEnvironment();
-    Label entry(env);
-    env->SubCfgEntry(&entry);
-    Label exit(env);
-    CallNGCRuntime(glue, RTSTUB_ID(ObjectCopy),
-                   {TaggedCastToIntPtr(dstAddr), TaggedCastToIntPtr(srcAddr), taggedValueCount});
-    if (needBarrier) {
-        CallCommonStub(glue, CommonStubCSigns::MoveBarrierInRegion,
-                 {glue, TaggedCastToIntPtr(dstObj), TaggedCastToIntPtr(dstAddr), taggedValueCount, TaggedCastToIntPtr(srcAddr)});
-    }
-    Jump(&exit);
-    Bind(&exit);
-    env->SubCfgExit();
-}
-
-template <>
-void StubBuilder::ArrayCopy<CopyKind::Unknown>(GateRef glue, GateRef srcAddr, GateRef dstObj,
-                                               GateRef dstAddr, GateRef taggedValueCount, bool needBarrier)
-{
-    auto env = GetEnvironment();
-    Label entry(env);
-    env->SubCfgEntry(&entry);
-    Label exit(env);
-    GateRef needRightToLeft = LogicAndBuilder(env)
-                              .And(IntPtrGreaterThan(dstAddr, srcAddr))
-                              .And(IntPtrGreaterThan(PtrAdd(srcAddr, ZExtInt32ToPtr(taggedValueCount)), dstAddr))
-                              .Done();
-    Label leftToRight(env);
-    Label rightToLeft(env);
-    BRANCH_NO_WEIGHT(needRightToLeft, &rightToLeft, &leftToRight);
-    Bind(&rightToLeft);
+    Label handleBarrier(env);
+    BRANCH_NO_WEIGHT(needBarrier, &handleBarrier, &exit);
+    Bind(&handleBarrier);
     {
-        ArrayCopy<MustOverlap>(glue, srcAddr, dstObj, dstAddr, taggedValueCount, needBarrier);
-        Jump(&exit);
-    }
-    Bind(&leftToRight);
-    {
-        ArrayCopy<NotOverlap>(glue, srcAddr, dstObj, dstAddr, taggedValueCount, needBarrier);
+        if (copyKind == SameArray) {
+            CallCommonStub(glue, CommonStubCSigns::MoveBarrierInRegion,
+                           {
+                               glue, TaggedCastToIntPtr(dstObj), TaggedCastToIntPtr(dstAddr), taggedValueCount,
+                               TaggedCastToIntPtr(srcAddr)
+                           });
+        } else {
+            ASSERT(copyKind == DifferentArray);
+            CallCommonStub(glue, CommonStubCSigns::MoveBarrierCrossRegion,
+                           {
+                               glue, TaggedCastToIntPtr(dstObj), TaggedCastToIntPtr(dstAddr), taggedValueCount,
+                               TaggedCastToIntPtr(srcAddr), TaggedCastToIntPtr(srcObj)
+                           });
+        }
         Jump(&exit);
     }
     Bind(&exit);
     env->SubCfgExit();
 }
 
-void StubBuilder::ArrayCopyAndHoleToUndefined(GateRef glue, GateRef srcAddr, GateRef dstObj, GateRef dstAddr,
-                                              GateRef length, MemoryAttribute mAttr)
+void StubBuilder::ArrayCopyAndHoleToUndefined(GateRef glue, GateRef srcObj, GateRef srcAddr, GateRef dstObj,
+                                              GateRef dstAddr, GateRef length, GateRef needBarrier)
 {
     auto env = GetEnvironment();
     Label entry(env);
     env->SubCfgEntry(&entry);
     Label loopExit(env);
+    Label exit(env);
     Label begin(env);
     Label body(env);
+    Label handleBarrier(env);
     Label endLoop(env);
     GateRef dstOff = PtrSub(TaggedCastToIntPtr(dstAddr), TaggedCastToIntPtr(dstObj));
     DEFVARIABLE(index, VariableType::INT32(), Int32(0));
@@ -10951,7 +10918,7 @@ void StubBuilder::ArrayCopyAndHoleToUndefined(GateRef glue, GateRef srcAddr, Gat
                 Jump(&endLoop);
             }
             Bind(&isNotHole);
-            Store(VariableType::JS_ANY(), glue, dstObj, PtrAdd(dstOff, offset), value, mAttr);
+            Store(VariableType::JS_ANY(), glue, dstObj, PtrAdd(dstOff, offset), value, MemoryAttribute::NoBarrier());
             Jump(&endLoop);
         }
     }
@@ -10959,6 +10926,16 @@ void StubBuilder::ArrayCopyAndHoleToUndefined(GateRef glue, GateRef srcAddr, Gat
     index = Int32Add(*index, Int32(1));
     LoopEnd(&begin);
     Bind(&loopExit);
+    BRANCH_NO_WEIGHT(needBarrier, &handleBarrier, &exit);
+    Bind(&handleBarrier);
+    {
+        CallCommonStub(glue, CommonStubCSigns::MoveBarrierCrossRegion,
+                       {glue, TaggedCastToIntPtr(dstObj), TaggedCastToIntPtr(dstAddr), length,
+                       TaggedCastToIntPtr(srcAddr), TaggedCastToIntPtr(srcObj)});
+
+        Jump(&exit);
+    }
+    Bind(&exit);
     env->SubCfgExit();
 }
 

@@ -3168,4 +3168,23 @@ DEF_CALL_SIGNATURE(MoveBarrierInRegion)
     callSign->SetGCLeafFunction(true);
     callSign->SetCallConv(CallSignature::CallConv::CCallConv);;
 }
+
+DEF_CALL_SIGNATURE(MoveBarrierCrossRegion)
+{
+    constexpr size_t paramCount = 6;
+    CallSignature signature("MoveBarrierCrossRegion", 0, paramCount, ArgumentsOrder::DEFAULT_ORDER,
+                            VariableType::VOID());
+    *callSign = signature;
+    std::array<VariableType, paramCount> params = {
+        VariableType::NATIVE_POINTER(),
+        VariableType::NATIVE_POINTER(),
+        VariableType::NATIVE_POINTER(),
+        VariableType::INT32(),
+        VariableType::NATIVE_POINTER(),
+        VariableType::NATIVE_POINTER(),
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetGCLeafFunction(true);
+    callSign->SetCallConv(CallSignature::CallConv::CCallConv);;
+}
 }  // namespace panda::ecmascript::kungfu
