@@ -475,6 +475,8 @@ class C3 {
 function splice() {
     print("Start Test splice")
     const array = new SendableArray<string>('Jan', 'March', 'April', 'June');
+    print(array.splice());
+    print(array);
     array.splice(1, 0, 'Feb', 'Oct');
     print(array); // "Jan", "Feb", "Oct", "March", "April", "June"
     const removeArray = array.splice(4, 2, 'May');
