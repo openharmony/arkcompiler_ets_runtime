@@ -382,6 +382,7 @@
       panda::panda_file::MethodDataAccessor::MethodDataAccessor*;
       panda::ecmascript::JitCompilationEnv::GetMethodFromCache*;
       panda::ecmascript::SetAppFreezeFilterCallback*;
+      panda::ecmascript::InitializeMallocConfig*;
     };
     extern "C" {
       get_ark_native_frame_info;

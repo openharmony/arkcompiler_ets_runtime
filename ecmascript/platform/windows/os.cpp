@@ -73,4 +73,9 @@ void SetSecurityLabel([[maybe_unused]] const std::string& path)
 {
     LOG_ECMA(INFO) << "Set Security Label in windows not support";
 }
+
+void InitializeMallocConfig()
+{
+    LOG_ECMA(INFO) << "Initialize Malloc Config in windows not support";
+}
 }  // namespace panda::ecmascript
