@@ -8067,7 +8067,7 @@ GateRef StubBuilder::ToPrototypeOrObj(GateRef glue, GateRef obj)
     env->SubCfgEntry(&entry);
     Label exit(env);
     DEFVARIABLE(result, VariableType::JS_ANY(), obj);
-
+    Label isNotEcmaObject(env);
     Label isNumber(env);
     Label notNumber(env);
     Label isBoolean(env);
@@ -8077,6 +8077,8 @@ GateRef StubBuilder::ToPrototypeOrObj(GateRef glue, GateRef obj)
     Label isSymbol(env);
     Label notSymbol(env);
     Label isBigInt(env);
+    BRANCH(IsEcmaObject(obj), &exit, &isNotEcmaObject);
+    Bind(&isNotEcmaObject);
     BRANCH(TaggedIsNumber(obj), &isNumber, &notNumber);
     Bind(&isNumber);
     {
