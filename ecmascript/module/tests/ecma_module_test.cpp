@@ -1801,6 +1801,47 @@ HWTEST_F_L0(EcmaModuleTest, ConcatImportFileNormalizedOhmurlWithRecordName)
     EXPECT_EQ(result, entryPoint);
 }
 
+HWTEST_F_L0(EcmaModuleTest, ConcatImportFileNormalizedOhmurlWithRecordName2)
+{
+    CString baseFilename = "merge.abc";
+    const char *data = R"(
+        .language ECMAScript
+        .function any func_main_0(any a0, any a1, any a2) {
+            ldai 1
+            return
+        }
+    )";
+    JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
+    Parser parser;
+    auto res = parser.Parse(data);
+    std::unique_ptr<const File> pfPtr = pandasm::AsmEmitter::Emit(res.Value());
+    std::shared_ptr<JSPandaFile> pf = pfManager->NewJSPandaFile(pfPtr.release(), baseFilename);
+
+    CString requestPath = "./Test";
+    CString recordName = "com.demo.application&hsp/Index&";
+    CString result = "com.demo.application&hsp/Test&";
+    pf->InsertJSRecordInfo(result);
+    CString entryPoint = ModulePathHelper::ConcatImportFileNormalizedOhmurlWithRecordName(thread, pf.get(),
+        baseFilename, recordName, requestPath);
+    EXPECT_EQ(result, entryPoint);
+
+    requestPath = "../Test2";
+    recordName = "com.demo.application&hsp/src/main/ets/pages/Index&";
+    result = "com.demo.application&hsp/src/main/ets/Test2&";
+    pf->InsertJSRecordInfo(result);
+    entryPoint = ModulePathHelper::ConcatImportFileNormalizedOhmurlWithRecordName(thread, pf.get(),
+        baseFilename, recordName, requestPath);
+    EXPECT_EQ(result, entryPoint);
+
+    requestPath = "../Test3";
+    recordName = "com.demo.application&hsp/src/main/ets/pages/Index&1.0.1";
+    result = "com.demo.application&hsp/src/main/ets/Test3&1.0.1";
+    pf->InsertJSRecordInfo(result);
+    entryPoint = ModulePathHelper::ConcatImportFileNormalizedOhmurlWithRecordName(thread, pf.get(),
+        baseFilename, recordName, requestPath);
+    EXPECT_EQ(result, entryPoint);
+}
+
 HWTEST_F_L0(EcmaModuleTest, HostResolveImportedModuleWithMerge)
 {
     ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
