@@ -2149,3 +2149,15 @@ print(sliceArray.slice(1, 10));
         }
     }      
 }
+
+// pop 
+var y = new Array(10)
+for (let i = 0; i < y.length; i++) {
+    y[i] = i
+}
+print(y.pop()); //: 9
+print(y.pop()); //: 8
+print(y.pop()); //: 7
+print(y.pop()); //: 6
+print(y.pop()); //: 5
+print(y);
