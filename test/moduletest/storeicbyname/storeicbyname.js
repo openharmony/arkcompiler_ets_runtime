@@ -62,3 +62,35 @@ for (let i = 0; i < 20; i++) {
     obj.bar = 'new value';
 }
 print("test accessor ic successful!");
+
+{
+    let o = {};
+    o["a"] = String.prototype;
+    for (let i = 0; i < 2; i++) {
+        let o1;
+        if (o1) {
+            o["a"]= o1;
+        } else {
+            o1 = o["a"];
+        }
+        for (let j = 0; j < 50; j++) {
+            let o2 = new Object(-63);
+            if (o2) {
+                o["a"] = o2;
+            } else {
+                o2 = o["a"];
+            }
+            let o3 = o1.valueOf();
+            if (o3) {
+                o["a"] = o3;
+            } else {
+                o3 = o["a"];
+            }
+            // o3 is Number when i = 0 and o3 is Int when i = 1
+            try {
+                o3.x = "telu";
+            } catch(e) {}
+        }
+    }
+    print("test store_ic_by_name success");
+}

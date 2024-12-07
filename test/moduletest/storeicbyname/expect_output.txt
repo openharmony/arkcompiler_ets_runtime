@@ -15,3 +15,4 @@ test successful !!!
 test set __proto__ null successful
 test set bad_proto successful!
 test accessor ic successful!
+test store_ic_by_name success
