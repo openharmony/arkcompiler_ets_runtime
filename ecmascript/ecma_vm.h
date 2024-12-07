@@ -108,6 +108,7 @@ using RequestAotCallback =
 using SearchHapPathCallBack = std::function<bool(const std::string moduleName, std::string &hapPath)>;
 using DeviceDisconnectCallback = std::function<bool()>;
 using UncatchableErrorHandler = std::function<void(panda::TryCatch&)>;
+using OnAllErrorCallback = std::function<void(Local<ObjectRef> value, void *data)>;
 
 class EcmaVM {
 public:
@@ -359,6 +360,22 @@ public:
     {
         concurrentCallback_ = callback;
         concurrentData_ = data;
+    }
+
+    void SetOnAllErrorCallback(OnAllErrorCallback callback, void* data)
+    {
+        onAllErrorCallback_ = callback;
+        onAllErrorData_ = data;
+    }
+
+    OnAllErrorCallback GetOnAllErrorCallback()
+    {
+        return onAllErrorCallback_;
+    }
+
+    void* GetOnAllData()
+    {
+        return onAllErrorData_;
     }
 
     void TriggerConcurrentCallback(JSTaggedValue result, JSTaggedValue hint);
@@ -893,6 +910,10 @@ private:
     // Concurrent taskpool callback and data
     ConcurrentCallback concurrentCallback_ {nullptr};
     void *concurrentData_ {nullptr};
+
+    // AllError callback
+    OnAllErrorCallback onAllErrorCallback_ {nullptr};
+    void *onAllErrorData_ {nullptr};
 
     // serch happath callback
     SearchHapPathCallBack SearchHapPathCallBack_ {nullptr};

@@ -744,11 +744,19 @@ void EcmaContext::EnableUserUncaughtErrorHandler()
 
 void EcmaContext::HandleUncaughtException(JSTaggedValue exception)
 {
-    if (isUncaughtExceptionRegistered_) {
-        return;
-    }
     [[maybe_unused]] EcmaHandleScope handleScope(thread_);
     JSHandle<JSTaggedValue> exceptionHandle(thread_, exception);
+    if (isUncaughtExceptionRegistered_) {
+        auto callback = vm_->GetOnAllErrorCallback();
+        if (callback) {
+            Local<ObjectRef> exceptionRef = JSNApiHelper::ToLocal<ObjectRef>(exceptionHandle);
+            callback(exceptionRef, vm_->GetOnAllData());
+        }
+        if (vm_->GetJSThread()->IsMainThread()) {
+            return;
+        }
+    }
+
     // if caught exceptionHandle type is JSError
     thread_->ClearException();
     if (exceptionHandle->IsJSError()) {
