@@ -197,7 +197,8 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--async-load-abc-test:                Enable asynchronous load abc test. Default: 'false'\n"
     "--compiler-enable-concurrent:         Enable concurrent compile(only support in ark_stub_compiler).\n"
     "                                      Default: 'true'\n"
-    "--compiler-opt-frame-state-elimination: Enable frame state elimination. Default: 'true'\n\n";
+    "--compiler-opt-frame-state-elimination: Enable frame state elimination. Default: 'true'\n"
+    "--enable-inline-property-optimization:  Enable inline property optimization(also enable slack tracking).\n\n";
 
 bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
 {
@@ -338,6 +339,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"compiler-enable-concurrent", required_argument, nullptr, OPTION_COMPILER_ENABLE_CONCURRENT},
         {"compiler-opt-frame-state-elimination", required_argument, nullptr,
             OPTION_COMPILER_OPT_FRAME_STATE_ELIMINATION},
+        {"enable-inline-property-optimization", required_argument, nullptr, OPTION_ENABLE_INLINE_PROPERTY_OPTIMIZATION},
         {nullptr, 0, nullptr, 0},
     };
 
@@ -1319,6 +1321,14 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                  ret = ParseBoolParam(&argBool);
                 if (ret) {
                     SetCompilerEnablePgoSpace(argBool);
+                } else {
+                    return false;
+                }
+                break;
+            case OPTION_ENABLE_INLINE_PROPERTY_OPTIMIZATION:
+                 ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetEnableInlinePropertyOptimization(argBool);
                 } else {
                     return false;
                 }

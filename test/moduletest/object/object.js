@@ -222,3 +222,109 @@ print(JSON.stringify(desc4[1]));
 print(JSON.stringify(desc5[3]));
 print(JSON.stringify(desc6.c));
 print(JSON.stringify(desc7.getBar));
+
+class A {
+    p1 = 1;
+    p2 = 2;
+    p3 = 3;
+    constructor() {
+        this.p4 = 4;
+    }
+}
+var a1 = new A();
+a1.jjj = 4;
+print(ArkTools.getInlinedPropertiesCount(a1));
+var a2 = new A();
+a2.aaa1 = 5;
+a2.aaa2 = 5;
+a2.aaa3 = 5;
+a2.aaa4 = 5;
+a2.aaa5 = 5;
+a2.aaa6 = 5;
+print(ArkTools.getInlinedPropertiesCount(a2));
+var a3 = new A();
+var a4 = new A();
+var a5 = new A();
+var a6 = new A();
+var a7 = new A();
+print(ArkTools.getInlinedPropertiesCount(a7));
+var a8 = new A();
+print(a3.p2);
+print(a7.p3);
+
+for (let i = 0; i < 2000; i++) {
+    var tmp = "jj" + i;
+    a2[tmp] = i;
+}
+print(a2.aaa6);
+print(a2.jj1000);
+
+class B extends A {
+    p5 = 5;
+    constructor() {
+        super();
+        this.p6 = 6;
+    }
+}
+var b1 = new B();
+b1.jjj = 4;
+print(ArkTools.getInlinedPropertiesCount(b1));
+var b2 = new B();
+var b3 = new B();
+var b4 = new B();
+var b5 = new B();
+var b6 = new B();
+var b7 = new B();
+print(ArkTools.getInlinedPropertiesCount(b7));
+
+class C extends Date {
+    p5 = 5;
+    constructor() {
+        super();
+        this.p6 = 6;
+    }
+}
+var c1 = new C();
+c1.jjj = 4;
+print(ArkTools.getInlinedPropertiesCount(c1));
+var c2 = new C();
+var c3 = new C();
+var c4 = new C();
+var c5 = new C();
+var c6 = new C();
+var c7 = new C();
+print(ArkTools.getInlinedPropertiesCount(c7));
+
+function func1() {
+    this.a1 = 1;
+    this.a2 = 2;
+    this.a3 = 2;
+}
+var f1 = new func1();
+f1.jjj = 4;
+print(ArkTools.getInlinedPropertiesCount(f1));
+var f2 = new func1();
+print(ArkTools.getInlinedPropertiesCount(f2));
+var f3 = new func1();
+f3.aaa1 = 5;
+f3.aaa2 = 5;
+f3.aaa3 = 5;
+f3.aaa4 = 5;
+f3.aaa5 = 5;
+f3.aaa6 = 5;
+var f4 = new func1();
+var f5 = new func1();
+var f6 = new func1();
+var f7 = new func1();
+print(ArkTools.getInlinedPropertiesCount(f7));
+
+function func2() {
+    this.a1 = 1;
+    this.a2 = 2;
+    this.a3 = 2;
+}
+var f8 = new func2();
+print(ArkTools.getInlinedPropertiesCount(f8));
+func2.prototype = A.prototype;
+var f9 = new func2();
+print(ArkTools.getInlinedPropertiesCount(f9));

@@ -132,6 +132,7 @@ public:
     static bool BigIntEquals(JSTaggedType left, JSTaggedType right);
     static bool BigIntSameValueZero(JSTaggedType key, JSTaggedType other);
     static JSTaggedValue JSHClassFindProtoTransitions(JSHClass *cls, JSTaggedValue key, JSTaggedValue proto);
+    static void FinishObjSizeTracking(JSHClass *cls);
     static JSTaggedValue NumberHelperStringToDouble(EcmaString *str);
     static JSTaggedValue GetStringToListCacheArray(uintptr_t argGlue);
     static int FastArraySort(JSTaggedType x, JSTaggedType y);

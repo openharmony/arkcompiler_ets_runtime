@@ -2255,6 +2255,30 @@ inline GateRef StubBuilder::GetInlinedPropOffsetFromHClass(GateRef hclass, GateR
     return ZExtInt32ToInt64(propOffset);
 }
 
+inline GateRef StubBuilder::IsObjSizeTrackingInProgress(GateRef hclass)
+{
+    GateRef count = GetConstructionCounter(hclass);
+    return Int32NotEqual(count, Int32(0));
+}
+
+inline GateRef StubBuilder::GetConstructionCounter(GateRef hclass)
+{
+    GateRef bitfield = Load(VariableType::INT32(), hclass, IntPtr(JSHClass::BIT_FIELD_OFFSET));
+    return Int32And(Int32LSR(bitfield,
+        Int32(JSHClass::ConstructionCounterBits::START_BIT)),
+        Int32((1LU << JSHClass::ConstructionCounterBits::SIZE) - 1));
+}
+
+inline void StubBuilder::SetConstructionCounter(GateRef glue, GateRef hclass, GateRef count)
+{
+    GateRef bitfield = Load(VariableType::INT32(), hclass, IntPtr(JSHClass::BIT_FIELD_OFFSET));
+    GateRef encodeValue = Int32LSL(count, Int32(JSHClass::ConstructionCounterBits::START_BIT));
+    GateRef mask =
+        Int32(((1LU << JSHClass::ConstructionCounterBits::SIZE) - 1) << JSHClass::ConstructionCounterBits::START_BIT);
+    bitfield = Int32Or(Int32And(bitfield, Int32Not(mask)), encodeValue);
+    Store(VariableType::INT32(), glue, hclass, IntPtr(JSHClass::BIT_FIELD_OFFSET), bitfield);
+}
+
 inline void StubBuilder::IncNumberOfProps(GateRef glue, GateRef hClass)
 {
     GateRef propNums = GetNumberOfPropsFromHClass(hClass);
