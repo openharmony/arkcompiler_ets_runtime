@@ -1273,6 +1273,16 @@ public:
     void PushContext(EcmaContext *context);
     void PopContext();
 
+    void SetStackStart(uint64_t stackStart)
+    {
+        glueData_.stackStart_ = stackStart;
+    }
+
+    void SetStackLimit(uint64_t stackLimit)
+    {
+        glueData_.stackLimit_ = stackLimit;
+    }
+
     EcmaContext *GetCurrentEcmaContext() const
     {
         return glueData_.currentContext_;

@@ -96,6 +96,11 @@ struct HmsMap {
     uint32_t sinceVersion;
 };
 
+struct StackInfo {
+    size_t stackStart;
+    size_t stackSize;
+};
+
 using WeakRefClearCallBack = void (*)(void *);
 using WeakFinalizeTaskCallback = std::function<void()>;
 using NativePointerCallback = void (*)(void *env, void* data, void* hint);
@@ -1547,6 +1552,8 @@ public:
 
     static EcmaVM *CreateJSVM(const RuntimeOption &option);
     static void DestroyJSVM(EcmaVM *ecmaVm);
+    static void SetStackInfo(const EcmaVM *vm, const panda::StackInfo &info);
+    static panda::StackInfo GetStackInfo(const EcmaVM *vm);
     static void RegisterUncatchableErrorHandler(EcmaVM *ecmaVm, const UncatchableErrorHandler &handler);
 
     // aot load

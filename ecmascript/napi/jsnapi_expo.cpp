@@ -4392,6 +4392,21 @@ void JSNApi::DestroyJSVM(EcmaVM *ecmaVm)
     EcmaVM::Destroy(ecmaVm);
 }
 
+void JSNApi::SetStackInfo(const EcmaVM *vm, const panda::StackInfo &info)
+{
+    JSThread *thread = vm->GetJSThread();
+    thread->SetStackStart(info.stackStart);
+    thread->SetStackLimit(info.stackStart - info.stackSize);
+}
+
+panda::StackInfo JSNApi::GetStackInfo(const EcmaVM *vm)
+{
+    JSThread *thread = vm->GetJSThread();
+    size_t stackStart = thread->GetStackStart();
+    size_t stackSize = stackStart - thread->GetStackLimit();
+    return {stackStart, stackSize};
+}
+
 void JSNApi::RegisterUncatchableErrorHandler(EcmaVM *ecmaVm, const UncatchableErrorHandler &handler)
 {
     ecmaVm->RegisterUncatchableErrorHandler(handler);
