@@ -17,6 +17,7 @@
 #include "ecmascript/compiler/stub_builder.h"
 
 namespace panda::ecmascript::kungfu {
+enum class ICStubType { LOAD, STORE };
 class ICStubBuilder : public StubBuilder {
 public:
     explicit ICStubBuilder(StubBuilder *parent)
@@ -53,6 +54,7 @@ public:
     void TryLoadGlobalICByName(Variable* result, Label* tryFastPath, Label *slowPath, Label *success);
     void TryStoreGlobalICByName(Variable* result, Label* tryFastPath, Label *slowPath, Label *success);
 private:
+    template<ICStubType type>
     void NamedICAccessor(Variable* cachedHandler, Label *tryICHandler);
     void ValuedICAccessor(Variable* cachedHandler, Label *tryICHandler, Label* tryElementIC);
     void SetLabels(Label* tryFastPath, Label *slowPath, Label *success)
