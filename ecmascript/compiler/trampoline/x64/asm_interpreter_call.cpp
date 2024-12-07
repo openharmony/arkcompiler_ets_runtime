@@ -1908,9 +1908,24 @@ void AsmInterpreterCall::ThrowStackOverflowExceptionAndReturnToAsmInterpBridgeFr
     __ Movq(rbp, rsp);
     __ Popq(rbp);
 
+    // +----------------------------------------------------+
+    // |                     return addr                    |
+    // |----------------------------------------------------| <---- rbp
+    // |                     frame type                     |           ^                       ^
+    // |----------------------------------------------------|           |                       |
+    // |                     prev rbp                       |           |                       |
+    // |----------------------------------------------------|           |                       |
+    // |                     pc                             |           |                       |
+    // |----------------------------------------------------|  PushAsmInterpBridgeFrame     total skip
+    // |                     pushAlignBytes                 |           |                       |
+    // |----------------------------------------------------|           |                       |
+    // |       5 callee save regs(r12,r13,r14,r15,rbx)      |           |                       |
+    // |----------------------------------------------------|           v                       |
+    // |                     lr                 		    |                                   |
+    // +----------------------------------------------------+                                   v
     // Base on PushAsmInterpBridgeFrame, need to skip AsmInterpBridgeFrame size, callee Save Registers(5)
     // and PushAlignBytes(1)
-    int32_t skipNum = AsmInterpretedBridgeFrame::GetSize(false) / FRAME_SLOT_SIZE + 5 + 1;
+    int32_t skipNum = static_cast<int32_t>(AsmInterpretedBridgeFrame::GetSize(false)) / FRAME_SLOT_SIZE + 5 + 1;
     __ Leaq(Operand(rbp, -skipNum * FRAME_SLOT_SIZE), rsp);
     __ Ret();
 }

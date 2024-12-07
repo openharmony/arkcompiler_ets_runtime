@@ -1366,14 +1366,15 @@ void TypedNativeInlineLowering::LowerDataViewProtoFunc(GateRef gate, DataViewPro
         builder_.Jump(&isNotDetachedBuffer);
     }
     builder_.Bind(&isNotDetachedBuffer);
+    GateRef sizeOffset = builder_.IntPtr(JSDataView::BYTE_LENGTH_OFFSET);
+    GateRef size = builder_.ZExtInt32ToInt64(builder_.Load(VariableType::INT32(), thisobj, sizeOffset));
+    GateRef elementSize = BuiltinIdToSize(builtinId);
+    GateRef totalSize = builder_.Int64Add(builder_.ZExtInt32ToInt64(requestIndex), elementSize);
+
+    builder_.DeoptCheck(
+        builder_.Int64UnsignedGreaterThanOrEqual(size, totalSize), frameState, DeoptType::TOTALSIZEOVERFLOW);
     GateRef byteOffset = builder_.IntPtr(JSDataView::BYTE_OFFSET_OFFSET);
     GateRef offset = builder_.Load(VariableType::INT32(), thisobj, byteOffset);
-    GateRef sizeOffset = builder_.IntPtr(JSDataView::BYTE_LENGTH_OFFSET);
-    GateRef size = builder_.Load(VariableType::INT32(), thisobj, sizeOffset);
-    GateRef elementSize = BuiltinIdToSize(builtinId);
-    GateRef totalSize = builder_.Int32Add(requestIndex, elementSize);
-
-    builder_.DeoptCheck(builder_.Int32LessThanOrEqual(totalSize, size), frameState, DeoptType::TOTALSIZEOVERFLOW);
     GateRef bufferIndex = builder_.Int32Add(requestIndex, offset);
     BRANCH_CIR(builder_.CheckJSType(buffer, JSType::BYTE_ARRAY), &getPointFromByteArray, &getPointFromNotByteArray);
     builder_.Bind(&getPointFromByteArray);
@@ -1426,22 +1427,22 @@ GateRef TypedNativeInlineLowering::BuiltinIdToSize(GateRef ID)
         case BuiltinsStubCSigns::ID::DataViewGetUint8:
         case BuiltinsStubCSigns::ID::DataViewSetUint8:
         case BuiltinsStubCSigns::ID::DataViewSetInt8:
-            return builder_.Int32(ElmentSize::BITS_8);
+            return builder_.Int64(ElmentSize::BITS_8);
         case BuiltinsStubCSigns::ID::DataViewGetInt16:
         case BuiltinsStubCSigns::ID::DataViewGetUint16:
         case BuiltinsStubCSigns::ID::DataViewSetInt16:
         case BuiltinsStubCSigns::ID::DataViewSetUint16:
-            return builder_.Int32(ElmentSize::BITS_16);
+            return builder_.Int64(ElmentSize::BITS_16);
         case BuiltinsStubCSigns::ID::DataViewGetUint32:
         case BuiltinsStubCSigns::ID::DataViewGetInt32:
         case BuiltinsStubCSigns::ID::DataViewGetFloat32:
         case BuiltinsStubCSigns::ID::DataViewSetUint32:
         case BuiltinsStubCSigns::ID::DataViewSetInt32:
         case BuiltinsStubCSigns::ID::DataViewSetFloat32:
-            return builder_.Int32(ElmentSize::BITS_32);
+            return builder_.Int64(ElmentSize::BITS_32);
         case BuiltinsStubCSigns::ID::DataViewGetFloat64:
         case BuiltinsStubCSigns::ID::DataViewSetFloat64:
-            return builder_.Int32(ElmentSize::BITS_64);
+            return builder_.Int64(ElmentSize::BITS_64);
         default:
             UNREACHABLE();
     }
