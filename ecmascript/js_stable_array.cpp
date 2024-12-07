@@ -475,8 +475,10 @@ void JSStableArray::ProcessElements(JSThread *thread, JSHandle<JSTaggedValue> re
     JSHandle<JSObject> obj(thread, receiverValue.GetTaggedValue());
     JSTaggedValue element = JSTaggedValue::Undefined();
     for (uint32_t k = 0; k < len; k++) {
-        element = ElementAccessor::Get(obj, k);
-        if (element.IsHole() && JSTaggedValue::HasProperty(thread, receiverValue, k)) {
+        if (receiverValue->IsStableJSArray(thread)) {
+            element = k < ElementAccessor::GetElementsLength(obj) ?
+                      ElementAccessor::Get(obj, k) : JSTaggedValue::Hole();
+        } else {
             element = JSArray::FastGetPropertyByValue(thread, receiverValue, k).GetTaggedValue();
             RETURN_IF_ABRUPT_COMPLETION(thread);
         }
@@ -710,14 +712,14 @@ JSTaggedValue JSStableArray::Join(JSHandle<JSArray> receiver, EcmaRuntimeCallInf
     }
     CVector<JSHandle<EcmaString>> vec;
     vec.reserve(len);
+    JSTaggedValue element = JSTaggedValue::Hole();
     for (uint32_t k = 0; k < len; k++) {
-        JSTaggedValue element = JSTaggedValue::Undefined();
-        if (k < elementsLength) {
-            element = ElementAccessor::Get(obj, k);
-            if (element.IsHole() && JSTaggedValue::HasProperty(thread, receiverValue, k)) {
-                element = JSArray::FastGetPropertyByValue(thread, receiverValue, k).GetTaggedValue();
-                RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-            }
+        if (receiverValue->IsStableJSArray(thread)) {
+            element = k < ElementAccessor::GetElementsLength(obj) ?
+                      ElementAccessor::Get(obj, k) : JSTaggedValue::Hole();
+        } else {
+            element = JSArray::FastGetPropertyByValue(thread, receiverValue, k).GetTaggedValue();
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         }
         if (!element.IsUndefinedOrNull() && !element.IsHole()) {
             if (!element.IsString()) {
