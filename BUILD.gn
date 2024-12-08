@@ -436,6 +436,10 @@ config("ark_jsruntime_common_config") {
     defines += [ "PANDA_TARGET_OHOS" ]
   }
 
+  if (is_qemu_runtime && is_ohos) {
+    defines += [ "OHOS_FOR_QEMU" ]
+  }
+
   if (!is_mac && target_os != "ios" && !use_libfuzzer && !enable_lto_O0) {
     cflags_cc += [ "-flto=thin" ]
     ldflags += [ "-flto=thin" ]
