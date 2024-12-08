@@ -10,5 +10,3 @@ dynamicLazySequence.js;dynamicLazySequence;esm;dynamicLazySequence.js;xxdynamicL
 dynamicLazySequence2.js;dynamicLazySequence2;esm;dynamicLazySequence2.js;xxdynamicLazySequence2xx
 dynamicSubFile.js;dynamicSubFile;esm;dynamicSubFile.js;xxdynamicSubFilexx
 moduleLazyImport.js;moduleLazyImport;esm;moduleLazyImport.js;xxmoduleLazyImportxx
-asyncUseLazyImport.ts;asyncUseLazyImport;esm;asyncUseLazyImport.ts;xxasyncUseLazyImportxx
-lazyExport.js;lazyExport;esm;lazyExport.js;xxlazyExportxx

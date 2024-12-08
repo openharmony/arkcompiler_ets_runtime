@@ -11,22 +11,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-this is E
-this is H
-H
-this is entry
-this is F
-F func
-this is D_Cjs
-this is A
-{"foo":"module use cjsModule"}
-this is B {"foo":"module use cjsModule"}
-this is C_Cjs
-foo5
-instance 3
-E func
-H
-this is dynamicLazySequence
-this is dynamicSubFile
-this is dynamicLazySequence2
-dynamicSubFile
+import("//arkcompiler/ets_runtime/test/test_helper.gni")
+
+host_moduletest_action("asyncUseLazyValue") {
+  deps = []
+  entry_point = "--entry-point=moduleLazyImport"
+  is_module = true
+  is_merge = true
+  is_merge_abc = true
+  async_load_abc_test = true
+}

@@ -20,19 +20,8 @@
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/tagged_queue.h"
-#include "ecmascript/ecma_context.h"
 
 namespace panda::ecmascript::job {
-MicroJobScope::MicroJobScope(JSThread* thread) : thread_(thread)
-{
-    thread_->GetCurrentEcmaContext()->AddPendingJobEnterCount();
-}
-
-MicroJobScope::~MicroJobScope()
-{
-    thread_->GetCurrentEcmaContext()->MinusPendingJobEnterCount();
-}
-
 uint32_t MicroJobQueue::GetPromiseQueueSize(JSThread *thread, JSHandle<MicroJobQueue> jobQueue)
 {
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
@@ -69,7 +58,6 @@ void MicroJobQueue::EnqueueJob(JSThread *thread, JSHandle<MicroJobQueue> jobQueu
 void MicroJobQueue::ExecutePendingJob(JSThread *thread, JSHandle<MicroJobQueue> jobQueue)
 {
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
-    [[maybe_unused]] MicroJobScope microJobScope(thread);
     JSMutableHandle<TaggedQueue> promiseQueue(thread, jobQueue->GetPromiseJobQueue());
     JSMutableHandle<PendingJob> pendingJob(thread, JSTaggedValue::Undefined());
     while (!promiseQueue->Empty()) {

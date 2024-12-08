@@ -64,8 +64,6 @@ enum ArkProperties {
     ENABLE_MODULE_LOG = 1 << 25,
     ENABLE_SERIALIZATION_TIMEOUT_CHECK = 1 << 26,
     ENABLE_PAGETAG_THREAD_ID = 1 << 27,
-    // TEMP LAZY TEST
-    ENABLE_LAZY_PROMISE_FIX = 1 << 28,
 };
 
 // asm interpreter control parsed option
@@ -640,11 +638,6 @@ public:
     bool EnablePageTagThreadId() const
     {
         return (static_cast<uint32_t>(arkProperties_) & ArkProperties::ENABLE_PAGETAG_THREAD_ID) != 0;
-    }
-
-    bool EnableLazyPromiseFix() const
-    {
-        return (static_cast<uint32_t>(arkProperties_) & ArkProperties::ENABLE_LAZY_PROMISE_FIX) != 0;
     }
 
     bool WasSetMaxNonmovableSpaceCapacity() const
