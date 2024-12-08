@@ -17,13 +17,19 @@ declare function print(arg:any):string;
 function foo(a: any, b: any) {
     return this + a + b;
 }
+//aot: [trace] aot call builtin: Function.prototype.apply, caller function name:func_main_0@builtinFunctionFunction
 print(foo.apply(1, [2, 3])); //: 6
+//aot: [trace] aot call builtin: Function.prototype.apply, caller function name:func_main_0@builtinFunctionFunction
 print(foo.apply(1)); //: NaN
+//aot: [trace] aot call builtin: Function.prototype.bind, caller function name:func_main_0@builtinFunctionFunction
 let bfoo = foo.bind(2);
 print(bfoo(3, 4)); //: 9
+//aot: [trace] aot call builtin: Function.prototype.bind, caller function name:func_main_0@builtinFunctionFunction
 let bfoo1 = foo.bind(5, 6);
 print(bfoo1(7)); //: 18
+//aot: [trace] aot call builtin: Function.prototype.call, caller function name:func_main_0@builtinFunctionFunction
 print(foo.call(10, 20)); //: NaN
+//aot: [trace] aot call builtin: Function.prototype.call, caller function name:func_main_0@builtinFunctionFunction
 print(foo.call(10, 20, 30)); //: 60
 class C {}
 //aot: [trace] aot inline builtin: Function.prototype.hasInstance, caller function name:func_main_0@builtinFunctionFunction

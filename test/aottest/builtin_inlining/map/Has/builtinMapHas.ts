@@ -40,6 +40,7 @@ let myMap = new Map([[0, 0], [0.0, 5], [-1, 1], [2.5, -2.5], [NaN, Infinity], [2
 print(myMap.has()); //: false
 
 // Check with adding element undefined
+//aot: [trace] aot call builtin: Map.Set, caller function name:func_main_0@builtinMapHas
 myMap.set(undefined, 42);
 //aot: [trace] aot inline builtin: Map.has, caller function name:func_main_0@builtinMapHas
 print(myMap.has()); //: true
@@ -67,7 +68,9 @@ print(myMap.has(-21, 10.2, 15)); //: false
 print(myMap.has(2.5, -800, 0.56, 0)); //: true
 
 // Check after inserting elements
+//aot: [trace] aot call builtin: Map.Set, caller function name:func_main_0@builtinMapHas
 myMap.set(2000, 1e-98);
+//aot: [trace] aot call builtin: Map.Set, caller function name:func_main_0@builtinMapHas
 myMap.set(133.33, -1);
 //aot: [trace] aot inline builtin: Map.has, caller function name:func_main_0@builtinMapHas
 print(myMap.has(2000)); //: true
@@ -146,7 +149,7 @@ try {
 
 // Check after clearing
 myMap.clear();
-//aot: [trace] aot inline builtin: Map.clear, caller function name:func_main_0@builtinMapHas
+//aot: [trace] aot call builtin: Map.clear, caller function name:func_main_0@builtinMapHas
 print(myMap.has(2000));
 //aot: [trace] aot inline builtin: Map.has, caller function name:func_main_0@builtinMapHas
 //: false
@@ -156,6 +159,7 @@ print(myMap.has(2000));
 
 function checkObjWithMapProto() {
     let o = {};
+    //aot: [trace] aot call builtin: Object.SetPrototypeOf, caller function name:#*#checkObjWithMapProto@builtinMapHas
     Object.setPrototypeOf(o, Map.prototype);
     try {
         print((o as Map<number, number>).has(1));

@@ -112,7 +112,8 @@ public:
           acc_(circuit),
           builder_(circuit, cmpCfg),
           dependEntry_(circuit->GetDependRoot()),
-          enableLoweringBuiltin_(enableLoweringBuiltin)
+          enableLoweringBuiltin_(enableLoweringBuiltin),
+          traceBuiltins_(env != nullptr ? env->GetJSOptions().GetTraceBuiltins() : false)
     {
     }
 
@@ -274,6 +275,7 @@ private:
     CircuitBuilder builder_;
     GateRef dependEntry_;
     bool enableLoweringBuiltin_ {false};
+    bool traceBuiltins_ {false};
 };
 }  // panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_TYPED_HCR_LOWERING_H

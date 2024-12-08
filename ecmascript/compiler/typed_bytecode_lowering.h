@@ -226,7 +226,7 @@ private:
     void SpeculateNumber(const UnOpTypeInfoAccessor& tacc);
     void SpeculateConditionJump(const ConditionJumpTypeInfoAccessor &tacc, bool flag);
     void SpeculateCallBuiltin(GateRef gate, GateRef func, const std::vector<GateRef> &args,
-                              BuiltinsStubCSigns::ID id, bool isThrow, bool isSideEffect = false);
+                              BuiltinsStubCSigns::ID id, bool isThrow);
     void SpeculateCallBuiltinFromGlobal(GateRef gate, const std::vector<GateRef> &args,
                                         BuiltinsStubCSigns::ID id, bool isThrow, bool isSideEffect = false);
     void DeleteConstDataIfNoUser(GateRef gate);

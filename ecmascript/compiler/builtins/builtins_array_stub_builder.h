@@ -39,6 +39,9 @@ BUILTINS_WITH_ARRAY_STUB_BUILDER(DECLARE_BUILTINS_ARRAY_STUB_BUILDER)
 
     void Sort(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *result, Label *exit, Label *slowPath);
 
+    void ArrayIteratorNext(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *result, Label *exit,
+                           Label *slowPath);
+
     void SortAfterArgs(GateRef glue, GateRef thisValue, GateRef callbackFnHandle,
                        Variable *result, Label *exit, Label *slowPath, GateRef hir = Circuit::NullGate());
 

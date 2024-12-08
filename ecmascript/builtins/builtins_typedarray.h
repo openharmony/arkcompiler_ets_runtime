@@ -61,8 +61,8 @@
 // where BuiltinsTypedArray::func refers to the native implementation.
 #define BUILTIN_TYPED_ARRAY_PROTOTYPE_GETTERS(V)                                            \
     V("buffer",     GetBuffer,     INVALID) /* get %TypedArray%.prototype.buffer */         \
-    V("byteLength", GetByteLength, TypedArrayGetByteLength) /* get %TypedArray%.prototype.byteLength */     \
-    V("byteOffset", GetByteOffset, TypedArrayGetByteOffset) /* get %TypedArray%.prototype.byteOffset */     \
+    V("byteLength", GetByteLength, INVALID) /* get %TypedArray%.prototype.byteLength */     \
+    V("byteOffset", GetByteOffset, INVALID) /* get %TypedArray%.prototype.byteOffset */     \
     V("length",     GetLength,     INVALID) /* get %TypedArray%.prototype.length */
 
 // List of functions in %TypedArray%.prototype, excluding the constructor and '@@' properties.

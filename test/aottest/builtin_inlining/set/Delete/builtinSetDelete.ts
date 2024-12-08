@@ -150,7 +150,7 @@ print(mySet.delete(obj)); //: false
 
 // Check after clearing
 mySet.clear();
-//aot: [trace] aot inline builtin: Set.clear, caller function name:func_main_0@builtinSetDelete
+//aot: [trace] aot call builtin: Set.clear, caller function name:func_main_0@builtinSetDelete
 print(mySet.delete(2000));
 //aot: [trace] aot inline builtin: Set.delete, caller function name:func_main_0@builtinSetDelete
 //: false
@@ -275,6 +275,7 @@ print("case 3"); //: case 3
 
 function checkObjWithSetProto() {
     let o = {};
+    //aot: [trace] aot call builtin: Object.SetPrototypeOf, caller function name:#*#checkObjWithSetProto@builtinSetDelete
     Object.setPrototypeOf(o, Set.prototype);
     try {
         o.delete(1);

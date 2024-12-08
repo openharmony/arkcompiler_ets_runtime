@@ -52,6 +52,7 @@ print(xFilterFunc)
 
 // Check without args
 try {
+    //aot: [trace] aot call builtin: Array.prototype.filter, caller function name:func_main_0@builtinArrayFilter
     print(x.filter())
 } catch(e) {
     print(e) //: TypeError: the callbackfun is not callable.
@@ -136,6 +137,7 @@ function filterCase3() {
 
     //aot: [trace] aot inline builtin: Array.prototype.filter, caller function name:#*#filterCase3@builtinArrayFilter
     print(marr.filter(x => x == 1)); //: 1
+    //aot: [trace] aot call builtin: Object.SetPrototypeOf, caller function name:#*#filterCase3@builtinArrayFilter
     Object.setPrototypeOf(marr, mimicArray)
 
     print(marr.filter(x => x == 1)); //aot: [trace] Check Type: BuiltinInstanceHClassMismatch
@@ -153,6 +155,7 @@ function filterCase4() {
             return x(0)
         }
     }
+    //aot: [trace] aot call builtin: Object.SetPrototypeOf, caller function name:#*#filterCase4@builtinArrayFilter
     Object.setPrototypeOf(arr2, notArray)
 
     //aot: [trace] aot inline builtin: Array.prototype.filter, caller function name:#*#filterCase4@builtinArrayFilter

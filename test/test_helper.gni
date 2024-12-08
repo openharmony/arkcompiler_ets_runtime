@@ -1292,6 +1292,11 @@ template("host_aot_js_test_action") {
       _aot_compile_options_ += " --compiler-trace-inline=true"
     }
 
+    if (defined(invoker.is_enable_builtins_trace) &&
+        invoker.is_enable_builtins_trace) {
+      _aot_compile_options_ += " --compiler-trace-builtins=true"
+    }
+
     if (defined(invoker.userDefinedMethodsInModule) &&
         invoker.userDefinedMethodsInModule) {
       _aot_compile_options_ += " --compiler-module-methods=2"
@@ -1573,6 +1578,11 @@ template("host_aot_js_test_action") {
         _aot_compile_options_ += " --compiler-trace-inline=true"
       }
 
+      if (defined(invoker.is_enable_builtins_trace) &&
+          invoker.is_enable_builtins_trace) {
+        _aot_compile_options_ += " --compiler-trace-builtins=true"
+      }
+
       if (defined(invoker.userDefinedMethodsInModule) &&
           invoker.userDefinedMethodsInModule) {
         _aot_compile_options_ += " --compiler-module-methods=2"
@@ -1845,6 +1855,11 @@ template("host_aot_js_test_action") {
       if (defined(invoker.is_enable_inline_trace) &&
           invoker.is_enable_inline_trace) {
         _aot_compile_options_ += " --compiler-trace-inline=true"
+      }
+
+      if (defined(invoker.is_enable_builtins_trace) &&
+          invoker.is_enable_builtins_trace) {
+        _aot_compile_options_ += " --compiler-trace-builtins=true"
       }
 
       if (defined(invoker.userDefinedMethodsInModule) &&
@@ -2218,6 +2233,11 @@ template("host_aot_js_assert_test_action") {
     if (defined(invoker.is_enable_inline_trace) &&
         invoker.is_enable_inline_trace) {
       _aot_compile_options_ += " --compiler-trace-inline=true"
+    }
+
+    if (defined(invoker.is_enable_builtins_trace) &&
+        invoker.is_enable_builtins_trace) {
+      _aot_compile_options_ += " --compiler-trace-builtins=true"
     }
 
     if (defined(invoker.userDefinedMethodsInModule) &&
@@ -2648,6 +2668,11 @@ template("host_aot_test_action") {
       _aot_compile_options_ += " --compiler-trace-inline=true"
     }
 
+    if (defined(invoker.is_enable_builtins_trace) &&
+        invoker.is_enable_builtins_trace) {
+      _aot_compile_options_ += " --compiler-trace-builtins=true"
+    }
+
     if (defined(invoker.userDefinedMethodsInModule) &&
         invoker.userDefinedMethodsInModule) {
       _aot_compile_options_ += " --compiler-module-methods=2"
@@ -2740,6 +2765,11 @@ template("host_aot_test_action") {
     if (defined(invoker.is_enable_inline_trace) &&
         invoker.is_enable_inline_trace) {
       _aot_compile_options_ += " --compiler-trace-inline=true"
+    }
+
+    if (defined(invoker.is_enable_builtins_trace) &&
+        invoker.is_enable_builtins_trace) {
+      _aot_compile_options_ += " --compiler-trace-builtins=true"
     }
 
     if (defined(invoker.userDefinedMethodsInModule) &&
@@ -3085,6 +3115,11 @@ template("host_aot_test_action") {
         _aot_compile_options_ += " --compiler-trace-inline=true"
       }
 
+      if (defined(invoker.is_enable_builtins_trace) &&
+          invoker.is_enable_builtins_trace) {
+        _aot_compile_options_ += " --compiler-trace-builtins=true"
+      }
+
       if (defined(invoker.userDefinedMethodsInModule) &&
           invoker.userDefinedMethodsInModule) {
         _aot_compile_options_ += " --compiler-module-methods=2"
@@ -3179,6 +3214,11 @@ template("host_aot_test_action") {
       if (defined(invoker.is_enable_inline_trace) &&
           invoker.is_enable_inline_trace) {
         _aot_compile_options_ += " --compiler-trace-inline=true"
+      }
+
+      if (defined(invoker.is_enable_builtins_trace) &&
+          invoker.is_enable_builtins_trace) {
+        _aot_compile_options_ += " --compiler-trace-builtins=true"
       }
 
       if (defined(invoker.userDefinedMethodsInModule) &&
@@ -3514,6 +3554,11 @@ template("host_aot_test_action") {
         _aot_compile_options_ += " --compiler-trace-inline=true"
       }
 
+      if (defined(invoker.is_enable_builtins_trace) &&
+          invoker.is_enable_builtins_trace) {
+        _aot_compile_options_ += " --compiler-trace-builtins=true"
+      }
+
       if (defined(invoker.userDefinedMethodsInModule) &&
           invoker.userDefinedMethodsInModule) {
         _aot_compile_options_ += " --compiler-module-methods=2"
@@ -3610,6 +3655,11 @@ template("host_aot_test_action") {
       if (defined(invoker.is_enable_inline_trace) &&
           invoker.is_enable_inline_trace) {
         _aot_compile_options_ += " --compiler-trace-inline=true"
+      }
+
+      if (defined(invoker.is_enable_builtins_trace) &&
+          invoker.is_enable_builtins_trace) {
+        _aot_compile_options_ += " --compiler-trace-builtins=true"
       }
 
       if (defined(invoker.userDefinedMethodsInModule) &&
@@ -4054,6 +4104,11 @@ template("host_aot_assert_test_action") {
       _aot_compile_options_ += " --compiler-trace-inline=true"
     }
 
+    if (defined(invoker.is_enable_builtins_trace) &&
+        invoker.is_enable_builtins_trace) {
+      _aot_compile_options_ += " --compiler-trace-builtins=true"
+    }
+
     if (defined(invoker.userDefinedMethodsInModule) &&
         invoker.userDefinedMethodsInModule) {
       _aot_compile_options_ += " --compiler-module-methods=2"
@@ -4146,6 +4201,11 @@ template("host_aot_assert_test_action") {
     if (defined(invoker.is_enable_inline_trace) &&
         invoker.is_enable_inline_trace) {
       _aot_compile_options_ += " --compiler-trace-inline=true"
+    }
+
+    if (defined(invoker.is_enable_builtins_trace) &&
+        invoker.is_enable_builtins_trace) {
+      _aot_compile_options_ += " --compiler-trace-builtins=true"
     }
 
     if (defined(invoker.userDefinedMethodsInModule) &&
@@ -4765,6 +4825,7 @@ template("host_aot_builtin_inlining_test_action") {
     is_enable_trace_deopt = true
     log_option = " --log-info=trace"
     is_enable_inline_trace = true
+    is_enable_builtins_trace = true
     is_enable_enableArkTools = true
     gen_expect_output = true
     is_test_llvm_only = true

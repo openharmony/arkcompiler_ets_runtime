@@ -70,6 +70,7 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--compiler-trace-bc:                  Enable tracing bytecode for aot runtime. Default: 'false'\n"
     "--compiler-trace-deopt:               Enable tracing deopt for aot runtime. Default: 'false'\n"
     "--compiler-trace-inline:              Enable tracing inline function for aot runtime. Default: 'false'\n"
+    "--compiler-trace-builtins:            Enable tracing builtins function for aot runtime. Default: 'false'\n"
     "--compiler-trace-value-numbering:     Enable tracing value numbering for aot runtime. Default: 'false'\n"
     "--compiler-max-inline-bytecodes       Set max bytecodes count which aot function can be inlined. Default: '25'\n"
     "--compiler-deopt-threshold:           Set max count which aot function can occur deoptimization. Default: '10'\n"
@@ -348,6 +349,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"enable-inline-property-optimization", required_argument, nullptr, OPTION_ENABLE_INLINE_PROPERTY_OPTIMIZATION},
         {"compiler-enable-aot-code-comment", required_argument, nullptr, OPTION_COMPILER_ENABLE_AOT_CODE_COMMENT},
         {"compiler-an-file-max-size", required_argument, nullptr, OPTION_COMPILER_AN_FILE_MAX_SIZE},
+        {"compiler-trace-builtins", required_argument, nullptr, OPTION_COMPILER_TRACE_BUILTINS},
         {nullptr, 0, nullptr, 0},
     };
 
@@ -1340,6 +1342,14 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                  ret = ParseBoolParam(&argBool);
                 if (ret) {
                     SetEnableInlinePropertyOptimization(argBool);
+                } else {
+                    return false;
+                }
+                break;
+            case OPTION_COMPILER_TRACE_BUILTINS:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetTraceBuiltins(argBool);
                 } else {
                     return false;
                 }

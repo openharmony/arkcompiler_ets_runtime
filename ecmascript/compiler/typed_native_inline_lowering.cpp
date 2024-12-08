@@ -277,12 +277,6 @@ GateRef TypedNativeInlineLowering::VisitGate(GateRef gate)
         case OpCode::BIGINT_CONSTRUCTOR_UINT32:
             LowerBigIntConstructorInt32<false>(gate);
             break;
-        case OpCode::MAP_CLEAR:
-            LowerToBuiltinStub(gate, BuiltinsStubCSigns::MapClear);
-            break;
-        case OpCode::SET_CLEAR:
-            LowerToBuiltinStub(gate, BuiltinsStubCSigns::SetClear);
-            break;
         case OpCode::STRING_CHAR_CODE_AT:
             LowerStringCharCodeAt(gate);
             break;
@@ -2062,29 +2056,6 @@ void TypedNativeInlineLowering::LowerToCommonStub(GateRef gate, CommonStubCSigns
         args.emplace_back(acc_.GetValueIn(gate, idx));
     }
     GateRef ret = builder_.CallStub(glue, gate, id, args);
-    acc_.ReplaceGate(gate, builder_.GetStateDepend(), ret);
-}
-
-void TypedNativeInlineLowering::LowerToBuiltinStub(GateRef gate, BuiltinsStubCSigns::ID id)
-{
-    Environment env(gate, circuit_, &builder_);
-    size_t numIn = acc_.GetNumValueIn(gate);
-    ASSERT(numIn <= 4); // 4 : this + three args
-    GateRef glue = acc_.GetGlueFromArgList();
-
-    std::vector<GateRef> args(static_cast<size_t>(BuiltinsArgs::NUM_OF_INPUTS), builder_.Undefined());
-    args[static_cast<size_t>(BuiltinsArgs::GLUE)] = glue;
-    args[static_cast<size_t>(BuiltinsArgs::THISVALUE)] = acc_.GetValueIn(gate, 0);
-    args[static_cast<size_t>(BuiltinsArgs::NUMARGS)] = builder_.Int32(numIn);
-    for (size_t idx = 1; idx < numIn; idx++) { // 1 : skip thisInput
-        args[static_cast<size_t>(BuiltinsArgs::ARG0_OR_ARGV) + idx - 1] = acc_.GetValueIn(gate, idx);
-    }
-
-    const CallSignature *cs = BuiltinsStubCSigns::BuiltinsCSign();
-    ASSERT(cs->IsBuiltinsStub());
-    size_t ptrSize = env.Is32Bit() ? sizeof(uint32_t) : sizeof(uint64_t);
-    GateRef target = builder_.IntPtr(id * ptrSize);
-    GateRef ret = builder_.Call(cs, glue, target, builder_.GetDepend(), args, gate);
     acc_.ReplaceGate(gate, builder_.GetStateDepend(), ret);
 }
 

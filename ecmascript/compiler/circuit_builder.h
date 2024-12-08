@@ -54,6 +54,7 @@ class TypedNativeInlineLowering;
 class StringBuilderOptimizer;
 class PostSchedule;
 class TSHCROptPass;
+class BuiltinLowering;
 
 #define BINARY_ARITHMETIC_METHOD_LIST_WITH_BITWIDTH(V)                    \
     V(Int16Add, Add, MachineType::I16)                                    \
@@ -973,6 +974,7 @@ private:
     friend TypedNativeInlineLowering;
     friend PostSchedule;
     friend TSHCROptPass;
+    friend BuiltinLowering;
 };
 
 class LogicAndBuilder {

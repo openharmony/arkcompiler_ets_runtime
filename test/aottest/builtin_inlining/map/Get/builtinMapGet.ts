@@ -153,7 +153,7 @@ try {
 
 // Check after clearing
 myMap.clear();
-//aot: [trace] aot inline builtin: Map.clear, caller function name:func_main_0@builtinMapGet
+//aot: [trace] aot call builtin: Map.clear, caller function name:func_main_0@builtinMapGet
 print(myMap.get(2000));
 //aot: [trace] aot inline builtin: Map.get, caller function name:func_main_0@builtinMapGet
 //: undefined

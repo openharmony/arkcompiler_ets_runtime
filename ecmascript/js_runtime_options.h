@@ -222,6 +222,7 @@ enum CommandValues {
     OPTION_ENABLE_INLINE_PROPERTY_OPTIMIZATION,
     OPTION_COMPILER_ENABLE_AOT_CODE_COMMENT,
     OPTION_COMPILER_AN_FILE_MAX_SIZE,
+    OPTION_COMPILER_TRACE_BUILTINS,
 };
 static_assert(OPTION_INVALID == 63); // Placeholder for invalid options
 static_assert(OPTION_SPLIT_ONE == 64); // add new option at the bottom, DO NOT modify this value
@@ -1522,6 +1523,16 @@ public:
         return traceInline_;
     }
 
+    bool GetTraceBuiltins() const
+    {
+        return traceBuiltins_;
+    }
+
+    void SetTraceBuiltins(bool value)
+    {
+        traceBuiltins_ = value;
+    }
+
     void SetTraceValueNumbering(bool value)
     {
         traceValueNumbering_ = value;
@@ -2159,6 +2170,7 @@ private:
     std::string compilerSkipMethods_ {""};
     bool pgoTrace_ {false};
     bool traceInline_ {false};
+    bool traceBuiltins_ {false};
     bool traceJIT_ {false};
     bool traceValueNumbering_ {false};
     bool traceInstructionCombine_ {false};

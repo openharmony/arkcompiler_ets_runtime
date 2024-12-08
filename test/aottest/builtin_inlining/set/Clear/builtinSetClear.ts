@@ -46,21 +46,21 @@ let mySet = new Set([0, -5, 2.5]);
 
 // Check without params
 print(mySet.size); //: 3
-//aot: [trace] aot inline builtin: Set.clear, caller function name:func_main_0@builtinSetClear
+//aot: [trace] aot call builtin: Set.clear, caller function name:func_main_0@builtinSetClear
 print(mySet.clear()); //: undefined
 print(mySet.size); //: 0
 
 // Check with single param
 let mySet1 = new Set([0, -5, 2.5]);
 print(mySet1.size); //: 3
-//aot: [trace] aot inline builtin: Set.clear, caller function name:func_main_0@builtinSetClear
+//aot: [trace] aot call builtin: Set.clear, caller function name:func_main_0@builtinSetClear
 print(mySet1.clear(125)); //: undefined
 print(mySet1.size); //: 0
 
 // Check with 2 params
 let mySet2 = new Set([0, -5, 2.5]);
 print(mySet2.size); //: 3
-//aot: [trace] aot inline builtin: Set.clear, caller function name:func_main_0@builtinSetClear
+//aot: [trace] aot call builtin: Set.clear, caller function name:func_main_0@builtinSetClear
 print(mySet2.clear(0, undefined)); //: undefined
 print(mySet2.size); //: 0
 
@@ -77,7 +77,7 @@ print(mySet.clear()); //: replaced
 
 mySet.clear = true_clear
 printClear(); //: 2
-              //aot: [trace] aot inline builtin: Set.clear, caller function name:#*#doClear@builtinSetClear
+              //aot: [trace] aot call builtin: Set.clear, caller function name:#*#doClear@builtinSetClear
               //: undefined
               //: 0
 
@@ -87,7 +87,7 @@ mySet.add(0);
 mySet.add(12);
 //aot: [trace] aot inline builtin: Set.add, caller function name:func_main_0@builtinSetClear
 print(mySet.size); //: 2
-//aot: [trace] aot inline builtin: Set.clear, caller function name:func_main_0@builtinSetClear
+//aot: [trace] aot call builtin: Set.clear, caller function name:func_main_0@builtinSetClear
 mySet.clear("abc");
 print(mySet.size); //: 0
 
@@ -108,7 +108,7 @@ printClear(); //: 2
               //aot: 2
 
 mySet.clear = true_clear
-//aot: [trace] aot inline builtin: Set.clear, caller function name:func_main_0@builtinSetClear
+//aot: [trace] aot call builtin: Set.clear, caller function name:func_main_0@builtinSetClear
 mySet.clear();
 
 // Check IR correctness inside try-block
@@ -118,7 +118,7 @@ try {
     mySet.add(12);
     //aot: [trace] aot inline builtin: Set.add, caller function name:func_main_0@builtinSetClear
     printClear(); //: 2
-                  //aot: [trace] aot inline builtin: Set.clear, caller function name:#*#doClear@builtinSetClear
+                  //aot: [trace] aot call builtin: Set.clear, caller function name:#*#doClear@builtinSetClear
                   //: undefined
                   //: 0
 } catch (e) {
@@ -132,7 +132,7 @@ mySet.add(0);
 mySet.add(12);
 //aot: [trace] aot inline builtin: Set.add, caller function name:func_main_0@builtinSetClear
 print(mySet.size); //: 2
-//aot: [trace] aot inline builtin: Set.clear, caller function name:func_main_0@builtinSetClear
+//aot: [trace] aot call builtin: Set.clear, caller function name:func_main_0@builtinSetClear
 print(mySet.clear(obj)); //: undefined
 print(mySet.size); //: 0
 
@@ -153,7 +153,7 @@ try {
     mySet.add(12);
     //aot: [trace] aot inline builtin: Set.add, caller function name:func_main_0@builtinSetClear
     print(mySet.size); //: 2
-    //aot: [trace] aot inline builtin: Set.clear, caller function name:func_main_0@builtinSetClear
+    //aot: [trace] aot call builtin: Set.clear, caller function name:func_main_0@builtinSetClear
     print(mySet.clear(throwingObj)); //: undefined
     print(mySet.size); //: 0
 } catch(e) {
@@ -165,7 +165,7 @@ try {
     //aot: [trace] aot inline builtin: Set.add, caller function name:func_main_0@builtinSetClear
 
     print(mySet.size); //: 2
-    //aot: [trace] aot inline builtin: Set.clear, caller function name:func_main_0@builtinSetClear
+    //aot: [trace] aot call builtin: Set.clear, caller function name:func_main_0@builtinSetClear
     print(mySet.clear(obj)); //: undefined
     print(mySet.size); //: 0
 }
@@ -185,7 +185,7 @@ m.add(obj1);
 //aot: [trace] aot inline builtin: Set.add, caller function name:func_main_0@builtinSetClear
 
 print(m.size); //: 5
-//aot: [trace] aot inline builtin: Set.clear, caller function name:func_main_0@builtinSetClear
+//aot: [trace] aot call builtin: Set.clear, caller function name:func_main_0@builtinSetClear
 m.clear();
 print(m.size); //: 0
 
@@ -197,22 +197,22 @@ let m3 = new Set([1]);
 let m4 = new Set([1]);
 
 print(m.size); //: 1
-//aot: [trace] aot inline builtin: Set.clear, caller function name:#*#printClear2@builtinSetClear
+//aot: [trace] aot call builtin: Set.clear, caller function name:#*#printClear2@builtinSetClear
 printClear2(m) //: undefined
 print(m.size); //: 0
 
 print(m2.size); //: 1
-//aot: [trace] aot inline builtin: Set.clear, caller function name:#*#printClear2@builtinSetClear
+//aot: [trace] aot call builtin: Set.clear, caller function name:#*#printClear2@builtinSetClear
 printClear2(m2) //: undefined
 print(m2.size); //: 0
 
 print(m3.size); //: 1
-//aot: [trace] aot inline builtin: Set.clear, caller function name:#*#printClear2@builtinSetClear
+//aot: [trace] aot call builtin: Set.clear, caller function name:#*#printClear2@builtinSetClear
 printClear2(m3) //: undefined
 print(m3.size); //: 0
 
 print(m4.size); //: 1
-//aot: [trace] aot inline builtin: Set.clear, caller function name:#*#printClear2@builtinSetClear
+//aot: [trace] aot call builtin: Set.clear, caller function name:#*#printClear2@builtinSetClear
 printClear2(m4) //: undefined
 print(m4.size); //: 0
 
@@ -233,17 +233,17 @@ m3.add(20);
 m4.add(20); //aot: [trace] Check Type: BuiltinInstanceHClassMismatch
 
 print(m.size); //: 1
-//aot: [trace] aot inline builtin: Set.clear, caller function name:#*#printClear2@builtinSetClear
+//aot: [trace] aot call builtin: Set.clear, caller function name:#*#printClear2@builtinSetClear
 printClear2(m) //: undefined
 print(m.size); //: 0
 
 print(m2.size); //: 1
-//aot: [trace] aot inline builtin: Set.clear, caller function name:#*#printClear2@builtinSetClear
+//aot: [trace] aot call builtin: Set.clear, caller function name:#*#printClear2@builtinSetClear
 printClear2(m2) //: undefined
 print(m2.size); //: 0
 
 print(m3.size); //: 1
-//aot: [trace] aot inline builtin: Set.clear, caller function name:#*#printClear2@builtinSetClear
+//aot: [trace] aot call builtin: Set.clear, caller function name:#*#printClear2@builtinSetClear
 printClear2(m3) //: undefined
 print(m3.size); //: 0
 
@@ -264,7 +264,7 @@ m2.add(20);
 m3.add(20);
 
 print(m.size); //: 1
-//aot: [trace] aot inline builtin: Set.clear, caller function name:#*#printClear2@builtinSetClear
+//aot: [trace] aot call builtin: Set.clear, caller function name:#*#printClear2@builtinSetClear
 printClear2(m) //: undefined
 print(m.size); //: 0
 
@@ -282,12 +282,13 @@ let mimicSet = {
 let mm = new Set([1]);
 
 print(mm.size); //: 1
-//aot: [trace] aot inline builtin: Set.clear, caller function name:#*#printClear2@builtinSetClear
+//aot: [trace] aot call builtin: Set.clear, caller function name:#*#printClear2@builtinSetClear
 printClear2(mm) //: undefined
 print(m.size);  //: 0
 
 function checkObjWithSetProto() {
     let o = {};
+    //aot: [trace] aot call builtin: Object.SetPrototypeOf, caller function name:#*#checkObjWithSetProto@builtinSetClear
     Object.setPrototypeOf(o, Set.prototype);
     try {
         o.clear(1);

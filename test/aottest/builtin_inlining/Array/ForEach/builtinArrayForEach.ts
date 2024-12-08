@@ -48,6 +48,7 @@ x.forEach(foo)
 
 // Check without args
 try {
+    //aot: [trace] aot call builtin: Array.prototype.foreach, caller function name:func_main_0@builtinArrayForEach
     print(x.forEach())
 } catch(e) {
     print(e) //: TypeError: the callbackfun is not callable.
@@ -143,6 +144,7 @@ function forEachCase3() {
 
     //aot: [trace] aot inline builtin: Array.prototype.foreach, caller function name:#*#forEachCase3@builtinArrayForEach
     print(marr.forEach(x => x == 1)); //: undefined
+    //aot: [trace] aot call builtin: Object.SetPrototypeOf, caller function name:#*#forEachCase3@builtinArrayForEach
     Object.setPrototypeOf(marr, mimicArray)
 
     print(marr.forEach(x => x == 1)); //aot: [trace] Check Type: BuiltinInstanceHClassMismatch
@@ -160,6 +162,7 @@ function forEachCase4() {
             return x(0)
         }
     }
+    //aot: [trace] aot call builtin: Object.SetPrototypeOf, caller function name:#*#forEachCase4@builtinArrayForEach
     Object.setPrototypeOf(arr2, notArray)
 
     //aot: [trace] aot inline builtin: Array.prototype.foreach, caller function name:#*#forEachCase4@builtinArrayForEach

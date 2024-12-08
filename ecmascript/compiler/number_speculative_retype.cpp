@@ -273,9 +273,6 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
             return VisitDateNow(gate);
         case OpCode::BIGINT_CONSTRUCTOR:
             return VisitBigIntConstructor(gate);
-        case OpCode::MAP_CLEAR:
-        case OpCode::SET_CLEAR:
-            return VisitOthers(gate, GateType::UndefinedType());
         case OpCode::CREATE_ARRAY_WITH_BUFFER:
         case OpCode::TYPED_CREATE_OBJ_WITH_BUFFER:
         case OpCode::ARRAY_ITERATOR_BUILTIN:

@@ -272,6 +272,7 @@ function getCase3() {
     msample.setInt32(0, null)
     //aot: [trace] aot inline builtin: DataView.prototype.GetInt32, caller function name:#*#getCase3@builtinDataViewGet
     print(msample.getInt32(0)); //: 0
+    //aot: [trace] aot call builtin: Object.SetPrototypeOf, caller function name:#*#getCase3@builtinDataViewGet
     Object.setPrototypeOf(msample, mimicDataView)
 
     //aot: [trace] aot inline builtin: DataView.prototype.GetInt32, caller function name:#*#getCase3@builtinDataViewGet
@@ -292,6 +293,7 @@ function getCase4() {
         },
         setInt32: true_setInt32
     }
+    //aot: [trace] aot call builtin: Object.SetPrototypeOf, caller function name:#*#getCase4@builtinDataViewGet
     Object.setPrototypeOf(sample2, notDataView)
     //aot: [trace] aot inline builtin: DataView.prototype.SetInt32, caller function name:#*#getCase4@builtinDataViewGet
     sample1.setInt32(0, null)
