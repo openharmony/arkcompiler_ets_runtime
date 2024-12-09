@@ -2829,24 +2829,17 @@ void BuiltinsArrayStubBuilder::From(GateRef glue, [[maybe_unused]] GateRef thisV
 }
 
 GateRef BuiltinsArrayStubBuilder::CreateSpliceDeletedArray(GateRef glue, GateRef thisValue, GateRef actualDeleteCount,
-    GateRef arrayCls, GateRef start)
+                                                           GateRef start)
 {
     auto env = GetEnvironment();
     Label subentry(env);
     Label exit(env);
     env->SubCfgEntry(&subentry);
-    DEFVARIABLE(result, VariableType::BOOL(), False());
+    DEFVARIABLE(result, VariableType::JS_POINTER(), Undefined());
 
     // new delete array
     DEFVARIABLE(srcElements, VariableType::JS_ANY(), GetElementsArray(thisValue));
-    NewObjectStubBuilder newBuilder(this);
-    newBuilder.SetParameters(glue, 0);
-    GateRef newArray = newBuilder.NewJSArrayWithSize(arrayCls, actualDeleteCount);
-    GateRef lengthOffset = IntPtr(JSArray::LENGTH_OFFSET);
-    Store(VariableType::INT32(), glue, newArray, lengthOffset, TruncInt64ToInt32(actualDeleteCount));
-    GateRef accessor = GetGlobalConstantValue(VariableType::JS_ANY(), glue, ConstantIndex::ARRAY_LENGTH_ACCESSOR);
-    SetPropertyInlinedProps(glue, newArray, arrayCls, accessor, Int32(JSArray::LENGTH_INLINE_PROPERTY_INDEX));
-    SetExtensibleToBitfield(glue, newArray, true);
+    GateRef newArray = NewArray(glue, actualDeleteCount);
     result = newArray;
 
     DEFVARIABLE(i, VariableType::INT32(), Int32(0));
@@ -3152,7 +3145,6 @@ void BuiltinsArrayStubBuilder::Splice(GateRef glue, GateRef thisValue, GateRef n
     Label notCOWArray(env);
     BRANCH(IsJsCOWArray(thisValue), slowPath, &notCOWArray);
     Bind(&notCOWArray);
-    GateRef arrayCls = LoadHClass(thisValue);
     GateRef arrayLen = GetArrayLength(thisValue);
     Label lessThreeArg(env);
 
@@ -3206,7 +3198,7 @@ void BuiltinsArrayStubBuilder::Splice(GateRef glue, GateRef thisValue, GateRef n
         BRANCH(Int64GreaterThan(Int64Sub(Int64Add(ZExtInt32ToInt64(arrayLen), ZExtInt32ToInt64(*insertCount)),
             ZExtInt32ToInt64(*actualDeleteCount)), Int64(base::MAX_SAFE_INTEGER)), slowPath, &notOverflow);
         Bind(&notOverflow);
-        *result = CreateSpliceDeletedArray(glue, thisValue, *actualDeleteCount, arrayCls, *start);
+        *result = CreateSpliceDeletedArray(glue, thisValue, *actualDeleteCount, *start);
         // insert Val
         DEFVARIABLE(srcElements, VariableType::JS_ANY(), GetElementsArray(thisValue));
         GateRef oldCapacity = GetLengthOfTaggedArray(*srcElements);
@@ -3275,7 +3267,7 @@ void BuiltinsArrayStubBuilder::Splice(GateRef glue, GateRef thisValue, GateRef n
             Bind(&trimCheck);
             GateRef needTrim = LogicAndBuilder(env)
                 .And(Int32GreaterThan(oldCapacity, newCapacity))
-                .And(Int32GreaterThan(Int32Sub(newCapacity, oldCapacity), Int32(TaggedArray::MAX_END_UNUSED)))
+                .And(Int32GreaterThan(Int32Sub(oldCapacity, newCapacity), Int32(TaggedArray::MAX_END_UNUSED)))
                 .Done();
             BRANCH(needTrim, &trim, &noTrim);
             Bind(&trim);

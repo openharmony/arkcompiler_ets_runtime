@@ -73,8 +73,7 @@ private:
     };
     GateRef IsJsArrayWithLengthLimit(GateRef glue, GateRef object,
         uint32_t maxLength, JsArrayRequirements requirements);
-    GateRef CreateSpliceDeletedArray(GateRef glue, GateRef thisValue, GateRef actualDeleteCount,
-        GateRef intialHClass, GateRef start);
+    GateRef CreateSpliceDeletedArray(GateRef glue, GateRef thisValue, GateRef actualDeleteCount, GateRef start);
     void DoReverse(GateRef glue, GateRef fromArray, GateRef toArray, bool holeToUndefined, bool getWithKind,
                    MemoryAttribute mAttr);
     GateRef DoReverse(GateRef glue, GateRef thisValue, GateRef receiver, GateRef receiverState, Variable *result,
