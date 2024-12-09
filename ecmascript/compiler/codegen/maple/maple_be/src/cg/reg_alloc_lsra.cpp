@@ -404,6 +404,7 @@ void LSRALinearScanRegAllocator::SetupLiveInterval(Operand &opnd, Insn &insn, bo
 
     LiveInterval *li = nullptr;
     uint32 regNO = regOpnd.GetRegisterNumber();
+    DEBUG_ASSERT(regNO <= liveIntervalsArray.size() - 1, "index out of range");
     if (liveIntervalsArray[regNO] == nullptr) {
         li = memPool->New<LiveInterval>(*memPool);
         li->SetRegNO(regNO);

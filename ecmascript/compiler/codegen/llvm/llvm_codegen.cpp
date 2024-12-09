@@ -383,6 +383,7 @@ static uint8_t *RoundTripAllocateDataSectionOnDemand(void *object, uintptr_t siz
                                                      [[maybe_unused]] unsigned sectionID, const char *sectionName,
                                                      [[maybe_unused]] LLVMBool isReadOnly)
 {
+    ASSERT(object != nullptr);
     struct CodeInfo& state = *static_cast<struct CodeInfo*>(object);
     return state.AllocaDataSectionOnDemand(size, sectionName);
 }
