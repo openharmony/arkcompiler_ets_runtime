@@ -541,14 +541,9 @@ void DFXJSNApi::NotifyMemoryPressure(EcmaVM *vm, bool inHighMemoryPressure)
     const_cast<ecmascript::Heap *>(vm->GetHeap())->NotifyMemoryPressure(inHighMemoryPressure);
 }
 
-void DFXJSNApi::NotifyFinishColdStart(EcmaVM *vm, bool isConvinced)
+void DFXJSNApi::NotifyFinishColdStart(EcmaVM *vm, [[maybe_unused]] bool isConvinced)
 {
     ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
-    if (isConvinced) {
-        const_cast<ecmascript::Heap *>(vm->GetHeap())->NotifyFinishColdStart();
-    } else {
-        const_cast<ecmascript::Heap *>(vm->GetHeap())->NotifyFinishColdStartSoon();
-    }
 }
 
 void DFXJSNApi::NotifyHighSensitive(EcmaVM *vm, bool isStart)

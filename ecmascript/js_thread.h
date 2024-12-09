@@ -543,6 +543,8 @@ public:
         return BCStubStatusBits::Decode(glueData_.interruptVector_);
     }
 
+    bool ShouldHandleMarkingFinishedInSafepoint();
+
     bool CheckSafepoint();
 
     void CheckAndPassActiveBarrier();
