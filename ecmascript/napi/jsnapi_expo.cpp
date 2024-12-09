@@ -4533,6 +4533,7 @@ bool JSNApi::StartDebuggerCheckParameters(EcmaVM *vm, const DebugOption &option,
     vm->GetJsDebuggerManager()->SetDebugMode(option.isDebugMode);
     vm->GetJsDebuggerManager()->SetIsDebugApp(true);
     vm->GetJsDebuggerManager()->SetDebugLibraryHandle(std::move(handle.Value()));
+    vm->GetJsDebuggerManager()->SetFaApp(option.isFaApp);
     bool ret = reinterpret_cast<StartDebugger>(sym.Value())(
         "PandaDebugger", vm, option.isDebugMode, instanceId, debuggerPostTask, option.port);
     if (!ret) {
@@ -4561,6 +4562,7 @@ bool JSNApi::StartDebugger([[maybe_unused]] EcmaVM *vm, [[maybe_unused]] const D
     }
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
     vm->GetJsDebuggerManager()->SetDebugMode(option.isDebugMode);
+    vm->GetJsDebuggerManager()->SetFaApp(option.isFaApp);
     bool ret = OHOS::ArkCompiler::Toolchain::StartDebug(
         DEBUGGER_NAME, vm, option.isDebugMode, instanceId, debuggerPostTask, option.port);
     if (!ret) {
@@ -4715,6 +4717,7 @@ bool JSNApi::NotifyDebugMode([[maybe_unused]] int tid,
     jsDebuggerManager->SetDebugLibraryHandle(std::move(handle.Value()));
     jsDebuggerManager->SetDebugMode(option.isDebugMode && debugApp);
     jsDebuggerManager->SetIsDebugApp(debugApp);
+    jsDebuggerManager->SetFaApp(option.isFaApp);
 #ifdef PANDA_TARGET_ARM32
     ret = StartDebuggerForOldProcess(vm, option, instanceId, debuggerPostTask);
 #else

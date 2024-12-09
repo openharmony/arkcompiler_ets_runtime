@@ -1494,6 +1494,7 @@ public:
         const char *libraryPath;
         bool isDebugMode = false;
         int port = -1;
+        bool isFaApp = false;
     };
     using DebuggerPostTask = std::function<void(std::function<void()>&&)>;
 
