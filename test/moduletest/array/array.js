@@ -200,3 +200,7 @@ function f110() {
 Object.defineProperty(f99, Symbol.species, { configurable: true, enumerable: true, value: f110 });
 v98.constructor = f99;
 print(JSON.stringify(v98.splice(4)));
+
+var x = [];
+x[2147483648] = 1;
+print("x.length == "+x.length);

@@ -581,8 +581,23 @@ GateRef StubBuilder::CallGetterHelper(
         Branch(Equal(accessor, lengthAccessor), &arrayLength, &tryContinue);
         Bind(&arrayLength);
         {
-            result = IntToTaggedPtr(Load(VariableType::INT32(), holder, IntPtr(JSArray::LENGTH_OFFSET)));
-            Jump(&exit);
+            auto length = Load(VariableType::INT32(), holder, IntPtr(JSArray::LENGTH_OFFSET));
+            // TaggedInt supports up to INT32_MAX.
+            // If length is greater than Int32_MAX, needs to be converted to TaggedDouble.
+            auto condition = Int32UnsignedGreaterThan(length, Int32(INT32_MAX));
+            Label overflow(env);
+            Label notOverflow(env);
+            Branch(condition, &overflow, &notOverflow);
+            Bind(&overflow);
+            {
+                result = DoubleToTaggedDoublePtr(ChangeUInt32ToFloat64(length));
+                Jump(&exit);
+            }
+            Bind(&notOverflow);
+            {
+                result = IntToTaggedPtr(length);
+                Jump(&exit);
+            }
         }
         Bind(&tryContinue);
         result = CallRuntime(glue, RTSTUB_ID(CallInternalGetter), { accessor, holder });
