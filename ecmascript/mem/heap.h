@@ -105,6 +105,13 @@ enum AppSensitiveStatus : uint8_t {
     EXIT_HIGH_SENSITIVE,
 };
 
+enum class StartupStatus : uint8_t {
+    BEFORE_STARTUP,
+    ON_STARTUP,
+    JUST_FINISH_STARTUP,
+    FINISH_STARTUP
+};
+
 enum class VerifyKind {
     VERIFY_PRE_GC,
     VERIFY_POST_GC,
@@ -494,13 +501,23 @@ public:
         return smartGCStats_.sensitiveStatus_;
     }
 
+    void SetStartupStatus(StartupStatus startupStatus)
+    {
+        smartGCStats_.startupStatus_ = startupStatus;
+    }
+
+    StartupStatus GetStartupStatus() const
+    {
+        return smartGCStats_.startupStatus_;
+    }
+
     bool FinishStartupEvent() override
     {
         LockHolder lock(smartGCStats_.sensitiveStatusMutex_);
-        if (!smartGCStats_.onStartupEvent_) {
+        if (!OnStartupEvent()) {
             return false;
         }
-        smartGCStats_.onStartupEvent_ = false;
+        smartGCStats_.startupStatus_ = StartupStatus::JUST_FINISH_STARTUP;
         if (!InSensitiveStatus()) {
             smartGCStats_.sensitiveStatusCV_.Signal();
         }
@@ -510,13 +527,13 @@ public:
     // This should be called when holding lock of sensitiveStatusMutex_.
     bool OnStartupEvent() const override
     {
-        return smartGCStats_.onStartupEvent_;
+        return smartGCStats_.startupStatus_ == StartupStatus::ON_STARTUP;
     }
 
     void NotifyPostFork() override
     {
         LockHolder lock(smartGCStats_.sensitiveStatusMutex_);
-        smartGCStats_.onStartupEvent_ = true;
+        smartGCStats_.startupStatus_ = StartupStatus::ON_STARTUP;
     }
 
     void WaitSensitiveStatusFinished()
@@ -528,6 +545,10 @@ public:
     }
 
     bool ObjectExceedMaxHeapSize() const override;
+
+    bool ObjectExceedJustFinishStartupThreshold() const;
+
+    bool CheckIfNeedStopCollectionByStartup();
 
     bool CheckAndTriggerSharedGC(JSThread *thread);
 
@@ -831,7 +852,7 @@ private:
         Mutex sensitiveStatusMutex_;
         ConditionVariable sensitiveStatusCV_;
         AppSensitiveStatus sensitiveStatus_ {AppSensitiveStatus::NORMAL_SCENE};
-        bool onStartupEvent_ {false};
+        StartupStatus startupStatus_ {StartupStatus::BEFORE_STARTUP};
         // If the SharedHeap is almost OOM and a collect is failed, cause a GC with GCReason::ALLOCATION_FAILED,
         // must do GC at once even in sensitive status.
         bool forceGC_ {false};
@@ -1308,6 +1329,14 @@ public:
 
     bool ObjectExceedMaxHeapSize() const override;
 
+    bool ObjectExceedJustFinishStartupThresholdForGC() const;
+
+    bool ObjectExceedJustFinishStartupThresholdForCM() const;
+
+    void TryIncreaseNewSpaceOvershootByConfigSize();
+
+    bool CheckIfNeedStopCollectionByStartup();
+
     bool NeedStopCollection() override;
 
     void SetSensitiveStatus(AppSensitiveStatus status) override
@@ -1336,21 +1365,55 @@ public:
         return smartGCStats_.sensitiveStatus_.compare_exchange_strong(expect, status, std::memory_order_seq_cst);
     }
 
+    void SetStartupStatus(StartupStatus startupStatus)
+    {
+        ASSERT(smartGCStats_.startupStatus_.load(std::memory_order_relaxed) == sHeap_->GetStartupStatus());
+        smartGCStats_.startupStatus_.store(startupStatus, std::memory_order_relaxed);
+        sHeap_->SetStartupStatus(startupStatus);
+    }
+
+    StartupStatus GetStartupStatus() const
+    {
+        ASSERT(smartGCStats_.startupStatus_.load(std::memory_order_relaxed) == sHeap_->GetStartupStatus());
+        return smartGCStats_.startupStatus_.load(std::memory_order_relaxed);
+    }
+
+    bool IsJustFinishStartup() const
+    {
+        return GetStartupStatus() == StartupStatus::JUST_FINISH_STARTUP;
+    }
+
+    bool CancelJustFinishStartupEvent()
+    {
+        if (!IsJustFinishStartup()) {
+            return false;
+        }
+        TryIncreaseNewSpaceOvershootByConfigSize();
+        smartGCStats_.startupStatus_.store(StartupStatus::FINISH_STARTUP, std::memory_order_release);
+        sHeap_->SetStartupStatus(StartupStatus::FINISH_STARTUP);
+        return true;
+    }
+
     bool FinishStartupEvent() override
     {
+        if (!OnStartupEvent()) {
+            return false;
+        }
+        TryIncreaseNewSpaceOvershootByConfigSize();
+        smartGCStats_.startupStatus_.store(StartupStatus::JUST_FINISH_STARTUP, std::memory_order_release);
         sHeap_->FinishStartupEvent();
-        return smartGCStats_.onStartupEvent_.exchange(false, std::memory_order_relaxed) == true;
+        return true;
     }
 
     bool OnStartupEvent() const override
     {
-        return smartGCStats_.onStartupEvent_.load(std::memory_order_relaxed);
+        return GetStartupStatus() == StartupStatus::ON_STARTUP;
     }
 
     void NotifyPostFork() override
     {
         sHeap_->NotifyPostFork();
-        smartGCStats_.onStartupEvent_.store(true, std::memory_order_relaxed);
+        smartGCStats_.startupStatus_.store(StartupStatus::ON_STARTUP, std::memory_order_relaxed);
         LOG_GC(INFO) << "SmartGC: enter app cold start";
     }
 
@@ -1600,6 +1663,19 @@ private:
         Heap *heap_;
     };
 
+    class FinishGCRestrainTask : public Task {
+    public:
+        FinishGCRestrainTask(int32_t id, Heap *heap)
+            : Task(id), heap_(heap) {}
+        ~FinishGCRestrainTask() override = default;
+        bool Run(uint32_t threadIndex) override;
+
+        NO_COPY_SEMANTIC(FinishGCRestrainTask);
+        NO_MOVE_SEMANTIC(FinishGCRestrainTask);
+    private:
+        Heap *heap_;
+    };
+
     class DeleteCallbackTask : public Task {
     public:
         DeleteCallbackTask(int32_t id, std::vector<NativePointerCallbackData> &callbacks) : Task(id)
@@ -1623,7 +1699,7 @@ private:
          * collect garbage(e.g. in JSThread::CheckSafePoint), and skip if need, so std::atomic is almost enough.
         */
         std::atomic<AppSensitiveStatus> sensitiveStatus_ {AppSensitiveStatus::NORMAL_SCENE};
-        std::atomic<bool> onStartupEvent_ {false};
+        std::atomic<StartupStatus> startupStatus_ {StartupStatus::BEFORE_STARTUP};
     };
 
     // Some data used in SharedGC is also need to store in local heap, e.g. the temporary local mark stack.
@@ -1761,6 +1837,8 @@ private:
 
     // parallel evacuator task number.
     uint32_t maxEvacuateTaskCount_ {0};
+
+    Mutex setNewSpaceOvershootSizeMutex_;
 
     // Application status
 

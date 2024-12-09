@@ -100,6 +100,13 @@ static constexpr size_t IDLE_SPACE_SIZE_MIN_INC_STEP = 5_MB;
 static constexpr size_t IDLE_SPACE_SIZE_MIN_INC_STEP_FULL = 1_MB;
 static constexpr size_t IDLE_MIN_EXPECT_RECLAIM_SIZE = 1_MB;
 
+// cold start
+static constexpr uint64_t STARTUP_DURATION_MS = 2000;
+static constexpr uint64_t JUST_FINISH_STARTUP_DURATION_MS = 6000;
+static constexpr double JUST_FINISH_STARTUP_LOCAL_THRESHOLD_RATIO = 0.25;
+static constexpr double JUST_FINISH_STARTUP_SHARED_THRESHOLD_RATIO = 0.25;
+static constexpr double JUST_FINISH_STARTUP_CONCURRENT_MARK_RATIO = 0.9;
+
 using TaggedType = uint64_t;
 static constexpr uint32_t TAGGED_TYPE_SIZE = sizeof(TaggedType);
 static constexpr uint32_t TAGGED_TYPE_SIZE_LOG = base::MathHelper::GetIntLog2(TAGGED_TYPE_SIZE);

@@ -47,10 +47,13 @@ uintptr_t LinearSpace::Allocate(size_t size, bool isPromoted)
         return object;
     }
     if (Expand(isPromoted)) {
-        if (!isPromoted && !localHeap_->NeedStopCollection()) {
-            localHeap_->TryTriggerIncrementalMarking();
-            localHeap_->TryTriggerIdleCollection();
-            localHeap_->TryTriggerConcurrentMarking();
+        if (!isPromoted) {
+            if (!localHeap_->NeedStopCollection() ||
+                (localHeap_->IsJustFinishStartup() && localHeap_->ObjectExceedJustFinishStartupThresholdForCM())) {
+                localHeap_->TryTriggerIncrementalMarking();
+                localHeap_->TryTriggerIdleCollection();
+                localHeap_->TryTriggerConcurrentMarking();
+            }
         }
         object = allocator_.Allocate(size);
     } else if (localHeap_->IsMarking() || !localHeap_->IsEmptyIdleTask()) {
@@ -80,7 +83,7 @@ uintptr_t LinearSpace::Allocate(size_t size, bool isPromoted)
 bool LinearSpace::Expand(bool isPromoted)
 {
     if (committedSize_ >= initialCapacity_ + overShootSize_ + outOfMemoryOvershootSize_ &&
-        !localHeap_->NeedStopCollection()) {
+        (isPromoted || !localHeap_->NeedStopCollection())) {
         return false;
     }
 

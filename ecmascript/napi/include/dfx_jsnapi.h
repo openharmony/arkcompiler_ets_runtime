@@ -104,7 +104,7 @@ public:
     static void NotifyIdleStatusControl(const EcmaVM *vm, std::function<void(bool)> callback);
     static void NotifyIdleTime(const EcmaVM *vm, int idleMicroSec);
     static void NotifyMemoryPressure(EcmaVM *vm, bool inHighMemoryPressure);
-    static void NotifyFinishColdStart(EcmaVM *vm, bool isConvinced);
+    static void NotifyFinishColdStart(EcmaVM *vm, [[maybe_unused]] bool isConvinced);
     static void NotifyHighSensitive(EcmaVM *vm, bool isStart);
     static bool BuildJsStackInfoList(const EcmaVM *hostVm, uint32_t tid, std::vector<JsFrameInfo>& jsFrames);
     static int32_t GetObjectHash(const EcmaVM *vm, Local<JSValueRef> nativeObject);
