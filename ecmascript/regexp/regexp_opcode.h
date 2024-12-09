@@ -67,6 +67,7 @@ public:
     static constexpr size_t OP_SIZE_EIGHT = 8;
     static constexpr size_t OP_SIZE_NINE = 9;
     static constexpr size_t OP_SIZE_THIRTEEN = 13;
+    static constexpr uint32_t INVALID_PARA = 0xffffffff;
 
     RegExpOpCode(uint8_t opCode, int size);
     NO_COPY_SEMANTIC(RegExpOpCode);
