@@ -147,6 +147,7 @@ namespace panda::ecmascript {
     V(MarkingBarrierWithEden)                  \
     V(SharedGCMarkingBarrier)                  \
     V(DoubleToInt)                             \
+    V(SaturateTruncDoubleToInt32)           \
     V(FloatMod)                                \
     V(FloatAcos)                               \
     V(FloatAcosh)                              \

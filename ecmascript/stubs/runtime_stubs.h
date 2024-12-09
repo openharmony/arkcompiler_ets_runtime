@@ -102,6 +102,7 @@ public:
     static void SetBitAtomic(GCBitset::GCBitsetWord *word, GCBitset::GCBitsetWord mask,
                              GCBitset::GCBitsetWord oldValue);
     static int32_t DoubleToInt(double x, size_t bits);
+    static int32_t SaturateTruncDoubleToInt32(double x);
     static double FloatMod(double x, double y);
     static double FloatAcos(double x);
     static double FloatAcosh(double x);

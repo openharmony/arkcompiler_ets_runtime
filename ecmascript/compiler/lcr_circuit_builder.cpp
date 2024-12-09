@@ -200,34 +200,19 @@ GateRef CircuitBuilder::GetDoubleOfTNumber(GateRef x)
     return ret;
 }
 
-GateRef CircuitBuilder::DoubleToInt(GateRef x, Label *exit)
+GateRef CircuitBuilder::DoubleToIntOverflowCheck(GateRef x, size_t typeBits)
 {
-    Label overflow(env_);
-
-    GateRef xInt = ChangeFloat64ToInt32(x);
-    DEFVALUE(result, env_, VariableType::INT32(), xInt);
-
     GateRef xInt64 = CastDoubleToInt64(x);
     // exp = (u64 & DOUBLE_EXPONENT_MASK) >> DOUBLE_SIGNIFICAND_SIZE - DOUBLE_EXPONENT_BIAS
     GateRef exp = Int64And(xInt64, Int64(base::DOUBLE_EXPONENT_MASK));
     exp = TruncInt64ToInt32(Int64LSR(exp, Int64(base::DOUBLE_SIGNIFICAND_SIZE)));
     exp = Int32Sub(exp, Int32(base::DOUBLE_EXPONENT_BIAS));
-    GateRef bits = Int32(base::INT32_BITS - 1);
+    GateRef bits = Int32(typeBits - 1);
     // exp < 32 - 1
-    BRANCH_CIR2(Int32LessThan(exp, bits), exit, &overflow);
-
-    Bind(&overflow);
-    {
-        result = CallNGCRuntime(acc_.GetGlueFromArgList(), RTSTUB_ID(DoubleToInt),
-                                Circuit::NullGate(), { x, IntPtr(base::INT32_BITS) }, Circuit::NullGate());
-        Jump(exit);
-    }
-    Bind(exit);
-    auto ret = *result;
-    return ret;
+    return Int32LessThan(exp, bits);
 }
 
-GateRef CircuitBuilder::DoubleToInt(GateRef glue, GateRef x, size_t typeBits)
+GateRef CircuitBuilder::TruncDoubleToInt(GateRef glue, GateRef x, size_t typeBits)
 {
     Label entry(env_);
     env_->SubCfgEntry(&entry);
@@ -236,23 +221,34 @@ GateRef CircuitBuilder::DoubleToInt(GateRef glue, GateRef x, size_t typeBits)
 
     GateRef xInt = ChangeFloat64ToInt32(x);
     DEFVALUE(result, env_, VariableType::INT32(), xInt);
+    BRANCH_CIR2(DoubleToIntOverflowCheck(x, typeBits), &exit, &overflow);
 
-    if (env_->IsAmd64()) {
-        // 0x80000000: amd64 overflow return value
-        BRANCH_CIR2(Int32Equal(xInt, Int32(0x80000000)), &overflow, &exit);
-    } else {
-        GateRef xInt64 = CastDoubleToInt64(x);
-        // exp = (u64 & DOUBLE_EXPONENT_MASK) >> DOUBLE_SIGNIFICAND_SIZE - DOUBLE_EXPONENT_BIAS
-        GateRef exp = Int64And(xInt64, Int64(base::DOUBLE_EXPONENT_MASK));
-        exp = TruncInt64ToInt32(Int64LSR(exp, Int64(base::DOUBLE_SIGNIFICAND_SIZE)));
-        exp = Int32Sub(exp, Int32(base::DOUBLE_EXPONENT_BIAS));
-        GateRef bits = Int32(typeBits - 1);
-        // exp < 32 - 1
-        BRANCH_CIR2(Int32LessThan(exp, bits), &exit, &overflow);
-    }
     Bind(&overflow);
     {
         result = CallNGCRuntime(glue, RTSTUB_ID(DoubleToInt), Circuit::NullGate(), { x, IntPtr(typeBits) },
+                                Circuit::NullGate());
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env_->SubCfgExit();
+    return ret;
+}
+
+GateRef CircuitBuilder::SaturateTruncDoubleToInt32(GateRef glue, GateRef x)
+{
+    Label entry(env_);
+    env_->SubCfgEntry(&entry);
+    Label exit(env_);
+    Label overflow(env_);
+
+    GateRef xInt = ChangeFloat64ToInt32(x);
+    DEFVALUE(result, env_, VariableType::INT32(), xInt);
+    BRANCH_CIR2(DoubleToIntOverflowCheck(x, base::INT32_BITS), &exit, &overflow);
+
+    Bind(&overflow);
+    {
+        result = CallNGCRuntime(glue, RTSTUB_ID(SaturateTruncDoubleToInt32), Circuit::NullGate(), { x },
                                 Circuit::NullGate());
         Jump(&exit);
     }

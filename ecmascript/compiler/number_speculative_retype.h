@@ -146,7 +146,7 @@ private:
 
     template<bool BOOL_AS_INT = true>
     TypeInfo GetNumberInputTypeInfo(GateRef gate, bool skipTagged = false);
-    void SetNewInputForMathImul(GateRef gate, int idx, Label *exit);
+    void SetNewInputForMathImul(GateRef gate, int idx);
     double GetDoubleValueFromConst(GateRef gate);
 
     GateRef CheckAndConvertToInt32(GateRef gate, GateType gateType, ConvertSupport support = ConvertSupport::ENABLE,

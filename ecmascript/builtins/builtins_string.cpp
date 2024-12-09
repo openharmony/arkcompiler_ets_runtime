@@ -1550,7 +1550,7 @@ JSTaggedValue BuiltinsString::Slice(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> startTag = BuiltinsString::GetCallArg(argv, 0);
     JSTaggedNumber startVal = JSTaggedValue::ToInteger(thread, startTag);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    int32_t start = ConvertDoubleToInt(startVal.GetNumber());
+    int32_t start = base::NumberHelper::SaturateTruncDoubleToInt32(startVal.GetNumber());
     int32_t end = 0;
     JSHandle<JSTaggedValue> endTag = BuiltinsString::GetCallArg(argv, 1);
     if (endTag->IsUndefined()) {
@@ -1558,7 +1558,7 @@ JSTaggedValue BuiltinsString::Slice(EcmaRuntimeCallInfo *argv)
     } else {
         JSTaggedNumber endVal = JSTaggedValue::ToInteger(thread, endTag);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        end = ConvertDoubleToInt(endVal.GetNumber());
+        end = base::NumberHelper::SaturateTruncDoubleToInt32(endVal.GetNumber());
     }
     int32_t from = 0;
     int32_t to = 0;
@@ -1861,7 +1861,7 @@ JSTaggedValue BuiltinsString::Substring(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> startTag = BuiltinsString::GetCallArg(argv, 0);
     JSTaggedNumber startVal = JSTaggedValue::ToInteger(thread, startTag);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    int32_t start = ConvertDoubleToInt(startVal.GetNumber());
+    int32_t start = base::NumberHelper::SaturateTruncDoubleToInt32(startVal.GetNumber());
     int32_t end = 0;
     JSHandle<JSTaggedValue> endTag = BuiltinsString::GetCallArg(argv, 1);
     if (endTag->IsUndefined()) {
@@ -1869,7 +1869,7 @@ JSTaggedValue BuiltinsString::Substring(EcmaRuntimeCallInfo *argv)
     } else {
         JSTaggedNumber endVal = JSTaggedValue::ToInteger(thread, endTag);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        end = ConvertDoubleToInt(endVal.GetNumber());
+        end = base::NumberHelper::SaturateTruncDoubleToInt32(endVal.GetNumber());
     }
     start = std::min(std::max(start, 0), thisLen);
     end = std::min(std::max(end, 0), thisLen);
@@ -2306,20 +2306,6 @@ JSTaggedValue BuiltinsString::Pad(EcmaRuntimeCallInfo *argv, bool isStart)
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     return factory->NewFromUtf16Literal(reinterpret_cast<const uint16_t *>(resultString.c_str()),
                                         resultString.size()).GetTaggedValue();
-}
-
-int32_t BuiltinsString::ConvertDoubleToInt(double d)
-{
-    if (std::isnan(d) || d == -base::POSITIVE_INFINITY) {
-        return 0;
-    }
-    if (d >= static_cast<double>(INT_MAX)) {
-        return INT_MAX;
-    }
-    if (d <= static_cast<double>(INT_MIN)) {
-        return INT_MIN;
-    }
-    return base::NumberHelper::DoubleToInt(d, base::INT32_BITS);
 }
 
 JSTaggedValue BuiltinsString::StringToList(JSThread *thread, JSHandle<EcmaString> &str)

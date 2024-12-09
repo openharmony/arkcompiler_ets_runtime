@@ -878,8 +878,9 @@ public:
     inline GateRef GetDoubleOfTDouble(GateRef x);
     inline GateRef GetBooleanOfTBoolean(GateRef x);
     GateRef GetDoubleOfTNumber(GateRef x);
-    GateRef DoubleToInt(GateRef x, Label *exit);
-    GateRef DoubleToInt(GateRef glue, GateRef x, size_t typeBits);
+    GateRef TruncDoubleToInt(GateRef glue, GateRef x, size_t typeBits);
+    GateRef DoubleToIntOverflowCheck(GateRef x, size_t typeBits);
+    GateRef SaturateTruncDoubleToInt32(GateRef glue, GateRef x);
     GateRef DoubleCheckINFInRangeInt32(GateRef x);
     GateRef DoubleInRangeInt32(GateRef x);
     inline GateRef Int32ToTaggedPtr(GateRef x);

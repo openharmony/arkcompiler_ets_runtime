@@ -300,6 +300,7 @@ group("ark_aot_ts_test") {
     "string",
     "string_add",
     "string_equal",
+    "string_inline",
     "string_localecompare",
     "stsuperbyname",
     "sub",
