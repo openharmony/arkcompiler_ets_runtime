@@ -15,7 +15,7 @@ import("//build/ohos.gni")
 import("//build/test.gni")
 
 compiler_service_root = "//arkcompiler/ets_runtime/compiler_service"
-module_output_path = "arkcompiler/ets_runtime/compiler_service"
+module_output_path = "ets_runtime/compiler_service"
 
 declare_args() {
   code_sign_enable_test = true
