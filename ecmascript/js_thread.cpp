@@ -754,6 +754,13 @@ bool JSThread::PassSuspendBarrier()
     return false;
 }
 
+bool JSThread::ShouldHandleMarkingFinishedInSafepoint()
+{
+    auto heap = const_cast<Heap *>(GetEcmaVM()->GetHeap());
+    return IsMarkFinished() && heap->GetConcurrentMarker()->IsTriggeredConcurrentMark() &&
+           !heap->GetOnSerializeEvent() && !heap->InSensitiveStatus() && !heap->CheckIfNeedStopCollectionByStartup();
+}
+
 bool JSThread::CheckSafepoint()
 {
     ResetCheckSafePointStatus();
@@ -800,8 +807,7 @@ bool JSThread::CheckSafepoint()
     }
     // After concurrent mark finish, should trigger gc here to avoid create much floating garbage
     // except in serialize or high sensitive event
-    if (IsMarkFinished() && heap->GetConcurrentMarker()->IsTriggeredConcurrentMark()
-        && !heap->GetOnSerializeEvent() && !heap->InSensitiveStatus()) {
+    if (ShouldHandleMarkingFinishedInSafepoint()) {
         heap->SetCanThrowOOMError(false);
         heap->GetConcurrentMarker()->HandleMarkingFinished();
         heap->SetCanThrowOOMError(true);

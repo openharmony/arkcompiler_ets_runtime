@@ -643,8 +643,38 @@ bool SharedHeap::IsReadyToConcurrentMark() const
     return dThread_->IsReadyToConcurrentMark();
 }
 
+bool SharedHeap::ObjectExceedJustFinishStartupThreshold() const
+{
+    size_t heapObjectSizeThreshold = config_.GetMaxHeapSize() * JUST_FINISH_STARTUP_SHARED_THRESHOLD_RATIO;
+    return ObjectExceedMaxHeapSize() || GetHeapObjectSize() > heapObjectSizeThreshold;
+}
+
+bool SharedHeap::CheckIfNeedStopCollectionByStartup()
+{
+    StartupStatus startupStatus = GetStartupStatus();
+    switch (startupStatus) {
+        case StartupStatus::ON_STARTUP:
+            if (!ObjectExceedMaxHeapSize()) {
+                return true;
+            }
+            break;
+        case StartupStatus::JUST_FINISH_STARTUP:
+            if (!ObjectExceedJustFinishStartupThreshold()) {
+                return true;
+            }
+            break;
+        default:
+            break;
+    }
+    return false;
+}
+
 bool SharedHeap::NeedStopCollection()
 {
+    if (CheckIfNeedStopCollectionByStartup()) {
+        return true;
+    }
+
     if (!InSensitiveStatus()) {
         return false;
     }
@@ -1979,6 +2009,10 @@ void Heap::TryTriggerConcurrentMarking()
         TriggerConcurrentMarking();
         return;
     }
+    if (IsJustFinishStartup() && !ObjectExceedJustFinishStartupThresholdForCM()) {
+        return;
+    }
+
     double oldSpaceMarkDuration = 0, newSpaceMarkDuration = 0, newSpaceRemainSize = 0, newSpaceAllocToLimitDuration = 0,
            oldSpaceAllocToLimitDuration = 0;
     double oldSpaceAllocSpeed = memController_->GetOldSpaceAllocationThroughputPerMS();
@@ -2343,20 +2377,17 @@ void Heap::NotifyFinishColdStart(bool isMainThread)
         return;
     }
     ASSERT(!OnStartupEvent());
-    LOG_GC(INFO) << "SmartGC: finish app cold start";
+    LOG_GC(INFO) << "SmartGC: app cold start just finished";
 
-    // set overshoot size to increase gc threashold larger 8MB than current heap size.
-    int64_t semiRemainSize =
-        static_cast<int64_t>(GetNewSpace()->GetInitialCapacity() - GetNewSpace()->GetCommittedSize());
-    int64_t overshootSize =
-        static_cast<int64_t>(config_.GetOldSpaceStepOvershootSize()) - semiRemainSize;
-    // overshoot size should be larger than 0.
-    GetNewSpace()->SetOverShootSize(std::max(overshootSize, (int64_t)0));
-
-    if (isMainThread && CheckCanTriggerConcurrentMarking()) {
+    if (isMainThread && ObjectExceedJustFinishStartupThresholdForCM()) {
         TryTriggerConcurrentMarking();
     }
-    GetEdenSpace()->AllowTryEnable();
+
+    // restrain GC from 2s to 8s
+    uint64_t delayTimeInMillisecond = JUST_FINISH_STARTUP_DURATION_MS;
+    Taskpool::GetCurrentTaskpool()->PostDelayedTask(
+        std::make_unique<FinishGCRestrainTask>(GetJSThread()->GetThreadId(), this),
+        delayTimeInMillisecond);
 }
 
 void Heap::NotifyFinishColdStartSoon()
@@ -2366,8 +2397,10 @@ void Heap::NotifyFinishColdStartSoon()
     }
 
     // post 2s task
-    Taskpool::GetCurrentTaskpool()->PostTask(
-        std::make_unique<FinishColdStartTask>(GetJSThread()->GetThreadId(), this));
+    uint64_t delayTimeInMillisecond = STARTUP_DURATION_MS;
+    Taskpool::GetCurrentTaskpool()->PostDelayedTask(
+        std::make_unique<FinishColdStartTask>(GetJSThread()->GetThreadId(), this),
+        delayTimeInMillisecond);
 }
 
 void Heap::NotifyHighSensitive(bool isStart)
@@ -2386,12 +2419,7 @@ bool Heap::HandleExitHighSensitiveEvent()
         // Set record heap obj size 0 after exit high senstive
         SetRecordHeapObjectSizeBeforeSensitive(0);
         // set overshoot size to increase gc threashold larger 8MB than current heap size.
-        int64_t semiRemainSize =
-            static_cast<int64_t>(GetNewSpace()->GetInitialCapacity() - GetNewSpace()->GetCommittedSize());
-        int64_t overshootSize =
-            static_cast<int64_t>(config_.GetOldSpaceStepOvershootSize()) - semiRemainSize;
-        // overshoot size should be larger than 0.
-        GetNewSpace()->SetOverShootSize(std::max(overshootSize, (int64_t)0));
+        TryIncreaseNewSpaceOvershootByConfigSize();
 
         // fixme: IncrementalMarking and IdleCollection is currently not enabled
         TryTriggerIncrementalMarking();
@@ -2411,6 +2439,61 @@ bool Heap::ObjectExceedMaxHeapSize() const
     return GetHeapObjectSize() > configMaxHeapSize - overshootSize;
 }
 
+bool Heap::ObjectExceedJustFinishStartupThresholdForGC() const
+{
+    size_t heapObjectSizeThresholdForGC = config_.GetMaxHeapSize() * JUST_FINISH_STARTUP_LOCAL_THRESHOLD_RATIO;
+    return GetHeapObjectSize() > heapObjectSizeThresholdForGC;
+}
+
+bool Heap::ObjectExceedJustFinishStartupThresholdForCM() const
+{
+    size_t heapObjectSizeThresholdForGC = config_.GetMaxHeapSize() * JUST_FINISH_STARTUP_LOCAL_THRESHOLD_RATIO;
+    size_t heapObjectSizeThresholdForCM = heapObjectSizeThresholdForGC * JUST_FINISH_STARTUP_CONCURRENT_MARK_RATIO;
+    return GetHeapObjectSize() > heapObjectSizeThresholdForCM;
+}
+
+void Heap::TryIncreaseNewSpaceOvershootByConfigSize()
+{
+    if (InGC() || !IsReadyToConcurrentMark()) {
+        // overShootSize will be adjusted when resume heap during GC and
+        // no need to reserve space for newSpace if ConcurrentMark is already triggered
+        return;
+    }
+    // need lock because conflict may occur when handle exit sensitive status by main thread
+    // and handle finish startup by child thread happen at the same time
+    LockHolder lock(setNewSpaceOvershootSizeMutex_);
+    // set overshoot size to increase gc threashold larger 8MB than current heap size.
+    int64_t initialCapacity = static_cast<int64_t>(GetNewSpace()->GetInitialCapacity());
+    int64_t committedSize = static_cast<int64_t>(GetNewSpace()->GetCommittedSize());
+    int64_t semiRemainSize = initialCapacity - committedSize;
+    int64_t overshootSize =
+        static_cast<int64_t>(config_.GetOldSpaceStepOvershootSize()) - semiRemainSize;
+    // overshoot size should be larger than 0.
+    GetNewSpace()->SetOverShootSize(std::max(overshootSize, (int64_t)0));
+}
+
+bool Heap::CheckIfNeedStopCollectionByStartup()
+{
+    StartupStatus startupStatus = GetStartupStatus();
+    switch (startupStatus) {
+        case StartupStatus::ON_STARTUP:
+            // During app cold start, gc threshold adjust to max heap size
+            if (!ObjectExceedMaxHeapSize()) {
+                return true;
+            }
+            break;
+        case StartupStatus::JUST_FINISH_STARTUP:
+            // During app cold start just finished, gc threshold adjust to a quarter of max heap size
+            if (!ObjectExceedJustFinishStartupThresholdForGC()) {
+                return true;
+            }
+            break;
+        default:
+            break;
+    }
+    return false;
+}
+
 bool Heap::NeedStopCollection()
 {
     // gc is not allowed during value serialize
@@ -2418,14 +2501,14 @@ bool Heap::NeedStopCollection()
         return true;
     }
 
+    if (CheckIfNeedStopCollectionByStartup()) {
+        return true;
+    }
+
     if (!InSensitiveStatus()) {
         return false;
     }
 
-    // During app cold start, gc threshold adjust to max heap size
-    if (OnStartupEvent() && !ObjectExceedMaxHeapSize()) {
-        return true;
-    }
     size_t objSize = GetHeapObjectSize();
     size_t recordSizeBeforeSensitive = GetRecordHeapObjectSizeBeforeSensitive();
     if (recordSizeBeforeSensitive == 0) {
@@ -2492,8 +2575,21 @@ bool Heap::AsyncClearTask::Run([[maybe_unused]] uint32_t threadIndex)
 
 bool Heap::FinishColdStartTask::Run([[maybe_unused]] uint32_t threadIndex)
 {
-    std::this_thread::sleep_for(std::chrono::microseconds(2000000));  // 2000000 means 2s
     heap_->NotifyFinishColdStart(false);
+    return true;
+}
+
+bool Heap::FinishGCRestrainTask::Run([[maybe_unused]] uint32_t threadIndex)
+{
+    heap_->CancelJustFinishStartupEvent();
+    LOG_GC(INFO) << "SmartGC: app cold start finished";
+    return true;
+}
+
+bool Heap::FinishGCRestrainTask::Run([[maybe_unused]] uint32_t threadIndex)
+{
+    heap_->CancelJustFinishStartupEvent();
+    LOG_GC(INFO) << "SmartGC: app cold start finished";
     return true;
 }
 
