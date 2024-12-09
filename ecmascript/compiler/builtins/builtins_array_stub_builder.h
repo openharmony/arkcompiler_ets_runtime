@@ -108,6 +108,7 @@ private:
     void FastFill(GateRef glue, GateRef element, GateRef start, GateRef count, GateRef value, bool needBarrier);
     void PopOptimised(GateRef glue, GateRef thisValue,
                       GateRef numArgs, Variable *result, Label *exit, Label *slowPath);
+    void ReverseOptimised(GateRef glue, GateRef thisValue, Variable *result, Label *exit, Label *slowPath);
 };
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_BUILTINS_ARRAY_STUB_BUILDER_H

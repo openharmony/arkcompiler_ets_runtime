@@ -4232,6 +4232,12 @@ void RuntimeStubs::ObjectCopy(JSTaggedType *dst, JSTaggedType *src, uint32_t cou
     std::copy_n(src, count, dst);
 }
 
+void RuntimeStubs::ReverseArray(JSTaggedType *dst, uint32_t length)
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    std::reverse(dst, dst + length);
+}
+
 void RuntimeStubs::Initialize(JSThread *thread)
 {
 #define DEF_RUNTIME_STUB(name) kungfu::RuntimeStubCSigns::ID_##name

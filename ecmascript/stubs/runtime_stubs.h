@@ -157,6 +157,7 @@ public:
     static void SortTypedArray(JSTypedArray *typedArray);
     static void ObjectCopy(JSTaggedType *dst, JSTaggedType *src, uint32_t count);
     static void FillObject(JSTaggedType *dst, JSTaggedType value, uint32_t count);
+    static void ReverseArray(JSTaggedType *dst, uint32_t length);
 private:
     static void DumpToStreamWithHint(std::ostream &out, std::string_view prompt, JSTaggedValue value);
 
