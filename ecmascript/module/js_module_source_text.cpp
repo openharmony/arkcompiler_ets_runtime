@@ -16,6 +16,7 @@
 #include "ecmascript/module/js_module_source_text.h"
 
 #include "ecmascript/builtins/builtins_promise.h"
+#include "ecmascript/interpreter/fast_runtime_stub-inl.h"
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/jobs/micro_job_queue.h"
 #include "ecmascript/jspandafile/js_pandafile_executor.h"
@@ -23,6 +24,7 @@
 #include "ecmascript/module/module_logger.h"
 #include "ecmascript/module/js_shared_module_manager.h"
 #include "ecmascript/module/module_path_helper.h"
+#include "ecmascript/object_fast_operator-inl.h"
 #include "ecmascript/module/module_resolver.h"
 #include "ecmascript/object_fast_operator-inl.h"
 #include "ecmascript/runtime_lock.h"
@@ -1331,7 +1333,23 @@ JSTaggedValue SourceTextModule::GetValueFromExportObject(JSThread *thread, JSHan
     if (index == SourceTextModule::UNDEFINED_INDEX) {
         return exportObject.GetTaggedValue();
     }
-    return ObjectFastOperator::FastGetPropertyByPorpsIndex(thread, exportObject.GetTaggedValue(), index);
+    JSTaggedValue value = JSTaggedValue::Hole();
+    JSObject *obj = JSObject::Cast(exportObject.GetTaggedValue());
+    TaggedArray *properties = TaggedArray::Cast(obj->GetProperties().GetTaggedObject());
+    if (!properties->IsDictionaryMode()) {
+        JSHClass *jsHclass = obj->GetJSHClass();
+        LayoutInfo *layoutInfo = LayoutInfo::Cast(jsHclass->GetLayout().GetTaggedObject());
+        PropertyAttributes attr = layoutInfo->GetAttr(index);
+        value = obj->GetProperty(jsHclass, attr);
+    } else {
+        NameDictionary *dict = NameDictionary::Cast(properties);
+        value = dict->GetValue(index);
+    }
+    if (UNLIKELY(value.IsAccessor())) {
+        return FastRuntimeStub::CallGetter(thread, JSTaggedValue(obj), JSTaggedValue(obj), value);
+    }
+    ASSERT(!value.IsAccessor());
+    return value;
 }
 
 JSTaggedValue SourceTextModule::FindByExport(const JSTaggedValue &exportEntriesTv, const JSTaggedValue &key,

@@ -1236,27 +1236,5 @@ bool ObjectFastOperator::GetNumFromString(const char *str, int len, int *index, 
     *index = indexStr;
     return true;
 }
-
-JSTaggedValue ObjectFastOperator::FastGetPropertyByPorpsIndex(JSThread *thread,
-                                                              JSTaggedValue receiver, uint32_t index)
-{
-    JSTaggedValue value = JSTaggedValue::Hole();
-    JSObject *obj = JSObject::Cast(receiver);
-    TaggedArray *properties = TaggedArray::Cast(obj->GetProperties().GetTaggedObject());
-    if (!properties->IsDictionaryMode()) {
-        JSHClass *jsHclass = obj->GetJSHClass();
-        LayoutInfo *layoutInfo = LayoutInfo::Cast(jsHclass->GetLayout().GetTaggedObject());
-        PropertyAttributes attr = layoutInfo->GetAttr(index);
-        value = obj->GetProperty(jsHclass, attr);
-    } else {
-        NameDictionary *dict = NameDictionary::Cast(properties);
-        value = dict->GetValue(index);
-    }
-    if (UNLIKELY(value.IsAccessor())) {
-        return CallGetter(thread, JSTaggedValue(obj), JSTaggedValue(obj), value);
-    }
-    ASSERT(!value.IsAccessor());
-    return value;
-}
 }
 #endif  // ECMASCRIPT_OBJECT_FAST_OPERATOR_INL_H
