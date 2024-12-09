@@ -232,7 +232,7 @@ void JSObject::ElementsToDictionary(const JSThread *thread, JSHandle<JSObject> o
     JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
     JSMutableHandle<JSTaggedValue> valueHandle(thread, JSTaggedValue ::Undefined());
     for (uint32_t i = 0; i < length; i++) {
-        JSTaggedValue value = ElementAccessor::Get(obj, i);
+        JSTaggedValue value = ElementAccessor::Get(thread, obj, i);
         if (value.IsHole()) {
             continue;
         }
@@ -624,7 +624,7 @@ void JSObject::GetAllElementKeys(JSThread *thread, const JSHandle<JSObject> &obj
     if (!ElementAccessor::IsDictionaryMode(obj)) {
         uint32_t elementsLen = ElementAccessor::GetElementsLength(obj);
         for (uint32_t i = 0, j = elementIndex; i < elementsLen; ++i) {
-            if (!ElementAccessor::Get(obj, i).IsHole()) {
+            if (!ElementAccessor::Get(thread, obj, i).IsHole()) {
                 auto key = base::NumberHelper::IntToEcmaString(thread, i);
                 keyArray->Set(thread, j++, key);
             }
@@ -658,7 +658,7 @@ void JSObject::GetAllElementKeysByFilter(JSThread *thread,
     if (!ElementAccessor::IsDictionaryMode(obj)) {
         uint32_t elementsLen = ElementAccessor::GetElementsLength(obj);
         for (uint32_t i = 0; i < elementsLen; ++i) {
-            if (!ElementAccessor::Get(obj, i).IsHole()) {
+            if (!ElementAccessor::Get(thread, obj, i).IsHole()) {
                 ObjectOperator op(thread, objValue, i, OperatorType::OWN);
                 bool bIgnore = FilterHelper::IgnoreKeyByFilter<ObjectOperator>(op, filter);
                 if (bIgnore) {
@@ -681,7 +681,7 @@ void JSObject::GetALLElementKeysIntoVector(const JSThread *thread, const JSHandl
     if (!ElementAccessor::IsDictionaryMode(obj)) {
         uint32_t elementsLen = ElementAccessor::GetElementsLength(obj);
         for (uint32_t i = 0; i < elementsLen; ++i) {
-            if (!ElementAccessor::Get(obj, i).IsHole()) {
+            if (!ElementAccessor::Get(thread, obj, i).IsHole()) {
                 keyVector.emplace_back(JSTaggedValue(i));
             }
         }
@@ -723,7 +723,7 @@ void JSObject::CollectEnumElementsAlongProtoChain(JSThread *thread, const JSHand
         uint32_t elementsLen = ElementAccessor::GetElementsLength(obj);
         uint32_t preElementIndex = elementIndex;
         for (uint32_t i = 0; i < elementsLen; ++i) {
-            if (ElementAccessor::Get(obj, i).IsHole()) {
+            if (ElementAccessor::Get(thread, obj, i).IsHole()) {
                 continue;
             }
             keyHandle.Update(base::NumberHelper::IntToEcmaString(thread, i));
@@ -757,7 +757,7 @@ void JSObject::GetEnumElementKeys(JSThread *thread, const JSHandle<JSObject> &ob
     if (!ElementAccessor::IsDictionaryMode(obj)) {
         uint32_t elementsLen = ElementAccessor::GetElementsLength(obj);
         for (uint32_t i = 0, j = elementIndex; i < elementsLen; ++i) {
-            if (!ElementAccessor::Get(obj, i).IsHole()) {
+            if (!ElementAccessor::Get(thread, obj, i).IsHole()) {
                 auto key = base::NumberHelper::IntToEcmaString(thread, i);
                 keyArray->Set(thread, j++, key);
             }
@@ -815,7 +815,7 @@ bool JSObject::GlobalSetProperty(JSThread *thread, const JSHandle<JSTaggedValue>
     return SetProperty(&op, value, mayThrow);
 }
 
-uint32_t JSObject::GetNumberOfElements()
+uint32_t JSObject::GetNumberOfElements(JSThread *thread)
 {
     DISALLOW_GARBAGE_COLLECTION;
     uint32_t numOfElements = 0;
@@ -826,7 +826,7 @@ uint32_t JSObject::GetNumberOfElements()
     if (!ElementAccessor::IsDictionaryMode(this)) {
         uint32_t elementsLen = ElementAccessor::GetElementsLength(this);
         for (uint32_t i = 0; i < elementsLen; ++i) {
-            if (!ElementAccessor::Get(this, i).IsHole()) {
+            if (!ElementAccessor::Get(thread, this, i).IsHole()) {
                 numOfElements++;
             }
         }
@@ -1615,7 +1615,7 @@ bool JSObject::PreventExtensions(JSThread *thread, const JSHandle<JSObject> &obj
 // 9.1.12 [[OwnPropertyKeys]] ( )
 JSHandle<TaggedArray> JSObject::GetOwnPropertyKeys(JSThread *thread, const JSHandle<JSObject> &obj)
 {
-    uint32_t numOfElements = obj->GetNumberOfElements();
+    uint32_t numOfElements = obj->GetNumberOfElements(thread);
     uint32_t keyLen = numOfElements + obj->GetNumberOfKeys();
 
     JSHandle<TaggedArray> keyArray = thread->GetEcmaVM()->GetFactory()->NewTaggedArray(keyLen);
@@ -1632,7 +1632,7 @@ JSHandle<TaggedArray> JSObject::GetAllPropertyKeys(JSThread *thread, const JSHan
     JSMutableHandle<JSObject> currentObj(thread, obj);
     JSMutableHandle<JSTaggedValue> currentObjValue(thread, currentObj);
 
-    uint32_t curObjNumberOfElements = currentObj->GetNumberOfElements();
+    uint32_t curObjNumberOfElements = currentObj->GetNumberOfElements(thread);
     uint32_t curObjNumberOfKeys = currentObj->GetNumberOfKeys();
     uint32_t curObjectKeysLength = curObjNumberOfElements + curObjNumberOfKeys;
     uint32_t retArrayLength = curObjectKeysLength;
@@ -1641,7 +1641,7 @@ JSHandle<TaggedArray> JSObject::GetAllPropertyKeys(JSThread *thread, const JSHan
     uint32_t retArrayEffectivelength = 0;
 
     do {
-        curObjNumberOfElements = currentObj->GetNumberOfElements();
+        curObjNumberOfElements = currentObj->GetNumberOfElements(thread);
         curObjNumberOfKeys = currentObj->GetNumberOfKeys();
         curObjectKeysLength = curObjNumberOfElements + curObjNumberOfKeys;
         uint32_t minRequireLength = curObjectKeysLength + retArrayEffectivelength;
@@ -1721,7 +1721,7 @@ void JSObject::AppendOwnEnumPropertyKeys(JSThread *thread, const JSHandle<JSObje
                                          JSHandle<TaggedQueue> shadowQueue)
 {
     int32_t lastLength = *keys;
-    uint32_t numOfElements = obj->GetNumberOfElements();
+    uint32_t numOfElements = obj->GetNumberOfElements(thread);
     if (numOfElements > 0) {
         CollectEnumElementsAlongProtoChain(thread, obj, *keys, keyArray, keys, lastLength);
     }
@@ -1730,7 +1730,7 @@ void JSObject::AppendOwnEnumPropertyKeys(JSThread *thread, const JSHandle<JSObje
 
 JSHandle<TaggedArray> JSObject::GetOwnEnumPropertyKeys(JSThread *thread, const JSHandle<JSObject> &obj)
 {
-    uint32_t numOfElements = obj->GetNumberOfElements();
+    uint32_t numOfElements = obj->GetNumberOfElements(thread);
     uint32_t keyLen = numOfElements + obj->GetNumberOfKeys();
 
     JSHandle<TaggedArray> keyArray = thread->GetEcmaVM()->GetFactory()->NewTaggedArray(keyLen);
@@ -2575,10 +2575,10 @@ void PropertyDescriptor::CompletePropertyDescriptor(const JSThread *thread, Prop
 // the enum cache is a simple enum cache.
 // When receiver and receiver's prototype chain have no elements, and the prototype is not modified,
 // the enum cache is a enum cache with protochain
-bool JSObject::IsSimpleEnumCacheValid(JSTaggedValue receiver)
+bool JSObject::IsSimpleEnumCacheValid(JSThread *thread, JSTaggedValue receiver)
 {
     DISALLOW_GARBAGE_COLLECTION;
-    uint32_t numOfElements = JSObject::Cast(receiver.GetTaggedObject())->GetNumberOfElements();
+    uint32_t numOfElements = JSObject::Cast(receiver.GetTaggedObject())->GetNumberOfElements(thread);
     if (numOfElements > 0) {
         return false;
     }
@@ -2586,7 +2586,7 @@ bool JSObject::IsSimpleEnumCacheValid(JSTaggedValue receiver)
     JSTaggedValue current = JSObject::GetPrototype(receiver);
     while (current.IsHeapObject()) {
         JSObject *currentObj = JSObject::Cast(current.GetTaggedObject());
-        uint32_t numOfCurrentElements = currentObj->GetNumberOfElements();
+        uint32_t numOfCurrentElements = currentObj->GetNumberOfElements(thread);
         if (numOfCurrentElements > 0) {
             return false;
         }
@@ -2600,11 +2600,11 @@ bool JSObject::IsSimpleEnumCacheValid(JSTaggedValue receiver)
     return true;
 }
 
-bool JSObject::IsEnumCacheWithProtoChainInfoValid(JSTaggedValue receiver)
+bool JSObject::IsEnumCacheWithProtoChainInfoValid(JSThread *thread, JSTaggedValue receiver)
 {
     DISALLOW_GARBAGE_COLLECTION;
     // check elements of receiver
-    uint32_t numOfElements = JSObject::Cast(receiver.GetTaggedObject())->GetNumberOfElements();
+    uint32_t numOfElements = JSObject::Cast(receiver.GetTaggedObject())->GetNumberOfElements(thread);
     if (numOfElements > 0) {
         return false;
     }
@@ -2624,7 +2624,7 @@ bool JSObject::IsEnumCacheWithProtoChainInfoValid(JSTaggedValue receiver)
     JSTaggedValue current = proto;
     while (current.IsHeapObject()) {
         JSObject *currentObj = JSObject::Cast(current.GetTaggedObject());
-        uint32_t numOfCurrentElements = currentObj->GetNumberOfElements();
+        uint32_t numOfCurrentElements = currentObj->GetNumberOfElements(thread);
         if (numOfCurrentElements > 0) {
             return false;
         }
@@ -2643,10 +2643,10 @@ JSTaggedValue JSObject::TryGetEnumCache(JSThread *thread, JSTaggedValue obj)
     bool isEnumCacheValid = false;
     switch (kind) {
         case EnumCacheKind::SIMPLE:
-            isEnumCacheValid = IsSimpleEnumCacheValid(obj);
+            isEnumCacheValid = IsSimpleEnumCacheValid(thread, obj);
             break;
         case EnumCacheKind::PROTOCHAIN:
-            isEnumCacheValid = IsEnumCacheWithProtoChainInfoValid(obj);
+            isEnumCacheValid = IsEnumCacheWithProtoChainInfoValid(thread, obj);
             break;
         default:
             break;

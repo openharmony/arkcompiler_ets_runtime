@@ -1481,7 +1481,7 @@ void BuiltinsTypedArrayStubBuilder::Filter(GateRef glue, GateRef thisValue, Gate
                 BRANCH(Int32LessThan(*i, *newArrayLen), &next2, &loopExit2);
                 Bind(&next2);
                 {
-                    GateRef kValue = arrayStubBuilder.GetTaggedValueWithElementsKind(kept, *i);
+                    GateRef kValue = arrayStubBuilder.GetTaggedValueWithElementsKind(glue, kept, *i);
                     StoreTypedArrayElement(glue, newArray, ZExtInt32ToInt64(*i), kValue, arrayType);
                     Jump(&loopEnd2);
                 }
@@ -3457,7 +3457,7 @@ void BuiltinsTypedArrayStubBuilder::CopyElementsToArrayBuffer(GateRef glue, Gate
         BRANCH(Int32UnsignedLessThan(*i, srcLength), &storeValue, &exit);
         Bind(&storeValue);
         {
-            GateRef value = getWithKind ? GetTaggedValueWithElementsKind(array, *i)
+            GateRef value = getWithKind ? GetTaggedValueWithElementsKind(glue, array, *i)
                                         : GetValueFromTaggedArray(elementsArray, *i);
             GateRef val = ToNumber(glue, value);
             BRANCH(HasPendingException(glue), &exit, &copyElement);

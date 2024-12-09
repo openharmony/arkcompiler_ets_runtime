@@ -46,7 +46,7 @@ void PropertyAccessor::PreLoad()
         onlyHasSimpleProperties_ = false;
         canUseEnumCache_ = false;
     }
-    uint32_t numOfElements = receiverObj->GetNumberOfElements();
+    uint32_t numOfElements = receiverObj->GetNumberOfElements(thread_);
     if (numOfElements > 0) {
         AccumulateKeyLength(numOfElements);
         onlyHasSimpleProperties_ = false;
@@ -82,7 +82,7 @@ void PropertyAccessor::CollectPrototypeInfo()
             break;
         }
         JSObject *currentObj = JSObject::Cast(current.GetTaggedObject());
-        uint32_t numOfCurrentElements = currentObj->GetNumberOfElements();
+        uint32_t numOfCurrentElements = currentObj->GetNumberOfElements(thread_);
         if (numOfCurrentElements > 0) {
             AccumulateKeyLength(numOfCurrentElements);
             onlyHasSimpleProperties_ = false;
@@ -115,7 +115,7 @@ void PropertyAccessor::InitSimplePropertiesEnumCache()
 {
     ObjectFactory *factory = thread_->GetEcmaVM()->GetFactory();
     JSHandle<JSObject> receiverObj(receiver_);
-    ASSERT(receiverObj->GetNumberOfElements() == 0);
+    ASSERT(receiverObj->GetNumberOfElements(thread_) == 0);
     ASSERT(!receiver_->IsInSharedHeap());
     JSMutableHandle<TaggedArray> keyArray(thread_, JSTaggedValue::Undefined());
     if (keyLength_ == 0) {

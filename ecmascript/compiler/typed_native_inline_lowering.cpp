@@ -3311,7 +3311,7 @@ void TypedNativeInlineLowering::LowerArrayFilter(GateRef gate)
     builder_.Jump(&loopHead);
     builder_.LoopBegin(&loopHead);
     {
-        kValue = builtinsArrayStubBuilder.GetTaggedValueWithElementsKind(thisValue, *i);
+        kValue = builtinsArrayStubBuilder.GetTaggedValueWithElementsKind(glue, thisValue, *i);
         GateRef callJs = builder_.CallInternal(gate,
                                                {glue,
                                                 builder_.Int64(6),
@@ -3409,7 +3409,7 @@ void TypedNativeInlineLowering::LowerArrayMap(GateRef gate)
     builder_.Jump(&loopHead);
     builder_.LoopBegin(&loopHead);
     {
-        kValue = builtinsArrayStubBuilder.GetTaggedValueWithElementsKind(thisValue, *i);
+        kValue = builtinsArrayStubBuilder.GetTaggedValueWithElementsKind(glue, thisValue, *i);
         GateRef callJs = builder_.CallInternal(gate,
                                                {glue,
                                                 builder_.Int64(6),
@@ -3483,7 +3483,7 @@ void TypedNativeInlineLowering::LowerArraySome(GateRef gate)
     builder_.Bind(&lengthNotZero);
     builder_.Jump(&loopHead);
     builder_.LoopBegin(&loopHead);
-    kValue = builtinsArrayStubBuilder.GetTaggedValueWithElementsKind(thisValue, *i);
+    kValue = builtinsArrayStubBuilder.GetTaggedValueWithElementsKind(glue, thisValue, *i);
     {
         GateRef callJs = builder_.CallInternal(gate,
                                                {glue,
@@ -3553,7 +3553,7 @@ void TypedNativeInlineLowering::LowerArrayEvery(GateRef gate)
     builder_.Bind(&lengthNotZero);
     builder_.Jump(&loopHead);
     builder_.LoopBegin(&loopHead);
-    kValue = builtinsArrayStubBuilder.GetTaggedValueWithElementsKind(thisValue, *i);
+    kValue = builtinsArrayStubBuilder.GetTaggedValueWithElementsKind(glue, thisValue, *i);
     {
         GateRef callJs = builder_.CallInternal(gate,
                                                {glue,

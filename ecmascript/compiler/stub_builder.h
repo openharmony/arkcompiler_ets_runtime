@@ -596,7 +596,7 @@ public:
     GateRef ClearSharedStoreKind(GateRef handlerInfo);
     GateRef UpdateSOutOfBoundsForHandler(GateRef handlerInfo);
     void RestoreElementsKindToGeneric(GateRef glue, GateRef jsHClass);
-    GateRef GetTaggedValueWithElementsKind(GateRef receiver, GateRef index);
+    GateRef GetTaggedValueWithElementsKind(GateRef glue, GateRef receiver, GateRef index);
     void FastSetValueWithElementsKind(GateRef glue, GateRef elements, GateRef rawValue,
                                       GateRef index, ElementsKind kind);
     GateRef SetValueWithElementsKind(GateRef glue, GateRef receiver, GateRef rawValue, GateRef index,
@@ -915,9 +915,9 @@ public:
     GateRef IsSpecialKeysObject(GateRef obj);
     GateRef IsSlowKeysObject(GateRef obj);
     GateRef TryGetEnumCache(GateRef glue, GateRef obj);
-    GateRef GetNumberOfElements(GateRef obj);
-    GateRef IsSimpleEnumCacheValid(GateRef obj);
-    GateRef IsEnumCacheWithProtoChainInfoValid(GateRef obj);
+    GateRef GetNumberOfElements(GateRef glue, GateRef obj);
+    GateRef IsSimpleEnumCacheValid(GateRef glue, GateRef obj);
+    GateRef IsEnumCacheWithProtoChainInfoValid(GateRef glue, GateRef obj);
 
     // Exception handle
     GateRef HasPendingException(GateRef glue);

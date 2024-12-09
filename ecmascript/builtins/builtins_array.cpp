@@ -831,7 +831,7 @@ JSTaggedValue BuiltinsArray::Fill(EcmaRuntimeCallInfo *argv)
         bool isDictionary = thisObjHandle->GetJSHClass()->IsDictionaryElement();
         if (isDictionary) {
             uint32_t length = JSArray::Cast(*thisObjHandle)->GetLength();
-            uint32_t size = thisObjHandle->GetNumberOfElements();
+            uint32_t size = thisObjHandle->GetNumberOfElements(thread);
             if (length - size > JSObject::MAX_GAP) {
                 JSObject::TryOptimizeAsFastElements(thread, thisObjHandle);
             }
