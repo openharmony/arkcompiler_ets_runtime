@@ -310,6 +310,10 @@ Expected<JSTaggedValue, bool> EcmaContext::CommonInvokeEcmaEntrypoint(const JSPa
         CString msg = "Cannot find module '" + entry + "' , which is application Entry Point";
         THROW_REFERENCE_ERROR_AND_RETURN(thread_, msg.c_str(), Unexpected(false));
     }
+    ModuleLogger *moduleLogger = GetModuleLogger();
+    if (moduleLogger != nullptr) {
+        moduleLogger->SetStartTime(CString(entryPoint));
+    }
     if (jsPandaFile->IsModule(recordInfo)) {
         global = undefined;
         CString moduleName = jsPandaFile->GetJSPandaFileDesc();
@@ -336,6 +340,9 @@ Expected<JSTaggedValue, bool> EcmaContext::CommonInvokeEcmaEntrypoint(const JSPa
     JSTaggedValue result;
     if (jsPandaFile->IsCjs(recordInfo)) {
         CJSExecution(func, global, jsPandaFile, entryPoint);
+        if (moduleLogger != nullptr) {
+            moduleLogger->SetEndTime(CString(entryPoint));
+        }
     } else {
         if (aotFileManager_->IsLoadMain(jsPandaFile, entry)) {
             EcmaRuntimeStatScope runtimeStatScope(vm_);
@@ -356,6 +363,9 @@ Expected<JSTaggedValue, bool> EcmaContext::CommonInvokeEcmaEntrypoint(const JSPa
             EcmaRuntimeStatScope runtimeStatScope(vm_);
             result = EcmaInterpreter::Execute(info);
         }
+        if (moduleLogger != nullptr) {
+            moduleLogger->SetEndTime(CString(entryPoint));
+        }
 
         if (!thread_->HasPendingException() && !executeFromJob) {
             JSHandle<JSTaggedValue> handleResult(thread_, result);
@@ -363,6 +373,7 @@ Expected<JSTaggedValue, bool> EcmaContext::CommonInvokeEcmaEntrypoint(const JSPa
             result = handleResult.GetTaggedValue();
         }
     }
+    
     if (thread_->HasPendingException()) {
 #if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE) && !defined(OHOS_FOR_QEMU)
         return result;
@@ -381,10 +392,7 @@ Expected<JSTaggedValue, bool> EcmaContext::InvokeEcmaEntrypoint(const JSPandaFil
     if (options.EnableModuleLog()) {
         LOG_FULL(INFO) << "current executing file's name " << entryPoint.data();
     }
-    ModuleLogger *moduleLogger = GetModuleLogger();
-    if (moduleLogger != nullptr) {
-        moduleLogger->SetStartTime(CString(entryPoint));
-    }
+    
     JSHandle<Program> program = JSPandaFileManager::GetInstance()->GenerateProgram(vm_, jsPandaFile, entryPoint);
     if (program.IsEmpty()) {
         LOG_ECMA(ERROR) << "program is empty, invoke entrypoint failed";
@@ -403,9 +411,6 @@ Expected<JSTaggedValue, bool> EcmaContext::InvokeEcmaEntrypoint(const JSPandaFil
     }
 #endif
 
-    if (moduleLogger != nullptr) {
-        moduleLogger->SetEndTime(CString(entryPoint));
-    }
     return result;
 }
 
