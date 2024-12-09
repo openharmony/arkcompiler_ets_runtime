@@ -13,6 +13,8 @@
  * limitations under the License.
  */
 
+#include <climits>
+#include <cassert>
 #include "ecmascript/compiler/baseline/baseline_compiler.h"
 #include "ecmascript/compiler/bytecode_info_collector.h"
 #include "ecmascript/js_function.h"
@@ -1396,6 +1398,8 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(CREATEEMPTYOBJECT)
 BYTECODE_BASELINE_HANDLER_IMPLEMENT(CREATEEMPTYARRAY_IMM8)
 {
     uint8_t slotId = READ_INST_8_0();
+    ASSERT((bytecodeArray - pfHeaderAddr) >= std::numeric_limits<int32_t>::min());
+    ASSERT((bytecodeArray - pfHeaderAddr) <= std::numeric_limits<int32_t>::max());
     auto traceId = static_cast<int32_t>(bytecodeArray - pfHeaderAddr);
 
     auto *thread = vm->GetAssociatedJSThread();
@@ -1417,6 +1421,8 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(CREATEEMPTYARRAY_IMM8)
 BYTECODE_BASELINE_HANDLER_IMPLEMENT(CREATEEMPTYARRAY_IMM16)
 {
     uint16_t slotId = READ_INST_16_0();
+    ASSERT((bytecodeArray - pfHeaderAddr) >= std::numeric_limits<int32_t>::min());
+    ASSERT((bytecodeArray - pfHeaderAddr) <= std::numeric_limits<int32_t>::max());
     auto traceId = static_cast<int32_t>(bytecodeArray - pfHeaderAddr);
 
     auto *thread = vm->GetAssociatedJSThread();
@@ -1578,6 +1584,8 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(CREATEARRAYWITHBUFFER_IMM8_ID16)
 {
     uint8_t slotId = READ_INST_8_0();
     uint16_t literalId = READ_INST_16_1();
+    ASSERT((bytecodeArray - pfHeaderAddr) >= std::numeric_limits<int32_t>::min());
+    ASSERT((bytecodeArray - pfHeaderAddr) <= std::numeric_limits<int32_t>::max());
     auto traceId = static_cast<int32_t>(bytecodeArray - pfHeaderAddr);
 
     auto *thread = vm->GetAssociatedJSThread();
@@ -1601,6 +1609,8 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(CREATEARRAYWITHBUFFER_IMM16_ID16)
 {
     uint16_t slotId = READ_INST_16_0();
     uint16_t literalId = READ_INST_16_2();
+    ASSERT((bytecodeArray - pfHeaderAddr) >= std::numeric_limits<int32_t>::min());
+    ASSERT((bytecodeArray - pfHeaderAddr) <= std::numeric_limits<int32_t>::max());
     auto traceId = static_cast<int32_t>(bytecodeArray - pfHeaderAddr);
 
     auto *thread = vm->GetAssociatedJSThread();
