@@ -135,7 +135,7 @@ void BuiltinsArrayStubBuilder::With(GateRef glue, GateRef thisValue, GateRef num
                         }
                         Bind(&notReplaceIndex);
                         {
-                            GateRef ele = GetTaggedValueWithElementsKind(thisValue, *k);
+                            GateRef ele = GetTaggedValueWithElementsKind(glue, thisValue, *k);
                             Label eleIsHole(env);
                             Label eleNotHole(env);
                             BRANCH(TaggedIsHole(ele), &eleIsHole, &eleNotHole);
@@ -230,7 +230,7 @@ void BuiltinsArrayStubBuilder::Unshift(GateRef glue, GateRef thisValue, GateRef 
                 BRANCH(Int64GreaterThanOrEqual(*fromKey, Int64(0)), &next, &loopExit);
                 Bind(&next);
                 {
-                    ele = GetTaggedValueWithElementsKind(thisValue, *fromKey);
+                    ele = GetTaggedValueWithElementsKind(glue, thisValue, *fromKey);
                     BRANCH(TaggedIsHole(*ele), &eleIsHole, &notHasException0);
                     Bind(&eleIsHole);
                     {
@@ -344,7 +344,7 @@ void BuiltinsArrayStubBuilder::Shift(GateRef glue, GateRef thisValue,
                     GateRef capacity = ZExtInt32ToInt64(GetLengthOfTaggedArray(elements));
                     GateRef index = Int64Sub(thisLen, Int64(1));
                     DEFVARIABLE(element, VariableType::JS_ANY(), Hole());
-                    element = GetTaggedValueWithElementsKind(thisValue, Int64(0));
+                    element = GetTaggedValueWithElementsKind(glue, thisValue, Int64(0));
                     Label hasException0(env);
                     Label taggedHole(env);
                     Label copyArray(env);
@@ -373,7 +373,7 @@ void BuiltinsArrayStubBuilder::Shift(GateRef glue, GateRef thisValue,
                             BRANCH(Int64LessThan(*fromKey, thisLen), &loopNext, &loopExit);
                             Bind(&loopNext);
                             {
-                                GateRef ele = GetTaggedValueWithElementsKind(thisValue, *fromKey);
+                                GateRef ele = GetTaggedValueWithElementsKind(glue, thisValue, *fromKey);
                                 SetValueWithElementsKind(glue, thisValue, ele, *toKey, Boolean(false),
                                     Int32(static_cast<uint32_t>(ElementsKind::NONE)));
                                 Jump(&loopEnd);
@@ -511,7 +511,7 @@ void BuiltinsArrayStubBuilder::Concat(GateRef glue, GateRef thisValue, GateRef n
                                 {
                                     BRANCH(Int64LessThan(*i, thisLen), &next, &loopExit);
                                     Bind(&next);
-                                    GateRef ele = GetTaggedValueWithElementsKind(thisValue, *i);
+                                    GateRef ele = GetTaggedValueWithElementsKind(glue, thisValue, *i);
                                     #if ECMASCRIPT_ENABLE_ELEMENTSKIND_ALWAY_GENERIC
                                     SetValueWithElementsKind(glue, newArray, ele, *j, Boolean(true),
                                         Int32(static_cast<uint32_t>(ElementsKind::GENERIC)));
@@ -535,7 +535,7 @@ void BuiltinsArrayStubBuilder::Concat(GateRef glue, GateRef thisValue, GateRef n
                                 {
                                     BRANCH(Int64LessThan(*k, argLen), &next1, &loopExit1);
                                     Bind(&next1);
-                                    GateRef ele = GetTaggedValueWithElementsKind(arg0, *k);
+                                    GateRef ele = GetTaggedValueWithElementsKind(glue, arg0, *k);
                                     #if ECMASCRIPT_ENABLE_ELEMENTSKIND_ALWAY_GENERIC
                                     SetValueWithElementsKind(glue, newArray, ele, *j, Boolean(true),
                                                              Int32(static_cast<uint32_t>(ElementsKind::GENERIC)));
@@ -626,7 +626,7 @@ void BuiltinsArrayStubBuilder::Filter(GateRef glue, GateRef thisValue, GateRef n
         {
             BRANCH(Int64LessThan(*i, *thisArrLenVar), &next, &loopExit);
             Bind(&next);
-            kValue = GetTaggedValueWithElementsKind(thisValue, *i);
+            kValue = GetTaggedValueWithElementsKind(glue, thisValue, *i);
             Label kValueIsHole(env);
             Label kValueNotHole(env);
             Label arrayValueIsHole(env);
@@ -790,7 +790,7 @@ void BuiltinsArrayStubBuilder::Map(GateRef glue, GateRef thisValue, GateRef numA
         {
             BRANCH(Int64LessThan(*i, *thisArrLenVar), &next, &loopExit);
             Bind(&next);
-            kValue = GetTaggedValueWithElementsKind(thisValue, *i);
+            kValue = GetTaggedValueWithElementsKind(glue, thisValue, *i);
             Label kValueIsHole(env);
             Label kValueNotHole(env);
             Label arrayValueIsHole(env);
@@ -927,7 +927,7 @@ void BuiltinsArrayStubBuilder::ForEach([[maybe_unused]] GateRef glue, GateRef th
             Bind(&nextStep);
             BRANCH(Int64GreaterThanOrEqual(*i, ZExtInt32ToInt64(*thisLen)), &loopExit, &next);
             Bind(&next);
-            kValue = GetTaggedValueWithElementsKind(thisValue, *i);
+            kValue = GetTaggedValueWithElementsKind(glue, thisValue, *i);
             BRANCH(TaggedIsHole(*kValue), &kValueIsHole, &callDispatch);
             Bind(&kValueIsHole);
             {
@@ -1064,7 +1064,7 @@ void BuiltinsArrayStubBuilder::ArrayIteratorNext(GateRef glue, GateRef thisValue
                    &createIterResult, &kindIsNotKey);
             Bind(&kindIsNotKey);
             {
-                iterValue = GetTaggedValueWithElementsKind(array, index);
+                iterValue = GetTaggedValueWithElementsKind(glue, array, index);
                 Jump(&checkNeedCreateEntry);
             }
         }
@@ -1259,7 +1259,7 @@ void BuiltinsArrayStubBuilder::Pop(GateRef glue, GateRef thisValue,
     BRANCH(Int64LessThan(index, capacity), &inRange, &trimCheck);
     Bind(&inRange);
     {
-        element = GetTaggedValueWithElementsKind(thisValue, index);
+        element = GetTaggedValueWithElementsKind(glue, thisValue, index);
         Jump(&isHole);
     }
     Bind(&isHole);
@@ -1492,7 +1492,7 @@ void BuiltinsArrayStubBuilder::Slice(GateRef glue, GateRef thisValue, GateRef nu
                                 BRANCH(Int64LessThan(*idx, *count), &next, &loopExit);
                                 Bind(&next);
 
-                                GateRef ele = GetTaggedValueWithElementsKind(thisValue, Int64Add(*idx, *start));
+                                GateRef ele = GetTaggedValueWithElementsKind(glue, thisValue, Int64Add(*idx, *start));
                                 SetValueWithElementsKind(glue, newArray, ele, *idx, Boolean(true),
                                                          Int32(static_cast<uint32_t>(ElementsKind::NONE)));
                                 Jump(&loopEnd);
@@ -1525,7 +1525,7 @@ void BuiltinsArrayStubBuilder::Slice(GateRef glue, GateRef thisValue, GateRef nu
                                 BRANCH(Int64GreaterThan(thisElesLen, index), &indexInRange, &indexOutRange);
                                 Bind(&indexInRange);
                                 {
-                                    ele = GetTaggedValueWithElementsKind(thisValue, index);
+                                    ele = GetTaggedValueWithElementsKind(glue, thisValue, index);
                                     Jump(&setEle);
                                 }
                                 Bind(&indexOutRange);
@@ -1619,7 +1619,7 @@ void BuiltinsArrayStubBuilder::ToSorted(GateRef glue, GateRef thisValue,
         BRANCH(Int64LessThan(*i, thisArrLen), &next, &loopExit);
         Bind(&next);
         {
-            GateRef ele = GetTaggedValueWithElementsKind(thisValue, *i);
+            GateRef ele = GetTaggedValueWithElementsKind(glue, thisValue, *i);
             SetValueWithElementsKind(glue, receiver, ele, *i, Boolean(true),
                 Int32(static_cast<uint32_t>(ElementsKind::NONE)));
             Jump(&loopEnd);
@@ -1688,7 +1688,7 @@ GateRef BuiltinsArrayStubBuilder::DoSort(GateRef glue, GateRef receiver, bool is
         Label afterGettingpresentValue(env);
         Label presentValueHasProperty(env);
         Label presentValueHasException0(env);
-        presentValue = GetTaggedValueWithElementsKind(receiver, *i);
+        presentValue = GetTaggedValueWithElementsKind(glue, receiver, *i);
         BRANCH(TaggedIsHole(*presentValue), &presentValueIsHole, &afterGettingpresentValue);
         Bind(&presentValueIsHole);
         {
@@ -1722,7 +1722,7 @@ GateRef BuiltinsArrayStubBuilder::DoSort(GateRef glue, GateRef receiver, bool is
                 Bind(&next1);
                 GateRef sum = Int64Add(*beginIndex, *endIndex);
                 GateRef middleIndex = Int64Div(sum, Int64(2)); // 2 : half
-                middleValue = GetTaggedValueWithElementsKind(receiver, middleIndex);
+                middleValue = GetTaggedValueWithElementsKind(glue, receiver, middleIndex);
                 BRANCH(TaggedIsHole(*middleValue), &middleValueIsHole, &afterGettingmiddleValue);
                 Bind(&middleValueIsHole);
                 {
@@ -1797,7 +1797,7 @@ GateRef BuiltinsArrayStubBuilder::DoSort(GateRef glue, GateRef receiver, bool is
                     Label previousValueHasException0(env);
                     BRANCH(Int64GreaterThan(*j, *endIndex), &next2, &loopExit2);
                     Bind(&next2);
-                    previousValue = GetTaggedValueWithElementsKind(receiver, Int64Sub(*j, Int64(1)));
+                    previousValue = GetTaggedValueWithElementsKind(glue, receiver, Int64Sub(*j, Int64(1)));
                     BRANCH(TaggedIsHole(*previousValue), &previousValueIsHole, &afterGettingpreviousValue);
                     Bind(&previousValueIsHole);
                     {
@@ -1926,7 +1926,7 @@ void BuiltinsArrayStubBuilder::Reduce(GateRef glue, GateRef thisValue, GateRef n
                         Label changeThisLen(env);
                         Label updateCallResult(env);
                         GateRef elements = GetElementsArray(thisValue);
-                        GateRef kValue = GetTaggedValueWithElementsKind(thisValue, *k);
+                        GateRef kValue = GetTaggedValueWithElementsKind(glue, thisValue, *k);
                         BRANCH(TaggedIsHole(kValue), &loopEnd, &notHole);
                         Bind(&notHole);
                         {
@@ -2176,7 +2176,7 @@ GateRef BuiltinsArrayStubBuilder::DoReverse(GateRef glue, GateRef thisValue, Gat
         BRANCH(Int64LessThanOrEqual(*i, *j), &next, &loopExit);
         Bind(&next);
         {
-            lower = GetTaggedValueWithElementsKind(thisValue, *i);
+            lower = GetTaggedValueWithElementsKind(glue, thisValue, *i);
             BRANCH(TaggedIsHole(*lower), &lowerValueIsHole, &afterGettingLower);
             Bind(&lowerValueIsHole);
             {
@@ -2195,7 +2195,7 @@ GateRef BuiltinsArrayStubBuilder::DoReverse(GateRef glue, GateRef thisValue, Gat
             }
             Bind(&afterGettingLower);
             {
-                upper = GetTaggedValueWithElementsKind(thisValue, *j);
+                upper = GetTaggedValueWithElementsKind(glue, thisValue, *j);
                 BRANCH(TaggedIsHole(*upper), &upperValueIsHole, &afterGettingUpper);
                 Bind(&upperValueIsHole);
                 {
@@ -2466,7 +2466,7 @@ void BuiltinsArrayStubBuilder::FindIndex(GateRef glue, GateRef thisValue, GateRe
         {
             BRANCH(Int64LessThan(*i, *thisArrLen), &next, &loopExit);
             Bind(&next);
-            kValue = GetTaggedValueWithElementsKind(thisValue, *i);
+            kValue = GetTaggedValueWithElementsKind(glue, thisValue, *i);
             Label isHole(env);
             Label notHole(env);
             BRANCH(TaggedIsHole(*kValue), &isHole, &notHole);
@@ -2939,7 +2939,7 @@ void BuiltinsArrayStubBuilder::Includes(GateRef glue, GateRef thisValue, GateRef
                             {
                                 Label notHoleOrUndefValue(env);
                                 Label valueFound(env);
-                                GateRef value = GetTaggedValueWithElementsKind(thisValue, *from);
+                                GateRef value = GetTaggedValueWithElementsKind(glue, thisValue, *from);
                                 GateRef isHole = TaggedIsHole(value);
                                 GateRef isUndef = TaggedIsUndefined(value);
                                 BRANCH(BitOr(isHole, isUndef), slowPath, &notHoleOrUndefValue);
@@ -3065,7 +3065,7 @@ GateRef BuiltinsArrayStubBuilder::CreateSpliceDeletedArray(GateRef glue, GateRef
         }
         Bind(&setSrc);
         {
-            GateRef val = GetTaggedValueWithElementsKind(thisValue, Int32Add(start, *i));
+            GateRef val = GetTaggedValueWithElementsKind(glue, thisValue, Int32Add(start, *i));
             SetValueWithElementsKind(glue, newArray, val, *i, Boolean(true),
                                      Int32(static_cast<uint32_t>(ElementsKind::NONE)));
             Jump(&loopEnd);
@@ -3118,7 +3118,7 @@ void BuiltinsArrayStubBuilder::Fill(GateRef glue, GateRef thisValue, GateRef num
     BRANCH(IsDictionaryElement(arrayCls), &isDict, &notDict);
     Bind(&isDict);
     {
-        GateRef size = GetNumberOfElements(thisValue);
+        GateRef size = GetNumberOfElements(glue, thisValue);
         BRANCH(Int32GreaterThan(Int32Sub(thisArrLen, size),
             TruncInt64ToInt32(IntPtr(JSObject::MAX_GAP))), slowPath, &notDict);
     }
@@ -3445,7 +3445,7 @@ void BuiltinsArrayStubBuilder::Splice(GateRef glue, GateRef thisValue, GateRef n
                     BRANCH(Int32LessThan(Int32Add(*i, *actualDeleteCount), srcElementsLen), &getSrcEle, &setEle);
                     Bind(&getSrcEle);
                     {
-                        ele = GetTaggedValueWithElementsKind(thisValue, Int32Add(*i, *actualDeleteCount));
+                        ele = GetTaggedValueWithElementsKind(glue, thisValue, Int32Add(*i, *actualDeleteCount));
                         Jump(&setEle);
                     }
                     Bind(&setEle);
@@ -3521,7 +3521,7 @@ void BuiltinsArrayStubBuilder::Splice(GateRef glue, GateRef thisValue, GateRef n
                 {
                     BRANCH(Int32GreaterThan(*j, *start), &next, &loopExit);
                     Bind(&next);
-                    ele = GetTaggedValueWithElementsKind(thisValue, Int32Sub(Int32Add(*j, *actualDeleteCount),
+                    ele = GetTaggedValueWithElementsKind(glue, thisValue, Int32Sub(Int32Add(*j, *actualDeleteCount),
                                                                              Int32(1)));
                     SetValueWithElementsKind(glue, thisValue, *ele, Int32Sub(Int32Add(*j, *insertCount), Int32(1)),
                                              Boolean(true), Int32(static_cast<uint32_t>(ElementsKind::NONE)));
@@ -3678,7 +3678,7 @@ void BuiltinsArrayStubBuilder::ToSpliced(GateRef glue, GateRef thisValue, GateRe
                         {
                             BRANCH(Int32LessThan(*oldIndex, *actualStart), &loopNext, &loopExit);
                             Bind(&loopNext);
-                            GateRef ele = GetTaggedValueWithElementsKind(thisValue, *oldIndex);
+                            GateRef ele = GetTaggedValueWithElementsKind(glue, thisValue, *oldIndex);
                             BRANCH(TaggedIsHole(ele), &eleIsHole, &eleNotHole);
                             Bind(&eleIsHole);
                             {
@@ -3732,7 +3732,7 @@ void BuiltinsArrayStubBuilder::ToSpliced(GateRef glue, GateRef thisValue, GateRe
                             {
                                 BRANCH(Int32LessThan(*oldIndex, thisLen), &loopNext1, &loopExit1);
                                 Bind(&loopNext1);
-                                GateRef ele1 = GetTaggedValueWithElementsKind(thisValue, *oldIndex);
+                                GateRef ele1 = GetTaggedValueWithElementsKind(glue, thisValue, *oldIndex);
                                 BRANCH(TaggedIsHole(ele1), &ele1IsHole, &ele1NotHole);
                                 Bind(&ele1IsHole);
                                 {
@@ -3892,7 +3892,7 @@ void BuiltinsArrayStubBuilder::CopyWithin(GateRef glue, GateRef thisValue, GateR
                     Label notHasException0(env);
                     BRANCH(Int64GreaterThan(*count, Int64(0)), &next, &loopExit);
                     Bind(&next);
-                    kValue = GetTaggedValueWithElementsKind(thisValue, *copyFrom);
+                    kValue = GetTaggedValueWithElementsKind(glue, thisValue, *copyFrom);
                     BRANCH(TaggedIsHole(*kValue), &kValueIsHole, &setValue);
                     Bind(&kValueIsHole);
                     GateRef hasProp = CallRuntime(glue, RTSTUB_ID(HasProperty),
@@ -4040,7 +4040,7 @@ void BuiltinsArrayStubBuilder::Some(GateRef glue, GateRef thisValue, GateRef num
             Bind(&nextStep);
             BRANCH(Int64LessThan(*i, *thisArrLen), &next, &loopExit);
             Bind(&next);
-            kValue = GetTaggedValueWithElementsKind(thisValue, *i);
+            kValue = GetTaggedValueWithElementsKind(glue, thisValue, *i);
             BRANCH(TaggedIsHole(*kValue), &kValueIsHole, &callDispatch);
             Bind(&kValueIsHole);
             {
@@ -4237,7 +4237,7 @@ void BuiltinsArrayStubBuilder::Every(GateRef glue, GateRef thisValue, GateRef nu
             Bind(&nextStep);
             BRANCH(Int64LessThan(*i, *thisArrLen), &next, &loopExit);
             Bind(&next);
-            kValue = GetTaggedValueWithElementsKind(thisValue, *i);
+            kValue = GetTaggedValueWithElementsKind(glue, thisValue, *i);
             BRANCH(TaggedIsHole(*kValue), &kValueIsHole, &callDispatch);
             Bind(&kValueIsHole);
             {
@@ -4436,7 +4436,7 @@ void BuiltinsArrayStubBuilder::ReduceRight(GateRef glue, GateRef thisValue, Gate
             Bind(&nextStep);
             BRANCH(Int32GreaterThanOrEqual(*k, Int32(0)), &next, &loopExit);
             Bind(&next);
-            kValue = GetTaggedValueWithElementsKind(thisValue, *k);
+            kValue = GetTaggedValueWithElementsKind(glue, thisValue, *k);
             BRANCH(TaggedIsHole(*kValue), &kValueIsHole, &callDispatch);
             Bind(&kValueIsHole);
             {
@@ -4616,7 +4616,7 @@ void BuiltinsArrayStubBuilder::FindLastIndex(GateRef glue, GateRef thisValue, Ga
             Bind(&nextStep);
             BRANCH(Int64LessThan(*i, Int64(0)), &loopExit, &next);
             Bind(&next);
-            kValue = GetTaggedValueWithElementsKind(thisValue, *i);
+            kValue = GetTaggedValueWithElementsKind(glue, thisValue, *i);
             BRANCH(TaggedIsHole(*kValue), &kValueIsHole, &callDispatch);
             Bind(&kValueIsHole);
             {
@@ -4800,7 +4800,7 @@ void BuiltinsArrayStubBuilder::FindLast(GateRef glue, GateRef thisValue, GateRef
             Bind(&nextStep);
             BRANCH(Int64LessThan(*i, Int64(0)), &loopExit, &next);
             Bind(&next);
-            kValue = GetTaggedValueWithElementsKind(thisValue, *i);
+            kValue = GetTaggedValueWithElementsKind(glue, thisValue, *i);
             BRANCH(TaggedIsHole(*kValue), &kValueIsHole, &callDispatch);
             Bind(&kValueIsHole);
             {
@@ -5190,7 +5190,7 @@ void BuiltinsArrayStubBuilder::FlatMap(GateRef glue, GateRef thisValue, GateRef 
             Bind(&nextStep);
             BRANCH(Int64LessThan(*i, *thisArrLen), &next, &loopExit);
             Bind(&next);
-            kValue = GetTaggedValueWithElementsKind(thisValue, *i);
+            kValue = GetTaggedValueWithElementsKind(glue, thisValue, *i);
             BRANCH(TaggedIsHole(*kValue), &kValueIsHole, &callDispatch);
             Bind(&kValueIsHole);
             {
@@ -5255,8 +5255,8 @@ void BuiltinsArrayStubBuilder::FlatMap(GateRef glue, GateRef thisValue, GateRef 
                         }
                         Bind(&retValueIsJsArray);
                         {
-                            GateRef elementsNum =
-                            ZExtInt32ToInt64(GetNumberOfElements(retValue)); // newArray only contains non-hole elements
+                            // newArray only contains non-hole elements
+                            GateRef elementsNum = ZExtInt32ToInt64(GetNumberOfElements(glue, retValue));
                             newArrLen = Int64Sub(Int64Add(*newArrLen, elementsNum), Int64(1));
                             Jump(&loopEnd);
                         }
@@ -5338,8 +5338,8 @@ void BuiltinsArrayStubBuilder::FlatMap(GateRef glue, GateRef thisValue, GateRef 
                     }
                     Bind(&retValueIsJsArray);
                     {
-                        GateRef elementsNum =
-                            ZExtInt32ToInt64(GetNumberOfElements(retValue)); // newArray only contains non-hole elements
+                        // newArray only contains non-hole elements
+                        GateRef elementsNum = ZExtInt32ToInt64(GetNumberOfElements(glue, retValue));
                         newArrLen = Int64Sub(Int64Add(*newArrLen, elementsNum), Int64(1));
                         Jump(&loopEnd);
                     }
@@ -5372,7 +5372,7 @@ void BuiltinsArrayStubBuilder::FlatMap(GateRef glue, GateRef thisValue, GateRef 
             Label retValueIsNotJsArray(env);
             BRANCH(Int64LessThan(*i, *thisArrLen), &next2, &loopExit2);
             Bind(&next2);
-            GateRef retValue = GetTaggedValueWithElementsKind(mappedArray, *i);
+            GateRef retValue = GetTaggedValueWithElementsKind(glue, mappedArray, *i);
             BRANCH(TaggedIsHole(retValue), &loopEnd2, &nextStep);
             Bind(&nextStep);
             BRANCH(TaggedIsHeapObject(retValue), &retValueIsHeapObject, &retValueIsNotJsArray);
@@ -5399,7 +5399,7 @@ void BuiltinsArrayStubBuilder::FlatMap(GateRef glue, GateRef thisValue, GateRef 
                         Bind(&next3);
                         BRANCH(retValueIsStable, &retValueIsStableArray, &retValueNotStableArray);
                         Bind(&retValueIsStableArray);
-                        retValueItem = GetTaggedValueWithElementsKind(retValue, *k);
+                        retValueItem = GetTaggedValueWithElementsKind(glue, retValue, *k);
                         BRANCH(TaggedIsHole(*retValueItem), &loopEnd3, &setValue);
                         Bind(&retValueNotStableArray);
                         GateRef hasProp = CallRuntime(glue, RTSTUB_ID(HasProperty), { retValue, IntToTaggedInt(*k) });

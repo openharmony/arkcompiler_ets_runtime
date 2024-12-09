@@ -126,7 +126,7 @@ void BuiltinsObjectStubBuilder::AssignEnumElementProperty(Variable *result, Labe
         {
             BRANCH(Int32LessThan(*idx, len), &next, &loopExit);
             Bind(&next);
-            GateRef value = GetTaggedValueWithElementsKind(source, *idx);
+            GateRef value = GetTaggedValueWithElementsKind(glue_, source, *idx);
             Label notHole(env);
             BRANCH(TaggedIsHole(value), &loopEnd, &notHole);
             Bind(&notHole);
@@ -542,7 +542,7 @@ void BuiltinsObjectStubBuilder::HasOwnProperty(Variable *result, Label *exit, La
                         Bind(&lessThanLength);
                         {
                             Label notHole(env);
-                            GateRef value = GetTaggedValueWithElementsKind(thisValue, index);
+                            GateRef value = GetTaggedValueWithElementsKind(glue_, thisValue, index);
                             BRANCH(TaggedIsNotHole(value), &notHole, exit);
                             Bind(&notHole);
                             {
@@ -905,7 +905,7 @@ GateRef BuiltinsObjectStubBuilder::GetEnumElementKeys(GateRef glue, GateRef obj)
 
     Label propsNotZero(env);
     Label propsIsZero(env);
-    GateRef numOfElements = GetNumberOfElements(obj);
+    GateRef numOfElements = GetNumberOfElements(glue, obj);
     BRANCH(Int32GreaterThan(numOfElements, Int32(0)), &propsNotZero, &propsIsZero);
     Bind(&propsNotZero);
     {
@@ -961,7 +961,7 @@ GateRef BuiltinsObjectStubBuilder::GetEnumElementKeys(GateRef glue, GateRef obj)
                 BRANCH(Int32UnsignedLessThan(*j, elementsLen), &iLessLength, &afterLoop);
                 Bind(&iLessLength);
                 {
-                    GateRef element = GetTaggedValueWithElementsKind(obj, *j);
+                    GateRef element = GetTaggedValueWithElementsKind(glue, obj, *j);
                     BRANCH(TaggedIsHole(element), &loopEnd, &notHole);
                     Bind(&notHole);
                     GateRef str = IntToEcmaString(glue, *j);
@@ -1305,7 +1305,7 @@ void BuiltinsObjectStubBuilder::GetOwnPropertyNames(Variable *result, Label *exi
                 Label getAllElementKeys(env);
                 Label checkNumOfKeys(env);
                 GateRef hclass = LoadHClass(obj);
-                GateRef numOfElements = GetNumberOfElements(obj);
+                GateRef numOfElements = GetNumberOfElements(glue_, obj);
                 GateRef numOfKeys = GetNumberOfPropsFromHClass(hclass);
                 GateRef keyLen = Int32Add(numOfElements, numOfKeys);
                 GateRef elementKind = Int32(static_cast<int32_t>(ElementsKind::TAGGED));
@@ -1414,7 +1414,7 @@ void BuiltinsObjectStubBuilder::GetOwnPropertySymbols(Variable *result, Label *e
                 Label getAllElementKeys(env);
                 Label checkNumOfKeys(env);
                 GateRef hclass = LoadHClass(obj);
-                GateRef numOfElements = GetNumberOfElements(obj);
+                GateRef numOfElements = GetNumberOfElements(glue_, obj);
                 GateRef numOfKeys = GetNumberOfPropsFromHClass(hclass);
                 GateRef keyLen = Int32Add(numOfElements, numOfKeys);
                 // need to caclulate elementKind
@@ -1564,7 +1564,7 @@ GateRef BuiltinsObjectStubBuilder::GetAllElementKeys(GateRef glue, GateRef obj, 
                 BRANCH(Int32UnsignedLessThan(*j, elementsLen), &next, &loopExit);
                 Bind(&next);
                 {
-                    GateRef element = GetTaggedValueWithElementsKind(obj, *j);
+                    GateRef element = GetTaggedValueWithElementsKind(glue, obj, *j);
                     BRANCH(TaggedIsHole(element), &loopEnd, &notHole);
                     Bind(&notHole);
                     {
@@ -1763,7 +1763,7 @@ GateRef BuiltinsObjectStubBuilder::GetEnumElementEntries(GateRef glue, GateRef o
         {
             BRANCH(Int32LessThan(*idx, len), &LoopNext, &loopExit);
             Bind(&LoopNext);
-            GateRef value = GetTaggedValueWithElementsKind(obj, *idx);
+            GateRef value = GetTaggedValueWithElementsKind(glue, obj, *idx);
             Label notHole(env);
             BRANCH(TaggedIsHole(value), &loopEnd, &notHole);
             Bind(&notHole);
@@ -2051,7 +2051,7 @@ void BuiltinsObjectStubBuilder::GetOwnPropertyDescriptors(Variable *result, Labe
             Bind(&notDictMode);
             {
                 Label onlyProperties(env);
-                GateRef numOfElements = GetNumberOfElements(obj);
+                GateRef numOfElements = GetNumberOfElements(glue_, obj);
                 BRANCH(Int32Equal(numOfElements, Int32(0)), &onlyProperties, slowPath);
                 Bind(&onlyProperties);
                 {

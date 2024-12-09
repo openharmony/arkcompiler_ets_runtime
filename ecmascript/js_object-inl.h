@@ -558,7 +558,7 @@ inline std::pair<JSHandle<TaggedArray>, JSHandle<TaggedArray>> JSObject::GetOwnE
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     std::pair<uint32_t, uint32_t> numOfKeys = obj->GetNumberOfEnumKeys();
     uint32_t numOfEnumKeys = numOfKeys.first;
-    uint32_t numOfElements = obj->GetNumberOfElements();
+    uint32_t numOfElements = obj->GetNumberOfElements(thread);
     JSHandle<TaggedArray> elementArray = numOfElements > 0 ? JSObject::GetEnumElementKeys(
         thread, obj, 0, numOfElements, copyLengthOfElements) : factory->EmptyArray();
     JSHandle<TaggedArray> keyArray = numOfEnumKeys > 0 ? JSObject::GetAllEnumKeys(

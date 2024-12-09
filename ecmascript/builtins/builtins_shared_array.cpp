@@ -859,7 +859,7 @@ JSTaggedValue BuiltinsSharedArray::Find(EcmaRuntimeCallInfo *argv)
 
 JSTaggedValue BuiltinsSharedArray::GetElementByKey(JSThread *thread, JSHandle<JSObject>& thisObjHandle, uint32_t index)
 {
-    JSTaggedValue val = ElementAccessor::Get(thisObjHandle, index);
+    JSTaggedValue val = ElementAccessor::Get(thread, thisObjHandle, index);
     if (val.IsHole()) {
         JSHandle<JSTaggedValue> thisObjVal(thisObjHandle);
         // dependent on Prototype, SharedArray have not Prototype，Can be optimized

@@ -312,7 +312,7 @@ GateRef BuiltinsFunctionStubBuilder::BuildArgumentsListFastElements(GateRef glue
                             BRANCH(Int32UnsignedLessThan(*index, elementsLength), &storeValue, &afterLoop);
                             Bind(&storeValue);
                             {
-                                GateRef value = GetTaggedValueWithElementsKind(arrayObj, *index);
+                                GateRef value = GetTaggedValueWithElementsKind(glue, arrayObj, *index);
                                 SetValueToTaggedArray(VariableType::JS_ANY(), glue, newTaggedArgList, *index, value);
                                 index = Int32Add(*index, Int32(1));
                                 Jump(&loopEnd);
@@ -353,7 +353,7 @@ GateRef BuiltinsFunctionStubBuilder::BuildArgumentsListFastElements(GateRef glue
                         BRANCH(Int32UnsignedLessThan(*index, elementsLength), &storeValue, &afterLoop);
                         Bind(&storeValue);
                         {
-                            GateRef value = GetTaggedValueWithElementsKind(arrayObj, *index);
+                            GateRef value = GetTaggedValueWithElementsKind(glue, arrayObj, *index);
                             SetValueToTaggedArray(VariableType::JS_ANY(), glue, newTaggedArgList, *index, value);
                             index = Int32Add(*index, Int32(1));
                             Jump(&loopEnd);
