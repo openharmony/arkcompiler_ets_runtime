@@ -48,7 +48,8 @@ uintptr_t LinearSpace::Allocate(size_t size, bool isPromoted)
     }
     if (Expand(isPromoted)) {
         if (!isPromoted) {
-            if (!localHeap_->NeedStopCollection() || localHeap_->IsNearGCInSensitive()) {
+            if (!localHeap_->NeedStopCollection() || localHeap_->IsNearGCInSensitive() ||
+                (localHeap_->IsJustFinishStartup() && localHeap_->ObjectExceedJustFinishStartupThresholdForCM())) {
                 localHeap_->TryTriggerIncrementalMarking();
                 localHeap_->TryTriggerIdleCollection();
                 localHeap_->TryTriggerConcurrentMarking();
@@ -83,7 +84,7 @@ uintptr_t LinearSpace::Allocate(size_t size, bool isPromoted)
 bool LinearSpace::Expand(bool isPromoted)
 {
     if (committedSize_ >= initialCapacity_ + overShootSize_ + outOfMemoryOvershootSize_ &&
-        !localHeap_->NeedStopCollection()) {
+        (isPromoted || !localHeap_->NeedStopCollection())) {
         return false;
     }
 
