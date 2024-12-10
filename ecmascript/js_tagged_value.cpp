@@ -1460,10 +1460,11 @@ bool JSTaggedValue::ToArrayLength(JSThread *thread, const JSHandle<JSTaggedValue
 
 JSHandle<JSTaggedValue> JSTaggedValue::ToPrototypeOrObj(JSThread *thread, const JSHandle<JSTaggedValue> &obj)
 {
+#ifdef ENABLE_NEXT_OPTIMIZATION
     if (obj->IsECMAObject()) {
         return obj;
     }
-    
+#endif
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     if (obj->IsNumber()) {
         return JSHandle<JSTaggedValue>(thread,
