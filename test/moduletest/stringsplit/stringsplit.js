@@ -81,3 +81,10 @@ c.split("")
 // Test split string is sliced string
 var d = a.slice(4)
 d.split("")
+
+let str = "dcidmcdififf";
+for (let i = 0; i < 10; i++) {
+    str.split('d');
+}
+let resSplit = str.split('d');
+print(resSplit);
