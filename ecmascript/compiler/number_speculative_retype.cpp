@@ -134,6 +134,18 @@ void NumberSpeculativeRetype::setState(NumberSpeculativeRetype::State state)
     state_ = state;
 }
 
+void NumberSpeculativeRetype::ConvertMonoAccessorValueIn(GateRef gate)
+{
+    size_t valueNum = acc_.GetNumValueIn(gate);
+    for (size_t i = 0; i < valueNum; ++i) {
+        if (i == PROPERTY_LOOKUP_RESULT_INDEX || i == HCLASS_INDEX) {
+            continue;
+        }
+        GateRef input = acc_.GetValueIn(gate, i);
+        acc_.ReplaceValueIn(gate, ConvertToTagged(input), i);
+    }
+}
+
 GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
 {
     OpCode op = acc_.GetOpCode(gate);
@@ -1103,8 +1115,7 @@ GateRef NumberSpeculativeRetype::TryConvertConstant(GateRef gate, bool needInt32
         MachineType mType = acc_.GetMachineType(gate);
         if (mType == MachineType::I32) {
             int32_t rawValue = acc_.GetInt32FromConstant(gate);
-            double value = static_cast<double>(rawValue);
-            return needInt32 ? builder_.Int32(rawValue) : builder_.Double(value);
+            return needInt32 ? builder_.Int32(rawValue) : builder_.Double(static_cast<double>(rawValue));
         } else if (mType == MachineType::F64 && !needInt32) {
             double rawValue = acc_.GetFloat64FromConstant(gate);
             return builder_.Double(rawValue);
@@ -1116,8 +1127,7 @@ GateRef NumberSpeculativeRetype::TryConvertConstant(GateRef gate, bool needInt32
     JSTaggedValue value(acc_.GetConstantValue(gate));
     if (value.IsInt()) {
         int32_t rawValue = value.GetInt();
-        double doubleValue = static_cast<double>(rawValue);
-        return needInt32 ? builder_.Int32(rawValue) : builder_.Double(doubleValue);
+        return needInt32 ? builder_.Int32(rawValue) : builder_.Double(static_cast<double>(rawValue));
     } else if (value.IsDouble() && !needInt32) {
         double rawValue = value.GetDouble();
         return builder_.Double(rawValue);
@@ -1559,7 +1569,7 @@ GateRef NumberSpeculativeRetype::VisitLoadElement(GateRef gate)
 
     if (IsConvert()) {
         Environment env(gate, circuit_, &builder_);
-        GateRef index = acc_.GetValueIn(gate, 1);
+        GateRef index = acc_.GetValueIn(gate, 1); // 1: value idx
         GateType indexType = acc_.GetGateType(index);
         acc_.ReplaceValueIn(gate, CheckAndConvertToInt32(index, indexType), 1);
         acc_.ReplaceStateIn(gate, builder_.GetState());
@@ -1577,10 +1587,10 @@ GateRef NumberSpeculativeRetype::VisitStoreElement(GateRef gate)
 
     if (IsConvert()) {
         Environment env(gate, circuit_, &builder_);
-        GateRef index = acc_.GetValueIn(gate, 1);
+        GateRef index = acc_.GetValueIn(gate, 1); // 1: value idx
         GateType indexType = acc_.GetGateType(index);
-        GateRef value = acc_.GetValueIn(gate, 2);
-        acc_.ReplaceValueIn(gate, CheckAndConvertToInt32(index, indexType), 1);
+        GateRef value = acc_.GetValueIn(gate, 2); // 2: value idx
+        acc_.ReplaceValueIn(gate, CheckAndConvertToInt32(index, indexType), 1); // 1: value idx
         auto op = acc_.GetTypedStoreOp(gate);
         switch (op) {
             case TypedStoreOp::INT8ARRAY_STORE_ELEMENT:
@@ -1638,7 +1648,7 @@ GateRef NumberSpeculativeRetype::VisitStoreProperty(GateRef gate)
     }
 
     GateRef receiver = acc_.GetValueIn(gate, 0); // receiver
-    acc_.ReplaceValueIn(gate, ConvertToTagged(receiver), 0);
+    acc_.ReplaceValueIn(gate, ConvertToTagged(receiver), 0); // 0: value idx
     acc_.ReplaceStateIn(gate, builder_.GetState());
     acc_.ReplaceDependIn(gate, builder_.GetDepend());
     return Circuit::NullGate();
@@ -1647,7 +1657,7 @@ GateRef NumberSpeculativeRetype::VisitStoreProperty(GateRef gate)
 GateRef NumberSpeculativeRetype::VisitLoadProperty(GateRef gate)
 {
     if (IsRetype()) {
-        GateRef propertyLookupResult = acc_.GetValueIn(gate, 1);
+        GateRef propertyLookupResult = acc_.GetValueIn(gate, 1); // 1: value idx
         PropertyLookupResult plr(acc_.TryGetValue(propertyLookupResult));
         return SetOutputType(gate, plr.GetRepresentation());
     }
@@ -1659,7 +1669,7 @@ GateRef NumberSpeculativeRetype::VisitLoadProperty(GateRef gate)
 
 GateRef NumberSpeculativeRetype::VisitTypeConvert(GateRef gate)
 {
-    GateRef input = acc_.GetValueIn(gate, 0);
+    GateRef input = acc_.GetValueIn(gate, 0); // 0: value idx
     TypeInfo inputInfo = GetOutputTypeInfo(input);
     TypeConvertAccessor accessor(acc_.TryGetValue(gate));
     ParamType paramType = accessor.GetLeftType();
@@ -2203,14 +2213,7 @@ GateRef NumberSpeculativeRetype::VisitMonoLoadPropertyOnProto(GateRef gate)
     }
 
     ASSERT(IsConvert());
-    size_t valueNum = acc_.GetNumValueIn(gate);
-    for (size_t i = 0; i < valueNum; ++i) {
-        if (i == PROPERTY_LOOKUP_RESULT_INDEX || i == HCLASS_INDEX) {
-            continue;
-        }
-        GateRef input = acc_.GetValueIn(gate, i);
-        acc_.ReplaceValueIn(gate, ConvertToTagged(input), i);
-    }
+    ConvertMonoAccessorValueIn(gate);
 
     return Circuit::NullGate();
 }
@@ -2221,14 +2224,7 @@ GateRef NumberSpeculativeRetype::VisitMonoCallGetterOnProto(GateRef gate)
         return SetOutputType(gate, GateType::AnyType());
     }
     if (IsConvert()) {
-        size_t valueNum = acc_.GetNumValueIn(gate);
-        for (size_t i = 0; i < valueNum; ++i) {
-            if (i == PROPERTY_LOOKUP_RESULT_INDEX || i == HCLASS_INDEX) {
-                continue;
-            }
-            GateRef input = acc_.GetValueIn(gate, i);
-            acc_.ReplaceValueIn(gate, ConvertToTagged(input), i);
-        }
+        ConvertMonoAccessorValueIn(gate);
     }
     return Circuit::NullGate();
 }

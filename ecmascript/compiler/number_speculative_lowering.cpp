@@ -41,6 +41,7 @@ void NumberSpeculativeLowering::Run()
             }
             default: {
                 VisitGate(gate);
+                break;
             }
         }
     }
@@ -469,8 +470,8 @@ void NumberSpeculativeLowering::VisitBooleanJump(GateRef gate)
 
 void NumberSpeculativeLowering::VisitUndefinedStrictEqOrUndefinedStrictNotEq(GateRef gate)
 {
-    ASSERT(acc_.GetTypedBinaryOp(gate) == TypedBinOp::TYPED_STRICTEQ ||
-           acc_.GetTypedBinaryOp(gate) == TypedBinOp::TYPED_STRICTNOTEQ);
+    ASSERT((acc_.GetTypedBinaryOp(gate) == TypedBinOp::TYPED_STRICTEQ) ||
+           (acc_.GetTypedBinaryOp(gate) == TypedBinOp::TYPED_STRICTNOTEQ));
     GateRef left = acc_.GetValueIn(gate, 0);
     GateRef right = acc_.GetValueIn(gate, 1);
     ASSERT(acc_.IsUndefinedOrNullOrHole(left) || acc_.IsUndefinedOrNullOrHole(right));
@@ -488,8 +489,8 @@ void NumberSpeculativeLowering::VisitUndefinedStrictEqOrUndefinedStrictNotEq(Gat
 
 void NumberSpeculativeLowering::VisitUndefinedEqOrUndefinedNotEq(GateRef gate)
 {
-    ASSERT(acc_.GetTypedBinaryOp(gate) == TypedBinOp::TYPED_EQ ||
-           acc_.GetTypedBinaryOp(gate) == TypedBinOp::TYPED_NOTEQ);
+    ASSERT((acc_.GetTypedBinaryOp(gate) == TypedBinOp::TYPED_EQ) ||
+           (acc_.GetTypedBinaryOp(gate) == TypedBinOp::TYPED_NOTEQ));
     GateRef left = acc_.GetValueIn(gate, 0);
     GateRef right = acc_.GetValueIn(gate, 1);
     ASSERT(acc_.IsUndefinedOrNullOrHole(left) || acc_.IsUndefinedOrNullOrHole(right));
@@ -615,7 +616,7 @@ void NumberSpeculativeLowering::VisitLoadElement(GateRef gate)
 void NumberSpeculativeLowering::VisitLoadProperty(GateRef gate)
 {
     TypeInfo output = GetOutputType(gate);
-    if (output == TypeInfo::INT32 || output == TypeInfo::FLOAT64) {
+    if ((output == TypeInfo::INT32) || (output == TypeInfo::FLOAT64)) {
         Environment env(gate, circuit_, &builder_);
         ASSERT(acc_.GetNumValueIn(gate) == 2);  // 2: receiver, plr
         GateRef receiver = acc_.GetValueIn(gate, 0);
