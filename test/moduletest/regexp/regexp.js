@@ -19,6 +19,20 @@
  * @tc.type: FUNC
  * @tc.require: issueI5NO8G
  */
+
+{
+  let reg= /ab|cd||/
+  print(JSON.stringify(reg.exec("cd")))
+}
+{
+  let reg= /ab||/
+  print(JSON.stringify(reg.exec("cd")))
+}
+{
+  let reg= /ab|cd|ef/
+  print(JSON.stringify(reg.exec("cd")))
+}
+
 {
   let str = "😀";
   let regexp = /[😀]/;
