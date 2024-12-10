@@ -32,6 +32,7 @@ CString CompileDecision::GetMethodInfo() const
 CString CompileDecision::GetMethodName() const
 {
     Method *method = Method::Cast(jsFunction_->GetMethod().GetTaggedObject());
+    ASSERT(method != nullptr);
     auto jSPandaFile = method->GetJSPandaFile();
     CString fileDesc;
     if (jSPandaFile != nullptr) {

@@ -180,6 +180,7 @@ void Jit::Destroy()
     initialized_ = false;
     fastJitEnable_ = false;
     baselineJitEnable_ = false;
+    ASSERT(jitResources_ != nullptr);
     jitResources_->Destroy();
     jitResources_ = nullptr;
 }
