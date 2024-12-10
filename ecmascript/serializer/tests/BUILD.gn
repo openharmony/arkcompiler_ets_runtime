@@ -30,7 +30,6 @@ host_unittest_action("SerializerTest") {
     "$ark_third_party_root/icu/icu4c:shared_icui18n",
     "$ark_third_party_root/icu/icu4c:shared_icuuc",
     "$js_root:libark_jsruntime_test",
-    sdk_libc_secshared_dep,
   ]
 
   # hiviewdfx libraries

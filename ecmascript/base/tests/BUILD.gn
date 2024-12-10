@@ -16,15 +16,123 @@ import("//arkcompiler/ets_runtime/test/test_helper.gni")
 
 module_output_path = "ets_runtime"
 
-host_unittest_action("Base_001_Test") {
+host_unittest_action("JSHelper_ArrayHelper_Test") {
   module_out_path = module_output_path
 
   sources = [
     # test file
     "array_helper_test.cpp",
+  ]
+
+  configs = [
+    "../../../:ecma_test_config",
+    "../../../:icu_path_test_config",
+  ]
+
+  deps = [ "../../../:libark_jsruntime_test" ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+    "zlib:libz",
+
+    #sdk_libc_secshared_dep,
+  ]
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("JSHelper_AtomicHelper_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
     "atomic_helper_test.cpp",
+  ]
+
+  configs = [
+    "../../../:ecma_test_config",
+    "../../../:icu_path_test_config",
+  ]
+
+  deps = [ "../../../:libark_jsruntime_test" ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+    "zlib:libz",
+
+    #sdk_libc_secshared_dep,
+  ]
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("JSHelper_BitHelper_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
     "bit_helper_test.cpp",
+  ]
+
+  configs = [
+    "../../../:ecma_test_config",
+    "../../../:icu_path_test_config",
+  ]
+
+  deps = [ "../../../:libark_jsruntime_test" ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+    "zlib:libz",
+
+    #sdk_libc_secshared_dep,
+  ]
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("Builtins_Base_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
     "builtins_base_test.cpp",
+  ]
+
+  configs = [
+    "../../../:ecma_test_config",
+    "../../../:icu_path_test_config",
+  ]
+
+  deps = [ "../../../:libark_jsruntime_test" ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+    "zlib:libz",
+
+    #sdk_libc_secshared_dep,
+  ]
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("JSHelper_ErrorHelper_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
     "error_helper_test.cpp",
   ]
 
@@ -33,28 +141,166 @@ host_unittest_action("Base_001_Test") {
     "../../../:icu_path_test_config",
   ]
 
-  deps = [
-    "$ark_third_party_root/icu/icu4c:shared_icui18n",
-    "$ark_third_party_root/icu/icu4c:shared_icuuc",
-    "../../../:libark_jsruntime_test",
-    sdk_libc_secshared_dep,
-  ]
+  deps = [ "../../../:libark_jsruntime_test" ]
 
   # hiviewdfx libraries
   external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+    "zlib:libz",
+
+    #sdk_libc_secshared_dep,
+  ]
   deps += hiviewdfx_deps
 }
 
-host_unittest_action("Base_002_Test") {
+host_unittest_action("JS_Ason_Test") {
   module_out_path = module_output_path
 
   sources = [
     # test file
     "ason_test.cpp",
+  ]
+
+  configs = [
+    "../../../:ecma_test_config",
+    "../../../:icu_path_test_config",
+  ]
+
+  deps = [ "../../../:libark_jsruntime_test" ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+    "zlib:libz",
+
+    #sdk_libc_secshared_dep,
+  ]
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("JSHelper_FilePathHelper_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
     "file_path_helper_test.cpp",
+  ]
+
+  configs = [
+    "../../../:ecma_test_config",
+    "../../../:icu_path_test_config",
+  ]
+
+  deps = [ "../../../:libark_jsruntime_test" ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+    "zlib:libz",
+
+    #sdk_libc_secshared_dep,
+  ]
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("GC_RingBuffer_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
     "gc_ring_buffer_test.cpp",
+  ]
+
+  configs = [
+    "../../../:ecma_test_config",
+    "../../../:icu_path_test_config",
+  ]
+
+  deps = [ "../../../:libark_jsruntime_test" ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+    "zlib:libz",
+
+    #sdk_libc_secshared_dep,
+  ]
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("JS_JsonParser_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
     "json_parser_test.cpp",
+  ]
+
+  configs = [
+    "../../../:ecma_test_config",
+    "../../../:icu_path_test_config",
+  ]
+
+  deps = [ "../../../:libark_jsruntime_test" ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+    "zlib:libz",
+
+    #sdk_libc_secshared_dep,
+  ]
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("JS_JsonStringIfier_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
     "json_stringifier_test.cpp",
+  ]
+
+  configs = [
+    "../../../:ecma_test_config",
+    "../../../:icu_path_test_config",
+  ]
+
+  deps = [ "../../../:libark_jsruntime_test" ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+    "zlib:libz",
+
+    #sdk_libc_secshared_dep,
+  ]
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("JSHelper_MathHelper_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
     "math_helper_test.cpp",
   ]
 
@@ -63,27 +309,138 @@ host_unittest_action("Base_002_Test") {
     "../../../:icu_path_test_config",
   ]
 
-  deps = [
-    "$ark_third_party_root/icu/icu4c:shared_icui18n",
-    "$ark_third_party_root/icu/icu4c:shared_icuuc",
-    "../../../:libark_jsruntime_test",
-    sdk_libc_secshared_dep,
-  ]
+  deps = [ "../../../:libark_jsruntime_test" ]
 
   # hiviewdfx libraries
   external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+    "zlib:libz",
+
+    #sdk_libc_secshared_dep,
+  ]
   deps += hiviewdfx_deps
 }
 
-host_unittest_action("Base_003_Test") {
+host_unittest_action("JSHelper_DtoaHelper_Test") {
   module_out_path = module_output_path
 
   sources = [
     # test file
     "dtoa_helper_test.cpp",
+  ]
+
+  configs = [
+    "../../../:ecma_test_config",
+    "../../../:icu_path_test_config",
+  ]
+
+  deps = [ "../../../:libark_jsruntime_test" ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+    "zlib:libz",
+
+    #sdk_libc_secshared_dep,
+  ]
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("JSHelper_NumberHelper_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
     "number_helper_test.cpp",
+  ]
+
+  configs = [
+    "../../../:ecma_test_config",
+    "../../../:icu_path_test_config",
+  ]
+
+  deps = [ "../../../:libark_jsruntime_test" ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+    "zlib:libz",
+
+    #sdk_libc_secshared_dep,
+  ]
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("JSHelper_StringHelper_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
     "string_helper_test.cpp",
+  ]
+
+  configs = [
+    "../../../:ecma_test_config",
+    "../../../:icu_path_test_config",
+  ]
+
+  deps = [ "../../../:libark_jsruntime_test" ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+    "zlib:libz",
+
+    #sdk_libc_secshared_dep,
+  ]
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("JSHelper_TypeArrayHelper_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
     "typed_array_helper_test.cpp",
+  ]
+
+  configs = [
+    "../../../:ecma_test_config",
+    "../../../:icu_path_test_config",
+  ]
+
+  deps = [ "../../../:libark_jsruntime_test" ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+    "zlib:libz",
+
+    #sdk_libc_secshared_dep,
+  ]
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("JSHelper_UtfHelper_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
     "utf_helper_test.cpp",
   ]
 
@@ -92,15 +449,18 @@ host_unittest_action("Base_003_Test") {
     "../../../:icu_path_test_config",
   ]
 
-  deps = [
-    "$ark_third_party_root/icu/icu4c:shared_icui18n",
-    "$ark_third_party_root/icu/icu4c:shared_icuuc",
-    "../../../:libark_jsruntime_test",
-    sdk_libc_secshared_dep,
-  ]
+  deps = [ "../../../:libark_jsruntime_test" ]
 
   # hiviewdfx libraries
   external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+    "zlib:libz",
+
+    #sdk_libc_secshared_dep,
+  ]
   deps += hiviewdfx_deps
 }
 
@@ -109,9 +469,22 @@ group("unittest") {
 
   # deps file
   deps = [
-    ":Base_001_Test",
-    ":Base_002_Test",
-    ":Base_003_Test",
+    ":Builtins_Base_Test",
+    ":GC_RingBuffer_Test",
+    ":JSHelper_ArrayHelper_Test",
+    ":JSHelper_AtomicHelper_Test",
+    ":JSHelper_BitHelper_Test",
+    ":JSHelper_DtoaHelper_Test",
+    ":JSHelper_ErrorHelper_Test",
+    ":JSHelper_FilePathHelper_Test",
+    ":JSHelper_MathHelper_Test",
+    ":JSHelper_NumberHelper_Test",
+    ":JSHelper_StringHelper_Test",
+    ":JSHelper_TypeArrayHelper_Test",
+    ":JSHelper_UtfHelper_Test",
+    ":JS_Ason_Test",
+    ":JS_JsonParser_Test",
+    ":JS_JsonStringIfier_Test",
   ]
 }
 
@@ -120,15 +493,41 @@ group("host_unittest") {
 
   # deps file
   deps = [
-    ":Base_001_TestAction",
-    ":Base_002_TestAction",
-    ":Base_003_TestAction",
+    ":Builtins_Base_TestAction",
+    ":GC_RingBuffer_TestAction",
+    ":JSHelper_ArrayHelper_TestAction",
+    ":JSHelper_AtomicHelper_TestAction",
+    ":JSHelper_BitHelper_TestAction",
+    ":JSHelper_DtoaHelper_TestAction",
+    ":JSHelper_ErrorHelper_TestAction",
+    ":JSHelper_FilePathHelper_TestAction",
+    ":JSHelper_MathHelper_TestAction",
+    ":JSHelper_NumberHelper_TestAction",
+    ":JSHelper_StringHelper_TestAction",
+    ":JSHelper_TypeArrayHelper_TestAction",
+    ":JSHelper_UtfHelper_TestAction",
+    ":JS_Ason_TestAction",
+    ":JS_JsonParser_TestAction",
+    ":JS_JsonStringIfier_TestAction",
   ]
   if (is_mac) {
     deps -= [
-      ":Base_001_TestAction",
-      ":Base_002_TestAction",
-      ":Base_003_TestAction",
+      ":Builtins_Base_TestAction",
+      ":GC_RingBuffer_TestAction",
+      ":JSHelper_ArrayHelper_TestAction",
+      ":JSHelper_AtomicHelper_TestAction",
+      ":JSHelper_BitHelper_TestAction",
+      ":JSHelper_DtoaHelper_TestAction",
+      ":JSHelper_ErrorHelper_TestAction",
+      ":JSHelper_FilePathHelper_TestAction",
+      ":JSHelper_MathHelper_TestAction",
+      ":JSHelper_NumberHelper_TestAction",
+      ":JSHelper_StringHelper_TestAction",
+      ":JSHelper_TypeArrayHelper_TestAction",
+      ":JSHelper_UtfHelper_TestAction",
+      ":JS_Ason_TestAction",
+      ":JS_JsonParser_TestAction",
+      ":JS_JsonStringIfier_TestAction",
     ]
   }
 }

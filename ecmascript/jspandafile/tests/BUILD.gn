@@ -113,9 +113,8 @@ host_unittest_action("JSPandaFileTest") {
   deps = [
     "$ark_third_party_root/icu/icu4c:shared_icui18n",
     "$ark_third_party_root/icu/icu4c:shared_icuuc",
-    "//arkcompiler/ets_runtime:libark_jsruntime_test",
+    "$js_root:libark_jsruntime_test",
     "//arkcompiler/runtime_core/assembler:libarkassembler_static",
-    sdk_libc_secshared_dep,
   ]
 
   foreach(file, test_js_files) {

@@ -28,13 +28,14 @@ ohos_fuzztest("ArrayBufferRefNewWithTwoParametersFuzzTest") {
 
   configs = [ "$js_root:ecma_test_config" ]
 
-  deps = [
-    "$js_root:libark_jsruntime",
-    sdk_libc_secshared_dep,
-  ]
+  deps = [ "$js_root:libark_jsruntime" ]
 
   # hiviewdfx libraries
   external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "zlib:libz",
+    sdk_libc_secshared_dep,
+  ]
   deps += hiviewdfx_deps
 }
 
