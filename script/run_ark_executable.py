@@ -125,11 +125,12 @@ def generate_stub_code_comment(out_str:str):
     if not os.path.exists(dir_path):
         return
     zip_path = dir_path + 'stub_code_comment.zip'
-    memory_file = StringIO()
-    memory_file.write(out_str)
-    memory_file.seek(0)
-    with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zip_file:
-        zip_file.writestr('stub_code_comment.txt', memory_file.getvalue())
+    if out_str != '':
+        memory_file = StringIO()
+        memory_file.write(out_str)
+        memory_file.seek(0)
+        with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+            zip_file.writestr('stub_code_comment.txt', memory_file.getvalue())
 
 
 def judge_output(args: object):
