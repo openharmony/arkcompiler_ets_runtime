@@ -743,6 +743,20 @@ JSTaggedValue BuiltinsSharedTypedArray::IndexOf(EcmaRuntimeCallInfo *argv)
     return BuiltinsArray::IndexOf(argv);
 }
 
+JSTaggedValue BuiltinsSharedTypedArray::LastIndexOf(EcmaRuntimeCallInfo *argv)
+{
+    ASSERT(argv);
+    BUILTINS_API_TRACE(argv->GetThread(), SharedTypedArray, LastIndexOf);
+    JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
+    JSThread *thread = argv->GetThread();
+    if (!thisHandle->IsSharedTypedArray()) {
+        auto error = ContainerError::BindError(thread, "The lastindexOf method cannot be bound.");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+    }
+    [[maybe_unused]] ConcurrentApiScope<JSSharedTypedArray> scope(thread, thisHandle);
+    return BuiltinsArray::LastIndexOf(argv);
+}
+
 JSTaggedValue BuiltinsSharedTypedArray::Join(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
@@ -977,6 +991,20 @@ JSTaggedValue BuiltinsSharedTypedArray::Reduce(EcmaRuntimeCallInfo *argv)
     }
     [[maybe_unused]] ConcurrentApiScope<JSSharedTypedArray> scope(thread, thisHandle);
     return BuiltinsArray::Reduce(argv);
+}
+
+JSTaggedValue BuiltinsSharedTypedArray::ReduceRight(EcmaRuntimeCallInfo *argv)
+{
+    ASSERT(argv);
+    BUILTINS_API_TRACE(argv->GetThread(), SharedTypedArray, ReduceRight);
+    JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
+    JSThread *thread = argv->GetThread();
+    if (!thisHandle->IsSharedTypedArray()) {
+        auto error = ContainerError::BindError(thread, "The reduceRight method cannot be bound.");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+    }
+    [[maybe_unused]] ConcurrentApiScope<JSSharedTypedArray> scope(thread, thisHandle);
+    return BuiltinsArray::ReduceRight(argv);
 }
 
 JSTaggedValue BuiltinsSharedTypedArray::Reverse(EcmaRuntimeCallInfo *argv)
