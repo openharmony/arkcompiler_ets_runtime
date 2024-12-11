@@ -57,18 +57,19 @@ JSTaggedValue BuiltinsSharedArray::ArrayConstructor(EcmaRuntimeCallInfo *argv)
     // In NewJSObjectByConstructor(), will get prototype.
     // 5. ReturnIfAbrupt(proto).
 
-    // 22.1.1.1 Array ( )
-    if (argc == 0) {
-        // 6. Return ArrayCreate(0, proto).
-        return JSSharedArray::ArrayCreate(thread, JSTaggedNumber(0), newTarget).GetTaggedValue();
-    }
-
     // 22.1.1.3 Array(...items )
     JSTaggedValue newArray = JSSharedArray::ArrayCreate(thread, JSTaggedNumber(argc), newTarget).GetTaggedValue();
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     if (!newArray.IsJSSharedArray()) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "Failed to create array.", JSTaggedValue::Exception());
     }
+
+    // 22.1.1.1 Array ( )
+    if (argc == 0) {
+        // 6. Return ArrayCreate(0, proto).
+        return newArray;
+    }
+
     JSHandle<JSObject> newArrayHandle(thread, newArray);
     // 8. Let k be 0.
     // 9. Let items be a zero-origined List containing the argument items in order.
@@ -513,6 +514,7 @@ JSTaggedValue BuiltinsSharedArray::CheckElementMeetReq(JSThread *thread,
                                                        JSHandle<JSTaggedValue> &thisObjVal,
                                                        JSHandle<JSTaggedValue> &callbackFnHandle, bool isSome)
 {
+    [[maybe_unused]] ConcurrentApiScope<JSSharedArray> scope(thread, thisObjVal);
     JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     const uint32_t argsLength = 3; // 3: «kValue, k, O»
@@ -641,58 +643,27 @@ JSTaggedValue BuiltinsSharedArray::Fill(EcmaRuntimeCallInfo *argv)
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     // 5. Let relativeStart be ToInteger(start).
-    JSHandle<JSTaggedValue> startArg = GetCallArg(argv, 1);
-    double argStart = 0;
-    if (!startArg->IsUndefined()) {
-        JSTaggedNumber argStartTemp = JSTaggedValue::ToInteger(thread, startArg);
-        // 6. ReturnIfAbrupt(relativeStart).
-        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        argStart = argStartTemp.GetNumber();
-    }
-
-    // 7. If relativeStart < 0, let k be max((len + relativeStart),0); else let k be min(relativeStart, len).
-    int64_t start = 0;
-    if (argStart < 0) {
-        double tempStart = argStart + len;
-        start = tempStart > 0 ? tempStart : 0;
-    } else {
-        start = argStart < len ? argStart : len;
-    }
+    // 6. If relativeStart < 0, let k be max((len + relativeStart),0); else let k be min(relativeStart, len).
+    int64_t start = GetNumberArgVal(thread, argv, 1, len, 0);
+    // 7. ReturnIfAbrupt(relativeStart).
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     // 8. If end is undefined, let relativeEnd be len; else let relativeEnd be ToInteger(end).
-    double argEnd = len;
-    JSHandle<JSTaggedValue> endArg = GetCallArg(argv, INDEX_TWO);
-    if (!endArg->IsUndefined()) {
-        JSTaggedNumber argEndTemp = JSTaggedValue::ToInteger(thread, endArg);
-        // 9. ReturnIfAbrupt(relativeEnd).
-        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        argEnd = argEndTemp.GetNumber();
-    }
+    // 9. If relativeEnd < 0, let final be max((len + relativeEnd),0); else let final be min(relativeEnd, len).
+    int64_t end = GetNumberArgVal(thread, argv, INDEX_TWO, len, len);
+    // 10. ReturnIfAbrupt(relativeStart).
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
-    // 10. If relativeEnd < 0, let final be max((len + relativeEnd),0); else let final be min(relativeEnd, len).
-    int64_t end = len;
-    if (argEnd < 0) {
-        double tempEnd = argEnd + len;
-        end = tempEnd > 0 ? tempEnd : 0;
-    } else {
-        end = argEnd < len ? argEnd : len;
-    }
     // 11. Repeat, while k < final
     //   a. Let Pk be ToString(k).
     //   b. Let setStatus be Set(O, Pk, value, true).
     //   c. ReturnIfAbrupt(setStatus).
     //   d. Increase k by 1.
 
-    if (thisHandle->IsStableJSArray(thread) && !startArg->IsJSObject() && !endArg->IsJSObject()) {
-        auto opResult = JSStableArray::Fill(thread, thisObjHandle, value, start, end);
-        return opResult;
-    }
-
     int64_t k = start;
     JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
     while (k < end) {
-        key.Update(JSTaggedValue(k));
-        JSSharedArray::FastSetPropertyByValue(thread, thisHandle, key, value);
+        BuiltinsSharedArray::SetElementValue(thread, thisObjHandle, k, value);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         k++;
     }
@@ -861,6 +832,10 @@ JSTaggedValue BuiltinsSharedArray::Find(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsSharedArray::GetElementByKey([[maybe_unused]] JSThread *thread,
                                                    JSHandle<JSObject>& thisObjHandle, uint32_t index)
 {
+    if (UNLIKELY(ElementAccessor::GetElementsLength(thisObjHandle) <= index)) {
+        return JSTaggedValue::Undefined();
+    }
+
     return ElementAccessor::Get(thisObjHandle, index);
 }
 
@@ -1121,10 +1096,9 @@ JSTaggedValue BuiltinsSharedArray::Map(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] ConcurrentApiScope<JSSharedArray> scope(thread, thisHandle);
     // 2. ReturnIfAbrupt(O).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    JSHandle<JSTaggedValue> thisObjVal(thisObjHandle);
 
     // 3. Let len be ToLength(Get(O, "length")).
-    int64_t rawLen = ArrayHelper::GetArrayLength(thread, thisObjVal);
+    int64_t rawLen = ArrayHelper::GetArrayLength(thread, thisHandle);
     // 4. ReturnIfAbrupt(len).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
@@ -1162,35 +1136,28 @@ JSTaggedValue BuiltinsSharedArray::Map(EcmaRuntimeCallInfo *argv)
     //   e. Increase k by 1.
     uint32_t k = 0;
     uint32_t len = static_cast<uint32_t>(rawLen);
-    if (thisObjVal->IsStableJSArray(thread)) {
-        JSStableArray::Map(newArrayHandle, thisObjHandle, argv, k, len);
-        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    }
     JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
     JSMutableHandle<JSTaggedValue> mapResultHandle(thread, JSTaggedValue::Undefined());
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
+    JSMutableHandle<JSTaggedValue> kValue(thread, JSTaggedValue::Undefined());
     const uint32_t argsLength = 3; // 3: «kValue, k, O»
     while (k < len) {
-        bool exists = JSTaggedValue::HasProperty(thread, thisObjVal, k);
+        kValue.Update(BuiltinsSharedArray::GetElementByKey(thread, thisObjHandle, k));
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        if (exists) {
-            JSHandle<JSTaggedValue> kValue = JSSharedArray::FastGetPropertyByValue(thread, thisObjVal, k);
-            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-            key.Update(JSTaggedValue(k));
-            EcmaRuntimeCallInfo *info =
-                EcmaInterpreter::NewRuntimeCallInfo(thread, callbackFnHandle, thisArgHandle, undefined, argsLength);
-            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-            info->SetCallArg(kValue.GetTaggedValue(), key.GetTaggedValue(), thisObjVal.GetTaggedValue());
-            JSTaggedValue mapResult = JSFunction::Call(info);
-            if (!mapResult.IsSharedType()) {
-                auto error = ContainerError::ParamError(thread, "Parameter error.Only accept sendable value.");
-                THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
-            }
-            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-            mapResultHandle.Update(mapResult);
-            JSObject::CreateDataPropertyOrThrow(thread, newArrayHandle, k, mapResultHandle, SCheckMode::SKIP);
-            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        key.Update(JSTaggedValue(k));
+        EcmaRuntimeCallInfo *info =
+            EcmaInterpreter::NewRuntimeCallInfo(thread, callbackFnHandle, thisArgHandle, undefined, argsLength);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        info->SetCallArg(kValue.GetTaggedValue(), key.GetTaggedValue(), thisHandle.GetTaggedValue());
+        JSTaggedValue mapResult = JSFunction::Call(info);
+        if (!mapResult.IsSharedType()) {
+            auto error = ContainerError::ParamError(thread, "Parameter error.Only accept sendable value.");
+            THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
         }
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        mapResultHandle.Update(mapResult);
+        JSObject::CreateDataPropertyOrThrow(thread, newArrayHandle, k, mapResultHandle, SCheckMode::SKIP);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         k++;
     }
 
@@ -1261,10 +1228,7 @@ JSTaggedValue BuiltinsSharedArray::PopInner(EcmaRuntimeCallInfo *argv, JSHandle<
     //   i. Return element.
     int64_t newLen = len - 1;
     JSHandle<JSTaggedValue> indexHandle(thread, JSTaggedValue(newLen));
-    JSHandle<JSTaggedValue> element =
-        JSTaggedValue::GetProperty(thread, thisObjVal, indexHandle, SCheckMode::SKIP).GetValue();
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    JSTaggedValue::DeletePropertyOrThrow(thread, thisObjVal, indexHandle);
+    JSHandle<JSTaggedValue> element(thread, BuiltinsSharedArray::GetElementByKey(thread, thisObjHandle, newLen));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSSharedArray::LengthSetter(thread, thisObjHandle, indexHandle, true);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -1296,10 +1260,9 @@ JSTaggedValue BuiltinsSharedArray::Push(EcmaRuntimeCallInfo *argv)
     JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
     // 2. ReturnIfAbrupt(O).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    JSHandle<JSTaggedValue> thisObjVal(thisObjHandle);
 
     // 3. Let len be ToLength(Get(O, "length")).
-    int64_t len = ArrayHelper::GetArrayLength(thread, thisObjVal);
+    int64_t len = ArrayHelper::GetArrayLength(thread, thisHandle);
     // 4. ReturnIfAbrupt(len).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     // 7. If len + argCount > 253-1, throw a TypeError exception.
@@ -1321,7 +1284,7 @@ JSTaggedValue BuiltinsSharedArray::Push(EcmaRuntimeCallInfo *argv)
             auto error = ContainerError::ParamError(thread, "Parameter error.Only accept sendable value.");
             THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
         }
-        JSSharedArray::FastSetPropertyByValue(thread, thisObjVal, key, kValue);
+        JSSharedArray::FastSetPropertyByValue(thread, thisHandle, key, kValue);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         k++;
         len++;
@@ -2580,6 +2543,7 @@ JSTaggedValue BuiltinsSharedArray::Of(EcmaRuntimeCallInfo *argv)
 uint64_t BuiltinsSharedArray::ConvertTagValueToInteger(JSThread *thread, JSHandle<JSTaggedValue>& number, int64_t len)
 {
     JSTaggedNumber targetTemp = JSTaggedValue::ToInteger(thread, number);
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, 0);
     double target = targetTemp.GetNumber();
     // If relativeTarget < 0, let to be max((len + relativeTarget),0); else let to be min(relativeTarget, len).
     if (target < 0) {
@@ -2626,6 +2590,7 @@ JSTaggedValue BuiltinsSharedArray::CopyWithin(EcmaRuntimeCallInfo *argv)
     // 2. ReturnIfAbrupt(O).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
+    [[maybe_unused]] ConcurrentApiScope<JSSharedArray, ModType::WRITE> scope(thread, thisHandle);
     // 3. Let len be ToLength(Get(O, "length")).
     int64_t len = ArrayHelper::GetLength(thread, thisHandle);
     // 4. ReturnIfAbrupt(len).
