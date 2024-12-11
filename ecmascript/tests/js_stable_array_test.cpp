@@ -51,13 +51,14 @@ public:
     }
 
     // tests for sep is Undefined
-    JSHandle<JSTaggedValue> CallJoin(JSHandle<TaggedArray> handleTagArr, int64_t lengthArr) const
+    JSHandle<JSTaggedValue> CallJoin(JSHandle<TaggedArray> handleTagArr, [[maybe_unused]] int64_t lengthArr) const
     {
         JSTaggedValue sepValue = JSTaggedValue::Undefined();
         return CallJoin(handleTagArr, sepValue);
     }
 
-    JSHandle<JSTaggedValue> CallJoin(JSHandle<TaggedArray> handleTagArr, std::string& sep, int64_t lengthArr) const
+    JSHandle<JSTaggedValue> CallJoin(JSHandle<TaggedArray> handleTagArr, std::string& sep,
+                                     [[maybe_unused]] int64_t lengthArr) const
     {
         ObjectFactory* objFactory = thread->GetEcmaVM()->GetFactory();
         JSTaggedValue sepValue = JSHandle<JSTaggedValue>::Cast(objFactory->NewFromStdString(sep)).GetTaggedValue();

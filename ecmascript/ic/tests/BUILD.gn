@@ -14,56 +14,159 @@
 import("//arkcompiler/ets_runtime/js_runtime_config.gni")
 import("//arkcompiler/ets_runtime/test/test_helper.gni")
 
-module_output_path = "ets_runtime"
+module_output_path = "arkcompiler/ets_runtime"
 
-host_unittest_action("IC_001_Test") {
+host_unittest_action("IC_Handler_Test") {
   module_out_path = module_output_path
 
   sources = [
     # test file
     "ic_handler_test.cpp",
+  ]
+
+  configs = [ "../../../:ecma_test_config" ]
+
+  deps = [ "../../../:libark_jsruntime_test" ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "zlib:libz",
+  ]
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("IC_RuntimeStub_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
     "ic_runtime_stub_test.cpp",
   ]
 
   configs = [ "../../../:ecma_test_config" ]
 
-  deps = [
-    "$ark_third_party_root/icu/icu4c:shared_icui18n",
-    "$ark_third_party_root/icu/icu4c:shared_icuuc",
-    "../../../:libark_jsruntime_test",
-    sdk_libc_secshared_dep,
-  ]
+  deps = [ "../../../:libark_jsruntime_test" ]
 
   # hiviewdfx libraries
   external_deps = hiviewdfx_ext_deps
-  external_deps += [ "zlib:libz" ]
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "zlib:libz",
+  ]
   deps += hiviewdfx_deps
 }
 
-host_unittest_action("IC_002_Test") {
+host_unittest_action("IC_Runtime_Test") {
   module_out_path = module_output_path
 
   sources = [
     # test file
     "ic_runtime_test.cpp",
+  ]
+
+  configs = [ "../../../:ecma_test_config" ]
+
+  deps = [ "../../../:libark_jsruntime_test" ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "zlib:libz",
+  ]
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("IC_ProfileTypeInfo_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
     "profile_type_info_test.cpp",
+  ]
+
+  configs = [ "../../../:ecma_test_config" ]
+
+  deps = [ "../../../:libark_jsruntime_test" ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "zlib:libz",
+  ]
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("IC_PropertiesCache_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
     "properties_cache_test.cpp",
+  ]
+
+  configs = [ "../../../:ecma_test_config" ]
+
+  deps = [ "../../../:libark_jsruntime_test" ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "zlib:libz",
+  ]
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("IC_PropertyBox_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
     "property_box_test.cpp",
+  ]
+
+  configs = [ "../../../:ecma_test_config" ]
+
+  deps = [ "../../../:libark_jsruntime_test" ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "zlib:libz",
+  ]
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("IC_ProtoChangeDetails_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
     "proto_change_details_test.cpp",
   ]
 
   configs = [ "//arkcompiler/ets_runtime:ecma_test_config" ]
 
-  deps = [
-    "$ark_third_party_root/icu/icu4c:shared_icui18n",
-    "$ark_third_party_root/icu/icu4c:shared_icuuc",
-    "//arkcompiler/ets_runtime:libark_jsruntime_test",
-    sdk_libc_secshared_dep,
-  ]
+  deps = [ "../../../:libark_jsruntime_test" ]
 
   # hiviewdfx libraries
   external_deps = hiviewdfx_ext_deps
-  external_deps += [ "zlib:libz" ]
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "zlib:libz",
+  ]
   deps += hiviewdfx_deps
 }
 
@@ -72,8 +175,13 @@ group("unittest") {
 
   # deps file
   deps = [
-    ":IC_001_Test",
-    ":IC_002_Test",
+    ":IC_Handler_Test",
+    ":IC_ProfileTypeInfo_Test",
+    ":IC_PropertiesCache_Test",
+    ":IC_PropertyBox_Test",
+    ":IC_ProtoChangeDetails_Test",
+    ":IC_RuntimeStub_Test",
+    ":IC_Runtime_Test",
   ]
 }
 
@@ -82,14 +190,24 @@ group("host_unittest") {
 
   # deps file
   deps = [
-    ":IC_001_TestAction",
-    ":IC_002_TestAction",
+    ":IC_Handler_TestAction",
+    ":IC_ProfileTypeInfo_TestAction",
+    ":IC_PropertiesCache_TestAction",
+    ":IC_PropertyBox_TestAction",
+    ":IC_ProtoChangeDetails_TestAction",
+    ":IC_RuntimeStub_TestAction",
+    ":IC_Runtime_TestAction",
   ]
 
   if (is_mac) {
     deps -= [
-      ":IC_001_TestAction",
-      ":IC_002_TestAction",
+      ":IC_Handler_TestAction",
+      ":IC_ProfileTypeInfo_TestAction",
+      ":IC_PropertiesCache_TestAction",
+      ":IC_PropertyBox_TestAction",
+      ":IC_ProtoChangeDetails_TestAction",
+      ":IC_RuntimeStub_TestAction",
+      ":IC_Runtime_TestAction",
     ]
   }
 }

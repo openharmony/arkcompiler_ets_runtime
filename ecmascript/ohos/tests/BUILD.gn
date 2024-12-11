@@ -35,7 +35,6 @@ host_unittest_action("OhosTest") {
     "$ark_third_party_root/icu/icu4c:shared_icuuc",
     "$js_root:libark_jsruntime_test",
     "$js_root/ecmascript/compiler:libark_jsoptimizer_set",
-    sdk_libc_secshared_dep,
   ]
 
   # hiviewdfx libraries
@@ -63,7 +62,6 @@ host_unittest_action("CrashTest") {
     "$ark_third_party_root/icu/icu4c:shared_icuuc",
     "$js_root:libark_jsruntime_test",
     "$js_root/ecmascript/compiler:libark_jsoptimizer_set",
-    sdk_libc_secshared_dep,
   ]
 
   # hiviewdfx libraries

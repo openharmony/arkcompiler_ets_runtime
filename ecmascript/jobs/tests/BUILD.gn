@@ -14,46 +14,84 @@
 import("//arkcompiler/ets_runtime/js_runtime_config.gni")
 import("//arkcompiler/ets_runtime/test/test_helper.gni")
 
-module_output_path = "ets_runtime"
-
-host_unittest_action("JobTest") {
+module_output_path = "arkcompiler/ets_runtime"
+host_unittest_action("JS_Job_MicroJobQueueTest") {
   module_out_path = module_output_path
 
   sources = [
     # test file
     "micro_job_queue_test.cpp",
-    "pending_job_test.cpp",
   ]
 
-  configs = [ "//arkcompiler/ets_runtime:ecma_test_config" ]
-
-  deps = [
-    "$ark_third_party_root/icu/icu4c:shared_icui18n",
-    "$ark_third_party_root/icu/icu4c:shared_icuuc",
-    "//arkcompiler/ets_runtime:libark_jsruntime_test",
-    sdk_libc_secshared_dep,
+  configs = [
+    "../../../:asm_interp_enable_config",
+    "../../../:ecma_test_config",
   ]
+
+  deps = [ "../../../:libark_jsruntime_test" ]
 
   # hiviewdfx libraries
   external_deps = hiviewdfx_ext_deps
   deps += hiviewdfx_deps
-  external_deps += [ "zlib:libz" ]
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+    "runtime_core:libarkverifier",
+    "zlib:libz",
+  ]
+}
+
+host_unittest_action("JS_Job_PendingJobTest") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "pending_job_test.cpp",
+  ]
+
+  configs = [
+    "../../../:asm_interp_enable_config",
+    "../../../:ecma_test_config",
+  ]
+
+  deps = [ "../../../:libark_jsruntime_test" ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  deps += hiviewdfx_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+    "runtime_core:libarkverifier",
+    "zlib:libz",
+  ]
 }
 
 group("unittest") {
   testonly = true
 
   # deps file
-  deps = [ ":JobTest" ]
+  deps = [
+    ":JS_Job_MicroJobQueueTest",
+    ":JS_Job_PendingJobTest",
+  ]
 }
 
 group("host_unittest") {
   testonly = true
 
   # deps file
-  deps = [ ":JobTestAction" ]
+  deps = [
+    ":JS_Job_MicroJobQueueTestAction",
+    ":JS_Job_PendingJobTestAction",
+  ]
 
   if (is_mac) {
-    deps -= [ ":JobTestAction" ]
+    deps -= [
+      ":JS_Job_MicroJobQueueTestAction",
+      ":JS_Job_PendingJobTestAction",
+    ]
   }
 }

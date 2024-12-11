@@ -58,9 +58,8 @@ host_unittest_action("RuntimeDebuggerTest") {
   ]
 
   deps = [
-    "//arkcompiler/ets_runtime:libark_jsruntime_test",
+    "$js_root:libark_jsruntime_test",
     "//arkcompiler/runtime_core/assembler:libarkassembler_static",
-    sdk_libc_secshared_dep,
   ]
 
   foreach(file, test_js_files) {

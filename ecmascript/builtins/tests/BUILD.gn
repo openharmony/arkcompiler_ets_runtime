@@ -14,9 +14,9 @@
 import("//arkcompiler/ets_runtime/js_runtime_config.gni")
 import("//arkcompiler/ets_runtime/test/test_helper.gni")
 
-module_output_path = "ets_runtime"
+module_output_path = "arkcompiler/ets_runtime"
 
-host_unittest_action("BuiltinsInternational_001_Test") {
+host_unittest_action("Builtins_BigInt_Test") {
   module_out_path = module_output_path
 
   sources = [
@@ -29,19 +29,19 @@ host_unittest_action("BuiltinsInternational_001_Test") {
     "../../../:icu_path_test_config",
   ]
 
-  deps = [
-    "$ark_third_party_root/icu/icu4c:shared_icui18n",
-    "$ark_third_party_root/icu/icu4c:shared_icuuc",
-    "../../../:libark_jsruntime_test",
-    sdk_libc_secshared_dep,
-  ]
+  deps = [ "../../../:libark_jsruntime_test" ]
 
   # hiviewdfx libraries
   external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+  ]
   deps += hiviewdfx_deps
 }
 
-host_unittest_action("BuiltinsInternational_002_Test") {
+host_unittest_action("Builtins_Intl_Test") {
   module_out_path = module_output_path
 
   sources = [
@@ -54,19 +54,19 @@ host_unittest_action("BuiltinsInternational_002_Test") {
     "../../../:icu_path_test_config",
   ]
 
-  deps = [
-    "$ark_third_party_root/icu/icu4c:shared_icui18n",
-    "$ark_third_party_root/icu/icu4c:shared_icuuc",
-    "../../../:libark_jsruntime_test",
-    sdk_libc_secshared_dep,
-  ]
+  deps = [ "../../../:libark_jsruntime_test" ]
 
   # hiviewdfx libraries
   external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+  ]
   deps += hiviewdfx_deps
 }
 
-host_unittest_action("BuiltinsInternational_003_Test") {
+host_unittest_action("Builtins_RelativeTimeFormat_Test") {
   module_out_path = module_output_path
 
   sources = [
@@ -79,19 +79,19 @@ host_unittest_action("BuiltinsInternational_003_Test") {
     "../../../:icu_path_test_config",
   ]
 
-  deps = [
-    "$ark_third_party_root/icu/icu4c:shared_icui18n",
-    "$ark_third_party_root/icu/icu4c:shared_icuuc",
-    "../../../:libark_jsruntime_test",
-    sdk_libc_secshared_dep,
-  ]
+  deps = [ "../../../:libark_jsruntime_test" ]
 
   # hiviewdfx libraries
   external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+  ]
   deps += hiviewdfx_deps
 }
 
-host_unittest_action("BuiltinsInternational_004_Test") {
+host_unittest_action("Builtins_Collator_Test") {
   module_out_path = module_output_path
 
   sources = [
@@ -104,19 +104,19 @@ host_unittest_action("BuiltinsInternational_004_Test") {
     "../../../:icu_path_test_config",
   ]
 
-  deps = [
-    "$ark_third_party_root/icu/icu4c:shared_icui18n",
-    "$ark_third_party_root/icu/icu4c:shared_icuuc",
-    "../../../:libark_jsruntime_test",
-    sdk_libc_secshared_dep,
-  ]
+  deps = [ "../../../:libark_jsruntime_test" ]
 
   # hiviewdfx libraries
   external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+  ]
   deps += hiviewdfx_deps
 }
 
-host_unittest_action("BuiltinsInternational_005_Test") {
+host_unittest_action("Builtins_DateTimeFormat_First_Test") {
   module_out_path = module_output_path
 
   sources = [
@@ -129,19 +129,19 @@ host_unittest_action("BuiltinsInternational_005_Test") {
     "../../../:icu_path_test_config",
   ]
 
-  deps = [
-    "$ark_third_party_root/icu/icu4c:shared_icui18n",
-    "$ark_third_party_root/icu/icu4c:shared_icuuc",
-    "../../../:libark_jsruntime_test",
-    sdk_libc_secshared_dep,
-  ]
+  deps = [ "../../../:libark_jsruntime_test" ]
 
   # hiviewdfx libraries
   external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+  ]
   deps += hiviewdfx_deps
 }
 
-host_unittest_action("BuiltinsInternational_006_Test") {
+host_unittest_action("Builtins_DisPlayNames_Test") {
   module_out_path = module_output_path
 
   sources = [
@@ -154,19 +154,19 @@ host_unittest_action("BuiltinsInternational_006_Test") {
     "../../../:icu_path_test_config",
   ]
 
-  deps = [
-    "$ark_third_party_root/icu/icu4c:shared_icui18n",
-    "$ark_third_party_root/icu/icu4c:shared_icuuc",
-    "../../../:libark_jsruntime_test",
-    sdk_libc_secshared_dep,
-  ]
+  deps = [ "../../../:libark_jsruntime_test" ]
 
   # hiviewdfx libraries
   external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+  ]
   deps += hiviewdfx_deps
 }
 
-host_unittest_action("BuiltinsInternational_007_Test") {
+host_unittest_action("Builtins_Lazy_Test") {
   module_out_path = module_output_path
 
   sources = [
@@ -179,19 +179,19 @@ host_unittest_action("BuiltinsInternational_007_Test") {
     "../../../:icu_path_test_config",
   ]
 
-  deps = [
-    "$ark_third_party_root/icu/icu4c:shared_icui18n",
-    "$ark_third_party_root/icu/icu4c:shared_icuuc",
-    "../../../:libark_jsruntime_test",
-    sdk_libc_secshared_dep,
-  ]
+  deps = [ "../../../:libark_jsruntime_test" ]
 
   # hiviewdfx libraries
   external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+  ]
   deps += hiviewdfx_deps
 }
 
-host_unittest_action("BuiltinsInternational_008_Test") {
+host_unittest_action("Builtins_ListFormat_First_Test") {
   module_out_path = module_output_path
 
   sources = [
@@ -204,19 +204,19 @@ host_unittest_action("BuiltinsInternational_008_Test") {
     "../../../:icu_path_test_config",
   ]
 
-  deps = [
-    "$ark_third_party_root/icu/icu4c:shared_icui18n",
-    "$ark_third_party_root/icu/icu4c:shared_icuuc",
-    "../../../:libark_jsruntime_test",
-    sdk_libc_secshared_dep,
-  ]
+  deps = [ "../../../:libark_jsruntime_test" ]
 
   # hiviewdfx libraries
   external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+  ]
   deps += hiviewdfx_deps
 }
 
-host_unittest_action("BuiltinsInternational_009_Test") {
+host_unittest_action("Builtins_Local_Test") {
   module_out_path = module_output_path
 
   sources = [
@@ -229,44 +229,19 @@ host_unittest_action("BuiltinsInternational_009_Test") {
     "../../../:icu_path_test_config",
   ]
 
-  deps = [
-    "$ark_third_party_root/icu/icu4c:shared_icui18n",
-    "$ark_third_party_root/icu/icu4c:shared_icuuc",
-    "../../../:libark_jsruntime_test",
-    sdk_libc_secshared_dep,
-  ]
+  deps = [ "../../../:libark_jsruntime_test" ]
 
   # hiviewdfx libraries
   external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+  ]
   deps += hiviewdfx_deps
 }
 
-host_unittest_action("BuiltinsInternational_010_Test") {
-  module_out_path = module_output_path
-
-  sources = [
-    # test file
-    "builtins_locale_test.cpp",
-  ]
-
-  configs = [
-    "../../../:ecma_test_config",
-    "../../../:icu_path_test_config",
-  ]
-
-  deps = [
-    "$ark_third_party_root/icu/icu4c:shared_icui18n",
-    "$ark_third_party_root/icu/icu4c:shared_icuuc",
-    "../../../:libark_jsruntime_test",
-    sdk_libc_secshared_dep,
-  ]
-
-  # hiviewdfx libraries
-  external_deps = hiviewdfx_ext_deps
-  deps += hiviewdfx_deps
-}
-
-host_unittest_action("BuiltinsInternational_011_Test") {
+host_unittest_action("Builtins_NumberFormat_Test") {
   module_out_path = module_output_path
 
   sources = [
@@ -279,19 +254,19 @@ host_unittest_action("BuiltinsInternational_011_Test") {
     "../../../:icu_path_test_config",
   ]
 
-  deps = [
-    "$ark_third_party_root/icu/icu4c:shared_icui18n",
-    "$ark_third_party_root/icu/icu4c:shared_icuuc",
-    "../../../:libark_jsruntime_test",
-    sdk_libc_secshared_dep,
-  ]
+  deps = [ "../../../:libark_jsruntime_test" ]
 
   # hiviewdfx libraries
   external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+  ]
   deps += hiviewdfx_deps
 }
 
-host_unittest_action("BuiltinsInternational_012_Test") {
+host_unittest_action("Builtins_PluralRules_Test") {
   module_out_path = module_output_path
 
   sources = [
@@ -304,19 +279,19 @@ host_unittest_action("BuiltinsInternational_012_Test") {
     "../../../:icu_path_test_config",
   ]
 
-  deps = [
-    "$ark_third_party_root/icu/icu4c:shared_icui18n",
-    "$ark_third_party_root/icu/icu4c:shared_icuuc",
-    "../../../:libark_jsruntime_test",
-    sdk_libc_secshared_dep,
-  ]
+  deps = [ "../../../:libark_jsruntime_test" ]
 
   # hiviewdfx libraries
   external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+  ]
   deps += hiviewdfx_deps
 }
 
-host_unittest_action("BuiltinsInternational_013_Test") {
+host_unittest_action("Builtins_String_Test") {
   module_out_path = module_output_path
 
   sources = [
@@ -329,19 +304,19 @@ host_unittest_action("BuiltinsInternational_013_Test") {
     "../../../:icu_path_test_config",
   ]
 
-  deps = [
-    "$ark_third_party_root/icu/icu4c:shared_icui18n",
-    "$ark_third_party_root/icu/icu4c:shared_icuuc",
-    "../../../:libark_jsruntime_test",
-    sdk_libc_secshared_dep,
-  ]
+  deps = [ "../../../:libark_jsruntime_test" ]
 
   # hiviewdfx libraries
   external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+  ]
   deps += hiviewdfx_deps
 }
 
-host_unittest_action("BuiltinsInternational_014_Test") {
+host_unittest_action("Builtins_DateTimeFormat_Second_Test") {
   module_out_path = module_output_path
 
   sources = [
@@ -354,19 +329,19 @@ host_unittest_action("BuiltinsInternational_014_Test") {
     "../../../:icu_path_test_config",
   ]
 
-  deps = [
-    "$ark_third_party_root/icu/icu4c:shared_icui18n",
-    "$ark_third_party_root/icu/icu4c:shared_icuuc",
-    "../../../:libark_jsruntime_test",
-    sdk_libc_secshared_dep,
-  ]
+  deps = [ "../../../:libark_jsruntime_test" ]
 
   # hiviewdfx libraries
   external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+  ]
   deps += hiviewdfx_deps
 }
 
-host_unittest_action("BuiltinsInternational_015_Test") {
+host_unittest_action("Builtins_ListFormat_Second_Test") {
   module_out_path = module_output_path
 
   sources = [
@@ -379,19 +354,19 @@ host_unittest_action("BuiltinsInternational_015_Test") {
     "../../../:icu_path_test_config",
   ]
 
-  deps = [
-    "$ark_third_party_root/icu/icu4c:shared_icui18n",
-    "$ark_third_party_root/icu/icu4c:shared_icuuc",
-    "../../../:libark_jsruntime_test",
-    sdk_libc_secshared_dep,
-  ]
+  deps = [ "../../../:libark_jsruntime_test" ]
 
   # hiviewdfx libraries
   external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+  ]
   deps += hiviewdfx_deps
 }
 
-host_unittest_action("BuiltinsInternational_016_Test") {
+host_unittest_action("Builtins_Segmenter_Test") {
   module_out_path = module_output_path
 
   sources = [
@@ -404,200 +379,768 @@ host_unittest_action("BuiltinsInternational_016_Test") {
     "../../../:icu_path_test_config",
   ]
 
-  deps = [
-    "$ark_third_party_root/icu/icu4c:shared_icui18n",
-    "$ark_third_party_root/icu/icu4c:shared_icuuc",
-    "../../../:libark_jsruntime_test",
-    sdk_libc_secshared_dep,
-  ]
+  deps = [ "../../../:libark_jsruntime_test" ]
 
   # hiviewdfx libraries
   external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+  ]
   deps += hiviewdfx_deps
 }
 
-host_unittest_action("BuiltinsNatural_001_Test") {
+host_unittest_action("Builtins_Array_Test") {
   module_out_path = module_output_path
 
   sources = [
     # test file
     "builtins_array_test.cpp",
-    "builtins_arraybuffer_test.cpp",
-    "builtins_atomics_test.cpp",
-    "builtins_boolean_test.cpp",
-    "builtins_dataview_test.cpp",
-    "builtins_shared_array_test.cpp",
   ]
 
   configs = [ "../../../:ecma_test_config" ]
 
-  deps = [
-    "$ark_third_party_root/icu/icu4c:shared_icui18n",
-    "$ark_third_party_root/icu/icu4c:shared_icuuc",
-    "../../../:libark_jsruntime_test",
-    sdk_libc_secshared_dep,
-  ]
+  deps = [ "../../../:libark_jsruntime_test" ]
 
   # hiviewdfx libraries
   external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+  ]
   deps += hiviewdfx_deps
 }
 
-host_unittest_action("BuiltinsNatural_002_Test") {
+host_unittest_action("Builtins_ArrayBuffer_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "builtins_arraybuffer_test.cpp",
+  ]
+
+  configs = [ "../../../:ecma_test_config" ]
+
+  deps = [ "../../../:libark_jsruntime_test" ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+  ]
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("Builtins_Atomics_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "builtins_atomics_test.cpp",
+  ]
+
+  configs = [ "../../../:ecma_test_config" ]
+
+  deps = [ "../../../:libark_jsruntime_test" ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+  ]
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("Builtins_Boolean_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "builtins_boolean_test.cpp",
+  ]
+
+  configs = [ "../../../:ecma_test_config" ]
+
+  deps = [ "../../../:libark_jsruntime_test" ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+  ]
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("Builtins_DataView_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "builtins_dataview_test.cpp",
+  ]
+
+  configs = [ "../../../:ecma_test_config" ]
+
+  deps = [ "../../../:libark_jsruntime_test" ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+  ]
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("Builtins_Data_Test") {
   module_out_path = module_output_path
 
   sources = [
     # test file
     "builtins_date_test.cpp",
+  ]
+
+  configs = [ "../../../:ecma_test_config" ]
+
+  deps = [ "../../../:libark_jsruntime_test" ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+  ]
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("Builtins_Errors_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
     "builtins_errors_test.cpp",
+  ]
+
+  configs = [ "../../../:ecma_test_config" ]
+
+  deps = [ "../../../:libark_jsruntime_test" ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+  ]
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("Builtins_FinalizationRegistry_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
     "builtins_finalization_registry_test.cpp",
+  ]
+
+  configs = [ "../../../:ecma_test_config" ]
+
+  deps = [ "../../../:libark_jsruntime_test" ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+  ]
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("Builtins_Function_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
     "builtins_function_test.cpp",
+  ]
+
+  configs = [ "../../../:ecma_test_config" ]
+
+  deps = [ "../../../:libark_jsruntime_test" ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+  ]
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("Builtins_Global_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
     "builtins_global_test.cpp",
   ]
 
   configs = [ "../../../:ecma_test_config" ]
 
-  deps = [
-    "$ark_third_party_root/icu/icu4c:shared_icui18n",
-    "$ark_third_party_root/icu/icu4c:shared_icuuc",
-    "../../../:libark_jsruntime_test",
-    sdk_libc_secshared_dep,
-  ]
+  deps = [ "../../../:libark_jsruntime_test" ]
 
   # hiviewdfx libraries
   external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+  ]
   deps += hiviewdfx_deps
 }
 
-host_unittest_action("BuiltinsNatural_003_Test") {
+host_unittest_action("Builtins_Iterator_Test") {
   module_out_path = module_output_path
 
   sources = [
     # test file
     "builtins_iterator_test.cpp",
+  ]
+
+  configs = [ "../../../:ecma_test_config" ]
+
+  deps = [ "../../../:libark_jsruntime_test" ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+  ]
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("Builtins_Json_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
     "builtins_json_test.cpp",
+  ]
+
+  configs = [ "../../../:ecma_test_config" ]
+
+  deps = [ "../../../:libark_jsruntime_test" ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+  ]
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("Builtins_Map_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
     "builtins_map_test.cpp",
+  ]
+
+  configs = [ "../../../:ecma_test_config" ]
+
+  deps = [ "../../../:libark_jsruntime_test" ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+  ]
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("Builtins_Math_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
     "builtins_math_test.cpp",
+  ]
+
+  configs = [ "../../../:ecma_test_config" ]
+
+  deps = [ "../../../:libark_jsruntime_test" ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+  ]
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("Builtins_Number_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
     "builtins_number_test.cpp",
   ]
 
   configs = [ "../../../:ecma_test_config" ]
 
-  deps = [
-    "$ark_third_party_root/icu/icu4c:shared_icui18n",
-    "$ark_third_party_root/icu/icu4c:shared_icuuc",
-    "../../../:libark_jsruntime_test",
-    sdk_libc_secshared_dep,
-  ]
+  deps = [ "../../../:libark_jsruntime_test" ]
 
   # hiviewdfx libraries
   external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+  ]
   deps += hiviewdfx_deps
 }
 
-host_unittest_action("BuiltinsNatural_004_Test") {
+host_unittest_action("Builtins_Object_Test") {
   module_out_path = module_output_path
 
   sources = [
     # test file
     "builtins_object_test.cpp",
+  ]
+
+  configs = [ "../../../:ecma_test_config" ]
+
+  deps = [ "../../../:libark_jsruntime_test" ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+  ]
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("Builtins_Promise_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
     "builtins_promise_test.cpp",
+  ]
+
+  configs = [ "../../../:ecma_test_config" ]
+
+  deps = [ "../../../:libark_jsruntime_test" ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+  ]
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("Builtins_Proxy_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
     "builtins_proxy_test.cpp",
+  ]
+
+  configs = [ "../../../:ecma_test_config" ]
+
+  deps = [ "../../../:libark_jsruntime_test" ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+  ]
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("Builtins_Reflect_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
     "builtins_reflect_test.cpp",
+  ]
+
+  configs = [ "../../../:ecma_test_config" ]
+
+  deps = [ "../../../:libark_jsruntime_test" ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+  ]
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("Builtins_Regexp_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
     "builtins_regexp_test.cpp",
   ]
 
   configs = [ "../../../:ecma_test_config" ]
 
-  deps = [
-    "$ark_third_party_root/icu/icu4c:shared_icui18n",
-    "$ark_third_party_root/icu/icu4c:shared_icuuc",
-    "../../../:libark_jsruntime_test",
-    sdk_libc_secshared_dep,
-  ]
+  deps = [ "../../../:libark_jsruntime_test" ]
 
   # hiviewdfx libraries
   external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+  ]
   deps += hiviewdfx_deps
 }
 
-host_unittest_action("BuiltinsNatural_005_Test") {
+host_unittest_action("Builtins_Set_Test") {
   module_out_path = module_output_path
 
   sources = [
     # test file
     "builtins_set_test.cpp",
-    "builtins_shared_map_test.cpp",
-    "builtins_shared_set_test.cpp",
-    "builtins_shared_typedarray_test.cpp",
-    "builtins_sharedarraybuffer_test.cpp",
+  ]
+
+  configs = [ "../../../:ecma_test_config" ]
+
+  deps = [ "../../../:libark_jsruntime_test" ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+    "zlib:libz",
+  ]
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("Builtins_StringIterator_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
     "builtins_string_iterator_test.cpp",
+  ]
+
+  configs = [ "../../../:ecma_test_config" ]
+
+  deps = [ "../../../:libark_jsruntime_test" ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+  ]
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("Builtins_Symbol_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
     "builtins_symbol_test.cpp",
+  ]
+
+  configs = [ "../../../:ecma_test_config" ]
+
+  deps = [ "../../../:libark_jsruntime_test" ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+  ]
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("Builtins_TypedArray_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
     "builtins_typedarray_test.cpp",
   ]
 
   configs = [ "../../../:ecma_test_config" ]
 
-  deps = [
-    "$ark_third_party_root/icu/icu4c:shared_icui18n",
-    "$ark_third_party_root/icu/icu4c:shared_icuuc",
-    "../../../:libark_jsruntime_test",
-    sdk_libc_secshared_dep,
-  ]
+  deps = [ "../../../:libark_jsruntime_test" ]
 
   # hiviewdfx libraries
   external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+  ]
   deps += hiviewdfx_deps
 }
 
-host_unittest_action("BuiltinsNatural_006_Test") {
+host_unittest_action("Builtins_WeakMap_Test") {
   module_out_path = module_output_path
 
   sources = [
     # test file
     "builtins_weak_map_test.cpp",
+  ]
+
+  configs = [ "../../../:ecma_test_config" ]
+
+  deps = [ "../../../:libark_jsruntime_test" ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+  ]
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("Builtins_WeakRef_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
     "builtins_weak_ref_test.cpp",
+  ]
+
+  configs = [ "../../../:ecma_test_config" ]
+
+  deps = [ "../../../:libark_jsruntime_test" ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+  ]
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("Builtins_WeakSet_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
     "builtins_weak_set_test.cpp",
   ]
 
   configs = [ "../../../:ecma_test_config" ]
 
-  deps = [
-    "$ark_third_party_root/icu/icu4c:shared_icui18n",
-    "$ark_third_party_root/icu/icu4c:shared_icuuc",
-    "../../../:libark_jsruntime_test",
-    sdk_libc_secshared_dep,
-  ]
+  deps = [ "../../../:libark_jsruntime_test" ]
 
   # hiviewdfx libraries
   external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+  ]
   deps += hiviewdfx_deps
 }
 
-host_unittest_action("BuiltinsNatural_007_Test") {
+host_unittest_action("Sendable_BuiltinsSharedArray_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "builtins_shared_array_test.cpp",
+  ]
+
+  configs = [ "../../../:ecma_test_config" ]
+
+  deps = [ "../../../:libark_jsruntime_test" ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+  ]
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("Sendable_BuiltinsSharedArrayBuffer_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "builtins_sharedarraybuffer_test.cpp",
+  ]
+
+  configs = [ "../../../:ecma_test_config" ]
+
+  deps = [ "../../../:libark_jsruntime_test" ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+  ]
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("Sendable_BuiltinsSharedTypedArray_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "builtins_shared_typedarray_test.cpp",
+  ]
+
+  configs = [ "../../../:ecma_test_config" ]
+
+  deps = [ "../../../:libark_jsruntime_test" ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+  ]
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("Sendable_BuiltinsSharedSet_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "builtins_shared_set_test.cpp",
+  ]
+
+  configs = [ "../../../:ecma_test_config" ]
+
+  deps = [ "../../../:libark_jsruntime_test" ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+  ]
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("Sendable_BuiltinsSharedMap_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "builtins_shared_map_test.cpp",
+  ]
+
+  configs = [ "../../../:ecma_test_config" ]
+
+  deps = [ "../../../:libark_jsruntime_test" ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+  ]
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("Sendable_BuiltinsSendableArrayBuffer_Test") {
   module_out_path = module_output_path
 
   sources = [
     # test file
     "builtins_sendable_arraybuffer_test.cpp",
+  ]
+
+  configs = [ "../../../:ecma_test_config" ]
+
+  deps = [ "../../../:libark_jsruntime_test" ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+  ]
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("Sendable_BuiltinsSharedFunction_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
     "builtins_shared_function_test.cpp",
   ]
 
   configs = [ "../../../:ecma_test_config" ]
 
-  deps = [
-    "$ark_third_party_root/icu/icu4c:shared_icui18n",
-    "$ark_third_party_root/icu/icu4c:shared_icuuc",
-    "../../../:libark_jsruntime_test",
-    sdk_libc_secshared_dep,
-  ]
+  deps = [ "../../../:libark_jsruntime_test" ]
 
   # hiviewdfx libraries
   external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+  ]
   deps += hiviewdfx_deps
 }
 
-host_unittest_action("BuiltinsSharedObject_Test") {
+host_unittest_action("Sendable_BuiltinsSharedObject_Test") {
   module_out_path = module_output_path
 
   sources = [
@@ -610,15 +1153,15 @@ host_unittest_action("BuiltinsSharedObject_Test") {
     "../../../:icu_path_test_config",
   ]
 
-  deps = [
-    "$ark_third_party_root/icu/icu4c:shared_icui18n",
-    "$ark_third_party_root/icu/icu4c:shared_icuuc",
-    "../../../:libark_jsruntime_test",
-    sdk_libc_secshared_dep,
-  ]
+  deps = [ "../../../:libark_jsruntime_test" ]
 
   # hiviewdfx libraries
   external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+  ]
   deps += hiviewdfx_deps
 }
 
@@ -627,30 +1170,56 @@ group("unittest") {
 
   # deps file
   deps = [
-    ":BuiltinsInternational_001_Test",
-    ":BuiltinsInternational_002_Test",
-    ":BuiltinsInternational_003_Test",
-    ":BuiltinsInternational_004_Test",
-    ":BuiltinsInternational_005_Test",
-    ":BuiltinsInternational_006_Test",
-    ":BuiltinsInternational_007_Test",
-    ":BuiltinsInternational_008_Test",
-    ":BuiltinsInternational_009_Test",
-    ":BuiltinsInternational_010_Test",
-    ":BuiltinsInternational_011_Test",
-    ":BuiltinsInternational_012_Test",
-    ":BuiltinsInternational_013_Test",
-    ":BuiltinsInternational_014_Test",
-    ":BuiltinsInternational_015_Test",
-    ":BuiltinsInternational_016_Test",
-    ":BuiltinsNatural_001_Test",
-    ":BuiltinsNatural_002_Test",
-    ":BuiltinsNatural_003_Test",
-    ":BuiltinsNatural_004_Test",
-    ":BuiltinsNatural_005_Test",
-    ":BuiltinsNatural_006_Test",
-    ":BuiltinsNatural_007_Test",
-    ":BuiltinsSharedObject_Test",
+    ":Builtins_ArrayBuffer_Test",
+    ":Builtins_Array_Test",
+    ":Builtins_Atomics_Test",
+    ":Builtins_BigInt_Test",
+    ":Builtins_Boolean_Test",
+    ":Builtins_Collator_Test",
+    ":Builtins_DataView_Test",
+    ":Builtins_Data_Test",
+    ":Builtins_DateTimeFormat_First_Test",
+    ":Builtins_DateTimeFormat_Second_Test",
+    ":Builtins_DisPlayNames_Test",
+    ":Builtins_Errors_Test",
+    ":Builtins_FinalizationRegistry_Test",
+    ":Builtins_Function_Test",
+    ":Builtins_Global_Test",
+    ":Builtins_Intl_Test",
+    ":Builtins_Iterator_Test",
+    ":Builtins_Json_Test",
+    ":Builtins_Lazy_Test",
+    ":Builtins_ListFormat_First_Test",
+    ":Builtins_ListFormat_Second_Test",
+    ":Builtins_Local_Test",
+    ":Builtins_Map_Test",
+    ":Builtins_Math_Test",
+    ":Builtins_NumberFormat_Test",
+    ":Builtins_Number_Test",
+    ":Builtins_Object_Test",
+    ":Builtins_PluralRules_Test",
+    ":Builtins_Promise_Test",
+    ":Builtins_Proxy_Test",
+    ":Builtins_Reflect_Test",
+    ":Builtins_Regexp_Test",
+    ":Builtins_RelativeTimeFormat_Test",
+    ":Builtins_Segmenter_Test",
+    ":Builtins_Set_Test",
+    ":Builtins_StringIterator_Test",
+    ":Builtins_String_Test",
+    ":Builtins_Symbol_Test",
+    ":Builtins_TypedArray_Test",
+    ":Builtins_WeakMap_Test",
+    ":Builtins_WeakRef_Test",
+    ":Builtins_WeakSet_Test",
+    ":Sendable_BuiltinsSendableArrayBuffer_Test",
+    ":Sendable_BuiltinsSharedArrayBuffer_Test",
+    ":Sendable_BuiltinsSharedArray_Test",
+    ":Sendable_BuiltinsSharedFunction_Test",
+    ":Sendable_BuiltinsSharedMap_Test",
+    ":Sendable_BuiltinsSharedObject_Test",
+    ":Sendable_BuiltinsSharedSet_Test",
+    ":Sendable_BuiltinsSharedTypedArray_Test",
   ]
 }
 
@@ -659,57 +1228,110 @@ group("host_unittest") {
 
   # deps file
   deps = [
-    ":BuiltinsInternational_001_TestAction",
-    ":BuiltinsInternational_002_TestAction",
-    ":BuiltinsInternational_003_TestAction",
-    ":BuiltinsInternational_004_TestAction",
-    ":BuiltinsInternational_005_TestAction",
-    ":BuiltinsInternational_006_TestAction",
-    ":BuiltinsInternational_007_TestAction",
-    ":BuiltinsInternational_008_TestAction",
-    ":BuiltinsInternational_009_TestAction",
-    ":BuiltinsInternational_010_TestAction",
-    ":BuiltinsInternational_011_TestAction",
-    ":BuiltinsInternational_012_TestAction",
-    ":BuiltinsInternational_013_TestAction",
-    ":BuiltinsInternational_014_TestAction",
-    ":BuiltinsInternational_015_TestAction",
-    ":BuiltinsInternational_016_TestAction",
-    ":BuiltinsNatural_001_TestAction",
-    ":BuiltinsNatural_002_TestAction",
-    ":BuiltinsNatural_003_TestAction",
-    ":BuiltinsNatural_004_TestAction",
-    ":BuiltinsNatural_005_TestAction",
-    ":BuiltinsNatural_006_TestAction",
-    ":BuiltinsNatural_007_TestAction",
-    ":BuiltinsSharedObject_TestAction",
+    ":Builtins_ArrayBuffer_TestAction",
+    ":Builtins_Array_TestAction",
+    ":Builtins_Atomics_TestAction",
+    ":Builtins_BigInt_TestAction",
+    ":Builtins_Boolean_TestAction",
+    ":Builtins_Collator_TestAction",
+    ":Builtins_DataView_TestAction",
+    ":Builtins_Data_TestAction",
+    ":Builtins_DateTimeFormat_First_TestAction",
+    ":Builtins_DateTimeFormat_Second_TestAction",
+    ":Builtins_DisPlayNames_TestAction",
+    ":Builtins_Errors_TestAction",
+    ":Builtins_FinalizationRegistry_TestAction",
+    ":Builtins_Function_TestAction",
+    ":Builtins_Global_TestAction",
+    ":Builtins_Intl_TestAction",
+    ":Builtins_Iterator_TestAction",
+    ":Builtins_Json_TestAction",
+    ":Builtins_Lazy_TestAction",
+    ":Builtins_ListFormat_First_TestAction",
+    ":Builtins_ListFormat_Second_TestAction",
+    ":Builtins_Local_TestAction",
+    ":Builtins_Map_TestAction",
+    ":Builtins_Math_TestAction",
+    ":Builtins_NumberFormat_TestAction",
+    ":Builtins_Number_TestAction",
+    ":Builtins_Object_TestAction",
+    ":Builtins_PluralRules_TestAction",
+    ":Builtins_Promise_TestAction",
+    ":Builtins_Proxy_TestAction",
+    ":Builtins_Reflect_TestAction",
+    ":Builtins_Regexp_TestAction",
+    ":Builtins_RelativeTimeFormat_TestAction",
+    ":Builtins_Segmenter_TestAction",
+    ":Builtins_Set_TestAction",
+    ":Builtins_StringIterator_TestAction",
+    ":Builtins_String_TestAction",
+    ":Builtins_Symbol_TestAction",
+    ":Builtins_TypedArray_TestAction",
+    ":Builtins_WeakMap_TestAction",
+    ":Builtins_WeakRef_TestAction",
+    ":Builtins_WeakSet_TestAction",
+    ":Sendable_BuiltinsSendableArrayBuffer_TestAction",
+    ":Sendable_BuiltinsSharedArrayBuffer_TestAction",
+    ":Sendable_BuiltinsSharedArray_TestAction",
+    ":Sendable_BuiltinsSharedFunction_TestAction",
+    ":Sendable_BuiltinsSharedMap_TestAction",
+    ":Sendable_BuiltinsSharedObject_TestAction",
+    ":Sendable_BuiltinsSharedSet_TestAction",
+    ":Sendable_BuiltinsSharedTypedArray_TestAction",
   ]
   if (is_mac) {
     deps -= [
-      ":BuiltinsInternational_001_TestAction",
-      ":BuiltinsInternational_002_TestAction",
-      ":BuiltinsInternational_003_TestAction",
-      ":BuiltinsInternational_004_TestAction",
-      ":BuiltinsInternational_005_TestAction",
-      ":BuiltinsInternational_006_TestAction",
-      ":BuiltinsInternational_007_TestAction",
-      ":BuiltinsInternational_008_TestAction",
-      ":BuiltinsInternational_009_TestAction",
-      ":BuiltinsInternational_010_TestAction",
-      ":BuiltinsInternational_011_TestAction",
-      ":BuiltinsInternational_012_TestAction",
-      ":BuiltinsInternational_013_TestAction",
-      ":BuiltinsInternational_014_TestAction",
-      ":BuiltinsInternational_015_TestAction",
-      ":BuiltinsInternational_016_TestAction",
-      ":BuiltinsNatural_001_TestAction",
-      ":BuiltinsNatural_002_TestAction",
-      ":BuiltinsNatural_003_TestAction",
-      ":BuiltinsNatural_004_TestAction",
-      ":BuiltinsNatural_005_TestAction",
-      ":BuiltinsNatural_006_TestAction",
-      ":BuiltinsNatural_007_TestAction",
-      ":BuiltinsSharedObject_TestAction",
+      ":Builtins_ArrayBuffer_TestAction",
+      ":Builtins_Array_TestAction",
+      ":Builtins_Atomics_TestAction",
+      ":Builtins_BigInt_TestAction",
+      ":Builtins_Boolean_TestAction",
+      ":Builtins_Collator_TestAction",
+      ":Builtins_DataView_TestAction",
+      ":Builtins_Data_TestAction",
+      ":Builtins_DateTimeFormat_First_TestAction",
+      ":Builtins_DateTimeFormat_Second_TestAction",
+      ":Builtins_DisPlayNames_TestAction",
+      ":Builtins_Errors_TestAction",
+      ":Builtins_FinalizationRegistry_TestAction",
+      ":Builtins_Function_TestAction",
+      ":Builtins_Global_TestAction",
+      ":Builtins_Intl_TestAction",
+      ":Builtins_Iterator_TestAction",
+      ":Builtins_Json_TestAction",
+      ":Builtins_Lazy_TestAction",
+      ":Builtins_ListFormat_First_TestAction",
+      ":Builtins_ListFormat_Second_TestAction",
+      ":Builtins_Local_TestAction",
+      ":Builtins_Map_TestAction",
+      ":Builtins_Math_TestAction",
+      ":Builtins_NumberFormat_TestAction",
+      ":Builtins_Number_TestAction",
+      ":Builtins_Object_TestAction",
+      ":Builtins_PluralRules_TestAction",
+      ":Builtins_Promise_TestAction",
+      ":Builtins_Proxy_TestAction",
+      ":Builtins_Reflect_TestAction",
+      ":Builtins_Regexp_TestAction",
+      ":Builtins_RelativeTimeFormat_TestAction",
+      ":Builtins_Segmenter_TestAction",
+      ":Builtins_Set_TestAction",
+      ":Builtins_SharedObject__TestAction",
+      ":Builtins_StringIterator_TestAction",
+      ":Builtins_String_TestAction",
+      ":Builtins_Symbol_TestAction",
+      ":Builtins_TypedArray_TestAction",
+      ":Builtins_WeakMap_TestAction",
+      ":Builtins_WeakRef_TestAction",
+      ":Builtins_WeakSet_TestAction",
+      ":Sendable_BuiltinsSendableArrayBuffer_TestAction",
+      ":Sendable_BuiltinsSharedArrayBuffer_TestAction",
+      ":Sendable_BuiltinsSharedArray_TestAction",
+      ":Sendable_BuiltinsSharedFunction_TestAction",
+      ":Sendable_BuiltinsSharedMap_TestAction",
+      ":Sendable_BuiltinsSharedObject_TestAction",
+      ":Sendable_BuiltinsSharedSet_TestAction",
+      ":Sendable_BuiltinsSharedTypedArray_TestAction",
     ]
   }
 }

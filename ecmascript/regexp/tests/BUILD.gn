@@ -14,41 +14,71 @@
 import("//arkcompiler/ets_runtime/js_runtime_config.gni")
 import("//arkcompiler/ets_runtime/test/test_helper.gni")
 
-module_output_path = "ets_runtime"
+module_output_path = "arkcompiler/ets_runtime"
 
-host_unittest_action("RegexpTest") {
+host_unittest_action("JS_Regexp_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "regexp_test.cpp",
+  ]
+
+  configs = [ "../../../:ecma_test_config" ]
+
+  deps = [ "../../../:libark_jsruntime_test" ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+  ]
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("JS_Regexp_Chunk_Test") {
   module_out_path = module_output_path
 
   sources = [
     # test file
     "dyn_chunk_test.cpp",
-    "regexp_test.cpp",
   ]
 
-  configs = [ "//arkcompiler/ets_runtime:ecma_test_config" ]
+  configs = [ "../../../:ecma_test_config" ]
 
-  deps = [
-    "$ark_third_party_root/icu/icu4c:shared_icui18n",
-    "$ark_third_party_root/icu/icu4c:shared_icuuc",
-    "//arkcompiler/ets_runtime:libark_jsruntime_test",
-    sdk_libc_secshared_dep,
-  ]
+  deps = [ "../../../:libark_jsruntime_test" ]
 
   # hiviewdfx libraries
   external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+  ]
   deps += hiviewdfx_deps
 }
 
 group("unittest") {
   testonly = true
-  deps = [ ":RegexpTest" ]
+  deps = [
+    ":JS_Regexp_Chunk_Test",
+    ":JS_Regexp_Test",
+  ]
 }
 
 group("host_unittest") {
   testonly = true
-  deps = [ ":RegexpTestAction" ]
+  deps = [
+    ":JS_Regexp_Chunk_TestAction",
+    ":JS_Regexp_TestAction",
+  ]
 
   if (is_mac) {
-    deps -= [ ":RegexpTestAction" ]
+    deps = [
+      ":JS_Regexp_Chunk_TestAction",
+      ":JS_Regexp_TestAction",
+    ]
   }
 }
