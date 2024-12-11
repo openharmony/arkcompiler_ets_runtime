@@ -180,6 +180,7 @@ group("ark_aot_ts_test") {
     "isfalse",
     "isin",
     "isomorphism",
+    "isprototype",
     "istrue",
     "jsonstringify",
     "large_func",
