@@ -54,9 +54,11 @@ void ObjectOperator::HandleKey(const JSHandle<JSTaggedValue> &key)
 
     if (key->IsString()) {
         keyFromStringType_ = true;
+#ifdef ENABLE_NEXT_OPTIMIZATION
         if (TryFastHandleStringKey(key)) {
             return;
         }
+#endif
         uint32_t index = 0;
         if (JSTaggedValue::StringToElementIndex(key.GetTaggedValue(), &index)) {
             ASSERT(index < JSObject::MAX_ELEMENT_INDEX);
@@ -105,9 +107,11 @@ void ObjectOperator::HandleKey(const JSHandle<JSTaggedValue> &key)
 
 void ObjectOperator::UpdateHolder()
 {
+#ifdef ENABLE_NEXT_OPTIMIZATION
     if (holder_->IsECMAObject()) {
         return;
     }
+#endif
     if (holder_->IsString() && (GetThroughElement() || GetStringLength())) {
         JSHandle<JSTaggedValue> undefined = thread_->GlobalConstants()->GetHandledUndefined();
         holder_.Update(JSPrimitiveRef::StringCreate(thread_, holder_, undefined).GetTaggedValue());
