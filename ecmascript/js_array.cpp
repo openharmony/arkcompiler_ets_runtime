@@ -644,7 +644,7 @@ JSTaggedValue JSArray::FastConcatDictionaryArray(JSThread *thread, JSHandle<JSOb
         uint32_t uintKey = static_cast<uint32_t>(key.GetInt());
         if (uintKey < len) {
             JSTaggedValue value = elements->GetValue(hashIndex);
-            toKey.Update(JSTaggedValue(n + uintKey));
+            toKey.Update(JSTaggedValue(static_cast<int32_t>(n + uintKey))); // guarantee the toKey IsInt
             fromValHandle.Update(value);
             JSHandle<NumberDictionary> newDict = \
                 NumberDictionary::PutIfAbsent(thread, dict, toKey, fromValHandle, attr);

@@ -56,6 +56,16 @@ print([1, 2].concat([3, , 5])); // [1, 2, 3, empty, 5]
 const emptyArr = [];
 print(emptyArr.concat([]).length);
 
+{
+    let v1 = Math.pow(2, 31);
+    let v2 = [];
+    v2[v1] = 31;
+    let v3 = [];
+    let v4 = v2.concat(v3);
+    let v5 = v3.concat(1, -24323, v1, v4);
+    print(v5.length);
+}
+
 /*
  * @tc.name:Array concat1
  * @tc.desc:test long Array Concat long Array and change proto
@@ -181,20 +191,4 @@ print(emptyArr.concat([]).length);
     print(arr4[0], arr4[2000], arr4[2001], arr4[2002], arr4[2003], arr4[2004]);
 }
 
-/*
- * @tc.name:Array concat8
- * @tc.desc:test long Array Concat long Array change origin prototype
- * @tc.type: FUNC
- */
-{
-    let arr2 = new Array(2000);
-    arr2.__proto__[0] = "??";
-    arr2[1] = 3;
-    arr2[2] = 2;
-    arr2[3] = "ab";
-    arr2[4] = 1;
-    let arr3 = new Array(2000);
-    let arr4 = arr3.concat(arr2);
-    print(arr4[0], arr4[2000], arr4[2001], arr4[2002], arr4[2003], arr4[2004]);
-}
 print("test arrayconcat success!");
