@@ -428,6 +428,15 @@ bool ModuleManager::IsLocalModuleInstantiated(const CString &referencing)
     return module->GetStatus() == ModuleStatus::INSTANTIATED;
 }
 
+bool ModuleManager::NeedExecuteModule(const CString &referencing)
+{
+    if (IsModuleLoaded(referencing)) {
+        JSHandle<SourceTextModule> module = GetImportedModule(referencing);
+        return module->GetStatus() == ModuleStatus::INSTANTIATED;
+    }
+    return true;
+}
+
 void ModuleManager::AddToInstantiatingSModuleList(const CString &record)
 {
     InstantiatingSModuleList_.push_back(record);
@@ -689,24 +698,6 @@ JSHandle<JSTaggedValue> ModuleManager::ExecuteCjsModule(JSThread *thread, const 
         UpdateResolveImportedModule(recordName, module.GetTaggedValue());
     }
     return requiredModule;
-}
-
-JSHandle<JSTaggedValue> ModuleManager::GetModuleNameSpaceFromFile(
-    JSThread *thread, const CString &recordName, const CString &baseFileName)
-{
-    // IsInstantiatedModule is for lazy module to execute
-    if (!IsLocalModuleLoaded(recordName) || IsLocalModuleInstantiated(recordName)) {
-        if (!ecmascript::JSPandaFileExecutor::ExecuteFromAbcFile(
-            thread, baseFileName, recordName, false, true)) {
-            LOG_ECMA(ERROR) << "LoadModuleNameSpaceFromFile:Cannot execute module: "<< baseFileName <<
-                ", recordName: " << recordName;
-            return thread->GlobalConstants()->GetHandledUndefinedString();
-        }
-    }
-    JSHandle<ecmascript::SourceTextModule> moduleRecord = GetImportedModule(recordName);
-    moduleRecord->SetLoadingTypes(ecmascript::LoadingTypes::STABLE_MODULE);
-    return ecmascript::SourceTextModule::GetModuleNamespace(
-        thread, JSHandle<ecmascript::SourceTextModule>(moduleRecord));
 }
 
 JSHandle<JSTaggedValue> ModuleManager::TryGetImportedModule(const CString& referencing)

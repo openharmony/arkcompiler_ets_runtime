@@ -39,6 +39,7 @@
 #include "ecmascript/require/js_cjs_module.h"
 #include "ecmascript/module/module_manager_helper.h"
 #include "ecmascript/module/module_resolver.h"
+#include "ecmascript/module/napi_module_loader.h"
 #include "ecmascript/ecma_vm.h"
 
 using namespace panda::ecmascript;
@@ -690,15 +691,14 @@ HWTEST_F_L0(EcmaModuleTest, GetModuleNameSpaceFromFile)
     CString recordName1 = "a";
     CString recordName2 = "module_test_module_test_B";
     CString baseFileName = MODULE_ABC_PATH "module_test_module_test_B.abc";
-    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
 
     // ExecuteFromAbcFile is success
-    JSHandle<JSTaggedValue> res2 = moduleManager->GetModuleNameSpaceFromFile(thread, recordName2, baseFileName);
+    JSHandle<JSTaggedValue> res2 = ecmascript::NapiModuleLoader::LoadModuleNameSpace(thread, recordName2, baseFileName);
     EXPECT_NE(res2, thread->GlobalConstants()->GetHandledUndefinedString());
 
     // ExecuteFromAbcFile is fail
-    JSHandle<JSTaggedValue> res1 = moduleManager->GetModuleNameSpaceFromFile(thread, recordName1, baseFileName);
-    EXPECT_EQ(res1, thread->GlobalConstants()->GetHandledUndefinedString());
+    JSHandle<JSTaggedValue> res1 = ecmascript::NapiModuleLoader::LoadModuleNameSpace(thread, recordName1, baseFileName);
+    EXPECT_EQ(res1.GetTaggedValue(), JSTaggedValue::Exception());
 }
 
 HWTEST_F_L0(EcmaModuleTest, TryGetImportedModule)
