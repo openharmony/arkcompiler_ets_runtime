@@ -2095,7 +2095,7 @@ private:
     bool enableOptString_ {true};
     bool enableMutantArray_ {false};
 #if ENABLE_NEXT_OPTIMIZATION
-    bool enableElementsKind_ {true};
+    bool enableElementsKind_ {false};
 #else
     bool enableElementsKind_ {false};
 #endif
