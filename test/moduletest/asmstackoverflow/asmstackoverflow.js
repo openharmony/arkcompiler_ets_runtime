@@ -24,10 +24,9 @@ function foo(x, y, z, a, b) {
 }
 try {
     foo(1, 2, 3, 4, 5)
+	assert_unreachable();
 } catch (e) {
-    if ((e instanceof RangeError)) {
-        print("stack overflow2!");
-    }
+    assert_equal(e instanceof RangeError, true);
 }
 
 function foo2() {
@@ -35,10 +34,9 @@ function foo2() {
 }
 try {
     foo2()
+	assert_unreachable();
 } catch (e) {
-    if ((e instanceof RangeError)) {
-        print("stack overflow!");
-    }
+    assert_equal(e instanceof RangeError, true);
 }
 
 const obj = {};
@@ -46,19 +44,17 @@ const pro = new Proxy({}, obj);
 obj.__proto__ = pro;
 try {
     obj[10];
+	assert_unreachable();
 } catch (e) {
-    if (e instanceof RangeError) {
-        print("proxy stackoverflow!");
-    }
+    assert_equal(e instanceof RangeError, true);
 }
 try {
     function func() { }
     Function.prototype.__proto__ = new Proxy(func, {})
     Function.prototype.__proto__ = new Proxy(func, {})
+	assert_unreachable();
 } catch (error) {
-    if (error instanceof RangeError) {
-        print("proxy stackoverflow2!");
-    }
+    assert_equal(error instanceof RangeError, true);
 }
 
 // callarg0-3 callrange
@@ -67,8 +63,9 @@ function callarg0() {
 }
 try {
     callarg0();
+	assert_unreachable();
 } catch (e) {
-    print("callarg0 stackoverflow");
+    assert_equal(e instanceof RangeError, true);
 }
 
 function callarg1(a) {
@@ -76,8 +73,9 @@ function callarg1(a) {
 }
 try {
     callarg1(1);
+	assert_unreachable();
 } catch (e) {
-    print("callarg1 stackoverflow");
+    assert_equal(e instanceof RangeError, true);
 }
 
 function callarg2(a, b) {
@@ -85,8 +83,9 @@ function callarg2(a, b) {
 }
 try {
     callarg2(1, 2);
+	assert_unreachable();
 } catch (e) {
-    print("callarg2 stackoverflow");
+    assert_equal(e instanceof RangeError, true);
 }
 
 function callarg3(a, b, c) {
@@ -94,8 +93,9 @@ function callarg3(a, b, c) {
 }
 try {
     callarg3(1, 2, 3);
+	assert_unreachable();
 } catch (e) {
-    print("callarg3 stackoverflow");
+    assert_equal(e instanceof RangeError, true);
 }
 
 function callrange(a, b, c, d) {
@@ -103,8 +103,9 @@ function callrange(a, b, c, d) {
 }
 try {
     callrange(1, 2, 3, 4);
+	assert_unreachable();
 } catch (e) {
-    print("callrange stackoverflow");
+    assert_equal(e instanceof RangeError, true);
 }
 
 // callthis0-3 callthisrange
@@ -127,28 +128,33 @@ var obj2 = {
 }
 try {
     obj2.callthis0();
+	assert_unreachable();
 } catch (e) {
-    print("callthis0 stackoverflow");
+    assert_equal(e instanceof RangeError, true);
 }
 try {
     obj2.callthis1(1);
+	assert_unreachable();
 } catch (e) {
-    print("callthis1 stackoverflow");
+    assert_equal(e instanceof RangeError, true);
 }
 try {
     obj2.callthis2(1, 2);
+	assert_unreachable();
 } catch (e) {
-    print("callthis2 stackoverflow");
+    assert_equal(e instanceof RangeError, true);
 }
 try {
     obj2.callthis3(1, 2, 3);
+	assert_unreachable();
 } catch (e) {
-    print("callthis3 stackoverflow");
+    assert_equal(e instanceof RangeError, true);
 }
 try {
     obj2.callthisrange(1, 2, 3, 4);
+	assert_unreachable();
 } catch (e) {
-    print("callthisrange stackoverflow");
+    assert_equal(e instanceof RangeError, true);
 }
 
 // callstatic
@@ -171,28 +177,33 @@ class MyClass {
 }
 try {
     MyClass.callstatic0();
+	assert_unreachable();
 } catch (e) {
-    print("callstatic0 stackoverflow");
+    assert_equal(e instanceof RangeError, true);
 }
 try {
     MyClass.callstatic1(1);
+	assert_unreachable();
 } catch (e) {
-    print("callstatic1 stackoverflow");
+    assert_equal(e instanceof RangeError, true);
 }
 try {
     MyClass.callstatic2(1, 2);
+	assert_unreachable();
 } catch (e) {
-    print("callstatic2 stackoverflow");
+    assert_equal(e instanceof RangeError, true);
 }
 try {
     MyClass.callstatic3(1, 2, 3);
+	assert_unreachable();
 } catch (e) {
-    print("callstatic3 stackoverflow");
+    assert_equal(e instanceof RangeError, true);
 }
 try {
     MyClass.callstaticrange(1, 2, 3, 4);
+	assert_unreachable();
 } catch (e) {
-    print("callstaticrange stackoverflow");
+    assert_equal(e instanceof RangeError, true);
 }
 
 // callnew
@@ -203,8 +214,9 @@ class MyClass2 {
 }
 try {
     new MyClass2();
+	assert_unreachable();
 } catch (e) {
-    print("callnew stackoverflow");
+    assert_equal(e instanceof RangeError, true);
 }
 
 class MyClass3 {
@@ -214,8 +226,9 @@ class MyClass3 {
 }
 try {
     new MyClass3(1, 2, 3, 4);
+	assert_unreachable();
 } catch (e) {
-    print("callnew stackoverflow2");
+    assert_equal(e instanceof RangeError, true);
 }
 
 function callarg0_with_callthis() {
@@ -229,8 +242,9 @@ function callarg0_with_callthis() {
 
 try {
     foo_arg0();
+	assert_unreachable();
 } catch (e) {
-    print("callarg0_with_callthis stack overflow!")
+    assert_equal(e instanceof ReferenceError, true);
 }
 
 function callarg1_with_callthis(a) {
@@ -244,8 +258,9 @@ function callarg1_with_callthis(a) {
 
 try {
     callarg1_with_callthis(1);
+	assert_unreachable();
 } catch (e) {
-    print("callarg1_with_callthis stack overflow!")
+    assert_equal(e instanceof RangeError, true);
 }
 
 function callarg2_with_callthis(a, b) {
@@ -259,8 +274,9 @@ function callarg2_with_callthis(a, b) {
 
 try {
     callarg2_with_callthis(1, 2);
+	assert_unreachable();
 } catch (e) {
-    print("callarg2_with_callthis stack overflow!")
+    assert_equal(e instanceof RangeError, true);
 }
 
 function callarg3_with_callthis(a, b, c) {
@@ -274,8 +290,9 @@ function callarg3_with_callthis(a, b, c) {
 
 try {
     callarg3_with_callthis(1, 2, 3);
+	assert_unreachable();
 } catch (e) {
-    print("callarg3_with_callthis stack overflow!")
+    assert_equal(e instanceof RangeError, true);
 }
 
 function callrange_with_callthis(a, b, c, d) {
@@ -289,8 +306,9 @@ function callrange_with_callthis(a, b, c, d) {
 
 try {
     callrange_with_callthis(1, 2, 3, 4);
+	assert_unreachable();
 } catch (e) {
-    print("callrange_with_callthis stack overflow!")
+    assert_equal(e instanceof RangeError, true);
 }
 
 // PoC
@@ -298,8 +316,9 @@ var source = Array(2500).join("(") + "a" + Array(2500).join(")");
 try {
     var r = RegExp(source);
     r.test("\x80");
+	assert_unreachable();
 } catch (e) {
-    print(e.name)
+    assert_equal(e.name, "SyntaxError");
 }
 
 // Poc
@@ -318,8 +337,9 @@ try {
     var arr = [1];
     arr.push(arr);
     const v7 = arr.flat(65535);
+	assert_unreachable();
 } catch (error) {
-    print(error.name)
+    assert_equal(error.name, "RangeError");
 }
 
 function f0() {
@@ -334,8 +354,9 @@ class C1 extends f0 {
 }
 try {
     new C1(f0);
+    assert_unreachable();
 } catch(e) {
-    print(e.name);
+    assert_equal(e.name, "RangeError");
 }
 
 const v3 = new Proxy([123], {});
@@ -350,7 +371,8 @@ class C4{
   }
 }
 new C4();
-print("recursive stack overflow")
+const result1 = "recursive stack overflow"
+assert_equal(result1, "recursive stack overflow")
 
 function f(a5) {
     ("ZU").matchAll(a5);
@@ -369,4 +391,7 @@ function runNearStackLimit(f) {
     }
 }
 runNearStackLimit(f);
-print("matchAll success");
+const result2 = "matchAll success";
+assert_equal(result2, "matchAll success");
+
+test_end();

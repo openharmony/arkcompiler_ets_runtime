@@ -26,3 +26,5 @@ var arr = [
 
 assert_equal(arr[0](), "foo")
 assert_equal(arr[1](), "foo2")
+
+test_end();

@@ -13,7 +13,7 @@
 
 import("//arkcompiler/ets_runtime/test/test_helper.gni")
 
-host_moduletest_action("multiconstpoolconstructor") {
+host_moduletest_assert_action("multiconstpoolconstructor") {
   is_gen_js_by_script = true
   deps = []
 }

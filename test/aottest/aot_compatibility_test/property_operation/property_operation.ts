@@ -83,4 +83,6 @@ declare function print(arg:any):string;
     } catch(e) {
         assert_equal(e.message, "CallObj is NonCallable");
     }
+	
+	test_end();
 }

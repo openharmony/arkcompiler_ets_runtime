@@ -25,3 +25,5 @@ function emptyiftrue() {
 
 assert_equal(emptycompare(2, 3), 1);
 assert_equal(emptyiftrue(), 2);
+
+test_end();

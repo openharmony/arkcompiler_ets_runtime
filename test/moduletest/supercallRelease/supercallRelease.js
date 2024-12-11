@@ -32,5 +32,7 @@ function f() {
     f();
   } catch (e) {
   }
+  let value1 = "super call test success!";
+  assert_equal(value1, "super call test success!");
   
-  print("super call test success!");
+  test_end();
