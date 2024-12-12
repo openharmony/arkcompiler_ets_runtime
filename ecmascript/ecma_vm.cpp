@@ -153,10 +153,6 @@ void EcmaVM::PostFork()
     int arkProperties = OHOS::system::GetIntParameter<int>("persist.ark.properties", -1);
     GetJSOptions().SetArkProperties(arkProperties);
 #endif
-    auto startIdleMonitor = JSNApi::GetStartIdleMonitorCallback();
-    if (startIdleMonitor != nullptr) {
-        startIdleMonitor();
-    }
     DaemonThread::GetInstance()->EnsureRunning();
 #ifdef ENABLE_POSTFORK_FORCEEXPAND
     heap_->NotifyPostFork();

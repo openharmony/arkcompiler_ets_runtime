@@ -53,7 +53,7 @@ void GCStats::PrintGCStatistic()
                         << ")ms, " << GCReasonToString(reason_);
         LOG_GC(INFO) << "IsInBackground: " << heap_->IsInBackground() << "; "
             << "SensitiveStatus: " << static_cast<int>(heap_->GetSensitiveStatus()) << "; "
-            << "OnStartupEvent: " << heap_->OnStartupEvent() << "; "
+            << "StartupStatus: " << std::to_string(static_cast<int>(heap_->GetStartupStatus())) << "; "
             << "BundleName: " << heap_->GetEcmaVM()->GetBundleName() << ";";
         // print verbose gc statsistics
         PrintVerboseGCStatistic();
