@@ -104,7 +104,6 @@ public:
 
     void UpdateTrackArrayLength(JSTaggedValue trackInfoVal, uint32_t newSize);
     void UpdateTrackSpaceFlag(TaggedObject *object, RegionSpaceFlag spaceFlag);
-    void UpdateTrackElementsKind(JSTaggedValue trackInfoVal, ElementsKind newKind);
     void UpdateTrackInfo(JSTaggedValue trackInfoVal);
 
     JSTaggedValue TryFindKeyInPrototypeChain(TaggedObject *currObj, JSHClass *currHC, JSTaggedValue key);

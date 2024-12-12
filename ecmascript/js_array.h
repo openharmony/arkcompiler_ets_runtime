@@ -144,6 +144,8 @@ public:
         cb(newElements, length);
         return array.GetTaggedValue();
     }
+
+    void UpdateTrackInfo(const JSThread *thread);
 };
 
 class TrackInfo : public TaggedObject {

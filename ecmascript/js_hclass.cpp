@@ -758,14 +758,16 @@ bool JSHClass::TransitToElementsKind(const JSThread *thread, const JSHandle<JSOb
         return false;
     }
 
-    if (!thread->GetEcmaVM()->IsEnableMutantArray()) {
-        // Update TrackInfo
-        if (!thread->IsPGOProfilerEnable()) {
-            return true;
-        }
-        auto trackInfoVal = JSHandle<JSArray>(object)->GetTrackInfo();
-        thread->GetEcmaVM()->GetPGOProfiler()->UpdateTrackElementsKind(trackInfoVal, newKind);
+    // Update TrackInfo
+    JSHandle<JSArray>(object)->UpdateTrackInfo(thread);
+
+    if (!thread->IsPGOProfilerEnable()) {
         return true;
+    }
+    JSTaggedValue trackInfoVal = JSHandle<JSArray>(object)->GetTrackInfo();
+    if (trackInfoVal.IsHeapObject() && trackInfoVal.IsWeak()) {
+        TrackInfo *trackInfo = TrackInfo::Cast(trackInfoVal.GetWeakReferentUnChecked());
+        thread->GetEcmaVM()->GetPGOProfiler()->UpdateTrackInfo(JSTaggedValue(trackInfo));
     }
     return true;
 }
