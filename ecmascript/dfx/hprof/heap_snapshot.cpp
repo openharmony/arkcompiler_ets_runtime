@@ -1143,7 +1143,7 @@ void HeapSnapshot::GenerateNodeForBinMod(CUnorderedMap<uint64_t, NewAddr *> &obj
     Node *syntheticRoot = Node::NewNode(chunk_, 1, nodeCount_, GetString("SyntheticRoot"),
                                         NodeType::SYNTHETIC, 0, 0, 0);
     InsertNodeAt(0, syntheticRoot);
-    int edgeOffset = 0;
+    CList<Edge *> rootEdges;
     for (auto objItem : objMap) {
         TaggedObject *obj = reinterpret_cast<TaggedObject *>(objItem.second->Data());
         auto currNode = GenerateNode(JSTaggedValue(obj), objItem.second->objSize, false, false, false);
@@ -1155,11 +1155,13 @@ void HeapSnapshot::GenerateNodeForBinMod(CUnorderedMap<uint64_t, NewAddr *> &obj
         }
         if (rootSet.find(objItem.first) != rootSet.end()) {
             Edge *edge = Edge::NewEdge(chunk_, EdgeType::SHORTCUT, syntheticRoot, currNode, GetString("-subroot-"));
-            InsertEdgeAt(edgeOffset, edge);
-            edgeOffset++;
+            rootEdges.emplace_back(edge);
             syntheticRoot->IncEdgeCount();
         }
     }
+    // add root edges to edges begin
+    edges_.insert(edges_.begin(), rootEdges.begin(), rootEdges.end());
+    edgeCount_ += rootEdges.size();
 }
 
 bool HeapSnapshot::BuildSnapshotForBinMod(CUnorderedMap<uint64_t, NewAddr *> &objMap,
@@ -1268,7 +1270,7 @@ void HeapSnapshot::AddSyntheticRoot()
                                         NodeType::SYNTHETIC, 0, 0, 0);
     InsertNodeAt(0, syntheticRoot);
     CUnorderedSet<JSTaggedType> values {};
-    int edgeOffset = 0;
+    CList<Edge *> rootEdges;
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define ROOT_EDGE_BUILDER_CORE(type, slot)                                                            \
     do {                                                                                              \
@@ -1283,15 +1285,14 @@ void HeapSnapshot::AddSyntheticRoot()
                     values.insert(valueTo);                                                           \
                     Edge *edge = Edge::NewEdge(chunk_,                                                \
                         EdgeType::SHORTCUT, syntheticRoot, rootNode, GetString("-subroot-"));         \
-                    InsertEdgeAt(edgeOffset, edge);                                                   \
-                    edgeOffset++;                                                                     \
+                    rootEdges.emplace_back(edge);                                                     \
                     syntheticRoot->IncEdgeCount();                                                    \
                 }                                                                                     \
             }                                                                                         \
         }                                                                                             \
     } while (false)
 
-    RootVisitor rootEdgeBuilder = [this, syntheticRoot, &edgeOffset, &values](
+    RootVisitor rootEdgeBuilder = [this, syntheticRoot, &rootEdges, &values](
         [[maybe_unused]] Root type, ObjectSlot slot) {
         ROOT_EDGE_BUILDER_CORE(type, slot);
     };
@@ -1300,7 +1301,7 @@ void HeapSnapshot::AddSyntheticRoot()
          [[maybe_unused]] uintptr_t baseOldObject) {
     };
 
-    RootRangeVisitor rootRangeEdgeBuilder = [this, syntheticRoot, &edgeOffset, &values]([[maybe_unused]] Root type,
+    RootRangeVisitor rootRangeEdgeBuilder = [this, syntheticRoot, &rootEdges, &values]([[maybe_unused]] Root type,
         ObjectSlot start, ObjectSlot end) {
         for (ObjectSlot slot = start; slot < end; slot++) {
             ROOT_EDGE_BUILDER_CORE(type, slot);
@@ -1309,6 +1310,9 @@ void HeapSnapshot::AddSyntheticRoot()
 #undef ROOT_EDGE_BUILDER_CORE
     rootVisitor_.VisitHeapRoots(vm_->GetJSThread(), rootEdgeBuilder, rootRangeEdgeBuilder, rootBaseEdgeBuilder);
 
+    // add root edges to edges begin
+    edges_.insert(edges_.begin(), rootEdges.begin(), rootEdges.end());
+    edgeCount_ += rootEdges.size();
     int reindex = 0;
     for (Node *node : nodes_) {
         node->SetIndex(reindex);
