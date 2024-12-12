@@ -2450,7 +2450,7 @@ EcmaString *BuiltinsRegExp::EscapeRegExpPattern(JSThread *thread, const JSHandle
     bool escapeChar = false;
     for (size_t i = 0; i < srcStdStr.size(); i++) {
         if (srcStdStr[i] == '\\') {
-            escapeChar=!escapeChar;
+            escapeChar = !escapeChar;
         } else if (!escapeChar && srcStdStr[i]=='/') {
             srcStdStr.insert(i, "\\");
             i++;

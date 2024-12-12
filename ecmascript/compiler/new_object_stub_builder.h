@@ -150,6 +150,7 @@ private:
     void AllocateInSOld(Variable *result, Label *exit, GateRef hclass);
     void InitializeTaggedArrayWithSpeicalValue(Label *exit,
         GateRef array, GateRef value, GateRef start, GateRef length);
+    void InitializeObject(Variable *result);
     GateRef glue_ {Circuit::NullGate()};
     GateRef size_ {0};
 };

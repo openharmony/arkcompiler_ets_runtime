@@ -447,14 +447,7 @@ void NewObjectStubBuilder::NewJSObject(Variable *result, Label *exit, GateRef hc
             result->ReadVariable(), *initValue, Int32(JSObject::SIZE), ChangeIntPtrToInt32(size_),
             MemoryAttribute::NoBarrier());
         Bind(&afterInitialize);
-        auto emptyArray = GetGlobalConstantValue(
-            VariableType::JS_POINTER(), glue_, ConstantIndex::EMPTY_ARRAY_OBJECT_INDEX);
-        GateRef hashOffset = IntPtr(ECMAObject::HASH_OFFSET);
-        Store(VariableType::INT64(), glue_, result->ReadVariable(), hashOffset, Int64(JSTaggedValue(0).GetRawData()));
-        SetPropertiesArray(VariableType::INT64(),
-                           glue_, result->ReadVariable(), emptyArray, MemoryAttribute::NoBarrier());
-        SetElementsArray(VariableType::INT64(),
-                         glue_, result->ReadVariable(), emptyArray, MemoryAttribute::NoBarrier());
+        InitializeObject(result);
         Jump(exit);
     }
     Bind(&hasPendingException);
@@ -490,14 +483,7 @@ void NewObjectStubBuilder::NewSObject(Variable *result, Label *exit, GateRef hcl
             result->ReadVariable(), *initValue, Int32(JSObject::SIZE), ChangeIntPtrToInt32(size_),
             MemoryAttribute::NoBarrier());
         Bind(&afterInitialize);
-        auto emptyArray = GetGlobalConstantValue(
-            VariableType::JS_POINTER(), glue_, ConstantIndex::EMPTY_ARRAY_OBJECT_INDEX);
-        GateRef hashOffset = IntPtr(ECMAObject::HASH_OFFSET);
-        Store(VariableType::INT64(), glue_, result->ReadVariable(), hashOffset, Int64(JSTaggedValue(0).GetRawData()));
-        SetPropertiesArray(VariableType::INT64(),
-                           glue_, result->ReadVariable(), emptyArray, MemoryAttribute::NoBarrier());
-        SetElementsArray(VariableType::INT64(),
-                         glue_, result->ReadVariable(), emptyArray, MemoryAttribute::NoBarrier());
+        InitializeObject(result);
         Jump(exit);
     }
 }
@@ -585,14 +571,7 @@ void NewObjectStubBuilder::NewJSObject(Variable *result, Label *exit, GateRef hc
         result->ReadVariable(), *initValue, Int32(JSObject::SIZE), ChangeIntPtrToInt32(size_),
         MemoryAttribute::NoBarrier());
     Bind(&afterInitialize);
-    auto emptyArray = GetGlobalConstantValue(
-        VariableType::JS_POINTER(), glue_, ConstantIndex::EMPTY_ARRAY_OBJECT_INDEX);
-    GateRef hashOffset = IntPtr(ECMAObject::HASH_OFFSET);
-    Store(VariableType::INT64(), glue_, result->ReadVariable(), hashOffset, Int64(JSTaggedValue(0).GetRawData()));
-    SetPropertiesArray(VariableType::INT64(),
-                       glue_, result->ReadVariable(), emptyArray, MemoryAttribute::NoBarrier());
-    SetElementsArray(VariableType::INT64(),
-                     glue_, result->ReadVariable(), emptyArray, MemoryAttribute::NoBarrier());
+    InitializeObject(result);
     Jump(exit);
 }
 
@@ -1652,6 +1631,16 @@ void NewObjectStubBuilder::InitializeTaggedArrayWithSpeicalValue(Label *exit,
     InitializeWithSpeicalValue(exit, array, value, dataOffset, endOffset);
 }
 
+void NewObjectStubBuilder::InitializeObject(Variable *result)
+{
+    auto emptyArray =
+        GetGlobalConstantValue(VariableType::JS_POINTER(), glue_, ConstantIndex::EMPTY_ARRAY_OBJECT_INDEX);
+    GateRef hashOffset = IntPtr(ECMAObject::HASH_OFFSET);
+    Store(VariableType::INT64(), glue_, result->ReadVariable(), hashOffset, Int64(JSTaggedValue(0).GetRawData()));
+    SetPropertiesArray(VariableType::INT64(), glue_, result->ReadVariable(), emptyArray, MemoryAttribute::NoBarrier());
+    SetElementsArray(VariableType::INT64(), glue_, result->ReadVariable(), emptyArray, MemoryAttribute::NoBarrier());
+}
+
 void NewObjectStubBuilder::AllocLineStringObject(Variable *result, Label *exit, GateRef length, bool compressed)
 {
     auto env = GetEnvironment();
@@ -2094,12 +2083,7 @@ void NewObjectStubBuilder::CreateJSCollectionIterator(
     Bind(&noException);
     {
         StoreBuiltinHClass(glue_, result->ReadVariable(), iteratorHClass);
-        GateRef hashOffset = IntPtr(ECMAObject::HASH_OFFSET);
-        Store(VariableType::INT64(), glue_, result->ReadVariable(), hashOffset, Int64(JSTaggedValue(0).GetRawData()));
-        auto emptyArray = GetGlobalConstantValue(
-            VariableType::JS_POINTER(), glue_, ConstantIndex::EMPTY_ARRAY_OBJECT_INDEX);
-        SetPropertiesArray(VariableType::INT64(), glue_, result->ReadVariable(), emptyArray);
-        SetElementsArray(VariableType::INT64(), glue_, result->ReadVariable(), emptyArray);
+        InitializeObject(result);
 
         // GetLinked
         GateRef linked = Load(VariableType::JS_ANY(), thisValue, IntPtr(linkedOffset));
@@ -2150,12 +2134,7 @@ void NewObjectStubBuilder::CreateJSTypedArrayIterator(Variable *result, Label *e
     Bind(&noException);
     {
         StoreBuiltinHClass(glue_, result->ReadVariable(), iteratorHClass);
-        GateRef hashOffset = IntPtr(ECMAObject::HASH_OFFSET);
-        Store(VariableType::INT64(), glue_, result->ReadVariable(), hashOffset, Int64(JSTaggedValue(0).GetRawData()));
-        auto emptyArray = GetGlobalConstantValue(
-            VariableType::JS_POINTER(), glue_, ConstantIndex::EMPTY_ARRAY_OBJECT_INDEX);
-        SetPropertiesArray(VariableType::INT64(), glue_, result->ReadVariable(), emptyArray);
-        SetElementsArray(VariableType::INT64(), glue_, result->ReadVariable(), emptyArray);
+        InitializeObject(result);
 
         GateRef iteratorOffset = IntPtr(JSArrayIterator::ITERATED_ARRAY_OFFSET);
         Store(VariableType::JS_POINTER(), glue_, result->ReadVariable(), iteratorOffset, thisValue,
