@@ -501,14 +501,24 @@ public:
         return smartGCStats_.sensitiveStatus_;
     }
 
-    void SetStartupStatus(StartupStatus startupStatus)
-    {
-        smartGCStats_.startupStatus_ = startupStatus;
-    }
-
     StartupStatus GetStartupStatus() const
     {
         return smartGCStats_.startupStatus_;
+    }
+
+    bool IsJustFinishStartup() const
+    {
+        return smartGCStats_.startupStatus_ == StartupStatus::JUST_FINISH_STARTUP;
+    }
+
+    bool CancelJustFinishStartupEvent()
+    {
+        LockHolder lock(smartGCStats_.sensitiveStatusMutex_);
+        if (!IsJustFinishStartup()) {
+            return false;
+        }
+        smartGCStats_.startupStatus_ = StartupStatus::FINISH_STARTUP;
+        return true;
     }
 
     bool FinishStartupEvent() override
@@ -546,7 +556,9 @@ public:
 
     bool ObjectExceedMaxHeapSize() const override;
 
-    bool ObjectExceedJustFinishStartupThreshold() const;
+    bool ObjectExceedJustFinishStartupThresholdForGC() const;
+
+    bool ObjectExceedJustFinishStartupThresholdForCM() const;
 
     bool CheckIfNeedStopCollectionByStartup();
 
@@ -1365,13 +1377,6 @@ public:
         return smartGCStats_.sensitiveStatus_.compare_exchange_strong(expect, status, std::memory_order_seq_cst);
     }
 
-    void SetStartupStatus(StartupStatus startupStatus)
-    {
-        ASSERT(smartGCStats_.startupStatus_.load(std::memory_order_relaxed) == sHeap_->GetStartupStatus());
-        smartGCStats_.startupStatus_.store(startupStatus, std::memory_order_relaxed);
-        sHeap_->SetStartupStatus(startupStatus);
-    }
-
     StartupStatus GetStartupStatus() const
     {
         ASSERT(smartGCStats_.startupStatus_.load(std::memory_order_relaxed) == sHeap_->GetStartupStatus());
@@ -1390,7 +1395,7 @@ public:
         }
         TryIncreaseNewSpaceOvershootByConfigSize();
         smartGCStats_.startupStatus_.store(StartupStatus::FINISH_STARTUP, std::memory_order_release);
-        sHeap_->SetStartupStatus(StartupStatus::FINISH_STARTUP);
+        sHeap_->CancelJustFinishStartupEvent();
         return true;
     }
 
@@ -1415,6 +1420,16 @@ public:
         sHeap_->NotifyPostFork();
         smartGCStats_.startupStatus_.store(StartupStatus::ON_STARTUP, std::memory_order_relaxed);
         LOG_GC(INFO) << "SmartGC: enter app cold start";
+        size_t localFirst = config_.GetMaxHeapSize();
+        size_t localSecond = config_.GetMaxHeapSize() * JUST_FINISH_STARTUP_LOCAL_THRESHOLD_RATIO;
+        auto sharedHeapConfig = sHeap_->GetEcmaParamConfiguration();
+        size_t sharedFirst = sHeap_->GetOldSpace()->GetInitialCapacity();
+        size_t sharedSecond = sharedHeapConfig.GetMaxHeapSize()
+                            * JUST_FINISH_STARTUP_SHARED_THRESHOLD_RATIO
+                            * JUST_FINISH_STARTUP_SHARED_CONCURRENT_MARK_RATIO;
+        LOG_GC(INFO) << "SmartGC: startup GC restrain, "
+            << "phase 1 threshold: local " << localFirst / 1_MB << "MB, shared " << sharedFirst / 1_MB << "MB; "
+            << "phase 2 threshold: local " << localSecond / 1_MB << "MB, shared " << sharedSecond / 1_MB << "MB";
     }
 
 #if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
@@ -1837,6 +1852,8 @@ private:
 
     // parallel evacuator task number.
     uint32_t maxEvacuateTaskCount_ {0};
+
+    uint64_t startupDurationInMs_ {0};
 
     Mutex setNewSpaceOvershootSizeMutex_;
 

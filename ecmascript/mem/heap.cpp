@@ -590,10 +590,18 @@ bool SharedHeap::IsReadyToConcurrentMark() const
     return dThread_->IsReadyToConcurrentMark();
 }
 
-bool SharedHeap::ObjectExceedJustFinishStartupThreshold() const
+bool SharedHeap::ObjectExceedJustFinishStartupThresholdForGC() const
 {
-    size_t heapObjectSizeThreshold = config_.GetMaxHeapSize() * JUST_FINISH_STARTUP_SHARED_THRESHOLD_RATIO;
-    return ObjectExceedMaxHeapSize() || GetHeapObjectSize() > heapObjectSizeThreshold;
+    size_t heapObjectSizeThresholdForGC = config_.GetMaxHeapSize() * JUST_FINISH_STARTUP_SHARED_THRESHOLD_RATIO;
+    return ObjectExceedMaxHeapSize() || GetHeapObjectSize() > heapObjectSizeThresholdForGC;
+}
+
+bool SharedHeap::ObjectExceedJustFinishStartupThresholdForCM() const
+{
+    size_t heapObjectSizeThresholdForGC = config_.GetMaxHeapSize() * JUST_FINISH_STARTUP_SHARED_THRESHOLD_RATIO;
+    size_t heapObjectSizeThresholdForCM = heapObjectSizeThresholdForGC
+                                        * JUST_FINISH_STARTUP_SHARED_CONCURRENT_MARK_RATIO;
+    return ObjectExceedMaxHeapSize() || GetHeapObjectSize() > heapObjectSizeThresholdForCM;
 }
 
 bool SharedHeap::CheckIfNeedStopCollectionByStartup()
@@ -606,7 +614,7 @@ bool SharedHeap::CheckIfNeedStopCollectionByStartup()
             }
             break;
         case StartupStatus::JUST_FINISH_STARTUP:
-            if (!ObjectExceedJustFinishStartupThreshold()) {
+            if (!ObjectExceedJustFinishStartupThresholdForGC()) {
                 return true;
             }
             break;
@@ -2248,11 +2256,20 @@ void Heap::NotifyFinishColdStart(bool isMainThread)
         TryTriggerConcurrentMarking();
     }
 
+    auto startIdleMonitor = JSNApi::GetStartIdleMonitorCallback();
+    if (startIdleMonitor != nullptr) {
+        startIdleMonitor();
+    }
+
+    if (startupDurationInMs_ == 0) {
+        startupDurationInMs_ = DEFAULT_STARTUP_DURATION_MS;
+    }
+
     // restrain GC from 2s to 8s
-    uint64_t delayTimeInMillisecond = JUST_FINISH_STARTUP_DURATION_MS;
+    uint64_t delayTimeInMs = FINISH_STARTUP_TIMEPOINT_MS - startupDurationInMs_;
     Taskpool::GetCurrentTaskpool()->PostDelayedTask(
         std::make_unique<FinishGCRestrainTask>(GetJSThread()->GetThreadId(), this),
-        delayTimeInMillisecond);
+        delayTimeInMs);
 }
 
 void Heap::NotifyFinishColdStartSoon()
@@ -2262,10 +2279,16 @@ void Heap::NotifyFinishColdStartSoon()
     }
 
     // post 2s task
-    uint64_t delayTimeInMillisecond = STARTUP_DURATION_MS;
+    startupDurationInMs_ = DEFAULT_STARTUP_DURATION_MS;
+#if defined(ECMASCRIPT_SUPPORT_SNAPSHOT) && defined(PANDA_TARGET_OHOS) && defined(ENABLE_HISYSEVENT)
+    startupDurationInMs_ = OHOS::system::GetUintParameter<uint64_t>("persist.ark.startupDuration",
+                                                                    DEFAULT_STARTUP_DURATION_MS);
+    startupDurationInMs_ = std::max(startupDurationInMs_, static_cast<uint64_t>(MIN_CONFIGURABLE_STARTUP_DURATION_MS));
+    startupDurationInMs_ = std::min(startupDurationInMs_, static_cast<uint64_t>(MAX_CONFIGURABLE_STARTUP_DURATION_MS));
+#endif
     Taskpool::GetCurrentTaskpool()->PostDelayedTask(
         std::make_unique<FinishColdStartTask>(GetJSThread()->GetThreadId(), this),
-        delayTimeInMillisecond);
+        startupDurationInMs_);
 }
 
 void Heap::NotifyHighSensitive(bool isStart)
@@ -2313,7 +2336,8 @@ bool Heap::ObjectExceedJustFinishStartupThresholdForGC() const
 bool Heap::ObjectExceedJustFinishStartupThresholdForCM() const
 {
     size_t heapObjectSizeThresholdForGC = config_.GetMaxHeapSize() * JUST_FINISH_STARTUP_LOCAL_THRESHOLD_RATIO;
-    size_t heapObjectSizeThresholdForCM = heapObjectSizeThresholdForGC * JUST_FINISH_STARTUP_CONCURRENT_MARK_RATIO;
+    size_t heapObjectSizeThresholdForCM = heapObjectSizeThresholdForGC
+                                        * JUST_FINISH_STARTUP_LOCAL_CONCURRENT_MARK_RATIO;
     return GetHeapObjectSize() > heapObjectSizeThresholdForCM;
 }
 
@@ -2443,13 +2467,6 @@ bool Heap::FinishGCRestrainTask::Run([[maybe_unused]] uint32_t threadIndex)
     return true;
 }
 
-bool Heap::FinishGCRestrainTask::Run([[maybe_unused]] uint32_t threadIndex)
-{
-    heap_->CancelJustFinishStartupEvent();
-    LOG_GC(INFO) << "SmartGC: app cold start finished";
-    return true;
-}
-
 void Heap::CleanCallBack()
 {
     auto &concurrentCallbacks = this->GetEcmaVM()->GetConcurrentNativePointerCallbacks();
@@ -2557,7 +2574,7 @@ void Heap::PrintHeapInfo(TriggerGCType gcType) const
 {
     OPTIONAL_LOG(ecmaVm_, INFO) << "-----------------------Statistic Heap Object------------------------";
     OPTIONAL_LOG(ecmaVm_, INFO) << "GC Reason:" << ecmaVm_->GetEcmaGCStats()->GCReasonToString()
-                                << ";OnStartup:" << OnStartupEvent()
+                                << ";OnStartup:" << static_cast<int>(GetStartupStatus())
                                 << ";OnHighSensitive:" << static_cast<int>(GetSensitiveStatus())
                                 << ";ConcurrentMark Status:" << static_cast<int>(thread_->GetMarkStatus());
     OPTIONAL_LOG(ecmaVm_, INFO) << "Heap::CollectGarbage, gcType(" << gcType << "), Concurrent Mark("

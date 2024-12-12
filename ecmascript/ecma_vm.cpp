@@ -157,10 +157,6 @@ void EcmaVM::PostFork()
     int arkProperties = OHOS::system::GetIntParameter<int>("persist.ark.properties", -1);
     GetJSOptions().SetArkProperties(arkProperties);
 #endif
-    auto startIdleMonitor = JSNApi::GetStartIdleMonitorCallback();
-    if (startIdleMonitor != nullptr) {
-        startIdleMonitor();
-    }
 }
 
 EcmaVM::EcmaVM(JSRuntimeOptions options, EcmaParamConfiguration config)
