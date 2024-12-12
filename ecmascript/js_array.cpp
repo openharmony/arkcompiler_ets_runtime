@@ -250,7 +250,12 @@ void JSArray::SetCapacity(JSThread *thread, const JSHandle<JSObject> &array,
         JSObject::GrowElementsCapacity(thread, array, newLen, isNew);
     }
     JSArray::Cast(*array)->SetArrayLength(thread, newLen);
+    JSArray::TransformElementsKindAfterSetCapacity(thread, array, oldLen, newLen, isNew);
+}
 
+void JSArray::TransformElementsKindAfterSetCapacity(JSThread *thread, const JSHandle<JSObject> &array,
+                                                    [[maybe_unused]] uint32_t oldLen, uint32_t newLen, bool isNew)
+{
     // Update ElementsKind after reset array length.
     // Add this switch because we do not support ElementsKind for instance from new Array
     if (!array->IsElementDict()) {
