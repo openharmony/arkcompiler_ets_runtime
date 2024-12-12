@@ -597,6 +597,17 @@ void Global<T>::FreeXRefGlobalHandleAddr()
     address_ = 0;
 }
 
+#ifdef PANDA_JS_ETS_HYBRID_MODE
+    template<typename T>
+    void Global<T>::MarkFromObject()
+    {
+        if (address_ == 0) {
+            return;
+        }
+        JSNApi::MarkFromObject(vm_, address_);
+    }
+#endif // PANDA_JS_ETS_HYBRID_MODE
+
 template<typename T>
 void Global<T>::SetWeak()
 {

@@ -438,6 +438,7 @@ public:
     // This method must be called before Global is released.
     void FreeGlobalHandleAddr();
     void FreeXRefGlobalHandleAddr();
+    void MarkFromObject();
 
     inline T *operator*() const
     {
@@ -1782,6 +1783,10 @@ private:
     static bool IsWeak(const EcmaVM *vm, uintptr_t localAddress);
     static void DisposeGlobalHandleAddr(const EcmaVM *vm, uintptr_t addr);
     static void DisposeXRefGlobalHandleAddr(const EcmaVM *vm, uintptr_t addr);
+#ifdef PANDA_JS_ETS_HYBRID_MODE
+    static void MarkFromObject(const EcmaVM *vm, uintptr_t addr);
+#endif // PANDA_JS_ETS_HYBRID_MODE
+    
     static bool IsSerializationTimeoutCheckEnabled(const EcmaVM *vm);
     static void GenerateTimeoutTraceIfNeeded(const EcmaVM *vm, std::chrono::system_clock::time_point &start,
                                      std::chrono::system_clock::time_point &end, bool isSerialization);

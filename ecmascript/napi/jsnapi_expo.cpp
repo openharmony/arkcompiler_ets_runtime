@@ -5588,9 +5588,18 @@ void JSNApi::DisposeXRefGlobalHandleAddr(const EcmaVM *vm, uintptr_t addr)
         return;
     }
     CROSS_THREAD_CHECK(vm);
-    ecmascript::ThreadManagedScope scope(thread);
     thread->DisposeXRefGlobalHandle(addr);
 }
+
+#ifdef PANDA_JS_ETS_HYBRID_MODE
+void JSNApi::MarkFromObject(const EcmaVM *vm, uintptr_t addr)
+{
+    if (addr == 0 || !reinterpret_cast<ecmascript::Node *>(addr)->IsUsing()) {
+        return;
+    }
+    vm->GetCrossVMOperator()->GetEcmaVMInterface()->MarkFromObject(reinterpret_cast<void *>(addr));
+}
+#endif // PANDA_JS_ETS_HYBRID_MODE
 
 void *JSNApi::SerializeValue(const EcmaVM *vm, Local<JSValueRef> value, Local<JSValueRef> transfer,
                              Local<JSValueRef> cloneList, bool defaultTransfer, bool defaultCloneShared)

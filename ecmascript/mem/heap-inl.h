@@ -1225,6 +1225,14 @@ void Heap::ClearNativePointerList()
     nativePointerList_.clear();
 }
 
+template<TriggerGCType gcType, GCReason gcReason>
+bool Heap::TriggerUnifiedGCMark() const
+{
+    ASSERT(gcType == TriggerGCType::UNIFIED_GC);
+    ASSERT(gcReason == GCReason::CROSSREF_CAUSE);
+    return DaemonThread::GetInstance()->CheckAndPostTask(TrigerUnifiedGCMarkTask(thread_));
+}
+
 }  // namespace panda::ecmascript
 
 #endif  // ECMASCRIPT_MEM_HEAP_INL_H

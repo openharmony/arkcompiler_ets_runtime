@@ -30,6 +30,7 @@
 #include "ecmascript/mem/shared_heap/shared_gc.h"
 #include "ecmascript/mem/shared_heap/shared_full_gc.h"
 #include "ecmascript/mem/shared_heap/shared_concurrent_marker.h"
+#include "ecmascript/mem/unified_gc/unified_gc_marker.h"
 #include "ecmascript/mem/verification.h"
 #include "ecmascript/runtime_call_id.h"
 #include "ecmascript/jit/jit.h"
@@ -846,6 +847,7 @@ void Heap::Initialize()
     nonMovableMarker_ = new NonMovableMarker(this);
     semiGCMarker_ = new SemiGCMarker(this);
     compressGCMarker_ = new CompressGCMarker(this);
+    unifiedGCMarker_ = new UnifiedGCMarker(this);
     evacuator_ = new ParallelEvacuator(this);
     incrementalMarker_ = new IncrementalMarker(this);
     gcListeners_.reserve(16U);
@@ -1015,6 +1017,10 @@ void Heap::Destroy()
         delete compressGCMarker_;
         compressGCMarker_ = nullptr;
     }
+    if (unifiedGCMarker_ != nullptr) {
+        delete unifiedGCMarker_;
+        unifiedGCMarker_ = nullptr;
+    }
     if (evacuator_ != nullptr) {
         delete evacuator_;
         evacuator_ = nullptr;
@@ -1024,6 +1030,13 @@ void Heap::Destroy()
 void Heap::Prepare()
 {
     MEM_ALLOCATE_AND_GC_TRACE(ecmaVm_, HeapPrepare);
+    WaitRunningTaskFinished();
+    sweeper_->EnsureAllTaskFinished();
+    WaitClearTaskFinished();
+}
+
+void Heap::UnifiedGCPrepare()
+{
     WaitRunningTaskFinished();
     sweeper_->EnsureAllTaskFinished();
     WaitClearTaskFinished();
@@ -2471,6 +2484,9 @@ bool Heap::ParallelGCTask::Run(uint32_t threadIndex)
         case ParallelGCTaskPhase::CONCURRENT_HANDLE_OLD_TO_NEW_TASK:
             heap_->GetNonMovableMarker()->ProcessOldToNew(threadIndex);
             break;
+        case ParallelGCTaskPhase::UNIFIED_HANDLE_GLOBAL_POOL_TASK:
+            heap_->GetUnifiedGCMarker()->ProcessMarkStack(threadIndex);
+            break;
         default: // LOCV_EXCL_BR_LINE
             LOG_GC(FATAL) << "this branch is unreachable, type: " << static_cast<int>(taskPhase_);
             UNREACHABLE();
@@ -2675,6 +2691,7 @@ void Heap::UpdateWorkManager(WorkManager *workManager)
     nonMovableMarker_->workManager_ = workManager;
     semiGCMarker_->workManager_ = workManager;
     compressGCMarker_->workManager_ = workManager;
+    unifiedGCMarker_->workManager_ = workManager;
     partialGC_->workManager_ = workManager;
 }
 
@@ -2824,6 +2841,12 @@ void BaseHeap::WaitRunningTaskFinished()
     }
 }
 
+uint32_t BaseHeap::GetRunningTaskCount()
+{
+    LockHolder holder(waitTaskFinishedMutex_);
+    return runningTaskCount_;
+}
+
 bool BaseHeap::CheckCanDistributeTask()
 {
     LockHolder holder(waitTaskFinishedMutex_);
@@ -2882,4 +2905,11 @@ void Heap::TryEnableEdenGC()
         EnableEdenGC();
     }
 }
+
+void Heap::StartUnifiedGCMark() const
+{
+    ASSERT(JSThread::GetCurrent() == DaemonThread::GetInstance());
+    unifiedGCMarker_->Mark();
+}
+
 }  // namespace panda::ecmascript

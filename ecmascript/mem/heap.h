@@ -50,6 +50,7 @@ class HeapProfiler;
 class IncrementalMarker;
 class JSNativePointer;
 class Marker;
+class UnifiedGCMarker;
 class MemController;
 class IdleGCTrigger;
 class NativeAreaAllocator;
@@ -359,6 +360,7 @@ public:
     void IncreaseTaskCount();
     void ReduceTaskCount();
     void WaitRunningTaskFinished();
+    uint32_t GetRunningTaskCount();
     void WaitClearTaskFinished();
     void ThrowOutOfMemoryError(JSThread *thread, size_t size, std::string functionName,
         bool NonMovableObjNearOOM = false);
@@ -946,6 +948,7 @@ public:
     void Initialize();
     void Destroy() override;
     void Prepare();
+    void UnifiedGCPrepare();
     void GetHeapPrepare();
     void Resume(TriggerGCType gcType);
     void ResumeForAppSpawn();
@@ -1083,6 +1086,11 @@ public:
     Marker *GetCompressGCMarker() const
     {
         return compressGCMarker_;
+    }
+
+    UnifiedGCMarker *GetUnifiedGCMarker() const
+    {
+        return unifiedGCMarker_;
     }
 
     EcmaVM *GetEcmaVM() const
@@ -1593,6 +1601,11 @@ public:
         return nativePointerList_.size();
     }
 
+    void StartUnifiedGCMark() const;
+
+    template<TriggerGCType gcType, GCReason gcReason>
+    bool TriggerUnifiedGCMark() const;
+
 private:
 
     static constexpr int MIN_JSDUMP_THRESHOLDS = 85;
@@ -1778,6 +1791,7 @@ private:
     Marker *nonMovableMarker_ {nullptr};
     Marker *semiGCMarker_ {nullptr};
     Marker *compressGCMarker_ {nullptr};
+    UnifiedGCMarker *unifiedGCMarker_ {nullptr};
 
     // Work manager managing the tasks mostly generated in the GC mark phase.
     WorkManager *workManager_ {nullptr};
