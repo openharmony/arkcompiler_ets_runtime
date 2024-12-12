@@ -599,6 +599,8 @@ GateRef FrameStateBuilder::MergeValue(const BytecodeRegion &bb,
     auto mergedContext = GetMergedBbContext(bb.id);
     GateRef result = currentValue;
     GateRef mergeValueSelector;
+    // When next is empty, if next has not changed within the loop, there is no need to merge;
+    bool skipMergeValues = !changedInLoop && !IsGateNotEmpty(nextValue);
 
     // if already a merged gate
     if (IsGateNotEmpty(nextValue) &&
@@ -618,6 +620,8 @@ GateRef FrameStateBuilder::MergeValue(const BytecodeRegion &bb,
             }
         }
         result = nextValue;
+    } else if (skipMergeValues) {
+        // simply assign the value of current.
     } else if (currentValue != nextValue) {
         bool needMergeValues = IsGateNotEmpty(mergedContext->mergeState_);
         // build value selector for merge.
@@ -651,7 +655,7 @@ GateRef FrameStateBuilder::MergeValue(const BytecodeRegion &bb,
                 acc_.NewIn(phi, 1, mergeValueSelector); // 1: merge
             }
             if (IsGateNotEmpty(nextValue)) {
-                for (size_t i = 0; i < mergedContext->loopBackIndex_; i++) {
+                for (size_t i = 1; i < mergedContext->loopBackIndex_; i++) {
                     acc_.NewIn(phi, i + 1, nextValue); // 1: merge
                 }
             }
