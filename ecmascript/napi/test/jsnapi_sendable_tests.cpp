@@ -15,6 +15,8 @@
 
 #include "ecmascript/napi/jsnapi_helper.h"
 #include "ecmascript/tests/test_helper.h"
+#include "ecmascript/serializer/base_deserializer.h"
+#include "ecmascript/serializer/value_serializer.h"
 #include "gtest/gtest.h"
 #include "jsnapi_expo.h"
 
@@ -549,6 +551,119 @@ HWTEST_F_L0(JSNApiTests, SendableSetRef_GetSize_GetTotalElements_GetValue)
     ASSERT_EQ(num1, 1);
     Local<JSValueRef> res = set->GetValue(vm_, 0);
     ASSERT_EQ(res->ToString(vm_)->ToString(vm_), value->ToString(vm_)->ToString(vm_));
+}
+
+HWTEST_F_L0(JSNApiTests, SendableArrayRef_New_Len_GetVal_SetPro)
+{
+    LocalScope scope(vm_);
+    uint32_t length = 4;
+    Local<SendableArrayRef> array = SendableArrayRef::New(vm_, length);
+    EXPECT_TRUE(array->IsSharedArray(vm_));
+    Local<JSValueRef> value = StringRef::NewFromUtf8(vm_, "TestValue");
+    uint32_t arrayLength = array->Length(vm_);
+    ASSERT_EQ(arrayLength, length);
+    Local<JSValueRef> res = array->GetValueAt(vm_, value, length);
+    uint32_t index = 1;
+    bool flag = array->SetProperty(vm_, res, index, value);
+    EXPECT_FALSE(flag);
+}
+
+HWTEST_F_L0(JSNApiTests, WeakSetRef_New_add)
+{
+    LocalScope scope(vm_);
+    Local<WeakSetRef> object = WeakSetRef::New(vm_);
+    Local<JSValueRef> value = StringRef::NewFromUtf8(vm_, "TestValue");
+    object->Add(vm_, value);
+    ASSERT_EQ(object->GetSize(vm_), 1);
+}
+
+HWTEST_F_L0(JSNApiTests, JSValueRef_IsWeakMap_Set_Has)
+{
+    LocalScope scope(vm_);
+    Local<WeakMapRef> map = WeakMapRef::New(vm_);
+    EXPECT_TRUE(map->IsWeakMap(vm_));
+    Local<JSValueRef> key = StringRef::NewFromUtf8(vm_, "TestKey");
+    Local<JSValueRef> value = StringRef::NewFromUtf8(vm_, "TestValue");
+    map->Set(vm_, key, value);
+    EXPECT_TRUE(map->Has(vm_, key));
+}
+
+HWTEST_F_L0(JSNApiTests, SetRef_Add)
+{
+    LocalScope scope(vm_);
+    Local<SetRef> set = SetRef::New(vm_);
+    Local<JSValueRef> value = StringRef::NewFromUtf8(vm_, "TestValue");
+    set->Add(vm_, value);
+    ASSERT_EQ(set->GetSize(vm_), 1);
+}
+
+HWTEST_F_L0(JSNApiTests, Promise_GetPromiseResult)
+{
+    LocalScope scope(vm_);
+    Local<PromiseCapabilityRef> capability = PromiseCapabilityRef::New(vm_);
+
+    Local<PromiseRef> promise = capability->GetPromise(vm_);
+    promise->GetPromiseResult(vm_);
+    ASSERT_TRUE(promise->IsPromise(vm_));
+}
+
+HWTEST_F_L0(JSNApiTests, Promise_GetPromiseState)
+{
+    LocalScope scope(vm_);
+    Local<PromiseCapabilityRef> cap = PromiseCapabilityRef::New(vm_);
+
+    Local<PromiseRef> promise = cap->GetPromise(vm_);
+    promise->GetPromiseState(vm_);
+    ASSERT_TRUE(promise->IsPromise(vm_));
+}
+
+HWTEST_F_L0(JSNApiTests, NapiHasOwnProperty)
+{
+    Local<ObjectRef> object = ObjectRef::New(vm_);
+    JSTaggedValue value(0);
+    JSHandle<JSTaggedValue> handle(thread_, value);
+    Local<JSValueRef> key = JSNApiHelper::ToLocal<JSValueRef>(handle);
+    const char* utf8Key = "TestKeyForOwnProperty";
+    Local<JSValueRef> key2 = StringRef::NewFromUtf8(vm_, utf8Key);
+    Local<JSValueRef> value2 = ObjectRef::New(vm_);
+    object->Set(vm_, key, value2);
+    object->Set(vm_, key2, value2);
+    
+    Local<JSValueRef> flag = JSNApi::NapiHasOwnProperty(vm_, reinterpret_cast<uintptr_t>(*object),
+                                                     reinterpret_cast<uintptr_t>(*key));
+    ASSERT_TRUE(flag->BooleaValue(vm_));
+    flag = JSNApi::NapiHasOwnProperty(vm_, reinterpret_cast<uintptr_t>(*object), reinterpret_cast<uintptr_t>(*key2));
+    ASSERT_TRUE(flag->BooleaValue(vm_));
+
+    flag = JSNApi::NapiDeleteProperty(vm_, reinterpret_cast<uintptr_t>(*object), reinterpret_cast<uintptr_t>(*key));
+    ASSERT_TRUE(flag->BooleaValue(vm_));
+    flag = JSNApi::NapiDeleteProperty(vm_, reinterpret_cast<uintptr_t>(*object), reinterpret_cast<uintptr_t>(*key2));
+    ASSERT_TRUE(flag->BooleaValue(vm_));
+
+    flag = JSNApi::NapiHasOwnProperty(vm_, reinterpret_cast<uintptr_t>(*object), reinterpret_cast<uintptr_t>(*key));
+    ASSERT_FALSE(flag->BooleaValue(vm_));
+    flag = JSNApi::NapiHasOwnProperty(vm_, reinterpret_cast<uintptr_t>(*object), reinterpret_cast<uintptr_t>(*key2));
+    ASSERT_FALSE(flag->BooleaValue(vm_));
+}
+
+HWTEST_F_L0(JSNApiTests, DeleteSerializationData)
+{
+    LocalScope scope(vm_);
+    void *data = JSNApi::SerializeValue(vm_, StringRef::NewFromUtf8(vm_, "testData"),
+        StringRef::NewFromUtf8(vm_, "testTransfer"), JSValueRef::Undefined(vm_));
+    JSNApi::DeleteSerializationData(data);
+    ASSERT_EQ(reinterpret_cast<ecmascript::SerializeData *>(data), nullptr);
+}
+
+HWTEST_F_L0(JSNApiTests, JSNApi_DeserializeValue_String)
+{
+    LocalScope scope(vm_);
+    vm_->SetEnableForceGC(true);
+    void *recoder = JSNApi::SerializeValue(vm_, StringRef::NewFromUtf8(vm_, "testData"), JSValueRef::Undefined(vm_),
+        JSValueRef::Undefined(vm_));
+    void *hint = nullptr;
+    Local<JSValueRef> local = JSNApi::DeserializeValue(vm_, recoder, hint);
+    ASSERT_FALSE(local->IsObject(vm_));
 }
 
 }  // namespace panda::test
