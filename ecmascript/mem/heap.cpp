@@ -1154,7 +1154,7 @@ TriggerGCType Heap::SelectGCType() const
     return OLD_GC;
 }
 
-void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
+void Heap::CollectGarbageImpl(TriggerGCType gcType, GCReason reason)
 {
     Jit::JitGCLockHolder lock(GetEcmaVM()->GetJSThread());
     {
@@ -1349,13 +1349,6 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
         Verification(this, VerifyKind::VERIFY_POST_GC).VerifyAll();
     }
 
-    // Weak node nativeFinalizeCallback may execute JS and change the weakNodeList status,
-    // even lead to another GC, so this have to invoke after this GC process.
-    thread_->InvokeWeakNodeNativeFinalizeCallback();
-    // PostTask for ProcessNativeDelete
-    CleanCallBack();
-
-    JSFinalizationRegistry::CheckAndCall(thread_);
 #if defined(ECMASCRIPT_SUPPORT_TRACING)
     auto tracing = GetEcmaVM()->GetTracing();
     if (tracing != nullptr) {
@@ -1376,6 +1369,18 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
             static_cast<int>(GetMachineCodeSpace()->GetHeapObjectSize());
         Jit::GetInstance()->CheckMechineCodeSpaceMemory(GetEcmaVM()->GetJSThread(), remainSize);
     }
+}
+
+void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
+{
+    CollectGarbageImpl(gcType, reason);
+
+    // Weak node nativeFinalizeCallback may execute JS and change the weakNodeList status,
+    // even lead to another GC, so this have to invoke after this GC process.
+    thread_->InvokeWeakNodeNativeFinalizeCallback();
+    // PostTask for ProcessNativeDelete
+    CleanCallback();
+    JSFinalizationRegistry::CheckAndCall(thread_);
 }
 
 void BaseHeap::ThrowOutOfMemoryError(JSThread *thread, size_t size, std::string functionName,
@@ -2492,7 +2497,7 @@ bool Heap::FinishColdStartTask::Run([[maybe_unused]] uint32_t threadIndex)
     return true;
 }
 
-void Heap::CleanCallBack()
+void Heap::CleanCallback()
 {
     auto &concurrentCallbacks = this->GetEcmaVM()->GetConcurrentNativePointerCallbacks();
     if (!concurrentCallbacks.empty()) {
