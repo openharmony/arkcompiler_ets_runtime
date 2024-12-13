@@ -42,6 +42,7 @@ group("ark_js_moduletest") {
     "assignproxy",
     "async",
     "asyncgenerator",
+    "asyncUseLazyValue",
     "barrier",
     "bigint",
     "bindfunction",
