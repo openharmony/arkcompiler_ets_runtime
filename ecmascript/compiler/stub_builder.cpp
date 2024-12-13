@@ -664,40 +664,25 @@ GateRef StubBuilder::CreateDataPropertyOrThrow(GateRef glue, GateRef obj, GateRe
     Label subentry(env);
     env->SubCfgEntry(&subentry);
     Label exit(env);
-    Label isPropertyKey(env);
-    Label isNotStringOrSymbol(env);
-    Label isNotNumber(env);
     Label newThrow(env);
     Label isThrow(env);
 
     DEFVARIABLE(result, VariableType::BOOL(), True());
-    DEFVARIABLE(isPropertyKeyFlag, VariableType::BOOL(), True());
 
     CanNotConvertNotValidObject(obj);
-    BRANCH(TaggedIsStringOrSymbol(key), &isPropertyKey, &isNotStringOrSymbol);
-    Bind(&isNotStringOrSymbol);
+    IsNotPropertyKey(TaggedIsPropertyKey(key));
+
+    result = CreateDataProperty(glue, obj, key, value);
+    BRANCH(*result, &exit, &isThrow);
+
+    Bind(&isThrow);
     {
-        BRANCH(TaggedIsNumber(key), &isPropertyKey, &isNotNumber);
-        Bind(&isNotNumber);
+        BRANCH(HasPendingException(glue), &exit, &newThrow);
+        Bind(&newThrow);
         {
-            isPropertyKeyFlag = False();
-            Jump(&isPropertyKey);
-        }
-    }
-    Bind(&isPropertyKey);
-    {
-        IsNotPropertyKey(*isPropertyKeyFlag);
-        result = CreateDataProperty(glue, obj, key, value);
-        BRANCH(*result, &exit, &isThrow);
-        Bind(&isThrow);
-        {
-            BRANCH(HasPendingException(glue), &exit, &newThrow);
-            Bind(&newThrow);
-            {
-                GateRef msgIntId = Int32(GET_MESSAGE_STRING_ID(CreateDataPropertyFailed));
-                CallRuntime(glue, RTSTUB_ID(ThrowTypeError), { IntToTaggedInt(msgIntId)});
-                Jump(&exit);
-            }
+            GateRef msgIntId = Int32(GET_MESSAGE_STRING_ID(CreateDataPropertyFailed));
+            CallRuntime(glue, RTSTUB_ID(ThrowTypeError), { IntToTaggedInt(msgIntId)});
+            Jump(&exit);
         }
     }
 
@@ -714,16 +699,16 @@ GateRef StubBuilder::DefineField(GateRef glue, GateRef obj, GateRef propKey, Gat
     env->SubCfgEntry(&entry);
     Label exit(env);
     Label next(env);
+    Label notObj(env);
     Label newThrow(env);
     Label isObj(env);
-    Label notObj(env);
     Label hasPendingException(env);
     DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
     DEFVARIABLE(key, VariableType::JS_ANY(), Undefined());
     BRANCH(IsEcmaObject(obj), &isObj, &notObj);
     Bind(&isObj);
     {
-        key = CallRuntime(glue, RTSTUB_ID(ToPropertyKey), {propKey});
+        key = ToPropertyKey(glue, propKey);
         BRANCH(HasPendingException(glue), &hasPendingException, &next);
     }
     Bind(&next);
@@ -3336,10 +3321,10 @@ GateRef StubBuilder::GetPropertyByIndex(GateRef glue, GateRef receiver,
             Label isSpecialContainer(env);
             Label notSpecialContainer(env);
             // Add SpecialContainer
-            BRANCH(IsSpecialContainer(jsType), &isSpecialContainer, &notSpecialContainer);
+            BRANCH(IsArrayListOrVector(jsType), &isSpecialContainer, &notSpecialContainer);
             Bind(&isSpecialContainer);
             {
-                result = GetContainerProperty(glue, *holder, index, jsType);
+                result = JSAPIContainerGet(glue, *holder, index);
                 Jump(&exit);
             }
             Bind(&notSpecialContainer);
@@ -3457,23 +3442,12 @@ GateRef StubBuilder::GetPropertyByValue(GateRef glue, GateRef receiver, GateRef 
     DEFVARIABLE(key, VariableType::JS_ANY(), keyValue);
     DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
     DEFVARIABLE(isInternal, VariableType::BOOL(), True());
-    Label isNumberOrStringSymbol(env);
-    Label notNumber(env);
-    Label isStringOrSymbol(env);
-    Label notStringOrSymbol(env);
+    Label isPropertyKey(env);
     Label exit(env);
 
-    BRANCH(TaggedIsNumber(*key), &isNumberOrStringSymbol, &notNumber);
-    Bind(&notNumber);
-    {
-        BRANCH(TaggedIsStringOrSymbol(*key), &isNumberOrStringSymbol, &notStringOrSymbol);
-        Bind(&notStringOrSymbol);
-        {
-            result = Hole();
-            Jump(&exit);
-        }
-    }
-    Bind(&isNumberOrStringSymbol);
+    BRANCH(TaggedIsPropertyKey(*key), &isPropertyKey, &exit);
+
+    Bind(&isPropertyKey);
     {
         GateRef index64 = TryToElementsIndex(glue, *key);
         Label validIndex(env);
@@ -4688,7 +4662,7 @@ GateRef StubBuilder::SetPropertyByName(GateRef glue, GateRef receiver, GateRef k
 
         Label isSpecialContainer(env);
         Label notSpecialContainer(env);
-        BRANCH(IsSpecialContainer(jsType), &isSpecialContainer, &notSpecialContainer);
+        BRANCH(IsArrayListOrVector(jsType), &isSpecialContainer, &notSpecialContainer);
         Bind(&isSpecialContainer);
         {
             GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(CanNotSetPropertyOnContainer));
@@ -5007,7 +4981,7 @@ GateRef StubBuilder::DefinePropertyByName(GateRef glue, GateRef receiver, GateRe
 
         Label isSpecialContainer(env);
         Label notSpecialContainer(env);
-        BRANCH(IsSpecialContainer(jsType), &isSpecialContainer, &notSpecialContainer);
+        BRANCH(IsArrayListOrVector(jsType), &isSpecialContainer, &notSpecialContainer);
         Bind(&isSpecialContainer);
         {
             GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(CanNotSetPropertyOnContainer));
@@ -5265,22 +5239,12 @@ GateRef StubBuilder::SetPropertyByValue(GateRef glue, GateRef receiver, GateRef 
     DEFVARIABLE(varKey, VariableType::JS_ANY(), key);
     DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
     DEFVARIABLE(isInternal, VariableType::BOOL(), True());
-    Label isNumberOrStringSymbol(env);
-    Label notNumber(env);
-    Label isStringOrSymbol(env);
-    Label notStringOrSymbol(env);
+    Label isPropertyKey(env);
     Label exit(env);
-    BRANCH(TaggedIsNumber(*varKey), &isNumberOrStringSymbol, &notNumber);
-    Bind(&notNumber);
-    {
-        BRANCH(TaggedIsStringOrSymbol(*varKey), &isNumberOrStringSymbol, &notStringOrSymbol);
-        Bind(&notStringOrSymbol);
-        {
-            result = Hole();
-            Jump(&exit);
-        }
-    }
-    Bind(&isNumberOrStringSymbol);
+
+    BRANCH(TaggedIsPropertyKey(*varKey), &isPropertyKey, &exit);
+
+    Bind(&isPropertyKey);
     {
         GateRef index64 = TryToElementsIndex(glue, *varKey);
         Label validIndex(env);
@@ -5365,22 +5329,12 @@ GateRef StubBuilder::DefinePropertyByValue(GateRef glue, GateRef receiver, GateR
     DEFVARIABLE(varKey, VariableType::JS_ANY(), key);
     DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
     DEFVARIABLE(isInternal, VariableType::BOOL(), True());
-    Label isNumberOrStringSymbol(env);
-    Label notNumber(env);
-    Label isStringOrSymbol(env);
-    Label notStringOrSymbol(env);
+    Label isPropertyKey(env);
     Label exit(env);
-    BRANCH(TaggedIsNumber(*varKey), &isNumberOrStringSymbol, &notNumber);
-    Bind(&notNumber);
-    {
-        BRANCH(TaggedIsStringOrSymbol(*varKey), &isNumberOrStringSymbol, &notStringOrSymbol);
-        Bind(&notStringOrSymbol);
-        {
-            result = Hole();
-            Jump(&exit);
-        }
-    }
-    Bind(&isNumberOrStringSymbol);
+
+    BRANCH(TaggedIsPropertyKey(*varKey), &isPropertyKey, &exit);
+
+    Bind(&isPropertyKey);
     {
         GateRef index64 = TryToElementsIndex(glue, *varKey);
         Label validIndex(env);
@@ -5484,33 +5438,6 @@ void StubBuilder::NotifyHClassChanged(GateRef glue, GateRef oldHClass, GateRef n
     Bind(&exit);
     env->SubCfgExit();
     return;
-}
-
-GateRef StubBuilder::GetContainerProperty(GateRef glue, GateRef receiver, GateRef index, GateRef jsType)
-{
-    auto env = GetEnvironment();
-    Label entry(env);
-    env->SubCfgEntry(&entry);
-    Label exit(env);
-    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
-
-    Label isDefaultLabel(env);
-    Label noDefaultLabel(env);
-    BRANCH(IsSpecialContainer(jsType), &noDefaultLabel, &isDefaultLabel);
-    Bind(&noDefaultLabel);
-    {
-        result = JSAPIContainerGet(glue, receiver, index);
-        Jump(&exit);
-    }
-    Bind(&isDefaultLabel);
-    {
-        Jump(&exit);
-    }
-    Bind(&exit);
-
-    auto ret = *result;
-    env->SubCfgExit();
-    return ret;
 }
 
 GateRef StubBuilder::FastTypeOf(GateRef glue, GateRef obj)
@@ -8141,18 +8068,8 @@ GateRef StubBuilder::DeletePropertyOrThrow(GateRef glue, GateRef obj, GateRef va
     Bind(&isNotExceptiont);
     {
         Label deleteProper(env);
-        Label notStringOrSymbol(env);
-        Label notPrimitive(env);
-        BRANCH(TaggedIsStringOrSymbol(value), &deleteProper, &notStringOrSymbol);
-        Bind(&notStringOrSymbol);
-        {
-            BRANCH(TaggedIsNumber(value), &deleteProper, &notPrimitive);
-            Bind(&notPrimitive);
-            {
-                key = CallRuntime(glue, RTSTUB_ID(ToPropertyKey), {value});
-                BRANCH(TaggedIsException(*key), &exit, &deleteProper);
-            }
-        }
+        key = ToPropertyKey(glue, value);
+        BRANCH(HasPendingException(glue), &exit, &deleteProper);
         Bind(&deleteProper);
         {
             result = DeleteProperty(glue, object, *key);
@@ -8251,9 +8168,57 @@ GateRef StubBuilder::ToPrototypeOrObj(GateRef glue, GateRef obj)
     return ret;
 }
 
+GateRef StubBuilder::ToPropertyKey(GateRef glue, GateRef tagged)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+    Label notPrimitive(env);
+    Label hasPendingException(env);
+    Label checkSymbol(env);
+    Label castKey(env);
+    DEFVARIABLE(result, VariableType::JS_ANY(), tagged);
+
+    BRANCH(TaggedIsPropertyKey(tagged), &exit, &notPrimitive);
+
+    Bind(&notPrimitive);
+    {
+        result = ToPrimitive(glue, tagged, PreferredPrimitiveType::PREFER_STRING);
+        BRANCH(HasPendingException(glue), &hasPendingException, &checkSymbol);
+    }
+
+    Bind(&checkSymbol);
+    {
+        BRANCH(TaggedIsSymbol(*result), &exit, &castKey);
+    }
+
+    Bind(&castKey);
+    {
+        result = JSTaggedValueToString(glue, *result);
+        BRANCH(HasPendingException(glue), &hasPendingException, &exit);
+    }
+
+    Bind(&hasPendingException);
+    {
+        result = Exception();
+        Jump(&exit);
+    }
+
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef StubBuilder::TaggedIsPropertyKey(GateRef obj)
+{
+    return LogicOrBuilder(env_).Or(TaggedIsStringOrSymbol(obj)).Or(TaggedIsNumber(obj)).Done();
+}
+
 GateRef StubBuilder::IsSpecialKeysObject(GateRef obj)
 {
-    return LogicOrBuilder(env_).Or(IsTypedArray(obj)).Or(IsModuleNamespace(obj)).Or(ObjIsSpecialContainer(obj)).Done();
+    return LogicOrBuilder(env_).Or(IsTypedArray(obj)).Or(IsModuleNamespace(obj)).Or(IsSpecialContainer(obj)).Done();
 }
 
 GateRef StubBuilder::IsSlowKeysObject(GateRef obj)
@@ -8531,9 +8496,7 @@ void StubBuilder::ReturnExceptionIfAbruptCompletion(GateRef glue)
     env->SubCfgEntry(&entry);
     Label exit(env);
     Label hasPendingException(env);
-    GateRef exceptionOffset = IntPtr(JSThread::GlueData::GetExceptionOffset(env->IsArch32Bit()));
-    GateRef exception = Load(VariableType::JS_ANY(), glue, exceptionOffset);
-    BRANCH(TaggedIsNotHole(exception), &hasPendingException, &exit);
+    BRANCH(HasPendingException(glue), &hasPendingException, &exit);
     Bind(&hasPendingException);
     Return(Exception());
     Bind(&exit);
@@ -11281,7 +11244,7 @@ GateRef StubBuilder::OrdinaryToPrimitive(GateRef glue, GateRef value, PreferredP
         BRANCH(HasPendingException(glue), &hasException, &notHasException1);
         Bind(&notHasException1);
         Label isCallable1(env);
-        BRANCH(IsCallable(entryfunc), &isCallable1, &loopEnd);
+        BRANCH(TaggedIsCallable(entryfunc), &isCallable1, &loopEnd);
         Bind(&isCallable1);
         {
             DEFVARIABLE(tmpResult, VariableType::JS_ANY(), Undefined());
@@ -11345,7 +11308,7 @@ GateRef StubBuilder::CallFunction(GateRef glue, GateRef func)
         Jump(&exit);
     }
     Bind(&notUndefinedAndNull);
-    BRANCH(IsCallable(func), &exit, &notCallable);
+    BRANCH(TaggedIsCallable(func), &exit, &notCallable);
     Bind(&notCallable);
     {
         GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(ObjIsNotCallable));

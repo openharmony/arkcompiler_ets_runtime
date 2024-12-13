@@ -5477,7 +5477,7 @@ void BaselineCallRuntimeDefineFieldByIndexPrefImm8Imm32V8StubBuilder::GenerateCi
     GateRef index = Int32Argument(PARAM_INDEX(BaselineCallRuntimeDefineFieldByIndexPrefImm8Imm32V8, INDEX));
     GateRef v0 = Int32Argument(PARAM_INDEX(BaselineCallRuntimeDefineFieldByIndexPrefImm8Imm32V8, V0));
 
-    GateRef propKey = IntToTaggedInt(index);
+    GateRef propKey = IntToTaggedPtr(index);
     GateRef obj = GetVregValue(sp, ZExtInt8ToPtr(v0));
     GateRef res = DefineField(glue, obj, propKey, acc);
     CHECK_EXCEPTION_WITH_ACC(res);

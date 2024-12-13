@@ -1533,7 +1533,7 @@ inline GateRef StubBuilder::IsSourceTextModule(GateRef obj)
     return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::SOURCE_TEXT_MODULE_RECORD)));
 }
 
-inline GateRef StubBuilder::ObjIsSpecialContainer(GateRef obj)
+inline GateRef StubBuilder::IsSpecialContainer(GateRef obj)
 {
     GateRef objectType = GetObjectType(LoadHClass(obj));
     return BitAnd(
@@ -2533,12 +2533,11 @@ inline GateRef StubBuilder::UpdateSOutOfBoundsForHandler(GateRef handlerInfo)
     return Int64Or(handlerInfo, Int64(HandlerBase::SOutOfBoundsBit::Mask()));
 }
 
-inline GateRef StubBuilder::IsSpecialContainer(GateRef jsType)
+inline GateRef StubBuilder::IsArrayListOrVector(GateRef jsType)
 {
     // arraylist and vector has fast pass now
-    return BitOr(
-        Int32Equal(jsType, Int32(static_cast<int32_t>(JSType::JS_API_ARRAY_LIST))),
-        Int32Equal(jsType, Int32(static_cast<int32_t>(JSType::JS_API_VECTOR))));
+    return BitOr(Int32Equal(jsType, Int32(static_cast<int32_t>(JSType::JS_API_ARRAY_LIST))),
+                 Int32Equal(jsType, Int32(static_cast<int32_t>(JSType::JS_API_VECTOR))));
 }
 
 inline GateRef StubBuilder::IsSharedArray(GateRef jsType)
@@ -2866,6 +2865,14 @@ inline GateRef StubBuilder::IsCallable(GateRef obj)
     ASM_ASSERT(GET_MESSAGE_STRING_ID(IsCallable), TaggedIsHeapObject(obj));
     GateRef res = env_->GetBuilder()->IsCallable(obj);
     return res;
+}
+
+inline GateRef StubBuilder::TaggedIsCallable(GateRef obj)
+{
+    return LogicAndBuilder(env_)
+        .And(TaggedIsHeapObject(obj))
+        .And(env_->GetBuilder()->IsCallable(obj))
+        .Done();
 }
 
 // GetOffset func in property_attribute.h

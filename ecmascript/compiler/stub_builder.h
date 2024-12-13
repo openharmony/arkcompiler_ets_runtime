@@ -401,7 +401,7 @@ public:
     GateRef IsModuleNamespace(GateRef obj);
     GateRef IsNativePointer(GateRef obj);
     GateRef IsSourceTextModule(GateRef obj);
-    GateRef ObjIsSpecialContainer(GateRef obj);
+    GateRef IsSpecialContainer(GateRef obj);
     GateRef IsJSPrimitiveRef(GateRef obj);
     GateRef IsJSFunctionBase(GateRef obj);
     GateRef IsConstructor(GateRef object);
@@ -580,7 +580,7 @@ public:
                                MemoryAttribute mAttr = MemoryAttribute::Default());
     void UpdateValueAndAttributes(GateRef glue, GateRef elements, GateRef index, GateRef value, GateRef attr);
     GateRef IsSpecialIndexedObj(GateRef jsType);
-    GateRef IsSpecialContainer(GateRef jsType);
+    GateRef IsArrayListOrVector(GateRef jsType);
     GateRef IsSharedArray(GateRef jsType);
     GateRef IsAccessorInternal(GateRef value);
     template<typename DictionaryT>
@@ -700,6 +700,7 @@ public:
     GateRef GetGlobalConstantOffset(ConstantIndex index);
     GateRef IsCallableFromBitField(GateRef bitfield);
     GateRef IsCallable(GateRef obj);
+    GateRef TaggedIsCallable(GateRef obj);
     GateRef GetOffsetFieldInPropAttr(GateRef attr);
     GateRef SetOffsetFieldInPropAttr(GateRef attr, GateRef value);
     GateRef SetIsInlinePropsFieldInPropAttr(GateRef attr, GateRef value);
@@ -853,7 +854,6 @@ public:
     GateRef FastToBooleanWithProfileBaseline(GateRef value, ProfileOperation callback, bool flag = true);
 
     // Add SpecialContainer
-    GateRef GetContainerProperty(GateRef glue, GateRef receiver, GateRef index, GateRef jsType);
     GateRef JSAPIContainerGet(GateRef glue, GateRef receiver, GateRef index);
 
     // for-in
@@ -882,6 +882,8 @@ public:
     GateRef EnumerateObjectProperties(GateRef glue, GateRef obj);
     GateRef GetFunctionPrototype(GateRef glue, size_t index);
     GateRef ToPrototypeOrObj(GateRef glue, GateRef obj);
+    GateRef ToPropertyKey(GateRef glue, GateRef tagged);
+    GateRef TaggedIsPropertyKey(GateRef obj);
     GateRef IsSpecialKeysObject(GateRef obj);
     GateRef IsSlowKeysObject(GateRef obj);
     GateRef TryGetEnumCache(GateRef glue, GateRef obj);

@@ -209,7 +209,6 @@ namespace panda::ecmascript {
     V(LrInt)
 
 #define RUNTIME_STUB_WITH_GC_LIST(V)            \
-    V(AddElementInternal)                       \
     V(HeapAlloc)                                \
     V(AllocateInYoung)                          \
     V(AllocateInOld)                            \
@@ -222,10 +221,6 @@ namespace panda::ecmascript {
     V(RegularJSObjDeletePrototype)              \
     V(CallJSObjDeletePrototype)                 \
     V(ToPropertyKey)                            \
-    V(ToPropertyKeyValue)                       \
-    V(ToPropertyKeyWritable)                    \
-    V(ToPropertyKeyEnumerable)                  \
-    V(ToPropertyKeyConfigurable)                \
     V(NewJSPrimitiveRef)                        \
     V(ThrowTypeError)                           \
     V(MismatchError)                            \
