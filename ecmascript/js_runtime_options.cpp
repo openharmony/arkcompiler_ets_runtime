@@ -134,7 +134,7 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--enable-pgo-profiler:                Enable pgo profiler to sample jsfunction call and output to file. "
                                            "Default: 'false'\n"
     "--enable-mutant-array:                Enable transition between mutant array and tagged array. Default: 'false'\n"
-    "--enable-elements-kind:               Enable initialization of elements kind in array. Default: 'false'\n"
+    "--enable-elements-kind:               Enable initialization of elements kind in array. Default: 'true'\n"
     "--compiler-pgo-hotness-threshold:     Set hotness threshold for pgo in aot compiler. Default: '2'\n"
     "--compiler-pgo-profiler-path:         The pgo file output dir or the pgo file dir of AOT compiler. Default: ''\n"
     "--compiler-pgo-save-min-interval:     Set the minimum time interval for automatically saving profile, "
