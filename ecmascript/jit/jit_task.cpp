@@ -304,7 +304,13 @@ void JitTask::InstallCode()
             heap->GetMachineCodeSpace()->MarkJitFortMemInstalled(machineCodeObj.GetObject<MachineCode>());
         }
     }
-    jsFunction_->SetJitCompilingFlag(false);
+
+    if (compilerTier_.IsFast()) {
+        jsFunction_->SetJitCompilingFlag(false);
+    } else {
+        ASSERT(compilerTier_.IsBaseLine());
+        jsFunction_->SetBaselinejitCompilingFlag(false);
+    }
 }
 
 void JitTask::InstallCodeByCompilerTier(JSHandle<MachineCode> &machineCodeObj,
