@@ -171,7 +171,7 @@ private:
                                     maple::litecg::Expr rtbaseoffset, const std::string &realName = "") const;
     bool IsOptimizedJSFunction() const;
     bool IsOptimized() const;
-    CallExceptionKind GetCallExceptionKind(size_t index, OpCode op) const;
+    CallExceptionKind GetCallExceptionKind(OpCode op, size_t index = SIZE_MAX) const;
     maple::litecg::Expr GetRTStubOffset(maple::litecg::Expr glue, int index) const;
     maple::litecg::Expr GetCoStubOffset(maple::litecg::Expr glue, int index) const;
     maple::litecg::Expr GetBaselineStubOffset(maple::litecg::Expr glue, int index) const;

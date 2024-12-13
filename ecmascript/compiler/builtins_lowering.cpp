@@ -56,6 +56,9 @@ void BuiltinLowering::LowerTypedCallBuitin(GateRef gate)
         case BUILTINS_STUB_ID(GlobalDecodeURIComponent):
             LowerGlobalDecodeURIComponent(gate);
             break;
+        case BUILTINS_STUB_ID(ArrayConcat):
+            LowerCallBuiltinStub(gate, id);
+            break;
         default:
             break;
     }
@@ -378,6 +381,7 @@ GateRef BuiltinLowering::CheckPara(GateRef gate, GateRef funcCheck)
     }
     switch (id) {
         case BuiltinsStubCSigns::ID::StringLocaleCompare:
+        case BuiltinsStubCSigns::ID::ArrayConcat:
         case BuiltinsStubCSigns::ID::ArraySort:
         case BuiltinsStubCSigns::ID::JsonStringify:
         case BuiltinsStubCSigns::ID::MapProtoIterator:
@@ -541,5 +545,31 @@ void BuiltinLowering::LowerGlobalDecodeURIComponent(GateRef gate)
     GateRef param = acc_.GetValueIn(gate, 0);
     GateRef result = LowerCallRuntime(glue, gate, RTSTUB_ID(DecodeURIComponent), { param }, true);
     ReplaceHirWithValue(gate, result);
+}
+
+void BuiltinLowering::LowerCallBuiltinStub(GateRef gate, BuiltinsStubCSigns::ID id)
+{
+    Environment env(gate, circuit_, &builder_);
+    size_t numIn = acc_.GetNumValueIn(gate);
+    GateRef glue = acc_.GetGlueFromArgList();
+    GateRef function = builder_.GetGlobalConstantValue(GET_TYPED_CONSTANT_INDEX(id));
+    GateRef method = builder_.Load(VariableType::JS_ANY(), function, builder_.IntPtr(JSFunction::METHOD_OFFSET));
+    GateRef nativeCode = builder_.Load(VariableType::NATIVE_POINTER(), method,
+                                       builder_.IntPtr(Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET));
+    std::vector<GateRef> args(static_cast<size_t>(BuiltinsArgs::NUM_OF_INPUTS), builder_.Undefined());
+    args[static_cast<size_t>(BuiltinsArgs::GLUE)] = glue;
+    args[static_cast<size_t>(BuiltinsArgs::NATIVECODE)] = nativeCode;
+    args[static_cast<size_t>(BuiltinsArgs::FUNC)] = function;
+    args[static_cast<size_t>(BuiltinsArgs::NEWTARGET)] = builder_.Undefined();
+    args[static_cast<size_t>(BuiltinsArgs::THISVALUE)] = acc_.GetValueIn(gate, 0);
+    args[static_cast<size_t>(BuiltinsArgs::NUMARGS)] = builder_.Int32(numIn - 2); // 2: skip thisValue and id
+    for (size_t idx = 1; idx < numIn - 1; idx++) {
+        // 1 : skip thisInput
+        args[static_cast<size_t>(BuiltinsArgs::ARG0_OR_ARGV) + idx - 1] = acc_.GetValueIn(gate, idx);
+    }
+    const CallSignature *cs = BuiltinsStubCSigns::BuiltinsCSign();
+    GateRef target = builder_.IntPtr(id * sizeof(uintptr_t));
+    GateRef ret = builder_.Call(cs, glue, target, builder_.GetDepend(), args, gate);
+    ReplaceHirWithValue(gate, ret);
 }
 }  // namespace panda::ecmascript::kungfu

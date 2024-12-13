@@ -487,7 +487,6 @@ public:
     GateRef IsJSHClass(GateRef obj);
     inline void StoreHClass(GateRef glue, GateRef object, GateRef hClass);
     inline void StoreHClassWithoutBarrier(GateRef glue, GateRef object, GateRef hClass);
-    GateRef IsStabelArray(GateRef glue, GateRef obj);
     inline void StorePrototype(GateRef glue, GateRef hclass, GateRef prototype);
     void SetExtensibleToBitfield(GateRef glue, GateRef obj, bool isExtensible);
 
@@ -722,6 +721,7 @@ public:
     inline GateRef TaggedIsString(GateRef obj);
     inline GateRef TaggedIsStringIterator(GateRef obj);
     inline GateRef TaggedIsSharedObj(GateRef obj);
+    inline GateRef TaggedIsStableArray(GateRef glue, GateRef obj);
     inline GateRef TaggedIsStringOrSymbol(GateRef obj);
     inline GateRef TaggedIsSymbol(GateRef obj);
     inline GateRef TaggedIsProtoChangeMarker(GateRef obj);

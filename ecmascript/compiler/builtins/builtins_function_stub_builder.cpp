@@ -554,7 +554,7 @@ void BuiltinsFunctionStubBuilder::InitializeSFunction(GateRef glue, GateRef func
     Bind(&exit);
     auto emptyProfileTypeInfoCell = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
                                                            ConstantIndex::EMPTY_PROFILE_TYPE_INFO_CELL_INDEX);
-    SetRawProfileTypeInfoToFunction(glue, func, emptyProfileTypeInfoCell);
+    SetRawProfileTypeInfoToFunction(glue, func, emptyProfileTypeInfoCell, MemoryAttribute::NoBarrier());
     env->SubCfgExit();
     return;
 }
@@ -685,7 +685,7 @@ void BuiltinsFunctionStubBuilder::InitializeJSFunction(GateRef glue, GateRef fun
     Bind(&exit);
     auto emptyProfileTypeInfoCell = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
                                                            ConstantIndex::EMPTY_PROFILE_TYPE_INFO_CELL_INDEX);
-    SetRawProfileTypeInfoToFunction(glue, func, emptyProfileTypeInfoCell);
+    SetRawProfileTypeInfoToFunction(glue, func, emptyProfileTypeInfoCell, MemoryAttribute::NoBarrier());
     env->SubCfgExit();
     return;
 }

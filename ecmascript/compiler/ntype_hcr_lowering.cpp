@@ -231,11 +231,12 @@ GateRef NTypeHCRLowering::NewJSArrayLiteral(GateRef glue, GateRef gate, GateRef 
     GateRef array = builder_.HeapAlloc(glue, size, GateType::TaggedValue(), flag);
     // initialization
     for (size_t offset = JSArray::SIZE; offset < arraySize; offset += JSTaggedValue::TaggedTypeSize()) {
-        builder_.StoreConstOffset(VariableType::INT64(), array, offset, builder_.Undefined());
+        builder_.StoreConstOffset(VariableType::INT64(), array, offset, builder_.Undefined(),
+                                  MemoryAttribute::NoBarrier());
     }
     builder_.StoreConstOffset(VariableType::JS_POINTER(), array, 0, hclass, MemoryAttribute::NeedBarrierAndAtomic());
     builder_.StoreConstOffset(VariableType::INT64(), array, ECMAObject::HASH_OFFSET,
-                              builder_.Int64(JSTaggedValue(0).GetRawData()));
+                              builder_.Int64(JSTaggedValue(0).GetRawData()), MemoryAttribute::NoBarrier());
     builder_.StoreConstOffset(VariableType::JS_POINTER(), array, JSObject::PROPERTIES_OFFSET, emptyArray,
                               MemoryAttribute::NoBarrier());
     builder_.StoreConstOffset(VariableType::JS_POINTER(), array, JSObject::ELEMENTS_OFFSET, elements,
@@ -243,12 +244,13 @@ GateRef NTypeHCRLowering::NewJSArrayLiteral(GateRef glue, GateRef gate, GateRef 
     builder_.StoreConstOffset(VariableType::INT32(), array, JSArray::LENGTH_OFFSET, length);
     if (hintLength > 0) {
         builder_.StoreConstOffset(VariableType::INT64(), array, JSArray::TRACK_INFO_OFFSET,
-            builder_.Int64(JSTaggedValue(hintLength).GetRawData()));
+            builder_.Int64(JSTaggedValue(hintLength).GetRawData()), MemoryAttribute::NoBarrier());
     } else {
-        builder_.StoreConstOffset(VariableType::INT64(), array, JSArray::TRACK_INFO_OFFSET, builder_.Undefined());
+        builder_.StoreConstOffset(VariableType::INT64(), array, JSArray::TRACK_INFO_OFFSET, builder_.Undefined(),
+            MemoryAttribute::NoBarrier());
     }
     builder_.StoreConstOffset(VariableType::JS_POINTER(), array, lengthAccessorOffset, accessor,
-                              MemoryAttribute::NeedBarrier());
+                              MemoryAttribute::NoBarrier());
     return builder_.FinishAllocate(array);
 }
 

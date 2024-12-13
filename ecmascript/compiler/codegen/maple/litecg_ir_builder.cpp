@@ -1311,11 +1311,12 @@ bool LiteCGIRBuilder::IsOptimized() const
     return circuit_->GetFrameType() == FrameType::OPTIMIZED_FRAME;
 }
 
-CallExceptionKind LiteCGIRBuilder::GetCallExceptionKind(size_t index, OpCode op) const
+CallExceptionKind LiteCGIRBuilder::GetCallExceptionKind(OpCode op, size_t index) const
 {
+    ASSERT(op != OpCode::NOGC_RUNTIME_CALL || index != SIZE_MAX);
     bool hasPcOffset = IsOptimizedJSFunction() &&
                        ((op == OpCode::NOGC_RUNTIME_CALL && (kungfu::RuntimeStubCSigns::IsAsmStub(index))) ||
-                        (op == OpCode::CALL) || (op == OpCode::RUNTIME_CALL));
+                        (op == OpCode::CALL) || (op == OpCode::RUNTIME_CALL) || (op == OpCode::BUILTINS_CALL));
     return hasPcOffset ? CallExceptionKind::HAS_PC_OFFSET : CallExceptionKind::NO_PC_OFFSET;
 }
 
@@ -1328,7 +1329,7 @@ void LiteCGIRBuilder::VisitRuntimeCall(GateRef gate, const std::vector<GateRef> 
     Expr rtbaseOffset = lmirBuilder_->Add(glue.GetType(), glue, rtoffset);
     const CallSignature *signature = RuntimeStubCSigns::Get(std::get<RuntimeStubCSigns::ID>(stubId));
 
-    CallExceptionKind kind = GetCallExceptionKind(stubIndex, OpCode::RUNTIME_CALL);
+    CallExceptionKind kind = GetCallExceptionKind(OpCode::RUNTIME_CALL);
     bool hasPCOffset = (kind == CallExceptionKind::HAS_PC_OFFSET);
     size_t actualNumArgs = hasPCOffset ? (inList.size() - 2) : inList.size();  // 2: pcOffset and frameArgs
 
@@ -1505,7 +1506,7 @@ void LiteCGIRBuilder::VisitCall(GateRef gate, const std::vector<GateRef> &inList
         Expr rtoffset = GetCoStubOffset(glue, index);
         Expr rtbaseoffset = lmirBuilder_->Add(glue.GetType(), glue, rtoffset);
         callee = GetFunction(bb, glue, calleeDescriptor, rtbaseoffset);
-        kind = GetCallExceptionKind(index, op);
+        kind = GetCallExceptionKind(op);
     } else if (op == OpCode::NOGC_RUNTIME_CALL) {
         UpdateLeaveFrame(glue);
         const size_t index = acc_.GetConstantValue(inList[targetIndex]);
@@ -1513,7 +1514,7 @@ void LiteCGIRBuilder::VisitCall(GateRef gate, const std::vector<GateRef> &inList
         Expr rtoffset = GetRTStubOffset(glue, index);
         Expr rtbaseoffset = lmirBuilder_->Add(glue.GetType(), glue, rtoffset);
         callee = GetFunction(bb, glue, calleeDescriptor, rtbaseoffset);
-        kind = GetCallExceptionKind(index, op);
+        kind = GetCallExceptionKind(op, index);
     } else if (op == OpCode::CALL_OPTIMIZED) {
         calleeDescriptor = RuntimeStubCSigns::GetOptimizedCallSign();
         callee = GetCallee(bb, inList, calleeDescriptor, calleeDescriptor->GetName());
@@ -1536,7 +1537,7 @@ void LiteCGIRBuilder::VisitCall(GateRef gate, const std::vector<GateRef> &inList
         Expr rtoffset = GetBaselineStubOffset(glue, index);
         Expr rtbaseoffset = lmirBuilder_->Add(glue.GetType(), glue, rtoffset);
         callee = GetFunction(bb, glue, calleeDescriptor, rtbaseoffset);
-        kind = GetCallExceptionKind(index, op);
+        kind = GetCallExceptionKind(op);
     } else if (op == OpCode::ASM_CALL_BARRIER) {
         const size_t index = acc_.GetConstantValue(inList[targetIndex]);
         calleeDescriptor = RuntimeStubCSigns::Get(index);
@@ -1555,6 +1556,7 @@ void LiteCGIRBuilder::VisitCall(GateRef gate, const std::vector<GateRef> &inList
             calleeDescriptor = BuiltinsStubCSigns::BuiltinsWithArgvCSign();
         }
         callee = GetFunction(bb, glue, calleeDescriptor, rtbaseoffset);
+        kind = GetCallExceptionKind(op);
     }
 
     std::vector<Expr> params;

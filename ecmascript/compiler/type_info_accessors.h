@@ -186,6 +186,11 @@ public:
         return pgoType_.IsBoolean();
     }
 
+    inline bool IsUndefinedOrNullType() const
+    {
+        return pgoType_.IsUndefinedOrNull();
+    }
+
     inline ParamType GetParamType() const
     {
         return PGOSampleTypeToParamType();

@@ -202,6 +202,34 @@ GateRef CircuitBuilder::TaggedIsSharedObj(GateRef obj)
     return ret;
 }
 
+GateRef CircuitBuilder::TaggedIsStableArray(GateRef glue, GateRef obj)
+{
+    Label subentry(env_);
+    env_->SubCfgEntry(&subentry);
+    DEFVALUE(result, env_, VariableType::BOOL(), False());
+    Label exit(env_);
+    Label targetIsHeapObject(env_);
+    Label targetIsStableArray(env_);
+
+    BRANCH_CIR2(TaggedIsHeapObject(obj), &targetIsHeapObject, &exit);
+    Bind(&targetIsHeapObject);
+    {
+        GateRef jsHclass = LoadHClass(obj);
+        BRANCH_CIR2(IsStableArray(jsHclass), &targetIsStableArray, &exit);
+        Bind(&targetIsStableArray);
+        {
+            GateRef guardiansOffset =
+                IntPtr(JSThread::GlueData::GetArrayElementsGuardiansOffset(false));
+            result = Load(VariableType::BOOL(), glue, guardiansOffset);
+            Jump(&exit);
+        }
+    }
+    Bind(&exit);
+    auto res = *result;
+    env_->SubCfgExit();
+    return res;
+}
+
 GateRef CircuitBuilder::TaggedIsSymbol(GateRef obj)
 {
     Label entry(env_);

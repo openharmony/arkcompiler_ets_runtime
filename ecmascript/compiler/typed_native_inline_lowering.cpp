@@ -2084,7 +2084,7 @@ void TypedNativeInlineLowering::LowerToBuiltinStub(GateRef gate, BuiltinsStubCSi
     ASSERT(cs->IsBuiltinsStub());
     size_t ptrSize = env.Is32Bit() ? sizeof(uint32_t) : sizeof(uint64_t);
     GateRef target = builder_.IntPtr(id * ptrSize);
-    GateRef ret = builder_.Call(cs, glue, target, builder_.GetDepend(), args, Circuit::NullGate());
+    GateRef ret = builder_.Call(cs, glue, target, builder_.GetDepend(), args, gate);
     acc_.ReplaceGate(gate, builder_.GetStateDepend(), ret);
 }
 
@@ -3153,7 +3153,6 @@ void TypedNativeInlineLowering::ReplaceGateWithPendingException(
     acc_.ReplaceHirWithIfBranch(gate, success, exception, value);
 }
 
-
 void TypedNativeInlineLowering::LowerArrayForEach(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
@@ -3730,13 +3729,11 @@ void TypedNativeInlineLowering::LowerArraySlice(GateRef gate)
     Environment env(gate, circuit_, &builder_);
     Label exit(&builder_);
     Label checkIndexDone(&builder_);
-    Label lenUseCount(&builder_);
-    Label lenUseMixLenAndStart(&builder_);
-    Label startCopy(&builder_);
+    Label sliceCountIsZero(&builder_);
+    Label sliceCountIsNotZero(&builder_);
     Label inThisEles(&builder_);
     Label outThisEles(&builder_);
 
-    Label indexOutRange(&builder_);
     Label indexInRange(&builder_);
     Label setElementToNewArray(&builder_);
 
@@ -3753,6 +3750,14 @@ void TypedNativeInlineLowering::LowerArraySlice(GateRef gate)
     CheckAndCalcuSliceIndex(length, startHandler, endHandler, &exit, &checkIndexDone, &res, &start, &end);
     builder_.Bind(&checkIndexDone);
     GateRef sliceCount = builder_.Int32Sub(*end, *start);
+    builder_.Branch(builder_.Int32Equal(sliceCount, builder_.Int32(0)), &sliceCountIsZero, &sliceCountIsNotZero);
+    builder_.Bind(&sliceCountIsZero);
+    {
+        NewObjectStubBuilder newObject(&env);
+        res = newObject.CreateEmptyArray(glue);
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&sliceCountIsNotZero);
     builder_.DeoptCheck(builder_.Int32LessThanOrEqual(sliceCount, builder_.Int32(JSObject::MAX_GAP)),
                         frameState,
                         DeoptType::ARRAYLENGTHOVERMAX);

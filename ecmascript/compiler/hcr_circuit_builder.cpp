@@ -572,34 +572,6 @@ void CircuitBuilder::SetPropertyInlinedProps(GateRef glue, GateRef obj, GateRef 
     Store(type, glue, obj, ZExtInt32ToPtr(propOffset), value);
 }
 
-GateRef CircuitBuilder::IsStabelArray(GateRef glue, GateRef obj)
-{
-    Label subentry(env_);
-    env_->SubCfgEntry(&subentry);
-    DEFVALUE(result, env_, VariableType::BOOL(), False());
-    Label exit(env_);
-    Label targetIsHeapObject(env_);
-    Label targetIsStableArray(env_);
-
-    BRANCH_CIR2(TaggedIsHeapObject(obj), &targetIsHeapObject, &exit);
-    Bind(&targetIsHeapObject);
-    {
-        GateRef jsHclass = LoadHClass(obj);
-        BRANCH_CIR2(IsStableArray(jsHclass), &targetIsStableArray, &exit);
-        Bind(&targetIsStableArray);
-        {
-            GateRef guardiansOffset =
-                IntPtr(JSThread::GlueData::GetArrayElementsGuardiansOffset(false));
-            result = Load(VariableType::BOOL(), glue, guardiansOffset);
-            Jump(&exit);
-        }
-    }
-    Bind(&exit);
-    auto res = *result;
-    env_->SubCfgExit();
-    return res;
-}
-
 GateRef CircuitBuilder::StoreModuleVar(GateRef jsFunc, GateRef index, GateRef value)
 {
     auto currentLabel = env_->GetCurrentLabel();

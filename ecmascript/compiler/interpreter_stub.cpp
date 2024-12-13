@@ -5573,6 +5573,7 @@ DECLARE_ASM_HANDLER(HandleDefineFieldByNameImm8Id16V8)
     DEFINE_BY_NAME(Boolean(false));
     CHECK_EXCEPTION_WITH_ACC(*result, INT_PTR(DEFINEFIELDBYNAME_IMM8_ID16_V8));
 }
+
 DECLARE_ASM_HANDLER(HandleDefinePropertyByNameImm8Id16V8)
 {
     auto env = GetEnvironment();
@@ -5580,7 +5581,6 @@ DECLARE_ASM_HANDLER(HandleDefinePropertyByNameImm8Id16V8)
     DEFINE_BY_NAME(Boolean(true));
     CHECK_EXCEPTION_WITH_ACC(*result, INT_PTR(DEFINEPROPERTYBYNAME_IMM8_ID16_V8));
 }
-
 
 DECLARE_ASM_HANDLER(HandleCallRuntimeDefineFieldByValuePrefImm8V8V8)
 {

@@ -423,7 +423,7 @@ private:
     LLVMValueRef GetBCDebugStubOffset(LLVMValueRef glue);
     LLVMValueRef GetBuiltinsStubOffset(LLVMValueRef glue);
     LLVMValueRef GetBaseOffset(GateRef gate, LLVMValueRef glue);
-    CallExceptionKind GetCallExceptionKind(size_t index, OpCode op) const;
+    CallExceptionKind GetCallExceptionKind(OpCode op, size_t index = SIZE_MAX) const;
     void ComputeArgCountAndExtraInfo(size_t &actualNumArgs, LLVMValueRef &pcOffset, GateRef &frameArgs,
                                     const std::vector<GateRef> &inList, CallExceptionKind kind);
     void SaveLexicalEnvOnOptJSFuncFrame(LLVMValueRef value);

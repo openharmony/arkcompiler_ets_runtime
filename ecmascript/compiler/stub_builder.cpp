@@ -6694,7 +6694,7 @@ GateRef StubBuilder::FastEqual(GateRef glue, GateRef left, GateRef right, Profil
             BRANCH(TaggedIsUndefinedOrNull(right), &rightIsUndefinedOrNull, &rightIsNotUndefinedOrNull);
             Bind(&rightIsUndefinedOrNull);
             {
-                curType = TaggedInt(PGOSampleType::UndefineOrNullType());
+                curType = TaggedInt(PGOSampleType::UndefinedOrNullType());
                 Label leftIsHeapObject(env);
                 Label leftNotHeapObject(env);
                 BRANCH(TaggedIsHeapObject(left), &leftIsHeapObject, &leftNotHeapObject);
@@ -7044,6 +7044,7 @@ GateRef StubBuilder::FastToBooleanWithProfile(GateRef value, ProfileOperation ca
     Label isNotTrue(env);
     Label isFalse(env);
     Label isNotFalse(env);
+    Label isUndefinedOrNull(env);
 
     BRANCH(TaggedIsSpecial(value), &isSpecial, &notSpecial);
     Bind(&isSpecial);
@@ -7062,9 +7063,14 @@ GateRef StubBuilder::FastToBooleanWithProfile(GateRef value, ProfileOperation ca
                 callback.ProfileOpType(TaggedInt(PGOSampleType::BooleanType()));
                 Jump(&returnFalse);
             }
+            Bind(&isNotFalse);
+            BRANCH(TaggedIsUndefinedOrNull(value), &isUndefinedOrNull, &returnFalse);
+            Bind(&isUndefinedOrNull);
+            {
+                callback.ProfileOpType(TaggedInt(PGOSampleType::UndefinedOrNullType()));
+                Jump(&returnFalse);
+            }
         }
-        Bind(&isNotFalse);
-        Jump(&returnFalse);
     }
     Bind(&notSpecial);
     {
@@ -7164,6 +7170,7 @@ GateRef StubBuilder::FastToBooleanWithProfileBaseline(GateRef value, ProfileOper
     Label isNotTrue(env);
     Label isFalse(env);
     Label isNotFalse(env);
+    Label isUndefinedOrNull(env);
 
     Branch(TaggedIsSpecial(value), &isSpecial, &notSpecial);
     Bind(&isSpecial);
@@ -7176,15 +7183,20 @@ GateRef StubBuilder::FastToBooleanWithProfileBaseline(GateRef value, ProfileOper
         }
         Bind(&isNotTrue);
         {
-            Branch(TaggedIsFalse(value), &isFalse, &isNotFalse);
+            BRANCH(TaggedIsFalse(value), &isFalse, &isNotFalse);
             Bind(&isFalse);
             {
                 callback.ProfileOpType(TaggedInt(PGOSampleType::BooleanType()));
                 Jump(&returnFalse);
             }
+            Bind(&isNotFalse);
+            BRANCH(TaggedIsUndefinedOrNull(value), &isUndefinedOrNull, &returnFalse);
+            Bind(&isUndefinedOrNull);
+            {
+                callback.ProfileOpType(TaggedInt(PGOSampleType::UndefinedOrNullType()));
+                Jump(&returnFalse);
+            }
         }
-        Bind(&isNotFalse);
-        Jump(&returnFalse);
     }
     Bind(&notSpecial);
     {

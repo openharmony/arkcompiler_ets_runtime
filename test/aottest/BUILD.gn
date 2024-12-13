@@ -61,6 +61,7 @@ group("ark_aot_ts_test") {
   test_list = [
     "add",
     "array",
+    "array_concat",
     "array_foreach_inline",
     "array_inline_exception",
     "array_pop_inline",
