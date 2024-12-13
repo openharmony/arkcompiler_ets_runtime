@@ -956,12 +956,7 @@ JSTaggedValue RuntimeStubs::RuntimeCreateClassWithBuffer(JSThread *thread,
         chc.Update(aotLiteralInfo->GetChc());
     }
 
-    JSHandle<JSTaggedValue> sendableEnv(thread, JSTaggedValue::Undefined());
-    if (module->GetTaggedObject()->GetClass()->IsSourceTextModule()) {
-        JSHandle<SourceTextModule> moduleRecord = JSHandle<SourceTextModule>::Cast(module);
-        sendableEnv = JSHandle<JSTaggedValue>(thread, moduleRecord->GetSendableEnv());
-    }
-    JSTaggedValue literalObj = ConstantPool::GetClassLiteralFromCache(thread, cp, literalId, entry, sendableEnv);
+    JSTaggedValue literalObj = ConstantPool::GetClassLiteralFromCache(thread, cp, literalId, entry);
 
     JSHandle<ClassLiteral> classLiteral(thread, literalObj);
     JSHandle<TaggedArray> arrayHandle(thread, classLiteral->GetArray());

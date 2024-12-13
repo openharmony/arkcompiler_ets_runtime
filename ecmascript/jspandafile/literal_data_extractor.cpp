@@ -269,7 +269,9 @@ JSHandle<FunctionTemplate> LiteralDataExtractor::DefineFunctionTemplate(JSThread
     // Generate Module
     JSHandle<JSTaggedValue> module = SharedModuleManager::GetInstance()->GenerateFuncModule(thread, jsPandaFile,
                                                                                             entryPoint, classKind);
-    if (module->IsSourceTextModule()) {
+
+    // for classLiteral. The SENDABLE kind will generate new module.
+    if (module->IsSourceTextModule() && classKind == ClassKind::SENDABLE) {
         SourceTextModule::Cast(module->GetTaggedObject())->SetSendableEnv(thread, sendableEnv);
     }
 
@@ -348,7 +350,9 @@ JSHandle<JSFunction> LiteralDataExtractor::DefineMethodInLiteral(JSThread *threa
     JSHandle<JSFunction> jsFunc = CreateJSFunctionInLiteral(vm, method, kind, classKind);
     JSHandle<JSTaggedValue> module = SharedModuleManager::GetInstance()->GenerateFuncModule(thread, jsPandaFile,
                                                                                             entryPoint, classKind);
-    if (module->IsSourceTextModule()) {
+
+    // for objectLiteral and arrayLiteral. The NON_SENDABLE kind does not need to reset sendableEnv.
+    if (module->IsSourceTextModule() && classKind == ClassKind::SENDABLE) {
         SourceTextModule::Cast(module->GetTaggedObject())->SetSendableEnv(thread, sendableEnv);
     }
 
