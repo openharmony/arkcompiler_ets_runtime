@@ -139,6 +139,19 @@ public:
         return JitCompilingFlagBit::Decode(bitField);
     }
 
+    void SetBaselinejitCompilingFlag(bool value)
+    {
+        uint32_t bitField = GetBitField();
+        uint32_t newValue = BaselinejitCompilingFlagBit::Update(bitField, value);
+        SetBitField(newValue);
+    }
+
+    bool IsBaselinejitCompiling() const
+    {
+        uint32_t bitField = GetBitField();
+        return BaselinejitCompilingFlagBit::Decode(bitField);
+    }
+
     JSTaggedValue GetFunctionExtraInfo() const;
 
     /* compiled code flag field */
@@ -148,6 +161,7 @@ public:
 
     using TaskConcurrentFuncFlagBit = IsFastCallBit::NextFlag;     // offset 2
     using JitCompilingFlagBit = TaskConcurrentFuncFlagBit::NextFlag; // offset 3
+    using BaselinejitCompilingFlagBit = JitCompilingFlagBit::NextFlag; // offset 4
 
     static constexpr size_t METHOD_OFFSET = JSObject::SIZE;
     ACCESSORS(Method, METHOD_OFFSET, CODE_ENTRY_OFFSET)

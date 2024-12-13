@@ -116,7 +116,11 @@ bool CompileDecision::IsSupportFunctionKind() const
 
 bool CompileDecision::CheckJsFunctionStatus() const
 {
-    if (jsFunction_->IsJitCompiling()) {
+    if (tier_.IsFast() && jsFunction_->IsJitCompiling()) {
+        return false;
+    }
+
+    if (tier_.IsBaseLine() && jsFunction_->IsBaselinejitCompiling()) {
         return false;
     }
 
