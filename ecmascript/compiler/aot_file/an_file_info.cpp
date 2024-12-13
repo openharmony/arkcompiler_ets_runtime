@@ -18,9 +18,10 @@
 #include <cerrno>
 #include "ecmascript/compiler/aot_file/elf_builder.h"
 #include "ecmascript/compiler/aot_file/elf_reader.h"
+#include "macros.h"
 
 namespace panda::ecmascript {
-bool AnFileInfo::Save(const std::string &filename, Triple triple)
+bool AnFileInfo::Save(const std::string &filename, Triple triple, size_t anFileMaxByteSize)
 {
     std::string realPath;
     if (!RealPath(filename, realPath, false)) {
@@ -32,16 +33,34 @@ bool AnFileInfo::Save(const std::string &filename, Triple triple)
         return false;
     };
 
-    std::ofstream file(rawPath, std::ofstream::binary);
     SetStubNum(entries_.size());
     AddFuncEntrySec();
 
     ElfBuilder builder(des_, GetDumpSectionNames());
+    size_t anFileSize = builder.CalculateTotalFileSize();
+    if (anFileMaxByteSize != 0) {
+        if (anFileSize > anFileMaxByteSize) {
+            LOG_COMPILER(ERROR) << "Expected AN file size " << anFileSize << " bytes ("
+                                << (static_cast<double>(anFileSize) / 1_MB) << "MB) "
+                                << "exceeds maximum allowed size of " << (static_cast<double>(anFileMaxByteSize) / 1_MB)
+                                << "MB";
+            return false;
+        }
+    }
+
+    std::ofstream file(rawPath, std::ofstream::binary);
     llvm::ELF::Elf64_Ehdr header;
     builder.PackELFHeader(header, base::FileHeaderBase::ToVersionNumber(AOTFileVersion::AN_VERSION), triple);
     file.write(reinterpret_cast<char *>(&header), sizeof(llvm::ELF::Elf64_Ehdr));
     builder.PackELFSections(file);
     builder.PackELFSegment(file);
+    if (static_cast<size_t>(file.tellp()) != anFileSize) {
+        LOG_COMPILER(ERROR) << "Error to save an file: file size " << file.tellp()
+                            << " not equal calculated size: " << anFileSize;
+        file.close();
+        TryRemoveAnFile(rawPath);
+        return false;
+    }
     file.close();
     return true;
 }

@@ -221,6 +221,7 @@ enum CommandValues {
     OPTION_COMPILER_ENABLE_PGO_SPACE,
     OPTION_ENABLE_INLINE_PROPERTY_OPTIMIZATION,
     OPTION_COMPILER_ENABLE_AOT_CODE_COMMENT,
+    OPTION_COMPILER_AN_FILE_MAX_SIZE,
 };
 static_assert(OPTION_INVALID == 63); // Placeholder for invalid options
 static_assert(OPTION_SPLIT_ONE == 64); // add new option at the bottom, DO NOT modify this value
@@ -2011,6 +2012,16 @@ public:
         return enableInlinePropertyOptimization_;
     }
 
+    void SetCompilerAnFileMaxByteSize(uint64_t value)
+    {
+        CompilerAnFileMaxByteSize_ = value;
+    }
+
+    uint64_t GetCompilerAnFileMaxByteSize() const
+    {
+        return CompilerAnFileMaxByteSize_;
+    }
+
 public:
     static constexpr int32_t MAX_APP_COMPILE_METHOD_SIZE = 4_KB;
 
@@ -2195,6 +2206,7 @@ private:
     bool aotHasException_ {false};
     bool enableInlinePropertyOptimization_ {NEXT_OPTIMIZATION_BOOL};
     bool storeBarrierOpt_ {true};
+    uint64_t CompilerAnFileMaxByteSize_ {0_MB};
 };
 } // namespace panda::ecmascript
 

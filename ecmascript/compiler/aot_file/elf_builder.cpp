@@ -740,4 +740,121 @@ void ElfBuilder::PackELFSegment(std::ofstream &file)
     }
     file.write(reinterpret_cast<char *>(phdrs.get()), sizeof(llvm::ELF::Elf64_Phdr) * segNum);
 }
+
+size_t ElfBuilder::CalculateTotalFileSize()
+{
+    uint32_t moduleNum = des_.size();
+    const auto &sections = GetFullSecInfo();
+    uint32_t secNum = sections.size() + 1;  // +1 for null section
+    llvm::ELF::Elf64_Off curOffset = ComputeEndAddrOfShdr(secNum);
+
+    for (auto const &[secName, secInfo] : sections) {
+        ElfSection section = ElfSection(secName);
+        if (!section.ShouldDumpToAOTFile()) {
+            continue;
+        }
+        auto align = sectionToAlign_[secName];
+        curOffset = AlignUp(curOffset, align);
+
+        switch (secName) {
+            case ElfSecName::ARK_MODULEINFO: {
+                uint32_t curSecSize = sizeof(ModuleSectionDes::ModuleRegionInfo) * moduleNum;
+                curOffset = AlignUp(curOffset, align);
+                curOffset += curSecSize;
+                break;
+            }
+            case ElfSecName::TEXT: {
+                CalculateTextSectionSize(curOffset);
+                break;
+            }
+            case ElfSecName::ARK_STACKMAP: {
+                for (auto &des : des_) {
+                    curOffset += des.GetSecSize(ElfSecName::ARK_STACKMAP);
+                }
+                break;
+            }
+            case ElfSecName::STRTAB: {
+                CalculateStrTabSectionSize(curOffset);
+                break;
+            }
+            case ElfSecName::SYMTAB: {
+                CalculateSymTabSectionSize(curOffset);
+                break;
+            }
+            case ElfSecName::SHSTRTAB:
+            case ElfSecName::ARK_FUNCENTRY:
+            case ElfSecName::ARK_ASMSTUB: {
+                uint32_t curSecSize = des_[FullSecIndex].GetSecSize(secName);
+                curOffset = AlignUp(curOffset, align);
+                curOffset += curSecSize;
+                break;
+            }
+            default: {
+                LOG_COMPILER(FATAL) << "this section should not be included in file size calculation";
+                break;
+            }
+        }
+
+        if (secName == lastDataSection || secName == lastCodeSection) {
+            curOffset = AlignUp(curOffset, PageSize());
+        }
+    }
+    // calcutelate segment
+    curOffset += GetSegmentNum() * sizeof(llvm::ELF::Elf64_Phdr);
+    return curOffset;
+}
+
+void ElfBuilder::CalculateTextSectionSize(llvm::ELF::Elf64_Off &curOffset)
+{
+    for (ModuleSectionDes &des : des_) {
+        curOffset = AlignUp(curOffset, AOTFileInfo::PAGE_ALIGN);
+        uint32_t textSize = des.GetSecSize(ElfSecName::TEXT);
+        uint64_t textAddr = des.GetSecAddr(ElfSecName::TEXT);
+        uint64_t rodataAddrBeforeText = 0;
+        uint32_t rodataSizeBeforeText = 0;
+        uint64_t rodataAddrAfterText = 0;
+        uint32_t rodataSizeAfterText = 0;
+        std::tie(rodataAddrBeforeText, rodataSizeBeforeText, rodataAddrAfterText, rodataSizeAfterText) =
+            des.GetMergedRODataAddrAndSize(textAddr);
+
+        if (rodataSizeBeforeText != 0) {
+            curOffset += rodataSizeBeforeText;
+            curOffset = AlignUp(curOffset, AOTFileInfo::TEXT_SEC_ALIGN);
+        }
+        curOffset += textSize;
+        if (rodataSizeAfterText != 0) {
+            curOffset = AlignUp(curOffset, AOTFileInfo::RODATA_SEC_ALIGN);
+            curOffset += rodataSizeAfterText;
+        }
+    }
+}
+
+void ElfBuilder::CalculateStrTabSectionSize(llvm::ELF::Elf64_Off &curOffset)
+{
+    for (auto &des : des_) {
+        uint32_t curSecSize = des.GetSecSize(ElfSecName::STRTAB);
+        curOffset += curSecSize;
+        if (des.HasAsmStubStrTab()) {
+            const auto &asmStubInfo = des.GetAsmStubELFInfo();
+            uint32_t asmStubStrSize = 1;  // 1 for null string
+            uint32_t asmStubSymTabNum = asmStubInfo.size() - 1;
+            for (size_t idx = 0; idx < asmStubSymTabNum; ++idx) {
+                asmStubStrSize += asmStubInfo[idx].first.size() + 1;  // +1 for null terminator
+            }
+            curOffset += asmStubStrSize;
+        }
+    }
+}
+
+void ElfBuilder::CalculateSymTabSectionSize(llvm::ELF::Elf64_Off &curOffset)
+{
+    for (auto &des : des_) {
+        curOffset += des.GetSecSize(ElfSecName::SYMTAB);
+        if (des.HasAsmStubStrTab()) {
+            const auto &asmStubInfo = des.GetAsmStubELFInfo();
+            uint32_t asmStubSymTabNum = asmStubInfo.size() - 1;
+            curOffset += asmStubSymTabNum * sizeof(llvm::ELF::Elf64_Sym);
+        }
+    }
+}
 }  // namespace panda::ecmascript

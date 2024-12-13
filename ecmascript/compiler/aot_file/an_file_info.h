@@ -30,7 +30,7 @@ public:
     using FuncEntryIndexKey = std::pair<std::string, uint32_t>; // (compilefileName, MethodID)
     AnFileInfo() = default;
     ~AnFileInfo() override = default;
-    bool PUBLIC_API Save(const std::string &filename, Triple triple);
+    bool PUBLIC_API Save(const std::string &filename, Triple triple, size_t anFileMaxByteSize);
     void AddModuleDes(ModuleSectionDes &moduleDes)
     {
         des_.emplace_back(moduleDes);
@@ -94,9 +94,9 @@ public:
     void PUBLIC_API GenerateMethodToEntryIndexMap();
 
     void Dump() const;
+    static const std::vector<ElfSecName> &GetDumpSectionNames();
 
 private:
-    static const std::vector<ElfSecName> &GetDumpSectionNames();
     using EntryKey = std::pair<uint32_t, uint32_t>;
     bool LoadInternal(const std::string &filename);
     bool Load(const std::string &filename);
