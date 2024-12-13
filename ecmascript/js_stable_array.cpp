@@ -1660,7 +1660,7 @@ JSTaggedValue JSStableArray::Slice(JSThread *thread, JSHandle<JSObject> thisObjH
     if (len > k + count) {
         oldLen = count;
     } else {
-        oldLen = len - k;
+        oldLen = std::max<int64_t>(len - k, 0);
     }
     JSHandle<JSObject> arrayObj = factory->NewAndCopyJSArrayObject(thisObjHandle, count, oldLen, k);
     for (int i = 0; i < count; i++) {
