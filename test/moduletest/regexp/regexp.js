@@ -444,7 +444,6 @@ try {
 }
 print(RegExp.prototype.toString())
 
-
 let inputString = "/vedio/av{avid}{cid}";
 let extractedContent = inputString.match(/\{([^{}]+)\}/g);
 let replacedString = inputString.replace(/\{([^{}]+)\}/g, '(uuu)').replace(/\//g, "\\/");
@@ -495,29 +494,23 @@ try {
 } catch(e) {
   print(e);
 }
-
-try {
-  let matchReg = new RegExp("@【哈哈】*^o^*|@小米（kk）",'g');
-} catch (error) {
-  print(error)
-}
 const str3 = "a-b-c";
 const re = /-/y;
 print(str3.split(re));
- 
+
 re.lastIndex = 1;
 print(str3.split(re));
- 
+
 re.lastIndex = -1;
 print(str3.split(re));
- 
+
 re.lastIndex = 3;
 print(str3.split(re));
- 
+
 print(re.test(str3));
- 
+
 print(str3.split(/-/g));
- 
+
 // search
 const str4 = "abc";
 let re1 = /b/;
@@ -526,7 +519,7 @@ print(str4.search(re1));
 print(str4.search(/b/y));
 print(str4.search(re1));
 print(re1.lastIndex);
- 
+
 // check cache
 const str5 = "a-bc";
 let re2 = /-/;
@@ -535,7 +528,7 @@ print(str5.split(re2));
 print(re2.lastIndex);
 print(str5.split(re2));
 print(re2.lastIndex);
- 
+
 const str6 = "abcabc";
 let re3 = /abc/;
 re3.lastIndex = 2;
@@ -543,7 +536,7 @@ print(str6.match(re3));
 print(re3.lastIndex);
 print(str6.match(re3));
 print(re3.lastIndex);
- 
+
 let re4 = /abc/g;
 re4.lastIndex = 2;
 print(str6.match(re4));
@@ -562,7 +555,7 @@ print(str6.match(re4));
 print(re4.lastIndex);
 print(str6.match(re4));
 print(re4.lastIndex);
- 
+
 let myExp = new RegExp("a+b+c");
 Object.defineProperty(myExp, "sticky", {
     value: true
@@ -609,6 +602,12 @@ print(matches);
 const matches1 = regex.exec(str10);
 print(matches1);
 
+try {
+  let matchReg = new RegExp("@【哈哈】*^o^*|@小米（kk）",'g');
+} catch (error) {
+  print(error)
+}
+
 let e = /./;
 e.exec = function() {
     return [];
@@ -632,13 +631,6 @@ delete e.exec;
 }
 
 {
-  let str = /^\s*([^;\s]*)/;
-  str.test("text/html");
-  print(RegExp.$1);
-  str.test("text/plain");
-  print(RegExp.$1);
-  str.test("text/html");
-  print(RegExp.$1);
   const v2 = /e\8Z(x)(x)(x)(x)(x)(x)(x)(x)(x)(x)\10*/misd;
   v2[1073741824] = -194290175n;
   for (let v3 = 0; v3 < 2; v3++) {
@@ -654,6 +646,17 @@ f.exec = f;
 let relpfun = reg51[Symbol.replace];
 relpfun.apply(f, [1, 2, 3, 4]);
 print("success");
+
+{
+  let str = /^\s*([^;\s]*)/;
+  str.test("text/html");
+  print(RegExp.$1);
+  str.test("text/plain");
+  print(RegExp.$1);
+  str.test("text/html");
+  print(RegExp.$1);
+}
+
 {
   let reg52 = /abc/;
   let count = 0;
@@ -666,6 +669,7 @@ print("success");
   Object.defineProperty(reg52, "ignoreCase", {
     get: function() { count++; return true; }
   });
+
   print(reg52.ignoreCase);
   print(count);
   print(reg52.global);
@@ -690,6 +694,164 @@ pattern = /\d$/gm;
 result = string.match(pattern);
 print(1 == result.length);
 print('9' == result[0]);
+
+// test getFlags
+Object.defineProperty(RegExp.prototype, "global", {
+  value: true
+})
+const res = /abc/giymsud;
+res.lastIndex = -1;
+print(res.flags);
+const res1 = /abc/g;
+res1.lastIndex = -1;
+print(res1.flags);
+const res2 = /abc/i;
+res2.lastIndex = -1;
+print(res2.flags);
+const res3 = /abc/y;
+res3.lastIndex = -1;
+print(res3.flags);
+const res4 = /abc/m;
+res4.lastIndex = -1;
+print(res4.flags);
+const res5 = /abc/s;
+res5.lastIndex = -1;
+print(res5.flags);
+const res6 = /abc/u;
+res6.lastIndex = -1;
+print(res6.flags);
+const res7 = /abc/d;
+res7.lastIndex = -1;
+print(res7.flags);
+const res8 = /abc/;
+res8.lastIndex = -1;
+print(res8.flags);
+
+{
+  let str="\\\\\\\\[aaa"
+  try {
+    let pattern="[";
+    let reg = new RegExp(pattern);
+    print(pattern,JSON.stringify(reg.exec(str)))
+  } catch (e) {
+    print(e.name);
+  }
+  try {
+    let pattern="\[";
+    let reg = new RegExp(pattern);
+    print(pattern,JSON.stringify(reg.exec(str)))
+  } catch (e) {
+    print(e.name);
+  }
+  try {
+    let pattern="\\[";
+    let reg = new RegExp(pattern);
+    print(pattern,JSON.stringify(reg.exec(str)))
+  } catch (e) {
+    print(e.name);
+  }
+  try {
+    let pattern="\\\[";
+    let reg = new RegExp(pattern);
+    print(pattern,JSON.stringify(reg.exec(str)))
+  } catch (e) {
+    print(e.name);
+  }
+  try {
+    let pattern="\\\\[";
+    let reg = new RegExp(pattern);
+    print(pattern,JSON.stringify(reg.exec(str)))
+  } catch (e) {
+    print(e.name);
+  }
+  try {
+    let pattern="\\\\\[";
+    let reg = new RegExp(pattern);
+    print(pattern,JSON.stringify(reg.exec(str)))
+  } catch (e) {
+    print(e.name);
+  }
+  try {
+    let pattern="\\\\\\[";
+    let reg = new RegExp(pattern);
+    print(pattern,JSON.stringify(reg.exec(str)))
+  } catch (e) {
+    print(e.name);
+  }
+  try {
+    let pattern="\\\\\\\[";
+    let reg = new RegExp(pattern);
+    print(pattern,JSON.stringify(reg.exec(str)))
+  } catch (e) {
+    print(e.name);
+  }
+}
+
+{
+  Object.defineProperty(RegExp.prototype, "global", {
+    value: false
+  })
+  let str1;
+  let result;
+  const re1 = /[Cz]/;
+  const re2 = /[Cz]/g;
+  const re3 = /([Cz])/;
+  const re4 = /([Cz])/g;
+
+  function createHaystack() {
+    let s = "abCdefgz";
+    for (let i = 0; i < 3; i++) s += s;
+    return s;
+  }
+  str1 = createHaystack();
+  function String1Replace(re) {
+    result = re[Symbol.replace](str1, ".");
+  }
+  function String2Replace(re) {
+    result = re[Symbol.replace](str1, "xyz");
+  }
+  function String3Replace(re) {
+    result = re[Symbol.replace](str1, "x$1yz");
+  }
+  function Function1Replace(re) {
+    result = re[Symbol.replace](str1, String);
+  }
+  String1Replace(re1);
+  print(result);
+  String1Replace(re2);
+  print(result);
+  String2Replace(re2);
+  print(result);
+  String2Replace(re1);
+  print(result);
+  String3Replace(re3);
+  print(result);
+  String3Replace(re4);
+  print(result);
+  Function1Replace(re3);
+  print(result);
+  Function1Replace(re4);
+  print(result);
+
+  // subStringIsUtf8 branch canbecompressed
+  str1 = 'utf83c这要替换"!';
+  let regexp = /([0-9])([a-z])/g
+  let newStr1 = str1.replace(regexp, "$1" );
+  print(newStr1);
+
+  // subStringIsUtf8 branch length=0;
+  str1 = '3c这要替换"!';
+  regexp = /([0-9])([a-z])/g
+  newStr1 = str1.replace(regexp, "$1" );
+  print(newStr1);
+
+  // subStringIsUtf8 branch src isUtf8;
+  str1 = 'abcdefg3chigk"!';
+  regexp = /([0-9])([a-z])/g
+  newStr1 = str1.replace(regexp, "$1" );
+  print(newStr1);
+}
+
 {
   let s1 = 'abc';
   let s2 = '\ud834\udf06';
