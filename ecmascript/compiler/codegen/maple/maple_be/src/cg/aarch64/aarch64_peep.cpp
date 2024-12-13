@@ -199,6 +199,7 @@ void AArch64PeepHole0::InitOpts()
     optimizations[kCmpCsetOpt] = optOwnMemPool->New<CmpCsetAArch64>(cgFunc);
     optimizations[kComplexMemOperandOptAdd] = optOwnMemPool->New<ComplexMemOperandAddAArch64>(cgFunc);
     optimizations[kRemoveSxtBeforeStrOpt] = optOwnMemPool->New<RemoveSxtBeforeStrAArch64>(cgFunc);
+    optimizations[kRedundantMovAArch64Opt] = optOwnMemPool->New<RedundantMovAArch64>(cgFunc);
     optimizations[kRemoveMovingtoSameRegOpt] = optOwnMemPool->New<RemoveMovingtoSameRegAArch64>(cgFunc);
     optimizations[kEnhanceStrLdrAArch64Opt] = optOwnMemPool->New<EnhanceStrLdrAArch64>(cgFunc);
     optimizations[kAddImmZeroToMov] = optOwnMemPool->New<AddImmZeroToMov>(cgFunc);
@@ -230,6 +231,7 @@ void AArch64PeepHole0::Run(BB &bb, Insn &insn)
         case MOP_xmovrr:
         case MOP_xvmovs:
         case MOP_xvmovd: {
+            (static_cast<RedundantMovAArch64 *>(optimizations[kRedundantMovAArch64Opt]))->Run(bb, insn);
             (static_cast<RemoveMovingtoSameRegAArch64 *>(optimizations[kRemoveMovingtoSameRegOpt]))->Run(bb, insn);
             break;
         }
@@ -327,6 +329,30 @@ void RemoveMovingtoSameRegPattern::Run(BB &bb, Insn &insn)
     if (CheckCondition(insn)) {
         bb.RemoveInsn(insn);
     }
+}
+
+void RedundantMovAArch64::Run(BB &bb, Insn &insn)
+{
+    auto *prevInsn = insn.GetPreviousMachineInsn();
+    if (prevInsn == nullptr) {
+        return;
+    }
+    auto *prevOpndDes = prevInsn->GetDesc()->GetOpndDes(kInsnFirstOpnd);
+    auto *srcOpndDesc  = insn.GetDesc()->GetOpndDes(kInsnSecondOpnd);
+    if (!prevOpndDes->IsRegDef() || prevOpndDes->IsUse() || prevOpndDes->GetSize() > srcOpndDesc->GetSize()) {
+        return;
+    }
+    auto &srcOpnd = static_cast<RegOperand&>(insn.GetOperand(kInsnSecondOpnd));
+    auto &prevDestOpnd = static_cast<RegOperand&>(prevInsn->GetOperand(kInsnFirstOpnd));
+    if (srcOpnd.GetRegisterNumber() != prevDestOpnd.GetRegisterNumber()) {
+        return;
+    }
+    if (IfOperandIsLiveAfterInsn(srcOpnd, insn)) {
+        return;
+    }
+    auto &desOpnd = static_cast<RegOperand&>(insn.GetOperand(kInsnFirstOpnd));
+    prevInsn->SetOperand(kInsnFirstOpnd, desOpnd);
+    bb.RemoveInsn(insn);
 }
 
 void RemoveMovingtoSameRegAArch64::Run(BB &bb, Insn &insn)
