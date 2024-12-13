@@ -804,7 +804,7 @@ uint32_t JSObject::GetNumberOfKeys()
 }
 
 bool JSObject::GlobalSetProperty(JSThread *thread, const JSHandle<JSTaggedValue> &key,
-                                 const JSHandle<JSTaggedValue> &value, bool mayThrow)
+                                 JSHandle<JSTaggedValue> value, bool mayThrow)
 {
     ASSERT_PRINT(JSTaggedValue::IsPropertyKey(key), "Key is not a property key");
 
@@ -841,7 +841,7 @@ uint32_t JSObject::GetNumberOfElements()
 
 // 9.1.9 [[Set]] ( P, V, Receiver)
 bool JSObject::SetProperty(JSThread *thread, const JSHandle<JSTaggedValue> &obj, const JSHandle<JSTaggedValue> &key,
-                           const JSHandle<JSTaggedValue> &value, const JSHandle<JSTaggedValue> &receiver, bool mayThrow)
+                           JSHandle<JSTaggedValue> value, const JSHandle<JSTaggedValue> &receiver, bool mayThrow)
 {
     ASSERT_PRINT(!(obj->IsUndefined() || obj->IsNull() || obj->IsHole()), "Obj is not a valid object");
     ASSERT_PRINT(JSTaggedValue::IsPropertyKey(key), "Key is not a property key");
@@ -852,7 +852,7 @@ bool JSObject::SetProperty(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
 }
 
 bool JSObject::SetProperty(JSThread *thread, const JSHandle<JSObject> &obj, const JSHandle<JSTaggedValue> &key,
-                           const JSHandle<JSTaggedValue> &value, bool mayThrow)
+                           JSHandle<JSTaggedValue> value, bool mayThrow)
 {
     ASSERT_PRINT(obj->IsECMAObject(), "Obj is not a valid JSObject");
     ASSERT_PRINT(JSTaggedValue::IsPropertyKey(key), "Key is not a property key");
@@ -862,7 +862,7 @@ bool JSObject::SetProperty(JSThread *thread, const JSHandle<JSObject> &obj, cons
 }
 
 bool JSObject::SetProperty(JSThread *thread, const JSHandle<JSTaggedValue> &obj, const JSHandle<JSTaggedValue> &key,
-                           const JSHandle<JSTaggedValue> &value, bool mayThrow, SCheckMode sCheckMode)
+                           JSHandle<JSTaggedValue> value, bool mayThrow, SCheckMode sCheckMode)
 {
     ASSERT_PRINT(!(obj->IsUndefined() || obj->IsNull() || obj->IsHole()), "Obj is not a valid object");
     ASSERT_PRINT(JSTaggedValue::IsPropertyKey(key), "Key is not a property key");
@@ -876,7 +876,7 @@ bool JSObject::SetProperty(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
 }
 
 bool JSObject::SetProperty(JSThread *thread, const JSHandle<JSTaggedValue> &obj, uint32_t index,
-                           const JSHandle<JSTaggedValue> &value, bool mayThrow)
+                           JSHandle<JSTaggedValue> value, bool mayThrow)
 {
     ASSERT_PRINT(!(obj->IsUndefined() || obj->IsNull() || obj->IsHole()), "Obj is not a valid object");
 
@@ -914,7 +914,7 @@ bool JSObject::SetPropertyForDataDescriptorProxy(JSThread *thread, ObjectOperato
     return CreateDataProperty(thread, JSHandle<JSObject>(receiver), key, value);
 }
 
-bool JSObject::SetPropertyForDataDescriptor(ObjectOperator *op, const JSHandle<JSTaggedValue> &value,
+bool JSObject::SetPropertyForDataDescriptor(ObjectOperator *op, JSHandle<JSTaggedValue> value,
                                             JSHandle<JSTaggedValue> &receiver, bool mayThrow, bool isInternalAccessor)
 {
     JSThread *thread = op->GetThread();
@@ -932,12 +932,14 @@ bool JSObject::SetPropertyForDataDescriptor(ObjectOperator *op, const JSHandle<J
         return false;
     }
     if (op->IsFound() && receiver->IsJSShared()) {
-        if (!ClassHelper::MatchFieldType(op->GetSharedFieldType(), value.GetTaggedValue())) {
+        SharedFieldType type = op->GetSharedFieldType();
+        if (!ClassHelper::MatchFieldType(type, value.GetTaggedValue())) {
             if (mayThrow) {
                 THROW_TYPE_ERROR_AND_RETURN(thread, GET_MESSAGE_STRING(SetTypeMismatchedSharedProperty), false);
             }
             return false;
         }
+        value = JSTaggedValue::PublishSharedValue(thread, value);
     }
 
     if (receiver->IsJSProxy()) {
@@ -969,12 +971,15 @@ bool JSObject::SetPropertyForDataDescriptor(ObjectOperator *op, const JSHandle<J
             }
             return false;
         }
-        if (hasReceiver && receiver->IsJSShared() &&
-            !ClassHelper::MatchFieldType(op->GetSharedFieldType(), value.GetTaggedValue())) {
-            if (mayThrow) {
-                THROW_TYPE_ERROR_AND_RETURN(thread, GET_MESSAGE_STRING(SetTypeMismatchedSharedProperty), false);
+        if (hasReceiver && receiver->IsJSShared()) {
+            SharedFieldType type = op->GetSharedFieldType();
+            if (!ClassHelper::MatchFieldType(type, value.GetTaggedValue())) {
+                if (mayThrow) {
+                    THROW_TYPE_ERROR_AND_RETURN(thread, GET_MESSAGE_STRING(SetTypeMismatchedSharedProperty), false);
+                }
+                return false;
             }
-            return false;
+            value = JSTaggedValue::PublishSharedValue(thread, value);
         }
         isSuccess = op->UpdateDataValue(JSHandle<JSObject>(receiver), value, isInternalAccessor, mayThrow);
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, isSuccess);
@@ -998,7 +1003,7 @@ bool JSObject::SetPropertyForDataDescriptor(ObjectOperator *op, const JSHandle<J
     return isSuccess;
 }
 
-bool JSObject::SetProperty(ObjectOperator *op, const JSHandle<JSTaggedValue> &value, bool mayThrow)
+bool JSObject::SetProperty(ObjectOperator *op, JSHandle<JSTaggedValue> value, bool mayThrow)
 {
     JSThread *thread = op->GetThread();
     op->UpdateDetector();
@@ -1379,13 +1384,18 @@ bool JSObject::ValidateDataDescriptorWhenConfigurable(ObjectOperator *op, const 
             return false;
         }
     }
-    if (op->HasHolder() && op->GetHolder()->IsJSShared() && (sCheckMode == SCheckMode::CHECK)) {
-        if (!desc.HasValue()) {
-            THROW_TYPE_ERROR_AND_RETURN(op->GetThread(), GET_MESSAGE_STRING(UpdateSendableAttributes), false);
+    if (op->HasHolder() && op->GetHolder()->IsJSShared()) {
+        SharedFieldType type = current.GetSharedFieldType();
+        JSHandle<JSTaggedValue> value(desc.GetValue());
+        if (sCheckMode == SCheckMode::CHECK) {
+            if (!desc.HasValue()) {
+                THROW_TYPE_ERROR_AND_RETURN(op->GetThread(), GET_MESSAGE_STRING(UpdateSendableAttributes), false);
+            }
+            if (!ClassHelper::MatchFieldType(type, value.GetTaggedValue())) {
+                THROW_TYPE_ERROR_AND_RETURN(op->GetThread(), GET_MESSAGE_STRING(SetTypeMismatchedSharedProperty), false);
+            }
         }
-        if (!ClassHelper::MatchFieldType(current.GetSharedFieldType(), desc.GetValue().GetTaggedValue())) {
-            THROW_TYPE_ERROR_AND_RETURN(op->GetThread(), GET_MESSAGE_STRING(SetTypeMismatchedSharedProperty), false);
-        }
+        value = JSTaggedValue::PublishSharedValue(op->GetThread(), value);
     }
     return true;
 }

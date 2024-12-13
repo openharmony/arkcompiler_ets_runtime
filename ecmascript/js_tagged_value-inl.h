@@ -1420,5 +1420,15 @@ inline bool JSTaggedValue::IsPureString(JSTaggedValue key)
     uint32_t idx;
     return !StringToElementIndex(key, &idx);
 }
+
+inline JSHandle<JSTaggedValue> JSTaggedValue::PublishSharedValue(JSThread *thread, JSHandle<JSTaggedValue> value)
+{
+    ASSERT(value->IsSharedType());
+    ASSERT(!value->IsHeapObject() || value->IsInSharedHeap());
+    if (value->IsTreeString()) {
+        return PublishSharedValueSlow(thread, value);
+    }
+    return value;
+}
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_TAGGED_VALUE_INL_H

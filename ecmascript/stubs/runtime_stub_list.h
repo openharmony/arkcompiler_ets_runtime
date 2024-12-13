@@ -483,8 +483,8 @@ namespace panda::ecmascript {
     V(OptSuperCallForwardAllArgs)               \
     V(GetCollationValueFromIcuCollator)         \
     V(DecodeURIComponent)                       \
-    V(GetAllFlagsInternal)
-
+    V(GetAllFlagsInternal)                      \
+    V(SlowSharedObjectStoreBarrier)
 
 #define RUNTIME_STUB_LIST(V)                     \
     RUNTIME_ASM_STUB_LIST(V)                     \

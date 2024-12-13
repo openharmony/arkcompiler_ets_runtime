@@ -2609,31 +2609,28 @@ bool ObjectRef::Set(const EcmaVM *vm, const char *utf8, Local<JSValueRef> value)
     JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(this);
     LOG_IF_SPECIAL(obj, ERROR);
     ObjectFactory *factory = vm->GetFactory();
-    JSHandle<JSTaggedValue> keyValue(factory->NewFromUtf8(utf8));
-    JSTaggedValue valueValue = JSNApiHelper::ToJSTaggedValue(*value);
+    JSHandle<JSTaggedValue> key(factory->NewFromUtf8(utf8));
+    JSHandle<JSTaggedValue> val = JSNApiHelper::ToJSHandle(value);
     if (!obj->IsHeapObject()) {
-        return JSTaggedValue::SetProperty(thread, obj, keyValue, JSHandle<JSTaggedValue>(thread, valueValue));
+        return JSTaggedValue::SetProperty(thread, obj, key, val);
     }
-    JSTaggedValue res = ObjectFastOperator::TrySetPropertyByNameThroughCacheAtLocal(thread, obj.GetTaggedValue(),
-                                                                                    keyValue.GetTaggedValue(),
-                                                                                    valueValue);
+    JSTaggedValue res = ObjectFastOperator::TrySetPropertyByNameThroughCacheAtLocal(thread, obj, key, val);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
     if (!res.IsHole()) {
         return !res.IsException();
     }
     if (!JSNApi::KeyIsNumber(utf8)) {
-        res = ObjectFastOperator::SetPropertyByName(thread, obj.GetTaggedValue(), keyValue.GetTaggedValue(),
-                                                    valueValue);
+        res = ObjectFastOperator::SetPropertyByName(thread, obj.GetTaggedValue(), key.GetTaggedValue(),
+                                                    val.GetTaggedValue());
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
         if (!res.IsHole()) {
             return !res.IsException();
         }
-        return JSTaggedValue::SetProperty(thread, JSHandle<JSTaggedValue>(thread, obj.GetTaggedValue()), keyValue,
-                                          JSHandle<JSTaggedValue>(thread, valueValue), true);
+        return JSTaggedValue::SetProperty(thread, obj, key, val, true);
     }
     return ObjectFastOperator::FastSetPropertyByValue(thread, obj.GetTaggedValue(),
-                                                      keyValue.GetTaggedValue(),
-                                                      valueValue);
+                                                      key.GetTaggedValue(),
+                                                      val.GetTaggedValue());
 }
 
 bool ObjectRef::Set(const EcmaVM *vm, uint32_t key, Local<JSValueRef> value)

@@ -2395,61 +2395,69 @@ inline GateRef StubBuilder::IsSpecialIndexedObj(GateRef jsType)
     return Int32GreaterThan(jsType, Int32(static_cast<int32_t>(JSType::JS_ARRAY)));
 }
 
-inline void StubBuilder::CheckUpdateSharedType(bool isDicMode, Variable *result, GateRef glue, GateRef receiver,
-    GateRef attr, GateRef value, Label *executeSetProp, Label *exit)
+inline void StubBuilder::SharedObjectStoreBarrierWithTypeCheck(bool isDicMode, Variable *result, GateRef glue,
+    GateRef attr, GateRef value, Variable *newValue, Label *executeSharedSetProp, Label *exit)
 {
     auto *env = GetEnvironment();
-    Label isJSShared(env);
-    BRANCH(IsJSShared(receiver), &isJSShared, executeSetProp);
-    Bind(&isJSShared);
-    {
-        Label typeMismatch(env);
-        GateRef fieldType = isDicMode ? GetDictSharedFieldTypeInPropAttr(attr) : GetSharedFieldTypeInPropAttr(attr);
-        MatchFieldType(glue, fieldType, value, executeSetProp, &typeMismatch);
-        Bind(&typeMismatch);
-        {
-            GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(SetTypeMismatchedSharedProperty));
-            CallRuntime(glue, RTSTUB_ID(ThrowTypeError), {IntToTaggedInt(taggedId)});
-            *result = Exception();
-            Jump(exit);
-        }
-    }
-}
-
-inline void StubBuilder::CheckUpdateSharedType(bool isDicMode, Variable *result, GateRef glue, GateRef receiver,
-    GateRef attr, GateRef value, Label *executeSetProp, Label *exit, GateRef SCheckModelIsCHECK)
-{
-    auto *env = GetEnvironment();
-    Label isJSShared(env);
-    BRANCH(LogicAndBuilder(env).And(SCheckModelIsCHECK).And(IsJSShared(receiver)).Done(),
-        &isJSShared, executeSetProp);
-    Bind(&isJSShared);
-    {
-        Label typeMismatch(env);
-        GateRef fieldType = isDicMode ? GetDictSharedFieldTypeInPropAttr(attr) : GetSharedFieldTypeInPropAttr(attr);
-        MatchFieldType(glue, fieldType, value, executeSetProp, &typeMismatch);
-        Bind(&typeMismatch);
-        {
-            GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(SetTypeMismatchedSharedProperty));
-            CallRuntime(glue, RTSTUB_ID(ThrowTypeError), {IntToTaggedInt(taggedId)});
-            *result = Exception();
-            Jump(exit);
-        }
-    }
-}
-
-inline void StubBuilder::MatchFieldType(Variable *result, GateRef glue, GateRef fieldType, GateRef value,
-                                        Label *executeSetProp, Label *exit)
-{
-    auto *env = GetEnvironment();
+    Label barrier(env);
     Label typeMismatch(env);
-    MatchFieldType(glue, fieldType, value, executeSetProp, &typeMismatch);
+    GateRef fieldType = isDicMode ? GetDictSharedFieldTypeInPropAttr(attr) : GetSharedFieldTypeInPropAttr(attr);
+    SharedObjectStoreBarrierWithTypeCheck(result, glue, fieldType, value, newValue, executeSharedSetProp, exit);
+}
+
+inline void StubBuilder::SharedObjectStoreBarrierWithTypeCheck(bool isDicMode, Variable *result, GateRef glue,
+    GateRef attr, GateRef value, Variable *newValue, Label *executeSharedSetProp, Label *exit,
+    GateRef SCheckModelIsCHECK)
+{
+    auto *env = GetEnvironment();
+    Label checkFieldTypeAndStoreBarrier(env);
+    Label storeBarrierOnly(env);
+    BRANCH(SCheckModelIsCHECK, &checkFieldTypeAndStoreBarrier, &storeBarrierOnly);
+    Bind(&checkFieldTypeAndStoreBarrier);
+    {
+        SharedObjectStoreBarrierWithTypeCheck(isDicMode, result, glue, attr, value, newValue,
+            executeSharedSetProp, exit);
+    }
+    Bind(&storeBarrierOnly);
+    {
+        SharedObjectStoreBarrier(glue, value, newValue, executeSharedSetProp);
+    }
+}
+
+inline void StubBuilder::SharedObjectStoreBarrierWithTypeCheck(Variable *result, GateRef glue, GateRef fieldType,
+    GateRef value, Variable *newValue, Label *executeSharedSetProp, Label *exit)
+{
+    auto *env = GetEnvironment();
+    Label barrier(env);
+    Label typeMismatch(env);
+    MatchFieldType(glue, fieldType, value, &barrier, &typeMismatch);
     Bind(&typeMismatch);
     {
         GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(SetTypeMismatchedSharedProperty));
         CallRuntime(glue, RTSTUB_ID(ThrowTypeError), {IntToTaggedInt(taggedId)});
         *result = Exception();
         Jump(exit);
+    }
+    Bind(&barrier);
+    {
+        SharedObjectStoreBarrier(glue, value, newValue, executeSharedSetProp);
+    }
+}
+
+inline void StubBuilder::SharedObjectStoreBarrier(GateRef glue, GateRef value, Variable *newValue, Label *exit)
+{
+    auto *env = GetEnvironment();
+    Label checkIsTreeString(env);
+    BRANCH(TaggedIsHeapObject(value), &checkIsTreeString, exit);
+    Bind(&checkIsTreeString);
+    {
+        Label needFlatten(env);
+        BRANCH(IsTreeString(value), &needFlatten, exit);
+        Bind(&needFlatten);
+        {
+            *newValue = CallRuntime(glue, RTSTUB_ID(SlowSharedObjectStoreBarrier), { value });
+            Jump(exit);
+        }
     }
 }
 

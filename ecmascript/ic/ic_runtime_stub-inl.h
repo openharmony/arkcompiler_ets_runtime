@@ -232,9 +232,21 @@ ARK_INLINE JSTaggedValue ICRuntimeStub::StoreICWithHandler(JSThread *thread, JST
         if (isShared) {
             SharedFieldType fieldType { HandlerBase::GetFieldType(handlerInfo) };
             bool hasAccessor = HandlerBase::IsAccessor(handlerInfo);
-            if (!hasAccessor && !ClassHelper::MatchFieldType(fieldType, value)) {
-                THROW_TYPE_ERROR_AND_RETURN((thread), GET_MESSAGE_STRING(SetTypeMismatchedSharedProperty),
-                                            JSTaggedValue::Exception());
+            if (!hasAccessor) {
+                if (!ClassHelper::MatchFieldType(fieldType, value)) {
+                    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+                    THROW_TYPE_ERROR_AND_RETURN((thread), GET_MESSAGE_STRING(SetTypeMismatchedSharedProperty),
+                                                JSTaggedValue::Exception()); 
+                }
+                if (value.IsTreeString()) {
+                    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+                    JSHandle<JSTaggedValue> objHandle(thread, receiver);
+                    JSHandle<JSTaggedValue> holderHandle(thread, holder);
+                    JSHandle<JSTaggedValue> valueHandle(thread, value);
+                    value = JSTaggedValue::PublishSharedValue(thread, valueHandle).GetTaggedValue();
+                    receiver = objHandle.GetTaggedValue();
+                    holder = holderHandle.GetTaggedValue();
+                }
             }
             HandlerBase::ClearSharedStoreKind(handlerInfo);
             return StoreICWithHandler(thread, receiver, holder, value,

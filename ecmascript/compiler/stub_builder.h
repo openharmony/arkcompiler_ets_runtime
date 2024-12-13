@@ -580,12 +580,13 @@ public:
     GateRef GetUnsharedConstpoolFromGlue(GateRef glue, GateRef constpool);
     GateRef GetUnsharedConstpool(GateRef array, GateRef index);
     GateRef GetValueFromMutantTaggedArray(GateRef elements, GateRef index);
-    void CheckUpdateSharedType(bool isDicMode, Variable *result, GateRef glue, GateRef receiver, GateRef attr,
-                               GateRef value, Label *executeSetProp, Label *exit);
-    void CheckUpdateSharedType(bool isDicMode, Variable *result, GateRef glue, GateRef receiver, GateRef attr,
-                               GateRef value, Label *executeSetProp, Label *exit, GateRef SCheckModelIsCHECK);
-    void MatchFieldType(Variable *result, GateRef glue, GateRef fieldType, GateRef value, Label *executeSetProp,
-                               Label *exit);
+    void SharedObjectStoreBarrierWithTypeCheck(bool isDicMode, Variable *result, GateRef glue, GateRef attr,
+        GateRef value, Variable *newValue, Label *executeSharedSetProp, Label *exit);
+    void SharedObjectStoreBarrierWithTypeCheck(bool isDicMode, Variable *result, GateRef glue, GateRef attr,
+        GateRef value, Variable *newValue, Label *executeSharedSetProp, Label *exit, GateRef SCheckModelIsCHECK);
+    void SharedObjectStoreBarrierWithTypeCheck(Variable *result, GateRef glue, GateRef fieldType, GateRef value,
+        Variable *newValue, Label *executeSharedSetProp, Label *exit);
+    void SharedObjectStoreBarrier(GateRef glue, GateRef value, Variable *newValue, Label *exit);
     GateRef GetFieldTypeFromHandler(GateRef attr);
     GateRef ClearSharedStoreKind(GateRef handlerInfo);
     GateRef UpdateSOutOfBoundsForHandler(GateRef handlerInfo);

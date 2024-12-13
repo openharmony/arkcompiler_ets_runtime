@@ -2888,7 +2888,7 @@ GateRef StubBuilder::StoreICWithHandler(GateRef glue, GateRef receiver, GateRef 
     Label handlerInfoNotField(env);
     Label isShared(env);
     Label notShared(env);
-    Label matchType(env);
+    Label sharedObjectStoreBarrier(env);
     Label prepareIntHandlerLoop(env);
     Label handlerIsTransitionHandler(env);
     Label handlerNotTransitionHandler(env);
@@ -2913,6 +2913,7 @@ GateRef StubBuilder::StoreICWithHandler(GateRef glue, GateRef receiver, GateRef 
     DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
     DEFVARIABLE(holder, VariableType::JS_ANY(), argHolder);
     DEFVARIABLE(handler, VariableType::JS_ANY(), argHandler);
+    DEFVARIABLE(actualValue, VariableType::JS_ANY(), value);
     Jump(&loopHead);
     LoopBegin(&loopHead);
     {
@@ -2923,7 +2924,7 @@ GateRef StubBuilder::StoreICWithHandler(GateRef glue, GateRef receiver, GateRef 
             BRANCH(IsNonSharedStoreField(handlerInfo), &handlerInfoIsField, &handlerInfoNotField);
             Bind(&handlerInfoIsField);
             {
-                result = StoreField(glue, receiver, value, handlerInfo, callback);
+                result = StoreField(glue, receiver, *actualValue, handlerInfo, callback);
                 Jump(&exit);
             }
             Bind(&handlerInfoNotField);
@@ -2931,11 +2932,12 @@ GateRef StubBuilder::StoreICWithHandler(GateRef glue, GateRef receiver, GateRef 
                 BRANCH(IsStoreShared(handlerInfo), &isShared, &notShared);
                 Bind(&isShared);
                 {
-                    BRANCH(HandlerBaseIsAccessor(handlerInfo), &prepareIntHandlerLoop, &matchType);
-                    Bind(&matchType);
+                    BRANCH(HandlerBaseIsAccessor(handlerInfo), &prepareIntHandlerLoop, &sharedObjectStoreBarrier);
+                    Bind(&sharedObjectStoreBarrier);
                     {
                         GateRef field = GetFieldTypeFromHandler(handlerInfo);
-                        MatchFieldType(&result, glue, field, value, &prepareIntHandlerLoop, &exit);
+                        SharedObjectStoreBarrierWithTypeCheck(&result, glue, field, value, &actualValue,
+                            &prepareIntHandlerLoop, &exit);
                     }
                     Bind(&prepareIntHandlerLoop);
                     {
@@ -2945,7 +2947,7 @@ GateRef StubBuilder::StoreICWithHandler(GateRef glue, GateRef receiver, GateRef 
                 }
                 Bind(&notShared);
                 GateRef accessor = LoadFromField(*holder, handlerInfo);
-                result = CallSetterHelper(glue, receiver, accessor, value, callback);
+                result = CallSetterHelper(glue, receiver, accessor, *actualValue, callback);
                 Jump(&exit);
             }
         }
@@ -2954,7 +2956,7 @@ GateRef StubBuilder::StoreICWithHandler(GateRef glue, GateRef receiver, GateRef 
             BRANCH(TaggedIsTransitionHandler(*handler), &handlerIsTransitionHandler, &handlerNotTransitionHandler);
             Bind(&handlerIsTransitionHandler);
             {
-                result = StoreWithTransition(glue, receiver, value, *handler, callback);
+                result = StoreWithTransition(glue, receiver, *actualValue, *handler, callback);
                 Jump(&exit);
             }
             Bind(&handlerNotTransitionHandler);
@@ -2967,7 +2969,7 @@ GateRef StubBuilder::StoreICWithHandler(GateRef glue, GateRef receiver, GateRef 
                     BRANCH(GetHasChanged(cellValue), &cellHasChanged, &cellNotChanged);
                     Bind(&cellNotChanged);
                     {
-                        result = StoreWithTransition(glue, receiver, value, *handler, callback, true);
+                        result = StoreWithTransition(glue, receiver, *actualValue, *handler, callback, true);
                         Jump(&exit);
                     }
                 }
@@ -2978,7 +2980,7 @@ GateRef StubBuilder::StoreICWithHandler(GateRef glue, GateRef receiver, GateRef 
                     {
                         BRANCH(TaggedIsPropertyBox(*handler), &handlerIsPropertyBox, &handlerNotPropertyBox);
                         Bind(&handlerIsPropertyBox);
-                        StoreGlobal(glue, value, *handler);
+                        StoreGlobal(glue, *actualValue, *handler);
                         Jump(&exit);
                     }
                 }
@@ -3016,13 +3018,13 @@ GateRef StubBuilder::StoreICWithHandler(GateRef glue, GateRef receiver, GateRef 
                     BRANCH(IsField(handlerInfo), &aotHandlerInfoIsField, &aotHandlerInfoNotField);
                     Bind(&aotHandlerInfoIsField);
                     {
-                        result = StoreField(glue, receiver, value, handlerInfo, callback);
+                        result = StoreField(glue, receiver, *actualValue, handlerInfo, callback);
                         Jump(&exit);
                     }
                     Bind(&aotHandlerInfoNotField);
                     {
                         GateRef accessor = LoadFromField(*holder, handlerInfo);
-                        result = CallSetterHelper(glue, receiver, accessor, value, callback);
+                        result = CallSetterHelper(glue, receiver, accessor, *actualValue, callback);
                         Jump(&exit);
                     }
                 }
@@ -4782,13 +4784,32 @@ GateRef StubBuilder::SetPropertyByName(GateRef glue, GateRef receiver, GateRef k
                         }
                         Bind(&holdEqualsRecv);
                         {
+                            Label isJSShared(env);
                             Label executeSetProp(env);
-                            CheckUpdateSharedType(false, &result, glue, receiver, attr, value, &executeSetProp, &exit);
+                            BRANCH(IsJSShared(receiver), &isJSShared, &executeSetProp);
+                            Bind(&isJSShared);
+                            {
+                                DEFVARIABLE(actualValue, VariableType::JS_ANY(), value);
+                                Label executeSharedSetProp(env);
+                                SharedObjectStoreBarrierWithTypeCheck(false, &result, glue, attr, value, &actualValue,
+                                    &executeSharedSetProp, &exit);
+                                Bind(&executeSharedSetProp);
+                                {
+                                    JSObjectSetProperty(glue, *holder, hclass, attr, key, *actualValue);
+                                    ProfilerStubBuilder(env).UpdatePropAttrWithValue(glue, receiver, attr,
+                                        *actualValue, callback);
+                                    result = Undefined();
+                                    Jump(&exit);
+                                }
+                            }
                             Bind(&executeSetProp);
-                            JSObjectSetProperty(glue, *holder, hclass, attr, key, value);
-                            ProfilerStubBuilder(env).UpdatePropAttrWithValue(glue, receiver, attr, value, callback);
-                            result = Undefined();
-                            Jump(&exit);
+                            {
+                                JSObjectSetProperty(glue, *holder, hclass, attr, key, value);
+                                ProfilerStubBuilder(env).UpdatePropAttrWithValue(glue, receiver, attr, value,
+                                    callback);
+                                result = Undefined();
+                                Jump(&exit);
+                            }
                         }
                     }
                 }
@@ -4847,12 +4868,28 @@ GateRef StubBuilder::SetPropertyByName(GateRef glue, GateRef receiver, GateRef k
                         }
                         Bind(&holdEqualsRecv1);
                         {
+                            Label isJSShared(env);
                             Label executeSetProp(env);
-                            CheckUpdateSharedType(true, &result, glue, receiver, attr1, value, &executeSetProp, &exit);
+                            BRANCH(IsJSShared(receiver), &isJSShared, &executeSetProp);
+                            Bind(&isJSShared);
+                            {
+                                DEFVARIABLE(actualValue, VariableType::JS_ANY(), value);
+                                Label executeSharedSetProp(env);
+                                SharedObjectStoreBarrierWithTypeCheck(true, &result, glue, attr1, value, &actualValue,
+                                    &executeSharedSetProp, &exit);
+                                Bind(&executeSharedSetProp);
+                                {
+                                    UpdateValueInDict<NameDictionary>(glue, array, entry1, *actualValue);
+                                    result = Undefined();
+                                    Jump(&exit);
+                                }
+                            }
                             Bind(&executeSetProp);
-                            UpdateValueInDict<NameDictionary>(glue, array, entry1, value);
-                            result = Undefined();
-                            Jump(&exit);
+                            {
+                                UpdateValueInDict<NameDictionary>(glue, array, entry1, value);
+                                result = Undefined();
+                                Jump(&exit);
+                            }
                         }
                     }
                 }
@@ -5052,14 +5089,32 @@ GateRef StubBuilder::DefinePropertyByName(GateRef glue, GateRef receiver, GateRe
                         BRANCH(Equal(*holder, receiver), &holdEqualsRecv, &ifEnd);
                         Bind(&holdEqualsRecv);
                         {
+                            Label isJSShared(env);
                             Label executeSetProp(env);
-                            CheckUpdateSharedType(false, &result, glue, receiver, attr, value,
-                                &executeSetProp, &exit, SCheckModelIsCHECK);
+                            BRANCH(IsJSShared(receiver), &isJSShared, &executeSetProp);
+                            Bind(&isJSShared);
+                            {
+                                DEFVARIABLE(actualValue, VariableType::JS_ANY(), value);
+                                Label executeSharedSetProp(env);
+                                SharedObjectStoreBarrierWithTypeCheck(false, &result, glue, attr, value, &actualValue,
+                                    &executeSharedSetProp, &exit, SCheckModelIsCHECK);
+                                Bind(&executeSharedSetProp);
+                                {
+                                    JSObjectSetProperty(glue, *holder, hclass, attr, key, *actualValue);
+                                    ProfilerStubBuilder(env).UpdatePropAttrWithValue(glue, receiver, attr,
+                                        *actualValue, callback);
+                                    result = Undefined();
+                                    Jump(&exit);
+                                }
+                            }
                             Bind(&executeSetProp);
-                            JSObjectSetProperty(glue, *holder, hclass, attr, key, value);
-                            ProfilerStubBuilder(env).UpdatePropAttrWithValue(glue, receiver, attr, value, callback);
-                            result = Undefined();
-                            Jump(&exit);
+                            {
+                                JSObjectSetProperty(glue, *holder, hclass, attr, key, value);
+                                ProfilerStubBuilder(env).UpdatePropAttrWithValue(glue, receiver, attr, value,
+                                    callback);
+                                result = Undefined();
+                                Jump(&exit);
+                            }
                         }
                     }
                 }
@@ -5118,13 +5173,28 @@ GateRef StubBuilder::DefinePropertyByName(GateRef glue, GateRef receiver, GateRe
                         BRANCH(Equal(*holder, receiver), &holdEqualsRecv1, &ifEnd);
                         Bind(&holdEqualsRecv1);
                         {
+                            Label isJSShared(env);
                             Label executeSetProp(env);
-                            CheckUpdateSharedType(true, &result, glue, receiver, attr1,
-                                value, &executeSetProp, &exit, SCheckModelIsCHECK);
+                            BRANCH(IsJSShared(receiver), &isJSShared, &executeSetProp);
+                            Bind(&isJSShared);
+                            {
+                                DEFVARIABLE(actualValue, VariableType::JS_ANY(), value);
+                                Label executeSharedSetProp(env);
+                                SharedObjectStoreBarrierWithTypeCheck(true, &result, glue, attr1, value, &actualValue,
+                                    &executeSharedSetProp, &exit, SCheckModelIsCHECK);
+                                Bind(&executeSharedSetProp);
+                                {
+                                    UpdateValueInDict<NameDictionary>(glue, array, entry1, *actualValue);
+                                    result = Undefined();
+                                    Jump(&exit);
+                                }
+                            }
                             Bind(&executeSetProp);
-                            UpdateValueInDict<NameDictionary>(glue, array, entry1, value);
-                            result = Undefined();
-                            Jump(&exit);
+                            {
+                                UpdateValueInDict<NameDictionary>(glue, array, entry1, value);
+                                result = Undefined();
+                                Jump(&exit);
+                            }
                         }
                     }
                 }

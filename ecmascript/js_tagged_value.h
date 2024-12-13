@@ -86,6 +86,10 @@ public:
         return sizeof(JSTaggedType);
     }
 
+    static JSHandle<JSTaggedValue> PublishSharedValue(JSThread *thread, JSHandle<JSTaggedValue> value);
+
+    static JSHandle<JSTaggedValue> PublishSharedValueSlow(JSThread *thread, JSHandle<JSTaggedValue> value);
+
     static constexpr size_t SizeArch32 = sizeof(JSTaggedType);
 
     static constexpr size_t SizeArch64 = sizeof(JSTaggedType);
