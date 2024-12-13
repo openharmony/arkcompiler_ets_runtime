@@ -147,6 +147,18 @@ bool ValueSerializer::WriteValue(JSThread *thread,
         return false;
     }
     if (!chunkEmpty) {
+        [[maybe_unused]] EcmaHandleScope scope(thread_);
+        JSMutableHandle<JSTaggedValue> strHandle(thread_, JSTaggedValue::Undefined());
+        SerializationChunk *chunk = Runtime::GetInstance()->GetSerializeRootMapValue(thread_, index);
+        size_t size = chunk->Size();
+        for (size_t i = 0; i < size; ++i) {
+            JSTaggedValue val(chunk->Get(i));
+            if (UNLIKELY(val.IsTreeString())) {
+                strHandle.Update(val);
+                JSHandle<JSTaggedValue> flattenStr(JSTaggedValue::PublishSharedValue(thread, strHandle));
+                chunk->Set(i, flattenStr.GetTaggedType());
+            }
+        }
         data_->SetDataIndex(index);
     }
     size_t maxSerializerSize = vm_->GetEcmaParamConfiguration().GetMaxJSSerializerSize();

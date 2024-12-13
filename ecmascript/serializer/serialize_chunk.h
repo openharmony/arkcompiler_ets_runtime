@@ -43,6 +43,12 @@ public:
         top_ += JSTaggedValue::TaggedTypeSize();
     }
 
+    void Set(size_t index, JSTaggedType value)
+    {
+        ASSERT(begin_ + index * JSTaggedValue::TaggedTypeSize() < top_);
+        *reinterpret_cast<JSTaggedType *>(begin_ + index * JSTaggedValue::TaggedTypeSize()) = value;
+    }
+
     JSTaggedType Get(size_t index) const
     {
         ASSERT(begin_ + index * JSTaggedValue::TaggedTypeSize() < top_);

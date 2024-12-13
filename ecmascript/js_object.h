@@ -544,21 +544,21 @@ public:
     static OperationResult GetPropertyFromGlobal(JSThread *thread, const JSHandle<JSTaggedValue> &key);
 
     static bool SetProperty(JSThread *thread, const JSHandle<JSObject> &obj, const JSHandle<JSTaggedValue> &key,
-                            const JSHandle<JSTaggedValue> &value, bool mayThrow = false);
+                            JSHandle<JSTaggedValue> value, bool mayThrow = false);
 
     static bool SetProperty(JSThread *thread, const JSHandle<JSTaggedValue> &obj, const JSHandle<JSTaggedValue> &key,
-                            const JSHandle<JSTaggedValue> &value, bool mayThrow = false,
+                            JSHandle<JSTaggedValue> value, bool mayThrow = false,
                             SCheckMode checkMode = SCheckMode::CHECK);
 
     static bool SetProperty(JSThread *thread, const JSHandle<JSTaggedValue> &obj, const JSHandle<JSTaggedValue> &key,
-                            const JSHandle<JSTaggedValue> &value, const JSHandle<JSTaggedValue> &receiver,
+                            JSHandle<JSTaggedValue> value, const JSHandle<JSTaggedValue> &receiver,
                             bool mayThrow = false);
 
     static bool SetProperty(JSThread *thread, const JSHandle<JSTaggedValue> &obj, uint32_t index,
-                            const JSHandle<JSTaggedValue> &value, bool mayThrow = false);
+                            JSHandle<JSTaggedValue> value, bool mayThrow = false);
 
     static bool GlobalSetProperty(JSThread *thread, const JSHandle<JSTaggedValue> &key,
-                                  const JSHandle<JSTaggedValue> &value, bool mayThrow);
+                                  JSHandle<JSTaggedValue> value, bool mayThrow);
 
     // [[HasProperty]]
     static bool HasProperty(JSThread *thread, const JSHandle<JSObject> &obj, const JSHandle<JSTaggedValue> &key);
@@ -793,7 +793,7 @@ private:
         PropertyAttributes attr = PropertyAttributes(PropertyAttributes::GetDefaultAttributes()));
 
     static JSTaggedValue GetProperty(JSThread *thread, ObjectOperator *op);
-    static bool SetProperty(ObjectOperator *op, const JSHandle<JSTaggedValue> &value, bool mayThrow);
+    static bool SetProperty(ObjectOperator *op, JSHandle<JSTaggedValue> value, bool mayThrow);
     static bool SetPropertyForData(ObjectOperator *op, const JSHandle<JSTaggedValue> &value, bool *isAccessor);
     static bool SetPropertyForAccessor(ObjectOperator *op, const JSHandle<JSTaggedValue> &value);
     static void DeletePropertyInternal(JSThread *thread, const JSHandle<JSObject> &obj,
@@ -819,7 +819,7 @@ private:
                                      uint32_t numberInlinedProps);
     static bool ValidateDataDescriptorWhenConfigurable(ObjectOperator *op, const PropertyDescriptor &desc,
                                                        const PropertyDescriptor &current, SCheckMode sCheckMode);
-    static bool SetPropertyForDataDescriptor(ObjectOperator *op, const JSHandle<JSTaggedValue> &value,
+    static bool SetPropertyForDataDescriptor(ObjectOperator *op, JSHandle<JSTaggedValue> value,
                                              JSHandle<JSTaggedValue> &receiver, bool mayThrow, bool isInternalAccessor);
     static bool SetPropertyForDataDescriptorProxy(JSThread *thread, ObjectOperator *op,
                                                   const JSHandle<JSTaggedValue> &value,

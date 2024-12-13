@@ -4202,6 +4202,15 @@ DEF_RUNTIME_STUBS(GetAllFlagsInternal)
     return flagsString.GetTaggedValue().GetRawData();
 }
 
+DEF_RUNTIME_STUBS(SlowSharedObjectStoreBarrier)
+{
+    RUNTIME_STUBS_HEADER(SlowSharedObjectStoreBarrier);
+    JSHandle<JSTaggedValue> value = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
+    ASSERT(value->IsTreeString());
+    JSHandle<JSTaggedValue> publishValue = JSTaggedValue::PublishSharedValueSlow(thread, value);
+    return publishValue.GetTaggedValue().GetRawData();
+}
+
 void RuntimeStubs::Initialize(JSThread *thread)
 {
 #define DEF_RUNTIME_STUB(name) kungfu::RuntimeStubCSigns::ID_##name

@@ -201,6 +201,7 @@ group("ark_js_moduletest") {
     "sharedJSON",
     "sharedic",
     "sendable",
+    "sharedobjectstorebarrier_treestring",
   ]
 
   deps = []
@@ -409,6 +410,7 @@ group("ark_asm_test") {
     "sharedJSON",
     "sharedic",
     "sendable",
+    "sharedobjectstorebarrier_treestring",
   ]
 
   deps = []
@@ -594,6 +596,7 @@ group("ark_asm_single_step_test") {
     "sharedmap",
     "sharedJSON",
     "sendable",
+    "sharedobjectstorebarrier_treestring",
   ]
 
   deps = []

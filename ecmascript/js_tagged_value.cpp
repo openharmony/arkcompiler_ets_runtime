@@ -1813,4 +1813,13 @@ void JSTaggedValue::DumpExceptionObject(JSThread *thread, const JSHandle<JSTagge
         LOG_ECMA(ERROR) << "DumpExceptionObject: " << sensitiveStr;
     }
 }
+
+JSHandle<JSTaggedValue> JSTaggedValue::PublishSharedValueSlow(JSThread *thread, JSHandle<JSTaggedValue> value)
+{
+    SharedValuePublishGuard guard;
+
+    ASSERT(value->IsTreeString());
+    EcmaString *flatStr = EcmaStringAccessor::Flatten(thread->GetEcmaVM(), JSHandle<EcmaString>(value));
+    return JSHandle<JSTaggedValue>(thread, JSTaggedValue(flatStr));
+}
 }  // namespace panda::ecmascript
