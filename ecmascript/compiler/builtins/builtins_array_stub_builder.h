@@ -77,6 +77,8 @@ private:
         bool stable = false;
         bool defaultConstructor = false;
     };
+    enum MethodKind {mIncludes, mIndexOf};
+    enum UndefOrHole {kUndefined, kHole, kAll};
     GateRef IsJsArrayWithLengthLimit(GateRef glue, GateRef object,
         uint32_t maxLength, JsArrayRequirements requirements);
     GateRef CreateSpliceDeletedArray(GateRef glue, GateRef thisValue, GateRef actualDeleteCount,
@@ -111,6 +113,23 @@ private:
     void ReverseOptimised(GateRef glue, GateRef thisValue, Variable *result, Label *exit, Label *slowPath);
     void ShiftOptimised(GateRef glue, GateRef thisValue,
                         GateRef numArgs, Variable *result, Label *exit, Label *slowPath);
+    void IncludesIndexOfOptimised(GateRef glue, GateRef thisValue, GateRef numArgs, MethodKind mk, Variable *result,
+                                  Label *exit, Label *slowPath);
+    void IntIncludesIndexOf(GateRef elements, GateRef fromIndex, GateRef searchElement, GateRef thisLen,
+                            Variable *result, Label *exit);
+    void DoubleIncludesIndexOf(GateRef elements, GateRef fromIndex, GateRef searchElement, GateRef thisLen,
+                               MethodKind mk, Variable *result, Label *exit);
+    void StringIncludesIndexOf(GateRef glue, GateRef elements, GateRef fromIndex, GateRef searchElement,
+                               GateRef thisLen, Variable *result, Label *exit);
+    void ObjectIncludesIndexOf(GateRef elements, GateRef fromIndex, GateRef searchElement,
+                               GateRef thisLen, Variable *result, Label *exit);
+    void GenericIncludesIndexOf(GateRef glue, GateRef elements, GateRef fromIndex, GateRef searchElement,
+                                GateRef thisLen, MethodKind mk, Variable *result, Label *exit);
+    void UndefinedHoleLoop(GateRef elements, GateRef fromIndex, GateRef thisLen, UndefOrHole uoh,
+                           Variable *result, Label *exit);
+    void NumberLoop(GateRef elements, GateRef fromIndex, GateRef searchElement, GateRef thisLen, MethodKind mk,
+                    Variable *result, Label *exit);
+    void NaNLoop(GateRef elements, GateRef fromIndex, GateRef thisLen, Variable *result, Label *exit);
 };
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_BUILTINS_ARRAY_STUB_BUILDER_H

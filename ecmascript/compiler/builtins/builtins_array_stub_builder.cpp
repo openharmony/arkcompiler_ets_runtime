@@ -1167,6 +1167,9 @@ void BuiltinsArrayStubBuilder::ArrayIteratorNext(GateRef glue, GateRef thisValue
 void BuiltinsArrayStubBuilder::IndexOf([[maybe_unused]] GateRef glue, GateRef thisValue, GateRef numArgs,
     Variable *result, Label *exit, Label *slowPath)
 {
+#if ENABLE_NEXT_OPTIMIZATION
+    IncludesIndexOfOptimised(glue, thisValue, numArgs, MethodKind::mIndexOf, result, exit, slowPath);
+#else
     auto env = GetEnvironment();
     Label thisIsEmpty(env);
     // Fast path if: (1) this is an empty array; (2) fromIndex is missing
@@ -1181,6 +1184,7 @@ void BuiltinsArrayStubBuilder::IndexOf([[maybe_unused]] GateRef glue, GateRef th
         result->WriteVariable(IntToTaggedPtr(Int32(-1)));
         Jump(exit);
     }
+#endif
 }
 
 // Note: unused arguments are reserved for further development
@@ -2752,6 +2756,9 @@ GateRef BuiltinsArrayStubBuilder::NewArray(GateRef glue, GateRef count)
 void BuiltinsArrayStubBuilder::Includes(GateRef glue, GateRef thisValue, GateRef numArgs,
     Variable *result, Label *exit, Label *slowPath)
 {
+#if ENABLE_NEXT_OPTIMIZATION
+    IncludesIndexOfOptimised(glue, thisValue, numArgs, MethodKind::mIncludes, result, exit, slowPath);
+#else
     auto env = GetEnvironment();
     Label isDictMode(env);
     Label isHeapObject(env);
@@ -2868,6 +2875,7 @@ void BuiltinsArrayStubBuilder::Includes(GateRef glue, GateRef thisValue, GateRef
         result->WriteVariable(TaggedFalse());
         Jump(exit);
     }
+#endif
 }
 
 void BuiltinsArrayStubBuilder::From(GateRef glue, [[maybe_unused]] GateRef thisValue, GateRef numArgs,
