@@ -111,6 +111,19 @@ JSHandle<JSTaggedValue> JSArray::ArrayCreate(JSThread *thread, JSTaggedNumber le
     return JSHandle<JSTaggedValue>(obj);
 }
 
+JSTaggedValue JSArray::GetConstructorOrSpeciesInlinedProp(JSTaggedValue object, uint32_t inlinePropIndex)
+{
+    JSHClass *hclass = JSObject::Cast(object)->GetJSHClass();
+    ASSERT(!hclass->IsDictionaryMode() && "object can't be dictionary");
+    LayoutInfo *layoutInfo = LayoutInfo::Cast(hclass->GetLayout().GetTaggedObject());
+    PropertyAttributes attr(layoutInfo->GetAttr(inlinePropIndex));
+    ASSERT(attr.GetOffset() == inlinePropIndex && "offset of Attr must be inlinePropIndex");
+    ASSERT(attr.IsInlinedProps() && "attr must be inline prop");
+    JSTaggedValue value = JSObject::Cast(object)->GetPropertyInlinedPropsWithRep(hclass, attr.GetOffset(), attr);
+    ASSERT(!value.IsHole() && "object must have inlinePropIndex");
+    return value;
+}
+
 // 9.4.2.3 ArraySpeciesCreate(originalArray, length)
 JSTaggedValue JSArray::ArraySpeciesCreate(JSThread *thread, const JSHandle<JSObject> &originalArray,
                                           JSTaggedNumber length)
@@ -124,65 +137,94 @@ JSTaggedValue JSArray::ArraySpeciesCreate(JSThread *thread, const JSHandle<JSObj
     if (arrayLength == -0) {
         arrayLength = +0;
     }
-    // Let C be undefined.
-    // Let isArray be IsArray(originalArray).
+    // 1. Let isArray be ? IsArray(originalArray).
     JSHandle<JSTaggedValue> originalValue(originalArray);
     bool isArray = originalValue->IsArray(thread);
-    // ReturnIfAbrupt(isArray).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    // If isArray is true, then
-    JSHandle<JSTaggedValue> constructor(thread, JSTaggedValue::Undefined());
-    if (isArray) {
-        // Let C be Get(originalArray, "constructor").
-        auto *hclass = originalArray->GetJSHClass();
-        JSTaggedValue proto = hclass->GetPrototype();
-        if (hclass->IsJSArray() && !hclass->HasConstructor() && proto.IsJSArray()) {
-            return JSArray::ArrayCreate(thread, length).GetTaggedValue();
-        }
-        JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
-        constructor = JSTaggedValue::GetProperty(thread, originalValue, constructorKey).GetValue();
-        // ReturnIfAbrupt(C).
-        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        // If IsConstructor(C) is true, then
-        if (constructor->IsConstructor()) {
-            // Let thisRealm be the running execution context’s Realm.
-            // Let realmC be GetFunctionRealm(C).
-            JSHandle<GlobalEnv> realmC = JSObject::GetFunctionRealm(thread, constructor);
-            // ReturnIfAbrupt(realmC).
-            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-            // If thisRealm and realmC are not the same Realm Record, then
-            if (*realmC != *env) {
-                JSTaggedValue realmArrayConstructor = realmC->GetArrayFunction().GetTaggedValue();
-                // If SameValue(C, realmC.[[intrinsics]].[[%Array%]]) is true, let C be undefined.
-                if (JSTaggedValue::SameValue(constructor.GetTaggedValue(), realmArrayConstructor)) {
-                    return JSArray::ArrayCreate(thread, length).GetTaggedValue();
-                }
-            }
-        }
 
-        // If Type(C) is Object, then
-        if (constructor->IsECMAObject()) {
-            // Let C be Get(C, @@species).
-            JSHandle<JSTaggedValue> speciesSymbol = env->GetSpeciesSymbol();
-            constructor = JSTaggedValue::GetProperty(thread, constructor, speciesSymbol).GetValue();
-            // ReturnIfAbrupt(C).
-            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-            // If C is null, let C be undefined.
-            if (constructor->IsNull()) {
-                return JSArray::ArrayCreate(thread, length).GetTaggedValue();
+    // 2. If isArray is false, return ? ArrayCreate(length).
+    if (!isArray) {
+        return ArrayCreate(thread, length).GetTaggedValue();
+    }
+
+    JSMutableHandle<JSTaggedValue> constructor(thread, globalConst->GetHandledHole());
+    // 3. Let C be ? Get(originalArray, "constructor").
+    // 3. fastpath: if object has no custom constructor, the constructor may be on the proto.
+    if (originalArray->IsJSArray() && !originalArray->GetJSHClass()->HasConstructor()) {
+        JSTaggedValue proto = JSObject::GetPrototype(originalArray);
+        // fastpath: if the hclass of proto is the default Array Prototype hclass,
+        // the constructor must in the inline properties.
+        if LIKELY(proto.IsECMAObject()
+            && JSObject::Cast(proto)->GetJSHClass() == thread->GetBuiltinPrototypeHClass(BuiltinTypeId::ARRAY)) {
+            constructor.Update(GetConstructorOrSpeciesInlinedProp(proto, CONSTRUCTOR_INLINE_PROPERTY_INDEX));
+        }
+    }
+
+    if (constructor->IsHole()) {
+        // 3. slowpath: Let C be ? Get(originalArray, "constructor").
+        JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
+        JSTaggedValue c = ObjectFastOperator::FastGetPropertyByValue(thread, originalValue.GetTaggedValue(),
+                                                                     constructorKey.GetTaggedValue());
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        constructor.Update(c);
+    }
+
+    // fastpath: if constructor is the default constructor. don't need check the realm.
+    // check the species of it.
+    if (constructor == env->GetArrayFunction() && constructor->IsECMAObject()) {
+        JSTaggedValue taggedCtor = constructor.GetTaggedValue();
+        JSHClass *chc = JSObject::Cast(taggedCtor)->GetJSHClass();
+        // if the hclass of constructor is the default Array Function hclass,
+        // the species must in the inline properties.
+        if LIKELY(chc == thread->GetBuiltinHClass(BuiltinTypeId::ARRAY)) {
+            JSTaggedValue species = GetConstructorOrSpeciesInlinedProp(taggedCtor, ARRAY_FUNCTION_SPECIES_INDEX);
+            if (species == globalConst->GetArraySpeciesAccessor()) {
+                // fast path: means using default constructor, do ArrayCreate directly.
+                return ArrayCreate(thread, length).GetTaggedValue();
             }
         }
     }
 
-    // If C is undefined, return ArrayCreate(length).
+    // 4. If IsConstructor(C) is true, then
+    if (constructor->IsConstructor()) {
+        // a. Let thisRealm be the current Realm Record.
+        // b. Let realmC be ? GetFunctionRealm(C).
+        JSHandle<GlobalEnv> realmC = JSObject::GetFunctionRealm(thread, constructor);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        // c. If thisRealm and realmC are not the same Realm Record, then
+        if (*realmC != *env) {
+            JSTaggedValue realmArrayConstructor = realmC->GetArrayFunction().GetTaggedValue();
+            // i. If SameValue(C, realmC.[[Intrinsics]].[[%Array%]]) is true, set C to undefined.
+            if (JSTaggedValue::SameValue(constructor.GetTaggedValue(), realmArrayConstructor)) {
+                constructor.Update(globalConst->GetUndefined());
+            }
+        }
+    }
+
+    // 5. slowpath: If Type(C) is Object, then
+    if (constructor->IsECMAObject()) {
+        // a. Set C to ? Get(C, @@species).
+        JSHandle<JSTaggedValue> speciesSymbol = env->GetSpeciesSymbol();
+        JSTaggedValue speciesConstructor = ObjectFastOperator::FastGetPropertyByValue(
+            thread, constructor.GetTaggedValue(), speciesSymbol.GetTaggedValue());
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        // b. If C is null, set C to undefined.
+        if (speciesConstructor.IsNull()) {
+            // fast path: use ArrayCreate instead pf set C to undefined.
+            return ArrayCreate(thread, length).GetTaggedValue();
+        }
+        constructor.Update(speciesConstructor);
+    }
+
+    // 6. If C is undefined, return ? ArrayCreate(length).
     if (constructor->IsUndefined()) {
         return JSArray::ArrayCreate(thread, length).GetTaggedValue();
     }
-    // If IsConstructor(C) is false, throw a TypeError exception.
+    // 7. If IsConstructor(C) is false, throw a TypeError exception.
     if (!constructor->IsConstructor()) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "Not a constructor", JSTaggedValue::Exception());
     }
-    // Return Construct(C, «length»).
+    // 8. Return ? Construct(C, « 𝔽(length)»).
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     EcmaRuntimeCallInfo *info =
         EcmaInterpreter::NewRuntimeCallInfo(thread, constructor, undefined, undefined, 1);
@@ -190,6 +232,24 @@ JSTaggedValue JSArray::ArraySpeciesCreate(JSThread *thread, const JSHandle<JSObj
     info->SetCallArg(JSTaggedValue(arrayLength));
     JSTaggedValue result = JSFunction::Construct(info);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+
+    // The abstract operation ArraySpeciesCreate takes arguments originalArray and length (a non-negative integer).
+    // It is used to specify the creation of a new Array object using a constructor function that is derived from
+    // originalArray. It performs the following steps when called:
+    // 1. Let isArray be ? IsArray(originalArray).
+    // 2. If isArray is false, return ? ArrayCreate(length).
+    // 3. Let C be ? Get(originalArray, "constructor").
+    // 4. If IsConstructor(C) is true, then
+    //      a. Let thisRealm be the current Realm Record.
+    //      b. Let realmC be ? GetFunctionRealm(C).
+    //      c. If thisRealm and realmC are not the same Realm Record, then
+    //          i. If SameValue(C, realmC.[[Intrinsics]].[[%Array%]]) is true, set C to undefined.
+    // 5. If Type(C) is Object, then
+    //      a. Set C to ? Get(C, @@species).
+    //      b. If C is null, set C to undefined.
+    // 6. If C is undefined, return ? ArrayCreate(length).
+    // 7. If IsConstructor(C) is false, throw a TypeError exception.
+    // 8. Return ? Construct(C, « 𝔽(length) »).
 
     // NOTEIf originalArray was created using the standard built-in Array constructor for
     // a Realm that is not the Realm of the running execution context, then a new Array is
@@ -850,4 +910,66 @@ bool JSArray::IsProtoNotChangeJSArray(JSThread *thread, const JSHandle<JSObject>
     }
     return false;
 }
-}  // namespace panda::ecmascript
+
+
+JSHandle<JSHClass> JSArray::CreateJSArrayPrototypeClass(const JSThread *thread, ObjectFactory *factory,
+                                                        JSHandle<JSTaggedValue> proto, uint32_t inlinedProps)
+{
+    const GlobalEnvConstants *globalConst = thread->GlobalConstants();
+    JSHandle<JSHClass> arrayClass = factory->NewEcmaHClass(JSArray::SIZE, inlinedProps, JSType::JS_ARRAY, proto);
+
+    uint32_t fieldOrder = 0;
+    ASSERT(JSArray::LENGTH_INLINE_PROPERTY_INDEX == fieldOrder);
+    JSHandle<LayoutInfo> layoutInfoHandle = factory->CreateLayoutInfo(inlinedProps);
+    {
+        PropertyAttributes attributes = PropertyAttributes::DefaultAccessor(true, false, false);
+        attributes.SetIsInlinedProps(true);
+        attributes.SetRepresentation(Representation::TAGGED);
+        attributes.SetOffset(fieldOrder++);
+        JSTaggedValue key = globalConst->GetLengthString();
+        layoutInfoHandle->AddKey(thread, JSArray::LENGTH_INLINE_PROPERTY_INDEX, key, attributes);
+    }
+    ASSERT(JSArray::CONSTRUCTOR_INLINE_PROPERTY_INDEX == fieldOrder);
+    {
+        PropertyAttributes attributes = PropertyAttributes::Default(true, false, true);
+        attributes.SetIsInlinedProps(true);
+        attributes.SetRepresentation(Representation::TAGGED);
+        attributes.SetOffset(fieldOrder++);
+        JSTaggedValue key = globalConst->GetConstructorString();
+        layoutInfoHandle->AddKey(thread, JSArray::CONSTRUCTOR_INLINE_PROPERTY_INDEX, key, attributes);
+    }
+    {
+        arrayClass->SetLayout(thread, layoutInfoHandle);
+        arrayClass->SetNumberOfProps(fieldOrder);
+    }
+    arrayClass->SetIsStableElements(true);
+    arrayClass->SetHasConstructor(false);
+
+    return arrayClass;
+}
+
+JSHandle<JSHClass> JSArray::CreateJSArrayFunctionClass(const JSThread *thread, ObjectFactory *factory,
+                                                       const JSHandle<GlobalEnv> &env)
+{
+    JSHandle<JSHClass> arrayFunctionClass =
+        factory->NewEcmaHClass(JSFunction::SIZE, JSArray::ARRAY_FUNCTION_INLINE_PROPERTY_NUM, JSType::JS_FUNCTION,
+                               env->GetFunctionPrototype());
+    arrayFunctionClass->SetConstructor(true);
+
+    uint32_t fieldOrder = 0;
+    JSHandle<LayoutInfo> layoutInfoHandle = factory->CreateLayoutInfo(1);
+    {
+        PropertyAttributes attributes = PropertyAttributes::DefaultAccessor(false, false, true);
+        attributes.SetIsInlinedProps(true);
+        attributes.SetRepresentation(Representation::TAGGED);
+        attributes.SetOffset(fieldOrder++);
+        JSTaggedValue key = env->GetSpeciesSymbol().GetTaggedValue();
+        layoutInfoHandle->AddKey(thread, JSArray::ARRAY_FUNCTION_SPECIES_INDEX, key, attributes);
+    }
+    {
+        arrayFunctionClass->SetLayout(thread, layoutInfoHandle);
+        arrayFunctionClass->SetNumberOfProps(fieldOrder);
+    }
+    return arrayFunctionClass;
+}
+} // namespace panda::ecmascript

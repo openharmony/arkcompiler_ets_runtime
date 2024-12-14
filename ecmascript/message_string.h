@@ -68,7 +68,8 @@ namespace panda::ecmascript {
     V(CreateDataPropertyFailed, "failed to create data property")                            \
     V(ValueIsNonSObject, "value is not a shared object")                                     \
     V(MapIteratorTypeError, "this value is not a map iterator")                              \
-    V(SetIteratorTypeError, "this value is not a set iterator")
+    V(SetIteratorTypeError, "this value is not a set iterator")                              \
+    V(LengthError, "length must be positive integer")
 
 #define DEBUG_CHECK_MESSAGE_STRING_LIST(V)                                                   \
     V(IsCallable)                                                                            \

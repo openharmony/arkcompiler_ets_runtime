@@ -27,8 +27,13 @@ enum class ArrayMode : uint8_t { UNDEFINED = 0, DICTIONARY, LITERAL };
 // ecma6 9.4.2 Array Exotic Object
 class JSArray : public JSObject {
 public:
+    // array instance property:
     static constexpr int LENGTH_INLINE_PROPERTY_INDEX = 0;
-
+    // array prototype property:
+    static constexpr int CONSTRUCTOR_INLINE_PROPERTY_INDEX = 1;
+    // array constructor property:
+    static constexpr int ARRAY_FUNCTION_INLINE_PROPERTY_NUM = 7;
+    static constexpr int ARRAY_FUNCTION_SPECIES_INDEX = 0;
     CAST_CHECK(JSArray, IsJSArray);
 
     static PUBLIC_API JSHandle<JSTaggedValue> ArrayCreate(JSThread *thread, JSTaggedNumber length,
@@ -36,6 +41,7 @@ public:
     static JSHandle<JSTaggedValue> ArrayCreate(JSThread *thread, JSTaggedNumber length,
                                                const JSHandle<JSTaggedValue> &newTarget,
                                                ArrayMode mode = ArrayMode::UNDEFINED);
+    static JSTaggedValue GetConstructorOrSpeciesInlinedProp(JSTaggedValue object, uint32_t inlinePropIndex);
     static JSTaggedValue ArraySpeciesCreate(JSThread *thread, const JSHandle<JSObject> &originalArray,
                                             JSTaggedNumber length);
     static bool ArraySetLength(JSThread *thread, const JSHandle<JSObject> &array, const PropertyDescriptor &desc);
@@ -141,6 +147,12 @@ public:
         const JSHandle<JSTaggedValue> &fn, int64_t startIdx, int64_t endIdx);
     static void MergeSortedElements(JSThread *thread, const JSHandle<TaggedArray> &elements,
         const JSHandle<JSTaggedValue> &fn, int64_t startIdx, int64_t middleIdx, int64_t endIdx);
+
+    static JSHandle<JSHClass> CreateJSArrayPrototypeClass(const JSThread *thread, ObjectFactory *factory,
+                                                          JSHandle<JSTaggedValue> proto, uint32_t inlinedProps);
+
+    static JSHandle<JSHClass> CreateJSArrayFunctionClass(const JSThread *thread, ObjectFactory *factory,
+                                                         const JSHandle<GlobalEnv> &env);
 
     template <class Callback>
     static JSTaggedValue ArrayCreateWithInit(JSThread *thread, uint32_t length, const Callback &cb)

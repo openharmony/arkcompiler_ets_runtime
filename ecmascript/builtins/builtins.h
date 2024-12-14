@@ -60,7 +60,8 @@ private:
     JSHandle<JSFunction> NewBuiltinConstructor(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &prototype,
                                                EcmaEntrypoint ctorFunc, std::string_view name, int length,
                                                kungfu::BuiltinsStubCSigns::ID builtinId =
-                                               kungfu::BuiltinsStubCSigns::INVALID) const;
+                                               kungfu::BuiltinsStubCSigns::INVALID,
+                                               JSHandle<JSHClass> hclass = JSHandle<JSHClass>()) const;
 
     JSHandle<JSFunction> NewBuiltinCjsCtor(const JSHandle<GlobalEnv> &env,
                                            const JSHandle<JSObject> &prototype, EcmaEntrypoint ctorFunc,
