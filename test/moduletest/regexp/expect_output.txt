@@ -102,7 +102,6 @@ true
 true
 true
 SyntaxError: Invalid regular expression :/[\p{}]/u
-SyntaxError: nothing to repeat
 a,b,c
 a,b,c
 a,b,c
@@ -145,14 +144,15 @@ true
 8
 true
 
+SyntaxError: nothing to repeat
 null
 [object Object]
-text/html
-text/plain
-text/html
 false
 false
 success
+text/html
+text/plain
+text/html
 false
 false
 
@@ -167,5 +167,33 @@ true
 true
 true
 true
+dgimsuy
+g
+gi
+gy
+gm
+gs
+gu
+dg
+g
+SyntaxError
+SyntaxError
+\[ ["["]
+\[ ["["]
+SyntaxError
+SyntaxError
+\\\[ ["\\["]
+\\\[ ["\\["]
+ab.defgzabCdefgzabCdefgzabCdefgzabCdefgzabCdefgzabCdefgzabCdefgz
+ab.defgzabCdefgzabCdefgzabCdefgzabCdefgzabCdefgzabCdefgzabCdefgz
+abCdefgxyzabCdefgzabCdefgzabCdefgzabCdefgzabCdefgzabCdefgzabCdefgz
+abxyzdefgzabCdefgzabCdefgzabCdefgzabCdefgzabCdefgzabCdefgzabCdefgz
+abxCyzdefgzabCdefgzabCdefgzabCdefgzabCdefgzabCdefgzabCdefgzabCdefgz
+abxCyzdefgzabCdefgzabCdefgzabCdefgzabCdefgzabCdefgzabCdefgzabCdefgz
+abCdefgzabCdefgzabCdefgzabCdefgzabCdefgzabCdefgzabCdefgzabCdefgz
+abCdefgzabCdefgzabCdefgzabCdefgzabCdefgzabCdefgzabCdefgzabCdefgz
+utf83这要替换"!
+3这要替换"!
+abcdefg3higk"!
 true
 true
