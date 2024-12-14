@@ -30,6 +30,7 @@ void DaemonThread::CreateNewInstance()
     ASSERT(instance_ == nullptr);
     instance_ = new DaemonThread();
     instance_->StartRunning();
+    instance_->EnsureRunning();
 }
 
 DaemonThread *DaemonThread::GetInstance()
@@ -51,15 +52,19 @@ void DaemonThread::StartRunning()
     ASSERT(thread_ == nullptr);
     ASSERT(!IsRunning());
     ASSERT(tasks_.empty());
-    Taskpool::GetCurrentTaskpool()->Initialize();
     ASSERT(GetThreadId() == 0);
     thread_ = std::make_unique<std::thread>([this] {this->Run();});
+    Taskpool::GetCurrentTaskpool()->Initialize();
+}
+
+void DaemonThread::EnsureRunning() const
+{
     // Wait until daemon thread is running.
     while (!IsRunning());
+    ASSERT(GetThreadId() != 0);
 #ifdef ENABLE_QOS
     OHOS::QOS::SetQosForOtherThread(OHOS::QOS::QosLevel::QOS_USER_INITIATED, GetThreadId());
 #endif
-    ASSERT(GetThreadId() != 0);
 }
 
 bool DaemonThread::IsRunning() const

@@ -130,12 +130,12 @@ void EcmaVM::PostFork()
     RandomGenerator::InitRandom(GetAssociatedJSThread());
     heap_->SetHeapMode(HeapMode::SHARE);
     GetAssociatedJSThread()->PostFork();
+    DaemonThread::GetInstance()->StartRunning();
     Taskpool::GetCurrentTaskpool()->Initialize();
     SetPostForked(true);
     LOG_ECMA(INFO) << "multi-thread check enabled: " << GetThreadCheckStatus();
     SignalAllReg();
     SharedHeap::GetInstance()->EnableParallelGC(GetJSOptions());
-    DaemonThread::GetInstance()->StartRunning();
     heap_->EnableParallelGC();
     options_.SetPgoForceDump(false);
     std::string bundleName = PGOProfilerManager::GetInstance()->GetBundleName();
@@ -145,10 +145,6 @@ void EcmaVM::PostFork()
     processStartRealtime_ = InitializeStartRealTime();
 
     Jit::GetInstance()->SetJitEnablePostFork(this, bundleName);
-#ifdef ENABLE_POSTFORK_FORCEEXPAND
-    heap_->NotifyPostFork();
-    heap_->NotifyFinishColdStartSoon();
-#endif
     ModuleLogger *moduleLogger = thread_->GetCurrentEcmaContext()->GetModuleLogger();
     if (moduleLogger != nullptr) {
         moduleLogger->PostModuleLoggerTask(thread_->GetThreadId(), this);
@@ -161,6 +157,11 @@ void EcmaVM::PostFork()
     if (startIdleMonitor != nullptr) {
         startIdleMonitor();
     }
+    DaemonThread::GetInstance()->EnsureRunning();
+#ifdef ENABLE_POSTFORK_FORCEEXPAND
+    heap_->NotifyPostFork();
+    heap_->NotifyFinishColdStartSoon();
+#endif
 }
 
 EcmaVM::EcmaVM(JSRuntimeOptions options, EcmaParamConfiguration config)
