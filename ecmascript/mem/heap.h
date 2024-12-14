@@ -84,12 +84,6 @@ enum class IdleTaskType : uint8_t {
     INCREMENTAL_MARK
 };
 
-enum class MarkType : uint8_t {
-    MARK_EDEN,
-    MARK_YOUNG,
-    MARK_FULL
-};
-
 enum class MemGrowingType : uint8_t {
     HIGH_THROUGHPUT,
     CONSERVATIVE,
@@ -185,6 +179,8 @@ public:
     virtual GCStats *GetEcmaGCStats() = 0;
 
     virtual bool ObjectExceedMaxHeapSize() const = 0;
+
+    virtual void UpdateHeapStatsAfterGC(TriggerGCType gcType) = 0;
 
     MarkType GetMarkType() const
     {
@@ -295,18 +291,6 @@ public:
     size_t GetHeapAliveSizeAfterGC() const
     {
         return heapAliveSizeAfterGC_;
-    }
-
-    void UpdateHeapStatsAfterGC(TriggerGCType gcType)
-    {
-        if (gcType == TriggerGCType::EDEN_GC || gcType == TriggerGCType::YOUNG_GC) {
-            return;
-        }
-        heapAliveSizeAfterGC_ = GetHeapObjectSize();
-        fragmentSizeAfterGC_ = GetCommittedSize() - GetHeapObjectSize();
-        if (gcType == TriggerGCType::FULL_GC || gcType == TriggerGCType::SHARED_FULL_GC) {
-            heapBasicLoss_ = fragmentSizeAfterGC_;
-        }
     }
 
     size_t GetFragmentSizeAfterGC() const
@@ -862,6 +846,8 @@ public:
 
     inline void ProcessSharedNativeDelete(const WeakRootVisitor& visitor);
     inline void PushToSharedNativePointerList(JSNativePointer* pointer);
+
+    void UpdateHeapStatsAfterGC(TriggerGCType gcType) override;
 
     class SharedGCScope {
     public:
@@ -1648,6 +1634,13 @@ public:
         return nativePointerList_.size();
     }
 
+    size_t GetHeapAliveSizeExcludesYoungAfterGC() const
+    {
+        return heapAliveSizeExcludesYoungAfterGC_;
+    }
+
+    void UpdateHeapStatsAfterGC(TriggerGCType gcType) override;
+
 private:
 
     static constexpr int MIN_JSDUMP_THRESHOLDS = 85;
@@ -1876,6 +1869,7 @@ private:
     size_t nativeSizeOvershoot_ {0};
     size_t asyncClearNativePointerThreshold_ {0};
     size_t nativeSizeAfterLastGC_ {0};
+    size_t heapAliveSizeExcludesYoungAfterGC_ {0};
     size_t nativeBindingSizeAfterLastGC_ {0};
     size_t newAllocatedSharedObjectSize_ {0};
     // recordObjectSize_ & recordNativeSize_:

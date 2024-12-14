@@ -1521,11 +1521,12 @@ public:
     };
 
     enum class ECMA_PUBLIC_API TRIGGER_IDLE_GC_TYPE : uint8_t {
-        LOCAL_CONCURRENT_MARK = 1,
-        LOCAL_REMARK = 1 << 1,
-        FULL_GC = 1 << 2,
-        SHARED_CONCURRENT_MARK = 1 << 3,
-        SHARED_FULL_GC = 1 << 4,
+        LOCAL_CONCURRENT_YOUNG_MARK = 1,
+        LOCAL_CONCURRENT_FULL_MARK = 1 << 1,
+        LOCAL_REMARK = 1 << 2,
+        FULL_GC = 1 << 3,
+        SHARED_CONCURRENT_MARK = 1 << 4,
+        SHARED_FULL_GC = 1 << 5,
     };
 
     enum class ECMA_PUBLIC_API MemoryReduceDegree : uint8_t {
@@ -1654,7 +1655,7 @@ public:
     static void NotifyNativeReturn(const EcmaVM *vm, const void *nativeAddress);
     static void NotifyLoadModule(const EcmaVM *vm);
     static void NotifyUIIdle(const EcmaVM *vm, int idleTime);
-    static void NotifyLooperIdleStart(const EcmaVM *vm, int64_t timestamp, int idleTime);
+    static bool NotifyLooperIdleStart(const EcmaVM *vm, int64_t timestamp, int idleTime);
     static void NotifyLooperIdleEnd(const EcmaVM *vm, int64_t timestamp);
     static bool IsJSMainThreadOfEcmaVM(const EcmaVM *vm);
     static void SetDeviceDisconnectCallback(EcmaVM *vm, DeviceDisconnectCallback cb);
