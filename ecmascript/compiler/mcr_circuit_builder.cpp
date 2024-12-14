@@ -780,12 +780,14 @@ GateRef CircuitBuilder::IsNotUndefinedOrHoleCheck(GateRef value)
     return ret;
 }
 
-GateRef CircuitBuilder::IsCallableCheck(GateRef func)
+GateRef CircuitBuilder::IsCallableCheck(GateRef func, GateRef frameState)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
-    auto frameState = acc_.FindNearestFrameState(currentDepend);
+    if (frameState == Circuit::NullGate()) {
+        frameState = acc_.FindNearestFrameState(currentDepend);
+    }
     GateRef ret = GetCircuit()->NewGate(circuit_->IsCallableCheck(),
                                         MachineType::I1,
                                         {currentControl, currentDepend, func, frameState},
