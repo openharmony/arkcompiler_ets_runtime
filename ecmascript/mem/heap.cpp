@@ -2620,6 +2620,8 @@ void Heap::PrintHeapInfo(TriggerGCType gcType) const
                  << "), ReadOnlySpace(" << readOnlySpace_->GetCommittedSize() << "/"
                  << readOnlySpace_->GetInitialCapacity() << "), AppspawnSpace(" << appSpawnSpace_->GetHeapObjectSize()
                  << "/" << appSpawnSpace_->GetCommittedSize() << "/" << appSpawnSpace_->GetInitialCapacity()
+                 << "), NativeBindingSize(" << nativeBindingSize_
+                 << "), NativeLimitSize(" << globalSpaceNativeLimit_
                  << "), GlobalLimitSize(" << globalSpaceAllocLimit_ << ").";
 }
 

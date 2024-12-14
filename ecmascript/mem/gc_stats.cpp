@@ -58,6 +58,7 @@ void GCStats::PrintGCStatistic()
         // print verbose gc statsistics
         PrintVerboseGCStatistic();
     }
+    GCFinishTrace();
     InitializeRecordList();
 }
 
@@ -106,6 +107,21 @@ void GCStats::PrintVerboseGCStatistic()
     PrintGCDurationStatistic();
     PrintGCMemoryStatistic();
     PrintGCSummaryStatistic();
+}
+
+void GCStats::GCFinishTrace()
+{
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "PartialGC::Finish" + std::to_string(heap_->IsConcurrentFullMark())
+    + ";Reason" + std::to_string(static_cast<int>(reason_))
+    + ";Sensitive" + std::to_string(static_cast<int>(heap_->GetSensitiveStatus()))
+    + ";IsInBackground" + std::to_string(heap_->IsInBackground())
+    + ";Startup" + std::to_string(heap_->OnStartupEvent())
+    + ";ConMark" + std::to_string(static_cast<int>(heap_->GetJSThread()->GetMarkStatus()))
+    + ";Young" + std::to_string(heap_->GetNewSpace()->GetCommittedSize())
+    + ";Old" + std::to_string(heap_->GetOldSpace()->GetCommittedSize())
+    + ";TotalCommit" + std::to_string(heap_->GetCommittedSize())
+    + ";NativeBindingSize" + std::to_string(heap_->GetNativeBindingSize())
+    + ";NativeLimitSize" + std::to_string(heap_->GetGlobalSpaceNativeLimit()));
 }
 
 void GCStats::PrintGCMemoryStatistic()
@@ -160,6 +176,8 @@ void GCStats::PrintGCMemoryStatistic()
                     << STATS_DATA_FORMAT(sizeToMB(nativeAreaAllocator->GetNativeMemoryUsage())) << "MB\n"
                     << STATS_DESCRIPTION_FORMAT("NativeBindingSize:")
                     << STATS_DATA_FORMAT(sizeToKB(heap_->GetNativeBindingSize())) << "KB\n"
+                    << STATS_DESCRIPTION_FORMAT("NativeLimitSize:")
+                    << STATS_DATA_FORMAT(sizeToKB(heap_->GetGlobalSpaceNativeLimit())) << "KB\n"
                     << STATS_DESCRIPTION_FORMAT("ArrayBufferNativeSize:")
                     << STATS_DATA_FORMAT(sizeToKB(heap_->GetNativeAreaAllocator()->GetArrayBufferNativeSize()))
                     << "KB\n"
@@ -649,7 +667,24 @@ void SharedGCStats::PrintGCStatistic()
         PrintGCMemoryStatistic();
         PrintSharedGCSummaryStatistic();
     }
+    SharedGCFinishTrace();
     InitializeRecordList();
+}
+
+void SharedGCStats::SharedGCFinishTrace()
+{
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedGC::Finish;Reason"
+        + std::to_string(static_cast<int>(reason_))
+        + ";Sensitive" + std::to_string(static_cast<int>(sHeap_->GetSensitiveStatus()))
+        + ";IsInBackground" + std::to_string(sHeap_->IsInBackground())
+        + ";Startup" + std::to_string(sHeap_->OnStartupEvent())
+        + ";Old" + std::to_string(sHeap_->GetOldSpace()->GetCommittedSize())
+        + ";huge" + std::to_string(sHeap_->GetHugeObjectSpace()->GetCommittedSize())
+        + ";NonMov" + std::to_string(sHeap_->GetNonMovableSpace()->GetCommittedSize())
+        + ";TotCommit" + std::to_string(sHeap_->GetCommittedSize())
+        + ";NativeBindingSize" + std::to_string(sHeap_->GetNativeSizeAfterLastGC())
+        + ";NativeLimitGC" + std::to_string(sHeap_->GetNativeSizeTriggerSharedGC())
+        + ";NativeLimitCM" + std::to_string(sHeap_->GetNativeSizeTriggerSharedCM()));
 }
 
 void SharedGCStats::PrintSharedGCSummaryStatistic()

@@ -1499,6 +1499,11 @@ public:
         return nativeBindingSize_;
     }
 
+    size_t GetGlobalSpaceNativeLimit() const
+    {
+        return globalSpaceNativeLimit_;
+    }
+
     size_t GetNativeBindingSizeAfterLastGC() const
     {
         return nativeBindingSizeAfterLastGC_;

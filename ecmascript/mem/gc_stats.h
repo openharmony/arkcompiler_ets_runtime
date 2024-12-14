@@ -223,6 +223,7 @@ protected:
     GCType GetGCType(TriggerGCType gcType);
     void InitializeRecordList();
     float GetConcurrrentMarkDuration();
+    void GCFinishTrace();
 
     int GetRecordDurationIndex(RecordDuration durationIdx)
     {
@@ -335,6 +336,7 @@ public:
 private:
     void PrintSharedGCDuration();
     void PrintSharedGCSummaryStatistic();
+    void SharedGCFinishTrace();
 
     const SharedHeap *sHeap_ {nullptr};
     bool enableGCTracer_ {false};
