@@ -90,6 +90,16 @@ public:
         return isDebugApp_;
     }
 
+    void SetFaApp(bool isFaApp)
+    {
+        isFaApp_ = isFaApp;
+    }
+    
+    bool GetFaApp() const
+    {
+        return isFaApp_;
+    }
+
     void SetMixedStackEnabled(bool mixedStackEnabled)
     {
         isMixedStackEnabled_ = mixedStackEnabled;
@@ -258,6 +268,7 @@ public:
 private:
     bool isDebugMode_ {false};
     bool isDebugApp_ {false};
+    bool isFaApp_ {false};
     bool isMixedDebugEnabled_ { false };
     bool isMixedStackEnabled_ { false };
     bool isSignalInterrupt_ {false};
