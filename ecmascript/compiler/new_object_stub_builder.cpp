@@ -1380,16 +1380,20 @@ void NewObjectStubBuilder::NewJSArrayLiteral(Variable *result, Label *exit, Regi
                                TruncInt64ToInt32(size_), MemoryAttribute::NoBarrier());
     Bind(&afterInitialize);
     GateRef hashOffset = IntPtr(ECMAObject::HASH_OFFSET);
-    Store(VariableType::INT64(), glue_, result->ReadVariable(), hashOffset, Int64(JSTaggedValue(0).GetRawData()));
+    Store(VariableType::INT64(), glue_, result->ReadVariable(), hashOffset, Int64(JSTaggedValue(0).GetRawData()),
+          MemoryAttribute::NoBarrier());
 
     GateRef propertiesOffset = IntPtr(JSObject::PROPERTIES_OFFSET);
     GateRef elementsOffset = IntPtr(JSObject::ELEMENTS_OFFSET);
     GateRef lengthOffset = IntPtr(JSArray::LENGTH_OFFSET);
     GateRef trackInfoOffset = IntPtr(JSArray::TRACK_INFO_OFFSET);
     if (isEmptyArray) {
-        Store(VariableType::JS_POINTER(), glue_, result->ReadVariable(), propertiesOffset, obj);
-        Store(VariableType::JS_POINTER(), glue_, result->ReadVariable(), elementsOffset, obj);
-        Store(VariableType::INT32(), glue_, result->ReadVariable(), lengthOffset, Int32(0));
+        Store(VariableType::JS_POINTER(), glue_, result->ReadVariable(), propertiesOffset, obj,
+              MemoryAttribute::NoBarrier());
+        Store(VariableType::JS_POINTER(), glue_, result->ReadVariable(), elementsOffset, obj,
+              MemoryAttribute::NoBarrier());
+        Store(VariableType::INT32(), glue_, result->ReadVariable(), lengthOffset, Int32(0),
+              MemoryAttribute::NoBarrier());
     } else {
         auto newProperties = Load(VariableType::JS_POINTER(), obj, propertiesOffset);
         Store(VariableType::JS_POINTER(), glue_, result->ReadVariable(), propertiesOffset, newProperties);
@@ -1398,7 +1402,8 @@ void NewObjectStubBuilder::NewJSArrayLiteral(Variable *result, Label *exit, Regi
         Store(VariableType::JS_POINTER(), glue_, result->ReadVariable(), elementsOffset, newElements);
 
         GateRef arrayLength = Load(VariableType::INT32(), obj, lengthOffset);
-        Store(VariableType::INT32(), glue_, result->ReadVariable(), lengthOffset, arrayLength);
+        Store(VariableType::INT32(), glue_, result->ReadVariable(), lengthOffset, arrayLength,
+              MemoryAttribute::NoBarrier());
     }
     Store(VariableType::JS_POINTER(), glue_, result->ReadVariable(), trackInfoOffset, trackInfo);
 
@@ -1628,7 +1633,7 @@ void NewObjectStubBuilder::InitializeTaggedArrayWithSpeicalValue(Label *exit,
     auto dataOffset = Int32Add(offset, Int32(TaggedArray::DATA_OFFSET));
     offset = Int32Mul(length, Int32(JSTaggedValue::TaggedTypeSize()));
     auto endOffset = Int32Add(offset, Int32(TaggedArray::DATA_OFFSET));
-    InitializeWithSpeicalValue(exit, array, value, dataOffset, endOffset);
+    InitializeWithSpeicalValue(exit, array, value, dataOffset, endOffset, MemoryAttribute::NoBarrier());
 }
 
 void NewObjectStubBuilder::InitializeObject(Variable *result)
@@ -1636,7 +1641,8 @@ void NewObjectStubBuilder::InitializeObject(Variable *result)
     auto emptyArray =
         GetGlobalConstantValue(VariableType::JS_POINTER(), glue_, ConstantIndex::EMPTY_ARRAY_OBJECT_INDEX);
     GateRef hashOffset = IntPtr(ECMAObject::HASH_OFFSET);
-    Store(VariableType::INT64(), glue_, result->ReadVariable(), hashOffset, Int64(JSTaggedValue(0).GetRawData()));
+    Store(VariableType::INT64(), glue_, result->ReadVariable(), hashOffset, Int64(JSTaggedValue(0).GetRawData()),
+          MemoryAttribute::NoBarrier());
     SetPropertiesArray(VariableType::INT64(), glue_, result->ReadVariable(), emptyArray, MemoryAttribute::NoBarrier());
     SetElementsArray(VariableType::INT64(), glue_, result->ReadVariable(), emptyArray, MemoryAttribute::NoBarrier());
 }
@@ -2436,7 +2442,7 @@ void NewObjectStubBuilder::NewByteArray(Variable *result, Label *exit, GateRef e
         auto startOffset = Int32(ByteArray::DATA_OFFSET);
         static_assert(static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT) == 8);
         InitializeWithSpeicalValue(&initializeExit, result->ReadVariable(), Int64(0), startOffset,
-                                   TruncPtrToInt32(size));
+                                   TruncPtrToInt32(size), MemoryAttribute::NoBarrier());
         Bind(&initializeExit);
         Store(VariableType::INT32(), glue_, result->ReadVariable(), IntPtr(ByteArray::ARRAY_LENGTH_OFFSET), length);
         Store(VariableType::INT32(), glue_, result->ReadVariable(), IntPtr(ByteArray::BYTE_LENGTH_OFFSET), elementSize);

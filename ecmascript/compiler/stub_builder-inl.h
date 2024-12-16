@@ -3316,7 +3316,7 @@ inline void StubBuilder::SetCompiledCodeFlagToFunction(GateRef glue, GateRef fun
 
     GateRef mask = Int32(JSFunctionBase::COMPILED_CODE_FASTCALL_BITS << JSFunctionBase::IsCompiledCodeBit::START_BIT);
     GateRef newVal = Int32Or(Int32And(oldVal, Int32Not(mask)), value);
-    Store(VariableType::INT32(), glue, function, bitFieldOffset, newVal);
+    Store(VariableType::INT32(), glue, function, bitFieldOffset, newVal, MemoryAttribute::NoBarrier());
 }
 
 inline void StubBuilder::SetCompiledFuncEntry(GateRef glue, GateRef jsFunc, GateRef codeEntry, GateRef isFastCall)
@@ -3690,7 +3690,8 @@ inline void StubBuilder::SetExtensibleToBitfield(GateRef glue, GateRef obj, bool
     GateRef encodeValue = Int32LSL(boolToInt32, Int32(JSHClass::ExtensibleBit::START_BIT));
     GateRef mask = Int32(((1LU << JSHClass::ExtensibleBit::SIZE) - 1) << JSHClass::ExtensibleBit::START_BIT);
     bitfield = Int32Or(Int32And(bitfield, Int32Not(mask)), encodeValue);
-    Store(VariableType::INT32(), glue, jsHclass, IntPtr(JSHClass::BIT_FIELD_OFFSET), bitfield);
+    Store(VariableType::INT32(), glue, jsHclass, IntPtr(JSHClass::BIT_FIELD_OFFSET), bitfield,
+        MemoryAttribute::NoBarrier());
 }
 
 inline void StubBuilder::SetCallableToBitfield(GateRef glue, GateRef obj, bool isCallable)
@@ -3702,7 +3703,8 @@ inline void StubBuilder::SetCallableToBitfield(GateRef glue, GateRef obj, bool i
     GateRef encodeValue = Int32LSL(boolToInt32, Int32(JSHClass::CallableBit::START_BIT));
     GateRef mask = Int32(((1LU << JSHClass::CallableBit::SIZE) - 1) << JSHClass::CallableBit::START_BIT);
     bitfield = Int32Or(Int32And(bitfield, Int32Not(mask)), encodeValue);
-    Store(VariableType::INT32(), glue, jsHclass, IntPtr(JSHClass::BIT_FIELD_OFFSET), bitfield);
+    Store(VariableType::INT32(), glue, jsHclass, IntPtr(JSHClass::BIT_FIELD_OFFSET), bitfield,
+        MemoryAttribute::NoBarrier());
 }
 
 inline void StubBuilder::Comment(GateRef glue, const std::string &str)

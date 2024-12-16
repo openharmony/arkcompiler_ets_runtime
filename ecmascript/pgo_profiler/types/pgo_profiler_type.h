@@ -163,7 +163,7 @@ public:
         return static_cast<int32_t>(Type::HEAP_OBJECT);
     }
 
-    static int32_t UndefineOrNullType()
+    static int32_t UndefinedOrNullType()
     {
         return static_cast<int32_t>(Type::UNDEFINED_OR_NULL);
     }
@@ -390,6 +390,11 @@ public:
     bool IsHeapObject() const
     {
         return type_.index() == 0 && GetPrimitiveType() == Type::HEAP_OBJECT;
+    }
+
+    bool IsUndefinedOrNull() const
+    {
+        return type_.index() == 0 && GetPrimitiveType() == Type::UNDEFINED_OR_NULL;
     }
 
     bool IsNumber() const
@@ -1230,6 +1235,11 @@ public:
     bool IsBoolean() const
     {
         return GetPGOSampleType()->IsBoolean();
+    }
+
+    bool IsUndefinedOrNull() const
+    {
+        return GetPGOSampleType()->IsUndefinedOrNull();
     }
 
     bool IsString() const

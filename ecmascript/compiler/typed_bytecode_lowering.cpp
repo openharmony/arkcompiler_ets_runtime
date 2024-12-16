@@ -2123,7 +2123,7 @@ void TypedBytecodeLowering::LowerTypedCallthis1(GateRef gate)
     BuiltinsStubCSigns::ID pgoFuncId = tacc.TryGetPGOBuiltinMethodId();
     if (!IS_INVALID_ID(pgoFuncId) && IS_TYPED_BUILTINS_ID_CALL_THIS1(pgoFuncId)) {
         AddProfiling(gate);
-        SpeculateCallBuiltin(gate, tacc.GetFunc(), { tacc.GetArgs() }, pgoFuncId, true);
+        SpeculateCallBuiltin(gate, tacc.GetFunc(), { tacc.GetArgs() }, pgoFuncId, true, true);
         return;
     }
     if (!tacc.CanOptimizeAsFastCall()) {

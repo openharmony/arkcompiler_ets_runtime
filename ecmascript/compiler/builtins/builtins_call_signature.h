@@ -397,6 +397,7 @@ public:
                (BuiltinsStubCSigns::ID::StringIteratorProtoNext == builtinId) ||
                (BuiltinsStubCSigns::ID::ArrayIteratorProtoNext == builtinId) ||
                (BuiltinsStubCSigns::ID::ArraySort == builtinId) ||
+               (BuiltinsStubCSigns::ID::ArrayConcat == builtinId) ||
                (BuiltinsStubCSigns::ID::GlobalDecodeURIComponent == builtinId) ||
                ((BuiltinsStubCSigns::ID::TYPED_BUILTINS_FIRST <= builtinId) &&
                (builtinId <= BuiltinsStubCSigns::ID::TYPED_BUILTINS_LAST));
@@ -494,6 +495,7 @@ public:
             case BuiltinsStubCSigns::ID::StringIteratorProtoNext:
             case BuiltinsStubCSigns::ID::ArrayIteratorProtoNext:
             case BuiltinsStubCSigns::ID::IteratorProtoReturn:
+            case BuiltinsStubCSigns::ID::ArrayConcat:
             case BuiltinsStubCSigns::ID::ArraySort:
                 return true;
             default:
@@ -504,6 +506,7 @@ public:
     static bool IsTypedBuiltinCallThis1(ID builtinId)
     {
         switch (builtinId) {
+            case BuiltinsStubCSigns::ID::ArrayConcat:
             case BuiltinsStubCSigns::ID::JsonStringify:
             case BuiltinsStubCSigns::ID::StringLocaleCompare:
                 return true;
@@ -769,6 +772,8 @@ public:
                 return ConstantIndex::ARRAY_PUSH_INDEX;
             case BuiltinsStubCSigns::ID::ArraySlice:
                 return ConstantIndex::ARRAY_SLICE_INDEX;
+            case BuiltinsStubCSigns::ID::ArrayConcat:
+                return ConstantIndex::ARRAY_CONCAT_INDEX;
             case BuiltinsStubCSigns::ID::GlobalDecodeURIComponent:
                 return ConstantIndex::GLOBAL_DECODE_URI_COMPONENT;
             default:
