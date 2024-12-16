@@ -254,7 +254,8 @@ void JSArray::SetCapacity(JSThread *thread, const JSHandle<JSObject> &array,
 }
 
 void JSArray::TransformElementsKindAfterSetCapacity(JSThread *thread, const JSHandle<JSObject> &array,
-                                                    [[maybe_unused]] uint32_t oldLen, uint32_t newLen, bool isNew)
+                                                    [[maybe_unused]] uint32_t oldLen, uint32_t newLen,
+                                                    [[maybe_unused]] bool isNew)
 {
     // Update ElementsKind after reset array length.
     // Add this switch because we do not support ElementsKind for instance from new Array

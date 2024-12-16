@@ -124,7 +124,8 @@ public:
     static void SetCapacity(JSThread *thread, const JSHandle<JSObject> &array, uint32_t oldLen, uint32_t newLen,
                             bool isNew = false);
     static void TransformElementsKindAfterSetCapacity(JSThread *thread, const JSHandle<JSObject> &array,
-                                                      [[maybe_unused]] uint32_t oldLen, uint32_t newLen, bool isNew);
+                                                      [[maybe_unused]] uint32_t oldLen, uint32_t newLen,
+                                                      [[maybe_unused]] bool isNew);
     static void SortElements(JSThread *thread, const JSHandle<TaggedArray> &elements,
                              const JSHandle<JSTaggedValue> &fn);
     static void SortElementsByObject(JSThread *thread, const JSHandle<JSObject> &thisObjHandle,
