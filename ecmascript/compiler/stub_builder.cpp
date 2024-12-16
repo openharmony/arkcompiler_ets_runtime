@@ -2606,7 +2606,7 @@ GateRef StubBuilder::LoadElement(GateRef glue, GateRef receiver, GateRef key)
         Bind(&lengthLessIndex);
         Jump(&exit);
         Bind(&lengthNotLessIndex);
-        result = GetTaggedValueWithElementsKind(receiver, index);
+        result = GetTaggedValueWithElementsKind(glue, receiver, index);
         Jump(&exit);
     }
     Bind(&exit);
@@ -3355,7 +3355,7 @@ GateRef StubBuilder::GetPropertyByIndex(GateRef glue, GateRef receiver,
                     DEFVARIABLE(value, VariableType::JS_ANY(), Hole());
                     Label notHole(env);
                     Label isHole(env);
-                    value = GetTaggedValueWithElementsKind(*holder, index);
+                    value = GetTaggedValueWithElementsKind(glue, *holder, index);
                     BRANCH(TaggedIsNotHole(*value), &notHole, &isHole);
                     Bind(&notHole);
                     {
@@ -4278,7 +4278,7 @@ GateRef StubBuilder::SetPropertyByIndex(GateRef glue, GateRef receiver, GateRef 
                 }
                 Bind(&inRange);
                 {
-                    GateRef value1 = GetTaggedValueWithElementsKind(*holder, index);
+                    GateRef value1 = GetTaggedValueWithElementsKind(glue, *holder, index);
                     Label notHole(env);
                     if (useOwn) {
                         BRANCH(Int64NotEqual(value1, Hole()), &notHole, &ifEnd);
@@ -4481,7 +4481,7 @@ GateRef StubBuilder::DefinePropertyByIndex(GateRef glue, GateRef receiver, GateR
                 BRANCH(Int64LessThan(index, length), &inRange, &ifEnd);
                 Bind(&inRange);
                 {
-                    GateRef value1 = GetTaggedValueWithElementsKind(*holder, index);
+                    GateRef value1 = GetTaggedValueWithElementsKind(glue, *holder, index);
                     Label notHole(env);
                     BRANCH(Int64NotEqual(value1, Hole()), &notHole, &ifEnd);
                     Bind(&notHole);
@@ -8145,7 +8145,7 @@ GateRef StubBuilder::IsSlowKeysObject(GateRef obj)
     return ret;
 }
 
-GateRef StubBuilder::GetNumberOfElements(GateRef obj)
+GateRef StubBuilder::GetNumberOfElements(GateRef glue, GateRef obj)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -8185,7 +8185,7 @@ GateRef StubBuilder::GetNumberOfElements(GateRef obj)
             BRANCH(Int32UnsignedLessThan(*i, elementsLen), &iLessLength, &exit);
             Bind(&iLessLength);
             {
-                GateRef element = GetTaggedValueWithElementsKind(obj, *i);
+                GateRef element = GetTaggedValueWithElementsKind(glue, obj, *i);
                 BRANCH(TaggedIsHole(element), &loopEnd, &notHole);
                 Bind(&notHole);
                 numOfElements = Int32Add(*numOfElements, Int32(1));
@@ -8209,7 +8209,7 @@ GateRef StubBuilder::GetNumberOfElements(GateRef obj)
     return ret;
 }
 
-GateRef StubBuilder::IsSimpleEnumCacheValid(GateRef obj)
+GateRef StubBuilder::IsSimpleEnumCacheValid(GateRef glue, GateRef obj)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -8220,7 +8220,7 @@ GateRef StubBuilder::IsSimpleEnumCacheValid(GateRef obj)
 
     Label receiverHasNoElements(env);
 
-    GateRef numOfElements = GetNumberOfElements(obj);
+    GateRef numOfElements = GetNumberOfElements(glue, obj);
     BRANCH(Int32GreaterThan(numOfElements, Int32(0)), &exit, &receiverHasNoElements);
     Bind(&receiverHasNoElements);
     {
@@ -8233,7 +8233,7 @@ GateRef StubBuilder::IsSimpleEnumCacheValid(GateRef obj)
         BRANCH(TaggedIsHeapObject(*current), &loopHead, &afterLoop);
         LoopBegin(&loopHead);
         {
-            GateRef numOfCurrentElements = GetNumberOfElements(*current);
+            GateRef numOfCurrentElements = GetNumberOfElements(glue, *current);
             BRANCH(Int32GreaterThan(numOfCurrentElements, Int32(0)), &exit, &currentHasNoElements);
             Bind(&currentHasNoElements);
             GateRef hclass = LoadHClass(*current);
@@ -8257,7 +8257,7 @@ GateRef StubBuilder::IsSimpleEnumCacheValid(GateRef obj)
     return ret;
 }
 
-GateRef StubBuilder::IsEnumCacheWithProtoChainInfoValid(GateRef obj)
+GateRef StubBuilder::IsEnumCacheWithProtoChainInfoValid(GateRef glue, GateRef obj)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -8271,7 +8271,7 @@ GateRef StubBuilder::IsEnumCacheWithProtoChainInfoValid(GateRef obj)
     Label isProtoChangeMarker(env);
     Label protoNotChanged(env);
 
-    GateRef numOfElements = GetNumberOfElements(obj);
+    GateRef numOfElements = GetNumberOfElements(glue, obj);
     BRANCH(Int32GreaterThan(numOfElements, Int32(0)), &exit, &receiverHasNoElements);
     Bind(&receiverHasNoElements);
     GateRef prototype = GetPrototypeFromHClass(LoadHClass(obj));
@@ -8291,7 +8291,7 @@ GateRef StubBuilder::IsEnumCacheWithProtoChainInfoValid(GateRef obj)
         BRANCH(TaggedIsHeapObject(*current), &loopHead, &afterLoop);
         LoopBegin(&loopHead);
         {
-            GateRef numOfCurrentElements = GetNumberOfElements(*current);
+            GateRef numOfCurrentElements = GetNumberOfElements(glue, *current);
             BRANCH(Int32GreaterThan(numOfCurrentElements, Int32(0)), &exit, &currentHasNoElements);
             Bind(&currentHasNoElements);
             current = GetPrototypeFromHClass(LoadHClass(*current));
@@ -8337,14 +8337,14 @@ GateRef StubBuilder::TryGetEnumCache(GateRef glue, GateRef obj)
            &checkSimpleEnumCache, &notSimpleEnumCache);
     Bind(&checkSimpleEnumCache);
     {
-        BRANCH(IsSimpleEnumCacheValid(obj), &enumCacheValid, &exit);
+        BRANCH(IsSimpleEnumCacheValid(glue, obj), &enumCacheValid, &exit);
     }
     Bind(&notSimpleEnumCache);
     BRANCH(Int32Equal(kind, Int32(static_cast<int32_t>(EnumCacheKind::PROTOCHAIN))),
            &checkEnumCacheWithProtoChainInfo, &exit);
     Bind(&checkEnumCacheWithProtoChainInfo);
     {
-        BRANCH(IsEnumCacheWithProtoChainInfoValid(obj), &enumCacheValid, &exit);
+        BRANCH(IsEnumCacheWithProtoChainInfoValid(glue, obj), &enumCacheValid, &exit);
     }
     Bind(&enumCacheValid);
     {
@@ -9661,19 +9661,27 @@ void StubBuilder::RestoreElementsKindToGeneric(GateRef glue, GateRef jsHClass)
     SetElementsKindToJSHClass(glue, jsHClass, newKind);
 }
 
-GateRef StubBuilder::GetTaggedValueWithElementsKind(GateRef receiver, GateRef index)
+GateRef StubBuilder::GetTaggedValueWithElementsKind(GateRef glue, GateRef receiver, GateRef index)
 {
     auto env = GetEnvironment();
     Label entryPass(env);
     env->SubCfgEntry(&entryPass);
     DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
     Label exit(env);
-
-    GateRef hclass = LoadHClass(receiver);
-    DEFVARIABLE(elementsKind, VariableType::INT32(), GetElementsKindFromHClass(hclass));
+    Label enableMutantArray(env);
+    Label disableMutantArray(env);
     Label isMutantTaggedArray(env);
     Label isNotMutantTaggedArray(env);
     GateRef elements = GetElementsArray(receiver);
+    BRANCH_UNLIKELY(IsEnableMutantArray(glue), &enableMutantArray, &disableMutantArray);
+    Bind(&disableMutantArray);
+    {
+        result = GetValueFromTaggedArray(elements, index);
+        Jump(&exit);
+    }
+    Bind(&enableMutantArray);
+    GateRef hclass = LoadHClass(receiver);
+    DEFVARIABLE(elementsKind, VariableType::INT32(), GetElementsKindFromHClass(hclass));
     BRANCH(IsMutantTaggedArray(elements), &isMutantTaggedArray, &isNotMutantTaggedArray);
     Bind(&isNotMutantTaggedArray);
     {
@@ -9839,6 +9847,15 @@ GateRef StubBuilder::SetValueWithElementsKind(GateRef glue, GateRef receiver, Ga
     Label isMutantTaggedArray(env);
     Label isNotMutantTaggedArray(env);
     GateRef elements = GetElementsArray(receiver);
+    Label enableMutantArray(env);
+    Label disableMutantArray(env);
+    BRANCH_UNLIKELY(IsEnableMutantArray(glue), &enableMutantArray, &disableMutantArray);
+    Bind(&disableMutantArray);
+    {
+        SetValueToTaggedArray(VariableType::JS_ANY(), glue, elements, index, rawValue);
+        Jump(&exit);
+    }
+    Bind(&enableMutantArray);
     BRANCH(IsMutantTaggedArray(elements), &isMutantTaggedArray, &isNotMutantTaggedArray);
     Bind(&isNotMutantTaggedArray);
     {
@@ -9983,7 +10000,7 @@ GateRef StubBuilder::CopyJSArrayToTaggedArrayArgs(GateRef glue, GateRef srcObj)
             BRANCH(Int32UnsignedLessThan(*index, argvLength), &storeValue, &afterLoop);
             Bind(&storeValue);
             {
-                GateRef value = GetTaggedValueWithElementsKind(srcObj, *index);
+                GateRef value = GetTaggedValueWithElementsKind(glue, srcObj, *index);
                 SetValueToTaggedArray(VariableType::JS_ANY(), glue, argv, *index, value);
                 index = Int32Add(*index, Int32(1));
                 Jump(&loopEnd);

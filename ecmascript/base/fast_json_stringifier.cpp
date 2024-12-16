@@ -238,7 +238,7 @@ bool FastJsonStringifier::SerializeJSONObject(const JSHandle<JSTaggedValue> &val
         }
     } else {
         uint32_t numOfKeys = obj->GetNumberOfKeys();
-        uint32_t numOfElements = obj->GetNumberOfElements();
+        uint32_t numOfElements = obj->GetNumberOfElements(thread_);
         if (numOfKeys + numOfElements < CACHE_MINIMUN_SIZIE || !cacheable_) {
             if (numOfElements > 0) {
                 hasContent = DefaultSerializeElements(obj, hasContent);
@@ -403,9 +403,9 @@ bool FastJsonStringifier::TryCacheSerializeElements(const JSHandle<JSObject> &ob
     if (!ElementAccessor::IsDictionaryMode(obj)) {
         uint32_t elementsLen = ElementAccessor::GetElementsLength(obj);
         for (uint32_t i = 0; i < elementsLen; ++i) {
-            if (!ElementAccessor::Get(obj, i).IsHole()) {
+            if (!ElementAccessor::Get(thread_, obj, i).IsHole()) {
                 handleKey_.Update(JSTaggedValue(i));
-                handleValue_.Update(ElementAccessor::Get(obj, i));
+                handleValue_.Update(ElementAccessor::Get(thread_, obj, i));
                 hasContent = AppendJsonString(hasContent, strCache, i);
                 RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, false);
             }
@@ -450,9 +450,9 @@ bool FastJsonStringifier::SerializeElementsWithCache(const JSHandle<JSObject> &o
     if (!ElementAccessor::IsDictionaryMode(obj)) {
         uint32_t elementsLen = ElementAccessor::GetElementsLength(obj);
         for (uint32_t i = 0; i < elementsLen; ++i) {
-            if (!ElementAccessor::Get(obj, i).IsHole()) {
+            if (!ElementAccessor::Get(thread_, obj, i).IsHole()) {
                 CString key = strCache[cacheIndex++].first;
-                handleValue_.Update(ElementAccessor::Get(obj, i));
+                handleValue_.Update(ElementAccessor::Get(thread_, obj, i));
                 hasContent = FastAppendJsonString(hasContent, key);
                 RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, false);
             }
@@ -755,9 +755,9 @@ bool FastJsonStringifier::DefaultSerializeElements(const JSHandle<JSObject> &obj
     if (!ElementAccessor::IsDictionaryMode(obj)) {
         uint32_t elementsLen = ElementAccessor::GetElementsLength(obj);
         for (uint32_t i = 0; i < elementsLen; ++i) {
-            if (!ElementAccessor::Get(obj, i).IsHole()) {
+            if (!ElementAccessor::Get(thread_, obj, i).IsHole()) {
                 handleKey_.Update(JSTaggedValue(i));
-                handleValue_.Update(ElementAccessor::Get(obj, i));
+                handleValue_.Update(ElementAccessor::Get(thread_, obj, i));
                 hasContent = AppendJsonString(hasContent);
                 RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, false);
             }

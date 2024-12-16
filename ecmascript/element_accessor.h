@@ -25,8 +25,8 @@ namespace ecmascript {
 // ElementAccessor intends to replace all .GetElements and share the common following methods.
 class ElementAccessor {
 public:
-    static JSTaggedValue PUBLIC_API Get(JSHandle<JSObject> receiver, uint32_t idx);
-    static JSTaggedValue Get(JSObject *receiver, uint32_t idx);
+    static JSTaggedValue PUBLIC_API Get(const JSThread *thread, JSHandle<JSObject> receiver, uint32_t idx);
+    static JSTaggedValue Get(const JSThread *thread, JSObject *receiver, uint32_t idx);
     static JSTaggedValue PUBLIC_API FastGet(JSHandle<TaggedArray> elements, uint32_t idx, ElementsKind kind);
 
     template<typename T>

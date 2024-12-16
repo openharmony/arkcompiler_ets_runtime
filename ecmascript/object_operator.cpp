@@ -1023,7 +1023,7 @@ void ObjectOperator::LookupElementInlinedProps(const JSHandle<JSObject> &obj)
                 return;
             }
 
-            JSTaggedValue value = ElementAccessor::Get(obj, elementIndex_);
+            JSTaggedValue value = ElementAccessor::Get(thread_, obj, elementIndex_);
             if (value.IsHole()) {
                 return;
             }

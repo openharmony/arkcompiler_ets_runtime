@@ -836,7 +836,7 @@ JSTaggedValue BuiltinsSharedArray::GetElementByKey([[maybe_unused]] JSThread *th
         return JSTaggedValue::Undefined();
     }
 
-    return ElementAccessor::Get(thisObjHandle, index);
+    return ElementAccessor::Get(thread, thisObjHandle, index);
 }
 
 void BuiltinsSharedArray::SetElementValue(JSThread *thread, JSHandle<JSObject> arrHandle, uint32_t key,

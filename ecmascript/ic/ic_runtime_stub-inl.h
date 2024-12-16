@@ -122,7 +122,7 @@ ARK_INLINE JSTaggedValue ICRuntimeStub::TryLoadICByValue(JSThread *thread, JSTag
         auto hclass = receiver.GetTaggedObject()->GetClass();
         if (firstValue.GetWeakReferentUnChecked() == hclass) {
             if (HandlerBase::IsNormalElement(secondValue.GetNumber())) {
-                return LoadElement(JSObject::Cast(receiver.GetTaggedObject()), key);
+                return LoadElement(thread, JSObject::Cast(receiver.GetTaggedObject()), key);
             } else if (HandlerBase::IsTypedArrayElement(secondValue.GetNumber())) {
                 return LoadTypedArrayElement(thread, receiver, key);
             }
@@ -485,7 +485,7 @@ ARK_INLINE JSTaggedValue ICRuntimeStub::LoadICWithElementHandler(JSThread *threa
         auto handlerInfo = JSTaggedValue::UnwrapToUint64(handler);
         HandlerBase::PrintLoadHandler(handlerInfo, std::cout);
         if (HandlerBase::IsNormalElement(handlerInfo)) {
-            return LoadElement(JSObject::Cast(receiver.GetTaggedObject()), key);
+            return LoadElement(thread, JSObject::Cast(receiver.GetTaggedObject()), key);
         } else if (HandlerBase::IsTypedArrayElement(handlerInfo)) {
             return LoadTypedArrayElement(thread, receiver, key);
         }
@@ -495,7 +495,7 @@ ARK_INLINE JSTaggedValue ICRuntimeStub::LoadICWithElementHandler(JSThread *threa
     return JSTaggedValue::Hole();
 }
 
-ARK_INLINE JSTaggedValue ICRuntimeStub::LoadElement(JSObject *receiver, JSTaggedValue key)
+ARK_INLINE JSTaggedValue ICRuntimeStub::LoadElement(JSThread *thread, JSObject *receiver, JSTaggedValue key)
 {
     auto index = TryToElementsIndex(key);
     if (index < 0) {
@@ -506,7 +506,7 @@ ARK_INLINE JSTaggedValue ICRuntimeStub::LoadElement(JSObject *receiver, JSTagged
         return JSTaggedValue::Hole();
     }
 
-    JSTaggedValue value = ElementAccessor::Get(receiver, elementIndex);
+    JSTaggedValue value = ElementAccessor::Get(thread, receiver, elementIndex);
     // TaggedArray elements
     return value;
 }
