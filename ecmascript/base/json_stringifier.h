@@ -49,8 +49,20 @@ private:
 
     bool SerializeJSONObject(const JSHandle<JSTaggedValue> &value, const JSHandle<JSTaggedValue> &replacer);
 
+    bool SerializeJSONSharedMap(const JSHandle<JSTaggedValue> &value, const JSHandle<JSTaggedValue> &replacer);
+
+    bool SerializeJSONSharedSet(const JSHandle<JSTaggedValue> &value, const JSHandle<JSTaggedValue> &replacer);
+
+    bool SerializeJSONMap(const JSHandle<JSTaggedValue> &value, const JSHandle<JSTaggedValue> &replacer);
+
+    bool SerializeJSONSet(const JSHandle<JSTaggedValue> &value, const JSHandle<JSTaggedValue> &replacer);
+
+    bool SerializeJSONHashMap(const JSHandle<JSTaggedValue> &value, const JSHandle<JSTaggedValue> &replacer);
+
+    bool SerializeJSONHashSet(const JSHandle<JSTaggedValue> &value, const JSHandle<JSTaggedValue> &replacer);
+
     bool SerializeJSArray(const JSHandle<JSTaggedValue> &value, const JSHandle<JSTaggedValue> &replacer);
-    
+
     bool SerializeJSProxy(const JSHandle<JSTaggedValue> &object, const JSHandle<JSTaggedValue> &replacer);
 
     void SerializePrimitiveRef(const JSHandle<JSTaggedValue> &primitiveRef);
