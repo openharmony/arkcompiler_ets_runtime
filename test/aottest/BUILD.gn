@@ -144,6 +144,7 @@ group("ark_aot_ts_test") {
     "exp",
     "extends_builtins",
     "fast_call_builtins",
+    "fast_call_func_check",
     "frame_iteration",
     "frame_states",
     "forin_delete_property",
