@@ -42,3 +42,8 @@ true
 TypeError
 true
 TypeError: stack contains value, usually caused by circular structure
+{
+          "name": "abc",
+          "age": 123,
+          "city": "Shanghai"
+}

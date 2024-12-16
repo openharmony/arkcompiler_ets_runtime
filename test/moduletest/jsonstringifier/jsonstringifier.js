@@ -257,3 +257,10 @@ try {
 } catch (err) {
     print(err);
 }
+
+const testspaceobj = {
+  name: "abc",
+  age: 123,
+  city: "Shanghai"
+};
+print(JSON.stringify(testspaceobj, null, Infinity));
