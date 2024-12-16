@@ -50,6 +50,7 @@ void MethodLiteral::Initialize(const JSPandaFile *jsPandaFile, const JSThread *t
 
     uint32_t callType = UINT32_MAX;  // UINT32_MAX means not found
     uint32_t slotSize = 0;
+    uint32_t expectedPropertyCount = MAX_EXPECTED_PROPERTY_COUNT; // MAX_EXPECTED_PROPERTY_COUNT means not found
     mda.EnumerateAnnotations([&](EntityId annotationId) {
         panda_file::AnnotationDataAccessor ada(*pf, annotationId);
         auto *annotationName = reinterpret_cast<const char *>(pf->GetStringData(ada.GetClassId()).data);
@@ -71,6 +72,15 @@ void MethodLiteral::Initialize(const JSPandaFile *jsPandaFile, const JSThread *t
                     slotSize = adae.GetScalarValue().GetValue();
                 }
             }
+        } else if (::strcmp("L_ESExpectedPropertyCountAnnotation;", annotationName) == 0) {
+            uint32_t elemCount = ada.GetCount();
+            for (uint32_t i = 0; i < elemCount; i++) {
+                panda_file::AnnotationDataAccessor::Elem adae = ada.GetElement(i);
+                auto *elemName = reinterpret_cast<const char *>(pf->GetStringData(adae.GetNameId()).data);
+                if (::strcmp("ExpectedPropertyCount", elemName) == 0) {
+                    expectedPropertyCount = adae.GetScalarValue().GetValue();
+                }
+            }
         }
     });
 
@@ -85,6 +95,7 @@ void MethodLiteral::Initialize(const JSPandaFile *jsPandaFile, const JSThread *t
                  NumArgsBits::Encode(numArgs - HaveFuncBit::Decode(callType)  // exclude func
                                              - HaveNewTargetBit::Decode(callType)  // exclude new target
                                              - HaveThisBit::Decode(callType));  // exclude this
+    SetExpectedPropertyCount(expectedPropertyCount);
     SetSlotSize(slotSize);
 }
 

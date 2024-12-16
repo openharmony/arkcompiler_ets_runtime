@@ -368,6 +368,7 @@ public:
     bool IsSendableOrConcurrentFunction() const;
     bool IsSharedFunction() const;
 
+    static uint32_t CalcuExpotedOfProperties(const JSHandle<JSFunction> &fun, bool *isStartSlackTracking);
     static void InitializeJSFunction(JSThread *thread, const JSHandle<JSFunction> &func,
                                      FunctionKind kind = FunctionKind::NORMAL_FUNCTION);
     static void InitializeSFunction(JSThread *thread, const JSHandle<JSFunction> &func,

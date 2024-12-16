@@ -38,6 +38,12 @@ namespace panda::ecmascript {
 
 #define ENABLE_NEXT_OPTIMIZATION 1
 
+#if ENABLE_NEXT_OPTIMIZATION
+    #define NEXT_OPTIMIZATION_BOOL true
+#else
+    #define NEXT_OPTIMIZATION_BOOL false
+#endif
+
 #ifndef NDEBUG
 #define ECMASCRIPT_ENABLE_INTERPRETER_LOG 1
 #define ECMASCRIPT_ENABLE_RUNTIME_STAT 1

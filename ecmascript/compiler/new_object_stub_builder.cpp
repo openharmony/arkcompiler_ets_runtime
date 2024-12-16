@@ -434,6 +434,17 @@ void NewObjectStubBuilder::NewJSObject(Variable *result, Label *exit, GateRef hc
         DEFVARIABLE(initValue, VariableType::JS_ANY(), Undefined());
         Label isAOT(env);
         Label initialize(env);
+        Label inProgress(env);
+        Label notInProgress(env);
+        GateRef isObjSizeTrackingInProgress = IsObjSizeTrackingInProgress(hclass);
+        Branch(isObjSizeTrackingInProgress, &inProgress, &notInProgress);
+        Bind(&inProgress);
+        {
+            initValue = GetGlobalConstantValue(
+                VariableType::JS_POINTER(), glue_, ConstantIndex::FREE_OBJECT_WITH_NONE_FIELD_CLASS_INDEX);
+            Jump(&initialize);
+        }
+        Bind(&notInProgress);
         BRANCH(IsAOTHClass(hclass), &isAOT, &initialize);
         Bind(&isAOT);
         {
@@ -448,8 +459,22 @@ void NewObjectStubBuilder::NewJSObject(Variable *result, Label *exit, GateRef hc
             result->ReadVariable(), *initValue, Int32(JSObject::SIZE), ChangeIntPtrToInt32(size_),
             MemoryAttribute::NoBarrier());
         Bind(&afterInitialize);
+        Label objSizeTrackingStep(env);
         InitializeObject(result);
-        Jump(exit);
+        Branch(isObjSizeTrackingInProgress, &objSizeTrackingStep, exit);
+        Bind(&objSizeTrackingStep);
+        {
+            Label calcuFinalCount(env);
+            GateRef count = GetConstructionCounter(hclass);
+            GateRef nextCount = Int32Sub(count, Int32(1));
+            SetConstructionCounter(glue_, hclass, nextCount);
+            Branch(Int32Equal(nextCount, Int32(0)), &calcuFinalCount, exit);
+            Bind(&calcuFinalCount);
+            {
+                CallNGCRuntime(glue_, RTSTUB_ID(FinishObjSizeTracking), { hclass });
+                Jump(exit);
+            }
+        }
     }
     Bind(&hasPendingException);
     {

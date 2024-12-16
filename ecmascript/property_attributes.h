@@ -94,11 +94,11 @@ public:
     explicit PropertyAttributes(const PropertyDescriptor &desc);
 
     static constexpr uint32_t DICTIONARY_ORDER_NUM = 20;
-    static constexpr uint32_t OFFSET_BITFIELD_NUM = 10;
+    static constexpr uint32_t MAX_FAST_PROPS_CAPACITY_LOG2 = 10;
     static constexpr uint32_t REPRESENTATION_NUM = 2;
     static constexpr uint32_t TRACK_TYPE_NUM = 3;
     static constexpr uint32_t FIELD_TYPE_NUM = 8;
-    static constexpr uint32_t MAX_FAST_PROPS_CAPACITY = (1U << OFFSET_BITFIELD_NUM) - 1;
+    static constexpr uint32_t MAX_FAST_PROPS_CAPACITY = (1U << MAX_FAST_PROPS_CAPACITY_LOG2) - 1;
     static constexpr unsigned BITS_PER_BYTE = 8;
 
     static constexpr uint32_t MAX_BIT_SIZE = 48;
@@ -122,7 +122,7 @@ public:
     using FastModeStartField = CommonLastBitField;
     static_assert(FastModeStartField::START_BIT == CommonLastBitField::START_BIT);
     static_assert(FastModeStartField::SIZE == CommonLastBitField::SIZE);
-    using OffsetField = FastModeStartField::NextField<uint32_t, OFFSET_BITFIELD_NUM>; // 17
+    using OffsetField = FastModeStartField::NextField<uint32_t, MAX_FAST_PROPS_CAPACITY_LOG2>; // 17
     using TrackTypeField = OffsetField::NextField<TrackType, TRACK_TYPE_NUM>;     // 20: 3 bits
     static_assert(TrackTypeField::END_BIT <= sizeof(uint32_t) * BITS_PER_BYTE, "Invalid");
 
@@ -130,7 +130,7 @@ public:
     static constexpr uint32_t NORMAL_ATTR_BITS = 28;
     using NormalAttrField = BitField<uint32_t, 0, NORMAL_ATTR_BITS>;
     using SharedFieldTypeField = TrackTypeField::NextField<SharedFieldType, FIELD_TYPE_NUM>; // 28: 8 bits
-    using SortedIndexField = SharedFieldTypeField::NextField<uint32_t, OFFSET_BITFIELD_NUM>; // 38: 10 bits
+    using SortedIndexField = SharedFieldTypeField::NextField<uint32_t, MAX_FAST_PROPS_CAPACITY_LOG2>; // 38: 10 bits
     using IsConstPropsField = SortedIndexField::NextFlag;                              // 39
     using IsNotHoleField = IsConstPropsField::NextFlag;                                // 40
     using IsPGODumpedField = IsNotHoleField::NextFlag;                                      // 41

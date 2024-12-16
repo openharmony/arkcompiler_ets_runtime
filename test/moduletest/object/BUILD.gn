@@ -15,4 +15,5 @@ import("//arkcompiler/ets_runtime/test/test_helper.gni")
 
 host_moduletest_action("object") {
   deps = []
+  disable_force_gc = true
 }

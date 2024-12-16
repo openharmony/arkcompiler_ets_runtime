@@ -147,6 +147,7 @@ void JSHClass::InitializeWithDefaultValue(const JSThread *thread, uint32_t size,
     SetProtoChangeMarker(thread, JSTaggedValue::Null());
     SetProtoChangeDetails(thread, JSTaggedValue::Null());
     SetEnumCache(thread, JSTaggedValue::Null());
+    SetConstructionCounter(0);
 }
 
 bool JSHClass::IsJSTypeShared(JSType type)
@@ -234,6 +235,22 @@ JSHandle<JSHClass> JSHClass::Clone(const JSThread *thread, const JSHandle<JSHCla
     }
 
     return newJsHClass;
+}
+
+JSHandle<JSHClass> JSHClass::CloneAndIncInlinedProperties(const JSThread *thread, const JSHandle<JSHClass> &jshclass,
+                                                          uint32_t expectedOfProperties)
+{
+    uint32_t size = jshclass->IsJSObject() ?
+        jshclass->GetInlinedPropsStartSize() : jshclass->GetObjectSize();
+    ASSERT((size % JSTaggedValue::TaggedTypeSize()) == 0);
+    uint32_t maxFields = PropertyAttributes::MAX_FAST_PROPS_CAPACITY - size / JSTaggedValue::TaggedTypeSize();
+    expectedOfProperties = std::min(maxFields, expectedOfProperties);
+    uint32_t incInlinedProperties = 0;
+    uint32_t inlinedProp = jshclass->GetInlinedProperties();
+    if (expectedOfProperties > inlinedProp) {
+        incInlinedProperties = expectedOfProperties - inlinedProp;
+    }
+    return JSHClass::Clone(thread, jshclass, false, incInlinedProperties);
 }
 
 JSHandle<JSHClass> JSHClass::CloneWithElementsKind(const JSThread *thread, const JSHandle<JSHClass> &jshclass,
@@ -807,6 +824,66 @@ void JSHClass::VisitAndUpdateLayout(JSHClass *ownHClass, const PropertyAttribute
             backHClass.push(JSHClass::Cast(cache));
         });
     }
+}
+
+void JSHClass::VisitTransitionAndUpdateObjSize(JSHClass *ownHClass, uint32_t finalInObjPropsNum)
+{
+    uint32_t size = ownHClass->GetInlinedPropsStartSize();
+    uint32_t objectSize = size + finalInObjPropsNum * JSTaggedValue::TaggedTypeSize();
+    std::queue<JSHClass *> backHClass;
+    backHClass.push(ownHClass);
+    while (!backHClass.empty()) {
+        JSHClass *current = backHClass.front();
+        backHClass.pop();
+        current->SetObjectSize(objectSize);
+        auto transitions = current->GetTransitions();
+        if (transitions.IsUndefined()) {
+            continue;
+        }
+        if (transitions.IsWeak()) {
+            auto cache = transitions.GetTaggedWeakRef();
+            backHClass.push(JSHClass::Cast(cache));
+            continue;
+        }
+
+        ASSERT(transitions.IsTaggedArray());
+        TransitionsDictionary *dict = TransitionsDictionary::Cast(transitions.GetTaggedObject());
+        dict->IterateEntryValue([&backHClass] (JSHClass *cache) {
+            backHClass.push(JSHClass::Cast(cache));
+        });
+    }
+}
+
+uint32_t JSHClass::VisitTransitionAndFindMaxNumOfProps(JSHClass *ownHClass)
+{
+    std::queue<JSHClass *> backHClass;
+    backHClass.push(ownHClass);
+    uint32_t maxNumOfProps = 0;
+    while (!backHClass.empty()) {
+        JSHClass *current = backHClass.front();
+        uint32_t numOfProps = current->NumberOfProps();
+        if (numOfProps > maxNumOfProps) {
+            maxNumOfProps = numOfProps;
+        }
+        backHClass.pop();
+
+        auto transitions = current->GetTransitions();
+        if (transitions.IsUndefined()) {
+            continue;
+        }
+        if (transitions.IsWeak()) {
+            auto cache = transitions.GetTaggedWeakRef();
+            backHClass.push(JSHClass::Cast(cache));
+            continue;
+        }
+
+        ASSERT(transitions.IsTaggedArray());
+        TransitionsDictionary *dict = TransitionsDictionary::Cast(transitions.GetTaggedObject());
+        dict->IterateEntryValue([&backHClass] (JSHClass *cache) {
+            backHClass.push(JSHClass::Cast(cache));
+        });
+    }
+    return maxNumOfProps;
 }
 
 TransitionResult JSHClass::ConvertOrTransitionWithRep(const JSThread *thread,

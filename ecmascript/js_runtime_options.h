@@ -219,6 +219,7 @@ enum CommandValues {
     OPTION_OPEN_ARK_TOOLS,
     OPTION_COMPILER_OPT_FRAME_STATE_ELIMINATION,
     OPTION_COMPILER_ENABLE_PGO_SPACE,
+    OPTION_ENABLE_INLINE_PROPERTY_OPTIMIZATION,
     OPTION_COMPILER_ENABLE_AOT_CODE_COMMENT,
 };
 static_assert(OPTION_INVALID == 63); // Placeholder for invalid options
@@ -2000,6 +2001,16 @@ public:
         return enableAotCodeComment_;
     }
 
+    void SetEnableInlinePropertyOptimization(bool value)
+    {
+        enableInlinePropertyOptimization_ = value;
+    }
+
+    bool IsEnableInlinePropertyOptimization() const
+    {
+        return enableInlinePropertyOptimization_;
+    }
+
 public:
     static constexpr int32_t MAX_APP_COMPILE_METHOD_SIZE = 4_KB;
 
@@ -2182,6 +2193,7 @@ private:
     bool forceDump_ {true};
     bool concurrentCompile {true};
     bool aotHasException_ {false};
+    bool enableInlinePropertyOptimization_ {NEXT_OPTIMIZATION_BOOL};
     bool storeBarrierOpt_ {true};
 };
 } // namespace panda::ecmascript

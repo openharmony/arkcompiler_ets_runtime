@@ -112,6 +112,18 @@ JSTaggedValue BuiltinsArkTools::DumpHClass(EcmaRuntimeCallInfo *info)
     return JSTaggedValue::Undefined();
 }
 
+JSTaggedValue BuiltinsArkTools::GetInlinedPropertiesCount(EcmaRuntimeCallInfo *info)
+{
+    ASSERT(info);
+    JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+
+    JSHandle<JSTaggedValue> obj = GetCallArg(info, 0);
+    JSHClass *objHclass = obj->GetTaggedObject()->GetClass();
+    return JSTaggedValue(objHclass->GetInlinedProperties());
+}
+
 JSTaggedValue BuiltinsArkTools::IsTSHClass(EcmaRuntimeCallInfo *info)
 {
     ASSERT(info);
