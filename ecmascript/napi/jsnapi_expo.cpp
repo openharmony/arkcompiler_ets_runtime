@@ -3962,6 +3962,11 @@ bool JSNApi::IsNormalizedOhmUrlPack(EcmaVM *vm)
     return vm->IsNormalizedOhmUrlPack();
 }
 
+bool JSNApi::IsOhmUrl(const std::string &srcName)
+{
+    return ModulePathHelper::IsOhmUrl(srcName.c_str());
+}
+
 void JSNApi::SetModuleInfo(EcmaVM *vm, const std::string &assetPath, const std::string &entryPoint)
 {
     SetAssetPath(vm, assetPath);
@@ -3987,7 +3992,7 @@ void JSNApi::SetAssetPath(EcmaVM *vm, const std::string &assetPath)
     ecmascript::CString path = assetPath.c_str();
     // check input assetPath
 #if !defined(PANDA_TARGET_WINDOWS) && !defined(PANDA_TARGET_MACOS)
-    if (!ModulePathHelper::ValidateAbcPath(path)) {
+    if (!ModulePathHelper::ValidateAbcPath(path, ecmascript::ValidateFilePath::ABC)) {
         LOG_FULL(FATAL) << "Invalid input assetPath: " << assetPath.c_str();
     }
 #endif
@@ -5003,6 +5008,7 @@ bool JSNApi::ExecuteInContext(EcmaVM *vm, const std::string &fileName, const std
     return true;
 }
 
+// function for bundle abc
 bool JSNApi::ExecuteForAbsolutePath(const EcmaVM *vm, const std::string &fileName, const std::string &entry,
                                     bool needUpdate, bool executeFromJob)
 {
@@ -5101,6 +5107,46 @@ bool JSNApi::ExecuteModuleBuffer(EcmaVM *vm, const uint8_t *data, int32_t size, 
             thread->GetCurrentEcmaContext()->HandleUncaughtException();
         }
         LOG_ECMA(ERROR) << "Cannot execute module buffer file '" << filename;
+        return false;
+    }
+    return true;
+}
+
+/*
+ * srcFilename: data/storage/el1/bundle/modulename/ets/modules.abc
+ * ohmUrl :     1. @bundle:bundleName/moduleName@namespace/ets/pages/Index
+ *              2. @package:pkg_modules/.ohpm/pkgName/pkg_modules/pkgName/xxx/xxx
+ *              3. @normalized:N&moduleName&bundleName&entryPath&version
+ *              4. @normalized:N&moduleName&bundleName&entryPath&
+ */
+bool JSNApi::ExecuteSecureWithOhmUrl(EcmaVM *vm, uint8_t *data, int32_t size, const std::string &srcFilename,
+                                     const std::string &ohmUrl)
+{
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
+    LOG_ECMA(INFO) << "start to execute ark buffer with secure memory use file: " << srcFilename <<
+                      ", entrypoint: " << ohmUrl;
+    ecmascript::ThreadManagedScope scope(thread);
+    ecmascript::CString filename = PathHelper::NormalizePath(srcFilename.c_str());
+    // check input filePath
+#if !defined(PANDA_TARGET_WINDOWS) && !defined(PANDA_TARGET_MACOS)
+    if (!ModulePathHelper::ValidateAbcPath(filename, ecmascript::ValidateFilePath::ETS_MODULES)) {
+        LOG_FULL(FATAL) << "ExecuteSecureWithOhmUrl: Invalid input filePath: " << srcFilename <<
+                           ", input OhmUrl:" << ohmUrl;
+    }
+#endif
+    ecmascript::CString entryPoint;
+    // Check and translate OhmUrl to recordName
+    if (!ModulePathHelper::CheckAndGetRecordName(thread, ohmUrl.c_str(), entryPoint)) {
+        LOG_FULL(FATAL) << "ExecuteSecureWithOhmUrl: Invalid input OhmUrl: " << ohmUrl <<
+                           ", input filePath:" << filename;
+    }
+    if (!ecmascript::JSPandaFileExecutor::ExecuteSecureWithOhmUrl(thread, data, size, filename, entryPoint)) {
+        if (thread->HasPendingException()) {
+            ecmascript::JsStackInfo::BuildCrashInfo(thread);
+            thread->GetCurrentEcmaContext()->HandleUncaughtException();
+        }
+        LOG_ECMA(ERROR) << "Cannot execute ark buffer file '" << srcFilename
+                        << "' with entry '" << ohmUrl << "'" << std::endl;
         return false;
     }
     return true;
@@ -5722,6 +5768,24 @@ Local<ObjectRef> JSNApi::GetExportObjectFromBuffer(EcmaVM *vm, const std::string
     ObjectFactory *factory = vm->GetFactory();
     JSHandle<EcmaString> keyHandle = factory->NewFromASCII(key.c_str());
     JSTaggedValue result = ecmaModule->GetModuleValue(thread, keyHandle.GetTaggedValue(), false);
+    JSHandle<JSTaggedValue> exportObj(thread, result);
+    return JSNApiHelper::ToLocal<ObjectRef>(exportObj);
+}
+
+Local<ObjectRef> JSNApi::GetExportObjectFromOhmUrl(EcmaVM *vm, const std::string &ohmUrl, const std::string &key)
+{
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
+    ecmascript::ThreadManagedScope scope(vm->GetJSThread());
+    ecmascript::CString recordName;
+    // Check and translate OhmUrl to recordName
+    if (!ModulePathHelper::CheckAndGetRecordName(thread, ohmUrl.c_str(), recordName)) {
+        LOG_FULL(FATAL) << "ExecuteSecureWithOhmUrl: Invalid input OhmUrl: " << ohmUrl;
+        return JSValueRef::Undefined(vm);
+    }
+    ecmascript::ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+    JSHandle<ecmascript::SourceTextModule> ecmaModule = moduleManager->GetImportedModule(recordName.c_str());
+    int index = ecmascript::ModuleManager::GetExportObjectIndex(vm, ecmaModule, key.c_str());
+    JSTaggedValue result = ecmaModule->GetModuleValue(thread, index, false);
     JSHandle<JSTaggedValue> exportObj(thread, result);
     return JSNApiHelper::ToLocal<ObjectRef>(exportObj);
 }
