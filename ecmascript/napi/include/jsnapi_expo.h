@@ -139,6 +139,34 @@ using StopPreLoadSoCallback = std::function<void()>;
 #define ECMA_ASSERT(cond) static_cast<void>(0)
 #endif
 
+#define INIT_CRASH_HOLDER(holder, tag) \
+    ArkCrashHolder holder(tag, __FUNCTION__)
+
+class ECMA_PUBLIC_API ArkCrashHolder {
+public:
+    ArkCrashHolder(std::string tag, const std::string& info)
+    {
+        SetCrashObj(tag.c_str(), info.c_str());
+    }
+
+    explicit ArkCrashHolder(const char* tag, const char* info)
+    {
+        SetCrashObj(tag, info);
+    }
+
+    ~ArkCrashHolder();
+
+void UpdateCallbackPtr(uintptr_t addr);
+
+private:
+    void SetCrashObj(const char* tag, const char* info);
+
+    uintptr_t handle_ {0};
+
+    char* data_ {nullptr};
+    size_t size_ {0};
+};
+
 class ECMA_PUBLIC_API AsyncNativeCallbacksPack {
 public:
     AsyncNativeCallbacksPack() = default;
@@ -175,12 +203,14 @@ public:
         return callBacks_.size();
     }
 
-    void ProcessAll()
+    void ProcessAll(const char* tag)
     {
+        INIT_CRASH_HOLDER(holder, tag);
         for (auto &iter : callBacks_) {
             NativePointerCallback callback = iter.first;
             std::tuple<void*, void*, void*> &param = iter.second;
             if (callback != nullptr) {
+                holder.UpdateCallbackPtr(reinterpret_cast<uintptr_t>(callback));
                 callback(std::get<0>(param), std::get<1>(param), std::get<2>(param)); // 2 is the param.
             }
         }
