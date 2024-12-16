@@ -1440,33 +1440,27 @@ void JSRuntimeOptions::BindCPUCoreForTargetCompilation()
 
 void JSRuntimeOptions::SetOptionsForTargetCompilation()
 {
-    if (IsTargetCompilerMode()) {
+    if (IsApplicationCompilation()) {
         SetTargetTriple("aarch64-unknown-linux-gnu");
         SetMaxAotMethodSize(MAX_APP_COMPILE_METHOD_SIZE);
         SetEnableOptTrackField(false);
         SetEnableOptInlining(false);
         SetEnableArrayBoundsCheckElimination(false);
-        if (IsPartialCompilerMode()) {
-            SetEnableOptPGOType(true);
-            if (IsPGOProfilerPathEmpty()) {
-                LOG_ECMA(DEBUG) << "no pgo profile file in partial mode!";
-            }
-        } else {
+        SetCompilerEnableLiteCG(true);
+        SetEnableOptPGOType(true);
+    }
+
+    if (IsTargetCompilerMode()) {
+        if (UNLIKELY(IsFullCompilerMode())) {
             SetEnableOptPGOType(false);
             SetPGOProfilerPath("");
         }
         BindCPUCoreForTargetCompilation();
     }
+
     if (IsCompilerPipelineHostAOT()) {
-        SetTargetTriple("aarch64-unknown-linux-gnu");
-        SetMaxAotMethodSize(MAX_APP_COMPILE_METHOD_SIZE);
-        SetEnableOptTrackField(false);
-        SetEnableOptInlining(false);
-        SetEnableArrayBoundsCheckElimination(false);
-        SetEnableOptPGOType(true);
         SetFastAOTCompileMode(true);
         SetOptLevel(DEFAULT_OPT_LEVEL);
-        SetCompilerEnableLiteCG(true);
         SetEnableLoweringBuiltin(false);
     }
 }

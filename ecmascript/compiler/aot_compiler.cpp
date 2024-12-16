@@ -215,10 +215,6 @@ int Main(const int argc, const char **argv)
                                 cOptions.optBCRange_);
 
         bool isEnableLiteCG = runtimeOptions.IsCompilerEnableLiteCG();
-        if (ohos::EnableAotJitListHelper::GetInstance()->IsEnableAot(bundleName)) {
-            isEnableLiteCG = true;
-        }
-        vm->GetJSOptions().SetCompilerEnableLiteCG(isEnableLiteCG);
         compilerStats.SetIsLiteCg(isEnableLiteCG);
 
         AOTFileGenerator generator(&log, &logList, &aotCompilationEnv, cOptions.triple_, isEnableLiteCG);

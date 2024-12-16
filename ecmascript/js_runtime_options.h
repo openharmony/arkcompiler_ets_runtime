@@ -1599,6 +1599,11 @@ public:
         return targetCompilerMode_ == "full";
     }
 
+    bool IsApplicationCompilation() const
+    {
+        return IsTargetCompilerMode() || IsCompilerPipelineHostAOT();
+    }
+
     void SetHapPath(std::string path)
     {
         hapPath_ = std::move(path);
