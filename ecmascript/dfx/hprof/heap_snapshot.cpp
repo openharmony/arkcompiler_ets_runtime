@@ -176,7 +176,7 @@ void HeapSnapshot::PushHeapStat(Stream* stream)
         stream->UpdateHeapStats(&statsBuffer.front(), static_cast<int32_t>(statsBuffer.size()));
         statsBuffer.clear();
     }
-    stream->UpdateLastSeenObjectId(sequenceId, timeStampUs);
+    stream->UpdateLastSeenObjectId(entryIdMap_->GetLastId(), timeStampUs);
 }
 
 Node *HeapSnapshot::AddNode(TaggedObject *address, size_t size)
