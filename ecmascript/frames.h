@@ -184,8 +184,7 @@ struct OptimizedFrame : public base::AlignedStruct<base::AlignedPointer::Size(),
                                                    base::AlignedPointer,
                                                    base::AlignedPointer> {
 public:
-    void GCIterate(const FrameIterator &it, const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor,
-        const RootBaseAndDerivedVisitor &derivedVisitor) const;
+    void GCIterate(const FrameIterator &it, RootVisitor &visitor) const;
 
     static size_t GetTypeOffset(bool isArch32 = false)
     {
@@ -262,8 +261,7 @@ struct BaselineBuiltinFrame : public base::AlignedStruct<base::AlignedPointer::S
                                                          base::AlignedPointer,
                                                          base::AlignedPointer> {
 public:
-    void GCIterate(const FrameIterator &it, const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor,
-        const RootBaseAndDerivedVisitor &derivedVisitor) const;
+    void GCIterate(const FrameIterator &it, RootVisitor &visitor) const;
 
     static size_t GetTypeOffset(bool isArch32 = false)
     {
@@ -592,8 +590,7 @@ public:
         return returnAddr;
     }
 
-    void GCIterate(const FrameIterator &it, const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor,
-        const RootBaseAndDerivedVisitor &derivedVisitor, FrameType frameType) const;
+    void GCIterate(const FrameIterator &it, RootVisitor &visitor, FrameType frameType) const;
     void CollectPcOffsetInfo(const FrameIterator &it, ConstInfo &info) const;
 
     inline JSTaggedValue GetFunction() const
@@ -903,7 +900,7 @@ public:
         return GetOffset<static_cast<size_t>(Index::FunctionIndex)>(isArch32);
     }
 
-    void GCIterate(const FrameIterator &it, const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor) const;
+    void GCIterate(const FrameIterator &it, RootVisitor &visitor) const;
 
     alignas(EAS) JSTaggedValue constpool {JSTaggedValue::Hole()};
     alignas(EAS) JSTaggedValue function {JSTaggedValue::Hole()};
@@ -973,7 +970,7 @@ struct InterpretedBuiltinFrame : public base::AlignedStruct<JSTaggedValue::Tagge
         return GetOffset<static_cast<size_t>(Index::FunctionIndex)>(isArch32);
     }
 
-    void GCIterate(const FrameIterator &it, const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor) const;
+    void GCIterate(const FrameIterator &it, RootVisitor &visitor) const;
 
     alignas(EAS) JSTaggedValue function {JSTaggedValue::Hole()};
     alignas(EAS) const uint8_t *pc {nullptr};
@@ -1119,8 +1116,7 @@ struct AsmInterpretedFrame : public base::AlignedStruct<JSTaggedValue::TaggedTyp
     {
         return sizeof(AsmInterpretedFrame) / JSTaggedValue::TaggedTypeSize();
     }
-    void GCIterate(const FrameIterator &it, const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor,
-        const RootBaseAndDerivedVisitor &derivedVisitor, bool isBaselineFrame) const;
+    void GCIterate(const FrameIterator &it, RootVisitor &visitor, bool isBaselineFrame) const;
 
     JSTaggedValue GetEnv() const
     {
@@ -1202,8 +1198,7 @@ struct InterpretedEntryFrame : public base::AlignedStruct<JSTaggedValue::TaggedT
             InterpretedFrameBase::GetPrevOffset(isArch32);
     }
 
-    void GCIterate(const FrameIterator &it, const RootVisitor &visitor,
-        const RootRangeVisitor &rangeVisitor) const;
+    void GCIterate(const FrameIterator &it, RootVisitor &visitor) const;
     alignas(EAS) const uint8_t *pc {nullptr};
     alignas(EAS) InterpretedFrameBase base;
 };
@@ -1393,7 +1388,7 @@ struct OptimizedLeaveFrame {
         return MEMBER_OFFSET(OptimizedLeaveFrame, returnAddr);
     }
 
-    void GCIterate(const FrameIterator &it, const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor) const;
+    void GCIterate(const FrameIterator &it, RootVisitor &visitor) const;
 };
 
 // * Optimized-leaved-frame-with-argv layout as the following:
@@ -1454,7 +1449,7 @@ struct OptimizedWithArgvLeaveFrame {
         return MEMBER_OFFSET(OptimizedWithArgvLeaveFrame, returnAddr);
     }
 
-    void GCIterate(const FrameIterator &it, const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor) const;
+    void GCIterate(const FrameIterator &it, RootVisitor &visitor) const;
 };
 
 // * OptimizedBuiltinLeaveFrame layout as the following:
@@ -1502,7 +1497,7 @@ public:
         return returnAddr;
     }
 
-    void GCIterate(const FrameIterator &it, const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor) const;
+    void GCIterate(const FrameIterator &it, RootVisitor &visitor) const;
 
     static size_t GetTypeOffset()
     {
@@ -1659,7 +1654,7 @@ struct BuiltinFrame : public base::AlignedStruct<base::AlignedPointer::Size(),
         return GetOffset<static_cast<size_t>(Index::ReturnAddrIndex)>(isArch32);
     }
 
-    void GCIterate(const FrameIterator &it, const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor) const;
+    void GCIterate(const FrameIterator &it, RootVisitor &visitor) const;
 
     alignas(EAS) FrameType type;
     alignas(EAS) JSTaggedType *prevFp;
@@ -1760,7 +1755,7 @@ struct BuiltinWithArgvFrame : public base::AlignedStruct<base::AlignedPointer::S
         return GetOffset<static_cast<size_t>(Index::ReturnAddrIndex)>(isArch32);
     }
 
-    void GCIterate(const FrameIterator &it, const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor) const;
+    void GCIterate(const FrameIterator &it, RootVisitor &visitor) const;
     // argv(... this, new.target, function)
     // numargs
     alignas(EAS) FrameType type;
@@ -1844,8 +1839,7 @@ public:
         return returnAddr;
     }
 
-    void GCIterate(const FrameIterator &it, const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor,
-        const RootBaseAndDerivedVisitor &derivedVisitor, FrameType frameType) const;
+    void GCIterate(const FrameIterator &it, RootVisitor &visitor, FrameType frameType) const;
     void CollectPcOffsetInfo(const FrameIterator &it, ConstInfo &info) const;
 
     inline JSTaggedValue GetFunction() const
@@ -2007,7 +2001,7 @@ public:
     {
         return thread_;
     }
-    bool IteratorStackMap(const RootVisitor &visitor, const RootBaseAndDerivedVisitor &derivedVisitor) const;
+    bool IteratorStackMap(RootVisitor &visitor) const;
     void CollectPcOffsetInfo(ConstInfo &info) const;
     void CollectMethodOffsetInfo(std::map<uint32_t, uint32_t> &info) const;
     void CollectArkDeopt(std::vector<kungfu::ARKDeopt>& deopts) const;

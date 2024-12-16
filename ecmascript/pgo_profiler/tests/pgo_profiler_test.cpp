@@ -512,7 +512,7 @@ HWTEST_F_L0(PGOProfilerTest, PGOProfilerDoubleVM)
 
         JSHandle<Method> method = vm2->GetFactory()->NewSMethod(methodLiterals[0]);
         method->SetConstantPool(vm2->GetJSThread(), constPool2.GetTaggedValue());
-        JSHandle<JSFunction> func = vm2->GetFactory()->NewJSFunction(vm_->GetGlobalEnv(), method);
+        JSHandle<JSFunction> func = vm2->GetFactory()->NewJSFunction(vm2->GetGlobalEnv(), method);
         JSHandle<JSTaggedValue> recordName(vm2->GetFactory()->NewFromStdString("sample_test"));
         func->SetModule(vm2->GetJSThread(), recordName);
         vm2->GetJSThread()->ManagedCodeEnd();

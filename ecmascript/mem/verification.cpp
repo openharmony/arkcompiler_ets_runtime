@@ -88,27 +88,12 @@ void VerifyObjectVisitor::VerifyInactiveSemiSpaceMarkedObject(const BaseHeap *he
 // Verify the object body
 void VerifyObjectVisitor::VisitAllObjects(TaggedObject *obj)
 {
+    auto cb = [this] (ObjectSlot slot, TaggedObject *root) {
+        VerifyObjectSlotLegal(slot, root);
+    };
+    VerifyVisitor verifyVisitor(cb);
     auto jsHclass = obj->GetClass();
-    ObjectXRay::VisitObjectBody<VisitType::OLD_GC_VISIT>(
-        obj, jsHclass, [this](TaggedObject *root, ObjectSlot start, ObjectSlot end,
-                              VisitObjectArea area) {
-            if (area == VisitObjectArea::IN_OBJECT) {
-                auto hclass = root->GetClass();
-                ASSERT(!hclass->IsAllTaggedProp());
-                int index = 0;
-                for (ObjectSlot slot = start; slot < end; slot++) {
-                    auto layout = LayoutInfo::Cast(hclass->GetLayout().GetTaggedObject());
-                    auto attr = layout->GetAttr(index++);
-                    if (attr.IsTaggedRep()) {
-                        VerifyObjectSlotLegal(slot, root);
-                    }
-                }
-                return;
-            }
-            for (ObjectSlot slot = start; slot < end; slot++) {
-                VerifyObjectSlotLegal(slot, root);
-            }
-        });
+    ObjectXRay::VisitObjectBody<VisitType::OLD_GC_VISIT>(obj, jsHclass, verifyVisitor);
 }
 
 void VerifyObjectVisitor::VerifyObjectSlotLegal(ObjectSlot slot, TaggedObject *object) const
@@ -437,32 +422,39 @@ void Verification::VerifyAll() const
     } // LCOV_EXCL_STOP
 }
 
-size_t Verification::VerifyRoot() const
+void Verification::VerificationRootVisitor::VisitRoot([[maybe_unused]] Root type, ObjectSlot slot)
 {
-    size_t failCount = 0;
-    RootVisitor visitor = [this, &failCount]([[maybe_unused]] Root type, ObjectSlot slot) {
+    JSTaggedValue value(slot.GetTaggedType());
+    // Skip verifying shared object in local gc verification.
+    if (value.IsInSharedHeap()) {
+        return;
+    }
+    verification_->VerifyObjectSlot(slot, &failCount_);
+};
+
+void Verification::VerificationRootVisitor::VisitRangeRoot([[maybe_unused]] Root type, ObjectSlot start,
+                                                           ObjectSlot end)
+{
+    for (ObjectSlot slot = start; slot < end; slot++) {
         JSTaggedValue value(slot.GetTaggedType());
         // Skip verifying shared object in local gc verification.
         if (value.IsInSharedHeap()) {
             return;
         }
-        VerifyObjectSlot(slot, &failCount);
-    };
-    RootRangeVisitor rangeVisitor = [this, &failCount]([[maybe_unused]] Root type, ObjectSlot start, ObjectSlot end) {
-        for (ObjectSlot slot = start; slot < end; slot++) {
-            JSTaggedValue value(slot.GetTaggedType());
-            // Skip verifying shared object in local gc verification.
-            if (value.IsInSharedHeap()) {
-                return;
-            }
-            VerifyObjectSlot(slot, &failCount);
-        }
-    };
-    RootBaseAndDerivedVisitor derivedVisitor =
-        []([[maybe_unused]] Root type, [[maybe_unused]] ObjectSlot base, [[maybe_unused]] ObjectSlot derived,
-           [[maybe_unused]] uintptr_t baseOldObject) {
-    };
-    ObjectXRay::VisitVMRoots(heap_->GetEcmaVM(), visitor, rangeVisitor, derivedVisitor, VMRootVisitType::VERIFY);
+        verification_->VerifyObjectSlot(slot, &failCount_);
+    }
+};
+
+void Verification::VerificationRootVisitor::VisitBaseAndDerivedRoot([[maybe_unused]] Root type,
+    [[maybe_unused]] ObjectSlot base, [[maybe_unused]] ObjectSlot derived, [[maybe_unused]] uintptr_t baseOldObject)
+{
+}
+
+size_t Verification::VerifyRoot() const
+{
+    size_t failCount = 0;
+    VerificationRootVisitor verificationRootVisitor(this, failCount);
+    ObjectXRay::VisitVMRoots(heap_->GetEcmaVM(), verificationRootVisitor, VMRootVisitType::VERIFY);
     if (failCount > 0) {
         LOG_GC(ERROR) << "VerifyRoot detects deadObject count is " << failCount;
     }
@@ -547,7 +539,34 @@ void SharedHeapVerification::VerifyMark(bool cm) const
     LOG_GC(DEBUG) << "start verify shared mark";
     [[maybe_unused]] VerifyScope verifyScope(sHeap_);
     sHeap_->GetSweeper()->EnsureAllTaskFinished();
-    Runtime::GetInstance()->GCIterateThreadList([cm](JSThread *thread) {
+    auto cb1 = [cm] (ObjectSlot slot, TaggedObject *obj) {
+        Region *objectRegion = Region::ObjectAddressToRange(obj);
+        JSTaggedValue value(slot.GetTaggedType());
+        if (value.IsWeak() || !value.IsHeapObject()) {
+            return;
+        }
+        Region *valueRegion = Region::ObjectAddressToRange(value.GetTaggedObject());
+        if (!valueRegion->InSharedSweepableSpace()) {
+            return;
+        }
+        if (!objectRegion->TestLocalToShare(slot.SlotAddress())) { // LCOV_EXCL_START
+            LOG_GC(FATAL) << "verify shared1 " << cm << ':' << slot.SlotAddress()
+                          << ' ' << value.GetTaggedObject();
+            UNREACHABLE();
+        }
+        if (!valueRegion->Test(value.GetTaggedObject())) {
+            LOG_GC(FATAL) << "verify shared2 " << cm << ':' << slot.SlotAddress()
+                          << ' ' << value.GetTaggedObject();
+            UNREACHABLE();
+        }
+        if (value.GetTaggedObject()->GetClass()->IsFreeObject()) {
+            LOG_GC(FATAL) << "verify shared3 " << cm << ':' << slot.SlotAddress()
+                          << ' ' << value.GetTaggedObject();
+            UNREACHABLE();
+        } // LCOV_EXCL_STOP
+    };
+    VerifyVisitor verifyVisitor1(cb1);
+    Runtime::GetInstance()->GCIterateThreadList([cm, &verifyVisitor1](JSThread *thread) {
         auto vm = thread->GetEcmaVM();
         auto heap = vm->GetHeap();
         heap->GetSweeper()->EnsureAllTaskFinished();
@@ -557,105 +576,42 @@ void SharedHeapVerification::VerifyMark(bool cm) const
             LOG_GC(FATAL) << "verify shared node not null " << cm << ':' << thread;
             UNREACHABLE();
         } // LCOV_EXCL_STOP
-        heap->IterateOverObjects([cm](TaggedObject *obj) {
+        heap->IterateOverObjects([&verifyVisitor1](TaggedObject *obj) {
             auto jsHclass = obj->GetClass();
-            auto f = [cm] (ObjectSlot slot, TaggedObject *obj) {
-                Region *objectRegion = Region::ObjectAddressToRange(obj);
-                JSTaggedValue value(slot.GetTaggedType());
-                if (value.IsWeak() || !value.IsHeapObject()) {
-                    return;
-                }
-                Region *valueRegion = Region::ObjectAddressToRange(value.GetTaggedObject());
-                if (!valueRegion->InSharedSweepableSpace()) {
-                    return;
-                }
-                if (!objectRegion->TestLocalToShare(slot.SlotAddress())) { // LCOV_EXCL_START
-                    LOG_GC(FATAL) << "verify shared1 " << cm << ':' << slot.SlotAddress()
-                                  << ' ' << value.GetTaggedObject();
-                    UNREACHABLE();
-                }
-                if (!valueRegion->Test(value.GetTaggedObject())) {
-                    LOG_GC(FATAL) << "verify shared2 " << cm << ':' << slot.SlotAddress()
-                                  << ' ' << value.GetTaggedObject();
-                    UNREACHABLE();
-                }
-                if (value.GetTaggedObject()->GetClass()->IsFreeObject()) {
-                    LOG_GC(FATAL) << "verify shared3 " << cm << ':' << slot.SlotAddress()
-                                  << ' ' << value.GetTaggedObject();
-                    UNREACHABLE();
-                } // LCOV_EXCL_STOP
-            };
-            ObjectXRay::VisitObjectBody<VisitType::OLD_GC_VISIT>(
-                obj, jsHclass, [f](TaggedObject *root, ObjectSlot start, ObjectSlot end,
-                                VisitObjectArea area) {
-                if (area == VisitObjectArea::IN_OBJECT) {
-                    auto hclass = root->GetClass();
-                    ASSERT(!hclass->IsAllTaggedProp());
-                    int index = 0;
-                    for (ObjectSlot slot = start; slot < end; slot++) {
-                        auto layout = LayoutInfo::Cast(hclass->GetLayout().GetTaggedObject());
-                        auto attr = layout->GetAttr(index++);
-                        if (attr.IsTaggedRep()) {
-                            f(slot, root);
-                        }
-                    }
-                    return;
-                }
-                for (ObjectSlot slot = start; slot < end; slot++) {
-                    f(slot, root);
-                }
-            });
+            ObjectXRay::VisitObjectBody<VisitType::OLD_GC_VISIT>(obj, jsHclass, verifyVisitor1);
         });
     });
-    sHeap_->IterateOverObjects([cm](TaggedObject *obj) {
+    auto cb2 = [cm] (ObjectSlot slot, TaggedObject *obj) {
+        Region *objectRegion = Region::ObjectAddressToRange(obj);
+        if (!objectRegion->Test(obj)) {
+            return;
+        }
+        JSTaggedValue value(slot.GetTaggedType());
+        if (value.IsWeak() || !value.IsHeapObject()) {
+            return;
+        }
+        [[maybe_unused]] Region *valueRegion = Region::ObjectAddressToRange(value.GetTaggedObject());
+        if (!valueRegion->InSharedHeap()) { // LCOV_EXCL_START
+            LOG_GC(FATAL) << "verify shared4 " << cm << ':' << slot.SlotAddress()
+                          << ' ' << value.GetTaggedObject();
+            UNREACHABLE();
+        }
+        if (!valueRegion->InSharedReadOnlySpace()
+                && !valueRegion->Test(value.GetTaggedObject())) {
+            LOG_GC(FATAL) << "verify shared5 " << cm << ':' << slot.SlotAddress()
+                          << ' ' << value.GetTaggedObject();
+            UNREACHABLE();
+        }
+        if (value.GetTaggedObject()->GetClass()->IsFreeObject()) {
+            LOG_GC(FATAL) << "verify shared6 " << cm << ':' << slot.SlotAddress()
+                          << ' ' << value.GetTaggedObject();
+            UNREACHABLE();
+        } // LCOV_EXCL_STOP
+    };
+    VerifyVisitor verifyVisitor2(cb2);
+    sHeap_->IterateOverObjects([&verifyVisitor2](TaggedObject *obj) {
         auto jsHclass = obj->GetClass();
-        auto f = [cm] (ObjectSlot slot, TaggedObject *obj) {
-            Region *objectRegion = Region::ObjectAddressToRange(obj);
-            if (!objectRegion->Test(obj)) {
-                return;
-            }
-            JSTaggedValue value(slot.GetTaggedType());
-            if (value.IsWeak() || !value.IsHeapObject()) {
-                return;
-            }
-            [[maybe_unused]] Region *valueRegion = Region::ObjectAddressToRange(value.GetTaggedObject());
-            if (!valueRegion->InSharedHeap()) { // LCOV_EXCL_START
-                LOG_GC(FATAL) << "verify shared4 " << cm << ':' << slot.SlotAddress()
-                              << ' ' << value.GetTaggedObject();
-                UNREACHABLE();
-            }
-            if (!valueRegion->InSharedReadOnlySpace()
-                    && !valueRegion->Test(value.GetTaggedObject())) {
-                LOG_GC(FATAL) << "verify shared5 " << cm << ':' << slot.SlotAddress()
-                              << ' ' << value.GetTaggedObject();
-                UNREACHABLE();
-            }
-            if (value.GetTaggedObject()->GetClass()->IsFreeObject()) {
-                LOG_GC(FATAL) << "verify shared6 " << cm << ':' << slot.SlotAddress()
-                              << ' ' << value.GetTaggedObject();
-                UNREACHABLE();
-            } // LCOV_EXCL_STOP
-        };
-        ObjectXRay::VisitObjectBody<VisitType::OLD_GC_VISIT>(
-            obj, jsHclass, [f](TaggedObject *root, ObjectSlot start, ObjectSlot end,
-                               VisitObjectArea area) {
-            if (area == VisitObjectArea::IN_OBJECT) {
-                auto hclass = root->GetClass();
-                ASSERT(!hclass->IsAllTaggedProp());
-                int index = 0;
-                for (ObjectSlot slot = start; slot < end; slot++) {
-                    auto layout = LayoutInfo::Cast(hclass->GetLayout().GetTaggedObject());
-                    auto attr = layout->GetAttr(index++);
-                    if (attr.IsTaggedRep()) {
-                        f(slot, root);
-                    }
-                }
-                return;
-            }
-            for (ObjectSlot slot = start; slot < end; slot++) {
-                f(slot, root);
-            }
-        });
+        ObjectXRay::VisitObjectBody<VisitType::OLD_GC_VISIT>(obj, jsHclass, verifyVisitor2);
     });
 }
 
@@ -664,143 +620,128 @@ void SharedHeapVerification::VerifySweep(bool cm) const
     LOG_GC(DEBUG) << "start verify shared sweep";
     [[maybe_unused]] VerifyScope verifyScope(sHeap_);
     sHeap_->GetSweeper()->EnsureAllTaskFinished();
-    Runtime::GetInstance()->GCIterateThreadList([cm](JSThread *thread) {
+    auto cb1 = [cm] (ObjectSlot slot, TaggedObject *obj) {
+        Region *objectRegion = Region::ObjectAddressToRange(obj);
+        JSTaggedValue value(slot.GetTaggedType());
+        if (value.IsWeak() || !value.IsHeapObject()) {
+            return;
+        }
+        Region *valueRegion = Region::ObjectAddressToRange(value.GetTaggedObject());
+        if (!valueRegion->InSharedSweepableSpace()) {
+            return;
+        }
+        if (!objectRegion->TestLocalToShare(slot.SlotAddress())) { // LCOV_EXCL_START
+            LOG_GC(FATAL) << "verify shared7 " << cm << ':' << slot.SlotAddress()
+                          << ' ' << value.GetTaggedObject();
+            UNREACHABLE();
+        }
+        if (!valueRegion->Test(value.GetTaggedObject())) {
+            LOG_GC(FATAL) << "verify shared8 " << cm << ':' << slot.SlotAddress()
+                          << ' ' << value.GetTaggedObject();
+            UNREACHABLE();
+        }
+        if (value.GetTaggedObject()->GetClass()->IsFreeObject()) {
+            LOG_GC(FATAL) << "verify shared9 " << cm << ':' << slot.SlotAddress()
+                          << ' ' << value.GetTaggedObject();
+            UNREACHABLE();
+        } // LCOV_EXCL_STOP
+    };
+    VerifyVisitor verifyVisitor1(cb1);
+    Runtime::GetInstance()->GCIterateThreadList([&verifyVisitor1](JSThread *thread) {
         auto vm = thread->GetEcmaVM();
         auto heap = vm->GetHeap();
         heap->GetSweeper()->EnsureAllTaskFinished();
         const_cast<Heap*>(heap)->FillBumpPointerForTlab();
-        heap->IterateOverObjects([cm](TaggedObject *obj) {
+        heap->IterateOverObjects([&verifyVisitor1](TaggedObject *obj) {
             auto jsHclass = obj->GetClass();
-            auto f = [cm] (ObjectSlot slot, TaggedObject *obj) {
-                Region *objectRegion = Region::ObjectAddressToRange(obj);
-                JSTaggedValue value(slot.GetTaggedType());
-                if (value.IsWeak() || !value.IsHeapObject()) {
-                    return;
-                }
-                Region *valueRegion = Region::ObjectAddressToRange(value.GetTaggedObject());
-                if (!valueRegion->InSharedSweepableSpace()) {
-                    return;
-                }
-                if (!objectRegion->TestLocalToShare(slot.SlotAddress())) { // LCOV_EXCL_START
-                    LOG_GC(FATAL) << "verify shared7 " << cm << ':' << slot.SlotAddress()
-                                  << ' ' << value.GetTaggedObject();
-                    UNREACHABLE();
-                }
-                if (!valueRegion->Test(value.GetTaggedObject())) {
-                    LOG_GC(FATAL) << "verify shared8 " << cm << ':' << slot.SlotAddress()
-                                  << ' ' << value.GetTaggedObject();
-                    UNREACHABLE();
-                }
-                if (value.GetTaggedObject()->GetClass()->IsFreeObject()) {
-                    LOG_GC(FATAL) << "verify shared9 " << cm << ':' << slot.SlotAddress()
-                                  << ' ' << value.GetTaggedObject();
-                    UNREACHABLE();
-                } // LCOV_EXCL_STOP
-            };
-            ObjectXRay::VisitObjectBody<VisitType::OLD_GC_VISIT>(
-                obj, jsHclass, [f](TaggedObject *root, ObjectSlot start, ObjectSlot end,
-                                VisitObjectArea area) {
-                if (area == VisitObjectArea::IN_OBJECT) {
-                    auto hclass = root->GetClass();
-                    ASSERT(!hclass->IsAllTaggedProp());
-                    int index = 0;
-                    for (ObjectSlot slot = start; slot < end; slot++) {
-                        auto layout = LayoutInfo::Cast(hclass->GetLayout().GetTaggedObject());
-                        auto attr = layout->GetAttr(index++);
-                        if (attr.IsTaggedRep()) {
-                            f(slot, root);
-                        }
-                    }
-                    return;
-                }
-                for (ObjectSlot slot = start; slot < end; slot++) {
-                    f(slot, root);
-                }
-            });
+            ObjectXRay::VisitObjectBody<VisitType::OLD_GC_VISIT>(obj, jsHclass, verifyVisitor1);
         });
     });
-    sHeap_->IterateOverObjects([cm](TaggedObject *obj) {
+    auto cb2 = [cm] (ObjectSlot slot, TaggedObject *obj) {
+        [[maybe_unused]] Region *objectRegion = Region::ObjectAddressToRange(obj);
+        if (!objectRegion->Test(obj)) { // LCOV_EXCL_START
+            LOG_GC(FATAL) << "verify shared10 " << cm << ':' << obj;
+            UNREACHABLE();
+        }
+        JSTaggedValue value(slot.GetTaggedType());
+        if (value.IsWeak() || !value.IsHeapObject()) {
+            return;
+        }
+        [[maybe_unused]] Region *valueRegion = Region::ObjectAddressToRange(value.GetTaggedObject());
+        if (!valueRegion->InSharedHeap()) {
+            LOG_GC(FATAL) << "verify shared11 " << cm << ':' << slot.SlotAddress()
+                          << ' ' << value.GetTaggedObject();
+            UNREACHABLE();
+        }
+        if (!valueRegion->InSharedReadOnlySpace()
+                && !valueRegion->Test(value.GetTaggedObject())) {
+            LOG_GC(FATAL) << "verify shared12 " << cm << ':' << slot.SlotAddress()
+                          << ' ' << value.GetTaggedObject();
+            UNREACHABLE();
+        }
+        if (value.GetTaggedObject()->GetClass()->IsFreeObject()) {
+            LOG_GC(FATAL) << "verify shared13 " << cm << ':' << slot.SlotAddress()
+                          << ' ' << value.GetTaggedObject();
+            UNREACHABLE();
+        } // LCOV_EXCL_STOP
+    };
+    VerifyVisitor verifyVisitor2(cb2);
+    sHeap_->IterateOverObjects([&verifyVisitor2](TaggedObject *obj) {
         auto jsHclass = obj->GetClass();
-        auto f = [cm] (ObjectSlot slot, TaggedObject *obj) {
-            [[maybe_unused]] Region *objectRegion = Region::ObjectAddressToRange(obj);
-            if (!objectRegion->Test(obj)) { // LCOV_EXCL_START
-                LOG_GC(FATAL) << "verify shared10 " << cm << ':' << obj;
-                UNREACHABLE();
-            }
-            JSTaggedValue value(slot.GetTaggedType());
-            if (value.IsWeak() || !value.IsHeapObject()) {
-                return;
-            }
-            [[maybe_unused]] Region *valueRegion = Region::ObjectAddressToRange(value.GetTaggedObject());
-            if (!valueRegion->InSharedHeap()) {
-                LOG_GC(FATAL) << "verify shared11 " << cm << ':' << slot.SlotAddress()
-                              << ' ' << value.GetTaggedObject();
-                UNREACHABLE();
-            }
-            if (!valueRegion->InSharedReadOnlySpace()
-                    && !valueRegion->Test(value.GetTaggedObject())) {
-                LOG_GC(FATAL) << "verify shared12 " << cm << ':' << slot.SlotAddress()
-                              << ' ' << value.GetTaggedObject();
-                UNREACHABLE();
-            }
-            if (value.GetTaggedObject()->GetClass()->IsFreeObject()) {
-                LOG_GC(FATAL) << "verify shared13 " << cm << ':' << slot.SlotAddress()
-                              << ' ' << value.GetTaggedObject();
-                UNREACHABLE();
-            } // LCOV_EXCL_STOP
-        };
-        ObjectXRay::VisitObjectBody<VisitType::OLD_GC_VISIT>(
-            obj, jsHclass, [f](TaggedObject *root, ObjectSlot start, ObjectSlot end,
-                                VisitObjectArea area) {
-            if (area == VisitObjectArea::IN_OBJECT) {
-                auto hclass = root->GetClass();
-                ASSERT(!hclass->IsAllTaggedProp());
-                int index = 0;
-                for (ObjectSlot slot = start; slot < end; slot++) {
-                    auto layout = LayoutInfo::Cast(hclass->GetLayout().GetTaggedObject());
-                    auto attr = layout->GetAttr(index++);
-                    if (attr.IsTaggedRep()) {
-                        f(slot, root);
-                    }
-                }
-                return;
-            }
-            for (ObjectSlot slot = start; slot < end; slot++) {
-                f(slot, root);
-            }
-        });
+       
+        ObjectXRay::VisitObjectBody<VisitType::OLD_GC_VISIT>(obj, jsHclass, verifyVisitor2);
     });
+}
+
+void SharedHeapVerification::VerificationRootVisitor::VisitRoot([[maybe_unused]] Root type, ObjectSlot slot)
+{
+    sVerification_->VerifyObjectSlot(slot, &failCount_);
+};
+
+void SharedHeapVerification::VerificationRootVisitor::VisitRangeRoot([[maybe_unused]] Root type, ObjectSlot start,
+                                                                     ObjectSlot end)
+{
+    for (ObjectSlot slot = start; slot < end; slot++) {
+        sVerification_->VerifyObjectSlot(slot, &failCount_);
+    }
+};
+
+void SharedHeapVerification::VerificationRootVisitor::VisitBaseAndDerivedRoot([[maybe_unused]] Root type,
+    [[maybe_unused]] ObjectSlot base, [[maybe_unused]] ObjectSlot derived, [[maybe_unused]] uintptr_t baseOldObject)
+{
+}
+
+void SharedHeapVerification::VerificationSerializeRootVisitor::VisitRoot([[maybe_unused]] Root type, ObjectSlot slot)
+{
+    JSTaggedValue value(slot.GetTaggedType());
+    if (!sHeap_->IsAlive(value.GetTaggedObject())) {
+        LOG_ECMA(ERROR) << "Serialize Heap verify detected a dead object. " << value.GetTaggedObject();
+        ++failCount_;
+    }
+};
+
+void SharedHeapVerification::VerificationSerializeRootVisitor::VisitRangeRoot([[maybe_unused]] Root type,
+    [[maybe_unused]] ObjectSlot start, [[maybe_unused]] ObjectSlot end)
+{
+}
+
+void SharedHeapVerification::VerificationSerializeRootVisitor::VisitBaseAndDerivedRoot([[maybe_unused]] Root type,
+    [[maybe_unused]] ObjectSlot base, [[maybe_unused]] ObjectSlot derived, [[maybe_unused]] uintptr_t baseOldObject)
+{
 }
 
 size_t SharedHeapVerification::VerifyRoot() const
 {
     size_t failCount = 0;
-    RootVisitor visitor = [this, &failCount]([[maybe_unused]] Root type, ObjectSlot slot) {
-        VerifyObjectSlot(slot, &failCount);
-    };
-    RootRangeVisitor rangeVisitor = [this, &failCount]([[maybe_unused]] Root type, ObjectSlot start, ObjectSlot end) {
-        for (ObjectSlot slot = start; slot < end; slot++) {
-            VerifyObjectSlot(slot, &failCount);
-        }
-    };
-    RootBaseAndDerivedVisitor derivedVisitor =
-        []([[maybe_unused]] Root type, [[maybe_unused]] ObjectSlot base, [[maybe_unused]] ObjectSlot derived,
-           [[maybe_unused]] uintptr_t baseOldObject) {
-    };
-    RootVisitor serializeVisitor = [this, &failCount]([[maybe_unused]] Root type, ObjectSlot slot) {
-        JSTaggedValue value(slot.GetTaggedType());
-        if (!sHeap_->IsAlive(value.GetTaggedObject())) {
-            LOG_ECMA(ERROR) << "Serialize Heap verify detected a dead object. " << value.GetTaggedObject();
-            ++failCount;
-        }
-    };
-    Runtime::GetInstance()->IterateSerializeRoot(serializeVisitor);
+    VerificationRootVisitor verificationRootVisitor(this, failCount);
+    VerificationSerializeRootVisitor verificationSerializeRootVisitor(sHeap_, failCount);
+    Runtime::GetInstance()->IterateSerializeRoot(verificationSerializeRootVisitor);
     Runtime::GetInstance()->GCIterateThreadList([&](JSThread *thread) {
         ASSERT(!thread->IsInRunningState());
         auto vm = thread->GetEcmaVM();
         auto localHeap = const_cast<Heap*>(vm->GetHeap());
         localHeap->GetSweeper()->EnsureAllTaskFinished();
-        ObjectXRay::VisitVMRoots(vm, visitor, rangeVisitor, derivedVisitor, VMRootVisitType::VERIFY);
+        ObjectXRay::VisitVMRoots(vm, verificationRootVisitor, VMRootVisitType::VERIFY);
         if (failCount > 0) {
             LOG_GC(ERROR) << "SharedHeap VerifyRoot detects deadObject count is " << failCount;
         }

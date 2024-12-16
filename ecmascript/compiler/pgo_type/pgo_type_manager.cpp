@@ -18,16 +18,16 @@
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/layout_info-inl.h"
 namespace panda::ecmascript::kungfu {
-void PGOTypeManager::Iterate(const RootVisitor &v)
+void PGOTypeManager::Iterate(RootVisitor &v)
 {
     for (auto &iter : hcData_) {
         for (auto &hclassIter : iter.second) {
-            v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&(hclassIter.second))));
+            v.VisitRoot(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&(hclassIter.second))));
         }
     }
     aotSnapshot_.Iterate(v);
     for (auto &iter : hclassInfoLocal_) {
-        v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&(iter))));
+        v.VisitRoot(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&(iter))));
     }
 }
 

@@ -101,6 +101,21 @@ public:
     size_t VerifyHeap() const;
     size_t VerifyOldToNewRSet() const;
 private:
+    class VerificationRootVisitor final : public RootVisitor {
+    public:
+        explicit VerificationRootVisitor(const Verification *verification, size_t &failCount)
+            : verification_(verification), failCount_(failCount) {}
+        ~VerificationRootVisitor() = default;
+
+        void VisitRoot([[maybe_unused]] Root type, ObjectSlot slot) override;
+        void VisitRangeRoot([[maybe_unused]] Root type, ObjectSlot start, ObjectSlot end) override;
+        void VisitBaseAndDerivedRoot([[maybe_unused]] Root type, ObjectSlot base, ObjectSlot derived,
+                                     uintptr_t baseOldObject) override;
+    private:
+        const Verification *verification_;
+        size_t &failCount_;
+    };
+
     void VerifyObjectSlot(const ObjectSlot &slot, size_t *failCount) const;
 
     NO_COPY_SEMANTIC(Verification);
@@ -123,6 +138,36 @@ public:
     size_t VerifyRoot() const;
     size_t VerifyHeap() const;
 private:
+    class VerificationRootVisitor final : public RootVisitor {
+    public:
+        explicit VerificationRootVisitor(const SharedHeapVerification *sVerification, size_t &failCount)
+            : sVerification_(sVerification), failCount_(failCount) {}
+        ~VerificationRootVisitor() = default;
+
+        void VisitRoot([[maybe_unused]] Root type, ObjectSlot slot) override;
+        void VisitRangeRoot([[maybe_unused]] Root type, ObjectSlot start, ObjectSlot end) override;
+        void VisitBaseAndDerivedRoot([[maybe_unused]] Root type, ObjectSlot base, ObjectSlot derived,
+                                     uintptr_t baseOldObject) override;
+    private:
+        const SharedHeapVerification *sVerification_;
+        size_t &failCount_;
+    };
+
+    class VerificationSerializeRootVisitor final : public RootVisitor {
+    public:
+        explicit VerificationSerializeRootVisitor(SharedHeap *sHeap, size_t &failCount)
+            : sHeap_(sHeap), failCount_(failCount) {}
+        ~VerificationSerializeRootVisitor() = default;
+
+        void VisitRoot([[maybe_unused]] Root type, ObjectSlot slot) override;
+        void VisitRangeRoot([[maybe_unused]] Root type, ObjectSlot start, ObjectSlot end) override;
+        void VisitBaseAndDerivedRoot([[maybe_unused]] Root type, ObjectSlot base, ObjectSlot derived,
+                                     uintptr_t baseOldObject) override;
+    private:
+        SharedHeap *sHeap_;
+        size_t &failCount_;
+    };
+
     void VerifyObjectSlot(const ObjectSlot &slot, size_t *failCount) const;
 
     NO_COPY_SEMANTIC(SharedHeapVerification);
@@ -130,6 +175,34 @@ private:
 
     SharedHeap *sHeap_ {nullptr};
     VerifyKind verifyKind_;
+};
+
+template <class Callback>
+class VerifyVisitor final : public EcmaObjectRangeVisitor<VerifyVisitor<Callback>> {
+public:
+    explicit VerifyVisitor(Callback &cb) : cb_(cb) {}
+    ~VerifyVisitor() = default;
+    void VisitObjectRangeImpl(TaggedObject *root, ObjectSlot start, ObjectSlot end, VisitObjectArea area) override
+    {
+        if (UNLIKELY(area == VisitObjectArea::IN_OBJECT)) {
+            auto hclass = root->GetClass();
+            ASSERT(!hclass->IsAllTaggedProp());
+            int index = 0;
+            for (ObjectSlot slot = start; slot < end; slot++) {
+                auto layout = LayoutInfo::Cast(hclass->GetLayout().GetTaggedObject());
+                auto attr = layout->GetAttr(index++);
+                if (attr.IsTaggedRep()) {
+                    cb_(slot, root);
+                }
+            }
+            return;
+        }
+        for (ObjectSlot slot = start; slot < end; slot++) {
+            cb_(slot, root);
+        }
+    }
+private:
+    Callback &cb_;
 };
 }  // namespace panda::ecmascript
 

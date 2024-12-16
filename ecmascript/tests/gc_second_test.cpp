@@ -398,15 +398,6 @@ HWTEST_F_L0(GCTest, GCReasonToStringTest001)
     ASSERT_EQ(strcmp(stats->GCReasonToString(GCReason::TRIGGER_BY_TASKPOOL), "Trigger by taskPool"), 0);
 }
 
-HWTEST_F_L0(GCTest, PrintGCMemoryStatisticTest001)
-{
-    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-    heap->SetMarkType(MarkType::MARK_EDEN);
-    GCStats *stats = new GCStats(heap);
-    stats->RecordStatisticBeforeGC(TriggerGCType::EDEN_GC, GCReason::TRIGGER_BY_ARKUI);
-    stats->PrintGCMemoryStatistic();
-}
-
 HWTEST_F_L0(GCTest, PrintGCMemoryStatisticTest002)
 {
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
@@ -431,26 +422,6 @@ HWTEST_F_L0(GCTest, PrintGCSummaryStatisticTest001)
     heap->SetMarkType(MarkType::MARK_YOUNG);
     GCStats *stats = new GCStats(heap);
     stats->PrintStatisticResult();
-}
-
-HWTEST_F_L0(GCTest, RecordStatisticAfterGCTest001)
-{
-    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-    heap->SetMarkType(MarkType::MARK_YOUNG);
-    GCStats *stats = new GCStats(heap);
-    stats->RecordStatisticBeforeGC(TriggerGCType::EDEN_GC, GCReason::TRIGGER_BY_ARKUI);
-    stats->SetRecordData(RecordData::EDEN_COUNT, 1);
-    stats->RecordStatisticAfterGC();
-}
-
-HWTEST_F_L0(GCTest, RecordStatisticAfterGCTest002)
-{
-    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-    heap->SetMarkType(MarkType::MARK_EDEN);
-    GCStats *stats = new GCStats(heap);
-    stats->RecordStatisticBeforeGC(TriggerGCType::EDEN_GC, GCReason::TRIGGER_BY_ARKUI);
-    stats->SetRecordData(RecordData::EDEN_COUNT, 1);
-    stats->RecordStatisticAfterGC();
 }
 
 HWTEST_F_L0(GCTest, CalculateGrowingFactorTest001)

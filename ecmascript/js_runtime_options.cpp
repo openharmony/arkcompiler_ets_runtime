@@ -256,6 +256,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"entry-point", required_argument, nullptr, OPTION_ENTRY_POINT},
         {"force-full-gc", required_argument, nullptr, OPTION_FORCE_FULL_GC},
         {"force-shared-gc-frequency", required_argument, nullptr, OPTION_ENABLE_FORCE_SHARED_GC_FREQUENCY},
+        {"enable-heap-verify", required_argument, nullptr, OPTION_ENABLE_HEAP_VERIFY},
         {"gc-thread-num", required_argument, nullptr, OPTION_GC_THREADNUM},
         {"heap-size-limit", required_argument, nullptr, OPTION_HEAP_SIZE_LIMIT},
         {"help", no_argument, nullptr, OPTION_HELP},
@@ -605,6 +606,14 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 ret = ParseUint32Param("force-shared-gc-frequency", &argUint32);
                 if (ret) {
                     SetForceSharedGCFrequency(argUint32);
+                } else {
+                    return false;
+                }
+                break;
+            case OPTION_ENABLE_HEAP_VERIFY:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetEnableHeapVerify(argBool);
                 } else {
                     return false;
                 }

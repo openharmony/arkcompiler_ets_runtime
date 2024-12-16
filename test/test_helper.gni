@@ -297,6 +297,10 @@ template("host_moduletest_action") {
       js_vm_options += " --enable-ark-tools=true"
       js_vm_options += " --enable-force-gc=false"
     }
+
+    if (defined(invoker.disable_heap_verify) && invoker.disable_heap_verify) {
+      js_vm_options += " --enable-heap-verify=false"
+    }
     _icu_data_path_options_ =
         " --icu-data-path=" + rebase_path("//third_party/icu/ohos_icu4j/data")
     js_vm_options += _icu_data_path_options_
@@ -360,6 +364,10 @@ template("host_moduletest_action") {
         invoker.is_enable_enableArkTools) {
       js_vm_options += " --enable-ark-tools=true"
       js_vm_options += " --enable-force-gc=false"
+    }
+
+    if (defined(invoker.disable_heap_verify) && invoker.disable_heap_verify) {
+      js_vm_options += " --enable-heap-verify=false"
     }
     js_vm_options += " --enable-context=true"
     js_vm_options += common_options
@@ -430,6 +438,10 @@ template("host_moduletest_action") {
       _asm_run_options_ += " --enable-ark-tools=true"
       _asm_run_options_ += " --enable-force-gc=false"
     }
+
+    if (defined(invoker.disable_heap_verify) && invoker.disable_heap_verify) {
+      _asm_run_options_ += " --enable-heap-verify=false"
+    }
     _asm_run_options_ += " --enable-context=true"
     _asm_run_options_ += common_options
     _icu_data_path_options_ =
@@ -499,6 +511,10 @@ template("host_moduletest_action") {
       _asm_run_options_ += " --enable-ark-tools=true"
       _asm_run_options_ += " --enable-force-gc=false"
     }
+
+    if (defined(invoker.disable_heap_verify) && invoker.disable_heap_verify) {
+      _asm_run_options_ += " --enable-heap-verify=false"
+    }
     _asm_run_options_ += common_options
     _icu_data_path_options_ =
         " --icu-data-path=" + rebase_path("//third_party/icu/ohos_icu4j/data")
@@ -565,6 +581,10 @@ template("host_moduletest_action") {
       _asm_run_options_ += " --enable-ark-tools=true"
       _asm_run_options_ += " --enable-force-gc=false"
     }
+
+    if (defined(invoker.disable_heap_verify) && invoker.disable_heap_verify) {
+      _asm_run_options_ += " --enable-heap-verify=false"
+    }
     _asm_run_options_ += common_options
     _icu_data_path_options_ =
         " --icu-data-path=" + rebase_path("//third_party/icu/ohos_icu4j/data")
@@ -628,6 +648,10 @@ template("host_moduletest_action") {
         invoker.is_enable_enableArkTools) {
       _asm_run_options_ += " --enable-ark-tools=true"
       _asm_run_options_ += " --enable-force-gc=false"
+    }
+
+    if (defined(invoker.disable_heap_verify) && invoker.disable_heap_verify) {
+      _asm_run_options_ += " --enable-heap-verify=false"
     }
     _asm_run_options_ += " --enable-context=true"
     _asm_run_options_ += common_options

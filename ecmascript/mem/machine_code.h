@@ -246,8 +246,8 @@ public:
     bool SetText(const MachineCodeDesc &desc);
     bool SetNonText(const MachineCodeDesc &desc, EntityId methodId);
 
-    template <VisitType visitType>
-    void VisitRangeSlot(const EcmaObjectRangeVisitor &visitor)
+    template <VisitType visitType, class DerivedVisitor>
+    void VisitRangeSlot(EcmaObjectRangeVisitor<DerivedVisitor> &visitor)
     {
         ASSERT(visitType == VisitType::ALL_VISIT || visitType == VisitType::OLD_GC_VISIT);
         if constexpr (visitType == VisitType::ALL_VISIT) {

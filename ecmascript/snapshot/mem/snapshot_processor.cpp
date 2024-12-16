@@ -1426,6 +1426,30 @@ void SnapshotProcessor::AddRootObjectToAOTFileManager(SnapshotType type, const C
     }
 }
 
+SnapshotProcessor::SerializeObjectVisitor::SerializeObjectVisitor(SnapshotProcessor *processor, uintptr_t snapshotObj,
+    CQueue<TaggedObject *> *queue, std::unordered_map<uint64_t, ObjectEncode> *data)
+    : processor_(processor), snapshotObj_(snapshotObj), queue_(queue), data_(data) {}
+
+void SnapshotProcessor::SerializeObjectVisitor::VisitObjectRangeImpl(TaggedObject *root, ObjectSlot start,
+                                                                     ObjectSlot end, VisitObjectArea area)
+{
+    int index = 0;
+    for (ObjectSlot slot = start; slot < end; slot++) {
+        if (area == VisitObjectArea::NATIVE_POINTER) {
+            auto nativePointer = *reinterpret_cast<void **>(slot.SlotAddress());
+            processor_->SetObjectEncodeField(snapshotObj_, slot.SlotAddress() - ToUintPtr(root),
+                                             processor_->NativePointerToEncodeBit(nativePointer).GetValue());
+        } else {
+            if (processor_->VisitObjectBodyWithRep(root, slot, snapshotObj_, index, area)) {
+                continue;
+            }
+            auto fieldAddr = reinterpret_cast<JSTaggedType *>(slot.SlotAddress());
+            processor_->SetObjectEncodeField(snapshotObj_, slot.SlotAddress() - ToUintPtr(root),
+                                             processor_->SerializeTaggedField(fieldAddr, queue_, data_));
+        }
+    }
+}
+
 void SnapshotProcessor::SerializeObject(TaggedObject *objectHeader, CQueue<TaggedObject *> *queue,
                                         std::unordered_map<uint64_t, ObjectEncode> *data)
 {
@@ -1443,25 +1467,7 @@ void SnapshotProcessor::SerializeObject(TaggedObject *objectHeader, CQueue<Tagge
     EncodeBit encodeBit = SerializeObjectHeader(objectHeader, static_cast<size_t>(objectType), queue, data);
     SetObjectEncodeField(snapshotObj, 0, encodeBit.GetValue());
 
-    auto visitor = [this, snapshotObj, queue, data](TaggedObject *root, ObjectSlot start, ObjectSlot end,
-                                                    VisitObjectArea area) {
-        int index = 0;
-        for (ObjectSlot slot = start; slot < end; slot++) {
-            if (area == VisitObjectArea::NATIVE_POINTER) {
-                auto nativePointer = *reinterpret_cast<void **>(slot.SlotAddress());
-                SetObjectEncodeField(snapshotObj, slot.SlotAddress() - ToUintPtr(root),
-                                     NativePointerToEncodeBit(nativePointer).GetValue());
-            } else {
-                if (VisitObjectBodyWithRep(root, slot, snapshotObj, index, area)) {
-                    continue;
-                }
-                auto fieldAddr = reinterpret_cast<JSTaggedType *>(slot.SlotAddress());
-                SetObjectEncodeField(snapshotObj, slot.SlotAddress() - ToUintPtr(root),
-                                     SerializeTaggedField(fieldAddr, queue, data));
-            }
-        }
-    };
-
+    SerializeObjectVisitor visitor(this, snapshotObj, queue, data);
     ObjectXRay::VisitObjectBody<VisitType::SNAPSHOT_VISIT>(objectHeader, objectHeader->GetClass(), visitor);
 }
 
@@ -1676,19 +1682,25 @@ void SnapshotProcessor::DeserializeClassWord(TaggedObject *object)
     object->SynchronizedSetClass(vm_->GetJSThread(), reinterpret_cast<JSHClass *>(hclassAddr));
 }
 
+SnapshotProcessor::DeserializeFieldVisitor::DeserializeFieldVisitor(SnapshotProcessor *processor)
+    : processor_(processor) {}
+
+void SnapshotProcessor::DeserializeFieldVisitor::VisitObjectRangeImpl(TaggedObject *root, ObjectSlot start,
+                                                                      ObjectSlot end, VisitObjectArea area)
+{
+    for (ObjectSlot slot = start; slot < end; slot++) {
+        auto encodeBitAddr = reinterpret_cast<uint64_t *>(slot.SlotAddress());
+        if (area == VisitObjectArea::NATIVE_POINTER) {
+            processor_->DeserializeNativePointer(encodeBitAddr);
+        } else {
+            processor_->DeserializeTaggedField(encodeBitAddr, root);
+        }
+    }
+}
+
 void SnapshotProcessor::DeserializeField(TaggedObject *objectHeader)
 {
-    auto visitor = [this]([[maybe_unused]] TaggedObject *root, ObjectSlot start, ObjectSlot end, VisitObjectArea area) {
-        for (ObjectSlot slot = start; slot < end; slot++) {
-            auto encodeBitAddr = reinterpret_cast<uint64_t *>(slot.SlotAddress());
-            if (area == VisitObjectArea::NATIVE_POINTER) {
-                DeserializeNativePointer(encodeBitAddr);
-            } else {
-                DeserializeTaggedField(encodeBitAddr, root);
-            }
-        }
-    };
-
+    DeserializeFieldVisitor visitor(this);
     ObjectXRay::VisitObjectBody<VisitType::SNAPSHOT_VISIT>(objectHeader, objectHeader->GetClass(), visitor);
 }
 

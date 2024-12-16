@@ -1510,13 +1510,22 @@ JSTaggedValue BuiltinsArkTools::IterateFrame(EcmaRuntimeCallInfo *info)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     JSTaggedType *currentFrame = const_cast<JSTaggedType *>(thread->GetCurrentFrame());
-    RootVisitor visitor = []([[maybe_unused]] Root type, [[maybe_unused]] ObjectSlot slot) {};
-    RootBaseAndDerivedVisitor derivedVisitor = []([[maybe_unused]] Root Type, [[maybe_unused]] ObjectSlot base,
-                                                  [[maybe_unused]] ObjectSlot derived,
-                                                  [[maybe_unused]] uintptr_t baseOldObject) {};
+
+    class DummyRootVisitor final : public RootVisitor {
+    public:
+        DummyRootVisitor() = default;
+        ~DummyRootVisitor() = default;
+
+        void VisitRoot([[maybe_unused]] Root type, [[maybe_unused]] ObjectSlot slot) override {}
+        void VisitRangeRoot([[maybe_unused]] Root type, [[maybe_unused]] ObjectSlot start,
+            [[maybe_unused]] ObjectSlot end) override {}
+        void VisitBaseAndDerivedRoot([[maybe_unused]] Root type, [[maybe_unused]] ObjectSlot base,
+            [[maybe_unused]] ObjectSlot derived, [[maybe_unused]] uintptr_t baseOldObject) override {}
+    };
+    DummyRootVisitor visitor;
 
     for (FrameIterator it(currentFrame, thread); !it.Done(); it.Advance<GCVisitedFlag::VISITED>()) {
-        bool ret = it.IteratorStackMap(visitor, derivedVisitor);
+        bool ret = it.IteratorStackMap(visitor);
         FrameType type = it.GetFrameType();
         int delta = it.ComputeDelta();
         kungfu::CalleeRegAndOffsetVec calleeRegInfo;

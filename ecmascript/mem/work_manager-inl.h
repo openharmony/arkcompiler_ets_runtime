@@ -13,12 +13,132 @@
  * limitations under the License.
  */
 
+#ifndef ECMASCRIPT_MEM_WORK_MANAGER_INL_H
+#define ECMASCRIPT_MEM_WORK_MANAGER_INL_H
+
 #include "ecmascript/mem/work_manager.h"
 
 #include "ecmascript/mem/incremental_marker.h"
 #include "ecmascript/mem/tlab_allocator-inl.h"
 
 namespace panda::ecmascript {
+void WorkNodeHolder::Setup(Heap *heap, WorkManager *workManager, GlobalWorkStack *workStack)
+{
+    heap_ = heap;
+    workManager_ = workManager;
+    workStack_ = workStack;
+    continuousQueue_ = new ProcessQueue();
+}
+
+void WorkNodeHolder::Destroy()
+{
+    continuousQueue_->Destroy();
+    delete continuousQueue_;
+    continuousQueue_ = nullptr;
+}
+
+void WorkNodeHolder::Initialize(TriggerGCType gcType, ParallelGCTaskPhase taskPhase)
+{
+    inNode_ = workManager_->AllocateWorkNode();
+    cachedInNode_ = workManager_->AllocateWorkNode();
+    outNode_ = workManager_->AllocateWorkNode();
+    weakQueue_ = new ProcessQueue();
+    weakQueue_->BeginMarking(continuousQueue_);
+    aliveSize_ = 0;
+    promotedSize_ = 0;
+    parallelGCTaskPhase_ = taskPhase;
+    if (gcType != TriggerGCType::OLD_GC) {
+        allocator_ = new TlabAllocator(heap_);
+    }
+}
+
+void WorkNodeHolder::Finish()
+{
+    if (weakQueue_ != nullptr) {
+        weakQueue_->FinishMarking(continuousQueue_);
+        delete weakQueue_;
+        weakQueue_ = nullptr;
+    }
+    if (allocator_ != nullptr) {
+        allocator_->Finalize();
+        delete allocator_;
+        allocator_ = nullptr;
+    }
+    parallelGCTaskPhase_ = ParallelGCTaskPhase::UNDEFINED_TASK;
+}
+
+bool WorkNodeHolder::Push(TaggedObject *object)
+{
+    if (!inNode_->PushObject(ToUintPtr(object))) {
+        PushWorkNodeToGlobal();
+        return inNode_->PushObject(ToUintPtr(object));
+    }
+    return true;
+}
+
+void WorkNodeHolder::PushWorkNodeToGlobal(bool postTask)
+{
+    if (!inNode_->IsEmpty()) {
+        workStack_->Push(inNode_);
+        inNode_ = cachedInNode_;
+        ASSERT(inNode_ != nullptr);
+        cachedInNode_ = cachedInNode_->Next();
+        if (cachedInNode_ == nullptr) {
+            cachedInNode_ = workManager_->AllocateWorkNode();
+        }
+        if (postTask && heap_->IsParallelGCEnabled() && heap_->CheckCanDistributeTask() &&
+            !(heap_->IsMarking() && heap_->GetIncrementalMarker()->IsTriggeredIncrementalMark())) {
+            heap_->PostParallelGCTask(parallelGCTaskPhase_);
+        }
+    }
+}
+
+bool WorkNodeHolder::Pop(TaggedObject **object)
+{
+    if (!outNode_->PopObject(reinterpret_cast<uintptr_t *>(object))) {
+        if (!inNode_->IsEmpty()) {
+            WorkNode *tmp = outNode_;
+            outNode_ = inNode_;
+            inNode_ = tmp;
+        } else {
+            cachedInNode_->SetNext(outNode_);
+            outNode_->SetNext(nullptr);
+            if (!PopWorkNodeFromGlobal()) {
+                return false;
+            }
+        }
+        return outNode_->PopObject(reinterpret_cast<uintptr_t *>(object));
+    }
+    return true;
+}
+
+bool WorkNodeHolder::PopWorkNodeFromGlobal()
+{
+    return workStack_->Pop(&outNode_);
+}
+
+void WorkNodeHolder::PushWeakReference(JSTaggedType *weak)
+{
+    weakQueue_->PushBack(weak);
+}
+void WorkNodeHolder::IncreaseAliveSize(size_t size)
+{
+    aliveSize_ += size;
+}
+void WorkNodeHolder::IncreasePromotedSize(size_t size)
+{
+    promotedSize_ += size;
+}
+
+ProcessQueue *WorkNodeHolder::GetWeakReferenceQueue() const
+{
+    return weakQueue_;
+}
+TlabAllocator *WorkNodeHolder::GetTlabAllocator() const
+{
+    return allocator_;
+}
+
 WorkManagerBase::WorkManagerBase(NativeAreaAllocator *allocator)
     : spaceChunk_(allocator), workSpace_(0), spaceStart_(0), spaceEnd_(0)
 {
@@ -55,10 +175,10 @@ WorkManagerBase::~WorkManagerBase()
 
 WorkManager::WorkManager(Heap *heap, uint32_t threadNum)
     : WorkManagerBase(heap->GetNativeAreaAllocator()), heap_(heap), threadNum_(threadNum),
-      continuousQueue_ { nullptr }, parallelGCTaskPhase_(UNDEFINED_TASK)
+      parallelGCTaskPhase_(UNDEFINED_TASK)
 {
     for (uint32_t i = 0; i < threadNum_; i++) {
-        continuousQueue_.at(i) = new ProcessQueue();
+        works_.at(i).Setup(heap_, this, &workStack_);
     }
 }
 
@@ -66,57 +186,8 @@ WorkManager::~WorkManager()
 {
     Finish();
     for (uint32_t i = 0; i < threadNum_; i++) {
-        continuousQueue_.at(i)->Destroy();
-        delete continuousQueue_.at(i);
-        continuousQueue_.at(i) = nullptr;
+        works_.at(i).Destroy();
     }
-}
-
-bool WorkManager::Push(uint32_t threadId, TaggedObject *object)
-{
-    WorkNode *&inNode = works_.at(threadId).inNode_;
-    if (!inNode->PushObject(ToUintPtr(object))) {
-        PushWorkNodeToGlobal(threadId);
-        return inNode->PushObject(ToUintPtr(object));
-    }
-    return true;
-}
-
-void WorkManager::PushWorkNodeToGlobal(uint32_t threadId, bool postTask)
-{
-    WorkNode *&inNode = works_.at(threadId).inNode_;
-    if (!inNode->IsEmpty()) {
-        workStack_.Push(inNode);
-        inNode = works_.at(threadId).cachedInNode_;
-        ASSERT(inNode != nullptr);
-        works_.at(threadId).cachedInNode_ = AllocateWorkNode();
-        if (postTask && heap_->IsParallelGCEnabled() && heap_->CheckCanDistributeTask() &&
-            !(heap_->IsMarking() && heap_->GetIncrementalMarker()->IsTriggeredIncrementalMark())) {
-            heap_->PostParallelGCTask(parallelGCTaskPhase_);
-        }
-    }
-}
-
-bool WorkManager::Pop(uint32_t threadId, TaggedObject **object)
-{
-    WorkNode *&outNode = works_.at(threadId).outNode_;
-    WorkNode *&inNode = works_.at(threadId).inNode_;
-    if (!outNode->PopObject(reinterpret_cast<uintptr_t *>(object))) {
-        if (!inNode->IsEmpty()) {
-            WorkNode *tmp = outNode;
-            outNode = inNode;
-            inNode = tmp;
-        } else if (!PopWorkNodeFromGlobal(threadId)) {
-            return false;
-        }
-        return outNode->PopObject(reinterpret_cast<uintptr_t *>(object));
-    }
-    return true;
-}
-
-bool WorkManager::PopWorkNodeFromGlobal(uint32_t threadId)
-{
-    return workStack_.Pop(&works_.at(threadId).outNode_);
 }
 
 size_t WorkManager::Finish()
@@ -124,17 +195,7 @@ size_t WorkManager::Finish()
     size_t aliveSize = 0;
     for (uint32_t i = 0; i < threadNum_; i++) {
         WorkNodeHolder &holder = works_.at(i);
-        if (holder.weakQueue_ != nullptr) {
-            holder.weakQueue_->FinishMarking(continuousQueue_.at(i));
-            delete holder.weakQueue_;
-            holder.weakQueue_ = nullptr;
-        }
-        if (holder.allocator_ != nullptr) {
-            holder.allocator_->Finalize();
-            delete holder.allocator_;
-            holder.allocator_ = nullptr;
-        }
-        holder.pendingUpdateSlots_.clear();
+        holder.Finish();
         aliveSize += holder.aliveSize_;
     }
     FinishBase();
@@ -163,16 +224,7 @@ void WorkManager::Initialize(TriggerGCType gcType, ParallelGCTaskPhase taskPhase
     InitializeBase();
     for (uint32_t i = 0; i < threadNum_; i++) {
         WorkNodeHolder &holder = works_.at(i);
-        holder.inNode_ = AllocateWorkNode();
-        holder.cachedInNode_ = AllocateWorkNode();
-        holder.outNode_ = AllocateWorkNode();
-        holder.weakQueue_ = new ProcessQueue();
-        holder.weakQueue_->BeginMarking(continuousQueue_.at(i));
-        holder.aliveSize_ = 0;
-        holder.promotedSize_ = 0;
-        if (gcType != TriggerGCType::OLD_GC) {
-            holder.allocator_ = new TlabAllocator(heap_);
-        }
+        holder.Initialize(gcType, taskPhase);
     }
     if (initialized_.load(std::memory_order_acquire)) { // LOCV_EXCL_BR_LINE
         LOG_ECMA(FATAL) << "this branch is unreachable";
@@ -316,3 +368,4 @@ bool SharedGCWorkManager::PopWorkNodeFromGlobal(uint32_t threadId)
     return workStack_.Pop(&works_.at(threadId).outNode_);
 }
 }  // namespace panda::ecmascript
+#endif  //  ECMASCRIPT_MEM_WORK_MANAGER_INL_H

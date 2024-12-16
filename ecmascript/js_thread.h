@@ -278,12 +278,11 @@ public:
         glueData_.isTracing_ = isTracing;
     }
 
-    void Iterate(const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor,
-        const RootBaseAndDerivedVisitor &derivedVisitor);
+    void Iterate(RootVisitor &visitor);
 
     void IterateJitCodeMap(const JitCodeMapVisitor &updater);
 
-    void IterateHandleWithCheck(const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor);
+    void IterateHandleWithCheck(RootVisitor &visitor);
 
     uintptr_t* PUBLIC_API ExpandHandleStorage();
     void PUBLIC_API ShrinkHandleStorage(int prevIndex);

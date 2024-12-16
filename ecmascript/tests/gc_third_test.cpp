@@ -271,14 +271,6 @@ HWTEST_F_L0(GCTest, CheckAndTriggerHintGCTest006)
 #endif
 }
 
-HWTEST_F_L0(GCTest, CalculateIdleDurationTest001)
-{
-    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-    heap->SetMarkType(MarkType::MARK_EDEN);
-    ASSERT_EQ(heap->GetMarkType(), MarkType::MARK_EDEN);
-    heap->CalculateIdleDuration();
-}
-
 HWTEST_F_L0(GCTest, CalculateIdleDurationTest002)
 {
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
@@ -372,14 +364,6 @@ HWTEST_F_L0(GCTest, TriggerIdleCollectionTest004)
     heap->TriggerIdleCollection(1000);
 }
 
-HWTEST_F_L0(GCTest, TriggerIdleCollectionTest005)
-{
-    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-    heap->SetIdleTask(IdleTaskType::FINISH_MARKING);
-    heap->SetMarkType(MarkType::MARK_EDEN);
-    heap->TriggerIdleCollection(1000);
-}
-
 HWTEST_F_L0(GCTest, TriggerIdleCollectionTest006)
 {
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
@@ -412,20 +396,6 @@ HWTEST_F_L0(GCTest, ReclaimTest001)
     SharedHeap *heap = SharedHeap::GetInstance();
     heap->DisableParallelGC(thread);
     heap->Reclaim(TriggerGCType::EDEN_GC);
-}
-
-HWTEST_F_L0(GCTest, CollectGarbageTest001)
-{
-    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-    heap->CollectGarbage(TriggerGCType::EDEN_GC, GCReason::IDLE);
-}
-
-HWTEST_F_L0(GCTest, CollectGarbageTest002)
-{
-    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-    heap->SetMarkType(MarkType::MARK_FULL);
-    ASSERT_EQ(heap->GetMarkType(), MarkType::MARK_FULL);
-    heap->CollectGarbage(TriggerGCType::EDEN_GC, GCReason::IDLE);
 }
 
 HWTEST_F_L0(GCTest, CollectGarbageTest003)
@@ -533,35 +503,6 @@ HWTEST_F_L0(GCTest, SelectGCTypeTest002)
     ASSERT_EQ(heap->SelectGCType(), OLD_GC);
 }
 
-HWTEST_F_L0(GCTest, CollectGarbageTest004)
-{
-    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-    thread->EnableCrossThreadExecution();
-    heap->CollectGarbage(TriggerGCType::EDEN_GC, GCReason::TRIGGER_BY_TASKPOOL);
-}
-
-HWTEST_F_L0(GCTest, CollectGarbageTest005)
-{
-    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-    heap->SetOnSerializeEvent(true);
-    heap->CollectGarbage(TriggerGCType::EDEN_GC, GCReason::TRIGGER_BY_TASKPOOL);
-}
-
-HWTEST_F_L0(GCTest, CollectGarbageTest006)
-{
-    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-    heap->SetOnSerializeEvent(true);
-    thread->EnableCrossThreadExecution();
-    heap->CollectGarbage(TriggerGCType::EDEN_GC, GCReason::TRIGGER_BY_TASKPOOL);
-}
-
-HWTEST_F_L0(GCTest, CollectGarbageTest007)
-{
-    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-    heap->GetConcurrentMarker()->ConfigConcurrentMark(false);
-    heap->CollectGarbage(TriggerGCType::EDEN_GC, GCReason::TRIGGER_BY_TASKPOOL);
-}
-
 HWTEST_F_L0(GCTest, CollectGarbageTest008)
 {
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
@@ -575,15 +516,6 @@ HWTEST_F_L0(GCTest, CollectGarbageTest009)
     heap->GetConcurrentMarker()->EnableConcurrentMarking(EnableConcurrentMarkType::REQUEST_DISABLE);
     ASSERT_TRUE(heap->GetConcurrentMarker()->IsRequestDisabled());
     heap->CollectGarbage(TriggerGCType::YOUNG_GC, GCReason::TRIGGER_BY_TASKPOOL);
-}
-
-HWTEST_F_L0(GCTest, AdjustBySurvivalRateTest001)
-{
-    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-    heap->SetMarkType(MarkType::MARK_EDEN);
-    heap->AdjustBySurvivalRate(100);
-    heap->SetMarkType(MarkType::MARK_YOUNG);
-    heap->AdjustBySurvivalRate(100);
 }
 
 HWTEST_F_L0(GCTest, TryTriggerIdleCollectionTest007)
@@ -600,15 +532,6 @@ HWTEST_F_L0(GCTest, TryTriggerFullMarkBySharedLimitTest004)
     heap->TryTriggerFullMarkBySharedLimit();
     heap->GetConcurrentMarker()->ConfigConcurrentMark(false);
     heap->TryTriggerFullMarkBySharedLimit();
-}
-
-HWTEST_F_L0(GCTest, TriggerConcurrentMarkingTest002)
-{
-    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-    heap->SetMarkType(MarkType::MARK_FULL);
-    heap->TriggerConcurrentMarking();
-    heap->SetMarkType(MarkType::MARK_EDEN);
-    heap->TriggerConcurrentMarking();
 }
 
 HWTEST_F_L0(GCTest, TriggerConcurrentMarkingTest003)

@@ -109,6 +109,29 @@ public:
     size_t GetNativeTableSize() const;
 
 private:
+    class SerializeObjectVisitor final : public EcmaObjectRangeVisitor<SerializeObjectVisitor> {
+    public:
+        explicit SerializeObjectVisitor(SnapshotProcessor *processor, uintptr_t snapshotObj,
+            CQueue<TaggedObject *> *queue, std::unordered_map<uint64_t, ObjectEncode> *data);
+        ~SerializeObjectVisitor() override = default;
+
+        void VisitObjectRangeImpl(TaggedObject *root, ObjectSlot start, ObjectSlot end, VisitObjectArea area) override;
+    private:
+        SnapshotProcessor *processor_ {nullptr};
+        uintptr_t snapshotObj_ {-1};
+        CQueue<TaggedObject *> *queue_ {nullptr};
+        std::unordered_map<uint64_t, ObjectEncode> *data_{nullptr};
+    };
+
+    class DeserializeFieldVisitor final : public EcmaObjectRangeVisitor<DeserializeFieldVisitor> {
+    public:
+        explicit DeserializeFieldVisitor(SnapshotProcessor *processor);
+        ~DeserializeFieldVisitor() override = default;
+
+        void VisitObjectRangeImpl(TaggedObject *root, ObjectSlot start, ObjectSlot end, VisitObjectArea area) override;
+    private:
+        SnapshotProcessor *processor_ {nullptr};
+    };
     size_t GetMarkGCBitSetSize() const
     {
         return GCBitset::SizeOfGCBitset(DEFAULT_REGION_SIZE -

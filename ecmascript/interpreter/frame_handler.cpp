@@ -374,33 +374,31 @@ ARK_INLINE uintptr_t FrameHandler::GetInterpretedFrameEnd(JSTaggedType *prevSp) 
     return end;
 }
 
-void FrameHandler::IterateAssembleStack(const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor,
-    const RootBaseAndDerivedVisitor &derivedVisitor)
+void FrameHandler::IterateAssembleStack(RootVisitor &visitor)
 {
     JSTaggedType *current = const_cast<JSTaggedType *>(thread_->GetLastLeaveFrame());
-    IterateFrameChain(current, visitor, rangeVisitor, derivedVisitor);
+    IterateFrameChain(current, visitor);
 }
 
 // We seperate InterpretedEntryFrame from assemble stack when asm interpreter is enable.
 // To protect EcmaRuntimeCallInfo on InterpretedEntryFrame, we iterate InterpretedEntryFrame on thread sp individually.
 // And only InterpretedEntryFrame is on thread sp when asm interpreter is enable.
-void FrameHandler::IterateEcmaRuntimeCallInfo(const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor)
+void FrameHandler::IterateEcmaRuntimeCallInfo(RootVisitor &visitor)
 {
     ASSERT(thread_->IsAsmInterpreter());
     JSTaggedType *current = const_cast<JSTaggedType *>(thread_->GetCurrentSPFrame());
     for (FrameIterator it(current, thread_); !it.Done(); it.Advance()) {
         ASSERT(it.GetFrameType() == FrameType::INTERPRETER_ENTRY_FRAME);
         auto frame = it.GetFrame<InterpretedEntryFrame>();
-        frame->GCIterate(it, visitor, rangeVisitor);
+        frame->GCIterate(it, visitor);
     }
 }
 
-void FrameHandler::Iterate(const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor,
-    const RootBaseAndDerivedVisitor &derivedVisitor)
+void FrameHandler::Iterate(RootVisitor &visitor)
 {
     if (thread_->IsAsmInterpreter()) {
-        IterateEcmaRuntimeCallInfo(visitor, rangeVisitor);
-        IterateAssembleStack(visitor, rangeVisitor, derivedVisitor);
+        IterateEcmaRuntimeCallInfo(visitor);
+        IterateAssembleStack(visitor);
         return;
     }
     JSTaggedType *current = const_cast<JSTaggedType *>(thread_->GetCurrentSPFrame());
@@ -416,11 +414,10 @@ void FrameHandler::Iterate(const RootVisitor &visitor, const RootRangeVisitor &r
         arkStackMapParser_ =
             const_cast<JSThread *>(thread_)->GetEcmaVM()->GetAOTFileManager()->GetStackMapParser();
     }
-    IterateFrameChain(current, visitor, rangeVisitor, derivedVisitor);
+    IterateFrameChain(current, visitor);
 }
 
-void FrameHandler::IterateFrameChain(JSTaggedType *start, const RootVisitor &visitor,
-    const RootRangeVisitor &rangeVisitor, const RootBaseAndDerivedVisitor &derivedVisitor) const
+void FrameHandler::IterateFrameChain(JSTaggedType *start, RootVisitor &visitor) const
 {
     JSTaggedType *current = start;
     // if the current frame type is BASELINE_BUILTIN_FRAME, the upper frame must be BaselineFrame.
@@ -431,74 +428,74 @@ void FrameHandler::IterateFrameChain(JSTaggedType *start, const RootVisitor &vis
         switch (type) {
             case FrameType::OPTIMIZED_FRAME: {
                 auto frame = it.GetFrame<OptimizedFrame>();
-                frame->GCIterate(it, visitor, rangeVisitor, derivedVisitor);
+                frame->GCIterate(it, visitor);
                 break;
             }
             case FrameType::OPTIMIZED_JS_FAST_CALL_FUNCTION_FRAME:
             case FrameType::OPTIMIZED_JS_FUNCTION_FRAME: {
                 auto frame = it.GetFrame<OptimizedJSFunctionFrame>();
-                frame->GCIterate(it, visitor, rangeVisitor, derivedVisitor, type);
+                frame->GCIterate(it, visitor, type);
                 break;
             }
             case FrameType::BASELINE_BUILTIN_FRAME: {
                 isBaselineFrame = true;
                 auto frame = it.GetFrame<BaselineBuiltinFrame>();
-                frame->GCIterate(it, visitor, rangeVisitor, derivedVisitor);
+                frame->GCIterate(it, visitor);
                 break;
             }
             case FrameType::FASTJIT_FUNCTION_FRAME:
             case FrameType::FASTJIT_FAST_CALL_FUNCTION_FRAME: {
                 auto frame = it.GetFrame<FASTJITFunctionFrame>();
-                frame->GCIterate(it, visitor, rangeVisitor, derivedVisitor, type);
+                frame->GCIterate(it, visitor, type);
                 break;
             }
             case FrameType::ASM_INTERPRETER_FRAME:
             case FrameType::INTERPRETER_CONSTRUCTOR_FRAME: {
                 auto frame = it.GetFrame<AsmInterpretedFrame>();
-                frame->GCIterate(it, visitor, rangeVisitor, derivedVisitor, isBaselineFrame);
+                frame->GCIterate(it, visitor, isBaselineFrame);
                 isBaselineFrame = false;
                 break;
             }
             case FrameType::INTERPRETER_FRAME:
             case FrameType::INTERPRETER_FAST_NEW_FRAME: {
                 auto frame = it.GetFrame<InterpretedFrame>();
-                frame->GCIterate(it, visitor, rangeVisitor);
+                frame->GCIterate(it, visitor);
                 break;
             }
             case FrameType::INTERPRETER_BUILTIN_FRAME: {
                 auto frame = it.GetFrame<InterpretedBuiltinFrame>();
-                frame->GCIterate(it, visitor, rangeVisitor);
+                frame->GCIterate(it, visitor);
                 break;
             }
             case FrameType::LEAVE_FRAME: {
                 auto frame = it.GetFrame<OptimizedLeaveFrame>();
-                frame->GCIterate(it, visitor, rangeVisitor);
+                frame->GCIterate(it, visitor);
                 break;
             }
             case FrameType::LEAVE_FRAME_WITH_ARGV: {
                 auto frame = it.GetFrame<OptimizedWithArgvLeaveFrame>();
-                frame->GCIterate(it, visitor, rangeVisitor);
+                frame->GCIterate(it, visitor);
                 break;
             }
             case FrameType::BUILTIN_CALL_LEAVE_FRAME: {
                 auto frame = it.GetFrame<OptimizedBuiltinLeaveFrame>();
-                frame->GCIterate(it, visitor, rangeVisitor);
+                frame->GCIterate(it, visitor);
                 break;
             }
             case FrameType::BUILTIN_FRAME_WITH_ARGV: {
                 auto frame = it.GetFrame<BuiltinWithArgvFrame>();
-                frame->GCIterate(it, visitor, rangeVisitor);
+                frame->GCIterate(it, visitor);
                 break;
             }
             case FrameType::BUILTIN_ENTRY_FRAME:
             case FrameType::BUILTIN_FRAME: {
                 auto frame = it.GetFrame<BuiltinFrame>();
-                frame->GCIterate(it, visitor, rangeVisitor);
+                frame->GCIterate(it, visitor);
                 break;
             }
             case FrameType::INTERPRETER_ENTRY_FRAME: {
                 auto frame = it.GetFrame<InterpretedEntryFrame>();
-                frame->GCIterate(it, visitor, rangeVisitor);
+                frame->GCIterate(it, visitor);
                 break;
             }
             case FrameType::BUILTIN_FRAME_WITH_ARGV_STACK_OVER_FLOW_FRAME:

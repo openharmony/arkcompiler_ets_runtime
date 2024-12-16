@@ -360,33 +360,32 @@ void JSThread::SetJitCodeMap(JSTaggedType exception,  MachineCode* machineCode, 
     }
 }
 
-void JSThread::Iterate(const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor,
-    const RootBaseAndDerivedVisitor &derivedVisitor)
+void JSThread::Iterate(RootVisitor &visitor)
 {
     if (!glueData_.exception_.IsHole()) {
-        visitor(Root::ROOT_VM, ObjectSlot(ToUintPtr(&glueData_.exception_)));
+        visitor.VisitRoot(Root::ROOT_VM, ObjectSlot(ToUintPtr(&glueData_.exception_)));
     }
-    rangeVisitor(
-        Root::ROOT_VM, ObjectSlot(glueData_.builtinEntries_.Begin()), ObjectSlot(glueData_.builtinEntries_.End()));
+    visitor.VisitRangeRoot(Root::ROOT_VM,
+        ObjectSlot(glueData_.builtinEntries_.Begin()), ObjectSlot(glueData_.builtinEntries_.End()));
 
     EcmaContext *tempContext = glueData_.currentContext_;
     for (EcmaContext *context : contexts_) {
         // visit stack roots
         SwitchCurrentContext(context, true);
         FrameHandler frameHandler(this);
-        frameHandler.Iterate(visitor, rangeVisitor, derivedVisitor);
-        context->Iterate(visitor, rangeVisitor);
+        frameHandler.Iterate(visitor);
+        context->Iterate(visitor);
     }
     SwitchCurrentContext(tempContext, true);
     // visit tagged handle storage roots
     if (vm_->GetJSOptions().EnableGlobalLeakCheck()) {
-        IterateHandleWithCheck(visitor, rangeVisitor);
+        IterateHandleWithCheck(visitor);
     } else {
         size_t globalCount = 0;
-        globalStorage_->IterateUsageGlobal([visitor, &globalCount](Node *node) {
+        globalStorage_->IterateUsageGlobal([&visitor, &globalCount](Node *node) {
             JSTaggedValue value(node->GetObject());
             if (value.IsHeapObject()) {
-                visitor(ecmascript::Root::ROOT_HANDLE, ecmascript::ObjectSlot(node->GetObjectAddress()));
+                visitor.VisitRoot(Root::ROOT_HANDLE, ecmascript::ObjectSlot(node->GetObjectAddress()));
             }
             globalCount++;
         });
@@ -403,11 +402,11 @@ void JSThread::IterateJitCodeMap(const JitCodeMapVisitor &jitCodeMapVisitor)
     jitCodeMapVisitor(jitCodeMaps_);
 }
 
-void JSThread::IterateHandleWithCheck(const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor)
+void JSThread::IterateHandleWithCheck(RootVisitor &visitor)
 {
     size_t handleCount = 0;
     for (EcmaContext *context : contexts_) {
-        handleCount += context->IterateHandle(rangeVisitor);
+        handleCount += context->IterateHandle(visitor);
     }
 
     size_t globalCount = 0;
@@ -417,12 +416,12 @@ void JSThread::IterateHandleWithCheck(const RootVisitor &visitor, const RootRang
     bool isStopObjectLeakCheck = EnableGlobalObjectLeakCheck() && !IsStartGlobalLeakCheck() && stackTraceFd_ > 0;
     bool isStopPrimitiveLeakCheck = EnableGlobalPrimitiveLeakCheck() && !IsStartGlobalLeakCheck() && stackTraceFd_ > 0;
     std::ostringstream buffer;
-    globalDebugStorage_->IterateUsageGlobal([this, visitor, &globalCount, &typeCount, &primitiveCount,
+    globalDebugStorage_->IterateUsageGlobal([this, &visitor, &globalCount, &typeCount, &primitiveCount,
         isStopObjectLeakCheck, isStopPrimitiveLeakCheck, &buffer](DebugNode *node) {
         node->MarkCount();
         JSTaggedValue value(node->GetObject());
         if (value.IsHeapObject()) {
-            visitor(ecmascript::Root::ROOT_HANDLE, ecmascript::ObjectSlot(node->GetObjectAddress()));
+            visitor.VisitRoot(Root::ROOT_HANDLE, ecmascript::ObjectSlot(node->GetObjectAddress()));
             TaggedObject *object = value.GetTaggedObject();
             MarkWord word(value.GetTaggedObject());
             if (word.IsForwardingAddress()) {

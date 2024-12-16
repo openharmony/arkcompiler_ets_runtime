@@ -30,11 +30,11 @@ SharedModuleManager* SharedModuleManager::GetInstance()
     return instance;
 }
 
-void SharedModuleManager::Iterate(const RootVisitor &v)
+void SharedModuleManager::Iterate(RootVisitor &v)
 {
     for (auto &it : resolvedSharedModules_) {
         ObjectSlot slot(reinterpret_cast<uintptr_t>(&it.second));
-        v(Root::ROOT_VM, slot);
+        v.VisitRoot(Root::ROOT_VM, slot);
         ASSERT(slot.GetTaggedValue() == it.second);
     }
 }

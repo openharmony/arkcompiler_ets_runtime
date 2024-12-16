@@ -16,14 +16,17 @@
 #include "ecmascript/mem/shared_heap/shared_gc_marker-inl.h"
 
 #include "ecmascript/mem/object_xray.h"
+#include "ecmascript/mem/shared_heap/shared_full_gc.h"
+#include "ecmascript/mem/shared_heap/shared_gc_visitor-inl.h"
+#include "ecmascript/mem/shared_heap/shared_full_gc-inl.h"
 
 namespace panda::ecmascript {
-void SharedGCMarkerBase::MarkRoots(uint32_t threadId, SharedMarkType markType, VMRootVisitType type)
+void SharedGCMarkerBase::MarkRoots(RootVisitor &visitor, SharedMarkType markType, VMRootVisitType type)
 {
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedGCMarkerBase::MarkRoots");
-    MarkSerializeRoots(threadId);
-    MarkSharedModule(threadId);
-    MarkStringCache(threadId);
+    MarkSerializeRoots(visitor);
+    MarkSharedModule(visitor);
+    MarkStringCache(visitor);
     Runtime *runtime = Runtime::GetInstance();
     if (markType != SharedMarkType::CONCURRENT_MARK_REMARK) {
         // The approximate size is enough, because even if some thread creates and registers after here, it will keep
@@ -34,14 +37,14 @@ void SharedGCMarkerBase::MarkRoots(uint32_t threadId, SharedMarkType markType, V
     runtime->GCIterateThreadList([&](JSThread *thread) {
         ASSERT(!thread->IsInRunningState());
         auto vm = thread->GetEcmaVM();
-        MarkLocalVMRoots(threadId, vm, markType, type);
+        MarkLocalVMRoots(visitor, vm, markType, type);
         if (markType != SharedMarkType::CONCURRENT_MARK_REMARK) {
             CollectLocalVMRSet(vm);
         }
     });
 }
 
-void SharedGCMarkerBase::MarkLocalVMRoots(uint32_t threadId, EcmaVM *localVm, SharedMarkType markType,
+void SharedGCMarkerBase::MarkLocalVMRoots(RootVisitor &visitor, EcmaVM *localVm, SharedMarkType markType,
                                           VMRootVisitType type)
 {
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedGCMarkerBase::MarkLocalVMRoots");
@@ -49,15 +52,7 @@ void SharedGCMarkerBase::MarkLocalVMRoots(uint32_t threadId, EcmaVM *localVm, Sh
     if (markType != SharedMarkType::CONCURRENT_MARK_REMARK) {
         heap->GetSweeper()->EnsureAllTaskFinished();
     }
-    ObjectXRay::VisitVMRoots(
-        localVm,
-        [this, threadId](Root type, ObjectSlot slot) {this->HandleLocalRoots(threadId, type, slot);},
-        [this, threadId](Root type, ObjectSlot start, ObjectSlot end) {
-            this->HandleLocalRangeRoots(threadId, type, start, end);
-        },
-        [this](Root type, ObjectSlot base, ObjectSlot derived, uintptr_t baseOldObject) {
-            this->HandleLocalDerivedRoots(type, base, derived, baseOldObject);
-        }, type);
+    ObjectXRay::VisitVMRoots(localVm, visitor, type);
     heap->ProcessSharedGCMarkingLocalBuffer();
 }
 
@@ -71,26 +66,21 @@ void SharedGCMarkerBase::CollectLocalVMRSet(EcmaVM *localVm)
     rSetHandlers_.emplace_back(handler);
 }
 
-void SharedGCMarkerBase::MarkSerializeRoots(uint32_t threadId)
+void SharedGCMarkerBase::MarkSerializeRoots(RootVisitor &visitor)
 {
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedGCMarkerBase::MarkSerializeRoots");
-    auto callback = [this, threadId](Root type, ObjectSlot slot) {this->HandleRoots(threadId, type, slot);};
-    Runtime::GetInstance()->IterateSerializeRoot(callback);
+    Runtime::GetInstance()->IterateSerializeRoot(visitor);
 }
 
-void SharedGCMarkerBase::MarkStringCache(uint32_t threadId)
+void SharedGCMarkerBase::MarkStringCache(RootVisitor &visitor)
 {
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedGCMarkerBase::MarkStringCache");
-    auto cacheStringCallback = [this, threadId](Root type, ObjectSlot start, ObjectSlot end) {
-        this->HandleLocalRangeRoots(threadId, type, start, end);
-    };
-    Runtime::GetInstance()->IterateCachedStringRoot(cacheStringCallback);
+    Runtime::GetInstance()->IterateCachedStringRoot(visitor);
 }
 
-void SharedGCMarkerBase::MarkSharedModule(uint32_t threadId)
+void SharedGCMarkerBase::MarkSharedModule(RootVisitor &visitor)
 {
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedGCMarkerBase::MarkSharedModule");
-    auto visitor = [this, threadId](Root type, ObjectSlot slot) {this->HandleRoots(threadId, type, slot);};
     SharedModuleManager::GetInstance()->Iterate(visitor);
 }
 
@@ -111,34 +101,17 @@ void SharedGCMarker::ProcessMarkStack(uint32_t threadId)
         }
     }
 #endif
-    auto cb = [&](ObjectSlot slot) {
-        MarkValue(threadId, slot);
-    };
-    EcmaObjectRangeVisitor visitor = [this, threadId, cb](TaggedObject *root, ObjectSlot start, ObjectSlot end,
-                                        VisitObjectArea area) {
-        if (area == VisitObjectArea::IN_OBJECT) {
-            if (VisitBodyInObj(root, start, end, cb)) {
-                return;
-            }
-        }
-        for (ObjectSlot slot = start; slot < end; slot++) {
-            MarkValue(threadId, slot);
-        }
-    };
+    SharedGCMarkObjectVisitor sharedGCMarkObjectVisitor(sWorkManager_, threadId);
     TaggedObject *obj = nullptr;
-    while (true) {
-        obj = nullptr;
-        if (!sWorkManager_->Pop(threadId, &obj)) {
-            break;
-        }
+    while (sWorkManager_->Pop(threadId, &obj)) {
         JSHClass *hclass = obj->SynchronizedGetClass();
         auto size = hclass->SizeFromJSHClass(obj);
         Region *region = Region::ObjectAddressToRange(obj);
         ASSERT(region->InSharedSweepableSpace());
-        region->IncreaseAliveObjectSafe(size);
-        ObjectSlot objectSlot(ToUintPtr(obj));
-        MarkObject(threadId, hclass, objectSlot);
-        ObjectXRay::VisitObjectBody<VisitType::OLD_GC_VISIT>(obj, hclass, visitor);
+        region->IncreaseAliveObject(size);
+
+        sharedGCMarkObjectVisitor.VisitHClass(hclass);
+        ObjectXRay::VisitObjectBody<VisitType::OLD_GC_VISIT>(obj, hclass, sharedGCMarkObjectVisitor);
     }
 }
 
@@ -159,31 +132,13 @@ void SharedGCMovableMarker::ProcessMarkStack(uint32_t threadId)
         }
     }
 #endif
-    auto cb = [&](ObjectSlot slot) {
-        MarkValue(threadId, slot);
-    };
-    EcmaObjectRangeVisitor visitor = [this, threadId, cb](TaggedObject *root, ObjectSlot start, ObjectSlot end,
-                                        VisitObjectArea area) {
-        if (area == VisitObjectArea::IN_OBJECT) {
-            if (VisitBodyInObj(root, start, end, cb)) {
-                return;
-            }
-        }
-        for (ObjectSlot slot = start; slot < end; slot++) {
-            MarkValue(threadId, slot);
-        }
-    };
+    SharedFullGCMarkObjectVisitor sharedFullGCMarkObjectVisitor(this, threadId);
     TaggedObject *obj = nullptr;
-    while (true) {
-        obj = nullptr;
-        if (!sWorkManager_->Pop(threadId, &obj)) {
-            break;
-        }
+    while (sWorkManager_->Pop(threadId, &obj)) {
         JSHClass *hclass = obj->SynchronizedGetClass();
-        [[maybe_unused]] Region *region = Region::ObjectAddressToRange(obj);
         ObjectSlot objectSlot(ToUintPtr(obj));
         MarkObject(threadId, hclass, objectSlot);
-        ObjectXRay::VisitObjectBody<VisitType::OLD_GC_VISIT>(obj, hclass, visitor);
+        ObjectXRay::VisitObjectBody<VisitType::OLD_GC_VISIT>(obj, hclass, sharedFullGCMarkObjectVisitor);
     }
 }
 

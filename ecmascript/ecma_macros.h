@@ -551,46 +551,46 @@
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define DECL_VISIT_ARRAY(BEGIN_OFFSET, REF_LENGTH, LENGTH)                                                \
-    template <VisitType visitType>                                                                        \
-    void VisitRangeSlot(const EcmaObjectRangeVisitor &visitor)                                            \
+    template <VisitType visitType, class DerivedVisitor>                                                  \
+    void VisitRangeSlot(EcmaObjectRangeVisitor<DerivedVisitor> &visitor)                                  \
     {                                                                                                     \
         ArrayBodyIterator<visitType, (BEGIN_OFFSET)>::IterateBody(this, visitor, (REF_LENGTH), (LENGTH)); \
     }
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define DECL_VISIT_OBJECT(BEGIN_OFFSET, END_OFFSET)                                                       \
-    template <VisitType visitType>                                                                        \
-    void VisitRangeSlot(const EcmaObjectRangeVisitor &visitor)                                            \
+    template <VisitType visitType, class DerivedVisitor>                                                  \
+    void VisitRangeSlot(EcmaObjectRangeVisitor<DerivedVisitor> &visitor)                                  \
     {                                                                                                     \
         ObjectBodyIterator<visitType, (BEGIN_OFFSET), (END_OFFSET), SIZE>::IterateRefBody(this, visitor); \
     }
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define DECL_VISIT_PRIMITIVE_OBJECT()                                               \
-    template <VisitType visitType>                                                  \
-    void VisitRangeSlot(const EcmaObjectRangeVisitor &visitor)                      \
+    template <VisitType visitType, class DerivedVisitor>                            \
+    void VisitRangeSlot(EcmaObjectRangeVisitor<DerivedVisitor> &visitor)            \
     {                                                                               \
         PrimitiveObjectBodyIterator<visitType, SIZE>::IterateBody(this, visitor);   \
     }
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define DECL_VISIT_NATIVE_FIELD(BEGIN_OFFSET, END_OFFSET)                                                    \
-    template <VisitType visitType>                                                                           \
-    void VisitRangeSlot(const EcmaObjectRangeVisitor &visitor)                                               \
+    template <VisitType visitType, class DerivedVisitor>                                                     \
+    void VisitRangeSlot(EcmaObjectRangeVisitor<DerivedVisitor> &visitor)                                     \
     {                                                                                                        \
         ObjectBodyIterator<visitType, (BEGIN_OFFSET), (END_OFFSET), SIZE>::IterateNativeBody(this, visitor); \
     }                                                                                                        \
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define DECL_VISIT_OBJECT_FOR_JS_OBJECT(PARENTCLASS, BEGIN_OFFSET, END_OFFSET)                         \
-    template <VisitType visitType>                                                                     \
-    void VisitRangeSlot(const EcmaObjectRangeVisitor &visitor)                                         \
+    template <VisitType visitType, class DerivedVisitor>                                               \
+    void VisitRangeSlot(EcmaObjectRangeVisitor<DerivedVisitor> &visitor)                               \
     {                                                                                                  \
         VisitObjects<visitType>(visitor);                                                              \
         JSObjectBodyIterator<visitType, SIZE>::IterateBody(this, visitor);                             \
     }                                                                                                  \
-    template <VisitType visitType>                                                                     \
-    void VisitObjects(const EcmaObjectRangeVisitor &visitor)                                           \
+    template <VisitType visitType, class DerivedVisitor>                                               \
+    void VisitObjects(EcmaObjectRangeVisitor<DerivedVisitor> &visitor)                                 \
     {                                                                                                  \
         PARENTCLASS::VisitObjects<visitType>(visitor);                                                 \
         static constexpr size_t PARENT_SIZE = PARENTCLASS::SIZE;                                       \

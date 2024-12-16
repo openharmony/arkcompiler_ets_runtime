@@ -18,6 +18,7 @@
 
 #include "ecmascript/mem/heap.h"
 
+#include "ecmascript/base/block_hook_scope.h"
 #include "ecmascript/js_native_pointer.h"
 #include "ecmascript/daemon/daemon_task-inl.h"
 #include "ecmascript/dfx/hprof/heap_tracker.h"
@@ -644,6 +645,32 @@ void Heap::SwapOldSpace()
     oldSpace_ = oldSpace;
 #ifdef ECMASCRIPT_SUPPORT_HEAPSAMPLING
     oldSpace_->SwapAllocationCounter(compressSpace_);
+#endif
+}
+
+void Heap::OnMoveEvent([[maybe_unused]] uintptr_t address, [[maybe_unused]] TaggedObject* forwardAddress,
+                       [[maybe_unused]] size_t size)
+{
+#if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
+    HeapProfilerInterface *profiler = GetEcmaVM()->GetHeapProfile();
+    if (profiler != nullptr) {
+        base::BlockHookScope blockScope;
+        profiler->MoveEvent(address, forwardAddress, size);
+    }
+#endif
+}
+
+void SharedHeap::OnMoveEvent([[maybe_unused]] uintptr_t address, [[maybe_unused]] TaggedObject* forwardAddress,
+                             [[maybe_unused]] size_t size)
+{
+#if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
+    Runtime::GetInstance()->GCIterateThreadListWithoutLock([&](JSThread *thread) {
+        HeapProfilerInterface *profiler = thread->GetEcmaVM()->GetHeapProfile();
+        if (profiler != nullptr) {
+            base::BlockHookScope blockScope;
+            profiler->MoveEvent(address, forwardAddress, size);
+        }
+    });
 #endif
 }
 

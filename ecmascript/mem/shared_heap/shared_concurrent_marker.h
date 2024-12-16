@@ -13,11 +13,12 @@
  * limitations under the License.
  */
 
-#ifndef ECMASCRIPT_MEM_SHARED_CONCURRENT_MARKER_H
-#define ECMASCRIPT_MEM_SHARED_CONCURRENT_MARKER_H
+#ifndef ECMASCRIPT_MEM_SHARED_HEAP_SHARED_CONCURRENT_MARKER_H
+#define ECMASCRIPT_MEM_SHARED_HEAP_SHARED_CONCURRENT_MARKER_H
 
-#include "ecmascript/mem/concurrent_marker.h"
 #include "ecmascript/daemon/daemon_thread.h"
+#include "ecmascript/mem/concurrent_marker.h"
+#include "ecmascript/mem/shared_heap/shared_gc_marker.h"
 
 namespace panda::ecmascript {
 class EcmaVM;
@@ -110,12 +111,13 @@ private:
         duration_ = duration;
     }
 
-    void InitializeMarking();               // In daemon thread
-    void DoMarking();                       // In daemon thread
-    void FinishMarking(float spendTime);    // In daemon thread
-    void HandleMarkingFinished();           // In daemon thread
+    void MarkRoots(SharedMarkType markType);    // In daemon thread
+    void InitializeMarking();                   // In daemon thread
+    void DoMarking();                           // In daemon thread
+    void FinishMarking(float spendTime);        // In daemon thread
+    void HandleMarkingFinished();               // In daemon thread
 
-    void Finish();                          // In daemon thread
+    void Finish();                              // In daemon thread
 
     SharedHeap *sHeap_ {nullptr};
     DaemonThread *dThread_ {nullptr};
@@ -132,4 +134,4 @@ private:
     GCReason gcReason_ {GCReason::OTHER};
 };
 }  // namespace panda::ecmascript
-#endif  // ECMASCRIPT_MEM_SHARED_CONCURRENT_MARKER_H
+#endif  // ECMASCRIPT_MEM_SHARED_HEAP_SHARED_CONCURRENT_MARKER_H

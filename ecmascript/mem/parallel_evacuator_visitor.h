@@ -16,15 +16,27 @@
 #ifndef ECMASCRIPT_MEM_PARALLEL_EVACUATOR_VISITOR_H
 #define ECMASCRIPT_MEM_PARALLEL_EVACUATOR_VISITOR_H
 
-#include "ecmascript/mem/object_xray.h"
-#include "ecmascript/mem/tagged_object.h"
+#include "ecmascript/mem/parallel_evacuator.h"
 
 namespace panda::ecmascript {
 template<TriggerGCType gcType>
+class SlotUpdateRangeVisitor final : public EcmaObjectRangeVisitor<SlotUpdateRangeVisitor<gcType>> {
+public:
+    explicit SlotUpdateRangeVisitor(ParallelEvacuator *evacuator);
+    ~SlotUpdateRangeVisitor() override = default;
+
+    void VisitObjectRangeImpl(TaggedObject *root, ObjectSlot start, ObjectSlot end, VisitObjectArea area) override;
+private:
+    void UpdateSlot(ObjectSlot slot, Region *rootRegion);
+
+    ParallelEvacuator *evacuator_ {nullptr};
+};
+
+template<TriggerGCType gcType>
 class NewToOldEvacuationVisitor {
 public:
-    NewToOldEvacuationVisitor(Heap *heap, bool pgoEnabled, std::unordered_set<JSTaggedType> *set)
-        : pgoProfiler_(heap->GetEcmaVM()->GetPGOProfiler()), trackSet_(set), pgoEnabled_(pgoEnabled) {}
+    explicit NewToOldEvacuationVisitor(Heap *heap, std::unordered_set<JSTaggedType> *set,
+        ParallelEvacuator *evacuator);
 
     ~NewToOldEvacuationVisitor() = default;
 
@@ -35,12 +47,11 @@ public:
 
     void UpdateTrackInfo(TaggedObject *header, JSHClass *klass);
 
-    static void SlotUpdateRangeVisitor(TaggedObject *root, ObjectSlot start, ObjectSlot end, VisitObjectArea area);
-
 private:
+    bool pgoEnabled_ {false};
     std::shared_ptr<PGOProfiler> pgoProfiler_;
     std::unordered_set<JSTaggedType> *trackSet_ {nullptr};
-    bool pgoEnabled_ {false};
+    SlotUpdateRangeVisitor<gcType> slotUpdateRangeVisitor_;
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_MEM_PARALLEL_EVACUATOR_VISITOR_H

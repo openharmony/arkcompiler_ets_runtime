@@ -253,7 +253,11 @@ public:
     NO_COPY_SEMANTIC(AppSpawnSpace);
     NO_MOVE_SEMANTIC(AppSpawnSpace);
 
+    uintptr_t AllocateSync(size_t size);
+
     void IterateOverMarkedObjects(const std::function<void(TaggedObject *object)> &visitor) const;
+private:
+    Mutex mutex_;
 };
 
 class LocalSpace : public SparseSpace {

@@ -647,6 +647,12 @@ AppSpawnSpace::AppSpawnSpace(Heap *heap, size_t initialCapacity)
 {
 }
 
+uintptr_t AppSpawnSpace::AllocateSync(size_t size)
+{
+    LockHolder holder(mutex_);
+    return Allocate(size);
+}
+
 void AppSpawnSpace::IterateOverMarkedObjects(const std::function<void(TaggedObject *object)> &visitor) const
 {
     EnumerateRegions([&](Region *current) {

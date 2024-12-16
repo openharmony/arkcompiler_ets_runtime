@@ -45,7 +45,7 @@ public:
 
     void SuspendAll(JSThread *current);
     void ResumeAll(JSThread *current);
-    void IterateSerializeRoot(const RootVisitor &v);
+    void IterateSerializeRoot(RootVisitor &v);
 
     JSThread *GetMainThread() const
     {
@@ -214,7 +214,7 @@ public:
         return false;
     }
 
-    void IterateCachedStringRoot(const RootRangeVisitor &v)
+    void IterateCachedStringRoot(RootVisitor &v)
     {
         if ((externalRegisteredStringTable_ == nullptr) || (registeredStringTableSize_ <= 0)) {
             return;
@@ -222,7 +222,7 @@ public:
         auto begin = ObjectSlot(reinterpret_cast<uintptr_t>(externalRegisteredStringTable_));
         auto end = ObjectSlot(reinterpret_cast<uintptr_t>(externalRegisteredStringTable_ +
             registeredStringTableSize_));
-        v(Root::ROOT_VM, begin, end);
+        v.VisitRangeRoot(Root::ROOT_VM, begin, end);
     }
 
 private:

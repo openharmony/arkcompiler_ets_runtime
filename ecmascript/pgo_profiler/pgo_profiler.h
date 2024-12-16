@@ -90,7 +90,7 @@ public:
     void HandlePGOPreDump();
     void HandlePGODumpByDumpThread();
     void ProcessReferences(const WeakRootVisitor& visitor);
-    void Iterate(const RootVisitor& visitor);
+    void Iterate(RootVisitor& visitor);
     void UpdateTrackArrayLength(JSTaggedValue trackInfoVal, uint32_t newSize);
     void UpdateTrackSpaceFlag(TaggedObject* object, RegionSpaceFlag spaceFlag);
     void UpdateTrackInfo(JSTaggedValue trackInfoVal);

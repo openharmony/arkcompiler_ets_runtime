@@ -998,7 +998,8 @@ void EcmaContext::SetupStringToListResultCache()
 {
     stringToListResultCache_ = builtins::StringToListResultCache::CreateCacheTable(thread_);
 }
-void EcmaContext::IterateMegaIC(const RootVisitor &v, [[maybe_unused]]const RootRangeVisitor &rv)
+
+void EcmaContext::IterateMegaIC(RootVisitor &v)
 {
     if (ecmaData_.loadMegaICCache_ != nullptr) {
         ecmaData_.loadMegaICCache_->Iterate(v);
@@ -1007,32 +1008,33 @@ void EcmaContext::IterateMegaIC(const RootVisitor &v, [[maybe_unused]]const Root
         ecmaData_.storeMegaICCache_->Iterate(v);
     }
 }
-void EcmaContext::Iterate(const RootVisitor &v, const RootRangeVisitor &rv)
+
+void EcmaContext::Iterate(RootVisitor &v)
 {
     // visit global Constant
-    globalConst_.VisitRangeSlot(rv);
+    globalConst_.Iterate(v);
 
-    v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&globalEnv_)));
+    v.VisitRoot(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&globalEnv_)));
     if (!regexpCache_.IsHole()) {
-        v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&regexpCache_)));
+        v.VisitRoot(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&regexpCache_)));
     }
     if (!regexpGlobal_.IsHole()) {
-        v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&regexpGlobal_)));
+        v.VisitRoot(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&regexpGlobal_)));
     }
     if (!numberToStringResultCache_.IsHole()) {
-        v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&numberToStringResultCache_)));
+        v.VisitRoot(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&numberToStringResultCache_)));
     }
     if (!stringSplitResultCache_.IsHole()) {
-        v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&stringSplitResultCache_)));
+        v.VisitRoot(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&stringSplitResultCache_)));
     }
     if (!stringToListResultCache_.IsHole()) {
-        v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&stringToListResultCache_)));
+        v.VisitRoot(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&stringToListResultCache_)));
     }
     if (!microJobQueue_.IsHole()) {
-        v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&microJobQueue_)));
+        v.VisitRoot(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&microJobQueue_)));
     }
     if (!pointerToIndexDictionary_.IsHole()) {
-        v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&pointerToIndexDictionary_)));
+        v.VisitRoot(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&pointerToIndexDictionary_)));
     }
 
     if (functionProtoTransitionTable_) {
@@ -1050,7 +1052,7 @@ void EcmaContext::Iterate(const RootVisitor &v, const RootRangeVisitor &rv)
     if (regExpParserCache_ != nullptr) {
         regExpParserCache_->Clear();
     }
-    IterateMegaIC(v, rv);
+    IterateMegaIC(v);
     if (!vm_->GetJSOptions().EnableGlobalLeakCheck() && currentHandleStorageIndex_ != -1) {
         // IterateHandle when disableGlobalLeakCheck.
         int32_t nid = currentHandleStorageIndex_;
@@ -1058,26 +1060,26 @@ void EcmaContext::Iterate(const RootVisitor &v, const RootRangeVisitor &rv)
             auto node = handleStorageNodes_.at(i);
             auto start = node->data();
             auto end = (i != nid) ? &(node->data()[NODE_BLOCK_SIZE]) : handleScopeStorageNext_;
-            rv(ecmascript::Root::ROOT_HANDLE, ObjectSlot(ToUintPtr(start)), ObjectSlot(ToUintPtr(end)));
+            v.VisitRangeRoot(Root::ROOT_HANDLE, ObjectSlot(ToUintPtr(start)), ObjectSlot(ToUintPtr(end)));
         }
     }
 
     if (sustainingJSHandleList_) {
-        sustainingJSHandleList_->Iterate(rv);
+        sustainingJSHandleList_->Iterate(v);
     }
 
     if (!joinStack_.empty()) {
-        rv(Root::ROOT_VM, ObjectSlot(ToUintPtr(&joinStack_.front())),
+        v.VisitRangeRoot(Root::ROOT_VM, ObjectSlot(ToUintPtr(&joinStack_.front())),
             ObjectSlot(ToUintPtr(&joinStack_.back()) + JSTaggedValue::TaggedTypeSize()));
     }
 
     auto start = ObjectSlot(ToUintPtr(unsharedConstpools_));
     auto end = ObjectSlot(ToUintPtr(&unsharedConstpools_[GetUnsharedConstpoolsArrayLen() - 1]) +
         JSTaggedValue::TaggedTypeSize());
-    rv(Root::ROOT_VM, start, end);
+    v.VisitRangeRoot(Root::ROOT_VM, start, end);
 }
 
-size_t EcmaContext::IterateHandle(const RootRangeVisitor &rangeVisitor)
+size_t EcmaContext::IterateHandle(RootVisitor &visitor)
 {
     // EnableGlobalLeakCheck.
     size_t handleCount = 0;
@@ -1087,7 +1089,7 @@ size_t EcmaContext::IterateHandle(const RootRangeVisitor &rangeVisitor)
             auto node = handleStorageNodes_.at(i);
             auto start = node->data();
             auto end = (i != nid) ? &(node->data()[NODE_BLOCK_SIZE]) : handleScopeStorageNext_;
-            rangeVisitor(ecmascript::Root::ROOT_HANDLE, ObjectSlot(ToUintPtr(start)), ObjectSlot(ToUintPtr(end)));
+            visitor.VisitRangeRoot(Root::ROOT_HANDLE, ObjectSlot(ToUintPtr(start)), ObjectSlot(ToUintPtr(end)));
             handleCount += (ToUintPtr(end) - ToUintPtr(start)) / sizeof(JSTaggedType);
         }
     }

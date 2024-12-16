@@ -669,9 +669,9 @@ void EcmaVM::CollectGarbage(TriggerGCType gcType, panda::ecmascript::GCReason re
     heap_->CollectGarbage(gcType, reason);
 }
 
-void EcmaVM::Iterate(const RootVisitor &v, const RootRangeVisitor &rv, VMRootVisitType type)
+void EcmaVM::Iterate(RootVisitor &v, VMRootVisitType type)
 {
-    rv(Root::ROOT_VM, ObjectSlot(ToUintPtr(&internalNativeMethods_.front())),
+    v.VisitRangeRoot(Root::ROOT_VM, ObjectSlot(ToUintPtr(&internalNativeMethods_.front())),
         ObjectSlot(ToUintPtr(&internalNativeMethods_.back()) + JSTaggedValue::TaggedTypeSize()));
     if (!WIN_OR_MAC_OR_IOS_PLATFORM && snapshotEnv_!= nullptr) {
         snapshotEnv_->Iterate(v, type);

@@ -765,12 +765,6 @@ public:
         }
     }
 
-    void IncreaseAliveObjectSafe(size_t size)
-    {
-        ASSERT(aliveObject_ + size <= GetSize());
-        aliveObject_ += size;
-    }
-
     void IncreaseAliveObject(size_t size)
     {
         aliveObject_.fetch_add(size, std::memory_order_relaxed);

@@ -476,7 +476,7 @@ public:
     }
 
     template<class Callback>
-    void IterateUsageGlobal(Callback callback)
+    void IterateUsageGlobal(Callback &&callback)
     {
         NodeList<T> *next = topGlobalNodes_;
         NodeList<T> *current = nullptr;

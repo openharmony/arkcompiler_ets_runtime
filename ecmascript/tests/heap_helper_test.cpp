@@ -55,38 +55,4 @@ private:
     Heap *heap_{nullptr};
 };
 
-HWTEST_F_L0(HeapTest, TryTriggerIdleCollectionTest001)
-{
-    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-    auto helper = new HeapTestHelper(heap);
-    helper->SetIdleGCState(true);
-    helper->GetHeap()->SetIdleTask(IdleTaskType::NO_TASK);
-    helper->GetHeap()->GetJSThread()->SetMarkStatus(MarkStatus::READY_TO_MARK);
-    helper->GetHeap()->CollectGarbage(TriggerGCType::EDEN_GC, GCReason::TRIGGER_BY_TASKPOOL);
-    helper->GetHeap()->TryTriggerIdleCollection();
-}
-
-HWTEST_F_L0(HeapTest, TryTriggerIncrementalMarkingTest001)
-{
-    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-    auto helper = new HeapTestHelper(heap);
-    helper->SetIdleGCState(true);
-    helper->GetHeap()->SetIdleTask(IdleTaskType::NO_TASK);
-    helper->GetHeap()->GetJSThread()->SetMarkStatus(MarkStatus::READY_TO_MARK);
-    helper->GetHeap()->CollectGarbage(TriggerGCType::EDEN_GC, GCReason::TRIGGER_BY_TASKPOOL);
-    helper->GetHeap()->TryTriggerIncrementalMarking();
-}
-
-HWTEST_F_L0(HeapTest, TryTriggerIncrementalMarkingTest002)
-{
-    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-    auto helper = new HeapTestHelper(heap);
-    helper->SetIdleGCState(true);
-    helper->GetHeap()->GetOldSpace()->IncreaseLiveObjectSize(467664896);
-    helper->GetHeap()->SetIdleTask(IdleTaskType::NO_TASK);
-    helper->GetHeap()->GetJSThread()->SetMarkStatus(MarkStatus::READY_TO_MARK);
-    helper->GetHeap()->CollectGarbage(TriggerGCType::EDEN_GC, GCReason::TRIGGER_BY_TASKPOOL);
-    helper->GetHeap()->TryTriggerIncrementalMarking();
-}
-
 }
