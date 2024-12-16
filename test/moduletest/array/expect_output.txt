@@ -567,3 +567,18 @@ true
 1
 -1
 succ
+0,1,2,3,4,5
+5
+1,2,3
+1,2,3,4,5
+Exception
+a false
+b false
+undefined true
+0 false
+1 false
+undefined true
+0,a false
+1,b false
+undefined true
+Test passed

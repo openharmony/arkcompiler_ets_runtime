@@ -17,11 +17,13 @@
 
 #include "ecmascript/builtins/builtins_string.h"
 #include "ecmascript/compiler/builtins/builtins_stubs.h"
+#include "ecmascript/compiler/builtins/builtins_typedarray_stub_builder.h"
 #include "ecmascript/compiler/call_stub_builder.h"
 #include "ecmascript/compiler/new_object_stub_builder.h"
 #include "ecmascript/compiler/profiler_operation.h"
 #include "ecmascript/compiler/rt_call_signature.h"
 #include "ecmascript/runtime_call_id.h"
+#include "ecmascript/js_array_iterator.h"
 #include "ecmascript/js_iterator.h"
 #include "ecmascript/compiler/access_object_stub_builder.h"
 #include "ecmascript/base/array_helper.h"
@@ -1003,6 +1005,157 @@ void BuiltinsArrayStubBuilder::ForEach([[maybe_unused]] GateRef glue, GateRef th
         i = Int64Add(*i, Int64(1));
         LoopEnd(&loopHead);
         Bind(&loopExit);
+        Jump(exit);
+    }
+}
+
+void BuiltinsArrayStubBuilder::ArrayIteratorNext(GateRef glue, GateRef thisValue,
+    [[maybe_unused]] GateRef numArgs, Variable *result, Label *exit, Label *slowPath)
+{
+    auto env = GetEnvironment();
+    DEFVARIABLE(res, VariableType::JS_ANY(), Undefined());
+    DEFVARIABLE(iterValue, VariableType::JS_ANY(), Undefined());
+
+    Label thisIsArrayIterator(env);
+    Label arrayNotUndefined(env);
+    Label isStableJsArray(env);
+    Label NotStableJsArray(env);
+    Label isTypedArray(env);
+    Label isArrayLikeObject(env);
+    Label throwException(env);
+    Label checkNeedCreateEntry(env);
+    Label iterDone(env);
+    Label createIterResult(env);
+
+    GateRef array = Circuit::NullGate();
+    GateRef index = Circuit::NullGate();
+
+    BRANCH(TaggedIsArrayIterator(thisValue), &thisIsArrayIterator, slowPath);
+    Bind(&thisIsArrayIterator);
+    {
+        array = Load(VariableType::JS_POINTER(), thisValue, IntPtr(JSArrayIterator::ITERATED_ARRAY_OFFSET));
+        BRANCH(TaggedIsUndefined(array), &iterDone, &arrayNotUndefined);
+    }
+    Bind(&arrayNotUndefined);
+    {
+        index = Load(VariableType::INT32(), thisValue, IntPtr(JSArrayIterator::NEXT_INDEX_OFFSET));
+        BRANCH(IsStableJSArray(glue, array), &isStableJsArray, &NotStableJsArray);
+    }
+    Bind(&isStableJsArray);
+    {
+        Label indexIsValid(env);
+        Label kindIsNotKey(env);
+        Label eleIsHole(env);
+        Label hasProperty(env);
+        GateRef length = GetArrayLength(array);
+        BRANCH(Int32UnsignedLessThan(index, length), &indexIsValid, &iterDone);
+        Bind(&indexIsValid);
+        {
+            IncreaseArrayIteratorIndex(glue, thisValue, index);
+            iterValue = IntToTaggedPtr(index);
+            BRANCH(Int32Equal(GetArrayIterationKind(thisValue), Int32(static_cast<int32_t>(IterationKind::KEY))),
+                   &createIterResult, &kindIsNotKey);
+            Bind(&kindIsNotKey);
+            {
+                iterValue = GetTaggedValueWithElementsKind(array, index);
+                Jump(&checkNeedCreateEntry);
+            }
+        }
+    }
+    Bind(&NotStableJsArray);
+    BRANCH(IsTypedArray(array), &isTypedArray, &isArrayLikeObject);
+    Bind(&isTypedArray);
+    {
+        Label indexIsValid(env);
+        Label kindIsNotKey(env);
+        BuiltinsTypedArrayStubBuilder typedArrayBuilder(this);
+        GateRef length = typedArrayBuilder.GetArrayLength(array);
+        BRANCH(Int32UnsignedLessThan(index, length), &indexIsValid, &iterDone);
+        Bind(&indexIsValid);
+        {
+            IncreaseArrayIteratorIndex(glue, thisValue, index);
+            iterValue = IntToTaggedPtr(index);
+            BRANCH(Int32Equal(GetArrayIterationKind(thisValue), Int32(static_cast<int32_t>(IterationKind::KEY))),
+                   &createIterResult, &kindIsNotKey);
+            Bind(&kindIsNotKey);
+            {
+                iterValue = typedArrayBuilder.FastGetPropertyByIndex(glue, array, index,
+                                                                     GetObjectType(LoadHClass(array)));
+                BRANCH(HasPendingException(glue), &throwException, &checkNeedCreateEntry);
+            }
+        }
+    }
+    Bind(&isArrayLikeObject);
+    {
+        Label indexIsValid(env);
+        Label kindIsNotKey(env);
+        Label propertyToLength(env);
+        Label noPendingException(env);
+        GateRef rawLength = Circuit::NullGate();
+        GateRef lengthString = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
+                                                      ConstantIndex::LENGTH_STRING_INDEX);
+        GateRef value = FastGetPropertyByName(glue, array, lengthString, ProfileOperation());
+        BRANCH(HasPendingException(glue), &throwException, &propertyToLength);
+        Bind(&propertyToLength);
+        {
+            rawLength = ToLength(glue, value);
+            BRANCH(HasPendingException(glue), &throwException, &noPendingException);
+        }
+        Bind(&noPendingException);
+        {
+            GateRef length = GetInt32OfTNumber(rawLength);
+            BRANCH(Int32UnsignedLessThan(index, length), &indexIsValid, &iterDone);
+            Bind(&indexIsValid);
+            {
+                IncreaseArrayIteratorIndex(glue, thisValue, index);
+                iterValue = IntToTaggedPtr(index);
+                BRANCH(Int32Equal(GetArrayIterationKind(thisValue), Int32(static_cast<int32_t>(IterationKind::KEY))),
+                       &createIterResult, &kindIsNotKey);
+                Bind(&kindIsNotKey);
+                {
+                    iterValue = FastGetPropertyByIndex(glue, array, index, ProfileOperation());
+                    BRANCH(HasPendingException(glue), &throwException, &checkNeedCreateEntry);
+                }
+            }
+        }
+    }
+    Bind(&throwException);
+    {
+        result->WriteVariable(Exception());
+        Jump(exit);
+    }
+    Bind(&checkNeedCreateEntry);
+    {
+        Label kindIsEntry(env);
+        BRANCH(Int32Equal(GetArrayIterationKind(thisValue), Int32(static_cast<int32_t>(IterationKind::KEY_AND_VALUE))),
+               &kindIsEntry, &createIterResult);
+        Bind(&kindIsEntry);
+        {
+            Label afterCreate(env);
+            NewObjectStubBuilder newBuilder(this);
+            newBuilder.CreateJSIteratorResultForEntry(glue, &res, IntToTaggedPtr(index), *iterValue, &afterCreate);
+            Bind(&afterCreate);
+            result->WriteVariable(*res);
+            Jump(exit);
+        }
+    }
+    Bind(&createIterResult);
+    {
+        Label afterCreate(env);
+        NewObjectStubBuilder newBuilder(this);
+        newBuilder.CreateJSIteratorResult(glue, &res, *iterValue, TaggedFalse(), &afterCreate);
+        Bind(&afterCreate);
+        result->WriteVariable(*res);
+        Jump(exit);
+    }
+    Bind(&iterDone);
+    {
+        SetIteratedArrayOfArrayIterator(glue, thisValue, Undefined());
+        Label afterCreate(env);
+        NewObjectStubBuilder newBuilder(this);
+        newBuilder.CreateJSIteratorResult(glue, &res, Undefined(), TaggedTrue(), &afterCreate);
+        Bind(&afterCreate);
+        result->WriteVariable(*res);
         Jump(exit);
     }
 }

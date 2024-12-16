@@ -2956,17 +2956,10 @@ void BuiltinsStringStubBuilder::StringIteratorNext(GateRef glue, GateRef thisVal
         Store(VariableType::INT32(), glue, thisValue, IntPtr(JSStringIterator::STRING_ITERATOR_NEXT_INDEX_OFFSET),
               Int32Add(position, Int32(1)));
         // CreateIterResultObject(firstStr, false)
-        GateRef iterResultClass = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
-                                                         ConstantIndex::ITERATOR_RESULT_CLASS);
-        Label afterNew(env);
+        Label afterCreate(env);
         NewObjectStubBuilder newBuilder(this);
-        newBuilder.SetParameters(glue, 0);
-        newBuilder.NewJSObject(&result, &afterNew, iterResultClass);
-        Bind(&afterNew);
-        SetPropertyInlinedProps(glue, *result, iterResultClass, firstStr,
-                                Int32(JSIterator::VALUE_INLINE_PROPERTY_INDEX));
-        SetPropertyInlinedProps(glue, *result, iterResultClass, TaggedFalse(),
-                                Int32(JSIterator::DONE_INLINE_PROPERTY_INDEX));
+        newBuilder.CreateJSIteratorResult(glue, &result, firstStr, TaggedFalse(), &afterCreate);
+        Bind(&afterCreate);
         res->WriteVariable(*result);
         Jump(exit);
     }
@@ -2975,17 +2968,10 @@ void BuiltinsStringStubBuilder::StringIteratorNext(GateRef glue, GateRef thisVal
         Store(VariableType::JS_POINTER(), glue, thisValue, IntPtr(JSStringIterator::ITERATED_STRING_OFFSET),
               Undefined());
         // CreateIterResultObject(undefined, true)
-        GateRef iterResultClass = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
-                                                         ConstantIndex::ITERATOR_RESULT_CLASS);
-        Label afterNew(env);
+        Label afterCreate(env);
         NewObjectStubBuilder newBuilder(this);
-        newBuilder.SetParameters(glue, 0);
-        newBuilder.NewJSObject(&result, &afterNew, iterResultClass);
-        Bind(&afterNew);
-        SetPropertyInlinedProps(glue, *result, iterResultClass, Undefined(),
-                                Int32(JSIterator::VALUE_INLINE_PROPERTY_INDEX));
-        SetPropertyInlinedProps(glue, *result, iterResultClass, TaggedTrue(),
-                                Int32(JSIterator::DONE_INLINE_PROPERTY_INDEX));
+        newBuilder.CreateJSIteratorResult(glue, &result, Undefined(), TaggedTrue(), &afterCreate);
+        Bind(&afterCreate);
         res->WriteVariable(*result);
         Jump(exit);
     }

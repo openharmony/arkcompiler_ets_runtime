@@ -8050,7 +8050,7 @@ GateRef StubBuilder::NextInternal(GateRef glue, GateRef iter)
     Bind(&fastGetKey);
     {
         result = GetValueFromTaggedArray(keys, index);
-        IncreaseInteratorIndex(glue, iter, index);
+        IncreaseIteratorIndex(glue, iter, index);
         Jump(&exit);
     }
     Bind(&slowpath);

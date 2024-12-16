@@ -62,6 +62,7 @@ group("ark_aot_ts_test") {
     "add",
     "array",
     "array_foreach_inline",
+    "array_forof_test",
     "array_inline_exception",
     "array_pop_inline",
     "ashr",
