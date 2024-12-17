@@ -1271,7 +1271,11 @@ DECLARE_ASM_HANDLER(HandleIsinImm8V8)
 {
     GateRef v0 = ReadInst8_1(pc);
     GateRef prop = GetVregValue(sp, ZExtInt8ToPtr(v0));
-    GateRef result = CallRuntime(glue, RTSTUB_ID(IsIn), { prop, acc }); // acc is obj
+#if ENABLE_NEXT_OPTIMIZATION
+    GateRef result = IsIn(glue, prop, acc); // acc is obj
+#else
+    GateRef result = CallRuntime(glue, RTSTUB_ID(IsIn), {prop, acc}); // acc is obj
+#endif
     CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(ISIN_IMM8_V8));
 }
 

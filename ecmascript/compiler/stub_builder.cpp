@@ -19,6 +19,7 @@
 #include "ecmascript/compiler/builtins/builtins_typedarray_stub_builder.h"
 #include "ecmascript/compiler/builtins/builtins_collection_stub_builder.h"
 #include "ecmascript/compiler/new_object_stub_builder.h"
+#include "ecmascript/compiler/object_operator_stub_builder.h"
 #include "ecmascript/compiler/profiler_stub_builder.h"
 #include "ecmascript/elements.h"
 #include "ecmascript/compiler/stub_builder.h"
@@ -594,6 +595,7 @@ GateRef StubBuilder::GetKeyHashCode(GateRef glue, GateRef key, GateRef hir)
     return ret;
 }
 
+// JSObject::CreateDataProperty
 GateRef StubBuilder::CreateDataProperty(GateRef glue, GateRef obj, GateRef propKey, GateRef value)
 {
     auto env = GetEnvironment();
@@ -687,7 +689,11 @@ GateRef StubBuilder::DefineField(GateRef glue, GateRef obj, GateRef propKey, Gat
     BRANCH(IsEcmaObject(obj), &isObj, &notObj);
     Bind(&isObj);
     {
+#if ENABLE_NEXT_OPTIMIZATION
         key = ToPropertyKey(glue, propKey);
+#else
+        key = CallRuntime(glue, RTSTUB_ID(ToPropertyKey), {propKey});
+#endif
         BRANCH(HasPendingException(glue), &hasPendingException, &next);
     }
     Bind(&next);
@@ -984,6 +990,72 @@ GateRef StubBuilder::FindEntryFromTransitionDictionary(GateRef glue, GateRef ele
             LoopEnd(&loopHead, env, glue);
         }
     }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+// JSObject::HasProperty
+GateRef StubBuilder::JSObjectHasProperty(GateRef glue, GateRef obj, GateRef key, GateRef hir)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+    Label isProperty(env);
+    Label isElement(env);
+    Label isJSProxy(env);
+    Label ifFound(env);
+    Label notFound(env);
+    DEFVARIABLE(holder, VariableType::JS_ANY(), obj);
+    DEFVARIABLE(propKey, VariableType::JS_ANY(), Undefined());
+    DEFVARIABLE(elemKey, VariableType::INT32(), Int32(-1));
+    DEFVARIABLE(result, VariableType::JS_ANY(), TaggedFalse());
+    ObjectOperatorStubBuilder opStubBuilder(this);
+
+    IsNotPropertyKey(TaggedIsPropertyKey(key));
+    
+    // 1. handle property key
+    opStubBuilder.HandleKey(glue, key, &propKey, &elemKey, &isProperty, &isElement, &exit, hir);
+
+    // 2(1). start lookup when key is property
+    Bind(&isProperty);
+    {
+        Label holderUpdated(env);
+        opStubBuilder.UpdateHolder<false>(glue, &holder, *propKey, &holderUpdated);
+        
+        Bind(&holderUpdated);
+        opStubBuilder.LookupProperty<false>(glue, &holder, *propKey, &isJSProxy, &ifFound, &notFound, hir);
+    }
+
+    // 2(2). start lookup when key is element
+    Bind(&isElement);
+    {
+        Label holderUpdated(env);
+        opStubBuilder.UpdateHolder<true>(glue, &holder, *elemKey, &holderUpdated);
+
+        Bind(&holderUpdated);
+        opStubBuilder.LookupProperty<true>(glue, &holder, *elemKey, &isJSProxy, &ifFound, &notFound, hir);
+    }
+
+    Bind(&isJSProxy);
+    {
+        result = CallRuntime(glue, RTSTUB_ID(JSProxyHasProperty), {*holder, key});
+        Jump(&exit);
+    }
+
+    Bind(&ifFound);
+    {
+        result = TaggedTrue();
+        Jump(&exit);
+    }
+
+    Bind(&notFound);
+    {
+        Jump(&exit);
+    }
+
     Bind(&exit);
     auto ret = *result;
     env->SubCfgExit();
@@ -5275,6 +5347,7 @@ GateRef StubBuilder::SetPropertyByValue(GateRef glue, GateRef receiver, GateRef 
     return ret;
 }
 
+// ObjectFastOperator::SetPropertyByValue
 GateRef StubBuilder::DefinePropertyByValue(GateRef glue, GateRef receiver, GateRef key, GateRef value,
     GateRef SCheckModelIsCHECK, ProfileOperation callback)
 {
@@ -8110,7 +8183,11 @@ GateRef StubBuilder::DeletePropertyOrThrow(GateRef glue, GateRef obj, GateRef va
     Bind(&isNotExceptiont);
     {
         Label deleteProper(env);
+#if ENABLE_NEXT_OPTIMIZATION
         key = ToPropertyKey(glue, value);
+#else
+        key = CallRuntime(glue, RTSTUB_ID(ToPropertyKey), {value});
+#endif
         BRANCH(HasPendingException(glue), &exit, &deleteProper);
         Bind(&deleteProper);
         {
@@ -8256,6 +8333,120 @@ GateRef StubBuilder::ToPropertyKey(GateRef glue, GateRef tagged)
 GateRef StubBuilder::TaggedIsPropertyKey(GateRef obj)
 {
     return LogicOrBuilder(env_).Or(TaggedIsStringOrSymbol(obj)).Or(TaggedIsNumber(obj)).Done();
+}
+
+// JSTaggedValue::HasProperty (O, P)
+GateRef StubBuilder::HasProperty(GateRef glue, GateRef obj, GateRef key, GateRef hir)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+    Label slowpath(env);
+    Label isJSProxy(env);
+    Label notJSProxy(env);
+    Label isTypedArray(env);
+    Label notTypedArray(env);
+    Label isModuleNamespace(env);
+    Label notModuleNamespace(env);
+    Label isSpecialContainer(env);
+    Label defaultObj(env);
+    DEFVARIABLE(result, VariableType::JS_ANY(), TaggedFalse());
+
+    BRANCH(IsJsProxy(obj), &isJSProxy, &notJSProxy);
+    Bind(&isJSProxy);
+    {
+        result = CallRuntime(glue, RTSTUB_ID(JSProxyHasProperty), {obj, key});
+        Jump(&exit);
+    }
+
+    Bind(&notJSProxy);
+    BRANCH(BitOr(IsTypedArray(obj), IsSharedTypedArray(obj)), &isTypedArray, &notTypedArray);
+    Bind(&isTypedArray);
+    {
+        result = CallRuntime(glue, RTSTUB_ID(JSTypedArrayHasProperty), {obj, key});
+        Jump(&exit);
+    }
+
+    Bind(&notTypedArray);
+    BRANCH(IsModuleNamespace(obj), &isModuleNamespace, &notModuleNamespace);
+    Bind(&isModuleNamespace);
+    {
+        result = CallRuntime(glue, RTSTUB_ID(ModuleNamespaceHasProperty), {obj, key});
+        Jump(&exit);
+    }
+
+    Bind(&notModuleNamespace);
+    BRANCH(IsSpecialContainer(obj), &isSpecialContainer, &defaultObj);
+    Bind(&isSpecialContainer);
+    {
+        Jump(&slowpath);
+    }
+
+    Bind(&defaultObj);
+    {
+        result = JSObjectHasProperty(glue, obj, key, hir);
+        Jump(&exit);
+    }
+
+    Bind(&slowpath);
+    {
+        result = CallRuntime(glue, RTSTUB_ID(HasProperty), {obj, key});
+        Jump(&exit);
+    }
+
+    Bind(&exit);
+    auto res = *result;
+    env->SubCfgExit();
+    return res;
+}
+
+GateRef StubBuilder::IsIn(GateRef glue, GateRef prop, GateRef obj)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+    Label isEcmaObject(env);
+    Label notEcmaObject(env);
+    Label checkProperty(env);
+    Label isPendingException(env);
+
+    DEFVARIABLE(result, VariableType::JS_ANY(), TaggedFalse());
+    DEFVARIABLE(propKey, VariableType::JS_ANY(), Undefined());
+
+    BRANCH(IsEcmaObject(obj), &isEcmaObject, &notEcmaObject);
+
+    Bind(&notEcmaObject);
+    {
+        auto taggedId = Int32(GET_MESSAGE_STRING_ID(InOperatorOnNonObject));
+        CallRuntime(glue, RTSTUB_ID(ThrowTypeError), {IntToTaggedInt(taggedId)});
+        Jump(&exit);
+    }
+
+    Bind(&isEcmaObject);
+    {
+        propKey = ToPropertyKey(glue, prop);
+        BRANCH(HasPendingException(glue), &isPendingException, &checkProperty);
+    }
+
+    Bind(&checkProperty);
+    {
+        result = CallCommonStub(glue, CommonStubCSigns::JSTaggedValueHasProperty,
+                                { glue, obj, *propKey });
+        BRANCH(HasPendingException(glue), &isPendingException, &exit);
+    }
+
+    Bind(&isPendingException);
+    {
+        result = Exception();
+        Jump(&exit);
+    }
+
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
 }
 
 GateRef StubBuilder::IsSpecialKeysObject(GateRef obj)

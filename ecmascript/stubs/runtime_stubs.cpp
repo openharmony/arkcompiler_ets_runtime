@@ -4209,13 +4209,68 @@ DEF_RUNTIME_STUBS(SetPrototypeTransition)
     return JSTaggedValue::Hole().GetRawData();
 }
 
+DEF_RUNTIME_STUBS(JSProxyHasProperty)
+{
+    RUNTIME_STUBS_HEADER(JSProxyHasProperty);
+    JSHandle<JSTaggedValue> obj = GetHArg<JSTaggedValue>(argv, argc, 0);        // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> keyHandle = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
+    bool res = false;
+    res = JSProxy::HasProperty(thread, JSHandle<JSProxy>(obj), keyHandle);
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception().GetRawData());
+    return JSTaggedValue(res).GetRawData();
+}
+
+DEF_RUNTIME_STUBS(JSTypedArrayHasProperty)
+{
+    RUNTIME_STUBS_HEADER(JSTypedArrayHasProperty);
+    JSHandle<JSTaggedValue> obj = GetHArg<JSTaggedValue>(argv, argc, 0);        // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> keyHandle = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
+    bool res = false;
+    res = JSTypedArray::HasProperty(thread, obj, keyHandle);
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception().GetRawData());
+    return JSTaggedValue(res).GetRawData();
+}
+
+DEF_RUNTIME_STUBS(ModuleNamespaceHasProperty)
+{
+    RUNTIME_STUBS_HEADER(ModuleNamespaceHasProperty);
+    JSHandle<JSTaggedValue> obj = GetHArg<JSTaggedValue>(argv, argc, 0);        // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> keyHandle = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
+    bool res = false;
+    res = ModuleNamespace::HasProperty(thread, obj, keyHandle);
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception().GetRawData());
+    return JSTaggedValue(res).GetRawData();
+}
+
+DEF_RUNTIME_STUBS(JSObjectHasProperty)
+{
+    RUNTIME_STUBS_HEADER(JSObjectHasProperty);
+    JSHandle<JSTaggedValue> obj = GetHArg<JSTaggedValue>(argv, argc, 0);        // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> keyHandle = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
+    bool res = false;
+    if (keyHandle->IsInt()) {
+        uint32_t keyToIndex = static_cast<uint32_t>(keyHandle->GetInt());
+        res = JSObject::HasProperty(thread, JSHandle<JSObject>(obj), keyToIndex);
+    } else {
+        res = JSObject::HasProperty(thread, JSHandle<JSObject>(obj), keyHandle);
+    }
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception().GetRawData());
+    return JSTaggedValue(res).GetRawData();
+}
+
 DEF_RUNTIME_STUBS(HasProperty)
 {
     RUNTIME_STUBS_HEADER(HasProperty);
     JSHandle<JSTaggedValue> obj = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
-    JSTaggedValue indexValue = GetArg(argv, argc, 1);  // 1: means the first parameter
-    uint32_t index = static_cast<uint32_t>(indexValue.GetInt());
-    bool res = JSTaggedValue::HasProperty(thread, obj, index);
+    JSTaggedValue key = GetArg(argv, argc, 1);  // 1: means the first parameter
+    bool res = false;
+    if (key.IsInt()) {
+        uint32_t keyToIndex = static_cast<uint32_t>(key.GetInt());
+        res = JSTaggedValue::HasProperty(thread, obj, keyToIndex);
+    } else {
+        JSHandle<JSTaggedValue> keyHandle(thread, key);
+        res = JSTaggedValue::HasProperty(thread, obj, keyHandle);
+    }
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception().GetRawData());
     return JSTaggedValue(res).GetRawData();
 }

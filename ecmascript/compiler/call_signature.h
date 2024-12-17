@@ -380,6 +380,7 @@ private:
     V(And)                                      \
     V(Or)                                       \
     V(Xor)                                      \
+    V(IsIn)                                     \
     V(Instanceof)                               \
     V(Inc)                                      \
     V(Dec)                                      \
@@ -403,6 +404,7 @@ private:
     V(StOwnByNameWithNameSet)                   \
     V(StObjByIndex)                             \
     V(LdObjByIndex)                             \
+    V(JSTaggedValueHasProperty)                 \
     V(SetPropertyByValueWithOwn)                \
     V(GetPropertyByName)                        \
     V(SetPropertyByNameWithMega)                \

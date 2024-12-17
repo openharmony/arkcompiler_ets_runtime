@@ -1246,7 +1246,11 @@ void BaselineIsinImm8V8StubBuilder::GenerateCircuit()
     GateRef prop = TaggedArgument(PARAM_INDEX(BaselineIsinImm8V8, PROP));
     ProfileOperation callback;
 
+#if ENABLE_NEXT_OPTIMIZATION
+    GateRef result = IsIn(glue, prop, acc); // acc is obj
+#else
     GateRef result = CallRuntime(glue, RTSTUB_ID(IsIn), { prop, acc }); // acc is obj
+#endif
     CHECK_EXCEPTION_WITH_ACC(result);
 }
 

@@ -320,6 +320,14 @@ void XorStubBuilder::GenerateCircuit()
     Return(operationBuilder.Xor(glue, x, y));
 }
 
+void IsInStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef prop = TaggedArgument(1); // 1: 2nd argument
+    GateRef obj = TaggedArgument(2);  // 2: 3rd argument
+    Return(IsIn(glue, prop, obj));
+}
+
 void InstanceofStubBuilder::GenerateCircuit()
 {
     GateRef glue = PtrArgument(0);
@@ -514,6 +522,14 @@ void SetPropertyByIndexWithOwnStubBuilder::GenerateCircuit()
     Return(SetPropertyByIndex(glue, receiver, index, value, true));
 }
 
+void JSTaggedValueHasPropertyStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef obj = TaggedArgument(1);
+    GateRef key = TaggedArgument(2);      // 2 : 3rd para
+    Return(HasProperty(glue, obj, key));
+}
+
 void GetPropertyByNameStubBuilder::GenerateCircuit()
 {
     GateRef glue = PtrArgument(0);
@@ -562,7 +578,6 @@ void GetPropertyByNameWithMegaStubBuilder::GenerateCircuit()
     Return(builder.LoadObjByNameWithMega(glue, receiver, megaStubCache, prop, jsFunc, slotId,
                                          ProfileOperation()));
 }
-
 
 void SetPropertyByNameWithMegaStubBuilder::GenerateCircuit()
 {
@@ -1400,7 +1415,6 @@ void GrowElementsCapacityStubBuilder::GenerateCircuit()
     result = builder.GrowElementsCapacity(glue, thisValue, newLength);
     Return(*result);
 }
-
 
 void SameValueStubBuilder::GenerateCircuit()
 {

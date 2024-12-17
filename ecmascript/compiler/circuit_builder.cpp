@@ -216,6 +216,14 @@ GateRef CircuitBuilder::IsTypedArray(GateRef array)
                   Int32GreaterThanOrEqual(Int32(static_cast<int32_t>(JSType::JS_TYPED_ARRAY_LAST)), type));
 }
 
+GateRef CircuitBuilder::IsSharedTypedArray(GateRef array)
+{
+    GateRef hclass = LoadHClass(array);
+    GateRef type = GetObjectType(hclass);
+    return BitAnd(Int32GreaterThan(type, Int32(static_cast<int32_t>(JSType::JS_SHARED_TYPED_ARRAY_FIRST))),
+                  Int32GreaterThanOrEqual(Int32(static_cast<int32_t>(JSType::JS_SHARED_TYPED_ARRAY_LAST)), type));
+}
+
 void CircuitBuilder::Jump(Label *label)
 {
     ASSERT(label);

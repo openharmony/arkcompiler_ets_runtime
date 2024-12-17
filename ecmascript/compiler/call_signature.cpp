@@ -218,6 +218,11 @@ DEF_CALL_SIGNATURE(TypeOf)
     callSign->SetCallConv(CallSignature::CallConv::CCallConv);
 }
 
+DEF_CALL_SIGNATURE(JSTaggedValueHasProperty)
+{
+    BINARY_CALL_SIGNATURE(JSTaggedValueHasProperty)
+}
+
 DEF_CALL_SIGNATURE(SetPropertyByName)
 {
     // 6 : 6 input parameters
@@ -446,6 +451,11 @@ DEF_CALL_SIGNATURE(GetPropertyByName)
     };
     callSign->SetParameters(params.data());
     callSign->SetCallConv(CallSignature::CallConv::CCallConv);
+}
+
+DEF_CALL_SIGNATURE(IsIn)
+{
+    BINARY_CALL_SIGNATURE(IsIn)
 }
 
 DEF_CALL_SIGNATURE(Instanceof)
