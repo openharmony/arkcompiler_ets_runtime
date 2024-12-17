@@ -16,7 +16,7 @@
 
 const array1 = [5, 12, 8, 130, 44];
 const found = array1.find((element) => element > 10);
-console.log(found);
+print(found);
 
 const arrayLike = {
 	  length: 3,
@@ -24,20 +24,20 @@ const arrayLike = {
 	  1: 7.3,
 	  2: 4,
 };
-console.log(Array.prototype.find.call(arrayLike, (x) => !Number.isInteger(x)));
+print(Array.prototype.find.call(arrayLike, (x) => !Number.isInteger(x)));
 
 const array = [0, 1, , , , 5, 6];
 
 array.find((value, index) => {
-	  console.log(`${index},${value}`);
+    print(`${index},${value}`);
 });
 
 array.find((value, index) => {
-	  if (index === 0) {
-		      console.log(`array[5]${array[5]}`);
-		      delete array[5];
-		    }
-	  console.log(`${index},${value}`);
+    if (index === 0) {
+        print(`array[5]${array[5]}`);
+        delete array[5];
+    }
+    print(`${index},${value}`);
 });
 
 function isPrime(element, index, array) {
@@ -50,8 +50,8 @@ function isPrime(element, index, array) {
 	  return element > 1;
 }
 
-console.log([4, 6, 8, 12].find(isPrime)); 
-console.log([4, 5, 8, 12].find(isPrime)); 
+print([4, 6, 8, 12].find(isPrime));
+print([4, 5, 8, 12].find(isPrime));
 //
 const numbers = [3, -1, 1, 4, 1, 5, 9, 2, 6];
 const firstTrough = numbers
@@ -61,7 +61,7 @@ const firstTrough = numbers
     if (idx < arr.length - 1 && num >= arr[idx + 1]) return false;
     return true;
   });
-console.log(firstTrough); // 1
+print(firstTrough); // 1
 
 const words = ["spray", "limit", "limits"];
 const deleteWords = words.find((word, index, arr) => {
@@ -69,6 +69,155 @@ const deleteWords = words.find((word, index, arr) => {
   word="asd"
   return word == "asd"
 });
-console.log(deleteWords);
-console.log(words.length);
+print(deleteWords);
+print(words.length);
 
+const findTestCases = [
+    () => {
+        let log = [];
+        const result = [1, 2, 3, 4].find((x, i, arr) => {
+            log.push({value: x, index: i, array: [...arr]});
+            return x === 3;
+        });
+        print("Log:", JSON.stringify(log), "Result:", JSON.stringify(result)); // Result: 3
+    },
+
+    () => {
+        let log = [];
+        const result = [1, 2, 3, 4].find((x, i, arr) => {
+            log.push({value: x, index: i, array: [...arr]});
+            return x === 5;
+        });
+        print("Log:", JSON.stringify(log), "Result:", JSON.stringify(result)); // Result: undefined
+    },
+
+    () => {
+        let log = [];
+        const result = [].find((x, i, arr) => {
+            log.push({value: x, index: i, array: [...arr]});
+            return x > 0;
+        });
+        print("Log:", JSON.stringify(log), "Result:", JSON.stringify(result)); // Result: undefined
+    },
+
+    () => {
+        let log = [];
+        const result = [false, 0, ''].find((x, i, arr) => {
+            log.push({value: x, index: i, array: [...arr]});
+            return !x; // 找到 falsy 值
+        });
+        print("Log:", JSON.stringify(log), "Result:", JSON.stringify(result)); // Result: false
+    },
+
+    () => {
+        let log = [];
+        const result = [1, 2, 3, 4].find((x, i, arr) => {
+            log.push({value: x, index: i, array: [...arr]});
+            return x > 2; // 第一个大于 2 的元素
+        });
+        print("Log:", JSON.stringify(log), "Result:", JSON.stringify(result)); // Result: 3
+    },
+
+    () => {
+        let log = [];
+        const result = [null, 1, 2].find((x, i, arr) => {
+            log.push({value: x, index: i, array: [...arr]});
+            return x !== null && x !== undefined;
+        });
+        print("Log:", JSON.stringify(log), "Result:", JSON.stringify(result)); // Result: 1
+    },
+
+    () => {
+        let log = [];
+        let arr = [1, 2, 3];
+        const result = arr.find((x, i, arrRef) => {
+            log.push({value: x, index: i, array: [...arrRef]});
+            if (i === 1) arrRef.push(4); // 修改数组
+            return x === 3;
+        });
+        print("Log:", JSON.stringify(log), "Result:", JSON.stringify(result)); // Result: 3
+    },
+
+    () => {
+        let log = [];
+        const result = [NaN, 1, 2].find((x, i, arr) => {
+            log.push({value: x, index: i, array: [...arr]});
+            return !isNaN(x);
+        });
+        print("Log:", JSON.stringify(log), "Result:", JSON.stringify(result)); // Result: 1
+    },
+
+    () => {
+        let log = [];
+        const result = [1, 2, 3].find((x, i, arr) => {
+            log.push({value: x, index: i, array: [...arr]});
+            return false;
+        });
+        print("Log:", JSON.stringify(log), "Result:", JSON.stringify(result)); // Result: undefined
+    },
+
+    () => {
+        let log = [];
+        const result = [1, 2, 3].find((x, i, arr) => {
+            log.push({value: x, index: i, array: [...arr]});
+            return true; // 返回第一个元素
+        });
+        print("Log:", JSON.stringify(log), "Result:", JSON.stringify(result)); // Result: 1
+    },
+
+    () => {
+        let log = [];
+        const context = {value: 3};
+        const result = [1, 2, 3, 4].find(function (x, i, arr) {
+            log.push({value: x, index: i, array: [...arr]});
+            return x === this.value; // 使用 this 进行比较
+        }, context);
+        print("Log:", JSON.stringify(log), "Result:", JSON.stringify(result)); // Result: 3
+    },
+
+    () => {
+        let log = [];
+        const result = [{id: 1}, {id: 2}].find((x, i, arr) => {
+            log.push({value: x, index: i, array: [...arr]});
+            return x.id === 2;
+        });
+        print("Log:", JSON.stringify(log), "Result:", JSON.stringify(result)); // Result: { id: 2 }
+    },
+
+    () => {
+        let log = [];
+        let obj = {x: 1};
+        const result = [obj, obj].find((x, i, arr) => {
+            log.push({value: x, index: i, array: [...arr]});
+            x.x++; // 修改对象属性
+            return x.x > 1;
+        });
+        print("Log:", JSON.stringify(log), "Result:", JSON.stringify(result)); // Result: { x: 2 }
+    },
+
+    () => {
+        let log = [];
+        const result = [].find((x, i, arr) => {
+            log.push({value: x, index: i, array: [...arr]});
+            return x === 1;
+        });
+        print("Log:", JSON.stringify(log), "Result:", JSON.stringify(result)); // Result: undefined
+    },
+
+    () => {
+        let log = [];
+        let arr = [1, 2, 3];
+        const result = arr.find((x, i, arrRef) => {
+            log.push({value: x, index: i, array: [...arrRef]});
+            if (i === 1) arrRef.splice(1, 1, 4); // 修改数组
+            return x === 4;
+        });
+        print("Log:", JSON.stringify(log), "Result:", JSON.stringify(result)); // Result: 4
+    },
+];
+
+findTestCases.forEach((test, i) => {
+    print(`Find Test case ${i + 1}:`);
+    test();
+    print('---');
+});
