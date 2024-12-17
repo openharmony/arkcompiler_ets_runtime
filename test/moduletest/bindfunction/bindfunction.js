@@ -120,3 +120,10 @@ function func() {}
 var fb = func.bind({});
 Object.defineProperty(func, 'name', {value: 1});
 print('bound func' == fb.name);
+
+// test dictionary
+function testDict(a) {
+    print(a);
+}
+testDict[10000] = 0;
+testDict.bind({})(123);
