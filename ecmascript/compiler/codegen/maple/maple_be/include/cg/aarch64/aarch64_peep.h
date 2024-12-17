@@ -71,6 +71,19 @@ public:
     }
 };
 
+/*
+ * add x0, x1, x2
+ * mov x19, x0
+ * ==>
+ * add x19, x1, x2
+ */
+class RedundantMovAArch64 : public PeepPattern {
+public:
+    explicit RedundantMovAArch64(CGFunc &cgFunc) : PeepPattern(cgFunc) {}
+    ~RedundantMovAArch64() override = default;
+    void Run(BB &bb, Insn &insn) override;
+};
+
 /* Remove redundant mov which src and dest opnd is exactly same */
 class RemoveMovingtoSameRegAArch64 : public PeepPattern {
 public:
@@ -629,6 +642,7 @@ private:
         kComplexMemOperandOptAdd,
         kDeleteMovAfterCbzOrCbnzOpt,
         kRemoveSxtBeforeStrOpt,
+        kRedundantMovAArch64Opt,
         kRemoveMovingtoSameRegOpt,
         kEnhanceStrLdrAArch64Opt,
         kAddImmZeroToMov,
