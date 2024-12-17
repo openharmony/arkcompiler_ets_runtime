@@ -861,6 +861,9 @@ void BuiltinsArrayStubBuilder::Map(GateRef glue, GateRef thisValue, GateRef numA
 void BuiltinsArrayStubBuilder::ForEach([[maybe_unused]] GateRef glue, GateRef thisValue, GateRef numArgs,
     [[maybe_unused]] Variable *result, Label *exit, Label *slowPath)
 {
+#if ENABLE_NEXT_OPTIMIZATION
+    ForEachOptimised(glue, thisValue, numArgs, result, exit, slowPath);
+#else
     auto env = GetEnvironment();
     Label thisExists(env);
     Label isHeapObject(env);
@@ -1002,6 +1005,7 @@ void BuiltinsArrayStubBuilder::ForEach([[maybe_unused]] GateRef glue, GateRef th
         Bind(&loopExit);
         Jump(exit);
     }
+#endif
 }
 
 void BuiltinsArrayStubBuilder::ArrayIteratorNext(GateRef glue, GateRef thisValue,
@@ -3917,6 +3921,9 @@ GateRef BuiltinsArrayStubBuilder::CalculatePositionWithLength(GateRef position, 
 void BuiltinsArrayStubBuilder::Some(GateRef glue, GateRef thisValue, GateRef numArgs,
     Variable *result, Label *exit, Label *slowPath)
 {
+#if ENABLE_NEXT_OPTIMIZATION
+    SomeOptimised(glue, thisValue, numArgs, result, exit, slowPath);
+#else
     auto env = GetEnvironment();
     Label thisExists(env);
     Label isHeapObject(env);
@@ -4108,11 +4115,15 @@ void BuiltinsArrayStubBuilder::Some(GateRef glue, GateRef thisValue, GateRef num
         result->WriteVariable(TaggedFalse());
         Jump(exit);
     }
+#endif
 }
 
 void BuiltinsArrayStubBuilder::Every(GateRef glue, GateRef thisValue, GateRef numArgs,
     Variable *result, Label *exit, Label *slowPath)
 {
+#if ENABLE_NEXT_OPTIMIZATION
+    EveryOptimised(glue, thisValue, numArgs, result, exit, slowPath);
+#else
     auto env = GetEnvironment();
     Label thisExists(env);
     Label isHeapObject(env);
@@ -4289,6 +4300,7 @@ void BuiltinsArrayStubBuilder::Every(GateRef glue, GateRef thisValue, GateRef nu
         result->WriteVariable(TaggedTrue());
         Jump(exit);
     }
+#endif
 }
 
 void BuiltinsArrayStubBuilder::ReduceRight(GateRef glue, GateRef thisValue, GateRef numArgs,
