@@ -133,7 +133,8 @@
     V("isBeingInterpreted",                        IsBeingInterpreted,                        0, INVALID)     \
     V("clearFunctionFeedback",                     ClearFunctionFeedback,                     1, INVALID)     \
     V("inYoungSpace",                              InYoungSpace,                              1, INVALID)     \
-    V("inOldSpace",                                InOldSpace,                                1, INVALID)
+    V("inOldSpace",                                InOldSpace,                                1, INVALID)     \
+    V("createNapiObject",                          CreateNapiObject,                          0, INVALID)
 
 #define BUILTIN_ARK_TOOLS_FUNCTIONS_JITCOMPILE(V)                                                             \
     V("jitCompileSync",                            JitCompileSync,                            1, INVALID)     \
@@ -403,6 +404,8 @@ public:
     static JSTaggedValue DebugPushPromise(EcmaRuntimeCallInfo *info);
 
     static JSTaggedValue SetForceSlowPath(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue CreateNapiObject(EcmaRuntimeCallInfo *info);
 
     static JSTaggedValue NotifyContextDisposed(EcmaRuntimeCallInfo *info);
 

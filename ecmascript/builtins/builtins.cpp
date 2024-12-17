@@ -378,6 +378,7 @@ void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread, bool
     InitializeCjsRequire(env);
     InitializeDefaultExportOfScript(env);
     InitializePropertyDetector(env, lazyInit);
+    InitializeNapiHClass(env, objFuncClass);
     JSHandle<JSHClass> generatorFuncClass =
         factory_->CreateFunctionClass(FunctionKind::GENERATOR_FUNCTION, JSFunction::SIZE, JSType::JS_GENERATOR_FUNCTION,
                                       env->GetGeneratorFunctionPrototype());
@@ -412,6 +413,13 @@ void Builtins::InitializePropertyDetector(const JSHandle<GlobalEnv> &env, bool l
     env->Set##name(thread_, name##detector);
     GLOBAL_ENV_DETECTOR_FIELDS(INITIALIZE_PROPERTY_DETECTOR)
 #undef INITIALIZE_PROPERTY_DETECTOR
+}
+
+void Builtins::InitializeNapiHClass(const JSHandle<GlobalEnv> &env,
+                                    const JSHandle<JSHClass> &objFuncClass) const
+{
+    JSHandle<JSHClass> newJsHClass = JSHClass::Clone(thread_, objFuncClass);
+    env->SetObjectFunctionNapiClass(thread_, newJsHClass);
 }
 
 void Builtins::SetLazyAccessor(const JSHandle<JSObject> &object, const JSHandle<JSTaggedValue> &key,

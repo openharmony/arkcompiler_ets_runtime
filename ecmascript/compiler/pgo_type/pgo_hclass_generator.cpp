@@ -64,7 +64,7 @@ bool PGOHClassGenerator::GenerateHClass(PGOSampleType type, bool isCache) const
     return true;
 }
 
-bool PGOHClassGenerator::GenerateIHClass(PGOSampleType type, const JSHandle<JSObject> &prototype) const
+bool PGOHClassGenerator::GenerateIHClass(PGOSampleType type, const JSHandle<JSTaggedValue> &prototype) const
 {
     PGOHClassTreeDesc *desc;
     if (!typeRecorder_.GetHClassTreeDesc(type, &desc)) {
