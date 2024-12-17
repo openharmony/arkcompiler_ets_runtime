@@ -3687,6 +3687,9 @@ void BuiltinsArrayStubBuilder::ToSpliced(GateRef glue, GateRef thisValue, GateRe
 void BuiltinsArrayStubBuilder::CopyWithin(GateRef glue, GateRef thisValue, GateRef numArgs,
     Variable *result, Label *exit, Label *slowPath)
 {
+#if ENABLE_NEXT_OPTIMIZATION
+    CopyWithinOptimised(glue, thisValue, numArgs, result, exit, slowPath);
+#else
     auto env = GetEnvironment();
     Label thisExists(env);
     Label isHeapObject(env);
@@ -3852,6 +3855,7 @@ void BuiltinsArrayStubBuilder::CopyWithin(GateRef glue, GateRef thisValue, GateR
             }
         }
     }
+#endif
 }
 
 GateRef BuiltinsArrayStubBuilder::CalculatePositionWithLength(GateRef position, GateRef length)
