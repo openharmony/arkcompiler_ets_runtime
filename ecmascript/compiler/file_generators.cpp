@@ -839,7 +839,14 @@ bool AOTFileGenerator::CreateAOTCodeCommentFile(const std::string &filename)
         }
     }
 
-    std::ofstream file(aotCodeCommentFile.c_str(), std::ofstream::app);
+    std::string aotRealPath;
+    if (!panda::ecmascript::RealPath(aotCodeCommentFile, aotRealPath, false)) {
+        SetAotCodeCommentFile("");
+        LOG_COMPILER(ERROR) << "Fail to get realPath: " << aotCodeCommentFile;
+        return false;
+    }
+
+    std::ofstream file(aotRealPath.c_str(), std::ofstream::app);
     if (!file.is_open()) {
         SetAotCodeCommentFile("");
         LOG_COMPILER(ERROR) << "Failed to create " << aotCodeCommentFile;
