@@ -678,6 +678,8 @@ void JITProfiler::ConvertICByValue(int32_t bcOffset, uint32_t slotId, BCType typ
     }
     // Check key
     if ((firstValue.IsString() || firstValue.IsSymbol())) {
+        JSTaggedValue secondValue = profileTypeInfo_->Get(slotId + 1);
+        ConvertICByValueWithPoly(abcId_, bcOffset, secondValue, type);
         return;
     }
     // Check without key
@@ -731,7 +733,7 @@ void JITProfiler::HandleStoreType(ApEntityId &abcId, int32_t &bcOffset,
         HandleTransition(abcId, bcOffset, hclass, secondValue);
     } else if (secondValue.IsTransWithProtoHandler()) {
         HandleTransWithProto(abcId, bcOffset, hclass, secondValue);
-    } else {
+    } else if (secondValue.IsPrototypeHandler()) {
         HandlePrototypeHandler(abcId, bcOffset, hclass, secondValue);
     }
 }
@@ -741,19 +743,20 @@ void JITProfiler::HandleTransition(ApEntityId &abcId, int32_t &bcOffset,
 {
     auto transitionHandler = TransitionHandler::Cast(secondValue.GetTaggedObject());
     auto transitionHClassVal = transitionHandler->GetTransitionHClass();
-
+    if (!transitionHClassVal.IsJSHClass()) {
+        return ;
+    }
     auto handlerInfoValue = transitionHandler->GetHandlerInfo();
-    ASSERT(handlerInfoValue.IsInt());
-    auto handlerInfo = static_cast<uint32_t>(handlerInfoValue.GetInt());
-    if (transitionHClassVal.IsJSHClass()) {
-        auto transitionHClass = JSHClass::Cast(transitionHClassVal.GetTaggedObject());
+    auto transitionHClass = JSHClass::Cast(transitionHClassVal.GetTaggedObject());
+    if (handlerInfoValue.IsInt()) {
+        auto handlerInfo = static_cast<uint32_t>(handlerInfoValue.GetInt());
         if (HandlerBase::IsElement(handlerInfo)) {
             AddBuiltinsInfo(abcId, bcOffset, hclass, transitionHClass,
                             OnHeapMode::NONE, HandlerBase::IsStoreOutOfBounds(handlerInfo));
-        } else {
-            AddObjectInfo(abcId, bcOffset, hclass, hclass, transitionHClass);
+            return;
         }
     }
+    AddObjectInfo(abcId, bcOffset, hclass, hclass, transitionHClass);
 }
 
 void JITProfiler::HandleTransWithProto(ApEntityId &abcId, int32_t &bcOffset,
@@ -761,24 +764,25 @@ void JITProfiler::HandleTransWithProto(ApEntityId &abcId, int32_t &bcOffset,
 {
     auto transWithProtoHandler = TransWithProtoHandler::Cast(secondValue.GetTaggedObject());
     auto transitionHClassVal = transWithProtoHandler->GetTransitionHClass();
+    if (!transitionHClassVal.IsJSHClass()) {
+        return ;
+    }
     auto handlerInfoValue = transWithProtoHandler->GetHandlerInfo();
-    ASSERT(handlerInfoValue.IsInt());
-    auto handlerInfo = static_cast<uint32_t>(handlerInfoValue.GetInt());
-    if (transitionHClassVal.IsJSHClass()) {
-        auto transitionHClass = JSHClass::Cast(transitionHClassVal.GetTaggedObject());
+    auto transitionHClass = JSHClass::Cast(transitionHClassVal.GetTaggedObject());
+    if (handlerInfoValue.IsInt()) {
+        auto handlerInfo = static_cast<uint32_t>(handlerInfoValue.GetInt());
         if (HandlerBase::IsElement(handlerInfo)) {
             AddBuiltinsInfo(abcId, bcOffset, hclass, transitionHClass,
                             OnHeapMode::NONE, HandlerBase::IsStoreOutOfBounds(handlerInfo));
-        } else {
-            AddObjectInfo(abcId, bcOffset, hclass, hclass, transitionHClass);
+            return;
         }
     }
+    AddObjectInfo(abcId, bcOffset, hclass, hclass, transitionHClass);
 }
 
 void JITProfiler::HandlePrototypeHandler(ApEntityId &abcId, int32_t &bcOffset,
                                          JSHClass *hclass, JSTaggedValue &secondValue)
 {
-    ASSERT(secondValue.IsPrototypeHandler());
     PrototypeHandler *prototypeHandler = PrototypeHandler::Cast(secondValue.GetTaggedObject());
     auto cellValue = prototypeHandler->GetProtoCell();
     if (!cellValue.IsProtoChangeMarker()) {
@@ -790,12 +794,13 @@ void JITProfiler::HandlePrototypeHandler(ApEntityId &abcId, int32_t &bcOffset,
         return;
     }
     JSTaggedValue handlerInfoValue = prototypeHandler->GetHandlerInfo();
-    ASSERT(handlerInfoValue.IsInt());
-    auto handlerInfo = static_cast<uint32_t>(handlerInfoValue.GetInt());
-    if (HandlerBase::IsElement(handlerInfo)) {
-        AddBuiltinsInfo(abcId, bcOffset, hclass, hclass,
-                        OnHeapMode::NONE, HandlerBase::IsStoreOutOfBounds(handlerInfo));
-        return;
+    if (handlerInfoValue.IsInt()) {
+        auto handlerInfo = static_cast<uint32_t>(handlerInfoValue.GetInt());
+        if (HandlerBase::IsElement(handlerInfo)) {
+            AddBuiltinsInfo(abcId, bcOffset, hclass, hclass,
+                            OnHeapMode::NONE, HandlerBase::IsStoreOutOfBounds(handlerInfo));
+            return;
+        }
     }
     auto holder = prototypeHandler->GetHolder();
     auto holderHClass = holder.GetTaggedObject()->GetClass();

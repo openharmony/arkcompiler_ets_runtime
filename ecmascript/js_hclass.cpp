@@ -1514,12 +1514,13 @@ bool JSHClass::UpdateRootLayoutDescByPGO(const JSHClass* hclass, HClassLayoutDes
     return true;
 }
 
-CString JSHClass::DumpToString(JSTaggedType hclassVal)
+std::pair<bool, CString> JSHClass::DumpToString(JSTaggedType hclassVal)
 {
     DISALLOW_GARBAGE_COLLECTION;
     auto hclass = JSHClass::Cast(JSTaggedValue(hclassVal).GetTaggedObject());
+    bool isInvalid = false;
     if (hclass->IsDictionaryMode()) {
-        return "";
+        return std::make_pair(isInvalid, "");
     }
 
     CString result;
@@ -1536,15 +1537,22 @@ CString JSHClass::DumpToString(JSTaggedType hclassVal)
             value += defaultAttr.GetValue();
             result += ToCString(value);
         } else if (key.IsSymbol()) {
-            result += JSSymbol::Cast(key)->GetPrivateId();
-            auto attr = layout->GetAttr(i);
-            result += static_cast<int32_t>(attr.GetTrackType());
-            result += attr.GetPropertyMetaData();
+            auto symbol = JSSymbol::Cast(key);
+            if (symbol->HasId()) {
+                result += JSSymbol::Cast(key)->GetPrivateId();
+                auto attr = layout->GetAttr(i);
+                result += static_cast<int32_t>(attr.GetTrackType());
+                result += attr.GetPropertyMetaData();
+            } else {
+                isInvalid = true;
+                result = "";
+                break;
+            }
         } else {
             LOG_ECMA(FATAL) << "JSHClass::DumpToString UNREACHABLE";
         }
     }
-    return result;
+    return std::make_pair(isInvalid, result);
 }
 
 PropertyLookupResult JSHClass::LookupPropertyInBuiltinHClass(const JSThread *thread, JSHClass *hclass,

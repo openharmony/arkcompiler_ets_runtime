@@ -2085,7 +2085,7 @@ public:
     static bool DumpChildHClassByPGO(const JSHClass* hclass, HClassLayoutDesc* desc);
     static bool UpdateRootLayoutDescByPGO(const JSHClass* hclass, HClassLayoutDesc* rootDesc);
     static bool UpdateChildLayoutDescByPGO(const JSHClass* hclass, HClassLayoutDesc* childDesc);
-    static CString DumpToString(JSTaggedType hclassVal);
+    static std::pair<bool, CString> DumpToString(JSTaggedType hclassVal);
 
     DECL_VISIT_OBJECT(PROTOTYPE_OFFSET, PROFILE_TYPE);
     inline JSHClass *FindProtoTransitions(const JSTaggedValue &key, const JSTaggedValue &proto);

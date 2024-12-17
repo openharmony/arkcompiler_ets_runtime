@@ -98,7 +98,8 @@ private:
     void GenerateHClassForClassType(ProfileType rootType, ProfileType protoPt, const PGOHClassGenerator &generator,
                                     bool isCache);
     void GenerateHClassForPrototype(ProfileType rootType, const PGOHClassGenerator &generator, bool isCache);
-    bool SkipGenerateHClass(PGOTypeRecorder typeRecorder, ProfileType rootType, bool isCache);
+    bool SkipGenerateHClass(PGOTypeRecorder typeRecorder, ProfileType rootType,
+                            bool isCache, PGOHClassTreeDesc *desc);
 
     const PGOProfilerDecoder &decoder_;
     PGOTypeManager *ptManager_;

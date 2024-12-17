@@ -186,11 +186,13 @@ PGOTypeParser::PGOTypeParser(const PGOProfilerDecoder &decoder, PGOTypeManager *
     parsers_.emplace_back(std::make_unique<ObjectLiteralParser>(ptManager));
 }
 
-bool PGOTypeParser::SkipGenerateHClass(PGOTypeRecorder typeRecorder, ProfileType rootType, bool isCache)
+bool PGOTypeParser::SkipGenerateHClass(PGOTypeRecorder typeRecorder, ProfileType rootType,
+                                       bool isCache, PGOHClassTreeDesc *desc)
 {
     // If the definition point is not includes in the AOT list. This hclass needs to be discarded.
     // otherwise, the using point must to be deopt.
-    if (!rootType.IsNapiType() && !isCache && !typeRecorder.IsValidPt(rootType)) {
+    if ((!rootType.IsNapiType() && !isCache && !typeRecorder.IsValidPt(rootType)) ||
+         desc->CheckHasInvalidType()) {
         return true;
     }
     return false;
@@ -212,7 +214,7 @@ void PGOTypeParser::CreatePGOType(BytecodeInfoCollector &collector)
         auto rootType = desc->GetProfileType();
         auto protoPt = desc->GetProtoPt();
         bool isCache = rootType.IsObjectLiteralType();
-        if (SkipGenerateHClass(typeRecorder, rootType, isCache)) {
+        if (SkipGenerateHClass(typeRecorder, rootType, isCache, desc)) {
             return ;
         }
         const PGOHClassGenerator generator(typeRecorder, ptManager_);
