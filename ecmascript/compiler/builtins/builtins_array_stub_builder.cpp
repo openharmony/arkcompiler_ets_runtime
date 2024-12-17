@@ -1133,10 +1133,11 @@ void BuiltinsArrayStubBuilder::ArrayIteratorNext(GateRef glue, GateRef thisValue
         {
             Label afterCreate(env);
             NewObjectStubBuilder newBuilder(this);
-            newBuilder.CreateJSIteratorResultForEntry(glue, &res, IntToTaggedPtr(index), *iterValue, &afterCreate);
-            Bind(&afterCreate);
-            result->WriteVariable(*res);
-            Jump(exit);
+            GateRef elements = newBuilder.NewTaggedArray(glue, Int32(2)); // 2: length of array
+            SetValueToTaggedArray(VariableType::JS_ANY(), glue, elements, Int32(0), IntToTaggedPtr(index)); // 0: key
+            SetValueToTaggedArray(VariableType::JS_ANY(), glue, elements, Int32(1), *iterValue); // 1: value
+            iterValue = newBuilder.CreateArrayFromList(glue, elements);
+            Jump(&createIterResult);
         }
     }
     Bind(&createIterResult);

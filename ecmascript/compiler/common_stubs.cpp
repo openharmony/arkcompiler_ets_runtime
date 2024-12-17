@@ -18,8 +18,8 @@
 #include "ecmascript/base/number_helper.h"
 #include "ecmascript/compiler/access_object_stub_builder.h"
 #include "ecmascript/compiler/builtins/builtins_array_stub_builder.h"
+#include "ecmascript/compiler/builtins/builtins_collection_iterator_stub_builder.h"
 #include "ecmascript/compiler/builtins/builtins_string_stub_builder.h"
-#include "ecmascript/compiler/builtins/builtins_array_stub_builder.h"
 #include "ecmascript/compiler/builtins/linked_hashtable_stub_builder.h"
 #include "ecmascript/compiler/circuit_builder.h"
 #include "ecmascript/compiler/codegen/llvm/llvm_ir_builder.h"
@@ -1177,6 +1177,38 @@ void ArrayIteratorNextStubBuilder::GenerateCircuit()
         result = CallRuntime(glue, RTSTUB_ID(ArrayIteratorNext), { obj });
         Jump(&exit);
     }
+    Bind(&exit);
+    Return(*result);
+}
+
+void MapIteratorNextStubBuilder::GenerateCircuit()
+{
+    auto env = GetEnvironment();
+    Label exit(env);
+
+    GateRef glue = PtrArgument(0);
+    GateRef obj = TaggedArgument(1);
+
+    DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
+
+    BuiltinsCollectionIteratorStubBuilder<JSMapIterator> builder(this, glue, obj, Gate::InvalidGateRef);
+    builder.Next(&result, &exit);
+    Bind(&exit);
+    Return(*result);
+}
+
+void SetIteratorNextStubBuilder::GenerateCircuit()
+{
+    auto env = GetEnvironment();
+    Label exit(env);
+
+    GateRef glue = PtrArgument(0);
+    GateRef obj = TaggedArgument(1);
+
+    DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
+
+    BuiltinsCollectionIteratorStubBuilder<JSSetIterator> builder(this, glue, obj, Gate::InvalidGateRef);
+    builder.Next(&result, &exit);
     Bind(&exit);
     Return(*result);
 }

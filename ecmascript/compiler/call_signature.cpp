@@ -2873,6 +2873,16 @@ DEF_CALL_SIGNATURE(ArrayIteratorNext)
     UNARY_CALL_SIGNATURE(ArrayIteratorNext)
 }
 
+DEF_CALL_SIGNATURE(MapIteratorNext)
+{
+    UNARY_CALL_SIGNATURE(MapIteratorNext)
+}
+
+DEF_CALL_SIGNATURE(SetIteratorNext)
+{
+    UNARY_CALL_SIGNATURE(SetIteratorNext)
+}
+
 DEF_CALL_SIGNATURE(GetIterator)
 {
     UNARY_CALL_SIGNATURE(GetIterator)

@@ -635,7 +635,10 @@ private:
     V(ReverseTypedArray)                             \
     V(IsFastRegExp)                                  \
     V(ArrayIteratorNext)                             \
+    V(MapIteratorNext)                               \
+    V(SetIteratorNext)                               \
     V(GetIterator)
+
 
 #define DECL_CALL_SIGNATURE(name)                                  \
 class name##CallSignature final {                                  \
