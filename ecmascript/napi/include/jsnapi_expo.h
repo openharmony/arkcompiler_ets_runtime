@@ -1768,6 +1768,7 @@ private:
 
     static uintptr_t GetHandleAddr(const EcmaVM *vm, uintptr_t localAddress);
     static uintptr_t GetGlobalHandleAddr(const EcmaVM *vm, uintptr_t localAddress);
+    static uintptr_t GetXRefGlobalHandleAddr(const EcmaVM *vm, uintptr_t localAddress);
     static uintptr_t SetWeak(const EcmaVM *vm, uintptr_t localAddress);
     static uintptr_t SetWeakCallback(const EcmaVM *vm, uintptr_t localAddress, void *ref,
                                      WeakRefClearCallBack freeGlobalCallBack,
@@ -1775,6 +1776,7 @@ private:
     static uintptr_t ClearWeak(const EcmaVM *vm, uintptr_t localAddress);
     static bool IsWeak(const EcmaVM *vm, uintptr_t localAddress);
     static void DisposeGlobalHandleAddr(const EcmaVM *vm, uintptr_t addr);
+    static void DisposeXRefGlobalHandleAddr(const EcmaVM *vm, uintptr_t addr);
     static bool IsSerializationTimeoutCheckEnabled(const EcmaVM *vm);
     static void GenerateTimeoutTraceIfNeeded(const EcmaVM *vm, std::chrono::system_clock::time_point &start,
                                      std::chrono::system_clock::time_point &end, bool isSerialization);

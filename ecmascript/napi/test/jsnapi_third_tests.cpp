@@ -127,6 +127,16 @@ public:
         return base::bit_cast<JSTaggedType>(val) + JSTaggedValue::DOUBLE_ENCODE_OFFSET;
     }
 
+    uintptr_t JSNApiGetXRefGlobalHandleAddr(const EcmaVM *vm, uintptr_t localAddress)
+    {
+        return JSNApi::GetXRefGlobalHandleAddr(vm, localAddress);
+    }
+
+    void JSNApiDisposeXRefGlobalHandleAddr(const EcmaVM *vm, uintptr_t addr)
+    {
+        JSNApi::DisposeXRefGlobalHandleAddr(vm, addr);
+    }
+
 protected:
     void RegisterStringCacheTable();
 
@@ -1434,5 +1444,28 @@ HWTEST_F_L0(JSNApiTests, GetData002)
         TestHelper::CreateEcmaRuntimeCallInfo(vm_->GetJSThread(), JSTaggedValue::Undefined(), argvLength);
     JsiRuntimeCallInfo *jsiRuntimeCallInfo = reinterpret_cast<JsiRuntimeCallInfo *>(ecmaRuntimeCallInfo);
     jsiRuntimeCallInfo->GetData();
+}
+
+HWTEST_F_L0(JSNApiTests, XRefGlobalHandleAddr)
+{
+    JSHandle<TaggedArray> weakRefArray = vm_->GetFactory()->NewTaggedArray(2, JSTaggedValue::Hole());
+    uintptr_t xRefArrayAddress;
+    vm_->SetEnableForceGC(false);
+    {
+        [[maybe_unused]] EcmaHandleScope scope(thread_);
+        JSHandle<JSTaggedValue> xRefArray = JSArray::ArrayCreate(thread_, JSTaggedNumber(1));
+        JSHandle<JSTaggedValue> normalArray = JSArray::ArrayCreate(thread_, JSTaggedNumber(2));
+        xRefArrayAddress = JSNApiGetXRefGlobalHandleAddr(vm_, xRefArray.GetAddress());
+        weakRefArray->Set(thread_, 0, xRefArray.GetTaggedValue().CreateAndGetWeakRef());
+        weakRefArray->Set(thread_, 1, normalArray.GetTaggedValue().CreateAndGetWeakRef());
+    }
+    vm_->CollectGarbage(TriggerGCType::FULL_GC);
+    EXPECT_TRUE(!weakRefArray->Get(0).IsUndefined());
+    EXPECT_TRUE(weakRefArray->Get(1).IsUndefined());
+
+    JSNApiDisposeXRefGlobalHandleAddr(vm_, xRefArrayAddress);
+    vm_->CollectGarbage(TriggerGCType::FULL_GC);
+    vm_->SetEnableForceGC(true);
+    EXPECT_TRUE(weakRefArray->Get(0).IsUndefined());
 }
 } // namespace panda::test
