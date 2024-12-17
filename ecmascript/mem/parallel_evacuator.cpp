@@ -216,8 +216,6 @@ void ParallelEvacuator::EvacuateRegion(TlabAllocator *allocator, Region *region,
             SetObjectFieldRSet<false>(reinterpret_cast<TaggedObject *>(address), klass);
         } else if (isInEden) {
             SetObjectFieldRSet<true>(reinterpret_cast<TaggedObject *>(address), klass);
-        } else if (region->HasLocalToShareRememberedSet()) {
-            UpdateLocalToShareRSet(reinterpret_cast<TaggedObject *>(address), klass);
         }
     });
     promotedSize_.fetch_add(promotedSize);
@@ -405,10 +403,7 @@ void ParallelEvacuator::UpdateRSet(Region *region)
     } else {
         region->IterateAllCrossRegionBits([this](void *mem) {
             ObjectSlot slot(ToUintPtr(mem));
-            JSTaggedType value = slot.GetTaggedType();
-            if (JSTaggedValue(value).IsHeapObject() && Region::ObjectAddressToRange(value)->InCollectSet()) {
-                UpdateObjectSlotOpt<TriggerGCType::OLD_GC>(slot);
-            }
+            UpdateCrossRegionObjectSlot(slot);
         });
     }
     region->DeleteCrossRegionRSet();
@@ -445,7 +440,7 @@ void ParallelEvacuator::UpdateNewRegionReference(Region *region)
         if (!freeObject->IsFreeObject()) {
             auto obj = reinterpret_cast<TaggedObject *>(curPtr);
             auto klass = obj->GetClass();
-            UpdateNewObjectField<gcType>(obj, klass);
+            UpdateNewObjectField<gcType, true>(obj, klass);
             objSize = klass->SizeFromJSHClass(obj);
         } else {
             freeObject->AsanUnPoisonFreeObject();
@@ -467,7 +462,7 @@ void ParallelEvacuator::UpdateAndSweepNewRegionReference(Region *region)
         ASSERT(region->InRange(ToUintPtr(mem)));
         auto header = reinterpret_cast<TaggedObject *>(mem);
         JSHClass *klass = header->GetClass();
-        UpdateNewObjectField<gcType>(header, klass);
+        UpdateNewObjectField<gcType, false>(header, klass);
 
         uintptr_t freeEnd = ToUintPtr(mem);
         if (freeStart != freeEnd) {
@@ -485,19 +480,19 @@ void ParallelEvacuator::UpdateAndSweepNewRegionReference(Region *region)
     }
 }
 
-template<TriggerGCType gcType>
+template<TriggerGCType gcType, bool needUpdateLocalToShare>
 void ParallelEvacuator::UpdateNewObjectField(TaggedObject *object, JSHClass *cls)
 {
     ObjectXRay::VisitObjectBody<VisitType::OLD_GC_VISIT>(object, cls,
         [this](TaggedObject *root, ObjectSlot start, ObjectSlot end, VisitObjectArea area) {
             if (area == VisitObjectArea::IN_OBJECT) {
                 if (VisitBodyInObj(root, start, end,
-                                    [&](ObjectSlot slot) { UpdateObjectSlotOpt<gcType>(slot); })) {
+                    [&](ObjectSlot slot) { UpdateNewObjectSlot<gcType, needUpdateLocalToShare>(slot); })) {
                     return;
                 };
             }
             for (ObjectSlot slot = start; slot < end; slot++) {
-                UpdateObjectSlotOpt<gcType>(slot);
+                UpdateNewObjectSlot<gcType, needUpdateLocalToShare>(slot);
             }
         });
 }

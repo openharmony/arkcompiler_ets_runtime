@@ -191,9 +191,6 @@ private:
     template<bool SetEdenObject>
     inline void SetObjectRSet(ObjectSlot slot, Region *region);
 
-    inline void UpdateLocalToShareRSet(TaggedObject *object, JSHClass *cls);
-    inline void SetLocalToShareRSet(ObjectSlot slot, Region *region);
-
     inline bool IsWholeRegionEvacuate(Region *region);
     inline bool WholeRegionEvacuate(Region *region);
     void VerifyValue(TaggedObject *object, ObjectSlot slot);
@@ -210,7 +207,7 @@ private:
     void UpdateNewRegionReference(Region *region);
     template<TriggerGCType gcType>
     void UpdateAndSweepNewRegionReference(Region *region);
-    template<TriggerGCType gcType>
+    template<TriggerGCType gcType, bool needUpdateLocalToShare>
     void UpdateNewObjectField(TaggedObject *object, JSHClass *cls);
 
     template<typename Callback>
@@ -220,11 +217,11 @@ private:
     inline bool UpdateOldToNewObjectSlot(ObjectSlot &slot);
     inline bool UpdateNewToEdenObjectSlot(ObjectSlot &slot);
     inline void UpdateObjectSlot(ObjectSlot &slot);
-    template<TriggerGCType gcType>
-    inline void UpdateObjectSlotOpt(ObjectSlot &slot);
     inline void UpdateWeakObjectSlot(TaggedObject *object, ObjectSlot &slot);
-    template<TriggerGCType gcType>
-    inline bool UpdateWeakObjectSlotOpt(JSTaggedValue value, ObjectSlot &slot);
+    template<TriggerGCType gcType, bool needUpdateLocalToShare>
+    inline void UpdateNewObjectSlot(ObjectSlot &slot);
+    inline void UpdateCrossRegionObjectSlot(ObjectSlot &slot);
+    inline void UpdateObjectSlotValue(JSTaggedValue value, ObjectSlot &slot);
 
     inline int CalculateEvacuationThreadNum();
     inline int CalculateUpdateThreadNum();
