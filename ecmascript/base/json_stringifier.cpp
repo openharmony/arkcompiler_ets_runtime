@@ -152,10 +152,9 @@ void JsonStringifier::AddDeduplicateProp(const JSHandle<JSTaggedValue> &property
 
 bool JsonStringifier::CalculateNumberGap(JSTaggedValue gap)
 {
-    double numValue = gap.GetNumber();
-    int num = static_cast<int>(numValue);
-    if (num > 0) {
-        int gapLength = std::min(num, GAP_MAX_LEN);
+    double value = std::min(gap.GetNumber(), 10.0); // means GAP_MAX_LEN.
+    if (value > 0) {
+        int gapLength = static_cast<int>(value);
         gap_.append(gapLength, ' ');
         gap_.append("\0");
     }
