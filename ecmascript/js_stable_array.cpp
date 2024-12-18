@@ -437,12 +437,12 @@ bool JSStableArray::WorthUseTreeString(uint32_t sepLength, size_t allocateLength
 template <typename Container>
 JSTaggedValue JSStableArray::JoinUseTreeString(const JSThread *thread, const JSHandle<JSTaggedValue> receiverValue,
                                                const JSHandle<EcmaString> sepStringHandle, uint32_t sepLength,
-                                               Container &arrElements, int elemNum)
+                                               Container &arrElements, uint32_t elemNum)
 {
     // Do not concat the elements one by one, it will make the tree string unbalanced. Concat each element with its
     // right neighbor first level by level, then the tree string will be balanced as possible.
-    if (sepLength != 0) {
-        for (int k = 0; k < elemNum - 1; k++) {
+    if (sepLength != 0 && elemNum > 1) {
+        for (uint32_t k = 0; k < elemNum - 1; k++) {
             arrElements[k] = JSHandle<EcmaString>(
                 thread, EcmaStringAccessor::Concat(thread->GetEcmaVM(), arrElements[k], sepStringHandle));
             RETURN_EXCEPTION_AND_POP_JOINSTACK(thread, receiverValue);
@@ -450,8 +450,8 @@ JSTaggedValue JSStableArray::JoinUseTreeString(const JSThread *thread, const JSH
     }
 
     while (elemNum > 1) {
-        size_t newNum = (elemNum + 1) / NUM_2;
-        for (size_t i = 0; i < elemNum / NUM_2; ++i) {
+        uint32_t newNum = (elemNum + 1) / NUM_2;
+        for (uint32_t i = 0; i < elemNum / NUM_2; ++i) {
             arrElements[i] = JSHandle<EcmaString>(
                     thread,
                     EcmaStringAccessor::Concat(thread->GetEcmaVM(), arrElements[NUM_2 * i], arrElements[NUM_2 * i + 1])

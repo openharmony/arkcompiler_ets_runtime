@@ -173,7 +173,7 @@ private:
     template <typename Container>
     static JSTaggedValue JoinUseTreeString(const JSThread *thread, JSHandle<JSTaggedValue> receiverValue,
                                            JSHandle<EcmaString> sepStringHandle, uint32_t sepLength,
-                                           Container &arrElements, int elemNum);
+                                           Container &arrElements, uint32_t elemNum);
 #endif
 };
 }  // namespace panda::ecmascript
