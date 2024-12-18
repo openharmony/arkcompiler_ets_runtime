@@ -251,6 +251,21 @@ public:
         return GetOrCreatePhysicalRegisterOperand(RFP, GetPointerSize() * kBitsPerByte, kRegTyInt);
     }
 
+    RegOperand *GetOrCreateRegOpndFromPregIdx(PregIdx preg, PrimType type) override
+    {
+        DEBUG_ASSERT(preg > 0, "NIY, preg must be greater than 0.");
+        auto idx = static_cast<size_t>(preg);
+        if (pregIdx2Opnd[idx] == nullptr) {
+            pregIdx2Opnd[idx] = &GetOrCreateVirtualRegisterOperand(GetVirtualRegNOFromPseudoRegIdx(preg));
+        }
+        auto *regOpnd = pregIdx2Opnd[idx];
+        if (type == maple::PTY_ref) {
+            regOpnd->SetIsReference(true);
+            AddReferenceReg(regOpnd->GetRegisterNumber());
+        }
+        return regOpnd;
+    }
+
     MemOperand &GetOrCreateMemOpnd(const MIRSymbol &symbol, int64 offset, uint32 size, bool forLocalRef = false,
                                    bool needLow12 = false, RegOperand *regOp = nullptr);
 

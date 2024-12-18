@@ -281,30 +281,20 @@ public:
         }
     }
 
-    void AddReferenceStackSlot(int64 offset)
+    virtual RegOperand *GetOrCreateRegOpndFromPregIdx(PregIdx preg, PrimType type)
     {
-        referenceStackSlots.insert(offset);
-    }
-
-    bool IsStackSlotReference(int64 offset) const
-    {
-        return referenceStackSlots.count(offset) != 0;
-    }
-
-    const MapleSet<int64> &GetReferenceStackSlots() const
-    {
-        return referenceStackSlots;
-    }
-
-    void SetPregIdx2Opnd(size_t pregIdx, Operand &opnd)
-    {
-        pregIdx2Opnd[pregIdx] = &opnd;
-    }
-
-    Operand *GetOpndFromPregIdx(size_t pregIdx)
-    {
-        Operand *opnd = pregIdx2Opnd[pregIdx];
-        return opnd;
+        DEBUG_ASSERT(preg > 0, "NIY, preg must be greater than 0.");
+        auto idx = static_cast<size_t>(preg);
+        if (pregIdx2Opnd[idx] == nullptr) {
+            pregIdx2Opnd[idx] = &GetOpndBuilder()->CreateVReg(GetVirtualRegNOFromPseudoRegIdx(preg),
+                GetPrimTypeBitSize(type), GetRegTyFromPrimTy(type));
+        }
+        auto *regOpnd = pregIdx2Opnd[idx];
+        if (type == maple::PTY_ref) {
+            regOpnd->SetIsReference(true);
+            AddReferenceReg(regOpnd->GetRegisterNumber());
+        }
+        return regOpnd;
     }
 
     Operand &CreateCfiImmOperand(int64 val, uint32 size) const
@@ -1008,8 +998,7 @@ protected:
     size_t lSymSize;         /* size of local symbol table imported */
     MapleVector<BB *> bbVec;
     MapleUnorderedSet<regno_t> referenceVirtualRegs;
-    MapleSet<int64> referenceStackSlots;
-    MapleVector<Operand *> pregIdx2Opnd;
+    MapleVector<RegOperand *> pregIdx2Opnd;
     MapleUnorderedMap<PregIdx, MemOperand *> pRegSpillMemOperands;
     MapleUnorderedMap<regno_t, MemOperand *> spillRegMemOperands;
     MapleUnorderedMap<uint32, SpillMemOperandSet *> reuseSpillLocMem;

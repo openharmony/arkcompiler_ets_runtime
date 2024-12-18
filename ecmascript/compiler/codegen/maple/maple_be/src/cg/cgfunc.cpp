@@ -483,7 +483,6 @@ CGFunc::CGFunc(MIRModule &mod, CG &cg, MIRFunction &mirFunc, BECommon &beCommon,
                StackMemPool &stackMp, MapleAllocator &allocator, uint32 funcId)
     : bbVec(allocator.Adapter()),
       referenceVirtualRegs(allocator.Adapter()),
-      referenceStackSlots(allocator.Adapter()),
       pregIdx2Opnd(mirFunc.GetPregTab()->Size(), nullptr, allocator.Adapter()),
       pRegSpillMemOperands(allocator.Adapter()),
       spillRegMemOperands(allocator.Adapter()),

@@ -41,58 +41,71 @@ static int64_t DecodeSLEB128(const std::vector<uint8_t> &bytes, size_t &index)
     return static_cast<int64_t>(res);
 }
 
-void LiteCGStackMapInfo::ConvertToLLVMStackMapInfo(
-    std::vector<LLVMStackMapType::Pc2CallSiteInfo> &pc2StackMapsVec,
-    std::vector<LLVMStackMapType::Pc2Deopt> &pc2DeoptInfoVec, Triple triple) const
+void LiteCGStackMapInfo::ConvertToLLVMPc2CallSiteInfo(LLVMPc2CallSiteInfo &pc2CallSiteInfo,
+                                                      const LiteCGPc2CallSiteInfo &liteCGPc2CallSiteInfo,
+                                                      int fpReg) const
+{
+    for (const auto &elem : liteCGPc2CallSiteInfo) {
+        const auto &litecgCallSiteInfo = elem.second;
+        LLVMCallSiteInfo llvmCallSiteInfo;
+        // parse std::vector<uint8_t>
+        size_t index = 0;
+        while (index < litecgCallSiteInfo.size()) {
+            int64_t kind = DecodeSLEB128(litecgCallSiteInfo, index);
+            int64_t value = DecodeSLEB128(litecgCallSiteInfo, index);
+            if (kind == 2) {  // kind is 2 means register
+                llvmCallSiteInfo.push_back(LLVMDwarfRegAndOffsetType(0xFFFFU, static_cast<LLVMOffsetType>(value)));
+            } else if (kind == 1) { // stack
+                llvmCallSiteInfo.push_back(LLVMDwarfRegAndOffsetType(fpReg, static_cast<LLVMOffsetType>(value)));
+            } else {
+                LOG_ECMA(FATAL) << "only stack and reigster is supported currently";
+                UNREACHABLE();
+            }
+        }
+        uintptr_t pc = static_cast<uintptr_t>(elem.first);
+        pc2CallSiteInfo[pc] = llvmCallSiteInfo;
+    }
+}
+
+void LiteCGStackMapInfo::ConvertToLLVMPv2Deopt(LLVMPc2Deopt &pc2DeoptInfo, const LiteCGPc2Deopt &liteCGPc2DeoptInfo,
+                                               int fpReg) const
+{
+    for (const auto &elem : liteCGPc2DeoptInfo) {
+        const auto &litecgDeoptInfo = elem.second;
+        LLVMDeoptInfoType llvmDeoptInfo;
+        // parse std::vector<uint8_t>
+        size_t index = 0;
+        while (index < litecgDeoptInfo.size()) {
+            int64_t deoptVreg = DecodeSLEB128(litecgDeoptInfo, index);
+            int64_t kind = DecodeSLEB128(litecgDeoptInfo, index);
+            int64_t value = DecodeSLEB128(litecgDeoptInfo, index);
+            llvmDeoptInfo.push_back(static_cast<LLVMIntType>(deoptVreg));
+            if (kind == 2) { // kind is 2 means register
+                llvmDeoptInfo.push_back(LLVMDwarfRegAndOffsetType(0xFFFFU, static_cast<LLVMOffsetType>(value)));
+            } else if (kind == 1) { // stack
+                llvmDeoptInfo.push_back(LLVMDwarfRegAndOffsetType(fpReg, static_cast<LLVMOffsetType>(value)));
+            } else if (value > INT32_MAX || value < INT32_MIN) {  // large imm
+                llvmDeoptInfo.push_back(static_cast<LLVMLargeInt>(value));
+            } else {  // imm
+                llvmDeoptInfo.push_back(static_cast<LLVMIntType>(value));
+            }
+        }
+        pc2DeoptInfo[elem.first] = llvmDeoptInfo;
+    }
+}
+
+void LiteCGStackMapInfo::ConvertToLLVMStackMapInfo(std::vector<LLVMPc2CallSiteInfo> &pc2StackMapsVec,
+                                                   std::vector<LLVMPc2Deopt> &pc2DeoptInfoVec, Triple triple) const
 {
     auto fpReg = GCStackMapRegisters::GetFpRegByTriple(triple);
     for (const auto &callSiteInfo : pc2CallSiteInfoVec_) {
-        LLVMStackMapType::Pc2CallSiteInfo pc2CallSiteInfo;
-        for (const auto &elem : callSiteInfo) {
-            const std::vector<uint8_t> &litecgCallSiteInfo = elem.second;
-            LLVMStackMapType::CallSiteInfo llvmCallSiteInfo;
-            // parse std::vector<uint8_t>
-            size_t index = 0;
-            while (index < litecgCallSiteInfo.size()) {
-                int64_t kind = DecodeSLEB128(litecgCallSiteInfo, index);
-                int64_t value = DecodeSLEB128(litecgCallSiteInfo, index);
-                if (kind == 2) {  // kind is 2 means register
-                    llvmCallSiteInfo.push_back(std::pair<uint16_t, uint32_t>(0xFFFFU, static_cast<int32_t>(value)));
-                } else if (kind == 1) { // stack
-                    llvmCallSiteInfo.push_back(std::pair<uint16_t, uint32_t>(fpReg, static_cast<int32_t>(value)));
-                } else {
-                    LOG_ECMA(FATAL) << "only stack and reigster is supported currently";
-                    UNREACHABLE();
-                }
-            }
-            uintptr_t pc = static_cast<uintptr_t>(elem.first);
-            pc2CallSiteInfo[pc] = llvmCallSiteInfo;
-        }
+        LLVMPc2CallSiteInfo pc2CallSiteInfo;
+        ConvertToLLVMPc2CallSiteInfo(pc2CallSiteInfo, callSiteInfo, fpReg);
         pc2StackMapsVec.push_back(pc2CallSiteInfo);
     }
     for (const auto &deoptInfo : pc2DeoptVec_) {
-        LLVMStackMapType::Pc2Deopt pc2DeoptInfo;
-        for (const auto &elem : deoptInfo) {
-            const std::vector<uint8_t> &litecgDeoptInfo = elem.second;
-            LLVMStackMapType::DeoptInfoType llvmDeoptInfo;
-            // parse std::vector<uint8_t>
-            size_t index = 0;
-            while (index < litecgDeoptInfo.size()) {
-                int64_t deoptVreg = DecodeSLEB128(litecgDeoptInfo, index);
-                int64_t kind = DecodeSLEB128(litecgDeoptInfo, index);
-                int64_t value = DecodeSLEB128(litecgDeoptInfo, index);
-                llvmDeoptInfo.push_back(static_cast<int32_t>(deoptVreg));
-                if (kind == 2) { // kind is 2 means register
-                    llvmDeoptInfo.push_back(std::pair<uint16_t, uint32_t>(0xFFFFU, static_cast<int32_t>(value)));
-                } else if (kind == 1) { // stack
-                    llvmDeoptInfo.push_back(std::pair<uint16_t, uint32_t>(fpReg, static_cast<int32_t>(value)));
-                } else { // imm
-                    llvmDeoptInfo.push_back(static_cast<int32_t>(value));
-                }
-            }
-            pc2DeoptInfo[elem.first] = llvmDeoptInfo;
-        }
-
+        LLVMPc2Deopt pc2DeoptInfo;
+        ConvertToLLVMPv2Deopt(pc2DeoptInfo, deoptInfo, fpReg);
         pc2DeoptInfoVec.push_back(pc2DeoptInfo);
     }
 }

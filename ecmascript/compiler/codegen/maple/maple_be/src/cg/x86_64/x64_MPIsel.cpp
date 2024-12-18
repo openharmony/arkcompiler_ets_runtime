@@ -260,8 +260,7 @@ void X64MPIsel::SelectCall(CallNode &callNode)
     for (const auto &elem : deoptBundleInfo) {
         auto valueKind = elem.second.GetMapleValueKind();
         if (valueKind == MapleValue::kPregKind) {
-            auto *opnd = cgFunc->GetOpndFromPregIdx(elem.second.GetPregIdx());
-            CHECK_FATAL(opnd != nullptr, "pregIdx has not been assigned Operand");
+            auto *opnd = cgFunc->GetOrCreateRegOpndFromPregIdx(elem.second.GetPregIdx(), PTY_ref);
             callInsn.AddDeoptBundleInfo(elem.first, *opnd);
         } else if (valueKind == MapleValue::kConstKind) {
             auto *opnd = SelectIntConst(static_cast<const MIRIntConst &>(elem.second.GetConstValue()), PTY_i32);
@@ -299,8 +298,7 @@ void X64MPIsel::SelectIcall(IcallNode &iCallNode)
     for (const auto &elem : deoptBundleInfo) {
         auto valueKind = elem.second.GetMapleValueKind();
         if (valueKind == MapleValue::kPregKind) {
-            auto *opnd = cgFunc->GetOpndFromPregIdx(elem.second.GetPregIdx());
-            CHECK_FATAL(opnd != nullptr, "pregIdx has not been assigned Operand");
+            auto *opnd = cgFunc->GetOrCreateRegOpndFromPregIdx(elem.second.GetPregIdx(), PTY_ref);
             callInsn.AddDeoptBundleInfo(elem.first, *opnd);
         } else if (valueKind == MapleValue::kConstKind) {
             auto *opnd = SelectIntConst(static_cast<const MIRIntConst &>(elem.second.GetConstValue()), PTY_i32);

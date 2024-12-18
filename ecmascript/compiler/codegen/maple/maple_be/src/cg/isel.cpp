@@ -626,11 +626,6 @@ void MPISel::SelectDassign(const DassignNode &stmt, Operand &opndRhs)
     /* Generate Insn */
     PrimType memType = symbolInfo.primType;
     SelectCopy(symbolMem, opndRhs, memType, rhsType);
-    if (rhsType == PTY_ref) {
-        cgFunc->AddReferenceStackSlot(symbolMem.GetOffsetImmediate()->GetOffsetValue());
-    }
-
-    return;
 }
 
 void MPISel::SelectIassign(const IassignNode &stmt, Operand &opndAddr, Operand &opndRhs)
@@ -704,28 +699,15 @@ void MPISel::SelectRegassign(RegassignNode &stmt, Operand &opnd0)
     PrimType rhsType = stmt.Opnd(0)->GetPrimType();
     PregIdx pregIdx = stmt.GetRegIdx();
     PrimType regType = stmt.GetPrimType();
-    RegOperand &regOpnd =
-        cgFunc->GetOpndBuilder()->CreateVReg(cgFunc->GetVirtualRegNOFromPseudoRegIdx(pregIdx),
-                                             GetPrimTypeBitSize(regType), cgFunc->GetRegTyFromPrimTy(regType));
+    RegOperand &regOpnd = *cgFunc->GetOrCreateRegOpndFromPregIdx(pregIdx, regType);
     SelectCopy(regOpnd, opnd0, regType, rhsType);
-    if (stmt.GetPrimType() == PTY_ref) {
-        regOpnd.SetIsReference(true);
-        cgFunc->AddReferenceReg(regOpnd.GetRegisterNumber());
-    }
-    if (pregIdx > 0) {
-        // special MIRPreg is not supported
-        cgFunc->SetPregIdx2Opnd(pregIdx, regOpnd);
-    }
+
     const auto &derived2BaseRef = cgFunc->GetFunction().GetDerived2BaseRef();
     auto itr = derived2BaseRef.find(pregIdx);
     if (itr != derived2BaseRef.end()) {
-        auto *opnd = cgFunc->GetOpndFromPregIdx(itr->first);
-        CHECK_FATAL(opnd != nullptr, "pregIdx has not been assigned Operand");
-        auto &derivedRegOpnd = static_cast<RegOperand &>(*opnd);
-        opnd = cgFunc->GetOpndFromPregIdx(itr->second);
-        CHECK_FATAL(opnd != nullptr, "pregIdx has not been assigned Operand");
-        auto &baseRegOpnd = static_cast<RegOperand &>(*opnd);
-        derivedRegOpnd.SetBaseRefOpnd(baseRegOpnd);
+        auto *derivedRegOpnd =  cgFunc->GetOrCreateRegOpndFromPregIdx(itr->first, PTY_ref);
+        auto *baseRegOpnd =  cgFunc->GetOrCreateRegOpndFromPregIdx(itr->second, PTY_ref);
+        derivedRegOpnd->SetBaseRefOpnd(*baseRegOpnd);
     }
     if ((Globals::GetInstance()->GetOptimLevel() == CGOptions::kLevel0) && (pregIdx >= 0)) {
         const SymbolAlloc *symLoc = cgFunc->GetMemlayout()->GetSpillLocOfPseduoRegister(pregIdx);
@@ -746,16 +728,7 @@ RegOperand *MPISel::SelectRegread(RegreadNode &expr)
         return &SelectSpecialRegread(pregIdx, rhsType);
     }
 
-    RegOperand &reg = cgFunc->GetOpndBuilder()->CreateVReg(cgFunc->GetVirtualRegNOFromPseudoRegIdx(pregIdx),
-                                                           GetPrimTypeSize(rhsType) * kBitsPerByte,
-                                                           cgFunc->GetRegTyFromPrimTy(rhsType));
-    if (cgFunc->GetOpndFromPregIdx(pregIdx) == nullptr) {
-        cgFunc->SetPregIdx2Opnd(pregIdx, reg);
-    }
-    if (expr.GetPrimType() == maple::PTY_ref) {
-        reg.SetIsReference(true);
-        cgFunc->AddReferenceReg(reg.GetRegisterNumber());
-    }
+    RegOperand &reg = *cgFunc->GetOrCreateRegOpndFromPregIdx(pregIdx, rhsType);
     if (Globals::GetInstance()->GetOptimLevel() == CGOptions::kLevel0) {
         const SymbolAlloc *symLoc = cgFunc->GetMemlayout()->GetSpillLocOfPseduoRegister(pregIdx);
         int64 offset = static_cast<int64>(cgFunc->GetBaseOffset(*symLoc));
@@ -777,17 +750,10 @@ Operand *MPISel::SelectDread(const BaseNode &parent, const AddrofNode &expr)
     /* Get symbol location */
     MemOperand &symbolMem = GetOrCreateMemOpndFromSymbol(*symbol, expr.GetFieldID());
     PrimType primType = expr.GetPrimType();
-    if (primType == PTY_ref) {
-        cgFunc->AddReferenceStackSlot(symbolMem.GetOffsetImmediate()->GetOffsetValue());
-    }
 
     /* for BasicType, load symbolVal to register. */
     RegOperand &regOpnd =
         cgFunc->GetOpndBuilder()->CreateVReg(GetPrimTypeBitSize(primType), cgFunc->GetRegTyFromPrimTy(primType));
-    if (primType == PTY_ref) {
-        regOpnd.SetIsReference(true);
-        cgFunc->AddReferenceReg(regOpnd.GetRegisterNumber());
-    }
     /* Generate Insn */
     SelectCopy(regOpnd, symbolMem, primType, symbolType);
     return &regOpnd;
