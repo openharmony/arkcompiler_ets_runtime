@@ -1044,8 +1044,8 @@ bool HeapProfiler::UpdateHeapTracking(Stream *stream)
         vm_->CollectGarbage(TriggerGCType::OLD_GC);
         ForceSharedGC();
         SuspendAllScope suspendScope(vm_->GetAssociatedJSThread());
-        snapshot->RecordSampleTime();
         UpdateHeapObjects(snapshot);
+        snapshot->RecordSampleTime();
     }
 
     if (stream != nullptr) {
