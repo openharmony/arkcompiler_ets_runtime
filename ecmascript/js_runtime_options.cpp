@@ -194,6 +194,7 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--compiler-pgo-force-dump:            Enable pgo dump not interrupted by GC. Default: 'true'\n"
     "--async-load-abc:                     Enable asynchronous load abc. Default: 'true'\n"
     "--async-load-abc-test:                Enable asynchronous load abc test. Default: 'false'\n"
+    "--compiler-enable-store-barrier:      Enable store barrier optimization. Default: 'true'\n"
     "--compiler-enable-concurrent:         Enable concurrent compile(only support in ark_stub_compiler).\n"
     "                                      Default: 'true'\n"
     "--compiler-opt-frame-state-elimination: Enable frame state elimination. Default: 'true'\n"
@@ -335,6 +336,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"compiler-enable-pgo-space", required_argument, nullptr, OPTION_COMPILER_ENABLE_PGO_SPACE},
         {"async-load-abc", required_argument, nullptr, OPTION_ASYNC_LOAD_ABC},
         {"async-load-abc-test", required_argument, nullptr, OPTION_ASYNC_LOAD_ABC_TEST},
+        {"compiler-enable-store-barrier", required_argument, nullptr, OPTION_COMPILER_ENABLE_STORE_BARRIER_OPT},
         {"compiler-enable-concurrent", required_argument, nullptr, OPTION_COMPILER_ENABLE_CONCURRENT},
         {"compiler-opt-frame-state-elimination", required_argument, nullptr,
             OPTION_COMPILER_OPT_FRAME_STATE_ELIMINATION},
@@ -1291,6 +1293,14 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 ret = ParseBoolParam(&argBool);
                 if (ret) {
                     SetConcurrentCompile(argBool);
+                } else {
+                    return false;
+                }
+                break;
+            case OPTION_COMPILER_ENABLE_STORE_BARRIER_OPT:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetStoreBarrierOpt(argBool);
                 } else {
                     return false;
                 }
