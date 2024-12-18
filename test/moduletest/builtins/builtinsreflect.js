@@ -107,4 +107,22 @@ function prepare(target) {
 let obj = {name:"tom"};
 let pxobj = new Proxy(obj,{});
 print(Reflect.get(pxobj,"name"))
+
+{
+    try {
+        let arr=[1,2,3,4];
+        arr.length=102600;
+        Reflect.set(arr,"length","aaa",arr);
+    } catch (error) {
+        print(error.name)
+    }
+    try {
+        let arr=[1,2,3,4];
+        arr.length=102600;
+        Reflect.set(arr,"length","aaa");
+    } catch (error) {
+        print(error.name)
+    }
+}
+
 print("builtins reflect end");
