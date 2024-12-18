@@ -36,4 +36,7 @@
  onBindRawData end 1 8
  onBindRawData end 2 7
  onBindRawData end 2 8
- Test end     at start (asyncUseLazyImport.ts:31:1)
+ Test end     at start (asyncUseLazyImport.ts:32:1)
+
+ Test catch
+ Test finally

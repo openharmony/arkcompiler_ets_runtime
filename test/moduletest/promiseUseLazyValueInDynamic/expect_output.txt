@@ -1,0 +1,39 @@
+# Copyright (c) 2024 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+before dynamic import
+after dynamic import
+promiseFuncRejected executor
+promiseFuncResolved executor
+LazyGenerator before 1 return
+testPromise end 1
+dynamic import then
+LazyGenerator before 2 return
+promiseFuncRejected catch 2
+LazyObjectForPromiseReject print
+LazyGenerator before 3 return
+promiseFuncResolved then 3
+Promise in LazyLogForPromiseThen executor
+LazyLogForPromiseThen log end
+LazyObjectForPromiseResolve print
+LazyGenerator before 4 return
+promiseFuncRejected finally 4
+Promise in LazyLogForPromiseThen then
+dynamic import module promise executor
+dynamic import module loaded
+LazyGenerator before 5 return
+promiseFuncResolved finally 5
+Promise in LazyLogForPromiseThen finally
+dynamic import module promise then
+Text in dynamic import module
+dynamic import module promise finally

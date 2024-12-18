@@ -24,12 +24,18 @@
 import lazy { TestLazy } from './lazyExport';
 export class Test {
     async start() {
-        this.log(` Test start`)
-        let a = await this.mapAsync([1, 2], async (t) => {
-            await this.bindRawData(t)
-        })
-        this.log(` Test end ${new Error().stack}`)
-        return a
+        try {
+            this.log(` Test start`)
+            let a = await this.mapAsync([1, 2], async (t) => {
+                await this.bindRawData(t)
+            })
+            this.log(` Test end ${new Error().stack}`)
+            throw new Error();
+        } catch (e) {
+            this.log(` Test catch`)
+        } finally {
+            this.log(` Test finally`)
+        }
     }
     private async bindRawData(t: number) {
         await this.mapAsync([1, 2], async (k, b) => {

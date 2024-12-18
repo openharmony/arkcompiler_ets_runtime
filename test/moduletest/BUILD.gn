@@ -127,6 +127,8 @@ group("ark_js_moduletest") {
     "objoperate",
     "objseal",
     "promise",
+    "promiseUseLazyValue",
+    "promiseUseLazyValueInDynamic",
     "propertydetector",
     "protobuf",
     "proxy",
