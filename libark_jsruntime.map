@@ -65,6 +65,9 @@
       panda::SharedInt32ArrayRef::*;
       panda::SharedUint32ArrayRef::*;
       panda::SharedFloat32ArrayRef::*;
+      panda::SharedFloat64ArrayRef::*;
+      panda::SharedBigInt64ArrayRef::*;
+      panda::SharedBigUint64ArrayRef::*;
       panda::SharedUint8ClampedArrayRef::*;
       panda::ProxyRef::*;
       panda::StringRef::*;

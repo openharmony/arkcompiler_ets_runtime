@@ -666,4 +666,46 @@ HWTEST_F_L0(JSNApiTests, JSNApi_DeserializeValue_String)
     ASSERT_FALSE(local->IsObject(vm_));
 }
 
+HWTEST_F_L0(JSNApiTests, NewSharedFloat64Array)
+{
+    LocalScope scope(vm_);
+    Local<SendableArrayBufferRef> buffer = SendableArrayBufferRef::New(vm_, 57);
+    ASSERT_TRUE(buffer->IsSendableArrayBuffer(vm_));
+
+    Local<SharedFloat64ArrayRef> typedArray = SharedFloat64ArrayRef::New(vm_, buffer, 8, 6);
+    ASSERT_TRUE(typedArray->IsJSSharedFloat64Array(vm_));
+    ASSERT_EQ(typedArray->ByteLength(vm_), 48U); // 48 : length of bytes
+    ASSERT_EQ(typedArray->ByteOffset(vm_), 8U);  // 8 : offset of byte
+    ASSERT_EQ(typedArray->ArrayLength(vm_), 6U); // 6 : length of array
+    ASSERT_EQ(typedArray->GetArrayBuffer(vm_)->GetBuffer(vm_), buffer->GetBuffer(vm_));
+}
+
+HWTEST_F_L0(JSNApiTests, NewSharedBigInt64Array)
+{
+    LocalScope scope(vm_);
+    Local<SendableArrayBufferRef> buffer = SendableArrayBufferRef::New(vm_, 57);
+    ASSERT_TRUE(buffer->IsSendableArrayBuffer(vm_));
+
+    Local<SharedBigInt64ArrayRef> typedArray = SharedBigInt64ArrayRef::New(vm_, buffer, 8, 6);
+    ASSERT_TRUE(typedArray->IsJSSharedBigInt64Array(vm_));
+    ASSERT_EQ(typedArray->ByteLength(vm_), 48U); // 48 : length of bytes
+    ASSERT_EQ(typedArray->ByteOffset(vm_), 8U);  // 8 : offset of byte
+    ASSERT_EQ(typedArray->ArrayLength(vm_), 6U); // 6 : length of array
+    ASSERT_EQ(typedArray->GetArrayBuffer(vm_)->GetBuffer(vm_), buffer->GetBuffer(vm_));
+}
+
+HWTEST_F_L0(JSNApiTests, NewSharedBigUint64Array)
+{
+    LocalScope scope(vm_);
+    Local<SendableArrayBufferRef> buffer = SendableArrayBufferRef::New(vm_, 57);
+    ASSERT_TRUE(buffer->IsSendableArrayBuffer(vm_));
+
+    Local<SharedBigUint64ArrayRef> typedArray = SharedBigUint64ArrayRef::New(vm_, buffer, 8, 6);
+    ASSERT_TRUE(typedArray->IsJSSharedBigUint64Array(vm_));
+    ASSERT_EQ(typedArray->ByteLength(vm_), 48U); // 48 : length of bytes
+    ASSERT_EQ(typedArray->ByteOffset(vm_), 8U);  // 8 : offset of byte
+    ASSERT_EQ(typedArray->ArrayLength(vm_), 6U); // 6 : length of array
+    ASSERT_EQ(typedArray->GetArrayBuffer(vm_)->GetBuffer(vm_), buffer->GetBuffer(vm_));
+}
+
 }  // namespace panda::test

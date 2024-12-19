@@ -1131,6 +1131,18 @@ int32_t TypedArrayHelper::SortCompare(JSThread *thread, const JSHandle<JSTaggedV
             THROW_TYPE_ERROR_AND_RETURN(thread, "The buffer is detached buffer.", 0);
         }
         JSHandle<JSTaggedValue> testResult(thread, callResult);
+        if (testResult->IsBigInt()) {
+            JSHandle<BigInt> bigIntResult = JSHandle<BigInt>::Cast(testResult);
+            JSHandle<JSTaggedValue> zero(thread, JSTaggedValue(0));
+            ComparisonResult compareResult = BigInt::CompareWithNumber(bigIntResult, zero);
+            if (compareResult == ComparisonResult::LESS) {
+                return -1;
+            }
+            if (compareResult == ComparisonResult::GREAT) {
+                return 1;
+            }
+            return +0;
+        }
         JSTaggedNumber v = JSTaggedValue::ToNumber(thread, testResult);
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, 0);
         double value = v.GetNumber();
