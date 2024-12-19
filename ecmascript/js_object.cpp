@@ -1392,7 +1392,8 @@ bool JSObject::ValidateDataDescriptorWhenConfigurable(ObjectOperator *op, const 
                 THROW_TYPE_ERROR_AND_RETURN(op->GetThread(), GET_MESSAGE_STRING(UpdateSendableAttributes), false);
             }
             if (!ClassHelper::MatchFieldType(type, value.GetTaggedValue())) {
-                THROW_TYPE_ERROR_AND_RETURN(op->GetThread(), GET_MESSAGE_STRING(SetTypeMismatchedSharedProperty), false);
+                THROW_TYPE_ERROR_AND_RETURN(op->GetThread(),
+                                            GET_MESSAGE_STRING(SetTypeMismatchedSharedProperty), false);
             }
         }
         value = JSTaggedValue::PublishSharedValue(op->GetThread(), value);
