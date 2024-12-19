@@ -139,6 +139,7 @@ void CallStubBuilder::JSCallNative(Label *exit)
         case JSCallMode::CALL_THIS_ARG1:
         case JSCallMode::CALL_THIS_ARG2:
         case JSCallMode::CALL_THIS_ARG3:
+        case JSCallMode::CALL_THIS_ARG2_WITH_RETURN:
         case JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV:
         case JSCallMode::DEPRECATED_CALL_CONSTRUCTOR_WITH_ARGV:
             numArgsKeeper = numArgs_;
@@ -160,7 +161,6 @@ void CallStubBuilder::JSCallNative(Label *exit)
         case JSCallMode::DEPRECATED_CALL_THIS_WITH_ARGV:
         case JSCallMode::CALL_GETTER:
         case JSCallMode::CALL_SETTER:
-        case JSCallMode::CALL_THIS_ARG2_WITH_RETURN:
         case JSCallMode::CALL_THIS_ARG3_WITH_RETURN:
         case JSCallMode::CALL_THIS_ARGV_WITH_RETURN:
             ret = CallNGCRuntime(glue_, idxForNative, argsForNative, hir_);
@@ -1325,6 +1325,7 @@ void CallStubBuilder::CallFastBuiltin(Label* notFastBuiltins, Label *exit)
             case JSCallMode::CALL_THIS_ARG1:
             case JSCallMode::CALL_THIS_ARG2:
             case JSCallMode::CALL_THIS_ARG3:
+            case JSCallMode::CALL_THIS_ARG2_WITH_RETURN:
                 ret = DispatchBuiltins(glue_, builtinId, PrepareArgsForFastBuiltin());
                 break;
             case JSCallMode::DEPRECATED_CALL_CONSTRUCTOR_WITH_ARGV:
@@ -1362,6 +1363,12 @@ std::vector<GateRef> CallStubBuilder::PrepareAppendArgsForFastBuiltin()
                 callArgs_.callArgsWithThis.thisValue, numArgs_,
                 callArgs_.callArgsWithThis.arg0,
                 callArgs_.callArgsWithThis.arg1, Undefined()
+            };
+        case JSCallMode::CALL_THIS_ARG2_WITH_RETURN:
+            return { Undefined(),
+                callArgs_.callThisArg2WithReturnArgs.thisValue, numArgs_,
+                callArgs_.callThisArg2WithReturnArgs.arg0,
+                callArgs_.callThisArg2WithReturnArgs.arg1, Undefined()
             };
         case JSCallMode::CALL_THIS_ARG3:
             return { Undefined(),
@@ -1436,6 +1443,7 @@ bool CallStubBuilder::IsCallModeSupportCallBuiltin() const
         case JSCallMode::CALL_THIS_ARG1:
         case JSCallMode::CALL_THIS_ARG2:
         case JSCallMode::CALL_THIS_ARG3:
+        case JSCallMode::CALL_THIS_ARG2_WITH_RETURN:
             return true;
         case JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV:
         case JSCallMode::DEPRECATED_CALL_CONSTRUCTOR_WITH_ARGV:

@@ -15,6 +15,8 @@
 
 #include "ecmascript/js_native_pointer.h"
 #include "ecmascript/js_thread.h"
+#include "ecmascript/ecma_vm.h"
+#include "ecmascript/object_factory.h"
 
 namespace panda::ecmascript {
 void JSNativePointer::ResetExternalPointer(JSThread *thread, void *externalPointer)
@@ -46,5 +48,13 @@ void JSNativePointer::DeleteExternalPointer(JSThread *thread)
     if (deleter != nullptr) {
         deleter(env, externalPointer, GetData());
     }
+}
+
+JSHandle<EcmaString> JSNativePointer::ToString(JSThread *thread)
+{
+    std::stringstream stringstream;
+    stringstream << "[External: " << std::hex << GetExternalPointer() << "]";
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    return factory->NewFromASCII(stringstream.str());
 }
 }  // namespace panda::ecmascript

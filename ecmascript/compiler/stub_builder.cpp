@@ -3518,7 +3518,8 @@ GateRef StubBuilder::GetPropertyByValue(GateRef glue, GateRef receiver, GateRef 
 }
 
 GateRef StubBuilder::GetPropertyByName(GateRef glue, GateRef receiver, GateRef key,
-                                       ProfileOperation callback, GateRef isInternal, bool canUseIsInternal)
+                                       ProfileOperation callback, GateRef isInternal,
+                                       bool canUseIsInternal, GateRef hir)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -3613,7 +3614,7 @@ GateRef StubBuilder::GetPropertyByName(GateRef glue, GateRef receiver, GateRef k
                 GateRef layOutInfo = GetLayoutFromHClass(hclass);
                 GateRef propsNum = GetNumberOfPropsFromHClass(hclass);
                 // int entry = layoutInfo->FindElementWithCache(thread, hclass, key, propsNumber)
-                GateRef entryA = FindElementWithCache(glue, layOutInfo, hclass, key, propsNum);
+                GateRef entryA = FindElementWithCache(glue, layOutInfo, hclass, key, propsNum, hir);
                 Label hasEntry(env);
                 Label noEntry(env);
                 // if branch condition : entry != -1
@@ -3628,7 +3629,7 @@ GateRef StubBuilder::GetPropertyByName(GateRef glue, GateRef receiver, GateRef k
                     BRANCH(IsAccessor(attr), &isAccessor, &notAccessor);
                     Bind(&isAccessor);
                     {
-                        result = CallGetterHelper(glue, receiver, *holder, value, callback);
+                        result = CallGetterHelper(glue, receiver, *holder, value, callback, hir);
                         Jump(&exit);
                     }
                     Bind(&notAccessor);
@@ -3651,7 +3652,7 @@ GateRef StubBuilder::GetPropertyByName(GateRef glue, GateRef receiver, GateRef k
             {
                 GateRef array = GetPropertiesArray(*holder);
                 // int entry = dict->FindEntry(key)
-                GateRef entryB = FindEntryFromNameDictionary(glue, array, key);
+                GateRef entryB = FindEntryFromNameDictionary(glue, array, key, hir);
                 Label notNegtiveOne(env);
                 Label negtiveOne(env);
                 // if branch condition : entry != -1
@@ -3667,7 +3668,7 @@ GateRef StubBuilder::GetPropertyByName(GateRef glue, GateRef receiver, GateRef k
                     BRANCH(IsAccessor(attr), &isAccessor1, &notAccessor1);
                     Bind(&isAccessor1);
                     {
-                        result = CallGetterHelper(glue, receiver, *holder, value, callback);
+                        result = CallGetterHelper(glue, receiver, *holder, value, callback, hir);
                         Jump(&exit);
                     }
                     Bind(&notAccessor1);
@@ -5718,7 +5719,8 @@ GateRef StubBuilder::GetMethod(GateRef glue, GateRef obj, GateRef key, GateRef p
     return ret;
 }
 
-GateRef StubBuilder::FastGetPropertyByName(GateRef glue, GateRef obj, GateRef key, ProfileOperation callback)
+GateRef StubBuilder::FastGetPropertyByName(GateRef glue, GateRef obj, GateRef key,
+                                           ProfileOperation callback, GateRef hir)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -5732,7 +5734,7 @@ GateRef StubBuilder::FastGetPropertyByName(GateRef glue, GateRef obj, GateRef ke
     BRANCH(TaggedIsHeapObject(obj), &fastpath, &slowpath);
     Bind(&fastpath);
     {
-        result = GetPropertyByName(glue, obj, key, callback, True());
+        result = GetPropertyByName(glue, obj, key, callback, True(), false, hir);
         BRANCH(TaggedIsHole(*result), &slowpath, &exit);
     }
     Bind(&slowpath);
@@ -10870,6 +10872,361 @@ GateRef StubBuilder::NeedBarrier(GateRef kind){
     return ret;
 }
 
+GateRef StubBuilder::JSTaggedValueToString(GateRef glue, GateRef val, GateRef hir)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    DEFVARIABLE(value, VariableType::JS_ANY(), val);
+    Label exit(env);
+    Label notString(env);
+    Label isSpecial(env);
+    Label notSpecial(env);
+    Label loopHead(env);
+    Label loopEnd(env);
+    Label loopExit(env);
+    Jump(&loopHead);
+    LoopBegin(&loopHead);
+    {
+        BRANCH(TaggedIsString(*value), &exit, &notString);
+        Bind(&notString);
+        {
+            BRANCH(TaggedIsSpecial(*value), &isSpecial, &notSpecial);
+            Bind(&isSpecial);
+            {
+                value = SpecialToString(glue, *value);
+                Jump(&exit);
+            }
+            Bind(&notSpecial);
+            {
+                Label numberBigIntPointer(env);
+                Label notNumberBigIntPointer(env);
+                GateRef checkValue = *value;
+                GateRef checkType = LogicOrBuilder(env)
+                                    .Or(TaggedIsNumber(checkValue))
+                                    .Or(TaggedIsBigInt(checkValue))
+                                    .Or(TaggedIsNativePointer(checkValue))
+                                    .Done();
+                BRANCH(checkType, &numberBigIntPointer, &notNumberBigIntPointer);
+                Bind(&numberBigIntPointer);
+                {
+                    value = CallRuntime(glue, RTSTUB_ID(NumberBigIntNativePointerToString), { *value });
+                    Jump(&exit);
+                }
+                Bind(&notNumberBigIntPointer);
+                {
+                    Label isEcmaObject1(env);
+                    Label notEcmaObject1(env);
+                    BRANCH(IsEcmaObject(*value), &isEcmaObject1, &notEcmaObject1);
+                    Bind(&isEcmaObject1);
+                    {
+                        value = ToPrimitive(glue, *value, PreferredPrimitiveType::PREFER_STRING, hir);
+                        Label hasException(env);
+                        BRANCH(HasPendingException(glue), &hasException, &loopEnd);
+                        Bind(&hasException);
+                        {
+                            value = GetGlobalConstantValue(VariableType::JS_POINTER(),
+                                                           glue, ConstantIndex::EMPTY_STRING_OBJECT_INDEX);
+                            Jump(&exit);
+                        }
+                    }
+                    Bind(&notEcmaObject1);
+                    {
+                        GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(CanNotConvertIllageValueToString));
+                        CallRuntime(glue, RTSTUB_ID(ThrowTypeError), { IntToTaggedInt(taggedId) });
+                        value = GetGlobalConstantValue(VariableType::JS_POINTER(),
+                                                       glue, ConstantIndex::EMPTY_STRING_OBJECT_INDEX);
+                        Jump(&exit);
+                    }                    
+                }
+            }
+        }
+    }
+    Bind(&loopEnd);
+    LoopEnd(&loopHead);
+    Bind(&exit);
+    auto ret = *value;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef StubBuilder::SpecialToString(GateRef glue, GateRef specialVal)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    Label exit(env);
+    env->SubCfgEntry(&entry);
+    DEFVARIABLE(value, VariableType::JS_ANY(), Undefined());
+    Label labelBuffer[5] = { Label(env), Label(env), Label(env), Label(env), Label(env) };
+    Label defaultLabel(env);
+    Switch(ChangeTaggedPointerToInt64(specialVal), &defaultLabel, SPECIAL_VALUE, labelBuffer, SPECIAL_VALUE_NUM);
+    for (int i = 0; i < SPECIAL_VALUE_NUM; i++) {
+        Bind(&labelBuffer[i]);
+        value = GetGlobalConstantValue(VariableType::JS_ANY(), glue, SPECIAL_STRING_INDEX[i]);
+        Jump(&exit);
+    }
+    Bind(&defaultLabel);
+    {
+        FatalPrint(glue, {Int32(GET_MESSAGE_STRING_ID(ThisBranchIsUnreachable))});
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *value;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef StubBuilder::ToPrimitive(GateRef glue, GateRef value, PreferredPrimitiveType type, GateRef hir)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label isEcmaObject(env);
+    Label exit(env);
+    Label hasException(env);
+    Label notHasException(env);
+    Label notHasException1(env);
+    Label notHasException2(env);
+    DEFVARIABLE(result, VariableType::JS_ANY(), value);
+    BRANCH(IsEcmaObject(value), &isEcmaObject, &exit);
+    Bind(&isEcmaObject);
+    {
+        Label isUndefined(env);
+        Label notUndefined(env);
+        GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
+        GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
+        GateRef primitiveKey = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv,
+                                                 GlobalEnv::TOPRIMITIVE_SYMBOL_INDEX);
+        GateRef name = FastGetPropertyByName(glue, value, primitiveKey, ProfileOperation(), hir);
+        BRANCH(HasPendingException(glue), &hasException, &notHasException);
+        Bind(&notHasException);
+        GateRef exoticToprim = CallFunction(glue, name);
+        BRANCH(HasPendingException(glue), &hasException, &notHasException1);
+        Bind(&notHasException1);
+        BRANCH(TaggedIsUndefined(exoticToprim), &isUndefined, &notUndefined);
+        Bind(&notUndefined);
+        {
+            GateRef typeValue = GetPrimitiveTypeString(glue, type);
+            DEFVARIABLE(tmpResult, VariableType::JS_ANY(), Undefined());
+            JSCallArgs callArgs(JSCallMode::CALL_THIS_ARG2_WITH_RETURN);
+            callArgs.callThisArg2WithReturnArgs = {value, typeValue, Undefined()};
+            CallStubBuilder callBuilder(this, glue, exoticToprim, Int32(2), 0, &tmpResult, Circuit::NullGate(),
+                                        callArgs, ProfileOperation(), true, hir);
+            Label callExit(env);
+            if (env->IsBaselineBuiltin()) {
+                callBuilder.JSCallDispatchForBaseline(&callExit);
+                Bind(&callExit);
+            } else {
+                tmpResult = callBuilder.JSCallDispatch();
+            }
+            BRANCH(HasPendingException(glue), &hasException, &notHasException2);
+            Bind(&notHasException2);
+            Label isEcmaObject1(env);
+            Label notEcmaObject1(env);
+            BRANCH(IsEcmaObject(*tmpResult), &isEcmaObject1, &notEcmaObject1);
+            Bind(&isEcmaObject1);
+            {
+                GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(CanNotConvertObjectToPrimitiveValue));
+                CallRuntime(glue, RTSTUB_ID(ThrowTypeError), {IntToTaggedInt(taggedId)});
+                Jump(&hasException);
+            }
+            Bind(&notEcmaObject1);
+            {
+                result = *tmpResult;
+                Jump(&exit);
+            }
+        }
+        Bind(&isUndefined);
+        {
+            Label numberPreference(env);
+            Label defaultPreference(env);
+            BRANCH(Int32Equal(Int32(static_cast<uint8_t>(type)),
+                Int32(static_cast<uint8_t>(PreferredPrimitiveType::NO_PREFERENCE))),
+                &numberPreference, &defaultPreference);
+            Bind(&numberPreference);
+            {   
+                result = OrdinaryToPrimitive(glue, value, PreferredPrimitiveType::PREFER_NUMBER, hir);
+                Jump(&exit);
+            }
+            Bind(&defaultPreference);
+            {
+                result = OrdinaryToPrimitive(glue, value, type, hir);
+                Jump(&exit);
+            }
+        }
+    }
+    Bind(&hasException);
+    {
+        result = Exception();
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef StubBuilder::GetPrimitiveTypeString(GateRef glue, PreferredPrimitiveType type)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    DEFVARIABLE(typeValue, VariableType::JS_ANY(),
+        GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
+        ConstantIndex::STRING_STRING_INDEX));
+    Label labelBuffer[2] = {Label(env), Label(env)};
+    Label labelDefault(env);
+    int64_t valueBuffer[2] = {
+        static_cast<int64_t>(PreferredPrimitiveType::NO_PREFERENCE),
+        static_cast<int64_t>(PreferredPrimitiveType::PREFER_NUMBER),
+    };
+    Switch(Int64(static_cast<int64_t>(type)), &labelDefault, valueBuffer, labelBuffer, 2);
+    Bind(&labelBuffer[0]);
+    {
+        typeValue = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
+                                           ConstantIndex::DEFAULT_INDEX);
+        Jump(&labelDefault);
+    }
+    Bind(&labelBuffer[1]);
+    {
+        typeValue = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
+                                           ConstantIndex::NUMBER_STRING_INDEX);
+        Jump(&labelDefault);
+    }
+    Bind(&labelDefault);
+    auto ret = *typeValue;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef StubBuilder::OrdinaryToPrimitive(GateRef glue, GateRef value, PreferredPrimitiveType type, GateRef hir)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label isEcmaObject(env);
+    Label exit(env);
+    Label hasException(env);
+    Label notHasException1(env);
+    Label notHasException2(env);
+    DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
+    BRANCH(IsEcmaObject(value), &isEcmaObject, &exit);
+    Bind(&isEcmaObject);
+    DEFVARIABLE(valType, VariableType::INT32(), Int32(static_cast<uint8_t>(type)));
+    GateRef numberInt32 = Int32(static_cast<uint8_t>(PreferredPrimitiveType::PREFER_NUMBER));
+    GateRef stringInt32 = Int32(static_cast<uint8_t>(PreferredPrimitiveType::PREFER_STRING));
+    GateRef len = Int32(2);
+    DEFVARIABLE(i, VariableType::INT32(), Int32(0));
+    Label loopHead(env);
+    Label loopEnd(env);
+    Label next(env);
+    Label loopExit(env);
+    Jump(&loopHead);
+    LoopBegin(&loopHead);
+    {
+        DEFVARIABLE(keyString, VariableType::JS_ANY(), Undefined());
+        BRANCH(Int32LessThan(*i, len), &next, &loopExit);
+        Bind(&next);
+        Label toString(env);
+        Label valueOf(env);
+        Label checkExit(env);
+        BRANCH(Int32Equal(*valType, stringInt32), &toString, &valueOf);
+        Bind(&toString);
+        {
+            keyString = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
+                                               ConstantIndex::TO_STRING_STRING_INDEX);
+            valType = numberInt32;
+            Jump(&checkExit);
+        }
+        Bind(&valueOf);
+        {
+            keyString = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
+                                               ConstantIndex::VALUE_OF_STRING_INDEX);
+            valType = stringInt32;
+            Jump(&checkExit);
+        }
+        Bind(&checkExit);
+        GateRef entryfunc = FastGetPropertyByName(glue, value, *keyString, ProfileOperation(), hir);
+        BRANCH(HasPendingException(glue), &hasException, &notHasException1);
+        Bind(&notHasException1);
+        Label isCallable1(env);
+        BRANCH(IsCallable(entryfunc), &isCallable1, &loopEnd);
+        Bind(&isCallable1);
+        {
+            DEFVARIABLE(tmpResult, VariableType::JS_ANY(), Undefined());
+            JSCallArgs callArgs(JSCallMode::CALL_THIS_ARG2_WITH_RETURN);
+            callArgs.callThisArg2WithReturnArgs = { value, Undefined(), Undefined() };
+            CallStubBuilder callBuilder(this, glue, entryfunc, Int32(2), 0, &tmpResult, Circuit::NullGate(),
+                                        callArgs, ProfileOperation(), true, hir);
+            Label callExit(env);
+            if (env->IsBaselineBuiltin()) {
+                callBuilder.JSCallDispatchForBaseline(&callExit);
+                Bind(&callExit);
+            } else {
+                tmpResult = callBuilder.JSCallDispatch();
+            }
+            BRANCH(HasPendingException(glue), &hasException, &notHasException2);
+            Bind(&notHasException2);
+            Label notEcmaObject1(env);
+            BRANCH(IsEcmaObject(*tmpResult), &loopEnd, &notEcmaObject1);
+            Bind(&notEcmaObject1);
+            {
+                result = *tmpResult;
+                Jump(&exit);
+            }
+        }        
+    }
+    Bind(&loopEnd);
+    i = Int32Add(*i, Int32(1));
+    LoopEnd(&loopHead);
+    Bind(&loopExit);
+    {
+        GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(CanNotConvertIllageValueToPrimitive));
+        CallRuntime(glue, RTSTUB_ID(ThrowTypeError), { IntToTaggedInt(taggedId) });
+        result = Undefined();
+        Jump(&exit);
+    }
+    Bind(&hasException);
+    {
+        result = Exception();
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef StubBuilder::CallFunction(GateRef glue, GateRef func)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+    Label undefinedOrNull(env);
+    Label notUndefinedAndNull(env);
+    Label notCallable(env);
+    DEFVARIABLE(result, VariableType::JS_ANY(), func);
+    BRANCH(TaggedIsUndefinedOrNull(func), &undefinedOrNull, &notUndefinedAndNull);
+    Bind(&undefinedOrNull);
+    {
+        result = Undefined();
+        Jump(&exit);
+    }
+    Bind(&notUndefinedAndNull);
+    BRANCH(IsCallable(func), &exit, &notCallable);
+    Bind(&notCallable);
+    {
+        GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(ObjIsNotCallable));
+        CallRuntime(glue, RTSTUB_ID(ThrowTypeError), { IntToTaggedInt(taggedId) });
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
 
 void StubBuilder::ArrayCopy(GateRef glue, GateRef srcObj, GateRef srcAddr, GateRef dstObj,
                             GateRef dstAddr, GateRef taggedValueCount, GateRef needBarrier, CopyKind copyKind)
@@ -10987,6 +11344,23 @@ ConstantIndex StubBuilder::ELEMENTS_KIND_HCLASS_INDEX[ELEMENTS_KIND_HCLASS_NUM] 
     ConstantIndex::ELEMENT_HOLE_OBJECT_HCLASS_INDEX,
     ConstantIndex::ELEMENT_HOLE_TAGGED_HCLASS_INDEX
 };
+
+int64_t StubBuilder::SPECIAL_VALUE[SPECIAL_VALUE_NUM] = {
+    static_cast<int64_t>(JSTaggedValue::VALUE_UNDEFINED),
+    static_cast<int64_t>(JSTaggedValue::VALUE_NULL),
+    static_cast<int64_t>(JSTaggedValue::VALUE_TRUE),
+    static_cast<int64_t>(JSTaggedValue::VALUE_FALSE),
+    static_cast<int64_t>(JSTaggedValue::VALUE_HOLE)
+};
+
+ConstantIndex StubBuilder::SPECIAL_STRING_INDEX[SPECIAL_VALUE_NUM] = {
+    ConstantIndex::UNDEFINED_STRING_INDEX,
+    ConstantIndex::NULL_STRING_INDEX,
+    ConstantIndex::TRUE_STRING_INDEX,
+    ConstantIndex::FALSE_STRING_INDEX,
+    ConstantIndex::EMPTY_STRING_OBJECT_INDEX
+};
+
 
 GateRef StubBuilder::ThreeInt64Min(GateRef first, GateRef second, GateRef third)
 {

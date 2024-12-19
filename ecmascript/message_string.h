@@ -68,7 +68,11 @@ namespace panda::ecmascript {
     V(CreateDataPropertyFailed, "failed to create data property")                            \
     V(ValueIsNonSObject, "value is not a shared object")                                     \
     V(MapIteratorTypeError, "this value is not a map iterator")                              \
-    V(SetIteratorTypeError, "this value is not a set iterator")
+    V(SetIteratorTypeError, "this value is not a set iterator")                              \
+    V(CanNotConvertObjectToPrimitiveValue, "Cannot convert object to primitive value")       \
+    V(CanNotConvertIllageValueToString, "Cannot convert a illegal value to a String")        \
+    V(CanNotConvertIllageValueToPrimitive, "Cannot convert a illegal value to a Primitive")
+
 
 #define DEBUG_CHECK_MESSAGE_STRING_LIST(V)                                                   \
     V(IsCallable)                                                                            \
