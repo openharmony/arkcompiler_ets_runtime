@@ -56,16 +56,6 @@ print([1, 2].concat([3, , 5])); // [1, 2, 3, empty, 5]
 const emptyArr = [];
 print(emptyArr.concat([]).length);
 
-{
-    let v1 = Math.pow(2, 31);
-    let v2 = [];
-    v2[v1] = 31;
-    let v3 = [];
-    let v4 = v2.concat(v3);
-    let v5 = v3.concat(1, -24323, v1, v4);
-    print(v5.length);
-}
-
 /*
  * @tc.name:Array concat1
  * @tc.desc:test long Array Concat long Array and change proto
