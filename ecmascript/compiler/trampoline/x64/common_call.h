@@ -84,7 +84,7 @@ public:
 
     static void GenJSCallWithArgV(ExtendedAssembler *assembler, int id);
 private:
-    static void DeoptEnterAsmInterp(ExtendedAssembler *assembler);
+    static void DeoptEnterAsmInterpOrBaseline(ExtendedAssembler *assembler);
     static void JSCallCheck(ExtendedAssembler *assembler, Register jsFuncReg,
                             Label *lNonCallable, Label *lNotJSFunction, Label *lJSFunctionCall);
     static void ThrowNonCallableInternal(ExtendedAssembler *assembler, Register glueReg);
