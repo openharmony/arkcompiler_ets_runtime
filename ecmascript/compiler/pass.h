@@ -750,7 +750,11 @@ public:
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
         Scheduler::Run(data->GetCircuit(), data->GetCfg(), data->GetMethodName(), enableLog);
         Chunk chunk(data->GetNativeAreaAllocator());
+#if ENABLE_NEXT_OPTIMIZATION
         PostSchedule(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk, true).Run(data->GetCfg());
+#else
+        PostSchedule(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk, false).Run(data->GetCfg());
+#endif
         return true;
     }
 };
