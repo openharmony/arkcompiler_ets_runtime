@@ -29,3 +29,4 @@ TypeError: Constructor is false
 bound testFunc
 bound testFuncChanged
 true
+123
