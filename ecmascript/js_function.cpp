@@ -148,7 +148,17 @@ JSHClass *JSFunction::GetOrCreateInitialJSHClass(JSThread *thread, const JSHandl
     }
 
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<JSHClass> hclass = factory->NewEcmaHClass(JSObject::SIZE, JSType::JS_OBJECT, proto);
+    JSHandle<JSHClass> hclass;
+    if (thread->GetEcmaVM()->GetJSOptions().IsEnableInlinePropertyOptimization()) {
+        bool isStartObjSizeTracking = true;
+        uint32_t expectedOfProperties = JSFunction::CalcuExpotedOfProperties(fun, &isStartObjSizeTracking);
+        hclass = factory->NewEcmaHClass(JSObject::SIZE, expectedOfProperties, JSType::JS_OBJECT, proto);
+        if (isStartObjSizeTracking) {
+            hclass->StartObjSizeTracking();
+        }
+    } else {
+        hclass = factory->NewEcmaHClass(JSObject::SIZE, JSType::JS_OBJECT, proto);
+    }
     fun->SetProtoOrHClass(thread, hclass);
     if (thread->GetEcmaVM()->IsEnablePGOProfiler()) {
         if (!needProfileTransition) {
@@ -158,6 +168,32 @@ JSHClass *JSFunction::GetOrCreateInitialJSHClass(JSThread *thread, const JSHandl
         }
     }
     return *hclass;
+}
+
+uint32_t JSFunction::CalcuExpotedOfProperties(const JSHandle<JSFunction> &fun, bool *isStartObjSizeTracking)
+{
+    JSTaggedValue prototype = fun.GetTaggedValue();
+    uint32_t expectedPropertyCount = 0;
+    while (prototype.IsJSFunction()) {
+        JSTaggedValue method = JSFunction::Cast(prototype.GetTaggedObject())->GetMethod();
+        uint32_t count = Method::Cast(method.GetTaggedObject())->GetExpectedPropertyCount();
+        prototype = JSObject::GetPrototype(prototype);
+        // if equal MAX_EXPECTED_PROPERTY_COUNT means none expectedProperty in method
+        if (count == MethodLiteral::MAX_EXPECTED_PROPERTY_COUNT) {
+            continue;
+        }
+        expectedPropertyCount += count;
+    }
+    expectedPropertyCount += JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS;
+    // if equal DEFAULT_CAPACITY_OF_IN_OBJECTS mean none expectedProperty in func
+    if (expectedPropertyCount == JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS) {
+        *isStartObjSizeTracking = false;
+        return expectedPropertyCount;
+    }
+    if (expectedPropertyCount > PropertyAttributes::MAX_FAST_PROPS_CAPACITY) {
+        return PropertyAttributes::MAX_FAST_PROPS_CAPACITY;
+    }
+    return expectedPropertyCount;
 }
 
 JSTaggedValue JSFunction::PrototypeGetter(JSThread *thread, const JSHandle<JSObject> &self)
@@ -181,6 +217,7 @@ bool JSFunction::PrototypeSetter(JSThread *thread, const JSHandle<JSObject> &sel
     if (protoOrHClass.IsJSHClass()) {
         // need transition
         JSHandle<JSHClass> hclass(thread, JSHClass::Cast(protoOrHClass.GetTaggedObject()));
+        hclass->CompleteObjSizeTracking();
         JSHandle<JSHClass> newClass = JSHClass::SetPrototypeWithNotification(thread, hclass, value);
         func->SetProtoOrHClass(thread, newClass);
         // Forbide to profile for changing the function prototype after an instance of the function has been created
@@ -904,8 +941,19 @@ JSHandle<JSHClass> JSFunction::GetOrCreateDerivedJSHClass(JSThread *thread, JSHa
     if (protoOrHClass.IsJSHClass()) {
         return JSHandle<JSHClass>(thread, protoOrHClass);
     }
-
-    JSHandle<JSHClass> newJSHClass = JSHClass::Clone(thread, ctorInitialJSHClass);
+    JSHandle<JSHClass> newJSHClass;
+    if (thread->GetEcmaVM()->GetJSOptions().IsEnableInlinePropertyOptimization()) {
+        bool isStartObjSizeTracking = true;
+        uint32_t expectedOfProperties = CalcuExpotedOfProperties(derived, &isStartObjSizeTracking);
+        if (isStartObjSizeTracking) {
+            newJSHClass = JSHClass::CloneAndIncInlinedProperties(thread, ctorInitialJSHClass, expectedOfProperties);
+            newJSHClass->StartObjSizeTracking();
+        } else {
+            newJSHClass = JSHClass::Clone(thread, ctorInitialJSHClass);
+        }
+    } else {
+        newJSHClass = JSHClass::Clone(thread, ctorInitialJSHClass);
+    }
     if (ctorInitialJSHClass->IsJSArray()) {
         newJSHClass->SetIsJSArrayPrototypeModified(true);
     }

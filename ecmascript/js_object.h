@@ -261,7 +261,7 @@ public:
     using IsInlinedPropsField = IsFoundField::NextFlag;
     // 3: The bit field that represents the "Representation" of the property
     using RepresentationField = IsInlinedPropsField::NextField<Representation, 3>;
-    using OffsetField = RepresentationField::NextField<uint32_t, PropertyAttributes::OFFSET_BITFIELD_NUM>;
+    using OffsetField = RepresentationField::NextField<uint32_t, PropertyAttributes::MAX_FAST_PROPS_CAPACITY_LOG2>;
 
     explicit PropertyMetaData(uint32_t metaData) : metaData_(metaData) {}
 

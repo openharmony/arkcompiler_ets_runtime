@@ -587,6 +587,7 @@ private:
     V(JSSetDelete)                              \
     V(JSSetEntries)                             \
     V(JSHClassFindProtoTransitions)             \
+    V(FinishObjSizeTracking)                    \
     V(NumberHelperStringToDouble)               \
     V(GetStringToListCacheArray)                \
     V(FastArraySort)                            \

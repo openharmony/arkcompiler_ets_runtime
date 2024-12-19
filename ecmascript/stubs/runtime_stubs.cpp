@@ -4000,6 +4000,15 @@ void RuntimeStubs::ReverseTypedArray(JSTypedArray *typedArray)
     }
 }
 
+void RuntimeStubs::FinishObjSizeTracking(JSHClass *cls)
+{
+    uint32_t finalInObjPropsNum = JSHClass::VisitTransitionAndFindMaxNumOfProps(cls);
+    if (finalInObjPropsNum < cls->GetInlinedProperties()) {
+        // UpdateObjSize with finalInObjPropsNum
+        JSHClass::VisitTransitionAndUpdateObjSize(cls, finalInObjPropsNum);
+    }
+}
+
 DEF_RUNTIME_STUBS(ArrayForEachContinue)
 {
     RUNTIME_STUBS_HEADER(ArrayForEachContinue);

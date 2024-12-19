@@ -350,6 +350,36 @@ inline int JSHClass::FindPropertyEntry(const JSThread *thread, JSHClass *hclass,
     return entry;
 }
 
+inline void JSHClass::CompleteObjSizeTracking()
+{
+    if (!IsObjSizeTrackingInProgress()) {
+        return;
+    }
+    uint32_t finalInObjPropsNum = JSHClass::VisitTransitionAndFindMaxNumOfProps(this);
+    if (finalInObjPropsNum < GetInlinedProperties()) {
+        // UpdateObjSize with finalInObjPropsNum
+        JSHClass::VisitTransitionAndUpdateObjSize(this, finalInObjPropsNum);
+    }
+    SetConstructionCounter(0); // fini ObjSizeTracking
+}
+
+inline void JSHClass::ObjSizeTrackingStep()
+{
+    if (!IsObjSizeTrackingInProgress()) {
+        return;
+    }
+    uint32_t constructionCounter = GetConstructionCounter();
+    ASSERT(constructionCounter != 0);
+    SetConstructionCounter(--constructionCounter);
+    if (constructionCounter == 0) {
+        uint32_t finalInObjPropsNum = JSHClass::VisitTransitionAndFindMaxNumOfProps(this);
+        if (finalInObjPropsNum < GetInlinedProperties()) {
+            // UpdateObjSize with finalInObjPropsNum
+            JSHClass::VisitTransitionAndUpdateObjSize(this, finalInObjPropsNum);
+        }
+    }
+}
+
 template<bool checkDuplicateKeys /* = false*/>
 void JSHClass::AddPropertyToNewHClass(const JSThread *thread, JSHandle<JSHClass> &jshclass,
                                       JSHandle<JSHClass> &newJsHClass,

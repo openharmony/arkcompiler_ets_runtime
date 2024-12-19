@@ -39,6 +39,7 @@ struct PUBLIC_API MethodLiteral : public base::AlignedStruct<sizeof(uint64_t),
 public:
     static constexpr uint8_t INVALID_IC_SLOT = 0xFFU;
     static constexpr uint16_t MAX_SLOT_SIZE = 0xFFFFU;
+    static constexpr uint32_t MAX_EXPECTED_PROPERTY_COUNT = 0xFFFFFFFFU;
     static constexpr size_t EXTEND_SLOT_SIZE = 2;
 
     PUBLIC_API explicit MethodLiteral(EntityId methodId);
@@ -215,6 +216,7 @@ public:
 
     static constexpr size_t METHOD_ARGS_NUM_BITS = 16;
     static constexpr size_t METHOD_ARGS_METHODID_BITS = 32;
+    static constexpr size_t METHOD_EXPECTED_PROPERTY_COUNT_BITS = 32;
     static constexpr size_t METHOD_SLOT_SIZE_BITS = 16;
     using HotnessCounterBits = BitField<int16_t, 0, METHOD_ARGS_NUM_BITS>; // offset 0-15
     using MethodIdBits = HotnessCounterBits::NextField<uint32_t, METHOD_ARGS_METHODID_BITS>; // offset 16-47
@@ -230,6 +232,8 @@ public:
     using EmptyBit = HasDebuggerStmtBit::NextField<uint8_t, EMPTY_BITS>; // offset 14-29
     using IsSharedBit = EmptyBit::NextFlag; // offset 30
     using CanTypedCall = IsSharedBit::NextFlag; // offset 31
+    using ExpectedPropertyCountBits =
+        CanTypedCall::NextField<uint32_t, METHOD_EXPECTED_PROPERTY_COUNT_BITS>; // offset 32-63
 
     // one placeholder 0xffff (INVALID) in kungfu::BuiltinsStubCSigns::ID
     static_assert(static_cast<size_t>(kungfu::BuiltinsStubCSigns::ID::NUM_OF_BUILTINS_ID) < (1 << BUILTINID_NUM_BITS));
@@ -314,6 +318,16 @@ public:
     FunctionKind GetFunctionKind() const
     {
         return static_cast<FunctionKind>(FunctionKindBits::Decode(extraLiteralInfo_));
+    }
+
+    uint32_t GetExpectedPropertyCount() const
+    {
+        return ExpectedPropertyCountBits::Decode(extraLiteralInfo_);
+    }
+
+    void SetExpectedPropertyCount(uint32_t count)
+    {
+        extraLiteralInfo_ = ExpectedPropertyCountBits::Update(extraLiteralInfo_, count);
     }
 
     inline bool IsClassConstructor() const

@@ -381,6 +381,7 @@ public:
     static constexpr int TYPE_BITFIELD_NUM = 8;
     static constexpr int LEVEL_BTTFIELD_NUM = 5;
     static constexpr int ELEMENTS_KIND_BITFIELD_NUM = 5;
+    static constexpr int CONSTRUCTION_COUNTER_BITFIELD_NUM = 3;
     static constexpr unsigned BITS_PER_BYTE = 8;
     using ObjectTypeBits = BitField<JSType, 0, TYPE_BITFIELD_NUM>;                                // 8
     using CallableBit = ObjectTypeBits::NextFlag;                                                 // 9
@@ -399,16 +400,18 @@ public:
     using IsJSFunctionBit = IsJSArrayPrototypeModifiedBit::NextFlag;                              // 26
     using IsOnHeap = IsJSFunctionBit::NextFlag;                                                   // 27
     using IsJSSharedBit = IsOnHeap::NextFlag;                                                     // 28
-    using BitFieldLastBit = IsJSSharedBit;
+    using ConstructionCounterBits = IsJSSharedBit::NextField<uint8_t, CONSTRUCTION_COUNTER_BITFIELD_NUM>; // 29-31
+    using BitFieldLastBit = ConstructionCounterBits;
     static_assert(BitFieldLastBit::START_BIT + BitFieldLastBit::SIZE <= sizeof(uint32_t) * BITS_PER_BYTE, "Invalid");
 
     static constexpr int DEFAULT_CAPACITY_OF_IN_OBJECTS = 4;
     static constexpr int OFFSET_MAX_OBJECT_SIZE_IN_WORDS_WITHOUT_INLINED = 5;
     static constexpr int OFFSET_MAX_OBJECT_SIZE_IN_WORDS =
-        PropertyAttributes::OFFSET_BITFIELD_NUM + OFFSET_MAX_OBJECT_SIZE_IN_WORDS_WITHOUT_INLINED;
+        PropertyAttributes::MAX_FAST_PROPS_CAPACITY_LOG2 + OFFSET_MAX_OBJECT_SIZE_IN_WORDS_WITHOUT_INLINED;
     static constexpr int MAX_OBJECT_SIZE_IN_WORDS = (1U << OFFSET_MAX_OBJECT_SIZE_IN_WORDS) - 1;
+    static constexpr uint8_t SLACK_TRACKING_COUNT = (1 << CONSTRUCTION_COUNTER_BITFIELD_NUM) - 1;
 
-    using NumberOfPropsBits = BitField<uint32_t, 0, PropertyAttributes::OFFSET_BITFIELD_NUM>;                  // 10
+    using NumberOfPropsBits = BitField<uint32_t, 0, PropertyAttributes::MAX_FAST_PROPS_CAPACITY_LOG2>;         // 10
     using InlinedPropsStartBits = NumberOfPropsBits::NextField<uint32_t,
         OFFSET_MAX_OBJECT_SIZE_IN_WORDS_WITHOUT_INLINED>;                                                      // 15
     using ObjectSizeInWordsBits = InlinedPropsStartBits::NextField<uint32_t, OFFSET_MAX_OBJECT_SIZE_IN_WORDS>; // 30
@@ -433,6 +436,8 @@ public:
         const JSHandle<JSTaggedValue> &layout);
     static JSHandle<JSHClass> Clone(const JSThread *thread, const JSHandle<JSHClass> &jshclass,
                                     bool withoutInlinedProperties = false, uint32_t incInlinedProperties = 0);
+    static JSHandle<JSHClass> CloneAndIncInlinedProperties(const JSThread *thread, const JSHandle<JSHClass> &jshclass,
+                                                           uint32_t expectedOfProperties);
     static JSHandle<JSHClass> CloneWithoutInlinedProperties(const JSThread *thread, const JSHandle<JSHClass> &jshclass);
     static JSHandle<JSHClass> CloneWithElementsKind(const JSThread *thread, const JSHandle<JSHClass> &jshclass,
                                                     const ElementsKind kind, bool isPrototype);
@@ -488,6 +493,8 @@ public:
     static void UpdateFieldType(JSHClass *hclass, const PropertyAttributes &attr);
     static JSHClass *FindFieldOwnHClass(JSHClass *hclass, const PropertyAttributes &attr);
     static void VisitAndUpdateLayout(JSHClass *ownHClass, const PropertyAttributes &attr);
+    static void VisitTransitionAndUpdateObjSize(JSHClass *ownHClass, uint32_t finalInObjPropsNum);
+    static uint32_t VisitTransitionAndFindMaxNumOfProps(JSHClass *ownHClass);
 
     static JSHandle<JSTaggedValue> EnableProtoChangeMarker(const JSThread *thread, const JSHandle<JSHClass> &jshclass);
     static JSHandle<JSTaggedValue> EnablePHCProtoChangeMarker(
@@ -1805,6 +1812,19 @@ public:
         return ElementsKindBits::Decode(bits);
     }
 
+    inline void SetConstructionCounter(uint8_t count)
+    {
+        uint32_t bits = GetBitField();
+        uint32_t newVal = ConstructionCounterBits::Update(bits, count);
+        SetBitField(newVal);
+    }
+
+    inline uint8_t GetConstructionCounter() const
+    {
+        uint32_t bits = GetBitField();
+        return ConstructionCounterBits::Decode(bits);
+    }
+
     inline void SetIsDictionaryElement(bool value)
     {
         uint32_t newVal = DictionaryElementBits::Update(GetBitField(), value);
@@ -1978,6 +1998,20 @@ public:
         uint32_t bits = GetBitField1();
         return IsAllTaggedPropBit::Decode(bits);
     }
+
+    inline bool IsObjSizeTrackingInProgress() const
+    {
+        return GetConstructionCounter() != 0;
+    }
+
+    inline void StartObjSizeTracking()
+    {
+        SetConstructionCounter(SLACK_TRACKING_COUNT);
+    }
+
+    inline void CompleteObjSizeTracking();
+
+    inline void ObjSizeTrackingStep();
 
     inline static JSHClass *FindRootHClass(JSHClass *hclass);
     inline static JSTaggedValue FindProtoHClass(JSHClass *hclass);
