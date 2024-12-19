@@ -88,6 +88,7 @@ enum RegionGCFlags {
     NEED_RELOCATE = 1 << 12,
     // ONLY used for heap verification.
     IN_INACTIVE_SEMI_SPACE = 1 << 13,
+    IN_NEW_TO_OLD_SET = 1 << 14,
 };
 
 // Currently only use for region in LinearSpace, to check if the region is allocated during concurrent marking.
@@ -349,7 +350,7 @@ public:
     bool TestOldToNew(uintptr_t addr);
     bool TestLocalToShare(uintptr_t addr);
     template <typename Visitor>
-    void IterateAllMarkedBits(Visitor visitor) const;
+    void IterateAllMarkedBits(Visitor &&visitor) const;
     void ClearMarkGCBitset();
     // local to share remembered set
     bool HasLocalToShareRememberedSet() const;
@@ -431,6 +432,12 @@ public:
     {
         ASAN_UNPOISON_MEMORY_REGION(reinterpret_cast<void *>(GetBegin()), GetSize());
         packedData_.flags_.spaceFlag_ = RegionSpaceFlag::UNINITIALIZED;
+    }
+
+    void ResetRegionFlag(RegionSpaceFlag spaceFlag, RegionGCFlags gcFlag)
+    {
+        packedData_.flags_.spaceFlag_ = spaceFlag;
+        packedData_.flags_.gcFlags_ = gcFlag;
     }
 
     uint8_t GetRegionSpaceFlag();
@@ -581,6 +588,11 @@ public:
     bool InNewToNewSet() const
     {
         return IsGCFlagSet(RegionGCFlags::IN_NEW_TO_NEW_SET);
+    }
+
+    bool InNewToOldSet() const
+    {
+        return IsGCFlagSet(RegionGCFlags::IN_NEW_TO_OLD_SET);
     }
 
     bool HasAgeMark() const

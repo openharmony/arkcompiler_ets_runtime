@@ -1226,7 +1226,8 @@ public:
     inline void SwapNewSpace();
     inline void SwapOldSpace();
 
-    inline bool MoveYoungRegionSync(Region *region);
+    inline bool MoveYoungRegion(Region *region);
+    inline bool MoveYoungRegionToOld(Region *region);
     inline void MergeToOldSpaceSync(LocalSpace *localSpace);
 
     template<class Callback>

@@ -148,7 +148,7 @@ public:
     }
 
     template <typename Visitor>
-    void IterateMarkedBitsConst(uintptr_t begin, size_t bitSize, Visitor visitor) const
+    void IterateMarkedBitsConst(uintptr_t begin, size_t bitSize, Visitor &&visitor) const
     {
         auto words = Words();
         uint32_t wordCount = WordCount(bitSize);

@@ -221,7 +221,7 @@ inline bool Region::TestLocalToShare(uintptr_t addr)
 }
 
 template <typename Visitor>
-inline void Region::IterateAllMarkedBits(Visitor visitor) const
+inline void Region::IterateAllMarkedBits(Visitor &&visitor) const
 {
     packedData_.markGCBitset_->IterateMarkedBitsConst(
         reinterpret_cast<uintptr_t>(this), packedData_.bitsetSize_, visitor);
