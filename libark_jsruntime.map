@@ -76,6 +76,7 @@
       panda::Uint8ClampedArrayRef::*;
       panda::WeakMapRef::*;
       panda::WeakSetRef::*;
+      panda::HandshakeHelper::*;
 
       panda::TryCatch::*;
       panda::JSNApi::*;
