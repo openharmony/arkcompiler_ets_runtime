@@ -367,15 +367,13 @@ void BuiltinsArrayStubBuilder::ToReversedOptimised(GateRef glue, GateRef thisVal
     auto env = GetEnvironment();
     Label isHeapObject(env);
     Label isJsArray(env);
-    Label defaultConstr(env);
     Label isStability(env);
     Label notCOWArray(env);
     BRANCH(TaggedIsHeapObject(thisValue), &isHeapObject, slowPath);
     Bind(&isHeapObject);
     BRANCH(IsJsArray(thisValue), &isJsArray, slowPath);
     Bind(&isJsArray);
-    BRANCH(HasConstructor(thisValue), slowPath, &defaultConstr);
-    Bind(&defaultConstr);
+    // don't check constructor, "ToReversed" always use ArrayCreate to create array.
     BRANCH(IsStableJSArray(glue, thisValue), &isStability, slowPath);
     Bind(&isStability);
     BRANCH(IsJsCOWArray(thisValue), slowPath, &notCOWArray);
@@ -612,14 +610,11 @@ void BuiltinsArrayStubBuilder::ToSplicedOptimised(GateRef glue, GateRef thisValu
     Label isHeapObject(env);
     Label isJsArray(env);
     Label isStability(env);
-    Label defaultConstr(env);
-    Label isGeneric(env);
     BRANCH(TaggedIsHeapObject(thisValue), &isHeapObject, slowPath);
     Bind(&isHeapObject);
     BRANCH(IsJsArray(thisValue), &isJsArray, slowPath);
     Bind(&isJsArray);
-    BRANCH(HasConstructor(thisValue), slowPath, &defaultConstr);
-    Bind(&defaultConstr);
+    // don't check constructor, "ToSpliced" always use ArrayCreate to create array.
     BRANCH(IsStableJSArray(glue, thisValue), &isStability, slowPath);
     Bind(&isStability);
     Label notCOWArray(env);

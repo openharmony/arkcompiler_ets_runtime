@@ -378,6 +378,11 @@ void JSHClass::AddPropertyToNewHClass(const JSThread *thread, JSHandle<JSHClass>
 
     // Add newClass to old hclass's transitions.
     AddTransitions(thread, jshclass, newJsHClass, key, attr);
+
+    if UNLIKELY(key.GetTaggedValue() == thread->GlobalConstants()->GetConstructorString()
+        && (jshclass->IsJSArray() || jshclass->IsTypedArray())) {
+        newJsHClass->SetHasConstructor(true);
+    }
 }
 
 template<bool checkDuplicateKeys /* = false*/>

@@ -3724,6 +3724,7 @@ inline GateRef StubBuilder::HasConstructorByHClass(GateRef hClass)
 
 inline GateRef StubBuilder::HasConstructor(GateRef object)
 {
+    // only array and typedArray use this bitfield
     return env_->GetBuilder()->HasConstructor(object);
 }
 

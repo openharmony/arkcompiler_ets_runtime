@@ -1417,33 +1417,6 @@ void StubBuilder::JSHClassAddProperty(GateRef glue, GateRef receiver, GateRef ke
     return;
 }
 
-// if condition:(objHandle->IsJSArray() || objHandle->IsTypedArray()) &&
-//      keyHandle.GetTaggedValue() == thread->GlobalConstants()->GetConstructorString()
-GateRef StubBuilder::SetHasConstructorCondition(GateRef glue, GateRef receiver, GateRef key)
-{
-    Label subentry(env_);
-    env_->SubCfgEntry(&subentry);
-    Label isArray(env_);
-    Label exit(env_);
-    DEFVALUE(result, env_, VariableType::BOOL(), False());
-    Branch(LogicOrBuilder(env_).Or(IsJsArray(receiver)).Or(IsTypedArray(receiver)).Done(), &isArray, &exit);
-    Bind(&isArray);
-    {
-        GateRef gConstOffset = Load(VariableType::JS_ANY(), glue,
-                                    IntPtr(JSThread::GlueData::GetGlobalConstOffset(env_->Is32Bit())));
-        GateRef gCtorStr = Load(VariableType::JS_ANY(),
-                                gConstOffset,
-                                Int64Mul(Int64(sizeof(JSTaggedValue)),
-                                         Int64(static_cast<uint64_t>(ConstantIndex::CONSTRUCTOR_STRING_INDEX))));
-        result = Equal(key, gCtorStr);
-        Jump(&exit);
-    }
-    Bind(&exit);
-    auto ret = *result;
-    env_->SubCfgExit();
-    return ret;
-}
-
 // Note: set return exit node
 GateRef StubBuilder::AddPropertyByName(GateRef glue, GateRef receiver, GateRef key, GateRef value,
                                        GateRef propertyAttributes, ProfileOperation callback)
@@ -1453,19 +1426,7 @@ GateRef StubBuilder::AddPropertyByName(GateRef glue, GateRef receiver, GateRef k
     env->SubCfgEntry(&subentry);
     Label exit(env);
     DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
-    Label setHasCtor(env);
-    Label notSetHasCtor(env);
-    Label afterCtorCon(env);
     GateRef hclass = LoadHClass(receiver);
-    BRANCH(SetHasConstructorCondition(glue, receiver, key), &setHasCtor, &notSetHasCtor);
-    {
-        Bind(&setHasCtor);
-        SetHClassBit<JSHClass::HasConstructorBits>(glue, hclass, Int32(1));
-        Jump(&afterCtorCon);
-        Bind(&notSetHasCtor);
-        Jump(&afterCtorCon);
-    }
-    Bind(&afterCtorCon);
     // 0x111 : default attribute for property: writable, enumerable, configurable
     DEFVARIABLE(attr, VariableType::INT64(), propertyAttributes);
     GateRef numberOfProps = GetNumberOfPropsFromHClass(hclass);

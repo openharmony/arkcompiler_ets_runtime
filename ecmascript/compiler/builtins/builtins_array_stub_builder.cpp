@@ -55,14 +55,12 @@ void BuiltinsArrayStubBuilder::With(GateRef glue, GateRef thisValue, GateRef num
     Label isHeapObject(env);
     Label isJsArray(env);
     Label isStableArray(env);
-    Label defaultConstr(env);
     Label notCOWArray(env);
     BRANCH(TaggedIsHeapObject(thisValue), &isHeapObject, slowPath);
     Bind(&isHeapObject);
     BRANCH(IsJsArray(thisValue), &isJsArray, slowPath);
     Bind(&isJsArray);
-    BRANCH(HasConstructor(thisValue), slowPath, &defaultConstr);
-    Bind(&defaultConstr);
+    // don't check constructor, "with" always use ArrayCreate to create array.
     BRANCH(IsStableJSArray(glue, thisValue), &isStableArray, slowPath);
     Bind(&isStableArray);
     BRANCH(IsJsCOWArray(thisValue), slowPath, &notCOWArray);
@@ -314,11 +312,9 @@ void BuiltinsArrayStubBuilder::Shift(GateRef glue, GateRef thisValue,
     auto env = GetEnvironment();
     Label isHeapObject(env);
     Label stableJSArray(env);
-    Label isDefaultConstructor(env);
     BRANCH(TaggedIsHeapObject(thisValue), &isHeapObject, slowPath);
     Bind(&isHeapObject);
-    BRANCH(HasConstructor(thisValue), slowPath, &isDefaultConstructor);
-    Bind(&isDefaultConstructor);
+    // don't check constructor, "Shift" won't create new array.
     BRANCH(IsStableJSArray(glue, thisValue), &stableJSArray, slowPath);
     Bind(&stableJSArray);
     {
@@ -435,6 +431,7 @@ void BuiltinsArrayStubBuilder::Concat(GateRef glue, GateRef thisValue, GateRef n
     Bind(&isJsArray);
     {
         Label isExtensible(env);
+        // need check constructor, "Concat" should use ArraySpeciesCreate
         BRANCH(HasConstructor(thisValue), slowPath, &isExtensible);
         Bind(&isExtensible);
         {
@@ -573,6 +570,7 @@ void BuiltinsArrayStubBuilder::Filter(GateRef glue, GateRef thisValue, GateRef n
     GateRef protoIsJSArray = LogicAndBuilder(env).And(TaggedIsHeapObject(prototype)).And(IsJsArray(prototype)).Done();
     BRANCH(protoIsJSArray, &isprototypeJsArray, slowPath);
     Bind(&isprototypeJsArray);
+    // need check constructor, "Filter" should use ArraySpeciesCreate
     BRANCH(HasConstructor(thisValue), slowPath, &defaultConstr);
     Bind(&defaultConstr);
 
@@ -597,7 +595,7 @@ void BuiltinsArrayStubBuilder::Filter(GateRef glue, GateRef thisValue, GateRef n
     Bind(&notEmptyArray);
     BRANCH(Int64GreaterThan(len, Int64(JSObject::MAX_GAP)), slowPath, &notOverFlow);
     Bind(&notOverFlow);
-    
+
     GateRef argHandle = GetCallArg1(numArgs);
     GateRef newArray = NewArray(glue, len);
     GateRef lengthOffset = IntPtr(JSArray::LENGTH_OFFSET);
@@ -739,6 +737,7 @@ void BuiltinsArrayStubBuilder::Map(GateRef glue, GateRef thisValue, GateRef numA
     GateRef protoIsJSArray = LogicAndBuilder(env).And(TaggedIsHeapObject(prototype)).And(IsJsArray(prototype)).Done();
     BRANCH(protoIsJSArray, &isprototypeJsArray, slowPath);
     Bind(&isprototypeJsArray);
+    // need check constructor, "Map" should use ArraySpeciesCreate
     BRANCH(HasConstructor(thisValue), slowPath, &defaultConstr);
     Bind(&defaultConstr);
 
@@ -865,20 +864,16 @@ void BuiltinsArrayStubBuilder::ForEach([[maybe_unused]] GateRef glue, GateRef th
     auto env = GetEnvironment();
     Label thisExists(env);
     Label isHeapObject(env);
-    Label isGeneric(env);
     Label isJsArray(env);
-    Label defaultConstr(env);
     Label isStability(env);
     Label notCOWArray(env);
-    Label equalCls(env);
     BRANCH(TaggedIsUndefinedOrNull(thisValue), slowPath, &thisExists);
     Bind(&thisExists);
     BRANCH(TaggedIsHeapObject(thisValue), &isHeapObject, slowPath);
     Bind(&isHeapObject);
     BRANCH(IsJsArray(thisValue), &isJsArray, slowPath);
     Bind(&isJsArray);
-    BRANCH(HasConstructor(thisValue), slowPath, &defaultConstr);
-    Bind(&defaultConstr);
+    // don't check constructor, "ForEach" won't create new array.
     BRANCH(IsStableJSArray(glue, thisValue), &isStability, slowPath);
     Bind(&isStability);
     BRANCH(IsJsCOWArray(thisValue), slowPath, &notCOWArray);
@@ -1207,11 +1202,9 @@ void BuiltinsArrayStubBuilder::Pop(GateRef glue, GateRef thisValue,
     auto env = GetEnvironment();
     Label isHeapObject(env);
     Label stableJSArray(env);
-    Label isDeufaltConstructor(env);
     BRANCH(TaggedIsHeapObject(thisValue), &isHeapObject, slowPath);
     Bind(&isHeapObject);
-    BRANCH(HasConstructor(thisValue), slowPath, &isDeufaltConstructor);
-    Bind(&isDeufaltConstructor);
+    // don't check constructor, "Pop" won't create new array.
     BRANCH(IsStableJSArray(glue, thisValue), &stableJSArray, slowPath);
     Bind(&stableJSArray);
 
@@ -1308,6 +1301,7 @@ void BuiltinsArrayStubBuilder::Slice(GateRef glue, GateRef thisValue, GateRef nu
     Bind(&isHeapObject);
     BRANCH(IsJsArray(thisValue), &isJsArray, slowPath);
     Bind(&isJsArray);
+    // need check constructor, "Slice" should use ArraySpeciesCreate
     BRANCH(HasConstructor(thisValue), slowPath, &noConstructor);
     Bind(&noConstructor);
 
@@ -1546,7 +1540,6 @@ void BuiltinsArrayStubBuilder::SortAfterArgs(GateRef glue, GateRef thisValue,
     auto env = GetEnvironment();
     Label isHeapObject(env);
     Label isJsArray(env);
-    Label defaultConstr(env);
     Label isStability(env);
     Label notCOWArray(env);
     Label argUndefined(env);
@@ -1554,8 +1547,7 @@ void BuiltinsArrayStubBuilder::SortAfterArgs(GateRef glue, GateRef thisValue,
     Bind(&isHeapObject);
     BRANCH(IsJsArray(thisValue), &isJsArray, slowPath);
     Bind(&isJsArray);
-    BRANCH(HasConstructor(thisValue), slowPath, &defaultConstr);
-    Bind(&defaultConstr);
+    // don't check constructor, "Sort" won't create new array.
     BRANCH(IsStableJSArray(glue, thisValue), &isStability, slowPath);
     Bind(&isStability);
     BRANCH(IsJsCOWArray(thisValue), slowPath, &notCOWArray);
@@ -1572,7 +1564,6 @@ void BuiltinsArrayStubBuilder::ToSorted(GateRef glue, GateRef thisValue,
     auto env = GetEnvironment();
     Label isHeapObject(env);
     Label isJsArray(env);
-    Label defaultConstr(env);
     Label isStability(env);
     Label notCOWArray(env);
     Label argUndefined(env);
@@ -1580,8 +1571,7 @@ void BuiltinsArrayStubBuilder::ToSorted(GateRef glue, GateRef thisValue,
     Bind(&isHeapObject);
     BRANCH(IsJsArray(thisValue), &isJsArray, slowPath);
     Bind(&isJsArray);
-    BRANCH(HasConstructor(thisValue), slowPath, &defaultConstr);
-    Bind(&defaultConstr);
+    // don't check constructor, "Sort" always use ArrayCreate to create array.
     BRANCH(IsStableJSArray(glue, thisValue), &isStability, slowPath);
     Bind(&isStability);
     BRANCH(IsJsCOWArray(thisValue), slowPath, &notCOWArray);
@@ -1824,7 +1814,6 @@ void BuiltinsArrayStubBuilder::Reduce(GateRef glue, GateRef thisValue, GateRef n
     DEFVARIABLE(thisLen, VariableType::INT32(), Int32(0));
     Label isHeapObject(env);
     Label isJsArray(env);
-    Label defaultConstr(env);
     Label atLeastOneArg(env);
     Label callbackFnHandleHeapObject(env);
     Label callbackFnHandleCallable(env);
@@ -1834,8 +1823,7 @@ void BuiltinsArrayStubBuilder::Reduce(GateRef glue, GateRef thisValue, GateRef n
     Bind(&isHeapObject);
     BRANCH(IsJsArray(thisValue), &isJsArray, slowPath);
     Bind(&isJsArray);
-    BRANCH(HasConstructor(thisValue), slowPath, &defaultConstr);
-    Bind(&defaultConstr);
+    // don't check constructor, "Reduce" won't create new array.
     thisLen = GetArrayLength(thisValue);
     BRANCH(Int64GreaterThanOrEqual(numArgs, IntPtr(1)), &atLeastOneArg, slowPath);
     Bind(&atLeastOneArg);
@@ -1971,14 +1959,12 @@ void BuiltinsArrayStubBuilder::Reverse(GateRef glue, GateRef thisValue, [[maybe_
     Label isHeapObject(env);
     Label isJsArray(env);
     Label isStability(env);
-    Label defaultConstr(env);
     Label notCOWArray(env);
     BRANCH(TaggedIsHeapObject(thisValue), &isHeapObject, slowPath);
     Bind(&isHeapObject);
     BRANCH(IsJsArray(thisValue), &isJsArray, slowPath);
     Bind(&isJsArray);
-    BRANCH(HasConstructor(thisValue), slowPath, &defaultConstr);
-    Bind(&defaultConstr);
+    // don't check constructor, "Reverse" won't create new array.
     BRANCH(IsStableJSArray(glue, thisValue), &isStability, slowPath);
     Bind(&isStability);
     BRANCH(IsJsCOWArray(thisValue), slowPath, &notCOWArray);
@@ -2077,15 +2063,13 @@ void BuiltinsArrayStubBuilder::ToReversed(GateRef glue, GateRef thisValue, [[may
     auto env = GetEnvironment();
     Label isHeapObject(env);
     Label isJsArray(env);
-    Label defaultConstr(env);
     Label isStability(env);
     Label notCOWArray(env);
     BRANCH(TaggedIsHeapObject(thisValue), &isHeapObject, slowPath);
     Bind(&isHeapObject);
     BRANCH(IsJsArray(thisValue), &isJsArray, slowPath);
     Bind(&isJsArray);
-    BRANCH(HasConstructor(thisValue), slowPath, &defaultConstr);
-    Bind(&defaultConstr);
+    // don't check constructor, "ToReversed" always use ArrayCreate to create array.
     BRANCH(IsStableJSArray(glue, thisValue), &isStability, slowPath);
     Bind(&isStability);
     BRANCH(IsJsCOWArray(thisValue), slowPath, &notCOWArray);
@@ -2277,8 +2261,7 @@ void BuiltinsArrayStubBuilder::Values(GateRef glue, GateRef thisValue,
     Bind(&isHeapObject);
     BRANCH(IsJsArray(thisValue), &isJsArray, slowPath);
     Bind(&isJsArray);
-    BRANCH(HasConstructor(thisValue), slowPath, &defaultConstr);
-    Bind(&defaultConstr);
+    // don't check constructor, "Values" won't create new array.
     ConstantIndex iterClassIdx = ConstantIndex::JS_ARRAY_ITERATOR_CLASS_INDEX;
     GateRef iteratorHClass = GetGlobalConstantValue(VariableType::JS_POINTER(), glue, iterClassIdx);
     NewObjectStubBuilder newBuilder(this);
@@ -2304,14 +2287,12 @@ void BuiltinsArrayStubBuilder::Find(GateRef glue, GateRef thisValue, GateRef num
     Label isHeapObject(env);
     Label isJsArray(env);
     Label isStability(env);
-    Label defaultConstr(env);
     Label notCOWArray(env);
     BRANCH(TaggedIsHeapObject(thisValue), &isHeapObject, slowPath);
     Bind(&isHeapObject);
     BRANCH(IsJsArray(thisValue), &isJsArray, slowPath);
     Bind(&isJsArray);
-    BRANCH(HasConstructor(thisValue), slowPath, &defaultConstr);
-    Bind(&defaultConstr);
+    // don't check constructor, "Find" won't create new array.
     BRANCH(IsStableJSArray(glue, thisValue), &isStability, slowPath);
     Bind(&isStability);
     BRANCH(IsJsCOWArray(thisValue), slowPath, &notCOWArray);
@@ -2387,14 +2368,12 @@ void BuiltinsArrayStubBuilder::FindIndex(GateRef glue, GateRef thisValue, GateRe
     auto env = GetEnvironment();
     Label isHeapObject(env);
     Label isJsArray(env);
-    Label defaultConstr(env);
     Label notCOWArray(env);
     BRANCH(TaggedIsHeapObject(thisValue), &isHeapObject, slowPath);
     Bind(&isHeapObject);
     BRANCH(IsJsArray(thisValue), &isJsArray, slowPath);
     Bind(&isJsArray);
-    BRANCH(HasConstructor(thisValue), slowPath, &defaultConstr);
-    Bind(&defaultConstr);
+    // don't check constructor, "Shift" won't create new array.
     BRANCH(IsJsCOWArray(thisValue), slowPath, &notCOWArray);
     Bind(&notCOWArray);
 
@@ -3292,6 +3271,7 @@ void BuiltinsArrayStubBuilder::Splice(GateRef glue, GateRef thisValue, GateRef n
     Bind(&isHeapObject);
     BRANCH(IsJsArray(thisValue), &isJsArray, slowPath);
     Bind(&isJsArray);
+    // need check constructor, "Splice" should use ArraySpeciesCreate
     BRANCH(HasConstructor(thisValue), slowPath, &defaultConstr);
     Bind(&defaultConstr);
     BRANCH(IsStableJSArray(glue, thisValue), &isStability, slowPath);
@@ -3511,14 +3491,12 @@ void BuiltinsArrayStubBuilder::ToSpliced(GateRef glue, GateRef thisValue, GateRe
     Label isHeapObject(env);
     Label isJsArray(env);
     Label isStability(env);
-    Label defaultConstr(env);
     Label isGeneric(env);
     BRANCH(TaggedIsHeapObject(thisValue), &isHeapObject, slowPath);
     Bind(&isHeapObject);
     BRANCH(IsJsArray(thisValue), &isJsArray, slowPath);
     Bind(&isJsArray);
-    BRANCH(HasConstructor(thisValue), slowPath, &defaultConstr);
-    Bind(&defaultConstr);
+    // don't check constructor, "ToSpliced" always use ArrayCreate to create array.
     BRANCH(IsStableJSArray(glue, thisValue), &isStability, slowPath);
     Bind(&isStability);
     Label notCOWArray(env);
@@ -3726,9 +3704,7 @@ void BuiltinsArrayStubBuilder::CopyWithin(GateRef glue, GateRef thisValue, GateR
     Label thisExists(env);
     Label isHeapObject(env);
     Label isJsArray(env);
-    Label defaultConstr(env);
     Label isStability(env);
-    Label isGeneric(env);
     Label notCOWArray(env);
     BRANCH(TaggedIsUndefinedOrNull(thisValue), slowPath, &thisExists);
     Bind(&thisExists);
@@ -3736,8 +3712,7 @@ void BuiltinsArrayStubBuilder::CopyWithin(GateRef glue, GateRef thisValue, GateR
     Bind(&isHeapObject);
     BRANCH(IsJsArray(thisValue), &isJsArray, slowPath);
     Bind(&isJsArray);
-    BRANCH(HasConstructor(thisValue), slowPath, &defaultConstr);
-    Bind(&defaultConstr);
+    // don't check constructor, "CopyWithin" won't create new array.
     BRANCH(IsStableJSArray(glue, thisValue), &isStability, slowPath);
     Bind(&isStability);
     BRANCH(IsJsCOWArray(thisValue), slowPath, &notCOWArray);
@@ -3949,8 +3924,7 @@ void BuiltinsArrayStubBuilder::Some(GateRef glue, GateRef thisValue, GateRef num
     Bind(&isHeapObject);
     BRANCH(IsJsArray(thisValue), &isJsArray, slowPath);
     Bind(&isJsArray);
-    BRANCH(HasConstructor(thisValue), slowPath, &defaultConstr);
-    Bind(&defaultConstr);
+    // don't check constructor, "Some" won't create new array.
     BRANCH(IsStableJSArray(glue, thisValue), &isStability, slowPath);
     Bind(&isStability);
     BRANCH(IsJsCOWArray(thisValue), slowPath, &notCOWArray);
@@ -4135,21 +4109,17 @@ void BuiltinsArrayStubBuilder::Every(GateRef glue, GateRef thisValue, GateRef nu
     Label thisExists(env);
     Label isHeapObject(env);
     Label isJsArray(env);
-    Label defaultConstr(env);
     Label isStability(env);
     Label notCOWArray(env);
-    Label equalCls(env);
     Label arg0HeapObject(env);
     Label callable(env);
-    Label isGeneric(env);
     BRANCH(TaggedIsUndefinedOrNull(thisValue), slowPath, &thisExists);
     Bind(&thisExists);
     BRANCH(TaggedIsHeapObject(thisValue), &isHeapObject, slowPath);
     Bind(&isHeapObject);
     BRANCH(IsJsArray(thisValue), &isJsArray, slowPath);
     Bind(&isJsArray);
-    BRANCH(HasConstructor(thisValue), slowPath, &defaultConstr);
-    Bind(&defaultConstr);
+    // don't check constructor, "Every" won't create new array.
     BRANCH(IsStableJSArray(glue, thisValue), &isStability, slowPath);
     Bind(&isStability);
     BRANCH(IsJsCOWArray(thisValue), slowPath, &notCOWArray);
@@ -4320,7 +4290,6 @@ void BuiltinsArrayStubBuilder::ReduceRight(GateRef glue, GateRef thisValue, Gate
     Label thisExists(env);
     Label isHeapObject(env);
     Label isJsArray(env);
-    Label defaultConstr(env);
     Label isStability(env);
     Label notCOWArray(env);
     Label equalCls(env);
@@ -4331,8 +4300,7 @@ void BuiltinsArrayStubBuilder::ReduceRight(GateRef glue, GateRef thisValue, Gate
     Bind(&isHeapObject);
     BRANCH(IsJsArray(thisValue), &isJsArray, slowPath);
     Bind(&isJsArray);
-    BRANCH(HasConstructor(thisValue), slowPath, &defaultConstr);
-    Bind(&defaultConstr);
+    // don't check constructor, "ReduceRight" won't create new array.
     BRANCH(IsStableJSArray(glue, thisValue), &isStability, slowPath);
     Bind(&isStability);
     BRANCH(IsJsCOWArray(thisValue), slowPath, &notCOWArray);
@@ -4519,19 +4487,15 @@ void BuiltinsArrayStubBuilder::FindLastIndex(GateRef glue, GateRef thisValue, Ga
     Label thisExists(env);
     Label isHeapObject(env);
     Label isJsArray(env);
-    Label defaultConstr(env);
     Label isStability(env);
     Label notCOWArray(env);
-    Label equalCls(env);
-    Label isGeneric(env);
     BRANCH(TaggedIsUndefinedOrNull(thisValue), slowPath, &thisExists);
     Bind(&thisExists);
     BRANCH(TaggedIsHeapObject(thisValue), &isHeapObject, slowPath);
     Bind(&isHeapObject);
     BRANCH(IsJsArray(thisValue), &isJsArray, slowPath);
     Bind(&isJsArray);
-    BRANCH(HasConstructor(thisValue), slowPath, &defaultConstr);
-    Bind(&defaultConstr);
+    // don't check constructor, "FindLastIndex" won't create new array.
     BRANCH(IsStableJSArray(glue, thisValue), &isStability, slowPath);
     Bind(&isStability);
     BRANCH(IsJsCOWArray(thisValue), slowPath, &notCOWArray);
@@ -4707,19 +4671,15 @@ void BuiltinsArrayStubBuilder::FindLast(GateRef glue, GateRef thisValue, GateRef
     Label thisExists(env);
     Label isHeapObject(env);
     Label isJsArray(env);
-    Label defaultConstr(env);
     Label isStability(env);
     Label notCOWArray(env);
-    Label equalCls(env);
-    Label isGeneric(env);
     BRANCH(TaggedIsUndefinedOrNull(thisValue), slowPath, &thisExists);
     Bind(&thisExists);
     BRANCH(TaggedIsHeapObject(thisValue), &isHeapObject, slowPath);
     Bind(&isHeapObject);
     BRANCH(IsJsArray(thisValue), &isJsArray, slowPath);
     Bind(&isJsArray);
-    BRANCH(HasConstructor(thisValue), slowPath, &defaultConstr);
-    Bind(&defaultConstr);
+    // don't check constructor, "FindLast" won't create new array.
     BRANCH(IsStableJSArray(glue, thisValue), &isStability, slowPath);
     Bind(&isStability);
     BRANCH(IsJsCOWArray(thisValue), slowPath, &notCOWArray);
@@ -5103,6 +5063,7 @@ void BuiltinsArrayStubBuilder::FlatMap(GateRef glue, GateRef thisValue, GateRef 
     Bind(&isHeapObject);
     BRANCH(IsJsArray(thisValue), &isJsArray, slowPath);
     Bind(&isJsArray);
+    // need check constructor, "FlatMap" should use ArraySpeciesCreate
     BRANCH(HasConstructor(thisValue), slowPath, &defaultConstr);
     Bind(&defaultConstr);
     BRANCH(IsStableJSArray(glue, thisValue), &isStability, slowPath);

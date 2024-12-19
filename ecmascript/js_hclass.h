@@ -1837,11 +1837,13 @@ public:
     }
     inline void SetHasConstructor(bool value)
     {
+        // only array and typedArray use this bitfield
         JSTaggedType newVal = HasConstructorBits::Update(GetBitField(), value);
         SetBitField(newVal);
     }
     inline bool HasConstructor() const
     {
+        // only array and typedArray use this bitfield
         return HasConstructorBits::Decode(GetBitField());
     }
 

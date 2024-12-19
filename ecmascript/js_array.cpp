@@ -395,15 +395,7 @@ bool JSArray::DefineOwnProperty(JSThread *thread, const JSHandle<JSObject> &arra
     // 3. Else if P is an array index, then
     // already do in step 4.
     // 4. Return OrdinaryDefineOwnProperty(A, P, Desc).
-    bool success = JSObject::OrdinaryDefineOwnProperty(thread, array, key, desc);
-    if (success) {
-        JSTaggedValue constructorKey = thread->GlobalConstants()->GetConstructorString();
-        if (key.GetTaggedValue() == constructorKey) {
-            array->GetJSHClass()->SetHasConstructor(true);
-            return true;
-        }
-    }
-    return success;
+    return JSObject::OrdinaryDefineOwnProperty(thread, array, key, desc);
 }
 
 bool JSArray::DefineOwnProperty(JSThread *thread, const JSHandle<JSObject> &array, uint32_t index,
