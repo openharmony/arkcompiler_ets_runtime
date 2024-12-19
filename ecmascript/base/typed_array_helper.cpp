@@ -1212,6 +1212,8 @@ bool TypedArrayHelper::IsNativeArrayIterator(JSThread *thread,
     if (iterNext->IsJSFunction()) {
         nextMethod = Method::Cast(
             JSHandle<JSFunction>::Cast(iterNext)->GetMethod().GetTaggedObject());
+    } else {
+        return false;
     }
     // Array and TypedArray use the same JSArrayIterator.
     return nextMethod->GetNativePointer() == reinterpret_cast<void*>(JSArrayIterator::Next);
