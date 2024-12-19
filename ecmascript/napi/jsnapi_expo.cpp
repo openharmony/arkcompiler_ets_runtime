@@ -5938,9 +5938,8 @@ Local<ObjectRef> JSNApi::GetModuleNameSpaceFromFile(EcmaVM *vm, const std::strin
         recordNameStr = ModulePathHelper::TranslateNapiFileRequestPath(thread, path.c_str(), file.c_str());
     }
     LOG_ECMA(DEBUG) << "JSNApi::LoadModuleNameSpaceFromFile: Concated recordName " << recordNameStr;
-    ecmascript::ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
-    JSHandle<JSTaggedValue> moduleNamespace = moduleManager->
-        GetModuleNameSpaceFromFile(thread, recordNameStr, abcFilePath);
+    JSHandle<JSTaggedValue> moduleNamespace = ecmascript::NapiModuleLoader::LoadModuleNameSpaceFromFile(
+        thread, recordNameStr, abcFilePath);
     return JSNApiHelper::ToLocal<ObjectRef>(moduleNamespace);
 }
 

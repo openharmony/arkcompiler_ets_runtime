@@ -16,6 +16,7 @@
 #include "ecmascript/module/napi_module_loader.h"
 #include "ecmascript/module/module_path_helper.h"
 #include "ecmascript/module/js_module_manager.h"
+#include "ecmascript/module/js_shared_module_manager.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/jspandafile/js_pandafile_executor.h"
 
@@ -68,6 +69,12 @@ JSHandle<JSTaggedValue> NapiModuleLoader::LoadModuleNameSpaceWithPath(JSThread *
             "' failed, module name '" + requestPath + "'" + ", from napi load module";
         THROW_NEW_ERROR_AND_RETURN_HANDLE(thread, ErrorType::REFERENCE_ERROR, JSTaggedValue, msg.c_str());
     }
+    return LoadModuleNameSpaceFromFile(thread, entryPoint, abcFilePath);
+}
+
+JSHandle<JSTaggedValue> NapiModuleLoader::LoadModuleNameSpaceFromFile(
+    JSThread *thread, const CString &entryPoint, const CString &abcFilePath)
+{
     std::shared_ptr<JSPandaFile> jsPandaFile =
         JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, abcFilePath, entryPoint);
 
@@ -80,15 +87,29 @@ JSHandle<JSTaggedValue> NapiModuleLoader::LoadModuleNameSpaceWithPath(JSThread *
             "from napi load module";
         THROW_NEW_ERROR_AND_RETURN_HANDLE(thread, ErrorType::REFERENCE_ERROR, JSTaggedValue, msg.c_str());
     }
+    if (jsPandaFile->IsSharedModule(recordInfo)) {
+        LockHolder lock(SharedModuleManager::GetInstance()->GetSharedMutex());
+        return ecmascript::NapiModuleLoader::LoadModuleNameSpace(
+            thread, entryPoint, abcFilePath);
+    }
+    return ecmascript::NapiModuleLoader::LoadModuleNameSpace(
+        thread, entryPoint, abcFilePath);
+}
+
+JSHandle<JSTaggedValue> NapiModuleLoader::LoadModuleNameSpace(JSThread *thread, const CString &entryPoint,
+    const CString &abcFilePath)
+{
+    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
     // IsInstantiatedModule is for lazy module to execute
-    if (!moduleManager->IsLocalModuleLoaded(entryPoint) || moduleManager->IsLocalModuleInstantiated(entryPoint)) {
+    if (moduleManager->NeedExecuteModule(entryPoint)) {
         if (!JSPandaFileExecutor::ExecuteFromAbcFile(thread, abcFilePath, entryPoint.c_str(), false, true)) {
             CString msg = "Cannot execute request from napi load module : " + entryPoint +
                 ", from napi load module";
             THROW_NEW_ERROR_AND_RETURN_HANDLE(thread, ErrorType::REFERENCE_ERROR, JSTaggedValue, msg.c_str());
         }
     }
-    JSHandle<SourceTextModule> moduleRecord = moduleManager->HostGetImportedModule(entryPoint);
+
+    JSHandle<SourceTextModule> moduleRecord = moduleManager->GetImportedModule(entryPoint);
     JSHandle<JSTaggedValue> nameSp = SourceTextModule::GetModuleNamespace(thread, moduleRecord);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
     return nameSp;

@@ -24,6 +24,12 @@ public:
                                                                      CString &modulePath);
     static JSHandle<JSTaggedValue> LoadModuleNameSpaceWithPath(JSThread *thread, CString &abcFilePath,
         CString &requestPath, CString &modulePath, const JSPandaFile *pandaFile);
+
+    static JSHandle<JSTaggedValue> LoadModuleNameSpaceFromFile(JSThread *thread, const CString &entryPoint,
+        const CString &abcFilePath);
+
+    static JSHandle<JSTaggedValue> LoadModuleNameSpace(JSThread *thread, const CString &entryPoint,
+        const CString &abcFilePath);
 };
 }
 
