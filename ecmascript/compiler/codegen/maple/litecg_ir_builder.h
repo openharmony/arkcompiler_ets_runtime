@@ -142,6 +142,7 @@ private:
     std::map<GateRef, bool> derivedGateCache_; // cache whether the phi reference is derived, base or unknow
     std::map<GateRef, DeoptBBInfo> deoptFrameState2BB_;
     maple::ConstantFold cf_;
+    std::unordered_map<GateRef, maple::litecg::Expr> derivedrefGate;
 
 #define DECLAREVISITLOWEROPCODE(name, signature) void Visit##name signature;
     OPCODES(DECLAREVISITLOWEROPCODE)
@@ -231,6 +232,8 @@ private:
         return enableLog_;
     }
     void VisitBinaryOpWithOverflow(GateRef gate, GateRef e1, GateRef e2, maple::litecg::IntrinsicId intrinsicId);
+    void AddDerivedrefGate(GateRef gate, maple::litecg::Expr result);
+    maple::litecg::Expr GetDerivedrefExpr(GateRef gate);
     DeoptBBInfo &GetOrCreateDeoptBBInfo(GateRef gate);
 };
 }  // namespace panda::ecmascript::kungfu
