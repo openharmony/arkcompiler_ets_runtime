@@ -256,6 +256,7 @@ public:
     virtual bool IsSpillRegInRA(regno_t regNO, bool has3RegOpnd) = 0;
     virtual Insn *BuildStrInsn(uint32 regSize, PrimType stype, RegOperand &phyOpnd, MemOperand &memOpnd) = 0;
     virtual Insn *BuildLdrInsn(uint32 regSize, PrimType stype, RegOperand &phyOpnd, MemOperand &memOpnd) = 0;
+    virtual bool IsMovFromRegtoReg(MOperator mOp, Insn &insn) = 0;
     virtual MemOperand *GetOrCreatSpillMem(regno_t vrNum, uint32 bitSize) = 0;
     virtual MemOperand *AdjustMemOperandIfOffsetOutOfRange(MemOperand *memOpnd, const RegNoPair &regNoPair, bool isDest,
                                                            Insn &insn, bool &isOutOfRange) = 0;
