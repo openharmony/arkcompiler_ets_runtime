@@ -731,7 +731,7 @@ void AArch64CGFunc::SelectRegassign(RegassignNode &stmt, Operand &opnd0)
     if (IsSpecialPseudoRegister(pregIdx)) {
         regOpnd = &GetOrCreateSpecialRegisterOperand(-pregIdx, stmt.GetPrimType());
     } else {
-        regOpnd = &GetOrCreateVirtualRegisterOperand(GetVirtualRegNOFromPseudoRegIdx(pregIdx));
+        regOpnd = GetOrCreateRegOpndFromPregIdx(pregIdx, stmt.GetPrimType());
     }
     /* look at rhs */
     PrimType rhsType = stmt.Opnd(0)->GetPrimType();
@@ -765,24 +765,12 @@ void AArch64CGFunc::SelectRegassign(RegassignNode &stmt, Operand &opnd0)
         Insn &pseudo = GetInsnBuilder()->BuildInsn(MOP_pseudo_ret_float, *regOpnd);
         GetCurBB()->AppendInsn(pseudo);
     }
-    if (stmt.GetPrimType() == PTY_ref) {
-        regOpnd->SetIsReference(true);
-        AddReferenceReg(regOpnd->GetRegisterNumber());
-    }
-    if (pregIdx > 0) {
-        // special MIRPreg is not supported
-        SetPregIdx2Opnd(pregIdx, *regOpnd);
-    }
     const auto &derived2BaseRef = GetFunction().GetDerived2BaseRef();
     auto itr = derived2BaseRef.find(pregIdx);
     if (itr != derived2BaseRef.end()) {
-        auto *opnd = GetOpndFromPregIdx(itr->first);
-        CHECK_FATAL(opnd != nullptr, "pregIdx has not been assigned Operand");
-        auto &derivedRegOpnd = static_cast<RegOperand &>(*opnd);
-        opnd = GetOpndFromPregIdx(itr->second);
-        CHECK_FATAL(opnd != nullptr, "pregIdx has not been assigned Operand");
-        auto &baseRegOpnd = static_cast<RegOperand &>(*opnd);
-        derivedRegOpnd.SetBaseRefOpnd(baseRegOpnd);
+        auto *derivedRegOpnd =  GetOrCreateRegOpndFromPregIdx(itr->first, PTY_ref);
+        auto *baseRegOpnd =  GetOrCreateRegOpndFromPregIdx(itr->second, PTY_ref);
+        derivedRegOpnd->SetBaseRefOpnd(*baseRegOpnd);
     }
 }
 
@@ -897,14 +885,7 @@ RegOperand *AArch64CGFunc::SelectRegread(RegreadNode &expr)
         /* if it is one of special registers */
         return &GetOrCreateSpecialRegisterOperand(-pregIdx, expr.GetPrimType());
     }
-    RegOperand &reg = GetOrCreateVirtualRegisterOperand(GetVirtualRegNOFromPseudoRegIdx(pregIdx));
-    if (GetOpndFromPregIdx(pregIdx) == nullptr) {
-        SetPregIdx2Opnd(pregIdx, reg);
-    }
-    if (expr.GetPrimType() == PTY_ref) {
-        reg.SetIsReference(true);
-        AddReferenceReg(reg.GetRegisterNumber());
-    }
+    RegOperand &reg = *GetOrCreateRegOpndFromPregIdx(pregIdx, expr.GetPrimType());
     if (Globals::GetInstance()->GetOptimLevel() == CGOptions::kLevel0) {
         MemOperand *src = GetPseudoRegisterSpillMemoryOperand(pregIdx);
         MIRPreg *preg = GetFunction().GetPregTab()->PregFromPregIdx(pregIdx);
@@ -3573,8 +3554,7 @@ void AArch64CGFunc::SelectCall(CallNode &callNode)
     for (const auto &elem : deoptBundleInfo) {
         auto valueKind = elem.second.GetMapleValueKind();
         if (valueKind == MapleValue::kPregKind) {
-            auto *opnd = GetOpndFromPregIdx(elem.second.GetPregIdx());
-            CHECK_FATAL(opnd != nullptr, "pregIdx has not been assigned Operand");
+            auto *opnd = GetOrCreateRegOpndFromPregIdx(elem.second.GetPregIdx(), PTY_ref);
             callInsn.AddDeoptBundleInfo(elem.first, *opnd);
         } else if (valueKind == MapleValue::kConstKind) {
             auto *opnd = SelectIntConst(static_cast<const MIRIntConst &>(elem.second.GetConstValue()), callNode);
@@ -3633,8 +3613,7 @@ void AArch64CGFunc::SelectIcall(IcallNode &icallNode)
     for (const auto &elem : deoptBundleInfo) {
         auto valueKind = elem.second.GetMapleValueKind();
         if (valueKind == MapleValue::kPregKind) {
-            auto *opnd = GetOpndFromPregIdx(elem.second.GetPregIdx());
-            CHECK_FATAL(opnd != nullptr, "pregIdx has not been assigned Operand");
+            auto *opnd = GetOrCreateRegOpndFromPregIdx(elem.second.GetPregIdx(), PTY_ref);
             callInsn.AddDeoptBundleInfo(elem.first, *opnd);
         } else if (valueKind == MapleValue::kConstKind) {
             auto *opnd = SelectIntConst(static_cast<const MIRIntConst &>(elem.second.GetConstValue()), icallNode);
