@@ -15,10 +15,6 @@
 
 #include "ecmascript/builtins/builtins_global.h"
 
-#include <random>
-#include <sstream>
-#include <string>
-#include <vector>
 
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/js_object-inl.h"

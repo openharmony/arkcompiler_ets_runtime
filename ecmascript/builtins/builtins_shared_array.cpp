@@ -15,7 +15,6 @@
 
 #include "ecmascript/builtins/builtins_shared_array.h"
 
-#include <cmath>
 
 #include "ecmascript/builtins/builtins_array.h"
 #include "ecmascript/builtins/builtins_string.h"

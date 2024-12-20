@@ -81,7 +81,6 @@
 #include "ecmascript/shared_objects/js_shared_map_iterator.h"
 #include "ecmascript/shared_objects/js_shared_set_iterator.h"
 #include "ecmascript/marker_cell.h"
-#include "ecmascript/runtime.h"
 #ifdef ARK_SUPPORT_INTL
 #include "ecmascript/builtins/builtins_collator.h"
 #include "ecmascript/builtins/builtins_date_time_format.h"
@@ -105,7 +104,6 @@
 #include "ecmascript/js_segment_iterator.h"
 #endif
 
-#include "ohos/init_data.h"
 
 namespace panda::ecmascript {
 using Number = builtins::BuiltinsNumber;

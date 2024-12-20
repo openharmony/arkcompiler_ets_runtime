@@ -15,7 +15,6 @@
 
 #include "ecmascript/snapshot/mem/snapshot.h"
 
-#include <cerrno>
 
 #include "ecmascript/compiler/pgo_type/pgo_type_manager.h"
 

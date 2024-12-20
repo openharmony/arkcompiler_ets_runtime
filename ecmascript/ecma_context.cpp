@@ -29,7 +29,6 @@
 #include "ecmascript/platform/log.h"
 #include "ecmascript/regexp/regexp_parser_cache.h"
 #include "ecmascript/require/js_require_manager.h"
-#include "ecmascript/runtime.h"
 #include "ecmascript/snapshot/mem/snapshot.h"
 #include "ecmascript/stubs/runtime_stubs.h"
 #include "ecmascript/sustaining_js_handle.h"

@@ -15,12 +15,6 @@
 
 #include "source_map.h"
 
-#include <cerrno>
-#include <climits>
-#include <cstdlib>
-#include <fstream>
-#include <vector>
-#include <unistd.h>
 
 #include "ecmascript/base/string_helper.h"
 #include "ecmascript/extractortool/src/extractor.h"

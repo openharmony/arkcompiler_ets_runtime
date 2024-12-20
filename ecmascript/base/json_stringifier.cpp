@@ -17,14 +17,12 @@
 
 #include "ecmascript/global_dictionary-inl.h"
 #include "ecmascript/interpreter/interpreter.h"
-#include "ecmascript/js_api/js_api_hashmap.h"
 #include "ecmascript/js_api/js_api_hashset.h"
 #include "ecmascript/js_map.h"
 #include "ecmascript/js_primitive_ref.h"
 #include "ecmascript/js_set.h"
 #include "ecmascript/object_fast_operator-inl.h"
 #include "ecmascript/shared_objects/js_shared_map.h"
-#include "ecmascript/shared_objects/js_shared_set.h"
 #include "ecmascript/tagged_hash_array.h"
 
 namespace panda::ecmascript::base {

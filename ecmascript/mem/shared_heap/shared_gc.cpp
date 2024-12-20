@@ -19,7 +19,6 @@
 #include "ecmascript/mem/shared_heap/shared_concurrent_sweeper.h"
 #include "ecmascript/mem/shared_heap/shared_gc_marker-inl.h"
 #include "ecmascript/mem/verification.h"
-#include "ecmascript/runtime.h"
 
 namespace panda::ecmascript {
 void SharedGC::RunPhases()

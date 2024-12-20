@@ -14,13 +14,11 @@
  */
 
 #include "ecmascript/runtime.h"
-#include <memory>
 
 #include "ecmascript/checkpoint/thread_state_transition.h"
 #include "ecmascript/jit/jit.h"
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/mem/heap-inl.h"
-#include "ecmascript/mem/mem_map_allocator.h"
 namespace panda::ecmascript {
 using PGOProfilerManager = pgo::PGOProfilerManager;
 

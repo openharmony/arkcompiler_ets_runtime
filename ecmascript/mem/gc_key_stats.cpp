@@ -15,8 +15,6 @@
 
 #include "ecmascript/mem/gc_key_stats.h"
 
-#include <iostream>
-#include <cstring>
 
 #ifdef ENABLE_HISYSEVENT
 #include "hisysevent.h"

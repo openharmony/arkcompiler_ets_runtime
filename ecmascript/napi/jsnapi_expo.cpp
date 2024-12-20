@@ -13,9 +13,6 @@
  * limitations under the License.
  */
 
-#include <array>
-#include <cstdint>
-#include <fcntl.h>
 
 #include "ecmascript/base/json_stringifier.h"
 #include "ecmascript/base/typed_array_helper-inl.h"
@@ -37,7 +34,6 @@
 #include "ecmascript/regexp/regexp_parser.h"
 #include "ecmascript/serializer/base_deserializer.h"
 #include "ecmascript/serializer/value_serializer.h"
-#include "ecmascript/ohos/ohos_preload_app_info.h"
 #include "ecmascript/platform/aot_crash_info.h"
 #ifdef ARK_SUPPORT_INTL
 #include "ecmascript/js_bigint.h"

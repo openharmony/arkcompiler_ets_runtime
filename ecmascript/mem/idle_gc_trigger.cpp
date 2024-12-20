@@ -15,10 +15,7 @@
 
 #include "ecmascript/mem/idle_gc_trigger.h"
 
-#include <algorithm>
 
-#include "ecmascript/mem/mem_controller.h"
-#include "ecmascript/mem/shared_mem_controller.h"
 #include "ecmascript/mem/concurrent_marker.h"
 #include "ecmascript/mem/heap-inl.h"
 

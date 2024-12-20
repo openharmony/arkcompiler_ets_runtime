@@ -16,7 +16,6 @@
 #include "ecmascript/dfx/hprof/heap_snapshot_json_serializer.h"
 
 #include "ecmascript/dfx/hprof/heap_snapshot.h"
-#include "securec.h"
 
 namespace panda::ecmascript {
 

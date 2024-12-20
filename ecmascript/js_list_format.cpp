@@ -15,8 +15,6 @@
 
 #include "ecmascript/js_list_format.h"
 
-#include <cstring>
-#include <vector>
 
 #include "ecmascript/intl/locale_helper.h"
 #include "ecmascript/global_env.h"

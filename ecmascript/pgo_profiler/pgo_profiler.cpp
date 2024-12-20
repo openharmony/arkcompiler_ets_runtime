@@ -15,13 +15,10 @@
 
 #include "ecmascript/pgo_profiler/pgo_profiler.h"
 
-#include <chrono>
-#include <memory>
 
 #include "ecmascript/enum_conversion.h"
 #include "ecmascript/interpreter/interpreter-inl.h"
 #include "ecmascript/jit/jit_profiler.h"
-#include "ecmascript/pgo_profiler/pgo_profiler_info.h"
 #include "ecmascript/pgo_profiler/pgo_trace.h"
 
 namespace panda::ecmascript::pgo {

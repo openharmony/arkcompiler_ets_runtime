@@ -15,7 +15,6 @@
 
 #include "ecmascript/pgo_profiler/types/pgo_profile_type.h"
 
-#include <optional>
 
 #include "ecmascript/pgo_profiler/pgo_profiler_info.h"
 

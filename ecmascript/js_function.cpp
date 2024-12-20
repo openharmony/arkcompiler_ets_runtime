@@ -20,7 +20,6 @@
 #include "ecmascript/global_env.h"
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/js_object-inl.h"
-#include "ecmascript/module/js_module_manager.h"
 #include "ecmascript/module/module_resolver.h"
 #include "ecmascript/object_factory-inl.h"
 #include "ecmascript/pgo_profiler/pgo_profiler.h"

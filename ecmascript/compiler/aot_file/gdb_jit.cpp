@@ -17,7 +17,6 @@
 #include "llvm/BinaryFormat/ELF.h"
 #include "ecmascript/log_wrapper.h"
 
-#include <vector>
 #include <cstring>
 #include <securec.h>
 #include <mutex>

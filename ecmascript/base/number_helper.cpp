@@ -16,12 +16,6 @@
 #include "ecmascript/base/number_helper.h"
 
 #include <cfenv>
-#include <cmath>
-#include <cstddef>
-#include <cstdint>
-#include <iomanip>
-#include <sstream>
-#include <sys/time.h>
 
 #include "ecmascript/base/dtoa_helper.h"
 #include "ecmascript/base/string_helper.h"

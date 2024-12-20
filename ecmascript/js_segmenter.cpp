@@ -15,7 +15,6 @@
 
 #include "ecmascript/js_segmenter.h"
 
-#include <cstring>
 
 #include "ecmascript/intl/locale_helper.h"
 #include "ecmascript/object_factory-inl.h"

@@ -13,19 +13,13 @@
  * limitations under the License.
  */
 
-#include <cmath>
-#include <cfenv>
-#include <sstream>
-#include <sys/time.h>
 
 #include "ecmascript/stubs/runtime_optimized_stubs-inl.h"
 #include "ecmascript/stubs/runtime_stubs-inl.h"
 #include "ecmascript/base/json_stringifier.h"
 #include "ecmascript/base/typed_array_helper-inl.h"
 #include "ecmascript/builtins/builtins_array.h"
-#include "ecmascript/builtins/builtins_arraybuffer.h"
 #include "ecmascript/js_stable_array.h"
-#include "ecmascript/builtins/builtins_arraybuffer.h"
 #include "ecmascript/builtins/builtins_bigint.h"
 #include "ecmascript/builtins/builtins_function.h"
 #include "ecmascript/builtins/builtins_iterator.h"
@@ -41,7 +35,6 @@
 #include "ecmascript/interpreter/interpreter_assembly.h"
 #include "ecmascript/interpreter/slow_runtime_stub.h"
 #include "ecmascript/jit/jit.h"
-#include "ecmascript/js_array_iterator.h"
 #include "ecmascript/js_map_iterator.h"
 #include "ecmascript/js_set_iterator.h"
 #include "ecmascript/js_string_iterator.h"

@@ -15,7 +15,6 @@
 
 #include "ecmascript/platform/map.h"
 
-#include <cerrno>
 #include <sys/mman.h>
 #include <unistd.h>
 

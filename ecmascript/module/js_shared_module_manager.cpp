@@ -15,7 +15,6 @@
 #include "ecmascript/module/js_shared_module_manager.h"
 
 #include "ecmascript/jspandafile/js_pandafile_executor.h"
-#include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/module/module_manager_helper.h"
 #include "ecmascript/module/module_path_helper.h"
 #include "ecmascript/runtime_lock.h"

@@ -16,7 +16,6 @@
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/layout_info-inl.h"
 #include "ecmascript/mem/heap-inl.h"
-#include "ecmascript/runtime.h"
 #include "ecmascript/symbol_table.h"
 #include "ecmascript/jspandafile/program_object.h"
 

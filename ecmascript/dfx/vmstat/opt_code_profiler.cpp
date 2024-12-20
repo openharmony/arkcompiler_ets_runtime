@@ -14,7 +14,6 @@
  */
 
 #include "ecmascript/dfx/vmstat/opt_code_profiler.h"
-#include <iomanip>
 
 #include "ecmascript/js_function.h"
 #include "ecmascript/jspandafile/js_pandafile.h"

@@ -15,10 +15,6 @@
 
 #include "zip_file_reader.h"
 
-#include <atomic>
-#include <chrono>
-#include <climits>
-#include <memory>
 #include <sys/stat.h>
 
 #include "zip_file_reader_io.h"

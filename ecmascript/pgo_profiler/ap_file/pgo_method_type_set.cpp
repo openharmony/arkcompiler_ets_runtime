@@ -14,7 +14,6 @@
  */
 
 #include "ecmascript/pgo_profiler/ap_file/pgo_method_type_set.h"
-#include "ecmascript/pgo_profiler/ap_file/pgo_file_info.h"
 
 namespace panda::ecmascript::pgo {
 using StringHelper = base::StringHelper;

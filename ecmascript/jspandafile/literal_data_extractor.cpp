@@ -18,7 +18,6 @@
 #include "ecmascript/compiler/aot_file/aot_file_manager.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/module/js_shared_module_manager.h"
-#include "ecmascript/patch/quick_fix_helper.h"
 
 namespace panda::ecmascript {
 using LiteralTag = panda_file::LiteralTag;

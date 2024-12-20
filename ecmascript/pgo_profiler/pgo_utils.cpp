@@ -14,7 +14,6 @@
  */
 
 #include "ecmascript/pgo_profiler/pgo_utils.h"
-#include <cstdint>
 
 namespace panda::ecmascript::pgo {
 

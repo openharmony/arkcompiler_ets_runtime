@@ -14,9 +14,6 @@
  */
 #include "ecmascript/jit/jit_profiler.h"
 
-#include <chrono>
-#include <cstdint>
-#include <memory>
 
 #include "ecmascript/compiler/jit_compilation_env.h"
 #include "ecmascript/compiler/pgo_type/pgo_type_manager.h"

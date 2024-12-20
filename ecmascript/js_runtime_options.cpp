@@ -15,9 +15,6 @@
 
 #include "ecmascript/js_runtime_options.h"
 
-#include <cerrno>
-#include <cstdlib>
-#include <iostream>
 #include <getopt.h>
 
 #include "ecmascript/compiler/aot_file/an_file_data_manager.h"

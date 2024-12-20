@@ -13,24 +13,11 @@
  * limitations under the License.
  */
 
-#include <cerrno>
-#include <cstdio>
-#include <fstream>
-#include <memory>
-#include <string>
-#include <sys/stat.h>
 
-#include "ecmascript/log_wrapper.h"
-#include "ecmascript/mem/c_string.h"
-#include "ecmascript/ohos/enable_aot_list_helper.h"
-#include "ecmascript/pgo_profiler/ap_file/pgo_file_info.h"
-#include "ecmascript/pgo_profiler/pgo_profiler_decoder.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_encoder.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
 #include "ecmascript/pgo_profiler/pgo_trace.h"
-#include "ecmascript/pgo_profiler/pgo_utils.h"
 #include "ecmascript/platform/file.h"
-#include "ecmascript/platform/mutex.h"
 #include "ecmascript/platform/os.h"
 
 namespace panda::ecmascript::pgo {

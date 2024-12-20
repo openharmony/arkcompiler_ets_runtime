@@ -15,9 +15,6 @@
 
 #include "ecmascript/dfx/cpu_profiler/sampling_processor.h"
 
-#include <csignal>
-#include <sys/time.h>
-#include <unistd.h>
 
 #include "ecmascript/dfx/cpu_profiler/samples_record.h"
 #if defined(ENABLE_FFRT_INTERFACES)

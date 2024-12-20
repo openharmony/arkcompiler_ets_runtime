@@ -15,9 +15,6 @@
 
 #include "ecmascript/js_date.h"
 
-#include <ctime>
-#include <regex>
-#include <sys/time.h>
 
 #include "ecmascript/date_parse.h"
 #include "ecmascript/object_fast_operator-inl.h"

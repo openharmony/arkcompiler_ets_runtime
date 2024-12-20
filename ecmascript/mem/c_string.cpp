@@ -15,8 +15,6 @@
 
 #include "ecmascript/mem/c_string.h"
 
-#include <cmath>
-#include <cstdlib>
 
 #include "ecmascript/ecma_string-inl.h"
 #include "ecmascript/js_symbol.h"

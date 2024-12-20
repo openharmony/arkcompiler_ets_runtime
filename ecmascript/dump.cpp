@@ -13,17 +13,12 @@
  * limitations under the License.
  */
 
-#include <codecvt>
-#include <iomanip>
-#include <iostream>
-#include <string>
 
 #include "ecmascript/dfx/hprof/heap_snapshot.h"
 #include "ecmascript/global_dictionary-inl.h"
 #include "ecmascript/vtable.h"
 #include "ecmascript/linked_hash_table.h"
 #include "ecmascript/tagged_tree.h"
-#include "ecmascript/mem/object_xray.h"
 #ifdef ARK_SUPPORT_INTL
 #include "ecmascript/js_bigint.h"
 #include "ecmascript/js_collator.h"

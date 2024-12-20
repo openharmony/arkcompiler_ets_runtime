@@ -13,12 +13,9 @@
  * limitations under the License.
  */
 
-#include "ecmascript/ecma_context.h"
 #include "ecmascript/module/js_dynamic_import.h"
 #include "ecmascript/base/path_helper.h"
-#include "ecmascript/builtins/builtins_promise_job.h"
 #include "ecmascript/interpreter/interpreter.h"
-#include "ecmascript/js_function.h"
 #include "ecmascript/module/js_module_deregister.h"
 #include "ecmascript/module/js_module_manager.h"
 #include "ecmascript/module/module_data_extractor.h"

@@ -15,8 +15,6 @@
 
 #include "ecmascript/ecma_string-inl.h"
 
-#include "ecmascript/ecma_string_table.h"
-#include "ecmascript/platform/ecma_string_hash.h"
 
 namespace panda::ecmascript {
 

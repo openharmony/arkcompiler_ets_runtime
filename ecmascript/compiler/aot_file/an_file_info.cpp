@@ -15,7 +15,6 @@
 
 #include "ecmascript/compiler/aot_file/an_file_info.h"
 
-#include <cerrno>
 #include "ecmascript/compiler/aot_file/elf_builder.h"
 #include "ecmascript/compiler/aot_file/elf_reader.h"
 

@@ -15,9 +15,6 @@
 
 #include "ecmascript/builtins/builtins_string.h"
 
-#include <algorithm>
-#include <vector>
-#include <map>
 
 #include "ecmascript/intl/locale_helper.h"
 #include "ecmascript/builtins/builtins_number.h"
@@ -37,9 +34,7 @@
 #endif
 #endif
 
-#include "unicode/normalizer2.h"
 #include "unicode/normlzr.h"
-#include "unicode/unistr.h"
 
 namespace panda::ecmascript::builtins {
 using ObjectFactory = ecmascript::ObjectFactory;

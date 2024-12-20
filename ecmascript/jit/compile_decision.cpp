@@ -14,7 +14,6 @@
  */
 
 #include "ecmascript/jit/compile_decision.h"
-#include "ecmascript/jit/jit.h"
 #include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/ic/profile_type_info.h"
 

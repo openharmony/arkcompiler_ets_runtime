@@ -16,7 +16,6 @@
 #include "ecmascript/mem/shared_heap/shared_gc_marker-inl.h"
 
 #include "ecmascript/mem/object_xray.h"
-#include "ecmascript/runtime.h"
 
 namespace panda::ecmascript {
 void SharedGCMarkerBase::MarkRoots(uint32_t threadId, SharedMarkType markType, VMRootVisitType type)

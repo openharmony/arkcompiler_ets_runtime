@@ -15,10 +15,8 @@
 
 #include "ecmascript/dfx/hprof/heap_snapshot.h"
 
-#include <functional>
 
 #include "ecmascript/ecma_string-inl.h"
-#include "ecmascript/jspandafile/program_object.h"
 
 namespace panda::ecmascript {
 CString *HeapSnapshot::GetString(const CString &as)

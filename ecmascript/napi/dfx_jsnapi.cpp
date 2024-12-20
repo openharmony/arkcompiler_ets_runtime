@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 
-#include <semaphore.h>
 #include "ecmascript/napi/include/dfx_jsnapi.h"
 
 #include "ecmascript/base/block_hook_scope.h"
