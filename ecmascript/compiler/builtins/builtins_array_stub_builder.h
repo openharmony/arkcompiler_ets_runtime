@@ -132,6 +132,11 @@ private:
     void NaNLoop(GateRef elements, GateRef fromIndex, GateRef thisLen, Variable *result, Label *exit);
     void CopyWithinOptimised(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *result, Label *exit,
                              Label *slowPath);
+    GateRef CalEleKindForNewArrayNoHole(GateRef thisValue, GateRef thisLen, GateRef actualIndex, GateRef insertVal);
+    void FastArrayWith(GateRef glue, GateRef thisValue, GateRef newArray, GateRef actualIndex, GateRef insertValue,
+                       GateRef newArrEleKind);
+    void WithOptimised(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *result, Label *exit,
+                       Label *slowPath);
 };
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_BUILTINS_ARRAY_STUB_BUILDER_H
