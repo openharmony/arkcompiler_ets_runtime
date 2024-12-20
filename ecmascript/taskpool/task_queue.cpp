@@ -24,10 +24,20 @@ void TaskQueue::PostTask(std::unique_ptr<Task> task)
     cv_.Signal();
 }
 
+void TaskQueue::PostDelayedTask(std::unique_ptr<Task> task, uint64_t delayMilliseconds)
+{
+    LockHolder holder(mtx_);
+    ASSERT(!terminate_);
+    auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(delayMilliseconds);
+    delayedTasks_.insert({deadline, std::move(task)});
+    cv_.Signal();
+}
+
 std::unique_ptr<Task> TaskQueue::PopTask()
 {
     LockHolder holder(mtx_);
     while (true) {
+        MoveExpiredTask();
         if (!tasks_.empty()) {
             std::unique_ptr<Task> task = std::move(tasks_.front());
             tasks_.pop_front();
@@ -37,7 +47,7 @@ std::unique_ptr<Task> TaskQueue::PopTask()
             cv_.SignalAll();
             return nullptr;
         }
-        cv_.Wait(&mtx_);
+        WaitForTask();
     }
 }
 
@@ -52,6 +62,15 @@ void TaskQueue::TerminateTask(int32_t id, TaskType type)
             continue;
         }
         task->Terminated();
+    }
+    for (auto &taskItem : delayedTasks_) {
+        if (id != ALL_TASK_ID && id != (taskItem.second)->GetId()) {
+            continue;
+        }
+        if (type != TaskType::ALL && type != (taskItem.second)->GetTaskType()) {
+            continue;
+        }
+        (taskItem.second)->Terminated();
     }
 }
 
@@ -69,6 +88,36 @@ void TaskQueue::ForEachTask(const std::function<void(Task*)> &f)
         if (task.get() != nullptr) {
             f(task.get());
         }
+    }
+}
+
+void TaskQueue::MoveExpiredTask()
+{
+    ASSERT(!mtx_.TryLock());
+    while (!delayedTasks_.empty()) {
+        auto it = delayedTasks_.begin();
+        auto currentTime = std::chrono::steady_clock::now();
+        if ((std::chrono::duration_cast<std::chrono::duration<double>>(it->first - currentTime)).count() > 0) {
+            return;
+        }
+        tasks_.push_back(std::move(it->second));
+        delayedTasks_.erase(it);
+    }
+}
+
+void TaskQueue::WaitForTask()
+{
+    ASSERT(!mtx_.TryLock());
+    if (!delayedTasks_.empty()) {
+        auto it = delayedTasks_.begin();
+        auto currentTime = std::chrono::steady_clock::now();
+        if ((std::chrono::duration_cast<std::chrono::duration<double>>(it->first - currentTime)).count() < 0) {
+            return;
+        }
+        auto waitingTime = std::chrono::duration_cast<std::chrono::milliseconds>(it->first - currentTime);
+        cv_.TimedWait(&mtx_, static_cast<uint64_t>(waitingTime.count()));
+    } else {
+        cv_.Wait(&mtx_);
     }
 }
 }  // namespace panda::ecmascript
