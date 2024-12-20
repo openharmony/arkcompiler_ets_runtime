@@ -1416,7 +1416,7 @@ uint32 LSRALinearScanRegAllocator::HandleSpillForLi(LiveInterval &li)
     FindLowestPrioInActive(spillLi, &li, regType);
 
     if (spillLi == nullptr || li.GetStackSlot() == kSpilled || li.GetRefCount() <= spillLi->GetRefCount() ||
-        freeUntilPos[spillLi->GetAssignedReg()] < li.GetLastUse()) {
+        spillLi->GetLastUse() < li.GetLastUse()) {
         /* spill current li */
         #ifdef ARK_LITECG_DEBUG
         if (needDump) {
@@ -1429,8 +1429,6 @@ uint32 LSRALinearScanRegAllocator::HandleSpillForLi(LiveInterval &li)
     DEBUG_ASSERT(spillLi != nullptr, "spillLi is null in LSRALinearScanRegAllocator::HandleSpillForLi");
 
     uint32 newRegNO = spillLi->GetAssignedReg();
-    DEBUG_ASSERT(freeUntilPos[newRegNO] >= li.GetLastUse(), "phyReg has small free range.");
-
     #ifdef ARK_LITECG_DEBUG
     if (needDump) {
         LogInfo::MapleLogger() << "Flexible Spill: " << spillLi->GetRegNO() << " instead of " << li.GetRegNO() << ".\n";
