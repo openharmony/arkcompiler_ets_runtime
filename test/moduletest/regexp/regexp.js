@@ -906,3 +906,15 @@ print(res8.flags);
   res = str.replace(reg, s1);
   print(res == s1);
 }
+
+// This case aims to check overflow of error message while parsing regular expression
+{
+  let patternPart1 = "^(\\p{g}+)aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+  let patternPart2 = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+  let pattern = patternPart1 + patternPart2;
+  try {
+    let r = new RegExp(pattern);
+  } catch (e) {
+    print(e);
+  }
+}
