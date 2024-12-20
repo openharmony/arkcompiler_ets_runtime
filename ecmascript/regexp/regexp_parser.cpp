@@ -1511,9 +1511,7 @@ int RegExpParser::ParseClassEscape(RangeSet *atom)
             CString valueName;
             if (!ParseUnicodePropertyValueCharacters(propertyName, valueName) ||
                 !ParseUnicodePropertyClassRange(propertyName, valueName, atom, negate)) {
-                char *originExpression = (char *)base_;
-                CString expression(originExpression);
-                CString msg = "Invalid regular expression :" + expression;
+                CString msg = "Invalid regular expression of unicode";
                 ParseError(msg.c_str());
             }
             result = CLASS_RANGE_BASE;
