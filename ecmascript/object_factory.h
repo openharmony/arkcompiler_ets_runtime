@@ -972,8 +972,10 @@ private:
                                                   const JSHandle<EcmaString> &secondString);
 
     JSHandle<JSHClass> CreateJSArguments(const JSHandle<GlobalEnv> &env);
+
     JSHandle<JSHClass> CreateJSArrayInstanceClass(JSHandle<JSTaggedValue> proto,
                                                   uint32_t inlinedProps = JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS);
+
     JSHandle<JSHClass> CreateJSRegExpInstanceClass(JSHandle<JSTaggedValue> proto);
 
     inline TaggedObject *AllocObjectWithSpaceType(size_t size, JSHClass *cls, MemSpaceType type);
