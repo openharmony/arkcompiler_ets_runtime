@@ -952,6 +952,10 @@ ecma_source = [
   "ecmascript/require/js_require_manager.cpp",
 ]
 
+if (ark_js_hybrid) {
+  ecma_source += [ "ecmascript/cross_vm/cross_vm_operator.cpp" ]
+}
+
 hitrace_scope_source = []
 if (is_ohos && is_standard_system && enable_hitrace) {
   hitrace_scope_source += [ "ecmascript/jobs/hitrace_scope.cpp" ]
