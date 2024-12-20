@@ -47,3 +47,4 @@ TypeError: stack contains value, usually caused by circular structure
           "age": 123,
           "city": "Shanghai"
 }
+RangeError: Stack overflow!
