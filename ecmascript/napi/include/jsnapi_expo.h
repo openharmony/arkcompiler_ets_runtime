@@ -38,7 +38,6 @@
 #ifdef ERROR
 #undef ERROR
 #endif
-
 namespace panda {
 class JSNApiHelper;
 class EscapeLocalScope;
@@ -433,8 +432,12 @@ public:
         address_ = 0;
     }
 
+    template<typename S>
+    void CreateXRefGloablReference(const EcmaVM *vm, const Local<S> &current);
+
     // This method must be called before Global is released.
     void FreeGlobalHandleAddr();
+    void FreeXRefGlobalHandleAddr();
 
     inline T *operator*() const
     {
@@ -951,6 +954,7 @@ public:
     uint32_t WriteUtf16(const EcmaVM *vm, char16_t *buffer, uint32_t length);
     uint32_t WriteLatin1(const EcmaVM *vm, char *buffer, uint32_t length);
     static Local<StringRef> GetNapiWrapperString(const EcmaVM *vm);
+    static Local<StringRef> GetProxyNapiWrapperString(const EcmaVM *vm);
     Local<TypedArrayRef> EncodeIntoUint8Array(const EcmaVM *vm);
 };
 

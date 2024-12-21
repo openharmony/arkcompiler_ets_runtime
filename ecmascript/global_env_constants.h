@@ -599,6 +599,7 @@ class ObjectFactory;
     V(CjsExportsString,               CJS_EXPORTS_INDEX,                     "exports")                     \
     V(CjsCacheString,                 CJS_CACHE_INDEX,                       "_cache")                      \
     V(NapiWrapperString,              NAPI_WRAPPER_INDEX,                    "_napiwrapper")                \
+    V(ProxyNapiWrapperString,         PROXY_NAPI_WRAPPER_INDEX,              "_proxynapiwrapper")           \
     /* for require native module */                                                                         \
     V(RequireNativeModuleString,      REQUIRE_NATIVE_MOUDULE_FUNC_INDEX,     "requireNativeModule")         \
     V(RequireNapiString,              REQUIRE_NAPI_FUNC_INDEX,               "requireNapi")                 \

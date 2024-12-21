@@ -2209,6 +2209,17 @@ Local<StringRef> StringRef::GetNapiWrapperString(const EcmaVM *vm)
     return JSNApiHelper::ToLocal<StringRef>(napiWapperString);
 }
 
+Local<StringRef> StringRef::GetProxyNapiWrapperString(const EcmaVM *vm)
+{
+    // Omit exception check because ark calls here may not
+    // cause side effect even pending exception exists.
+    CROSS_THREAD_CHECK(vm);
+    ecmascript::ThreadManagedScope managedScope(thread);
+    JSHandle<JSTaggedValue> proxyNapiWapperString = thread->GlobalConstants()->GetHandledProxyNapiWrapperString();
+    return JSNApiHelper::ToLocal<StringRef>(proxyNapiWapperString);
+}
+
+
 Local<TypedArrayRef> StringRef::EncodeIntoUint8Array(const EcmaVM *vm)
 {
     CROSS_THREAD_CHECK(vm);
