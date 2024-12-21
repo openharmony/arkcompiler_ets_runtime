@@ -803,11 +803,6 @@ public:
         setNodeKind_(nodeKind);
     }
 
-    inline void GetNodeKind()
-    {
-        getNodeKind_();
-    }
-
     void EnableCrossThreadExecution()
     {
         glueData_.allowCrossThreadExecution_ = true;
@@ -1625,7 +1620,6 @@ private:
     std::function<uintptr_t(uintptr_t nodeAddr)> clearWeak_;
     std::function<bool(uintptr_t addr)> isWeak_;
     std::function<void(NodeKind nodeKind)> setNodeKind_;
-    std::function<NodeKind()> getNodeKind_;
     NativePointerTaskCallback asyncCleanTaskCb_ {nullptr};
     WeakFinalizeTaskCallback finalizeTaskCallback_ {nullptr};
     uint32_t globalNumberCount_ {0};

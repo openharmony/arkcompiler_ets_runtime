@@ -442,9 +442,9 @@ public:
     inline uintptr_t NewGlobalHandle(JSTaggedType value)
     {
         if constexpr(nodeKind == NodeKind::NORMAL_NODE) {
-            return NewGlobalHandleImplement(&lastXRefGlobalNodes_, &xRefFreeListNodes_, value);
-        } else if constexpr(nodeKind == NodeKind::UNIFIED_NODE) {
             return NewGlobalHandleImplement(&lastGlobalNodes_, &freeListNodes_, value);
+        } else if constexpr(nodeKind == NodeKind::UNIFIED_NODE) {
+            return NewGlobalHandleImplement(&lastXRefGlobalNodes_, &xRefFreeListNodes_, value);
         }
     }
 
@@ -460,8 +460,8 @@ public:
                 &lastXRefGlobalNodes_);
         } else if constexpr(nodeKind == NodeKind::NORMAL_NODE) {
             if (node->IsWeak()) {
-            DisposeGlobalHandleInner(reinterpret_cast<WeakNode *>(node), &weakFreeListNodes_, &topWeakGlobalNodes_,
-                &lastWeakGlobalNodes_);
+                DisposeGlobalHandleInner(reinterpret_cast<WeakNode *>(node), &weakFreeListNodes_, &topWeakGlobalNodes_,
+                    &lastWeakGlobalNodes_);
             } else {
                 DisposeGlobalHandleInner(node, &freeListNodes_, &topGlobalNodes_, &lastGlobalNodes_);
             }
