@@ -34,10 +34,10 @@ CString *HeapSnapshot::GetArrayString(TaggedArray *array, const CString &as)
     return GetString(arrayName);  // String type was handled singly, see#GenerateStringNode
 }
 
-Node *Node::NewNode(Chunk *chunk, NodeId id, size_t index, const CString *name, NodeType type, size_t size,
+Node *Node::NewNode(Chunk &chunk, NodeId id, size_t index, const CString *name, NodeType type, size_t size,
                     size_t nativeSize, JSTaggedType entry, bool isLive)
 {
-    auto node = chunk->New<Node>(id, index, name, type, size, nativeSize, 0, entry, isLive);
+    auto node = chunk.New<Node>(id, index, name, type, size, nativeSize, 0, entry, isLive);
     if (UNLIKELY(node == nullptr)) {
         LOG_FULL(FATAL) << "internal allocator failed";
         UNREACHABLE();
@@ -45,9 +45,9 @@ Node *Node::NewNode(Chunk *chunk, NodeId id, size_t index, const CString *name, 
     return node;
 }
 
-Edge *Edge::NewEdge(Chunk *chunk, EdgeType type, Node *from, Node *to, CString *name)
+Edge *Edge::NewEdge(Chunk &chunk, EdgeType type, Node *from, Node *to, CString *name)
 {
-    auto edge = chunk->New<Edge>(type, from, to, name);
+    auto edge = chunk.New<Edge>(type, from, to, name);
     if (UNLIKELY(edge == nullptr)) {
         LOG_FULL(FATAL) << "internal allocator failed";
         UNREACHABLE();
@@ -55,9 +55,9 @@ Edge *Edge::NewEdge(Chunk *chunk, EdgeType type, Node *from, Node *to, CString *
     return edge;
 }
 
-Edge *Edge::NewEdge(Chunk *chunk, EdgeType type, Node *from, Node *to, uint32_t index)
+Edge *Edge::NewEdge(Chunk &chunk, EdgeType type, Node *from, Node *to, uint32_t index)
 {
-    auto edge = chunk->New<Edge>(type, from, to, index);
+    auto edge = chunk.New<Edge>(type, from, to, index);
     if (UNLIKELY(edge == nullptr)) {
         LOG_FULL(FATAL) << "internal allocator failed";
         UNREACHABLE();
@@ -68,10 +68,10 @@ Edge *Edge::NewEdge(Chunk *chunk, EdgeType type, Node *from, Node *to, uint32_t 
 HeapSnapshot::~HeapSnapshot()
 {
     for (Node *node : nodes_) {
-        chunk_->Delete(node);
+        chunk_.Delete(node);
     }
     for (Edge *edge : edges_) {
-        chunk_->Delete(edge);
+        chunk_.Delete(edge);
     }
     nodes_.clear();
     edges_.clear();
@@ -81,7 +81,6 @@ HeapSnapshot::~HeapSnapshot()
     methodToTraceNodeId_.clear();
     traceNodeIndex_.clear();
     entryIdMap_ = nullptr;
-    chunk_ = nullptr;
     stringTable_ = nullptr;
 }
 
@@ -118,7 +117,7 @@ void HeapSnapshot::UpdateNodes(bool isInFinish)
             entryMap_.FindAndEraseNode((*iter)->GetAddress());
             entryIdMap_->EraseId((*iter)->GetAddress());
             DecreaseNodeSize((*iter)->GetSelfSize());
-            chunk_->Delete(*iter);
+            chunk_.Delete(*iter);
             iter = nodes_.erase(iter);
             nodeCount_--;
         } else {
@@ -1258,7 +1257,7 @@ void HeapSnapshot::EraseNodeUnique(Node *node)
     auto iter = std::find(nodes_.begin(), nodes_.end(), node);
     if (iter != nodes_.end()) {
         DecreaseNodeSize(node->GetSelfSize());
-        chunk_->Delete(node);
+        chunk_.Delete(node);
         nodes_.erase(iter);
         nodeCount_--;
     }

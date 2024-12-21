@@ -149,7 +149,7 @@ public:
     {
         traceId_ = traceId;
     }
-    static Node *NewNode(Chunk *chunk, NodeId id, size_t index, const CString *name, NodeType type, size_t size,
+    static Node *NewNode(Chunk &chunk, NodeId id, size_t index, const CString *name, NodeType type, size_t size,
                          size_t nativeSize, JSTaggedType entry, bool isLive = true);
     template<typename T>
     static JSTaggedType NewAddress(T *addr)
@@ -213,8 +213,8 @@ public:
     {
         to_ = node;
     }
-    static Edge *NewEdge(Chunk *chunk, EdgeType type, Node *from, Node *to, CString *name);
-    static Edge *NewEdge(Chunk *chunk, EdgeType type, Node *from, Node *to, uint32_t index);
+    static Edge *NewEdge(Chunk &chunk, EdgeType type, Node *from, Node *to, CString *name);
+    static Edge *NewEdge(Chunk &chunk, EdgeType type, Node *from, Node *to, uint32_t index);
     static constexpr int EDGE_FIELD_COUNT = 3;
     ~Edge() = default;
 
@@ -406,10 +406,10 @@ public:
     NO_MOVE_SEMANTIC(HeapSnapshot);
     NO_COPY_SEMANTIC(HeapSnapshot);
     HeapSnapshot(const EcmaVM *vm, StringHashMap *stringTable, const DumpSnapShotOption &dumpOption,
-                 const bool trackAllocations, EntryIdMap *entryIdMap, Chunk *chunk)
+                 const bool trackAllocations, EntryIdMap *entryIdMap)
         : vm_(vm), stringTable_(stringTable), isVmMode_(dumpOption.isVmMode), isPrivate_(dumpOption.isPrivate),
           captureNumericValue_(dumpOption.captureNumericValue), trackAllocations_(trackAllocations),
-          entryIdMap_(entryIdMap), chunk_(chunk) {}
+          entryIdMap_(entryIdMap), chunk_(vm->GetNativeAreaAllocator()) {}
     ~HeapSnapshot();
     bool BuildUp(bool isSimplify = false);
     bool Verify();
@@ -568,7 +568,7 @@ private:
     CMap<MethodLiteral *, uint32_t> methodToTraceNodeId_;
     CVector<uint32_t> traceNodeIndex_;
     EntryIdMap* entryIdMap_;
-    Chunk *chunk_ {nullptr};
+    Chunk chunk_;
     friend class HeapSnapShotFriendTest;
 };
 
