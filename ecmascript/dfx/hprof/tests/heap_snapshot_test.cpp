@@ -22,8 +22,8 @@ namespace panda::ecmascript {
 class HeapSnapShotFriendTest {
 public:
     explicit HeapSnapShotFriendTest(const EcmaVM *vm, StringHashMap *stringTable, DumpSnapShotOption dumpOption,
-                                    bool traceAllocation, EntryIdMap* entryIdMap, Chunk *chunk)
-        : heapSnapshot(vm, stringTable, dumpOption, traceAllocation, entryIdMap, chunk) {}
+                                    bool traceAllocation, EntryIdMap* entryIdMap)
+        : heapSnapshot(vm, stringTable, dumpOption, traceAllocation, entryIdMap) {}
 
     Node *GeneratePrivateStringNodeTest(size_t size)
     {
@@ -54,6 +54,11 @@ public:
     {
         return heapSnapshot.entryMap_;
     }
+
+    Chunk &GetChunkTest()
+    {
+        return heapSnapshot.chunk_;
+    }
 private:
     HeapSnapshot heapSnapshot;
 };
@@ -75,11 +80,6 @@ public:
     StringHashMap *GetEcmaStringTableTest()
     {
         return heapProfiler.GetEcmaStringTable();
-    }
-
-    Chunk *GetChunkTest()
-    {
-        return heapProfiler.GetChunk();
     }
 private:
     HeapProfiler heapProfiler;
@@ -144,7 +144,7 @@ HWTEST_F_L0(HeapSnapShotTest, TestGeneratePrivateStringNode)
     DumpSnapShotOption dumpOption;
     dumpOption.isPrivate = true;
     HeapSnapShotFriendTest heapSnapShotTest(ecmaVm_, tester.GetEcmaStringTableTest(),
-                                            dumpOption, false, tester.GetEntryIdMapTest(), tester.GetChunkTest());
+                                            dumpOption, false, tester.GetEntryIdMapTest());
     Node *node = heapSnapShotTest.GeneratePrivateStringNodeTest(0);
     // lineString: 24
     ASSERT_EQ(node->GetSelfSize(), 24);
@@ -155,14 +155,14 @@ HWTEST_F_L0(HeapSnapShotTest, TestMoveNode)
     HeapProfilerFriendTest tester(ecmaVm_);
     DumpSnapShotOption dumpOption;
     HeapSnapShotFriendTest heapSnapShotTest(ecmaVm_, tester.GetEcmaStringTableTest(),
-                                            dumpOption, false, tester.GetEntryIdMapTest(), tester.GetChunkTest());
+                                            dumpOption, false, tester.GetEntryIdMapTest());
     ObjectFactory *factory = ecmaVm_->GetFactory();
     // create tree string
     JSHandle<EcmaString> strLeft = factory->NewFromUtf8("leftString");
     JSHandle<EcmaString> strRight = factory->NewFromUtf8("rightString");
     EcmaString *treeString = EcmaStringAccessor::Concat(ecmaVm_, strLeft, strRight);
     uintptr_t address = 0;
-    Node *node = Node::NewNode(tester.GetChunkTest(), 0, 0,
+    Node *node = Node::NewNode(heapSnapShotTest.GetChunkTest(), 0, 0,
         heapSnapShotTest.GenerateNodeNameTest(reinterpret_cast<TaggedObject *>(treeString)),
         heapSnapShotTest.GenerateNodeTypeTest(reinterpret_cast<TaggedObject *>(treeString)),
         0, 0, address);
