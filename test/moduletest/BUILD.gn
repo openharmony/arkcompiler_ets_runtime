@@ -237,6 +237,7 @@ group("ark_js_assert_moduletest") {
       "hugearray",
       "hugeictest",
       "multiconstpoolarray",
+      "proxyrelease",
     ]
 
     foreach(test, release_test_assert_list) {
@@ -440,6 +441,7 @@ group("ark_asm_assert_test") {
       "hugearray",
       "hugeictest",
       "multiconstpoolarray",
+      "proxyrelease",
     ]
 
     foreach(test, release_test_assert_list) {
@@ -614,7 +616,10 @@ group("ark_asm_single_step_assert_test") {
     }
   }
   if (!is_debug) {
-    release_test_assert_list = [ "multiconstpoolarray" ]
+    release_test_assert_list = [
+      "multiconstpoolarray",
+      "proxyrelease",
+    ]
 
     foreach(test, release_test_assert_list) {
       deps += [
