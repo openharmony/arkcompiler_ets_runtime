@@ -2857,6 +2857,7 @@ JSTaggedValue RuntimeStubs::RuntimeOptConstructProxy(JSThread *thread, JSHandle<
                                                      JSHandle<JSTaggedValue> newTgt, JSHandle<JSTaggedValue> preArgs,
                                                      JSHandle<TaggedArray> args)
 {
+    STACK_LIMIT_CHECK(thread, JSTaggedValue::Exception());
     // step 1 ~ 4 get ProxyHandler and ProxyTarget
     JSHandle<JSTaggedValue> handler(thread, ctor->GetHandler());
     if (handler->IsNull()) {

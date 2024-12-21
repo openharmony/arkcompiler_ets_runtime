@@ -469,6 +469,7 @@ group("ark_asm_assert_test") {
       "multiconstpoolconstructor",
       "multiconstpoolfunc",
       "multiconstpoolobj",
+      "proxyrelease",
     ]
 
     foreach(test, release_test_assert_list) {
@@ -656,6 +657,7 @@ group("ark_asm_single_step_assert_test") {
       "multiconstpoolconstructor",
       "multiconstpoolfunc",
       "multiconstpoolobj",
+      "proxyrelease",
     ]
 
     foreach(test, release_test_assert_list) {
