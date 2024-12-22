@@ -2713,6 +2713,28 @@ bool BaseHeap::ContainObject(TaggedObject *object) const
     return region->InHeapSpace();
 }
 
+void SharedHeap::UpdateHeapStatsAfterGC(TriggerGCType gcType)
+{
+    heapAliveSizeAfterGC_ = GetHeapObjectSize();
+    fragmentSizeAfterGC_ = GetCommittedSize() - GetHeapObjectSize();
+    if (gcType == TriggerGCType::SHARED_FULL_GC) {
+        heapBasicLoss_ = fragmentSizeAfterGC_;
+    }
+}
+
+void Heap::UpdateHeapStatsAfterGC(TriggerGCType gcType)
+{
+    if (gcType == TriggerGCType::EDEN_GC || gcType == TriggerGCType::YOUNG_GC) {
+        return;
+    }
+    heapAliveSizeAfterGC_ = GetHeapObjectSize();
+    heapAliveSizeExcludesYoungAfterGC_ = heapAliveSizeAfterGC_ - activeSemiSpace_->GetHeapObjectSize();
+    fragmentSizeAfterGC_ = GetCommittedSize() - heapAliveSizeAfterGC_;
+    if (gcType == TriggerGCType::FULL_GC) {
+        heapBasicLoss_ = fragmentSizeAfterGC_;
+    }
+}
+
 void Heap::PrintHeapInfo(TriggerGCType gcType) const
 {
     OPTIONAL_LOG(ecmaVm_, INFO) << "-----------------------Statistic Heap Object------------------------";

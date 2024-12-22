@@ -59,8 +59,10 @@ public:
                 return "shared concurrent mark";
             case TRIGGER_IDLE_GC_TYPE::SHARED_FULL_GC:
                 return "shared full gc";
-            case TRIGGER_IDLE_GC_TYPE::LOCAL_CONCURRENT_MARK:
-                return "local concurrent mark";
+            case TRIGGER_IDLE_GC_TYPE::LOCAL_CONCURRENT_YOUNG_MARK:
+                return "local concurrent young mark";
+            case TRIGGER_IDLE_GC_TYPE::LOCAL_CONCURRENT_FULL_MARK:
+                return "local concurrent full mark";
             case TRIGGER_IDLE_GC_TYPE::LOCAL_REMARK:
                 return "local remark";
             default:
@@ -92,18 +94,20 @@ public:
     }
 
     void NotifyVsyncIdleStart();
-    void NotifyLooperIdleStart(int64_t timestamp, int idleTime);
+    bool NotifyLooperIdleStart(int64_t timestamp, int idleTime);
     void NotifyLooperIdleEnd(int64_t timestamp);
     void TryTriggerHandleMarkFinished();
-    void TryTriggerLocalConcurrentMark();
+    void TryTriggerLocalConcurrentMark(MarkType type);
+    bool TryTriggerIdleYoungGC();
     bool TryTriggerIdleLocalOldGC();
     bool TryTriggerIdleSharedOldGC();
     bool ReachIdleLocalOldGCThresholds();
     bool ReachIdleSharedGCThresholds();
     void TryPostHandleMarkFinished();
     void TryTriggerIdleGC(TRIGGER_IDLE_GC_TYPE gcType);
-    bool CheckIdleYoungGC() const;
-    bool CheckLocalBindingNativeTriggerFullGC() const;
+    bool CheckIdleYoungGC(bool isLongIdle = false) const;
+    bool CheckIdleLocalOldGC(const Heap *heap) const;
+    bool CheckLocalBindingNativeTriggerOldGC() const;
     template<class T>
     bool CheckIdleOrHintOldGC(const T *baseHeap) const
     {
@@ -162,7 +166,7 @@ public:
     }
 
 private:
-    void PostIdleGCTask(TRIGGER_IDLE_GC_TYPE gcType);
+    bool PostIdleGCTask(TRIGGER_IDLE_GC_TYPE gcType);
 
     Heap *heap_ {nullptr};
     SharedHeap *sHeap_ {nullptr};

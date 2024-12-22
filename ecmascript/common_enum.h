@@ -25,6 +25,12 @@ enum CheckIdleGCType {
     LOOPER
 };
 
+enum class MarkType : uint8_t {
+    MARK_EDEN,
+    MARK_YOUNG,
+    MARK_FULL
+};
+
 /*
  * TriggerGCType is categorized according to the scope the GC expects to cover.
  * Different GC algorithms may be applied to different GC types.

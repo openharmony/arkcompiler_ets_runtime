@@ -4966,11 +4966,12 @@ void JSNApi::NotifyUIIdle(const EcmaVM *vm, [[maybe_unused]] int idleTime)
     vm->GetHeap()->GetIdleGCTrigger()->NotifyVsyncIdleStart();
 }
 
-void JSNApi::NotifyLooperIdleStart(const EcmaVM *vm, int64_t timestamp, int idleTime)
+bool JSNApi::NotifyLooperIdleStart(const EcmaVM *vm, int64_t timestamp, int idleTime)
 {
     if (vm->IsPostForked()) {
-        vm->GetHeap()->GetIdleGCTrigger()->NotifyLooperIdleStart(timestamp, idleTime);
+        return vm->GetHeap()->GetIdleGCTrigger()->NotifyLooperIdleStart(timestamp, idleTime);
     }
+    return false;
 }
 
 void JSNApi::NotifyLooperIdleEnd(const EcmaVM *vm, int64_t timestamp)
