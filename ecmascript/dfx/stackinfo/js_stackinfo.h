@@ -220,8 +220,6 @@ private:
 extern "C" int ark_parse_js_frame_info(
     uintptr_t byteCodePc, uintptr_t methodId, uintptr_t mapBase, uintptr_t loadOffset, uint8_t *data,
     uint64_t dataSize, uintptr_t extractorptr, panda::ecmascript::JsFunction *jsFunction);
-extern "C" int ark_translate_js_frame_info(
-    uint8_t *data, size_t dataSize, panda::ecmascript::JsFunction *jsFunction);
 extern "C" int step_ark_with_record_jit(panda::ecmascript::ArkUnwindParam *arkUnwindParam);
 extern "C" int ark_write_jit_code(
     void *ctx, panda::ecmascript::ReadMemFunc readMem, int fd, const uintptr_t *const jitCodeArray,
@@ -234,8 +232,6 @@ extern "C" int ark_destory_js_symbol_extractor(uintptr_t extractorptr);
 extern "C" int ark_parse_js_file_info(
     uintptr_t byteCodePc, uintptr_t methodId, uintptr_t mapBase, const char* filePath, uintptr_t extractorptr,
     panda::ecmascript::JsFunction *jsFunction);
-extern "C" int get_ark_native_frame_info(
-    int pid, uintptr_t *pc, uintptr_t *fp, uintptr_t *sp, panda::ecmascript::JsFrame *jsFrame, size_t &size);
 extern "C" int ark_parse_js_frame_info_local(uintptr_t byteCodePc, uintptr_t methodId, uintptr_t mapBase,
     uintptr_t loadOffset, panda::ecmascript::JsFunction *jsFunction);
 extern "C" int ark_create_local();
