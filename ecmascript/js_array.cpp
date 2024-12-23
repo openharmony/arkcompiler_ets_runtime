@@ -30,7 +30,7 @@ bool JSArray::LengthSetter(JSThread *thread, const JSHandle<JSObject> &self, con
                            bool mayThrow)
 {
     uint32_t newLen = 0;
-    if (!JSTaggedValue::ToArrayLength(thread, value, &newLen) && mayThrow) {
+    if (!JSTaggedValue::ToArrayLength(thread, value, &newLen)) {
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
     }
 
