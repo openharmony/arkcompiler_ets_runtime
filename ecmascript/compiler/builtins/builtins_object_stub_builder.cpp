@@ -230,7 +230,7 @@ void BuiltinsObjectStubBuilder::LayoutInfoAssignAllEnumProperty(Variable *result
         GateRef key = GetKeyFromLayoutInfo(layout, *idx);
         GateRef attr = GetPropAttrFromLayoutInfo(layout, *idx);
         Label stringKey(env);
-        BRANCH(TaggedIsString(key), &stringKey, &loopEnd);
+        BRANCH(TaggedIsStringOrSymbol(key), &stringKey, &loopEnd);
         Bind(&stringKey);
         {
             Label enumerable(env);
@@ -320,7 +320,7 @@ void BuiltinsObjectStubBuilder::NameDictionaryAssignAllEnumProperty(Variable *re
         Bind(&next);
         GateRef key = GetKeyFromDictionary<NameDictionary>(properties, *idx);
         Label stringKey(env);
-        BRANCH(TaggedIsString(key), &stringKey, &loopEnd);
+        BRANCH(TaggedIsStringOrSymbol(key), &stringKey, &loopEnd);
         Bind(&stringKey);
         {
             GateRef attr = GetAttributesFromDictionary<NameDictionary>(properties, *idx);
