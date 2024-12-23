@@ -984,4 +984,199 @@ void BuiltinsArrayStubBuilder::FindOrFindIndex(GateRef glue, GateRef thisValue, 
         Jump(exit);
     }
 }
+
+void BuiltinsArrayStubBuilder::EveryOptimised(GateRef glue, GateRef thisValue, GateRef numArgs,
+                                              Variable *result, Label *exit, Label *slowPath)
+{
+    result->WriteVariable(TaggedTrue());
+    VisitAll(glue, thisValue, numArgs, result, exit, slowPath, kEvery);
+};
+
+void BuiltinsArrayStubBuilder::SomeOptimised(GateRef glue, GateRef thisValue, GateRef numArgs,
+                                             Variable *result, Label *exit, Label *slowPath)
+{
+    result->WriteVariable(TaggedFalse());
+    VisitAll(glue, thisValue, numArgs, result, exit, slowPath, kSome);
+};
+
+void BuiltinsArrayStubBuilder::ForEachOptimised(GateRef glue, GateRef thisValue, GateRef numArgs,
+                                                Variable *result, Label *exit, Label *slowPath)
+{
+    result->WriteVariable(Undefined());
+    VisitAll(glue, thisValue, numArgs, result, exit, slowPath, kForEach);
+};
+
+void BuiltinsArrayStubBuilder::VisitAll(GateRef glue, GateRef thisValue, GateRef numArgs,
+                                        Variable *result, Label *exit, Label *slowPath, VisitKind visitKind)
+{
+    auto env = GetEnvironment();
+    Label thisExists(env);
+    Label isHeapObject(env);
+    Label isJsArray(env);
+    Label arg0HeapObject(env);
+    Label callable(env);
+    BRANCH(TaggedIsUndefinedOrNull(thisValue), slowPath, &thisExists);
+    Bind(&thisExists);
+    BRANCH(TaggedIsHeapObject(thisValue), &isHeapObject, slowPath);
+    Bind(&isHeapObject);
+    BRANCH(IsJsArray(thisValue), &isJsArray, slowPath);
+    Bind(&isJsArray);
+    GateRef callbackFnHandle = GetCallArg0(numArgs);
+    BRANCH(TaggedIsHeapObject(callbackFnHandle), &arg0HeapObject, slowPath);
+    Bind(&arg0HeapObject);
+    BRANCH(IsCallable(callbackFnHandle), &callable, slowPath);
+    Bind(&callable);
+
+    Label returnFalse(env);
+    Label returnTrue(env);
+
+    Label thisIsStable(env);
+    Label thisNotStable(env);
+    GateRef argHandle = GetCallArg1(numArgs);
+    DEFVARIABLE(i, VariableType::INT64(), Int64(0));
+    GateRef thisArrLen = ZExtInt32ToInt64(GetArrayLength(thisValue));
+    BRANCH_LIKELY(IsStableJSArray(glue, thisValue), &thisIsStable, &thisNotStable);
+
+    Bind(&thisIsStable);
+    {
+        DEFVARIABLE(kValue, VariableType::JS_ANY(), Hole());
+        Label loopHead(env);
+        Label loopEnd(env);
+        Label next(env);
+        Jump(&loopHead);
+        LoopBegin(&loopHead);
+        {
+            Label callDispatch(env);
+            BRANCH_NO_WEIGHT(Int64LessThan(*i, thisArrLen), &next, exit);
+            Bind(&next);
+            kValue = GetTaggedValueWithElementsKind(thisValue, *i);
+            BRANCH_UNLIKELY(TaggedIsHole(*kValue), &loopEnd, &callDispatch);
+            Bind(&callDispatch);
+            {
+                Label hasException(env);
+                Label noException(env);
+                GateRef key = Int64ToTaggedInt(*i);
+                JSCallArgs callArgs(JSCallMode::CALL_THIS_ARG3_WITH_RETURN);
+                callArgs.callThisArg3WithReturnArgs = {argHandle, *kValue, key, thisValue};
+                CallStubBuilder callBuilder(this, glue, callbackFnHandle, Int32(NUM_MANDATORY_JSFUNC_ARGS), 0, nullptr,
+                                            Circuit::NullGate(), callArgs);
+                GateRef retValue = callBuilder.JSCallDispatch();
+                BRANCH_UNLIKELY(HasPendingException(glue), &hasException, &noException);
+                Bind(&hasException);
+                {
+                    result->WriteVariable(Exception());
+                    Jump(exit);
+                }
+                Bind(&noException);
+                {
+                    Label checkLength(env);
+                    Label checkStable(env);
+                    if (visitKind == kEvery) {
+                        BRANCH_NO_WEIGHT(TaggedIsFalse(FastToBoolean(retValue)), &returnFalse, &checkLength);
+                    }
+                    if (visitKind == kSome) {
+                        BRANCH_NO_WEIGHT(TaggedIsTrue(FastToBoolean(retValue)), &returnTrue, &checkLength);
+                    }
+                    if (visitKind == kForEach) {
+                        Jump(&checkLength);
+                    }
+                    Bind(&checkLength);
+                    {
+                        GateRef newLen = ZExtInt32ToInt64(GetArrayLength(thisValue));
+                        BRANCH_LIKELY(Int64LessThan(Int64Add(*i, Int64(1)), newLen), &checkStable, exit);
+                    }
+                    Bind(&checkStable);
+                    {
+                        Label changeToNotStable(env);
+                        BRANCH_LIKELY(IsStableJSArray(glue, thisValue), &loopEnd, &changeToNotStable);
+                        Bind(&changeToNotStable);
+                        {
+                            i = Int64Add(*i, Int64(1));
+                            Jump(&thisNotStable);
+                        }
+                    }
+                }
+            }
+        }
+        Bind(&loopEnd);
+        i = Int64Add(*i, Int64(1));
+        LoopEnd(&loopHead);
+    }
+
+    Bind(&thisNotStable);
+    {
+        DEFVARIABLE(kValue, VariableType::JS_ANY(), Hole());
+        Label loopHead(env);
+        Label loopEnd(env);
+        Label next(env);
+        Jump(&loopHead);
+        LoopBegin(&loopHead);
+        {
+            Label hasProperty(env);
+            Label hasException0(env);
+            Label notHasException0(env);
+            Label callDispatch(env);
+            Label hasException1(env);
+            Label notHasException1(env);
+            BRANCH_NO_WEIGHT(Int64LessThan(*i, thisArrLen), &next, exit);
+            Bind(&next);
+            GateRef hasProp = CallRuntime(glue, RTSTUB_ID(HasProperty), {thisValue, IntToTaggedInt(*i)});
+            BRANCH_LIKELY(TaggedIsTrue(hasProp), &hasProperty, &loopEnd);
+            Bind(&hasProperty);
+            kValue = FastGetPropertyByIndex(glue, thisValue, TruncInt64ToInt32(*i), ProfileOperation());
+            BRANCH_UNLIKELY(HasPendingException(glue), &hasException0, &notHasException0);
+            Bind(&hasException0);
+            {
+                result->WriteVariable(Exception());
+                Jump(exit);
+            }
+            Bind(&notHasException0);
+            {
+                BRANCH_UNLIKELY(TaggedIsHole(*kValue), &loopEnd, &callDispatch);
+                Bind(&callDispatch);
+                GateRef key = Int64ToTaggedInt(*i);
+                JSCallArgs callArgs(JSCallMode::CALL_THIS_ARG3_WITH_RETURN);
+                callArgs.callThisArg3WithReturnArgs = {argHandle, *kValue, key, thisValue};
+                CallStubBuilder callBuilder(this, glue, callbackFnHandle, Int32(NUM_MANDATORY_JSFUNC_ARGS), 0, nullptr,
+                                            Circuit::NullGate(), callArgs);
+                GateRef retValue = callBuilder.JSCallDispatch();
+                BRANCH_UNLIKELY(HasPendingException(glue), &hasException1, &notHasException1);
+                Bind(&hasException1);
+                {
+                    result->WriteVariable(Exception());
+                    Jump(exit);
+                }
+                Bind(&notHasException1);
+                {
+                    if (visitKind == kEvery) {
+                        BRANCH_NO_WEIGHT(TaggedIsFalse(FastToBoolean(retValue)), &returnFalse, &loopEnd);
+                    }
+                    if (visitKind == kSome) {
+                        BRANCH_NO_WEIGHT(TaggedIsTrue(FastToBoolean(retValue)), &returnTrue, &loopEnd);
+                    }
+                    if (visitKind == kForEach) {
+                        Jump(&loopEnd);
+                    }
+                }
+            }
+        }
+        Bind(&loopEnd);
+        i = Int64Add(*i, Int64(1));
+        LoopEnd(&loopHead);
+    }
+    if (visitKind == kEvery) {
+        Bind(&returnFalse);
+        {
+            result->WriteVariable(TaggedFalse());
+            Jump(exit);
+        }
+    }
+    if (visitKind == kSome) {
+        Bind(&returnTrue);
+        {
+            result->WriteVariable(TaggedTrue());
+            Jump(exit);
+        }
+    }
+}
 } // namespace panda::ecmascript::kungfu

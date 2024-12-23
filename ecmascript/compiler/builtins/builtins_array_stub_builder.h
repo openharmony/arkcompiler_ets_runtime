@@ -102,6 +102,24 @@ private:
 
     void FindOrFindIndex(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *result, Label *exit,
                          Label *slowPath, IndexOrValue);
+
+    void EveryOptimised(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *result, Label *exit,
+                       Label *slowPath);
+
+    void ForEachOptimised(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *result, Label *exit,
+                          Label *slowPath);
+
+    void SomeOptimised(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *result, Label *exit,
+                       Label *slowPath);
+
+    enum VisitKind {
+        kSome,
+        kEvery,
+        kForEach,
+    };
+
+    void VisitAll(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *result, Label *exit,
+                  Label *slowPath, VisitKind visitKind);
 };
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_BUILTINS_ARRAY_STUB_BUILDER_H
