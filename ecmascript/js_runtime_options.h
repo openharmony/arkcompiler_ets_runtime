@@ -223,6 +223,7 @@ enum CommandValues {
     OPTION_COMPILER_ENABLE_PGO_SPACE,
     OPTION_ENABLE_INLINE_PROPERTY_OPTIMIZATION,
     OPTION_COMPILER_ENABLE_AOT_CODE_COMMENT,
+    OPTION_ENABLE_JIT_VERIFY_PASS,
     OPTION_COMPILER_AN_FILE_MAX_SIZE,
     OPTION_COMPILER_TRACE_BUILTINS,
 };
@@ -2039,6 +2040,16 @@ public:
         return enableInlinePropertyOptimization_;
     }
 
+    void SetEnableJitVerifyPass(bool value)
+    {
+        enableJitVerifyPass_ = value;
+    }
+
+    bool IsEnableJitVerifyPass() const
+    {
+        return enableJitVerifyPass_;
+    }
+
     void SetCompilerAnFileMaxByteSize(uint64_t value)
     {
         CompilerAnFileMaxByteSize_ = value;
@@ -2240,6 +2251,7 @@ private:
     bool enableInlinePropertyOptimization_ {NEXT_OPTIMIZATION_BOOL};
     bool storeBarrierOpt_ {true};
     uint64_t CompilerAnFileMaxByteSize_ {0_MB};
+    bool enableJitVerifyPass_ {false};
     bool enableLocalHandleLeakDetect_ {false};
 };
 } // namespace panda::ecmascript
