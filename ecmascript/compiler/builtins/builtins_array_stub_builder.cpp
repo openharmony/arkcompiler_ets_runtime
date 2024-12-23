@@ -2283,6 +2283,9 @@ void BuiltinsArrayStubBuilder::Values(GateRef glue, GateRef thisValue,
 void BuiltinsArrayStubBuilder::Find(GateRef glue, GateRef thisValue, GateRef numArgs,
     Variable *result, Label *exit, Label *slowPath)
 {
+#if ENABLE_NEXT_OPTIMIZATION
+    FindOptimised(glue, thisValue, numArgs, result, exit, slowPath);
+#else
     auto env = GetEnvironment();
     Label isHeapObject(env);
     Label isJsArray(env);
@@ -2360,11 +2363,15 @@ void BuiltinsArrayStubBuilder::Find(GateRef glue, GateRef thisValue, GateRef num
     LoopEnd(&loopHead, env, glue);
     Bind(&loopExit);
     Jump(exit);
+#endif
 }
 
 void BuiltinsArrayStubBuilder::FindIndex(GateRef glue, GateRef thisValue, GateRef numArgs,
     Variable *result, Label *exit, Label *slowPath)
 {
+#if ENABLE_NEXT_OPTIMIZATION
+    FindIndexOptimised(glue, thisValue, numArgs, result, exit, slowPath);
+#else
     auto env = GetEnvironment();
     Label isHeapObject(env);
     Label isJsArray(env);
@@ -2531,6 +2538,7 @@ void BuiltinsArrayStubBuilder::FindIndex(GateRef glue, GateRef thisValue, GateRe
         Bind(&loopExit);
         Jump(exit);
     }
+#endif
 }
 
 #if ENABLE_NEXT_OPTIMIZATION

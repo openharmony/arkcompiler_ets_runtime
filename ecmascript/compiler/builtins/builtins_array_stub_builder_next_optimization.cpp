@@ -824,4 +824,164 @@ void BuiltinsArrayStubBuilder::ToSplicedOptimised(GateRef glue, GateRef thisValu
         }
     }
 }
+
+void BuiltinsArrayStubBuilder::FindOptimised(GateRef glue, GateRef thisValue, GateRef numArgs,
+                                             Variable *result, Label *exit, Label *slowPath)
+{
+    FindOrFindIndex(glue, thisValue, numArgs, result, exit, slowPath, Value);
+}
+
+void BuiltinsArrayStubBuilder::FindIndexOptimised(GateRef glue, GateRef thisValue, GateRef numArgs,
+                                                  Variable *result, Label *exit, Label *slowPath)
+{
+    FindOrFindIndex(glue, thisValue, numArgs, result, exit, slowPath, Index);
+}
+
+void BuiltinsArrayStubBuilder::FindOrFindIndex(GateRef glue, GateRef thisValue, GateRef numArgs,
+                                               Variable *result, Label *exit, Label *slowPath,
+                                               IndexOrValue indexOrValue)
+{
+    auto env = GetEnvironment();
+    Label isHeapObject(env);
+    Label isJsArray(env);
+    BRANCH_LIKELY(TaggedIsHeapObject(thisValue), &isHeapObject, slowPath);
+    Bind(&isHeapObject);
+    BRANCH_LIKELY(IsJsArray(thisValue), &isJsArray, slowPath);
+    Bind(&isJsArray);
+
+    Label arg0HeapObject(env);
+    Label callable(env);
+    Label stableJSArray(env);
+    Label notStableJSArray(env);
+    GateRef callbackFnHandle = GetCallArg0(numArgs);
+    BRANCH_LIKELY(TaggedIsHeapObject(callbackFnHandle), &arg0HeapObject, slowPath);
+    Bind(&arg0HeapObject);
+    BRANCH_LIKELY(IsCallable(callbackFnHandle), &callable, slowPath);
+    Bind(&callable);
+
+    result->WriteVariable(indexOrValue == Index ? IntToTaggedPtr(Int32(-1)) : Undefined());
+    GateRef argHandle = GetCallArg1(numArgs);
+    GateRef thisArrLen = ZExtInt32ToInt64(GetArrayLength(thisValue));
+    DEFVARIABLE(i, VariableType::INT64(), Int64(0));
+    BRANCH_LIKELY(IsStableJSArray(glue, thisValue), &stableJSArray, &notStableJSArray);
+    Bind(&stableJSArray);
+    {
+        Label loopHead(env);
+        Label loopEnd(env);
+        Label next(env);
+        Label loopExit(env);
+        Jump(&loopHead);
+        LoopBegin(&loopHead);
+        {
+            DEFVARIABLE(kValue, VariableType::JS_ANY(), Undefined());
+            Label useUndefined(env);
+            Label getValue(env);
+            Label callback(env);
+            BRANCH_NO_WEIGHT(Int64LessThan(*i, thisArrLen), &next, &loopExit);
+            Bind(&next);
+            BRANCH_LIKELY(Int64LessThan(*i,  ZExtInt32ToInt64(GetArrayLength(thisValue))), &getValue, &useUndefined);
+            Bind(&getValue);
+            {
+                kValue = GetTaggedValueWithElementsKind(thisValue, *i);
+                BRANCH_UNLIKELY(TaggedIsHole(*kValue), &useUndefined, &callback);
+            }
+            Bind(&useUndefined);
+            {
+                kValue = Undefined();
+                Jump(&callback);
+            }
+            Bind(&callback);
+            {
+                GateRef key = IntToTaggedPtr(*i);
+                Label hasException(env);
+                Label notHasException(env);
+                Label checkStable(env);
+                JSCallArgs callArgs(JSCallMode::CALL_THIS_ARG3_WITH_RETURN);
+                callArgs.callThisArg3WithReturnArgs = { argHandle, *kValue, key, thisValue };
+                CallStubBuilder callBuilder(this, glue, callbackFnHandle, Int32(NUM_MANDATORY_JSFUNC_ARGS), 0, nullptr,
+                    Circuit::NullGate(), callArgs);
+                GateRef retValue = callBuilder.JSCallDispatch();
+                BRANCH_UNLIKELY(HasPendingException(glue), &hasException, &notHasException);
+                Bind(&hasException);
+                {
+                    result->WriteVariable(retValue);
+                    Jump(exit);
+                }
+                Bind(&notHasException);
+                {
+                    Label find(env);
+                    BRANCH_NO_WEIGHT(TaggedIsTrue(FastToBoolean(retValue)), &find, &checkStable);
+                    Bind(&find);
+                    {
+                        result->WriteVariable(indexOrValue == Index ? key : *kValue);
+                        Jump(exit);
+                    }
+                }
+                Bind(&checkStable);
+                i = Int64Add(*i, Int64(1));
+                BRANCH_LIKELY(IsStableJSArray(glue, thisValue), &loopEnd, &notStableJSArray);
+            }
+        }
+        Bind(&loopEnd);
+        LoopEnd(&loopHead);
+        Bind(&loopExit);
+        Jump(exit);
+    }
+    Bind(&notStableJSArray);
+    {
+        Label loopHead(env);
+        Label loopEnd(env);
+        Label next(env);
+        Label loopExit(env);
+        Jump(&loopHead);
+        LoopBegin(&loopHead);
+        {
+            BRANCH_NO_WEIGHT(Int64LessThan(*i, thisArrLen), &next, &loopExit);
+            Bind(&next);
+            {
+                Label hasException0(env);
+                Label notHasException0(env);
+                GateRef kValue = FastGetPropertyByIndex(glue, thisValue, TruncInt64ToInt32(*i), ProfileOperation());
+                BRANCH_UNLIKELY(HasPendingException(glue), &hasException0, &notHasException0);
+                Bind(&hasException0);
+                {
+                    result->WriteVariable(Exception());
+                    Jump(exit);
+                }
+                Bind(&notHasException0);
+                {
+                    GateRef key = IntToTaggedPtr(*i);
+                    Label hasException(env);
+                    Label notHasException(env);
+                    JSCallArgs callArgs(JSCallMode::CALL_THIS_ARG3_WITH_RETURN);
+                    callArgs.callThisArg3WithReturnArgs = { argHandle, kValue, key, thisValue };
+                    CallStubBuilder callBuilder(this, glue, callbackFnHandle, Int32(NUM_MANDATORY_JSFUNC_ARGS), 0,
+                        nullptr, Circuit::NullGate(), callArgs);
+                    GateRef retValue = callBuilder.JSCallDispatch();
+                    BRANCH_UNLIKELY(TaggedIsException(retValue), &hasException, &notHasException);
+                    Bind(&hasException);
+                    {
+                        result->WriteVariable(retValue);
+                        Jump(exit);
+                    }
+                    Bind(&notHasException);
+                    {
+                        Label find(env);
+                        BRANCH_NO_WEIGHT(TaggedIsTrue(FastToBoolean(retValue)), &find, &loopEnd);
+                        Bind(&find);
+                        {
+                            result->WriteVariable(indexOrValue == Index ? key : kValue);
+                            Jump(exit);
+                        }
+                    }
+                }
+            }
+        }
+        Bind(&loopEnd);
+        i = Int64Add(*i, Int64(1));
+        LoopEnd(&loopHead);
+        Bind(&loopExit);
+        Jump(exit);
+    }
+}
 } // namespace panda::ecmascript::kungfu

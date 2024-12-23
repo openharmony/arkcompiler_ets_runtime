@@ -88,6 +88,20 @@ private:
                             Label *slowPath, GateRef hir);
     void ToReversedOptimised(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *result, Label *exit,
                              Label *slowPath);
+
+    void FindOptimised(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *result, Label *exit,
+                       Label *slowPath);
+
+    void FindIndexOptimised(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *result, Label *exit,
+                            Label *slowPath);
+
+    enum IndexOrValue {
+        Index,
+        Value,
+    };
+
+    void FindOrFindIndex(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *result, Label *exit,
+                         Label *slowPath, IndexOrValue);
 };
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_BUILTINS_ARRAY_STUB_BUILDER_H
