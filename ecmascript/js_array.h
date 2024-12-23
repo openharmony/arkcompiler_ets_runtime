@@ -132,6 +132,7 @@ public:
                                      const JSHandle<JSTaggedValue> &value);
     static JSHandle<TaggedArray> ToTaggedArray(JSThread *thread, const JSHandle<JSTaggedValue> &obj);
     static void PUBLIC_API CheckAndCopyArray(const JSThread *thread, JSHandle<JSArray> obj);
+    static void CheckAndSetPrototypeModified(JSThread *thread, const JSHandle<JSObject> &newArrayHandle);
     static void SetCapacity(JSThread *thread, const JSHandle<JSObject> &array, uint32_t oldLen, uint32_t newLen,
                             bool isNew = false);
     static void TransformElementsKindAfterSetCapacity(JSThread *thread, const JSHandle<JSObject> &array,

@@ -954,9 +954,6 @@ JSHandle<JSHClass> JSFunction::GetOrCreateDerivedJSHClass(JSThread *thread, JSHa
     } else {
         newJSHClass = JSHClass::Clone(thread, ctorInitialJSHClass);
     }
-    if (ctorInitialJSHClass->IsJSArray()) {
-        newJSHClass->SetIsJSArrayPrototypeModified(true);
-    }
     newJSHClass->SetElementsKind(ElementsKind::GENERIC);
     // guarante derived has function prototype
     JSHandle<JSTaggedValue> prototype(thread, derived->GetProtoOrHClass());

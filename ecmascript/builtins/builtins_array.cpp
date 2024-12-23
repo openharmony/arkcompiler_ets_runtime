@@ -53,19 +53,12 @@ JSTaggedValue BuiltinsArray::ArrayConstructor(EcmaRuntimeCallInfo *argv)
     // In NewJSObjectByConstructor(), will get prototype.
     // 5. ReturnIfAbrupt(proto).
 
-    auto CheckAndSetPrototypeModified = [] (JSThread* thread, const JSHandle<JSObject>& newArrayHandle) {
-        if (!JSArray::IsProtoNotChangeJSArray(thread, newArrayHandle)) {
-            newArrayHandle->GetJSHClass()->SetIsJSArrayPrototypeModified(true);
-        }
-    };
-
     // 22.1.1.1 Array ( )
     if (argc == 0) {
         // 6. Return ArrayCreate(0, proto).
         auto arrayHandle = JSArray::ArrayCreate(thread, JSTaggedNumber(0), newTarget);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         auto newArrayHandle = JSHandle<JSObject>::Cast(arrayHandle);
-        CheckAndSetPrototypeModified(thread, newArrayHandle);
         return newArrayHandle.GetTaggedValue();
     }
 
@@ -99,7 +92,6 @@ JSTaggedValue BuiltinsArray::ArrayConstructor(EcmaRuntimeCallInfo *argv)
         JSArray::SetCapacity(thread, newArrayHandle, 0, newLen, true);
 
         // 11. Return array.
-        CheckAndSetPrototypeModified(thread, newArrayHandle);
         return newArrayHandle.GetTaggedValue();
     }
 
@@ -161,7 +153,6 @@ JSTaggedValue BuiltinsArray::ArrayConstructor(EcmaRuntimeCallInfo *argv)
     // 11. Assert: the value of array’s length property is numberOfArgs.
     // 12. Return array.
     JSArray::Cast(*newArrayHandle)->SetArrayLength(thread, argc);
-    CheckAndSetPrototypeModified(thread, newArrayHandle);
     return newArrayHandle.GetTaggedValue();
 }
 

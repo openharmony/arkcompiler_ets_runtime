@@ -65,6 +65,14 @@ JSHandle<JSTaggedValue> JSArray::ArrayCreate(JSThread *thread, JSTaggedNumber le
     return JSArray::ArrayCreate(thread, length, arrayFunction, mode);
 }
 
+// Used to check whether newArrayHandle's proto == Array.prototype.
+void JSArray::CheckAndSetPrototypeModified(JSThread* thread, const JSHandle<JSObject> &newArrayHandle)
+{
+    if (!JSArray::IsProtoNotChangeJSArray(thread, newArrayHandle)) {
+        newArrayHandle->GetJSHClass()->SetIsJSArrayPrototypeModified(true);
+    }
+};
+
 // 9.4.2.2 ArrayCreate(length, proto)
 JSHandle<JSTaggedValue> JSArray::ArrayCreate(JSThread *thread, JSTaggedNumber length,
                                              const JSHandle<JSTaggedValue> &newTarget, ArrayMode mode)
@@ -72,7 +80,7 @@ JSHandle<JSTaggedValue> JSArray::ArrayCreate(JSThread *thread, JSTaggedNumber le
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     // Assert: length is an integer Number ≥ 0.
     ASSERT_PRINT(length.IsInteger() && length.GetNumber() >= 0, "length must be positive integer");
-    // 2. If length is −0, let length be +0.
+    // 2. If length is −0, let length  be +0.
     double arrayLength = length.GetNumber();
     if (arrayLength > MAX_ARRAY_INDEX) {
         JSHandle<JSTaggedValue> exception(thread, JSTaggedValue::Exception());
@@ -107,7 +115,7 @@ JSHandle<JSTaggedValue> JSArray::ArrayCreate(JSThread *thread, JSTaggedNumber le
             #endif
         }
     }
-
+    CheckAndSetPrototypeModified(thread, obj);
     return JSHandle<JSTaggedValue>(obj);
 }
 
@@ -524,6 +532,7 @@ JSHandle<JSArray> JSArray::CreateArrayFromList(JSThread *thread, const JSHandle<
     arr->SetArrayLength(thread, length);
     obj->SetElements(thread, elements);
 
+    CheckAndSetPrototypeModified(thread, obj);
     return arr;
 }
 
