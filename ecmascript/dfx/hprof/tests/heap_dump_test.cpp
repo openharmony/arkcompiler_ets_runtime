@@ -644,7 +644,7 @@ HWTEST_F_L0(HeapDumpTest, TestAllocationEvent)
        {{"TaggedArray", 1}, {"AsyncFunction", 2}, {"LexicalEnv", 2}, {"Array", 3}, {"Function", 7}, {"Map", 1},
        {"Object", 1}, {"Uint8 Clamped Array", 1}, {"Uint32 Array", 1}, {"Float32 Array", 1}, {"Int32 Array", 1},
        {"Int16 Array", 1}, {"BigUint64 Array", 1}, {"Uint8 Array", 1}, {"Float64 Array", 1}, {"ByteArray", 11},
-       {"Int8 Array", 1}, {"BigInt64 Array", 1}, {"Uint16 Array", 1}};
+       {"Int8 Array", 1}, {"BigInt64 Array", 1}, {"Uint16 Array", 1}, {"ArrayIterator", 1}};
     bool pass = true;
     std::unordered_map<std::string, int> noTraceObj;
     for (auto o = ObjAfterExecute.begin(); o != ObjAfterExecute.end(); o++) {

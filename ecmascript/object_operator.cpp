@@ -21,6 +21,25 @@
 #include "ecmascript/property_detector-inl.h"
 
 namespace panda::ecmascript {
+bool ObjectOperator::TryFastHandleStringKey(const JSHandle<JSTaggedValue> &key)
+{
+    if (!EcmaStringAccessor(key->GetTaggedObject()).IsInternString()) {
+        return false;
+    }
+    if (EcmaStringAccessor(key->GetTaggedObject()).IsInteger()) {
+        elementIndex_ = EcmaStringAccessor(key->GetTaggedObject()).GetIntegerCode();
+        return true;
+    }
+    if (EcmaStringAccessor(key->GetTaggedObject()).GetLength() <= EcmaString::MAX_CACHED_INTEGER_SIZE) {
+        // Since the range of hash values is of the int32 type,
+        // the IsInteger() function can only accurately determine
+        // a string whose length is less than or equal to MAX_CACHED_INTEGER_SIZE is not a number.
+        key_ = key;
+        return true;
+    }
+    return false;
+}
+
 void ObjectOperator::HandleKey(const JSHandle<JSTaggedValue> &key)
 {
     if (key->IsInt()) {
@@ -35,8 +54,13 @@ void ObjectOperator::HandleKey(const JSHandle<JSTaggedValue> &key)
 
     if (key->IsString()) {
         keyFromStringType_ = true;
+#ifdef ENABLE_NEXT_OPTIMIZATION
+        if (TryFastHandleStringKey(key)) {
+            return;
+        }
+#endif
         uint32_t index = 0;
-        if (JSTaggedValue::ToElementIndex(key.GetTaggedValue(), &index)) {
+        if (JSTaggedValue::StringToElementIndex(key.GetTaggedValue(), &index)) {
             ASSERT(index < JSObject::MAX_ELEMENT_INDEX);
             elementIndex_ = index;
             return;
@@ -83,6 +107,11 @@ void ObjectOperator::HandleKey(const JSHandle<JSTaggedValue> &key)
 
 void ObjectOperator::UpdateHolder()
 {
+#ifdef ENABLE_NEXT_OPTIMIZATION
+    if (holder_->IsECMAObject()) {
+        return;
+    }
+#endif
     if (holder_->IsString() && (GetThroughElement() || GetStringLength())) {
         JSHandle<JSTaggedValue> undefined = thread_->GlobalConstants()->GetHandledUndefined();
         holder_.Update(JSPrimitiveRef::StringCreate(thread_, holder_, undefined).GetTaggedValue());

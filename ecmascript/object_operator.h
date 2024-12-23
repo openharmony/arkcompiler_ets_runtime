@@ -332,6 +332,7 @@ private:
     void UpdateHolder();
     void StartLookUp(OperatorType type);
     void StartGlobalLookUp(OperatorType type);
+    bool TryFastHandleStringKey(const JSHandle<JSTaggedValue> &key);
     void HandleKey(const JSHandle<JSTaggedValue> &key);
     uint32_t ComputeElementCapacity(uint32_t oldCapacity);
     void SetFound(uint32_t index, JSTaggedValue value, uint64_t attr, bool mode, bool transition = false);
