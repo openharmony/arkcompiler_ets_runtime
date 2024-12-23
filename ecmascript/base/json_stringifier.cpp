@@ -241,6 +241,7 @@ JSHandle<JSTaggedValue> JsonStringifier::SerializeHolder(const JSHandle<JSTagged
 JSTaggedValue JsonStringifier::SerializeJSONProperty(const JSHandle<JSTaggedValue> &value,
                                                      const JSHandle<JSTaggedValue> &replacer)
 {
+    STACK_LIMIT_CHECK(thread_, JSTaggedValue::Exception());
     JSTaggedValue tagValue = value.GetTaggedValue();
     if (!tagValue.IsHeapObject()) {
         JSTaggedType type = tagValue.GetRawData();

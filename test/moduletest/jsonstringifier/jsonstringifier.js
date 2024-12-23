@@ -264,3 +264,17 @@ const testspaceobj = {
   city: "Shanghai"
 };
 print(JSON.stringify(testspaceobj, null, Infinity));
+
+{
+    let obj = {};
+    let tmp = obj;
+    for (let i = 0; i < 5000; i++) {
+        tmp.name = {};
+        tmp = tmp.name;
+    }
+    try {
+        let res = JSON.stringify(obj);
+    } catch (error) {
+        print(error)
+    }
+}
