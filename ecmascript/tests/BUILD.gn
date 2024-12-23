@@ -2896,6 +2896,33 @@ host_unittest_action("GC_Second_Test") {
   deps += hiviewdfx_deps
 }
 
+host_unittest_action("GC_Taskpool_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "gc_taskpool_test.cpp",
+  ]
+
+  configs = [
+    "../../:asm_interp_enable_config",
+    "../../:ecma_test_config",
+  ]
+
+  deps = [ "../../:libark_jsruntime_test" ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+    "runtime_core:libarkverifier",
+    "zlib:libz",
+  ]
+  deps += hiviewdfx_deps
+}
+
 host_unittest_action("GC_Third_Test") {
   module_out_path = module_output_path
 
@@ -3422,10 +3449,6 @@ group("unittest") {
 
     #":ECMA_String_Test",
     ":ECMA_VM_Test",
-    ":JS_APIArrayListIterator_Test",
-    ":JS_APIArrayList_Test",
-    ":JS_APIBitVectorIterator_Test",
-    ":JS_APIBitVector_Test",
     ":GC_ConcurrentMarking_Test",
     ":GC_ConcurrentSweep_Test",
     ":GC_First_Test",
@@ -3442,11 +3465,16 @@ group("unittest") {
     ":GC_ReadOnlySpace_Test",
     ":GC_Second_Test",
     ":GC_SharedPartialGC_Test",
+    ":GC_Taskpool_Test",
     ":GC_Third_Test",
     ":GC_Verification_Test",
     ":GC_Verify_Test",
     ":GC_WeakRefOldGC_Test",
     ":GC_WeakRefSemiGC_Test",
+    ":JS_APIArrayListIterator_Test",
+    ":JS_APIArrayList_Test",
+    ":JS_APIBitVectorIterator_Test",
+    ":JS_APIBitVector_Test",
     ":JS_APIDequeIterator_Test",
     ":JS_APIDeque_Test",
     ":JS_APIHashMapIterator_Test",
@@ -3562,10 +3590,6 @@ group("host_unittest") {
 
     #":ECMA_String_TestAction",
     ":ECMA_VM_TestAction",
-    ":JS_APIArrayListIterator_TestAction",
-    ":JS_APIArrayList_TestAction",
-    ":JS_APIBitVectorIterator_TestAction",
-    ":JS_APIBitVector_TestAction",
     ":GC_ConcurrentMarking_TestAction",
     ":GC_ConcurrentSweep_TestAction",
     ":GC_First_TestAction",
@@ -3582,11 +3606,16 @@ group("host_unittest") {
     ":GC_ReadOnlySpace_TestAction",
     ":GC_Second_TestAction",
     ":GC_SharedPartialGC_TestAction",
+    ":GC_Taskpool_TestAction",
     ":GC_Third_TestAction",
     ":GC_Verification_TestAction",
     ":GC_Verify_TestAction",
     ":GC_WeakRefOldGC_TestAction",
     ":GC_WeakRefSemiGC_TestAction",
+    ":JS_APIArrayListIterator_TestAction",
+    ":JS_APIArrayList_TestAction",
+    ":JS_APIBitVectorIterator_TestAction",
+    ":JS_APIBitVector_TestAction",
     ":JS_APIDequeIterator_TestAction",
     ":JS_APIDeque_TestAction",
     ":JS_APIHashMapIterator_TestAction",
@@ -3698,10 +3727,6 @@ group("host_unittest") {
 
       #":ECMA_String_TestAction",
       ":ECMA_VM_TestAction",
-      ":JS_APIArrayListIterator_TestAction",
-      ":JS_APIArrayList_TestAction",
-      ":JS_APIBitVectorIterator_TestAction",
-      ":JS_APIBitVector_TestAction",
       ":GC_ConcurrentMarking_TestAction",
       ":GC_ConcurrentSweep_TestAction",
       ":GC_First_TestAction",
@@ -3718,11 +3743,16 @@ group("host_unittest") {
       ":GC_ReadOnlySpace_TestAction",
       ":GC_Second_TestAction",
       ":GC_SharedPartialGC_TestAction",
+      ":GC_Taskpool_TestAction",
       ":GC_Third_TestAction",
       ":GC_Verification_TestAction",
       ":GC_Verify_TestAction",
       ":GC_WeakRefOldGC_TestAction",
       ":GC_WeakRefSemiGC_TestAction",
+      ":JS_APIArrayListIterator_TestAction",
+      ":JS_APIArrayList_TestAction",
+      ":JS_APIBitVectorIterator_TestAction",
+      ":JS_APIBitVector_TestAction",
       ":JS_APIDequeIterator_TestAction",
       ":JS_APIDeque_TestAction",
       ":JS_APIHashMapIterator_TestAction",
