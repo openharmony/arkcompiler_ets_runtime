@@ -482,6 +482,36 @@ bool JSArray::IsProtoNotModifiedDictionaryJSArray(JSThread *thread, const JSHand
            JSObject::AttributesUnchanged(thread, obj);
 }
 
+#if ENABLE_NEXT_OPTIMIZATION
+// ecma6 7.3 Operations on Objects
+JSHandle<JSArray> JSArray::CreateArrayFromList(JSThread *thread, const JSHandle<TaggedArray> &elements)
+{
+    // Assert: elements is a List whose elements are all ECMAScript language values.
+    uint32_t length = elements->GetLength();
+    auto env = thread->GetEcmaVM()->GetGlobalEnv();
+    
+    // New JSObject by Constructor.
+    JSTaggedValue protoOrHClass = JSHandle<JSFunction>::Cast(env->GetArrayFunction())->GetProtoOrHClass();
+    JSHandle<JSHClass> jsHClass = JSHandle<JSHClass>(thread,
+        reinterpret_cast<JSHClass *>(protoOrHClass.GetTaggedObject()));
+    
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<JSObject> obj = factory->NewJSObject(jsHClass);
+    
+    JSArray::Cast(*obj)->SetLength(0);
+    JSArray::Cast(*obj)->SetTrackInfo(thread, JSTaggedValue::Undefined());
+    auto accessor = thread->GlobalConstants()->GetArrayLengthAccessor();
+    JSArray::Cast(*obj)->SetPropertyInlinedProps(thread, JSArray::LENGTH_INLINE_PROPERTY_INDEX, accessor);
+    
+    obj->GetJSHClass()->SetExtensible(true);
+    JSArray::Cast(*obj)->SetArrayLength(thread, length);
+    obj->SetElements(thread, elements);
+
+    JSHandle<JSArray> arr(obj);
+    JSHClass::TransitToElementsKind(thread, arr, ElementsKind::GENERIC);
+    return arr;
+}
+# else
 // ecma6 7.3 Operations on Objects
 JSHandle<JSArray> JSArray::CreateArrayFromList(JSThread *thread, const JSHandle<TaggedArray> &elements)
 {
@@ -503,6 +533,7 @@ JSHandle<JSArray> JSArray::CreateArrayFromList(JSThread *thread, const JSHandle<
 
     return arr;
 }
+#endif
 
 // used for array contructor with (...items)
 JSHandle<JSArray> JSArray::CreateArrayFromList(JSThread *thread, const JSHandle<JSTaggedValue> &newtarget,

@@ -1532,6 +1532,16 @@ public:
         return string_->IsLineOrConstantString();
     }
 
+    bool IsInteger() const
+    {
+        return string_->IsInteger();
+    }
+    
+    uint32_t GetIntegerCode() const
+    {
+        return string_->GetIntegerCode();
+    }
+
     JSType GetStringType() const
     {
         return string_->GetStringType();
