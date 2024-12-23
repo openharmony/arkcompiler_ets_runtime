@@ -6039,6 +6039,48 @@ DECLARE_ASM_HANDLER(HandleCallRuntimeSuperCallForwardAllArgsV8)
     }
 }
 
+DECLARE_ASM_HANDLER(HandleCallRuntimeLdsendablelocalmodulevarImm8)
+{
+    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
+    DEFVARIABLE(moduleRef, VariableType::JS_ANY(), Undefined());
+    GateRef index = ReadInst8_1(pc);
+
+    // LdSendableLocalModuleVarByIndex may load uninitialized module lazy. Exception could happened.
+    GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
+    moduleRef = CallRuntime(glue, RTSTUB_ID(LdSendableLocalModuleVarByIndex), {Int8ToTaggedInt(index), currentFunc});
+
+    auto env = GetEnvironment();
+    Label notException(env);
+    CHECK_EXCEPTION_WITH_JUMP(*moduleRef, &notException);
+    Bind(&notException);
+    {
+        varAcc = *moduleRef;
+        DISPATCH_WITH_ACC(CALLRUNTIME_LDSENDABLELOCALMODULEVAR_PREF_IMM8);
+    }
+}
+
+DECLARE_ASM_HANDLER(HandleCallRuntimeWideLdsendablelocalmodulevarPrefImm16)
+{
+    DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
+    DEFVARIABLE(moduleRef, VariableType::JS_ANY(), Undefined());
+
+    GateRef index = ReadInst16_1(pc);
+
+    // LdSendableLocalModuleVarByIndex may load uninitialized module lazy. Exception could happened.
+    GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
+    moduleRef =
+        CallRuntime(glue, RTSTUB_ID(LdSendableLocalModuleVarByIndex), {Int16ToTaggedInt(index), currentFunc});
+
+    auto env = GetEnvironment();
+    Label notException(env);
+    CHECK_EXCEPTION_WITH_JUMP(*moduleRef, &notException);
+    Bind(&notException);
+    {
+        varAcc = *moduleRef;
+        DISPATCH_WITH_ACC(CALLRUNTIME_WIDELDSENDABLELOCALMODULEVAR_PREF_IMM16);
+    }
+}
+
 ASM_INTERPRETER_BC_TYPE_PROFILER_STUB_LIST(DECLARE_ASM_HANDLER_PROFILE)
 ASM_INTERPRETER_BC_LAYOUT_PROFILER_STUB_LIST(DECLARE_ASM_HANDLER_PROFILE)
 ASM_INTERPRETER_BC_FUNC_HOT_PROFILER_STUB_LIST(DECLARE_ASM_HANDLER_PROFILE)
