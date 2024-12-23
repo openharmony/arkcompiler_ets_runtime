@@ -67,9 +67,22 @@ public:
         return fileInfos_.size();
     }
 
+    void SampleSafe(uint32_t checksum, uint32_t abcId)
+    {
+        WriteLockHolder lock(fileInfosLock_);
+        Sample(checksum, abcId);
+    }
+
+    void ClearSafe()
+    {
+        WriteLockHolder lock(fileInfosLock_);
+        Clear();
+    }
+
     void ParseFromBinary(void *buffer, SectionInfo *const info);
     void ProcessToBinary(std::fstream &fileStream, SectionInfo *info) const;
     void Merge(const PGOPandaFileInfos &pandaFileInfos);
+    void MergeSafe(const PGOPandaFileInfos& pandaFileInfos);
     bool VerifyChecksum(const PGOPandaFileInfos &pandaFileInfos, const std::string &base,
                         const std::string &incoming) const;
 
@@ -121,6 +134,7 @@ private:
     };
 
     std::set<FileInfo> fileInfos_;
+    RWLock fileInfosLock_;
 };
 
 class PGOMethodInfo {
@@ -480,6 +494,7 @@ public:
     ~PGORecordDetailInfos() override;
 
     void Clear();
+    void ClearSafe();
     void InitSections();
 
     // If it is a new method, return true.
@@ -498,6 +513,7 @@ public:
     bool IsDumped(ProfileType rootType, ProfileType curType) const;
 
     void Merge(const PGORecordDetailInfos &recordInfos);
+    void MergeSafe(const PGORecordDetailInfos& recordInfos);
 
     void UpdateLayout();
 
@@ -582,6 +598,7 @@ private:
     std::shared_ptr<PGOProtoTransitionPool> protoTransitionPool_;
     std::shared_ptr<PGOProfileTypePool> profileTypePool_;
     mutable std::map<ApEntityId, ApEntityId> abcIdRemap_;
+    Mutex mutex_;
 };
 
 class PGORecordSimpleInfos : public PGOContext {

@@ -30,7 +30,7 @@ bool PGOProfilerDecoder::Load(const std::shared_ptr<PGOAbcFilePool> &externalAbc
 
     if (!PGOProfilerHeader::ParseFromBinary(addr, fileMapAddr_.GetSize(), &header_)) {
         UnLoadAPBinaryFile();
-        LOG_ECMA(ERROR) << "Parse profiler header failed";
+        LOG_PGO(ERROR) << "Parse profiler header failed";
         return false;
     }
     pandaFileInfos_.ParseFromBinary(addr, header_->GetPandaInfoSection());
@@ -68,7 +68,7 @@ bool PGOProfilerDecoder::LoadAndVerify(const std::unordered_map<CString, uint32_
 {
     // The file does not exist. Enter full compiler mode.
     if (inPath_.empty()) {
-        LOG_ECMA(INFO) << "When the file is empty. Enter full compiler mode.";
+        LOG_PGO(INFO) << "When the file is empty. Enter full compiler mode.";
         Clear();
         return true;
     }
@@ -91,7 +91,7 @@ bool PGOProfilerDecoder::LoadFull(const std::shared_ptr<PGOAbcFilePool> &externa
 
     if (!PGOProfilerHeader::ParseFromBinary(addr, fileMapAddr_.GetSize(), &header_)) {
         UnLoadAPBinaryFile();
-        LOG_ECMA(ERROR) << "Parse profiler header failed";
+        LOG_PGO(ERROR) << "parse profiler header failed";
         return false;
     }
     pandaFileInfos_.ParseFromBinary(addr, header_->GetPandaInfoSection());
@@ -141,11 +141,11 @@ bool PGOProfilerDecoder::SaveAPTextFile(const std::string &outPath)
     }
     std::ofstream fileStream(realOutPath.c_str());
     if (!fileStream.is_open()) {
-        LOG_ECMA(ERROR) << "The file path(" << realOutPath << ") open failure!";
+        LOG_PGO(ERROR) << "The file path(" << realOutPath << ") open failure!";
         return false;
     }
     if (header_ == nullptr) {
-        LOG_ECMA(FATAL) << "PGOProfilerDecoder::SaveAPTextFile:header_ is nullptr";
+        LOG_PGO(FATAL) << "PGOProfilerDecoder::SaveAPTextFile:header_ is nullptr";
     }
     if (!header_->ProcessToText(fileStream)) {
         return false;
@@ -165,13 +165,13 @@ bool PGOProfilerDecoder::LoadAPBinaryFile(int prot)
 
     static const std::string endString = ".ap";
     if (realPath.compare(realPath.length() - endString.length(), endString.length(), endString)) {
-        LOG_ECMA(ERROR) << "The file path( " << realPath << ") does not end with .ap";
+        LOG_PGO(ERROR) << "the file path( " << realPath << ") does not end with '.ap'";
         return false;
     }
-    LOG_ECMA(INFO) << "Load profiler from file:" << realPath;
+    LOG_PGO(INFO) << "load profiler from file " << realPath;
     fileMapAddr_ = FileMap(realPath.c_str(), FILE_RDONLY, prot);
     if (fileMapAddr_.GetOriginAddr() == nullptr) {
-        LOG_ECMA(ERROR) << "File mmap failed";
+        LOG_PGO(ERROR) << "file mmap failed";
         return false;
     }
     return true;
@@ -288,4 +288,39 @@ void PGOProfilerDecoder::MergeFileNameToChecksumMap(std::unordered_map<CString, 
     });
 }
 
+bool PGOProfilerDecoder::LoadAPTextFile(const std::string& inPath)
+{
+    std::string realPath;
+    if (!RealPath(inPath, realPath)) {
+        LOG_PGO(ERROR) << "real path failure, path: " << inPath;
+        return false;
+    }
+
+    std::ifstream fileStream(realPath.c_str());
+    if (!fileStream.is_open()) {
+        LOG_PGO(ERROR) << "can't open the file path " << realPath;
+        return false;
+    }
+
+    if (!header_) {
+        PGOProfilerHeader::Build(&header_, sizeof(PGOProfilerHeader));
+    }
+    if (!header_->ParseFromText(fileStream)) {
+        LOG_PGO(ERROR) << "header format error";
+        return false;
+    }
+    if (!pandaFileInfos_.ParseFromText(fileStream)) {
+        LOG_PGO(ERROR) << "panda file info format error";
+        return false;
+    }
+    if (!recordDetailInfos_) {
+        recordDetailInfos_ = std::make_shared<PGORecordDetailInfos>(hotnessThreshold_);
+    }
+    if (!recordDetailInfos_->ParseFromText(fileStream)) {
+        LOG_PGO(ERROR) << "record info format error";
+        return false;
+    }
+
+    return true;
+}
 } // namespace panda::ecmascript::pgo

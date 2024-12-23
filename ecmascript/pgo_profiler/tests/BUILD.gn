@@ -65,14 +65,14 @@ host_unittest_action("PGOProfilerTest") {
   configs = [
     "//arkcompiler/ets_runtime:asm_interp_enable_config",
     "//arkcompiler/ets_runtime:ecma_test_config",
-    "$ark_root/assembler:arkassembler_public_config",
   ]
 
-  deps = [
-    "$ark_root/assembler:libarkassembler_static",
-    "$ark_third_party_root/icu/icu4c:shared_icui18n",
-    "$ark_third_party_root/icu/icu4c:shared_icuuc",
-    "$js_root:libark_jsruntime_test",
+  deps = [ "$js_root:libark_jsruntime_test" ]
+
+  external_deps = [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
   ]
 
   foreach(file, test_js_files) {
@@ -87,20 +87,70 @@ host_unittest_action("PGOProfilerTest") {
   defines = [ "TARGET_ABC_PATH=\"${test_abc_dir}/\"" ]
 
   # hiviewdfx libraries
-  external_deps = hiviewdfx_ext_deps
+  external_deps += hiviewdfx_ext_deps
   deps += hiviewdfx_deps
 }
 
+host_unittest_action("PGOProfilerTestOne") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "pgo_profiler_test_one.cpp",
+  ]
+
+  configs = [
+    "../../../:asm_interp_enable_config",
+    "../../../:ecma_test_config",
+  ]
+
+  deps = [ "$js_root:libark_jsruntime_test" ]
+
+  external_deps = [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+  ]
+
+  foreach(file, test_js_files) {
+    deps += [ ":gen_${file}_abc" ]
+  }
+
+  if (is_ohos && is_standard_system) {
+    test_abc_dir = "/data/test"
+  } else {
+    test_abc_dir = rebase_path(target_out_dir)
+  }
+  defines = [ "TARGET_ABC_PATH=\"${test_abc_dir}/\"" ]
+
+  # hiviewdfx libraries
+  external_deps += hiviewdfx_ext_deps
+  deps += hiviewdfx_deps
+}
+
+tests = [
+  "PGOProfilerTest",
+  "PGOProfilerTestOne",
+]
+
 group("unittest") {
   testonly = true
-  deps = [ ":PGOProfilerTest" ]
+  deps = []
+  foreach(test, tests) {
+    deps += [ ":${test}" ]
+  }
 }
 
 group("host_unittest") {
   testonly = true
-  deps = [ ":PGOProfilerTestAction" ]
+  deps = []
+  foreach(test, tests) {
+    deps += [ ":${test}Action" ]
+  }
 
   if (is_mac) {
-    deps -= [ ":PGOProfilerTestAction" ]
+    foreach(test, tests) {
+      deps -= [ ":${test}Action" ]
+    }
   }
 }

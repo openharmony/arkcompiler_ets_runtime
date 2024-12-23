@@ -193,9 +193,11 @@ void EcmaVM::InitializeForJit(JitThread *jitThread)
 
 void EcmaVM::InitializePGOProfiler()
 {
+    LOG_PGO(INFO) << "initialize pgo profiler, pgo is enable: " << IsEnablePGOProfiler()
+                  << ", is worker: " << options_.IsWorker() << ", profiler: " << pgoProfiler_;
     bool isEnablePGOProfiler = IsEnablePGOProfiler();
     if (pgoProfiler_ == nullptr) {
-        pgoProfiler_ = PGOProfilerManager::GetInstance()->Build(this, isEnablePGOProfiler);
+        pgoProfiler_ = PGOProfilerManager::GetInstance()->BuildProfiler(this, isEnablePGOProfiler);
     }
     pgo::PGOTrace::GetInstance()->SetEnable(options_.GetPGOTrace() || ohos::AotTools::GetPgoTraceEnable());
     thread_->SetPGOProfilerEnable(isEnablePGOProfiler);
@@ -215,6 +217,7 @@ void EcmaVM::DisablePGOProfilerWithAOTFile(const std::string &aotFileName)
 {
     if (AOTFileManager::AOTFileExist(aotFileName, AOTFileManager::FILE_EXTENSION_AN) ||
         AOTFileManager::AOTFileExist(aotFileName, AOTFileManager::FILE_EXTENSION_AI)) {
+        LOG_PGO(INFO) << "disable pgo profiler due to aot file exist: " << aotFileName;
         options_.SetEnablePGOProfiler(false);
         PGOProfilerManager::GetInstance()->SetDisablePGO(true);
         ResetPGOProfiler();

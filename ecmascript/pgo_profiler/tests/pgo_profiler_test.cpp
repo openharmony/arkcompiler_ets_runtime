@@ -21,35 +21,34 @@
 #include <unordered_map>
 #include <utility>
 
-#include "ecmascript/base/file_header.h"
-#include "ecmascript/elements.h"
-#include "ecmascript/js_symbol.h"
-#include "ecmascript/log_wrapper.h"
-#include "ecmascript/object_factory.h"
-#include "ecmascript/pgo_profiler/ap_file/pgo_file_info.h"
-#include "ecmascript/pgo_profiler/pgo_context.h"
-#include "ecmascript/pgo_profiler/pgo_profiler_encoder.h"
-#include "ecmascript/pgo_profiler/types/pgo_profile_type.h"
-#include "ecmascript/pgo_profiler/types/pgo_profiler_type.h"
-#include "ecmascript/pgo_profiler/pgo_utils.h"
-#include "ecmascript/platform/file.h"
-#include "gtest/gtest.h"
-
 #include "assembler/assembly-emitter.h"
 #include "assembler/assembly-parser.h"
+#include "gtest/gtest.h"
+
+#include "ecmascript/base/file_header.h"
 #include "ecmascript/ecma_vm.h"
+#include "ecmascript/elements.h"
+#include "ecmascript/js_symbol.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/jspandafile/method_literal.h"
 #include "ecmascript/jspandafile/program_object.h"
+#include "ecmascript/log_wrapper.h"
 #include "ecmascript/napi/include/jsnapi.h"
+#include "ecmascript/object_factory.h"
+#include "ecmascript/pgo_profiler/ap_file/pgo_file_info.h"
 #include "ecmascript/pgo_profiler/ap_file/pgo_method_type_set.h"
+#include "ecmascript/pgo_profiler/pgo_context.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_decoder.h"
+#include "ecmascript/pgo_profiler/pgo_profiler_encoder.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_info.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
+#include "ecmascript/pgo_profiler/pgo_utils.h"
 #include "ecmascript/pgo_profiler/tests/pgo_context_mock.h"
-#include "ecmascript/pgo_profiler/tests/pgo_encoder_mock.h"
+#include "ecmascript/pgo_profiler/types/pgo_profile_type.h"
+#include "ecmascript/pgo_profiler/types/pgo_profiler_type.h"
+#include "ecmascript/platform/file.h"
 #include "ecmascript/tests/test_helper.h"
 
 using namespace panda;
@@ -140,9 +139,9 @@ protected:
     void ExecuteAndLoadJSPandaFile(std::string profDir, std::string recordName)
     {
         RuntimeOption option;
-        option.SetLogLevel(LOG_LEVEL::INFO);
         option.SetEnableProfile(true);
         option.SetProfileDir(profDir);
+        option.SetLogLevel(LOG_LEVEL::INFO);
         vm_ = JSNApi::CreateJSVM(option);
         JSNApi::EnableUserUncaughtErrorHandler(vm_);
 
@@ -676,8 +675,8 @@ HWTEST_F_L0(PGOProfilerTest, TextToBinary)
     file.close();
 
     PGOProfilerHeader::SetStrictMatch(false);
-    ASSERT_TRUE(PGOProfilerManager::GetInstance()->TextToBinary("ark-profiler10/modules.text", "ark-profiler10/", 2,
-                                                                ApGenMode::OVERWRITE));
+    ASSERT_TRUE(PGOProfilerManager::GetInstance()->TextToBinary(
+        "ark-profiler10/modules.text", "ark-profiler10/modules.ap", 2, ApGenMode::OVERWRITE));
 
     PGOProfilerDecoder loader("ark-profiler10/modules.ap", DECODER_THRESHOLD);
     ASSERT_TRUE(loader.LoadAndVerify({{"test", 413775942}}));
@@ -1237,11 +1236,10 @@ HWTEST_F_L0(PGOProfilerTest, ApVersionMatchCheck)
     ExecuteAndLoadJSPandaFile("ark-ApVersionMatchCheck/", targetRecordName);
     ASSERT_NE(pf_, nullptr);
 
-    PGOProfilerEncoderMock encoder("ark-ApVersionMatchCheck/modules.ap", DECODER_THRESHOLD,
-                                   PGOProfilerEncoder::ApGenMode::MERGE);
-    encoder.InitializeData();
-    encoder.SetVersion(PGOProfilerHeader::PROFILE_TYPE_WITH_ABC_ID_MINI_VERSION);
-    encoder.Save();
+    auto info = std::make_shared<PGOInfo>(DECODER_THRESHOLD);
+    info->GetHeaderPtr()->SetVersion(PGOProfilerHeader::PROFILE_TYPE_WITH_ABC_ID_MINI_VERSION);
+    PGOProfilerEncoder encoder("ark-ApVersionMatchCheck/modules.ap", PGOProfilerEncoder::ApGenMode::MERGE);
+    encoder.Save(info);
 
     PGOProfilerDecoder decoder("ark-ApVersionMatchCheck/modules.ap", DECODER_THRESHOLD);
     PGOProfilerHeader::SetStrictMatch(true);
@@ -1475,9 +1473,10 @@ HWTEST_F_L0(PGOProfilerTest, PgoChecksumTest)
     ASSERT_NE(pf_, nullptr);
     PGOProfilerManager::GetInstance()->Initialize("ark-pgoChecksumTest/modules.ap", DECODER_THRESHOLD);
     PGOProfilerDecoder decoder0("ark-pgoChecksumTest/modules.ap", DECODER_THRESHOLD);
-
+    auto info = std::make_shared<PGOInfo>(DECODER_THRESHOLD);
     decoder0.LoadFull();
-    auto infos1 = decoder0.GetPandaFileInfos();
+    info->MergeSafe(decoder0.GetPandaFileInfos());
+    auto& infos1 = info->GetPandaFileInfos();
     auto infos1AbcFilePool = decoder0.GetAbcFilePool();
     CString testabc1Name = "test1.abc";
     uint32_t testabc1Checksum = 123456;

@@ -159,6 +159,10 @@ void Log::SetLogComponentFromString(const std::vector<std::string>& components)
             components_ |= Component::ECMASCRIPT;
             continue;
         }
+        if (component == "pgo") {
+            components_ |= Component::PGO;
+            continue;
+        }
         if (component == "interpreter") {
             components_ |= Component::INTERPRETER;
             continue;
