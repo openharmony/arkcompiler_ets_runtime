@@ -283,6 +283,7 @@ public:
     GateRef GetUnsharedConstpoolFromGlue(GateRef glue, GateRef constpool);
     GateRef GetUnsharedConstpoolIndex(GateRef constpool);
     GateRef GetUnsharedConstpool(GateRef arrayAddr, GateRef index);
+    GateRef GetUnsharedConstpoolArrayLen(GateRef glue);
     GateRef GetCodeAddr(GateRef jsFunc);
     GateRef GetBaselineCodeAddr(GateRef baselineCode);
     GateRef GetObjectByIndexFromConstPool(GateRef glue, GateRef hirGate, GateRef frameState, GateRef index,

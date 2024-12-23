@@ -674,12 +674,26 @@ private:
     void RelocateConstantString(const JSPandaFile *jsPandaFile);
     JSTaggedValue FindConstpoolFromContextCache(const JSPandaFile *jsPandaFile, int32_t index);
 
-    void CheckUnsharedConstpoolArrayLimit(int32_t index)
+    void GrowUnsharedConstpoolArray(int32_t index);
+    void ResizeUnsharedConstpoolArray(int32_t oldCapacity, int32_t minCapacity);
+    void ClearUnsharedConstpoolArray()
     {
-        if (index >= UNSHARED_CONSTANTPOOL_COUNT) {
-            LOG_ECMA(FATAL) << "the unshared constpool array need to expanding capacity, index :" << index;
-            UNREACHABLE();
+        if (unsharedConstpools_ != nullptr) {
+            delete[] unsharedConstpools_;
+            unsharedConstpools_ = nullptr;
+            thread_->SetUnsharedConstpools(reinterpret_cast<uintptr_t>(nullptr));
+            thread_->SetUnsharedConstpoolsArrayLen(0);
         }
+    }
+
+    int32_t GetUnsharedConstpoolsArrayLen() const
+    {
+        return unsharedConstpoolsArrayLen_;
+    }
+
+    void SetUnsharedConstpoolsArrayLen(int32_t len)
+    {
+        unsharedConstpoolsArrayLen_ = len;
     }
 
     NO_MOVE_SEMANTIC(EcmaContext);
@@ -707,7 +721,8 @@ private:
     EcmaRuntimeStat *runtimeStat_ {nullptr};
 
     CMap<const JSPandaFile *, CMap<int32_t, JSTaggedValue>> cachedSharedConstpools_ {};
-    std::array<JSTaggedValue, UNSHARED_CONSTANTPOOL_COUNT> unsharedConstpools_ {};
+    JSTaggedValue* unsharedConstpools_ = nullptr;
+    int32_t unsharedConstpoolsArrayLen_ = UNSHARED_CONSTANTPOOL_COUNT;
     static constexpr int32_t SHARED_CONSTPOOL_KEY_NOT_FOUND = INT32_MAX; // INT32_MAX :invalid value.
 
     // for HotReload of module.

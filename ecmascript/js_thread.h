@@ -256,6 +256,16 @@ public:
         glueData_.unsharedConstpools_ = unsharedConstpools;
     }
 
+    uintptr_t GetUnsharedConstpoolsArrayLen() const
+    {
+        return glueData_.unsharedConstpoolsArrayLen_;
+    }
+
+    void SetUnsharedConstpoolsArrayLen(uint32_t unsharedConstpoolsArrayLen)
+    {
+        glueData_.unsharedConstpoolsArrayLen_ = unsharedConstpoolsArrayLen;
+    }
+
     void SetIsStartHeapSampling(bool isStart)
     {
         glueData_.isStartHeapSampling_ = isStart ? JSTaggedValue::True() : JSTaggedValue::False();
@@ -949,6 +959,7 @@ public:
                                                  base::AlignedPointer,
                                                  BuiltinEntries,
                                                  base::AlignedBool,
+                                                 base::AlignedUint32,
                                                  base::AlignedPointer,
                                                  base::AlignedPointer,
                                                  base::AlignedPointer,
@@ -991,6 +1002,7 @@ public:
             CurrentContextIndex,
             BuiltinEntriesIndex,
             IsTracingIndex,
+            UnsharedConstpoolsArrayLenIndex,
             UnsharedConstpoolsIndex,
             RandomStatePtrIndex,
             StateAndFlagsIndex,
@@ -1206,6 +1218,11 @@ public:
             return GetOffset<static_cast<size_t>(Index::UnsharedConstpoolsIndex)>(isArch32);
         }
 
+        static size_t GetUnSharedConstpoolsArrayLenOffset(bool isArch32)
+        {
+            return GetOffset<static_cast<size_t>(Index::UnsharedConstpoolsArrayLenIndex)>(isArch32);
+        }
+
         static size_t GetStateAndFlagsOffset(bool isArch32)
         {
             return GetOffset<static_cast<size_t>(Index::StateAndFlagsIndex)>(isArch32);
@@ -1262,6 +1279,7 @@ public:
         alignas(EAS) EcmaContext *currentContext_ {nullptr};
         alignas(EAS) BuiltinEntries builtinEntries_ {};
         alignas(EAS) bool isTracing_ {false};
+        alignas(EAS) uint32_t unsharedConstpoolsArrayLen_ {0};
         alignas(EAS) uintptr_t unsharedConstpools_ {0};
         alignas(EAS) uintptr_t randomStatePtr_ {0};
         alignas(EAS) ThreadStateAndFlags stateAndFlags_ {};
