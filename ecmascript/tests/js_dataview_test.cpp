@@ -47,6 +47,32 @@ HWTEST_F_L0(JSDataViewTest, GetElementSize)
 
 /*
  * Feature: JSDataView
+ * Function: NewJSDataView
+ * CaseDescription: Test the illegal NewJSDataView.
+ */
+HWTEST_F_L0(JSDataViewTest, NewJSDataView)
+{
+    EcmaVM *ecmaVMPtr = thread->GetEcmaVM();
+    ObjectFactory *factory = ecmaVMPtr->GetFactory();
+    JSHandle<GlobalEnv> handleGlobalEnv = ecmaVMPtr->GetGlobalEnv();
+
+    uint32_t lengthDataArrayBuf = 8;
+    uint32_t offsetDataView = 10;
+    uint32_t lengthDataView = 10;
+    JSHandle<JSFunction> handleFuncArrayBuf(handleGlobalEnv->GetArrayBufferFunction());
+    JSHandle<JSTaggedValue> handleTagValFuncArrayBuf(handleFuncArrayBuf);
+    JSHandle<JSArrayBuffer> handleArrayBuf(
+        factory->NewJSObjectByConstructor(handleFuncArrayBuf, handleTagValFuncArrayBuf));
+    handleArrayBuf->SetArrayBufferByteLength(lengthDataArrayBuf);
+
+    // Call "SetDataView" function through "NewJSDataView" function of "object_factory.cpp"
+    JSHandle<JSDataView> handleDataView = factory->NewJSDataView(handleArrayBuf, offsetDataView, lengthDataView);
+    EXPECT_TRUE(thread->HasPendingException());
+    EXPECT_EQ(handleDataView.GetTaggedValue(), JSTaggedValue::Undefined());
+}
+
+/*
+ * Feature: JSDataView
  * Function: SetDataView
  * SubFunction: GetDataView
  * FunctionPoints: Set DataView
