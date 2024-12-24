@@ -1047,7 +1047,7 @@ void BuiltinsArrayStubBuilder::FindOrFindIndex(GateRef glue, GateRef thisValue, 
             BRANCH_LIKELY(Int64LessThan(*i,  ZExtInt32ToInt64(GetArrayLength(thisValue))), &getValue, &useUndefined);
             Bind(&getValue);
             {
-                kValue = GetTaggedValueWithElementsKind(thisValue, *i);
+                kValue = GetTaggedValueWithElementsKind(glue, thisValue, *i);
                 BRANCH_UNLIKELY(TaggedIsHole(*kValue), &useUndefined, &callback);
             }
             Bind(&useUndefined);
@@ -1214,7 +1214,7 @@ void BuiltinsArrayStubBuilder::VisitAll(GateRef glue, GateRef thisValue, GateRef
             Label callDispatch(env);
             BRANCH_NO_WEIGHT(Int64LessThan(*i, thisArrLen), &next, exit);
             Bind(&next);
-            kValue = GetTaggedValueWithElementsKind(thisValue, *i);
+            kValue = GetTaggedValueWithElementsKind(glue, thisValue, *i);
             BRANCH_UNLIKELY(TaggedIsHole(*kValue), &loopEnd, &callDispatch);
             Bind(&callDispatch);
             {
@@ -2488,7 +2488,7 @@ void BuiltinsArrayStubBuilder::IncludesIndexOfOptimised(GateRef glue, GateRef th
                                     GateRef isUndef = TaggedIsUndefined(value);
                                     BRANCH(BitOr(isHole, isUndef), slowPath, &notHoleOrUndefValue);
                                     Bind(&notHoleOrUndefValue);
-                                    if (mk == mIncludes) {
+                                    if (mk == M_INCLUDES) {
                                         valueEqual = SameValueZero(glue, searchElement, value);
                                     } else {
                                         valueEqual = FastStrictEqual(glue, searchElement, value, ProfileOperation());
@@ -2535,19 +2535,19 @@ void BuiltinsArrayStubBuilder::IncludesIndexOfOptimised(GateRef glue, GateRef th
                                 BRANCH_NO_WEIGHT(taggedOrHoleTagged, &containUdef, &notContainUdef);
                                 Bind(&containUdef);
                                 {
-                                    if (mk == mIncludes) {
+                                    if (mk == M_INCLUDES) {
                                         UndefinedHoleLoop(elements,
-                                            *from, thisLen, UndefOrHole::kAll, result, &beforeExit);
+                                            *from, thisLen, UndefOrHole::K_ALL, result, &beforeExit);
                                     } else {
                                         UndefinedHoleLoop(elements,
-                                            *from, thisLen, UndefOrHole::kUndefined, result, &beforeExit);
+                                            *from, thisLen, UndefOrHole::K_UNDEFINED, result, &beforeExit);
                                     }
                                 }
                                 Bind(&notContainUdef);
                                 {
-                                    if (mk == mIncludes) {
+                                    if (mk == M_INCLUDES) {
                                         UndefinedHoleLoop(elements,
-                                            *from, thisLen, UndefOrHole::kHole, result, &beforeExit);
+                                            *from, thisLen, UndefOrHole::K_HOLE, result, &beforeExit);
                                     } else {
                                         Jump(&notFound);
                                     }
@@ -2612,7 +2612,7 @@ void BuiltinsArrayStubBuilder::IncludesIndexOfOptimised(GateRef glue, GateRef th
                             BRANCH(Int32Equal(tempRes, Int32(-1)), &notFound, &resFound);
                             Bind(&resFound);
                             {
-                                if (mk == mIncludes) {
+                                if (mk == M_INCLUDES) {
                                     result->WriteVariable(TaggedTrue());
                                 }
                                 Jump(exit);
@@ -2625,7 +2625,7 @@ void BuiltinsArrayStubBuilder::IncludesIndexOfOptimised(GateRef glue, GateRef th
     }
     Bind(&notFound);
     {
-        if (mk == mIncludes) {
+        if (mk == M_INCLUDES) {
             result->WriteVariable(TaggedFalse());
         } else {
             result->WriteVariable(IntToTaggedPtr(Int32(-1)));
@@ -2965,9 +2965,9 @@ void BuiltinsArrayStubBuilder::UndefinedHoleLoop(GateRef elements, GateRef fromI
         {
             Label valueFound(env);
             GateRef value = GetValueFromTaggedArray(elements, *from);
-            if (uoh == UndefOrHole::kUndefined) {
+            if (uoh == UndefOrHole::K_UNDEFINED) {
                 res = TaggedIsUndefined(value);
-            } else if (uoh == UndefOrHole::kHole) {
+            } else if (uoh == UndefOrHole::K_HOLE) {
                 res = TaggedIsHole(value);
             } else {
                 res = BitOr(TaggedIsUndefined(value), TaggedIsHole(value));
@@ -3073,7 +3073,7 @@ void BuiltinsArrayStubBuilder::NumberLoop(GateRef elements, GateRef fromIndex, G
         BRANCH_UNLIKELY(DoubleIsNAN(doubleValue), &isNaN, &notNaN);
         Bind(&isNaN);
         {
-            if (mk == mIncludes) {
+            if (mk == M_INCLUDES) {
                 NaNLoop(elements, fromIndex, thisLen, result, exit);
             } else {
                 Jump(&notFound);

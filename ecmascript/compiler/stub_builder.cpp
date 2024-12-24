@@ -10821,7 +10821,7 @@ GateRef StubBuilder::GetElementsKindHClass(GateRef glue, GateRef elementKind)
         Label(env), Label(env), Label(env), Label(env)
     };
     Switch(elementKind, &defaultLabel, ELEMENTS_KIND_HCLASS_CASES, labelBuffer, ELEMENTS_KIND_HCLASS_NUM);
-    for (int i = 0 ; i < ELEMENTS_KIND_HCLASS_NUM; i++) {
+    for (int i = 0; i < ELEMENTS_KIND_HCLASS_NUM; i++) {
         Bind(&labelBuffer[i]);
         result = GetGlobalConstantValue(VariableType::JS_ANY(), glue, ELEMENTS_KIND_HCLASS_INDEX[i]);
         Jump(&exit);

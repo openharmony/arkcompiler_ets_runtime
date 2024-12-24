@@ -1178,7 +1178,7 @@ void BuiltinsArrayStubBuilder::IndexOf([[maybe_unused]] GateRef glue, GateRef th
     Variable *result, Label *exit, Label *slowPath)
 {
 #if ENABLE_NEXT_OPTIMIZATION
-    IncludesIndexOfOptimised(glue, thisValue, numArgs, MethodKind::mIndexOf, result, exit, slowPath);
+    IncludesIndexOfOptimised(glue, thisValue, numArgs, MethodKind::M_INDEXOF, result, exit, slowPath);
 #else
     auto env = GetEnvironment();
     Label thisIsEmpty(env);
@@ -2854,7 +2854,7 @@ void BuiltinsArrayStubBuilder::Includes(GateRef glue, GateRef thisValue, GateRef
     Variable *result, Label *exit, Label *slowPath)
 {
 #if ENABLE_NEXT_OPTIMIZATION
-    IncludesIndexOfOptimised(glue, thisValue, numArgs, MethodKind::mIncludes, result, exit, slowPath);
+    IncludesIndexOfOptimised(glue, thisValue, numArgs, MethodKind::M_INCLUDES, result, exit, slowPath);
 #else
     auto env = GetEnvironment();
     Label isDictMode(env);

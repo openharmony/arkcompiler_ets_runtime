@@ -77,8 +77,18 @@ private:
         bool stable = false;
         bool defaultConstructor = false;
     };
-    enum MethodKind {mIncludes, mIndexOf};
-    enum UndefOrHole {kUndefined, kHole, kAll};
+
+    enum MethodKind {
+        M_INCLUDES,
+        M_INDEXOF
+    };
+
+    enum UndefOrHole {
+        K_UNDEFINED,
+        K_HOLE,
+        K_ALL
+    };
+
     GateRef IsJsArrayWithLengthLimit(GateRef glue, GateRef object,
         uint32_t maxLength, JsArrayRequirements requirements);
     GateRef CreateSpliceDeletedArray(GateRef glue, GateRef thisValue, GateRef actualDeleteCount, GateRef start);
