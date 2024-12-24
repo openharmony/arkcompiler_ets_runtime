@@ -34,3 +34,7 @@ SendableLocalClass, SendableUseLocalModuleValue::start
 sendableLocalFunc, SendableUseLocalModuleValue::start
 LocalClass, SendableUseLocalModuleValue::start
 localFunc, SendableUseLocalModuleValue::start
+SendableLocalClass, SendableFuncUseLocalModuleValue
+sendableLocalFunc, SendableFuncUseLocalModuleValue
+LocalClass, SendableFuncUseLocalModuleValue
+localFunc, SendableFuncUseLocalModuleValue

@@ -81,3 +81,11 @@ export class SendableUseLocalModuleValue {
         new InStaticClass().foo()
     }
 }
+
+export function sendableFuncUseLocalModuleValue() {
+    "use sendable";
+    new SendableLocalClass().func("SendableFuncUseLocalModuleValue");
+    sendableLocalFunc("SendableFuncUseLocalModuleValue");
+    new LocalClass().func("SendableFuncUseLocalModuleValue");
+    localFunc("SendableFuncUseLocalModuleValue");
+}
