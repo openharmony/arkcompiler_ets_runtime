@@ -746,9 +746,14 @@ bool JSHClass::TransitToElementsKind(const JSThread *thread, const JSHandle<JSOb
     if (Elements::IsGeneric(current)) {
         return false;
     }
-    auto newKind = Elements::ToElementsKind(value.GetTaggedValue(), kind);
+
     // Merge current kind and new kind
-    newKind = Elements::MergeElementsKind(current, newKind);
+    ElementsKind newKind = Elements::MergeElementsKindNoFix(value.GetTaggedValue(), current, kind);
+    if (newKind == current) {
+        return false;
+    }
+
+    newKind = Elements::FixElementsKind(newKind);
     if (newKind == current) {
         return false;
     }

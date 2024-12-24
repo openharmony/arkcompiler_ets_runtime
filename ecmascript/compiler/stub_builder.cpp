@@ -10035,19 +10035,8 @@ void StubBuilder::FastSetValueWithElementsKind(GateRef glue, GateRef receiver, G
         SetValueToTaggedArray(VariableType::INT64(), glue, elements, index, rawValue);
         Jump(&exit);
     } else {
-        Label storeToNormalArray(env);
-        Label storeToMutantArray(env);
-        BRANCH(TaggedIsHeapObject(rawValue), &storeToNormalArray, &storeToMutantArray);
-        Bind(&storeToNormalArray);
-        {
-            SetValueToTaggedArray(VariableType::JS_ANY(), glue, elements, index, rawValue);
-            Jump(&exit);
-        }
-        Bind(&storeToMutantArray);
-        {
-            SetValueToTaggedArray(VariableType::INT64(), glue, elements, index, rawValue);
-            Jump(&exit);
-        }
+        SetValueToTaggedArray(VariableType::JS_ANY(), glue, elements, index, rawValue);
+        Jump(&exit);
     }
     Bind(&exit);
     env->SubCfgExit();
