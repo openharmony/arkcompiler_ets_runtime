@@ -2075,6 +2075,8 @@ public:
     }
 
 private:
+    uint32_t GetBaselineBytecodeOffset() const;
+private:
     JSTaggedType *current_ {nullptr};
     const JSThread *thread_ {nullptr};
     const kungfu::ArkStackMapParser *arkStackMapParser_ {nullptr};
@@ -2089,6 +2091,7 @@ private:
 
     // cache current machine code, it's nonmovable
     JSTaggedType machineCode_ {JSTaggedValue::VALUE_UNDEFINED};
+    uintptr_t baselineNativePc_ {0}; // For baselineJit upFrame
 };
 }  // namespace panda::ecmascript
 #endif // ECMASCRIPT_FRAMES_H

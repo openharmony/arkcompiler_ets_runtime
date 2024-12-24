@@ -17,6 +17,7 @@
 #define ECMASCRIPT_COMPILER_BASELINE_BASELINE_STUBS_INL_H
 
 #include "ecmascript/compiler/baseline/baseline_stubs.h"
+#include "ecmascript/compiler/new_object_stub_builder.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_generator_object.h"
 #include "ecmascript/js_async_generator_object.h"
@@ -343,6 +344,49 @@ GateRef BaselineStubBuilder::GetLastLeaveFrame(GateRef glue)
     GateRef spOffset = IntPtr(JSThread::GlueData::GetLeaveFrameOffset(isArch32));
     return Load(VariableType::NATIVE_POINTER(), glue, spOffset);
 }
+
+void BaselineStubBuilder::UpdateProfileTypeInfoCellToFunction(GateRef glue, GateRef function,
+                                                              GateRef profileTypeInfo, GateRef slotId)
+{
+    auto env = GetEnvironment();
+    Label subEntry(env);
+    env->SubCfgEntry(&subEntry);
+
+    Label profileTypeInfoNotUndefined(env);
+    Label slotValueUpdate(env);
+    Label slotValueNotUndefined(env);
+    Label slotValueNotHole(env);
+    Label profileTypeInfoEnd(env);
+    NewObjectStubBuilder newBuilder(this);
+    BRANCH(TaggedIsUndefined(profileTypeInfo), &profileTypeInfoEnd, &profileTypeInfoNotUndefined);
+    Bind(&profileTypeInfoNotUndefined);
+    {
+        GateRef slotValue = GetValueFromTaggedArray(profileTypeInfo, slotId);
+        BRANCH_UNLIKELY(TaggedIsUndefined(slotValue), &slotValueUpdate, &slotValueNotUndefined);
+        Bind(&slotValueUpdate);
+        {
+            GateRef newProfileTypeInfoCell = newBuilder.NewProfileTypeInfoCell(glue, Undefined());
+            SetValueToTaggedArray(VariableType::JS_ANY(), glue, profileTypeInfo, slotId, newProfileTypeInfoCell,
+                                  MemoryAttribute::NeedNotShareBarrier());
+            SetRawProfileTypeInfoToFunction(glue, function, newProfileTypeInfoCell,
+                                            MemoryAttribute::NeedNotShareBarrier());
+            Jump(&profileTypeInfoEnd);
+        }
+        Bind(&slotValueNotUndefined);
+        BRANCH_UNLIKELY(TaggedIsHole(slotValue), &profileTypeInfoEnd, &slotValueNotHole);
+        Bind(&slotValueNotHole);
+        {
+            UpdateProfileTypeInfoCellType(glue, slotValue);
+            SetRawProfileTypeInfoToFunction(glue, function, slotValue, MemoryAttribute::NeedNotShareBarrier());
+            TryToBaselineJitReuseCompiledFunc(glue, function, slotValue);
+        }
+        Jump(&profileTypeInfoEnd);
+    }
+    Bind(&profileTypeInfoEnd);
+
+    env->SubCfgExit();
+}
+
 }
 
 #endif // ECMASCRIPT_COMPILER_BASELINE_BASELINE_STUBS_INL_H
