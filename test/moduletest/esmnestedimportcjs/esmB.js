@@ -14,6 +14,6 @@
  */
 import T from './cjsC.js'
 import {foo} from './cjsD.js'
-print(T.name)
+assert_equal(T.name,'testcjs')
 foo()
 export {T, foo}

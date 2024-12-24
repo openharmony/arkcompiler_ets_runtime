@@ -22,70 +22,70 @@
 
 {
   let reg= /ab|cd||/
-  print(JSON.stringify(reg.exec("cd")))
+  assert_equal(JSON.stringify(reg.exec("cd")),'["cd"]')
 }
 {
   let reg= /ab||/
-  print(JSON.stringify(reg.exec("cd")))
+  assert_equal(JSON.stringify(reg.exec("cd")),'[""]')
 }
 {
   let reg= /ab|cd|ef/
-  print(JSON.stringify(reg.exec("cd")))
+  assert_equal(JSON.stringify(reg.exec("cd")),'["cd"]')
 }
 
 {
   let str = "😀";
   let regexp = /[😀]/;
-  print(JSON.stringify(str.replace(regexp,"b")));
+  assert_equal(JSON.stringify(str.replace(regexp,"b")),JSON.stringify("b\ude00"));
 }
 {
   let str = "😀";
   let regexp = /[😀]/g;
-  print(JSON.stringify(str.replace(regexp,"b")));
+  assert_equal(JSON.stringify(str.replace(regexp,"b")),JSON.stringify("bb"));
 }
 {
   let str = "😀";
   let regexp = /[😀]/u;
-  print(JSON.stringify(str.replace(regexp,"b")));
+  assert_equal(JSON.stringify(str.replace(regexp,"b")),JSON.stringify("b"));
 }
 {
   let str = "😀";
   let regexp = /[\😀]/;
-  print(JSON.stringify(str.replace(regexp,"b")));
+  assert_equal(JSON.stringify(str.replace(regexp,"b")),JSON.stringify("b\ude00"));
 }
 
 
 var reg = /[\x5d-\x7e]/i;
 var result = reg.test("a");
-print(result);
+assert_equal(result,true);
 
 var reg1 = new RegExp("^[-+]?([0-9]+)?(\\٫[0-9]{1,})?$");
 var result1 = reg1.test('0٫0000000000001');
-print(result1);
+assert_equal(result1,true);
 
 var reg2 = /^[Α-ώ]+$/i
-print(reg2.test('άέήίΰϊϋόύώ'));
+assert_equal(reg2.test('άέήίΰϊϋόύώ'),true);
 
-print(reg2.test('ΆΈΉΊΪΫΎΏ'));
+assert_equal(reg2.test('ΆΈΉΊΪΫΎΏ'),true);
 
-print(reg2.test('αβγδεζηθικλμνξοπρςστυφχψω'));
+assert_equal(reg2.test('αβγδεζηθικλμνξοπρςστυφχψω'),true);
 
-print(reg2.test('ΑΒΓΔΕΖΗΘΙΚΛΜΝΞΟΠΡΣΤΥΦΧΨΩ'));
+assert_equal(reg2.test('ΑΒΓΔΕΖΗΘΙΚΛΜΝΞΟΠΡΣΤΥΦΧΨΩ'),true);
 
 let reg3 =/^[A-Z0-9_\-]*$/i
-print(reg3.test(''))
+assert_equal(reg3.test(''),true)
 
 let reg4 =   new RegExp("^(?<urlStrIndex>.*?)(?<urlStr>https?[:：]//[^/]+/svn(?:/[a-z0-9.,;?'*:+&%$#=~_ \\u4E00-\\u9FA5-]*)*).*$", "i")
-print(reg4.test('a'));
+assert_equal(reg4.test('a'),false);
 
 let reg5 =   new RegExp("^(?<urlStrIndex>.*?)(?<urlStr>(?:(?:ht|f)tps?[:：]//)?(?:[a-z0-9-]+\\.)+" + "(?:com|edu|gov|mil|net|org|biz|info|name|museum|us|ca|uk|cn|cc|tw|de|au|sg|hk|ei|fr|me|im)(?![a-z])" + "(?:\\:[0-9][0-9]*)?(?:\\.?/[a-z0-9.,;?'\\|*:\\\\+&%$#=~_-]*)*).*$", "i")
-print(reg5.test('a'));
+assert_equal(reg5.test('a'),false);
 
 let reg6 =   new RegExp("^(?<urlStrIndex>.*?)(?<urlStr>(?:ht|f)tps?[:：]//(?:[a-z0-9-]+\\.)*[a-z0-9-]+(?:/[a-z0-9]+)*[/a-z0-9.,;?'\\|*:\\\\+&%$#=~_-]*).*$", "i")
-print(reg6.test('a'));
+assert_equal(reg6.test('a'),false);
 
 let reg7 =   new RegExp("^(?<urlStrIndex>.*?)(?<urlStr>(?:https?[:：]//)?(?:[a-z0-9-\\\\]+\\.)+" + "(?:com|edu|gov|mil|net|org|biz|info|name|museum|us|ca|uk|cn|cc|tw|de|au|sg|hk|ei|fr|me|im)(?![a-z])" + "(?:\\:\\d{4})?(?:/[a-z0-9.,;?'\\|*:\\\\+&%$#=~_-]*)*\\?(?:[a-z0-9]*=[a-z0-9.,;?'*:+%$#=~_\\u4E00-\\u9FA5-]*&?)*).*$", "i")
-print(reg7.test('a'));
+assert_equal(reg7.test('a'),false);
 
 let arr = []
 let temp = true
@@ -294,7 +294,7 @@ arr.forEach((item)=>{
     temp = false
   }
 })
-print(temp)
+assert_equal(temp,true)
 
 let arr1 = []
 let temp1 = false
@@ -315,30 +315,33 @@ arr1.forEach((item)=>{
     temp1 = true
   }
 })
-print(temp1)
+assert_equal(temp1,false)
 let str1 = 'SC52BAHL01031234567890123456USD'
-print(str1.replace(/[^A-Z0-9]+/gi, ''))
+assert_equal(str1.replace(/[^A-Z0-9]+/gi, ''),"SC52BAHL01031234567890123456USD")
 
 let reg50 = /^[ABCEGHJKLMNPRSTVXY]\d[ABCEGHJ-NPRSTV-Z][\s-]?\d[ABCEGHJ-NPRSTV-Z]\d$/i
 
 let regabc = /abc/g;
 let strabcd = "abcdabcdabcd";
+let exceptArr = [true,true,true,false,true,true,true,false,true,true]
+let resultArr = []
 for (let i = 0; i < 10; i++) {
   // cache is used in this case
-  print(regabc.test(strabcd));
+  resultArr.push(regabc.test(strabcd))
 }
+assert_equal(exceptArr,resultArr);
 
 let str2 = "aaaabbBbcccC";
 for (let i = 0; i < 2; i++) {
-  print(str2);
+  assert_equal(str2,'aaaabbBbcccC');
   let t1 = str2.replace(/([A-Z])/g, function(e) {
     return "_" + e;
   });
-  print(t1);
+  assert_equal(t1,'aaaabb_Bbccc_C');
   let t2 = str2.replace(/([A-Z])/g, "_$1");
-  print(t2);
-  print(t1.replace(/([a-z]+)/g, "_xy"));
-  print(t2.replace(/_/g, ""));
+  assert_equal(t2,'aaaabb_Bbccc_C');
+  assert_equal(t1.replace(/([a-z]+)/g, "_xy"),'_xy_B_xy_C');
+  assert_equal(t2.replace(/_/g, ""),'aaaabbBbcccC');
 }
 
 // regexp cache test
@@ -346,7 +349,7 @@ let mediaReg = "\([^\)]+\)\([^\)]+\)\([^\)]+\)\([^\)]+\)\([^\)]+\)\([^\)]+\)\([^
 let string = '(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s';
 const regex1 = new RegExp(mediaReg);
 let matchArray = string.match(regex1);
-print(matchArray);
+assert_equal(matchArray.toString(),'(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s,(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(s(,s,(,s,(,s,(,s,(,s,(,s,(,s,(,s');
 
 // Test regexp.test fastpath
 var protoExec = RegExp.prototype.exec
@@ -354,43 +357,43 @@ RegExp.prototype.exec = function () {
   return null
 }
 var reg = /a/
-print(reg.test("aaaaa"));
+assert_equal(reg.test("aaaaa"),false);
 
 delete RegExp.prototype.exec
-print(reg.test("aaaaa"));
+assert_equal(reg.test("aaaaa"),true);
 
 Object.prototype.exec = function () {
   return null
 }
-print(reg.test("aaaaa"));
+assert_equal(reg.test("aaaaa"),false);
 
 delete Object.prototype.exec
 RegExp.prototype.exec = protoExec
-print(reg.test("aaaaa"));
+assert_equal(reg.test("aaaaa"),true);
 
 var protoTest = RegExp.prototype.test
 RegExp.prototype.test = function () {
     return false
 }
 var reg2 = /foo*/
-print(reg2.test("fooooooo"));
+assert_equal(reg2.test("fooooooo"),false);
 
 RegExp.prototype.test = protoTest
-print(reg2.test("fooooooo"));
+assert_equal(reg2.test("fooooooo"),true);
 
 // Same hash in cached result, but different flags.
 var regexp1 = /a*/gs;
 var regexp2 = /a*/g;
 regexp2.lastIndex = 8;
-print(regexp1.exec('aaa'));
-print(regexp2.exec('aaa'));
+assert_equal(regexp1.exec('aaa').toString(),'aaa');
+assert_equal(regexp2.exec('aaa'),null);
 
 // Same hash in cached result, and same flags, but different lastIndex.
 var regexp3 = /a*/g;
 var regexp4 = /a*/g;
 regexp4.lastIndex = 1;
-print(regexp3.exec('aaabab'));
-print(regexp4.exec('aaabaa'));
+assert_equal(regexp3.exec('aaabab').toString(),'aaa');
+assert_equal(regexp4.exec('aaabaa').toString(),'aa');
 
 const v43 = /V[\d-\d]/ys;
 const o54 = {
@@ -398,8 +401,9 @@ const o54 = {
 };
 try {
     o54.test(Map);
-} catch (e) {
-    print(e)
+    assert_unreachable();
+} catch (error) {
+  assert_equal("Caught an error: "+ error.message, "Caught an error: this does not have [[RegExpMatcher]]");
 }
 
 // Testing regexp.prototype.replace after optimization
@@ -411,60 +415,62 @@ try {
 
   let replace_str = "abCdefgzabCdefgzabCdefgz";
   let replace_result = replace_str.replace(re1, "");
-  print(re1.lastIndex);
+  assert_equal(re1.lastIndex,0);
   let cached_reuslt = replace_str.replace(re1, "");
-  print(replace_result === cached_reuslt);
-  print(re1.lastIndex);
+  assert_equal(replace_result === cached_reuslt,true);
+  assert_equal(re1.lastIndex,0);
 
   replace_result = replace_str.replace(re2, "xyz");
-  print(re2.lastIndex);
+  assert_equal(re2.lastIndex,0);
   cached_reuslt = replace_str.replace(re2, "xyz");
-  print(replace_result === cached_reuslt);
-  print(re2.lastIndex);
+  assert_equal(replace_result === cached_reuslt,true);
+  assert_equal(re2.lastIndex,0);
 
   replace_result = replace_str.replace(re3, "x$1yz");
-  print(re3.lastIndex);
+  assert_equal(re3.lastIndex,0);
   cached_reuslt = replace_str.replace(re3, "x$1yz");
-  print(replace_result === cached_reuslt);
-  print(re3.lastIndex);
+  assert_equal(replace_result === cached_reuslt,true);
+  assert_equal(re3.lastIndex,0);
 
   replace_result = replace_str.replace(re4, String);
-  print(re4.lastIndex);
+  assert_equal(re4.lastIndex,0);
   cached_reuslt = replace_str.replace(re4, String);
-  print(replace_result === cached_reuslt);
-  print(re4.lastIndex);
+  assert_equal(replace_result === cached_reuslt,true);
+  assert_equal(re4.lastIndex,0);
 }
 
 // test RegExp.prototype.xx
-print(RegExp.prototype.dotAll)
-print(RegExp.prototype.global)
-print(RegExp.prototype.hasIndices)
-print(RegExp.prototype.ignoreCase)
-print(RegExp.prototype.multiline)
-print(RegExp.prototype.sticky)
-print(RegExp.prototype.unicode)
-print(RegExp.prototype.lastIndex)
-print(RegExp.prototype.flags)
-print(RegExp.prototype.source)
+assert_equal(RegExp.prototype.dotAll,undefined)
+assert_equal(RegExp.prototype.global,undefined)
+assert_equal(RegExp.prototype.hasIndices,undefined)
+assert_equal(RegExp.prototype.ignoreCase,undefined)
+assert_equal(RegExp.prototype.multiline,undefined)
+assert_equal(RegExp.prototype.sticky,undefined)
+assert_equal(RegExp.prototype.unicode,undefined)
+assert_equal(RegExp.prototype.lastIndex,undefined)
+assert_equal(RegExp.prototype.flags,"")
+assert_equal(RegExp.prototype.source,"(?:)")
 try {
     RegExp.prototype.test("abc")
-} catch (e) {
-    print(e.name)
+    assert_unreachable();
+} catch (error) {
+  assert_equal(error instanceof TypeError,true)
 }
 try {
     RegExp.prototype.exec("abc")
-} catch (e) {
-    print(e.name)
+    assert_unreachable();
+} catch (error) {
+  assert_equal(error instanceof TypeError,true)
 }
-print(RegExp.prototype.toString())
+assert_equal(RegExp.prototype.toString(),'/(?:)/')
 
 let inputString = "/vedio/av{avid}{cid}";
 let extractedContent = inputString.match(/\{([^{}]+)\}/g);
 let replacedString = inputString.replace(/\{([^{}]+)\}/g, '(uuu)').replace(/\//g, "\\/");
-print(replacedString);
+assert_equal(replacedString,'\\/vedio\\/av(uuu)(uuu)');
 
 let str = "beep boop   afff测试样本one1";
-print(str.split(/([{}:;,]|\s+)/));
+assert_equal(str.split(/([{}:;,]|\s+)/).toString(),'beep, ,boop,   ,afff测试样本one1');
 
 function verifyRegExp(text) {
   text = text.replace(new RegExp('[\\s]', 'g'), ' ');
@@ -477,9 +483,12 @@ function verifyRegExp(text) {
 const srcTextA = '<em>a</em>bcdefghijklmnopqrstuvwxyz<em>a</em>bcdefghijklmnopqrstuvwxyz<em>a</em>bcdefghijklmnopqrstuvwxyz<em>a</em>bcdefghijklmnopqrstuvwxyz'
 const srcTextAbcd = '<em>abcd</em>efghijklmnopqrstuvwxyz<em>abcd</em>efghijklmnopqrstuvwxyz<em>abcd</em>efghijklmnopqrstuvwxyz<em>abcd</em>efghijklmnopqrstuvwxyz'
 
-print(`verifyRegExp_1: ${verifyRegExp(srcTextA)}`);
-print(`verifyRegExp_2: ${verifyRegExp(srcTextAbcd)}`);
-print(`verifyRegExp_3: ${verifyRegExp(srcTextAbcd)}`);
+var s =`verifyRegExp_1: ${verifyRegExp(srcTextA)}`
+assert_equal(s,'verifyRegExp_1: ,bcdefghijklmnopqrstuvwxyz,bcdefghijklmnopqrstuvwxyz,bcdefghijklmnopqrstuvwxyz,bcdefghijklmnopqrstuvwxyz');
+var s =`verifyRegExp_2: ${verifyRegExp(srcTextAbcd)}`
+assert_equal(s,'verifyRegExp_2: ,efghijklmnopqrstuvwxyz,efghijklmnopqrstuvwxyz,efghijklmnopqrstuvwxyz,efghijklmnopqrstuvwxyz');
+var s = `verifyRegExp_3: ${verifyRegExp(srcTextAbcd)}`
+assert_equal(s,'verifyRegExp_3: ,efghijklmnopqrstuvwxyz,efghijklmnopqrstuvwxyz,efghijklmnopqrstuvwxyz,efghijklmnopqrstuvwxyz');
 
 //regexp unicode property
 const ans1 = /\p{Alphabetic}/u.test("æ");
@@ -492,71 +501,71 @@ const ans7 = /[^\P{Any}]+/u.test(456);
 const ans8 = /\p{Assigned}+/u.test("🄰🄱🄲");
 const ans9 = /[\p{P}\p{S}]/u.test("!");
 const ans10 = /\p{General_Category=Math_Symbol}/u.test("+");
-print(ans1);
-print(ans2);
-print(ans3);
-print(ans4);
-print(ans5);
-print(ans6);
-print(ans7);
-print(ans8);
-print(ans9);
-print(ans10);
+assert_equal(ans1,true);
+assert_equal(ans2,false);
+assert_equal(ans3,true);
+assert_equal(ans4,false);
+assert_equal(ans5,true);
+assert_equal(ans6,true);
+assert_equal(ans7,true);
+assert_equal(ans8,true);
+assert_equal(ans9,true);
+assert_equal(ans10,true);
 try {
   const ans11 = RegExp("/[\\p{}]/u");
-  print(ans11);
-} catch(e) {
-  print(e);
+  assert_unreachable();
+} catch(error) {
+  assert_equal(error instanceof SyntaxError, true);
 }
 const str3 = "a-b-c";
 const re = /-/y;
-print(str3.split(re));
+assert_equal(str3.split(re).toString(),'a,b,c');
 
 re.lastIndex = 1;
-print(str3.split(re));
+assert_equal(str3.split(re).toString(),'a,b,c');
 
 re.lastIndex = -1;
-print(str3.split(re));
+assert_equal(str3.split(re).toString(),'a,b,c');
 
 re.lastIndex = 3;
-print(str3.split(re));
+assert_equal(str3.split(re).toString(),'a,b,c');
 
-print(re.test(str3));
+assert_equal(re.test(str3),true);
 
-print(str3.split(/-/g));
+assert_equal(str3.split(/-/g).toString(),'a,b,c');
 
 // search
 const str4 = "abc";
 let re1 = /b/;
 re1.lastIndex = 2;
-print(str4.search(re1));
-print(str4.search(/b/y));
-print(str4.search(re1));
-print(re1.lastIndex);
+assert_equal(str4.search(re1),1);
+assert_equal(str4.search(/b/y),-1);
+assert_equal(str4.search(re1),1);
+assert_equal(re1.lastIndex,2);
 
 // check cache
 const str5 = "a-bc";
 let re2 = /-/;
 re2.lastIndex = 2;
-print(str5.split(re2));
-print(re2.lastIndex);
-print(str5.split(re2));
-print(re2.lastIndex);
+assert_equal(str5.split(re2).toString(),'a,bc');
+assert_equal(re2.lastIndex,2);
+assert_equal(str5.split(re2).toString(),'a,bc');
+assert_equal(re2.lastIndex,2);
 
 const str6 = "abcabc";
 let re3 = /abc/;
 re3.lastIndex = 2;
-print(str6.match(re3));
-print(re3.lastIndex);
-print(str6.match(re3));
-print(re3.lastIndex);
+assert_equal(str6.match(re3).toString(),'abc');
+assert_equal(re3.lastIndex,2);
+assert_equal(str6.match(re3).toString(),'abc');
+assert_equal(re3.lastIndex,2);
 
 let re4 = /abc/g;
 re4.lastIndex = 2;
-print(str6.match(re4));
-print(re4.lastIndex);
-print(str6.match(re4));
-print(re4.lastIndex);
+assert_equal(str6.match(re4).toString(),'abc,abc');
+assert_equal(re4.lastIndex,0);
+assert_equal(str6.match(re4).toString(),'abc,abc');
+assert_equal(re4.lastIndex,0);
 Object.defineProperty(RegExp.prototype, "global", {
   value: true
 })
@@ -564,17 +573,17 @@ var flags = RegExp.prototype.flags;
 Object.defineProperty(RegExp.prototype, "global", {
   value: false
 })
-print(flags);
-print(str6.match(re4));
-print(re4.lastIndex);
-print(str6.match(re4));
-print(re4.lastIndex);
+assert_equal(flags,"g");
+assert_equal(str6.match(re4).toString(),'abc');
+assert_equal(re4.lastIndex,3);
+assert_equal(str6.match(re4).toString(),'abc');
+assert_equal(re4.lastIndex,6);
 
 let myExp = new RegExp("a+b+c");
 Object.defineProperty(myExp, "sticky", {
     value: true
   })
-print(myExp.toString());
+assert_equal(myExp.toString(),'/a+b+c/y');
 
 // Testing regexp.prototype.replace after optimization
 {
@@ -585,41 +594,42 @@ print(myExp.toString());
 
   let replace_str = "abCdefgzabCdefgzabCdefgz";
   let replace_result = replace_str.replace(re1, "");
-  print(re1.lastIndex);
+  assert_equal(re1.lastIndex,0);
   let cached_reuslt = replace_str.replace(re1, "");
-  print(replace_result === cached_reuslt);
-  print(re1.lastIndex);
+  assert_equal(replace_result === cached_reuslt,true);
+  assert_equal(re1.lastIndex,0);
 
   replace_result = replace_str.replace(re2, "xyz");
-  print(re2.lastIndex);
+  assert_equal(re2.lastIndex,3);
   cached_reuslt = replace_str.replace(re2, "xyz");
-  print(replace_result === cached_reuslt);
-  print(re2.lastIndex);
+  assert_equal(replace_result === cached_reuslt,false);
+  assert_equal(re2.lastIndex,8);
 
   replace_result = replace_str.replace(re3, "x$1yz");
-  print(re3.lastIndex);
+  assert_equal(re3.lastIndex,0);
   cached_reuslt = replace_str.replace(re3, "x$1yz");
-  print(replace_result === cached_reuslt);
-  print(re3.lastIndex);
+  assert_equal(replace_result === cached_reuslt,true);
+  assert_equal(re3.lastIndex,0);
 
   replace_result = replace_str.replace(re4, String);
-  print(re4.lastIndex);
+  assert_equal(re4.lastIndex,3);
   cached_reuslt = replace_str.replace(re4, String);
-  print(replace_result === cached_reuslt);
-  print(re4.lastIndex);
+  assert_equal(replace_result === cached_reuslt,true);
+  assert_equal(re4.lastIndex,8);
 }
 
 const regex = /(?:)+/;
 const str10 = "abcabcabc";
 const matches = regex.test(str10);
-print(matches);
+assert_equal(matches,true);
 const matches1 = regex.exec(str10);
-print(matches1);
+assert_equal(matches1.toString(),"");
 
 try {
   let matchReg = new RegExp("@【哈哈】*^o^*|@小米（kk）",'g');
+  assert_unreachable();
 } catch (error) {
-  print(error)
+  assert_equal("Caught an error: "+ error.message, "Caught an error: nothing to repeat");
 }
 
 let e = /./;
@@ -633,7 +643,7 @@ delete e.exec;
   const v0 = /qeu(?<a>.)\k<a>(x)(x)(x)\1*xyz{93}/ugysd;
   const v4 = typeof Date === "string";
   v0[Symbol.match] = v4;
-  print(v0["exec"]());
+  assert_equal(v0["exec"](),null);
 }
 
 {
@@ -641,14 +651,14 @@ delete e.exec;
   const o4 = {
     ...RegExp,
   };
-  print(o4);
+  assert_equal(o4.toString(),"[object Object]");
 }
 
 {
   const v2 = /e\8Z(x)(x)(x)(x)(x)(x)(x)(x)(x)(x)\10*/misd;
   v2[1073741824] = -194290175n;
   for (let v3 = 0; v3 < 2; v3++) {
-    print(v2.test(-194290175n));
+    assert_equal(v2.test(-194290175n),false);
   }
 }
 
@@ -659,24 +669,25 @@ let reg51 = new RegExp("a");
 f.exec = f;
 let relpfun = reg51[Symbol.replace];
 relpfun.apply(f, [1, 2, 3, 4]);
-print("success");
+var s = "success"
+assert_equal(s,"success");
 
 {
   let str = /^\s*([^;\s]*)/;
   str.test("text/html");
-  print(RegExp.$1);
+  assert_equal(RegExp.$1,'text/html');
   str.test("text/plain");
-  print(RegExp.$1);
+  assert_equal(RegExp.$1,'text/plain');
   str.test("text/html");
-  print(RegExp.$1);
+  assert_equal(RegExp.$1,'text/html');
 }
 
 {
   let reg52 = /abc/;
   let count = 0;
-  print(reg52.ignoreCase);
-  print(reg52.global);
-  print(reg52.flags);
+  assert_equal(reg52.ignoreCase,false);
+  assert_equal(reg52.global,false);
+  assert_equal(reg52.flags,"");
   Object.defineProperty(reg52, "global", {
     get: function() { count++; return true; }
   });
@@ -684,12 +695,12 @@ print("success");
     get: function() { count++; return true; }
   });
 
-  print(reg52.ignoreCase);
-  print(count);
-  print(reg52.global);
-  print(count);
-  print(reg52.flags);
-  print(count);
+  assert_equal(reg52.ignoreCase,true);
+  assert_equal(count,1);
+  assert_equal(reg52.global,true);
+  assert_equal(count,2);
+  assert_equal(reg52.flags,"gi");
+  assert_equal(count,4);
 }
 
 // The above test case in false environment did not reset the environment
@@ -699,15 +710,15 @@ Object.defineProperty(RegExp.prototype, "global", {
 string = 'aaa\n789\r\nccc\r\n345';
 var pattern = /\d$/gm;
 result = string.match(pattern);
-print(2 == result.length);
-print('9' == result[0]);
-print('5' == result[1]);
+assert_equal(2 == result.length,true);
+assert_equal('9' == result[0],true);
+assert_equal('5' == result[1],true);
 
 string = 'aaa\n789\r\nccc\r\nddd';
 pattern = /\d$/gm;
 result = string.match(pattern);
-print(1 == result.length);
-print('9' == result[0]);
+assert_equal(1 == result.length,true);
+assert_equal('9' == result[0],true);
 
 // test getFlags
 Object.defineProperty(RegExp.prototype, "global", {
@@ -715,116 +726,116 @@ Object.defineProperty(RegExp.prototype, "global", {
 })
 const res = /abc/giymsud;
 res.lastIndex = -1;
-print(res.flags);
+assert_equal(res.flags,'dgimsuy');
 const res1 = /abc/g;
 res1.lastIndex = -1;
-print(res1.flags);
+assert_equal(res1.flags,'g');
 const res2 = /abc/i;
 res2.lastIndex = -1;
-print(res2.flags);
+assert_equal(res2.flags,'gi');
 const res3 = /abc/y;
 res3.lastIndex = -1;
-print(res3.flags);
+assert_equal(res3.flags,'gy');
 const res4 = /abc/m;
 res4.lastIndex = -1;
-print(res4.flags);
+assert_equal(res4.flags,'gm');
 const res5 = /abc/s;
 res5.lastIndex = -1;
-print(res5.flags);
+assert_equal(res5.flags,'gs');
 const res6 = /abc/u;
 res6.lastIndex = -1;
-print(res6.flags);
+assert_equal(res6.flags,'gu');
 const res7 = /abc/d;
 res7.lastIndex = -1;
-print(res7.flags);
+assert_equal(res7.flags,'dg');
 const res8 = /abc/;
 res8.lastIndex = -1;
-print(res8.flags);
+assert_equal(res8.flags,'g');
 
 {
   let str = "<style>test</style>"
   let reg = new RegExp("/");
-  print(reg.source,JSON.stringify(reg.exec(str)));
+  assert_equal(reg.source + ' ' + JSON.stringify(reg.exec(str)), '\\/ ["/"]');
   
   reg = new RegExp("\/[a-z]*>");
-  print(reg.source,JSON.stringify(reg.exec(str)));
+  assert_equal(reg.source + ' ' + JSON.stringify(reg.exec(str)),'\\/[a-z]*> ["/style>"]');
   
   reg = new RegExp("\\/[a-z]*>");
-  print(reg.source,JSON.stringify(reg.exec(str)));
+  assert_equal(reg.source + ' ' + JSON.stringify(reg.exec(str)),'\\/[a-z]*> ["/style>"]');
 
   reg = new RegExp("\\\/[a-z]*>");
-  print(reg.source,JSON.stringify(reg.exec(str)));
+  assert_equal(reg.source + ' ' + JSON.stringify(reg.exec(str)),'\\/[a-z]*> ["/style>"]');
 
   str="<style>test<\\\\/style>"
   reg = new RegExp("\\\\/[a-z]*>");
-  print(reg.source,JSON.stringify(reg.exec(str)));
+  assert_equal(reg.source + ' ' + JSON.stringify(reg.exec(str)),'\\\\\\/[a-z]*> ["\\\\/style>"]');
   
   reg = new RegExp("\\\\\/[a-z]*>");
-  print(reg.source,JSON.stringify(reg.exec(str)));
+  assert_equal(reg.source + ' ' +  JSON.stringify(reg.exec(str)),'\\\\\\/[a-z]*> ["\\\\/style>"]');
   
   reg = new RegExp("\\\\\\/[a-z]*>");
-  print(reg.source,JSON.stringify(reg.exec(str)));
+  assert_equal(reg.source + ' ' +  JSON.stringify(reg.exec(str)),'\\\\\\/[a-z]*> ["\\\\/style>"]');
 
   reg = new RegExp("\\\\\\\/[a-z]*>");
-  print(reg.source,JSON.stringify(reg.exec(str)));
+  assert_equal(reg.source + ' ' +  JSON.stringify(reg.exec(str)),'\\\\\\/[a-z]*> ["\\\\/style>"]');
 }
 {
   let str="\\\\\\\\[aaa"
   try {
     let pattern="[";
     let reg = new RegExp(pattern);
-    print(pattern,JSON.stringify(reg.exec(str)))
-  } catch (e) {
-    print(e.name);
+    assert_unreachable();
+  } catch (error) {
+    assert_equal(error instanceof SyntaxError,true);
   }
   try {
     let pattern="\[";
     let reg = new RegExp(pattern);
-    print(pattern,JSON.stringify(reg.exec(str)))
-  } catch (e) {
-    print(e.name);
+    assert_unreachable();
+  } catch (error) {
+    assert_equal(error instanceof SyntaxError,true);
   }
   try {
     let pattern="\\[";
     let reg = new RegExp(pattern);
-    print(pattern,JSON.stringify(reg.exec(str)))
-  } catch (e) {
-    print(e.name);
+    assert_equal(pattern+" "+JSON.stringify(reg.exec(str)),'\\[ ["["]')
+  } catch (error) {
+    assert_unreachable();
   }
   try {
     let pattern="\\\[";
     let reg = new RegExp(pattern);
-    print(pattern,JSON.stringify(reg.exec(str)))
-  } catch (e) {
-    print(e.name);
+    assert_equal(pattern+" "+JSON.stringify(reg.exec(str)),'\\[ ["["]')
+  } catch (error) {
+    assert_unreachable();
   }
   try {
     let pattern="\\\\[";
     let reg = new RegExp(pattern);
-    print(pattern,JSON.stringify(reg.exec(str)))
-  } catch (e) {
-    print(e.name);
+    assert_unreachable();
+  } catch (error) {
+    assert_equal(error instanceof SyntaxError,true);
   }
   try {
     let pattern="\\\\\[";
     let reg = new RegExp(pattern);
-    print(pattern,JSON.stringify(reg.exec(str)))
-  } catch (e) {
-    print(e.name);
+    assert_unreachable();
+  } catch (error) {
+    assert_equal(error instanceof SyntaxError,true);
   }
   try {
     let pattern="\\\\\\[";
     let reg = new RegExp(pattern);
-    print(pattern,JSON.stringify(reg.exec(str)))
-  } catch (e) {
-    print(e.name);
+    assert_equal(pattern+" "+JSON.stringify(reg.exec(str)),'\\\\\\[ ["\\\\["]')
+  } catch (error) {
+    assert_unreachable();
   }
   try {
     let pattern="\\\\\\\[";
     let reg = new RegExp(pattern);
-    print(pattern,JSON.stringify(reg.exec(str)))
-  } catch (e) {
-    print(e.name);
+    assert_equal(pattern+" "+JSON.stringify(reg.exec(str)),'\\\\\\[ ["\\\\["]')
+  } catch (error) {
+    assert_unreachable();
   }
 }
 
@@ -858,39 +869,39 @@ print(res8.flags);
     result = re[Symbol.replace](str1, String);
   }
   String1Replace(re1);
-  print(result);
+  assert_equal(result,"ab.defgzabCdefgzabCdefgzabCdefgzabCdefgzabCdefgzabCdefgzabCdefgz");
   String1Replace(re2);
-  print(result);
+  assert_equal(result,"ab.defgzabCdefgzabCdefgzabCdefgzabCdefgzabCdefgzabCdefgzabCdefgz");
   String2Replace(re2);
-  print(result);
+  assert_equal(result,"abCdefgxyzabCdefgzabCdefgzabCdefgzabCdefgzabCdefgzabCdefgzabCdefgz");
   String2Replace(re1);
-  print(result);
+  assert_equal(result,"abxyzdefgzabCdefgzabCdefgzabCdefgzabCdefgzabCdefgzabCdefgzabCdefgz");
   String3Replace(re3);
-  print(result);
+  assert_equal(result,"abxCyzdefgzabCdefgzabCdefgzabCdefgzabCdefgzabCdefgzabCdefgzabCdefgz");
   String3Replace(re4);
-  print(result);
+  assert_equal(result,"abxCyzdefgzabCdefgzabCdefgzabCdefgzabCdefgzabCdefgzabCdefgzabCdefgz");
   Function1Replace(re3);
-  print(result);
+  assert_equal(result,"abCdefgzabCdefgzabCdefgzabCdefgzabCdefgzabCdefgzabCdefgzabCdefgz");
   Function1Replace(re4);
-  print(result);
+  assert_equal(result,"abCdefgzabCdefgzabCdefgzabCdefgzabCdefgzabCdefgzabCdefgzabCdefgz");
 
   // subStringIsUtf8 branch canbecompressed
   str1 = 'utf83c这要替换"!';
   let regexp = /([0-9])([a-z])/g
   let newStr1 = str1.replace(regexp, "$1" );
-  print(newStr1);
+  assert_equal(newStr1,'utf83这要替换"!');
 
   // subStringIsUtf8 branch length=0;
   str1 = '3c这要替换"!';
   regexp = /([0-9])([a-z])/g
   newStr1 = str1.replace(regexp, "$1" );
-  print(newStr1);
+  assert_equal(newStr1,'3这要替换"!');
 
   // subStringIsUtf8 branch src isUtf8;
   str1 = 'abcdefg3chigk"!';
   regexp = /([0-9])([a-z])/g
   newStr1 = str1.replace(regexp, "$1" );
-  print(newStr1);
+  assert_equal(newStr1,'abcdefg3higk"!');
 }
 
 {
@@ -899,12 +910,12 @@ print(res8.flags);
   let reg = new RegExp(s1.repeat(10000));
   let str = s1.repeat(10000);
   let res = str.replace(reg, s2);
-  print(res == s2);
+  assert_equal(res == s2, true);
 
   reg = new RegExp(s2.repeat(10000));
   str = s2.repeat(10000);
   res = str.replace(reg, s1);
-  print(res == s1);
+  assert_equal(res == s1, true);
 }
 
 // This case aims to check overflow of error message while parsing regular expression
@@ -914,7 +925,10 @@ print(res8.flags);
   let pattern = patternPart1 + patternPart2;
   try {
     let r = new RegExp(pattern);
+    assert_unreachable();
   } catch (e) {
-    print(e);
+    assert_equal(e instanceof SyntaxError, true);
   }
 }
+
+test_end();

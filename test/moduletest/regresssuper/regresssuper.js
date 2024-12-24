@@ -22,30 +22,34 @@
 
   let a = new A();
   (new A).s.call(a);
-  print(10 == a.bla);
+  assert_equal(10 == a.bla, true);
 
   try {
     (new A).s.call(undefined);
+    assert_unreachable();
   } catch (error) {
-    print(error instanceof TypeError);
+    assert_equal(error instanceof TypeError, true);
   }
   
   try {
     (new A).s.call(42);
+    assert_unreachable();
   } catch (error) {
-    print(error instanceof TypeError);
+    assert_equal(error instanceof TypeError, true);
   }
 
   try {
     (new A).s.call(null);
+    assert_unreachable();
   } catch (error) {
-    print(error instanceof TypeError);
+    assert_equal(error instanceof TypeError, true);
   }
   
   try {
     (new A).s.call("abc");
+    assert_unreachable();
   } catch (error) {
-    print(error instanceof TypeError);
+    assert_equal(error instanceof TypeError, true);
   }
   
 })();
@@ -60,32 +64,34 @@
   };
 
   let a = new A();
-  print(undefined == (new A).s.call(a));
-  print(undefined == (new A).s.call(undefined));
-  print(undefined == (new A).s.call(42));
-  print(undefined == (new A).s.call(null));
-  print(undefined == (new A).s.call("abc"));
+  assert_equal(undefined == (new A).s.call(a), true);
+  assert_equal(undefined == (new A).s.call(undefined), true);
+  assert_equal(undefined == (new A).s.call(42), true);
+  assert_equal(undefined == (new A).s.call(null), true);
+  assert_equal(undefined == (new A).s.call("abc"), true);
 })();
 
 class TestA {
   constructor() {
-      print("TestA", this.constructor.name, new.target.name);
+    assert_equal("TestA "+this.constructor.name+" "+new.target.name, 'TestA TestC TestC');
   }
 }
 class TestB extends TestA {
   constructor() {
       super();
-      print("TestB", this.constructor.name, new.target.name);
+      assert_equal("TestB "+this.constructor.name+" "+new.target.name, 'TestB TestC TestC');
       this.test();
   }
 }
 class TestC {
   constructor() {
-      print("TestC", this.constructor.name, new.target.name);
+      ("TestC", this.constructor.name, new.target.name);
   }
   test() {
-      print("TestC");
+      assert_equal("TestC", 'TestC');
   }
 }
 let c1 = Reflect.construct(TestB, [], TestC.prototype.constructor);
 let c2 = Reflect.construct(TestB, [], c1.constructor);
+
+test_end();

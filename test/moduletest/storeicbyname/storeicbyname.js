@@ -27,12 +27,11 @@ for (let i = 0; i < 200; i++) {
 for (let i = 0; i < 100; i++) {
     arr.length = 1025;
 }
-print("test successful !!!");
+
 for (let i = 0; i < 100; i++) {
     const v77 = {};
     v77.__proto__ = null;
 }
-print("test set __proto__ null successful")
 
 let bad_proto = {
     get __proto__(){
@@ -41,7 +40,6 @@ let bad_proto = {
 }
 let obj = {};
 obj.__proto__ = bad_proto;
-print("test set bad_proto successful!");
 
 let obj1 = {};
 Object.defineProperty(obj1, 'foo', {
@@ -61,7 +59,6 @@ obj.foo = 'some value';
 for (let i = 0; i < 20; i++) {
     obj.bar = 'new value';
 }
-print("test accessor ic successful!");
 
 {
     let o = {};
@@ -92,5 +89,6 @@ print("test accessor ic successful!");
             } catch(e) {}
         }
     }
-    print("test store_ic_by_name success");
 }
+
+test_end();

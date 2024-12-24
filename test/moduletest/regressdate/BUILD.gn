@@ -13,6 +13,6 @@
 
 import("//arkcompiler/ets_runtime/test/test_helper.gni")
 
-host_moduletest_action("regressdate") {
+host_moduletest_assert_action("regressdate") {
   deps = []
 }

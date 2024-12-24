@@ -25,24 +25,53 @@ const typedArrayFindConstructors = [
     Uint8ClampedArray
 ];
 
+const typedArrayFindConstructorsAssertSuccessList = [
+	"Float64Array",
+	"Float32Array",
+	"Int32Array",
+	"Int16Array",
+	"Int8Array",
+	"Uint32Array",
+	"Uint16Array",
+	"Uint8Array",
+	"Uint8ClampedArray"
+	];
+const typedArrayFindConstructorsAssertFailList = [];
+let typedArrayFindConstructorsSuccessList = [];
+let typedArrayFindConstructorsFailList = [];
+
 typedArrayFindConstructors.forEach(function (ctor, i) {
     if (testTypeArrayAt1(ctor)) {
-        print(ctor.name + " test success !!!");
+        typedArrayFindConstructorsSuccessList.push(ctor.name);
     } else {
-        print(ctor.name + " test fail !!!");
+        typedArrayFindConstructorsFailList.push(ctor.name);
     }
 });
+
+assert_equal(typedArrayFindConstructorsSuccessList, typedArrayFindConstructorsAssertSuccessList);
+assert_equal(typedArrayFindConstructorsFailList, typedArrayFindConstructorsAssertFailList);
+
+const testTypeArrayAt2SuccessList = [
+	"BigInt64Array",
+	"BigUint64Array"
+	];
+const testTypeArrayAt2AssertFailList = [];
+let testTypeArrayAt2SuccessList = [];
+let testTypeArrayAt2FailList = [];
 
 [
     BigInt64Array,
     BigUint64Array
 ].forEach(function (ctor, i) {
     if (testTypeArrayAt2(ctor)) {
-        print(ctor.name + " test success !!!");
+        testTypeArrayAt2SuccessList.push(ctor.name);
     } else {
-        print(ctor.name + " test fail !!!");
+        testTypeArrayAt2FailList.push(ctor.name);
     }
 });
+
+assert_equal(testTypeArrayAt2SuccessList, testTypeArrayAt2AssertSuccessList);
+assert_equal(testTypeArrayAt2FailList, testTypeArrayAt2AssertFailList);
 
 function testTypeArrayAt1(ctor) {
     let result = [];
@@ -103,3 +132,5 @@ function testTypeArrayAt2(ctor) {
     }
     return true;
 }
+
+test_end();

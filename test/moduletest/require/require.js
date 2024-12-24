@@ -25,6 +25,7 @@ var index = require('.');
 var strB = JSON.stringify(b);
 var strC = JSON.stringify(c);
 var strIndex = JSON.stringify(index);
-print(strB + " and " + strC);
-print(strIndex);
+assert_equal(strB + " and " + strC, '{"b":"objB_mes"} and {"c":"objC_mes"}');
+assert_equal(strIndex, '{"index":"index loading..."}');
 
+test_end();

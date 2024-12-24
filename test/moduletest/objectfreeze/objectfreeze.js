@@ -19,10 +19,10 @@ let l = {
     return 1;
   },
 };
-a.length = l;
-print(a.length);
+assert_equal(a.length,1);
 
 function f1() { }
 Object.defineProperty(this, "han", { configurable: true, get: f1 });
 Object.freeze(this);
-print("test successful");
+
+test_end();
