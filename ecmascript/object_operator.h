@@ -109,22 +109,20 @@ public:
         return key_.IsEmpty();
     }
 
-    inline bool GetThroughElement() const
+    inline bool CheckValidIndexOrKeyIsLength() const
     {
-        uint32_t len = EcmaStringAccessor(holder_->GetTaggedObject()).GetLength();
-        bool flag = elementIndex_ < len;
-        return key_.IsEmpty() && flag;
-    }
-
-    inline bool GetStringLength() const
-    {
-        JSTaggedValue lenKey = thread_->GlobalConstants()->GetLengthString();
-        if (GetKey()->IsUndefined() || !GetKey()->IsString()) {
-            return false;
+        // if property key is element, check element index < strLength
+        if (key_.IsEmpty()) {
+            uint32_t len = EcmaStringAccessor(holder_->GetTaggedObject()).GetLength();
+            return elementIndex_ < len;
         }
-        EcmaString *proKey = EcmaString::Cast(GetKey()->GetTaggedObject());
-        return receiver_->IsString() && EcmaStringAccessor::StringsAreEqual(proKey,
-            EcmaString::Cast(lenKey.GetTaggedObject()));
+        // if property key is string, check key is 'length' of str
+        if (key_->IsString() && receiver_->IsString()) {
+            JSTaggedValue lenKey = thread_->GlobalConstants()->GetLengthString();
+            EcmaString *proKey = EcmaString::Cast(key_->GetTaggedObject());
+            return EcmaStringAccessor::StringsAreEqual(proKey, EcmaString::Cast(lenKey.GetTaggedObject()));
+        }
+        return false;
     }
 
     inline bool IsOnPrototype() const
@@ -294,7 +292,11 @@ public:
     inline void ReLookupPropertyInReceiver()
     {
         ResetState();
-        return LookupPropertyInlinedProps(JSHandle<JSObject>(receiver_));
+        if (IsElement()) {
+            LookupElementInlinedProps(JSHandle<JSObject>(receiver_));
+        } else {
+            LookupPropertyInlinedProps(JSHandle<JSObject>(receiver_));
+        }
     }
     inline void SetAsDefaultAttr()
     {
@@ -342,13 +344,17 @@ private:
     inline void LookupPropertyInHolder()
     {
         JSHandle<JSObject> obj(holder_);
-        LookupPropertyInlinedProps(obj);
+        IsElement()
+            ? LookupElementInlinedProps(obj)
+            : LookupPropertyInlinedProps(obj);
     }
     inline void GlobalLookupPropertyInHolder()
     {
         JSHandle<JSObject> obj(holder_);
         LookupGlobal(obj);
     }
+    template<bool isElement> bool ShouldContinuelyLookupInProtoChain();
+    template<bool isElement> void TryLookupInProtoChain();
     void LookupGlobal(const JSHandle<JSObject> &obj);
     void LookupPropertyInlinedProps(const JSHandle<JSObject> &obj);
     void LookupElementInlinedProps(const JSHandle<JSObject> &obj);
@@ -358,6 +364,7 @@ private:
     bool UpdateValueAndDetails(const JSHandle<JSObject> &receiver, const JSHandle<JSTaggedValue> &value,
                                PropertyAttributes attr, bool attrChanged);
     void TransitionForAttributeChanged(const JSHandle<JSObject> &receiver, PropertyAttributes attr);
+    bool SetTypedArrayPropByIndex(const JSHandle<JSObject> &receiver, const JSHandle<JSTaggedValue> &value);
     JSThread *thread_{nullptr};
     JSMutableHandle<JSTaggedValue> value_{};
     JSMutableHandle<JSTaggedValue> holder_{};

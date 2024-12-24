@@ -104,6 +104,7 @@ group("ark_js_moduletest") {
     "helloworld",
     "instanceofic",
     "intl",
+    "isin",
     "jsonparser",
     "jsonstringifier",
     "ldmodulensbyic",

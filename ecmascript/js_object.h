@@ -649,6 +649,7 @@ public:
     bool IsElementDict() const;
     bool IsPropertiesDict() const;
     bool IsTypedArray() const;
+    bool IsSharedTypedArray() const;
     bool PUBLIC_API ElementsAndPropertiesIsEmpty() const;
 
     static PUBLIC_API void DefinePropertyByLiteral(JSThread *thread, const JSHandle<JSObject> &obj,
@@ -788,6 +789,8 @@ private:
 
     static bool HasMutantTaggedArrayElements(const JSHandle<JSObject> &obj);
     PropertyBox* GetGlobalPropertyBox(JSTaggedValue key);
+    static bool CheckAndUpdateArrayLength(JSThread *thread, const JSHandle<JSObject> &receiver,
+                                          uint32_t index, ElementsKind &kind);
     static bool PUBLIC_API AddElementInternal(
         JSThread *thread, const JSHandle<JSObject> &receiver, uint32_t index, const JSHandle<JSTaggedValue> &value,
         PropertyAttributes attr = PropertyAttributes(PropertyAttributes::GetDefaultAttributes()));

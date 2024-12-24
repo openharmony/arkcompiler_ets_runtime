@@ -374,11 +374,15 @@ bool JSObject::IsArrayLengthWritable(JSThread *thread, const JSHandle<JSObject> 
     return op.GetAttr().IsWritable();
 }
 
-bool JSObject::AddElementInternal(JSThread *thread, const JSHandle<JSObject> &receiver,
-                                  uint32_t index, const JSHandle<JSTaggedValue> &value,
-                                  PropertyAttributes attr)
+bool JSObject::CheckAndUpdateArrayLength(JSThread *thread, const JSHandle<JSObject> &receiver,
+                                         uint32_t index, ElementsKind &kind)
 {
-    ElementsKind kind = ElementsKind::NONE;
+    if (receiver->IsTypedArray() || receiver->IsSharedTypedArray()) {
+        if (!JSTypedArray::IsValidIntegerIndex(JSHandle<JSTaggedValue>(receiver), index)) {
+            return false;
+        }
+        return true;
+    }
     if (receiver->IsJSArray()) {
         DISALLOW_GARBAGE_COLLECTION;
         JSArray *arr = JSArray::Cast(*receiver);
@@ -392,6 +396,7 @@ bool JSObject::AddElementInternal(JSThread *thread, const JSHandle<JSObject> &re
                 kind = ElementsKind::HOLE;
             }
         }
+        return true;
     }
     if (receiver->IsJSSArray()) {
         uint32_t oldLength = JSSharedArray::Cast(*receiver)->GetArrayLength();
@@ -402,7 +407,20 @@ bool JSObject::AddElementInternal(JSThread *thread, const JSHandle<JSObject> &re
                 kind = ElementsKind::HOLE;
             }
         }
+        return true;
     }
+    return true;
+}
+
+bool JSObject::AddElementInternal(JSThread *thread, const JSHandle<JSObject> &receiver,
+                                  uint32_t index, const JSHandle<JSTaggedValue> &value,
+                                  PropertyAttributes attr)
+{
+    ElementsKind kind = ElementsKind::NONE;
+    if (!CheckAndUpdateArrayLength(thread, receiver, index, kind)) {
+        return false;
+    }
+
     thread->NotifyArrayPrototypeChangedGuardians(receiver);
 
     // check whether to convert to dictionary
