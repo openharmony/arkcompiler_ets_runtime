@@ -37,9 +37,7 @@ void JitCompiler::UpdatePassOptions(CompilationEnv *env)
 {
     EcmaVM *vm = env->GetHostThread()->GetEcmaVM();
     bool builtinsLazyEnabled = vm->GetJSOptions().IsWorker() && vm->GetJSOptions().GetEnableBuiltinsLazy();
-    if (builtinsLazyEnabled) {
-        passOptions_.SetLoweringBuiltin(false);
-    }
+    passOptions_.SetLoweringBuiltin(!builtinsLazyEnabled);
 }
 
 JitCompilationOptions::JitCompilationOptions(JSRuntimeOptions runtimeOptions)
