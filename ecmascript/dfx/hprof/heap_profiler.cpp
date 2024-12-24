@@ -31,6 +31,7 @@
 #include "ecmascript/base/block_hook_scope.h"
 #include "ecmascript/dfx/hprof/heap_root_visitor.h"
 #include "ecmascript/mem/object_xray.h"
+#include "ecmascript/platform/backtrace.h"
 
 #if defined(ENABLE_DUMP_IN_FAULTLOG)
 #include "faultloggerd_client.h"
@@ -1227,5 +1228,114 @@ const struct SamplingInfo *HeapProfiler::GetAllocationProfile()
         return nullptr;
     }
     return heapSampling_->GetAllocationProfile();
+}
+
+bool HeapProfiler::IsStartLocalHandleLeakDetect() const
+{
+    return startLocalHandleLeakDetect_;
+}
+
+void HeapProfiler::SwitchStartLocalHandleLeakDetect()
+{
+    startLocalHandleLeakDetect_ = !startLocalHandleLeakDetect_;
+}
+
+void HeapProfiler::IncreaseScopeCount()
+{
+    ++scopeCount_;
+}
+
+void HeapProfiler::DecreaseScopeCount()
+{
+    --scopeCount_;
+}
+
+uint32_t HeapProfiler::GetScopeCount() const
+{
+    return scopeCount_;
+}
+
+void HeapProfiler::PushToActiveScopeStack(LocalScope *localScope, EcmaHandleScope *ecmaHandleScope)
+{
+    activeScopeStack_.emplace(std::make_shared<ScopeWrapper>(localScope, ecmaHandleScope));
+}
+
+void HeapProfiler::PopFromActiveScopeStack()
+{
+    if (!activeScopeStack_.empty()) {
+        activeScopeStack_.pop();
+    }
+}
+
+std::shared_ptr<ScopeWrapper> HeapProfiler::GetLastActiveScope() const
+{
+    if (!activeScopeStack_.empty()) {
+        return activeScopeStack_.top();
+    }
+    return nullptr;
+}
+
+void HeapProfiler::ClearHandleBackTrace()
+{
+    handleBackTrace_.clear();
+}
+
+std::string_view HeapProfiler::GetBackTraceOfHandle(const uintptr_t handle) const
+{
+    const auto it = handleBackTrace_.find(handle);
+    if (it != handleBackTrace_.end()) {
+        return std::string_view(it->second);
+    }
+    return "";
+}
+
+bool HeapProfiler::InsertHandleBackTrace(uintptr_t handle, const std::string &backTrace)
+{
+    auto [iter, inserted] = handleBackTrace_.emplace(handle, backTrace);
+    return inserted;
+}
+
+void HeapProfiler::WriteToLeakStackTraceFd(std::ostringstream &buffer) const
+{
+    if (leakStackTraceFd_ < 0) {
+        return;
+    }
+    buffer << std::endl;
+    DPrintf(reinterpret_cast<fd_t>(leakStackTraceFd_), buffer.str());
+    buffer.str("");
+}
+
+void HeapProfiler::SetLeakStackTraceFd(const int32_t fd)
+{
+    leakStackTraceFd_ = fd;
+}
+
+int32_t HeapProfiler::GetLeakStackTraceFd() const
+{
+    return leakStackTraceFd_;
+}
+
+void HeapProfiler::CloseLeakStackTraceFd()
+{
+    if (leakStackTraceFd_ != -1) {
+        FSync(reinterpret_cast<fd_t>(leakStackTraceFd_));
+        Close(reinterpret_cast<fd_t>(leakStackTraceFd_));
+        leakStackTraceFd_ = -1;
+    }
+}
+
+void HeapProfiler::StorePotentiallyLeakHandles(const uintptr_t handle)
+{
+    bool isDetectedByScopeCount { GetScopeCount() <= 1 };
+    bool isDetectedByScopeTime { false };
+    if (auto lastScope = GetLastActiveScope()) {
+        auto timeSinceLastScopeCreate = lastScope->clockScope_.TotalSpentTime();
+        isDetectedByScopeTime = timeSinceLastScopeCreate >= LOCAL_HANDLE_LEAK_TIME_MS;
+    }
+    if (isDetectedByScopeCount || isDetectedByScopeTime) {
+        std::ostringstream stack;
+        Backtrace(stack, true);
+        InsertHandleBackTrace(handle, stack.str());
+    }
 }
 }  // namespace panda::ecmascript

@@ -188,10 +188,6 @@ EcmaContext::~EcmaContext()
     }
     handleStorageNodes_.clear();
     currentHandleStorageIndex_ = -1;
-#ifdef ECMASCRIPT_ENABLE_HANDLE_LEAK_CHECK
-    handleScopeCount_ = 0;
-    primitiveScopeCount_ = 0;
-#endif
     handleScopeStorageNext_ = handleScopeStorageEnd_ = nullptr;
 
     for (auto n : primitiveStorageNodes_) {

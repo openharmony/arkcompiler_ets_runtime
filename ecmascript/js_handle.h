@@ -21,6 +21,7 @@
 #include "ecmascript/ecma_handle_scope.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/mem/assert_scope.h"
+#include "ecmascript/js_thread.h"
 
 /*
  * JSHandle: A JSHandle provides a reference to an object that survives relocation by the garbage collector.
@@ -83,7 +84,7 @@ public:
 
     JSHandle(const JSThread *thread, JSTaggedValue value)
     {
-        address_ = EcmaHandleScope::NewHandle(const_cast<JSThread *>(thread), value.GetRawData());
+        address_ = thread->NewHandle(value.GetRawData());
     }
 
     JSHandle(const JSThread *thread, JSTaggedValue value, bool isPrimitive)
@@ -93,12 +94,12 @@ public:
                 const_cast<JSThread *>(thread), value.GetRawData());
             return;
         }
-        address_ = EcmaHandleScope::NewHandle(const_cast<JSThread *>(thread), value.GetRawData());
+        address_ = thread->NewHandle(value.GetRawData());
     }
 
     JSHandle(const JSThread *thread, const TaggedObject *value)
     {
-        address_ = EcmaHandleScope::NewHandle(const_cast<JSThread *>(thread), JSTaggedValue(value).GetRawData());
+        address_ = thread->NewHandle(JSTaggedValue(value).GetRawData());
     }
 
     inline uintptr_t GetAddress() const

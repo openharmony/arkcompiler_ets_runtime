@@ -546,6 +546,8 @@ private:
     Node *InsertNodeAt(size_t pos, Node *node);
     Edge *InsertEdgeAt(size_t pos, Edge *edge);
 
+    void LogLeakedLocalHandleBackTrace(ObjectSlot slot);
+
     CList<Node *> nodes_ {};
     CList<Edge *> edges_ {};
     CVector<TimeStamp> timeStamps_ {};

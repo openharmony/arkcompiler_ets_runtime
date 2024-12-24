@@ -1296,6 +1296,7 @@ void HeapSnapshot::AddSyntheticRoot()
         [[maybe_unused]] Root type, ObjectSlot slot) {
         ROOT_EDGE_BUILDER_CORE(type, slot);
     };
+
     RootBaseAndDerivedVisitor rootBaseEdgeBuilder = []
         ([[maybe_unused]] Root type, [[maybe_unused]] ObjectSlot base, [[maybe_unused]] ObjectSlot derived,
          [[maybe_unused]] uintptr_t baseOldObject) {
@@ -1307,8 +1308,39 @@ void HeapSnapshot::AddSyntheticRoot()
             ROOT_EDGE_BUILDER_CORE(type, slot);
         }
     };
+
+    RootVisitor rootEdgeBuilderWithLeakDetect = [&]([[maybe_unused]] Root type, ObjectSlot slot) {
+        LogLeakedLocalHandleBackTrace(slot);
+        ROOT_EDGE_BUILDER_CORE(type, slot);
+    };
+
+    RootRangeVisitor rootRangeEdgeBuilderWithLeakDetect = [&]([[maybe_unused]] Root type,
+        ObjectSlot start, ObjectSlot end) {
+        for (ObjectSlot slot = start; slot < end; slot++) {
+            LogLeakedLocalHandleBackTrace(slot);
+            ROOT_EDGE_BUILDER_CORE(type, slot);
+        }
+    };
 #undef ROOT_EDGE_BUILDER_CORE
-    rootVisitor_.VisitHeapRoots(vm_->GetJSThread(), rootEdgeBuilder, rootRangeEdgeBuilder, rootBaseEdgeBuilder);
+
+    auto options = const_cast<EcmaVM *>(vm_)->GetJSOptions();
+    auto heapProfiler = reinterpret_cast<HeapProfiler *>(HeapProfilerInterface::GetInstance(const_cast<EcmaVM *>(vm_)));
+    bool isStopLocalLeakDetect =
+            options.IsEnableLocalHandleLeakDetect() && !heapProfiler->IsStartLocalHandleLeakDetect();
+    if (isStopLocalLeakDetect && heapProfiler->GetLeakStackTraceFd() > 0) {
+        LOG_ECMA(INFO) << "[LocalHandleLeakDetect] Iterate heap roots in heap snapshot WITH leak detection.";
+        std::ostringstream buffer;
+        buffer << "========================== Local Handle Leak Detection Result ==========================\n";
+        heapProfiler->WriteToLeakStackTraceFd(buffer);
+        rootVisitor_.VisitHeapRoots(vm_->GetJSThread(), rootEdgeBuilderWithLeakDetect,
+                                    rootRangeEdgeBuilderWithLeakDetect, rootBaseEdgeBuilder);
+        buffer << "======================== End of Local Handle Leak Detection Result =======================";
+        heapProfiler->WriteToLeakStackTraceFd(buffer);
+        heapProfiler->CloseLeakStackTraceFd();
+    } else {
+        rootVisitor_.VisitHeapRoots(vm_->GetJSThread(), rootEdgeBuilder, rootRangeEdgeBuilder, rootBaseEdgeBuilder);
+    }
+    heapProfiler->ClearHandleBackTrace();
 
     // add root edges to edges begin
     edges_.insert(edges_.begin(), rootEdges.begin(), rootEdges.end());
@@ -1317,6 +1349,22 @@ void HeapSnapshot::AddSyntheticRoot()
     for (Node *node : nodes_) {
         node->SetIndex(reindex);
         reindex++;
+    }
+}
+
+void HeapSnapshot::LogLeakedLocalHandleBackTrace(ObjectSlot slot)
+{
+    auto heapProfiler = reinterpret_cast<HeapProfiler *>(HeapProfilerInterface::GetInstance(const_cast<EcmaVM *>(vm_)));
+    if (!heapProfiler->GetBackTraceOfHandle(slot.SlotAddress()).empty()) {
+        JSTaggedValue value(slot.GetTaggedType());
+        TaggedObject *root = value.GetTaggedObject();
+        Node *rootNode = entryMap_.FindEntry(Node::NewAddress(root));
+        if (rootNode != nullptr && heapProfiler->GetLeakStackTraceFd() > 0) {
+            std::ostringstream buffer;
+            buffer << "NodeId: " << rootNode->GetId() << "\n"
+                   << heapProfiler->GetBackTraceOfHandle(slot.SlotAddress()) << "\n";
+            heapProfiler->WriteToLeakStackTraceFd(buffer);
+        }
     }
 }
 

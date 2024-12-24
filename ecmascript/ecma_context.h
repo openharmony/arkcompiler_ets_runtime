@@ -433,38 +433,6 @@ public:
         return currentHandleStorageIndex_;
     }
 
-#ifdef ECMASCRIPT_ENABLE_HANDLE_LEAK_CHECK
-    void HandleScopeCountAdd()
-    {
-        handleScopeCount_++;
-    }
-
-    void HandleScopeCountDec()
-    {
-        handleScopeCount_--;
-    }
-
-    void PrimitiveScopeCountAdd()
-    {
-        primitiveScopeCount_++;
-    }
-
-    void PrimitiveScopeCountDec()
-    {
-        primitiveScopeCount_--;
-    }
-#endif
-
-    void SetLastHandleScope(EcmaHandleScope *scope)
-    {
-        lastHandleScope_ = scope;
-    }
-
-    EcmaHandleScope *GetLastHandleScope() const
-    {
-        return lastHandleScope_;
-    }
-
     JSTaggedType *GetPrimitiveScopeStorageNext() const
     {
         return primitiveScopeStorageNext_;
@@ -488,16 +456,6 @@ public:
     int GetCurrentPrimitiveStorageIndex() const
     {
         return currentPrimitiveStorageIndex_;
-    }
-
-    void SetLastPrimitiveScope(EcmaHandleScope *scope)
-    {
-        lastPrimitiveScope_ = scope;
-    }
-
-    EcmaHandleScope *GetLastPrimitiveScope() const
-    {
-        return lastPrimitiveScope_;
     }
 
     size_t IterateHandle(const RootRangeVisitor &rangeVisitor);
@@ -749,18 +707,12 @@ private:
     JSTaggedType *handleScopeStorageEnd_ {nullptr};
     std::vector<std::array<JSTaggedType, NODE_BLOCK_SIZE> *> handleStorageNodes_ {};
     int32_t currentHandleStorageIndex_ {-1};
-#ifdef ECMASCRIPT_ENABLE_HANDLE_LEAK_CHECK
-    int32_t handleScopeCount_ {0};
-    int32_t primitiveScopeCount_ {0};
-#endif
-    EcmaHandleScope *lastHandleScope_ {nullptr};
     // PrimitveScope
     static constexpr int32_t MIN_PRIMITIVE_STORAGE_SIZE = 2;
     JSTaggedType *primitiveScopeStorageNext_ {nullptr};
     JSTaggedType *primitiveScopeStorageEnd_ {nullptr};
     std::vector<std::array<JSTaggedType, NODE_BLOCK_SIZE> *> primitiveStorageNodes_ {};
     int32_t currentPrimitiveStorageIndex_ {-1};
-    EcmaHandleScope *lastPrimitiveScope_ {nullptr};
 
     // Frame pointer
     JSTaggedType *currentFrame_ {nullptr};
