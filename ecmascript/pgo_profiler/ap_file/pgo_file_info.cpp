@@ -17,6 +17,7 @@
 namespace panda::ecmascript::pgo {
 using StringHelper = base::StringHelper;
 bool PGOProfilerHeader::strictMatch_ = true;
+bool PGOProfilerHeader::checksumListHasAbcId_ = true;
 
 bool PGOProfilerHeader::BuildFromLegacy(void *buffer, PGOProfilerHeader **header)
 {
@@ -143,6 +144,9 @@ bool PGOProfilerHeader::ParseFromText(std::ifstream &stream)
                 return false;
             }
             pandaInfoSection->offset_ -= sizeof(PGOProfilerHeader) - sizeof(PGOProfilerHeaderLegacy);
+        }
+        if (!base::FileHeaderBase::CompatibleVerify(MULTI_ABC_CHECKSUM_MINI_VERSION)) {
+            checksumListHasAbcId_ = false;
         }
         return true;
     }

@@ -15,12 +15,15 @@
 
 #include "ecmascript/compiler/aot_file/an_file_info.h"
 
+#include "ecmascript/base/dtoa_helper.h"
 #include "ecmascript/compiler/aot_file/elf_builder.h"
 #include "ecmascript/compiler/aot_file/elf_reader.h"
 #include "macros.h"
+#include <cerrno>
 
 namespace panda::ecmascript {
-bool AnFileInfo::Save(const std::string &filename, Triple triple, size_t anFileMaxByteSize)
+bool AnFileInfo::Save(const std::string &filename, Triple triple, size_t anFileMaxByteSize,
+                      const std::unordered_map<CString, uint32_t> &fileNameToChecksumMap)
 {
     std::string realPath;
     if (!RealPath(filename, realPath, false)) {
@@ -34,6 +37,7 @@ bool AnFileInfo::Save(const std::string &filename, Triple triple, size_t anFileM
 
     SetStubNum(entries_.size());
     AddFuncEntrySec();
+    AddFileNameToChecksumSec(fileNameToChecksumMap);
 
     ElfBuilder builder(des_, GetDumpSectionNames());
     size_t anFileSize = builder.CalculateTotalFileSize();
@@ -84,6 +88,10 @@ bool AnFileInfo::LoadInternal(const std::string &filename)
     reader.ParseELFSections(des, secs);
     if (!reader.ParseELFSegment()) {
         LOG_ECMA(ERROR) << "modify mmap area permission failed";
+        return false;
+    }
+    if (!ParseChecksumInfo(des)) {
+        LOG_ECMA(ERROR) << "update fileName to checksum map failed";
         return false;
     }
     ParseFunctionEntrySection(des);
@@ -163,6 +171,40 @@ void AnFileInfo::ParseFunctionEntrySection(ModuleSectionDes &des)
     des.SetFuncCount(entryNum_);
 }
 
+bool AnFileInfo::ParseChecksumInfo(ModuleSectionDes &des)
+{
+    uint64_t secAddr = des.GetSecAddr(ElfSecName::ARK_CHECKSUMINFO);
+    uint32_t secSize = des.GetSecSize(ElfSecName::ARK_CHECKSUMINFO);
+    const char *data = reinterpret_cast<const char *>(secAddr);
+    std::unordered_map<CString, uint32_t> checksumInfoMap;
+    const char *end = data + secSize;
+
+    if (secSize == 0 || *(end - 1) != '\0') {
+        LOG_COMPILER(ERROR) << "Invalid checksum section: missing null terminator or invalid checksum section";
+        return false;
+    }
+
+    while (data < end) {
+        std::string currentString(data);
+        size_t colonPos = currentString.find(':');
+        if (colonPos == std::string::npos || colonPos == currentString.length() - 1) {
+            LOG_COMPILER(ERROR) << "Invalid fileName to checksum info " << currentString;
+            return false;
+        }
+        std::string fileName = currentString.substr(0, colonPos);
+        uint32_t checksum;
+        if (!base::StringHelper::StrToUInt32(currentString.substr(colonPos + 1).c_str(), &checksum)) {
+            LOG_COMPILER(ERROR) << "Invalid checksum " << currentString << " parse failed";
+            return false;
+        }
+        checksumInfoMap.emplace(fileName.c_str(), checksum);
+        // 1 for '\0'
+        data += currentString.size() + 1;
+    }
+    AnFileDataManager::GetInstance()->UnsafeMergeChecksumInfo(checksumInfoMap);
+    return true;
+}
+
 void AnFileInfo::UpdateFuncEntries()
 {
     ModuleSectionDes &des = des_[0];
@@ -189,8 +231,9 @@ const std::vector<ElfSecName> &AnFileInfo::GetDumpSectionNames()
         ElfSecName::SYMTAB,
         ElfSecName::SHSTRTAB,
         ElfSecName::ARK_STACKMAP,
-        ElfSecName::ARK_FUNCENTRY
-    };
+        ElfSecName::ARK_FUNCENTRY,
+        ElfSecName::ARK_CHECKSUMINFO
+        };
     return secNames;
 }
 
@@ -235,6 +278,49 @@ void AnFileInfo::AddFuncEntrySec()
     uint64_t funcEntryAddr = reinterpret_cast<uint64_t>(entries_.data());
     uint32_t funcEntrySize = sizeof(FuncEntryDes) * entryNum_;
     des.SetSecAddrAndSize(ElfSecName::ARK_FUNCENTRY, funcEntryAddr, funcEntrySize);
+}
+
+void AnFileInfo::AddFileNameToChecksumSec(const std::unordered_map<CString, uint32_t> &fileNameToChecksumMap)
+{
+    // save fileName to checksum relationship as like
+    // pandafileNormalizeDes:checksum
+    // /xxx/yyy/zzz.abc:123456
+    uint32_t secSize = 0;
+    for (const auto &pair : fileNameToChecksumMap) {
+        // 2 for ':' and '\0'
+        secSize += pair.first.size() + FastUint32ToDigits(pair.second) + 2;
+    }
+    checksumData_.resize(secSize);
+    char *basePtr = checksumData_.data();
+
+    char *writePtr = basePtr;
+    for (const auto &pair : fileNameToChecksumMap) {
+        int written = sprintf_s(writePtr, secSize - (writePtr - basePtr), "%s:%u", pair.first.c_str(), pair.second);
+        if (written < 0) {
+            LOG_COMPILER(FATAL) << "sprintf_s failed";
+            UNREACHABLE();
+        }
+        // 1 for '\0'
+        writePtr += written + 1;
+    }
+    ModuleSectionDes &des = des_[ElfBuilder::FuncEntryModuleDesIndex];
+    uint64_t checksumInfoAddr = reinterpret_cast<uint64_t>(basePtr);
+    uint32_t checksumInfoSize = secSize;
+    des.SetSecAddrAndSize(ElfSecName::ARK_CHECKSUMINFO, checksumInfoAddr, checksumInfoSize);
+}
+
+uint32_t AnFileInfo::FastUint32ToDigits(uint32_t number)
+{
+    return (number >= base::DtoaHelper::TEN9POW)   ? 10 // 10 digits
+           : (number >= base::DtoaHelper::TEN8POW) ? 9  // 9 digits
+           : (number >= base::DtoaHelper::TEN7POW) ? 8  // 8 digits
+           : (number >= base::DtoaHelper::TEN6POW) ? 7  // 7 digits
+           : (number >= base::DtoaHelper::TEN5POW) ? 6  // 6 digits
+           : (number >= base::DtoaHelper::TEN4POW) ? 5  // 5 digits
+           : (number >= base::DtoaHelper::TEN3POW) ? 4  // 4 digits
+           : (number >= base::DtoaHelper::TEN2POW) ? 3  // 3 digits
+           : (number >= base::DtoaHelper::TEN)     ? 2  // 2 digits
+                                                   : 1; // 1 digit
 }
 
 void AnFileInfo::GenerateMethodToEntryIndexMap()

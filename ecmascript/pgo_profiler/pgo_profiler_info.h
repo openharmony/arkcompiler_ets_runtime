@@ -52,14 +52,19 @@ class PGOContext;
 
 class PGOPandaFileInfos {
 public:
-    void Sample(uint32_t checksum)
+    void Sample(uint32_t checksum, uint32_t abcId)
     {
-        fileInfos_.emplace(checksum);
+        fileInfos_.emplace(checksum, abcId);
     }
 
     void Clear()
     {
         fileInfos_.clear();
+    }
+
+    uint32_t GetFileInfosSzie() const
+    {
+        return fileInfos_.size();
     }
 
     void ParseFromBinary(void *buffer, SectionInfo *const info);
@@ -71,27 +76,32 @@ public:
     void ProcessToText(std::ofstream &stream) const;
     bool ParseFromText(std::ifstream &stream);
 
-    bool Checksum(uint32_t checksum) const;
+    bool Checksum(const std::unordered_map<CString, uint32_t>& fileNameToChecksumMap,
+                  const std::shared_ptr<PGOAbcFilePool>& abcFilePool_) const;
+    bool Checksum(const std::unordered_map<CString, uint32_t>& fileNameToChecksumMap) const;
+    void UpdateFileInfosAbcID(const PGOContext &context);
+
+    template <typename Callback>
+    void ForEachFileInfo(Callback callback) const
+    {
+        for (const auto &fileInfo : fileInfos_) {
+            callback(fileInfo.GetChecksum(), fileInfo.GetAbcId());
+        }
+    }
 
 private:
     class FileInfo {
     public:
         FileInfo() = default;
-        FileInfo(uint32_t checksum) : size_(LastSize()), checksum_(checksum) {}
-
-        static size_t LastSize()
+        FileInfo(uint32_t checksum, uint32_t abcId) : abcId_(abcId), checksum_(checksum) {}
+        static size_t Size()
         {
             return sizeof(FileInfo);
         }
 
-        size_t Size() const
-        {
-            return static_cast<size_t>(size_);
-        }
-
         bool operator<(const FileInfo &right) const
         {
-            return checksum_ < right.checksum_;
+            return abcId_ < right.abcId_;
         }
 
         uint32_t GetChecksum() const
@@ -99,9 +109,14 @@ private:
             return checksum_;
         }
 
+        uint32_t GetAbcId() const
+        {
+            return abcId_;
+        }
+
     private:
         // Support extended fields
-        uint32_t size_;
+        uint32_t abcId_;
         uint32_t checksum_;
     };
 

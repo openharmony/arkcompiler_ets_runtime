@@ -148,6 +148,7 @@ protected:
     uint32_t totalCodeSize_ {0};
     std::vector<FuncEntryDes> entries_ {};
     std::vector<ModuleSectionDes> des_ {};
+    std::vector<char> checksumData_ {};
     ExecutedMemoryAllocator::ExeMem stubsMem_ {};
     MemMap fileMapMem_ {};
 

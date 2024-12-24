@@ -113,10 +113,11 @@ public:
     static constexpr VersionType PROFILE_TYPE_WITH_ABC_ID_MINI_VERSION = {0, 0, 0, 11};
     static constexpr VersionType ELEMENTS_TRACK_INFO_MINI_VERSION = {0, 0, 0, 12};
     static constexpr VersionType PROTO_TRANSITION_POOL_MINI_VERSION = {0, 0, 0, 14};
+    static constexpr VersionType MULTI_ABC_CHECKSUM_MINI_VERSION = {0, 0, 0, 15};
     static constexpr VersionType FILE_SIZE_MINI_VERSION = FILE_CONSISTENCY_MINI_VERSION;
     static constexpr VersionType HEADER_SIZE_MINI_VERSION = FILE_CONSISTENCY_MINI_VERSION;
     static constexpr VersionType ELASTIC_HEADER_MINI_VERSION = FILE_CONSISTENCY_MINI_VERSION;
-    static constexpr VersionType LAST_VERSION = {0, 0, 0, 14};
+    static constexpr VersionType LAST_VERSION = {0, 0, 0, 15};
     static constexpr size_t PANDA_FILE_SECTION_INDEX = 0;
     static constexpr size_t RECORD_INFO_SECTION_INDEX = 1;
     static constexpr size_t LAYOUT_DESC_SECTION_INDEX = 2;
@@ -297,6 +298,11 @@ public:
         return CompatibleVerify(ELEMENTS_TRACK_INFO_MINI_VERSION);
     }
 
+    bool SupportMultiAbcChecksum() const
+    {
+        return CompatibleVerify(MULTI_ABC_CHECKSUM_MINI_VERSION);
+    }
+
     bool IsCompatibleWithAOTFile() const
     {
         return VerifyVersion("ap file compatible aot file", GetCompatibleAnVersion(), AOTFileVersion::AN_VERSION, true);
@@ -307,10 +313,21 @@ public:
         return strictMatch_;
     }
 
+    static bool IschecksumListHasAbcId()
+    {
+        return checksumListHasAbcId_;
+    }
+
     // just for test
     static void SetStrictMatch(bool strictMatch)
     {
         strictMatch_ = strictMatch;
+    }
+
+    // just for test
+    static void SetchecksumListHasAbcId(bool checksumListHasAbcId)
+    {
+        checksumListHasAbcId_ = checksumListHasAbcId;
     }
 
     NO_COPY_SEMANTIC(PGOProfilerHeader);
@@ -331,6 +348,7 @@ private:
     uint32_t sectionNumber_ {SECTION_SIZE};
     SectionInfo sectionInfos_;
     static bool strictMatch_;
+    static bool checksumListHasAbcId_;
 };
 
 class PGOProfilerHeaderLegacy : public base::FileHeaderBase {

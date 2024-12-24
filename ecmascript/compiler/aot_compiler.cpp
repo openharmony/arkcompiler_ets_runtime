@@ -151,18 +151,18 @@ int Main(const int argc, const char **argv)
         profilerDecoder.SetHotnessThreshold(cOptions.hotnessThreshold_);
         profilerDecoder.SetInPath(cOptions.profilerIn_);
         cPreprocessor.AOTInitialize();
-        uint32_t checksum = cPreprocessor.GenerateAbcFileInfos();
+        std::unordered_map<CString, uint32_t> fileNameToChecksumMap;
+        cPreprocessor.GenerateAbcFileInfos(fileNameToChecksumMap);
 
         if (runtimeOptions.IsTargetCompilerMode() && (cPreprocessor.HasExistsAOTFiles(cOptions) ||
             cPreprocessor.HasPreloadAotFile())) {
             LOG_COMPILER(ERROR) << "The AOT file already exists and will not be compiled anymore";
             return ERR_OK;
         }
-
         ret = cPreprocessor.GetCompilerResult();
         // Notice: lx move load pandaFileHead and verify before GeneralAbcFileInfos.
         // need support multiple abc
-        auto isPgoMerged = cPreprocessor.HandleMergedPgoFile(checksum);
+        auto isPgoMerged = cPreprocessor.HandleMergedPgoFile(fileNameToChecksumMap);
         if (CheckVersion(runtimeOptions, compilerStats, isPgoMerged)) {
             return ERR_CHECK_VERSION;
         }
@@ -228,7 +228,8 @@ int Main(const int argc, const char **argv)
         if (compilerStats.GetCompilerMethodCount() == 0) {
             return runtimeOptions.IsPartialCompilerMode() ? ERR_AN_EMPTY : ERR_OK;
         }
-        if (!generator.SaveAOTFile(cOptions.outputFileName_ + AOTFileManager::FILE_EXTENSION_AN, appSignature)) {
+        if (!generator.SaveAOTFile(cOptions.outputFileName_ + AOTFileManager::FILE_EXTENSION_AN, appSignature,
+                                   fileNameToChecksumMap)) {
             return ERR_AN_FAIL;
         }
         if (!generator.SaveSnapshotFile()) {

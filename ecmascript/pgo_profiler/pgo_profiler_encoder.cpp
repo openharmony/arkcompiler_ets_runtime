@@ -83,9 +83,9 @@ bool PGOProfilerEncoder::InitializeData()
 void PGOProfilerEncoder::SamplePandaFileInfo(uint32_t checksum, const CString &abcName)
 {
     WriteLockHolder lock(rwLock_);
-    pandaFileInfos_->Sample(checksum);
     ApEntityId entryId(0);
     abcFilePool_->TryAdd(abcName, entryId);
+    pandaFileInfos_->Sample(checksum, entryId);
 }
 
 bool PGOProfilerEncoder::GetPandaFileId(const CString &abcName, ApEntityId &entryId)

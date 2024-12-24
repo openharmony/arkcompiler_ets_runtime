@@ -265,10 +265,12 @@ HWTEST_F_L0(PGOProfilerTest, Sample)
     PGOProfilerDecoder loader("ark-profiler/modules.ap", DECODER_THRESHOLD);
     CString expectRecordName = "sample_test";
 #if defined(SUPPORT_ENABLE_ASM_INTERP)
-    ASSERT_TRUE(loader.LoadAndVerify(checksum));
+    ASSERT_TRUE(loader.LoadAndVerify({{"ark-profiler.abc", checksum}}));
+    ASSERT_FALSE(loader.LoadAndVerify({{"ark-profiler.abc", 123456}}));
     ASSERT_TRUE(!loader.Match(pf_.get(), expectRecordName, methodLiterals[0]->GetMethodId()));
 #else
-    ASSERT_TRUE(!loader.LoadAndVerify(checksum));
+    ASSERT_TRUE(!loader.LoadAndVerify({{"ark-profiler.abc", checksum}}));
+    ASSERT_FALSE(loader.LoadAndVerify({{"ark-profiler.abc", 123456}}));
     ASSERT_TRUE(loader.Match(pf_.get(), expectRecordName, methodLiterals[0]->GetMethodId()));
 #endif
     unlink("ark-profiler/modules.ap");
@@ -314,17 +316,17 @@ HWTEST_F_L0(PGOProfilerTest, Sample1)
     PGOProfilerDecoder loader("ark-profiler1/modules.ap", DECODER_THRESHOLD);
     CString expectRecordName = "sample_test";
 #if defined(SUPPORT_ENABLE_ASM_INTERP)
-    ASSERT_TRUE(loader.LoadAndVerify(checksum));
+    ASSERT_TRUE(loader.LoadAndVerify({{"ark-profiler1.abc", checksum}}));
     for (uint32_t idx = 0; idx < 3; idx++) {
         loader.MatchAndMarkMethod(pf_.get(), expectRecordName,
-                                 methodLiterals[idx]->GetMethodName(pf_.get(), methodLiterals[idx]->GetMethodId()),
-                                 methodLiterals[idx]->GetMethodId());
+                                  methodLiterals[idx]->GetMethodName(pf_.get(), methodLiterals[idx]->GetMethodId()),
+                                  methodLiterals[idx]->GetMethodId());
     }
     ASSERT_TRUE(!loader.Match(pf_.get(), expectRecordName, methodLiterals[0]->GetMethodId()));
     ASSERT_TRUE(!loader.Match(pf_.get(), expectRecordName, methodLiterals[2]->GetMethodId()));
     ASSERT_TRUE(!loader.Match(pf_.get(), expectRecordName, methodLiterals[1]->GetMethodId()));
 #else
-    ASSERT_TRUE(!loader.LoadAndVerify(checksum));
+    ASSERT_TRUE(!loader.LoadAndVerify({{"ark-profiler1.abc", checksum}}));
     ASSERT_TRUE(loader.Match(pf_.get(), expectRecordName, methodLiterals[1]->GetMethodId()));
 #endif
     unlink("ark-profiler1/modules.ap");
@@ -368,19 +370,19 @@ HWTEST_F_L0(PGOProfilerTest, Sample2)
     CString expectRecordName = "sample_test";
     CString expectRecordName1 = "sample_test";
 #if defined(SUPPORT_ENABLE_ASM_INTERP)
-    ASSERT_TRUE(loader.LoadAndVerify(checksum));
+    ASSERT_TRUE(loader.LoadAndVerify({{"ark-profiler2.abc", checksum}}));
     for (uint32_t idx = 0; idx < 2; idx++) {
         loader.MatchAndMarkMethod(pf_.get(), expectRecordName,
-                                 methodLiterals[idx]->GetMethodName(pf_.get(), methodLiterals[idx]->GetMethodId()),
-                                 methodLiterals[idx]->GetMethodId());
+                                  methodLiterals[idx]->GetMethodName(pf_.get(), methodLiterals[idx]->GetMethodId()),
+                                  methodLiterals[idx]->GetMethodId());
         loader.MatchAndMarkMethod(pf_.get(), expectRecordName1,
-                                 methodLiterals[idx]->GetMethodName(pf_.get(), methodLiterals[idx]->GetMethodId()),
-                                 methodLiterals[idx]->GetMethodId());
+                                  methodLiterals[idx]->GetMethodName(pf_.get(), methodLiterals[idx]->GetMethodId()),
+                                  methodLiterals[idx]->GetMethodId());
     }
     ASSERT_TRUE(!loader.Match(pf_.get(), expectRecordName, methodLiterals[0]->GetMethodId()));
     ASSERT_TRUE(!loader.Match(pf_.get(), expectRecordName1, methodLiterals[1]->GetMethodId()));
 #else
-    ASSERT_TRUE(!loader.LoadAndVerify(checksum));
+    ASSERT_TRUE(!loader.LoadAndVerify({{"ark-profiler2.abc", checksum}}));
     ASSERT_TRUE(loader.Match(pf_.get(), expectRecordName, methodLiterals[0]->GetMethodId()));
     ASSERT_TRUE(loader.Match(pf_.get(), expectRecordName1, methodLiterals[1]->GetMethodId()));
 #endif
@@ -418,7 +420,7 @@ HWTEST_F_L0(PGOProfilerTest, DisEnableSample)
     // Loader
     ASSERT_FALSE(FileExist("ark-profiler3/modules.ap"));
     PGOProfilerDecoder loader("ark-profiler3/modules.ap", DECODER_THRESHOLD);
-    ASSERT_TRUE(!loader.LoadAndVerify(checksum));
+    ASSERT_TRUE(!loader.LoadAndVerify({{"sample_test.abc", checksum}}));
     CString expectRecordName = "sample_test";
     ASSERT_TRUE(loader.Match(pf_.get(), expectRecordName, methodLiterals[0]->GetMethodId()));
     rmdir("ark-profiler3/");
@@ -472,11 +474,11 @@ HWTEST_F_L0(PGOProfilerTest, PGOProfilerManagerSample)
 
     PGOProfilerDecoder loader("", DECODER_THRESHOLD);
     // path is empty()
-    ASSERT_TRUE(loader.LoadAndVerify(checksum));
+    ASSERT_TRUE(loader.LoadAndVerify({{"", checksum}}));
     // path size greater than PATH_MAX
     char path[PATH_MAX + 1] = {'0'};
     PGOProfilerDecoder loader1(path, 4);
-    ASSERT_TRUE(!loader1.LoadAndVerify(checksum));
+    ASSERT_TRUE(!loader1.LoadAndVerify({{"", checksum}}));
 }
 
 HWTEST_F_L0(PGOProfilerTest, PGOProfilerDoubleVM)
@@ -537,16 +539,16 @@ HWTEST_F_L0(PGOProfilerTest, PGOProfilerDoubleVM)
 
     PGOProfilerDecoder loader("ark-profiler5/profiler", DECODER_THRESHOLD);
     mkdir("ark-profiler5/profiler", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-    ASSERT_TRUE(!loader.LoadAndVerify(checksum));
+    ASSERT_TRUE(!loader.LoadAndVerify({{"sample_test.abc", checksum}}));
     CString expectRecordName = "sample_test";
     ASSERT_TRUE(loader.Match(pf_.get(), expectRecordName, methodLiterals[1]->GetMethodId()));
 
     PGOProfilerDecoder loader1("ark-profiler5/modules.ap", DECODER_THRESHOLD);
 #if defined(SUPPORT_ENABLE_ASM_INTERP)
-    ASSERT_TRUE(loader1.LoadAndVerify(checksum));
+    ASSERT_TRUE(loader1.LoadAndVerify({{"sample_test.abc", checksum}}));
     ASSERT_TRUE(!loader1.Match(pf_.get(), expectRecordName, methodLiterals[1]->GetMethodId()));
 #else
-    ASSERT_TRUE(!loader1.LoadAndVerify(checksum));
+    ASSERT_TRUE(!loader1.LoadAndVerify({{"sample_test.abc", checksum}}));
     ASSERT_TRUE(loader1.Match(pf_.get(), expectRecordName, methodLiterals[1]->GetMethodId()));
 #endif
 
@@ -584,10 +586,10 @@ HWTEST_F_L0(PGOProfilerTest, PGOProfilerDecoderNoHotMethod)
     PGOProfilerDecoder loader("ark-profiler8/modules.ap", DECODER_THRESHOLD);
     CString expectRecordName = "sample_test";
 #if defined(SUPPORT_ENABLE_ASM_INTERP)
-    ASSERT_TRUE(loader.LoadAndVerify(checksum));
+    ASSERT_TRUE(loader.LoadAndVerify({{"sample_test.abc", checksum}}));
     ASSERT_TRUE(!loader.Match(pf_.get(), expectRecordName, methodLiterals[0]->GetMethodId()));
 #else
-    ASSERT_TRUE(!loader.LoadAndVerify(checksum));
+    ASSERT_TRUE(!loader.LoadAndVerify({{"sample_test.abc", checksum}}));
     ASSERT_TRUE(loader.Match(pf_.get(), expectRecordName, methodLiterals[0]->GetMethodId()));
 #endif
 
@@ -631,15 +633,15 @@ HWTEST_F_L0(PGOProfilerTest, PGOProfilerPostTask)
 
     PGOProfilerDecoder loader("ark-profiler9/modules.ap", DECODER_THRESHOLD);
 #if defined(SUPPORT_ENABLE_ASM_INTERP)
-    ASSERT_TRUE(loader.LoadAndVerify(checksum));
+    ASSERT_TRUE(loader.LoadAndVerify({{"ark-profiler9.abc", checksum}}));
 #else
-    ASSERT_TRUE(!loader.LoadAndVerify(checksum));
+    ASSERT_TRUE(!loader.LoadAndVerify({{"ark-profiler9.abc", checksum}}));
 #endif
     CString expectRecordName = "ark-profiler9.abc";
     for (int i = 0; i < 100; i++) {
         EntityId methodId = methodLiterals[i]->GetMethodId();
-        loader.MatchAndMarkMethod(pf_.get(), expectRecordName,
-                                  methodLiterals[i]->GetMethodName(pf_.get(), methodId), methodId);
+        loader.MatchAndMarkMethod(pf_.get(), expectRecordName, methodLiterals[i]->GetMethodName(pf_.get(), methodId),
+                                  methodId);
     }
     for (int i = 61; i < 91; i++) {
 #if defined(SUPPORT_ENABLE_ASM_INTERP)
@@ -678,7 +680,7 @@ HWTEST_F_L0(PGOProfilerTest, TextToBinary)
                                                                 ApGenMode::OVERWRITE));
 
     PGOProfilerDecoder loader("ark-profiler10/modules.ap", DECODER_THRESHOLD);
-    ASSERT_TRUE(loader.LoadAndVerify(413775942));
+    ASSERT_TRUE(loader.LoadAndVerify({{"test", 413775942}}));
 
     unlink("ark-profiler10/modules.ap");
     unlink("ark-profiler10/modules.text");
@@ -718,7 +720,7 @@ HWTEST_F_L0(PGOProfilerTest, FailResetProfilerInWorker)
     // Loader
     ASSERT_FALSE(FileExist("ark-profiler12/modules.ap"));
     PGOProfilerDecoder loader("ark-profiler12/modules.ap", DECODER_THRESHOLD);
-    ASSERT_TRUE(!loader.LoadAndVerify(checksum));
+    ASSERT_TRUE(!loader.LoadAndVerify({{"sample_test.abc", checksum}}));
     CString expectRecordName = "sample_test";
     ASSERT_TRUE(loader.Match(pf_.get(), expectRecordName, methodLiterals[0]->GetMethodId()));
     rmdir("ark-profiler12/");
@@ -732,14 +734,15 @@ HWTEST_F_L0(PGOProfilerTest, ProfileCallTest)
     ExecuteAndLoadJSPandaFile("ark-profiler13/", targetRecordName);
     ASSERT_NE(pf_, nullptr);
     uint32_t checksum = pf_->GetChecksum();
+    ;
 
     // Loader
     PGOProfilerDecoder decoder("ark-profiler13/modules.ap", 1);
     PGOProfilerDecoder decoder1("ark-profiler13/modules.ap", 10);
     PGOProfilerDecoder decoder2("ark-profiler13/modules.ap", 11000);
-    ASSERT_TRUE(decoder.LoadAndVerify(checksum));
-    ASSERT_TRUE(decoder1.LoadAndVerify(checksum));
-    ASSERT_TRUE(decoder2.LoadAndVerify(checksum));
+    ASSERT_TRUE(decoder.LoadAndVerify({{pf_->GetNormalizedFileDesc(), checksum}}));
+    ASSERT_TRUE(decoder1.LoadAndVerify({{pf_->GetNormalizedFileDesc(), checksum}}));
+    ASSERT_TRUE(decoder2.LoadAndVerify({{pf_->GetNormalizedFileDesc(), checksum}}));
     auto methodLiterals = pf_->GetMethodLiteralMap();
     for (auto iter : methodLiterals) {
         auto methodLiteral = iter.second;
@@ -771,7 +774,7 @@ HWTEST_F_L0(PGOProfilerTest, UseClassTypeTest)
 
     // Loader
     PGOProfilerDecoder decoder("ark-profiler14/modules.ap", 1);
-    ASSERT_TRUE(decoder.LoadAndVerify(checksum));
+    ASSERT_TRUE(decoder.LoadAndVerify({{pf_->GetNormalizedFileDesc(), checksum}}));
     auto methodLiterals = pf_->GetMethodLiteralMap();
     for (auto iter : methodLiterals) {
         auto methodLiteral = iter.second;
@@ -793,8 +796,7 @@ HWTEST_F_L0(PGOProfilerTest, UseClassTypeTest)
                 ASSERT_TRUE(true);
             }
         };
-        decoder.GetTypeInfo(pf_.get(), targetRecordName, methodLiteral,
-                            callback);
+        decoder.GetTypeInfo(pf_.get(), targetRecordName, methodLiteral, callback);
     }
     unlink("ark-profiler14/modules.ap");
     rmdir("ark-profiler14/");
@@ -810,7 +812,7 @@ HWTEST_F_L0(PGOProfilerTest, DefineClassTypeTest)
 
     // Loader
     PGOProfilerDecoder decoder("ark-profiler15/modules.ap", 1);
-    ASSERT_TRUE(decoder.LoadAndVerify(checksum));
+    ASSERT_TRUE(decoder.LoadAndVerify({{pf_->GetNormalizedFileDesc(), checksum}}));
     auto methodLiterals = pf_->GetMethodLiteralMap();
     for (auto iter : methodLiterals) {
         auto methodLiteral = iter.second;
@@ -845,8 +847,7 @@ HWTEST_F_L0(PGOProfilerTest, DefineClassTypeTest)
                 }
             }
         };
-        decoder.GetTypeInfo(pf_.get(), targetRecordName, methodLiteral,
-                            callback);
+        decoder.GetTypeInfo(pf_.get(), targetRecordName, methodLiteral, callback);
     }
     unlink("ark-profiler15/modules.ap");
     rmdir("ark-profiler15/");
@@ -862,9 +863,8 @@ HWTEST_F_L0(PGOProfilerTest, OpTypeTest)
 
     // Loader
     PGOProfilerDecoder decoder("ark-profiler16/modules.ap", 1);
-    ASSERT_TRUE(decoder.LoadAndVerify(checksum));
-    std::string types[17] =
-        { "1", "5", "4", "4", "4", "4", "4", "4", "5", "4", "4", "1", "1", "4", "5", "1", "1" };
+    ASSERT_TRUE(decoder.LoadAndVerify({{pf_->GetNormalizedFileDesc(), checksum}}));
+    std::string types[17] = {"1", "5", "4", "4", "4", "4", "4", "4", "5", "4", "4", "1", "1", "4", "5", "1", "1"};
     int index = 0;
     auto methodLiterals = pf_->GetMethodLiteralMap();
     for (auto iter : methodLiterals) {
@@ -895,8 +895,7 @@ HWTEST_F_L0(PGOProfilerTest, OpTypeTest)
                 }
             }
         };
-        decoder.GetTypeInfo(pf_.get(), targetRecordName, methodLiteral,
-                            callback);
+        decoder.GetTypeInfo(pf_.get(), targetRecordName, methodLiteral, callback);
     }
     unlink("ark-profiler16/modules.ap");
     rmdir("ark-profiler16/");
@@ -912,7 +911,7 @@ HWTEST_F_L0(PGOProfilerTest, ArrayProfileTest)
 
     // Loader
     PGOProfilerDecoder decoder("ark-profiler18/modules.ap", 1);
-    ASSERT_TRUE(decoder.LoadAndVerify(checksum));
+    ASSERT_TRUE(decoder.LoadAndVerify({{pf_->GetNormalizedFileDesc(), checksum}}));
     auto methodLiterals = pf_->GetMethodLiteralMap();
     for (auto iter : methodLiterals) {
         auto methodLiteral = iter.second;
@@ -962,8 +961,7 @@ HWTEST_F_L0(PGOProfilerTest, ArrayProfileTest)
                 }
             }
         };
-        decoder.GetTypeInfo(pf_.get(), targetRecordName, methodLiteral,
-                            callback);
+        decoder.GetTypeInfo(pf_.get(), targetRecordName, methodLiteral, callback);
     }
     unlink("ark-profiler18/modules.ap");
     rmdir("ark-profiler18/");
@@ -979,7 +977,7 @@ HWTEST_F_L0(PGOProfilerTest, ObjectLiteralProfileTest)
 
     // Loader
     PGOProfilerDecoder decoder("ark-profiler20/modules.ap", 1);
-    ASSERT_TRUE(decoder.LoadAndVerify(checksum));
+    ASSERT_TRUE(decoder.LoadAndVerify({{pf_->GetNormalizedFileDesc(), checksum}}));
     auto methodLiterals = pf_->GetMethodLiteralMap();
     for (auto iter : methodLiterals) {
         auto methodLiteral = iter.second;
@@ -1010,8 +1008,7 @@ HWTEST_F_L0(PGOProfilerTest, ObjectLiteralProfileTest)
                 }
             }
         };
-        decoder.GetTypeInfo(pf_.get(), targetRecordName, methodLiteral,
-                            callback);
+        decoder.GetTypeInfo(pf_.get(), targetRecordName, methodLiteral, callback);
     }
     unlink("ark-profiler20/modules.ap");
     rmdir("ark-profiler20/");
@@ -1027,7 +1024,7 @@ HWTEST_F_L0(PGOProfilerTest, ArraySizeProfileTest)
 
     // Loader
     PGOProfilerDecoder decoder("ark-profiler21/modules.ap", 1);
-    ASSERT_TRUE(decoder.LoadAndVerify(checksum));
+    ASSERT_TRUE(decoder.LoadAndVerify({{pf_->GetNormalizedFileDesc(), checksum}}));
     auto methodLiterals = pf_->GetMethodLiteralMap();
     for (auto iter : methodLiterals) {
         auto methodLiteral = iter.second;
@@ -1038,17 +1035,16 @@ HWTEST_F_L0(PGOProfilerTest, ArraySizeProfileTest)
         auto callback = [methodName, jsPandaFile = pf_](uint32_t offset, const PGOType *type) {
             if (type->IsDefineOpType()) {
                 auto defineOptype = reinterpret_cast<const PGODefineOpType *>(type);
-                    if (std::string(methodName) == "foo") {
-                        ASSERT_EQ(defineOptype->GetElementsLength(), 4);
-                    } else if (std::string(methodName) == "foo1") {
-                        ASSERT_EQ(defineOptype->GetElementsLength(), 12);
-                    } else if (std::string(methodName) == "foo2") {
-                        ASSERT_EQ(defineOptype->GetElementsLength(), 12);
-                    }
+                if (std::string(methodName) == "foo") {
+                    ASSERT_EQ(defineOptype->GetElementsLength(), 4);
+                } else if (std::string(methodName) == "foo1") {
+                    ASSERT_EQ(defineOptype->GetElementsLength(), 12);
+                } else if (std::string(methodName) == "foo2") {
+                    ASSERT_EQ(defineOptype->GetElementsLength(), 12);
+                }
             }
         };
-        decoder.GetTypeInfo(pf_.get(), targetRecordName, methodLiteral,
-                            callback);
+        decoder.GetTypeInfo(pf_.get(), targetRecordName, methodLiteral, callback);
     }
     unlink("ark-profiler21/modules.ap");
     rmdir("ark-profiler21/");
@@ -1064,7 +1060,7 @@ HWTEST_F_L0(PGOProfilerTest, StringEqualProfileTest)
 
     // Loader
     PGOProfilerDecoder decoder("ark-profiler22/modules.ap", 1);
-    ASSERT_TRUE(decoder.LoadAndVerify(checksum));
+    ASSERT_TRUE(decoder.LoadAndVerify({{pf_->GetNormalizedFileDesc(), checksum}}));
     auto methodLiterals = pf_->GetMethodLiteralMap();
     for (auto iter : methodLiterals) {
         auto methodLiteral = iter.second;
@@ -1078,15 +1074,13 @@ HWTEST_F_L0(PGOProfilerTest, StringEqualProfileTest)
                 if (sampleType.IsProfileType()) {
                     return;
                 }
-                if (std::string(methodName) == "foo1" ||
-                    std::string(methodName) == "foo2") {
+                if (std::string(methodName) == "foo1" || std::string(methodName) == "foo2") {
                     auto primitiveType = sampleType.GetPrimitiveType();
                     ASSERT_EQ(static_cast<uint32_t>(primitiveType), PGOSampleType::StringType());
                 }
             }
         };
-        decoder.GetTypeInfo(pf_.get(), targetRecordName, methodLiteral,
-                            callback);
+        decoder.GetTypeInfo(pf_.get(), targetRecordName, methodLiteral, callback);
     }
     unlink("ark-profiler22/modules.ap");
     rmdir("ark-profiler22/");
@@ -1102,7 +1096,7 @@ HWTEST_F_L0(PGOProfilerTest, BuiltinsTest)
 
     // Loader
     PGOProfilerDecoder decoder("ark-profiler23/modules.ap", 1);
-    ASSERT_TRUE(decoder.LoadAndVerify(checksum));
+    ASSERT_TRUE(decoder.LoadAndVerify({{pf_->GetNormalizedFileDesc(), checksum}}));
     auto methodLiterals = pf_->GetMethodLiteralMap();
     for (auto iter : methodLiterals) {
         auto methodLiteral = iter.second;
@@ -1119,8 +1113,7 @@ HWTEST_F_L0(PGOProfilerTest, BuiltinsTest)
                 ASSERT_TRUE(pgoRWOpType.GetCount() == 1);
             }
         };
-        decoder.GetTypeInfo(pf_.get(), targetRecordName, methodLiteral,
-                            callback);
+        decoder.GetTypeInfo(pf_.get(), targetRecordName, methodLiteral, callback);
     }
     unlink("ark-profiler23/modules.ap");
     rmdir("ark-profiler23/");
@@ -1147,7 +1140,7 @@ HWTEST_F_L0(PGOProfilerTest, FileConsistencyCheck)
 
     // Loader
     PGOProfilerDecoder loader("ark-profiler17/modules.ap", DECODER_THRESHOLD);
-    ASSERT_FALSE(loader.LoadAndVerify(checksum));
+    ASSERT_FALSE(loader.LoadAndVerify({{pf_->GetNormalizedFileDesc(), checksum}}));
     unlink("ark-profiler17/modules.ap");
     rmdir("ark-profiler17/");
 }
@@ -1170,11 +1163,11 @@ HWTEST_F_L0(PGOProfilerTest, MergeApSelfTwice)
     auto doubleCount =
         decoder.GetRecordDetailInfos().GetRecordInfos().begin()->second->GetMethodInfos().begin()->second->GetCount();
     auto singleCount = decoderSingle.GetRecordDetailInfos()
-                            .GetRecordInfos()
-                            .begin()
-                            ->second->GetMethodInfos()
-                            .begin()
-                            ->second->GetCount();
+                           .GetRecordInfos()
+                           .begin()
+                           ->second->GetMethodInfos()
+                           .begin()
+                           ->second->GetCount();
     ASSERT_EQ(doubleCount, singleCount + singleCount);
 
     unlink("ark-profiler18/modules.ap");
@@ -1200,7 +1193,7 @@ HWTEST_F_L0(PGOProfilerTest, RuntimeMerge)
     CheckApMethods(methodIdInAp);
 #else
     uint32_t checksum = pf_->GetChecksum();
-    ASSERT_TRUE(!loader.LoadAndVerify(checksum));
+    ASSERT_TRUE(!loader.LoadAndVerify({{pf_->GetNormalizedFileDesc(), checksum}}));
 #endif
     unlink("ark-profiler19/modules.ap");
     rmdir("ark-profiler19/");
@@ -1228,7 +1221,7 @@ HWTEST_F_L0(PGOProfilerTest, ProfdumpMerge)
     CheckApMethods(methodIdInAp);
 #else
     uint32_t checksum = pf_->GetChecksum();
-    ASSERT_TRUE(!loader.LoadAndVerify(checksum));
+    ASSERT_TRUE(!loader.LoadAndVerify({{pf_->GetNormalizedFileDesc(), checksum}}));
 #endif
     unlink("ark-profiler20/merge_file_1.ap");
     unlink("ark-profiler20/merge_file_2.ap");
@@ -1270,7 +1263,7 @@ HWTEST_F_L0(PGOProfilerTest, TypedArrayOnHeap)
 
     // Loader
     PGOProfilerDecoder decoder("ark-profiler24/modules.ap", 1);
-    ASSERT_TRUE(decoder.LoadAndVerify(checksum));
+    ASSERT_TRUE(decoder.LoadAndVerify({{pf_->GetNormalizedFileDesc(), checksum}}));
     auto methodLiterals = pf_->GetMethodLiteralMap();
     for (auto iter : methodLiterals) {
         auto methodLiteral = iter.second;
@@ -1283,8 +1276,7 @@ HWTEST_F_L0(PGOProfilerTest, TypedArrayOnHeap)
                 ASSERT_TRUE(pgoRWOpType.GetCount() == 1);
             }
         };
-        decoder.GetTypeInfo(pf_.get(), targetRecordName, methodLiteral,
-                            callback);
+        decoder.GetTypeInfo(pf_.get(), targetRecordName, methodLiteral, callback);
     }
     unlink("ark-profiler24/modules.ap");
     rmdir("ark-profiler24/");
@@ -1317,7 +1309,7 @@ HWTEST_F_L0(PGOProfilerTest, CompatibleWithAOTFileTest)
 {
     constexpr uint32_t CHECKSUM = 1;
     PGOProfilerDecoder decoder("", DECODER_THRESHOLD);
-    EXPECT_TRUE(decoder.LoadAndVerify(CHECKSUM));
+    EXPECT_TRUE(decoder.LoadAndVerify({{"", CHECKSUM}}));
     EXPECT_FALSE(decoder.IsCompatibleWithAOTFile());
 }
 
@@ -1330,12 +1322,9 @@ HWTEST_F_L0(PGOProfilerTest, ExternalMethodLiteralTest)
     uint32_t checksum = pf_->GetChecksum();
 
     PGOProfilerDecoder decoder("ark-profiler26/modules.ap", DECODER_THRESHOLD);
-    ASSERT_TRUE(decoder.LoadAndVerify(checksum));
-    auto callback = []([[maybe_unused]] uint32_t offset, [[maybe_unused]] const PGOType *type) {
-        EXPECT_TRUE(false);
-    };
-    decoder.GetTypeInfo(pf_.get(), targetRecordName, nullptr,
-                        callback);
+    ASSERT_TRUE(decoder.LoadAndVerify({{pf_->GetNormalizedFileDesc(), checksum}}));
+    auto callback = []([[maybe_unused]] uint32_t offset, [[maybe_unused]] const PGOType *type) { EXPECT_TRUE(false); };
+    decoder.GetTypeInfo(pf_.get(), targetRecordName, nullptr, callback);
     unlink("ark-profiler26/modules.ap");
     rmdir("ark-profiler26/");
 }
@@ -1451,4 +1440,63 @@ HWTEST_F_L0(PGOProfilerTest, PGODisableUnderAOTFailTest)
     }
 }
 
+HWTEST_F_L0(PGOProfilerTest, AnChecksumTest)
+{
+    AnFileDataManager *fileManager = AnFileDataManager::GetInstance();
+    std::unordered_map<CString, uint32_t> testMap;
+    testMap.emplace("test1.abc", 123456);
+    fileManager->SafeMergeChecksumInfo(testMap);
+    std::unordered_map<CString, uint32_t> fullMap;
+    fullMap = fileManager->SafeGetfullFileNameToChecksumMap();
+    ASSERT_FALSE(fullMap.empty());
+    ASSERT_TRUE(fileManager->SafeCheckFilenameToChecksum("test1.abc", 123456));
+    ASSERT_FALSE(fileManager->SafeCheckFilenameToChecksum("test1.abc", 654321));
+    testMap.emplace("test2.abc", 456789);
+    fileManager->SafeMergeChecksumInfo(testMap);
+    fullMap = fileManager->SafeGetfullFileNameToChecksumMap();
+    ASSERT_TRUE(fullMap.size() == 2);
+    ASSERT_TRUE(fileManager->SafeCheckFilenameToChecksum("test2.abc", 456789));
+    ASSERT_FALSE(fileManager->SafeCheckFilenameToChecksum("test2.abc", 987654));
+    testMap["test1.abc"] = 123456789;
+    fileManager->SafeMergeChecksumInfo(testMap);
+    fullMap = fileManager->SafeGetfullFileNameToChecksumMap();
+    ASSERT_TRUE(fullMap["test1.abc"] == static_cast<uint32_t>(-1));
+    ASSERT_FALSE(fileManager->SafeCheckFilenameToChecksum("test1.abc", 123456789));
+    ASSERT_TRUE(fileManager->SafeCheckFilenameToChecksum("test2.abc", 456789));
+    fileManager->SafeDestroyAllData();
+}
+
+HWTEST_F_L0(PGOProfilerTest, PgoChecksumTest)
+{
+    mkdir("ark-pgoChecksumTest", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+    const char *targetRecordName = "sample_test";
+    ExecuteAndLoadJSPandaFile("ark-pgoChecksumTest/", targetRecordName);
+    ASSERT_TRUE(FileExist("ark-pgoChecksumTest/modules.ap"));
+    ASSERT_NE(pf_, nullptr);
+    PGOProfilerManager::GetInstance()->Initialize("ark-pgoChecksumTest/modules.ap", DECODER_THRESHOLD);
+    PGOProfilerDecoder decoder0("ark-pgoChecksumTest/modules.ap", DECODER_THRESHOLD);
+
+    decoder0.LoadFull();
+    auto infos1 = decoder0.GetPandaFileInfos();
+    auto infos1AbcFilePool = decoder0.GetAbcFilePool();
+    CString testabc1Name = "test1.abc";
+    uint32_t testabc1Checksum = 123456;
+    ApEntityId abcId1(0);
+    infos1AbcFilePool->TryAdd(testabc1Name, abcId1);
+    std::unordered_map<CString, uint32_t> fileNameToChecksumMap1;
+    fileNameToChecksumMap1.emplace(pf_->GetNormalizedFileDesc(), pf_->GetChecksum());
+    fileNameToChecksumMap1.emplace(testabc1Name, testabc1Checksum);
+    infos1.Sample(123456, abcId1);
+    ASSERT_TRUE(infos1.Checksum(fileNameToChecksumMap1, infos1AbcFilePool));
+    fileNameToChecksumMap1.emplace("notExist.abc", 456789);
+    ASSERT_TRUE(infos1.Checksum(fileNameToChecksumMap1, infos1AbcFilePool));
+    // different checksum
+    fileNameToChecksumMap1[testabc1Name] = 999999;
+    ASSERT_FALSE(infos1.Checksum(fileNameToChecksumMap1, infos1AbcFilePool));
+    // pandaFileInfos always keep old checksum
+    infos1.Sample(999999, abcId1);
+    ASSERT_FALSE(infos1.Checksum(fileNameToChecksumMap1, infos1AbcFilePool));
+    unlink("ark-pgoChecksumTest/modules.ap");
+    unlink("ark-pgoChecksumTest/");
+}
 }  // namespace panda::test

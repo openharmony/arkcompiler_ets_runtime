@@ -112,32 +112,24 @@ void ElfBuilder::Initialize()
     for (size_t i = 0; i < des_.size(); i++) {
         des_[i].AddArkStackMapSection();
     }
-    sectionToAlign_ = {
-        {ElfSecName::TEXT, AOTFileInfo::PAGE_ALIGN},
-        {ElfSecName::STRTAB, 1},
-        {ElfSecName::SYMTAB, AOTFileInfo::DATA_SEC_ALIGN},
-        {ElfSecName::SHSTRTAB, AOTFileInfo::DATA_SEC_ALIGN},
-        {ElfSecName::ARK_STACKMAP, AOTFileInfo::DATA_SEC_ALIGN},
-        {ElfSecName::ARK_FUNCENTRY, AOTFileInfo::DATA_SEC_ALIGN},
-        {ElfSecName::ARK_ASMSTUB, AOTFileInfo::DATA_SEC_ALIGN},
-        {ElfSecName::ARK_MODULEINFO, AOTFileInfo::DATA_SEC_ALIGN},
-    };
+    sectionToAlign_ = {{ElfSecName::TEXT, AOTFileInfo::PAGE_ALIGN},
+                       {ElfSecName::STRTAB, 1},
+                       {ElfSecName::SYMTAB, AOTFileInfo::DATA_SEC_ALIGN},
+                       {ElfSecName::SHSTRTAB, AOTFileInfo::DATA_SEC_ALIGN},
+                       {ElfSecName::ARK_STACKMAP, AOTFileInfo::DATA_SEC_ALIGN},
+                       {ElfSecName::ARK_FUNCENTRY, AOTFileInfo::DATA_SEC_ALIGN},
+                       {ElfSecName::ARK_ASMSTUB, AOTFileInfo::DATA_SEC_ALIGN},
+                       {ElfSecName::ARK_MODULEINFO, AOTFileInfo::DATA_SEC_ALIGN},
+                       {ElfSecName::ARK_CHECKSUMINFO, AOTFileInfo::DATA_SEC_ALIGN}};
 
     sectionToSegment_ = {
-        {ElfSecName::RODATA, ElfSecName::TEXT},
-        {ElfSecName::RODATA_CST4, ElfSecName::TEXT},
-        {ElfSecName::RODATA_CST8, ElfSecName::TEXT},
-        {ElfSecName::RODATA_CST16, ElfSecName::TEXT},
-        {ElfSecName::RODATA_CST32, ElfSecName::TEXT},
-        {ElfSecName::TEXT, ElfSecName::TEXT},
-        {ElfSecName::STRTAB, ElfSecName::DATA},
-        {ElfSecName::SYMTAB, ElfSecName::DATA},
-        {ElfSecName::SHSTRTAB, ElfSecName::DATA},
-        {ElfSecName::ARK_STACKMAP, ElfSecName::DATA},
-        {ElfSecName::ARK_FUNCENTRY, ElfSecName::DATA},
-        {ElfSecName::ARK_ASMSTUB, ElfSecName::TEXT},
-        {ElfSecName::ARK_MODULEINFO, ElfSecName::DATA},
-    };
+        {ElfSecName::RODATA, ElfSecName::TEXT},         {ElfSecName::RODATA_CST4, ElfSecName::TEXT},
+        {ElfSecName::RODATA_CST8, ElfSecName::TEXT},    {ElfSecName::RODATA_CST16, ElfSecName::TEXT},
+        {ElfSecName::RODATA_CST32, ElfSecName::TEXT},   {ElfSecName::TEXT, ElfSecName::TEXT},
+        {ElfSecName::STRTAB, ElfSecName::DATA},         {ElfSecName::SYMTAB, ElfSecName::DATA},
+        {ElfSecName::SHSTRTAB, ElfSecName::DATA},       {ElfSecName::ARK_STACKMAP, ElfSecName::DATA},
+        {ElfSecName::ARK_FUNCENTRY, ElfSecName::DATA},  {ElfSecName::ARK_ASMSTUB, ElfSecName::TEXT},
+        {ElfSecName::ARK_MODULEINFO, ElfSecName::DATA}, {ElfSecName::ARK_CHECKSUMINFO, ElfSecName::DATA}};
 
     segmentToFlag_ = {
         {ElfSecName::TEXT, llvm::ELF::PF_X | llvm::ELF::PF_R},
@@ -524,6 +516,7 @@ Section Headers:
   [ 4] .shstrtab         STRTAB           0000000000002350  00002350  000000000000003f  0000000000000000   A       0     0     8
   [ 5] .ark_funcentry    PROGBITS         0000000000002390  00002390  00000000000006c0  0000000000000000   A       0     0     8
   [ 6] .ark_stackmaps    PROGBITS         0000000000002a50  00002a50  000000000000070e  0000000000000000   A       0     0     8
+  [ 7] .ark_checksuminfo PROGBITS         000000000000315e  0000315e  0000000000000028  0000000000000000   A       0     0     8
 
 section of stub.an layout as follows:
 There are 7 section headers, starting at offset 0x40:
@@ -620,7 +613,8 @@ void ElfBuilder::PackELFSections(std::ofstream &file)
             }
             case ElfSecName::SHSTRTAB:
             case ElfSecName::ARK_FUNCENTRY:
-            case ElfSecName::ARK_ASMSTUB: {
+            case ElfSecName::ARK_ASMSTUB:
+            case ElfSecName::ARK_CHECKSUMINFO: {
                 uint32_t curSecSize = des_[FullSecIndex].GetSecSize(secName);
                 uint64_t curSecAddr = des_[FullSecIndex].GetSecAddr(secName);
                 file.write(reinterpret_cast<char *>(curSecAddr), curSecSize);
@@ -660,23 +654,23 @@ Entry point 0x0
 There are 2 program headers, starting at offset 16384
 
 Program Headers:
-  Type           Offset             VirtAddr           PhysAddr           FileSiz            MemSiz              Flags  Align
-  LOAD           0x0000000000001000 0x0000000000001000 0x0000000000001000 0x0000000000000f61 0x0000000000001000  R E    0x1000
-  LOAD           0x0000000000002000 0x0000000000002000 0x0000000000002000 0x000000000000115e 0x0000000000002000  R      0x1000
+  Type    Offset             VirtAddr           PhysAddr           FileSiz            MemSiz              Flags  Align
+  LOAD    0x0000000000001000 0x0000000000001000 0x0000000000001000 0x0000000000000f61 0x0000000000001000  R E    0x1000
+  LOAD    0x0000000000002000 0x0000000000002000 0x0000000000002000 0x000000000000115e 0x0000000000002000  R      0x1000
 
  Section to Segment mapping:
   Segment Sections...
    00     .text
-   01     .strtab .symtab .shstrtab .ark_funcentry .ark_stackmaps
+   01     .strtab .symtab .shstrtab .ark_funcentry .ark_stackmaps .ark_checksuminfo
 ------------------------------------------------------------------------------------------------------------------------------
 Stub Elf file
 Entry point 0x0
 There are 2 program headers, starting at offset 770048
 
 Program Headers:
-  Type           Offset             VirtAddr           PhysAddr           FileSiz            MemSiz              Flags  Align
-  LOAD           0x0000000000001000 0x0000000000001000 0x0000000000001000 0x0000000000085020 0x0000000000086000  R E    0x1000
-  LOAD           0x0000000000087000 0x0000000000087000 0x0000000000087000 0x0000000000035bbc 0x0000000000036000  R      0x1000
+  Type     Offset             VirtAddr           PhysAddr           FileSiz            MemSiz              Flags  Align
+  LOAD     0x0000000000001000 0x0000000000001000 0x0000000000001000 0x0000000000085020 0x0000000000086000  R E    0x1000
+  LOAD     0x0000000000087000 0x0000000000087000 0x0000000000087000 0x0000000000035bbc 0x0000000000036000  R      0x1000
 
  Section to Segment mapping:
   Segment Sections...
@@ -783,7 +777,8 @@ size_t ElfBuilder::CalculateTotalFileSize()
             }
             case ElfSecName::SHSTRTAB:
             case ElfSecName::ARK_FUNCENTRY:
-            case ElfSecName::ARK_ASMSTUB: {
+            case ElfSecName::ARK_ASMSTUB:
+            case ElfSecName::ARK_CHECKSUMINFO: {
                 uint32_t curSecSize = des_[FullSecIndex].GetSecSize(secName);
                 curOffset = AlignUp(curOffset, align);
                 curOffset += curSecSize;
