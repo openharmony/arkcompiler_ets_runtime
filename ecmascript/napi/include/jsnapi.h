@@ -85,7 +85,8 @@ using EcmaContext = ecmascript::EcmaContext;
 using JSThread = ecmascript::JSThread;
 using JSTaggedType = uint64_t;
 using ConcurrentCallback = void (*)(Local<JSValueRef> result, bool success, void *taskInfo, void *data);
-using SourceMapTranslateCallback = std::function<bool(std::string& url, int& line, int& column)>;
+using SourceMapTranslateCallback = std::function<bool(std::string& url, int& line, int& column,
+    std::string &packageName)>;
 using DeviceDisconnectCallback = std::function<bool()>;
 
 static constexpr size_t DEFAULT_GC_THREAD_NUM = 7;
