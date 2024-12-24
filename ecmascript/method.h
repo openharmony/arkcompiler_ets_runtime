@@ -130,9 +130,9 @@ public:
 
     void SetAotCodeBit(bool isCompiled)
     {
-        uint64_t callField = AtomicGetCallField();
+        uint64_t callField = GetCallField();
         uint64_t newValue = SetAotCodeBit(callField, isCompiled);
-        AtomicSetCallField(newValue);
+        SetCallField(newValue);
     }
 
     void SetFastBuiltinBit(bool isFastBuiltin)
@@ -174,7 +174,7 @@ public:
 
     bool IsAotWithCallField() const
     {
-        uint64_t callField = AtomicGetCallField();
+        uint64_t callField = GetCallField();
         return MethodLiteral::IsAotWithCallField(callField);
     }
 
@@ -320,14 +320,14 @@ public:
 
     void SetFunctionKind(FunctionKind kind)
     {
-        uint64_t extraLiteralInfo = AtomicGetExtraLiteralInfo();
+        uint64_t extraLiteralInfo = GetExtraLiteralInfo();
         uint64_t newValue = SetFunctionKind(extraLiteralInfo, kind);
-        AtomicSetExtraLiteralInfo(newValue);
+        SetExtraLiteralInfo(newValue);
     }
 
     FunctionKind GetFunctionKind() const
     {
-        uint64_t extraLiteralInfo = AtomicGetExtraLiteralInfo();
+        uint64_t extraLiteralInfo = GetExtraLiteralInfo();
         return GetFunctionKind(extraLiteralInfo);
     }
 
@@ -484,15 +484,16 @@ public:
 
     static constexpr size_t CONSTANT_POOL_OFFSET = TaggedObjectSize();
     ACCESSORS(ConstantPool, CONSTANT_POOL_OFFSET, CALL_FIELD_OFFSET)
-    ACCESSORS_PRIMITIVE_FIELD_HAS_ATOMIC_INTERFACE(CallField, uint64_t, CALL_FIELD_OFFSET,
-                                                    NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET)
+    ACCESSORS_SYNCHRONIZED_PRIMITIVE_FIELD(
+        CallField, uint64_t, CALL_FIELD_OFFSET, NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET)
     // Native method decides this filed is NativePointer or BytecodeArray pointer.
     ACCESSORS_NATIVE_FIELD(
         NativePointerOrBytecodeArray, void, NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET, CODEENTRY_LITERAL_OFFSET)
-    ACCESSORS_PRIMITIVE_FIELD(CodeEntryOrLiteral, uintptr_t, CODEENTRY_LITERAL_OFFSET, LITERAL_INFO_OFFSET)
+    ACCESSORS_SYNCHRONIZED_PRIMITIVE_FIELD(
+        CodeEntryOrLiteral, uintptr_t, CODEENTRY_LITERAL_OFFSET, LITERAL_INFO_OFFSET)
     // hotness counter is encoded in a js method field, the first uint16_t in a uint64_t.
     ACCESSORS_PRIMITIVE_FIELD(LiteralInfo, uint64_t, LITERAL_INFO_OFFSET, EXTRA_LITERAL_INFO_OFFSET)
-    ACCESSORS_PRIMITIVE_FIELD_HAS_ATOMIC_INTERFACE(
+    ACCESSORS_SYNCHRONIZED_PRIMITIVE_FIELD(
         ExtraLiteralInfo, uint64_t, EXTRA_LITERAL_INFO_OFFSET, EXPECTED_PROPERTY_COUNT_OFFSET)
     ACCESSORS_PRIMITIVE_FIELD(ExpectedPropertyCount, uint32_t, EXPECTED_PROPERTY_COUNT_OFFSET, LAST_OFFSET)
     DEFINE_ALIGN_SIZE(LAST_OFFSET);
