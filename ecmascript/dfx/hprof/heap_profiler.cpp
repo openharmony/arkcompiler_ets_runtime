@@ -159,6 +159,20 @@ void HeapProfiler::DumpHeapSnapshotForOOM([[maybe_unused]] const DumpSnapShotOpt
 #if defined(ENABLE_DUMP_IN_FAULTLOG)
     // Write in faultlog for heap leak.
     int32_t fd;
+#if defined(PANDA_TARGET_ARM32)
+    DumpSnapShotOption doDumpOption;
+    doDumpOption.dumpFormat = DumpFormat::JSON;
+    doDumpOption.isFullGC = dumpOption.isFullGC;
+    doDumpOption.isSimplify = true;
+    doDumpOption.isBeforeFill = false;
+    fd = RequestFileDescriptor(static_cast<int32_t>(FaultLoggerType::JS_HEAP_SNAPSHOT));
+    if (fd < 0) {
+        LOG_ECMA(ERROR) << "OOM Dump Write FD failed, fd" << fd;
+        return;
+    }
+    FileDescriptorStream stream(fd);
+    DumpHeapSnapshot(&stream, doDumpOption);
+#else
     if (dumpOption.isDumpOOM && dumpOption.dumpFormat == DumpFormat::BINARY) {
         fd = RequestFileDescriptor(static_cast<int32_t>(FaultLoggerType::JS_RAW_SNAPSHOT));
     } else {
@@ -174,6 +188,7 @@ void HeapProfiler::DumpHeapSnapshotForOOM([[maybe_unused]] const DumpSnapShotOpt
     } else {
         DumpHeapSnapshotFromSharedGC(&stream, dumpOption);
     }
+#endif
 #endif
 }
 
