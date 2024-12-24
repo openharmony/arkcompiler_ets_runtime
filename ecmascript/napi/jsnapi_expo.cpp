@@ -4508,6 +4508,11 @@ void JSNApi::PrintExceptionInfo(const EcmaVM *vm)
     ThrowException(vm, exception);
 }
 
+void JSNApi::SetOnAllErrorCallbackForThread(EcmaVM *vm, OnAllErrorCallback cb, void* data)
+{
+    vm->SetOnAllErrorCallback(cb, data);
+}
+
 #if defined(ECMASCRIPT_SUPPORT_DEBUGGER) && !defined(PANDA_TARGET_IOS)
 bool JSNApi::StartDebuggerCheckParameters(EcmaVM *vm, const DebugOption &option, int32_t instanceId,
                                           const DebuggerPostTask &debuggerPostTask)
