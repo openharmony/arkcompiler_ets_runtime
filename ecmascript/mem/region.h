@@ -109,6 +109,20 @@ enum RSetType {
     LOCAL_TO_SHARE,
 };
 
+enum class RSetSwapFlag : uint8_t {
+    // Both LocalToShare and oldToNew are not swapped. It means the bitset in it is available
+    NO_SWAPPED = 0,
+
+    // LocalToShare are swapped. It means the bitset in LocalToShare is unavailable
+    LOCAL_TO_SHARE_SWAPPED_MASK = 0b001,
+
+    // LocalToShare are collected. It means the bitset in LocalToShare is unavailable
+    LOCAL_TO_SHARE_COLLECTED_MASK = 0b010,
+
+    // oldToNew are swapped. It means the bitset in oldToNew is unavailable
+    OLD_TO_NEW_SWAPPED_MASK = 0b100,
+};
+
 static inline std::string ToSpaceTypeName(uint8_t space)
 {
     switch (space) {
@@ -354,7 +368,7 @@ public:
     void ClearMarkGCBitset();
     // local to share remembered set
     bool HasLocalToShareRememberedSet() const;
-    RememberedSet *ExtractLocalToShareRSet();
+    RememberedSet *CollectLocalToShareRSet();
     void InsertLocalToShareRSet(uintptr_t addr);
     template<RegionSpaceKind kind>
     Updater<kind> GetBatchRSetUpdater(uintptr_t addr);
@@ -441,6 +455,8 @@ public:
     }
 
     uint8_t GetRegionSpaceFlag();
+    void SetRSetSwapFlag(RSetSwapFlag mask);
+    void ClearRSetSwapFlag(RSetSwapFlag mask);
 
     void SetRegionSpaceFlag(RegionSpaceFlag flag)
     {
@@ -819,12 +835,18 @@ public:
     {
         sweepingOldToNewRSet_ = packedData_.oldToNewSet_;
         packedData_.oldToNewSet_ = nullptr;
+        if (sweepingOldToNewRSet_ != nullptr) {
+            SetRSetSwapFlag(RSetSwapFlag::OLD_TO_NEW_SWAPPED_MASK);
+        }
     }
 
     void SwapLocalToShareRSetForCS()
     {
         sweepingLocalToShareRSet_ = packedData_.localToShareSet_;
         packedData_.localToShareSet_ = nullptr;
+        if (sweepingLocalToShareRSet_ != nullptr) {
+            SetRSetSwapFlag(RSetSwapFlag::LOCAL_TO_SHARE_SWAPPED_MASK);
+        }
     }
 
     void SetLocalHeap(uintptr_t localHeap)
@@ -857,7 +879,8 @@ public:
                                                  base::AlignedPointer,
                                                  base::AlignedPointer,
                                                  base::AlignedPointer,
-                                                 base::AlignedSize> {
+                                                 base::AlignedSize,
+                                                 base::AlignedUint8> {
         enum class Index : size_t {
             FlagsIndex = 0,
             TypeFlagIndex,
@@ -866,6 +889,7 @@ public:
             LocalToShareSetIndex,
             BeginIndex,
             BitSetSizeIndex,
+            RSetSwapFlagIndex,
             NumOfMembers
         };
 
@@ -935,6 +959,11 @@ public:
             return GetOffset<static_cast<size_t>(Index::BeginIndex)>(isArch32);
         }
 
+        static size_t GetRSetSwapFlagOffset(bool isArch32)
+        {
+            return GetOffset<static_cast<size_t>(Index::RSetSwapFlagIndex)>(isArch32);
+        }
+
         alignas(EAS) PackedPtr flags_;
         // Use different UIntPtr from flags_ to prevent the potential data race.
         // Be careful when storing to this value, currently this is only from JS_Thread during ConcurrentMarking,
@@ -949,6 +978,9 @@ public:
         alignas(EAS) RememberedSet *localToShareSet_ {nullptr};
         alignas(EAS) uintptr_t begin_ {0};
         alignas(EAS) size_t bitsetSize_ {0};
+        // RSetSwapFlag_ represents if the oldToNewSet_ and localToShareSet_ are swapped, when they are swapped,
+        // the data in it are untrusted.
+        alignas(EAS) uint8_t RSetSwapFlag_ {0};
     };
     STATIC_ASSERT_EQ_ARCH(sizeof(PackedData), PackedData::SizeArch32, PackedData::SizeArch64);
 
@@ -992,6 +1024,7 @@ private:
 
     friend class Snapshot;
     friend class SnapshotProcessor;
+    friend class RuntimeStubs;
 };
 }  // namespace ecmascript
 }  // namespace panda

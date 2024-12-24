@@ -291,7 +291,7 @@ void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread, bool
     }
 
     thread->CheckSafepointIfSuspended();
-    InitializeArray(env, objFuncPrototypeVal);
+    InitializeArray(env, objFuncPrototypeVal, isRealm);
     if (lazyInit) {
         LazyInitializeDate(env);
         LazyInitializeSet(env);
@@ -2154,7 +2154,8 @@ void Builtins::InitializeRegExp(const JSHandle<GlobalEnv> &env)
     globalConst->SetConstant(ConstantIndex::JS_REGEXP_CLASS_INDEX, regexpFuncInstanceHClass.GetTaggedValue());
 }
 
-void Builtins::InitializeArray(const JSHandle<GlobalEnv> &env, const JSHandle<JSTaggedValue> &objFuncPrototypeVal) const
+void Builtins::InitializeArray(const JSHandle<GlobalEnv> &env, const JSHandle<JSTaggedValue> &objFuncPrototypeVal,
+                               bool isRealm) const
 {
     [[maybe_unused]] EcmaHandleScope scope(thread_);
     // Arraybase.prototype
@@ -2174,7 +2175,9 @@ void Builtins::InitializeArray(const JSHandle<GlobalEnv> &env, const JSHandle<JS
     JSMutableHandle<JSHClass> arrFuncInstanceHClass(thread_, JSTaggedValue::Undefined());
     arrFuncInstanceHClass.Update(factory_->CreateJSArrayInstanceClass(arrFuncPrototypeValue));
     auto globalConstant = const_cast<GlobalEnvConstants *>(thread_->GlobalConstants());
-    globalConstant->InitElementKindHClass(thread_, arrFuncInstanceHClass);
+    if (!isRealm) {
+        globalConstant->InitElementKindHClass(thread_, arrFuncInstanceHClass);
+    }
     if (thread_->GetEcmaVM()->IsEnableElementsKind()) {
         // for all JSArray, the initial ElementsKind should be NONE
         // For PGO, currently we do not support elementsKind for builtins
@@ -2251,8 +2254,10 @@ void Builtins::InitializeArray(const JSHandle<GlobalEnv> &env, const JSHandle<JS
     env->SetArrayFunction(thread_, arrayFunction);
     env->SetArrayPrototype(thread_, arrFuncPrototype);
 
-    thread_->SetInitialBuiltinHClass(BuiltinTypeId::ARRAY, arrayFunction->GetJSHClass(),
-        *arrFuncInstanceHClass, arrFuncPrototype->GetJSHClass());
+    if (!isRealm) {
+        thread_->SetInitialBuiltinHClass(BuiltinTypeId::ARRAY, arrayFunction->GetJSHClass(),
+                                         *arrFuncInstanceHClass, arrFuncPrototype->GetJSHClass());
+    }
 }
 
 void Builtins::InitializeTypedArray(const JSHandle<GlobalEnv> &env, JSHandle<JSTaggedValue> objFuncPrototypeVal) const

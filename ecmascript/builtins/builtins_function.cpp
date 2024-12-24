@@ -88,7 +88,7 @@ static std::pair<TaggedArray*, size_t> BuildArgumentsListFast(JSThread *thread,
             JSHandle<TaggedArray> newElements = thread->GetEcmaVM()->GetFactory()->
                                                 NewTaggedArray(elementsLength, JSTaggedValue::Undefined());
             for (int i = 0; i < elementsLength; ++i) {
-                JSTaggedValue value = ElementAccessor::Get(obj, i);
+                JSTaggedValue value = ElementAccessor::Get(thread, obj, i);
                 newElements->Set(thread, i, value);
             }
             elements = *newElements;

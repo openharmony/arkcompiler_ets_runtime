@@ -96,7 +96,7 @@ public:
                                                   JSHandle<TaggedArray> sortedList, uint32_t len);
     static JSTaggedValue Fill(JSThread *thread, const JSHandle<JSObject> &thisObj,
                               const JSHandle<JSTaggedValue> &value,
-                              int64_t start, int64_t end, int64_t len);
+                              int64_t start, int64_t end);
     static JSTaggedValue HandleFindLastOfStable(JSThread *thread, JSHandle<JSObject> thisObjHandle,
                                                 JSHandle<JSTaggedValue> callbackFnHandle,
                                                 JSHandle<JSTaggedValue> thisArgHandle,

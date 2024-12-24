@@ -208,14 +208,9 @@ GateRef NTypeHCRLowering::NewJSArrayLiteral(GateRef glue, GateRef gate, GateRef 
         flag = acc_.GetArrayMetaDataAccessor(gate).GetRegionSpaceFlag();
     }
     GateRef hclass = Circuit::NullGate();
-    if (!Elements::IsGeneric(kind)) {
-        // At define point, we use initial array class without IsPrototype set.
-        auto hclassIndex = compilationEnv_->GetArrayHClassIndexMap().at(kind).first;
-        hclass = builder_.GetGlobalConstantValue(hclassIndex);
-    } else {
-        GateRef globalEnv = builder_.GetGlobalEnv();
-        hclass = builder_.GetGlobalEnvObjHClass(globalEnv, GlobalEnv::ARRAY_FUNCTION_INDEX);
-    }
+    // At define point, we use initial array class without IsPrototype set.
+    auto hclassIndex = compilationEnv_->GetArrayHClassIndexMap().at(kind).first;
+    hclass = builder_.GetGlobalConstantValue(hclassIndex);
 
     JSHandle<JSFunction> arrayFunc(compilationEnv_->GetGlobalEnv()->GetArrayFunction());
     JSTaggedValue protoOrHClass = arrayFunc->GetProtoOrHClass();

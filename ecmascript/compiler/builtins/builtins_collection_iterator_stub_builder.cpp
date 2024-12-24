@@ -40,7 +40,7 @@ GateRef BuiltinsCollectionIteratorStubBuilder<IteratorType>::CreateIterValueForE
     GateRef elements = newBuilder.NewTaggedArray(glue_, Int32(2));    // 2: length of array to store [key, value] is 2
     SetValueToTaggedArray(VariableType::JS_ANY(), glue_, elements, Int32(0), key);   // 0: key
     SetValueToTaggedArray(VariableType::JS_ANY(), glue_, elements, Int32(1), value); // 1: value
-    return newBuilder.CreateArrayFromList(glue_, elements);
+    return newBuilder.CreateArrayFromList(glue_, elements, Int32(static_cast<int32_t>(ElementsKind::TAGGED)));
 }
 
 template <typename IteratorType>

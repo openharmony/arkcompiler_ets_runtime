@@ -133,7 +133,8 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "                                      Default: 'stub.an'\n"
     "--enable-pgo-profiler:                Enable pgo profiler to sample jsfunction call and output to file. "
                                            "Default: 'false'\n"
-    "--enable-elements-kind:               Enable elementsKind sampling and usage. Default: 'false'\n"
+    "--enable-mutant-array:                Enable transition between mutant array and tagged array. Default: 'false'\n"
+    "--enable-elements-kind:               Enable initialization of elements kind in array. Default: 'false'\n"
     "--compiler-pgo-hotness-threshold:     Set hotness threshold for pgo in aot compiler. Default: '2'\n"
     "--compiler-pgo-profiler-path:         The pgo file output dir or the pgo file dir of AOT compiler. Default: ''\n"
     "--compiler-pgo-save-min-interval:     Set the minimum time interval for automatically saving profile, "
@@ -282,7 +283,8 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"compiler-target-triple", required_argument, nullptr, OPTION_COMPILER_TARGET_TRIPLE},
         {"enable-print-execute-time", required_argument, nullptr, OPTION_PRINT_EXECUTE_TIME},
         {"enable-pgo-profiler", required_argument, nullptr, OPTION_ENABLE_PGO_PROFILER},
-        {"enable-elements-kind", required_argument, nullptr, OPTION_ENABLE_ELEMENTSKIND},
+        {"enable-mutant-array", required_argument, nullptr, OPTION_ENABLE_MUTANT_ARRAY},
+        {"enable-elements-kind", required_argument, nullptr, OPTION_ENABLE_ELEMENTS_KIND},
         {"compiler-pgo-profiler-path", required_argument, nullptr, OPTION_COMPILER_PGO_PROFILER_PATH},
         {"compiler-pgo-hotness-threshold", required_argument, nullptr, OPTION_COMPILER_PGO_HOTNESS_THRESHOLD},
         {"compiler-pgo-save-min-interval", required_argument, nullptr, OPTION_COMPILER_PGO_SAVE_MIN_INTERVAL},
@@ -376,6 +378,11 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         }
 
         if (option == -1) {
+            // set dependency between options at here
+            if (!IsEnableElementsKind() && IsEnableMutantArray()) {
+                LOG_ECMA(ERROR) << "'enable-mutant-array' must set to false while 'enable-elements-kind' is disabled\n";
+                return false;
+            }
             return true;
         }
 
@@ -737,7 +744,15 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                     return false;
                 }
                 break;
-            case OPTION_ENABLE_ELEMENTSKIND:
+            case OPTION_ENABLE_MUTANT_ARRAY:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetEnableMutantArray(argBool);
+                } else {
+                    return false;
+                }
+                break;
+            case OPTION_ENABLE_ELEMENTS_KIND:
                 ret = ParseBoolParam(&argBool);
                 if (ret) {
                     SetEnableElementsKind(argBool);

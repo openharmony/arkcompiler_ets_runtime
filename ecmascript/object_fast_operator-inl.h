@@ -79,7 +79,7 @@ std::pair<JSTaggedValue, bool> ObjectFastOperator::HasOwnProperty(JSThread *thre
             if (ElementAccessor::GetElementsLength(receiverObj) <= index) {
                 return std::make_pair(JSTaggedValue::Hole(), true);
             }
-            JSTaggedValue value = ElementAccessor::Get(receiverObj, index);
+            JSTaggedValue value = ElementAccessor::Get(thread, receiverObj, index);
             return std::make_pair(value, true);
         } else {
             NumberDictionary *dictionary =
@@ -138,7 +138,7 @@ JSTaggedValue ObjectFastOperator::TryFastHasProperty(JSThread *thread, JSTaggedV
         JSHandle<JSObject> receiverObj(thread, receiver);
         if (!ElementAccessor::IsDictionaryMode(receiverObj)) {
             if (index < ElementAccessor::GetElementsLength(receiverObj)) {
-                JSTaggedValue value = ElementAccessor::Get(receiverObj, index);
+                JSTaggedValue value = ElementAccessor::Get(thread, receiverObj, index);
                 return value.IsHole() ? JSTaggedValue::Hole() : JSTaggedValue::True();
             }
         }
@@ -210,7 +210,7 @@ JSTaggedValue ObjectFastOperator::TryFastGetPropertyByIndex(JSThread *thread, JS
     if (!hclass->IsDictionaryElement()) {
         ASSERT(!ElementAccessor::IsDictionaryMode(currentHolder));
         if (index < ElementAccessor::GetElementsLength(currentHolder)) {
-            JSTaggedValue value = ElementAccessor::Get(currentHolder, index);
+            JSTaggedValue value = ElementAccessor::Get(thread, currentHolder, index);
             if (!value.IsHole()) {
                 return value;
             }
@@ -627,7 +627,7 @@ JSTaggedValue ObjectFastOperator::GetPropertyByIndex(JSThread *thread, JSTaggedV
         if (!hclass->IsDictionaryElement()) {
             ASSERT(!ElementAccessor::IsDictionaryMode(currentHolder));
             if (index < ElementAccessor::GetElementsLength(currentHolder)) {
-                JSTaggedValue value = ElementAccessor::Get(currentHolder, index);
+                JSTaggedValue value = ElementAccessor::Get(thread, currentHolder, index);
                 if (!value.IsHole()) {
                     return value;
                 }
@@ -689,7 +689,7 @@ JSTaggedValue ObjectFastOperator::SetPropertyByIndex(JSThread *thread, JSTaggedV
                 break;
             }
             if (index < elements->GetLength()) {
-                JSTaggedValue oldValue = ElementAccessor::Get(arrayHandler, index);
+                JSTaggedValue oldValue = ElementAccessor::Get(thread, arrayHandler, index);
                 if (!oldValue.IsHole()) {
                     if (holder.IsJSCOWArray()) {
                         [[maybe_unused]] EcmaHandleScope handleScope(thread);

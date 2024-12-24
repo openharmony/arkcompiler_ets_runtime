@@ -195,7 +195,12 @@ namespace panda::ecmascript {
     V(SortTypedArray)                          \
     V(ReverseTypedArray)                       \
     V(CopyTypedArrayBuffer)                    \
-    V(IsFastRegExp)
+    V(IsFastRegExp)                            \
+    V(CreateLocalToShare)                      \
+    V(CreateOldToNew)                          \
+    V(ObjectCopy)                              \
+    V(FillObject)                              \
+    V(ReverseArray)
 
 #define RUNTIME_STUB_WITH_GC_LIST(V)            \
     V(AddElementInternal)                       \

@@ -1481,7 +1481,7 @@ void BuiltinsTypedArrayStubBuilder::Filter(GateRef glue, GateRef thisValue, Gate
                 BRANCH(Int32LessThan(*i, *newArrayLen), &next2, &loopExit2);
                 Bind(&next2);
                 {
-                    GateRef kValue = arrayStubBuilder.GetTaggedValueWithElementsKind(kept, *i);
+                    GateRef kValue = arrayStubBuilder.GetTaggedValueWithElementsKind(glue, kept, *i);
                     StoreTypedArrayElement(glue, newArray, ZExtInt32ToInt64(*i), kValue, arrayType);
                     Jump(&loopEnd2);
                 }
@@ -3403,7 +3403,7 @@ void BuiltinsTypedArrayStubBuilder::FastCopyFromArrayToTypedArray(GateRef glue, 
     Label next(env);
     Label setValue(env);
     Label isTagged(env);
-    Label elementsKindEnabled(env);
+    Label mutantArrayEnabled(env);
 
     GateRef buffer = GetViewedArrayBufferOrByteArray(result->ReadVariable());
     if (!typedArrayFromCtor) {
@@ -3423,8 +3423,8 @@ void BuiltinsTypedArrayStubBuilder::FastCopyFromArrayToTypedArray(GateRef glue, 
     } else {
         targetByteIndex = Int32Add(Int32Mul(targetOffset, elementSize), targetByteOffset);
     }
-    BRANCH(IsEnableElementsKind(glue), &elementsKindEnabled, &isTagged);
-    Bind(&elementsKindEnabled);
+    BRANCH(IsEnableMutantArray(glue), &mutantArrayEnabled, &isTagged);
+    Bind(&mutantArrayEnabled);
     {
         CopyElementsToArrayBuffer(glue, srcLength, array, buffer, targetByteIndex, arrayType, true);
         Jump(check);
@@ -3457,7 +3457,7 @@ void BuiltinsTypedArrayStubBuilder::CopyElementsToArrayBuffer(GateRef glue, Gate
         BRANCH(Int32UnsignedLessThan(*i, srcLength), &storeValue, &exit);
         Bind(&storeValue);
         {
-            GateRef value = getWithKind ? GetTaggedValueWithElementsKind(array, *i)
+            GateRef value = getWithKind ? GetTaggedValueWithElementsKind(glue, array, *i)
                                         : GetValueFromTaggedArray(elementsArray, *i);
             GateRef val = ToNumber(glue, value);
             BRANCH(HasPendingException(glue), &exit, &copyElement);

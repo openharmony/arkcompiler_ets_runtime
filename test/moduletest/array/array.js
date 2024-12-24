@@ -2175,3 +2175,25 @@ x1.constructor = null
 
 print(ArkTools.hasConstructor(x2));
 print(ArkTools.hasConstructor(x3));
+// pop 
+var y = new Array(10)
+for (let i = 0; i < y.length; i++) {
+    y[i] = i
+}
+print(y.pop()); //: 9
+print(y.pop()); //: 8
+print(y.pop()); //: 7
+print(y.pop()); //: 6
+print(y.pop()); //: 5
+print(y);
+// shift
+var shiftArray = new Array(10)
+for (let i = 0; i < shiftArray.length; i++) {
+    shiftArray[i] = i
+}
+print(shiftArray.shift()); //: 0
+print(shiftArray.shift()); //: 1
+print(shiftArray.shift()); //: 2
+print(shiftArray.shift()); //: 3
+print(shiftArray.shift()); //: 4
+print(shiftArray);

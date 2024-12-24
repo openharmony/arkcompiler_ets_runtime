@@ -185,7 +185,8 @@ enum CommandValues {
     OPTION_COMPILER_ENABLE_AOT_PGO,
     OPTION_COMPILER_ENABLE_FRAMEWORK_AOT,
     OPTION_COMPILER_ENABLE_PROPFILE_DUMP,
-    OPTION_ENABLE_ELEMENTSKIND,
+    OPTION_ENABLE_MUTANT_ARRAY,
+    OPTION_ENABLE_ELEMENTS_KIND,
     OPTION_COMPILER_TYPED_OP_PROFILER,
     OPTION_COMPILER_OPT_BRANCH_PROFILING,
     OPTION_TEST_ASSERT,
@@ -206,8 +207,8 @@ enum CommandValues {
     OPTION_COMPILER_BASELINEJIT_HOTNESS_THRESHOLD,
     OPTION_COMPILER_FORCE_BASELINEJIT_COMPILE_MAIN,
     OPTION_ENABLE_AOT_CRASH_ESCAPE,
-    OPTION_COMPILER_ENABLE_JIT_FAST_COMPILE,
     OPTION_SPLIT_TWO,
+    OPTION_COMPILER_ENABLE_JIT_FAST_COMPILE,
     OPTION_COMPILER_BASELINE_PGO,
     OPTION_ASYNC_LOAD_ABC,
     OPTION_ASYNC_LOAD_ABC_TEST,
@@ -1085,6 +1086,16 @@ public:
     bool IsEnablePrintExecuteTime() const
     {
         return enablePrintExecuteTime_;
+    }
+
+    void SetEnableMutantArray(bool value)
+    {
+        enableMutantArray_ = value;
+    }
+
+    bool IsEnableMutantArray() const
+    {
+        return enableMutantArray_;
     }
 
     void SetEnableElementsKind(bool value)
@@ -2117,7 +2128,12 @@ private:
     bool enableLaterElimination_ {true};
     bool enableValueNumbering_ {true};
     bool enableOptString_ {true};
+    bool enableMutantArray_ {false};
+#if ENABLE_NEXT_OPTIMIZATION
     bool enableElementsKind_ {false};
+#else
+    bool enableElementsKind_ {false};
+#endif
     bool enableInstrcutionCombine {true};
     bool enableNewValueNumbering_ {true};
     bool enableOptInlining_ {true};

@@ -191,6 +191,7 @@ public:
                           const std::vector<GateRef>& args, GateRef hir = Circuit::NullGate());
     GateRef GetAotCodeAddr(GateRef jsFunc);
     GateRef CallStub(GateRef glue, int index, const std::initializer_list<GateRef>& args);
+    GateRef CallCommonStub(GateRef glue, int index, const std::initializer_list<GateRef>& args);
     GateRef CallBuiltinRuntime(GateRef glue, const std::initializer_list<GateRef>& args, bool isNew = false);
     GateRef CallBuiltinRuntimeWithNewTarget(GateRef glue, const std::initializer_list<GateRef>& args);
     void DebugPrint(GateRef thread, std::initializer_list<GateRef> args);
@@ -597,7 +598,7 @@ public:
     GateRef ClearSharedStoreKind(GateRef handlerInfo);
     GateRef UpdateSOutOfBoundsForHandler(GateRef handlerInfo);
     void RestoreElementsKindToGeneric(GateRef glue, GateRef jsHClass);
-    GateRef GetTaggedValueWithElementsKind(GateRef receiver, GateRef index);
+    GateRef GetTaggedValueWithElementsKind(GateRef glue, GateRef receiver, GateRef index);
     void FastSetValueWithElementsKind(GateRef glue, GateRef receiver, GateRef elements, GateRef rawValue,
                                       GateRef index, ElementsKind kind, bool needTransition = false);
     GateRef SetValueWithElementsKind(GateRef glue, GateRef receiver, GateRef rawValue, GateRef index,
@@ -915,9 +916,9 @@ public:
     GateRef IsSpecialKeysObject(GateRef obj);
     GateRef IsSlowKeysObject(GateRef obj);
     GateRef TryGetEnumCache(GateRef glue, GateRef obj);
-    GateRef GetNumberOfElements(GateRef obj);
-    GateRef IsSimpleEnumCacheValid(GateRef obj);
-    GateRef IsEnumCacheWithProtoChainInfoValid(GateRef obj);
+    GateRef GetNumberOfElements(GateRef glue, GateRef obj);
+    GateRef IsSimpleEnumCacheValid(GateRef glue, GateRef obj);
+    GateRef IsEnumCacheWithProtoChainInfoValid(GateRef glue, GateRef obj);
 
     // Exception handle
     GateRef HasPendingException(GateRef glue);
@@ -932,8 +933,9 @@ public:
     // dstAddr/srcAddr is the address will be copied to/from.
     // It can be a derived pointer point to the middle of an object.
     // Note: dstObj is the object address for dstAddr, it must point to the head of an object.
-    void ArrayCopyAndHoleToUndefined(GateRef glue, GateRef srcAddr, GateRef dstObj, GateRef dstAddr,
-                                     GateRef length, MemoryAttribute mAttr = MemoryAttribute::Default());
+    void ArrayCopyAndHoleToUndefined(GateRef glue, GateRef srcObj, GateRef srcAddr, GateRef dstObj,
+                                     GateRef dstAddr, GateRef length, GateRef needBarrier);
+    GateRef ThreeInt64Min(GateRef first, GateRef second, GateRef third);
     void MigrateArrayWithKind(GateRef glue, GateRef object, GateRef oldKind, GateRef newKind);
     GateRef MigrateFromRawValueToHeapValues(GateRef glue, GateRef object, GateRef needCOW, GateRef isIntKind);
     GateRef MigrateFromHeapValueToRawValue(GateRef glue, GateRef object, GateRef needCOW, GateRef isIntKind);
@@ -975,6 +977,7 @@ public:
     inline GateRef GetGlobalConstantValue(
         VariableType type, GateRef glue, ConstantIndex index);
     inline GateRef GetSingleCharTable(GateRef glue);
+    inline GateRef IsEnableMutantArray(GateRef glue);
     inline GateRef IsEnableElementsKind(GateRef glue);
     inline GateRef GetGlobalEnvValue(VariableType type, GateRef env, size_t index);
     GateRef CallGetterHelper(GateRef glue, GateRef receiver, GateRef holder,
@@ -996,6 +999,7 @@ public:
     GateRef ComputeSizeUtf8(GateRef length);
     GateRef ComputeSizeUtf16(GateRef length);
     GateRef AlignUp(GateRef x, GateRef alignment);
+    GateRef AlignDown(GateRef x, GateRef alignment);
     inline void SetLength(GateRef glue, GateRef str, GateRef length, bool compressed);
     inline void SetLength(GateRef glue, GateRef str, GateRef length, GateRef isCompressed);
     void Assert(int messageId, int line, GateRef glue, GateRef condition, Label *nextLabel);
@@ -1051,28 +1055,27 @@ public:
     void TryToJitReuseCompiledFunc(GateRef glue, GateRef jsFunc, GateRef profileTypeInfoCell);
     void TryToBaselineJitReuseCompiledFunc(GateRef glue, GateRef jsFunc, GateRef profileTypeInfoCell);
     GateRef GetIsFastCall(GateRef machineCode);
+    // compute new elementKind from sub elements
+    GateRef ComputeTaggedArrayElementKind(GateRef array, GateRef offset, GateRef end);
+    GateRef GetElementsKindHClass(GateRef glue, GateRef elementKind);
+    GateRef FixElementsKind(GateRef oldElement);
+    GateRef NeedBarrier(GateRef kind);
 
-    enum OverlapKind {
-        // NotOverlap means the source and destination memory are not overlap,
-        // or overlap but the start of source is larger than destination.
-        // then we will copy the memory from left to right.
-        NotOverlap,
-        // MustOverlap mean the source and destination memory are overlap,
-        // and the start of source is lesser than destination.
-        // then we will copy the memory from right to left.
-        MustOverlap,
-        // Unknown means all the kinds above are possible, it will select the suitable one in runtime.
-        Unknown,
+    enum CopyKind {
+        SameArray,
+        DifferentArray,
     };
     // dstAddr/srcAddr is the address will be copied to/from.
     // It can be a derived pointer point to the middle of an object.
-    //
     // Note: dstObj is the object address for dstAddr, it must point to the head of an object.
-    template <OverlapKind kind>
-    void ArrayCopy(GateRef glue, GateRef srcAddr, GateRef dstObj, GateRef dstAddr, GateRef length,
-                   MemoryAttribute mAttr = MemoryAttribute::Default());
+    void ArrayCopy(GateRef glue, GateRef srcObj, GateRef srcAddr, GateRef dstObj, GateRef dstAddr,
+                   GateRef taggedValueCount, GateRef needBarrier, CopyKind copyKind);
 protected:
     static constexpr int LOOP_UNROLL_FACTOR = 2;
+    static constexpr int ELEMENTS_KIND_HCLASS_NUM = 12;
+    static int64_t ELEMENTS_KIND_HCLASS_CASES[ELEMENTS_KIND_HCLASS_NUM];
+    static ConstantIndex ELEMENTS_KIND_HCLASS_INDEX[ELEMENTS_KIND_HCLASS_NUM];
+
 private:
     using BinaryOperation = std::function<GateRef(Environment*, GateRef, GateRef)>;
     template<OpCode Op>

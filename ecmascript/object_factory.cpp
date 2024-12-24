@@ -2705,7 +2705,7 @@ JSHandle<JSObject> ObjectFactory::NewAndCopyJSArrayObject(JSHandle<JSObject> thi
         return JSHandle<JSObject>(arrayObj);
     }
     for (uint32_t i = 0; i < oldLength; i++) {
-        JSHandle<JSTaggedValue> value(thread_, ElementAccessor::Get(thisObjHandle, i + k));
+        JSHandle<JSTaggedValue> value(thread_, ElementAccessor::Get(thread_, thisObjHandle, i + k));
         ElementAccessor::Set(thread_, arrayObj, i, value, true);
     }
     for (uint32_t i = oldLength; i < newLength; i++) {
@@ -2727,7 +2727,7 @@ JSHandle<TaggedArray> ObjectFactory::NewAndCopyTaggedArrayByObject(JSHandle<JSOb
     }
 
     for (uint32_t i = 0; i < oldLength; i++) {
-        dstElements->Set(thread_, i, ElementAccessor::Get(thisObjHandle, i + k));
+        dstElements->Set(thread_, i, ElementAccessor::Get(thread_, thisObjHandle, i + k));
     }
     for (uint32_t i = oldLength; i < newLength; i++) {
         dstElements->Set(thread_, i, JSTaggedValue::Hole());
@@ -2750,7 +2750,7 @@ JSHandle<MutantTaggedArray> ObjectFactory::NewAndCopyMutantTaggedArrayByObject(J
     for (uint32_t i = 0; i < oldLength; i++) {
         ElementsKind kind = thisObjHandle->GetClass()->GetElementsKind();
         JSTaggedValue value = JSTaggedValue(ElementAccessor::ConvertTaggedValueWithElementsKind(
-            ElementAccessor::Get(thisObjHandle, i + k), kind));
+            ElementAccessor::Get(thread_, thisObjHandle, i + k), kind));
         dstElements->Set<false>(thread_, i, value);
     }
     for (uint32_t i = oldLength; i < newLength; i++) {

@@ -291,6 +291,14 @@ inline GateRef StubBuilder::CallStub(GateRef glue, int index, const std::initial
     return result;
 }
 
+inline GateRef StubBuilder::CallCommonStub(GateRef glue, int index, const std::initializer_list<GateRef>& args)
+{
+    SavePcIfNeeded(glue);
+    const std::string name = CommonStubCSigns::GetName(index);
+    GateRef result = env_->GetBuilder()->CallCommonStub(glue, Circuit::NullGate(), index, args, name.c_str());
+    return result;
+}
+
 inline GateRef StubBuilder::CallBuiltinRuntime(GateRef glue, const std::initializer_list<GateRef>& args, bool isNew)
 {
     return env_->GetBuilder()->CallBuiltinRuntime(glue, Gate::InvalidGateRef, args, isNew);
@@ -3603,6 +3611,12 @@ inline GateRef StubBuilder::GetSingleCharTable(GateRef glue)
         VariableType::JS_POINTER(), glue, ConstantIndex::SINGLE_CHAR_TABLE_INDEX);
 }
 
+inline GateRef StubBuilder::IsEnableMutantArray(GateRef glue)
+{
+    GateRef offset = IntPtr(JSThread::GlueData::GetIsEnableMutantArrayOffset(env_->Is32Bit()));
+    return Load(VariableType::BOOL(), glue, offset);
+}
+
 inline GateRef StubBuilder::IsEnableElementsKind(GateRef glue)
 {
     GateRef offset = IntPtr(JSThread::GlueData::GetIsEnableElementsKindOffset(env_->Is32Bit()));
@@ -3657,6 +3671,11 @@ inline GateRef StubBuilder::AlignUp(GateRef x, GateRef alignment)
 {
     GateRef x1 = PtrAdd(x, PtrSub(alignment, IntPtr(1)));
     return IntPtrAnd(x1, IntPtrNot(PtrSub(alignment, IntPtr(1))));
+}
+
+inline GateRef StubBuilder::AlignDown(GateRef x, GateRef alignment)
+{
+    return IntPtrAnd(x, IntPtrNot(PtrSub(alignment, IntPtr(1))));
 }
 
 inline void StubBuilder::SetLength(GateRef glue, GateRef str, GateRef length, bool compressed)

@@ -832,7 +832,7 @@ JSTaggedValue BuiltinsArray::Fill(EcmaRuntimeCallInfo *argv)
         bool isDictionary = thisObjHandle->GetJSHClass()->IsDictionaryElement();
         if (isDictionary) {
             uint32_t length = JSArray::Cast(*thisObjHandle)->GetLength();
-            uint32_t size = thisObjHandle->GetNumberOfElements();
+            uint32_t size = thisObjHandle->GetNumberOfElements(thread);
             if (length - size > JSObject::MAX_GAP) {
                 JSObject::TryOptimizeAsFastElements(thread, thisObjHandle);
             }
@@ -892,8 +892,8 @@ JSTaggedValue BuiltinsArray::Fill(EcmaRuntimeCallInfo *argv)
     //   b. Let setStatus be Set(O, Pk, value, true).
     //   c. ReturnIfAbrupt(setStatus).
     //   d. Increase k by 1.
-    if (thisObjVal->IsStableJSArray(thread) && !startArg->IsJSObject() && !endArg->IsJSObject()) {
-        return JSStableArray::Fill(thread, thisObjHandle, value, start, end, len);
+    if (thisObjVal->IsStableJSArray(thread)) {
+        return JSStableArray::Fill(thread, thisObjHandle, value, start, end);
     }
 
     int64_t k = start;

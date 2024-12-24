@@ -483,3 +483,48 @@ print(sortNumber7[0]);
 print(sortNumber7[2]);
 print(sortNumber7[4]);
 print(sortNumber7[6]);
+// double sort
+{
+    let array1 = new Array();
+    array1[0] = NaN;
+    array1[1] = 0.0;
+    array1[2] = 1;
+    array1[3] = -0.1;
+    array1[4] = Infinity;
+    array1[5] = -Infinity;
+    array1[10] = NaN;
+    array1[11] = 0.0;
+    array1[12] = 1;
+    array1[13] = -0.1;
+    array1[14] = Infinity;
+    array1[15] = -Infinity;
+    print(array1.toSorted());
+
+    array1 = [5562684646268003, 0.005431, 0.00000019045, -79.39773355813419,
+        1e21, 340000000000000000, 12.01234567890123456789, 0.000001234567890123456789, Infinity,
+        -Infinity, 1.7976931348623157e+308, -1.7976931348623157e+308, 2.22507e-308,
+        0.0000001234567890123456789, 3.4e21, 1.2e20, 1.2e0, 1.2e-6, 1.2e-7, NaN, -12.01234567890123456789,
+        -0.000001234567890123456789, -0.0000001234567890123456789, -3.4e21, -1.2e20, -1.2e0, -1.2e-6, -1.2e-7,
+        0.0, 0
+    ];
+    print(array1.toSorted());
+}
+
+{
+    // double sort need barrier
+    let arrayInt = new Array(3,2,1,0);
+    print(arrayInt.sort());
+    let arrayHoleInt = new Array(4);
+    arrayHoleInt[1] = 4;
+    arrayHoleInt[3] = 2;
+    arrayHoleInt[4] = 1;
+    print(arrayHoleInt.sort());
+
+    let arrayNumber = new Array(3.1, 2.1, 1.1, 0);
+    print(arrayNumber.sort());
+    let arrayHoleNumber = new Array(4);
+    arrayHoleNumber[1] = 4.1;
+    arrayHoleNumber[3] = 2.1;
+    arrayHoleNumber[4] = 1.1;
+    print(arrayHoleNumber.sort());
+}

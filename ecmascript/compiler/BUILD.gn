@@ -55,6 +55,7 @@ libark_jsoptimizer_sources = [
   "assembler/x64/macro_assembler_x64.cpp",
   "assembler_module.cpp",
   "async_function_lowering.cpp",
+  "barrier_stub_builder.cpp",
   "base/depend_chain_helper.cpp",
   "baseline/baseline_assembler.cpp",
   "baseline/baseline_call_signature.cpp",

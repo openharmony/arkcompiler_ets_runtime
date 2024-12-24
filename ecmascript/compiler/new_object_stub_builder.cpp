@@ -78,8 +78,7 @@ GateRef NewObjectStubBuilder::NewJSArrayWithSize(GateRef hclass, GateRef size)
     Label enabledElementsKind(env);
     Label notEmptyArray(env);
     Label initObj(env);
-    GateRef isElementsKindEnabled = IsEnableElementsKind(glue_);
-    BRANCH(isElementsKindEnabled, &enabledElementsKind, &initObj);
+    BRANCH(IsEnableElementsKind(glue_), &enabledElementsKind, &initObj);
     Bind(&enabledElementsKind);
     {
         // For new Array(Len), the elementsKind should be Hole
@@ -115,12 +114,11 @@ GateRef NewObjectStubBuilder::NewEmptyJSArrayWithHClass(GateRef hclass)
     Label exit(env);
     env->SubCfgEntry(&entry);
     GateRef result = NewJSObject(glue_, hclass);
-    Label enabledElementsKind(env);
+    Label enabledMutantArray(env);
     Label initObj(env);
-    GateRef isElementsKindEnabled = IsEnableElementsKind(glue_);
     DEFVARIABLE(array, VariableType::JS_ANY(), Undefined());
-    BRANCH_UNLIKELY(isElementsKindEnabled, &enabledElementsKind, &initObj);
-    Bind(&enabledElementsKind);
+    BRANCH_UNLIKELY(IsEnableMutantArray(glue_), &enabledMutantArray, &initObj);
+    Bind(&enabledMutantArray);
     {
         Label initMutantArray(env);
         GateRef kind = GetElementsKindFromHClass(hclass);
@@ -894,28 +892,10 @@ GateRef NewObjectStubBuilder::CopyArray(GateRef glue, GateRef elements, GateRef 
             Store(VariableType::INT32(), glue, *array, IntPtr(TaggedArray::LENGTH_OFFSET), newLen);
             GateRef oldExtractLen = GetExtraLengthOfTaggedArray(elements);
             Store(VariableType::INT32(), glue, *array, IntPtr(TaggedArray::EXTRA_LENGTH_OFFSET), oldExtractLen);
-            Label afterCopy(env);
-
-            Label copyToTaggedArray(env);
-            Label copyToMutantTaggedArray(env);
-            BRANCH(checkIsMutantTaggedArray, &copyToMutantTaggedArray, &copyToTaggedArray);
-            Bind(&copyToTaggedArray);
-            {
-                ArrayCopy<NotOverlap>(glue, GetDataPtrInTaggedArray(elements), *array, GetDataPtrInTaggedArray(*array),
-                                      newLen);
-                Jump(&afterCopy);
-            }
-            Bind(&copyToMutantTaggedArray);
-            {
-                ArrayCopy<NotOverlap>(glue, GetDataPtrInTaggedArray(elements), *array, GetDataPtrInTaggedArray(*array),
-                                      newLen, MemoryAttribute::NoBarrier());
-                Jump(&afterCopy);
-            }
-            Bind(&afterCopy);
-            {
-                result = *array;
-                Jump(&exit);
-            }
+            ArrayCopy(glue, elements, GetDataPtrInTaggedArray(elements), *array,
+                      GetDataPtrInTaggedArray(*array), newLen, BoolNot(checkIsMutantTaggedArray), DifferentArray);
+            result = *array;
+            Jump(&exit);
         }
     }
     Bind(&exit);
@@ -2737,28 +2717,23 @@ GateRef NewObjectStubBuilder::GetOnHeapHClassFromType(GateRef glue, GateRef type
     return ret;
 }
 
-GateRef NewObjectStubBuilder::CreateArrayFromList(GateRef glue, GateRef elements)
+GateRef NewObjectStubBuilder::CreateArrayFromList(GateRef glue, GateRef elements, GateRef kind)
 {
     auto env = GetEnvironment();
-    DEFVARIABLE(result, VariableType::JS_POINTER(), Undefined());
-    GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
-    GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
-    auto arrayFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, GlobalEnv::ARRAY_FUNCTION_INDEX);
+    Label entry(env);
+    env->SubCfgEntry(&entry);
     GateRef accessor = GetGlobalConstantValue(VariableType::JS_ANY(), glue, ConstantIndex::ARRAY_LENGTH_ACCESSOR);
-    GateRef intialHClass = Load(VariableType::JS_ANY(), arrayFunc, IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
-    SetParameters(glue, 0);
+    GateRef intialHClass = GetElementsKindHClass(glue, kind);
     GateRef len = GetLengthOfTaggedArray(elements);
-    result = NewJSObject(glue, intialHClass);
-    Store(VariableType::JS_POINTER(), glue, *result,
-          IntPtr(JSArray::GetInlinedPropertyOffset(JSArray::LENGTH_INLINE_PROPERTY_INDEX)), accessor,
-          MemoryAttribute::NoBarrier());
-    SetArrayLength(glue, *result, len);
-    SetExtensibleToBitfield(glue, *result, true);
-    SetElementsArray(VariableType::JS_POINTER(), glue_, *result, elements);
-    auto res = *result;
-    return res;
+    GateRef result = NewJSObject(glue, intialHClass);
+    SetPropertyInlinedProps(glue, result, intialHClass, accessor, Int32(JSArray::LENGTH_INLINE_PROPERTY_INDEX));
+    SetArrayLength(glue, result, len);
+    SetExtensibleToBitfield(glue, result, true);
+    SetElementsArray(VariableType::JS_POINTER(), glue, result, elements);
+    auto ret = result;
+    env->SubCfgExit();
+    return ret;
 }
-
 GateRef NewObjectStubBuilder::CreateListFromArrayLike(GateRef glue, GateRef arrayObj)
 {
     auto env = GetEnvironment();

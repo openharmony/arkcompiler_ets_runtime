@@ -494,7 +494,7 @@ bool JsonStringifier::SerializeJSONObject(const JSHandle<JSTaggedValue> &value, 
             }
         } else {
             uint32_t numOfKeys = obj->GetNumberOfKeys();
-            uint32_t numOfElements = obj->GetNumberOfElements();
+            uint32_t numOfElements = obj->GetNumberOfElements(thread_);
             if (numOfElements > 0) {
                 hasContent = JsonStringifier::SerializeElements(obj, replacer, hasContent);
                 RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, false);
@@ -883,9 +883,9 @@ bool JsonStringifier::SerializeElements(const JSHandle<JSObject> &obj, const JSH
     if (!ElementAccessor::IsDictionaryMode(obj)) {
         uint32_t elementsLen = ElementAccessor::GetElementsLength(obj);
         for (uint32_t i = 0; i < elementsLen; ++i) {
-            if (!ElementAccessor::Get(obj, i).IsHole()) {
+            if (!ElementAccessor::Get(thread_, obj, i).IsHole()) {
                 handleKey_.Update(JSTaggedValue(i));
-                handleValue_.Update(ElementAccessor::Get(obj, i));
+                handleValue_.Update(ElementAccessor::Get(thread_, obj, i));
                 hasContent = JsonStringifier::AppendJsonString(obj, replacer, hasContent);
                 RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, false);
             }

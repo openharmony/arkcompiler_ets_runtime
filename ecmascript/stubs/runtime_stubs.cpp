@@ -589,13 +589,16 @@ DEF_RUNTIME_STUBS(UpdateHClassForElementsKind)
         return JSTaggedValue::Hole().GetRawData();
     }
 
-    if (!thread->GetEcmaVM()->IsEnableElementsKind()) {
-        // Update TrackInfo
-        if (!thread->IsPGOProfilerEnable()) {
-            return JSTaggedValue::Hole().GetRawData();
-        }
-        auto trackInfoVal = JSHandle<JSArray>(receiver)->GetTrackInfo();
-        thread->GetEcmaVM()->GetPGOProfiler()->UpdateTrackElementsKind(trackInfoVal, kind);
+    // Update TrackInfo
+    JSHandle<JSArray>(receiver)->UpdateTrackInfo(thread);
+
+    if (!thread->IsPGOProfilerEnable()) {
+        return JSTaggedValue::Hole().GetRawData();
+    }
+    JSTaggedValue trackInfoVal = JSHandle<JSArray>(receiver)->GetTrackInfo();
+    if (trackInfoVal.IsHeapObject() && trackInfoVal.IsWeak()) {
+        TrackInfo *trackInfo = TrackInfo::Cast(trackInfoVal.GetWeakReferentUnChecked());
+        thread->GetEcmaVM()->GetPGOProfiler()->UpdateTrackInfo(JSTaggedValue(trackInfo));
     }
     return JSTaggedValue::Hole().GetRawData();
 }
@@ -3861,7 +3864,15 @@ DEF_RUNTIME_STUBS(ParseInt)
 int RuntimeStubs::FastArraySort(JSTaggedType x, JSTaggedType y)
 {
     DISALLOW_GARBAGE_COLLECTION;
-    return JSTaggedValue::IntLexicographicCompare(JSTaggedValue(x), JSTaggedValue(y));
+    JSTaggedValue xValue = JSTaggedValue(x);
+    JSTaggedValue yValue = JSTaggedValue(y);
+    if (xValue.IsInt() && yValue.IsInt()) {
+        return JSTaggedValue::IntLexicographicCompare(xValue, yValue);
+    }
+    if (xValue.IsDouble() && yValue.IsDouble()) {
+        return JSTaggedValue::DoubleLexicographicCompare(xValue, yValue);
+    }
+    return -1;
 }
 
 int RuntimeStubs::FastArraySortString(uintptr_t argGlue, JSTaggedValue x, JSTaggedValue y)
@@ -3913,6 +3924,16 @@ bool RuntimeStubs::IsFastRegExp(uintptr_t argGlue, JSTaggedValue thisValue)
 {
     auto thread = JSThread::GlueToJSThread(argGlue);
     return builtins::BuiltinsRegExp::IsFastRegExp(thread, thisValue);
+}
+
+RememberedSet* RuntimeStubs::CreateLocalToShare(Region* region)
+{
+    return region->CreateLocalToShareRememberedSet();
+}
+
+RememberedSet* RuntimeStubs::CreateOldToNew(Region* region)
+{
+    return region->CreateOldToNewRememberedSet();
 }
 
 template <typename T>
@@ -4023,6 +4044,12 @@ void RuntimeStubs::FinishObjSizeTracking(JSHClass *cls)
         // UpdateObjSize with finalInObjPropsNum
         JSHClass::VisitTransitionAndUpdateObjSize(cls, finalInObjPropsNum);
     }
+}
+
+void RuntimeStubs::FillObject(JSTaggedType *dst, JSTaggedType value, uint32_t count)
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    std::fill_n(dst, count, value);
 }
 
 DEF_RUNTIME_STUBS(ArrayForEachContinue)
@@ -4234,6 +4261,18 @@ DEF_RUNTIME_STUBS(SlowSharedObjectStoreBarrier)
     ASSERT(value->IsTreeString());
     JSHandle<JSTaggedValue> publishValue = JSTaggedValue::PublishSharedValueSlow(thread, value);
     return publishValue.GetTaggedValue().GetRawData();
+}
+
+void RuntimeStubs::ObjectCopy(JSTaggedType *dst, JSTaggedType *src, uint32_t count)
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    std::copy_n(src, count, dst);
+}
+
+void RuntimeStubs::ReverseArray(JSTaggedType *dst, uint32_t length)
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    std::reverse(dst, dst + length);
 }
 
 void RuntimeStubs::Initialize(JSThread *thread)

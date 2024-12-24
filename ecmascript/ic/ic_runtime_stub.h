@@ -73,7 +73,7 @@ public:
     static inline JSTaggedValue StoreOwnICByValue(JSThread *thread, ProfileTypeInfo *profileTypeInfo,
                                                   JSTaggedValue receiver, JSTaggedValue key,
                                                   JSTaggedValue value, uint32_t slotId);
-    static inline JSTaggedValue LoadElement(JSObject *receiver, JSTaggedValue key);
+    static inline JSTaggedValue LoadElement(JSThread *thread, JSObject *receiver, JSTaggedValue key);
     static inline JSTaggedValue LoadStringElement(JSThread *thread, JSTaggedValue receiver, JSTaggedValue key);
     static inline JSTaggedValue LoadTypedArrayElement(JSThread *thread, JSTaggedValue receiver, JSTaggedValue key);
     static inline JSTaggedValue StoreElement(JSThread *thread, JSObject *receiver, JSTaggedValue key,

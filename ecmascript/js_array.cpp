@@ -274,7 +274,7 @@ void JSArray::SetCapacity(JSThread *thread, const JSHandle<JSObject> &array,
 
     if (element->IsDictionaryMode()) {
         ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-        uint32_t numOfElements = array->GetNumberOfElements();
+        uint32_t numOfElements = array->GetNumberOfElements(thread);
         uint32_t newNumOfElements = newLen;
 
         if (newLen < oldLen && numOfElements != 0U) {
@@ -348,7 +348,7 @@ void JSArray::TransformElementsKindAfterSetCapacity(JSThread *thread, const JSHa
         ElementsKind newKind = ElementsKind::NONE;
 #endif
         for (uint32_t i = 0; i < newLen; ++i) {
-            JSTaggedValue val = ElementAccessor::Get(array, i);
+            JSTaggedValue val = ElementAccessor::Get(thread, array, i);
             newKind = Elements::ToElementsKind(val, newKind);
         }
         // elements length might not be zero when newLen is zero
@@ -853,10 +853,10 @@ void JSArray::SortElementsByObject(JSThread *thread, const JSHandle<JSObject> &t
     for (uint32_t i = 1; i < len; i++) {
         uint32_t beginIndex = 0;
         uint32_t endIndex = i;
-        presentValue.Update(ElementAccessor::Get(thisObjHandle, i));
+        presentValue.Update(ElementAccessor::Get(thread, thisObjHandle, i));
         while (beginIndex < endIndex) {
             uint32_t middleIndex = (beginIndex + endIndex) / 2; // 2 : half
-            middleValue.Update(ElementAccessor::Get(thisObjHandle, middleIndex));
+            middleValue.Update(ElementAccessor::Get(thread, thisObjHandle, middleIndex));
             int32_t compareResult = base::ArrayHelper::SortCompare(thread, fn, middleValue, presentValue);
             RETURN_IF_ABRUPT_COMPLETION(thread);
             if (compareResult > 0) {
@@ -868,7 +868,7 @@ void JSArray::SortElementsByObject(JSThread *thread, const JSHandle<JSObject> &t
 
         if (endIndex >= 0 && endIndex < i) {
             for (uint32_t j = i; j > endIndex; j--) {
-                previousValue.Update(ElementAccessor::Get(thisObjHandle, j - 1));
+                previousValue.Update(ElementAccessor::Get(thread, thisObjHandle, j - 1));
                 ElementAccessor::Set(thread, thisObjHandle, j, previousValue, false);
             }
             ElementAccessor::Set(thread, thisObjHandle, endIndex, presentValue, false);
@@ -951,7 +951,6 @@ bool JSArray::IsProtoNotChangeJSArray(JSThread *thread, const JSHandle<JSObject>
     return false;
 }
 
-
 JSHandle<JSHClass> JSArray::CreateJSArrayPrototypeClass(const JSThread *thread, ObjectFactory *factory,
                                                         JSHandle<JSTaggedValue> proto, uint32_t inlinedProps)
 {
@@ -1012,4 +1011,26 @@ JSHandle<JSHClass> JSArray::CreateJSArrayFunctionClass(const JSThread *thread, O
     }
     return arrayFunctionClass;
 }
-} // namespace panda::ecmascript
+
+void JSArray::UpdateTrackInfo(const JSThread *thread)
+{
+    JSTaggedValue trackInfoVal = GetTrackInfo();
+    if (trackInfoVal.IsHeapObject() && trackInfoVal.IsWeak()) {
+        TrackInfo *trackInfo = TrackInfo::Cast(trackInfoVal.GetWeakReferentUnChecked());
+        ElementsKind oldKind = trackInfo->GetElementsKind();
+        if (Elements::IsGeneric(oldKind)) {
+            return;
+        }
+
+        JSHClass *hclass = GetJSHClass();
+        ElementsKind newKind = hclass->GetElementsKind();
+        trackInfo->SetElementsKind(newKind);
+        const GlobalEnvConstants *globalConst = thread->GlobalConstants();
+        // Since trackInfo is only used at define point,
+        // we update cachedHClass with initial array hclass which does not have IsPrototype set.
+        ConstantIndex constantId = thread->GetArrayHClassIndexMap().at(newKind).first;
+        JSTaggedValue cachedHClass = globalConst->GetGlobalConstantObject(static_cast<size_t>(constantId));
+        trackInfo->SetCachedHClass(thread, cachedHClass);
+    }
+}
+}  // namespace panda::ecmascript

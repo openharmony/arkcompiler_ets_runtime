@@ -182,3 +182,14 @@ print(emptyArr.concat([]).length);
 }
 
 print("test arrayconcat success!");
+
+print("proxy defineproperty success!");
+const v1 = [1, 2, "j", 9999, , 23];
+const v2 = ["sss", 2, "j", , , ,"test"];
+print(v1.concat(v2));
+
+let v3 = new Array();
+v3.push('foo');
+var v4 = ['bar'];
+var v5 = v3.concat(v4);
+print(v5);

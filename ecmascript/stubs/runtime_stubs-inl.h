@@ -518,7 +518,7 @@ JSTaggedValue RuntimeStubs::RuntimeStArraySpread(JSThread *thread, const JSHandl
         JSHandle<JSObject> dstObj(dst);
         ElementAccessor::CopyJSArrayObject(thread, srcObj, dstObj, length);
         for (uint32_t i = 0; i < length; i++) {
-            JSHandle<JSTaggedValue> reg(thread, ElementAccessor::Get(srcObj, i));
+            JSHandle<JSTaggedValue> reg(thread, ElementAccessor::Get(thread, srcObj, i));
             if (reg->IsHole()) {
                 JSHandle<JSTaggedValue> reg2(thread, JSArray::FastGetPropertyByValue(thread, src, i).GetTaggedValue());
                 RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);

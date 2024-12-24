@@ -55,11 +55,11 @@ BUILTINS_WITH_ARRAY_STUB_BUILDER(DECLARE_BUILTINS_ARRAY_STUB_BUILDER)
 
     GateRef NewArray(GateRef glue, GateRef count);
 
-    GateRef NewEmptyArrayWithHClass(GateRef glue, GateRef hclass);
+    GateRef NewEmptyArrayWithHClass(GateRef glue, GateRef hclass, GateRef newArrayLen);
 
     GateRef CalculatePositionWithLength(GateRef position, GateRef length);
 
-    GateRef DoSort(GateRef glue, GateRef receiver, GateRef receiverState,
+    GateRef DoSort(GateRef glue, GateRef receiver, bool isToSorted,
         Variable *result, Label *exit, Label *slowPath, GateRef hir = Circuit::NullGate());
 
     void FastReverse(GateRef glue, GateRef thisValue, GateRef len,
@@ -67,10 +67,28 @@ BUILTINS_WITH_ARRAY_STUB_BUILDER(DECLARE_BUILTINS_ARRAY_STUB_BUILDER)
 private:
     static constexpr uint32_t MAX_LENGTH_ZERO = 0;
     static constexpr uint32_t MAX_LENGTH_ONE = 1;
+    static constexpr uint32_t ONE_ARGS = 1;
+    static constexpr uint32_t TWO_ARGS = 2;
+    static constexpr uint32_t THREE_ARGS = 3;
+    static constexpr uint32_t Index0 = 0;
+    static constexpr uint32_t Index1 = 1;
+    static constexpr uint32_t Index2 = 2;
     struct JsArrayRequirements {
         bool stable = false;
         bool defaultConstructor = false;
     };
+
+    enum MethodKind {
+        M_INCLUDES,
+        M_INDEXOF
+    };
+
+    enum UndefOrHole {
+        K_UNDEFINED,
+        K_HOLE,
+        K_ALL
+    };
+
     GateRef IsJsArrayWithLengthLimit(GateRef glue, GateRef object,
         uint32_t maxLength, JsArrayRequirements requirements);
     GateRef CreateSpliceDeletedArray(GateRef glue, GateRef thisValue, GateRef actualDeleteCount, GateRef start);
@@ -84,7 +102,11 @@ private:
                             Label *slowPath);
     void UnshiftOptimised(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *result, Label *exit,
                           Label *slowPath);
+    void SliceOptimised(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *result, Label *exit,
+                        Label *slowPath);
     GateRef DoSortOptimised(GateRef glue, GateRef receiver, GateRef receiverState, Variable *result, Label *exit,
+                            Label *slowPath, GateRef hir);
+    GateRef DoSortOptimisedFast(GateRef glue, GateRef receiver, Variable *result, Label *exit,
                             Label *slowPath, GateRef hir);
     void ToReversedOptimised(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *result, Label *exit,
                              Label *slowPath);
@@ -120,6 +142,42 @@ private:
 
     void VisitAll(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *result, Label *exit,
                   Label *slowPath, VisitKind visitKind);
+    void ConcatOptimised(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *result, Label *exit,
+                         Label *slowPath);
+    void DoConcat(GateRef glue, GateRef thisValue, GateRef arg0, Variable *result, Label *exit, GateRef thisLen,
+                  GateRef argLen, GateRef sumArrayLen);
+    void FillOptimised(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *result, Label *exit,
+                       Label *slowPath);
+    void FastFill(GateRef glue, GateRef element, GateRef start, GateRef count, GateRef value, bool needBarrier);
+    void PopOptimised(GateRef glue, GateRef thisValue,
+                      GateRef numArgs, Variable *result, Label *exit, Label *slowPath);
+    void ReverseOptimised(GateRef glue, GateRef thisValue, Variable *result, Label *exit, Label *slowPath);
+    void ShiftOptimised(GateRef glue, GateRef thisValue,
+                        GateRef numArgs, Variable *result, Label *exit, Label *slowPath);
+    void IncludesIndexOfOptimised(GateRef glue, GateRef thisValue, GateRef numArgs, MethodKind mk, Variable *result,
+                                  Label *exit, Label *slowPath);
+    void IntIncludesIndexOf(GateRef elements, GateRef fromIndex, GateRef searchElement, GateRef thisLen,
+                            Variable *result, Label *exit);
+    void DoubleIncludesIndexOf(GateRef elements, GateRef fromIndex, GateRef searchElement, GateRef thisLen,
+                               MethodKind mk, Variable *result, Label *exit);
+    void StringIncludesIndexOf(GateRef glue, GateRef elements, GateRef fromIndex, GateRef searchElement,
+                               GateRef thisLen, Variable *result, Label *exit);
+    void ObjectIncludesIndexOf(GateRef elements, GateRef fromIndex, GateRef searchElement,
+                               GateRef thisLen, Variable *result, Label *exit);
+    void GenericIncludesIndexOf(GateRef glue, GateRef elements, GateRef fromIndex, GateRef searchElement,
+                                GateRef thisLen, MethodKind mk, Variable *result, Label *exit);
+    void UndefinedHoleLoop(GateRef elements, GateRef fromIndex, GateRef thisLen, UndefOrHole uoh,
+                           Variable *result, Label *exit);
+    void NumberLoop(GateRef elements, GateRef fromIndex, GateRef searchElement, GateRef thisLen, MethodKind mk,
+                    Variable *result, Label *exit);
+    void NaNLoop(GateRef elements, GateRef fromIndex, GateRef thisLen, Variable *result, Label *exit);
+    void CopyWithinOptimised(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *result, Label *exit,
+                             Label *slowPath);
+    GateRef CalEleKindForNewArrayNoHole(GateRef thisValue, GateRef thisLen, GateRef actualIndex, GateRef insertVal);
+    void FastArrayWith(GateRef glue, GateRef thisValue, GateRef newArray, GateRef actualIndex, GateRef insertValue,
+                       GateRef newArrEleKind);
+    void WithOptimised(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *result, Label *exit,
+                       Label *slowPath);
 };
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_BUILTINS_ARRAY_STUB_BUILDER_H

@@ -108,6 +108,12 @@ static constexpr int DECIMAL_INDEX = 2;
 
 class NumberHelper {
 public:
+    // double to string buffer offset
+    static constexpr int BUFFER_OFFSET = 8;
+    static const CString NAN_STR;
+    static const CString ZERO_STR;
+    static const CString MINUS_INFINITY_STR;
+    static const CString INFINITY_STR;
     static inline JSTaggedType GetNaN()
     {
         return JSTaggedValue(NAN_VALUE).GetRawData();
@@ -162,7 +168,7 @@ public:
     static JSTaggedValue DoubleToString(JSThread *thread, double number, int radix);
     static bool IsEmptyString(const uint8_t *start, const uint8_t *end);
     static JSHandle<EcmaString> IntToEcmaString(const JSThread *thread, int number);
-    static JSHandle<EcmaString> DoubleToEcmaString(const JSThread *thread, double d);
+    static CString DoubleToCString(double d);
     static uint32_t ToCharCode(uint32_t number);
     static JSTaggedValue Int32ToString(JSThread *thread, int32_t number, uint32_t radix);
     static JSHandle<EcmaString> NumberToString(const JSThread *thread, JSTaggedValue number);
