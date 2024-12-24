@@ -875,7 +875,8 @@ void BaselineCreateobjectwithbufferImm8Id16StubBuilder::GenerateCircuit()
     GateRef currentEnv = GetEnvFromFrame(frame);
     GateRef module = GetModuleFromFunction(curFunc);
     GateRef result = GetObjectLiteralFromConstPool(glue, constpool, imm, module);
-    GateRef res = CallRuntime(glue, RTSTUB_ID(CreateObjectHavingMethod), { result, currentEnv });
+    NewObjectStubBuilder newBuilder(this);
+    GateRef res = newBuilder.CreateObjectHavingMethod(glue, result, currentEnv);
     callback.ProfileCreateObject(res);
     CHECK_EXCEPTION_WITH_ACC(res);
 }
@@ -894,7 +895,8 @@ void BaselineCreateobjectwithbufferImm16Id16StubBuilder::GenerateCircuit()
     GateRef currentEnv = GetEnvFromFrame(GetFrame(sp));
     GateRef module = GetModuleFromFunction(curFunc);
     GateRef result = GetObjectLiteralFromConstPool(glue, constpool, imm, module);
-    GateRef res = CallRuntime(glue, RTSTUB_ID(CreateObjectHavingMethod), { result, currentEnv });
+    NewObjectStubBuilder newBuilder(this);
+    GateRef res = newBuilder.CreateObjectHavingMethod(glue, result, currentEnv);
     callback.ProfileCreateObject(res);
     CHECK_EXCEPTION_WITH_ACC(res);
 }
@@ -3085,9 +3087,12 @@ void BaselineStsuperbynameImm16Id16V8StubBuilder::GenerateCircuit()
 void BaselineLdlocalmodulevarImm8StubBuilder::GenerateCircuit()
 {
     GateRef glue = PtrArgument(PARAM_INDEX(BaselineLdlocalmodulevarImm8, GLUE));
+    GateRef sp = PtrArgument(PARAM_INDEX(BaselineLdlocalmodulevarImm8, SP));
     GateRef index = Int32Argument(PARAM_INDEX(BaselineLdlocalmodulevarImm8, INDEX));
+    GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
 
-    GateRef moduleRef = CallRuntime(glue, RTSTUB_ID(LdLocalModuleVarByIndex), { Int8ToTaggedInt(index) });
+    GateRef module = GetModuleFromFunction(currentFunc);
+    GateRef moduleRef = Loadlocalmodulevar(glue, index, module);
     Return(moduleRef);
 }
 
