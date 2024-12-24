@@ -1487,6 +1487,11 @@ public:
         return dateUtils_;
     }
 
+    bool CheckMultiThread() const
+    {
+        return GetThreadId() != JSThread::GetCurrentThreadId() && !IsCrossThreadExecutionEnable();
+    }
+
 #ifndef NDEBUG
     inline void LaunchSuspendAll()
     {

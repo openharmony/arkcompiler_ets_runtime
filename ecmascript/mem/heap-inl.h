@@ -544,7 +544,7 @@ TaggedObject *Heap::AllocateSharedNonMovableSpaceFromTlab(JSThread *thread, size
         if (thread->IsJitThread()) {
             LOG_ECMA(FATAL) << "jit thread not allowed";
         }
-        if (thread->GetThreadId() != JSThread::GetCurrentThreadId() && !thread->IsCrossThreadExecutionEnable()) {
+        if (thread->CheckMultiThread()) {
             LOG_FULL(FATAL) << "Fatal: ecma_vm cannot run in multi-thread!"
                             << "thread:" << thread->GetThreadId()
                             << " currentThread:" << JSThread::GetCurrentThreadId();
@@ -581,7 +581,7 @@ TaggedObject *Heap::AllocateSharedOldSpaceFromTlab(JSThread *thread, size_t size
         if (thread->IsJitThread()) {
             LOG_ECMA(FATAL) << "jit thread not allowed";
         }
-        if (thread->GetThreadId() != JSThread::GetCurrentThreadId() && !thread->IsCrossThreadExecutionEnable()) {
+        if (thread->CheckMultiThread()) {
             LOG_FULL(FATAL) << "Fatal: ecma_vm cannot run in multi-thread!"
                             << "thread:" << thread->GetThreadId()
                             << " currentThread:" << JSThread::GetCurrentThreadId();

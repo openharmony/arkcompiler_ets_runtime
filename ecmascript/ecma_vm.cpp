@@ -463,7 +463,7 @@ void EcmaVM::CheckThread() const
         UNREACHABLE();
     }
     if (!Taskpool::GetCurrentTaskpool()->IsDaemonThreadOrInThreadPool(std::this_thread::get_id()) &&
-        thread_->GetThreadId() != JSThread::GetCurrentThreadId() && !thread_->IsCrossThreadExecutionEnable()) {
+        thread_->CheckMultiThread()) {
             LOG_FULL(FATAL) << "Fatal: ecma_vm cannot run in multi-thread!"
                                 << " thread:" << thread_->GetThreadId()
                                 << " currentThread:" << JSThread::GetCurrentThreadId();
@@ -476,7 +476,7 @@ JSThread *EcmaVM::GetAndFastCheckJSThread() const
     if (thread_ == nullptr) {
         LOG_FULL(FATAL) << "Fatal: ecma_vm has been destructed! vm address is: " << this;
     }
-    if (thread_->GetThreadId() != JSThread::GetCurrentThreadId() && !thread_->IsCrossThreadExecutionEnable()) {
+    if (thread_->CheckMultiThread()) {
         LOG_FULL(FATAL) << "Fatal: ecma_vm cannot run in multi-thread!"
                                 << " thread:" << thread_->GetThreadId()
                                 << " currentThread:" << JSThread::GetCurrentThreadId();
