@@ -15,7 +15,13 @@
 
 #include "ecmascript/compiler/call_stub_builder.h"
 
+#include <cstddef>
+#include <tuple>
+
 #include "ecmascript/compiler/assembler_module.h"
+#include "ecmascript/compiler/bytecodes.h"
+#include "ecmascript/compiler/circuit_builder.h"
+#include "ecmascript/compiler/slowpath_lowering.h"
 #include "ecmascript/compiler/stub_builder-inl.h"
 
 namespace panda::ecmascript::kungfu {
@@ -48,6 +54,203 @@ void CallStubBuilder::JSCallDispatchForBaseline(Label *exit, Label *noNeedCheckE
     {
         JSCallJSFunction(exit, noNeedCheckException);
     }
+}
+
+std::tuple<bool, size_t, size_t> CallCoStubBuilder::GetOpInfo()
+{
+    switch (op_) {
+        case EcmaOpcode::CALLTHIS0_IMM8_V8:
+            return std::make_tuple(true, 2, 0);        // needThis: true, numberValueIn: 2, numberArg: 0
+        case EcmaOpcode::CALLTHIS1_IMM8_V8_V8:
+            return std::make_tuple(true, 3, 1);        // needThis: true, numberValueIn: 3, numberArg: 1
+        case EcmaOpcode::CALLTHIS2_IMM8_V8_V8_V8:
+            return std::make_tuple(true, 4, 2);	       // needThis: true, numberValueIn: 4, numberArg: 2
+        case EcmaOpcode::CALLTHIS3_IMM8_V8_V8_V8_V8:
+            return std::make_tuple(true, 5, 3);        // needThis: true, numberValueIn: 5, numberArg: 3
+        case EcmaOpcode::CALLARG0_IMM8:
+            return std::make_tuple(false, 1, 0);       // needThis: false, numberValueIn: 1, numberArg: 0
+        case EcmaOpcode::CALLARG1_IMM8_V8:
+            return std::make_tuple(false, 2, 1);       // needThis: false, numberValueIn: 2, numberArg: 1
+        case EcmaOpcode::CALLARGS2_IMM8_V8_V8:
+            return std::make_tuple(false, 3, 2);       // needThis: false, numberValueIn: 3, numberArg: 2
+        case EcmaOpcode::CALLARGS3_IMM8_V8_V8_V8:
+            return std::make_tuple(false, 4, 3);       // needThis: false, numberValueIn: 4, numberArg: 3
+        default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
+            UNREACHABLE();
+    }
+}
+
+void CallCoStubBuilder::PrepareArgs(std::vector<GateRef> &args, std::vector<GateRef> &argsFastCall)
+{
+    auto env = GetEnvironment();
+    auto &builder =  *env->GetBuilder();
+    auto [needThis, numberValueIn, numberArg] = GetOpInfo();
+    actualArgc_ = builder.Int64(BytecodeCallArgc::ComputeCallArgc(numberValueIn, op_));
+    actualArgv_ = builder.IntPtr(0);
+    newTarget_ = builder.Undefined();
+    thisObj_ = builder.Undefined();
+    hirGate_ = Circuit::NullGate();
+
+    size_t argIndex = 0;
+    glue_ = PtrArgument(argIndex++);
+    func_ = TaggedArgument(argIndex++);
+
+    // keep same with CommonArgIdx
+    args.push_back(glue_);
+    args.push_back(actualArgc_);
+    args.push_back(actualArgv_);
+    args.push_back(func_);
+    args.push_back(newTarget_);
+
+    // keep same with FastCallArgIdx
+    argsFastCall.push_back(glue_);
+    argsFastCall.push_back(func_);
+
+    // solve thisobj
+    if (needThis) {
+        thisObj_ = TaggedArgument(argIndex++);
+    }
+    args.push_back(thisObj_);
+    argsFastCall.push_back(thisObj_);
+
+    // solve args
+    for (size_t i = 0; i < numberArg; i++) {
+        args.push_back(TaggedArgument(argIndex));
+        argsFastCall.push_back(TaggedArgument(argIndex));
+        argIndex++;
+    }
+}
+
+void CallCoStubBuilder::LowerFastCall(GateRef gate, GateRef glue, CircuitBuilder &builder, GateRef func, GateRef argc,
+    const std::vector<GateRef> &args, const std::vector<GateRef> &argsFastCall,
+    Variable *result, Label *exit, bool isNew)
+{
+    Label isHeapObject(&builder);
+    Label isJsFcuntion(&builder);
+    Label fastCall(&builder);
+    Label notFastCall(&builder);
+    Label call(&builder);
+    Label call1(&builder);
+    Label slowCall(&builder);
+    Label callBridge(&builder);
+    Label callBridge1(&builder);
+    Label slowPath(&builder);
+    Label notCallConstructor(&builder);
+    Label isCallConstructor(&builder);
+    // use builder_ to make BRANCH_CIR work.
+    auto &builder_ = builder;
+    BRANCH_CIR(builder.TaggedIsHeapObject(func), &isHeapObject, &slowPath);
+    builder.Bind(&isHeapObject);
+    {
+        BRANCH_CIR(builder.IsJSFunction(func), &isJsFcuntion, &slowPath);
+        builder.Bind(&isJsFcuntion);
+        {
+            if (!isNew) {
+                BRANCH_CIR(builder.IsClassConstructor(func), &slowPath, &notCallConstructor);
+                builder.Bind(&notCallConstructor);
+            }
+            GateRef method = builder.GetMethodFromFunction(func);
+            BRANCH_CIR(builder.JudgeAotAndFastCall(func,
+                CircuitBuilder::JudgeMethodType::HAS_AOT_FASTCALL), &fastCall, &notFastCall);
+            builder.Bind(&fastCall);
+            {
+                GateRef expectedArgc = builder.Int64Add(builder.GetExpectedNumOfArgs(method),
+                    builder.Int64(NUM_MANDATORY_JSFUNC_ARGS));
+                BRANCH_CIR(builder.Equal(expectedArgc, argc), &call, &callBridge);
+                builder.Bind(&call);
+                {
+                    builder.StartCallTimer(glue, gate, {glue, func, builder.True()}, true);
+                    GateRef code = builder.GetCodeAddr(func);
+                    auto depend = builder.GetDepend();
+                    const CallSignature *cs = RuntimeStubCSigns::GetOptimizedFastCallSign();
+                    result->WriteVariable(builder.Call(cs, glue, code, depend, argsFastCall, gate, "callFastAOT"));
+                    builder.EndCallTimer(glue, gate, {glue, func}, true);
+                    builder.Jump(exit);
+                }
+                builder.Bind(&callBridge);
+                {
+                    builder.StartCallTimer(glue, gate, {glue, func, builder.True()}, true);
+                    const CallSignature *cs = RuntimeStubCSigns::Get(RTSTUB_ID(OptimizedFastCallAndPushArgv));
+                    GateRef target = builder.IntPtr(RTSTUB_ID(OptimizedFastCallAndPushArgv));
+                    auto depend = builder.GetDepend();
+                    result->WriteVariable(builder.Call(cs, glue, target, depend, args, gate, "callFastBridge"));
+                    builder.EndCallTimer(glue, gate, {glue, func}, true);
+                    builder.Jump(exit);
+                }
+            }
+            builder.Bind(&notFastCall);
+            BRANCH_CIR(builder.JudgeAotAndFastCall(func, CircuitBuilder::JudgeMethodType::HAS_AOT),
+                &slowCall, &slowPath);
+            builder.Bind(&slowCall);
+            {
+                GateRef expectedArgc = builder.Int64Add(builder.GetExpectedNumOfArgs(method),
+                    builder.Int64(NUM_MANDATORY_JSFUNC_ARGS));
+                BRANCH_CIR(builder.Equal(expectedArgc, argc), &call1, &callBridge1);
+                builder.Bind(&call1);
+                {
+                    builder.StartCallTimer(glue, gate, {glue, func, builder.True()}, true);
+                    GateRef code = builder.GetCodeAddr(func);
+                    auto depend = builder.GetDepend();
+                    const CallSignature *cs = RuntimeStubCSigns::GetOptimizedCallSign();
+                    result->WriteVariable(builder.Call(cs, glue, code, depend, args, gate, "callAOT"));
+                    builder.EndCallTimer(glue, gate, {glue, func}, true);
+                    builder.Jump(exit);
+                }
+                builder.Bind(&callBridge1);
+                {
+                    builder.StartCallTimer(glue, gate, {glue, func, builder.True()}, true);
+                    const CallSignature *cs = RuntimeStubCSigns::Get(RTSTUB_ID(OptimizedCallAndPushArgv));
+                    GateRef target = builder.IntPtr(RTSTUB_ID(OptimizedCallAndPushArgv));
+                    auto depend = builder.GetDepend();
+                    result->WriteVariable(builder.Call(cs, glue, target, depend, args, gate, "callBridge"));
+                    builder.EndCallTimer(glue, gate, {glue, func}, true);
+                    builder.Jump(exit);
+                }
+            }
+        }
+    }
+    builder.Bind(&slowPath);
+    {
+        if (isNew) {
+            builder.StartCallTimer(glue, gate, {glue, func, builder.True()}, true);
+            const CallSignature *cs = RuntimeStubCSigns::Get(RTSTUB_ID(JSCallNew));
+            GateRef target = builder.IntPtr(RTSTUB_ID(JSCallNew));
+            auto depend = builder.GetDepend();
+            result->WriteVariable(builder.Call(cs, glue, target, depend, args, gate, "slowNew"));
+            builder.EndCallTimer(glue, gate, {glue, func}, true);
+            builder.Jump(exit);
+        } else {
+            builder.StartCallTimer(glue, gate, {glue, func, builder.True()}, true);
+            const CallSignature *cs = RuntimeStubCSigns::Get(RTSTUB_ID(JSCall));
+            GateRef target = builder.IntPtr(RTSTUB_ID(JSCall));
+            auto depend = builder.GetDepend();
+            result->WriteVariable(builder.Call(cs, glue, target, depend, args, gate, "jscall"));
+            builder.EndCallTimer(glue, gate, {glue, func}, true);
+            builder.Jump(exit);
+        }
+    }
+}
+
+GateRef CallCoStubBuilder::CallStubDispatch()
+{
+    std::vector<GateRef> args = {};
+    std::vector<GateRef> argsFastCall = {};
+    PrepareArgs(args, argsFastCall);
+
+    auto env = GetEnvironment();
+    auto &builder =  *env->GetBuilder();
+    Label entry(env);
+    Label exit(env);
+    env->SubCfgEntry(&entry);
+
+    DEFVARIABLE(result, VariableType::JS_ANY(), builder.Undefined());
+    LowerFastCall(hirGate_, glue_, builder, func_, actualArgc_, args, argsFastCall,
+                  &result, &exit, false);
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
 }
 
 GateRef CallStubBuilder::JSCallDispatch()

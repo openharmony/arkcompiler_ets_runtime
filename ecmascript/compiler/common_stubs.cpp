@@ -21,8 +21,9 @@
 #include "ecmascript/compiler/builtins/builtins_collection_iterator_stub_builder.h"
 #include "ecmascript/compiler/builtins/builtins_string_stub_builder.h"
 #include "ecmascript/compiler/builtins/linked_hashtable_stub_builder.h"
-#include "ecmascript/compiler/circuit_builder.h"
+#include "ecmascript/compiler/call_stub_builder.h"
 #include "ecmascript/compiler/codegen/llvm/llvm_ir_builder.h"
+#include "ecmascript/compiler/gate.h"
 #include "ecmascript/compiler/interpreter_stub.h"
 #include "ecmascript/compiler/new_object_stub_builder.h"
 #include "ecmascript/compiler/operations_stub_builder.h"
@@ -35,6 +36,7 @@
 #include "ecmascript/js_set_iterator.h"
 #include "ecmascript/linked_hash_table.h"
 #include "ecmascript/message_string.h"
+#include "ecmascript/runtime_call_id.h"
 #include "ecmascript/tagged_hash_table.h"
 
 namespace panda::ecmascript::kungfu {
@@ -89,6 +91,54 @@ void DefinefuncStubBuilder::GenerateCircuit()
     }
     Bind(&exit);
     Return(*result);
+}
+
+void CallArg0StubStubBuilder::GenerateCircuit()
+{
+    CallCoStubBuilder callBuilder(this, EcmaOpcode::CALLARG0_IMM8);
+    Return(callBuilder.CallStubDispatch());
+}
+
+void CallArg1StubStubBuilder::GenerateCircuit()
+{
+    CallCoStubBuilder callBuilder(this, EcmaOpcode::CALLARG1_IMM8_V8);
+    Return(callBuilder.CallStubDispatch());
+}
+
+void CallArg2StubStubBuilder::GenerateCircuit()
+{
+    CallCoStubBuilder callBuilder(this, EcmaOpcode::CALLARGS2_IMM8_V8_V8);
+    Return(callBuilder.CallStubDispatch());
+}
+
+void CallArg3StubStubBuilder::GenerateCircuit()
+{
+    CallCoStubBuilder callBuilder(this, EcmaOpcode::CALLARGS3_IMM8_V8_V8_V8);
+    Return(callBuilder.CallStubDispatch());
+}
+
+void CallThis0StubStubBuilder::GenerateCircuit()
+{
+    CallCoStubBuilder callBuilder(this, EcmaOpcode::CALLTHIS0_IMM8_V8);
+    Return(callBuilder.CallStubDispatch());
+}
+
+void CallThis1StubStubBuilder::GenerateCircuit()
+{
+    CallCoStubBuilder callBuilder(this, EcmaOpcode::CALLTHIS1_IMM8_V8_V8);
+    Return(callBuilder.CallStubDispatch());
+}
+
+void CallThis2StubStubBuilder::GenerateCircuit()
+{
+    CallCoStubBuilder callBuilder(this, EcmaOpcode::CALLTHIS2_IMM8_V8_V8_V8);
+    Return(callBuilder.CallStubDispatch());
+}
+
+void CallThis3StubStubBuilder::GenerateCircuit()
+{
+    CallCoStubBuilder callBuilder(this, EcmaOpcode::CALLTHIS3_IMM8_V8_V8_V8_V8);
+    Return(callBuilder.CallStubDispatch());
 }
 
 void ConvertCharToInt32StubBuilder::GenerateCircuit()
