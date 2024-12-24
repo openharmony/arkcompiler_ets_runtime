@@ -659,7 +659,8 @@ private:
     V(MoveBarrierInRegion)                           \
     V(FillObject)                                    \
     V(MoveBarrierCrossRegion)                        \
-    V(ReverseArray)
+    V(ReverseArray)                                  \
+    V(LrInt)
 
 #define DECL_CALL_SIGNATURE(name)                                  \
 class name##CallSignature final {                                  \

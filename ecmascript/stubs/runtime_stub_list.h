@@ -200,7 +200,8 @@ namespace panda::ecmascript {
     V(CreateOldToNew)                          \
     V(ObjectCopy)                              \
     V(FillObject)                              \
-    V(ReverseArray)
+    V(ReverseArray)                            \
+    V(LrInt)
 
 #define RUNTIME_STUB_WITH_GC_LIST(V)            \
     V(AddElementInternal)                       \

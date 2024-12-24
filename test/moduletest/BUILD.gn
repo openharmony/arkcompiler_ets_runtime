@@ -223,6 +223,7 @@ group("ark_js_assert_moduletest") {
 
     #"typedarrayfrom_in_api14",
     "typedarrayiterator",
+    "typedarraymap",
     "typedarraynan",
     "typedarrayreverse",
     "typedarraysort",
@@ -451,6 +452,7 @@ group("ark_asm_assert_test") {
 
     #"typedarrayfrom_in_api14",
     "typedarrayiterator",
+    "typedarraymap",
     "typedarraynan",
     "typedarrayreverse",
     "typedarraysort",
@@ -651,6 +653,7 @@ group("ark_asm_single_step_assert_test") {
 
     #"typedarrayfrom_in_api14",
     "typedarrayiterator",
+    "typedarraymap",
     "typedarraynan",
     "typedarrayreverse",
     "typedarraysort",
