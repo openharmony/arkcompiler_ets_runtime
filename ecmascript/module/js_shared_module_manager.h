@@ -84,6 +84,11 @@ public:
     }
     void SharedNativeObjDestory();
 
+    RecursiveMutex& GetSharedMutex()
+    {
+        return sharedMutex_;
+    }
+
 private:
     SharedModuleManager() = default;
     ~SharedModuleManager() = default;
@@ -99,6 +104,7 @@ private:
     CUnorderedMap<CString, JSTaggedValue> resolvedSharedModules_;
     CMap<CString, StateVisit> sharedModuleMutex_;
     Mutex mutex_;
+    RecursiveMutex sharedMutex_;
 
     friend class SourceTextModule;
     friend class EcmaContext;
