@@ -666,7 +666,7 @@ bool AOTFileGenerator::SaveAOTFile(const std::string &filename, const std::strin
     PrintMergedCodeComment();
     GenerateMergedStackmapSection();
     aotInfo_.GenerateMethodToEntryIndexMap();
-    if (!aotInfo_.Save(filename, cfg_.GetTriple())) {
+    if (!aotInfo_.Save(filename, cfg_.GetTriple(), anFileMaxByteSize_)) {
         LOG_COMPILER(ERROR) << "Fail to save an file: " << filename;
         return false;
     }

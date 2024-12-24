@@ -217,7 +217,8 @@ int Main(const int argc, const char **argv)
         bool isEnableLiteCG = runtimeOptions.IsCompilerEnableLiteCG();
         compilerStats.SetIsLiteCg(isEnableLiteCG);
 
-        AOTFileGenerator generator(&log, &logList, &aotCompilationEnv, cOptions.triple_, isEnableLiteCG);
+        AOTFileGenerator generator(&log, &logList, &aotCompilationEnv, cOptions.triple_, isEnableLiteCG,
+                                   cOptions.anFileMaxByteSize_);
         if (runtimeOptions.IsTargetCompilerMode() && runtimeOptions.IsEnableAotCodeComment()) {
             if (!generator.CreateAOTCodeCommentFile(cOptions.outputFileName_ + AOTFileManager::FILE_EXTENSION_AN)) {
                 LOG_COMPILER(ERROR) << "Generate aot code comment file failed.";

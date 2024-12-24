@@ -54,13 +54,13 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "                                      'allllir' or 'all1': print llir info for all methods,\n"
     "                                      'allasm' or 'all2': print asm log for all methods,\n"
     "                                      'alltype' or 'all3': print type infer log for all methods,\n"
-    "                                      'cerllircirasm' or 'cer0112': print all log for certain method defined "
-                                           "in 'mlist-for-log',\n"
+    "                                      'cerllircirasm' or 'cer0112': print all log for certain method defined\n"
+    "                                       in 'mlist-for-log',\n"
     "                                      'cercir' or 'cer0': print IR for methods in 'mlist-for-log',\n"
     "                                      'cerasm' or 'cer2': print log for methods in 'mlist-for-log',\n"
     "                                      Default: 'none'\n"
     "--compiler-log-methods:               Specific method list for compiler log, only used when compiler-log. "
-                                           "Default: 'none'\n"
+    "                                      Default: 'none'\n"
     "--compiler-type-threshold:            enable to skip methods whose type is no more than threshold. Default: -1\n"
     "--compiler-log-snapshot:              Enable to print snapshot information. Default: 'false'\n"
     "--compiler-log-time:                  Enable to print pass compiler time. Default: 'false'\n"
@@ -103,7 +103,7 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--enable-worker:                      Whether is worker vm. Default: 'false'\n"
     "--log-level:                          Log level: ['debug', 'info', 'warning', 'error', 'fatal'].\n"
     "--log-components:                     Enable logs from specified components: ['all', 'gc', 'ecma','interpreter',\n"
-    "                                      'debugger', 'compiler', 'builtins', 'trace', 'jit', 'baselinejit', 'all']. \n"
+    "                                      'debugger', 'compiler', 'builtins', 'trace', 'jit', 'baselinejit', 'all'].\n"
     "                                      Default: 'all'\n"
     "--log-debug:                          Enable debug or above logs for components: ['all', 'gc', 'ecma',\n"
     "                                      'interpreter', 'debugger', 'compiler', 'builtins', 'trace', 'jit',\n"
@@ -129,17 +129,17 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--serializer-buffer-size-limit:       Max serializer buffer size used by the VM in Byte. Default size is 2GB\n"
     "--snapshot-file:                      Snapshot file. Default: '/system/etc/snapshot'\n"
     "--startup-time:                       Print the start time of command execution. Default: 'false'\n"
-    "--stub-file:                          Path of file includes common stubs module compiled by stub compiler. "
-                                           "Default: 'stub.an'\n"
+    "--stub-file:                          Path of file includes common stubs module compiled by stub compiler. \n"
+    "                                      Default: 'stub.an'\n"
     "--enable-pgo-profiler:                Enable pgo profiler to sample jsfunction call and output to file. "
                                            "Default: 'false'\n"
     "--enable-elements-kind:               Enable elementsKind sampling and usage. Default: 'false'\n"
     "--compiler-pgo-hotness-threshold:     Set hotness threshold for pgo in aot compiler. Default: '2'\n"
     "--compiler-pgo-profiler-path:         The pgo file output dir or the pgo file dir of AOT compiler. Default: ''\n"
     "--compiler-pgo-save-min-interval:     Set the minimum time interval for automatically saving profile, "
-                                           "Unit seconds. Default: '30s'\n"
-    "--compiler-baseline-pgo:              Enable compile the baseline Ap file. "
-                                           "Default: 'false'\n"
+    "Unit seconds. Default: '30s'\n"
+    "--compiler-baseline-pgo:              Enable compile the baseline Ap file. \n"
+    "                                      Default: 'false'\n"
     "--compiler-target-triple:             CPU triple for aot compiler or stub compiler. \n"
     "                                      values: ['x86_64-unknown-linux-gnu', 'arm-unknown-linux-gnu', \n"
     "                                      'aarch64-unknown-linux-gnu'], Default: 'x86_64-unknown-linux-gnu'\n"
@@ -200,7 +200,11 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--compiler-opt-frame-state-elimination: Enable frame state elimination. Default: 'true'\n"
     "--enable-inline-property-optimization:  Enable inline property optimization(also enable slack tracking).\n"
     "--compiler-enable-aot-code-comment    Enable generate aot_code_comment.txt file during compilation.\n"
-    "                                      Default : 'false'\n\n";
+    "                                      Default : 'false'\n"
+    "--compiler-an-file-max-size:          Max size of compiler .an file in MB. '0' means infinity.\n"
+    "                                      Default: '0' for Host, '100' for TargetCompilerMode\n"
+    // Please add new options above this line for keep a blank line after help message.
+    "\n";
 
 bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
 {
@@ -343,6 +347,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
             OPTION_COMPILER_OPT_FRAME_STATE_ELIMINATION},
         {"enable-inline-property-optimization", required_argument, nullptr, OPTION_ENABLE_INLINE_PROPERTY_OPTIMIZATION},
         {"compiler-enable-aot-code-comment", required_argument, nullptr, OPTION_COMPILER_ENABLE_AOT_CODE_COMMENT},
+        {"compiler-an-file-max-size", required_argument, nullptr, OPTION_COMPILER_AN_FILE_MAX_SIZE},
         {nullptr, 0, nullptr, 0},
     };
 
@@ -1339,6 +1344,14 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                     return false;
                 }
                 break;
+            case OPTION_COMPILER_AN_FILE_MAX_SIZE:
+                ret = ParseUint64Param("compiler-an-file-max-size", &argUInt64);
+                if (ret) {
+                    SetCompilerAnFileMaxByteSize(argUInt64 * 1_MB);
+                } else {
+                    return false;
+                }
+                break;
             default:
                 LOG_ECMA(ERROR) << "Invalid option\n";
                 return false;
@@ -1476,12 +1489,14 @@ void JSRuntimeOptions::SetOptionsForTargetCompilation()
             SetPGOProfilerPath("");
         }
         BindCPUCoreForTargetCompilation();
+        SetCompilerAnFileMaxByteSize(100_MB);
     }
 
     if (IsCompilerPipelineHostAOT()) {
         SetFastAOTCompileMode(true);
         SetOptLevel(DEFAULT_OPT_LEVEL);
         SetEnableLoweringBuiltin(false);
+        SetCompilerAnFileMaxByteSize(100_MB);
     }
 }
 }

@@ -56,6 +56,7 @@ public:
     {
         enableSecDump_ = flag;
     }
+    size_t CalculateTotalFileSize();
 
 private:
     uint32_t GetShIndex(ElfSecName section) const;
@@ -73,6 +74,9 @@ private:
     void SetLastSection();
     void RemoveNotNeedSection();
     void FixSymtab(llvm::ELF::Elf64_Shdr* shdr);
+    void CalculateTextSectionSize(llvm::ELF::Elf64_Off &curOffset);
+    void CalculateStrTabSectionSize(llvm::ELF::Elf64_Off &curOffset);
+    void CalculateSymTabSectionSize(llvm::ELF::Elf64_Off &curOffset);
 
     static constexpr uint32_t ASMSTUB_MODULE_NUM = 4;
     static constexpr uint32_t ShStrTableModuleDesIndex = 0;

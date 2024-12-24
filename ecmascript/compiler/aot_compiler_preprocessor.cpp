@@ -80,6 +80,7 @@ CompilationOptions::CompilationOptions(JSRuntimeOptions &runtimeOptions)
     if (!optionSkipMethods.empty()) {
         ParseOption(optionSkipMethods, optionSkipMethods_);
     }
+    anFileMaxByteSize_ = runtimeOptions.GetCompilerAnFileMaxByteSize();
 }
 
 std::vector<std::string> CompilationOptions::SplitString(const std::string &str, const char ch) const

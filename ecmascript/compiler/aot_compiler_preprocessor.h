@@ -95,6 +95,7 @@ struct CompilationOptions {
     bool enableAotCodeComment_ {false};
     std::map<std::string, std::vector<std::string>> optionSelectMethods_;
     std::map<std::string, std::vector<std::string>> optionSkipMethods_;
+    size_t anFileMaxByteSize_ {0_MB};
 };
 
 class AotCompilerPreprocessor {
