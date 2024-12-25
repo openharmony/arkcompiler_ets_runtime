@@ -2022,7 +2022,7 @@ void SourceTextModule::CheckCircularImportTool(JSThread *thread, const CString &
     if (moduleManager->IsLocalModuleLoaded(circularModuleRecordName)) {
         moduleRecord.Update(moduleManager->HostGetImportedModule(circularModuleRecordName));
     } else {
-        moduleRecord.Update(ModuleResolver::HostResolveImportedModuleBundlePack(thread, circularModuleRecordName));
+        moduleRecord.Update(ModuleResolver::HostResolveImportedModule(thread, circularModuleRecordName));
         RETURN_IF_ABRUPT_COMPLETION(thread);
     }
     CString requiredModuleName;

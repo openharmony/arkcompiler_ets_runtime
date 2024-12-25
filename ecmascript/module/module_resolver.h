@@ -27,75 +27,66 @@ public:
                                                              const JSHandle<SourceTextModule> &module,
                                                              const JSHandle<JSTaggedValue> &moduleRequest,
                                                              bool executeFromJob = false);
-    static CString ReplaceModuleThroughFeature(JSThread *thread, const CString &requestName);
-    // Refactoring: From SharedModuleManager::ResolveSharedImportedModule
-    static JSHandle<JSTaggedValue> ResolveImportedModuleBundlePack(JSThread *thread,
-                                                                   const CString &fileName,
-                                                                   bool executeFromJob);
-    // Refactoring: From SharedModuleManager::ResolveImportedModuleWithMerge
-    static JSHandle<JSTaggedValue> PUBLIC_API ResolveImportedModuleWithMerge(JSThread *thread,
-                                                                             const CString &fileName,
-                                                                             const CString &recordName,
-                                                                             bool executeFromJob);
-    // Refactoring: From ModuleManager::ResolveNativeModule
-    static JSHandle<JSTaggedValue> ResolveNativeModule(JSThread *thread,
-                                                       const CString &moduleRequest,
-                                                       const CString &baseFileName,
-                                                       ModuleTypes moduleType);
-    // Refactoring: From ModuleManager::HostResolveImportedModule
-    static JSHandle<JSTaggedValue> HostResolveImportedModuleBundlePack(JSThread *thread,
-                                                             const void *buffer,
-                                                             size_t size,
-                                                             const CString &filename);
-    // Refactoring: From ModuleManager::HostResolveImportedModule
-    static JSHandle<JSTaggedValue> HostResolveImportedModuleBundlePack(JSThread *thread,
-                                                             const CString &referencingModule,
-                                                             bool executeFromJob = false);
-    // Refactoring: From ModuleManager::HostResolveImportedModuleWithMerge
-    static JSHandle<JSTaggedValue> PUBLIC_API HostResolveImportedModuleWithMerge(JSThread *thread,
-                                                                                 const CString &referencingModule,
-                                                                                 const CString &recordName,
-                                                                                 bool executeFromJob = false);
-    // Refactoring: From ModuleManager::HostResolveImportedModuleWithMergeForHotReload
-    static JSHandle<JSTaggedValue> PUBLIC_API HostResolveImportedModuleWithMergeForHotReload(JSThread *thread,
+
+    static JSHandle<JSTaggedValue> PUBLIC_API HostResolveImportedModule(JSThread *thread,
+        const CString &fileName,
+        const CString &recordName = JSPandaFile::ENTRY_MAIN_FUNCTION,
+        const JSPandaFile *jsPandaFile = nullptr,
+        bool executeFromJob = false);
+
+    static JSHandle<JSTaggedValue> PUBLIC_API HostResolveImportedModule(JSThread *thread,
+        const CString &fileName,
+        const CString &recordName,
+        const void *buffer,
+        size_t size,
+        bool executeFromJob = false);
+
+    static JSHandle<JSTaggedValue> PUBLIC_API HostResolveImportedModuleForHotReload(JSThread *thread,
         const CString &referencingModule,
         const CString &recordName,
         bool executeFromJob = false);
-    // Refactoring: From ModuleManager::HostResolveImportedModule
-    static JSHandle<JSTaggedValue> HostResolveImportedModuleBundlePack(JSThread *thread,
-                                                             const JSPandaFile *jsPandaFile,
-                                                             const CString &filename);
+
+    static JSHandle<JSTaggedValue> ResolveNativeModule(JSThread *thread,
+        const CString &moduleRequest,
+        const CString &baseFileName,
+        ModuleTypes moduleType);
+
+    static CString ReplaceModuleThroughFeature(JSThread *thread, const CString &requestName);
+
 private:
-    // Refactoring: From SourceTextModule::HostResolveImportedModule
     static JSHandle<JSTaggedValue> HostResolveImportedModuleBundlePack(JSThread *thread,
                                                                        const JSHandle<SourceTextModule> &module,
                                                                        const JSHandle<JSTaggedValue> &moduleRequest,
                                                                        bool executeFromJob = false);
-    // Refactoring: From SourceTextModule::HostResolveImportedModuleWithMerge
     static JSHandle<JSTaggedValue> HostResolveImportedModuleWithMerge(JSThread *thread,
                                                                       const JSHandle<SourceTextModule> &module,
                                                                       const JSHandle<JSTaggedValue> &moduleRequest,
                                                                       bool executeFromJob = false);
-    // Refactoring: From SharedModuleManager::ResolveSharedImportedModuleWithMerge
+    static JSHandle<JSTaggedValue> HostResolveImportedModuleBundlePackBuffer(JSThread *thread,
+                                                                             const CString &referencingModule,
+                                                                             const JSPandaFile *jsPandaFile,
+                                                                             bool executeFromJob = false);
+    static JSHandle<JSTaggedValue> HostResolveImportedModuleBundlePack(JSThread *thread,
+                                                                       const CString &referencingModule,
+                                                                       bool executeFromJob = false);
+    static JSHandle<JSTaggedValue> HostResolveImportedModuleWithMerge(JSThread *thread,
+                                                                      const CString &referencingModule,
+                                                                      const CString &recordName,
+                                                                      const JSPandaFile *jsPandaFile = nullptr,
+                                                                      bool executeFromJob = false);
+
     static JSHandle<JSTaggedValue> ResolveSharedImportedModuleWithMerge(JSThread *thread,
                                                                         const CString &fileName,
                                                                         const CString &recordName,
                                                                         const JSPandaFile *jsPandaFile,
                                                                         JSRecordInfo *recordInfo);
-    // Refactoring: From ModuleManager::ResolveModule
     static JSHandle<JSTaggedValue> ResolveModuleBundlePack(JSThread *thread,
-                                                 const JSPandaFile *jsPandaFile,
-                                                 bool executeFromJob = false);
-    // Refactoring: From ModuleManager::ResolveModuleWithMerge
+                                                           const JSPandaFile *jsPandaFile,
+                                                           bool executeFromJob = false);
     static JSHandle<JSTaggedValue> ResolveModuleWithMerge(JSThread *thread,
                                                           const JSPandaFile *jsPandaFile,
                                                           const CString &recordName,
                                                           bool executeFromJob = false);
-    // Refactoring: From ModuleManager::CommonResolveImportedModuleWithMerge
-    static JSHandle<JSTaggedValue> CommonResolveImportedModuleWithMerge(JSThread *thread,
-                                                                        const CString &moduleFileName,
-                                                                        const CString &recordName,
-                                                                        bool executeFromJob = false);
 };
 }  // namespace panda::ecmascript
 #endif // ECMASCRIPT_MODULE_MODULE_RESOLVER_H

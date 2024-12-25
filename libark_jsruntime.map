@@ -255,8 +255,7 @@
       panda::ecmascript::MethodLiteral::ParseFunctionName*;
       panda::ecmascript::ModuleManager::GetRecordName*;
       panda::ecmascript::ModuleManager::HostGetImportedModule*;
-      panda::ecmascript::ModuleResolver::HostResolveImportedModuleWithMerge*;
-      panda::ecmascript::ModuleResolver::ResolveImportedModuleWithMerge*;
+      panda::ecmascript::ModuleResolver::HostResolveImportedModule*;
       panda::ecmascript::ModuleManagerHelper::GetModuleValue*;
       panda::ecmascript::ModuleManagerHelper::GetNativeModuleValue*;
       panda::ecmascript::ModuleManagerHelper::GetModuleValueFromIndexBinding*;

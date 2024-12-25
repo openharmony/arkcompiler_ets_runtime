@@ -339,7 +339,7 @@ void AotCompilerPreprocessor::ResolveModule(const JSPandaFile *jsPandaFile, cons
     for (auto info: recordInfo) {
         if (jsPandaFile->IsModule(info.second)) {
             auto recordName = info.first;
-            ModuleResolver::ResolveImportedModuleWithMerge(thread, fileName.c_str(), recordName, false);
+            ModuleResolver::HostResolveImportedModule(thread, fileName.c_str(), recordName);
             SharedModuleManager::GetInstance()->TransferSModule(thread);
         }
     }
