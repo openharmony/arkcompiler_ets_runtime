@@ -452,6 +452,8 @@ CallThis2TypeInfoAccessor::CallThis2TypeInfoAccessor(const CompilationEnv *env, 
 {
     argc_ = 2; // 2: number of argc
     func_ = acc_.GetValueIn(gate, 3); // 3: func
+    a0_ = acc_.GetValueIn(gate, 1); // 1: arg0
+    a1_ = acc_.GetValueIn(gate, 2); // 2: arg1
 }
 
 CallThis3TypeInfoAccessor::CallThis3TypeInfoAccessor(const CompilationEnv *env, Circuit *circuit, GateRef gate,

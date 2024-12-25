@@ -154,7 +154,6 @@ private:
     void LowerArraySort(GateRef gate);
 
     void LowerToCommonStub(GateRef gate, CommonStubCSigns::ID id);
-    void LowerToBuiltinStub(GateRef gate, BuiltinsStubCSigns::ID id);
 
     GateRef FindFrameState(GateRef gate);
     void LowerArrayIncludesIndexOf(GateRef gate);

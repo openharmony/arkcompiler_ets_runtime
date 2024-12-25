@@ -86,7 +86,7 @@
     /* Object.prototype.toLocaleString ( [ reserved1 [ , reserved2 ] ] ) */         \
     V("toLocaleString",       ToLocaleString,       0, INVALID)                     \
     /* Object.prototype.toString ( ) */                                             \
-    V("toString",             ToString,             0, ObjectToString)              \
+    V("toString",             ToString,             0, ObjectToStringFunc)          \
     /* Object.prototype.valueOf ( ) */                                              \
     V("valueOf",              ValueOf,              0, INVALID)
 

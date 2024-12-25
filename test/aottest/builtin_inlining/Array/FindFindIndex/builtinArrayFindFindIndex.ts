@@ -70,11 +70,13 @@ try {
 
 // Check without args
 try {
+  //aot: [trace] aot call builtin: Array.prototype.find, caller function name:func_main_0@builtinArrayFindFindIndex
   print(x.find())
 } catch(e) {
   print(e) //: TypeError: the predicate is not callable.
 }
 try {
+  //aot: [trace] aot call builtin: Array.prototype.findIndex, caller function name:func_main_0@builtinArrayFindFindIndex
   print(x.findIndex())
 } catch(e) {
   print(e) //: TypeError: the predicate is not callable.
@@ -199,6 +201,7 @@ function findCase3() {
 
   //aot: [trace] aot inline builtin: Array.prototype.find, caller function name:#*#findCase3@builtinArrayFindFindIndex
   print(marr.find(x => x == 1)); //: 1
+  //aot: [trace] aot call builtin: Object.SetPrototypeOf, caller function name:#*#findCase3@builtinArrayFindFindIndex
   Object.setPrototypeOf(marr, mimicArray)
 
   print(marr.find(x => x == 1)); //aot: [trace] Check Type: BuiltinInstanceHClassMismatch
@@ -216,9 +219,10 @@ function findIndexCase3() {
 
   print(marr.findIndex(x => x == 1)); //aot: [trace] aot inline builtin: Array.prototype.findIndex, caller function name:#*#findIndexCase3@builtinArrayFindFindIndex
                                       //: 0
-  //aot: [trace] Check Type: BuiltinInstanceHClassMismatch
+  //aot: [trace] aot call builtin: Object.SetPrototypeOf, caller function name:#*#findIndexCase3@builtinArrayFindFindIndex
   Object.setPrototypeOf(marr, mimicArray)
 
+  //aot: [trace] Check Type: BuiltinInstanceHClassMismatch
   print(marr.findIndex(x => x == 1)); //: 0
 }
 findCase3()
@@ -234,6 +238,7 @@ function findCase4() {
         return x(0)
     }
   }
+  //aot: [trace] aot call builtin: Object.SetPrototypeOf, caller function name:#*#findCase4@builtinArrayFindFindIndex
   Object.setPrototypeOf(arr2, notArray)
   //aot: [trace] aot inline builtin: Array.prototype.find, caller function name:#*#findCase4@builtinArrayFindFindIndex
   print(arr1.find(x => x == 1)); //: 1
@@ -250,6 +255,7 @@ function findIndexCase4() {
       return x(0)
     }
   }
+  //aot: [trace] aot call builtin: Object.SetPrototypeOf, caller function name:#*#findIndexCase4@builtinArrayFindFindIndex
   Object.setPrototypeOf(arr2, notArray)
 
   //aot: [trace] aot inline builtin: Array.prototype.findIndex, caller function name:#*#findIndexCase4@builtinArrayFindFindIndex

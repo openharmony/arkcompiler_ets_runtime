@@ -309,12 +309,6 @@ void NativeInlineLowering::RunNativeInlineLowering()
             case BuiltinsStubCSigns::ID::BigIntConstructor:
                 TryInlineBigIntConstructor(gate, argc, skipThis);
                 break;
-            case BuiltinsStubCSigns::ID::MapClear:
-                InlineStubBuiltin(gate, 0U, argc, id, circuit_->MapClear(), skipThis);
-                break;
-            case BuiltinsStubCSigns::ID::SetClear:
-                InlineStubBuiltin(gate, 0U, argc, id, circuit_->SetClear(), skipThis);
-                break;
             case BuiltinsStubCSigns::ID::ArraySort:
                 TryInlineArraySort(gate, argc, id, skipThis);
                 break;

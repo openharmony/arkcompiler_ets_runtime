@@ -164,6 +164,7 @@ std::unordered_set<std::string> AotArgsSet {
     "compiler-baselinejit-hotness-threshold",
     "compiler-force-baselinejit-compile-main",
     "compiler-baseline-pgo",
+    "compiler-trace-builtins",
 };
 
 /**

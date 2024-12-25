@@ -66,11 +66,12 @@ private:
     JSHandle<JSFunction> NewBuiltinCjsCtor(const JSHandle<GlobalEnv> &env,
                                            const JSHandle<JSObject> &prototype, EcmaEntrypoint ctorFunc,
                                            std::string_view name, int length) const;
+    void RegisterBuiltinToGlobal(kungfu::BuiltinsStubCSigns::ID builtinId, JSHandle<JSFunction> function) const;
 
     JSHandle<JSFunction> NewFunction(const JSHandle<GlobalEnv> &env, const JSHandle<JSTaggedValue> &key,
                                      EcmaEntrypoint func, int length,
                                      kungfu::BuiltinsStubCSigns::ID builtinId =
-                                     kungfu::BuiltinsStubCSigns::INVALID) const;
+                                         kungfu::BuiltinsStubCSigns::INVALID) const;
 
     void InitializeNapiHClass(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &objFuncClass) const;
     void InitializePropertyDetector(const JSHandle<GlobalEnv> &env, bool lazyInit) const;

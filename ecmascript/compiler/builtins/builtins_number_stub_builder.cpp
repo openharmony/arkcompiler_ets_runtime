@@ -312,7 +312,7 @@ void BuiltinsNumberStubBuilder::GenNumberConstructor(GateRef nativeCode, GateRef
     Return(*res);
 }
 
-void BuiltinsNumberStubBuilder::ToString(Variable *result, Label *exit, Label *slowPath)
+void BuiltinsNumberStubBuilder::ToStringFunc(Variable *result, Label *exit, Label *slowPath)
 {
     auto env = GetEnvironment();
     Label definedMsg(env);

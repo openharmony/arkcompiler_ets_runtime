@@ -175,6 +175,7 @@ void BuiltinsStringStubBuilder::CharCodeAt(GateRef glue, GateRef thisValue, Gate
     Variable* res, Label *exit, Label *slowPath)
 {
     auto env = GetEnvironment();
+    res->WriteVariable(DoubleToTaggedDoublePtr(Double(base::NAN_VALUE)));
     DEFVARIABLE(pos, VariableType::INT32(), Int32(0));
     Label posIsValid(env);
     Label flattenFastPath(env);

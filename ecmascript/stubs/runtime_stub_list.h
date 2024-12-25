@@ -497,7 +497,8 @@ namespace panda::ecmascript {
     V(DecodeURIComponent)                       \
     V(GetAllFlagsInternal)                      \
     V(SlowSharedObjectStoreBarrier)             \
-    V(GetNativePcOfstForBaseline)
+    V(GetNativePcOfstForBaseline)               \
+    V(AotCallBuiltinTrace)
 
 #define RUNTIME_STUB_LIST(V)                     \
     RUNTIME_ASM_STUB_LIST(V)                     \

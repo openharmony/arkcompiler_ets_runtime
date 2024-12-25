@@ -148,8 +148,6 @@ namespace panda::ecmascript::kungfu {
     V(DateNow, DATE_NOW, GateFlags::NONE_FLAG, 1, 1, 0)                                         \
     V(SetValues, SET_VALUES, GateFlags::NO_WRITE, 1, 1, 1)                                      \
     V(SetEntries, SET_ENTRIES, GateFlags::NO_WRITE, 1, 1, 1)                                    \
-    V(MapClear, MAP_CLEAR, GateFlags::NONE_FLAG, 1, 1, 1)                                       \
-    V(SetClear, SET_CLEAR, GateFlags::NONE_FLAG, 1, 1, 1)                                       \
     V(ObjectIs, OBJECT_IS, GateFlags::NO_WRITE, 1, 1, 2)                                        \
     V(ObjectGetPrototypeOf, OBJECT_GET_PROTOTYPE_OF, GateFlags::NO_WRITE, 1, 1, 1)              \
     V(ObjectCreate, OBJECT_CREATE, GateFlags::NONE_FLAG, 1, 1, 1)                               \

@@ -25,7 +25,7 @@
 #include "ecmascript/tagged_dictionary.h"
 
 namespace panda::ecmascript::kungfu {
-void BuiltinsObjectStubBuilder::ToString(Variable *result, Label *exit, Label *slowPath)
+void BuiltinsObjectStubBuilder::ToStringFunc(Variable *result, Label *exit, Label *slowPath)
 {
     auto env = GetEnvironment();
     Label ecmaObj(env);

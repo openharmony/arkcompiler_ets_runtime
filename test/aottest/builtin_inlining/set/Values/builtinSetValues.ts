@@ -41,14 +41,17 @@ print(mySet.values()); //: [object Set Iterator]
 
 // Check with single param
 //aot: [trace] aot inline builtin: Set.values, caller function name:func_main_0@builtinSetValues
+//aot: [trace] aot call builtin: SetIterator.next, caller function name:func_main_0@builtinSetValues
 print(mySet.values(0).next().value); //: 0
 
 // Check with 2 params
 //aot: [trace] aot inline builtin: Set.values, caller function name:func_main_0@builtinSetValues
+//aot: [trace] aot call builtin: SetIterator.next, caller function name:func_main_0@builtinSetValues
 print(mySet.values(0, 0).next().value); //: 0
 
 // Check with 3 params
 //aot: [trace] aot inline builtin: Set.values, caller function name:func_main_0@builtinSetValues
+//aot: [trace] aot call builtin: SetIterator.next, caller function name:func_main_0@builtinSetValues
 print(mySet.values(-1, 10.2, 15).next().value); //: 0
 
 // Check own methods
@@ -62,13 +65,21 @@ print(mySet.values().return); //: function return() { [native code] }
 for (let key of mySet.values()) {
     print(key);
 }
+//aot: [trace] aot call builtin: SetIterator.next, caller function name:func_main_0@builtinSetValues
 //: 0
+//aot: [trace] aot call builtin: SetIterator.next, caller function name:func_main_0@builtinSetValues
 //: 5
+//aot: [trace] aot call builtin: SetIterator.next, caller function name:func_main_0@builtinSetValues
 //: -200.5
+//aot: [trace] aot call builtin: SetIterator.next, caller function name:func_main_0@builtinSetValues
 //: 1e-78
+//aot: [trace] aot call builtin: SetIterator.next, caller function name:func_main_0@builtinSetValues
 //: NaN
+//aot: [trace] aot call builtin: SetIterator.next, caller function name:func_main_0@builtinSetValues
 //: xyz
+//aot: [trace] aot call builtin: SetIterator.next, caller function name:func_main_0@builtinSetValues
 //: 12345
+//aot: [trace] aot call builtin: SetIterator.next, caller function name:func_main_0@builtinSetValues
 
 // Replace standard builtin
 let true_values = mySet.values
@@ -108,19 +119,29 @@ let iter1 = mySet.values();
 for (let key of iter1) {
     print(key);
 }
+//aot: [trace] aot call builtin: SetIterator.next, caller function name:func_main_0@builtinSetValues
 //: 0
+//aot: [trace] aot call builtin: SetIterator.next, caller function name:func_main_0@builtinSetValues
 //: 5
+//aot: [trace] aot call builtin: SetIterator.next, caller function name:func_main_0@builtinSetValues
 //: -200.5
+//aot: [trace] aot call builtin: SetIterator.next, caller function name:func_main_0@builtinSetValues
 //: 1e-78
+//aot: [trace] aot call builtin: SetIterator.next, caller function name:func_main_0@builtinSetValues
 //: NaN
+//aot: [trace] aot call builtin: SetIterator.next, caller function name:func_main_0@builtinSetValues
 //: xyz
+//aot: [trace] aot call builtin: SetIterator.next, caller function name:func_main_0@builtinSetValues
 //: 12345
+//aot: [trace] aot call builtin: SetIterator.next, caller function name:func_main_0@builtinSetValues
 
 // Check reusing possibility
 for (let key of iter1) {
+    //aot: [trace] aot call builtin: SetIterator.next, caller function name:func_main_0@builtinSetValues
     print(key);
 } // <nothing>
 
+//aot: [trace] aot call builtin: SetIterator.next, caller function name:func_main_0@builtinSetValues
 print(iter1.next().value); //: undefined
 
 // Check using after inserting / deleting
@@ -135,9 +156,16 @@ mySet.delete("12345");
 for (let key of iter2) {
     print(key);
 }
+//aot: [trace] aot call builtin: SetIterator.next, caller function name:func_main_0@builtinSetValues
 //: 0
+//aot: [trace] aot call builtin: SetIterator.next, caller function name:func_main_0@builtinSetValues
 //: -200.5
+//aot: [trace] aot call builtin: SetIterator.next, caller function name:func_main_0@builtinSetValues
 //: 1e-78
+//aot: [trace] aot call builtin: SetIterator.next, caller function name:func_main_0@builtinSetValues
 //: NaN
+//aot: [trace] aot call builtin: SetIterator.next, caller function name:func_main_0@builtinSetValues
 //: xyz
+//aot: [trace] aot call builtin: SetIterator.next, caller function name:func_main_0@builtinSetValues
 //: 30
+//aot: [trace] aot call builtin: SetIterator.next, caller function name:func_main_0@builtinSetValues

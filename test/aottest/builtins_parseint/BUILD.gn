@@ -18,6 +18,7 @@ host_aot_js_test_action("builtins_parseint") {
   is_enable_pgo = true
   is_enable_opt_inlining = true
   is_enable_inline_trace = true
+  is_enable_builtins_trace = true
   is_enable_trace_deopt = true
   log_option = " --log-info=trace"
 }

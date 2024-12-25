@@ -88,6 +88,12 @@ public:
 BUILTINS_WITH_TYPEDARRAY_STUB_BUILDER(DECLARE_BUILTINS_TYPEDARRAY_STUB_BUILDER)
 #undef DECLARE_BUILTINS_TYPEDARRAY_STUB_BUILDER
 
+    void GetByteLength(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *result, Label *exit,
+                       Label *slowPath);
+    void GetByteOffset(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *result, Label *exit,
+                       Label *slowPath);
+    void Of(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *result, Label *exit, Label *slowPath);
+
     GateRef GetViewedArrayBuffer(GateRef array)
     {
         GateRef offset = IntPtr(JSTypedArray::VIEWED_ARRAY_BUFFER_OFFSET);

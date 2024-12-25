@@ -1684,13 +1684,13 @@ void TypedBytecodeLowering::LowerTypedSuperCall(GateRef gate)
 }
 
 void TypedBytecodeLowering::SpeculateCallBuiltin(GateRef gate, GateRef func, const std::vector<GateRef> &args,
-                                                 BuiltinsStubCSigns::ID id, bool isThrow, bool isSideEffect)
+                                                 BuiltinsStubCSigns::ID id, bool isThrow)
 {
     if (!Uncheck()) {
         builder_.CallTargetCheck(gate, func, builder_.IntPtr(static_cast<int64_t>(id)), {args[0]});
     }
 
-    GateRef result = builder_.TypedCallBuiltin(gate, args, id, isSideEffect);
+    GateRef result = builder_.TypedCallBuiltin(gate, args, id, IS_SIDE_EFFECT_BUILTINS_ID(id));
 
     if (isThrow) {
         acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
@@ -2105,7 +2105,7 @@ void TypedBytecodeLowering::LowerTypedCallthis0(GateRef gate)
     BuiltinsStubCSigns::ID pgoFuncId = tacc.TryGetPGOBuiltinMethodId();
     if (!IS_INVALID_ID(pgoFuncId) && IS_TYPED_BUILTINS_ID_CALL_THIS0(pgoFuncId)) {
         AddProfiling(gate);
-        SpeculateCallBuiltin(gate, tacc.GetFunc(), { tacc.GetThisObj() }, pgoFuncId, true, true);
+        SpeculateCallBuiltin(gate, tacc.GetFunc(), {tacc.GetThisObj()}, pgoFuncId, true);
         return;
     }
     if (!tacc.CanOptimizeAsFastCall()) {
@@ -2123,7 +2123,7 @@ void TypedBytecodeLowering::LowerTypedCallthis1(GateRef gate)
     BuiltinsStubCSigns::ID pgoFuncId = tacc.TryGetPGOBuiltinMethodId();
     if (!IS_INVALID_ID(pgoFuncId) && IS_TYPED_BUILTINS_ID_CALL_THIS1(pgoFuncId)) {
         AddProfiling(gate);
-        SpeculateCallBuiltin(gate, tacc.GetFunc(), { tacc.GetArgs() }, pgoFuncId, true, true);
+        SpeculateCallBuiltin(gate, tacc.GetFunc(), {tacc.GetArgs()}, pgoFuncId, true);
         return;
     }
     if (!tacc.CanOptimizeAsFastCall()) {
@@ -2138,6 +2138,12 @@ void TypedBytecodeLowering::LowerTypedCallthis2(GateRef gate)
         return;
     }
     CallThis2TypeInfoAccessor tacc(compilationEnv_, circuit_, gate, GetCalleePandaFile(gate), callMethodFlagMap_);
+    BuiltinsStubCSigns::ID pgoFuncId = tacc.TryGetPGOBuiltinMethodId();
+    if (!IS_INVALID_ID(pgoFuncId) && IS_TYPED_BUILTINS_ID_CALL_THIS2(pgoFuncId)) {
+        AddProfiling(gate);
+        SpeculateCallBuiltin(gate, tacc.GetFunc(), { tacc.GetArgs() }, pgoFuncId, true);
+        return;
+    }
     if (!tacc.CanOptimizeAsFastCall()) {
         return;
     }
@@ -2282,7 +2288,7 @@ void TypedBytecodeLowering::LowerGetIterator(GateRef gate)
     }
     AddProfiling(gate);
     GateRef obj = tacc.GetCallee();
-    SpeculateCallBuiltin(gate, obj, { obj }, id, true, true);
+    SpeculateCallBuiltin(gate, obj, { obj }, id, true);
 }
 
 void TypedBytecodeLowering::LowerTypedTryLdGlobalByName(GateRef gate)

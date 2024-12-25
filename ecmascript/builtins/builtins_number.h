@@ -64,7 +64,7 @@
     /* Number.prototype.toPrecision ( precision ) */                        \
     V("toPrecision",    ToPrecision,    1, INVALID)                         \
     /* Number.prototype.toString ( [ radix ] ) */                           \
-    V("toString",       ToString,       1, NumberToString)                  \
+    V("toString",       ToString,       1, NumberToStringFunc)              \
     /* Number.prototype.valueOf ( ) */                                      \
     V("valueOf",        ValueOf,        0, INVALID)
 

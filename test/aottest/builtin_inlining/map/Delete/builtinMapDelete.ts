@@ -47,6 +47,7 @@ let myMap = new Map([[0, 0], [0.0, 5], [-1, 1], [2.5, -2.5], [NaN, Infinity], [2
 print(myMap.delete()); //: false
 
 // Check with seting element undefined
+//aot: [trace] aot call builtin: Map.Set, caller function name:func_main_0@builtinMapDelete
 myMap.set(undefined, 42);
 //aot: [trace] aot inline builtin: Map.delete, caller function name:func_main_0@builtinMapDelete
 print(myMap.delete()); //: true
@@ -68,6 +69,7 @@ print(myMap.delete(2000, 0)); //: true
 print(myMap.delete(-51, 10.2, 15)); //: false
 
 // Check after inserting elements
+//aot: [trace] aot call builtin: Map.Set, caller function name:func_main_0@builtinMapDelete
 myMap.set(2000, 1e-98);
 //aot: [trace] aot inline builtin: Map.delete, caller function name:func_main_0@builtinMapDelete
 print(myMap.delete(2000)); //: true
@@ -118,6 +120,7 @@ try {
 let obj = {};
 obj.valueOf = (() => { return 0; });
 
+//aot: [trace] aot call builtin: Map.Set, caller function name:func_main_0@builtinMapDelete
 myMap.set(0, 0);
 //aot: [trace] aot inline builtin: Map.delete, caller function name:func_main_0@builtinMapDelete
 print(myMap.delete(obj)); //: false
@@ -133,6 +136,7 @@ function Throwing() {
 }
 
 let throwingObj = new Throwing();
+//aot: [trace] aot call builtin: Map.Set, caller function name:func_main_0@builtinMapDelete
 myMap.set(2, 4);
 try {
 //aot: [trace] aot inline builtin: Map.delete, caller function name:func_main_0@builtinMapDelete
@@ -146,18 +150,23 @@ print(myMap.delete(throwingObj)); //: false
 
 // Check after clearing
 myMap.clear();
-//aot: [trace] aot inline builtin: Map.clear, caller function name:func_main_0@builtinMapDelete
+//aot: [trace] aot call builtin: Map.clear, caller function name:func_main_0@builtinMapDelete
 print(myMap.delete(2000));
 //aot: [trace] aot inline builtin: Map.delete, caller function name:func_main_0@builtinMapDelete
 //: false
 
 let truedelete = Map.prototype.delete;
 let m = new Map();
+//aot: [trace] aot call builtin: Map.Set, caller function name:func_main_0@builtinMapDelete
 m.set(1, 2);
+//aot: [trace] aot call builtin: Map.Set, caller function name:func_main_0@builtinMapDelete
 m.set(2, 4);
+//aot: [trace] aot call builtin: Map.Set, caller function name:func_main_0@builtinMapDelete
 m.set("ab", 5);
+//aot: [trace] aot call builtin: Map.Set, caller function name:func_main_0@builtinMapDelete
 m.set("cd", "e");
 let obj1 = {};
+//aot: [trace] aot call builtin: Map.Set, caller function name:func_main_0@builtinMapDelete
 m.set(obj1, "obj");
 
 print("prototype"); //: prototype
@@ -182,11 +191,13 @@ print(m.delete(obj2)); //: false
 
 //aot: [trace] aot inline builtin: Map.delete, caller function name:func_main_0@builtinMapDelete
 print(m.delete()); //: false
+//aot: [trace] aot call builtin: Map.Set, caller function name:func_main_0@builtinMapDelete
 m.set(undefined, -1);
 //aot: [trace] aot inline builtin: Map.delete, caller function name:func_main_0@builtinMapDelete
 print(m.delete()); //: true
 
 print("baseline"); //: baseline
+//aot: [trace] aot call builtin: Map.Set, caller function name:func_main_0@builtinMapDelete
 m.set(10, 20);
 let m2 = new Map([[1, 2]]);
 let m3 = new Map([[1, 2]]);
@@ -209,8 +220,11 @@ if (ArkTools.isAOTCompiled(printDelete2)) {
 }
 
 // Nothing changed
+//aot: [trace] aot call builtin: Map.Set, caller function name:func_main_0@builtinMapDelete
 m.set(10, 20);
+//aot: [trace] aot call builtin: Map.Set, caller function name:func_main_0@builtinMapDelete
 m2.set(10, 20);
+//aot: [trace] aot call builtin: Map.Set, caller function name:func_main_0@builtinMapDelete
 m3.set(10, 20);
 m4.set(10, 20); //aot: [trace] Check Type: BuiltinInstanceHClassMismatch
 
@@ -260,6 +274,7 @@ print("case 3") //: case 3
 
 function checkObjWithMapProto() {
     let o = {};
+    //aot: [trace] aot call builtin: Object.SetPrototypeOf, caller function name:#*#checkObjWithMapProto@builtinMapDelete
     Object.setPrototypeOf(o, Map.prototype);
     try {
         print((o as Map<number, number>).delete(1));

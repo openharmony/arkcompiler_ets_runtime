@@ -24,6 +24,9 @@ void BuiltinLowering::LowerTypedCallBuitin(GateRef gate)
     ASSERT(valuesIn >= 1);
     auto idGate = acc_.GetValueIn(gate, valuesIn - 1);
     auto id = static_cast<BuiltinsStubCSigns::ID>(acc_.GetConstantValue(idGate));
+    if (traceBuiltins_) {
+        AddTraceLogs(gate, id);
+    }
     switch (id) {
         case BUILTINS_STUB_ID(StringLocaleCompare):
             LowerTypedLocaleCompare(gate);
@@ -56,10 +59,8 @@ void BuiltinLowering::LowerTypedCallBuitin(GateRef gate)
         case BUILTINS_STUB_ID(GlobalDecodeURIComponent):
             LowerGlobalDecodeURIComponent(gate);
             break;
-        case BUILTINS_STUB_ID(ArrayConcat):
-            LowerCallBuiltinStub(gate, id);
-            break;
         default:
+            LowerCallBuiltinStub(gate, id);
             break;
     }
 }
@@ -379,6 +380,10 @@ GateRef BuiltinLowering::CheckPara(GateRef gate, GateRef funcCheck)
         // Don't need check param. Param was checked before
         return funcCheck;
     }
+    if (IS_TYPED_BUILTINS_ID(id)) {
+        // Don't need check param. Param was checked before
+        return funcCheck;
+    }
     switch (id) {
         case BuiltinsStubCSigns::ID::StringLocaleCompare:
         case BuiltinsStubCSigns::ID::ArrayConcat:
@@ -564,12 +569,24 @@ void BuiltinLowering::LowerCallBuiltinStub(GateRef gate, BuiltinsStubCSigns::ID 
     args[static_cast<size_t>(BuiltinsArgs::THISVALUE)] = acc_.GetValueIn(gate, 0);
     args[static_cast<size_t>(BuiltinsArgs::NUMARGS)] = builder_.Int32(numIn - 2); // 2: skip thisValue and id
     for (size_t idx = 1; idx < numIn - 1; idx++) {
-        // 1 : skip thisInput
         args[static_cast<size_t>(BuiltinsArgs::ARG0_OR_ARGV) + idx - 1] = acc_.GetValueIn(gate, idx);
     }
     const CallSignature *cs = BuiltinsStubCSigns::BuiltinsCSign();
-    GateRef target = builder_.IntPtr(id * sizeof(uintptr_t));
-    GateRef ret = builder_.Call(cs, glue, target, builder_.GetDepend(), args, gate);
+    size_t ptrSize = env.Is32Bit() ? sizeof(uint32_t) : sizeof(uint64_t);
+    GateRef target = builder_.IntPtr(static_cast<int64_t>(id) * ptrSize);
+    GateRef ret = builder_.Call(cs, glue, target, builder_.GetDepend(), args, gate,
+                                BuiltinsStubCSigns::GetBuiltinName(id).c_str());
     ReplaceHirWithValue(gate, ret);
+}
+
+void BuiltinLowering::AddTraceLogs(GateRef gate, BuiltinsStubCSigns::ID id)
+{
+    size_t index = RTSTUB_ID(AotCallBuiltinTrace);
+    GateRef frameArgs =  acc_.GetFrameArgs(gate);
+    GateRef callerFunc = acc_.GetValueIn(frameArgs, static_cast<size_t>(FrameArgIdx::FUNC));
+    std::vector<GateRef> args{callerFunc, builder_.Int32ToTaggedInt(builder_.Int32(id))};
+    GateRef trace = builder_.CallRuntime(acc_.GetGlueFromArgList(), index, Gate::InvalidGateRef, args, gate);
+    acc_.SetDep(gate, trace);
+    builder_.SetDepend(acc_.GetDep(gate));  // set gate depend: profiling or STATE_SPLIT
 }
 }  // namespace panda::ecmascript::kungfu

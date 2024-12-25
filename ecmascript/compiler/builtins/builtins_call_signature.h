@@ -16,330 +16,12 @@
 #ifndef ECMASCRIPT_COMPILER_BUILTINS_CALL_SIGNATURE_H
 #define ECMASCRIPT_COMPILER_BUILTINS_CALL_SIGNATURE_H
 
+#include "ecmascript/compiler/builtins/builtins_call_signature_list.h"
 #include "ecmascript/base/config.h"
 #include "ecmascript/compiler/call_signature.h"
 #include "ecmascript/global_env_constants.h"
 
 namespace panda::ecmascript::kungfu {
-
-#define PADDING_BUILTINS_STUB_LIST(V)               \
-    V(NONE)
-
-// BUILTINS_STUB_LIST is shared both ASM Interpreter and AOT.
-// AOT_BUILTINS_STUB_LIST is used in AOT only.
-#define BUILTINS_STUB_LIST(V, D, C)                 \
-    BUILTINS_METHOD_STUB_LIST(D, D, D, D)           \
-    BUILTINS_WITH_CONTAINERS_STUB_BUILDER(D)        \
-    AOT_AND_BUILTINS_STUB_LIST(V)                   \
-    BUILTINS_CONSTRUCTOR_STUB_LIST(C)               \
-    BUILTINS_ARKTOOLS_STUB_BUILDER(D)
-
-#define BUILTINS_NOSTUB_LIST(V)                     \
-    V(ObjectConstructor)                            \
-    V(GlobalDecodeURIComponent)
-
-#define BUILTINS_METHOD_STUB_LIST(V, T, D, K)       \
-    BUILTINS_WITH_STRING_STUB_BUILDER(V)            \
-    BUILTINS_WITH_OBJECT_STUB_BUILDER(T)            \
-    BUILTINS_WITH_ARRAY_STUB_BUILDER(V)             \
-    BUILTINS_WITH_SET_STUB_BUILDER(D)               \
-    BUILTINS_WITH_MAP_STUB_BUILDER(D)               \
-    BUILTINS_WITH_FUNCTION_STUB_BUILDER(V)          \
-    BUILTINS_WITH_NUMBER_STUB_BUILDER(T)            \
-    BUILTINS_WITH_TYPEDARRAY_STUB_BUILDER(V)        \
-    BUILTINS_WITH_DATAVIEW_STUB_BUILDER(K)          \
-    BUILTINS_WITH_REFLECT_STUB_BUILDER(T)           \
-    BUILTINS_WITH_COLLATOR_STUB_BUILDER(V)          \
-    BUILTINS_WITH_REGEXP_STUB_BUILDER(V)
-
-#define BUILTINS_WITH_STRING_STUB_BUILDER(V)                                            \
-    V(CharAt,             String,   Hole())                                             \
-    V(FromCharCode,       String,   Hole())                                             \
-    V(CharCodeAt,         String,   DoubleToTaggedDoublePtr(Double(base::NAN_VALUE)))   \
-    V(CodePointAt,        String,   Undefined())                                        \
-    V(IndexOf,            String,   IntToTaggedPtr(Int32(-1)))                          \
-    V(Substring,          String,   IntToTaggedPtr(Int32(-1)))                          \
-    V(SubStr,             String,   Undefined())                                        \
-    V(Replace,            String,   Undefined())                                        \
-    V(Trim,               String,   Undefined())                                        \
-    V(TrimStart,          String,   Undefined())                                        \
-    V(TrimEnd,            String,   Undefined())                                        \
-    V(TrimLeft,           String,   Undefined())                                        \
-    V(TrimRight,          String,   Undefined())                                        \
-    V(PadStart,           String,   Undefined())                                        \
-    V(PadEnd,             String,   Undefined())                                        \
-    V(Concat,             String,   Undefined())                                        \
-    V(Slice,              String,   Undefined())                                        \
-    V(ToLowerCase,        String,   Undefined())                                        \
-    V(StartsWith,         String,   TaggedFalse())                                      \
-    V(EndsWith,           String,   TaggedFalse())                                      \
-    V(GetStringIterator,  String,   Undefined())
-
-#define BUILTINS_WITH_OBJECT_STUB_BUILDER(V)                                      \
-    V(ToString,                    Object,   Undefined())                         \
-    V(Create,                      Object,   Undefined())                         \
-    V(Assign,                      Object,   Undefined())                         \
-    V(HasOwnProperty,              Object,   TaggedFalse())                       \
-    V(Keys,                        Object,   Undefined())                         \
-    V(GetPrototypeOf,              Object,   Undefined())                         \
-    V(GetOwnPropertyNames,         Object,   Undefined())                         \
-    V(GetOwnPropertySymbols,       Object,   Undefined())                         \
-    V(Entries,                     Object,   Undefined())                         \
-    V(IsFrozen,                    Object,   Undefined())                         \
-    V(IsSealed,                    Object,   Undefined())                         \
-    V(GetOwnPropertyDescriptors,   Object,   Undefined())                         \
-    V(SetPrototypeOf,              Object,   Undefined())
-
-#define BUILTINS_WITH_ARRAY_STUB_BUILDER(V)               \
-    V(With,                Array,   Undefined())          \
-    V(Unshift,             Array,   Undefined())          \
-    V(Shift,               Array,   Undefined())          \
-    V(Concat,              Array,   Undefined())          \
-    V(Filter,              Array,   Undefined())          \
-    V(Find,                Array,   Undefined())          \
-    V(FindIndex,           Array,   Undefined())          \
-    V(From,                Array,   Undefined())          \
-    V(Splice,              Array,   Undefined())          \
-    V(ToSpliced,           Array,   Undefined())          \
-    V(ForEach,             Array,   Undefined())          \
-    V(IndexOf,             Array,   Undefined())          \
-    V(LastIndexOf,         Array,   Undefined())          \
-    V(Pop,                 Array,   Undefined())          \
-    V(Slice,               Array,   Undefined())          \
-    V(Reduce,              Array,   Undefined())          \
-    V(Reverse,             Array,   Undefined())          \
-    V(ToReversed,          Array,   Undefined())          \
-    V(Push,                Array,   Undefined())          \
-    V(Values,              Array,   Undefined())          \
-    V(Includes,            Array,   Undefined())          \
-    V(CopyWithin,          Array,   Undefined())          \
-    V(Some,                Array,   Undefined())          \
-    V(Fill,                Array,   Undefined())          \
-    V(Every,               Array,   Undefined())          \
-    V(FindLastIndex,       Array,   Undefined())          \
-    V(FindLast,            Array,   Undefined())          \
-    V(ReduceRight,         Array,   Undefined())          \
-    V(Map,                 Array,   Undefined())          \
-    V(FlatMap,             Array,   Undefined())          \
-    V(ToSorted,            Array,   Undefined())          \
-    V(IsArray,             Array,   Undefined())          \
-    V(ArrayIteratorNext,   Array,   Undefined())
-
-#define BUILTINS_WITH_SET_STUB_BUILDER(V)           \
-    V(Clear,    Set,   Undefined())                 \
-    V(Values,   Set,   Undefined())                 \
-    V(Entries,  Set,   Undefined())                 \
-    V(ForEach,  Set,   Undefined())                 \
-    V(Add,      Set,   Undefined())                 \
-    V(Delete,   Set,   Undefined())                 \
-    V(Has,      Set,   Undefined())
-
-#define BUILTINS_WITH_MAP_STUB_BUILDER(V)           \
-    V(Clear,    Map,   Undefined())                 \
-    V(Values,   Map,   Undefined())                 \
-    V(Entries,  Map,   Undefined())                 \
-    V(Keys,     Map,   Undefined())                 \
-    V(ForEach,  Map,   Undefined())                 \
-    V(Set,      Map,   Undefined())                 \
-    V(Delete,   Map,   Undefined())                 \
-    V(Has,      Map,   Undefined())                 \
-    V(Get,      Map,   Undefined())
-
-#define BUILTINS_WITH_FUNCTION_STUB_BUILDER(V)      \
-    V(PrototypeApply,  Function,  Undefined())      \
-    V(PrototypeBind,   Function,  Undefined())      \
-    V(PrototypeCall,   Function,  Undefined())
-
-#define BUILTINS_WITH_NUMBER_STUB_BUILDER(V)        \
-    V(ParseFloat,      Number,    Undefined())      \
-    V(ParseInt,        Number,    Undefined())      \
-    V(IsFinite,        Number,    Undefined())      \
-    V(IsNaN,           Number,    Undefined())      \
-    V(IsInteger,       Number,    Undefined())      \
-    V(IsSafeInteger,   Number,    Undefined())      \
-    V(ToString,        Number,    Undefined())
-
-#define BUILTINS_WITH_REFLECT_STUB_BUILDER(V)       \
-    V(Get,             Reflect,   Undefined())
-
-#define BUILTINS_WITH_COLLATOR_STUB_BUILDER(V)      \
-    V(ResolvedOptions, Collator,   Undefined())
-
-#define BUILTINS_WITH_REGEXP_STUB_BUILDER(V)        \
-    V(GetFlags,        RegExp,   Undefined())
-
-#define BUILTINS_WITH_TYPEDARRAY_STUB_BUILDER(V)    \
-    V(Reverse,         TypedArray,  Undefined())    \
-    V(LastIndexOf,     TypedArray,  Undefined())    \
-    V(IndexOf,         TypedArray,  Undefined())    \
-    V(Find,            TypedArray,  Undefined())    \
-    V(Includes,        TypedArray,  Undefined())    \
-    V(CopyWithin,      TypedArray,  Undefined())    \
-    V(ReduceRight,     TypedArray,  Undefined())    \
-    V(Reduce,          TypedArray,  Undefined())    \
-    V(Every,           TypedArray,  Undefined())    \
-    V(Some,            TypedArray,  Undefined())    \
-    V(Filter,          TypedArray,  Undefined())    \
-    V(With,            TypedArray,  Undefined())    \
-    V(Entries,         TypedArray,  Undefined())    \
-    V(Keys,            TypedArray,  Undefined())    \
-    V(Values,          TypedArray,  Undefined())    \
-    V(Slice,           TypedArray,  Undefined())    \
-    V(SubArray,        TypedArray,  Undefined())    \
-    V(Sort,            TypedArray,  Undefined())    \
-    V(GetByteLength,   TypedArray,  Undefined())    \
-    V(GetByteOffset,   TypedArray,  Undefined())    \
-    V(Set,             TypedArray,  Undefined())    \
-    V(FindIndex,       TypedArray,  Undefined())    \
-    V(FindLastIndex,   TypedArray,  Undefined())    \
-    V(ToSorted,        TypedArray,  Undefined())    \
-    V(Of,              TypedArray,  Undefined())    \
-    V(Map,             TypedArray,  Undefined())    \
-    V(ToReversed,      TypedArray,  Undefined())
-
-#define BUILTINS_WITH_DATAVIEW_STUB_BUILDER(V)                           \
-    V(SetInt32,     DataView,  INT32,     SetTypedValue, Undefined())    \
-    V(SetFloat32,   DataView,  FLOAT32,   SetTypedValue, Undefined())    \
-    V(SetFloat64,   DataView,  FLOAT64,   SetTypedValue, Undefined())
-
-#define BUILTINS_WITH_CONTAINERS_STUB_BUILDER(V)                                                               \
-    V(ForEach,            ArrayList,      ContainersCommonFuncCall,  ARRAYLIST_FOREACH,            JS_POINTER) \
-    V(ForEach,            Deque,          DequeCommonFuncCall,       DEQUE_FOREACH,                JS_POINTER) \
-    V(ForEach,            HashMap,        ContainersHashCall,        HASHMAP_FOREACH,              JS_POINTER) \
-    V(ForEach,            HashSet,        ContainersHashCall,        HASHSET_FOREACH,              JS_POINTER) \
-    V(ForEach,            LightWeightMap, ContainersLightWeightCall, LIGHTWEIGHTMAP_FOREACH,       JS_POINTER) \
-    V(ForEach,            LightWeightSet, ContainersLightWeightCall, LIGHTWEIGHTSET_FOREACH,       JS_POINTER) \
-    V(ForEach,            LinkedList,     ContainersLinkedListCall,  LINKEDLIST_FOREACH,           JS_POINTER) \
-    V(ForEach,            List,           ContainersLinkedListCall,  LIST_FOREACH,                 JS_POINTER) \
-    V(ForEach,            PlainArray,     ContainersCommonFuncCall,  PLAINARRAY_FOREACH,           JS_POINTER) \
-    V(ForEach,            Queue,          QueueCommonFuncCall,       QUEUE_FOREACH,                JS_POINTER) \
-    V(ForEach,            Stack,          ContainersCommonFuncCall,  STACK_FOREACH,                JS_POINTER) \
-    V(ForEach,            Vector,         ContainersCommonFuncCall,  VECTOR_FOREACH,               JS_POINTER) \
-    V(ReplaceAllElements, ArrayList,      ContainersCommonFuncCall,  ARRAYLIST_REPLACEALLELEMENTS, JS_POINTER) \
-    V(ReplaceAllElements, Vector,         ContainersCommonFuncCall,  VECTOR_REPLACEALLELEMENTS,    JS_POINTER)
-
-#define BUILTINS_ARKTOOLS_STUB_BUILDER(V) \
-    V(HashCode, ArkTools, Undefined())
-
-#define BUILTINS_CONSTRUCTOR_STUB_LIST(V)           \
-    V(BooleanConstructor)                           \
-    V(NumberConstructor)                            \
-    V(ProxyConstructor)                             \
-    V(DateConstructor)                              \
-    V(ArrayConstructor)                             \
-    V(SetConstructor)                               \
-    V(MapConstructor)                               \
-    V(Int8ArrayConstructor)                         \
-    V(Uint8ArrayConstructor)                        \
-    V(Uint8ClampedArrayConstructor)                 \
-    V(Int16ArrayConstructor)                        \
-    V(Uint16ArrayConstructor)                       \
-    V(Int32ArrayConstructor)                        \
-    V(Uint32ArrayConstructor)                       \
-    V(Float32ArrayConstructor)                      \
-    V(Float64ArrayConstructor)                      \
-    V(BigInt64ArrayConstructor)                     \
-    V(BigUint64ArrayConstructor)
-
-// NEXT_AOT_AND_BUILTINS_STUB_LIST: List of functions that is optimized for Next
-#if ENABLE_NEXT_OPTIMIZATION
-    #define NEXT_AOT_AND_BUILTINS_STUB_LIST(V)             \
-        V(ArrayIteratorProtoNext)                          \
-        V(MapIteratorProtoNext)                            \
-        V(SetIteratorProtoNext)
-    #define NEXT_AOT_BUILTINS_STUB_LIST(V)
-#else
-    #define NEXT_AOT_AND_BUILTINS_STUB_LIST(V)
-    #define NEXT_AOT_BUILTINS_STUB_LIST(V)                 \
-        V(ArrayIteratorProtoNext)                          \
-        V(MapIteratorProtoNext)                            \
-        V(SetIteratorProtoNext)
-#endif
-
-#define AOT_AND_BUILTINS_STUB_LIST(V)               \
-    V(StringLocaleCompare)                          \
-    V(StringIteratorProtoNext)                      \
-    V(ArraySort)                                    \
-    NEXT_AOT_AND_BUILTINS_STUB_LIST(V)
-
-#define AOT_BUILTINS_STUB_LIST(V)                       \
-    V(JsonStringify)                                    \
-    V(MapProtoIterator)                                 \
-    V(SetProtoIterator)                                 \
-    V(StringProtoIterator)                              \
-    V(ArrayProtoIterator)                               \
-    V(TypeArrayProtoIterator)                           \
-    V(IteratorProtoReturn)                              \
-    NEXT_AOT_BUILTINS_STUB_LIST(V)
-
-// List of builtins which will try to be inlined in TypedNativeInlineLoweringPass
-#define AOT_BUILTINS_INLINE_LIST(V)                 \
-    V(MathAcos)                                     \
-    V(MathAcosh)                                    \
-    V(MathAsin)                                     \
-    V(MathAsinh)                                    \
-    V(MathAtan)                                     \
-    V(MathAtan2)                                    \
-    V(MathAtanh)                                    \
-    V(MathCos)                                      \
-    V(MathCosh)                                     \
-    V(MathSign)                                     \
-    V(MathSin)                                      \
-    V(MathSinh)                                     \
-    V(MathSqrt)                                     \
-    V(MathTan)                                      \
-    V(MathCbrt)                                     \
-    V(MathTanh)                                     \
-    V(MathLog)                                      \
-    V(MathLog2)                                     \
-    V(MathLog10)                                    \
-    V(MathLog1p)                                    \
-    V(MathExp)                                      \
-    V(MathExpm1)                                    \
-    V(MathClz32)                                    \
-    V(MathPow)                                      \
-    V(MathTrunc)                                    \
-    V(MathCeil)                                     \
-    V(MathFloor)                                    \
-    V(MathAbs)                                      \
-    V(MathRound)                                    \
-    V(MathFRound)                                   \
-    V(MathMin)                                      \
-    V(MathMax)                                      \
-    V(MathImul)                                     \
-    V(DateGetTime)                                  \
-    V(DateNow)                                      \
-    V(GlobalIsFinite)                               \
-    V(GlobalIsNan)                                  \
-    V(BigIntConstructor)                            \
-    V(ArrayBufferIsView)                            \
-    V(BigIntAsIntN)                                 \
-    V(BigIntAsUintN)                                \
-    V(DataViewGetFloat32)                           \
-    V(DataViewGetFloat64)                           \
-    V(DataViewGetInt8)                              \
-    V(DataViewGetInt16)                             \
-    V(DataViewGetInt32)                             \
-    V(DataViewGetUint16)                            \
-    V(DataViewGetUint32)                            \
-    V(DataViewGetUint8)                             \
-    V(DataViewSetInt8)                              \
-    V(DataViewSetInt16)                             \
-    V(DataViewSetUint8)                             \
-    V(DataViewSetUint16)                            \
-    V(DataViewSetUint32)                            \
-    V(ObjectIs)                                     \
-    V(ObjectGetProto)                               \
-    V(ObjectIsPrototypeOf)                          \
-    V(ReflectGetPrototypeOf)                        \
-    V(ReflectHas)                                   \
-    V(ReflectConstruct)                             \
-    V(ReflectApply)                                 \
-    V(FunctionPrototypeHasInstance)                 \
-    V(ArrayKeys)                                    \
-    V(ArrayEntries)                                 \
-    V(TYPED_BUILTINS_INLINE_FIRST = MathAcos)       \
-    V(TYPED_BUILTINS_INLINE_LAST = ArrayEntries)
 
 class BuiltinsStubCSigns {
 public:
@@ -404,7 +86,22 @@ public:
                (BuiltinsStubCSigns::ID::ArrayConcat == builtinId) ||
                (BuiltinsStubCSigns::ID::GlobalDecodeURIComponent == builtinId) ||
                ((BuiltinsStubCSigns::ID::TYPED_BUILTINS_FIRST <= builtinId) &&
-               (builtinId <= BuiltinsStubCSigns::ID::TYPED_BUILTINS_LAST));
+               (builtinId <= BuiltinsStubCSigns::ID::TYPED_BUILTINS_LAST)) ||
+               IsAOTCallThisBuiltin(builtinId);
+    }
+
+    static bool IsAOTCallThisBuiltin(ID builtinId)
+    {
+#define BUILTINS_ID(METHOD, OBJECT, ...)  OBJECT##METHOD,
+        static std::unordered_set<BuiltinsStubCSigns::ID> callThisBuiltinsIds = {
+            BUILTINS_METHOD_STUB_LIST(BUILTINS_ID, BUILTINS_ID, BUILTINS_ID, BUILTINS_ID)
+        };
+#undef BUILTINS_ID
+#if ENABLE_NEXT_OPTIMIZATION
+        return callThisBuiltinsIds.count(builtinId);
+#else
+        return false;
+#endif
     }
 
     static bool IsTypedInlineBuiltin(ID builtinId)
@@ -503,7 +200,7 @@ public:
             case BuiltinsStubCSigns::ID::ArraySort:
                 return true;
             default:
-                return false;
+                return IsAOTCallThisBuiltin(builtinId);
         }
     }
 
@@ -515,8 +212,13 @@ public:
             case BuiltinsStubCSigns::ID::StringLocaleCompare:
                 return true;
             default:
-                return false;
+                return IsAOTCallThisBuiltin(builtinId);
         }
+    }
+
+    static bool IsTypedBuiltinCallThis2(ID builtinId)
+    {
+        return IsAOTCallThisBuiltin(builtinId);
     }
 
     static bool IsTypedBuiltinCallThis3(ID builtinId)
@@ -525,12 +227,31 @@ public:
             case BuiltinsStubCSigns::ID::StringLocaleCompare:
                 return true;
             default:
+                return IsAOTCallThisBuiltin(builtinId);
+        }
+    }
+
+    static bool IsSideEffectBuiltin(ID builtinId)
+    {
+        switch (builtinId) {
+            case BuiltinsStubCSigns::ID::StringLocaleCompare:
                 return false;
+            default:
+                return true;
         }
     }
 
     static ConstantIndex GetConstantIndex(ID builtinId)
     {
+#define ID_TO_IDX4(Method, Object, Unused, Index)                                            \
+        {BuiltinsStubCSigns::ID::Object##Method, ConstantIndex::Index##_INDEX},
+#define ID_TO_IDX6(Method, Object, Unused1, Unused2, Unused3, Index)                         \
+        {BuiltinsStubCSigns::ID::Object##Method, ConstantIndex::Index##_INDEX},
+        static std::unordered_map<BuiltinsStubCSigns::ID, ConstantIndex> callThisBuiltinsIds = {
+            BUILTINS_METHOD_STUB_LIST(ID_TO_IDX4, ID_TO_IDX4, ID_TO_IDX4, ID_TO_IDX6)
+        };
+#undef ID_TO_IDX4
+#undef ID_TO_IDX6
         switch (builtinId) {
             case BuiltinsStubCSigns::ID::NONE:
                 return ConstantIndex::INVALID;
@@ -781,6 +502,9 @@ public:
             case BuiltinsStubCSigns::ID::GlobalDecodeURIComponent:
                 return ConstantIndex::GLOBAL_DECODE_URI_COMPONENT;
             default:
+                if (callThisBuiltinsIds.count(builtinId)) {
+                    return callThisBuiltinsIds.at(builtinId);
+                }
                 LOG_COMPILER(DEBUG) << "GetConstantIndex Invalid Id:" << builtinId;
                 return ConstantIndex::INVALID;
         }
@@ -907,11 +631,24 @@ public:
             {DataViewSetUint32, "DataView.prototype.SetUint32"},
             {DataViewSetFloat32, "DataView.prototype.SetFloat32"},
             {DataViewSetFloat64, "DataView.prototype.SetFloat64"},
+            {ArrayIteratorProtoNext, "ArrayIterator.next"},
+            {MapIteratorProtoNext, "MapIterator.next"},
+            {SetIteratorProtoNext, "SetIterator.next"},
+            {StringLocaleCompare, "String.LocaleCompare"},
+            {ArraySort, "Array.Sort"},
         };
         if (builtinId2Str.count(id) > 0) {
             return builtinId2Str.at(id);
         }
-        return "";
+#define ID_TO_STRING(Method, Object, ...)  {BuiltinsStubCSigns::ID::Object##Method, #Object"."#Method},
+        static const std::unordered_map<BuiltinsStubCSigns::ID, const std::string> builtinId2Str2 = {
+            BUILTINS_METHOD_STUB_LIST(ID_TO_STRING, ID_TO_STRING, ID_TO_STRING, ID_TO_STRING)
+        };
+#undef ID_TO_STRING
+        if (builtinId2Str2.count(id) > 0) {
+            return builtinId2Str2.at(id);
+        }
+        return "unnamed-builtin-"+std::to_string(id);
     }
 
     static ID GetBuiltinId(std::string idStr)
@@ -1047,9 +784,11 @@ enum class BuiltinsArgs : size_t {
 #define IS_TYPED_BUILTINS_GLOBAL_ID(id) kungfu::BuiltinsStubCSigns::IsTypedBuiltinGlobal(id)
 #define IS_TYPED_BUILTINS_ID_CALL_THIS0(id) kungfu::BuiltinsStubCSigns::IsTypedBuiltinCallThis0(id)
 #define IS_TYPED_BUILTINS_ID_CALL_THIS1(id) kungfu::BuiltinsStubCSigns::IsTypedBuiltinCallThis1(id)
+#define IS_TYPED_BUILTINS_ID_CALL_THIS2(id) kungfu::BuiltinsStubCSigns::IsTypedBuiltinCallThis2(id)
 #define IS_TYPED_BUILTINS_ID_CALL_THIS3(id) kungfu::BuiltinsStubCSigns::IsTypedBuiltinCallThis3(id)
 #define GET_TYPED_CONSTANT_INDEX(id) kungfu::BuiltinsStubCSigns::GetConstantIndex(id)
 #define IS_INVALID_ID(id) kungfu::BuiltinsStubCSigns::CheckBuiltinsIdInvalid(id)
 #define GET_TYPED_GLOBAL_ENV_INDEX(id) kungfu::BuiltinsStubCSigns::GetGlobalEnvIndex(id)
+#define IS_SIDE_EFFECT_BUILTINS_ID(id) kungfu::BuiltinsStubCSigns::IsSideEffectBuiltin(id)
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_BUILTINS_CALL_SIGNATURE_H

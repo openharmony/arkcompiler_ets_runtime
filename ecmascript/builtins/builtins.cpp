@@ -2783,6 +2783,14 @@ JSHandle<JSFunction> Builtins::NewBuiltinCjsCtor(const JSHandle<GlobalEnv> &env,
     return ctor;
 }
 
+void Builtins::RegisterBuiltinToGlobal(kungfu::BuiltinsStubCSigns::ID builtinId, JSHandle<JSFunction> function) const
+{
+    auto globalConst = const_cast<GlobalEnvConstants *>(thread_->GlobalConstants());
+    if (IS_TYPED_BUILTINS_ID(builtinId) || IS_TYPED_INLINE_BUILTINS_ID(builtinId)) {
+        globalConst->SetConstant(GET_TYPED_CONSTANT_INDEX(builtinId), function);
+    }
+}
+
 JSHandle<JSFunction> Builtins::NewFunction(const JSHandle<GlobalEnv> &env, const JSHandle<JSTaggedValue> &key,
                                            EcmaEntrypoint func, int length,
                                            kungfu::BuiltinsStubCSigns::ID builtinId) const
@@ -2794,9 +2802,7 @@ JSHandle<JSFunction> Builtins::NewFunction(const JSHandle<GlobalEnv> &env, const
     JSHandle<JSFunctionBase> baseFunction(function);
     auto globalConst = const_cast<GlobalEnvConstants *>(thread_->GlobalConstants());
     JSFunction::SetFunctionName(thread_, baseFunction, key, globalConst->GetHandledUndefined());
-    if (IS_TYPED_BUILTINS_ID(builtinId) || IS_TYPED_INLINE_BUILTINS_ID(builtinId)) {
-        globalConst->SetConstant(GET_TYPED_CONSTANT_INDEX(builtinId), function);
-    }
+    RegisterBuiltinToGlobal(builtinId, function);
     return function;
 }
 
@@ -2887,6 +2893,7 @@ JSHandle<JSTaggedValue> Builtins::SetAndReturnFunctionAtSymbol(const JSHandle<Gl
     JSHandle<JSFunctionBase> baseFunction(function);
     JSHandle<JSTaggedValue> handleUndefine(thread_, JSTaggedValue::Undefined());
     JSFunction::SetFunctionName(thread_, baseFunction, nameString, handleUndefine);
+    RegisterBuiltinToGlobal(builtinId, function);
     // NOLINTNEXTLINE(readability-braces-around-statements, bugprone-suspicious-semicolon)
     if constexpr (flag == JSSymbol::SYMBOL_TO_PRIMITIVE_TYPE) {
         PropertyDescriptor descriptor(thread_, JSHandle<JSTaggedValue>::Cast(function), false, false, true);
@@ -2931,6 +2938,7 @@ JSHandle<JSTaggedValue> Builtins::CreateGetter(const JSHandle<GlobalEnv> &env, E
     JSFunction::SetFunctionLength(thread_, function, JSTaggedValue(length));
     JSHandle<JSTaggedValue> prefix = thread_->GlobalConstants()->GetHandledGetString();
     JSFunction::SetFunctionName(thread_, JSHandle<JSFunctionBase>(function), key, prefix);
+    RegisterBuiltinToGlobal(builtinId, function);
     return JSHandle<JSTaggedValue>(function);
 }
 
@@ -3009,10 +3017,7 @@ void Builtins::SetFuncToObjAndGlobal(const JSHandle<GlobalEnv> &env, const JSHan
     JSHandle<JSFunctionBase> baseFunction(function);
     JSHandle<JSTaggedValue> handleUndefine(thread_, JSTaggedValue::Undefined());
     JSFunction::SetFunctionName(thread_, baseFunction, keyString, handleUndefine);
-    if (IS_TYPED_BUILTINS_ID(builtinId) || IS_TYPED_INLINE_BUILTINS_ID(builtinId)) {
-        auto globalConst = const_cast<GlobalEnvConstants *>(thread_->GlobalConstants());
-        globalConst->SetConstant(GET_TYPED_CONSTANT_INDEX(builtinId), function);
-    }
+    RegisterBuiltinToGlobal(builtinId, function);
     PropertyDescriptor descriptor(thread_, JSHandle<JSTaggedValue>::Cast(function), true, false, true);
     JSObject::DefineOwnProperty(thread_, obj, keyString, descriptor);
     JSObject::DefineOwnProperty(thread_, globalObject, keyString, descriptor);
