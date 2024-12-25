@@ -222,7 +222,10 @@ group("ark_js_moduletest") {
 
 group("ark_js_assert_moduletest") {
   testonly = true
-  assert_test_list = [ "addpropertybyname" ]
+  assert_test_list = [
+    "addpropertybyname",
+    "getvaluefrombuffer",
+  ]
 
   deps = []
   foreach(test, assert_test_list) {
@@ -427,7 +430,10 @@ group("ark_asm_test") {
 
 group("ark_asm_assert_test") {
   testonly = true
-  assert_test_list = [ "addpropertybyname" ]
+  assert_test_list = [
+    "addpropertybyname",
+    "getvaluefrombuffer",
+  ]
   deps = []
 
   foreach(test, assert_test_list) {
@@ -607,7 +613,10 @@ group("ark_asm_single_step_test") {
 
 group("ark_asm_single_step_assert_test") {
   testonly = true
-  assert_test_list = [ "addpropertybyname" ]
+  assert_test_list = [
+    "addpropertybyname",
+    "getvaluefrombuffer",
+  ]
 
   deps = []
   foreach(test, assert_test_list) {
