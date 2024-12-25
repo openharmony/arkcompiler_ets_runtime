@@ -1392,35 +1392,48 @@ void OptimizedCall::DeoptEnterAsmInterpOrBaseline(ExtendedAssembler *assembler)
     __ Cmp(opRegister, Immediate(JSTaggedValue::VALUE_HOLE));
     __ B(Condition::EQ, &baselineCodeUndefined);
     {
+        // x20 is free and callee save
+        Register newSpRegister = X20;
+        // get new sp
+        __ Add(newSpRegister, currentSlotRegister, Immediate(AsmInterpretedFrame::GetSize(false)));
+        __ Align16(currentSlotRegister);
+        __ Mov(sp, currentSlotRegister);
+
+        // save glue, callTarget
+        __ Stp(glueRegister, callTargetRegister, MemoryOperand(sp, -DOUBLE_SLOT_SIZE, AddrMode::PREINDEX));
+        // callee save
+        __ CalleeSave();
+
         // get bytecode pc
         Register bytecodePc = opRegister;
         __ Ldr(bytecodePc, MemoryOperand(frameStateBase, AsmInterpretedFrame::GetPcOffset(false)));
         // get func
         Register func(X1);
         func = callTargetRegister;
-        // save glue, callTarget
-        __ Stp(glueRegister, callTargetRegister,
-               MemoryOperand(currentSlotRegister, -DOUBLE_SLOT_SIZE, AddrMode::PREINDEX));
         Register argC(X2);
         Register runtimeId(X3);
         __ Mov(argC, Immediate(2)); // 2: argc
         __ Mov(runtimeId, Immediate(RTSTUB_ID(GetNativePcOfstForBaseline)));
         // get native pc offset in baselinecode by bytecodePc in func
-        __ Stp(func, bytecodePc, MemoryOperand(currentSlotRegister, -DOUBLE_SLOT_SIZE, AddrMode::PREINDEX));
-        __ Stp(runtimeId, argC, MemoryOperand(currentSlotRegister, -DOUBLE_SLOT_SIZE, AddrMode::PREINDEX));
-        __ Mov(sp, currentSlotRegister);
+        __ Stp(func, bytecodePc, MemoryOperand(sp, -DOUBLE_SLOT_SIZE, AddrMode::PREINDEX));
+        __ Stp(runtimeId, argC, MemoryOperand(sp, -DOUBLE_SLOT_SIZE, AddrMode::PREINDEX));
         __ CallAssemblerStub(RTSTUB_ID(CallRuntime), false);
 
         // 2: skip runtimeId argc func bytecodePc
         __ Add(sp, sp, Immediate(2 * DOUBLE_SLOT_SIZE));
+
+        __ CalleeRestore();
         // restore glue, callTarget
         __ Ldp(X19, callTargetRegister, MemoryOperand(sp, DOUBLE_SLOT_SIZE, AddrMode::POSTINDEX));
         // restore method, fp
         __ Ldr(methodRegister, MemoryOperand(callTargetRegister, JSFunctionBase::METHOD_OFFSET));
         __ Mov(X21, methodRegister);
-        __ Add(opRegister, sp, Immediate(AsmInterpretedFrame::GetSize(false)));
-        __ Align16(sp);
-        __ Mov(Register(FP), opRegister);
+        __ Mov(Register(FP), newSpRegister);
+
+        // update pc
+        const int64_t pcOffsetFromSp = -24; // -24: 3 slots, frameType, prevFrame, pc
+        __ Mov(opRegister, Immediate(BASELINEJIT_PC_FLAG));
+        __ Stur(opRegister, MemoryOperand(Register(FP), pcOffsetFromSp));
 
         // jmp to baselinecode
         __ Br(X0);
