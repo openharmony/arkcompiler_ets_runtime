@@ -16,6 +16,9 @@
 #include "ecmascript/ecma_handle_scope.h"
 
 #include "ecmascript/ecma_context.h"
+#if !WIN_OR_MAC_OR_IOS_PLATFORM
+#include "ecmascript/dfx/hprof/heap_profiler.h"
+#endif
 
 namespace panda::ecmascript {
 EcmaHandleScope::EcmaHandleScope(JSThread *thread) : thread_(thread)
@@ -23,6 +26,14 @@ EcmaHandleScope::EcmaHandleScope(JSThread *thread) : thread_(thread)
     auto context = thread_->GetCurrentEcmaContext();
     OpenHandleScope(context);
     OpenPrimitiveScope(context);
+#if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
+    if (thread_->GetEcmaVM()->GetJSOptions().IsEnableLocalHandleLeakDetect()) {
+        auto vm = thread_->GetEcmaVM();
+        auto heapProfiler = reinterpret_cast<HeapProfiler *>(HeapProfilerInterface::GetInstance(vm));
+        heapProfiler->IncreaseScopeCount();
+        heapProfiler->PushToActiveScopeStack(nullptr, this);
+    }
+#endif
 }
 
 void EcmaHandleScope::OpenHandleScope(EcmaContext *context)
@@ -30,11 +41,6 @@ void EcmaHandleScope::OpenHandleScope(EcmaContext *context)
     prevNext_ = context->handleScopeStorageNext_;
     prevEnd_ = context->handleScopeStorageEnd_;
     prevHandleStorageIndex_ = context->currentHandleStorageIndex_;
-#ifdef ECMASCRIPT_ENABLE_HANDLE_LEAK_CHECK
-    context->HandleScopeCountAdd();
-    prevHandleScope_ = context->GetLastHandleScope();
-    context->SetLastHandleScope(this);
-#endif
 }
 
 void EcmaHandleScope::OpenPrimitiveScope(EcmaContext *context)
@@ -42,11 +48,6 @@ void EcmaHandleScope::OpenPrimitiveScope(EcmaContext *context)
     prevPrimitiveNext_ = context->primitiveScopeStorageNext_;
     prevPrimitiveEnd_ = context->primitiveScopeStorageEnd_;
     prevPrimitiveStorageIndex_ = context->currentPrimitiveStorageIndex_;
-#ifdef ECMASCRIPT_ENABLE_HANDLE_LEAK_CHECK
-    context->PrimitiveScopeCountAdd();
-    prevPrimitiveScope_ = context->GetLastPrimitiveScope();
-    context->SetLastPrimitiveScope(this);
-#endif
 }
 
 EcmaHandleScope::~EcmaHandleScope()
@@ -54,15 +55,18 @@ EcmaHandleScope::~EcmaHandleScope()
     auto context = thread_->GetCurrentEcmaContext();
     CloseHandleScope(context);
     ClosePrimitiveScope(context);
+#if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
+    if (thread_->GetEcmaVM()->GetJSOptions().IsEnableLocalHandleLeakDetect()) {
+        auto vm = thread_->GetEcmaVM();
+        auto heapProfiler = reinterpret_cast<HeapProfiler *>(HeapProfilerInterface::GetInstance(vm));
+        heapProfiler->DecreaseScopeCount();
+        heapProfiler->PopFromActiveScopeStack();
+    }
+#endif
 }
 
 void EcmaHandleScope::CloseHandleScope(EcmaContext *context)
 {
-#ifdef ECMASCRIPT_ENABLE_HANDLE_LEAK_CHECK
-    context->HandleScopeCountDec();
-    context->SetLastHandleScope(prevHandleScope_);
-    prevHandleScope_ = nullptr;
-#endif
     context->handleScopeStorageNext_ = prevNext_;
     if (context->handleScopeStorageEnd_ != prevEnd_) {
         context->handleScopeStorageEnd_ = prevEnd_;
@@ -72,11 +76,6 @@ void EcmaHandleScope::CloseHandleScope(EcmaContext *context)
 
 void EcmaHandleScope::ClosePrimitiveScope(EcmaContext *context)
 {
-#ifdef ECMASCRIPT_ENABLE_HANDLE_LEAK_CHECK
-    context->PrimitiveScopeCountDec();
-    context->SetLastPrimitiveScope(prevPrimitiveScope_);
-    prevPrimitiveScope_ = nullptr;
-#endif
     context->primitiveScopeStorageNext_ = prevPrimitiveNext_;
     if (context->primitiveScopeStorageEnd_ != prevPrimitiveEnd_) {
         context->primitiveScopeStorageEnd_ = prevPrimitiveEnd_;
@@ -96,23 +95,6 @@ uintptr_t EcmaHandleScope::NewHandle(JSThread *thread, JSTaggedType value)
     // Handle is a kind of GC_ROOT, and should only directly hold Obejct or Primitive, not a weak reference.
     ASSERT(!JSTaggedValue(value).IsWeak());
     auto context = thread->GetCurrentEcmaContext();
-#ifdef ECMASCRIPT_ENABLE_HANDLE_LEAK_CHECK
-    // Each Handle must be managed by HandleScope, otherwise it may cause Handle leakage.
-    if (context->handleScopeCount_ <= 0) {
-        LOG_ECMA(ERROR) << "New handle must be in handlescope" << context->handleScopeCount_;
-    }
-    static const long MAYBE_HANDLE_LEAK_TIME_MS = 5000;
-    if (context->GetLastHandleScope() != nullptr) {
-        float totalSpentTime = context->GetLastHandleScope()->scope_.TotalSpentTime();
-        if (totalSpentTime >= MAYBE_HANDLE_LEAK_TIME_MS) {
-            LOG_ECMA(INFO) << "New handle in scope count:" << context->handleScopeCount_
-                            << ", time:" << totalSpentTime << "ms";
-            std::ostringstream stack;
-            Backtrace(stack);
-            LOG_ECMA(INFO) << stack.str();
-        }
-    }
-#endif
     auto result = context->handleScopeStorageNext_;
     if (result == context->handleScopeStorageEnd_) {
         result = reinterpret_cast<JSTaggedType *>(context->ExpandHandleStorage());
@@ -134,23 +116,6 @@ uintptr_t EcmaHandleScope::NewPrimitiveHandle(JSThread *thread, JSTaggedType val
 {
     CHECK_NO_HANDLE_ALLOC;
     auto context = thread->GetCurrentEcmaContext();
-#ifdef ECMASCRIPT_ENABLE_HANDLE_LEAK_CHECK
-    // Each PrimitiveHandle must be managed by PrimitiveScope, otherwise it may cause Handle leakage.
-    if (context->primitiveScopeCount_ <= 0) {
-        LOG_ECMA(ERROR) << "New primitive must be in primitivescope" << context->primitiveScopeCount_;
-    }
-    static const long MAYBE_PRIMITIVE_LEAK_TIME_MS = 5000;
-    if (context->GetLastPrimitiveScope() != nullptr) {
-        float totalSpentTime = context->GetLastPrimitiveScope()->scope_.TotalSpentTime();
-        if (totalSpentTime >= MAYBE_PRIMITIVE_LEAK_TIME_MS) {
-            LOG_ECMA(INFO) << "New primitiveHandle in scope count:" << context->primitiveScopeCount_
-                            << ", time:" << totalSpentTime << "ms";
-            std::ostringstream stack;
-            Backtrace(stack);
-            LOG_ECMA(INFO) << stack.str();
-        }
-    }
-#endif
     auto result = context->primitiveScopeStorageNext_;
     if (result == context->primitiveScopeStorageEnd_) {
         result = reinterpret_cast<JSTaggedType *>(context->ExpandPrimitiveStorage());
@@ -165,6 +130,43 @@ uintptr_t EcmaHandleScope::NewPrimitiveHandle(JSThread *thread, JSTaggedType val
     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
     context->primitiveScopeStorageNext_ = result + 1;
     *result = value;
+    return reinterpret_cast<uintptr_t>(result);
+}
+
+uintptr_t EcmaHandleScope::NewHandleWithLeakDetect(JSThread *thread, JSTaggedType value)
+{
+    CHECK_NO_HANDLE_ALLOC;
+#if ECMASCRIPT_ENABLE_THREAD_STATE_CHECK
+    if (UNLIKELY(!thread->IsInRunningStateOrProfiling())) {
+        LOG_ECMA(FATAL) << "New handle must be in jsthread running state";
+        UNREACHABLE();
+    }
+#endif
+    // Handle is a kind of GC_ROOT, and should only directly hold Obejct or Primitive, not a weak reference.
+    ASSERT(!JSTaggedValue(value).IsWeak());
+    auto context = thread->GetCurrentEcmaContext();
+    auto result = context->handleScopeStorageNext_;
+    if (result == context->handleScopeStorageEnd_) {
+        result = reinterpret_cast<JSTaggedType *>(context->ExpandHandleStorage());
+    }
+#if ECMASCRIPT_ENABLE_NEW_HANDLE_CHECK
+    thread->CheckJSTaggedType(value);
+    if (result == nullptr) {
+        LOG_ECMA(ERROR) << "result is nullptr, New handle fail!";
+        return 0U;
+    }
+#endif
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+    context->handleScopeStorageNext_ = result + 1;
+    *result = value;
+    // Local Handle Leak Detection
+#if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
+    EcmaVM *vm = thread->GetEcmaVM();
+    auto heapProfiler = reinterpret_cast<HeapProfiler *>(HeapProfilerInterface::GetInstance(vm));
+    if (heapProfiler->IsStartLocalHandleLeakDetect()) {
+        heapProfiler->StorePotentiallyLeakHandles(reinterpret_cast<uintptr_t>(result));
+    }
+#endif
     return reinterpret_cast<uintptr_t>(result);
 }
 }  // namespace panda::ecmascript

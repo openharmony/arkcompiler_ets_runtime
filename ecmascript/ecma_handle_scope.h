@@ -37,6 +37,7 @@ public:
     PUBLIC_API ~EcmaHandleScope();
     static uintptr_t PUBLIC_API NewHandle(JSThread *thread, JSTaggedType value);
     static uintptr_t PUBLIC_API NewPrimitiveHandle(JSThread *thread, JSTaggedType value);
+    static uintptr_t NewHandleWithLeakDetect(JSThread *thread, JSTaggedType value);
     void OpenHandleScope(EcmaContext *context);
     void OpenPrimitiveScope(EcmaContext *context);
     void CloseHandleScope(EcmaContext *context);
@@ -55,11 +56,6 @@ private:
     JSTaggedType *prevPrimitiveNext_;
     JSTaggedType *prevPrimitiveEnd_;
     int prevPrimitiveStorageIndex_ {-1};
-#ifdef ECMASCRIPT_ENABLE_HANDLE_LEAK_CHECK
-    ClockScope scope_;
-    EcmaHandleScope *prevHandleScope_ {nullptr};
-    EcmaHandleScope *prevPrimitiveScope_ {nullptr};
-#endif
 
     NO_COPY_SEMANTIC(EcmaHandleScope);
     NO_MOVE_SEMANTIC(EcmaHandleScope);

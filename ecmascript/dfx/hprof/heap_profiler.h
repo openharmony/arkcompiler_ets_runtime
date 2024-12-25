@@ -25,6 +25,7 @@
 #include "ecmascript/dfx/hprof/progress.h"
 #include "ecmascript/dfx/hprof/string_hashmap.h"
 #include "ecmascript/mem/c_containers.h"
+#include "ecmascript/mem/clock_scope.h"
 
 namespace panda::ecmascript {
 class HeapSnapshot;
@@ -111,6 +112,15 @@ struct NewAddr {
     }
 };
 
+struct ScopeWrapper {
+    LocalScope *localScope_ {nullptr};
+    EcmaHandleScope *ecmaHandleScope_ {nullptr};
+    ClockScope clockScope_;
+
+    ScopeWrapper(LocalScope *localScope, EcmaHandleScope *ecmaHandleScope)
+        : localScope_(localScope), ecmaHandleScope_(ecmaHandleScope) {}
+};
+
 class HeapProfiler : public HeapProfilerInterface {
 public:
     NO_MOVE_SEMANTIC(HeapProfiler);
@@ -153,6 +163,19 @@ public:
         return const_cast<StringHashMap *>(&stringTable_);
     }
     bool GenerateHeapSnapshot(std::string &inputFilePath, std::string &outputPath) override;
+    bool IsStartLocalHandleLeakDetect() const;
+    void SwitchStartLocalHandleLeakDetect();
+    void IncreaseScopeCount();
+    void DecreaseScopeCount();
+    void PushToActiveScopeStack(LocalScope *localScope, EcmaHandleScope *ecmaHandleScope);
+    void PopFromActiveScopeStack();
+    void ClearHandleBackTrace();
+    std::string_view GetBackTraceOfHandle(uintptr_t handle) const;
+    void WriteToLeakStackTraceFd(std::ostringstream &buffer) const;
+    void SetLeakStackTraceFd(int32_t fd);
+    int32_t GetLeakStackTraceFd() const;
+    void CloseLeakStackTraceFd();
+    void StorePotentiallyLeakHandles(uintptr_t handle);
 
 private:
     /**
@@ -181,7 +204,11 @@ private:
                          CUnorderedMap<uint64_t, CVector<uint64_t>> &strIdMapObjVec);
     uint32_t GenRootTable(Stream *stream);
     bool DumpRawHeap(Stream *stream, uint32_t &fileOffset, CVector<uint32_t> &secIndexVec);
+    uint32_t GetScopeCount() const;
+    std::shared_ptr<ScopeWrapper> GetLastActiveScope() const;
+    bool InsertHandleBackTrace(uintptr_t handle, const std::string &backTrace);
 
+    static const long LOCAL_HANDLE_LEAK_TIME_MS {5000};
     const size_t MAX_NUM_HPROF = 5;  // ~10MB
     const EcmaVM *vm_;
     CVector<HeapSnapshot *> hprofs_;
@@ -192,6 +219,12 @@ private:
     Chunk chunk_;
     std::unique_ptr<HeapSampling> heapSampling_ {nullptr};
     Mutex mutex_;
+    bool startLocalHandleLeakDetect_ {false};
+    uint32_t scopeCount_ {0};
+    std::stack<std::shared_ptr<ScopeWrapper>> activeScopeStack_;
+    std::map<uintptr_t, std::string> handleBackTrace_;
+    int32_t leakStackTraceFd_ {-1};
+
     friend class HeapProfilerFriendTest;
 };
 }  // namespace panda::ecmascript

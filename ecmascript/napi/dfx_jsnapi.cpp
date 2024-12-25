@@ -26,6 +26,7 @@
 #include "ecmascript/mem/heap-inl.h"
 #include "ecmascript/jit/jit.h"
 #include "ecmascript/dfx/vm_thread_control.h"
+#include "ecmascript/dfx/hprof/heap_profiler.h"
 
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
 #include "ecmascript/dfx/cpu_profiler/cpu_profiler.h"
@@ -73,6 +74,20 @@ void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unus
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
     ecmascript::HeapProfilerInterface *heapProfile = ecmascript::HeapProfilerInterface::GetInstance(
         const_cast<EcmaVM *>(vm));
+#ifdef ENABLE_DUMP_IN_FAULTLOG
+    if (const_cast<EcmaVM *>(vm)->GetJSOptions().IsEnableLocalHandleLeakDetect()) {
+        auto heapProfiler = reinterpret_cast<ecmascript::HeapProfiler *>(heapProfile);
+        heapProfiler->SwitchStartLocalHandleLeakDetect();
+        if (heapProfiler->IsStartLocalHandleLeakDetect()) {
+            int32_t fd = RequestFileDescriptor(static_cast<int32_t>(FaultLoggerType::JS_STACKTRACE));
+            if (fd < 0) {
+                LOG_ECMA(ERROR) << "[LocalHandleLeakDetect] Failed on request file descriptor";
+            } else {
+                heapProfiler->SetLeakStackTraceFd(fd);
+            }
+        }
+    }
+#endif  // ENABLE_DUMP_IN_FAULTLOG
     heapProfile->DumpHeapSnapshot(stream, dumpOption, progress);
 #else
     LOG_ECMA(ERROR) << "Not support arkcompiler heap snapshot";
