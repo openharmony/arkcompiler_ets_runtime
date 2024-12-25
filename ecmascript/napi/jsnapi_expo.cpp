@@ -2225,9 +2225,8 @@ Local<StringRef> StringRef::GetNapiWrapperString(const EcmaVM *vm)
     // Omit exception check because ark calls here may not
     // cause side effect even pending exception exists.
     CROSS_THREAD_CHECK(vm);
-    ecmascript::ThreadManagedScope managedScope(thread);
-    JSHandle<JSTaggedValue> napiWapperString = thread->GlobalConstants()->GetHandledNapiWrapperString();
-    return JSNApiHelper::ToLocal<StringRef>(napiWapperString);
+    JSHandle<JSTaggedValue> napiWrapperString = thread->GlobalConstants()->GetHandledNapiWrapperString();
+    return JSNApiHelper::ToLocal<StringRef>(napiWrapperString);
 }
 
 Local<TypedArrayRef> StringRef::EncodeIntoUint8Array(const EcmaVM *vm)
