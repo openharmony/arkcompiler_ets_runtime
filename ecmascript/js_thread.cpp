@@ -126,7 +126,6 @@ void JSThread::ConstructGlobalStorage(EcmaVM *vm)
     clearWeak_ = [this](uintptr_t nodeAddr) { return globalStorage_->ClearWeak(nodeAddr); };
     isWeak_ = [this](uintptr_t addr) { return globalStorage_->IsWeak(addr); };
     setNodeKind_ = [this](NodeKind nodeKind) { globalStorage_->SetNodeKind(nodeKind); };
-    getNodeKind_ = [this]() { return globalStorage_->GetNodeKind(); };
 }
 
 void JSThread::ConstructGlobalDebugStorage(EcmaVM *vm)
@@ -152,7 +151,6 @@ void JSThread::ConstructGlobalDebugStorage(EcmaVM *vm)
     clearWeak_ = [this](uintptr_t nodeAddr) { return globalDebugStorage_->ClearWeak(nodeAddr); };
     isWeak_ = [this](uintptr_t addr) { return globalDebugStorage_->IsWeak(addr); };
     setNodeKind_ = [this](NodeKind nodeKind) { globalDebugStorage_->SetNodeKind(nodeKind); };
-    getNodeKind_ = [this]() { return globalDebugStorage_->GetNodeKind(); };
 }
 
 JSThread::JSThread(EcmaVM *vm) : id_(os::thread::GetCurrentThreadId()), vm_(vm)
