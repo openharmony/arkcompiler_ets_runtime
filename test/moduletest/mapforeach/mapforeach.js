@@ -18,7 +18,7 @@ class Person {
     age = 28;
     height = 178.3;
 }
-
+let objkeys1 = [];
 let map = new Map();
 map.set(0, 41);
 map.set('key', 'value');
@@ -26,13 +26,16 @@ map.set('object', new Person());
 
 
 function PrintElems(v, k) {
-    print('k:', k, 'v:', JSON.stringify(v))
+    objkeys1.push('k:', k, 'v:', JSON.stringify(v))
 }
 map.forEach(PrintElems);
+assert_equal(JSON.stringify(objkeys1),'["k:",0,"v:","41","k:","key","v:","\\"value\\"","k:","object","v:","{\\"name\\":\\"John\\",\\"age\\":28,\\"height\\":178.3}"]');
 
 try {
     let nonCallable = new Person();
     map.forEach(nonCallable);
 } catch (error) {
-    print(error);
+    assert_equal(error instanceof TypeError, true);
 }
+
+test_end();

@@ -22,22 +22,23 @@
 let map = new Map();
 
 map.set('key', 'value');
-print(map.get('key'))
+assert_equal(map.get('key'),"value");
 
 for (let i = 0; i < 3; ++i) {
     map.set(i, -i);
 }
-
+let objkeys1 = [];
 for (let i = 0; i < 4; ++i) {
     let value = map.get(i);
-    print(value);
+    objkeys1.push(value);
 }
+assert_equal(objkeys1,[-0, -1, -2, undefined]);
 
 map = new Map();
 let key = Number.parseFloat("1392210229");
 map.set(key, "success");
 let value = map.get(key);
-print(value);
+assert_equal(value,"success");
 
 
 function check(key) {
@@ -120,15 +121,17 @@ const maps = [
     new Map([["ark_unicodeKey 🔑", "ark_unicodeValue 😀"]])
 ];
 
+let objkeys2 = [];
 maps.forEach((map, index) => {
-    print("Map " + (index + 1) + ":");
+    objkeys2.push("Map " + (index + 1) + ":");
     map.forEach((value, key) => {
-        print("Key: " + key + ", Value: " + value);
+        objkeys2.push("Key: " + key + ", Value: " + value);
     });
 });
+assert_equal(objkeys2,["Map 1:", "Key: ark_stringKey, Value: ark_stringValue", "Map 2:", "Key: 1, Value: ark_numberValue", "Map 3:", "Key: true, Value: ark_booleanValue", "Map 4:", "Key: [object Object], Value: ark_objectValue", "Map 5:", "Key: null, Value: ark_nullValue", "Map 6:", "Key: undefined, Value: ark_undefinedValue", "Map 7:", "Key: NaN, Value: ark_NaNValue", "Map 8:", "Key: Infinity, Value: ark_infinityValue", "Map 9:", "Key: -Infinity, Value: ark_negativeInfinityValue", "Map 10:", "Key: /ark_regexKey/, Value: ark_regexValue", "Map 11:", "Key: [object Map], Value: ark_mapValue", "Map 12:", "Key: [object Set], Value: ark_setValue", "Map 13:", "Key: 1,2,3, Value: ark_arrayValue", "Map 14:", "Key: ark_unicodeKey 🔑, Value: ark_unicodeValue 😀"]);
 
 let result =  Map[Symbol.species];
-print(result);
+assert_equal(result.toString(),'function Map() { [native code] }');
 
 /*
  * @tc.name:forEach,get,has,keys,set,clear
@@ -153,35 +156,42 @@ const combinedMap = new Map([
 ]);
 
 const newMap = new Map();
-
+let objkeys3= [];
 const keysArray = Array.from(combinedMap.keys());
 keysArray.forEach(key => {
-  print("Keys: " + key);
+    objkeys3.push("Keys: " + key);
 });
+assert_equal(objkeys3,["Keys: ark_stringKey", "Keys: 1", "Keys: true", "Keys: [object Object]", "Keys: null", "Keys: undefined", "Keys: NaN", "Keys: Infinity", "Keys: -Infinity", "Keys: /ark_regexKey/", "Keys: [object Map]", "Keys: [object Set]", "Keys: 1,2,3", "Keys: ark_unicodeKey 🔑"]);
 
 const valuesArray = Array.from(combinedMap.values());
+let objkeys4 = [];
 valuesArray.forEach(value => {
-  print("Value: " + value);
+    objkeys4.push("Value: " + value);
 });
+assert_equal(objkeys4,["Value: ark_stringValue", "Value: ark_numberValue", "Value: ark_booleanValue", "Value: ark_objectValue", "Value: ark_nullValue", "Value: ark_undefinedValue", "Value: ark_NaNValue", "Value: ark_infinityValue", "Value: ark_negativeInfinityValue", "Value: ark_regexValue", "Value: ark_mapValue", "Value: ark_setValue", "Value: ark_arrayValue", "Value: ark_unicodeValue 😀"]);
 
 const entriesArray = Array.from(combinedMap.entries());
+let objkeys5 = [];
 entriesArray.forEach(entry => {
   const [key, value] = entry;
-  print("Key: " + key + ", Value: " + value);
+  objkeys5.push("Key: " + key + ", Value: " + value);
 });
+assert_equal(objkeys5,["Key: ark_stringKey, Value: ark_stringValue", "Key: 1, Value: ark_numberValue", "Key: true, Value: ark_booleanValue", "Key: [object Object], Value: ark_objectValue", "Key: null, Value: ark_nullValue", "Key: undefined, Value: ark_undefinedValue", "Key: NaN, Value: ark_NaNValue", "Key: Infinity, Value: ark_infinityValue", "Key: -Infinity, Value: ark_negativeInfinityValue", "Key: /ark_regexKey/, Value: ark_regexValue", "Key: [object Map], Value: ark_mapValue", "Key: [object Set], Value: ark_setValue", "Key: 1,2,3, Value: ark_arrayValue", "Key: ark_unicodeKey 🔑, Value: ark_unicodeValue 😀"]);
 
+let objkeys6= [];
 combinedMap.forEach((value, key) => {
     const retrievedValue = combinedMap.get(key);
     const hasKey = combinedMap.has(key);
     newMap.set(key, value);
-    print("Key: " + key + ", Retrieved Value: " + retrievedValue);
-    print("Key: " + key + ", Exists: " + hasKey);
+    objkeys6.push("Key: " + key + ", Retrieved Value: " + retrievedValue);
+    objkeys6.push("Key: " + key + ", Exists: " + hasKey);
     combinedMap.delete(key);
 });
+assert_equal(objkeys6,["Key: ark_stringKey, Retrieved Value: ark_stringValue", "Key: ark_stringKey, Exists: true", "Key: 1, Retrieved Value: ark_numberValue", "Key: 1, Exists: true", "Key: true, Retrieved Value: ark_booleanValue", "Key: true, Exists: true", "Key: [object Object], Retrieved Value: ark_objectValue", "Key: [object Object], Exists: true", "Key: null, Retrieved Value: ark_nullValue", "Key: null, Exists: true", "Key: undefined, Retrieved Value: ark_undefinedValue", "Key: undefined, Exists: true", "Key: NaN, Retrieved Value: ark_NaNValue", "Key: NaN, Exists: true", "Key: Infinity, Retrieved Value: ark_infinityValue", "Key: Infinity, Exists: true", "Key: -Infinity, Retrieved Value: ark_negativeInfinityValue", "Key: -Infinity, Exists: true", "Key: /ark_regexKey/, Retrieved Value: ark_regexValue", "Key: /ark_regexKey/, Exists: true", "Key: [object Map], Retrieved Value: ark_mapValue", "Key: [object Map], Exists: true", "Key: [object Set], Retrieved Value: ark_setValue", "Key: [object Set], Exists: true", "Key: 1,2,3, Retrieved Value: ark_arrayValue", "Key: 1,2,3, Exists: true", "Key: ark_unicodeKey 🔑, Retrieved Value: ark_unicodeValue 😀", "Key: ark_unicodeKey 🔑, Exists: true"]);
 
-print(combinedMap.size);
+assert_equal(combinedMap.size,0);
 newMap.clear();
-print(newMap.size);
+assert_equal(newMap.size,0);
 
 const testMap = new Map([
   ["key1", "value1"],
@@ -191,8 +201,9 @@ const emptyMap = new Map();
 
 try {
   const abnormalMap = new Map(5);
+  assert_unreachable();
 } catch (error) {
-  print("Caught an error: " + error);
+  assert_equal("Caught an error: "+ error, "Caught an error: TypeError: iterable is not object");
 }
 
 try {
@@ -204,15 +215,15 @@ try {
     testMap.set("key", "value2");
     emptyMap.clear();
     emptyMap.delete(NaN);
-    print("Exception usage, but does not throw an error");
 } catch (error) {
-    print("Caught an error: " + error);
+    assert_unreachable();
 }
 
 try {
   testMap.forEach(5);
+  assert_unreachable();
 } catch (error) {
-  print("Caught an error: " + error);
+  assert_equal("Caught an error: "+ error, "Caught an error: TypeError: obj is not Callable");
 }
 
 try {
@@ -220,10 +231,9 @@ try {
       if (key === "key2") {
           throw new Error("Encountered key2");
       }
-      print("Key: " + key + ", Value: " + value);
   });
 } catch (error) {
-  print("Caught an error: " + error);
+  assert_equal("Caught an error: "+ error, "Caught an error: Error: Encountered key2");
 }
 
 // Map.clear tests
@@ -288,3 +298,5 @@ if (!last.next().done) {
 if (!end.next().done) {
     throw new Error("Invalid 'end' iterator");
 }
+
+test_end();
