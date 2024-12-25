@@ -21,4 +21,6 @@ Object.defineProperty(a, "length", {
   }
 });
 
-print(Float64Array.from(a).length);
+assert_equal(Float64Array.from(a).length, 6);
+
+test_end();

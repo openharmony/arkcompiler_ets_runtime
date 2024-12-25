@@ -26,26 +26,32 @@ const o11 = {
 } 
 try {
     o11[[o]] = []
+    assert_unreachable();
 } catch (error) {
-    print("TypeError")
+    assert_equal(error instanceof TypeError, true);
 }
 
 try {
     var a = 1;
     a();
+    assert_unreachable();
 } catch(e) {
-    print(e.name);
+    assert_equal(e instanceof TypeError, true);
 }
 
 try {
     var arr = [0];
     arr.length = 10000000000;
+    assert_unreachable();
 } catch(e) {
-    print(e.name);
+    assert_equal(e instanceof RangeError, true);
 }
 
 try {
-    print(e.name);
+    e.name;
+    assert_unreachable();
 } catch(e) {
-    print(e.name);
+    assert_equal(e instanceof ReferenceError, true);
 }
+
+test_end();

@@ -13,5 +13,7 @@
  * limitations under the License.
  */
 import {T, foo} from './esmB.js'
-print("test print: ", T.name)
+assert_equal("test print: "+ T.name,"test print: "+ 'testcjs')
 foo()
+
+test_end();

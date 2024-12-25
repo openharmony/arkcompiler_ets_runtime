@@ -20,5 +20,5 @@
  * @tc.require: issueI5NO8G
  */
 function func_main_watch() {
-    print("watch function success!")
+	test_end();
 }

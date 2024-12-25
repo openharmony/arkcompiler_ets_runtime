@@ -25,4 +25,6 @@ var x = {
 }
 for (var i = 1; i < 90; i++) {
 }
-print(x.b)
+assert_equal(x.b, "B");
+
+test_end();

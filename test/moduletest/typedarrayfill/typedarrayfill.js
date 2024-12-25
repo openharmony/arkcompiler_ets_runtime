@@ -23,4 +23,5 @@
 let buff = new ArrayBuffer(0);
 let arr = new Int32Array(buff);
 arr.fill(0);
-print("test typedarrayfill success!")
+
+test_end();

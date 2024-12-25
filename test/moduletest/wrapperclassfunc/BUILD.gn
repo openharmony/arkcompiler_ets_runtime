@@ -13,7 +13,7 @@
 
 import("//arkcompiler/ets_runtime/test/test_helper.gni")
 
-host_moduletest_action("wrapperclassfunc") {
+host_moduletest_assert_action("wrapperclassfunc") {
   extra_modules = [
     "wrapperclassfunc",
     "wrapperclassfunc",

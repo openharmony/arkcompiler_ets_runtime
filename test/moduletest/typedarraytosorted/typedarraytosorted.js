@@ -24,14 +24,40 @@ const typedArraySortedConstructors = [
     Uint8ClampedArray
 ];
 
+const typedArraySortedConstructorsAssertSuccessList = [
+	"Float64Array",
+	"Float32Array",
+	"Int32Array",
+	"Int16Array",
+	"Int8Array",
+	"Uint32Array",
+	"Uint16Array",
+	"Uint8Array",
+	"Uint8ClampedArray"
+	];
+const typedArraySortedConstructorsAssertFailList = [];
+let typedArraySortedConstructorsSuccessList = [];
+let typedArraySortedConstructorsFailList = [];
+
 typedArraySortedConstructors.forEach(function (ctor, i) {
     let arr = [10, 3, 8, 5, 30, 100, 6, 7, 100, 3];
     if (testTypeArrayToSorted(ctor, arr)) {
-        print(ctor.name + " test success !!!");
+        typedArraySortedConstructorsSuccessList.push(ctor.name);
     } else {
-        print(ctor.name + " test fail !!!");
+        typedArraySortedConstructorsFailList.push(ctor.name);
     }
 });
+
+assert_equal(typedArraySortedConstructorsSuccessList, typedArraySortedConstructorsAssertSuccessList);
+assert_equal(typedArraySortedConstructorsFailList, typedArraySortedConstructorsAssertFailList);
+
+const bigArrayAssertSuccessList = [
+	"BigInt64Array",
+	"BigUint64Array"
+	];
+const bigArrayAssertFailList = [];
+let bigArraySuccessList = [];
+let bigArrayFailList = [];
 
 [
     BigInt64Array,
@@ -39,11 +65,14 @@ typedArraySortedConstructors.forEach(function (ctor, i) {
 ].forEach(function (ctor, i) {
     let arr = [10n, 3n, 8n, 5n, 30n, 100n, 6n, 7n, 100n, 3n];
     if (testTypeArrayToSorted(ctor, arr)) {
-        print(ctor.name + " test success !!!");
+        bigArraySuccessList.push(ctor.name);
     } else {
-        print(ctor.name + " test fail !!!");
+        bigArrayFailList.push(ctor.name);
     }
 });
+
+assert_equal(bigArraySuccessList, bigArrayAssertSuccessList);
+assert_equal(bigArrayFailList, bigArrayAssertFailList);
 
 function testTypeArrayToSorted(ctor, arr) {
     let obj = new ctor(arr);
@@ -67,5 +96,7 @@ function testTypeArrayToSorted(ctor, arr) {
 
 var arr = new Float64Array(["aaa", 10, 20, 30]);
 var arrSorted = arr.toSorted();
-print(arrSorted);
-print(arr);
+assert_equal(arrSorted.toString(),"10,20,30,NaN");
+assert_equal(arr.toString(),"NaN,10,20,30");
+
+test_end();

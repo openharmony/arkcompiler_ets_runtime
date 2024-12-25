@@ -24,14 +24,40 @@ const typedArrayWithConstructors = [
     Uint8ClampedArray
 ];
 
+const typedArrayWithConstructorsAssertSuccessList = [
+	"Float64Array",
+	"Float32Array",
+	"Int32Array",
+	"Int16Array",
+	"Int8Array",
+	"Uint32Array",
+	"Uint16Array",
+	"Uint8Array",
+	"Uint8ClampedArray"
+	];
+const typedArrayFindConstructorsAssertFailList = [];
+let typedArrayFindConstructorsSuccessList = [];
+let typedArrayFindConstructorsFailList = [];
+
 typedArrayWithConstructors.forEach(function (ctor, i) {
     let arr = [1, 2, 3, 4, 5];
     if (testTypeArrayWithInt(ctor, arr, false)) {
-        print(ctor.name + " test success !!!");
+        typedArrayFindConstructorsSuccessList.push(ctor.name);
     } else {
-        print(ctor.name + " test fail !!!");
+        typedArrayFindConstructorsFailList.push(ctor.name);
     }
 });
+
+assert_equal(typedArrayFindConstructorsSuccessList, typedArrayFindConstructorsAssertSuccessList);
+assert_equal(typedArrayFindConstructorsFailList, typedArrayFindConstructorsAssertFailList);
+
+const bigArrayAssertSuccessList = [
+	"BigInt64Array",
+	"BigUint64Array"
+	];
+const bigArrayAssertFailList = [];
+let bigArraySuccessList = [];
+let bigArrayFailList = [];
 
 [
     BigInt64Array,
@@ -39,11 +65,14 @@ typedArrayWithConstructors.forEach(function (ctor, i) {
 ].forEach(function (ctor, i) {
     let arr = [10n, 11n, 12n, 13n, 9017199254740995n];
     if (testTypeArrayWithInt(ctor, arr, true)) {
-        print(ctor.name + " test success !!!");
+        bigArraySuccessList.push(ctor.name);
     } else {
-        print(ctor.name + " test fail !!!");
+        bigArrayFailList.push(ctor.name);
     }
 });
+
+assert_equal(bigArraySuccessList, bigArrayAssertSuccessList);
+assert_equal(bigArrayFailList, bigArrayAssertFailList);
 
 function testTypeArrayWithInt(ctor, arr, flagBig) {
     let obj = new ctor(arr);
@@ -72,7 +101,9 @@ function testTypeArrayWithInt(ctor, arr, flagBig) {
 }
 
 const with_arr1 = new Uint8Array([1, 2, 3, 4, 5]);
-print(with_arr1.with(2, 6));
+assert_equal(with_arr1.with(2, 6).toString(),"1,2,6,4,5");
 
 const with_arr2 = new Uint8Array([1, 2, 3, 4, 5]);
-print(with_arr2.with("2", 6));
+assert_equal(with_arr2.with("2", 6).toString(),"1,2,6,4,5");
+
+test_end();

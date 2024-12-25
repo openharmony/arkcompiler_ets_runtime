@@ -25,24 +25,53 @@ const typedArrayAtConstructors = [
     Uint8ClampedArray
 ];
 
+const typedArrayAtConstructorsAssertSuccessList = [
+	"Float64Array",
+	"Float32Array",
+	"Int32Array",
+	"Int16Array",
+	"Int8Array",
+	"Uint32Array",
+	"Uint16Array",
+	"Uint8Array",
+	"Uint8ClampedArray"
+	];
+const typedArrayAtConstructorsAssertFailList = [];
+let typedArrayAtConstructorsSuccessList = [];
+let typedArrayAtConstructorsFailList = [];
+
 typedArrayAtConstructors.forEach(function (ctor, i) {
     if (testTypeArrayAt1(ctor)) {
-        print(ctor.name + " test success !!!")
+        typedArrayAtConstructorsSuccessList.push(ctor.name);
     } else {
-        print(ctor.name + " test fail !!!")
+        typedArrayAtConstructorsFailList.push(ctor.name);
     }
 });
+
+assert_equal(typedArrayAtConstructorsSuccessList, typedArrayAtConstructorsAssertSuccessList);
+assert_equal(typedArrayAtConstructorsFailList, typedArrayAtConstructorsAssertFailList);
+
+const bigArrayAssertSuccessList = [
+	"BigInt64Array",
+	"BigUint64Array"
+	];
+const bigArrayAssertFailList = [];
+let bigArraySuccessList = [];
+let bigArrayFailList = [];
 
 [
     BigInt64Array,
     BigUint64Array
 ].forEach(function (ctor, i) {
     if (testTypeArrayAt2(ctor)) {
-        print(ctor.name + " test success !!!")
+        bigArraySuccessList.push(ctor.name);
     } else {
-        print(ctor.name + " test fail !!!")
+        bigArrayFailList.push(ctor.name);
     }
 });
+
+assert_equal(bigArraySuccessList, bigArrayAssertSuccessList);
+assert_equal(bigArrayFailList, bigArrayAssertFailList);
 
 function testTypeArrayAt1(ctor) {
     let result = []
@@ -92,16 +121,18 @@ function testTypeArrayAt2(ctor) {
 
 let uint8c = new Uint8ClampedArray(11);
 uint8c.set(uint8c);
-print(uint8c);
+assert_equal(uint8c.toString(),"0,0,0,0,0,0,0,0,0,0,0");
 let uint8 = new Uint8Array(11);
 uint8.fill(1);
 uint8.set(uint8);
-print(uint8);
+assert_equal(uint8.toString(),"1,1,1,1,1,1,1,1,1,1,1");
 let uint16 = new Uint16Array(11);
 uint16.fill(513);
 uint16.set(uint16);
-print(uint16);
+assert_equal(uint16.toString(),"513,513,513,513,513,513,513,513,513,513,513");
 let uint32 = new Uint32Array(11);
 uint32.fill(65536);
 uint32.set(uint32);
-print(uint32);
+assert_equal(uint32.toString(),"65536,65536,65536,65536,65536,65536,65536,65536,65536,65536,65536");
+
+test_end();

@@ -23,22 +23,21 @@ var object = {
     __proto__: null
 };
 
-print(Object.getPrototypeOf(object));
+assert_equal(Object.getPrototypeOf(object),null);
 
 class C32 extends String {
 
 }
 let obj1 = new C32();
-print(obj1.__proto__ == C32.prototype);
-print(C32.__proto__ == String);
+assert_equal(obj1.__proto__ == C32.prototype,true);
+assert_equal(C32.__proto__ == String,true);
 C32.__proto__ = Array;
 let obj2 = new C32();
-print(obj2.__proto__ == C32.prototype);
-print(C32.__proto__ == Array);
+assert_equal(obj2.__proto__ == C32.prototype,true);
+assert_equal(C32.__proto__ == Array,true);
 
 Float64Array.__proto__ = Float32Array
 new Float64Array();
-print("test new Float64Array Suc")
 
 var normalValues = [
     1,
@@ -70,13 +69,13 @@ function TestSetPrototypeOf1() {
       y: 'old y'
     };
     Object.setPrototypeOf(object, oldProto);
-    print(object.x);
-    print(object.y);
+    assert_equal(object.x,"old x");
+    assert_equal(object.y,"old y");
     var newProto = {
       x: 'new x'
     };
     Object.setPrototypeOf(object, newProto);
-    print(object.x);
+    assert_equal(object.x,'new x');
 }
 TestSetPrototypeOf1();
 
@@ -94,7 +93,7 @@ function TestSetPrototypeOf2() {
     return true;
 }
 
-print(TestSetPrototypeOf2());
+assert_equal(TestSetPrototypeOf2(),true);
 
 function TestSetPrototypeOf(object, proto) {
     return (Object.setPrototypeOf(object, proto) === object) &&
@@ -113,4 +112,6 @@ function TestSetPrototypeOf3() {
     }
     return true;
 }
-print(TestSetPrototypeOf3());
+assert_equal(TestSetPrototypeOf3(),true);
+
+test_end();

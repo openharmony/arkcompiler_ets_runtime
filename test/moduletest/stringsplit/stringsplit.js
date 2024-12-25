@@ -23,7 +23,7 @@
 try {
     ("X").split("00QP", -32297n);
 } catch (e) {
-    print(e);
+    assert_equal(e instanceof TypeError, true);
 }
 
 // Test String.prototype.split and cache
@@ -33,44 +33,44 @@ const longString = new Array(200).fill("abcdef").join('');
 const longTwoBytesString = new Array(200).fill("\u0426\u0427\u0428\u0429\u0430").join('');
 let res1 = shortString.split('');
 let res2 = shortString.split('');
-print(res1.length)
-print(res1.length == res2.length);
-print(res1[0] == res2[0]);
+assert_equal(res1.length,17)
+assert_equal(res1.length == res2.length,true);
+assert_equal(res1[0] == res2[0],true);
 let res3 = longString.split('');
 let res4 = longString.split('');
-print(res3.length)
-print(res3.length == res4.length);
-print(res3[0] == res4[0]);
+assert_equal(res3.length,1200)
+assert_equal(res3.length == res4.length,true);
+assert_equal(res3[0] == res4[0],true);
 let res5 = shortTwoBytesString.split('');
 let res6 = shortTwoBytesString.split('');
-print(res5.length)
-print(res5.length == res6.length);
-print(res5[0] == res6[0]);
+assert_equal(res5.length,9)
+assert_equal(res5.length == res6.length,true);
+assert_equal(res5[0] == res6[0],true);
 let res7 = longTwoBytesString.split('');
 let res8 = longTwoBytesString.split('');
-print(res7.length)
-print(res7.length == res8.length);
-print(res7[0] == res8[0]);
+assert_equal(res7.length,1000)
+assert_equal(res7.length == res8.length,true);
+assert_equal(res7[0] == res8[0],true);
 let res9 = shortString.split('a');
 let res10 = shortString.split('a');
-print(res9.length)
-print(res9.length == res10.length);
-print(res9[0] == res10[0]);
+assert_equal(res9.length,10)
+assert_equal(res9.length == res10.length,true);
+assert_equal(res9[0] == res10[0],true);
 let res11 = longString.split('a');
 let res12 = longString.split('a');
-print(res11.length)
-print(res11.length == res12.length);
-print(res11[0] == res12[0]);
+assert_equal(res11.length,201)
+assert_equal(res11.length == res12.length,true);
+assert_equal(res11[0] == res12[0],true);
 let res13 = shortTwoBytesString.split('\u0429');
 let res14 = shortTwoBytesString.split('\u0429');
-print(res13.length)
-print(res13.length == res14.length);
-print(res13[0] == res14[0]);
+assert_equal(res13.length,7)
+assert_equal(res13.length == res14.length,true);
+assert_equal(res13[0] == res14[0],true);
 let res15 = longTwoBytesString.split('\u0429');
 let res16 = longTwoBytesString.split('\u0429');
-print(res15.length)
-print(res15.length == res16.length);
-print(res15[0] == res16[0]);
+assert_equal(res15.length,201)
+assert_equal(res15.length == res16.length,true);
+assert_equal(res15[0] == res16[0],true);
 
 // Test split string is tree string
 var a = "12345678910"
@@ -87,4 +87,6 @@ for (let i = 0; i < 10; i++) {
     str.split('d');
 }
 let resSplit = str.split('d');
-print(resSplit);
+print(resSplit,["","ci","mc","ififf"]);
+
+test_end();

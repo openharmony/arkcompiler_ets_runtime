@@ -24,8 +24,11 @@ let v3 = v2[Symbol.iterator]();
 let nextBak = v3.__proto__["next"];
 v3.__proto__["next"] = null;
 try {
-    print(Uint8Array.from(v2));
+    Uint8Array.from(v2);
+	assert_unreachable();
 } catch (e) {
-    print(e);
+    assert_equal(e instanceof TypeError,true);
 }
 v3.__proto__["next"] = nextBak;
+
+test_end();

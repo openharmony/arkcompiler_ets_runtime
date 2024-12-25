@@ -45,10 +45,9 @@ function ICTest() {
 ICTest();
 ICTest();
 
-print("test successful !!!");
-
 let obj2 = {};
 for(let i=0; i<100; i++){
     obj2[Uint16Array] = 1;
 }
-print("store obj by value successful!!!")
+
+test_end();
