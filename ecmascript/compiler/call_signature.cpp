@@ -1926,6 +1926,20 @@ DEF_CALL_SIGNATURE(IsFastRegExp)
     callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
 }
 
+DEF_CALL_SIGNATURE(LrInt)
+{
+    constexpr size_t paramCount = 1;
+    // 1 : 1 input parameters
+    CallSignature lrInt("LrInt", 0, paramCount, ArgumentsOrder::DEFAULT_ORDER, VariableType::INT8());
+    *callSign = lrInt;
+    std::array<VariableType, paramCount> params = {
+        VariableType::FLOAT64(),
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetGCLeafFunction(true);
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
+}
+
 #define PUSH_CALL_ARGS_AND_DISPATCH_SIGNATURE_COMMON(name)                  \
     /* 1 : 1 input parameters */                                            \
     CallSignature signature(#name, 0, 1,                                    \

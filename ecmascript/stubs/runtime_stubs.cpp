@@ -3341,6 +3341,12 @@ int32_t RuntimeStubs::SaturateTruncDoubleToInt32(double x)
     return base::NumberHelper::SaturateTruncDoubleToInt32(x);
 }
 
+uint8_t RuntimeStubs::LrInt(double x)
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    return static_cast<uint8_t>(std::lrint(x));
+}
+
 void RuntimeStubs::InsertNewToEdenRSet([[maybe_unused]] uintptr_t argGlue,
     uintptr_t object, size_t offset)
 {
