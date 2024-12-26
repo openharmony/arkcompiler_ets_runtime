@@ -293,7 +293,7 @@ HWTEST_F_L0(HeapTrackerTest, HeapSnapshotBuildUp)
     dumpOption.isPrivate = isPrivate;
     dumpOption.captureNumericValue = captureNumericValue;
     HeapSnapshot heapSnapshot(instance, heapProfiler.GetEcmaStringTable(), dumpOption, traceAllocation,
-                              heapProfiler.GetEntryIdMap(), instance->GetChunk());
+                              heapProfiler.GetEntryIdMap());
     EXPECT_TRUE(heapSnapshot.BuildUp());
 }
 
@@ -309,7 +309,7 @@ HWTEST_F_L0(HeapTrackerTest, HeapSnapshotUpdateNode)
     dumpOption.isPrivate = isPrivate;
     dumpOption.captureNumericValue = captureNumericValue;
     HeapSnapshot heapSnapshot(instance, heapProfiler.GetEcmaStringTable(), dumpOption, traceAllocation,
-                              heapProfiler.GetEntryIdMap(), instance->GetChunk());
+                              heapProfiler.GetEntryIdMap());
     size_t beginNode = heapSnapshot.GetNodeCount();
     heapSnapshot.UpdateNodes();
     size_t endNode = heapSnapshot.GetNodeCount();

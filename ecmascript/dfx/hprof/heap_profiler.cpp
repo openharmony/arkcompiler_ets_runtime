@@ -527,7 +527,7 @@ bool HeapProfiler::GenerateHeapSnapshot(std::string &inputFilePath, std::string 
     auto strTabMap = DecodeStrTable(GetEcmaStringTable(), file, sections[2], sections[3]);
     file.close();
     DumpSnapShotOption dp;
-    auto *snapshot = new HeapSnapshot(vm_, GetEcmaStringTable(), dp, false, entryIdMap_, GetChunk());
+    auto *snapshot = new HeapSnapshot(vm_, GetEcmaStringTable(), dp, false, entryIdMap_);
     LOG_ECMA(INFO) << "ark raw heap decode generate nodes=" << objMap.size();
     snapshot->GenerateNodeForBinMod(objMap, rootSet, strTabMap);
     rootSet.clear();
@@ -831,7 +831,7 @@ bool HeapProfiler::DumpRawHeap(Stream *stream, uint32_t &fileOffset, CVector<uin
     CUnorderedMap<char *, uint32_t> objTabMap; // buf map table num
     CUnorderedMap<uint64_t, CVector<uint64_t>> strIdMapObjVec; // string id map to objs vector
     DumpSnapShotOption op;
-    auto snapshot = GetChunk()->New<HeapSnapshot>(vm_, GetEcmaStringTable(), op, false, entryIdMap_, GetChunk());
+    auto snapshot = GetChunk()->New<HeapSnapshot>(vm_, GetEcmaStringTable(), op, false, entryIdMap_);
     uint32_t objTotalNum = GenObjTable(objTabMap, snapshot, strIdMapObjVec);
     LOG_ECMA(INFO) << "ark raw heap dump DumpRawHeap totalObjNumber=" << objTotalNum;
     CVector<CVector<std::pair<char *, uint32_t>>> allMemBuf(objTabMap.size(), CVector<std::pair<char *, uint32_t>>());
@@ -1164,7 +1164,7 @@ HeapSnapshot *HeapProfiler::MakeHeapSnapshot(SampleType sampleType, const DumpSn
     switch (sampleType) {
         case SampleType::ONE_SHOT: {
             auto *snapshot = GetChunk()->New<HeapSnapshot>(vm_, GetEcmaStringTable(), dumpOption,
-                                                           traceAllocation, entryIdMap_, GetChunk());
+                                                           traceAllocation, entryIdMap_);
             if (snapshot == nullptr) {
                 LOG_FULL(FATAL) << "alloc snapshot failed";
                 UNREACHABLE();
@@ -1174,7 +1174,7 @@ HeapSnapshot *HeapProfiler::MakeHeapSnapshot(SampleType sampleType, const DumpSn
         }
         case SampleType::REAL_TIME: {
             auto *snapshot = GetChunk()->New<HeapSnapshot>(vm_, GetEcmaStringTable(), dumpOption,
-                                                           traceAllocation, entryIdMap_, GetChunk());
+                                                           traceAllocation, entryIdMap_);
             if (snapshot == nullptr) {
                 LOG_FULL(FATAL) << "alloc snapshot failed";
                 UNREACHABLE();
