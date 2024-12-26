@@ -26,6 +26,12 @@ declare function print(str: any): string;
 class Parent {
     static sField: number = 0;
     field: number = 0;
+    static "123": string = "parent"
+    "123": number = 123;
+    "560": string = "560";
+    aa: string = "aa";
+    bb: boolean = true;
+    cc: number = 10;
 
     static get sAge() {
         print("sAge getter");
@@ -48,6 +54,12 @@ class Parent {
 
 class Child extends Parent {
     childField: number = 0;
+    "45": string = "45";
+    "855": number = 855;
+    dd: string = "dd";
+    ee: number = 11;
+    ff: boolean = false;
+    
 
     constructor() {
         "use sendable";
@@ -1076,6 +1088,8 @@ class ChildToDict extends Parent {
     a1017:string = "a1017";
     a1018:string = "";
     a1019:string = "";
+    static "100":string = "100";
+    "101":number = 101;
 
     constructor() {
         "use sendable";
@@ -1085,6 +1099,8 @@ class ChildToDict extends Parent {
 
 class ChildExtendsDict extends ChildToDict {
     childField: number = 0;
+    static "102":string = "102";
+    "103":number = 103;
 
     constructor() {
         "use sendable";
@@ -2113,6 +2129,7 @@ class StaticDict {
     static a1017:string = "a1017";
     static a1018:string = "";
     static a1019:string = "";
+    static "104":number = 104
     static get a1020() {
         print("StaticDict getter 1020");
     }
@@ -2130,7 +2147,12 @@ function testParent(parent: Parent) {
     Parent.sAge = 1;
     // test field
     print("parent.field = " + parent.field);
-    print("Parent.sField = " + Parent.sField)
+    print("Parent.sField = " + Parent.sField);
+    print("Parent.123 = " + parent["123"]);
+    print("Parent.s123 = " + Parent[123]);
+    print("Parent.aa = " + parent.aa);
+    print("Parent.560 = " + parent[560]);
+    print("Parent.cc = " + parent.cc);
 }
 
 function testChild(child: Child) {
@@ -2138,6 +2160,9 @@ function testChild(child: Child) {
     testParent(child);
     // test child
     print("child.childField = " + child.childField);
+    print("child.45 = " + child[45]);
+    print("child.855 = " + child[855]);
+    print("child.ff = " + child.ff);
 }
 
 function testChildToDict(child: ChildToDict) {
@@ -2145,6 +2170,8 @@ function testChildToDict(child: ChildToDict) {
     testParent(child);
     // test childToDict
     print("child.a1017 = " + child.a1017);
+    print("child.100 = " + ChildToDict[100]);
+    print("child.101 = " + child["101"]);
 }
 
 function testChildExtendsDict(child: ChildExtendsDict) {
@@ -2152,6 +2179,8 @@ function testChildExtendsDict(child: ChildExtendsDict) {
     testChildToDict(child);
     // test childExtendsDict
     print("child.childField = " + child.childField);
+    print("child.102 = " + ChildExtendsDict[102]);
+    print("child.103 = " + child["103"]);
 }
 
 function testICChecking(child: ChildToDict) {
@@ -2168,6 +2197,7 @@ function testICChecking(child: ChildToDict) {
 
 function testStaticDict() {
     StaticDict.a1020;
+    print("StaticDict.104 = " + StaticDict[104]);
 }
 
 function testKeys() {
@@ -2190,16 +2220,3 @@ testChildExtendsDict(childExtendsDict);
 testICChecking(childToDict);
 testStaticDict();
 testKeys();
-
-class A {
-    constructor() {
-      "use sendable"
-    }
-    num:number = 1
-    "123":string = "123"
-}
-try {
-    let a = new A();
-} catch (e) {
-    print(e);
-}

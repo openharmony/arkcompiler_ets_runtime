@@ -711,7 +711,7 @@ JSTaggedValue ObjectFastOperator::SetPropertyByIndex(JSThread *thread, JSTaggedV
             int entry = dict->FindEntry(JSTaggedValue(static_cast<int>(index)));
             if (entry != -1) {
                 auto attr = dict->GetAttributes(entry);
-                if (UNLIKELY(!attr.IsWritable() || !attr.IsConfigurable())) {
+                if (UNLIKELY((!attr.IsWritable() || !attr.IsConfigurable()) && !hclass->IsJSShared())) {
                     return JSTaggedValue::Hole();
                 }
                 if (UNLIKELY(holder != receiver)) {

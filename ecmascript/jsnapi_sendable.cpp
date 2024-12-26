@@ -54,6 +54,13 @@ void JSNapiSendable::InitStaticDescription(JSThread *thread,
     prototypeDesc.SetSharedFieldType(SharedFieldType::SENDABLE);
     prototypeDesc.SetValue(globalConst->GetHandledNull());
     descs.push_back(prototypeDesc);
+
+    JSHandle<JSTaggedValue> sendableElementsKey = globalConst->GetHandledSendableElementsSymbol();
+    PropertyDescriptor sendableElementsDesc(thread, false, false, false);
+    sendableElementsDesc.SetKey(sendableElementsKey);
+    sendableElementsDesc.SetSharedFieldType(SharedFieldType::SENDABLE);
+    sendableElementsDesc.SetValue(globalConst->GetHandledUndefined());
+    descs.push_back(sendableElementsDesc);
 }
 
 void JSNapiSendable::InitNonStaticDescription(JSThread *thread, std::vector<PropertyDescriptor> &descs)

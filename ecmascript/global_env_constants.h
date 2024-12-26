@@ -310,6 +310,7 @@ class ObjectFactory;
     V(EnumerableString,               ENUMERABLE_STRING_INDEX,               "enumerable")                  \
     V(ConfigurableString,             CONFIGURABLE_STRING_INDEX,             "configurable")                \
     V(NameString,                     NAME_STRING_INDEX,                     "name")                        \
+    V(SendableElementsSymbol,         SENDABLE_ELEMENTS_INDEX,               "sendableElements")            \
     /* SymbolTable * RegisterSymbols */                                                                     \
     V(GetPrototypeOfString,           GETPROTOTYPEOF_STRING_INDEX,           "getPrototypeOf")              \
     V(SetPrototypeOfString,           SETPROTOTYPEOF_STRING_INDEX,           "setPrototypeOf")              \
