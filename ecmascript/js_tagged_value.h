@@ -517,7 +517,6 @@ public:
     bool PUBLIC_API IsJSCOWArray() const;
     bool IsStableJSArray(JSThread *thread) const;
     bool IsStableJSArguments(JSThread *thread) const;
-    bool HasStableElements(JSThread *thread) const;
     bool IsTypedArray() const;
     bool IsJSTypedArray() const;
     bool IsJSInt8Array() const;

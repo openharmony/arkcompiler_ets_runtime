@@ -383,12 +383,6 @@ bool JSTaggedValue::IsGeneratorContext() const
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsGeneratorContext();
 }
 
-bool JSTaggedValue::HasStableElements(JSThread *thread) const
-{
-    return IsHeapObject() && GetTaggedObject()->GetClass()->IsStableElements() &&
-           !thread->IsArrayPrototypeChangedGuardiansInvalid();
-}
-
 bool JSTaggedValue::WithinInt32() const
 {
     if (!IsNumber()) {

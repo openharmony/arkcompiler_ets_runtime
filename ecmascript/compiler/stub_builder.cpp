@@ -9386,34 +9386,6 @@ GateRef StubBuilder::NumberGetInt(GateRef glue, GateRef x)
     return ret;
 }
 
-GateRef StubBuilder::HasStableElements(GateRef glue, GateRef obj)
-{
-    auto env = GetEnvironment();
-    Label subentry(env);
-    env->SubCfgEntry(&subentry);
-    DEFVARIABLE(result, VariableType::BOOL(), False());
-    Label exit(env);
-    Label targetIsHeapObject(env);
-    Label targetIsStableElements(env);
-    BRANCH(TaggedIsHeapObject(obj), &targetIsHeapObject, &exit);
-    Bind(&targetIsHeapObject);
-    {
-        GateRef jsHclass = LoadHClass(obj);
-        BRANCH(IsStableElements(jsHclass), &targetIsStableElements, &exit);
-        Bind(&targetIsStableElements);
-        {
-            GateRef guardiansOffset =
-                IntPtr(JSThread::GlueData::GetArrayElementsGuardiansOffset(env->Is32Bit()));
-            result = Load(VariableType::BOOL(), glue, guardiansOffset);
-            Jump(&exit);
-        }
-    }
-    Bind(&exit);
-    auto res = *result;
-    env->SubCfgExit();
-    return res;
-}
-
 GateRef StubBuilder::IsStableJSArguments(GateRef glue, GateRef obj)
 {
     auto env = GetEnvironment();
