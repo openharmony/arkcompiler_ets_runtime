@@ -335,8 +335,6 @@ HWTEST_F_L0(JsStackInfoTest, TestArkParseJsFrameInfo)
 
     uintptr_t byteCodePc1 = methods1[0].codeBegin;
     uintptr_t byteCodePc2 = methods2[0].codeBegin;
-    uintptr_t methodId1 = methods1[0].methodId;
-    uintptr_t methodId2 = methods2[0].methodId;
     uintptr_t mapBase1 = reinterpret_cast<uintptr_t>(jsPandaFile1->GetHeader());
     uintptr_t mapBase2 = reinterpret_cast<uintptr_t>(jsPandaFile2->GetHeader());
     uintptr_t loadOffset1 = 0;
@@ -357,37 +355,37 @@ HWTEST_F_L0(JsStackInfoTest, TestArkParseJsFrameInfo)
     EXPECT_TRUE(ret == 1);
     EXPECT_TRUE(extractorptr2 != 0);
 
-    ret = ark_parse_js_frame_info(byteCodePc1, methodId1, mapBase1, loadOffset1,
+    ret = ark_parse_js_frame_info(byteCodePc1, mapBase1, loadOffset1,
         reinterpret_cast<uint8_t *>(const_cast<char*>(pfdata1)),
         strlen(pfdata1) + 1, extractorptr1, &jsFunction1);
     EXPECT_TRUE(ret == -1);
 
-    ret = ark_parse_js_frame_info(byteCodePc1, methodId1, mapBase1, loadOffset1,
+    ret = ark_parse_js_frame_info(byteCodePc1, mapBase1, loadOffset1,
         const_cast<uint8_t*>(data1), dataSize1, extractorptr1, &jsFunction1);
     EXPECT_TRUE(ret == 1);
     EXPECT_TRUE(std::string(jsFunction1.functionName) == "foo");
 
-    ret = ark_parse_js_frame_info(byteCodePc1, methodId1, mapBase1, loadOffset1,
+    ret = ark_parse_js_frame_info(byteCodePc1, mapBase1, loadOffset1,
         const_cast<uint8_t*>(data1), dataSize1 + 1, 0, &jsFunction1);
     EXPECT_TRUE(ret == -1);
 
-    ret = ark_parse_js_frame_info(byteCodePc1, methodId1, mapBase1, loadOffset1,
+    ret = ark_parse_js_frame_info(byteCodePc1, mapBase1, loadOffset1,
         nullptr, 0, extractorptr1, &jsFunction1);
     EXPECT_TRUE(ret == -1);
 
-    ret = ark_parse_js_frame_info(byteCodePc1, methodId1, mapBase1, loadOffset1,
+    ret = ark_parse_js_frame_info(byteCodePc1, mapBase1, loadOffset1,
         const_cast<uint8_t*>(data2), dataSize2, extractorptr2, &jsFunction1);
     EXPECT_TRUE(ret == -1);
 
-    ret = ark_parse_js_frame_info(byteCodePc2, methodId1, mapBase1, loadOffset1,
+    ret = ark_parse_js_frame_info(byteCodePc2, mapBase1, loadOffset1,
         const_cast<uint8_t*>(data2), dataSize2, extractorptr2, &jsFunction1);
     EXPECT_TRUE(ret == -1);
 
-    ret = ark_parse_js_frame_info(byteCodePc2, methodId2, mapBase1, loadOffset1,
+    ret = ark_parse_js_frame_info(byteCodePc2, mapBase1, loadOffset1,
         const_cast<uint8_t*>(data2), dataSize2, extractorptr2, &jsFunction1);
     EXPECT_TRUE(ret == -1);
 
-    ret = ark_parse_js_frame_info(byteCodePc2, methodId2, mapBase2, loadOffset2,
+    ret = ark_parse_js_frame_info(byteCodePc2, mapBase2, loadOffset2,
         const_cast<uint8_t*>(data2), dataSize2, extractorptr2, &jsFunction2);
     EXPECT_TRUE(ret == 1);
     EXPECT_TRUE(std::string(jsFunction2.functionName) == "func_main_0");
@@ -460,26 +458,36 @@ HWTEST_F_L0(JsStackInfoTest, TestStepArk__001)
     for (int i = 1; i < 10; i++) {
         fp[i] = fp[i-1] + 24;
     }
+    ArkStepParam arkStepParam{ &fp[0], &sp, &pc, &isJsFrame };
     frame[0][2] = static_cast<uintptr_t>(FrameType::INTERPRETER_CONSTRUCTOR_FRAME);
-    ASSERT_TRUE(step_ark(ctx, ReadMemFunc, &fp[0], &sp, &pc, nullptr, &isJsFrame));
+    ASSERT_TRUE(step_ark(ctx, ReadMemFunc, &arkStepParam));
     frame[1][2] = static_cast<uintptr_t>(FrameType::INTERPRETER_FAST_NEW_FRAME);
-    ASSERT_TRUE(step_ark(ctx, ReadMemFunc, &fp[1], &sp, &pc, nullptr, &isJsFrame));
+    arkStepParam.fp = &fp[1];
+    ASSERT_TRUE(step_ark(ctx, ReadMemFunc, &arkStepParam));
     frame[2][2] = static_cast<uintptr_t>(FrameType::OPTIMIZED_JS_FUNCTION_ARGS_CONFIG_FRAME);
-    ASSERT_TRUE(step_ark(ctx, ReadMemFunc, &fp[2], &sp, &pc, nullptr, &isJsFrame));
+    arkStepParam.fp = &fp[2];
+    ASSERT_TRUE(step_ark(ctx, ReadMemFunc, &arkStepParam));
     frame[3][2] = static_cast<uintptr_t>(FrameType::ASM_INTERPRETER_ENTRY_FRAME);
-    ASSERT_TRUE(step_ark(ctx, ReadMemFunc, &fp[3], &sp, &pc, nullptr, &isJsFrame));
+    arkStepParam.fp = &fp[3];
+    ASSERT_TRUE(step_ark(ctx, ReadMemFunc, &arkStepParam));
     frame[4][2] = static_cast<uintptr_t>(FrameType::BUILTIN_ENTRY_FRAME);
-    ASSERT_TRUE(step_ark(ctx, ReadMemFunc, &fp[4], &sp, &pc, nullptr, &isJsFrame));
+    arkStepParam.fp = &fp[4];
+    ASSERT_TRUE(step_ark(ctx, ReadMemFunc, &arkStepParam));
     frame[5][2] = static_cast<uintptr_t>(FrameType::BUILTIN_FRAME_WITH_ARGV_STACK_OVER_FLOW_FRAME);
-    ASSERT_TRUE(step_ark(ctx, ReadMemFunc, &fp[5], &sp, &pc, nullptr, &isJsFrame));
+    arkStepParam.fp = &fp[5];
+    ASSERT_TRUE(step_ark(ctx, ReadMemFunc, &arkStepParam));
     frame[6][2] = static_cast<uintptr_t>(FrameType::BASELINE_BUILTIN_FRAME);
-    ASSERT_TRUE(step_ark(ctx, ReadMemFunc, &fp[6], &sp, &pc, nullptr, &isJsFrame));
+    arkStepParam.fp = &fp[6];
+    ASSERT_TRUE(step_ark(ctx, ReadMemFunc, &arkStepParam));
     frame[7][2] = static_cast<uintptr_t>(FrameType::ASM_BRIDGE_FRAME);
-    ASSERT_TRUE(step_ark(ctx, ReadMemFunc, &fp[7], &sp, &pc, nullptr, &isJsFrame));
+    arkStepParam.fp = &fp[7];
+    ASSERT_TRUE(step_ark(ctx, ReadMemFunc, &arkStepParam));
     frame[8][2] = static_cast<uintptr_t>(FrameType::LEAVE_FRAME);
-    ASSERT_TRUE(step_ark(ctx, ReadMemFunc, &fp[8], &sp, &pc, nullptr, &isJsFrame));
+    arkStepParam.fp = &fp[8];
+    ASSERT_TRUE(step_ark(ctx, ReadMemFunc, &arkStepParam));
     frame[9][2] = static_cast<uintptr_t>(FrameType::LEAVE_FRAME_WITH_ARGV);
-    ASSERT_TRUE(step_ark(ctx, ReadMemFunc, &fp[9], &sp, &pc, nullptr, &isJsFrame));
+    arkStepParam.fp = &fp[9];
+    ASSERT_TRUE(step_ark(ctx, ReadMemFunc, &arkStepParam));
 }
 
 HWTEST_F_L0(JsStackInfoTest, TestStepArk__002)
@@ -498,26 +506,36 @@ HWTEST_F_L0(JsStackInfoTest, TestStepArk__002)
     for (int i = 1; i < 30; i++) {
         fp[i] = fp[i-1] + 24;
     }
+    ArkStepParam arkStepParam{ &fp[0], &sp, &pc, &isJsFrame };
     frame[0][2] = static_cast<uintptr_t>(FrameType::BUILTIN_CALL_LEAVE_FRAME);
-    ASSERT_TRUE(step_ark(ctx, ReadMemFunc, &fp[0], &sp, &pc, nullptr, &isJsFrame));
+    ASSERT_TRUE(step_ark(ctx, ReadMemFunc, &arkStepParam));
     frame[1][2] = static_cast<uintptr_t>(FrameType::OPTIMIZED_FRAME);
-    ASSERT_TRUE(step_ark(ctx, ReadMemFunc, &fp[1], &sp, &pc, nullptr, &isJsFrame));
+    arkStepParam.fp = &fp[1];
+    ASSERT_TRUE(step_ark(ctx, ReadMemFunc, &arkStepParam));
     frame[2][2] = static_cast<uintptr_t>(FrameType::ASM_INTERPRETER_BRIDGE_FRAME);
-    ASSERT_TRUE(step_ark(ctx, ReadMemFunc, &fp[2], &sp, &pc, nullptr, &isJsFrame));
+    arkStepParam.fp = &fp[2];
+    ASSERT_TRUE(step_ark(ctx, ReadMemFunc, &arkStepParam));
     frame[3][2] = static_cast<uintptr_t>(FrameType::OPTIMIZED_JS_FUNCTION_UNFOLD_ARGV_FRAME);
-    ASSERT_TRUE(step_ark(ctx, ReadMemFunc, &fp[3], &sp, &pc, nullptr, &isJsFrame));
+    arkStepParam.fp = &fp[3];
+    ASSERT_TRUE(step_ark(ctx, ReadMemFunc, &arkStepParam));
     frame[4][2] = static_cast<uintptr_t>(FrameType::INTERPRETER_CONSTRUCTOR_FRAME);
-    ASSERT_TRUE(step_ark(ctx, ReadMemFunc, &fp[4], &sp, &pc, nullptr, &isJsFrame));
+    arkStepParam.fp = &fp[4];
+    ASSERT_TRUE(step_ark(ctx, ReadMemFunc, &arkStepParam));
     frame[5][2] = static_cast<uintptr_t>(FrameType::OPTIMIZED_ENTRY_FRAME);
-    ASSERT_TRUE(step_ark(ctx, ReadMemFunc, &fp[5], &sp, &pc, nullptr, &isJsFrame));
+    arkStepParam.fp = &fp[5];
+    ASSERT_TRUE(step_ark(ctx, ReadMemFunc, &arkStepParam));
     frame[6][2] = static_cast<uintptr_t>(FrameType::ASM_BRIDGE_FRAME);
-    ASSERT_TRUE(step_ark(ctx, ReadMemFunc, &fp[6], &sp, &pc, nullptr, &isJsFrame));
+    arkStepParam.fp = &fp[6];
+    ASSERT_TRUE(step_ark(ctx, ReadMemFunc, &arkStepParam));
     frame[7][2] = static_cast<uintptr_t>(FrameType::OPTIMIZED_JS_FUNCTION_UNFOLD_ARGV_FRAME);
-    ASSERT_TRUE(step_ark(ctx, ReadMemFunc, &fp[7], &sp, &pc, nullptr, &isJsFrame));
+    arkStepParam.fp = &fp[7];
+    ASSERT_TRUE(step_ark(ctx, ReadMemFunc, &arkStepParam));
     frame[8][2] = static_cast<uintptr_t>(FrameType::OPTIMIZED_JS_FUNCTION_FRAME);
-    ASSERT_TRUE(step_ark(ctx, ReadMemFunc, &fp[8], &sp, &pc, nullptr, &isJsFrame));
+    arkStepParam.fp = &fp[8];
+    ASSERT_TRUE(step_ark(ctx, ReadMemFunc, &arkStepParam));
     frame[9][2] = 100;
-    ASSERT_TRUE(step_ark(ctx, ReadMemFunc, &fp[9], &sp, &pc, nullptr, &isJsFrame));
+    arkStepParam.fp = &fp[9];
+    ASSERT_TRUE(step_ark(ctx, ReadMemFunc, &arkStepParam));
 }
 
 HWTEST_F_L0(JsStackInfoTest, TestLocalParseJsFrameInfo__001)
@@ -540,21 +558,20 @@ HWTEST_F_L0(JsStackInfoTest, TestLocalParseJsFrameInfo__001)
     auto methods = JSStackTrace::ReadAllMethodInfos(jsPandaFile);
 
     uintptr_t byteCodePc = methods[0].codeBegin;
-    uintptr_t methodId = methods[0].methodId;
     uintptr_t mapBase = reinterpret_cast<uintptr_t>(jsPandaFile->GetHeader());
     uintptr_t loadOffset = 0;
     JsFunction jsFunction;
 
     // Incorrect invocation demonstration
-    auto ret = ark_parse_js_frame_info_local(byteCodePc, methodId, mapBase, loadOffset, &jsFunction);
+    auto ret = ark_parse_js_frame_info_local(byteCodePc, mapBase, loadOffset, &jsFunction);
     EXPECT_TRUE(ret == -1);
 
     // Correct invocation demonstration
     ark_create_local();
-    ret = ark_parse_js_frame_info_local(byteCodePc, methodId, mapBase, loadOffset, &jsFunction);
+    ret = ark_parse_js_frame_info_local(byteCodePc, mapBase, loadOffset, &jsFunction);
     EXPECT_TRUE(ret == 1);
 
-    ret = ark_parse_js_frame_info_local(byteCodePc, methodId, mapBase, loadOffset, &jsFunction);
+    ret = ark_parse_js_frame_info_local(byteCodePc, mapBase, loadOffset, &jsFunction);
     EXPECT_TRUE(ret == 1);
 
     ark_destroy_local();
@@ -581,13 +598,12 @@ HWTEST_F_L0(JsStackInfoTest, TestLocalParseJsFrameInfo__002)
     auto methods = JSStackTrace::ReadAllMethodInfos(jsPandaFile);
 
     uintptr_t byteCodePc = methods[0].codeBegin;
-    uintptr_t methodId = methods[0].methodId;
     uintptr_t mapBase = reinterpret_cast<uintptr_t>(jsPandaFile->GetHeader());
     uintptr_t loadOffset = 0;
     JsFunction jsFunction;
 
     ark_create_local();
-    auto ret = ark_parse_js_frame_info_local(byteCodePc, methodId, mapBase, loadOffset, &jsFunction);
+    auto ret = ark_parse_js_frame_info_local(byteCodePc, mapBase, loadOffset, &jsFunction);
     ark_destroy_local();
     // pandafile manager can't find jsPandaFile
     EXPECT_TRUE(ret == -1);
