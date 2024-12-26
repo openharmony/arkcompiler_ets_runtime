@@ -108,3 +108,14 @@
         print(item);
     }
 }
+
+// This case aims to test the logic which check the undefined result of GetIterator.
+{
+    class c2 extends Object {}
+    Array.prototype[Symbol.iterator] = function () {};
+    try {
+        let myC2 = new c2();
+    } catch (error) {
+        print(error);
+    }
+}
