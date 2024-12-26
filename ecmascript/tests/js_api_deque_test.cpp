@@ -99,14 +99,14 @@ HWTEST_F_L0(JSAPIDequeTest, PopFirst)
     JSHandle<JSAPIDeque> toor(thread, CreateDeque());
 
     // test PopFirst of empty deque
-    EXPECT_EQ(toor->PopFirst(), JSTaggedValue::Undefined());
+    EXPECT_EQ(toor->PopFirst(thread), JSTaggedValue::Undefined());
 
     std::string myValue("myvalue");
     for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
         std::string ivalue = myValue + std::to_string(i);
         value.Update(factory->NewFromStdString(ivalue).GetTaggedValue());
         JSAPIDeque::InsertFront(thread, toor, value);
-        EXPECT_EQ(toor->PopFirst(), value.GetTaggedValue());
+        EXPECT_EQ(toor->PopFirst(thread), value.GetTaggedValue());
     }
 
     toor->Dump();
@@ -121,14 +121,14 @@ HWTEST_F_L0(JSAPIDequeTest, PopLast)
     JSHandle<JSAPIDeque> toor(thread, CreateDeque());
 
     // test PopLast of empty deque
-    EXPECT_EQ(toor->PopLast(), JSTaggedValue::Undefined());
+    EXPECT_EQ(toor->PopLast(thread), JSTaggedValue::Undefined());
 
     std::string myValue("myvalue");
     for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
         std::string ivalue = myValue + std::to_string(i);
         value.Update(factory->NewFromStdString(ivalue).GetTaggedValue());
         JSAPIDeque::InsertEnd(thread, toor, value);
-        EXPECT_EQ(toor->PopLast(), value.GetTaggedValue());
+        EXPECT_EQ(toor->PopLast(thread), value.GetTaggedValue());
     }
 
     toor->Dump();

@@ -55,7 +55,7 @@ public:
 
     JSTaggedValue Peek();
 
-    JSTaggedValue Pop();
+    JSTaggedValue Pop(JSThread *thread);
 
     JSTaggedValue Get(const uint32_t index);
 
