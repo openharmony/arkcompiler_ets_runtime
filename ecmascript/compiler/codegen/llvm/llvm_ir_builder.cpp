@@ -2768,7 +2768,7 @@ LLVMValueRef LLVMModule::GetDeoptFunction()
 void LLVMIRBuilder::GenDeoptEntry(LLVMModuleRef &module)
 {
     // glue type depth
-    std::vector<LLVMTypeRef> paramTys = { GetInt64T(), GetInt32T(), GetInt32T() };
+    std::vector<LLVMTypeRef> paramTys = { GetInt64T(), GetInt64T(), GetInt64T() };
     auto funcType = LLVMFunctionType(GetInt64T(), paramTys.data(),  paramTys.size(), 0);
     auto function = LLVMAddFunction(module, Deoptimizier::GetLLVMDeoptRelocateSymbol(), funcType);
     LLVMSetFunctionCallConv(function, LLVMCCallConv);
@@ -2890,13 +2890,13 @@ void LLVMIRBuilder::VisitDeoptCheck(GateRef gate)
     params.push_back(glue); // glue
     GateRef deoptType = acc_.GetValueIn(gate, 2); // 2: deopt type
     uint64_t v = acc_.GetConstantValue(deoptType);
-    params.push_back(LLVMConstInt(GetInt32T(), static_cast<uint32_t>(v), false)); // deoptType
+    params.push_back(ConvertInt32ToTaggedInt(LLVMConstInt(GetInt32T(), static_cast<uint32_t>(v), false))); // deoptType
     LLVMValueRef callee = GetExperimentalDeopt(module_);
     LLVMTypeRef funcType = GetExperimentalDeoptTy();
 
     std::vector<LLVMValueRef> values;
     size_t maxDepth = acc_.GetFrameDepth(deoptFrameState, OpCode::FRAME_STATE);
-    params.push_back(LLVMConstInt(GetInt32T(), static_cast<uint32_t>(maxDepth), false));
+    params.push_back(ConvertInt32ToTaggedInt(LLVMConstInt(GetInt32T(), static_cast<uint32_t>(maxDepth), false)));
     size_t shift = Deoptimizier::ComputeShift(maxDepth);
     GateRef frameState = deoptFrameState;
     ArgumentAccessor argAcc(const_cast<Circuit *>(circuit_));

@@ -2801,7 +2801,7 @@ void LiteCGIRBuilder::HandleDeoptCheck(GateRef gate)
 
 LiteCGType *LiteCGIRBuilder::GetExperimentalDeoptTy()
 {
-    std::vector<LiteCGType *> paramTys = {lmirBuilder_->i64Type, lmirBuilder_->i32Type, lmirBuilder_->i32Type};
+    std::vector<LiteCGType *> paramTys = {lmirBuilder_->i64Type, lmirBuilder_->i64RefType, lmirBuilder_->i64RefType};
     LiteCGType *functionType = lmirBuilder_->CreateFuncType(paramTys, lmirBuilder_->i64RefType, false);
     return functionType;
 }
@@ -2867,8 +2867,8 @@ Function *LiteCGIRBuilder::GetExperimentalDeopt()
         FunctionBuilder funcBuilder = lmirBuilder_->DefineFunction(funcName);
         // glue type depth
         funcBuilder.Param(lmirBuilder_->i64Type, "glue")
-            .Param(lmirBuilder_->i32Type, "deopt_type")
-            .Param(lmirBuilder_->i32Type, "max_depth");
+            .Param(lmirBuilder_->i64RefType, "deopt_type")
+            .Param(lmirBuilder_->i64RefType, "max_depth");
         Function &curFunc = funcBuilder.Return(lmirBuilder_->LiteCGGetFuncReturnType(fnTy)).Done();
         funcBuilder.CallConvAttribute(maple::litecg::CCall);
         lmirBuilder_->SetCurFunc(curFunc);
@@ -2957,7 +2957,8 @@ void LiteCGIRBuilder::VisitDeoptCheck(GateRef gate)
             return *iter->second;
         }
         BB &falseBB = lmirBuilder_->CreateBB();
-        auto constDeoptType = lmirBuilder_->ConstVal(lmirBuilder_->CreateIntConst(lmirBuilder_->u32Type, deoptType));
+        Expr constDeoptType = ConvertInt32ToTaggedInt(
+            lmirBuilder_->ConstVal(lmirBuilder_->CreateIntConst(lmirBuilder_->u32Type, deoptType)));
         lmirBuilder_->AppendStmt(falseBB, lmirBuilder_->Regassign(constDeoptType, deoptBBInfo.deoptTypePreg));
         lmirBuilder_->AppendStmt(falseBB, lmirBuilder_->Goto(*deoptBBInfo.deoptBB));
         // deopt branch is not expected to be token as often,
@@ -2996,7 +2997,7 @@ LiteCGIRBuilder::DeoptBBInfo &LiteCGIRBuilder::GetOrCreateDeoptBBInfo(GateRef ga
 
     std::vector<Expr> params;
     params.push_back(glue);                        // glue
-    auto deoptTypePreg = lmirBuilder_->CreatePreg(lmirBuilder_->u32Type);
+    auto deoptTypePreg = lmirBuilder_->CreatePreg(lmirBuilder_->i64RefType);
     params.push_back(lmirBuilder_->Regread(deoptTypePreg));  // deoptType
 
     std::unordered_map<int, LiteCGValue> deoptBundleInfo;
@@ -3006,8 +3007,9 @@ LiteCGIRBuilder::DeoptBBInfo &LiteCGIRBuilder::GetOrCreateDeoptBBInfo(GateRef ga
         maxDepth++;
         frameState = acc_.GetFrameState(frameState);
     }
-    auto &constMaxDepth = lmirBuilder_->CreateIntConst(lmirBuilder_->u32Type, static_cast<uint32_t>(maxDepth));
-    params.push_back(lmirBuilder_->ConstVal(constMaxDepth));
+    Expr constMaxDepth =
+        lmirBuilder_->ConstVal(lmirBuilder_->CreateIntConst(lmirBuilder_->u32Type, static_cast<uint32_t>(maxDepth)));
+    params.push_back(ConvertInt32ToTaggedInt(constMaxDepth));
     size_t shift = Deoptimizier::ComputeShift(maxDepth);
     frameState = deoptFrameState;
     ArgumentAccessor argAcc(const_cast<Circuit *>(circuit_));
