@@ -114,6 +114,7 @@ using SourceMapTranslateCallback = std::function<bool(std::string& url, int& lin
 using DeviceDisconnectCallback = std::function<bool()>;
 using QueueType = ecmascript::job::QueueType;
 using OnAllErrorCallback = std::function<void(Local<ObjectRef> value, void *data)>;
+using StopPreLoadSoCallback = std::function<void()>;
 
 #define ECMA_DISALLOW_COPY(className)      \
     className(const className &) = delete; \
@@ -1732,6 +1733,9 @@ public:
     static void SetpkgContextInfoList(EcmaVM *vm, const std::map<std::string,
         std::vector<std::vector<std::string>>> &list);
     static void SetExecuteBufferMode(const EcmaVM *vm);
+    // Stop preloading so task callback.
+    static void SetStopPreLoadSoCallback(EcmaVM *vm, const StopPreLoadSoCallback &callback);
+    static StopPreLoadSoCallback GetStopPreLoadSoCallback(EcmaVM *vm);
     static void SetLoop(EcmaVM *vm, void *loop);
     static void SetWeakFinalizeTaskCallback(EcmaVM *vm, const WeakFinalizeTaskCallback &callback);
     static void SetAsyncCleanTaskCallback(EcmaVM *vm, const NativePointerTaskCallback &callback);

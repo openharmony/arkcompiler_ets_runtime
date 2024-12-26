@@ -1435,4 +1435,15 @@ HWTEST_F_L0(JSNApiTests, GetData002)
     JsiRuntimeCallInfo *jsiRuntimeCallInfo = reinterpret_cast<JsiRuntimeCallInfo *>(ecmaRuntimeCallInfo);
     jsiRuntimeCallInfo->GetData();
 }
+
+HWTEST_F_L0(JSNApiTests, SetStopPreLoadSoCallback)
+{
+    auto callback = []()->void {
+        LOG_FULL(INFO) << "Call stopPreLoadSoCallback";
+    };
+    JSNApi::SetStopPreLoadSoCallback(vm_, callback);
+    auto stopPreLoadSoCallback = vm_->GetStopPreLoadSoCallback();
+    EXPECT_NE(stopPreLoadSoCallback, nullptr);
+    stopPreLoadSoCallback();
+}
 } // namespace panda::test
