@@ -8503,7 +8503,7 @@ GateRef StubBuilder::GetIterator(GateRef glue, GateRef obj, ProfileOperation cal
     Label exit(env);
     env->SubCfgEntry(&entryPass);
     DEFVARIABLE(result, VariableType::JS_ANY(), Exception());
-    DEFVARIABLE(taggedId, VariableType::INT32(), Int32(0));
+    DEFVARIABLE(taggedId, VariableType::INT32(), Int32(GET_MESSAGE_STRING_ID(ObjIsNotCallable)));
 
     Label isPendingException(env);
     Label noPendingException(env);
@@ -8534,14 +8534,18 @@ GateRef StubBuilder::GetIterator(GateRef glue, GateRef obj, ProfileOperation cal
         if (env->IsBaselineBuiltin()) {
             callBuilder.JSCallDispatchForBaseline(&callExit);
             Bind(&callExit);
+            Jump(&exit);
         } else {
             result = callBuilder.JSCallDispatch();
+            Label modifyErrorInfo(env);
+            BRANCH(TaggedIsHeapObject(*result), &exit, &modifyErrorInfo);
+            Bind(&modifyErrorInfo);
+            taggedId = Int32(GET_MESSAGE_STRING_ID(IterNotObject));
+            Jump(&throwError);
         }
-        Jump(&exit);
     }
     Bind(&throwError);
     {
-        taggedId = Int32(GET_MESSAGE_STRING_ID(ObjIsNotCallable));
         CallRuntime(glue, RTSTUB_ID(ThrowTypeError), { IntToTaggedInt(*taggedId) });
         result = Exception();
         Jump(&exit);
