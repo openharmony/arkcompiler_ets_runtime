@@ -393,6 +393,7 @@ group("ark_asm_test") {
     "sharedJSON",
     "sharedic",
     "sendable",
+    "getiterator",
   ]
 
   deps = []
