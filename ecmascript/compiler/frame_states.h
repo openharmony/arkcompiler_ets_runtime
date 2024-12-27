@@ -126,6 +126,7 @@ public:
     ~FrameStateBuilder();
 
     void DoBytecodeAnalysis();
+    void AnalyzeLiveness();
     void AdvanceToNextBc(const BytecodeInfo &bytecodeInfo, FrameLiveOut* liveout, uint32_t bcId);
     void UpdateFrameValues(const BytecodeInfo &bytecodeInfo, uint32_t bcId,
         GateRef gate);

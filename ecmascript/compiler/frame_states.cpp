@@ -166,6 +166,11 @@ void FrameStateBuilder::ComputeLiveState()
 
 void FrameStateBuilder::DoBytecodeAnalysis()
 {
+    ComputeLoopInfo();
+}
+
+void FrameStateBuilder::AnalyzeLiveness()
+{
     auto bcSize = bcBuilder_->GetLastBcIndex() + 1; // 1: +1 pcOffsets size
     auto bbSize = bcBuilder_->GetBasicBlockCount();
     bcEndStateLiveouts_.resize(bcSize, nullptr);
@@ -178,7 +183,6 @@ void FrameStateBuilder::DoBytecodeAnalysis()
     if (bcBuilder_->IsLogEnabled()) {
         DumpLiveState();
     }
-    ComputeLoopInfo();
 }
 
 void FrameStateBuilder::ComputeLiveOutBC(const BytecodeInfo &bytecodeInfo)

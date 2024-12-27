@@ -355,6 +355,7 @@
       panda::ecmascript::kungfu::PGOTypeRecorder::GetElementsKindForCreater*;
       panda::ecmascript::kungfu::PGOTypeRecorder::GetElementsKindsForUser*;
       panda::ecmascript::kungfu::PGOTypeRecorder::GetElementsLength*;
+      panda::ecmascript::kungfu::PGOTypeRecorder::IsInsufficientProfile*;
       panda::ecmascript::kungfu::PGOTypeRecorder::GetPGOType*;
       panda::ecmascript::kungfu::PGOTypeRecorder::GetRegionSpaceFlag*;
       panda::ecmascript::kungfu::PGOTypeRecorder::GetTransitionElementsKindForUser*;

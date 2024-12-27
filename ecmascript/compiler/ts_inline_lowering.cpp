@@ -233,6 +233,9 @@ void TSInlineLowering::InlineCall(MethodInfo &methodInfo, MethodPcInfo &methodPC
             BuildFrameStateChain(info, builder);
         }
         TimeScope timeScope("BytecodeToCircuit", methodName, method->GetMethodId().GetOffset(), log);
+        if (compilationEnv_->IsJitCompiler()) {
+            builder.SetJitCompile();
+        }
         builder.BytecodeToCircuit();
     }
 

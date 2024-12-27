@@ -122,7 +122,7 @@ void GraphEditor::PropagateMerge(const Edge& edge)
     }
 }
 
-bool GraphEditor::HasOsrDeoptUse(GateRef gate)
+bool GraphEditor::FrameValueUsedInCFGTailoring(GateRef gate)
 {
     std::vector<GateRef> valueOuts;
     acc_.GetValueUses(gate, valueOuts);
@@ -138,7 +138,8 @@ bool GraphEditor::HasOsrDeoptUse(GateRef gate)
             }
             GateRef deoptType = acc_.GetValueIn(use, 2);  // 2: deopt type
             uint64_t v = acc_.GetConstantValue(deoptType);
-            if (v == static_cast<uint64_t>(DeoptType::OSRLOOPEXIT)) {
+            if (v == static_cast<uint64_t>(DeoptType::OSRLOOPEXIT) ||
+                v == static_cast<uint64_t>(DeoptType::INSUFFICIENTPROFILE)) {
                 return true;
             }
         }
@@ -163,7 +164,11 @@ void GraphEditor::EliminatePhi()
             phis.emplace_back(gate);
             continue;
         }
-        if (acc_.IsFrameValues(gate) && !HasOsrDeoptUse(gate)) {
+        // 1. When Deopt occurs, FrameValue assists in restoring the assembly interpreter stack. If all the logic
+        // affected by this FrameValue does not use this phi, then this phi can be deleted.
+        // 2. In the OSR and Insufficient Profile scenarios, we will actively crop CFG and remove some references to
+        // phi, which will result in incomplete recovery of the assembly interpreter stack by Deopt.
+        if (acc_.IsFrameValues(gate) && !FrameValueUsedInCFGTailoring(gate)) {
             continue;
         }
         // get used phi
