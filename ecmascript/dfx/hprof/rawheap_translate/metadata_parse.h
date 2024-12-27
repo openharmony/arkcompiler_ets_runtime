@@ -110,10 +110,10 @@ private:
     std::unordered_map<std::string, std::shared_ptr<Layout>> layout_ {};
     std::unordered_map<std::string, std::string> typeDesc_ {};
     std::vector<std::string> enumsVec_ {};
-    int objTypeBitFieldOffset_ {0};
-    int objTypeBitFieldSize_ {0};
-    int nativatePointerBindingSizeOffset_ {0};
-    int nativatePointerBindingSize_ {0};
+    uint32_t objTypeBitFieldOffset_ {0};
+    uint32_t objTypeBitFieldSize_ {0};
+    uint32_t nativatePointerBindingSizeOffset_ {0};
+    uint32_t nativatePointerBindingSize_ {0};
 };
 }  // namespace rawheap_translate
 #endif  // METADATA_JSON_PARSE_H
