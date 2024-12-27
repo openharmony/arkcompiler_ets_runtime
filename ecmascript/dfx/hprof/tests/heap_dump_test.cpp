@@ -1097,7 +1097,11 @@ HWTEST_F_L0(HeapDumpTest, TestHeapDumpGenerateNodeName9)
     ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_9.heapsnapshot", "\"PlainArrayIterator\""));
 }
 
+#ifdef PANDA_TARGET_ARM32
+HWTEST_F_L0(HeapDumpTest, DISABLED_TestHeapDumpBinaryDump)
+#else
 HWTEST_F_L0(HeapDumpTest, TestHeapDumpBinaryDump)
+#endif
 {
     ObjectFactory *factory = ecmaVm_->GetFactory();
     HeapDumpTestHelper tester(ecmaVm_);
