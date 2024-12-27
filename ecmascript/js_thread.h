@@ -26,6 +26,7 @@
 #include "ecmascript/builtin_entries.h"
 #include "ecmascript/daemon/daemon_task.h"
 #include "ecmascript/global_index.h"
+#include "ecmascript/ic/mega_ic_cache.h"
 #include "ecmascript/js_object_resizing_strategy.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/js_thread_hclass_entries.h"
@@ -47,6 +48,7 @@ class EcmaHandleScope;
 class GlobalIndex;
 class HeapRegionAllocator;
 class PropertiesCache;
+class MegaICCache;
 template<typename T>
 class EcmaGlobalStorage;
 class Node;
@@ -459,6 +461,8 @@ public:
     void UpdateJitCodeMapReference(const WeakRootVisitor &visitor);
 
     PUBLIC_API PropertiesCache *GetPropertiesCache() const;
+    PUBLIC_API MegaICCache *GetLoadMegaICCache() const;
+    PUBLIC_API MegaICCache *GetStoreMegaICCache() const;
 
     MarkStatus GetMarkStatus() const
     {

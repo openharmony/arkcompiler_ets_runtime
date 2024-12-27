@@ -16,7 +16,9 @@
 #ifndef ECMASCRIPT_IC_PROFILE_TYPE_INFO_H
 #define ECMASCRIPT_IC_PROFILE_TYPE_INFO_H
 
+#include "ecmascript/ic/mega_ic_cache.h"
 #include "ecmascript/js_function.h"
+#include "ecmascript/js_tagged_value.h"
 #include "ecmascript/tagged_array.h"
 #include "ecmascript/tagged_dictionary.h"
 
@@ -440,20 +442,34 @@ public:
         UNINIT,
         MONO,
         POLY,
+        IC_MEGA,
         MEGA,
     };
+
+#if ECMASCRIPT_ENABLE_TRACE_LOAD
+    enum MegaState {
+        NONE,
+        NOTFOUND_MEGA,
+        DICT_MEGA,
+    };
+#endif
 
     ProfileTypeAccessor(JSThread* thread, JSHandle<ProfileTypeInfo> profileTypeInfo, uint32_t slotId, ICKind kind)
         : thread_(thread), profileTypeInfo_(profileTypeInfo), slotId_(slotId), kind_(kind)
     {
+        enableICMega_ = thread_->GetEcmaVM()->GetJSOptions().IsEnableMegaIC();
     }
     ~ProfileTypeAccessor() = default;
-
+    ICState GetMegaState() const;
     ICState GetICState() const;
     static std::string ICStateToString(ICState state);
-    void AddHandlerWithoutKey(JSHandle<JSTaggedValue> hclass, JSHandle<JSTaggedValue> handler) const;
+    void AddHandlerWithoutKey(JSHandle<JSTaggedValue> hclass, JSHandle<JSTaggedValue> handler,
+                              JSHandle<JSTaggedValue> keyForMegaIC = JSHandle<JSTaggedValue>(),
+                              MegaICCache::MegaICKind kind = MegaICCache::MegaICKind::None) const;
     void AddWithoutKeyPoly(JSHandle<JSTaggedValue> hclass, JSHandle<JSTaggedValue> handler, uint32_t index,
-                           JSTaggedValue profileData) const;
+                           JSTaggedValue profileData, JSHandle<JSTaggedValue> keyForMegaIC = JSHandle<JSTaggedValue>(),
+                           MegaICCache::MegaICKind kind = MegaICCache::MegaICKind::None) const;
+
     void AddElementHandler(JSHandle<JSTaggedValue> hclass, JSHandle<JSTaggedValue> handler) const;
     void AddHandlerWithKey(JSHandle<JSTaggedValue> key, JSHandle<JSTaggedValue> hclass,
                            JSHandle<JSTaggedValue> handler) const;
@@ -470,6 +486,8 @@ public:
         return JSTaggedValue(value.GetWeakReferent());
     }
     void SetAsMega() const;
+    void SetAsMegaForTraceSlowMode(ObjectOperator& op) const;
+    void SetAsMegaForTrace(JSTaggedValue value) const;
 
     ICKind GetKind() const
     {
@@ -486,6 +504,7 @@ private:
     JSHandle<ProfileTypeInfo> profileTypeInfo_;
     uint32_t slotId_;
     ICKind kind_;
+    bool enableICMega_;
 };
 }  // namespace panda::ecmascript
 

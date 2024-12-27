@@ -42,6 +42,11 @@ public:
     void UpdateTypedArrayHandler(JSHandle<JSTaggedValue> receiver);
     void UpdateStoreHandler(const ObjectOperator &op, JSHandle<JSTaggedValue> key, JSHandle<JSTaggedValue> receiver);
 
+    bool IsMegaIC()
+    {
+        return icAccessor_.GetICState() == ProfileTypeAccessor::ICState::IC_MEGA;
+    }
+
     JSThread *GetThread() const
     {
         return thread_;

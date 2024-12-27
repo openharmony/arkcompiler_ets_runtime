@@ -125,6 +125,11 @@ namespace panda::ecmascript {
     V(JSFastCallWithArgV)                    \
     V(JSFastCallWithArgVAndPushArgv)
 
+#define RUNTIME_STUB_WITH_DFX(V)                \
+    V(TraceLoadGetter)                          \
+    V(TraceLoadSlowPath)                        \
+    V(TraceLoadDetail)                          \
+    V(TraceLoadEnd)
 
 #define RUNTIME_STUB_WITHOUT_GC_LIST(V)        \
     V(Dump)                                    \
@@ -505,6 +510,7 @@ namespace panda::ecmascript {
     RUNTIME_ASM_STUB_LIST(V)                     \
     RUNTIME_STUB_WITHOUT_GC_LIST(V)              \
     RUNTIME_STUB_WITH_GC_LIST(V)                 \
+    RUNTIME_STUB_WITH_DFX(V)                     \
     TEST_RUNTIME_STUB_GC_LIST(V)
 
 }  // namespace panda::ecmascript

@@ -30,7 +30,9 @@
 #include "ecmascript/compiler/profiler_stub_builder.h"
 #include "ecmascript/compiler/rt_call_signature.h"
 #include "ecmascript/elements.h"
+#include "ecmascript/compiler/stub_builder.h"
 #include "ecmascript/global_env_constants.h"
+#include "ecmascript/ic/mega_ic_cache.h"
 #include "ecmascript/ic/properties_cache.h"
 #include "ecmascript/js_api/js_api_arraylist.h"
 #include "ecmascript/js_api/js_api_vector.h"
@@ -402,6 +404,37 @@ GateRef StubBuilder::GetIndexFromPropertiesCache(GateRef glue, GateRef cache, Ga
     env->SubCfgExit();
     return ret;
 }
+
+GateRef StubBuilder::GetHandlerFromMegaICCache(GateRef glue, GateRef cache, GateRef cls, GateRef key)
+{
+    auto env = GetEnvironment();
+    Label subentry(env);
+    env->SubCfgEntry(&subentry);
+    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
+    Label exit(env);
+    Label find(env);
+    GateRef hash = HashFromHclassAndStringKey(glue, cls, key);
+
+    GateRef prop = PtrAdd(cache, PtrMul(ZExtInt32ToPtr(hash), IntPtr(MegaICCache::PropertyKey::GetPropertyKeySize())));
+    GateRef propHclass = Load(VariableType::JS_POINTER(), prop, IntPtr(MegaICCache::PropertyKey::GetHclassOffset()));
+    GateRef propKey = Load(VariableType::JS_ANY(), prop, IntPtr(MegaICCache::PropertyKey::GetKeyOffset()));
+
+    GateRef hclassIsEqual = IntPtrEqual(cls, propHclass);
+    GateRef keyIsEqual = IntPtrEqual(key, propKey);
+    IncMegaProbeCount(glue);
+    BRANCH(BitAnd(hclassIsEqual, keyIsEqual), &find, &exit);
+    Bind(&find);
+    {
+        result = Load(VariableType::JS_ANY(), prop, IntPtr(MegaICCache::PropertyKey::GetResultsOffset()));
+        IncMegaHitCount(glue);
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
 
 GateRef StubBuilder::BinarySearch(GateRef glue, GateRef layoutInfo, GateRef key, GateRef propsNum, GateRef hir)
 {
@@ -2343,7 +2376,11 @@ GateRef StubBuilder::LoadFromField(GateRef receiver, GateRef handlerInfo)
     Label handlerPost(env);
     DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
     GateRef index = HandlerBaseGetOffset(handlerInfo);
+#if ENABLE_NEXT_OPTIMIZATION
+    BRANCH_LIKELY(HandlerBaseIsInlinedProperty(handlerInfo), &handlerInfoIsInlinedProps, &handlerInfoNotInlinedProps);
+#else
     BRANCH(HandlerBaseIsInlinedProperty(handlerInfo), &handlerInfoIsInlinedProps, &handlerInfoNotInlinedProps);
+#endif
     Bind(&handlerInfoIsInlinedProps);
     {
         result = Load(VariableType::JS_ANY(), receiver, PtrMul(ZExtInt32ToPtr(index),
@@ -2360,7 +2397,11 @@ GateRef StubBuilder::LoadFromField(GateRef receiver, GateRef handlerInfo)
         Label nonDoubleToTagged(env);
         Label doubleToTagged(env);
         GateRef rep = HandlerBaseGetRep(handlerInfo);
+#if ENABLE_NEXT_OPTIMIZATION
+        BRANCH_UNLIKELY(IsDoubleRepInPropAttr(rep), &doubleToTagged, &nonDoubleToTagged);
+#else
         BRANCH(IsDoubleRepInPropAttr(rep), &doubleToTagged, &nonDoubleToTagged);
+#endif
         Bind(&doubleToTagged);
         {
             result = TaggedPtrToTaggedDoublePtr(*result);
@@ -2369,7 +2410,11 @@ GateRef StubBuilder::LoadFromField(GateRef receiver, GateRef handlerInfo)
         Bind(&nonDoubleToTagged);
         {
             Label intToTagged(env);
+#if ENABLE_NEXT_OPTIMIZATION
+            BRANCH_UNLIKELY(IsIntRepInPropAttr(rep), &intToTagged, &exit);
+#else
             BRANCH(IsIntRepInPropAttr(rep), &intToTagged, &exit);
+#endif
             Bind(&intToTagged);
             {
                 result = TaggedPtrToTaggedIntPtr(*result);
@@ -2487,7 +2532,11 @@ GateRef StubBuilder::LoadICWithHandler(
         Bind(&handlerIsInt);
         {
             GateRef handlerInfo = GetInt64OfTInt(*handler);
+#if ENABLE_NEXT_OPTIMIZATION
+            BRANCH_LIKELY(IsField(handlerInfo), &handlerInfoIsField, &handlerInfoNotField);
+#else
             BRANCH(IsField(handlerInfo), &handlerInfoIsField, &handlerInfoNotField);
+#endif
             Bind(&handlerInfoIsField);
             {
                 result = LoadFromField(*holder, handlerInfo);
@@ -2513,7 +2562,10 @@ GateRef StubBuilder::LoadICWithHandler(
                         Bind(&handlerInfoNotStringLength);
                         {
                             GateRef accessor = LoadFromField(*holder, handlerInfo);
+                            // The getter may involve nested calls, so it is better to end (or return) early.
+                            EndTraceLoad(glue);
                             result = CallGetterHelper(glue, receiver, *holder, accessor, callback);
+                            StartTraceLoadGetter(glue);
                             Jump(&exit);
                         }
                         Bind(&handlerInfoIsStringLength);
@@ -3611,7 +3663,10 @@ GateRef StubBuilder::GetPropertyByName(GateRef glue, GateRef receiver, GateRef k
                     BRANCH(IsAccessor(attr), &isAccessor, &notAccessor);
                     Bind(&isAccessor);
                     {
+                        // The getter may involve nested calls, so it is better to end (or return) early
+                        EndTraceLoad(glue);
                         result = CallGetterHelper(glue, receiver, *holder, value, callback);
+                        StartTraceLoadGetter(glue);
                         Jump(&exit);
                     }
                     Bind(&notAccessor);
@@ -3650,7 +3705,10 @@ GateRef StubBuilder::GetPropertyByName(GateRef glue, GateRef receiver, GateRef k
                     BRANCH(IsAccessor(attr), &isAccessor1, &notAccessor1);
                     Bind(&isAccessor1);
                     {
+                        // The getter may involve nested calls, so it is better to end (or return) early
+                        EndTraceLoad(glue);
                         result = CallGetterHelper(glue, receiver, *holder, value, callback);
+                        StartTraceLoadGetter(glue);
                         Jump(&exit);
                     }
                     Bind(&notAccessor1);
@@ -10939,6 +10997,34 @@ GateRef StubBuilder::NeedBarrier(GateRef kind){
     return ret;
 }
 
+void StubBuilder::StartTraceLoadDetail([[maybe_unused]] GateRef glue, [[maybe_unused]] GateRef receiver,
+                                       [[maybe_unused]] GateRef profileTypeInfo, [[maybe_unused]] GateRef slotId)
+{
+#if ECMASCRIPT_ENABLE_TRACE_LOAD
+    CallRuntime(glue, RTSTUB_ID(TraceLoadDetail), {receiver, profileTypeInfo, slotId});
+#endif
+}
+
+void StubBuilder::StartTraceLoadGetter([[maybe_unused]]GateRef glue)
+{
+#if ECMASCRIPT_ENABLE_TRACE_LOAD
+    CallRuntime(glue, RTSTUB_ID(TraceLoadGetter), {});
+#endif
+}
+
+void StubBuilder::StartTraceLoadSlowPath([[maybe_unused]]GateRef glue)
+{
+#if ECMASCRIPT_ENABLE_TRACE_LOAD
+    CallRuntime(glue, RTSTUB_ID(TraceLoadSlowPath), {});
+#endif
+}
+
+void StubBuilder::EndTraceLoad([[maybe_unused]]GateRef glue)
+{
+#if ECMASCRIPT_ENABLE_TRACE_LOAD
+    CallRuntime(glue, RTSTUB_ID(TraceLoadEnd), {});
+#endif
+}
 
 void StubBuilder::ArrayCopy(GateRef glue, GateRef srcObj, GateRef srcAddr, GateRef dstObj,
                             GateRef dstAddr, GateRef taggedValueCount, GateRef needBarrier, CopyKind copyKind)

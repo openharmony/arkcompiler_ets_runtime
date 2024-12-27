@@ -97,6 +97,9 @@ void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unus
 
 void DFXJSNApi::DumpCpuProfile([[maybe_unused]] const EcmaVM *vm)
 {
+#if ECMASCRIPT_ENABLE_MEGA_PROFILER
+    vm->GetJSThread()->GetCurrentEcmaContext()->PrintMegaICStat();
+#endif
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
 #if defined(ENABLE_DUMP_IN_FAULTLOG)
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)

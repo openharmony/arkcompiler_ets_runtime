@@ -460,6 +460,10 @@ void Builtins::InitializeGlobalObject(const JSHandle<GlobalEnv> &env, const JSHa
     SetFunction(env, globalObject, "printOptStat", Global::PrintOptStat, 0);
 #endif
 
+#if ECMASCRIPT_ENABLE_MEGA_PROFILER
+    SetFunction(env, globalObject, "printMegaICStat", Global::PrintMegaICStat, 0);
+#endif
+
 #if ECMASCRIPT_ENABLE_FUNCTION_CALL_TIMER
     SetFunction(env, globalObject, "printFunctionCallStat", Global::PrintFunctionCallStat, 0);
 #endif

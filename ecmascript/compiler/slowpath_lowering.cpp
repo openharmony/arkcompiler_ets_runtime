@@ -2413,13 +2413,28 @@ void SlowPathLowering::LowerLdGlobalVar(GateRef gate)
     LowerCallStubWithIC(gate, CommonStubCSigns::LdGlobalVar, { stringId });
 }
 
+bool SlowPathLowering::enableMegaIC(GateRef gate)
+{
+    // AOT is currently not enabled, but will be enabled later.
+    return compilationEnv_->GetJSOptions().IsEnableMegaIC() && compilationEnv_->IsJitCompiler() &&
+           acc_.TryGetMegaProp(gate);
+}
+
 void SlowPathLowering::LowerLdObjByName(GateRef gate)
 {
     // 3: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 3);
     GateRef stringId = acc_.GetValueIn(gate, 1);  // 1: the second parameter
-    GateRef receiver = acc_.GetValueIn(gate, 2);  // 2: the third parameter
-    LowerCallStubWithIC(gate, CommonStubCSigns::GetPropertyByName, { receiver, stringId });
+    GateRef receiver = acc_.GetValueIn(gate, 2);  // 2: the thi+rd parameter
+    if (enableMegaIC(gate)) {
+        // The JIT will assume that the cache will not change and that the String is always present in the constantPool.
+        auto cache = builder_.IntPtr((int64_t)(compilationEnv_->GetHostThread()->GetLoadMegaICCache()));
+        GateRef sharedConstPool = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::SHARED_CONST_POOL);
+        GateRef prop = builder_.GetValueFromTaggedArray(sharedConstPool, builder_.TruncInt64ToInt32(stringId));
+        LowerCallStubWithIC(gate, CommonStubCSigns::GetPropertyByNameWithMega, {receiver, stringId, cache, prop});
+    } else {
+        LowerCallStubWithIC(gate, CommonStubCSigns::GetPropertyByName, {receiver, stringId});
+    }
 }
 
 void SlowPathLowering::LowerStObjByName(GateRef gate, bool isThis)
@@ -2436,7 +2451,16 @@ void SlowPathLowering::LowerStObjByName(GateRef gate, bool isThis)
         value = acc_.GetValueIn(gate, 3);      // 3: the 4th para is value
     }
     GateRef stringId = acc_.GetValueIn(gate, 1);   // 1: the second parameter
-    LowerCallStubWithIC(gate, CommonStubCSigns::SetPropertyByName, { receiver, stringId, value });
+    if (enableMegaIC(gate)) {
+        // The JIT will assume that the cache will not change and that the String is always present in the constantPool.
+        auto cache = builder_.IntPtr((int64_t)(compilationEnv_->GetHostThread()->GetStoreMegaICCache()));
+        GateRef sharedConstPool = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::SHARED_CONST_POOL);
+        GateRef prop = builder_.GetValueFromTaggedArray(sharedConstPool, builder_.TruncInt64ToInt32(stringId));
+        LowerCallStubWithIC(gate, CommonStubCSigns::SetPropertyByNameWithMega,
+                            {receiver, stringId, value, cache, prop});
+    } else {
+        LowerCallStubWithIC(gate, CommonStubCSigns::SetPropertyByName, {receiver, stringId, value});
+    }
 }
 
 void SlowPathLowering::LowerDefineGetterSetterByValue(GateRef gate)

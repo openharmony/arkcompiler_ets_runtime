@@ -20,7 +20,15 @@
 #include "ecmascript/builtins/builtins_number.h"
 #include "ecmascript/compiler/aot_constantpool_patcher.h"
 #include "ecmascript/compiler/pgo_type/pgo_type_manager.h"
+#include "ecmascript/compiler/rt_call_signature.h"
 #include "ecmascript/dfx/vmstat/opt_code_profiler.h"
+#include "ecmascript/ecma_string.h"
+#include "ecmascript/ecma_string_table.h"
+#include "ecmascript/ecma_vm.h"
+#include "ecmascript/global_env.h"
+#include "ecmascript/global_env_constants-inl.h"
+#include "ecmascript/ic/mega_ic_cache.h"
+#include "ecmascript/interpreter/interpreter-inl.h"
 #include "ecmascript/jit/jit.h"
 #include "ecmascript/linked_hash_table.h"
 #include "ecmascript/module/module_logger.h"
@@ -68,7 +76,11 @@ bool EcmaContext::Initialize()
     LOG_ECMA(DEBUG) << "EcmaContext::Initialize";
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "EcmaContext::Initialize");
     [[maybe_unused]] EcmaHandleScope scope(thread_);
-    propertiesCache_ = new PropertiesCache();
+    ecmaData_.propertiesCache_ = new PropertiesCache();
+    if (vm_->GetJSOptions().IsEnableMegaIC()) {
+        ecmaData_.loadMegaICCache_ = new MegaICCache();
+        ecmaData_.storeMegaICCache_ = new MegaICCache();
+    }
     regExpParserCache_ = new RegExpParserCache();
     unsharedConstpools_ = new(std::nothrow) JSTaggedValue[GetUnsharedConstpoolsArrayLen()];
     if (unsharedConstpools_ == nullptr) {
@@ -140,6 +152,7 @@ void EcmaContext::InitializeEcmaScriptRunStat()
 #undef MEM_ALLOCATE_AND_GC_NAME
 #define DEF_RUNTIME_ID(name) "Runtime::" #name,
     RUNTIME_STUB_WITH_GC_LIST(DEF_RUNTIME_ID)
+    RUNTIME_STUB_WITH_DFX(DEF_RUNTIME_ID)
 #undef DEF_RUNTIME_ID
     };
     static_assert(sizeof(runtimeCallerNames) == sizeof(const char *) * ecmascript::RUNTIME_CALLER_NUMBER,
@@ -252,9 +265,17 @@ EcmaContext::~EcmaContext()
     if (aotFileManager_ != nullptr) {
         aotFileManager_ = nullptr;
     }
-    if (propertiesCache_ != nullptr) {
-        delete propertiesCache_;
-        propertiesCache_ = nullptr;
+    if (ecmaData_.loadMegaICCache_ != nullptr) {
+        delete ecmaData_.loadMegaICCache_;
+        ecmaData_.loadMegaICCache_ = nullptr;
+    }
+    if (ecmaData_.storeMegaICCache_ != nullptr) {
+        delete ecmaData_.storeMegaICCache_;
+        ecmaData_.storeMegaICCache_ = nullptr;
+    }
+    if (ecmaData_.propertiesCache_ != nullptr) {
+        delete ecmaData_.propertiesCache_;
+        ecmaData_.propertiesCache_ = nullptr;
     }
     if (sustainingJSHandleList_ != nullptr) {
         delete sustainingJSHandleList_;
@@ -977,7 +998,15 @@ void EcmaContext::SetupStringToListResultCache()
 {
     stringToListResultCache_ = builtins::StringToListResultCache::CreateCacheTable(thread_);
 }
-
+void EcmaContext::IterateMegaIC(const RootVisitor &v, [[maybe_unused]]const RootRangeVisitor &rv)
+{
+    if (ecmaData_.loadMegaICCache_ != nullptr) {
+        ecmaData_.loadMegaICCache_->Iterate(v);
+    }
+    if (ecmaData_.storeMegaICCache_ != nullptr) {
+        ecmaData_.storeMegaICCache_->Iterate(v);
+    }
+}
 void EcmaContext::Iterate(const RootVisitor &v, const RootRangeVisitor &rv)
 {
     // visit global Constant
@@ -1015,12 +1044,13 @@ void EcmaContext::Iterate(const RootVisitor &v, const RootRangeVisitor &rv)
     if (ptManager_) {
         ptManager_->Iterate(v);
     }
-    if (propertiesCache_ != nullptr) {
-        propertiesCache_->Clear();
+    if (ecmaData_.propertiesCache_ != nullptr) {
+        ecmaData_.propertiesCache_->Clear();
     }
     if (regExpParserCache_ != nullptr) {
         regExpParserCache_->Clear();
     }
+    IterateMegaIC(v, rv);
     if (!vm_->GetJSOptions().EnableGlobalLeakCheck() && currentHandleStorageIndex_ != -1) {
         // IterateHandle when disableGlobalLeakCheck.
         int32_t nid = currentHandleStorageIndex_;

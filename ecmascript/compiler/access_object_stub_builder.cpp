@@ -15,8 +15,10 @@
 #include "ecmascript/compiler/access_object_stub_builder.h"
 #include "ecmascript/compiler/ic_stub_builder.h"
 #include "ecmascript/compiler/interpreter_stub-inl.h"
+#include "ecmascript/compiler/profiler_operation.h"
 #include "ecmascript/compiler/profiler_stub_builder.h"
 #include "ecmascript/compiler/rt_call_signature.h"
+#include "ecmascript/compiler/share_gate_meta_data.h"
 #include "ecmascript/compiler/stub_builder-inl.h"
 #include "ecmascript/ic/profile_type_info.h"
 
@@ -35,6 +37,7 @@ GateRef AccessObjectStubBuilder::LoadObjByName(GateRef glue, GateRef receiver, G
     DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
     GateRef value = 0;
     ICStubBuilder builder(this);
+    StartTraceLoadDetail(glue, receiver, profileTypeInfo, IntToTaggedInt(slotId));
     builder.SetParameters(glue, receiver, profileTypeInfo, value, slotId);
     builder.LoadICByName(&result, &tryFastPath, &tryPreDump, &exit, callback);
     Bind(&tryFastPath);
@@ -50,9 +53,41 @@ GateRef AccessObjectStubBuilder::LoadObjByName(GateRef glue, GateRef receiver, G
     }
     Bind(&slowPath);
     {
+        EndTraceLoad(glue);
+        StartTraceLoadSlowPath(glue);
         GateRef propKey = ResolvePropKey(glue, prop, info);
         result =
             CallRuntime(glue, RTSTUB_ID(LoadICByName), {profileTypeInfo, receiver, propKey, IntToTaggedInt(slotId)});
+        Jump(&exit);
+    }
+    Bind(&exit);
+    EndTraceLoad(glue);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef AccessObjectStubBuilder::LoadObjByNameWithMega(GateRef glue, GateRef receiver, GateRef megaStubCache,
+                                                       GateRef propKey, GateRef jsFunc, GateRef slotId,
+                                                       ProfileOperation callback)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+    Label slowPath(env);
+
+    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
+    GateRef value = 0;
+    ICStubBuilder builder(this);
+    builder.SetParameters(glue, receiver, 0, value, slotId, megaStubCache, propKey, ProfileOperation());
+    builder.LoadICByNameWithMega(&result, nullptr, &slowPath, &exit, callback);
+    Bind(&slowPath);
+    {
+        GateRef profileTypeInfo = GetProfileTypeInfo(jsFunc);
+        result =
+            CallRuntime(glue, RTSTUB_ID(LoadICByName), {profileTypeInfo, receiver, propKey, IntToTaggedInt(slotId)});
+        callback.TryPreDump();
         Jump(&exit);
     }
     Bind(&exit);
@@ -60,6 +95,36 @@ GateRef AccessObjectStubBuilder::LoadObjByName(GateRef glue, GateRef receiver, G
     env->SubCfgExit();
     return ret;
 }
+
+
+GateRef AccessObjectStubBuilder::StoreObjByNameWithMega(GateRef glue, GateRef receiver, GateRef value,
+                                                        GateRef megaStubCache, GateRef propKey, GateRef jsFunc,
+                                                        GateRef slotId, ProfileOperation callback)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+    Label tryFastPath(env);
+    Label slowPath(env);
+    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
+    ICStubBuilder builder(this);
+    builder.SetParameters(glue, receiver, 0, value, slotId, megaStubCache, propKey, ProfileOperation());
+    builder.StoreICByNameWithMega(&result, nullptr, &slowPath, &exit);
+    Bind(&slowPath);
+    {
+        GateRef profileTypeInfo = GetProfileTypeInfo(jsFunc);
+        result = CallRuntime(glue, RTSTUB_ID(StoreICByName),
+                             {profileTypeInfo, receiver, propKey, value, IntToTaggedInt(slotId)});
+        callback.TryPreDump();
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
 
 GateRef AccessObjectStubBuilder::LoadPrivatePropertyByName(
     GateRef glue, GateRef receiver, GateRef key, GateRef profileTypeInfo, GateRef slotId, ProfileOperation callback)

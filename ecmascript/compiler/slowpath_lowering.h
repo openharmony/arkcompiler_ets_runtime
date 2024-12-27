@@ -151,7 +151,7 @@ private:
     {
         return methodName_;
     }
-
+    bool enableMegaIC(GateRef gate);
     void ReplaceHirWithPendingException(GateRef hirGate, GateRef state, GateRef depend, GateRef value);
     void ReplaceHirWithValue(GateRef hirGate, GateRef value, bool noThrow = false);
     void ReplaceHirToThrowCall(GateRef hirGate, GateRef callGate);

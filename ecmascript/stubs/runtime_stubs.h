@@ -50,6 +50,7 @@ public:
 #define DECLARE_RUNTIME_STUBS(name) \
     static JSTaggedType name(uintptr_t argGlue, uint32_t argc, uintptr_t argv);
     RUNTIME_STUB_WITH_GC_LIST(DECLARE_RUNTIME_STUBS)
+    RUNTIME_STUB_WITH_DFX(DECLARE_RUNTIME_STUBS)
     TEST_RUNTIME_STUB_GC_LIST(DECLARE_RUNTIME_STUBS)
 #undef DECLARE_RUNTIME_STUBS
 

@@ -163,7 +163,7 @@ HWTEST_F_L0(ICRuntimeStubTest, StoreICAndLoadIC_ByName)
     JSHandle<JSTaggedValue> handleValue(thread, JSTaggedValue(1));
     JSHandle<JSTaggedValue> handleStoreVal(thread, JSTaggedValue(2));
 
-    uint32_t arrayLength = 1U;
+    uint32_t arrayLength = 2U;
     JSHandle<TaggedArray> handleTaggedArray = factory->NewTaggedArray(arrayLength);
     JSHandle<ProfileTypeInfo> handleProfileTypeInfo = JSHandle<ProfileTypeInfo>::Cast(handleTaggedArray);
 

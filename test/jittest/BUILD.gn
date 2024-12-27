@@ -45,6 +45,7 @@ group("ark_jit_ts_test") {
     "inc",
     "uncheck_float64_to_int32",
     "retype_convert_test",
+    "mega_ic_test",
   ]
 
   deps = [ "pgo_roottype_test:pgo_roottype_test" ]

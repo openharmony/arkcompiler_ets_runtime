@@ -1087,6 +1087,17 @@ PropertiesCache *JSThread::GetPropertiesCache() const
     return glueData_.currentContext_->GetPropertiesCache();
 }
 
+MegaICCache *JSThread::GetLoadMegaICCache() const
+{
+    return glueData_.currentContext_->GetLoadMegaICCache();
+}
+
+MegaICCache *JSThread::GetStoreMegaICCache() const
+{
+    return glueData_.currentContext_->GetStoreMegaICCache();
+}
+
+
 const GlobalEnvConstants *JSThread::GetFirstGlobalConst() const
 {
     return contexts_[0]->GlobalConstants();

@@ -217,6 +217,9 @@ int Main(const int argc, const char **argv)
     newArgc--;
     JSRuntimeOptions runtimeOptions;
     bool retOpt = runtimeOptions.ParseCommand(newArgc, argv);
+    if (!runtimeOptions.IsMegaICInitialized()) {
+        runtimeOptions.SetEnableMegaIC(true);
+    }
     if (!retOpt) {
         std::cerr << GetHelper();
         return 1;

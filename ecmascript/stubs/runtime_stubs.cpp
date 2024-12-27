@@ -4067,6 +4067,100 @@ void RuntimeStubs::FillObject(JSTaggedType *dst, JSTaggedType value, uint32_t co
     std::fill_n(dst, count, value);
 }
 
+DEF_RUNTIME_STUBS(TraceLoadSlowPath)
+{
+#if ECMASCRIPT_ENABLE_TRACE_LOAD
+    auto thread = JSThread::GlueToJSThread(argGlue);
+    auto target_bundle_name = thread->GetEcmaVM()->GetJSOptions().GetTraceLoadBundleName();
+    if (thread->GetEcmaVM()->GetBundleName() != ConvertToString(target_bundle_name)) {
+        return JSTaggedValue::Undefined().GetRawData();
+    }
+
+    ECMA_BYTRACE_START_TRACE(HITRACE_TAG_ARK, "[dfx]TraceLoadSlowPath");
+#endif
+    return JSTaggedValue::Undefined().GetRawData();
+}
+
+DEF_RUNTIME_STUBS(TraceLoadGetter)
+{
+#if ECMASCRIPT_ENABLE_TRACE_LOAD
+    auto thread = JSThread::GlueToJSThread(argGlue);
+    auto target_bundle_name = thread->GetEcmaVM()->GetJSOptions().GetTraceLoadBundleName();
+    if (thread->GetEcmaVM()->GetBundleName() != ConvertToString(target_bundle_name)) {
+        return JSTaggedValue::Undefined().GetRawData();
+    }
+
+    ECMA_BYTRACE_START_TRACE(HITRACE_TAG_ARK, "[DFX]TraceLoadGetter");
+#endif
+    return JSTaggedValue::Undefined().GetRawData();
+}
+
+DEF_RUNTIME_STUBS(TraceLoadDetail)
+{
+#if ECMASCRIPT_ENABLE_TRACE_LOAD
+    auto thread = JSThread::GlueToJSThread(argGlue);
+    auto target_bundle_name = thread->GetEcmaVM()->GetJSOptions().GetTraceLoadBundleName();
+    if (thread->GetEcmaVM()->GetBundleName() != ConvertToString(target_bundle_name)) {
+        return JSTaggedValue::Undefined().GetRawData();
+    }
+
+    JSHandle<JSTaggedValue> receiver = GetHArg<JSTaggedValue>(argv, argc, 0);
+    JSHandle<JSTaggedValue> profile = GetHArg<JSTaggedValue>(argv, argc, 1);
+    JSTaggedValue slotId = GetArg(argv, argc, 2);
+    CString msg = "[DFX]Trace Load Detail: ";
+    if (profile->IsUndefined()) {
+        msg += "ProfileTypeInfo Undefine";
+    } else {
+        auto prof = JSHandle<ProfileTypeInfo>::Cast(profile);
+        auto slot = slotId.GetInt();
+        auto first = prof->GetIcSlot(slot);
+        if (first.IsHole()) {
+            auto second = prof->GetIcSlot(slot + 1);
+            if (second.IsHole()) {
+                msg += "other-mega, ";
+            // 1: Call SetAsMegaDFX and set it to 1 (for placeholder purposes)..
+            } else if (second == JSTaggedValue(ProfileTypeAccessor::MegaState::NOTFOUND_MEGA)) {
+                msg += "not_found-mage, ";
+            // 2: Call SetAsMegaDFX and set it to 2 (for placeholder purposes).
+            } else if (second == JSTaggedValue(ProfileTypeAccessor::MegaState::DICT_MEGA)) {
+                msg += "dictionary-mega, ";
+            } else if (second.IsString()) {
+                msg += "ic-mega, ";
+            } else {
+                msg += "unkown-mega, ";
+            }
+        } else if (first.IsUndefined()) {
+            msg += "undedfine slot, ";
+        } else if (first.IsWeak()) {
+            msg += "mono, ";
+        } else {
+            msg += "poly, ";
+        }
+    }
+    if (!receiver->IsHeapObject()) {
+        msg += "prim_obj";
+    } else {
+        msg += "heap_obj";
+    }
+    ECMA_BYTRACE_START_TRACE(HITRACE_TAG_ARK, msg);
+#endif
+    return JSTaggedValue::Undefined().GetRawData();
+}
+
+DEF_RUNTIME_STUBS(TraceLoadEnd)
+{
+#if ECMASCRIPT_ENABLE_TRACE_LOAD
+    auto thread = JSThread::GlueToJSThread(argGlue);
+    auto target_bundle_name = thread->GetEcmaVM()->GetJSOptions().GetTraceLoadBundleName();
+    if (thread->GetEcmaVM()->GetBundleName() != ConvertToString(target_bundle_name)) {
+        return JSTaggedValue::Undefined().GetRawData();
+    }
+
+    ECMA_BYTRACE_FINISH_TRACE(HITRACE_TAG_ARK);
+#endif
+    return JSTaggedValue::Undefined().GetRawData();
+}
+
 DEF_RUNTIME_STUBS(ArrayForEachContinue)
 {
     RUNTIME_STUBS_HEADER(ArrayForEachContinue);
@@ -4297,6 +4391,7 @@ void RuntimeStubs::Initialize(JSThread *thread)
     thread->RegisterRTInterface(DEF_RUNTIME_STUB(name), reinterpret_cast<uintptr_t>(name));
     RUNTIME_STUB_WITHOUT_GC_LIST(INITIAL_RUNTIME_FUNCTIONS)
     RUNTIME_STUB_WITH_GC_LIST(INITIAL_RUNTIME_FUNCTIONS)
+    RUNTIME_STUB_WITH_DFX(INITIAL_RUNTIME_FUNCTIONS)
     TEST_RUNTIME_STUB_GC_LIST(INITIAL_RUNTIME_FUNCTIONS)
 #undef INITIAL_RUNTIME_FUNCTIONS
 #undef DEF_RUNTIME_STUB

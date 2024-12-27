@@ -1834,4 +1834,10 @@ JSHandle<JSTaggedValue> JSTaggedValue::PublishSharedValueSlow(JSThread *thread, 
     EcmaString *flatStr = EcmaStringAccessor::Flatten(thread->GetEcmaVM(), JSHandle<EcmaString>(value));
     return JSHandle<JSTaggedValue>(thread, JSTaggedValue(flatStr));
 }
+
+uint32_t JSTaggedValue::GetStringKeyHashCode() const
+{
+    ASSERT(IsString());
+    return EcmaStringAccessor(GetTaggedObject()).GetHashcode();
+}
 }  // namespace panda::ecmascript
