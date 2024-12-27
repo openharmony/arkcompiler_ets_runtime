@@ -506,10 +506,10 @@ JSHandle<JSArray> JSArray::CreateArrayFromList(JSThread *thread, const JSHandle<
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSObject> obj = factory->NewJSObject(jsHClass);
     
-    JSArray::Cast(*obj)->SetLength(0);
     JSArray::Cast(*obj)->SetTrackInfo(thread, JSTaggedValue::Undefined());
     auto accessor = thread->GlobalConstants()->GetArrayLengthAccessor();
-    JSArray::Cast(*obj)->SetPropertyInlinedProps(thread, JSArray::LENGTH_INLINE_PROPERTY_INDEX, accessor);
+    JSArray::Cast(*obj)->SetPropertyInlinedPropsWithSize<JSArray::SIZE, JSArray::LENGTH_INLINE_PROPERTY_INDEX>(
+        thread, accessor);
     
     obj->GetJSHClass()->SetExtensible(true);
     JSArray::Cast(*obj)->SetArrayLength(thread, length);

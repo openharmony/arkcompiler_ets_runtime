@@ -25,7 +25,7 @@
 namespace panda::ecmascript {
 enum class ArrayMode : uint8_t { UNDEFINED = 0, DICTIONARY, LITERAL };
 // ecma6 9.4.2 Array Exotic Object
-class JSArray : public JSObject {
+class JSArray final : public JSObject {
 public:
     // array instance property:
     static constexpr int LENGTH_INLINE_PROPERTY_INDEX = 0;

@@ -47,10 +47,12 @@ class JSIterator final {
 public:
     static constexpr int VALUE_INLINE_PROPERTY_INDEX = 0;
     static constexpr int DONE_INLINE_PROPERTY_INDEX = 1;
+
+    static constexpr size_t SIZE = JSObject::SIZE;
     
     static uint32_t GetInlinedPropertyOffset(uint32_t index)
     {
-        return JSObject::SIZE + index * JSTaggedValue::TaggedTypeSize();
+        return JSIterator::SIZE + index * JSTaggedValue::TaggedTypeSize();
     }
 
     static JSTaggedValue IteratorCloseAndReturn(JSThread *thread, const JSHandle<JSTaggedValue> &iter);

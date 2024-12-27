@@ -537,7 +537,7 @@ GateRef BuiltinsArrayStubBuilder::NewEmptyArrayWithHClass(GateRef glue, GateRef 
     BRANCH(TaggedIsException(*result), &exit, &setProperties);
     Bind(&setProperties);
     {
-        InitializeArray(glue, Int32(0), &result, hclass);
+        InitializeArray(glue, Int32(0), &result);
         Jump(&exit);
     }
     Bind(&exit);

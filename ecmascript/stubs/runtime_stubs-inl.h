@@ -2727,7 +2727,8 @@ JSTaggedValue RuntimeStubs::RuntimeGetUnmapedJSArgumentObj(JSThread *thread, con
     JSHandle<JSArguments> obj = factory->NewJSArguments();
     // 4. Perform DefinePropertyOrThrow(obj, "length", PropertyDescriptor{[[Value]]: len, [[Writable]]: true,
     // [[Enumerable]]: false, [[Configurable]]: true}).
-    obj->SetPropertyInlinedProps(thread, JSArguments::LENGTH_INLINE_PROPERTY_INDEX, JSTaggedValue(len));
+    obj->SetPropertyInlinedPropsWithSize<JSArguments::SIZE, JSArguments::LENGTH_INLINE_PROPERTY_INDEX>(
+        thread, JSTaggedValue(len));
     // 5. Let index be 0.
     // 6. Repeat while index < len,
     //    a. Let val be argumentsList[index].
@@ -2737,16 +2738,18 @@ JSTaggedValue RuntimeStubs::RuntimeGetUnmapedJSArgumentObj(JSThread *thread, con
     // 7. Perform DefinePropertyOrThrow(obj, @@iterator, PropertyDescriptor
     // {[[Value]]:%ArrayProto_values%,
     // [[Writable]]: true, [[Enumerable]]: false, [[Configurable]]: true}).
-    obj->SetPropertyInlinedProps(thread, JSArguments::ITERATOR_INLINE_PROPERTY_INDEX,
-                                 globalEnv->GetArrayProtoValuesFunction().GetTaggedValue());
+    obj->SetPropertyInlinedPropsWithSize<JSArguments::SIZE, JSArguments::ITERATOR_INLINE_PROPERTY_INDEX>(
+        thread, globalEnv->GetArrayProtoValuesFunction().GetTaggedValue());
     // 8. Perform DefinePropertyOrThrow(obj, "caller", PropertyDescriptor {[[Get]]: %ThrowTypeError%,
     // [[Set]]: %ThrowTypeError%, [[Enumerable]]: false, [[Configurable]]: false}).
     JSHandle<JSTaggedValue> accessorCaller = globalEnv->GetArgumentsCallerAccessor();
-    obj->SetPropertyInlinedProps(thread, JSArguments::CALLER_INLINE_PROPERTY_INDEX, accessorCaller.GetTaggedValue());
+    obj->SetPropertyInlinedPropsWithSize<JSArguments::SIZE, JSArguments::CALLER_INLINE_PROPERTY_INDEX>(
+        thread, accessorCaller.GetTaggedValue());
     // 9. Perform DefinePropertyOrThrow(obj, "callee", PropertyDescriptor {[[Get]]: %ThrowTypeError%,
     // [[Set]]: %ThrowTypeError%, [[Enumerable]]: false, [[Configurable]]: false}).
     JSHandle<JSTaggedValue> accessorCallee = globalEnv->GetArgumentsCalleeAccessor();
-    obj->SetPropertyInlinedProps(thread, JSArguments::CALLEE_INLINE_PROPERTY_INDEX, accessorCallee.GetTaggedValue());
+    obj->SetPropertyInlinedPropsWithSize<JSArguments::SIZE, JSArguments::CALLEE_INLINE_PROPERTY_INDEX>(
+        thread, accessorCallee.GetTaggedValue());
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     // 11. Return obj
     return obj.GetTaggedValue();
