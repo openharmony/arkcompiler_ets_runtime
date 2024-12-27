@@ -3585,14 +3585,14 @@ JSTaggedValue RuntimeStubs::CallBoundFunction(EcmaRuntimeCallInfo *info)
 DEF_RUNTIME_STUBS(DeoptHandler)
 {
     RUNTIME_STUBS_HEADER(DeoptHandler);
-    size_t depth = static_cast<size_t>(GetTArg(argv, argc, 1));
+    size_t depth = static_cast<size_t>(GetArg(argv, argc, 1).GetInt());
     Deoptimizier deopt(thread, depth);
     std::vector<kungfu::ARKDeopt> deoptBundle;
     deopt.CollectDeoptBundleVec(deoptBundle);
     ASSERT(!deoptBundle.empty());
     size_t shift = Deoptimizier::ComputeShift(depth);
     deopt.CollectVregs(deoptBundle, shift);
-    kungfu::DeoptType type = static_cast<kungfu::DeoptType>(GetTArg(argv, argc, 0));
+    kungfu::DeoptType type = static_cast<kungfu::DeoptType>(GetArg(argv, argc, 0).GetInt());
     deopt.UpdateAndDumpDeoptInfo(type);
     return deopt.ConstructAsmInterpretFrame();
 }
