@@ -198,6 +198,7 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--async-load-abc-test:                Enable asynchronous load abc test. Default: 'false'\n"
     "--compiler-enable-store-barrier:      Enable store barrier optimization. Default: 'true'\n"
     "--compiler-enable-concurrent:         Enable concurrent compile(only support in ark_stub_compiler).\n"
+    "--compile-enable-jit-verify-pass:     Enable jit compile with verify pass. Default: 'false'\n\n"
     "                                      Default: 'true'\n"
     "--compiler-opt-frame-state-elimination: Enable frame state elimination. Default: 'true'\n"
     "--enable-inline-property-optimization:  Enable inline property optimization(also enable slack tracking).\n"
@@ -350,6 +351,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
             OPTION_COMPILER_OPT_FRAME_STATE_ELIMINATION},
         {"enable-inline-property-optimization", required_argument, nullptr, OPTION_ENABLE_INLINE_PROPERTY_OPTIMIZATION},
         {"compiler-enable-aot-code-comment", required_argument, nullptr, OPTION_COMPILER_ENABLE_AOT_CODE_COMMENT},
+        {"compile-enable-jit-verify-pass", required_argument, nullptr, OPTION_ENABLE_JIT_VERIFY_PASS},
         {"compiler-an-file-max-size", required_argument, nullptr, OPTION_COMPILER_AN_FILE_MAX_SIZE},
         {"compiler-trace-builtins", required_argument, nullptr, OPTION_COMPILER_TRACE_BUILTINS},
         {nullptr, 0, nullptr, 0},
@@ -1357,6 +1359,14 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                  ret = ParseBoolParam(&argBool);
                 if (ret) {
                     SetEnableInlinePropertyOptimization(argBool);
+                } else {
+                    return false;
+                }
+                break;
+            case OPTION_ENABLE_JIT_VERIFY_PASS:
+                 ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetEnableJitVerifyPass(argBool);
                 } else {
                     return false;
                 }

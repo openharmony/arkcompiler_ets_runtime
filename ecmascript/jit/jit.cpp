@@ -123,6 +123,9 @@ void Jit::ConfigOptions(EcmaVM *vm) const
     bool jitEnableJitFort = ohos::JitTools::GetEnableJitFort(options.GetEnableJitFort());
     options.SetEnableJitFort(jitEnableJitFort);
 
+    bool jitEnableVerifyPass = ohos::JitTools::GetEnableJitVerifyPass(options.IsEnableJitVerifyPass());
+    options.SetEnableJitVerifyPass(jitEnableVerifyPass);
+
     bool jitEnableAsyncCopyToFort = ohos::JitTools::GetEnableAsyncCopyToFort(options.GetEnableAsyncCopyToFort());
     options.SetEnableAsyncCopyToFort(jitEnableAsyncCopyToFort);
 

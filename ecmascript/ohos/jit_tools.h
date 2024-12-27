@@ -110,6 +110,14 @@ public:
         return value;
     }
 
+    static bool GetEnableJitVerifyPass(bool value)
+    {
+    #ifdef GET_PARAMETER_FOR_JIT
+        return OHOS::system::GetBoolParameter("persist.ark.jit.enable.jitverify", true);
+    #endif
+        return value;
+    }
+
     static bool GetEnableAsyncCopyToFort(bool value)
     {
     #ifdef GET_PARAMETER_FOR_JIT

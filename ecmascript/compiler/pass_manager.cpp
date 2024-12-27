@@ -195,7 +195,8 @@ bool JitPassManager::Compile(JSHandle<ProfileTypeInfo> &profileTypeInfo,
         pipeline.RunPass<InstructionCombinePass>();
         pipeline.RunPass<EarlyEliminationPass>();
         pipeline.RunPass<UselessGateEliminationPass>();
-        if (!compilationEnv_->GetJSOptions().IsEnableJitFastCompile()) {
+        if (!compilationEnv_->GetJSOptions().IsEnableJitFastCompile()
+            && compilationEnv_->GetJSOptions().IsEnableJitVerifyPass()) {
             pipeline.RunPass<VerifierPass>();
         }
         pipeline.RunPass<GraphLinearizerPass>();
