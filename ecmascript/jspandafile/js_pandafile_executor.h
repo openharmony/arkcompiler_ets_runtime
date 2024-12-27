@@ -31,8 +31,6 @@ public:
 
     std::pair<CString, CString> ParseEntryPointWithUnifiedRules(EcmaVM *vm, const CString &filename,
                                                                 std::string_view entryPoint);
-    static std::pair<CString, CString> ParseAbcEntryPoint(JSThread *thread, const CString &filename,
-                                                          [[maybe_unused]] std::string_view entryPoint);
     static Expected<JSTaggedValue, bool> ExecuteFromFile(JSThread *thread, const CString &name,
                                                          CString entry, bool needUpdate = false,
                                                          bool executeFromJob = false);

@@ -22,36 +22,10 @@
 #include "ecmascript/module/module_resolver.h"
 #include "ecmascript/module/module_tools.h"
 #include "ecmascript/checkpoint/thread_state_transition.h"
+#include "ecmascript/platform/pandafile.h"
 
 namespace panda::ecmascript {
 using PathHelper = base::PathHelper;
-
-// use "@bundle" as ohmurl's rules, will be abandon later
-std::pair<CString, CString> JSPandaFileExecutor::ParseAbcEntryPoint(JSThread *thread, const CString &filename,
-    [[maybe_unused]] std::string_view entryPoint)
-{
-    CString name;
-    CString entry;
-    [[maybe_unused]] EcmaVM *vm = thread->GetEcmaVM();
-#if defined(PANDA_TARGET_LINUX) || defined(OHOS_UNIT_TEST) || defined(PANDA_TARGET_MACOS)
-    return {filename, entryPoint.data()};
-#else
-    CString normalName = PathHelper::NormalizePath(filename);
-    ModulePathHelper::ParseAbcPathAndOhmUrl(vm, normalName, name, entry);
-#if !defined(PANDA_TARGET_WINDOWS)
-    if (name.empty()) {
-        name = vm->GetAssetPath();
-    }
-#elif defined(PANDA_TARGET_WINDOWS)
-    CString assetPath = vm->GetAssetPath();
-    name = assetPath + "\\" + JSPandaFile::MERGE_ABC_NAME;
-#else
-    CString assetPath = vm->GetAssetPath();
-    name = assetPath + "/" + JSPandaFile::MERGE_ABC_NAME;
-#endif
-#endif
-    return std::make_pair(name, entry);
-}
 
 Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromFile(JSThread *thread, const CString &name,
     CString entry, bool needUpdate, bool executeFromJob)
@@ -181,15 +155,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteModuleBuffer(
     CString name;
     CString entry;
     EcmaVM *vm = thread->GetEcmaVM();
-#if !defined(PANDA_TARGET_WINDOWS)
-    name = vm->GetAssetPath();
-#elif defined(PANDA_TARGET_WINDOWS)
-    CString assetPath = vm->GetAssetPath();
-    name = assetPath + "\\" + JSPandaFile::MERGE_ABC_NAME;
-#else
-    CString assetPath = vm->GetAssetPath();
-    name = assetPath + "/" + JSPandaFile::MERGE_ABC_NAME;
-#endif
+    name = GetAssetPath(vm);
     CString normalName = PathHelper::NormalizePath(filename);
     ModulePathHelper::ParseAbcPathAndOhmUrl(vm, normalName, name, entry);
     std::shared_ptr<JSPandaFile> jsPandaFile =
@@ -366,15 +332,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteModuleBufferSecure(JST
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, traceInfo.c_str());
     CString name;
     EcmaVM *vm = thread->GetEcmaVM();
-#if !defined(PANDA_TARGET_WINDOWS)
-    name = vm->GetAssetPath();
-#elif defined(PANDA_TARGET_WINDOWS)
-    CString assetPath = vm->GetAssetPath();
-    name = assetPath + "\\" + JSPandaFile::MERGE_ABC_NAME;
-#else
-    CString assetPath = vm->GetAssetPath();
-    name = assetPath + "/" + JSPandaFile::MERGE_ABC_NAME;
-#endif
+    name = GetAssetPath(vm);
     CString entry;
     CString normalName = PathHelper::NormalizePath(filename);
     ModulePathHelper::ParseAbcPathAndOhmUrl(vm, normalName, name, entry);

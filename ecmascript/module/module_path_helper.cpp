@@ -14,6 +14,8 @@
  */
 #include "ecmascript/module/module_path_helper.h"
 
+#include "ecmascript/platform/module.h"
+
 namespace panda::ecmascript {
 /*
  * This function use recordName, requestName to get baseFileName and entryPoint.
@@ -184,22 +186,7 @@ void ModulePathHelper::ParseAbcPathAndOhmUrl(EcmaVM *vm, const CString &inputFil
             outEntryPoint = inputFileName.substr(PREFIX_BUNDLE_LEN);
             outBaseFileName = ParseUrl(vm, outEntryPoint);
         } else {
-#if !defined(PANDA_TARGET_WINDOWS) && !defined(PANDA_TARGET_MACOS)
-            // inputFileName: moduleName/ets/xxx/xxx.abc
-            outEntryPoint = vm->GetBundleName() + PathHelper::SLASH_TAG + inputFileName;
-#else
-            // if the inputFileName starts with '.test', the preview test page is started.
-            // in this case, the path ets does not need to be combined.
-            // inputFileName: .test/xxx/xxx.abc
-            if (StringHelper::StringStartWith(inputFileName, PREVIER_TEST_DIR)) {
-                outEntryPoint = vm->GetBundleName() + PathHelper::SLASH_TAG + vm->GetModuleName() +
-                                PathHelper::SLASH_TAG + inputFileName;
-            } else {
-                // inputFileName: xxx/xxx.abc
-                outEntryPoint = vm->GetBundleName() + PathHelper::SLASH_TAG + vm->GetModuleName() +
-                                MODULE_DEFAULE_ETS + inputFileName;
-            }
-#endif
+            outEntryPoint = GetOutEntryPoint(vm, inputFileName);
         }
     }
     if (StringHelper::StringEndWith(outEntryPoint, EXT_NAME_ABC)) {
@@ -352,33 +339,7 @@ CString ModulePathHelper::ParsePrefixBundle(JSThread *thread, const JSPandaFile 
         CString bundleName = vec[0];
         CString moduleName = vec[1];
         PathHelper::DeleteNamespace(moduleName);
-
-#if !defined(PANDA_TARGET_WINDOWS) && !defined(PANDA_TARGET_MACOS)
-        if (bundleName != vm->GetBundleName()) {
-            baseFileName = BUNDLE_INSTALL_PATH + bundleName + PathHelper::SLASH_TAG + moduleName +
-                           PathHelper::SLASH_TAG + moduleName + MERGE_ABC_ETS_MODULES;
-        } else if (moduleName != vm->GetModuleName()) {
-            baseFileName = BUNDLE_INSTALL_PATH + moduleName + MERGE_ABC_ETS_MODULES;
-        } else {
-            // Support multi-module card service
-            baseFileName = vm->GetAssetPath();
-        }
-#else
-        CVector<CString> currentVec;
-        StringHelper::SplitString(moduleRequestName, currentVec, 0, SEGMENTS_LIMIT_TWO);
-        if (currentVec.size() < SEGMENTS_LIMIT_TWO) { // LCOV_EXCL_BR_LINE
-            LOG_ECMA(FATAL) << " Exceptional module path : " << moduleRequestName << ", abc path: " <<
-                baseFileName << ", current file name: " << recordName;
-        }
-        CString currentModuleName = currentVec[1];
-        PathHelper::DeleteNamespace(currentModuleName);
-        if (bundleName != vm->GetBundleName()) {
-            baseFileName = BUNDLE_INSTALL_PATH + bundleName + PathHelper::SLASH_TAG + moduleName +
-                           PathHelper::SLASH_TAG + moduleName + MERGE_ABC_ETS_MODULES;
-        } else if (currentModuleName != vm->GetModuleName()) {
-            baseFileName = BUNDLE_INSTALL_PATH + moduleName + MERGE_ABC_ETS_MODULES;
-        }
-#endif
+        baseFileName = GetBaseFileName(vm, moduleRequestName, baseFileName, bundleName, moduleName, recordName);
     } else {
         PathHelper::AdaptOldIsaRecord(entryPoint);
     }

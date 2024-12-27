@@ -22,6 +22,7 @@
 #include "ecmascript/module/module_message_helper.h"
 #include "ecmascript/module/module_tools.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
+#include "ecmascript/platform/pandafile.h"
 
 namespace panda::ecmascript {
 using PGOProfilerManager = pgo::PGOProfilerManager;
@@ -72,9 +73,7 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFile(JSThread *threa
         !vm->IsRestrictedWorkerThread()) {
         ResolveBufferCallback resolveBufferCallback = vm->GetResolveBufferCallback();
         if (resolveBufferCallback == nullptr) {
-#if defined(PANDA_TARGET_WINDOWS) || defined(PANDA_TARGET_MACOS)
-            LOG_NO_TAG(ERROR) << "[ArkRuntime Log] Importing shared package is not supported in the Previewer.";
-#endif
+            LoadJSPandaFileFailLog("[ArkRuntime Log] Importing shared package is not supported in the Previewer.");
             LOG_FULL(FATAL) << "resolveBufferCallback is nullptr";
             return nullptr;
         }
@@ -93,18 +92,12 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFile(JSThread *threa
         std::string errorMsg;
         bool getBuffer = resolveBufferCallback(hspPath, &data, &dataSize, errorMsg);
         if (!getBuffer) {
-#if defined(PANDA_TARGET_WINDOWS) || defined(PANDA_TARGET_MACOS)
-            LOG_NO_TAG(INFO) << "[ArkRuntime Log] Importing shared package in the Previewer.";
-#endif
+            LoadJSPandaFileFailLog("[ArkRuntime Log] Importing shared package in the Previewer.");
             LOG_FULL(FATAL) << "resolveBufferCallback get hsp buffer failed, hsp path:" << filename
                 << ", errorMsg:" << errorMsg;
             return nullptr;
         }
-#if defined(PANDA_TARGET_ANDROID) || defined(PANDA_TARGET_IOS)
-        pf = panda_file::OpenPandaFileFromMemory(data, dataSize);
-#else
-        pf = panda_file::OpenPandaFileFromSecureMemory(data, dataSize);
-#endif
+        pf = OpenPandaFileFromMemory(data, dataSize);
     } else if (vm->IsRestrictedWorkerThread()) {
         // ReadOnly
         pf = panda_file::OpenPandaFileOrZip(filename);
@@ -151,17 +144,7 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFile(JSThread *threa
             return jsPandaFile;
         }
     }
-#if defined(PANDA_TARGET_PREVIEW)
-    auto pf = panda_file::OpenPandaFileFromMemory(buffer, size);
-#else
-    CString tag = ModulePathHelper::ParseFileNameToVMAName(filename);
-    constexpr size_t PR_SET_VMA_ANON_NAME_MAX_LEN = 80;
-    constexpr size_t ANON_FLAG_LEN = 7; // [anon:]
-    if (tag.length() > PR_SET_VMA_ANON_NAME_MAX_LEN - ANON_FLAG_LEN) {
-        tag = CString(ModulePathHelper::VMA_NAME_ARKTS_CODE);
-    }
-    auto pf = panda_file::OpenPandaFileFromMemory(buffer, size, tag.c_str());
-#endif
+    auto pf = ParseAndOpenPandaFile(buffer, size, filename);
     if (pf == nullptr) {
         LOG_ECMA(ERROR) << "open file " << filename << " error";
         return nullptr;

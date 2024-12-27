@@ -23,9 +23,6 @@
 #include "ecmascript/module/module_tools.h"
 #include "ecmascript/module/module_resolver.h"
 #include "ecmascript/require/js_cjs_module.h"
-#ifdef PANDA_TARGET_WINDOWS
-#include <algorithm>
-#endif
 
 namespace panda::ecmascript {
 using StringHelper = base::StringHelper;

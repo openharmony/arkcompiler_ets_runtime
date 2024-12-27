@@ -22,6 +22,7 @@
 #include "ecmascript/module/module_data_extractor.h"
 #include "ecmascript/object_fast_operator-inl.h"
 #include "ecmascript/patch/quick_fix_manager.h"
+#include "ecmascript/platform/module.h"
 
 namespace panda::ecmascript {
 JSHandle<JSTaggedValue> ModuleResolver::HostResolveImportedModule(JSThread *thread,
@@ -110,11 +111,10 @@ JSHandle<JSTaggedValue> ModuleResolver::HostResolveImportedModuleWithMerge(JSThr
         ModulePathHelper::ConcatFileNameWithMerge(thread, pandaFile.get(), baseFilename, recordName, moduleRequestName);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
 
-#if defined(PANDA_TARGET_WINDOWS) || defined(PANDA_TARGET_MACOS)
-    if (entryPoint == ModulePathHelper::PREVIEW_OF_ACROSS_HAP_FLAG) {
-        THROW_SYNTAX_ERROR_AND_RETURN(thread, "", thread->GlobalConstants()->GetHandledUndefined());
+    JSHandle<JSTaggedValue> handle = CheckEntryPointPreview(thread, entryPoint);
+    if (handle != thread->GlobalConstants()->GetHandledNull()) {
+        return handle;
     }
-#endif
     return HostResolveImportedModuleWithMerge(thread, baseFilename, entryPoint, nullptr, executeFromJob);
 }
 
