@@ -236,6 +236,7 @@ private:
     bool IsTrueOrFalseHasProfileType(GateRef gate) const;
     int32_t GetEcmaOpCodeListIndex(EcmaOpcode ecmaOpCode);
     void ParseOptBytecodeRange();
+    void ReplaceGateWithPendingException(GateRef glue, GateRef gate, GateRef state, GateRef depend, GateRef value);
 
     const JSPandaFile* GetCalleePandaFile(GateRef gate);
 

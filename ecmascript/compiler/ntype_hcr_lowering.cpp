@@ -163,13 +163,13 @@ void NTypeHCRLowering::LowerCreateArguments(GateRef gate, GateRef glue)
         case CreateArgumentsAccessor::Mode::REST_ARGUMENTS: {
             GateRef newGate = builder_.CallStub(glue, gate, CommonStubCSigns::CopyRestArgs,
                 { glue, *actualArgv, startIdx, actualArgc, *actualArgvArray });
-            ReplaceGateWithPendingException(gate, builder_.GetState(), builder_.GetDepend(), newGate);
+            acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), newGate);
             break;
         }
         case CreateArgumentsAccessor::Mode::UNMAPPED_ARGUMENTS: {
             GateRef newGate = builder_.CallStub(glue, gate, CommonStubCSigns::GetUnmappedArgs,
                 { glue, *actualArgv, actualArgc, *actualArgvArray });
-            ReplaceGateWithPendingException(gate, builder_.GetState(), builder_.GetDepend(), newGate);
+            acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), newGate);
             break;
         }
         default: {
@@ -312,7 +312,7 @@ void NTypeHCRLowering::LowerStoreModuleVar(GateRef gate, GateRef glue)
     GateRef indexOffset = builder_.Int32Mul(index, builder_.Int32(JSTaggedValue::TaggedTypeSize()));
     GateRef offset = builder_.ZExtInt32ToPtr(builder_.Int32Add(indexOffset, dataOffset));
     builder_.Store(VariableType::JS_ANY(), glue_, *array, offset, value);
-    ReplaceGateWithPendingException(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
 void NTypeHCRLowering::LowerLdLocalModuleVar(GateRef gate)

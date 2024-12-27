@@ -177,28 +177,9 @@ GateRef BuiltinLowering::LowerCallRuntime(GateRef glue, GateRef gate, int index,
     }
 }
 
-void BuiltinLowering::ReplaceHirWithValue(GateRef hirGate, GateRef value, bool noThrow)
+void BuiltinLowering::ReplaceHirWithValue(GateRef hirGate, GateRef value)
 {
-    if (!noThrow) {
-        GateRef state = builder_.GetState();
-        // copy depend-wire of hirGate to value
-        GateRef depend = builder_.GetDepend();
-        // exception value
-        GateRef exceptionVal = builder_.ExceptionConstant();
-        // compare with trampolines result
-        GateRef equal = builder_.Equal(value, exceptionVal);
-        auto ifBranch = builder_.Branch(state, equal, 1, BranchWeight::DEOPT_WEIGHT, "checkException");
-
-        GateRef ifTrue = builder_.IfTrue(ifBranch);
-        GateRef ifFalse = builder_.IfFalse(ifBranch);
-        GateRef eDepend = builder_.DependRelay(ifTrue, depend);
-        GateRef sDepend = builder_.DependRelay(ifFalse, depend);
-        StateDepend success(ifFalse, sDepend);
-        StateDepend exception(ifTrue, eDepend);
-        acc_.ReplaceHirWithIfBranch(hirGate, success, exception, value);
-    } else {
-        acc_.ReplaceHirDirectly(hirGate, builder_.GetStateDepend(), value);
-    }
+    acc_.ReplaceHirDirectly(hirGate, builder_.GetStateDepend(), value);
 }
 
 void BuiltinLowering::LowerTypedLocaleCompare(GateRef gate)
