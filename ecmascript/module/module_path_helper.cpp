@@ -64,6 +64,9 @@ CString ModulePathHelper::ConcatMergeFileNameToNormalized(JSThread *thread, cons
     if (StringHelper::StringStartWith(requestName, prefix)) {
         return requestName;
     } else if (IsImportFile(requestName)) {
+        if (StringHelper::StringStartWith(recordName, PACKAGE_PATH_SEGMENT)) {
+            return MakeNewRecord(thread, jsPandaFile, baseFileName, recordName, requestName);
+        }
         // this branch save for import "xxx.js" in npm
         CString inputPath = requestName;
         CString entryPoint = ConcatImportFileNormalizedOhmurlWithRecordName(thread, jsPandaFile, baseFileName,
