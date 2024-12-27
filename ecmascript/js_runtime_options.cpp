@@ -203,8 +203,8 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--enable-inline-property-optimization:  Enable inline property optimization(also enable slack tracking).\n"
     "--compiler-enable-aot-code-comment    Enable generate aot_code_comment.txt file during compilation.\n"
     "                                      Default : 'false'\n"
-    "--compiler-an-file-max-size:          Max size of compiler .an file in MB. '0' means infinity.\n"
-    "                                      Default: '0' for Host, '100' for TargetCompilerMode\n"
+    "--compiler-an-file-max-size:          Max size of compiler .an file in MB. '0' means Default\n"
+    "                                      Default: No limit for Host, '100' for TargetCompilerMode\n"
     // Please add new options above this line for keep a blank line after help message.
     "\n";
 
@@ -1506,6 +1506,9 @@ void JSRuntimeOptions::SetOptionsForTargetCompilation()
         SetEnableArrayBoundsCheckElimination(false);
         SetCompilerEnableLiteCG(true);
         SetEnableOptPGOType(true);
+        if (IsCompilerAnFileMaxByteSizeDefault()) {
+            SetCompilerAnFileMaxByteSize(100_MB);
+        }
     }
 
     if (IsTargetCompilerMode()) {
@@ -1514,14 +1517,12 @@ void JSRuntimeOptions::SetOptionsForTargetCompilation()
             SetPGOProfilerPath("");
         }
         BindCPUCoreForTargetCompilation();
-        SetCompilerAnFileMaxByteSize(100_MB);
     }
 
     if (IsCompilerPipelineHostAOT()) {
         SetFastAOTCompileMode(true);
         SetOptLevel(DEFAULT_OPT_LEVEL);
         SetEnableLoweringBuiltin(false);
-        SetCompilerAnFileMaxByteSize(100_MB);
     }
 }
 
