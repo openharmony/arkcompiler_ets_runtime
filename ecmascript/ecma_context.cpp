@@ -71,8 +71,14 @@ bool EcmaContext::Initialize()
     [[maybe_unused]] EcmaHandleScope scope(thread_);
     propertiesCache_ = new PropertiesCache();
     regExpParserCache_ = new RegExpParserCache();
-    unsharedConstpools_.fill(JSTaggedValue::Hole());
-    thread_->SetUnsharedConstpools(reinterpret_cast<uintptr_t>(unsharedConstpools_.data()));
+    unsharedConstpools_ = new(std::nothrow) JSTaggedValue[GetUnsharedConstpoolsArrayLen()];
+    if (unsharedConstpools_ == nullptr) {
+        LOG_ECMA(FATAL) << "allocate unshared constpool array fail during initing";
+        UNREACHABLE();
+    }
+    std::fill(unsharedConstpools_, unsharedConstpools_ + GetUnsharedConstpoolsArrayLen(), JSTaggedValue::Hole());
+    thread_->SetUnsharedConstpools(reinterpret_cast<uintptr_t>(unsharedConstpools_));
+    thread_->SetUnsharedConstpoolsArrayLen(unsharedConstpoolsArrayLen_);
 
     thread_->SetGlobalConst(&globalConst_);
     globalConst_.Init(thread_);
@@ -262,6 +268,12 @@ EcmaContext::~EcmaContext()
     if (abcBufferCache_ != nullptr) {
         delete abcBufferCache_;
         abcBufferCache_ = nullptr;
+    }
+    if (unsharedConstpools_ != nullptr) {
+        delete[] unsharedConstpools_;
+        unsharedConstpools_ = nullptr;
+        thread_->SetUnsharedConstpools(reinterpret_cast<uintptr_t>(nullptr));
+        thread_->SetUnsharedConstpoolsArrayLen(0);
     }
     // clear join stack
     joinStack_.clear();
@@ -507,8 +519,10 @@ JSTaggedValue EcmaContext::FindUnsharedConstpool(JSTaggedValue sharedConstpool)
     ConstantPool *shareCp = ConstantPool::Cast(sharedConstpool.GetTaggedObject());
     int32_t constpoolIndex = shareCp->GetUnsharedConstpoolIndex();
     // unshared constpool index is default INT32_MAX.
-    ASSERT(0 <= constpoolIndex && constpoolIndex != ConstantPool::CONSTPOOL_TYPE_FLAG &&
-        constpoolIndex < UNSHARED_CONSTANTPOOL_COUNT);
+    ASSERT(0 <= constpoolIndex && constpoolIndex != ConstantPool::CONSTPOOL_TYPE_FLAG);
+    if (constpoolIndex >= GetUnsharedConstpoolsArrayLen()) {
+        return JSTaggedValue::Hole();
+    }
     return unsharedConstpools_[constpoolIndex];
 }
 
@@ -519,9 +533,7 @@ JSTaggedValue EcmaContext::FindOrCreateUnsharedConstpool(JSTaggedValue sharedCon
         ConstantPool *shareCp = ConstantPool::Cast(sharedConstpool.GetTaggedObject());
         int32_t constpoolIndex = shareCp->GetUnsharedConstpoolIndex();
         // unshared constpool index is default INT32_MAX.
-        ASSERT(0 <= constpoolIndex && constpoolIndex != ConstantPool::CONSTPOOL_TYPE_FLAG &&
-            constpoolIndex < UNSHARED_CONSTANTPOOL_COUNT);
-        ASSERT(constpoolIndex != INT32_MAX);
+        ASSERT(0 <= constpoolIndex && constpoolIndex != INT32_MAX);
         JSHandle<ConstantPool> unshareCp =
             ConstantPool::CreateUnSharedConstPoolBySharedConstpool(vm_, shareCp->GetJSPandaFile(), shareCp);
         unsharedConstpool = unshareCp.GetTaggedValue();
@@ -533,7 +545,7 @@ JSTaggedValue EcmaContext::FindOrCreateUnsharedConstpool(JSTaggedValue sharedCon
 void EcmaContext::EraseUnusedConstpool(const JSPandaFile *jsPandaFile, int32_t index, int32_t constpoolIndex)
 {
     // unshared constpool index is default INT32_MAX.
-    ASSERT(constpoolIndex != ConstantPool::CONSTPOOL_TYPE_FLAG);
+    ASSERT(0 <= constpoolIndex && constpoolIndex < GetUnsharedConstpoolsArrayLen());
 
     SetUnsharedConstpool(constpoolIndex, JSTaggedValue::Hole());
     auto iter = cachedSharedConstpools_.find(jsPandaFile);
@@ -624,9 +636,47 @@ void EcmaContext::SetUnsharedConstpool(JSHandle<ConstantPool> sharedConstpool, J
 
 void EcmaContext::SetUnsharedConstpool(int32_t constpoolIndex, JSTaggedValue unsharedConstpool)
 {
-    CheckUnsharedConstpoolArrayLimit(constpoolIndex);
-    ASSERT(0 <= constpoolIndex && constpoolIndex < UNSHARED_CONSTANTPOOL_COUNT);
+    GrowUnsharedConstpoolArray(constpoolIndex);
+    ASSERT(0 <= constpoolIndex && constpoolIndex < ConstantPool::CONSTPOOL_TYPE_FLAG);
     unsharedConstpools_[constpoolIndex] = unsharedConstpool;
+}
+
+void EcmaContext::GrowUnsharedConstpoolArray(int32_t index)
+{
+    if (index == ConstantPool::CONSTPOOL_TYPE_FLAG) {
+        LOG_ECMA(FATAL) << "index has exceed unshared constpool array limit";
+        UNREACHABLE();
+    }
+    int32_t oldCapacity = GetUnsharedConstpoolsArrayLen();
+    if (index >= oldCapacity) {
+        int32_t minCapacity = index + 1;
+        ResizeUnsharedConstpoolArray(oldCapacity, minCapacity);
+    }
+}
+
+void EcmaContext::ResizeUnsharedConstpoolArray(int32_t oldCapacity, int32_t minCapacity)
+{
+    int32_t newCapacity = oldCapacity << 1;
+    if (newCapacity - minCapacity < 0) {
+        newCapacity = minCapacity;
+    }
+
+    if (newCapacity >= (INT32_MAX >> 1)) {
+        newCapacity = INT32_MAX;
+    }
+
+    JSTaggedValue *newUnsharedConstpools = new(std::nothrow) JSTaggedValue[newCapacity];
+    if (newUnsharedConstpools == nullptr) {
+        LOG_ECMA(FATAL) << "allocate unshared constpool array fail during resizing";
+        UNREACHABLE();
+    }
+    std::fill(newUnsharedConstpools, newUnsharedConstpools + newCapacity, JSTaggedValue::Hole());
+    std::copy(unsharedConstpools_, unsharedConstpools_ + GetUnsharedConstpoolsArrayLen(), newUnsharedConstpools);
+    ClearUnsharedConstpoolArray();
+    unsharedConstpools_ = newUnsharedConstpools;
+    thread_->SetUnsharedConstpools(reinterpret_cast<uintptr_t>(unsharedConstpools_));
+    thread_->SetUnsharedConstpoolsArrayLen(newCapacity);
+    SetUnsharedConstpoolsArrayLen(newCapacity);
 }
 
 void EcmaContext::UpdateConstpoolWhenDeserialAI(const std::string& fileName,
@@ -846,6 +896,7 @@ void EcmaContext::ClearBufferData()
 {
     cachedSharedConstpools_.clear();
     thread_->SetUnsharedConstpools(reinterpret_cast<uintptr_t>(nullptr));
+    thread_->SetUnsharedConstpoolsArrayLen(0);
 }
 
 void EcmaContext::SetGlobalEnv(GlobalEnv *global)
@@ -991,8 +1042,8 @@ void EcmaContext::Iterate(const RootVisitor &v, const RootRangeVisitor &rv)
             ObjectSlot(ToUintPtr(&joinStack_.back()) + JSTaggedValue::TaggedTypeSize()));
     }
 
-    auto start = ObjectSlot(ToUintPtr(unsharedConstpools_.data()));
-    auto end = ObjectSlot(ToUintPtr(&unsharedConstpools_[UNSHARED_CONSTANTPOOL_COUNT - 1]) +
+    auto start = ObjectSlot(ToUintPtr(unsharedConstpools_));
+    auto end = ObjectSlot(ToUintPtr(&unsharedConstpools_[GetUnsharedConstpoolsArrayLen() - 1]) +
         JSTaggedValue::TaggedTypeSize());
     rv(Root::ROOT_VM, start, end);
 }

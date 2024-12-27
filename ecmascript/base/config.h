@@ -125,7 +125,7 @@ namespace panda::ecmascript {
     #define ECMASCRIPT_DISABLE_CONCURRENT_MARKING 0
 #endif
 
-#define UNSHARED_CONSTANTPOOL_COUNT 10240
+#define UNSHARED_CONSTANTPOOL_COUNT 1024
 }  // namespace panda::ecmascript
 
 #endif  // ECMASCRIPT_BASE_CONFIG_H
