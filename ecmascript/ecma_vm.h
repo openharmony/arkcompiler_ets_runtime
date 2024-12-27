@@ -108,7 +108,7 @@ using RequestAotCallback =
 using SearchHapPathCallBack = std::function<bool(const std::string moduleName, std::string &hapPath)>;
 using DeviceDisconnectCallback = std::function<bool()>;
 using UncatchableErrorHandler = std::function<void(panda::TryCatch&)>;
-using OnAllErrorCallback = std::function<void(Local<ObjectRef> value, void *data)>;
+using OnErrorCallback = std::function<void(Local<ObjectRef> value, void *data)>;
 using StopPreLoadSoCallback = std::function<void()>;
 
 class EcmaVM {
@@ -364,20 +364,20 @@ public:
         concurrentData_ = data;
     }
 
-    void SetOnAllErrorCallback(OnAllErrorCallback callback, void* data)
+    void SetOnErrorCallback(OnErrorCallback callback, void* data)
     {
-        onAllErrorCallback_ = callback;
-        onAllErrorData_ = data;
+        onErrorCallback_ = callback;
+        onErrorData_ = data;
     }
 
-    OnAllErrorCallback GetOnAllErrorCallback()
+    OnErrorCallback GetOnErrorCallback()
     {
-        return onAllErrorCallback_;
+        return onErrorCallback_;
     }
 
     void* GetOnAllData()
     {
-        return onAllErrorData_;
+        return onErrorData_;
     }
     
     void SetStopPreLoadSoCallback(const StopPreLoadSoCallback &cb)
@@ -924,9 +924,9 @@ private:
     ConcurrentCallback concurrentCallback_ {nullptr};
     void *concurrentData_ {nullptr};
 
-    // AllError callback
-    OnAllErrorCallback onAllErrorCallback_ {nullptr};
-    void *onAllErrorData_ {nullptr};
+    // Error callback
+    OnErrorCallback onErrorCallback_ {nullptr};
+    void *onErrorData_ {nullptr};
 
     // serch happath callback
     SearchHapPathCallBack SearchHapPathCallBack_ {nullptr};

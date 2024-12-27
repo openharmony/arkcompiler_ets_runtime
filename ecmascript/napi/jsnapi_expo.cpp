@@ -4532,9 +4532,9 @@ void JSNApi::PrintExceptionInfo(const EcmaVM *vm)
     ThrowException(vm, exception);
 }
 
-void JSNApi::SetOnAllErrorCallbackForThread(EcmaVM *vm, OnAllErrorCallback cb, void* data)
+void JSNApi::SetOnErrorCallback(EcmaVM *vm, OnErrorCallback cb, void* data)
 {
-    vm->SetOnAllErrorCallback(cb, data);
+    vm->SetOnErrorCallback(cb, data);
 }
 
 #if defined(ECMASCRIPT_SUPPORT_DEBUGGER) && !defined(PANDA_TARGET_IOS)
