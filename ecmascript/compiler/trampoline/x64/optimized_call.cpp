@@ -1421,7 +1421,9 @@ void OptimizedCall::DeoptEnterAsmInterpOrBaseline(ExtendedAssembler *assembler)
         __ Push(callTargetRegister);
         // save new sp
         __ Push(newSpRegister);
-        __ Subq(FRAME_SLOT_SIZE, rsp); // align
+        // callee save
+        __ PushCppCalleeSaveRegisters();
+
         __ Movq(glueRegister, rax);
         // get native pc offset in baselinecode by bytecodePc in func
         __ Pushq(bytecodePc);
@@ -1430,7 +1432,9 @@ void OptimizedCall::DeoptEnterAsmInterpOrBaseline(ExtendedAssembler *assembler)
         __ Pushq(kungfu::RuntimeStubCSigns::ID_GetNativePcOfstForBaseline);
         __ CallAssemblerStub(RTSTUB_ID(CallRuntime), false);
 
-        __ Addq(5 * FRAME_SLOT_SIZE, rsp); // 5: skip runtimeId argc func bytecodePc align
+        __ Addq(4 * FRAME_SLOT_SIZE, rsp); // 4: skip runtimeId argc func bytecodePc
+
+        __ PopCppCalleeSaveRegisters();
         __ Pop(newSpRegister);
         __ Pop(callTargetRegister);
         __ Pop(glueRegister);
@@ -1440,6 +1444,11 @@ void OptimizedCall::DeoptEnterAsmInterpOrBaseline(ExtendedAssembler *assembler)
         __ Movq(Operand(callTargetRegister, JSFunctionBase::METHOD_OFFSET), methodRegister);
         __ Movq(methodRegister, rbx);
         __ Movq(newSpRegister, rbp);
+
+        // update pc
+        const int32_t pcOffsetFromSp = -24; // -24: 3 slots, frameType, prevFrame, pc
+        __ Movabs(std::numeric_limits<uint64_t>::max(), opRegister);
+        __ Movq(opRegister, Operand(rbp, pcOffsetFromSp));
 
         // jmp to baselinecode
         __ Jmp(rax);
