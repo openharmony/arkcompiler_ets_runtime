@@ -116,7 +116,7 @@ JSTaggedValue BuiltinsArray::ArrayConstructor(EcmaRuntimeCallInfo *argv)
         // 7. create array from elements
         auto newArray = JSArray::CreateArrayFromList(thread, newTarget, elements);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        if (thread->GetEcmaVM()->IsEnableElementsKind()) {
+        if (thread->IsEnableElementsKind()) {
             JSHClass::TransitToElementsKind(thread, newArray, newKind);
         }
         // 8. Return array.

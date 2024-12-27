@@ -930,6 +930,16 @@ public:
         return jitCodeMaps_;
     }
 
+    bool IsEnableMutantArray() const
+    {
+        return glueData_.isEnableMutantArray_;
+    }
+
+    bool IsEnableElementsKind() const
+    {
+        return glueData_.IsEnableElementsKind_;
+    }
+
     struct GlueData : public base::AlignedStruct<JSTaggedValue::TaggedTypeSize(),
                                                  BCStubEntries,
                                                  JSTaggedValue,

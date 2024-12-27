@@ -626,9 +626,9 @@ bool JSArray::TryFastCreateDataProperty(JSThread *thread, const JSHandle<JSObjec
         }
         JSHandle<JSArray>::Cast(obj)->SetArrayLength(thread, newLen);
     }
-    if LIKELY(!thread->GetEcmaVM()->IsEnableMutantArray()) {
+    if LIKELY(!thread->IsEnableMutantArray()) {
         TaggedArray::Cast(obj->GetElements())->Set(thread, index, value);
-        if LIKELY(thread->GetEcmaVM()->IsEnableElementsKind()) {
+        if LIKELY(thread->IsEnableElementsKind()) {
             JSHClass::TransitToElementsKind(thread, obj, value, ElementsKind::NONE);
         }
     } else {

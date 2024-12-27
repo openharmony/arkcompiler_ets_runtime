@@ -28,7 +28,7 @@ JSTaggedValue ElementAccessor::Get(const JSThread *thread, JSHandle<JSObject> re
     size_t offset = JSTaggedValue::TaggedTypeSize() * idx;
     // NOLINTNEXTLINE(readability-braces-around-statements, bugprone-suspicious-semicolon)
     JSTaggedType rawValue = Barriers::GetValue<JSTaggedType>(elements->GetData(), offset);
-    if (UNLIKELY(thread->GetEcmaVM()->IsEnableMutantArray())) {
+    if (UNLIKELY(thread->IsEnableMutantArray())) {
         ElementsKind kind = receiver->GetClass()->GetElementsKind();
         if (!elements->GetClass()->IsMutantTaggedArray()) {
             kind = ElementsKind::GENERIC;
@@ -48,7 +48,7 @@ JSTaggedValue ElementAccessor::Get(const JSThread *thread, JSObject *receiver, u
     size_t offset = JSTaggedValue::TaggedTypeSize() * idx;
     // NOLINTNEXTLINE(readability-braces-around-statements, bugprone-suspicious-semicolon)
     JSTaggedType rawValue = Barriers::GetValue<JSTaggedType>(elements->GetData(), offset);
-    if (UNLIKELY(thread->GetEcmaVM()->IsEnableMutantArray())) {
+    if (UNLIKELY(thread->IsEnableMutantArray())) {
         ElementsKind kind = receiver->GetClass()->GetElementsKind();
         if (!elements->GetClass()->IsMutantTaggedArray()) {
             kind = ElementsKind::GENERIC;

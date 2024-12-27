@@ -582,8 +582,10 @@ DEF_RUNTIME_STUBS(UpdateHClassForElementsKind)
         return JSTaggedValue::Hole().GetRawData();
     }
 
-    // Update TrackInfo
-    JSHandle<JSArray>(receiver)->UpdateTrackInfo(thread);
+    if (thread->IsEnableElementsKind() || thread->IsPGOProfilerEnable()) {
+        // Update TrackInfo
+        JSHandle<JSArray>(receiver)->UpdateTrackInfo(thread);
+    }
 
     if (!thread->IsPGOProfilerEnable()) {
         return JSTaggedValue::Hole().GetRawData();
