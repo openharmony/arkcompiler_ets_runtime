@@ -16,7 +16,6 @@
 #include "ecmascript/mem/verification.h"
 
 #include "ecmascript/mem/shared_heap/shared_concurrent_sweeper.h"
-#include "ecmascript/runtime.h"
 
 namespace panda::ecmascript {
 void LogErrorForObjSlot(const BaseHeap *heap, const char *headerInfo, TaggedObject *obj, ObjectSlot slot,

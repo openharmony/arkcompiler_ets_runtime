@@ -15,7 +15,6 @@
 
 #include "ecmascript/ic/ic_runtime.h"
 #include "ecmascript/ic/ic_handler.h"
-#include "ecmascript/dfx/stackinfo/js_stackinfo.h"
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/interpreter/slow_runtime_stub.h"
 #include "ecmascript/js_primitive_ref.h"

@@ -15,7 +15,6 @@
 
 #include "ecmascript/mem/gc_stats.h"
 
-#include <iomanip>
 #include "ecmascript/mem/heap-inl.h"
 
 constexpr int DESCRIPTION_LENGTH = 25;

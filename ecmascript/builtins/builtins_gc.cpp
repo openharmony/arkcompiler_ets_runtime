@@ -14,7 +14,6 @@
  */
 
 #include "ecmascript/builtins/builtins_gc.h"
-#include "ecmascript/mem/concurrent_marker.h"
 #include "ecmascript/mem/heap-inl.h"
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/interpreter/interpreter-inl.h"

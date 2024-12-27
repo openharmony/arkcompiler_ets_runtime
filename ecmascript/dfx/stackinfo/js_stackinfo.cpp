@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 
-#include <sys/time.h>
 
 #include "ecmascript/dfx/stackinfo/js_stackinfo.h"
 #include "ecmascript/platform/aot_crash_info.h"

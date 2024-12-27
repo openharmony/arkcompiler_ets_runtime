@@ -16,7 +16,6 @@
 #include "ecmascript/containers/containers_private.h"
 
 #include "containers_arraylist.h"
-#include "containers_bitvector.h"
 #include "containers_deque.h"
 #include "containers_hashmap.h"
 #include "containers_hashset.h"
@@ -30,7 +29,6 @@
 #include "containers_treemap.h"
 #include "containers_treeset.h"
 #include "containers_vector.h"
-#include "ecmascript/global_env_fields.h"
 #include "ecmascript/js_api/js_api_arraylist_iterator.h"
 #include "ecmascript/js_api/js_api_bitvector_iterator.h"
 #include "ecmascript/js_api/js_api_deque_iterator.h"

@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 #include "ecmascript/compiler/aot_file/module_section_des.h"
-#include <iomanip>
 
 namespace panda::ecmascript {
 std::string ModuleSectionDes::GetSecName(const ElfSecName idx)

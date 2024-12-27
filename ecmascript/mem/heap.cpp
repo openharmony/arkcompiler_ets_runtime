@@ -12,8 +12,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <chrono>
-#include <thread>
 
 #include "ecmascript/base/block_hook_scope.h"
 #include "ecmascript/checkpoint/thread_state_transition.h"

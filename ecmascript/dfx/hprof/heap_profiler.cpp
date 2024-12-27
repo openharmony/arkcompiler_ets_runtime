@@ -12,20 +12,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <atomic>
-#include <chrono>
-#include <fcntl.h>
 #include <sys/wait.h>
 #include <sys/prctl.h>
-#include <sys/stat.h>
-#include <sys/syscall.h>
-#include <thread>
-#include <unistd.h>
 #include "ecmascript/dfx/hprof/heap_profiler.h"
 
 #include "ecmascript/checkpoint/thread_state_transition.h"
 #include "ecmascript/dfx/hprof/heap_snapshot.h"
-#include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/mem/heap-inl.h"
 #include "ecmascript/mem/shared_heap/shared_concurrent_sweeper.h"
 #include "ecmascript/base/block_hook_scope.h"

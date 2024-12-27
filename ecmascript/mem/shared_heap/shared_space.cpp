@@ -18,7 +18,6 @@
 #include "ecmascript/js_hclass-inl.h"
 #include "ecmascript/mem/heap-inl.h"
 #include "ecmascript/mem/shared_heap/shared_concurrent_sweeper.h"
-#include "ecmascript/checkpoint/thread_state_transition.h"
 
 namespace panda::ecmascript {
 SharedSparseSpace::SharedSparseSpace(SharedHeap *heap,

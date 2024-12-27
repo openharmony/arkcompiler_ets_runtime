@@ -14,7 +14,6 @@
  */
 
 #include "ecmascript/debugger/js_debugger.h"
-#include <memory>
 
 #include "ecmascript/interpreter/interpreter-inl.h"
 

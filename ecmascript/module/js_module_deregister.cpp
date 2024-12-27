@@ -16,7 +16,6 @@
 
 #include "ecmascript/checkpoint/thread_state_transition.h"
 #include "ecmascript/jspandafile/js_pandafile_executor.h"
-#include "ecmascript/module/js_module_manager.h"
 #include "ecmascript/module/module_path_helper.h"
 #include "ecmascript/module/module_resolver.h"
 

@@ -15,11 +15,9 @@
 
 #include "ecmascript/builtins/builtins_array.h"
 
-#include <cmath>
 
 #include "ecmascript/base/typed_array_helper-inl.h"
 #include "ecmascript/interpreter/interpreter.h"
-#include "ecmascript/js_array.h"
 #include "ecmascript/js_map_iterator.h"
 #include "ecmascript/js_stable_array.h"
 #include "ecmascript/object_fast_operator-inl.h"

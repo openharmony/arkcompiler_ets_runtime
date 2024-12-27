@@ -70,7 +70,6 @@
 #include "ecmascript/containers/containers_treeset.h"
 #include "ecmascript/containers/containers_vector.h"
 #include "ecmascript/containers/containers_bitvector.h"
-#include "ecmascript/runtime.h"
 #include "ecmascript/runtime_lock.h"
 #ifdef ARK_SUPPORT_INTL
 #include "ecmascript/builtins/builtins_collator.h"

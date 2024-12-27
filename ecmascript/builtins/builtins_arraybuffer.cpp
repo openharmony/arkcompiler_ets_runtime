@@ -15,15 +15,12 @@
 
 #include "ecmascript/builtins/builtins_arraybuffer.h"
 
-#include <typeinfo>
 
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_object-inl.h"
 #include "ecmascript/base/typed_array_helper-inl.h"
 
-#include "cstdio"
-#include "cstring"
 
 namespace panda::ecmascript::builtins {
 using TypedArrayHelper = base::TypedArrayHelper;

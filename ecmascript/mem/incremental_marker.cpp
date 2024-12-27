@@ -15,10 +15,6 @@
 
 #include "ecmascript/mem/incremental_marker.h"
 
-#include <ctime>
-#include <regex>
-#include <sys/time.h>
-
 #include "ecmascript/mem/concurrent_marker.h"
 #include "ecmascript/mem/parallel_marker-inl.h"
 #include "ecmascript/runtime_call_id.h"

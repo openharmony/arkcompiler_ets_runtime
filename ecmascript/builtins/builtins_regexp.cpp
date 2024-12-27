@@ -17,7 +17,6 @@
 #include "ecmascript/builtins/builtins_regexp-inl.h"
 #include "ecmascript/checkpoint/thread_state_transition.h"
 
-#include <cmath>
 
 #include "ecmascript/ecma_string-inl.h"
 #include "ecmascript/interpreter/interpreter.h"

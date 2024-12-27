@@ -16,8 +16,6 @@
 
 #include "ecmascript/interpreter/frame_handler.h"
 #include "ecmascript/jspandafile/js_pandafile_executor.h"
-#include "ecmascript/jspandafile/js_pandafile_manager.h"
-#include "ecmascript/module/js_module_deregister.h"
 #include "ecmascript/module/js_shared_module_manager.h"
 #include "ecmascript/module/module_data_extractor.h"
 #include "ecmascript/module/module_manager_helper.h"

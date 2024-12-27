@@ -15,18 +15,12 @@
 
 #include "ecmascript/module/module_resolver.h"
 
-#include "ecmascript/builtins/builtins_promise.h"
-#include "ecmascript/interpreter/interpreter.h"
-#include "ecmascript/jobs/micro_job_queue.h"
-#include "ecmascript/jspandafile/js_pandafile_executor.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
-#include "ecmascript/module/module_logger.h"
 #include "ecmascript/module/js_shared_module_manager.h"
 #include "ecmascript/module/module_path_helper.h"
 #include "ecmascript/module/js_module_deregister.h"
 #include "ecmascript/module/module_data_extractor.h"
 #include "ecmascript/object_fast_operator-inl.h"
-#include "ecmascript/runtime_lock.h"
 #include "ecmascript/patch/quick_fix_manager.h"
 
 namespace panda::ecmascript {

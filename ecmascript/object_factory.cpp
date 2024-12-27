@@ -16,7 +16,6 @@
 #include "ecmascript/dfx/native_module_failure_info.h"
 #include "ecmascript/builtins/builtins.h"
 #include "ecmascript/builtins/builtins_errors.h"
-#include "ecmascript/ecma_string_table.h"
 #include "ecmascript/ecma_string-inl.h"
 #include "ecmascript/ic/ic_handler.h"
 #include "ecmascript/ic/profile_type_info.h"

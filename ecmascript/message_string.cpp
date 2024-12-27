@@ -15,7 +15,6 @@
 
 #include "ecmascript/message_string.h"
 
-#include <array>
 
 namespace panda::ecmascript {
 // NOLINTNEXTLINE(fuchsia-statically-constructed-objects)

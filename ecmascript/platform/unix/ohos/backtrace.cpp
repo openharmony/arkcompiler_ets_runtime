@@ -15,13 +15,8 @@
 
 #include "ecmascript/platform/backtrace.h"
 
-#include <cstring>
 #include <cinttypes>
 #include <dlfcn.h>
-#include <iomanip>
-#include <ios>
-#include <map>
-#include <unwind.h>
 #include "securec.h"
 
 #include "ecmascript/mem/mem.h"

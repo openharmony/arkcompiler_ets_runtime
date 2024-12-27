@@ -14,7 +14,6 @@
  */
 
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
-#include <fstream>
 
 #include "ecmascript/platform/file.h"
 namespace panda::ecmascript::pgo {
