@@ -60,9 +60,14 @@
             "name": "SendableEnv",
             "offset": 88,
             "size": 8
+        },
+        {
+            "name": "Exception",
+            "offset": 96,
+            "size": 8
         }
     ],
-    "end_offset": 144,
+    "end_offset": 152,
     "parents": [
         "MODULE_RECORD"
     ]

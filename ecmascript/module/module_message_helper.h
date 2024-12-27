@@ -29,6 +29,30 @@ public:
                ", moduleName:" + vm->GetModuleName() +
                ", assetPath:" + vm->GetAssetPath();
     }
+
+    static void PrintAndThrowError(JSThread *thread, JSHandle<SourceTextModule> module)
+    {
+        // root error need throw error msg, for interface like pushurl(etc.) doesn't actually need ldmodulevar.
+        LOG_FULL(ERROR) << "Error found in module:" << module->GetEcmaModuleRecordNameString();
+        PrintErrorMessage(thread, module);
+        auto &options = const_cast<EcmaVM *>(thread->GetEcmaVM())->GetJSOptions();
+        if (options.EnableModuleException()) {
+            THROW_NEW_ERROR_AND_RETURN(thread, module->GetException());
+        }
+    }
+
+    static void PrintErrorMessage(JSThread *thread, JSHandle<SourceTextModule> module)
+    {
+        JSHandle<JSTaggedValue> exceptionInfo(thread, module->GetException());
+        if (exceptionInfo->IsJSError()) {
+            thread->GetCurrentEcmaContext()->PrintJSErrorInfo(thread, exceptionInfo);
+            return;
+        }
+        JSHandle<EcmaString> str = JSTaggedValue::ToString(thread, exceptionInfo);
+        RETURN_IF_ABRUPT_COMPLETION(thread);
+        CString message = ConvertToString(*str);
+        LOG_ECMA(ERROR) << "Error occurs:" << message;
+    }
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_MODULE_JS_SHARED_MODULE_H

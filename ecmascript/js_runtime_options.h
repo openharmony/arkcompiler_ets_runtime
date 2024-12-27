@@ -65,6 +65,7 @@ enum ArkProperties {
     ENABLE_SERIALIZATION_TIMEOUT_CHECK = 1 << 26,
     ENABLE_PAGETAG_THREAD_ID = 1 << 27,
     ENABLE_LOCAL_HANDLE_LEAK_DETECT = 1 << 28,
+    ENABLE_MODULE_EXCEPTION = 1 << 29,
 };
 
 // asm interpreter control parsed option
@@ -662,6 +663,11 @@ public:
     bool EnablePageTagThreadId() const
     {
         return (static_cast<uint32_t>(arkProperties_) & ArkProperties::ENABLE_PAGETAG_THREAD_ID) != 0;
+    }
+
+    bool EnableModuleException() const
+    {
+        return (static_cast<uint32_t>(arkProperties_) & ArkProperties::ENABLE_MODULE_EXCEPTION) != 0;
     }
 
     bool WasSetMaxNonmovableSpaceCapacity() const

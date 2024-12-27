@@ -100,6 +100,7 @@ void PatchLoader::ExecuteFuncOrPatchMain(
         RETURN_IF_ABRUPT_COMPLETION(thread);
         JSHandle<SourceTextModule> module = JSHandle<SourceTextModule>::Cast(moduleRecord);
         SourceTextModule::Evaluate(thread, module);
+        RETURN_IF_ABRUPT_COMPLETION(thread);
     }
 
     if (loadPatch) {

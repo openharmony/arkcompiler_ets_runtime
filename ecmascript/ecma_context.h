@@ -104,6 +104,12 @@ using JsAotReaderCallback = std::function<bool(std::string fileName, uint8_t **b
 #endif
 class EcmaContext {
 public:
+    enum JSErrorProps {
+        NAME,
+        MESSAGE,
+        STACK
+    };
+
     static EcmaContext *CreateAndInitialize(JSThread *thread);
     static void CheckAndDestroy(JSThread *thread, EcmaContext *context);
 
@@ -375,6 +381,7 @@ public:
     JSHandle<job::MicroJobQueue> GetMicroJobQueue() const;
 
     static void PrintJSErrorInfo(JSThread *thread, const JSHandle<JSTaggedValue> &exceptionInfo);
+    static CString GetJSErrorInfo(JSThread *thread, const JSHandle<JSTaggedValue> exceptionInfo, JSErrorProps key);
     void IterateMegaIC(const RootVisitor &v, const RootRangeVisitor &rv);
     void Iterate(const RootVisitor &v, const RootRangeVisitor &rv);
     static void MountContext(JSThread *thread);

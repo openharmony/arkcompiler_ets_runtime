@@ -149,6 +149,7 @@ JSHandle<SourceTextModule> SharedModuleManager::GetSModuleUnsafe(JSThread *threa
 {
     auto entry = resolvedSharedModules_.find(recordName);
     if (entry == resolvedSharedModules_.end()) {
+        // LATER DO: cause assert failed
         return JSHandle<SourceTextModule>::Cast(thread->GlobalConstants()->GetHandledUndefined());
     }
     JSHandle<JSTaggedValue> module(thread, entry->second);

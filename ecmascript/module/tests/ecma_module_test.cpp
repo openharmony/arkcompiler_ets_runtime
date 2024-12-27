@@ -3470,8 +3470,8 @@ HWTEST_F_L0(EcmaModuleTest, AsyncModuleExecutionFulfilled)
 {
     ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
     JSHandle<SourceTextModule> module = objectFactory->NewSourceTextModule();
-    module->SetStatus(ModuleStatus::EVALUATED);
-    module->SetEvaluationError(0);
+    module->SetStatus(ModuleStatus::ERRORED);
+    module->SetException(thread, JSTaggedValue(2));
     SourceTextModule::AsyncModuleExecutionFulfilled(thread, module);
     EXPECT_TRUE(!thread->HasPendingException());
 
@@ -3488,7 +3488,7 @@ HWTEST_F_L0(EcmaModuleTest, GatherAvailableAncestors)
     module2->SetCycleRoot(thread, module2);
     SourceTextModule::AddAsyncParentModule(thread, module1, module2);
     SourceTextModule::AsyncParentCompletionSet execList1;
-    module2->SetEvaluationError(0);
+    module2->SetStatus(ModuleStatus::ERRORED);
     SourceTextModule::GatherAvailableAncestors(thread, module1, execList1);
     EXPECT_TRUE(!thread->HasPendingException());
 
@@ -3496,7 +3496,7 @@ HWTEST_F_L0(EcmaModuleTest, GatherAvailableAncestors)
     SourceTextModule::GatherAvailableAncestors(thread, module1, execList1);
     EXPECT_TRUE(!thread->HasPendingException());
 
-    module2->SetEvaluationError(SourceTextModule::UNDEFINED_INDEX);
+    module2->SetStatus(ModuleStatus::EVALUATING_ASYNC);
     SourceTextModule::GatherAvailableAncestors(thread, module1, execList1);
     EXPECT_TRUE(!thread->HasPendingException());
 
@@ -4164,4 +4164,40 @@ HWTEST_F_L0(EcmaModuleTest, ParseCrossModuleFile)
     EXPECT_EQ(requestPath, "/a/b/c");
 }
 
+HWTEST_F_L0(EcmaModuleTest, CheckAndThrowModuleError)
+{
+    ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
+    CString baseFileName = "modules.abc";
+    JSHandle<SourceTextModule> module1 = objectFactory->NewSourceTextModule();
+    JSHandle<SourceTextModule> module2 = objectFactory->NewSourceTextModule();
+    module1->SetEcmaModuleFilenameString(baseFileName);
+    module2->SetEcmaModuleFilenameString(baseFileName);
+    CString recordName1 = "a";
+    CString recordName2 = "b";
+    module1->SetEcmaModuleRecordNameString(recordName1);
+    module2->SetEcmaModuleRecordNameString(recordName2);
+    module1->SetSharedType(SharedTypes::SHARED_MODULE);
+    module1->SetStatus(ModuleStatus::EVALUATED);
+    module2->SetStatus(ModuleStatus::EVALUATED);
+    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+    moduleManager->AddResolveImportedModule(recordName1, module1.GetTaggedValue());
+    moduleManager->AddResolveImportedModule(recordName2, module2.GetTaggedValue());
+    JSHandle<SourceTextModule> moduleRecord1 = moduleManager->HostGetImportedModule(recordName1);
+    moduleRecord1->CheckAndThrowModuleError(thread);
+    EXPECT_TRUE(!thread->HasPendingException());
+    JSHandle<SourceTextModule> moduleRecord2 = moduleManager->HostGetImportedModule(recordName2);
+    moduleRecord2->CheckAndThrowModuleError(thread);
+    EXPECT_TRUE(!thread->HasPendingException());
+}
+
+HWTEST_F_L0(EcmaModuleTest, ModuleStatusOrder)
+{
+    EXPECT_EQ(static_cast<int>(ModuleStatus::UNINSTANTIATED), 0x01);
+    EXPECT_EQ(static_cast<int>(ModuleStatus::INSTANTIATING), 0x02);
+    EXPECT_EQ(static_cast<int>(ModuleStatus::INSTANTIATED), 0x03);
+    EXPECT_EQ(static_cast<int>(ModuleStatus::EVALUATING), 0x04);
+    EXPECT_EQ(static_cast<int>(ModuleStatus::EVALUATING_ASYNC), 0x05);
+    EXPECT_EQ(static_cast<int>(ModuleStatus::EVALUATED), 0x06);
+    EXPECT_EQ(static_cast<int>(ModuleStatus::ERRORED), 0x07);
+}
 }  // namespace panda::test

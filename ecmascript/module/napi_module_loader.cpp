@@ -110,6 +110,11 @@ JSHandle<JSTaggedValue> NapiModuleLoader::LoadModuleNameSpace(JSThread *thread, 
     }
 
     JSHandle<SourceTextModule> moduleRecord = moduleManager->GetImportedModule(entryPoint);
+    auto &options = const_cast<EcmaVM *>(thread->GetEcmaVM())->GetJSOptions();
+    if (options.EnableModuleException()) {
+        moduleRecord->CheckAndThrowModuleError(thread);
+        RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
+    }
     JSHandle<JSTaggedValue> nameSp = SourceTextModule::GetModuleNamespace(thread, moduleRecord);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
     return nameSp;
