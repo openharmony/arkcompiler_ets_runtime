@@ -20,17 +20,19 @@
  * @tc.require: issueI5NO8G
  */
 const en = "ENGLISH";
-print(en.toLocaleLowerCase());
-print(en.toLocaleLowerCase('zh-CN'));
-print(en.toLocaleLowerCase('en-US'));
+assert_equal(en.toLocaleLowerCase(),'english');
+assert_equal(en.toLocaleLowerCase('zh-CN'),'english');
+assert_equal(en.toLocaleLowerCase('en-US'),'english');
 
 const tr = 'İstanbul';
-print(tr.toLocaleLowerCase());
-print(tr.toLocaleLowerCase('zh-CN'));
-print(tr.toLocaleLowerCase('en-US'));
+assert_equal(tr.toLocaleLowerCase(),'i̇stanbul');
+assert_equal(tr.toLocaleLowerCase('zh-CN'),'i̇stanbul');
+assert_equal(tr.toLocaleLowerCase('en-US'),'i̇stanbul');
 
 let el = 'Αυτό είΝαι ένα δοκιμαστΙκό κείμενο.';
-print(el.toLocaleLowerCase());
-print(el.toLocaleLowerCase('zh-CN'));
-print(el.toLocaleLowerCase('en-US'));
-print(el.toLocaleLowerCase('el'));
+assert_equal(el.toLocaleLowerCase(),'αυτό είναι ένα δοκιμαστικό κείμενο.');
+assert_equal(el.toLocaleLowerCase('zh-CN'),'αυτό είναι ένα δοκιμαστικό κείμενο.');
+assert_equal(el.toLocaleLowerCase('en-US'),'αυτό είναι ένα δοκιμαστικό κείμενο.');
+assert_equal(el.toLocaleLowerCase('el'),'αυτό είναι ένα δοκιμαστικό κείμενο.');
+
+test_end();

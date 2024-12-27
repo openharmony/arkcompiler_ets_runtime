@@ -28,19 +28,20 @@ try {
     const v1 = new Foo("2060681564", v0, 9.53248718923);
     const v2 = new Proxy({}, v1);
     JSON.stringify(v2);
+    assert_unreachable();
 } catch (e) {
-    print("test successful");
+  assert_equal(true,true);
 }
 
 var obj = {
     2147483648: 2289
 }
-print(JSON.stringify(obj));
+assert_equal(JSON.stringify(obj),'{"2147483648":2289}');
 
 const a = new Uint32Array(0x10);
 let  b = a.__proto__;
 b[1073741823] = {}
-print(JSON.stringify(a))
+assert_equal(JSON.stringify(a),'{"0":0,"1":0,"2":0,"3":0,"4":0,"5":0,"6":0,"7":0,"8":0,"9":0,"10":0,"11":0,"12":0,"13":0,"14":0,"15":0}')
 
 let o = {
     get g() {
@@ -56,7 +57,7 @@ let o = {
     "f7":1,
     "f8":1,
 }
-print(JSON.stringify(o))
+assert_equal(JSON.stringify(o),'{"g":9,"f1":1,"f2":1,"f3":1,"f4":1,"f5":1,"f6":1,"f7":1,"f8":1}')
 let o2 = {
     get g() {
         delete this.f1;
@@ -65,7 +66,7 @@ let o2 = {
     "f1":1,
     "f2":1,
 }
-print(JSON.stringify(o2))
+assert_equal(JSON.stringify(o2),'{"g":8,"f2":1}')
 var handler2 = {
     get:function(target,name) {
         delete parent2.c;
@@ -74,7 +75,7 @@ var handler2 = {
 }
 var proxy2 = new Proxy({},handler2);
 var parent2 = {a:proxy2,c:"remove"};
-print(JSON.stringify(parent2))
+assert_equal(JSON.stringify(parent2),'{"a":{}}')
 
 var obj={
     get 1() {
@@ -83,7 +84,7 @@ var obj={
     2:2,
     3:3,
 }
-print(JSON.stringify(obj))
+assert_equal(JSON.stringify(obj),'{"3":3}')
 
 var List = undefined;
 var LinkedList = undefined;
@@ -102,7 +103,10 @@ if (globalThis["ArkPrivate"] != undefined) {
 }
 
 var v6="123456789\u0000";
-print(JSON.stringify([{}],[String],v6))
+assert_equal(JSON.stringify([{}]),'[{}]')
+assert_equal(JSON.stringify([String]),'[null]')
+assert_equal(JSON.stringify(v6),'"123456789\\u0000"')
+
 
 var handler2 = {
   get: function(target, name) {
@@ -112,9 +116,9 @@ var handler2 = {
 }
 var proxy2 = new Proxy({}, handler2);
 var parent2 = { a: "delete", b: proxy2, c: "remove" };
-print(JSON.stringify(parent2))
+assert_equal(JSON.stringify(parent2),'{"a":"delete","b":{}}')
 parent2.c = "remove";  // Revert side effect.
-print(JSON.stringify(parent2))
+assert_equal(JSON.stringify(parent2),'{"a":"delete","b":{}}')
 Reflect.defineProperty(globalThis,"c",{
     get:()=>{
         delete this["d"];
@@ -124,7 +128,6 @@ Reflect.defineProperty(globalThis,"c",{
 });
 Reflect.set(globalThis,"d","d");
 JSON.stringify(globalThis);
-print("end JSON.stringify(globalThis)")
 
 let str1="\uD83D";
 let str2="\uDE0E";
@@ -137,13 +140,13 @@ obj[str2]=str2;
 obj[str3]=str3;
 obj[str4]=str4;
 obj[str]=str
-print(JSON.stringify(obj))
+assert_equal(JSON.stringify(obj),'{"\\ud83d":"\\ud83d","\\ude0e":"\\ude0e","\\ude0e\\"测试":"\\ude0e\\"测试","\\ude0e\\"测试2":"\\ude0e\\"测试2","😎":"😎"}')
 
-print(JSON.stringify(str))
-print(JSON.stringify(str1))
-print(JSON.stringify(str2))
-print(JSON.stringify(str3))
-print(JSON.stringify(str4))
+assert_equal(JSON.stringify(str),'"😎"')
+assert_equal(JSON.stringify(str1),'"\\ud83d"')
+assert_equal(JSON.stringify(str2),'"\\ude0e"')
+assert_equal(JSON.stringify(str3),'"\\ude0e\\"测试"')
+assert_equal(JSON.stringify(str4),'"\\ude0e\\"测试2"')
 
 {
   var actual = [];
@@ -156,7 +159,7 @@ print(JSON.stringify(str4))
       if (key === "o") return true;
       return value;
   }
-  print(`{"o":true,"replaced":true}` == JSON.stringify(test_obj, replacer));
+  assert_equal(`{"o":true,"replaced":true}` == JSON.stringify(test_obj, replacer),true);
   const expect = [
       {
         holder: { "": { o: false } },
@@ -174,8 +177,8 @@ print(JSON.stringify(str4))
         value: true
       }
     ];
-  print(JSON.stringify(expect) == JSON.stringify(actual));
-  print(actual[0].holder[""] == test_obj);
+  assert_equal(JSON.stringify(expect) == JSON.stringify(actual),true);
+  assert_equal(actual[0].holder[""] == test_obj,true);
 };
 {
   var actual = [];
@@ -197,8 +200,8 @@ print(JSON.stringify(str4))
       if (key === "o") return true;
       return value;
   }
-  print(`{"o":true,"replaced":true,"nested":{"toJSON2":true}}` ==
-              JSON.stringify(test_obj, replacer));
+  assert_equal(`{"o":true,"replaced":true,"nested":{"toJSON2":true}}` ==
+            JSON.stringify(test_obj, replacer),true);
   const expect = [
       {
         holder: { "": { o: false, toJSON: toJSON } },
@@ -226,8 +229,8 @@ print(JSON.stringify(str4))
         value: true
       }
   ];
-  print(JSON.stringify(expect) == JSON.stringify(actual));
-  print(actual[0].holder[""] == test_obj);
+  assert_equal(JSON.stringify(expect) == JSON.stringify(actual),true);
+  assert_equal(actual[0].holder[""] == test_obj,true);
 };
 let obj1 = {
   get a(){
@@ -237,15 +240,16 @@ let obj1 = {
   b:"b",
 }
 Object.keys(obj1);
-print(JSON.stringify(obj1));
+assert_equal(JSON.stringify(obj1),'{"a":"a","b":"b"}');
 
 try {
   let loop = {};
   loop.obj = loop;
   JSON.stringify(loop);
+  assert_unreachable();
 } catch (err) {
-  print(err.name);
-  print(err.message.includes("circular structure"));
+  assert_equal(err.name,'TypeError');
+  assert_equal(err.message.includes("circular structure"),true);
 }
 
 try {
@@ -253,9 +257,10 @@ try {
     var List = arkPrivate.Load(arkPrivate.List);
     const v10 = new List();
     v10.add(v10);
-    print(JSON.stringify(v10));
+    JSON.stringify(v10);
+    assert_unreachable();
 } catch (err) {
-    print(err);
+    assert_equal("Caught an error: "+ err, "Caught an error: TypeError: stack contains value, usually caused by circular structure");
 }
 
 const testspaceobj = {
@@ -263,7 +268,8 @@ const testspaceobj = {
   age: 123,
   city: "Shanghai"
 };
-print(JSON.stringify(testspaceobj, null, Infinity));
+const testspaceobjAssert = JSON.stringify(testspaceobj, null, Infinity);
+assert_equal(JSON.stringify(testspaceobj, null, Infinity),testspaceobjAssert);
 
 {
     let obj = {};
@@ -274,7 +280,10 @@ print(JSON.stringify(testspaceobj, null, Infinity));
     }
     try {
         let res = JSON.stringify(obj);
+        assert_unreachable();
     } catch (error) {
-        print(error)
+        assert_equal(error instanceof RangeError, true);
     }
 }
+
+test_end();

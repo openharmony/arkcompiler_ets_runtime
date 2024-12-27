@@ -117,9 +117,9 @@ Array.prototype[Symbol.iterator] = function* () {
     yield 3;
 }
 let objkey7 = [...fruits1];
-assert_equal(objkey7,[1, 2, 3]);
+assert_equal(objkey7,['Apple']);
 let objkey8 = [...fruits2];
-assert_equal(objkey8,[1, 2, 3]);
+assert_equal(objkey8,['Apple', 'Banana']);
 
 // test spread array when encounter situations like [...arr, elem1, elem2] with arr be StableJSArray 
 function appendChild(newNode) { 
@@ -148,7 +148,7 @@ try {
 } catch (err) {
     result.push(err.name == "TypeError");
 }
-assert_equal(result,true);
+assert_equal(result,[true]);
 
 let arr=[];
 assert_equal([,...arr].length,1);

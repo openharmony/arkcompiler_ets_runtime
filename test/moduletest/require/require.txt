@@ -1,0 +1,4 @@
+B.js;B;commonjs;B.js;xxBxx
+C.js;C;commonjs;C.js;xxCxx
+require.js;require;commonjs;require.js;xxrequirexx
+index.js;index;commonjs;index.js;xxindexxx

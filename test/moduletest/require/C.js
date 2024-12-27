@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Huawei Device Co., Ltd.
+ * Copyright (c) 2022 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -14,19 +14,10 @@
  */
 
 /*
- * @tc.name:lexicalenv
- * @tc.desc:test lexical env
+ * @tc.name:require
+ * @tc.desc:test require
  * @tc.type: FUNC
  * @tc.require: issueI5NO8G
  */
-function foo(a) {
-    var b = 2;
-    var c = 3
-    function bar() {
-    }
-    bar()
-}
-
-foo(1)
-
-test_end();
+var objC = "objC_mes";
+module.exports.c = objC;
