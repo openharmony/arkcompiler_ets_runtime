@@ -16,6 +16,7 @@
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/base/json_parser.h"
 #include "ecmascript/linked_hash_table.h"
+#include "ecmascript/ecma_string_table.h"
 
 namespace panda::ecmascript::base {
 
@@ -1158,6 +1159,12 @@ JSHandle<JSTaggedValue> Utf8JsonParser::ParseString(bool inObjOrArrOrMap)
             uint32_t strLength = end_ - current_;
             ASSERT(strLength <= static_cast<size_t>(UINT32_MAX));
             current_ = end_ + 1;
+            auto *utf8Data = EcmaStringAccessor(sourceString_).GetDataUtf8() + offset;
+            if (strLength == 1 && EcmaStringAccessor::IsASCIICharacter(utf8Data[0])) {
+                int32_t ch = static_cast<int32_t>(utf8Data[0]);
+                JSHandle<SingleCharTable> singleCharTable(thread_, thread_->GetSingleCharTable());
+                return JSHandle<JSTaggedValue>(thread_, singleCharTable->GetStringFromSingleCharTable(ch));
+            }
             return JSHandle<JSTaggedValue>::Cast(factory_->NewCompressedUtf8SubString(
                 sourceString_, offset, strLength));
         }
