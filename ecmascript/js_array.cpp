@@ -607,14 +607,13 @@ bool JSArray::TryFastCreateDataProperty(JSThread *thread, const JSHandle<JSObjec
     }
 
     uint32_t capacity = TaggedArray::Cast(obj->GetElements())->GetLength();
-    ElementsKind kind = obj->GetJSHClass()->GetElementsKind();
     uint32_t len = JSHandle<JSArray>::Cast(obj)->GetArrayLength();
-    if (index > len || kind != ElementsKind::HOLE_TAGGED) {
+    if UNLIKELY(index > len) {
         // goto slowPath
         return JSObject::CreateDataPropertyOrThrow(thread, obj, index, value, sCheckMode);
     }
 
-    if (index == len) {
+    if UNLIKELY(index == len) {
         // append situation
         if (!IsArrayLengthWritable(thread, obj)) {
             THROW_TYPE_ERROR_AND_RETURN(thread, "UnWritable ArrayLength", false);
@@ -627,8 +626,14 @@ bool JSArray::TryFastCreateDataProperty(JSThread *thread, const JSHandle<JSObjec
         }
         JSHandle<JSArray>::Cast(obj)->SetArrayLength(thread, newLen);
     }
-    
-    TaggedArray::Cast(obj->GetElements())->Set(thread, index, value);
+    if LIKELY(!thread->GetEcmaVM()->IsEnableMutantArray()) {
+        TaggedArray::Cast(obj->GetElements())->Set(thread, index, value);
+        if LIKELY(thread->GetEcmaVM()->IsEnableElementsKind()) {
+            JSHClass::TransitToElementsKind(thread, obj, value, ElementsKind::NONE);
+        }
+    } else {
+        ElementAccessor::Set(thread, obj, index, value, true);
+    }
     return true;
 #else
     return JSObject::CreateDataPropertyOrThrow(thread, obj, index, value, sCheckMode);

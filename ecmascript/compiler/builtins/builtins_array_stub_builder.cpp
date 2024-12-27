@@ -2624,7 +2624,7 @@ void BuiltinsArrayStubBuilder::Push(GateRef glue, GateRef thisValue,
     BRANCH(Int32LessThanOrEqual(ChangeIntPtrToInt32(numArgs), Int32(2)), &smallArgs, slowPath);
     Bind(&smallArgs);
 
-    GateRef elementsKindEnabled = IsEnableElementsKind(glue);
+    GateRef mutantArrayEnabled = IsEnableMutantArray(glue);
     GateRef newLength = Int32Add(oldLength, ChangeIntPtrToInt32(numArgs));
 
     DEFVARIABLE(elements, VariableType::JS_ANY(), GetElementsArray(thisValue));
@@ -2650,7 +2650,7 @@ void BuiltinsArrayStubBuilder::Push(GateRef glue, GateRef thisValue,
             index = Int32Add(oldLength, Int32(0)); // 0 slot index
             Label slowSet(env);
             Label fastSet(env);
-            BRANCH(elementsKindEnabled, &slowSet, &fastSet);
+            BRANCH(mutantArrayEnabled, &slowSet, &fastSet);
             Bind(&slowSet);
             {
                 SetValueWithElementsKind(glue, thisValue, *value, *index, Boolean(true),
@@ -2673,7 +2673,7 @@ void BuiltinsArrayStubBuilder::Push(GateRef glue, GateRef thisValue,
             index2 = Int32Add(oldLength, Int32(1)); // 1 slot index
             Label slowSet(env);
             Label fastSet(env);
-            BRANCH(elementsKindEnabled, &slowSet, &fastSet);
+            BRANCH(mutantArrayEnabled, &slowSet, &fastSet);
             Bind(&slowSet);
             {
                 SetValueWithElementsKind(glue, thisValue, *value, *index, Boolean(true),

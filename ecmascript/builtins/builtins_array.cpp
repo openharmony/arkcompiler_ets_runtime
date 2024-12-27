@@ -219,13 +219,13 @@ JSTaggedValue BuiltinsArray::From(EcmaRuntimeCallInfo *argv)
         //     i. Let A be ArrayCreate(0).
         //   c. ReturnIfAbrupt(A).
         JSTaggedValue newArray;
-        if (thisHandle->IsConstructor()) {
+        if (thisHandle == env->GetArrayFunction() || !thisHandle->IsConstructor()) {
+            newArray = JSArray::ArrayCreate(thread, JSTaggedNumber(static_cast<double>(0))).GetTaggedValue();
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        } else {
             EcmaRuntimeCallInfo *info =
                 EcmaInterpreter::NewRuntimeCallInfo(thread, thisHandle, undefined, undefined, 0);
             newArray = JSFunction::Construct(info);
-            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        } else {
-            newArray = JSArray::ArrayCreate(thread, JSTaggedNumber(0)).GetTaggedValue();
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         }
         if (!newArray.IsECMAObject()) {
@@ -252,12 +252,11 @@ JSTaggedValue BuiltinsArray::From(EcmaRuntimeCallInfo *argv)
                 JSHandle<JSTaggedValue> kValue = JSArray::FastGetPropertyByValue(thread, arrayLike, k);
                 RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
                 if (mapping) {
-                    key.Update(JSTaggedValue(k));
                     const uint32_t argsLength = 2; // 2: «kValue, k»
                     EcmaRuntimeCallInfo *info =
                         EcmaInterpreter::NewRuntimeCallInfo(thread, mapfn, thisArgHandle, undefined, argsLength);
                     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-                    info->SetCallArg(kValue.GetTaggedValue(), key.GetTaggedValue());
+                    info->SetCallArg(kValue.GetTaggedValue(), JSTaggedValue(k));
                     JSTaggedValue callResult = JSFunction::Call(info);
                     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
                     mapValue.Update(callResult);
@@ -339,15 +338,15 @@ JSTaggedValue BuiltinsArray::From(EcmaRuntimeCallInfo *argv)
     //   a. Let A be ArrayCreate(len).
     // 14. ReturnIfAbrupt(A).
     JSTaggedValue newArray;
-    if (thisHandle->IsConstructor()) {
+    if (thisHandle == env->GetArrayFunction() || !thisHandle->IsConstructor()) {
+        newArray = JSArray::ArrayCreate(thread, JSTaggedNumber(static_cast<double>(len))).GetTaggedValue();
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    } else {
         EcmaRuntimeCallInfo *info =
             EcmaInterpreter::NewRuntimeCallInfo(thread, thisHandle, undefined, undefined, 1);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         info->SetCallArg(JSTaggedValue(len));
         newArray = JSFunction::Construct(info);
-        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    } else {
-        newArray = JSArray::ArrayCreate(thread, JSTaggedNumber(static_cast<double>(len))).GetTaggedValue();
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     }
     if (!newArray.IsECMAObject()) {
@@ -362,19 +361,17 @@ JSTaggedValue BuiltinsArray::From(EcmaRuntimeCallInfo *argv)
     //     i. Let mappedValue be Call(mapfn, T, «kValue, k»).
     //   e. Else, let mappedValue be kValue.
     //   f. Let defineStatus be CreateDataPropertyOrThrow(A, Pk, mappedValue).
-    JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
     JSMutableHandle<JSTaggedValue> mapValue(thread, JSTaggedValue::Undefined());
     int64_t k = 0;
     while (k < len) {
         JSHandle<JSTaggedValue> kValue = JSArray::FastGetPropertyByValue(thread, arrayLike, k);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         if (mapping) {
-            key.Update(JSTaggedValue(k));
             const uint32_t argsLength = 2; // 2: «kValue, k»
             EcmaRuntimeCallInfo *info =
                 EcmaInterpreter::NewRuntimeCallInfo(thread, mapfn, thisArgHandle, undefined, argsLength);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-            info->SetCallArg(kValue.GetTaggedValue(), key.GetTaggedValue());
+            info->SetCallArg(kValue.GetTaggedValue(), JSTaggedValue(k));
             JSTaggedValue callResult = JSFunction::Call(info);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             mapValue.Update(callResult);

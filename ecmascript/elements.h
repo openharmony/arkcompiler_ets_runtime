@@ -97,7 +97,32 @@ public:
     static ConstantIndex GetGlobalContantIndexByKind(ElementsKind kind);
     static ElementsKind MergeElementsKind(ElementsKind curKind, ElementsKind newKind);
     static ElementsKind FixElementsKind(ElementsKind oldKind);
+    static inline ElementsKind ToElementsKind(JSTaggedValue value)
+    {
+        ElementsKind valueKind = ElementsKind::NONE;
+        if (value.IsInt()) {
+            valueKind = ElementsKind::INT;
+        } else if (value.IsDouble()) {
+            valueKind = ElementsKind::NUMBER;
+        } else if (value.IsString()) {
+            valueKind = ElementsKind::STRING;
+        } else if (value.IsHeapObject()) {
+            valueKind = ElementsKind::OBJECT;
+        } else if (value.IsHole()) {
+            valueKind = ElementsKind::HOLE;
+        } else {
+            valueKind = ElementsKind::TAGGED;
+        }
+        return valueKind;
+    }
     static ElementsKind ToElementsKind(JSTaggedValue value, ElementsKind kind);
+
+    static ElementsKind MergeElementsKindNoFix(JSTaggedValue value, ElementsKind curKind, ElementsKind newKind)
+    {
+        return static_cast<ElementsKind>(static_cast<uint8_t>(ToElementsKind(value)) | static_cast<uint8_t>(curKind) |
+            static_cast<uint8_t>(newKind));
+    }
+
     static void MigrateArrayWithKind(const JSThread *thread, const JSHandle<JSObject> &object,
                                      const ElementsKind oldKind, const ElementsKind newKind);
 private:

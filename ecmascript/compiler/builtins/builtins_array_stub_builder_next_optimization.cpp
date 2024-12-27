@@ -536,40 +536,25 @@ void BuiltinsArrayStubBuilder::ToReversedOptimised(GateRef glue, GateRef thisVal
     Bind(&isStability);
     BRANCH(IsJsCOWArray(thisValue), slowPath, &notCOWArray);
     Bind(&notCOWArray);
-    Label MutantArrayEnabled(env);
-    Label MutantArrayDisabled(env);
     Label next(env);
-    GateRef isMutantArrayEnabled = IsEnableMutantArray(glue);
     DEFVARIABLE(receiver, VariableType::JS_ANY(), Hole());
     GateRef kind = GetElementsKindFromHClass(LoadHClass(thisValue));
     GateRef thisArrLen = GetArrayLength(thisValue);
-    BRANCH_UNLIKELY(isMutantArrayEnabled, &MutantArrayEnabled, &MutantArrayDisabled);
-    Bind(&MutantArrayEnabled);
+    Label newArrayIsTagged(env);
+    Label reuseOldHClass(env);
+    BRANCH_NO_WEIGHT(ElementsKindHasHole(kind), &newArrayIsTagged, &reuseOldHClass);
+    Bind(&newArrayIsTagged);
     {
-        Label newArrayIsTagged(env);
-        Label reuseOldHClass(env);
-        BRANCH_NO_WEIGHT(ElementsKindHasHole(kind), &newArrayIsTagged, &reuseOldHClass);
-        Bind(&newArrayIsTagged);
-        {
-            // If the kind has hole, we know it must be transited to TAGGED kind;
-            // There will be no hole in the new array because hole will be converted to undefined.
-            GateRef newHClass = GetGlobalConstantValue(VariableType::JS_ANY(), glue,
-                                                       ConstantIndex::ELEMENT_TAGGED_HCLASS_INDEX);
-            receiver = NewEmptyArrayWithHClass(glue, newHClass, thisArrLen);
-            Jump(&next);
-        }
-        Bind(&reuseOldHClass);
-        {
-            receiver = NewEmptyArrayWithHClass(glue, LoadHClass(thisValue), thisArrLen);
-            Jump(&next);
-        }
+        // If the kind has hole, we know it must be transited to TAGGED kind;
+        // There will be no hole in the new array because hole will be converted to undefined.
+        GateRef newHClass = GetGlobalConstantValue(VariableType::JS_ANY(), glue,
+                                                   ConstantIndex::ELEMENT_TAGGED_HCLASS_INDEX);
+        receiver = NewEmptyArrayWithHClass(glue, newHClass, thisArrLen);
+        Jump(&next);
     }
-    Bind(&MutantArrayDisabled);
+    Bind(&reuseOldHClass);
     {
-        NewObjectStubBuilder newBuilder(this);
-        GateRef destElements = newBuilder.NewTaggedArray(glue, thisArrLen);
-        receiver = newBuilder.CreateArrayFromList(glue, destElements,
-                                                  Int32(static_cast<int32_t>(ElementsKind::TAGGED)));
+        receiver = NewEmptyArrayWithHClass(glue, LoadHClass(thisValue), thisArrLen);
         Jump(&next);
     }
     Bind(&next);
@@ -578,23 +563,18 @@ void BuiltinsArrayStubBuilder::ToReversedOptimised(GateRef glue, GateRef thisVal
     Label notIntOrNumber(env);
     Label isTagged(env);
     Label isHoleOrIntOrNumber(env);
-    Label mutantArrayEnabled(env);
-    BRANCH_NO_WEIGHT(isMutantArrayEnabled, &mutantArrayEnabled, &isTagged);
-    Bind(&mutantArrayEnabled);
+    GateRef intOrNumber = LogicOrBuilder(env)
+                          .Or(Int32Equal(kind, Int32(static_cast<int32_t>(ElementsKind::INT))))
+                          .Or(Int32Equal(kind, Int32(static_cast<int32_t>(ElementsKind::NUMBER))))
+                          .Done();
+    BRANCH_NO_WEIGHT(intOrNumber, &isIntOrNumber, &notIntOrNumber);
+    Bind(&notIntOrNumber);
     {
-        GateRef intOrNumber = LogicOrBuilder(env)
-                              .Or(Int32Equal(kind, Int32(static_cast<int32_t>(ElementsKind::INT))))
-                              .Or(Int32Equal(kind, Int32(static_cast<int32_t>(ElementsKind::NUMBER))))
-                              .Done();
-        BRANCH_NO_WEIGHT(intOrNumber, &isIntOrNumber, &notIntOrNumber);
-        Bind(&notIntOrNumber);
-        {
-            GateRef holeOrIntOrNumber = LogicOrBuilder(env)
-                                        .Or(Int32Equal(kind, Int32(static_cast<int32_t>(ElementsKind::HOLE_INT))))
-                                        .Or(Int32Equal(kind, Int32(static_cast<int32_t>(ElementsKind::HOLE_NUMBER))))
-                                        .Done();
-            BRANCH_NO_WEIGHT(holeOrIntOrNumber, &isHoleOrIntOrNumber, &isTagged);
-        }
+        GateRef holeOrIntOrNumber = LogicOrBuilder(env)
+                                    .Or(Int32Equal(kind, Int32(static_cast<int32_t>(ElementsKind::HOLE_INT))))
+                                    .Or(Int32Equal(kind, Int32(static_cast<int32_t>(ElementsKind::HOLE_NUMBER))))
+                                    .Done();
+        BRANCH_NO_WEIGHT(holeOrIntOrNumber, &isHoleOrIntOrNumber, &isTagged);
     }
     Bind(&isTagged);
     {
@@ -872,11 +852,9 @@ void BuiltinsArrayStubBuilder::ToSplicedOptimised(GateRef glue, GateRef thisValu
                     BRANCH_UNLIKELY(IsEnableMutantArray(glue), &mutantArrayToSpliced, &fastToSpliced);
                     Bind(&fastToSpliced);
                     {
-                        NewObjectStubBuilder newBuilder(this);
-                        GateRef destElements = newBuilder.NewTaggedArray(glue, *newLen);
-                        GateRef newArray =
-                            newBuilder.CreateArrayFromList(glue, destElements,
-                                Int32(static_cast<int32_t>(ElementsKind::TAGGED)));
+                        GateRef newHClass = GetGlobalConstantValue(VariableType::JS_ANY(), glue,
+                                                                   ConstantIndex::ELEMENT_TAGGED_HCLASS_INDEX);
+                        GateRef newArray = NewEmptyArrayWithHClass(glue, newHClass, *newLen);
                         FastToSpliced(glue, thisValue, newArray, *actualStart, *actualDeleteCount, *insertCount,
                                       GetCallArg2(numArgs));
                         result->WriteVariable(newArray);
@@ -1186,6 +1164,7 @@ void BuiltinsArrayStubBuilder::VisitAll(GateRef glue, GateRef thisValue, GateRef
     Bind(&isHeapObject);
     BRANCH(IsJsArray(thisValue), &isJsArray, slowPath);
     Bind(&isJsArray);
+    // don't check constructor, "VisitKind" won't create new array.
     GateRef callbackFnHandle = GetCallArg0(numArgs);
     BRANCH(TaggedIsHeapObject(callbackFnHandle), &arg0HeapObject, slowPath);
     Bind(&arg0HeapObject);
@@ -1351,11 +1330,9 @@ void BuiltinsArrayStubBuilder::PopOptimised(GateRef glue, GateRef thisValue,
     auto env = GetEnvironment();
     Label isHeapObject(env);
     Label stableJSArray(env);
-    Label isDeufaltConstructor(env);
     BRANCH(TaggedIsHeapObject(thisValue), &isHeapObject, slowPath);
     Bind(&isHeapObject);
-    BRANCH(HasConstructor(thisValue), slowPath, &isDeufaltConstructor);
-    Bind(&isDeufaltConstructor);
+    // don't check constructor, "Pop" won't create new array.
     BRANCH(IsStableJSArray(glue, thisValue), &stableJSArray, slowPath);
     Bind(&stableJSArray);
 
@@ -1460,6 +1437,7 @@ void BuiltinsArrayStubBuilder::SliceOptimised(GateRef glue, GateRef thisValue, G
     Bind(&isHeapObject);
     BRANCH(IsJsArray(thisValue), &isJsArray, slowPath);
     Bind(&isJsArray);
+    // need check constructor, "Slice" should use ArraySpeciesCreate
     BRANCH(HasConstructor(thisValue), slowPath, &noConstructor);
     Bind(&noConstructor);
 
@@ -1660,11 +1638,9 @@ void BuiltinsArrayStubBuilder::ShiftOptimised(GateRef glue, GateRef thisValue,
     auto env = GetEnvironment();
     Label isHeapObject(env);
     Label stableJSArray(env);
-    Label isDefaultConstructor(env);
     BRANCH(TaggedIsHeapObject(thisValue), &isHeapObject, slowPath);
     Bind(&isHeapObject);
-    BRANCH(HasConstructor(thisValue), slowPath, &isDefaultConstructor);
-    Bind(&isDefaultConstructor);
+    // don't check constructor, "Shift" won't create new array.
     BRANCH(IsStableJSArray(glue, thisValue), &stableJSArray, slowPath);
     Bind(&stableJSArray);
     {
@@ -1823,15 +1799,14 @@ void BuiltinsArrayStubBuilder::WithOptimised(GateRef glue, GateRef thisValue, Ga
     Label isHeapObject(env);
     Label isJsArray(env);
     Label isStableArray(env);
-    Label defaultConstr(env);
     BRANCH(TaggedIsHeapObject(thisValue), &isHeapObject, slowPath);
     Bind(&isHeapObject);
     BRANCH(IsJsArray(thisValue), &isJsArray, slowPath);
     Bind(&isJsArray);
-    BRANCH(HasConstructor(thisValue), slowPath, &defaultConstr);
-    Bind(&defaultConstr);
     BRANCH(IsStableJSArray(glue, thisValue), &isStableArray, slowPath);
     Bind(&isStableArray);
+    // don't check constructor, "with" always use ArrayCreate to create array.
+
     // don't check COW array, "With" won't modify original array.
 
     GateRef thisLen = ZExtInt32ToInt64(GetArrayLength(thisValue));
@@ -1885,11 +1860,10 @@ void BuiltinsArrayStubBuilder::WithOptimised(GateRef glue, GateRef thisValue, Ga
                     BRANCH_UNLIKELY(IsEnableMutantArray(glue), &enableMutantArrayWith, &fastArrayWith);
                     Bind(&fastArrayWith);
                     {
-                        NewObjectStubBuilder newBuilder(this);
-                        GateRef destElements = newBuilder.NewTaggedArray(glue, TruncInt64ToInt32(thisLen));
                         GateRef newArrayEleKind = CalEleKindForNewArrayNoHole(thisValue, thisLen,
                                                                               *actualIndex, *value);
-                        GateRef newArray = newBuilder.CreateArrayFromList(glue, destElements, newArrayEleKind);
+                        GateRef newHClass =  GetElementsKindHClass(glue, newArrayEleKind);
+                        GateRef newArray = NewEmptyArrayWithHClass(glue, newHClass, TruncInt64ToInt32(thisLen));
                         FastArrayWith(glue, thisValue, newArray, TruncInt64ToInt32(*actualIndex),
                                       *value, newArrayEleKind);
                         result->WriteVariable(newArray);
@@ -1962,6 +1936,7 @@ void BuiltinsArrayStubBuilder::ConcatOptimised(GateRef glue, GateRef thisValue, 
     Bind(&isJsArray);
     {
         Label isExtensible(env);
+        // need check constructor, "Concat" should use ArraySpeciesCreate
         BRANCH(HasConstructor(thisValue), slowPath, &isExtensible);
         Bind(&isExtensible);
         {
@@ -2352,14 +2327,12 @@ void BuiltinsArrayStubBuilder::ReverseOptimised(GateRef glue, GateRef thisValue,
     Label isHeapObject(env);
     Label isJsArray(env);
     Label isStability(env);
-    Label defaultConstr(env);
     Label notCOWArray(env);
     BRANCH(TaggedIsHeapObject(thisValue), &isHeapObject, slowPath);
     Bind(&isHeapObject);
     BRANCH(IsJsArray(thisValue), &isJsArray, slowPath);
     Bind(&isJsArray);
-    BRANCH(HasConstructor(thisValue), slowPath, &defaultConstr);
-    Bind(&defaultConstr);
+    // don't check constructor, "Reverse" won't create new array.
     BRANCH(IsStableJSArray(glue, thisValue), &isStability, slowPath);
     Bind(&isStability);
     BRANCH(IsJsCOWArray(thisValue), slowPath, &notCOWArray);

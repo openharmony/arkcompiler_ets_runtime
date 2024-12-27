@@ -782,18 +782,18 @@ bool JSThread::CheckSafepoint()
 {
     ResetCheckSafePointStatus();
 
-    if (HasTerminationRequest()) {
+    if UNLIKELY(HasTerminationRequest()) {
         TerminateExecution();
         SetVMTerminated(true);
         SetTerminationRequest(false);
     }
 
-    if (HasSuspendRequest()) {
+    if UNLIKELY(HasSuspendRequest()) {
         WaitSuspension();
     }
 
     // vmThreadControl_ 's thread_ is current JSThread's this.
-    if (VMNeedSuspension()) {
+    if UNLIKELY(VMNeedSuspension()) {
         vmThreadControl_->SuspendVM();
     }
     if (HasInstallMachineCode()) {
@@ -802,7 +802,7 @@ bool JSThread::CheckSafepoint()
     }
 
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
-    if (needProfiling_.load() && !isProfiling_) {
+    if UNLIKELY(needProfiling_.load() && !isProfiling_) {
         DFXJSNApi::StartCpuProfilerForFile(vm_, profileName_, CpuProfiler::INTERVAL_OF_INNER_START);
         SetNeedProfiling(false);
     }
@@ -819,12 +819,12 @@ bool JSThread::CheckSafepoint()
     heap->HandleExitHighSensitiveEvent();
 
     // Do not trigger local gc during the shared gc processRset process.
-    if (IsProcessingLocalToSharedRset()) {
+    if UNLIKELY(IsProcessingLocalToSharedRset()) {
         return false;
     }
     // After concurrent mark finish, should trigger gc here to avoid create much floating garbage
     // except in serialize or high sensitive event
-    if (ShouldHandleMarkingFinishedInSafepoint()) {
+    if UNLIKELY(ShouldHandleMarkingFinishedInSafepoint()) {
         heap->SetCanThrowOOMError(false);
         heap->GetConcurrentMarker()->HandleMarkingFinished();
         heap->SetCanThrowOOMError(true);
