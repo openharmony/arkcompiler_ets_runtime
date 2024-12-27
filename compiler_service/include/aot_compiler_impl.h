@@ -42,6 +42,10 @@ public:
     void HandlePowerDisconnected();
     void HandleScreenOn();
     void HandleThermalLevelChanged(const int32_t level);
+#ifdef ENABLE_COMPILER_SERVICE_GET_PARAMETER
+    void SetAnFileMaxSizeBySysParam();
+    void SetEnableCodeCommentBySysParam();
+#endif
 
 protected:
     int32_t FindArgsIdxToInteger(const std::unordered_map<std::string, std::string> &argsMap,

@@ -100,17 +100,33 @@ int32_t AotCompilerImpl::PrepareArgs(const std::unordered_map<std::string, std::
         }
     }
 #ifdef ENABLE_COMPILER_SERVICE_GET_PARAMETER
-    bool enableAotCodeComment = OHOS::system::GetBoolParameter("ark.aot.code_comment.enable", false);
-    if (enableAotCodeComment) {
-        hapArgs_.argVector.emplace_back(Symbols::PREFIX + ArgsIdx::COMPILER_ENABLE_AOT_CODE_COMMENT +
-            Symbols::EQ + "true");
-        hapArgs_.argVector.emplace_back(Symbols::PREFIX + ArgsIdx::COMPILER_LOG_OPT +
-            Symbols::EQ + "allasm");
-    }
+    SetEnableCodeCommentBySysParam();
+    SetAnFileMaxSizeBySysParam();
 #endif
     hapArgs_.argVector.emplace_back(abcPath);
     return ERR_OK;
 }
+
+#ifdef ENABLE_COMPILER_SERVICE_GET_PARAMETER
+void AotCompilerImpl::SetAnFileMaxSizeBySysParam()
+{
+    int anFileMaxSize = OHOS::system::GetIntParameter<int>("ark.aot.compiler_an_file_max_size", -1);
+    if (anFileMaxSize >= 0) {
+        hapArgs_.argVector.emplace_back(Symbols::PREFIX + ArgsIdx::COMPILER_AN_FILE_MAX_SIZE + Symbols::EQ +
+                                        std::to_string(anFileMaxSize));
+    }
+}
+
+void AotCompilerImpl::SetEnableCodeCommentBySysParam()
+{
+    bool enableAotCodeComment = OHOS::system::GetBoolParameter("ark.aot.code_comment.enable", false);
+    if (enableAotCodeComment) {
+        hapArgs_.argVector.emplace_back(Symbols::PREFIX + ArgsIdx::COMPILER_ENABLE_AOT_CODE_COMMENT + Symbols::EQ +
+                                        "true");
+        hapArgs_.argVector.emplace_back(Symbols::PREFIX + ArgsIdx::COMPILER_LOG_OPT + Symbols::EQ + "allasm");
+    }
+}
+#endif
 
 void AotCompilerImpl::GetBundleId(int32_t &bundleUid, int32_t &bundleGid) const
 {

@@ -2089,6 +2089,11 @@ public:
         return CompilerAnFileMaxByteSize_;
     }
 
+    bool IsCompilerAnFileMaxByteSizeDefault() const
+    {
+        return CompilerAnFileMaxByteSize_ == 0;
+    }
+
 public:
     static constexpr int32_t MAX_APP_COMPILE_METHOD_SIZE = 4_KB;
 
