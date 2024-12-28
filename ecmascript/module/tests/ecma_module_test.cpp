@@ -1742,6 +1742,23 @@ HWTEST_F_L0(EcmaModuleTest, ConcatMergeFileNameToNormalized)
     entryPoint = ModulePathHelper::ConcatMergeFileNameToNormalized(thread, pf.get(), baseFilename, recordName,
         requestPath);
     EXPECT_EQ(result, entryPoint);
+
+    recordName = "pkg_modules/.ohpm/validator@13.12.0/pkg_modules/validator/index";
+    requestPath = "./lib/toDate";
+    result = "pkg_modules/.ohpm/validator@13.12.0/pkg_modules/validator/lib/toDate";
+    pf->InsertJSRecordInfo(result);
+    CUnorderedMap<CString, JSPandaFile::JSRecordInfo*> &recordInfo =
+        const_cast<CUnorderedMap<CString, JSPandaFile::JSRecordInfo*>&>(pf->GetJSRecordInfo());
+    JSPandaFile::JSRecordInfo *info = new JSPandaFile::JSRecordInfo();
+    info->npmPackageName = result;
+    recordInfo.insert({recordName, info});
+
+    entryPoint = ModulePathHelper::ConcatMergeFileNameToNormalized(thread, pf.get(), baseFilename, recordName,
+        requestPath);
+    EXPECT_EQ(result, entryPoint);
+    
+    delete info;
+    recordInfo.erase(recordName);
 }
 
 HWTEST_F_L0(EcmaModuleTest, ConcatImportFileNormalizedOhmurlWithRecordName)
