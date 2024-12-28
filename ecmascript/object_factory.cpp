@@ -1123,6 +1123,17 @@ JSHandle<JSObject> ObjectFactory::NewJSObjectByConstructor(const JSHandle<JSFunc
                 auto properties = NewAndCopySNameDictionary(dict, dict->GetLength());
                 obj->SetProperties(thread_, properties);
             }
+            if (constructor->IsClassConstructor()) {
+                JSTaggedValue elementsDic =
+                    constructor->GetPropertyInlinedProps(ClassInfoExtractor::SENDABLE_ELEMENTS_INDEX);
+                if (elementsDic.IsDictionary()) {
+                    JSHandle<TaggedArray> elementsDicHld(thread_, elementsDic);
+                    JSHandle<TaggedArray> elements =
+                        NewAndCopySNameDictionary(elementsDicHld, elementsDicHld->GetLength());
+                    obj->SetElements(thread_, elements);
+                    jshclass->SetIsDictionaryElement(true);
+                }
+            }
             InitializeJSObject(obj, jshclass);
         } else {
             obj = NewJSObjectWithInit(jshclass);
@@ -1164,11 +1175,57 @@ JSHandle<JSObject> ObjectFactory::NewJSObjectByConstructor(const JSHandle<JSFunc
             auto properties = NewAndCopySNameDictionary(dict, dict->GetLength());
             obj->SetProperties(thread_, properties);
         }
+        if (constructor->IsClassConstructor() && newTarget->IsClassConstructor()) {
+            JSTaggedValue elementsDicOfCtor =
+                constructor->GetPropertyInlinedProps(ClassInfoExtractor::SENDABLE_ELEMENTS_INDEX);
+            JSTaggedValue elementsDicOfTrg =
+                JSHandle<JSFunction>(newTarget)->GetPropertyInlinedProps(ClassInfoExtractor::SENDABLE_ELEMENTS_INDEX);
+            if (elementsDicOfCtor.IsDictionary() && elementsDicOfTrg.IsDictionary()) {
+                JSHandle<TaggedArray> elements;
+                MergeSendableClassElementsDic(elements, JSHandle<JSTaggedValue>(thread_, elementsDicOfCtor),
+                                              JSHandle<JSTaggedValue>(thread_, elementsDicOfTrg));
+                obj->SetElements(thread_, elements);
+                jshclass->SetIsDictionaryElement(true);
+            }
+        }
         InitializeJSObject(obj, jshclass);
     } else {
         obj = NewJSObjectWithInit(jshclass);
     }
     return obj;
+}
+
+void ObjectFactory::MergeSendableClassElementsDic(JSHandle<TaggedArray> &elements,
+                                                  const JSHandle<JSTaggedValue> &elementsDicOfCtorVal,
+                                                  const JSHandle<JSTaggedValue> &elementsDicOfTrgVal)
+{
+    JSHandle<JSTaggedValue> undefinedVal = thread_->GlobalConstants()->GetHandledUndefined();
+
+    JSHandle<TaggedArray> elementsDicOfCtorHdl(elementsDicOfCtorVal);
+    if (elementsDicOfCtorVal.GetTaggedValue() == elementsDicOfTrgVal.GetTaggedValue()) {
+        elements = NewAndCopySNameDictionary(elementsDicOfCtorHdl, elementsDicOfCtorHdl->GetLength());
+    } else {
+        JSHandle<TaggedArray> elementsDicDicOfTrgHdl(elementsDicOfTrgVal);
+        JSHandle<NumberDictionary> elementsDicOfCtor(elementsDicOfCtorVal);
+        JSMutableHandle<JSTaggedValue> key(thread_, JSTaggedValue::Undefined());
+
+        JSMutableHandle<NumberDictionary> newElementsDicUpdate(thread_, elementsDicOfCtor);
+        uint32_t headerSize = 4;
+        for (uint32_t i = headerSize; i < elementsDicDicOfTrgHdl->GetLength(); i++) {
+            key.Update(elementsDicDicOfTrgHdl->Get(i));
+            if (key->IsInt()) {
+                JSHandle<NumberDictionary> elementsDicOfTrg(elementsDicOfTrgVal);
+
+                int entry = elementsDicOfTrg->FindEntry(key.GetTaggedValue());
+                PropertyAttributes attributes = elementsDicOfTrg->GetAttributes(entry);
+                JSHandle<NumberDictionary> newElementsDic =
+                    NumberDictionary::Put(thread_, elementsDicOfCtor, key, undefinedVal, attributes);
+                newElementsDicUpdate.Update(newElementsDic);
+            }
+        }
+        JSHandle<TaggedArray> newElementsDicHld(newElementsDicUpdate);
+        elements = NewAndCopySNameDictionary(newElementsDicHld, newElementsDicHld->GetLength());
+    }
 }
 
 JSHandle<JSObject> ObjectFactory::NewJSObjectWithInit(const JSHandle<JSHClass> &jshclass)

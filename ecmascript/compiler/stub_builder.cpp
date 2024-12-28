@@ -4377,8 +4377,8 @@ GateRef StubBuilder::SetPropertyByIndex(GateRef glue, GateRef receiver, GateRef 
                 GateRef attr = GetAttributesFromDictionary<NumberDictionary>(elements, entryA);
                 Label isWritandConfig(env);
                 Label notWritandConfig(env);
-                BRANCH(LogicAndBuilder(env).And(IsWritable(attr)).And(IsConfigable(attr)).Done(),
-                    &isWritandConfig, &notWritandConfig);
+                BRANCH(BitOr(LogicAndBuilder(env).And(IsWritable(attr)).And(IsConfigable(attr)).Done(),
+                    IsJSShared(*holder)), &isWritandConfig, &notWritandConfig);
                 Bind(&isWritandConfig);
                 {
                     Label isAccessor(env);
@@ -4576,8 +4576,8 @@ GateRef StubBuilder::DefinePropertyByIndex(GateRef glue, GateRef receiver, GateR
                 GateRef attr = GetAttributesFromDictionary<NumberDictionary>(elements, entryA);
                 Label isWritandConfig(env);
                 Label notWritandConfig(env);
-                BRANCH(LogicAndBuilder(env).And(IsWritable(attr)).And(IsConfigable(attr)).Done(),
-                    &isWritandConfig, &notWritandConfig);
+                BRANCH(BitOr(LogicAndBuilder(env).And(IsWritable(attr)).And(IsConfigable(attr)).Done(),
+                    IsJSShared(*holder)), &isWritandConfig, &notWritandConfig);
                 Bind(&isWritandConfig);
                 {
                     Label notAccessor(env);

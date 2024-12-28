@@ -995,6 +995,9 @@ private:
                                                                         const Local<JSValueRef> *values);
 
     JSHandle<MutantTaggedArray> NewMutantTaggedArrayWithoutInit(uint32_t length, MemSpaceType spaceType);
+    void MergeSendableClassElementsDic(JSHandle<TaggedArray> &elements,
+                                       const JSHandle<JSTaggedValue> &elementsDicOfCtorVal,
+                                       const JSHandle<JSTaggedValue> &elementsDicOfTrgVal);
 
     friend class Builtins;    // create builtins object need hclass
     friend class JSFunction;  // create prototype_or_hclass need hclass
