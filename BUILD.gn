@@ -1074,6 +1074,7 @@ config("include_llvm") {
 
 if (is_mingw) {
   ecma_platform_source += [
+    "ecmascript/platform/common/dfx_crash_obj.cpp",
     "ecmascript/platform/windows/backtrace.cpp",
     "ecmascript/platform/windows/map.cpp",
     "ecmascript/platform/windows/file.cpp",
@@ -1091,6 +1092,7 @@ if (is_mingw) {
   ]
   if (is_mac) {
     ecma_platform_source += [
+      "ecmascript/platform/common/dfx_crash_obj.cpp",
       "ecmascript/platform/unix/mac/os.cpp",
       "ecmascript/platform/unix/mac/backtrace.cpp",
       "ecmascript/platform/unix/mac/log.cpp",
@@ -1099,6 +1101,7 @@ if (is_mingw) {
     ecma_platform_source += [
       "ecmascript/platform/unix/mac/os.cpp",
       "ecmascript/platform/unix/mac/backtrace.cpp",
+      "ecmascript/platform/common/dfx_crash_obj.cpp",
       "ecmascript/platform/common/log.cpp",
     ]
   } else if (is_ohos || target_os == "android") {
@@ -1108,10 +1111,19 @@ if (is_mingw) {
       "ecmascript/platform/common/log.cpp",
       "ecmascript/platform/unix/ohos/memory.cpp",
     ]
+
+    if (is_ohos && !ark_standalone_build &&
+        (current_cpu == "arm64" || current_cpu == "arm")) {
+      ecma_platform_source +=
+          [ "ecmascript/platform/unix/ohos/dfx_crash_obj.cpp" ]
+    } else {
+      ecma_platform_source += [ "ecmascript/platform/common/dfx_crash_obj.cpp" ]
+    }
   } else if (is_linux) {
     ecma_platform_source += [
       "ecmascript/platform/unix/linux/os.cpp",
       "ecmascript/platform/unix/linux/backtrace.cpp",
+      "ecmascript/platform/common/dfx_crash_obj.cpp",
       "ecmascript/platform/common/log.cpp",
       "ecmascript/platform/unix/linux/memory.cpp",
     ]

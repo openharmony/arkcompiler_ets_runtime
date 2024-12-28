@@ -2635,7 +2635,7 @@ void Heap::CleanCallback()
         asyncTaskCb(asyncCallbacks);
     } else {
         ThreadNativeScope nativeScope(thread_);
-        asyncCallbacks->ProcessAll();
+        asyncCallbacks->ProcessAll("ArkCompiler");
         delete asyncCallbacks;
     }
     ASSERT(asyncCallbacksPack.TotallyEmpty());

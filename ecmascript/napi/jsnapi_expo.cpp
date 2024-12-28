@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include <cinttypes>
 
 #include "ecmascript/base/json_stringifier.h"
 #include "ecmascript/base/typed_array_helper-inl.h"
@@ -35,6 +36,7 @@
 #include "ecmascript/serializer/base_deserializer.h"
 #include "ecmascript/serializer/value_serializer.h"
 #include "ecmascript/platform/aot_crash_info.h"
+#include "ecmascript/platform/dfx_crash_obj.h"
 #ifdef ARK_SUPPORT_INTL
 #include "ecmascript/js_bigint.h"
 #include "ecmascript/js_collator.h"
@@ -153,6 +155,48 @@ constexpr std::string_view ENTRY_POINTER = "_GLOBAL::func_main_0";
 bool JSNApi::isForked_ = false;
 static Mutex *mutex = new panda::Mutex();
 StartIdleMonitorCallback JSNApi::startIdleMonitorCallback_ = nullptr;
+
+// ----------------------------------- ArkCrashHolder --------------------------------------
+constexpr size_t FORMATED_FUNCPTR_LENGTH = 36; // length of dec function pointer
+
+ArkCrashHolder::~ArkCrashHolder()
+{
+    ecmascript::ResetCrashObject(handle_);
+    if (data_ != nullptr) {
+        delete [] data_;
+        data_ = nullptr;
+    }
+}
+
+void ArkCrashHolder::SetCrashObj(const char* tag, const char* info)
+{
+    std::string data = "[";
+    data += tag,
+    data += "] Crash occured on ";
+    data += info;
+    data += ", callback: ";
+
+    size_ = data.length();
+    const size_t bufSize = size_ + FORMATED_FUNCPTR_LENGTH;
+    data_ = new char[bufSize];
+
+    if (memcpy_s(data_, bufSize, data.c_str(), size_) != EOK) {
+        LOG_FULL(WARN) << "Failed to init crash holder.";
+        size_ = 0;
+        data_[0] = '\0';
+    };
+
+    handle_ = ecmascript::SetCrashObject(ecmascript::DFXObjectType::STRING, reinterpret_cast<uintptr_t>(data_));
+}
+
+void ArkCrashHolder::UpdateCallbackPtr(uintptr_t addr)
+{
+    if (sprintf_s(data_ + size_, FORMATED_FUNCPTR_LENGTH, "%" PRIuPTR, addr) < 0) {
+        LOG_FULL(ERROR) << "Failed to update callback info: " << addr;
+    }
+}
+
+#undef ENABLE_DFX_CRASH_OBJECT
 
 // ----------------------------------- JSValueRef --------------------------------------
 Local<PrimitiveRef> JSValueRef::Undefined(const EcmaVM *vm)
