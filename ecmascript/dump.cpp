@@ -3608,8 +3608,8 @@ void SourceTextModule::Dump(std::ostream &os) const
     os << " - Status: ";
     os << static_cast<int32_t>(GetStatus());
     os << "\n";
-    os << " - EvaluationError: ";
-    os << GetEvaluationError();
+    os << " - Exception: ";
+    GetException().Dump(os);
     os << "\n";
     os << " - DFSIndex: ";
     os << GetDFSIndex();
@@ -5852,7 +5852,7 @@ void SourceTextModule::DumpForSnapshot(std::vector<Reference> &vec) const
     vec.emplace_back(CString("IndirectExportEntries"), GetIndirectExportEntries());
     vec.emplace_back(CString("StarExportEntries"), GetStarExportEntries());
     vec.emplace_back(CString("Status"), JSTaggedValue(static_cast<int32_t>(GetStatus())));
-    vec.emplace_back(CString("EvaluationError"), JSTaggedValue(GetEvaluationError()));
+    vec.emplace_back(CString("Exception"), GetException());
     vec.emplace_back(CString("DFSIndex"), JSTaggedValue(GetDFSIndex()));
     vec.emplace_back(CString("DFSAncestorIndex"), JSTaggedValue(GetDFSAncestorIndex()));
     vec.emplace_back(CString("NameDictionary"), GetNameDictionary());

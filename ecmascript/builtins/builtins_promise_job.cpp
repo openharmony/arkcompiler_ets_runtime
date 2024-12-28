@@ -232,6 +232,8 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
         // b. Let moduleRecord be ! HostResolveImportedModule(referencingScriptOrModule, specifier).
         JSHandle<SourceTextModule> moduleRecord =
             moduleManager->GetImportedModule(moduleName);
+        moduleRecord->CheckAndThrowModuleError(thread);
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, CatchException(thread, reject));
         JSHandle<JSTaggedValue> nameSp = SourceTextModule::GetModuleNamespace(thread, moduleRecord);
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, CatchException(thread, reject));
         // d. Let namespace be ? GetModuleNamespace(moduleRecord).

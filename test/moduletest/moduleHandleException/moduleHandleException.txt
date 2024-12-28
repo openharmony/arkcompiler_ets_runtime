@@ -1,0 +1,14 @@
+A.js;A;esm;A.js;xxAxx
+B.js;B;esm;B.js;xxBxx
+C.js;C;esm;C.js;xxCxx
+D.js;D;esm;D.js;xxDxx
+E.js;E;esm;E.js;xxExx
+sharedA.ts;sharedA;esm;sharedA.ts;xxsharedAxx
+sharedB.ts;sharedB;esm;sharedB.ts;xxsharedBxx
+importShared1.js;importShared1;esm;importShared1.js;xximportShared1xx
+importShared2.js;importShared2;esm;importShared2.js;xximportShared2xx
+importSharedChild.js;importSharedChild;esm;importSharedChild.js;xximimportSharedChildxx
+multiLevel1.js;multiLevel1;esm;multiLevel1.js;xxmultiLevel1xx
+multiLevel2.js;multiLevel2;esm;multiLevel2.js;xxmultiLevel2xx
+multiLevel3.js;multiLevel3;esm;multiLevel3.js;xxmultiLevel3xx
+moduleHandleException.js;moduleHandleException;esm;moduleHandleException.js;xxmoduleHandleExceptionxx

@@ -846,42 +846,42 @@ void EcmaContext::HandleUncaughtException()
 // static
 void EcmaContext::PrintJSErrorInfo(JSThread *thread, const JSHandle<JSTaggedValue> &exceptionInfo)
 {
-    JSHandle<JSTaggedValue> nameKey = thread->GlobalConstants()->GetHandledNameString();
-    JSHandle<JSTaggedValue> nameValue = JSObject::GetProperty(thread, exceptionInfo, nameKey).GetValue();
-    RETURN_IF_ABRUPT_COMPLETION(thread);
-    JSHandle<EcmaString> name = JSTaggedValue::ToString(thread, nameValue);
-    // JSTaggedValue::ToString may cause exception. In this case, do not return, use "<error>" instead.
-    if (thread->HasPendingException()) {
-        thread->ClearException();
-        name = thread->GetEcmaVM()->GetFactory()->NewFromStdString("<error>");
-    }
-    JSHandle<JSTaggedValue> msgKey = thread->GlobalConstants()->GetHandledMessageString();
-    JSHandle<JSTaggedValue> msgValue = JSObject::GetProperty(thread, exceptionInfo, msgKey).GetValue();
-    RETURN_IF_ABRUPT_COMPLETION(thread);
-    JSHandle<EcmaString> msg = JSTaggedValue::ToString(thread, msgValue);
-    // JSTaggedValue::ToString may cause exception. In this case, do not return, use "<error>" instead.
-    if (thread->HasPendingException()) {
-        thread->ClearException();
-        msg = thread->GetEcmaVM()->GetFactory()->NewFromStdString("<error>");
-    }
-    JSHandle<JSTaggedValue> stackKey = thread->GlobalConstants()->GetHandledStackString();
-    JSHandle<JSTaggedValue> stackValue = JSObject::GetProperty(thread, exceptionInfo, stackKey).GetValue();
-    RETURN_IF_ABRUPT_COMPLETION(thread);
-    JSHandle<EcmaString> stack = JSTaggedValue::ToString(thread, stackValue);
-    // JSTaggedValue::ToString may cause exception. In this case, do not return, use "<error>" instead.
-    if (thread->HasPendingException()) {
-        thread->ClearException();
-        stack = thread->GetEcmaVM()->GetFactory()->NewFromStdString("<error>");
-    }
-
-    CString nameBuffer = ConvertToString(*name);
-    CString msgBuffer = ConvertToString(*msg);
-    CString stackBuffer = ConvertToString(*stack);
+    CString nameBuffer = GetJSErrorInfo(thread, exceptionInfo, JSErrorProps::NAME);
+    CString msgBuffer = GetJSErrorInfo(thread, exceptionInfo, JSErrorProps::MESSAGE);
+    CString stackBuffer = GetJSErrorInfo(thread, exceptionInfo, JSErrorProps::STACK);
     LOG_NO_TAG(ERROR) << panda::ecmascript::previewerTag << nameBuffer << ": " << msgBuffer << "\n"
                       << (panda::ecmascript::previewerTag.empty()
                               ? stackBuffer
                               : std::regex_replace(stackBuffer, std::regex(".+(\n|$)"),
                                                    panda::ecmascript::previewerTag + "$0"));
+}
+
+CString EcmaContext::GetJSErrorInfo(JSThread *thread, const JSHandle<JSTaggedValue> exceptionInfo, JSErrorProps key)
+{
+    JSHandle<JSTaggedValue> keyStr(thread, JSTaggedValue::Undefined());
+    switch (key) {
+        case JSErrorProps::NAME:
+            keyStr = thread->GlobalConstants()->GetHandledNameString();
+            break;
+        case JSErrorProps::MESSAGE:
+            keyStr = thread->GlobalConstants()->GetHandledMessageString();
+            break;
+        case JSErrorProps::STACK:
+            keyStr = thread->GlobalConstants()->GetHandledStackString();
+            break;
+        default:
+            LOG_ECMA(FATAL) << "this branch is unreachable " << key;
+            UNREACHABLE();
+    }
+    JSHandle<JSTaggedValue> value = JSObject::GetProperty(thread, exceptionInfo, keyStr).GetValue();
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, CString());
+    JSHandle<EcmaString> errStr = JSTaggedValue::ToString(thread, value);
+    // JSTaggedValue::ToString may cause exception. In this case, do not return, use "<error>" instead.
+    if (thread->HasPendingException()) {
+        thread->ClearException();
+        errStr = thread->GetEcmaVM()->GetFactory()->NewFromStdString("<error>");
+    }
+    return ConvertToString(*errStr);
 }
 
 bool EcmaContext::HasPendingJob()

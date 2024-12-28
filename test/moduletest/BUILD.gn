@@ -109,6 +109,7 @@ group("ark_js_moduletest") {
     "memleakobjectcreate",
     "merge",
     "module",
+    "moduleHandleException",
     "moduleImportJson",
     "moduleLazyImport",
     "moduleTopLevelAwait",

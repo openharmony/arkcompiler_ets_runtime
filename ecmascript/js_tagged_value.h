@@ -723,6 +723,7 @@ public:
     void Dump(std::ostream &os, bool isPrivacy = false) const DUMP_API_ATTR;
     void D() const DUMP_API_ATTR;
     void DumpForSnapshot(std::vector<Reference> &vec, bool isVmMode = true) const;
+    static void DesensitizedDump(const JSHandle<JSTaggedValue> &obj);
     static void DV(JSTaggedType val) DUMP_API_ATTR;
     friend std::ostream& operator<<(std::ostream& os, const JSTaggedValue& value)
     {

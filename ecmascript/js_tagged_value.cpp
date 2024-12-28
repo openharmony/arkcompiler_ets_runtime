@@ -1818,12 +1818,17 @@ bool JSTaggedValue::SetJSAPIProperty(JSThread *thread, const JSHandle<JSTaggedVa
 void JSTaggedValue::DumpExceptionObject(JSThread *thread, const JSHandle<JSTaggedValue> &obj)
 {
     if (thread->GetEcmaVM()->GetJSOptions().EnableExceptionBacktrace()) {
-        std::ostringstream oss;
-        obj->Dump(oss, true);
-        std::regex reg("0x[0-9a-fA-F]+");
-        std::string sensitiveStr = std::regex_replace(oss.str(), reg, "");
-        LOG_ECMA(ERROR) << "DumpExceptionObject: " << sensitiveStr;
+        DesensitizedDump(obj);
     }
+}
+
+void JSTaggedValue::DesensitizedDump(const JSHandle<JSTaggedValue> &obj)
+{
+    std::ostringstream oss;
+    obj->Dump(oss, true);
+    std::regex reg("0x[0-9a-fA-F]+");
+    std::string sensitiveStr = std::regex_replace(oss.str(), reg, "");
+    LOG_ECMA(ERROR) << "DumpExceptionObject: " << sensitiveStr;
 }
 
 JSHandle<JSTaggedValue> JSTaggedValue::PublishSharedValueSlow(JSThread *thread, JSHandle<JSTaggedValue> value)

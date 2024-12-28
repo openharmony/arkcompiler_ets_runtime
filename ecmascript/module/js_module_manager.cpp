@@ -192,7 +192,7 @@ JSTaggedValue ModuleManager::GetLazyModuleValueOutterInternal(int32_t index, JST
                 module.Update(resolvedModule);
             }
         }
-        if (module->GetStatus() != ModuleStatus::EVALUATED) {
+        if (module->GetStatus() < ModuleStatus::EVALUATED) {
             SourceTextModule::Evaluate(thread, module, nullptr, 0, true);
         }
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception());
@@ -210,9 +210,10 @@ JSTaggedValue ModuleManager::GetLazyModuleValueOutterInternal(int32_t index, JST
         }
         if (SourceTextModule::IsCjsModule(moduleType)) {
             ModuleStatus status = module->GetStatus();
-            if (status != ModuleStatus::EVALUATED) {
+            if (status < ModuleStatus::EVALUATED) {
                 SourceTextModule::ModuleExecution(thread, module, nullptr, 0);
-                module->SetStatus(ModuleStatus::EVALUATED);
+                SourceTextModule::RecordEvaluatedOrError(thread, module);
+                RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception());
             }
             return ModuleManagerHelper::UpdateBindingAndGetModuleValue(
                 thread, currentModuleHdl, module, index, binding->GetBindingName());
@@ -405,9 +406,9 @@ bool ModuleManager::IsEvaluatedModule(const CString &referencing)
         return false;
     }
     JSTaggedValue result = entry->second;
-    if (SourceTextModule::Cast(result.GetTaggedObject())->GetStatus() ==
-        ModuleStatus::EVALUATED) {
-            return true;
+    // ModuleStatus == (EVALUATED || ERRORED).
+    if (SourceTextModule::Cast(result.GetTaggedObject())->GetStatus() >= ModuleStatus::EVALUATED) {
+        return true;
     }
     return false;
 }
@@ -614,7 +615,7 @@ JSHandle<JSTaggedValue> ModuleManager::ExecuteNativeModuleMayThrowError(JSThread
     auto exportObject = SourceTextModule::LoadNativeModuleMayThrowError(thread, nativeModule, moduleType);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread,
         JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
-    nativeModule->SetStatus(ModuleStatus::EVALUATED);
+    SourceTextModule::RecordEvaluatedOrError(thread, nativeModule);
     nativeModule->SetLoadingTypes(LoadingTypes::STABLE_MODULE);
     SourceTextModule::StoreModuleValue(thread, nativeModule, 0, JSNApiHelper::ToJSHandle(exportObject));
     AddResolveImportedModule(recordName, moduleRecord.GetTaggedValue());
@@ -629,10 +630,7 @@ JSHandle<JSTaggedValue> ModuleManager::ExecuteNativeModule(JSThread *thread, con
         requiredModule.Update(moduleRecord);
     } else if (IsLocalModuleLoaded(recordName)) {
         JSHandle<SourceTextModule> nativeModule = HostGetImportedModule(recordName);
-        if (!SourceTextModule::LoadNativeModule(thread, nativeModule, nativeModule->GetTypes())) {
-            LOG_FULL(ERROR) << "loading native module " << recordName << " failed";
-        }
-        nativeModule->SetStatus(ModuleStatus::EVALUATED);
+        SourceTextModule::EvaluateNativeModule(thread, nativeModule, nativeModule->GetTypes());
         nativeModule->SetLoadingTypes(LoadingTypes::STABLE_MODULE);
         requiredModule.Update(nativeModule);
     } else {
@@ -641,10 +639,7 @@ JSHandle<JSTaggedValue> ModuleManager::ExecuteNativeModule(JSThread *thread, con
             ModuleResolver::ResolveNativeModule(thread, recordName, "", moduleType);
         JSHandle<SourceTextModule> nativeModule =
             JSHandle<SourceTextModule>::Cast(nativeModuleHandle);
-        if (!SourceTextModule::LoadNativeModule(thread, nativeModule, moduleType)) {
-            LOG_FULL(ERROR) << "loading native module " << recordName << " failed";
-        }
-        nativeModule->SetStatus(ModuleStatus::EVALUATED);
+        SourceTextModule::EvaluateNativeModule(thread, nativeModule, moduleType);
         nativeModule->SetLoadingTypes(LoadingTypes::STABLE_MODULE);
         requiredModule.Update(nativeModule);
     }
@@ -663,7 +658,7 @@ JSHandle<JSTaggedValue> ModuleManager::ExecuteJsonModule(JSThread *thread, const
         JSHandle<SourceTextModule> moduleRecord =
             JSHandle<SourceTextModule>::Cast(ModuleDataExtractor::ParseJsonModule(thread, jsPandaFile, filename,
                                                                                   recordName));
-        moduleRecord->SetStatus(ModuleStatus::EVALUATED);
+        SourceTextModule::RecordEvaluatedOrError(thread, moduleRecord);
         requiredModule.Update(moduleRecord);
         UpdateResolveImportedModule(recordName, moduleRecord.GetTaggedValue());
     }
@@ -690,8 +685,8 @@ JSHandle<JSTaggedValue> ModuleManager::ExecuteCjsModule(JSThread *thread, const 
         requiredModule.Update(module);
         AddResolveImportedModule(recordName, module.GetTaggedValue());
         JSPandaFileExecutor::Execute(thread, jsPandaFile, entryPoint);
+        SourceTextModule::RecordEvaluatedOrError(thread, JSHandle<SourceTextModule>::Cast(requiredModule));
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, requiredModule);
-        module->SetStatus(ModuleStatus::EVALUATED);
         UpdateResolveImportedModule(recordName, module.GetTaggedValue());
     }
     return requiredModule;
