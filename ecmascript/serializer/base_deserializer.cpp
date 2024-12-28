@@ -182,7 +182,9 @@ void BaseDeserializer::HandleNewObjectEncodeFlag(SerializedObjectSpace space,  u
     if (object->GetClass()->IsJSNativePointer()) {
         JSNativePointer *nativePointer = reinterpret_cast<JSNativePointer *>(object);
         if (nativePointer->GetDeleter() != nullptr) {
-            thread_->GetEcmaVM()->PushToNativePointerList(nativePointer);
+            if (!JSTaggedValue::Cast(object).IsInSharedHeap()) {
+                thread_->GetEcmaVM()->PushToNativePointerList(nativePointer);
+            }
         }
     } else if (object->GetClass()->IsJSFunction()) {
         JSFunction* func = reinterpret_cast<JSFunction *>(object);
