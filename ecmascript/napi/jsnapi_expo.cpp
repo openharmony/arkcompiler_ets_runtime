@@ -5953,31 +5953,19 @@ Local<ObjectRef> JSNApi::ExecuteNativeModule(EcmaVM *vm, const std::string &key)
     return JSNApiHelper::ToLocal<ObjectRef>(exportObj);
 }
 
-Local<ObjectRef> JSNApi::GetModuleNameSpaceFromFile(EcmaVM *vm, const std::string &file, const std::string &module_path)
+Local<ObjectRef> JSNApi::GetModuleNameSpaceFromFile(EcmaVM *vm, const std::string &file)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     ecmascript::ThreadManagedScope managedScope(thread);
-    ecmascript::CString recordNameStr;
-    ecmascript::CString abcFilePath;
-    if (module_path.size() != 0) {
-        ecmascript::CString moduleName = ModulePathHelper::GetModuleNameWithPath(module_path.c_str());
-        abcFilePath = ModulePathHelper::ConcatPandaFilePath(moduleName);
-        recordNameStr = ModulePathHelper::TranslateNapiFileRequestPath(thread, module_path.c_str(), file.c_str());
-    } else {
-        // need get moduleName from stack
-        std::pair<std::string, std::string> moduleInfo = vm->GetCurrentModuleInfo(false);
-        if (thread->HasPendingException()) {
-            thread->GetCurrentEcmaContext()->HandleUncaughtException();
-            return JSValueRef::Undefined(vm);
-        }
-        std::string path = std::string(vm->GetBundleName().c_str()) + PathHelper::SLASH_TAG +
-            moduleInfo.first;
-        abcFilePath = moduleInfo.second;
-        recordNameStr = ModulePathHelper::TranslateNapiFileRequestPath(thread, path.c_str(), file.c_str());
+    std::pair<std::string, std::string> moduleInfo = vm->GetCurrentModuleInfo(false);
+    if (thread->HasPendingException()) {
+        thread->GetCurrentEcmaContext()->HandleUncaughtException();
+        return JSValueRef::Undefined(vm);
     }
-    LOG_ECMA(DEBUG) << "JSNApi::LoadModuleNameSpaceFromFile: Concated recordName " << recordNameStr;
-    JSHandle<JSTaggedValue> moduleNamespace = ecmascript::NapiModuleLoader::LoadModuleNameSpaceFromFile(
-        thread, recordNameStr, abcFilePath);
+    ecmascript::CString moduleName = moduleInfo.first.c_str();
+    ecmascript::CString abcPath = moduleInfo.second.c_str();
+    JSHandle<JSTaggedValue> moduleNamespace = ecmascript::NapiModuleLoader::LoadModuleNameSpace(vm,
+        file.c_str(), moduleName, abcPath);
     return JSNApiHelper::ToLocal<ObjectRef>(moduleNamespace);
 }
 
@@ -5986,16 +5974,9 @@ Local<ObjectRef> JSNApi::GetModuleNameSpaceWithModuleInfo(EcmaVM *vm, const std:
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     ecmascript::ThreadManagedScope managedScope(thread);
-    ecmascript::CString moduleStr = ModulePathHelper::GetModuleNameWithPath(module_path.c_str());
-    ecmascript::CString srcPrefix = moduleStr + ModulePathHelper::PHYCICAL_FILE_PATH;
-    std::string prefix = ConvertToStdString(srcPrefix);
-    if (file.find(srcPrefix) == 0)  {
-        std::string fileName = file.substr(prefix.size() + 1);
-        return GetModuleNameSpaceFromFile(vm, fileName, module_path);
-    }
     ecmascript::CString requestPath = file.c_str();
     ecmascript::CString modulePath = module_path.c_str();
-    JSHandle<JSTaggedValue> nameSp = ecmascript::NapiModuleLoader::LoadModuleNameSpaceWithModuleInfo(vm,
+    JSHandle<JSTaggedValue> nameSp = ecmascript::NapiModuleLoader::LoadModuleNameSpace(vm,
         requestPath, modulePath);
     return JSNApiHelper::ToLocal<ObjectRef>(nameSp);
 }

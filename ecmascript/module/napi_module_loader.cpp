@@ -22,12 +22,10 @@
 
 namespace panda::ecmascript {
 JSHandle<JSTaggedValue> NapiModuleLoader::LoadModuleNameSpaceWithModuleInfo(EcmaVM *vm, CString &requestPath,
-    CString &modulePath)
+    CString &modulePath, CString &abcFilePath)
 {
-    LOG_ECMA(DEBUG) << "NapiModuleLoader::LoadModuleNameSpaceWithModuleInfo requestPath:" << requestPath <<
+    LOG_ECMA(INFO) << "NapiModuleLoader::LoadModuleNameSpaceWithModuleInfo requestPath:" << requestPath <<
         "," << "modulePath:" << modulePath;
-    CString moduleStr = ModulePathHelper::GetModuleNameWithPath(modulePath);
-    CString abcFilePath = ModulePathHelper::ConcatPandaFilePath(moduleStr);
     JSThread *thread = vm->GetJSThread();
     std::shared_ptr<JSPandaFile> curJsPandaFile;
     if (modulePath.size() != 0) {
@@ -48,6 +46,57 @@ JSHandle<JSTaggedValue> NapiModuleLoader::LoadModuleNameSpaceWithModuleInfo(Ecma
     JSHandle<JSTaggedValue> nameSp = LoadModuleNameSpaceWithPath(thread, abcFilePath, requestPath, modulePath,
         curJsPandaFile.get());
     return nameSp;
+}
+
+JSHandle<JSTaggedValue> NapiModuleLoader::LoadModuleNameSpace(EcmaVM *vm, CString requestPath,
+    CString moduleName, CString &abcFilePath)
+{
+    JSThread *thread = vm->GetJSThread();
+    CString path = vm->GetBundleName() + PathHelper::SLASH_TAG;
+    // RequestPath starts with ets/xxx
+    if (StringHelper::StringStartWith(requestPath, ModulePathHelper::PREFIX_ETS)) {
+        path += moduleName;
+        CString recordNameStr = ModulePathHelper::TranslateNapiFileRequestPath(thread, path, requestPath);
+        LOG_ECMA(DEBUG) << "NapiModuleLoader::LoadFilePathWithinModule: Concated recordName " << recordNameStr;
+        return LoadModuleNameSpaceFromFile(thread, recordNameStr, abcFilePath);
+    }
+    CString abcModuleName = ModulePathHelper::GetModuleNameWithBaseFile(abcFilePath);
+    CString srcPrefix = abcModuleName + ModulePathHelper::PHYCICAL_FILE_PATH;
+    path += abcModuleName;
+    // RequestPath starts with moduleName/src/main/xxx
+    if (StringHelper::StringStartWith(requestPath, srcPrefix)) {
+        return LoadFilePathWithinModule(thread, abcFilePath, srcPrefix, requestPath, path);
+    }
+    return LoadModuleNameSpaceWithModuleInfo(vm, requestPath, path, abcFilePath);
+}
+
+JSHandle<JSTaggedValue> NapiModuleLoader::LoadModuleNameSpace(EcmaVM *vm, CString requestPath, CString modulePath)
+{
+    JSThread *thread = vm->GetJSThread();
+    CString moduleName = ModulePathHelper::GetModuleNameWithPath(modulePath);
+    CString abcFilePath = ModulePathHelper::ConcatPandaFilePath(moduleName);
+    CString srcPrefix = moduleName + ModulePathHelper::PHYCICAL_FILE_PATH;
+    // RequestPath starts with moduleName/src/main/xxx
+    if (StringHelper::StringStartWith(requestPath, srcPrefix)) {
+        return LoadFilePathWithinModule(thread, abcFilePath, srcPrefix, requestPath, modulePath);
+    }
+    return LoadModuleNameSpaceWithModuleInfo(vm, requestPath, modulePath, abcFilePath);
+}
+
+JSHandle<JSTaggedValue> NapiModuleLoader::LoadFilePathWithinModule(JSThread *thread, CString abcFilePath,
+    CString srcPrefix, CString requestPath, CString modulePath)
+{
+    if (requestPath.size() > srcPrefix.size()) {
+        // Sub after moduleName/src/main/
+        CString fileName = requestPath.substr(srcPrefix.size() + 1);
+        CString recordNameStr = ModulePathHelper::TranslateNapiFileRequestPath(thread, modulePath, fileName);
+        LOG_ECMA(DEBUG) << "NapiModuleLoader::LoadFilePathWithinModule: Concated recordName " << recordNameStr;
+        return LoadModuleNameSpaceFromFile(thread, recordNameStr, abcFilePath);
+    } else {
+        CString msg = "cannot find record '" + requestPath + "' in basefileName " + abcFilePath + "," +
+            "from napi load module";
+        THROW_NEW_ERROR_AND_RETURN_HANDLE(thread, ErrorType::REFERENCE_ERROR, JSTaggedValue, msg.c_str());
+    }
 }
 
 JSHandle<JSTaggedValue> NapiModuleLoader::LoadModuleNameSpaceWithPath(JSThread *thread, CString &abcFilePath,
@@ -89,14 +138,14 @@ JSHandle<JSTaggedValue> NapiModuleLoader::LoadModuleNameSpaceFromFile(
     }
     if (jsPandaFile->IsSharedModule(recordInfo)) {
         LockHolder lock(SharedModuleManager::GetInstance()->GetSharedMutex());
-        return ecmascript::NapiModuleLoader::LoadModuleNameSpace(
+        return ecmascript::NapiModuleLoader::GetModuleNameSpace(
             thread, entryPoint, abcFilePath);
     }
-    return ecmascript::NapiModuleLoader::LoadModuleNameSpace(
+    return ecmascript::NapiModuleLoader::GetModuleNameSpace(
         thread, entryPoint, abcFilePath);
 }
 
-JSHandle<JSTaggedValue> NapiModuleLoader::LoadModuleNameSpace(JSThread *thread, const CString &entryPoint,
+JSHandle<JSTaggedValue> NapiModuleLoader::GetModuleNameSpace(JSThread *thread, const CString &entryPoint,
     const CString &abcFilePath)
 {
     ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();

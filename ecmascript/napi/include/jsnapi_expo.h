@@ -1607,8 +1607,7 @@ public:
     static Local<ObjectRef> GetExportObjectFromBuffer(EcmaVM *vm, const std::string &file, const std::string &key);
     static Local<ObjectRef> GetExportObjectFromOhmUrl(EcmaVM *vm, const std::string &ohmUrl, const std::string &key);
     static Local<ObjectRef> ExecuteNativeModule(EcmaVM *vm, const std::string &key);
-    static Local<ObjectRef> GetModuleNameSpaceFromFile(EcmaVM *vm, const std::string &file,
-                                                       const std::string &module_path);
+    static Local<ObjectRef> GetModuleNameSpaceFromFile(EcmaVM *vm, const std::string &file);
     static Local<ObjectRef> GetModuleNameSpaceWithModuleInfo(EcmaVM *vm, const std::string &file,
                                                              const std::string &module_path);
 
