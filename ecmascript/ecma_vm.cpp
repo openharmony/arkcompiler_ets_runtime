@@ -153,11 +153,11 @@ void EcmaVM::PostFork()
     int arkProperties = OHOS::system::GetIntParameter<int>("persist.ark.properties", -1);
     GetJSOptions().SetArkProperties(arkProperties);
 #endif
-    DaemonThread::GetInstance()->EnsureRunning();
 #ifdef ENABLE_POSTFORK_FORCEEXPAND
     heap_->NotifyPostFork();
     heap_->NotifyFinishColdStartSoon();
 #endif
+    DaemonThread::GetInstance()->EnsureRunning();
 }
 
 EcmaVM::EcmaVM(JSRuntimeOptions options, EcmaParamConfiguration config)
