@@ -762,8 +762,10 @@ bool JSHClass::TransitToElementsKind(const JSThread *thread, const JSHandle<JSOb
         return false;
     }
 
-    // Update TrackInfo
-    JSHandle<JSArray>(object)->UpdateTrackInfo(thread);
+    if (thread->IsEnableElementsKind() || thread->IsPGOProfilerEnable()) {
+        // Update TrackInfo
+        JSHandle<JSArray>(object)->UpdateTrackInfo(thread);
+    }
 
     if (!thread->IsPGOProfilerEnable()) {
         return true;

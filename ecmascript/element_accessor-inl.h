@@ -40,7 +40,7 @@ inline void ElementAccessor::Set(const JSThread *thread, JSHandle<JSObject> rece
     
     TaggedArray *elements = TaggedArray::Cast(receiver->GetElements());
     ASSERT(idx < elements->GetLength());
-    if (UNLIKELY(thread->GetEcmaVM()->IsEnableMutantArray())) {
+    if (UNLIKELY(thread->IsEnableMutantArray())) {
         ElementsKind kind = receiver->GetClass()->GetElementsKind();
         if (!elements->GetClass()->IsMutantTaggedArray()) {
             kind = ElementsKind::GENERIC;
