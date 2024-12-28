@@ -2732,9 +2732,9 @@ DECLARE_ASM_HANDLER(HandleReturn)
     {
         GateRef varProfileTypeInfoVal = *varProfileTypeInfo;
         GateRef isProfileDumpedAndJitCompiled = LogicAndBuilder(env)
-            .And(ProfilerStubBuilder(env).IsProfileTypeInfoDumped(varProfileTypeInfoVal, callback))
             .And(ProfilerStubBuilder(env).IsCompiledOrTryCompile(glue, GetFunctionFromFrame(frame),
-                varProfileTypeInfoVal, callback))
+                varProfileTypeInfoVal, callback, pc))
+            .And(ProfilerStubBuilder(env).IsProfileTypeInfoDumped(varProfileTypeInfoVal, callback))
             .Done();
         BRANCH(isProfileDumpedAndJitCompiled, &tryContinue, &updateHotness);
     }
@@ -2831,9 +2831,9 @@ DECLARE_ASM_HANDLER(HandleReturnundefined)
     {
         GateRef varProfileTypeInfoVal = *varProfileTypeInfo;
         GateRef isProfileDumpedAndJitCompiled = LogicAndBuilder(env)
-            .And(ProfilerStubBuilder(env).IsProfileTypeInfoDumped(varProfileTypeInfoVal, callback))
             .And(ProfilerStubBuilder(env).IsCompiledOrTryCompile(glue, GetFunctionFromFrame(frame),
-                varProfileTypeInfoVal, callback))
+                varProfileTypeInfoVal, callback, pc))
+            .And(ProfilerStubBuilder(env).IsProfileTypeInfoDumped(varProfileTypeInfoVal, callback))
             .Done();
         BRANCH(isProfileDumpedAndJitCompiled, &tryContinue, &updateHotness);
     }

@@ -61,10 +61,10 @@ public:
         return threshold;
     }
 
-    static uint8_t GetJitCallThreshold(uint8_t threshold)
+    static uint16_t GetJitCallThreshold(uint16_t threshold)
     {
     #ifdef GET_PARAMETER_FOR_JIT
-        return OHOS::system::GetUintParameter("ark.jit.call.threshold", static_cast<uint8_t>(0));
+        return OHOS::system::GetUintParameter("ark.jit.call.threshold", threshold);
     #endif
         return threshold;
     }

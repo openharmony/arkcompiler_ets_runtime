@@ -138,9 +138,7 @@ public:
     static constexpr size_t OSR_HOTNESS_THRESHOLD_OFFSET_FROM_BITFIELD = 8;  // 8 : 8 byte offset from bitfield
     static constexpr size_t OSR_CNT_OFFSET_FROM_OSR_THRESHOLD = 2;  // 2 : 2 byte offset from osr hotness threshold
     static constexpr size_t BASELINEJIT_HOTNESS_THRESHOLD_OFFSET_FROM_BITFIELD = 12; // 12: bytes offset from bitfield
-    static constexpr size_t JIT_CALL_THRESHOLD_OFFSET_FROM_BITFIELD = 14;  // 12 : 12 byte offset from bitfield
-    // 1 : 1 byte offset from jit call threshold
-    static constexpr size_t JIT_CALL_CNT_OFFSET_FROM_JIT_CALL_THRESHOLD = 1;
+    static constexpr size_t JIT_CALL_CNT_OFFSET_FROM_BITFIELD = 14;  // 14 : 14 byte offset from bitfield
 
     static ProfileTypeInfo *Cast(TaggedObject *object)
     {
@@ -194,7 +192,6 @@ public:
         SetOsrHotnessThreshold(INITIAL_OSR_HOTNESS_THRESHOLD);
         SetOsrHotnessCnt(INITIAL_OSR_HOTNESS_CNT);
         SetJitCallThreshold(INITIAL_JIT_CALL_THRESHOLD);
-        SetJitCallCnt(INITIAL_JIT_CALL_CNT);
     }
 
     inline void InitializeExtraInfoMap()
@@ -286,14 +283,9 @@ public:
         Barriers::SetPrimitive(GetData(), GetBaselineJitHotnessThresholdBitfieldOffset(), count);
     }
 
-    uint8_t GetJitCallThreshold() const
+    void SetJitCallThreshold(uint16_t count)
     {
-        return Barriers::GetValue<uint8_t>(GetData(), GetJitCallThresholdBitfieldOffset());
-    }
-
-    void SetJitCallThreshold(uint8_t count)
-    {
-        Barriers::SetPrimitive(GetData(), GetJitCallThresholdBitfieldOffset(), count);
+        Barriers::SetPrimitive(GetData(), GetJitCallCntBitfieldOffset(), count);
     }
 
     uint16_t GetJitHotnessCnt() const
@@ -309,11 +301,6 @@ public:
     void SetOsrHotnessCnt(uint16_t count)
     {
         Barriers::SetPrimitive(GetData(), GetOsrHotnessCntBitfieldOffset(), count);
-    }
-
-    void SetJitCallCnt(uint8_t count)
-    {
-        Barriers::SetPrimitive(GetData(), GetJitCallCntBitfieldOffset(), count);
     }
 
     inline JSTaggedValue GetIcSlot(uint32_t idx) const
@@ -420,15 +407,10 @@ private:
         return GetOsrHotnessThresholdBitfieldOffset() + OSR_CNT_OFFSET_FROM_OSR_THRESHOLD;
     }
 
-    // jit call threshold(8bits) + count(8bits)
-    inline size_t GetJitCallThresholdBitfieldOffset() const
-    {
-        return GetBitfieldOffset() + JIT_CALL_THRESHOLD_OFFSET_FROM_BITFIELD;
-    }
-
+    // jit call count(16bits)
     inline size_t GetJitCallCntBitfieldOffset() const
     {
-        return GetJitCallThresholdBitfieldOffset() + JIT_CALL_CNT_OFFSET_FROM_JIT_CALL_THRESHOLD;
+        return GetBitfieldOffset() + JIT_CALL_CNT_OFFSET_FROM_BITFIELD;
     }
 };
 

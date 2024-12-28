@@ -1095,8 +1095,8 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
             case OPTION_COMPILER_JIT_CALL_THRESHOLD:
                 ret = ParseUint32Param("compiler-jit-call-threshold", &argUint32);
                 if (ret) {
-                    uint8_t val =  argUint32 > std::numeric_limits<uint8_t>::max() ?
-                        std::numeric_limits<uint8_t>::max() : static_cast<uint8_t>(argUint32);
+                    uint16_t val =  argUint32 > std::numeric_limits<uint16_t>::max() ?
+                        std::numeric_limits<uint16_t>::max() : static_cast<uint16_t>(argUint32);
                     SetJitCallThreshold(val);
                 } else {
                     return false;
