@@ -483,7 +483,6 @@ public:
     GateRef ConvertTaggedValueWithElementsKind(GateRef glue, GateRef value, GateRef extraKind);
     GateRef SameValue(GateRef glue, GateRef left, GateRef right);
     GateRef SameValueZero(GateRef glue, GateRef left, GateRef right);
-    GateRef HasStableElements(GateRef glue, GateRef obj);
     GateRef IsStableJSArguments(GateRef glue, GateRef obj);
     GateRef IsStableJSArray(GateRef glue, GateRef obj);
     GateRef IsTypedArray(GateRef obj);

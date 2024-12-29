@@ -266,7 +266,6 @@ GateRef BuiltinsFunctionStubBuilder::BuildArgumentsListFastElements(GateRef glue
     env->SubCfgEntry(&subentry);
     DEFVARIABLE(res, VariableType::JS_ANY(), Hole());
     Label exit(env);
-    Label hasStableElements(env);
     Label targetIsStableJSArguments(env);
     Label targetNotStableJSArguments(env);
     Label targetIsInt(env);
@@ -274,65 +273,20 @@ GateRef BuiltinsFunctionStubBuilder::BuildArgumentsListFastElements(GateRef glue
     Label targetIsStableJSArray(env);
     Label targetNotStableJSArray(env);
 
-    BRANCH(HasStableElements(glue, arrayObj), &hasStableElements, &exit);
-    Bind(&hasStableElements);
+    BRANCH(IsStableJSArguments(glue, arrayObj), &targetIsStableJSArguments, &targetNotStableJSArguments);
+    Bind(&targetIsStableJSArguments);
     {
-        BRANCH(IsStableJSArguments(glue, arrayObj), &targetIsStableJSArguments, &targetNotStableJSArguments);
-        Bind(&targetIsStableJSArguments);
+        GateRef hClass = LoadHClass(arrayObj);
+        GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
+        GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
+        GateRef argmentsClass = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, GlobalEnv::ARGUMENTS_CLASS);
+        BRANCH(Int64Equal(hClass, argmentsClass), &hClassEqual, &exit);
+        Bind(&hClassEqual);
         {
-            GateRef hClass = LoadHClass(arrayObj);
-            GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
-            GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
-            GateRef argmentsClass = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv,
-                                                      GlobalEnv::ARGUMENTS_CLASS);
-            BRANCH(Int64Equal(hClass, argmentsClass), &hClassEqual, &exit);
-            Bind(&hClassEqual);
-            {
-                GateRef PropertyInlinedPropsOffset = IntPtr(JSArguments::LENGTH_INLINE_PROPERTY_INDEX);
-                GateRef result = GetPropertyInlinedProps(arrayObj, hClass, PropertyInlinedPropsOffset);
-                BRANCH(TaggedIsInt(result), &targetIsInt, &exit);
-                Bind(&targetIsInt);
-                {
-                    res = GetElementsArray(arrayObj);
-                    Label isMutantTaggedArray(env);
-                    BRANCH(IsMutantTaggedArray(*res), &isMutantTaggedArray, &exit);
-                    Bind(&isMutantTaggedArray);
-                    {
-                        NewObjectStubBuilder newBuilder(this);
-                        GateRef elementsLength = GetLengthOfTaggedArray(*res);
-                        GateRef newTaggedArgList = newBuilder.NewTaggedArray(glue, elementsLength);
-                        DEFVARIABLE(index, VariableType::INT32(), Int32(0));
-                        Label loopHead(env);
-                        Label loopEnd(env);
-                        Label afterLoop(env);
-                        Label storeValue(env);
-                        Jump(&loopHead);
-                        LoopBegin(&loopHead);
-                        {
-                            BRANCH(Int32UnsignedLessThan(*index, elementsLength), &storeValue, &afterLoop);
-                            Bind(&storeValue);
-                            {
-                                GateRef value = GetTaggedValueWithElementsKind(glue, arrayObj, *index);
-                                SetValueToTaggedArray(VariableType::JS_ANY(), glue, newTaggedArgList, *index, value);
-                                index = Int32Add(*index, Int32(1));
-                                Jump(&loopEnd);
-                            }
-                        }
-                        Bind(&loopEnd);
-                        LoopEnd(&loopHead);
-                        Bind(&afterLoop);
-                        {
-                            res = newTaggedArgList;
-                            Jump(&exit);
-                        }
-                    }
-                }
-            }
-        }
-        Bind(&targetNotStableJSArguments);
-        {
-            BRANCH(IsStableJSArray(glue, arrayObj), &targetIsStableJSArray, &targetNotStableJSArray);
-            Bind(&targetIsStableJSArray);
+            GateRef PropertyInlinedPropsOffset = IntPtr(JSArguments::LENGTH_INLINE_PROPERTY_INDEX);
+            GateRef result = GetPropertyInlinedProps(arrayObj, hClass, PropertyInlinedPropsOffset);
+            BRANCH(TaggedIsInt(result), &targetIsInt, &exit);
+            Bind(&targetIsInt);
             {
                 res = GetElementsArray(arrayObj);
                 Label isMutantTaggedArray(env);
@@ -368,11 +322,50 @@ GateRef BuiltinsFunctionStubBuilder::BuildArgumentsListFastElements(GateRef glue
                     }
                 }
             }
-            Bind(&targetNotStableJSArray);
+        }
+    }
+    Bind(&targetNotStableJSArguments);
+    {
+        BRANCH(IsStableJSArray(glue, arrayObj), &targetIsStableJSArray, &targetNotStableJSArray);
+        Bind(&targetIsStableJSArray);
+        {
+            res = GetElementsArray(arrayObj);
+            Label isMutantTaggedArray(env);
+            BRANCH(IsMutantTaggedArray(*res), &isMutantTaggedArray, &exit);
+            Bind(&isMutantTaggedArray);
             {
-                FatalPrint(glue, { Int32(GET_MESSAGE_STRING_ID(ThisBranchIsUnreachable)) });
-                Jump(&exit);
+                NewObjectStubBuilder newBuilder(this);
+                GateRef elementsLength = GetLengthOfTaggedArray(*res);
+                GateRef newTaggedArgList = newBuilder.NewTaggedArray(glue, elementsLength);
+                DEFVARIABLE(index, VariableType::INT32(), Int32(0));
+                Label loopHead(env);
+                Label loopEnd(env);
+                Label afterLoop(env);
+                Label storeValue(env);
+                Jump(&loopHead);
+                LoopBegin(&loopHead);
+                {
+                    BRANCH(Int32UnsignedLessThan(*index, elementsLength), &storeValue, &afterLoop);
+                    Bind(&storeValue);
+                    {
+                        GateRef value = GetTaggedValueWithElementsKind(glue, arrayObj, *index);
+                        SetValueToTaggedArray(VariableType::JS_ANY(), glue, newTaggedArgList, *index, value);
+                        index = Int32Add(*index, Int32(1));
+                        Jump(&loopEnd);
+                    }
+                }
+                Bind(&loopEnd);
+                LoopEnd(&loopHead);
+                Bind(&afterLoop);
+                {
+                    res = newTaggedArgList;
+                    Jump(&exit);
+                }
             }
+        }
+        Bind(&targetNotStableJSArray);
+        {
+            Jump(&exit);
         }
     }
     Bind(&exit);
