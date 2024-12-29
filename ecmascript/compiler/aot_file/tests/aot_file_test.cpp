@@ -158,9 +158,10 @@ protected:
             profilerDecoder.SetHotnessThreshold(cOptions.hotnessThreshold_);
             profilerDecoder.SetInPath(cOptions.profilerIn_);
             cPreprocessor.AOTInitialize();
-            uint32_t checksum = cPreprocessor.GenerateAbcFileInfos();
+            std::unordered_map<CString, uint32_t> originFilenameToChecksumMap;
+            cPreprocessor.GenerateAbcFileInfos(originFilenameToChecksumMap);
             ret = cPreprocessor.GetCompilerResult();
-            cPreprocessor.HandleMergedPgoFile(checksum);
+            cPreprocessor.HandleMergedPgoFile(originFilenameToChecksumMap);
             cPreprocessor.Process(cOptions);
             PassOptions::Builder optionsBuilder;
             PassOptions passOptions = optionsBuilder.Build();
@@ -171,7 +172,7 @@ protected:
             AOTFileGeneratorMock generator(&log, &logList, &aotCompilationEnv, cOptions.triple_, false, limitSizeByte);
             passManager.CompileValidFiles(generator, ret, compilerStats);
             if (generator.SaveAndGetAOTFileSize(cOptions.outputFileName_ + AOTFileManager::FILE_EXTENSION_AN, "",
-                                                testAnExpectedSize_)) {
+                                                testAnExpectedSize_, originFilenameToChecksumMap)) {
                 generator.SaveSnapshotFile();
             }
         }

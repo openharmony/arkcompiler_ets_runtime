@@ -52,6 +52,8 @@ std::string ModuleSectionDes::GetSecName(const ElfSecName idx)
             return ".ark_asmstub";
         case ElfSecName::ARK_MODULEINFO:
             return ".ark_moduleinfo";
+        case ElfSecName::ARK_CHECKSUMINFO:
+            return ".ark_checksuminfo";
         default: {
             LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();

@@ -252,7 +252,8 @@ public:
 
     static bool PUBLIC_API MergeApFiles(const std::string &inFiles, const std::string &outPath,
                                         uint32_t hotnessThreshold, ApGenMode mode);
-    static bool PUBLIC_API MergeApFiles(uint32_t checksum, PGOProfilerDecoder &merger);
+    static bool PUBLIC_API MergeApFiles(std::unordered_map<CString, uint32_t> &fileNameToChecksumMap,
+                                        PGOProfilerDecoder &merger);
 
     void SetIsApFileCompatible(bool isCompatible)
     {

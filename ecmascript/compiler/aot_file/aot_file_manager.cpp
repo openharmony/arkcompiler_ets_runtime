@@ -232,6 +232,11 @@ void AOTFileManager::BindPreloadedPandaFilesInAotFile(const std::string &moduleN
             continue;
         }
         if (!abcFile->IsLoadedAOT()) {
+            if (!anFileDataManager->SafeCheckFilenameToChecksum(abcNormalizedName, abcFile->GetChecksum())) {
+                LOG_ECMA(ERROR) << "BindPreloadedPandaFilesInAotFile failed because of different checksum: "
+                                << abcNormalizedName;
+                continue;
+            }
             abcFile->SetAOTFileInfoIndex(aotFileInfoIndex);
             LOG_ECMA(INFO) << "Bind file: " << abcNormalizedName << ", aotFileInfoIndex: " << aotFileInfoIndex
                            << " in module: " << moduleName;
@@ -270,6 +275,10 @@ void AOTFileManager::BindPandaFileInAotFile(const std::string &aotFileBaseName, 
         // not existed in an file.
         LOG_ECMA(WARN) << "Bind panda file to AOT failed. " << abcNormalizedName << " not found for "
                        << aotFileBaseName;
+        return;
+    }
+    if (!anFileDataManager->SafeCheckFilenameToChecksum(abcNormalizedName, jsPandaFile->GetChecksum())) {
+        LOG_ECMA(ERROR) << "checksum is different,BindPandaFileInAotFile failed " << abcNormalizedName;
         return;
     }
     jsPandaFile->SetAOTFileInfoIndex(aotFileInfoIndex);

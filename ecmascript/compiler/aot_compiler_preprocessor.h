@@ -127,11 +127,11 @@ public:
 
     void Process(CompilationOptions &cOptions);
 
-    uint32_t GenerateAbcFileInfos();
+    void GenerateAbcFileInfos(std::unordered_map<CString, uint32_t> &fileNameToChecksumMap);
 
     void GenerateBytecodeInfoCollectors(const CompilationOptions &cOptions);
 
-    bool HandleMergedPgoFile(uint32_t checksum);
+    bool HandleMergedPgoFile(std::unordered_map<CString, uint32_t> &fileNameToChecksumMap);
 
     void GeneratePGOTypes();
 

@@ -214,7 +214,8 @@ public:
     bool SetFileModeAsDefault(const std::string &filename);
 
     // save function for aot files containing normal func translated from JS/TS
-    bool SaveAOTFile(const std::string &filename, const std::string &appSignature);
+    bool SaveAOTFile(const std::string &filename, const std::string &appSignature,
+                     const std::unordered_map<CString, uint32_t> &fileNameToChecksumMap);
 
     static void SaveEmptyAOTFile(const std::string& filename, const std::string& appSignature, bool isAnFile);
 

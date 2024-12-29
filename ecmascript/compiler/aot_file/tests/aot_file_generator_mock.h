@@ -16,9 +16,11 @@
 #ifndef ECMASCRIPT_COMPILER_AOT_FILE_TESTS_AOT_FILE_GENERATOR_MOCK_H
 #define ECMASCRIPT_COMPILER_AOT_FILE_TESTS_AOT_FILE_GENERATOR_MOCK_H
 
+#include <unordered_map>
 #include "ecmascript/compiler/aot_compilation_env.h"
 #include "ecmascript/compiler/aot_file/elf_builder.h"
 #include "ecmascript/compiler/file_generators.h"
+#include "ecmascript/mem/c_string.h"
 
 namespace panda::ecmascript::kungfu {
 class AOTFileGeneratorMock : public AOTFileGenerator {
@@ -30,9 +32,10 @@ public:
     }
 
 public:
-    bool SaveAndGetAOTFileSize(const std::string &filename, const std::string &appSignature, size_t &anFileSize)
+    bool SaveAndGetAOTFileSize(const std::string &filename, const std::string &appSignature, size_t &anFileSize,
+                               std::unordered_map<CString, uint32_t> &fileNameToChecksumMap)
     {
-        bool ret = SaveAOTFile(filename, appSignature);
+        bool ret = SaveAOTFile(filename, appSignature, fileNameToChecksumMap);
         ElfBuilder testBuilder(aotInfo_.GetModuleSectionDes(), aotInfo_.GetDumpSectionNames());
         anFileSize = testBuilder.CalculateTotalFileSize();
         return ret;

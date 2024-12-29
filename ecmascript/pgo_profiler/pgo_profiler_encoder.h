@@ -77,6 +77,11 @@ public:
     {
         return abcFilePool_;
     }
+    // for test only
+    const PGOPandaFileInfos *GetPandaFileInfos() const
+    {
+        return pandaFileInfos_.get();
+    }
     void TerminateSaveTask();
     void PostSaveTask();
     void SetApGenMode(ApGenMode mode)

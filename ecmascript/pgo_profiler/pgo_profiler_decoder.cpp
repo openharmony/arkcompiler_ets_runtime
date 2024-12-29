@@ -39,23 +39,32 @@ bool PGOProfilerDecoder::Load(const std::shared_ptr<PGOAbcFilePool> &externalAbc
         recordSimpleInfos_ = std::make_unique<PGORecordSimpleInfos>(hotnessThreshold_);
     }
     LoadAbcIdPool(externalAbcFilePool, *recordSimpleInfos_, addr);
+    if (header_->SupportMultiAbcChecksum()) {
+        pandaFileInfos_.UpdateFileInfosAbcID(*recordSimpleInfos_);
+    }
     recordSimpleInfos_->ParseFromBinary(addr, header_, abcFilePool_);
+
     UnLoadAPBinaryFile();
 
     isLoaded_ = true;
     return true;
 }
 
-bool PGOProfilerDecoder::Verify(uint32_t checksum)
+bool PGOProfilerDecoder::Verify(const std::unordered_map<CString, uint32_t>& fileNameToChecksumMap)
 {
     if (!isLoaded_) {
         return false;
     }
     // Notice: lx maybe can support method checksum;
-    return pandaFileInfos_.Checksum(checksum);
+    if (header_->SupportMultiAbcChecksum()) {
+        return pandaFileInfos_.Checksum(fileNameToChecksumMap, abcFilePool_);
+    } else {
+        return pandaFileInfos_.Checksum(fileNameToChecksumMap);
+    }
 }
 
-bool PGOProfilerDecoder::LoadAndVerify(uint32_t checksum, const std::shared_ptr<PGOAbcFilePool> &externalAbcFilePool)
+bool PGOProfilerDecoder::LoadAndVerify(const std::unordered_map<CString, uint32_t>& fileNameToChecksumMap,
+                                       const std::shared_ptr<PGOAbcFilePool>& externalAbcFilePool)
 {
     // The file does not exist. Enter full compiler mode.
     if (inPath_.empty()) {
@@ -63,7 +72,7 @@ bool PGOProfilerDecoder::LoadAndVerify(uint32_t checksum, const std::shared_ptr<
         Clear();
         return true;
     }
-    if (Load(externalAbcFilePool) && Verify(checksum)) {
+    if (Load(externalAbcFilePool) && Verify(fileNameToChecksumMap)) {
         return true;
     }
     return false;
@@ -91,6 +100,9 @@ bool PGOProfilerDecoder::LoadFull(const std::shared_ptr<PGOAbcFilePool> &externa
     }
 
     LoadAbcIdPool(externalAbcFilePool, *recordDetailInfos_, addr);
+    if (header_->SupportMultiAbcChecksum()) {
+        pandaFileInfos_.UpdateFileInfosAbcID(*recordDetailInfos_);
+    }
     if (!recordDetailInfos_->ParseFromBinary(addr, header_)) {
         return false;
     }
@@ -267,4 +279,13 @@ void PGOProfilerDecoder::Merge(const PGOProfilerDecoder &decoder)
     pandaFileInfos_.Merge(decoder.GetPandaFileInfos());
     recordSimpleInfos_->Merge(decoder.GetRecordSimpleInfos());
 }
+
+void PGOProfilerDecoder::MergeFileNameToChecksumMap(std::unordered_map<CString, uint32_t> &fileNameToChecksumMap) const
+{
+    pandaFileInfos_.ForEachFileInfo([this, &fileNameToChecksumMap](uint32_t checksum, uint32_t abcId) {
+        const CString &abcNameInDecoder = JSPandaFile::GetNormalizedFileDesc(abcFilePool_->GetEntry(abcId)->GetData());
+        fileNameToChecksumMap.emplace(abcNameInDecoder, checksum);
+    });
+}
+
 } // namespace panda::ecmascript::pgo

@@ -34,7 +34,7 @@ void PGOPandaFileInfos::ProcessToBinary(std::fstream &fileStream, SectionInfo *i
     fileStream.seekp(info->offset_);
     info->number_ = fileInfos_.size();
     for (auto localInfo : fileInfos_) {
-        fileStream.write(reinterpret_cast<char *>(&localInfo), localInfo.Size());
+        fileStream.write(reinterpret_cast<char *>(&localInfo), FileInfo::Size());
     }
     info->size_ = static_cast<uint32_t>(fileStream.tellp()) - info->offset_;
 }
@@ -42,7 +42,7 @@ void PGOPandaFileInfos::ProcessToBinary(std::fstream &fileStream, SectionInfo *i
 void PGOPandaFileInfos::Merge(const PGOPandaFileInfos &pandaFileInfos)
 {
     for (const auto &info : pandaFileInfos.fileInfos_) {
-        fileInfos_.emplace(info.GetChecksum());
+        fileInfos_.emplace(info.GetChecksum(), info.GetAbcId());
     }
 }
 
@@ -81,7 +81,7 @@ bool PGOPandaFileInfos::ParseFromText(std::ifstream &stream)
                 LOG_ECMA(ERROR) << "checksum: " << checksum << " parse failed";
                 return false;
             }
-            Sample(result);
+            Sample(result, 0);
         }
         return true;
     }
@@ -98,6 +98,7 @@ void PGOPandaFileInfos::ProcessToText(std::ofstream &stream) const
         } else {
             isFirst = false;
         }
+        pandaFileInfo += (std::to_string(info.GetAbcId()) + DumpUtils::BLOCK_START);
         pandaFileInfo += std::to_string(info.GetChecksum());
     }
 
@@ -105,13 +106,56 @@ void PGOPandaFileInfos::ProcessToText(std::ofstream &stream) const
     stream << pandaFileInfo;
 }
 
-bool PGOPandaFileInfos::Checksum(uint32_t checksum) const
+bool PGOPandaFileInfos::Checksum(const std::unordered_map<CString, uint32_t>& fileNameToChecksumMap,
+                                 const std::shared_ptr<PGOAbcFilePool>& abcFilePool) const
 {
-    if (fileInfos_.find(checksum) == fileInfos_.end()) {
-        LOG_ECMA(ERROR) << "Checksum verification failed. Please ensure that the .abc and .ap match.";
-        return false;
+    for (const auto& fileNameToChecksumPair: fileNameToChecksumMap) {
+        ApEntityId abcId(0);
+        abcFilePool->GetEntryIdByNormalizedName(fileNameToChecksumPair.first, abcId);
+        FileInfo tempInfo = FileInfo(fileNameToChecksumPair.second, abcId);
+        auto it = fileInfos_.find(tempInfo);
+        if (it != fileInfos_.end()) {
+            if (it->GetChecksum() != tempInfo.GetChecksum()) {
+                LOG_ECMA(ERROR)
+                    << "Checksum verification failed. Please ensure that the "
+                       ".abc and .ap match. Fail file: "
+                    << fileNameToChecksumPair.first << "\n"
+                    << " compile file checksum: "
+                    << fileNameToChecksumPair.second
+                    << " recorded checksum in ap file: " << it->GetChecksum();
+                return false;
+            }
+        }
     }
     return true;
+}
+
+bool PGOPandaFileInfos::Checksum(const std::unordered_map<CString, uint32_t>& fileNameToChecksumMap) const
+{
+    for (const auto& fileNameToChecksumPair: fileNameToChecksumMap) {
+        for (const auto &fileInfo : fileInfos_) {
+            if (fileInfo.GetChecksum() == fileNameToChecksumPair.second) {
+                return true;
+            }
+        }
+    }
+    LOG_ECMA(ERROR) << "Checksum verification failed. Please ensure that the .abc and .ap match.";
+    return false;
+}
+
+void PGOPandaFileInfos::UpdateFileInfosAbcID(const PGOContext &context)
+{
+    std::set<FileInfo> newFileInfos;
+    auto oldToNewInfoMap = context.GetAbcIdRemap();
+    for (const auto &fileInfo : fileInfos_) {
+        auto changeInfo = oldToNewInfoMap.find(fileInfo.GetAbcId());
+        if (changeInfo != oldToNewInfoMap.end()) {
+            newFileInfos.emplace(fileInfo.GetChecksum(), changeInfo->second);
+        } else {
+            newFileInfos.emplace(fileInfo);
+        }
+    }
+    fileInfos_.swap(newFileInfos);
 }
 
 void PGOMethodInfo::ProcessToText(std::string &text) const

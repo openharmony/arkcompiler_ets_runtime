@@ -15,8 +15,10 @@
 #ifndef ECMASCRIPT_COMPILER_AOT_FILE_AN_FILE_DATA_MANAGER_H
 #define ECMASCRIPT_COMPILER_AOT_FILE_AN_FILE_DATA_MANAGER_H
 
+#include <utility>
 #include "ecmascript/compiler/aot_file/an_file_info.h"
 #include "ecmascript/compiler/aot_file/stub_file_info.h"
+#include "ecmascript/mem/c_string.h"
 #include "ecmascript/platform/map.h"
 
 namespace panda::ecmascript {
@@ -35,6 +37,11 @@ public:
     uint32_t SafeGetFileInfoIndex(const std::string &fileName);
     std::shared_ptr<AnFileInfo> SafeGetAnFileInfo(uint32_t index);
     std::shared_ptr<StubFileInfo> SafeGetStubFileInfo();
+    void SafeMergeChecksumInfo(const std::unordered_map<CString, uint32_t> &fileNameToChecksumMap);
+    void UnsafeMergeChecksumInfo(const std::unordered_map<CString, uint32_t> &fileNameToChecksumMap);
+    void VerifyChecksumOrSetToInvalid(const std::pair<CString, uint32_t> &newPair,
+                                      std::pair<const CString, uint32_t> &fullPair);
+    bool SafeCheckFilenameToChecksum(const CString &fileName, uint32_t checksum);
     bool SafeTryReadLock();
     bool SafeInsideStub(uintptr_t pc);
     bool SafeInsideAOT(uintptr_t pc);
@@ -42,6 +49,7 @@ public:
     static void DestroyFileMapMem(MemMap &fileMapMem);
     void SafeDestroyAllData();
     void SafeDestroyAnData(const std::string &fileName);
+    const std::unordered_map<CString, uint32_t> &SafeGetfullFileNameToChecksumMap();
 
     const std::string &GetDir() const
     {
@@ -76,7 +84,9 @@ private:
                            std::function<bool(std::string fileName, uint8_t **buff, size_t *buffSize)> cb);
 #endif
     bool UnsafeLoadFromStub(const std::string &fileName);
+    bool UnsafeCheckFilenameToChecksum(const CString &fileName, uint32_t checksum);
     uint32_t UnSafeGetFileInfoIndex(const std::string &fileName);
+    const std::unordered_map<CString, uint32_t> &UnsafeGetfullFileNameToChecksumMap() const;
     std::shared_ptr<AnFileInfo> UnSafeGetAnFileInfo(uint32_t index)
     {
         return loadedAn_.at(index);
@@ -85,7 +95,7 @@ private:
     RWLock lock_ {};
     std::unordered_map<std::string, uint32_t> anFileNameToIndexMap_ {};
     std::vector<std::shared_ptr<AnFileInfo>> loadedAn_ {};
-
+    std::unordered_map<CString, uint32_t> fullFileNameToChecksumMap_ {};
     std::shared_ptr<StubFileInfo> loadedStub_ {nullptr};
     std::string anDir_;
     bool anEnable_ {false};

@@ -653,7 +653,8 @@ bool AOTFileGenerator::CreateDirIfNotExist(const std::string &filename)
     return panda::ecmascript::SetDirModeAsDefault(path);
 }
 
-bool AOTFileGenerator::SaveAOTFile(const std::string &filename, const std::string &appSignature)
+bool AOTFileGenerator::SaveAOTFile(const std::string &filename, const std::string &appSignature,
+                                   const std::unordered_map<CString, uint32_t> &fileNameToChecksumMap)
 {
     if (aotInfo_.GetTotalCodeSize() == 0) {
         LOG_COMPILER(WARN) << "error: code size of generated an file is empty!";
@@ -666,7 +667,7 @@ bool AOTFileGenerator::SaveAOTFile(const std::string &filename, const std::strin
     PrintMergedCodeComment();
     GenerateMergedStackmapSection();
     aotInfo_.GenerateMethodToEntryIndexMap();
-    if (!aotInfo_.Save(filename, cfg_.GetTriple(), anFileMaxByteSize_)) {
+    if (!aotInfo_.Save(filename, cfg_.GetTriple(), anFileMaxByteSize_, fileNameToChecksumMap)) {
         LOG_COMPILER(ERROR) << "Fail to save an file: " << filename;
         return false;
     }

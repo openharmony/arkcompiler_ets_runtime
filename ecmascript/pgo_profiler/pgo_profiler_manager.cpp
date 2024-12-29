@@ -76,20 +76,21 @@ bool PGOProfilerManager::MergeApFiles(const std::string &inFiles, const std::str
     return true;
 }
 
-bool PGOProfilerManager::MergeApFiles(uint32_t checksum, PGOProfilerDecoder &merger)
+bool PGOProfilerManager::MergeApFiles(std::unordered_map<CString, uint32_t> &fileNameToChecksumMap,
+                                      PGOProfilerDecoder &merger)
 {
     uint32_t hotnessThreshold = merger.GetHotnessThreshold();
     std::string inFiles(merger.GetInPath());
-    arg_list_t pandaFileNames = base::StringHelper::SplitString(inFiles, GetFileDelimiter());
-    if (pandaFileNames.empty()) {
+    arg_list_t pgoFileNamesVector = base::StringHelper::SplitString(inFiles, GetFileDelimiter());
+    if (pgoFileNamesVector.empty()) {
         return true;
     }
     merger.InitMergeData();
     bool hasMerged = false;
     std::string firstApFileName;
-    for (const auto &fileName : pandaFileNames) {
+    for (const auto &fileName : pgoFileNamesVector) {
         PGOProfilerDecoder decoder(fileName, hotnessThreshold);
-        if (!decoder.LoadAndVerify(checksum, merger.GetAbcFilePool())) {
+        if (!decoder.LoadAndVerify(fileNameToChecksumMap, merger.GetAbcFilePool())) {
             LOG_ECMA(ERROR) << "Load and verify file (" << fileName << ") failed, skip it.";
             continue;
         }
@@ -115,6 +116,11 @@ bool PGOProfilerManager::MergeApFiles(uint32_t checksum, PGOProfilerDecoder &mer
         return false;
     }
     GetInstance()->SetIsApFileCompatible(true);
+    // In the scenario of on-device application compilation, the input fileNameToChecksumMap only contains ABC
+    // information of the application, while AP holds all ABC information collected during the
+    // collection phase. Considering external HSP dependencies, the input fileNameToChecksumMap
+    // needs to be merged with the information from AP, that we can write full ABC information to the an file.
+    merger.MergeFileNameToChecksumMap(fileNameToChecksumMap);
     return true;
 }
 
