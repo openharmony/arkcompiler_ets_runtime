@@ -693,11 +693,11 @@ HWTEST_F_L0(EcmaModuleTest, GetModuleNameSpaceFromFile)
     CString baseFileName = MODULE_ABC_PATH "module_test_module_test_B.abc";
 
     // ExecuteFromAbcFile is success
-    JSHandle<JSTaggedValue> res2 = ecmascript::NapiModuleLoader::LoadModuleNameSpace(thread, recordName2, baseFileName);
+    JSHandle<JSTaggedValue> res2 = ecmascript::NapiModuleLoader::GetModuleNameSpace(thread, recordName2, baseFileName);
     EXPECT_NE(res2, thread->GlobalConstants()->GetHandledUndefinedString());
 
     // ExecuteFromAbcFile is fail
-    JSHandle<JSTaggedValue> res1 = ecmascript::NapiModuleLoader::LoadModuleNameSpace(thread, recordName1, baseFileName);
+    JSHandle<JSTaggedValue> res1 = ecmascript::NapiModuleLoader::GetModuleNameSpace(thread, recordName1, baseFileName);
     EXPECT_EQ(res1.GetTaggedValue(), JSTaggedValue::Exception());
 }
 

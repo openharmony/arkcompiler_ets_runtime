@@ -20,16 +20,23 @@
 namespace panda::ecmascript {
 class NapiModuleLoader {
 public:
+    static JSHandle<JSTaggedValue> LoadModuleNameSpace(EcmaVM *vm, CString requestPath,
+                                                       CString moduleName, CString &abcFilePath);
+    static JSHandle<JSTaggedValue> LoadModuleNameSpace(EcmaVM *vm, CString requestPath, CString modulePath);
+
+    static JSHandle<JSTaggedValue> GetModuleNameSpace(JSThread *thread, const CString &entryPoint,
+        const CString &abcFilePath);
+private:
     static JSHandle<JSTaggedValue> LoadModuleNameSpaceWithModuleInfo(EcmaVM *vm, CString &requestPath,
-                                                                     CString &modulePath);
+                                                                     CString &modulePath, CString &abcFilePath);
     static JSHandle<JSTaggedValue> LoadModuleNameSpaceWithPath(JSThread *thread, CString &abcFilePath,
         CString &requestPath, CString &modulePath, const JSPandaFile *pandaFile);
 
     static JSHandle<JSTaggedValue> LoadModuleNameSpaceFromFile(JSThread *thread, const CString &entryPoint,
         const CString &abcFilePath);
 
-    static JSHandle<JSTaggedValue> LoadModuleNameSpace(JSThread *thread, const CString &entryPoint,
-        const CString &abcFilePath);
+    static JSHandle<JSTaggedValue> LoadFilePathWithinModule(JSThread *thread, CString abcFilePath,
+        CString srcPrefix, CString requestPath, CString modulePath);
 };
 }
 
