@@ -87,6 +87,9 @@ GateRef TypedHCRLowering::VisitGate(GateRef gate)
         case OpCode::TYPED_CALLTARGETCHECK_OP:
             LowerJSCallTargetCheck(gate);
             break;
+        case OpCode::CALL_TARGET_IS_COMPILED_CHECK:
+            LowerCallTargetIsCompiledCheck(gate);
+            break;
         case OpCode::TYPED_CALL_CHECK:
             LowerCallTargetCheck(gate);
             break;
@@ -1496,15 +1499,46 @@ void TypedHCRLowering::LowerTypedCallBuitin(GateRef gate)
     lowering.LowerTypedCallBuitin(gate);
 }
 
+void TypedHCRLowering::CallTargetIsCompiledCheck(GateRef func, GateRef frameState,
+                                                 Label *checkAlreadyDeopt, Label *exit)
+{
+    GateRef isCompiled = builder_.JudgeAotAndFastCall(func, CircuitBuilder::JudgeMethodType::HAS_AOT);
+    BRANCH_CIR_LIKELY(isCompiled, exit, checkAlreadyDeopt);
+    builder_.Bind(checkAlreadyDeopt);
+    {
+        GateRef method = builder_.GetMethodFromFunction(func);
+        GateRef hasDeopt = builder_.AlreadyDeopt(method);
+        builder_.DeoptCheck(hasDeopt, frameState, DeoptType::CALLTARGETNOTCOMPILED);
+        builder_.Jump(exit);
+    }
+    builder_.Bind(exit);
+}
+
+void TypedHCRLowering::LowerCallTargetIsCompiledCheck(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    Label checkAlreadyDeopt(&builder_);
+    Label exit(&builder_);
+    GateRef func = acc_.GetValueIn(gate, 0);
+    GateRef frameState = acc_.GetFrameState(gate);
+    builder_.IsCallableCheck(func, frameState);
+    CallTargetIsCompiledCheck(func, frameState, &checkAlreadyDeopt, &exit);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
+}
+
 void TypedHCRLowering::LowerJSCallTargetTypeCheck(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
+    Label checkAlreadyDeopt(&builder_);
+    Label exit(&builder_);
     ArgumentAccessor argAcc(circuit_);
     GateRef frameState = GetFrameState(gate);
     GateRef sharedConstPool = argAcc.GetFrameArgsIn(frameState, FrameArgIdx::SHARED_CONST_POOL);
     auto func = acc_.GetValueIn(gate, 0);
     auto methodIndex = acc_.GetValueIn(gate, 1);
     builder_.IsCallableCheck(func, frameState);
+    CallTargetIsCompiledCheck(func, frameState, &checkAlreadyDeopt, &exit);
+
     GateRef funcMethodTarget = builder_.GetMethodFromFunction(func);
     GateRef methodTarget = builder_.GetValueFromTaggedArray(sharedConstPool, methodIndex);
     GateRef check = builder_.Equal(funcMethodTarget, methodTarget);
@@ -1515,12 +1549,16 @@ void TypedHCRLowering::LowerJSCallTargetTypeCheck(GateRef gate)
 void TypedHCRLowering::LowerJSFastCallTargetTypeCheck(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
+    Label checkAlreadyDeopt(&builder_);
+    Label exit(&builder_);
     ArgumentAccessor argAcc(circuit_);
     GateRef frameState = GetFrameState(gate);
     GateRef sharedConstPool = argAcc.GetFrameArgsIn(frameState, FrameArgIdx::SHARED_CONST_POOL);
     auto func = acc_.GetValueIn(gate, 0);
     auto methodIndex = acc_.GetValueIn(gate, 1);
     builder_.IsCallableCheck(func, frameState);
+    CallTargetIsCompiledCheck(func, frameState, &checkAlreadyDeopt, &exit);
+
     GateRef funcMethodTarget = builder_.GetMethodFromFunction(func);
     GateRef methodTarget = builder_.GetValueFromTaggedArray(sharedConstPool, methodIndex);
     GateRef check = builder_.Equal(funcMethodTarget, methodTarget);
@@ -1531,9 +1569,13 @@ void TypedHCRLowering::LowerJSFastCallTargetTypeCheck(GateRef gate)
 void TypedHCRLowering::LowerJSCallThisTargetTypeCheck(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
+    Label checkAlreadyDeopt(&builder_);
+    Label exit(&builder_);
     GateRef frameState = GetFrameState(gate);
     auto func = acc_.GetValueIn(gate, 0);
     builder_.IsCallableCheck(func, frameState);
+    CallTargetIsCompiledCheck(func, frameState, &checkAlreadyDeopt, &exit);
+
     GateRef methodId = builder_.GetMethodId(func);
     GateRef check = builder_.Equal(methodId, acc_.GetValueIn(gate, 1));
     builder_.DeoptCheck(check, frameState, DeoptType::NOTJSCALLTGT3);
@@ -1543,9 +1585,13 @@ void TypedHCRLowering::LowerJSCallThisTargetTypeCheck(GateRef gate)
 void TypedHCRLowering::LowerJSNoGCCallThisTargetTypeCheck(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
+    Label checkAlreadyDeopt(&builder_);
+    Label exit(&builder_);
     GateRef frameState = GetFrameState(gate);
     auto func = acc_.GetValueIn(gate, 0);
     builder_.IsCallableCheck(func, frameState);
+    CallTargetIsCompiledCheck(func, frameState, &checkAlreadyDeopt, &exit);
+
     GateRef methodId = builder_.GetMethodId(func);
     GateRef check = builder_.Equal(methodId, acc_.GetValueIn(gate, 1));
     builder_.DeoptCheck(check, frameState, DeoptType::NOTJSCALLTGT4);
@@ -1555,9 +1601,13 @@ void TypedHCRLowering::LowerJSNoGCCallThisTargetTypeCheck(GateRef gate)
 void TypedHCRLowering::LowerJSFastCallThisTargetTypeCheck(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
+    Label checkAlreadyDeopt(&builder_);
+    Label exit(&builder_);
     GateRef frameState = GetFrameState(gate);
     auto func = acc_.GetValueIn(gate, 0);
     builder_.IsCallableCheck(func, frameState);
+    CallTargetIsCompiledCheck(func, frameState, &checkAlreadyDeopt, &exit);
+
     GateRef methodId = builder_.GetMethodId(func);
     GateRef check = builder_.Equal(methodId, acc_.GetValueIn(gate, 1));
     builder_.DeoptCheck(check, frameState, DeoptType::NOTJSFASTCALLTGT2);
@@ -1567,9 +1617,13 @@ void TypedHCRLowering::LowerJSFastCallThisTargetTypeCheck(GateRef gate)
 void TypedHCRLowering::LowerJSNoGCFastCallThisTargetTypeCheck(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
+    Label checkAlreadyDeopt(&builder_);
+    Label exit(&builder_);
     GateRef frameState = GetFrameState(gate);
     auto func = acc_.GetValueIn(gate, 0);
     builder_.IsCallableCheck(func, frameState);
+    CallTargetIsCompiledCheck(func, frameState, &checkAlreadyDeopt, &exit);
+
     GateRef methodId = builder_.GetMethodId(func);
     GateRef check = builder_.Equal(methodId, acc_.GetValueIn(gate, 1));
     builder_.DeoptCheck(check, frameState, DeoptType::NOTJSFASTCALLTGT3);

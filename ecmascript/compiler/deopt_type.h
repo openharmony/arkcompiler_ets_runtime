@@ -121,7 +121,8 @@ namespace panda::ecmascript::kungfu {
     V(NotCallable,                     NOTCALLABLE)                    \
     V(ArrayLengthOverMax,              ARRAYLENGTHOVERMAX)             \
     V(ArrayLengthNotWritable,          ARRAYLENGTHNOTWRITABLE)         \
-    V(InsufficientProfile,             INSUFFICIENTPROFILE)
+    V(InsufficientProfile,             INSUFFICIENTPROFILE)            \
+    V(CallTargetNotCompiled,           CALLTARGETNOTCOMPILED)
 
 enum class DeoptType : uint8_t {
     NONE = 0,

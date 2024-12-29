@@ -63,13 +63,8 @@ void StubBuilder::Jump(Label *label)
     env_->SetCurrentLabel(nullptr);
 }
 
-void StubBuilder::Branch(GateRef condition, Label *trueLabel, Label *falseLabel, const char* comment)
-{
-    return BranchPredict(condition, trueLabel, falseLabel, BranchWeight::ONE_WEIGHT, BranchWeight::ONE_WEIGHT, comment);
-}
-
-void StubBuilder::BranchPredict(GateRef condition, Label *trueLabel, Label *falseLabel, uint32_t trueWeight,
-                                uint32_t falseWeight, const char *comment)
+void StubBuilder::Branch(GateRef condition, Label *trueLabel, Label *falseLabel,
+                        uint32_t trueWeight, uint32_t falseWeight, const char *comment)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();

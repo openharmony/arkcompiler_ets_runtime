@@ -249,18 +249,50 @@ public:
     GateRef NanValue();
     GateRef RelocatableData(uint64_t val);
 
-#define BRANCH_CIR(condition, trueLabel, falseLabel)                                \
-    {                                                                               \
-        std::ostringstream os;                                                      \
-        os << __func__ << ": " << #trueLabel << "- " << #falseLabel;                \
-        builder_.Branch(condition, trueLabel, falseLabel, 1, 1, os.str().c_str());  \
+#define BRANCH(condition, trueLabel, falseLabel)                                         \
+    {                                                                                    \
+        std::ostringstream os;                                                           \
+        os << __func__ << ": " << #trueLabel << "- " << #falseLabel;                     \
+        Branch(condition, trueLabel, falseLabel, 1, 1, os.str().c_str());                \
     }
 
-#define BRANCH_CIR2(condition, trueLabel, falseLabel)                      \
-    {                                                                      \
-        std::ostringstream os;                                             \
-        os << __func__ << ": " << #trueLabel << "- " << #falseLabel;       \
-        Branch(condition, trueLabel, falseLabel, 1, 1, os.str().c_str());  \
+#define BRANCH_CIR(condition, trueLabel, falseLabel)                                     \
+    {                                                                                    \
+        std::ostringstream os;                                                           \
+        os << __func__ << ": " << #trueLabel << "- " << #falseLabel;                     \
+        builder_.Branch(condition, trueLabel, falseLabel, 1, 1, os.str().c_str());       \
+    }
+
+#define BRANCH_LIKELY(condition, trueLabel, falseLabel)                                  \
+    {                                                                                    \
+        std::ostringstream os;                                                           \
+        os << __func__ << ": " << #trueLabel << "(likely)- " << #falseLabel;             \
+        Branch(condition, trueLabel, falseLabel,                                         \
+            BranchWeight::DEOPT_WEIGHT, BranchWeight::ONE_WEIGHT, os.str().c_str());     \
+    }
+
+#define BRANCH_CIR_LIKELY(condition, trueLabel, falseLabel)                              \
+    {                                                                                    \
+        std::ostringstream os;                                                           \
+        os << __func__ << ": " << #trueLabel << "(likely)- " << #falseLabel;             \
+        builder_.Branch(condition, trueLabel, falseLabel,                                \
+            BranchWeight::DEOPT_WEIGHT, BranchWeight::ONE_WEIGHT, os.str().c_str());     \
+    }
+
+#define BRANCH_UNLIKELY(condition, trueLabel, falseLabel)                                \
+    {                                                                                    \
+        std::ostringstream os;                                                           \
+        os << __func__ << ": " << #trueLabel << "(unlikely)- " << #falseLabel;           \
+        Branch(condition, trueLabel, falseLabel,                                         \
+            BranchWeight::ONE_WEIGHT, BranchWeight::DEOPT_WEIGHT, os.str().c_str());     \
+    }
+
+#define BRANCH_NO_WEIGHT(condition, trueLabel, falseLabel)                               \
+    {                                                                                    \
+        std::ostringstream os;                                                           \
+        os << __func__ << ": " << #trueLabel << "(no weight)- " << #falseLabel;          \
+        Branch(condition, trueLabel, falseLabel,                                         \
+            BranchWeight::ZERO_WEIGHT, BranchWeight::ZERO_WEIGHT, os.str().c_str());     \
     }
 
     GateRef Branch(GateRef state, GateRef condition, uint32_t leftWeight = 1, uint32_t rightWeight = 1,
@@ -488,6 +520,8 @@ public:
     inline GateRef IsJSObject(GateRef obj);
     inline GateRef IsCallable(GateRef obj);
     inline GateRef IsCallableFromBitField(GateRef bitfield);
+    inline GateRef AlreadyDeopt(GateRef method);
+    inline GateRef AlreadyDeoptFromExtraLiteralInfo(GateRef callfield);
     inline GateRef IsPrototypeHClass(GateRef hclass);
     inline GateRef IsJsProxy(GateRef obj);
     GateRef IsJSHClass(GateRef obj);
@@ -550,6 +584,7 @@ public:
     GateRef JSCallTargetTypeCheck(GateRef func, GateRef methodIndex, GateRef gate);
     template<TypedCallTargetCheckOp Op>
     inline GateRef JSNoGCCallThisTargetTypeCheck(GateRef func, GateRef methodId, GateRef gate);
+    GateRef CallTargetIsCompiledCheck(GateRef func, GateRef gate);
     GateRef TypeOfCheck(GateRef gate, ParamType paramType);
     GateRef TypedTypeOf(ParamType paramType);
     GateRef TypedCallOperator(GateRef hirGate, MachineType type, const std::vector<GateRef>& inList, bool isSideEffect);

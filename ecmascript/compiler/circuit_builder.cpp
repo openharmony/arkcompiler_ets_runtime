@@ -596,7 +596,7 @@ GateRef CircuitBuilder::GetUnsharedConstpoolFromGlue(GateRef glue, GateRef const
     GateRef unshareIdx = GetUnsharedConstpoolIndex(constpool);
     GateRef unsharedCpArrayLen = GetUnsharedConstpoolArrayLen(glue);
     GateRef indexLessThanUnsharedCpArrayLen = Int32LessThan(TaggedGetInt(unshareIdx), unsharedCpArrayLen);
-    BRANCH_CIR2(indexLessThanUnsharedCpArrayLen, &canGetUnsharedCp, &exit);
+    BRANCH(indexLessThanUnsharedCpArrayLen, &canGetUnsharedCp, &exit);
     Bind(&canGetUnsharedCp);
     {
         GateRef unshareCpOffset =
@@ -808,7 +808,7 @@ GateRef CircuitBuilder::CheckJSType(GateRef object, JSType jsType)
     Label heapObj(env_);
     Label exit(env_);
     GateRef isHeapObject = TaggedIsHeapObject(object);
-    BRANCH_CIR2(isHeapObject, &heapObj, &exit);
+    BRANCH(isHeapObject, &heapObj, &exit);
     Bind(&heapObj);
     {
         GateRef objectType = GetObjectType(LoadHClass(object));
@@ -852,7 +852,7 @@ GateRef CircuitBuilder::GetObjectFromConstPool(GateRef glue, GateRef hirGate, Ga
     // Call runtime to create unshared constpool when current context's cache is hole in multi-thread.
     DEFVALUE(cacheValue, env_, VariableType::JS_ANY(), Hole());
     if (type == ConstPoolType::ARRAY_LITERAL || type == ConstPoolType::OBJECT_LITERAL) {
-        BRANCH_CIR2(TaggedIsNotHole(unsharedConstPool), &unshareCpHit, &unshareCpMiss);
+        BRANCH(TaggedIsNotHole(unsharedConstPool), &unshareCpHit, &unshareCpMiss);
         Bind(&unshareCpHit);
         {
             cacheValue = GetValueFromTaggedArray(unsharedConstPool, index);
@@ -864,7 +864,7 @@ GateRef CircuitBuilder::GetObjectFromConstPool(GateRef glue, GateRef hirGate, Ga
     }
     Bind(&unshareCpMiss);
     DEFVALUE(result, env_, VariableType::JS_ANY(), *cacheValue);
-    BRANCH_CIR2(BitOr(TaggedIsHole(*result), TaggedIsNullPtr(*result)), &cacheMiss, &cache);
+    BRANCH(BitOr(TaggedIsHole(*result), TaggedIsNullPtr(*result)), &cacheMiss, &cache);
     Bind(&cacheMiss);
     {
         if (type == ConstPoolType::STRING) {
@@ -887,11 +887,11 @@ GateRef CircuitBuilder::GetObjectFromConstPool(GateRef glue, GateRef hirGate, Ga
         if (type == ConstPoolType::METHOD) {
             Label isHeapObj(env_);
             Label checkInteger(env_);
-            BRANCH_CIR2(TaggedIsHeapObject(*result), &isHeapObj, &checkInteger);
+            BRANCH(TaggedIsHeapObject(*result), &isHeapObj, &checkInteger);
             Bind(&isHeapObj);
             {
                 Label isAOTLiteralInfo(env_);
-                BRANCH_CIR2(IsAOTLiteralInfo(*result), &isAOTLiteralInfo, &exit);
+                BRANCH(IsAOTLiteralInfo(*result), &isAOTLiteralInfo, &exit);
                 Bind(&isAOTLiteralInfo);
                 {
                     result = CallRuntime(glue, RTSTUB_ID(GetMethodFromCache), Gate::InvalidGateRef,
@@ -902,7 +902,7 @@ GateRef CircuitBuilder::GetObjectFromConstPool(GateRef glue, GateRef hirGate, Ga
             Bind(&checkInteger);
             {
                 Label isInteger(env_);
-                BRANCH_CIR2(TaggedIsInt(*result), &isInteger, &exit);
+                BRANCH(TaggedIsInt(*result), &isInteger, &exit);
                 Bind(&isInteger);
                 {
                     result = CallRuntime(glue, RTSTUB_ID(GetMethodFromCache), Gate::InvalidGateRef,
@@ -912,11 +912,11 @@ GateRef CircuitBuilder::GetObjectFromConstPool(GateRef glue, GateRef hirGate, Ga
             }
         } else if (type == ConstPoolType::ARRAY_LITERAL) {
             Label isHeapObj(env_);
-            BRANCH_CIR2(TaggedIsHeapObject(*result), &isHeapObj, &exit);
+            BRANCH(TaggedIsHeapObject(*result), &isHeapObj, &exit);
             Bind(&isHeapObj);
             {
                 Label isAOTLiteralInfo(env_);
-                BRANCH_CIR2(IsAOTLiteralInfo(*result), &isAOTLiteralInfo, &exit);
+                BRANCH(IsAOTLiteralInfo(*result), &isAOTLiteralInfo, &exit);
                 Bind(&isAOTLiteralInfo);
                 {
                     result = CallRuntime(glue, RTSTUB_ID(GetArrayLiteralFromCache), Gate::InvalidGateRef,
@@ -926,11 +926,11 @@ GateRef CircuitBuilder::GetObjectFromConstPool(GateRef glue, GateRef hirGate, Ga
             }
         } else if (type == ConstPoolType::OBJECT_LITERAL) {
             Label isHeapObj(env_);
-            BRANCH_CIR2(TaggedIsHeapObject(*result), &isHeapObj, &exit);
+            BRANCH(TaggedIsHeapObject(*result), &isHeapObj, &exit);
             Bind(&isHeapObj);
             {
                 Label isAOTLiteralInfo(env_);
-                BRANCH_CIR2(IsAOTLiteralInfo(*result), &isAOTLiteralInfo, &exit);
+                BRANCH(IsAOTLiteralInfo(*result), &isAOTLiteralInfo, &exit);
                 Bind(&isAOTLiteralInfo);
                 {
                     result = CallRuntime(glue, RTSTUB_ID(GetObjectLiteralFromCache), Gate::InvalidGateRef,
@@ -1200,63 +1200,63 @@ GateRef CircuitBuilder::ToObject(GateRef glue, GateRef obj)
     Label isBigInt(env_);
     Label notIsBigInt(env_);
     Label throwError(env_);
-    BRANCH_CIR2(IsEcmaObject(obj), &isECMAObject, &notIsECMAObject);
+    BRANCH(IsEcmaObject(obj), &isECMAObject, &notIsECMAObject);
     Bind(&isECMAObject);
     {
         result = obj;
         Jump(&exit);
     }
     Bind(&notIsECMAObject);
-    BRANCH_CIR2(TaggedIsNumber(obj), &isNumber, &notNumber);
+    BRANCH(TaggedIsNumber(obj), &isNumber, &notNumber);
     Bind(&isNumber);
     {
         result = NewJSPrimitiveRef(glue, GlobalEnv::NUMBER_FUNCTION_INDEX, obj);
         Jump(&exit);
     }
     Bind(&notNumber);
-    BRANCH_CIR2(TaggedIsBoolean(obj), &isBoolean, &notBoolean);
+    BRANCH(TaggedIsBoolean(obj), &isBoolean, &notBoolean);
     Bind(&isBoolean);
     {
         result = NewJSPrimitiveRef(glue, GlobalEnv::BOOLEAN_FUNCTION_INDEX, obj);
         Jump(&exit);
     }
     Bind(&notBoolean);
-    BRANCH_CIR2(TaggedIsString(obj), &isString, &notString);
+    BRANCH(TaggedIsString(obj), &isString, &notString);
     Bind(&isString);
     {
         result = NewJSPrimitiveRef(glue, GlobalEnv::STRING_FUNCTION_INDEX, obj);
         Jump(&exit);
     }
     Bind(&notString);
-    BRANCH_CIR2(TaggedIsSymbol(obj), &isSymbol, &notSymbol);
+    BRANCH(TaggedIsSymbol(obj), &isSymbol, &notSymbol);
     Bind(&isSymbol);
     {
         result = NewJSPrimitiveRef(glue, GlobalEnv::SYMBOL_FUNCTION_INDEX, obj);
         Jump(&exit);
     }
     Bind(&notSymbol);
-    BRANCH_CIR2(TaggedIsUndefined(obj), &isUndefined, &notIsUndefined);
+    BRANCH(TaggedIsUndefined(obj), &isUndefined, &notIsUndefined);
     Bind(&isUndefined);
     {
         taggedId = Int32(GET_MESSAGE_STRING_ID(CanNotConvertNotUndefinedObject));
         Jump(&throwError);
     }
     Bind(&notIsUndefined);
-    BRANCH_CIR2(TaggedIsHole(obj), &isHole, &notIsHole);
+    BRANCH(TaggedIsHole(obj), &isHole, &notIsHole);
     Bind(&isHole);
     {
         taggedId = Int32(GET_MESSAGE_STRING_ID(CanNotConvertNotHoleObject));
         Jump(&throwError);
     }
     Bind(&notIsHole);
-    BRANCH_CIR2(TaggedIsNull(obj), &isNull, &notIsNull);
+    BRANCH(TaggedIsNull(obj), &isNull, &notIsNull);
     Bind(&isNull);
     {
         taggedId = Int32(GET_MESSAGE_STRING_ID(CanNotConvertNotNullObject));
         Jump(&throwError);
     }
     Bind(&notIsNull);
-    BRANCH_CIR2(TaggedIsBigInt(obj), &isBigInt, &notIsBigInt);
+    BRANCH(TaggedIsBigInt(obj), &isBigInt, &notIsBigInt);
     Bind(&isBigInt);
     {
         result = NewJSPrimitiveRef(glue, GlobalEnv::BIGINT_FUNCTION_INDEX, obj);
@@ -1289,9 +1289,9 @@ GateRef CircuitBuilder::GetPrototype(GateRef glue, GateRef object)
     Label objectIsEcmaObject(env_);
     Label objectNotEcmaObject(env_);
 
-    BRANCH_CIR2(TaggedIsHeapObject(object), &objectIsHeapObject, &objectNotEcmaObject);
+    BRANCH(TaggedIsHeapObject(object), &objectIsHeapObject, &objectNotEcmaObject);
     Bind(&objectIsHeapObject);
-    BRANCH_CIR2(TaggedObjectIsEcmaObject(object), &objectIsEcmaObject, &objectNotEcmaObject);
+    BRANCH(TaggedObjectIsEcmaObject(object), &objectIsEcmaObject, &objectNotEcmaObject);
     Bind(&objectNotEcmaObject);
     {
         GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(CanNotGetNotEcmaObject));
@@ -1303,7 +1303,7 @@ GateRef CircuitBuilder::GetPrototype(GateRef glue, GateRef object)
     {
         Label objectIsJsProxy(env_);
         Label objectNotIsJsProxy(env_);
-        BRANCH_CIR2(IsJsProxy(object), &objectIsJsProxy, &objectNotIsJsProxy);
+        BRANCH(IsJsProxy(object), &objectIsJsProxy, &objectNotIsJsProxy);
         Bind(&objectIsJsProxy);
         {
             result = CallRuntime(glue, RTSTUB_ID(CallGetPrototype), Gate::InvalidGateRef, { object }, glue);
@@ -1342,7 +1342,7 @@ GateRef CircuitBuilder::TransProtoWithoutLayout(GateRef glue, GateRef hClass, Ga
                                       { hClass, key, proto }, glue);
     Label undef(env_);
     Label find(env_);
-    BRANCH_CIR2(IntPtrEqual(TaggedCastToIntPtr(newClass), IntPtr(0)), &undef, &find);
+    BRANCH(IntPtrEqual(TaggedCastToIntPtr(newClass), IntPtr(0)), &undef, &find);
     Bind(&find);
     {
         result = newClass;
@@ -1373,7 +1373,7 @@ GateRef CircuitBuilder::OrdinaryNewJSObjectCreate(GateRef glue, GateRef proto)
     GateRef newClass = TransProtoWithoutLayout(glue, hClass, proto);
     Label exception(env_);
     Label noexception(env_);
-    BRANCH_CIR2(TaggedIsException(newClass), &exception, &noexception);
+    BRANCH(TaggedIsException(newClass), &exception, &noexception);
     Bind(&exception);
     {
         result = ExceptionConstant();
@@ -1384,7 +1384,7 @@ GateRef CircuitBuilder::OrdinaryNewJSObjectCreate(GateRef glue, GateRef proto)
     GateRef newObj = newBuilder.NewJSObject(glue, newClass);
     Label exceptionNewObj(env_);
     Label noexceptionNewObj(env_);
-    BRANCH_CIR2(TaggedIsException(newObj), &exceptionNewObj, &noexceptionNewObj);
+    BRANCH(TaggedIsException(newObj), &exceptionNewObj, &noexceptionNewObj);
     Bind(&exceptionNewObj);
     {
         result = ExceptionConstant();
@@ -1431,11 +1431,11 @@ void CircuitBuilder::UpdateProfileTypeInfoCellToFunction(GateRef glue, GateRef f
     Label slotValueNotUndefined(env_);
     Label profileTypeInfoEnd(env_);
     NewObjectStubBuilder newBuilder(env_);
-    BRANCH_CIR2(TaggedIsUndefined(profileTypeInfo), &profileTypeInfoEnd, &profileTypeInfoNotUndefined);
+    BRANCH(TaggedIsUndefined(profileTypeInfo), &profileTypeInfoEnd, &profileTypeInfoNotUndefined);
     Bind(&profileTypeInfoNotUndefined);
     {
         GateRef slotValue = GetValueFromTaggedArray(profileTypeInfo, slotId);
-        BRANCH_CIR2(TaggedIsUndefined(slotValue), &slotValueUpdate, &slotValueNotUndefined);
+        BRANCH(TaggedIsUndefined(slotValue), &slotValueUpdate, &slotValueNotUndefined);
         Bind(&slotValueUpdate);
         {
             GateRef newProfileTypeInfoCell = newBuilder.NewProfileTypeInfoCell(glue, Undefined());
@@ -1464,8 +1464,8 @@ void CircuitBuilder::UpdateProfileTypeInfoCellType(GateRef glue, GateRef profile
     Label isProfileTypeInfoCell1(env_);
     Label endProfileTypeInfoCellType(env_);
     GateRef objectType = GetObjectType(LoadHClass(profileTypeInfoCell));
-    BRANCH_CIR2(Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::PROFILE_TYPE_INFO_CELL_0))),
-                &isProfileTypeInfoCell0, &notProfileTypeInfoCell0);
+    BRANCH(Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::PROFILE_TYPE_INFO_CELL_0))),
+           &isProfileTypeInfoCell0, &notProfileTypeInfoCell0);
     Bind(&isProfileTypeInfoCell0);
     {
         auto profileTypeInfoCell1Class = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
@@ -1474,8 +1474,8 @@ void CircuitBuilder::UpdateProfileTypeInfoCellType(GateRef glue, GateRef profile
         Jump(&endProfileTypeInfoCellType);
     }
     Bind(&notProfileTypeInfoCell0);
-    BRANCH_CIR2(Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::PROFILE_TYPE_INFO_CELL_1))),
-                &isProfileTypeInfoCell1, &endProfileTypeInfoCellType);
+    BRANCH(Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::PROFILE_TYPE_INFO_CELL_1))),
+           &isProfileTypeInfoCell1, &endProfileTypeInfoCellType);
     Bind(&isProfileTypeInfoCell1);
     {
         auto profileTypeInfoCellNClass = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
@@ -1508,50 +1508,50 @@ GateRef CircuitBuilder::FastToBoolean(GateRef value)
     Label returnTrue(env_);
     Label returnFalse(env_);
 
-    BRANCH_CIR2(TaggedIsSpecial(value), &isSpecial, &notSpecial);
+    BRANCH(TaggedIsSpecial(value), &isSpecial, &notSpecial);
     Bind(&isSpecial);
     {
-        BRANCH_CIR2(TaggedIsTrue(value), &returnTrue, &returnFalse);
+        BRANCH(TaggedIsTrue(value), &returnTrue, &returnFalse);
     }
     Bind(&notSpecial);
     {
-        BRANCH_CIR2(TaggedIsNumber(value), &isNumber, &notNumber);
+        BRANCH(TaggedIsNumber(value), &isNumber, &notNumber);
         Bind(&notNumber);
         {
-            BRANCH_CIR2(TaggedIsString(value), &isString, &notString);
+            BRANCH(TaggedIsString(value), &isString, &notString);
             Bind(&isString);
             {
                 auto len = GetLengthFromString(value);
-                BRANCH_CIR2(Int32Equal(len, Int32(0)), &returnFalse, &returnTrue);
+                BRANCH(Int32Equal(len, Int32(0)), &returnFalse, &returnTrue);
             }
             Bind(&notString);
-            BRANCH_CIR2(TaggedIsBigInt(value), &isBigint, &returnTrue);
+            BRANCH(TaggedIsBigInt(value), &isBigint, &returnTrue);
             Bind(&isBigint);
             {
                 auto len = Load(VariableType::INT32(), value, IntPtr(BigInt::LENGTH_OFFSET));
-                BRANCH_CIR2(Int32Equal(len, Int32(1)), &lengthIsOne, &returnTrue);
+                BRANCH(Int32Equal(len, Int32(1)), &lengthIsOne, &returnTrue);
                 Bind(&lengthIsOne);
                 {
                     auto data = PtrAdd(value, IntPtr(BigInt::DATA_OFFSET));
                     auto data0 = Load(VariableType::INT32(), data, Int32(0));
-                    BRANCH_CIR2(Int32Equal(data0, Int32(0)), &returnFalse, &returnTrue);
+                    BRANCH(Int32Equal(data0, Int32(0)), &returnFalse, &returnTrue);
                 }
             }
         }
         Bind(&isNumber);
         {
-            BRANCH_CIR2(TaggedIsInt(value), &isInt, &isDouble);
+            BRANCH(TaggedIsInt(value), &isInt, &isDouble);
             Bind(&isInt);
             {
                 auto intValue = GetInt32OfTInt(value);
-                BRANCH_CIR2(Int32Equal(intValue, Int32(0)), &returnFalse, &returnTrue);
+                BRANCH(Int32Equal(intValue, Int32(0)), &returnFalse, &returnTrue);
             }
             Bind(&isDouble);
             {
                 auto doubleValue = GetDoubleOfTDouble(value);
-                BRANCH_CIR2(DoubleIsNAN(doubleValue), &returnFalse, &notNan);
+                BRANCH(DoubleIsNAN(doubleValue), &returnFalse, &notNan);
                 Bind(&notNan);
-                BRANCH_CIR2(DoubleEqual(doubleValue, Double(0.0)), &returnFalse, &returnTrue);
+                BRANCH(DoubleEqual(doubleValue, Double(0.0)), &returnFalse, &returnTrue);
             }
         }
     }
