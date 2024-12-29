@@ -82,7 +82,7 @@ void PatchLoader::ExecuteFuncOrPatchMain(
     CString fileName = jsPandaFile->GetJSPandaFileDesc();
     for (const auto &recordName : replacedRecordNames) {
         JSHandle<JSTaggedValue> moduleRecord =
-            ModuleResolver::HostResolveImportedModuleWithMergeForHotReload(thread, fileName, recordName, false);
+            ModuleResolver::HostResolveImportedModuleForHotReload(thread, fileName, recordName, false);
         moduleRecords.emplace(recordName, moduleRecord);
     }
 

@@ -48,7 +48,7 @@ public:
                                                            bool needUpdate = false, bool executeFromJob = false);
     static Expected<JSTaggedValue, bool> ExecuteModuleBuffer(JSThread *thread, const void *buffer, size_t size,
                                                              const CString &filename = "", bool needUpdate = false);
-    static Expected<JSTaggedValue, bool> CommonExecuteBuffer(JSThread *thread, bool isBundle, const CString &filename,
+    static Expected<JSTaggedValue, bool> CommonExecuteBuffer(JSThread *thread, const CString &filename,
                                                              const CString &entry, const void *buffer, size_t size,
                                                              bool executeFromJob = false);
     static Expected<JSTaggedValue, bool> Execute(JSThread *thread, const JSPandaFile *jsPandaFile,

@@ -33,7 +33,47 @@ JSHandle<JSTaggedValue> ModuleResolver::HostResolveImportedModule(JSThread *thre
         HostResolveImportedModuleBundlePack(thread, module, moduleRequest, executeFromJob) :
         HostResolveImportedModuleWithMerge(thread, module, moduleRequest, executeFromJob);
 }
-// new way with module
+
+JSHandle<JSTaggedValue> ModuleResolver::HostResolveImportedModule(JSThread* thread,
+                                                                  const CString& fileName,
+                                                                  const CString& recordName,
+                                                                  const JSPandaFile* jsPandaFile,
+                                                                  bool executeFromJob)
+{
+    if (jsPandaFile == nullptr) {
+        std::shared_ptr<JSPandaFile> file =
+            JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, fileName, recordName, false);
+        RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
+        if (file == nullptr) {
+            CString msg = "Load file with filename '" + fileName + "' failed, recordName '" + recordName + "'";
+            THROW_NEW_ERROR_AND_RETURN_HANDLE(thread, ErrorType::REFERENCE_ERROR, JSTaggedValue, msg.c_str());
+        }
+        jsPandaFile = file.get();
+    }
+    return jsPandaFile->IsBundlePack() ?
+        HostResolveImportedModuleBundlePack(thread, fileName, executeFromJob) :
+        HostResolveImportedModuleWithMerge(thread, fileName, recordName, jsPandaFile, executeFromJob);
+}
+
+JSHandle<JSTaggedValue> ModuleResolver::HostResolveImportedModule(JSThread* thread,
+                                                                  const CString& fileName,
+                                                                  const CString& recordName,
+                                                                  const void* buffer,
+                                                                  size_t size,
+                                                                  bool executeFromJob)
+{
+    std::shared_ptr<JSPandaFile> jsPandaFile =
+        JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, fileName, recordName, buffer, size);
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
+    if (jsPandaFile == nullptr) {
+        CString msg = "Load file with filename '" + fileName + "' failed, recordName '" + recordName + "'";
+        THROW_NEW_ERROR_AND_RETURN_HANDLE(thread, ErrorType::REFERENCE_ERROR, JSTaggedValue, msg.c_str());
+    }
+    return jsPandaFile->IsBundlePack() ?
+        HostResolveImportedModuleBundlePackBuffer(thread, fileName, jsPandaFile.get(), executeFromJob) :
+        HostResolveImportedModuleWithMerge(thread, fileName, recordName, jsPandaFile.get(), executeFromJob);
+}
+
 JSHandle<JSTaggedValue> ModuleResolver::HostResolveImportedModuleWithMerge(JSThread *thread,
                                                                            const JSHandle<SourceTextModule> &module,
                                                                            const JSHandle<JSTaggedValue> &moduleRequest,
@@ -76,10 +116,9 @@ JSHandle<JSTaggedValue> ModuleResolver::HostResolveImportedModuleWithMerge(JSThr
         THROW_SYNTAX_ERROR_AND_RETURN(thread, "", thread->GlobalConstants()->GetHandledUndefined());
     }
 #endif
-    return ResolveImportedModuleWithMerge(thread, outFileName, entryPoint, executeFromJob);
+    return HostResolveImportedModuleWithMerge(thread, outFileName, entryPoint, nullptr, executeFromJob);
 }
 
-// old way with bundle
 JSHandle<JSTaggedValue> ModuleResolver::HostResolveImportedModuleBundlePack(JSThread *thread,
     const JSHandle<SourceTextModule> &module,
     const JSHandle<JSTaggedValue> &moduleRequest,
@@ -94,7 +133,7 @@ JSHandle<JSTaggedValue> ModuleResolver::HostResolveImportedModuleBundlePack(JSTh
     CString dirname = base::PathHelper::ResolveDirPath(module->GetEcmaModuleFilenameString());
     CString moduleFilename = ResolveFilenameFromNative(thread, dirname, moduleRequestStr);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
-    return ResolveImportedModuleBundlePack(thread, moduleFilename, executeFromJob);
+    return HostResolveImportedModuleBundlePack(thread, moduleFilename, executeFromJob);
 }
 CString ModuleResolver::ReplaceModuleThroughFeature(JSThread *thread, const CString &requestName)
 {
@@ -109,46 +148,6 @@ CString ModuleResolver::ReplaceModuleThroughFeature(JSThread *thread, const CStr
         return vm->GetHmsModule(requestName);
     }
     return requestName;
-}
-JSHandle<JSTaggedValue> ModuleResolver::ResolveImportedModuleBundlePack(JSThread *thread,
-                                                                        const CString &fileName,
-                                                                        bool executeFromJob)
-{
-    std::shared_ptr<JSPandaFile> jsPandaFile =
-        JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, fileName, JSPandaFile::ENTRY_MAIN_FUNCTION);
-    if (jsPandaFile == nullptr) { // LCOV_EXCL_BR_LINE
-        LOG_FULL(FATAL) << "Load current file's panda file failed. Current file is " << fileName;
-    }
-    JSRecordInfo *recordInfo = nullptr;
-    [[maybe_unused]] bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(fileName, &recordInfo);
-    ASSERT(hasRecord && !jsPandaFile->IsSharedModule(recordInfo));
-    // loading unshared module though current context's module manager
-    return HostResolveImportedModuleBundlePack(thread, fileName, executeFromJob);
-}
-
-JSHandle<JSTaggedValue> ModuleResolver::ResolveImportedModuleWithMerge(JSThread *thread,
-                                                                       const CString &fileName,
-                                                                       const CString &recordName,
-                                                                       bool executeFromJob)
-{
-    std::shared_ptr<JSPandaFile> jsPandaFile =
-        JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, fileName, recordName, false);
-    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
-    if (jsPandaFile == nullptr) {
-        CString msg = "Load file with filename '" + fileName + "' failed, recordName '" + recordName + "'";
-        THROW_NEW_ERROR_AND_RETURN_HANDLE(thread, ErrorType::REFERENCE_ERROR, JSTaggedValue, msg.c_str());
-    }
-    JSRecordInfo *recordInfo = nullptr;
-    bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(recordName, &recordInfo);
-    if (!hasRecord) {
-        CString msg = "cannot find record '" + recordName + "', please check the request path.'" + fileName + "'.";
-        THROW_NEW_ERROR_AND_RETURN_HANDLE(thread, ErrorType::REFERENCE_ERROR, JSTaggedValue, msg.c_str());
-    }
-
-    if (jsPandaFile->IsSharedModule(recordInfo)) {
-        return ResolveSharedImportedModuleWithMerge(thread, fileName, recordName, jsPandaFile.get(), recordInfo);
-    }
-    return HostResolveImportedModuleWithMerge(thread, fileName, recordName, executeFromJob);
 }
 
 JSHandle<JSTaggedValue> ModuleResolver::ResolveSharedImportedModuleWithMerge(JSThread *thread,
@@ -176,23 +175,11 @@ JSHandle<JSTaggedValue> ModuleResolver::ResolveSharedImportedModuleWithMerge(JST
     moduleManager->AddToInstantiatingSModuleList(recordName);
     return moduleRecord;
 }
-JSHandle<JSTaggedValue> ModuleResolver::HostResolveImportedModuleWithMerge(JSThread *thread,
-                                                                           const CString &moduleFileName,
-                                                                           const CString &recordName,
-                                                                           bool executeFromJob)
-{
-    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
-    JSHandle<JSTaggedValue> module = moduleManager->TryGetImportedModule(recordName);
-    if (!module->IsUndefined()) {
-        return module;
-    }
-    return CommonResolveImportedModuleWithMerge(thread, moduleFileName, recordName, executeFromJob);
-}
 
-JSHandle<JSTaggedValue> ModuleResolver::HostResolveImportedModuleWithMergeForHotReload(JSThread *thread,
-                                                                                       const CString &moduleFileName,
-                                                                                       const CString &recordName,
-                                                                                       bool executeFromJob)
+JSHandle<JSTaggedValue> ModuleResolver::HostResolveImportedModuleForHotReload(JSThread *thread,
+                                                                              const CString &moduleFileName,
+                                                                              const CString &recordName,
+                                                                              bool executeFromJob)
 {
     std::shared_ptr<JSPandaFile> jsPandaFile =
         JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, moduleFileName, recordName, false);
@@ -207,29 +194,69 @@ JSHandle<JSTaggedValue> ModuleResolver::HostResolveImportedModuleWithMergeForHot
     return moduleRecord;
 }
 
-JSHandle<JSTaggedValue> ModuleResolver::CommonResolveImportedModuleWithMerge(JSThread *thread,
-                                                                             const CString &moduleFileName,
-                                                                             const CString &recordName,
-                                                                             bool executeFromJob)
+JSHandle<JSTaggedValue> ModuleResolver::HostResolveImportedModuleWithMerge(JSThread *thread,
+                                                                           const CString &moduleFileName,
+                                                                           const CString &recordName,
+                                                                           const JSPandaFile *jsPandaFile,
+                                                                           bool executeFromJob)
 {
-    std::shared_ptr<JSPandaFile> jsPandaFile =
-        JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, moduleFileName, recordName, false);
-    if (jsPandaFile == nullptr) { // LCOV_EXCL_BR_LINE
-        LOG_FULL(FATAL) << "Load current file's panda file failed. Current file is " << moduleFileName;
+    if (jsPandaFile == nullptr) {
+        std::shared_ptr<JSPandaFile> file =
+            JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, moduleFileName, recordName, false);
+        RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
+        if (file == nullptr) {
+            CString msg = "Load file with filename '" + moduleFileName + "' failed, recordName '" + recordName + "'";
+            THROW_NEW_ERROR_AND_RETURN_HANDLE(thread, ErrorType::REFERENCE_ERROR, JSTaggedValue, msg.c_str());
+        }
+        jsPandaFile = file.get();
+    }
+    JSRecordInfo *recordInfo = nullptr;
+    bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(recordName, &recordInfo);
+    if (!hasRecord) {
+        CString msg = "cannot find record '" + recordName + "',please check the request path.'" + moduleFileName + "'.";
+        THROW_NEW_ERROR_AND_RETURN_HANDLE(thread, ErrorType::REFERENCE_ERROR, JSTaggedValue, msg.c_str());
+    }
+
+    if (jsPandaFile->IsSharedModule(recordInfo)) {
+        return ResolveSharedImportedModuleWithMerge(thread, moduleFileName, recordName, jsPandaFile, recordInfo);
+    }
+    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+    JSHandle<JSTaggedValue> module = moduleManager->TryGetImportedModule(recordName);
+    if (!module->IsUndefined()) {
+        return module;
     }
     JSHandle<JSTaggedValue> moduleRecord =
-        ResolveModuleWithMerge(thread, jsPandaFile.get(), recordName, executeFromJob);
+        ResolveModuleWithMerge(thread, jsPandaFile, recordName, executeFromJob);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
-    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
     moduleManager->AddResolveImportedModule(recordName, moduleRecord.GetTaggedValue());
     return moduleRecord;
 }
-
+JSHandle<JSTaggedValue> ModuleResolver::HostResolveImportedModuleBundlePackBuffer(JSThread *thread,
+                                                                                  const CString &referencingModule,
+                                                                                  const JSPandaFile *jsPandaFile,
+                                                                                  bool executeFromJob)
+{
+    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+    JSHandle<JSTaggedValue> module = moduleManager->TryGetImportedModule(referencingModule);
+    if (!module->IsUndefined()) {
+        return module;
+    }
+    return ResolveModuleBundlePack(thread, jsPandaFile, executeFromJob);
+}
 JSHandle<JSTaggedValue> ModuleResolver::HostResolveImportedModuleBundlePack(JSThread *thread,
                                                                             const CString &referencingModule,
                                                                             bool executeFromJob)
 {
     ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+    // Can not use jsPandaFile from js_pandafile_executor, need to construct with JSPandaFile::ENTRY_MAIN_FUNCTION
+    std::shared_ptr<JSPandaFile> jsPandaFile =
+        JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, referencingModule, JSPandaFile::ENTRY_MAIN_FUNCTION);
+    if (jsPandaFile == nullptr) { // LCOV_EXCL_BR_LINE
+        LOG_FULL(FATAL) << "Load current file's panda file failed. Current file is " << referencingModule;
+    }
+    [[maybe_unused]] JSRecordInfo *recordInfo = nullptr;
+    ASSERT(jsPandaFile->CheckAndGetRecordInfo(referencingModule, &recordInfo) &&
+        !jsPandaFile->IsSharedModule(recordInfo));
     CString moduleFileName = referencingModule;
     if (moduleManager->IsVMBundlePack()) {
         if (!AOTFileManager::GetAbsolutePath(referencingModule, moduleFileName)) {
@@ -237,40 +264,17 @@ JSHandle<JSTaggedValue> ModuleResolver::HostResolveImportedModuleBundlePack(JSTh
             THROW_NEW_ERROR_AND_RETURN_HANDLE(thread, ErrorType::REFERENCE_ERROR, JSTaggedValue, msg.c_str());
         }
     }
-
-    JSHandle<JSTaggedValue> module = moduleManager->TryGetImportedModule(referencingModule);
+    JSHandle<JSTaggedValue> module = moduleManager->TryGetImportedModule(moduleFileName);
     if (!module->IsUndefined()) {
         return module;
     }
-
-    std::shared_ptr<JSPandaFile> jsPandaFile =
-        JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, moduleFileName, JSPandaFile::ENTRY_MAIN_FUNCTION);
-    if (jsPandaFile == nullptr) { // LCOV_EXCL_BR_LINE
-        LOG_FULL(FATAL) << "Load current file's panda file failed. Current file is " << moduleFileName;
+    std::shared_ptr<JSPandaFile> pandaFile =
+           JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, moduleFileName, JSPandaFile::ENTRY_MAIN_FUNCTION);
+    if (pandaFile == nullptr) { // LCOV_EXCL_BR_LINE
+        LOG_FULL(FATAL) << "Load current file's panda file failed. Current file is " << referencingModule;
     }
 
-    return ResolveModuleBundlePack(thread, jsPandaFile.get(), executeFromJob);
-}
-
-// The security interface needs to be modified accordingly.
-JSHandle<JSTaggedValue> ModuleResolver::HostResolveImportedModuleBundlePack(JSThread *thread,
-                                                                            const void *buffer,
-                                                                            size_t size,
-                                                                            const CString &filename)
-{
-    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
-    JSHandle<JSTaggedValue> module = moduleManager->TryGetImportedModule(filename);
-    if (!module->IsUndefined()) {
-        return module;
-    }
-
-    std::shared_ptr<JSPandaFile> jsPandaFile = JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, filename,
-        JSPandaFile::ENTRY_MAIN_FUNCTION, buffer, size);
-    if (jsPandaFile == nullptr) { // LCOV_EXCL_BR_LINE
-        LOG_FULL(FATAL) << "Load current file's panda file failed. Current file is " << filename;
-    }
-
-    return ResolveModuleBundlePack(thread, jsPandaFile.get());
+    return ResolveModuleBundlePack(thread, pandaFile.get(), executeFromJob);
 }
 
 JSHandle<JSTaggedValue> ModuleResolver::ResolveModuleBundlePack(JSThread *thread,
@@ -334,19 +338,5 @@ JSHandle<JSTaggedValue> ModuleResolver::ResolveModuleWithMerge(JSThread *thread,
     JSHandle<SourceTextModule>::Cast(moduleRecord)->SetEcmaModuleRecordNameString(recordName);
     ModuleDeregister::InitForDeregisterModule(moduleRecord, executeFromJob);
     return moduleRecord;
-}
-JSHandle<JSTaggedValue> ModuleResolver::HostResolveImportedModuleBundlePack(JSThread *thread,
-                                                                            const JSPandaFile *jsPandaFile,
-                                                                            const CString &filename)
-{
-    if (jsPandaFile == nullptr) { // LCOV_EXCL_BR_LINE
-        LOG_FULL(FATAL) << "Load current file's panda file failed. Current file is " << filename;
-    }
-    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
-    JSHandle<JSTaggedValue> module = moduleManager->TryGetImportedModule(filename);
-    if (!module->IsUndefined()) {
-        return module;
-    }
-    return ResolveModuleBundlePack(thread, jsPandaFile);
 }
 } // namespace panda::ecmascript

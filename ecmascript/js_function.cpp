@@ -1203,15 +1203,9 @@ void JSFunction::InitializeForConcurrentFunction(JSThread *thread, JSHandle<JSFu
         return;
     }
     ecmascript::ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
-    JSHandle<ecmascript::JSTaggedValue> moduleRecord;
-    // check compileMode
-    if (jsPandaFile->IsBundlePack()) {
-        LOG_ECMA(DEBUG) << "CompileMode is jsbundle";
-        moduleRecord = ModuleResolver::HostResolveImportedModuleBundlePack(thread, moduleName);
-    } else {
-        LOG_ECMA(DEBUG) << "CompileMode is esmodule";
-        moduleRecord = ModuleResolver::HostResolveImportedModuleWithMerge(thread, moduleName, recordName);
-    }
+    LOG_ECMA(DEBUG) << "CompileMode is " << (jsPandaFile->IsBundlePack() ? "jsbundle" : "esmodule");
+    JSHandle<ecmascript::JSTaggedValue> moduleRecord =
+        ModuleResolver::HostResolveImportedModule(thread, moduleName, recordName);
     RETURN_IF_ABRUPT_COMPLETION(thread);
     ecmascript::SourceTextModule::Instantiate(thread, moduleRecord);
     RETURN_IF_ABRUPT_COMPLETION(thread);

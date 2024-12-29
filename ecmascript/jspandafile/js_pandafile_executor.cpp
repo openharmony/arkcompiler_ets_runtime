@@ -84,13 +84,8 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromFile(JSThread *thr
     }
     if (jsPandaFile->IsModule(recordInfo)) {
         ThreadManagedScope managedScope(thread);
-        JSHandle<JSTaggedValue> moduleRecord(thread->GlobalConstants()->GetHandledUndefined());
-        if (jsPandaFile->IsBundlePack()) {
-            moduleRecord = ModuleResolver::ResolveImportedModuleBundlePack(thread, name, executeFromJob);
-        } else {
-            moduleRecord = ModuleResolver::ResolveImportedModuleWithMerge(thread, name, entry, executeFromJob);
-        }
-
+        JSHandle<JSTaggedValue> moduleRecord =
+            ModuleResolver::HostResolveImportedModule(thread, name, entry, jsPandaFile.get(), executeFromJob);
         SourceTextModule::Instantiate(thread, moduleRecord, executeFromJob);
         if (thread->HasPendingException()) {
             return Unexpected(false);
@@ -170,8 +165,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromBuffer(JSThread *t
         THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(), Unexpected(false));
     }
     if (jsPandaFile->IsModule(recordInfo)) {
-        bool isBundle = jsPandaFile->IsBundlePack();
-        return CommonExecuteBuffer(thread, isBundle, normalName, entry, buffer, size, executeFromJob);
+        return CommonExecuteBuffer(thread, normalName, entry, buffer, size, executeFromJob);
     }
     return JSPandaFileExecutor::Execute(thread, jsPandaFile.get(), entry, executeFromJob);
 }
@@ -229,24 +223,18 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteModuleBuffer(
     if (!jsPandaFile->IsModule(recordInfo)) {
         LOG_ECMA(FATAL) << "Input file is not esmodule";
     }
-    return CommonExecuteBuffer(thread, isBundle, name, entry, buffer, size);
+    return CommonExecuteBuffer(thread, name, entry, buffer, size);
 }
 
 // The security interface needs to be modified accordingly.
 Expected<JSTaggedValue, bool> JSPandaFileExecutor::CommonExecuteBuffer(JSThread *thread,
-    bool isBundle, const CString &filename, const CString &entry, const void *buffer, size_t size, bool executeFromJob)
+    const CString &filename, const CString &entry, const void *buffer, size_t size, bool executeFromJob)
 {
     [[maybe_unused]] EcmaHandleScope scope(thread);
     ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
     moduleManager->SetExecuteMode(ModuleExecuteMode::ExecuteBufferMode);
-    JSMutableHandle<JSTaggedValue> moduleRecord(thread, thread->GlobalConstants()->GetUndefined());
-    if (isBundle) {
-        moduleRecord.Update(ModuleResolver::HostResolveImportedModuleBundlePack(thread, buffer, size, filename));
-    } else {
-        moduleRecord.Update(
-            ModuleResolver::HostResolveImportedModuleWithMerge(thread, filename, entry, executeFromJob));
-    }
-
+    JSHandle<JSTaggedValue> moduleRecord =
+        ModuleResolver::HostResolveImportedModule(thread, filename, entry, buffer, size, executeFromJob);
     SourceTextModule::Instantiate(thread, moduleRecord, executeFromJob);
     if (thread->HasPendingException()) {
         return Unexpected(false);
@@ -360,13 +348,8 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::CommonExecuteBuffer(JSThread 
     [[maybe_unused]] EcmaHandleScope scope(thread);
     ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
     moduleManager->SetExecuteMode(ModuleExecuteMode::ExecuteBufferMode);
-    JSMutableHandle<JSTaggedValue> moduleRecord(thread, thread->GlobalConstants()->GetUndefined());
-    if (jsPandaFile->IsBundlePack()) {
-        moduleRecord.Update(ModuleResolver::HostResolveImportedModuleBundlePack(thread, jsPandaFile, filename));
-    } else {
-        moduleRecord.Update(ModuleResolver::HostResolveImportedModuleWithMerge(thread, filename, entry));
-    }
-
+    JSHandle<JSTaggedValue> moduleRecord =
+        ModuleResolver::HostResolveImportedModule(thread, filename, entry, jsPandaFile, false);
     SourceTextModule::Instantiate(thread, moduleRecord);
     if (thread->HasPendingException()) {
         return Unexpected(false);
@@ -530,12 +513,8 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::LazyExecuteModule(
     }
     [[maybe_unused]] EcmaHandleScope scope(thread);
     // The first js file should execute at current vm.
-    JSHandle<JSTaggedValue> moduleRecord(thread->GlobalConstants()->GetHandledUndefined());
-    if (isMergedAbc) {
-        moduleRecord = ModuleResolver::HostResolveImportedModuleWithMerge(thread, filename, recordName);
-    } else {
-        moduleRecord = ModuleResolver::HostResolveImportedModuleBundlePack(thread, filename);
-    }
+    JSHandle<JSTaggedValue> moduleRecord =
+        ModuleResolver::HostResolveImportedModule(thread, filename, recordName, jsPandaFile.get(), false);
     SourceTextModule::Instantiate(thread, moduleRecord);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, Unexpected(false));
     JSHandle<SourceTextModule> module = JSHandle<SourceTextModule>::Cast(moduleRecord);
@@ -566,7 +545,7 @@ int JSPandaFileExecutor::ExecuteAbcFileWithSingletonPatternFlag(JSThread *thread
     [[maybe_unused]] EcmaHandleScope scope(thread);
     ASSERT(!jsPandaFile->IsBundlePack());
     JSHandle<JSTaggedValue> moduleRecord =
-        ModuleResolver::HostResolveImportedModuleWithMerge(thread, abcFilePath, entryPoint);
+        ModuleResolver::HostResolveImportedModule(thread, abcFilePath, entryPoint, jsPandaFile.get());
     SourceTextModule::Instantiate(thread, moduleRecord);
     if (thread->HasPendingException()) {
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, ROUTE_INTERNAL_ERROR);
