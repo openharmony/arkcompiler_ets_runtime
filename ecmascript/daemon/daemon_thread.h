@@ -39,7 +39,7 @@ public:
 
     void StartRunning();
 
-    void EnsureRunning() const;
+    void EnsureRunning();
 
     bool IsRunning() const;
 
