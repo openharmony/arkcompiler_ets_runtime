@@ -186,6 +186,8 @@ private:
     void LowerTypedCallBuitin(GateRef gate);
     void LowerCallTargetCheck(GateRef gate);
     void LowerJSCallTargetCheck(GateRef gate);
+    void LowerCallTargetIsCompiledCheck(GateRef gate);
+    void CallTargetIsCompiledCheck(GateRef func, GateRef frameState, Label *checkAlreadyDeopt, Label *exit);
     void LowerJSCallTargetFromDefineFuncCheck(GateRef gate);
     void LowerJSCallTargetTypeCheck(GateRef gate);
     void LowerJSFastCallTargetTypeCheck(GateRef gate);

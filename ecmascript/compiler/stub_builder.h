@@ -137,41 +137,7 @@ public:
     GateRef Return();
     void Bind(Label *label);
     void Jump(Label *label);
-
-#define BRANCH(condition, trueLabel, falseLabel)                       \
-    {                                                                  \
-        std::ostringstream os;                                         \
-        os << __func__ << ": " << #trueLabel << "- " << #falseLabel;   \
-        Branch(condition, trueLabel, falseLabel, os.str().c_str());    \
-    }
-
-    void Branch(GateRef condition, Label *trueLabel, Label *falseLabel, const char *comment = nullptr);
-
-#define BRANCH_LIKELY(condition, trueLabel, falseLabel)                                  \
-    {                                                                                    \
-        std::ostringstream os;                                                           \
-        os << __func__ << ": " << #trueLabel << "(likely)- " << #falseLabel;             \
-        BranchPredict(condition, trueLabel, falseLabel,                                  \
-            BranchWeight::DEOPT_WEIGHT, BranchWeight::ONE_WEIGHT, os.str().c_str());     \
-    }
-
-#define BRANCH_UNLIKELY(condition, trueLabel, falseLabel)                                \
-    {                                                                                    \
-        std::ostringstream os;                                                           \
-        os << __func__ << ": " << #trueLabel << "(unlikely)- " << #falseLabel;           \
-        BranchPredict(condition, trueLabel, falseLabel,                                  \
-            BranchWeight::ONE_WEIGHT, BranchWeight::DEOPT_WEIGHT, os.str().c_str());     \
-    }
-
-#define BRANCH_NO_WEIGHT(condition, trueLabel, falseLabel)                               \
-    {                                                                                    \
-        std::ostringstream os;                                                           \
-        os << __func__ << ": " << #trueLabel << "(no weight)- " << #falseLabel;          \
-        BranchPredict(condition, trueLabel, falseLabel,                                  \
-            BranchWeight::ZERO_WEIGHT, BranchWeight::ZERO_WEIGHT, os.str().c_str());     \
-    }
-
-    void BranchPredict(GateRef condition, Label *trueLabel, Label *falseLabel,
+    void Branch(GateRef condition, Label *trueLabel, Label *falseLabel,
                        uint32_t trueWeight = BranchWeight::ONE_WEIGHT, uint32_t falseWeight = BranchWeight::ONE_WEIGHT,
                        const char *comment = nullptr);
 

@@ -1784,6 +1784,9 @@ void TypedBytecodeLowering::CheckCallTargetFromDefineFuncAndLowerCall(const Type
     GateRef func = tacc.GetFunc();
     GateRef gate = tacc.GetGate();
     // NO CHECK
+    if (!Uncheck()) {
+        builder_.CallTargetIsCompiledCheck(func, gate);
+    }
     if (tacc.CanFastCall()) {
         LowerFastCall(gate, func, argsFastCall, isNoGC);
     } else {

@@ -183,7 +183,7 @@ GateRef CircuitBuilder::GetDoubleOfTNumber(GateRef x)
     Label isDouble(env_);
     Label exit(env_);
     DEFVALUE(result, env_, VariableType::FLOAT64(), Double(0));
-    BRANCH_CIR2(TaggedIsInt(x), &isInt, &isDouble);
+    BRANCH(TaggedIsInt(x), &isInt, &isDouble);
     Bind(&isInt);
     {
         result = ChangeInt32ToFloat64(GetInt32OfTInt(x));
@@ -221,7 +221,7 @@ GateRef CircuitBuilder::TruncDoubleToInt(GateRef glue, GateRef x, size_t typeBit
 
     GateRef xInt = ChangeFloat64ToInt32(x);
     DEFVALUE(result, env_, VariableType::INT32(), xInt);
-    BRANCH_CIR2(DoubleToIntOverflowCheck(x, typeBits), &exit, &overflow);
+    BRANCH(DoubleToIntOverflowCheck(x, typeBits), &exit, &overflow);
 
     Bind(&overflow);
     {
@@ -244,7 +244,7 @@ GateRef CircuitBuilder::SaturateTruncDoubleToInt32(GateRef glue, GateRef x)
 
     GateRef xInt = ChangeFloat64ToInt32(x);
     DEFVALUE(result, env_, VariableType::INT32(), xInt);
-    BRANCH_CIR2(DoubleToIntOverflowCheck(x, base::INT32_BITS), &exit, &overflow);
+    BRANCH(DoubleToIntOverflowCheck(x, base::INT32_BITS), &exit, &overflow);
 
     Bind(&overflow);
     {

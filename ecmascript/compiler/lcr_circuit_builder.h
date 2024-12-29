@@ -155,7 +155,7 @@ GateRef CircuitBuilder::GetInt32OfTNumber(GateRef x)
     Label isDouble(env_);
     Label exit(env_);
     DEFVALUE(result, env_, VariableType::INT32(), Int32(0));
-    BRANCH_CIR2(TaggedIsInt(x), &isInt, &isDouble);
+    BRANCH(TaggedIsInt(x), &isInt, &isDouble);
     Bind(&isInt);
     {
         result = GetInt32OfTInt(x);
