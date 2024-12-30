@@ -69,7 +69,8 @@ namespace panda::ecmascript {
     V(ValueIsNonSObject, "value is not a shared object")                                     \
     V(MapIteratorTypeError, "this value is not a map iterator")                              \
     V(SetIteratorTypeError, "this value is not a set iterator")                              \
-    V(LengthError, "length must be positive integer")
+    V(LengthError, "length must be positive integer")                                        \
+    V(IterNotObject, "JSIterator::GetIterator: iter is not object")
 
 #define DEBUG_CHECK_MESSAGE_STRING_LIST(V)                                                   \
     V(IsCallable)                                                                            \
