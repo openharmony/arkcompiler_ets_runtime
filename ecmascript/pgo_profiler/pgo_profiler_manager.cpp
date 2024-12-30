@@ -147,7 +147,7 @@ void PGOProfilerManager::SavingSignalHandler(int signo)
         return;
     }
 
-    PGOProfilerManager::GetInstance()->ForceSave();
+    PGOProfilerManager::GetInstance()->ForceDump();
 }
 
 void PGOProfilerManager::Initialize(const std::string& outDir, uint32_t hotnessThreshold)
@@ -330,12 +330,13 @@ void PGOProfilerManager::SetDisablePGO(bool state)
     disablePGO_ = state;
 }
 
-void PGOProfilerManager::ForceSave()
+void PGOProfilerManager::ForceDump()
 {
     LockHolder lock(profilersMutex_);
     for (const auto& profiler: profilers_) {
-        profiler->DumpByForce();
+        profiler->ForceDump();
     }
+    state_->SetState(State::SAVE);
     GetInstance()->AsyncSave();
 }
 

@@ -178,9 +178,7 @@ void PGOState::WaitDumpIfStart()
 void PGOState::SetStopIfSaveAndNotify()
 {
     LockHolder lock(pgoDumpMutex_);
-    if (!SetStopIfSave()) {
-        LOG_PGO(FATAL) << "wrong state when try to transition SAVE to STOP";
-    }
+    SetStopIfSave();
     NotifyAll();
 }
 
@@ -212,5 +210,22 @@ bool PGOState::GcCountIsZero() const
 int PGOState::GetGcCount() const
 {
     return gcCount_;
+}
+
+void PGOState::ForceDump(PGOProfiler* profiler)
+{
+    LockHolder lock(pgoDumpMutex_);
+    auto state = GetState();
+    if (state == State::START) {
+        SetState(State::FORCE_SAVE_START);
+        WaitDump();
+    } else if (state == State::STOP) {
+        SetState(State::FORCE_SAVE_START);
+    } else if (state == State::PAUSE) {
+        SetState(State::FORCE_SAVE_PAUSE);
+        WaitDump();
+    }
+    profiler->DispatchPGODumpTask();
+    WaitDump();
 }
 } // namespace panda::ecmascript::pgo

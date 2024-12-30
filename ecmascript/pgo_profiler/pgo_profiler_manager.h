@@ -58,7 +58,7 @@ public:
     bool IsDisableAot() const;
     void SetDisableAot(bool state);
     void SetDisablePGO(bool state);
-    void ForceSave();
+    void ForceDump();
     bool PUBLIC_API TextToBinary(const std::string& inPath,
                                  const std::string& outPath,
                                  uint32_t hotnessThreshold,

@@ -193,6 +193,57 @@ HWTEST_F_L0(PGOProfilerTestOne, Worker)
     rmdir("ark-profiler-worker/");
 }
 
+HWTEST_F_L0(PGOProfilerTestOne, ForceDump)
+{
+    mkdir("ark-profiler-worker/", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+    RuntimeOption option;
+    option.SetEnableProfile(true);
+    option.SetLogLevel(LOG_LEVEL::INFO);
+    option.SetProfileDir("ark-profiler-worker/");
+    EcmaVM* vm = JSNApi::CreateJSVM(option);
+    ASSERT_TRUE(vm != nullptr) << "Cannot create Runtime";
+
+    std::string targetAbcPath = std::string(TARGET_ABC_PATH) + "truck.abc";
+    auto result = JSNApi::Execute(vm, targetAbcPath, "truck", false);
+    EXPECT_TRUE(result);
+
+    std::thread workerThread([vm]() {
+        RuntimeOption workerOption;
+        workerOption.SetEnableProfile(true);
+        workerOption.SetLogLevel(LOG_LEVEL::INFO);
+        workerOption.SetProfileDir("ark-profiler-worker/");
+        workerOption.SetIsWorker();
+        EcmaVM* workerVm = JSNApi::CreateJSVM(workerOption);
+        ASSERT_TRUE(workerVm != nullptr) << "Cannot create Worker Runtime";
+
+        JSNApi::AddWorker(vm, workerVm);
+
+        std::string targetAbcPath = std::string(TARGET_ABC_PATH) + "call_test.abc";
+        auto result = JSNApi::Execute(workerVm, targetAbcPath, "call_test", false);
+        EXPECT_TRUE(result);
+
+        auto hasDeleted = JSNApi::DeleteWorker(vm, workerVm);
+        EXPECT_TRUE(hasDeleted);
+        JSNApi::DestroyJSVM(workerVm);
+    });
+
+    auto manager = PGOProfilerManager::GetInstance();
+    auto state = manager->GetPGOState();
+    manager->ForceDump();
+    while (!state->IsStop()) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
+
+    PGOProfilerDecoder loader("ark-profiler-worker/modules.ap", threshhold);
+    std::shared_ptr<PGOAbcFilePool> abcFilePool = std::make_shared<PGOAbcFilePool>();
+    ASSERT_TRUE(loader.LoadFull(abcFilePool));
+
+    workerThread.join();
+    JSNApi::DestroyJSVM(vm);
+    unlink("ark-profiler-worker/modules.ap");
+    rmdir("ark-profiler-worker/");
+}
+
 HWTEST_F_L0(PGOProfilerTestOne, PGOStateMultiThread)
 {
     RuntimeOption option;

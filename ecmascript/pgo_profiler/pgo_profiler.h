@@ -114,7 +114,7 @@ private:
 
     void StopPGODumpAndNotify();
     void StartPGODump();
-    void DumpByForce();
+    void ForceDump();
     void ProfileBytecode(ApEntityId abcId, const CString& recordName, JSTaggedValue funcValue);
     void DumpICByName(ApEntityId abcId,
                       const CString& recordName,
@@ -260,7 +260,7 @@ private:
                                     EntityId methodId,
                                     WorkNode* current);
     WorkNode* PopFromProfileQueue();
-    void TryDispatchSaveTask(bool force);
+    void TryDispatchSaveTask();
     bool IsJSHClassNotEqual(JSHClass* receiver,
                             JSHClass* hold,
                             JSHClass* exceptRecvHClass,
@@ -286,7 +286,7 @@ private:
         {
             ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "PGOProfilerTask::Run");
             profiler_->HandlePGODumpByDumpThread();
-            profiler_->TryDispatchSaveTask(profiler_->isForce_);
+            profiler_->TryDispatchSaveTask();
             profiler_->StopPGODumpAndNotify();
             return true;
         }
