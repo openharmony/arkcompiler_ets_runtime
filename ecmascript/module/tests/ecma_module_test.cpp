@@ -3271,11 +3271,12 @@ HWTEST_F_L0(EcmaModuleTest, ReplaceModuleThroughFeature1)
 {
     auto vm = thread->GetEcmaVM();
     CString moduleName = "a";
+    CString mockName = "a_mock";
     std::map<std::string, std::string> list;
-    list.emplace(moduleName, moduleName);
+    list.emplace(moduleName, mockName);
     vm->SetMockModuleList(list);
-    CString res = ModuleResolver::ReplaceModuleThroughFeature(thread, moduleName);
-    EXPECT_EQ(res, moduleName);
+    ModuleResolver::ReplaceModuleThroughFeature(thread, moduleName);
+    EXPECT_EQ(moduleName, mockName);
 }
 
 HWTEST_F_L0(EcmaModuleTest, ReplaceModuleThroughFeature2)
@@ -3284,12 +3285,12 @@ HWTEST_F_L0(EcmaModuleTest, ReplaceModuleThroughFeature2)
     CString moduleName = "a";
     std::vector<panda::HmsMap> map;
     HmsMap tmp;
-    tmp.targetPath = "a";
+    tmp.targetPath = "a_target";
     tmp.originalPath = "a";
     map.push_back(tmp);
     vm->SetHmsModuleList(map);
-    CString res = ModuleResolver::ReplaceModuleThroughFeature(thread, moduleName);
-    EXPECT_EQ(res, moduleName);
+    ModuleResolver::ReplaceModuleThroughFeature(thread, moduleName);
+    EXPECT_EQ(moduleName, tmp.targetPath.c_str());
 }
 
 HWTEST_F_L0(EcmaModuleTest, CheckResolvedBinding)

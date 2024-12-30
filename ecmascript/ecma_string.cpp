@@ -1581,11 +1581,11 @@ CString EcmaStringAccessor::Utf8ConvertToString()
     if (IsUtf8()) {
         std::string stdStr;
         if (IsLineString()) {
-            return base::StringHelper::Utf8ToString(GetDataUtf8(), GetLength()).c_str();
+            return base::StringHelper::Utf8ToCString(GetDataUtf8(), GetLength());
         }
         CVector<uint8_t> buf;
         const uint8_t *data = EcmaString::GetUtf8DataFlat(string_, buf);
-        return base::StringHelper::Utf8ToString(data, GetLength()).c_str();
+        return base::StringHelper::Utf8ToCString(data, GetLength());
     } else {
         return ToCString();
     }

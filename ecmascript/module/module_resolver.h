@@ -51,7 +51,7 @@ public:
         const CString &baseFileName,
         ModuleTypes moduleType);
 
-    static CString ReplaceModuleThroughFeature(JSThread *thread, const CString &requestName);
+    static void ReplaceModuleThroughFeature(JSThread *thread, CString &requestName);
 
 private:
     static JSHandle<JSTaggedValue> HostResolveImportedModuleBundlePack(JSThread *thread,
@@ -86,6 +86,7 @@ private:
     static JSHandle<JSTaggedValue> ResolveModuleWithMerge(JSThread *thread,
                                                           const JSPandaFile *jsPandaFile,
                                                           const CString &recordName,
+                                                          JSRecordInfo *recordInfo,
                                                           bool executeFromJob = false);
 };
 }  // namespace panda::ecmascript
