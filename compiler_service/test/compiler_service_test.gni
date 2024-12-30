@@ -18,10 +18,11 @@ compiler_service_root = "//arkcompiler/ets_runtime/compiler_service"
 module_output_path = "ets_runtime/compiler_service"
 
 declare_args() {
-  code_sign_enable_test = true
+  code_sign_enable_test = false
   if (defined(global_parts_info) &&
-      !defined(global_parts_info.security_code_signature)) {
-    code_sign_enable_test = false
+      defined(global_parts_info.security_code_signature) &&
+      global_parts_info.security_code_signature) {
+    code_sign_enable_test = true
   }
 }
 
