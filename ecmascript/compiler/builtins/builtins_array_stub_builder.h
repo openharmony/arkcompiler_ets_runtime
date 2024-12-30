@@ -120,13 +120,24 @@ private:
     void FindIndexOptimised(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *result, Label *exit,
                             Label *slowPath);
 
-    enum IndexOrValue {
-        Index,
-        Value,
+    struct Option {
+        enum MethodKind {
+            MethodFind,
+            MethodFindIndex,
+            MethodSome,
+            MethodEvery,
+            MethodForEach,
+        };
+        enum CompatibleMode {
+            Standard,
+            Compatible5_0_0,
+        };
+        MethodKind kind;
+        CompatibleMode mode;
     };
 
     void FindOrFindIndex(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *result, Label *exit,
-                         Label *slowPath, IndexOrValue);
+                         Label *slowPath, const Option option);
 
     void EveryOptimised(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *result, Label *exit,
                        Label *slowPath);
@@ -137,14 +148,8 @@ private:
     void SomeOptimised(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *result, Label *exit,
                        Label *slowPath);
 
-    enum VisitKind {
-        kSome,
-        kEvery,
-        kForEach,
-    };
-
     void VisitAll(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *result, Label *exit,
-                  Label *slowPath, VisitKind visitKind);
+                  Label *slowPath, const Option option);
     void ConcatOptimised(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *result, Label *exit,
                          Label *slowPath);
     void DoConcat(GateRef glue, GateRef thisValue, GateRef arg0, Variable *result, Label *exit, GateRef thisLen,

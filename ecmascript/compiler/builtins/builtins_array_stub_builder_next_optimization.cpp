@@ -971,27 +971,67 @@ void BuiltinsArrayStubBuilder::ToSplicedOptimised(GateRef glue, GateRef thisValu
 void BuiltinsArrayStubBuilder::FindOptimised(GateRef glue, GateRef thisValue, GateRef numArgs,
                                              Variable *result, Label *exit, Label *slowPath)
 {
-    FindOrFindIndex(glue, thisValue, numArgs, result, exit, slowPath, Value);
+    auto env = GetEnvironment();
+    Label isHeapObject(env);
+    Label isJsArray(env);
+    Label standardPath(env);
+    Label compatiblePath(env);
+    BRANCH_LIKELY(TaggedIsHeapObject(thisValue), &isHeapObject, slowPath);
+    Bind(&isHeapObject);
+    BRANCH_LIKELY(IsJsArray(thisValue), &isJsArray, slowPath);
+    Bind(&isJsArray);
+    GateRef isStandard = LogicOrBuilder(env)
+                         .Or(HasConstructor(thisValue))
+                         .Or(BoolNot(IsStableJSArray(glue, thisValue)))
+                         .Or(IsJsCOWArray(thisValue))
+                         .Done();
+    BRANCH_NO_WEIGHT(isStandard, &standardPath, &compatiblePath);
+    Bind(&standardPath);
+    {
+        FindOrFindIndex(glue, thisValue, numArgs, result, exit, slowPath, {Option::MethodFind, Option::Standard});
+    }
+    Bind(&compatiblePath);
+    {
+        FindOrFindIndex(glue, thisValue, numArgs, result, exit, slowPath,
+                        {Option::MethodFind, Option::Compatible5_0_0});
+    }
 }
 
 void BuiltinsArrayStubBuilder::FindIndexOptimised(GateRef glue, GateRef thisValue, GateRef numArgs,
                                                   Variable *result, Label *exit, Label *slowPath)
 {
-    FindOrFindIndex(glue, thisValue, numArgs, result, exit, slowPath, Index);
-}
-
-void BuiltinsArrayStubBuilder::FindOrFindIndex(GateRef glue, GateRef thisValue, GateRef numArgs,
-                                               Variable *result, Label *exit, Label *slowPath,
-                                               IndexOrValue indexOrValue)
-{
     auto env = GetEnvironment();
     Label isHeapObject(env);
     Label isJsArray(env);
+    Label standardPath(env);
+    Label compatiblePath(env);
     BRANCH_LIKELY(TaggedIsHeapObject(thisValue), &isHeapObject, slowPath);
     Bind(&isHeapObject);
     BRANCH_LIKELY(IsJsArray(thisValue), &isJsArray, slowPath);
     Bind(&isJsArray);
+    GateRef isStandard = LogicOrBuilder(env)
+                         .Or(HasConstructor(thisValue))
+                         .Or(IsJsCOWArray(thisValue))
+                         .Done();
+    BRANCH_NO_WEIGHT(isStandard, &standardPath, &compatiblePath);
+    Bind(&standardPath);
+    {
+        FindOrFindIndex(glue, thisValue, numArgs, result, exit, slowPath, {Option::MethodFindIndex, Option::Standard});
+    }
+    Bind(&compatiblePath);
+    {
+        FindOrFindIndex(glue, thisValue, numArgs, result, exit, slowPath,
+                        {Option::MethodFindIndex, Option::Compatible5_0_0});
+    }
+}
 
+void BuiltinsArrayStubBuilder::FindOrFindIndex(GateRef glue, GateRef thisValue, GateRef numArgs,
+                                               Variable *result, Label *exit, Label *slowPath,
+                                               const Option option)
+{
+    ASSERT((option.kind == Option::MethodFind || option.kind == Option::MethodFindIndex)
+        && "Unexpected kind in FindOrFindIndex");
+    auto env = GetEnvironment();
     Label arg0HeapObject(env);
     Label callable(env);
     Label stableJSArray(env);
@@ -1002,9 +1042,9 @@ void BuiltinsArrayStubBuilder::FindOrFindIndex(GateRef glue, GateRef thisValue, 
     BRANCH_LIKELY(IsCallable(callbackFnHandle), &callable, slowPath);
     Bind(&callable);
 
-    result->WriteVariable(indexOrValue == Index ? IntToTaggedPtr(Int32(-1)) : Undefined());
+    result->WriteVariable(option.kind == Option::MethodFindIndex ? IntToTaggedPtr(Int32(-1)) : Undefined());
     GateRef argHandle = GetCallArg1(numArgs);
-    GateRef thisArrLen = ZExtInt32ToInt64(GetArrayLength(thisValue));
+    DEFVARIABLE(thisArrLen, VariableType::INT64(), ZExtInt32ToInt64(GetArrayLength(thisValue)));
     DEFVARIABLE(i, VariableType::INT64(), Int64(0));
     BRANCH_LIKELY(IsStableJSArray(glue, thisValue), &stableJSArray, &notStableJSArray);
     Bind(&stableJSArray);
@@ -1020,10 +1060,13 @@ void BuiltinsArrayStubBuilder::FindOrFindIndex(GateRef glue, GateRef thisValue, 
             Label useUndefined(env);
             Label getValue(env);
             Label callback(env);
-            BRANCH_NO_WEIGHT(Int64LessThan(*i, thisArrLen), &next, &loopExit);
+            BRANCH_NO_WEIGHT(Int64LessThan(*i, *thisArrLen), &next, &loopExit);
             Bind(&next);
-            BRANCH_LIKELY(Int64LessThan(*i,  ZExtInt32ToInt64(GetArrayLength(thisValue))), &getValue, &useUndefined);
-            Bind(&getValue);
+            if (option.mode == Option::Standard) {
+                GateRef arrayLen = GetArrayLength(thisValue);
+                BRANCH_LIKELY(Int64LessThan(*i,  ZExtInt32ToInt64(arrayLen)), &getValue, &useUndefined);
+                Bind(&getValue);
+            }
             {
                 kValue = GetTaggedValueWithElementsKind(glue, thisValue, *i);
                 BRANCH_UNLIKELY(TaggedIsHole(*kValue), &useUndefined, &callback);
@@ -1056,7 +1099,7 @@ void BuiltinsArrayStubBuilder::FindOrFindIndex(GateRef glue, GateRef thisValue, 
                     BRANCH_NO_WEIGHT(TaggedIsTrue(FastToBoolean(retValue)), &find, &checkStable);
                     Bind(&find);
                     {
-                        result->WriteVariable(indexOrValue == Index ? key : *kValue);
+                        result->WriteVariable(option.kind == Option::MethodFindIndex ? key : *kValue);
                         Jump(exit);
                     }
                 }
@@ -1066,6 +1109,11 @@ void BuiltinsArrayStubBuilder::FindOrFindIndex(GateRef glue, GateRef thisValue, 
             }
         }
         Bind(&loopEnd);
+        if (option.mode == Option::Compatible5_0_0) {
+            // In version 5.0.0, the iterator length will be updated if the length of array changed
+            // be compatible with this behaviour.
+            thisArrLen = ZExtInt32ToInt64(GetArrayLength(thisValue));
+        }
         LoopEnd(&loopHead);
         Bind(&loopExit);
         Jump(exit);
@@ -1079,7 +1127,7 @@ void BuiltinsArrayStubBuilder::FindOrFindIndex(GateRef glue, GateRef thisValue, 
         Jump(&loopHead);
         LoopBegin(&loopHead);
         {
-            BRANCH_NO_WEIGHT(Int64LessThan(*i, thisArrLen), &next, &loopExit);
+            BRANCH_NO_WEIGHT(Int64LessThan(*i, *thisArrLen), &next, &loopExit);
             Bind(&next);
             {
                 Label hasException0(env);
@@ -1113,7 +1161,7 @@ void BuiltinsArrayStubBuilder::FindOrFindIndex(GateRef glue, GateRef thisValue, 
                         BRANCH_NO_WEIGHT(TaggedIsTrue(FastToBoolean(retValue)), &find, &loopEnd);
                         Bind(&find);
                         {
-                            result->WriteVariable(indexOrValue == Index ? key : kValue);
+                            result->WriteVariable(option.kind == Option::MethodFindIndex ? key : kValue);
                             Jump(exit);
                         }
                     }
@@ -1122,6 +1170,11 @@ void BuiltinsArrayStubBuilder::FindOrFindIndex(GateRef glue, GateRef thisValue, 
         }
         Bind(&loopEnd);
         i = Int64Add(*i, Int64(1));
+        if (option.mode == Option::Compatible5_0_0) {
+            // In version 5.0.0, the iterator length will be updated if the length of array changed
+            // be compatible with this behaviour.
+            thisArrLen = ZExtInt32ToInt64(GetArrayLength(thisValue));
+        }
         LoopEnd(&loopHead);
         Bind(&loopExit);
         Jump(exit);
@@ -1131,40 +1184,92 @@ void BuiltinsArrayStubBuilder::FindOrFindIndex(GateRef glue, GateRef thisValue, 
 void BuiltinsArrayStubBuilder::EveryOptimised(GateRef glue, GateRef thisValue, GateRef numArgs,
                                               Variable *result, Label *exit, Label *slowPath)
 {
+    auto env = GetEnvironment();
+    Label isHeapObject(env);
+    Label isJsArray(env);
+    Label standardPath(env);
+    Label compatiblePath(env);
+    Label thisExists(env);
+    BRANCH_UNLIKELY(TaggedIsUndefinedOrNull(thisValue), slowPath, &thisExists);
+    Bind(&thisExists);
+    BRANCH_LIKELY(TaggedIsHeapObject(thisValue), &isHeapObject, slowPath);
+    Bind(&isHeapObject);
+    BRANCH_LIKELY(IsJsArray(thisValue), &isJsArray, slowPath);
+    Bind(&isJsArray);
     result->WriteVariable(TaggedTrue());
-    VisitAll(glue, thisValue, numArgs, result, exit, slowPath, kEvery);
+    GateRef isStandard = LogicOrBuilder(env)
+                         .Or(HasConstructor(thisValue))
+                         .Or(BoolNot(IsStableJSArray(glue, thisValue)))
+                         .Or(IsJsCOWArray(thisValue))
+                         .Done();
+    BRANCH_NO_WEIGHT(isStandard, &standardPath, &compatiblePath);
+    Bind(&standardPath);
+    {
+        VisitAll(glue, thisValue, numArgs, result, exit, slowPath, {Option::MethodEvery, Option::Standard});
+    }
+    Bind(&compatiblePath);
+    {
+        VisitAll(glue, thisValue, numArgs, result, exit, slowPath, {Option::MethodEvery, Option::Compatible5_0_0});
+    }
 };
 
 void BuiltinsArrayStubBuilder::SomeOptimised(GateRef glue, GateRef thisValue, GateRef numArgs,
                                              Variable *result, Label *exit, Label *slowPath)
 {
+    auto env = GetEnvironment();
+    Label isHeapObject(env);
+    Label isJsArray(env);
+    Label standardPath(env);
+    Label compatiblePath(env);
+    Label thisExists(env);
+    BRANCH_UNLIKELY(TaggedIsUndefinedOrNull(thisValue), slowPath, &thisExists);
+    Bind(&thisExists);
+    BRANCH_LIKELY(TaggedIsHeapObject(thisValue), &isHeapObject, slowPath);
+    Bind(&isHeapObject);
+    BRANCH_LIKELY(IsJsArray(thisValue), &isJsArray, slowPath);
+    Bind(&isJsArray);
     result->WriteVariable(TaggedFalse());
-    VisitAll(glue, thisValue, numArgs, result, exit, slowPath, kSome);
+    GateRef isStandard = LogicOrBuilder(env)
+                         .Or(HasConstructor(thisValue))
+                         .Or(BoolNot(IsStableJSArray(glue, thisValue)))
+                         .Or(IsJsCOWArray(thisValue))
+                         .Done();
+    BRANCH_NO_WEIGHT(isStandard, &standardPath, &compatiblePath);
+    Bind(&standardPath);
+    {
+        VisitAll(glue, thisValue, numArgs, result, exit, slowPath, {Option::MethodSome, Option::Standard});
+    }
+    Bind(&compatiblePath);
+    {
+        VisitAll(glue, thisValue, numArgs, result, exit, slowPath, {Option::MethodSome, Option::Compatible5_0_0});
+    }
 };
 
 void BuiltinsArrayStubBuilder::ForEachOptimised(GateRef glue, GateRef thisValue, GateRef numArgs,
                                                 Variable *result, Label *exit, Label *slowPath)
 {
+    auto env = GetEnvironment();
+    Label isHeapObject(env);
+    Label isJsArray(env);
+    Label thisExists(env);
+    BRANCH_UNLIKELY(TaggedIsUndefinedOrNull(thisValue), slowPath, &thisExists);
+    Bind(&thisExists);
+    BRANCH_LIKELY(TaggedIsHeapObject(thisValue), &isHeapObject, slowPath);
+    Bind(&isHeapObject);
+    BRANCH_LIKELY(IsJsArray(thisValue), &isJsArray, slowPath);
+    Bind(&isJsArray);
     result->WriteVariable(Undefined());
-    VisitAll(glue, thisValue, numArgs, result, exit, slowPath, kForEach);
+    VisitAll(glue, thisValue, numArgs, result, exit, slowPath, {Option::MethodForEach, Option::Standard});
 };
 
 void BuiltinsArrayStubBuilder::VisitAll(GateRef glue, GateRef thisValue, GateRef numArgs,
-                                        Variable *result, Label *exit, Label *slowPath, VisitKind visitKind)
+                                        Variable *result, Label *exit, Label *slowPath, const Option option)
 {
+    ASSERT((option.kind == Option::MethodEvery || option.kind == Option::MethodSome
+        || option.kind == Option::MethodForEach) && "Unexpected kind in VisitAll");
     auto env = GetEnvironment();
-    Label thisExists(env);
-    Label isHeapObject(env);
-    Label isJsArray(env);
     Label arg0HeapObject(env);
     Label callable(env);
-    BRANCH(TaggedIsUndefinedOrNull(thisValue), slowPath, &thisExists);
-    Bind(&thisExists);
-    BRANCH(TaggedIsHeapObject(thisValue), &isHeapObject, slowPath);
-    Bind(&isHeapObject);
-    BRANCH(IsJsArray(thisValue), &isJsArray, slowPath);
-    Bind(&isJsArray);
-    // don't check constructor, "VisitKind" won't create new array.
     GateRef callbackFnHandle = GetCallArg0(numArgs);
     BRANCH(TaggedIsHeapObject(callbackFnHandle), &arg0HeapObject, slowPath);
     Bind(&arg0HeapObject);
@@ -1178,7 +1283,7 @@ void BuiltinsArrayStubBuilder::VisitAll(GateRef glue, GateRef thisValue, GateRef
     Label thisNotStable(env);
     GateRef argHandle = GetCallArg1(numArgs);
     DEFVARIABLE(i, VariableType::INT64(), Int64(0));
-    GateRef thisArrLen = ZExtInt32ToInt64(GetArrayLength(thisValue));
+    DEFVARIABLE(thisArrLen, VariableType::INT64(), ZExtInt32ToInt64(GetArrayLength(thisValue)));
     BRANCH_LIKELY(IsStableJSArray(glue, thisValue), &thisIsStable, &thisNotStable);
 
     Bind(&thisIsStable);
@@ -1191,7 +1296,7 @@ void BuiltinsArrayStubBuilder::VisitAll(GateRef glue, GateRef thisValue, GateRef
         LoopBegin(&loopHead);
         {
             Label callDispatch(env);
-            BRANCH_NO_WEIGHT(Int64LessThan(*i, thisArrLen), &next, exit);
+            BRANCH_NO_WEIGHT(Int64LessThan(*i, *thisArrLen), &next, exit);
             Bind(&next);
             kValue = GetTaggedValueWithElementsKind(glue, thisValue, *i);
             BRANCH_UNLIKELY(TaggedIsHole(*kValue), &loopEnd, &callDispatch);
@@ -1215,19 +1320,31 @@ void BuiltinsArrayStubBuilder::VisitAll(GateRef glue, GateRef thisValue, GateRef
                 {
                     Label checkLength(env);
                     Label checkStable(env);
-                    if (visitKind == kEvery) {
+                    if (option.kind == Option::MethodEvery) {
                         BRANCH_NO_WEIGHT(TaggedIsFalse(FastToBoolean(retValue)), &returnFalse, &checkLength);
                     }
-                    if (visitKind == kSome) {
+                    if (option.kind == Option::MethodSome) {
                         BRANCH_NO_WEIGHT(TaggedIsTrue(FastToBoolean(retValue)), &returnTrue, &checkLength);
                     }
-                    if (visitKind == kForEach) {
+                    if (option.kind == Option::MethodForEach) {
                         Jump(&checkLength);
                     }
                     Bind(&checkLength);
                     {
                         GateRef newLen = ZExtInt32ToInt64(GetArrayLength(thisValue));
-                        BRANCH_LIKELY(Int64LessThan(Int64Add(*i, Int64(1)), newLen), &checkStable, exit);
+                        if (option.mode == Option::Compatible5_0_0) {
+                            // In version 5.0.0, the iterator length will be updated if the length of array be shorter.
+                            // be compatible with this behaviour.
+                            Label changeThisLen(env);
+                            BRANCH(Int64LessThan(newLen, *thisArrLen), &changeThisLen, &checkStable);
+                            Bind(&changeThisLen);
+                            {
+                                thisArrLen = newLen;
+                                Jump(&checkStable);
+                            }
+                        } else if (option.mode == Option::Standard) {
+                            BRANCH_LIKELY(Int64LessThan(Int64Add(*i, Int64(1)), newLen), &checkStable, exit);
+                        }
                     }
                     Bind(&checkStable);
                     {
@@ -1262,7 +1379,7 @@ void BuiltinsArrayStubBuilder::VisitAll(GateRef glue, GateRef thisValue, GateRef
             Label callDispatch(env);
             Label hasException1(env);
             Label notHasException1(env);
-            BRANCH_NO_WEIGHT(Int64LessThan(*i, thisArrLen), &next, exit);
+            BRANCH_NO_WEIGHT(Int64LessThan(*i, *thisArrLen), &next, exit);
             Bind(&next);
             GateRef hasProp = CallRuntime(glue, RTSTUB_ID(HasProperty), {thisValue, IntToTaggedInt(*i)});
             BRANCH_LIKELY(TaggedIsTrue(hasProp), &hasProperty, &loopEnd);
@@ -1292,13 +1409,13 @@ void BuiltinsArrayStubBuilder::VisitAll(GateRef glue, GateRef thisValue, GateRef
                 }
                 Bind(&notHasException1);
                 {
-                    if (visitKind == kEvery) {
+                    if (option.kind == Option::MethodEvery) {
                         BRANCH_NO_WEIGHT(TaggedIsFalse(FastToBoolean(retValue)), &returnFalse, &loopEnd);
                     }
-                    if (visitKind == kSome) {
+                    if (option.kind == Option::MethodSome) {
                         BRANCH_NO_WEIGHT(TaggedIsTrue(FastToBoolean(retValue)), &returnTrue, &loopEnd);
                     }
-                    if (visitKind == kForEach) {
+                    if (option.kind == Option::MethodForEach) {
                         Jump(&loopEnd);
                     }
                 }
@@ -1308,14 +1425,14 @@ void BuiltinsArrayStubBuilder::VisitAll(GateRef glue, GateRef thisValue, GateRef
         i = Int64Add(*i, Int64(1));
         LoopEnd(&loopHead);
     }
-    if (visitKind == kEvery) {
+    if (option.kind == Option::MethodEvery) {
         Bind(&returnFalse);
         {
             result->WriteVariable(TaggedFalse());
             Jump(exit);
         }
     }
-    if (visitKind == kSome) {
+    if (option.kind == Option::MethodSome) {
         Bind(&returnTrue);
         {
             result->WriteVariable(TaggedTrue());
