@@ -175,4 +175,26 @@ assert_equal(parsedObj.C, 29);
 assert_equal(parsedObj.J, 36);
 assert_equal(parsedObj.T, 46);
 
+let numStr = `{
+    "numberval1": 1.79e+308,
+    "numberval2": 1.7976931348623158e+309,
+    "numberval3": 5e+320,
+    "numberval4": 2.225e-308,
+	"numberval5": 2.225e-309,
+	"numberval6": 3e-320,
+	"numberval7": 5e-324,
+	"numberval8": 5e-325,
+	"numberval9": 7e-350
+}`;
+let numParsedObj = JSON.parse(numStr);
+assert_equal(numParsedObj.numberval1, 1.79e+308);// DBL_MAX
+assert_equal(numParsedObj.numberval2, Infinity);// greater than DBL_MAX, expect Infinity
+assert_equal(numParsedObj.numberval3, Infinity);// greater than DBL_MAX, expect Infinity
+assert_equal(numParsedObj.numberval4, 2.225e-308);// DBL_MIN
+assert_equal(numParsedObj.numberval5, 2.225e-309);// less than DBL_MIN
+assert_equal(numParsedObj.numberval6, 3e-320);// less than DBL_MIN
+assert_equal(numParsedObj.numberval7, 5e-324);// Number.MIN_VALUE
+assert_equal(numParsedObj.numberval8, 0);// less than Number.MIN_VALUE, expect 0
+assert_equal(numParsedObj.numberval9, 0);// less than Number.MIN_VALUE, expect 0
+
 test_end();
