@@ -113,7 +113,7 @@ public:
     static bool GetEnableJitVerifyPass(bool value)
     {
     #ifdef GET_PARAMETER_FOR_JIT
-        return OHOS::system::GetBoolParameter("persist.ark.jit.enable.jitverify", true);
+        return OHOS::system::GetBoolParameter("persist.ark.jit.enable.jitverify", false);
     #endif
         return value;
     }

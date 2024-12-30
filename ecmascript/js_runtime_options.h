@@ -2294,7 +2294,7 @@ private:
     bool enableInlinePropertyOptimization_ {NEXT_OPTIMIZATION_BOOL};
     bool storeBarrierOpt_ {true};
     uint64_t CompilerAnFileMaxByteSize_ {0_MB};
-    bool enableJitVerifyPass_ {false};
+    bool enableJitVerifyPass_ {true};
     bool enableLocalHandleLeakDetect_ {false};
 };
 } // namespace panda::ecmascript
