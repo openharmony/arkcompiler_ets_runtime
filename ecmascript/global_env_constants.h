@@ -743,9 +743,9 @@ public:
 #undef DECL_GET_COMMON
 #undef DECL_GET_BUILTIN
 
-    void VisitRangeSlot(const RootRangeVisitor &visitor)
+    void Iterate(RootVisitor &visitor)
     {
-        visitor(ecmascript::Root::ROOT_VM, ObjectSlot(ToUintPtr(BeginSlot())), ObjectSlot(ToUintPtr(EndSlot())));
+        visitor.VisitRangeRoot(Root::ROOT_VM, ObjectSlot(ToUintPtr(BeginSlot())), ObjectSlot(ToUintPtr(EndSlot())));
     }
 
     JSTaggedValue GetGlobalConstantObject(size_t index) const

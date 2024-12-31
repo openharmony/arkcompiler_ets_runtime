@@ -149,8 +149,7 @@ uintptr_t ArkStackMapParser::GetStackSlotAddress(uint8_t *stackmapAddr, uintptr_
     return address;
 }
 
-bool ArkStackMapParser::IteratorStackMap(const RootVisitor& visitor,
-                                         const RootBaseAndDerivedVisitor& derivedVisitor,
+bool ArkStackMapParser::IteratorStackMap(RootVisitor& visitor,
                                          uintptr_t callSiteAddr,
                                          uintptr_t callsiteFp,
                                          uintptr_t callSiteSp,
@@ -189,11 +188,12 @@ bool ArkStackMapParser::IteratorStackMap(const RootVisitor& visitor,
             // The base address may be marked repeatedly
             if (baseSet.find(base) == baseSet.end()) {
                 baseSet.emplace(base, *reinterpret_cast<uintptr_t *>(base));
-                visitor(Root::ROOT_FRAME, ObjectSlot(base));
+                visitor.VisitRoot(Root::ROOT_FRAME, ObjectSlot(base));
             }
 
             if (base != derived) {
-                derivedVisitor(Root::ROOT_FRAME, ObjectSlot(base), ObjectSlot(derived), baseSet[base]);
+                visitor.VisitBaseAndDerivedRoot(Root::ROOT_FRAME, ObjectSlot(base), ObjectSlot(derived),
+                                                baseSet[base]);
             }
         }
     }

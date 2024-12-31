@@ -595,6 +595,32 @@ public:
     HeapProfilerInterface *profiler_ {nullptr};
 };
 
+template <class Callback>
+class TestAllocationEventRootVisitor final : public RootVisitor {
+public:
+    explicit TestAllocationEventRootVisitor(Callback &cb) : cb_(cb) {}
+    ~TestAllocationEventRootVisitor() = default;
+    void VisitRoot([[maybe_unused]] Root type, ObjectSlot slot) override
+    {
+        JSTaggedValue value((slot).GetTaggedType());
+        if (!value.IsHeapObject()) {
+            return;
+        }
+        TaggedObject *root = value.GetTaggedObject();
+        cb_(root);
+    }
+    void VisitRangeRoot([[maybe_unused]] Root type, ObjectSlot start, ObjectSlot end) override
+    {
+        for (ObjectSlot slot = start; slot < end; slot++) {
+            VisitRoot(type, slot);
+        }
+    }
+    void VisitBaseAndDerivedRoot([[maybe_unused]] Root type, [[maybe_unused]] ObjectSlot base,
+        [[maybe_unused]] ObjectSlot derived, [[maybe_unused]] uintptr_t baseOldObject) override {}
+private:
+    Callback &cb_;
+};
+
 HWTEST_F_L0(HeapDumpTest, TestAllocationEvent)
 {
     const std::string abcFileName = HPROF_TEST_ABC_FILES_DIR"heapdump.abc";
@@ -610,25 +636,10 @@ HWTEST_F_L0(HeapDumpTest, TestAllocationEvent)
         ObjMap->emplace(obj, true);
     };
     heap->IterateOverObjects(countCb);
-    RootVisitor rootVisitor = [&countCb]([[maybe_unused]] Root type, ObjectSlot slot) {
-        JSTaggedValue value((slot).GetTaggedType());
-        if (!value.IsHeapObject()) {
-            return;
-        }
-        TaggedObject *root = value.GetTaggedObject();
-        countCb(root);
-    };
-    RootRangeVisitor rangeVisitor = [&rootVisitor]([[maybe_unused]] Root type,
-                                    ObjectSlot start, ObjectSlot end) {
-        for (ObjectSlot slot = start; slot < end; slot++) {
-            rootVisitor(type, slot);
-        }
-    };
-    RootBaseAndDerivedVisitor derivedVisitor = []
-        ([[maybe_unused]] Root type, [[maybe_unused]] ObjectSlot base, [[maybe_unused]] ObjectSlot derived,
-         [[maybe_unused]] uintptr_t baseOldObject) {};
-    ecmaVm_->Iterate(rootVisitor, rangeVisitor, VMRootVisitType::HEAP_SNAPSHOT);
-    thread_->Iterate(rootVisitor, rangeVisitor, derivedVisitor);
+
+    TestAllocationEventRootVisitor testAllocationEventRootVisitor(countCb);
+    ecmaVm_->Iterate(testAllocationEventRootVisitor, VMRootVisitType::HEAP_SNAPSHOT);
+    thread_->Iterate(testAllocationEventRootVisitor);
 
     bool result = JSNApi::Execute(ecmaVm_, abcFileName, "heapdump");
     EXPECT_TRUE(result);
@@ -636,8 +647,8 @@ HWTEST_F_L0(HeapDumpTest, TestAllocationEvent)
     std::unordered_map<TaggedObject *, bool> ObjAfterExecute;
     ObjMap = &ObjAfterExecute;
     heap->IterateOverObjects(countCb);
-    ecmaVm_->Iterate(rootVisitor, rangeVisitor, VMRootVisitType::HEAP_SNAPSHOT);
-    thread_->Iterate(rootVisitor, rangeVisitor, derivedVisitor);
+    ecmaVm_->Iterate(testAllocationEventRootVisitor, VMRootVisitType::HEAP_SNAPSHOT);
+    thread_->Iterate(testAllocationEventRootVisitor);
     ecmaVm_->SetHeapProfile(mockHeapProfiler.profiler_);
 
     std::unordered_map<std::string, int> noTraceObjCheck =

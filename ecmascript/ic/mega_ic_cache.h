@@ -61,15 +61,15 @@ public:
         return true;
     }
 
-    void Iterate(const RootVisitor &v)
+    void Iterate(RootVisitor &v)
     {
         for (auto &key : keys_) {
             if (key.hclass_ != nullptr) {
                 auto value = JSTaggedValue::Cast(key.hclass_);
-                v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&(value))));
+                v.VisitRoot(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&(value))));
             }
-            v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&(key.key_))));
-            v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&(key.results_))));
+            v.VisitRoot(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&(key.key_))));
+            v.VisitRoot(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&(key.results_))));
         }
     }
     constexpr static const JSTaggedValue NOT_FOUND = JSTaggedValue::Hole();

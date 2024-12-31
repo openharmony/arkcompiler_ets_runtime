@@ -42,7 +42,7 @@ JSTaggedType SnapshotEnv::RelocateRootObjectAddr(uint32_t index)
     return value->GetRawData();
 }
 
-void SnapshotEnv::Iterate(const RootVisitor &v, VMRootVisitType type)
+void SnapshotEnv::Iterate(RootVisitor &v, VMRootVisitType type)
 {
     if (multiThreadCheckValue_.exchange(JSThread::GetCurrentThreadId()) != 0) {
         LOG_ECMA(FATAL) << "SnapshotEnv push multi-thread check fail, thread id: " << multiThreadCheckValue_;
@@ -53,7 +53,7 @@ void SnapshotEnv::Iterate(const RootVisitor &v, VMRootVisitType type)
         for (auto &it : rootObjectMap_) {
             auto objectAddr = it.first;
             ObjectSlot slot(reinterpret_cast<uintptr_t>(&objectAddr));
-            v(Root::ROOT_VM, slot);
+            v.VisitRoot(Root::ROOT_VM, slot);
             rootObjectMap.emplace(slot.GetTaggedType(), it.second);
         }
         std::swap(rootObjectMap_, rootObjectMap);
@@ -61,7 +61,7 @@ void SnapshotEnv::Iterate(const RootVisitor &v, VMRootVisitType type)
     } else {
         for (auto &it : rootObjectMap_) {
             ObjectSlot slot(reinterpret_cast<uintptr_t>(&it));
-            v(Root::ROOT_VM, slot);
+            v.VisitRoot(Root::ROOT_VM, slot);
         }
     }
     multiThreadCheckValue_ = 0;

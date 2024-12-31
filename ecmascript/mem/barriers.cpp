@@ -12,6 +12,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+#include "ecmascript/mem/work_manager-inl.h"
 #include "ecmascript/runtime.h"
 
 namespace panda::ecmascript {
@@ -36,7 +38,7 @@ void Barriers::UpdateWithoutEden(const JSThread *thread, uintptr_t slotAddr, Reg
     if (valueRegion->IsFreshRegion()) {
         valueRegion->NonAtomicMark(heapValue);
     } else if (writeType != WriteBarrierType::DESERIALIZE && valueRegion->AtomicMark(heapValue)) {
-        heap->GetWorkManager()->Push(MAIN_THREAD_INDEX, heapValue);
+        heap->GetWorkManager()->GetWorkNodeHolder(MAIN_THREAD_INDEX)->Push(heapValue);
     }
 }
 
@@ -67,7 +69,7 @@ void Barriers::Update(const JSThread *thread, uintptr_t slotAddr, Region *object
     if (valueRegion->IsFreshRegion()) {
         valueRegion->NonAtomicMark(heapValue);
     } else if (writeType != WriteBarrierType::DESERIALIZE && valueRegion->AtomicMark(heapValue)) {
-        heap->GetWorkManager()->Push(MAIN_THREAD_INDEX, heapValue);
+        heap->GetWorkManager()->GetWorkNodeHolder(MAIN_THREAD_INDEX)->Push(heapValue);
     }
 }
 

@@ -873,7 +873,6 @@ ecma_source = [
   "ecmascript/mem/thread_local_allocation_buffer.cpp",
   "ecmascript/mem/verification.cpp",
   "ecmascript/mem/work_space_chunk.cpp",
-  "ecmascript/mem/work_manager.cpp",
   "ecmascript/mem/allocation_inspector.cpp",
   "ecmascript/mem/jit_fort.cpp",
   "ecmascript/module/js_module_manager.cpp",

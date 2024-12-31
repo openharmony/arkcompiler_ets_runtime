@@ -13,11 +13,11 @@
  * limitations under the License.
  */
 
-#include "ecmascript/mem/full_gc.h"
+#include "ecmascript/mem/full_gc-inl.h"
 
 #include "ecmascript/mem/concurrent_marker.h"
 #include "ecmascript/mem/incremental_marker.h"
-#include "ecmascript/mem/parallel_marker-inl.h"
+#include "ecmascript/mem/parallel_marker.h"
 #include "ecmascript/mem/verification.h"
 #include "ecmascript/runtime_call_id.h"
 
@@ -96,11 +96,19 @@ void FullGC::Initialize()
     nonMoveSpaceCommitSize_ = heap_->GetNonMovableSpace()->GetCommittedSize();
 }
 
+void FullGC::MarkRoots()
+{
+    CompressGCMarker *marker = static_cast<CompressGCMarker*>(heap_->GetCompressGCMarker());
+    FullGCRunner fullGCRunner(heap_, workManager_->GetWorkNodeHolder(MAIN_THREAD_INDEX), forAppSpawn_);
+    FullGCMarkRootVisitor &fullGCMarkRootVisitor = fullGCRunner.GetMarkRootVisitor();
+    marker->MarkRoots(fullGCMarkRootVisitor, VMRootVisitType::UPDATE_ROOT);
+}
+
 void FullGC::Mark()
 {
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "FullGC::Mark");
     TRACE_GC(GCStats::Scope::ScopeId::Mark, heap_->GetEcmaVM()->GetEcmaGCStats());
-    heap_->GetCompressGCMarker()->MarkRoots(MAIN_THREAD_INDEX, VMRootVisitType::UPDATE_ROOT);
+    MarkRoots();
     heap_->GetCompressGCMarker()->ProcessMarkStack(MAIN_THREAD_INDEX);
     heap_->WaitRunningTaskFinished();
     // MarkJitCodeMap must be call after other mark work finish to make sure which jserror object js alive.
@@ -117,7 +125,7 @@ void FullGC::Sweep()
         totalThreadCount += Taskpool::GetCurrentTaskpool()->GetTotalThreadNum();
     }
     for (uint32_t i = 0; i < totalThreadCount; i++) {
-        ProcessQueue *queue = workManager_->GetWeakReferenceQueue(i);
+        ProcessQueue *queue = workManager_->GetWorkNodeHolder(i)->GetWeakReferenceQueue();
 
         while (true) {
             auto obj = queue->PopBack();
@@ -192,8 +200,11 @@ void FullGC::Finish()
 
 bool FullGC::HasEvacuated(Region *region)
 {
-    auto marker = reinterpret_cast<CompressGCMarker*>(heap_->GetCompressGCMarker());
-    return marker->NeedEvacuate(region);
+    if (forAppSpawn_) {
+        return !region->InHugeObjectSpace()  && !region->InReadOnlySpace() && !region->InNonMovableSpace() &&
+               !region->InSharedHeap();
+    }
+    return region->InYoungOrOldSpace();
 }
 
 void FullGC::SetForAppSpawn(bool flag)

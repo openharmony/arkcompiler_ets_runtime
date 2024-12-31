@@ -469,7 +469,7 @@ public:
 
     void AdjustGlobalSpaceAllocLimit();
 
-    void OnMoveEvent(uintptr_t address, TaggedObject* forwardAddress, size_t size);
+    inline void OnMoveEvent(uintptr_t address, TaggedObject* forwardAddress, size_t size);
 
     class ParallelMarkTask : public Task {
     public:
@@ -1094,11 +1094,6 @@ public:
         return nonMovableMarker_;
     }
 
-    Marker *GetSemiGCMarker() const
-    {
-        return semiGCMarker_;
-    }
-
     Marker *GetCompressGCMarker() const
     {
         return compressGCMarker_;
@@ -1498,7 +1493,7 @@ public:
 #endif
     inline bool InHeapProfiler();
 
-    void OnMoveEvent(uintptr_t address, TaggedObject* forwardAddress, size_t size);
+    inline void OnMoveEvent(uintptr_t address, TaggedObject* forwardAddress, size_t size);
 
     // add allocationInspector to each space
     void AddAllocationInspectorToAllSpaces(AllocationInspector *inspector);
@@ -1867,7 +1862,6 @@ private:
      *  while some others need to handle object movement.
      */
     Marker *nonMovableMarker_ {nullptr};
-    Marker *semiGCMarker_ {nullptr};
     Marker *compressGCMarker_ {nullptr};
 
     // Work manager managing the tasks mostly generated in the GC mark phase.

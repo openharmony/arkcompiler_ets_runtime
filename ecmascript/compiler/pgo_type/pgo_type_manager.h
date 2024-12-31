@@ -26,7 +26,7 @@ public:
         : thread_(vm->GetJSThread()), aotSnapshot_(vm) {}
     ~PGOTypeManager() = default;
 
-    void Iterate(const RootVisitor &v);
+    void Iterate(RootVisitor &v);
 
     // common
     uint32_t PUBLIC_API GetConstantPoolIDByMethodOffset(const uint32_t methodOffset) const;

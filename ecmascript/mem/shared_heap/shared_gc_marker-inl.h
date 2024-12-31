@@ -22,6 +22,7 @@
 #include "ecmascript/mem/heap-inl.h"
 #include "ecmascript/mem/region-inl.h"
 #include "ecmascript/mem/tlab_allocator-inl.h"
+#include "ecmascript/mem/work_manager-inl.h"
 
 namespace panda::ecmascript {
 inline void SharedGCMarker::MarkObject(uint32_t threadId, TaggedObject *object, [[maybe_unused]] ObjectSlot &slot)
@@ -52,14 +53,6 @@ inline void SharedGCMarker::MarkValue(uint32_t threadId, ObjectSlot &slot)
         } else {
             RecordWeakReference(threadId, reinterpret_cast<JSTaggedType *>(slot.SlotAddress()));
         }
-    }
-}
-
-inline void SharedGCMarkerBase::HandleRoots(uint32_t threadId, [[maybe_unused]] Root type, ObjectSlot slot)
-{
-    JSTaggedValue value(slot.GetTaggedType());
-    if (value.IsInSharedSweepableSpace()) {
-        MarkObject(threadId, value.GetTaggedObject(), slot);
     }
 }
 

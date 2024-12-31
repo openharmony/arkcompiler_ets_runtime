@@ -26,6 +26,8 @@ class Region;
 class TaggedObject;
 class SharedGCMarker;
 class JSHClass;
+class SharedFullGCMarkRootVisitor;
+class SharedFullGCMarkObjectVisitor;
 enum class Root;
 
 enum class SharedMarkType : uint8_t {
@@ -40,19 +42,18 @@ public:
     virtual ~SharedGCMarkerBase() = default;
 
     void ResetWorkManager(SharedGCWorkManager *workManager);
-    void MarkRoots(uint32_t threadId, SharedMarkType markType, VMRootVisitType type = VMRootVisitType::MARK);
-    void MarkLocalVMRoots(uint32_t threadId, EcmaVM *localVm, SharedMarkType markType,
+    void MarkRoots(RootVisitor &visitor, SharedMarkType markType, VMRootVisitType type = VMRootVisitType::MARK);
+    void MarkLocalVMRoots(RootVisitor &visitor, EcmaVM *localVm, SharedMarkType markType,
                           VMRootVisitType type = VMRootVisitType::MARK);
     void CollectLocalVMRSet(EcmaVM *localVm);
-    void MarkStringCache(uint32_t threadId);
-    void MarkSerializeRoots(uint32_t threadId);
-    void MarkSharedModule(uint32_t threadId);
+    void MarkStringCache(RootVisitor &visitor);
+    void MarkSerializeRoots(RootVisitor &visitor);
+    void MarkSharedModule(RootVisitor &visitor);
     inline void ProcessThenMergeBackRSetFromBoundJSThread(RSetWorkListHandler *handler);
     template<SharedMarkType markType>
     inline void DoMark(uint32_t threadId);
     template <typename Callback>
     inline bool VisitBodyInObj(TaggedObject *root, ObjectSlot start, ObjectSlot end, Callback callback);
-    inline void HandleRoots(uint32_t threadId, [[maybe_unused]] Root type, ObjectSlot slot);
     inline void HandleLocalRoots(uint32_t threadId, [[maybe_unused]] Root type, ObjectSlot slot);
     inline void HandleLocalRangeRoots(uint32_t threadId, [[maybe_unused]] Root type, ObjectSlot start,
                                       ObjectSlot end);
@@ -105,7 +106,7 @@ private:
     std::vector<RSetWorkListHandler*> rSetHandlers_;
 };
 
-class SharedGCMarker : public SharedGCMarkerBase {
+class SharedGCMarker final : public SharedGCMarkerBase {
 public:
     explicit SharedGCMarker(SharedGCWorkManager *workManger);
     ~SharedGCMarker() override = default;
@@ -118,7 +119,7 @@ protected:
                                         uintptr_t baseOldObject) override;
 };
 
-class SharedGCMovableMarker : public SharedGCMarkerBase {
+class SharedGCMovableMarker final : public SharedGCMarkerBase {
 public:
     explicit SharedGCMovableMarker(SharedGCWorkManager *workManger, SharedHeap *sHeap);
     ~SharedGCMovableMarker() override = default;
@@ -140,6 +141,9 @@ protected:
 
 private:
     SharedHeap *sHeap_;
+
+    friend class SharedFullGCMarkRootVisitor;
+    friend class SharedFullGCMarkObjectVisitor;
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_MEM_SHARED_HEAP_SHARED_GC_MARKER_H

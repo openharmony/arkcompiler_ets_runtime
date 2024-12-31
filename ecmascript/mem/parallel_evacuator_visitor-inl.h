@@ -18,42 +18,64 @@
 
 #include "ecmascript/mem/parallel_evacuator_visitor.h"
 
-#include "ecmascript/mem/parallel_evacuator.h"
-
 namespace panda::ecmascript {
+
+template<TriggerGCType gcType>
+SlotUpdateRangeVisitor<gcType>::SlotUpdateRangeVisitor(ParallelEvacuator *evacuator) : evacuator_(evacuator) {}
+
+template<TriggerGCType gcType>
+void SlotUpdateRangeVisitor<gcType>::VisitObjectRangeImpl(TaggedObject *root, ObjectSlot start, ObjectSlot end,
+                                                          VisitObjectArea area)
+{
+    Region *rootRegion = Region::ObjectAddressToRange(root);
+    if (UNLIKELY(area == VisitObjectArea::IN_OBJECT)) {
+        JSHClass *hclass = root->SynchronizedGetClass();
+        ASSERT(!hclass->IsAllTaggedProp());
+        int index = 0;
+        LayoutInfo *layout = LayoutInfo::UncheckCast(hclass->GetLayout().GetTaggedObject());
+        ObjectSlot realEnd = start;
+        realEnd += layout->GetPropertiesCapacity();
+        end = end > realEnd ? realEnd : end;
+        for (ObjectSlot slot = start; slot < end; slot++) {
+            PropertyAttributes attr = layout->GetAttr(index++);
+            if (attr.IsTaggedRep()) {
+                UpdateSlot(slot, rootRegion);
+            }
+        }
+        return;
+    }
+    for (ObjectSlot slot = start; slot < end; slot++) {
+        UpdateSlot(slot, rootRegion);
+    }
+}
+
+template<TriggerGCType gcType>
+void SlotUpdateRangeVisitor<gcType>::UpdateSlot(ObjectSlot slot, Region *rootRegion)
+{
+    evacuator_->UpdateNewObjectSlot<gcType, false>(slot);
+    JSTaggedValue value(slot.GetTaggedType());
+    if (!value.IsHeapObject()) {
+        return;
+    }
+    Region *valueRegion = Region::ObjectAddressToRange(slot.GetTaggedObject());
+    if (valueRegion->InYoungSpace()) {
+        rootRegion->InsertOldToNewRSet(slot.SlotAddress());
+    }
+}
+
+template<TriggerGCType gcType>
+NewToOldEvacuationVisitor<gcType>::NewToOldEvacuationVisitor(Heap *heap, std::unordered_set<JSTaggedType> *set,
+    ParallelEvacuator *evacuator) : pgoEnabled_(heap->GetJSThread()->IsPGOProfilerEnable()),
+    pgoProfiler_(heap->GetEcmaVM()->GetPGOProfiler()), trackSet_(set), slotUpdateRangeVisitor_(evacuator) {}
+
 template<TriggerGCType gcType>
 void NewToOldEvacuationVisitor<gcType>::operator()(void *mem)
 {
     auto object = reinterpret_cast<TaggedObject *>(mem);
     JSHClass *klass = object->GetClass();
-    ObjectXRay::VisitObjectBody<VisitType::OLD_GC_VISIT>(object, klass, SlotUpdateRangeVisitor);
+    ObjectXRay::VisitObjectBody<VisitType::OLD_GC_VISIT>(object, klass, slotUpdateRangeVisitor_);
     if (pgoEnabled_) {
         UpdateTrackInfo(object, klass);
-    }
-}
-
-template<TriggerGCType gcType>
-void NewToOldEvacuationVisitor<gcType>::SlotUpdateRangeVisitor(TaggedObject *root, ObjectSlot start,
-                                                               ObjectSlot end, VisitObjectArea area)
-{
-    auto updateSlot = [root](ObjectSlot slot) {
-        ParallelEvacuator::UpdateNewObjectSlot<gcType, false>(slot);
-        JSTaggedValue value(slot.GetTaggedType());
-        if (!value.IsHeapObject()) {
-            return;
-        }
-        Region *valueRegion = Region::ObjectAddressToRange(slot.GetTaggedObject());
-        if (valueRegion->InYoungSpace()) {
-            Region *rootRegion = Region::ObjectAddressToRange(root);
-            rootRegion->InsertOldToNewRSet(slot.SlotAddress());
-        }
-    };
-    if (area == VisitObjectArea::IN_OBJECT &&
-        ParallelEvacuator::VisitBodyInObj(root, start, end, updateSlot)) {
-        return;
-    }
-    for (ObjectSlot slot = start; slot < end; slot++) {
-        updateSlot(slot);
     }
 }
 

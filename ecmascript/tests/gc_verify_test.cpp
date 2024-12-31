@@ -47,14 +47,6 @@ public:
     }
 };
 
-HWTEST_F_L0(GCTest, VerificationTest1)
-{
-    Heap *heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-    heap->SetMarkType(MarkType::MARK_EDEN);
-    auto partialGc = heap->GetPartialGC();
-    partialGc->RunPhases();
-}
-
 HWTEST_F_L0(GCTest, VerificationTest2)
 {
     Heap *heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());

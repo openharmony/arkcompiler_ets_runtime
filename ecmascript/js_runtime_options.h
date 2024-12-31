@@ -228,6 +228,7 @@ enum CommandValues {
     OPTION_ENABLE_JIT_VERIFY_PASS,
     OPTION_COMPILER_AN_FILE_MAX_SIZE,
     OPTION_COMPILER_TRACE_BUILTINS,
+    OPTION_ENABLE_HEAP_VERIFY,
 };
 static_assert(OPTION_INVALID == 63); // Placeholder for invalid options
 static_assert(OPTION_SPLIT_ONE == 64); // add new option at the bottom, DO NOT modify this value
@@ -403,9 +404,8 @@ public:
         return enableEdenGC_;
     }
 
-    void SetEnableEdenGC(bool value)
+    void SetEnableEdenGC([[maybe_unused]] bool value)
     {
-        enableEdenGC_ = value;
     }
 
     bool ForceFullGC() const
@@ -426,6 +426,11 @@ public:
     uint32_t GetForceSharedGCFrequency() const
     {
         return forceSharedGc_;
+    }
+
+    void SetEnableHeapVerify(bool value)
+    {
+        enableHeapVerify_ = value;
     }
 
     void SetGcThreadNum(size_t num)
@@ -637,7 +642,7 @@ public:
 
     bool EnableHeapVerify() const
     {
-        return (static_cast<uint32_t>(arkProperties_) & ArkProperties::ENABLE_HEAP_VERIFY) != 0;
+        return enableHeapVerify_ && (static_cast<uint32_t>(arkProperties_) & ArkProperties::ENABLE_HEAP_VERIFY) != 0;
     }
 
     bool EnableMicroJobTrace() const
@@ -2147,6 +2152,7 @@ private:
     bool enableForceGc_ {true};
     bool enableEdenGC_ {false};
     bool forceFullGc_ {true};
+    bool enableHeapVerify_ {true};
     uint32_t forceSharedGc_ {1};
     int32_t deviceThermalLevel_ {0};
     int arkProperties_ = GetDefaultProperties();

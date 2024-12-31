@@ -246,7 +246,7 @@ void Runtime::ResumeAllThreadsImpl(JSThread *current)
     }
 }
 
-void Runtime::IterateSerializeRoot(const RootVisitor &v)
+void Runtime::IterateSerializeRoot(RootVisitor &v)
 {
     LockHolder lock(serializeLock_);
     for (auto &it : serializeRootMap_) {

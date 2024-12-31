@@ -33,6 +33,16 @@ public:
     // ForwardingAddress mark, this object has been moved and the address points to the newly allocated space.
     static constexpr MarkWordType TAG_MARK_BIT = 0x02ULL;
 
+    static bool IsForwardingAddress(MarkWordType value)
+    {
+        return (value & TAG_MARK_BIT) != 0;
+    }
+
+    static TaggedObject *ToForwardingAddress(MarkWordType value)
+    {
+        return reinterpret_cast<TaggedObject *>(value & (~TAG_MARK_BIT));
+    }
+
     explicit MarkWord(TaggedObject *header)
     {
         value_ = reinterpret_cast<volatile std::atomic<MarkWordType> *>(header)->load(std::memory_order_acquire);

@@ -38,7 +38,7 @@ public:
         return JSHandle<T>(GetJsHandleSlot(value));
     }
 
-    void Iterate(const RootRangeVisitor &rv);
+    void Iterate(RootVisitor &v);
 
 private:
     uintptr_t GetJsHandleSlot(JSTaggedType value);
@@ -61,7 +61,7 @@ class SustainingJSHandleList {
 public:
     void AddSustainingJSHandle(SustainingJSHandle *sustainingJSHandle);
     void RemoveSustainingJSHandle(SustainingJSHandle *sustainingJSHandle);
-    void Iterate(const RootRangeVisitor &rv);
+    void Iterate(RootVisitor &v);
 
 private:
     SustainingJSHandle *listHead_ { nullptr };

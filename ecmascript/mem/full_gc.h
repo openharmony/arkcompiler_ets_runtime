@@ -22,7 +22,9 @@
 
 namespace panda {
 namespace ecmascript {
-class FullGC : public GarbageCollector {
+class FullGCRunner;
+
+class FullGC final : public GarbageCollector {
 public:
     explicit FullGC(Heap *heap);
     ~FullGC() override = default;
@@ -40,6 +42,7 @@ protected:
     void Finish() override;
 
 private:
+    void MarkRoots();
     void ProcessSharedGCRSetWorkList();
     bool HasEvacuated(Region *region);
 
@@ -55,6 +58,98 @@ private:
 
     friend class WorkManager;
     friend class Heap;
+};
+
+class FullGCMarkRootVisitor final : public RootVisitor {
+public:
+    inline explicit FullGCMarkRootVisitor(FullGCRunner *runner);
+    ~FullGCMarkRootVisitor() override = default;
+
+    inline void VisitRoot([[maybe_unused]] Root type, ObjectSlot slot) override;
+
+    inline void VisitRangeRoot([[maybe_unused]] Root type, ObjectSlot start, ObjectSlot end) override;
+
+    inline void VisitBaseAndDerivedRoot([[maybe_unused]] Root type, ObjectSlot base, ObjectSlot derived,
+                                        uintptr_t baseOldObject) override;
+private:
+    FullGCRunner *runner_ {nullptr};
+};
+
+class FullGCMarkObjectVisitor final : public EcmaObjectRangeVisitor<FullGCMarkObjectVisitor> {
+public:
+    inline explicit FullGCMarkObjectVisitor(FullGCRunner *runner);
+    ~FullGCMarkObjectVisitor() override = default;
+
+    inline void VisitObjectRangeImpl(TaggedObject *root, ObjectSlot start, ObjectSlot end,
+                                     VisitObjectArea area) override;
+
+    inline void VisitHClassSlot(ObjectSlot slot, TaggedObject *hclass);
+private:
+    FullGCRunner *runner_ {nullptr};
+};
+
+class FullGCUpdateLocalToShareRSetVisitor final : public EcmaObjectRangeVisitor<FullGCUpdateLocalToShareRSetVisitor> {
+public:
+    inline explicit FullGCUpdateLocalToShareRSetVisitor(FullGCRunner *runner);
+    ~FullGCUpdateLocalToShareRSetVisitor() override = default;
+
+    inline void VisitObjectRangeImpl(TaggedObject *root, ObjectSlot start, ObjectSlot end,
+                                     VisitObjectArea area) override;
+private:
+    inline void SetLocalToShareRSet(ObjectSlot slot, Region *rootRegion);
+
+    FullGCRunner *runner_ {nullptr};
+};
+
+class FullGCRunner {
+public:
+    inline explicit FullGCRunner(Heap *heap, WorkNodeHolder *workNodeHolder, bool isAppSpawn);
+    ~FullGCRunner() = default;
+
+    inline FullGCMarkRootVisitor &GetMarkRootVisitor();
+    inline FullGCMarkObjectVisitor &GetMarkObjectVisitor();
+
+protected:
+    inline void HandleMarkingSlot(ObjectSlot slot);
+
+    inline void HandleMarkingSlotObject(ObjectSlot slot, TaggedObject *object);
+
+    template <class Callback>
+    void VisitBodyInObj(TaggedObject *root, ObjectSlot start, ObjectSlot end, Callback &&cb);
+    
+private:
+    inline bool NeedEvacuate(Region *region);
+
+    inline void EvacuateObject(ObjectSlot slot, TaggedObject *object, const MarkWord &markWord);
+
+    inline uintptr_t AllocateForwardAddress(size_t size);
+
+    inline uintptr_t AllocateDstSpace(size_t size);
+
+    inline uintptr_t AllocateAppSpawnSpace(size_t size);
+
+    inline void RawCopyObject(uintptr_t fromAddress, uintptr_t toAddress, size_t size, const MarkWord &markWord);
+
+    inline void UpdateForwardAddressIfSuccess(ObjectSlot slot, TaggedObject *object, JSHClass *klass, size_t size,
+        TaggedObject *toAddress);
+
+    inline void UpdateForwardAddressIfFailed(ObjectSlot slot, size_t size, uintptr_t toAddress, TaggedObject *dst);
+
+    inline void PushObject(TaggedObject *object);
+
+    inline void RecordWeakReference(JSTaggedType *weak);
+
+    Heap *heap_ {nullptr};
+    WorkNodeHolder *workNodeHolder_ {nullptr};
+    bool isAppSpawn_ {false};
+    FullGCMarkRootVisitor markRootVisitor_;
+    FullGCMarkObjectVisitor markObjectVisitor_;
+    FullGCUpdateLocalToShareRSetVisitor updateLocalToShareRSetVisitor_;
+
+    friend class FullGCMarkRootVisitor;
+    friend class FullGCMarkObjectVisitor;
+    friend class FullGCUpdateLocalToShareRSetVisitor;
+    friend class CompressGCMarker;
 };
 }  // namespace ecmascript
 }  // namespace panda

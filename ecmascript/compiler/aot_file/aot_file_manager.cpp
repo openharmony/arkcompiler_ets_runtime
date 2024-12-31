@@ -44,14 +44,14 @@ void AOTLiteralInfo::SetObjectToCache(JSThread *thread, uint32_t index, JSTagged
     Set(thread, index, value);
 }
 
-void AOTFileManager::Iterate(const RootVisitor &v)
+void AOTFileManager::Iterate(RootVisitor &v)
 {
     for (auto &iter : aiDatum_) {
         auto &aiData = iter.second;
         for (auto &eachFileData : aiData) {
             auto &cpMap = eachFileData.second.multiCpsMap_;
             for (auto &eachCpPair : cpMap) {
-                v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&eachCpPair.second)));
+                v.VisitRoot(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&eachCpPair.second)));
             }
         }
     }

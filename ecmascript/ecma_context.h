@@ -382,8 +382,8 @@ public:
 
     static void PrintJSErrorInfo(JSThread *thread, const JSHandle<JSTaggedValue> &exceptionInfo);
     static CString GetJSErrorInfo(JSThread *thread, const JSHandle<JSTaggedValue> exceptionInfo, JSErrorProps key);
-    void IterateMegaIC(const RootVisitor &v, const RootRangeVisitor &rv);
-    void Iterate(const RootVisitor &v, const RootRangeVisitor &rv);
+    void IterateMegaIC(RootVisitor &v);
+    void Iterate(RootVisitor &v);
     static void MountContext(JSThread *thread);
     static void UnmountContext(JSThread *thread);
     void SetMicroJobQueue(job::MicroJobQueue *queue);
@@ -537,7 +537,7 @@ public:
         return currentPrimitiveStorageIndex_;
     }
 
-    size_t IterateHandle(const RootRangeVisitor &rangeVisitor);
+    size_t IterateHandle(RootVisitor &visitor);
     uintptr_t *ExpandHandleStorage();
     void ShrinkHandleStorage(int prevIndex);
     uintptr_t *ExpandPrimitiveStorage();

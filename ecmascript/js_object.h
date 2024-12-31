@@ -393,8 +393,8 @@ public:
 
     DECL_VISIT_OBJECT(HASH_OFFSET, SIZE);
 
-    template <VisitType visitType>
-    void VisitObjects(const EcmaObjectRangeVisitor &visitor)
+    template <VisitType visitType, class DerivedVisitor>
+    void VisitObjects(EcmaObjectRangeVisitor<DerivedVisitor> &visitor)
     {
         // no field in this object
         VisitRangeSlot<visitType>(visitor);

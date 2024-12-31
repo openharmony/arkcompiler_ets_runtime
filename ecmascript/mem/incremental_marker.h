@@ -79,6 +79,7 @@ public:
     double GetCurrentTimeInMs();
 
 private:
+    void MarkRoots();
     void Mark();
     void Initialize();
     void Finish();

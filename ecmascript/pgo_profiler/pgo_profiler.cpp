@@ -1809,7 +1809,7 @@ void PGOProfiler::ProcessReferences(const WeakRootVisitor &visitor)
     });
 }
 
-void PGOProfiler::Iterate(const RootVisitor &visitor)
+void PGOProfiler::Iterate(RootVisitor &visitor)
 {
     if (!isEnable_) {
         return;
@@ -1817,7 +1817,7 @@ void PGOProfiler::Iterate(const RootVisitor &visitor)
     // If the IC of the method is stable, the current design forces the dump data.
     // Must pause dump during GC.
     dumpWorkList_.Iterate([&visitor](WorkNode* node) {
-        visitor(Root::ROOT_VM, ObjectSlot(node->GetValueAddr()));
+        visitor.VisitRoot(Root::ROOT_VM, ObjectSlot(node->GetValueAddr()));
     });
 }
 

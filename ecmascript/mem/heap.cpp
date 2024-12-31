@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 
-#include "ecmascript/base/block_hook_scope.h"
 #include "ecmascript/checkpoint/thread_state_transition.h"
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
 #include "ecmascript/dfx/cpu_profiler/cpu_profiler.h"
@@ -22,7 +21,7 @@
 #include "ecmascript/mem/incremental_marker.h"
 #include "ecmascript/mem/partial_gc.h"
 #include "ecmascript/mem/parallel_evacuator.h"
-#include "ecmascript/mem/parallel_marker-inl.h"
+#include "ecmascript/mem/parallel_marker.h"
 #include "ecmascript/mem/shared_heap/shared_concurrent_sweeper.h"
 #include "ecmascript/mem/shared_heap/shared_gc_marker-inl.h"
 #include "ecmascript/mem/shared_heap/shared_gc.h"
@@ -880,7 +879,6 @@ void Heap::Initialize()
     concurrentMarker_ = new ConcurrentMarker(this, concurrentMarkerEnabled ? EnableConcurrentMarkType::ENABLE :
         EnableConcurrentMarkType::CONFIG_DISABLE);
     nonMovableMarker_ = new NonMovableMarker(this);
-    semiGCMarker_ = new SemiGCMarker(this);
     compressGCMarker_ = new CompressGCMarker(this);
     evacuator_ = new ParallelEvacuator(this);
     incrementalMarker_ = new IncrementalMarker(this);
@@ -1042,10 +1040,6 @@ void Heap::Destroy()
     if (nonMovableMarker_ != nullptr) {
         delete nonMovableMarker_;
         nonMovableMarker_ = nullptr;
-    }
-    if (semiGCMarker_ != nullptr) {
-        delete semiGCMarker_;
-        semiGCMarker_ = nullptr;
     }
     if (compressGCMarker_ != nullptr) {
         delete compressGCMarker_;
@@ -1495,7 +1489,6 @@ void Heap::CheckNonMovableSpaceOOM()
 void Heap::AdjustBySurvivalRate(size_t originalNewSpaceSize)
 {
     promotedSize_ = GetEvacuator()->GetPromotedSize();
-    edenToYoungSize_ = GetEvacuator()->GetEdenToYoungSize();
     if (originalNewSpaceSize <= 0) {
         return;
     }
@@ -1671,32 +1664,6 @@ void Heap::DumpHeapSnapshotBeforeOOM([[maybe_unused]] bool isFullGC)
 #endif // ECMASCRIPT_SUPPORT_SNAPSHOT
 }
 
-void Heap::OnMoveEvent([[maybe_unused]] uintptr_t address, [[maybe_unused]] TaggedObject* forwardAddress,
-                       [[maybe_unused]] size_t size)
-{
-#if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
-    HeapProfilerInterface *profiler = GetEcmaVM()->GetHeapProfile();
-    if (profiler != nullptr) {
-        base::BlockHookScope blockScope;
-        profiler->MoveEvent(address, forwardAddress, size);
-    }
-#endif
-}
-
-void SharedHeap::OnMoveEvent([[maybe_unused]] uintptr_t address, [[maybe_unused]] TaggedObject* forwardAddress,
-                             [[maybe_unused]] size_t size)
-{
-#if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
-    Runtime::GetInstance()->GCIterateThreadListWithoutLock([&](JSThread *thread) {
-        HeapProfilerInterface *profiler = thread->GetEcmaVM()->GetHeapProfile();
-        if (profiler != nullptr) {
-            base::BlockHookScope blockScope;
-            profiler->MoveEvent(address, forwardAddress, size);
-        }
-    });
-#endif
-}
-
 void Heap::AdjustSpaceSizeForAppSpawn()
 {
     SetHeapMode(HeapMode::SPAWN);
@@ -1707,11 +1674,6 @@ void Heap::AdjustSpaceSizeForAppSpawn()
     appSpawnSpace_->SetMaximumCapacity(committedSize);
     oldSpace_->SetInitialCapacity(oldSpace_->GetInitialCapacity() - committedSize);
     oldSpace_->SetMaximumCapacity(oldSpace_->GetMaximumCapacity() - committedSize);
-}
-
-bool Heap::ShouldMoveToRoSpace(JSHClass *hclass, TaggedObject *object)
-{
-    return hclass->IsString() && !Region::ObjectAddressToRange(object)->InHugeObjectSpace();
 }
 
 void Heap::AddAllocationInspectorToAllSpaces(AllocationInspector *inspector)
@@ -2559,16 +2521,6 @@ bool Heap::ParallelGCTask::Run(uint32_t threadIndex)
     ASSERT(heap_->GetWorkManager()->HasInitialized());
     while (!heap_->GetWorkManager()->HasInitialized());
     switch (taskPhase_) {
-        case ParallelGCTaskPhase::SEMI_HANDLE_THREAD_ROOTS_TASK:
-            heap_->GetSemiGCMarker()->MarkRoots(threadIndex);
-            heap_->GetSemiGCMarker()->ProcessMarkStack(threadIndex);
-            break;
-        case ParallelGCTaskPhase::SEMI_HANDLE_SNAPSHOT_TASK:
-            heap_->GetSemiGCMarker()->ProcessSnapshotRSet(threadIndex);
-            break;
-        case ParallelGCTaskPhase::SEMI_HANDLE_GLOBAL_POOL_TASK:
-            heap_->GetSemiGCMarker()->ProcessMarkStack(threadIndex);
-            break;
         case ParallelGCTaskPhase::OLD_HANDLE_GLOBAL_POOL_TASK:
             heap_->GetNonMovableMarker()->ProcessMarkStack(threadIndex);
             break;
@@ -2577,9 +2529,6 @@ bool Heap::ParallelGCTask::Run(uint32_t threadIndex)
             break;
         case ParallelGCTaskPhase::CONCURRENT_HANDLE_GLOBAL_POOL_TASK:
             heap_->GetConcurrentMarker()->ProcessConcurrentMarkTask(threadIndex);
-            break;
-        case ParallelGCTaskPhase::CONCURRENT_HANDLE_OLD_TO_NEW_TASK:
-            heap_->GetNonMovableMarker()->ProcessOldToNew(threadIndex);
             break;
         default: // LOCV_EXCL_BR_LINE
             LOG_GC(FATAL) << "this branch is unreachable, type: " << static_cast<int>(taskPhase_);
@@ -2813,7 +2762,6 @@ void Heap::UpdateWorkManager(WorkManager *workManager)
     fullGC_->workManager_ = workManager;
     incrementalMarker_->workManager_ = workManager;
     nonMovableMarker_->workManager_ = workManager;
-    semiGCMarker_->workManager_ = workManager;
     compressGCMarker_->workManager_ = workManager;
     partialGC_->workManager_ = workManager;
 }

@@ -26,7 +26,7 @@ public:
     explicit AOTSnapshot(EcmaVM *vm)
         : vm_(vm), factory_(vm->GetFactory()), thread_(vm_->GetJSThread()) {}
 
-    void Iterate(const RootVisitor &v)
+    void Iterate(RootVisitor &v)
     {
         snapshotData_.Iterate(v);
     }

@@ -24,6 +24,9 @@
 #include "ecmascript/mem/work_manager.h"
 
 namespace panda::ecmascript {
+class SharedGCMovableMarker;
+enum class SharedMarkType : uint8_t;
+
 class SharedFullGC : public GarbageCollector {
 public:
     explicit SharedFullGC(SharedHeap *heap) : sHeap_(heap), sWorkManager_(heap->GetWorkManager()) {}
@@ -44,12 +47,48 @@ protected:
     void Finish() override;
 
 private:
+    void MarkRoots(SharedMarkType markType, VMRootVisitType type);
     void UpdateRecordWeakReference();
     bool HasEvacuated(Region *region);
 
     SharedHeap *sHeap_ {nullptr};
     SharedGCWorkManager *sWorkManager_ {nullptr};
     bool isAppspawn_ {false};
+};
+
+class SharedFullGCMarkRootVisitor final : public RootVisitor {
+public:
+    explicit SharedFullGCMarkRootVisitor(SharedGCMovableMarker *marker, uint32_t threadId);
+    ~SharedFullGCMarkRootVisitor() override = default;
+
+    void VisitRoot([[maybe_unused]] Root type, ObjectSlot slot) override;
+
+    void VisitRangeRoot([[maybe_unused]] Root type, ObjectSlot start, ObjectSlot end) override;
+
+    void VisitBaseAndDerivedRoot([[maybe_unused]] Root type, ObjectSlot base, ObjectSlot derived,
+                                 uintptr_t baseOldObject) override;
+private:
+    void MarkObject(TaggedObject *object);
+
+    SharedGCMovableMarker *marker_ {nullptr};
+    uint32_t threadId_ {-1};
+};
+
+class SharedFullGCMarkObjectVisitor final : public EcmaObjectRangeVisitor<SharedFullGCMarkObjectVisitor> {
+public:
+    explicit SharedFullGCMarkObjectVisitor(SharedGCMovableMarker *marker, uint32_t threadId);
+    ~SharedFullGCMarkObjectVisitor() override = default;
+
+    void VisitObjectRangeImpl(TaggedObject *root, ObjectSlot start, ObjectSlot end, VisitObjectArea area) override;
+
+    void VisitObjectHClassImpl(TaggedObject *hclass) override;
+private:
+    void HandleSlot(ObjectSlot slot, Region *rootRegion, bool rootNeedEvacuate);
+
+    void MarkAndPush(TaggedObject *object, Region *objectRegion);
+
+    SharedGCMovableMarker *marker_ {nullptr};
+    uint32_t threadId_ {-1};
 };
 }  // namespace panda::ecmascript
 

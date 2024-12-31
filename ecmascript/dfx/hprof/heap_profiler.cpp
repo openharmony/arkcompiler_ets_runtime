@@ -275,28 +275,42 @@ static uint64_t VisitMember(ObjectSlot &slot, uint64_t objAddr, CUnorderedSet<ui
     return newAddr;
 }
 
-CUnorderedMap<uint64_t, CUnorderedSet<uint64_t>> VisitObj(CUnorderedMap<uint64_t, NewAddr *> &objMap)
-{
-    CUnorderedSet<uint64_t> notFoundObj;
-    CUnorderedMap<uint64_t, CUnorderedSet<uint64_t>> refSetMap; // old addr map to ref set
-    auto visitor = [&notFoundObj, &objMap, &refSetMap] (TaggedObject *root, ObjectSlot start,
-                                                        ObjectSlot end, VisitObjectArea area) {
+class VisitObjVisitor final : public EcmaObjectRangeVisitor<VisitObjVisitor> {
+public:
+    explicit VisitObjVisitor(CUnorderedSet<uint64_t> &notFoundObj, CUnorderedMap<uint64_t, NewAddr *> &objMap,
+                             CUnorderedMap<uint64_t, CUnorderedSet<uint64_t>> &refSetMap)
+        : notFoundObj_(notFoundObj), objMap_(objMap), refSetMap_(refSetMap) {}
+    ~VisitObjVisitor() = default;
+
+    void VisitObjectRangeImpl(TaggedObject *root, ObjectSlot start, ObjectSlot end, VisitObjectArea area)
+    {
         if (area == VisitObjectArea::RAW_DATA || area == VisitObjectArea::NATIVE_POINTER) {
             return;
         }
         auto jsHclass = root->GetClass();
         auto objAddr = reinterpret_cast<uint64_t>(root);
         CUnorderedSet<uint64_t> *refSet = nullptr;
-        if (refSetMap.find(objAddr) != refSetMap.end()) {
-            refSet = &refSetMap[objAddr];
+        if (refSetMap_.find(objAddr) != refSetMap_.end()) {
+            refSet = &refSetMap_[objAddr];
         }
         for (ObjectSlot slot = start; slot < end; slot++) {
-            auto newAddr = VisitMember(slot, objAddr, notFoundObj, jsHclass, objMap);
+            auto newAddr = VisitMember(slot, objAddr, notFoundObj_, jsHclass, objMap_);
             if (jsHclass->IsJsGlobalEnv() && refSet != nullptr && newAddr != 0LL) {
                 refSet->insert(newAddr);
             }
         }
-    };
+    }
+private:
+    CUnorderedSet<uint64_t> &notFoundObj_;
+    CUnorderedMap<uint64_t, NewAddr *> &objMap_;
+    CUnorderedMap<uint64_t, CUnorderedSet<uint64_t>> &refSetMap_;
+};
+
+CUnorderedMap<uint64_t, CUnorderedSet<uint64_t>> VisitObj(CUnorderedMap<uint64_t, NewAddr *> &objMap)
+{
+    CUnorderedSet<uint64_t> notFoundObj;
+    CUnorderedMap<uint64_t, CUnorderedSet<uint64_t>> refSetMap; // old addr map to ref set
+    VisitObjVisitor visitor(notFoundObj, objMap, refSetMap);
     for (auto objInfo : objMap) {
         auto newAddr = objInfo.second->Data();
         auto jsHclassAddr = *reinterpret_cast<uint64_t *>(newAddr);
@@ -616,39 +630,84 @@ static CUnorderedSet<TaggedObject*> GetRootObjects(const EcmaVM *vm)
 {
     CUnorderedSet<TaggedObject*> result {};
     HeapRootVisitor visitor;
-    uint32_t rootCnt1 = 0;
-    RootVisitor rootEdgeBuilder = [&result, &rootCnt1](
-        [[maybe_unused]] Root type, ObjectSlot slot) {
-        JSTaggedValue value((slot).GetTaggedType());
-        if (!value.IsHeapObject()) {
-            return;
-        }
-        ++rootCnt1;
-        TaggedObject *root = value.GetTaggedObject();
-        result.insert(root);
-    };
-    RootBaseAndDerivedVisitor rootBaseEdgeBuilder = []
-        ([[maybe_unused]] Root type, [[maybe_unused]] ObjectSlot base, [[maybe_unused]] ObjectSlot derived,
-         [[maybe_unused]] uintptr_t baseOldObject) {
-    };
-    uint32_t rootCnt2 = 0;
-    RootRangeVisitor rootRangeEdgeBuilder = [&result, &rootCnt2]([[maybe_unused]] Root type,
-        ObjectSlot start, ObjectSlot end) {
-        for (ObjectSlot slot = start; slot < end; slot++) {
+
+    class EdgeBuilderRootVisitor final : public RootVisitor {
+    public:
+        explicit EdgeBuilderRootVisitor(CUnorderedSet<TaggedObject*> &result) : result_(result) {}
+        ~EdgeBuilderRootVisitor() = default;
+
+        void VisitRoot([[maybe_unused]] Root type, ObjectSlot slot) override
+        {
             JSTaggedValue value((slot).GetTaggedType());
             if (!value.IsHeapObject()) {
-                continue;
+                return;
             }
-            ++rootCnt2;
             TaggedObject *root = value.GetTaggedObject();
-            result.insert(root);
+            result_.insert(root);
         }
+
+        void VisitRangeRoot([[maybe_unused]] Root type, ObjectSlot start, ObjectSlot end) override
+        {
+            for (ObjectSlot slot = start; slot < end; slot++) {
+                JSTaggedValue value((slot).GetTaggedType());
+                if (!value.IsHeapObject()) {
+                    continue;
+                }
+                TaggedObject *root = value.GetTaggedObject();
+                result_.insert(root);
+            }
+        }
+
+        void VisitBaseAndDerivedRoot([[maybe_unused]] Root type, [[maybe_unused]] ObjectSlot base,
+            [[maybe_unused]] ObjectSlot derived, [[maybe_unused]] uintptr_t baseOldObject) override {}
+    private:
+        CUnorderedSet<TaggedObject*> &result_;
     };
-    visitor.VisitHeapRoots(vm->GetJSThread(), rootEdgeBuilder, rootRangeEdgeBuilder, rootBaseEdgeBuilder);
-    SharedModuleManager::GetInstance()->Iterate(rootEdgeBuilder);
-    Runtime::GetInstance()->IterateCachedStringRoot(rootRangeEdgeBuilder);
+    EdgeBuilderRootVisitor edgeBuilderRootVisitor(result);
+
+    visitor.VisitHeapRoots(vm->GetJSThread(), edgeBuilderRootVisitor);
+    SharedModuleManager::GetInstance()->Iterate(edgeBuilderRootVisitor);
+    Runtime::GetInstance()->IterateCachedStringRoot(edgeBuilderRootVisitor);
     return result;
 }
+
+class GetNotFoundObjVisitor final : public EcmaObjectRangeVisitor<GetNotFoundObjVisitor> {
+public:
+    explicit GetNotFoundObjVisitor(CUnorderedSet<TaggedObject *> &notFoundObjSet,
+                                   CUnorderedSet<TaggedObject*> &allHeapObjSet)
+        : notFoundObjSet_(notFoundObjSet), allHeapObjSet_(allHeapObjSet) {}
+    ~GetNotFoundObjVisitor() = default;
+
+    void VisitObjectRangeImpl([[maybe_unused]] TaggedObject *root, ObjectSlot start, ObjectSlot end,
+                              VisitObjectArea area)
+    {
+        if (area == VisitObjectArea::RAW_DATA || area == VisitObjectArea::NATIVE_POINTER) {
+            return;
+        }
+        for (ObjectSlot slot = start; slot < end; slot++) {
+            auto taggedPointerAddr = reinterpret_cast<uint64_t **>(slot.SlotAddress());
+            JSTaggedValue value(reinterpret_cast<TaggedObject *>(*taggedPointerAddr));
+            auto originalAddr = reinterpret_cast<uint64_t>(*taggedPointerAddr);
+            if (!value.IsHeapObject() || originalAddr == 0) {
+                continue;
+            }
+            if (value.IsWeakForHeapObject()) {
+                originalAddr -= 1;
+            }
+            if (allHeapObjSet_.find(reinterpret_cast<TaggedObject *>(originalAddr)) != allHeapObjSet_.end()) {
+                continue;
+            }
+            auto obj = reinterpret_cast<TaggedObject *>(*taggedPointerAddr);
+            if (notFoundObjSet_.find(obj) != notFoundObjSet_.end()) {
+                continue;
+            }
+            notFoundObjSet_.insert(obj);
+        }
+    }
+private:
+    CUnorderedSet<TaggedObject *> &notFoundObjSet_;
+    CUnorderedSet<TaggedObject*> &allHeapObjSet_;
+};
 
 size_t GetNotFoundObj(const EcmaVM *vm)
 {
@@ -665,31 +724,7 @@ size_t GetNotFoundObj(const EcmaVM *vm)
     LOG_ECMA(INFO) << "ark raw heap dump GetNotFound heap count:" << allHeapObjSet.size()
                    << ", heap size=" << heapTotalSize;
     CUnorderedSet<TaggedObject *> notFoundObjSet {};
-    auto visitor = [&notFoundObjSet, &allHeapObjSet] ([[maybe_unused]]TaggedObject *root, ObjectSlot start,
-                                                      ObjectSlot end, VisitObjectArea area) {
-        if (area == VisitObjectArea::RAW_DATA || area == VisitObjectArea::NATIVE_POINTER) {
-            return;
-        }
-        for (ObjectSlot slot = start; slot < end; slot++) {
-            auto taggedPointerAddr = reinterpret_cast<uint64_t **>(slot.SlotAddress());
-            JSTaggedValue value(reinterpret_cast<TaggedObject *>(*taggedPointerAddr));
-            auto originalAddr = reinterpret_cast<uint64_t>(*taggedPointerAddr);
-            if (!value.IsHeapObject() || originalAddr == 0) {
-                continue;
-            }
-            if (value.IsWeakForHeapObject()) {
-                originalAddr -= 1;
-            }
-            if (allHeapObjSet.find(reinterpret_cast<TaggedObject *>(originalAddr)) != allHeapObjSet.end()) {
-                continue;
-            }
-            auto obj = reinterpret_cast<TaggedObject *>(*taggedPointerAddr);
-            if (notFoundObjSet.find(obj) != notFoundObjSet.end()) {
-                continue;
-            }
-            notFoundObjSet.insert(obj);
-        }
-    };
+    GetNotFoundObjVisitor visitor(notFoundObjSet, allHeapObjSet);
     for (auto obj : allHeapObjSet) {
         ObjectXRay::VisitObjectBody<VisitType::OLD_GC_VISIT>(obj, obj->GetClass(), visitor);
     }

@@ -114,12 +114,30 @@ void Snapshot::SerializeBuiltins(const CString &fileName)
     std::unordered_map<uint64_t, std::pair<uint64_t, EncodeBit>> data;
     CQueue<TaggedObject *> objectQueue;
 
+    class SerializeBuiltinsRootVisitor final : public RootVisitor {
+    public:
+        explicit SerializeBuiltinsRootVisitor(SnapshotProcessor *processor,
+            std::unordered_map<uint64_t, std::pair<uint64_t, EncodeBit>> *data, CQueue<TaggedObject *> *objectQueue)
+            : processor_(processor), data_(data), objectQueue_(objectQueue) {}
+        ~SerializeBuiltinsRootVisitor() = default;
+
+        void VisitRoot([[maybe_unused]] Root type, [[maybe_unused]] ObjectSlot slot) override {}
+        void VisitRangeRoot([[maybe_unused]] Root type, ObjectSlot start, ObjectSlot end) override
+        {
+            processor_->EncodeTaggedObjectRange(start, end, objectQueue_, data_);
+        }
+        void VisitBaseAndDerivedRoot([[maybe_unused]] Root type,  [[maybe_unused]] ObjectSlot base,
+            [[maybe_unused]] ObjectSlot derived, [[maybe_unused]] uintptr_t baseOldObject) override {}
+    private:
+        SnapshotProcessor *processor_;
+        std::unordered_map<uint64_t, std::pair<uint64_t, EncodeBit>> *data_;
+        CQueue<TaggedObject *> *objectQueue_;
+    };
+    SerializeBuiltinsRootVisitor serializeBuiltinsRootVisitor(&processor, &data, &objectQueue);
+
     auto globalEnvHandle = vm_->GetGlobalEnv();
     auto constant = const_cast<GlobalEnvConstants *>(vm_->GetJSThread()->GlobalConstants());
-    constant->VisitRangeSlot([&objectQueue, &data, &processor]([[maybe_unused]] Root type,
-                                                               ObjectSlot start, ObjectSlot end) {
-        processor.EncodeTaggedObjectRange(start, end, &objectQueue, &data);
-    });
+    constant->Iterate(serializeBuiltinsRootVisitor);
     processor.EncodeTaggedObject(*globalEnvHandle, &objectQueue, &data);
     size_t rootObjSize = objectQueue.size();
     processor.ProcessObjectQueue(&objectQueue, &data);

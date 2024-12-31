@@ -17,6 +17,7 @@
 
 #include "ecmascript/checkpoint/thread_state_transition.h"
 #include "ecmascript/mem/shared_heap/shared_gc_marker-inl.h"
+#include "ecmascript/mem/shared_heap/shared_gc_visitor-inl.h"
 #include "ecmascript/mem/verification.h"
 
 namespace panda::ecmascript {
@@ -36,6 +37,12 @@ void SharedConcurrentMarker::EnableConcurrentMarking(EnableConcurrentMarkType ty
     } else {
         enableMarkType_ = type;
     }
+}
+
+void SharedConcurrentMarker::MarkRoots(SharedMarkType markType)
+{
+    SharedGCMarkRootVisitor sharedGCMarkRootVisitor(sWorkManager_, DAEMON_THREAD_INDEX);
+    sHeap_->GetSharedGCMarker()->MarkRoots(sharedGCMarkRootVisitor, markType);
 }
 
 void SharedConcurrentMarker::Mark(TriggerGCType gcType, GCReason gcReason)
@@ -80,7 +87,7 @@ void SharedConcurrentMarker::ReMark()
     SharedGCMarker *sharedGCMarker = sHeap_->GetSharedGCMarker();
     // If enable shared concurrent mark, the recorded weak reference slots from local to share may be changed
     // during LocalGC. For now just re-scan the local_to_share bit to record and update these weak references.
-    sharedGCMarker->MarkRoots(DAEMON_THREAD_INDEX, SharedMarkType::CONCURRENT_MARK_REMARK);
+    MarkRoots(SharedMarkType::CONCURRENT_MARK_REMARK);
     sharedGCMarker->DoMark<SharedMarkType::CONCURRENT_MARK_REMARK>(DAEMON_THREAD_INDEX);
     sharedGCMarker->MergeBackAndResetRSetWorkListHandler();
     sHeap_->WaitRunningTaskFinished();
@@ -123,7 +130,7 @@ void SharedConcurrentMarker::InitializeMarking()
         current->ResetAliveObject();
     });
     sWorkManager_->Initialize(TriggerGCType::SHARED_GC, SharedParallelMarkPhase::SHARED_MARK_TASK);
-    sHeap_->GetSharedGCMarker()->MarkRoots(DAEMON_THREAD_INDEX, SharedMarkType::CONCURRENT_MARK_INITIAL_MARK);
+    MarkRoots(SharedMarkType::CONCURRENT_MARK_INITIAL_MARK);
 }
 
 void SharedConcurrentMarker::DoMarking()

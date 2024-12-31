@@ -531,11 +531,11 @@ JSTaggedValue ModuleManager::GetModuleNamespaceInternal(JSTaggedValue localName,
     return moduleNamespace;
 }
 
-void ModuleManager::Iterate(const RootVisitor &v)
+void ModuleManager::Iterate(RootVisitor &v)
 {
     for (auto &it : resolvedModules_) {
         ObjectSlot slot(reinterpret_cast<uintptr_t>(&it.second));
-        v(Root::ROOT_VM, slot);
+        v.VisitRoot(Root::ROOT_VM, slot);
         ASSERT(slot.GetTaggedValue() == it.second);
     }
 }

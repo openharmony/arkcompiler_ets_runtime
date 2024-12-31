@@ -52,7 +52,7 @@ public:
 
     JSTaggedValue GetLazySendableModuleValueImpl(JSThread *thread, int32_t index, JSTaggedValue currentModule) const;
 
-    void Iterate(const RootVisitor &v);
+    void Iterate(RootVisitor &v);
 
     StateVisit &findModuleMutexWithLock(JSThread *thread, const JSHandle<SourceTextModule> &module);
 

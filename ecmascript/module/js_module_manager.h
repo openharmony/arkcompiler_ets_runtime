@@ -88,7 +88,7 @@ public:
     JSHandle<JSTaggedValue> GenerateSendableFuncModule(const JSHandle<JSTaggedValue> &module);
 
     JSHandle<JSTaggedValue> TryGetImportedModule(const CString& referencing);
-    void Iterate(const RootVisitor &v);
+    void Iterate(RootVisitor &v);
     void AddToInstantiatingSModuleList(const CString &record);
     ModuleExecuteMode GetExecuteMode() const
     {

@@ -18,6 +18,7 @@
 #include "ecmascript/mem/shared_heap/shared_concurrent_marker.h"
 #include "ecmascript/mem/shared_heap/shared_concurrent_sweeper.h"
 #include "ecmascript/mem/shared_heap/shared_gc_marker-inl.h"
+#include "ecmascript/mem/shared_heap/shared_gc_visitor-inl.h"
 #include "ecmascript/mem/verification.h"
 
 namespace panda::ecmascript {
@@ -70,6 +71,13 @@ void SharedGC::Initialize()
         sWorkManager_->Initialize(TriggerGCType::SHARED_GC, SharedParallelMarkPhase::SHARED_MARK_TASK);
     }
 }
+
+void SharedGC::MarkRoots(SharedMarkType markType)
+{
+    SharedGCMarkRootVisitor sharedGCMarkRootVisitor(sWorkManager_, DAEMON_THREAD_INDEX);
+    sHeap_->GetSharedGCMarker()->MarkRoots(sharedGCMarkRootVisitor, markType);
+}
+
 void SharedGC::Mark()
 {
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedGC::Mark");
@@ -79,7 +87,7 @@ void SharedGC::Mark()
         return;
     }
     SharedGCMarker *marker = sHeap_->GetSharedGCMarker();
-    marker->MarkRoots(DAEMON_THREAD_INDEX, SharedMarkType::NOT_CONCURRENT_MARK);
+    MarkRoots(SharedMarkType::NOT_CONCURRENT_MARK);
     marker->DoMark<SharedMarkType::NOT_CONCURRENT_MARK>(DAEMON_THREAD_INDEX);
     marker->MergeBackAndResetRSetWorkListHandler();
     sHeap_->WaitRunningTaskFinished();
