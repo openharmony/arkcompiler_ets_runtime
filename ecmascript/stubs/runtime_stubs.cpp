@@ -3417,8 +3417,10 @@ void RuntimeStubs::MarkingBarrierWithEden([[maybe_unused]] uintptr_t argGlue,
     Barriers::Update(thread, slotAddr, objectRegion, value, valueRegion);
 }
 
-void RuntimeStubs::SharedGCMarkingBarrier([[maybe_unused]] uintptr_t argGlue, TaggedObject *value)
+void RuntimeStubs::SharedGCMarkingBarrier(uintptr_t argGlue, uintptr_t object, size_t offset, TaggedObject *value)
 {
+    uintptr_t slotAddr = object + offset;
+    Region *objectRegion = Region::ObjectAddressToRange(object);
     Region *valueRegion = Region::ObjectAddressToRange(value);
     ASSERT(valueRegion->InSharedSweepableSpace());
     auto thread = JSThread::GlueToJSThread(argGlue);
@@ -3428,7 +3430,7 @@ void RuntimeStubs::SharedGCMarkingBarrier([[maybe_unused]] uintptr_t argGlue, Ta
     }
 #endif
     ASSERT(thread->IsSharedConcurrentMarkingOrFinished());
-    Barriers::UpdateShared(thread, value, valueRegion);
+    Barriers::UpdateShared(thread, slotAddr, objectRegion, value, valueRegion);
 }
 
 bool RuntimeStubs::BigIntEquals(JSTaggedType left, JSTaggedType right)

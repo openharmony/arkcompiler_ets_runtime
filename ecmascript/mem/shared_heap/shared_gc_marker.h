@@ -52,8 +52,6 @@ public:
     inline void ProcessThenMergeBackRSetFromBoundJSThread(RSetWorkListHandler *handler);
     template<SharedMarkType markType>
     inline void DoMark(uint32_t threadId);
-    template <typename Callback>
-    inline bool VisitBodyInObj(TaggedObject *root, ObjectSlot start, ObjectSlot end, Callback callback);
     inline void HandleLocalRoots(uint32_t threadId, [[maybe_unused]] Root type, ObjectSlot slot);
     inline void HandleLocalRangeRoots(uint32_t threadId, [[maybe_unused]] Root type, ObjectSlot start,
                                       ObjectSlot end);
@@ -66,23 +64,12 @@ public:
 
     inline void MarkObjectFromJSThread(WorkNode *&localBuffer, TaggedObject *object);
 
-    virtual inline void MarkValue([[maybe_unused]] uint32_t threadId, [[maybe_unused]] ObjectSlot &slot)
-    {
-        LOG_GC(FATAL) << " can not call this method";
-    }
-
     virtual inline void MarkObject([[maybe_unused]] uint32_t threadId, [[maybe_unused]] TaggedObject *object,
                                    [[maybe_unused]] ObjectSlot &slot)
     {
         LOG_GC(FATAL) << " can not call this method";
     }
 
-    virtual inline void HandleLocalDerivedRoots([[maybe_unused]] Root type, [[maybe_unused]] ObjectSlot base,
-                                                [[maybe_unused]] ObjectSlot derived,
-                                                [[maybe_unused]] uintptr_t baseOldObject)
-    {
-        LOG_GC(FATAL) << " can not call this method";
-    }
     virtual void ProcessMarkStack([[maybe_unused]] uint32_t threadId)
     {
         LOG_GC(FATAL) << " can not call this method";
@@ -113,10 +100,7 @@ public:
     void ProcessMarkStack(uint32_t threadId) override;
 
 protected:
-    inline void MarkValue(uint32_t threadId, ObjectSlot &slot) override;
     inline void MarkObject(uint32_t threadId, TaggedObject *object, ObjectSlot &slot) override;
-    inline void HandleLocalDerivedRoots(Root type, ObjectSlot base, ObjectSlot derived,
-                                        uintptr_t baseOldObject) override;
 };
 
 class SharedGCMovableMarker final : public SharedGCMarkerBase {
@@ -127,9 +111,7 @@ public:
     void ProcessMarkStack(uint32_t threadId) override;
 
 protected:
-    inline void HandleLocalDerivedRoots(Root type, ObjectSlot base, ObjectSlot derived,
-                                        uintptr_t baseOldObject) override;
-    inline void MarkValue(uint32_t threadId, ObjectSlot &slot) override;
+    inline void MarkValue(uint32_t threadId, ObjectSlot &slot);
     inline void MarkObject(uint32_t threadId, TaggedObject *object, ObjectSlot &slot) override;
     inline uintptr_t AllocateForwardAddress(uint32_t threadId, size_t size);
     inline void EvacuateObject(uint32_t threadId, TaggedObject *object, const MarkWord &markWord, ObjectSlot slot);

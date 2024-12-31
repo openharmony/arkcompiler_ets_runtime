@@ -68,7 +68,7 @@ public:
     void Mark(TriggerGCType gcType, GCReason gcReason);             // In daemon thread
     void ReMark();                          // In daemon thread
 
-    void Reset(bool clearGCBits = true);    // In daemon thread
+    void Reset(bool clearGCBits);    // In daemon thread
 
     void ResetWorkManager(SharedGCWorkManager *sWorkManager);       // In js thread
 

@@ -160,19 +160,20 @@ MemMap MemMapAllocator::Allocate(const uint32_t threadId, size_t size, size_t al
     return mem;
 }
 
-void MemMapAllocator::CacheOrFree(void *mem, size_t size, bool isRegular, size_t cachedSize, bool shouldPageTag)
+void MemMapAllocator::CacheOrFree(void *mem, size_t size, bool isRegular, size_t cachedSize, bool shouldPageTag,
+                                  bool skipCache)
 {
     // Clear ThreadId tag and tag the mem with ARKTS HEAP.
     if (shouldPageTag) {
         PageTag(mem, size, PageTagType::HEAP);
     }
-    if (isRegular && !memMapPool_.IsRegularCommittedFull(cachedSize)) {
+    if (!skipCache && isRegular && !memMapPool_.IsRegularCommittedFull(cachedSize)) {
         // Cache regions to accelerate allocation.
         memMapPool_.AddMemToCommittedCache(mem, size);
         return;
     }
     Free(mem, size, isRegular);
-    if (isRegular && memMapPool_.ShouldFreeMore(cachedSize) > 0) {
+    if (!skipCache && isRegular && memMapPool_.ShouldFreeMore(cachedSize) > 0) {
         int freeNum = memMapPool_.ShouldFreeMore(cachedSize);
         for (int i = 0; i < freeNum; i++) {
             void *freeMem = memMapPool_.GetRegularMemFromCommitted(size).GetMem();

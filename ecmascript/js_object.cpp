@@ -69,7 +69,7 @@ Method *ECMAObject::GetCallTarget() const
     } else {
         value = JSProxy::ConstCast(obj)->GetMethod();
     }
-    return Method::Cast(value.GetTaggedObject());
+    return reinterpret_cast<Method *>(value.GetTaggedObject());
 }
 
 JSHandle<TaggedArray> JSObject::GrowElementsCapacity(const JSThread *thread, const JSHandle<JSObject> &obj,

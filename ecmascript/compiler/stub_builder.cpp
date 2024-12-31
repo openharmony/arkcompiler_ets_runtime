@@ -1963,7 +1963,7 @@ void StubBuilder::SetSValueWithBarrier(GateRef glue, GateRef obj, GateRef offset
                    &exit, &sharedMarking);
 
             Bind(&sharedMarking);
-            CallNGCRuntime(glue, RTSTUB_ID(SharedGCMarkingBarrier), {glue, value});
+            CallNGCRuntime(glue, RTSTUB_ID(SharedGCMarkingBarrier), {glue, obj, offset, value});
             Jump(&exit);
         }
     }

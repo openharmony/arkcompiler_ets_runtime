@@ -52,6 +52,7 @@ void SharedFullGC::Initialize()
     }
     sHeap_->GetAppSpawnSpace()->EnumerateRegions([](Region *current) {
         current->ClearMarkGCBitset();
+        current->ClearCrossRegionRSet();
     });
     sHeap_->EnumerateOldSpaceRegions([](Region *current) {
         ASSERT(current->InSharedSweepableSpace());

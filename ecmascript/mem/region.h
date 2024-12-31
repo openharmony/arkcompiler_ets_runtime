@@ -89,6 +89,7 @@ enum RegionGCFlags {
     // ONLY used for heap verification.
     IN_INACTIVE_SEMI_SPACE = 1 << 13,
     IN_NEW_TO_OLD_SET = 1 << 14,
+    IN_SHARED_COLLECT_SET = 1 << 15,
 };
 
 // Currently only use for region in LinearSpace, to check if the region is allocated during concurrent marking.
@@ -594,6 +595,11 @@ public:
     bool InCollectSet() const
     {
         return IsGCFlagSet(RegionGCFlags::IN_COLLECT_SET);
+    }
+
+    bool InSCollectSet() const
+    {
+        return IsGCFlagSet(RegionGCFlags::IN_SHARED_COLLECT_SET);
     }
 
     bool InGeneralNewSpaceOrCSet() const

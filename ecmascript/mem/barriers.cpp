@@ -73,11 +73,14 @@ void Barriers::Update(const JSThread *thread, uintptr_t slotAddr, Region *object
     }
 }
 
-void Barriers::UpdateShared(const JSThread *thread, TaggedObject *value, Region *valueRegion)
+void Barriers::UpdateShared(const JSThread *thread, uintptr_t slotAddr, Region *objectRegion, TaggedObject *value,
+                            Region *valueRegion)
 {
     ASSERT(DaemonThread::GetInstance()->IsConcurrentMarkingOrFinished());
     ASSERT(valueRegion->InSharedSweepableSpace());
-
+    if (valueRegion->InSCollectSet() && objectRegion->InSharedHeap()) {
+        objectRegion->AtomicInsertCrossRegionRSet(slotAddr);
+    }
     // Weak ref record and concurrent mark record maybe conflict.
     // This conflict is solved by keeping alive weak reference. A small amount of floating garbage may be added.
     TaggedObject *heapValue = JSTaggedValue(value).GetHeapObject();

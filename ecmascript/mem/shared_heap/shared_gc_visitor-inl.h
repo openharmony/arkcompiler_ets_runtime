@@ -69,6 +69,7 @@ SharedGCMarkObjectVisitor::SharedGCMarkObjectVisitor(SharedGCWorkManager *sWorkM
 void SharedGCMarkObjectVisitor::VisitObjectRangeImpl(TaggedObject *root, ObjectSlot start, ObjectSlot end,
                                                      VisitObjectArea area)
 {
+    Region *rootRegion = Region::ObjectAddressToRange(root);
     if (UNLIKELY(area == VisitObjectArea::IN_OBJECT)) {
         JSHClass *hclass = root->SynchronizedGetClass();
         ASSERT(!hclass->IsAllTaggedProp());
@@ -80,13 +81,13 @@ void SharedGCMarkObjectVisitor::VisitObjectRangeImpl(TaggedObject *root, ObjectS
         for (ObjectSlot slot = start; slot < end; slot++) {
             PropertyAttributes attr = layout->GetAttr(index++);
             if (attr.IsTaggedRep()) {
-                HandleSlot(slot);
+                HandleSlot(slot, rootRegion);
             }
         }
         return;
     }
     for (ObjectSlot slot = start; slot < end; slot++) {
-        HandleSlot(slot);
+        HandleSlot(slot, rootRegion);
     }
 }
 
@@ -100,7 +101,7 @@ void SharedGCMarkObjectVisitor::VisitObjectHClassImpl(TaggedObject *hclass)
     }
 }
 
-void SharedGCMarkObjectVisitor::HandleSlot(ObjectSlot slot)
+void SharedGCMarkObjectVisitor::HandleSlot(ObjectSlot slot, Region *rootRegion)
 {
     JSTaggedValue value(slot.GetTaggedType());
     if (!value.IsHeapObject()) {
@@ -117,6 +118,9 @@ void SharedGCMarkObjectVisitor::HandleSlot(ObjectSlot slot)
     if (!value.IsWeakForHeapObject()) {
         TaggedObject *object = value.GetTaggedObject();
         MarkAndPush(object, objectRegion);
+        if (objectRegion->InSCollectSet()) {
+            rootRegion->AtomicInsertCrossRegionRSet(slot.SlotAddress());
+        }
     } else {
         RecordWeakReference(reinterpret_cast<JSTaggedType*>(slot.SlotAddress()));
     }

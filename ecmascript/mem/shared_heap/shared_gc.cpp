@@ -17,6 +17,7 @@
 
 #include "ecmascript/mem/shared_heap/shared_concurrent_marker.h"
 #include "ecmascript/mem/shared_heap/shared_concurrent_sweeper.h"
+#include "ecmascript/mem/shared_heap/shared_gc_evacuator.h"
 #include "ecmascript/mem/shared_heap/shared_gc_marker-inl.h"
 #include "ecmascript/mem/shared_heap/shared_gc_visitor-inl.h"
 #include "ecmascript/mem/verification.h"
@@ -45,6 +46,8 @@ void SharedGC::RunPhases()
         LOG_ECMA(DEBUG) << "start verify mark";
         SharedHeapVerification(sHeap_, VerifyKind::VERIFY_SHARED_GC_MARK).VerifyMark(markingInProgress_);
     }
+    PreSweep();
+    Evacuate();
     Sweep();
     if (UNLIKELY(sHeap_->ShouldVerifyHeap())) {
         // verify sweep
@@ -63,6 +66,7 @@ void SharedGC::Initialize()
         sHeap_->Prepare(true);
         sHeap_->GetAppSpawnSpace()->EnumerateRegions([](Region *current) {
             current->ClearMarkGCBitset();
+            current->ClearCrossRegionRSet();
         });
         sHeap_->EnumerateOldSpaceRegions([](Region *current) {
             ASSERT(current->InSharedSweepableSpace());
@@ -92,19 +96,40 @@ void SharedGC::Mark()
     marker->MergeBackAndResetRSetWorkListHandler();
     sHeap_->WaitRunningTaskFinished();
 }
+void SharedGC::PreSweep()
+{
+    sHeap_->GetSweeper()->Sweep(false);
+    UpdateRecordWeakReference();
+}
+
+void SharedGC::Evacuate()
+{
+    if (sHeap_->HasCSetRegions()) {
+        sHeap_->GetSharedGCEvacuator()->Evacuate();
+    }
+}
 
 void SharedGC::Sweep()
 {
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedGC::Sweep");
     TRACE_GC(GCStats::Scope::ScopeId::Sweep, sHeap_->GetEcmaGCStats());
-    UpdateRecordWeakReference();
     WeakRootVisitor gcUpdateWeak = [](TaggedObject *header) -> TaggedObject* {
         Region *objectRegion = Region::ObjectAddressToRange(header);
         if (UNLIKELY(objectRegion == nullptr)) {
             LOG_GC(ERROR) << "SharedGC updateWeakReference: region is nullptr, header is " << header;
             return nullptr;
         }
-        if (!objectRegion->InSharedSweepableSpace() || objectRegion->Test(header)) {
+        if (!objectRegion->InSharedSweepableSpace()) {
+            return header;
+        }
+        if (objectRegion->InSCollectSet()) {
+            MarkWord markWord(header);
+            if (markWord.IsForwardingAddress()) {
+                return markWord.ToForwardingAddress();
+            }
+            return nullptr;
+        }
+        if (objectRegion->Test(header)) {
             return header;
         }
         return nullptr;
@@ -113,15 +138,17 @@ void SharedGC::Sweep()
     stringTableCleaner->PostSweepWeakRefTask(gcUpdateWeak);
     Runtime::GetInstance()->ProcessNativeDeleteInSharedGC(gcUpdateWeak);
     Runtime::GetInstance()->ProcessSharedNativeDelete(gcUpdateWeak);
-
-    Runtime::GetInstance()->GCIterateThreadList([&](JSThread *thread) {
+    bool needClearCache = sHeap_->HasCSetRegions();
+    Runtime::GetInstance()->GCIterateThreadList([&gcUpdateWeak, needClearCache](JSThread *thread) {
         ASSERT(!thread->IsInRunningState());
         thread->IterateWeakEcmaGlobalStorage(gcUpdateWeak, GCKind::SHARED_GC);
         const_cast<Heap*>(thread->GetEcmaVM()->GetHeap())->ResetTlab();
+        if (needClearCache) {
+            thread->ClearContextCachedConstantPool();
+        }
     });
 
     stringTableCleaner->JoinAndWaitSweepWeakRefTask(gcUpdateWeak);
-    sHeap_->GetSweeper()->Sweep(false);
     sHeap_->GetSweeper()->PostTask(false);
 }
 

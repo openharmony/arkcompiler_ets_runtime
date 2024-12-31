@@ -582,6 +582,7 @@ class ObjectFactory;
     V(FullGcCause,                    FULL_GC_CAUSE,                         "full")                        \
     V(AppSpawnFullGcCause,            APP_SPAWN_FULL_GC_CAUSE,               "app_spawn_full")              \
     V(SharedGcCause,                  SHARED_GC_CAUSE,                       "shared")                      \
+    V(SharedPartialGcCause,           SHARED_PARTIAL_GC_CAUSE,               "shared_partial")              \
     V(SharedFullGcCause,              SHARED_FULL_GC_CAUSE,                  "shared_full")                 \
     V(AppSpawnSharedFullGcCause,      APP_SPAWN_SHARED_FULL_GC_CAUSE,        "app_spawn_shared_full")       \
     V(SymbolLeftParentheses,          SYMBOL_LEFT_PARENTHESES,               "Symbol(")
