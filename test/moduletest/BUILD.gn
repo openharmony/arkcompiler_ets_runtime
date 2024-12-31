@@ -244,6 +244,7 @@ group("ark_js_assert_moduletest") {
     "regressdate",
     "regresssuper",
     "objectfreeze",
+    "getvaluefrombuffer",
   ]
 
   deps = []
@@ -466,6 +467,7 @@ group("ark_asm_assert_test") {
     "regexp",
     "deregistermodule",
     "getpropertybyic",
+    "getvaluefrombuffer",
   ]
   deps = []
 
@@ -665,6 +667,7 @@ group("ark_asm_single_step_assert_test") {
     "yieldstar",
     "getpropertybyic",
     "regressarraybuffer",
+    "getvaluefrombuffer",
   ]
 
   deps = []

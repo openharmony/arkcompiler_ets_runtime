@@ -370,8 +370,16 @@ GateRef BuiltinsTypedArrayStubBuilder::GetValueFromBuffer(GateRef buffer, GateRe
             {
                 GateRef byteIndex = Int32Add(Int32Mul(index, Int32(base::ElementSize::EIGHT)), offset);
                 GateRef block = GetDataPointFromBuffer(buffer);
-                GateRef re = Load(VariableType::INT64(), block, byteIndex);
-                result = DoubleToTaggedDoublePtr(CastInt64ToFloat64(re));
+                GateRef tmpResult = CastInt64ToFloat64(Load(VariableType::INT64(), block, byteIndex));
+
+                Label tmpResultIsNumber(env);
+                Label tmpResultIsNan(env);
+                BRANCH(env->GetBuilder()->DoubleIsImpureNaN(tmpResult), &tmpResultIsNan, &tmpResultIsNumber);
+                Bind(&tmpResultIsNan);
+                result = DoubleToTaggedDoublePtr(Double(base::NAN_VALUE));
+                Jump(&exit);
+                Bind(&tmpResultIsNumber);
+                result = DoubleToTaggedDoublePtr(tmpResult);
                 Jump(&exit);
             }
         }

@@ -14,26 +14,21 @@
  */
 
 /*
- * @tc.name:proxy
- * @tc.desc:test proxy
+ * @tc.name:getvaluefrombuffer
+ * @tc.desc:test BuiltinsTypedArrayStubBuilder::GetValueFromBuffer
  * @tc.type: FUNC
- * @tc.require: issueIBCUJM
+ * @tc.require: issueIBDK44
  */
 
-// This case aims to test if there's stack-overflow checking in RuntimeOptConstructProxy
+// This case aims to check overflow of double in BuiltinsTypedArrayStubBuilder::GetValueFromBuffer
 {
-    let v0 = new Proxy(function () {}, {});
-    for (let v1 = 0; v1 < 10000; v1++) {
-        v0 = new Proxy(v0, {});
-    }
-    let error = new Error();
-    try {
-        new v0(0);
-    } catch (e) {
-        error = e;
-    }
-    assert_equal(error.name, "RangeError");
-    assert_equal(error.message, "Stack overflow!");
+    let v0 = new ArrayBuffer(8);
+    let v1 = new Int32Array(v0);
+    v1[0] = 0xcafe0000;
+    v1[1] = 0xffff0000;
+    let v2 = new Float64Array(v0);
+    Array.prototype.push.apply(v0, v2);
+    assert_equal(Number.isNaN(v2[0]), true);
 }
 
 test_end();

@@ -1662,7 +1662,7 @@ var typedArrEleAssertLengthEqual = [2,2,2,2];
 let typedArrEleAssertLengthRes = [];
 for (let typedArrEle of iterForTypedArrEntry) {
     typedArrEleAssertRes.push(typedArrEle);
-    typedArrEleAssertLengthRes.puhs(typedArrEle.length)
+    typedArrEleAssertLengthRes.push(typedArrEle.length)
 }
 assert_equal(typedArrEleAssertRes,typedArrEleAssertEqual);
 assert_equal(typedArrEleAssertLengthRes,typedArrEleAssertLengthEqual);
