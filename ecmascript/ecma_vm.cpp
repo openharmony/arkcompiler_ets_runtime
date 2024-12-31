@@ -189,8 +189,9 @@ void EcmaVM::InitializeForJit(JitThread *jitThread)
 
 void EcmaVM::InitializePGOProfiler()
 {
-    LOG_PGO(INFO) << "initialize pgo profiler, pgo is enable: " << IsEnablePGOProfiler()
-                  << ", is worker: " << options_.IsWorker() << ", profiler: " << pgoProfiler_;
+    LOG_PGO(INFO) << "initializing pgo profiler, pgo is " << (IsEnablePGOProfiler() ? "enabled" : "disabled")
+                  << ", worker is " << (options_.IsWorker() ? "enabled" : "disabled")
+                  << ", profiler: " << pgoProfiler_;
     bool isEnablePGOProfiler = IsEnablePGOProfiler();
     if (pgoProfiler_ == nullptr) {
         pgoProfiler_ = PGOProfilerManager::GetInstance()->BuildProfiler(this, isEnablePGOProfiler);

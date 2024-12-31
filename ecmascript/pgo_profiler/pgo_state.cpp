@@ -15,12 +15,16 @@
 
 #include "ecmascript/pgo_profiler/pgo_state.h"
 
-#include "ecmascript/log.h"
-#include "ecmascript/log_wrapper.h"
 #include "ecmascript/pgo_profiler/pgo_profiler.h"
+#include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
 
 namespace panda::ecmascript::pgo {
 using State = PGOState::State;
+using GCState = PGOState::GCState;
+PGOState::PGOState()
+{
+    manager_ = PGOProfilerManager::GetInstance();
+}
 
 std::string PGOState::ToString(State state)
 {
@@ -29,14 +33,22 @@ std::string PGOState::ToString(State state)
             return "STOP";
         case State::SAVE:
             return "SAVE";
-        case State::PAUSE:
-            return "PAUSE";
         case State::START:
             return "START";
-        case State::FORCE_SAVE_START:
-            return "FORCE_SAVE_START";
-        case State::FORCE_SAVE_PAUSE:
-            return "FORCE_SAVE_PAUSE";
+        default:
+            return "UNKNOWN";
+    }
+}
+
+std::string PGOState::ToString(GCState state)
+{
+    switch (state) {
+        case GCState::STOP:
+            return "STOP";
+        case GCState::WAITING:
+            return "WAITING";
+        case GCState::RUNNING:
+            return "RUNNING";
         default:
             return "UNKNOWN";
     }
@@ -49,183 +61,151 @@ State PGOState::GetState() const
 
 void PGOState::SetState(State state)
 {
+#if PRINT_STATE_CHANGE
+    PrintStateChange(GetState(), state);
+#endif
     state_.store(state, std::memory_order_release);
 }
 
-bool PGOState::SetStartIfStop()
+bool PGOState::GCIsWaiting() const
 {
-    return TryTransitionState(State::STOP, State::START);
+    GCState gcState = GetGCState();
+    return gcState == GCState::WAITING;
 }
 
-bool PGOState::SetStopIfStart()
+bool PGOState::GCIsRunning() const
 {
-    return TryTransitionState(State::START, State::STOP);
+    GCState gcState = GetGCState();
+    return gcState == GCState::RUNNING;
 }
 
-bool PGOState::SetPauseIfStartByGC()
+bool PGOState::GCIsStop() const
 {
-    State expected = GetState();
-    State desired;
-
-    if (expected == State::START) {
-        desired = State::PAUSE;
-    } else if (expected == State::FORCE_SAVE_START) {
-        desired = State::FORCE_SAVE_PAUSE;
-    } else if (expected == State::PAUSE || expected == State::FORCE_SAVE_PAUSE) {
-        return true;
-    } else {
-        return false;
-    }
-
-    return TryTransitionState(expected, desired);
+    GCState gcState = GetGCState();
+    return gcState == GCState::STOP;
 }
 
-bool PGOState::SetStartIfPauseByGC()
-{
-    State expected = GetState();
-    State desired;
-
-    if (expected == State::PAUSE) {
-        desired = State::START;
-    } else if (expected == State::FORCE_SAVE_PAUSE) {
-        desired = State::FORCE_SAVE_START;
-    } else {
-        return false;
-    }
-
-    return TryTransitionState(expected, desired);
-}
-
-bool PGOState::IsGcWaiting() const
-{
-    State state = GetState();
-    return state == State::PAUSE || state == State::FORCE_SAVE_PAUSE;
-}
-
-bool PGOState::IsStop() const
+bool PGOState::StateIsStop() const
 {
     State state = GetState();
     return state == State::STOP;
 }
 
-bool PGOState::IsStart() const
+bool PGOState::StateIsStart() const
 {
     State state = GetState();
     return state == State::START;
 }
 
-bool PGOState::TryTransitionState(State expected, State desired)
+#if PRINT_STATE_CHANGE
+bool PGOState::TryChangeState(State expected, State desired)
+{
+    auto original = expected;
+    if (state_.compare_exchange_strong(expected, desired, std::memory_order_acq_rel)) {
+        PrintStateChange(expected, desired);
+        return true;
+    }
+    PrintStateChange(original, expected, desired);
+    return false;
+}
+#endif
+
+#if !PRINT_STATE_CHANGE
+bool PGOState::TryChangeState(State expected, State desired)
 {
     if (state_.compare_exchange_strong(expected, desired, std::memory_order_acq_rel)) {
-        LOG_PGO(DEBUG) << ToString(expected) << " -> " << ToString(desired);
+        return true;
+    }
+    return false;
+}
+#endif
+
+void PGOState::SetGCState(GCState state)
+{
+    gcState_.store(state, std::memory_order_release);
+}
+
+GCState PGOState::GetGCState() const
+{
+    return gcState_.load(std::memory_order_acquire);
+}
+
+void PGOState::SuspendByGC()
+{
+    LockHolder lock(stateMutex_);
+    // possible state: START, SAVE, STOP
+    if (StateIsStart()) {
+        // possible gc state: STOP
+        SetGCState(GCState::WAITING);
+        needRedump_ = true;
+        WaitDump();
+    }
+    // possible gc state: STOP, WAITING
+    SetGCState(GCState::RUNNING);
+}
+
+void PGOState::ResumeByGC(PGOProfiler* profiler)
+{
+    LockHolder lock(stateMutex_);
+    // possible state: START, SAVE, STOP
+    SetGCState(GCState::STOP);
+    if (needRedump_) {
+        manager_->TryDispatchDumpTask(profiler);
+        needRedump_ = false;
+    }
+    NotifyAllGCWaiters();
+}
+
+bool PGOState::SetStartIfStop()
+{
+    LockHolder lock(stateMutex_);
+    // possible state: STOP, SAVE
+    // possible gc state: STOP, WAITING, RUNNING
+    if (GCIsStop() && TryChangeState(State::STOP, State::START)) {
         return true;
     }
     return false;
 }
 
-bool PGOState::SetStopIfSave()
+void PGOState::SetStopAndNotify()
 {
-    return TryTransitionState(State::SAVE, State::STOP);
+    LockHolder lock(stateMutex_);
+    // possible state: START, SAVE
+    SetState(State::STOP);
+    NotifyAllDumpWaiters();
 }
 
-void PGOState::SuspendByGC()
+void PGOState::StartDumpBeforeDestroy()
 {
-    LockHolder lock(pgoDumpMutex_);
-    if (SetPauseIfStartByGC() && GcCountIsZero()) {
+    LockHolder lock(stateMutex_);
+    // possible state: STOP, SAVE, START
+    if (!StateIsStop()) {
         WaitDump();
     }
-    IncrementGcCount();
-}
-
-void PGOState::ResumeByGC(PGOProfiler* profiler)
-{
-    LockHolder lock(pgoDumpMutex_);
-    DecrementGcCount();
-    if (!GcCountIsZero()) {
-        return;
+    // possible gc state: STOP, WAITING, RUNNING
+    if (!GCIsStop()) {
+        WaitGC();
     }
-    if (SetStartIfPauseByGC()) {
-        profiler->DispatchPGODumpTask();
-    }
-}
-
-void PGOState::SetStartIfStopAndDispatchDumpTask(PGOProfiler* profiler)
-{
-    LockHolder lock(pgoDumpMutex_);
-    if (!GcCountIsZero()) {
-        return;
-    }
-    if (SetStartIfStop()) {
-        profiler->DispatchPGODumpTask();
-    }
-}
-
-void PGOState::SetStopIfStartAndNotify()
-{
-    LockHolder lock(pgoDumpMutex_);
-    SetStopIfStart();
-    NotifyAll();
-}
-
-void PGOState::WaitDumpIfStart()
-{
-    LockHolder lock(pgoDumpMutex_);
-    if (IsStart()) {
-        WaitDump();
-    }
-}
-
-void PGOState::SetStopIfSaveAndNotify()
-{
-    LockHolder lock(pgoDumpMutex_);
-    SetStopIfSave();
-    NotifyAll();
+    SetState(State::START);
 }
 
 void PGOState::WaitDump()
 {
-    pgoDumpCondition_.Wait(&pgoDumpMutex_);
+    stateCondition_.Wait(&stateMutex_);
 }
 
-void PGOState::NotifyAll()
+void PGOState::NotifyAllDumpWaiters()
 {
-    pgoDumpCondition_.SignalAll();
+    stateCondition_.SignalAll();
 }
 
-void PGOState::IncrementGcCount()
+void PGOState::WaitGC()
 {
-    gcCount_++;
+    gcCondition_.Wait(&stateMutex_);
 }
 
-void PGOState::DecrementGcCount()
+void PGOState::NotifyAllGCWaiters()
 {
-    gcCount_--;
-}
-
-bool PGOState::GcCountIsZero() const
-{
-    return gcCount_ == 0;
-}
-
-int PGOState::GetGcCount() const
-{
-    return gcCount_;
-}
-
-void PGOState::ForceDump(PGOProfiler* profiler)
-{
-    LockHolder lock(pgoDumpMutex_);
-    auto state = GetState();
-    if (state == State::START) {
-        SetState(State::FORCE_SAVE_START);
-        WaitDump();
-    } else if (state == State::STOP) {
-        SetState(State::FORCE_SAVE_START);
-    } else if (state == State::PAUSE) {
-        SetState(State::FORCE_SAVE_PAUSE);
-        WaitDump();
-    }
-    profiler->DispatchPGODumpTask();
-    WaitDump();
+    gcCondition_.SignalAll();
 }
 } // namespace panda::ecmascript::pgo

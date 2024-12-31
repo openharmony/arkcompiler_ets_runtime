@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 
-
 #include "ecmascript/pgo_profiler/pgo_profiler_encoder.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
 #include "ecmascript/pgo_profiler/pgo_trace.h"
@@ -33,7 +32,7 @@ bool PGOProfilerEncoder::SaveAndRename(const std::shared_ptr<PGOInfo> info, cons
     LOG_PGO(INFO) << "start save and rename ap file to " << path_;
     ClockScope start;
     umask(S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
-    static const char *tempSuffix = ".tmp";
+    static const char* tempSuffix = ".tmp";
     auto tmpOutPath = path_ + "." + std::to_string(getpid()) + tempSuffix;
     std::fstream fileStream(tmpOutPath.c_str(),
                             std::fstream::binary | std::fstream::out | std::fstream::in | std::fstream::trunc);
@@ -78,7 +77,7 @@ bool PGOProfilerEncoder::SaveAndRename(const std::shared_ptr<PGOInfo> info, cons
 bool PGOProfilerEncoder::InternalSave(const std::shared_ptr<PGOInfo> rtInfo, const SaveTask* task)
 {
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "PGOProfilerEncoder::InternalSave");
-    LOG_PGO(INFO) << "OVERWRITE(0) or MERGE(1) pgo info, mode: " << mode_;
+    LOG_PGO(INFO) << (mode_ == MERGE ? "MERGE(1)" : "OVERWRITE(0)") << " pgo info";
     if ((mode_ == MERGE) && FileExist(path_.c_str())) {
         auto info = std::make_shared<PGOInfo>(rtInfo->GetHotnessThreshold());
         PGOProfilerDecoder decoder(path_, rtInfo->GetHotnessThreshold());
@@ -88,7 +87,7 @@ bool PGOProfilerEncoder::InternalSave(const std::shared_ptr<PGOInfo> rtInfo, con
     return SaveAndRename(rtInfo, task);
 }
 
-void PGOProfilerEncoder::AddChecksum(std::fstream &fileStream)
+void PGOProfilerEncoder::AddChecksum(std::fstream& fileStream)
 {
     static constexpr uint32_t KILO_BYTES = 1024;
     static constexpr uint32_t STEP_IN_KB = 256;
@@ -97,20 +96,20 @@ void PGOProfilerEncoder::AddChecksum(std::fstream &fileStream)
     std::unique_ptr<std::vector<uint8_t>> buffer = std::make_unique<std::vector<uint8_t>>(STEP_SIZE);
     // first, calculate the version field's checksum.
     fileStream.seekg(PGOProfilerHeader::MAGIC_SIZE, std::fstream::beg)
-        .read(reinterpret_cast<char *>(buffer->data()), PGOProfilerHeader::VERSION_SIZE);
-    uint32_t checksum = adler32(0, reinterpret_cast<const Bytef *>(buffer->data()), PGOProfilerHeader::VERSION_SIZE);
+        .read(reinterpret_cast<char*>(buffer->data()), PGOProfilerHeader::VERSION_SIZE);
+    uint32_t checksum = adler32(0, reinterpret_cast<const Bytef*>(buffer->data()), PGOProfilerHeader::VERSION_SIZE);
     // second, calculate the checksum for remaining content(exclude checksum field).
     uint32_t remainingSize = size - PGOProfilerHeader::CHECKSUM_END_OFFSET;
     fileStream.seekg(PGOProfilerHeader::CHECKSUM_END_OFFSET);
     while (remainingSize > 0) {
         uint32_t readSize = std::min(STEP_SIZE, remainingSize);
         remainingSize = remainingSize - readSize;
-        fileStream.read(reinterpret_cast<char *>(buffer->data()), readSize);
-        checksum = adler32(checksum, reinterpret_cast<const Bytef *>(buffer->data()), readSize);
+        fileStream.read(reinterpret_cast<char*>(buffer->data()), readSize);
+        checksum = adler32(checksum, reinterpret_cast<const Bytef*>(buffer->data()), readSize);
     }
     // third, write the checksum back to the checksum field in the output stream.
     fileStream.seekp(PGOProfilerHeader::MAGIC_SIZE + PGOProfilerHeader::VERSION_SIZE, std::fstream::beg);
-    fileStream.write(reinterpret_cast<char *>(&checksum), sizeof(checksum));
+    fileStream.write(reinterpret_cast<char*>(&checksum), sizeof(checksum));
 }
 
 void PGOProfilerEncoder::TerminateSaveTask()
@@ -136,11 +135,8 @@ void PGOProfilerEncoder::StartSaveTask(const std::shared_ptr<PGOInfo> info, cons
         LOG_PGO(ERROR) << "save task is terminated";
         return;
     }
-    {
-        LockHolder lock(PGOProfilerManager::GetPGOInfoMutex());
-        InternalSave(info, task);
-    }
-    PGOProfilerManager::GetInstance()->GetPGOState()->SetStopIfSaveAndNotify();
+    LockHolder lock(PGOProfilerManager::GetPGOInfoMutex());
+    InternalSave(info, task);
 }
 
 ApGenMode PGOProfilerEncoder::GetApGenMode() const
