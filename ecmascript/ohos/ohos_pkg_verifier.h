@@ -47,10 +47,10 @@ public:
 
     static bool CheckArkProfile(AotCompilerPreprocessor &cPreprocessor)
     {
-        std::string arkProfilePath = "/data/local/ark-profile/";
+        std::regex pattern("/data/app/el1/\\d+/aot_compiler/ark_profile.*");
         std::string pgoDir = cPreprocessor.GetMainPkgArgs()->GetPgoDir();
         std::string bundleName = cPreprocessor.GetMainPkgArgs()->GetBundleName();
-        if (pgoDir.substr(0, arkProfilePath.length()) != arkProfilePath ||
+        if (!std::regex_search(pgoDir, pattern) ||
             pgoDir.find(bundleName) == std::string::npos) {
             LOG_COMPILER(ERROR) << "verify ark-profile path wrong";
             return false;
@@ -60,7 +60,7 @@ public:
 
     static bool CheckAOTOutputFilePath(AotCompilerPreprocessor &cPreprocessor, CompilationOptions &cOptions)
     {
-        std::string arkCachePath = "/data/local/ark-cache/";
+        std::string arkCachePath = "/data/app/el1/public/aot_compiler/ark_cache/";
         if (cOptions.outputFileName_.substr(0, arkCachePath.length()) != arkCachePath) {
             LOG_COMPILER(ERROR) << "aot file name wrong";
             return false;

@@ -50,13 +50,13 @@ const std::string compilerPkgInfoValue =
     "\"isEncryptedBundle\":\"0x0\","
     "\"isScreenOff\":\"0x1\","
     "\"moduleName\":\"entry\","
-    "\"pgoDir\":\"/data/local/ark-profile/100/com.ohos.contacts\","
+    "\"pgoDir\":\"/data/app/el1/100/aot_compiler/ark_profile/com.ohos.contacts\","
     "\"pkgPath\":\"/system/app/Contacts/Contacts.hap\","
     "\"processUid\":\"0xbf4\"}";
 
 const std::unordered_map<std::string, std::string> argsMapForTest {
     {"target-compiler-mode", "partial"},
-    {"aot-file", "/data/local/ark-cache/com.ohos.contacts/arm64/entry"},
+    {"aot-file", "/data/app/el1/public/aot_compiler/ark_cache/com.ohos.contacts/arm64/entry"},
     {"compiler-pkg-info", compilerPkgInfoValue},
     {"compiler-external-pkg-info", "[]"},
     {"compiler-opt-bc-range", ""},
@@ -65,7 +65,7 @@ const std::unordered_map<std::string, std::string> argsMapForTest {
     {"ABC-Path", "/system/app/Contacts/Contacts.hap/ets/modules.abc"},
     {"BundleUid", "20020079"},
     {"BundleGid", "20020079"},
-    {"anFileName", "/data/local/ark-cache/com.ohos.contacts/arm64/entry.an"},
+    {"anFileName", "/data/app/el1/public/aot_compiler/ark_cache/com.ohos.contacts/arm64/entry.an"},
     {"appIdentifier", "5765880207853624761"}
 };
 } // namespace ark_aot_compiler arguments
@@ -581,7 +581,7 @@ HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_022, TestSize.Level0)
 HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_023, TestSize.Level0)
 {
     AotCompilerImplMock aotImplMock;
-    std::string fileName = "/data/local/ark-cache/com.ohos.contacts/arm64/entry.an";
+    std::string fileName = "/data/app/el1/public/aot_compiler/ark_cache/com.ohos.contacts/arm64/entry.an";
     std::string appSignature = "5765880207853624761";
     std::vector<int16_t> sigData;
     int32_t ret = aotImplMock.PrepareArgsMock(argsMapForTest);
