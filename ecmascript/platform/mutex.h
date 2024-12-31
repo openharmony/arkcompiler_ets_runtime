@@ -67,7 +67,7 @@ public:
     NO_MOVE_SEMANTIC(RecursiveMutex);
 };
 
-class RWLock {
+class PUBLIC_API RWLock {
 public:
     RWLock();
 

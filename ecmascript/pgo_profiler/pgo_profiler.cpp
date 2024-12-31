@@ -135,13 +135,13 @@ void PGOProfiler::ProfileProtoTransitionClass(JSHandle<JSFunction> func,
     auto *transitionTable = thread->GetCurrentEcmaContext()->GetFunctionProtoTransitionTable();
     JSTaggedType baseIhc = transitionTable->GetFakeParent(JSTaggedType(phcRoot));
     if (baseIhc == 0) {
-        LOG_ECMA(DEBUG) << "fake parent not found!";
+        LOG_PGO(DEBUG) << "fake parent not found!";
         ProfileClassRootHClass(func.GetTaggedType(), hclass.GetTaggedType());
         return;
     }
     JSTaggedType ihc = func->GetProtoTransRootHClass().GetRawData();
     if (JSTaggedValue(ihc).IsUndefined()) {
-        LOG_ECMA(DEBUG) << "maybe the prototype of the current function is just the initial prototype!";
+        LOG_PGO(DEBUG) << "maybe the prototype of the current function is just the initial prototype!";
         ProfileClassRootHClass(func.GetTaggedType(), hclass.GetTaggedType());
         return;
     }
@@ -337,12 +337,10 @@ void PGOProfiler::PGODump(JSTaggedType func)
     if (workNode == nullptr) {
         workNode = nativeAreaAllocator_->New<WorkNode>(JSTaggedType(function));
         function->SetWorkNodePointer(reinterpret_cast<uintptr_t>(workNode));
-        LockHolder lock(mutex_);
         dumpWorkList_.PushBack(workNode);
     } else {
         workNode->SetValue(JSTaggedType(function));
         auto workList = workNode->GetWorkList();
-        LockHolder lock(mutex_);
         if (workList == &preDumpWorkList_) {
             preDumpWorkList_.Remove(workNode);
         }
@@ -358,14 +356,7 @@ void PGOProfiler::SuspendByGC()
     if (!isEnable_) {
         return;
     }
-    LockHolder lock(mutex_);
-    if (GetState() == State::START) {
-        SetState(State::PAUSE);
-        WaitingPGODump();
-    } else if (GetState() == State::FORCE_SAVE) {
-        SetState(State::FORCE_SAVE_PAUSE);
-        WaitingPGODump();
-    }
+    state_->SuspendByGC();
 }
 
 void PGOProfiler::ResumeByGC()
@@ -373,33 +364,17 @@ void PGOProfiler::ResumeByGC()
     if (!isEnable_) {
         return;
     }
-    LockHolder lock(mutex_);
-    if (GetState() == State::PAUSE) {
-        SetState(State::START);
-        DispatchPGODumpTask();
-    } else if (GetState() == State::FORCE_SAVE_PAUSE) {
-        SetState(State::FORCE_SAVE);
-        DispatchPGODumpTask();
-    }
+    state_->ResumeByGC(this);
 }
 
-void PGOProfiler::StopPGODump()
+void PGOProfiler::StopPGODumpAndNotify()
 {
-    LockHolder lock(mutex_);
-    if (IsGCWaiting()) {
-        NotifyGC("[StopPGODump::PAUSE]");
-        return;
-    }
-    SetState(State::STOP);
-    NotifyAll("[StopPGODump::STOP]");
+    state_->SetStopIfStartAndNotify();
 }
 
 void PGOProfiler::StartPGODump()
 {
-    if (GetState() == State::STOP) {
-        SetState(State::START);
-        DispatchPGODumpTask();
-    }
+    state_->SetStartIfStopAndDispatchDumpTask(this);
 }
 
 void PGOProfiler::DispatchPGODumpTask()
@@ -408,79 +383,32 @@ void PGOProfiler::DispatchPGODumpTask()
         std::make_unique<PGOProfilerTask>(this, vm_->GetJSThread()->GetThreadId()));
 }
 
-PGOProfiler::State PGOProfiler::GetState() const
-{
-    return state_.load(std::memory_order_acquire);
-}
-
-void PGOProfiler::SetState(State state)
-{
-    v_.AddLogWithDebugLog("[PGODumpStateChange] " + StateToString(GetState()) + " -> " + StateToString(state));
-    state_.store(state, std::memory_order_release);
-}
-
-void PGOProfiler::NotifyGC(std::string tag)
-{
-    v_.AddLogWithDebugLog(tag + " notify GC");
-    condition_.SignalAll();
-}
-
-void PGOProfiler::NotifyAll(std::string tag)
-{
-    v_.AddLogWithDebugLog(tag + " notify all");
-    condition_.SignalAll();
-}
-
-void PGOProfiler::WaitingPGODump()
-{
-    condition_.Wait(&mutex_);
-}
-
-void PGOProfiler::WaitPGODumpFinish()
+void PGOProfiler::WaitDumpIfStart()
 {
     if (!isEnable_) {
         return;
     }
-    LockHolder lock(mutex_);
-    while (GetState() == State::START || GetState() == State::MERGE) {
-        WaitingPGODump();
-    }
+    state_->WaitDumpIfStart();
 }
 
 void PGOProfiler::DumpByForce()
 {
+    if (!isEnable_) {
+        return;
+    }
     isForce_ = true;
-    LockHolder lock(mutex_);
-    if (GetState() == State::START) {
-        SetState(State::FORCE_SAVE);
-        WaitingPGODump();
-    } else if (GetState() == State::STOP && !dumpWorkList_.IsEmpty()) {
-        SetState(State::FORCE_SAVE);
-        WaitingPGODump();
+    auto state = state_->GetState();
+    if (state == State::START) {
+        state_->SetState(State::FORCE_SAVE_START);
+        state_->WaitDump();
+    } else if (state == State::STOP && !dumpWorkList_.IsEmpty()) {
+        state_->SetState(State::FORCE_SAVE_START);
+        state_->WaitDump();
         DispatchPGODumpTask();
-    } else if (GetState() == State::PAUSE) {
-        SetState(State::FORCE_SAVE_PAUSE);
-        WaitingPGODump();
+    } else if (state == State::PAUSE) {
+        state_->SetState(State::FORCE_SAVE_PAUSE);
+        state_->WaitDump();
     }
-}
-
-bool PGOProfiler::IsGCWaitingWithLock()
-{
-    if (GetState() == State::PAUSE) {
-        LockHolder lock(mutex_);
-        if (GetState() == State::PAUSE) {
-            return true;
-        }
-    }
-    return false;
-}
-
-bool PGOProfiler::IsGCWaiting()
-{
-    if (GetState() == State::PAUSE) {
-        return true;
-    }
-    return false;
 }
 
 void PGOProfiler::PGOPreDump(JSTaggedType func)
@@ -502,12 +430,10 @@ void PGOProfiler::PGOPreDump(JSTaggedType func)
     if (workNode == nullptr) {
         workNode = nativeAreaAllocator_->New<WorkNode>(JSTaggedType(function));
         function->SetWorkNodePointer(reinterpret_cast<uintptr_t>(workNode));
-        LockHolder lock(mutex_);
         preDumpWorkList_.PushBack(workNode);
     } else {
         workNode->SetValue(JSTaggedType(function));
         auto workList = workNode->GetWorkList();
-        LockHolder lock(mutex_);
         if (workList == &dumpWorkList_) {
             workList->Remove(workNode);
         }
@@ -584,7 +510,7 @@ void PGOProfiler::ProcessExtraProfileTypeInfo(JSFunction *func, ApEntityId abcId
 
 void PGOProfiler::HandlePGOPreDump()
 {
-    LockHolder lock(recordInfoMutex_);
+    LockHolder lock(PGOProfilerManager::GetPGOInfoMutex());
     if (!isEnable_ || !vm_->GetJSOptions().IsEnableProfileDump()) {
         return;
     }
@@ -618,10 +544,12 @@ void PGOProfiler::HandlePGOPreDump()
     });
 }
 
-void PGOProfiler::HandlePGODumpByDumpThread(bool force)
+void PGOProfiler::HandlePGODumpByDumpThread()
 {
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "PGOProfiler::HandlePGODumpByDumpThread");
-    LockHolder lock(recordInfoMutex_);
+    ConcurrentGuard guard(PGOProfilerManager::GetInstance()->GetConcurrentGuardValue(),
+                          "HandlePGODumpByDumpThread");
+    LockHolder lock(PGOProfilerManager::GetPGOInfoMutex());
     if (!isEnable_ || !vm_->GetJSOptions().IsEnableProfileDump()) {
         return;
     }
@@ -666,32 +594,20 @@ void PGOProfiler::HandlePGODumpByDumpThread(bool force)
             PGOTrace::GetInstance()->TryGetMethodData(methodValue, true);
         }
     }
-    ASSERT(GetState() != State::STOP);
-    if (IsGCWaitingWithLock()) {
-        return;
-    }
-    MergeProfilerAndDispatchAsyncSaveTask(force);
 }
 
-void PGOProfiler::MergeProfilerAndDispatchAsyncSaveTask(bool force)
+void PGOProfiler::TryDispatchSaveTask(bool force)
 {
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "PGOProfiler::MergeProfilerAndDispatchAsyncSaveTask");
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "PGOProfiler::TryDispatchSaveTask");
     // Merged every 50 methods and merge interval greater than minimal interval
     auto interval = std::chrono::system_clock::now() - saveTimestamp_;
     auto minIntervalOption = vm_->GetJSOptions().GetPGOSaveMinInterval();
     auto mergeMinInterval = std::chrono::milliseconds(minIntervalOption * MS_PRE_SECOND);
     if ((methodCount_ >= MERGED_EVERY_COUNT && interval > mergeMinInterval) || (force && methodCount_ > 0)) {
-        LOG_ECMA(DEBUG) << "Sample: post task to save profiler";
-        {
-            ClockScope start;
-            SetState(State::MERGE);
-            PGOProfilerManager::GetInstance()->Merge(this);
-            if (PGOTrace::GetInstance()->IsEnable()) {
-                PGOTrace::GetInstance()->SetMergeTime(start.TotalSpentTime());
-            }
-        }
+        LOG_PGO(INFO) << "trigger save task, methodCount_ = " << methodCount_;
         if (!force) {
-            PGOProfilerManager::GetInstance()->AsyncSave();
+            state_->SetState(State::SAVE);
+            manager_->AsyncSave();
         }
         SetSaveTimestamp(std::chrono::system_clock::now());
         methodCount_ = 0;
@@ -700,10 +616,9 @@ void PGOProfiler::MergeProfilerAndDispatchAsyncSaveTask(bool force)
 
 PGOProfiler::WorkNode* PGOProfiler::PopFromProfileQueue()
 {
-    LockHolder lock(mutex_);
     WorkNode* node = nullptr;
     while (node == nullptr) {
-        if (IsGCWaiting()) {
+        if (state_->IsGcWaiting()) {
             break;
         }
         if (dumpWorkList_.IsEmpty()) {
@@ -735,7 +650,7 @@ void PGOProfiler::ProfileBytecode(ApEntityId abcId, const CString &recordName, J
 
     while (bcIns.GetAddress() != bcInsLast.GetAddress()) {
         if (!isForceDump) {
-            if (IsGCWaitingWithLock()) {
+            if (state_->IsGcWaiting()) {
                 break;
             }
         }
@@ -1264,7 +1179,7 @@ void PGOProfiler::TryDumpProtoTransitionType(JSHClass *hclass)
     JSTaggedValue phc1Root = JSHClass::FindProtoRootHClass(ihc1);
     auto transitionPrototype = GetProfileType(JSHClass::Cast(phc1Root.GetTaggedObject()), true);
     if (!transitionPrototype.IsRootType()) {
-        LOG_ECMA(DEBUG) << "Set as the prototype of a function again after transition happened for this prototype!";
+        LOG_PGO(DEBUG) << "Set as the prototype of a function again after transition happened for this prototype!";
         return;
     }
 
@@ -1287,7 +1202,7 @@ void PGOProfiler::TryDumpProtoTransitionType(JSHClass *hclass)
     auto baseRootHClass = JSHClass::FindRootHClass(baseIhcObj);
     auto baseRootType = GetProfileType(baseRootHClass, true);
     if (!baseRootType.IsRootType()) {
-        LOG_ECMA(DEBUG) << "Unsupported prototypes which cannot be recorded!";
+        LOG_PGO(DEBUG) << "Unsupported prototypes which cannot be recorded!";
         return;
     }
     auto baseType = GetProfileType(baseIhcObj);
@@ -1357,7 +1272,7 @@ void PGOProfiler::DumpDefineClass(ApEntityId abcId, const CString &recordName, E
         auto ctorRootHClass = JSHClass::FindRootHClass(ctorFunction->GetJSHClass());
         auto ctorType = GetProfileType(ctorRootHClass);
         if (!ctorType.IsRootType()) {
-            LOG_ECMA(DEBUG) << "The profileType of constructor root hclass was not found.";
+            LOG_PGO(DEBUG) << "The profileType of constructor root hclass was not found.";
         } else {
             objDefType.SetCtorPt(ctorType);
             recordInfos_->AddRootLayout(JSTaggedType(ctorRootHClass), ctorType);
@@ -1368,7 +1283,7 @@ void PGOProfiler::DumpDefineClass(ApEntityId abcId, const CString &recordName, E
             auto prototypeRootHClass = JSHClass::FindRootHClass(prototypeHClass);
             ProfileType prototypeType = GetProfileType(prototypeRootHClass);
             if (!prototypeType.IsRootType()) {
-                LOG_ECMA(DEBUG) << "The profileType of prototype root hclass was not found.";
+                LOG_PGO(DEBUG) << "The profileType of prototype root hclass was not found.";
             } else {
                 objDefType.SetPrototypePt(prototypeType);
                 recordInfos_->AddRootLayout(JSTaggedType(prototypeRootHClass), prototypeType);
@@ -1828,7 +1743,7 @@ bool PGOProfiler::IsRecoredTransRootType(ProfileType type)
         return false;
     }
     if (std::find(recordedTransRootType_.begin(), recordedTransRootType_.end(), type) != recordedTransRootType_.end()) {
-        LOG_ECMA(DEBUG) << "forbide to add more than 1 hclass for a root type!";
+        LOG_PGO(DEBUG) << "forbide to add more than 1 hclass for a root type!";
         return true;
     }
     recordedTransRootType_.emplace_back(type);
@@ -1909,8 +1824,14 @@ void PGOProfiler::Iterate(const RootVisitor &visitor)
 PGOProfiler::PGOProfiler(EcmaVM* vm, bool isEnable)
     : nativeAreaAllocator_(std::make_unique<NativeAreaAllocator>()), vm_(vm), isEnable_(isEnable)
 {
+    LOG_PGO(INFO) << "create pgo profiler, pgo profiler enable: " << isEnable_;
     if (isEnable_) {
-        recordInfos_ = std::make_unique<PGORecordDetailInfos>(0);
+        manager_ = PGOProfilerManager::GetInstance();
+        state_ = manager_->GetPGOState();
+        recordInfos_ = manager_->GetPGOInfo()->GetRecordDetailInfosPtr();
+        SetSaveTimestamp(std::chrono::system_clock::now());
+    } else {
+        LOG_PGO(INFO) << "pgo profiler is disabled";
     }
 };
 
@@ -1921,16 +1842,16 @@ PGOProfiler::~PGOProfiler()
 
 void PGOProfiler::Reset(bool isEnable)
 {
-    LockHolder lock(recordInfoMutex_);
+    LockHolder lock(PGOProfilerManager::GetPGOInfoMutex());
     isEnable_ = isEnable;
     methodCount_ = 0;
-    if (recordInfos_) {
-        recordInfos_->Clear();
-    } else {
-        if (isEnable_) {
-            recordInfos_ = std::make_unique<PGORecordDetailInfos>(0);
-        }
+    SetSaveTimestamp(std::chrono::system_clock::now());
+    if (!recordInfos_ && isEnable_) {
+        manager_ = PGOProfilerManager::GetInstance();
+        state_ = manager_->GetPGOState();
+        recordInfos_ = manager_->GetPGOInfo()->GetRecordDetailInfosPtr();
     }
+    LOG_PGO(INFO) << "reset pgo profiler, pgo profiler enable: " << isEnable_;
 }
 
 ApEntityId PGOProfiler::GetMethodAbcId(JSTaggedValue jsMethod)
@@ -1944,7 +1865,7 @@ ApEntityId PGOProfiler::GetMethodAbcId(JSTaggedValue jsMethod)
     }
     ApEntityId abcId(0);
     if (!PGOProfilerManager::GetInstance()->GetPandaFileId(pfName, abcId) && !pfName.empty()) {
-        LOG_ECMA(ERROR) << "Get method abc id failed. abcName: " << pfName;
+        LOG_PGO(ERROR) << "Get method abc id failed. abcName: " << pfName;
     }
     return abcId;
 }
@@ -1955,7 +1876,7 @@ ApEntityId PGOProfiler::GetMethodAbcId(JSFunction *jsFunction)
     if (jsMethod.IsMethod()) {
         return GetMethodAbcId(jsMethod);
     }
-    LOG_ECMA(ERROR) << "Get method abc id failed. Not a method.";
+    LOG_PGO(ERROR) << "Get method abc id failed. Not a method.";
     UNREACHABLE();
 }
 
@@ -1971,8 +1892,8 @@ ProfileType PGOProfiler::GetRecordProfileType(JSFunction *jsFunction, const CStr
     }
     const auto &pf = JSPandaFileManager::GetInstance()->FindJSPandaFile(pfName);
     if (pf == nullptr) {
-        LOG_ECMA(ERROR) << "Get record profile type failed. pf is null, pfName: " << pfName
-                        << ", recordName: " << recordName;
+        LOG_PGO(ERROR) << "Get record profile type failed. pf is null, pfName: " << pfName
+                       << ", recordName: " << recordName;
         return ProfileType::PROFILE_TYPE_NONE;
     }
     return GetRecordProfileType(pf, GetMethodAbcId(jsFunction), recordName);
@@ -1984,8 +1905,8 @@ ProfileType PGOProfiler::GetRecordProfileType(ApEntityId abcId, const CString &r
     PGOProfilerManager::GetInstance()->GetPandaFileDesc(abcId, pfDesc);
     const auto &pf = JSPandaFileManager::GetInstance()->FindJSPandaFile(pfDesc);
     if (pf == nullptr) {
-        LOG_ECMA(ERROR) << "Get record profile type failed. pf is null, pfDesc: " << pfDesc
-                        << ", recordName: " << recordName;
+        LOG_PGO(ERROR) << "Get record profile type failed. pf is null, pfDesc: " << pfDesc
+                       << ", recordName: " << recordName;
         return ProfileType::PROFILE_TYPE_NONE;
     }
     return GetRecordProfileType(pf, abcId, recordName);
@@ -1998,7 +1919,7 @@ ProfileType PGOProfiler::GetRecordProfileType(const std::shared_ptr<JSPandaFile>
     JSRecordInfo *recordInfo = nullptr;
     bool hasRecord = pf->CheckAndGetRecordInfo(recordName, &recordInfo);
     if (!hasRecord) {
-        LOG_ECMA(ERROR) << "Get recordInfo failed. recordName: " << recordName;
+        LOG_PGO(ERROR) << "Get recordInfo failed. recordName: " << recordName;
         return ProfileType::PROFILE_TYPE_NONE;
     }
     ProfileType recordType {0};
@@ -2012,15 +1933,22 @@ ProfileType PGOProfiler::GetRecordProfileType(const std::shared_ptr<JSPandaFile>
         recordInfos_->GetRecordPool()->Add(recordType, recordName);
         return recordType;
     }
-    LOG_ECMA(ERROR) << "Invalid classId, skip it. recordName: " << recordName << ", isCjs: " << recordInfo->isCjs
-                    << ", isJson: " << recordInfo->isJson;
+    LOG_PGO(ERROR) << "Invalid classId, skip it. recordName: " << recordName << ", isCjs: " << recordInfo->isCjs
+                   << ", isJson: " << recordInfo->isJson;
     return ProfileType::PROFILE_TYPE_NONE;
+}
+
+bool PGOProfiler::WorkList::IsEmpty()
+{
+    LockHolder lock(workListMutex_);
+    return first_ == nullptr;
 }
 
 void PGOProfiler::WorkList::PushBack(WorkNode *node)
 {
+    LockHolder lock(workListMutex_);
     if (node == nullptr) {
-        LOG_ECMA(FATAL) << "PGOProfiler::WorkList::PushBack:node is nullptr";
+        LOG_PGO(FATAL) << "PGOProfiler::WorkList::PushBack:node is nullptr";
         UNREACHABLE();
     }
     if (last_ == nullptr) {
@@ -2036,6 +1964,7 @@ void PGOProfiler::WorkList::PushBack(WorkNode *node)
 
 PGOProfiler::WorkNode *PGOProfiler::WorkList::PopFront()
 {
+    LockHolder lock(workListMutex_);
     WorkNode *result = nullptr;
     if (first_ != nullptr) {
         result = first_;
@@ -2054,6 +1983,7 @@ PGOProfiler::WorkNode *PGOProfiler::WorkList::PopFront()
 
 void PGOProfiler::WorkList::Remove(WorkNode *node)
 {
+    LockHolder lock(workListMutex_);
     if (node->GetPrev() != nullptr) {
         node->GetPrev()->SetNext(node->GetNext());
     }
@@ -2079,6 +2009,13 @@ void PGOProfiler::WorkList::Iterate(Callback callback) const
         callback(current);
         current = next;
     }
+}
+
+void PGOProfiler::WorkList::Reset()
+{
+    LockHolder lock(workListMutex_);
+    first_ = nullptr;
+    last_ = nullptr;
 }
 
 ProfileType PGOProfiler::CreateRecordProfileType(ApEntityId abcId, ApEntityId classId)
@@ -2122,4 +2059,43 @@ void PGOProfiler::InitJITProfiler()
     jitProfiler_->InitJITProfiler();
 }
 
+void PGOProfiler::InsertSkipCtorMethodIdSafe(EntityId ctorMethodId)
+{
+    LockHolder lock(skipCtorMethodIdMutex_);
+    skipCtorMethodId_.insert(ctorMethodId.GetOffset());
+}
+
+void PGOProfiler::SetSaveTimestamp(std::chrono::system_clock::time_point timestamp)
+{
+    saveTimestamp_ = timestamp;
+}
+
+JITProfiler* PGOProfiler::GetJITProfile()
+{
+    return jitProfiler_;
+}
+
+bool PGOProfiler::IsSkippableObjectTypeSafe(ProfileType type)
+{
+    if (type.IsGeneralizedClassType() || type.IsConstructor() || type.IsGeneralizedPrototype()) {
+        uint32_t ctorId = type.GetId();
+        LockHolder lock(skipCtorMethodIdMutex_);
+        return skipCtorMethodId_.find(ctorId) != skipCtorMethodId_.end();
+    }
+    return false;
+}
+
+bool PGOProfiler::IsSkippableCtor(uint32_t entityId)
+{
+    return entityId == 0 || skipCtorMethodId_.find(entityId) != skipCtorMethodId_.end();
+}
+
+bool PGOProfiler::InsertDefinedCtor(uint32_t entityId)
+{
+    if (definedCtorMethodId_.find(entityId) == definedCtorMethodId_.end()) {
+        definedCtorMethodId_.insert(entityId);
+        return true;
+    }
+    return false;
+}
 } // namespace panda::ecmascript::pgo

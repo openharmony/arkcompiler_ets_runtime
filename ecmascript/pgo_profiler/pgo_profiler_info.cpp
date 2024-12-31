@@ -46,6 +46,12 @@ void PGOPandaFileInfos::Merge(const PGOPandaFileInfos &pandaFileInfos)
     }
 }
 
+void PGOPandaFileInfos::MergeSafe(const PGOPandaFileInfos& pandaFileInfos)
+{
+    WriteLockHolder lock(fileInfosLock_);
+    Merge(pandaFileInfos);
+}
+
 bool PGOPandaFileInfos::VerifyChecksum(const PGOPandaFileInfos &pandaFileInfos, const std::string &base,
                                        const std::string &incoming) const
 {
@@ -775,6 +781,12 @@ void PGORecordDetailInfos::Merge(const PGORecordDetailInfos &recordInfos)
     }
 }
 
+void PGORecordDetailInfos::MergeSafe(const PGORecordDetailInfos& recordInfos)
+{
+    LockHolder lock(mutex_);
+    Merge(recordInfos);
+}
+
 bool PGORecordDetailInfos::ParseFromBinary(void *buffer, PGOProfilerHeader *const header)
 {
     header_ = header;
@@ -1020,6 +1032,12 @@ void PGORecordDetailInfos::Clear()
     abcIdRemap_.clear();
     chunk_ = std::make_unique<Chunk>(&nativeAreaAllocator_);
     InitSections();
+}
+
+void PGORecordDetailInfos::ClearSafe()
+{
+    LockHolder lock(mutex_);
+    Clear();
 }
 
 bool PGORecordSimpleInfos::Match(const CString &abcNormalizedDesc, const CString &recordName, EntityId methodId)

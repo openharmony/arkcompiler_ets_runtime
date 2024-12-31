@@ -55,7 +55,7 @@ public:
 
     void SetEnable(bool enable)
     {
-        LOG_ECMA(DEBUG) << "PGO Trace enable: " << enable;
+        LOG_PGO(DEBUG) << "trace enable: " << enable;
         enable_ = enable;
     }
 
@@ -152,15 +152,9 @@ public:
             method.Print();
         }
         LOG_TRACE(INFO) << Separator();
-        LOG_TRACE(INFO) << std::left << std::setw(NAME_WIDTH) << "MergeBeforeSave(ms) " << mergeTime_;
         LOG_TRACE(INFO) << std::left << std::setw(NAME_WIDTH) << "MergeWithExistAP(ms) " << mergeWithExistProfileTime_;
         LOG_TRACE(INFO) << std::left << std::setw(NAME_WIDTH) << "SaveAndRename(ms) " << saveTime_;
         LOG_TRACE(INFO) << Separator();
-    }
-
-    void SetMergeTime(float time)
-    {
-        mergeTime_ = time;
     }
 
     void SetSaveTime(float time)
@@ -175,7 +169,6 @@ public:
 
 private:
     std::unordered_map<EntityId, MethodData> methods;
-    float mergeTime_;
     float mergeWithExistProfileTime_;
     float saveTime_;
     bool enable_ {false};

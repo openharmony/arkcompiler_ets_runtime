@@ -21,246 +21,71 @@
 #include "ecmascript/platform/os.h"
 
 namespace panda::ecmascript::pgo {
-void PGOProfilerEncoder::Destroy()
+
+bool PGOProfilerEncoder::Save(const std::shared_ptr<PGOInfo> pgoInfo)
 {
-    LockHolder lock(mutex_);
-    {
-        WriteLockHolder rwLock(rwLock_);
-        pandaFileInfos_->Clear();
-        abcFilePool_->Clear();
-    }
-    if (!isProfilingInitialized_) {
-        return;
-    }
-    PGOProfilerHeader::Destroy(&header_);
-    globalRecordInfos_->Clear();
-    globalRecordInfos_.reset();
-    isProfilingInitialized_ = false;
+    return InternalSave(pgoInfo);
 }
 
-bool PGOProfilerEncoder::ResetOutPathByModuleName(const std::string &moduleName)
+bool PGOProfilerEncoder::SaveAndRename(const std::shared_ptr<PGOInfo> info, const SaveTask* task)
 {
-    LockHolder lock(mutex_);
-    // only first assign takes effect
-    if (!moduleName_.empty() || moduleName.empty()) {
-        return false;
-    }
-    moduleName_ = moduleName;
-    return ResetOutPath(ApNameUtils::GetRuntimeApName(moduleName_));
-}
-
-bool PGOProfilerEncoder::ResetOutPath(const std::string &profileFileName)
-{
-    if (!RealPath(outDir_, realOutPath_, false)) {
-        return false;
-    }
-
-    auto suffixLength = ApNameUtils::AP_SUFFIX.length();
-    if (realOutPath_.compare(realOutPath_.length() - suffixLength, suffixLength, ApNameUtils::AP_SUFFIX)) {
-        realOutPath_ += "/" + profileFileName;
-    }
-
-    SetSecurityLabel(realOutPath_);
-
-    LOG_ECMA(INFO) << "Save profiler to file:" << realOutPath_;
-    return true;
-}
-
-bool PGOProfilerEncoder::InitializeData()
-{
-    LockHolder lock(mutex_);
-    if (!isProfilingInitialized_) {
-        if (!ResetOutPath(ApNameUtils::DEFAULT_AP_NAME)) {
-            return false;
-        }
-        PGOProfilerHeader::Build(&header_, PGOProfilerHeader::LastSize());
-        globalRecordInfos_ = std::make_shared<PGORecordDetailInfos>(hotnessThreshold_);
-        isProfilingInitialized_ = true;
-    }
-    return true;
-}
-
-void PGOProfilerEncoder::SamplePandaFileInfo(uint32_t checksum, const CString &abcName)
-{
-    WriteLockHolder lock(rwLock_);
-    ApEntityId entryId(0);
-    abcFilePool_->TryAdd(abcName, entryId);
-    pandaFileInfos_->Sample(checksum, entryId);
-}
-
-bool PGOProfilerEncoder::GetPandaFileId(const CString &abcName, ApEntityId &entryId)
-{
-    ReadLockHolder lock(rwLock_);
-    return abcFilePool_->GetEntryId(abcName, entryId);
-}
-
-bool PGOProfilerEncoder::GetPandaFileDesc(ApEntityId abcId, CString &desc)
-{
-    if (!isProfilingInitialized_) {
-        return false;
-    }
-    ReadLockHolder lock(rwLock_);
-    const auto *entry = abcFilePool_->GetEntry(abcId);
-    if (entry == nullptr) {
-        return false;
-    }
-    desc = entry->GetData();
-    return true;
-}
-
-void PGOProfilerEncoder::Merge(const PGORecordDetailInfos &recordInfos)
-{
-    if (!isProfilingInitialized_) {
-        return;
-    }
-    LockHolder lock(mutex_);
-    globalRecordInfos_->Merge(recordInfos);
-}
-
-void PGOProfilerEncoder::Merge(const PGOPandaFileInfos &pandaFileInfos)
-{
-    WriteLockHolder lock(rwLock_);
-    return pandaFileInfos_->Merge(pandaFileInfos);
-}
-
-void PGOProfilerEncoder::Merge(const PGOProfilerEncoder &encoder)
-{
-    Merge(*encoder.pandaFileInfos_);
-    Merge(*encoder.globalRecordInfos_);
-}
-
-bool PGOProfilerEncoder::VerifyPandaFileMatched(const PGOPandaFileInfos &pandaFileInfos, const std::string &base,
-                                                const std::string &incoming) const
-{
-    return pandaFileInfos_->VerifyChecksum(pandaFileInfos, base, incoming);
-}
-
-bool PGOProfilerEncoder::Save()
-{
-    if (!isProfilingInitialized_) {
-        return false;
-    }
-    LockHolder lock(mutex_);
-    return InternalSave();
-}
-
-void PGOProfilerEncoder::MergeWithExistProfile(PGOProfilerEncoder &runtimeEncoder, PGOProfilerDecoder &decoder,
-                                               const SaveTask *task)
-{
-    // inherit some info from runtime encoder
-    ASSERT(header_ != nullptr);
-    ASSERT(runtimeEncoder.header_ != nullptr);
-    header_->SetVersion(runtimeEncoder.header_->GetVersion());
-    bundleName_ = runtimeEncoder.bundleName_;
-    moduleName_ = runtimeEncoder.moduleName_;
-
-    // copy abcFilePool from runtime to temp merger.
-    ASSERT(abcFilePool_->GetPool()->Empty());
-    {
-        WriteLockHolder lock(rwLock_);
-        abcFilePool_->Copy(runtimeEncoder.abcFilePool_);
-    }
-    if (!decoder.LoadFull(abcFilePool_)) {
-        LOG_ECMA(ERROR) << "Fail to load ap: " << realOutPath_;
-    } else {
-        Merge(decoder.GetPandaFileInfos());
-        globalRecordInfos_ = decoder.GetRecordDetailInfosPtr();
-    }
-    if (task && task->IsTerminate()) {
-        LOG_ECMA(DEBUG) << "ProcessProfile: task is already terminate";
-        return;
-    }
-    Merge(*runtimeEncoder.pandaFileInfos_);
-    if (task && task->IsTerminate()) {
-        LOG_ECMA(DEBUG) << "ProcessProfile: task is already terminate";
-        return;
-    }
-    Merge(*runtimeEncoder.globalRecordInfos_);
-}
-
-bool PGOProfilerEncoder::SaveAndRename(const SaveTask *task)
-{
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "PGOProfilerEncoder::SaveAndRename");
+    LOG_PGO(INFO) << "start save and rename ap file to " << path_;
     ClockScope start;
     umask(S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
     static const char *tempSuffix = ".tmp";
-    auto tmpOutPath = realOutPath_ + "." + std::to_string(getpid()) + tempSuffix;
+    auto tmpOutPath = path_ + "." + std::to_string(getpid()) + tempSuffix;
     std::fstream fileStream(tmpOutPath.c_str(),
                             std::fstream::binary | std::fstream::out | std::fstream::in | std::fstream::trunc);
     if (!fileStream.is_open()) {
-        LOG_ECMA(ERROR) << "The file path(" << tmpOutPath << ") open failure! errno: " << errno;
+        LOG_PGO(ERROR) << "can't open the file path (" << tmpOutPath << ") errno: " << errno;
         return false;
     }
-    if (header_ == nullptr) {
-        LOG_ECMA(FATAL) << "PGOProfilerEncoder::SaveAndRename:header_ is nullptr";
+    if (info->GetHeaderPtr() == nullptr) {
+        LOG_PGO(FATAL) << "[PGOProfilerEncoder::SaveAndRename] header_ is not initialized";
     }
-    pandaFileInfos_->ProcessToBinary(fileStream, header_->GetPandaInfoSection());
-    globalRecordInfos_->ProcessToBinary(task, fileStream, header_);
-    {
-        ReadLockHolder lock(rwLock_);
-        PGOFileSectionInterface::ProcessSectionToBinary(*globalRecordInfos_, fileStream, header_,
-                                                        *abcFilePool_->GetPool());
-    }
-    header_->SetFileSize(static_cast<uint32_t>(fileStream.tellp()));
-    header_->SetCompatibleAnVersion(AOTFileVersion::AN_VERSION);
-    header_->ProcessToBinary(fileStream);
-    if (header_->SupportFileConsistency()) {
+    info->GetPandaFileInfos().ProcessToBinary(fileStream, info->GetHeaderPtr()->GetPandaInfoSection());
+    info->GetRecordDetailInfosPtr()->ProcessToBinary(task, fileStream, info->GetHeaderPtr());
+    PGOFileSectionInterface::ProcessSectionToBinary(
+        info->GetRecordDetailInfos(), fileStream, info->GetHeaderPtr(), *info->GetAbcFilePool().GetPool());
+    info->GetHeaderPtr()->SetFileSize(static_cast<uint32_t>(fileStream.tellp()));
+    info->GetHeaderPtr()->SetCompatibleAnVersion(AOTFileVersion::AN_VERSION);
+    info->GetHeaderPtr()->ProcessToBinary(fileStream);
+    if (info->GetHeaderPtr()->SupportFileConsistency()) {
         AddChecksum(fileStream);
     }
     fileStream.close();
     if (task && task->IsTerminate()) {
-        LOG_ECMA(DEBUG) << "ProcessProfile: task is already terminate";
         return false;
     }
-    if (FileExist(realOutPath_.c_str()) && remove(realOutPath_.c_str())) {
-        LOG_ECMA(ERROR) << "Remove " << realOutPath_ << " failure!, errno: " << errno;
+    if (FileExist(path_.c_str()) && remove(path_.c_str())) {
+        LOG_PGO(ERROR) << "remove " << path_ << " failed, errno: " << errno;
         return false;
     }
-    if (rename(tmpOutPath.c_str(), realOutPath_.c_str())) {
-        LOG_ECMA(ERROR) << "Rename " << tmpOutPath << " --> " << realOutPath_ << " failure!, errno: " << errno;
+    if (rename(tmpOutPath.c_str(), path_.c_str())) {
+        LOG_PGO(ERROR) << "rename " << tmpOutPath << " to " << path_ << " failed, errno: " << errno;
         return false;
     }
-    RequestAot();
+    PGOProfilerManager::GetInstance()->RequestAot();
     if (PGOTrace::GetInstance()->IsEnable()) {
         PGOTrace::GetInstance()->SetSaveTime(start.TotalSpentTime());
         PGOTrace::GetInstance()->Print();
     }
+    LOG_PGO(INFO) << "successfully save and rename ap file to " << path_;
     return true;
 }
 
-void PGOProfilerEncoder::RequestAot()
-{
-    if (bundleName_.empty() || moduleName_.empty()) {
-        return;
-    }
-
-    LOG_ECMA(INFO) << "Request local aot, bundle: " << bundleName_ << ", module: " << moduleName_;
-    if (!PGOProfilerManager::GetInstance()->RequestAot(bundleName_, moduleName_, RequestAotMode::RE_COMPILE_ON_IDLE)) {
-        LOG_ECMA(ERROR) << "Request aot failed, bundle: " << bundleName_ << ", module: " << moduleName_;
-    }
-}
-
-bool PGOProfilerEncoder::InternalSave(const SaveTask *task)
+bool PGOProfilerEncoder::InternalSave(const std::shared_ptr<PGOInfo> rtInfo, const SaveTask* task)
 {
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "PGOProfilerEncoder::InternalSave");
-    if (!isProfilingInitialized_) {
-        return false;
+    LOG_PGO(INFO) << "OVERWRITE(0) or MERGE(1) pgo info, mode: " << mode_;
+    if ((mode_ == MERGE) && FileExist(path_.c_str())) {
+        auto info = std::make_shared<PGOInfo>(rtInfo->GetHotnessThreshold());
+        PGOProfilerDecoder decoder(path_, rtInfo->GetHotnessThreshold());
+        info->MergeWithExistProfile(*rtInfo, decoder, task);
+        return SaveAndRename(info, task);
     }
-    if ((mode_ == MERGE) && FileExist(realOutPath_.c_str())) {
-        PGOProfilerEncoder encoder(realOutPath_, hotnessThreshold_, mode_);
-        encoder.InitializeData();
-        PGOProfilerDecoder decoder(realOutPath_, hotnessThreshold_);
-        {
-            ClockScope start;
-            encoder.MergeWithExistProfile(*this, decoder, task);
-            if (PGOTrace::GetInstance()->IsEnable()) {
-                PGOTrace::GetInstance()->SetMergeWithExistProfileTime(start.TotalSpentTime());
-            }
-        }
-        auto saveAndRenameResult = encoder.SaveAndRename(task);
-        encoder.Destroy();
-        return saveAndRenameResult;
-    }
-    return SaveAndRename(task);
+    return SaveAndRename(rtInfo, task);
 }
 
 void PGOProfilerEncoder::AddChecksum(std::fstream &fileStream)
@@ -290,76 +115,40 @@ void PGOProfilerEncoder::AddChecksum(std::fstream &fileStream)
 
 void PGOProfilerEncoder::TerminateSaveTask()
 {
-    if (!isProfilingInitialized_) {
-        return;
-    }
     Taskpool::GetCurrentTaskpool()->TerminateTask(GLOBAL_TASK_ID, TaskType::PGO_SAVE_TASK);
 }
 
-void PGOProfilerEncoder::PostSaveTask()
+void PGOProfilerEncoder::PostSaveTask(const std::string& path,
+                                      ApGenMode mode,
+                                      const std::shared_ptr<PGOInfo> pgoInfo)
 {
-    if (!isProfilingInitialized_) {
-        return;
-    }
-    Taskpool::GetCurrentTaskpool()->PostTask(std::make_unique<SaveTask>(this, GLOBAL_TASK_ID));
+    LOG_PGO(INFO) << "dispatch save task, path: " << path;
+    auto encoder = std::make_shared<PGOProfilerEncoder>(path, mode);
+    Taskpool::GetCurrentTaskpool()->PostTask(std::make_unique<SaveTask>(encoder, pgoInfo, GLOBAL_TASK_ID));
 }
 
-void PGOProfilerEncoder::PostResetOutPathTask(const std::string &moduleName)
+void PGOProfilerEncoder::StartSaveTask(const std::shared_ptr<PGOInfo> info, const SaveTask* task)
 {
-    if (moduleName.empty()) {
-        LOG_ECMA(ERROR) << "PostSetModuleNameTask: moduleName is empty.";
-        return;
-    }
-    // only post moduleName once
-    bool hasPost = false;
-    if (!hasPostModuleName_.compare_exchange_strong(hasPost, true)) {
-        return;
-    }
-    Taskpool::GetCurrentTaskpool()->PostTask(std::make_unique<ResetOutPathTask>(this, moduleName, GLOBAL_TASK_ID));
-}
-
-void PGOProfilerEncoder::StartSaveTask(const SaveTask *task)
-{
+    ConcurrentGuard guard(PGOProfilerManager::GetInstance()->GetConcurrentGuardValue(), "StartSaveTask");
     if (task == nullptr) {
         return;
     }
     if (task->IsTerminate()) {
-        LOG_ECMA(ERROR) << "StartSaveTask: task is already terminate";
+        LOG_PGO(ERROR) << "save task is terminated";
         return;
     }
-    LockHolder lock(mutex_);
-    InternalSave(task);
+    LockHolder lock(PGOProfilerManager::GetPGOInfoMutex());
+    InternalSave(info, task);
+    PGOProfilerManager::GetInstance()->GetPGOState()->SetStopIfSaveAndNotify();
 }
 
-bool PGOProfilerEncoder::LoadAPTextFile(const std::string &inPath)
+ApGenMode PGOProfilerEncoder::GetApGenMode() const
 {
-    if (!isProfilingInitialized_) {
-        return false;
-    }
-    std::string realPath;
-    if (!RealPath(inPath, realPath)) {
-        return false;
-    }
+    return mode_;
+}
 
-    std::ifstream fileStream(realPath.c_str());
-    if (!fileStream.is_open()) {
-        LOG_ECMA(ERROR) << "The file path(" << realOutPath_ << ") open failure!";
-        return false;
-    }
-
-    if (!header_->ParseFromText(fileStream)) {
-        LOG_ECMA(ERROR) << "header format error";
-        return false;
-    }
-    if (!pandaFileInfos_->ParseFromText(fileStream)) {
-        LOG_ECMA(ERROR) << "panda file info format error";
-        return false;
-    }
-    if (!globalRecordInfos_->ParseFromText(fileStream)) {
-        LOG_ECMA(ERROR) << "record info format error";
-        return false;
-    }
-
-    return true;
+void PGOProfilerEncoder::SetApGenMode(ApGenMode mode)
+{
+    mode_ = mode;
 }
 } // namespace panda::ecmascript::pgo

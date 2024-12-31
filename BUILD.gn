@@ -906,6 +906,8 @@ ecma_source = [
   "ecmascript/pgo_profiler/pgo_profiler_layout.cpp",
   "ecmascript/pgo_profiler/pgo_profiler_manager.cpp",
   "ecmascript/pgo_profiler/pgo_utils.cpp",
+  "ecmascript/pgo_profiler/pgo_state.cpp",
+  "ecmascript/pgo_profiler/pgo_info.cpp",
   "ecmascript/pgo_profiler/ap_file/pgo_method_type_set.cpp",
   "ecmascript/pgo_profiler/types/pgo_profile_type.cpp",
   "ecmascript/property_accessor.cpp",
