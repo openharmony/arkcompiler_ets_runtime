@@ -213,6 +213,10 @@ private:
     static inline JSTaggedValue GetElementByKey(JSThread *thread, JSHandle<JSObject>& thisObjHandle, uint32_t index);
     static JSTaggedValue PopInner(EcmaRuntimeCallInfo *argv, JSHandle<JSTaggedValue> &thisHandle,
                                   JSHandle<JSObject> &thisObjHandle);
+    static int64_t FillNewTaggedArray(JSThread *thread, EcmaRuntimeCallInfo *argv, int argc,
+                                      int64_t newArrayIdx, JSHandle<TaggedArray> &eleArray);
+    static int64_t CalNewArrayLen(JSThread *thread, EcmaRuntimeCallInfo *argv, int argc);
+
 #define BUILTIN_SENDABLE_ARRAY_FUNCTION_ENTRY(name, method, length, id) \
     base::BuiltinFunctionEntry::Create(name, BuiltinsSharedArray::method, length, kungfu::BuiltinsStubCSigns::id),
 
