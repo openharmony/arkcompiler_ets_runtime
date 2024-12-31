@@ -1774,7 +1774,6 @@ public:
     static void SetExecuteBufferMode(const EcmaVM *vm);
     // Stop preloading so task callback.
     static void SetStopPreLoadSoCallback(EcmaVM *vm, const StopPreLoadSoCallback &callback);
-    static StopPreLoadSoCallback GetStopPreLoadSoCallback(EcmaVM *vm);
     static void SetLoop(EcmaVM *vm, void *loop);
     static void SetWeakFinalizeTaskCallback(EcmaVM *vm, const WeakFinalizeTaskCallback &callback);
     static void SetAsyncCleanTaskCallback(EcmaVM *vm, const NativePointerTaskCallback &callback);

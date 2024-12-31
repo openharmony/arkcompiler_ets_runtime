@@ -1442,9 +1442,12 @@ HWTEST_F_L0(JSNApiTests, SetStopPreLoadSoCallback)
         LOG_FULL(INFO) << "Call stopPreLoadSoCallback";
     };
     JSNApi::SetStopPreLoadSoCallback(vm_, callback);
-    auto stopPreLoadSoCallback = vm_->GetStopPreLoadSoCallback();
-    EXPECT_NE(stopPreLoadSoCallback, nullptr);
-    stopPreLoadSoCallback();
+    auto stopPreLoadCallbacks = vm_->GetStopPreLoadCallbacks();
+    EXPECT_EQ(stopPreLoadCallbacks.size(), 1);
+    vm_->StopPreLoadSoOrAbc();
+
+    stopPreLoadCallbacks = vm_->GetStopPreLoadCallbacks();
+    EXPECT_EQ(stopPreLoadCallbacks.size(), 0);
 }
 
 HWTEST_F_L0(JSNApiTests, UpdatePkgContextInfoList)

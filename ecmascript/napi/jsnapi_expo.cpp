@@ -4314,12 +4314,7 @@ void JSNApi::SetExecuteBufferMode(const EcmaVM *vm)
 
 void JSNApi::SetStopPreLoadSoCallback(EcmaVM *vm, const StopPreLoadSoCallback &callback)
 {
-    vm->SetStopPreLoadSoCallback(callback);
-}
-
-StopPreLoadSoCallback JSNApi::GetStopPreLoadSoCallback(EcmaVM *vm)
-{
-    return vm->GetStopPreLoadSoCallback();
+    vm->AddStopPreLoadCallback(callback);
 }
 
 bool JSNApi::InitForConcurrentThread(EcmaVM *vm, ConcurrentCallback cb, void *data)
