@@ -161,18 +161,17 @@ private:
                                   Label *exit, Label *slowPath);
     void IntIncludesIndexOf(GateRef elements, GateRef fromIndex, GateRef searchElement, GateRef thisLen,
                             Variable *result, Label *exit);
-    void DoubleIncludesIndexOf(GateRef elements, GateRef fromIndex, GateRef searchElement, GateRef thisLen,
-                               MethodKind mk, Variable *result, Label *exit);
-    void StringIncludesIndexOf(GateRef glue, GateRef elements, GateRef fromIndex, GateRef searchElement,
-                               GateRef thisLen, Variable *result, Label *exit);
+    void DoubleIncludesIndexOf(GateRef glue, GateRef elements, GateRef fromIndex, GateRef searchElement,
+                               GateRef thisLen, MethodKind mk, Variable *result, Label *exit);
     void ObjectIncludesIndexOf(GateRef elements, GateRef fromIndex, GateRef searchElement,
                                GateRef thisLen, Variable *result, Label *exit);
-    void GenericIncludesIndexOf(GateRef glue, GateRef elements, GateRef fromIndex, GateRef searchElement,
+    void GenericIncludesIndexOf(GateRef glue, GateRef thisValue, GateRef fromIndex, GateRef searchElement,
                                 GateRef thisLen, MethodKind mk, Variable *result, Label *exit);
     void UndefinedHoleLoop(GateRef elements, GateRef fromIndex, GateRef thisLen, UndefOrHole uoh,
                            Variable *result, Label *exit);
-    void NumberLoop(GateRef elements, GateRef fromIndex, GateRef searchElement, GateRef thisLen, MethodKind mk,
-                    Variable *result, Label *exit);
+    void NumberLoop(GateRef glue, GateRef elements, GateRef fromIndex, GateRef searchElement, GateRef thisLen,
+                    MethodKind mk, Variable *result, Label *exit);
+    void ZeroLoop(GateRef elements, GateRef fromIndex, GateRef thisLen, Variable *result, Label *exit);
     void NaNLoop(GateRef elements, GateRef fromIndex, GateRef thisLen, Variable *result, Label *exit);
     void CopyWithinOptimised(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *result, Label *exit,
                              Label *slowPath);
