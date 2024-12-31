@@ -70,7 +70,11 @@ namespace panda::ecmascript {
     V(MapIteratorTypeError, "this value is not a map iterator")                              \
     V(SetIteratorTypeError, "this value is not a set iterator")                              \
     V(LengthError, "length must be positive integer")                                        \
-    V(IterNotObject, "JSIterator::GetIterator: iter is not object")
+    V(IterNotObject, "JSIterator::GetIterator: iter is not object")                          \
+    V(CanNotConvertObjectToPrimitiveValue, "Cannot convert object to primitive value")       \
+    V(CanNotConvertIllageValueToString, "Cannot convert a illegal value to a String")        \
+    V(CanNotConvertIllageValueToPrimitive, "Cannot convert a illegal value to a Primitive")
+
 
 #define DEBUG_CHECK_MESSAGE_STRING_LIST(V)                                                   \
     V(IsCallable)                                                                            \

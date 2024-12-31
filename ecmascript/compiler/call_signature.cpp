@@ -1816,6 +1816,7 @@ DEF_CALL_SIGNATURE(FastArraySortString)
     callSign->SetGCLeafFunction(true);
     callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
 }
+
 DEF_CALL_SIGNATURE(StringToNumber)
 {
     // 4 : 4 input parameters

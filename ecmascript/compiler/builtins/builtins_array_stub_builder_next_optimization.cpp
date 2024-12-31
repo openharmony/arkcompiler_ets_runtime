@@ -427,11 +427,56 @@ GateRef BuiltinsArrayStubBuilder::DoSortOptimisedFast(GateRef glue, GateRef rece
                     Label intOrDouble(env);
                     Label notIntAndDouble(env);
                     Label exchangeIndex(env);
-                    GateRef middleVal = *middleValue;
-                    GateRef presentVal = *presentValue;
                     DEFVARIABLE(compareResult, VariableType::INT32(), Int32(0));
-                    GateRef intDoubleCheck = BitOr(BitAnd(TaggedIsInt(middleVal), TaggedIsInt(presentVal)),
-                                                   BitAnd(TaggedIsDouble(middleVal), TaggedIsDouble(presentVal)));
+
+                    Label middleIsHole(env);
+                    Label presentIsHole(env);
+                    Label middleNotHole(env);
+                    Label presentNotHole(env);
+                    Label notHole(env);
+                    Label middleIsUndefined(env);
+                    Label presentIsUndefined(env);
+                    Label middleNotUndefined(env);
+                    Label presentNotUndefined(env);
+                    Label notUndefined(env);
+                    BRANCH(TaggedIsHole(*middleValue), &middleIsHole, &middleNotHole);
+                    Bind(&middleIsHole);
+                    {
+                        Label presentNotHole0(env);
+                        BRANCH(TaggedIsHole(*presentValue), &exchangeIndex, &presentNotHole0);
+                        Bind(&presentNotHole0);
+                        compareResult = Int32(1);
+                        Jump(&exchangeIndex);
+                    }
+                    Bind(&middleNotHole);
+                    BRANCH(TaggedIsHole(*presentValue), &presentIsHole, &presentNotHole);
+                    Bind(&presentIsHole);
+                    {
+                        compareResult = Int32(-1);
+                        Jump(&exchangeIndex);
+                    }
+                    Bind(&presentNotHole);
+                    BRANCH(TaggedIsUndefined(*middleValue), &middleIsUndefined, &middleNotUndefined);
+                    Bind(&middleIsUndefined);
+                    {
+                        Label presentNotUndefined0(env);
+                        BRANCH(TaggedIsUndefined(*presentValue), &exchangeIndex, &presentNotUndefined0);
+                        Bind(&presentNotUndefined0);
+                        compareResult = Int32(1);
+                        Jump(&exchangeIndex);
+                    }
+                    Bind(&middleNotUndefined);
+                    BRANCH(TaggedIsUndefined(*presentValue), &presentIsUndefined, &presentNotUndefined);
+                    Bind(&presentIsUndefined);
+                    {
+                        compareResult = Int32(-1);
+                        Jump(&exchangeIndex);
+                    }
+                    Bind(&presentNotUndefined);
+                    GateRef intDoubleCheck = BitOr(BitAnd(TaggedIsInt(*middleValue),
+                                                          TaggedIsInt(*presentValue)),
+                                                   BitAnd(TaggedIsDouble(*middleValue),
+                                                          TaggedIsDouble(*presentValue)));
                     BRANCH(intDoubleCheck, &intOrDouble, &notIntAndDouble);
                     Bind(&intOrDouble);
                     {
@@ -440,19 +485,15 @@ GateRef BuiltinsArrayStubBuilder::DoSortOptimisedFast(GateRef glue, GateRef rece
                         Jump(&exchangeIndex);
                     }
                     Bind(&notIntAndDouble);
+                    Label isString(env);
+                    GateRef stringCheck = BitAnd(TaggedIsString(*middleValue),
+                                                 TaggedIsString(*presentValue));
+                    BRANCH(stringCheck, &isString, slowPath);
+                    Bind(&isString);
                     {
-                        Label isString(env);
-                        GateRef strBool = LogicAndBuilder(env)
-                                          .And(TaggedIsString(middleVal))
-                                          .And(TaggedIsString(presentVal))
-                                          .Done();
-                        BRANCH(strBool, &isString, slowPath);
-                        Bind(&isString);
-                        {
-                            compareResult = CallNGCRuntime(glue,
-                                RTSTUB_ID(FastArraySortString), {glue, *middleValue, *presentValue});
-                            Jump(&exchangeIndex);
-                        }
+                        compareResult = CallNGCRuntime(glue, RTSTUB_ID(FastArraySortString),
+                            { glue, *middleValue, *presentValue });
+                        Jump(&exchangeIndex);
                     }
                     Bind(&exchangeIndex);
                     {

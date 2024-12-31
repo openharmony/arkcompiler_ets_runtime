@@ -568,6 +568,13 @@ GateRef CircuitBuilder::TaggedIsBoolean(GateRef x)
     return BitOr(TaggedIsFalse(x), TaggedIsTrue(x));
 }
 
+GateRef CircuitBuilder::TaggedIsNativePointer(GateRef x)
+{
+    return LogicAndBuilder(env_)
+        .And(TaggedIsHeapObject(x))
+        .And(IsJsType(x, JSType::JS_NATIVE_POINTER)).Done();
+}
+
 GateRef CircuitBuilder::TaggedGetInt(GateRef x)
 {
     x = ChangeTaggedPointerToInt64(x);
