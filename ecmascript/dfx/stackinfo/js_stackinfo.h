@@ -47,6 +47,7 @@ static constexpr uint16_t PACKAGENAME_MAX = 1024;
 struct JsFrameInfo {
     std::string functionName;
     std::string fileName;
+    std::string packageName;
     std::string pos;
     uintptr_t *nativePointer = nullptr;
 };

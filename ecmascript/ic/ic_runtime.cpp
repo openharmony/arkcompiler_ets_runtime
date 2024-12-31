@@ -511,7 +511,7 @@ void ICRuntime::TraceIC([[maybe_unused]] JSThread *thread,
             int columnNumber = std::stoi(jsFrameInfo.pos.substr(pos + 1));
             auto sourceMapcb = thread->GetEcmaVM()->GetSourceMapTranslateCallback();
             if (sourceMapcb != nullptr && !jsFrameInfo.fileName.empty()) {
-                sourceMapcb(jsFrameInfo.fileName, lineNumber, columnNumber);
+                sourceMapcb(jsFrameInfo.fileName, lineNumber, columnNumber, jsFrameInfo.packageName);
             }
         }
         strTraceIC += "funcName: " + jsFrameInfo.functionName + ", url: " +

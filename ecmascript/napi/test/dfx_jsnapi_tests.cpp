@@ -651,9 +651,10 @@ HWTEST_F_L0(DFXJSNApiTests, StopTracing)
 HWTEST_F_L0(DFXJSNApiTests, TranslateJSStackInfo)
 {
     std::string resultUrl = "";
-    auto cb = [&resultUrl](std::string& url, int& line, int& column) -> bool {
+    auto cb = [&resultUrl](std::string& url, int& line, int& column, std::string& packageName) -> bool {
         line = 0;
         column = 0;
+        packageName = "name";
         if (url.find("TranslateJSStackInfo", 0) != std::string::npos) {
             resultUrl = "true";
             return true;
@@ -666,15 +667,16 @@ HWTEST_F_L0(DFXJSNApiTests, TranslateJSStackInfo)
     std::string url = "TranslateJSStackInfo";
     int32_t line = 0;
     int32_t column = 0;
-    DFXJSNApi::TranslateJSStackInfo(vm_, url, line, column);
+    std::string packageName = "";
+    DFXJSNApi::TranslateJSStackInfo(vm_, url, line, column, packageName);
 
     vm_->SetSourceMapTranslateCallback(cb);
     url = "Translate";
-    DFXJSNApi::TranslateJSStackInfo(vm_, url, line, column);
+    DFXJSNApi::TranslateJSStackInfo(vm_, url, line, column, packageName);
     ASSERT_STREQ(resultUrl.c_str(), "false");
 
     url = "TranslateJSStackInfo";
-    DFXJSNApi::TranslateJSStackInfo(vm_, url, line, column);
+    DFXJSNApi::TranslateJSStackInfo(vm_, url, line, column, packageName);
     ASSERT_STREQ(resultUrl.c_str(), "true");
 }
 

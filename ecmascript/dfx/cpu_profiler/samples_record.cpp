@@ -602,7 +602,8 @@ void SamplesRecord::TranslateUrlPositionBySourceMap(struct FrameInfo &codeEntry)
     if (codeEntry.url.empty()) {
         return;
     }
-    if (!sourceMapTranslateCallback_(codeEntry.url, codeEntry.lineNumber, codeEntry.columnNumber)) {
+    if (!sourceMapTranslateCallback_(codeEntry.url, codeEntry.lineNumber, codeEntry.columnNumber,
+                                     codeEntry.packageName)) {
         size_t find = codeEntry.url.rfind("_.js");
         if (find == std::string::npos) {
             size_t start = codeEntry.url.find("entry/");

@@ -45,6 +45,7 @@ struct FrameInfo {
     std::string functionName = "";
     std::string moduleName = "";
     std::string url = "";
+    std::string packageName = "";
 };
 
 struct CpuProfileNode {

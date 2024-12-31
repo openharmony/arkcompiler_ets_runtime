@@ -1020,12 +1020,13 @@ void DFXJSNApi::GetTracingBufferUseage([[maybe_unused]] const EcmaVM *vm, [[mayb
 #endif
 }
 
-void DFXJSNApi::TranslateJSStackInfo(const EcmaVM *vm, std::string &url, int32_t &line, int32_t &column)
+void DFXJSNApi::TranslateJSStackInfo(const EcmaVM *vm, std::string &url, int32_t &line, int32_t &column,
+    std::string &packageName)
 {
     auto cb = vm->GetSourceMapTranslateCallback();
     if (cb == nullptr) {
         LOG_ECMA(ERROR) << "Translate failed, callback function is nullptr.";
-    } else if (!cb(url, line, column)) {
+    } else if (!cb(url, line, column, packageName)) {
         LOG_ECMA(ERROR) << "Translate failed, url: " << url;
     }
 }
