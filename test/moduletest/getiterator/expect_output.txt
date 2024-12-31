@@ -22,3 +22,18 @@ value2,value2
 Testing methods affected by array Symbol.iterator:
 value2
 value1
+Testing methods affected by map Symbol.iterator (inherited way):
+CustomMapInherit
+key2
+CustomMapInherit
+key1
+Testing methods affected by custom Set Symbol.iterator (inherited way):
+CustomSetInherit
+value2,value2
+CustomSetInherit
+value1,value1
+Testing methods affected by custom Array Symbol.iterator (inherited way):
+CustomArrayInherit
+value1
+CustomArrayInherit
+value2

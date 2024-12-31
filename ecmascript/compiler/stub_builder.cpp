@@ -41,6 +41,7 @@
 #include "ecmascript/js_arguments.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/lexical_env.h"
+#include "ecmascript/marker_cell.h"
 #include "ecmascript/mem/region.h"
 #include "ecmascript/mem/remembered_set.h"
 #include "ecmascript/message_string.h"
@@ -8773,14 +8774,140 @@ GateRef StubBuilder::CalIteratorKey(GateRef glue)
     return iteratorKey;
 }
 
-void StubBuilder::FuncCompare(GateRef glue, GateRef Function,
-                              Label *matchFunc, Label *slowPath, size_t funcIndex)
+void StubBuilder::FuncOrHClassCompare(GateRef glue, GateRef funcOrHClass,
+                                      Label *match, Label *slowPath, size_t index)
 {
     auto env = GetEnvironment();
     GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
     GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
-    GateRef globalRecord = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, funcIndex);
-    BRANCH(Equal(globalRecord, Function), matchFunc, slowPath);
+    GateRef globalRecord = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, index);
+    BRANCH(Equal(globalRecord, funcOrHClass), match, slowPath);
+}
+
+GateRef StubBuilder::IsDetectorInvalid(GateRef glue, size_t indexDetector)
+{
+    auto env = GetEnvironment();
+    GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
+    GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
+    GateRef value = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, indexDetector);
+    GateRef bitFieldOffset = IntPtr(MarkerCell::BIT_FIELD_OFFSET);
+    GateRef bitField = Load(VariableType::INT32(), value, bitFieldOffset);
+    GateRef mask = Int32(1LLU << (MarkerCell::IS_DETECTOR_INVALID_BITS - 1));
+    return Int32NotEqual(Int32And(bitField, mask), Int32(0));
+}
+
+void StubBuilder::HClassCompareAndCheckDetector(GateRef glue, GateRef hclass,
+                                                Label *match, Label *slowPath,
+                                                size_t indexHClass, size_t indexDetector)
+{
+    auto env = GetEnvironment();
+    Label matchHClass(env);
+    FuncOrHClassCompare(glue, hclass, &matchHClass, slowPath, indexHClass);
+    Bind(&matchHClass);
+    BRANCH(IsDetectorInvalid(glue, indexDetector), slowPath, match);
+}
+
+void StubBuilder::GetIteratorResult(GateRef glue, Variable *result, GateRef obj, 
+                                    Label *isPendingException, Label *noPendingException)
+{
+    GateRef iteratorKey = CalIteratorKey(glue);
+    *result = FastGetPropertyByName(glue, obj, iteratorKey, ProfileOperation());
+    BRANCH(HasPendingException(glue), isPendingException, noPendingException);
+}
+
+// If the jsType of the obj is JS_ARRAY and 
+// its elementsKind is not GENERIC or it's hclass == GENERIC array's ihc
+// the obj doesn't have symbol.iterator within itself.
+// So when the Array.prototype[symbol.iterator] remains unchanged, we call FastPath.
+void StubBuilder::TryFastGetArrayIterator(GateRef glue, GateRef hclass, GateRef jsType,
+                                          Label *slowPath2, Label *matchArray)
+{
+    auto env = GetEnvironment();
+    Label arrayDetectorValid(env);
+    Label tryArray(env);
+    BRANCH(Int32Equal(jsType, Int32(static_cast<int32_t>(JSType::JS_ARRAY))), &tryArray, slowPath2);
+    Bind(&tryArray);
+    {
+        BRANCH(IsDetectorInvalid(glue, GlobalEnv::ARRAY_ITERATOR_DETECTOR_INDEX), slowPath2, &arrayDetectorValid);
+        Bind(&arrayDetectorValid);
+        {
+            BuiltinsArrayStubBuilder arrayStubBuilder(this);
+            arrayStubBuilder.ElementsKindHclassCompare(glue, hclass, matchArray, slowPath2);
+        }
+    }
+}
+
+void StubBuilder::TryFastGetIterator(GateRef glue, GateRef obj, GateRef hclass,
+                                     Variable &result, Label *slowPath, Label *exit,
+                                     Label *isPendingException)
+{
+    auto env = GetEnvironment();
+    Label matchMap(env);
+    Label notmatchMap(env);
+    Label matchSet(env);
+    Label notmatchSet(env);
+    Label tryArray(env);
+    Label matchArray(env);
+    Label isMap(env);
+    Label isNotMap(env);
+    Label isSet(env);
+    Label isNotSet(env);
+    Label isArray(env);
+    Label noPendingException(env);
+    Label slowPath2(env);
+
+    // When the symbol.iterator method remains unmodified
+    // it is used to quickly process instances of Map, Set whose hclass == Map/Set's ihc.
+    // In this situation we don't need to perform FastGetPropertyByName and CallRuntime.
+    HClassCompareAndCheckDetector(glue, hclass, &matchMap, &notmatchMap, GlobalEnv::MAP_CLASS_INDEX, GlobalEnv::MAP_ITERATOR_DETECTOR_INDEX);
+    Bind(&notmatchMap);
+    HClassCompareAndCheckDetector(glue, hclass, &matchSet, &notmatchSet, GlobalEnv::SET_CLASS_INDEX, GlobalEnv::SET_ITERATOR_DETECTOR_INDEX);
+    Bind(&notmatchSet);
+
+    GateRef jsType = GetObjectType(hclass);
+    TryFastGetArrayIterator(glue, hclass, jsType, &slowPath2, &matchArray);
+    
+    Bind(&slowPath2);
+    GetIteratorResult(glue, &result, obj, isPendingException, &noPendingException);
+    // Mainly solve the situation with inheritance
+    // and the symbol.iterator method remains unmodified.
+    // In this situation we need to perform FastGetPropertyByName but needn't CallRuntime.
+    Bind(&noPendingException);
+    {
+        BRANCH(Int32Equal(jsType, Int32(static_cast<int32_t>(JSType::JS_MAP))), &isMap, &isNotMap);
+        Bind(&isMap);
+        {
+            FuncOrHClassCompare(glue, *result, &matchMap, slowPath, GlobalEnv::MAP_PROTO_ENTRIES_FUNCTION_INDEX);
+        }
+        Bind(&isNotMap);
+        BRANCH(Int32Equal(jsType, Int32(static_cast<int32_t>(JSType::JS_SET))), &isSet, &isNotSet);
+        Bind(&isSet);
+        {
+            FuncOrHClassCompare(glue, *result, &matchSet, slowPath, GlobalEnv::SET_PROTO_VALUES_FUNCTION_INDEX);
+        }
+        Bind(&isNotSet);
+        BRANCH(Int32Equal(jsType, Int32(static_cast<int32_t>(JSType::JS_ARRAY))), &isArray, slowPath);
+        Bind(&isArray);
+        {
+            FuncOrHClassCompare(glue, *result, &matchArray, slowPath, GlobalEnv::ARRAY_PROTO_VALUES_FUNCTION_INDEX);
+        }
+    }
+
+    Bind(&matchMap);
+    {
+        BuiltinsCollectionStubBuilder<JSMap> collectionStubBuilder(this, glue, obj, Int32(0));
+        collectionStubBuilder.Entries(&result, exit, slowPath);
+    }
+    Bind(&matchSet);
+    {
+        BuiltinsCollectionStubBuilder<JSSet> collectionStubBuilder(this, glue, obj, Int32(0));
+        collectionStubBuilder.Values(&result, exit, slowPath);
+    }
+    Bind(&matchArray);
+    {
+        BuiltinsArrayStubBuilder arrayStubBuilder(this);
+        arrayStubBuilder.Values(glue, obj, Int32(0), &result, exit, slowPath);
+    }
 }
 
 #if ENABLE_NEXT_OPTIMIZATION
@@ -8793,67 +8920,23 @@ GateRef StubBuilder::GetIterator(GateRef glue, GateRef obj, ProfileOperation cal
     DEFVARIABLE(result, VariableType::JS_ANY(), Exception());
     DEFVARIABLE(taggedId, VariableType::INT32(), Int32(GET_MESSAGE_STRING_ID(ObjIsNotCallable)));
 
-    Label isPendingException(env);
-    Label noPendingException(env);
     Label isHeapObject(env);
+    Label objIsHeapObject(env);
     Label objIsCallable(env);
     Label throwError(env);
     Label callExit(env);
-    Label isMap(env);
-    Label isNotMap(env);
     Label slowPath(env);
-    Label isSet(env);
-    Label isNotSet(env);
-    Label isArray(env);
-    Label objIsHeapObject(env);
-    GateRef iteratorKey = CalIteratorKey(glue);
-    result = FastGetPropertyByName(glue, obj, iteratorKey, ProfileOperation());
-    BRANCH(HasPendingException(glue), &isPendingException, &noPendingException);
-    Bind(&isPendingException);
-    {
-        result = Exception();
-        Jump(&exit);
-    }
-    Bind(&noPendingException);
-    BRANCH(TaggedIsHeapObject(obj), &objIsHeapObject, &slowPath);
+    Label slowPath3(env);
+    Label isPendingException(env);
+
+    BRANCH(TaggedIsHeapObject(obj), &objIsHeapObject, &slowPath3);
     Bind(&objIsHeapObject);
     GateRef hclass = LoadHClass(obj);
-    GateRef jsType = GetObjectType(hclass);
-    BRANCH(Int32Equal(jsType, Int32(static_cast<int32_t>(JSType::JS_MAP))), &isMap, &isNotMap);
-    Bind(&isMap);
-    {
-        Label matchMapFunc(env);
-        FuncCompare(glue, *result, &matchMapFunc, &slowPath, GlobalEnv::MAP_PROTO_ENTRIES_FUNCTION_INDEX);
-        Bind(&matchMapFunc);
-        {
-            BuiltinsCollectionStubBuilder<JSMap> collectionStubBuilder(this, glue, obj, Int32(0));
-            collectionStubBuilder.Entries(&result, &exit, &slowPath);
-        }
-    }
-    Bind(&isNotMap);
-    BRANCH(Int32Equal(jsType, Int32(static_cast<int32_t>(JSType::JS_SET))), &isSet, &isNotSet);
-    Bind(&isSet);
-    {
-        Label matchSetFunc(env);
-        FuncCompare(glue, *result, &matchSetFunc, &slowPath, GlobalEnv::SET_PROTO_VALUES_FUNCTION_INDEX);
-        Bind(&matchSetFunc);
-        {
-            BuiltinsCollectionStubBuilder<JSSet> collectionStubBuilder(this, glue, obj, Int32(0));
-            collectionStubBuilder.Values(&result, &exit, &slowPath);
-        }
-    }
-    Bind(&isNotSet);
-    BRANCH(Int32Equal(jsType, Int32(static_cast<int32_t>(JSType::JS_ARRAY))), &isArray, &slowPath);
-    Bind(&isArray);
-    {
-        Label matchArrayFunc(env);
-        FuncCompare(glue, *result, &matchArrayFunc, &slowPath, GlobalEnv::ARRAY_PROTO_VALUES_FUNCTION_INDEX);
-        Bind(&matchArrayFunc);
-        {
-            BuiltinsArrayStubBuilder arrayStubBuilder(this);
-            arrayStubBuilder.Values(glue, obj, Int32(0), &result, &exit, &slowPath);
-        }
-    }
+    TryFastGetIterator(glue, obj, hclass, result, &slowPath, &exit, &isPendingException);
+
+    Bind(&slowPath3);
+    GetIteratorResult(glue, &result, obj, &isPendingException, &slowPath);
+    
     Bind(&slowPath);
     callback.ProfileGetIterator(*result);
     BRANCH(TaggedIsHeapObject(*result), &isHeapObject, &throwError);
@@ -8877,6 +8960,11 @@ GateRef StubBuilder::GetIterator(GateRef glue, GateRef obj, ProfileOperation cal
             taggedId = Int32(GET_MESSAGE_STRING_ID(IterNotObject));
             Jump(&throwError);
         }
+    }
+    Bind(&isPendingException);
+    {
+        result = Exception();
+        Jump(&exit);
     }
     Bind(&throwError);
     {

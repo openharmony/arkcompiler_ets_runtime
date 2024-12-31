@@ -65,6 +65,8 @@
     V(JSTaggedValue, BigInt64ArrayFunctionPrototype, BIGINT64_ARRAY_FUNCTION_PROTOTYPE_INDEX)       \
     V(JSTaggedValue, BigUint64ArrayFunctionPrototype, BIGUINT64_ARRAY_FUNCTION_PROTOTYPE_INDEX)     \
     V(JSTaggedValue, MapClass, MAP_CLASS_INDEX)                                                     \
+    V(JSTaggedValue, SetClass, SET_CLASS_INDEX)                                                     \
+    V(JSTaggedValue, ArrayClass, ARRAY_CLASS_INDEX)                                                 \
     V(JSTaggedValue, Int8ArrayRootHclass, INT8_ARRAY_ROOT_HCLASS_INDEX)                             \
     V(JSTaggedValue, Uint8ArrayRootHclass, UINT8_ARRAY_ROOT_HCLASS_INDEX)                           \
     V(JSTaggedValue, Uint8ClampedArrayRootHclass, UINT8_CLAMPED_ARRAY_ROOT_HCLASS_INDEX)            \

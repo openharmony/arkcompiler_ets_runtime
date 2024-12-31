@@ -25,13 +25,13 @@ namespace ecmascript {
 class GlobalEnv;
 class PropertyDetector {
 public:
-#define GLOBAL_ENV_DETECTOR_FIELDS(V)                                                   \
-    V(JSTaggedValue, RegExpReplaceDetector, REGEXP_REPLACE_DETECTOR_INDEX)              \
-    V(JSTaggedValue, MapIteratorDetector, MAP_ITERATOR_DETECTOR_INDEX)                  \
-    V(JSTaggedValue, SetIteratorDetector, SET_ITERATOR_DETECTOR_INDEX)                  \
-    V(JSTaggedValue, StringIteratorDetector, STRING_ITERATOR_DETECTOR_INDEX)            \
-    V(JSTaggedValue, ArrayIteratorDetector, ARRAY_ITERATOR_DETECTOR_INDEX)              \
-    V(JSTaggedValue, TypedArrayIteratorDetector, TYPED_ARRAY_ITERATOR_DETECTOR_INDEX)   \
+#define GLOBAL_ENV_DETECTOR_FIELDS(V)                                                                 \
+    V(JSTaggedValue, RegExpReplaceDetector, REGEXP_REPLACE_DETECTOR_INDEX)                            \
+    V(JSTaggedValue, MapIteratorDetector, MAP_ITERATOR_DETECTOR_INDEX)                                \
+    V(JSTaggedValue, SetIteratorDetector, SET_ITERATOR_DETECTOR_INDEX)                                \
+    V(JSTaggedValue, StringIteratorDetector, STRING_ITERATOR_DETECTOR_INDEX)                          \
+    V(JSTaggedValue, ArrayIteratorDetector, ARRAY_ITERATOR_DETECTOR_INDEX)                            \
+    V(JSTaggedValue, TypedArrayIteratorDetector, TYPED_ARRAY_ITERATOR_DETECTOR_INDEX)                 \
     V(JSTaggedValue, TypedArraySpeciesProtectDetector, TYPED_ARRAY_SPECIES_PROTECT_DETECTOR_INDEX)    \
     V(JSTaggedValue, NumberStringNotRegexpLikeDetector, NUMBER_STRING_NOT_REGEXP_LIKE_DETECTOR_INDEX) \
     V(JSTaggedValue, RegExpFlagsDetector, REGEXP_FLAGS_DETECTOR_INDEX)                                \

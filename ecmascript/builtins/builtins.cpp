@@ -1357,6 +1357,7 @@ void Builtins::InitializeSet(const JSHandle<GlobalEnv> &env, JSHandle<JSTaggedVa
     // Set.prototype_or_hclass
     JSHandle<JSHClass> setFuncInstanceHClass =
         factory_->NewEcmaHClass(JSSet::SIZE, JSType::JS_SET, setFuncPrototypeValue);
+    env->SetSetClass(thread_, setFuncInstanceHClass);
     // Set() = new Function()
     JSHandle<JSTaggedValue> setFunction(
         NewBuiltinConstructor(env, setFuncPrototype, BuiltinsSet::SetConstructor, "Set", FunctionLength::ZERO,
@@ -1420,6 +1421,7 @@ void Builtins::LazyInitializeSet(const JSHandle<GlobalEnv> &env)
     env->SetBuiltinsSetFunction(thread_, accessor);
     env->SetSetPrototype(thread_, accessor);
     env->SetSetProtoValuesFunction(thread_, accessor);
+    env->SetSetClass(thread_, accessor);
 }
 
 void Builtins::InitializeMap(const JSHandle<GlobalEnv> &env, JSHandle<JSTaggedValue> objFuncPrototypeVal) const
@@ -2176,6 +2178,7 @@ void Builtins::InitializeArray(const JSHandle<GlobalEnv> &env, const JSHandle<JS
     //  Array.prototype_or_hclass
     JSMutableHandle<JSHClass> arrFuncInstanceHClass(thread_, JSTaggedValue::Undefined());
     arrFuncInstanceHClass.Update(factory_->CreateJSArrayInstanceClass(arrFuncPrototypeValue));
+    env->SetArrayClass(thread_, arrFuncInstanceHClass);
     auto globalConstant = const_cast<GlobalEnvConstants *>(thread_->GlobalConstants());
     if (!isRealm) {
         globalConstant->InitElementKindHClass(thread_, arrFuncInstanceHClass);
