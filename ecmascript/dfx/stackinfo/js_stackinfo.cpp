@@ -593,7 +593,7 @@ void ParseJsFrameInfo(JSPandaFile *jsPandaFile, DebugInfoExtractor *debugExtract
     jsFrame.column = columnNumber;
 }
 
-bool ArkParseJsFrameInfo(uintptr_t byteCodePc, uintptr_t methodId, uintptr_t mapBase, uintptr_t loadOffset,
+bool ArkParseJsFrameInfo(uintptr_t byteCodePc, uintptr_t mapBase, uintptr_t loadOffset,
                          uint8_t *data, uint64_t dataSize, uintptr_t extractorptr, JsFunction *jsFunction)
 {
     if (data == nullptr) {
@@ -624,11 +624,9 @@ bool ArkParseJsFrameInfo(uintptr_t byteCodePc, uintptr_t methodId, uintptr_t map
         LOG_ECMA(ERROR) << std::hex << "Failed to get methodId, pc: " << byteCodePc;
         return false;
     }
-    if (!methodId) {
-        methodId = codeInfo->methodId;
-    }
     auto offset = codeInfo->offset;
-    ParseJsFrameInfo(jsPandaFile, debugExtractor, EntityId(methodId), offset, *jsFunction, extractor->GetSourceMap());
+    ParseJsFrameInfo(jsPandaFile, debugExtractor, EntityId(codeInfo->methodId), offset,
+                     *jsFunction, extractor->GetSourceMap());
 
     jsFunction->codeBegin = byteCodePc - offset;
     jsFunction->codeSize = codeInfo->codeSize;
@@ -740,39 +738,12 @@ uintptr_t GetBytecodeOffset(void *ctx, ReadMemFunc readMem, uintptr_t frameType,
     return 0;
 }
 
-uintptr_t ArkGetFunction(void *ctx, ReadMemFunc readMem, uintptr_t currentPtr, uintptr_t frameType)
+uintptr_t ArkGetFunction(void *ctx, ReadMemFunc readMem, uintptr_t currentPtr)
 {
-    FrameType type = static_cast<FrameType>(frameType);
+    // only for jit frame
     uintptr_t funcAddr = currentPtr;
-    switch (type) {
-        case FrameType::OPTIMIZED_JS_FAST_CALL_FUNCTION_FRAME:
-        case FrameType::OPTIMIZED_JS_FUNCTION_FRAME: {
-            funcAddr -= OptimizedJSFunctionFrame::GetTypeOffset();
-            funcAddr += OptimizedJSFunctionFrame::GetFunctionOffset();
-            break;
-        }
-        case FrameType::ASM_INTERPRETER_FRAME:
-        case FrameType::INTERPRETER_CONSTRUCTOR_FRAME: {
-            funcAddr -= AsmInterpretedFrame::GetTypeOffset();
-            funcAddr += AsmInterpretedFrame::GetFunctionOffset(false);
-            break;
-        }
-        case FrameType::INTERPRETER_FRAME:
-        case FrameType::INTERPRETER_FAST_NEW_FRAME: {
-            funcAddr -= InterpretedFrame::GetTypeOffset();
-            funcAddr += InterpretedFrame::GetFunctionOffset();
-            break;
-        }
-        case FrameType::FASTJIT_FUNCTION_FRAME:
-        case FrameType::FASTJIT_FAST_CALL_FUNCTION_FRAME: {
-            funcAddr -= FASTJITFunctionFrame::GetTypeOffset();
-            funcAddr += FASTJITFunctionFrame::GetFunctionOffset();
-            break;
-        }
-        default: {
-            return 0;
-        }
-    }
+    funcAddr -= FASTJITFunctionFrame::GetTypeOffset();
+    funcAddr += FASTJITFunctionFrame::GetFunctionOffset();
     uintptr_t function = 0;
     if (!readMem(ctx, funcAddr, &function)) {
         return 0;
@@ -780,85 +751,8 @@ uintptr_t ArkGetFunction(void *ctx, ReadMemFunc readMem, uintptr_t currentPtr, u
     return function;
 }
 
-bool ArkCheckIsJSFunctionBaseOrJSProxy(void *ctx, ReadMemFunc readMem, uintptr_t objAddr, bool &isJSFunctionBase)
-{
-    bool isHeapObj = ((objAddr & JSTaggedValue::TAG_HEAPOBJECT_MASK) == 0U);
-    bool isInvalidValue = (objAddr <= JSTaggedValue::INVALID_VALUE_LIMIT);
-    if (isHeapObj && !isInvalidValue) {
-        ASSERT_PRINT(((objAddr & JSTaggedValue::TAG_WEAK) == 0U),
-                     "can not convert JSTaggedValue to HeapObject :" << std::hex << objAddr);
-        uintptr_t hclassAddr = objAddr + TaggedObject::HCLASS_OFFSET;
-        uintptr_t hclass = 0;
-        if (!readMem(ctx, hclassAddr, &hclass)) {
-            return false;
-        }
-        if (hclass != 0) {
-            uintptr_t bitsAddr = reinterpret_cast<uintptr_t>(hclass + JSHClass::BIT_FIELD_OFFSET);
-            uintptr_t bits = 0;
-            if (!readMem(ctx, bitsAddr, &bits)) {
-                return false;
-            }
-            JSType jsType = JSHClass::ObjectTypeBits::Decode(bits);
-            isJSFunctionBase = (jsType >= JSType::JS_FUNCTION_BASE && jsType <= JSType::JS_BOUND_FUNCTION);
-            bool isJSProxy = (jsType == JSType::JS_PROXY);
-            return isJSFunctionBase || isJSProxy;
-        }
-    }
-    return false;
-}
-
-uintptr_t ArkCheckAndGetMethod(void *ctx, ReadMemFunc readMem, uintptr_t value)
-{
-    bool isJSFunctionBase = 0;
-    if (ArkCheckIsJSFunctionBaseOrJSProxy(ctx, readMem, value, isJSFunctionBase)) {
-        if (isJSFunctionBase) {
-            value += JSFunctionBase::METHOD_OFFSET;
-        } else {
-            value += JSProxy::METHOD_OFFSET;
-        }
-        uintptr_t method = 0;
-        if (!readMem(ctx, value, &method)) {
-            return 0;
-        }
-        return method;
-    }
-    return 0;
-}
-
-bool ArkGetMethodIdFromMethod(void *ctx, ReadMemFunc readMem, uintptr_t method, uintptr_t &methodId)
-{
-    uintptr_t methodLiteralAddr = method + Method::LITERAL_INFO_OFFSET;
-    uintptr_t methodLiteral = 0;
-    if (!readMem(ctx, methodLiteralAddr, &methodLiteral)) {
-        return false;
-    }
-    methodId = MethodLiteral::MethodIdBits::Decode(methodLiteral);
-    return true;
-}
-
-bool ArkGetMethodId(void *ctx, ReadMemFunc readMem, uintptr_t frameType, uintptr_t currentPtr, uintptr_t &methodId)
-{
-    uintptr_t function = ArkGetFunction(ctx, readMem, currentPtr, frameType);
-    if (!function) {
-        LOG_ECMA(DEBUG) << "Failed to get function";
-        return false;
-    }
-
-    uintptr_t method = ArkCheckAndGetMethod(ctx, readMem, function);
-    if (!method) {
-        LOG_ECMA(DEBUG) << std::hex << "Failed to get method: " << function;
-        return false;
-    }
-
-    if (!ArkGetMethodIdFromMethod(ctx, readMem, method, methodId)) {
-        LOG_ECMA(DEBUG) << std::hex << "ArkGetJsFrameDebugInfo failed, method: " << method;
-        return false;
-    }
-    return true;
-}
-
 bool ArkGetNextFrame(void *ctx, ReadMemFunc readMem, uintptr_t &currentPtr,
-                     uintptr_t &frameType, uintptr_t &pc, uintptr_t *methodId)
+                     uintptr_t &frameType, uintptr_t &pc)
 {
     currentPtr -= sizeof(FrameType);
     if (!readMem(ctx, currentPtr, &frameType)) {
@@ -868,13 +762,7 @@ bool ArkGetNextFrame(void *ctx, ReadMemFunc readMem, uintptr_t &currentPtr,
         return true;
     }
     bool ret = false;
-    if (IsJsFunctionFrame(frameType)) {
-        pc = GetBytecodeOffset(ctx, readMem, frameType, currentPtr);
-        ret = true;
-        if (methodId != nullptr) {
-            ret = ArkGetMethodId(ctx, readMem, frameType, currentPtr, *methodId);
-        }
-    } else if (IsNativeFunctionFrame(frameType)) {
+    if (IsJsFunctionFrame(frameType) || IsNativeFunctionFrame(frameType)) {
         pc = GetBytecodeOffset(ctx, readMem, frameType, currentPtr);
         ret = true;
     }
@@ -893,50 +781,37 @@ bool ArkGetNextFrame(void *ctx, ReadMemFunc readMem, uintptr_t &currentPtr,
     if (ret) {
         return true;
     }
-    return ArkGetNextFrame(ctx, readMem, currentPtr, frameType, pc, methodId);
+    return ArkGetNextFrame(ctx, readMem, currentPtr, frameType, pc);
 }
 
-bool ArkGetMethodIdWithJit(ArkUnwindParam *arkUnwindParam, uintptr_t frameType, uintptr_t currentPtr)
+bool ArkGetMethodIdWithJit(ArkUnwindParam *arkUnwindParam, uintptr_t currentPtr)
 {
-    uintptr_t function = ArkGetFunction(arkUnwindParam->ctx, arkUnwindParam->readMem, currentPtr, frameType);
+    // only for jit frame
+    uintptr_t function = ArkGetFunction(arkUnwindParam->ctx, arkUnwindParam->readMem, currentPtr);
     if (!function) {
         LOG_ECMA(DEBUG) << "Failed to get function";
         return false;
     }
-
-    uintptr_t method = ArkCheckAndGetMethod(arkUnwindParam->ctx, arkUnwindParam->readMem, function);
-    if (!method) {
-        LOG_ECMA(DEBUG) << std::hex << "Failed to get method: " << function;
-        return false;
+    uintptr_t machineCode = 0;
+    uintptr_t functionAddr = function + JSFunction::MACHINECODE_OFFSET;
+    arkUnwindParam->readMem(arkUnwindParam->ctx, functionAddr, &machineCode);
+    uintptr_t size = 0;
+    uintptr_t funcAddr = 0;
+    if (machineCode) {
+        arkUnwindParam->readMem(arkUnwindParam->ctx, machineCode + MachineCode::INSTRSIZ_OFFSET, &size);
+        arkUnwindParam->readMem(arkUnwindParam->ctx, machineCode + MachineCode::FUNCADDR_OFFSET, &funcAddr);
     }
-
-    if (!ArkGetMethodIdFromMethod(arkUnwindParam->ctx, arkUnwindParam->readMem, method, *arkUnwindParam->methodId)) {
-        LOG_ECMA(DEBUG) << std::hex << "ArkGetJsFrameDebugInfo failed, method: " << method;
-        return false;
-    }
-
-    if (IsFastJitFunctionFrame(frameType)) {
-        uintptr_t machineCode = 0;
-        uintptr_t functionAddr = function + JSFunction::MACHINECODE_OFFSET;
-        arkUnwindParam->readMem(arkUnwindParam->ctx, functionAddr, &machineCode);
-        uintptr_t size = 0;
-        uintptr_t funcAddr = 0;
-        if (machineCode) {
-            arkUnwindParam->readMem(arkUnwindParam->ctx, machineCode + MachineCode::INSTRSIZ_OFFSET, &size);
-            arkUnwindParam->readMem(arkUnwindParam->ctx, machineCode + MachineCode::FUNCADDR_OFFSET, &funcAddr);
+    if (size && funcAddr) {
+        // take the lower four bytes
+        size &= 0xFFFFFFFF;
+        std::vector<uint8> codeVec;
+        for (size_t l = 0; l < size; l++) {
+            uintptr_t tmp = 0;
+            arkUnwindParam->readMem(arkUnwindParam->ctx, funcAddr + l, &tmp);
+            codeVec.push_back(tmp);
         }
-        if (size && funcAddr) {
-            // take the lower four bytes
-            size &= 0xFFFFFFFF;
-            std::vector<uint8> codeVec;
-            for (size_t l = 0; l < size; l++) {
-                uintptr_t tmp = 0;
-                arkUnwindParam->readMem(arkUnwindParam->ctx, funcAddr + l, &tmp);
-                codeVec.push_back(tmp);
-            }
-            arkUnwindParam->jitCache.push_back(*arkUnwindParam->methodId);
-            JsStackInfo::machineCodeMap[EntityId(*arkUnwindParam->methodId)] = codeVec;
-        }
+        arkUnwindParam->jitCache.push_back(*arkUnwindParam->methodId);
+        JsStackInfo::machineCodeMap[EntityId(*arkUnwindParam->methodId)] = codeVec;
     }
     return true;
 }
@@ -952,15 +827,12 @@ bool ArkGetNextFrameWithJit(ArkUnwindParam *arkUnwindParam, uintptr_t &currentPt
     }
     bool ret = false;
     if (IsJsFunctionFrame(frameType) ||
-        IsFastJitFunctionFrame(frameType)) {
+        IsNativeFunctionFrame(frameType)) {
         *arkUnwindParam->pc = GetBytecodeOffset(arkUnwindParam->ctx, arkUnwindParam->readMem, frameType, currentPtr);
         ret = true;
-        if (arkUnwindParam->methodId != nullptr) {
-            ret = ArkGetMethodIdWithJit(arkUnwindParam, frameType, currentPtr);
-        }
-    } else if (IsNativeFunctionFrame(frameType)) {
+    } else if (IsFastJitFunctionFrame(frameType)) {
         *arkUnwindParam->pc = GetBytecodeOffset(arkUnwindParam->ctx, arkUnwindParam->readMem, frameType, currentPtr);
-        ret = true;
+        ret = ArkGetMethodIdWithJit(arkUnwindParam, currentPtr);
     }
 
     uintptr_t typeOffset = 0;
@@ -1033,37 +905,36 @@ bool StepArkWithRecordJit(ArkUnwindParam *arkUnwindParam)
                 IsFastJitFunctionFrame(frameType);
         }
     } else {
-        LOG_ECMA(ERROR) << "ArkGetNextFrame failed, currentPtr: " << currentPtr << ", frameType: " << frameType;
+        LOG_ECMA(ERROR) << "ArkGetNextFrameWithJit failed, currentPtr: " << currentPtr << ", frameType: " << frameType;
         return false;
     }
     return true;
 }
 
-bool StepArk(void *ctx, ReadMemFunc readMem, uintptr_t *fp, uintptr_t *sp,
-             uintptr_t *pc, uintptr_t *methodId, bool *isJsFrame)
+bool StepArk(void *ctx, ReadMemFunc readMem, ArkStepParam *arkStepParam)
 {
     constexpr size_t FP_SIZE = sizeof(uintptr_t);
-    uintptr_t currentPtr = *fp;
+    uintptr_t currentPtr = *arkStepParam->fp;
     if (currentPtr == 0) {
         LOG_ECMA(ERROR) << "fp is nullptr in StepArk()!";
         return false;
     }
 
     uintptr_t frameType = 0;
-    if (ArkGetNextFrame(ctx, readMem, currentPtr, frameType, *pc, methodId)) {
+    if (ArkGetNextFrame(ctx, readMem, currentPtr, frameType, *arkStepParam->pc)) {
         if (ArkFrameCheck(frameType)) {
             currentPtr += sizeof(FrameType);
-            *sp = currentPtr;
-            bool ret = readMem(ctx, currentPtr, fp);
+            *arkStepParam->sp = currentPtr;
+            bool ret = readMem(ctx, currentPtr, arkStepParam->fp);
             currentPtr += FP_SIZE;
-            ret &= readMem(ctx, currentPtr, pc);
-            *isJsFrame = false;
+            ret &= readMem(ctx, currentPtr, arkStepParam->pc);
+            *arkStepParam->isJsFrame = false;
             return ret;
         } else {
-            *fp = currentPtr;
-            *sp = currentPtr;
+            *arkStepParam->fp = currentPtr;
+            *arkStepParam->sp = currentPtr;
             // js -> true, native -> false
-            *isJsFrame = IsJsFunctionFrame(frameType);
+            *arkStepParam->isJsFrame = IsJsFunctionFrame(frameType);
         }
     } else {
         LOG_ECMA(ERROR) << std::hex << "ArkGetNextFrame failed, addr: " << currentPtr;
@@ -1131,9 +1002,9 @@ bool JSSymbolExtractor::ParseHapFileData([[maybe_unused]] std::string& hapName)
     return ret;
 }
 
-bool ArkParseJSFileInfo([[maybe_unused]] uintptr_t byteCodePc, [[maybe_unused]] uintptr_t methodId,
-                        [[maybe_unused]] uintptr_t mapBase, [[maybe_unused]] const char* filePath,
-                        [[maybe_unused]] uintptr_t extractorptr, [[maybe_unused]] JsFunction *jsFunction)
+bool ArkParseJSFileInfo([[maybe_unused]] uintptr_t byteCodePc, [[maybe_unused]] uintptr_t mapBase,
+                        [[maybe_unused]] const char* filePath, [[maybe_unused]] uintptr_t extractorptr,
+                        [[maybe_unused]] JsFunction *jsFunction)
 {
     bool ret = false;
 #if defined(PANDA_TARGET_OHOS)
@@ -1151,7 +1022,7 @@ bool ArkParseJSFileInfo([[maybe_unused]] uintptr_t byteCodePc, [[maybe_unused]] 
         extractor->ParseHapFileData(hapName);
         extractor->CreateJSPandaFile();
     }
-    ret = ArkParseJsFrameInfo(byteCodePc, methodId, mapBase, extractor->GetLoadOffset(),
+    ret = ArkParseJsFrameInfo(byteCodePc, mapBase, extractor->GetLoadOffset(),
             extractor->GetData(), extractor->GetDataSize(), extractorptr, jsFunction);
 #endif
     return ret;
@@ -1361,7 +1232,7 @@ void JSStackTrace::SetMethodInfos(uintptr_t mapBase, CVector<MethodInfo> &infos)
     methodInfos_.emplace(mapBase, std::move(infos));
 }
 
-bool JSStackTrace::GetJsFrameInfo(uintptr_t byteCodePc, uintptr_t methodId, uintptr_t mapBase,
+bool JSStackTrace::GetJsFrameInfo(uintptr_t byteCodePc, uintptr_t mapBase,
                                   uintptr_t loadOffset, JsFunction *jsFunction)
 {
     if (!InitializeMethodInfo(mapBase)) {
@@ -1375,14 +1246,11 @@ bool JSStackTrace::GetJsFrameInfo(uintptr_t byteCodePc, uintptr_t methodId, uint
         LOG_ECMA(ERROR) << std::hex << "Failed to get methodId, pc: " << byteCodePc;
         return false;
     }
-    if (!methodId) {
-        methodId = codeInfo->methodId;
-    }
     auto offset = codeInfo->offset;
     auto pandafile = FindJSpandaFile(mapBase);
     auto debugInfoExtractor =
         JSPandaFileManager::GetInstance()->GetJSPtExtractor(pandafile.get());
-    ParseJsFrameInfo(pandafile.get(), debugInfoExtractor, EntityId(methodId), offset, *jsFunction);
+    ParseJsFrameInfo(pandafile.get(), debugInfoExtractor, EntityId(codeInfo->methodId), offset, *jsFunction);
     jsFunction->codeBegin = byteCodePc - offset;
     jsFunction->codeSize = codeInfo->codeSize;
     return true;
@@ -1393,7 +1261,7 @@ void ArkCreateLocal()
     JSStackTrace::AddReference();
 }
 
-bool ArkParseJsFrameInfoLocal(uintptr_t byteCodePc, uintptr_t methodId, uintptr_t mapBase,
+bool ArkParseJsFrameInfoLocal(uintptr_t byteCodePc, uintptr_t mapBase,
                               uintptr_t loadOffset, JsFunction *jsFunction)
 {
     auto trace = JSStackTrace::GetInstance();
@@ -1401,7 +1269,7 @@ bool ArkParseJsFrameInfoLocal(uintptr_t byteCodePc, uintptr_t methodId, uintptr_
         LOG_ECMA(ERROR) << "singleton is null, need create first.";
         return false;
     }
-    return trace->GetJsFrameInfo(byteCodePc, methodId, mapBase, loadOffset, jsFunction);
+    return trace->GetJsFrameInfo(byteCodePc, mapBase, loadOffset, jsFunction);
 }
 
 void ArkDestoryLocal()
@@ -1456,20 +1324,19 @@ __attribute__((visibility("default"))) int ark_write_jit_code(
 }
 
 __attribute__((visibility("default"))) int step_ark(
-    void *ctx, panda::ecmascript::ReadMemFunc readMem, uintptr_t *fp, uintptr_t *sp,
-    uintptr_t *pc, uintptr_t *methodId, bool *isJsFrame)
+    void *ctx, panda::ecmascript::ReadMemFunc readMem, panda::ecmascript::ArkStepParam *arkStepParam)
 {
-    if (panda::ecmascript::StepArk(ctx, readMem, fp, sp, pc, methodId, isJsFrame)) {
+    if (panda::ecmascript::StepArk(ctx, readMem, arkStepParam)) {
         return 1;
     }
     return -1;
 }
 
 __attribute__((visibility("default"))) int ark_parse_js_frame_info(
-    uintptr_t byteCodePc, uintptr_t methodId, uintptr_t mapBase, uintptr_t loadOffset, uint8_t *data,
+    uintptr_t byteCodePc, uintptr_t mapBase, uintptr_t loadOffset, uint8_t *data,
     uint64_t dataSize, uintptr_t extractorptr, panda::ecmascript::JsFunction *jsFunction)
 {
-    if (panda::ecmascript::ArkParseJsFrameInfo(byteCodePc, methodId, mapBase, loadOffset, data,
+    if (panda::ecmascript::ArkParseJsFrameInfo(byteCodePc, mapBase, loadOffset, data,
                                                dataSize, extractorptr, jsFunction)) {
         return 1;
     }
@@ -1477,20 +1344,19 @@ __attribute__((visibility("default"))) int ark_parse_js_frame_info(
 }
 
 __attribute__((visibility("default"))) int ark_parse_js_file_info(
-    uintptr_t byteCodePc, uintptr_t methodId, uintptr_t mapBase, const char* filePath, uintptr_t extractorptr,
+    uintptr_t byteCodePc, uintptr_t mapBase, const char* filePath, uintptr_t extractorptr,
     panda::ecmascript::JsFunction *jsFunction)
 {
-    if (panda::ecmascript::ArkParseJSFileInfo(byteCodePc, methodId, mapBase, filePath, extractorptr, jsFunction)) {
+    if (panda::ecmascript::ArkParseJSFileInfo(byteCodePc, mapBase, filePath, extractorptr, jsFunction)) {
         return 1;
     }
     return -1;
 }
 
 __attribute__((visibility("default"))) int ark_parse_js_frame_info_local(
-    uintptr_t byteCodePc, uintptr_t methodId, uintptr_t mapBase, uintptr_t loadOffset,
-    panda::ecmascript::JsFunction *jsFunction)
+    uintptr_t byteCodePc, uintptr_t mapBase, uintptr_t loadOffset, panda::ecmascript::JsFunction *jsFunction)
 {
-    if (panda::ecmascript::ArkParseJsFrameInfoLocal(byteCodePc, methodId, mapBase, loadOffset, jsFunction)) {
+    if (panda::ecmascript::ArkParseJsFrameInfoLocal(byteCodePc, mapBase, loadOffset, jsFunction)) {
         return 1;
     }
     return -1;
