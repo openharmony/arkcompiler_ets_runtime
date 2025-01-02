@@ -92,6 +92,12 @@ public:
         return str;
     }
 
+    static inline CString Utf8ToCString(const uint8_t *utf8Data, uint32_t dataLen)
+    {
+        auto *charData = reinterpret_cast<const char *>(utf8Data);
+        return { charData, dataLen };
+    }
+
     static inline std::u16string Utf8ToU16String(const uint8_t *utf8Data, uint32_t dataLen)
     {
         auto *charData = reinterpret_cast<const char *>(utf8Data);

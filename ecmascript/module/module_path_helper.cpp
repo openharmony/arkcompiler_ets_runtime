@@ -21,7 +21,7 @@ namespace panda::ecmascript {
  * unified format.
  */
 CString ModulePathHelper::ConcatFileNameWithMerge(JSThread *thread, const JSPandaFile *jsPandaFile,
-    CString &baseFileName, CString recordName, CString requestName)
+    CString &baseFileName, const CString &recordName, const CString &requestName)
 {
     if (StringHelper::StringStartWith(requestName, PREFIX_NORMALIZED_NOT_CROSS_HAP_FILE)) {
         return requestName.substr(PREFIX_NORMALIZED_LEN);
