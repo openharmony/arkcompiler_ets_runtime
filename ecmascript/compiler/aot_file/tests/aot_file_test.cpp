@@ -13,20 +13,19 @@
  * limitations under the License.
  */
 
-#include "ecmascript/compiler/aot_compilation_env.h"
-#include "ecmascript/compiler/aot_compiler_stats.h"
-#include "ecmascript/compiler/aot_file/tests/aot_file_generator_mock.h"
 #include "gtest/gtest.h"
-#include "ecmascript/tests/test_helper.h"
-#include "ecmascript/platform/filesystem.h"
-#include "ecmascript/compiler/aot_file/an_file_data_manager.h"
-#include "ecmascript/ohos/ohos_pkg_args.h"
-#include "ecmascript/compiler/pass_options.h"
-#include "ecmascript/compiler/pass_manager.h"
-#include "ecmascript/compiler/aot_compiler_preprocessor.h"
+
 #include "ecmascript/compiler/aot_compilation_env.h"
-#include "ecmascript/ohos/ohos_pkg_verifier.h"
+#include "ecmascript/compiler/aot_compiler_preprocessor.h"
+#include "ecmascript/compiler/aot_compiler_stats.h"
+#include "ecmascript/compiler/aot_file/an_file_data_manager.h"
+#include "ecmascript/compiler/aot_file/tests/aot_file_generator_mock.h"
+#include "ecmascript/compiler/pass_manager.h"
+#include "ecmascript/compiler/pass_options.h"
 #include "ecmascript/js_runtime_options.h"
+#include "ecmascript/ohos/ohos_pkg_args.h"
+#include "ecmascript/platform/filesystem.h"
+#include "ecmascript/tests/test_helper.h"
 
 using namespace panda;
 using namespace panda::ecmascript;
@@ -198,7 +197,7 @@ protected:
 
 HWTEST_F_L0(AOTFileTest, fileSizeEqualExpectedTest)
 {
-    // This case use to test the compiler out .an file size equal to expected size by calcutelate.
+    // This case use to test the compiler out .an file size equal to expected size by calculate.
     // Test file use file_size_test.abc
     std::string testFile = "file_size_test.abc";
     SetEnvrionmentForTest(testFile);
@@ -220,7 +219,7 @@ HWTEST_F_L0(AOTFileTest, dontSaveAnFile)
     GetAnFileInTest(1);
     ASSERT_FALSE(Exists(testAnPath_));
     ASSERT_FALSE(Exists(testAiPath_));
-    // We can still calcutelate the correct size
+    // We can still calculate the correct size
     ASSERT_NE(testAnExpectedSize_, 0);
 }
 }  // namespace panda::test
