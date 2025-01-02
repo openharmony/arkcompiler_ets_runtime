@@ -23,6 +23,7 @@
 #include "ecmascript/common.h"
 #include "ecmascript/mem/clock_scope.h"
 #include "ecmascript/mem/mem_common.h"
+#include "ecmascript/mem/long_gc_stats.h"
 #include "libpandabase/macros.h"
 
 namespace panda::ecmascript {
@@ -71,16 +72,28 @@ class GCStats {
     using Duration = std::chrono::duration<uint64_t, std::nano>;
 
 public:
-    explicit GCStats(const Heap *heap) : heap_(heap) {}
+    explicit GCStats(const Heap *heap) : heap_(heap)
+    {
+        longGCStats_ = new LongGCStats();
+    }
     GCStats(const Heap *heap, size_t longPuaseTime) : heap_(heap),
-        longPauseTime_(longPuaseTime) {}
-    virtual ~GCStats() = default;
+        longPauseTime_(longPuaseTime)
+    {
+        longGCStats_ = new LongGCStats();
+    }
+    virtual ~GCStats()
+    {
+        if (longGCStats_ != nullptr) {
+            delete longGCStats_;
+            longGCStats_ = nullptr;
+        }
+    };
 
     virtual void PrintStatisticResult();
     virtual void PrintGCMemoryStatistic();
     bool CheckIfLongTimePause();
     virtual void PrintGCStatistic();
-
+    GCType GetGCType(TriggerGCType gcType);
     float GetGCSpeed(SpeedData data)
     {
         return gcSpeed_[(uint8_t)data];
@@ -105,6 +118,13 @@ public:
     {
         return reason_;
     }
+
+    LongGCStats *GetLongGCStats()
+    {
+        return longGCStats_;
+    }
+
+    bool IsLongGC(GCReason gcReason, bool gcIsSensitive, bool gcIsInBackground, float gcTotalTime);
 
     const char *GetGCTypeName()
     {
@@ -220,11 +240,11 @@ protected:
     void PrintVerboseGCStatistic();
     void PrintGCDurationStatistic();
     void PrintGCSummaryStatistic(GCType type = GCType::START);
-    GCType GetGCType(TriggerGCType gcType);
     void InitializeRecordList();
     float GetConcurrrentMarkDuration();
     void GCFinishTrace();
-
+    virtual void ProcessBeforeLongGCStats();
+    virtual void ProcessAfterLongGCStats();
     int GetRecordDurationIndex(RecordDuration durationIdx)
     {
         return (int)durationIdx - (int)RecordDuration::FIRST_DATA;
@@ -315,6 +335,8 @@ protected:
 
     NO_COPY_SEMANTIC(GCStats);
     NO_MOVE_SEMANTIC(GCStats);
+private:
+    LongGCStats *longGCStats_;
 };
 
 class SharedGCStats : public GCStats {
@@ -337,6 +359,8 @@ private:
     void PrintSharedGCDuration();
     void PrintSharedGCSummaryStatistic();
     void SharedGCFinishTrace();
+    void ProcessAfterLongGCStats() override;
+    void ProcessBeforeLongGCStats() override;
 
     const SharedHeap *sHeap_ {nullptr};
     bool enableGCTracer_ {false};

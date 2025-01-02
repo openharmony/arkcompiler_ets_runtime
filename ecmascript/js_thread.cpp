@@ -282,6 +282,7 @@ void JSThread::InvokeWeakNodeNativeFinalizeCallback()
         return;
     }
     runningNativeFinalizeCallbacks_ = true;
+    TRACE_GC(GCStats::Scope::ScopeId::InvokeNativeFinalizeCallbacks, GetEcmaVM()->GetEcmaGCStats());
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "InvokeNativeFinalizeCallbacks num:"
         + std::to_string(weakNodeNativeFinalizeCallbacks_.size()));
     while (!weakNodeNativeFinalizeCallbacks_.empty()) {

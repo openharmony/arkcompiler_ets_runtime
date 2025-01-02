@@ -51,7 +51,8 @@
               "samgr",
               "common_event_service",
               "ffrt",
-              "cJSON"
+              "cJSON",
+              "hiview"
             ],
             "third_party": [
             ]

@@ -46,7 +46,8 @@ namespace ecmascript {
     V(UpdateRoot)                        \
     V(UpdateWeekRef)                     \
     V(EvacuateRegion)                    \
-    V(WaitFinish)
+    V(WaitFinish)                        \
+    V(InvokeNativeFinalizeCallbacks)
 
 #define RECORD_DATA(V)                   \
     V(START_OBJ_SIZE)                    \

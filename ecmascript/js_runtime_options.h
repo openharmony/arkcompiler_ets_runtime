@@ -229,6 +229,7 @@ enum CommandValues {
     OPTION_COMPILER_AN_FILE_MAX_SIZE,
     OPTION_COMPILER_TRACE_BUILTINS,
     OPTION_ENABLE_HEAP_VERIFY,
+    OPTION_COMPILER_ENABLE_DFX_HISYS_EVENT,
 };
 static_assert(OPTION_INVALID == 63); // Placeholder for invalid options
 static_assert(OPTION_SPLIT_ONE == 64); // add new option at the bottom, DO NOT modify this value
@@ -1274,6 +1275,16 @@ public:
         return enableFastJIT_;
     }
 
+    void SetEnableDFXHiSysEvent(bool value)
+    {
+        enableDFXHiSysEvent_ = value;
+    }
+
+    bool IsEnableDFXHiSysEvent() const
+    {
+        return enableDFXHiSysEvent_;
+    }
+
     void SetEnableAPPJIT(bool value)
     {
         enableAPPJIT_ = value;
@@ -2213,6 +2224,7 @@ private:
     bool enableOptInlining_ {true};
     bool enableOptPGOType_ {true};
     bool enableFastJIT_ {false};
+    bool enableDFXHiSysEvent_ {true};
     bool enableAPPJIT_ {false};
     bool isEnableJitDfxDump_ {false};
     bool enableOSR_ {false};
