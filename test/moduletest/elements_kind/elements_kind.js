@@ -1332,7 +1332,7 @@ function test97() {
 
 function test98() {
     let a = [1, , 3].copyWithin(2, 1, 2); // [1, empty, empty]
-    if (a.length == 3 && ArkTools.getElementsKind(a) == DICTIONARY) {
+    if (a.length == 3 && ArkTools.getElementsKind(a) == HOLEINT) {
         print("test98 - success");
     } else {
         print("test98 - failed");

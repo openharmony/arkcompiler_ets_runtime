@@ -2197,3 +2197,35 @@ print(shiftArray.shift()); //: 2
 print(shiftArray.shift()); //: 3
 print(shiftArray.shift()); //: 4
 print(shiftArray);
+// copyWithin
+let copyWithInArray = new Array(0, 1, 2, 3, 4);
+print(copyWithInArray.copyWithin(2,1,3))
+
+for (let i = 0; i < 2; i++) {
+    let copyWithInArray1 = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+    copyWithInArray1.copyWithin(1,2,3);
+    if (i == 0) {
+        print(copyWithInArray1);
+    }
+    copyWithInArray1.copyWithin(1,3,2);
+    if (i == 0) {
+        print(copyWithInArray1);
+    }
+    copyWithInArray1.copyWithin(2,1,3);
+    if (i == 0) {
+        print(copyWithInArray1);
+    }
+    copyWithInArray1.copyWithin(2,3,1);
+    if (i == 0) {
+        print(copyWithInArray1);
+    }
+    copyWithInArray1.copyWithin(3,1,2);
+    if (i == 0) {
+        print(copyWithInArray1);
+    }
+    copyWithInArray1.copyWithin(3,2,1);
+    if (i == 0) {
+        print(copyWithInArray1);
+    }
+}
+print([0, 1, 2, 3].copyWithin(0, 1, -10));

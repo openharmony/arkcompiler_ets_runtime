@@ -560,6 +560,196 @@ GateRef BuiltinsArrayStubBuilder::DoSortOptimisedFast(GateRef glue, GateRef rece
     return receiver;
 }
 
+void BuiltinsArrayStubBuilder::CopyWithinOptimised(GateRef glue, GateRef thisValue, GateRef numArgs,
+    Variable *result, Label *exit, Label *slowPath)
+{
+    auto env = GetEnvironment();
+    Label thisExists(env);
+    Label isHeapObject(env);
+    Label isJsArray(env);
+    Label defaultConstr(env);
+    Label isStability(env);
+    Label isGeneric(env);
+    Label notCOWArray(env);
+    BRANCH(TaggedIsUndefinedOrNull(thisValue), slowPath, &thisExists);
+    Bind(&thisExists);
+    BRANCH(TaggedIsHeapObject(thisValue), &isHeapObject, slowPath);
+    Bind(&isHeapObject);
+    BRANCH(IsJsArray(thisValue), &isJsArray, slowPath);
+    Bind(&isJsArray);
+    BRANCH(HasConstructor(thisValue), slowPath, &defaultConstr);
+    Bind(&defaultConstr);
+    BRANCH(IsStableJSArray(glue, thisValue), &isStability, slowPath);
+    Bind(&isStability);
+    Label isJsCOWArray(env);
+    Label getElements(env);
+    BRANCH(IsJsCOWArray(thisValue), &isJsCOWArray, &getElements);
+    Bind(&isJsCOWArray);
+    {
+        NewObjectStubBuilder newBuilder(this);
+        GateRef elements = GetElementsArray(thisValue);
+        GateRef capacity = GetLengthOfTaggedArray(elements);
+        GateRef newElements = newBuilder.CopyArray(glue, elements, capacity, capacity);
+        SetElementsArray(VariableType::JS_POINTER(), glue, thisValue, newElements);
+        Jump(&getElements);
+    }
+    Bind(&getElements);
+    DEFVARIABLE(startPos, VariableType::INT64(), Int64(0));
+    DEFVARIABLE(endPos, VariableType::INT64(), Int64(0));
+    Label targetTagExists(env);
+    Label targetTagIsInt(env);
+    Label startTagExists(env);
+    Label startTagIsInt(env);
+    Label afterCallArg1(env);
+    Label endTagExists(env);
+    Label endTagIsInt(env);
+    Label afterCallArg2(env);
+    GateRef thisLen = ZExtInt32ToInt64(GetArrayLength(thisValue));
+    BRANCH(Int64GreaterThanOrEqual(IntPtr(0), numArgs), slowPath, &targetTagExists);
+    Bind(&targetTagExists);
+    GateRef targetTag = GetCallArg0(numArgs);
+    BRANCH(TaggedIsInt(targetTag), &targetTagIsInt, slowPath);
+    Bind(&targetTagIsInt);
+    GateRef argTarget = SExtInt32ToInt64(TaggedGetInt(targetTag));
+    BRANCH(Int64GreaterThanOrEqual(IntPtr(ONE_ARGS), numArgs), &afterCallArg1, &startTagExists);
+    Bind(&startTagExists);
+    {
+        GateRef startTag = GetCallArg1(numArgs);
+        BRANCH(TaggedIsInt(startTag), &startTagIsInt, slowPath);
+        Bind(&startTagIsInt);
+        startPos = SExtInt32ToInt64(TaggedGetInt(startTag));
+        Jump(&afterCallArg1);
+    }
+    Bind(&afterCallArg1);
+    {
+        endPos = thisLen;
+        BRANCH(Int64GreaterThanOrEqual(IntPtr(TWO_ARGS), numArgs), &afterCallArg2, &endTagExists);
+        Bind(&endTagExists);
+        {
+            GateRef endTag = GetCallArg2(numArgs);
+            BRANCH(TaggedIsInt(endTag), &endTagIsInt, slowPath);
+            Bind(&endTagIsInt);
+            {
+                endPos = SExtInt32ToInt64(TaggedGetInt(endTag));
+                Jump(&afterCallArg2);
+            }
+        }
+    }
+    Bind(&afterCallArg2);
+    {
+        DEFVARIABLE(copyTo, VariableType::INT64(), Int64(0));
+        DEFVARIABLE(copyFrom, VariableType::INT64(), Int64(0));
+        DEFVARIABLE(copyEnd, VariableType::INT64(), Int64(0));
+        DEFVARIABLE(count, VariableType::INT64(), Int64(0));
+        DEFVARIABLE(direction, VariableType::INT64(), Int64(0));
+        Label calculateCountBranch1(env);
+        Label calculateCountBranch2(env);
+        Label afterCalculateCount(env);
+        Label needToAdjustParam(env);
+        Label afterAdjustParam(env);
+        copyTo = CalculatePositionWithLength(argTarget, thisLen);
+        copyFrom = CalculatePositionWithLength(*startPos, thisLen);
+        copyEnd = CalculatePositionWithLength(*endPos, thisLen);
+        BRANCH(Int64LessThan(Int64Sub(*copyEnd, *copyFrom), Int64Sub(thisLen, *copyTo)),
+               &calculateCountBranch1, &calculateCountBranch2);
+        Bind(&calculateCountBranch1);
+        {
+            count = Int64Sub(*copyEnd, *copyFrom);
+            Jump(&afterCalculateCount);
+        }
+        Bind(&calculateCountBranch2);
+        {
+            count = Int64Sub(thisLen, *copyTo);
+            Jump(&afterCalculateCount);
+        }
+        Bind(&afterCalculateCount);
+        Label countGreaterZero(env);
+        Label countLessOrEqualZero(env);
+        BRANCH(Int64GreaterThan(*count, Int64(0)), &countGreaterZero, &countLessOrEqualZero);
+        Bind(&countLessOrEqualZero);
+        {
+            result->WriteVariable(thisValue);
+            Jump(exit);
+        }
+        Bind(&countGreaterZero);
+        Label enableMutantArray(env);
+        Label disableMutantArray(env);
+        GateRef isEnable = IsEnableMutantArray(glue);
+        BRANCH(isEnable, &enableMutantArray, &disableMutantArray);
+        Bind(&enableMutantArray);
+        {
+            direction = Int64(1);
+            GateRef copyFromVal = *copyFrom;
+            GateRef copyToVal = *copyTo;
+            GateRef countVal = *count;
+            BRANCH(LogicAndBuilder(env).And(Int64LessThan(copyFromVal, copyToVal))
+                .And(Int64LessThan(copyToVal, Int64Add(copyFromVal, countVal))).Done(),
+                &needToAdjustParam, &afterAdjustParam);
+            Bind(&needToAdjustParam);
+            {
+                direction = Int64(-1);
+                copyFrom = Int64Sub(Int64Add(*copyFrom, *count), Int64(1));
+                copyTo = Int64Sub(Int64Add(*copyTo, *count), Int64(1));
+                Jump(&afterAdjustParam);
+            }
+            Bind(&afterAdjustParam);
+            {
+                DEFVARIABLE(kValue, VariableType::JS_ANY(), Hole());
+                Label loopHead(env);
+                Label loopEnd(env);
+                Label next(env);
+                Label loopExit(env);
+                Jump(&loopHead);
+                LoopBegin(&loopHead);
+                {
+                    Label kValueIsHole(env);
+                    Label setValue(env);
+                    Label hasProperty(env);
+                    Label setHole(env);
+                    Label hasException0(env);
+                    Label notHasException0(env);
+                    BRANCH(Int64GreaterThan(*count, Int64(0)), &next, &loopExit);
+                    Bind(&next);
+                    kValue = GetTaggedValueWithElementsKind(glue, thisValue, *copyFrom);
+                    BRANCH(TaggedIsHole(*kValue), &setHole, &setValue);
+                    Bind(&setHole);
+                    {
+                        SetValueWithElementsKind(glue, thisValue, Hole(), *copyTo,
+                            Boolean(true), Int32(static_cast<uint32_t>(ElementsKind::GENERIC)));
+                        Jump(&loopEnd);
+                    }
+                    Bind(&setValue);
+                    {
+                        SetValueWithElementsKind(glue, thisValue, *kValue, *copyTo,
+                            Boolean(true), Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                        Jump(&loopEnd);
+                    }
+                }
+                Bind(&loopEnd);
+                copyFrom = Int64Add(*copyFrom, *direction);
+                copyTo = Int64Add(*copyTo, *direction);
+                count = Int64Sub(*count, Int64(1));
+                LoopEnd(&loopHead);
+                Bind(&loopExit);
+                result->WriteVariable(thisValue);
+                Jump(exit);
+            }
+        }
+        Bind(&disableMutantArray);
+        {
+            GateRef elements = GetElementsArray(thisValue);
+            GateRef elementsPtr = GetDataPtrInTaggedArray(elements);
+            GateRef kind = GetElementsKindFromHClass(LoadHClass(thisValue));
+            GateRef src = PtrAdd(elementsPtr, PtrMul(*copyFrom, IntPtr(JSTaggedValue::TaggedTypeSize())));
+            GateRef dest = PtrAdd(elementsPtr, PtrMul(*copyTo, IntPtr(JSTaggedValue::TaggedTypeSize())));
+            ArrayCopy(glue, elements, src, elements, dest,
+                      TruncInt64ToInt32(*count), NeedBarrier(kind), SameArray);
+            result->WriteVariable(thisValue);
+            Jump(exit);
+        }
+    }
+}
+
 void BuiltinsArrayStubBuilder::ToReversedOptimised(GateRef glue, GateRef thisValue, [[maybe_unused]] GateRef numArgs,
                                           Variable *result, Label *exit, Label *slowPath)
 {
