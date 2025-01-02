@@ -549,12 +549,11 @@ JSTaggedValue JsonParser<T>::ConvertToNumber(const std::string &str, bool negati
     errno = 0; // reset errno to 0 to avoid errno has been changed
     double v = std::strtod(str.c_str(), nullptr);
     if (errno == ERANGE) {
+        // errno is ERANGE mean double value greater than DBL_MAX(1.79e+308) or less than DBL_MIN(2.22e-308),
+        // by compromising precision, std::strtod support representation allows even smaller
+        // values up to about 5e-324(Number.MIN_VALUE).
         errno = 0;
-        if (v > 0) {
-            return JSTaggedValue(base::POSITIVE_INFINITY);
-        } else if (v < 0) {
-            return JSTaggedValue(-base::POSITIVE_INFINITY);
-        }
+        return JSTaggedValue(v);
     }
     errno = 0;
     if (negative && v == 0) {
