@@ -98,3 +98,35 @@ print(bPar);
 
 const emptyArr = [];
 print(emptyArr.filter(isPrime).length);
+
+{
+	const arr1 = [1, null, 3, undefined, 5, null];
+	const result1 = arr1.filter(item => item != null);
+	print(result1); // [1, 3, 5]
+
+	const arr2 = [1, 2, 3, 4, 5];
+	const result2 = arr2.filter((num, index) => {
+	if (index === 2) return false;
+	return true;
+	});
+	print(result2); // [1, 2, 4, 5]
+
+	const arr3 = [0, 'hello', NaN, '', false, 42, undefined];
+	arr3.filter((item, index) => {
+	if (!item) {
+		arr3.splice(index, 1);
+		return false;
+	}
+	return true;
+	});
+	print(arr3); // ['hello', 42]
+
+	const arr4 = [1, 2, 3, 4, 5];
+	const result4 = arr4
+	.map((num, index, array) => {
+		if (index === 3) array.pop();
+		return num * 2;
+	})
+	.filter(num => num !== 6);
+	print(result4); // [2, 4, 8]
+}
