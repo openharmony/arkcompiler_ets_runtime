@@ -3268,10 +3268,10 @@ DEF_CALL_SIGNATURE(CopyTypedArrayBuffer)
         ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
     *callSign = CopyTypedArrayBuffer;
     // 6 : 6 input parameters
-    std::array<VariableType, 6 > params = {
+    std::array<VariableType, 6> params = {
+        VariableType::NATIVE_POINTER(),
         VariableType::JS_POINTER(),
         VariableType::JS_POINTER(),
-        VariableType::INT32(),
         VariableType::INT32(),
         VariableType::INT32(),
         VariableType::INT32()
