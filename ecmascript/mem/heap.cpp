@@ -340,6 +340,7 @@ bool SharedHeap::ParallelMarkTask::Run(uint32_t threadIndex)
 
 bool SharedHeap::AsyncClearTask::Run([[maybe_unused]] uint32_t threadIndex)
 {
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedHeap::AsyncClearTask::Run");
     sHeap_->ReclaimRegions(gcType_);
     return true;
 }
@@ -2540,6 +2541,7 @@ bool Heap::ParallelGCTask::Run(uint32_t threadIndex)
 
 bool Heap::AsyncClearTask::Run([[maybe_unused]] uint32_t threadIndex)
 {
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "AsyncClearTask::Run");
     heap_->ReclaimRegions(gcType_);
     return true;
 }

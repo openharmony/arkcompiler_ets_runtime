@@ -38,6 +38,8 @@ namespace ecmascript {
     V(Finish)                            \
     V(UpdateReference)                   \
     V(EvacuateSpace)                     \
+    V(SweepNewToOldRegions)              \
+    V(Finalize)                          \
     V(SuspendAll)                        \
     V(ResumeAll)                         \
     V(ProceeWorkload)                    \

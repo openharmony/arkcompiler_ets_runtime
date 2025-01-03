@@ -59,10 +59,21 @@ void ConcurrentMarker::MarkRoots()
 
 void ConcurrentMarker::Mark()
 {
+    GCStats *gcStats = heap_->GetEcmaVM()->GetEcmaGCStats();
     RecursionScope recurScope(this);
-    TRACE_GC(GCStats::Scope::ScopeId::ConcurrentMark, heap_->GetEcmaVM()->GetEcmaGCStats());
+    TRACE_GC(GCStats::Scope::ScopeId::ConcurrentMark, gcStats);
     LOG_GC(DEBUG) << "ConcurrentMarker: Concurrent Marking Begin";
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "ConcurrentMarker::Mark");
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "ConcurrentMarker::Mark" + std::to_string(heap_->IsFullMarkRequested())
+        + ";Reason" + std::to_string(static_cast<int>(gcStats->GetGCReason()))
+        + ";Sensitive" + std::to_string(static_cast<int>(heap_->GetSensitiveStatus()))
+        + ";IsInBackground" + std::to_string(heap_->IsInBackground())
+        + ";Startup" + std::to_string(static_cast<int>(heap_->GetStartupStatus()))
+        + ";ConMark" + std::to_string(static_cast<int>(heap_->GetJSThread()->GetMarkStatus()))
+        + ";Young" + std::to_string(heap_->GetNewSpace()->GetCommittedSize())
+        + ";Old" + std::to_string(heap_->GetOldSpace()->GetCommittedSize())
+        + ";TotalCommit" + std::to_string(heap_->GetCommittedSize())
+        + ";NativeBindingSize" + std::to_string(heap_->GetNativeBindingSize())
+        + ";NativeLimitSize" + std::to_string(heap_->GetGlobalSpaceNativeLimit()));
     MEM_ALLOCATE_AND_GC_TRACE(vm_, ConcurrentMarking);
     InitializeMarking();
     clockScope_.Reset();
