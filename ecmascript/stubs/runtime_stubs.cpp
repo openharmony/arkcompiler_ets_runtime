@@ -20,6 +20,7 @@
 
 #include "ecmascript/stubs/runtime_stubs-inl.h"
 #include "ecmascript/base/json_stringifier.h"
+#include "ecmascript/base/typed_array_helper-inl.h"
 #include "ecmascript/builtins/builtins_array.h"
 #include "ecmascript/builtins/builtins_arraybuffer.h"
 #include "ecmascript/js_stable_array.h"
@@ -220,20 +221,40 @@ DEF_RUNTIME_STUBS(TypedArraySpeciesCreate)
     return newArr.GetTaggedValue().GetRawData();
 }
 
-void RuntimeStubs::CopyTypedArrayBuffer(JSTypedArray *srcArray, JSTypedArray *targetArray, int32_t srcStartPos,
-    int32_t tarStartPos, int32_t count, int32_t elementSize)
+void RuntimeStubs::CopyTypedArrayBuffer(uintptr_t argGlue, JSTypedArray *srcArray, JSTypedArray *targetArray,
+                                        int32_t srcStartPos, int32_t tarStartPos, int32_t count)
 {
     DISALLOW_GARBAGE_COLLECTION;
-    JSTaggedValue srcBuffer = srcArray->GetViewedArrayBufferOrByteArray();
-    JSTaggedValue targetBuffer = targetArray->GetViewedArrayBufferOrByteArray();
-    uint32_t srcByteIndex = static_cast<uint32_t>(srcStartPos * elementSize) + srcArray->GetByteOffset();
-    uint32_t targetByteIndex = static_cast<uint32_t>(tarStartPos * elementSize) + targetArray->GetByteOffset();
-    uint8_t *srcBuf = (uint8_t *)builtins::BuiltinsArrayBuffer::GetDataPointFromBuffer(srcBuffer, srcByteIndex);
-    uint8_t *targetBuf = (uint8_t *)builtins::BuiltinsArrayBuffer::GetDataPointFromBuffer(targetBuffer,
-                                                                                          targetByteIndex);
-    if (count > 0 && memmove_s(targetBuf, elementSize * count, srcBuf, elementSize * count) != EOK) {
-        LOG_FULL(FATAL) << "memmove_s failed";
-        UNREACHABLE();
+    if (count <= 0) {
+        return;
+    }
+
+    JSType srcType = srcArray->GetClass()->GetObjectType();
+    JSType tarType = targetArray->GetClass()->GetObjectType();
+    uint32_t srcElementSize = base::TypedArrayHelper::GetElementSize(srcType);
+    uint32_t uSrcStartPos = static_cast<uint32_t>(srcStartPos);
+    uint32_t uTarStartPos = static_cast<uint32_t>(tarStartPos);
+    uint32_t uCount = static_cast<uint32_t>(count);
+    if (LIKELY(srcType == tarType)) {
+        JSTaggedValue srcBuffer = srcArray->GetViewedArrayBufferOrByteArray();
+        JSTaggedValue targetBuffer = targetArray->GetViewedArrayBufferOrByteArray();
+        uint32_t srcByteIndex = uSrcStartPos * srcElementSize + srcArray->GetByteOffset();
+        uint32_t targetByteIndex = uTarStartPos * srcElementSize + targetArray->GetByteOffset();
+        uint8_t *srcBuf = (uint8_t *) builtins::BuiltinsArrayBuffer::GetDataPointFromBuffer(srcBuffer, srcByteIndex);
+        uint8_t *targetBuf = (uint8_t *) builtins::BuiltinsArrayBuffer::GetDataPointFromBuffer(targetBuffer,
+                                                                                               targetByteIndex);
+        if (memmove_s(targetBuf, srcElementSize * uCount, srcBuf, srcElementSize * uCount) != EOK) {
+            LOG_FULL(FATAL) << "memmove_s failed";
+            UNREACHABLE();
+        }
+    } else {
+        auto thread = JSThread::GlueToJSThread(argGlue);
+        for (uint32_t i = 0; i < uCount; ++i) {
+            JSTaggedValue curElement = JSTypedArray::FastGetPropertyByIndex(thread, JSTaggedValue::Cast(srcArray),
+                                                                            uSrcStartPos + i, srcType);
+            JSTypedArray::FastSetPropertyByIndex(thread, JSTaggedValue::Cast(targetArray), uTarStartPos + i,
+                                                 curElement, tarType);
+        }
     }
 }
 
