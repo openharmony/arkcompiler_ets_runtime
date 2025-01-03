@@ -143,6 +143,7 @@ public:
         const CString &path, const CString &version);
     static CString ConcatHspFileNameCrossBundle(const CString &bundleName, const CString &moduleName);
     static CString ConcatHspFileName(const CString &moduleName);
+    static CString ThrowInvalidOhmurlError(EcmaVM *vm, const CString &oldEntryPoint);
     static CString TransformToNormalizedOhmUrl(EcmaVM *vm, const CString &inputFileName, const CString &baseFileName,
         const CString &oldEntryPoint);
     static CString ParseUrl(EcmaVM *vm, const CString &recordName);
