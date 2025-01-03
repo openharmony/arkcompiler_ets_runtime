@@ -47,6 +47,7 @@ public:
     void SetStopIfSaveAndNotify();
     void SetStartIfStopAndDispatchDumpTask(PGOProfiler* profiler);
     void ResumeByGC(PGOProfiler* profiler);
+    void ForceDump(PGOProfiler* profiler);
 
     bool SetStartIfStop();
     bool SetStopIfStart();

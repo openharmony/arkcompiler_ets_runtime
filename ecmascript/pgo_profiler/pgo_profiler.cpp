@@ -391,24 +391,14 @@ void PGOProfiler::WaitDumpIfStart()
     state_->WaitDumpIfStart();
 }
 
-void PGOProfiler::DumpByForce()
+void PGOProfiler::ForceDump()
 {
-    if (!isEnable_) {
+    if (!isEnable_ || dumpWorkList_.IsEmpty()) {
         return;
     }
     isForce_ = true;
-    auto state = state_->GetState();
-    if (state == State::START) {
-        state_->SetState(State::FORCE_SAVE_START);
-        state_->WaitDump();
-    } else if (state == State::STOP && !dumpWorkList_.IsEmpty()) {
-        state_->SetState(State::FORCE_SAVE_START);
-        state_->WaitDump();
-        DispatchPGODumpTask();
-    } else if (state == State::PAUSE) {
-        state_->SetState(State::FORCE_SAVE_PAUSE);
-        state_->WaitDump();
-    }
+    state_->ForceDump(this);
+    isForce_ = false;
 }
 
 void PGOProfiler::PGOPreDump(JSTaggedType func)
@@ -596,19 +586,19 @@ void PGOProfiler::HandlePGODumpByDumpThread()
     }
 }
 
-void PGOProfiler::TryDispatchSaveTask(bool force)
+void PGOProfiler::TryDispatchSaveTask()
 {
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "PGOProfiler::TryDispatchSaveTask");
-    // Merged every 50 methods and merge interval greater than minimal interval
+    if (isForce_) {
+        return;
+    }
     auto interval = std::chrono::system_clock::now() - saveTimestamp_;
     auto minIntervalOption = vm_->GetJSOptions().GetPGOSaveMinInterval();
     auto mergeMinInterval = std::chrono::milliseconds(minIntervalOption * MS_PRE_SECOND);
-    if ((methodCount_ >= MERGED_EVERY_COUNT && interval > mergeMinInterval) || (force && methodCount_ > 0)) {
+    // trigger save every 50 methods and duration greater than 30s
+    if (methodCount_ >= MERGED_EVERY_COUNT && interval > mergeMinInterval) {
         LOG_PGO(INFO) << "trigger save task, methodCount_ = " << methodCount_;
-        if (!force) {
-            state_->SetState(State::SAVE);
-            manager_->AsyncSave();
-        }
+        state_->SetState(State::SAVE);
+        manager_->AsyncSave();
         SetSaveTimestamp(std::chrono::system_clock::now());
         methodCount_ = 0;
     }
