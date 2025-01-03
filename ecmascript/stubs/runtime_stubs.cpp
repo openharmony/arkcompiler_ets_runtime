@@ -3540,8 +3540,13 @@ void RuntimeStubs::SaveFrameToContext(JSThread *thread, JSHandle<GeneratorContex
     context->SetMethod(thread, function);
     context->SetThis(thread, frameHandler.GetThis());
 
-    BytecodeInstruction ins(frameHandler.GetPc());
-    auto offset = ins.GetSize();
+    uint32_t offset = 0;
+    // pc in baseline is not real bytecode offset, so skip to get the offset
+    if (reinterpret_cast<uint64_t>(frameHandler.GetPc()) != std::numeric_limits<uint64_t>::max()) {
+        BytecodeInstruction ins(frameHandler.GetPc());
+        offset = ins.GetSize();
+    }
+
     context->SetAcc(thread, frameHandler.GetAcc());
     context->SetLexicalEnv(thread, thread->GetCurrentLexenv());
     context->SetNRegs(nregs);
