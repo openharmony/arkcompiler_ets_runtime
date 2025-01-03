@@ -128,6 +128,7 @@ public:
     GateRef NewProfileTypeInfoCell(GateRef glue, GateRef value);
     GateRef GetElementSizeFromType(GateRef glue, GateRef type);
     GateRef GetOnHeapHClassFromType(GateRef glue, GateRef type);
+    GateRef GetNotOnHeapHClassFromType(GateRef glue, GateRef type);
 private:
     static constexpr int MAX_TAGGED_ARRAY_LENGTH = 50;
     static constexpr int LOOP_UNROLL_FACTOR = 2;
