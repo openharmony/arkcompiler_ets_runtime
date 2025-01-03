@@ -780,12 +780,12 @@ void BuiltinsArrayStubBuilder::ToReversedOptimised(GateRef glue, GateRef thisVal
         // There will be no hole in the new array because hole will be converted to undefined.
         GateRef newHClass = GetGlobalConstantValue(VariableType::JS_ANY(), glue,
                                                    ConstantIndex::ELEMENT_TAGGED_HCLASS_INDEX);
-        receiver = NewEmptyArrayWithHClass(glue, newHClass, thisArrLen);
+        receiver = NewArrayWithHClass(glue, newHClass, thisArrLen);
         Jump(&next);
     }
     Bind(&reuseOldHClass);
     {
-        receiver = NewEmptyArrayWithHClass(glue, LoadHClass(thisValue), thisArrLen);
+        receiver = NewArrayWithHClass(glue, LoadHClass(thisValue), thisArrLen);
         Jump(&next);
     }
     Bind(&next);
@@ -887,13 +887,13 @@ void BuiltinsArrayStubBuilder::DoReverse(GateRef glue, GateRef fromArray, GateRe
 }
 
 
-// new an empty array, the length is zero, but with specific hclass,
-GateRef BuiltinsArrayStubBuilder::NewEmptyArrayWithHClass(GateRef glue, GateRef hclass, GateRef newArrayLen)
+// new an array, with specific hclass and length.
+GateRef BuiltinsArrayStubBuilder::NewArrayWithHClass(GateRef glue, GateRef hclass, GateRef newArrayLen)
 {
 #if ECMASCRIPT_ENABLE_ELEMENTSKIND_ALWAY_GENERIC
     hclass = GetGlobalConstantValue(VariableType::JS_ANY(), glue, ConstantIndex::ELEMENT_HOLE_TAGGED_HCLASS_INDEX);
 #endif
-    // New an array with zero length.
+    // New an array with length.
     auto env = GetEnvironment();
     Label entry(env);
     env->SubCfgEntry(&entry);
@@ -902,17 +902,15 @@ GateRef BuiltinsArrayStubBuilder::NewEmptyArrayWithHClass(GateRef glue, GateRef 
     Label setProperties(env);
     NewObjectStubBuilder newBuilder(this);
     newBuilder.SetParameters(glue, Int32(0));
-    result = newBuilder.NewEmptyJSArrayWithHClass(hclass);
+    result = newBuilder.NewJSArrayWithHClass(hclass, newArrayLen);
     BRANCH(TaggedIsException(*result), &exit, &setProperties);
     Bind(&setProperties);
     {
-        InitializeArray(glue, Int32(0), &result);
+        InitializeArray(glue, newArrayLen, &result);
         Jump(&exit);
     }
     Bind(&exit);
     auto res = *result;
-    GrowElementsCapacity(glue, res, newArrayLen);
-    SetArrayLength(glue, res, newArrayLen);
     env->SubCfgExit();
     return res;
 }
@@ -1085,7 +1083,7 @@ void BuiltinsArrayStubBuilder::ToSplicedOptimised(GateRef glue, GateRef thisValu
                     {
                         GateRef newHClass = GetGlobalConstantValue(VariableType::JS_ANY(), glue,
                                                                    ConstantIndex::ELEMENT_TAGGED_HCLASS_INDEX);
-                        GateRef newArray = NewEmptyArrayWithHClass(glue, newHClass, *newLen);
+                        GateRef newArray = NewArrayWithHClass(glue, newHClass, *newLen);
                         FastToSpliced(glue, thisValue, newArray, *actualStart, *actualDeleteCount, *insertCount,
                                       GetCallArg2(numArgs));
                         result->WriteVariable(newArray);
@@ -2211,7 +2209,7 @@ void BuiltinsArrayStubBuilder::WithOptimised(GateRef glue, GateRef thisValue, Ga
                         GateRef newArrayEleKind = CalEleKindForNewArrayNoHole(thisValue, thisLen,
                                                                               *actualIndex, *value);
                         GateRef newHClass =  GetElementsKindHClass(glue, newArrayEleKind);
-                        GateRef newArray = NewEmptyArrayWithHClass(glue, newHClass, TruncInt64ToInt32(thisLen));
+                        GateRef newArray = NewArrayWithHClass(glue, newHClass, TruncInt64ToInt32(thisLen));
                         FastArrayWith(glue, thisValue, newArray, TruncInt64ToInt32(*actualIndex),
                                       *value, newArrayEleKind);
                         result->WriteVariable(newArray);

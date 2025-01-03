@@ -107,7 +107,7 @@ GateRef NewObjectStubBuilder::NewJSArrayWithSize(GateRef hclass, GateRef size)
     return result;
 }
 
-GateRef NewObjectStubBuilder::NewEmptyJSArrayWithHClass(GateRef hclass)
+GateRef NewObjectStubBuilder::NewJSArrayWithHClass(GateRef hclass, GateRef length)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -126,11 +126,11 @@ GateRef NewObjectStubBuilder::NewEmptyJSArrayWithHClass(GateRef hclass)
         BRANCH_NO_WEIGHT(needMutant, &initMutantArray, &initObj);
         Bind(&initMutantArray);
         {
-            NewMutantTaggedArrayChecked(&array, Int32(0), &exit);
+            NewMutantTaggedArrayChecked(&array, length, &exit);
         }
     }
     Bind(&initObj);
-    NewTaggedArrayChecked(&array, Int32(0), &exit);
+    NewTaggedArrayChecked(&array, length, &exit);
     Bind(&exit);
     auto arrayRet = *array;
     env->SubCfgExit();
