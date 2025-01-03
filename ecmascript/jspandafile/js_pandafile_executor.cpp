@@ -20,6 +20,7 @@
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/module/module_path_helper.h"
 #include "ecmascript/module/module_resolver.h"
+#include "ecmascript/module/module_tools.h"
 #include "ecmascript/checkpoint/thread_state_transition.h"
 
 namespace panda::ecmascript {
@@ -253,11 +254,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::Execute(JSThread *thread, con
                                                            std::string_view entryPoint, bool executeFromJob)
 {
     ThreadManagedScope managedScope(thread);
-    bool enableESMTrace = thread->GetEcmaVM()->GetJSOptions().EnableESMTrace();
-    if (enableESMTrace) {
-        CString traceInfo = "FileExecute: " + CString(entryPoint);
-        ECMA_BYTRACE_START_TRACE(HITRACE_TAG_ARK, traceInfo.c_str());
-    }
+    ModuleTraceScope moduleTraceScope(thread, "JSPandaFileExecutor::Execute:" + CString(entryPoint));
     // For Ark application startup
     EcmaContext *context = thread->GetCurrentEcmaContext();
 
@@ -270,9 +267,6 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::Execute(JSThread *thread, con
         quickFixManager->LoadPatchIfNeeded(thread, jsPandaFile);
 
         result = context->InvokeEcmaEntrypoint(jsPandaFile, entryPoint, executeFromJob);
-    }
-    if (enableESMTrace) {
-        ECMA_BYTRACE_FINISH_TRACE(HITRACE_TAG_ARK);
     }
     return result;
 }

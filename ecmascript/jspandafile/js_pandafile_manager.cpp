@@ -20,6 +20,7 @@
 #include "ecmascript/jspandafile/js_pandafile_executor.h"
 #include "ecmascript/module/module_path_helper.h"
 #include "ecmascript/module/module_message_helper.h"
+#include "ecmascript/module/module_tools.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
 
 namespace panda::ecmascript {
@@ -181,10 +182,7 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFile(JSThread *threa
 std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFileSecure(JSThread *thread, const CString &filename,
     std::string_view entryPoint, uint8_t *buffer, size_t size, bool needUpdate)
 {
-    bool enableESMTrace = thread->GetEcmaVM()->GetJSOptions().EnableESMTrace();
-    if (enableESMTrace) {
-        ECMA_BYTRACE_START_TRACE(HITRACE_TAG_ARK, "JSPandaFileManager::LoadJSPandaFileSecure");
-    }
+    ModuleTraceScope moduleTraceScope(thread, "JSPandaFileManager::LoadJSPandaFileSecure:" + filename);
     if (buffer == nullptr || size == 0) {
         LOG_FULL(ERROR) << "Input buffer is empty";
         return nullptr;
@@ -222,9 +220,6 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFileSecure(JSThread 
         GetJSPtExtractorAndExtract(jsPandaFile.get());
     }
 #endif
-    if (enableESMTrace) {
-        ECMA_BYTRACE_FINISH_TRACE(HITRACE_TAG_ARK);
-    }
     return jsPandaFile;
 }
 

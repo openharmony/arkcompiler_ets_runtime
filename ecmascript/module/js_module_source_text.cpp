@@ -23,6 +23,7 @@
 #include "ecmascript/module/module_logger.h"
 #include "ecmascript/module/module_message_helper.h"
 #include "ecmascript/module/module_path_helper.h"
+#include "ecmascript/module/module_tools.h"
 #include "ecmascript/object_fast_operator-inl.h"
 #include "ecmascript/module/module_resolver.h"
 #include "ecmascript/object_fast_operator-inl.h"
@@ -309,11 +310,7 @@ Local<JSValueRef> SourceTextModule::LoadNativeModuleImpl(EcmaVM *vm, JSThread *t
     const JSHandle<SourceTextModule> &requiredModule, ModuleTypes moduleType)
 {
     CString moduleRequestName = requiredModule->GetEcmaModuleRecordNameString();
-    bool enableESMTrace = thread->GetEcmaVM()->GetJSOptions().EnableESMTrace();
-    if (enableESMTrace) {
-        CString traceInfo = "LoadNativeModule: " + moduleRequestName;
-        ECMA_BYTRACE_START_TRACE(HITRACE_TAG_ARK, traceInfo.c_str());
-    }
+    ModuleTraceScope moduleTraceScope(thread, "SourceTextModule::LoadNativeModule:" + moduleRequestName);
     ModuleLogger *moduleLogger = thread->GetCurrentEcmaContext()->GetModuleLogger();
     if (moduleLogger != nullptr) {
         moduleLogger->SetStartTime(moduleRequestName);
@@ -335,9 +332,6 @@ Local<JSValueRef> SourceTextModule::LoadNativeModuleImpl(EcmaVM *vm, JSThread *t
     // some function(s) may not registered in global object for non-main thread
     if (!maybeFuncRef->IsFunction(vm)) {
         LOG_FULL(WARN) << "Not found require func";
-        if (enableESMTrace) {
-            ECMA_BYTRACE_FINISH_TRACE(HITRACE_TAG_ARK);
-        }
         if (moduleLogger != nullptr) {
             moduleLogger->SetEndTime(moduleRequestName);
         }
@@ -346,9 +340,6 @@ Local<JSValueRef> SourceTextModule::LoadNativeModuleImpl(EcmaVM *vm, JSThread *t
 
     Local<FunctionRef> funcRef = maybeFuncRef;
     auto exportObject = funcRef->Call(vm, JSValueRef::Undefined(vm), arguments.data(), arguments.size());
-    if (enableESMTrace) {
-        ECMA_BYTRACE_FINISH_TRACE(HITRACE_TAG_ARK);
-    }
     if (moduleLogger != nullptr) {
         moduleLogger->SetEndTime(moduleRequestName);
     }
@@ -687,23 +678,13 @@ void SourceTextModule::ModuleDeclarationEnvironmentSetup(JSThread *thread,
 void SourceTextModule::ModuleDeclarationArrayEnvironmentSetup(JSThread *thread,
                                                               const JSHandle<SourceTextModule> &module)
 {
-    bool enableESMTrace = thread->GetEcmaVM()->GetJSOptions().EnableESMTrace();
-    if (enableESMTrace) {
-        CString traceInfo = "SourceTextModule::Instantiating: " +
-            module->GetEcmaModuleRecordNameString();
-        ECMA_BYTRACE_START_TRACE(HITRACE_TAG_ARK, traceInfo.c_str());
-    }
+    ModuleTraceScope moduleTraceScope(thread,
+        "SourceTextModule::Instantiating:" + module->GetEcmaModuleRecordNameString());
     if (IsSharedModule(module) && SharedModuleManager::GetInstance()->IsInstantiatedSModule(thread, module)) {
-        if (enableESMTrace) {
-            ECMA_BYTRACE_FINISH_TRACE(HITRACE_TAG_ARK);
-        }
         return;
     }
     CheckResolvedIndexBinding(thread, module);
     if (module->GetImportEntries().IsUndefined()) {
-        if (enableESMTrace) {
-            ECMA_BYTRACE_FINISH_TRACE(HITRACE_TAG_ARK);
-        }
         return;
     }
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
@@ -738,9 +719,6 @@ void SourceTextModule::ModuleDeclarationArrayEnvironmentSetup(JSThread *thread,
             // need refactor
             envRec = JSSharedModule::CloneEnvForSModule(thread, module, envRec);
             module->SetEnvironment(thread, envRec);
-            if (enableESMTrace) {
-                ECMA_BYTRACE_FINISH_TRACE(HITRACE_TAG_ARK);
-            }
             return;
         }
         // i. Let resolution be ? importedModule.ResolveExport(in.[[ImportName]], « »).
@@ -768,9 +746,6 @@ void SourceTextModule::ModuleDeclarationArrayEnvironmentSetup(JSThread *thread,
     }
     envRec = JSSharedModule::CloneEnvForSModule(thread, module, envRec);
     module->SetEnvironment(thread, envRec);
-    if (enableESMTrace) {
-        ECMA_BYTRACE_FINISH_TRACE(HITRACE_TAG_ARK);
-    }
 }
 
 JSHandle<JSTaggedValue> SourceTextModule::GetModuleNamespace(JSThread *thread,
