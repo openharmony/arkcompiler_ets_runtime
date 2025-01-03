@@ -4219,4 +4219,28 @@ HWTEST_F_L0(EcmaModuleTest, ModuleStatusOrder)
     EXPECT_EQ(static_cast<int>(ModuleStatus::EVALUATED), 0x06);
     EXPECT_EQ(static_cast<int>(ModuleStatus::ERRORED), 0x07);
 }
+
+HWTEST_F_L0(EcmaModuleTest, FindOhpmEntryPoint)
+{
+    CString baseFilename = "merge.abc";
+    const char *data = R"(
+        .language ECMAScript
+        .function any func_main_0(any a0, any a1, any a2) {
+            ldai 1
+            return
+        }
+    )";
+    JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
+    Parser parser;
+    auto res = parser.Parse(data);
+    std::unique_ptr<const File> pfPtr = pandasm::AsmEmitter::Emit(res.Value());
+    std::shared_ptr<JSPandaFile> pf = pfManager->NewJSPandaFile(pfPtr.release(), baseFilename);
+
+    //test requestName is empty string
+    CString ohpmPath = "pkg_modules/0";
+    CString requestName = "";
+    CString result = "";
+    CString entryPoint = ModulePathHelper::FindOhpmEntryPoint(pf.get(), ohpmPath, requestName);
+    EXPECT_EQ(entryPoint, result);
+}
 }  // namespace panda::test

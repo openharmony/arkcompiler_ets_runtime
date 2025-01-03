@@ -469,7 +469,9 @@ CString ModulePathHelper::FindOhpmEntryPoint(const JSPandaFile *jsPandaFile,
 {
     CVector<CString> vec;
     StringHelper::SplitString(requestName, vec, 0);
-    ASSERT(vec.size() > 0);
+    if (vec.empty()) {
+        return CString();
+    }
     size_t maxIndex = vec.size() - 1;
     CString ohpmKey;
     size_t index = 0;
