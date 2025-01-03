@@ -54,7 +54,6 @@ using RandomGenerator = base::RandomGenerator;
 using PGOProfilerManager = pgo::PGOProfilerManager;
 using JitTools = ohos::JitTools;
 AOTFileManager *JsStackInfo::loader = nullptr;
-JSRuntimeOptions *JsStackInfo::options = nullptr;
 bool EcmaVM::multiThreadCheck_ = false;
 bool EcmaVM::errorInfoEnhanced_ = false;
 
@@ -88,9 +87,6 @@ EcmaVM *EcmaVM::Create(const JSRuntimeOptions &options)
     Runtime::GetInstance()->InitializeIfFirstVm(vm);
     if (JsStackInfo::loader == nullptr) {
         JsStackInfo::loader = vm->GetAOTFileManager();
-    }
-    if (JsStackInfo::options == nullptr) {
-        JsStackInfo::options = &(vm->GetJSOptions());
     }
 #if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE)
     int arkProperties = OHOS::system::GetIntParameter<int>("persist.ark.properties", -1);
