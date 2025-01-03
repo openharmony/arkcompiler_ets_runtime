@@ -40,20 +40,12 @@ public:
 
     void Push(JSTaggedType objectAddr, uint32_t index)
     {
-        if (multiThreadCheckValue_.exchange(JSThread::GetCurrentThreadId()) != 0) {
-            LOG_ECMA(FATAL) << "SnapshotEnv push multi-thread check fail, thread id: " << multiThreadCheckValue_;
-        }
         rootObjectMap_.emplace(objectAddr, index);
-        multiThreadCheckValue_ = 0;
     }
 
     void Remove(JSTaggedType objectAddr)
     {
-        if (multiThreadCheckValue_.exchange(JSThread::GetCurrentThreadId()) != 0) {
-            LOG_ECMA(FATAL) << "SnapshotEnv remove multi-thread check fail, thread id: " << multiThreadCheckValue_;
-        }
         rootObjectMap_.erase(objectAddr);
-        multiThreadCheckValue_ = 0;
     }
 
     uint32_t FindEnvObjectIndex(JSTaggedType objectAddr) const

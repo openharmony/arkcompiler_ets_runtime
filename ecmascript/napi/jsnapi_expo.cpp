@@ -109,6 +109,7 @@ using ecmascript::Region;
 using ecmascript::TaggedArray;
 using ecmascript::base::BuiltinsBase;
 using ecmascript::base::JsonStringifier;
+using ecmascript::SharedHeap;
 using ecmascript::base::StringHelper;
 using ecmascript::base::TypedArrayHelper;
 using ecmascript::base::Utf16JsonParser;
@@ -4325,6 +4326,17 @@ void JSNApi::AllowCrossThreadExecution(EcmaVM *vm)
 {
     LOG_ECMA(WARN) << "enable cross thread execution";
     vm->GetAssociatedJSThread()->EnableCrossThreadExecution();
+}
+
+// Enable cross thread execution except in gc process.
+bool JSNApi::CheckAndSetAllowCrossThreadExecution(EcmaVM *vm)
+{
+    if (vm->GetHeap()->InGC() || SharedHeap::GetInstance()->InGC()) {
+        return false;
+    }
+    LOG_ECMA(WARN) << "enable cross thread execution when not in gc process";
+    vm->GetAssociatedJSThread()->EnableCrossThreadExecution();
+    return true;
 }
 
 void* JSNApi::GetEnv(EcmaVM *vm)
