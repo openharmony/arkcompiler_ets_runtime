@@ -90,7 +90,7 @@ public:
                IsAOTCallThisBuiltin(builtinId);
     }
 
-    static bool IsAOTCallThisBuiltin(ID builtinId)
+    static bool IsAOTCallThisBuiltin([[maybe_unused]]ID builtinId)
     {
 #define BUILTINS_ID(METHOD, OBJECT, ...)  OBJECT##METHOD,
         static std::unordered_set<BuiltinsStubCSigns::ID> callThisBuiltinsIds = {
