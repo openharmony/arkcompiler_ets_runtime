@@ -346,8 +346,15 @@ GateRef LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::
     Label loopEnd(env);
     Label next(env);
     Label loopExit(env);
+    Label noNumberOfDeletedElements(env);
 
-    Jump(&loopHead);
+    Branch(Int32Equal(GetNumberOfDeletedElements(linkedTable), Int32(-1)), &noNumberOfDeletedElements, &loopHead);
+    Bind(&noNumberOfDeletedElements);
+    {
+        res = entry;
+        Jump(&exit);
+    }
+
     LoopBegin(&loopHead);
     {
         Branch(Int32GreaterThanOrEqual(*currentEntry, Int32(0)), &next, &loopExit);
