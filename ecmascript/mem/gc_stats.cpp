@@ -14,7 +14,7 @@
  */
 
 #include "ecmascript/mem/gc_stats.h"
-
+#include "ecmascript/mem/gc_key_stats.h"
 #include "ecmascript/mem/heap-inl.h"
 
 constexpr int DESCRIPTION_LENGTH = 25;
@@ -53,7 +53,10 @@ void GCStats::PrintGCStatistic()
         LOG_GC(INFO) << "IsInBackground: " << heap_->IsInBackground() << "; "
             << "SensitiveStatus: " << static_cast<int>(heap_->GetSensitiveStatus()) << "; "
             << "StartupStatus: " << std::to_string(static_cast<int>(heap_->GetStartupStatus())) << "; "
-            << "BundleName: " << heap_->GetEcmaVM()->GetBundleName() << ";";
+            << "BundleName: " << heap_->GetEcmaVM()->GetBundleName()
+            << "; Young: " << std::to_string(heap_->GetNewSpace()->GetCommittedSize())
+            << "; Old: " << std::to_string(heap_->GetOldSpace()->GetCommittedSize())
+            << "; TotalCommit" << std::to_string(heap_->GetCommittedSize());
         // print verbose gc statsistics
         PrintVerboseGCStatistic();
     }
@@ -446,6 +449,7 @@ void GCStats::RecordStatisticBeforeGC(TriggerGCType gcType, GCReason reason)
         default: // LCOV_EXCL_BR_LINE
             break;
     }
+    ProcessBeforeLongGCStats();
 }
 
 void GCStats::RecordStatisticAfterGC()
@@ -541,6 +545,89 @@ void GCStats::RecordStatisticAfterGC()
     IncreaseTotalDuration(scopeDuration_[Scope::ScopeId::TotalGC]);
     IncreaseAccumulatedFreeSize(GetRecordData(RecordData::START_OBJ_SIZE) -
                                 GetRecordData(RecordData::END_OBJ_SIZE));
+    ProcessAfterLongGCStats();
+}
+
+void GCStats::ProcessAfterLongGCStats()
+{
+    LongGCStats *longGCStats = GetLongGCStats();
+    float gcTotalTime = GetScopeDuration(GCStats::Scope::ScopeId::TotalGC);
+    if (IsLongGC(reason_, heap_->InSensitiveStatus(), heap_->IsInBackground(), gcTotalTime)) {
+        longGCStats->SetGCType(static_cast<int>(gcType_));
+        longGCStats->SetGCReason(static_cast<int>(reason_));
+        longGCStats->SetGCIsSensitive(heap_->InSensitiveStatus());
+        longGCStats->SetGCIsInBackground(heap_->IsInBackground());
+        longGCStats->SetGCTotalTime(gcTotalTime);
+        longGCStats->SetGCMarkTime(GetScopeDuration(GCStats::Scope::ScopeId::Mark));
+        longGCStats->SetGCEvacuateTime(GetScopeDuration(GCStats::Scope::ScopeId::Evacuate));
+        longGCStats->SetGCUpdateRootTime(GetScopeDuration(GCStats::Scope::ScopeId::UpdateRoot));
+        longGCStats->SetGCUpdateWeekRefTime(GetScopeDuration(GCStats::Scope::ScopeId::UpdateWeekRef));
+        longGCStats->SetGCUpdateReferenceTime(GetScopeDuration(GCStats::Scope::ScopeId::UpdateReference));
+        longGCStats->SetGCSweepNewToOldTime(GetScopeDuration(GCStats::Scope::ScopeId::SweepNewToOldRegions));
+        longGCStats->SetGCFinalizeTime(GetScopeDuration(GCStats::Scope::ScopeId::Finalize));
+        longGCStats->SetGCInvokeCallbackTime(GetScopeDuration(GCStats::Scope::ScopeId::InvokeNativeFinalizeCallbacks));
+        longGCStats->SetAfterGCTotalMemUsed(heap_->GetHeapObjectSize());
+        longGCStats->SetAfterGCTotalMemCommitted(heap_->GetCommittedSize());
+        longGCStats->SetAfterGCActiveMemUsed(heap_->GetNewSpace()->GetHeapObjectSize());
+        longGCStats->SetAfterGCActiveMemCommitted(heap_->GetNewSpace()->GetCommittedSize() +
+                                                  heap_->GetEdenSpace()->GetCommittedSize());
+        longGCStats->SetAfterGCOldMemUsed(heap_->GetOldSpace()->GetHeapObjectSize());
+        longGCStats->SetAfterGCOldMemCommitted(heap_->GetOldSpace()->GetCommittedSize());
+        longGCStats->SetAfterGCHugeMemUsed(heap_->GetHugeObjectSpace()->GetHeapObjectSize());
+        longGCStats->SetAfterGCHugeMemCommitted(heap_->GetHugeObjectSpace()->GetCommittedSize());
+        longGCStats->SetAfterGCNativeBindingSize(heap_->GetNativeBindingSize());
+        longGCStats->SetAfterGCNativeLimit(heap_->GetGlobalSpaceNativeLimit());
+    }
+}
+
+void GCStats::ProcessBeforeLongGCStats()
+{
+    LongGCStats *longGCStats = GetLongGCStats();
+    longGCStats->SetBeforeGCTotalMemUsed(heap_->GetHeapObjectSize());
+    longGCStats->SetBeforeGCTotalMemCommitted(heap_->GetCommittedSize());
+    longGCStats->SetBeforeGCActiveMemUsed(heap_->GetNewSpace()->GetHeapObjectSize());
+    longGCStats->SetBeforeGCActiveMemCommitted(heap_->GetNewSpace()->GetCommittedSize() +
+                                               heap_->GetEdenSpace()->GetCommittedSize());
+    longGCStats->SetBeforeGCOldMemUsed(heap_->GetOldSpace()->GetHeapObjectSize());
+    longGCStats->SetBeforeGCOldMemCommitted(heap_->GetOldSpace()->GetCommittedSize());
+    longGCStats->SetBeforeGCHugeMemUsed(heap_->GetHugeObjectSpace()->GetHeapObjectSize());
+    longGCStats->SetBeforeGCHugeMemCommitted(heap_->GetHugeObjectSpace()->GetCommittedSize());
+    longGCStats->SetBeforeGCNativeBindingSize(heap_->GetNativeBindingSize());
+    longGCStats->SetBeforeGCNativeLimit(heap_->GetGlobalSpaceNativeLimit());
+}
+
+/*
+| The Judgment criteria of Long GC
+|  IsInBackground  |  IsSensitive or Idle |  GCTime |
+| -----------------| ---------------------|---------|
+|       false      |       Sensitive      |    33   |
+|       false      |  !Sensitive & !Idle  |    33   |
+|       true       |         Idle         |    200  |
+|       true       |        !Idle         |    200  |
+|       true       |         Idle         |    500  |
+*/
+bool GCStats::IsLongGC(GCReason gcReason, bool gcIsSensitive, bool gcIsInBackground, float gcTotalTime)
+{
+    if (gcIsSensitive) {
+        if (gcTotalTime > GCKeyStats::GC_SENSITIVE_LONG_TIME) {
+            return true;
+        }
+    } else {
+        if (gcReason == GCReason::IDLE) {
+            if (!gcIsInBackground && gcTotalTime > GCKeyStats::GC_IDLE_LONG_TIME) {
+                return true;
+            } else if (gcIsInBackground && gcTotalTime > GCKeyStats::GC_BACKGROUD_IDLE_LONG_TIME) {
+                return true;
+            }
+        } else {
+            if (!gcIsInBackground && gcTotalTime > GCKeyStats::GC_NOT_SENSITIVE_LONG_TIME) {
+                return true;
+            } else if (gcIsInBackground && gcTotalTime > GCKeyStats::GC_BACKGROUD_LONG_TIME) {
+                return true;
+            }
+        }
+    }
+    return false;
 }
 
 void GCStats::RecordGCSpeed()
@@ -771,6 +858,7 @@ void SharedGCStats::RecordStatisticBeforeGC(TriggerGCType gcType, GCReason reaso
     IncreaseRecordData(RecordData::SHARED_TOTAL_COMMIT, commitSize);
     gcType_ = GetGCType(gcType);
     reason_ = reason;
+    ProcessBeforeLongGCStats();
 }
 
 void SharedGCStats::RecordStatisticAfterGC()
@@ -797,5 +885,41 @@ void SharedGCStats::RecordStatisticAfterGC()
     IncreaseTotalDuration(scopeDuration_[Scope::ScopeId::TotalGC]);
     IncreaseAccumulatedFreeSize(GetRecordData(RecordData::START_OBJ_SIZE) -
                                 GetRecordData(RecordData::END_OBJ_SIZE));
+    ProcessAfterLongGCStats();
+}
+
+void SharedGCStats::ProcessAfterLongGCStats()
+{
+    LongGCStats *longGCStats = GetLongGCStats();
+    float gcTotalTime = GetScopeDuration(GCStats::Scope::ScopeId::TotalGC);
+    if (IsLongGC(reason_, sHeap_->InSensitiveStatus(), sHeap_->IsInBackground(), gcTotalTime)) {
+        longGCStats->SetGCType(static_cast<int>(gcType_));
+        longGCStats->SetGCReason(static_cast<int>(reason_));
+        longGCStats->SetGCIsSensitive(sHeap_->InSensitiveStatus());
+        longGCStats->SetGCIsInBackground(sHeap_->IsInBackground());
+        longGCStats->SetGCTotalTime(gcTotalTime);
+        longGCStats->SetGCMarkTime(GetScopeDuration(GCStats::Scope::ScopeId::Mark));
+        longGCStats->SetAfterGCTotalMemUsed(sHeap_->GetHeapObjectSize());
+        longGCStats->SetAfterGCTotalMemCommitted(sHeap_->GetCommittedSize());
+        longGCStats->SetAfterGCOldMemUsed(sHeap_->GetOldSpace()->GetHeapObjectSize());
+        longGCStats->SetAfterGCOldMemCommitted(sHeap_->GetOldSpace()->GetCommittedSize());
+        longGCStats->SetAfterGCHugeMemUsed(sHeap_->GetHugeObjectSpace()->GetHeapObjectSize());
+        longGCStats->SetAfterGCHugeMemCommitted(sHeap_->GetHugeObjectSpace()->GetCommittedSize());
+        longGCStats->SetAfterGCNativeBindingSize(sHeap_->GetNativeSizeAfterLastGC());
+        longGCStats->SetAfterGCNativeLimit(sHeap_->GetNativeSizeTriggerSharedGC());
+    }
+}
+
+void SharedGCStats::ProcessBeforeLongGCStats()
+{
+    LongGCStats *longGCStats = GetLongGCStats();
+    longGCStats->SetBeforeGCTotalMemUsed(sHeap_->GetHeapObjectSize());
+    longGCStats->SetBeforeGCTotalMemCommitted(sHeap_->GetCommittedSize());
+    longGCStats->SetBeforeGCOldMemUsed(sHeap_->GetOldSpace()->GetHeapObjectSize());
+    longGCStats->SetBeforeGCOldMemCommitted(sHeap_->GetOldSpace()->GetCommittedSize());
+    longGCStats->SetBeforeGCHugeMemUsed(sHeap_->GetHugeObjectSpace()->GetHeapObjectSize());
+    longGCStats->SetBeforeGCHugeMemCommitted(sHeap_->GetHugeObjectSpace()->GetCommittedSize());
+    longGCStats->SetBeforeGCNativeBindingSize(sHeap_->GetNativeSizeAfterLastGC());
+    longGCStats->SetBeforeGCNativeLimit(sHeap_->GetNativeSizeTriggerSharedGC());
 }
 }  // namespace panda::ecmascript

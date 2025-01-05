@@ -290,7 +290,10 @@ config("hiviewdfx_config") {
     defines += [ "ENABLE_HILOG" ]
   }
   if (enable_hisysevent) {
-    defines += [ "ENABLE_HISYSEVENT" ]
+    defines += [
+      "ENABLE_HISYSEVENT",
+      "ENABLE_UCOLLECTION",
+    ]
   }
   if (enable_unwinder) {
     defines += [ "ENABLE_UNWINDER" ]
@@ -1085,6 +1088,7 @@ if (is_mingw) {
     "ecmascript/platform/windows/time.cpp",
     "ecmascript/platform/windows/log.cpp",
     "ecmascript/platform/windows/aot_crash_info.cpp",
+    "ecmascript/platform/windows/dfx_hisys_event.cpp",
   ]
 } else {
   ecma_platform_source += [
@@ -1099,6 +1103,7 @@ if (is_mingw) {
       "ecmascript/platform/unix/mac/os.cpp",
       "ecmascript/platform/unix/mac/backtrace.cpp",
       "ecmascript/platform/unix/mac/log.cpp",
+      "ecmascript/platform/unix/mac/dfx_hisys_event.cpp",
     ]
   } else if (target_os == "ios") {
     ecma_platform_source += [
@@ -1106,6 +1111,7 @@ if (is_mingw) {
       "ecmascript/platform/unix/mac/backtrace.cpp",
       "ecmascript/platform/common/dfx_crash_obj.cpp",
       "ecmascript/platform/common/log.cpp",
+      "ecmascript/platform/unix/mac/dfx_hisys_event.cpp",
     ]
   } else if (is_ohos || target_os == "android") {
     ecma_platform_source += [
@@ -1113,6 +1119,7 @@ if (is_mingw) {
       "ecmascript/platform/unix/ohos/backtrace.cpp",
       "ecmascript/platform/common/log.cpp",
       "ecmascript/platform/unix/ohos/memory.cpp",
+      "ecmascript/platform/unix/ohos/dfx_hisys_event.cpp",
     ]
 
     if (is_ohos && !ark_standalone_build &&
@@ -1129,6 +1136,7 @@ if (is_mingw) {
       "ecmascript/platform/common/dfx_crash_obj.cpp",
       "ecmascript/platform/common/log.cpp",
       "ecmascript/platform/unix/linux/memory.cpp",
+      "ecmascript/platform/unix/linux/dfx_hisys_event.cpp",
     ]
   } else {
     print("Invalid os!")

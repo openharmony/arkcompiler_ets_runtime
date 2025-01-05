@@ -60,11 +60,16 @@ public:
         gcStats_(gcStats) {}
     ~GCKeyStats() = default;
 
+    static constexpr int GC_SENSITIVE_LONG_TIME = 33;
+    static constexpr int GC_NOT_SENSITIVE_LONG_TIME = 33;
+    static constexpr int GC_IDLE_LONG_TIME = 200;
+    static constexpr int GC_BACKGROUD_LONG_TIME = 200;
+    static constexpr int GC_BACKGROUD_IDLE_LONG_TIME = 500;
     void AddGCStatsToKey();
     bool CheckIfMainThread() const;
     bool CheckIfKeyPauseTime() const;
     void SendSysEventBeforeDump(std::string type, size_t limitSize, size_t activeMemory) const;
-
+    void ProcessLongGCEvent();
     void IncGCCount()
     {
         gcCount_++;
@@ -94,7 +99,8 @@ private:
     void SendSysEvent() const;
     void InitializeRecordList();
     void PrintKeyStatisticResult() const;
-
+    double GetCpuUsage();
+    void SendLongGCEvent();
     bool CheckLastSendTimeIfSend() const
     {
         return lastSendTimestamp_ == Clock::time_point::min() ||

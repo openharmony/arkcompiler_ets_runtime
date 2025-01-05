@@ -1394,6 +1394,10 @@ void Heap::CollectGarbageImpl(TriggerGCType gcType, GCReason reason)
     }
 #endif
 
+    if (GetEcmaGCKeyStats()->CheckIfMainThread()) {
+        GetEcmaGCKeyStats()->ProcessLongGCEvent();
+    }
+
     if (GetEcmaVM()->IsEnableBaselineJit() || GetEcmaVM()->IsEnableFastJit()) {
         // check machine code space if enough
         int remainSize = static_cast<int>(config_.GetDefaultMachineCodeSpaceSize()) -

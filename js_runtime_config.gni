@@ -158,7 +158,10 @@ if (enable_hilog) {
   hiviewdfx_ext_deps += [ "hilog:libhilog" ]
 }
 if (enable_hisysevent) {
-  hiviewdfx_ext_deps += [ "hisysevent:libhisysevent" ]
+  hiviewdfx_ext_deps += [
+    "hisysevent:libhisysevent",
+    "hiview:libucollection_client",
+  ]
 }
 
 enable_sanitize = is_ohos && is_standard_system && !ark_standalone_build &&
