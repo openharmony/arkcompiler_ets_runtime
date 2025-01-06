@@ -208,6 +208,9 @@ HWTEST_F_L0(JSArrayTest, COWArray)
 
 HWTEST_F_L0(JSArrayTest, TrackInfo)
 {
+    if (!thread->IsEnableElementsKind()) {
+        return;
+    }
     auto constants = thread->GlobalConstants();
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<TaggedArray> values(factory->NewTaggedArray(5));
