@@ -341,10 +341,13 @@ uint32_t Jit::GetRunningTaskCnt(EcmaVM *vm)
 
 void Jit::InstallTasks(JSThread *jsThread)
 {
-    LockHolder holder(threadTaskInfoLock_);
-    ThreadTaskInfo &info = threadTaskInfo_[jsThread];
-    auto &taskQueue = info.installJitTasks_;
-
+    std::deque<std::shared_ptr<JitTask>> taskQueue;
+    {
+        LockHolder holder(threadTaskInfoLock_);
+        ThreadTaskInfo &info = threadTaskInfo_[jsThread];
+        taskQueue = info.installJitTasks_;
+        info.installJitTasks_.clear();
+    }
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, ConvertToStdString("Jit::InstallTasks count:" + ToCString(taskQueue.size())));
 
     for (auto it = taskQueue.begin(); it != taskQueue.end(); it++) {
@@ -352,7 +355,6 @@ void Jit::InstallTasks(JSThread *jsThread)
         // check task state
         task->InstallCode();
     }
-    taskQueue.clear();
 }
 
 bool Jit::JitCompile(void *compiler, JitTask *jitTask)
