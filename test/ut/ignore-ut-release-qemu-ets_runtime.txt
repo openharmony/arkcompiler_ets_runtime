@@ -1,2 +1,4 @@
 # Known failure list for ut - release - qemu - ets_runtime
+#20980
+obj/arkcompiler/ets_runtime/test/aottest/builtin_inlining/map/Delete/builtinMapDelete
 
