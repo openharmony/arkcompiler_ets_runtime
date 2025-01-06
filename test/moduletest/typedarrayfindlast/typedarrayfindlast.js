@@ -51,7 +51,7 @@ typedArrayFindConstructors.forEach(function (ctor, i) {
 assert_equal(typedArrayFindConstructorsSuccessList, typedArrayFindConstructorsAssertSuccessList);
 assert_equal(typedArrayFindConstructorsFailList, typedArrayFindConstructorsAssertFailList);
 
-const testTypeArrayAt2SuccessList = [
+const testTypeArrayAt2AssertSuccessList = [
 	"BigInt64Array",
 	"BigUint64Array"
 	];

@@ -22,8 +22,9 @@
 try {
     var array = new Uint8Array(1000000);
     var res = String.fromCharCode.apply(null, array);
+    assert_unreachable();
 } catch (e) {
-    assert_equal(error instanceof RangeError, true);
+    assert_equal(e instanceof RangeError, true);
 }
 
 try {

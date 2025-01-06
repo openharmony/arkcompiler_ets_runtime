@@ -187,7 +187,10 @@ ohos_static_library("ark_runtime_host_unittest") {
   ]
 
   # js bytecode test
-  deps += [ "$js_root/test/moduletest:ark_js_moduletest" ]
+  deps += [
+    "$js_root/test/moduletest:ark_js_assert_moduletest",
+    "$js_root/test/moduletest:ark_js_moduletest",
+  ]
 
   # quickfix test
   deps += [ "$js_root/test/quickfix:ark_quickfix_test" ]
@@ -211,11 +214,15 @@ ohos_static_library("ark_runtime_host_unittest") {
 
       # Temporarily closed
       # "$js_root/test/deopttest:ark_deopt_to_baseline_test",
+      "$js_root/test/moduletest:ark_asm_assert_test",
       "$js_root/test/moduletest:ark_asm_test",
     ]
 
     if (is_mac) {
-      deps -= [ "$js_root/test/moduletest:ark_asm_test" ]
+      deps -= [
+        "$js_root/test/moduletest:ark_asm_assert_test",
+        "$js_root/test/moduletest:ark_asm_test",
+      ]
     }
   }
   part_name = "ets_runtime"

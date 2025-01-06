@@ -766,7 +766,7 @@ res10 = arr2.reduce(fun1, null);
 assert_equal(res10,6);
 
 // Test case for findLastIndex()
-const typedArrayAtConstructorsAssertSuccessList = [
+const testTypeArrayfindLastIndexAssertSuccessList = [
 	"Float64Array",
 	"Float32Array",
 	"Int32Array",
@@ -842,8 +842,6 @@ function testTypeArrayfindLastIndex1(ctor) {
 
 // Test case for of()
 const testTypeArrayOf1AssertSuccessList = [
-	"Float64Array",
-	"Float32Array",
 	"Int32Array",
 	"Int16Array",
 	"Int8Array",
@@ -852,7 +850,10 @@ const testTypeArrayOf1AssertSuccessList = [
 	"Uint8Array",
 	"Uint8ClampedArray"
 	];
-const testTypeArrayOf1AssertFailList = [];
+const testTypeArrayOf1AssertFailList = [
+	"Float64Array",
+	"Float32Array",
+	];
 let testTypeArrayOf1SuccessList = [];
 let testTypeArrayOf1FailList = [];
 
@@ -1050,19 +1051,27 @@ function testTypeArrayToReversed1(ctor) {
     return true;
 }
 
+const testTypeArrayToReversed2AssertSuccessList = [
+	"BigInt64Array",
+	"BigUint64Array"
+	];
+const testTypeArrayToReversed2AssertFailList = [];
+let testTypeArrayToReversed2SuccessList = [];
+let testTypeArrayToReversed2FailList = [];
+
 [
     BigInt64Array,
     BigUint64Array
 ].forEach(function(ctor, i) {
     if (testTypeArrayToReversed2(ctor) ) {
-        testTypeArrayOf1SuccessList.push(ctor.name);
+        testTypeArrayToReversed2SuccessList.push(ctor.name);
     } else {
-        testTypeArrayOf1FailList.push(ctor.name);
+        testTypeArrayToReversed2FailList.push(ctor.name);
     }
 });
 
-assert_equal(testTypeArrayOf1SuccessList, testTypeArrayOf1AssertSuccessList);
-assert_equal(testTypeArrayOf1FailList, testTypeArrayOf1AssertFailList);
+assert_equal(testTypeArrayToReversed2SuccessList, testTypeArrayToReversed2AssertSuccessList);
+assert_equal(testTypeArrayToReversed2FailList, testTypeArrayToReversed2AssertFailList);
 
 
 function testTypeArrayToReversed2(ctor) {

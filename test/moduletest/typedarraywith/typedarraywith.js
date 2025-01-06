@@ -24,7 +24,7 @@ const typedArrayWithConstructors = [
     Uint8ClampedArray
 ];
 
-const typedArrayWithConstructorsAssertSuccessList = [
+const typedArrayFindConstructorsAssertSuccessList = [
 	"Float64Array",
 	"Float32Array",
 	"Int32Array",
