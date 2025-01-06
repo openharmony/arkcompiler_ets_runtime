@@ -34,9 +34,8 @@ JSTaggedValue JSStableArray::Push(JSHandle<JSSharedArray> receiver, EcmaRuntimeC
     uint32_t newLength = argc + oldLength;
     JSHandle<JSObject> thisObjHandle(receiver);
 
-    TaggedArray *elements = TaggedArray::Cast(receiver->GetElements().GetTaggedObject());
     if (newLength > ElementAccessor::GetElementsLength(thisObjHandle)) {
-        elements = *JSObject::GrowElementsCapacity(thread, JSHandle<JSObject>::Cast(receiver), newLength, true);
+        JSObject::GrowElementsCapacity(thread, JSHandle<JSObject>::Cast(receiver), newLength, true);
     }
     bool needTransition = true;
     for (uint32_t k = 0; k < argc; k++) {
@@ -56,9 +55,8 @@ JSTaggedValue JSStableArray::Push(JSHandle<JSArray> receiver, EcmaRuntimeCallInf
     uint32_t newLength = argc + oldLength;
     JSHandle<JSObject> thisObjHandle(receiver);
 
-    TaggedArray *elements = TaggedArray::Cast(receiver->GetElements().GetTaggedObject());
     if (newLength > ElementAccessor::GetElementsLength(thisObjHandle)) {
-        elements = *JSObject::GrowElementsCapacity(thread, JSHandle<JSObject>::Cast(receiver), newLength, true);
+        JSObject::GrowElementsCapacity(thread, JSHandle<JSObject>::Cast(receiver), newLength, true);
     }
     bool needTransition = true;
     for (uint32_t k = 0; k < argc; k++) {
