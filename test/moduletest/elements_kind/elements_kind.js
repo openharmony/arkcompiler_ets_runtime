@@ -1410,7 +1410,7 @@ function test104() {
     const words = ['spray', 'elite', 'exuberant', 'destruction', 'present'];
     const result = words.filter((word) => word.length > 6);
     // Expected output: Array ["exuberant", "destruction", "present"]
-    if (result.length == 3 && ArkTools.getElementsKind(result) == HOLESTRING){
+    if (result.length == 3 && ArkTools.getElementsKind(result) == PACKEDSTRING){
         print("test104 - success");
     } else {
         print("test104 - failed");
