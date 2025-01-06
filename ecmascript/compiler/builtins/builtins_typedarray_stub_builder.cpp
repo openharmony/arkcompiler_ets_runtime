@@ -1586,8 +1586,9 @@ void BuiltinsTypedArrayStubBuilder::Slice(GateRef glue, GateRef thisValue, GateR
         BRANCH(Int32Equal(TruncInt64ToInt32(*newArrayLen), Int32(0)), &writeVariable, &copyBuffer);
         Bind(&copyBuffer);
         {
-            CallNGCRuntime(glue, RTSTUB_ID(CopyTypedArrayBuffer), { thisValue, newArray, TruncInt64ToInt32(*startPos),
-                Int32(0), TruncInt64ToInt32(*newArrayLen), newBuilder.GetElementSizeFromType(glue, arrayType) });
+            CallNGCRuntime(glue, RTSTUB_ID(CopyTypedArrayBuffer),
+                           { glue, thisValue, newArray, TruncInt64ToInt32(*startPos), Int32(0),
+                             TruncInt64ToInt32(*newArrayLen) });
             Jump(&writeVariable);
         }
         Bind(&writeVariable);
@@ -1721,8 +1722,7 @@ void BuiltinsTypedArrayStubBuilder::With(GateRef glue, GateRef thisValue, GateRe
     }
     Bind(&notHasException0);
     CallNGCRuntime(glue, RTSTUB_ID(CopyTypedArrayBuffer),
-        {thisValue, newArray, Int32(0), Int32(0), TruncInt64ToInt32(thisLen),
-        newBuilder.GetElementSizeFromType(glue, jsType)});
+                   { glue, thisValue, newArray, Int32(0), Int32(0), TruncInt64ToInt32(thisLen) });
     BRANCH(Int64GreaterThanOrEqual(*relativeIndex, Int64(0)), &indexGreaterOrEqualZero, &indexLessZero);
     Bind(&indexGreaterOrEqualZero);
     {
@@ -2208,8 +2208,8 @@ void BuiltinsTypedArrayStubBuilder::Set(GateRef glue, GateRef thisValue, GateRef
             {
                 NewObjectStubBuilder newBuilder(this);
                 CallNGCRuntime(glue, RTSTUB_ID(CopyTypedArrayBuffer),
-                    { srcArray, thisValue, Int32(0), TruncInt64ToInt32(*realOffset), TruncInt64ToInt32(srcLen),
-                    newBuilder.GetElementSizeFromType(glue, arrayType) });
+                               { glue, srcArray, thisValue, Int32(0), TruncInt64ToInt32(*realOffset),
+                                 TruncInt64ToInt32(srcLen) });
                 Jump(exit);
             }
             Bind(&isNotSameType);
@@ -2462,8 +2462,7 @@ void BuiltinsTypedArrayStubBuilder::ToSorted(GateRef glue, GateRef thisValue,
     newBuilder.SetParameters(glue, 0);
     GateRef newArray = newBuilder.NewTypedArray(glue, thisValue, jsType, TruncInt64ToInt32(thisLen));
     CallNGCRuntime(glue, RTSTUB_ID(CopyTypedArrayBuffer),
-        { thisValue, newArray, Int32(0), Int32(0), TruncInt64ToInt32(thisLen),
-        newBuilder.GetElementSizeFromType(glue, jsType) });
+                   { glue, thisValue, newArray, Int32(0), Int32(0), TruncInt64ToInt32(thisLen) });
     DoSort(glue, newArray, result, exit, slowPath);
     result->WriteVariable(newArray);
     Jump(exit);

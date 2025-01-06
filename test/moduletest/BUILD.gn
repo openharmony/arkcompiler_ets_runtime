@@ -173,7 +173,7 @@ group("ark_js_moduletest") {
   }
 
   if (!is_debug) {
-    release_test_list = []
+    release_test_list = [ "typedarrayrelease" ]
 
     foreach(test, release_test_list) {
       deps += [
@@ -264,6 +264,7 @@ group("ark_js_assert_moduletest") {
       "multiconstpoolconstructor",
       "multiconstpoolfunc",
       "multiconstpoolobj",
+      "proxyrelease",
     ]
 
     foreach(test, release_test_assert_list) {
@@ -412,7 +413,10 @@ group("ark_asm_test") {
   }
 
   if (!is_debug) {
-    release_test_list = [ "throwerrorrelease" ]
+    release_test_list = [
+      "throwerrorrelease",
+      "typedarrayrelease",
+    ]
 
     foreach(test, release_test_list) {
       deps += [
@@ -615,7 +619,7 @@ group("ark_asm_single_step_test") {
     }
   }
   if (!is_debug) {
-    release_test_list = []
+    release_test_list = [ "typedarrayrelease" ]
 
     foreach(test, release_test_list) {
       deps += [
