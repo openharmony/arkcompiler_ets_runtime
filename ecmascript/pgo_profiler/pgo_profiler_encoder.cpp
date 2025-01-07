@@ -129,7 +129,6 @@ void PGOProfilerEncoder::PostSaveTask(const std::string& path,
 
 void PGOProfilerEncoder::StartSaveTask(const std::shared_ptr<PGOInfo> info, const SaveTask* task)
 {
-    ConcurrentGuard guard(PGOProfilerManager::GetInstance()->GetConcurrentGuardValue(), "StartSaveTask");
     if (task == nullptr) {
         return;
     }
@@ -137,8 +136,11 @@ void PGOProfilerEncoder::StartSaveTask(const std::shared_ptr<PGOInfo> info, cons
         LOG_PGO(ERROR) << "save task is terminated";
         return;
     }
-    LockHolder lock(PGOProfilerManager::GetPGOInfoMutex());
-    InternalSave(info, task);
+    {
+        ConcurrentGuard guard(PGOProfilerManager::GetInstance()->GetConcurrentGuardValue(), "StartSaveTask");
+        LockHolder lock(PGOProfilerManager::GetPGOInfoMutex());
+        InternalSave(info, task);
+    }
     PGOProfilerManager::GetInstance()->GetPGOState()->SetStopIfSaveAndNotify();
 }
 
