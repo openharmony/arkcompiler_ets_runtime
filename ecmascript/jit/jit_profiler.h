@@ -72,7 +72,8 @@ public:
     }
     void InitJITProfiler()
     {
-        ptManager_ = vm_->GetJSThread()->GetCurrentEcmaContext()->GetPTManager();
+        mainThread_ = vm_->GetJSThread();
+        ptManager_ = mainThread_->GetCurrentEcmaContext()->GetPTManager();
     }
     void SetCompilationEnv(CompilationEnv *env)
     {
@@ -143,7 +144,7 @@ private:
     void AddBuiltinsInfo(ApEntityId abcId, int32_t bcOffset, JSHClass *receiver,
                          JSHClass *transitionHClass, OnHeapMode onHeap = OnHeapMode::NONE,
                          bool everOutOfBounds = false);
-    void AddBuiltinsGlobalInfo(ApEntityId abcId, int32_t bcOffset, GlobalIndex globalsId);
+    void AddBuiltinsGlobalInfo(ApEntityId abcId, int32_t bcOffset, GlobalIndex globalId);
     bool AddBuiltinsInfoByNameInInstance(ApEntityId abcId, int32_t bcOffset, JSHClass *receiver);
     bool AddBuiltinsInfoByNameInProt(ApEntityId abcId, int32_t bcOffset, JSHClass *receiver, JSHClass *hold);
 
@@ -178,6 +179,7 @@ private:
     void Clear();
 
     EcmaVM *vm_ { nullptr };
+    JSThread *mainThread_ {nullptr};
     kungfu::PGOTypeManager *ptManager_ { nullptr };
     ProfileTypeInfo* profileTypeInfo_ { nullptr };
     ApEntityId abcId_ { 0 };

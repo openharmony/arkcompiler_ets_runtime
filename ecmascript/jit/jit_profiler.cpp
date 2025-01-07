@@ -404,7 +404,7 @@ void JITProfiler::ConvertNewObjRange(uint32_t slotId, long bcOffset)
 
 void JITProfiler::ConvertGetIterator(uint32_t slotId, long bcOffset)
 {
-    if (vm_->GetJSThread()->GetEnableLazyBuiltins()) {
+    if (mainThread_->GetEnableLazyBuiltins()) {
         return;
     }
     JSTaggedValue value = profileTypeInfo_->Get(slotId);
@@ -864,7 +864,7 @@ JSTaggedValue JITProfiler::TryFindKeyInPrototypeChain(TaggedObject *currObj, JSH
     }
     while (!JSTaggedValue(currHC).IsUndefinedOrNull()) {
         if (LIKELY(!currHC->IsDictionaryMode())) {
-            int entry = JSHClass::FindPropertyEntry(vm_->GetJSThread(), currHC, key);
+            int entry = JSHClass::FindPropertyEntry(mainThread_, currHC, key);
             if (entry != -1) {
                 return JSTaggedValue(currHC);
             }
@@ -960,9 +960,8 @@ void JITProfiler::AddBuiltinsGlobalInfo(ApEntityId abcId, int32_t bcOffset, Glob
 
 bool JITProfiler::AddBuiltinsInfoByNameInInstance(ApEntityId abcId, int32_t bcOffset, JSHClass *receiver)
 {
-    auto thread = vm_->GetJSThread();
     auto type = receiver->GetObjectType();
-    const auto &ctorEntries = thread->GetCtorHclassEntries();
+    const auto &ctorEntries = mainThread_->GetCtorHclassEntries();
     auto entry = ctorEntries.find(receiver);
     if (entry != ctorEntries.end()) {
         AddBuiltinsGlobalInfo(abcId, bcOffset, entry->second);
@@ -976,18 +975,19 @@ bool JITProfiler::AddBuiltinsInfoByNameInInstance(ApEntityId abcId, int32_t bcOf
     JSHClass *exceptRecvHClass = nullptr;
     if (builtinsId == BuiltinTypeId::ARRAY) {
         bool receiverIsPrototype = receiver->IsPrototype();
-        exceptRecvHClass = thread->GetArrayInstanceHClass(receiver->GetElementsKind(), receiverIsPrototype);
+        exceptRecvHClass = mainThread_->GetArrayInstanceHClass(receiver->GetElementsKind(), receiverIsPrototype);
     } else if (builtinsId == BuiltinTypeId::STRING) {
         exceptRecvHClass = receiver;
     } else {
-        exceptRecvHClass = thread->GetBuiltinInstanceHClass(builtinsId.value());
+        exceptRecvHClass = mainThread_->GetBuiltinInstanceHClass(builtinsId.value());
     }
 
     if (exceptRecvHClass != receiver) {
         // When JSType cannot uniquely identify builtins object, it is necessary to
         // query the receiver on the global constants.
         if (builtinsId == BuiltinTypeId::OBJECT) {
-            exceptRecvHClass = JSHClass::Cast(thread->GlobalConstants()->GetIteratorResultClass().GetTaggedObject());
+            exceptRecvHClass = JSHClass::Cast(
+                mainThread_->GlobalConstants()->GetIteratorResultClass().GetTaggedObject());
             if (exceptRecvHClass == receiver) {
                 GlobalIndex globalsId;
                 globalsId.UpdateGlobalConstId(static_cast<size_t>(ConstantIndex::ITERATOR_RESULT_CLASS));
@@ -1009,20 +1009,19 @@ bool JITProfiler::AddBuiltinsInfoByNameInProt(ApEntityId abcId, int32_t bcOffset
     if (!builtinsId.has_value()) {
         return false;
     }
-    auto thread = vm_->GetJSThread();
     JSHClass *exceptRecvHClass = nullptr;
     if (builtinsId == BuiltinTypeId::ARRAY) {
         bool receiverIsPrototype = receiver->IsPrototype();
-        exceptRecvHClass = thread->GetArrayInstanceHClass(receiver->GetElementsKind(), receiverIsPrototype);
+        exceptRecvHClass = mainThread_->GetArrayInstanceHClass(receiver->GetElementsKind(), receiverIsPrototype);
     } else if (builtinsId == BuiltinTypeId::STRING) {
         exceptRecvHClass = receiver;
     } else {
-        exceptRecvHClass = thread->GetBuiltinInstanceHClass(builtinsId.value());
+        exceptRecvHClass = mainThread_->GetBuiltinInstanceHClass(builtinsId.value());
     }
 
-    auto exceptHoldHClass = thread->GetBuiltinPrototypeHClass(builtinsId.value());
+    auto exceptHoldHClass = mainThread_->GetBuiltinPrototypeHClass(builtinsId.value());
     auto exceptPrototypeOfPrototypeHClass =
-        thread->GetBuiltinPrototypeOfPrototypeHClass(builtinsId.value());
+        mainThread_->GetBuiltinPrototypeOfPrototypeHClass(builtinsId.value());
     // iterator needs to find two layers of prototype
     if (builtinsId == BuiltinTypeId::ARRAY_ITERATOR) {
         if ((exceptRecvHClass != receiver) ||
@@ -1030,7 +1029,7 @@ bool JITProfiler::AddBuiltinsInfoByNameInProt(ApEntityId abcId, int32_t bcOffset
             return true;
         }
     } else if (IsTypedArrayType(builtinsId.value())) {
-        auto exceptRecvHClassOnHeap = thread->GetBuiltinExtraHClass(builtinsId.value());
+        auto exceptRecvHClassOnHeap = mainThread_->GetBuiltinExtraHClass(builtinsId.value());
         ASSERT_PRINT(exceptRecvHClassOnHeap == nullptr || exceptRecvHClassOnHeap->IsOnHeapFromBitField(),
                      "must be on heap");
         if (JITProfiler::IsJSHClassNotEqual(receiver, hold, exceptRecvHClass, exceptRecvHClassOnHeap, exceptHoldHClass,
