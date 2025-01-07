@@ -1194,13 +1194,22 @@ void HeapSnapshot::RenameFunction(const CString &edgeName, Node *entryFrom, Node
     }
 }
 
-CString HeapSnapshot::ParseFunctionName(TaggedObject *obj)
+CString HeapSnapshot::ParseFunctionName(TaggedObject *obj, bool isRawHeap)
 {
     CString result;
     JSFunctionBase *func = JSFunctionBase::Cast(obj);
     Method *method = Method::Cast(func->GetMethod().GetTaggedObject());
     MethodLiteral *methodLiteral = method->GetMethodLiteral();
     if (methodLiteral == nullptr) {
+        if (!isRawHeap) {
+            return "JSFunction";
+        }
+        JSHandle<JSFunctionBase> funcBase = JSHandle<JSFunctionBase>(vm_->GetJSThread(), obj);
+        auto funcName = JSFunction::GetFunctionName(vm_->GetJSThread(), funcBase);
+        if (funcName->IsString()) {
+            auto name = EcmaStringAccessor(JSHandle<EcmaString>::Cast(funcName)).ToCString();
+            return name.empty() ? "JSFunction" : name;
+        }
         return "JSFunction";
     }
     const JSPandaFile *jsPandaFile = method->GetJSPandaFile();

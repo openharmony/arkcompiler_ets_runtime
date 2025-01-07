@@ -514,7 +514,7 @@ public:
             return stringTable_->InsertStrAndGetStringId(ParseObjectName(obj));
         }
         if (entry.IsJSFunction()) {
-            return stringTable_->InsertStrAndGetStringId(ParseFunctionName(obj));
+            return stringTable_->InsertStrAndGetStringId(ParseFunctionName(obj, true));
         }
         return 1; // 1 : invalid id
     }
@@ -535,7 +535,7 @@ private:
     Node *GenerateObjectNode(JSTaggedValue entry, size_t size, bool isInFinish = false);
     void FillEdges(bool isSimplify = false);
     void RenameFunction(const CString &edgeName, Node *entryFrom, Node *entryTo);
-    CString ParseFunctionName(TaggedObject *obj);
+    CString ParseFunctionName(TaggedObject *obj, bool isRawHeap = false);
     const CString ParseObjectName(TaggedObject *obj);
 
     Node *InsertNodeUnique(Node *node);

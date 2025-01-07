@@ -32,6 +32,7 @@
 #include <memory>
 
 namespace panda::ecmascript {
+using AppfreezeFilterCallback = std::function<bool(const int32_t pid)>;
 class Runtime {
 public:
     PUBLIC_API static Runtime *GetInstance();
@@ -225,6 +226,16 @@ public:
         v.VisitRangeRoot(Root::ROOT_VM, begin, end);
     }
 
+    AppfreezeFilterCallback GetAppFreezeFilterCallback() const
+    {
+        return appfreezeFilterCallback_;
+    }
+
+    void SetAppFreezeFilterCallback(AppfreezeFilterCallback cb)
+    {
+        appfreezeFilterCallback_ = cb;
+    }
+
 private:
     static constexpr int32_t WORKER_DESTRUCTION_COUNT = 3;
     static constexpr int32_t MIN_GC_TRIGGER_VM_COUNT = 4;
@@ -303,6 +314,9 @@ private:
     // for shared native pointer
     std::vector<std::pair<NativePointerCallback, std::pair<void *, void *>>> sharedNativePointerCallbacks_ {};
 
+    // for appfreeze filter function
+    AppFreezeFilterCallback appfreezeFilterCallback_ {nullptr};
+    
     friend class EcmaVM;
     friend class JSThread;
     friend class SharedHeap;
