@@ -1,1 +1,3 @@
 # Known failure list for ut - release - x64 - ets_runtime
+#20980
+obj/arkcompiler/ets_runtime/test/aottest/builtin_inlining/map/Delete/builtinMapDelete
