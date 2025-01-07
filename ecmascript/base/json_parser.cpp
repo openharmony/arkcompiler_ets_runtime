@@ -26,7 +26,7 @@ JSHandle<JSTaggedValue> JsonParser<T>::Launch(Text begin, Text end)
     // check empty
     if (UNLIKELY(begin == end)) {
         return JSHandle<JSTaggedValue>(thread_, [&]() -> JSTaggedValue {
-            THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Text in JSON", JSTaggedValue::Exception());
+            THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Text in JSON: Empty Text", JSTaggedValue::Exception());
         }());
     }
     end_ = end - 1;
@@ -166,7 +166,8 @@ JSTaggedValue JsonParser<T>::ParseJSONText()
                     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
                     break;
                 default:
-                    THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Text in JSON", JSTaggedValue::Exception());
+                    THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Text in JSON: Invalid Token",
+                                                  JSTaggedValue::Exception());
             }
             break;
         }
@@ -178,7 +179,7 @@ JSTaggedValue JsonParser<T>::ParseJSONText()
                     ASSERT(elementsList.empty());
                     ASSERT(propertyList.empty());
                     if (current_ <= range_) {
-                        THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Text in JSON",
+                        THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Text in JSON: Remaining Text Before Return",
                                                       JSTaggedValue::Exception());
                     }
                     return parseValue.GetTaggedValue();
@@ -572,7 +573,8 @@ JSTaggedValue JsonParser<T>::ConvertToNumber(const std::string &str, bool negati
             if (value.IsBigInt()) {
                 return value;
             }
-            THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Text in JSON", JSTaggedValue::Exception());
+            THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Text in JSON: ConvertToNumber Fail",
+                                          JSTaggedValue::Exception());
         }
         return JSTaggedValue::TryCastDoubleToInt32(v);
     } else {
@@ -849,13 +851,15 @@ JSTaggedValue JsonParser<T>::ParseLiteralTrue()
     static const char literalTrue[] = "true";
     uint32_t remainingLength = range_ - current_;
     if (UNLIKELY(remainingLength < 3)) { // 3: literalTrue length - 1
-        THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Text in JSON", JSTaggedValue::Exception());
+        THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Text in JSON: ParseLiteralTrue Fail",
+                                      JSTaggedValue::Exception());
     }
     bool isMatch = MatchText(literalTrue, 4); // 4: literalTrue length
     if (LIKELY(isMatch)) {
         return JSTaggedValue::True();
     }
-    THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Text in JSON", JSTaggedValue::Exception());
+    THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Text in JSON: ParseLiteralTrue Fail",
+                                  JSTaggedValue::Exception());
 }
 
 template<typename T>
@@ -864,13 +868,15 @@ JSTaggedValue JsonParser<T>::ParseLiteralFalse()
     static const char literalFalse[] = "false";
     uint32_t remainingLength = range_ - current_;
     if (UNLIKELY(remainingLength < 4)) { // 4: literalFalse length - 1
-        THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Text in JSON", JSTaggedValue::Exception());
+        THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Text in JSON: ParseLiteralFalse Fail",
+                                      JSTaggedValue::Exception());
     }
     bool isMatch = MatchText(literalFalse, 5); // 5: literalFalse length
     if (LIKELY(isMatch)) {
         return JSTaggedValue::False();
     }
-    THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Text in JSON", JSTaggedValue::Exception());
+    THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Text in JSON: ParseLiteralFalse Fail",
+                                  JSTaggedValue::Exception());
 }
 
 template<typename T>
@@ -879,13 +885,15 @@ JSTaggedValue JsonParser<T>::ParseLiteralNull()
     static const char literalNull[] = "null";
     uint32_t remainingLength = range_ - current_;
     if (UNLIKELY(remainingLength < 3)) { // 3: literalNull length - 1
-        THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Text in JSON", JSTaggedValue::Exception());
+        THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Text in JSON: ParseLiteralNull Fail",
+                                      JSTaggedValue::Exception());
     }
     bool isMatch = MatchText(literalNull, 4); // 4: literalNull length
     if (LIKELY(isMatch)) {
         return JSTaggedValue::Null();
     }
-    THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Text in JSON", JSTaggedValue::Exception());
+    THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Text in JSON: ParseLiteralNull Fail",
+                                  JSTaggedValue::Exception());
 }
 
 template<typename T>
