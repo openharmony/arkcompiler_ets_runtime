@@ -4626,7 +4626,13 @@ JSHandle<JSAPIBitVector> ObjectFactory::NewJSAPIBitVector(uint32_t capacity)
     uint32_t taggedArrayCapacity = (capacity >> JSAPIBitVector::TAGGED_VALUE_BIT_SIZE) + 1;
     auto *newBitSetVector = new std::vector<std::bitset<JSAPIBitVector::BIT_SET_LENGTH>>();
     newBitSetVector->resize(taggedArrayCapacity, 0);
-    JSHandle<JSNativePointer> pointer = NewJSNativePointer(newBitSetVector);
+    auto deleter = []([[maybe_unused]] void *env, void *pointer, [[maybe_unused]] void *data) {
+        if (pointer == nullptr) {
+            return;
+        }
+        delete reinterpret_cast<std::vector<std::bitset<JSAPIBitVector::BIT_SET_LENGTH>> *>(pointer);
+    };
+    JSHandle<JSNativePointer> pointer = NewSJSNativePointer(newBitSetVector, deleter, newBitSetVector);
     obj->SetNativePointer(thread_, pointer);
 
     return obj;
