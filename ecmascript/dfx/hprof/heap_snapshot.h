@@ -445,11 +445,11 @@ public:
     }
     void AccumulateNodeSize(size_t size)
     {
-        totalNodesSize_ += static_cast<int>(size);
+        totalNodesSize_ += size;
     }
     void DecreaseNodeSize(size_t size)
     {
-        totalNodesSize_ -= static_cast<int>(size);
+        totalNodesSize_ -= size;
     }
     CString *GenerateNodeName(TaggedObject *entry);
     NodeType GenerateNodeType(TaggedObject *entry);
@@ -549,9 +549,9 @@ private:
     CList<Node *> nodes_ {};
     CList<Edge *> edges_ {};
     CVector<TimeStamp> timeStamps_ {};
-    int nodeCount_ {0};
-    int edgeCount_ {0};
-    int totalNodesSize_ {0};
+    uint32_t nodeCount_ {0};
+    uint32_t edgeCount_ {0};
+    size_t totalNodesSize_ {0};
     HeapEntryMap entryMap_;
     panda::ecmascript::HeapRootVisitor rootVisitor_;
     const EcmaVM *vm_;
