@@ -74,7 +74,7 @@ class ObjectFactory;
     V(JSTaggedValue, PrototypeHandlerClass, PROTOTYPE_HANDLER_CLASS_INDEX, ecma_roots_class)                          \
     V(JSTaggedValue, TransitionHandlerClass, TRANSITION_HANDLER_CLASS_INDEX, ecma_roots_class)                        \
     V(JSTaggedValue, TransWithProtoHandlerClass, TRANS_WITH_PROTO_HANDLER_CLASS_INDEX, ecma_roots_class)              \
-    V(JSTaggedValue, StoreAOTHandlerClass, STORE_TS_HANDLER_CLASS_INDEX, ecma_roots_class)                             \
+    V(JSTaggedValue, StoreAOTHandlerClass, STORE_TS_HANDLER_CLASS_INDEX, ecma_roots_class)                            \
     V(JSTaggedValue, PropertyBoxClass, PROPERTY_BOX_CLASS_INDEX, ecma_roots_class)                                    \
     V(JSTaggedValue, ProgramClass, PROGRAM_CLASS_INDEX, ecma_roots_class)                                             \
     V(JSTaggedValue, ImportEntryClass, IMPORT_ENTRY_CLASS_INDEX, ecma_roots_class)                                    \
@@ -253,8 +253,8 @@ class ObjectFactory;
     V(ValueString,                    VALUE_STRING_INDEX,                    "value")                       \
     V(SetString,                      SET_STRING_INDEX,                      "set")                         \
     V(GetString,                      GET_STRING_INDEX,                      "get")                         \
-    V(SetWithSpaceString,             SET_SPACE_STRING_INDEX,                "set ")                         \
-    V(GetWithSpaceString,             GET_SPACE_STRING_INDEX,                "get ")                         \
+    V(SetWithSpaceString,             SET_SPACE_STRING_INDEX,                "set ")                        \
+    V(GetWithSpaceString,             GET_SPACE_STRING_INDEX,                "get ")                        \
     V(WritableString,                 WRITABLE_STRING_INDEX,                 "writable")                    \
     V(EnumerableString,               ENUMERABLE_STRING_INDEX,               "enumerable")                  \
     V(ConfigurableString,             CONFIGURABLE_STRING_INDEX,             "configurable")                \

@@ -1147,7 +1147,7 @@ void BuiltinsObjectStubBuilder::SetPrototypeOf(Variable *result, Label *exit, La
         Label objNotSpecial(env);
         GateRef protoVal = *proto;
         GateRef isSpecialobj = LogicOrBuilder(env).Or(IsJsProxy(obj)).Or(TaggedIsSharedObj(obj))
-            .Or(TaggedIsSharedObj(protoVal)).Or(ObjIsSpecialContainer(obj)).Or(IsModuleNamespace(obj)).Done();
+            .Or(TaggedIsSharedObj(protoVal)).Or(IsSpecialContainer(obj)).Or(IsModuleNamespace(obj)).Done();
         BRANCH(isSpecialobj, slowPath, &objNotSpecial);
         Bind(&objNotSpecial);
         Label isFunction(env);
@@ -1945,7 +1945,7 @@ GateRef BuiltinsObjectStubBuilder::TestIntegrityLevel(GateRef glue,
     Bind(&isNotTypedArray);
     BRANCH(IsModuleNamespace(obj), slowPath, &isNotModuleNamespace);
     Bind(&isNotModuleNamespace);
-    BRANCH(IsSpecialContainer(GetObjectType(LoadHClass(obj))), slowPath, &isNotSpecialContainer);
+    BRANCH(IsArrayListOrVector(GetObjectType(LoadHClass(obj))), slowPath, &isNotSpecialContainer);
     Bind(&isNotSpecialContainer);
     GateRef cls = LoadHClass(obj);
     BRANCH(IsDictionaryModeByHClass(cls), slowPath, &notDicMode);
@@ -2059,10 +2059,14 @@ void BuiltinsObjectStubBuilder::GetOwnPropertyDescriptors(Variable *result, Labe
                     GateRef hclass = LoadHClass(obj);
                     GateRef layout = GetLayoutFromHClass(hclass);
                     GateRef number = GetNumberOfPropsFromHClass(hclass);
-                    GateRef keyValue = CallRuntime(glue_, RTSTUB_ID(ToPropertyKeyValue), {});
-                    GateRef keyWritable = CallRuntime(glue_, RTSTUB_ID(ToPropertyKeyWritable), {});
-                    GateRef keyEnumerable = CallRuntime(glue_, RTSTUB_ID(ToPropertyKeyEnumerable), {});
-                    GateRef keyConfigurable = CallRuntime(glue_, RTSTUB_ID(ToPropertyKeyConfigurable), {});
+                    GateRef keyValue = GetGlobalConstantValue(VariableType::JS_POINTER(), glue_,
+                                                              ConstantIndex::VALUE_STRING_INDEX);
+                    GateRef keyWritable = GetGlobalConstantValue(VariableType::JS_POINTER(), glue_,
+                                                                 ConstantIndex::WRITABLE_STRING_INDEX);
+                    GateRef keyEnumerable = GetGlobalConstantValue(VariableType::JS_POINTER(), glue_,
+                                                                   ConstantIndex::ENUMERABLE_STRING_INDEX);
+                    GateRef keyConfigurable = GetGlobalConstantValue(VariableType::JS_POINTER(), glue_,
+                                                                     ConstantIndex::CONFIGURABLE_STRING_INDEX);
                     NewObjectStubBuilder newBuilder(this);
                     newBuilder.SetParameters(glue_, 0);
                     GateRef descriptors = newBuilder.CreateEmptyObject(glue_);

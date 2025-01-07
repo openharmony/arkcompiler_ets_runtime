@@ -5597,14 +5597,14 @@ DECLARE_ASM_HANDLER(HandleCallRuntimeDefineFieldByIndexPrefImm8Imm32V8)
     GateRef index = ReadInst32_2(pc);
     GateRef v0 = ReadInst8_6(pc);
     GateRef obj = GetVregValue(sp, ZExtInt8ToPtr(v0));
-    GateRef propKey = IntToTaggedInt(index);
+    GateRef propKey = IntToTaggedPtr(index);
     GateRef res = DefineField(glue, obj, propKey, acc);  // acc as value
     CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(CALLRUNTIME_DEFINEFIELDBYINDEX_PREF_IMM8_IMM32_V8));
 }
 
 DECLARE_ASM_HANDLER(HandleCallRuntimeToPropertyKeyPrefNone)
 {
-    GateRef res = CallRuntime(glue, RTSTUB_ID(ToPropertyKey), {acc});
+    GateRef res = ToPropertyKey(glue, acc);
     CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(CALLRUNTIME_TOPROPERTYKEY_PREF_NONE));
 }
 

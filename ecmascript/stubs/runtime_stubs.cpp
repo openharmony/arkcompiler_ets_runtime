@@ -71,18 +71,6 @@ namespace panda::ecmascript {
 #define GET_ASM_FRAME(CurrentSp) \
     (reinterpret_cast<AsmInterpretedFrame *>(CurrentSp) - 1) // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
 
-DEF_RUNTIME_STUBS(AddElementInternal)
-{
-    RUNTIME_STUBS_HEADER(AddElementInternal);
-    JSHandle<JSObject> receiver = GetHArg<JSObject>(argv, argc, 0);  // 0: means the zeroth parameter
-    JSTaggedValue argIndex = GetArg(argv, argc, 1);  // 1: means the first parameter
-    JSHandle<JSTaggedValue> value = GetHArg<JSTaggedValue>(argv, argc, 2);  // 2: means the second parameter
-    JSTaggedValue attr = GetArg(argv, argc, 3);  // 3: means the third parameter
-    PropertyAttributes attrValue(attr);
-    auto result = JSObject::AddElementInternal(thread, receiver, argIndex.GetInt(), value, attrValue);
-    return JSTaggedValue(result).GetRawData();
-}
-
 DEF_RUNTIME_STUBS(InitializeGeneratorFunction)
 {
     RUNTIME_STUBS_HEADER(InitializeGeneratorFunction);
@@ -898,46 +886,6 @@ DEF_RUNTIME_STUBS(ToPropertyKey)
 {
     RUNTIME_STUBS_HEADER(ToPropertyKey);
     JSHandle<JSTaggedValue> key = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
-    JSTaggedValue res = JSTaggedValue::ToPropertyKey(thread, key).GetTaggedValue();
-    return res.GetRawData();
-}
-
-DEF_RUNTIME_STUBS(ToPropertyKeyValue)
-{
-    RUNTIME_STUBS_HEADER(ToPropertyKeyValue);
-    std::string string_key = "value";
-    JSHandle<JSTaggedValue> key = JSHandle<JSTaggedValue>(thread,
-        base::BuiltinsBase::GetTaggedString(thread, string_key.c_str()));
-    JSTaggedValue res = JSTaggedValue::ToPropertyKey(thread, key).GetTaggedValue();
-    return res.GetRawData();
-}
-
-DEF_RUNTIME_STUBS(ToPropertyKeyWritable)
-{
-    RUNTIME_STUBS_HEADER(ToPropertyKeyWritable);
-    std::string string_key = "writable";
-    JSHandle<JSTaggedValue> key = JSHandle<JSTaggedValue>(thread,
-        base::BuiltinsBase::GetTaggedString(thread, string_key.c_str()));
-    JSTaggedValue res = JSTaggedValue::ToPropertyKey(thread, key).GetTaggedValue();
-    return res.GetRawData();
-}
-
-DEF_RUNTIME_STUBS(ToPropertyKeyEnumerable)
-{
-    RUNTIME_STUBS_HEADER(ToPropertyKeyEnumerable);
-    std::string string_key = "enumerable";
-    JSHandle<JSTaggedValue> key = JSHandle<JSTaggedValue>(thread,
-        base::BuiltinsBase::GetTaggedString(thread, string_key.c_str()));
-    JSTaggedValue res = JSTaggedValue::ToPropertyKey(thread, key).GetTaggedValue();
-    return res.GetRawData();
-}
-
-DEF_RUNTIME_STUBS(ToPropertyKeyConfigurable)
-{
-    RUNTIME_STUBS_HEADER(ToPropertyKeyConfigurable);
-    std::string string_key = "configurable";
-    JSHandle<JSTaggedValue> key = JSHandle<JSTaggedValue>(thread,
-        base::BuiltinsBase::GetTaggedString(thread, string_key.c_str()));
     JSTaggedValue res = JSTaggedValue::ToPropertyKey(thread, key).GetTaggedValue();
     return res.GetRawData();
 }
