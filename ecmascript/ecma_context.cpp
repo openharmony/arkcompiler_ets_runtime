@@ -818,6 +818,7 @@ void EcmaContext::HandleUncaughtException(JSTaggedValue exception)
         }
         auto callback = vm_->GetOnErrorCallback();
         if (callback) {
+            thread_->ClearException();
             Local<ObjectRef> exceptionRef = JSNApiHelper::ToLocal<ObjectRef>(exceptionHandle);
             callback(exceptionRef, vm_->GetOnAllData());
         }
