@@ -32,6 +32,9 @@ namespace panda::ecmascript {
 
 std::unordered_map<EntityId, std::string> JsStackInfo::nameMap;
 std::unordered_map<EntityId, std::vector<uint8>> JsStackInfo::machineCodeMap;
+JSStackTrace *JSStackTrace::trace_ = nullptr;
+std::mutex JSStackTrace::mutex_;
+size_t JSStackTrace::count_ = 0;
 
 bool IsFastJitFunctionFrame(const FrameType frameType)
 {
@@ -1685,43 +1688,102 @@ bool ArkDestoryJSSymbolExtractor(uintptr_t extractorptr)
     return JSSymbolExtractor::Destory(extractor);
 }
 
-JSStackTrace *JSStackTrace::GetInstance()
+void JSStackTrace::AddReference()
 {
-    static JSStackTrace *jsStackTrace = new JSStackTrace();
-    return jsStackTrace;
+    std::unique_lock<std::mutex> lock(mutex_);
+    if (count_ == 0) {
+        trace_ = new JSStackTrace();
+    }
+    ++count_;
+    LOG_ECMA(INFO) << "Add reference, count: " << count_;
+}
+
+void JSStackTrace::ReleaseReference()
+{
+    std::unique_lock<std::mutex> lock(mutex_);
+    if (trace_ == nullptr) {
+        return ;
+    }
+    --count_;
+    LOG_ECMA(INFO) << "Release reference, count: " << count_;
+    if (count_ == 0) {
+        delete trace_;
+        trace_ = nullptr;
+    }
 }
 
 JSStackTrace::~JSStackTrace()
 {
-    methodInfo_.clear();
-    methodInfos_.clear();
-    jsPandaFiles_.clear();
+    {
+        std::unique_lock<std::shared_mutex> lock(infosMutex_);
+        methodInfos_.clear();
+    }
+    {
+        std::unique_lock<std::shared_mutex> lock(pfMutex_);
+        jsPandaFiles_.clear();
+    }
 }
 
-bool JSStackTrace::AddMethodInfos(uintptr_t mapBase)
+bool JSStackTrace::InitializeMethodInfo(uintptr_t mapBase)
 {
-    auto pandaFile =
-        JSPandaFileManager::GetInstance()->FindJSPandaFileByMapBase(mapBase);
-    jsPandaFiles_[mapBase] = pandaFile;
-    auto methodInfos = JSStackTrace::ReadAllMethodInfos(pandaFile);
-    methodInfos_[mapBase] = std::move(methodInfos);
-    if (pandaFile == nullptr) {
-        LOG_ECMA(ERROR) << "Can't find JSPandaFile by mapBase: " << mapBase;
+    auto pandafile = FindJSpandaFile(mapBase);
+    if (pandafile != nullptr) {
+        return true;
     }
+    pandafile =
+        JSPandaFileManager::GetInstance()->FindJSPandaFileByMapBase(mapBase);
+    if (pandafile == nullptr) {
+        LOG_ECMA(ERROR) << "Find pandafile failed, mapBase: " << std::hex << mapBase;
+        return false;
+    }
+    auto methodInfos = ReadAllMethodInfos(pandafile);
+    SetMethodInfos(mapBase, methodInfos);
+    SetJSpandaFile(mapBase, pandafile);
     return true;
+}
+
+std::shared_ptr<JSPandaFile> JSStackTrace::FindJSpandaFile(uintptr_t mapBase)
+{
+    std::shared_lock<std::shared_mutex> lock(pfMutex_);
+    auto iter = jsPandaFiles_.find(mapBase);
+    if (iter == jsPandaFiles_.end()) {
+        return nullptr;
+    }
+    return iter->second;
+}
+
+void JSStackTrace::SetJSpandaFile(uintptr_t mapBase, std::shared_ptr<JSPandaFile> pandafile)
+{
+    std::unique_lock<std::shared_mutex> lock(pfMutex_);
+    jsPandaFiles_.emplace(mapBase, pandafile);
+}
+
+const CVector<MethodInfo> &JSStackTrace::FindMethodInfos(uintptr_t mapBase)
+{
+    std::shared_lock<std::shared_mutex> lock(infosMutex_);
+    auto iter = methodInfos_.find(mapBase);
+    if (iter == methodInfos_.end()) {
+        return methodInfo_;
+    }
+    return iter->second;
+}
+
+void JSStackTrace::SetMethodInfos(uintptr_t mapBase, CVector<MethodInfo> &infos)
+{
+    std::unique_lock<std::shared_mutex> lock(infosMutex_);
+    methodInfos_.emplace(mapBase, std::move(infos));
 }
 
 bool JSStackTrace::GetJsFrameInfo(uintptr_t byteCodePc, uintptr_t methodId, uintptr_t mapBase,
                                   uintptr_t loadOffset, JsFunction *jsFunction)
 {
-    bool ret = true;
-    auto iter = methodInfos_.find(mapBase);
-    if (iter == methodInfos_.end()) {
-        ret = AddMethodInfos(mapBase);
+    if (!InitializeMethodInfo(mapBase)) {
+        return false;
     }
     loadOffset = loadOffset % PageSize();
     byteCodePc = byteCodePc - loadOffset;
-    auto codeInfo = TranslateByteCodePc(byteCodePc, methodInfos_[mapBase]);
+    auto infos = FindMethodInfos(mapBase);
+    auto codeInfo = TranslateByteCodePc(byteCodePc, infos);
     if (!codeInfo) {
         LOG_ECMA(ERROR) << std::hex << "Failed to get methodId, pc: " << byteCodePc;
         return false;
@@ -1730,35 +1792,34 @@ bool JSStackTrace::GetJsFrameInfo(uintptr_t byteCodePc, uintptr_t methodId, uint
         methodId = codeInfo->methodId;
     }
     auto offset = codeInfo->offset;
+    auto pandafile = FindJSpandaFile(mapBase);
     auto debugInfoExtractor =
-        JSPandaFileManager::GetInstance()->GetJSPtExtractor(jsPandaFiles_[mapBase].get());
-    ParseJsFrameInfo(jsPandaFiles_[mapBase].get(), debugInfoExtractor, EntityId(methodId), offset, *jsFunction);
+        JSPandaFileManager::GetInstance()->GetJSPtExtractor(pandafile.get());
+    ParseJsFrameInfo(pandafile.get(), debugInfoExtractor, EntityId(methodId), offset, *jsFunction);
     jsFunction->codeBegin = byteCodePc - offset;
     jsFunction->codeSize = codeInfo->codeSize;
-    return ret;
+    return true;
 }
 
-void JSStackTrace::Destory(JSStackTrace* trace)
+void ArkCreateLocal()
 {
-    if (trace == nullptr) {
-        return;
-    }
-    delete trace;
-    trace = nullptr;
+    JSStackTrace::AddReference();
 }
 
 bool ArkParseJsFrameInfoLocal(uintptr_t byteCodePc, uintptr_t methodId, uintptr_t mapBase,
                               uintptr_t loadOffset, JsFunction *jsFunction)
 {
-    bool ret =
-        JSStackTrace::GetInstance()->GetJsFrameInfo(byteCodePc, methodId, mapBase, loadOffset, jsFunction);
-    return ret;
+    auto trace = JSStackTrace::GetInstance();
+    if (trace == nullptr) {
+        LOG_ECMA(ERROR) << "singleton is null, need create first.";
+        return false;
+    }
+    return trace->GetJsFrameInfo(byteCodePc, methodId, mapBase, loadOffset, jsFunction);
 }
 
 void ArkDestoryLocal()
 {
-    auto trace = JSStackTrace::GetInstance();
-    return JSStackTrace::Destory(trace);
+    JSStackTrace::ReleaseReference();
 }
 
 } // namespace panda::ecmascript
@@ -1777,9 +1838,15 @@ __attribute__((visibility("default"))) int ark_destory_js_symbol_extractor(uintp
     return -1;
 }
 
-__attribute__((visibility("default"))) int ark_destory_local()
+__attribute__((visibility("default"))) int ark_destroy_local()
 {
     panda::ecmascript::ArkDestoryLocal();
+    return 1;
+}
+
+__attribute__((visibility("default"))) int ark_create_local()
+{
+    panda::ecmascript::ArkCreateLocal();
     return 1;
 }
 
