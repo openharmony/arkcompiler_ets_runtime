@@ -39,6 +39,8 @@ public:
 
     void StartRunning();
 
+    void EnsureRunning();
+
     bool IsRunning() const;
 
     void MarkTerminate();       // In daemon thread

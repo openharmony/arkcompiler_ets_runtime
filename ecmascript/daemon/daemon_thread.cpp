@@ -30,6 +30,7 @@ void DaemonThread::CreateNewInstance()
     ASSERT(instance_ == nullptr);
     instance_ = new DaemonThread();
     instance_->StartRunning();
+    instance_->EnsureRunning();
 }
 
 DaemonThread *DaemonThread::GetInstance()
@@ -51,15 +52,24 @@ void DaemonThread::StartRunning()
     ASSERT(thread_ == nullptr);
     ASSERT(!IsRunning());
     ASSERT(tasks_.empty());
-    Taskpool::GetCurrentTaskpool()->Initialize();
     ASSERT(GetThreadId() == 0);
     thread_ = std::make_unique<std::thread>([this] {this->Run();});
+    Taskpool::GetCurrentTaskpool()->Initialize();
+}
+
+void DaemonThread::EnsureRunning()
+{
     // Wait until daemon thread is running.
-    while (!IsRunning());
+    {
+        LockHolder holder(mtx_);
+        while (!IsRunning()) {
+            cv_.Wait(&mtx_);
+        }
+    }
+    ASSERT(GetThreadId() != 0);
 #ifdef ENABLE_QOS
     OHOS::QOS::SetQosForOtherThread(OHOS::QOS::QosLevel::QOS_USER_INITIATED, GetThreadId());
 #endif
-    ASSERT(GetThreadId() != 0);
 }
 
 bool DaemonThread::IsRunning() const
@@ -111,8 +121,12 @@ void DaemonThread::Run()
     ASSERT(JSThread::GetCurrent() == nullptr);
     RegisterThread(this);
     SetThreadId();
-    running_.store(true, std::memory_order_release);
     ASSERT(JSThread::GetCurrent() == this);
+    {
+        LockHolder holder(mtx_);
+        running_.store(true, std::memory_order_release);
+        cv_.Signal();
+    }
     // Load running_ here do not need atomic, because only daemon thread will set it to false
     while (running_.load(std::memory_order_acquire)) {
         ASSERT(!IsInRunningState());
