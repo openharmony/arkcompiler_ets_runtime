@@ -204,8 +204,15 @@ function fill() {
 // remove
 function pop() {
     print("Start Test pop")
-    const sharedArray = new SendableArray<number>(5, 12, 8, 130, 44);
-    print("poped: " + sharedArray.pop());
+    const sharedArray = new SendableArray<number>(5, 12, 8, 130, 44, 10, 20, 30, 100, 50, 80, 90, 150, 200);
+    let sharedArray2 = sharedArray.concat(sharedArray).concat(sharedArray).concat(sharedArray).concat(sharedArray);
+    print(sharedArray2.length);
+    let len = sharedArray2.length;
+    for (let idx = 0; idx < 10; ++idx) {
+        sharedArray2.pop();
+        print(sharedArray2)
+    }
+    print(sharedArray2.length);
 }
 
 // update
@@ -280,6 +287,56 @@ function from(): void {
     } catch (err) {
         print("Create from sendable list failed without constructor functions. err: " + err + ", code: " + err.code);
     }
+  
+    let sArr = SendableArray.from<string>(['A', 'B', 'C'], (str: string) => 'S' + str);
+    print(sArr);
+    let sArr1 = SendableArray.from<string>(sArr, (str: string) => 'S' + str);
+    print(sArr1);
+  
+    try {
+        let sArr2 = SendableArray.from<string>(sArr, (str: string) =>{
+            return new SuperUnSharedClass(1);
+        });
+        print(sArr2);
+    } catch (err) {
+        print("Create from sendable array. err: " + err + ", code: " + err.code);
+    }
+  
+    try {
+        let sArr2 = SendableArray.from<SuperClass>(sArr, (str: string) =>{
+            return new SuperClass(1);
+        });
+        sArr2.forEach((element: SubClass) => print(element.num)); // 5, 8, 44
+    } catch (err) {
+        print("Create from sendable array. err: " + err + ", code: " + err.code);
+    }
+  
+    let normalArr = new Array<number>(3,2,1,5);
+    let sArr3 = SendableArray.from<number>(normalArr, (num: number) =>{
+        normalArr.pop();
+        return num += 1;
+    });
+    print(sArr3)
+
+    let normalArr1 = new Array<number>(3,2,1,5);
+    let sArr4 = SendableArray.from<number>(normalArr1, (num: number) =>{
+        if (num < 3) {
+          normalArr1.push(num + 1);
+        }  
+  
+        return num += 1;
+    });
+    print(sArr4)
+
+    let normalArr2 = new Array<string>("abcd","bcde","cdef","cfgh");
+    let sArr5 = SendableArray.from<number>(normalArr2, (str: string) =>{
+        if (str.length <= 4) {
+            normalArr2.push(str + "cde");
+        }  
+  
+        return str + "cde";
+    });
+    print(sArr5)
 }
 
 function fromTemplate(): void {
@@ -358,13 +415,38 @@ function shift() {
 
     const emptyArray = new SendableArray<number>();
     print(emptyArray.shift());
+
+    const array2 = new SendableArray<number>(2, 4, 6, 100, 50, 60, 70);
+    let array3 = array2.concat(array2).concat(array2).concat(array2).concat(array2).concat(array2).concat(array2);
+    print(array3);
+    print(array3.length);
+    let len = array3.length;
+    for (let idx = 0; idx < 10; ++idx) {
+        array3.shift();
+        print(array3);
+    }
+    print(array3.length)
 }
 
 function unshift() {
     print("Start Test unshift")
     const array = SendableArray.from<number>([1, 2, 3]);
-    print(array.unshift(4, 5));
+    print(array);
     print(array.length);
+    print(array.unshift(4, 5));
+    print(array);
+    print(array.length);
+
+    let arr2 = array.concat(array).concat(array).concat(array).concat(array).concat(array).concat(array);
+    print(arr2);
+    print(arr2.length);
+    let arr3 = arr2.concat(arr2);
+    print(arr3);
+    print(arr3.length);
+    print(arr2.unshift(arr3));
+    print(arr2);
+    print(arr2.length);
+    
 }
 
 function slice() {
@@ -456,6 +538,11 @@ function filter() {
     );
     const result = array2.filter<SubClass>((value: SuperClass, index: number, obj: Array<SuperClass>) => value instanceof SubClass);
     result.forEach((element: SubClass) => print(element.num)); // 5, 8, 44
+
+    const words1 = new SendableArray<string>('spray', 'elite', 'exuberant', 'destruction', 'present');
+    let words2 = words1.concat(words).concat(words).concat(words).concat(words).concat(words).concat(words).concat(words);
+    print(words2)
+    print(words2.filter((word: string) => word.length > 10))
 }
 
 function reduce() {

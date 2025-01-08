@@ -42,7 +42,7 @@ public:
                                 JSHandle<JSObject> newArrayHandle, uint32_t len);
     static JSTaggedValue Shift(JSHandle<JSArray> receiver, EcmaRuntimeCallInfo *argv);
     static JSTaggedValue Shift(JSHandle<JSSharedArray> receiver, EcmaRuntimeCallInfo *argv);
-    static JSTaggedValue Join(JSHandle<JSArray> receiver, EcmaRuntimeCallInfo *argv);
+    static JSTaggedValue Join(JSHandle<JSTaggedValue> receiver, EcmaRuntimeCallInfo *argv);
     static JSTaggedValue HandleFindIndexOfStable(JSThread *thread, JSHandle<JSObject> thisObjHandle,
                                                  JSHandle<JSTaggedValue> callbackFnHandle,
                                                  JSHandle<JSTaggedValue> thisArgHandle, uint32_t &k);

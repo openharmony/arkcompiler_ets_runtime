@@ -102,12 +102,16 @@ inline void Barriers::SynchronizedSetObject(const JSThread *thread, void *obj, s
     }
 }
 
-static inline void CopyMaybeOverlap(JSTaggedValue* dst, JSTaggedValue* src, size_t count)
+static inline void CopyMaybeOverlap(JSTaggedValue* dst, const JSTaggedValue* src, size_t count)
 {
-    std::copy_n(src, count, dst);
+    if (dst > src && dst < src + count) {
+        std::copy_backward(src, src + count, dst + count);
+    } else {
+        std::copy_n(src, count, dst);
+    }
 }
 
-static inline void CopyNoOverlap(JSTaggedValue* __restrict__ dst, JSTaggedValue* __restrict__ src, size_t count)
+static inline void CopyNoOverlap(JSTaggedValue* __restrict__ dst, const JSTaggedValue* __restrict__ src, size_t count)
 {
     std::copy_n(src, count, dst);
 }
@@ -117,7 +121,7 @@ ARK_NOINLINE bool BatchBitSet(const JSThread* thread, Region* objectRegion, JSTa
 
 template <bool needWriteBarrier, bool maybeOverlap>
 void Barriers::CopyObject(const JSThread *thread, const TaggedObject *dstObj, JSTaggedValue *dstAddr,
-                          JSTaggedValue *srcAddr, size_t count)
+                          const JSTaggedValue *srcAddr, size_t count)
 {
     // NOTE: The logic in CopyObject should be synced with WriteBarrier.
     // if any new feature/bugfix be added in CopyObject, it should also be added to WriteBarrier.
@@ -168,7 +172,7 @@ void Barriers::CopyObject(const JSThread *thread, const TaggedObject *dstObj, JS
 }
 
 template <bool maybeOverlap>
-inline void Barriers::CopyObjectPrimitive(JSTaggedValue* dst, JSTaggedValue* src, size_t count)
+inline void Barriers::CopyObjectPrimitive(JSTaggedValue* dst, const JSTaggedValue* src, size_t count)
 {
     // Copy Primitive value don't need thread.
     ASSERT((ToUintPtr(dst) % static_cast<uint8_t>(MemAlignment::MEM_ALIGN_OBJECT)) == 0);

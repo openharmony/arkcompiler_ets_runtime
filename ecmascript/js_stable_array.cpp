@@ -475,7 +475,7 @@ void JSStableArray::ProcessElements(JSThread *thread, JSHandle<JSTaggedValue> re
     JSHandle<JSObject> obj(thread, receiverValue.GetTaggedValue());
     JSTaggedValue element = JSTaggedValue::Undefined();
     for (uint32_t k = 0; k < len; k++) {
-        if (receiverValue->IsStableJSArray(thread)) {
+        if (receiverValue->IsStableJSArray(thread) || receiverValue->IsJSSharedArray()) {
             element = k < ElementAccessor::GetElementsLength(obj) ?
                       ElementAccessor::Get(thread, obj, k) : JSTaggedValue::Hole();
         } else {
@@ -553,18 +553,17 @@ JSTaggedValue JSStableArray::DoStableArrayJoin(JSThread *thread, JSHandle<JSTagg
     return JSTaggedValue(newString);
 }
 
-JSTaggedValue JSStableArray::Join(JSHandle<JSArray> receiver, EcmaRuntimeCallInfo *argv)
+JSTaggedValue JSStableArray::Join(JSHandle<JSTaggedValue> receiverValue, EcmaRuntimeCallInfo *argv)
 {
     JSThread *thread = argv->GetThread();
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
     auto context = thread->GetCurrentEcmaContext();
 
     // 1. Let O be ToObject(this.value)
-    JSHandle<JSTaggedValue> receiverValue = JSHandle<JSTaggedValue>::Cast(receiver);
     JSHandle<JSObject> obj(thread, receiverValue.GetTaggedValue());
 
     // 2. Let len be ToLength(Get(O, "length"))
-    uint32_t len = receiver->GetArrayLength();
+    uint32_t len = base::ArrayHelper::GetArrayLength(thread, receiverValue);
 
     int sep = ',';
     uint32_t sepLength = 1;
@@ -673,17 +672,16 @@ JSTaggedValue JSStableArray::JoinUseTreeString(const JSThread *thread,
     return vec.front().GetTaggedValue();
 }
 
-JSTaggedValue JSStableArray::Join(JSHandle<JSArray> receiver, EcmaRuntimeCallInfo *argv)
+JSTaggedValue JSStableArray::Join(JSHandle<JSTaggedValue> receiverValue, EcmaRuntimeCallInfo *argv)
 {
     JSThread *thread = argv->GetThread();
-    uint32_t length = receiver->GetArrayLength();
+    uint32_t len = base::ArrayHelper::GetArrayLength(thread, receiverValue);
     JSHandle<JSTaggedValue> sepHandle = base::BuiltinsBase::GetCallArg(argv, 0);
     int sep = ',';
     uint32_t sepLength = 1;
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
     JSHandle<EcmaString> sepStringHandle = JSHandle<EcmaString>::Cast(globalConst->GetHandledCommaString());
     auto context = thread->GetCurrentEcmaContext();
-    JSHandle<JSTaggedValue> receiverValue = JSHandle<JSTaggedValue>::Cast(receiver);
     if (!sepHandle->IsUndefined()) {
         if (sepHandle->IsString()) {
             sepStringHandle = JSHandle<EcmaString>::Cast(sepHandle);
@@ -1754,7 +1752,7 @@ JSTaggedValue JSStableArray::Sort(JSThread *thread, const JSHandle<JSTaggedValue
                                   const JSHandle<JSTaggedValue> &callbackFnHandle)
 {
     // 3. Let len be ?LengthOfArrayLike(obj).
-    uint32_t len = JSHandle<JSArray>::Cast(thisObjVal)->GetArrayLength();
+    uint32_t len = base::ArrayHelper::GetArrayLength(thread, thisObjVal);
     // ReturnIfAbrupt(len).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     // If len is 0 or 1, no need to sort
