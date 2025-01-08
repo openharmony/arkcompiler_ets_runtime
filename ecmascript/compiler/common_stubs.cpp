@@ -451,7 +451,7 @@ void CopyRestArgsStubBuilder::GenerateCircuit()
     arrayObj = newBuilder.NewJSArrayWithSize(intialHClass, *actualRestNum);
 
     GateRef args = GetArgumentsElements(glue, argvTaggedArray, *argv);
-    newBuilder.AssignRestArg(&arrayObj, &afterCreateArrayObj, args, startIdx, *actualRestNum, intialHClass);
+    newBuilder.AssignRestArg(&arrayObj, &afterCreateArrayObj, args, startIdx, *actualRestNum);
     Bind(&afterCreateArrayObj);
     Return(*arrayObj);
 }

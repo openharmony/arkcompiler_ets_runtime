@@ -69,7 +69,8 @@ static std::pair<TaggedArray*, size_t> BuildArgumentsListFast(JSThread *thread,
         if (argList->GetClass() != env->GetArgumentsClass().GetObject<JSHClass>()) {
             return std::make_pair(nullptr, 0);
         }
-        auto result = argList->GetPropertyInlinedProps(JSArguments::LENGTH_INLINE_PROPERTY_INDEX);
+        auto result = argList->GetPropertyInlinedPropsWithSize<
+            JSArguments::SIZE, JSArguments::LENGTH_INLINE_PROPERTY_INDEX>();
         if (!result.IsInt()) {
             return std::make_pair(nullptr, 0);
         }

@@ -594,7 +594,8 @@ DECLARE_ASM_HANDLER(HandleCopyrestargsImm8)
     GateRef lengthOffset = IntPtr(JSArray::LENGTH_OFFSET);
     Store(VariableType::INT32(), glue, *res, lengthOffset, TruncInt64ToInt32(numArgs));
     GateRef accessor = GetGlobalConstantValue(VariableType::JS_ANY(), glue, ConstantIndex::ARRAY_LENGTH_ACCESSOR);
-    SetPropertyInlinedProps(glue, *res, intialHClass, accessor, Int32(JSArray::LENGTH_INLINE_PROPERTY_INDEX));
+    Store(VariableType::JS_ANY(), glue, *res,
+          IntPtr(JSArray::GetInlinedPropertyOffset(JSArray::LENGTH_INLINE_PROPERTY_INDEX)), accessor);
     SetExtensibleToBitfield(glue, *res, true);
     Label setArgumentsBegin(env);
     Label setArgumentsAgain(env);

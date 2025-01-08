@@ -500,8 +500,9 @@ void BuiltinsArrayStubBuilder::Concat(GateRef glue, GateRef thisValue, GateRef n
                                     TruncInt64ToInt32(sumArrayLen));
                                 GateRef accessor = GetGlobalConstantValue(VariableType::JS_ANY(), glue,
                                     ConstantIndex::ARRAY_LENGTH_ACCESSOR);
-                                SetPropertyInlinedProps(glue, newArray, intialHClass, accessor,
-                                    Int32(JSArray::LENGTH_INLINE_PROPERTY_INDEX));
+                                Store(VariableType::JS_ANY(), glue, newArray,
+                                      IntPtr(JSArray::GetInlinedPropertyOffset(JSArray::LENGTH_INLINE_PROPERTY_INDEX)),
+                                      accessor);
                                 SetExtensibleToBitfield(glue, newArray, true);
                                 DEFVARIABLE(i, VariableType::INT64(), Int64(0));
                                 DEFVARIABLE(j, VariableType::INT64(), Int64(0));
@@ -2835,13 +2836,13 @@ GateRef BuiltinsArrayStubBuilder::IsConcatSpreadable(GateRef glue, GateRef obj)
     return res;
 }
 
-void BuiltinsArrayStubBuilder::InitializeArray(GateRef glue, GateRef count, Variable* result, GateRef intialHClass)
+void BuiltinsArrayStubBuilder::InitializeArray(GateRef glue, GateRef count, Variable* result)
 {
     GateRef lengthOffset = IntPtr(JSArray::LENGTH_OFFSET);
     Store(VariableType::INT32(), glue, result->ReadVariable(), lengthOffset, TruncInt64ToInt32(count));
     GateRef accessor = GetGlobalConstantValue(VariableType::JS_ANY(), glue, ConstantIndex::ARRAY_LENGTH_ACCESSOR);
-    SetPropertyInlinedProps(glue, result->ReadVariable(), intialHClass, accessor,
-                            Int32(JSArray::LENGTH_INLINE_PROPERTY_INDEX));
+    Store(VariableType::JS_ANY(), glue, result->ReadVariable(),
+          IntPtr(JSArray::GetInlinedPropertyOffset(JSArray::LENGTH_INLINE_PROPERTY_INDEX)), accessor);
     SetExtensibleToBitfield(glue, result->ReadVariable(), true);
 }
 
@@ -2863,7 +2864,7 @@ GateRef BuiltinsArrayStubBuilder::NewArray(GateRef glue, GateRef count)
     BRANCH(TaggedIsException(*result), &exit, &setProperties);
     Bind(&setProperties);
     {
-        InitializeArray(glue, count, &result, intialHClass);
+        InitializeArray(glue, count, &result);
         Jump(&exit);
     }
     Bind(&exit);
@@ -3046,7 +3047,8 @@ void BuiltinsArrayStubBuilder::From(GateRef glue, [[maybe_unused]] GateRef thisV
         GateRef newArray = newBuilder.NewJSObject(glue, intialHClass);
         Store(VariableType::INT32(), glue, newArray, IntPtr(JSArray::LENGTH_OFFSET), strLen);
         GateRef accessor = GetGlobalConstantValue(VariableType::JS_ANY(), glue, ConstantIndex::ARRAY_LENGTH_ACCESSOR);
-        SetPropertyInlinedProps(glue, newArray, intialHClass, accessor, Int32(JSArray::LENGTH_INLINE_PROPERTY_INDEX));
+        Store(VariableType::JS_ANY(), glue, newArray,
+              IntPtr(JSArray::GetInlinedPropertyOffset(JSArray::LENGTH_INLINE_PROPERTY_INDEX)), accessor);
         SetExtensibleToBitfield(glue, newArray, true);
 
         SetElementsArray(VariableType::JS_ANY(), glue, newArray, cacheResArray);
@@ -5010,7 +5012,8 @@ void BuiltinsArrayStubBuilder::FastCreateArrayWithArgv(GateRef glue, Variable *r
     GateRef lengthOffset = IntPtr(JSArray::LENGTH_OFFSET);
     Store(VariableType::INT32(), glue, arr, lengthOffset, len);
     GateRef accessor = GetGlobalConstantValue(VariableType::JS_ANY(), glue, ConstantIndex::ARRAY_LENGTH_ACCESSOR);
-    SetPropertyInlinedProps(glue, arr, hclass, accessor, Int32(JSArray::LENGTH_INLINE_PROPERTY_INDEX));
+    Store(VariableType::JS_ANY(), glue, arr,
+          IntPtr(JSArray::GetInlinedPropertyOffset(JSArray::LENGTH_INLINE_PROPERTY_INDEX)), accessor);
     SetExtensibleToBitfield(glue, arr, true);
     SetElementsArray(VariableType::JS_POINTER(), glue, arr, elements);
 
@@ -5128,8 +5131,8 @@ void BuiltinsArrayStubBuilder::GenArrayConstructor(GateRef glue, GateRef nativeC
                     Store(VariableType::INT32(), glue, *res, lengthOffset, TruncInt64ToInt32(*arrayLength));
                     GateRef accessor = GetGlobalConstantValue(VariableType::JS_ANY(), glue,
                                                               ConstantIndex::ARRAY_LENGTH_ACCESSOR);
-                    SetPropertyInlinedProps(glue, *res, intialHClass, accessor,
-                                            Int32(JSArray::LENGTH_INLINE_PROPERTY_INDEX));
+                    Store(VariableType::JS_ANY(), glue, *res,
+                          IntPtr(JSArray::GetInlinedPropertyOffset(JSArray::LENGTH_INLINE_PROPERTY_INDEX)), accessor);
                     SetExtensibleToBitfield(glue, *res, true);
                     Jump(&exit);
                 }

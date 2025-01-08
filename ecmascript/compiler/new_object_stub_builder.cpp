@@ -1149,14 +1149,14 @@ GateRef NewObjectStubBuilder::NewJSBoundFunction(GateRef glue, GateRef target, G
     result = NewJSObject(glue, hclass);
     GateRef nameAccessor = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
                                                   ConstantIndex::FUNCTION_NAME_ACCESSOR);
-    SetPropertyInlinedProps(glue, *result, hclass, nameAccessor,
-                            Int32(JSFunction::NAME_INLINE_PROPERTY_INDEX), VariableType::JS_ANY(),
-                            MemoryAttribute::NoBarrier());
+    Store(VariableType::JS_POINTER(), glue, *result,
+          IntPtr(JSBoundFunction::GetInlinedPropertyOffset(JSFunction::NAME_INLINE_PROPERTY_INDEX)), nameAccessor,
+          MemoryAttribute::NoBarrier());
     GateRef lengthAccessor = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
                                                     ConstantIndex::FUNCTION_LENGTH_ACCESSOR);
-    SetPropertyInlinedProps(glue, *result, hclass, lengthAccessor,
-                            Int32(JSFunction::LENGTH_INLINE_PROPERTY_INDEX), VariableType::JS_ANY(),
-                            MemoryAttribute::NoBarrier());
+    Store(VariableType::JS_POINTER(), glue, *result,
+          IntPtr(JSBoundFunction::GetInlinedPropertyOffset(JSFunction::LENGTH_INLINE_PROPERTY_INDEX)), lengthAccessor,
+          MemoryAttribute::NoBarrier());
     SetJSObjectTaggedField(glue, *result, JSBoundFunction::BOUND_TARGET_OFFSET, target);
     SetJSObjectTaggedField(glue, *result, JSBoundFunction::BOUND_THIS_OFFSET, boundThis);
     SetJSObjectTaggedField(glue, *result, JSBoundFunction::BOUND_ARGUMENTS_OFFSET, args);
@@ -1324,34 +1324,38 @@ void NewObjectStubBuilder::NewArgumentsObj(Variable *result, Label *exit,
     Label setArgumentsObjProperties(env);
     BRANCH(TaggedIsException(result->ReadVariable()), exit, &setArgumentsObjProperties);
     Bind(&setArgumentsObjProperties);
-    SetPropertyInlinedProps(glue_, result->ReadVariable(), argumentsClass, IntToTaggedInt(numArgs),
-                            Int32(JSArguments::LENGTH_INLINE_PROPERTY_INDEX));
+    Store(VariableType::JS_ANY(), glue_, result->ReadVariable(),
+          IntPtr(JSArguments::GetInlinedPropertyOffset(JSArguments::LENGTH_INLINE_PROPERTY_INDEX)),
+          IntToTaggedInt(numArgs));
     SetElementsArray(VariableType::JS_ANY(), glue_, result->ReadVariable(), argumentsList);
     GateRef arrayProtoValuesFunction = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv,
                                                          GlobalEnv::ARRAY_PROTO_VALUES_FUNCTION_INDEX);
-    SetPropertyInlinedProps(glue_, result->ReadVariable(), argumentsClass, arrayProtoValuesFunction,
-                            Int32(JSArguments::ITERATOR_INLINE_PROPERTY_INDEX));
+    Store(VariableType::JS_ANY(), glue_, result->ReadVariable(),
+          IntPtr(JSArguments::GetInlinedPropertyOffset(JSArguments::ITERATOR_INLINE_PROPERTY_INDEX)),
+          arrayProtoValuesFunction);
     GateRef accessorCaller = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv,
                                                GlobalEnv::ARGUMENTS_CALLER_ACCESSOR);
-    SetPropertyInlinedProps(glue_, result->ReadVariable(), argumentsClass, accessorCaller,
-                            Int32(JSArguments::CALLER_INLINE_PROPERTY_INDEX));
+    Store(VariableType::JS_ANY(), glue_, result->ReadVariable(),
+          IntPtr(JSArguments::GetInlinedPropertyOffset(JSArguments::CALLER_INLINE_PROPERTY_INDEX)),
+          accessorCaller);
     GateRef accessorCallee = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv,
                                                GlobalEnv::ARGUMENTS_CALLEE_ACCESSOR);
-    SetPropertyInlinedProps(glue_, result->ReadVariable(), argumentsClass, accessorCallee,
-                            Int32(JSArguments::CALLEE_INLINE_PROPERTY_INDEX));
+    Store(VariableType::JS_ANY(), glue_, result->ReadVariable(),
+          IntPtr(JSArguments::GetInlinedPropertyOffset(JSArguments::CALLEE_INLINE_PROPERTY_INDEX)),
+          accessorCallee);
     Jump(exit);
 }
 
 void NewObjectStubBuilder::AssignRestArg(Variable *result, Label *exit,
-    GateRef sp, GateRef startIdx, GateRef numArgs, GateRef intialHClass)
+    GateRef sp, GateRef startIdx, GateRef numArgs)
 {
     auto env = GetEnvironment();
     DEFVARIABLE(i, VariableType::INT32(), Int32(0));
     GateRef lengthOffset = IntPtr(JSArray::LENGTH_OFFSET);
     Store(VariableType::INT32(), glue_, result->ReadVariable(), lengthOffset, TruncInt64ToInt32(numArgs));
     GateRef accessor = GetGlobalConstantValue(VariableType::JS_ANY(), glue_, ConstantIndex::ARRAY_LENGTH_ACCESSOR);
-    SetPropertyInlinedProps(glue_, result->ReadVariable(), intialHClass, accessor,
-                            Int32(JSArray::LENGTH_INLINE_PROPERTY_INDEX));
+    Store(VariableType::JS_ANY(), glue_, result->ReadVariable(),
+          IntPtr(JSArray::GetInlinedPropertyOffset(JSArray::LENGTH_INLINE_PROPERTY_INDEX)), accessor);
     SetExtensibleToBitfield(glue_, result->ReadVariable(), true);
     Label setArgumentsBegin(env);
     Label setArgumentsAgain(env);

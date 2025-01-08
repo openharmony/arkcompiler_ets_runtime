@@ -420,6 +420,11 @@ public:
     // 9.4.1.2[[Construct]](argumentsList, newTarget)
     static JSTaggedValue ConstructInternal(EcmaRuntimeCallInfo *info);
 
+    static constexpr uint32_t GetInlinedPropertyOffset(uint32_t index)
+    {
+        return JSBoundFunction::SIZE + index * JSTaggedValue::TaggedTypeSize();
+    }
+
     static constexpr size_t BOUND_TARGET_OFFSET = JSFunctionBase::SIZE;
     ACCESSORS(BoundTarget, BOUND_TARGET_OFFSET, BOUND_THIS_OFFSET);
     ACCESSORS(BoundThis, BOUND_THIS_OFFSET, BOUND_ARGUMENTS_OFFSET);

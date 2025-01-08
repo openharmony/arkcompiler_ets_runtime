@@ -732,6 +732,8 @@ public:
     static inline std::pair<bool, JSTaggedValue> ConvertValueWithRep(PropertyAttributes attr, JSTaggedValue value);
 
     inline void SetPropertyInlinedPropsWithRep(const JSThread *thread, uint32_t index, JSTaggedValue value);
+    template <size_t objectSize, uint32_t index, bool needBarrier = true>
+    inline void SetPropertyInlinedPropsWithSize(const JSThread* thread, JSTaggedValue value);
     template <bool needBarrier = true>
     inline void SetPropertyInlinedProps(const JSThread *thread, uint32_t index, JSTaggedValue value);
     template <bool needBarrier = true>
@@ -740,6 +742,8 @@ public:
     inline JSTaggedValue GetPropertyInlinedPropsWithRep(uint32_t index, PropertyAttributes attr) const;
     inline JSTaggedValue GetPropertyInlinedPropsWithRep(const JSHClass *hclass, uint32_t index,
         PropertyAttributes attr) const;
+    template <size_t objectSize, uint32_t index>
+    inline JSTaggedValue GetPropertyInlinedPropsWithSize() const;
     inline JSTaggedValue GetPropertyInlinedProps(uint32_t index) const;
     inline JSTaggedValue GetPropertyInlinedProps(const JSHClass *hclass, uint32_t index) const;
     inline JSTaggedValue GetProperty(const JSHClass *hclass, PropertyAttributes attr) const;

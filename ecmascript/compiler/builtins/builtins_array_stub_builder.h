@@ -54,7 +54,7 @@ BUILTINS_WITH_ARRAY_STUB_BUILDER(DECLARE_BUILTINS_ARRAY_STUB_BUILDER)
 
     GateRef IsConcatSpreadable(GateRef glue, GateRef obj);
 
-    void InitializeArray(GateRef glue, GateRef count, Variable *result, GateRef intialHClass);
+    void InitializeArray(GateRef glue, GateRef count, Variable *result);
 
     GateRef NewArray(GateRef glue, GateRef count);
 
