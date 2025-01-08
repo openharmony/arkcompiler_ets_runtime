@@ -16,7 +16,7 @@
 #ifndef CODE_SIGN_JIT_SIGN_CODE_H
 #define CODE_SIGN_JIT_SIGN_CODE_H
 
-#include "jit_code_signer_base.h"
+#include "jit_code_signer.h"
 
 namespace panda::ecmascript::kungfu {
 using namespace OHOS::Security::CodeSign;
@@ -32,8 +32,8 @@ public:
         return &instance;
     }
 
-    void SetCodeSigner(JitCodeSignerBase *p);
-    JitCodeSignerBase *GetCodeSigner();
+    void SetCodeSigner(JitCodeSigner *p);
+    JitCodeSigner *GetCodeSigner();
     void SetKind(int kind);
     int GetKind();
     void Reset();
@@ -41,7 +41,7 @@ public:
 private:
     JitSignCode();
     int kind_ = -1;
-    JitCodeSignerBase *codeSigner_ {nullptr};
+    JitCodeSigner *codeSigner_ {nullptr};
 };
 
 } // namespace panda::ecmascript::kungfu

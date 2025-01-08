@@ -117,7 +117,7 @@ void LiteCGAssembler::Run(const CompilerLog &log, [[maybe_unused]] bool fastComp
 #ifdef JIT_ENABLE_CODE_SIGN
     isJit &= JitFort::IsResourceAvailable();
     if (isJit) {
-        JitCodeSignerBase *jitSigner = CreateJitCodeSigner(JitBufferIntegrityLevel::Level0);
+        JitCodeSigner *jitSigner = CreateJitCodeSigner();
         JitSignCode *singleton = JitSignCode::GetInstance();
         singleton->Reset();
         singleton->SetCodeSigner(jitSigner);

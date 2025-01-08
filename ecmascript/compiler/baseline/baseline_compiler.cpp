@@ -116,7 +116,7 @@ static ARK_INLINE void SetupCodeSigner([[maybe_unused]] EcmaVM *vm)
     if (enableCodeSign && JitFort::IsResourceAvailable()) {
         JitSignCode *singleton = JitSignCode::GetInstance();
         singleton->Reset();
-        JitCodeSignerBase *jitSigner = CreateJitCodeSigner(JitBufferIntegrityLevel::Level0);
+        JitCodeSigner *jitSigner = CreateJitCodeSigner();
         singleton->SetCodeSigner(jitSigner);
         LOG_INST() << "  Created Code Signer for baseline compilation: " << std::hex << (uintptr_t)jitSigner << "\n";
     }
