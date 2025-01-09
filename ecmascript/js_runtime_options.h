@@ -64,7 +64,6 @@ enum ArkProperties {
     ENABLE_MODULE_LOG = 1 << 25,
     ENABLE_SERIALIZATION_TIMEOUT_CHECK = 1 << 26,
     ENABLE_PAGETAG_THREAD_ID = 1 << 27,
-    ENABLE_LOCAL_HANDLE_LEAK_DETECT = 1 << 28,
     ENABLE_MODULE_EXCEPTION = 1 << 29,
 };
 
@@ -587,10 +586,6 @@ public:
     {
         return EnableGlobalObjectLeakCheck() || EnableGlobalPrimitiveLeakCheck();
     }
-
-    bool IsEnableLocalHandleLeakDetect() const;
-
-    void SetEnableLocalHandleLeakDetect();
 
     bool EnableCpuProfilerColdStartMainThread() const
     {
@@ -2313,7 +2308,6 @@ private:
     bool storeBarrierOpt_ {true};
     uint64_t CompilerAnFileMaxByteSize_ {0_MB};
     bool enableJitVerifyPass_ {true};
-    bool enableLocalHandleLeakDetect_ {false};
 };
 } // namespace panda::ecmascript
 

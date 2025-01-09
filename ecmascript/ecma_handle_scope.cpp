@@ -16,7 +16,7 @@
 #include "ecmascript/ecma_handle_scope.h"
 
 #include "ecmascript/ecma_context.h"
-#if !WIN_OR_MAC_OR_IOS_PLATFORM
+#if defined(ENABLE_LOCAL_HANDLE_LEAK_DETECT)
 #include "ecmascript/dfx/hprof/heap_profiler.h"
 #endif
 
@@ -26,13 +26,11 @@ EcmaHandleScope::EcmaHandleScope(JSThread *thread) : thread_(thread)
     auto context = thread_->GetCurrentEcmaContext();
     OpenHandleScope(context);
     OpenPrimitiveScope(context);
-#if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
-    if (thread_->GetEcmaVM()->GetJSOptions().IsEnableLocalHandleLeakDetect()) {
-        auto vm = thread_->GetEcmaVM();
-        auto heapProfiler = reinterpret_cast<HeapProfiler *>(HeapProfilerInterface::GetInstance(vm));
-        heapProfiler->IncreaseScopeCount();
-        heapProfiler->PushToActiveScopeStack(nullptr, this);
-    }
+#if defined(ENABLE_LOCAL_HANDLE_LEAK_DETECT)
+    auto vm = thread_->GetEcmaVM();
+    auto heapProfiler = reinterpret_cast<HeapProfiler *>(HeapProfilerInterface::GetInstance(vm));
+    heapProfiler->IncreaseScopeCount();
+    heapProfiler->PushToActiveScopeStack(nullptr, this);
 #endif
 }
 
@@ -55,13 +53,11 @@ EcmaHandleScope::~EcmaHandleScope()
     auto context = thread_->GetCurrentEcmaContext();
     CloseHandleScope(context);
     ClosePrimitiveScope(context);
-#if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
-    if (thread_->GetEcmaVM()->GetJSOptions().IsEnableLocalHandleLeakDetect()) {
-        auto vm = thread_->GetEcmaVM();
-        auto heapProfiler = reinterpret_cast<HeapProfiler *>(HeapProfilerInterface::GetInstance(vm));
-        heapProfiler->DecreaseScopeCount();
-        heapProfiler->PopFromActiveScopeStack();
-    }
+#if defined(ENABLE_LOCAL_HANDLE_LEAK_DETECT)
+    auto vm = thread_->GetEcmaVM();
+    auto heapProfiler = reinterpret_cast<HeapProfiler *>(HeapProfilerInterface::GetInstance(vm));
+    heapProfiler->DecreaseScopeCount();
+    heapProfiler->PopFromActiveScopeStack();
 #endif
 }
 
@@ -109,6 +105,13 @@ uintptr_t EcmaHandleScope::NewHandle(JSThread *thread, JSTaggedType value)
     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
     context->handleScopeStorageNext_ = result + 1;
     *result = value;
+#if defined(ENABLE_LOCAL_HANDLE_LEAK_DETECT)
+    EcmaVM *vm = thread->GetEcmaVM();
+    auto heapProfiler = reinterpret_cast<HeapProfiler *>(HeapProfilerInterface::GetInstance(vm));
+    if (heapProfiler->IsStartLocalHandleLeakDetect()) {
+        heapProfiler->StorePotentiallyLeakHandles(reinterpret_cast<uintptr_t>(result));
+    }
+#endif  // ENABLE_LOCAL_HANDLE_LEAK_DETECT
     return reinterpret_cast<uintptr_t>(result);
 }
 
@@ -130,43 +133,13 @@ uintptr_t EcmaHandleScope::NewPrimitiveHandle(JSThread *thread, JSTaggedType val
     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
     context->primitiveScopeStorageNext_ = result + 1;
     *result = value;
-    return reinterpret_cast<uintptr_t>(result);
-}
-
-uintptr_t EcmaHandleScope::NewHandleWithLeakDetect(JSThread *thread, JSTaggedType value)
-{
-    CHECK_NO_HANDLE_ALLOC;
-#if ECMASCRIPT_ENABLE_THREAD_STATE_CHECK
-    if (UNLIKELY(!thread->IsInRunningStateOrProfiling())) {
-        LOG_ECMA(FATAL) << "New handle must be in jsthread running state";
-        UNREACHABLE();
-    }
-#endif
-    // Handle is a kind of GC_ROOT, and should only directly hold Obejct or Primitive, not a weak reference.
-    ASSERT(!JSTaggedValue(value).IsWeak());
-    auto context = thread->GetCurrentEcmaContext();
-    auto result = context->handleScopeStorageNext_;
-    if (result == context->handleScopeStorageEnd_) {
-        result = reinterpret_cast<JSTaggedType *>(context->ExpandHandleStorage());
-    }
-#if ECMASCRIPT_ENABLE_NEW_HANDLE_CHECK
-    thread->CheckJSTaggedType(value);
-    if (result == nullptr) {
-        LOG_ECMA(ERROR) << "result is nullptr, New handle fail!";
-        return 0U;
-    }
-#endif
-    // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-    context->handleScopeStorageNext_ = result + 1;
-    *result = value;
-    // Local Handle Leak Detection
-#if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
+#if defined(ENABLE_LOCAL_HANDLE_LEAK_DETECT)
     EcmaVM *vm = thread->GetEcmaVM();
     auto heapProfiler = reinterpret_cast<HeapProfiler *>(HeapProfilerInterface::GetInstance(vm));
     if (heapProfiler->IsStartLocalHandleLeakDetect()) {
         heapProfiler->StorePotentiallyLeakHandles(reinterpret_cast<uintptr_t>(result));
     }
-#endif
+#endif  // ENABLE_LOCAL_HANDLE_LEAK_DETECT
     return reinterpret_cast<uintptr_t>(result);
 }
 }  // namespace panda::ecmascript

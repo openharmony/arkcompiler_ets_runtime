@@ -1560,15 +1560,4 @@ void JSRuntimeOptions::SetOptionsForTargetCompilation()
         SetEnableLoweringBuiltin(false);
     }
 }
-
-bool JSRuntimeOptions::IsEnableLocalHandleLeakDetect() const
-{
-    return enableLocalHandleLeakDetect_;
-}
-
-void JSRuntimeOptions::SetEnableLocalHandleLeakDetect()
-{
-    enableLocalHandleLeakDetect_ =
-            (static_cast<uint32_t>(arkProperties_) & ArkProperties::ENABLE_LOCAL_HANDLE_LEAK_DETECT) != 0;
-}
 }

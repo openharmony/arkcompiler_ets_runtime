@@ -128,16 +128,6 @@ JSThread::JSThread(EcmaVM *vm) : id_(os::thread::GetCurrentThreadId()), vm_(vm)
         clearWeak_ = [this](uintptr_t nodeAddr) { return globalDebugStorage_->ClearWeak(nodeAddr); };
         isWeak_ = [this](uintptr_t addr) { return globalDebugStorage_->IsWeak(addr); };
     }
-    vm->GetJSOptions().SetEnableLocalHandleLeakDetect();
-    if (!vm->GetJSOptions().IsEnableLocalHandleLeakDetect()) {
-        newHandle_ = [](JSThread *thread, JSTaggedType value) {
-            return EcmaHandleScope::NewHandle(thread, value);
-        };
-    } else {
-        newHandle_ = [](JSThread *thread, JSTaggedType value) {
-            return EcmaHandleScope::NewHandleWithLeakDetect(thread, value);
-        };
-    }
     vmThreadControl_ = new VmThreadControl(this);
     SetBCStubStatus(BCStubStatus::NORMAL_BC_STUB);
     dateUtils_ = new DateUtils();
@@ -196,12 +186,6 @@ JSThread::~JSThread()
         delete dateUtils_;
         dateUtils_ = nullptr;
     }
-}
-
-uintptr_t JSThread::NewHandle(JSTaggedType value) const
-{
-    ASSERT(newHandle_ != nullptr);
-    return newHandle_(const_cast<JSThread *>(this), value);
 }
 
 ThreadId JSThread::GetCurrentThreadId()

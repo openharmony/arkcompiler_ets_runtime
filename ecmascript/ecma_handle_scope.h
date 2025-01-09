@@ -17,11 +17,6 @@
 #define ECMASCRIPT_HANDLE_SCOPE_H
 
 #include "ecmascript/js_tagged_value.h"
-#ifdef ECMASCRIPT_ENABLE_HANDLE_LEAK_CHECK
-#include "ecmascript/platform/backtrace.h"
-#include "ecmascript/log_wrapper.h"
-#include "ecmascript/mem/clock_scope.h"
-#endif
 
 namespace panda::ecmascript {
 class JSThread;
@@ -37,7 +32,6 @@ public:
     PUBLIC_API ~EcmaHandleScope();
     static uintptr_t PUBLIC_API NewHandle(JSThread *thread, JSTaggedType value);
     static uintptr_t PUBLIC_API NewPrimitiveHandle(JSThread *thread, JSTaggedType value);
-    static uintptr_t NewHandleWithLeakDetect(JSThread *thread, JSTaggedType value);
     void OpenHandleScope(EcmaContext *context);
     void OpenPrimitiveScope(EcmaContext *context);
     void CloseHandleScope(EcmaContext *context);
