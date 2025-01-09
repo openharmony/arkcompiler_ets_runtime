@@ -162,10 +162,12 @@ void PGOMethodTypeSet::ProcessToText(std::string &text) const
             continue;
         }
         if (isFirst) {
-            text += DumpUtils::ARRAY_START + DumpUtils::SPACE;
+            text += DumpUtils::ARRAY_START + DumpUtils::NEW_LINE;
+            text += DumpUtils::ALIGN + DumpUtils::ALIGN;
             isFirst = false;
         } else {
-            text += DumpUtils::TYPE_SEPARATOR + DumpUtils::SPACE;
+            text += DumpUtils::SPACE + DumpUtils::TYPE_SEPARATOR + DumpUtils::NEW_LINE;
+            text += DumpUtils::ALIGN + DumpUtils::ALIGN;
         }
         text += std::to_string(typeInfoIter.GetOffset());
         text += DumpUtils::BLOCK_START;
@@ -176,24 +178,30 @@ void PGOMethodTypeSet::ProcessToText(std::string &text) const
             continue;
         }
         if (isFirst) {
-            text += DumpUtils::ARRAY_START + DumpUtils::SPACE;
+            text += DumpUtils::ARRAY_START + DumpUtils::NEW_LINE;
+            text += DumpUtils::ALIGN + DumpUtils::ALIGN;
             isFirst = false;
         } else {
-            text += DumpUtils::TYPE_SEPARATOR + DumpUtils::SPACE;
+            text += DumpUtils::SPACE + DumpUtils::TYPE_SEPARATOR + DumpUtils::NEW_LINE;
+            text += DumpUtils::ALIGN + DumpUtils::ALIGN;
         }
         rwScalarOpTypeInfoIter.ProcessToText(text);
     }
     for (const auto &defTypeInfoIter : objDefOpTypeInfos_) {
         if (isFirst) {
-            text += DumpUtils::ARRAY_START + DumpUtils::SPACE;
+            text += DumpUtils::ARRAY_START + DumpUtils::NEW_LINE;
+            text += DumpUtils::ALIGN + DumpUtils::ALIGN;
             isFirst = false;
         } else {
-            text += DumpUtils::TYPE_SEPARATOR + DumpUtils::SPACE;
+            text += DumpUtils::SPACE + DumpUtils::TYPE_SEPARATOR + DumpUtils::NEW_LINE;
+            text += DumpUtils::ALIGN + DumpUtils::ALIGN;
         }
         defTypeInfoIter.ProcessToText(text);
     }
     if (!isFirst) {
-        text += (DumpUtils::SPACE + DumpUtils::ARRAY_END);
+        text += DumpUtils::NEW_LINE;
+        text += DumpUtils::ALIGN;
+        text += DumpUtils::ARRAY_END;
     }
 }
 

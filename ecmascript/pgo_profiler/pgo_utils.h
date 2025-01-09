@@ -41,6 +41,7 @@ public:
     static const std::string ARRAY_END;
     static const std::string NEW_LINE;
     static const std::string SPACE;
+    static const std::string ALIGN;
     static const std::string BLOCK_AND_ARRAY_START;
     static const std::string VERSION_HEADER;
     static const std::string PANDA_FILE_INFO_HEADER;

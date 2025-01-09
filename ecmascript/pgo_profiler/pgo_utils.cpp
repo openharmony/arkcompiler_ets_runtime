@@ -25,6 +25,7 @@ const std::string DumpUtils::ARRAY_START = "[";
 const std::string DumpUtils::ARRAY_END = "]";
 const std::string DumpUtils::NEW_LINE = "\n";
 const std::string DumpUtils::SPACE = " ";
+const std::string DumpUtils::ALIGN = "  ";
 const std::string DumpUtils::BLOCK_AND_ARRAY_START = BLOCK_START + SPACE + ARRAY_START + SPACE;
 const std::string DumpUtils::VERSION_HEADER = "Profiler Version" + BLOCK_START + SPACE;
 const std::string DumpUtils::PANDA_FILE_INFO_HEADER = "Panda file sumcheck list" + BLOCK_AND_ARRAY_START;

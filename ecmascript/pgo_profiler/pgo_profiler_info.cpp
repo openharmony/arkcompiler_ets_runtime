@@ -484,10 +484,11 @@ void PGOMethodInfoMap::ProcessToText(uint32_t threshold, const CString &recordNa
         if (isFirst) {
             profilerString += DumpUtils::NEW_LINE;
             profilerString += recordName;
-            profilerString += DumpUtils::BLOCK_AND_ARRAY_START;
+            profilerString += DumpUtils::BLOCK_START + DumpUtils::SPACE + DumpUtils::ARRAY_START;
+            profilerString += DumpUtils::NEW_LINE + DumpUtils::ALIGN;
             isFirst = false;
         } else {
-            profilerString += DumpUtils::BLOCK_SEPARATOR + DumpUtils::SPACE;
+            profilerString += DumpUtils::BLOCK_SEPARATOR + DumpUtils::NEW_LINE + DumpUtils::ALIGN;
         }
         methodInfo->ProcessToText(profilerString);
         profilerString += DumpUtils::ELEMENT_SEPARATOR;
@@ -505,7 +506,7 @@ void PGOMethodInfoMap::ProcessToText(uint32_t threshold, const CString &recordNa
         }
     }
     if (!isFirst) {
-        profilerString += (DumpUtils::SPACE + DumpUtils::ARRAY_END + DumpUtils::NEW_LINE);
+        profilerString += (DumpUtils::NEW_LINE + DumpUtils::ARRAY_END + DumpUtils::NEW_LINE);
         stream << profilerString;
     }
 }
@@ -981,15 +982,17 @@ void PGORecordDetailInfos::ProcessToText(std::ofstream &stream) const
     for (auto layoutInfoIter : hclassTreeDescInfos_) {
         if (isFirst) {
             profilerString += DumpUtils::NEW_LINE;
-            profilerString += DumpUtils::ARRAY_START + DumpUtils::SPACE;
+            profilerString += DumpUtils::ARRAY_START + DumpUtils::NEW_LINE;
+            profilerString += DumpUtils::ALIGN;
             isFirst = false;
         } else {
-            profilerString += DumpUtils::BLOCK_SEPARATOR + DumpUtils::SPACE;
+            profilerString += DumpUtils::BLOCK_SEPARATOR + DumpUtils::NEW_LINE;
+            profilerString += DumpUtils::ALIGN;
         }
         profilerString += PGOHClassTreeDescInner::GetTypeString(layoutInfoIter);
     }
     if (!isFirst) {
-        profilerString += (DumpUtils::SPACE + DumpUtils::ARRAY_END + DumpUtils::NEW_LINE);
+        profilerString += (DumpUtils::NEW_LINE + DumpUtils::ARRAY_END + DumpUtils::NEW_LINE);
         stream << profilerString;
     }
     for (auto iter = recordInfos_.begin(); iter != recordInfos_.end(); iter++) {
