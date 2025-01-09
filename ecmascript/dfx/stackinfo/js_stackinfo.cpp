@@ -250,11 +250,11 @@ std::string JsStackInfo::BuildJsStackTraceInfo(JSThread *thread, Method *method,
 
 void JsStackInfo::BuildCrashInfo(bool isJsCrash, uintptr_t pc, JSThread *thread)
 {
-    if (JsStackInfo::loader == nullptr || JsStackInfo::options == nullptr) {
+    if (JsStackInfo::loader == nullptr) {
         return;
     }
     if (!JsStackInfo::loader->IsEnableAOT() && !Jit::GetInstance()->IsEnableFastJit() &&
-        !JsStackInfo::options->IsEnablePGOProfiler()) {
+        !pgo::PGOProfilerManager::GetInstance()->IsEnable()) {
         return;
     }
     ohos::RuntimeInfoType type;
