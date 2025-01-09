@@ -615,7 +615,6 @@ JSTaggedValue BuiltinsString::Match(EcmaRuntimeCallInfo *argv)
         JSHandle<JSTaggedValue> matcher = JSObject::GetMethod(thread, regexp, matchTag);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         if (!matcher->IsUndefined()) {
-            ASSERT(matcher->IsJSFunctionBase());
             EcmaRuntimeCallInfo *info =
                 EcmaInterpreter::NewRuntimeCallInfo(thread, matcher, regexp, undefined, 1);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
