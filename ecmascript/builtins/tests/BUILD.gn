@@ -1316,7 +1316,6 @@ group("host_unittest") {
       ":Builtins_RelativeTimeFormat_TestAction",
       ":Builtins_Segmenter_TestAction",
       ":Builtins_Set_TestAction",
-      ":Builtins_SharedObject__TestAction",
       ":Builtins_StringIterator_TestAction",
       ":Builtins_String_TestAction",
       ":Builtins_Symbol_TestAction",

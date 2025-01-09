@@ -74,11 +74,4 @@ group("host_unittest") {
     ":JS_Regexp_Chunk_TestAction",
     ":JS_Regexp_TestAction",
   ]
-
-  if (is_mac) {
-    deps = [
-      ":JS_Regexp_Chunk_TestAction",
-      ":JS_Regexp_TestAction",
-    ]
-  }
 }
