@@ -19,12 +19,12 @@ namespace panda::ecmascript::kungfu {
 
 JitSignCode::JitSignCode() {}
 
-void JitSignCode::SetCodeSigner(JitCodeSignerBase *p)
+void JitSignCode::SetCodeSigner(JitCodeSigner *p)
 {
     codeSigner_ = p;
 }
 
-JitCodeSignerBase *JitSignCode::GetCodeSigner()
+JitCodeSigner *JitSignCode::GetCodeSigner()
 {
     return codeSigner_;
 }
