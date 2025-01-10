@@ -800,3 +800,44 @@ print(sortNumber7[6]);
     }
     dateHintSort();
 }
+
+
+{
+    print("---------------test for stable array sort where arr changeto dictionary array during sorting-----------")
+    let arr = new Array(20);
+    let haschang = false;
+    for (let i = 0; i < arr.length; i++) {
+        arr[i] = i;
+    }
+    arr[1] = {
+        toString() {
+            if (!haschang) {
+                arr.length = 102400;
+            }
+            return -999;
+        }
+    }
+    arr.sort();
+    arr.splice(-1, 1);
+    print("---------------test for stable array sort where arr changeto dictionary array during sorting end-------")
+}
+{
+    print("---------------test for stable array sort where elements length change---------------------------------")
+    let arr = new Array(20);
+    let haschang = false;
+    for (let i = 0; i < arr.length; i++) {
+        arr[i] = i;
+    }
+    arr[1] = {
+        toString() {
+            if (!haschang) {
+                arr.splice(-1, 1);
+            }
+            return -999;
+        }
+    }
+    arr.sort();
+    arr.splice(-1, 1)
+    print("---------------test for stable array sort where elements length change end-----------------------------")
+}
+    

@@ -112,3 +112,7 @@ Cannot convert a illegal value to a Primitive
 Cannot convert a illegal value to a String
 Fri Dec 13 2019 14:48:00 GMT+0800,Sat Dec 14 2019 14:48:00 GMT+0800,Thu Dec 12 2019 14:48:00 GMT+0800,Tue Dec 10 2019 14:48:00 GMT+0800,Wed Dec 11 2019 14:48:00 GMT+0800
 1575960480000,1576046880000,1576133280000,1576219680000,1576306080000
+---------------test for stable array sort where arr changeto dictionary array during sorting-----------
+---------------test for stable array sort where arr changeto dictionary array during sorting end-------
+---------------test for stable array sort where elements length change---------------------------------
+---------------test for stable array sort where elements length change end-----------------------------
