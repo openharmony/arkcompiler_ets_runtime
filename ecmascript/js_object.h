@@ -371,6 +371,7 @@ public:
     void SetCallable(bool flag);
     bool IsCallable() const;
     Method *GetCallTarget() const;
+    void *GetNativePointer() const;
 
     static constexpr size_t HASH_OFFSET = TaggedObjectSize();
     static constexpr size_t SIZE = HASH_OFFSET + sizeof(JSTaggedType);

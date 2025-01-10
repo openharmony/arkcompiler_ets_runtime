@@ -1163,6 +1163,7 @@ GateRef NewObjectStubBuilder::NewJSBoundFunction(GateRef glue, GateRef target, G
     GateRef method = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
                                             ConstantIndex::BOUND_FUNCTION_METHOD_INDEX);
     SetMethodToFunction(glue, *result, method);
+    SetNativePointerToFunctionFromMethod(glue, *result, method);
 
     Label targetIsHeapObject(env);
     Label targetIsConstructor(env);

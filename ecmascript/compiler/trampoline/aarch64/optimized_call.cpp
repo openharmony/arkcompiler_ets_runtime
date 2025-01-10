@@ -501,7 +501,7 @@ void OptimizedCall::JSCallInternal(ExtendedAssembler *assembler, Register jsfunc
             __ Tbnz(callField, MethodLiteral::IsFastBuiltinBit::START_BIT, &lCallBuiltinStub);
         }
         __ Bind(&lCallNativeCpp);
-        __ Ldr(nativeFuncAddr, MemoryOperand(method, Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET));
+        __ Ldr(nativeFuncAddr, MemoryOperand(jsfunc, JSFunctionBase::CODE_ENTRY_OFFSET));
         CallBuiltinTrampoline(assembler);
     }
 
@@ -518,7 +518,7 @@ void OptimizedCall::JSCallInternal(ExtendedAssembler *assembler, Register jsfunc
         __ Add(builtinStub, glue, Operand(Register(X5).W(), UXTW, FRAME_SLOT_SIZE_LOG2));
         __ Ldr(builtinStub, MemoryOperand(builtinStub, JSThread::GlueData::GetBuiltinsStubEntriesOffset(false)));
 
-        __ Ldr(Register(X1), MemoryOperand(method, Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET));
+        __ Ldr(Register(X1), MemoryOperand(jsfunc, JSFunctionBase::CODE_ENTRY_OFFSET));
         __ Ldr(Register(X2), MemoryOperand(sp, DOUBLE_SLOT_SIZE));  // get jsfunc
         __ Ldr(Register(X3), MemoryOperand(sp, TRIPLE_SLOT_SIZE));  // get newtarget
         __ Ldr(Register(X4), MemoryOperand(sp, QUADRUPLE_SLOT_SIZE));  // get this
@@ -610,10 +610,12 @@ void OptimizedCall::JSCallInternal(ExtendedAssembler *assembler, Register jsfunc
     }
     __ Bind(&jsProxy);
     {
+        Register nativeFuncAddr(X4);
         __ Ldr(method, MemoryOperand(jsfunc, JSProxy::METHOD_OFFSET));
         __ Ldr(callField, MemoryOperand(method, Method::CALL_FIELD_OFFSET));
         __ Ldr(actualArgC, MemoryOperand(sp, 0));
-        __ B(&callNativeMethod);
+        __ Ldr(nativeFuncAddr, MemoryOperand(method, Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET));
+        CallBuiltinTrampoline(assembler);
     }
     __ Bind(&nonCallable);
     {

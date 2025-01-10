@@ -222,7 +222,7 @@ private:
     static void PushVregs(ExtendedAssembler *assembler, Label *stackOverflow, FrameTransitionType type);
     static void DispatchCall(ExtendedAssembler *assembler, Register pcRegister, Register newSpRegister,
                              Register callTargetRegister, Register methodRegister, Register accRegister = rInvalid);
-    static void CallNativeEntry(ExtendedAssembler *assembler);
+    static void CallNativeEntry(ExtendedAssembler *assembler, bool isJsProxy);
     static void CallFastBuiltin(ExtendedAssembler *assembler, Label *callNativeBuiltin);
     static void CallNativeWithArgv(ExtendedAssembler *assembler, bool callNew, bool hasNewTarget = false);
     static void CallNativeInternal(ExtendedAssembler *assembler, Register nativeCode);

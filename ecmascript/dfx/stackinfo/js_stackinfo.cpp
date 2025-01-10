@@ -215,7 +215,7 @@ std::string JsStackInfo::BuildJsStackTrace(JSThread *thread, bool needNative, co
             }
             data += BuildJsStackTraceInfo(thread, method, it, pcOffset, jsErrorObj, lastCache);
         } else if (needNative) {
-            auto addr = method->GetNativePointer();
+            auto addr = JSFunction::Cast(it.GetFunction().GetTaggedObject())->GetNativePointer();
             std::stringstream strm;
             strm << addr;
             data.append("    at native method (").append(strm.str()).append(")\n");

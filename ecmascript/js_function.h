@@ -152,6 +152,26 @@ public:
         return BaselinejitCompilingFlagBit::Decode(bitField);
     }
 
+    uintptr_t GetCodeEntry() const
+    {
+        return GetCodeEntryOrNativePointer();
+    }
+
+    void SetCodeEntry(uintptr_t codeEntry)
+    {
+        SetCodeEntryOrNativePointer(codeEntry);
+    }
+
+    void *GetNativePointer() const
+    {
+        return reinterpret_cast<void *>(GetCodeEntryOrNativePointer());
+    }
+
+    void SetNativePointer(void *nativePointer)
+    {
+        SetCodeEntryOrNativePointer(ToUintPtr(nativePointer));
+    }
+
     JSTaggedValue GetFunctionExtraInfo() const;
 
     /* compiled code flag field */
@@ -165,7 +185,7 @@ public:
 
     static constexpr size_t METHOD_OFFSET = JSObject::SIZE;
     ACCESSORS(Method, METHOD_OFFSET, CODE_ENTRY_OFFSET)
-    ACCESSORS_PRIMITIVE_FIELD(CodeEntry, uintptr_t, CODE_ENTRY_OFFSET, LENGTH_OFFSET)
+    ACCESSORS_PRIMITIVE_FIELD(CodeEntryOrNativePointer, uintptr_t, CODE_ENTRY_OFFSET, LENGTH_OFFSET)
     ACCESSORS_PRIMITIVE_FIELD(Length, uint32_t, LENGTH_OFFSET, BIT_FIELD_OFFSET)
     ACCESSORS_PRIMITIVE_FIELD(BitField, uint32_t, BIT_FIELD_OFFSET, LAST_OFFSET)
     DEFINE_ALIGN_SIZE(LAST_OFFSET);

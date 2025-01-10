@@ -1220,14 +1220,10 @@ bool TypedArrayHelper::IsNativeArrayIterator(JSThread *thread,
     JSHandle<JSTaggedValue> nextKey = thread->GlobalConstants()->GetHandledNextString();
     JSHandle<JSTaggedValue> iterNext = JSObject::GetMethod(thread, iterator, nextKey);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
-    Method *nextMethod = nullptr;
-    if (iterNext->IsJSFunction()) {
-        nextMethod = Method::Cast(
-            JSHandle<JSFunction>::Cast(iterNext)->GetMethod().GetTaggedObject());
-    } else {
+    if (!iterNext->IsJSFunction()) {
         return false;
     }
     // Array and TypedArray use the same JSArrayIterator.
-    return nextMethod->GetNativePointer() == reinterpret_cast<void*>(JSArrayIterator::Next);
+    return JSHandle<JSFunction>::Cast(iterNext)->GetNativePointer() == reinterpret_cast<void *>(JSArrayIterator::Next);
 }
 }  // namespace panda::ecmascript::base

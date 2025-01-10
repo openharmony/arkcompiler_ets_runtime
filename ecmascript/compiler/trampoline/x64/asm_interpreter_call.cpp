@@ -155,10 +155,10 @@ void AsmInterpreterCall::AsmInterpEntryDispatch(ExtendedAssembler *assembler)
     {
         __ Testq(static_cast<int64_t>(1ULL << JSHClass::CallableBit::START_BIT), bitFieldRegister);
         __ Jz(&notCallable);
-        // fall through
+        CallNativeEntry(assembler, true);
     }
     __ Bind(&callNativeEntry);
-    CallNativeEntry(assembler);
+    CallNativeEntry(assembler, false);
     __ Bind(&callJSFunctionEntry);
     {
         Register callFieldRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::CALL_FIELD);
@@ -927,19 +927,23 @@ void AsmInterpreterCall::CallNativeWithArgv(ExtendedAssembler *assembler, bool c
     }
 }
 
-void AsmInterpreterCall::CallNativeEntry(ExtendedAssembler *assembler)
+void AsmInterpreterCall::CallNativeEntry(ExtendedAssembler *assembler, bool isJsProxy)
 {
     Label callFastBuiltin;
     Label callNativeBuiltin;
     Register glue = rdi;
     Register argv = r9;
-    Register method = rdx;
     Register function = rsi;
     Register nativeCode = r10;
-    Register callFieldRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::CALL_FIELD);
-    __ Movq(Operand(method, Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET), nativeCode); // get native pointer
-    __ Btq(MethodLiteral::IsFastBuiltinBit::START_BIT, callFieldRegister);
-    __ Jb(&callFastBuiltin);
+    if (isJsProxy) {
+        Register method = rdx;
+        __ Movq(Operand(method, Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET), nativeCode); // get native pointer
+    } else {
+        Register callFieldRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::CALL_FIELD);
+        __ Movq(Operand(function, JSFunctionBase::CODE_ENTRY_OFFSET), nativeCode); // get native pointer
+        __ Btq(MethodLiteral::IsFastBuiltinBit::START_BIT, callFieldRegister);
+        __ Jb(&callFastBuiltin);
+    }
 
     __ Bind(&callNativeBuiltin);
     __ PushAlignBytes();

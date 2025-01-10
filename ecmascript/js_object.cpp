@@ -72,6 +72,18 @@ Method *ECMAObject::GetCallTarget() const
     return Method::Cast(value.GetTaggedObject());
 }
 
+void *ECMAObject::GetNativePointer() const
+{
+    Method *method = GetCallTarget();
+    ASSERT(method->IsNativeWithCallField());
+    const TaggedObject *obj = this;
+    if (JSTaggedValue(obj).IsJSFunctionBase()) {
+        return JSFunctionBase::ConstCast(obj)->GetNativePointer();
+    }
+    ASSERT(JSTaggedValue(obj).IsJSProxy());
+    return const_cast<void *>(method->GetNativePointer());
+}
+
 JSHandle<TaggedArray> JSObject::GrowElementsCapacity(const JSThread *thread, const JSHandle<JSObject> &obj,
                                                      uint32_t capacity, bool highGrowth, bool isNew)
 {
