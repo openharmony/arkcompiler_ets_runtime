@@ -45,7 +45,7 @@ public:
 
     void SetBit(const JSThread* thread, uint32_t idx, uint32_t bitOffset, const JSTaggedValue &value);
 
-    template <bool needBarrier = true>
+    template <bool needBarrier = true, bool maybeOverlap = false>
     inline void Copy(const JSThread* thread, uint32_t dstStart, uint32_t srcStart,
                                   const TaggedArray *srcArray, uint32_t count);
 

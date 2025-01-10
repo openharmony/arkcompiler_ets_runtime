@@ -1311,7 +1311,7 @@ JSTaggedValue BuiltinsArray::Join(EcmaRuntimeCallInfo *argv)
         return factory->GetEmptyString().GetTaggedValue();
     }
     if (thisHandle->IsStableJSArray(thread)) {
-        return JSStableArray::Join(JSHandle<JSArray>::Cast(thisHandle), argv);
+        return JSStableArray::Join(thisHandle, argv);
     }
 
     // 1. Let O be ToObject(this value).

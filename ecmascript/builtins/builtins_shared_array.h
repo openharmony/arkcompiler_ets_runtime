@@ -186,7 +186,7 @@ public:
         JSHandle<JSTaggedValue> &callbackFnHandle);
 
     static JSTaggedValue FilterArray(JSThread *thread, JSHandle<JSTaggedValue> &thisArgHandle,
-        JSHandle<JSTaggedValue> &thisObjVal, JSHandle<JSObject> newArrayHandle,
+        JSHandle<JSTaggedValue> &thisObjVal, JSHandle<JSObject>& newArrayHandle,
         JSHandle<JSTaggedValue> &callbackFnHandle);
 
     static Span<const std::pair<std::string_view, bool>> GetPrototypeProperties()
@@ -211,11 +211,22 @@ public:
 
 private:
     static inline JSTaggedValue GetElementByKey(JSThread *thread, JSHandle<JSObject>& thisObjHandle, uint32_t index);
-    static JSTaggedValue PopInner(EcmaRuntimeCallInfo *argv, JSHandle<JSTaggedValue> &thisHandle,
-                                  JSHandle<JSObject> &thisObjHandle);
-    static int64_t FillNewTaggedArray(JSThread *thread, EcmaRuntimeCallInfo *argv, int argc,
-                                      int64_t newArrayIdx, JSHandle<TaggedArray> &eleArray);
-    static int64_t CalNewArrayLen(JSThread *thread, EcmaRuntimeCallInfo *argv, int argc);
+    static inline JSTaggedValue PopInner(EcmaRuntimeCallInfo *argv, JSHandle<JSTaggedValue> &thisHandle,
+                                         JSHandle<JSObject> &thisObjHandle);
+    static inline int64_t FillNewTaggedArray(JSThread *thread, EcmaRuntimeCallInfo *argv, int argc,
+                                             int64_t newArrayIdx, JSHandle<TaggedArray> &eleArray);
+    static inline int64_t CalNewArrayLen(JSThread *thread, EcmaRuntimeCallInfo *argv, int argc);
+    static inline JSTaggedValue IndexOfStable(EcmaRuntimeCallInfo *argv, JSThread *thread,
+                                              const JSHandle<JSTaggedValue> &thisHandle);
+    static inline JSTaggedValue FromSharedArray(JSThread *thread, const JSHandle<JSTaggedValue>& items,
+                                                JSHandle<JSObject>& newArrayHandle);
+    static inline JSTaggedValue FromArrayNoMaping(JSThread *thread, const JSHandle<JSTaggedValue>& items,
+                                                  JSHandle<JSObject>& newArrayHandle);
+    template<bool itemIsSharedArray>
+    static inline JSTaggedValue FromArray(JSThread *thread, const JSHandle<JSTaggedValue>& items,
+                                          const JSHandle<JSTaggedValue>& thisArgHandle,
+                                          const JSHandle<JSTaggedValue> mapfn,
+                                          JSHandle<JSObject>& newArrayHandle);
 
 #define BUILTIN_SENDABLE_ARRAY_FUNCTION_ENTRY(name, method, length, id) \
     base::BuiltinFunctionEntry::Create(name, BuiltinsSharedArray::method, length, kungfu::BuiltinsStubCSigns::id),
