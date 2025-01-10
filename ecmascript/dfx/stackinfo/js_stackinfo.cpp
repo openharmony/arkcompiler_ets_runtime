@@ -1083,7 +1083,7 @@ void JSSymbolExtractor::CreateJSPandaFile()
         LOG_ECMA(ERROR) << "Failed to open panda file.";
         return;
     }
-    jsPandaFile_ = std::make_shared<JSPandaFile>(pf.release(), "");
+    jsPandaFile_ = std::make_shared<JSPandaFile>(pf.release(), "", CreateMode::DFX);
 }
 
 void JSSymbolExtractor::CreateJSPandaFile(uint8_t *data, size_t dataSize)
@@ -1093,7 +1093,7 @@ void JSSymbolExtractor::CreateJSPandaFile(uint8_t *data, size_t dataSize)
         LOG_ECMA(ERROR) << "Failed to open panda file.";
         return;
     }
-    jsPandaFile_ = std::make_shared<JSPandaFile>(pf.release(), "");
+    jsPandaFile_ = std::make_shared<JSPandaFile>(pf.release(), "", CreateMode::DFX);
 }
 
 SourceMap* JSSymbolExtractor::GetSourceMap(uint8_t *data, size_t dataSize)

@@ -30,6 +30,11 @@
 
 namespace panda {
 namespace ecmascript {
+enum class CreateMode : uint8_t {
+    RUNTIME = 0,
+    DFX,
+};
+
 class JSPandaFile {
 public:
     struct JSRecordInfo {
@@ -86,7 +91,7 @@ public:
     static constexpr int CLASSID_OFFSET_NOT_FOUND = 0;
     static constexpr int32_t PF_OFFSET = 0;
 
-    JSPandaFile(const panda_file::File *pf, const CString &descriptor);
+    JSPandaFile(const panda_file::File *pf, const CString &descriptor, CreateMode state = CreateMode::RUNTIME);
     ~JSPandaFile();
 
     class TranslateClassesTask : public Task {
@@ -508,7 +513,8 @@ private:
     CUnorderedMap<CString, CString> npmEntries_;
     bool isRecordWithBundleName_ {true};
     static bool loadedFirstPandaFile;
-    bool isFirstPandafile_{false};
+    bool isFirstPandafile_ {false};
+    CreateMode mode_ {CreateMode::RUNTIME};
 };
 }  // namespace ecmascript
 }  // namespace panda
