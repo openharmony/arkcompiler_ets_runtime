@@ -1096,6 +1096,9 @@ if (is_mingw) {
     "ecmascript/platform/windows/log.cpp",
     "ecmascript/platform/windows/aot_crash_info.cpp",
     "ecmascript/platform/windows/dfx_hisys_event.cpp",
+    "ecmascript/platform/windows/pandafile.cpp",
+    "ecmascript/platform/windows/module.cpp",
+    "ecmascript/platform/common/ecma_context.cpp",
   ]
 } else {
   ecma_platform_source += [
@@ -1111,6 +1114,9 @@ if (is_mingw) {
       "ecmascript/platform/unix/mac/backtrace.cpp",
       "ecmascript/platform/unix/mac/log.cpp",
       "ecmascript/platform/unix/mac/dfx_hisys_event.cpp",
+      "ecmascript/platform/unix/mac/pandafile.cpp",
+      "ecmascript/platform/unix/mac/module.cpp",
+      "ecmascript/platform/common/ecma_context.cpp",
     ]
   } else if (target_os == "ios") {
     ecma_platform_source += [
@@ -1119,6 +1125,9 @@ if (is_mingw) {
       "ecmascript/platform/common/dfx_crash_obj.cpp",
       "ecmascript/platform/common/log.cpp",
       "ecmascript/platform/unix/mac/dfx_hisys_event.cpp",
+      "ecmascript/platform/common/pandafile.cpp",
+      "ecmascript/platform/common/module.cpp",
+      "ecmascript/platform/common/ecma_context.cpp",
     ]
   } else if (is_ohos || target_os == "android") {
     ecma_platform_source += [
@@ -1127,7 +1136,17 @@ if (is_mingw) {
       "ecmascript/platform/common/log.cpp",
       "ecmascript/platform/unix/ohos/memory.cpp",
       "ecmascript/platform/unix/ohos/dfx_hisys_event.cpp",
+      "ecmascript/platform/common/module.cpp",
     ]
+
+    if (is_ohos) {
+      ecma_platform_source += [ "ecmascript/platform/unix/ohos/pandafile.cpp" ]
+      ecma_platform_source +=
+          [ "ecmascript/platform/unix/ohos/ecma_context.cpp" ]
+    } else {
+      ecma_platform_source += [ "ecmascript/platform/common/pandafile.cpp" ]
+      ecma_platform_source += [ "ecmascript/platform/common/ecma_context.cpp" ]
+    }
 
     if (is_ohos && !ark_standalone_build &&
         (current_cpu == "arm64" || current_cpu == "arm")) {
@@ -1144,6 +1163,9 @@ if (is_mingw) {
       "ecmascript/platform/common/log.cpp",
       "ecmascript/platform/unix/linux/memory.cpp",
       "ecmascript/platform/unix/linux/dfx_hisys_event.cpp",
+      "ecmascript/platform/unix/linux/pandafile.cpp",
+      "ecmascript/platform/common/module.cpp",
+      "ecmascript/platform/common/ecma_context.cpp",
     ]
   } else {
     print("Invalid os!")

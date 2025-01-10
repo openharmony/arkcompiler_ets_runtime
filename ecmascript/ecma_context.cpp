@@ -34,6 +34,7 @@
 #include "ecmascript/module/module_logger.h"
 #include "ecmascript/jspandafile/abc_buffer_cache.h"
 #include "ecmascript/platform/aot_crash_info.h"
+#include "ecmascript/platform/ecma_context.h"
 #include "ecmascript/platform/log.h"
 #include "ecmascript/regexp/regexp_parser_cache.h"
 #include "ecmascript/require/js_require_manager.h"
@@ -410,11 +411,7 @@ Expected<JSTaggedValue, bool> EcmaContext::CommonInvokeEcmaEntrypoint(const JSPa
     }
     
     if (thread_->HasPendingException()) {
-#if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE) && !defined(OHOS_FOR_QEMU)
-        return result;
-#else
-        return Unexpected(false);
-#endif
+        return GetPendingExceptionResult(result);
     }
     return result;
 }
@@ -440,12 +437,7 @@ Expected<JSTaggedValue, bool> EcmaContext::InvokeEcmaEntrypoint(const JSPandaFil
     JSHandle<JSFunction> func(thread_, program->GetMainFunction());
     Expected<JSTaggedValue, bool> result = CommonInvokeEcmaEntrypoint(jsPandaFile, entryPoint, func, executeFromJob);
 
-#if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE) && !defined(OHOS_FOR_QEMU)
-    if (thread_->HasPendingException()) {
-        HandleUncaughtException();
-    }
-#endif
-
+    CheckHasPendingException(this, thread_);
     return result;
 }
 
