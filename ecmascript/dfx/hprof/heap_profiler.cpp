@@ -30,14 +30,6 @@
 #endif
 
 namespace panda::ecmascript {
-static pid_t ForkBySyscall(void)
-{
-#ifdef SYS_fork
-    return syscall(SYS_fork);
-#else
-    return syscall(SYS_clone, SIGCHLD, 0);
-#endif
-}
 
 std::pair<bool, NodeId> EntryIdMap::FindId(JSTaggedType addr)
 {
@@ -1028,7 +1020,7 @@ bool HeapProfiler::DumpHeapSnapshot(Stream *stream, const DumpSnapShotOption &du
             FillIdMap();
         }
         // fork
-        if ((pid = ForkBySyscall()) < 0) {
+        if ((pid = fork()) < 0) {
             LOG_ECMA(ERROR) << "DumpHeapSnapshot fork failed!";
             return false;
         }
