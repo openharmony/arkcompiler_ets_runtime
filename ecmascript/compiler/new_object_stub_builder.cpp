@@ -783,40 +783,26 @@ void NewObjectStubBuilder::ExtendArray(Variable *res, GateRef glue, GateRef elem
         isMutantArray ? ConstantIndex::MUTANT_TAGGED_ARRAY_CLASS_INDEX : ConstantIndex::ARRAY_CLASS_INDEX);
     HeapAlloc(&array, &allocArray, spaceType, hclass);
     Bind(&allocArray);
-    {
-        StoreBuiltinHClass(glue_, array.ReadVariable(), hclass);
-        InitializeTaggedArrayWithSpeicalValue(&afterAllocate,
-            array.ReadVariable(), isMutantArray ? SpecialHole() : Hole(), Int32(0), newLen);
-    }
-    Bind(&afterAllocate);
-    Store(VariableType::INT32(), glue, *array, IntPtr(TaggedArray::LENGTH_OFFSET), newLen);
+    StoreBuiltinHClass(glue_, array.ReadVariable(), hclass);
+    Store(VariableType::INT32(), glue_, *array, IntPtr(TaggedArray::LENGTH_OFFSET), newLen);
     GateRef oldExtractLen = GetExtraLengthOfTaggedArray(elements);
     Store(VariableType::INT32(), glue, *array, IntPtr(TaggedArray::EXTRA_LENGTH_OFFSET), oldExtractLen);
     GateRef oldL = GetLengthOfTaggedArray(elements);
-    Label loopHead(env);
-    Label loopEnd(env);
-    Label afterLoop(env);
-    Label storeValue(env);
-    Jump(&loopHead);
-    LoopBegin(&loopHead);
-    {
-        BRANCH(Int32UnsignedLessThan(*index, oldL), &storeValue, &afterLoop);
-        Bind(&storeValue);
-        {
-            if (isMutantArray) {
-                GateRef value = GetValueFromMutantTaggedArray(elements, *index);
-                SetValueToTaggedArray(VariableType::INT64(), glue, *array, *index, value);
-            } else {
-                GateRef value = GetValueFromTaggedArray(elements, *index);
-                SetValueToTaggedArray(VariableType::JS_ANY(), glue, *array, *index, value);
-            }
-            index = Int32Add(*index, Int32(1));
-            Jump(&loopEnd);
-        }
+    Label afterCopy(env);
+    GateRef startOffset = Int32Mul(oldL, Int32(JSTaggedValue::TaggedTypeSize()));
+    GateRef endOffset = Int32Mul(newLen, Int32(JSTaggedValue::TaggedTypeSize()));
+    GateRef srcDataPtr = GetDataPtrInTaggedArray(elements);
+    GateRef dstDataPtr = GetDataPtrInTaggedArray(*array);
+    if (isMutantArray) {
+        ArrayCopy(glue, elements, srcDataPtr, *array, dstDataPtr, oldL, Boolean(false), DifferentArray);
+        InitializeWithSpeicalValue(&afterCopy, dstDataPtr, SpecialHole(), startOffset,
+                                   endOffset, MemoryAttribute::NoBarrier());
+    } else {
+        ArrayCopy(glue, elements, srcDataPtr, *array, dstDataPtr, oldL, Boolean(true), DifferentArray);
+        InitializeWithSpeicalValue(&afterCopy, dstDataPtr, Hole(), startOffset, endOffset,
+                                   MemoryAttribute::NoBarrier());
     }
-    Bind(&loopEnd);
-    LoopEnd(&loopHead, env, glue);
-    Bind(&afterLoop);
+    Bind(&afterCopy);
     {
         *res = *array;
         Jump(exit);
