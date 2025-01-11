@@ -5811,7 +5811,7 @@ Local<JSValueRef> JSNApi::NapiHasOwnProperty(const EcmaVM *vm, uintptr_t nativeO
         RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
         return scope.Escape(JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread, res)));
     }
-    auto ret = JSTaggedValue(JSTaggedValue::HasProperty(thread, obj, keyValue));
+    auto ret = JSTaggedValue(JSTaggedValue::HasOwnProperty(thread, obj, keyValue));
     return scope.Escape(JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread, ret)));
 }
 
