@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -108,3 +108,24 @@ function testMore() {
 
 testMore()
 print(ArkTools.isAOTCompiled(testMore))
+
+class A {
+    constructor() {
+        this.x = 1;
+        this.y = 2;
+    }
+}
+for(let i = 0; i < 1000; i++) {
+    A.prototype["z"] = "z";
+}
+function fooNew() {
+    let a = new A();
+    print(a.x);
+    print(a.y);
+    print(a.z);
+}
+print(ArkTools.isAOTCompiled(fooNew));
+for (let i = 0; i < 2; i++) {
+    fooNew();
+}
+

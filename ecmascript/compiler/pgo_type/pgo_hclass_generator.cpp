@@ -37,6 +37,11 @@ bool PGOHClassGenerator::GenerateHClass(PGOSampleType type, bool isCache) const
     if (!typeRecorder_.GetHClassTreeDesc(type, &desc)) {
         return false;
     }
+
+    if (desc->CheckHasInvalidType()) {
+        return false;
+    }
+
     auto rootType = type.GetProfileType();
     auto rootHClassDesc = desc->GetHClassLayoutDesc(rootType);
     if (rootHClassDesc == nullptr) {
@@ -70,6 +75,11 @@ bool PGOHClassGenerator::GenerateIHClass(PGOSampleType type, const JSHandle<JSTa
     if (!typeRecorder_.GetHClassTreeDesc(type, &desc)) {
         return false;
     }
+
+    if (desc->CheckHasInvalidType()) {
+        return false;
+    }
+
     auto rootType = type.GetProfileType();
     auto rootHClassDesc = desc->GetHClassLayoutDesc(rootType);
     if (rootHClassDesc == nullptr) {

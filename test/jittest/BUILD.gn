@@ -28,7 +28,8 @@ group("ark_jit_ts_test") {
     "while_loop",
     "exception",
     "data_view",
-
+    "pgo_ldobjbyvalue_string",
+    "pgo_ldobjbyvalue_symbol",
     "construct_with_normal_function",
     "addition_assignment",
     "catch_with_osr",

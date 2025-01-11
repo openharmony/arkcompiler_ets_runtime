@@ -330,6 +330,16 @@ public:
         });
     }
 
+    bool CheckHasInvalidType() const
+    {
+        for (auto iter : transitionLayout_) {
+            if (iter.first.IsInvalidType()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
 private:
     template<typename Callback>
     void IterateAll(Callback callback) const

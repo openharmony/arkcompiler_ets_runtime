@@ -75,7 +75,7 @@ uint32_t PGOTypeManager::GetSymbolCountFromHClassData()
                 uint32_t len = hclass->NumberOfProps();
                 for (uint32_t i = 0; i < len; i++) {
                     JSTaggedValue key = layoutInfo->GetKey(i);
-                    if (key.IsSymbol()) {
+                    if (key.IsSymbol() && JSSymbol::Cast(key)->HasId()) {
                         count++;
                     }
                 }
@@ -105,7 +105,7 @@ void PGOTypeManager::GenSymbolInfo()
                 uint32_t len = hclass->NumberOfProps();
                 for (uint32_t i = 0; i < len; i++) {
                     JSTaggedValue symbol = layoutInfo->GetKey(i);
-                    if (symbol.IsSymbol()) {
+                    if (symbol.IsSymbol() && JSSymbol::Cast(symbol)->HasId()) {
                         JSSymbol* symbolPtr = JSSymbol::Cast(symbol.GetTaggedObject());
                         uint64_t symbolId = symbolPtr->GetPrivateId();
                         uint64_t slotIndex = JSSymbol::GetSlotIndex(symbolId);
@@ -184,7 +184,7 @@ void PGOTypeManager::GenProtoTransitionInfo()
         JSTaggedValue transIhc = QueryHClass(protoTransType.transIhcType, protoTransType.transIhcType);
         JSTaggedValue transPhc = QueryHClass(protoTransType.transPhcType, protoTransType.transPhcType);
         if (ihc.IsUndefined() || baseIhc.IsUndefined() || transIhc.IsUndefined() || transPhc.IsUndefined()) {
-            LOG_COMPILER(ERROR) << "broken prototype transition info!";
+            LOG_COMPILER(DEBUG) << "broken prototype transition info!";
             continue;
         }
         transitionTable->InsertTransitionItem(thread_,
