@@ -35,14 +35,9 @@
             "name": "Module",
             "offset": 48,
             "size": 8
-        },
-        {
-            "name": "ProtoTransRootHClass",
-            "offset": 56,
-            "size": 8
         }
     ],
-    "end_offset": 72,
+    "end_offset": 64,
     "parents": [
         "JS_FUNCTION_BASE"
     ]

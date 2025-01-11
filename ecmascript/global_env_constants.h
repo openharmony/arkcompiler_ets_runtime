@@ -628,6 +628,7 @@ class ObjectFactory;
     V(JSTaggedValue, Hole, HOLE_INDEX, ecma_roots_special)                                        \
     V(JSTaggedValue, True, TRUE_INDEX, ecma_roots_special)                                        \
     V(JSTaggedValue, False, FALSE_INDEX, ecma_roots_special)                                      \
+    V(JSTaggedValue, ProtoTransRootHClassSymbol, PROTO_TRANS_ROOT_HCLASS_SYMBOL_INDEX, ecma_roots_special) \
     V(JSTaggedValue, EmptyString, EMPTY_STRING_OBJECT_INDEX, ecma_roots_special)                  \
     V(JSTaggedValue, SingleCharTable, SINGLE_CHAR_TABLE_INDEX, ecma_roots_special)                \
     V(JSTaggedValue, EmptySLayoutInfo, EMPTY_SLAYOUT_INFO_OBJECT_INDEX, ecma_roots_special)       \

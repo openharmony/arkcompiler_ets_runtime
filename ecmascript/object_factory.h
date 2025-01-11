@@ -886,6 +886,7 @@ public:
     JSHandle<AccessorData> NewSInternalAccessor(void *setter, void *getter);
 
     JSHandle<JSSymbol> NewSWellKnownSymbol(const JSHandle<JSTaggedValue> &name);
+    JSHandle<JSSymbol> NewSConstantPrivateSymbol();
     JSHandle<JSSymbol> NewSEmptySymbol();
     JSHandle<JSSymbol> NewSWellKnownSymbolWithChar(std::string_view description);
     JSHandle<JSSymbol> NewSPublicSymbolWithChar(std::string_view description);

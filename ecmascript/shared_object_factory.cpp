@@ -691,6 +691,19 @@ JSHandle<JSSymbol> ObjectFactory::NewSPublicSymbol(const JSHandle<JSTaggedValue>
     return obj;
 }
 
+JSHandle<JSSymbol> ObjectFactory::NewSConstantPrivateSymbol()
+{
+    NewObjectHook();
+    TaggedObject *header = sHeap_->AllocateReadOnlyOrHugeObject(
+        thread_, JSHClass::Cast(thread_->GlobalConstants()->GetSymbolClass().GetTaggedObject()));
+    JSHandle<JSSymbol> obj(thread_, JSSymbol::Cast(header));
+    obj->SetDescription(thread_, JSTaggedValue::Undefined());
+    obj->SetFlags(0);
+    obj->SetHashField(SymbolTable::Hash(obj.GetTaggedValue()));
+    obj->SetPrivate();
+    return obj;
+}
+
 JSHandle<JSSymbol> ObjectFactory::NewSEmptySymbol()
 {
     NewObjectHook();
