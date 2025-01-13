@@ -145,12 +145,12 @@ using StopPreLoadSoCallback = std::function<void()>;
 
 class ECMA_PUBLIC_API ArkCrashHolder {
 public:
-    ArkCrashHolder(std::string tag, const std::string& info)
+    ArkCrashHolder(const std::string& tag, const std::string& info)
     {
         SetCrashObj(tag.c_str(), info.c_str());
     }
 
-    explicit ArkCrashHolder(const char* tag, const char* info)
+    ArkCrashHolder(const char* tag, const char* info)
     {
         SetCrashObj(tag, info);
     }
