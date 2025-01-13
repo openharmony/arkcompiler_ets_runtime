@@ -1326,6 +1326,7 @@ void HeapSnapshot::AddSyntheticRoot()
         CUnorderedSet<JSTaggedType> &values_;
     };
 
+#if defined(ENABLE_LOCAL_HANDLE_LEAK_DETECT)
     class EdgeBuilderWithLeakDetectRootVisitor final : public RootVisitor {
     public:
         explicit EdgeBuilderWithLeakDetectRootVisitor(HeapSnapshot &snapshot, Node *syntheticRoot,
@@ -1355,12 +1356,12 @@ void HeapSnapshot::AddSyntheticRoot()
         CList<Edge *> &rootEdges_;
         CUnorderedSet<JSTaggedType> &values_;
     };
+#endif  // ENABLE_LOCAL_HANDLE_LEAK_DETECT
 #undef ROOT_EDGE_BUILDER_CORE
 
-    auto options = const_cast<EcmaVM *>(vm_)->GetJSOptions();
+#if defined(ENABLE_LOCAL_HANDLE_LEAK_DETECT)
     auto heapProfiler = reinterpret_cast<HeapProfiler *>(HeapProfilerInterface::GetInstance(const_cast<EcmaVM *>(vm_)));
-    bool isStopLocalLeakDetect =
-            options.IsEnableLocalHandleLeakDetect() && !heapProfiler->IsStartLocalHandleLeakDetect();
+    bool isStopLocalLeakDetect = !heapProfiler->IsStartLocalHandleLeakDetect();
     if (isStopLocalLeakDetect && heapProfiler->GetLeakStackTraceFd() > 0) {
         LOG_ECMA(INFO) << "[LocalHandleLeakDetect] Iterate heap roots in heap snapshot WITH leak detection.";
         std::ostringstream buffer;
@@ -1377,6 +1378,10 @@ void HeapSnapshot::AddSyntheticRoot()
         rootVisitor_.VisitHeapRoots(vm_->GetJSThread(), edgeBuilderRootVisitor);
     }
     heapProfiler->ClearHandleBackTrace();
+#else
+    EdgeBuilderRootVisitor edgeBuilderRootVisitor(*this, syntheticRoot, rootEdges, values);
+    rootVisitor_.VisitHeapRoots(vm_->GetJSThread(), edgeBuilderRootVisitor);
+#endif  // ENABLE_LOCAL_HANDLE_LEAK_DETECT
 
     // add root edges to edges begin
     edges_.insert(edges_.begin(), rootEdges.begin(), rootEdges.end());
@@ -1388,13 +1393,12 @@ void HeapSnapshot::AddSyntheticRoot()
     }
 }
 
+#if defined(ENABLE_LOCAL_HANDLE_LEAK_DETECT)
 void HeapSnapshot::LogLeakedLocalHandleBackTrace(ObjectSlot slot)
 {
     auto heapProfiler = reinterpret_cast<HeapProfiler *>(HeapProfilerInterface::GetInstance(const_cast<EcmaVM *>(vm_)));
     if (!heapProfiler->GetBackTraceOfHandle(slot.SlotAddress()).empty()) {
-        JSTaggedValue value(slot.GetTaggedType());
-        TaggedObject *root = value.GetTaggedObject();
-        Node *rootNode = entryMap_.FindEntry(Node::NewAddress(root));
+        Node *rootNode = entryMap_.FindEntry(slot.GetTaggedType());
         if (rootNode != nullptr && heapProfiler->GetLeakStackTraceFd() > 0) {
             std::ostringstream buffer;
             buffer << "NodeId: " << rootNode->GetId() << "\n"
@@ -1403,6 +1407,7 @@ void HeapSnapshot::LogLeakedLocalHandleBackTrace(ObjectSlot slot)
         }
     }
 }
+#endif  // ENABLE_LOCAL_HANDLE_LEAK_DETECT
 
 Node *HeapSnapshot::InsertNodeAt(size_t pos, Node *node)
 {

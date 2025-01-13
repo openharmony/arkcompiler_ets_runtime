@@ -546,7 +546,9 @@ private:
     Node *InsertNodeAt(size_t pos, Node *node);
     Edge *InsertEdgeAt(size_t pos, Edge *edge);
 
+#if defined(ENABLE_LOCAL_HANDLE_LEAK_DETECT)
     void LogLeakedLocalHandleBackTrace(ObjectSlot slot);
+#endif
 
     CList<Node *> nodes_ {};
     CList<Edge *> edges_ {};

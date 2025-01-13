@@ -81,7 +81,7 @@ compile_llvm_online = false
 if (enable_fuzz_option) {
   run_with_asan = true
 }
-enable_leak_check = false
+enable_handle_leak_detect = false
 enable_cow_array = true
 enable_coverage = false
 enable_asm_assert = false

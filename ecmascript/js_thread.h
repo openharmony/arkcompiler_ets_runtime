@@ -786,8 +786,6 @@ public:
         disposeGlobalHandle_(nodeAddr);
     }
 
-    uintptr_t PUBLIC_API NewHandle(JSTaggedType value) const;
-
     inline uintptr_t SetWeak(uintptr_t nodeAddr, void *ref = nullptr, WeakClearCallback freeGlobalCallBack = nullptr,
                              WeakClearCallback nativeFinalizeCallBack = nullptr)
     {
@@ -1629,7 +1627,6 @@ private:
     EcmaGlobalStorage<Node> *globalStorage_ {nullptr};
     EcmaGlobalStorage<DebugNode> *globalDebugStorage_ {nullptr};
     int32_t stackTraceFd_ {-1};
-    std::function<uintptr_t(JSThread *thread, JSTaggedType value)> newHandle_;
     std::function<uintptr_t(JSTaggedType value)> newGlobalHandle_;
     std::function<void(uintptr_t nodeAddr)> disposeGlobalHandle_;
     std::function<uintptr_t(uintptr_t nodeAddr, void *ref, WeakClearCallback freeGlobalCallBack_,

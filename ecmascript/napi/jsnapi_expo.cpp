@@ -43,7 +43,7 @@
 #include "ecmascript/js_date_time_format.h"
 #include "ecmascript/js_number_format.h"
 #endif
-#if !WIN_OR_MAC_OR_IOS_PLATFORM
+#if defined(ENABLE_LOCAL_HANDLE_LEAK_DETECT)
 #include "ecmascript/dfx/hprof/heap_profiler.h"
 #endif
 
@@ -142,7 +142,7 @@ using Concurrent = ecmascript::Concurrent;
 using EnableAotJitListHelper = ecmascript::ohos::EnableAotJitListHelper;
 using PGOProfilerManager = ecmascript::pgo::PGOProfilerManager;
 using AotRuntimeInfo = ecmascript::ohos::AotRuntimeInfo;
-#if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
+#if defined(ENABLE_LOCAL_HANDLE_LEAK_DETECT)
 using HeapProfiler = ecmascript::HeapProfiler;
 using HeapProfilerInterface = ecmascript::HeapProfilerInterface;
 #endif
@@ -2417,13 +2417,11 @@ LocalScope::LocalScope(const EcmaVM *vm) : thread_(vm->GetJSThread())
     prevPrimitiveNext_ = context->GetPrimitiveScopeStorageNext();
     prevPrimitiveEnd_ = context->GetPrimitiveScopeStorageEnd();
     prevPrimitiveStorageIndex_ = context->GetCurrentPrimitiveStorageIndex();
-#if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
-    if (const_cast<EcmaVM *>(vm)->GetJSOptions().IsEnableLocalHandleLeakDetect()) {
+#if defined(ENABLE_LOCAL_HANDLE_LEAK_DETECT)
         auto heapProfiler = reinterpret_cast<HeapProfiler *>(
             HeapProfilerInterface::GetInstance(const_cast<EcmaVM *>(vm)));
         heapProfiler->IncreaseScopeCount();
         heapProfiler->PushToActiveScopeStack(this, nullptr);
-    }
 #endif
 }
 
@@ -2431,7 +2429,7 @@ LocalScope::LocalScope(const EcmaVM *vm, JSTaggedType value) : thread_(vm->GetJS
 {
     ecmascript::ThreadManagedScope managedScope(reinterpret_cast<JSThread *>(thread_));
     // Simply reserve a slot on the handlescope. The escaped handle will still be retained in this slot.
-    reinterpret_cast<JSThread *>(thread_)->NewHandle(value);
+    ecmascript::EcmaHandleScope::NewHandle(reinterpret_cast<JSThread *>(thread_), value);
     auto context = reinterpret_cast<JSThread *>(thread_)->GetCurrentEcmaContext();
     prevNext_ = context->GetHandleScopeStorageNext();
     prevEnd_ = context->GetHandleScopeStorageEnd();
@@ -2440,13 +2438,11 @@ LocalScope::LocalScope(const EcmaVM *vm, JSTaggedType value) : thread_(vm->GetJS
     prevPrimitiveNext_ = context->GetPrimitiveScopeStorageNext();
     prevPrimitiveEnd_ = context->GetPrimitiveScopeStorageEnd();
     prevPrimitiveStorageIndex_ = context->GetCurrentPrimitiveStorageIndex();
-#if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
-    if (const_cast<EcmaVM *>(vm)->GetJSOptions().IsEnableLocalHandleLeakDetect()) {
+#if defined(ENABLE_LOCAL_HANDLE_LEAK_DETECT)
         auto heapProfiler = reinterpret_cast<HeapProfiler *>(
             HeapProfilerInterface::GetInstance(const_cast<EcmaVM *>(vm)));
         heapProfiler->IncreaseScopeCount();
         heapProfiler->PushToActiveScopeStack(this, nullptr);
-    }
 #endif
 }
 
@@ -2466,13 +2462,11 @@ LocalScope::~LocalScope()
         context->SetPrimitiveScopeStorageEnd(static_cast<JSTaggedType *>(prevPrimitiveEnd_));
         context->ShrinkPrimitiveStorage(prevPrimitiveStorageIndex_);
     }
-#if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
-    if (context->GetEcmaVM()->GetJSOptions().IsEnableLocalHandleLeakDetect()) {
+#if defined(ENABLE_LOCAL_HANDLE_LEAK_DETECT)
         EcmaVM *vm = context->GetEcmaVM();
         auto heapProfiler = reinterpret_cast<HeapProfiler *>(HeapProfilerInterface::GetInstance(vm));
         heapProfiler->DecreaseScopeCount();
         heapProfiler->PopFromActiveScopeStack();
-    }
 #endif
 }
 
@@ -5524,7 +5518,7 @@ uintptr_t JSNApi::GetHandleAddr(const EcmaVM *vm, uintptr_t localAddress)
     CROSS_THREAD_CHECK(vm);
     ecmascript::ThreadManagedScope scope(thread);
     JSTaggedType value = *(reinterpret_cast<JSTaggedType *>(localAddress));
-    return thread->NewHandle(value);
+    return ecmascript::EcmaHandleScope::NewHandle(thread, value);
 }
 
 uintptr_t JSNApi::GetGlobalHandleAddr(const EcmaVM *vm, uintptr_t localAddress)

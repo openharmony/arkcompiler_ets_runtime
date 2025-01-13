@@ -533,8 +533,8 @@ config("ark_jsruntime_common_config") {
     }
   }
 
-  if (enable_leak_check || enable_gc_dfx_options || is_asan) {
-    defines += [ "ECMASCRIPT_ENABLE_HANDLE_LEAK_CHECK" ]
+  if (enable_handle_leak_detect) {
+    defines += [ "ENABLE_LOCAL_HANDLE_LEAK_DETECT" ]
   }
 
   if (is_ohos && is_standard_system) {
@@ -581,8 +581,8 @@ config("ecma_test_config") {
     "$js_root:ark_jsruntime_common_config",
   ]
 
-  if (enable_leak_check || is_asan) {
-    defines = [ "ECMASCRIPT_ENABLE_HANDLE_LEAK_CHECK" ]
+  if (enable_handle_leak_detect) {
+    defines = [ "ENABLE_LOCAL_HANDLE_LEAK_DETECT" ]
   }
   if (!is_mac) {
     ldflags = [ "-Wl,-rpath=\$ORIGIN/" ]
@@ -1272,8 +1272,8 @@ ohos_source_set("libark_jsruntime_test_set") {
     deps += [ "$js_root/ecmascript/compiler:libark_mock_stub_set" ]
   }
 
-  if (enable_leak_check || is_asan) {
-    defines += [ "ECMASCRIPT_ENABLE_HANDLE_LEAK_CHECK" ]
+  if (enable_handle_leak_detect) {
+    defines += [ "ENABLE_LOCAL_HANDLE_LEAK_DETECT" ]
   }
 
   public_configs = [ "$js_root:ark_jsruntime_public_config" ]

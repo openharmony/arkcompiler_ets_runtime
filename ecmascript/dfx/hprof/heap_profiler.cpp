@@ -1264,6 +1264,7 @@ const struct SamplingInfo *HeapProfiler::GetAllocationProfile()
     return heapSampling_->GetAllocationProfile();
 }
 
+#if defined(ENABLE_LOCAL_HANDLE_LEAK_DETECT)
 bool HeapProfiler::IsStartLocalHandleLeakDetect() const
 {
     return startLocalHandleLeakDetect_;
@@ -1325,7 +1326,7 @@ std::string_view HeapProfiler::GetBackTraceOfHandle(const uintptr_t handle) cons
 
 bool HeapProfiler::InsertHandleBackTrace(uintptr_t handle, const std::string &backTrace)
 {
-    auto [iter, inserted] = handleBackTrace_.emplace(handle, backTrace);
+    auto [iter, inserted] = handleBackTrace_.insert_or_assign(handle, backTrace);
     return inserted;
 }
 
@@ -1372,4 +1373,5 @@ void HeapProfiler::StorePotentiallyLeakHandles(const uintptr_t handle)
         InsertHandleBackTrace(handle, stack.str());
     }
 }
+#endif  // ENABLE_LOCAL_HANDLE_LEAK_DETECT
 }  // namespace panda::ecmascript
