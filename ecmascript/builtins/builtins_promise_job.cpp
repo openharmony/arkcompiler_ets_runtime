@@ -153,7 +153,9 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
     CString recordNameStr;
     if (!recordName->IsUndefined()) {
         recordNameStr = ModulePathHelper::Utf8ConvertToString(recordName.GetTaggedValue());
-        curJsPandaFile = JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, fileName, recordNameStr.c_str());
+        curJsPandaFile = JSPandaFileManager::GetInstance()->LoadJSPandaFile(
+            thread, fileName, recordNameStr.c_str(), false, ExecuteTypes::STATIC);
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, CatchException(thread, reject));
         if (curJsPandaFile == nullptr) {
             LOG_FULL(FATAL) << "Load current file's panda file failed. Current file is " << recordNameStr;
         }
@@ -188,7 +190,8 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
         moduleName = entryPoint;
     }
     std::shared_ptr<JSPandaFile> jsPandaFile =
-        JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, fileName, entryPoint);
+        JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, fileName, entryPoint, false, ExecuteTypes::STATIC);
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, CatchException(thread, reject));
     if (jsPandaFile == nullptr) {
         LOG_FULL(FATAL) << "Load current file's panda file failed. Current file is " << fileName;
     }
@@ -210,7 +213,8 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
     thread->GetEcmaVM()->PushToDeregisterModuleList(entryPoint);
     // IsInstantiatedModule is for lazy module to execute
     if (!moduleManager->IsModuleLoaded(moduleName) || moduleManager->IsInstantiatedModule(moduleName)) {
-        if (!JSPandaFileExecutor::ExecuteFromAbcFile(thread, fileName.c_str(), entryPoint.c_str(), false, true)) {
+        if (!JSPandaFileExecutor::ExecuteFromAbcFile(
+            thread, fileName.c_str(), entryPoint.c_str(), false, ExecuteTypes::DYNAMIC)) {
             CString msg = "Cannot execute request dynamic-imported module : " + entryPoint;
             JSTaggedValue error = factory->GetJSError(ErrorType::REFERENCE_ERROR, msg.c_str(),
                                                       StackCheck::NO).GetTaggedValue();

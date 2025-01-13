@@ -160,7 +160,9 @@ JSHandle<JSTaggedValue> CjsModule::Load(JSThread *thread, JSHandle<EcmaString> &
 void CjsModule::RequireExecution(JSThread *thread, const CString &mergedFilename, const CString &requestEntryPoint)
 {
     std::shared_ptr<JSPandaFile> jsPandaFile =
-        JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, mergedFilename, requestEntryPoint);
+        JSPandaFileManager::GetInstance()->LoadJSPandaFile(
+            thread, mergedFilename, requestEntryPoint, false, ExecuteTypes::STATIC);
+    RETURN_IF_ABRUPT_COMPLETION(thread);
     if (jsPandaFile == nullptr) {
         LOG_FULL(FATAL) << "Load current file's panda file failed. Current file is " <<  mergedFilename;
     }

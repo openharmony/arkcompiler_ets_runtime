@@ -1872,13 +1872,13 @@ HWTEST_F_L0(EcmaModuleTest, HostResolveImportedModuleWithMerge)
 
     JSHandle<JSTaggedValue> nativeName = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("@ohos:hilog"));
     JSHandle<JSTaggedValue> res1 =
-        ModuleResolver::HostResolveImportedModule(thread, module1, nativeName, false);
+        ModuleResolver::HostResolveImportedModule(thread, module1, nativeName);
     EXPECT_TRUE(res1->IsSourceTextModule());
 
     thread->GetCurrentEcmaContext()->GetModuleManager()->AddResolveImportedModule(
         recordName2, module2.GetTaggedValue());
     JSHandle<JSTaggedValue> res2 =
-        ModuleResolver::HostResolveImportedModule(thread, module1, nativeName, false);
+        ModuleResolver::HostResolveImportedModule(thread, module1, nativeName);
     EXPECT_TRUE(res2->IsSourceTextModule());
 }
 
@@ -1896,7 +1896,7 @@ HWTEST_F_L0(EcmaModuleTest, ModuleResolverHostResolveImportedModule)
     thread->GetCurrentEcmaContext()->GetModuleManager()->AddResolveImportedModule(
         recordName2, module2.GetTaggedValue());
     JSHandle<JSTaggedValue> res1 =
-        ModuleResolver::HostResolveImportedModule(thread, module1, nativeName, false);
+        ModuleResolver::HostResolveImportedModule(thread, module1, nativeName);
     EXPECT_TRUE(res1->IsSourceTextModule());
 }
 
@@ -2190,7 +2190,7 @@ HWTEST_F_L0(EcmaModuleTest, InnerModuleInstantiation)
     module->SetStatus(ModuleStatus::UNINSTANTIATED);
     module->SetIsNewBcVersion(false);
     CVector<JSHandle<SourceTextModule>> stack;
-    int index = SourceTextModule::InnerModuleInstantiation(thread, JSHandle<ModuleRecord>::Cast(module), stack, 1, 0);
+    int index = SourceTextModule::InnerModuleInstantiation(thread, JSHandle<ModuleRecord>::Cast(module), stack, 1);
     EXPECT_EQ(index, 2);
 }
 
@@ -2272,15 +2272,15 @@ HWTEST_F_L0(EcmaModuleTest, Evaluate)
     module->SetEcmaModuleRecordNameString(recordName);
     module->SetStatus(ModuleStatus::EVALUATED);
     module->SetCycleRoot(thread, module);
-    SourceTextModule::Evaluate(thread, module, nullptr, 0, 0);
+    SourceTextModule::Evaluate(thread, module, nullptr, 0, ExecuteTypes::STATIC);
     EXPECT_TRUE(!thread->HasPendingException());
-    SourceTextModule::Evaluate(thread, module, nullptr, 0, 1);
+    SourceTextModule::Evaluate(thread, module, nullptr, 0, ExecuteTypes::DYNAMIC);
     EXPECT_TRUE(!thread->HasPendingException());
     ModuleLogger *moduleLogger = new ModuleLogger(vm);
     thread->GetCurrentEcmaContext()->SetModuleLogger(moduleLogger);
-    SourceTextModule::Evaluate(thread, module, nullptr, 0, 0);
+    SourceTextModule::Evaluate(thread, module, nullptr, 0, ExecuteTypes::STATIC);
     EXPECT_TRUE(!thread->HasPendingException());
-    SourceTextModule::Evaluate(thread, module, nullptr, 0, 1);
+    SourceTextModule::Evaluate(thread, module, nullptr, 0, ExecuteTypes::DYNAMIC);
     EXPECT_TRUE(!thread->HasPendingException());
     thread->GetCurrentEcmaContext()->SetModuleLogger(nullptr);
     delete moduleLogger;
@@ -2610,7 +2610,7 @@ HWTEST_F_L0(EcmaModuleTest, InnerModuleInstantiation_ReEnterTest)
     module->SetIsNewBcVersion(true);
     module->SetSharedType(SharedTypes::SHARED_MODULE);
     CVector<JSHandle<SourceTextModule>> stack;
-    int index = SourceTextModule::InnerModuleInstantiation(thread, JSHandle<ModuleRecord>::Cast(module), stack, 1, 0);
+    int index = SourceTextModule::InnerModuleInstantiation(thread, JSHandle<ModuleRecord>::Cast(module), stack, 1);
     EXPECT_EQ(index, 1);
 }
 
@@ -2805,9 +2805,9 @@ HWTEST_F_L0(EcmaModuleTest, ResolveImportedModuleWithMerge) {
     module->SetSharedType(SharedTypes::SHARED_MODULE);
 
     CString recordName2 = "testModule";
-    bool executeFromJob = false;
+    ExecuteTypes executeType = ExecuteTypes::STATIC;
     JSHandle<JSTaggedValue> res = ModuleResolver::HostResolveImportedModule(
-        thread, baseFileName.c_str(), recordName2, nullptr, executeFromJob);
+        thread, baseFileName.c_str(), recordName2, nullptr, executeType);
     EXPECT_EQ(res.GetTaggedValue(), JSTaggedValue::Exception());
 }
 
@@ -2815,9 +2815,9 @@ HWTEST_F_L0(EcmaModuleTest, ResolveImportedModuleWithMerge2) {
     CString moduleName1;
     CString recordName1;
 
-    bool executeFromJob = false;
+    ExecuteTypes executeType = ExecuteTypes::STATIC;
     JSHandle<JSTaggedValue> res = ModuleResolver::HostResolveImportedModule(
-        thread, moduleName1, recordName1, nullptr, executeFromJob);
+        thread, moduleName1, recordName1, nullptr, executeType);
     EXPECT_EQ(res.GetTaggedValue(), JSTaggedValue::Exception());
 }
 

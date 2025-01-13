@@ -30,6 +30,7 @@
 #include "ecmascript/base/config.h"
 #include "ecmascript/mem/mem_common.h"
 #include "ecmascript/common_enum.h"
+#include "ecmascript/module/js_module_execute_type.h"
 
 #ifndef NDEBUG
 #include "libpandabase/utils/debug.h"
@@ -1622,10 +1623,12 @@ public:
     static bool ExecuteInContext(EcmaVM *vm, const std::string &fileName, const std::string &entry,
                                  bool needUpdate = false);
     // JS code
-    static bool ExecuteForAbsolutePath(const EcmaVM *vm, const std::string &fileName, const std::string &entry,
-                                       bool needUpdate = false, bool executeFromJob = false);
-    static bool Execute(const EcmaVM *vm, const std::string &fileName, const std::string &entry,
-                        bool needUpdate = false, bool executeFromJob = false);
+    static bool ExecuteForAbsolutePath(const EcmaVM *vm, const std::string &fileName,
+                                       const std::string &entry, bool needUpdate = false,
+                                       const ecmascript::ExecuteTypes &executeType = ecmascript::ExecuteTypes::STATIC);
+    static bool Execute(const EcmaVM *vm, const std::string &fileName,
+                        const std::string &entry, bool needUpdate = false,
+                        const ecmascript::ExecuteTypes &executeType = ecmascript::ExecuteTypes::STATIC);
     static bool Execute(EcmaVM *vm, const uint8_t *data, int32_t size, const std::string &entry,
                         const std::string &filename = "", bool needUpdate = false);
     static int ExecuteWithSingletonPatternFlag(EcmaVM *vm, const std::string &bundleName,

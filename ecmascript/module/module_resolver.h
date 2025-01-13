@@ -26,25 +26,25 @@ public:
     static JSHandle<JSTaggedValue> HostResolveImportedModule(JSThread *thread,
                                                              const JSHandle<SourceTextModule> &module,
                                                              const JSHandle<JSTaggedValue> &moduleRequest,
-                                                             bool executeFromJob = false);
+                                                             const ExecuteTypes& executeType = ExecuteTypes::STATIC);
 
     static JSHandle<JSTaggedValue> PUBLIC_API HostResolveImportedModule(JSThread *thread,
         const CString &fileName,
         const CString &recordName = JSPandaFile::ENTRY_MAIN_FUNCTION,
         const JSPandaFile *jsPandaFile = nullptr,
-        bool executeFromJob = false);
+        const ExecuteTypes &executeType = ExecuteTypes::STATIC);
 
     static JSHandle<JSTaggedValue> PUBLIC_API HostResolveImportedModule(JSThread *thread,
         const CString &fileName,
         const CString &recordName,
         const void *buffer,
         size_t size,
-        bool executeFromJob = false);
+        const ExecuteTypes &executeType = ExecuteTypes::STATIC);
 
     static JSHandle<JSTaggedValue> PUBLIC_API HostResolveImportedModuleForHotReload(JSThread *thread,
         const CString &referencingModule,
         const CString &recordName,
-        bool executeFromJob = false);
+        const ExecuteTypes &executeType = ExecuteTypes::STATIC);
 
     static JSHandle<JSTaggedValue> ResolveNativeModule(JSThread *thread,
         const CString &moduleRequest,
@@ -55,25 +55,30 @@ public:
 
 private:
     static JSHandle<JSTaggedValue> HostResolveImportedModuleBundlePack(JSThread *thread,
-                                                                       const JSHandle<SourceTextModule> &module,
-                                                                       const JSHandle<JSTaggedValue> &moduleRequest,
-                                                                       bool executeFromJob = false);
+        const JSHandle<SourceTextModule> &module,
+        const JSHandle<JSTaggedValue> &moduleRequest,
+        const ExecuteTypes &executeType = ExecuteTypes::STATIC);
+
     static JSHandle<JSTaggedValue> HostResolveImportedModuleWithMerge(JSThread *thread,
-                                                                      const JSHandle<SourceTextModule> &module,
-                                                                      const JSHandle<JSTaggedValue> &moduleRequest,
-                                                                      bool executeFromJob = false);
+        const JSHandle<SourceTextModule> &module,
+        const JSHandle<JSTaggedValue> &moduleRequest,
+        const ExecuteTypes &executeType = ExecuteTypes::STATIC);
+
     static JSHandle<JSTaggedValue> HostResolveImportedModuleBundlePackBuffer(JSThread *thread,
                                                                              const CString &referencingModule,
                                                                              const JSPandaFile *jsPandaFile,
-                                                                             bool executeFromJob = false);
+                                                                             const ExecuteTypes &executeType =
+                                                                             ExecuteTypes::STATIC);
+
     static JSHandle<JSTaggedValue> HostResolveImportedModuleBundlePack(JSThread *thread,
-                                                                       const CString &referencingModule,
-                                                                       bool executeFromJob = false);
+        const CString &referencingModule,
+        const ExecuteTypes &executeType = ExecuteTypes::STATIC);
+
     static JSHandle<JSTaggedValue> HostResolveImportedModuleWithMerge(JSThread *thread,
-                                                                      const CString &referencingModule,
-                                                                      const CString &recordName,
-                                                                      const JSPandaFile *jsPandaFile = nullptr,
-                                                                      bool executeFromJob = false);
+        const CString &referencingModule,
+        const CString &recordName,
+        const JSPandaFile *jsPandaFile = nullptr,
+        const ExecuteTypes &executeType = ExecuteTypes::STATIC);
 
     static JSHandle<JSTaggedValue> ResolveSharedImportedModuleWithMerge(JSThread *thread,
                                                                         const CString &fileName,
@@ -82,12 +87,12 @@ private:
                                                                         JSRecordInfo *recordInfo);
     static JSHandle<JSTaggedValue> ResolveModuleBundlePack(JSThread *thread,
                                                            const JSPandaFile *jsPandaFile,
-                                                           bool executeFromJob = false);
+                                                           const ExecuteTypes &executeType = ExecuteTypes::STATIC);
     static JSHandle<JSTaggedValue> ResolveModuleWithMerge(JSThread *thread,
                                                           const JSPandaFile *jsPandaFile,
                                                           const CString &recordName,
                                                           JSRecordInfo *recordInfo,
-                                                          bool executeFromJob = false);
+                                                          const ExecuteTypes &executeType = ExecuteTypes::STATIC);
 };
 }  // namespace panda::ecmascript
 #endif // ECMASCRIPT_MODULE_MODULE_RESOLVER_H

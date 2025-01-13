@@ -20,7 +20,7 @@
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/jspandafile/js_pandafile.h"
-#include "ecmascript/module/js_module_source_text.h"
+#include "ecmascript/module/js_module_execute_type.h"
 
 namespace panda::ecmascript {
 class JSPandaFileExecutor {
@@ -33,24 +33,27 @@ public:
                                                                 std::string_view entryPoint);
     static Expected<JSTaggedValue, bool> ExecuteFromFile(JSThread *thread, const CString &name,
                                                          CString entry, bool needUpdate = false,
-                                                         bool executeFromJob = false);
+                                                         const ExecuteTypes &executeType = ExecuteTypes::STATIC);
     static Expected<JSTaggedValue, bool> ExecuteFromAbsolutePathAbcFile(JSThread *thread, const CString &filename,
                                                                         std::string_view entryPoint,
                                                                         bool needUpdate = false,
-                                                                        bool executeFromJob = false);
+                                                                        const ExecuteTypes &executeType =
+                                                                        ExecuteTypes::STATIC);
     static Expected<JSTaggedValue, bool> ExecuteFromAbcFile(JSThread *thread, const CString &filename,
                                                             std::string_view entryPoint, bool needUpdate = false,
-                                                            bool executeFromJob = false);
+                                                            const ExecuteTypes &executeType = ExecuteTypes::STATIC);
     static Expected<JSTaggedValue, bool> ExecuteFromBuffer(JSThread *thread, const void *buffer, size_t size,
                                                            std::string_view entryPoint, const CString &filename = "",
-                                                           bool needUpdate = false, bool executeFromJob = false);
+                                                           bool needUpdate = false,
+                                                           const ExecuteTypes &executeType = ExecuteTypes::STATIC);
     static Expected<JSTaggedValue, bool> ExecuteModuleBuffer(JSThread *thread, const void *buffer, size_t size,
                                                              const CString &filename = "", bool needUpdate = false);
     static Expected<JSTaggedValue, bool> CommonExecuteBuffer(JSThread *thread, const CString &filename,
                                                              const CString &entry, const void *buffer, size_t size,
-                                                             bool executeFromJob = false);
+                                                             const ExecuteTypes &executeType = ExecuteTypes::STATIC);
     static Expected<JSTaggedValue, bool> Execute(JSThread *thread, const JSPandaFile *jsPandaFile,
-                                                 std::string_view entryPoint, bool executeFromJob = false);
+                                                 std::string_view entryPoint,
+                                                 const ExecuteTypes &executeType = ExecuteTypes::STATIC);
     static void BindPreloadedPandaFilesToAOT(EcmaVM *vm, const std::string &moduleName);
     static void BindPandaFileToAot(JSPandaFile *jsPandaFile);
     static Expected<JSTaggedValue, bool> ExecuteSpecialModule(JSThread *thread, const CString &recordName,

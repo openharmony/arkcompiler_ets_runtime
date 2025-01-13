@@ -23,9 +23,9 @@
 namespace panda::ecmascript {
 class ModuleDeregister {
 public:
-    static inline void InitForDeregisterModule(JSHandle<JSTaggedValue> moduleRecord, bool executeFromJob)
+    static inline void InitForDeregisterModule(JSHandle<JSTaggedValue> moduleRecord, const ExecuteTypes &executeType)
     {
-        if (!executeFromJob) {
+        if (IsStaticImport(executeType)) {
             return;
         }
         LoadingTypes moduleLoadingType = LoadingTypes::DYNAMITC_MODULE;
