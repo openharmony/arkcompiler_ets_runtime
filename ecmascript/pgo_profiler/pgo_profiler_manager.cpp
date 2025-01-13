@@ -285,7 +285,7 @@ void PGOProfilerManager::Reset(const std::shared_ptr<PGOProfiler>& profiler, boo
 void PGOProfilerManager::SamplePandaFileInfo(uint32_t checksum, const CString& abcName)
 {
     if (pgoInfo_) {
-        pgoInfo_->SamplePandaFileInfo(checksum, abcName);
+        pgoInfo_->SamplePandaFileInfoSafe(checksum, abcName);
     }
 }
 

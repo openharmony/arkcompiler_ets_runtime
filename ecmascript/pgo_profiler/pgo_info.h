@@ -55,7 +55,7 @@ public:
     void Clear();
     void SetHotnessThreshold(uint32_t threshold);
     uint32_t GetHotnessThreshold() const;
-    void SamplePandaFileInfo(uint32_t checksum, const CString& abcName);
+    void SamplePandaFileInfoSafe(uint32_t checksum, const CString& abcName);
     void MergeWithExistProfile(PGOInfo& other, PGOProfilerDecoder& decoder, const SaveTask* task);
     bool GetPandaFileIdSafe(const CString& abcName, ApEntityId& entryId);
     bool GetPandaFileDescSafe(ApEntityId abcId, CString& desc);
@@ -66,6 +66,8 @@ public:
                                 const std::string& base,
                                 const std::string& incoming) const;
     void ProcessToBinary(std::fstream& fileStream, PGOProfilerHeader* header);
+    Mutex& GetSampleMutexLock();
+    ConcurrentGuardValue& GetConcurrentGuardValue();
 
 private:
     uint32_t hotnessThreshold_ {0};
@@ -73,6 +75,8 @@ private:
     std::unique_ptr<PGOPandaFileInfos> pandaFileInfos_;
     std::shared_ptr<PGOAbcFilePool> abcFilePool_;
     std::shared_ptr<PGORecordDetailInfos> recordDetailInfos_;
+    Mutex sampleMutexLock_;
+    ConcurrentGuardValue v_;
 };
 } // namespace panda::ecmascript::pgo
 #endif // ECMASCRIPT_PGO_INFO_H
