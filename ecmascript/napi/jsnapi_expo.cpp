@@ -2463,6 +2463,15 @@ Local<ObjectRef> ObjectRef::New(const EcmaVM *vm)
     return JSNApiHelper::ToLocal<ObjectRef>(object);
 }
 
+Local<ObjectRef> ObjectRef::NewJSXRefObject(const EcmaVM *vm)
+{
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
+    ecmascript::ThreadManagedScope managedScope(thread);
+    ObjectFactory *factory = vm->GetFactory();
+    JSHandle<JSTaggedValue> object(factory->NewJSXRefObject());
+    return JSNApiHelper::ToLocal<ObjectRef>(object);
+}
+
 uintptr_t ObjectRef::NewObject(const EcmaVM *vm)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm,

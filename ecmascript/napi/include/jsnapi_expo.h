@@ -791,6 +791,7 @@ public:
     }
     static Local<ObjectRef> New(const EcmaVM *vm);
     static uintptr_t NewObject(const EcmaVM *vm);
+    static Local<ObjectRef> NewJSXRefObject(const EcmaVM *vm);
     static Local<ObjectRef> NewS(const EcmaVM *vm);
     static Local<ObjectRef> NewWithProperties(const EcmaVM *vm, size_t propertyCount, const Local<JSValueRef> *keys,
                                               const PropertyAttribute *attributes);
