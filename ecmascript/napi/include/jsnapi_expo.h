@@ -542,6 +542,7 @@ public:
     bool IsString(const EcmaVM *vm);
     bool IsSymbol(const EcmaVM *vm);
     bool IsObject(const EcmaVM *vm);
+    bool IsNativeBindingObject(const EcmaVM *vm);
     bool IsArray(const EcmaVM *vm);
     bool IsJSArray(const EcmaVM *vm);
     bool IsConstructor(const EcmaVM *vm);
@@ -831,6 +832,7 @@ public:
                                                        Local<FunctionRef> getter,
                                                        Local<FunctionRef> setter);
     bool ConvertToNativeBindingObject(const EcmaVM *vm, Local<NativePointerRef> value);
+    Local<NativePointerRef> GetNativeBindingPointer(const EcmaVM *vm);
     bool Set(const EcmaVM *vm, Local<JSValueRef> key, Local<JSValueRef> value);
     bool Set(const EcmaVM *vm, const char *utf8, Local<JSValueRef> value);
     bool Set(const EcmaVM *vm, uint32_t key, Local<JSValueRef> value);
@@ -1563,6 +1565,8 @@ public:
         void *detachFunc = nullptr;
         void *detachData = nullptr;
         void *hint = nullptr;
+        void *detachedFinalizer = nullptr;
+        void *detachedHint = nullptr;
     };
 
     // JSVM

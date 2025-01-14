@@ -79,11 +79,11 @@ JSHandle<JSTaggedValue> BaseDeserializer::DeserializeJSTaggedValue()
     concurrentFunctions_.clear();
 
     // new native binding object here
-    for (auto nativeBindingInfo : nativeBindingInfos_) {
+    for (auto nativeBindingInfo : nativeBindingAttachInfos_) {
         DeserializeNativeBindingObject(nativeBindingInfo);
         delete nativeBindingInfo;
     }
-    nativeBindingInfos_.clear();
+    nativeBindingAttachInfos_.clear();
 
     // new js error here
     for (auto jsErrorInfo : jsErrorInfos_) {
@@ -116,7 +116,7 @@ void BaseDeserializer::DeserializeObjectField(uintptr_t start, uintptr_t end)
     }
 }
 
-void BaseDeserializer::DeserializeNativeBindingObject(NativeBindingInfo *info)
+void BaseDeserializer::DeserializeNativeBindingObject(NativeBindingAttachInfo *info)
 {
     [[maybe_unused]] EcmaHandleScope scope(thread_);
     AttachFunc af = info->af_;
@@ -332,8 +332,8 @@ size_t BaseDeserializer::ReadSingleEncodeData(uint8_t encodeFlag, uintptr_t objA
             void *hint = reinterpret_cast<void *>(data_->ReadJSTaggedType(position_));
             void *attachData = reinterpret_cast<void *>(data_->ReadJSTaggedType(position_));
             // defer new native binding object until deserialize finish
-            nativeBindingInfos_.push_back(new NativeBindingInfo(af, bufferPointer, hint, attachData,
-                                                                objAddr, fieldOffset, isRoot));
+            nativeBindingAttachInfos_.push_back(new NativeBindingAttachInfo(af, bufferPointer, hint, attachData,
+                                                                            objAddr, fieldOffset, isRoot));
             break;
         }
         case (uint8_t)EncodeFlag::JS_ERROR: {

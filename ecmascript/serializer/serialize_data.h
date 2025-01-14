@@ -31,6 +31,18 @@ constexpr uint32_t RESERVED_INDEX = 0;
 
 typedef void* (*DetachFunc)(void *enginePointer, void *objPointer, void *hint, void *detachData);
 typedef Local<JSValueRef> (*AttachFunc)(void *enginePointer, void *buffer, void *hint, void *attachData);
+typedef void (*DetachFinalizer)(void *detachedObject, void *finalizerHint);
+
+struct NativeBindingDetachInfo {
+    DetachFinalizer detachedFinalizer = nullptr;
+    void *detachedObject = nullptr;
+    void *detachedHint = nullptr;
+
+    NativeBindingDetachInfo(void *df, void *dObj, void *hint)
+        : detachedFinalizer(reinterpret_cast<DetachFinalizer>(df)), detachedObject(dObj), detachedHint(hint)
+    {
+    }
+};
 
 enum class EncodeFlag : uint8_t {
     // 0x00~0x06 represent new object to different space:
@@ -84,6 +96,14 @@ public:
         if (sharedArrayBufferSet_.size() > 0) {
             DecreaseSharedArrayBufferReference();
         }
+        for (const auto &info: nativeBindingDetachInfos_) {
+            auto finalizer = reinterpret_cast<DetachFinalizer>(info->detachedFinalizer);
+            if (finalizer != nullptr) {
+                finalizer(info->detachedObject, info->detachedHint);
+            }
+            delete info;
+        }
+        nativeBindingDetachInfos_.clear();
         free(buffer_);
         if (!incompleteData_ && dataIndex_ != RESERVED_INDEX) {
             Runtime::GetInstance()->RemoveSerializationRoot(thread_, dataIndex_);
@@ -387,6 +407,12 @@ public:
         return dataIndex_;
     }
 
+    void AddNativeBindingDetachInfo(panda::JSNApi::NativeBindingInfo *info, void *dObj)
+    {
+        auto *detachInfo = new NativeBindingDetachInfo(info->detachedFinalizer, dObj, info->detachedHint);
+        nativeBindingDetachInfos_.insert(detachInfo);
+    }
+
 private:
     static constexpr size_t U8_SIZE = 1;
     static constexpr size_t U16_SIZE = 2;
@@ -404,8 +430,9 @@ private:
     size_t sharedOldSpaceSize_ {0};
     size_t sharedNonMovableSpaceSize_ {0};
     bool incompleteData_ {false};
-    std::vector<size_t> regionRemainSizeVector_;
-    std::set<uintptr_t> sharedArrayBufferSet_;
+    std::vector<size_t> regionRemainSizeVector_ {};
+    std::set<uintptr_t> sharedArrayBufferSet_ {};
+    std::set<NativeBindingDetachInfo *> nativeBindingDetachInfos_ {};
 };
 }
 
