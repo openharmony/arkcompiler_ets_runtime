@@ -1246,7 +1246,6 @@ void BuiltinsArrayStubBuilder::Pop(GateRef glue, GateRef thisValue,
 #if ENABLE_NEXT_OPTIMIZATION
     PopOptimised(glue, thisValue, numArgs, result, exit, slowPath);
 #else
-{
     auto env = GetEnvironment();
     Label isHeapObject(env);
     Label stableJSArray(env);
@@ -1811,10 +1810,6 @@ GateRef BuiltinsArrayStubBuilder::DoSort(GateRef glue, GateRef receiver, bool is
                 Label loopEnd2(env);
                 Label next2(env);
                 Label loopExit2(env);
-                Label receiverIsNew(env);
-                Label receiverIsOrigin(env);
-                Label receiverIsNew2(env);
-                Label receiverIsOrigin2(env);
                 Jump(&loopHead2);
                 LoopBegin(&loopHead2);
                 {
@@ -1846,13 +1841,7 @@ GateRef BuiltinsArrayStubBuilder::DoSort(GateRef glue, GateRef receiver, bool is
                     }
                     Bind(&afterGettingpreviousValue);
                     {
-                        BRANCH(receiverState, &receiverIsNew, &receiverIsOrigin);
-                        Bind(&receiverIsNew);
-                        SetValueWithElementsKind(glue, receiver, *previousValue, *j, Boolean(true),
-                            Int32(static_cast<uint32_t>(ElementsKind::NONE)));
-                        Jump(&loopEnd2);
-                        Bind(&receiverIsOrigin);
-                        SetValueWithElementsKind(glue, receiver, *previousValue, *j, Boolean(false),
+                        SetValueWithElementsKind(glue, receiver, *previousValue, *j, Boolean(isToSorted),
                             Int32(static_cast<uint32_t>(ElementsKind::NONE)));
                         Jump(&loopEnd2);
                     }
@@ -1861,19 +1850,9 @@ GateRef BuiltinsArrayStubBuilder::DoSort(GateRef glue, GateRef receiver, bool is
                 j = Int64Sub(*j, Int64(1));
                 LoopEnd(&loopHead2);
                 Bind(&loopExit2);
-                BRANCH(receiverState, &receiverIsNew2, &receiverIsOrigin2);
-                Bind(&receiverIsNew2);
-                {
-                    SetValueWithElementsKind(glue, receiver, *presentValue, *endIndex, Boolean(true),
-                        Int32(static_cast<uint32_t>(ElementsKind::NONE)));
-                    Jump(&loopEnd);
-                }
-                Bind(&receiverIsOrigin2);
-                {
-                    SetValueWithElementsKind(glue, receiver, *presentValue, *endIndex, Boolean(false),
-                        Int32(static_cast<uint32_t>(ElementsKind::NONE)));
-                    Jump(&loopEnd);
-                }
+                SetValueWithElementsKind(glue, receiver, *presentValue, *endIndex, Boolean(isToSorted),
+                    Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                Jump(&loopEnd);
             }
         }
     }
@@ -2795,6 +2774,7 @@ void BuiltinsArrayStubBuilder::Push(GateRef glue, GateRef thisValue,
     Jump(exit);
 }
 #endif
+
 GateRef BuiltinsArrayStubBuilder::IsConcatSpreadable(GateRef glue, GateRef obj)
 {
     auto env = GetEnvironment();
@@ -3550,7 +3530,7 @@ void BuiltinsArrayStubBuilder::Splice(GateRef glue, GateRef thisValue, GateRef n
                     BRANCH(Int32GreaterThan(*j, *start), &next, &loopExit);
                     Bind(&next);
                     ele = GetTaggedValueWithElementsKind(glue, thisValue, Int32Sub(Int32Add(*j, *actualDeleteCount),
-                                                                             Int32(1)));
+                                                                                   Int32(1)));
                     SetValueWithElementsKind(glue, thisValue, *ele, Int32Sub(Int32Add(*j, *insertCount), Int32(1)),
                                              Boolean(true), Int32(static_cast<uint32_t>(ElementsKind::NONE)));
                     Jump(&loopEnd);
