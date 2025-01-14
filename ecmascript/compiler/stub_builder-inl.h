@@ -3935,6 +3935,16 @@ inline GateRef StubBuilder::ComputeTaggedTypedArraySize(GateRef elementSize, Gat
     return PtrAdd(IntPtr(ByteArray::DATA_OFFSET), PtrMul(elementSize, length));
 }
 
+inline GateRef StubBuilder::GetAccGetter(GateRef accesstor)
+{
+    return Load(VariableType::JS_ANY(), accesstor, IntPtr(AccessorData::GETTER_OFFSET));
+}
+
+inline GateRef StubBuilder::GetAccSetter(GateRef accesstor)
+{
+    return Load(VariableType::JS_ANY(), accesstor, IntPtr(AccessorData::SETTER_OFFSET));
+}
+
 inline GateRef StubBuilder::GetViewedArrayBuffer(GateRef dataView)
 {
     return Load(VariableType::JS_ANY(), dataView,

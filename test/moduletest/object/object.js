@@ -328,3 +328,15 @@ print(ArkTools.getInlinedPropertiesCount(f8));
 func2.prototype = A.prototype;
 var f9 = new func2();
 print(ArkTools.getInlinedPropertiesCount(f9));
+
+let res = Object.getOwnPropertyDescriptors(Object);
+print(JSON.stringify(res.prototype));
+
+let obj = {};
+Object.defineProperty(obj, "key1", {
+    get() { print("get"); return 6; },
+    set(x) {}
+})
+let res2 = Object.getOwnPropertyDescriptors(obj);
+print(res2["key1"].get);
+print(JSON.stringify(res2));
