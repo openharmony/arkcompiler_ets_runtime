@@ -206,3 +206,22 @@ print("foo5 result:")
 foo5()
 print(ArkTools.isAOTCompiled(foo5))
 print(ArkTools.isAOTDeoptimized(foo5))
+
+function foo6(a, flag) {
+    let result
+    if (flag) {
+        result = "" +  a
+        result += "b"
+    } else {
+        result = "" + "c"
+    }
+    return result
+}
+
+let a1 = "aaaaaaaaaaaaaaaaaaa"
+foo6(a1, false)
+a1 = foo6(a1, true)
+foo6(a1, true)
+foo6(a1, true)
+print(ArkTools.isAOTCompiled(foo6))
+print(a1)
