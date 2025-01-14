@@ -116,3 +116,6 @@ Fri Dec 13 2019 14:48:00 GMT+0800,Sat Dec 14 2019 14:48:00 GMT+0800,Thu Dec 12 2
 ---------------test for stable array sort where arr changeto dictionary array during sorting end-------
 ---------------test for stable array sort where elements length change---------------------------------
 ---------------test for stable array sort where elements length change end-----------------------------
+---------------test for string array sort---------------------------------
+a,aa,ab,aba,abb,abc,ac,b,c
+---------------test for string array sort end-----------------------------
