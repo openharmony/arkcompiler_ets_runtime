@@ -1654,31 +1654,23 @@ std::string JSDateTimeFormat::ToTitleCaseFunction(const std::string &input)
     return result;
 }
 
-bool JSDateTimeFormat::IsValidTimeZoneInput(const std::string &input)
-{
-    std::regex r("[a-zA-Z_\\-/]*");
-    bool isValid = regex_match(input, r);
-    return isValid;
-}
-
 std::string JSDateTimeFormat::ToTitleCaseTimezonePosition(const std::string &input)
 {
-    if (!IsValidTimeZoneInput(input)) {
-        return std::string();
-    }
     std::vector<std::string> titleEntry;
     std::vector<std::string> charEntry;
-    int32_t leftPosition = 0;
-    int32_t titleLength = 0;
-    for (int32_t i = 0; i < static_cast<int>(input.length()); i++) {
+    uint32_t leftPosition = 0;
+    uint32_t titleLength = 0;
+    for (size_t i = 0; i < input.length(); i++) {
         if (input[i] == '_' || input[i] == '-' || input[i] == '/') {
             std::string s(1, input[i]);
             charEntry.emplace_back(s);
             titleLength = i - leftPosition;
             titleEntry.emplace_back(input.substr(leftPosition, titleLength));
             leftPosition = i + 1;
-        } else {
+        } else if (JSLocale::IsAsciiAlpha(input[i]) || input[i] == '\\') {
             continue;
+        } else {
+            return std::string();
         }
     }
     ASSERT(input.length() >= static_cast<size_t>(leftPosition));
