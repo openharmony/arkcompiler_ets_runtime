@@ -466,6 +466,40 @@ function testASONStringifyMapAndSetAndObj() {
     print(output16);
 }
 
+function testASONStringifyAfterClearMapAndSet() {
+    let map1 = new Map<string | null | number | boolean, string | null | number | boolean>();
+    map1.set("a1", "A1");
+    map1.clear();
+    map1.set(1, 1);
+    map1.set(true, true);
+    let str1 = JSON.stringifySendable(map1);
+    print(str1);
+
+    let map2 = new SendableMap<string | null | number | boolean, string | null | number | boolean>();
+    map2.set("a1", "A1");
+    map2.clear();
+    map2.set(1, 1);
+    map2.set(true, true);
+    let str2 = JSON.stringifySendable(map2);
+    print(str2);
+
+    let set1 = new Set<string | null | number | boolean>();
+    set1.add("a1");
+    set1.clear();
+    set1.add(1);
+    set1.add(true);
+    let str3 = JSON.stringifySendable(set1);
+    print(str3);
+
+    let set2 = new SendableSet<string | null | number | boolean>();
+    set2.add("a1");
+    set2.clear();
+    set2.add(1);
+    set2.add(true);
+    let str4 = JSON.stringifySendable(set2);
+    print(str4);
+}
+
 testJSONParseSendable();
 jsonRepeatCall();
 testASONBigInt();
@@ -478,3 +512,4 @@ testIndexASON();
 testJSONBigIntZero();
 testASONStringifyMapAndSet();
 testASONStringifyMapAndSetAndObj();
+testASONStringifyAfterClearMapAndSet();

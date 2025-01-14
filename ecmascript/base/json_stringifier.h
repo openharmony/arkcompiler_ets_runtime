@@ -19,6 +19,7 @@
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/base/json_helper.h"
 #include "ecmascript/js_handle.h"
+#include "ecmascript/linked_hash_table.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/mem/c_containers.h"
@@ -60,6 +61,10 @@ private:
     bool SerializeJSONHashMap(const JSHandle<JSTaggedValue> &value, const JSHandle<JSTaggedValue> &replacer);
 
     bool SerializeJSONHashSet(const JSHandle<JSTaggedValue> &value, const JSHandle<JSTaggedValue> &replacer);
+
+    bool SerializeLinkedHashMap(const JSHandle<LinkedHashMap> &hashMap, const JSHandle<JSTaggedValue> &replacer);
+
+    bool SerializeLinkedHashSet(const JSHandle<LinkedHashSet> &hashSet, const JSHandle<JSTaggedValue> &replacer);
 
     bool SerializeJSArray(const JSHandle<JSTaggedValue> &value, const JSHandle<JSTaggedValue> &replacer);
 
