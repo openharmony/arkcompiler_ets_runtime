@@ -7,3 +7,12 @@ obj/arkcompiler/ets_runtime/test/aottest/builtin_inlining/set/Delete/builtinSetD
 
 #21629
 obj/arkcompiler/ets_runtime/test/aottest/builtin_inlining/set/Delete/builtinSetDeleteContext
+
+#20896
+obj/arkcompiler/ets_runtime/test/aottest/builtin_inlining/math/Ceil/builtinMathCeil
+
+#21801
+obj/arkcompiler/ets_runtime/test/aottest/builtin_inlining/math/Ceil/builtinMathCeilContext
+
+#20981
+obj/arkcompiler/ets_runtime/test/aottest/builtin_inlining/map/Delete/builtinMapDeleteContext
