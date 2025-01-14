@@ -931,4 +931,21 @@ assert_equal(res8.flags,'g');
   }
 }
 
+{
+  class C3 extends Array {
+  }
+  const o7 = {
+    get(a5, a6) {
+      return 1942;
+    },
+  };
+  const v9 = new Proxy(C3, o7);
+  try {
+    RegExp(v9).toString();
+    assert_unreachable();
+  } catch (e) {
+    assert_equal(e instanceof SyntaxError, true);
+  }
+}
+
 test_end();
