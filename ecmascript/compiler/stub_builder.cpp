@@ -2558,11 +2558,11 @@ GateRef StubBuilder::LoadICWithHandler(
             }
         }
         Bind(&handlerNotInt);
-        BRANCH(TaggedIsPrototypeHandler(*handler), &handlerIsPrototypeHandler, &handlerNotPrototypeHandler);
+        BRANCH_LIKELY(TaggedIsPrototypeHandler(*handler), &handlerIsPrototypeHandler, &handlerNotPrototypeHandler);
         Bind(&handlerIsPrototypeHandler);
         {
             GateRef cellValue = GetProtoCell(*handler);
-            BRANCH(TaggedIsUndefined(cellValue), &loopEnd, &cellNotUndefined);
+            BRANCH_LIKELY(TaggedIsUndefined(cellValue), &loopEnd, &cellNotUndefined);
             Bind(&cellNotUndefined);
             BRANCH(GetHasChanged(cellValue), &cellHasChanged, &loopEnd);
             Bind(&cellHasChanged);
@@ -4052,7 +4052,7 @@ GateRef StubBuilder::IsArrayLengthWritable(GateRef glue, GateRef receiver)
     Label isDicMode(env);
     Label notDicMode(env);
     DEFVARIABLE(result, VariableType::BOOL(), False());
-    BRANCH(IsDictionaryModeByHClass(hclass), &isDicMode, &notDicMode);
+    BRANCH_UNLIKELY(IsDictionaryModeByHClass(hclass), &isDicMode, &notDicMode);
     Bind(&isDicMode);
     {
         GateRef array = GetPropertiesArray(receiver);
@@ -9450,15 +9450,15 @@ GateRef StubBuilder::IsStableJSArray(GateRef glue, GateRef obj)
     Label exit(env);
     Label targetIsHeapObject(env);
     Label targetIsStableArray(env);
-    BRANCH(TaggedIsHeapObject(obj), &targetIsHeapObject, &exit);
+    BRANCH_LIKELY(TaggedIsHeapObject(obj), &targetIsHeapObject, &exit);
     Bind(&targetIsHeapObject);
     {
         GateRef jsHClass = LoadHClass(obj);
-        BRANCH(IsStableArray(jsHClass), &targetIsStableArray, &exit);
+        BRANCH_LIKELY(IsStableArray(jsHClass), &targetIsStableArray, &exit);
         Bind(&targetIsStableArray);
         {
             Label isPrototypeNotModified(env);
-            BRANCH(IsJSArrayPrototypeModified(jsHClass), &exit, &isPrototypeNotModified);
+            BRANCH_UNLIKELY(IsJSArrayPrototypeModified(jsHClass), &exit, &isPrototypeNotModified);
             Bind(&isPrototypeNotModified);
             {
                 GateRef guardiansOffset =
@@ -9916,11 +9916,6 @@ GateRef StubBuilder::SetValueWithElementsKind(GateRef glue, GateRef receiver, Ga
         Jump(&finishTransition);
     }
     Bind(&finishTransition);
-    GateRef hclass = LoadHClass(receiver);
-    DEFVARIABLE(elementsKind, VariableType::INT32(), GetElementsKindFromHClass(hclass));
-    Label setValue(env);
-    Label isMutantTaggedArray(env);
-    Label isNotMutantTaggedArray(env);
     GateRef elements = GetElementsArray(receiver);
     Label enableMutantArray(env);
     Label disableMutantArray(env);
@@ -9931,6 +9926,11 @@ GateRef StubBuilder::SetValueWithElementsKind(GateRef glue, GateRef receiver, Ga
         Jump(&exit);
     }
     Bind(&enableMutantArray);
+    Label setValue(env);
+    Label isMutantTaggedArray(env);
+    Label isNotMutantTaggedArray(env);
+    GateRef hclass = LoadHClass(receiver);
+    DEFVARIABLE(elementsKind, VariableType::INT32(), GetElementsKindFromHClass(hclass));
     BRANCH(IsMutantTaggedArray(elements), &isMutantTaggedArray, &isNotMutantTaggedArray);
     Bind(&isNotMutantTaggedArray);
     {

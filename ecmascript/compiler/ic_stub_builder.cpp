@@ -62,13 +62,13 @@ void ICStubBuilder::NamedICAccessor(Variable* cachedHandler, Label *tryICHandler
     Label receiverNotHeapObject(env);
     Label tryIC(env);
     if constexpr (type == ICStubType::LOAD) {
-        BRANCH(TaggedIsHeapObject(receiver_), &receiverIsHeapObject, &receiverNotHeapObject);
+        BRANCH_LIKELY(TaggedIsHeapObject(receiver_), &receiverIsHeapObject, &receiverNotHeapObject);
     } else {
-        BRANCH(TaggedIsHeapObject(receiver_), &receiverIsHeapObject, slowPath_);
+        BRANCH_LIKELY(TaggedIsHeapObject(receiver_), &receiverIsHeapObject, slowPath_);
     }
     Bind(&receiverIsHeapObject);
     {
-        BRANCH(TaggedIsUndefined(profileTypeInfo_), tryFastPath_, &tryIC);
+        BRANCH_UNLIKELY(TaggedIsUndefined(profileTypeInfo_), tryFastPath_, &tryIC);
         Bind(&tryIC);
         {
             Label isHeapObject(env);
@@ -204,7 +204,7 @@ void ICStubBuilder::LoadICByName(
     {
         GateRef ret = LoadICWithHandler(glue_, receiver_, receiver_, *cachedHandler, callback);
         result->WriteVariable(ret);
-        BRANCH(TaggedIsHole(ret), slowPath_, success_);
+        BRANCH_UNLIKELY(TaggedIsHole(ret), slowPath_, success_);
     }
 }
 
