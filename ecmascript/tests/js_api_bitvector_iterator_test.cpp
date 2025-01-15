@@ -77,7 +77,13 @@ protected:
         JSHandle<JSAPIBitVector> bitVector(
             factory->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor), constructor));
         auto *newBitSetVector = new std::vector<std::bitset<JSAPIBitVector::BIT_SET_LENGTH>>();
-        JSHandle<JSNativePointer> pointer = factory->NewJSNativePointer(newBitSetVector);
+        auto deleter = []([[maybe_unused]] void *env, void *pointer, [[maybe_unused]] void *data) {
+            if (pointer == nullptr) {
+                return;
+            }
+            delete reinterpret_cast<std::vector<std::bitset<JSAPIBitVector::BIT_SET_LENGTH>> *>(pointer);
+        };
+        JSHandle<JSNativePointer> pointer = factory->NewSJSNativePointer(newBitSetVector, deleter, newBitSetVector);
         bitVector->SetNativePointer(thread, pointer);
         return *bitVector;
     }
