@@ -840,4 +840,9 @@ print(sortNumber7[6]);
     arr.splice(-1, 1)
     print("---------------test for stable array sort where elements length change end-----------------------------")
 }
-    
+{
+    print("---------------test for string array sort---------------------------------")
+    let arr = new Array("aa","ab","ac","abc","abb","aba","a","b","c",);
+    print(arr.toSorted());
+    print("---------------test for string array sort end-----------------------------")
+}

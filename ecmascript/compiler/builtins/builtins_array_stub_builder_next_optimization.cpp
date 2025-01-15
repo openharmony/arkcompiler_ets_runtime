@@ -265,8 +265,7 @@ GateRef BuiltinsArrayStubBuilder::DoSortOptimised(GateRef glue, GateRef receiver
                         BRANCH(strBool, &isString, slowPath);
                         Bind(&isString);
                         {
-                            compareResult = CallNGCRuntime(glue,
-                                RTSTUB_ID(FastArraySortString), {glue, *middleValue, *presentValue});
+                            compareResult = StringCompare(glue, *middleValue, *presentValue);
                             Jump(&exchangeIndex);
                         }
                     }
@@ -491,8 +490,7 @@ GateRef BuiltinsArrayStubBuilder::DoSortOptimisedFast(GateRef glue, GateRef rece
                     BRANCH(stringCheck, &isString, slowPath);
                     Bind(&isString);
                     {
-                        compareResult = CallNGCRuntime(glue, RTSTUB_ID(FastArraySortString),
-                            { glue, *middleValue, *presentValue });
+                        compareResult = StringCompare(glue, *middleValue, *presentValue);
                         Jump(&exchangeIndex);
                     }
                     Bind(&exchangeIndex);

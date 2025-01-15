@@ -843,6 +843,7 @@ public:
     GateRef FastEqual(GateRef glue, GateRef left, GateRef right, ProfileOperation callback);
     GateRef FastStrictEqual(GateRef glue, GateRef left, GateRef right, ProfileOperation callback);
     GateRef FastStringEqual(GateRef glue, GateRef left, GateRef right);
+    GateRef StringCompare(GateRef glue, GateRef left, GateRef right);
     GateRef FastMod(GateRef gule, GateRef left, GateRef right, ProfileOperation callback);
     GateRef FastTypeOf(GateRef left, GateRef right);
     GateRef FastMul(GateRef glue, GateRef left, GateRef right, ProfileOperation callback);

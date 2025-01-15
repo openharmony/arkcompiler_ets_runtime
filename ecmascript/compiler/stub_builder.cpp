@@ -6465,6 +6465,93 @@ GateRef StubBuilder::FastStringEqual(GateRef glue, GateRef left, GateRef right)
     return ret;
 }
 
+GateRef StubBuilder::StringCompare(GateRef glue, GateRef left, GateRef right)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+    Label compareContent(env);
+    Label compareLength(env);
+    GateRef leftLength = GetLengthFromString(left);
+    GateRef rightLength = GetLengthFromString(right);
+    DEFVARIABLE(minLength, VariableType::INT32(), leftLength);
+    DEFVARIABLE(result, VariableType::INT32(), Int32(0));
+    BRANCH_NO_WEIGHT(Int32Equal(leftLength, rightLength), &compareContent, &compareLength);
+    Bind(&compareLength);
+    {
+        Label rightLengthIsLess(env);
+        Label leftLengthIsLess(env);
+        BRANCH(Int32GreaterThan(leftLength, rightLength), &rightLengthIsLess, &leftLengthIsLess);
+        Bind(&rightLengthIsLess);
+        {
+            result = Int32(1);
+            minLength = rightLength;
+            Jump(&compareContent);
+        }
+        Bind(&leftLengthIsLess);
+        {
+            result = Int32(-1);
+            minLength = leftLength;
+            Jump(&compareContent);
+        }
+    }
+
+    Bind(&compareContent);
+    Label loopHead(env);
+    Label loopEnd(env);
+    Label loopBody(env);
+    Label leftFlattenFastPath(env);
+    FlatStringStubBuilder leftFlat(this);
+    leftFlat.FlattenString(glue, left, &leftFlattenFastPath);
+    Bind(&leftFlattenFastPath);
+
+    Label rightFlattenFastPath(env);
+    FlatStringStubBuilder rightFlat(this);
+    rightFlat.FlattenString(glue, right, &rightFlattenFastPath);
+    Bind(&rightFlattenFastPath);
+
+    StringInfoGateRef leftStrInfoGate(&leftFlat);
+    StringInfoGateRef rightStrInfoGate(&rightFlat);
+    DEFVARIABLE(i, VariableType::INT32(), Int32(0));
+    Jump(&loopHead);
+    LoopBegin(&loopHead);
+    {
+        BRANCH(Int32UnsignedLessThan(*i, *minLength), &loopBody, &exit);
+        Bind(&loopBody);
+        {
+            BuiltinsStringStubBuilder stringBuilder(this);
+            GateRef leftStrToInt = stringBuilder.StringAt(leftStrInfoGate, *i);
+            GateRef rightStrToInt = stringBuilder.StringAt(rightStrInfoGate, *i);
+            Label notEqual(env);
+            BRANCH_NO_WEIGHT(Int32Equal(leftStrToInt, rightStrToInt), &loopEnd, &notEqual);
+            Bind(&notEqual);
+            {
+                Label leftIsLess(env);
+                Label rightIsLess(env);
+                BRANCH_NO_WEIGHT(Int32UnsignedLessThan(leftStrToInt, rightStrToInt), &leftIsLess, &rightIsLess);
+                Bind(&leftIsLess);
+                {
+                    result = Int32(-1);
+                    Jump(&exit);
+                }
+                Bind(&rightIsLess);
+                {
+                    result = Int32(1);
+                    Jump(&exit);
+                }
+            }
+        }
+        Bind(&loopEnd);
+        i = Int32Add(*i, Int32(1));
+        LoopEnd(&loopHead);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
 GateRef StubBuilder::FastStrictEqual(GateRef glue, GateRef left, GateRef right, ProfileOperation callback)
 {
     auto env = GetEnvironment();
