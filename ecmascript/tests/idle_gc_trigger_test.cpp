@@ -143,10 +143,10 @@ HWTEST_F_L0(IdleGCTriggerTest, TryTriggerIdleSharedOldGCTest002)
 
 HWTEST_F_L0(IdleGCTriggerTest, TryTriggerIdleSharedOldGCTest003)
 {
+    constexpr size_t LIVE_SIZE = 5242889;
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
     SharedHeap *sheap = SharedHeap::GetInstance();
-    sheap->GetOldSpace()->SetInitialCapacity(10000);
-    sheap->GetOldSpace()->IncreaseLiveObjectSize(5242889);
+    sheap->GetOldSpace()->IncreaseLiveObjectSize(LIVE_SIZE);
     sheap->NotifyHeapAliveSizeAfterGC(1);
     IdleGCTrigger *trigger = new IdleGCTrigger(heap, sheap, thread);
     trigger->ClearPostGCTask(TRIGGER_IDLE_GC_TYPE::SHARED_CONCURRENT_MARK);
@@ -418,4 +418,14 @@ HWTEST_F_L0(IdleGCTriggerTest, TryTriggerIdleGCTest019)
     trigger->TryTriggerIdleGC(TRIGGER_IDLE_GC_TYPE::SHARED_FULL_GC);
 }
 
+HWTEST_F_L0(IdleGCTriggerTest, TryTriggerIdleGCTest020)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    SharedHeap *sheap = SharedHeap::GetInstance();
+    sheap->NotifyHeapAliveSizeAfterGC(1);
+    sheap->GetOldSpace()->SetInitialCapacity(10000);
+    sheap->GetOldSpace()->IncreaseLiveObjectSize(5242889);
+    IdleGCTrigger *trigger = new IdleGCTrigger(heap, sheap, thread);
+    trigger->TryTriggerIdleGC(TRIGGER_IDLE_GC_TYPE::SHARED_CONCURRENT_PARTIAL_MARK);
+}
 }  // namespace panda::test

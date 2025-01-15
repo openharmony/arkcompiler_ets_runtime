@@ -93,9 +93,13 @@ bool IdleGCTrigger::TryTriggerIdleLocalOldGC()
 
 bool IdleGCTrigger::TryTriggerIdleSharedOldGC()
 {
-    if (CheckIdleOrHintOldGC<SharedHeap>(sHeap_) &&
-        ReachIdleSharedGCThresholds() && !sHeap_->NeedStopCollection() &&
-        sHeap_->CheckCanTriggerConcurrentMarking(thread_)) {
+    if (!CheckIdleOrHintOldGC<SharedHeap>(sHeap_) || sHeap_->NeedStopCollection() ||
+        !sHeap_->CheckCanTriggerConcurrentMarking(thread_)) {
+        return false;
+    }
+    if (ReachIdleSharedPartialGCThresholds()) {
+        return PostIdleGCTask(TRIGGER_IDLE_GC_TYPE::SHARED_CONCURRENT_PARTIAL_MARK);
+    } else if (ReachIdleSharedGCThresholds()) {
         return PostIdleGCTask(TRIGGER_IDLE_GC_TYPE::SHARED_CONCURRENT_MARK);
     }
     return false;
@@ -132,6 +136,12 @@ bool IdleGCTrigger::ReachIdleLocalOldGCThresholds()
         return true;
     }
     return false;
+}
+
+bool IdleGCTrigger::ReachIdleSharedPartialGCThresholds()
+{
+    size_t expectGlobalSizeLimit = sHeap_->GetGlobalSpaceAllocLimit() * IDLE_PATIAL_GC_SPACE_SIZE_LIMIT_RATE;
+    return sHeap_->GetHeapObjectSize() > expectGlobalSizeLimit;
 }
 
 bool IdleGCTrigger::ReachIdleSharedGCThresholds()
@@ -213,6 +223,13 @@ void IdleGCTrigger::TryTriggerIdleGC(TRIGGER_IDLE_GC_TYPE gcType)
             } else if (CheckIdleYoungGC(true) && !heap_->NeedStopCollection()) {
                 LOG_GC(INFO) << "IdleGCTrigger: trigger young gc";
                 heap_->CollectGarbage(TriggerGCType::YOUNG_GC, GCReason::IDLE);
+            }
+            break;
+        case TRIGGER_IDLE_GC_TYPE::SHARED_CONCURRENT_PARTIAL_MARK:
+            if (CheckIdleOrHintOldGC<SharedHeap>(sHeap_) && sHeap_->CheckCanTriggerConcurrentMarking(thread_)
+                && !sHeap_->NeedStopCollection()) {
+                LOG_GC(INFO) << "IdleGCTrigger: trigger " << GetGCTypeName(gcType);
+                sHeap_->TriggerConcurrentMarking<TriggerGCType::SHARED_PARTIAL_GC, GCReason::IDLE>(thread_);
             }
             break;
         case TRIGGER_IDLE_GC_TYPE::SHARED_CONCURRENT_MARK:

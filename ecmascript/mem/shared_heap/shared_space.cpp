@@ -206,6 +206,7 @@ void SharedSparseSpace::PrepareSweeping()
     ASSERT(GetSweptRegionSafe() == nullptr);
     EnumerateRegions([this](Region *current) {
         ASSERT(!current->IsGCFlagSet(RegionGCFlags::HAS_BEEN_SWEPT));
+        ASSERT(!current->InSCollectSet());
         IncreaseLiveObjectSize(current->AliveObject());
         current->ResetWasted();
         AddSweepingRegion(current);
@@ -430,6 +431,77 @@ SharedOldSpace::SharedOldSpace(SharedHeap *heap, size_t initialCapacity, size_t 
 {
 }
 
+void SharedOldSpace::SelectCSets()
+{
+    EnumerateRegions([this](Region *region) {
+        if (!region->MostObjectAlive()) {
+            collectRegionSet_.emplace_back(region);
+        }
+    });
+#ifdef NDEBUG
+    if (collectRegionSet_.size() < MIN_COLLECT_REGION_SIZE) {
+        LOG_ECMA_MEM(DEBUG) << "Selected SCSet number: " << collectRegionSet_.size() << " are too few";
+        collectRegionSet_.clear();
+        return;
+    }
+#endif
+    // sort
+    std::sort(collectRegionSet_.begin(), collectRegionSet_.end(), [](Region *first, Region *second) {
+        return first->AliveObject() < second->AliveObject();
+    });
+
+    // Limit cset size
+    int64_t leftEvacuateSize = MAX_EVACUATION_SIZE;
+    size_t selectedNumber = 0;
+    for (; selectedNumber < collectRegionSet_.size(); selectedNumber++) {
+        Region *region = collectRegionSet_[selectedNumber];
+        leftEvacuateSize -= region->AliveObject();
+        if (leftEvacuateSize > 0) {
+            RemoveCSetRegion(region);
+            allocator_->DetachFreeObjectSet(region);
+            region->SetGCFlag(RegionGCFlags::IN_SHARED_COLLECT_SET);
+            region->ResetAliveObject();
+        } else {
+            break;
+        }
+    }
+    if (collectRegionSet_.size() > selectedNumber) {
+        collectRegionSet_.resize(selectedNumber);
+    }
+}
+
+void SharedOldSpace::RevertCSets()
+{
+    EnumerateCollectRegionSet([this](Region *region) {
+        region->ClearGCFlag(RegionGCFlags::IN_SHARED_COLLECT_SET);
+        AddCSetRegion(region);
+        allocator_->CollectFreeObjectSet(region);
+    });
+    collectRegionSet_.clear();
+}
+
+void SharedOldSpace::ReclaimCSets()
+{
+    EnumerateCollectRegionSet([this](Region *region) {
+        region->DeleteCrossRegionRSet();
+        region->DestroyFreeObjectSets();
+        heapRegionAllocator_->FreeRegion(region, 0, true);
+    });
+    collectRegionSet_.clear();
+}
+
+void SharedOldSpace::AddCSetRegion(Region *region)
+{
+    ASSERT(region != nullptr);
+    regionList_.AddNode(region);
+}
+
+void SharedOldSpace::RemoveCSetRegion(Region *region)
+{
+    ASSERT(region != nullptr);
+    regionList_.RemoveNode(region);
+}
+
 void SharedOldSpace::Merge(SharedLocalSpace *localSpace)
 {
     localSpace->FreeBumpPoint();
@@ -443,15 +515,14 @@ void SharedOldSpace::Merge(SharedLocalSpace *localSpace)
         IncreaseLiveObjectSize(region->AliveObject());
         allocator_->CollectFreeObjectSet(region);
     });
-    size_t hugeSpaceCommitSize = sHeap_->GetHugeObjectSpace()->GetCommittedSize();
-    if (committedSize_ + hugeSpaceCommitSize > GetOverShootMaximumCapacity()) {
+    if (committedSize_ > GetOverShootMaximumCapacity()) {
         LOG_ECMA_MEM(ERROR) << "Merge::Committed size " << committedSize_ << " of old space is too big. ";
         if (sHeap_->CanThrowOOMError()) {
             sHeap_->ShouldThrowOOMError(true);
         }
         IncreaseMergeSize(committedSize_ - oldCommittedSize);
         // if throw OOM, temporarily increase space size to avoid vm crash
-        IncreaseOutOfMemoryOvershootSize(committedSize_ + hugeSpaceCommitSize - GetOverShootMaximumCapacity());
+        IncreaseOutOfMemoryOvershootSize(committedSize_ - GetOverShootMaximumCapacity());
     }
 
     localSpace->GetRegionList().Clear();
@@ -564,9 +635,6 @@ void SharedReadOnlySpace::IterateOverObjects(const std::function<void(TaggedObje
         FreeObject::FillFreeObject(heap_, allocator_.GetTop(), size);
     }
     EnumerateRegions([&](Region *region) {
-        if (region->InCollectSet()) {
-            return;
-        }
         uintptr_t curPtr = region->GetBegin();
         uintptr_t endPtr = region->GetEnd();
         while (curPtr < endPtr) {

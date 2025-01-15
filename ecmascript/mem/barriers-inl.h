@@ -63,7 +63,8 @@ static ARK_INLINE void WriteBarrier(const JSThread *thread, void *obj, size_t of
         // can't be "not shared heap" and "in SharedSweepableSpace" at the same time. So using "if - else if" is safe.
     } else if (valueRegion->InSharedSweepableSpace() && thread->IsSharedConcurrentMarkingOrFinished()) {
         if constexpr (writeType != WriteBarrierType::DESERIALIZE) {
-            Barriers::UpdateShared(thread, reinterpret_cast<TaggedObject *>(value), valueRegion);
+            Barriers::UpdateShared(thread, slotAddr, objectRegion, reinterpret_cast<TaggedObject *>(value),
+                                   valueRegion);
         } else {
             // In deserialize, will never add references from old object(not allocated by deserialing) to
             // new object(allocated by deserializing), only two kinds of references(new->old, new->new) will
@@ -71,6 +72,9 @@ static ARK_INLINE void WriteBarrier(const JSThread *thread, void *obj, size_t of
             // SharedGC::MarkRoots, so just mark all the new object is enough, do not need to push them to
             // workmanager and recursively visit slots of that.
             ASSERT(DaemonThread::GetInstance()->IsConcurrentMarkingOrFinished());
+            if (valueRegion->InSCollectSet() && objectRegion->InSharedHeap()) {
+                objectRegion->AtomicInsertCrossRegionRSet(slotAddr);
+            }
             valueRegion->AtomicMark(JSTaggedValue(value).GetHeapObject());
         }
     }
@@ -166,7 +170,8 @@ void Barriers::CopyObject(const JSThread *thread, const TaggedObject *dstObj, JS
             // value can't be "not shared heap" and "in SharedSweepableSpace" at the same time. So using "if - else if"
             // is safe.
         } else if (sharedMarking && valueRegion->InSharedSweepableSpace()) {
-            Barriers::UpdateShared(thread, taggedValue.GetTaggedObject(), valueRegion);
+            const uintptr_t slotAddr = ToUintPtr(dstAddr) + JSTaggedValue::TaggedTypeSize() * i;
+            Barriers::UpdateShared(thread, slotAddr, objectRegion, taggedValue.GetTaggedObject(), valueRegion);
         }
     }
 }

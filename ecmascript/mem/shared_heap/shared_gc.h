@@ -26,6 +26,7 @@
 #include "ecmascript/mem/shared_heap/shared_gc_marker.h"
 
 namespace panda::ecmascript {
+class SharedGCEvacuator;
 class SharedGC : public GarbageCollector {
 public:
     explicit SharedGC(SharedHeap *heap) : sHeap_(heap), sWorkManager_(heap->GetWorkManager()) {}
@@ -44,6 +45,8 @@ protected:
 private:
     void MarkRoots(SharedMarkType markType);
     void UpdateRecordWeakReference();
+    void Evacuate();
+    void PreSweep();
 
     SharedHeap *sHeap_ {nullptr};
     SharedGCWorkManager *sWorkManager_ {nullptr};

@@ -57,6 +57,8 @@ public:
                 return "full gc";
             case TRIGGER_IDLE_GC_TYPE::SHARED_CONCURRENT_MARK:
                 return "shared concurrent mark";
+            case TRIGGER_IDLE_GC_TYPE::SHARED_CONCURRENT_PARTIAL_MARK:
+                return "shared concurrent partial mark";
             case TRIGGER_IDLE_GC_TYPE::SHARED_FULL_GC:
                 return "shared full gc";
             case TRIGGER_IDLE_GC_TYPE::LOCAL_CONCURRENT_YOUNG_MARK:
@@ -102,6 +104,7 @@ public:
     bool TryTriggerIdleLocalOldGC();
     bool TryTriggerIdleSharedOldGC();
     bool ReachIdleLocalOldGCThresholds();
+    bool ReachIdleSharedPartialGCThresholds();
     bool ReachIdleSharedGCThresholds();
     void TryPostHandleMarkFinished();
     void TryTriggerIdleGC(TRIGGER_IDLE_GC_TYPE gcType);

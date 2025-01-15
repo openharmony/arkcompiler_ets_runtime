@@ -158,7 +158,7 @@ void BarrierStubBuilder::HandleMark()
                     &callSharedMarking, &endLoop);
                 Bind(&callSharedMarking);
                 {
-                    CallNGCRuntime(glue_, RTSTUB_ID(SharedGCMarkingBarrier), {glue_, value});
+                    CallNGCRuntime(glue_, RTSTUB_ID(SharedGCMarkingBarrier), {glue_, dstAddr_, offset, value});
                     Jump(&endLoop);
                 }
             }

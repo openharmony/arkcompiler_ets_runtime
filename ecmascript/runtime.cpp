@@ -246,6 +246,13 @@ void Runtime::ResumeAllThreadsImpl(JSThread *current)
     }
 }
 
+void Runtime::IterateSharedRoot(RootVisitor &visitor)
+{
+    IterateSerializeRoot(visitor);
+    SharedModuleManager::GetInstance()->Iterate(visitor);
+    IterateCachedStringRoot(visitor);
+}
+
 void Runtime::IterateSerializeRoot(RootVisitor &v)
 {
     LockHolder lock(serializeLock_);

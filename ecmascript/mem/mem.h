@@ -94,6 +94,7 @@ static constexpr double TRIGGER_OLDGC_NATIVE_SIZE_LIMIT = 20_MB;
 static constexpr size_t IDLE_GC_YOUNG_SPACE = 3_MB;
 
 static constexpr double LOW_ALLOCATION_RATE_PER_MS = 10;
+static constexpr double IDLE_PATIAL_GC_SPACE_SIZE_LIMIT_RATE = 0.65f;
 static constexpr double IDLE_SPACE_SIZE_LIMIT_RATE = 0.8f;
 static constexpr double IDLE_SPACE_SIZE_MIN_INC_RATIO = 1.1f;
 static constexpr double IDLE_FRAGMENT_SIZE_RATIO = 0.1f;

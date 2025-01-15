@@ -59,6 +59,7 @@ class RSetWorkListHandler;
 class SharedConcurrentMarker;
 class SharedConcurrentSweeper;
 class SharedGC;
+class SharedGCEvacuator;
 class SharedGCMarkerBase;
 class SharedGCMarker;
 class SharedFullGC;
@@ -587,6 +588,11 @@ public:
 
     bool CheckHugeAndTriggerSharedGC(JSThread *thread, size_t size);
 
+    bool HasCSetRegions()
+    {
+        return sOldSpace_->GetCollectSetRegionCount() > 0;
+    }
+
     void TryTriggerLocalConcurrentMarking();
 
     // Called when all vm is destroyed, and try to destroy daemon thread.
@@ -629,6 +635,11 @@ public:
     SharedConcurrentMarker *GetConcurrentMarker() const
     {
         return sConcurrentMarker_;
+    }
+
+    SharedGCEvacuator *GetSharedGCEvacuator() const
+    {
+        return sEvacuator_;
     }
 
     SharedConcurrentSweeper *GetSweeper() const
@@ -940,6 +951,7 @@ private:
     SharedConcurrentSweeper *sSweeper_ {nullptr};
     SharedGC *sharedGC_ {nullptr};
     SharedFullGC *sharedFullGC_ {nullptr};
+    SharedGCEvacuator *sEvacuator_ {nullptr};
     SharedGCMarker *sharedGCMarker_ {nullptr};
     SharedGCMovableMarker *sharedGCMovableMarker_ {nullptr};
     SharedMemController *sharedMemController_ {nullptr};

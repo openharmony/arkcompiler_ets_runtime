@@ -635,7 +635,7 @@ void SharedHeapVerification::VerifySweep(bool cm) const
                           << ' ' << value.GetTaggedObject();
             UNREACHABLE();
         }
-        if (!valueRegion->Test(value.GetTaggedObject())) {
+        if (valueRegion->InSCollectSet()) {
             LOG_GC(FATAL) << "verify shared8 " << cm << ':' << slot.SlotAddress()
                           << ' ' << value.GetTaggedObject();
             UNREACHABLE();
@@ -659,7 +659,7 @@ void SharedHeapVerification::VerifySweep(bool cm) const
     });
     auto cb2 = [cm] (ObjectSlot slot, TaggedObject *obj) {
         [[maybe_unused]] Region *objectRegion = Region::ObjectAddressToRange(obj);
-        if (!objectRegion->Test(obj)) { // LCOV_EXCL_START
+        if (objectRegion->InSCollectSet()) { // LCOV_EXCL_START
             LOG_GC(FATAL) << "verify shared10 " << cm << ':' << obj;
             UNREACHABLE();
         }
@@ -673,8 +673,7 @@ void SharedHeapVerification::VerifySweep(bool cm) const
                           << ' ' << value.GetTaggedObject();
             UNREACHABLE();
         }
-        if (!valueRegion->InSharedReadOnlySpace()
-                && !valueRegion->Test(value.GetTaggedObject())) {
+        if (!valueRegion->InSharedReadOnlySpace() && valueRegion->InSCollectSet()) {
             LOG_GC(FATAL) << "verify shared12 " << cm << ':' << slot.SlotAddress()
                           << ' ' << value.GetTaggedObject();
             UNREACHABLE();

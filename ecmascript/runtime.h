@@ -106,6 +106,8 @@ public:
         return stringTable_.get();
     }
 
+    void IterateSharedRoot(RootVisitor &visitor);
+
     inline SerializationChunk *GetSerializeRootMapValue([[maybe_unused]] JSThread *thread,
         uint32_t dataIndex)
     {

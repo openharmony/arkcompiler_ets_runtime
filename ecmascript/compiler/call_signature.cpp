@@ -2671,11 +2671,13 @@ DEF_CALL_SIGNATURE(MarkingBarrierWithEden)
 
 DEF_CALL_SIGNATURE(SharedGCMarkingBarrier)
 {
-    // 2 : 2 input parameters
-    CallSignature index("SharedGCMarkingBarrier", 0, 2, ArgumentsOrder::DEFAULT_ORDER, VariableType::VOID());
+    // 4 : 4 input parameters
+    CallSignature index("SharedGCMarkingBarrier", 0, 4, ArgumentsOrder::DEFAULT_ORDER, VariableType::VOID());
     *callSign = index;
-    // 2 : 2 input parameters
-    std::array<VariableType, 2> params = {
+    // 4 : 4 input parameters
+    std::array<VariableType, 4> params = {
+        VariableType::NATIVE_POINTER(),
+        VariableType::JS_POINTER(),
         VariableType::NATIVE_POINTER(),
         VariableType::JS_POINTER(),
     };

@@ -94,7 +94,7 @@ Region *HeapRegionAllocator::AllocateAlignedRegion(Space *space, size_t capacity
     return region;
 }
 
-void HeapRegionAllocator::FreeRegion(Region *region, size_t cachedSize)
+void HeapRegionAllocator::FreeRegion(Region *region, size_t cachedSize, bool skipCache)
 {
     auto size = region->GetCapacity();
     bool isRegular = !region->InHugeObjectSpace() && !region->InHugeMachineCodeSpace() &&
@@ -111,8 +111,8 @@ void HeapRegionAllocator::FreeRegion(Region *region, size_t cachedSize)
         UNREACHABLE();
     }
 #endif
-    MemMapAllocator::GetInstance()->CacheOrFree(ToVoidPtr(allocateBase),
-                                                size, isRegular, cachedSize, shouldPageTag);
+    MemMapAllocator::GetInstance()->CacheOrFree(ToVoidPtr(allocateBase), size, isRegular, cachedSize,
+                                                shouldPageTag, skipCache);
 }
 
 void HeapRegionAllocator::TemporarilyEnsureAllocateionAlwaysSuccess(BaseHeap *heap)

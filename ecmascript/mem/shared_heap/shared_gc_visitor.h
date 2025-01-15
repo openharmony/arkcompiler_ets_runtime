@@ -49,7 +49,7 @@ public:
 
     inline void VisitObjectHClassImpl(TaggedObject *hclass) override;
 private:
-    inline void HandleSlot(ObjectSlot slot);
+    inline void HandleSlot(ObjectSlot slot, Region *rootRegion);
 
     inline void MarkAndPush(TaggedObject *object, Region *objectRegion);
 

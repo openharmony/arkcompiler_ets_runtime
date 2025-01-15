@@ -110,10 +110,12 @@ void SharedConcurrentMarker::Reset(bool clearGCBits)
     dThread_->SetSharedMarkStatus(SharedMarkStatus::READY_TO_CONCURRENT_MARK);
     isConcurrentMarking_ = false;
     if (clearGCBits) {
+        sHeap_->GetOldSpace()->RevertCSets();
         // Shared gc clear GC bits in ReclaimRegions after GC
         auto callback = [](Region *region) {
             region->ClearMarkGCBitset();
             region->ResetAliveObject();
+            region->ClearCrossRegionRSet();
         };
         sHeap_->EnumerateOldSpaceRegions(callback);
     }
@@ -129,12 +131,16 @@ void SharedConcurrentMarker::InitializeMarking()
     CHECK_DAEMON_THREAD();
     // TODO: support shared runtime state
     sHeap_->Prepare(true);
+    if (gcType_ == TriggerGCType::SHARED_PARTIAL_GC) {
+        sHeap_->GetOldSpace()->SelectCSets();
+    }
     isConcurrentMarking_ = true;
     dThread_->SetSharedMarkStatus(SharedMarkStatus::CONCURRENT_MARKING_OR_FINISHED);
 
     sHeapObjectSize_ = sHeap_->GetHeapObjectSize();
     sHeap_->GetAppSpawnSpace()->EnumerateRegions([](Region *current) {
         current->ClearMarkGCBitset();
+        current->ClearCrossRegionRSet();
     });
     sHeap_->EnumerateOldSpaceRegions([](Region *current) {
         ASSERT(current->InSharedSweepableSpace());

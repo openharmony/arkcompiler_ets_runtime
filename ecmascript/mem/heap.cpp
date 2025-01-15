@@ -23,6 +23,7 @@
 #include "ecmascript/mem/parallel_evacuator.h"
 #include "ecmascript/mem/parallel_marker.h"
 #include "ecmascript/mem/shared_heap/shared_concurrent_sweeper.h"
+#include "ecmascript/mem/shared_heap/shared_gc_evacuator.h"
 #include "ecmascript/mem/shared_heap/shared_gc_marker-inl.h"
 #include "ecmascript/mem/shared_heap/shared_gc.h"
 #include "ecmascript/mem/shared_heap/shared_full_gc.h"
@@ -101,6 +102,7 @@ void SharedHeap::ForceCollectGarbageWithoutDaemonThread(TriggerGCType gcType, GC
         SharedHeapVerification(this, VerifyKind::VERIFY_PRE_SHARED_GC).VerifyAll();
     }
     switch (gcType) { // LCOV_EXCL_BR_LINE
+        case TriggerGCType::SHARED_PARTIAL_GC:
         case TriggerGCType::SHARED_GC: {
             sharedGC_->RunPhases();
             break;
@@ -205,7 +207,8 @@ void SharedHeap::Initialize(NativeAreaAllocator *nativeAreaAllocator, HeapRegion
     sNonMovableSpace_ = new SharedNonMovableSpace(this, nonmovableSpaceCapacity, nonmovableSpaceCapacity);
 
     size_t readOnlySpaceCapacity = config_.GetDefaultReadOnlySpaceSize();
-    size_t oldSpaceCapacity = (maxHeapSize - nonmovableSpaceCapacity - readOnlySpaceCapacity) / 2; // 2: half
+    size_t oldSpaceCapacity =
+        AlignUp((maxHeapSize - nonmovableSpaceCapacity - readOnlySpaceCapacity) / 2, DEFAULT_REGION_SIZE); // 2: half
     globalSpaceAllocLimit_ = config_.GetDefaultGlobalAllocLimit();
     globalSpaceConcurrentMarkLimit_ = static_cast<size_t>(globalSpaceAllocLimit_ *
                                                           TRIGGER_SHARED_CONCURRENT_MARKING_OBJECT_LIMIT_RATE);
@@ -269,7 +272,10 @@ void SharedHeap::Destroy()
         delete sharedFullGC_;
         sharedFullGC_ = nullptr;
     }
-
+    if (sEvacuator_ != nullptr) {
+        delete sEvacuator_;
+        sEvacuator_ = nullptr;
+    }
     nativeAreaAllocator_ = nullptr;
     heapRegionAllocator_ = nullptr;
 
@@ -310,6 +316,7 @@ void SharedHeap::PostInitialization(const GlobalEnvConstants *globalEnvConstants
     sSweeper_ = new SharedConcurrentSweeper(this, option.EnableConcurrentSweep() ?
         EnableConcurrentSweepType::ENABLE : EnableConcurrentSweepType::CONFIG_DISABLE);
     sharedGC_ = new SharedGC(this);
+    sEvacuator_ = new SharedGCEvacuator(this);
     sharedFullGC_ = new SharedFullGC(this);
 }
 
@@ -377,7 +384,8 @@ void SharedHeap::WaitGCFinishedAfterAllJSThreadEliminated()
 void SharedHeap::DaemonCollectGarbage([[maybe_unused]]TriggerGCType gcType, [[maybe_unused]]GCReason gcReason)
 {
     RecursionScope recurScope(this, HeapType::SHARED_HEAP);
-    ASSERT(gcType == TriggerGCType::SHARED_GC || gcType == TriggerGCType::SHARED_FULL_GC);
+    ASSERT(gcType == TriggerGCType::SHARED_GC || gcType == TriggerGCType::SHARED_PARTIAL_GC ||
+        gcType == TriggerGCType::SHARED_FULL_GC);
     ASSERT(JSThread::GetCurrent() == dThread_);
     {
         ThreadManagedScope runningScope(dThread_);
@@ -393,6 +401,7 @@ void SharedHeap::DaemonCollectGarbage([[maybe_unused]]TriggerGCType gcType, [[ma
             SharedHeapVerification(this, VerifyKind::VERIFY_PRE_SHARED_GC).VerifyAll();
         }
         switch (gcType) {
+            case TriggerGCType::SHARED_PARTIAL_GC:
             case TriggerGCType::SHARED_GC: {
                 sharedGC_->RunPhases();
                 break;
@@ -521,10 +530,11 @@ void SharedHeap::ReclaimRegions(TriggerGCType gcType)
     if (gcType == TriggerGCType::SHARED_FULL_GC) {
         sCompressSpace_->Reset();
     }
+    sOldSpace_->ReclaimCSets();
     sSweeper_->WaitAllTaskFinished();
     EnumerateOldSpaceRegionsWithRecord([] (Region *region) {
         region->ClearMarkGCBitset();
-        region->ResetAliveObject();
+        region->ClearCrossRegionRSet();
     });
     if (!clearTaskFinished_) {
         LockHolder holder(waitClearTaskFinishedMutex_);
@@ -707,6 +717,8 @@ void SharedHeap::MoveOldSpaceToAppspawn()
     sAppSpawnSpace_->SetMaximumCapacity(committedSize);
     sOldSpace_->SetInitialCapacity(sOldSpace_->GetInitialCapacity() - committedSize);
     sOldSpace_->SetMaximumCapacity(sOldSpace_->GetMaximumCapacity() - committedSize);
+    sCompressSpace_->SetInitialCapacity(sOldSpace_->GetInitialCapacity());
+    sCompressSpace_->SetMaximumCapacity(sOldSpace_->GetMaximumCapacity());
 #ifdef ECMASCRIPT_SUPPORT_HEAPSAMPLING
     sAppSpawnSpace_->SwapAllocationCounter(sOldSpace_);
 #endif
@@ -729,7 +741,6 @@ void SharedHeap::ReclaimForAppSpawn()
     MoveOldSpaceToAppspawn();
     auto cb = [] (Region *region) {
         region->ClearMarkGCBitset();
-        region->ResetAliveObject();
     };
     sNonMovableSpace_->EnumerateRegions(cb);
     sHugeObjectSpace_->EnumerateRegions(cb);

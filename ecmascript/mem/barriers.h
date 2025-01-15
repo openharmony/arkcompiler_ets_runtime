@@ -80,7 +80,8 @@ public:
                                              TaggedObject *value, Region *valueRegion,
                                              WriteBarrierType writeType = WriteBarrierType::NORMAL);
 
-    static void PUBLIC_API UpdateShared(const JSThread *thread, TaggedObject *value, Region *valueRegion);
+    static void PUBLIC_API UpdateShared(const JSThread *thread, uintptr_t slotAddr, Region *objectRegion,
+                                        TaggedObject *value, Region *valueRegion);
 };
 }  // namespace panda::ecmascript
 

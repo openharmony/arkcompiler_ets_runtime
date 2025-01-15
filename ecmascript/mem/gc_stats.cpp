@@ -709,6 +709,8 @@ GCType GCStats::GetGCType(TriggerGCType gcType)
             return GCType::COMPRESS_GC;
         case TriggerGCType::SHARED_GC:
             return GCType::SHARED_GC;
+        case TriggerGCType::SHARED_PARTIAL_GC:
+            return GCType::SHARED_PARTIAL_GC;
         case TriggerGCType::SHARED_FULL_GC:
             return GCType::SHARED_FULL_GC;
         default:
@@ -834,6 +836,10 @@ void SharedGCStats::PrintSharedGCDuration()
         << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::Initialize]) << "ms\n"
         << STATS_DESCRIPTION_FORMAT("Mark:")
         << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::Mark]) << "ms\n"
+        << STATS_DESCRIPTION_FORMAT("Evacuate:")
+        << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::Evacuate]) << "ms\n"
+        << STATS_DESCRIPTION_FORMAT("UpdateReference:")
+        << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::UpdateReference]) << "ms\n"
         << STATS_DESCRIPTION_FORMAT("Sweep:")
         << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::Sweep]) << "ms\n"
         << STATS_DESCRIPTION_FORMAT("Finish:")

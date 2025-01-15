@@ -1018,7 +1018,7 @@ TaggedObject *SharedHeap::AllocateSNonMovableTlab(JSThread *thread, size_t size)
 template<TriggerGCType gcType, GCReason gcReason>
 void SharedHeap::TriggerConcurrentMarking(JSThread *thread)
 {
-    ASSERT(gcType == TriggerGCType::SHARED_GC);
+    ASSERT(gcType == TriggerGCType::SHARED_GC || gcType == TriggerGCType::SHARED_PARTIAL_GC);
     // lock is outside to prevent extreme case, maybe could move update gcFinished_ into CheckAndPostTask
     // instead of an outside locking.
     LockHolder lock(waitGCFinishedMutex_);
@@ -1031,7 +1031,8 @@ void SharedHeap::TriggerConcurrentMarking(JSThread *thread)
 template<TriggerGCType gcType, GCReason gcReason>
 void SharedHeap::CollectGarbage(JSThread *thread)
 {
-    ASSERT(gcType == TriggerGCType::SHARED_GC || gcType == TriggerGCType::SHARED_FULL_GC);
+    ASSERT(gcType == TriggerGCType::SHARED_GC || gcType == TriggerGCType::SHARED_PARTIAL_GC ||
+        gcType == TriggerGCType::SHARED_FULL_GC);
 #ifndef NDEBUG
     ASSERT(!thread->HasLaunchedSuspendAll());
 #endif
@@ -1059,7 +1060,8 @@ void SharedHeap::CollectGarbage(JSThread *thread)
 template<TriggerGCType gcType, GCReason gcReason>
 void SharedHeap::PostGCTaskForTest(JSThread *thread)
 {
-    ASSERT(gcType == TriggerGCType::SHARED_GC || gcType == TriggerGCType::SHARED_FULL_GC);
+    ASSERT(gcType == TriggerGCType::SHARED_GC ||gcType == TriggerGCType::SHARED_PARTIAL_GC ||
+        gcType == TriggerGCType::SHARED_FULL_GC);
 #ifndef NDEBUG
     ASSERT(!thread->HasLaunchedSuspendAll());
 #endif

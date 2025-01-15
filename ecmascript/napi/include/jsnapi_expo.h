@@ -1581,7 +1581,8 @@ public:
         LOCAL_REMARK = 1 << 2,
         FULL_GC = 1 << 3,
         SHARED_CONCURRENT_MARK = 1 << 4,
-        SHARED_FULL_GC = 1 << 5,
+        SHARED_CONCURRENT_PARTIAL_MARK = 1 << 5,
+        SHARED_FULL_GC = 1 << 6,
     };
 
     enum class ECMA_PUBLIC_API MemoryReduceDegree : uint8_t {
