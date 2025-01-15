@@ -161,7 +161,7 @@ HWTEST_F_L0(WeakRefOldGCTest, WeakRefTest)
         std::random_device randomDevice;
         std::shuffle(dstNewArrayHandleRecord.begin(), dstNewArrayHandleRecord.end(), std::mt19937(randomDevice()));
         for (auto it2 : dstNewArrayHandleRecord) {
-            if (Region::ObjectAddressToRange(it2.GetTaggedValue().GetTaggedObject())->InGeneralNewSpace()) {
+            if (Region::ObjectAddressToRange(it2.GetTaggedValue().GetTaggedObject())->InYoungSpace()) {
                 JSTaggedValue valueWeak = it2.GetTaggedValue().CreateAndGetWeakRef();
                 it->Set<true>(thread, countIndex, valueWeak);
                 if (++countIndex >= 40) {

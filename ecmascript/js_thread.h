@@ -1509,18 +1509,6 @@ public:
         return isInConcurrentScope_;
     }
 
-    void EnableEdenGCBarriers()
-    {
-        auto setValueStub = GetFastStubEntry(kungfu::CommonStubCSigns::SetValueWithEdenBarrier);
-        SetFastStubEntry(kungfu::CommonStubCSigns::SetValueWithBarrier, setValueStub);
-        auto markStub = GetRTInterface(kungfu::RuntimeStubCSigns::ID_MarkingBarrierWithEden);
-        RegisterRTInterface(kungfu::RuntimeStubCSigns::ID_MarkingBarrier, markStub);
-        auto setNotShareValueStub = GetFastStubEntry(kungfu::CommonStubCSigns::SetNonSValueWithEdenBarrier);
-        SetFastStubEntry(kungfu::CommonStubCSigns::SetNonSValueWithBarrier, setNotShareValueStub);
-        auto asmCheckStub = GetRTInterface(kungfu::RuntimeStubCSigns::ID_ASMWriteBarrierWithEden);
-        RegisterRTInterface(kungfu::RuntimeStubCSigns::ID_ASMFastWriteBarrier, asmCheckStub);
-    }
-
     DateUtils *GetDateUtils() const
     {
         return dateUtils_;

@@ -83,8 +83,6 @@ void MemController::StartCalculationBeforeGC()
         return;
     }
 
-    auto edenSpace = heap_->GetEdenSpace();
-    size_t edenSpaceAllocBytesSinceGC = edenSpace->GetAllocatedSizeSinceGC(edenSpace->GetTop());
     // It's unnecessary to calculate newSpaceAllocAccumulatedSize. newSpaceAllocBytesSinceGC can be calculated directly.
     auto newSpace = heap_->GetNewSpace();
     size_t newSpaceAllocBytesSinceGC = newSpace->GetAllocatedSizeSinceGC(newSpace->GetTop());
@@ -106,7 +104,6 @@ void MemController::StartCalculationBeforeGC()
 
     allocDurationSinceGc_ += duration;
 
-    edenSpaceAllocSizeSinceGC_ += edenSpaceAllocBytesSinceGC;
     newSpaceAllocSizeSinceGC_ += newSpaceAllocBytesSinceGC;
     oldSpaceAllocSizeSinceGC_ += oldSpaceAllocSize;
     oldSpaceAllocSizeSinceGC_ += hugeObjectAllocSizeSinceGC;
@@ -165,7 +162,6 @@ void MemController::StopCalculationAfterGC(TriggerGCType gcType)
     allocTimeMs_ = gcEndTime_;
     if (allocDurationSinceGc_ > 0) {
         oldSpaceAllocSizeSinceGC_ += heap_->GetEvacuator()->GetPromotedSize();
-        recordedEdenSpaceAllocations_.Push(MakeBytesAndDuration(edenSpaceAllocSizeSinceGC_, allocDurationSinceGc_));
         recordedNewSpaceAllocations_.Push(MakeBytesAndDuration(newSpaceAllocSizeSinceGC_, allocDurationSinceGc_));
         recordedOldSpaceAllocations_.Push(MakeBytesAndDuration(oldSpaceAllocSizeSinceGC_, allocDurationSinceGc_));
         recordedNonmovableSpaceAllocations_.Push(
@@ -173,7 +169,6 @@ void MemController::StopCalculationAfterGC(TriggerGCType gcType)
         recordedCodeSpaceAllocations_.Push(MakeBytesAndDuration(codeSpaceAllocSizeSinceGC_, allocDurationSinceGc_));
     }
     allocDurationSinceGc_ = 0.0;
-    edenSpaceAllocSizeSinceGC_ = 0;
     newSpaceAllocSizeSinceGC_ = 0;
     oldSpaceAllocSizeSinceGC_ = 0;
     nonMovableSpaceAllocSizeSinceGC_ = 0;
@@ -216,8 +211,6 @@ void MemController::RecordAfterConcurrentMark(MarkType markType, const Concurren
         recordedConcurrentMarks_.Push(MakeBytesAndDuration(marker->GetHeapObjectSize(), duration));
     } else if (markType == MarkType::MARK_YOUNG) {
         recordedSemiConcurrentMarks_.Push(MakeBytesAndDuration(marker->GetHeapObjectSize(), duration));
-    } else if (markType == MarkType::MARK_EDEN) {
-        recordedEdenConcurrentMarks_.Push(MakeBytesAndDuration(marker->GetHeapObjectSize(), duration));
     }
 }
 
@@ -271,19 +264,9 @@ double MemController::GetCurrentOldSpaceAllocationThroughputPerMS(double timeMs)
                                  MakeBytesAndDuration(allocatedSize, duration), timeMs);
 }
 
-double MemController::GetEdenSpaceAllocationThroughputPerMS() const
-{
-    return CalculateAverageSpeed(recordedEdenSpaceAllocations_);
-}
-
 double MemController::GetNewSpaceAllocationThroughputPerMS() const
 {
     return CalculateAverageSpeed(recordedNewSpaceAllocations_);
-}
-
-double MemController::GetEdenSpaceConcurrentMarkSpeedPerMS() const
-{
-    return CalculateAverageSpeed(recordedEdenConcurrentMarks_);
 }
 
 double MemController::GetNewSpaceConcurrentMarkSpeedPerMS() const

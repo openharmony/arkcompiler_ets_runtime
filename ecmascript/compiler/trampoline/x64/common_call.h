@@ -193,8 +193,6 @@ public:
     static void ResumeRspAndRollback(ExtendedAssembler *assembler);
 
     static void ASMFastWriteBarrier(ExtendedAssembler *assembler);
-
-    static void ASMWriteBarrierWithEden(ExtendedAssembler *assembler);
 private:
     static void PushFrameState(ExtendedAssembler *assembler, Register prevSpRegister, Register fpRegister,
         Register callTargetRegister, Register thisRegister, Register methodRegister, Register pcRegister,

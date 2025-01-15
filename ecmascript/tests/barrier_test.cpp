@@ -35,14 +35,9 @@ HWTEST_F_L0(BarrierTest, YoungToYoungBatchCopy)
     }
 
     JSHandle<TaggedArray> dstArray = factory->NewTaggedArray(arrayLength);
-    std::set<uintptr_t> NewToEdenBeforeCopy;
     std::set<uintptr_t> LocalToShareBeforeCopy;
 
     Region* dstRegion = Region::ObjectAddressToRange(dstArray.GetObject<TaggedArray>());
-    dstRegion->IterateAllNewToEdenBits([&NewToEdenBeforeCopy](void* mem) {
-        NewToEdenBeforeCopy.emplace(ToUintPtr(mem));
-        return true;
-    });
     dstRegion->IterateAllLocalToShareBits([&LocalToShareBeforeCopy](void* mem) {
         LocalToShareBeforeCopy.emplace(ToUintPtr(mem));
         return true;
@@ -53,10 +48,6 @@ HWTEST_F_L0(BarrierTest, YoungToYoungBatchCopy)
     Barriers::CopyObject<true, false>(thread, *dstArray, to, from, arrayLength);
 
     // young to young, all the bitset should not be changed.
-    dstRegion->IterateAllNewToEdenBits([&NewToEdenBeforeCopy](void* mem) {
-        EXPECT_TRUE(NewToEdenBeforeCopy.count(ToUintPtr(mem)));
-        return true;
-    });
     dstRegion->IterateAllLocalToShareBits([&LocalToShareBeforeCopy](void* mem) {
         EXPECT_TRUE(LocalToShareBeforeCopy.count(ToUintPtr(mem)));
         return true;
@@ -78,14 +69,9 @@ HWTEST_F_L0(BarrierTest, BatchCopyNoBarrier)
     }
 
     JSHandle<TaggedArray> dstArray = factory->NewTaggedArray(arrayLength);
-    std::set<uintptr_t> NewToEdenBeforeCopy;
     std::set<uintptr_t> LocalToShareBeforeCopy;
 
     Region* dstRegion = Region::ObjectAddressToRange(dstArray.GetObject<TaggedArray>());
-    dstRegion->IterateAllNewToEdenBits([&NewToEdenBeforeCopy](void* mem) {
-        NewToEdenBeforeCopy.emplace(ToUintPtr(mem));
-        return true;
-    });
     dstRegion->IterateAllLocalToShareBits([&LocalToShareBeforeCopy](void* mem) {
         LocalToShareBeforeCopy.emplace(ToUintPtr(mem));
         return true;
@@ -95,10 +81,6 @@ HWTEST_F_L0(BarrierTest, BatchCopyNoBarrier)
     JSTaggedValue* from = reinterpret_cast<JSTaggedValue*>(ToUintPtr(srcArray->GetData()));
     Barriers::CopyObjectPrimitive<false>(to, from, arrayLength);
 
-    dstRegion->IterateAllNewToEdenBits([&NewToEdenBeforeCopy](void* mem) {
-        EXPECT_TRUE(NewToEdenBeforeCopy.count(ToUintPtr(mem)));
-        return true;
-    });
     dstRegion->IterateAllLocalToShareBits([&LocalToShareBeforeCopy](void* mem) {
         EXPECT_TRUE(LocalToShareBeforeCopy.count(ToUintPtr(mem)));
         return true;
@@ -132,14 +114,9 @@ HWTEST_F_L0(BarrierTest, LocalToShareBatchCopy)
     }
 
     JSHandle<TaggedArray> dstArray = factory->NewTaggedArray(arrayLength);
-    std::set<uintptr_t> NewToEdenBeforeCopy;
     std::set<uintptr_t> LocalToShareBeforeCopy;
 
     Region* dstRegion = Region::ObjectAddressToRange(dstArray.GetObject<TaggedArray>());
-    dstRegion->IterateAllNewToEdenBits([&NewToEdenBeforeCopy](void* mem) {
-        NewToEdenBeforeCopy.emplace(ToUintPtr(mem));
-        return true;
-    });
     dstRegion->IterateAllLocalToShareBits([&LocalToShareBeforeCopy](void* mem) {
         LocalToShareBeforeCopy.emplace(ToUintPtr(mem));
         return true;
@@ -154,10 +131,6 @@ HWTEST_F_L0(BarrierTest, LocalToShareBatchCopy)
         LocalToShareSlot.insert(ToUintPtr(dstArray->GetData() + i));
     }
     // young to young, all the bitset should not be changed.
-    dstRegion->IterateAllNewToEdenBits([&NewToEdenBeforeCopy](void* mem) {
-        EXPECT_TRUE(NewToEdenBeforeCopy.count(ToUintPtr(mem)));
-        return true;
-    });
     dstRegion->IterateAllLocalToShareBits([&LocalToShareSlot, &LocalToShareBeforeCopy, &dstArray, arrayLength](
         void* mem) {
             if (!LocalToShareBeforeCopy.count(ToUintPtr(mem))) {
@@ -188,14 +161,9 @@ HWTEST_F_L0(BarrierTest, LocalToReadOnlyShareBatchCopy)
     }
 
     JSHandle<TaggedArray> dstArray = factory->NewTaggedArray(arrayLength);
-    std::set<uintptr_t> NewToEdenBeforeCopy;
     std::set<uintptr_t> LocalToShareBeforeCopy;
 
     Region* dstRegion = Region::ObjectAddressToRange(dstArray.GetObject<TaggedArray>());
-    dstRegion->IterateAllNewToEdenBits([&NewToEdenBeforeCopy](void* mem) {
-        NewToEdenBeforeCopy.emplace(ToUintPtr(mem));
-        return true;
-    });
     dstRegion->IterateAllLocalToShareBits([&LocalToShareBeforeCopy](void* mem) {
         LocalToShareBeforeCopy.emplace(ToUintPtr(mem));
         return true;
@@ -210,10 +178,6 @@ HWTEST_F_L0(BarrierTest, LocalToReadOnlyShareBatchCopy)
         LocalToShareSlot.insert(ToUintPtr(dstArray->GetData() + i));
     }
     // young to young, all the bitset should not be changed.
-    dstRegion->IterateAllNewToEdenBits([&NewToEdenBeforeCopy](void* mem) {
-        EXPECT_TRUE(NewToEdenBeforeCopy.count(ToUintPtr(mem)));
-        return true;
-    });
     dstRegion->IterateAllLocalToShareBits([&LocalToShareSlot, &LocalToShareBeforeCopy](
         void* mem) {
             EXPECT_FALSE(LocalToShareSlot.count(ToUintPtr(mem)));
@@ -242,14 +206,9 @@ HWTEST_F_L0(BarrierTest, LocalToShareMixBatchCopy)
     }
 
     JSHandle<TaggedArray> dstArray = factory->NewTaggedArray(arrayLength);
-    std::set<uintptr_t> NewToEdenBeforeCopy;
     std::set<uintptr_t> LocalToShareBeforeCopy;
 
     Region* dstRegion = Region::ObjectAddressToRange(dstArray.GetObject<TaggedArray>());
-    dstRegion->IterateAllNewToEdenBits([&NewToEdenBeforeCopy](void* mem) {
-        NewToEdenBeforeCopy.emplace(ToUintPtr(mem));
-        return true;
-    });
     dstRegion->IterateAllLocalToShareBits([&LocalToShareBeforeCopy](void* mem) {
         LocalToShareBeforeCopy.emplace(ToUintPtr(mem));
         return true;
@@ -266,10 +225,6 @@ HWTEST_F_L0(BarrierTest, LocalToShareMixBatchCopy)
         }
     }
     // young to young, all the bitset should not be changed.
-    dstRegion->IterateAllNewToEdenBits([&NewToEdenBeforeCopy](void* mem) {
-        EXPECT_TRUE(NewToEdenBeforeCopy.count(ToUintPtr(mem)));
-        return true;
-    });
     dstRegion->IterateAllLocalToShareBits([&LocalToShareSlot, &LocalToShareBeforeCopy, &dstArray, arrayLength](
         void* mem) {
             if (!LocalToShareBeforeCopy.count(ToUintPtr(mem))) {
@@ -328,21 +283,10 @@ HWTEST_F_L0(BarrierTest, OldToNewBatchCopy)
     Barriers::CopyObject<true, false>(thread, *dstArray, to, from, arrayLength);
 
     // young to young, all the bitset should not be changed.
-    dstRegion->IterateAllNewToEdenBits([&OldToNewSlot, &OldToNewBeforeCopy, &dstArray, arrayLength](void* mem) {
-        if (!OldToNewBeforeCopy.count(ToUintPtr(mem))) {
-            EXPECT_GE(ToUintPtr(mem), ToUintPtr(dstArray->GetData()));
-            EXPECT_LT(ToUintPtr(mem), ToUintPtr(dstArray->GetData()+arrayLength));
-            OldToNewSlot.erase(ToUintPtr(mem));
-        } else {
-            EXPECT_TRUE(OldToNewBeforeCopy.count(ToUintPtr(mem)));
-        }
-        return true;
-    });
     dstRegion->IterateAllLocalToShareBits([&LocalToShareBeforeCopy](void* mem) {
         EXPECT_TRUE(LocalToShareBeforeCopy.count(ToUintPtr(mem)));
         return true;
     });
-    EXPECT_TRUE(OldToNewSlot.empty());
     // check
     for (uint32_t i = 0; i < arrayLength; i++) {
         EXPECT_EQ(dstArray->Get(thread, i), srcArray->Get(thread, i));

@@ -35,7 +35,6 @@ public:
     void SetUp() override
     {
         JSRuntimeOptions options;
-        options.SetEnableEdenGC(true);
         instance = JSNApi::CreateEcmaVM(options);
         ASSERT_TRUE(instance != nullptr) << "Cannot create EcmaVM";
         thread = instance->GetJSThread();

@@ -31,7 +31,6 @@ class Heap;
 class SharedHeap;
 
 enum class GCType : int {
-    PARTIAL_EDEN_GC,
     PARTIAL_YOUNG_GC,
     PARTIAL_OLD_GC,
     COMPRESS_GC,
@@ -130,8 +129,6 @@ public:
     const char *GetGCTypeName()
     {
         switch (gcType_) {
-            case GCType::PARTIAL_EDEN_GC:
-                return "HPP EdenGC";
             case GCType::PARTIAL_YOUNG_GC:
                 return "HPP YoungGC";
             case GCType::PARTIAL_OLD_GC:
@@ -154,15 +151,6 @@ public:
 
     double GetAvgSurvivalRate()
     {
-        if (gcType_ == GCType::PARTIAL_EDEN_GC) {
-            size_t commitSize = GetRecordData(RecordData::EDEN_TOTAL_COMMIT);
-            if (commitSize == 0) {
-                return 0;
-            }
-            double copiedRate = double(GetRecordData(RecordData::EDEN_TOTAL_ALIVE)) / commitSize;
-            double promotedRate = double(GetRecordData(RecordData::EDEN_TOTAL_PROMOTE)) / commitSize;
-            return std::min(copiedRate + promotedRate, 1.0);
-        }
         double copiedRate = double(GetRecordData(RecordData::YOUNG_TOTAL_ALIVE)) /
                             GetRecordData(RecordData::YOUNG_TOTAL_COMMIT);
         double promotedRate = double(GetRecordData(RecordData::YOUNG_TOTAL_PROMOTE)) /

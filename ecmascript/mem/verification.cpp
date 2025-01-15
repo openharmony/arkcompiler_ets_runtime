@@ -42,7 +42,6 @@ void LogErrorForObjSlot(const BaseHeap *heap, const char *headerInfo, TaggedObje
                   << ", value type=" << JSHClass::DumpJSType(value->GetClass()->GetObjectType())
                   << ", obj mark bit=" << region->Test(obj)
                   << ", obj slot oldToNew bit=" << region->TestOldToNew(slot.SlotAddress())
-                  << ", obj slot newToEden bit=" << region->TestNewToEden(slot.SlotAddress())
                   << ", obj slot value mark bit=" << slotRegion->Test(slotValue)
                   << ", value mark bit=" << valueRegion->Test(value);
     UNREACHABLE();
@@ -132,12 +131,6 @@ void VerifyObjectVisitor::VerifyHeapObjectSlotLegal(ObjectSlot slot,
         case VerifyKind::VERIFY_PRE_GC:
         case VerifyKind::VERIFY_POST_GC:
             break;
-        case VerifyKind::VERIFY_MARK_EDEN:
-            VerifyMarkEden(object, slot, slotValue.GetTaggedObject());
-            break;
-        case VerifyKind::VERIFY_EVACUATE_EDEN:
-            VerifyEvacuateEden(object, slot, slotValue.GetTaggedObject());
-            break;
         case VerifyKind::VERIFY_MARK_YOUNG:
             VerifyMarkYoung(object, slot, slotValue.GetTaggedObject());
             break;
@@ -166,56 +159,12 @@ void VerifyObjectVisitor::VerifyHeapObjectSlotLegal(ObjectSlot slot,
     }
 }
 
-void VerifyObjectVisitor::VerifyMarkEden(TaggedObject *object, ObjectSlot slot, TaggedObject *value) const
-{
-    Region *objectRegion = Region::ObjectAddressToRange(object);
-    Region *valueRegion = Region::ObjectAddressToRange(value);
-    JSTaggedValue value1(object);
-    JSTaggedValue value2(value);
-    if (objectRegion->InGeneralOldSpace() && valueRegion->InEdenSpace()) { // LCOV_EXCL_START
-        if (!objectRegion->TestOldToNew(slot.SlotAddress())) {
-            LogErrorForObjSlot(heap_, "Verify MarkEden: Old object, slot miss old_to_new bit.", object, slot, value);
-        } else if (!valueRegion->Test(value)) {
-            LogErrorForObjSlot(heap_, "Verify MarkEden: Old object, slot has old_to_new bit, miss gc_mark bit.",
-                object, slot, value);
-        }
-    }
-    
-    if (objectRegion->InYoungSpace() && valueRegion->InEdenSpace()) {
-        if (!objectRegion->TestNewToEden(slot.SlotAddress())) {
-            value1.D();
-            value2.D();
-            LogErrorForObjSlot(heap_, "Verify MarkEden: Young object, slot miss new_to_eden bit.", object, slot, value);
-        } else if (!valueRegion->Test(value)) {
-            LogErrorForObjSlot(heap_, "Verify MarkEden: Young object, slot has new_to_eden bit, miss gc_mark bit.",
-                object, slot, value);
-        }
-    }
-
-    if (objectRegion->Test(object)) {
-        if (!objectRegion->InEdenSpace() && !objectRegion->InAppSpawnSpace()
-                && !objectRegion->InReadOnlySpace()) {
-            LogErrorForObj(heap_, "Verify MarkYoung: Marked object, NOT in Eden Space", object);
-        }
-        if (valueRegion->InEdenSpace() && !valueRegion->Test(value)) {
-            LogErrorForObjSlot(heap_, "Verify MarkEden: Marked object, slot in EdenSpace, miss gc_mark bit.",
-                object, slot, value);
-        }
-        if (valueRegion->Test(value) && !(valueRegion->InEdenSpace() || valueRegion->InAppSpawnSpace()
-                || valueRegion->InReadOnlySpace() || valueRegion->InSharedHeap())) {
-            LogErrorForObjSlot(heap_, "Verify MarkEden: Marked object, slot marked, but NOT in Eden Space.",
-                object, slot, value);
-        }
-    } // LCOV_EXCL_STOP
-}
-
-
 void VerifyObjectVisitor::VerifyMarkYoung(TaggedObject *object, ObjectSlot slot, TaggedObject *value) const
 {
     Region *objectRegion = Region::ObjectAddressToRange(object);
     Region *valueRegion = Region::ObjectAddressToRange(value);
     ASSERT(!objectRegion->InSharedHeap());
-    if (objectRegion->InGeneralOldSpace() && valueRegion->InGeneralNewSpace()) { // LCOV_EXCL_START
+    if (objectRegion->InGeneralOldSpace() && valueRegion->InYoungSpace()) { // LCOV_EXCL_START
         if (!objectRegion->TestOldToNew(slot.SlotAddress())) {
             LogErrorForObjSlot(heap_, "Verify MarkYoung: Old object, slot miss old_to_new bit.", object, slot, value);
         } else if (!valueRegion->Test(value)) {
@@ -230,58 +179,19 @@ void VerifyObjectVisitor::VerifyMarkYoung(TaggedObject *object, ObjectSlot slot,
         }
     }
     if (objectRegion->Test(object)) {
-        if (!objectRegion->InGeneralNewSpace() && !objectRegion->InAppSpawnSpace() &&
+        if (!objectRegion->InYoungSpace() && !objectRegion->InAppSpawnSpace() &&
             !objectRegion->InReadOnlySpace()) {
             LogErrorForObj(heap_, "Verify MarkYoung: Marked object, NOT in Young/AppSpawn/ReadOnly Space", object);
         }
-        if (valueRegion->InGeneralNewSpace() && !valueRegion->Test(value)) {
+        if (valueRegion->InYoungSpace() && !valueRegion->Test(value)) {
             LogErrorForObjSlot(heap_, "Verify MarkYoung: Marked object, slot in YoungSpace, miss gc_mark bit.",
                 object, slot, value);
         }
         if (valueRegion->Test(value) &&
             !(valueRegion->InYoungSpace() || valueRegion->InAppSpawnSpace() || valueRegion->InReadOnlySpace() ||
-              valueRegion->InSharedHeap() || valueRegion->InEdenSpace())) {
+              valueRegion->InSharedHeap())) {
             LogErrorForObjSlot(heap_, "Verify MarkYoung: Marked object, slot marked, but NOT in "
                 "Young/AppSpawn/ReadOnly Space.", object, slot, value);
-        }
-    } // LCOV_EXCL_STOP
-}
-
-void VerifyObjectVisitor::VerifyEvacuateEden(TaggedObject *object, ObjectSlot slot, TaggedObject *value) const
-{
-    Region *objectRegion = Region::ObjectAddressToRange(object);
-    Region *valueRegion = Region::ObjectAddressToRange(value);
-    if (objectRegion->InGeneralOldSpace()) { // LCOV_EXCL_START
-        if (objectRegion->TestOldToNew(slot.SlotAddress())) {
-            if (!valueRegion->InActiveSemiSpace()) {
-                if (valueRegion->InEdenSpace()) {
-                    LogErrorForObjSlot(heap_, "Verify EvacuateEden: Old object, slot old_to_new bit = 1, "
-                        "but in EdenSpace object.", object, slot, value);
-                }
-                LogErrorForObjSlot(heap_, "Verify EvacuateEden: Old object, slot old_to_new bit = 1, "
-                    "but NOT ActiveSpace(ToSpace) object.", object, slot, value);
-            }
-        } else {
-            if (valueRegion->InGeneralNewSpace()) {
-                LogErrorForObjSlot(heap_, "Verify EvacuateEden: Old object, slot old_to_new bit = 0, "
-                    "but YoungSpace object.", object, slot, value);
-            }
-        }
-    }
-    if (objectRegion->InYoungSpace()) {
-        if (objectRegion->TestNewToEden(slot.SlotAddress())) {
-            if (!valueRegion->InEdenSpace()) {
-                LogErrorForObjSlot(heap_, "Verify EvacuateEden: Young object, slot young_to_eden bit = 1, "
-                    "but NOT Eden object.", object, slot, value);
-            } else {
-                LogErrorForObjSlot(heap_, "Verify EvacuateEden: Young object, slot young_to_eden bit = 1, "
-                    "but Eden object.", object, slot, value);
-            }
-        } else {
-            if (valueRegion->InEdenSpace()) {
-                LogErrorForObjSlot(heap_, "Verify EvacuateEden: Young object, slot young_to_eden bit = 0, "
-                    "but Eden object.", object, slot, value);
-            }
         }
     } // LCOV_EXCL_STOP
 }
@@ -294,15 +204,11 @@ void VerifyObjectVisitor::VerifyEvacuateYoung(TaggedObject *object, ObjectSlot s
     if (objectRegion->InGeneralOldSpace()) { // LCOV_EXCL_START
         if (objectRegion->TestOldToNew(slot.SlotAddress())) {
             if (!valueRegion->InActiveSemiSpace()) {
-                if (valueRegion->InEdenSpace()) {
-                    LogErrorForObjSlot(heap_, "Verify EvacuateYoung: Old object, slot old_to_new bit = 1, "
-                        "but in EdenSpace object.", object, slot, value);
-                }
                 LogErrorForObjSlot(heap_, "Verify EvacuateYoung: Old object, slot old_to_new bit = 1, "
                     "but NOT ActiveSpace(ToSpace) object.", object, slot, value);
             }
         } else {
-            if (valueRegion->InGeneralNewSpace()) {
+            if (valueRegion->InYoungSpace()) {
                 LogErrorForObjSlot(heap_, "Verify EvacuateYoung: Old object, slot old_to_new bit = 0, "
                     "but YoungSpace object.", object, slot, value);
             }
@@ -318,9 +224,6 @@ void VerifyObjectVisitor::VerifyEvacuateYoung(TaggedObject *object, ObjectSlot s
         if (valueRegion->InInactiveSemiSpace()) {
             LogErrorForObjSlot(heap_, "Verify EvacuateYoung: ActiveSpace object, slot in InactiveSpace(FromSpace).",
                 object, slot, value);
-        } else if (valueRegion->InEdenSpace()) {
-            LogErrorForObjSlot(heap_, "Verify EvacuateYoung: ActiveSpace object, slot in EdenSpace.",
-                object, slot, value);
         }
     } // LCOV_EXCL_STOP
 }
@@ -329,7 +232,7 @@ void VerifyObjectVisitor::VerifyMarkFull(TaggedObject *object, ObjectSlot slot, 
 {
     Region *objectRegion = Region::ObjectAddressToRange(object);
     Region *valueRegion = Region::ObjectAddressToRange(value);
-    if (objectRegion->InGeneralOldSpace() && valueRegion->InGeneralNewSpace()) { // LCOV_EXCL_START
+    if (objectRegion->InGeneralOldSpace() && valueRegion->InYoungSpace()) { // LCOV_EXCL_START
         if (!objectRegion->TestOldToNew(slot.SlotAddress())) {
             LogErrorForObjSlot(heap_, "Verify MarkFull: Old object, slot miss old_to_new bit.", object, slot, value);
         }
@@ -494,9 +397,6 @@ void Verification::VerifyMark(Heap *heap)
 {
     LOG_ECMA(DEBUG) << "start verify mark";
     switch (heap->GetMarkType()) {
-        case MarkType::MARK_EDEN:
-            Verification(heap, VerifyKind::VERIFY_MARK_EDEN).VerifyAll();
-            break;
         case MarkType::MARK_YOUNG:
             Verification(heap, VerifyKind::VERIFY_MARK_YOUNG).VerifyAll();
             break;
@@ -510,9 +410,6 @@ void Verification::VerifyEvacuate(Heap *heap)
 {
     LOG_ECMA(DEBUG) << "start verify evacuate and sweep";
     switch (heap->GetMarkType()) {
-        case MarkType::MARK_EDEN:
-            Verification(heap, VerifyKind::VERIFY_EVACUATE_EDEN).VerifyAll();
-            break;
         case MarkType::MARK_YOUNG:
             Verification(heap, VerifyKind::VERIFY_EVACUATE_YOUNG).VerifyAll();
             break;

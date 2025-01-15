@@ -113,8 +113,6 @@ enum class StartupStatus : uint8_t {
 enum class VerifyKind {
     VERIFY_PRE_GC,
     VERIFY_POST_GC,
-    VERIFY_MARK_EDEN,
-    VERIFY_EVACUATE_EDEN,
     VERIFY_MARK_YOUNG,
     VERIFY_EVACUATE_YOUNG,
     VERIFY_MARK_FULL,
@@ -197,11 +195,6 @@ public:
     void SetMarkType(MarkType markType)
     {
         markType_ = markType;
-    }
-
-    bool IsEdenMark() const
-    {
-        return markType_ == MarkType::MARK_EDEN;
     }
 
     bool IsYoungMark() const
@@ -985,11 +978,6 @@ public:
     void SetJsDumpThresholds(size_t thresholds) const;
 #endif
 
-    EdenSpace *GetEdenSpace() const
-    {
-        return edenSpace_;
-    }
-
     // fixme: Rename NewSpace to YoungSpace.
     // This is the active young generation space that the new objects are allocated in
     // or copied into (from the other semi space) during semi space GC.
@@ -1176,7 +1164,7 @@ public:
      */
 
     // Young
-    inline TaggedObject *AllocateInGeneralNewSpace(size_t size);
+    inline TaggedObject *AllocateInYoungSpace(size_t size);
     inline TaggedObject *AllocateYoungOrHugeObject(JSHClass *hclass);
     inline TaggedObject *AllocateYoungOrHugeObject(JSHClass *hclass, size_t size);
     inline TaggedObject *AllocateReadOnlyOrHugeObject(JSHClass *hclass);
@@ -1264,9 +1252,6 @@ public:
     void EnumerateNonNewSpaceRegionsWithRecord(const Callback &cb) const;
 
     template<class Callback>
-    void EnumerateEdenSpaceRegions(const Callback &cb) const;
-
-    template<class Callback>
     void EnumerateNewSpaceRegions(const Callback &cb) const;
 
     template<class Callback>
@@ -1318,10 +1303,6 @@ public:
     size_t GetPromotedSize() const
     {
         return promotedSize_;
-    }
-    size_t GetEdenToYoungSize() const
-    {
-        return edenToYoungSize_;
     }
 
     size_t GetArrayBufferSize() const;
@@ -1627,28 +1608,12 @@ public:
 
     bool IsReadyToConcurrentMark() const override;
 
-    bool IsEdenGC() const
-    {
-        return gcType_ == TriggerGCType::EDEN_GC;
-    }
-
     bool IsYoungGC() const
     {
         return gcType_ == TriggerGCType::YOUNG_GC;
     }
 
-    bool IsGeneralYoungGC() const
-    {
-        return gcType_ == TriggerGCType::YOUNG_GC || gcType_ == TriggerGCType::EDEN_GC;
-    }
-
-    void EnableEdenGC();
-
-    void TryEnableEdenGC();
-
     void CheckNonMovableSpaceOOM();
-    void ReleaseEdenAllocator();
-    void InstallEdenAllocator();
     void DumpHeapSnapshotBeforeOOM(bool isFullGC = true);
     std::tuple<uint64_t, uint8_t *, int, kungfu::CalleeRegAndOffsetVec> CalCallSiteInfo(uintptr_t retAddr) const;
     MachineCode *GetMachineCodeObject(uintptr_t pc) const;
@@ -1822,7 +1787,6 @@ private:
      * Young generation spaces where most new objects are allocated.
      * (only one of the spaces is active at a time in semi space GC).
      */
-    EdenSpace *edenSpace_ {nullptr};
     SemiSpace *activeSemiSpace_ {nullptr};
     SemiSpace *inactiveSemiSpace_ {nullptr};
 
@@ -1893,7 +1857,6 @@ private:
      * which is used for GC heuristics.
      */
     MemController *memController_ {nullptr};
-    size_t edenToYoungSize_ {0};
     size_t promotedSize_ {0};
     size_t semiSpaceCopiedSize_ {0};
     size_t nativeBindingSize_{0};
@@ -1940,7 +1903,6 @@ private:
     IdleGCTrigger *idleGCTrigger_ {nullptr};
 
     bool hasOOMDump_ {false};
-    bool enableEdenGC_ {false};
 
     CVector<JSNativePointer *> nativePointerList_;
     CVector<JSNativePointer *> concurrentNativePointerList_;

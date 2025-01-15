@@ -172,7 +172,7 @@ void ParallelEvacuator::UpdateRecordWeakReferenceInParallel(uint32_t idOrder)
             if (JSTaggedValue(value).IsWeak()) {
                 ASSERT(heap_->IsConcurrentFullMark());
                 Region *objectRegion = Region::ObjectAddressToRange(value);
-                if (!objectRegion->InGeneralNewSpaceOrCSet() && !objectRegion->InSharedHeap() &&
+                if (!objectRegion->InYoungSpaceOrCSet() && !objectRegion->InSharedHeap() &&
                         (objectRegion->GetMarkGCBitset() == nullptr || !objectRegion->Test(value))) {
                     slot.Clear();
                 }
@@ -330,14 +330,14 @@ void ParallelEvacuator::UpdateWeakReferenceOpt()
         Region *objectRegion = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(header));
         ASSERT(objectRegion != nullptr);
         if constexpr (gcType == TriggerGCType::YOUNG_GC) {
-            if (!objectRegion->InGeneralNewSpace()) {
+            if (!objectRegion->InYoungSpace()) {
                 if (objectRegion->InNewToOldSet() && !objectRegion->Test(header)) {
                     return nullptr;
                 }
                 return header;
             }
         } else if constexpr (gcType == TriggerGCType::OLD_GC) {
-            if (!objectRegion->InGeneralNewSpaceOrCSet()) {
+            if (!objectRegion->InYoungSpaceOrCSet()) {
                 if (!objectRegion->InSharedHeap() && (objectRegion->GetMarkGCBitset() == nullptr ||
                                               !objectRegion->Test(header))) {
                     return nullptr;

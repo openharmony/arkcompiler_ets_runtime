@@ -34,7 +34,6 @@ public:
     void SetUp() override
     {
         JSRuntimeOptions options;
-        options.SetEnableEdenGC(true);
         options.SetArkProperties(options.GetArkProperties() | ArkProperties::ENABLE_HEAP_VERIFY);
         instance = JSNApi::CreateEcmaVM(options);
         ASSERT_TRUE(instance != nullptr) << "Cannot create EcmaVM";
@@ -74,7 +73,6 @@ HWTEST_F_L0(GCTest, SharedHeapVerificationTest)
 {
     SharedHeap *sHeap = SharedHeap::GetInstance();
     JSRuntimeOptions options;
-    options.SetEnableEdenGC(true);
     options.SetArkProperties(options.GetArkProperties() | ArkProperties::ENABLE_HEAP_VERIFY);
     auto nativeAreaAllocator_ = std::make_unique<NativeAreaAllocator>();
     auto heapRegionAllocator_ = std::make_unique<HeapRegionAllocator>();
