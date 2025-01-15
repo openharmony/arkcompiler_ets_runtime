@@ -12,6 +12,7 @@
       vtable?for?panda::ecmascript::kungfu::StringSnapshotInfo;
       vtable?for?panda::ecmascript::Taskpool;
       vtable?for?panda::ecmascript::base::Utf8JsonParser;
+      vtable?for?panda::ecmascript::tooling::JSDebugger;
 
       panda::ecmascript::COMMON_HELP_HEAD_MSG*;
       panda::ecmascript::HELP_OPTION_MSG*;

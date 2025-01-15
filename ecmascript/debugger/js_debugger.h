@@ -91,7 +91,7 @@ public:
     }
 };
 
-class JSDebugger : public JSDebugInterface, RuntimeListener {
+class PUBLIC_API JSDebugger : public JSDebugInterface, RuntimeListener {
 public:
     explicit JSDebugger(const EcmaVM *vm) : ecmaVm_(vm)
     {
