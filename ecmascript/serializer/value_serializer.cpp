@@ -134,6 +134,9 @@ bool ValueSerializer::WriteValue(JSThread *thread,
                 break;
             }
             void *buffer = detachNative(info->env, info->nativeValue, info->hint, info->detachData);
+            if (info->detachedFinalizer != nullptr) {
+                data_->AddNativeBindingDetachInfo(info, buffer);
+            }
             data_->EmitU64(reinterpret_cast<uint64_t>(buffer), static_cast<size_t>(entry.first));
         }
     }

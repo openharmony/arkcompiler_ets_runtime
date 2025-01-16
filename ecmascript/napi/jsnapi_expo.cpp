@@ -536,6 +536,17 @@ bool JSValueRef::IsObject(const EcmaVM *vm)
     return JSNApiHelper::ToJSTaggedValue(this).IsECMAObject();
 }
 
+bool JSValueRef::IsNativeBindingObject(const EcmaVM *vm)
+{
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
+    JSTaggedValue object = JSNApiHelper::ToJSTaggedValue(this);
+    if (!object.IsECMAObject()) {
+        return false;
+    }
+
+    return object.GetTaggedObject()->GetClass()->IsNativeBindingObject();
+}
+
 bool JSValueRef::IsArray(const EcmaVM *vm)
 {
     CROSS_THREAD_CHECK(vm);
@@ -2643,11 +2654,26 @@ bool ObjectRef::ConvertToNativeBindingObject(const EcmaVM *vm, Local<NativePoint
     LOG_IF_SPECIAL(object, ERROR);
     JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
     JSHandle<JSTaggedValue> keyValue = env->GetNativeBindingSymbol();
-    JSHandle<JSTaggedValue> valueValue = JSNApiHelper::ToJSHandle(value);
-    bool result = JSTaggedValue::SetProperty(thread, object, keyValue, valueValue);
+    auto key = JSNApiHelper::ToLocal<JSValueRef>(keyValue);
+    PropertyAttribute attr(Local<JSValueRef>(value), true, false, false);
+    bool result = DefineProperty(vm, key, attr);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
     object->GetTaggedObject()->GetClass()->SetIsNativeBindingObject(true);
     return result;
+}
+
+Local<NativePointerRef> ObjectRef::GetNativeBindingPointer(const EcmaVM *vm)
+{
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
+    ecmascript::ThreadManagedScope managedScope(thread);
+    EscapeLocalScope scope(vm);
+    JSHandle<JSTaggedValue> object = JSNApiHelper::ToJSHandle(this);
+    LOG_IF_SPECIAL(object, ERROR);
+    JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
+    JSHandle<JSTaggedValue> keyValue = env->GetNativeBindingSymbol();
+    OperationResult ret = JSTaggedValue::GetProperty(thread, object, keyValue);
+    RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
+    return scope.Escape(JSNApiHelper::ToLocal<JSValueRef>(ret.GetValue()));
 }
 
 bool ObjectRef::Set(const EcmaVM *vm, Local<JSValueRef> key, Local<JSValueRef> value)
