@@ -99,7 +99,6 @@ void JSFunction::InitializeWithDefaultValue(JSThread *thread, const JSHandle<JSF
     func->SetRawProfileTypeInfo(thread, thread->GlobalConstants()->GetEmptyProfileTypeInfoCell(), SKIP_BARRIER);
     func->SetMethod(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
     func->SetModule(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
-    func->SetProtoTransRootHClass(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
     func->SetCodeEntry(reinterpret_cast<uintptr_t>(nullptr));
     func->ClearCompiledCodeFlags();
     func->SetTaskConcurrentFuncFlag(0); // 0 : default value

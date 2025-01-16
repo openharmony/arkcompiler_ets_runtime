@@ -139,7 +139,11 @@ void PGOProfiler::ProfileProtoTransitionClass(JSHandle<JSFunction> func,
         ProfileClassRootHClass(func.GetTaggedType(), hclass.GetTaggedType());
         return;
     }
-    JSTaggedType ihc = func->GetProtoTransRootHClass().GetRawData();
+    JSHandle<JSTaggedValue> keyHandle(thread, thread->GlobalConstants()->GetGlobalConstantObject(
+        static_cast<size_t>(ConstantIndex::PROTO_TRANS_ROOT_HCLASS_SYMBOL_INDEX)));
+    PropertyDescriptor desc(thread);
+    JSObject::GetOwnProperty(thread, JSHandle<JSObject>::Cast(func), keyHandle, desc);
+    JSTaggedType ihc = (desc.GetValue())->GetRawData();
     if (JSTaggedValue(ihc).IsUndefined()) {
         LOG_PGO(DEBUG) << "maybe the prototype of the current function is just the initial prototype!";
         ProfileClassRootHClass(func.GetTaggedType(), hclass.GetTaggedType());
@@ -172,10 +176,14 @@ void PGOProfiler::ProfileProtoTransitionPrototype(JSHandle<JSFunction> func,
         return;
     }
     // set prototype once, and just skip this time
-    if (!func->GetProtoTransRootHClass().IsUndefined()) {
+    auto thread = vm_->GetJSThread();
+    JSHandle<JSTaggedValue> keyHandle(thread, thread->GlobalConstants()->GetGlobalConstantObject(
+        static_cast<size_t>(ConstantIndex::PROTO_TRANS_ROOT_HCLASS_SYMBOL_INDEX)));
+    PropertyDescriptor desc(thread);
+    JSObject::GetOwnProperty(thread, JSHandle<JSObject>::Cast(func), keyHandle, desc);
+    if (!(desc.GetValue())->IsUndefined()) {
         return;
     }
-    auto thread = vm_->GetJSThread();
     // insert transition item
     JSHandle<JSTaggedValue> transIhc(thread, JSTaggedValue::Undefined());
     JSHandle<JSTaggedValue> transPhc(thread, prototype->GetTaggedObject()->GetClass());
@@ -190,7 +198,8 @@ void PGOProfiler::ProfileProtoTransitionPrototype(JSHandle<JSFunction> func,
     // Do not generate ihc lazily, beacause it's used for the key of hash table
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSHClass> ihc = factory->NewEcmaHClass(JSObject::SIZE, JSType::JS_OBJECT, oldPrototype);
-    func->SetProtoTransRootHClass(thread, JSHandle<JSTaggedValue>(ihc));
+    PropertyDescriptor definePropertyDesc(thread, JSHandle<JSTaggedValue>(ihc), false, false, false);
+    JSObject::DefineOwnProperty(thread, JSHandle<JSObject>::Cast(func), keyHandle, definePropertyDesc);
 
     // record phc type
     JSHClass *phc0Root = JSHClass::FindRootHClass(oldPrototype->GetTaggedObject()->GetClass());

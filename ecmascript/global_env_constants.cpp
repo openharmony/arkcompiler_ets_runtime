@@ -265,6 +265,8 @@ void GlobalEnvConstants::InitSharedMiscellanious(JSThread *thread, ObjectFactory
     SetConstant(ConstantIndex::HOLE_INDEX, JSTaggedValue::Hole());
     SetConstant(ConstantIndex::TRUE_INDEX, JSTaggedValue::True());
     SetConstant(ConstantIndex::FALSE_INDEX, JSTaggedValue::False());
+    // Constant Symbols
+    SetConstant(ConstantIndex::PROTO_TRANS_ROOT_HCLASS_SYMBOL_INDEX, factory->NewSConstantPrivateSymbol());
     // Emptys
     auto vm = thread->GetEcmaVM();
     SetConstant(ConstantIndex::EMPTY_STRING_OBJECT_INDEX, JSTaggedValue(EcmaStringAccessor::CreateEmptyString(vm)));

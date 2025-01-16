@@ -767,8 +767,6 @@ public:
     inline GateRef GetBuiltinId(GateRef method);
     void SetLexicalEnvToFunction(GateRef glue, GateRef object, GateRef lexicalEnv,
                                  MemoryAttribute mAttr = MemoryAttribute::Default());
-    void SetProtoTransRootHClassToFunction(GateRef glue, GateRef object, GateRef hclass,
-                                           MemoryAttribute mAttr = MemoryAttribute::Default());
     void SetProtoOrHClassToFunction(GateRef glue, GateRef function, GateRef value,
                                     MemoryAttribute mAttr = MemoryAttribute::Default());
     void SetWorkNodePointerToFunction(GateRef glue, GateRef function, GateRef value,

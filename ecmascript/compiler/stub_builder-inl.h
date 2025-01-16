@@ -3186,13 +3186,6 @@ inline void StubBuilder::SetLexicalEnvToFunction(GateRef glue, GateRef object, G
     Store(VariableType::JS_ANY(), glue, object, offset, lexicalEnv, mAttr);
 }
 
-inline void StubBuilder::SetProtoTransRootHClassToFunction(GateRef glue, GateRef object, GateRef hclass,
-                                                           MemoryAttribute mAttr)
-{
-    GateRef offset = IntPtr(JSFunction::PROTO_TRANS_ROOT_HCLASS_OFFSET);
-    Store(VariableType::JS_ANY(), glue, object, offset, hclass, mAttr);
-}
-
 inline void StubBuilder::SetProtoOrHClassToFunction(GateRef glue, GateRef function, GateRef value,
                                                     MemoryAttribute mAttr)
 {
