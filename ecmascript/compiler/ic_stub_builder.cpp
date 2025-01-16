@@ -15,6 +15,8 @@
 #include "ecmascript/compiler/ic_stub_builder.h"
 
 #include "ecmascript/compiler/builtins/builtins_typedarray_stub_builder.h"
+#include "ecmascript/compiler/rt_call_signature.h"
+#include "ecmascript/compiler/stub_builder-inl.h"
 #include "ecmascript/ic/mega_ic_cache.h"
 
 namespace panda::ecmascript::kungfu {
@@ -30,22 +32,57 @@ void ICStubBuilder::NamedICAccessorWithMega(Variable *cachedHandler, Label *tryI
         // must be a hole, thus no checks are performed
         Label exit(env);
         Label find(env);
+        Label findSecond(env);
+        Label trySecondary(env);
         GateRef hclass = LoadHClass(glue_, receiver_);
         GateRef hash = HashFromHclassAndStringKey(glue_, hclass, propKey_);
         GateRef prop = PtrAdd(megaStubCache_,
                               PtrMul(ZExtInt32ToPtr(hash), IntPtr(MegaICCache::PropertyKey::GetPropertyKeySize())));
         GateRef propHclass =
             Load(VariableType::JS_POINTER(), glue_, prop, IntPtr(MegaICCache::PropertyKey::GetHclassOffset()));
-        GateRef propKey = Load(VariableType::JS_ANY(), glue_, prop, IntPtr(MegaICCache::PropertyKey::GetKeyOffset()));
+        GateRef propKey =
+            Load(VariableType::JS_ANY(), glue_, prop,
+                 IntPtr(MegaICCache::PropertyKey::GetKeyOffset()));
         GateRef hclassIsEqual = IntPtrEqual(hclass, propHclass);
         GateRef keyIsEqual = IntPtrEqual(propKey_, propKey);
+
         // profiling code
         IncMegaProbeCount(glue_);
-        BRANCH_LIKELY(BitAnd(hclassIsEqual, keyIsEqual), &find, slowPath_);
+        BRANCH_LIKELY(BitAnd(hclassIsEqual, keyIsEqual), &find, &trySecondary);
         Bind(&find);
         {
             cachedHandler->WriteVariable(
                 Load(VariableType::JS_ANY(), glue_, prop, IntPtr(MegaICCache::PropertyKey::GetResultsOffset())));
+            // profiling code
+            IncMegaHitCount(glue_);
+            Jump(tryICHandler);
+        }
+        Bind(&trySecondary);
+        {
+            GateRef secondaryHash = HashSecondaryFromHclassAndStringKey(glue_, hclass, propKey_);
+            GateRef secondaryArray = PtrAdd(
+                megaStubCache_, IntPtr(MegaICCache::GetSecondaryOffset()));
+            GateRef secondaryProp = PtrAdd(
+                secondaryArray,
+                PtrMul(ZExtInt32ToPtr(secondaryHash),
+                       IntPtr(MegaICCache::PropertyKey::GetPropertyKeySize())));
+            GateRef secondaryHclass =
+                Load(VariableType::JS_POINTER(), glue_, secondaryProp,
+                     IntPtr(MegaICCache::PropertyKey::GetHclassOffset()));
+            GateRef secondaryKey =
+                Load(VariableType::JS_ANY(), glue_, secondaryProp,
+                     IntPtr(MegaICCache::PropertyKey::GetKeyOffset()));
+            GateRef secondaryHclassIsEqual =
+                IntPtrEqual(hclass, secondaryHclass);
+            GateRef secondaryKeyIsEqual = IntPtrEqual(propKey_, secondaryKey);
+            cachedHandler->WriteVariable(
+                Load(VariableType::JS_ANY(), glue_, secondaryProp,
+                     IntPtr(MegaICCache::PropertyKey::GetResultsOffset())));
+            BRANCH_LIKELY(BitAnd(secondaryHclassIsEqual, secondaryKeyIsEqual),
+                          &findSecond, slowPath_);
+        }
+        Bind(&findSecond);
+        {
             // profiling code
             IncMegaHitCount(glue_);
             Jump(tryICHandler);

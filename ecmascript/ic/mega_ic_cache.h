@@ -34,26 +34,40 @@ public:
         Load,
         Store,
     };
-    inline JSTaggedValue Get(JSHClass *jsHclass, JSTaggedValue key)
+    JSTaggedValue Get(JSHClass *jsHclass, JSTaggedValue key)
     {
-        int hash = Hash(jsHclass, key);
-        PropertyKey &prop = keys_[hash];
+        int hash = PrimaryHash(jsHclass, key);
+        PropertyKey &prop = primary_[hash];
         if ((prop.hclass_ == jsHclass) && (prop.key_ == key)) {
-            return keys_[hash].results_;
+            return primary_[hash].results_;
+        }
+        int secondaryHash = SecondaryHash(jsHclass, key);
+        PropertyKey &secondaryProp = secondary_[secondaryHash];
+        if ((secondaryProp.hclass_ == jsHclass) && (secondaryProp.key_ == key)) {
+            return secondary_[secondaryHash].results_;
         }
         return NOT_FOUND;
     }
     void Set(JSHClass *jsHclass, JSTaggedValue key, JSTaggedValue handler, JSThread* thread);
     inline void Clear()
     {
-        for (auto &key : keys_) {
+        for (auto &key : primary_) {
+            key.hclass_ = nullptr;
+            key.key_ = JSTaggedValue::Hole();
+        }
+        for (auto &key : secondary_) {
             key.hclass_ = nullptr;
             key.key_ = JSTaggedValue::Hole();
         }
     }
-    inline bool IsCleared() const
+    bool IsCleared() const
     {
-        for (auto &key : keys_) {
+        for (auto &key : primary_) {
+            if (key.hclass_ != nullptr) {
+                return false;
+            }
+        }
+        for (auto &key : secondary_) {
             if (key.hclass_ != nullptr) {
                 return false;
             }
@@ -61,9 +75,37 @@ public:
         return true;
     }
 
+    bool PrintLoadFactor() const
+    {
+        int tot = 0;
+        for (auto &key : primary_) {
+            if (key.hclass_ != nullptr) {
+                tot++;
+            }
+        }
+        LOG_JIT(INFO) << "PrimaryTable LoadFactor:" << (double)tot / PRIMARY_LENGTH;
+        tot = 0;
+        for (auto &key : secondary_) {
+            if (key.hclass_ != nullptr) {
+                tot++;
+            }
+        }
+        LOG_JIT(INFO) << "SecondaryTable LoadFactor:" << (double)tot / SECONDARY_LENGTH;
+
+        return true;
+    }
+
     void Iterate(RootVisitor &v)
     {
-        for (auto &key : keys_) {
+        for (auto &key : primary_) {
+            if (key.hclass_ != nullptr) {
+                auto value = JSTaggedValue::Cast(key.hclass_);
+                v.VisitRoot(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&(value))));
+            }
+            v.VisitRoot(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&(key.key_))));
+            v.VisitRoot(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&(key.results_))));
+        }
+        for (auto &key : secondary_) {
             if (key.hclass_ != nullptr) {
                 auto value = JSTaggedValue::Cast(key.hclass_);
                 v.VisitRoot(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&(value))));
@@ -72,10 +114,19 @@ public:
             v.VisitRoot(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&(key.results_))));
         }
     }
+
+    static size_t GetSecondaryOffset()
+    {
+        return sizeof(PropertyKey) * PRIMARY_LENGTH;
+    }
+
     constexpr static const JSTaggedValue NOT_FOUND = JSTaggedValue::Hole();
-    static const uint32_t CACHE_LENGTH_BIT = 10;
-    static const uint32_t CACHE_LENGTH = (1U << CACHE_LENGTH_BIT);
-    static const uint32_t CACHE_LENGTH_MASK = CACHE_LENGTH - 1;
+    static const uint32_t PRIMARY_LENGTH_BIT = 10;
+    static const uint32_t PRIMARY_LENGTH = (1U << PRIMARY_LENGTH_BIT);
+    static const uint32_t PRIMARY_LENGTH_MASK = PRIMARY_LENGTH - 1;
+    static const uint32_t SECONDARY_LENGTH_BIT = 9;
+    static const uint32_t SECONDARY_LENGTH = (1U << SECONDARY_LENGTH_BIT);
+    static const uint32_t SECONDARY_LENGTH_MASK = SECONDARY_LENGTH - 1;
     static const uint32_t HCLASS_SHIFT = 3;
     struct PropertyKey : public base::AlignedStruct<JSTaggedValue::TaggedTypeSize(),
                                                     base::AlignedPointer,
@@ -116,23 +167,41 @@ public:
 private:
     MegaICCache()
     {
-        for (uint32_t i = 0; i < CACHE_LENGTH; ++i) {
-            keys_[i].hclass_ = nullptr;
-            keys_[i].key_ = JSTaggedValue::Hole();
-            keys_[i].results_ = NOT_FOUND;
+        for (uint32_t i = 0; i < PRIMARY_LENGTH; ++i) {
+            primary_[i].hclass_ = nullptr;
+            primary_[i].key_ = JSTaggedValue::Hole();
+            primary_[i].results_ = NOT_FOUND;
+        }
+        for (uint32_t i = 0; i < SECONDARY_LENGTH; ++i) {
+            secondary_[i].hclass_ = nullptr;
+            secondary_[i].key_ = JSTaggedValue::Hole();
+            secondary_[i].results_ = NOT_FOUND;
         }
     }
     ~MegaICCache() = default;
 
     // NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init)
-    static inline int Hash(JSHClass *cls, JSTaggedValue key)
+    static inline int PrimaryHash(JSHClass *cls, JSTaggedValue key)
     {
-        uint32_t clsHash = static_cast<uint32_t>(reinterpret_cast<uintptr_t>(cls)) >> HCLASS_SHIFT; // skip 8bytes
+        uint32_t clsHash = static_cast<uint32_t>(
+            reinterpret_cast<uintptr_t>(cls) ^
+            (reinterpret_cast<uintptr_t>(cls) >> PRIMARY_LENGTH_BIT));
         uint32_t keyHash = key.GetStringKeyHashCode();
-        uint32_t hash = (clsHash * 31) ^ ((keyHash * 0x9e3779b9) ^ (keyHash >> 16));
-        return static_cast<int>((hash) & CACHE_LENGTH_MASK);
+        uint32_t hash = clsHash + keyHash;
+        return static_cast<int>((hash) & PRIMARY_LENGTH_MASK);
     }
-    PropertyKey keys_[CACHE_LENGTH];
+
+    static inline int SecondaryHash(JSHClass *cls, JSTaggedValue key)
+    {
+        uint32_t clsHash = static_cast<uint32_t>(reinterpret_cast<uintptr_t>(cls)) >> HCLASS_SHIFT;  // skip 8bytes
+        uint32_t keyHash = static_cast<uint32_t>(key.GetRawData());
+        uint32_t hash = clsHash + keyHash;
+        hash = hash + (hash >> SECONDARY_LENGTH_BIT);
+        return static_cast<int>((hash) & SECONDARY_LENGTH_MASK);
+    }
+
+    PropertyKey primary_[PRIMARY_LENGTH];
+    PropertyKey secondary_[SECONDARY_LENGTH];
 
     friend class JSThread;
 };

@@ -14,17 +14,27 @@
  */
  
 #include "ecmascript/ic/mega_ic_cache.h"
+#include "ecmascript/js_tagged_value.h"
 #include "ecmascript/js_thread.h"
 
 namespace panda::ecmascript {
 void MegaICCache::Set(JSHClass *jsHclass, JSTaggedValue key, JSTaggedValue handler,
                       [[maybe_unused]] JSThread *thread)
 {
-    int hash = Hash(jsHclass, key);
-    PropertyKey &prop = keys_[hash];
-    prop.hclass_ = jsHclass;
-    prop.key_ = key;
-    keys_[hash].results_ = handler;
+    int hash = PrimaryHash(jsHclass, key);
+    PropertyKey &primaryProp = primary_[hash];
+    if (primaryProp.key_ != JSTaggedValue::Hole()) {
+        JSHClass* oldHclass = primaryProp.hclass_;
+        JSTaggedValue oldKey = primaryProp.key_;
+        int secondaryHash = SecondaryHash(oldHclass, oldKey);
+        PropertyKey &secondaryProp = secondary_[secondaryHash];
+        secondaryProp.hclass_ = oldHclass;
+        secondaryProp.key_ = oldKey;
+        secondaryProp.results_ = primaryProp.results_;
+    }
+    primaryProp.hclass_ = jsHclass;
+    primaryProp.key_ = key;
+    primaryProp.results_ = handler;
 #if ECMASCRIPT_ENABLE_MEGA_PROFILER
         thread->IncMegaUpdateCount();
 #endif
