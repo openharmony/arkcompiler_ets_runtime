@@ -80,7 +80,7 @@ public:
             minSemiSpaceSize_ = 2_MB;
             maxSemiSpaceSize_ = 4_MB;
             defaultReadOnlySpaceSize_ = 256_KB;
-            defaultNonMovableSpaceSize_ = 2_MB;
+            defaultNonMovableSpaceSize_ = 4_MB;
             defaultSnapshotSpaceSize_ = 512_KB;
             defaultMachineCodeSpaceSize_ = 2_MB;
             defaultGlobalAllocLimit_ = 20_MB;
@@ -93,7 +93,7 @@ public:
             minAllocLimitGrowingStep_ = 2_MB;
             minNativeLimitGrowingStep_ = 16_MB;
             minGrowingStep_ = 4_MB;
-            maxStackSize_ = 128_KB;
+            maxStackSize_ = 64_KB;
             maxJSSerializerSize_ = 8_MB;
             sharedHeapLimitGrowingFactor_ = 2; // 2: growing factor
             sharedHeapLimitGrowingStep_ = 20_MB;
