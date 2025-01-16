@@ -1,18 +1,7 @@
 # Known failure list for ut - release - qemu - ets_runtime
-#20980
-obj/arkcompiler/ets_runtime/test/aottest/builtin_inlining/map/Delete/builtinMapDelete
-
-#20896
-obj/arkcompiler/ets_runtime/test/aottest/builtin_inlining/math/Ceil/builtinMathCeil
 
 #21801
 obj/arkcompiler/ets_runtime/test/aottest/builtin_inlining/math/Ceil/builtinMathCeilContext
 
-#20981
-obj/arkcompiler/ets_runtime/test/aottest/builtin_inlining/map/Delete/builtinMapDeleteContext
-
 #20471
 obj/arkcompiler/ets_runtime/test/aottest/builtin_inlining/set/Delete/builtinSetDelete
-
-#21629
-obj/arkcompiler/ets_runtime/test/aottest/builtin_inlining/set/Delete/builtinSetDeleteContext
