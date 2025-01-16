@@ -1034,8 +1034,7 @@ JSHandle<JSObject> ObjectFactory::NewJSError(const ErrorType &errorType, const J
         EcmaInterpreter::NewRuntimeCallInfo(thread_, nativeConstructor, nativePrototype, undefined, 1, needCheckStack);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSObject, thread_);
     info->SetCallArg(message.GetTaggedValue());
-    Method *method = JSHandle<ECMAObject>::Cast(nativeConstructor)->GetCallTarget();
-    JSTaggedValue obj = reinterpret_cast<EcmaEntrypoint>(const_cast<void *>(method->GetNativePointer()))(info);
+    JSTaggedValue obj = reinterpret_cast<EcmaEntrypoint>(nativeFunc->GetNativePointer())(info);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSObject, thread_);
     JSHandle<JSObject> handleNativeInstanceObj(thread_, obj);
     auto sp = const_cast<JSTaggedType *>(thread_->GetCurrentSPFrame());
@@ -1831,18 +1830,8 @@ JSHandle<JSObject> ObjectFactory::OrdinaryNewJSObjectCreate(const JSHandle<JSTag
     return newObj;
 }
 
-JSHandle<JSFunction> ObjectFactory::NewJSFunction(const JSHandle<GlobalEnv> &env, const void *nativeFunc,
-                                                  FunctionKind kind, kungfu::BuiltinsStubCSigns::ID builtinId,
-                                                  MemSpaceType methodSpaceType)
+JSHandle<JSHClass> ObjectFactory::GetHClassByFunctionKind(const JSHandle<GlobalEnv> &env, FunctionKind kind)
 {
-    JSHandle<Method> target = NewMethodForNativeFunction(nativeFunc, kind, builtinId, methodSpaceType);
-    return NewJSFunction(env, target);
-}
-
-JSHandle<JSFunction> ObjectFactory::NewJSFunction(const JSHandle<GlobalEnv> &env,
-                                                  const JSHandle<Method> &method)
-{
-    FunctionKind kind = method->GetFunctionKind();
     JSHandle<JSHClass> hclass;
     if (kind == FunctionKind::BASE_CONSTRUCTOR) {
         hclass = JSHandle<JSHClass>::Cast(env->GetFunctionClassWithProto());
@@ -1853,7 +1842,26 @@ JSHandle<JSFunction> ObjectFactory::NewJSFunction(const JSHandle<GlobalEnv> &env
     } else {
         hclass = JSHandle<JSHClass>::Cast(env->GetNormalFunctionClass());
     }
+    return hclass;
+}
 
+JSHandle<JSFunction> ObjectFactory::NewJSFunction(const JSHandle<GlobalEnv> &env, const void *nativeFunc,
+                                                  FunctionKind kind, kungfu::BuiltinsStubCSigns::ID builtinId,
+                                                  MemSpaceType methodSpaceType)
+{
+    JSHandle<JSHClass> hclass = GetHClassByFunctionKind(env, kind);
+    if (builtinId != kungfu::BuiltinsStubCSigns::INVALID) {
+        JSHandle<Method> method = NewMethodForNativeFunction(nativeFunc, kind, builtinId, methodSpaceType);
+        return NewJSFunctionByHClass(method, hclass);
+    }
+    return NewNativeFunctionByHClass(hclass, nativeFunc, kind);
+}
+
+JSHandle<JSFunction> ObjectFactory::NewJSFunction(const JSHandle<GlobalEnv> &env,
+                                                  const JSHandle<Method> &method)
+{
+    FunctionKind kind = method->GetFunctionKind();
+    JSHandle<JSHClass> hclass = GetHClassByFunctionKind(env, kind);
     return NewJSFunctionByHClass(method, hclass);
 }
 
@@ -1863,10 +1871,12 @@ JSHandle<JSFunction> ObjectFactory::NewSFunction(const JSHandle<GlobalEnv> &env,
                                                  kungfu::BuiltinsStubCSigns::ID builtinId,
                                                  MemSpaceType spaceType)
 {
-    JSHandle<Method> method = NewSMethodForNativeFunction(nativeFunc, kind, builtinId, spaceType);
     JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetSFunctionClassWithoutProto());
-    JSHandle<JSFunction> sfunc = NewSFunctionByHClass(method, hclass);
-    return sfunc;
+    if (builtinId != kungfu::BuiltinsStubCSigns::INVALID) {
+        JSHandle<Method> method = NewSMethodForNativeFunction(nativeFunc, kind, builtinId, spaceType);
+        return NewSFunctionByHClass(method, hclass);
+    }
+    return NewNativeSFunctionByHClass(hclass, nativeFunc, kind);
 }
 
 JSHandle<JSHClass> ObjectFactory::CreateFunctionClass(FunctionKind kind, uint32_t size, JSType type,
@@ -2022,9 +2032,9 @@ JSHandle<JSHClass> ObjectFactory::CreateDefaultClassConstructorHClass(JSHClass *
     return defaultHclass;
 }
 
-void ObjectFactory::SetCodeEntryToFunctionFromMethod(const JSHandle<JSFunction> &func, const JSHandle<Method> &mothed)
+void ObjectFactory::SetCodeEntryToFunctionFromMethod(const JSHandle<JSFunction> &func, const JSHandle<Method> &method)
 {
-    uintptr_t entry = mothed->GetCodeEntryOrLiteral();
+    uintptr_t entry = method->GetCodeEntryOrLiteral();
     func->SetCodeEntry(entry);
 }
 
@@ -2052,7 +2062,9 @@ JSHandle<JSFunction> ObjectFactory::NewJSFunctionByHClass(const JSHandle<Method>
     JSFunction::InitializeJSFunction(thread_, function, method->GetFunctionKind());
     function->SetMethod(thread_, method);
     function->SetTaskConcurrentFuncFlag(0); // 0 : default value
-    if (method->IsAotWithCallField()) {
+    if (method->IsNativeWithCallField()) {
+        SetNativePointerToFunctionFromMethod(JSHandle<JSFunctionBase>::Cast(function), method);
+    } else if (method->IsAotWithCallField()) {
         thread_->GetEcmaVM()->GetAOTFileManager()->
             SetAOTFuncEntry(method->GetJSPandaFile(), *function, *method);
     } else {
@@ -2061,15 +2073,102 @@ JSHandle<JSFunction> ObjectFactory::NewJSFunctionByHClass(const JSHandle<Method>
     return function;
 }
 
+JSTaggedValue ObjectFactory::GetReadOnlyMethodForNativeFunction(FunctionKind kind)
+{
+    size_t constantIndex;
+    switch (kind) {
+        case FunctionKind::NORMAL_FUNCTION:
+            constantIndex = static_cast<size_t>(ConstantIndex::NATIVE_NORMAL_FUNCTION_METHOD_INDEX);
+            break;
+        case FunctionKind::GETTER_FUNCTION:
+            constantIndex = static_cast<size_t>(ConstantIndex::NATIVE_GETTER_FUNCTION_METHOD_INDEX);
+            break;
+        case FunctionKind::SETTER_FUNCTION:
+            constantIndex = static_cast<size_t>(ConstantIndex::NATIVE_SETTER_FUNCTION_METHOD_INDEX);
+            break;
+        case FunctionKind::ARROW_FUNCTION:
+            constantIndex = static_cast<size_t>(ConstantIndex::NATIVE_ARROW_FUNCTION_METHOD_INDEX);
+            break;
+        case FunctionKind::ASYNC_ARROW_FUNCTION:
+            constantIndex = static_cast<size_t>(ConstantIndex::NATIVE_ASYNC_ARROW_FUNCTION_METHOD_INDEX);
+            break;
+        case FunctionKind::CONCURRENT_FUNCTION:
+            constantIndex = static_cast<size_t>(ConstantIndex::NATIVE_CONCURRENT_FUNCTION_METHOD_INDEX);
+            break;
+        case FunctionKind::ASYNC_FUNCTION:
+            constantIndex = static_cast<size_t>(ConstantIndex::NATIVE_ASYNC_FUNCTION_METHOD_INDEX);
+            break;
+        case FunctionKind::BASE_CONSTRUCTOR:
+            constantIndex = static_cast<size_t>(ConstantIndex::NATIVE_BASE_CONSTRUCTOR_METHOD_INDEX);
+            break;
+        case FunctionKind::CLASS_CONSTRUCTOR:
+            constantIndex = static_cast<size_t>(ConstantIndex::NATIVE_CLASS_CONSTRUCTOR_METHOD_INDEX);
+            break;
+        case FunctionKind::BUILTIN_PROXY_CONSTRUCTOR:
+            constantIndex = static_cast<size_t>(ConstantIndex::NATIVE_BUILTIN_PROXY_CONSTRUCTOR_METHOD_INDEX);
+            break;
+        case FunctionKind::BUILTIN_CONSTRUCTOR:
+            constantIndex = static_cast<size_t>(ConstantIndex::NATIVE_BUILTIN_CONSTRUCTOR_METHOD_INDEX);
+            break;
+        case FunctionKind::DERIVED_CONSTRUCTOR:
+            constantIndex = static_cast<size_t>(ConstantIndex::NATIVE_DERIVED_CONSTRUCTOR_METHOD_INDEX);
+            break;
+        case FunctionKind::GENERATOR_FUNCTION:
+            constantIndex = static_cast<size_t>(ConstantIndex::NATIVE_GENERATOR_FUNCTION_METHOD_INDEX);
+            break;
+        case FunctionKind::NONE_FUNCTION:
+            constantIndex = static_cast<size_t>(ConstantIndex::NATIVE_NONE_FUNCTION_METHOD_INDEX);
+            break;
+        case FunctionKind::ASYNC_GENERATOR_FUNCTION:
+            constantIndex = static_cast<size_t>(ConstantIndex::NATIVE_ASYNC_GENERATOR_FUNCTION_METHOD_INDEX);
+            break;
+        default:
+            LOG_ECMA(FATAL) << "cannot get method for native function of kind "
+                << std::to_string(static_cast<int>(kind));
+            UNREACHABLE();
+    }
+    JSTaggedValue methodValue = thread_->GlobalConstants()->GetGlobalConstantObject(constantIndex);
+    return methodValue;
+}
+
+JSHandle<JSFunction> ObjectFactory::NewNativeFunctionByHClass(const JSHandle<JSHClass> &clazz,
+                                                              const void *nativeFunc,
+                                                              FunctionKind kind,
+                                                              MemSpaceType type)
+{
+    JSHandle<JSFunction> function;
+    switch (type) {
+        case MemSpaceType::SEMI_SPACE:
+            function = JSHandle<JSFunction>::Cast(NewJSObject(clazz));
+            break;
+        case MemSpaceType::OLD_SPACE:
+            function = JSHandle<JSFunction>::Cast(NewOldSpaceJSObject(clazz));
+            break;
+        case MemSpaceType::NON_MOVABLE:
+            function = JSHandle<JSFunction>::Cast(NewNonMovableJSObject(clazz));
+            break;
+        default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
+            UNREACHABLE();
+    }
+    clazz->SetCallable(true);
+    clazz->SetExtensible(true);
+    JSFunction::InitializeJSFunction(thread_, function, kind);
+    function->SetMethod(thread_, GetReadOnlyMethodForNativeFunction(kind));
+    function->SetNativePointer(const_cast<void *>(nativeFunc));
+    function->SetTaskConcurrentFuncFlag(0); // 0 : default value
+    return function;
+}
+
 JSHandle<JSFunction> ObjectFactory::NewJSFunctionByHClass(const void *func, const JSHandle<JSHClass> &clazz,
                                                           FunctionKind kind)
 {
-    JSHandle<Method> method = NewMethodForNativeFunction(func, kind);
     JSHandle<JSFunction> function = JSHandle<JSFunction>::Cast(NewJSObject(clazz));
     clazz->SetCallable(true);
     clazz->SetExtensible(true);
     JSFunction::InitializeJSFunction(thread_, function, kind);
-    function->SetMethod(thread_, method);
+    function->SetMethod(thread_, GetReadOnlyMethodForNativeFunction(kind));
+    function->SetNativePointer(const_cast<void *>(func));
     return function;
 }
 
@@ -2077,12 +2176,12 @@ JSHandle<JSFunction> ObjectFactory::NewJSFunctionByHClass(const void *func, cons
 JSHandle<JSFunction> ObjectFactory::NewJSFunctionByHClassWithoutAccessor(const void *func,
     const JSHandle<JSHClass> &clazz, FunctionKind kind)
 {
-    JSHandle<Method> method = NewMethodForNativeFunction(func, kind);
     JSHandle<JSFunction> function = JSHandle<JSFunction>::Cast(NewJSObject(clazz));
     clazz->SetCallable(true);
     clazz->SetExtensible(true);
     JSFunction::InitializeWithDefaultValue(thread_, function);
-    function->SetMethod(thread_, method);
+    function->SetMethod(thread_, GetReadOnlyMethodForNativeFunction(kind));
+    function->SetNativePointer(const_cast<void *>(func));
     return function;
 }
 
@@ -2144,18 +2243,20 @@ JSHandle<Method> ObjectFactory::NewMethod(const JSPandaFile *jsPandaFile, Method
 
 JSHandle<JSFunction> ObjectFactory::NewJSNativeErrorFunction(const JSHandle<GlobalEnv> &env, const void *nativeFunc)
 {
-    JSHandle<Method> target = NewMethodForNativeFunction(nativeFunc, FunctionKind::BUILTIN_CONSTRUCTOR);
     JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetNativeErrorFunctionClass());
-    return NewJSFunctionByHClass(target, hclass);
+    return NewNativeFunctionByHClass(hclass, nativeFunc, FunctionKind::BUILTIN_CONSTRUCTOR);
 }
 
 JSHandle<JSFunction> ObjectFactory::NewSpecificTypedArrayFunction(const JSHandle<GlobalEnv> &env,
                                                                   const void *nativeFunc,
                                                                   kungfu::BuiltinsStubCSigns::ID builtinId)
 {
-    JSHandle<Method> target = NewMethodForNativeFunction(nativeFunc, FunctionKind::BUILTIN_CONSTRUCTOR, builtinId);
     JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetSpecificTypedArrayFunctionClass());
-    return NewJSFunctionByHClass(target, hclass);
+    if (builtinId != kungfu::BuiltinsStubCSigns::INVALID) {
+        JSHandle<Method> method = NewMethodForNativeFunction(nativeFunc, FunctionKind::BUILTIN_CONSTRUCTOR, builtinId);
+        return NewJSFunctionByHClass(method, hclass);
+    }
+    return NewNativeFunctionByHClass(hclass, nativeFunc, FunctionKind::BUILTIN_CONSTRUCTOR);
 }
 
 JSHandle<JSFunction> ObjectFactory::NewAotFunction(uint32_t numArgs, uintptr_t codeEntry)
@@ -2168,6 +2269,13 @@ JSHandle<JSFunction> ObjectFactory::NewAotFunction(uint32_t numArgs, uintptr_t c
     method->SetCodeEntryOrLiteral(codeEntry);
     JSHandle<JSFunction> jsfunc = NewJSFunction(env, method);
     return jsfunc;
+}
+
+void ObjectFactory::SetNativePointerToFunctionFromMethod(const JSHandle<JSFunctionBase> &func,
+                                                         const JSHandle<Method> &method)
+{
+    void *nativePointer = const_cast<void *>(method->GetNativePointer());
+    func->SetNativePointer(nativePointer);
 }
 
 JSHandle<JSBoundFunction> ObjectFactory::NewJSBoundFunction(const JSHandle<JSTaggedValue> &target,
@@ -2194,7 +2302,9 @@ JSHandle<JSBoundFunction> ObjectFactory::NewJSBoundFunction(const JSHandle<JSTag
     if (target.GetTaggedValue().IsConstructor()) {
         bundleFunction->SetConstructor(true);
     }
-    bundleFunction->SetMethod(thread_, vm_->GetMethodByIndex(MethodIndex::BUILTINS_GLOBAL_CALL_JS_BOUND_FUNCTION));
+    JSHandle<Method> method(thread_, vm_->GetMethodByIndex(MethodIndex::BUILTINS_GLOBAL_CALL_JS_BOUND_FUNCTION));
+    bundleFunction->SetMethod(thread_, method);
+    SetNativePointerToFunctionFromMethod(JSHandle<JSFunctionBase>::Cast(bundleFunction), method);
     return bundleFunction;
 }
 
@@ -2209,7 +2319,9 @@ JSHandle<JSIntlBoundFunction> ObjectFactory::NewJSIntlBoundFunction(MethodIndex 
     intlBoundFunc->SetCollator(thread_, JSTaggedValue::Undefined());
     JSHandle<JSFunction> function = JSHandle<JSFunction>::Cast(intlBoundFunc);
     JSFunction::InitializeJSFunction(thread_, function);
-    function->SetMethod(thread_, vm_->GetMethodByIndex(idx));
+    JSHandle<Method> method(thread_, vm_->GetMethodByIndex(idx));
+    function->SetMethod(thread_, method);
+    SetNativePointerToFunctionFromMethod(JSHandle<JSFunctionBase>::Cast(function), method);
     JSFunction::SetFunctionLength(thread_, function, JSTaggedValue(functionLength));
     const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
     JSHandle<JSTaggedValue> emptyString = globalConst->GetHandledEmptyString();
@@ -2231,7 +2343,9 @@ JSHandle<JSProxyRevocFunction> ObjectFactory::NewJSProxyRevocFunction(const JSHa
     revocFunction->SetRevocableProxy(thread_, proxy);
     JSHandle<JSFunction> function = JSHandle<JSFunction>::Cast(revocFunction);
     JSFunction::InitializeJSFunction(thread_, function);
-    function->SetMethod(thread_, vm_->GetMethodByIndex(MethodIndex::BUILTINS_PROXY_INVALIDATE_PROXY_FUNCTION));
+    JSHandle<Method> method(thread_, vm_->GetMethodByIndex(MethodIndex::BUILTINS_PROXY_INVALIDATE_PROXY_FUNCTION));
+    function->SetMethod(thread_, method);
+    SetNativePointerToFunctionFromMethod(JSHandle<JSFunctionBase>::Cast(function), method);
     JSFunction::SetFunctionLength(thread_, function, JSTaggedValue(0));
     JSHandle<JSTaggedValue> emptyString = globalConst->GetHandledEmptyString();
     JSHandle<JSTaggedValue> nameKey = globalConst->GetHandledNameString();
@@ -2250,7 +2364,9 @@ JSHandle<JSAsyncAwaitStatusFunction> ObjectFactory::NewJSAsyncAwaitStatusFunctio
         JSHandle<JSAsyncAwaitStatusFunction>::Cast(NewJSObject(hclass));
     awaitFunction->SetAsyncContext(thread_, JSTaggedValue::Undefined());
     JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>::Cast(awaitFunction));
-    awaitFunction->SetMethod(thread_, vm_->GetMethodByIndex(idx));
+    JSHandle<Method> method(thread_, vm_->GetMethodByIndex(idx));
+    awaitFunction->SetMethod(thread_, method);
+    SetNativePointerToFunctionFromMethod(JSHandle<JSFunctionBase>::Cast(awaitFunction), method);
     return awaitFunction;
 }
 
@@ -3661,7 +3777,9 @@ JSHandle<JSPromiseReactionsFunction> ObjectFactory::CreateJSPromiseReactionsFunc
     reactionsFunction->SetAlreadyResolved(thread_, JSTaggedValue::Hole());
     JSHandle<JSFunction> function = JSHandle<JSFunction>::Cast(reactionsFunction);
     JSFunction::InitializeJSFunction(thread_, function);
-    reactionsFunction->SetMethod(thread_, vm_->GetMethodByIndex(idx));
+    JSHandle<Method> method(thread_, vm_->GetMethodByIndex(idx));
+    reactionsFunction->SetMethod(thread_, method);
+    SetNativePointerToFunctionFromMethod(JSHandle<JSFunctionBase>::Cast(reactionsFunction), method);
     JSFunction::SetFunctionLength(thread_, function, JSTaggedValue(1));
     return reactionsFunction;
 }
@@ -3675,8 +3793,9 @@ JSHandle<JSPromiseExecutorFunction> ObjectFactory::CreateJSPromiseExecutorFuncti
     executorFunction->SetCapability(thread_, JSTaggedValue::Undefined());
     JSHandle<JSFunction> function = JSHandle<JSFunction>::Cast(executorFunction);
     JSFunction::InitializeJSFunction(thread_, function);
-    executorFunction->SetMethod(
-        thread_, vm_->GetMethodByIndex(MethodIndex::BUILTINS_PROMISE_HANDLER_EXECUTOR));
+    JSHandle<Method> method(thread_, vm_->GetMethodByIndex(MethodIndex::BUILTINS_PROMISE_HANDLER_EXECUTOR));
+    executorFunction->SetMethod(thread_, method);
+    SetNativePointerToFunctionFromMethod(JSHandle<JSFunctionBase>::Cast(executorFunction), method);
     JSFunction::SetFunctionLength(thread_, function, JSTaggedValue(FunctionLength::TWO));
     return executorFunction;
 }
@@ -3690,8 +3809,9 @@ JSHandle<JSAsyncModuleFulfilledFunction> ObjectFactory::CreateJSAsyncModuleFulfi
     fulfilledFunction->SetModule(thread_, JSTaggedValue::Undefined());
     JSHandle<JSFunction> function = JSHandle<JSFunction>::Cast(fulfilledFunction);
     JSFunction::InitializeJSFunction(thread_, function);
-    fulfilledFunction->SetMethod(
-        thread_, vm_->GetMethodByIndex(MethodIndex::BUILTINS_ASYNC_MODULE_FULFILLED_FUNCTION));
+    JSHandle<Method> method(thread_, vm_->GetMethodByIndex(MethodIndex::BUILTINS_ASYNC_MODULE_FULFILLED_FUNCTION));
+    fulfilledFunction->SetMethod(thread_, method);
+    SetNativePointerToFunctionFromMethod(JSHandle<JSFunctionBase>::Cast(fulfilledFunction), method);
     JSFunction::SetFunctionLength(thread_, function, JSTaggedValue(FunctionLength::ONE));
     return fulfilledFunction;
 }
@@ -3705,8 +3825,9 @@ JSHandle<JSAsyncModuleRejectedFunction> ObjectFactory::CreateJSAsyncModuleReject
     rejectedFunction->SetModule(thread_, JSTaggedValue::Undefined());
     JSHandle<JSFunction> function = JSHandle<JSFunction>::Cast(rejectedFunction);
     JSFunction::InitializeJSFunction(thread_, function);
-    rejectedFunction->SetMethod(
-        thread_, vm_->GetMethodByIndex(MethodIndex::BUILTINS_ASYNC_MODULE_REJECTED_FUNCTION));
+    JSHandle<Method> method(thread_, vm_->GetMethodByIndex(MethodIndex::BUILTINS_ASYNC_MODULE_REJECTED_FUNCTION));
+    rejectedFunction->SetMethod(thread_, method);
+    SetNativePointerToFunctionFromMethod(JSHandle<JSFunctionBase>::Cast(rejectedFunction), method);
     JSFunction::SetFunctionLength(thread_, function, JSTaggedValue(FunctionLength::ONE));
     return rejectedFunction;
 }
@@ -3718,8 +3839,10 @@ JSHandle<JSPromiseAllResolveElementFunction> ObjectFactory::NewJSPromiseAllResol
     JSHandle<JSPromiseAllResolveElementFunction> function =
         JSHandle<JSPromiseAllResolveElementFunction>::Cast(NewJSObject(hclass));
     JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>::Cast(function));
-    function->SetMethod(
-        thread_, vm_->GetMethodByIndex(MethodIndex::BUILTINS_PROMISE_HANDLER_RESOLVE_ELEMENT_FUNCTION));
+    JSHandle<Method> method(thread_,
+                            vm_->GetMethodByIndex(MethodIndex::BUILTINS_PROMISE_HANDLER_RESOLVE_ELEMENT_FUNCTION));
+    function->SetMethod(thread_, method);
+    SetNativePointerToFunctionFromMethod(JSHandle<JSFunctionBase>::Cast(function), method);
     function->SetIndex(thread_, JSTaggedValue::Undefined());
     function->SetValues(thread_, JSTaggedValue::Undefined());
     function->SetCapabilities(thread_, JSTaggedValue::Undefined());
@@ -3736,8 +3859,10 @@ JSHandle<JSPromiseAnyRejectElementFunction> ObjectFactory::NewJSPromiseAnyReject
     JSHandle<JSPromiseAnyRejectElementFunction> function =
         JSHandle<JSPromiseAnyRejectElementFunction>::Cast(NewJSObject(hclass));
     JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>::Cast(function));
-    function->SetMethod(
-        thread_, vm_->GetMethodByIndex(MethodIndex::BUILTINS_PROMISE_HANDLER_ANY_REJECT_ELEMENT_FUNCTION));
+    JSHandle<Method> method(thread_,
+                            vm_->GetMethodByIndex(MethodIndex::BUILTINS_PROMISE_HANDLER_ANY_REJECT_ELEMENT_FUNCTION));
+    function->SetMethod(thread_, method);
+    SetNativePointerToFunctionFromMethod(JSHandle<JSFunctionBase>::Cast(function), method);
     function->SetIndex(0);
     function->SetErrors(thread_, JSTaggedValue::Undefined());
     function->SetCapability(thread_, JSTaggedValue::Undefined());
@@ -3754,8 +3879,10 @@ JSHandle<JSPromiseAllSettledElementFunction> ObjectFactory::NewJSPromiseAllSettl
     JSHandle<JSPromiseAllSettledElementFunction> function =
         JSHandle<JSPromiseAllSettledElementFunction>::Cast(NewJSObject(hclass));
     JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>::Cast(function));
-    function->SetMethod(thread_,
+    JSHandle<Method> method(thread_,
         vm_->GetMethodByIndex(MethodIndex::BUILTINS_PROMISE_HANDLER_ALL_SETTLED_RESOLVE_ELEMENT_FUNCTION));
+    function->SetMethod(thread_, method);
+    SetNativePointerToFunctionFromMethod(JSHandle<JSFunctionBase>::Cast(function), method);
     function->SetIndex(0);
     function->SetValues(thread_, JSTaggedValue::Undefined());
     function->SetCapability(thread_, JSTaggedValue::Undefined());
@@ -3772,8 +3899,10 @@ JSHandle<JSPromiseAllSettledElementFunction> ObjectFactory::NewJSPromiseAllSettl
     JSHandle<JSPromiseAllSettledElementFunction> function =
         JSHandle<JSPromiseAllSettledElementFunction>::Cast(NewJSObject(hclass));
     JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>::Cast(function));
-    function->SetMethod(thread_,
+    JSHandle<Method> method(thread_,
         vm_->GetMethodByIndex(MethodIndex::BUILTINS_PROMISE_HANDLER_ALL_SETTLED_REJECT_ELEMENT_FUNCTION));
+    function->SetMethod(thread_, method);
+    SetNativePointerToFunctionFromMethod(JSHandle<JSFunctionBase>::Cast(function), method);
     function->SetIndex(0);
     function->SetValues(thread_, JSTaggedValue::Undefined());
     function->SetCapability(thread_, JSTaggedValue::Undefined());
@@ -3790,7 +3919,10 @@ JSHandle<JSPromiseFinallyFunction> ObjectFactory::NewJSPromiseThenFinallyFunctio
     JSHandle<JSPromiseFinallyFunction> function =
         JSHandle<JSPromiseFinallyFunction>::Cast(NewJSObject(hclass));
     JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>::Cast(function));
-    function->SetMethod(thread_, vm_->GetMethodByIndex(MethodIndex::BUILTINS_PROMISE_HANDLER_THEN_FINALLY_FUNCTION));
+    JSHandle<Method> method(thread_,
+                            vm_->GetMethodByIndex(MethodIndex::BUILTINS_PROMISE_HANDLER_THEN_FINALLY_FUNCTION));
+    function->SetMethod(thread_, method);
+    SetNativePointerToFunctionFromMethod(JSHandle<JSFunctionBase>::Cast(function), method);
     function->SetConstructor(thread_, JSTaggedValue::Undefined());
     function->SetOnFinally(thread_, JSTaggedValue::Undefined());
     JSFunction::SetFunctionLength(thread_, JSHandle<JSFunction>::Cast(function), JSTaggedValue(1));
@@ -3804,7 +3936,10 @@ JSHandle<JSPromiseFinallyFunction> ObjectFactory::NewJSPromiseCatchFinallyFuncti
     JSHandle<JSPromiseFinallyFunction> function =
         JSHandle<JSPromiseFinallyFunction>::Cast(NewJSObject(hclass));
     JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>::Cast(function));
-    function->SetMethod(thread_, vm_->GetMethodByIndex(MethodIndex::BUILTINS_PROMISE_HANDLER_CATCH_FINALLY_FUNCTION));
+    JSHandle<Method> method(thread_,
+                            vm_->GetMethodByIndex(MethodIndex::BUILTINS_PROMISE_HANDLER_CATCH_FINALLY_FUNCTION));
+    function->SetMethod(thread_, method);
+    SetNativePointerToFunctionFromMethod(JSHandle<JSFunctionBase>::Cast(function), method);
     function->SetConstructor(thread_, JSTaggedValue::Undefined());
     function->SetOnFinally(thread_, JSTaggedValue::Undefined());
     JSFunction::SetFunctionLength(thread_, JSHandle<JSFunction>::Cast(function), JSTaggedValue(1));
@@ -3819,7 +3954,10 @@ JSHandle<JSAsyncGeneratorResNextRetProRstFtn> ObjectFactory::NewJSAsyGenResNextR
     JSHandle<JSAsyncGeneratorResNextRetProRstFtn> function =
         JSHandle<JSAsyncGeneratorResNextRetProRstFtn>::Cast(NewJSObject(hclass));
     JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>::Cast(function));
-    function->SetMethod(thread_, vm_->GetMethodByIndex(MethodIndex::BUILTINS_ASYNC_GENERATOR_NEXT_FULFILLED_FUNCTION));
+    JSHandle<Method> method(thread_,
+                            vm_->GetMethodByIndex(MethodIndex::BUILTINS_ASYNC_GENERATOR_NEXT_FULFILLED_FUNCTION));
+    function->SetMethod(thread_, method);
+    SetNativePointerToFunctionFromMethod(JSHandle<JSFunctionBase>::Cast(function), method);
     function->SetAsyncGeneratorObject(thread_, JSTaggedValue::Undefined());
     JSFunction::SetFunctionLength(thread_, JSHandle<JSFunction>::Cast(function), JSTaggedValue(1));
     return function;
@@ -3832,8 +3970,9 @@ JSHandle<JSAsyncFromSyncIterUnwarpFunction> ObjectFactory::NewJSAsyncFromSyncIte
     JSHandle<JSAsyncFromSyncIterUnwarpFunction> function =
         JSHandle<JSAsyncFromSyncIterUnwarpFunction>::Cast(NewJSObject(hclass));
     JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>::Cast(function));
-    JSTaggedValue debugVaule =  vm_->GetMethodByIndex(MethodIndex::BUILTINS_ASYNC_FROM_SYNC_ITERATOR_FUNCTION);
-    function->SetMethod(thread_, debugVaule);
+    JSHandle<Method> method(thread_, vm_->GetMethodByIndex(MethodIndex::BUILTINS_ASYNC_FROM_SYNC_ITERATOR_FUNCTION));
+    function->SetMethod(thread_, method);
+    SetNativePointerToFunctionFromMethod(JSHandle<JSFunctionBase>::Cast(function), method);
     function->SetDone(thread_, JSTaggedValue::Undefined());
     JSFunction::SetFunctionLength(thread_, JSHandle<JSFunction>::Cast(function), JSTaggedValue(1));
     return function;
@@ -3847,7 +3986,10 @@ JSHandle<JSAsyncGeneratorResNextRetProRstFtn> ObjectFactory::NewJSAsyGenResNextR
     JSHandle<JSAsyncGeneratorResNextRetProRstFtn> function =
         JSHandle<JSAsyncGeneratorResNextRetProRstFtn>::Cast(NewJSObject(hclass));
     JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>::Cast(function));
-    function->SetMethod(thread_, vm_->GetMethodByIndex(MethodIndex::BUILTINS_ASYNC_GENERATOR_NEXT_REJECTED_FUNCTION));
+    JSHandle<Method> method(thread_,
+                            vm_->GetMethodByIndex(MethodIndex::BUILTINS_ASYNC_GENERATOR_NEXT_REJECTED_FUNCTION));
+    function->SetMethod(thread_, method);
+    SetNativePointerToFunctionFromMethod(JSHandle<JSFunctionBase>::Cast(function), method);
     function->SetAsyncGeneratorObject(thread_, JSTaggedValue::Undefined());
     JSFunction::SetFunctionLength(thread_, JSHandle<JSFunction>::Cast(function), JSTaggedValue(1));
     return function;
@@ -3860,7 +4002,10 @@ JSHandle<JSPromiseValueThunkOrThrowerFunction> ObjectFactory::NewJSPromiseValueT
     JSHandle<JSPromiseValueThunkOrThrowerFunction> function =
         JSHandle<JSPromiseValueThunkOrThrowerFunction>::Cast(NewJSObject(hclass));
     JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>::Cast(function));
-    function->SetMethod(thread_, vm_->GetMethodByIndex(MethodIndex::BUILTINS_PROMISE_HANDLER_VALUE_THUNK_FUNCTION));
+    JSHandle<Method> method(thread_,
+                            vm_->GetMethodByIndex(MethodIndex::BUILTINS_PROMISE_HANDLER_VALUE_THUNK_FUNCTION));
+    function->SetMethod(thread_, method);
+    SetNativePointerToFunctionFromMethod(JSHandle<JSFunctionBase>::Cast(function), method);
     function->SetResult(thread_, JSTaggedValue::Undefined());
     JSFunction::SetFunctionLength(thread_, JSHandle<JSFunction>::Cast(function), JSTaggedValue(0));
     return function;
@@ -3873,7 +4018,9 @@ JSHandle<JSPromiseValueThunkOrThrowerFunction> ObjectFactory::NewJSPromiseThrowe
     JSHandle<JSPromiseValueThunkOrThrowerFunction> function =
         JSHandle<JSPromiseValueThunkOrThrowerFunction>::Cast(NewJSObject(hclass));
     JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>::Cast(function));
-    function->SetMethod(thread_, vm_->GetMethodByIndex(MethodIndex::BUILTINS_PROMISE_HANDLER_THROWER_FUNCTION));
+    JSHandle<Method> method(thread_, vm_->GetMethodByIndex(MethodIndex::BUILTINS_PROMISE_HANDLER_THROWER_FUNCTION));
+    function->SetMethod(thread_, method);
+    SetNativePointerToFunctionFromMethod(JSHandle<JSFunctionBase>::Cast(function), method);
     function->SetResult(thread_, JSTaggedValue::Undefined());
     JSFunction::SetFunctionLength(thread_, JSHandle<JSFunction>::Cast(function), JSTaggedValue(0));
     return function;

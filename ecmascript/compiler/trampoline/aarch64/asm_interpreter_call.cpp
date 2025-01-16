@@ -95,10 +95,10 @@ void AsmInterpreterCall::AsmInterpEntryDispatch(ExtendedAssembler *assembler)
         __ Tst(bitFieldRegister,
             LogicalImmediate::Create(static_cast<int64_t>(1ULL << JSHClass::CallableBit::START_BIT), RegXSize));
         __ B(Condition::EQ, &notCallable);
-        // fall through
+        CallNativeEntry(assembler, true);
     }
     __ Bind(&callNativeEntry);
-    CallNativeEntry(assembler);
+    CallNativeEntry(assembler, false);
     __ Bind(&callJSFunctionEntry);
     {
         __ Tbnz(callFieldRegister, MethodLiteral::IsNativeBit::START_BIT, &callNativeEntry);
@@ -1918,20 +1918,24 @@ void AsmInterpreterCall::CallBCStub(ExtendedAssembler *assembler, Register &newS
     __ Br(temp);
 }
 
-void AsmInterpreterCall::CallNativeEntry(ExtendedAssembler *assembler)
+void AsmInterpreterCall::CallNativeEntry(ExtendedAssembler *assembler, bool isJsProxy)
 {
     Label callFastBuiltin;
     Label callNativeBuiltin;
     Register glue(X0);
     Register argv(X5);
-    Register method(X2);
     Register function(X1);
     Register nativeCode(X7);
     Register temp(X9);
-    Register callFieldRegister(X3);
     // get native pointer
-    __ Ldr(nativeCode, MemoryOperand(method, Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET));
-    __ Tbnz(callFieldRegister, MethodLiteral::IsFastBuiltinBit::START_BIT, &callFastBuiltin);
+    if (isJsProxy) {
+        Register method(X2);
+        __ Ldr(nativeCode, MemoryOperand(method, Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET));
+    } else {
+        Register callFieldRegister(X3);
+        __ Ldr(nativeCode, MemoryOperand(function, JSFunctionBase::CODE_ENTRY_OFFSET));
+        __ Tbnz(callFieldRegister, MethodLiteral::IsFastBuiltinBit::START_BIT, &callFastBuiltin);
+    }
 
     __ Bind(&callNativeBuiltin);
     Register sp(SP);

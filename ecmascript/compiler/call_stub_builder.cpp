@@ -325,14 +325,32 @@ void CallStubBuilder::JSCallInit(Label *exit, Label *funcIsHeapObject, Label *fu
 void CallStubBuilder::JSCallNative(Label *exit)
 {
     HandleProfileNativeCall();
-    GateRef ret;
-    nativeCode_ = Load(VariableType::NATIVE_POINTER(), method_,
-        IntPtr(Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET));
     newTarget_ = Undefined();
     thisValue_ = Undefined();
     numArgs_ = Int32Add(actualNumArgs_, Int32(NUM_MANDATORY_JSFUNC_ARGS));
-    GateRef numArgsKeeper;
+    auto env = GetEnvironment();
+    Label jsProxy(env);
+    Label notJsProxy(env);
+    BRANCH(IsJsProxy(func_), &jsProxy, &notJsProxy);
+    Bind(&jsProxy);
+    {
+        JSCallNativeInner(exit, true);
+    }
+    Bind(&notJsProxy);
+    {
+        JSCallNativeInner(exit, false);
+    }
+}
 
+void CallStubBuilder::JSCallNativeInner(Label *exit, bool isJsProxy)
+{
+    if (isJsProxy) {
+        nativeCode_ = Load(VariableType::NATIVE_POINTER(), method_,
+            IntPtr(Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET));
+    } else {
+        nativeCode_ = Load(VariableType::NATIVE_POINTER(), func_, IntPtr(JSFunctionBase::CODE_ENTRY_OFFSET));
+    }
+    GateRef ret;
     int idxForNative = PrepareIdxForNative();
     std::vector<GateRef> argsForNative = PrepareArgsForNative();
     auto env = GetEnvironment();
@@ -345,10 +363,12 @@ void CallStubBuilder::JSCallNative(Label *exit)
         case JSCallMode::CALL_THIS_ARG2_WITH_RETURN:
         case JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV:
         case JSCallMode::DEPRECATED_CALL_CONSTRUCTOR_WITH_ARGV:
-            numArgsKeeper = numArgs_;
-            CallFastBuiltin(&notFastBuiltins, exit, hir_);
-            Bind(&notFastBuiltins);
-            numArgs_ = numArgsKeeper;
+            if (!isJsProxy) {
+                GateRef numArgsKeeper = numArgs_;
+                CallFastBuiltin(&notFastBuiltins, exit, hir_);
+                Bind(&notFastBuiltins);
+                numArgs_ = numArgsKeeper;
+            }
             [[fallthrough]];
         case JSCallMode::CALL_ARG0:
         case JSCallMode::CALL_ARG1:

@@ -276,7 +276,7 @@ private:
     static void CallBCStub(ExtendedAssembler *assembler, Register &newSp, Register &glue,
         Register &callTarget, Register &method, Register &pc, Register &temp);
 
-    static void CallNativeEntry(ExtendedAssembler *assembler);
+    static void CallNativeEntry(ExtendedAssembler *assembler, bool isJsProxy);
 
     static void CallFastBuiltin(ExtendedAssembler *assembler, Label *callNativeBuiltin);
 

@@ -3292,6 +3292,14 @@ inline void StubBuilder::SetCodeEntryToFunctionFromFuncEntry(GateRef glue, GateR
     Store(VariableType::NATIVE_POINTER(), glue, function, funcOffset, codeEntry);
 }
 
+inline void StubBuilder::SetNativePointerToFunctionFromMethod(GateRef glue, GateRef function, GateRef method)
+{
+    GateRef nativePointerOffset = IntPtr(Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET);
+    GateRef nativePointer = Load(VariableType::NATIVE_POINTER(), method, nativePointerOffset);
+    GateRef funcOffset = IntPtr(JSFunctionBase::CODE_ENTRY_OFFSET);
+    Store(VariableType::NATIVE_POINTER(), glue, function, funcOffset, nativePointer);
+}
+
 inline void StubBuilder::SetLengthToFunction(GateRef glue, GateRef function, GateRef value)
 {
     GateRef offset = IntPtr(JSFunctionBase::LENGTH_OFFSET);

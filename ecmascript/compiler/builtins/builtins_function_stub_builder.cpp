@@ -712,8 +712,17 @@ void BuiltinsFunctionStubBuilder::InitializeFunctionWithMethod(GateRef glue,
     SetMachineCodeToFunction(glue, func, Undefined(), MemoryAttribute::NoBarrier());
     SetBaselineJitCodeToFunction(glue, func, Undefined(), MemoryAttribute::NoBarrier());
 
+    Label isNativeMethod(env);
+    Label checkAotStatus(env);
     Label hasCompiledStatus(env);
     Label tryInitFuncCodeEntry(env);
+    BRANCH(IsNativeMethod(method), &isNativeMethod, &checkAotStatus);
+    Bind(&isNativeMethod);
+    {
+        SetNativePointerToFunctionFromMethod(glue, func, method);
+        Jump(&exit);
+    }
+    Bind(&checkAotStatus);
     BRANCH(IsAotWithCallField(method), &hasCompiledStatus, &tryInitFuncCodeEntry);
     Bind(&hasCompiledStatus);
     {

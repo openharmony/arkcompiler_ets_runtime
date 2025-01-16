@@ -781,6 +781,7 @@ public:
                              MemoryAttribute mAttr = MemoryAttribute::Default());
     void SetCodeEntryToFunctionFromMethod(GateRef glue, GateRef function, GateRef value);
     void SetCodeEntryToFunctionFromFuncEntry(GateRef glue, GateRef function, GateRef value);
+    void SetNativePointerToFunctionFromMethod(GateRef glue, GateRef function, GateRef value);
     void SetCompiledCodeFlagToFunctionFromMethod(GateRef glue, GateRef function, GateRef value);
     void SetLengthToFunction(GateRef glue, GateRef function, GateRef value);
     void SetRawProfileTypeInfoToFunction(GateRef glue, GateRef function, GateRef value,
@@ -918,7 +919,7 @@ public:
     GateRef IsJSFunction(GateRef obj);
     GateRef IsBoundFunction(GateRef obj);
     GateRef IsJSOrBoundFunction(GateRef obj);
-    GateRef GetMethodFromJSFunctionOrProxy(GateRef jsfunc);
+    GateRef GetMethodFromJSFunctionOrProxy(GateRef object);
     GateRef IsNativeMethod(GateRef method);
     GateRef GetFuncKind(GateRef method);
     GateRef HasPrototype(GateRef kind);

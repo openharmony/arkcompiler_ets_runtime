@@ -638,6 +638,21 @@ class ObjectFactory;
     V(JSTaggedValue, Uint64MaxBigInt, UINT64_MAX_BIGINT_INDEX, ecma_roots_special)                \
     V(JSTaggedValue, Int64MaxBigInt, INT64_MAX_BIGINT_INDEX, ecma_roots_special)                  \
     V(JSTaggedValue, EmptyProfileTypeInfoCell, EMPTY_PROFILE_TYPE_INFO_CELL_INDEX, ecma_roots_special) \
+    V(JSTaggedValue, NativeNormalFunctionMethod, NATIVE_NORMAL_FUNCTION_METHOD_INDEX, ecma_roots_special) \
+    V(JSTaggedValue, NativeGetterFunctionMethod, NATIVE_GETTER_FUNCTION_METHOD_INDEX, ecma_roots_special) \
+    V(JSTaggedValue, NativeSetterFunctionMethod, NATIVE_SETTER_FUNCTION_METHOD_INDEX, ecma_roots_special) \
+    V(JSTaggedValue, NativeArrowFunctionMethod, NATIVE_ARROW_FUNCTION_METHOD_INDEX, ecma_roots_special) \
+    V(JSTaggedValue, NativeAsyncArrowFunctionMethod, NATIVE_ASYNC_ARROW_FUNCTION_METHOD_INDEX, ecma_roots_special) \
+    V(JSTaggedValue, NativeConcurrentFunctionMethod, NATIVE_CONCURRENT_FUNCTION_METHOD_INDEX, ecma_roots_special) \
+    V(JSTaggedValue, NativeAsyncFunctionMethod, NATIVE_ASYNC_FUNCTION_METHOD_INDEX, ecma_roots_special) \
+    V(JSTaggedValue, NativeBaseConstructorMethod, NATIVE_BASE_CONSTRUCTOR_METHOD_INDEX, ecma_roots_special) \
+    V(JSTaggedValue, NativeClassConstructorMethod, NATIVE_CLASS_CONSTRUCTOR_METHOD_INDEX, ecma_roots_special) \
+    V(JSTaggedValue, NativeBuiltinProxyConstructorMethod, NATIVE_BUILTIN_PROXY_CONSTRUCTOR_METHOD_INDEX, ecma_roots_special) \
+    V(JSTaggedValue, NativeBuiltinConstructorMethod, NATIVE_BUILTIN_CONSTRUCTOR_METHOD_INDEX, ecma_roots_special) \
+    V(JSTaggedValue, NativeDerivedConstructorMethod, NATIVE_DERIVED_CONSTRUCTOR_METHOD_INDEX, ecma_roots_special) \
+    V(JSTaggedValue, NativeGeneratorFunctionMethod, NATIVE_GENERATOR_FUNCTION_METHOD_INDEX, ecma_roots_special) \
+    V(JSTaggedValue, NativeNoneFunctionMethod, NATIVE_NONE_FUNCTION_METHOD_INDEX, ecma_roots_special) \
+    V(JSTaggedValue, NativeAsyncGeneratorFunctionMethod, NATIVE_ASYNC_GENERATOR_FUNCTION_METHOD_INDEX, ecma_roots_special) \
     V(JSTaggedValue, BoundFunctionMethod, BOUND_FUNCTION_METHOD_INDEX, ecma_roots_special)
 
 #define GLOBAL_ENV_CACHES(V)                \
