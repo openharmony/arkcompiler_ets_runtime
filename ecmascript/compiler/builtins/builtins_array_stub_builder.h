@@ -58,7 +58,7 @@ BUILTINS_WITH_ARRAY_STUB_BUILDER(DECLARE_BUILTINS_ARRAY_STUB_BUILDER)
 
     GateRef NewArray(GateRef glue, GateRef count);
 
-    GateRef NewEmptyArrayWithHClass(GateRef glue, GateRef hclass, GateRef newArrayLen);
+    GateRef NewArrayWithHClass(GateRef glue, GateRef hclass, GateRef newArrayLen);
 
     GateRef CalculatePositionWithLength(GateRef position, GateRef length);
 

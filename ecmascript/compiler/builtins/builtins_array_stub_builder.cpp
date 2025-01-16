@@ -612,7 +612,7 @@ void BuiltinsArrayStubBuilder::Filter(GateRef glue, GateRef thisValue, GateRef n
     GateRef argHandle = GetCallArg1(numArgs);
     GateRef kind = GetElementsKindFromHClass(LoadHClass(thisValue));
     GateRef newHClass =  GetElementsKindHClass(glue, kind);
-    GateRef newArray = NewEmptyArrayWithHClass(glue, newHClass, TruncInt64ToInt32(len));
+    GateRef newArray = NewArrayWithHClass(glue, newHClass, TruncInt64ToInt32(len));
     GateRef newArrayEles = GetElementsArray(newArray);
     Label stableJSArray(env);
     Label notStableJSArray(env);
