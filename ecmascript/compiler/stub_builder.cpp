@@ -5520,7 +5520,7 @@ GateRef StubBuilder::FastTypeOf(GateRef glue, GateRef obj)
             {
                 Label objIsSymbol(env);
                 Label objNotSymbol(env);
-                BRANCH(IsSymbol(obj), &objIsSymbol, &objNotSymbol);
+                BRANCH_UNLIKELY(IsSymbol(obj), &objIsSymbol, &objNotSymbol);
                 Bind(&objIsSymbol);
                 {
                     result = Load(VariableType::JS_POINTER(), gConstAddr,
@@ -5531,7 +5531,7 @@ GateRef StubBuilder::FastTypeOf(GateRef glue, GateRef obj)
                 {
                     Label objIsCallable(env);
                     Label objNotCallable(env);
-                    BRANCH(IsCallable(obj), &objIsCallable, &objNotCallable);
+                    BRANCH_UNLIKELY(IsCallable(obj), &objIsCallable, &objNotCallable);
                     Bind(&objIsCallable);
                     {
                         result = Load(VariableType::JS_POINTER(), gConstAddr,
@@ -5542,7 +5542,7 @@ GateRef StubBuilder::FastTypeOf(GateRef glue, GateRef obj)
                     {
                         Label objIsBigInt(env);
                         Label objNotBigInt(env);
-                        BRANCH(TaggedObjectIsBigInt(obj), &objIsBigInt, &objNotBigInt);
+                        BRANCH_UNLIKELY(TaggedObjectIsBigInt(obj), &objIsBigInt, &objNotBigInt);
                         Bind(&objIsBigInt);
                         {
                             result = Load(VariableType::JS_POINTER(), gConstAddr,
@@ -5553,7 +5553,7 @@ GateRef StubBuilder::FastTypeOf(GateRef glue, GateRef obj)
                         {
                             Label objIsNativeModuleFailureInfo(env);
                             Label objNotNativeModuleFailureInfo(env);
-                            BRANCH(IsNativeModuleFailureInfo(obj), &objIsNativeModuleFailureInfo,
+                            BRANCH_UNLIKELY(IsNativeModuleFailureInfo(obj), &objIsNativeModuleFailureInfo,
                                 &objNotNativeModuleFailureInfo);
                             Bind(&objIsNativeModuleFailureInfo);
                             {
