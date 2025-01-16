@@ -1478,6 +1478,15 @@ void MoveBarrierCrossRegionStubBuilder::GenerateCircuit()
     Return();
 }
 
+void FindEntryFromNameDictionaryStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef taggedArray = PtrArgument(1);
+    GateRef key = PtrArgument(2);
+    GateRef entry = FindEntryFromNameDictionary(glue, taggedArray, key);
+    Return(entry);
+}
+
 CallSignature CommonStubCSigns::callSigns_[CommonStubCSigns::NUM_OF_STUBS];
 
 void CommonStubCSigns::Initialize()

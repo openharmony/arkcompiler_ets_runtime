@@ -3451,4 +3451,19 @@ DEF_CALL_SIGNATURE(MoveBarrierCrossRegion)
     callSign->SetGCLeafFunction(true);
     callSign->SetCallConv(CallSignature::CallConv::CCallConv);;
 }
+
+DEF_CALL_SIGNATURE(FindEntryFromNameDictionary)
+{
+    constexpr size_t paramCount = 3;
+    CallSignature signature("FindEntryFromNameDictionary", 0, paramCount, ArgumentsOrder::DEFAULT_ORDER,
+                            VariableType::INT32());
+    *callSign = signature;
+    std::array<VariableType, paramCount> params = {
+        VariableType::NATIVE_POINTER(),
+        VariableType::JS_ANY(),
+        VariableType::JS_ANY(),
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetCallConv(CallSignature::CallConv::CCallConv);;
+}
 }  // namespace panda::ecmascript::kungfu
