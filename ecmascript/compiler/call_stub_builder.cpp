@@ -302,11 +302,11 @@ void CallStubBuilder::JSCallInit(Label *exit, Label *funcIsHeapObject, Label *fu
     CallNGCRuntime(glue_, RTSTUB_ID(StartCallTimer, { glue_, func_, False()}));
 #endif
     if (checkIsCallable_) {
-        BRANCH(TaggedIsHeapObject(func_), funcIsHeapObject, funcNotCallable);
+        BRANCH_LIKELY(TaggedIsHeapObject(func_), funcIsHeapObject, funcNotCallable);
         Bind(funcIsHeapObject);
         GateRef hclass = LoadHClass(func_);
         bitfield_ = Load(VariableType::INT32(), hclass, IntPtr(JSHClass::BIT_FIELD_OFFSET));
-        BRANCH(IsCallableFromBitField(bitfield_), funcIsCallable, funcNotCallable);
+        BRANCH_LIKELY(IsCallableFromBitField(bitfield_), funcIsCallable, funcNotCallable);
         Bind(funcNotCallable);
         {
             CallRuntime(glue_, RTSTUB_ID(ThrowNotCallableException), {});

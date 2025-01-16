@@ -1679,19 +1679,19 @@ void BuiltinsArrayStubBuilder::PopOptimised(GateRef glue, GateRef thisValue,
     BRANCH(TaggedIsHeapObject(thisValue), &isHeapObject, slowPath);
     Bind(&isHeapObject);
     // don't check constructor, "Pop" won't create new array.
-    BRANCH(IsStableJSArray(glue, thisValue), &stableJSArray, slowPath);
+    BRANCH_LIKELY(IsStableJSArray(glue, thisValue), &stableJSArray, slowPath);
     Bind(&stableJSArray);
 
     Label isLengthWritable(env);
-    BRANCH(IsArrayLengthWritable(glue, thisValue), &isLengthWritable, slowPath);
+    BRANCH_LIKELY(IsArrayLengthWritable(glue, thisValue), &isLengthWritable, slowPath);
     Bind(&isLengthWritable);
     GateRef thisLen = ZExtInt32ToInt64(GetArrayLength(thisValue));
     Label notZeroLen(env);
-    BRANCH(Int64Equal(thisLen, Int64(0)), exit, &notZeroLen);
+    BRANCH_UNLIKELY(Int64Equal(thisLen, Int64(0)), exit, &notZeroLen);
     Bind(&notZeroLen);
     Label isJsCOWArray(env);
     Label getElements(env);
-    BRANCH(IsJsCOWArray(thisValue), &isJsCOWArray, &getElements);
+    BRANCH_NO_WEIGHT(IsJsCOWArray(thisValue), &isJsCOWArray, &getElements);
     Bind(&isJsCOWArray);
     {
         NewObjectStubBuilder newBuilder(this);
@@ -1736,7 +1736,7 @@ void BuiltinsArrayStubBuilder::PopOptimised(GateRef glue, GateRef thisValue,
     Label noTrim(env);
     Label needTrim(env);
     GateRef unused = Int64Sub(capacity, index);
-    BRANCH(Int64GreaterThan(unused, Int64(TaggedArray::MAX_END_UNUSED)), &needTrim, &noTrim);
+    BRANCH_UNLIKELY(Int64GreaterThan(unused, Int64(TaggedArray::MAX_END_UNUSED)), &needTrim, &noTrim);
     Bind(&needTrim);
     {
         CallNGCRuntime(glue, RTSTUB_ID(ArrayTrim), {glue, elements, index});
@@ -1746,7 +1746,7 @@ void BuiltinsArrayStubBuilder::PopOptimised(GateRef glue, GateRef thisValue,
     {
         Label enableMutantArray(env);
         Label disableMutantArray(env);
-        BRANCH(enableMutant, &enableMutantArray, &disableMutantArray);
+        BRANCH_UNLIKELY(enableMutant, &enableMutantArray, &disableMutantArray);
         Bind(&enableMutantArray);
         {
             SetValueWithElementsKind(glue, thisValue, Hole(), index, Boolean(false),
