@@ -19,6 +19,7 @@
 #include "ecmascript/pgo_profiler/pgo_profiler_encoder.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_info.h"
 #include "ecmascript/pgo_profiler/pgo_trace.h"
+#include "ecmascript/pgo_profiler/pgo_utils.h"
 
 namespace panda::ecmascript::pgo {
 
@@ -100,8 +101,10 @@ uint32_t PGOInfo::GetHotnessThreshold() const
     return hotnessThreshold_;
 }
 
-void PGOInfo::SamplePandaFileInfo(uint32_t checksum, const CString& abcName)
+void PGOInfo::SamplePandaFileInfoSafe(uint32_t checksum, const CString& abcName)
 {
+    LockHolder lock(sampleMutexLock_);
+    ConcurrentGuard guard(v_, "SafeSamplePandaFileInfo");
     ApEntityId entryId(0);
     abcFilePool_->TryAddSafe(abcName, entryId);
     pandaFileInfos_->SampleSafe(checksum, entryId);
@@ -163,19 +166,26 @@ void PGOInfo::MergeWithExistProfile(PGOInfo& rtInfo, PGOProfilerDecoder& decoder
     ASSERT(header_ != nullptr);
     ASSERT(rtInfo.header_ != nullptr);
     header_->SetVersion(rtInfo.header_->GetVersion());
-    // copy abcFilePool from runtime to temp merger.
     ASSERT(abcFilePool_->GetPool()->Empty());
-    abcFilePool_->CopySafe(rtInfo.GetAbcFilePoolPtr());
-    if (!decoder.LoadFull(abcFilePool_)) {
-        LOG_PGO(ERROR) << "fail to load ap: " << decoder.GetInPath();
-    } else {
-        MergeSafe(decoder.GetPandaFileInfos());
-        SetRecordDetailInfos(decoder.GetRecordDetailInfosPtr());
+    {
+        // copy abcFilePool from runtime to temp merger.
+        // Lock for avoid sampling fileInfos during merge, it will cause pandafile ApEntityId different in abcFilePool
+        // and pandaFileInfos, which will cause checksum verification failed or an ApEntityId only in one of pools.
+        // when PGOProfilerManager::MergeApFiles, ApEntityId in abcFilePool not exist will cause crash.
+        LockHolder lock(rtInfo.GetSampleMutexLock());
+        ConcurrentGuard guard(rtInfo.GetConcurrentGuardValue(), "MergeWithExistProfile");
+        abcFilePool_->CopySafe(rtInfo.GetAbcFilePoolPtr());
+        pandaFileInfos_->MergeSafe(rtInfo.GetPandaFileInfos());
     }
     if (task && task->IsTerminate()) {
         return;
     }
-    MergeSafe(rtInfo.GetPandaFileInfos());
+    if (decoder.LoadFull(abcFilePool_)) {
+        MergeSafe(decoder.GetPandaFileInfos());
+        SetRecordDetailInfos(decoder.GetRecordDetailInfosPtr());
+    } else {
+        LOG_PGO(ERROR) << "fail to load ap: " << decoder.GetInPath();
+    }
     if (task && task->IsTerminate()) {
         return;
     }
@@ -183,5 +193,15 @@ void PGOInfo::MergeWithExistProfile(PGOInfo& rtInfo, PGOProfilerDecoder& decoder
     if (PGOTrace::GetInstance()->IsEnable()) {
         PGOTrace::GetInstance()->SetMergeWithExistProfileTime(start.TotalSpentTime());
     }
+}
+
+Mutex& PGOInfo::GetSampleMutexLock()
+{
+    return sampleMutexLock_;
+}
+
+ConcurrentGuardValue& PGOInfo::GetConcurrentGuardValue()
+{
+    return v_;
 }
 } // namespace panda::ecmascript::pgo
