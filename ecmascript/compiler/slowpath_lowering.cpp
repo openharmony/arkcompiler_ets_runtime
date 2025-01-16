@@ -3229,7 +3229,7 @@ void SlowPathLowering::LowerConstruct(GateRef gate)
     GateRef result = builder_.CallStub(
         glue_, gate, CommonStubCSigns::ConstructorCheck, { glue_, ctor, *res, thisObj });
     GateRef state = builder_.GetState();
-    ReplaceHirWithPendingException(gate, state, result, result);
+    acc_.ReplaceGate(gate, state, result, result);
 }
 
 void SlowPathLowering::LowerCallInternal(GateRef gate)
@@ -3283,7 +3283,7 @@ void SlowPathLowering::LowerCallNew(GateRef gate)
     GateRef result = builder_.CallStub(
         glue_, gate, CommonStubCSigns::ConstructorCheck, { glue_, ctor, *res, thisObj });
     GateRef state = builder_.GetState();
-    ReplaceHirWithPendingException(gate, state, result, result);
+    acc_.ReplaceGate(gate, state, result, result);
 }
 
 void SlowPathLowering::LowerNewFastCall(GateRef gate, GateRef glue, GateRef func,
@@ -3365,7 +3365,7 @@ void SlowPathLowering::LowerTypedCall(GateRef gate)
     auto depend = builder_.GetDepend();
     const CallSignature *cs = RuntimeStubCSigns::GetOptimizedCallSign();
     GateRef result = builder_.Call(cs, glue_, code, depend, args, gate, "callAOT");
-    ReplaceHirWithPendingException(gate, state, result, result);
+    acc_.ReplaceGate(gate, state, result, result);
 }
 
 void SlowPathLowering::LowerTypedFastCall(GateRef gate)
@@ -3382,7 +3382,7 @@ void SlowPathLowering::LowerTypedFastCall(GateRef gate)
     auto depend = builder_.GetDepend();
     const CallSignature *cs = RuntimeStubCSigns::GetOptimizedFastCallSign();
     GateRef result = builder_.Call(cs, glue_, code, depend, args, gate, "callFastAOT");
-    ReplaceHirWithPendingException(gate, state, result, result);
+    acc_.ReplaceGate(gate, state, result, result);
 }
 
 void SlowPathLowering::LowerCheckSafePointAndStackOver(GateRef gate)

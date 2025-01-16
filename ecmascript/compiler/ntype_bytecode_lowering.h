@@ -56,6 +56,7 @@ private:
     void LowerNTypedStOwnByName(GateRef gate);
     void LowerThrowIfSuperNotCorrectCall(GateRef gate);
     void LowerThrowIfNotObject(GateRef gate);
+    void ReplaceGateWithPendingException(GateRef gate, GateRef state, GateRef depend, GateRef value);
 
     bool IsLogEnabled() const
     {

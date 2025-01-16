@@ -40,7 +40,7 @@ private:
     GateRef IntToTaggedIntPtr(GateRef x);
     GateRef LowerCallRuntime(GateRef glue, GateRef gate, int index, const std::vector<GateRef> &args,
                              bool useLabel = false);
-    void ReplaceHirWithValue(GateRef hirGate, GateRef value, bool noThrow = false);
+    void ReplaceHirWithValue(GateRef hirGate, GateRef value);
     GateRef LowerCallTargetCheckDefault(GateRef gate, BuiltinsStubCSigns::ID id);
     GateRef LowerCallTargetCheckWithGlobalEnv(GateRef gate, BuiltinsStubCSigns::ID id);
     GateRef LowerCallTargetCheckWithDetector(GateRef gate, BuiltinsStubCSigns::ID id);

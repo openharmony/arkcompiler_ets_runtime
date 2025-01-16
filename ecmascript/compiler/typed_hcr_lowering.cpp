@@ -2094,7 +2094,7 @@ void TypedHCRLowering::NewFloat32ArrayConstructorWithNoArgs(GateRef gate, GateRe
     NewObjectStubBuilder newBuilder(builder_.GetCurrentEnvironment());
     newBuilder.SetParameters(glue, 0);
     GateRef res = newBuilder.NewFloat32ArrayWithSize(glue, builder_.Int32(0));
-    ReplaceGateWithPendingException(glue, gate, builder_.GetState(), builder_.GetDepend(), res);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), res);
 }
 
 void TypedHCRLowering::ConvertFloat32ArrayConstructorLength(GateRef len, Variable *arrayLength,
@@ -2177,7 +2177,7 @@ void TypedHCRLowering::LowerFloat32ArrayConstructor(GateRef gate, GateRef glue)
         builder_.Jump(&exit);
     }
     builder_.Bind(&exit);
-    ReplaceGateWithPendingException(glue, gate, builder_.GetState(), builder_.GetDepend(), *res);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *res);
 }
 
 void TypedHCRLowering::NewArrayConstructorWithNoArgs(GateRef gate, GateRef glue)
@@ -2332,7 +2332,7 @@ void TypedHCRLowering::LowerObjectConstructor(GateRef gate, GateRef glue)
         builder_.Jump(&exit);
     }
     builder_.Bind(&exit);
-    ReplaceGateWithPendingException(glue, gate, builder_.GetState(), builder_.GetDepend(), *res);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *res);
 }
 
 void TypedHCRLowering::LowerBooleanConstructorCheck(GateRef gate, GateRef glue)
@@ -2403,7 +2403,7 @@ void TypedHCRLowering::LowerBooleanConstructor(GateRef gate, GateRef glue)
         builder_.Jump(&exit);
     }
     builder_.Bind(&exit);
-    ReplaceGateWithPendingException(glue, gate, builder_.GetState(), builder_.GetDepend(), *res);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *res);
 }
 
 GateRef TypedHCRLowering::NewJSPrimitiveRef(PrimitiveType type, GateRef glue, GateRef value)
@@ -3115,7 +3115,7 @@ void TypedHCRLowering::LowerStringFromSingleCharCode(GateRef gate, GateRef glue)
         }
     }
     builder_.Bind(&exit);
-    ReplaceGateWithPendingException(glue, gate, builder_.GetState(), builder_.GetDepend(), *res);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *res);
 }
 
 void TypedHCRLowering::LowerMigrateArrayWithKind(GateRef gate)

@@ -14,6 +14,8 @@
 group("ark_jit_ts_test") {
   testonly = true
   test_list = [
+    "lower_jscode_0001",
+    "lower_jscode_0002",
     "arguments",
     "create_arguments",
     "deopt",

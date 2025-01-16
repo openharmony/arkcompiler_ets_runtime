@@ -433,7 +433,7 @@ void NativeInlineLowering::TryInlineStringFromCharCode(GateRef gate, size_t argc
     }
 
     GateRef ret = builder_.StringFromSingleCharCode(tacc.GetArg0());
-    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), ret);
+    ReplaceGateWithPendingException(gate, ret);
 }
 
 void NativeInlineLowering::TryInlineStringCharCodeAt(GateRef gate, size_t argc, bool skipThis)

@@ -33,6 +33,8 @@ group("ark_aot_js_test") {
     "definefieldbyname",
     "definefieldbyname2",
     "induction_variable",
+    "lower_jscode_0001",
+    "lower_jscode_0002",
   ]
 
   deps = []
