@@ -161,7 +161,7 @@ bool PGOProfilerHeader::ProcessToText(std::ofstream &stream) const
     stream << DumpUtils::VERSION_HEADER << InternalGetVersion() << DumpUtils::NEW_LINE;
     stream << "Compatible an file version: " << ConvToStr(GetCompatibleAnVersion()) << DumpUtils::NEW_LINE;
     if (SupportFileConsistency()) {
-        stream << "FileSize: " << GetFileSize() << " ,HeaderSize: " << GetHeaderSize() << " ,Checksum: " << std::hex
+        stream << "FileSize: " << GetFileSize() << ", HeaderSize: " << GetHeaderSize() << ", Checksum: " << std::hex
                << GetChecksum() << DumpUtils::NEW_LINE;
     }
     return true;

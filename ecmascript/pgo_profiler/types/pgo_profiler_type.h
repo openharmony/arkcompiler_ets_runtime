@@ -605,21 +605,15 @@ public:
 
     std::string GetInfoString() const
     {
-        std::string result = "(receiverRoot";
-        result += receiverRootType_.GetTypeString();
-        result += ", receiver";
-        result += receiverType_.GetTypeString();
-        result += ", holdRoot";
-        result += holdRootType_.GetTypeString();
-        result += ", hold";
-        result += holdType_.GetTypeString();
-        result += ", holdTraRoot";
-        result += holdTraRootType_.GetTypeString();
-        result += ", holdTra";
-        result += holdTraType_.GetTypeString();
-        result += ", accessorMethod";
-        result += accessorMethod_.GetTypeString();
-        result += ")";
+        std::string result = "      ";
+        result += "(\n        receiverRoot" + receiverRootType_.GetTypeString();
+        result += ",\n        receiver" + receiverType_.GetTypeString();
+        result += ",\n        holdRoot" + holdRootType_.GetTypeString();
+        result += ",\n        hold" + holdType_.GetTypeString();
+        result += ",\n        holdTraRoot" + holdTraRootType_.GetTypeString();
+        result += ",\n        holdTra" + holdTraType_.GetTypeString();
+        result += ",\n        accessorMethod:" + accessorMethod_.GetTypeString();
+        result += "\n      )";
         return result;
     }
 
@@ -872,19 +866,14 @@ public:
 
     std::string GetTypeString() const
     {
-        std::string result = "(local";
-        result += type_.GetTypeString();
-        result += ", ctor";
-        result += ctorPt_.GetTypeString();
-        result += ", proto";
-        result += protoPt_.GetTypeString();
-        result += ", elementsKind:";
-        result += std::to_string(static_cast<int32_t>(kind_));
+        std::string result = "";
+        result += "      local" + type_.GetTypeString();
+        result += ",\n      ctor" + ctorPt_.GetTypeString();
+        result += ",\n      proto" + protoPt_.GetTypeString();
+        result += ",\n      elementsKind:" + std::to_string(static_cast<int32_t>(kind_));
         if (elementsLength_ > 0 && spaceFlag_ != RegionSpaceFlag::UNINITIALIZED) {
-            result += ", size: ";
-            result += std::to_string(elementsLength_);
-            result += ", space; ";
-            result += ToSpaceTypeName(spaceFlag_);
+            result += ",\n      size: " + std::to_string(elementsLength_);
+            result += ",\n      space; " + ToSpaceTypeName(spaceFlag_);
         }
         return result;
     }

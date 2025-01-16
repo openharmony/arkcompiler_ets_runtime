@@ -198,16 +198,16 @@ private:
         {
             text += std::to_string(GetOffset());
             text += DumpUtils::BLOCK_START;
-            text += DumpUtils::ARRAY_START + DumpUtils::SPACE;
+            text += DumpUtils::ARRAY_START + DumpUtils::NEW_LINE;
             bool isFirst = true;
             for (uint32_t i = 0; i < type_.GetCount(); i++) {
                 if (!isFirst) {
-                    text += DumpUtils::TYPE_SEPARATOR + DumpUtils::SPACE;
+                    text += DumpUtils::SPACE + DumpUtils::BLOCK_SEPARATOR + DumpUtils::NEW_LINE;
                 }
                 isFirst = false;
                 text += type_.GetObjectInfo(i).GetInfoString();
             }
-            text += (DumpUtils::SPACE + DumpUtils::ARRAY_END);
+            text += DumpUtils::NEW_LINE + DumpUtils::ALIGN + DumpUtils::ALIGN + DumpUtils::ARRAY_END;
         }
 
         void ProcessToJson(ProfileType::MapVector &typeArray) const
@@ -287,9 +287,9 @@ private:
         {
             text += std::to_string(this->GetOffset());
             text += DumpUtils::BLOCK_START;
-            text += DumpUtils::ARRAY_START + DumpUtils::SPACE;
+            text += DumpUtils::ARRAY_START + DumpUtils::NEW_LINE;
             text += this->GetType().GetTypeString();
-            text += (DumpUtils::SPACE + DumpUtils::ARRAY_END);
+            text += DumpUtils::NEW_LINE + DumpUtils::ALIGN + DumpUtils::ALIGN + DumpUtils::ARRAY_END;
         }
 
         void ProcessToJson(std::vector<ProfileType::StringMap> &sameOffsetTypeArray) const
