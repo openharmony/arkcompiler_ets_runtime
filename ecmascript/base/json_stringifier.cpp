@@ -538,123 +538,33 @@ bool JsonStringifier::SerializeJSONObject(const JSHandle<JSTaggedValue> &value, 
 bool JsonStringifier::SerializeJSONSharedMap(const JSHandle<JSTaggedValue> &value,
                                              const JSHandle<JSTaggedValue> &replacer)
 {
-    CString stepback = indent_;
-    result_ += "{";
     JSHandle<JSSharedMap> sharedMap(value);
-    uint32_t mapSize = JSSharedMap::GetSize(thread_, sharedMap);
-    JSMutableHandle<JSTaggedValue> keyHandle(thread_, JSTaggedValue::Undefined());
-    JSMutableHandle<JSTaggedValue> valHandle(thread_, JSTaggedValue::Undefined());
-    if (mapSize > 0) {
-        uint32_t lastEntry = mapSize - 1;
-        for (uint32_t entry = 0; entry <= lastEntry; ++entry) {
-            JSTaggedValue keyTagValue = JSSharedMap::GetKey(thread_, sharedMap, entry);
-            keyHandle.Update(keyTagValue);
-            if (UNLIKELY(!keyHandle->IsString())) {
-                result_ += "\"";
-                SerializeJSONProperty(keyHandle, replacer);
-                result_ += "\"";
-            } else {
-                SerializeJSONProperty(keyHandle, replacer);
-            }
-            result_ += ":";
-            JSTaggedValue valueTagValue = JSSharedMap::GetValue(thread_, sharedMap, entry);
-            valHandle.Update(valueTagValue);
-            SerializeJSONProperty(valHandle, replacer);
-            if (entry != lastEntry) {
-                result_ += ",";
-            }
-        }
-    }
-    result_ += "}";
-    PopValue();
-    indent_ = stepback;
-    return true;
+    JSHandle<LinkedHashMap> hashMap(thread_, sharedMap->GetLinkedMap());
+    return SerializeLinkedHashMap(hashMap, replacer);
 }
 
 bool JsonStringifier::SerializeJSONSharedSet(const JSHandle<JSTaggedValue> &value,
                                              const JSHandle<JSTaggedValue> &replacer)
 {
-    CString stepback = indent_;
-    result_ += "[";
     JSHandle<JSSharedSet> sharedSet(value);
-    uint32_t setSize = JSSharedSet::GetSize(thread_, sharedSet);
-    JSMutableHandle<JSTaggedValue> valHandle(thread_, JSTaggedValue::Undefined());
-    if (setSize > 0) {
-        uint32_t lastEntry = setSize - 1;
-        for (uint32_t entry = 0; entry <= lastEntry; ++entry) {
-            JSTaggedValue valueTagValue = JSSharedSet::GetValue(thread_, sharedSet, entry);
-            valHandle.Update(valueTagValue);
-            SerializeJSONProperty(valHandle, replacer);
-            if (entry != lastEntry) {
-                result_ += ",";
-            }
-        }
-    }
-    result_ += "]";
-    PopValue();
-    indent_ = stepback;
-    return true;
+    JSHandle<LinkedHashSet> hashSet(thread_, sharedSet->GetLinkedSet());
+    return SerializeLinkedHashSet(hashSet, replacer);
 }
 
 bool JsonStringifier::SerializeJSONMap(const JSHandle<JSTaggedValue> &value,
                                        const JSHandle<JSTaggedValue> &replacer)
 {
-    CString stepback = indent_;
-    result_ += "{";
     JSHandle<JSMap> jsMap(value);
-    uint32_t mapSize = jsMap->GetSize();
-    JSMutableHandle<JSTaggedValue> keyHandle(thread_, JSTaggedValue::Undefined());
-    JSMutableHandle<JSTaggedValue> valHandle(thread_, JSTaggedValue::Undefined());
-    if (mapSize > 0) {
-        uint32_t lastEntry = mapSize - 1;
-        for (uint32_t entry = 0; entry <= lastEntry; ++entry) {
-            JSTaggedValue keyTagValue = jsMap->GetKey(entry);
-            keyHandle.Update(keyTagValue);
-            if (UNLIKELY(!keyHandle->IsString())) {
-                result_ += "\"";
-                SerializeJSONProperty(keyHandle, replacer);
-                result_ += "\"";
-            } else {
-                SerializeJSONProperty(keyHandle, replacer);
-            }
-            result_ += ":";
-            JSTaggedValue valueTagValue = jsMap->GetValue(entry);
-            valHandle.Update(valueTagValue);
-            SerializeJSONProperty(valHandle, replacer);
-            if (entry != lastEntry) {
-                result_ += ",";
-            }
-        }
-    }
-    result_ += "}";
-    PopValue();
-    indent_ = stepback;
-    return true;
+    JSHandle<LinkedHashMap> hashMap(thread_, jsMap->GetLinkedMap());
+    return SerializeLinkedHashMap(hashMap, replacer);
 }
 
 bool JsonStringifier::SerializeJSONSet(const JSHandle<JSTaggedValue> &value,
                                        const JSHandle<JSTaggedValue> &replacer)
 {
-    CString stepback = indent_;
-    result_ += "[";
     JSHandle<JSSet> jsSet(value);
-    uint32_t setSize = jsSet->GetSize();
-    JSMutableHandle<JSTaggedValue> valHandle(thread_, JSTaggedValue::Undefined());
-    if (setSize > 0) {
-        uint32_t lastEntry = setSize - 1;
-        for (uint32_t entry = 0; entry <= lastEntry; ++entry) {
-            JSTaggedValue valueTagValue = jsSet->GetValue(entry);
-            valHandle.Update(valueTagValue);
-            SerializeJSONProperty(valHandle, replacer);
-            if (entry != lastEntry) {
-                result_ += ",";
-            }
-        }
-    }
-    result_ += "]";
-    PopValue();
-    indent_ = stepback;
-    return true;
+    JSHandle<LinkedHashSet> hashSet(thread_, jsSet->GetLinkedSet());
+    return SerializeLinkedHashSet(hashSet, replacer);
 }
 
 bool JsonStringifier::SerializeJSONHashMap(const JSHandle<JSTaggedValue> &value,
@@ -721,6 +631,71 @@ bool JsonStringifier::SerializeJSONHashSet(const JSHandle<JSTaggedValue> &value,
         }
         currentKey.Update(node->GetKey());
         SerializeJSONProperty(currentKey, replacer);
+        result_ += ",";
+        needRemove = true;
+    }
+    if (needRemove) {
+        result_.pop_back();
+    }
+    result_ += "]";
+    PopValue();
+    indent_ = stepback;
+    return true;
+}
+
+bool JsonStringifier::SerializeLinkedHashMap(const JSHandle<LinkedHashMap> &hashMap,
+                                             const JSHandle<JSTaggedValue> &replacer)
+{
+    CString stepback = indent_;
+    result_ += "{";
+    int index = 0;
+    int totalElements = hashMap->NumberOfElements() + hashMap->NumberOfDeletedElements();
+    JSMutableHandle<JSTaggedValue> keyHandle(thread_, JSTaggedValue::Undefined());
+    JSMutableHandle<JSTaggedValue> valHandle(thread_, JSTaggedValue::Undefined());
+    bool needRemove = false;
+    while (index < totalElements) {
+        keyHandle.Update(hashMap->GetKey(index++));
+        if (keyHandle->IsHole()) {
+            continue;
+        }
+        if (UNLIKELY(!keyHandle->IsString())) {
+            result_ += "\"";
+            SerializeJSONProperty(keyHandle, replacer);
+            result_ += "\"";
+        } else {
+            SerializeJSONProperty(keyHandle, replacer);
+        }
+        result_ += ":";
+        valHandle.Update(hashMap->GetValue(index - 1));
+        SerializeJSONProperty(valHandle, replacer);
+        result_ += ",";
+        needRemove = true;
+    }
+    if (needRemove) {
+        result_.pop_back();
+    }
+    result_ += "}";
+    PopValue();
+    indent_ = stepback;
+    return true;
+}
+
+bool JsonStringifier::SerializeLinkedHashSet(const JSHandle<LinkedHashSet> &hashSet,
+                                             const JSHandle<JSTaggedValue> &replacer)
+{
+    CString stepback = indent_;
+    result_ += "[";
+    JSMutableHandle<JSTaggedValue> keyHandle(thread_, JSTaggedValue::Undefined());
+    bool needRemove = false;
+
+    int index = 0;
+    int totalElements = hashSet->NumberOfElements() + hashSet->NumberOfDeletedElements();
+    while (index < totalElements) {
+        keyHandle.Update(hashSet->GetKey(index++));
+        if (keyHandle->IsHole()) {
+            continue;
+        }
+        SerializeJSONProperty(keyHandle, replacer);
         result_ += ",";
         needRemove = true;
     }

@@ -656,4 +656,53 @@ HWTEST_F_L0(JsonStringifierTest, Stringify_015)
     JSHandle<EcmaString> handleEcmaStr1(resultString1);
     EXPECT_STRNE("[]", EcmaStringAccessor(handleEcmaStr1).ToCString().c_str());
 }
+
+HWTEST_F_L0(JsonStringifierTest, Stringify_016)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+
+    JsonStringifier stringifier(thread, TransformType::SENDABLE);
+    JSHandle<JSSharedMap> sharedMap1 = CreateSharedMap(thread);
+    JSHandle<JSTaggedValue> key1(factory->NewFromASCII("key1"));
+    JSHandle<JSTaggedValue> value1(factory->NewFromASCII("abc"));
+    JSSharedMap::Set(thread, sharedMap1, key1, value1);
+    JSSharedMap::Clear(thread, sharedMap1);
+
+    JSHandle<JSTaggedValue> key2(factory->NewFromASCII("key2"));
+    JSHandle<JSTaggedValue> value2(factory->NewFromASCII("val"));
+    JSSharedMap::Set(thread, sharedMap1, key2, value2);
+    JSSharedMap::Set(thread, sharedMap1, key1, value1);
+    
+    JSHandle<JSTaggedValue> handleMap1 = JSHandle<JSTaggedValue>(sharedMap1);
+    JSHandle<JSTaggedValue> handleReplacer1(thread, JSTaggedValue::Undefined());
+    JSHandle<JSTaggedValue> handleGap1(thread, JSTaggedValue::Undefined());
+    EXPECT_TRUE(*handleMap1 != nullptr);
+    JSHandle<JSTaggedValue> resultString1 = stringifier.Stringify(handleMap1, handleReplacer1, handleGap1);
+    EXPECT_TRUE(resultString1->IsString());
+    JSHandle<EcmaString> handleEcmaStr1(resultString1);
+    EXPECT_STREQ("{\"key2\":\"val\",\"key1\":\"abc\"}", EcmaStringAccessor(handleEcmaStr1).ToCString().c_str());
+}
+
+HWTEST_F_L0(JsonStringifierTest, Stringify_017)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JsonStringifier stringifier(thread, TransformType::SENDABLE);
+    JSHandle<JSSharedSet> sharedSet1 = CreateJSSharedSet(thread);
+    JSHandle<JSTaggedValue> value1(factory->NewFromASCII("abc"));
+    JSSharedSet::Add(thread, sharedSet1, value1);
+    JSSharedSet::Clear(thread, sharedSet1);
+
+    JSHandle<JSTaggedValue> value2(factory->NewFromASCII("val"));
+    JSSharedSet::Add(thread, sharedSet1, value2);
+    JSSharedSet::Add(thread, sharedSet1, value1);
+    
+    JSHandle<JSTaggedValue> handleSet1 = JSHandle<JSTaggedValue>(sharedSet1);
+    JSHandle<JSTaggedValue> handleReplacer1(thread, JSTaggedValue::Undefined());
+    JSHandle<JSTaggedValue> handleGap1(thread, JSTaggedValue::Undefined());
+    EXPECT_TRUE(*handleSet1 != nullptr);
+    JSHandle<JSTaggedValue> resultString1 = stringifier.Stringify(handleSet1, handleReplacer1, handleGap1);
+    EXPECT_TRUE(resultString1->IsString());
+    JSHandle<EcmaString> handleEcmaStr1(resultString1);
+    EXPECT_STREQ("[\"val\",\"abc\"]", EcmaStringAccessor(handleEcmaStr1).ToCString().c_str());
+}
 }  // namespace panda::test
