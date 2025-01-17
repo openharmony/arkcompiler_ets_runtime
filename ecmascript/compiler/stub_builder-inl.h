@@ -4072,7 +4072,9 @@ inline GateRef StubBuilder::HashFromHclassAndStringKey([[maybe_unused]] GateRef 
     GateRef clsHash =
         Int32LSR(ChangeIntPtrToInt32(TaggedCastToIntPtr(cls)), Int32(MegaICCache::HCLASS_SHIFT)); // skip 8bytes
     GateRef keyHash = Load(VariableType::INT32(), key, IntPtr(EcmaString::MIX_HASHCODE_OFFSET));
-    return Int32And(Int32Xor(clsHash, keyHash), Int32(MegaICCache::CACHE_LENGTH_MASK));
+    GateRef temp = Int32Xor(Int32Xor(Int32Mul(clsHash, Int32(31)), Int32Mul(keyHash, Int32(0x9e3779b9))),
+                            Int32LSR(keyHash, Int32(16)));
+    return Int32And(temp, Int32(MegaICCache::CACHE_LENGTH_MASK));
 }
 
 inline GateRef StubBuilder::OrdinaryNewJSObjectCreate(GateRef glue, GateRef proto)
