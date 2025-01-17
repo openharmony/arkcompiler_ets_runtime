@@ -75,54 +75,105 @@ bool EcmaStringTableCleaner::SweepWeakRefTask::Run([[maybe_unused]] uint32_t thr
     return true;
 }
 
-std::pair<EcmaString *, uint32_t> EcmaStringTable::GetStringThreadUnsafe(const JSHandle<EcmaString> &firstString,
-                                                                         const JSHandle<EcmaString> &secondString,
-                                                                         uint32_t hashcode) const
+EcmaString *EcmaStringTable::GetStringFromCompressedSubString(JSThread *thread, const JSHandle<EcmaString> string,
+                                                              uint32_t offset, uint32_t utf8Len, uint32_t hashcode)
 {
-    ASSERT(EcmaStringAccessor(firstString).NotTreeString());
-    ASSERT(EcmaStringAccessor(secondString).NotTreeString());
+    RuntimeLockHolder locker(thread, stringTable_[GetTableId(hashcode)].mutex_);
+#if ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT
+    EcmaVM *vm = thread->GetEcmaVM();
+    if (vm->IsCollectingScopeLockStats()) {
+        vm->IncreaseStringTableLockCount();
+    }
+#endif
+    const uint8_t *utf8Data = EcmaStringAccessor(string).GetDataUtf8() + offset;
     auto range = stringTable_[GetTableId(hashcode)].table_.equal_range(hashcode);
     for (auto item = range.first; item != range.second;) {
         auto foundString = (item++)->second;
-        if (EcmaStringAccessor(foundString).EqualToSplicedString(*firstString, *secondString)) {
-            return std::make_pair(foundString, hashcode);
+        if (EcmaStringAccessor::StringIsEqualUint8Data(foundString, utf8Data, utf8Len, true)) {
+            return foundString;
         }
     }
-    return std::make_pair(nullptr, hashcode);
+    return nullptr;
 }
 
-std::pair<EcmaString *, uint32_t> EcmaStringTable::GetStringThreadUnsafe(const uint8_t *utf8Data, uint32_t utf8Len,
-                                                                         bool canBeCompress, uint32_t hashcode) const
+EcmaString *EcmaStringTable::GetString(JSThread *thread, JSHandle<EcmaString> string, uint32_t hashcode)
 {
+    RuntimeLockHolder locker(thread, stringTable_[GetTableId(hashcode)].mutex_);
+#if ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT
+    EcmaVM *vm = thread->GetEcmaVM();
+    if (vm->IsCollectingScopeLockStats()) {
+        vm->IncreaseStringTableLockCount();
+    }
+#endif
+    EcmaString *str = *string;
+    auto range = stringTable_[GetTableId(hashcode)].table_.equal_range(hashcode);
+    for (auto item = range.first; item != range.second;) {
+        auto foundString = (item++)->second;
+        if (EcmaStringAccessor::StringsAreEqual(foundString, str)) {
+            return foundString;
+        }
+    }
+    return nullptr;
+}
+
+EcmaString *EcmaStringTable::GetString(JSThread *thread, const JSHandle<EcmaString> firstString,
+                                       const JSHandle<EcmaString> secondString, uint32_t hashcode)
+{
+    ASSERT(EcmaStringAccessor(firstString).NotTreeString());
+    ASSERT(EcmaStringAccessor(secondString).NotTreeString());
+    RuntimeLockHolder locker(thread, stringTable_[GetTableId(hashcode)].mutex_);
+#if ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT
+    EcmaVM *vm = thread->GetEcmaVM();
+    if (vm->IsCollectingScopeLockStats()) {
+        vm->IncreaseStringTableLockCount();
+    }
+#endif
+    EcmaString *firstStr = *firstString;
+    EcmaString *secondStr = *secondString;
+    auto range = stringTable_[GetTableId(hashcode)].table_.equal_range(hashcode);
+    for (auto item = range.first; item != range.second;) {
+        auto foundString = (item++)->second;
+        if (EcmaStringAccessor(foundString).EqualToSplicedString(firstStr, secondStr)) {
+            return foundString;
+        }
+    }
+    return nullptr;
+}
+
+EcmaString *EcmaStringTable::GetString(JSThread *thread, const uint8_t *utf8Data, uint32_t utf8Len, bool canBeCompress,
+                                       uint32_t hashcode)
+{
+    RuntimeLockHolder locker(thread, stringTable_[GetTableId(hashcode)].mutex_);
+#if ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT
+    EcmaVM *vm = thread->GetEcmaVM();
+    if (vm->IsCollectingScopeLockStats()) {
+        vm->IncreaseStringTableLockCount();
+    }
+#endif
     auto range = stringTable_[GetTableId(hashcode)].table_.equal_range(hashcode);
     for (auto item = range.first; item != range.second;) {
         auto foundString = (item++)->second;
         if (EcmaStringAccessor::StringIsEqualUint8Data(foundString, utf8Data, utf8Len, canBeCompress)) {
-            return std::make_pair(foundString, hashcode);
+            return foundString;
         }
     }
-    return std::make_pair(nullptr, hashcode);
+    return nullptr;
 }
 
-std::pair<EcmaString *, uint32_t> EcmaStringTable::GetStringThreadUnsafe(const uint16_t *utf16Data,
-                                                                         uint32_t utf16Len, uint32_t hashcode) const
+EcmaString *EcmaStringTable::GetString(JSThread *thread, const uint16_t *utf16Data, uint32_t utf16Len,
+                                       uint32_t hashcode)
 {
+    RuntimeLockHolder locker(thread, stringTable_[GetTableId(hashcode)].mutex_);
+#if ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT
+    EcmaVM *vm = thread->GetEcmaVM();
+    if (vm->IsCollectingScopeLockStats()) {
+        vm->IncreaseStringTableLockCount();
+    }
+#endif
     auto range = stringTable_[GetTableId(hashcode)].table_.equal_range(hashcode);
     for (auto item = range.first; item != range.second;) {
         auto foundString = (item++)->second;
         if (EcmaStringAccessor::StringsAreEqualUtf16(foundString, utf16Data, utf16Len)) {
-            return std::make_pair(foundString, hashcode);
-        }
-    }
-    return std::make_pair(nullptr, hashcode);
-}
-
-EcmaString *EcmaStringTable::GetStringWithHashThreadUnsafe(EcmaString *string, uint32_t hashcode) const
-{
-    auto range = stringTable_[GetTableId(hashcode)].table_.equal_range(hashcode);
-    for (auto item = range.first; item != range.second;) {
-        auto foundString = (item++)->second;
-        if (EcmaStringAccessor::StringsAreEqual(foundString, string)) {
             return foundString;
         }
     }
@@ -131,6 +182,7 @@ EcmaString *EcmaStringTable::GetStringWithHashThreadUnsafe(EcmaString *string, u
 
 EcmaString *EcmaStringTable::GetStringThreadUnsafe(EcmaString *string, uint32_t hashcode) const
 {
+    ASSERT(EcmaStringAccessor(string).NotTreeString());
     auto range = stringTable_[GetTableId(hashcode)].table_.equal_range(hashcode);
     for (auto item = range.first; item != range.second;) {
         auto foundString = (item++)->second;
@@ -143,202 +195,62 @@ EcmaString *EcmaStringTable::GetStringThreadUnsafe(EcmaString *string, uint32_t 
 
 void EcmaStringTable::InternStringThreadUnsafe(EcmaString *string, uint32_t hashcode)
 {
-    if (EcmaStringAccessor(string).IsInternString()) {
-        return;
-    }
+    ASSERT(!EcmaStringAccessor(string).IsInternString());
+    ASSERT(EcmaStringAccessor(string).NotTreeString());
     // Strings in string table should not be in the young space.
     ASSERT(Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(string))->InSharedHeap());
-    ASSERT(EcmaStringAccessor(string).NotTreeString());
     stringTable_[GetTableId(hashcode)].table_.emplace(hashcode, string);
     EcmaStringAccessor(string).SetInternString();
 }
 
-void EcmaStringTable::InternEmptyString(JSThread *thread, EcmaString *emptyStr)
+EcmaString *EcmaStringTable::AtomicGetOrInternStringImpl(JSThread *thread, const JSHandle<EcmaString> string,
+                                                         uint32_t hashcode)
 {
-    auto hashcode = EcmaStringAccessor(emptyStr).GetHashcode();
+    ASSERT(EcmaStringAccessor(string).NotTreeString());
     RuntimeLockHolder locker(thread, stringTable_[GetTableId(hashcode)].mutex_);
 #if ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT
-    auto vm = thread->GetEcmaVM();
-    if (vm->IsCollectingScopeLockStats()) {
-        vm->IncreaseStringTableLockCount();
-    }
-#endif
-    InternStringThreadUnsafe(emptyStr, hashcode);
-}
-
-void EcmaStringTable::InsertStringIfNotExistThreadUnsafe(EcmaString *string)
-{
-    auto hashcode = EcmaStringAccessor(string).GetHashcode();
-    EcmaString *str = GetStringThreadUnsafe(string, hashcode);
-    if (str == nullptr) {
-        InternStringThreadUnsafe(string, hashcode);
-    }
-}
-
-EcmaString *EcmaStringTable::GetOrInternString(EcmaVM *vm, const JSHandle<EcmaString> &firstString,
-                                               const JSHandle<EcmaString> &secondString)
-{
-    JSThread *thread = nullptr;
-    bool signalState = vm->GetJsDebuggerManager()->GetSignalState();
-    thread = signalState ? vm->GetJSThreadNoCheck() : vm->GetJSThread();
-    auto firstFlat = JSHandle<EcmaString>(thread, EcmaStringAccessor::Flatten(vm, firstString));
-    auto secondFlat = JSHandle<EcmaString>(thread, EcmaStringAccessor::Flatten(vm, secondString));
-    uint32_t hashcode = EcmaStringAccessor::CalculateAllConcatHashCode(firstFlat, secondFlat);
-    if (signalState) {
-        return GetOrInternStringWithoutLock(thread, firstString, secondString, hashcode);
-    }
-    RuntimeLockHolder locker(thread, stringTable_[GetTableId(hashcode)].mutex_);
-    return GetOrInternStringWithoutLock(thread, firstString, secondString, hashcode);
-}
-
-EcmaString *EcmaStringTable::GetOrInternStringWithoutLock(JSThread *thread, const JSHandle<EcmaString> &firstString,
-                                                          const JSHandle<EcmaString> &secondString, uint32_t hashcode)
-{
     EcmaVM *vm = thread->GetEcmaVM();
-    auto firstFlat = JSHandle<EcmaString>(thread, EcmaStringAccessor::Flatten(vm, firstString));
-    auto secondFlat = JSHandle<EcmaString>(thread, EcmaStringAccessor::Flatten(vm, secondString));
-#if ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT
     if (vm->IsCollectingScopeLockStats()) {
         vm->IncreaseStringTableLockCount();
     }
 #endif
-    std::pair<EcmaString *, uint32_t> result = GetStringThreadUnsafe(firstFlat, secondFlat, hashcode);
-    if (result.first != nullptr) {
-        return result.first;
+    EcmaString *str = *string;
+    EcmaString *result = GetStringThreadUnsafe(str, hashcode);
+    if (result == nullptr) {
+        InternStringThreadUnsafe(str, hashcode);
+        return str;
     }
-    JSHandle<EcmaString> concatHandle(thread,
-        EcmaStringAccessor::Concat(vm, firstFlat, secondFlat, MemSpaceType::SHARED_OLD_SPACE));
-    EcmaString *concatString = EcmaStringAccessor::Flatten(vm, concatHandle, MemSpaceType::SHARED_OLD_SPACE);
-    concatString->SetMixHashcode(result.second);
-    InternStringThreadUnsafe(concatString, hashcode);
-    return concatString;
+    return result;
 }
 
-EcmaString *EcmaStringTable::GetOrInternString(EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf8Len,
-                                               bool canBeCompress)
+EcmaString *EcmaStringTable::GetOrInternFlattenString(EcmaVM *vm, EcmaString *string)
 {
-    uint32_t hashcode = EcmaStringAccessor::ComputeHashcodeUtf8(utf8Data, utf8Len, canBeCompress);
-    if (vm->GetJsDebuggerManager()->GetSignalState()) {
-        return GetOrInternStringWithoutLock(vm, utf8Data, utf8Len, canBeCompress, hashcode);
-    } else {
-        RuntimeLockHolder locker(vm->GetJSThread(), stringTable_[GetTableId(hashcode)].mutex_);
-        return GetOrInternStringWithoutLock(vm, utf8Data, utf8Len, canBeCompress, hashcode);
+    ASSERT(EcmaStringAccessor(string).NotTreeString());
+    if (EcmaStringAccessor(string).IsInternString()) {
+        return string;
     }
+    JSThread *thread = vm->GetJSThread();
+    JSHandle<EcmaString> stringHandle(thread, string);
+    uint32_t hashcode = EcmaStringAccessor(string).GetHashcode();
+    return AtomicGetOrInternStringImpl(thread, stringHandle, hashcode);
 }
 
-EcmaString *EcmaStringTable::GetOrInternStringWithoutLock(EcmaVM *vm, const uint8_t *utf8Data,
-                                                          uint32_t utf8Len, bool canBeCompress, uint32_t hashcode)
-{
-#if ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT
-    if (vm->IsCollectingScopeLockStats()) {
-        vm->IncreaseStringTableLockCount();
-    }
-#endif
-    std::pair<EcmaString *, uint32_t> result = GetStringThreadUnsafe(utf8Data, utf8Len, canBeCompress, hashcode);
-    if (result.first != nullptr) {
-        return result.first;
-    }
-
-    EcmaString *str =
-        EcmaStringAccessor::CreateFromUtf8(vm, utf8Data, utf8Len, canBeCompress, MemSpaceType::SHARED_OLD_SPACE);
-    str->SetMixHashcode(result.second);
-    InternStringThreadUnsafe(str, hashcode);
-    return str;
-}
-
-EcmaString *EcmaStringTable::GetOrInternCompressedSubString(EcmaVM *vm, const JSHandle<EcmaString> &string,
+EcmaString *EcmaStringTable::GetOrInternStringFromCompressedSubString(EcmaVM *vm, const JSHandle<EcmaString> &string,
     uint32_t offset, uint32_t utf8Len)
 {
-    auto *utf8Data = EcmaStringAccessor(string).GetDataUtf8() + offset;
+    const uint8_t *utf8Data = EcmaStringAccessor(string).GetDataUtf8() + offset;
     uint32_t hashcode = EcmaStringAccessor::ComputeHashcodeUtf8(utf8Data, utf8Len, true);
-    RuntimeLockHolder locker(vm->GetJSThread(), stringTable_[GetTableId(hashcode)].mutex_);
-#if ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT
-    if (vm->IsCollectingScopeLockStats()) {
-        vm->IncreaseStringTableLockCount();
+    JSThread *thread = vm->GetJSThread();
+    EcmaString *result = GetStringFromCompressedSubString(thread, string, offset, utf8Len, hashcode);
+    if (result != nullptr) {
+        return result;
     }
-#endif
-    // utf8data may be moved after shared full gc, so reload utf8Data here.
     utf8Data = EcmaStringAccessor(string).GetDataUtf8() + offset;
-    std::pair<EcmaString *, uint32_t> result = GetStringThreadUnsafe(utf8Data, utf8Len, true, hashcode);
-    if (result.first != nullptr) {
-        return result.first;
-    }
-
-    EcmaString *str = EcmaStringAccessor::CreateFromUtf8CompressedSubString(
-        vm, string, offset, utf8Len, MemSpaceType::SHARED_OLD_SPACE);
-    str->SetMixHashcode(result.second);
-    InternStringThreadUnsafe(str, hashcode);
-    return str;
-}
-
-/*
-    This function is used to create global constant strings from non-movable sapce only.
-    It only inserts string into string-table and provides no string-table validity check.
-*/
-EcmaString *EcmaStringTable::CreateAndInternStringNonMovable(EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf8Len)
-{
-    uint32_t hashcode = EcmaStringAccessor::ComputeHashcodeUtf8(utf8Data, utf8Len, true);
-    RuntimeLockHolder locker(vm->GetJSThread(), stringTable_[GetTableId(hashcode)].mutex_);
-#if ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT
-    if (vm->IsCollectingScopeLockStats()) {
-        vm->IncreaseStringTableLockCount();
-    }
-#endif
-    std::pair<EcmaString *, uint32_t> result = GetStringThreadUnsafe(utf8Data, utf8Len, true, hashcode);
-    if (result.first != nullptr) {
-        return result.first;
-    }
-    EcmaString *str = EcmaStringAccessor::CreateFromUtf8(vm, utf8Data, utf8Len, true, MemSpaceType::SHARED_NON_MOVABLE);
-    str->SetMixHashcode(result.second);
-    InternStringThreadUnsafe(str, hashcode);
-    return str;
-}
-
-/*
-    This function is used to create global constant strings from read-only sapce only.
-    It only inserts string into string-table and provides no string-table validity check.
-*/
-EcmaString *EcmaStringTable::CreateAndInternStringReadOnly(EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf8Len,
-                                                           bool canBeCompress)
-{
-    uint32_t hashcode = EcmaStringAccessor::ComputeHashcodeUtf8(utf8Data, utf8Len, canBeCompress);
-    RuntimeLockHolder locker(vm->GetJSThread(), stringTable_[GetTableId(hashcode)].mutex_);
-#if ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT
-    if (vm->IsCollectingScopeLockStats()) {
-        vm->IncreaseStringTableLockCount();
-    }
-#endif
-    std::pair<EcmaString *, uint32_t> result = GetStringThreadUnsafe(utf8Data, utf8Len, canBeCompress, hashcode);
-    if (result.first != nullptr) {
-        return result.first;
-    }
-    EcmaString *str = EcmaStringAccessor::CreateFromUtf8(vm, utf8Data, utf8Len, canBeCompress,
-                                                         MemSpaceType::SHARED_READ_ONLY_SPACE);
-    str->SetMixHashcode(result.second);
-    InternStringThreadUnsafe(str, hashcode);
-    return str;
-}
-
-EcmaString *EcmaStringTable::GetOrInternString(EcmaVM *vm, const uint16_t *utf16Data, uint32_t utf16Len,
-                                               bool canBeCompress)
-{
-    uint32_t hashcode = EcmaStringAccessor::ComputeHashcodeUtf16(const_cast<uint16_t *>(utf16Data), utf16Len);
-    RuntimeLockHolder locker(vm->GetJSThread(), stringTable_[GetTableId(hashcode)].mutex_);
-#if ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT
-    if (vm->IsCollectingScopeLockStats()) {
-        vm->IncreaseStringTableLockCount();
-    }
-#endif
-    std::pair<EcmaString *, uint32_t> result = GetStringThreadUnsafe(utf16Data, utf16Len, hashcode);
-    if (result.first != nullptr) {
-        return result.first;
-    }
-
-    EcmaString *str =
-        EcmaStringAccessor::CreateFromUtf16(vm, utf16Data, utf16Len, canBeCompress, MemSpaceType::SHARED_OLD_SPACE);
-    str->SetMixHashcode(result.second);
-    InternStringThreadUnsafe(str, hashcode);
-    return str;
+    EcmaString *str = EcmaStringAccessor::CreateFromUtf8CompressedSubString(vm, string, offset, utf8Len,
+        MemSpaceType::SHARED_OLD_SPACE);
+    JSHandle<EcmaString> strHandle(thread, str);
+    strHandle->SetMixHashcode(hashcode);
+    return AtomicGetOrInternStringImpl(thread, strHandle, hashcode);
 }
 
 EcmaString *EcmaStringTable::GetOrInternString(EcmaVM *vm, EcmaString *string)
@@ -346,50 +258,115 @@ EcmaString *EcmaStringTable::GetOrInternString(EcmaVM *vm, EcmaString *string)
     if (EcmaStringAccessor(string).IsInternString()) {
         return string;
     }
-    auto thread = vm->GetJSThread();
-    JSHandle<EcmaString> strHandle(thread, string);
+    JSThread *thread = vm->GetJSThread();
+    JSHandle<EcmaString> stringHandle(thread, string);
     // may gc
-    auto strFlat = EcmaStringAccessor::Flatten(vm, strHandle, MemSpaceType::SHARED_OLD_SPACE);
+    EcmaString *strFlat = EcmaStringAccessor::Flatten(vm, stringHandle, MemSpaceType::SHARED_OLD_SPACE);
     if (EcmaStringAccessor(strFlat).IsInternString()) {
         return strFlat;
     }
+    uint32_t hashcode = EcmaStringAccessor(strFlat).GetHashcode();
     JSHandle<EcmaString> strFlatHandle(thread, strFlat);
-    // may gc
-    auto hashcode = EcmaStringAccessor(strFlat).GetHashcode();
-    RuntimeLockHolder locker(thread, stringTable_[GetTableId(hashcode)].mutex_);
-#if ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT
-    if (vm->IsCollectingScopeLockStats()) {
-        vm->IncreaseStringTableLockCount();
-    }
-#endif
-    strFlat = *strFlatHandle;
-    EcmaString *result = GetStringThreadUnsafe(strFlat, hashcode);
+    EcmaString *result = GetString(thread, strFlatHandle, hashcode);
     if (result != nullptr) {
         return result;
     }
-
-    InternStringThreadUnsafe(strFlat, hashcode);
-    return strFlat;
+    return AtomicGetOrInternStringImpl(thread, strFlatHandle, hashcode);
 }
 
-EcmaString *EcmaStringTable::GetOrInternStringThreadUnsafe(EcmaVM *vm, EcmaString *string)
+EcmaString *EcmaStringTable::GetOrInternString(EcmaVM *vm, const JSHandle<EcmaString> &firstString,
+                                               const JSHandle<EcmaString> &secondString)
 {
-    if (EcmaStringAccessor(string).IsInternString()) {
-        return string;
+    bool signalState = vm->GetJsDebuggerManager()->GetSignalState();
+    if (UNLIKELY(signalState)) {
+        return GetOrInternStringThreadUnsafe(vm, firstString, secondString);
     }
-    JSHandle<EcmaString> strHandle(vm->GetJSThread(), string);
-    EcmaString *strFlat = EcmaStringAccessor::Flatten(vm, strHandle, MemSpaceType::SHARED_OLD_SPACE);
-    if (EcmaStringAccessor(strFlat).IsInternString()) {
-        return strFlat;
-    }
-    auto hashcode = EcmaStringAccessor(strFlat).GetHashcode();
-    EcmaString *result = GetStringThreadUnsafe(strFlat, hashcode);
+    JSThread *thread = vm->GetJSThread();
+    JSHandle<EcmaString> firstFlat(thread, EcmaStringAccessor::Flatten(vm, firstString));
+    JSHandle<EcmaString> secondFlat(thread, EcmaStringAccessor::Flatten(vm, secondString));
+    uint32_t hashcode = EcmaStringAccessor::CalculateAllConcatHashCode(firstFlat, secondFlat);
+    EcmaString *result = GetString(thread, firstFlat, secondFlat, hashcode);
     if (result != nullptr) {
         return result;
     }
+    JSHandle<EcmaString> concatHandle(thread,
+        EcmaStringAccessor::Concat(vm, firstFlat, secondFlat, MemSpaceType::SHARED_OLD_SPACE));
+    JSHandle<EcmaString> flattenConcatHandle(thread,
+        EcmaStringAccessor::Flatten(vm, concatHandle, MemSpaceType::SHARED_OLD_SPACE));
+    flattenConcatHandle->SetMixHashcode(hashcode);
+    return AtomicGetOrInternStringImpl(thread, flattenConcatHandle, hashcode);
+}
 
-    InternStringThreadUnsafe(strFlat, hashcode);
-    return strFlat;
+EcmaString *EcmaStringTable::GetOrInternString(EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf8Len,
+                                               bool canBeCompress, MemSpaceType type)
+{
+    ASSERT(IsSMemSpace(type));
+    bool signalState = vm->GetJsDebuggerManager()->GetSignalState();
+    if (UNLIKELY(signalState)) {
+        return GetOrInternStringThreadUnsafe(vm, utf8Data, utf8Len, canBeCompress);
+    }
+    JSThread *thread = vm->GetJSThread();
+    uint32_t hashcode = EcmaStringAccessor::ComputeHashcodeUtf8(utf8Data, utf8Len, canBeCompress);
+    EcmaString *result = GetString(thread, utf8Data, utf8Len, canBeCompress, hashcode);
+    if (result != nullptr) {
+        return result;
+    }
+    JSHandle<EcmaString> strHandle(thread,
+        EcmaStringAccessor::CreateFromUtf8(vm, utf8Data, utf8Len, canBeCompress, type));
+    strHandle->SetMixHashcode(hashcode);
+    return AtomicGetOrInternStringImpl(thread, strHandle, hashcode);
+}
+
+EcmaString *EcmaStringTable::GetOrInternString(EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf8Len,
+                                               bool canBeCompress, MemSpaceType type,
+                                               bool isConstantString, uint32_t idOffset)
+{
+    ASSERT(IsSMemSpace(type));
+    ASSERT(type == MemSpaceType::SHARED_NON_MOVABLE || type == MemSpaceType::SHARED_OLD_SPACE);
+    uint32_t hashcode = EcmaStringAccessor::ComputeHashcodeUtf8(utf8Data, utf8Len, canBeCompress);
+    JSThread *thread = vm->GetJSThread();
+    EcmaString *result = GetString(thread, utf8Data, utf8Len, canBeCompress, hashcode);
+    if (result != nullptr) {
+        return result;
+    }
+    EcmaString *str = nullptr;
+    if (canBeCompress) {
+        // Constant string will be created in this branch.
+        str = EcmaStringAccessor::CreateFromUtf8(vm, utf8Data, utf8Len, canBeCompress, type, isConstantString,
+            idOffset);
+    } else {
+        str = EcmaStringAccessor::CreateFromUtf8(vm, utf8Data, utf8Len, canBeCompress, type);
+    }
+    JSHandle<EcmaString> strHandle(thread, str);
+    strHandle->SetMixHashcode(hashcode);
+    return AtomicGetOrInternStringImpl(thread, strHandle, hashcode);
+}
+
+EcmaString *EcmaStringTable::GetOrInternString(EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf16Len,
+                                               MemSpaceType type)
+{
+    ASSERT(IsSMemSpace(type));
+    ASSERT(type == MemSpaceType::SHARED_NON_MOVABLE || type == MemSpaceType::SHARED_OLD_SPACE);
+    JSThread *thread = vm->GetJSThread();
+    EcmaString *str = EcmaStringAccessor::CreateUtf16StringFromUtf8(vm, utf8Data, utf16Len, type);
+    JSHandle<EcmaString> strHandle(thread, str);
+    uint32_t hashcode = EcmaStringAccessor(str).GetHashcode();
+    return AtomicGetOrInternStringImpl(thread, strHandle, hashcode);
+}
+
+EcmaString *EcmaStringTable::GetOrInternString(EcmaVM *vm, const uint16_t *utf16Data, uint32_t utf16Len,
+                                               bool canBeCompress)
+{
+    uint32_t hashcode = EcmaStringAccessor::ComputeHashcodeUtf16(const_cast<uint16_t *>(utf16Data), utf16Len);
+    JSThread *thread = vm->GetJSThread();
+    EcmaString *result = GetString(thread, utf16Data, utf16Len, hashcode);
+    if (result != nullptr) {
+        return result;
+    }
+    JSHandle<EcmaString> strHandle(thread,
+        EcmaStringAccessor::CreateFromUtf16(vm, utf16Data, utf16Len, canBeCompress, MemSpaceType::SHARED_OLD_SPACE));
+    strHandle->SetMixHashcode(hashcode);
+    return AtomicGetOrInternStringImpl(thread, strHandle, hashcode);
 }
 
 void EcmaStringTable::InsertStringToTableWithHashThreadUnsafe(EcmaString* string, uint32_t hashcode)
@@ -404,10 +381,11 @@ void EcmaStringTable::InsertStringToTableWithHashThreadUnsafe(EcmaString* string
 
 EcmaString *EcmaStringTable::InsertStringToTable(EcmaVM *vm, const JSHandle<EcmaString> &strHandle)
 {
-    auto strFlat = EcmaStringAccessor::Flatten(vm, strHandle, MemSpaceType::SHARED_OLD_SPACE);
-    JSHandle<EcmaString> strFlatHandle(vm->GetJSThread(), strFlat);
-    auto hashcode = EcmaStringAccessor(strFlat).GetHashcode();
-    RuntimeLockHolder locker(vm->GetJSThread(), stringTable_[GetTableId(hashcode)].mutex_);
+    JSThread *thread = vm->GetJSThread();
+    EcmaString *strFlat = EcmaStringAccessor::Flatten(vm, strHandle, MemSpaceType::SHARED_OLD_SPACE);
+    JSHandle<EcmaString> strFlatHandle(thread, strFlat);
+    uint32_t hashcode = EcmaStringAccessor(strFlat).GetHashcode();
+    RuntimeLockHolder locker(thread, stringTable_[GetTableId(hashcode)].mutex_);
 #if ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT
     if (vm->IsCollectingScopeLockStats()) {
         vm->IncreaseStringTableLockCount();
@@ -420,34 +398,28 @@ EcmaString *EcmaStringTable::InsertStringToTable(EcmaVM *vm, const JSHandle<Ecma
 
 EcmaString *EcmaStringTable::TryGetInternString(JSThread *thread, const JSHandle<EcmaString> &string)
 {
-    auto hashcode = EcmaStringAccessor(*string).GetHashcode();
-    RuntimeLockHolder locker(thread, stringTable_[GetTableId(hashcode)].mutex_);
-#if ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT
-    auto vm = thread->GetEcmaVM();
-    if (vm->IsCollectingScopeLockStats()) {
-        vm->IncreaseStringTableLockCount();
-    }
-#endif
-    return GetStringThreadUnsafe(*string, hashcode);
+    uint32_t hashcode = EcmaStringAccessor(*string).GetHashcode();
+    return GetString(thread, string, hashcode);
 }
 
-EcmaString *EcmaStringTable::GetOrInternStringWithSpaceType(EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf8Len,
-                                                            bool canBeCompress, MemSpaceType type,
-                                                            bool isConstantString, uint32_t idOffset)
+// used in jit thread, which unsupport create jshandle
+EcmaString *EcmaStringTable::GetOrInternStringWithoutJSHandleForJit(EcmaVM *vm, const uint8_t *utf8Data,
+    uint32_t utf8Len, bool canBeCompress, MemSpaceType type, bool isConstantString, uint32_t idOffset)
 {
     ASSERT(IsSMemSpace(type));
+    ASSERT(type == MemSpaceType::SHARED_NON_MOVABLE || type == MemSpaceType::SHARED_OLD_SPACE);
     uint32_t hashcode = EcmaStringAccessor::ComputeHashcodeUtf8(utf8Data, utf8Len, canBeCompress);
-    RuntimeLockHolder locker(vm->GetJSThread(), stringTable_[GetTableId(hashcode)].mutex_);
+    JSThread *thread = vm->GetJSThread();
+    RuntimeLockHolder locker(thread, stringTable_[GetTableId(hashcode)].mutex_);
 #if ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT
     if (vm->IsCollectingScopeLockStats()) {
         vm->IncreaseStringTableLockCount();
     }
 #endif
-    std::pair<EcmaString *, uint32_t> result = GetStringThreadUnsafe(utf8Data, utf8Len, canBeCompress, hashcode);
-    if (result.first != nullptr) {
-        return result.first;
+    EcmaString *result = GetStringThreadUnsafe(utf8Data, utf8Len, canBeCompress, hashcode);
+    if (result != nullptr) {
+        return result;
     }
-    type = (type == MemSpaceType::SHARED_NON_MOVABLE) ? type : MemSpaceType::SHARED_OLD_SPACE;
     EcmaString *str = nullptr;
     if (canBeCompress) {
         // Constant string will be created in this branch.
@@ -456,52 +428,30 @@ EcmaString *EcmaStringTable::GetOrInternStringWithSpaceType(EcmaVM *vm, const ui
     } else {
         str = EcmaStringAccessor::CreateFromUtf8(vm, utf8Data, utf8Len, canBeCompress, type);
     }
-    str->SetMixHashcode(result.second);
-    InternStringThreadUnsafe(str, hashcode);
-    return str;
-}
-
-EcmaString *EcmaStringTable::GetOrInternStringWithSpaceType(EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf16Len,
-                                                            MemSpaceType type)
-{
-    ASSERT(IsSMemSpace(type));
-    type = (type == MemSpaceType::SHARED_NON_MOVABLE) ? type : MemSpaceType::SHARED_OLD_SPACE;
-    EcmaString *str = EcmaStringAccessor::CreateUtf16StringFromUtf8(vm, utf8Data, utf16Len, type);
-    JSHandle<EcmaString> stringHandle(vm->GetJSThread(), str);
-    auto hashcode = EcmaStringAccessor(str).GetHashcode();
-    RuntimeLockHolder locker(vm->GetJSThread(), stringTable_[GetTableId(hashcode)].mutex_);
-#if ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT
-    if (vm->IsCollectingScopeLockStats()) {
-        vm->IncreaseStringTableLockCount();
-    }
-#endif
-    str = *stringHandle;
-    EcmaString *result = GetStringThreadUnsafe(str, hashcode);
-    if (result != nullptr) {
-        return result;
-    }
+    str->SetMixHashcode(hashcode);
     InternStringThreadUnsafe(str, hashcode);
     return str;
 }
 
 // used in jit thread, which unsupport create jshandle
-EcmaString *EcmaStringTable::GetOrInternStringWithSpaceTypeWithoutJSHandle(EcmaVM *vm, const uint8_t *utf8Data,
-                                                                           uint32_t utf16Len, MemSpaceType type)
+EcmaString *EcmaStringTable::GetOrInternStringWithoutJSHandleForJit(EcmaVM *vm, const uint8_t *utf8Data,
+                                                                    uint32_t utf16Len, MemSpaceType type)
 {
+    ASSERT(vm->GetJSThread()->IsJitThread());
     ASSERT(IsSMemSpace(type));
     type = (type == MemSpaceType::SHARED_NON_MOVABLE) ? type : MemSpaceType::SHARED_OLD_SPACE;
     CVector<uint16_t> u16Buffer(utf16Len);
     utf::ConvertRegionMUtf8ToUtf16(utf8Data, u16Buffer.data(), utf::Mutf8Size(utf8Data), utf16Len, 0);
-    auto hashcode = EcmaStringAccessor::ComputeHashcodeUtf16(u16Buffer.data(), utf16Len);
+    uint32_t hashcode = EcmaStringAccessor::ComputeHashcodeUtf16(u16Buffer.data(), utf16Len);
     RuntimeLockHolder locker(vm->GetJSThread(), stringTable_[GetTableId(hashcode)].mutex_);
 #if ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT
     if (vm->IsCollectingScopeLockStats()) {
         vm->IncreaseStringTableLockCount();
     }
 #endif
-    auto result = GetStringThreadUnsafe(u16Buffer.data(), utf16Len, hashcode);
-    if (result.first != nullptr) {
-        return result.first;
+    EcmaString *result = GetStringThreadUnsafe(u16Buffer.data(), utf16Len, hashcode);
+    if (result != nullptr) {
+        return result;
     }
     EcmaString *str = EcmaStringAccessor::CreateFromUtf16(vm, u16Buffer.data(), utf16Len, false, type);
     str->SetMixHashcode(hashcode);
@@ -624,5 +574,91 @@ JSTaggedValue SingleCharTable::CreateSingleCharTable(JSThread *thread)
         table->Set(thread, i, factory->NewFromASCIIReadOnly(tmp).GetTaggedValue());
     }
     return table.GetTaggedValue();
+}
+
+// This should only call in Debugger Signal, and need to fix and remove
+EcmaString *EcmaStringTable::GetOrInternStringThreadUnsafe(EcmaVM *vm,
+                                                           const JSHandle<EcmaString> firstString,
+                                                           const JSHandle<EcmaString> secondString)
+{
+    ASSERT(vm->GetJsDebuggerManager()->GetSignalState());
+    JSThread *thread = vm->GetJSThreadNoCheck();
+    JSHandle<EcmaString> firstFlat(thread, EcmaStringAccessor::Flatten(vm, firstString));
+    JSHandle<EcmaString> secondFlat(thread, EcmaStringAccessor::Flatten(vm, secondString));
+    uint32_t hashcode = EcmaStringAccessor::CalculateAllConcatHashCode(firstFlat, secondFlat);
+    EcmaString *result = GetStringThreadUnsafe(firstFlat, secondFlat, hashcode);
+    if (result != nullptr) {
+        return result;
+    }
+    JSHandle<EcmaString> concatHandle(thread,
+        EcmaStringAccessor::Concat(vm, firstFlat, secondFlat, MemSpaceType::SHARED_OLD_SPACE));
+    EcmaString *concatString = EcmaStringAccessor::Flatten(vm, concatHandle, MemSpaceType::SHARED_OLD_SPACE);
+    concatString->SetMixHashcode(hashcode);
+    InternStringThreadUnsafe(concatString, hashcode);
+    return concatString;
+}
+
+// This should only call in Debugger Signal, and need to fix and remove
+EcmaString *EcmaStringTable::GetOrInternStringThreadUnsafe(EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf8Len,
+                                                           bool canBeCompress)
+{
+    ASSERT(vm->GetJsDebuggerManager()->GetSignalState());
+    uint32_t hashcode = EcmaStringAccessor::ComputeHashcodeUtf8(utf8Data, utf8Len, canBeCompress);
+    EcmaString *result = GetStringThreadUnsafe(utf8Data, utf8Len, canBeCompress, hashcode);
+    if (result != nullptr) {
+        return result;
+    }
+    EcmaString *str =
+        EcmaStringAccessor::CreateFromUtf8(vm, utf8Data, utf8Len, canBeCompress, MemSpaceType::SHARED_OLD_SPACE);
+    str->SetMixHashcode(hashcode);
+    InternStringThreadUnsafe(str, hashcode);
+    return str;
+}
+
+// This should only call in Debugger Signal, and need to fix and remove
+EcmaString *EcmaStringTable::GetStringThreadUnsafe(const JSHandle<EcmaString> firstString,
+                                                   const JSHandle<EcmaString> secondString,
+                                                   uint32_t hashcode) const
+{
+    ASSERT(EcmaStringAccessor(firstString).NotTreeString());
+    ASSERT(EcmaStringAccessor(secondString).NotTreeString());
+    EcmaString *firstStr = *firstString;
+    EcmaString *secondStr = *secondString;
+    auto range = stringTable_[GetTableId(hashcode)].table_.equal_range(hashcode);
+    for (auto item = range.first; item != range.second;) {
+        auto foundString = (item++)->second;
+        if (EcmaStringAccessor(foundString).EqualToSplicedString(firstStr, secondStr)) {
+            return foundString;
+        }
+    }
+    return nullptr;
+}
+
+// This should only call in Debugger Signal, and need to fix and remove
+EcmaString *EcmaStringTable::GetStringThreadUnsafe(const uint8_t *utf8Data, uint32_t utf8Len, bool canBeCompress,
+                                                   uint32_t hashcode) const
+{
+    auto range = stringTable_[GetTableId(hashcode)].table_.equal_range(hashcode);
+    for (auto item = range.first; item != range.second;) {
+        auto foundString = (item++)->second;
+        if (EcmaStringAccessor::StringIsEqualUint8Data(foundString, utf8Data, utf8Len, canBeCompress)) {
+            return foundString;
+        }
+    }
+    return nullptr;
+}
+
+// This should only call in JIT Thread, and need to fix and remove
+EcmaString *EcmaStringTable::GetStringThreadUnsafe(const uint16_t *utf16Data, uint32_t utf16Len,
+                                                   uint32_t hashcode) const
+{
+    auto range = stringTable_[GetTableId(hashcode)].table_.equal_range(hashcode);
+    for (auto item = range.first; item != range.second;) {
+        auto foundString = (item++)->second;
+        if (EcmaStringAccessor::StringsAreEqualUtf16(foundString, utf16Data, utf16Len)) {
+            return foundString;
+        }
+    }
+    return nullptr;
 }
 }  // namespace panda::ecmascript

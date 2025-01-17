@@ -947,8 +947,6 @@ private:
     // used to create nonmovable js_object
     JSHandle<JSObject> NewNonMovableJSObject(const JSHandle<JSHClass> &jshclass);
 
-    // used to create nonmovable utf8 string at global constants
-    JSHandle<EcmaString> NewFromASCIINonMovable(std::string_view data);
     // used to create read only utf8 string at global constants
     JSHandle<EcmaString> NewFromASCIIReadOnly(std::string_view data);
 
@@ -969,7 +967,6 @@ private:
     JSHandle<EcmaString> GetStringFromStringTable(const uint8_t *utf8Data, uint32_t utf8Len, bool canBeCompress) const;
     JSHandle<EcmaString> GetCompressedSubStringFromStringTable(const JSHandle<EcmaString> &string, uint32_t offset,
                                                                uint32_t utf8Len) const;
-    JSHandle<EcmaString> GetStringFromStringTableNonMovable(const uint8_t *utf8Data, uint32_t utf8Len) const;
     JSHandle<EcmaString> GetStringFromStringTableReadOnly(const uint8_t *utf8Data, uint32_t utf8Len,
                                                           bool canBeCompress = true) const;
     // For MUtf-8 string data
@@ -983,8 +980,6 @@ private:
 
     JSHandle<EcmaString> GetStringFromStringTable(const uint16_t *utf16Data, uint32_t utf16Len,
                                                   bool canBeCompress) const;
-
-    JSHandle<EcmaString> GetStringFromStringTable(EcmaString *string) const;
 
     JSHandle<EcmaString> GetStringFromStringTable(const JSHandle<EcmaString> &firstString,
                                                   const JSHandle<EcmaString> &secondString);
