@@ -232,7 +232,7 @@ config("ark_jsruntime_public_config") {
 
   if (ark_js_hybrid) {
     defines += [ "PANDA_JS_ETS_HYBRID_MODE" ]
-    include_dirs += [ "$arkplatform_root" ]
+    configs += [ "$ark_root/arkplatform:arkplatform_public_config" ]
   }
 }
 
