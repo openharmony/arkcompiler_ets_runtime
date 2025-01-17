@@ -2078,49 +2078,49 @@ JSTaggedValue ObjectFactory::GetReadOnlyMethodForNativeFunction(FunctionKind kin
     size_t constantIndex;
     switch (kind) {
         case FunctionKind::NORMAL_FUNCTION:
-            constantIndex = static_cast<size_t>(ConstantIndex::NATIVE_NORMAL_FUNCTION_METHOD_INDEX);
+            constantIndex = static_cast<size_t>(ConstantIndex::NORMAL_FUNCTION_METHOD_INDEX);
             break;
         case FunctionKind::GETTER_FUNCTION:
-            constantIndex = static_cast<size_t>(ConstantIndex::NATIVE_GETTER_FUNCTION_METHOD_INDEX);
+            constantIndex = static_cast<size_t>(ConstantIndex::GETTER_FUNCTION_METHOD_INDEX);
             break;
         case FunctionKind::SETTER_FUNCTION:
-            constantIndex = static_cast<size_t>(ConstantIndex::NATIVE_SETTER_FUNCTION_METHOD_INDEX);
+            constantIndex = static_cast<size_t>(ConstantIndex::SETTER_FUNCTION_METHOD_INDEX);
             break;
         case FunctionKind::ARROW_FUNCTION:
-            constantIndex = static_cast<size_t>(ConstantIndex::NATIVE_ARROW_FUNCTION_METHOD_INDEX);
+            constantIndex = static_cast<size_t>(ConstantIndex::ARROW_FUNCTION_METHOD_INDEX);
             break;
         case FunctionKind::ASYNC_ARROW_FUNCTION:
-            constantIndex = static_cast<size_t>(ConstantIndex::NATIVE_ASYNC_ARROW_FUNCTION_METHOD_INDEX);
+            constantIndex = static_cast<size_t>(ConstantIndex::ASYNC_ARROW_FUNCTION_METHOD_INDEX);
             break;
         case FunctionKind::CONCURRENT_FUNCTION:
-            constantIndex = static_cast<size_t>(ConstantIndex::NATIVE_CONCURRENT_FUNCTION_METHOD_INDEX);
+            constantIndex = static_cast<size_t>(ConstantIndex::CONCURRENT_FUNCTION_METHOD_INDEX);
             break;
         case FunctionKind::ASYNC_FUNCTION:
-            constantIndex = static_cast<size_t>(ConstantIndex::NATIVE_ASYNC_FUNCTION_METHOD_INDEX);
+            constantIndex = static_cast<size_t>(ConstantIndex::ASYNC_FUNCTION_METHOD_INDEX);
             break;
         case FunctionKind::BASE_CONSTRUCTOR:
-            constantIndex = static_cast<size_t>(ConstantIndex::NATIVE_BASE_CONSTRUCTOR_METHOD_INDEX);
+            constantIndex = static_cast<size_t>(ConstantIndex::BASE_CONSTRUCTOR_METHOD_INDEX);
             break;
         case FunctionKind::CLASS_CONSTRUCTOR:
-            constantIndex = static_cast<size_t>(ConstantIndex::NATIVE_CLASS_CONSTRUCTOR_METHOD_INDEX);
+            constantIndex = static_cast<size_t>(ConstantIndex::CLASS_CONSTRUCTOR_METHOD_INDEX);
             break;
         case FunctionKind::BUILTIN_PROXY_CONSTRUCTOR:
-            constantIndex = static_cast<size_t>(ConstantIndex::NATIVE_BUILTIN_PROXY_CONSTRUCTOR_METHOD_INDEX);
+            constantIndex = static_cast<size_t>(ConstantIndex::BUILTIN_PROXY_CONSTRUCTOR_METHOD_INDEX);
             break;
         case FunctionKind::BUILTIN_CONSTRUCTOR:
-            constantIndex = static_cast<size_t>(ConstantIndex::NATIVE_BUILTIN_CONSTRUCTOR_METHOD_INDEX);
+            constantIndex = static_cast<size_t>(ConstantIndex::BUILTIN_CONSTRUCTOR_METHOD_INDEX);
             break;
         case FunctionKind::DERIVED_CONSTRUCTOR:
-            constantIndex = static_cast<size_t>(ConstantIndex::NATIVE_DERIVED_CONSTRUCTOR_METHOD_INDEX);
+            constantIndex = static_cast<size_t>(ConstantIndex::DERIVED_CONSTRUCTOR_METHOD_INDEX);
             break;
         case FunctionKind::GENERATOR_FUNCTION:
-            constantIndex = static_cast<size_t>(ConstantIndex::NATIVE_GENERATOR_FUNCTION_METHOD_INDEX);
+            constantIndex = static_cast<size_t>(ConstantIndex::GENERATOR_FUNCTION_METHOD_INDEX);
             break;
         case FunctionKind::NONE_FUNCTION:
-            constantIndex = static_cast<size_t>(ConstantIndex::NATIVE_NONE_FUNCTION_METHOD_INDEX);
+            constantIndex = static_cast<size_t>(ConstantIndex::NONE_FUNCTION_METHOD_INDEX);
             break;
         case FunctionKind::ASYNC_GENERATOR_FUNCTION:
-            constantIndex = static_cast<size_t>(ConstantIndex::NATIVE_ASYNC_GENERATOR_FUNCTION_METHOD_INDEX);
+            constantIndex = static_cast<size_t>(ConstantIndex::ASYNC_GENERATOR_FUNCTION_METHOD_INDEX);
             break;
         default:
             LOG_ECMA(FATAL) << "cannot get method for native function of kind "

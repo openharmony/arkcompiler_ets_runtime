@@ -623,37 +623,37 @@ class ObjectFactory;
     V(JSTaggedValue, SharedArrayLengthAccessor, SHARED_ARRAY_LENGTH_ACCESSOR, ecma_roots_accessor)
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define SHARED_GLOBAL_ENV_CONSTANT_SPECIAL(V)                                                     \
-    V(JSTaggedValue, Undefined, UNDEFINED_INDEX, ecma_roots_special)                              \
-    V(JSTaggedValue, Null, NULL_INDEX, ecma_roots_special)                                        \
-    V(JSTaggedValue, Hole, HOLE_INDEX, ecma_roots_special)                                        \
-    V(JSTaggedValue, True, TRUE_INDEX, ecma_roots_special)                                        \
-    V(JSTaggedValue, False, FALSE_INDEX, ecma_roots_special)                                      \
-    V(JSTaggedValue, ProtoTransRootHClassSymbol, PROTO_TRANS_ROOT_HCLASS_SYMBOL_INDEX, ecma_roots_special) \
-    V(JSTaggedValue, EmptyString, EMPTY_STRING_OBJECT_INDEX, ecma_roots_special)                  \
-    V(JSTaggedValue, SingleCharTable, SINGLE_CHAR_TABLE_INDEX, ecma_roots_special)                \
-    V(JSTaggedValue, EmptySLayoutInfo, EMPTY_SLAYOUT_INFO_OBJECT_INDEX, ecma_roots_special)       \
-    V(JSTaggedValue, EmptyArray, EMPTY_ARRAY_OBJECT_INDEX, ecma_roots_special)                    \
-    V(JSTaggedValue, EmptyMutantArray, EMPTY_MUTANT_ARRAY_OBJECT_INDEX, ecma_roots_special)       \
-    V(JSTaggedValue, ProxyMethod, PROXY_METHOD_INDEX, ecma_roots_special)                         \
-    V(JSTaggedValue, Uint64MaxBigInt, UINT64_MAX_BIGINT_INDEX, ecma_roots_special)                \
-    V(JSTaggedValue, Int64MaxBigInt, INT64_MAX_BIGINT_INDEX, ecma_roots_special)                  \
-    V(JSTaggedValue, EmptyProfileTypeInfoCell, EMPTY_PROFILE_TYPE_INFO_CELL_INDEX, ecma_roots_special) \
-    V(JSTaggedValue, NativeNormalFunctionMethod, NATIVE_NORMAL_FUNCTION_METHOD_INDEX, ecma_roots_special) \
-    V(JSTaggedValue, NativeGetterFunctionMethod, NATIVE_GETTER_FUNCTION_METHOD_INDEX, ecma_roots_special) \
-    V(JSTaggedValue, NativeSetterFunctionMethod, NATIVE_SETTER_FUNCTION_METHOD_INDEX, ecma_roots_special) \
-    V(JSTaggedValue, NativeArrowFunctionMethod, NATIVE_ARROW_FUNCTION_METHOD_INDEX, ecma_roots_special) \
-    V(JSTaggedValue, NativeAsyncArrowFunctionMethod, NATIVE_ASYNC_ARROW_FUNCTION_METHOD_INDEX, ecma_roots_special) \
-    V(JSTaggedValue, NativeConcurrentFunctionMethod, NATIVE_CONCURRENT_FUNCTION_METHOD_INDEX, ecma_roots_special) \
-    V(JSTaggedValue, NativeAsyncFunctionMethod, NATIVE_ASYNC_FUNCTION_METHOD_INDEX, ecma_roots_special) \
-    V(JSTaggedValue, NativeBaseConstructorMethod, NATIVE_BASE_CONSTRUCTOR_METHOD_INDEX, ecma_roots_special) \
-    V(JSTaggedValue, NativeClassConstructorMethod, NATIVE_CLASS_CONSTRUCTOR_METHOD_INDEX, ecma_roots_special) \
-    V(JSTaggedValue, NativeBuiltinProxyConstructorMethod, NATIVE_BUILTIN_PROXY_CONSTRUCTOR_METHOD_INDEX, ecma_roots_special) \
-    V(JSTaggedValue, NativeBuiltinConstructorMethod, NATIVE_BUILTIN_CONSTRUCTOR_METHOD_INDEX, ecma_roots_special) \
-    V(JSTaggedValue, NativeDerivedConstructorMethod, NATIVE_DERIVED_CONSTRUCTOR_METHOD_INDEX, ecma_roots_special) \
-    V(JSTaggedValue, NativeGeneratorFunctionMethod, NATIVE_GENERATOR_FUNCTION_METHOD_INDEX, ecma_roots_special) \
-    V(JSTaggedValue, NativeNoneFunctionMethod, NATIVE_NONE_FUNCTION_METHOD_INDEX, ecma_roots_special) \
-    V(JSTaggedValue, NativeAsyncGeneratorFunctionMethod, NATIVE_ASYNC_GENERATOR_FUNCTION_METHOD_INDEX, ecma_roots_special) \
+#define SHARED_GLOBAL_ENV_CONSTANT_SPECIAL(V)                                                                   \
+    V(JSTaggedValue, Undefined, UNDEFINED_INDEX, ecma_roots_special)                                            \
+    V(JSTaggedValue, Null, NULL_INDEX, ecma_roots_special)                                                      \
+    V(JSTaggedValue, Hole, HOLE_INDEX, ecma_roots_special)                                                      \
+    V(JSTaggedValue, True, TRUE_INDEX, ecma_roots_special)                                                      \
+    V(JSTaggedValue, False, FALSE_INDEX, ecma_roots_special)                                                    \
+    V(JSTaggedValue, ProtoTransRootHClassSymbol, PROTO_TRANS_ROOT_HCLASS_SYMBOL_INDEX, ecma_roots_special)      \
+    V(JSTaggedValue, EmptyString, EMPTY_STRING_OBJECT_INDEX, ecma_roots_special)                                \
+    V(JSTaggedValue, SingleCharTable, SINGLE_CHAR_TABLE_INDEX, ecma_roots_special)                              \
+    V(JSTaggedValue, EmptySLayoutInfo, EMPTY_SLAYOUT_INFO_OBJECT_INDEX, ecma_roots_special)                     \
+    V(JSTaggedValue, EmptyArray, EMPTY_ARRAY_OBJECT_INDEX, ecma_roots_special)                                  \
+    V(JSTaggedValue, EmptyMutantArray, EMPTY_MUTANT_ARRAY_OBJECT_INDEX, ecma_roots_special)                     \
+    V(JSTaggedValue, ProxyMethod, PROXY_METHOD_INDEX, ecma_roots_special)                                       \
+    V(JSTaggedValue, Uint64MaxBigInt, UINT64_MAX_BIGINT_INDEX, ecma_roots_special)                              \
+    V(JSTaggedValue, Int64MaxBigInt, INT64_MAX_BIGINT_INDEX, ecma_roots_special)                                \
+    V(JSTaggedValue, EmptyProfileTypeInfoCell, EMPTY_PROFILE_TYPE_INFO_CELL_INDEX, ecma_roots_special)          \
+    V(JSTaggedValue, NormalFunctionMethod, NORMAL_FUNCTION_METHOD_INDEX, ecma_roots_special)                    \
+    V(JSTaggedValue, GetterFunctionMethod, GETTER_FUNCTION_METHOD_INDEX, ecma_roots_special)                    \
+    V(JSTaggedValue, SetterFunctionMethod, SETTER_FUNCTION_METHOD_INDEX, ecma_roots_special)                    \
+    V(JSTaggedValue, ArrowFunctionMethod, ARROW_FUNCTION_METHOD_INDEX, ecma_roots_special)                      \
+    V(JSTaggedValue, AsyncArrowFunctionMethod, ASYNC_ARROW_FUNCTION_METHOD_INDEX, ecma_roots_special)           \
+    V(JSTaggedValue, ConcurrentFunctionMethod, CONCURRENT_FUNCTION_METHOD_INDEX, ecma_roots_special)            \
+    V(JSTaggedValue, AsyncFunctionMethod, ASYNC_FUNCTION_METHOD_INDEX, ecma_roots_special)                      \
+    V(JSTaggedValue, BaseConstructorMethod, BASE_CONSTRUCTOR_METHOD_INDEX, ecma_roots_special)                  \
+    V(JSTaggedValue, ClassConstructorMethod, CLASS_CONSTRUCTOR_METHOD_INDEX, ecma_roots_special)                \
+    V(JSTaggedValue, BuiltinProxyConstructorMethod, BUILTIN_PROXY_CONSTRUCTOR_METHOD_INDEX, ecma_roots_special) \
+    V(JSTaggedValue, BuiltinConstructorMethod, BUILTIN_CONSTRUCTOR_METHOD_INDEX, ecma_roots_special)            \
+    V(JSTaggedValue, DerivedConstructorMethod, DERIVED_CONSTRUCTOR_METHOD_INDEX, ecma_roots_special)            \
+    V(JSTaggedValue, GeneratorFunctionMethod, GENERATOR_FUNCTION_METHOD_INDEX, ecma_roots_special)              \
+    V(JSTaggedValue, NoneFunctionMethod, NONE_FUNCTION_METHOD_INDEX, ecma_roots_special)                        \
+    V(JSTaggedValue, AsyncGeneratorFunctionMethod, ASYNC_GENERATOR_FUNCTION_METHOD_INDEX, ecma_roots_special)   \
     V(JSTaggedValue, BoundFunctionMethod, BOUND_FUNCTION_METHOD_INDEX, ecma_roots_special)
 
 #define GLOBAL_ENV_CACHES(V)                \

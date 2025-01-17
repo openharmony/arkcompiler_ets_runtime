@@ -278,35 +278,35 @@ void GlobalEnvConstants::InitSharedMiscellanious(JSThread *thread, ObjectFactory
     SetConstant(ConstantIndex::INT64_MAX_BIGINT_INDEX, BigInt::CreateInt64MaxBigInt(thread));
     SetConstant(ConstantIndex::EMPTY_PROFILE_TYPE_INFO_CELL_INDEX, factory->NewSEmptyProfileTypeInfoCell());
     // Native function method
-    SetConstant(ConstantIndex::NATIVE_NORMAL_FUNCTION_METHOD_INDEX,
+    SetConstant(ConstantIndex::NORMAL_FUNCTION_METHOD_INDEX,
                 factory->NewSEmptyNativeFunctionMethod(FunctionKind::NORMAL_FUNCTION));
-    SetConstant(ConstantIndex::NATIVE_GETTER_FUNCTION_METHOD_INDEX,
+    SetConstant(ConstantIndex::GETTER_FUNCTION_METHOD_INDEX,
                 factory->NewSEmptyNativeFunctionMethod(FunctionKind::GETTER_FUNCTION));
-    SetConstant(ConstantIndex::NATIVE_SETTER_FUNCTION_METHOD_INDEX,
+    SetConstant(ConstantIndex::SETTER_FUNCTION_METHOD_INDEX,
                 factory->NewSEmptyNativeFunctionMethod(FunctionKind::SETTER_FUNCTION));
-    SetConstant(ConstantIndex::NATIVE_ARROW_FUNCTION_METHOD_INDEX,
+    SetConstant(ConstantIndex::ARROW_FUNCTION_METHOD_INDEX,
                 factory->NewSEmptyNativeFunctionMethod(FunctionKind::ARROW_FUNCTION));
-    SetConstant(ConstantIndex::NATIVE_ASYNC_ARROW_FUNCTION_METHOD_INDEX,
+    SetConstant(ConstantIndex::ASYNC_ARROW_FUNCTION_METHOD_INDEX,
                 factory->NewSEmptyNativeFunctionMethod(FunctionKind::ASYNC_ARROW_FUNCTION));
-    SetConstant(ConstantIndex::NATIVE_CONCURRENT_FUNCTION_METHOD_INDEX,
+    SetConstant(ConstantIndex::CONCURRENT_FUNCTION_METHOD_INDEX,
                 factory->NewSEmptyNativeFunctionMethod(FunctionKind::CONCURRENT_FUNCTION));
-    SetConstant(ConstantIndex::NATIVE_ASYNC_FUNCTION_METHOD_INDEX,
+    SetConstant(ConstantIndex::ASYNC_FUNCTION_METHOD_INDEX,
                 factory->NewSEmptyNativeFunctionMethod(FunctionKind::ASYNC_FUNCTION));
-    SetConstant(ConstantIndex::NATIVE_BASE_CONSTRUCTOR_METHOD_INDEX,
+    SetConstant(ConstantIndex::BASE_CONSTRUCTOR_METHOD_INDEX,
                 factory->NewSEmptyNativeFunctionMethod(FunctionKind::BASE_CONSTRUCTOR));
-    SetConstant(ConstantIndex::NATIVE_CLASS_CONSTRUCTOR_METHOD_INDEX,
+    SetConstant(ConstantIndex::CLASS_CONSTRUCTOR_METHOD_INDEX,
                 factory->NewSEmptyNativeFunctionMethod(FunctionKind::CLASS_CONSTRUCTOR));
-    SetConstant(ConstantIndex::NATIVE_BUILTIN_PROXY_CONSTRUCTOR_METHOD_INDEX,
+    SetConstant(ConstantIndex::BUILTIN_PROXY_CONSTRUCTOR_METHOD_INDEX,
                 factory->NewSEmptyNativeFunctionMethod(FunctionKind::BUILTIN_PROXY_CONSTRUCTOR));
-    SetConstant(ConstantIndex::NATIVE_BUILTIN_CONSTRUCTOR_METHOD_INDEX,
+    SetConstant(ConstantIndex::BUILTIN_CONSTRUCTOR_METHOD_INDEX,
                 factory->NewSEmptyNativeFunctionMethod(FunctionKind::BUILTIN_CONSTRUCTOR));
-    SetConstant(ConstantIndex::NATIVE_DERIVED_CONSTRUCTOR_METHOD_INDEX,
+    SetConstant(ConstantIndex::DERIVED_CONSTRUCTOR_METHOD_INDEX,
                 factory->NewSEmptyNativeFunctionMethod(FunctionKind::DERIVED_CONSTRUCTOR));
-    SetConstant(ConstantIndex::NATIVE_GENERATOR_FUNCTION_METHOD_INDEX,
+    SetConstant(ConstantIndex::GENERATOR_FUNCTION_METHOD_INDEX,
                 factory->NewSEmptyNativeFunctionMethod(FunctionKind::GENERATOR_FUNCTION));
-    SetConstant(ConstantIndex::NATIVE_NONE_FUNCTION_METHOD_INDEX,
+    SetConstant(ConstantIndex::NONE_FUNCTION_METHOD_INDEX,
                 factory->NewSEmptyNativeFunctionMethod(FunctionKind::NONE_FUNCTION));
-    SetConstant(ConstantIndex::NATIVE_ASYNC_GENERATOR_FUNCTION_METHOD_INDEX,
+    SetConstant(ConstantIndex::ASYNC_GENERATOR_FUNCTION_METHOD_INDEX,
                 factory->NewSEmptyNativeFunctionMethod(FunctionKind::ASYNC_GENERATOR_FUNCTION));
 }
 
