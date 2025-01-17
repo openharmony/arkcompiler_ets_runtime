@@ -139,7 +139,7 @@ void ICStubBuilder::ValuedICAccessor(Variable* cachedHandler, Label *tryICHandle
     Bind(&receiverIsHeapObject);
     {
         Label tryIC(env);
-        BRANCH(TaggedIsUndefined(profileTypeInfo_), tryFastPath_, &tryIC);
+        BRANCH_UNLIKELY(TaggedIsUndefined(profileTypeInfo_), tryFastPath_, &tryIC);
         Bind(&tryIC);
         {
             Label isHeapObject(env);

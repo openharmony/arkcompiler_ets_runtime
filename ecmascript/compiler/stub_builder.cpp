@@ -2742,14 +2742,14 @@ GateRef StubBuilder::ICStoreElement(GateRef glue, GateRef receiver, GateRef key,
     DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
     DEFVARIABLE(varHandler, VariableType::JS_ANY(), handler);
     GateRef index64 = TryToElementsIndex(glue, key);
-    BRANCH(Int64GreaterThanOrEqual(index64, Int64(INT32_MAX)), &greaterThanInt32Max, &notGreaterThanInt32Max);
+    BRANCH_UNLIKELY(Int64GreaterThanOrEqual(index64, Int64(INT32_MAX)), &greaterThanInt32Max, &notGreaterThanInt32Max);
     Bind(&greaterThanInt32Max);
     {
         Jump(&exit);
     }
     Bind(&notGreaterThanInt32Max);
     GateRef index = TruncInt64ToInt32(index64);
-    BRANCH(Int32LessThan(index, Int32(0)), &indexLessZero, &indexNotLessZero);
+    BRANCH_UNLIKELY(Int32LessThan(index, Int32(0)), &indexLessZero, &indexNotLessZero);
     Bind(&indexLessZero);
     {
         Jump(&exit);
