@@ -124,6 +124,7 @@ JSTaggedValue BuiltinsRegExp::RegExpConstructor(EcmaRuntimeCallInfo *argv)
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     // 10. Return RegExpInitialize(O, P, F).
     JSTaggedValue result = RegExpInitialize(thread, object, patternTemp, flagsTemp);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return JSTaggedValue(result);
 }
 
@@ -2392,6 +2393,10 @@ JSTaggedValue BuiltinsRegExp::RegExpInitialize(JSThread *thread, const JSHandle<
     // 11. Set the value of obj’s [[OriginalSource]] internal slot to P.
     regexp->SetOriginalSource(thread, patternStrHandle.GetTaggedValue());
     // 12. Set the value of obj’s [[OriginalFlags]] internal slot to F.
+    if (flagsBits & 0x80) { // 0x80: first bit of flags must be 0
+        THROW_SYNTAX_ERROR_AND_RETURN(thread, "Invalid flags supplied to RegExp constructor",
+            JSTaggedValue::Exception());
+    }
     regexp->SetOriginalFlags(thread, JSTaggedValue(flagsBits));
     if (!groupName.empty()) {
         JSHandle<TaggedArray> taggedArray = factory->NewTaggedArray(groupName.size());
