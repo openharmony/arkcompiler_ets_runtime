@@ -237,6 +237,13 @@ CString ModulePathHelper::ConcatHspFileName(const CString &moduleName)
     return bundlePath + moduleName + MERGE_ABC_ETS_MODULES;
 }
 
+CString ModulePathHelper::ThrowInvalidOhmurlError(EcmaVM *vm, const CString &oldEntryPoint)
+{
+    CString errorMsg = "TransformToNormalizedOhmUrl Invalid Ohmurl: " + oldEntryPoint + ", please check.";
+    THROW_NEW_ERROR_WITH_MSG_AND_RETURN_VALUE(vm->GetJSThread(), ErrorType::SYNTAX_ERROR, errorMsg.c_str(),
+        oldEntryPoint);
+}
+
 CString ModulePathHelper::TransformToNormalizedOhmUrl(EcmaVM *vm, const CString &inputFileName,
     const CString &baseFileName, const CString &oldEntryPoint)
 {
@@ -244,14 +251,15 @@ CString ModulePathHelper::TransformToNormalizedOhmUrl(EcmaVM *vm, const CString 
     if (oldEntryPoint == ENTRY_MAIN_FUNCTION || StringHelper::StringStartWith(oldEntryPoint, prefix)) {
         return oldEntryPoint;
     }
-    size_t pos = oldEntryPoint.find(PathHelper::SLASH_TAG);
-    size_t pathPos = oldEntryPoint.find(PathHelper::SLASH_TAG, pos + 1);
     LOG_ECMA(DEBUG) << "TransformToNormalizedOhmUrl inputFileName: " << inputFileName << " oldEntryPoint: " <<
         oldEntryPoint;
-    if (pos == CString::npos || pathPos == CString::npos) {
-        CString errorMsg = "TransformToNormalizedOhmUrl Invalid Ohmurl: " + oldEntryPoint + ", please check.";
-        THROW_NEW_ERROR_WITH_MSG_AND_RETURN_VALUE(vm->GetJSThread(), ErrorType::SYNTAX_ERROR, errorMsg.c_str(),
-            oldEntryPoint);
+    size_t pos = oldEntryPoint.find(PathHelper::SLASH_TAG);
+    if (pos == CString::npos) {
+        return ThrowInvalidOhmurlError(vm, oldEntryPoint);
+    }
+    size_t pathPos = oldEntryPoint.find(PathHelper::SLASH_TAG, pos + 1);
+    if (pathPos == CString::npos) {
+        return ThrowInvalidOhmurlError(vm, oldEntryPoint);
     }
     CString path = oldEntryPoint.substr(pathPos);
     CString moduleName = oldEntryPoint.substr(pos + 1, pathPos - pos - 1);
