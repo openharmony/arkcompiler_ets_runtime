@@ -13,29 +13,13 @@
  * limitations under the License.
  */
 
-#include <chrono>
-#include <iostream>
-#include <memory>
 
-#include "ecmascript/base/string_helper.h"
 #include "ecmascript/checkpoint/thread_state_transition.h"
-#include "ecmascript/compiler/aot_compilation_env.h"
-#include "ecmascript/compiler/aot_compiler_preprocessor.h"
-#include "ecmascript/compiler/aot_file/aot_file_manager.h"
 #include "ecmascript/compiler/pass_manager.h"
-#include "ecmascript/ecma_string.h"
-#include "ecmascript/js_runtime_options.h"
-#include "ecmascript/log.h"
 #include "ecmascript/log_wrapper.h"
-#include "ecmascript/napi/include/jsnapi.h"
-#include "ecmascript/ohos/enable_aot_list_helper.h"
-#include "ecmascript/ohos/ohos_pkg_args.h"
 #include "ecmascript/ohos/ohos_pkg_verifier.h"
 #include "ecmascript/platform/aot_crash_info.h"
-#include "ecmascript/platform/file.h"
-#include "ecmascript/platform/filesystem.h"
 
-#include "ecmascript/compiler/aot_compiler_stats.h"
 
 namespace panda::ecmascript::kungfu {
 namespace {

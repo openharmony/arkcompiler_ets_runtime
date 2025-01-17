@@ -14,7 +14,6 @@
  */
 
 #include "ecmascript/compiler/assembler/aarch64/macro_assembler_aarch64.h"
-#include <set>
 #include "ecmascript/js_function.h"
 
 namespace panda::ecmascript::kungfu {

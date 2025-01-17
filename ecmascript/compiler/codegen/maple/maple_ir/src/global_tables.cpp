@@ -14,7 +14,6 @@
  */
 
 #include "global_tables.h"
-#include "mir_type.h"
 #include "mir_symbol.h"
 
 #if MIR_FEATURE_FULL

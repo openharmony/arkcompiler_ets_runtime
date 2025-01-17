@@ -18,7 +18,6 @@
 #include <cstddef>
 #include <tuple>
 
-#include "ecmascript/compiler/assembler_module.h"
 #include "ecmascript/compiler/bytecodes.h"
 #include "ecmascript/compiler/circuit_builder.h"
 #include "ecmascript/compiler/slowpath_lowering.h"

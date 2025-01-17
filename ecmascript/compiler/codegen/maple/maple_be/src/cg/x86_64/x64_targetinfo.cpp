@@ -14,11 +14,9 @@
  */
 
 #include "x64_targetinfo.h"
-#include "target_registry.h"
 #include "x64_cg.h"
 #include "x64_emitter.h"
 #include "x64_targetmachine.h"
-#include <iostream>
 namespace maplebe {
 
 Target &getTheX64Target()

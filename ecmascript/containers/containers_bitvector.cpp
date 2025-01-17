@@ -17,7 +17,6 @@
 
 #include "ecmascript/containers/containers_errors.h"
 #include "ecmascript/js_api/js_api_bitvector.h"
-#include "ecmascript/object_factory-inl.h"
 namespace panda::ecmascript::containers {
 JSTaggedValue ContainersBitVector::BitVectorConstructor(EcmaRuntimeCallInfo* argv)
 {

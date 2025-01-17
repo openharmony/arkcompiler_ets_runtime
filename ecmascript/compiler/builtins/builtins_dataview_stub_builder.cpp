@@ -17,8 +17,6 @@
 
 #include "ecmascript/builtins/builtins_arraybuffer.h"
 #include "ecmascript/compiler/builtins/builtins_typedarray_stub_builder.h"
-#include "ecmascript/compiler/new_object_stub_builder.h"
-#include "ecmascript/compiler/stub_builder-inl.h"
 
 namespace panda::ecmascript::kungfu {
 template <DataViewType type>

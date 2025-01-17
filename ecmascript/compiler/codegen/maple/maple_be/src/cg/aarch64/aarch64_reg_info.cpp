@@ -13,9 +13,7 @@
  * limitations under the License.
  */
 
-#include "aarch64_cgfunc.h"
 #include "aarch64_cg.h"
-#include "becommon.h"
 
 namespace maplebe {
 using namespace maple;

@@ -14,9 +14,7 @@
  */
 
 #include "reg_alloc_lsra.h"
-#include "loop.h"
 #include "aarch64_cg.h"
-#include <queue>
 
 namespace maplebe {
 namespace {

@@ -17,8 +17,6 @@
 #include "factory.h"
 #include "cg.h"
 #include "standardize.h"
-#include <map>
-#include <utility>
 
 namespace maplebe {
 /* register,                       imm ,                         memory,                        cond */

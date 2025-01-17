@@ -18,9 +18,7 @@
 #include "ecmascript/compiler/type_info_accessors.h"
 #include "ecmascript/dfx/vmstat/opt_code_profiler.h"
 #include "ecmascript/js_hclass-inl.h"
-#include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/jit/jit.h"
-#include "ecmascript/layout_info.h"
 #include "ecmascript/lexical_env.h"
 
 namespace panda::ecmascript::kungfu {

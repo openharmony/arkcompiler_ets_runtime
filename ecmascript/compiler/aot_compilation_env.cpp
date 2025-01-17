@@ -14,7 +14,6 @@
  */
 #include "ecmascript/compiler/aot_compilation_env.h"
 #include "ecmascript/compiler/pgo_type/pgo_type_manager.h"
-#include "ecmascript/ecma_context.h"
 #include "ecmascript/jspandafile/program_object.h"
 
 namespace panda::ecmascript {

@@ -14,7 +14,6 @@
  */
 
 #include "ecmascript/compiler/call_signature.h"
-#include "ecmascript/compiler/variable_type.h"
 
 #if defined(__clang__)
 #pragma clang diagnostic push
@@ -26,8 +25,6 @@
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 #endif
 
-#include "llvm-c/Core.h"
-#include "llvm/Support/Host.h"
 
 #if defined(__clang__)
 #pragma clang diagnostic pop

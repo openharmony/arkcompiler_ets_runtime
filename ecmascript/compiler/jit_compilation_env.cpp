@@ -13,10 +13,7 @@
  * limitations under the License.
  */
 #include "ecmascript/compiler/jit_compilation_env.h"
-#include "ecmascript/ecma_context.h"
 #include "ecmascript/jspandafile/program_object.h"
-#include "ecmascript/pgo_profiler/pgo_profiler.h"
-#include "ecmascript/ic/profile_type_info.h"
 #include "ecmascript/ic/ic_handler.h"
 
 namespace panda::ecmascript {

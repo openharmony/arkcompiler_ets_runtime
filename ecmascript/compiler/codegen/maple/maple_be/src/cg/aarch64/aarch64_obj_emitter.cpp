@@ -14,7 +14,6 @@
  */
 
 #include "aarch64_obj_emitter.h"
-#include "aarch64_isa.h"
 
 namespace {
 enum ShiftNumber : maple::uint8 {

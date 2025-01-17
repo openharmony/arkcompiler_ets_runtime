@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 
-#include "becommon.h"
 #include "x64_cgfunc.h"
 #include "x64_reg_info.h"
 

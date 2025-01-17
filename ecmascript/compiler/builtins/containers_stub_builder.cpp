@@ -14,7 +14,6 @@
  */
 
 #include "ecmascript/compiler/builtins/containers_stub_builder.h"
-#include "ecmascript/compiler/builtins/containers_vector_stub_builder.h"
 
 #include "ecmascript/compiler/call_stub_builder.h"
 

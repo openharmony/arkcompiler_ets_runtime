@@ -15,12 +15,8 @@
 #include "ecmascript/object_factory.h"
 #include "ecmascript/stubs/runtime_stubs.h"
 
-#include "ecmascript/ecma_macros.h"
 #include "ecmascript/js_tagged_value.h"
-#include "ecmascript/ecma_vm.h"
-#include "ecmascript/frames.h"
 #include "ecmascript/global_env.h"
-#include "ecmascript/runtime_call_id.h"
 #include "ecmascript/js_function.h"
 
 namespace panda::ecmascript {

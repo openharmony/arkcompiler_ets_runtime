@@ -14,10 +14,8 @@
  */
 
 #include "ecmascript/js_bigint.h"
-
 #include "ecmascript/global_env_constants-inl.h"
 #include "ecmascript/js_tagged_value-inl.h"
-#include "ecmascript/js_tagged_number.h"
 
 namespace panda::ecmascript {
 class ObjectFactory;

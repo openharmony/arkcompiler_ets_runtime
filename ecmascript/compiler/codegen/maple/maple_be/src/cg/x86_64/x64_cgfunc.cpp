@@ -13,10 +13,7 @@
  * limitations under the License.
  */
 
-#include <x86_64/x64_cg.h>
 #include "x64_cgfunc.h"
-#include "x64_memlayout.h"
-#include "x64_isa.h"
 #include "assembler/operand.h"
 
 namespace maplebe {

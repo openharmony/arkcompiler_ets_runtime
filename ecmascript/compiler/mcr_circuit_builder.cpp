@@ -13,18 +13,9 @@
  * limitations under the License.
  */
 
-#include "libpandabase/utils/hash.h"
-
 #include "ecmascript/compiler/mcr_circuit_builder.h"
-
-#include "ecmascript/compiler/circuit_builder.h"
-#include "ecmascript/compiler/share_gate_meta_data.h"
-#include "ecmascript/message_string.h"
-#include "ecmascript/stubs/runtime_stubs-inl.h"
-
 #include "ecmascript/compiler/circuit_builder-inl.h"
 #include "ecmascript/global_env.h"
-#include "ecmascript/js_object.h"
 #include "ecmascript/marker_cell.h"
 
 namespace panda::ecmascript::kungfu {

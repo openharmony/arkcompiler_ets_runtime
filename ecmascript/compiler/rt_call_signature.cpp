@@ -15,7 +15,6 @@
 
 #include "ecmascript/compiler/rt_call_signature.h"
 
-#include "ecmascript/compiler/call_signature.h"
 #include "ecmascript/compiler/assembler_module.h"
 
 namespace panda::ecmascript::kungfu {

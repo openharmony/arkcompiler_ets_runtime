@@ -15,19 +15,6 @@
 
 #include "aarch64_cg.h"
 #include "aarch64_cgfunc.h"
-#include <vector>
-#include <cstdint>
-#include <sys/stat.h>
-#include <atomic>
-#include "cfi.h"
-#include "mpl_logging.h"
-#include "rt.h"
-#include "opcode_info.h"
-#include "mir_builder.h"
-#include "mir_symbol_builder.h"
-#include "metadata_layout.h"
-#include "emit.h"
-#include <algorithm>
 
 namespace maplebe {
 using namespace maple;

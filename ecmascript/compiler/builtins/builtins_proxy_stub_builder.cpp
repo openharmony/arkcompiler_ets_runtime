@@ -16,8 +16,6 @@
 #include "ecmascript/compiler/builtins/builtins_proxy_stub_builder.h"
 
 #include "ecmascript/compiler/new_object_stub_builder.h"
-#include "ecmascript/compiler/stub_builder-inl.h"
-#include "ecmascript/js_arguments.h"
 
 namespace panda::ecmascript::kungfu {
 void BuiltinsProxyStubBuilder::GenProxyConstructor(GateRef nativeCode, GateRef func, GateRef newTarget)

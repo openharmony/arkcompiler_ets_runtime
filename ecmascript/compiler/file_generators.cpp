@@ -15,15 +15,11 @@
 
 #include "ecmascript/compiler/file_generators.h"
 
-#include "ecmascript/common.h"
-#include "ecmascript/compiler/aot_file/aot_file_manager.h"
 #include "ecmascript/compiler/pgo_type/pgo_type_manager.h"
-#include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
 #include "ecmascript/platform/code_sign.h"
 #include "ecmascript/platform/directory.h"
 #include "ecmascript/platform/os.h"
 #include "ecmascript/snapshot/mem/snapshot.h"
-#include "ecmascript/stackmap/ark_stackmap_builder.h"
 #include "ecmascript/stackmap/llvm/llvm_stackmap_parser.h"
 #ifdef COMPILE_MAPLE
 #include "ecmascript/compiler/codegen/maple/litecg_codegen.h"
@@ -34,8 +30,6 @@
 #include "ecmascript/compiler/jit_signcode.h"
 #endif
 #endif
-#include "ecmascript/jit/jit.h"
-#include "ecmascript/jit/jit_task.h"
 #include "ecmascript/compiler/jit_compiler.h"
 
 namespace panda::ecmascript::kungfu {

@@ -14,10 +14,7 @@
  */
 
 #include "ecmascript/compiler/lcr_circuit_builder.h"
-
 #include "ecmascript/compiler/circuit_builder-inl.h"
-#include "ecmascript/compiler/rt_call_signature.h"
-#include "ecmascript/compiler/circuit_builder_helper.h"
 
 namespace panda::ecmascript::kungfu {
 

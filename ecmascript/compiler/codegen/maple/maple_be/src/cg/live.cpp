@@ -14,10 +14,7 @@
  */
 
 #include "live.h"
-#include <set>
 #include "cg.h"
-#include "cg_option.h"
-#include "cgfunc.h"
 
 /*
  * This phase build two sets: liveOutRegno and liveInRegno of each BB.

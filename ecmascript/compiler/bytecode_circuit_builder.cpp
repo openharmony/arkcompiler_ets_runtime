@@ -15,14 +15,8 @@
 
 #include "ecmascript/compiler/bytecode_circuit_builder.h"
 
-#include <algorithm>
-#include <cstddef>
-
-#include "ecmascript/base/number_helper.h"
-#include "ecmascript/compiler/gate_accessor.h"
 #include "ecmascript/deoptimizer/deoptimizer.h"
 #include "ecmascript/interpreter/interpreter-inl.h"
-#include "libpandafile/bytecode_instruction-inl.h"
 
 
 namespace panda::ecmascript::kungfu {

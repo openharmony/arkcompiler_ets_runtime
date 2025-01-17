@@ -15,14 +15,9 @@
 
 #include "ecmascript/compiler/assembler_module.h"
 
-#include "ecmascript/compiler/assembler/aarch64/assembler_aarch64.h"
-#include "ecmascript/compiler/assembler/x64/assembler_x64.h"
-#include "ecmascript/compiler/call_signature.h"
-#include "ecmascript/compiler/circuit_builder.h"
 #include "ecmascript/compiler/circuit_builder_helper.h"
 #include "ecmascript/compiler/trampoline/aarch64/common_call.h"
 #include "ecmascript/compiler/trampoline/x64/common_call.h"
-#include "ecmascript/compiler/rt_call_signature.h"
 
 namespace panda::ecmascript::kungfu {
 void AssemblerModule::Run(const CompilationConfig *cfg, Chunk* chunk)

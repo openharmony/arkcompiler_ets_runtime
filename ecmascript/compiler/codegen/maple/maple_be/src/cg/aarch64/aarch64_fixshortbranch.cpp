@@ -14,9 +14,6 @@
  */
 
 #include "aarch64_fixshortbranch.h"
-#include "cg.h"
-#include "mpl_logging.h"
-#include "common_utils.h"
 
 namespace maplebe {
 uint32 AArch64FixShortBranch::CalculateAlignRange(const BB &bb, uint32 addr) const

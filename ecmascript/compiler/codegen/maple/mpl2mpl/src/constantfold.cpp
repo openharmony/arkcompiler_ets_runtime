@@ -14,17 +14,7 @@
  */
 
 #include "constantfold.h"
-#include <cmath>
 #include <cfloat>
-#include <climits>
-#include <type_traits>
-#include "mpl_logging.h"
-#include "mir_function.h"
-#include "mir_builder.h"
-#include "global_tables.h"
-#include "me_option.h"
-#include "maple_phase_manager.h"
-#include "mir_type.h"
 
 namespace maple {
 

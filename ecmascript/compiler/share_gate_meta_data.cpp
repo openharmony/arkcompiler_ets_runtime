@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 
-#include "ecmascript/compiler/gate.h"
 #include "ecmascript/compiler/share_gate_meta_data.h"
 #include "ecmascript/compiler/gate_meta_data_builder.h"
 

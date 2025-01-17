@@ -16,11 +16,9 @@
 #include "ecmascript/compiler/builtins/builtins_typedarray_stub_builder.h"
 
 #include "ecmascript/base/typed_array_helper-inl.h"
-#include "ecmascript/byte_array.h"
 #include "ecmascript/compiler/builtins/builtins_array_stub_builder.h"
 #include "ecmascript/compiler/call_stub_builder.h"
 #include "ecmascript/compiler/new_object_stub_builder.h"
-#include "ecmascript/js_iterator.h"
 
 namespace panda::ecmascript::kungfu {
 GateRef BuiltinsTypedArrayStubBuilder::GetDataPointFromBuffer(GateRef arrBuf)

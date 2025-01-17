@@ -19,7 +19,6 @@
 #include "ecmascript/compiler/aot_file/elf_builder.h"
 #include "ecmascript/compiler/aot_file/elf_reader.h"
 #include "ecmascript/log_wrapper.h"
-#include <cerrno>
 
 namespace panda::ecmascript {
 bool AnFileInfo::Save(const std::string &filename, Triple triple, size_t anFileMaxByteSize,

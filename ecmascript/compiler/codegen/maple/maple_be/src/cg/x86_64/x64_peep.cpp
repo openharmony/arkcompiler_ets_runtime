@@ -14,10 +14,6 @@
  */
 
 #include "x64_peep.h"
-#include "cg.h"
-#include "mpl_logging.h"
-#include "common_utils.h"
-#include "cg_option.h"
 #include "x64_cg.h"
 
 namespace maplebe {

@@ -14,7 +14,6 @@
  */
 
 #include "maple_string.h"
-#include "securec.h"
 namespace maple {
 MapleString::MapleString(const char *str, size_t size, MemPool *currMp)
     : data(NewData(currMp, str, size)), memPool(currMp), dataLength(size)

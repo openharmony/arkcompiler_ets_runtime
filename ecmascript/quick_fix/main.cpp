@@ -13,21 +13,10 @@
  * limitations under the License.
  */
 
-#include <chrono>
-#include <iostream>
-#include <iterator>
-#include <ostream>
 #include <signal.h>  // NOLINTNEXTLINE(modernize-deprecated-headers)
-#include <vector>
 
 #include "ecmascript/base/string_helper.h"
-#include "ecmascript/ecma_string.h"
-#include "ecmascript/ecma_vm.h"
 #include "ecmascript/js_runtime_options.h"
-#include "ecmascript/jspandafile/js_pandafile.h"
-#include "ecmascript/log.h"
-#include "ecmascript/mem/mem_controller.h"
-#include "ecmascript/napi/include/jsnapi.h"
 
 namespace panda::ecmascript {
 using PatchErrorCode = panda::JSNApi::PatchErrorCode;

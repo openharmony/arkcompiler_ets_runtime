@@ -14,7 +14,6 @@
  */
 
 #include "ecmascript/mem/mem_controller.h"
-
 #include "ecmascript/mem/concurrent_marker.h"
 #include "ecmascript/mem/parallel_evacuator.h"
 

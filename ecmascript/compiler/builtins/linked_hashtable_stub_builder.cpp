@@ -15,7 +15,6 @@
 
 #include "ecmascript/compiler/builtins/linked_hashtable_stub_builder.h"
 
-#include "ecmascript/compiler/builtins/builtins_stubs.h"
 #include "ecmascript/compiler/call_stub_builder.h"
 #include "ecmascript/compiler/hash_stub_builder.h"
 #include "ecmascript/compiler/new_object_stub_builder.h"

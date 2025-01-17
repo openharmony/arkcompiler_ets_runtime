@@ -14,7 +14,6 @@
  */
 
 #include "aarch64_cgfunc.h"
-#include "becommon.h"
 
 namespace maplebe {
 using namespace maple;

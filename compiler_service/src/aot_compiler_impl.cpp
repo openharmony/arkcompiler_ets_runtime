@@ -15,30 +15,19 @@
 
 #include "aot_compiler_impl.h"
 
-#include <cerrno>
-#include <cstdint>
-#include <cstdlib>
-#include <cstring>
-#include <linux/capability.h>
-#include <securec.h>
 #include <sys/capability.h>
-#include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
 #include <thread>
 
 #include "aot_compiler_constants.h"
-#include "aot_compiler_error_utils.h"
-#include "aot_compiler_service.h"
 #include "ecmascript/log_wrapper.h"
-#include "hitrace_meter.h"
 #ifdef CODE_SIGN_ENABLE
 #include "local_code_sign_kit.h"
 #endif
 #ifdef ENABLE_COMPILER_SERVICE_GET_PARAMETER
 #include "base/startup/init/interfaces/innerkits/include/syspara/parameters.h"
 #endif
-#include "system_ability_definition.h"
 
 namespace OHOS::ArkCompiler {
 AotCompilerImpl& AotCompilerImpl::GetInstance()

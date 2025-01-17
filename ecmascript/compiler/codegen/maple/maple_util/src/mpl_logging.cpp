@@ -15,8 +15,6 @@
 
 #include "mpl_logging.h"
 #include <unistd.h>
-#include <cstring>
-#include <ctime>
 #ifndef _WIN32
 #include <sys/syscall.h>
 #endif

@@ -13,18 +13,7 @@
  * limitations under the License.
  */
 
-#include "ecmascript/compiler/share_gate_meta_data.h"
-#include "ecmascript/compiler/number_gate_info.h"
-#include "ecmascript/compiler/type.h"
-#include "ecmascript/compiler/typed_hcr_lowering.h"
-#include "ecmascript/compiler/builtins_lowering.h"
-#include "ecmascript/compiler/new_object_stub_builder.h"
 #include "ecmascript/compiler/number_speculative_lowering.h"
-#include "ecmascript/deoptimizer/deoptimizer.h"
-#include "ecmascript/js_arraybuffer.h"
-#include "ecmascript/js_locale.h"
-#include "ecmascript/js_native_pointer.h"
-#include "ecmascript/js_object.h"
 
 namespace panda::ecmascript::kungfu {
 

@@ -15,7 +15,6 @@
 #include "ecmascript/compiler/ic_stub_builder.h"
 
 #include "ecmascript/compiler/builtins/builtins_typedarray_stub_builder.h"
-#include "ecmascript/compiler/stub_builder-inl.h"
 #include "ecmascript/ic/mega_ic_cache.h"
 
 namespace panda::ecmascript::kungfu {

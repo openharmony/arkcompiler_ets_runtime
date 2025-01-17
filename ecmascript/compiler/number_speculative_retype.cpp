@@ -15,16 +15,7 @@
 
 #include "ecmascript/compiler/number_speculative_retype.h"
 
-#include "ecmascript/compiler/builtins/builtins_call_signature.h"
-#include "ecmascript/compiler/circuit.h"
 #include "ecmascript/compiler/circuit_builder-inl.h"
-#include "ecmascript/compiler/circuit_builder.h"
-#include "ecmascript/compiler/number_gate_info.h"
-#include "ecmascript/compiler/rt_call_signature.h"
-#include "ecmascript/compiler/share_gate_meta_data.h"
-#include "ecmascript/compiler/share_opcodes.h"
-#include "ecmascript/compiler/type.h"
-#include "ecmascript/compiler/variable_type.h"
 
 namespace panda::ecmascript::kungfu {
 GateRef NumberSpeculativeRetype::SetOutputType(GateRef gate, GateType gateType)
