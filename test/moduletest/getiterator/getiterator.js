@@ -109,6 +109,112 @@
     }
 }
 
+// -----------------------Test inheritance---------------------------------
+
+// Test map Symbol.iterator change using inheritance (new implementation).
+{
+    class CustomMapInherit extends Map {
+        constructor(initEntries) {
+            super(initEntries);
+        }
+    };
+    function customMapIterator() {
+        let mapEntries = this.entries();
+        let entryIndex = 0;
+
+        return {
+            next: function () {
+                if (entryIndex < 2) {
+                    print("CustomMapInherit");
+                    let entry = mapEntries.next();
+                    entryIndex++;
+                    // 这里只返回键，与标准的返回键值对不同
+                    return { done: false, value: entry.value[0] };
+                }
+                return { done: true, value: undefined };
+            },
+            customProperty: "This is a custom property for CustomMapInherit iterator"
+        };
+    }
+    let CustomMapPrototype = Object.getPrototypeOf(new CustomMapInherit());
+    let iteratorSymbol = Symbol.iterator;
+    CustomMapPrototype[iteratorSymbol] = customMapIterator;
+    print("Testing methods affected by map Symbol.iterator (inherited way):");
+    let customMap = new CustomMapInherit([['key1', 'value1'], ['key2', 'value2']]);
+    for (let item of customMap) {
+        print(item);
+    }
+}
+
+// Test set Symbol.iterator change using inheritance (new implementation).
+{
+    class CustomSetInherit extends Set {
+        constructor(initValues) {
+            super(initValues);
+        }
+    }
+    function customSetIterator() {
+        let setValues = this.values();
+        let valueIndex = 0;
+
+        return {
+            next: function () {
+                if (valueIndex < 2) {
+                    print("CustomSetInherit");
+                    let value = setValues.next();
+                    valueIndex++;
+                    // 将元素重复两次返回，与标准不同（这里可按需调整返回逻辑，保持或修改重复行为等）
+                    return { done: false, value: [value.value, value.value] };
+                }
+                return { done: true, value: undefined };
+            },
+            customProperty: "This is a custom property for CustomSetInherit iterator"
+        };
+    }
+    let CustomSetPrototype = Object.getPrototypeOf(new CustomSetInherit());
+    let iteratorSymbol = Symbol.iterator;
+    CustomSetPrototype[iteratorSymbol] = customSetIterator;
+    print("Testing methods affected by custom Set Symbol.iterator (inherited way):");
+    let customSet = new CustomSetInherit(['value1', 'value2']);
+    for (const item of customSet) {
+        print(item);
+    }
+}
+
+// Test array Symbol.iterator change using inheritance (new implementation).
+{
+    class CustomArrayInherit extends Array {
+        constructor(...args) {
+            super(...args);
+        }
+    }
+    function customArrayIterator() {
+        let array = this;
+        let index = 0;
+
+        return {
+            next: function () {
+                if (index < array.length) {
+                    print("CustomArrayInherit");
+                    let value = array[array.length - 1 - index];
+                    index++;
+                    return { done: false, value: value };
+                }
+                return { done: true, value: undefined };
+            },
+            customProperty: "This is a custom property for CustomArrayInherit iterator"
+        };
+    }
+    let CustomArrayPrototype = Object.getPrototypeOf(new CustomArrayInherit());
+    let iteratorSymbol = Symbol.iterator;
+    CustomArrayPrototype[iteratorSymbol] = customArrayIterator;
+    print("Testing methods affected by custom Array Symbol.iterator (inherited way):");
+    let customArray = new CustomArrayInherit('value1', 'value2');
+    for (const item of customArray) {
+        print(item);
+    }
+}
+
 // This case aims to test the logic which check the undefined result of GetIterator.
 {
     class c2 extends Object {}

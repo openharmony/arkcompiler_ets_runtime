@@ -144,7 +144,7 @@ public:
     void Switch(GateRef index, Label *defaultLabel, int64_t *keysValue, Label *keysLabel, int numberOfKeys);
     void LoopBegin(Label *loopHead);
     void LoopEnd(Label *loopHead);
-    /// LoopEnd with safepoint
+    // LoopEnd with safepoint
     void LoopEnd(Label *loopHead, Environment *env, GateRef glue);
     GateRef CheckSuspend(GateRef glue);
     // call operation
@@ -366,8 +366,19 @@ public:
     void StoreBuiltinHClass(GateRef glue, GateRef object, GateRef hClass);
     void StorePrototype(GateRef glue, GateRef hclass, GateRef prototype);
     void CopyAllHClass(GateRef glue, GateRef dstHClass, GateRef scrHClass);
-    void FuncCompare(GateRef glue, GateRef Function,
-                     Label *matchFunc, Label *slowPath, size_t funcIndex);
+    void FuncOrHClassCompare(GateRef glue, GateRef funcOrHClass,
+                             Label *match, Label *slowPath, size_t index);
+    void GetIteratorResult(GateRef glue, Variable *result, GateRef obj,
+                           Label *isPendingException, Label *noPendingException);
+    void HClassCompareAndCheckDetector(GateRef glue, GateRef hclass,
+                                       Label *match, Label *slowPath,
+                                       size_t indexHClass, size_t indexDetector);
+    void TryFastGetArrayIterator(GateRef glue, GateRef hclass, GateRef jsType,
+                                 Label *slowPath2, Label *matchArray);
+    void TryFastGetIterator(GateRef glue, GateRef obj, GateRef hclass,
+                            Variable &result, Label *slowPath, Label *exit,
+                            Label *isPendingException);
+    GateRef IsDetectorInvalid(GateRef glue, size_t indexDetector);
     GateRef GetObjectType(GateRef hClass);
     GateRef IsDictionaryMode(GateRef object);
     GateRef IsDictionaryModeByHClass(GateRef hClass);
