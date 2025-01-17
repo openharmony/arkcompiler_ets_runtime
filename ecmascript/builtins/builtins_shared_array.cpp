@@ -2726,39 +2726,9 @@ JSTaggedValue BuiltinsSharedArray::CopyWithin(EcmaRuntimeCallInfo *argv)
     //   c. Let to be to + count -1.
     // 16. Else,
     //   a. Let direction = 1.
-    int64_t direction = 1;
-    if (copyFrom < copyTo && copyTo < copyFrom + count) {
-        direction = -1;
-        copyFrom = copyFrom + count - 1;
-        copyTo = copyTo + count - 1;
-    }
-
-    // 17. Repeat, while count > 0
-    //   a. Let fromKey be ToString(from).
-    //   b. Let toKey be ToString(to).
-    //   c. Let fromPresent be HasProperty(O, fromKey).
-    //   d. ReturnIfAbrupt(fromPresent).
-    //   e. If fromPresent is true, then
-    //     i. Let fromVal be Get(O, fromKey).
-    //     ii. ReturnIfAbrupt(fromVal).
-    //     iii. Let setStatus be Set(O, toKey, fromVal, true).
-    //     iv. ReturnIfAbrupt(setStatus).
-    //   f. Else fromPresent is false,
-    //     i. Let deleteStatus be DeletePropertyOrThrow(O, toKey).
-    //     ii. ReturnIfAbrupt(deleteStatus).
-    //   g. Let from be from + direction.
-    //   h. Let to be to + direction.
-    //   i. Let count be count − 1.
-    JSMutableHandle<JSTaggedValue> kValue(thread, JSTaggedValue::Undefined());
-    TaggedArray *elements = TaggedArray::Cast(thisObjHandle->GetElements().GetTaggedObject());
-    while (count > 0) {
-        kValue.Update(BuiltinsSharedArray::GetElementByKey(thread, thisObjHandle, copyFrom));
-        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        elements->Set(thread, copyTo, kValue);
-        copyFrom = copyFrom + direction;
-        copyTo = copyTo + direction;
-        count--;
-    }
+    TaggedArray *element = TaggedArray::Cast(thisObjHandle->GetElements().GetTaggedObject());
+    element->Copy<true, true>(thread, copyTo, copyFrom, element, count);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     // 18. Return O.
     return thisObjHandle.GetTaggedValue();
