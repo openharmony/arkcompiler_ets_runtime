@@ -191,7 +191,7 @@ int32_t DebuggerApi::GetVregIndex(const FrameHandler *frameHandler, std::string_
     auto table = extractor->GetLocalVariableTable(method->GetMethodId());
     for (auto iter = table.begin(); iter != table.end(); iter++) {
         // if currentOffset not in variable's scope, skip it
-        if (iter->name == name.data() && currentOffset >= iter->startOffset && currentOffset <= iter->endOffset) {
+        if (iter->name == name.data() && currentOffset >= iter->startOffset && currentOffset < iter->endOffset) {
             // if there are multiple variables with the same name, get regNumber with the smallest scope
             if (iter->startOffset >= startOffset && iter->endOffset <= endOffset) {
                 regNumber = iter->regNumber;
