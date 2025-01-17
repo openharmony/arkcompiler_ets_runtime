@@ -2635,7 +2635,7 @@ void BuiltinsArrayStubBuilder::Push(GateRef glue, GateRef thisValue,
     BRANCH_UNLIKELY(Int32GreaterThan(newLength, capacity), &grow, &setValue);
     Bind(&grow);
     {
-        elements = GrowElementsCapacity(glue, thisValue, newLength);
+        elements = CallCommonStub(glue, CommonStubCSigns::GrowElementsCapacity, {glue, thisValue, newLength});
         Jump(&setValue);
     }
     Bind(&setValue);

@@ -137,7 +137,8 @@ namespace panda::ecmascript::kungfu {
     V(BatchBarrier)                   \
     V(VerifyBarrier)                  \
     V(MoveBarrierInRegion)            \
-    V(MoveBarrierCrossRegion)
+    V(MoveBarrierCrossRegion)         \
+    V(FindEntryFromNameDictionary)
 
 #define COMMON_STUB_ID_LIST(V)          \
     COMMON_STUB_LIST(V)

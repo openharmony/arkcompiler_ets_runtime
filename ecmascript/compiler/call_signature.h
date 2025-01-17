@@ -662,7 +662,8 @@ private:
     V(FillObject)                                    \
     V(MoveBarrierCrossRegion)                        \
     V(ReverseArray)                                  \
-    V(LrInt)
+    V(LrInt)                                         \
+    V(FindEntryFromNameDictionary)
 
 #define DECL_CALL_SIGNATURE(name)                                  \
 class name##CallSignature final {                                  \

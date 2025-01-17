@@ -4080,7 +4080,8 @@ GateRef StubBuilder::IsArrayLengthWritable(GateRef glue, GateRef receiver)
         GateRef array = GetPropertiesArray(receiver);
         GateRef lengthString = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
                                                       ConstantIndex::LENGTH_STRING_INDEX);
-        GateRef entry = FindEntryFromNameDictionary(glue, array, lengthString);
+        GateRef entry = CallCommonStub(glue, CommonStubCSigns::FindEntryFromNameDictionary,
+                                       {glue, array, lengthString});
         Label notNegtiveOne(env);
         Label isNegtiveOne(env);
         BRANCH(Int32NotEqual(entry, Int32(-1)), &notNegtiveOne, &isNegtiveOne);
