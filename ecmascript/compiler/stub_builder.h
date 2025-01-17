@@ -238,6 +238,7 @@ public:
     GateRef TaggedIsRegularObject(GateRef x);
     GateRef TaggedIsHeapObject(GateRef x);
     GateRef TaggedIsAccessor(GateRef x);
+    GateRef TaggedIsInternalAccessor(GateRef x);
     GateRef ObjectAddressToRange(GateRef x);
     GateRef RegionInSpace(GateRef region, RegionSpaceFlag space);
     GateRef RegionInSpace(GateRef region, RegionSpaceFlag spaceBegin, RegionSpaceFlag spaceEnd);
@@ -993,6 +994,8 @@ public:
     GateRef IntToEcmaString(GateRef glue, GateRef number);
     GateRef ToCharCode(GateRef number);
     GateRef NumberToString(GateRef glue, GateRef number);
+    inline GateRef GetAccGetter(GateRef accesstor);
+    inline GateRef GetAccSetter(GateRef accesstor);
     inline GateRef GetViewedArrayBuffer(GateRef dataView);
     inline GateRef GetByteOffset(GateRef dataView);
     inline GateRef GetByteLength(GateRef dataView);

@@ -2040,122 +2040,157 @@ void BuiltinsObjectStubBuilder::GetOwnPropertyDescriptors(Variable *result, Labe
         Jump(exit);
     }
     Bind(&noPendingException);
+    Label isFast(env);
+    BRANCH(IsNotSlowObjectKey(obj), &isFast, slowPath);
+    Bind(&isFast);
+    Label notDictMode(env);
+    GateRef properties = GetPropertiesArray(obj);
+    BRANCH(IsDictionaryMode(properties), slowPath, &notDictMode);
+    Bind(&notDictMode);
+    Label onlyProperties(env);
+    GateRef numOfElements = GetNumberOfElements(glue_, obj);
+    BRANCH(Int32Equal(numOfElements, Int32(0)), &onlyProperties, slowPath);
+    Bind(&onlyProperties);
+    DEFVARIABLE(i, VariableType::INT32(), Int32(0));
+    GateRef hclass = LoadHClass(obj);
+    GateRef layout = GetLayoutFromHClass(hclass);
+    GateRef number = GetNumberOfPropsFromHClass(hclass);
+    GateRef valueStr = GetGlobalConstantValue(VariableType::JS_POINTER(), glue_, ConstantIndex::VALUE_STRING_INDEX);
+    GateRef getterStr = GetGlobalConstantValue(VariableType::JS_POINTER(), glue_, ConstantIndex::GET_STRING_INDEX);
+    GateRef setterStr = GetGlobalConstantValue(VariableType::JS_POINTER(), glue_, ConstantIndex::SET_STRING_INDEX);
+    GateRef writableStr = GetGlobalConstantValue(VariableType::JS_POINTER(), glue_,
+                                                 ConstantIndex::WRITABLE_STRING_INDEX);
+    GateRef enumerableStr = GetGlobalConstantValue(VariableType::JS_POINTER(), glue_,
+                                                   ConstantIndex::ENUMERABLE_STRING_INDEX);
+    GateRef configurableStr = GetGlobalConstantValue(VariableType::JS_POINTER(), glue_,
+                                                     ConstantIndex::CONFIGURABLE_STRING_INDEX);
+    NewObjectStubBuilder newBuilder(this);
+    newBuilder.SetParameters(glue_, 0);
+    GateRef descriptors = newBuilder.CreateEmptyObject(glue_);
+    Label loopHead(env);
+    Label loopEnd(env);
+    Label next(env);
+    Label loopExit(env);
+    Jump(&loopHead);
+    LoopBegin(&loopHead);
     {
-        Label isFast(env);
-        BRANCH(IsNotSlowObjectKey(obj), &isFast, slowPath);
-        Bind(&isFast);
+        BRANCH(Int32UnsignedLessThan(*i, number), &next, &loopExit);
+        Bind(&next);
         {
-            Label notDictMode(env);
-            GateRef properties = GetPropertiesArray(obj);
-            BRANCH(IsDictionaryMode(properties), slowPath, &notDictMode);
-            Bind(&notDictMode);
+            Label isAccessor(env);
+            Label setValueAndIsWritable(env);
+            Label setIsEnumerable(env);
+            Label setIsConfigable(env);
+            Label setDescriptor(env);
+            GateRef key = GetKey(layout, *i);
+            GateRef attr = GetAttr(layout, *i);
+            GateRef descriptor = newBuilder.CreateEmptyObject(glue_);
+            DEFVARIABLE(value, VariableType::JS_ANY(), Undefined());
+            value = JSObjectGetProperty(obj, hclass, attr);
+            BRANCH(IsAccessor(attr), &isAccessor, &setValueAndIsWritable);
+            Bind(&isAccessor);
             {
-                Label onlyProperties(env);
-                GateRef numOfElements = GetNumberOfElements(glue_, obj);
-                BRANCH(Int32Equal(numOfElements, Int32(0)), &onlyProperties, slowPath);
-                Bind(&onlyProperties);
+                Label propertyBox(env);
+                Label checkInternalAccessor(env);
+                BRANCH(TaggedIsPropertyBox(*value), &propertyBox, &checkInternalAccessor);
+                Bind(&propertyBox);
                 {
-                    DEFVARIABLE(i, VariableType::INT32(), Int32(0));
-                    GateRef hclass = LoadHClass(obj);
-                    GateRef layout = GetLayoutFromHClass(hclass);
-                    GateRef number = GetNumberOfPropsFromHClass(hclass);
-                    GateRef keyValue = GetGlobalConstantValue(VariableType::JS_POINTER(), glue_,
-                                                              ConstantIndex::VALUE_STRING_INDEX);
-                    GateRef keyWritable = GetGlobalConstantValue(VariableType::JS_POINTER(), glue_,
-                                                                 ConstantIndex::WRITABLE_STRING_INDEX);
-                    GateRef keyEnumerable = GetGlobalConstantValue(VariableType::JS_POINTER(), glue_,
-                                                                   ConstantIndex::ENUMERABLE_STRING_INDEX);
-                    GateRef keyConfigurable = GetGlobalConstantValue(VariableType::JS_POINTER(), glue_,
-                                                                     ConstantIndex::CONFIGURABLE_STRING_INDEX);
-                    NewObjectStubBuilder newBuilder(this);
-                    newBuilder.SetParameters(glue_, 0);
-                    GateRef descriptors = newBuilder.CreateEmptyObject(glue_);
-                    Label loopHead(env);
-                    Label loopEnd(env);
-                    Label next(env);
-                    Label loopExit(env);
-                    Jump(&loopHead);
-                    LoopBegin(&loopHead);
-                    {
-                        BRANCH(Int32UnsignedLessThan(*i, number), &next, &loopExit);
-                        Bind(&next);
-                        {
-                            Label CheckIsWritable(env);
-                            Label CheckIsEnumerable(env);
-                            Label CheckIsIsConfigable(env);
-                            Label setDescriptor(env);
-                            GateRef key = GetKey(layout, *i);
-                            GateRef attr = GetAttr(layout, *i);
-                            GateRef descriptor = newBuilder.CreateEmptyObject(glue_);
-                            GateRef value = JSObjectGetProperty(obj, hclass, attr);
-                            FastSetPropertyByName(glue_, descriptor, keyValue, value);
-                            Jump(&CheckIsWritable);
-
-                            Bind(&CheckIsWritable);
-                            {
-                                Label isWritable(env);
-                                Label notWritable(env);
-                                BRANCH(IsWritable(attr), &isWritable, &notWritable);
-                                Bind(&isWritable);
-                                {
-                                    FastSetPropertyByName(glue_, descriptor, keyWritable, TaggedTrue());
-                                    Jump(&CheckIsEnumerable);
-                                }
-                                Bind(&notWritable);
-                                {
-                                    FastSetPropertyByName(glue_, descriptor, keyWritable, TaggedFalse());
-                                    Jump(&CheckIsEnumerable);
-                                }
-                            }
-                            Bind(&CheckIsEnumerable);
-                            {
-                                Label isEnumerable(env);
-                                Label notEnumerable(env);
-                                BRANCH(IsEnumerable(attr), &isEnumerable, &notEnumerable);
-                                Bind(&isEnumerable);
-                                {
-                                    FastSetPropertyByName(glue_, descriptor, keyEnumerable, TaggedTrue());
-                                    Jump(&CheckIsIsConfigable);
-                                }
-                                Bind(&notEnumerable);
-                                {
-                                    FastSetPropertyByName(glue_, descriptor, keyEnumerable, TaggedFalse());
-                                    Jump(&CheckIsIsConfigable);
-                                }
-                            }
-                            Bind(&CheckIsIsConfigable);
-                            {
-                                Label isConfigable(env);
-                                Label notConfigable(env);
-                                BRANCH(IsConfigable(attr), &isConfigable, &notConfigable);
-                                Bind(&isConfigable);
-                                {
-                                    FastSetPropertyByName(glue_, descriptor, keyConfigurable, TaggedTrue());
-                                    Jump(&setDescriptor);
-                                }
-                                Bind(&notConfigable);
-                                {
-                                    FastSetPropertyByName(glue_, descriptor, keyConfigurable, TaggedFalse());
-                                    Jump(&setDescriptor);
-                                }
-                            }
-                            Bind(&setDescriptor);
-                            {
-                                FastSetPropertyByName(glue_, descriptors, key, descriptor);
-                                Jump(&loopEnd);
-                            }
-                        }
-                    }
-                    Bind(&loopEnd);
-                    i = Int32Add(*i, Int32(1));
-                    LoopEnd(&loopHead, env, glue_);
-                    Bind(&loopExit);
-                    *result = descriptors;
-                    Jump(exit);
+                    value = GetValueFromPropertyBox(*value);
+                    Jump(&checkInternalAccessor);
                 }
+                Bind(&checkInternalAccessor);
+                Label isInternalAccesstor(env);
+                Label notInternalAccesstor(env);
+                BRANCH_UNLIKELY(TaggedIsInternalAccessor(*value), &isInternalAccesstor, &notInternalAccesstor);
+                Bind(&isInternalAccesstor);
+                {
+                    value = CallGetterHelper(glue_, obj, obj, *value, ProfileOperation());
+                    Jump(&setValueAndIsWritable);
+                }
+                Bind(&notInternalAccesstor);
+                {
+                    Label setGetter(env);
+                    Label getSetter(env);
+                    Label setSetter(env);
+                    GateRef getter = GetAccGetter(*value);
+                    BRANCH(TaggedIsHeapObject(getter), &setGetter, &getSetter);
+                    Bind(&setGetter);
+                    {
+                        FastSetPropertyByName(glue_, descriptor, getterStr, getter);
+                        Jump(&getSetter);
+                    }
+                    Bind(&getSetter);
+                    GateRef setter = GetAccSetter(*value);
+                    BRANCH(TaggedIsHeapObject(setter), &setSetter, &setIsEnumerable);
+                    Bind(&setSetter);
+                    {
+                        FastSetPropertyByName(glue_, descriptor, setterStr, setter);
+                        Jump(&setIsEnumerable);
+                    }
+                }
+            }
+            Bind(&setValueAndIsWritable);
+            {
+                Label isWritable(env);
+                Label notWritable(env);
+                FastSetPropertyByName(glue_, descriptor, valueStr, *value);
+                BRANCH(IsWritable(attr), &isWritable, &notWritable);
+                Bind(&isWritable);
+                {
+                    FastSetPropertyByName(glue_, descriptor, writableStr, TaggedTrue());
+                    Jump(&setIsEnumerable);
+                }
+                Bind(&notWritable);
+                {
+                    FastSetPropertyByName(glue_, descriptor, writableStr, TaggedFalse());
+                    Jump(&setIsEnumerable);
+                }
+            }
+            Bind(&setIsEnumerable);
+            {
+                Label isEnumerable(env);
+                Label notEnumerable(env);
+                BRANCH(IsEnumerable(attr), &isEnumerable, &notEnumerable);
+                Bind(&isEnumerable);
+                {
+                    FastSetPropertyByName(glue_, descriptor, enumerableStr, TaggedTrue());
+                    Jump(&setIsConfigable);
+                }
+                Bind(&notEnumerable);
+                {
+                    FastSetPropertyByName(glue_, descriptor, enumerableStr, TaggedFalse());
+                    Jump(&setIsConfigable);
+                }
+            }
+            Bind(&setIsConfigable);
+            {
+                Label isConfigable(env);
+                Label notConfigable(env);
+                BRANCH(IsConfigable(attr), &isConfigable, &notConfigable);
+                Bind(&isConfigable);
+                {
+                    FastSetPropertyByName(glue_, descriptor, configurableStr, TaggedTrue());
+                    Jump(&setDescriptor);
+                }
+                Bind(&notConfigable);
+                {
+                    FastSetPropertyByName(glue_, descriptor, configurableStr, TaggedFalse());
+                    Jump(&setDescriptor);
+                }
+            }
+            Bind(&setDescriptor);
+            {
+                FastSetPropertyByName(glue_, descriptors, key, descriptor);
+                Jump(&loopEnd);
             }
         }
     }
+    Bind(&loopEnd);
+    i = Int32Add(*i, Int32(1));
+    LoopEnd(&loopHead, env, glue_);
+    Bind(&loopExit);
+    *result = descriptors;
+    Jump(exit);
 }
 
 }  // namespace panda::ecmascript::kungfu
