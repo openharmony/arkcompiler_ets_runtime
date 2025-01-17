@@ -812,7 +812,10 @@ void JITProfiler::ConvertICByValueWithPoly(ApEntityId abcId, int32_t bcOffset, J
     if (cacheValue.IsWeak()) {
         return;
     }
-    ASSERT(cacheValue.IsTaggedArray());
+    // Check whether the cacheValue is TaggedArray
+    if (!cacheValue.IsTaggedArray()) {
+        return;
+    }
     auto array = TaggedArray::Cast(cacheValue);
     uint32_t length = array->GetLength();
     for (uint32_t i = 0; i < length; i += 2) { // 2 means one ic, two slot
