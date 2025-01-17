@@ -16,8 +16,6 @@
 #include "ecmascript/compiler/builtins/builtins_reflect_stub_builder.h"
 
 #include "ecmascript/compiler/stub_builder-inl.h"
-#include "ecmascript/js_arguments.h"
-#include "ecmascript/compiler/profiler_operation.h"
 
 namespace panda::ecmascript::kungfu {
 void BuiltinsReflectStubBuilder::Get(Variable *result, Label *exit, Label *slowPath)

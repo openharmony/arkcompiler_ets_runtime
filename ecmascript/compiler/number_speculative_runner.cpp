@@ -14,9 +14,6 @@
  */
 
 #include "ecmascript/compiler/array_bounds_check_elimination.h"
-#include "ecmascript/compiler/combined_pass_visitor.h"
-#include "ecmascript/compiler/number_gate_info.h"
-#include "ecmascript/compiler/number_speculative_lowering.h"
 #include "ecmascript/compiler/number_speculative_runner.h"
 #include "ecmascript/compiler/range_analysis.h"
 

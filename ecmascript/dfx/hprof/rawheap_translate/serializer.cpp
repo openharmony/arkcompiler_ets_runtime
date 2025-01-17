@@ -14,7 +14,6 @@
  */
 
 #include "ecmascript/dfx/hprof/rawheap_translate/serializer.h"
-#include "ecmascript/dfx/hprof/rawheap_translate/string_hashmap.h"
 
 namespace rawheap_translate {
 bool StreamWriter::Initialize(const std::string &filePath)

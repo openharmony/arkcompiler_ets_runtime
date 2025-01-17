@@ -18,7 +18,6 @@
 #include "ecmascript/compiler/builtins/builtins_object_stub_builder.h"
 #include "ecmascript/compiler/call_stub_builder.h"
 #include "ecmascript/compiler/new_object_stub_builder.h"
-#include "ecmascript/compiler/stub_builder-inl.h"
 #include "ecmascript/js_arguments.h"
 
 namespace panda::ecmascript::kungfu {

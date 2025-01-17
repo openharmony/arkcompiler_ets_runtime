@@ -13,8 +13,6 @@
  * limitations under the License.
  */
 
-#include <queue>
-#include <stack>
 #include "ecmascript/compiler/graph_editor.h"
 
 namespace panda::ecmascript::kungfu {

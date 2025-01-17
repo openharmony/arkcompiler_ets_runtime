@@ -16,14 +16,12 @@
 #include "ecmascript/compiler/access_object_stub_builder.h"
 #include "ecmascript/compiler/baseline/baseline_stubs.h"
 #include "ecmascript/compiler/baseline/baseline_stubs-inl.h"
-#include "ecmascript/compiler/baseline/baseline_call_signature.h"
 #include "ecmascript/compiler/call_stub_builder.h"
 #include "ecmascript/compiler/new_object_stub_builder.h"
 #include "ecmascript/compiler/operations_stub_builder.h"
 #include "ecmascript/compiler/profiler_stub_builder.h"
 #include "ecmascript/dfx/vm_thread_control.h"
 #include "ecmascript/interpreter/interpreter.h"
-#include "ecmascript/js_async_generator_object.h"
 
 namespace panda::ecmascript::kungfu {
 using namespace panda::ecmascript;

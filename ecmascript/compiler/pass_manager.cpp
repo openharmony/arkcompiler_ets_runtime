@@ -12,22 +12,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "ecmascript/compiler/pass_manager.h"
 
-#include "ecmascript/compiler/bytecodes.h"
-#include "ecmascript/compiler/compilation_driver.h"
+#include "ecmascript/compiler/pass_manager.h"
 #include "ecmascript/compiler/pass.h"
-#include "ecmascript/ecma_handle_scope.h"
-#include "ecmascript/jspandafile/js_pandafile_manager.h"
-#include "ecmascript/jspandafile/method_literal.h"
-#include "ecmascript/jspandafile/panda_file_translator.h"
-#include "ecmascript/log.h"
 #include "ecmascript/log_wrapper.h"
-#include "ecmascript/pgo_profiler/pgo_profiler.h"
-#include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
-#include "ecmascript/pgo_profiler/pgo_utils.h"
 #include "ecmascript/jit/jit.h"
-#include "jsnapi_expo.h"
 
 namespace panda::ecmascript::kungfu {
 using PGOProfilerManager = pgo::PGOProfilerManager;

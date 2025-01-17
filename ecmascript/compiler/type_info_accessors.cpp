@@ -15,12 +15,7 @@
 
 #include "ecmascript/compiler/type_info_accessors.h"
 
-#include "ecmascript/base/number_helper.h"
-#include "ecmascript/compiler/circuit.h"
-#include "ecmascript/compiler/pgo_type/pgo_type_manager.h"
 #include "ecmascript/global_env.h"
-#include "ecmascript/global_env_fields.h"
-#include "ecmascript/jspandafile/program_object.h"
 
 namespace panda::ecmascript::kungfu {
 ParamType TypeInfoAccessor::PGOSampleTypeToParamType() const

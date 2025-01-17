@@ -18,16 +18,7 @@
 #include "aot_compiler_impl.h"
 #include "ecmascript/log_wrapper.h"
 #include "iservice_registry.h"
-#include "ipc_skeleton.h"
-#include "iremote_object.h"
 #include "system_ability_definition.h"
-
-#include "power_disconnected_listener.h"
-
-#include "common_event_data.h"
-#include "common_event_manager.h"
-#include "common_event_support.h"
-#include "common_event_subscriber.h"
 
 namespace OHOS::ArkCompiler {
 namespace {

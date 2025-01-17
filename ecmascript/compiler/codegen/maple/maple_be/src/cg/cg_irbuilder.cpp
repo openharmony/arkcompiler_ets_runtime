@@ -14,9 +14,7 @@
  */
 
 #include "cg_irbuilder.h"
-#include "isa.h"
 #include "cg.h"
-#include "cfi.h"
 
 namespace maplebe {
 Insn &InsnBuilder::BuildInsn(MOperator opCode, const InsnDesc &idesc)

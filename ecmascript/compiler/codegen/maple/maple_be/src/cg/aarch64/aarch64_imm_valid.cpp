@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 #include "aarch64_imm_valid.h"
-#include <array>
 #include <iomanip>
 #include <set>
 

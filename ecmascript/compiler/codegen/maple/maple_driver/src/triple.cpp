@@ -14,7 +14,6 @@
  */
 
 #include "triple.h"
-#include "driver_options.h"
 
 namespace maple {
 void Triple::Init(bool isAArch64)

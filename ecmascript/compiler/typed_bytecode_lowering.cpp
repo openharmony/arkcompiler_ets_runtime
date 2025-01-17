@@ -13,27 +13,12 @@
  * limitations under the License.
  */
 
-#include <string>
-#include <cstring>
-#include <cstdlib>
 
-#include "ecmascript/compiler/circuit_builder.h"
 #include "ecmascript/compiler/typed_bytecode_lowering.h"
 
-#include "ecmascript/base/string_helper.h"
-#include "ecmascript/builtin_entries.h"
-#include "ecmascript/compiler/bytecodes.h"
-#include "ecmascript/compiler/circuit.h"
-#include "ecmascript/compiler/type_info_accessors.h"
 #include "ecmascript/dfx/vmstat/opt_code_profiler.h"
-#include "ecmascript/enum_conversion.h"
-#include "ecmascript/js_tagged_value.h"
-#include "ecmascript/jspandafile/js_pandafile.h"
-#include "ecmascript/jspandafile/js_pandafile_manager.h"
-#include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/jit/jit.h"
 #include "ecmascript/js_object-inl.h"
-#include "ecmascript/layout_info-inl.h"
 
 namespace panda::ecmascript::kungfu {
 void TypedBytecodeLowering::RunTypedBytecodeLowering()

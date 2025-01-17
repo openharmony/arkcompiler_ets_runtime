@@ -13,15 +13,7 @@
  * limitations under the License.
  */
 
-#include "ecmascript/compiler/circuit.h"
-#include "ecmascript/compiler/lcr_gate_meta_data.h"
-#include "ecmascript/compiler/mcr_gate_meta_data.h"
-#include "ecmascript/compiler/share_gate_meta_data.h"
 #include "ecmascript/compiler/constant_folding.h"
-#include "ecmascript/compiler/number_gate_info.h"
-#include "ecmascript/compiler/share_opcodes.h"
-#include "ecmascript/compiler/type.h"
-#include "utils/bit_utils.h"
 
 namespace panda::ecmascript::kungfu {
 

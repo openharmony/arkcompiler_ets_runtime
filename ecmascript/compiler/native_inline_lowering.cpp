@@ -13,21 +13,8 @@
  * limitations under the License.
  */
 #include "ecmascript/compiler/native_inline_lowering.h"
-#include "ecmascript/builtins/builtins_number.h"
-#include "ecmascript/builtins/builtins_string.h"
-#include "ecmascript/base/number_helper.h"
 #include "ecmascript/compiler/builtins/builtins_call_signature.h"
-#include "ecmascript/compiler/circuit.h"
-#include "ecmascript/compiler/circuit_builder-inl.h"
-#include "ecmascript/compiler/circuit_builder_helper.h"
-#include "ecmascript/compiler/share_gate_meta_data.h"
-#include "ecmascript/js_dataview.h"
-#include "ecmascript/compiler/circuit.h"
-#include "ecmascript/compiler/new_object_stub_builder.h"
 #include "ecmascript/global_env.h"
-#include "ecmascript/js_iterator.h"
-#include "ecmascript/js_thread.h"
-#include "ecmascript/message_string.h"
 
 namespace panda::ecmascript::kungfu {
 

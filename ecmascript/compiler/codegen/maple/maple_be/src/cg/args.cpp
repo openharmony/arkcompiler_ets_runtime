@@ -15,7 +15,6 @@
 
 #include "args.h"
 #include "cg.h"
-#include "cgfunc.h"
 
 namespace maplebe {
 using namespace maple;

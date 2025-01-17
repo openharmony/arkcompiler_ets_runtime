@@ -18,9 +18,6 @@
 #include "ecmascript/base/llvm_helper.h"
 #endif
 
-#include <cstring>
-#include <iomanip>
-#include <vector>
 
 #if defined(__clang__)
 #pragma clang diagnostic push
@@ -36,27 +33,16 @@
 
 #include "llvm-c/Analysis.h"
 #include "llvm-c/Disassembler.h"
-#include "llvm-c/DisassemblerTypes.h"
-#include "llvm-c/Target.h"
 #include "llvm-c/Transforms/PassManagerBuilder.h"
 #include "llvm/DebugInfo/DWARF/DWARFContext.h"
-#include "llvm/DebugInfo/DIContext.h"
-#include "llvm/ExecutionEngine/ExecutionEngine.h"
 #include "llvm/ExecutionEngine/SectionMemoryManager.h"
 #include "llvm/ExecutionEngine/MCJIT.h"
 #include "llvm/IR/LegacyPassManager.h"
-#include "llvm/IR/Verifier.h"
 #include "lib/llvm_interface.h"
 
 #include "ecmascript/compiler/aot_file/aot_file_info.h"
-#include "ecmascript/compiler/call_signature.h"
 #include "ecmascript/compiler/codegen/llvm/llvm_ir_builder.h"
 #include "ecmascript/compiler/compiler_log.h"
-#include "ecmascript/compiler/debug_info.h"
-#include "ecmascript/ecma_macros.h"
-#include "ecmascript/mem/region.h"
-#include "ecmascript/object_factory.h"
-#include "ecmascript/stackmap/llvm/llvm_stackmap_parser.h"
 
 #if defined(__clang__)
 #pragma clang diagnostic pop

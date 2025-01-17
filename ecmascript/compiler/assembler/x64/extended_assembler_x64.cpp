@@ -14,8 +14,6 @@
  */
 
 #include "ecmascript/compiler/assembler/x64/extended_assembler_x64.h"
-#include "ecmascript/deoptimizer/calleeReg.h"
-#include "ecmascript/frames.h"
 
 namespace panda::ecmascript::x64 {
 Register ExtendedAssembler::ghcJSCallDispacherArgs_[JS_CALL_DISPATCHER_ARGS_COUNT] = {

@@ -13,18 +13,9 @@
  * limitations under the License.
  */
 
-#include <chrono>
-#include <iostream>
-#include <csignal>  // NOLINTNEXTLINE(modernize-deprecated-headers)
-#include <vector>
 
 #include "ecmascript/compiler/jit_compiler.h"
-#include "ecmascript/compiler/baseline/baseline_compiler.h"
 
-#include "ecmascript/jit/jit_task.h"
-#include "ecmascript/log.h"
-#include "ecmascript/napi/include/jsnapi.h"
-#include "ecmascript/platform/file.h"
 
 namespace panda::ecmascript::kungfu {
 JitCompiler *JitCompiler::GetInstance(JSRuntimeOptions *options)

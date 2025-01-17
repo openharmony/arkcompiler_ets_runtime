@@ -13,30 +13,14 @@
  * limitations under the License.
  */
 
-#include <initializer_list>
-#include "ecmascript/base/number_helper.h"
 #include "ecmascript/compiler/access_object_stub_builder.h"
-#include "ecmascript/compiler/bc_call_signature.h"
 #include "ecmascript/compiler/call_stub_builder.h"
-#include "ecmascript/compiler/codegen/llvm/llvm_ir_builder.h"
-#include "ecmascript/compiler/ic_stub_builder.h"
 #include "ecmascript/compiler/interpreter_stub-inl.h"
-#include "ecmascript/compiler/new_object_stub_builder.h"
 #include "ecmascript/compiler/operations_stub_builder.h"
 #include "ecmascript/compiler/profiler_stub_builder.h"
-#include "ecmascript/compiler/stub_builder-inl.h"
-#include "ecmascript/compiler/variable_type.h"
 #include "ecmascript/dfx/vm_thread_control.h"
-#include "ecmascript/global_env_constants.h"
-#include "ecmascript/ic/profile_type_info.h"
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/interpreter/interpreter_assembly.h"
-#include "ecmascript/js_array.h"
-#include "ecmascript/js_function.h"
-#include "ecmascript/js_generator_object.h"
-#include "ecmascript/message_string.h"
-#include "ecmascript/tagged_hash_table.h"
-#include "libpandafile/bytecode_instruction-inl.h"
 
 namespace panda::ecmascript::kungfu {
 #define DECLARE_ASM_HANDLER_BASE(name, needPrint, V, format)                                      \

@@ -15,20 +15,8 @@
 
 #include "ecmascript/compiler/stub_compiler.h"
 
-#include "ecmascript/base/config.h"
-#include "ecmascript/base/string_helper.h"
-#include "ecmascript/compiler/codegen/llvm/llvm_codegen.h"
-#include "ecmascript/compiler/file_generators.h"
-#include "ecmascript/compiler/interpreter_stub-inl.h"
 #include "ecmascript/compiler/pass.h"
-#include "ecmascript/compiler/scheduler.h"
 #include "ecmascript/compiler/stub.h"
-#include "ecmascript/compiler/stub_builder-inl.h"
-#include "ecmascript/compiler/verifier.h"
-#include "ecmascript/js_runtime_options.h"
-#include "ecmascript/log.h"
-#include "ecmascript/napi/include/jsnapi.h"
-#include "ecmascript/compiler/baseline/baseline_stub_csigns.h"
 
 namespace panda::ecmascript::kungfu {
 class StubPassData : public PassData {

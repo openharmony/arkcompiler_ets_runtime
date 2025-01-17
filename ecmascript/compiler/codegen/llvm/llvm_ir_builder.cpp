@@ -15,23 +15,8 @@
 
 #include "ecmascript/compiler/codegen/llvm/llvm_ir_builder.h"
 
-#include <cmath>
 
-#include "ecmascript/compiler/argument_accessor.h"
-#include "ecmascript/compiler/bc_call_signature.h"
-#include "ecmascript/compiler/baseline/baseline_call_signature.h"
-#include "ecmascript/compiler/circuit.h"
-#include "ecmascript/compiler/call_signature.h"
-#include "ecmascript/compiler/debug_info.h"
-#include "ecmascript/compiler/gate.h"
-#include "ecmascript/compiler/share_gate_meta_data.h"
-#include "ecmascript/compiler/rt_call_signature.h"
-#include "ecmascript/compiler/baseline/baseline_stub_csigns.h"
 #include "ecmascript/deoptimizer/deoptimizer.h"
-#include "ecmascript/frames.h"
-#include "ecmascript/js_thread.h"
-#include "ecmascript/method.h"
-#include "ecmascript/stackmap/llvm/llvm_stackmap_parser.h"
 
 #if defined(__clang__)
 #pragma clang diagnostic push
@@ -45,8 +30,6 @@
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 #endif
 
-#include "llvm/IR/Instructions.h"
-#include "llvm/IR/Intrinsics.h"
 #include "llvm/IR/IRBuilder.h"
 
 #if defined(__clang__)
@@ -55,8 +38,6 @@
 #pragma GCC diagnostic pop
 #endif
 
-#include "llvm/Support/Host.h"
-#include "securec.h"
 
 namespace panda::ecmascript::kungfu {
 LLVMIRBuilder::LLVMIRBuilder(const std::vector<std::vector<GateRef>> *schedule, Circuit *circuit,

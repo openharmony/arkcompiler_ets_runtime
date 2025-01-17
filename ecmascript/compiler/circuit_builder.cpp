@@ -15,28 +15,12 @@
 
 #include "ecmascript/compiler/circuit_builder.h"
 
-#include "ecmascript/compiler/builtins/builtins_call_signature.h"
-#include "ecmascript/compiler/circuit_builder-inl.h"
-#include "ecmascript/compiler/hcr_circuit_builder.h"
-#include "ecmascript/compiler/lcr_circuit_builder.h"
-#include "ecmascript/compiler/mcr_circuit_builder.h"
 #include "ecmascript/compiler/new_object_stub_builder.h"
-#include "ecmascript/compiler/rt_call_signature.h"
-#include "ecmascript/compiler/share_gate_meta_data.h"
 #include "ecmascript/deoptimizer/deoptimizer.h"
 #include "ecmascript/global_env.h"
-#include "ecmascript/ic/proto_change_details.h"
 #include "ecmascript/js_array_iterator.h"
-#include "ecmascript/js_for_in_iterator.h"
-#include "ecmascript/js_function.h"
 #include "ecmascript/js_primitive_ref.h"
-#include "ecmascript/js_thread.h"
-#include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/lexical_env.h"
-#include "ecmascript/mem/region.h"
-#include "ecmascript/message_string.h"
-#include "ecmascript/method.h"
-#include "ecmascript/sendable_env.h"
 
 namespace panda::ecmascript::kungfu {
 

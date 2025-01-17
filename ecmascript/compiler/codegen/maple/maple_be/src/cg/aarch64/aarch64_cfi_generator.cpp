@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 #include "aarch64_cfi_generator.h"
-#include "aarch64_memlayout.h"
 #include "aarch64_cgfunc.h"
 namespace maplebe {
 void AArch64GenCfi::GenerateRegisterSaveDirective(BB &bb, Insn &stackDefInsn)

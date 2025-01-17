@@ -14,11 +14,8 @@
  */
 
 #include "x64_MPISel.h"
-#include "x64_memlayout.h"
-#include "x64_cgfunc.h"
 #include "x64_isa_tbl.h"
 #include "x64_cg.h"
-#include "isel.h"
 
 namespace maplebe {
 /* Field-ID 0 is assigned to the top level structure. (Field-ID also defaults to 0 if it is not a structure.) */

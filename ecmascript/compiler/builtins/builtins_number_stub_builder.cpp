@@ -17,7 +17,6 @@
 
 #include "ecmascript/builtins/builtins_number.h"
 #include "ecmascript/compiler/new_object_stub_builder.h"
-#include "ecmascript/compiler/stub_builder-inl.h"
 #include "ecmascript/js_arguments.h"
 #include "ecmascript/js_primitive_ref.h"
 #include "ecmascript/tagged_dictionary.h"

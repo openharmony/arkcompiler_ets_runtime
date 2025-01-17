@@ -14,8 +14,6 @@
  */
 
 #include "ecmascript/compiler/scheduler.h"
-#include <cmath>
-#include <stack>
 #include "ecmascript/compiler/gate_accessor.h"
 #include "ecmascript/compiler/verifier.h"
 

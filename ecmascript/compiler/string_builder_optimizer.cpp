@@ -14,7 +14,6 @@
  */
 
 #include "ecmascript/compiler/string_builder_optimizer.h"
-#include "share_opcodes.h"
 
 namespace panda::ecmascript::kungfu {
 

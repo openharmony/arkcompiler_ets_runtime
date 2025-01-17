@@ -12,9 +12,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "ecmascript/compiler/frame_states.h"
 
-#include <cstddef>
+#include "ecmascript/compiler/frame_states.h"
 
 #include "ecmascript/compiler/bytecode_circuit_builder.h"
 

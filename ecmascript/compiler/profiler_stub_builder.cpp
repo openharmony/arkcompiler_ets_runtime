@@ -19,8 +19,6 @@
 #include "ecmascript/compiler/circuit_builder_helper.h"
 #include "ecmascript/compiler/share_gate_meta_data.h"
 #include "ecmascript/compiler/interpreter_stub-inl.h"
-#include "ecmascript/compiler/stub_builder-inl.h"
-#include "ecmascript/ic/profile_type_info.h"
 
 namespace panda::ecmascript::kungfu {
 void ProfilerStubBuilder::PGOProfiler(GateRef glue, GateRef pc, GateRef func, GateRef profileTypeInfo,

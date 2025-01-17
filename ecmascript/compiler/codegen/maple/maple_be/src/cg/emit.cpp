@@ -14,7 +14,6 @@
  */
 
 #include "emit.h"
-#include "asm_emit.h"
 #if TARGAARCH64
 #include "aarch64_obj_emitter.h"
 #include "aarch64_emitter.h"
@@ -29,7 +28,6 @@
 #include "reflection_analysis.h"
 #include "muid_replacement.h"
 #include "metadata_layout.h"
-#include "string_utils.h"
 using namespace namemangler;
 
 namespace {

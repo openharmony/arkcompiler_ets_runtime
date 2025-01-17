@@ -15,11 +15,8 @@
 
 #include <getopt.h>
 
-#include "ecmascript/base/string_helper.h"
-#include "ecmascript/ecma_macros.h"
 #include "ecmascript/log_wrapper.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
-#include "ecmascript/platform/file.h"
 
 namespace panda::ecmascript::pgo {
 static const std::string VERSION = "0.0.0.1";

@@ -15,24 +15,8 @@
 
 #include "ecmascript/compiler/codegen/maple/litecg_ir_builder.h"
 
-#include <cmath>
-#include <cstdint>
 
-#include "ecmascript/compiler/argument_accessor.h"
-#include "ecmascript/compiler/bc_call_signature.h"
-#include "ecmascript/compiler/baseline/baseline_call_signature.h"
-#include "ecmascript/compiler/circuit.h"
-#include "ecmascript/compiler/call_signature.h"
-#include "ecmascript/compiler/common_stub_csigns.h"
-#include "ecmascript/compiler/gate.h"
-#include "ecmascript/compiler/rt_call_signature.h"
 #include "ecmascript/deoptimizer/deoptimizer.h"
-#include "ecmascript/frames.h"
-#include "ecmascript/js_function.h"
-#include "ecmascript/js_thread.h"
-#include "ecmascript/method.h"
-#include "triple.h"
-#include "lmir_builder.h"
 
 namespace panda::ecmascript::kungfu {
 using FunctionBuilder = maple::litecg::LMIRBuilder::FunctionBuilder;

@@ -14,11 +14,9 @@
  */
 
 #include "aarch64_targetinfo.h"
-#include "target_registry.h"
 #include "aarch64_cg.h"
 #include "aarch64_emitter.h"
 #include "aarch64_targetmachine.h"
-#include <iostream>
 namespace maplebe {
 
 Target &getTheAArch64Target()

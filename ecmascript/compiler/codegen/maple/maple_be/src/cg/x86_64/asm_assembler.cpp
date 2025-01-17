@@ -14,8 +14,6 @@
  */
 
 #include "assembler/asm_assembler.h"
-#include <unistd.h>
-#include <securec.h>
 #include "dwarf.h"
 
 namespace assembler {

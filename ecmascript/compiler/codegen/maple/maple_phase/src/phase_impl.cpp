@@ -14,9 +14,6 @@
  */
 
 #include "phase_impl.h"
-#include <cstdlib>
-#include "mpl_timer.h"
-#include "option.h"
 
 namespace maple {
 // ========== FuncOptimizeImpl ==========

@@ -17,17 +17,7 @@
 #include "ecmascript/interpreter/interpreter_assembly.h"
 #include "ecmascript/interpreter/slow_runtime_stub.h"
 #include "ecmascript/js_async_generator_object.h"
-#include "ecmascript/js_generator_object.h"
-#include "ecmascript/js_tagged_value.h"
-#include "ecmascript/jit/jit_task.h"
-#include "ecmascript/mem/concurrent_marker.h"
-#include "ecmascript/module/js_module_manager.h"
-#include "ecmascript/module/js_module_source_text.h"
-#include "ecmascript/runtime_call_id.h"
 #include "ecmascript/stubs/runtime_stubs.h"
-#include "ecmascript/sendable_env.h"
-#include "ecmascript/template_string.h"
-#include "ecmascript/checkpoint/thread_state_transition.h"
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
 #include "ecmascript/dfx/cpu_profiler/cpu_profiler.h"
 #endif

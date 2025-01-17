@@ -15,8 +15,6 @@
 
 #include "aarch64_memlayout.h"
 #include "aarch64_cgfunc.h"
-#include "becommon.h"
-#include "mir_nodes.h"
 
 namespace maplebe {
 using namespace maple;
