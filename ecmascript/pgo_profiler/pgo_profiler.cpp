@@ -874,7 +874,6 @@ void PGOProfiler::ProfileBytecode(ApEntityId abcId, const CString &recordName, J
 void PGOProfiler::DumpICByName(ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset,
                                uint32_t slotId, ProfileTypeInfo *profileTypeInfo, BCType type)
 {
-    ProfileTypeAccessorLockScope accessorLockScope(vm_->GetJSThreadNoCheck());
     JSTaggedValue firstValue = profileTypeInfo->Get(slotId);
     if (!firstValue.IsHeapObject()) {
         if (firstValue.IsHole()) {
@@ -898,7 +897,6 @@ void PGOProfiler::DumpICByName(ApEntityId abcId, const CString &recordName, Enti
 void PGOProfiler::DumpICByValue(ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset,
                                 uint32_t slotId, ProfileTypeInfo *profileTypeInfo, BCType type)
 {
-    ProfileTypeAccessorLockScope accessorLockScope(vm_->GetJSThreadNoCheck());
     JSTaggedValue firstValue = profileTypeInfo->Get(slotId);
     if (!firstValue.IsHeapObject()) {
         if (firstValue.IsHole()) {
