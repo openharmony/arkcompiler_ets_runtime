@@ -30,3 +30,4 @@ bound testFunc
 bound testFuncChanged
 true
 123
+bound 

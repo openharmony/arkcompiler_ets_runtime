@@ -127,3 +127,16 @@ function testDict(a) {
 }
 testDict[10000] = 0;
 testDict.bind({})(123);
+
+{
+    let v1 = {};
+    let v2 = new Proxy({}, v1);
+    v2.get = function(v6) {};
+    let v3 = function(v7) { "use strict" };
+    let v4 = new Proxy(v3, v2);
+    let v5 = Symbol();
+    try {
+        v2 = Function.prototype.bind.call(v4, v5, "foo");
+    } catch(e) {}
+    print(v2.name);
+}
