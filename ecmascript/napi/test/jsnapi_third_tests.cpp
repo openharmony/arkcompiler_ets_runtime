@@ -1446,4 +1446,71 @@ HWTEST_F_L0(JSNApiTests, SetStopPreLoadSoCallback)
     EXPECT_NE(stopPreLoadSoCallback, nullptr);
     stopPreLoadSoCallback();
 }
+
+HWTEST_F_L0(JSNApiTests, UpdatePkgContextInfoList)
+{
+    std::map<std::string, std::vector<std::vector<std::string>>> pkgList;
+    std::vector<std::string> entryList = {
+        "entry",
+        "packageName", "entry",
+        "bundleName", "",
+        "moduleName", "",
+        "version", "",
+        "entryPath", "src/main/",
+        "isSO", "false"
+    };
+    pkgList["entry"] = {entryList};
+    JSNApi::SetpkgContextInfoList(vm_, pkgList);
+
+    std::map<std::string, std::vector<std::vector<std::string>>> newPkgList;
+    std::vector<std::string> hspList = {
+        "hsp",
+        "packageName", "hsp",
+        "bundleName", "",
+        "moduleName", "",
+        "version", "1.1.0",
+        "entryPath", "Index.ets",
+        "isSO", "false"
+    };
+    newPkgList["hsp"] = {hspList};
+    JSNApi::UpdatePkgContextInfoList(vm_, newPkgList);
+
+    CMap<CString, CMap<CString, CVector<CString>>> vmPkgList = vm_->GetPkgContextInfoList();
+    EXPECT_EQ(vmPkgList.size(), 2);
+    EXPECT_EQ(vmPkgList["entry"]["entry"].size(), 12);
+    EXPECT_EQ(vmPkgList["hsp"].size(), 1);
+    EXPECT_EQ(vmPkgList["hsp"]["hsp"].size(), 12);
+}
+
+HWTEST_F_L0(JSNApiTests, UpdatePkgNameList)
+{
+    std::map<std::string, std::string> pkgNameList;
+    pkgNameList["moduleName1"] = "pkgName1";
+    JSNApi::SetPkgNameList(vm_, pkgNameList);
+
+    std::map<std::string, std::string> newPkgNameList;
+    newPkgNameList["moduleName2"] = "pkgName2";
+    JSNApi::UpdatePkgNameList(vm_, newPkgNameList);
+
+    CMap<CString, CString> vmPkgNameList = vm_->GetPkgNameList();
+    EXPECT_EQ(vmPkgNameList.size(), 2);
+    EXPECT_EQ(vmPkgNameList["moduleName1"], "pkgName1");
+    EXPECT_EQ(vmPkgNameList["moduleName2"], "pkgName2");
+}
+
+HWTEST_F_L0(JSNApiTests, UpdatePkgAliasList)
+{
+    std::map<std::string, std::string> aliasNameList;
+    aliasNameList["aliasName1"] = "pkgName1";
+    JSNApi::SetPkgAliasList(vm_, aliasNameList);
+
+    std::map<std::string, std::string> newAliasNameList;
+    newAliasNameList["aliasName2"] = "pkgName2";
+    JSNApi::UpdatePkgAliasList(vm_, newAliasNameList);
+
+    CMap<CString, CString> vmAliasNameList = vm_->GetPkgAliasList();
+    EXPECT_EQ(vmAliasNameList.size(), 2);
+    EXPECT_EQ(vmAliasNameList["aliasName1"], "pkgName1");
+    EXPECT_EQ(vmAliasNameList["aliasName2"], "pkgName2");
+}
 } // namespace panda::test

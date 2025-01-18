@@ -977,6 +977,7 @@ bool EcmaVM::IsHmsModule(const CString &moduleStr) const
 
 void EcmaVM::SetpkgContextInfoList(const CMap<CString, CMap<CString, CVector<CString>>> &list)
 {
+    WriteLockHolder lock(pkgContextInfoLock_);
     pkgContextInfoList_ = list;
 }
 

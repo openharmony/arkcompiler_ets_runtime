@@ -1756,12 +1756,16 @@ public:
     static void SetAssetPath(EcmaVM *vm, const std::string &assetPath);
     static void SetMockModuleList(EcmaVM *vm, const std::map<std::string, std::string> &list);
     static void SetPkgNameList(EcmaVM *vm, const std::map<std::string, std::string> &list);
+    static void UpdatePkgNameList(EcmaVM *vm, const std::map<std::string, std::string> &list);
     static std::string GetPkgName(EcmaVM *vm, const std::string &moduleName);
     static void SetPkgAliasList(EcmaVM *vm, const std::map<std::string, std::string> &list);
+    static void UpdatePkgAliasList(EcmaVM *vm, const std::map<std::string, std::string> &list);
     static void SetHmsModuleList(EcmaVM *vm, const std::vector<panda::HmsMap> &list);
     static void SetModuleInfo(EcmaVM *vm, const std::string &assetPath, const std::string &entryPoint);
     static void SetpkgContextInfoList(EcmaVM *vm, const std::map<std::string,
         std::vector<std::vector<std::string>>> &list);
+    static void UpdatePkgContextInfoList(EcmaVM *vm,
+        const std::map<std::string, std::vector<std::vector<std::string>>> &list);
     static void SetExecuteBufferMode(const EcmaVM *vm);
     // Stop preloading so task callback.
     static void SetStopPreLoadSoCallback(EcmaVM *vm, const StopPreLoadSoCallback &callback);

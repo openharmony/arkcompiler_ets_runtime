@@ -4196,6 +4196,19 @@ void JSNApi::SetPkgAliasList(EcmaVM *vm, const std::map<std::string, std::string
     vm->SetPkgAliasList(pkgAliasList);
 }
 
+void JSNApi::UpdatePkgAliasList(EcmaVM *vm, const std::map<std::string, std::string> &list)
+{
+    ecmascript::CMap<ecmascript::CString, ecmascript::CString> pkgAliasList;
+    for (auto &[alias, pkgName]: list) {
+        pkgAliasList.emplace(alias, pkgName);
+    }
+    vm->UpdatePkgAliasList(pkgAliasList);
+    ecmascript::CMap<uint32_t, EcmaVM *> workerList = vm->GetWorkList();
+    for (auto &[workerId, workerVm]: workerList) {
+        workerVm->UpdatePkgAliasList(pkgAliasList);
+    }
+}
+
 void JSNApi::SetPkgNameList(EcmaVM *vm, const std::map<std::string, std::string> &list)
 {
     ecmascript::CMap<ecmascript::CString, ecmascript::CString> pkgNameList;
@@ -4204,6 +4217,20 @@ void JSNApi::SetPkgNameList(EcmaVM *vm, const std::map<std::string, std::string>
     }
     vm->SetPkgNameList(pkgNameList);
 }
+
+void JSNApi::UpdatePkgNameList(EcmaVM *vm, const std::map<std::string, std::string> &list)
+{
+    ecmascript::CMap<ecmascript::CString, ecmascript::CString> pkgNameList;
+    for (auto &[moduleName, pkgName]: list) {
+        pkgNameList.emplace(moduleName, pkgName);
+    }
+    vm->UpdatePkgNameList(pkgNameList);
+    ecmascript::CMap<uint32_t, EcmaVM *> workerList = vm->GetWorkList();
+    for (auto &[workerId, workerVm]: workerList) {
+        workerVm->UpdatePkgNameList(pkgNameList);
+    }
+}
+
 std::string JSNApi::GetPkgName(EcmaVM *vm, const std::string &moduleName)
 {
     return vm->GetPkgName(moduleName.c_str()).c_str();
@@ -4230,6 +4257,33 @@ void JSNApi::SetpkgContextInfoList(EcmaVM *vm, const std::map<std::string,
     vm->SetpkgContextInfoList(pkgContextInfoList);
 }
 
+void JSNApi::UpdatePkgContextInfoList(EcmaVM *vm,
+    const std::map<std::string, std::vector<std::vector<std::string>>> &list)
+{
+    ecmascript::CMap<ecmascript::CString, ecmascript::CMap<ecmascript::CString,
+        ecmascript::CVector<ecmascript::CString>>> pkgContextInfoList;
+    for (auto &[moduleName, pkgContextInfos]: list) {
+        ecmascript::CMap<ecmascript::CString, ecmascript::CVector<ecmascript::CString>> map;
+        for (auto &datas: pkgContextInfos) {
+            if (datas.empty()) {
+                continue;
+            }
+            ecmascript::CString pkgName = datas[0].c_str();
+            ecmascript::CVector<ecmascript::CString> pkgContextInfo;
+            for (size_t i = 1; i < datas.size(); i++) {
+                pkgContextInfo.emplace_back(datas[i].c_str());
+            }
+            map.emplace(pkgName, pkgContextInfo);
+        }
+        pkgContextInfoList.emplace(moduleName, map);
+    }
+    vm->UpdatePkgContextInfoList(pkgContextInfoList);
+
+    ecmascript::CMap<uint32_t, EcmaVM *> workerList = vm->GetWorkList();
+    for (auto &[workerId, workerVm]: workerList) {
+        workerVm->UpdatePkgContextInfoList(pkgContextInfoList);
+    }
+}
 // Only used for env created by napi to set module execution mode
 void JSNApi::SetExecuteBufferMode(const EcmaVM *vm)
 {
@@ -4346,9 +4400,9 @@ void JSNApi::SynchronizVMInfo(EcmaVM *vm, const EcmaVM *hostVM)
     vm->SetModuleName(hostVM->GetModuleName());
     vm->SetAssetPath(hostVM->GetAssetPath());
     vm->SetIsBundlePack(hostVM->IsBundlePack());
-    vm->SetPkgNameList(hostVM->GetPkgNameList());
-    vm->SetPkgAliasList(hostVM->GetPkgAliasList());
-    vm->SetpkgContextInfoList(hostVM->GetPkgContextInfoLit());
+    vm->SetPkgNameList(const_cast<EcmaVM *>(hostVM)->GetPkgNameList());
+    vm->SetPkgAliasList(const_cast<EcmaVM *>(hostVM)->GetPkgAliasList());
+    vm->SetpkgContextInfoList(const_cast<EcmaVM *>(hostVM)->GetPkgContextInfoList());
 
     ecmascript::ModuleManager *vmModuleManager =
         vm->GetAssociatedJSThread()->GetCurrentEcmaContext()->GetModuleManager();
