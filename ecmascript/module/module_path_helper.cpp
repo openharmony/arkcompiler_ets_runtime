@@ -846,7 +846,7 @@ CVector<CString> ModulePathHelper::GetPkgContextInfoListElements(EcmaVM *vm, CSt
     if (packageName.size() == 0) {
         return resultList;
     }
-    CMap<CString, CMap<CString, CVector<CString>>> pkgContextList = vm->GetPkgContextInfoLit();
+    CMap<CString, CMap<CString, CVector<CString>>> pkgContextList = vm->GetPkgContextInfoList();
     if (pkgContextList.find(moduleName) == pkgContextList.end()) {
         return resultList;
     }
