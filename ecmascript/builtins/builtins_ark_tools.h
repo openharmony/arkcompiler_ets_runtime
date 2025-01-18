@@ -59,6 +59,7 @@
     V("hashCode",                       HashCode,                       1, ArkToolsHashCode)    \
     V("startRuntimeStat",               StartRuntimeStat,               0, INVALID)       \
     V("stopRuntimeStat",                StopRuntimeStat,                0, INVALID)       \
+    V("printMegaICStat",                PrintMegaICStat,                0, INVALID)       \
     V("iterateFrame",                   IterateFrame,                   0, INVALID)       \
     V("triggerSharedGC",                TriggerSharedGC,                0, INVALID)
 
@@ -223,6 +224,8 @@ public:
     static JSTaggedValue CheckCircularImport(EcmaRuntimeCallInfo *info);
 
     static JSTaggedValue HashCode(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue PrintMegaICStat(EcmaRuntimeCallInfo *info);
 
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
     static JSTaggedValue StartCpuProfiler(EcmaRuntimeCallInfo *info);

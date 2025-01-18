@@ -125,14 +125,13 @@ private:
     ~MegaICCache() = default;
 
     // NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init)
-
     static inline int Hash(JSHClass *cls, JSTaggedValue key)
     {
-        uint32_t clsHash = static_cast<uint32_t>(reinterpret_cast<uintptr_t>(cls)) >> HCLASS_SHIFT;  // skip 8bytes
+        uint32_t clsHash = static_cast<uint32_t>(reinterpret_cast<uintptr_t>(cls)) >> HCLASS_SHIFT; // skip 8bytes
         uint32_t keyHash = key.GetStringKeyHashCode();
-        return static_cast<int>((clsHash ^ keyHash) & CACHE_LENGTH_MASK);
+        uint32_t hash = (clsHash * 31) ^ ((keyHash * 0x9e3779b9) ^ (keyHash >> 16));
+        return static_cast<int>((hash) & CACHE_LENGTH_MASK);
     }
-
     PropertyKey keys_[CACHE_LENGTH];
 
     friend class EcmaContext;

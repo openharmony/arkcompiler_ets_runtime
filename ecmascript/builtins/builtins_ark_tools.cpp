@@ -339,6 +339,18 @@ JSTaggedValue BuiltinsArkTools::HashCode(EcmaRuntimeCallInfo *info)
     return JSTaggedValue(LinkedHash::Hash(thread, key.GetTaggedValue()));
 }
 
+JSTaggedValue BuiltinsArkTools::PrintMegaICStat(EcmaRuntimeCallInfo *info)
+{
+    JSThread *thread = info->GetThread();
+    BUILTINS_API_TRACE(thread, Global, PrintMegaICStat);
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+    // start vm runtime stat statistic
+#if ECMASCRIPT_ENABLE_MEGA_PROFILER
+    thread->GetCurrentEcmaContext()->PrintMegaICStat();
+#endif
+    return JSTaggedValue::Undefined();
+}
+
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
 JSTaggedValue BuiltinsArkTools::StartCpuProfiler(EcmaRuntimeCallInfo *info)
 {
