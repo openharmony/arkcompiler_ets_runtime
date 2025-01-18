@@ -90,7 +90,9 @@ class ProfileTypeAccessorLockScope {
 public:
     ProfileTypeAccessorLockScope(JSThread *thread)
     {
-        if (thread->GetEcmaVM()->IsEnableFastJit() || thread->GetEcmaVM()->IsEnableBaselineJit()) {
+        if (thread->GetEcmaVM()->IsEnableFastJit() ||
+            thread->GetEcmaVM()->IsEnableBaselineJit() ||
+            thread->GetEcmaVM()->IsEnablePGOProfiler()) {
             lockHolder_.emplace(thread->GetProfileTypeAccessorLock());
         }
     }
