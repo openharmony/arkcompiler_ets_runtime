@@ -112,8 +112,9 @@ void BuiltinsArrayStubBuilder::UnshiftOptimised(GateRef glue, GateRef thisValue,
             }
             Bind(&migrateElementsKind);
             {
-                newKind = FixElementsKind(*newKind);
                 Label needTransition(env);
+                // note: newKind is not be fixed, may be an invalid kind.
+                // but use it as a condition for transition is ok.
                 BRANCH_UNLIKELY(Int32NotEqual(*newKind, kind), &needTransition, &final);
                 Bind(&needTransition);
                 {
@@ -127,7 +128,7 @@ void BuiltinsArrayStubBuilder::UnshiftOptimised(GateRef glue, GateRef thisValue,
             GateRef value0 = GetCallArg0(numArgs);
             // 0 : the first Element position
             SetValueWithElementsKind(glue, thisValue, value0, Int64(Index0), Boolean(false),
-                                     Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                                     Int32(Elements::ToUint(ElementsKind::NONE)));
             // 2 : the second param
             BRANCH(Int64GreaterThanOrEqual(numArgs, IntPtr(TWO_ARGS)), &numEqual2, &numEqual3);
             Bind(&numEqual2);
@@ -135,7 +136,7 @@ void BuiltinsArrayStubBuilder::UnshiftOptimised(GateRef glue, GateRef thisValue,
                 GateRef value1 = GetCallArg1(numArgs);
                 // 1 : the second Element position
                 SetValueWithElementsKind(glue, thisValue, value1, Int64(Index1), Boolean(false),
-                                         Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                                         Int32(Elements::ToUint(ElementsKind::NONE)));
                 Jump(&numEqual3);
             }
             Bind(&numEqual3);
@@ -146,7 +147,7 @@ void BuiltinsArrayStubBuilder::UnshiftOptimised(GateRef glue, GateRef thisValue,
                 GateRef value2 = GetCallArg2(numArgs);
                 // 2 : the third Element position
                 SetValueWithElementsKind(glue, thisValue, value2, Int64(Index2), Boolean(false),
-                                         Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                                         Int32(Elements::ToUint(ElementsKind::NONE)));
                 Jump(&final);
             }
             Bind(&final);
@@ -371,11 +372,11 @@ GateRef BuiltinsArrayStubBuilder::DoSortOptimised(GateRef glue, GateRef receiver
                         BRANCH(receiverState, &receiverIsNew, &receiverIsOrigin);
                         Bind(&receiverIsNew);
                         SetValueWithElementsKind(glue, receiver, *previousValue, *j, Boolean(true),
-                                                 Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                                                 Int32(Elements::ToUint(ElementsKind::NONE)));
                         Jump(&loopEnd2);
                         Bind(&receiverIsOrigin);
                         SetValueWithElementsKind(glue, receiver, *previousValue, *j, Boolean(false),
-                                                 Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                                                 Int32(Elements::ToUint(ElementsKind::NONE)));
                         Jump(&loopEnd2);
                     }
                 }
@@ -387,13 +388,13 @@ GateRef BuiltinsArrayStubBuilder::DoSortOptimised(GateRef glue, GateRef receiver
                 Bind(&receiverIsNew2);
                 {
                     SetValueWithElementsKind(glue, receiver, *presentValue, *endIndex, Boolean(true),
-                                             Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                                             Int32(Elements::ToUint(ElementsKind::NONE)));
                     Jump(&loopEnd);
                 }
                 Bind(&receiverIsOrigin2);
                 {
                     SetValueWithElementsKind(glue, receiver, *presentValue, *endIndex, Boolean(false),
-                                             Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                                             Int32(Elements::ToUint(ElementsKind::NONE)));
                     Jump(&loopEnd);
                 }
             }
@@ -760,13 +761,13 @@ void BuiltinsArrayStubBuilder::CopyWithinOptimised(GateRef glue, GateRef thisVal
                     Bind(&setHole);
                     {
                         SetValueWithElementsKind(glue, thisValue, Hole(), *copyTo,
-                            Boolean(true), Int32(static_cast<uint32_t>(ElementsKind::GENERIC)));
+                            Boolean(true), Int32(Elements::ToUint(ElementsKind::GENERIC)));
                         Jump(&loopEnd);
                     }
                     Bind(&setValue);
                     {
                         SetValueWithElementsKind(glue, thisValue, *kValue, *copyTo,
-                            Boolean(true), Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                            Boolean(true), Int32(Elements::ToUint(ElementsKind::NONE)));
                         Jump(&loopEnd);
                     }
                 }
@@ -840,15 +841,15 @@ void BuiltinsArrayStubBuilder::ToReversedOptimised(GateRef glue, GateRef thisVal
     Label isTagged(env);
     Label isHoleOrIntOrNumber(env);
     GateRef intOrNumber = LogicOrBuilder(env)
-                          .Or(Int32Equal(kind, Int32(static_cast<int32_t>(ElementsKind::INT))))
-                          .Or(Int32Equal(kind, Int32(static_cast<int32_t>(ElementsKind::NUMBER))))
+                          .Or(Int32Equal(kind, Int32(Elements::ToUint(ElementsKind::INT))))
+                          .Or(Int32Equal(kind, Int32(Elements::ToUint(ElementsKind::NUMBER))))
                           .Done();
     BRANCH_NO_WEIGHT(intOrNumber, &isIntOrNumber, &notIntOrNumber);
     Bind(&notIntOrNumber);
     {
         GateRef holeOrIntOrNumber = LogicOrBuilder(env)
-                                    .Or(Int32Equal(kind, Int32(static_cast<int32_t>(ElementsKind::HOLE_INT))))
-                                    .Or(Int32Equal(kind, Int32(static_cast<int32_t>(ElementsKind::HOLE_NUMBER))))
+                                    .Or(Int32Equal(kind, Int32(Elements::ToUint(ElementsKind::HOLE_INT))))
+                                    .Or(Int32Equal(kind, Int32(Elements::ToUint(ElementsKind::HOLE_NUMBER))))
                                     .Done();
         BRANCH_NO_WEIGHT(holeOrIntOrNumber, &isHoleOrIntOrNumber, &isTagged);
     }
@@ -1158,13 +1159,13 @@ void BuiltinsArrayStubBuilder::ToSplicedOptimised(GateRef glue, GateRef thisValu
                             Bind(&eleIsHole);
                             {
                                 SetValueWithElementsKind(glue, newArray, Undefined(), *newIndex, Boolean(true),
-                                                         Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                                                         Int32(Elements::ToUint(ElementsKind::NONE)));
                                 Jump(&loopEnd);
                             }
                             Bind(&eleNotHole);
                             {
                                 SetValueWithElementsKind(glue, newArray, ele, *newIndex, Boolean(true),
-                                                         Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                                                         Int32(Elements::ToUint(ElementsKind::NONE)));
                                 Jump(&loopEnd);
                             }
                         }
@@ -1183,7 +1184,7 @@ void BuiltinsArrayStubBuilder::ToSplicedOptimised(GateRef glue, GateRef thisValu
                         {
                             GateRef insertNum = GetCallArg2(numArgs);
                             SetValueWithElementsKind(glue, newArray, insertNum, *newIndex, Boolean(true),
-                                                     Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                                                     Int32(Elements::ToUint(ElementsKind::NONE)));
                             newIndex = Int32Add(*newIndex, Int32(1));
                             Jump(&copyAfter);
                         }
@@ -1212,13 +1213,13 @@ void BuiltinsArrayStubBuilder::ToSplicedOptimised(GateRef glue, GateRef thisValu
                                 Bind(&ele1IsHole);
                                 {
                                     SetValueWithElementsKind(glue, newArray, Undefined(), *newIndex, Boolean(true),
-                                                             Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                                                             Int32(Elements::ToUint(ElementsKind::NONE)));
                                     Jump(&loopEnd1);
                                 }
                                 Bind(&ele1NotHole);
                                 {
                                     SetValueWithElementsKind(glue, newArray, ele1, *newIndex, Boolean(true),
-                                                             Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                                                             Int32(Elements::ToUint(ElementsKind::NONE)));
                                     Jump(&loopEnd1);
                                 }
                             }
@@ -1800,7 +1801,7 @@ void BuiltinsArrayStubBuilder::PopOptimised(GateRef glue, GateRef thisValue,
         Bind(&enableMutantArray);
         {
             SetValueWithElementsKind(glue, thisValue, Hole(), index, Boolean(false),
-                                     Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                                     Int32(Elements::ToUint(ElementsKind::NONE)));
             Jump(&setNewLen);
         }
         Bind(&disableMutantArray);
@@ -1997,7 +1998,7 @@ void BuiltinsArrayStubBuilder::SliceOptimised(GateRef glue, GateRef thisValue, G
                                 Bind(&next);
                                 GateRef ele = GetTaggedValueWithElementsKind(glue, thisValue, Int64Add(*idx, *start));
                                 SetValueWithElementsKind(glue, newArray, ele, *idx, Boolean(true),
-                                                         Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                                                         Int32(Elements::ToUint(ElementsKind::NONE)));
                                 Jump(&loopEnd);
                             }
                             Bind(&loopEnd);
@@ -2010,6 +2011,8 @@ void BuiltinsArrayStubBuilder::SliceOptimised(GateRef glue, GateRef thisValue, G
                         Bind(&notMutantArrayEnabled);
                         {
                             GateRef kind = ComputeTaggedArrayElementKind(thisValue, *start, *end);
+                            // note: kind is not be fixed, may be an invalid kind. NeedBarrier and CreateArrayFromList
+                            // don't need a valid kind, so use it without fix.
                             GateRef elements = GetElementsArray(thisValue);
                             NewObjectStubBuilder newBuilder(this);
                             newBuilder.SetGlue(glue);
@@ -2139,14 +2142,13 @@ GateRef BuiltinsArrayStubBuilder::CalEleKindForNewArrayNoHole(GateRef thisValue,
     GateRef beforePartEleKind = ComputeTaggedArrayElementKind(thisValue, Int64(0), actualIndex);
     GateRef afterPartEleKind = ComputeTaggedArrayElementKind(thisValue, Int64Add(actualIndex, Int64(1)), thisLen);
     result = Int32Or(beforePartEleKind, TaggedToElementKind(insertVal));
-    result = FixElementsKind(Int32Or(*result, afterPartEleKind));
-
+    result = Int32Or(*result, afterPartEleKind);
+    // don't need to fix the result elementskind, we can know if it has hole without fix.
     Label haveHole(env);
-    GateRef isHaveHole = Int32Equal(Int32(1), Int32And(*result, Int32(static_cast<int32_t>(ElementsKind::HOLE))));
-    BRANCH(isHaveHole, &haveHole, &exit);
+    BRANCH(ElementsKindHasHole(*result), &haveHole, &exit);
     Bind(&haveHole);
     {
-        result = Int32(static_cast<int32_t>(ElementsKind::TAGGED));
+        result = Int32(Elements::ToUint(ElementsKind::TAGGED));
         Jump(&exit);
     }
 
@@ -2284,7 +2286,7 @@ void BuiltinsArrayStubBuilder::WithOptimised(GateRef glue, GateRef thisValue, Ga
                         Bind(&replaceIndex);
                         {
                             SetValueWithElementsKind(glue, newArray, *value, *k, Boolean(true),
-                                Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                                Int32(Elements::ToUint(ElementsKind::NONE)));
                             Jump(&loopEnd);
                         }
                         Bind(&notReplaceIndex);
@@ -2296,13 +2298,13 @@ void BuiltinsArrayStubBuilder::WithOptimised(GateRef glue, GateRef thisValue, Ga
                             Bind(&eleIsHole);
                             {
                                 SetValueWithElementsKind(glue, newArray, Undefined(), *k, Boolean(true),
-                                    Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                                    Int32(Elements::ToUint(ElementsKind::NONE)));
                                 Jump(&loopEnd);
                             }
                             Bind(&eleNotHole);
                             {
                                 SetValueWithElementsKind(glue, newArray, ele, *k, Boolean(true),
-                                    Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                                    Int32(Elements::ToUint(ElementsKind::NONE)));
                                 Jump(&loopEnd);
                             }
                         }
@@ -2382,8 +2384,9 @@ void BuiltinsArrayStubBuilder::ConcatOptimised(GateRef glue, GateRef thisValue, 
                             {
                                 GateRef kind1 = GetElementsKindFromHClass(LoadHClass(thisValue));
                                 GateRef kind2 = GetElementsKindFromHClass(LoadHClass(arg0));
-                                GateRef tmpKind = Int32Or(kind1, kind2);
-                                GateRef newKind = FixElementsKind(tmpKind);
+                                GateRef newKind = Int32Or(kind1, kind2);
+                                // note: kind is not be fixed, may be an invalid kind. CreateArrayFromList
+                                // don't need a valid kind, so use it without fix.
                                 GateRef thisElements = GetElementsArray(thisValue);
                                 GateRef argElements = GetElementsArray(arg0);
                                 NewObjectStubBuilder newBuilder(this);
@@ -2449,10 +2452,10 @@ void BuiltinsArrayStubBuilder::DoConcat(GateRef glue, GateRef thisValue, GateRef
             GateRef ele = GetTaggedValueWithElementsKind(glue, thisValue, *i);
             #if ECMASCRIPT_ENABLE_ELEMENTSKIND_ALWAY_GENERIC
             SetValueWithElementsKind(glue, newArray, ele, *j, Boolean(true),
-                Int32(static_cast<uint32_t>(ElementsKind::GENERIC)));
+                Int32(Elements::ToUint(ElementsKind::GENERIC)));
             #else
             SetValueWithElementsKind(glue, newArray, ele, *j, Boolean(true),
-                Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                Int32(Elements::ToUint(ElementsKind::NONE)));
             #endif
             Jump(&loopEnd);
         }
@@ -2473,10 +2476,10 @@ void BuiltinsArrayStubBuilder::DoConcat(GateRef glue, GateRef thisValue, GateRef
             GateRef ele = GetTaggedValueWithElementsKind(glue, arg0, *k);
             #if ECMASCRIPT_ENABLE_ELEMENTSKIND_ALWAY_GENERIC
             SetValueWithElementsKind(glue, newArray, ele, *j, Boolean(true),
-                                     Int32(static_cast<uint32_t>(ElementsKind::GENERIC)));
+                                     Int32(Elements::ToUint(ElementsKind::GENERIC)));
             #else
             SetValueWithElementsKind(glue, newArray, ele, *j, Boolean(true),
-                                     Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                                     Int32(Elements::ToUint(ElementsKind::NONE)));
             #endif
             Jump(&loopEnd1);
         }
@@ -2516,38 +2519,29 @@ void BuiltinsArrayStubBuilder::FillOptimised(GateRef glue, GateRef thisValue, Ga
     Bind(&proNotCOWArray);
     // 3. Let len be ToLength(Get(O,"length")).
     GateRef value = GetCallArg0(numArgs);
-    GateRef thisArrLen = GetLengthOfJSArray(thisValue);
-    Label isDict(env);
-    Label notDict(env);
-    BRANCH(IsDictionaryElement(arrayCls), &isDict, &notDict);
-    Bind(&isDict);
-    {
-        GateRef size = GetNumberOfElements(glue, thisValue);
-        BRANCH(Int32GreaterThan(Int32Sub(thisArrLen, size),
-            TruncInt64ToInt32(IntPtr(JSObject::MAX_GAP))), slowPath, &notDict);
-    }
-    Bind(&notDict);
-    Label startArgIsNumber(env);
+    GateRef thisArrLen = ZExtInt32ToInt64(GetLengthOfJSArray(thisValue));
+    Label startArgIsInt(env);
     // 5. let relativeStart be ToInteger(start).
     GateRef startArg = GetCallArg1(numArgs);
     // 6 ReturnIfAbrupt(relativeStart).
-    BRANCH(TaggedIsNumber(startArg), &startArgIsNumber, slowPath);
-    Bind(&startArgIsNumber);
-    GateRef argStart = NumberGetInt(glue, ToNumber(glue, startArg));
+    BRANCH(TaggedIsInt(startArg), &startArgIsInt, slowPath);
+    // ToInteger may be side effect for array, so fast path only handle startArg is int.
+    Bind(&startArgIsInt);
+    GateRef argStart = SExtInt32ToInt64(GetInt32OfTInt(startArg));
     Label notHasException3(env);
     BRANCH(HasPendingException(glue), &hasException, &notHasException3);
     Bind(&notHasException3);
     // 7. If relativeStart < 0, let k be max((len + relativeStart),0); else let k be min(relativeStart, len).
-    DEFVARIABLE(start, VariableType::INT32(), Int32(0));
+    DEFVARIABLE(start, VariableType::INT64(), Int64(0));
     Label maxStart(env);
     Label minStart(env);
     Label startExit(env);
-    BRANCH(Int32LessThan(argStart, Int32(0)), &maxStart, &minStart);
+    BRANCH(Int64LessThan(argStart, Int64(0)), &maxStart, &minStart);
     Bind(&maxStart);
     {
-        GateRef tempStart = Int32Add(argStart, thisArrLen);
+        GateRef tempStart = Int64Add(argStart, thisArrLen);
         Label bind1(env);
-        BRANCH(Int32GreaterThan(tempStart, Int32(0)), &bind1, &startExit);
+        BRANCH(Int64GreaterThan(tempStart, Int64(0)), &bind1, &startExit);
         Bind(&bind1);
         {
             start = tempStart;
@@ -2558,7 +2552,7 @@ void BuiltinsArrayStubBuilder::FillOptimised(GateRef glue, GateRef thisValue, Ga
     {
         Label bind1(env);
         Label bind2(env);
-        BRANCH(Int32LessThan(argStart, thisArrLen), &bind1, &bind2);
+        BRANCH(Int64LessThan(argStart, thisArrLen), &bind1, &bind2);
         Bind(&bind1);
         {
             start = argStart;
@@ -2571,12 +2565,12 @@ void BuiltinsArrayStubBuilder::FillOptimised(GateRef glue, GateRef thisValue, Ga
         }
     }
     Bind(&startExit);
-    Label endArgIsNumber(env);
+    Label endArgIsInt(env);
     // 8. If end is undefined, let relativeEnd be len; else let relativeEnd be ToInteger(end).
     GateRef endArg = GetCallArg2(numArgs);
-    BRANCH(TaggedIsNumber(endArg), &endArgIsNumber, slowPath);
-    Bind(&endArgIsNumber);
-    DEFVARIABLE(argEnd, VariableType::INT32(), Int32(0));
+    BRANCH(TaggedIsInt(endArg), &endArgIsInt, slowPath);
+    Bind(&endArgIsInt);
+    DEFVARIABLE(argEnd, VariableType::INT64(), Int64(0));
     Label endArgIsUndefined(env);
     Label endArgNotUndefined(env);
     Label next1(env);
@@ -2588,24 +2582,23 @@ void BuiltinsArrayStubBuilder::FillOptimised(GateRef glue, GateRef thisValue, Ga
     }
     Bind(&endArgNotUndefined);
     {
-        argEnd = NumberGetInt(glue, ToNumber(glue, endArg));
+        argEnd = SExtInt32ToInt64(GetInt32OfTInt(endArg));
         // 9. ReturnIfAbrupt(relativeEnd).
         BRANCH(HasPendingException(glue), &hasException, &next1);
     }
     Bind(&next1);
 
     // 10. If relativeEnd < 0, let final be max((len + relativeEnd),0); else let final be min(relativeEnd, len).
-    DEFVARIABLE(end, VariableType::INT32(), Int32(0));
+    DEFVARIABLE(end, VariableType::INT64(), Int64(0));
     Label maxEnd(env);
     Label minEnd(env);
     Label endExit(env);
-    BRANCH(Int32LessThan(*argEnd, Int32(0)), &maxEnd, &minEnd);
+    BRANCH(Int64LessThan(*argEnd, Int64(0)), &maxEnd, &minEnd);
     Bind(&maxEnd);
     {
-        GateRef tempEnd = Int32Add(*argEnd, thisArrLen);
+        GateRef tempEnd = Int64Add(*argEnd, thisArrLen);
         Label bind1(env);
-        Label bind2(env);
-        BRANCH(Int32GreaterThan(tempEnd, Int32(0)), &bind1, &endExit);
+        BRANCH(Int64GreaterThan(tempEnd, Int64(0)), &bind1, &endExit);
         Bind(&bind1);
         {
             end = tempEnd;
@@ -2616,7 +2609,7 @@ void BuiltinsArrayStubBuilder::FillOptimised(GateRef glue, GateRef thisValue, Ga
     {
         Label bind1(env);
         Label bind2(env);
-        BRANCH(Int32LessThan(*argEnd, thisArrLen), &bind1, &bind2);
+        BRANCH(Int64LessThan(*argEnd, thisArrLen), &bind1, &bind2);
         Bind(&bind1);
         {
             end = *argEnd;
@@ -2633,20 +2626,42 @@ void BuiltinsArrayStubBuilder::FillOptimised(GateRef glue, GateRef thisValue, Ga
         Label defaultElements(env);
         Label startFill(env);
         Label fatal(env);
-        GateRef elementKind = GetElementsKindFromHClass(arrayCls);
-        TransitToElementsKind(glue, thisValue, value, elementKind);
+        Label fillAllTransit(env);
+        Label transitKind(env);
+        Label doFill(env);
+        DEFVARIABLE(elementKind, VariableType::INT32(), GetElementsKindFromHClass(arrayCls));
+        BRANCH_NO_WEIGHT(BitAnd(Int64Equal(*start, Int64(0)), Int64Equal(*end, thisArrLen)), &fillAllTransit,
+                         &transitKind);
+        Bind(&fillAllTransit);
+        {
+            Label updateKind(env);
+            BRANCH_NO_WEIGHT(Int32Equal(*elementKind, Int32(Elements::ToUint(ElementsKind::GENERIC))), &doFill,
+                             &updateKind);
+            Bind(&updateKind);
+            {
+                elementKind = TaggedToElementKind(value);
+                CallRuntime(glue, RTSTUB_ID(UpdateHClassForElementsKind), {thisValue, *elementKind});
+                Jump(&doFill);
+            }
+        }
+        Bind(&transitKind);
+        {
+            TransitToElementsKind(glue, thisValue, value, *elementKind);
+            Jump(&doFill);
+        }
+        Bind(&doFill);
         DEFVARIABLE(migratedValue, VariableType::JS_ANY(), value);
         DEFVARIABLE(elements, VariableType::JS_ANY(), GetElementsArray(thisValue));
         GateRef mutant = IsMutantTaggedArray(*elements);
-        GateRef elementLen = GetLengthOfTaggedArray(*elements);
-        BRANCH(Int32GreaterThanOrEqual(elementLen, *end), &defaultElements, &fatal);
+        GateRef elementLen = ZExtInt32ToInt64(GetLengthOfTaggedArray(*elements));
+        BRANCH(Int64GreaterThanOrEqual(elementLen, *end), &defaultElements, &fatal);
         Bind(&defaultElements);
         {
             Label isMutant(env);
             BRANCH(mutant, &isMutant, &startFill);
             Bind(&isMutant);
             {
-                migratedValue = ConvertTaggedValueWithElementsKind(glue, value, elementKind);
+                migratedValue = ConvertTaggedValueWithElementsKind(glue, value, *elementKind);
                 Jump(&startFill);
             }
         }
@@ -2662,28 +2677,28 @@ void BuiltinsArrayStubBuilder::FillOptimised(GateRef glue, GateRef thisValue, Ga
         Label noRevise(env);
         Label startLessEnd(env);
         Label barrierExit(env);
-        BRANCH(Int32LessThan(*start, *end), &startLessEnd, &noRevise);
+        BRANCH(Int64LessThan(*start, *end), &startLessEnd, &noRevise);
         Bind(&startLessEnd);
         {
-            GateRef count = Int32Sub(*end, *start);
+            GateRef count = Int64Sub(*end, *start);
             BRANCH(mutant, &noBarrier, &needBarrier);
             Bind(&noBarrier);
             {
-                FastFill(glue, *elements, *start, count, *migratedValue, false);
+                FastFill(glue, *elements, TruncInt64ToInt32(*start), TruncInt64ToInt32(count), *migratedValue, false);
                 Jump(&barrierExit);
             }
             Bind(&needBarrier);
             {
-                FastFill(glue, *elements, *start, count, *migratedValue, true);
+                FastFill(glue, *elements, TruncInt64ToInt32(*start), TruncInt64ToInt32(count), *migratedValue, true);
                 Jump(&barrierExit);
             }
             Bind(&barrierExit);
             SetElementsArray(VariableType::JS_POINTER(), glue, thisValue, *elements);
-            GateRef arrLen = GetLengthOfJSArray(thisValue);
-            BRANCH(Int32LessThan(arrLen, *end), &needRevise, &noRevise);
+            GateRef arrLen = ZExtInt32ToInt64(GetLengthOfJSArray(thisValue));
+            BRANCH(Int64LessThan(arrLen, *end), &needRevise, &noRevise);
             Bind(&needRevise);
             {
-                SetArrayLength(glue, thisValue, *end);
+                SetArrayLength(glue, thisValue, TruncInt64ToInt32(*end));
                 Jump(&noRevise);
             }
         }
@@ -2824,14 +2839,14 @@ void BuiltinsArrayStubBuilder::IndexOfOptimised(GateRef glue, GateRef thisValue,
     Label genericBranch(env);
 
     constexpr int64_t caseKeys[] = {
-        static_cast<int64_t>(ElementsKind::INT),
-        static_cast<int64_t>(ElementsKind::HOLE_INT),
-        static_cast<int64_t>(ElementsKind::NUMBER),
-        static_cast<int64_t>(ElementsKind::HOLE_NUMBER),
-        static_cast<int64_t>(ElementsKind::STRING),
-        static_cast<int64_t>(ElementsKind::HOLE_STRING),
-        static_cast<int64_t>(ElementsKind::OBJECT),
-        static_cast<int64_t>(ElementsKind::HOLE_OBJECT),
+        Elements::ToUint(ElementsKind::INT),
+        Elements::ToUint(ElementsKind::HOLE_INT),
+        Elements::ToUint(ElementsKind::NUMBER),
+        Elements::ToUint(ElementsKind::HOLE_NUMBER),
+        Elements::ToUint(ElementsKind::STRING),
+        Elements::ToUint(ElementsKind::HOLE_STRING),
+        Elements::ToUint(ElementsKind::OBJECT),
+        Elements::ToUint(ElementsKind::HOLE_OBJECT),
     };
     Label *caseLabels[] = {
         &intBranch,

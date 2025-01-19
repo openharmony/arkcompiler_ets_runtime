@@ -18,20 +18,9 @@
 #include "ecmascript/tagged_array-inl.h"
 
 namespace panda::ecmascript {
-CMap<ElementsKind, std::pair<ConstantIndex, ConstantIndex>> Elements::InitializeHClassMap()
-{
-    CMap<ElementsKind, std::pair<ConstantIndex, ConstantIndex>> result;
-#define INIT_ARRAY_HCLASS_INDEX_MAPS(name)                                                                       \
-    result.emplace(ElementsKind::name, std::make_pair(ConstantIndex::ELEMENT_##name##_HCLASS_INDEX,              \
-                                                      ConstantIndex::ELEMENT_##name##_PROTO_HCLASS_INDEX));
-    ELEMENTS_KIND_INIT_HCLASS_LIST(INIT_ARRAY_HCLASS_INDEX_MAPS)
-#undef INIT_ARRAY_HCLASS_INDEX_MAPS
-    return result;
-}
-
 std::string Elements::GetString(ElementsKind kind)
 {
-    return std::to_string(static_cast<uint32_t>(kind));
+    return std::to_string(ToUint(kind));
 }
 
 bool Elements::IsInt(ElementsKind kind)
@@ -57,7 +46,7 @@ bool Elements::IsObject(ElementsKind kind)
 bool Elements::IsHole(ElementsKind kind)
 {
     static constexpr uint8_t EVEN_NUMBER = 2;
-    return static_cast<uint8_t>(kind) % EVEN_NUMBER == 1;
+    return ToUint(kind) % EVEN_NUMBER == 1;
 }
 
 ConstantIndex Elements::GetGlobalContantIndexByKind(ElementsKind kind)
@@ -88,7 +77,7 @@ ConstantIndex Elements::GetGlobalContantIndexByKind(ElementsKind kind)
         case ElementsKind::HOLE_TAGGED:
             return ConstantIndex::ELEMENT_HOLE_TAGGED_HCLASS_INDEX;
         default:
-            LOG_ECMA(FATAL) << "Unknown elementsKind when getting constantIndx: " << static_cast<int32_t>(kind);
+            LOG_ECMA(FATAL) << "Unknown elementsKind when getting constantIndx: " << ToUint(kind);
     }
 }
 
@@ -144,13 +133,13 @@ void Elements::HandleIntKindMigration(const JSThread *thread, const JSHandle<JSO
 
 bool Elements::IsNumberKind(const ElementsKind kind)
 {
-    return static_cast<uint32_t>(kind) >= static_cast<uint32_t>(ElementsKind::NUMBER) &&
-           static_cast<uint32_t>(kind) <= static_cast<uint32_t>(ElementsKind::HOLE_NUMBER);
+    return ToUint(kind) >= Elements::ToUint(ElementsKind::NUMBER) &&
+           ToUint(kind) <= Elements::ToUint(ElementsKind::HOLE_NUMBER);
 }
 
 bool Elements::IsStringOrNoneOrHole(const ElementsKind kind)
 {
-    return static_cast<uint32_t>(kind) >= static_cast<uint32_t>(ElementsKind::STRING) ||
+    return ToUint(kind) >= ToUint(ElementsKind::STRING) ||
            kind == ElementsKind::NONE || kind == ElementsKind::HOLE;
 }
 

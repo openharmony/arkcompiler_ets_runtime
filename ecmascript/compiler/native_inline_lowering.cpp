@@ -1498,7 +1498,7 @@ void NativeInlineLowering::TryInlineIndexOfIncludes(GateRef gate, size_t argc, B
     builder_.ElementsKindCheck(thisArray, kind, ArrayMetaDataAccessor::Mode::CALL_BUILTIN_METHOD);
     GateRef ret = Circuit::NullGate();
     GateRef callID = builder_.Int32(static_cast<int32_t>(id));
-    GateRef arrayKind = builder_.Int32(static_cast<int32_t>(kind));
+    GateRef arrayKind = builder_.Int32(Elements::ToUint(kind));
     if (argc == 1) {
         ret = builder_.ArrayIncludesIndexOf(thisArray, builder_.Int32(0), targetElement, callID, arrayKind);
     } else {

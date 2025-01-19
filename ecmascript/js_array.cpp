@@ -1052,11 +1052,9 @@ void JSArray::UpdateTrackInfo(const JSThread *thread)
         JSHClass *hclass = GetJSHClass();
         ElementsKind newKind = hclass->GetElementsKind();
         trackInfo->SetElementsKind(newKind);
-        const GlobalEnvConstants *globalConst = thread->GlobalConstants();
         // Since trackInfo is only used at define point,
         // we update cachedHClass with initial array hclass which does not have IsPrototype set.
-        ConstantIndex constantId = thread->GetArrayHClassIndexMap().at(newKind).first;
-        JSTaggedValue cachedHClass = globalConst->GetGlobalConstantObject(static_cast<size_t>(constantId));
+        JSTaggedValue cachedHClass = JSTaggedValue(thread->GetArrayInstanceHClass(newKind, false));
         trackInfo->SetCachedHClass(thread, cachedHClass);
     }
 }

@@ -1452,7 +1452,7 @@ void BuiltinsTypedArrayStubBuilder::Filter(GateRef glue, GateRef thisValue, Gate
                             Bind(&retValueIsTrue);
                             {
                                 arrayStubBuilder.SetValueWithElementsKind(glue, kept, kValue, *newArrayLen,
-                                    Boolean(true), Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                                    Boolean(true), Int32(Elements::ToUint(ElementsKind::NONE)));
                                 newArrayLen = Int32Add(*newArrayLen, Int32(1));
                                 Jump(&loopEnd);
                             }

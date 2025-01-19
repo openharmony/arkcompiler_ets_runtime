@@ -31,6 +31,7 @@
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/js_thread_hclass_entries.h"
 #include "ecmascript/js_thread_stub_entries.h"
+#include "ecmascript/js_thread_elements_hclass_entries.h"
 #include "ecmascript/log_wrapper.h"
 #include "ecmascript/mem/visitor.h"
 #include "ecmascript/mutator_lock.h"
@@ -333,11 +334,6 @@ public:
         return &glueData_.builtinEntries_;
     }
 
-    const CMap<ElementsKind, std::pair<ConstantIndex, ConstantIndex>> &GetArrayHClassIndexMap() const
-    {
-        return arrayHClassIndexMap_;
-    }
-
     const CMap<JSHClass *, GlobalIndex> &GetCtorHclassEntries() const
     {
         return ctorHclassEntries_;
@@ -363,7 +359,20 @@ public:
 
     JSHClass *GetBuiltinInstanceHClass(BuiltinTypeId type) const;
     JSHClass *GetBuiltinExtraHClass(BuiltinTypeId type) const;
-    JSHClass *GetArrayInstanceHClass(ElementsKind kind, bool isPrototype) const;
+
+    JSHClass* GetArrayInstanceHClass(ElementsKind kind, bool isPrototype) const
+    {
+        ConstantIndex index = glueData_.arrayHClassIndexes_.GetArrayInstanceHClassIndex(kind, isPrototype);
+        auto exceptArrayHClass = GlobalConstants()->GetGlobalConstantObject(static_cast<size_t>(index));
+        auto exceptRecvHClass = JSHClass::Cast(exceptArrayHClass.GetTaggedObject());
+        ASSERT(exceptRecvHClass->IsJSArray());
+        return exceptRecvHClass;
+    }
+
+    ConstantIndex GetArrayInstanceHClassIndex(ElementsKind kind, bool isPrototype) const
+    {
+        return glueData_.arrayHClassIndexes_.GetArrayInstanceHClassIndex(kind, isPrototype);
+    }
 
     PUBLIC_API JSHClass *GetBuiltinPrototypeHClass(BuiltinTypeId type) const;
     PUBLIC_API JSHClass *GetBuiltinPrototypeOfPrototypeHClass(BuiltinTypeId type) const;
@@ -980,7 +989,8 @@ public:
                                                  base::AlignedPointer,
                                                  base::AlignedUint32,
                                                  base::AlignedBool,
-                                                 base::AlignedBool> {
+                                                 base::AlignedBool,
+                                                 ElementsHClassEntries> {
         enum class Index : size_t {
             BcStubEntriesIndex = 0,
             ExceptionIndex,
@@ -1025,6 +1035,7 @@ public:
             TaskInfoIndex,
             IsEnableMutantArrayIndex,
             IsEnableElementsKindIndex,
+            ArrayHClassIndexesIndex,
             NumOfMembers
         };
         static_assert(static_cast<size_t>(Index::NumOfMembers) == NumOfTypes);
@@ -1265,6 +1276,11 @@ public:
             return GetOffset<static_cast<size_t>(Index::IsEnableElementsKindIndex)>(isArch32);
         }
 
+        static size_t GetArrayHClassIndexesIndexOffset(bool isArch32)
+        {
+            return GetOffset<static_cast<size_t>(Index::ArrayHClassIndexesIndex)>(isArch32);
+        }
+
         alignas(EAS) BCStubEntries bcStubEntries_ {};
         alignas(EAS) JSTaggedValue exception_ {JSTaggedValue::Hole()};
         alignas(EAS) JSTaggedValue globalObject_ {JSTaggedValue::Hole()};
@@ -1308,6 +1324,7 @@ public:
         alignas(EAS) uintptr_t taskInfo_ {0};
         alignas(EAS) bool isEnableMutantArray_ {false};
         alignas(EAS) bool IsEnableElementsKind_ {false};
+        alignas(EAS) ElementsHClassEntries arrayHClassIndexes_ {};
     };
     STATIC_ASSERT_EQ_ARCH(sizeof(GlueData), GlueData::SizeArch32, GlueData::SizeArch64);
 
@@ -1560,11 +1577,6 @@ private:
         glueData_.currentContext_ = context;
     }
 
-    void SetArrayHClassIndexMap(const CMap<ElementsKind, std::pair<ConstantIndex, ConstantIndex>> &map)
-    {
-        arrayHClassIndexMap_ = map;
-    }
-
     void TransferFromRunningToSuspended(ThreadState newState);
 
     void TransferToRunning();
@@ -1646,8 +1658,6 @@ private:
     // Shared heap collect local heap Rset
     bool processingLocalToSharedRset_ {false};
 
-    // { ElementsKind, (hclass, hclassWithProto) }
-    CMap<ElementsKind, std::pair<ConstantIndex, ConstantIndex>> arrayHClassIndexMap_;
     CMap<JSHClass *, GlobalIndex> ctorHclassEntries_;
 
     CVector<EcmaContext *> contexts_;

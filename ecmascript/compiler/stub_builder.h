@@ -978,6 +978,7 @@ public:
     inline GateRef ComputeTaggedArraySize(GateRef length);
     inline GateRef GetGlobalConstantValue(
         VariableType type, GateRef glue, ConstantIndex index);
+    GateRef GetGlobalConstantValue(VariableType type, GateRef glue, GateRef index);
     inline GateRef GetSingleCharTable(GateRef glue);
     inline GateRef IsEnableMutantArray(GateRef glue);
     inline GateRef IsEnableElementsKind(GateRef glue);
@@ -1073,7 +1074,6 @@ public:
     // compute new elementKind from sub elements
     GateRef ComputeTaggedArrayElementKind(GateRef array, GateRef offset, GateRef end);
     GateRef GetElementsKindHClass(GateRef glue, GateRef elementKind);
-    GateRef FixElementsKind(GateRef oldElement);
     GateRef NeedBarrier(GateRef kind);
     GateRef JSTaggedValueToString(GateRef glue, GateRef val, GateRef hir = Circuit::NullGate());
     GateRef SpecialToString(GateRef glue, GateRef specialVal);
@@ -1097,8 +1097,6 @@ public:
 protected:
     static constexpr int LOOP_UNROLL_FACTOR = 2;
     static constexpr int ELEMENTS_KIND_HCLASS_NUM = 12;
-    static int64_t ELEMENTS_KIND_HCLASS_CASES[ELEMENTS_KIND_HCLASS_NUM];
-    static ConstantIndex ELEMENTS_KIND_HCLASS_INDEX[ELEMENTS_KIND_HCLASS_NUM];
     static constexpr int SPECIAL_VALUE_NUM = 5;
     static int64_t SPECIAL_VALUE[SPECIAL_VALUE_NUM];
     static ConstantIndex SPECIAL_STRING_INDEX[SPECIAL_VALUE_NUM];

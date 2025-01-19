@@ -1782,7 +1782,11 @@ JSTaggedValue JSStableArray::Fill(JSThread *thread, const JSHandle<JSObject> &th
     JSArray::CheckAndCopyArray(thread, JSHandle<JSArray>::Cast(thisObj));
     uint32_t length = ElementAccessor::GetElementsLength(thisObj);
     ElementsKind oldKind = thisObj->GetClass()->GetElementsKind();
-    if (JSHClass::TransitToElementsKind(thread, thisObj, value)) {
+    if (start == 0 && end == length) {
+        if (oldKind != ElementsKind::GENERIC) {
+            JSHClass::TransitToElementsKindUncheck(thread, thisObj, Elements::ToElementsKind(value.GetTaggedValue()));
+        }
+    } else if (JSHClass::TransitToElementsKind(thread, thisObj, value)) {
         ElementsKind newKind = thisObj->GetClass()->GetElementsKind();
         Elements::MigrateArrayWithKind(thread, thisObj, oldKind, newKind);
     }

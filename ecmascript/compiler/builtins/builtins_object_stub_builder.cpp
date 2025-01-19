@@ -1033,7 +1033,7 @@ void BuiltinsObjectStubBuilder::Keys(Variable *result, Label *exit, Label *slowP
         Label hasKeyAndEle(env);
         Label nonKeyAndEle(env);
         // need to caclulate elementKind
-        GateRef elementKind = Int32(static_cast<int32_t>(ElementsKind::TAGGED));
+        GateRef elementKind = Int32(Elements::ToUint(ElementsKind::TAGGED));
         GateRef elementArray = GetEnumElementKeys(glue_, obj);
         GateRef keyArray = GetAllEnumKeys(glue_, obj);
         GateRef lengthOfKeys = GetLengthOfTaggedArray(keyArray);
@@ -1303,7 +1303,7 @@ void BuiltinsObjectStubBuilder::GetOwnPropertyNames(Variable *result, Label *exi
                 GateRef numOfElements = GetNumberOfElements(glue_, obj);
                 GateRef numOfKeys = GetNumberOfPropsFromHClass(hclass);
                 GateRef keyLen = Int32Add(numOfElements, numOfKeys);
-                GateRef elementKind = Int32(static_cast<int32_t>(ElementsKind::TAGGED));
+                GateRef elementKind = Int32(Elements::ToUint(ElementsKind::TAGGED));
                 NewObjectStubBuilder newBuilder(this);
                 GateRef keyArray = newBuilder.NewTaggedArray(glue_, keyLen);
                 BRANCH(Int32GreaterThan(numOfElements, Int32(0)), &getAllElementKeys, &checkNumOfKeys);
@@ -1413,7 +1413,7 @@ void BuiltinsObjectStubBuilder::GetOwnPropertySymbols(Variable *result, Label *e
                 GateRef numOfKeys = GetNumberOfPropsFromHClass(hclass);
                 GateRef keyLen = Int32Add(numOfElements, numOfKeys);
                 // need to caclulate elementKind
-                GateRef elementKind = Int32(static_cast<int32_t>(ElementsKind::TAGGED));
+                GateRef elementKind = Int32(Elements::ToUint(ElementsKind::TAGGED));
                 NewObjectStubBuilder newBuilder(this);
                 GateRef keyArray = newBuilder.NewTaggedArray(glue_, keyLen);
                 BRANCH(Int32GreaterThan(numOfElements, Int32(0)), &getAllElementKeys, &checkNumOfKeys);
@@ -1678,7 +1678,7 @@ void BuiltinsObjectStubBuilder::Entries(Variable* result, Label* exit, Label* sl
                 GateRef elementLen = GetLengthOfTaggedArray(elementArray);
                 GateRef propertyLen = GetLengthOfTaggedArray(propertyArray);
                 // need to caclulate elementKind
-                GateRef elementKind = Int32(static_cast<int32_t>(ElementsKind::GENERIC));
+                GateRef elementKind = Int32(Elements::ToUint(ElementsKind::GENERIC));
                 GateRef keyAndEle = BitAnd(Int32NotEqual(elementLen, Int32(0)), Int32NotEqual(propertyLen, Int32(0)));
                 BRANCH(keyAndEle, &hasKeyAndEle, &nonKeyAndEle);
                 Bind(&hasKeyAndEle);
@@ -1736,7 +1736,7 @@ GateRef BuiltinsObjectStubBuilder::GetEnumElementEntries(GateRef glue, GateRef o
     NewObjectStubBuilder newBuilder(this);
     GateRef numElementArray = newBuilder.NewTaggedArray(glue, realLen);
     // need to caclulate elementKind
-    GateRef elementKind = Int32(static_cast<int32_t>(ElementsKind::TAGGED));
+    GateRef elementKind = Int32(Elements::ToUint(ElementsKind::TAGGED));
     Label isJSPrimitiveRef(env);
     Label notPrimitiveString(env);
     Label notDictMode(env);
@@ -1804,7 +1804,7 @@ GateRef BuiltinsObjectStubBuilder::GetEnumPropertyEntries(GateRef glue, GateRef 
     NewObjectStubBuilder newBuilder(this);
     GateRef allEnumArray = newBuilder.NewTaggedArray(glue, len);
     // need to caclulate elementKind
-    GateRef elementKind = Int32(static_cast<int32_t>(ElementsKind::TAGGED));
+    GateRef elementKind = Int32(Elements::ToUint(ElementsKind::TAGGED));
     Label loopHead(env);
     Label loopEnd(env);
     Label LoopNext(env);

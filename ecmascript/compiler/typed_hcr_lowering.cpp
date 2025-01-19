@@ -611,26 +611,25 @@ void TypedHCRLowering::BuiltinInstanceHClassCheck(Environment *env, GateRef gate
     GateRef ihcMatches = Circuit::NullGate();
     if (type == BuiltinTypeId::ARRAY) {
         if (Elements::IsGeneric(kind)) {
-            auto arrayHClassIndexMap = compilationEnv_->GetArrayHClassIndexMap();
-            auto iter = arrayHClassIndexMap.find(kind);
-            ASSERT(iter != arrayHClassIndexMap.end());
+            auto index = compilationEnv_->GetArrayHClassIndex(kind, false);
+            auto protoIndex = compilationEnv_->GetArrayHClassIndex(kind, true);
             GateRef receiverHClass = builder_.LoadHClassByConstOffset(receiver);
             // If the Elements kind is Generic, hclass comparison is required. Other kinds can ensure that hclass has
             // not been modified.
             ihcMatches = LogicOrBuilder(env)
-                .Or(builder_.Equal(receiverHClass, builder_.GetGlobalConstantValue(iter->second.first)))
-                .Or(builder_.Equal(receiverHClass, builder_.GetGlobalConstantValue(iter->second.second)))
+                .Or(builder_.Equal(receiverHClass, builder_.GetGlobalConstantValue(index)))
+                .Or(builder_.Equal(receiverHClass, builder_.GetGlobalConstantValue(protoIndex)))
                 .Done();
             GateRef elementsKind = builder_.GetElementsKindByHClass(receiverHClass);
             ihcMatches = LogicOrBuilder(env)
                 .Or(ihcMatches)
-                .Or(builder_.NotEqual(elementsKind, builder_.Int32(static_cast<size_t>(ElementsKind::GENERIC))))
+                .Or(builder_.NotEqual(elementsKind, builder_.Int32(Elements::ToUint(ElementsKind::GENERIC))))
                 .Done();
         } else {
             GateRef receiverHClass = builder_.LoadHClassByConstOffset(receiver);
             GateRef elementsKind = builder_.GetElementsKindByHClass(receiverHClass);
             ihcMatches =
-                builder_.NotEqual(elementsKind, builder_.Int32(static_cast<size_t>(ElementsKind::GENERIC)));
+                builder_.NotEqual(elementsKind, builder_.Int32(Elements::ToUint(ElementsKind::GENERIC)));
         }
     } else {
         size_t ihcOffset = JSThread::GlueData::GetBuiltinInstanceHClassOffset(type, env->IsArch32Bit());
@@ -3118,10 +3117,10 @@ void TypedHCRLowering::LowerMigrateArrayWithKind(GateRef gate)
     Label migrateOtherKinds(&builder_);
     GateRef noNeedMigration = LogicOrBuilder(&env)
         .Or(builder_.Int32Equal(oldKind, newKind))
-        .Or(builder_.BitAnd(builder_.Int32Equal(oldKind, builder_.Int32(static_cast<uint32_t>(ElementsKind::INT))),
-            builder_.Int32Equal(newKind, builder_.Int32(static_cast<uint32_t>(ElementsKind::HOLE_INT)))))
-        .Or(builder_.BitAnd(builder_.Int32Equal(oldKind, builder_.Int32(static_cast<uint32_t>(ElementsKind::NUMBER))),
-            builder_.Int32Equal(newKind, builder_.Int32(static_cast<uint32_t>(ElementsKind::HOLE_NUMBER)))))
+        .Or(builder_.BitAnd(builder_.Int32Equal(oldKind, builder_.Int32(Elements::ToUint(ElementsKind::INT))),
+            builder_.Int32Equal(newKind, builder_.Int32(Elements::ToUint(ElementsKind::HOLE_INT)))))
+        .Or(builder_.BitAnd(builder_.Int32Equal(oldKind, builder_.Int32(Elements::ToUint(ElementsKind::NUMBER))),
+            builder_.Int32Equal(newKind, builder_.Int32(Elements::ToUint(ElementsKind::HOLE_NUMBER)))))
         .Done();
     BRANCH_CIR(noNeedMigration, &exit, &doMigration);
     builder_.Bind(&doMigration);
@@ -3244,10 +3243,10 @@ void TypedHCRLowering::LowerElementskindCheck(GateRef gate)
     GateRef hclass = builder_.LoadConstOffset(VariableType::JS_POINTER(), receiver, TaggedObject::HCLASS_OFFSET);
 
     if (Elements::IsComplex(kind)) {
-        check = builder_.Int32GreaterThanOrEqual(builder_.Int32(static_cast<int32_t>(kind)),
+        check = builder_.Int32GreaterThanOrEqual(builder_.Int32(Elements::ToUint(kind)),
                                                  builder_.GetElementsKindByHClass(hclass));
     } else {
-        check = builder_.Equal(builder_.Int32(static_cast<int32_t>(kind)), builder_.GetElementsKindByHClass(hclass));
+        check = builder_.Equal(builder_.Int32(Elements::ToUint(kind)), builder_.GetElementsKindByHClass(hclass));
     }
     builder_.DeoptCheck(check, frameState, DeoptType::INCONSISTENTELEMENTSKIND);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());

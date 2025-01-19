@@ -31,7 +31,7 @@ public:
     JSRuntimeOptions &GetJSOptions() override;
 
     // thread
-    const CMap<ElementsKind, std::pair<ConstantIndex, ConstantIndex>> &GetArrayHClassIndexMap() const override;
+    ConstantIndex GetArrayHClassIndex(ElementsKind kind, bool isProtoType) const override;
     const BuiltinHClassEntries &GetBuiltinHClassEntries() const override;
     JSHClass *GetBuiltinPrototypeHClass(BuiltinTypeId type) const override;
 
