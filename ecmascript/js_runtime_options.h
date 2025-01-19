@@ -65,6 +65,7 @@ enum ArkProperties {
     ENABLE_SERIALIZATION_TIMEOUT_CHECK = 1 << 26,
     ENABLE_PAGETAG_THREAD_ID = 1 << 27,
     ENABLE_MODULE_EXCEPTION = 1 << 29,
+    ENABLE_PENDING_CHEAK = 1 << 30,
 };
 
 // asm interpreter control parsed option
@@ -669,6 +670,11 @@ public:
     bool EnableModuleException() const
     {
         return (static_cast<uint32_t>(arkProperties_) & ArkProperties::ENABLE_MODULE_EXCEPTION) != 0;
+    }
+
+    bool EnablePendingCheak() const
+    {
+        return (static_cast<uint32_t>(arkProperties_) & ArkProperties::ENABLE_PENDING_CHEAK) != 0;
     }
 
     bool WasSetMaxNonmovableSpaceCapacity() const

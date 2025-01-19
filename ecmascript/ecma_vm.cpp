@@ -44,6 +44,7 @@
 #include "ecmascript/ohos/aot_tools.h"
 #include "ecmascript/checkpoint/thread_state_transition.h"
 #include "ecmascript/mem/heap-inl.h"
+#include "ecmascript/dfx/stackinfo/async_stack_trace.h"
 
 #if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE)
 #include "parameters.h"
@@ -277,6 +278,7 @@ bool EcmaVM::Initialize()
         UNREACHABLE();
     }
     debuggerManager_ = new tooling::JsDebuggerManager(this);
+    asyncStackTrace_ = new AsyncStackTrace(this);
     aotFileManager_ = new AOTFileManager(this);
     auto context = new EcmaContext(thread_);
     thread_->PushContext(context);
@@ -411,6 +413,11 @@ EcmaVM::~EcmaVM()
     if (debuggerManager_ != nullptr) {
         delete debuggerManager_;
         debuggerManager_ = nullptr;
+    }
+
+    if (asyncStackTrace_ != nullptr) {
+        delete asyncStackTrace_;
+        asyncStackTrace_ = nullptr;
     }
 
     if (aotFileManager_ != nullptr) {
@@ -1015,5 +1022,20 @@ int EcmaVM::InitializeStartRealTime()
     int whensys = int(timessys.tv_sec * 1000) + int(timessys.tv_nsec / 1000000);
     startRealTime = (whensys - whenpro);
     return startRealTime;
+}
+
+uint32_t EcmaVM::GetAsyncTaskId()
+{
+    return asyncStackTrace_->GetAsyncTaskId();
+}
+
+bool EcmaVM::InsertAsyncStackTrace(const JSHandle<JSPromise> &promise)
+{
+    return asyncStackTrace_->InsertAsyncStackTrace(promise);
+}
+
+bool EcmaVM::RemoveAsyncStackTrace(const JSHandle<JSPromise> &promise)
+{
+    return asyncStackTrace_->RemoveAsyncStackTrace(promise);
 }
 }  // namespace panda::ecmascript

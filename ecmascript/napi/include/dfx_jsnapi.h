@@ -155,6 +155,7 @@ public:
         std::string &packageName);
 
     static uint32_t GetCurrentThreadId();
+    static void RegisterAsyncDetectCallBack(const EcmaVM *vm);
 };
 }
 #endif
