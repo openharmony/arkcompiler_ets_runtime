@@ -381,15 +381,17 @@ public:
         return onErrorData_;
     }
     
-    void SetStopPreLoadSoCallback(const StopPreLoadSoCallback &cb)
+    void AddStopPreLoadCallback(const StopPreLoadSoCallback &cb)
     {
-        stopPreLoadSoCallback_ = cb;
+        stopPreLoadCallbacks_.emplace_back(cb);
     }
 
-    StopPreLoadSoCallback GetStopPreLoadSoCallback() const
+    CVector<StopPreLoadSoCallback> GetStopPreLoadCallbacks() const
     {
-        return stopPreLoadSoCallback_;
+        return stopPreLoadCallbacks_;
     }
+
+    void StopPreLoadSoOrAbc();
 
     void TriggerConcurrentCallback(JSTaggedValue result, JSTaggedValue hint);
 
@@ -939,7 +941,7 @@ private:
     RWLock pkgAliasListLock_;
     RWLock pkgNameListLock_;
 
-    StopPreLoadSoCallback stopPreLoadSoCallback_ {nullptr};
+    CVector<StopPreLoadSoCallback> stopPreLoadCallbacks_;
     NativePtrGetter nativePtrGetter_ {nullptr};
     SourceMapCallback sourceMapCallback_ {nullptr};
     SourceMapTranslateCallback sourceMapTranslateCallback_ {nullptr};

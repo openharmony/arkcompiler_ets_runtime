@@ -317,6 +317,9 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::CommonExecuteBuffer(JSThread 
 
     JSHandle<SourceTextModule> module = JSHandle<SourceTextModule>::Cast(moduleRecord);
     module->SetStatus(ModuleStatus::INSTANTIATED);
+    //After the module is instantiated, stop preloading so and parallel abc loading
+    thread->GetEcmaVM()->StopPreLoadSoOrAbc();
+
     SourceTextModule::Evaluate(thread, module, nullptr, 0);
     if (thread->HasPendingException()) {
         return Unexpected(false);
