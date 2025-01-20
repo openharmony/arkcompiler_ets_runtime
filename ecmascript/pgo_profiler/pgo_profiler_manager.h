@@ -83,12 +83,10 @@ public:
     void PostResetOutPathTask(const std::string& moduleName);
     bool IsInitialized() const;
     static Mutex& GetPGOInfoMutex();
-    ConcurrentGuardValue& GetConcurrentGuardValue();
 
 private:
     bool InitializeData();
 
-    ConcurrentGuardValue v_;
     bool disableAot_ {false};
     bool disablePGO_ {false};
     Mutex requestAotCallbackMutex_;

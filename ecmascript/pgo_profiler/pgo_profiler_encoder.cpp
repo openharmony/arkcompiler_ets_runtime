@@ -137,7 +137,6 @@ void PGOProfilerEncoder::StartSaveTask(const std::shared_ptr<PGOInfo> info, cons
         return;
     }
     {
-        ConcurrentGuard guard(PGOProfilerManager::GetInstance()->GetConcurrentGuardValue(), "StartSaveTask");
         LockHolder lock(PGOProfilerManager::GetPGOInfoMutex());
         InternalSave(info, task);
     }
