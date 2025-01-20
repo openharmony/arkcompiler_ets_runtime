@@ -13,13 +13,9 @@
  * limitations under the License.
  */
 
-#include <cstdint>
-#include <map>
 
 #include "ecmascript/compiler/assembler/aarch64/assembler_aarch64.h"
 
-#include "ecmascript/base/bit_helper.h"
-#include "ecmascript/ecma_macros.h"
 
 namespace panda::ecmascript::aarch64 {
 using namespace panda::ecmascript::base;

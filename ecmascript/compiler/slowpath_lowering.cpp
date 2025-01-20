@@ -15,16 +15,11 @@
 
 #include "ecmascript/compiler/slowpath_lowering.h"
 
-#include "ecmascript/compiler/bytecodes.h"
 #include "ecmascript/compiler/call_stub_builder.h"
-#include "ecmascript/compiler/circuit_builder.h"
-#include "ecmascript/compiler/share_gate_meta_data.h"
 #include "ecmascript/dfx/vm_thread_control.h"
 #include "ecmascript/dfx/vmstat/opt_code_profiler.h"
 #include "ecmascript/js_async_generator_object.h"
-#include "ecmascript/js_generator_object.h"
 #include "ecmascript/js_runtime_options.h"
-#include "ecmascript/js_thread.h"
 #include "ecmascript/jit/jit.h"
 #include "ecmascript/lexical_env.h"
 

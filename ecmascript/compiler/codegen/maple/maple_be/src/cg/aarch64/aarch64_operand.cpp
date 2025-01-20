@@ -14,11 +14,6 @@
  */
 
 #include "aarch64_operand.h"
-#include <fstream>
-#include <string>
-#include "aarch64_abi.h"
-#include "aarch64_cgfunc.h"
-#include "aarch64_cg.h"
 
 namespace maplebe {
 bool StImmOperand::Less(const Operand &right) const

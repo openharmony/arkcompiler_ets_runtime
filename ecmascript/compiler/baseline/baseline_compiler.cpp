@@ -15,9 +15,7 @@
 
 #include <climits>
 #include <cassert>
-#include "ecmascript/compiler/baseline/baseline_compiler.h"
 #include "ecmascript/compiler/bytecode_info_collector.h"
-#include "ecmascript/js_function.h"
 #include "ecmascript/compiler/jit_compiler.h"
 #ifdef JIT_ENABLE_CODE_SIGN
 #include "jit_buffer_integrity.h"

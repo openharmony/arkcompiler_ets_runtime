@@ -12,13 +12,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "ecmascript/compiler/ts_inline_lowering.h"
 
-#include "ecmascript/compiler/bytecode_circuit_builder.h"
-#include "ecmascript/compiler/bytecodes.h"
-#include "ecmascript/compiler/compiler_log.h"
 #include "ecmascript/compiler/pass.h"
-#include "ecmascript/compiler/type_info_accessors.h"
 
 namespace panda::ecmascript::kungfu {
 void TSInlineLowering::RunTSInlineLowering()

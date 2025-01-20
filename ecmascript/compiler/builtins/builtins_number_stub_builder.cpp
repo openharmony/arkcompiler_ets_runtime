@@ -15,11 +15,8 @@
 
 #include "ecmascript/compiler/builtins/builtins_number_stub_builder.h"
 
-#include "ecmascript/builtins/builtins_number.h"
 #include "ecmascript/compiler/new_object_stub_builder.h"
-#include "ecmascript/js_arguments.h"
 #include "ecmascript/js_primitive_ref.h"
-#include "ecmascript/tagged_dictionary.h"
 
 namespace panda::ecmascript::kungfu {
 void BuiltinsNumberStubBuilder::ParseFloat(Variable *result, Label *exit, Label *slowPath)

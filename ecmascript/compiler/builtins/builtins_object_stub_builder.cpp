@@ -16,13 +16,8 @@
 #include "ecmascript/compiler/builtins/builtins_object_stub_builder.h"
 
 #include "ecmascript/compiler/builtins/builtins_typedarray_stub_builder.h"
-#include "ecmascript/compiler/circuit_builder_helper.h"
 #include "ecmascript/compiler/new_object_stub_builder.h"
-#include "ecmascript/compiler/stub_builder-inl.h"
-#include "ecmascript/js_arguments.h"
 #include "ecmascript/js_primitive_ref.h"
-#include "ecmascript/message_string.h"
-#include "ecmascript/tagged_dictionary.h"
 
 namespace panda::ecmascript::kungfu {
 void BuiltinsObjectStubBuilder::ToStringFunc(Variable *result, Label *exit, Label *slowPath)

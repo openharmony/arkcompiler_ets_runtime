@@ -14,12 +14,7 @@
  */
 
 #include "becommon.h"
-#include "rt.h"
-#include "cg_option.h"
 #include "mir_builder.h"
-#include "mpl_logging.h"
-#include <cinttypes>
-#include <list>
 
 namespace maplebe {
 using namespace maple;
