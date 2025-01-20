@@ -2104,6 +2104,27 @@ GateRef StubBuilder::TaggedIsAccessor(GateRef x)
     return ret;
 }
 
+GateRef StubBuilder::TaggedIsInternalAccessor(GateRef x)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+    Label isHeapObject(env);
+    DEFVARIABLE(result, VariableType::BOOL(), False());
+    BRANCH(TaggedIsHeapObject(x), &isHeapObject, &exit);
+    Bind(&isHeapObject);
+    {
+        GateRef type = GetObjectType(LoadHClass(x));
+        result = Int32Equal(type, Int32(static_cast<int32_t>(JSType::INTERNAL_ACCESSOR)));
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
 GateRef StubBuilder::IsUtf16String(GateRef string)
 {
     // compressedStringsEnabled fixed to true constant
@@ -5776,7 +5797,7 @@ void StubBuilder::FastSetPropertyByName(GateRef glue, GateRef obj, GateRef key, 
     }
     Bind(&slowPath);
     {
-        result = CallRuntime(glue, RTSTUB_ID(StoreICByValue), { obj, *keyVar, value, IntToTaggedInt(Int32(0)) });
+        result = CallRuntime(glue, RTSTUB_ID(StObjByValue), { obj, *keyVar, value });
         Jump(&exit);
     }
     Bind(&exit);

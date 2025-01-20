@@ -1100,6 +1100,11 @@ inline GateRef StubBuilder::Int64UnsignedLessThanOrEqual(GateRef x, GateRef y)
     return env_->GetBuilder()->Int64UnsignedLessThanOrEqual(x, y);
 }
 
+inline GateRef StubBuilder::Int64UnsignedGreaterThan(GateRef x, GateRef y)
+{
+    return env_->GetBuilder()->Int64UnsignedGreaterThan(x, y);
+}
+
 inline GateRef StubBuilder::Int64UnsignedGreaterThanOrEqual(GateRef x, GateRef y)
 {
     return env_->GetBuilder()->Int64UnsignedGreaterThanOrEqual(x, y);
@@ -3693,6 +3698,16 @@ inline GateRef StubBuilder::GetAccessorHasChanged(GateRef obj)
 inline GateRef StubBuilder::ComputeTaggedTypedArraySize(GateRef elementSize, GateRef length)
 {
     return PtrAdd(IntPtr(ByteArray::DATA_OFFSET), PtrMul(elementSize, length));
+}
+
+inline GateRef StubBuilder::GetAccGetter(GateRef accesstor)
+{
+    return Load(VariableType::JS_ANY(), accesstor, IntPtr(AccessorData::GETTER_OFFSET));
+}
+
+inline GateRef StubBuilder::GetAccSetter(GateRef accesstor)
+{
+    return Load(VariableType::JS_ANY(), accesstor, IntPtr(AccessorData::SETTER_OFFSET));
 }
 
 inline GateRef StubBuilder::GetViewedArrayBuffer(GateRef dataView)

@@ -102,6 +102,11 @@ function func8() {
 res = lineString2.replace(re2, func8);
 print(res)
 
+const v3 = new BigUint64Array(128);
+for (let v4 = 0; v4 < 5; v4++) {
+    (v3 + 3).replace(/c(?<=a)8\P{sc=Greek}(a)/igus, 3);
+}
+
 let v5 = String.fromCharCode(0).replaceAll(/(?<a>.)/ug);
 print("undefinedss".replace(undefined,v5));
 print("undefinedss".replaceAll(undefined,v5));

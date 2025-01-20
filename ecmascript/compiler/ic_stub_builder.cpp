@@ -18,14 +18,18 @@
 #include "ecmascript/compiler/stub_builder-inl.h"
 
 namespace panda::ecmascript::kungfu {
+template<ICStubType type>
 void ICStubBuilder::NamedICAccessor(Variable* cachedHandler, Label *tryICHandler)
 {
     auto env = GetEnvironment();
     Label receiverIsHeapObject(env);
     Label receiverNotHeapObject(env);
     Label tryIC(env);
-
-    BRANCH(TaggedIsHeapObject(receiver_), &receiverIsHeapObject, &receiverNotHeapObject);
+    if constexpr (type == ICStubType::LOAD) {
+        BRANCH(TaggedIsHeapObject(receiver_), &receiverIsHeapObject, &receiverNotHeapObject);
+    } else {
+        BRANCH(TaggedIsHeapObject(receiver_), &receiverIsHeapObject, slowPath_);
+    }
     Bind(&receiverIsHeapObject);
     {
         BRANCH(TaggedIsUndefined(profileTypeInfo_), tryFastPath_, &tryIC);
@@ -56,6 +60,9 @@ void ICStubBuilder::NamedICAccessor(Variable* cachedHandler, Label *tryICHandler
                 BRANCH(TaggedIsUndefined(firstValue), slowPath_, tryFastPath_);
             }
         }
+    }
+    if constexpr (type == ICStubType::STORE) {
+        return;
     }
     Bind(&receiverNotHeapObject);
     {
@@ -156,7 +163,7 @@ void ICStubBuilder::LoadICByName(
 
     SetLabels(tryFastPath, slowPath, success);
     DEFVARIABLE(cachedHandler, VariableType::JS_ANY(), Undefined());
-    NamedICAccessor(&cachedHandler, &loadWithHandler);
+    NamedICAccessor<ICStubType::LOAD>(&cachedHandler, &loadWithHandler);
     Bind(&loadWithHandler);
     {
         GateRef ret = LoadICWithHandler(glue_, receiver_, receiver_, *cachedHandler, callback);
@@ -174,7 +181,7 @@ void ICStubBuilder::StoreICByName(Variable* result, Label* tryFastPath, Label *s
     GateRef secondValue = GetValueFromTaggedArray(
         profileTypeInfo_, Int32Add(slotId_, Int32(1)));
     DEFVARIABLE(cachedHandler, VariableType::JS_ANY(), secondValue);
-    NamedICAccessor(&cachedHandler, &storeWithHandler);
+    NamedICAccessor<ICStubType::STORE>(&cachedHandler, &storeWithHandler);
     Bind(&storeWithHandler);
     {
         GateRef ret = StoreICWithHandler(glue_, receiver_, receiver_, value_, *cachedHandler, callback_);
