@@ -103,7 +103,7 @@ public:
     // 15.2.1.16.4.1 InnerModuleInstantiation ( module, stack, index )
     static int InnerModuleInstantiation(JSThread *thread,
         const JSHandle<ModuleRecord> &moduleRecord, CVector<JSHandle<SourceTextModule>> &stack,
-        int index, bool executeFromJob = false);
+        int index, const ExecuteTypes &executeType = ExecuteTypes::STATIC);
 
     // 15.2.1.16.4.2 ModuleDeclarationEnvironmentSetup ( module )
     static void ModuleDeclarationEnvironmentSetup(JSThread *thread, const JSHandle<SourceTextModule> &module);
@@ -112,19 +112,22 @@ public:
     // 15.2.1.16.5.1 InnerModuleEvaluation ( module, stack, index )
     static int InnerModuleEvaluation(JSThread *thread, const JSHandle<SourceTextModule> &moduleRecord,
         CVector<JSHandle<SourceTextModule>> &stack, CVector<JSHandle<SourceTextModule>> &errorStack,
-        int index, const void *buffer = nullptr, size_t size = 0, bool executeFromJob = false);
+        int index, const void *buffer = nullptr, size_t size = 0,
+        const ExecuteTypes &executeType = ExecuteTypes::STATIC);
 
     static int InnerModuleEvaluationUnsafe(JSThread *thread,
         const JSHandle<ModuleRecord> &moduleRecord, CVector<JSHandle<SourceTextModule>> &stack,
         CVector<JSHandle<SourceTextModule>> &errorStack, int index, const void *buffer,
-        size_t size, bool executeFromJob);
+        size_t size, const ExecuteTypes &executeType);
     // 15.2.1.16.5.2 ModuleExecution ( module )
     static Expected<JSTaggedValue, bool> ModuleExecution(JSThread *thread, const JSHandle<SourceTextModule> &module,
-                                 const void *buffer = nullptr, size_t size = 0, bool executeFromJob = false);
+                                 const void *buffer = nullptr, size_t size = 0,
+                                 const ExecuteTypes &executeType = ExecuteTypes::STATIC);
 
     // 16.2.1.5.3.2 ExecuteAsyncModule ( module )
     static void ExecuteAsyncModule(JSThread *thread, const JSHandle<SourceTextModule> &module,
-                                   const void *buffer = nullptr, size_t size = 0, bool executeFromJob = false);
+                                   const void *buffer = nullptr, size_t size = 0,
+                                   const ExecuteTypes &executeType = ExecuteTypes::STATIC);
 
     // 16.2.1.5.3.3 GatherAvailableAncestors ( module, execList )
     static void GatherAvailableAncestors(JSThread *thread, const JSHandle<SourceTextModule> &module,
@@ -338,12 +341,13 @@ public:
 
     // 15.2.1.16.5 Evaluate()
     static JSTaggedValue Evaluate(JSThread *thread, const JSHandle<SourceTextModule> &module,
-                         const void *buffer = nullptr, size_t size = 0, bool executeFromJob = false);
+                         const void *buffer = nullptr, size_t size = 0,
+                         const ExecuteTypes &executeType = ExecuteTypes::STATIC);
 
     // 15.2.1.16.4 Instantiate()
     static int PUBLIC_API Instantiate(JSThread *thread,
                                       const JSHandle<JSTaggedValue> &moduleHdl,
-                                      bool executeFromJob = false);
+                                      const ExecuteTypes &executeType = ExecuteTypes::STATIC);
 
     static bool EvaluateNativeModule(JSThread *thread, JSHandle<SourceTextModule> nativeModule,
                                      ModuleTypes moduleType);
@@ -417,7 +421,7 @@ private:
                                                              JSHandle<SourceTextModule> &module,
                                                              JSMutableHandle<JSTaggedValue> &required,
                                                              CVector<JSHandle<SourceTextModule>> &stack,
-                                                             int &index, bool executeFromJob);
+                                                             int &index, const ExecuteTypes &executeType);
     static int HandleInstantiateException(JSHandle<SourceTextModule> &module,
                                           const CVector<JSHandle<SourceTextModule>> &stack, int result);
     static void HandleEvaluateResult(JSThread *thread, JSHandle<SourceTextModule> &module,

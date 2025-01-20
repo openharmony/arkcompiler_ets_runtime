@@ -82,7 +82,8 @@ void PatchLoader::ExecuteFuncOrPatchMain(
     CString fileName = jsPandaFile->GetJSPandaFileDesc();
     for (const auto &recordName : replacedRecordNames) {
         JSHandle<JSTaggedValue> moduleRecord =
-            ModuleResolver::HostResolveImportedModuleForHotReload(thread, fileName, recordName, false);
+            ModuleResolver::HostResolveImportedModuleForHotReload(thread, fileName, recordName, ExecuteTypes::STATIC);
+        RETURN_IF_ABRUPT_COMPLETION(thread);
         moduleRecords.emplace(recordName, moduleRecord);
     }
 
@@ -96,7 +97,7 @@ void PatchLoader::ExecuteFuncOrPatchMain(
         }
 
         JSHandle<JSTaggedValue> moduleRecord = moduleRecords[recordName];
-        SourceTextModule::Instantiate(thread, moduleRecord, false);
+        SourceTextModule::Instantiate(thread, moduleRecord, ExecuteTypes::STATIC);
         RETURN_IF_ABRUPT_COMPLETION(thread);
         JSHandle<SourceTextModule> module = JSHandle<SourceTextModule>::Cast(moduleRecord);
         SourceTextModule::Evaluate(thread, module);

@@ -42,8 +42,12 @@ JSPandaFileManager::~JSPandaFileManager()
     loadedJSPandaFiles_.clear();
 }
 
+/*
+ * Typically return nullptr for JSPandafile load fail. Throw cppcrash if load hsp failed.
+ * Specifically, return jscrash if napi load hsp failed.
+*/
 std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFile(JSThread *thread, const CString &filename,
-    std::string_view entryPoint, bool needUpdate)
+    std::string_view entryPoint, bool needUpdate, const ExecuteTypes &executeType)
 {
     {
         LockHolder lock(jsPandaFileLock_);
@@ -93,8 +97,13 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFile(JSThread *threa
         bool getBuffer = resolveBufferCallback(hspPath, &data, &dataSize, errorMsg);
         if (!getBuffer) {
             LoadJSPandaFileFailLog("[ArkRuntime Log] Importing shared package in the Previewer.");
-            LOG_FULL(FATAL) << "resolveBufferCallback get hsp buffer failed, hsp path:" << filename
-                << ", errorMsg:" << errorMsg;
+            CString msg = "resolveBufferCallback get hsp buffer failed, hsp path:" + filename +
+                ", errorMsg:" + errorMsg.c_str();
+            if (executeType == ExecuteTypes::NAPI) {
+                LOG_FULL(ERROR) << msg;
+                THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(), nullptr);
+            }
+            LOG_FULL(FATAL) << msg;
             return nullptr;
         }
         pf = OpenPandaFileFromMemory(data, dataSize);

@@ -27,6 +27,7 @@
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/mem/c_containers.h"
 #include "ecmascript/mem/visitor.h"
+#include "ecmascript/module/js_module_execute_type.h"
 #include "ecmascript/patch/patch_loader.h"
 #include "ecmascript/stackmap/ark_stackmap.h"
 #include "ecmascript/waiter_list.h"
@@ -743,11 +744,11 @@ private:
                                           const JSPandaFile *jsPandaFile, std::string_view entryPoint,
                                           CJSInfo *cjsInfo = nullptr);
     Expected<JSTaggedValue, bool> InvokeEcmaEntrypoint(const JSPandaFile *jsPandaFile, std::string_view entryPoint,
-                                                       bool executeFromJob = false);
+                                                       const ExecuteTypes &executeType = ExecuteTypes::STATIC);
     Expected<JSTaggedValue, bool> InvokeEcmaEntrypointForHotReload(
-        const JSPandaFile *jsPandaFile, std::string_view entryPoint, bool executeFromJob);
+        const JSPandaFile *jsPandaFile, std::string_view entryPoint, const ExecuteTypes &executeType);
     Expected<JSTaggedValue, bool> CommonInvokeEcmaEntrypoint(const JSPandaFile *jsPandaFile,
-        std::string_view entryPoint, JSHandle<JSFunction> &func, bool executeFromJob);
+        std::string_view entryPoint, JSHandle<JSFunction> &func, const ExecuteTypes &executeType);
     bool LoadAOTFilesInternal(const std::string& aotFileName);
     bool LoadAOTFiles(const std::string &aotFileName);
 #if defined(CROSS_PLATFORM) && defined(ANDROID_PLATFORM)

@@ -29,13 +29,12 @@ JSHandle<JSTaggedValue> NapiModuleLoader::LoadModuleNameSpaceWithModuleInfo(Ecma
     JSThread *thread = vm->GetJSThread();
     std::shared_ptr<JSPandaFile> curJsPandaFile;
     if (modulePath.size() != 0) {
-        bool isValid = JSPandaFileManager::GetInstance()->CheckFilePath(thread, abcFilePath);
-        if (!isValid) {
-            CString msg = "Load file with filename '" + abcFilePath +
-                "' failed, module name '" + requestPath + "'" + ", from napi load module";
-            THROW_NEW_ERROR_AND_RETURN_HANDLE(thread, ErrorType::REFERENCE_ERROR, JSTaggedValue, msg.c_str());
+        curJsPandaFile = JSPandaFileManager::GetInstance()->LoadJSPandaFile(
+            thread, abcFilePath, requestPath, false, ExecuteTypes::NAPI);
+        RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
+        if (curJsPandaFile == nullptr) {
+            LOG_FULL(FATAL) << "Load current file's panda file failed. Current file is " << abcFilePath;
         }
-        curJsPandaFile = JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, abcFilePath, requestPath);
         if (vm->IsNormalizedOhmUrlPack()) {
             ModulePathHelper::TranslateExpressionToNormalized(thread, curJsPandaFile.get(), abcFilePath, "",
                 requestPath);
@@ -111,13 +110,6 @@ JSHandle<JSTaggedValue> NapiModuleLoader::LoadModuleNameSpaceWithPath(JSThread *
     CString entryPoint = ModulePathHelper::ConcatFileNameWithMerge(thread, pandaFile,
         abcFilePath, modulePath, requestPath);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
-
-    bool isValid = JSPandaFileManager::GetInstance()->CheckFilePath(thread, abcFilePath);
-    if (!isValid) {
-        CString msg = "Load file with filename '" + abcFilePath +
-            "' failed, module name '" + requestPath + "'" + ", from napi load module";
-        THROW_NEW_ERROR_AND_RETURN_HANDLE(thread, ErrorType::REFERENCE_ERROR, JSTaggedValue, msg.c_str());
-    }
     return LoadModuleNameSpaceFromFile(thread, entryPoint, abcFilePath);
 }
 
@@ -125,8 +117,11 @@ JSHandle<JSTaggedValue> NapiModuleLoader::LoadModuleNameSpaceFromFile(
     JSThread *thread, const CString &entryPoint, const CString &abcFilePath)
 {
     std::shared_ptr<JSPandaFile> jsPandaFile =
-        JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, abcFilePath, entryPoint);
-
+        JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, abcFilePath, entryPoint, false, ExecuteTypes::NAPI);
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
+    if (jsPandaFile == nullptr) {
+        LOG_FULL(FATAL) << "Load current file's panda file failed. Current file is " << abcFilePath;
+    }
     JSRecordInfo *recordInfo = nullptr;
     bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(entryPoint, &recordInfo);
     if (!hasRecord) {
@@ -151,7 +146,8 @@ JSHandle<JSTaggedValue> NapiModuleLoader::GetModuleNameSpace(JSThread *thread, c
     ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
     // IsInstantiatedModule is for lazy module to execute
     if (moduleManager->NeedExecuteModule(entryPoint)) {
-        if (!JSPandaFileExecutor::ExecuteFromAbcFile(thread, abcFilePath, entryPoint.c_str(), false, true)) {
+        if (!JSPandaFileExecutor::ExecuteFromAbcFile(
+            thread, abcFilePath, entryPoint.c_str(), false, ExecuteTypes::NAPI)) {
             CString msg = "Cannot execute request from napi load module : " + entryPoint +
                 ", from napi load module";
             THROW_NEW_ERROR_AND_RETURN_HANDLE(thread, ErrorType::REFERENCE_ERROR, JSTaggedValue, msg.c_str());
