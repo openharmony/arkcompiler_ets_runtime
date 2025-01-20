@@ -588,6 +588,10 @@ bool JsonStringifier::SerializeJSONHashMap(const JSHandle<JSTaggedValue> &value,
             continue;
         }
         keyHandle.Update(node->GetKey());
+        valueHandle.Update(node->GetValue());
+        if (valueHandle->IsUndefined()) {
+            continue;
+        }
         if (UNLIKELY(!keyHandle->IsString())) {
             result_ += "\"";
             SerializeJSONProperty(keyHandle, replacer);
@@ -596,7 +600,6 @@ bool JsonStringifier::SerializeJSONHashMap(const JSHandle<JSTaggedValue> &value,
             SerializeJSONProperty(keyHandle, replacer);
         }
         result_ += ":";
-        valueHandle.Update(node->GetValue());
         SerializeJSONProperty(valueHandle, replacer);
         result_ += ",";
         needRemove = true;
@@ -630,7 +633,10 @@ bool JsonStringifier::SerializeJSONHashSet(const JSHandle<JSTaggedValue> &value,
             continue;
         }
         currentKey.Update(node->GetKey());
-        SerializeJSONProperty(currentKey, replacer);
+        JSTaggedValue res = SerializeJSONProperty(currentKey, replacer);
+        if (res.IsUndefined()) {
+            result_ += "null";
+        }
         result_ += ",";
         needRemove = true;
     }
@@ -655,10 +661,13 @@ bool JsonStringifier::SerializeLinkedHashMap(const JSHandle<LinkedHashMap> &hash
     bool needRemove = false;
     while (index < totalElements) {
         keyHandle.Update(hashMap->GetKey(index++));
-        if (keyHandle->IsHole()) {
+        valHandle.Update(hashMap->GetValue(index - 1));
+        if (keyHandle->IsHole() || valHandle->IsUndefined()) {
             continue;
         }
-        if (UNLIKELY(!keyHandle->IsString())) {
+        if (UNLIKELY(keyHandle->IsUndefined())) {
+            result_ += "\"undefined\"";
+        } else if (UNLIKELY(!keyHandle->IsString())) {
             result_ += "\"";
             SerializeJSONProperty(keyHandle, replacer);
             result_ += "\"";
@@ -666,7 +675,6 @@ bool JsonStringifier::SerializeLinkedHashMap(const JSHandle<LinkedHashMap> &hash
             SerializeJSONProperty(keyHandle, replacer);
         }
         result_ += ":";
-        valHandle.Update(hashMap->GetValue(index - 1));
         SerializeJSONProperty(valHandle, replacer);
         result_ += ",";
         needRemove = true;
@@ -695,7 +703,10 @@ bool JsonStringifier::SerializeLinkedHashSet(const JSHandle<LinkedHashSet> &hash
         if (keyHandle->IsHole()) {
             continue;
         }
-        SerializeJSONProperty(keyHandle, replacer);
+        JSTaggedValue res = SerializeJSONProperty(keyHandle, replacer);
+        if (res.IsUndefined()) {
+            result_ += "null";
+        }
         result_ += ",";
         needRemove = true;
     }
