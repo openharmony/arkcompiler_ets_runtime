@@ -90,3 +90,8 @@ proxy2.pop();
 proxy2.toString();
 proxy2.push(456);
 print(`proxy2: ${proxy2}`);
+
+const v9 = new Int16Array(128);
+const v10 = new Int8Array(128);
+v9[11] = [v9, v10];
+print(v9[11]);

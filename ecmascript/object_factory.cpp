@@ -327,7 +327,7 @@ JSHandle<JSArrayBuffer> ObjectFactory::NewJSArrayBuffer(void *buffer, int32_t le
 JSHandle<JSDataView> ObjectFactory::NewJSDataView(JSHandle<JSArrayBuffer> buffer, uint32_t offset, uint32_t length)
 {
     uint32_t arrayLength = buffer->GetArrayBufferByteLength();
-    if (arrayLength - offset < length) {
+    if (arrayLength < static_cast<uint64_t>(offset) + length) {
         THROW_TYPE_ERROR_AND_RETURN(thread_, "offset or length error",
                                     JSHandle<JSDataView>(thread_, JSTaggedValue::Undefined()));
     }

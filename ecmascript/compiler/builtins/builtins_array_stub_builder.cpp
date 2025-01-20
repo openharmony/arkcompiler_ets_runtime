@@ -163,13 +163,18 @@ void BuiltinsArrayStubBuilder::Filter(GateRef glue, GateRef thisValue, GateRef n
     auto env = GetEnvironment();
     Label isHeapObject(env);
     Label isJsArray(env);
+    Label prototypeIsHeapObject(env);
+    Label prototypeIsJsArray(env);
     Label defaultConstr(env);
     Branch(TaggedIsHeapObject(thisValue), &isHeapObject, slowPath);
     Bind(&isHeapObject);
-    GateRef thisValueIsJSArray = IsJsArray(thisValue);
-    GateRef protoIsJsArray = IsJsArray(StubBuilder::GetPrototype(glue, thisValue));
-    Branch(BoolAnd(thisValueIsJSArray, protoIsJsArray), &isJsArray, slowPath);
+    Branch(IsJsArray(thisValue), &isJsArray, slowPath);
     Bind(&isJsArray);
+    GateRef prototype = StubBuilder::GetPrototype(glue, thisValue);
+    Branch(TaggedIsHeapObject(prototype), &prototypeIsHeapObject, slowPath);
+    Bind(&prototypeIsHeapObject);
+    Branch(IsJsArray(prototype), &prototypeIsJsArray, slowPath);
+    Bind(&prototypeIsJsArray);
     Branch(HasConstructor(thisValue), slowPath, &defaultConstr);
     Bind(&defaultConstr);
 
