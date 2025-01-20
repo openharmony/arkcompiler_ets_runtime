@@ -41,6 +41,12 @@ public:
     static constexpr uint16_t MAX_SLOT_SIZE = 0xFFFFU;
     static constexpr uint32_t MAX_EXPECTED_PROPERTY_COUNT = 0xFFFFFFFFU;
     static constexpr size_t EXTEND_SLOT_SIZE = 2;
+    static constexpr std::string_view KCALL_TYPE_ANNOTATION = "L_ESCallTypeAnnotation;";
+    static constexpr std::string_view KCALL_TYPE_NAME = "callType";
+    static constexpr std::string_view KSLOT_NUMBER_ANNOTATION = "L_ESSlotNumberAnnotation;";
+    static constexpr std::string_view KSLOT_NUMBER_NAME = "SlotNumber";
+    static constexpr std::string_view KEXPECTED_PROPERTY_COUNT_ANNOTATION = "L_ESExpectedPropertyCountAnnotation;";
+    static constexpr std::string_view KEXPECTED_PROPERTY_COUNT_NAME = "ExpectedPropertyCount";
 
     PUBLIC_API explicit MethodLiteral(EntityId methodId);
     MethodLiteral() = delete;

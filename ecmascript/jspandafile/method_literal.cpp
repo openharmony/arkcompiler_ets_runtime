@@ -53,32 +53,39 @@ void MethodLiteral::Initialize(const JSPandaFile *jsPandaFile, const JSThread *t
     uint32_t expectedPropertyCount = MAX_EXPECTED_PROPERTY_COUNT; // MAX_EXPECTED_PROPERTY_COUNT means not found
     mda.EnumerateAnnotations([&](EntityId annotationId) {
         panda_file::AnnotationDataAccessor ada(*pf, annotationId);
-        auto *annotationName = reinterpret_cast<const char *>(pf->GetStringData(ada.GetClassId()).data);
-        if (::strcmp("L_ESCallTypeAnnotation;", annotationName) == 0) {
+        auto classIdstr = pf->GetStringData(ada.GetClassId());
+        std::string_view annotationNameView(utf::Mutf8AsCString(classIdstr.data), classIdstr.utf16_length);
+        if (annotationNameView == KCALL_TYPE_ANNOTATION) {
             uint32_t elemCount = ada.GetCount();
             for (uint32_t i = 0; i < elemCount; i++) {
                 panda_file::AnnotationDataAccessor::Elem adae = ada.GetElement(i);
-                auto *elemName = reinterpret_cast<const char *>(pf->GetStringData(adae.GetNameId()).data);
-                if (::strcmp("callType", elemName) == 0) {
+                auto nameStr = pf->GetStringData(adae.GetNameId());
+                std::string_view elemNameView(utf::Mutf8AsCString(nameStr.data), nameStr.utf16_length);
+                if (elemNameView == KCALL_TYPE_NAME) {
                     callType = adae.GetScalarValue().GetValue();
+                    break;
                 }
             }
-        } else if (::strcmp("L_ESSlotNumberAnnotation;", annotationName) == 0) {
+        } else if (annotationNameView == KSLOT_NUMBER_ANNOTATION) {
             uint32_t elemCount = ada.GetCount();
             for (uint32_t i = 0; i < elemCount; i++) {
                 panda_file::AnnotationDataAccessor::Elem adae = ada.GetElement(i);
-                auto *elemName = reinterpret_cast<const char *>(pf->GetStringData(adae.GetNameId()).data);
-                if (::strcmp("SlotNumber", elemName) == 0) {
+                auto nameStr = pf->GetStringData(adae.GetNameId());
+                std::string_view elemNameView(utf::Mutf8AsCString(nameStr.data), nameStr.utf16_length);
+                if (elemNameView == KSLOT_NUMBER_NAME) {
                     slotSize = adae.GetScalarValue().GetValue();
+                    break;
                 }
             }
-        } else if (::strcmp("L_ESExpectedPropertyCountAnnotation;", annotationName) == 0) {
+        } else if (annotationNameView == KEXPECTED_PROPERTY_COUNT_ANNOTATION) {
             uint32_t elemCount = ada.GetCount();
             for (uint32_t i = 0; i < elemCount; i++) {
                 panda_file::AnnotationDataAccessor::Elem adae = ada.GetElement(i);
-                auto *elemName = reinterpret_cast<const char *>(pf->GetStringData(adae.GetNameId()).data);
-                if (::strcmp("ExpectedPropertyCount", elemName) == 0) {
+                auto nameStr = pf->GetStringData(adae.GetNameId());
+                auto elemNameView = std::string_view(utf::Mutf8AsCString(nameStr.data), nameStr.utf16_length);
+                if (elemNameView == KEXPECTED_PROPERTY_COUNT_NAME) {
                     expectedPropertyCount = adae.GetScalarValue().GetValue();
+                    break;
                 }
             }
         }
