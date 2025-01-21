@@ -54,4 +54,16 @@ const v3 = 10;
 const v4 = Symbol("foo");
 
 const obj3 = Object.assign({}, v1, null, v2, undefined, v3, v4);
-print(Object.values(obj3))
+print(Object.values(obj3));
+
+const v5 = new Uint8Array();
+const o7 = {
+    __proto__ : v5,
+};
+const o8 = {
+    get f() {
+        return this;
+    },
+};
+Object.assign(o7, o8);
+print(o7.f === o8);

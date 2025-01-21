@@ -1224,6 +1224,15 @@ DEF_RUNTIME_STUBS(GetArrayLiteralFromCache)
         thread, constpool.GetTaggedValue(), index.GetInt(), module.GetTaggedValue()).GetRawData();
 }
 
+DEF_RUNTIME_STUBS(StObjByValue)
+{
+    RUNTIME_STUBS_HEADER(StObjByValue);
+    JSHandle<JSTaggedValue> receiver = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> key = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
+    JSHandle<JSTaggedValue> value = GetHArg<JSTaggedValue>(argv, argc, 2);  // 2: means the second parameter
+    return RuntimeStObjByValue(thread, receiver, key, value).GetRawData();
+}
+
 DEF_RUNTIME_STUBS(LdObjByIndex)
 {
     RUNTIME_STUBS_HEADER(LdObjByIndex);

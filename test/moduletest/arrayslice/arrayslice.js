@@ -12,6 +12,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+{
+    let arr = new Array();
+    let length = {
+        valueOf: function() {
+            while (arr.length > 0) {
+                arr.pop();
+            }
+            return 36;
+        }
+    }
+    for (let i = 0; i < 2; i++) {
+        Array.prototype.slice.apply(arr, [2, length]);
+        arr.splice(length, 2, 127, undefined, 127, undefined);
+    }
+    print(arr.length);
+}
+
 var holey_array = [1, 2, 3, 4, 5,,,,,,];
 print(holey_array.slice(6, 7)[0]);
 print(holey_array.slice(2, 3)[0]);
