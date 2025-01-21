@@ -83,6 +83,7 @@ group("ark_aot_ts_test") {
     "createobjectwithbuffer",
     "createobjectwithexcludedkeys",
     "createregexpwithliteral",
+    "realm",
     "dec",
     "default_supers",
     "defineasyncfunc",
