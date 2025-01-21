@@ -851,7 +851,13 @@ bool ObjectOperator::WriteDataProperty(const JSHandle<JSObject> &receiver, const
 
         return UpdateValueAndDetails(receiver, desc.GetValue(), attr, attrChanged);
     } else {
-        if (IsAccessorDescriptor() && !IsElement()) {
+        auto valueAccessor = GetValue();
+        if (valueAccessor.IsPropertyBox()) {
+            valueAccessor = PropertyBox::Cast(valueAccessor.GetTaggedObject())->GetValue();
+        }
+        bool isNotInternalAccessor = IsAccessorDescriptor()
+                && !AccessorData::Cast(valueAccessor.GetTaggedObject())->IsInternal();
+        if (isNotInternalAccessor && !IsElement()) {
             TaggedArray *properties = TaggedArray::Cast(receiver->GetProperties().GetTaggedObject());
             if (attrChanged && !properties->IsDictionaryMode()) {
                 // as some accessorData is in globalEnv, we need to new accessorData.
@@ -877,12 +883,7 @@ bool ObjectOperator::WriteDataProperty(const JSHandle<JSObject> &receiver, const
             }
         }
 
-        auto valueAccessor = GetValue();
-        if (valueAccessor.IsPropertyBox()) {
-            valueAccessor = PropertyBox::Cast(valueAccessor.GetTaggedObject())->GetValue();
-        }
-        JSHandle<AccessorData> accessor =
-            (IsAccessorDescriptor() && !JSHandle<AccessorData>(thread_, valueAccessor)->IsInternal()) ?
+        JSHandle<AccessorData> accessor = isNotInternalAccessor ?
             JSHandle<AccessorData>(thread_, valueAccessor) :
             thread_->GetEcmaVM()->GetFactory()->NewAccessorData();
         if (desc.HasGetter()) {
