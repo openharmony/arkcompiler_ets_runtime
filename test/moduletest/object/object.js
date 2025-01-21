@@ -222,3 +222,15 @@ print(JSON.stringify(desc4[1]));
 print(JSON.stringify(desc5[3]));
 print(JSON.stringify(desc6.c));
 print(JSON.stringify(desc7.getBar));
+
+let res = Object.getOwnPropertyDescriptors(Object);
+print(JSON.stringify(res.prototype));
+
+let obj = {};
+Object.defineProperty(obj, "key1", {
+    get() { print("get"); return 6; },
+    set(x) {}
+})
+let res2 = Object.getOwnPropertyDescriptors(obj);
+print(res2["key1"].get);
+print(JSON.stringify(res2));

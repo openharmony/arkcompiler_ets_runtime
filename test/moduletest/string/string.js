@@ -473,3 +473,12 @@ print(srcutf16.slice(0, 16)); // bytes == 2 * 16
 print(srcutf16.slice(0, 25)); // bytes > 16 && bytes % 16 != 0
 print(srcutf16.slice(0, 28)); // bytes == 7 * 8
 print(srcutf16.slice(0, 32)); // bytes == 4 * 16
+
+try {
+    let concatStr = 'c';
+    for (let i = 0; i < (0x3fffff0);i++) {
+        concatStr += "AAAAA" + concatStr + "BBBBBBBB";
+    }
+} catch(e) {
+    print(e);
+}

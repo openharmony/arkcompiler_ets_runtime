@@ -562,13 +562,16 @@ void BuiltinsArrayStubBuilder::Filter(GateRef glue, GateRef thisValue, GateRef n
     auto env = GetEnvironment();
     Label isHeapObject(env);
     Label isJsArray(env);
+    Label isprototypeJsArray(env);
     Label defaultConstr(env);
     BRANCH(TaggedIsHeapObject(thisValue), &isHeapObject, slowPath);
     Bind(&isHeapObject);
-    GateRef thisValueAndProtoIsJSArray = LogicAndBuilder(env).And(IsJsArray(thisValue))
-        .And(IsJsArray(StubBuilder::GetPrototype(glue, thisValue))).Done();
-    BRANCH(thisValueAndProtoIsJSArray, &isJsArray, slowPath);
+    BRANCH(IsJsArray(thisValue), &isJsArray, slowPath);
     Bind(&isJsArray);
+    GateRef prototype = StubBuilder::GetPrototype(glue, thisValue);
+    GateRef protoIsJSArray = LogicAndBuilder(env).And(TaggedIsHeapObject(prototype)).And(IsJsArray(prototype)).Done();
+    BRANCH(protoIsJSArray, &isprototypeJsArray, slowPath);
+    Bind(&isprototypeJsArray);
     BRANCH(HasConstructor(thisValue), slowPath, &defaultConstr);
     Bind(&defaultConstr);
 
@@ -725,13 +728,16 @@ void BuiltinsArrayStubBuilder::Map(GateRef glue, GateRef thisValue, GateRef numA
     auto env = GetEnvironment();
     Label isHeapObject(env);
     Label isJsArray(env);
+    Label isprototypeJsArray(env);
     Label defaultConstr(env);
     BRANCH(TaggedIsHeapObject(thisValue), &isHeapObject, slowPath);
     Bind(&isHeapObject);
-    GateRef thisValueAndProtoIsJSArray = LogicAndBuilder(env).And(IsJsArray(thisValue))
-        .And(IsJsArray(StubBuilder::GetPrototype(glue, thisValue))).Done();
-    BRANCH(thisValueAndProtoIsJSArray, &isJsArray, slowPath);
+    BRANCH(IsJsArray(thisValue), &isJsArray, slowPath);
     Bind(&isJsArray);
+    GateRef prototype = StubBuilder::GetPrototype(glue, thisValue);
+    GateRef protoIsJSArray = LogicAndBuilder(env).And(TaggedIsHeapObject(prototype)).And(IsJsArray(prototype)).Done();
+    BRANCH(protoIsJSArray, &isprototypeJsArray, slowPath);
+    Bind(&isprototypeJsArray);
     BRANCH(HasConstructor(thisValue), slowPath, &defaultConstr);
     Bind(&defaultConstr);
 
