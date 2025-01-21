@@ -18,7 +18,7 @@
 
 #include <cstdint>
 #include <string>
-#if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE)
+#if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE) && !defined(CROSS_PLATFORM)
 #include <uv.h>
 #endif
 
@@ -26,7 +26,7 @@
 
 namespace panda::ecmascript {
 void RegisterAsyncDetectCallBack(EcmaVM *vm);
-#if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE)
+#if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE) && !defined(CROSS_PLATFORM)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-function"
     static void AsyncDetectCallBack(uv_timer_t* handle);
