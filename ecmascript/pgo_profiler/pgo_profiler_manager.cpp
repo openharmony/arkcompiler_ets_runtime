@@ -487,9 +487,4 @@ Mutex& PGOProfilerManager::GetPGOInfoMutex()
     static Mutex pgoInfoMutex;
     return pgoInfoMutex;
 }
-
-ConcurrentGuardValue& PGOProfilerManager::GetConcurrentGuardValue()
-{
-    return v_;
-}
 } // namespace panda::ecmascript::pgo

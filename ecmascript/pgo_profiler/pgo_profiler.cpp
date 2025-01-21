@@ -546,8 +546,6 @@ void PGOProfiler::HandlePGOPreDump()
 void PGOProfiler::HandlePGODumpByDumpThread()
 {
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "PGOProfiler::HandlePGODumpByDumpThread");
-    ConcurrentGuard guard(PGOProfilerManager::GetInstance()->GetConcurrentGuardValue(),
-                          "HandlePGODumpByDumpThread");
     LockHolder lock(PGOProfilerManager::GetPGOInfoMutex());
     if (!isEnable_ || !vm_->GetJSOptions().IsEnableProfileDump()) {
         return;
