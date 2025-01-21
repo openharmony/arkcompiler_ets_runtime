@@ -155,6 +155,7 @@ public:
     static bool GetSingleStepStatus(JSDebugger *debugger);
 
     static int32_t GetObjectHash(const EcmaVM *ecmaVM, const JSHandle<JSTaggedValue> &tagged);
+    static int32_t GetObjectHashCode(const EcmaVM *ecmaVM, const JSHandle<JSTaggedValue> &tagged);
     static void GetObjectClassName(const EcmaVM *ecmaVM, Local<JSValueRef> &tagged, std::string &className);
     static bool RemoveBreakpointsByUrl(JSDebugger *debugger, const std::string &url);
     static void DisableFirstTimeFlag(JSDebugger *debugger);
