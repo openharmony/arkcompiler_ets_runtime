@@ -242,12 +242,7 @@ template("libark_jsruntime_common_set") {
       cflags_cc += [ "-fvisibility=hidden" ]
     }
 
-    external_deps = []
-
-    if (enable_dump_in_faultlog) {
-      external_deps += [ "libuv:uv" ]
-    }
-
+    external_deps = [ "libuv:uv" ]
     if (target_name == "libark_jsruntime_arm_set" && is_ohos &&
         is_standard_system && !is_arkui_x) {
       defines += [ "ENABLE_FFRT_INTERFACES" ]

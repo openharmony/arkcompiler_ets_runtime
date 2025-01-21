@@ -26,6 +26,9 @@ using BuiltinsPromiseHandler = builtins::BuiltinsPromiseHandler;
 JSHandle<ResolvingFunctionsRecord> JSPromise::CreateResolvingFunctions(JSThread *thread,
                                                                        const JSHandle<JSPromise> &promise)
 {
+    if (thread->GetEcmaVM()->GetJSOptions().EnablePendingCheak()) {
+        thread->GetEcmaVM()->InsertAsyncStackTrace(promise);
+    }
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     // 1. Let alreadyResolved be a new Record { [[value]]: false }.
     JSHandle<PromiseRecord> record = factory->NewPromiseRecord();
@@ -55,6 +58,9 @@ JSHandle<ResolvingFunctionsRecord> JSPromise::CreateResolvingFunctions(JSThread 
 JSTaggedValue JSPromise::FulfillPromise(JSThread *thread, const JSHandle<JSPromise> &promise,
                                         const JSHandle<JSTaggedValue> &value)
 {
+    if (thread->GetEcmaVM()->GetJSOptions().EnablePendingCheak()) {
+        thread->GetEcmaVM()->RemoveAsyncStackTrace(promise);
+    }
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
     // 1. Assert: the value of promise's [[PromiseState]] internal slot is "pending".
     ASSERT_PRINT(promise->GetPromiseState() == PromiseState::PENDING, "FulfillPromise: state must be pending");
@@ -132,6 +138,9 @@ bool JSPromise::IsPromise(const JSHandle<JSTaggedValue> &value)
 JSTaggedValue JSPromise::RejectPromise(JSThread *thread, const JSHandle<JSPromise> &promise,
                                        const JSHandle<JSTaggedValue> &reason)
 {
+    if (thread->GetEcmaVM()->GetJSOptions().EnablePendingCheak()) {
+        thread->GetEcmaVM()->RemoveAsyncStackTrace(promise);
+    }
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
     // 1. Assert: the value of promise's [[PromiseState]] internal slot is "pending".
     ASSERT_PRINT(promise->GetPromiseState() == PromiseState::PENDING, "RejectPromise: state must be pending");

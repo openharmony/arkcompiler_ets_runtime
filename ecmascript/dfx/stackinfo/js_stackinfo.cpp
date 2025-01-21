@@ -181,7 +181,8 @@ void AssembleJitCodeMap(JSThread *thread, const JSHandle<JSObject> &jsErrorObj, 
     thread->SetJitCodeMap(jsErrorObj.GetTaggedValue().GetRawData(), machineCode, methodName, offset);
 }
 
-std::string JsStackInfo::BuildJsStackTrace(JSThread *thread, bool needNative, const JSHandle<JSObject> &jsErrorObj)
+std::string JsStackInfo::BuildJsStackTrace(JSThread *thread, bool needNative,
+                                           const JSHandle<JSObject> &jsErrorObj, bool needNativeStack)
 {
     std::string data;
     data.reserve(InitialDeeps * InitialLength);
@@ -221,7 +222,7 @@ std::string JsStackInfo::BuildJsStackTrace(JSThread *thread, bool needNative, co
             data.append("    at native method (").append(strm.str()).append(")\n");
         }
     }
-    if (data.empty()) {
+    if (data.empty() && needNativeStack) {
 #if defined(ENABLE_EXCEPTION_BACKTRACE)
         std::ostringstream stack;
         Backtrace(stack);

@@ -185,13 +185,14 @@ private:
     };
 public:
     static std::string BuildInlinedMethodTrace(const JSPandaFile *pf, std::map<uint32_t, uint32_t> &methodOffsets);
-    static inline std::string BuildJsStackTrace(JSThread *thread, bool needNative)
+    static inline std::string BuildJsStackTrace(JSThread *thread, bool needNative, bool needNativeStack = true)
     {
         // If jsErrorObj not be pass in, MachineCode object of its stack frame while not be keep alive
         JSHandle<JSObject> jsErrorObj;
-        return BuildJsStackTrace(thread, needNative, jsErrorObj);
+        return BuildJsStackTrace(thread, needNative, jsErrorObj, needNativeStack);
     }
-    static std::string BuildJsStackTrace(JSThread *thread, bool needNative, const JSHandle<JSObject> &jsErrorObj);
+    static std::string BuildJsStackTrace(JSThread *thread, bool needNative,
+                                         const JSHandle<JSObject> &jsErrorObj, bool needNativeStack);
     static std::vector<JsFrameInfo> BuildJsStackInfo(JSThread *thread, bool currentStack = false);
     static std::string BuildMethodTrace(Method *method, uint32_t pcOffset, LastBuilderCache &lastCache,
                                         bool enableStackSourceFile = true);

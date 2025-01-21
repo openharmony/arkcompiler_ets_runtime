@@ -22,6 +22,7 @@
 #include "ecmascript/debugger/js_debugger_manager.h"
 #include "ecmascript/dfx/stackinfo/js_stackinfo.h"
 #include "ecmascript/dfx/tracing/tracing.h"
+#include "ecmascript/dfx/stackinfo/async_stack_trace.h"
 #include "ecmascript/mem/heap-inl.h"
 #include "ecmascript/jit/jit.h"
 #include "ecmascript/dfx/vm_thread_control.h"
@@ -1035,5 +1036,10 @@ void DFXJSNApi::TranslateJSStackInfo(const EcmaVM *vm, std::string &url, int32_t
 uint32_t DFXJSNApi::GetCurrentThreadId()
 {
     return JSThread::GetCurrentThreadId();
+}
+
+void DFXJSNApi::RegisterAsyncDetectCallBack(const EcmaVM *vm)
+{
+    vm->GetAsyncStackTrace()->RegisterAsyncDetectCallBack();
 }
 } // namespace panda

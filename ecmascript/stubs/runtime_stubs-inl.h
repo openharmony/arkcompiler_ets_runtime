@@ -396,6 +396,9 @@ JSTaggedValue RuntimeStubs::RuntimeAsyncFunctionResolveOrReject(JSThread *thread
     JSHandle<JSAsyncFuncObject> asyncFuncObjHandle(asyncFuncObj);
     JSHandle<JSPromise> promise(thread, asyncFuncObjHandle->GetPromise());
 
+    if (thread->GetEcmaVM()->GetJSOptions().EnablePendingCheak()) {
+        thread->GetEcmaVM()->RemoveAsyncStackTrace(promise);
+    }
     // ActivePromise
     JSHandle<ResolvingFunctionsRecord> reactions = JSPromise::CreateResolvingFunctions(thread, promise);
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
@@ -1487,6 +1490,9 @@ JSTaggedValue RuntimeStubs::RuntimeAsyncFunctionEnter(JSThread *thread)
     JSHandle<JSFunction> promiseFunc(globalEnv->GetPromiseFunction());
 
     JSHandle<JSPromise> promiseObject(factory->NewJSObjectByConstructor(promiseFunc));
+    if (thread->GetEcmaVM()->GetJSOptions().EnablePendingCheak()) {
+        thread->GetEcmaVM()->InsertAsyncStackTrace(promiseObject);
+    }
     promiseObject->SetPromiseState(PromiseState::PENDING);
     // 2. create asyncfuncobj
     JSHandle<JSAsyncFuncObject> asyncFuncObj = factory->NewJSAsyncFuncObject();

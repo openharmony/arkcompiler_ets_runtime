@@ -1531,6 +1531,7 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
             JSPromise::Cast(*obj)->SetPromiseResult(thread_, JSTaggedValue::Undefined());
             JSPromise::Cast(*obj)->SetPromiseRejectReactions(thread_, GetEmptyTaggedQueue().GetTaggedValue());
             JSPromise::Cast(*obj)->SetPromiseFulfillReactions(thread_, GetEmptyTaggedQueue().GetTaggedValue());
+            JSPromise::Cast(*obj)->SetAsyncTaskId(vm_->GetAsyncTaskId());
 
             JSPromise::Cast(*obj)->SetPromiseIsHandled(false);
             break;

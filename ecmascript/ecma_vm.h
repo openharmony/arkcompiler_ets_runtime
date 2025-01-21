@@ -51,6 +51,7 @@ class GCStats;
 class GCKeyStats;
 class CpuProfiler;
 class Tracing;
+class AsyncStackTrace;
 class RegExpExecResultCache;
 class JSPromise;
 enum class PromiseRejectionEvent : uint8_t;
@@ -273,6 +274,17 @@ public:
     }
     void ProcessNativeDelete(const WeakRootVisitor &visitor);
     void ProcessReferences(const WeakRootVisitor &visitor);
+
+    AsyncStackTrace *GetAsyncStackTrace() const
+    {
+        return asyncStackTrace_;
+    }
+
+    uint32_t GetAsyncTaskId();
+
+    bool InsertAsyncStackTrace(const JSHandle<JSPromise> &promise);
+
+    bool RemoveAsyncStackTrace(const JSHandle<JSPromise> &promise);
 
     SnapshotEnv *GetSnapshotEnv() const
     {
@@ -923,6 +935,10 @@ private:
     bool optionalLogEnabled_ {false};
     // Debugger
     tooling::JsDebuggerManager *debuggerManager_ {nullptr};
+
+    // DFX
+    AsyncStackTrace *asyncStackTrace_ {nullptr};
+
     // isBundle means app compile mode is JSBundle
     bool isBundlePack_ {true};
 #if !WIN_OR_MAC_OR_IOS_PLATFORM
