@@ -1743,9 +1743,21 @@ inline GateRef StubBuilder::IsInlinedProperty(GateRef attr)
         Int32(0));
 }
 
-inline GateRef StubBuilder::GetProtoCell(GateRef object)
+inline GateRef StubBuilder::GetPrototypeHandlerProtoCell(GateRef object)
 {
     GateRef protoCellOffset = IntPtr(PrototypeHandler::PROTO_CELL_OFFSET);
+    return Load(VariableType::JS_POINTER(), object, protoCellOffset);
+}
+
+inline GateRef StubBuilder::GetTransWithProtoHandlerProtoCell(GateRef object)
+{
+    GateRef protoCellOffset = IntPtr(TransWithProtoHandler::PROTO_CELL_OFFSET);
+    return Load(VariableType::JS_POINTER(), object, protoCellOffset);
+}
+
+inline GateRef StubBuilder::GetStoreAOTHandlerProtoCell(GateRef object)
+{
+    GateRef protoCellOffset = IntPtr(StoreAOTHandler::PROTO_CELL_OFFSET);
     return Load(VariableType::JS_POINTER(), object, protoCellOffset);
 }
 

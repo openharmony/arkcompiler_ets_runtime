@@ -91,4 +91,30 @@ for (let i = 0; i < 20; i++) {
     }
 }
 
+(function test1() {
+    let warmUpObj, testObj, Foo;
+    function SetUp() {
+        Foo = function () {}
+        Foo.prototype.a = 0;
+        warmUpObj = new Foo();
+        testObj = new Foo();
+    }
+    SetUp();
+
+    function test(o) {
+        for (let i  = 0;i < 1000; i++){}
+        o.a = 10;
+    }
+    test(warmUpObj);
+    Object.defineProperty(Foo.prototype, "a", {writable: false});
+    try {
+        test(testObj);
+        assert_unreachable();
+    } catch(e) {
+        print("cannot adjust");
+    }
+    let passed = testObj.a == Foo.prototype.a;
+    assert_equal(passed, true);
+})();
+
 test_end();

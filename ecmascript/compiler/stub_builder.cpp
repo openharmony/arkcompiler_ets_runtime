@@ -2561,7 +2561,7 @@ GateRef StubBuilder::LoadICWithHandler(
         BRANCH_LIKELY(TaggedIsPrototypeHandler(*handler), &handlerIsPrototypeHandler, &handlerNotPrototypeHandler);
         Bind(&handlerIsPrototypeHandler);
         {
-            GateRef cellValue = GetProtoCell(*handler);
+            GateRef cellValue = GetPrototypeHandlerProtoCell(*handler);
             BRANCH_LIKELY(TaggedIsUndefined(cellValue), &loopEnd, &cellNotUndefined);
             Bind(&cellNotUndefined);
             BRANCH(GetHasChanged(cellValue), &cellHasChanged, &loopEnd);
@@ -2838,7 +2838,7 @@ GateRef StubBuilder::ICStoreElement(GateRef glue, GateRef receiver, GateRef key,
         }
         Bind(&handlerNotInt);
         {
-            GateRef cellValue = GetProtoCell(*varHandler);
+            GateRef cellValue = GetPrototypeHandlerProtoCell(*varHandler);
             BRANCH(GetHasChanged(cellValue), &cellHasChanged, &loopEnd);
             Bind(&cellHasChanged);
             {
@@ -2960,7 +2960,7 @@ GateRef StubBuilder::StoreICWithHandler(GateRef glue, GateRef receiver, GateRef 
                     &handlerNotTransWithProtoHandler);
                 Bind(&handlerIsTransWithProtoHandler);
                 {
-                    GateRef cellValue = GetProtoCell(*handler);
+                    GateRef cellValue = GetTransWithProtoHandlerProtoCell(*handler);
                     BRANCH(GetHasChanged(cellValue), &cellHasChanged, &cellNotChanged);
                     Bind(&cellNotChanged);
                     {
@@ -2983,7 +2983,7 @@ GateRef StubBuilder::StoreICWithHandler(GateRef glue, GateRef receiver, GateRef 
         }
         Bind(&handlerIsPrototypeHandler);
         {
-            GateRef cellValue = GetProtoCell(*handler);
+            GateRef cellValue = GetPrototypeHandlerProtoCell(*handler);
             BRANCH(TaggedIsUndefined(cellValue), &loopEnd, &cellNotUndefined);
             Bind(&cellNotUndefined);
             BRANCH(TaggedIsNull(cellValue), &cellHasChanged, &cellNotNull);
@@ -3003,7 +3003,7 @@ GateRef StubBuilder::StoreICWithHandler(GateRef glue, GateRef receiver, GateRef 
             BRANCH(TaggedIsStoreAOTHandler(*handler), &handlerIsStoreAOTHandler, &handlerNotStoreAOTHandler);
             Bind(&handlerIsStoreAOTHandler);
             {
-                GateRef cellValue = GetProtoCell(*handler);
+                GateRef cellValue = GetStoreAOTHandlerProtoCell(*handler);
                 BRANCH(GetHasChanged(cellValue), &cellHasChanged, &aotCellNotChanged);
                 Bind(&aotCellNotChanged);
                 {

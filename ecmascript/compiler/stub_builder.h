@@ -474,7 +474,9 @@ public:
     GateRef GetTransitionHandlerInfo(GateRef obj);
     GateRef GetTransWithProtoHClass(GateRef obj);
     GateRef GetTransWithProtoHandlerInfo(GateRef obj);
-    GateRef GetProtoCell(GateRef object);
+    GateRef GetPrototypeHandlerProtoCell(GateRef object);
+    GateRef GetTransWithProtoHandlerProtoCell(GateRef object);
+    GateRef GetStoreAOTHandlerProtoCell(GateRef object);
     GateRef GetPrototypeHandlerHolder(GateRef object);
     GateRef GetPrototypeHandlerHandlerInfo(GateRef object);
     GateRef GetStoreAOTHandlerHolder(GateRef object);
