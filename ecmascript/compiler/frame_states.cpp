@@ -244,6 +244,9 @@ FrameLiveOut *FrameStateBuilder::GetOrOCreateBBLiveOut(size_t bbIndex)
 
 FrameContext *FrameStateBuilder::GetOrOCreateMergedContext(uint32_t bbIndex)
 {
+    if (bbIndex >= bbFrameContext_.size()) {
+        LOG_COMPILER(FATAL) << "bbIndex of FrameStateBuilder::GetOrOCreateMergedContext exceeds the limit.";
+    }
     auto context = bbFrameContext_[bbIndex];
     if (context == nullptr) {
         auto chunk = circuit_->chunk();
