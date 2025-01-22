@@ -287,12 +287,12 @@ public:
 
     void SetGCState(bool inGC)
     {
-        inGC_ = inGC;
+        inGC_.store(inGC, std::memory_order_relaxed);
     }
 
     bool InGC() const
     {
-        return inGC_;
+        return inGC_.load(std::memory_order_relaxed);
     }
 
     void NotifyHeapAliveSizeAfterGC(size_t size)
@@ -439,7 +439,7 @@ protected:
     bool shouldVerifyHeap_ {false};
     bool isVerifying_ {false};
     bool enablePageTagThreadId_ {false};
-    bool inGC_ {false};
+    std::atomic_bool inGC_ {false};
     int32_t recursionDepth_ {0};
 #ifndef NDEBUG
     bool triggerCollectionOnNewObject_ {true};

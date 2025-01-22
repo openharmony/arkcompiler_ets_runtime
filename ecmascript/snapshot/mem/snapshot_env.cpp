@@ -44,9 +44,6 @@ JSTaggedType SnapshotEnv::RelocateRootObjectAddr(uint32_t index)
 
 void SnapshotEnv::Iterate(RootVisitor &v, VMRootVisitType type)
 {
-    if (multiThreadCheckValue_.exchange(JSThread::GetCurrentThreadId()) != 0) {
-        LOG_ECMA(FATAL) << "SnapshotEnv push multi-thread check fail, thread id: " << multiThreadCheckValue_;
-    }
     if (type == VMRootVisitType::UPDATE_ROOT) {
         // during update root, rootObjectMap_ key need update
         std::unordered_map<JSTaggedType, uint32_t> rootObjectMap(rootObjectMap_.size());
@@ -64,7 +61,6 @@ void SnapshotEnv::Iterate(RootVisitor &v, VMRootVisitType type)
             v.VisitRoot(Root::ROOT_VM, slot);
         }
     }
-    multiThreadCheckValue_ = 0;
 }
 }  // namespace panda::ecmascript
 

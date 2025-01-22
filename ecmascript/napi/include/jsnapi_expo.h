@@ -1794,6 +1794,7 @@ public:
     static std::pair<std::string, std::string> GetCurrentModuleInfo(EcmaVM *vm, bool needRecordName = false);
     static std::string NormalizePath(const std::string &string);
     static void AllowCrossThreadExecution(EcmaVM *vm);
+    static bool CheckAndSetAllowCrossThreadExecution(EcmaVM *vm);
     static void SynchronizVMInfo(EcmaVM *vm, const EcmaVM *hostVM);
     static bool IsProfiling(EcmaVM *vm);
     static void SetProfilerState(const EcmaVM *vm, bool value);
