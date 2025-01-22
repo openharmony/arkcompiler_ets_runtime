@@ -48,3 +48,7 @@ TypeError
 5
 6
 RangeError
+---------------test for stable array sort where arr changeto dictionary array during sorting-----------
+---------------test for stable array sort where arr changeto dictionary array during sorting end-------
+---------------test for stable array sort where elements length change---------------------------------
+---------------test for stable array sort where elements length change end-----------------------------
