@@ -137,4 +137,6 @@ builtins reflect start
 false
 true
 tom
+RangeError
+RangeError
 builtins reflect end
