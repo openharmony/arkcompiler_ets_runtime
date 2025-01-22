@@ -630,9 +630,7 @@ bool ArkParseJsFrameInfo(uintptr_t byteCodePc, uintptr_t methodId, uintptr_t map
         LOG_ECMA(ERROR) << std::hex << "Failed to get methodId, pc: " << byteCodePc;
         return false;
     }
-    if (!methodId) {
-        methodId = codeInfo->methodId;
-    }
+    methodId = codeInfo->methodId;
     auto offset = codeInfo->offset;
     ParseJsFrameInfo(jsPandaFile, debugExtractor, EntityId(methodId), offset, *jsFunction, extractor->GetSourceMap());
 
@@ -1726,9 +1724,7 @@ bool JSStackTrace::GetJsFrameInfo(uintptr_t byteCodePc, uintptr_t methodId, uint
         LOG_ECMA(ERROR) << std::hex << "Failed to get methodId, pc: " << byteCodePc;
         return false;
     }
-    if (!methodId) {
-        methodId = codeInfo->methodId;
-    }
+    methodId = codeInfo->methodId;
     auto offset = codeInfo->offset;
     auto debugInfoExtractor =
         JSPandaFileManager::GetInstance()->GetJSPtExtractor(jsPandaFiles_[mapBase].get());
