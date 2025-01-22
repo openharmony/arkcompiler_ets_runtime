@@ -735,7 +735,6 @@ JSHandle<ConstantPool> EcmaContext::FindOrCreateConstPool(const JSPandaFile *jsP
         JSHandle<ConstantPool> newConstpool = ConstantPool::CreateUnSharedConstPool(vm_, jsPandaFile, id);
         JSHandle<ConstantPool> newSConstpool;
         if (jsPandaFile->IsLoadedAOT()) {
-            // worker thread is not active.
             AotConstantpoolPatcher::SetObjectFunctionFromConstPool(thread_, newConstpool);
             newSConstpool = ConstantPool::CreateSharedConstPoolForAOT(vm_, newConstpool, index);
         } else {
@@ -747,7 +746,8 @@ JSHandle<ConstantPool> EcmaContext::FindOrCreateConstPool(const JSPandaFile *jsP
     } else if (jsPandaFile->IsLoadedAOT()) {
         // For aot, after getting the cached shared constpool,
         // worker thread need to create and bind the correspoding unshared constpool.
-        FindOrCreateUnsharedConstpool(constpool);
+        JSHandle<ConstantPool> newConstpool = JSHandle<ConstantPool>(thread_, FindOrCreateUnsharedConstpool(constpool));
+        AotConstantpoolPatcher::SetObjectFunctionFromConstPool(thread_, newConstpool);
     }
     return JSHandle<ConstantPool>(thread_, constpool);
 }
