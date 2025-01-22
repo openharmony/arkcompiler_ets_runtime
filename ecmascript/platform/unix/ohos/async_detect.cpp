@@ -20,7 +20,7 @@
 namespace panda::ecmascript {
 void RegisterAsyncDetectCallBack([[maybe_unused]] EcmaVM *vm)
 {
-#if !defined(STANDALONE_MODE)
+#if !defined(STANDALONE_MODE) && !defined(CROSS_PLATFORM)
     if (vm->GetJSOptions().EnablePendingCheak()) {
         uv_loop_t *loop = reinterpret_cast<uv_loop_t *>(vm->GetLoop());
         if (loop == nullptr) {
@@ -41,7 +41,7 @@ void RegisterAsyncDetectCallBack([[maybe_unused]] EcmaVM *vm)
 #endif
 }
 
-#if !defined(STANDALONE_MODE)
+#if !defined(STANDALONE_MODE) && !defined(CROSS_PLATFORM)
 void AsyncDetectCallBack(uv_timer_t* handle)
 {
     AsyncStackTrace *asyncStackTrace = static_cast<AsyncStackTrace *>(handle->data);
