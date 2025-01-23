@@ -50,6 +50,7 @@ JSTaggedValue JSSharedMapIterator::NextInternal(JSThread *thread, JSHandle<JSTag
     IterationKind itemKind = iter->GetIterationKind();
     int totalElements = map->NumberOfElements() + map->NumberOfDeletedElements();
 
+    constexpr uint32_t NEW_ARRAY_LENGTH = 2; // 2 means the length of array
     JSMutableHandle<JSTaggedValue> keyHandle(thread, JSTaggedValue::Undefined());
     while (index < totalElements) {
         JSTaggedValue key = map->GetKey(index);
@@ -64,7 +65,7 @@ JSTaggedValue JSSharedMapIterator::NextInternal(JSThread *thread, JSHandle<JSTag
                 return JSIterator::CreateIterResultObject(thread, value, false).GetTaggedValue();
             }
             ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-            JSHandle<TaggedArray> array(factory->NewTaggedArray(2));  // 2 means the length of array
+            JSHandle<TaggedArray> array(factory->NewTaggedArray(NEW_ARRAY_LENGTH));
             array->Set(thread, 0, keyHandle);
             array->Set(thread, 1, value);
             JSHandle<JSTaggedValue> keyAndValue(JSArray::CreateArrayFromList(thread, array));
