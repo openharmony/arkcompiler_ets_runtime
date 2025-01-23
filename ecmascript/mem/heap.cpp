@@ -2152,7 +2152,11 @@ void Heap::TryTriggerFullMarkBySharedSize(size_t size)
 {
     newAllocatedSharedObjectSize_ += size;
     if (newAllocatedSharedObjectSize_ >= NEW_ALLOCATED_SHARED_OBJECT_SIZE_LIMIT) {
-        if (concurrentMarker_->IsEnabled()) {
+        if (thread_->IsMarkFinished() && GetConcurrentMarker()->IsTriggeredConcurrentMark() &&
+            !GetOnSerializeEvent() && InSensitiveStatus()) {
+            GetConcurrentMarker()->HandleMarkingFinished();
+            newAllocatedSharedObjectSize_ = 0;
+        } else if (concurrentMarker_->IsEnabled()) {
             SetFullMarkRequestedState(true);
             TryTriggerConcurrentMarking();
             newAllocatedSharedObjectSize_ = 0;
