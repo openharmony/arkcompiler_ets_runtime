@@ -369,7 +369,9 @@ void NativeInlineLowering::RunNativeInlineLowering()
                 TryInlineArrayPush(gate, argc, id, skipThis);
                 break;
             case BuiltinsStubCSigns::ID::ArraySlice:
-                TryInlineArraySlice(gate, argc, id, skipThis);
+                // disable slice inline because builtin call is faster than inline implementation.
+                // and the elementsKind in inline implementation is missed.
+                TryInlineArraySlice(gate, argc, id, false);
                 break;
             default:
                 break;

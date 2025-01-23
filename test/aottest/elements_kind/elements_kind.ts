@@ -189,3 +189,21 @@ function testNoneToNone(){
 }
 print(ArkTools.isAOTCompiled(testNoneToNone));
 testNoneToNone();
+
+function testElementsKindMigrate() {
+    let arr = [1, 2, 3, 4];
+    print(ArkTools.getElementsKind(arr));
+    arr[2] = 5.5
+    print(ArkTools.getElementsKind(arr));
+    let b = arr.slice(1, 3)
+    print(ArkTools.getElementsKind(b));
+    arr[10] = undefined;
+    print(ArkTools.getElementsKind(arr));
+
+    let arr1 = [1, 2, 3, 4];
+    print(ArkTools.getElementsKind(arr1));
+    arr1.push(5.5)
+    print(ArkTools.getElementsKind(arr1));
+}
+print(ArkTools.isAOTCompiled(testElementsKindMigrate));
+testElementsKindMigrate();
