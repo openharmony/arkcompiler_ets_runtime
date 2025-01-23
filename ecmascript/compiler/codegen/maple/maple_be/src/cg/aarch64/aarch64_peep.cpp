@@ -14,11 +14,6 @@
  */
 
 #include "aarch64_peep.h"
-#include "cg.h"
-#include "mpl_logging.h"
-#include "common_utils.h"
-#include "cg_option.h"
-#include "cg_irbuilder.h"
 #include "aarch64_cg.h"
 
 namespace maplebe {

@@ -14,13 +14,7 @@
  */
 
 #include "mempool.h"
-#include <cstdio>
-#include <cstdlib>
-#include <cstring>
-#include <iostream>
-#include <mutex>
 #include "securec.h"
-#include "mpl_logging.h"
 
 namespace maple {
 MemPoolCtrler memPoolCtrler;

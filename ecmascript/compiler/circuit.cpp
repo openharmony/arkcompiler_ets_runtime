@@ -13,12 +13,9 @@
  * limitations under the License.
  */
 
-#include "ecmascript/compiler/bytecode_circuit_builder.h"
 #include "ecmascript/compiler/circuit.h"
 #include "ecmascript/compiler/debug_info.h"
-#include "ecmascript/compiler/ecma_opcode_des.h"
 #include "ecmascript/compiler/gate_accessor.h"
-#include "ecmascript/platform/map.h"
 
 namespace panda::ecmascript::kungfu {
 Circuit::Circuit(NativeAreaAllocator* allocator, DebugInfo* debugInfo, const char* funcName,

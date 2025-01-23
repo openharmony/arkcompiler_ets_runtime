@@ -16,17 +16,12 @@
 #include "ecmascript/compiler/builtins/builtins_array_stub_builder.h"
 
 #include "ecmascript/builtins/builtins_string.h"
-#include "ecmascript/compiler/builtins/builtins_stubs.h"
 #include "ecmascript/compiler/builtins/builtins_typedarray_stub_builder.h"
 #include "ecmascript/compiler/call_stub_builder.h"
 #include "ecmascript/compiler/new_object_stub_builder.h"
-#include "ecmascript/compiler/profiler_operation.h"
-#include "ecmascript/compiler/rt_call_signature.h"
-#include "ecmascript/runtime_call_id.h"
 #include "ecmascript/js_array_iterator.h"
 #include "ecmascript/js_iterator.h"
 #include "ecmascript/compiler/access_object_stub_builder.h"
-#include "ecmascript/base/array_helper.h"
 
 namespace panda::ecmascript::kungfu {
 
