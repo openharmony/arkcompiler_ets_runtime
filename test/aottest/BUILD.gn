@@ -222,6 +222,7 @@ group("ark_aot_ts_test") {
     "not",
     "not_equal",
     "numberspeculativeretype",
+    "object_literal",
     "operations_stub_test",
     "optimization",
     "optimized_call",
