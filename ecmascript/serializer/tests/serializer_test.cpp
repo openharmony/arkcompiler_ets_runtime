@@ -1037,6 +1037,15 @@ public:
         TestHelper::DestroyEcmaVMWithScope(ecmaVm, scope);
     }
 
+    void Reset()
+    {
+        TestHelper::DestroyEcmaVMWithScope(ecmaVm, scope);
+        thread = nullptr;
+        ecmaVm = nullptr;
+        scope = nullptr;
+        TestHelper::CreateEcmaVMWithScope(ecmaVm, thread, scope);
+    }
+
     JSThread *thread {nullptr};
     EcmaVM *ecmaVm {nullptr};
     EcmaHandleScope *scope {nullptr};
@@ -2480,6 +2489,7 @@ HWTEST_F_L0(JSSerializerTest, SerializeJSSharedSetBasic1)
 
 HWTEST_F_L0(JSSerializerTest, SerializeMultiThreadJSSharedSet)
 {
+    Reset();
     JSHandle<JSSharedSet> jsSet = CreateSSet(thread);
     ValueSerializer *serializer = new ValueSerializer(thread);
     bool success = serializer->WriteValue(thread, JSHandle<JSTaggedValue>(jsSet),
