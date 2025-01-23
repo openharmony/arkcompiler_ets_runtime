@@ -675,7 +675,7 @@ JSTaggedValue JSStableArray::JoinUseTreeString(const JSThread *thread,
 JSTaggedValue JSStableArray::Join(JSHandle<JSTaggedValue> receiverValue, EcmaRuntimeCallInfo *argv)
 {
     JSThread *thread = argv->GetThread();
-    uint32_t len = base::ArrayHelper::GetArrayLength(thread, receiverValue);
+    uint32_t length = base::ArrayHelper::GetArrayLength(thread, receiverValue);
     JSHandle<JSTaggedValue> sepHandle = base::BuiltinsBase::GetCallArg(argv, 0);
     int sep = ',';
     uint32_t sepLength = 1;
