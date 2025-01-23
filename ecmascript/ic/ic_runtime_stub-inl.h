@@ -339,6 +339,10 @@ void ICRuntimeStub::StoreWithTransition(JSThread *thread, JSObject *receiver, JS
         handlerInfo = JSTaggedValue::UnwrapToUint64(transitionHandler->GetHandlerInfo());
     }
     JSHandle<JSHClass> newHClassHandle(thread, newHClass);
+    JSHandle<JSHClass> oldHClassHandle(thread, receiver->GetJSHClass());
+    if (newHClassHandle->IsPrototype()) {
+        newHClassHandle->SetProtoChangeDetails(thread, oldHClassHandle->GetProtoChangeDetails());
+    }
     JSHandle<JSObject> objHandle(thread, receiver);
     ElementsKind oldKind = receiver->GetJSHClass()->GetElementsKind();
     JSHClass::RestoreElementsKindToGeneric(newHClass);

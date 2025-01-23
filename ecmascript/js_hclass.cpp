@@ -319,6 +319,9 @@ void JSHClass::AddProperty(const JSThread *thread, const JSHandle<JSObject> &obj
             }
             JSHClass::EnablePHCProtoChangeMarker(thread, newHClass);
         } else {
+            if (newClass->IsPrototype()) {
+                newHClass->SetProtoChangeDetails(thread, jshclass->GetProtoChangeDetails());
+            }
             JSHClass::NotifyHclassChanged(thread, jshclass, newHClass, key.GetTaggedValue());
         }
 #endif
