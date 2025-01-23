@@ -683,6 +683,7 @@ ecma_source = [
   "ecmascript/byte_array.cpp",
   "ecmascript/ohos/code_decrypt.cpp",
   "ecmascript/ohos/enable_aot_list_helper.cpp",
+  "ecmascript/compiler/aot_constantpool_patcher.cpp",
   "ecmascript/compiler/aot_file/elf_builder.cpp",
   "ecmascript/compiler/aot_file/elf_reader.cpp",
   "ecmascript/compiler/aot_file/elf_checker.cpp",
