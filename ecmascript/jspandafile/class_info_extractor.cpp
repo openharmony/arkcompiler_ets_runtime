@@ -764,7 +764,7 @@ JSHandle<JSFunction> SendableClassDefiner::DefineSendableClassFromExtractor(JSTh
     JSHandle<NumberDictionary> elementsDic = NumberDictionary::CreateInSharedHeap(thread);
     bool hasElement = false;
     if (!constructorHClass->IsDictionaryMode() && staticFields > 0) {
-        auto layout = JSHandle<LayoutInfo>(thread, constructorHClass->GetLayout());      
+        auto layout = JSHandle<LayoutInfo>(thread, constructorHClass->GetLayout());
         AddFieldTypeToHClass(
             thread, staticFieldArray, length, layout, constructorHClass, elementsDic, hasElement, ~0U);
     }
