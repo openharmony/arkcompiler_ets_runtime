@@ -94,6 +94,7 @@ Create from sendable array. err: BusinessError: Parameter error.Only accept send
 4,3
 4,3,2,6,4,3,4
 abcdcde,bcdecde,cdefcde,cfghcde,abcdcdecde,bcdecdecde,cdefcdecde,cfghcdecde
+1,3,5,11,13
 Start Test fromTemplate
 artTSTest1: 1,2,3
 arkTSTest2: 1,2,3

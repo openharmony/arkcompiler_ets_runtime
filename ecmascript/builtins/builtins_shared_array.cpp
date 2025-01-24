@@ -258,7 +258,6 @@ JSTaggedValue BuiltinsSharedArray::From(EcmaRuntimeCallInfo *argv)
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     // 6. If usingIterator is not undefined, then
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     if (!usingIterator->IsUndefined()) {
         // Fast path for MapIterator
         JSHandle<JSTaggedValue> iterator(thread, JSTaggedValue::Hole());
@@ -408,43 +407,11 @@ JSTaggedValue BuiltinsSharedArray::From(EcmaRuntimeCallInfo *argv)
     //     i. Let mappedValue be Call(mapfn, T, «kValue, k»).
     //   e. Else, let mappedValue be kValue.
     //   f. Let defineStatus be CreateDataPropertyOrThrow(A, Pk, mappedValue).
-    JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
-    JSMutableHandle<JSTaggedValue> mapValue(thread, JSTaggedValue::Undefined());
-    int64_t k = 0;
-    JSHandle<TaggedArray> eleArray = factory->NewTaggedArray(len, JSTaggedValue::Undefined(),
-                                                             MemSpaceType::SHARED_OLD_SPACE);
-    while (k < len) {
-        JSHandle<JSTaggedValue> kValue = JSSharedArray::FastGetPropertyByValue(thread, arrayLike, k);
-        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        if (mapping) {
-            key.Update(JSTaggedValue(k));
-            const uint32_t argsLength = 2; // 2: «kValue, k»
-            EcmaRuntimeCallInfo *info =
-                EcmaInterpreter::NewRuntimeCallInfo(thread, mapfn, thisArgHandle, undefined, argsLength);
-            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-            info->SetCallArg(kValue.GetTaggedValue(), key.GetTaggedValue());
-            JSTaggedValue callResult = JSFunction::Call(info);
-            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-            mapValue.Update(callResult);
-        } else {
-            mapValue.Update(kValue.GetTaggedValue());
-        }
-        if (!mapValue->IsSharedType()) {
-            auto error = ContainerError::ParamError(thread, "Parameter error.Only accept sendable value.");
-            THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
-        }
-        eleArray->Set(thread, k, mapValue);
-        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        k++;
+    if (mapping) {
+        return BuiltinsSharedArray::FromArray<false>(thread, arrayLike, thisArgHandle, mapfn, newArrayHandle);
+    } else {
+        return BuiltinsSharedArray::FromArrayNoMaping(thread, arrayLike, newArrayHandle);
     }
-    newArrayHandle->SetElements(thread, eleArray);
-    // 17. Let setStatus be Set(A, "length", len, true).
-    JSSharedArray::Cast(*newArrayHandle)->SetArrayLength(thread, len);
-    newArrayHandle->GetJSHClass()->SetExtensible(false);
-    // 18. ReturnIfAbrupt(setStatus).
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    // 19. Return A.
-    return newArrayHandle.GetTaggedValue();
 }
 
 // Array.create ( arrayLength, initialValue )
