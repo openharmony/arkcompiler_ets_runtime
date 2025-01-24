@@ -30,7 +30,7 @@ bool PGOProfilerDecoder::Load(const std::shared_ptr<PGOAbcFilePool> &externalAbc
 
     if (!PGOProfilerHeader::ParseFromBinary(addr, fileMapAddr_.GetSize(), &header_)) {
         UnLoadAPBinaryFile();
-        LOG_PGO(ERROR) << "Parse profiler header failed";
+        LOG_PGO(ERROR) << "parse profiler header failed";
         return false;
     }
     pandaFileInfos_.ParseFromBinary(addr, header_->GetPandaInfoSection());
@@ -68,7 +68,7 @@ bool PGOProfilerDecoder::LoadAndVerify(const std::unordered_map<CString, uint32_
 {
     // The file does not exist. Enter full compiler mode.
     if (inPath_.empty()) {
-        LOG_PGO(INFO) << "When the file is empty. Enter full compiler mode.";
+        LOG_PGO(INFO) << "file path is empty, enter full compiler mode.";
         Clear();
         return true;
     }

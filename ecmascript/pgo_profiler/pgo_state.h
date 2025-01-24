@@ -19,54 +19,76 @@
 #include <atomic>
 #include <string>
 
+#include "ecmascript/log_wrapper.h"
 #include "ecmascript/platform/mutex.h"
+
+#define PRINT_STATE_CHANGE false
 
 namespace panda::ecmascript::pgo {
 class PGOProfiler;
+class PGOProfilerManager;
 class PGOState {
 public:
+    PGOState();
+
     enum class State : uint8_t {
         START,
-        PAUSE,
         SAVE,
         STOP,
-        FORCE_SAVE_START,
-        FORCE_SAVE_PAUSE,
+    };
+
+    enum class GCState : uint8_t {
+        RUNNING,
+        WAITING,
+        STOP,
     };
 
     static std::string ToString(State state);
+    static std::string ToString(GCState state);
     State GetState() const;
     void SetState(State state);
-    bool IsGcWaiting() const;
-    bool IsStop() const;
-    bool IsStart() const;
+    GCState GetGCState() const;
+    void SetGCState(GCState state);
+    bool GCIsWaiting() const;
+    bool GCIsRunning() const;
+    bool GCIsStop() const;
     void SuspendByGC();
-    void SetStopIfStartAndNotify();
-    void WaitDumpIfStart();
-    void WaitDump();
-    void SetStopIfSaveAndNotify();
-    void SetStartIfStopAndDispatchDumpTask(PGOProfiler* profiler);
     void ResumeByGC(PGOProfiler* profiler);
-    void ForceDump(PGOProfiler* profiler);
-
+    bool StateIsStop() const;
+    bool StateIsStart() const;
+    void SetStopAndNotify();
     bool SetStartIfStop();
-    bool SetStopIfStart();
-    bool SetStopIfSave();
-    bool SetPauseIfStartByGC();
-    bool SetStartIfPauseByGC();
-    void NotifyAll();
-    void IncrementGcCount();
-    void DecrementGcCount();
-    bool GcCountIsZero() const;
-    int GetGcCount() const;
+    void WaitDump();
+    void WaitGC();
+    void NotifyAllDumpWaiters();
+    void NotifyAllGCWaiters();
+    bool TryChangeState(State expected, State desired);
+    void StartDumpBeforeDestroy();
 
 private:
-    bool TryTransitionState(State expected, State desired);
+#if PRINT_STATE_CHANGE
+    template<typename T>
+    void PrintStateChange(T expected, T desired)
+    {
+        LOG_PGO(INFO) << ToString(expected) << " -> " << ToString(desired);
+    }
+
+    template<typename T>
+    void PrintStateChange(T original, T expected, T desired)
+    {
+        LOG_PGO(INFO) << ToString(original) << " -x " << ToString(desired) << ", " << ToString(expected);
+    }
+#endif
 
     std::atomic<State> state_ {State::STOP};
-    Mutex pgoDumpMutex_;
-    ConditionVariable pgoDumpCondition_;
-    std::atomic_int gcCount_ {0};
+    std::atomic<GCState> gcState_ {GCState::STOP};
+    ConditionVariable stateCondition_;
+    ConditionVariable gcCondition_;
+    PGOProfilerManager* manager_ {nullptr};
+    std::atomic_bool needRedump_ {false};
+
+protected:
+    Mutex stateMutex_;
 };
 } // namespace panda::ecmascript::pgo
 
