@@ -42,6 +42,8 @@ using UnwBackTraceFunc = int (*)(void**, int);
 
 static std::map<void *, Dl_info> stackInfoCache;
 
+std::shared_mutex rwMutex;
+
 #if defined(ENABLE_UNWINDER) && defined(__aarch64__)
 static inline ARK_INLINE void GetPcFpRegs([[maybe_unused]] void *regs)
 {
@@ -88,6 +90,24 @@ bool GetPcs(size_t &size, uintptr_t* pcs)
     return true;
 }
 
+bool FindStackInfoCache(uintptr_t pcs, Dl_info &info)
+{
+    std::shared_lock<std::shared_mutex> lock(rwMutex);
+    auto iter = stackInfoCache.find(reinterpret_cast<void *>(pcs));
+    if (iter != stackInfoCache.end()) {
+        info = iter->second;
+        return true;
+    } else {
+        return false;
+    }
+}
+
+void EmplaceStackInfoCache(uintptr_t pcs, const Dl_info &info)
+{
+    std::unique_lock<std::shared_mutex> lock(rwMutex);
+    stackInfoCache.emplace(reinterpret_cast<void *>(pcs), info);
+}
+
 void Backtrace(std::ostringstream &stack, bool enableCache)
 {
     uintptr_t pcs[MAX_STACK_SIZE] = {0};
@@ -103,15 +123,12 @@ void Backtrace(std::ostringstream &stack, bool enableCache)
 #endif
     for (; i < unwSz; i++) {
         Dl_info info;
-        auto iter = stackInfoCache.find(reinterpret_cast<void *>(pcs[i]));
-        if (enableCache && iter != stackInfoCache.end()) {
-            info = iter->second;
-        } else {
+        if (!FindStackInfoCache(pcs[i], info)) {
             if (!dladdr(reinterpret_cast<void *>(pcs[i]), &info)) {
                 break;
             }
             if (enableCache) {
-                stackInfoCache.emplace(reinterpret_cast<void *>(pcs[i]), info);
+                EmplaceStackInfoCache(pcs[i], info);
             }
         }
         const char *file = info.dli_fname ? info.dli_fname : "";
