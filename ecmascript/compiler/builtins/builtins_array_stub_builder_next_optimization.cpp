@@ -240,23 +240,39 @@ GateRef BuiltinsArrayStubBuilder::DoSortOptimised(GateRef glue, GateRef receiver
                 }
                 Bind(&afterGettingmiddleValue);
                 {
-                    Label intOrDouble(env);
-                    Label notIntAndDouble(env);
+                    Label isInt(env);
+                    Label notInt(env);
+                    Label isDouble(env);
+                    Label notDouble(env);
                     Label exchangeIndex(env);
                     GateRef middleVal = *middleValue;
                     GateRef presentVal = *presentValue;
                     DEFVARIABLE(compareResult, VariableType::INT32(), Int32(0));
-                    GateRef intDoubleCheck = BitOr(BitAnd(TaggedIsInt(middleVal), TaggedIsInt(presentVal)),
-                                                   BitAnd(TaggedIsDouble(middleVal), TaggedIsDouble(presentVal)));
-                    BRANCH(intDoubleCheck, &intOrDouble, &notIntAndDouble);
-                    Bind(&intOrDouble);
+                    GateRef intCheck = LogicAndBuilder(env)
+                                       .And(TaggedIsInt(middleVal))
+                                       .And(TaggedIsInt(presentVal))
+                                       .Done();
+                    BRANCH(intCheck, &isInt, &notInt);
+                    Bind(&isInt);
                     {
                         compareResult =
-                            CallNGCRuntime(glue, RTSTUB_ID(FastArraySort), {*middleValue, *presentValue});
+                            CallNGCRuntime(glue, RTSTUB_ID(IntLexicographicCompare), {*middleValue, *presentValue});
                         Jump(&exchangeIndex);
                     }
-                    Bind(&notIntAndDouble);
+                    Bind(&notInt);
                     {
+                        GateRef doubleCheck = LogicAndBuilder(env)
+                                              .And(TaggedIsDouble(middleVal))
+                                              .And(TaggedIsDouble(presentVal))
+                                              .Done();
+                        BRANCH(doubleCheck, &isDouble, &notDouble);
+                        Bind(&isDouble);
+                        {
+                            compareResult = CallNGCRuntime(glue,
+                                RTSTUB_ID(DoubleLexicographicCompare), {*middleValue, *presentValue});
+                            Jump(&exchangeIndex);
+                        }
+                        Bind(&notDouble);
                         Label isString(env);
                         GateRef strBool = LogicAndBuilder(env)
                                           .And(TaggedIsString(middleVal))
@@ -472,18 +488,36 @@ GateRef BuiltinsArrayStubBuilder::DoSortOptimisedFast(GateRef glue, GateRef rece
                         Jump(&exchangeIndex);
                     }
                     Bind(&presentNotUndefined);
-                    GateRef intDoubleCheck = BitOr(BitAnd(TaggedIsInt(*middleValue),
-                                                          TaggedIsInt(*presentValue)),
-                                                   BitAnd(TaggedIsDouble(*middleValue),
-                                                          TaggedIsDouble(*presentValue)));
-                    BRANCH(intDoubleCheck, &intOrDouble, &notIntAndDouble);
-                    Bind(&intOrDouble);
+                    Label isInt(env);
+                    Label notInt(env);
+                    Label isDouble(env);
+                    Label notDouble(env);
+                    GateRef middleVal = *middleValue;
+                    GateRef presentVal = *presentValue;
+                    GateRef intCheck = LogicAndBuilder(env)
+                                       .And(TaggedIsInt(middleVal))
+                                       .And(TaggedIsInt(presentVal))
+                                       .Done();
+                    BRANCH(intCheck, &isInt, &notInt);
+                    Bind(&isInt);
                     {
                         compareResult =
-                            CallNGCRuntime(glue, RTSTUB_ID(FastArraySort), {*middleValue, *presentValue});
+                            CallNGCRuntime(glue, RTSTUB_ID(IntLexicographicCompare), {*middleValue, *presentValue});
                         Jump(&exchangeIndex);
                     }
-                    Bind(&notIntAndDouble);
+                    Bind(&notInt);
+                    GateRef doubleCheck = LogicAndBuilder(env)
+                                          .And(TaggedIsDouble(middleVal))
+                                          .And(TaggedIsDouble(presentVal))
+                                          .Done();
+                    BRANCH(doubleCheck, &isDouble, &notDouble);
+                    Bind(&isDouble);
+                    {
+                        compareResult = CallNGCRuntime(glue,
+                            RTSTUB_ID(DoubleLexicographicCompare), {*middleValue, *presentValue});
+                        Jump(&exchangeIndex);
+                    }
+                    Bind(&notDouble);
                     Label isString(env);
                     GateRef stringCheck = BitAnd(TaggedIsString(*middleValue),
                                                  TaggedIsString(*presentValue));

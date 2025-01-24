@@ -1777,7 +1777,7 @@ GateRef BuiltinsArrayStubBuilder::DoSort(GateRef glue, GateRef receiver, bool is
                     Bind(&isInt);
                     {
                         GateRef compareResult =
-                            CallNGCRuntime(glue, RTSTUB_ID(FastArraySort), {*middleValue, *presentValue});
+                            CallNGCRuntime(glue, RTSTUB_ID(IntLexicographicCompare), {*middleValue, *presentValue});
                         Label less0(env);
                         Label greater0(env);
                         BRANCH(Int32LessThanOrEqual(compareResult, Int32(0)), &less0, &greater0);

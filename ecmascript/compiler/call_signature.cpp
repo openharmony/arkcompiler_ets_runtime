@@ -1784,11 +1784,27 @@ DEF_CALL_SIGNATURE(BigIntEquals)
     callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
 }
 
-DEF_CALL_SIGNATURE(FastArraySort)
+DEF_CALL_SIGNATURE(IntLexicographicCompare)
 {
     // 2 : 2 input parameters
-    CallSignature fastArraySort("FastArraySort", 0, 2, ArgumentsOrder::DEFAULT_ORDER, VariableType::INT32());
-    *callSign = fastArraySort;
+    CallSignature intLexicographicCompare("IntLexicographicCompare", 0, 2,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::INT32());
+    *callSign = intLexicographicCompare;
+    std::array<VariableType, 2> params = { // 2 : 2 input parameters
+        VariableType::JS_ANY(),
+        VariableType::JS_ANY()
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetGCLeafFunction(true);
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
+}
+
+DEF_CALL_SIGNATURE(DoubleLexicographicCompare)
+{
+    // 2 : 2 input parameters
+    CallSignature doubleLexicographicCompare("DoubleLexicographicCompare", 0, 2,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::INT32());
+    *callSign = doubleLexicographicCompare;
     std::array<VariableType, 2> params = { // 2 : 2 input parameters
         VariableType::JS_ANY(),
         VariableType::JS_ANY()
