@@ -96,6 +96,7 @@ public:
     static constexpr char PHYCICAL_FILE_PATH[] = "/src/main";
     static constexpr char VMA_NAME_ARKTS_CODE[] = "ArkTS Code";
     static constexpr char ENTRY_MAIN_FUNCTION[] = "_GLOBAL::func_main_0";
+    static constexpr char ENTRY_FUNCTION_NAME[] = "func_main_0";
     static constexpr char TRUE_FLAG[] = "true";
 
     static constexpr size_t MAX_PACKAGE_LEVEL = 1;

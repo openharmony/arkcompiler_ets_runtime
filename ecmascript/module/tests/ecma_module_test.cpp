@@ -2868,14 +2868,21 @@ HWTEST_F_L0(EcmaModuleTest, ProcessModuleLoadInfoForESM)
     JSTaggedValue res2 = ModuleTools::ProcessModuleNameSpaceLoadInfo(thread, module1, module2);
     EXPECT_NE(res2, JSTaggedValue::Exception());
 
-    // test HotReload
-    thread->GetCurrentEcmaContext()->SetStageOfHotReload(StageOfHotReload::LOAD_END_EXECUTE_PATCHMAIN);
-    JSTaggedValue res3 = ModuleTools::ProcessModuleLoadInfo(thread, module1, indexBinding.GetTaggedValue(), 0);
+    JSTaggedValue res3 = ModuleTools::ProcessLazyModuleLoadInfo(thread, module1, indexBinding.GetTaggedValue(), 0);
     EXPECT_EQ(res3, val.GetTaggedValue());
 
-    thread->GetCurrentEcmaContext()->AddPatchModule(recordName2, JSHandle<JSTaggedValue>::Cast(module2));
+    // test HotReload
+    thread->GetCurrentEcmaContext()->SetStageOfHotReload(StageOfHotReload::LOAD_END_EXECUTE_PATCHMAIN);
     JSTaggedValue res4 = ModuleTools::ProcessModuleLoadInfo(thread, module1, indexBinding.GetTaggedValue(), 0);
     EXPECT_EQ(res4, val.GetTaggedValue());
+    JSTaggedValue res5 = ModuleTools::ProcessLazyModuleLoadInfo(thread, module1, indexBinding.GetTaggedValue(), 0);
+    EXPECT_EQ(res5, val.GetTaggedValue());
+
+    thread->GetCurrentEcmaContext()->AddPatchModule(recordName2, JSHandle<JSTaggedValue>::Cast(module2));
+    JSTaggedValue res6 = ModuleTools::ProcessModuleLoadInfo(thread, module1, indexBinding.GetTaggedValue(), 0);
+    EXPECT_EQ(res6, val.GetTaggedValue());
+    JSTaggedValue res7 = ModuleTools::ProcessLazyModuleLoadInfo(thread, module1, indexBinding.GetTaggedValue(), 0);
+    EXPECT_EQ(res7, val.GetTaggedValue());
 
     thread->GetCurrentEcmaContext()->SetModuleLogger(nullptr);
     delete moduleLogger;
@@ -2929,6 +2936,10 @@ HWTEST_F_L0(EcmaModuleTest, ProcessModuleLoadInfoForCJS)
 
     JSTaggedValue res2 = ModuleTools::ProcessModuleLoadInfo(thread, module1, resolution.GetTaggedValue(), 0);
     EXPECT_EQ(res2, JSTaggedValue::Exception());
+    thread->ClearException();
+
+    JSTaggedValue res3 = ModuleTools::ProcessLazyModuleLoadInfo(thread, module1, resolution.GetTaggedValue(), 0);
+    EXPECT_EQ(res3, JSTaggedValue::Exception());
     thread->GetCurrentEcmaContext()->SetModuleLogger(nullptr);
     delete moduleLogger;
 }
@@ -2970,9 +2981,14 @@ HWTEST_F_L0(EcmaModuleTest, ProcessModuleLoadInfoForNativeModule)
 
     JSTaggedValue res1 = ModuleTools::ProcessModuleLoadInfo(thread, module1, resolution.GetTaggedValue(), 0);
     EXPECT_EQ(res1, JSTaggedValue::Exception());
+    thread->ClearException();
 
     JSTaggedValue res2 = ModuleTools::ProcessModuleNameSpaceLoadInfo(thread, module1, module2);
     EXPECT_NE(res2, JSTaggedValue::Exception());
+    thread->ClearException();
+
+    JSTaggedValue res3 = ModuleTools::ProcessLazyModuleLoadInfo(thread, module1, resolution.GetTaggedValue(), 0);
+    EXPECT_EQ(res3, JSTaggedValue::Exception());
     thread->GetCurrentEcmaContext()->SetModuleLogger(nullptr);
     delete moduleLogger;
 }
@@ -3014,11 +3030,20 @@ HWTEST_F_L0(EcmaModuleTest, ResolvedBindingForLog)
     JSTaggedValue res1 = ModuleTools::ProcessModuleLoadInfo(thread, module1, recordIndexBinding.GetTaggedValue(), 0);
     EXPECT_EQ(res1, val.GetTaggedValue());
 
+    JSTaggedValue res2 = ModuleTools::ProcessLazyModuleLoadInfo(
+        thread, module1, recordIndexBinding.GetTaggedValue(), 0);
+    EXPECT_EQ(res2, val.GetTaggedValue());
+
     // test ResolvedRecordBinding
     JSHandle<ResolvedRecordBinding> nameBinding =
         objectFactory->NewSResolvedRecordBindingRecord(recordNameHdl, val);
-    JSTaggedValue res2 = ModuleTools::ProcessModuleLoadInfo(thread, module1, nameBinding.GetTaggedValue(), 0);
-    EXPECT_EQ(res2, JSTaggedValue::Exception());
+    JSTaggedValue res3 = ModuleTools::ProcessModuleLoadInfo(thread, module1, nameBinding.GetTaggedValue(), 0);
+    EXPECT_EQ(res3, JSTaggedValue::Exception());
+    thread->ClearException();
+
+    JSTaggedValue res4 = ModuleTools::ProcessLazyModuleLoadInfo(thread, module1, nameBinding.GetTaggedValue(), 0);
+    EXPECT_EQ(res4, JSTaggedValue::Exception());
+
     thread->GetCurrentEcmaContext()->SetModuleLogger(nullptr);
     delete moduleLogger;
 }

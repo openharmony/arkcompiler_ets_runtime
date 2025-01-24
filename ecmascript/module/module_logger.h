@@ -40,7 +40,8 @@ public:
     }
     void SetStartTime(const CString &recordName);
     void SetEndTime(const CString &recordName);
-    void PostModuleLoggerTask(int32_t id, EcmaVM *vm);
+    static void SetModuleLoggerTask(EcmaVM *vm);
+    static void PrintModuleLoadInfoTask(void *data);
     void InsertModuleLoadInfo(JSHandle<SourceTextModule> currentModule,
                               JSHandle<SourceTextModule> exportModule,
                               int32_t index);
@@ -50,11 +51,11 @@ public:
     static std::string ToStringWithPrecision(const double num, const uint8_t n);
 
 private:
-    static constexpr const int MILLISECONDS_PER_SEC = 1000;
+    static constexpr const uint32_t MILLISECONDS_PER_SEC = 1000;
     static constexpr const double DOUBLE_MILLISECONDS_PER_SEC = 1000.0;
-    static constexpr const int TWO = 2;
-    static constexpr const int THREE = 3;
-    static constexpr const double TWO_SECONDS = TWO * MILLISECONDS_PER_SEC * MILLISECONDS_PER_SEC;
+    static constexpr const uint8_t TWO = 2;
+    static constexpr const uint8_t THREE = 3;
+    static constexpr const uint64_t TWO_SECONDS = TWO * MILLISECONDS_PER_SEC;
     static constexpr const char FILEDIR[] = "/data/storage/el2/base/files/";
     static constexpr const char SUFFIX[] = "_redundant_file.txt";
 
@@ -70,7 +71,9 @@ private:
     void PrintUnusedFileInfo() const;
     void ProcessModuleExecuteTime();
     EcmaVM *vm_ {nullptr};
+    uint32_t tid_ {0};
     CUnorderedMap<CString, ModuleLoadInfo*> jsModuleLoadInfo_ {};
+    CVector<std::pair<CString, ModuleLoadInfo*>> jsModuleLoadInfoRes_;
     uint32_t totalFileNumber_ {0};
     uint32_t unusedFileNumber_ {0};
     uint32_t usedFileNumber_ {0};
@@ -78,19 +81,6 @@ private:
     int64_t usedFileTime_ {0};
     int64_t unusedFileTime_ {0};
     Mutex mutex_;
-
-    class ModuleLoggerTask : public Task {
-    public:
-        ModuleLoggerTask(int32_t id, EcmaVM *vm)
-            : Task(id), vm_(vm) {}
-        ~ModuleLoggerTask() override = default;
-        bool Run([[maybe_unused]]uint32_t threadIndex) override;
-
-        NO_COPY_SEMANTIC(ModuleLoggerTask);
-        NO_MOVE_SEMANTIC(ModuleLoggerTask);
-    private:
-        EcmaVM *vm_ {nullptr};
-    };
 };
 } // namespace panda::ecmascript
 #endif // ECMASCRIPT_MODULE_MODULE_LOGGER_H

@@ -124,7 +124,7 @@ bool EcmaContext::Initialize()
     if (vm_->GetJSOptions().GetTypedOpProfiler()) {
         typedOpProfiler_ = new TypedOpProfiler();
     }
-    if (vm_->GetJSOptions().EnableModuleLog() && !vm_->GetJSOptions().IsWorker()) {
+    if (vm_->GetJSOptions().EnableModuleLog()) {
         moduleLogger_ = new ModuleLogger(vm_);
     }
     functionProtoTransitionTable_ = new FunctionProtoTransitionTable(thread_);
@@ -348,7 +348,7 @@ Expected<JSTaggedValue, bool> EcmaContext::CommonInvokeEcmaEntrypoint(const JSPa
     }
     ModuleLogger *moduleLogger = GetModuleLogger();
     if (moduleLogger != nullptr) {
-        moduleLogger->SetStartTime(CString(entryPoint));
+        moduleLogger->SetStartTime(entry);
     }
     if (jsPandaFile->IsModule(recordInfo)) {
         global = undefined;
@@ -377,7 +377,7 @@ Expected<JSTaggedValue, bool> EcmaContext::CommonInvokeEcmaEntrypoint(const JSPa
     if (jsPandaFile->IsCjs(recordInfo)) {
         CJSExecution(func, global, jsPandaFile, entryPoint);
         if (moduleLogger != nullptr) {
-            moduleLogger->SetEndTime(CString(entryPoint));
+            moduleLogger->SetEndTime(entry);
         }
     } else {
         if (aotFileManager_->IsLoadMain(jsPandaFile, entry)) {
@@ -400,7 +400,7 @@ Expected<JSTaggedValue, bool> EcmaContext::CommonInvokeEcmaEntrypoint(const JSPa
             result = EcmaInterpreter::Execute(info);
         }
         if (moduleLogger != nullptr) {
-            moduleLogger->SetEndTime(CString(entryPoint));
+            moduleLogger->SetEndTime(entry);
         }
 
         if (!thread_->HasPendingException() && IsStaticImport(executeType)) {

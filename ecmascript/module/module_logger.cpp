@@ -17,16 +17,22 @@
 
 #include "ecmascript/ecma_context.h"
 #include "ecmascript/module/module_path_helper.h"
+#include "ecmascript/platform/parameters.h"
 #include "ecmascript/runtime_lock.h"
-
-
 namespace panda::ecmascript {
 
-ModuleLogger::ModuleLogger(EcmaVM *vm) : vm_(vm) {}
+ModuleLogger::ModuleLogger(EcmaVM *vm) : vm_(vm)
+{
+    tid_ = os::thread::GetCurrentThreadId();
+}
 
 void ModuleLogger::PrintModuleLoadInfo()
 {
     ProcessModuleExecuteTime();
+    // copy jsModuleLoadInfo from map to vector in order to sort by cost time.
+    jsModuleLoadInfoRes_.insert(jsModuleLoadInfoRes_.begin(), jsModuleLoadInfo_.begin(), jsModuleLoadInfo_.end());
+    std::sort(jsModuleLoadInfoRes_.begin(), jsModuleLoadInfoRes_.end(),
+        [](auto &x, auto &y) { return x.second->time > y.second->time; });
     PrintSummary();
     PrintUsedFileInfo();
     PrintUnusedFileInfo();
@@ -34,7 +40,11 @@ void ModuleLogger::PrintModuleLoadInfo()
 
 bool ModuleLogger::CreateResultFile(std::string &path) const
 {
-    path = FILEDIR + std::string(vm_->GetBundleName().c_str()) + SUFFIX;
+    path = FILEDIR + std::string(vm_->GetBundleName().c_str());
+    if (vm_->IsWorkerThread()) {
+        path += "_" + std::to_string(tid_);
+    }
+    path += SUFFIX;
     const mode_t defaultMode = S_IRUSR | S_IWUSR | S_IRGRP; // -rw-r--
     int fd = creat(path.c_str(), defaultMode);
     if (fd == -1) {
@@ -47,7 +57,11 @@ bool ModuleLogger::CreateResultFile(std::string &path) const
 
 bool ModuleLogger::OpenResultFile(std::string &path) const
 {
-    path = FILEDIR + std::string(vm_->GetBundleName().c_str()) + SUFFIX;
+    path = FILEDIR + std::string(vm_->GetBundleName().c_str());
+    if (vm_->IsWorkerThread()) {
+        path += "_" + std::to_string(tid_);
+    }
+    path += SUFFIX;
     if (access(path.c_str(), F_OK) == 0) {
         if (access(path.c_str(), W_OK) == 0) {
             LOG_ECMA(DEBUG) << "file open success";
@@ -140,7 +154,7 @@ void ModuleLogger::PrintUsedFileInfo() const
                         + std::to_string(usedFileTime_) + "ms\n";
     fileHandle << start;
     int32_t fileNumber = 1;
-    for (auto &i : jsModuleLoadInfo_) {
+    for (auto &i : jsModuleLoadInfoRes_) {
         ModuleLoadInfo *info = i.second;
         if (info->isUsed) {
             std::string content = "used file " + std::to_string(fileNumber++) + ": " + i.first.c_str() +
@@ -177,7 +191,7 @@ void ModuleLogger::PrintUnusedFileInfo() const
                         ", cost time: "  + std::to_string(unusedFileTime_) + "ms\n";
     fileHandle << start;
     int32_t fileNumber = 1;
-    for (auto &i : jsModuleLoadInfo_) {
+    for (auto &i : jsModuleLoadInfoRes_) {
         ModuleLoadInfo *info = i.second;
         if (!info->isUsed) {
             std::string content = "unused file " + std::to_string(fileNumber++) + ": " + i.first.c_str() +
@@ -207,9 +221,6 @@ void ModuleLogger::ProcessModuleExecuteTime()
     for (auto &i : jsModuleLoadInfo_) {
         ModuleLoadInfo *info = i.second;
         double time = info->time;
-        if (time > TWO_SECONDS) {
-            time = 0;
-        }
         if (info->isUsed) {
             usedFileNumber_++;
             usedFileTime += time;
@@ -237,6 +248,11 @@ ModuleLoadInfo *ModuleLogger::GetModuleLoadInfo(const CString &recordName)
 
 void ModuleLogger::SetStartTime(const CString &recordName)
 {
+    // func_main_0/_GLOBAL::func_main_0 is system abc or so js/abc, need to exclude.
+    if (recordName == ModulePathHelper::ENTRY_FUNCTION_NAME ||
+        recordName == ModulePathHelper::ENTRY_MAIN_FUNCTION) {
+        return;
+    }
     RuntimeLockHolder locker(vm_->GetJSThread(), mutex_);
     ModuleLoadInfo *info = GetModuleLoadInfo(recordName);
     info->time = std::chrono::duration_cast<std::chrono::microseconds>
@@ -245,6 +261,11 @@ void ModuleLogger::SetStartTime(const CString &recordName)
 
 void ModuleLogger::SetEndTime(const CString &recordName)
 {
+    // func_main_0/_GLOBAL::func_main_0 is system abc or so js/abc, need to exclude.
+    if (recordName == ModulePathHelper::ENTRY_FUNCTION_NAME ||
+        recordName == ModulePathHelper::ENTRY_MAIN_FUNCTION) {
+        return;
+    }
     RuntimeLockHolder locker(vm_->GetJSThread(), mutex_);
     ModuleLoadInfo *info = GetModuleLoadInfo(recordName);
     double time = info->time;
@@ -260,20 +281,27 @@ std::string ModuleLogger::ToStringWithPrecision(const double num, const uint8_t 
     return out.str();
 }
 
-void ModuleLogger::PostModuleLoggerTask(int32_t id, EcmaVM *vm)
+void ModuleLogger::PrintModuleLoadInfoTask(void *data)
 {
-    Taskpool::GetCurrentTaskpool()->PostTask(
-        std::make_unique<ModuleLoggerTask>(id, vm));
+    ModuleLogger* moduleLogger = static_cast<ModuleLogger*>(data);
+    if (moduleLogger == nullptr) {
+        return;
+    }
+    moduleLogger->PrintModuleLoadInfo();
 }
 
-bool ModuleLogger::ModuleLoggerTask::Run([[maybe_unused]]uint32_t threadIndex)
+void ModuleLogger::SetModuleLoggerTask(EcmaVM *vm)
 {
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "ModuleLoggerTask::Run");
-    std::this_thread::sleep_for(
-        std::chrono::microseconds(static_cast<int64_t>(TWO_SECONDS))); // 2s
-    ModuleLogger *moduleLogger =
-        vm_->GetJSThread()->GetCurrentEcmaContext()->GetModuleLogger();
-    moduleLogger->PrintModuleLoadInfo();
-    return true;
+    ModuleLogger *moduleLogger = vm->GetJSThread()->GetCurrentEcmaContext()->GetModuleLogger();
+    if (moduleLogger == nullptr) {
+        return;
+    }
+    TimerTaskCallback timerTaskCallBack = vm->GetTimerTaskCallback();
+    if (timerTaskCallBack == nullptr) {
+        LOG_FULL(ERROR) << "TimerTaskCallback is nullptr";
+        return;
+    }
+    uint64_t importDurationInMs = GetImportDuration(TWO_SECONDS);
+    timerTaskCallBack(vm, moduleLogger, PrintModuleLoadInfoTask, importDurationInMs, 0);
 }
 } // namespace panda::ecmascript
