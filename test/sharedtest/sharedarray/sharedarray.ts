@@ -337,6 +337,22 @@ function from(): void {
         return str + "cde";
     });
     print(sArr5)
+
+    let obj = {
+        0:1,
+        1:3,
+        2:5,
+        length:3
+    };
+    let sArr6 = SendableArray.from<number>(obj, (value: number) =>{
+        if (value < 4) {
+            obj[obj.length] = value + 10;
+            obj.length += 1;
+        }  
+  
+        return value;
+    });
+    print(sArr6)
 }
 
 function fromTemplate(): void {
