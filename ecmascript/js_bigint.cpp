@@ -480,6 +480,15 @@ JSHandle<EcmaString> BigInt::ToString(JSThread *thread, JSHandle<BigInt> bigint,
     return factory->NewFromASCII(result.c_str());
 }
 
+void BigInt::AppendToCString(CString &str, BigInt *bigint, uint32_t conversionToRadix)
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    if (bigint->GetSign()) {
+        str += "-";
+    }
+    str += BigIntHelper::Conversion(BigIntHelper::GetBinary(bigint), conversionToRadix, BINARY);
+}
+
 CString BigInt::ToStdString(uint32_t conversionToRadix) const
 {
     CString result =

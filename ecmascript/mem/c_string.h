@@ -41,7 +41,7 @@ struct CStringHash {
     }
 };
 
-constexpr int BASE = 10;
+constexpr int DEC_BASE = 10;
 
 // PRINT will skip '\0' in utf16 during conversion of utf8
 enum StringConvertedUsage { PRINT, LOGICOPERATION };
@@ -59,6 +59,12 @@ std::string PUBLIC_API ConvertToStdString(const CString &str);
 // cesu8 means non-BMP1 codepoints should encode as 1 utf8 string
 CString PUBLIC_API ConvertToString(const ecmascript::EcmaString *s,
     StringConvertedUsage usage = StringConvertedUsage::PRINT, bool cesu8 = false);
+
+void ConvertAndAppendToString(CString &str, const ecmascript::EcmaString *s,
+                              StringConvertedUsage usage = StringConvertedUsage::PRINT, bool cesu8 = false);
+
+void ConvertQuotedAndAppendToString(CString &str, const ecmascript::EcmaString *s,
+                                    StringConvertedUsage usage = StringConvertedUsage::PRINT, bool cesu8 = false);
 CString ConvertToString(ecmascript::JSTaggedValue key);
 
 template<class T>
@@ -83,13 +89,34 @@ std::enable_if_t<std::is_integral_v<T>, CString> ToCString(T number)
         isNeg = false;
     }
     do {
-        buf[--position] = static_cast<int8_t>('0' - (n % 10)); // 10 : decimal
-        n /= 10; // 10 : decimal
+        buf[--position] = static_cast<int8_t>('0' - (n % DEC_BASE));
+        n /= DEC_BASE;
     } while (n);
     if (isNeg) {
         buf[--position] = '-';
     }
     return CString(&buf[position]);
+}
+
+template<class T>
+void AppendToCString(CString &str, T number)
+{
+    static_assert(std::is_integral_v<T>);
+    int64_t n = static_cast<int64_t>(number);
+    uint32_t preSize = str.size();
+    bool isNeg = true;
+    if (n >= 0) {
+        n = -n;
+        isNeg = false;
+    }
+    do {
+        str.push_back(static_cast<int8_t>('0' - (n % DEC_BASE)));
+        n /= DEC_BASE;
+    } while (n);
+    if (isNeg) {
+        str.push_back('-');
+    }
+    std::reverse(str.begin() + preSize, str.end());
 }
 }  // namespace panda::ecmascript
 

@@ -15,6 +15,7 @@
 
 #include "ecmascript/ecma_string-inl.h"
 
+#include "ecmascript/base/json_helper.h"
 
 namespace panda::ecmascript {
 
@@ -1565,12 +1566,16 @@ std::string EcmaStringAccessor::ToStdString(StringConvertedUsage usage)
     bool modify = (usage != StringConvertedUsage::PRINT);
     CVector<uint8_t> buf;
     Span<const uint8_t> sp = string_->ToUtf8Span(buf, modify);
+#if ENABLE_NEXT_OPTIMIZATION
+    return std::string(reinterpret_cast<const char*>(sp.data()), sp.size());
+#else
     std::string res;
     res.reserve(sp.size());
     for (const auto &c : sp) {
         res.push_back(c);
     }
     return res;
+#endif
 }
 
 CString EcmaStringAccessor::Utf8ConvertToString()
@@ -1600,12 +1605,16 @@ std::string EcmaStringAccessor::DebuggerToStdString(StringConvertedUsage usage)
     bool modify = (usage != StringConvertedUsage::PRINT);
     CVector<uint8_t> buf;
     Span<const uint8_t> sp = string_->DebuggerToUtf8Span(buf, modify);
+#if ENABLE_NEXT_OPTIMIZATION
+    return std::string(reinterpret_cast<const char*>(sp.data()), sp.size());
+#else
     std::string res;
     res.reserve(sp.size());
     for (const auto &c : sp) {
         res.push_back(c);
     }
     return res;
+#endif
 }
 
 CString EcmaStringAccessor::ToCString(StringConvertedUsage usage, bool cesu8)
@@ -1616,12 +1625,38 @@ CString EcmaStringAccessor::ToCString(StringConvertedUsage usage, bool cesu8)
     bool modify = (usage != StringConvertedUsage::PRINT);
     CVector<uint8_t> buf;
     Span<const uint8_t> sp = string_->ToUtf8Span(buf, modify, cesu8);
+#if ENABLE_NEXT_OPTIMIZATION
+    return CString(reinterpret_cast<const char*>(sp.data()), sp.size());
+#else
     CString res;
     res.reserve(sp.size());
     for (const auto &c : sp) {
         res.push_back(c);
     }
     return res;
+#endif
+}
+
+void EcmaStringAccessor::AppendToCString(CString &str, StringConvertedUsage usage, bool cesu8)
+{
+    if (string_ == nullptr) {
+        return;
+    }
+    bool modify = (usage != StringConvertedUsage::PRINT);
+    CVector<uint8_t> buf;
+    Span<const uint8_t> sp = string_->ToUtf8Span(buf, modify, cesu8);
+    str.append(reinterpret_cast<const char*>(sp.data()), sp.size());
+}
+
+void EcmaStringAccessor::AppendQuotedStringToCString(CString &str, StringConvertedUsage usage, bool cesu8)
+{
+    if (string_ == nullptr) {
+        return;
+    }
+    bool modify = (usage != StringConvertedUsage::PRINT);
+    CVector<uint8_t> buf;
+    Span<const uint8_t> sp = string_->ToUtf8Span(buf, modify, cesu8);
+    base::JsonHelper::AppendValueToQuotedString(sp, str);
 }
 
 // static

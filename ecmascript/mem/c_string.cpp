@@ -23,7 +23,7 @@ namespace panda::ecmascript {
 long CStringToL(const CString &str)
 {
     char *endPtr = nullptr;
-    int64_t result = std::strtol(str.c_str(), &endPtr, BASE);
+    int64_t result = std::strtol(str.c_str(), &endPtr, DEC_BASE);
     ASSERT(!(result == 0 && str.c_str() == endPtr) && "CString argument is not long int");
     return result;
 }
@@ -31,7 +31,7 @@ long CStringToL(const CString &str)
 int64_t CStringToLL(const CString &str)
 {
     char *endPtr = nullptr;
-    int64_t result = std::strtoll(str.c_str(), &endPtr, BASE);
+    int64_t result = std::strtoll(str.c_str(), &endPtr, DEC_BASE);
     ASSERT(!(result == 0 && str.c_str() == endPtr) && "CString argument is not long long int");
     return result;
 }
@@ -39,7 +39,7 @@ int64_t CStringToLL(const CString &str)
 uint64_t CStringToULL(const CString &str)
 {
     char *endPtr = nullptr;
-    uint64_t result = std::strtoull(str.c_str(), &endPtr, BASE);
+    uint64_t result = std::strtoull(str.c_str(), &endPtr, DEC_BASE);
     ASSERT(!(result == 0 && str.c_str() == endPtr) && "CString argument is not unsigned long long int");
     return result;
 }
@@ -98,6 +98,23 @@ CString ConvertToString(const EcmaString *s, StringConvertedUsage usage, bool ce
         return CString("");
     }
     return EcmaStringAccessor(const_cast<EcmaString *>(s)).ToCString(usage, cesu8);
+}
+
+void ConvertAndAppendToString(CString &str, const EcmaString *s, StringConvertedUsage usage, bool cesu8)
+{
+    if (s == nullptr) {
+        return;
+    }
+    EcmaStringAccessor(const_cast<EcmaString *>(s)).AppendToCString(str, usage, cesu8);
+}
+
+void ConvertQuotedAndAppendToString(CString &str, const EcmaString *s, StringConvertedUsage usage, bool cesu8)
+{
+    if (s == nullptr) {
+        str += "\"\"";
+        return;
+    }
+    EcmaStringAccessor(const_cast<EcmaString *>(s)).AppendQuotedStringToCString(str, usage, cesu8);
 }
 
 CString ConvertToString(JSTaggedValue key)

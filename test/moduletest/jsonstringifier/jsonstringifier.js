@@ -252,6 +252,25 @@ try {
   assert_equal(err.message.includes("circular structure"),true);
 }
 
+const specialString = '"Hello\nWorld\\tThis is a test string with special characters: \u00A9 \u00AE "';
+const nestedObj = {
+  level1: {
+    level2: {
+      level3: {
+        message: specialString,
+        number: 42,
+        truthy: true,
+        anotherObj: {
+          key: 'value'
+        },
+        array: [1, 'two', false, { nested: 'object' }]
+      }
+    }
+  }
+};
+assert_equal((JSON.stringify(nestedObj, null, 2)).substring(2, 5), '  "');
+assert_equal((JSON.stringify(nestedObj, null, " ")).substring(2, 4), ' "');
+
 try {
     let arkPrivate = globalThis.ArkPrivate;
     var List = arkPrivate.Load(arkPrivate.List);

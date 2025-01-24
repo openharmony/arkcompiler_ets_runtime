@@ -1260,6 +1260,12 @@ public:
     // if string is not flat, this func has low efficiency.
     CString ToCString(StringConvertedUsage usage = StringConvertedUsage::LOGICOPERATION, bool cesu8 = false);
 
+    void AppendToCString(CString &str, StringConvertedUsage usage = StringConvertedUsage::LOGICOPERATION,
+                         bool cesu8 = false);
+
+    void AppendQuotedStringToCString(CString &str, StringConvertedUsage usage = StringConvertedUsage::LOGICOPERATION,
+                                     bool cesu8 = false);
+
     // not change string data structure.
     // if string is not flat, this func has low efficiency.
     uint32_t WriteToFlatUtf8(uint8_t *buf, uint32_t maxLength, bool isWriteBuffer = false)
