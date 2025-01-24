@@ -164,7 +164,6 @@ inline bool Region::AtomicMark(void *address)
 
 inline bool Region::NonAtomicMark(void *address)
 {
-    ASSERT(IsFreshRegion());
     auto addrPtr = reinterpret_cast<uintptr_t>(address);
     ASSERT(InRange(addrPtr));
     return packedData_.markGCBitset_->SetBit<AccessType::NON_ATOMIC>(

@@ -43,6 +43,7 @@ public:
 
     static constexpr uint64_t SEQ_STEP = 2;
     std::pair<bool, NodeId> FindId(JSTaggedType addr);
+    NodeId FindOrInsertNodeId(JSTaggedType addr);
     bool InsertId(JSTaggedType addr, NodeId id);
     bool EraseId(JSTaggedType addr);
     bool Move(JSTaggedType oldAddr, JSTaggedType forwardAddr);
@@ -236,6 +237,88 @@ private:
 #endif  // ENABLE_LOCAL_HANDLE_LEAK_DETECT
 
     friend class HeapProfilerFriendTest;
+};
+
+class RawHeapDump final : public RootVisitor, public EcmaObjectRangeVisitor<RawHeapDump> {
+public:
+    RawHeapDump(const EcmaVM *vm, Stream *stream, HeapSnapshot *snapshot, EntryIdMap* entryIdMap)
+        : vm_(vm), stream_(stream), snapshot_(snapshot), entryIdMap_(entryIdMap), chunk_(vm->GetNativeAreaAllocator()),
+          startTime_(std::chrono::steady_clock::now())
+    {
+        buffer_ = chunk_.NewArray<char>(PER_GROUP_MEM_SIZE);
+    }
+
+    ~RawHeapDump()
+    {
+        auto endTime = std::chrono::steady_clock::now();
+        double duration = std::chrono::duration<double>(endTime - startTime_).count();
+        LOG_ECMA(INFO) << "rawheap dump sucess, cost " << duration << 's';
+        chunk_.Delete<char>(buffer_);
+        strIdMapObjVec_.clear();
+        secIndexVec_.clear();
+        roots_.clear();
+        readOnlyObjects_.clear();
+    }
+
+    void BinaryDump();
+
+    void VisitRoot([[maybe_unused]] Root type, ObjectSlot slot) override
+    {
+        HandleRootValue(slot.GetTaggedValue());
+    }
+
+    void VisitRangeRoot([[maybe_unused]] Root type, ObjectSlot start, ObjectSlot end) override
+    {
+        for (ObjectSlot slot = start; slot < end; slot++) {
+            HandleRootValue(slot.GetTaggedValue());
+        }
+    }
+
+    void VisitBaseAndDerivedRoot([[maybe_unused]] Root type, [[maybe_unused]] ObjectSlot base,
+        [[maybe_unused]] ObjectSlot derived, [[maybe_unused]] uintptr_t baseOldObject) override
+    {
+        // do nothing
+    }
+
+    void VisitObjectRangeImpl(TaggedObject *root, ObjectSlot start, ObjectSlot end, VisitObjectArea area) override;
+
+private:
+    void DumpVersion();
+    void DumpRootTable();
+    void DumpObjectTable();
+    void DumpObjectMemory();
+    void DumpStringTable();
+    void DumpSectionIndex();
+
+    void WriteU64(uint64_t number);
+    void WriteChunk(char *data, size_t size);
+    void MaybeWriteBuffer();
+    void WriteBinBlock();
+    void UpdateStringTable(TaggedObject *object);
+    void HandleRootValue(JSTaggedValue value);
+    void IterateMarkedObjects(const std::function<void(void *)> &visitor);
+    void ProcessMarkObjectsFromRoot(TaggedObject *root);
+    bool MarkObject(TaggedObject *object);
+    void ClearVisitMark();
+    void EndVisitMark();
+
+    const char versionID[VERSION_ID_SIZE] = {0};  // 0: current version id
+
+    const EcmaVM *vm_ {nullptr};
+    Stream *stream_ {nullptr};
+    HeapSnapshot *snapshot_ {nullptr};
+    EntryIdMap *entryIdMap_ {nullptr};
+    char *buffer_ {nullptr};
+    Chunk chunk_;
+    CUnorderedMap<uint64_t, CVector<uint64_t>> strIdMapObjVec_ {};
+    CUnorderedSet<TaggedObject*> roots_ {};
+    CUnorderedSet<TaggedObject*> readOnlyObjects_ {};
+    CVector<uint32_t> secIndexVec_ {};
+    CQueue<TaggedObject *> bfsQueue_ {};
+    size_t objCnt_ = 0;
+    size_t bufIndex_ = 0;
+    uint32_t fileOffset_ = 0;
+    std::chrono::time_point<std::chrono::steady_clock> startTime_;
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_DFX_HPROF_HEAP_PROFILER_H

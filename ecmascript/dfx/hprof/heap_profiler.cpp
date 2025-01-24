@@ -27,6 +27,7 @@
 
 #if defined(ENABLE_DUMP_IN_FAULTLOG)
 #include "faultloggerd_client.h"
+#include "heap_profiler.h"
 #endif
 
 namespace panda::ecmascript {
@@ -39,6 +40,17 @@ std::pair<bool, NodeId> EntryIdMap::FindId(JSTaggedType addr)
     } else {
         return std::make_pair(true, it->second);
     }
+}
+
+NodeId EntryIdMap::FindOrInsertNodeId(JSTaggedType addr)
+{
+    auto it = idMap_.find(addr);
+    if (it != idMap_.end()) {
+        return it->second;
+    }
+    NodeId id = GetNextId();
+    idMap_.emplace(addr, id);
+    return id;
 }
 
 bool EntryIdMap::InsertId(JSTaggedType addr, NodeId id)
@@ -924,30 +936,14 @@ bool HeapProfiler::DumpRawHeap(Stream *stream, uint32_t &fileOffset, CVector<uin
 //  * 4 byte: section_num
 bool HeapProfiler::BinaryDump(Stream *stream, [[maybe_unused]] const DumpSnapShotOption &dumpOption)
 {
-    char versionID[VERSION_ID_SIZE] = { 0 };
-    LOG_ECMA(INFO) << "ark raw heap dump start, version is: " << versionID;
-    stream->WriteBinBlock(versionID, VERSION_ID_SIZE);
-    CQueue<CVector<TaggedObject *>> needStrObjQue;
-    // a vector to index all sections, [offset, section_size, offset, section_size, ...]
-    CVector<uint32_t> secIndexVec(2); // 2 : section head size
-    uint32_t fileOffset = VERSION_ID_SIZE;
-    secIndexVec[0] = fileOffset;
-    LOG_ECMA(INFO) << "ark raw heap dump GenRootTable";
-    auto rootSectionSize = GenRootTable(stream);
-    secIndexVec[1] = rootSectionSize; // root section offset
-    fileOffset += rootSectionSize; // root section size
-    DumpRawHeap(stream, fileOffset, secIndexVec);
-    secIndexVec.push_back(secIndexVec.size()); // 4 byte is section num
-    secIndexVec.push_back(sizeof(uint32_t)); // the penultimate is section index data bytes number
-    stream->WriteBinBlock(reinterpret_cast<char *>(secIndexVec.data()), secIndexVec.size() *sizeof(uint32_t));
-#ifdef OHOS_UNIT_TEST
-    LOG_ECMA(INFO) << "ark raw heap dump UT check obj self-contained";
-    size_t ret = GetNotFoundObj(vm_);
-    return ret == 0;
-#else
-    LOG_ECMA(INFO) << "ark raw heap dump finished num=" << secIndexVec.size();
+    DumpSnapShotOption option;
+    auto stringTable = chunk_.New<StringHashMap>(vm_);
+    auto snapshot = chunk_.New<HeapSnapshot>(vm_, stringTable, option, false, entryIdMap_);
+    RawHeapDump rawHeapDump(vm_, stream, snapshot, entryIdMap_);
+    rawHeapDump.BinaryDump();
+    chunk_.Delete<StringHashMap>(stringTable);
+    chunk_.Delete<HeapSnapshot>(snapshot);
     return true;
-#endif
 }
 
 void HeapProfiler::FillIdMap()
@@ -1374,4 +1370,271 @@ void HeapProfiler::StorePotentiallyLeakHandles(const uintptr_t handle)
     }
 }
 #endif  // ENABLE_LOCAL_HANDLE_LEAK_DETECT
+
+void RawHeapDump::BinaryDump()
+{
+    ClearVisitMark();
+    DumpVersion();
+    DumpRootTable();
+    DumpStringTable();
+    DumpObjectTable();
+    DumpObjectMemory();
+    DumpSectionIndex();
+    WriteBinBlock();
+    EndVisitMark();
+}
+
+void RawHeapDump::VisitObjectRangeImpl(TaggedObject *root, ObjectSlot start, ObjectSlot end, VisitObjectArea area)
+{
+    if (area == VisitObjectArea::RAW_DATA || area == VisitObjectArea::NATIVE_POINTER) {
+        return;
+    }
+    auto hclass = reinterpret_cast<TaggedObject *>(root->GetClass());
+    if (MarkObject(hclass)) {
+        bfsQueue_.emplace(hclass);
+    }
+    for (ObjectSlot slot = start; slot < end; slot++) {
+        auto value = slot.GetTaggedValue();
+        if (!value.IsHeapObject()) {
+            continue;
+        }
+        auto obj = value.GetWeakReferentUnChecked();
+        if (MarkObject(obj)) {
+            bfsQueue_.emplace(obj);
+        }
+    }
+}
+
+void RawHeapDump::DumpVersion()
+{
+    WriteChunk(const_cast<char *>(versionID), VERSION_ID_SIZE);
+    LOG_ECMA(INFO) << "rawheap dump, version " << std::string(versionID);
+}
+
+void RawHeapDump::DumpRootTable()
+{
+    HeapRootVisitor rootVisitor;
+    rootVisitor.VisitHeapRoots(vm_->GetJSThread(), *this);
+    SharedModuleManager::GetInstance()->Iterate(*this);
+    Runtime::GetInstance()->IterateCachedStringRoot(*this);
+
+    secIndexVec_.push_back(fileOffset_);
+    uint32_t rootObjCnt = roots_.size();
+    uint32_t rootTableHeader[2] = {rootObjCnt, sizeof(TaggedObject *)};
+    WriteChunk(reinterpret_cast<char *>(rootTableHeader), sizeof(rootTableHeader));
+    for (auto &root : roots_) {
+        uint64_t addr = reinterpret_cast<uint64_t>(root);
+        WriteU64(addr);
+    }
+    secIndexVec_.push_back(sizeof(TaggedObject *) * rootObjCnt + sizeof(rootTableHeader));
+    LOG_ECMA(INFO) << "rawheap dump, root count " << rootObjCnt;
+}
+
+void RawHeapDump::DumpObjectTable()
+{
+    secIndexVec_.push_back(fileOffset_);
+    objCnt_ += readOnlyObjects_.size();
+    uint32_t header[2] = {objCnt_, sizeof(AddrTableItem)};
+    WriteChunk(reinterpret_cast<char *>(header), sizeof(header));
+
+    uint32_t offset = header[0] * header[1];
+    auto objTableDump = [&offset, this](void *addr) {
+        auto obj = reinterpret_cast<TaggedObject *>(addr);
+        AddrTableItem table;
+        table.addr = reinterpret_cast<uint64_t>(obj);
+        table.id = entryIdMap_->GetNextId();
+        table.objSize = obj->GetClass()->SizeFromJSHClass(obj);
+        table.offset = offset;
+        WriteChunk(reinterpret_cast<char *>(&table), sizeof(AddrTableItem));
+        if (obj->GetClass()->IsString()) {
+            offset += sizeof(JSHClass *);
+        } else {
+            offset += table.objSize;
+        }
+    };
+    IterateMarkedObjects(objTableDump);
+    LOG_ECMA(INFO) << "rawheap dump, object total count " << objCnt_;
+}
+
+void RawHeapDump::DumpObjectMemory()
+{
+    uint32_t startOffset = static_cast<uint32_t>(fileOffset_);
+    auto objMemDump = [this](void *addr) {
+        auto obj = reinterpret_cast<TaggedObject *>(addr);
+        size_t size = obj->GetClass()->SizeFromJSHClass(obj);
+        if (obj->GetClass()->IsString()) {
+            size = sizeof(JSHClass *);
+        }
+        WriteChunk(reinterpret_cast<char *>(obj), size);
+    };
+    IterateMarkedObjects(objMemDump);
+    // 2: means headers
+    secIndexVec_.push_back(fileOffset_ - startOffset + objCnt_ * sizeof(AddrTableItem) + sizeof(uint32_t) * 2);
+    LOG_ECMA(INFO) << "rawheap dump, object memory " << fileOffset_ - startOffset;
+}
+
+void RawHeapDump::DumpStringTable()
+{
+    for (auto obj : readOnlyObjects_) {
+        UpdateStringTable(obj);
+    }
+    WriteBinBlock();
+    secIndexVec_.push_back(fileOffset_);
+    auto size = HeapSnapshotJSONSerializer::DumpStringTable(snapshot_->GetEcmaStringTable(), stream_, strIdMapObjVec_);
+    fileOffset_ += size;
+    secIndexVec_.push_back(size);
+    auto capcity = snapshot_->GetEcmaStringTable()->GetCapcity();
+    LOG_ECMA(INFO) << "rawheap dump, string table capcity " << capcity << ", size " << size;
+}
+
+void RawHeapDump::DumpSectionIndex()
+{
+    secIndexVec_.push_back(secIndexVec_.size());
+    secIndexVec_.push_back(sizeof(uint32_t));
+    WriteChunk(reinterpret_cast<char *>(secIndexVec_.data()), secIndexVec_.size() * sizeof(uint32_t));
+    LOG_ECMA(INFO) << "rawheap dump, section count " << secIndexVec_.size();
+}
+
+void RawHeapDump::WriteU64(uint64_t number)
+{
+    if (PER_GROUP_MEM_SIZE - bufIndex_ < sizeof(uint64_t)) {
+        stream_->WriteBinBlock(buffer_, bufIndex_);
+        bufIndex_ = 0;
+    }
+    *reinterpret_cast<uint64_t *>(buffer_ + bufIndex_) = number;
+    bufIndex_ += sizeof(uint64_t);
+    fileOffset_ += sizeof(uint64_t);
+}
+
+void RawHeapDump::WriteChunk(char *data, size_t size)
+{
+    while (size > 0) {
+        MaybeWriteBuffer();
+        size_t remainderSize = PER_GROUP_MEM_SIZE - bufIndex_;
+        size_t writeSize = size < remainderSize ? size : remainderSize;
+        if (writeSize <= 0) {
+            break;
+        }
+        if (memcpy_s(buffer_ + bufIndex_, remainderSize, data, writeSize) != 0) {
+            LOG_ECMA(ERROR) << "rawheap dump, WriteChunk failed, write size " <<
+                               writeSize << ", remainder size " << remainderSize;
+            break;
+        }
+        data += writeSize;
+        size -= writeSize;
+        bufIndex_ += writeSize;
+        fileOffset_ += writeSize;
+    }
+}
+
+void RawHeapDump::MaybeWriteBuffer()
+{
+    if (UNLIKELY(bufIndex_ == PER_GROUP_MEM_SIZE)) {
+        WriteBinBlock();
+    }
+}
+
+void RawHeapDump::WriteBinBlock()
+{
+    if (bufIndex_ <= 0) {
+        return;
+    }
+    if (!stream_->WriteBinBlock(buffer_, bufIndex_)) {
+        LOG_ECMA(ERROR) << "rawheap dump, WriteBinBlock failed, write size " << bufIndex_;
+    }
+    bufIndex_ = 0;
+}
+
+
+void RawHeapDump::UpdateStringTable(TaggedObject *object)
+{
+    StringId strId = snapshot_->GenerateStringId(object);
+    if (strId == 1) {  // 1 : invalid str id
+        return;
+    }
+    auto vec = strIdMapObjVec_.find(strId);
+    if (vec != strIdMapObjVec_.end()) {
+        vec->second.push_back(reinterpret_cast<uint64_t>(object));
+    } else {
+        CVector<uint64_t> objVec;
+        objVec.push_back(reinterpret_cast<uint64_t>(object));
+        strIdMapObjVec_.emplace(strId, objVec);
+    }
+}
+
+void RawHeapDump::HandleRootValue(JSTaggedValue value)
+{
+    if (!value.IsHeapObject()) {
+        return;
+    }
+    TaggedObject *root = value.GetWeakReferentUnChecked();
+    ProcessMarkObjectsFromRoot(root);
+    roots_.insert(root);
+}
+
+void RawHeapDump::IterateMarkedObjects(const std::function<void(void *)> &visitor)
+{
+    auto cb = [&visitor](Region *region) {
+        region->IterateAllMarkedBits(visitor);
+    };
+    vm_->GetHeap()->EnumerateRegions(cb);
+    SharedHeap::GetInstance()->EnumerateOldSpaceRegions(cb);
+
+    for (auto obj : readOnlyObjects_) {
+        visitor(obj);
+    }
+}
+
+void RawHeapDump::ProcessMarkObjectsFromRoot(TaggedObject *root)
+{
+    if (!MarkObject(root)) {
+        return;
+    }
+    bfsQueue_.emplace(root);
+    while (!bfsQueue_.empty()) {
+        auto object = bfsQueue_.front();
+        bfsQueue_.pop();
+        if (object->GetClass()->IsString()) {
+            MarkObject(reinterpret_cast<TaggedObject*>(object->GetClass()));
+            continue;
+        }
+        ObjectXRay::VisitObjectBody<VisitType::OLD_GC_VISIT>(object, object->GetClass(), *this);
+    }
+}
+
+bool RawHeapDump::MarkObject(TaggedObject *object)
+{
+    Region *region = Region::ObjectAddressToRange(object);
+    if (region->InReadOnlySpace() || region->InSharedReadOnlySpace()) {
+        readOnlyObjects_.insert(object);
+        return false;
+    }
+    if (!region->NonAtomicMark(object)) {
+        return false;
+    }
+    UpdateStringTable(object);
+    ++objCnt_;
+    return true;
+}
+
+void RawHeapDump::ClearVisitMark()
+{
+    auto cb = [](Region *region) {
+        region->ClearMarkGCBitset();
+    };
+    vm_->GetHeap()->EnumerateRegions(cb);
+    SharedHeap::GetInstance()->EnumerateOldSpaceRegions(cb);
+}
+
+void RawHeapDump::EndVisitMark()
+{
+    auto cb = [](Region *region) {
+        if (region->InAppSpawnSpace() || region->InSharedAppSpawnSpace()) {
+            return;
+        }
+        region->ClearMarkGCBitset();
+    };
+    vm_->GetHeap()->EnumerateRegions(cb);
+    SharedHeap::GetInstance()->EnumerateOldSpaceRegions(cb);
+}
 }  // namespace panda::ecmascript
