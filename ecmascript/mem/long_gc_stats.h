@@ -23,6 +23,43 @@ class LongGCStats {
 public:
     ~LongGCStats() = default;
 
+    void Reset()
+    {
+        gcType_ = 0;
+        gcReason_ = 0;
+        gcIsSensitive_ = false;
+        gcIsInBackground_ = false;
+        gcTotalTime_ = 0.0f;
+        gcMarkTime_ = 0.0f;
+        gcEvacuateTime_ = 0.0f;
+        gcUpdateRootTime_ = 0.0f;
+        gcUpdateWeekRefTime_ = 0.0f;
+        gcUpdateReferenceTime_ = 0.0f;
+        gcSweepNewToOldTime_ = 0.0f;
+        gcFinalizeTime_ = 0.0f;
+        gcInvokeCallbackTime_ = 0.0f;
+        beforeGCTotalMemUsed_ = 0;
+        beforeGCTotalMemCommitted_ = 0;
+        beforeGCActiveMemUsed_ = 0;
+        beforeGCActiveMemCommitted_ = 0;
+        beforeGCOldMemUsed_ = 0;
+        beforeGCOldMemCommitted_ = 0;
+        beforeGCHugeMemUsed_ = 0;
+        beforeGCHugeMemCommitted_ = 0;
+        beforeGCNativeBindingSize_ = 0;
+        beforeGCNativeLimit_ = 0;
+        afterGCTotalMemUsed_ = 0;
+        afterGCTotalMemCommitted_ = 0;
+        afterGCActiveMemUsed_ = 0;
+        afterGCActiveMemCommitted_ = 0;
+        afterGCOldMemUsed_ = 0;
+        afterGCOldMemCommitted_ = 0;
+        afterGCHugeMemUsed_ = 0;
+        afterGCHugeMemCommitted_ = 0;
+        afterGCNativeBindingSize_ = 0;
+        afterGCNativeLimit_ = 0;
+        cpuLoad_ = 0.0;
+    }
     static int SizeToIntKB(size_t size)
     {
         return static_cast<int>(size / 1_KB);

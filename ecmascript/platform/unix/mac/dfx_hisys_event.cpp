@@ -29,4 +29,10 @@ bool DFXHiSysEvent::IsEnableDFXHiSysEvent()
 {
     return false;
 }
+
+double DFXHiSysEvent::GetCpuUsage()
+{
+    LOG_GC(WARN) << "Get CpuUsage is not support in mac.";
+    return -1.0;
+}
 }  // namespace panda::ecmascript

@@ -17,6 +17,9 @@
 #ifdef ENABLE_HISYSEVENT
 #include "hisysevent.h"
 #endif
+#ifdef ENABLE_UCOLLECTION
+#include "cpu_collector_client.h"
+#endif
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
 #include "ecmascript/log.h"
 
@@ -78,5 +81,21 @@ void DFXHiSysEvent::SendLongGCEvent([[maybe_unused]] LongGCStats *longGCStats)
 bool DFXHiSysEvent::IsEnableDFXHiSysEvent()
 {
     return true;
+}
+
+double DFXHiSysEvent::GetCpuUsage()
+{
+#ifdef ENABLE_UCOLLECTION
+    auto collector = OHOS::HiviewDFX::UCollectClient::CpuCollector::Create();
+    auto collectResult = collector->GetSysCpuUsage();
+    if (collectResult.retCode == OHOS::HiviewDFX::UCollect::UcError::SUCCESS) {
+        LOG_GC(DEBUG) << "GCKeyStats cpu usage: " << collectResult.data;
+        return collectResult.data;
+    }
+    LOG_GC(ERROR) << "GCKeyStats get cpu usage failed, error code: " << collectResult.retCode;
+    return -1.0;
+#else
+    return -1.0;
+#endif
 }
 }  // namespace panda::ecmascript

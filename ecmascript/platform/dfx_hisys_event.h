@@ -26,6 +26,8 @@ public:
     static void SendLongGCEvent(LongGCStats *longGCStats);
 
     static bool IsEnableDFXHiSysEvent();
+
+    static double GetCpuUsage();
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_PLATFORM_DFX_HISYS_EVENT_H
