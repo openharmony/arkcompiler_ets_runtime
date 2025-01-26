@@ -17,6 +17,7 @@
 
 #include <cinttypes>
 #include <dlfcn.h>
+#include "ecmascript/platform/mutex.h"
 #include "securec.h"
 
 #include "ecmascript/mem/mem.h"
@@ -42,7 +43,7 @@ using UnwBackTraceFunc = int (*)(void**, int);
 
 static std::map<void *, Dl_info> stackInfoCache;
 
-std::shared_mutex rwMutex;
+RWLock rwMutex;
 
 #if defined(ENABLE_UNWINDER) && defined(__aarch64__)
 static inline ARK_INLINE void GetPcFpRegs([[maybe_unused]] void *regs)
@@ -92,7 +93,7 @@ bool GetPcs(size_t &size, uintptr_t* pcs)
 
 bool FindStackInfoCache(uintptr_t pcs, Dl_info &info)
 {
-    std::shared_lock<std::shared_mutex> lock(rwMutex);
+    ReadLockHolder lock(rwMutex);
     auto iter = stackInfoCache.find(reinterpret_cast<void *>(pcs));
     if (iter != stackInfoCache.end()) {
         info = iter->second;
@@ -104,7 +105,7 @@ bool FindStackInfoCache(uintptr_t pcs, Dl_info &info)
 
 void EmplaceStackInfoCache(uintptr_t pcs, const Dl_info &info)
 {
-    std::unique_lock<std::shared_mutex> lock(rwMutex);
+    WriteLockHolder lock(rwMutex);
     stackInfoCache.emplace(reinterpret_cast<void *>(pcs), info);
 }
 
