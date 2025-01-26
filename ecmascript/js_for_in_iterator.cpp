@@ -120,6 +120,7 @@ JSTaggedValue JSForInIterator::NextInternalSlowpath(JSThread *thread, const JSHa
             break;
         }
         has = HasProperty(thread, receiverHandle, keyHandle);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         if (has) {
             break;
         }
