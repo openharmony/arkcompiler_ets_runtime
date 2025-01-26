@@ -44,6 +44,7 @@ enum ParallelGCTaskPhase {
     COMPRESS_HANDLE_GLOBAL_POOL_TASK,
     CONCURRENT_HANDLE_GLOBAL_POOL_TASK,
     CONCURRENT_HANDLE_OLD_TO_NEW_TASK,
+    UNIFIED_HANDLE_GLOBAL_POOL_TASK,
     UNDEFINED_TASK,
     TASK_LAST  // Count of different Task phase
 };
@@ -198,6 +199,7 @@ public:
     bool Pop(uint32_t threadId, TaggedObject **object);
     bool PopWorkNodeFromGlobal(uint32_t threadId);
     void PushWorkNodeToGlobal(uint32_t threadId, bool postTask = true);
+    void PushObjectToGlobal(TaggedObject *object, bool postTask = true);
 
     inline void PushWeakReference(uint32_t threadId, JSTaggedType *weak)
     {

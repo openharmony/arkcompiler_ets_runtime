@@ -43,7 +43,8 @@ enum TriggerGCType {
     SHARED_GC,
     SHARED_FULL_GC,
     APPSPAWN_SHARED_FULL_GC,
-    GC_TYPE_LAST
+    UNIFIED_GC,
+    GC_TYPE_LAST,
 };
 
 enum class GCReason : uint8_t {
@@ -60,6 +61,7 @@ enum class GCReason : uint8_t {
     TRIGGER_BY_TASKPOOL,
     HINT_GC,
     IDLE_NATIVE,
+    CROSSREF_CAUSE,
     OTHER
 };
 

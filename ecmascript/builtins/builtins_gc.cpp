@@ -212,7 +212,7 @@ JSTaggedValue BuiltinsGc::AllocateArrayObject(EcmaRuntimeCallInfo *info)
 
 TriggerGCType BuiltinsGc::StringToGcType(JSThread *thread, JSTaggedValue cause)
 {
-    static_assert(GC_TYPE_LAST == 8, "Update this method after TrigerGCType change");
+    static_assert(GC_TYPE_LAST == 9, "Update this method after TrigerGCType change");
     if (JSTaggedValue::StrictEqual(thread->GlobalConstants()->GetEdenGcCause(), cause)) {
         return EDEN_GC;
     }
@@ -236,6 +236,9 @@ TriggerGCType BuiltinsGc::StringToGcType(JSThread *thread, JSTaggedValue cause)
     }
     if (JSTaggedValue::StrictEqual(thread->GlobalConstants()->GetAppSpawnSharedFullGcCause(), cause)) {
         return APPSPAWN_SHARED_FULL_GC;
+    }
+    if (JSTaggedValue::StrictEqual(thread->GlobalConstants()->GetUnifiedGcCause(), cause)) {
+        return UNIFIED_GC;
     }
     return GC_TYPE_LAST;
 }

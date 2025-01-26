@@ -29,22 +29,35 @@ class EcmaVM;
 class CrossVMOperator {
     static_assert(PANDA_JS_ETS_HYBRID_MODE);
 public:
-    CrossVMOperator();
+    CrossVMOperator(EcmaVM *vm);
     ~CrossVMOperator() = default;
     NO_COPY_SEMANTIC(CrossVMOperator);
     NO_MOVE_SEMANTIC(CrossVMOperator);
 
     static void DoHandshake(EcmaVM *vm, void *stsIface, void **ecmaIface);
 
+    arkplatform::STSVMInterface *GetSTSVMInterface() const
+    {
+        return stsVMInterface_;
+    }
+
+    arkplatform::EcmaVMInterface *GetEcmaVMInterface() const
+    {
+        return ecmaVMInterface_.get();
+    }
+
 private:
     class EcmaVMInterfaceImpl final : public arkplatform::EcmaVMInterface {
     public:
         NO_COPY_SEMANTIC(EcmaVMInterfaceImpl);
         NO_MOVE_SEMANTIC(EcmaVMInterfaceImpl);
-        EcmaVMInterfaceImpl() = default;
+        EcmaVMInterfaceImpl(EcmaVM *vm): vm_(vm) {};
         ~EcmaVMInterfaceImpl() override = default;
 
-        void MarkFromObject([[maybe_unused]] void *obj) override {}
+        void MarkFromObject(void *objAddress) override;
+        bool StartXRefMarking() override;
+    private:
+        EcmaVM *vm_ {nullptr};
     };
 
     arkplatform::STSVMInterface *stsVMInterface_ = nullptr;

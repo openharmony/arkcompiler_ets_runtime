@@ -29,6 +29,7 @@ enum class SharedMarkStatus : uint8_t {
 enum class DaemonTaskType : uint32_t {
     TRIGGER_CONCURRENT_MARK,
     TRIGGER_COLLECT_GARBAGE,
+    TRIGGER_UNIFIED_GC,
     TERMINATE_DAEMON,
 };
 
@@ -87,6 +88,11 @@ template<TriggerGCType gcType, GCReason gcReason>
 class TriggerCollectGarbageTask : public DaemonTask {
 public:
     explicit TriggerCollectGarbageTask(JSThread *thread);
+};
+
+class TrigerUnifiedGCMarkTask : public DaemonTask {
+public:
+    explicit TrigerUnifiedGCMarkTask(JSThread *thread);
 };
 
 class TerminateDaemonTask : public DaemonTask {

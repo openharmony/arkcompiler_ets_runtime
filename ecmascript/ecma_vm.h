@@ -825,7 +825,7 @@ public:
 #endif
 
 #ifdef PANDA_JS_ETS_HYBRID_MODE
-    CrossVMOperator& GetCrossVMOperator()
+    CrossVMOperator* GetCrossVMOperator() const
     {
         return crossVMOperator_;
     }
@@ -960,7 +960,7 @@ private:
     bool enableJitLogSkip_ = true;
 
 #ifdef PANDA_JS_ETS_HYBRID_MODE
-    CrossVMOperator crossVMOperator_;
+    CrossVMOperator* crossVMOperator_ {nullptr};
 #endif // PANDA_JS_ETS_HYBRID_MODE
 
 #if ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT
