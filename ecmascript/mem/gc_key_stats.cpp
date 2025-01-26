@@ -18,9 +18,6 @@
 #ifdef ENABLE_HISYSEVENT
 #include "hisysevent.h"
 #endif
-#ifdef ENABLE_UCOLLECTION
-#include "cpu_collector_client.h"
-#endif
 #if !defined(PANDA_TARGET_WINDOWS) && !defined(PANDA_TARGET_MACOS) && !defined(PANDA_TARGET_IOS)
 #include <sys/resource.h>
 #endif
@@ -170,40 +167,29 @@ void GCKeyStats::ProcessLongGCEvent()
     if (gcIsSensitive) {
         if (gcTotalTime > GC_SENSITIVE_LONG_TIME) {
             DFXHiSysEvent::SendLongGCEvent(longGCStats);
+            longGCStats->Reset();
         }
     } else {
         if (gcReason == GCReason::IDLE) {
             if (!gcIsInBackground && gcTotalTime > GC_IDLE_LONG_TIME) {
-                longGCStats->SetCpuLoad(GetCpuUsage());
+                longGCStats->SetCpuLoad(DFXHiSysEvent::GetCpuUsage());
                 DFXHiSysEvent::SendLongGCEvent(longGCStats);
+                longGCStats->Reset();
             } else if (gcIsInBackground && gcTotalTime > GC_BACKGROUD_IDLE_LONG_TIME) {
-                longGCStats->SetCpuLoad(GetCpuUsage());
+                longGCStats->SetCpuLoad(DFXHiSysEvent::GetCpuUsage());
                 DFXHiSysEvent::SendLongGCEvent(longGCStats);
+                longGCStats->Reset();
             }
         } else {
             if (!gcIsInBackground && gcTotalTime > GC_NOT_SENSITIVE_LONG_TIME) {
                 DFXHiSysEvent::SendLongGCEvent(longGCStats);
+                longGCStats->Reset();
             } else if (gcIsInBackground && gcTotalTime > GC_BACKGROUD_LONG_TIME) {
-                longGCStats->SetCpuLoad(GetCpuUsage());
+                longGCStats->SetCpuLoad(DFXHiSysEvent::GetCpuUsage());
                 DFXHiSysEvent::SendLongGCEvent(longGCStats);
+                longGCStats->Reset();
             }
         }
     }
-}
-
-double GCKeyStats::GetCpuUsage()
-{
-#ifdef ENABLE_UCOLLECTION
-    auto collector = OHOS::HiviewDFX::UCollectClient::CpuCollector::Create();
-    auto collectResult = collector->GetSysCpuUsage();
-    if (collectResult.retCode == OHOS::HiviewDFX::UCollect::UcError::SUCCESS) {
-        LOG_GC(DEBUG) << "GCKeyStats cpu usage: " << collectResult.data;
-        return collectResult.data;
-    }
-    LOG_GC(ERROR) << "GCKeyStats get cpu usage failed, error code: " << collectResult.retCode;
-    return -1.0;
-#else
-    return -1.0;
-#endif
 }
 } // namespace panda::ecmascript
