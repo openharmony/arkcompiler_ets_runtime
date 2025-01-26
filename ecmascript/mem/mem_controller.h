@@ -62,10 +62,8 @@ public:
 
     double CalculateMarkCompactSpeedPerMS();
     double GetCurrentOldSpaceAllocationThroughputPerMS(double timeMs = THROUGHPUT_TIME_FRAME_MS) const;
-    double GetEdenSpaceAllocationThroughputPerMS() const;
     double GetNewSpaceAllocationThroughputPerMS() const;
     double GetOldSpaceAllocationThroughputPerMS() const;
-    double GetEdenSpaceConcurrentMarkSpeedPerMS() const;
     double GetNewSpaceConcurrentMarkSpeedPerMS() const;
     double GetFullSpaceConcurrentMarkSpeedPerMS() const;
 
@@ -92,11 +90,6 @@ public:
     double GetAllocDurationSinceGc() const
     {
         return allocDurationSinceGc_;
-    }
-
-    size_t GetEdenSpaceAllocSizeSinceGC() const
-    {
-        return edenSpaceAllocSizeSinceGC_;
     }
 
     size_t GetNewSpaceAllocSizeSinceGC() const
@@ -144,21 +137,6 @@ public:
         return result / count;
     }
 
-    void AddEdenSurvivalRate(double rate)
-    {
-        recordedEdenSurvivalRates_.Push(rate);
-    }
-
-    double GetAverageEdenSurvivalRate() const
-    {
-        int count = recordedEdenSurvivalRates_.Count();
-        if (count == 0) {
-            return 0;
-        }
-        double result = recordedEdenSurvivalRates_.Sum([](double x, double y) { return x + y;}, 0.0);
-        return result / count;
-    }
-
     double GetPredictedSurvivalRate() const
     {
         if (UNLIKELY(std::isnan(predictedSurvivalRate_))) {
@@ -194,7 +172,6 @@ private:
 
     // Duration and allocation size in last gc.
     double allocDurationSinceGc_ {0.0};
-    size_t edenSpaceAllocSizeSinceGC_ {0};
     size_t newSpaceAllocSizeSinceGC_ {0};
     size_t oldSpaceAllocSizeSinceGC_ {0};
     size_t nonMovableSpaceAllocSizeSinceGC_ {0};
@@ -214,17 +191,14 @@ private:
     double predictedSurvivalRate_ {std::numeric_limits<double>::quiet_NaN()};
 
     base::GCRingBuffer<BytesAndDuration, LENGTH> recordedMarkCompacts_;
-    base::GCRingBuffer<BytesAndDuration, LENGTH> recordedEdenSpaceAllocations_;
     base::GCRingBuffer<BytesAndDuration, LENGTH> recordedNewSpaceAllocations_;
     base::GCRingBuffer<BytesAndDuration, LENGTH> recordedOldSpaceAllocations_;
     base::GCRingBuffer<BytesAndDuration, LENGTH> recordedNonmovableSpaceAllocations_;
     base::GCRingBuffer<BytesAndDuration, LENGTH> recordedCodeSpaceAllocations_;
 
     base::GCRingBuffer<BytesAndDuration, LENGTH> recordedConcurrentMarks_;
-    base::GCRingBuffer<BytesAndDuration, LENGTH> recordedEdenConcurrentMarks_;
     base::GCRingBuffer<BytesAndDuration, LENGTH> recordedSemiConcurrentMarks_;
     base::GCRingBuffer<double, LENGTH> recordedSurvivalRates_;
-    base::GCRingBuffer<double, LENGTH> recordedEdenSurvivalRates_;
 
     static constexpr double THROUGHPUT_TIME_FRAME_MS = 5000;
     static constexpr int MILLISECOND_PER_SECOND = 1000;

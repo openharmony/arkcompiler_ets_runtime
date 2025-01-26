@@ -576,7 +576,6 @@ class ObjectFactory;
     V(DateToString,                   DATE_TO_STRING_INDEX,                  "[object Date]")               \
     V(ErrorToString,                  ERROR_TO_STRING_INDEX,                 "[object Error]")              \
     V(RegExpToString,                 REGEXP_TO_STRING_INDEX,                "[object RegExp]")             \
-    V(EdenGcCause,                    EDEN_GC_CAUSE,                         "eden")                        \
     V(YoungGcCause,                   YOUNG_GC_CAUSE,                        "young")                       \
     V(OldGcCause,                     OLD_GC_CAUSE,                          "old")                         \
     V(FullGcCause,                    FULL_GC_CAUSE,                         "full")                        \

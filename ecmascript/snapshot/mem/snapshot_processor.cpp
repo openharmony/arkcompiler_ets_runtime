@@ -1642,7 +1642,7 @@ void SnapshotProcessor::DeserializeTaggedField(uint64_t *value, TaggedObject *ro
         Region *rootRegion = Region::ObjectAddressToRange(ToUintPtr(root));
         uintptr_t taggedObjectAddr = TaggedObjectEncodeBitToAddr(encodeBit);
         Region *valueRegion = Region::ObjectAddressToRange(taggedObjectAddr);
-        if (rootRegion->InGeneralOldSpace() && valueRegion->InGeneralNewSpace()) {
+        if (rootRegion->InGeneralOldSpace() && valueRegion->InYoungSpace()) {
             // Should align with '8' in 64 and 32 bit platform
             ASSERT((ToUintPtr(value) % static_cast<uint8_t>(MemAlignment::MEM_ALIGN_OBJECT)) == 0);
             rootRegion->InsertOldToNewRSet((uintptr_t)value);

@@ -203,10 +203,10 @@ bool TaggedArray::IsDictionaryMode() const
     return GetClass()->IsDictionary();
 }
 
-bool TaggedArray::IsGeneralNewAndNotMarking(const JSThread *thread)
+bool TaggedArray::IsYoungAndNotMarking(const JSThread *thread)
 {
     Region *region = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(this));
-    return region->InGeneralNewSpace() && !thread->IsConcurrentMarkingOrFinished();
+    return region->InYoungSpace() && !thread->IsConcurrentMarkingOrFinished();
 }
 
 void TaggedArray::Trim(const JSThread *thread, uint32_t newLength)

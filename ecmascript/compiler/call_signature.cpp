@@ -852,16 +852,6 @@ DEF_CALL_SIGNATURE(SetNonSValueWithBarrier)
     SETVALUEBARRIER_CALL_ARGS_SIGNATURE_COMMON(SetNonSValueWithBarrier);
 }
 
-DEF_CALL_SIGNATURE(SetValueWithEdenBarrier)
-{
-    SETVALUEBARRIER_CALL_ARGS_SIGNATURE_COMMON(SetValueWithEdenBarrier);
-}
-
-DEF_CALL_SIGNATURE(SetNonSValueWithEdenBarrier)
-{
-    SETVALUEBARRIER_CALL_ARGS_SIGNATURE_COMMON(SetNonSValueWithEdenBarrier);
-}
-
 DEF_CALL_SIGNATURE(SetSValueWithBarrier)
 {
     SETVALUEBARRIER_CALL_ARGS_SIGNATURE_COMMON(SetSValueWithBarrier);
@@ -870,12 +860,6 @@ DEF_CALL_SIGNATURE(SetSValueWithBarrier)
 DEF_CALL_SIGNATURE(ASMFastWriteBarrier)
 {
     SETVALUEBARRIER_CALL_ARGS_SIGNATURE_COMMON(ASMFastWriteBarrier);
-    callSign->SetTargetKind(CallSignature::TargetKind::ASM_CALL_BARRIER_STUB);
-}
-
-DEF_CALL_SIGNATURE(ASMWriteBarrierWithEden)
-{
-    SETVALUEBARRIER_CALL_ARGS_SIGNATURE_COMMON(ASMWriteBarrierWithEden);
     callSign->SetTargetKind(CallSignature::TargetKind::ASM_CALL_BARRIER_STUB);
 }
 
@@ -2452,22 +2436,6 @@ DEF_CALL_SIGNATURE(GetActualArgvNoGC)
     callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
 }
 
-DEF_CALL_SIGNATURE(InsertNewToEdenRSet)
-{
-    // 3 : 3 input parameters
-    CallSignature index("InsertNewToEdenRSet", 0, 3, ArgumentsOrder::DEFAULT_ORDER, VariableType::VOID());
-    *callSign = index;
-    // 3 : 3 input parameters
-    std::array<VariableType, 3> params = {
-        VariableType::NATIVE_POINTER(),
-        VariableType::JS_POINTER(),
-        VariableType::NATIVE_POINTER(),
-    };
-    callSign->SetParameters(params.data());
-    callSign->SetGCLeafFunction(true);
-    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
-}
-
 DEF_CALL_SIGNATURE(InsertOldToNewRSet)
 {
     // 3 : 3 input parameters
@@ -2636,23 +2604,6 @@ DEF_CALL_SIGNATURE(MarkingBarrier)
 {
     // 4 : 4 input parameters
     CallSignature index("MarkingBarrier", 0, 4, ArgumentsOrder::DEFAULT_ORDER, VariableType::VOID());
-    *callSign = index;
-    // 4 : 4 input parameters
-    std::array<VariableType, 4> params = {
-        VariableType::NATIVE_POINTER(),
-        VariableType::JS_POINTER(),
-        VariableType::NATIVE_POINTER(),
-        VariableType::JS_POINTER()
-    };
-    callSign->SetParameters(params.data());
-    callSign->SetGCLeafFunction(true);
-    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
-}
-
-DEF_CALL_SIGNATURE(MarkingBarrierWithEden)
-{
-    // 4 : 4 input parameters
-    CallSignature index("MarkingBarrierWithEden", 0, 4, ArgumentsOrder::DEFAULT_ORDER, VariableType::VOID());
     *callSign = index;
     // 4 : 4 input parameters
     std::array<VariableType, 4> params = {

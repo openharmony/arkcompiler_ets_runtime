@@ -61,8 +61,7 @@ namespace panda::ecmascript {
     V(CallContainersArgs2ToBaseline)         \
     V(CallContainersArgs3ToBaseline)         \
     V(CallReturnWithArgvToBaseline)          \
-    V(ASMFastWriteBarrier)                   \
-    V(ASMWriteBarrierWithEden)
+    V(ASMFastWriteBarrier)
 
 #define BASELINE_TRAMPOLINE_LIST(V)                   \
     V(CallArg0AndCheckToBaseline)                     \
@@ -147,10 +146,8 @@ namespace panda::ecmascript {
     V(GetActualArgvNoGC)                       \
     V(InsertOldToNewRSet)                      \
     V(InsertLocalToShareRSet)                  \
-    V(InsertNewToEdenRSet)                     \
     V(SetBitAtomic)                            \
     V(MarkingBarrier)                          \
-    V(MarkingBarrierWithEden)                  \
     V(SharedGCMarkingBarrier)                  \
     V(DoubleToInt)                             \
     V(SaturateTruncDoubleToInt32)           \

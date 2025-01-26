@@ -3035,11 +3035,6 @@ inline GateRef StubBuilder::RegionInSpace(GateRef region, RegionSpaceFlag space)
     }
 }
 
-inline GateRef StubBuilder::InEdenGeneration(GateRef region)
-{
-    return RegionInSpace(region, RegionSpaceFlag::IN_EDEN_SPACE);
-}
-
 inline GateRef StubBuilder::InYoungGeneration(GateRef region)
 {
     return RegionInSpace(region, RegionSpaceFlag::IN_YOUNG_SPACE);
@@ -3061,11 +3056,6 @@ inline GateRef StubBuilder::RegionInSpace(GateRef region, RegionSpaceFlag spaceB
         GateRef less = Int64LessThanOrEqual(spaceType, Int64(spaceEnd));
         return BitAnd(greater, less);
     }
-}
-
-inline GateRef StubBuilder::InGeneralYoungGeneration(GateRef region)
-{
-    return RegionInSpace(region, RegionSpaceFlag::GENERAL_YOUNG_BEGIN, RegionSpaceFlag::GENERAL_YOUNG_END);
 }
 
 inline GateRef StubBuilder::InGeneralOldGeneration(GateRef region)

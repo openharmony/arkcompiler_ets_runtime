@@ -940,27 +940,7 @@ void SetNonSValueWithBarrierStubBuilder::GenerateCircuit()
     GateRef obj = TaggedArgument(1);
     GateRef offset = PtrArgument(2); // 2 : 3rd para
     GateRef value = TaggedArgument(3); // 3 : 4th para
-    SetValueWithBarrier(glue, obj, offset, value, false, MemoryAttribute::NON_SHARE);
-    Return();
-}
-
-void SetValueWithEdenBarrierStubBuilder::GenerateCircuit()
-{
-    GateRef glue = PtrArgument(0);
-    GateRef obj = TaggedArgument(1);
-    GateRef offset = PtrArgument(2); // 2 : 3rd para
-    GateRef value = TaggedArgument(3); // 3 : 4th para
-    SetValueWithBarrier(glue, obj, offset, value, true);
-    Return();
-}
-
-void SetNonSValueWithEdenBarrierStubBuilder::GenerateCircuit()
-{
-    GateRef glue = PtrArgument(0);
-    GateRef obj = TaggedArgument(1);
-    GateRef offset = PtrArgument(2); // 2 : 3rd para
-    GateRef value = TaggedArgument(3); // 3 : 4th para
-    SetValueWithBarrier(glue, obj, offset, value, true, MemoryAttribute::NON_SHARE);
+    SetValueWithBarrier(glue, obj, offset, value, MemoryAttribute::NON_SHARE);
     Return();
 }
 
@@ -970,7 +950,7 @@ void SetSValueWithBarrierStubBuilder::GenerateCircuit()
     GateRef obj = TaggedArgument(1);
     GateRef offset = PtrArgument(2); // 2 : 3rd para
     GateRef value = TaggedArgument(3); // 3 : 4th para
-    SetValueWithBarrier(glue, obj, offset, value, false, MemoryAttribute::SHARED);
+    SetValueWithBarrier(glue, obj, offset, value, MemoryAttribute::SHARED);
     Return();
 }
 

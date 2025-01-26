@@ -31,7 +31,6 @@
 #include "ecmascript/mem/verification.h"
 #include "ecmascript/runtime_call_id.h"
 #include "ecmascript/jit/jit.h"
-#include "ecmascript/ohos/ohos_params.h"
 #if !WIN_OR_MAC_OR_IOS_PLATFORM
 #include "ecmascript/dfx/hprof/heap_profiler_interface.h"
 #include "ecmascript/dfx/hprof/heap_profiler.h"
@@ -812,9 +811,6 @@ void Heap::Initialize()
     size_t maxHeapSize = config_.GetMaxHeapSize();
     size_t minSemiSpaceCapacity = config_.GetMinSemiSpaceSize();
     size_t maxSemiSpaceCapacity = config_.GetMaxSemiSpaceSize();
-    size_t edenSpaceCapacity = 2_MB;
-    edenSpace_ = new EdenSpace(this, edenSpaceCapacity, edenSpaceCapacity);
-    edenSpace_->Restart();
     activeSemiSpace_ = new SemiSpace(this, minSemiSpaceCapacity, maxSemiSpaceCapacity);
     activeSemiSpace_->Restart();
     activeSemiSpace_->SetWaterLine();
@@ -957,11 +953,6 @@ void Heap::Destroy()
         delete workManager_;
         workManager_ = nullptr;
     }
-    if (edenSpace_ != nullptr) {
-        edenSpace_->Destroy();
-        delete edenSpace_;
-        edenSpace_ = nullptr;
-    }
     if (activeSemiSpace_ != nullptr) {
         activeSemiSpace_->Destroy();
         delete activeSemiSpace_;
@@ -1078,19 +1069,6 @@ void Heap::GetHeapPrepare()
 
 void Heap::Resume(TriggerGCType gcType)
 {
-    if (edenSpace_->ShouldTryEnable()) {
-        TryEnableEdenGC();
-    }
-    if (enableEdenGC_) {
-        edenSpace_->ReclaimRegions(edenSpace_->GetInitialCapacity());
-        edenSpace_->Restart();
-        if (IsEdenMark()) {
-            activeSemiSpace_->EnumerateRegions([](Region *region) { region->ResetRegionTypeFlag(); });
-            activeSemiSpace_->SetWaterLine();
-            return;
-        }
-    }
-
     activeSemiSpace_->SetWaterLine();
 
     if (mode_ != HeapMode::SPAWN &&
@@ -1128,7 +1106,6 @@ void Heap::ResumeForAppSpawn()
     sweeper_->WaitAllTaskFinished();
     hugeObjectSpace_->ReclaimHugeRegion();
     hugeMachineCodeSpace_->ReclaimHugeRegion();
-    edenSpace_->ReclaimRegions();
     inactiveSemiSpace_->ReclaimRegions();
     oldSpace_->Reset();
     auto cb = [] (Region *region) {
@@ -1236,8 +1213,7 @@ void Heap::CollectGarbageImpl(TriggerGCType gcType, GCReason reason)
         oldGCRequested_ = false;
         oldSpace_->AdjustOvershootSize();
 
-        size_t originalNewSpaceSize = IsEdenMark() ? edenSpace_->GetHeapObjectSize() :
-                (activeSemiSpace_->GetHeapObjectSize() + edenSpace_->GetHeapObjectSize());
+        size_t originalNewSpaceSize = activeSemiSpace_->GetHeapObjectSize();
         if (!GetJSThread()->IsReadyToConcurrentMark() && markType_ == MarkType::MARK_FULL) {
             GetEcmaGCStats()->SetGCReason(reason);
         } else {
@@ -1249,19 +1225,6 @@ void Heap::CollectGarbageImpl(TriggerGCType gcType, GCReason reason)
         {
             pgo::PGODumpPauseScope pscope(GetEcmaVM()->GetPGOProfiler());
             switch (gcType) {
-                case TriggerGCType::EDEN_GC:
-                    if (!concurrentMarker_->IsEnabled() && !incrementalMarker_->IsTriggeredIncrementalMark()) {
-                        SetMarkType(MarkType::MARK_EDEN);
-                    }
-                    if (markType_ == MarkType::MARK_YOUNG) {
-                        gcType_ = TriggerGCType::YOUNG_GC;
-                    }
-                    if (markType_ == MarkType::MARK_FULL) {
-                        // gcType_ must be sure. Functions ProcessNativeReferences need to use it.
-                        gcType_ = TriggerGCType::OLD_GC;
-                    }
-                    partialGC_->RunPhases();
-                    break;
                 case TriggerGCType::YOUNG_GC:
                     // Use partial GC for young generation.
                     if (!concurrentMarker_->IsEnabled() && !incrementalMarker_->IsTriggeredIncrementalMark()) {
@@ -1498,16 +1461,12 @@ void Heap::AdjustBySurvivalRate(size_t originalNewSpaceSize)
     if (originalNewSpaceSize <= 0) {
         return;
     }
-    semiSpaceCopiedSize_ = IsEdenMark() ? edenToYoungSize_ : activeSemiSpace_->GetHeapObjectSize();
+    semiSpaceCopiedSize_ = activeSemiSpace_->GetHeapObjectSize();
     double copiedRate = semiSpaceCopiedSize_ * 1.0 / originalNewSpaceSize;
     double promotedRate = promotedSize_ * 1.0 / originalNewSpaceSize;
     double survivalRate = std::min(copiedRate + promotedRate, 1.0);
     OPTIONAL_LOG(ecmaVm_, INFO) << " copiedRate: " << copiedRate << " promotedRate: " << promotedRate
                                 << " survivalRate: " << survivalRate;
-    if (IsEdenMark()) {
-        memController_->AddEdenSurvivalRate(survivalRate);
-        return;
-    }
     if (!oldSpaceLimitAdjusted_) {
         memController_->AddSurvivalRate(survivalRate);
         AdjustOldSpaceLimit();
@@ -1698,7 +1657,6 @@ void Heap::AddAllocationInspectorToAllSpaces(AllocationInspector *inspector)
 
 void Heap::ClearAllocationInspectorFromAllSpaces()
 {
-    edenSpace_->ClearAllocationInspector();
     activeSemiSpace_->ClearAllocationInspector();
     oldSpace_->ClearAllocationInspector();
     nonMovableSpace_->ClearAllocationInspector();
@@ -1876,10 +1834,7 @@ void Heap::CalculateIdleDuration()
     size_t updateReferenceSpeed = 0;
     // clear native object duration
     size_t clearNativeObjSpeed = 0;
-    if (markType_ == MarkType::MARK_EDEN) {
-        updateReferenceSpeed = GetEcmaGCStats()->GetGCSpeed(SpeedData::EDEN_UPDATE_REFERENCE_SPEED);
-        clearNativeObjSpeed = GetEcmaGCStats()->GetGCSpeed(SpeedData::EDEN_CLEAR_NATIVE_OBJ_SPEED);
-    } else if (markType_ == MarkType::MARK_YOUNG) {
+    if (markType_ == MarkType::MARK_YOUNG) {
         updateReferenceSpeed = GetEcmaGCStats()->GetGCSpeed(SpeedData::YOUNG_UPDATE_REFERENCE_SPEED);
         clearNativeObjSpeed = GetEcmaGCStats()->GetGCSpeed(SpeedData::YOUNG_CLEAR_NATIVE_OBJ_SPEED);
     } else if (markType_ == MarkType::MARK_FULL) {
@@ -1898,14 +1853,10 @@ void Heap::CalculateIdleDuration()
     }
 
     // sweep and evacuate duration
-    size_t edenEvacuateSpeed = GetEcmaGCStats()->GetGCSpeed(SpeedData::EDEN_EVACUATE_SPACE_SPEED);
     size_t youngEvacuateSpeed = GetEcmaGCStats()->GetGCSpeed(SpeedData::YOUNG_EVACUATE_SPACE_SPEED);
     double survivalRate = GetEcmaGCStats()->GetAvgSurvivalRate();
-    if (markType_ == MarkType::MARK_EDEN && edenEvacuateSpeed != 0) {
-        idlePredictDuration_ += survivalRate * edenSpace_->GetHeapObjectSize() / edenEvacuateSpeed;
-    } else if (markType_ == MarkType::MARK_YOUNG && youngEvacuateSpeed != 0) {
-        idlePredictDuration_ += (activeSemiSpace_->GetHeapObjectSize() + edenSpace_->GetHeapObjectSize()) *
-            survivalRate / youngEvacuateSpeed;
+    if (markType_ == MarkType::MARK_YOUNG && youngEvacuateSpeed != 0) {
+        idlePredictDuration_ += activeSemiSpace_->GetHeapObjectSize() * survivalRate / youngEvacuateSpeed;
     } else if (markType_ == MarkType::MARK_FULL) {
         size_t sweepSpeed = GetEcmaGCStats()->GetGCSpeed(SpeedData::SWEEP_SPEED);
         size_t oldEvacuateSpeed = GetEcmaGCStats()->GetGCSpeed(SpeedData::OLD_EVACUATE_SPACE_SPEED);
@@ -2046,47 +1997,6 @@ void Heap::TryTriggerConcurrentMarking()
         TriggerConcurrentMarking();
         OPTIONAL_LOG(ecmaVm_, INFO) << "Trigger semi mark";
         return;
-    }
-
-    if (!enableEdenGC_ || IsInBackground()) {
-        return;
-    }
-
-    double edenSurvivalRate = memController_->GetAverageEdenSurvivalRate();
-    double survivalRate = memController_->GetAverageSurvivalRate();
-    constexpr double expectMaxSurvivalRate = 0.4;
-    if ((edenSurvivalRate == 0 || edenSurvivalRate >= expectMaxSurvivalRate) && survivalRate >= expectMaxSurvivalRate) {
-        return;
-    }
-
-    double edenSpaceAllocSpeed = memController_->GetEdenSpaceAllocationThroughputPerMS();
-    double edenSpaceConcurrentMarkSpeed = memController_->GetEdenSpaceConcurrentMarkSpeedPerMS();
-    if (edenSpaceConcurrentMarkSpeed == 0 || edenSpaceAllocSpeed == 0) {
-        auto &config = ecmaVm_->GetEcmaParamConfiguration();
-        if (edenSpace_->GetCommittedSize() >= config.GetEdenSpaceTriggerConcurrentMark()) {
-            markType_ = MarkType::MARK_EDEN;
-            TriggerConcurrentMarking();
-            OPTIONAL_LOG(ecmaVm_, INFO) << "Trigger the first eden mark " << fullGCRequested_;
-        }
-        return;
-    }
-
-    auto &config = ecmaVm_->GetEcmaParamConfiguration();
-    size_t edenCommittedSize = edenSpace_->GetCommittedSize();
-    triggerMark = edenCommittedSize >= config.GetEdenSpaceTriggerConcurrentMark();
-    if (!triggerMark && edenSpaceAllocSpeed != 0 && edenSpaceConcurrentMarkSpeed != 0 &&
-            edenSpace_->GetHeapObjectSize() > 0) {
-        double edenSpaceLimit = edenSpace_->GetInitialCapacity();
-        double edenSpaceAllocToLimitDuration = (edenSpaceLimit - edenCommittedSize) / edenSpaceAllocSpeed;
-        double edenSpaceMarkDuration = edenSpace_->GetHeapObjectSize() / edenSpaceConcurrentMarkSpeed;
-        double edenSpaceRemainSize = (edenSpaceAllocToLimitDuration - edenSpaceMarkDuration) * newSpaceAllocSpeed;
-        triggerMark = edenSpaceRemainSize < DEFAULT_REGION_SIZE;
-    }
-
-    if (triggerMark) {
-        markType_ = MarkType::MARK_EDEN;
-        TriggerConcurrentMarking();
-        OPTIONAL_LOG(ecmaVm_, INFO) << "Trigger eden mark";
     }
 }
 
@@ -2679,7 +2589,7 @@ void SharedHeap::UpdateHeapStatsAfterGC(TriggerGCType gcType)
 
 void Heap::UpdateHeapStatsAfterGC(TriggerGCType gcType)
 {
-    if (gcType == TriggerGCType::EDEN_GC || gcType == TriggerGCType::YOUNG_GC) {
+    if (gcType == TriggerGCType::YOUNG_GC) {
         return;
     }
     heapAliveSizeAfterGC_ = GetHeapObjectSize();
@@ -2698,10 +2608,8 @@ void Heap::PrintHeapInfo(TriggerGCType gcType) const
                                 << ";OnHighSensitive:" << static_cast<int>(GetSensitiveStatus())
                                 << ";ConcurrentMark Status:" << static_cast<int>(thread_->GetMarkStatus());
     OPTIONAL_LOG(ecmaVm_, INFO) << "Heap::CollectGarbage, gcType(" << gcType << "), Concurrent Mark("
-                                << concurrentMarker_->IsEnabled() << "), Full Mark(" << IsConcurrentFullMark()
-                                << ") Eden Mark(" << IsEdenMark() << ")";
-    OPTIONAL_LOG(ecmaVm_, INFO) << "Eden(" << edenSpace_->GetHeapObjectSize() << "/" << edenSpace_->GetInitialCapacity()
-                 << "), ActiveSemi(" << activeSemiSpace_->GetHeapObjectSize() << "/"
+                                << concurrentMarker_->IsEnabled() << "), Full Mark(" << IsConcurrentFullMark();
+    OPTIONAL_LOG(ecmaVm_, INFO) << "), ActiveSemi(" << activeSemiSpace_->GetHeapObjectSize() << "/"
                  << activeSemiSpace_->GetInitialCapacity() << "), NonMovable(" << nonMovableSpace_->GetHeapObjectSize()
                  << "/" << nonMovableSpace_->GetCommittedSize() << "/" << nonMovableSpace_->GetInitialCapacity()
                  << "), Old(" << oldSpace_->GetHeapObjectSize() << "/" << oldSpace_->GetCommittedSize() << "/"
@@ -2941,42 +2849,6 @@ void BaseHeap::WaitClearTaskFinished()
     LockHolder holder(waitClearTaskFinishedMutex_);
     while (!clearTaskFinished_) {
         waitClearTaskFinishedCV_.Wait(&waitClearTaskFinishedMutex_);
-    }
-}
-
-void Heap::ReleaseEdenAllocator()
-{
-    auto topAddress = activeSemiSpace_->GetAllocationTopAddress();
-    auto endAddress = activeSemiSpace_->GetAllocationEndAddress();
-    if (!topAddress || !endAddress) {
-        return;
-    }
-    thread_->ReSetNewSpaceAllocationAddress(topAddress, endAddress);
-}
-
-void Heap::InstallEdenAllocator()
-{
-    if (!enableEdenGC_) {
-        return;
-    }
-    auto topAddress = edenSpace_->GetAllocationTopAddress();
-    auto endAddress = edenSpace_->GetAllocationEndAddress();
-    if (!topAddress || !endAddress) {
-        return;
-    }
-    thread_->ReSetNewSpaceAllocationAddress(topAddress, endAddress);
-}
-
-void Heap::EnableEdenGC()
-{
-    enableEdenGC_ = true;
-    thread_->EnableEdenGCBarriers();
-}
-
-void Heap::TryEnableEdenGC()
-{
-    if (ohos::OhosParams::IsEdenGCEnable()) {
-        EnableEdenGC();
     }
 }
 }  // namespace panda::ecmascript

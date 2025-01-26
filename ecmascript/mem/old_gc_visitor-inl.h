@@ -75,7 +75,7 @@ void OldGCMarkObjectVisitor::VisitObjectRangeImpl(TaggedObject *root, ObjectSlot
                                                   VisitObjectArea area)
 {
     Region *rootRegion = Region::ObjectAddressToRange(root);
-    bool rootNeedEvacuate = rootRegion->InGeneralNewSpaceOrCSet();
+    bool rootNeedEvacuate = rootRegion->InYoungSpaceOrCSet();
     if (UNLIKELY(area == VisitObjectArea::IN_OBJECT)) {
         JSHClass *hclass = root->SynchronizedGetClass();
         ASSERT(!hclass->IsAllTaggedProp());
@@ -121,7 +121,7 @@ void OldGCMarkObjectVisitor::HandleSlot(ObjectSlot slot, Region *rootRegion, boo
         TaggedObject *object = value.GetTaggedObject();
         HandleObject(object, objectRegion);
     } else {
-        bool objectNeedEvacuate = objectRegion->InGeneralNewSpaceOrCSet();
+        bool objectNeedEvacuate = objectRegion->InYoungSpaceOrCSet();
         if (!rootNeedEvacuate && !objectNeedEvacuate) {
             // If `rootNeedEvacuate`, every slot will be updated when/after it has been evacuated.
             // Otherwise if `objectNeedEvacuate`, weak reference will be updated in UpdateReference by visiting RSet.

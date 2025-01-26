@@ -146,12 +146,6 @@ void Heap::EnumerateNonNewSpaceRegionsWithRecord(const Callback &cb) const
 }
 
 template<class Callback>
-void Heap::EnumerateEdenSpaceRegions(const Callback &cb) const
-{
-    edenSpace_->EnumerateRegions(cb);
-}
-
-template<class Callback>
 void Heap::EnumerateNewSpaceRegions(const Callback &cb) const
 {
     activeSemiSpace_->EnumerateRegions(cb);
@@ -171,7 +165,6 @@ void Heap::EnumerateNonMovableRegions(const Callback &cb) const
 template<class Callback>
 void Heap::EnumerateRegions(const Callback &cb) const
 {
-    edenSpace_->EnumerateRegions(cb);
     activeSemiSpace_->EnumerateRegions(cb);
     oldSpace_->EnumerateRegions(cb);
     if (!isCSetClearing_.load(std::memory_order_acquire)) {
@@ -188,7 +181,6 @@ void Heap::EnumerateRegions(const Callback &cb) const
 template<class Callback>
 void Heap::IterateOverObjects(const Callback &cb, bool isSimplify) const
 {
-    edenSpace_->IterateOverObjects(cb);
     activeSemiSpace_->IterateOverObjects(cb);
     oldSpace_->IterateOverObjects(cb);
     nonMovableSpace_->IterateOverObjects(cb);
@@ -215,15 +207,15 @@ TaggedObject *Heap::AllocateYoungOrHugeObject(size_t size)
     if (size > MAX_REGULAR_HEAP_OBJECT_SIZE) {
         object = AllocateHugeObject(size);
     } else {
-        object = AllocateInGeneralNewSpace(size);
+        object = AllocateInYoungSpace(size);
         if (object == nullptr) {
             if (!HandleExitHighSensitiveEvent()) {
                 CollectGarbage(SelectGCType(), GCReason::ALLOCATION_FAILED);
             }
-            object = AllocateInGeneralNewSpace(size);
+            object = AllocateInYoungSpace(size);
             if (object == nullptr) {
                 CollectGarbage(SelectGCType(), GCReason::ALLOCATION_FAILED);
-                object = AllocateInGeneralNewSpace(size);
+                object = AllocateInYoungSpace(size);
                 CHECK_OBJ_AND_THROW_OOM_ERROR(object, size, activeSemiSpace_, "Heap::AllocateYoungOrHugeObject");
             }
         }
@@ -231,14 +223,8 @@ TaggedObject *Heap::AllocateYoungOrHugeObject(size_t size)
     return object;
 }
 
-TaggedObject *Heap::AllocateInGeneralNewSpace(size_t size)
+TaggedObject *Heap::AllocateInYoungSpace(size_t size)
 {
-    if (enableEdenGC_) {
-        auto object = reinterpret_cast<TaggedObject *>(edenSpace_->Allocate(size));
-        if (object != nullptr) {
-            return object;
-        }
-    }
     return reinterpret_cast<TaggedObject *>(activeSemiSpace_->Allocate(size));
 }
 
@@ -692,7 +678,6 @@ void Heap::ReclaimRegions(TriggerGCType gcType)
         region->ClearMarkGCBitset();
         region->ClearCrossRegionRSet();
         region->ResetAliveObject();
-        region->DeleteNewToEdenRSet();
         region->ClearGCFlag(RegionGCFlags::IN_NEW_TO_NEW_SET);
     });
     size_t cachedSize = inactiveSemiSpace_->GetInitialCapacity();
@@ -720,7 +705,7 @@ void Heap::ReclaimRegions(TriggerGCType gcType)
 // only call in js-thread
 void Heap::ClearSlotsRange(Region *current, uintptr_t freeStart, uintptr_t freeEnd)
 {
-    if (!current->InGeneralNewSpace()) {
+    if (!current->InYoungSpace()) {
         // This clear may exist data race with concurrent sweeping, so use CAS
         current->AtomicClearSweepingOldToNewRSetInRange(freeStart, freeEnd);
         current->ClearOldToNewRSetInRange(freeStart, freeEnd);
@@ -732,8 +717,7 @@ void Heap::ClearSlotsRange(Region *current, uintptr_t freeStart, uintptr_t freeE
 
 size_t Heap::GetCommittedSize() const
 {
-    size_t result = edenSpace_->GetCommittedSize() +
-                    activeSemiSpace_->GetCommittedSize() +
+    size_t result = activeSemiSpace_->GetCommittedSize() +
                     oldSpace_->GetCommittedSize() +
                     hugeObjectSpace_->GetCommittedSize() +
                     nonMovableSpace_->GetCommittedSize() +
@@ -747,8 +731,7 @@ size_t Heap::GetCommittedSize() const
 
 size_t Heap::GetHeapObjectSize() const
 {
-    size_t result = edenSpace_->GetHeapObjectSize() +
-                    activeSemiSpace_->GetHeapObjectSize() +
+    size_t result = activeSemiSpace_->GetHeapObjectSize() +
                     oldSpace_->GetHeapObjectSize() +
                     hugeObjectSpace_->GetHeapObjectSize() +
                     nonMovableSpace_->GetHeapObjectSize() +
@@ -772,8 +755,7 @@ void Heap::NotifyRecordMemorySize()
 
 size_t Heap::GetRegionCount() const
 {
-    size_t result = edenSpace_->GetRegionCount() +
-        activeSemiSpace_->GetRegionCount() +
+    size_t result = activeSemiSpace_->GetRegionCount() +
         oldSpace_->GetRegionCount() +
         oldSpace_->GetCollectSetRegionCount() +
         appSpawnSpace_->GetRegionCount() +
@@ -1137,7 +1119,7 @@ void SharedHeap::ProcessSharedNativeDelete(const WeakRootVisitor& visitor)
 void Heap::ProcessNativeDelete(const WeakRootVisitor& visitor)
 {
     // ProcessNativeDelete should be limited to OldGC or FullGC only
-    if (!IsGeneralYoungGC()) {
+    if (!IsYoungGC()) {
         auto& asyncNativeCallbacksPack = GetEcmaVM()->GetAsyncNativePointerCallbacksPack();
         auto iter = nativePointerList_.begin();
         ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "ProcessNativeDeleteNum:" + std::to_string(nativePointerList_.size()));
@@ -1177,7 +1159,7 @@ void Heap::ProcessNativeDelete(const WeakRootVisitor& visitor)
 void Heap::ProcessReferences(const WeakRootVisitor& visitor)
 {
     // process native ref should be limited to OldGC or FullGC only
-    if (!IsGeneralYoungGC()) {
+    if (!IsYoungGC()) {
         auto& asyncNativeCallbacksPack = GetEcmaVM()->GetAsyncNativePointerCallbacksPack();
         ResetNativeBindingSize();
         // array buffer

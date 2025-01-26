@@ -109,7 +109,7 @@ void JSAPIPlainArray::AdjustArray(JSThread *thread, TaggedArray *srcArray, int32
             fromIndex++;
         }
     } else {
-        if (srcArray->IsGeneralNewAndNotMarking(thread)) {
+        if (srcArray->IsYoungAndNotMarking(thread)) {
             AdjustPrimitiveArray(srcArray, fromIndex, toIndex);
         } else {
             auto srcPtr = reinterpret_cast<JSTaggedType *>(

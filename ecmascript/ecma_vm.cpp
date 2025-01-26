@@ -297,9 +297,6 @@ bool EcmaVM::Initialize()
     if (options_.GetEnableAsmInterpreter()) {
         thread_->GetCurrentEcmaContext()->LoadStubFile();
     }
-    if (options_.EnableEdenGC()) {
-        heap_->EnableEdenGC();
-    }
 
     callTimer_ = new FunctionCallTimer();
     strategy_ = new ThroughputJSObjectResizingStrategy();

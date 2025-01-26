@@ -87,7 +87,7 @@ bool ParallelEvacuator::UpdateOldToNewObjectSlot(ObjectSlot &slot)
     TaggedObject *object = value.GetHeapObject();
     Region *valueRegion = Region::ObjectAddressToRange(object);
     // It is only update old to new object when iterate OldToNewRSet
-    if (valueRegion->InGeneralNewSpace()) {
+    if (valueRegion->InYoungSpace()) {
         if (!valueRegion->InNewToNewSet()) {
             return UpdateForwardedOldToNewObjectSlot(object, slot, value.IsWeakForHeapObject());
         }
@@ -181,7 +181,7 @@ void ParallelEvacuator::UpdateNewObjectSlot(ObjectSlot &slot)
             }
         }
         if constexpr (gcType == TriggerGCType::YOUNG_GC) {
-            if (!objectRegion->InGeneralNewSpace()) {
+            if (!objectRegion->InYoungSpace()) {
                 if (value.IsWeakForHeapObject() && objectRegion->InNewToOldSet() &&
                     !objectRegion->Test(value.GetRawData())) {
                     slot.Clear();
@@ -189,7 +189,7 @@ void ParallelEvacuator::UpdateNewObjectSlot(ObjectSlot &slot)
                 return;
             }
         } else if constexpr (gcType == TriggerGCType::OLD_GC) {
-            if (!objectRegion->InGeneralNewSpaceOrCSet()) {
+            if (!objectRegion->InYoungSpaceOrCSet()) {
                 if (value.IsWeakForHeapObject() && !objectRegion->InSharedHeap() &&
                         (objectRegion->GetMarkGCBitset() == nullptr || !objectRegion->Test(value.GetRawData()))) {
                     slot.Clear();
@@ -282,7 +282,7 @@ void ParallelEvacuator::SetObjectRSet(ObjectSlot slot, Region *region)
         return;
     }
     Region *valueRegion = Region::ObjectAddressToRange(value);
-    if (valueRegion->InGeneralNewSpace()) {
+    if (valueRegion->InYoungSpace()) {
         region->InsertOldToNewRSet(slot.SlotAddress());
     } else if (valueRegion->InNewToOldSet()) {
         if (JSTaggedValue(value).IsWeakForHeapObject() && !valueRegion->Test(value)) {
@@ -326,7 +326,7 @@ TaggedObject* ParallelEvacuator::UpdateAddressAfterEvacation(TaggedObject *oldAd
     if (!objectRegion) {
         return nullptr;
     }
-    if (objectRegion->InGeneralNewSpaceOrCSet()) {
+    if (objectRegion->InYoungSpaceOrCSet()) {
         if (objectRegion->InNewToNewSet()) {
             if (objectRegion->Test(oldAddress)) {
                 return oldAddress;

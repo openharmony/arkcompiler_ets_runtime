@@ -17,31 +17,6 @@
 #include "ecmascript/runtime.h"
 
 namespace panda::ecmascript {
-void Barriers::UpdateWithoutEden(const JSThread *thread, uintptr_t slotAddr, Region *objectRegion, TaggedObject *value,
-                                 Region *valueRegion, WriteBarrierType writeType)
-{
-    ASSERT(!valueRegion->InSharedHeap());
-    auto heap = thread->GetEcmaVM()->GetHeap();
-    if (heap->IsConcurrentFullMark()) {
-        if (valueRegion->InCollectSet() && !objectRegion->InGeneralNewSpaceOrCSet()) {
-            objectRegion->AtomicInsertCrossRegionRSet(slotAddr);
-        }
-    } else {
-        if (!valueRegion->InYoungSpace()) {
-            return;
-        }
-    }
-
-    // Weak ref record and concurrent mark record maybe conflict.
-    // This conflict is solved by keeping alive weak reference. A small amount of floating garbage may be added.
-    TaggedObject *heapValue = JSTaggedValue(value).GetHeapObject();
-    if (valueRegion->IsFreshRegion()) {
-        valueRegion->NonAtomicMark(heapValue);
-    } else if (writeType != WriteBarrierType::DESERIALIZE && valueRegion->AtomicMark(heapValue)) {
-        heap->GetWorkManager()->GetWorkNodeHolder(MAIN_THREAD_INDEX)->Push(heapValue);
-    }
-}
-
 void Barriers::Update(const JSThread *thread, uintptr_t slotAddr, Region *objectRegion, TaggedObject *value,
                       Region *valueRegion, WriteBarrierType writeType)
 {
@@ -50,15 +25,11 @@ void Barriers::Update(const JSThread *thread, uintptr_t slotAddr, Region *object
     }
     auto heap = thread->GetEcmaVM()->GetHeap();
     if (heap->IsConcurrentFullMark()) {
-        if (valueRegion->InCollectSet() && !objectRegion->InGeneralNewSpaceOrCSet()) {
+        if (valueRegion->InCollectSet() && !objectRegion->InYoungSpaceOrCSet()) {
             objectRegion->AtomicInsertCrossRegionRSet(slotAddr);
         }
-    } else if (heap->IsYoungMark()) {
-        if (!valueRegion->InGeneralNewSpace()) {
-            return;
-        }
     } else {
-        if (!valueRegion->InEdenSpace()) {
+        if (!valueRegion->InYoungSpace()) {
             return;
         }
     }
@@ -120,13 +91,8 @@ ARK_NOINLINE bool BatchBitSet([[maybe_unused]] const JSThread* thread, Region* o
             updater.UpdateLocalToShare();
             continue;
         }
-        if constexpr (kind == Region::InYoung) {
-            if (valueRegion->InEdenSpace()) {
-                updater.UpdateNewToEden();
-                continue;
-            }
-        } else if constexpr (kind == Region::InGeneralOld) {
-            if (valueRegion->InGeneralNewSpace()) {
+        if constexpr (kind == Region::InGeneralOld) {
+            if (valueRegion->InYoungSpace()) {
                 updater.UpdateOldToNew();
                 continue;
             }

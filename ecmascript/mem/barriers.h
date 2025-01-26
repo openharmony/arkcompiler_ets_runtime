@@ -76,9 +76,6 @@ public:
     static void PUBLIC_API Update(const JSThread *thread, uintptr_t slotAddr, Region *objectRegion,
                                   TaggedObject *value, Region *valueRegion,
                                   WriteBarrierType writeType = WriteBarrierType::NORMAL);
-    static void PUBLIC_API UpdateWithoutEden(const JSThread *thread, uintptr_t slotAddr, Region *objectRegion,
-                                             TaggedObject *value, Region *valueRegion,
-                                             WriteBarrierType writeType = WriteBarrierType::NORMAL);
 
     static void PUBLIC_API UpdateShared(const JSThread *thread, uintptr_t slotAddr, Region *objectRegion,
                                         TaggedObject *value, Region *valueRegion);

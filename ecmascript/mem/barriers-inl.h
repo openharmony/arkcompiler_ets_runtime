@@ -41,7 +41,7 @@ static ARK_INLINE void WriteBarrier(const JSThread *thread, void *obj, size_t of
     }
 #endif
     uintptr_t slotAddr = ToUintPtr(obj) + offset;
-    if (objectRegion->InGeneralOldSpace() && valueRegion->InGeneralNewSpace()) {
+    if (objectRegion->InGeneralOldSpace() && valueRegion->InYoungSpace()) {
         // Should align with '8' in 64 and 32 bit platform
         ASSERT((slotAddr % static_cast<uint8_t>(MemAlignment::MEM_ALIGN_OBJECT)) == 0);
         objectRegion->InsertOldToNewRSet(slotAddr);
@@ -52,8 +52,6 @@ static ARK_INLINE void WriteBarrier(const JSThread *thread, void *obj, size_t of
         }
 #endif
         objectRegion->InsertLocalToShareRSet(slotAddr);
-    } else if (valueRegion->InEdenSpace() && objectRegion->InYoungSpace()) {
-        objectRegion->InsertNewToEdenRSet(slotAddr);
     }
     ASSERT(!objectRegion->InSharedHeap() || valueRegion->InSharedHeap());
     if (!valueRegion->InSharedHeap() && thread->IsConcurrentMarkingOrFinished()) {

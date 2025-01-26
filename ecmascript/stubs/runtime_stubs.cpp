@@ -3327,14 +3327,6 @@ uint8_t RuntimeStubs::LrInt(double x)
     return static_cast<uint8_t>(std::lrint(x));
 }
 
-void RuntimeStubs::InsertNewToEdenRSet([[maybe_unused]] uintptr_t argGlue,
-    uintptr_t object, size_t offset)
-{
-    Region *region = Region::ObjectAddressToRange(object);
-    uintptr_t slotAddr = object + offset;
-    return region->InsertNewToEdenRSet(slotAddr);
-}
-
 void RuntimeStubs::InsertOldToNewRSet([[maybe_unused]] uintptr_t argGlue,
     uintptr_t object, size_t offset)
 {
@@ -3379,23 +3371,6 @@ void RuntimeStubs::MarkingBarrier([[maybe_unused]] uintptr_t argGlue,
 #if ECMASCRIPT_ENABLE_BARRIER_CHECK
     if (!thread->GetEcmaVM()->GetHeap()->IsAlive(JSTaggedValue(value).GetHeapObject())) {
         LOG_FULL(FATAL) << "RuntimeStubs::MarkingBarrier checked value:" << value << " is invalid!";
-    }
-#endif
-    ASSERT(thread->IsConcurrentMarkingOrFinished());
-    Barriers::UpdateWithoutEden(thread, slotAddr, objectRegion, value, valueRegion);
-}
-
-void RuntimeStubs::MarkingBarrierWithEden([[maybe_unused]] uintptr_t argGlue,
-    uintptr_t object, size_t offset, TaggedObject *value)
-{
-    uintptr_t slotAddr = object + offset;
-    Region *objectRegion = Region::ObjectAddressToRange(object);
-    Region *valueRegion = Region::ObjectAddressToRange(value);
-    ASSERT(!valueRegion->InSharedHeap());
-    auto thread = JSThread::GlueToJSThread(argGlue);
-#if ECMASCRIPT_ENABLE_BARRIER_CHECK
-    if (!thread->GetEcmaVM()->GetHeap()->IsAlive(JSTaggedValue(value).GetHeapObject())) {
-        LOG_FULL(FATAL) << "RuntimeStubs::MarkingBarrierWithEden checked value:" << value << " is invalid!";
     }
 #endif
     ASSERT(thread->IsConcurrentMarkingOrFinished());

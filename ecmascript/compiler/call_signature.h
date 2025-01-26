@@ -419,8 +419,6 @@ private:
     V(TryStoreICByValue)                        \
     V(SetValueWithBarrier)                      \
     V(SetNonSValueWithBarrier)                  \
-    V(SetValueWithEdenBarrier)                  \
-    V(SetNonSValueWithEdenBarrier)              \
     V(SetSValueWithBarrier)                     \
     V(NewLexicalEnv)                            \
     V(CopyRestArgs)                             \
@@ -510,7 +508,6 @@ private:
     V(FatalPrint)                               \
     V(FatalPrintCustom)                         \
     V(GetActualArgvNoGC)                        \
-    V(InsertNewToEdenRSet)                      \
     V(InsertOldToNewRSet)                       \
     V(InsertLocalToShareRSet)                   \
     V(SetBitAtomic)                             \
@@ -545,7 +542,6 @@ private:
     V(CallDateNow)                              \
     V(UpdateFieldType)                          \
     V(MarkingBarrier)                           \
-    V(MarkingBarrierWithEden)                   \
     V(SharedGCMarkingBarrier)                   \
     V(CallArg0)                                 \
     V(CallArg1)                                 \
@@ -645,7 +641,6 @@ private:
     V(ConvertCharToInt32)                            \
     V(ConvertCharToDouble)                           \
     V(ASMFastWriteBarrier)                           \
-    V(ASMWriteBarrierWithEden)                       \
     V(VerifyBarrier)                                 \
     V(SortTypedArray)                                \
     V(ReverseTypedArray)                             \
