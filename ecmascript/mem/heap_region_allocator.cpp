@@ -101,13 +101,15 @@ void HeapRegionAllocator::FreeRegion(Region *region, size_t cachedSize, bool ski
         !region->InSharedHugeObjectSpace();
     auto allocateBase = region->GetAllocateBase();
     bool shouldPageTag = FreeRegionShouldPageTag(region);
+    bool inHugeMachineCodeSpace = region->InHugeMachineCodeSpace();
 
     DecreaseAnnoMemoryUsage(size);
     region->Invalidate();
     region->ClearMembers();
+
     // Use the mmap interface to clean up the MAP_JIT tag bits on memory.
     // The MAP_JIT flag prevents the mprotect interface from setting PROT_WRITE for memory.
-    if (region->InHugeMachineCodeSpace()) {
+    if (inHugeMachineCodeSpace) {
         MemMap memMap = PageMap(size, PAGE_PROT_NONE, 0, ToVoidPtr(allocateBase), PAGE_FLAG_MAP_FIXED);
         if (memMap.GetMem() == nullptr) {
             LOG_ECMA_MEM(FATAL) << "Failed to clear the MAP_JIT flag for the huge machine code space.";
