@@ -1321,7 +1321,7 @@ struct AsmInterpretedBridgeFrame : public base::AlignedStruct<base::AlignedPoint
     }
 
     AsmInterpretedEntryFrame entry;
-    alignas(EAS) uintptr_t returnAddr;
+    alignas(EAS) uintptr_t returnAddr {0};
 };
 
 // * Optimized-leaved-frame layout as the following:
@@ -1344,13 +1344,12 @@ struct AsmInterpretedBridgeFrame : public base::AlignedStruct<base::AlignedPoint
 //  calleeSP --> +--------------------------+-------------
 //
 // NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init)
-struct OptimizedLeaveFrame {
-    FrameType type;
-    uintptr_t callsiteFp; // thread sp set here
-    uintptr_t returnAddr;
-    uint64_t argRuntimeId;
-    uint64_t argc;
-
+struct OptimizedLeaveFrame : public base::AlignedStruct<JSTaggedValue::TaggedTypeSize(),
+                                                        base::AlignedPointer,
+                                                        base::AlignedPointer,
+                                                        base::AlignedPointer,
+                                                        base::AlignedUint64,
+                                                        base::AlignedUint64> {
     // argv[0]...argv[argc-1] dynamic according to agc
     static OptimizedLeaveFrame* GetFrameFromSp(const JSTaggedType *sp)
     {
@@ -1389,6 +1388,12 @@ struct OptimizedLeaveFrame {
     }
 
     void GCIterate(const FrameIterator &it, RootVisitor &visitor) const;
+
+    alignas(EAS) FrameType type {0};
+    alignas(EAS) uintptr_t callsiteFp {0}; // thread sp set here
+    alignas(EAS) uintptr_t returnAddr {0};
+    alignas(EAS) uint64_t argRuntimeId {0};
+    alignas(EAS) uint64_t argc {0};
 };
 
 // * Optimized-leaved-frame-with-argv layout as the following:
@@ -1406,13 +1411,12 @@ struct OptimizedLeaveFrame {
 //               |       frameType          |            v
 //  calleeSP --> +--------------------------+-------------
 
-struct OptimizedWithArgvLeaveFrame {
-    FrameType type;
-    uintptr_t callsiteFp; // thread sp set here
-    uintptr_t returnAddr;
-    uint64_t argRuntimeId;
-    uint64_t argc;
-
+struct OptimizedWithArgvLeaveFrame : public base::AlignedStruct<JSTaggedValue::TaggedTypeSize(),
+                                                                base::AlignedPointer,
+                                                                base::AlignedPointer,
+                                                                base::AlignedPointer,
+                                                                base::AlignedUint64,
+                                                                base::AlignedUint64> {
     static OptimizedWithArgvLeaveFrame* GetFrameFromSp(const JSTaggedType *sp)
     {
         return reinterpret_cast<OptimizedWithArgvLeaveFrame *>(reinterpret_cast<uintptr_t>(sp) -
@@ -1450,9 +1454,15 @@ struct OptimizedWithArgvLeaveFrame {
     }
 
     void GCIterate(const FrameIterator &it, RootVisitor &visitor) const;
+
+    alignas(EAS) FrameType type {0};
+    alignas(EAS) uintptr_t callsiteFp {0}; // thread sp set here
+    alignas(EAS) uintptr_t returnAddr {0};
+    alignas(EAS) uint64_t argRuntimeId {0};
+    alignas(EAS) uint64_t argc {0};
 };
 
-// * OptimizedBuiltinLeaveFrame layout as the following:
+// * Optimized-builtin-leave-frame layout as the following:
 //               +--------------------------+
 //               |       argv[N-1]          |
 //               |--------------------------|
@@ -1474,7 +1484,12 @@ struct OptimizedWithArgvLeaveFrame {
 //  calleeSP --> +--------------------------+-------------
 //
 // NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init)
-struct OptimizedBuiltinLeaveFrame {
+struct OptimizedBuiltinLeaveFrame : public base::AlignedStruct<JSTaggedValue::TaggedTypeSize(),
+                                                               base::AlignedPointer,
+                                                               base::AlignedPointer,
+                                                               base::AlignedPointer,
+                                                               JSTaggedValue,
+                                                               base::AlignedUint64> {
 public:
     static OptimizedBuiltinLeaveFrame* GetFrameFromSp(const JSTaggedType *sp)
     {
@@ -1530,11 +1545,11 @@ public:
     }
 
 private:
-    FrameType type;
-    uintptr_t callsiteFp; // thread sp set here
-    uintptr_t returnAddr;
-    JSTaggedValue thread;
-    uint64_t argc;
+    alignas(EAS) FrameType type {0};
+    alignas(EAS) uintptr_t callsiteFp {0}; // thread sp set here
+    alignas(EAS) uintptr_t returnAddr {0};
+    alignas(EAS) JSTaggedValue thread {JSTaggedValue::Hole()};
+    alignas(EAS) uint64_t argc {0};
     // argv[0]...argv[argc-1] dynamic according to agc
 };
 
@@ -1567,7 +1582,7 @@ struct BuiltinFrame : public base::AlignedStruct<base::AlignedPointer::Size(),
                                                  base::AlignedPointer,
                                                  base::AlignedPointer,
                                                  base::AlignedPointer,
-                                                 base::AlignedPointer,
+                                                 base::AlignedUint32,
                                                  base::AlignedPointer> {
     enum class Index : size_t {
         TypeIndex = 0,
@@ -1656,12 +1671,12 @@ struct BuiltinFrame : public base::AlignedStruct<base::AlignedPointer::Size(),
 
     void GCIterate(const FrameIterator &it, RootVisitor &visitor) const;
 
-    alignas(EAS) FrameType type;
-    alignas(EAS) JSTaggedType *prevFp;
-    alignas(EAS) uintptr_t returnAddr;
-    alignas(EAS) uintptr_t thread;
-    alignas(EAS) uint32_t numArgs;
-    alignas(EAS) uintptr_t stackArgs;
+    alignas(EAS) FrameType type {0};
+    alignas(EAS) JSTaggedType *prevFp {nullptr};
+    alignas(EAS) uintptr_t returnAddr {0};
+    alignas(EAS) uintptr_t thread {0};
+    alignas(EAS) uint32_t numArgs {0};
+    alignas(EAS) uintptr_t stackArgs {0};
 };
 
 // * BuiltinWithArgvFrame layout as the following:
@@ -1758,9 +1773,9 @@ struct BuiltinWithArgvFrame : public base::AlignedStruct<base::AlignedPointer::S
     void GCIterate(const FrameIterator &it, RootVisitor &visitor) const;
     // argv(... this, new.target, function)
     // numargs
-    alignas(EAS) FrameType type;
-    alignas(EAS) JSTaggedType *prevFp;
-    alignas(EAS) uintptr_t returnAddr;
+    alignas(EAS) FrameType type {0};
+    alignas(EAS) JSTaggedType *prevFp {nullptr};
+    alignas(EAS) uintptr_t returnAddr {0};
 };
 
 // * FASTJITFunctionFrame layout description as the following:
@@ -2070,7 +2085,7 @@ public:
 
 private:
     uint32_t GetBaselineBytecodeOffset() const;
-private:
+
     JSTaggedType *current_ {nullptr};
     const JSThread *thread_ {nullptr};
     const kungfu::ArkStackMapParser *arkStackMapParser_ {nullptr};
