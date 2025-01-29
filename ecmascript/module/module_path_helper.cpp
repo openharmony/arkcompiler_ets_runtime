@@ -178,7 +178,7 @@ void ModulePathHelper::ParseAbcPathAndOhmUrl(EcmaVM *vm, const CString &inputFil
             outEntryPoint = inputFileName.substr(PREFIX_BUNDLE_LEN);
             outBaseFileName = ParseUrl(vm, outEntryPoint);
         } else {
-#if !defined(PANDA_TARGET_WINDOWS) && !defined(PANDA_TARGET_MACOS)
+#if !defined(PANDA_TARGET_WINDOWS) && !defined(PANDA_TARGET_MACOS) && !defined(PANDA_TARGET_LINUX_PREVIEWER)
             // inputFileName: moduleName/ets/xxx/xxx.abc
             outEntryPoint = vm->GetBundleName() + PathHelper::SLASH_TAG + inputFileName;
 #else
