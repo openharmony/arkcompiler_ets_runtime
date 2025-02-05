@@ -15,18 +15,24 @@
 
 #ifndef ECMASCRIPT_COMPILER_BUILTINS_CONTAINERS_PLAINARRAY_STUB_BUILDER_H
 #define ECMASCRIPT_COMPILER_BUILTINS_CONTAINERS_PLAINARRAY_STUB_BUILDER_H
-#include "ecmascript/compiler/stub_builder-inl.h"
+#include "ecmascript/compiler/builtins/builtins_stubs.h"
 #include "ecmascript/js_api/js_api_plain_array.h"
 
 namespace panda::ecmascript::kungfu {
-class ContainersPlainArrayStubBuilder : public StubBuilder {
+class ContainersPlainArrayStubBuilder : public BuiltinsStubBuilder {
 public:
     explicit ContainersPlainArrayStubBuilder(StubBuilder *parent)
-        : StubBuilder(parent) {}
+        : BuiltinsStubBuilder(parent) {}
     ~ContainersPlainArrayStubBuilder() override = default;
     NO_MOVE_SEMANTIC(ContainersPlainArrayStubBuilder);
     NO_COPY_SEMANTIC(ContainersPlainArrayStubBuilder);
     void GenerateCircuit() override {}
+
+#define DECLARE_CONTAINERS_PLAINARRAY_STUB_BUILDER(method, ...)           \
+    void method(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *result, Label *exit, Label *slowPath);
+BUILTINS_WITH_CONTAINERS_PLAINARRAY_STUB_BUILDER(DECLARE_CONTAINERS_PLAINARRAY_STUB_BUILDER)
+#undef DECLARE_CONTAINERS_PLAINARRAY_STUB_BUILDER
+
     GateRef GetSize(GateRef obj)
     {
         return Load(VariableType::INT32(), obj, IntPtr(JSAPIPlainArray::LENGTH_OFFSET));

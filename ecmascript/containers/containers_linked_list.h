@@ -19,6 +19,31 @@
 #include "ecmascript/base/builtins_base.h"
 #include "ecmascript/ecma_runtime_call_info.h"
 
+// List of functions in LinkedList.prototype, excluding the constructor and '@@' properties.
+// V(name, func, length, stubIndex)
+// where ContainersLinkedList::func refers to the native implementation of LinkedList.prototype[name].
+#define CONTAINER_LINKEDLIST_PROTOTYPE_FUNCTIONS(V)                                         \
+    V("add",                    Add,                    1,          INVALID)                \
+    V("insert",                 Insert,                 2,          INVALID)                \
+    V("clear",                  Clear,                  0,          INVALID)                \
+    V("clone",                  Clone,                  0,          INVALID)                \
+    V("removeFirst",            RemoveFirst,            0,          INVALID)                \
+    V("removeLast",             RemoveLast,             0,          INVALID)                \
+    V("removeFirstFound",       RemoveFirstFound,       1,          INVALID)                \
+    V("removeByIndex",          RemoveByIndex,          1,          INVALID)                \
+    V("remove",                 Remove,                 1,          INVALID)                \
+    V("removeLastFound",        RemoveLastFound,        1,          INVALID)                \
+    V("has",                    Has,                    1,          INVALID)                \
+    V("get",                    Get,                    1,          INVALID)                \
+    V("addFirst",               AddFirst,               1,          INVALID)                \
+    V("getFirst",               GetFirst,               0,          INVALID)                \
+    V("getLast",                GetLast,                0,          INVALID)                \
+    V("getIndexOf",             GetIndexOf,             1,          INVALID)                \
+    V("getLastIndexOf",         GetLastIndexOf,         1,          INVALID)                \
+    V("convertToArray",         ConvertToArray,         0,          INVALID)                \
+    V("set",                    Set,                    2,          INVALID)                \
+    V("forEach",                ForEach,                2,          LinkedListForEach)
+
 namespace panda::ecmascript::containers {
 class ContainersLinkedList : public base::BuiltinsBase {
 public:
@@ -46,6 +71,22 @@ public:
     static JSTaggedValue ConvertToArray(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue ForEach(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue GetIteratorObj(EcmaRuntimeCallInfo *argv);
+
+    // Excluding the constructor and '@@' internal properties.
+    static Span<const base::BuiltinFunctionEntry> GetLinkedListPrototypeFunctions()
+    {
+        return Span<const base::BuiltinFunctionEntry>(LINKEDLIST_PROTOTYPE_FUNCTIONS);
+    }
+
+private:
+#define CONTAINER_LINKEDLIST_FUNCTION_ENTRY(name, method, length, id) \
+    base::BuiltinFunctionEntry::Create(name, ContainersLinkedList::method, length, kungfu::BuiltinsStubCSigns::id),
+
+    static constexpr std::array LINKEDLIST_PROTOTYPE_FUNCTIONS = {
+        CONTAINER_LINKEDLIST_PROTOTYPE_FUNCTIONS(CONTAINER_LINKEDLIST_FUNCTION_ENTRY)
+    };
+#undef CONTAINER_LINKEDLIST_FUNCTION_ENTRY
+
 };
 }  // namespace panda::ecmascript::containers
 #endif  // ECMASCRIPT_CONTAINERS_CONTAINERS_LINKED_LIST_H
