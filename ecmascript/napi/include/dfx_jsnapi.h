@@ -108,6 +108,7 @@ public:
     static void NotifyHighSensitive(EcmaVM *vm, bool isStart);
     static bool BuildJsStackInfoList(const EcmaVM *hostVm, uint32_t tid, std::vector<JsFrameInfo>& jsFrames);
     static int32_t GetObjectHash(const EcmaVM *vm, Local<JSValueRef> nativeObject);
+    static int32_t GetObjectHashCode(const EcmaVM *vm, Local<JSValueRef> nativeObject);
 
     // cpuprofiler
     static bool StopCpuProfilerForColdStart(const EcmaVM *vm);

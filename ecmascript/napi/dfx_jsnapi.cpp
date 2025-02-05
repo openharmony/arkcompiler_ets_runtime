@@ -873,10 +873,18 @@ bool DFXJSNApi::BuildJsStackInfoList(const EcmaVM *hostVm, uint32_t tid, std::ve
     return false;
 }
 
+//When some objects invoke GetObjectHash, the return result is 0.
+//The GetObjectHashCode function is added to rectify the fault.
 int32_t DFXJSNApi::GetObjectHash(const EcmaVM *vm, Local<JSValueRef> nativeObject)
 {
     JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(nativeObject);
     return ecmascript::tooling::DebuggerApi::GetObjectHash(vm, obj);
+}
+
+int32_t DFXJSNApi::GetObjectHashCode(const EcmaVM *vm, Local<JSValueRef> nativeObject)
+{
+    JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(nativeObject);
+    return ecmascript::tooling::DebuggerApi::GetObjectHashCode(vm, obj);
 }
 
 bool DFXJSNApi::StartSampling([[maybe_unused]] const EcmaVM *vm, [[maybe_unused]] uint64_t samplingInterval)

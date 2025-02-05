@@ -302,6 +302,20 @@ int32_t DebuggerApi::GetObjectHash(const EcmaVM *ecmaVM, const JSHandle<JSTagged
     }
 }
 
+int32_t DebuggerApi::GetObjectHashCode(const EcmaVM *ecmaVM, const JSHandle<JSTaggedValue> &tagged)
+{
+    if (!tagged->IsECMAObject()) {
+        return 0;
+    }
+    int32_t hash = ECMAObject::Cast(tagged->GetTaggedObject())->GetHash();
+    if (hash == 0) {
+        hash = base::RandomGenerator::GenerateIdentityHash();
+        auto ecmaObjHandle = JSHandle<ECMAObject>::Cast(tagged);
+        ECMAObject::SetHash(ecmaVM->GetJSThread(), hash, ecmaObjHandle);
+    }
+    return hash;
+}
+
 void DebuggerApi::GetObjectClassName(const EcmaVM *ecmaVM, Local<JSValueRef> &tagged, std::string &className)
 {
     if (!tagged->IsObject(ecmaVM)) {
