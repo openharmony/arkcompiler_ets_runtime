@@ -15,6 +15,8 @@
 
 
 #include "ecmascript/compiler/jit_compiler.h"
+#include "ecmascript/jit/rewriter/reloc_rewriter.h"
+#include "ecmascript/jit/rewriter/reloc_rewriter_aarch64.h"
 
 
 namespace panda::ecmascript::kungfu {
@@ -154,6 +156,7 @@ bool JitCompilerTask::Finalize(JitTask *jitTask)
         return false;
     }
     if (compilerTier_.IsBaseLine()) {
+        baselineCompiler_->CollectBLInfo(jitTask->GetRelocInfo());
         return baselineCompiler_->CollectMemoryCodeInfos(jitTask->GetMachineCodeDesc());
     }
     jitCodeGenerator_->JitCreateLitecgModule();
@@ -203,7 +206,8 @@ static ARK_INLINE bool CopyCodeToFort(MachineCodeDesc &desc)
     return true;
 }
 
-ARK_INLINE bool JitCompiler::AllocFromFortAndCopy(CompilationEnv &compilationEnv, MachineCodeDesc &desc)
+ARK_INLINE bool JitCompiler::AllocFromFortAndCopy(CompilationEnv &compilationEnv,
+                                                  MachineCodeDesc &desc, RelocMap &relocInfo)
 {
     ASSERT(compilationEnv.IsJitCompiler());
     JSThread *hostThread = static_cast<JitCompilationEnv&>(compilationEnv).GetHostThread();
@@ -225,6 +229,11 @@ ARK_INLINE bool JitCompiler::AllocFromFortAndCopy(CompilationEnv &compilationEnv
             return false;
         }
         desc.instructionsAddr = mem;
+    }
+
+    if (desc.archType == MachineCodeArchType::AArch64) {
+        kungfu::RelocWriterAArch64 reWriter;
+        reWriter.RewriteRelocInfo((uint8_t*)desc.codeAddr, (uint8_t*)desc.instructionsAddr, relocInfo);
     }
 
     if (!CopyCodeToFort(desc)) {

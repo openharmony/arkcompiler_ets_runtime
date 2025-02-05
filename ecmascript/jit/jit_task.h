@@ -117,6 +117,11 @@ public:
         return codeDesc_;
     }
 
+    RelocMap &GetRelocInfo()
+    {
+        return relocInfo_;
+    }
+
     JSHandle<JSFunction> GetJsFunction() const
     {
         return jsFunction_;
@@ -307,6 +312,7 @@ private:
     std::atomic<RunState> runState_;
     Mutex runStateMutex_;
     ConditionVariable runStateCondition_;
+    RelocMap relocInfo_;
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_JIT_TASK_H

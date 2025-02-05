@@ -270,10 +270,10 @@ void JitTask::InstallCode()
             return;
         }
         machineCodeObj = hostThread_->GetEcmaVM()->GetFactory()->SetMachineCodeObjectData(
-            machineCode, size, codeDesc_, methodHandle);
+            machineCode, size, codeDesc_, methodHandle, relocInfo_);
     } else {
         machineCodeObj = hostThread_->GetEcmaVM()->GetFactory()->NewMachineCodeObject(
-            size, codeDesc_, methodHandle);
+            size, codeDesc_, methodHandle, relocInfo_);
     }
     if (machineCodeObj.GetAddress() == ToUintPtr(nullptr)) {
         // skip install

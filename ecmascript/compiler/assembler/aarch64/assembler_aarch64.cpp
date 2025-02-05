@@ -926,7 +926,7 @@ void AssemblerAarch64::Bl(Label *label)
     Bl(offsetImm);
 }
 
-void AssemblerAarch64::Bl(int32_t imm)
+void AssemblerAarch64::Bl(intptr_t imm)
 {
     uint32_t code = CallOpCode::BL | ((imm << BRANCH_Imm26_LOWBITS) & BRANCH_Imm26_MASK);
     EmitU32(code);
