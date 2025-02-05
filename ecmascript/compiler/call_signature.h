@@ -593,7 +593,8 @@ private:
     V(FinishObjSizeTracking)                    \
     V(NumberHelperStringToDouble)               \
     V(GetStringToListCacheArray)                \
-    V(FastArraySort)                            \
+    V(IntLexicographicCompare)                  \
+    V(DoubleLexicographicCompare)               \
     V(FastArraySortString)                      \
     V(StringToNumber)                           \
     V(StringGetStart)                           \
