@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 Huawei Device Co., Ltd.
+ * Copyright (c) 2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -12,15 +12,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-try {
-    new Intl.DateTimeFormat("en" , { timeZone: "US/Alaska0" });
-} catch (e) {
-    print(e instanceof RangeError);
-}
 
-// This case aims to check stack overflow while timeZone is a long string
-try {
-    new Intl.DateTimeFormat("en", {timeZone: Array(0x8000).join("a")});
-} catch (e) {
-    print(e);
+/*
+ * @tc.name:getiterator
+ * @tc.desc:test StubBuilder::GetIterator
+ * @tc.type: FUNC
+ * @tc.require: issueIBDZ1R
+ */
+
+// This case aims to test the logic which check the undefined result of GetIterator.
+{
+    class c2 extends Object {}
+    Array.prototype[Symbol.iterator] = function () {};
+    try {
+        let myC2 = new c2();
+    } catch (error) {
+        print(error);
+    }
 }

@@ -6666,6 +6666,7 @@ GateRef StubBuilder::GetIterator(GateRef glue, GateRef obj, ProfileOperation cal
     Label noPendingException(env);
     Label isHeapObject(env);
     Label objIsCallable(env);
+    Label throwError(env);
 
     GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
     GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
@@ -6686,6 +6687,14 @@ GateRef StubBuilder::GetIterator(GateRef glue, GateRef obj, ProfileOperation cal
     {
         result = JSCallDispatch(glue, *result, Int32(0), 0, Circuit::NullGate(),
                                 JSCallMode::CALL_GETTER, { obj }, ProfileOperation());
+        Branch(TaggedIsHeapObject(*result), &exit, &throwError);
+    }
+
+    Bind(&throwError);
+    {
+        GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(IterNotObject));
+        CallRuntime(glue, RTSTUB_ID(ThrowTypeError), { IntToTaggedInt(taggedId) });
+        result = Exception();
         Jump(&exit);
     }
 
@@ -7973,8 +7982,17 @@ GateRef StubBuilder::GetCallSpreadArgs(GateRef glue, GateRef array, ProfileOpera
     Label fastPath(env);
     Label noCopyPath(env);
     Label exit(env);
+    Label noException(env);
+    Label isException(env);
 
     GateRef itor = GetIterator(glue, array, callBack);
+    Branch(TaggedIsException(itor), &isException, &noException);
+    Bind(&isException);
+    {
+        result = Exception();
+        Jump(&exit);
+    }
+    Bind(&noException);
     GateRef iterHClass = LoadHClass(itor);
     GateRef isJSArrayIter = Int32Equal(GetObjectType(iterHClass),
                                        Int32(static_cast<int32_t>(JSType::JS_ARRAY_ITERATOR)));

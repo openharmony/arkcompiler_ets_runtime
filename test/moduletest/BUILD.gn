@@ -84,6 +84,7 @@ group("ark_js_moduletest") {
     "funcprotochangeobjectandnew",
     "functionapply",
     "generator",
+    "getdeletedelementsat",
     "getpropertybyindex",
     "getunmappedargs",
     "global",
@@ -110,6 +111,7 @@ group("ark_js_moduletest") {
     "multiprotoic",
     "negintmin",
     "newobjdynrange",
+    "nextinternalslowpath",
     "objectcloneproperties",
     "objectdefineproperties",
     "objectgetownproperty",
@@ -171,6 +173,7 @@ group("ark_js_moduletest") {
     "sharedcheck",
     "definesendableclass",
     "sendablecontext",
+    "getiterator",
   ]
 
   deps = []
@@ -189,6 +192,7 @@ group("ark_js_moduletest") {
       "multiconstpoolconstructor",
       "multiconstpoolfunc",
       "multiconstpoolobj",
+      "proxyrelease",
     ]
 
     foreach(test, release_test_list) {
@@ -265,6 +269,7 @@ group("ark_asm_test") {
     "funcprotochangeobjectandnew",
     "functionapply",
     "generator",
+    "getdeletedelementsat",
     "getunmappedargs",
     "global",
     "globalaccessor",
@@ -285,6 +290,7 @@ group("ark_asm_test") {
     "multiprotoic",
     "negintmin",
     "newobjdynrange",
+    "nextinternalslowpath",
     "number",
     "objectcloneproperties",
     "objecthasownproperty",
@@ -326,6 +332,7 @@ group("ark_asm_test") {
     "sharedcheck",
     "definesendableclass",
     "sendablecontext",
+    "getiterator",
   ]
 
   deps = []
@@ -345,6 +352,7 @@ group("ark_asm_test") {
       "multiconstpoolconstructor",
       "multiconstpoolfunc",
       "multiconstpoolobj",
+      "proxyrelease",
     ]
 
     foreach(test, release_test_list) {
@@ -406,6 +414,7 @@ group("ark_asm_single_step_test") {
     "funcprotochangeobjectandnew",
     "functionapply",
     "generator",
+    "getdeletedelementsat",
     "getunmappedargs",
     "global",
     "globalaccessor",
@@ -423,6 +432,7 @@ group("ark_asm_single_step_test") {
     "multiprotoic",
     "negintmin",
     "newobjdynrange",
+    "nextinternalslowpath",
     "objectcloneproperties",
     "objecthasownproperty",
     "objectkeys",
@@ -458,6 +468,7 @@ group("ark_asm_single_step_test") {
     "sharedcheck",
     "definesendableclass",
     "sendablecontext",
+    "getiterator",
   ]
 
   deps = []
@@ -476,6 +487,7 @@ group("ark_asm_single_step_test") {
       "multiconstpoolconstructor",
       "multiconstpoolfunc",
       "multiconstpoolobj",
+      "proxyrelease",
     ]
 
     foreach(test, release_test_list) {
