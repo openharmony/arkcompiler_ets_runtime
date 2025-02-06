@@ -60,7 +60,7 @@ public:
 
 private:
     uint32_t GetShIndex(ElfSecName section) const;
-    int GetSegmentNum() const;
+    size_t GetSegmentNum() const;
     int GetSecNum() const;
     unsigned GetPFlag(ElfSecName segment) const;
     ElfSecName GetSegmentName(const ElfSecName &secName) const;

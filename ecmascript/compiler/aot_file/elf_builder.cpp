@@ -245,7 +245,7 @@ void ElfBuilder::PackELFHeader(llvm::ELF::Elf64_Ehdr &header, uint32_t version, 
     header.e_phnum = GetSegmentNum();
 }
 
-int ElfBuilder::GetSegmentNum() const
+size_t ElfBuilder::GetSegmentNum() const
 {
     const std::map<ElfSecName, std::pair<uint64_t, uint32_t>> &sections = GetFullSecInfo();
     std::set<ElfSecName> segments;
