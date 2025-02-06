@@ -63,7 +63,7 @@ void Jit::SetJitEnablePostFork(EcmaVM *vm, const std::string &bundleName)
         options.SetEnableAPPJIT(true);
         isApp_ = true;
         // for app threshold
-        uint32_t defaultSize = 3000;
+        uint32_t defaultSize = 150;
         uint32_t threshold = ohos::JitTools::GetJitHotnessThreshold(defaultSize);
         options.SetJitHotnessThreshold(threshold);
         hotnessThreshold_ = threshold;
