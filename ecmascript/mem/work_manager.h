@@ -184,6 +184,9 @@ public:
 
     void InitializeBase()
     {
+        if (UNLIKELY(workSpace_ == 0)) {
+            LOG_ECMA(FATAL) << "workSpace is nullptr";
+        }
         spaceStart_ = workSpace_;
         spaceEnd_ = workSpace_ + WORKNODE_SPACE_SIZE;
     }
@@ -194,6 +197,23 @@ public:
             GetSpaceChunk()->Free(reinterpret_cast<void *>(agedSpaces_.back()));
             agedSpaces_.pop_back();
         }
+    }
+
+    void FinishInPreFork()
+    {
+        ASSERT(workSpace_ != 0);
+        GetSpaceChunk()->Free(reinterpret_cast<void *>(workSpace_));
+        workSpace_ = 0;
+        spaceStart_ = 0;
+        spaceEnd_ = 0;
+    }
+
+    void InitializeInPostFork()
+    {
+        ASSERT(workSpace_ == 0);
+        auto allocatedSpace = GetSpaceChunk()->Allocate(WORKNODE_SPACE_SIZE);
+        ASSERT(allocatedSpace != nullptr);
+        workSpace_ = ToUintPtr(allocatedSpace);
     }
 
     inline WorkNode *AllocateWorkNode();

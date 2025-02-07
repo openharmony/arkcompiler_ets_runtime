@@ -170,7 +170,9 @@ WorkNode *WorkManagerBase::AllocateWorkNode()
 
 WorkManagerBase::~WorkManagerBase()
 {
-    GetSpaceChunk()->Free(reinterpret_cast<void *>(workSpace_));
+    if (workSpace_ != 0) {
+        GetSpaceChunk()->Free(reinterpret_cast<void *>(workSpace_));
+    }
 }
 
 WorkManager::WorkManager(Heap *heap, uint32_t threadNum)
