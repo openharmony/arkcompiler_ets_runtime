@@ -198,11 +198,11 @@ public:
         return Span<const std::pair<std::string_view, bool>>(ARRAY_FUNCTION_PROPERTIES);
     }
 
-    static inline uint64_t ConvertTagValueToInteger(JSThread *thread, JSHandle<JSTaggedValue>& number, int64_t len);
-    static inline uint64_t GetNumberArgVal(JSThread *thread, EcmaRuntimeCallInfo *argv, uint32_t idx, int64_t len,
-                                           int64_t defVal);
-    static inline uint64_t GetNumberArgValThrow(JSThread *thread, EcmaRuntimeCallInfo *argv, uint32_t idx,
-                                                int64_t len, const char* err);
+    static inline int64_t ConvertTagValueToInteger(JSThread *thread, JSHandle<JSTaggedValue>& number, int64_t len);
+    static inline int64_t GetNumberArgVal(JSThread *thread, EcmaRuntimeCallInfo *argv, uint32_t idx, int64_t len,
+                                          int64_t defVal);
+    static inline int64_t GetNumberArgValThrow(JSThread *thread, EcmaRuntimeCallInfo *argv, uint32_t idx,
+                                               int64_t len, const char* err);
 
     static inline void SetElementValue(JSThread *thread, JSHandle<JSObject> arrHandle, uint32_t key,
                                        const JSHandle<JSTaggedValue> &value);
