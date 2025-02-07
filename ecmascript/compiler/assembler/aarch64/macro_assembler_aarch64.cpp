@@ -96,8 +96,11 @@ void MacroAssemblerAArch64::CallBuiltin(Address funcAddress,
         }
         MovParameterIntoParamReg(param, registerParamVec[i]);
     }
+    size_t startPc = assembler.GetCurPos();
     assembler.Mov(LOCAL_SCOPE_REGISTER, aarch64::Immediate(funcAddress));
     assembler.Blr(LOCAL_SCOPE_REGISTER);
+    size_t endPc = assembler.GetCurPos() - INSTRUCT_SIZE;
+    assembler.RecordRelocInfo(startPc, endPc, funcAddress);
 }
 
 void MacroAssemblerAArch64::SaveReturnRegister(const StackSlotOperand &dstStackSlot)
