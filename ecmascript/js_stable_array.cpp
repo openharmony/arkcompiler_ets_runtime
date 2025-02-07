@@ -513,12 +513,12 @@ JSTaggedValue JSStableArray::Join(JSThread *thread, JSHandle<JSArray> receiver,
     vec.reserve(len);
     for (uint32_t k = 0; k < len; k++) {
         JSTaggedValue element = JSTaggedValue::Undefined();
-        if (k < elementsLength) {
-            element = ElementAccessor::Get(obj, k);
-            if (element.IsHole() && JSTaggedValue::HasProperty(thread, receiverValue, k)) {
-                element = JSArray::FastGetPropertyByValue(thread, receiverValue, k).GetTaggedValue();
-                RETURN_EXCEPTION_AND_POP_JOINSTACK(thread, receiverValue);
-            }
+        if (receiverValue->IsStableJSArray(thread)) {
+            element = k < ElementAccessor::GetElementsLength(obj) ?
+                      ElementAccessor::Get(obj, k) : JSTaggedValue::Hole();
+        } else {
+            element = JSArray::FastGetPropertyByValue(thread, receiverValue, k).GetTaggedValue();
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         }
         if (!element.IsUndefinedOrNull() && !element.IsHole()) {
             if (!element.IsString()) {
