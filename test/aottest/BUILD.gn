@@ -261,6 +261,7 @@ group("ark_aot_ts_test") {
     "privateproperty",
     "privateproperty_js",
     "resumegenerator",
+    "realm",
     "rodata",
     "setobjectwithproto",
     "set",
