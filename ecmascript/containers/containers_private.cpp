@@ -286,30 +286,11 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeArrayList(JSThread *thread)
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(prototype), constructorKey, arrayListFunction);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
 
-    // ArrayList.prototype
-    SetFrozenFunction(thread, prototype, "add", ContainersArrayList::Add, FuncLength::ONE);
-    SetFrozenFunction(thread, prototype, "insert", ContainersArrayList::Insert, FuncLength::TWO);
-    SetFrozenFunction(thread, prototype, "clear", ContainersArrayList::Clear, FuncLength::ZERO);
-    SetFrozenFunction(thread, prototype, "clone", ContainersArrayList::Clone, FuncLength::ZERO);
-    SetFrozenFunction(thread, prototype, "has", ContainersArrayList::Has, FuncLength::ONE);
-    SetFrozenFunction(thread, prototype, "getCapacity", ContainersArrayList::GetCapacity, FuncLength::ZERO);
-    SetFrozenFunction(thread, prototype, "increaseCapacityTo",
-                      ContainersArrayList::IncreaseCapacityTo, FuncLength::ONE);
-    SetFrozenFunction(thread, prototype, "trimToCurrentLength",
-                      ContainersArrayList::TrimToCurrentLength, FuncLength::ZERO);
-    SetFrozenFunction(thread, prototype, "getIndexOf", ContainersArrayList::GetIndexOf, FuncLength::ONE);
-    SetFrozenFunction(thread, prototype, "isEmpty", ContainersArrayList::IsEmpty, FuncLength::ZERO);
-    SetFrozenFunction(thread, prototype, "getLastIndexOf", ContainersArrayList::GetLastIndexOf, FuncLength::ONE);
-    SetFrozenFunction(thread, prototype, "removeByIndex", ContainersArrayList::RemoveByIndex, FuncLength::ONE);
-    SetFrozenFunction(thread, prototype, "remove", ContainersArrayList::Remove, FuncLength::ONE);
-    SetFrozenFunction(thread, prototype, "removeByRange", ContainersArrayList::RemoveByRange, FuncLength::TWO);
-    SetFrozenFunction(thread, prototype, "replaceAllElements", ContainersArrayList::ReplaceAllElements,
-        FuncLength::TWO, BUILTINS_STUB_ID(ArrayListReplaceAllElements));
-    SetFrozenFunction(thread, prototype, "sort", ContainersArrayList::Sort, FuncLength::ONE);
-    SetFrozenFunction(thread, prototype, "subArrayList", ContainersArrayList::SubArrayList, FuncLength::TWO);
-    SetFrozenFunction(thread, prototype, "convertToArray", ContainersArrayList::ConvertToArray, FuncLength::ZERO);
-    SetFrozenFunction(thread, prototype, "forEach", ContainersArrayList::ForEach, FuncLength::TWO,
-        BUILTINS_STUB_ID(ArrayListForEach));
+    // ArrayList.prototype methods (excluding constructor and '@@' internal properties)
+    for (const base::BuiltinFunctionEntry &entry: ContainersArrayList::GetArrayListPrototypeFunctions()) {
+        SetFrozenFunction(thread, prototype, entry.GetName().data(), entry.GetEntrypoint(), entry.GetLength(),
+                          entry.GetBuiltinStubId());
+    }
 
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     SetStringTagSymbol(thread, env, prototype, "ArrayList");
@@ -361,31 +342,11 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeLightWeightMap(JSThread *th
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(funcPrototype), constructorKey, lightWeightMapFunction);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
 
-    // LightWeightMap.prototype.add()
-    SetFrozenFunction(thread, funcPrototype, "hasAll", ContainersLightWeightMap::HasAll, FuncLength::ONE);
-    SetFrozenFunction(thread, funcPrototype, "hasKey", ContainersLightWeightMap::HasKey, FuncLength::ONE);
-    SetFrozenFunction(thread, funcPrototype, "hasValue", ContainersLightWeightMap::HasValue, FuncLength::ONE);
-    SetFrozenFunction(thread, funcPrototype, "increaseCapacityTo", ContainersLightWeightMap::IncreaseCapacityTo,
-                      FuncLength::ONE);
-    SetFrozenFunction(thread, funcPrototype, "entries", ContainersLightWeightMap::Entries, FuncLength::ONE);
-    SetFrozenFunction(thread, funcPrototype, "get", ContainersLightWeightMap::Get, FuncLength::ONE);
-    SetFrozenFunction(thread, funcPrototype, "getIndexOfKey", ContainersLightWeightMap::GetIndexOfKey, FuncLength::ONE);
-    SetFrozenFunction(thread, funcPrototype, "getIndexOfValue", ContainersLightWeightMap::GetIndexOfValue,
-                      FuncLength::ONE);
-    SetFrozenFunction(thread, funcPrototype, "isEmpty", ContainersLightWeightMap::IsEmpty, FuncLength::ONE);
-    SetFrozenFunction(thread, funcPrototype, "getKeyAt", ContainersLightWeightMap::GetKeyAt, FuncLength::ONE);
-    SetFrozenFunction(thread, funcPrototype, "keys", ContainersLightWeightMap::Keys, FuncLength::ONE);
-    SetFrozenFunction(thread, funcPrototype, "setAll", ContainersLightWeightMap::SetAll, FuncLength::ONE);
-    SetFrozenFunction(thread, funcPrototype, "set", ContainersLightWeightMap::Set, FuncLength::ONE);
-    SetFrozenFunction(thread, funcPrototype, "remove", ContainersLightWeightMap::Remove, FuncLength::ONE);
-    SetFrozenFunction(thread, funcPrototype, "removeAt", ContainersLightWeightMap::RemoveAt, FuncLength::ONE);
-    SetFrozenFunction(thread, funcPrototype, "clear", ContainersLightWeightMap::Clear, FuncLength::ONE);
-    SetFrozenFunction(thread, funcPrototype, "setValueAt", ContainersLightWeightMap::SetValueAt, FuncLength::ONE);
-    SetFrozenFunction(thread, funcPrototype, "forEach", ContainersLightWeightMap::ForEach, FuncLength::ONE,
-                      BUILTINS_STUB_ID(LightWeightMapForEach));
-    SetFrozenFunction(thread, funcPrototype, "toString", ContainersLightWeightMap::ToString, FuncLength::ONE);
-    SetFrozenFunction(thread, funcPrototype, "getValueAt", ContainersLightWeightMap::GetValueAt, FuncLength::ONE);
-    SetFrozenFunction(thread, funcPrototype, "values", ContainersLightWeightMap::Values, FuncLength::ONE);
+    // LightWeightMap.prototype methods (excluding constructor and '@@' internal properties)
+    for (const base::BuiltinFunctionEntry &entry: ContainersLightWeightMap::GetLightWeightMapPrototypeFunctions()) {
+        SetFrozenFunction(thread, funcPrototype, entry.GetName().data(), entry.GetEntrypoint(),
+                          entry.GetLength(), entry.GetBuiltinStubId());
+    }
 
     JSHandle<JSTaggedValue> lengthGetter = CreateGetter(thread, ContainersLightWeightMap::Length, "length",
                                                         FuncLength::ZERO);
@@ -434,25 +395,13 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeLightWeightSet(JSThread *th
     JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(funcPrototype), constructorKey, lightweightSetFunction);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
-    SetFrozenFunction(thread, funcPrototype, "add", ContainersLightWeightSet::Add, FuncLength::ONE);
-    SetFrozenFunction(thread, funcPrototype, "addAll", ContainersLightWeightSet::AddAll, FuncLength::ONE);
-    SetFrozenFunction(thread, funcPrototype, "isEmpty", ContainersLightWeightSet::IsEmpty, FuncLength::ONE);
-    SetFrozenFunction(thread, funcPrototype, "getValueAt", ContainersLightWeightSet::GetValueAt, FuncLength::ONE);
-    SetFrozenFunction(thread, funcPrototype, "hasAll", ContainersLightWeightSet::HasAll, FuncLength::ONE);
-    SetFrozenFunction(thread, funcPrototype, "has", ContainersLightWeightSet::Has, FuncLength::ONE);
-    SetFrozenFunction(thread, funcPrototype, "equal", ContainersLightWeightSet::Equal, FuncLength::ONE);
-    SetFrozenFunction(thread, funcPrototype, "increaseCapacityTo",
-                      ContainersLightWeightSet::IncreaseCapacityTo, FuncLength::ONE);
-    SetFrozenFunction(thread, funcPrototype, "forEach", ContainersLightWeightSet::ForEach, FuncLength::ONE,
-                      BUILTINS_STUB_ID(LightWeightSetForEach));
-    SetFrozenFunction(thread, funcPrototype, "getIndexOf", ContainersLightWeightSet::GetIndexOf, FuncLength::ONE);
-    SetFrozenFunction(thread, funcPrototype, "remove", ContainersLightWeightSet::Remove, FuncLength::ZERO);
-    SetFrozenFunction(thread, funcPrototype, "removeAt", ContainersLightWeightSet::RemoveAt, FuncLength::ZERO);
-    SetFrozenFunction(thread, funcPrototype, "clear", ContainersLightWeightSet::Clear, FuncLength::ONE);
-    SetFrozenFunction(thread, funcPrototype, "toString", ContainersLightWeightSet::ToString, FuncLength::ZERO);
-    SetFrozenFunction(thread, funcPrototype, "toArray", ContainersLightWeightSet::ToArray, FuncLength::ONE);
-    SetFrozenFunction(thread, funcPrototype, "values", ContainersLightWeightSet::Values, FuncLength::ONE);
-    SetFrozenFunction(thread, funcPrototype, "entries", ContainersLightWeightSet::Entries, FuncLength::ZERO);
+
+    // LightWeightSet.prototype methods (excluding constructor and '@@' internal properties)
+    for (const base::BuiltinFunctionEntry &entry: ContainersLightWeightSet::GetLightWeightSetPrototypeFunctions()) {
+        SetFrozenFunction(thread, funcPrototype, entry.GetName().data(), entry.GetEntrypoint(),
+                          entry.GetLength(), entry.GetBuiltinStubId());
+    }
+
     JSHandle<JSTaggedValue> lengthGetter =
         CreateGetter(thread, ContainersLightWeightSet::GetSize, "length", FuncLength::ZERO);
 
@@ -501,24 +450,12 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeTreeMap(JSThread *thread)
     JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(mapFuncPrototype), constructorKey, mapFunction);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
-    // TreeMap.prototype
-    SetFrozenFunction(thread, mapFuncPrototype, "set", ContainersTreeMap::Set, FuncLength::TWO);
-    SetFrozenFunction(thread, mapFuncPrototype, "get", ContainersTreeMap::Get, FuncLength::ONE);
-    SetFrozenFunction(thread, mapFuncPrototype, "remove", ContainersTreeMap::Remove, FuncLength::ONE);
-    SetFrozenFunction(thread, mapFuncPrototype, "hasKey", ContainersTreeMap::HasKey, FuncLength::ONE);
-    SetFrozenFunction(thread, mapFuncPrototype, "hasValue", ContainersTreeMap::HasValue, FuncLength::ONE);
-    SetFrozenFunction(thread, mapFuncPrototype, "getFirstKey", ContainersTreeMap::GetFirstKey, FuncLength::ZERO);
-    SetFrozenFunction(thread, mapFuncPrototype, "getLastKey", ContainersTreeMap::GetLastKey, FuncLength::ZERO);
-    SetFrozenFunction(thread, mapFuncPrototype, "setAll", ContainersTreeMap::SetAll, FuncLength::ONE);
-    SetFrozenFunction(thread, mapFuncPrototype, "clear", ContainersTreeMap::Clear, FuncLength::ZERO);
-    SetFrozenFunction(thread, mapFuncPrototype, "getLowerKey", ContainersTreeMap::GetLowerKey, FuncLength::ONE);
-    SetFrozenFunction(thread, mapFuncPrototype, "getHigherKey", ContainersTreeMap::GetHigherKey, FuncLength::ONE);
-    SetFrozenFunction(thread, mapFuncPrototype, "keys", ContainersTreeMap::Keys, FuncLength::ZERO);
-    SetFrozenFunction(thread, mapFuncPrototype, "values", ContainersTreeMap::Values, FuncLength::ZERO);
-    SetFrozenFunction(thread, mapFuncPrototype, "replace", ContainersTreeMap::Replace, FuncLength::TWO);
-    SetFrozenFunction(thread, mapFuncPrototype, "forEach", ContainersTreeMap::ForEach, FuncLength::ONE);
-    SetFrozenFunction(thread, mapFuncPrototype, "entries", ContainersTreeMap::Entries, FuncLength::ZERO);
-    SetFrozenFunction(thread, mapFuncPrototype, "isEmpty", ContainersTreeMap::IsEmpty, FuncLength::ZERO);
+
+    // TreeMap.prototype methods (excluding constructor and '@@' internal properties)
+    for (const base::BuiltinFunctionEntry &entry: ContainersTreeMap::GetTreeMapPrototypeFunctions()) {
+        SetFrozenFunction(thread, mapFuncPrototype, entry.GetName().data(), entry.GetEntrypoint(),
+                          entry.GetLength(), entry.GetBuiltinStubId());
+    }
 
     // @@ToStringTag
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
@@ -578,21 +515,12 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeTreeSet(JSThread *thread)
     JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(setFuncPrototype), constructorKey, setFunction);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
-    // TreeSet.prototype
-    SetFrozenFunction(thread, setFuncPrototype, "add", ContainersTreeSet::Add, FuncLength::TWO);
-    SetFrozenFunction(thread, setFuncPrototype, "remove", ContainersTreeSet::Remove, FuncLength::ONE);
-    SetFrozenFunction(thread, setFuncPrototype, "has", ContainersTreeSet::Has, FuncLength::ONE);
-    SetFrozenFunction(thread, setFuncPrototype, "getFirstValue", ContainersTreeSet::GetFirstValue, FuncLength::ZERO);
-    SetFrozenFunction(thread, setFuncPrototype, "getLastValue", ContainersTreeSet::GetLastValue, FuncLength::ZERO);
-    SetFrozenFunction(thread, setFuncPrototype, "clear", ContainersTreeSet::Clear, FuncLength::ZERO);
-    SetFrozenFunction(thread, setFuncPrototype, "getLowerValue", ContainersTreeSet::GetLowerValue, FuncLength::ONE);
-    SetFrozenFunction(thread, setFuncPrototype, "getHigherValue", ContainersTreeSet::GetHigherValue, FuncLength::ONE);
-    SetFrozenFunction(thread, setFuncPrototype, "popFirst", ContainersTreeSet::PopFirst, FuncLength::ZERO);
-    SetFrozenFunction(thread, setFuncPrototype, "popLast", ContainersTreeSet::PopLast, FuncLength::ZERO);
-    SetFrozenFunction(thread, setFuncPrototype, "isEmpty", ContainersTreeSet::IsEmpty, FuncLength::TWO);
-    SetFrozenFunction(thread, setFuncPrototype, "values", ContainersTreeSet::Values, FuncLength::ZERO);
-    SetFrozenFunction(thread, setFuncPrototype, "forEach", ContainersTreeSet::ForEach, FuncLength::ONE);
-    SetFrozenFunction(thread, setFuncPrototype, "entries", ContainersTreeSet::Entries, FuncLength::ZERO);
+
+    // TreeSet.prototype methods (excluding constructor and '@@' internal properties)
+    for (const base::BuiltinFunctionEntry &entry: ContainersTreeSet::GetTreeSetPrototypeFunctions()) {
+        SetFrozenFunction(thread, setFuncPrototype, entry.GetName().data(), entry.GetEntrypoint(),
+                          entry.GetLength(), entry.GetBuiltinStubId());
+    }
 
     // @@ToStringTag
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
@@ -653,32 +581,12 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializePlainArray(JSThread *thread
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(plainArrayFuncPrototype), constructorKey,
                           plainArrayFunction);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
-    // PlainArray.prototype.add()
-    SetFrozenFunction(thread, plainArrayFuncPrototype, "add", ContainersPlainArray::Add, FuncLength::ONE);
-    SetFrozenFunction(thread, plainArrayFuncPrototype, "clear", ContainersPlainArray::Clear, FuncLength::ONE);
-    SetFrozenFunction(thread, plainArrayFuncPrototype, "clone", ContainersPlainArray::Clone, FuncLength::ONE);
-    SetFrozenFunction(thread, plainArrayFuncPrototype, "has", ContainersPlainArray::Has, FuncLength::ONE);
-    SetFrozenFunction(thread, plainArrayFuncPrototype, "get", ContainersPlainArray::Get, FuncLength::ONE);
-    SetFrozenFunction(thread, plainArrayFuncPrototype, "forEach", ContainersPlainArray::ForEach, FuncLength::ONE,
-                      BUILTINS_STUB_ID(PlainArrayForEach));
-    SetFrozenFunction(thread, plainArrayFuncPrototype, "toString", ContainersPlainArray::ToString,
-                      FuncLength::ZERO);
-    SetFrozenFunction(thread, plainArrayFuncPrototype, "getIndexOfKey", ContainersPlainArray::GetIndexOfKey,
-                      FuncLength::ZERO);
-    SetFrozenFunction(thread, plainArrayFuncPrototype, "getIndexOfValue", ContainersPlainArray::GetIndexOfValue,
-                      FuncLength::ZERO);
-    SetFrozenFunction(thread, plainArrayFuncPrototype, "isEmpty", ContainersPlainArray::IsEmpty, FuncLength::ZERO);
-    SetFrozenFunction(thread, plainArrayFuncPrototype, "getKeyAt",
-                      ContainersPlainArray::GetKeyAt, FuncLength::ZERO);
-    SetFrozenFunction(thread, plainArrayFuncPrototype, "remove", ContainersPlainArray::Remove, FuncLength::ZERO);
-    SetFrozenFunction(thread, plainArrayFuncPrototype, "removeAt", ContainersPlainArray::RemoveAt,
-                      FuncLength::ZERO);
-    SetFrozenFunction(thread, plainArrayFuncPrototype, "removeRangeFrom", ContainersPlainArray::RemoveRangeFrom,
-                      FuncLength::ZERO);
-    SetFrozenFunction(thread, plainArrayFuncPrototype, "setValueAt", ContainersPlainArray::SetValueAt,
-                      FuncLength::ZERO);
-    SetFrozenFunction(thread, plainArrayFuncPrototype, "getValueAt", ContainersPlainArray::GetValueAt,
-                      FuncLength::ZERO);
+
+    // PlainArray.prototype methods (excluding constructor and '@@' internal properties)
+    for (const base::BuiltinFunctionEntry &entry: ContainersPlainArray::GetPlainArrayPrototypeFunctions()) {
+        SetFrozenFunction(thread, plainArrayFuncPrototype, entry.GetName().data(), entry.GetEntrypoint(),
+                          entry.GetLength(), entry.GetBuiltinStubId());
+    }
 
     JSHandle<JSTaggedValue> lengthGetter = CreateGetter(thread, ContainersPlainArray::GetSize, "length",
                                                         FuncLength::ZERO);
@@ -727,19 +635,13 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeStack(JSThread *thread)
     JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(stackFuncPrototype), constructorKey, stackFunction);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
-    // Stack.prototype.push()
-    SetFrozenFunction(thread, stackFuncPrototype, "push", ContainersStack::Push, FuncLength::ONE);
-    // Stack.prototype.empty()
-    SetFrozenFunction(thread, stackFuncPrototype, "isEmpty", ContainersStack::IsEmpty, FuncLength::ONE);
-    // Stack.prototype.peek()
-    SetFrozenFunction(thread, stackFuncPrototype, "peek", ContainersStack::Peek, FuncLength::ONE);
-    // Stack.prototype.pop()
-    SetFrozenFunction(thread, stackFuncPrototype, "pop", ContainersStack::Pop, FuncLength::ONE);
-    // Stack.prototype.search()
-    SetFrozenFunction(thread, stackFuncPrototype, "locate", ContainersStack::Locate, FuncLength::ONE);
-    // Stack.prototype.forEach()
-    SetFrozenFunction(thread, stackFuncPrototype, "forEach", ContainersStack::ForEach, FuncLength::ONE,
-                      BUILTINS_STUB_ID(StackForEach));
+
+    // Stack.prototype methods (excluding constructor and '@@' internal properties)
+    for (const base::BuiltinFunctionEntry &entry: ContainersStack::GetStackPrototypeFunctions()) {
+        SetFrozenFunction(thread, stackFuncPrototype, entry.GetName().data(), entry.GetEntrypoint(),
+                          entry.GetLength(), entry.GetBuiltinStubId());
+    }
+
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     SetStringTagSymbol(thread, env, stackFuncPrototype, "Stack");
 
@@ -896,12 +798,12 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeQueue(JSThread *thread)
     JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(queueFuncPrototype), constructorKey, queueFunction);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
-    // Queue.prototype.add()
-    SetFrozenFunction(thread, queueFuncPrototype, "add", ContainersQueue::Add, FuncLength::ONE);
-    SetFrozenFunction(thread, queueFuncPrototype, "getFirst", ContainersQueue::GetFirst, FuncLength::ZERO);
-    SetFrozenFunction(thread, queueFuncPrototype, "pop", ContainersQueue::Pop, FuncLength::ZERO);
-    SetFrozenFunction(thread, queueFuncPrototype, "forEach", ContainersQueue::ForEach, FuncLength::TWO,
-                      BUILTINS_STUB_ID(QueueForEach));
+
+    // Queue.prototype methods (excluding constructor and '@@' internal properties)
+    for (const base::BuiltinFunctionEntry &entry: ContainersQueue::GetQueuePrototypeFunctions()) {
+        SetFrozenFunction(thread, queueFuncPrototype, entry.GetName().data(), entry.GetEntrypoint(),
+                          entry.GetLength(), entry.GetBuiltinStubId());
+    }
 
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     SetStringTagSymbol(thread, env, queueFuncPrototype, "Queue");
@@ -951,15 +853,12 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeDeque(JSThread *thread)
     JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(dequeFuncPrototype), constructorKey, dequeFunction);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
-    SetFrozenFunction(thread, dequeFuncPrototype, "insertFront", ContainersDeque::InsertFront, FuncLength::ONE);
-    SetFrozenFunction(thread, dequeFuncPrototype, "insertEnd", ContainersDeque::InsertEnd, FuncLength::ONE);
-    SetFrozenFunction(thread, dequeFuncPrototype, "getFirst", ContainersDeque::GetFirst, FuncLength::ZERO);
-    SetFrozenFunction(thread, dequeFuncPrototype, "getLast", ContainersDeque::GetLast, FuncLength::ZERO);
-    SetFrozenFunction(thread, dequeFuncPrototype, "has", ContainersDeque::Has, FuncLength::ONE);
-    SetFrozenFunction(thread, dequeFuncPrototype, "popFirst", ContainersDeque::PopFirst, FuncLength::ZERO);
-    SetFrozenFunction(thread, dequeFuncPrototype, "popLast", ContainersDeque::PopLast, FuncLength::ZERO);
-    SetFrozenFunction(thread, dequeFuncPrototype, "forEach", ContainersDeque::ForEach, FuncLength::TWO,
-                      BUILTINS_STUB_ID(DequeForEach));
+
+    // Deque.prototype methods (excluding constructor and '@@' internal properties)
+    for (const base::BuiltinFunctionEntry &entry: ContainersDeque::GetDequePrototypeFunctions()) {
+        SetFrozenFunction(thread, dequeFuncPrototype, entry.GetName().data(), entry.GetEntrypoint(), entry.GetLength(),
+                          entry.GetBuiltinStubId());
+    }
 
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     SetStringTagSymbol(thread, env, dequeFuncPrototype, "Deque");
@@ -1004,27 +903,12 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeList(JSThread *thread)
     JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(listFuncPrototype), constructorKey, listFunction);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
-    SetFrozenFunction(thread, listFuncPrototype, "add", ContainersList::Add, FuncLength::ONE);
-    SetFrozenFunction(thread, listFuncPrototype, "getFirst", ContainersList::GetFirst, FuncLength::ONE);
-    SetFrozenFunction(thread, listFuncPrototype, "getLast", ContainersList::GetLast, FuncLength::ONE);
-    SetFrozenFunction(thread, listFuncPrototype, "insert", ContainersList::Insert, FuncLength::ONE);
-    SetFrozenFunction(thread, listFuncPrototype, "clear", ContainersList::Clear, FuncLength::ONE);
-    SetFrozenFunction(thread, listFuncPrototype, "removeByIndex", ContainersList::RemoveByIndex, FuncLength::ONE);
-    SetFrozenFunction(thread, listFuncPrototype, "remove", ContainersList::Remove, FuncLength::ONE);
-    SetFrozenFunction(thread, listFuncPrototype, "has", ContainersList::Has, FuncLength::ONE);
-    SetFrozenFunction(thread, listFuncPrototype, "isEmpty", ContainersList::IsEmpty, FuncLength::ONE);
-    SetFrozenFunction(thread, listFuncPrototype, "get", ContainersList::Get, FuncLength::ONE);
-    SetFrozenFunction(thread, listFuncPrototype, "getIndexOf", ContainersList::GetIndexOf, FuncLength::ONE);
-    SetFrozenFunction(thread, listFuncPrototype, "getLastIndexOf", ContainersList::GetLastIndexOf, FuncLength::ONE);
-    SetFrozenFunction(thread, listFuncPrototype, "set", ContainersList::Set, FuncLength::ONE);
-    SetFrozenFunction(thread, listFuncPrototype, "forEach", ContainersList::ForEach, FuncLength::ONE,
-                      BUILTINS_STUB_ID(ListForEach));
-    SetFrozenFunction(thread, listFuncPrototype, "replaceAllElements", ContainersList::ReplaceAllElements,
-                      FuncLength::ONE);
-    SetFrozenFunction(thread, listFuncPrototype, "equal", ContainersList::Equal, FuncLength::ONE);
-    SetFrozenFunction(thread, listFuncPrototype, "sort", ContainersList::Sort, FuncLength::ONE);
-    SetFrozenFunction(thread, listFuncPrototype, "convertToArray", ContainersList::ConvertToArray, FuncLength::ONE);
-    SetFrozenFunction(thread, listFuncPrototype, "getSubList", ContainersList::GetSubList, FuncLength::ONE);
+
+    // List.prototype methods (excluding constructor and '@@' internal properties)
+    for (const base::BuiltinFunctionEntry &entry: ContainersList::GetListPrototypeFunctions()) {
+        SetFrozenFunction(thread, listFuncPrototype, entry.GetName().data(), entry.GetEntrypoint(), entry.GetLength(),
+                          entry.GetBuiltinStubId());
+    }
 
     JSHandle<JSTaggedValue> lengthGetter = CreateGetter(thread, ContainersList::Length, "length", FuncLength::ZERO);
     JSHandle<JSTaggedValue> lengthKey(factory->NewFromASCII("length"));
@@ -1055,33 +939,12 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeLinkedList(JSThread *thread
     JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(linkedListFuncPrototype), constructorKey, linkedListFunction);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
-    SetFrozenFunction(thread, linkedListFuncPrototype, "add", ContainersLinkedList::Add, FuncLength::ONE);
-    SetFrozenFunction(thread, linkedListFuncPrototype, "insert", ContainersLinkedList::Insert, FuncLength::ONE);
-    SetFrozenFunction(thread, linkedListFuncPrototype, "clear", ContainersLinkedList::Clear, FuncLength::ONE);
-    SetFrozenFunction(thread, linkedListFuncPrototype, "clone", ContainersLinkedList::Clone, FuncLength::ONE);
-    SetFrozenFunction(thread, linkedListFuncPrototype, "removeFirst", ContainersLinkedList::RemoveFirst,
-                      FuncLength::ONE);
-    SetFrozenFunction(thread, linkedListFuncPrototype, "removeLast", ContainersLinkedList::RemoveLast, FuncLength::ONE);
-    SetFrozenFunction(thread, linkedListFuncPrototype, "removeFirstFound", ContainersLinkedList::RemoveFirstFound,
-                      FuncLength::ONE);
-    SetFrozenFunction(thread, linkedListFuncPrototype, "removeByIndex", ContainersLinkedList::RemoveByIndex,
-                      FuncLength::ONE);
-    SetFrozenFunction(thread, linkedListFuncPrototype, "remove", ContainersLinkedList::Remove, FuncLength::ONE);
-    SetFrozenFunction(thread, linkedListFuncPrototype, "removeLastFound", ContainersLinkedList::RemoveLastFound,
-                      FuncLength::ONE);
-    SetFrozenFunction(thread, linkedListFuncPrototype, "has", ContainersLinkedList::Has, FuncLength::ONE);
-    SetFrozenFunction(thread, linkedListFuncPrototype, "get", ContainersLinkedList::Get, FuncLength::ONE);
-    SetFrozenFunction(thread, linkedListFuncPrototype, "addFirst", ContainersLinkedList::AddFirst, FuncLength::ONE);
-    SetFrozenFunction(thread, linkedListFuncPrototype, "getFirst", ContainersLinkedList::GetFirst, FuncLength::ONE);
-    SetFrozenFunction(thread, linkedListFuncPrototype, "getLast", ContainersLinkedList::GetLast, FuncLength::ONE);
-    SetFrozenFunction(thread, linkedListFuncPrototype, "getIndexOf", ContainersLinkedList::GetIndexOf, FuncLength::ONE);
-    SetFrozenFunction(thread, linkedListFuncPrototype, "getLastIndexOf", ContainersLinkedList::GetLastIndexOf,
-                      FuncLength::ONE);
-    SetFrozenFunction(thread, linkedListFuncPrototype, "convertToArray", ContainersLinkedList::ConvertToArray,
-                      FuncLength::ONE);
-    SetFrozenFunction(thread, linkedListFuncPrototype, "set", ContainersLinkedList::Set, FuncLength::ONE);
-    SetFrozenFunction(thread, linkedListFuncPrototype, "forEach", ContainersLinkedList::ForEach, FuncLength::ONE,
-                      BUILTINS_STUB_ID(LinkedListForEach));
+
+    // LinkedList.prototype methods (excluding constructor and '@@' internal properties)
+    for (const base::BuiltinFunctionEntry &entry: ContainersLinkedList::GetLinkedListPrototypeFunctions()) {
+        SetFrozenFunction(thread, linkedListFuncPrototype, entry.GetName().data(), entry.GetEntrypoint(), entry.GetLength(),
+                          entry.GetBuiltinStubId());
+    }
 
     JSHandle<JSTaggedValue> lengthGetter = CreateGetter(thread, ContainersLinkedList::Length, "length",
                                                         FuncLength::ZERO);
@@ -1142,33 +1005,13 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeHashMap(JSThread *thread)
     JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(hashMapFuncPrototype), constructorKey, hashMapFunction);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
-    // HashMap.prototype.set()
-    SetFrozenFunction(thread, hashMapFuncPrototype, "set", ContainersHashMap::Set, FuncLength::TWO);
-     // HashMap.prototype.setall()
-    SetFrozenFunction(thread, hashMapFuncPrototype, "setAll", ContainersHashMap::SetAll, FuncLength::ONE);
-    // HashMap.prototype.isEmpty()
-    SetFrozenFunction(thread, hashMapFuncPrototype, "isEmpty", ContainersHashMap::IsEmpty, FuncLength::ZERO);
-    // HashMap.prototype.remove()
-    SetFrozenFunction(thread, hashMapFuncPrototype, "remove", ContainersHashMap::Remove, FuncLength::ONE);
-     // HashMap.prototype.clear()
-    SetFrozenFunction(thread, hashMapFuncPrototype, "clear", ContainersHashMap::Clear, FuncLength::ZERO);
-    // HashMap.prototype.get()
-    SetFrozenFunction(thread, hashMapFuncPrototype, "get", ContainersHashMap::Get, FuncLength::ONE);
-    // HashMap.prototype.forEach()
-    SetFrozenFunction(thread, hashMapFuncPrototype, "forEach", ContainersHashMap::ForEach, FuncLength::TWO,
-                      BUILTINS_STUB_ID(HashMapForEach));
-    // HashMap.prototype.hasKey()
-    SetFrozenFunction(thread, hashMapFuncPrototype, "hasKey", ContainersHashMap::HasKey, FuncLength::ONE);
-     // HashMap.prototype.hasValue()
-    SetFrozenFunction(thread, hashMapFuncPrototype, "hasValue", ContainersHashMap::HasValue, FuncLength::ONE);
-     // HashMap.prototype.replace()
-    SetFrozenFunction(thread, hashMapFuncPrototype, "replace", ContainersHashMap::Replace, FuncLength::TWO);
-    // HashMap.prototype.keys()
-    SetFrozenFunction(thread, hashMapFuncPrototype, "keys", ContainersHashMap::Keys, FuncLength::ZERO);
-    // HashMap.prototype.Values()
-    SetFrozenFunction(thread, hashMapFuncPrototype, "values", ContainersHashMap::Values, FuncLength::ZERO);
-    // HashMap.prototype.keys()
-    SetFrozenFunction(thread, hashMapFuncPrototype, "entries", ContainersHashMap::Entries, FuncLength::ZERO);
+
+    // HashMap.prototype methods (excluding constructor and '@@' internal properties)
+    for (const base::BuiltinFunctionEntry &entry: ContainersHashMap::GetHashMapPrototypeFunctions()) {
+        SetFrozenFunction(thread, hashMapFuncPrototype, entry.GetName().data(), entry.GetEntrypoint(),
+                          entry.GetLength(), entry.GetBuiltinStubId());
+    }
+
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     // @@ToStringTag
     SetStringTagSymbol(thread, env, hashMapFuncPrototype, "HashMap");
@@ -1221,16 +1064,12 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeHashSet(JSThread *thread)
     JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(hashSetFuncPrototype), constructorKey, hashSetFunction);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
-    SetFrozenFunction(thread, hashSetFuncPrototype, "isEmpty", ContainersHashSet::IsEmpty, FuncLength::ZERO);
-    SetFrozenFunction(thread, hashSetFuncPrototype, "has", ContainersHashSet::Has, FuncLength::ONE);
-    SetFrozenFunction(thread, hashSetFuncPrototype, "add", ContainersHashSet::Add, FuncLength::ONE);
-    SetFrozenFunction(thread, hashSetFuncPrototype, "has", ContainersHashSet::Has, FuncLength::ONE);
-    SetFrozenFunction(thread, hashSetFuncPrototype, "remove", ContainersHashSet::Remove, FuncLength::ONE);
-    SetFrozenFunction(thread, hashSetFuncPrototype, "clear", ContainersHashSet::Clear, FuncLength::ZERO);
-    SetFrozenFunction(thread, hashSetFuncPrototype, "values", ContainersHashSet::Values, FuncLength::ZERO);
-    SetFrozenFunction(thread, hashSetFuncPrototype, "entries", ContainersHashSet::Entries, FuncLength::ZERO);
-    SetFrozenFunction(thread, hashSetFuncPrototype, "forEach", ContainersHashSet::ForEach, FuncLength::TWO,
-                      BUILTINS_STUB_ID(HashSetForEach));
+
+    // HashSet.prototype methods (excluding constructor and '@@' internal properties)
+    for (const base::BuiltinFunctionEntry &entry: ContainersHashSet::GetHashSetPrototypeFunctions()) {
+        SetFrozenFunction(thread, hashSetFuncPrototype, entry.GetName().data(), entry.GetEntrypoint(),
+                          entry.GetLength(), entry.GetBuiltinStubId());
+    }
 
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     // @@ToStringTag

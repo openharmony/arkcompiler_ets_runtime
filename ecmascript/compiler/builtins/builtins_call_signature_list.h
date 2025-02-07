@@ -25,7 +25,7 @@
 // AOT_BUILTINS_STUB_LIST is used in AOT only.
 #define BUILTINS_STUB_LIST(V, D, C)                 \
     BUILTINS_METHOD_STUB_LIST(D, D, D, D)           \
-    BUILTINS_WITH_CONTAINERS_STUB_BUILDER(D)        \
+    BUILTINS_CONTAINERS_STUB_BUILDER(D)             \
     AOT_AND_BUILTINS_STUB_LIST(V)                   \
     BUILTINS_CONSTRUCTOR_STUB_LIST(C)               \
     BUILTINS_ARKTOOLS_STUB_BUILDER(D)
@@ -194,21 +194,57 @@
     V(SetFloat32,   DataView,  FLOAT32,   SetTypedValue,   Undefined(),   DATA_VIEW_SET_FLOAT32) \
     V(SetFloat64,   DataView,  FLOAT64,   SetTypedValue,   Undefined(),   DATA_VIEW_SET_FLOAT64)
 
-#define BUILTINS_WITH_CONTAINERS_STUB_BUILDER(V)                                                               \
-    V(ForEach,            ArrayList,      ContainersCommonFuncCall,  ARRAYLIST_FOREACH,            JS_POINTER) \
-    V(ForEach,            Deque,          DequeCommonFuncCall,       DEQUE_FOREACH,                JS_POINTER) \
-    V(ForEach,            HashMap,        ContainersHashCall,        HASHMAP_FOREACH,              JS_POINTER) \
-    V(ForEach,            HashSet,        ContainersHashCall,        HASHSET_FOREACH,              JS_POINTER) \
-    V(ForEach,            LightWeightMap, ContainersLightWeightCall, LIGHTWEIGHTMAP_FOREACH,       JS_POINTER) \
-    V(ForEach,            LightWeightSet, ContainersLightWeightCall, LIGHTWEIGHTSET_FOREACH,       JS_POINTER) \
-    V(ForEach,            LinkedList,     ContainersLinkedListCall,  LINKEDLIST_FOREACH,           JS_POINTER) \
-    V(ForEach,            List,           ContainersLinkedListCall,  LIST_FOREACH,                 JS_POINTER) \
-    V(ForEach,            PlainArray,     ContainersCommonFuncCall,  PLAINARRAY_FOREACH,           JS_POINTER) \
-    V(ForEach,            Queue,          QueueCommonFuncCall,       QUEUE_FOREACH,                JS_POINTER) \
-    V(ForEach,            Stack,          ContainersCommonFuncCall,  STACK_FOREACH,                JS_POINTER) \
-    V(ForEach,            Vector,         ContainersCommonFuncCall,  VECTOR_FOREACH,               JS_POINTER) \
-    V(ReplaceAllElements, ArrayList,      ContainersCommonFuncCall,  ARRAYLIST_REPLACEALLELEMENTS, JS_POINTER) \
-    V(ReplaceAllElements, Vector,         ContainersCommonFuncCall,  VECTOR_REPLACEALLELEMENTS,    JS_POINTER)
+#define BUILTINS_CONTAINERS_STUB_BUILDER(V)                             \
+    BUILTINS_WITH_CONTAINERS_ARRAYLIST_STUB_BUILDER(V)                  \
+    BUILTINS_WITH_CONTAINERS_QUEUE_STUB_BUILDER(V)                      \
+    BUILTINS_WITH_CONTAINERS_DEQUE_STUB_BUILDER(V)                      \
+    BUILTINS_WITH_CONTAINERS_HASHMAP_STUB_BUILDER(V)                    \
+    BUILTINS_WITH_CONTAINERS_HASHSET_STUB_BUILDER(V)                    \
+    BUILTINS_WITH_CONTAINERS_LIGHTWEIGHTMAP_STUB_BUILDER(V)             \
+    BUILTINS_WITH_CONTAINERS_LIGHTWEIGHTSET_STUB_BUILDER(V)             \
+    BUILTINS_WITH_CONTAINERS_LINKEDLIST_STUB_BUILDER(V)                 \
+    BUILTINS_WITH_CONTAINERS_LIST_STUB_BUILDER(V)                       \
+    BUILTINS_WITH_CONTAINERS_PLAINARRAY_STUB_BUILDER(V)                 \
+    BUILTINS_WITH_CONTAINERS_STACK_STUB_BUILDER(V)                      \
+    BUILTINS_WITH_CONTAINERS_VECTOR_STUB_BUILDER(V)
+
+#define BUILTINS_WITH_CONTAINERS_ARRAYLIST_STUB_BUILDER(V)              \
+    V(ForEach,                  ArrayList,          Undefined())        \
+    V(ReplaceAllElements,       ArrayList,          Undefined())
+
+#define BUILTINS_WITH_CONTAINERS_QUEUE_STUB_BUILDER(V)                  \
+    V(ForEach,                  Queue,              Undefined())
+
+#define BUILTINS_WITH_CONTAINERS_DEQUE_STUB_BUILDER(V)                  \
+    V(ForEach,                  Deque,              Undefined())
+
+#define BUILTINS_WITH_CONTAINERS_HASHMAP_STUB_BUILDER(V)                \
+    V(ForEach,                  HashMap,            Undefined())
+
+#define BUILTINS_WITH_CONTAINERS_HASHSET_STUB_BUILDER(V)                \
+    V(ForEach,                  HashSet,            Undefined())
+
+#define BUILTINS_WITH_CONTAINERS_LIGHTWEIGHTMAP_STUB_BUILDER(V)         \
+    V(ForEach,                  LightWeightMap,     Undefined())
+
+#define BUILTINS_WITH_CONTAINERS_LIGHTWEIGHTSET_STUB_BUILDER(V)         \
+    V(ForEach,                  LightWeightSet,     Undefined())
+
+#define BUILTINS_WITH_CONTAINERS_LINKEDLIST_STUB_BUILDER(V)             \
+    V(ForEach,                  LinkedList,         Undefined())
+
+#define BUILTINS_WITH_CONTAINERS_LIST_STUB_BUILDER(V)                   \
+    V(ForEach,                  List,               Undefined())
+
+#define BUILTINS_WITH_CONTAINERS_PLAINARRAY_STUB_BUILDER(V)             \
+    V(ForEach,                  PlainArray,         Undefined())
+
+#define BUILTINS_WITH_CONTAINERS_STACK_STUB_BUILDER(V)                  \
+    V(ForEach,                  Stack,              Undefined())
+
+#define BUILTINS_WITH_CONTAINERS_VECTOR_STUB_BUILDER(V)                 \
+    V(ForEach,                  Vector,             Undefined())        \
+    V(ReplaceAllElements,       Vector,             Undefined())
 
 #define BUILTINS_ARKTOOLS_STUB_BUILDER(V) \
     V(HashCode, ArkTools, Undefined())

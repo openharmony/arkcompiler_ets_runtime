@@ -15,18 +15,24 @@
 
 #ifndef ECMASCRIPT_COMPILER_BUILTINS_CONTAINERS_ARRAYLIST_STUB_BUILDER_H
 #define ECMASCRIPT_COMPILER_BUILTINS_CONTAINERS_ARRAYLIST_STUB_BUILDER_H
-#include "ecmascript/compiler/stub_builder-inl.h"
+#include "ecmascript/compiler/builtins/builtins_stubs.h"
 #include "ecmascript/js_api/js_api_arraylist.h"
 
 namespace panda::ecmascript::kungfu {
-class ContainersArrayListStubBuilder : public StubBuilder {
+class ContainersArrayListStubBuilder : public BuiltinsStubBuilder {
 public:
     explicit ContainersArrayListStubBuilder(StubBuilder *parent)
-        : StubBuilder(parent) {}
+        : BuiltinsStubBuilder(parent) {}
     ~ContainersArrayListStubBuilder() override = default;
     NO_MOVE_SEMANTIC(ContainersArrayListStubBuilder);
     NO_COPY_SEMANTIC(ContainersArrayListStubBuilder);
     void GenerateCircuit() override {}
+
+#define DECLARE_CONTAINERS_ARRAYLIST_STUB_BUILDER(method, ...)           \
+    void method(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *result, Label *exit, Label *slowPath);
+BUILTINS_WITH_CONTAINERS_ARRAYLIST_STUB_BUILDER(DECLARE_CONTAINERS_ARRAYLIST_STUB_BUILDER)
+#undef DECLARE_CONTAINERS_ARRAYLIST_STUB_BUILDER
+
     GateRef GetSize(GateRef obj)
     {
         GateRef len = Load(VariableType::JS_ANY(), obj, IntPtr(JSAPIArrayList::LENGTH_OFFSET));

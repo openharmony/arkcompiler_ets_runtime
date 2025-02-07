@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 Huawei Device Co., Ltd.
+ * Copyright (c) 2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -19,7 +19,7 @@
 
 namespace panda::ecmascript::kungfu {
 // common IR for containers apis that use function call
-void ContainersStubBuilder::ContainersCommonFuncCall(GateRef glue, GateRef thisValue,
+void ContainersCommonStubBuilder::ContainersCommonFuncCall(GateRef glue, GateRef thisValue,
     GateRef numArgs, Variable* result, Label *exit, Label *slowPath, ContainersType type)
 {
     auto env = GetEnvironment();
@@ -128,7 +128,9 @@ void ContainersStubBuilder::ContainersCommonFuncCall(GateRef glue, GateRef thisV
                 BRANCH(Int32GreaterThanOrEqual(*k, *length), &afterLoop, &setValue);
                 Bind(&setValue);
                 if (IsReplaceAllElements(type)) {
-                    ContainerSet(glue, *thisObj, *k, retValue, type);
+                    GateRef elementsOffset = IntPtr(JSObject::ELEMENTS_OFFSET);
+                    GateRef elements = Load(VariableType::JS_POINTER(), *thisObj, elementsOffset);
+                    SetValueToTaggedArray(VariableType::JS_ANY(), glue, elements, *k, retValue);
                 }
                 Jump(&loopEnd);
             }
@@ -141,229 +143,9 @@ void ContainersStubBuilder::ContainersCommonFuncCall(GateRef glue, GateRef thisV
     Jump(exit);
 }
 
-void ContainersStubBuilder::QueueCommonFuncCall(GateRef glue, GateRef thisValue,
-    GateRef numArgs, Variable* result, Label *exit, Label *slowPath, ContainersType type)
-{
-    auto env = GetEnvironment();
-    DEFVARIABLE(thisObj, VariableType::JS_ANY(), thisValue);
-    DEFVARIABLE(thisArg, VariableType::JS_ANY(), Undefined());
-    DEFVARIABLE(key, VariableType::INT64(), Int64(0));
-    DEFVARIABLE(kValue, VariableType::JS_ANY(), Undefined());
-    DEFVARIABLE(length, VariableType::INT32(), Int32(0));
-    DEFVARIABLE(k, VariableType::INT32(), Int32(0));
-    DEFVARIABLE(index, VariableType::INT32(), Int32(0));
-    Label valueIsJSAPIVector(env);
-    Label valueNotJSAPIVector(env);
-    Label objIsJSProxy(env);
-    Label objNotJSProxy(env);
-    Label objIsJSAPIVector(env);
-    Label thisArgUndefined(env);
-    Label thisArgNotUndefined(env);
-    Label callbackUndefined(env);
-    Label callbackNotUndefined(env);
-    Label nextCount(env);
-    Label loopHead(env);
-    Label loopEnd(env);
-    Label next(env);
-    Label afterLoop(env);
-    GateRef callbackFnHandle;
-    BRANCH(IsContainer(*thisObj, type), &valueIsJSAPIVector, &valueNotJSAPIVector);
-    Bind(&valueNotJSAPIVector);
-    {
-        BRANCH(IsJsProxy(*thisObj), &objIsJSProxy, &objNotJSProxy);
-        Bind(&objIsJSProxy);
-        {
-            GateRef tempObj = GetTarget(*thisObj);
-            BRANCH(IsContainer(tempObj, type), &objIsJSAPIVector, slowPath);
-            Bind(&objIsJSAPIVector);
-            {
-                thisObj = tempObj;
-                Jump(&valueIsJSAPIVector);
-            }
-        }
-        Bind(&objNotJSProxy);
-        Jump(slowPath);
-    }
-    Bind(&valueIsJSAPIVector);
-    {
-        BRANCH(Int64GreaterThanOrEqual(IntPtr(0), numArgs), &callbackUndefined, &callbackNotUndefined);
-        Bind(&callbackUndefined);
-        Jump(slowPath);
-        Bind(&callbackNotUndefined);
-        {
-            Label isCall(env);
-            Label notCall(env);
-            Label isHeapObj(env);
-            callbackFnHandle = GetCallArg0(numArgs);
-            BRANCH(TaggedIsHeapObject(callbackFnHandle), &isHeapObj, slowPath);
-            Bind(&isHeapObj);
-            BRANCH(IsCallable(callbackFnHandle), &isCall, &notCall);
-            Bind(&notCall);
-            Jump(slowPath);
-            Bind(&isCall);
-            {
-                BRANCH(Int64GreaterThanOrEqual(IntPtr(1), numArgs), &thisArgUndefined, &thisArgNotUndefined);
-                Bind(&thisArgUndefined);
-                Jump(&nextCount);
-                Bind(&thisArgNotUndefined);
-                thisArg = GetCallArg1(numArgs);
-                Jump(&nextCount);
-            }
-        }
-    }
-    Bind(&nextCount);
-    {
-        length = ContainerGetSize(*thisObj, type);
-        Jump(&loopHead);
-        LoopBegin(&loopHead);
-        {
-            Label lenChange(env);
-            Label hasException(env);
-            Label notHasException(env);
-            Label setValue(env);
-            BRANCH(Int32LessThan(*k, *length), &next, &afterLoop);
-            Bind(&next);
-            {
-                kValue = ContainerGetValue(*thisObj, *index, type);
-                index = QueueGetNextPosition(*thisObj, *index);
-                key = IntToTaggedInt(*k);
-                JSCallArgs callArgs(JSCallMode::CALL_THIS_ARG3_WITH_RETURN);
-                callArgs.callThisArg3WithReturnArgs = { *thisArg, *kValue, *key, *thisObj };
-                CallStubBuilder callBuilder(this, glue, callbackFnHandle, Int32(NUM_MANDATORY_JSFUNC_ARGS), 0, nullptr,
-                    Circuit::NullGate(), callArgs);
-                GateRef retValue = callBuilder.JSCallDispatch();
-                BRANCH(HasPendingException(glue), &hasException, &notHasException);
-                Bind(&hasException);
-                {
-                    result->WriteVariable(retValue);
-                    Jump(exit);
-                }
-                Bind(&notHasException);
-                Jump(&loopEnd);
-            }
-        }
-        Bind(&loopEnd);
-        k = Int32Add(*k, Int32(1));
-        LoopEnd(&loopHead, env, glue);
-    }
-    Bind(&afterLoop);
-    Jump(exit);
-}
-
-void ContainersStubBuilder::DequeCommonFuncCall(GateRef glue, GateRef thisValue,
-    GateRef numArgs, Variable* result, Label *exit, Label *slowPath, ContainersType type)
-{
-    auto env = GetEnvironment();
-    DEFVARIABLE(thisObj, VariableType::JS_ANY(), thisValue);
-    DEFVARIABLE(thisArg, VariableType::JS_ANY(), Undefined());
-    DEFVARIABLE(key, VariableType::INT64(), Int64(0));
-    DEFVARIABLE(kValue, VariableType::JS_ANY(), Undefined());
-    DEFVARIABLE(length, VariableType::INT32(), Int32(0));
-    DEFVARIABLE(first, VariableType::INT32(), Int32(0));
-    DEFVARIABLE(index, VariableType::INT32(), Int32(0));
-    Label valueIsJSAPIVector(env);
-    Label valueNotJSAPIVector(env);
-    Label objIsJSProxy(env);
-    Label objNotJSProxy(env);
-    Label objIsJSAPIVector(env);
-    Label thisArgUndefined(env);
-    Label thisArgNotUndefined(env);
-    Label callbackUndefined(env);
-    Label callbackNotUndefined(env);
-    Label nextCount(env);
-    Label loopHead(env);
-    Label loopEnd(env);
-    Label next(env);
-    Label afterLoop(env);
-    GateRef callbackFnHandle;
-    BRANCH(IsContainer(*thisObj, type), &valueIsJSAPIVector, &valueNotJSAPIVector);
-    Bind(&valueNotJSAPIVector);
-    {
-        BRANCH(IsJsProxy(*thisObj), &objIsJSProxy, &objNotJSProxy);
-        Bind(&objIsJSProxy);
-        {
-            GateRef tempObj = GetTarget(*thisObj);
-            BRANCH(IsContainer(tempObj, type), &objIsJSAPIVector, slowPath);
-            Bind(&objIsJSAPIVector);
-            {
-                thisObj = tempObj;
-                Jump(&valueIsJSAPIVector);
-            }
-        }
-        Bind(&objNotJSProxy);
-        Jump(slowPath);
-    }
-    Bind(&valueIsJSAPIVector);
-    {
-        BRANCH(Int64GreaterThanOrEqual(IntPtr(0), numArgs), &callbackUndefined, &callbackNotUndefined);
-        Bind(&callbackUndefined);
-        Jump(slowPath);
-        Bind(&callbackNotUndefined);
-        {
-            Label isCall(env);
-            Label notCall(env);
-            Label isHeapObj(env);
-            callbackFnHandle = GetCallArg0(numArgs);
-            BRANCH(TaggedIsHeapObject(callbackFnHandle), &isHeapObj, slowPath);
-            Bind(&isHeapObj);
-            BRANCH(IsCallable(callbackFnHandle), &isCall, &notCall);
-            Bind(&notCall);
-            Jump(slowPath);
-            Bind(&isCall);
-            {
-                BRANCH(Int64GreaterThanOrEqual(IntPtr(1), numArgs), &thisArgUndefined, &thisArgNotUndefined);
-                Bind(&thisArgUndefined);
-                Jump(&nextCount);
-                Bind(&thisArgNotUndefined);
-                thisArg = GetCallArg1(numArgs);
-                Jump(&nextCount);
-            }
-        }
-    }
-    Bind(&nextCount);
-    {
-        ContainersDequeStubBuilder dequeBuilder(this);
-        first = dequeBuilder.GetFirst(*thisObj);
-        GateRef last = dequeBuilder.GetLast(*thisObj);
-        GateRef capacity = dequeBuilder.GetElementsLength(*thisObj);
-        Jump(&loopHead);
-        LoopBegin(&loopHead);
-        {
-            Label lenChange(env);
-            Label hasException(env);
-            Label notHasException(env);
-            Label setValue(env);
-            BRANCH(Int32NotEqual(*first, last), &next, &afterLoop);
-            Bind(&next);
-            {
-                kValue = ContainerGetValue(*thisObj, *index, type);
-                key = IntToTaggedInt(*index);
-                JSCallArgs callArgs(JSCallMode::CALL_THIS_ARG3_WITH_RETURN);
-                callArgs.callThisArg3WithReturnArgs = { *thisArg, *kValue, *key, *thisObj };
-                CallStubBuilder callBuilder(this, glue, callbackFnHandle, Int32(NUM_MANDATORY_JSFUNC_ARGS), 0, nullptr,
-                    Circuit::NullGate(), callArgs);
-                GateRef retValue = callBuilder.JSCallDispatch();
-                BRANCH(HasPendingException(glue), &hasException, &notHasException);
-                Bind(&hasException);
-                {
-                    result->WriteVariable(retValue);
-                    Jump(exit);
-                }
-                Bind(&notHasException);
-                Jump(&loopEnd);
-            }
-        }
-        Bind(&loopEnd);
-        first = Int32Mod(Int32Add(*first, Int32(1)), capacity);
-        index = Int32Add(*index, Int32(1));
-        LoopEnd(&loopHead, env, glue);
-    }
-    Bind(&afterLoop);
-    Jump(exit);
-}
-
-void ContainersStubBuilder::ContainersLightWeightCall(GateRef glue, GateRef thisValue,
-    GateRef numArgs, Variable* result, Label *exit, Label *slowPath, ContainersType type)
+void ContainersCommonStubBuilder::ContainersLightWeightCall(GateRef glue, GateRef thisValue, GateRef numArgs,
+                                                            Variable* result, Label *exit, Label *slowPath,
+                                                            ContainersType type)
 {
     auto env = GetEnvironment();
     DEFVARIABLE(thisObj, VariableType::JS_ANY(), thisValue);
@@ -472,8 +254,8 @@ void ContainersStubBuilder::ContainersLightWeightCall(GateRef glue, GateRef this
     Jump(exit);
 }
 
-void ContainersStubBuilder::ContainersHashCall(GateRef glue, GateRef thisValue,
-    GateRef numArgs, Variable* result, Label *exit, Label *slowPath, ContainersType type)
+void ContainersCommonStubBuilder::ContainersHashCall(GateRef glue, GateRef thisValue, GateRef numArgs, Variable* result,
+                                                     Label *exit, Label *slowPath, ContainersType type)
 {
     auto env = GetEnvironment();
     DEFVARIABLE(thisObj, VariableType::JS_ANY(), thisValue);
@@ -609,8 +391,9 @@ void ContainersStubBuilder::ContainersHashCall(GateRef glue, GateRef thisValue,
     Jump(exit);
 }
 
-void ContainersStubBuilder::ContainersLinkedListCall(GateRef glue, GateRef thisValue,
-    GateRef numArgs, Variable* result, Label *exit, Label *slowPath, ContainersType type)
+void ContainersCommonStubBuilder::ContainersLinkedListCall(GateRef glue, GateRef thisValue, GateRef numArgs,
+                                                           Variable* result, Label *exit, Label *slowPath,
+                                                           ContainersType type)
 {
     auto env = GetEnvironment();
     DEFVARIABLE(thisObj, VariableType::JS_ANY(), thisValue);

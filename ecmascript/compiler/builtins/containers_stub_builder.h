@@ -15,19 +15,17 @@
 
 #ifndef ECMASCRIPT_COMPILER_BUILTINS_CONTAINERS_STUB_BUILDER_H
 #define ECMASCRIPT_COMPILER_BUILTINS_CONTAINERS_STUB_BUILDER_H
-#include "ecmascript/compiler/builtins/containers_arraylist_stub_builder.h"
-#include "ecmascript/compiler/builtins/containers_deque_stub_builder.h"
-#include "ecmascript/compiler/builtins/containers_hashmap_stub_builder.h"
-#include "ecmascript/compiler/builtins/containers_hashset_stub_builder.h"
-#include "ecmascript/compiler/builtins/containers_lightweightmap_stub_builder.h"
-#include "ecmascript/compiler/builtins/containers_lightweightset_stub_builder.h"
-#include "ecmascript/compiler/builtins/containers_linkedlist_stub_builder.h"
-#include "ecmascript/compiler/builtins/containers_list_stub_builder.h"
-#include "ecmascript/compiler/builtins/containers_plainarray_stub_builder.h"
-#include "ecmascript/compiler/builtins/containers_queue_stub_builder.h"
-#include "ecmascript/compiler/builtins/containers_stack_stub_builder.h"
-#include "ecmascript/compiler/builtins/containers_vector_stub_builder.h"
 #include "ecmascript/compiler/builtins/builtins_stubs.h"
+#include "ecmascript/compiler/stub_builder-inl.h"
+#include "ecmascript/js_api/js_api_arraylist.h"
+#include "ecmascript/js_api/js_api_hashmap.h"
+#include "ecmascript/js_api/js_api_hashset.h"
+#include "ecmascript/js_api/js_api_lightweightmap.h"
+#include "ecmascript/js_api/js_api_lightweightset.h"
+#include "ecmascript/js_api/js_api_linked_list.h"
+#include "ecmascript/js_api/js_api_list.h"
+#include "ecmascript/js_api/js_api_plain_array.h"
+#include "ecmascript/js_api/js_api_stack.h"
 #include "ecmascript/js_api/js_api_vector.h"
 
 namespace panda::ecmascript::kungfu {
@@ -49,22 +47,16 @@ enum class ContainersType : uint8_t {
     ARRAYLIST_REPLACEALLELEMENTS,
 };
 
-class ContainersStubBuilder : public BuiltinsStubBuilder {
+class ContainersCommonStubBuilder : public BuiltinsStubBuilder {
 public:
-    explicit ContainersStubBuilder(StubBuilder *parent)
+    explicit ContainersCommonStubBuilder(StubBuilder *parent)
         : BuiltinsStubBuilder(parent) {}
-    ~ContainersStubBuilder() override = default;
-    NO_MOVE_SEMANTIC(ContainersStubBuilder);
-    NO_COPY_SEMANTIC(ContainersStubBuilder);
+    ~ContainersCommonStubBuilder() override = default;
+    NO_MOVE_SEMANTIC(ContainersCommonStubBuilder);
+    NO_COPY_SEMANTIC(ContainersCommonStubBuilder);
     void GenerateCircuit() override {}
 
     void ContainersCommonFuncCall(GateRef glue, GateRef thisValue, GateRef numArgs,
-        Variable* result, Label *exit, Label *slowPath, ContainersType type);
-
-    void QueueCommonFuncCall(GateRef glue, GateRef thisValue, GateRef numArgs,
-        Variable* result, Label *exit, Label *slowPath, ContainersType type);
-
-    void DequeCommonFuncCall(GateRef glue, GateRef thisValue, GateRef numArgs,
         Variable* result, Label *exit, Label *slowPath, ContainersType type);
 
     void ContainersLightWeightCall(GateRef glue, GateRef thisValue, GateRef numArgs,
@@ -172,77 +164,52 @@ public:
         return false;
     }
 
-    void ContainerSet(GateRef glue, GateRef obj, GateRef index, GateRef value, ContainersType type)
-    {
-        switch (type) {
-            case ContainersType::VECTOR_REPLACEALLELEMENTS: {
-                ContainersVectorStubBuilder vectorBuilder(this);
-                vectorBuilder.Set(glue, obj, index, value);
-                break;
-            }
-            case ContainersType::ARRAYLIST_REPLACEALLELEMENTS: {
-                ContainersArrayListStubBuilder arrayListBuilder(this);
-                arrayListBuilder.Set(glue, obj, index, value);
-                break;
-            }
-            default:
-                LOG_ECMA(FATAL) << "this branch is unreachable";
-                UNREACHABLE();
-        }
-    }
-
     GateRef ContainerGetSize(GateRef obj, ContainersType type)
     {
         switch (type) {
             case ContainersType::VECTOR_FOREACH:
             case ContainersType::VECTOR_REPLACEALLELEMENTS: {
-                ContainersVectorStubBuilder vectorBuilder(this);
-                return vectorBuilder.GetSize(obj);
+                return Load(VariableType::INT32(), obj, IntPtr(JSAPIVector::ELEMENT_COUNT_OFFSET));
             }
             case ContainersType::STACK_FOREACH: {
-                ContainersStackStubBuilder stackBuilder(this);
-                return stackBuilder.GetSize(obj);
+                GateRef top = Load(VariableType::INT32(), obj, IntPtr(JSAPIStack::TOP_OFFSET));
+                return Int32Add(top, Int32(1));
             }
             case ContainersType::PLAINARRAY_FOREACH: {
-                ContainersPlainArrayStubBuilder plainArrayBuilder(this);
-                return plainArrayBuilder.GetSize(obj);
-            }
-            case ContainersType::QUEUE_FOREACH: {
-                ContainersQueueStubBuilder queueBuilder(this);
-                return queueBuilder.GetArrayLength(obj);
-            }
-            case ContainersType::DEQUE_FOREACH: {
-                ContainersDequeStubBuilder dequeBuilder(this);
-                return dequeBuilder.GetSize(obj);
-            }
-            case ContainersType::LIGHTWEIGHTMAP_FOREACH: {
-                ContainersLightWeightMapStubBuilder lightWeightMapBuilder(this);
-                return lightWeightMapBuilder.GetSize(obj);
-            }
-            case ContainersType::LIGHTWEIGHTSET_FOREACH: {
-                ContainersLightWeightSetStubBuilder lightWeightSetBuilder(this);
-                return lightWeightSetBuilder.GetSize(obj);
-            }
-            case ContainersType::HASHMAP_FOREACH: {
-                ContainersHashMapStubBuilder hashMapBuilder(this);
-                return hashMapBuilder.GetTableLength(obj);
-            }
-            case ContainersType::HASHSET_FOREACH: {
-                ContainersHashSetStubBuilder hashSetBuilder(this);
-                return hashSetBuilder.GetTableLength(obj);
-            }
-            case ContainersType::LINKEDLIST_FOREACH: {
-                ContainersLinkedListStubBuilder linkedListBuilder(this);
-                return linkedListBuilder.GetTableLength(obj);
-            }
-            case ContainersType::LIST_FOREACH: {
-                ContainersListStubBuilder listBuilder(this);
-                return listBuilder.GetTableLength(obj);
+                return Load(VariableType::INT32(), obj, IntPtr(JSAPIPlainArray::LENGTH_OFFSET));
             }
             case ContainersType::ARRAYLIST_REPLACEALLELEMENTS:
             case ContainersType::ARRAYLIST_FOREACH: {
-                ContainersArrayListStubBuilder arrayListBuilder(this);
-                return arrayListBuilder.GetSize(obj);
+                GateRef len = Load(VariableType::JS_ANY(), obj, IntPtr(JSAPIArrayList::LENGTH_OFFSET));
+                return TaggedGetInt(len);
+            }
+            case ContainersType::LIGHTWEIGHTSET_FOREACH: {
+                return Load(VariableType::INT32(), obj, IntPtr(JSAPILightWeightSet::LENGTH_OFFSET));
+            }
+            case ContainersType::LIGHTWEIGHTMAP_FOREACH: {
+                return Load(VariableType::INT32(), obj, IntPtr(JSAPILightWeightMap::LWP_LENGTH_OFFSET));
+            }
+            case ContainersType::HASHMAP_FOREACH: {
+                GateRef tableOffset = IntPtr(JSAPIHashMap::HASHMAP_TABLE_INDEX);
+                GateRef table = Load(VariableType::JS_POINTER(), obj, tableOffset);
+                return GetLengthOfTaggedArray(table);
+            }
+            case ContainersType::HASHSET_FOREACH: {
+                GateRef tableOffset = IntPtr(JSAPIHashSet::HASHSET_TABLE_INDEX);
+                GateRef table = Load(VariableType::JS_POINTER(), obj, tableOffset);
+                return GetLengthOfTaggedArray(table);
+            }
+            case ContainersType::LINKEDLIST_FOREACH: {
+                GateRef tableOffset = IntPtr(JSAPILinkedList::DOUBLE_LIST_OFFSET);
+                GateRef table = Load(VariableType::JS_POINTER(), obj, tableOffset);
+                GateRef value = GetValueFromTaggedArray(table, Int32(TaggedDoubleList::NUMBER_OF_NODE_INDEX));
+                return TaggedGetInt(value);
+            }
+            case ContainersType::LIST_FOREACH: {
+                GateRef tableOffset = IntPtr(JSAPIList::SINGLY_LIST_OFFSET);
+                GateRef table = Load(VariableType::JS_POINTER(), obj, tableOffset);
+                GateRef value = GetValueFromTaggedArray(table, Int32(TaggedSingleList::NUMBER_OF_NODE_INDEX));
+                return TaggedGetInt(value);
             }
             default:
                 LOG_ECMA(FATAL) << "this branch is unreachable";
@@ -256,37 +223,35 @@ public:
         switch (type) {
             case ContainersType::VECTOR_FOREACH:
             case ContainersType::VECTOR_REPLACEALLELEMENTS: {
-                ContainersVectorStubBuilder vectorBuilder(this);
-                return vectorBuilder.Get(obj, index);
+                GateRef elementsOffset = IntPtr(JSObject::ELEMENTS_OFFSET);
+                GateRef elements = Load(VariableType::JS_POINTER(), obj, elementsOffset);
+                return GetValueFromTaggedArray(elements, index);
             }
             case ContainersType::STACK_FOREACH: {
-                ContainersStackStubBuilder stackBuilder(this);
-                return stackBuilder.Get(obj, index);
+                GateRef elementsOffset = IntPtr(JSObject::ELEMENTS_OFFSET);
+                GateRef elements = Load(VariableType::JS_POINTER(), obj, elementsOffset);
+                return GetValueFromTaggedArray(elements, index);
             }
             case ContainersType::PLAINARRAY_FOREACH: {
-                ContainersPlainArrayStubBuilder plainArrayBuilder(this);
-                return plainArrayBuilder.Get(obj, index);
-            }
-            case ContainersType::QUEUE_FOREACH: {
-                ContainersQueueStubBuilder queueBuilder(this);
-                return queueBuilder.Get(obj, index);
-            }
-            case ContainersType::DEQUE_FOREACH: {
-                ContainersDequeStubBuilder dequeBuilder(this);
-                return dequeBuilder.Get(obj, index);
-            }
-            case ContainersType::LIGHTWEIGHTMAP_FOREACH: {
-                ContainersLightWeightMapStubBuilder lightWeightMapBuilder(this);
-                return lightWeightMapBuilder.GetValue(obj, index);
-            }
-            case ContainersType::LIGHTWEIGHTSET_FOREACH: {
-                ContainersLightWeightSetStubBuilder lightWeightSetBuilder(this);
-                return lightWeightSetBuilder.GetValue(obj, index);
+                GateRef elementsOffset = IntPtr(JSAPIPlainArray::VALUES_OFFSET);
+                GateRef elements = Load(VariableType::JS_POINTER(), obj, elementsOffset);
+                return GetValueFromTaggedArray(elements, index);
             }
             case ContainersType::ARRAYLIST_REPLACEALLELEMENTS:
             case ContainersType::ARRAYLIST_FOREACH: {
-                ContainersArrayListStubBuilder arrayListBuilder(this);
-                return arrayListBuilder.Get(obj, index);
+                GateRef elementsOffset = IntPtr(JSObject::ELEMENTS_OFFSET);
+                GateRef elements = Load(VariableType::JS_POINTER(), obj, elementsOffset);
+                return GetValueFromTaggedArray(elements, index);
+            }
+            case ContainersType::LIGHTWEIGHTSET_FOREACH: {
+                GateRef valuesOffset = IntPtr(JSAPILightWeightSet::VALUES_OFFSET);
+                GateRef values = Load(VariableType::JS_POINTER(), obj, valuesOffset);
+                return GetValueFromTaggedArray(values, index);
+            }
+            case ContainersType::LIGHTWEIGHTMAP_FOREACH: {
+                GateRef valuesOffset = IntPtr(JSAPILightWeightMap::LWP_VALUES_OFFSET);
+                GateRef values = Load(VariableType::JS_POINTER(), obj, valuesOffset);
+                return GetValueFromTaggedArray(values, index);
             }
             default:
                 LOG_ECMA(FATAL) << "this branch is unreachable";
@@ -299,12 +264,14 @@ public:
     {
         switch (type) {
             case ContainersType::LIGHTWEIGHTMAP_FOREACH: {
-                ContainersLightWeightMapStubBuilder lightWeightMapBuilder(this);
-                return lightWeightMapBuilder.GetKey(obj, index);
+                GateRef keysOffset = IntPtr(JSAPILightWeightMap::LWP_KEYS_OFFSET);
+                GateRef keys = Load(VariableType::JS_POINTER(), obj, keysOffset);
+                return GetValueFromTaggedArray(keys, index);
             }
             case ContainersType::LIGHTWEIGHTSET_FOREACH: {
-                ContainersLightWeightSetStubBuilder lightWeightSetBuilder(this);
-                return lightWeightSetBuilder.GetKey(obj, index);
+                GateRef valuesOffset = IntPtr(JSAPILightWeightSet::VALUES_OFFSET);
+                GateRef values = Load(VariableType::JS_POINTER(), obj, valuesOffset);
+                return GetValueFromTaggedArray(values, index);
             }
             default:
                 LOG_ECMA(FATAL) << "this branch is unreachable";
@@ -317,20 +284,24 @@ public:
     {
         switch (type) {
             case ContainersType::HASHMAP_FOREACH: {
-                ContainersHashMapStubBuilder hashMapBuilder(this);
-                return hashMapBuilder.GetNode(obj, index);
+                GateRef tableOffset = IntPtr(JSAPIHashMap::HASHMAP_TABLE_INDEX);
+                GateRef table = Load(VariableType::JS_POINTER(), obj, tableOffset);
+                return GetValueFromTaggedArray(table, index);
             }
             case ContainersType::HASHSET_FOREACH: {
-                ContainersHashSetStubBuilder hashSetBuilder(this);
-                return hashSetBuilder.GetNode(obj, index);
+                GateRef tableOffset = IntPtr(JSAPIHashSet::HASHSET_TABLE_INDEX);
+                GateRef table = Load(VariableType::JS_POINTER(), obj, tableOffset);
+                return GetValueFromTaggedArray(table, index);
             }
             case ContainersType::LINKEDLIST_FOREACH: {
-                ContainersLinkedListStubBuilder linkedListBuilder(this);
-                return linkedListBuilder.GetNode(obj, index);
+                GateRef tableOffset = IntPtr(JSAPILinkedList::DOUBLE_LIST_OFFSET);
+                GateRef table = Load(VariableType::JS_POINTER(), obj, tableOffset);
+                return GetValueFromTaggedArray(table, index);
             }
             case ContainersType::LIST_FOREACH: {
-                ContainersListStubBuilder listBuilder(this);
-                return listBuilder.GetNode(obj, index);
+                GateRef tableOffset = IntPtr(JSAPIList::SINGLY_LIST_OFFSET);
+                GateRef table = Load(VariableType::JS_POINTER(), obj, tableOffset);
+                return GetValueFromTaggedArray(table, index);
             }
             default:
                 LOG_ECMA(FATAL) << "this branch is unreachable";
@@ -341,20 +312,9 @@ public:
 
     GateRef PlainArrayGetKey(GateRef obj, GateRef index)
     {
-        ContainersPlainArrayStubBuilder plainArrayBuilder(this);
-        return plainArrayBuilder.GetKey(obj, index);
-    }
-
-    GateRef QueueGetNextPosition(GateRef obj, GateRef index)
-    {
-        ContainersQueueStubBuilder queueBuilder(this);
-        return queueBuilder.GetNextPosition(obj, index);
-    }
-
-    GateRef QueueGetCurrentFront(GateRef obj)
-    {
-        ContainersQueueStubBuilder queueBuilder(this);
-        return queueBuilder.GetCurrentFront(obj);
+        GateRef elementsOffset = IntPtr(JSAPIPlainArray::KEYS_OFFSET);
+        GateRef elements = Load(VariableType::JS_POINTER(), obj, elementsOffset);
+        return GetValueFromTaggedArray(elements, index);
     }
 };
 }  // namespace panda::ecmascript::kungfu

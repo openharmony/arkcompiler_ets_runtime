@@ -15,18 +15,24 @@
 
 #ifndef ECMASCRIPT_COMPILER_BUILTINS_CONTAINERS_HASHSET_STUB_BUILDER_H
 #define ECMASCRIPT_COMPILER_BUILTINS_CONTAINERS_HASHSET_STUB_BUILDER_H
-#include "ecmascript/compiler/stub_builder-inl.h"
+#include "ecmascript/compiler/builtins/builtins_stubs.h"
 #include "ecmascript/js_api/js_api_hashset.h"
+#include "ecmascript/tagged_node.h"
 
 namespace panda::ecmascript::kungfu {
-class ContainersHashSetStubBuilder : public StubBuilder {
+class ContainersHashSetStubBuilder : public BuiltinsStubBuilder {
 public:
     explicit ContainersHashSetStubBuilder(StubBuilder *parent)
-        : StubBuilder(parent) {}
+        : BuiltinsStubBuilder(parent) {}
     ~ContainersHashSetStubBuilder() override = default;
     NO_MOVE_SEMANTIC(ContainersHashSetStubBuilder);
     NO_COPY_SEMANTIC(ContainersHashSetStubBuilder);
     void GenerateCircuit() override {}
+
+#define DECLARE_CONTAINERS_HASHSET_STUB_BUILDER(method, ...)           \
+    void method(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *result, Label *exit, Label *slowPath);
+BUILTINS_WITH_CONTAINERS_HASHSET_STUB_BUILDER(DECLARE_CONTAINERS_HASHSET_STUB_BUILDER)
+#undef DECLARE_CONTAINERS_HASHSET_STUB_BUILDER
 
     GateRef GetTableLength(GateRef obj)
     {

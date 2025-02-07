@@ -15,18 +15,23 @@
 
 #ifndef ECMASCRIPT_COMPILER_BUILTINS_CONTAINERS_LIGHTWEIGHTSET_STUB_BUILDER_H
 #define ECMASCRIPT_COMPILER_BUILTINS_CONTAINERS_LIGHTWEIGHTSET_STUB_BUILDER_H
-#include "ecmascript/compiler/stub_builder-inl.h"
+#include "ecmascript/compiler/builtins/builtins_stubs.h"
 #include "ecmascript/js_api/js_api_lightweightset.h"
 
 namespace panda::ecmascript::kungfu {
-class ContainersLightWeightSetStubBuilder : public StubBuilder {
+class ContainersLightWeightSetStubBuilder : public BuiltinsStubBuilder {
 public:
     explicit ContainersLightWeightSetStubBuilder(StubBuilder *parent)
-        : StubBuilder(parent) {}
+        : BuiltinsStubBuilder(parent) {}
     ~ContainersLightWeightSetStubBuilder() override = default;
     NO_MOVE_SEMANTIC(ContainersLightWeightSetStubBuilder);
     NO_COPY_SEMANTIC(ContainersLightWeightSetStubBuilder);
     void GenerateCircuit() override {}
+
+#define DECLARE_CONTAINERS_LIGHTWEIGHTSET_STUB_BUILDER(method, ...)           \
+    void method(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *result, Label *exit, Label *slowPath);
+BUILTINS_WITH_CONTAINERS_LIGHTWEIGHTSET_STUB_BUILDER(DECLARE_CONTAINERS_LIGHTWEIGHTSET_STUB_BUILDER)
+#undef DECLARE_CONTAINERS_LIGHTWEIGHTSET_STUB_BUILDER
 
     GateRef GetSize(GateRef obj)
     {
