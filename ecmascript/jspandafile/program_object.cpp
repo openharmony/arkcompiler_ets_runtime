@@ -186,7 +186,7 @@ JSTaggedValue ConstantPool::GetMethodFromCache(JSTaggedValue constpool, uint32_t
     auto val = taggedPool->GetObjectFromCache(index);
     JSPandaFile *jsPandaFile = taggedPool->GetJSPandaFile();
 
-    if (IsLoadedMethodInfoFromAOT(jsPandaFile, val)) {
+    if (IsLoadingAOTMethodInfo(jsPandaFile, val)) {
         val = JSTaggedValue::Hole();
     }
 

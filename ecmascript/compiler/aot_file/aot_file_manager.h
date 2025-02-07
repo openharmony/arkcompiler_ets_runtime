@@ -168,6 +168,7 @@ public:
     bool IsEnableAOT() const;
     void Iterate(RootVisitor& v);
 
+    static std::string GetAOTFileFullPath(EcmaVM* vm, const std::string& moduleName);
     const std::shared_ptr<AnFileInfo> GetAnFileInfo(const JSPandaFile* jsPandaFile) const;
     bool IsLoadMain(const JSPandaFile* jsPandaFile, const CString& entry) const;
     uint32_t GetFileIndex(uint32_t anFileInfoIndex, CString abcNormalizedName) const;
@@ -185,7 +186,7 @@ public:
                          uint32_t entryIndex = 0,
                          bool* canFastCall = nullptr);
     bool LoadAiFile([[maybe_unused]] const std::string& filename);
-    bool LoadAiFile(const JSPandaFile* jsPandaFile);
+    bool LoadAiFile(const JSPandaFile* jsPandaFile, EcmaVM* vm);
     kungfu::ArkStackMapParser* GetStackMapParser() const;
     static JSTaggedValue GetAbsolutePath(JSThread* thread, JSTaggedValue relativePathVal);
     static bool GetAbsolutePath(const CString& relativePathCstr, CString& absPathCstr);

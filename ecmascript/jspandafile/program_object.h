@@ -459,7 +459,7 @@ public:
         std::atomic<JSTaggedValue> *atomicVal = reinterpret_cast<std::atomic<JSTaggedValue> *>(
             reinterpret_cast<uintptr_t>(taggedPool) + DATA_OFFSET + index * JSTaggedValue::TaggedTypeSize());
         JSTaggedValue tempVal = taggedPool->GetObjectFromCache(index);
-        JSTaggedValue expected = IsLoadedMethodInfoFromAOT(taggedPool->GetJSPandaFile(), tempVal) ? tempVal :
+        JSTaggedValue expected = IsLoadingAOTMethodInfo(taggedPool->GetJSPandaFile(), tempVal) ? tempVal :
             JSTaggedValue::Hole();
         JSTaggedValue desired = value;
         if (std::atomic_compare_exchange_strong_explicit(atomicVal, &expected, desired,
@@ -484,7 +484,7 @@ public:
         bool isLoadedAOT = jsPandaFile->IsLoadedAOT();
         bool hasEntryIndex = false;
         uint32_t entryIndex = 0;
-        if (IsLoadedMethodInfoFromAOT(jsPandaFile, val)) {
+        if (IsLoadingAOTMethodInfo(jsPandaFile, val)) {
             int entryIndexVal = 0; // 0: only one method
             if (val.IsInt()) {
                 // For MethodInfo which does not have ihc infos, we store codeEntry directly.
@@ -729,8 +729,11 @@ private:
         return JSTaggedValue::TaggedTypeSize() * GetLength() + DATA_OFFSET;
     }
 
-    static bool IsLoadedMethodInfoFromAOT(const JSPandaFile *pf, JSTaggedValue cachedVal)
+    static bool IsLoadingAOTMethodInfo(const JSPandaFile *pf, JSTaggedValue cachedVal)
     {
+        // Two types of AOT method infos are stored in the constpool:
+        // 1. AOTLiteralInfo which includes function entry index and ihc/chc
+        // 2. An int value(function entry index) if ihc/chc is not needed
         return pf->IsLoadedAOT() && (cachedVal.IsAOTLiteralInfo() || cachedVal.IsInt());
     };
 

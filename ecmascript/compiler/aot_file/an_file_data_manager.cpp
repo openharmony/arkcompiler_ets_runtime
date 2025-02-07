@@ -51,7 +51,7 @@ void AnFileDataManager::SafeDestroyAllData()
         DestroyFileMapMem(iter->GetFileMapMem());
     }
     loadedAn_.clear();
-    anFileNameToIndexMap_.clear();
+    anFileNameVector_.clear();
 }
 
 void AnFileDataManager::SafeDestroyAnData(const std::string &fileName)
@@ -92,11 +92,11 @@ std::shared_ptr<AnFileInfo> AnFileDataManager::UnsafeFind(const std::string &fil
 {
     // note: This method is not thread-safe
     // need to ensure that the instance of AnFileDataManager has been locked before use
-    const auto iter = anFileNameToIndexMap_.find(fileName);
-    if (iter == anFileNameToIndexMap_.end()) {
+    const auto iter = std::find(anFileNameVector_.begin(), anFileNameVector_.end(), fileName);
+    if (iter == anFileNameVector_.end()) {
         return nullptr;
     }
-    uint32_t index = iter->second;
+    uint32_t index = std::distance(anFileNameVector_.begin(), iter);
     return loadedAn_.at(index);
 }
 
@@ -126,7 +126,7 @@ void AnFileDataManager::Dump() const
 bool AnFileDataManager::UnsafeLoadFromAOTInternal(const std::string &fileName, std::shared_ptr<AnFileInfo> &info)
 {
     std::string anBasename = JSFilePath::GetBaseName(fileName);
-    anFileNameToIndexMap_.insert({anBasename, loadedAn_.size()});
+    anFileNameVector_.emplace_back(anBasename);
     loadedAn_.emplace_back(info);
     return true;
 }
@@ -158,11 +158,11 @@ bool AnFileDataManager::UnsafeLoadFromAOT(const std::string &fileName, std::func
 
 uint32_t AnFileDataManager::UnSafeGetFileInfoIndex(const std::string &fileName)
 {
-    auto iter = anFileNameToIndexMap_.find(fileName);
-    if (iter == anFileNameToIndexMap_.end()) {
+    const auto iter = std::find(anFileNameVector_.begin(), anFileNameVector_.end(), fileName);
+    if (iter == anFileNameVector_.end()) {
         return INVALID_INDEX;
     }
-    return anFileNameToIndexMap_.at(fileName);
+    return std::distance(anFileNameVector_.begin(), iter);
 }
 
 uint32_t AnFileDataManager::SafeGetFileInfoIndex(const std::string &fileName)
@@ -181,6 +181,23 @@ std::shared_ptr<StubFileInfo> AnFileDataManager::SafeGetStubFileInfo()
 {
     ReadLockHolder lock(lock_);
     return loadedStub_;
+}
+
+std::string AnFileDataManager::UnSafeGetAnFileNameNoSuffix(uint32_t index)
+{
+    // The anFileNames are stored in the order of loading. So we can get the an file name by index
+    std::string fileName = anFileNameVector_.at(index);
+    size_t pos = fileName.find_last_of(".");
+    if (pos != std::string::npos) {
+        return fileName.substr(0, pos);
+    }
+    return "";
+}
+
+std::string AnFileDataManager::SafeGetAnFileNameNoSuffix(uint32_t index)
+{
+    ReadLockHolder lock(lock_);
+    return UnSafeGetAnFileNameNoSuffix(index);
 }
 
 void AnFileDataManager::SafeMergeChecksumInfo(const std::unordered_map<CString, uint32_t> &fileNameToChecksumMap)

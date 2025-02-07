@@ -5215,48 +5215,21 @@ void JSNApi::GenerateTimeoutTraceIfNeeded(const EcmaVM *vm, std::chrono::system_
     }
 }
 
-void JSNApi::LoadAotFileInternal(EcmaVM *vm, const std::string &moduleName, std::string &aotFileName)
-{
-    if (vm->GetJSOptions().WasAOTOutputFileSet()) {
-        aotFileName = vm->GetJSOptions().GetAOTOutputFile();
-    }
-#if defined(CROSS_PLATFORM) && defined(ANDROID_PLATFORM)
-    else if (vm->GetJSOptions().GetEnableAOT())
-#else
-    else if (ecmascript::AnFileDataManager::GetInstance()->IsEnable())
-#endif
-    {
-        aotFileName = ecmascript::AnFileDataManager::GetInstance()->GetDir() + moduleName;
-    } else {
-        std::string hapPath = "";
-        ecmascript::SearchHapPathCallBack callback = vm->GetSearchHapPathCallBack();
-        if (callback) {
-            callback(moduleName, hapPath);
-        }
-        aotFileName = ecmascript::OhosPreloadAppInfo::GetPreloadAOTFileName(hapPath, moduleName);
-    }
-    if (aotFileName.empty()) {
-        LOG_ECMA(INFO) << "can not find aot file";
-        return;
-    }
-    if (ecmascript::pgo::PGOProfilerManager::GetInstance()->IsDisableAot()) {
-        LOG_ECMA(INFO) << "can't load disable aot file: " << aotFileName;
-        return;
-    }
-    LOG_ECMA(INFO) << "start to load aot file: " << aotFileName;
-}
-
 void JSNApi::LoadAotFile(EcmaVM *vm, const std::string &moduleName)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK(vm);
     ecmascript::ThreadManagedScope scope(thread);
 
-    std::string aotFileName;
-    LoadAotFileInternal(vm, moduleName, aotFileName);
+    std::string aotFileName = ecmascript::AOTFileManager::GetAOTFileFullPath(vm, moduleName);
+    if (aotFileName.empty()) {
+        LOG_ECMA(INFO) << "can not find aot file";
+        return;
+    }
     // Disable PGO for applications when an/ai file exists
     if (isForked_) {
         vm->DisablePGOProfilerWithAOTFile(aotFileName);
     }
+    LOG_ECMA(INFO) << "start to load aot file: " << aotFileName;
     thread->GetCurrentEcmaContext()->LoadAOTFiles(aotFileName);
 }
 
@@ -5267,8 +5240,12 @@ void JSNApi::LoadAotFile(EcmaVM *vm, [[maybe_unused]] const std::string &bundleN
     CROSS_THREAD_AND_EXCEPTION_CHECK(vm);
     ecmascript::ThreadManagedScope scope(thread);
 
-    std::string aotFileName;
-    LoadAotFileInternal(vm, moduleName, aotFileName);
+    std::string aotFileName = ecmascript::AOTFileManager::GetAOTFileFullPath(vm, moduleName);
+    if (aotFileName.empty()) {
+        LOG_ECMA(INFO) << "can not find aot file";
+        return;
+    }
+    LOG_ECMA(INFO) << "start to load aot file: " << aotFileName;
     thread->GetCurrentEcmaContext()->LoadAOTFiles(aotFileName, cb);
 }
 #endif

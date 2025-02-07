@@ -55,8 +55,7 @@ public:
     ApGenMode GetApGenMode() const;
     void Merge(PGOProfiler* profiler);
     void RegisterSavingSignal();
-    bool IsDisableAot() const;
-    void SetDisableAot(bool state);
+    void AsyncSave();
     void SetDisablePGO(bool state);
     void ForceDumpAllProfilers();
     bool PUBLIC_API TextToBinary(const std::string& inPath,
@@ -96,7 +95,6 @@ private:
     bool InitializeData();
 
     ConcurrentGuardValue v_;
-    bool disableAot_ {false};
     bool disablePGO_ {false};
     Mutex requestAotCallbackMutex_;
     RequestAotCallback requestAotCallback_;

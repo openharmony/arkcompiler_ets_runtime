@@ -36,6 +36,7 @@ public:
         (std::string fileName, uint8_t **buff, size_t *buffSize)> cb = nullptr);
     uint32_t SafeGetFileInfoIndex(const std::string &fileName);
     std::shared_ptr<AnFileInfo> SafeGetAnFileInfo(uint32_t index);
+    std::string SafeGetAnFileNameNoSuffix(uint32_t index);
     std::shared_ptr<StubFileInfo> SafeGetStubFileInfo();
     void SafeMergeChecksumInfo(const std::unordered_map<CString, uint32_t> &fileNameToChecksumMap);
     void UnsafeMergeChecksumInfo(const std::unordered_map<CString, uint32_t> &fileNameToChecksumMap);
@@ -92,9 +93,11 @@ private:
         return loadedAn_.at(index);
     }
 
+    std::string UnSafeGetAnFileNameNoSuffix(uint32_t index);
+
     RWLock lock_ {};
-    std::unordered_map<std::string, uint32_t> anFileNameToIndexMap_ {};
-    std::vector<std::shared_ptr<AnFileInfo>> loadedAn_ {};
+    std::vector<std::string> anFileNameVector_ {};
+    std::vector<std::shared_ptr<AnFileInfo>> loadedAn_ {};  // keep the same order with anFileNameVector_
     std::unordered_map<CString, uint32_t> fullFileNameToChecksumMap_ {};
     std::shared_ptr<StubFileInfo> loadedStub_ {nullptr};
     std::string anDir_;
