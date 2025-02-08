@@ -1018,12 +1018,6 @@ void SharedHeap::CollectGarbage(JSThread *thread)
 #ifndef NDEBUG
     ASSERT(!thread->HasLaunchedSuspendAll());
 #endif
-    if (UNLIKELY(!dThread_->IsRunning())) {
-        // Hope this will not happen, unless the AppSpawn run smth after PostFork
-        LOG_GC(ERROR) << "Try to collect garbage in shared heap, but daemon thread is not running.";
-        ForceCollectGarbageWithoutDaemonThread(gcType, gcReason, thread);
-        return;
-    }
     {
         // lock here is outside post task to prevent the extreme case: another js thread succeeed posting a
         // concurrentmark task, so here will directly go into WaitGCFinished, but gcFinished_ is somehow
@@ -1047,7 +1041,7 @@ void SharedHeap::PostGCTaskForTest(JSThread *thread)
 #ifndef NDEBUG
     ASSERT(!thread->HasLaunchedSuspendAll());
 #endif
-    if (dThread_->IsRunning()) {
+    {
         // Some UT may run without Daemon Thread.
         LockHolder lock(waitGCFinishedMutex_);
         if (dThread_->CheckAndPostTask(TriggerCollectGarbageTask<gcType, gcReason>(thread))) {

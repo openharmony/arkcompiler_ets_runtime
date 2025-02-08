@@ -86,44 +86,6 @@ void SharedHeap::DestroyInstance()
     instance_ = nullptr;
 }
 
-void SharedHeap::ForceCollectGarbageWithoutDaemonThread(TriggerGCType gcType, GCReason gcReason, JSThread *thread)
-{
-    ASSERT(!dThread_->IsRunning());
-    SuspendAllScope scope(thread);
-    SharedGCScope sharedGCScope;  // SharedGCScope should be after SuspendAllScope.
-    RecursionScope recurScope(this, HeapType::SHARED_HEAP);
-    CheckInHeapProfiler();
-    GetEcmaGCStats()->RecordStatisticBeforeGC(gcType, gcReason);
-    if (UNLIKELY(ShouldVerifyHeap())) { // LCOV_EXCL_BR_LINE
-        // pre gc heap verify
-        LOG_ECMA(DEBUG) << "pre gc shared heap verify";
-        sharedGCMarker_->MergeBackAndResetRSetWorkListHandler();
-        SharedHeapVerification(this, VerifyKind::VERIFY_PRE_SHARED_GC).VerifyAll();
-    }
-    switch (gcType) { // LCOV_EXCL_BR_LINE
-        case TriggerGCType::SHARED_PARTIAL_GC:
-        case TriggerGCType::SHARED_GC: {
-            sharedGC_->RunPhases();
-            break;
-        }
-        case TriggerGCType::SHARED_FULL_GC: {
-            sharedFullGC_->RunPhases();
-            break;
-        }
-        default: // LOCV_EXCL_BR_LINE
-            LOG_ECMA(FATAL) << "this branch is unreachable";
-            UNREACHABLE();
-            break;
-    }
-    if (UNLIKELY(ShouldVerifyHeap())) { // LCOV_EXCL_BR_LINE
-        // pre gc heap verify
-        LOG_ECMA(DEBUG) << "after gc shared heap verify";
-        SharedHeapVerification(this, VerifyKind::VERIFY_POST_SHARED_GC).VerifyAll();
-    }
-    CollectGarbageFinish(false, gcType);
-    InvokeSharedNativePointerCallbacks();
-}
-
 bool SharedHeap::CheckAndTriggerSharedGC(JSThread *thread)
 {
     if (thread->IsSharedConcurrentMarkingOrFinished() && !ObjectExceedMaxHeapSize()) {
@@ -545,7 +507,7 @@ void SharedHeap::ReclaimRegions(TriggerGCType gcType)
 void SharedHeap::DisableParallelGC(JSThread *thread)
 {
     WaitAllTasksFinished(thread);
-    dThread_->WaitFinished();
+    dThread_->Stop();
     parallelGC_ = false;
     maxMarkTaskCount_ = 0;
     sSweeper_->ConfigConcurrentSweep(false);

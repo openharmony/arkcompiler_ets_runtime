@@ -158,7 +158,6 @@ void EcmaVM::PostFork()
     heap_->NotifyPostFork();
     heap_->NotifyFinishColdStartSoon();
 #endif
-    DaemonThread::GetInstance()->EnsureRunning();
 }
 
 EcmaVM::EcmaVM(JSRuntimeOptions options, EcmaParamConfiguration config)
