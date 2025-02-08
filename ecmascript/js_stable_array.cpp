@@ -563,7 +563,7 @@ JSTaggedValue JSStableArray::Join(JSHandle<JSTaggedValue> receiverValue, EcmaRun
     JSHandle<JSObject> obj(thread, receiverValue.GetTaggedValue());
 
     // 2. Let len be ToLength(Get(O, "length"))
-    uint32_t len = base::ArrayHelper::GetArrayLength(thread, receiverValue);
+    int64_t len = base::ArrayHelper::GetArrayLength(thread, receiverValue);
 
     int sep = ',';
     uint32_t sepLength = 1;
@@ -1752,7 +1752,7 @@ JSTaggedValue JSStableArray::Sort(JSThread *thread, const JSHandle<JSTaggedValue
                                   const JSHandle<JSTaggedValue> &callbackFnHandle)
 {
     // 3. Let len be ?LengthOfArrayLike(obj).
-    uint32_t len = base::ArrayHelper::GetArrayLength(thread, thisObjVal);
+    int64_t len = base::ArrayHelper::GetArrayLength(thread, thisObjVal);
     // ReturnIfAbrupt(len).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     // If len is 0 or 1, no need to sort
