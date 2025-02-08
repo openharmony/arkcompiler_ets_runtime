@@ -395,7 +395,7 @@ void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread, bool
     thread_->ResetGuardians();
 
     thread->CheckSafepointIfSuspended();
-    if (vm_->GetJSOptions().IsEnableLoweringBuiltin()) {
+    if (vm_->GetJSOptions().IsEnableLoweringBuiltin() && !isRealm) {
         if (!lazyInit) {
             thread_->InitializeBuiltinObject();
         }
