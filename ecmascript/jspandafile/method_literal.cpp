@@ -29,10 +29,13 @@ MethodLiteral::MethodLiteral(EntityId methodId)
     SetMethodId(methodId);
 }
 
-void MethodLiteral::Initialize(const JSPandaFile *jsPandaFile, const JSThread *thread)
+void MethodLiteral::Initialize(const JSPandaFile *jsPandaFile, const JSThread *thread, const uint32_t offset)
 {
     const panda_file::File *pf = jsPandaFile->GetPandaFile();
     EntityId methodId = GetMethodId();
+    if (UNLIKELY(offset != 0 && methodId.GetOffset() != offset)) {
+        LOG_ECMA(FATAL) << "Invalid methodId, expected methodId: " << offset << ", actual methodId: " << methodId;
+    }
     panda_file::MethodDataAccessor mda(*pf, methodId);
     auto codeId = mda.GetCodeId().value();
     ASSERT(codeId.IsValid());
