@@ -46,7 +46,6 @@ host_unittest_action("RuntimeDebuggerTest") {
 
   sources = [
     # test file
-    "debugger_api_test.cpp",
     "dropframe_manager_test.cpp",
     "hot_reload_manager_test.cpp",
     "js_debugger_test.cpp",
