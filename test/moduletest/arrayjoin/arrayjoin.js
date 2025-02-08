@@ -19,6 +19,31 @@
  * @tc.type: FUNC
  * @tc.require: issueI5NO8G
  */
+
+// do not modify prototype before this
+{
+    let arr = new Array(10).fill(1);
+    arr[0] = {
+        toString() {
+            arr.length = 10000;
+            return 2;
+        }
+    }
+    let res = arr.join();
+    print(res);
+}
+
+{
+    let arr = new Array(10).fill(1);
+    let res = arr.join({
+        toString() {
+            arr.length = 10000;
+            return "-";
+        }
+    });
+    print(res);
+}
+
 var a = new Array(1).join("  ");
 print(a.length);
 var str1 = JSON.stringify(Array(3).join("0"));
