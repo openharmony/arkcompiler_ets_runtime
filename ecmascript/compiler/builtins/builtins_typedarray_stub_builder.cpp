@@ -1709,7 +1709,7 @@ void BuiltinsTypedArrayStubBuilder::With(GateRef glue, GateRef thisValue, GateRe
     GateRef jsType = GetObjectType(hclass);
     NewObjectStubBuilder newBuilder(this);
     newBuilder.SetParameters(glue, 0);
-    GateRef newArray = newBuilder.NewTypedArray(glue, thisValue, jsType, TruncInt64ToInt32(thisLen));
+    GateRef newArray = newBuilder.NewTypedArraySameType(glue, thisValue, jsType, TruncInt64ToInt32(thisLen));
     Label hasException0(env);
     Label notHasException0(env);
     BRANCH(HasPendingException(glue), &hasException0, &notHasException0);
@@ -2458,7 +2458,7 @@ void BuiltinsTypedArrayStubBuilder::ToSorted(GateRef glue, GateRef thisValue,
     GateRef thisLen = ZExtInt32ToInt64(GetArrayLength(thisValue));
     NewObjectStubBuilder newBuilder(this);
     newBuilder.SetParameters(glue, 0);
-    GateRef newArray = newBuilder.NewTypedArray(glue, thisValue, jsType, TruncInt64ToInt32(thisLen));
+    GateRef newArray = newBuilder.NewTypedArraySameType(glue, thisValue, jsType, TruncInt64ToInt32(thisLen));
     CallNGCRuntime(glue, RTSTUB_ID(CopyTypedArrayBuffer),
                    { glue, thisValue, newArray, Int32(0), Int32(0), TruncInt64ToInt32(thisLen) });
     DoSort(glue, newArray, result, exit, slowPath);
@@ -2684,7 +2684,7 @@ void BuiltinsTypedArrayStubBuilder::ToReversed(GateRef glue, GateRef thisValue, 
     DEFVARIABLE(thisArrLen, VariableType::INT64(), ZExtInt32ToInt64(GetArrayLength(thisValue)));
     NewObjectStubBuilder newBuilder(this);
     newBuilder.SetParameters(glue, 0);
-    GateRef newArray = newBuilder.NewTypedArray(glue, thisValue, arrayType, TruncInt64ToInt32(*thisArrLen));
+    GateRef newArray = newBuilder.NewTypedArraySameType(glue, thisValue, arrayType, TruncInt64ToInt32(*thisArrLen));
     DEFVARIABLE(k, VariableType::INT64(), Int64(0));
 
     Label loopHead(env);
