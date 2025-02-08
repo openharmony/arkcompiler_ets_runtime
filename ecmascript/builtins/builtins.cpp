@@ -501,7 +501,7 @@ void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread, bool
     env->SetAsyncFunctionClass(thread_, asyncFuncClass);
     thread_->ResetGuardians();
 
-    if (vm_->GetJSOptions().IsEnableLoweringBuiltin()) {
+    if (vm_->GetJSOptions().IsEnableLoweringBuiltin() && !isRealm) {
         if (!lazyInit) {
             thread_->InitializeBuiltinObject();
         }
