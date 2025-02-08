@@ -477,6 +477,10 @@ namespace panda::ecmascript {
     V(FunctionDefineOwnProperty)                \
     V(DefineOwnProperty)                        \
     V(AOTEnableProtoChangeMarker)               \
+    V(JSProxyHasProperty)                       \
+    V(JSTypedArrayHasProperty)                  \
+    V(ModuleNamespaceHasProperty)               \
+    V(JSObjectHasProperty)                      \
     V(HasProperty)                              \
     V(DumpObject)                               \
     V(TryGetInternString)                       \

@@ -499,6 +499,7 @@ public:
     GateRef IsStableJSArguments(GateRef glue, GateRef obj);
     GateRef IsStableJSArray(GateRef glue, GateRef obj);
     GateRef IsTypedArray(GateRef obj);
+    GateRef IsSharedTypedArray(GateRef obj);
     GateRef IsStableArguments(GateRef hClass);
     GateRef IsStableArray(GateRef hClass);
     GateRef GetProfileTypeInfo(GateRef jsFunc);
@@ -614,6 +615,7 @@ public:
     GateRef FindEntryFromNameDictionary(GateRef glue, GateRef elements, GateRef key, GateRef hir = Circuit::NullGate());
     GateRef IsMatchInTransitionDictionary(GateRef element, GateRef key, GateRef metaData, GateRef attr);
     GateRef FindEntryFromTransitionDictionary(GateRef glue, GateRef elements, GateRef key, GateRef metaData);
+    GateRef JSObjectHasProperty(GateRef glue, GateRef obj, GateRef key, GateRef hir = Circuit::NullGate());
     GateRef JSObjectGetProperty(GateRef obj, GateRef hClass, GateRef propAttr);
     void JSObjectSetProperty(GateRef glue, GateRef obj, GateRef hClass, GateRef attr, GateRef key, GateRef value);
     GateRef ShouldCallSetter(GateRef receiver, GateRef holder, GateRef accessor, GateRef attr);
@@ -896,6 +898,8 @@ public:
     GateRef ToPrototypeOrObj(GateRef glue, GateRef obj);
     GateRef ToPropertyKey(GateRef glue, GateRef tagged);
     GateRef TaggedIsPropertyKey(GateRef obj);
+    GateRef HasProperty(GateRef glue, GateRef obj, GateRef key, GateRef hir = Circuit::NullGate());
+    GateRef IsIn(GateRef glue, GateRef prop, GateRef obj);
     GateRef IsSpecialKeysObject(GateRef obj);
     GateRef IsSlowKeysObject(GateRef obj);
     GateRef TryGetEnumCache(GateRef glue, GateRef obj);
@@ -1107,7 +1111,6 @@ private:
     void CheckDetectorName(GateRef glue, GateRef key, Label *fallthrough, Label *slow);
     GateRef CanDoubleRepresentInt(GateRef exp, GateRef expBits, GateRef fractionBits);
     GateRef CalIteratorKey(GateRef glue);
-
     CallSignature *callSignature_ {nullptr};
     Environment *env_;
 };

@@ -206,6 +206,7 @@ public:
     GateRef GetDataOfTaggedArray(GateRef array);
     GateRef GetLengthOfJSArray(GateRef array);
     GateRef IsTypedArray(GateRef array);
+    GateRef IsSharedTypedArray(GateRef array);
     GateRef GetSuperConstructor(GateRef ctor);
     GateRef Merge(const std::vector<GateRef> &inList);
     GateRef Selector(OpCode opcode, MachineType machineType, GateRef control, const std::vector<GateRef> &values,

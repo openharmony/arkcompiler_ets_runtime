@@ -39,6 +39,7 @@ namespace panda::ecmascript::kungfu {
     V(And)                            \
     V(Or)                             \
     V(Xor)                            \
+    V(IsIn)                           \
     V(Instanceof)                     \
     V(TypeOf)                         \
     V(Inc)                            \
@@ -47,6 +48,7 @@ namespace panda::ecmascript::kungfu {
     V(Not)                            \
     V(ToBooleanTrue)                  \
     V(ToBooleanFalse)                 \
+    V(JSTaggedValueHasProperty)       \
     V(GetPropertyByName)              \
     V(SetPropertyByNameWithMega)      \
     V(GetPropertyByNameWithMega)      \

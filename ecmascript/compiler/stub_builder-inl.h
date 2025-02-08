@@ -3812,6 +3812,11 @@ inline GateRef StubBuilder::IsTypedArray(GateRef obj)
     return env_->GetBuilder()->IsTypedArray(obj);
 }
 
+inline GateRef StubBuilder::IsSharedTypedArray(GateRef obj)
+{
+    return env_->GetBuilder()->IsSharedTypedArray(obj);
+}
+
 inline GateRef StubBuilder::GetProfileTypeInfo(GateRef jsFunc)
 {
     GateRef raw = Load(VariableType::JS_POINTER(), jsFunc, IntPtr(JSFunction::RAW_PROFILE_TYPE_INFO_OFFSET));

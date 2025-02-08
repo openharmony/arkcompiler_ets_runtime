@@ -189,7 +189,11 @@ GateRef BuiltinsArrayStubBuilder::DoSortOptimised(GateRef glue, GateRef receiver
         BRANCH(TaggedIsHole(*presentValue), &presentValueIsHole, &afterGettingpresentValue);
         Bind(&presentValueIsHole);
         {
+#if ENABLE_NEXT_OPTIMIZATION
+            GateRef presentValueHasProp = HasProperty(glue, receiver, IntToTaggedPtr(*i), hir);
+#else
             GateRef presentValueHasProp = CallRuntime(glue, RTSTUB_ID(HasProperty), {receiver, IntToTaggedInt(*i)});
+#endif
             BRANCH(TaggedIsTrue(presentValueHasProp), &presentValueHasProperty, &afterGettingpresentValue);
             Bind(&presentValueHasProperty);
             {
@@ -223,8 +227,12 @@ GateRef BuiltinsArrayStubBuilder::DoSortOptimised(GateRef glue, GateRef receiver
                 BRANCH(TaggedIsHole(*middleValue), &middleValueIsHole, &afterGettingmiddleValue);
                 Bind(&middleValueIsHole);
                 {
-                    GateRef middleValueHasProp = CallRuntime(glue, RTSTUB_ID(HasProperty),
-                                                             {receiver, IntToTaggedInt(middleIndex)});
+#if ENABLE_NEXT_OPTIMIZATION
+                    GateRef middleValueHasProp = HasProperty(glue, receiver, IntToTaggedPtr(middleIndex), hir);
+#else
+                    GateRef middleValueHasProp =
+                        CallRuntime(glue, RTSTUB_ID(HasProperty), {receiver, IntToTaggedInt(middleIndex)});
+#endif
                     BRANCH(TaggedIsTrue(middleValueHasProp), &middleValueHasProperty, &afterGettingmiddleValue);
                     Bind(&middleValueHasProperty);
                     {
@@ -336,8 +344,13 @@ GateRef BuiltinsArrayStubBuilder::DoSortOptimised(GateRef glue, GateRef receiver
                     BRANCH(TaggedIsHole(*previousValue), &previousValueIsHole, &afterGettingpreviousValue);
                     Bind(&previousValueIsHole);
                     {
+#if ENABLE_NEXT_OPTIMIZATION
+                        GateRef previousValueHasProp =
+                            HasProperty(glue, receiver, IntToTaggedPtr(Int64Sub(*j, Int64(1))), hir);
+#else
                         GateRef previousValueHasProp = CallRuntime(glue, RTSTUB_ID(HasProperty),
                                                                    {receiver, IntToTaggedInt(Int64Sub(*j, Int64(1)))});
+#endif
                         BRANCH(TaggedIsTrue(previousValueHasProp),
                                &previousValueHasProperty, &afterGettingpreviousValue);
                         Bind(&previousValueHasProperty);
@@ -1642,7 +1655,12 @@ void BuiltinsArrayStubBuilder::VisitAll(GateRef glue, GateRef thisValue, GateRef
             Label notHasException1(env);
             BRANCH_NO_WEIGHT(Int64LessThan(*i, *thisArrLen), &next, exit);
             Bind(&next);
+#if ENABLE_NEXT_OPTIMIZATION
+            GateRef hasProp = CallCommonStub(glue, CommonStubCSigns::JSTaggedValueHasProperty,
+                                             { glue, thisValue, IntToTaggedPtr(*i) });
+#else
             GateRef hasProp = CallRuntime(glue, RTSTUB_ID(HasProperty), {thisValue, IntToTaggedInt(*i)});
+#endif
             BRANCH_LIKELY(TaggedIsTrue(hasProp), &hasProperty, &loopEnd);
             Bind(&hasProperty);
             kValue = FastGetPropertyByIndex(glue, thisValue, TruncInt64ToInt32(*i), ProfileOperation());

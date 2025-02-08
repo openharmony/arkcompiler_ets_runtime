@@ -4352,7 +4352,6 @@ void BuiltinsArrayStubBuilder::ReduceRight(GateRef glue, GateRef thisValue, Gate
     Label thisExists(env);
     Label isHeapObject(env);
     Label isJsArray(env);
-    Label isStability(env);
     Label notCOWArray(env);
     Label equalCls(env);
     Label isGeneric(env);
@@ -4361,10 +4360,8 @@ void BuiltinsArrayStubBuilder::ReduceRight(GateRef glue, GateRef thisValue, Gate
     BRANCH(TaggedIsHeapObject(thisValue), &isHeapObject, slowPath);
     Bind(&isHeapObject);
     BRANCH(IsJsArray(thisValue), &isJsArray, slowPath);
-    Bind(&isJsArray);
     // don't check constructor, "ReduceRight" won't create new array.
-    BRANCH(IsStableJSArray(glue, thisValue), &isStability, slowPath);
-    Bind(&isStability);
+    Bind(&isJsArray);
     BRANCH(IsJsCOWArray(thisValue), slowPath, &notCOWArray);
     Bind(&notCOWArray);
     DEFVARIABLE(thisLen, VariableType::INT32(), Int32(0));
@@ -4389,7 +4386,7 @@ void BuiltinsArrayStubBuilder::ReduceRight(GateRef glue, GateRef thisValue, Gate
     BRANCH(numArgsLessThanTwo, slowPath, &updateAccumulator);           // 2: callbackFn initialValue
     Bind(&updateAccumulator);
     accumulator = GetCallArg1(numArgs);
-    Jump(&thisIsStable);
+    BRANCH(IsStableJSArray(glue, thisValue), &thisIsStable, &thisNotStable);
 
     Bind(&thisIsStable);
     {
@@ -4423,7 +4420,12 @@ void BuiltinsArrayStubBuilder::ReduceRight(GateRef glue, GateRef thisValue, Gate
             BRANCH(TaggedIsHole(*kValue), &kValueIsHole, &callDispatch);
             Bind(&kValueIsHole);
             {
-                GateRef hasProp = CallRuntime(glue, RTSTUB_ID(HasProperty), { thisValue, IntToTaggedInt(*k) });
+#if ENABLE_NEXT_OPTIMIZATION
+                GateRef hasProp = CallCommonStub(glue, CommonStubCSigns::JSTaggedValueHasProperty,
+                                                 { glue, thisValue, IntToTaggedPtr(*k) });
+#else
+                GateRef hasProp = CallRuntime(glue, RTSTUB_ID(HasProperty), {thisValue, IntToTaggedInt(*k)});
+#endif
                 BRANCH(TaggedIsTrue(hasProp), &hasProperty, &loopEnd);
                 Bind(&hasProperty);
                 kValue = FastGetPropertyByIndex(glue, thisValue, *k, ProfileOperation());
@@ -4493,7 +4495,12 @@ void BuiltinsArrayStubBuilder::ReduceRight(GateRef glue, GateRef thisValue, Gate
             Label notHasException1(env);
             BRANCH(Int32GreaterThanOrEqual(*k, Int32(0)), &next, &loopExit);
             Bind(&next);
-            GateRef hasProp = CallRuntime(glue, RTSTUB_ID(HasProperty), { thisValue, IntToTaggedInt(*k) });
+#if ENABLE_NEXT_OPTIMIZATION
+            GateRef hasProp = CallCommonStub(glue, CommonStubCSigns::JSTaggedValueHasProperty,
+                                             { glue, thisValue, IntToTaggedPtr(*k) });
+#else
+            GateRef hasProp = CallRuntime(glue, RTSTUB_ID(HasProperty), {thisValue, IntToTaggedInt(*k)});
+#endif
             BRANCH(TaggedIsTrue(hasProp), &hasProperty, &loopEnd);
             Bind(&hasProperty);
             kValue = FastGetPropertyByIndex(glue, thisValue, *k, ProfileOperation());
@@ -4549,17 +4556,14 @@ void BuiltinsArrayStubBuilder::FindLastIndex(GateRef glue, GateRef thisValue, Ga
     Label thisExists(env);
     Label isHeapObject(env);
     Label isJsArray(env);
-    Label isStability(env);
     Label notCOWArray(env);
     BRANCH(TaggedIsUndefinedOrNull(thisValue), slowPath, &thisExists);
     Bind(&thisExists);
     BRANCH(TaggedIsHeapObject(thisValue), &isHeapObject, slowPath);
     Bind(&isHeapObject);
     BRANCH(IsJsArray(thisValue), &isJsArray, slowPath);
-    Bind(&isJsArray);
     // don't check constructor, "FindLastIndex" won't create new array.
-    BRANCH(IsStableJSArray(glue, thisValue), &isStability, slowPath);
-    Bind(&isStability);
+    Bind(&isJsArray);
     BRANCH(IsJsCOWArray(thisValue), slowPath, &notCOWArray);
     Bind(&notCOWArray);
     Label arg0HeapObject(env);
@@ -4574,7 +4578,7 @@ void BuiltinsArrayStubBuilder::FindLastIndex(GateRef glue, GateRef thisValue, Ga
     GateRef argHandle = GetCallArg1(numArgs);
 
     DEFVARIABLE(i, VariableType::INT64(), Int64Sub(ZExtInt32ToInt64(GetArrayLength(thisValue)), Int64(1)));
-    Jump(&thisIsStable);
+    BRANCH(IsStableJSArray(glue, thisValue), &thisIsStable, &thisNotStable);
 
     Bind(&thisIsStable);
     {
@@ -4603,7 +4607,12 @@ void BuiltinsArrayStubBuilder::FindLastIndex(GateRef glue, GateRef thisValue, Ga
             BRANCH(TaggedIsHole(*kValue), &kValueIsHole, &callDispatch);
             Bind(&kValueIsHole);
             {
-                GateRef hasProp = CallRuntime(glue, RTSTUB_ID(HasProperty), { thisValue, IntToTaggedInt(*i) });
+#if ENABLE_NEXT_OPTIMIZATION
+                GateRef hasProp = CallCommonStub(glue, CommonStubCSigns::JSTaggedValueHasProperty,
+                                                 { glue, thisValue, IntToTaggedPtr(*i) });
+#else
+                GateRef hasProp = CallRuntime(glue, RTSTUB_ID(HasProperty), {thisValue, IntToTaggedInt(*i)});
+#endif
                 BRANCH(TaggedIsTrue(hasProp), &hasProperty, &useUndefined);
                 Bind(&hasProperty);
                 kValue = FastGetPropertyByIndex(glue, thisValue, TruncInt64ToInt32(*i), ProfileOperation());
@@ -4677,7 +4686,12 @@ void BuiltinsArrayStubBuilder::FindLastIndex(GateRef glue, GateRef thisValue, Ga
             Label notHasException1(env);
             BRANCH(Int64LessThan(*i, Int64(0)), &loopExit, &next);
             Bind(&next);
-            GateRef hasProp = CallRuntime(glue, RTSTUB_ID(HasProperty), { thisValue, IntToTaggedInt(*i) });
+#if ENABLE_NEXT_OPTIMIZATION
+            GateRef hasProp = CallCommonStub(glue, CommonStubCSigns::JSTaggedValueHasProperty,
+                                             { glue, thisValue, IntToTaggedPtr(*i) });
+#else
+            GateRef hasProp = CallRuntime(glue, RTSTUB_ID(HasProperty), {thisValue, IntToTaggedInt(*i)});
+#endif
             BRANCH(TaggedIsTrue(hasProp), &hasProperty, &useUndefined);
             Bind(&hasProperty);
             kValue = FastGetPropertyByIndex(glue, thisValue, TruncInt64ToInt32(*i), ProfileOperation());
@@ -4733,7 +4747,6 @@ void BuiltinsArrayStubBuilder::FindLast(GateRef glue, GateRef thisValue, GateRef
     Label thisExists(env);
     Label isHeapObject(env);
     Label isJsArray(env);
-    Label isStability(env);
     Label notCOWArray(env);
     BRANCH(TaggedIsUndefinedOrNull(thisValue), slowPath, &thisExists);
     Bind(&thisExists);
@@ -4742,8 +4755,6 @@ void BuiltinsArrayStubBuilder::FindLast(GateRef glue, GateRef thisValue, GateRef
     BRANCH(IsJsArray(thisValue), &isJsArray, slowPath);
     Bind(&isJsArray);
     // don't check constructor, "FindLast" won't create new array.
-    BRANCH(IsStableJSArray(glue, thisValue), &isStability, slowPath);
-    Bind(&isStability);
     BRANCH(IsJsCOWArray(thisValue), slowPath, &notCOWArray);
     Bind(&notCOWArray);
     Label arg0HeapObject(env);
@@ -4758,7 +4769,7 @@ void BuiltinsArrayStubBuilder::FindLast(GateRef glue, GateRef thisValue, GateRef
     GateRef argHandle = GetCallArg1(numArgs);
 
     DEFVARIABLE(i, VariableType::INT64(), Int64Sub(ZExtInt32ToInt64(GetArrayLength(thisValue)), Int64(1)));
-    Jump(&thisIsStable);
+    BRANCH(IsStableJSArray(glue, thisValue), &thisIsStable, &thisNotStable);
 
     Bind(&thisIsStable);
     {
@@ -4787,7 +4798,12 @@ void BuiltinsArrayStubBuilder::FindLast(GateRef glue, GateRef thisValue, GateRef
             BRANCH(TaggedIsHole(*kValue), &kValueIsHole, &callDispatch);
             Bind(&kValueIsHole);
             {
-                GateRef hasProp = CallRuntime(glue, RTSTUB_ID(HasProperty), { thisValue, IntToTaggedInt(*i) });
+#if ENABLE_NEXT_OPTIMIZATION
+                GateRef hasProp = CallCommonStub(glue, CommonStubCSigns::JSTaggedValueHasProperty,
+                                                 { glue, thisValue, IntToTaggedPtr(*i) });
+#else
+                GateRef hasProp = CallRuntime(glue, RTSTUB_ID(HasProperty), {thisValue, IntToTaggedInt(*i)});
+#endif
                 BRANCH(TaggedIsTrue(hasProp), &hasProperty, &useUndefined);
                 Bind(&hasProperty);
                 kValue = FastGetPropertyByIndex(glue, thisValue, TruncInt64ToInt32(*i), ProfileOperation());
@@ -4860,7 +4876,12 @@ void BuiltinsArrayStubBuilder::FindLast(GateRef glue, GateRef thisValue, GateRef
             Label notHasException1(env);
             BRANCH(Int64LessThan(*i, Int64(0)), &loopExit, &next);
             Bind(&next);
-            GateRef hasProp = CallRuntime(glue, RTSTUB_ID(HasProperty), { thisValue, IntToTaggedInt(*i) });
+#if ENABLE_NEXT_OPTIMIZATION
+            GateRef hasProp = CallCommonStub(glue, CommonStubCSigns::JSTaggedValueHasProperty,
+                                             { glue, thisValue, IntToTaggedPtr(*i) });
+#else
+            GateRef hasProp = CallRuntime(glue, RTSTUB_ID(HasProperty), {thisValue, IntToTaggedInt(*i)});
+#endif
             BRANCH(TaggedIsTrue(hasProp), &hasProperty, &useUndefined);
             Bind(&hasProperty);
             kValue = FastGetPropertyByIndex(glue, thisValue, TruncInt64ToInt32(*i), ProfileOperation());
