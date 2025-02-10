@@ -279,8 +279,8 @@ private:
     SingleStepperFunc *stepperFunc_ {nullptr};
     ReturnNativeFunc *returnNative_ {nullptr};
     JSThread *jsThread_ {nullptr};
-    std::shared_ptr<FrameHandler> frameHandler_;
-    DropframeManager dropframeManager_ { };
+    std::shared_ptr<FrameHandler> frameHandler_ {nullptr};
+    DropframeManager dropframeManager_;
 
     NotificationManager notificationManager_;
     HotReloadManager hotReloadManager_;
