@@ -25,7 +25,6 @@ class RelocWriter {
 public:
     RelocWriter() {}
     virtual ~RelocWriter() = default;
-    virtual bool RewriteRelocInfo(uint8_t *codeAddr, uint8_t *jitAllocAddr, RelocMap &relocInfo) = 0;
 };
 
 }  // namespace panda::ecmascript::kungfu
