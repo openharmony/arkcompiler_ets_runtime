@@ -10993,32 +10993,37 @@ void StubBuilder::TryToJitReuseCompiledFunc(GateRef glue, GateRef jsFunc, GateRe
     BRANCH(TaggedIsHole(weakMachineCode), &exitPoint, &machineCodeIsNotHole);
     Bind(&machineCodeIsNotHole);
     {
+        Label hasProfileTypeInfo(env_);
         GateRef profileTypeInfo = Load(VariableType::JS_ANY(), profileTypeInfoCell,
                                        IntPtr(ProfileTypeInfoCell::VALUE_OFFSET));
-        GateRef jitHotnessThreshold = ProfilerStubBuilder(env_).GetJitHotnessThreshold(profileTypeInfo);
-        BRANCH(Int32Equal(jitHotnessThreshold, Int32(ProfileTypeInfo::JIT_DISABLE_FLAG)), &exitPoint, &hasNotDisable);
-        Bind(&hasNotDisable);
+        BRANCH(TaggedIsUndefined(profileTypeInfo), &exitPoint, &hasProfileTypeInfo);
+        Bind(&hasProfileTypeInfo);
         {
-            Label machineCodeIsUndefine(env_);
-            Label machineCodeIsNotUndefine(env_);
-            BRANCH(TaggedIsUndefined(weakMachineCode), &machineCodeIsUndefine, &machineCodeIsNotUndefine);
-            Bind(&machineCodeIsUndefine);
+            GateRef jitHotnessThreshold = ProfilerStubBuilder(env_).GetJitHotnessThreshold(profileTypeInfo);
+            BRANCH(Int32Equal(jitHotnessThreshold, Int32(ProfileTypeInfo::JIT_DISABLE_FLAG)), &exitPoint, &hasNotDisable);
+            Bind(&hasNotDisable);
             {
-                ProfilerStubBuilder(env_).SetJitHotnessCnt(glue, profileTypeInfo, Int16(0));
-                Store(VariableType::JS_POINTER(), glue, profileTypeInfoCell,
-                      IntPtr(ProfileTypeInfoCell::MACHINE_CODE_OFFSET), Hole());
-                Jump(&exitPoint);
-            }
-            Bind(&machineCodeIsNotUndefine);
-            {
-                GateRef machineCode = TaggedCastToIntPtr(RemoveTaggedWeakTag(weakMachineCode));
-                GateRef codeAddr = Load(VariableType::NATIVE_POINTER(), machineCode,
-                                        IntPtr(MachineCode::FUNCADDR_OFFSET));
-                ASSERT(IntPtrNotEqual(codeAddr, IntPtr(0)));
-                GateRef isFastCall = GetIsFastCall(machineCode);
-                SetCompiledFuncEntry(glue, jsFunc, codeAddr, ZExtInt1ToInt32(isFastCall));
-                SetMachineCodeToFunction(glue, jsFunc, machineCode);
-                Jump(&exitPoint);
+                Label machineCodeIsUndefine(env_);
+                Label machineCodeIsNotUndefine(env_);
+                BRANCH(TaggedIsUndefined(weakMachineCode), &machineCodeIsUndefine, &machineCodeIsNotUndefine);
+                Bind(&machineCodeIsUndefine);
+                {
+                    ProfilerStubBuilder(env_).SetJitHotnessCnt(glue, profileTypeInfo, Int16(0));
+                    Store(VariableType::JS_POINTER(), glue, profileTypeInfoCell,
+                        IntPtr(ProfileTypeInfoCell::MACHINE_CODE_OFFSET), Hole());
+                    Jump(&exitPoint);
+                }
+                Bind(&machineCodeIsNotUndefine);
+                {
+                    GateRef machineCode = TaggedCastToIntPtr(RemoveTaggedWeakTag(weakMachineCode));
+                    GateRef codeAddr = Load(VariableType::NATIVE_POINTER(), machineCode,
+                                            IntPtr(MachineCode::FUNCADDR_OFFSET));
+                    ASSERT(IntPtrNotEqual(codeAddr, IntPtr(0)));
+                    GateRef isFastCall = GetIsFastCall(machineCode);
+                    SetCompiledFuncEntry(glue, jsFunc, codeAddr, ZExtInt1ToInt32(isFastCall));
+                    SetMachineCodeToFunction(glue, jsFunc, machineCode);
+                    Jump(&exitPoint);
+                }
             }
         }
     }

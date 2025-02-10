@@ -49,6 +49,7 @@ group("ark_jit_ts_test") {
     "inc",
     "uncheck_float64_to_int32",
     "retype_convert_test",
+    "stack_overflow",
     "mega_ic_test",
   ]
 
