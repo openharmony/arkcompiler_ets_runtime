@@ -2709,9 +2709,11 @@ JSTaggedValue BuiltinsSharedArray::CopyWithin(EcmaRuntimeCallInfo *argv)
     //   c. Let to be to + count -1.
     // 16. Else,
     //   a. Let direction = 1.
-    TaggedArray *element = TaggedArray::Cast(thisObjHandle->GetElements().GetTaggedObject());
-    element->Copy<true, true>(thread, copyTo, copyFrom, element, count);
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    if (count > 0) {
+        TaggedArray *element = TaggedArray::Cast(thisObjHandle->GetElements().GetTaggedObject());
+        element->Copy<true, true>(thread, copyTo, copyFrom, element, count);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    }
 
     // 18. Return O.
     return thisObjHandle.GetTaggedValue();

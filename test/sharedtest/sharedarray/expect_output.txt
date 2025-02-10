@@ -386,6 +386,8 @@ copyWithin SendableArray failed. err: BusinessError: Target index cannot be unde
 1,1,2,3,4,2
 1,1,3,4,2,2
 1,1,3,3,4,2
+1,1,3,3,4,2
+1,1,3,3,4,2
 Start Test findLast
 130
 undefined
