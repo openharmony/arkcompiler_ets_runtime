@@ -161,7 +161,7 @@ private:
 
 #if ENABLE_NEXT_OPTIMIZATION
     // When Array length is no more than 64, use array (stack memory) instead of vector to store the elements.
-    static constexpr size_t USE_STACK_MEMORY_THRESHOLD = 64;
+    static constexpr int64_t USE_STACK_MEMORY_THRESHOLD = 64;
     inline static bool WorthUseTreeString(uint32_t sepLength, size_t allocateLength, uint32_t len);
     template <typename Container>
     static void ProcessElements(JSThread *thread, JSHandle<JSTaggedValue> receiverValue, uint32_t len,
