@@ -532,14 +532,14 @@ JSTaggedValue BuiltinsArray::Concat(EcmaRuntimeCallInfo *argv)
                 JSStableArray::Concat(thread, newArrayHandle, JSHandle<JSObject>::Cast(ele), k, n);
                 RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             }
-            #if ENABLE_NEXT_OPTIMIZATION
-                else if (JSArray::IsProtoNotModifiedDictionaryJSArray(thread, JSHandle<JSObject>::Cast(ele))) {
-                    JSArray::FastConcatDictionaryArray(thread, JSHandle<JSObject>::Cast(ele), newArrayHandle,
-                                                       valHandle, toKey, n);
-                    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-                    continue;
-                }
-            #endif
+#if ENABLE_NEXT_OPTIMIZATION
+            else if (JSArray::IsProtoNotModifiedDictionaryJSArray(thread, JSHandle<JSObject>::Cast(ele))) {
+                JSArray::FastConcatDictionaryArray(thread, JSHandle<JSObject>::Cast(ele), newArrayHandle,
+                                                   valHandle, toKey, n);
+                RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+                continue;
+            }
+#endif
             // iv. Repeat, while k < len,
             while (k < len) {
                 // 1. Let P be ToString(k).
