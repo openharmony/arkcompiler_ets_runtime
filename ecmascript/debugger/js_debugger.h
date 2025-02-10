@@ -168,6 +168,14 @@ public:
     {
         singleStepOnDebuggerStmt_ = status;
     }
+    // Used by Launch Accelerate mode
+    void DisableFirstTimeFlag()
+    {
+        if (hooks_ == nullptr) {
+            return;
+        }
+        hooks_->DisableFirstTimeFlag();
+    }
 private:
     std::unique_ptr<PtMethod> FindMethod(const JSPtLocation &location) const;
     std::optional<JSBreakpoint> FindBreakpoint(JSHandle<Method> method, uint32_t bcOffset) const;

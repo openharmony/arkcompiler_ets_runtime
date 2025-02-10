@@ -325,6 +325,11 @@ bool DebuggerApi::RemoveBreakpointsByUrl(JSDebugger *debugger, const std::string
     return debugger->RemoveBreakpointsByUrl(url);
 }
 
+void DebuggerApi::DisableFirstTimeFlag(JSDebugger *debugger)
+{
+    return debugger->DisableFirstTimeFlag();
+}
+
 // ScopeInfo
 Local<JSValueRef> DebuggerApi::GetProperties(const EcmaVM *ecmaVm, const FrameHandler *frameHandler,
                                              int32_t level, uint32_t slot)
