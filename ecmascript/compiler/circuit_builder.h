@@ -288,6 +288,14 @@ public:
             BranchWeight::ONE_WEIGHT, BranchWeight::DEOPT_WEIGHT, os.str().c_str());     \
     }
 
+#define BRANCH_CIR_UNLIKELY(condition, trueLabel, falseLabel)                            \
+    {                                                                                    \
+        std::ostringstream os;                                                           \
+        os << __func__ << ": " << #trueLabel << "(likely)- " << #falseLabel;             \
+        builder_.Branch(condition, trueLabel, falseLabel,                                \
+            BranchWeight::ONE_WEIGHT, BranchWeight::DEOPT_WEIGHT, os.str().c_str());     \
+    }
+
 #define BRANCH_NO_WEIGHT(condition, trueLabel, falseLabel)                               \
     {                                                                                    \
         std::ostringstream os;                                                           \
@@ -305,8 +313,12 @@ public:
     inline GateRef Undefined();
     inline GateRef Hole();
 
+    GateRef ElementsKindIsInt(GateRef kind);
     GateRef ElementsKindIsIntOrHoleInt(GateRef kind);
+    GateRef ElementsKindIsNumber(GateRef kind);
     GateRef ElementsKindIsNumOrHoleNum(GateRef kind);
+    GateRef ElementsKindIsString(GateRef kind);
+    GateRef ElementsKindIsStringOrHoleString(GateRef kind);
     GateRef ElementsKindIsHeapKind(GateRef kind);
     GateRef ElementsKindHasHole(GateRef kind);
 
@@ -399,7 +411,10 @@ public:
     void Jump(Label *label);
     void Branch(GateRef condition, Label *trueLabel, Label *falseLabel,
                 uint32_t trueWeight = 1, uint32_t falseWeight = 1, const char* comment = nullptr);
-    void Switch(GateRef index, Label *defaultLabel, int64_t *keysValue, Label *keysLabel, int numberOfKeys);
+    void Switch(GateRef index, Label *defaultLabel,
+                const int64_t *keysValue, Label *keysLabel, int numberOfKeys);
+    void Switch(GateRef index, Label *defaultLabel,
+                const int64_t *keysValue, Label * const *keysLabel, int numberOfKeys);
     void LoopBegin(Label *loopHead);
     void LoopEnd(Label *loopHead);
     void LoopExit(const std::vector<Variable*> &vars, size_t diff = 1);
@@ -871,6 +886,9 @@ public:
     // **************************** Low IR *******************************
     inline GateRef Equal(GateRef x, GateRef y, const char* comment = nullptr);
     inline GateRef NotEqual(GateRef x, GateRef y, const char* comment = nullptr);
+    inline GateRef IntPtrAdd(GateRef x, GateRef y);
+    inline GateRef IntPtrSub(GateRef x, GateRef y);
+    inline GateRef IntPtrMul(GateRef x, GateRef y);
     inline GateRef IntPtrDiv(GateRef x, GateRef y);
     inline GateRef IntPtrOr(GateRef x, GateRef y);
     inline GateRef IntPtrLSL(GateRef x, GateRef y);
@@ -880,7 +898,10 @@ public:
     inline GateRef Int64Equal(GateRef x, GateRef y);
     inline GateRef Int8Equal(GateRef x, GateRef y);
     inline GateRef Int32Equal(GateRef x, GateRef y);
+    inline GateRef IntPtrLessThan(GateRef x, GateRef y);
+    inline GateRef IntPtrLessThanOrEqual(GateRef x, GateRef y);
     inline GateRef IntPtrGreaterThan(GateRef x, GateRef y);
+    inline GateRef IntPtrGreaterThanOrEqual(GateRef x, GateRef y);
     inline GateRef IntPtrAnd(GateRef x, GateRef y);
     inline GateRef IntPtrNot(GateRef x);
     inline GateRef IntPtrEqual(GateRef x, GateRef y);
@@ -941,6 +962,7 @@ public:
     inline GateRef DoubleIsNAN(GateRef x);
     inline GateRef DoubleIsINF(GateRef x);
     inline GateRef DoubleIsNanOrInf(GateRef x);
+    GateRef DoubleIsWithinInt32(GateRef x);
     static MachineType GetMachineTypeFromVariableType(VariableType type);
     GateRef FastToBoolean(GateRef value);
 
@@ -989,6 +1011,10 @@ private:
 
     inline void SetDepend(GateRef depend);
     inline void SetState(GateRef state);
+
+    template <class LabelPtrGetter>
+    void SwitchGeneric(GateRef index, Label *defaultLabel, Span<const int64_t> keysValue,
+                       LabelPtrGetter getIthLabelFn);
 
 #define ARITHMETIC_UNARY_OP_WITH_BITWIDTH(NAME, OPCODEID, MACHINETYPEID)                                     \
     inline GateRef NAME(GateRef x, const char* comment = nullptr)                                            \

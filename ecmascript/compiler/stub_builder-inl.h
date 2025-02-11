@@ -480,6 +480,16 @@ inline GateRef StubBuilder::IntPtrDiv(GateRef x, GateRef y)
     return env_->GetBuilder()->IntPtrDiv(x, y);
 }
 
+inline GateRef StubBuilder::Int32Min(GateRef x, GateRef y)
+{
+    return env_->GetBuilder()->Int32Min(x, y);
+}
+
+inline GateRef StubBuilder::Int32Max(GateRef x, GateRef y)
+{
+    return env_->GetBuilder()->Int32Max(x, y);
+}
+
 inline GateRef StubBuilder::Int32Mod(GateRef x, GateRef y)
 {
     return env_->GetBuilder()->Int32Mod(x, y);
@@ -720,14 +730,34 @@ inline GateRef StubBuilder::ValueIsSpecialHole(GateRef x)
     return env_->GetBuilder()->IsSpecialHole(x);
 }
 
+inline GateRef StubBuilder::ElementsKindIsInt(GateRef kind)
+{
+    return env_->GetBuilder()->ElementsKindIsInt(kind);
+}
+
 inline GateRef StubBuilder::ElementsKindIsIntOrHoleInt(GateRef kind)
 {
     return env_->GetBuilder()->ElementsKindIsIntOrHoleInt(kind);
 }
 
+inline GateRef StubBuilder::ElementsKindIsNumber(GateRef kind)
+{
+    return env_->GetBuilder()->ElementsKindIsNumber(kind);
+}
+
 inline GateRef StubBuilder::ElementsKindIsNumOrHoleNum(GateRef kind)
 {
     return env_->GetBuilder()->ElementsKindIsNumOrHoleNum(kind);
+}
+
+inline GateRef StubBuilder::ElementsKindIsString(GateRef kind)
+{
+    return env_->GetBuilder()->ElementsKindIsString(kind);
+}
+
+inline GateRef StubBuilder::ElementsKindIsStringOrHoleString(GateRef kind)
+{
+    return env_->GetBuilder()->ElementsKindIsStringOrHoleString(kind);
 }
 
 inline GateRef StubBuilder::ElementsKindIsHeapKind(GateRef kind)
@@ -848,6 +878,11 @@ inline GateRef StubBuilder::DoubleIsInteger(GateRef x)
     GateRef notInteger = LogicOrBuilder(env_).Or(DoubleIsNAN(x)).Or(DoubleIsINF(x))
         .Or(BoolNot(DoubleEqual(x, DoubleTrunc(x)))).Done();
     return BoolNot(notInteger);
+}
+
+inline GateRef StubBuilder::DoubleIsWithinInt32(GateRef x)
+{
+    return env_->GetBuilder()->DoubleIsWithinInt32(x);
 }
 
 inline GateRef StubBuilder::DoubleTrunc(GateRef x)
@@ -971,6 +1006,11 @@ inline GateRef StubBuilder::Int64ToTaggedInt(GateRef x)
 inline GateRef StubBuilder::Int64ToTaggedIntPtr(GateRef x)
 {
     return env_->GetBuilder()->ToTaggedIntPtr(x);
+}
+
+inline GateRef StubBuilder::DoubleToTaggedDouble(GateRef x)
+{
+    return env_->GetBuilder()->DoubleToTaggedDouble(x);
 }
 
 inline GateRef StubBuilder::DoubleToTaggedDoublePtr(GateRef x)
@@ -1164,9 +1204,24 @@ inline GateRef StubBuilder::Int64UnsignedGreaterThanOrEqual(GateRef x, GateRef y
     return env_->GetBuilder()->Int64UnsignedGreaterThanOrEqual(x, y);
 }
 
+inline GateRef StubBuilder::IntPtrLessThan(GateRef x, GateRef y)
+{
+    return env_->GetBuilder()->IntPtrLessThan(x, y);
+}
+
+inline GateRef StubBuilder::IntPtrLessThanOrEqual(GateRef x, GateRef y)
+{
+    return env_->GetBuilder()->IntPtrLessThanOrEqual(x, y);
+}
+
 inline GateRef StubBuilder::IntPtrGreaterThan(GateRef x, GateRef y)
 {
     return env_->GetBuilder()->IntPtrGreaterThan(x, y);
+}
+
+inline GateRef StubBuilder::IntPtrGreaterThanOrEqual(GateRef x, GateRef y)
+{
+    return env_->GetBuilder()->IntPtrGreaterThanOrEqual(x, y);
 }
 
 // cast operation

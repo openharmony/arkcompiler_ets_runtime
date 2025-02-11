@@ -252,25 +252,43 @@ void CircuitBuilder::Branch(GateRef condition, Label *trueLabel, Label *falseLab
     env_->SetCurrentLabel(nullptr);
 }
 
-void CircuitBuilder::Switch(GateRef index, Label *defaultLabel, int64_t *keysValue, Label *keysLabel, int numberOfKeys)
+template <class LabelPtrGetter>
+void CircuitBuilder::SwitchGeneric(GateRef index, Label *defaultLabel, Span<const int64_t> keysValue,
+                                   LabelPtrGetter getIthLabelFn)
 {
+    static_assert(std::is_invocable_r_v<Label*, LabelPtrGetter, size_t>, "Invalid call signature.");
+    size_t numberOfKeys = keysValue.Size();
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     GateRef switchBranch = SwitchBranch(currentControl, index, numberOfKeys);
     currentLabel->SetControl(switchBranch);
-    for (int i = 0; i < numberOfKeys; i++) {
-        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+    for (size_t i = 0; i < numberOfKeys; i++) {
         GateRef switchCase = SwitchCase(switchBranch, keysValue[i]);
-        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-        keysLabel[i].AppendPredecessor(currentLabel);
-        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-        keysLabel[i].MergeControl(switchCase);
+        Label *curLabel = std::invoke(getIthLabelFn, i);
+        curLabel->AppendPredecessor(currentLabel);
+        curLabel->MergeControl(switchCase);
     }
 
     GateRef defaultCase = DefaultCase(switchBranch);
     defaultLabel->AppendPredecessor(currentLabel);
     defaultLabel->MergeControl(defaultCase);
     env_->SetCurrentLabel(nullptr);
+}
+
+void CircuitBuilder::Switch(GateRef index, Label *defaultLabel,
+                            const int64_t *keysValue, Label *keysLabel, int numberOfKeys)
+{
+    return SwitchGeneric(index, defaultLabel, {keysValue, numberOfKeys}, [keysLabel](size_t i) {
+        return &keysLabel[i];
+    });
+}
+
+void CircuitBuilder::Switch(GateRef index, Label *defaultLabel,
+                            const int64_t *keysValue, Label * const *keysLabel, int numberOfKeys)
+{
+    return SwitchGeneric(index, defaultLabel, {keysValue, numberOfKeys}, [keysLabel](size_t i) {
+        return keysLabel[i];
+    });
 }
 
 void CircuitBuilder::LoopBegin(Label *loopHead)
@@ -1061,6 +1079,11 @@ GateRef Variable::TryRemoveTrivialPhi(GateRef phi)
     return same;
 }
 
+GateRef CircuitBuilder::ElementsKindIsInt(GateRef kind)
+{
+    return Int32Equal(kind, Int32(static_cast<uint32_t>(ElementsKind::INT)));
+}
+
 GateRef CircuitBuilder::ElementsKindIsIntOrHoleInt(GateRef kind)
 {
     GateRef kindIsInt = Int32Equal(kind, Int32(static_cast<uint32_t>(ElementsKind::INT)));
@@ -1068,11 +1091,28 @@ GateRef CircuitBuilder::ElementsKindIsIntOrHoleInt(GateRef kind)
     return BitOr(kindIsInt, kindIsHoleInt);
 }
 
+GateRef CircuitBuilder::ElementsKindIsNumber(GateRef kind)
+{
+    return Int32Equal(kind, Int32(static_cast<uint32_t>(ElementsKind::NUMBER)));
+}
+
 GateRef CircuitBuilder::ElementsKindIsNumOrHoleNum(GateRef kind)
 {
     GateRef kindIsNum = Int32Equal(kind, Int32(static_cast<uint32_t>(ElementsKind::NUMBER)));
     GateRef kindIsHoleNum = Int32Equal(kind, Int32(static_cast<uint32_t>(ElementsKind::HOLE_NUMBER)));
     return BitOr(kindIsNum, kindIsHoleNum);
+}
+
+GateRef CircuitBuilder::ElementsKindIsString(GateRef kind)
+{
+    return Int32Equal(kind, Int32(static_cast<uint32_t>(ElementsKind::STRING)));
+}
+
+GateRef CircuitBuilder::ElementsKindIsStringOrHoleString(GateRef kind)
+{
+    GateRef kindIsString = Int32Equal(kind, Int32(static_cast<uint32_t>(ElementsKind::STRING)));
+    GateRef kindIsHoleString = Int32Equal(kind, Int32(static_cast<uint32_t>(ElementsKind::HOLE_STRING)));
+    return BitOr(kindIsString, kindIsHoleString);
 }
 
 GateRef CircuitBuilder::ElementsKindIsHeapKind(GateRef kind)

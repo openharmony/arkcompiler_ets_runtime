@@ -84,14 +84,19 @@ public:
                 static_cast<uint32_t>(kind) < static_cast<uint32_t>(ElementsKind::STRING));
     }
 
-    static bool IsHoleInt(ElementsKind kind)
+    static bool IsIntOrHoleInt(ElementsKind kind)
     {
-        return kind == ElementsKind::HOLE_INT;
+        return kind == ElementsKind::INT || kind == ElementsKind::HOLE_INT;
     }
 
-    static bool IsHoleNumber(ElementsKind kind)
+    static bool IsNumberOrHoleNumber(ElementsKind kind)
     {
-        return kind == ElementsKind::HOLE_NUMBER;
+        return kind == ElementsKind::NUMBER || kind == ElementsKind::HOLE_NUMBER;
+    }
+
+    static bool IsStringOrHoleString(ElementsKind kind)
+    {
+        return kind == ElementsKind::STRING || kind == ElementsKind::HOLE_STRING;
     }
 
     static ConstantIndex GetGlobalContantIndexByKind(ElementsKind kind);

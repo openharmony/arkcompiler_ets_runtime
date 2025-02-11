@@ -322,6 +322,36 @@ GateRef CircuitBuilder::DoubleInRangeInt32(GateRef x)
     return ret;
 }
 
+// According to C++ standard: "If the truncated value cannot fit into the destination type, the behavior is undefined"
+// Thus it's necessary to do bound checking before converting back and forth.
+GateRef CircuitBuilder::DoubleIsWithinInt32(GateRef x)
+{
+    Label entry(env_);
+    env_->SubCfgEntry(&entry);
+    Label noOverflow(env_);
+    Label noUnderflow(env_);
+    Label isWithinInt32(env_);
+    Label exit(env_);
+    DEFVALUE(result, env_, VariableType::BOOL(), False());
+
+    GateRef limitMax = Double(INT32_MAX);
+    GateRef limitMin = Double(INT32_MIN);
+    Branch(DoubleLessThanOrEqual(x, limitMax), &noOverflow, &exit); // NaN, +inf -> exit
+    Bind(&noOverflow);
+    Branch(DoubleGreaterThanOrEqual(x, limitMin), &noUnderflow, &exit); // NaN, -inf -> exit
+    Bind(&noUnderflow);
+    GateRef xToInt32 = ChangeFloat64ToInt32(x);
+    Branch(DoubleEqual(ChangeInt32ToFloat64(xToInt32), x), &isWithinInt32, &exit);
+    Bind(&isWithinInt32);
+    result.WriteVariable(True());
+    Jump(&exit);
+
+    Bind(&exit);
+    auto ret = *result;
+    env_->SubCfgExit();
+    return ret;
+}
+
 GateRef CircuitBuilder::ThreeInt64Min(GateRef first, GateRef second, GateRef third)
 {
     Label entry(env_);
