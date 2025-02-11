@@ -53,6 +53,11 @@ public:
         taskQueue_.PostTask(std::move(task));
     }
 
+    void PostDelayedTask(std::unique_ptr<Task> task, uint64_t delayMilliseconds)
+    {
+        taskQueue_.PostDelayedTask(std::move(task), delayMilliseconds);
+    }
+
     void PUBLIC_API TerminateThread();
     void TerminateTask(int32_t id, TaskType type);
     void SetQosPriority(PriorityMode mode);

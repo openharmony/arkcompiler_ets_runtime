@@ -108,7 +108,7 @@ HWTEST_F_L0(GCTest, ColdStartForceExpand)
         }
     }
     size_t expandHeapSize = thread->GetEcmaVM()->GetHeap()->GetCommittedSize();
-    usleep(2500000);
+    usleep(10000000);
     size_t newSize = EcmaTestCommon::GcCommonCase(thread);
     EXPECT_TRUE(originalHeapSize < expandHeapSize);
     EXPECT_TRUE(expandHeapSize > newSize);
@@ -157,6 +157,30 @@ HWTEST_F_L0(GCTest, HighSensitiveExceedMaxHeapSize)
     size_t commitSize = thread->GetEcmaVM()->GetHeap()->GetCommittedSize();
     const_cast<Heap *>(thread->GetEcmaVM()->GetHeap())->NotifyHighSensitive(false);
     EXPECT_TRUE(commitSize < thread->GetEcmaVM()->GetEcmaParamConfiguration().GetMaxHeapSize());
+}
+
+HWTEST_F_L0(GCTest, ColdStartGCRestrainInternal)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    heap->NotifyPostFork();
+    heap->NotifyFinishColdStartSoon();
+    std::this_thread::sleep_for(std::chrono::seconds(3));
+    if (!heap->OnStartupEvent()) {
+        StartupStatus startupStatus = heap->GetStartupStatus();
+        EXPECT_TRUE(startupStatus == StartupStatus::JUST_FINISH_STARTUP);
+    }
+}
+
+HWTEST_F_L0(GCTest, ColdStartGCRestrainExternal)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    heap->NotifyPostFork();
+    heap->NotifyFinishColdStartSoon();
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+    heap->NotifyFinishColdStart(true);
+    EXPECT_FALSE(heap->OnStartupEvent());
+    StartupStatus startupStatus = heap->GetStartupStatus();
+    EXPECT_TRUE(startupStatus == StartupStatus::JUST_FINISH_STARTUP);
 }
 
 HWTEST_F_L0(GCTest, CallbackTask)
