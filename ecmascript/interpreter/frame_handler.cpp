@@ -378,6 +378,10 @@ void FrameHandler::IterateAssembleStack(RootVisitor &visitor)
 {
     JSTaggedType *current = const_cast<JSTaggedType *>(thread_->GetLastLeaveFrame());
     IterateFrameChain(current, visitor);
+    if (thread_->IsInSubStack() && thread_->GetMainStackInfo().lastLeaveFrame != 0) {
+        JSTaggedType *mainCurrent = reinterpret_cast<JSTaggedType *>(thread_->GetMainStackInfo().lastLeaveFrame);
+        IterateFrameChain(mainCurrent, visitor);
+    }
 }
 
 // We seperate InterpretedEntryFrame from assemble stack when asm interpreter is enable.

@@ -1236,6 +1236,47 @@ void JSThread::TransferFromRunningToSuspended(ThreadState newState)
     CheckAndPassActiveBarrier();
 }
 
+void JSThread::UpdateStackInfo(void *stackInfo, StackInfoOpKind opKind)
+{
+    switch (opKind) {
+        case SwitchToSubStackInfo: {
+            StackInfo *subStackInfo = reinterpret_cast<StackInfo*>(stackInfo);
+            if (subStackInfo == nullptr) {
+                LOG_ECMA(ERROR) << "fatal error, subStack not exist";
+                break;
+            }
+            // process stackLimit
+            mainStackInfo_.stackLimit = glueData_.stackLimit_;
+            glueData_.stackLimit_ = subStackInfo->stackLimit;
+            // process lastLeaveFrame
+            mainStackInfo_.lastLeaveFrame = reinterpret_cast<uint64_t>(glueData_.leaveFrame_);
+            glueData_.leaveFrame_ =
+                reinterpret_cast<uint64_t *>(subStackInfo->lastLeaveFrame);
+            isInSubStack_ = true;
+            
+            LOG_ECMA(DEBUG) << "Switch to subStack: "
+                            << ", stack limit: " << glueData_.stackLimit_
+                            << ", stack lastLeaveFrame: " << glueData_.leaveFrame_;
+            break;
+        }
+        case SwitchToMainStackInfo: {
+            // process stackLimit
+            glueData_.stackLimit_ = mainStackInfo_.stackLimit;
+            // process lastLeaveFrame
+            glueData_.leaveFrame_ = reinterpret_cast<uint64_t *>(mainStackInfo_.lastLeaveFrame);
+            isInSubStack_ = false;
+
+            LOG_ECMA(DEBUG) << "Switch to mainStack: "
+                            << ", main stack limit: " << mainStackInfo_.stackLimit
+                            << ", main stack lastLeaveFrame: " << mainStackInfo_.lastLeaveFrame;
+            break;
+        }
+        default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
+            UNREACHABLE();
+    }
+}
+
 void JSThread::TransferToRunning()
 {
     ASSERT(!IsDaemonThread());
