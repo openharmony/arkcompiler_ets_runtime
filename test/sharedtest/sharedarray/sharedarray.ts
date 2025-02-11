@@ -1338,6 +1338,12 @@ function copyWithinTest() {
 
     arr.copyWithin(3, -4, -2);
     print(arr);
+
+    arr.copyWithin(2, -3, -4);
+    print(arr);
+
+    arr.copyWithin(4, 2, 1);
+    print(arr);
 }
 
 function findLast() {
