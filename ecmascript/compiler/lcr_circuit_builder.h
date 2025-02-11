@@ -47,9 +47,24 @@ GateRef CircuitBuilder::Int32Equal(GateRef x, GateRef y)
     return Equal(x, y);
 }
 
+GateRef CircuitBuilder::IntPtrLessThan(GateRef x, GateRef y)
+{
+    return env_->Is32Bit() ? Int32LessThan(x, y) : Int64LessThan(x, y);
+}
+
+GateRef CircuitBuilder::IntPtrLessThanOrEqual(GateRef x, GateRef y)
+{
+    return env_->Is32Bit() ? Int32LessThanOrEqual(x, y) : Int64LessThanOrEqual(x, y);
+}
+
 GateRef CircuitBuilder::IntPtrGreaterThan(GateRef x, GateRef y)
 {
     return env_->Is32Bit() ? Int32GreaterThan(x, y) : Int64GreaterThan(x, y);
+}
+
+GateRef CircuitBuilder::IntPtrGreaterThanOrEqual(GateRef x, GateRef y)
+{
+    return env_->Is32Bit() ? Int32GreaterThanOrEqual(x, y) : Int64GreaterThanOrEqual(x, y);
 }
 
 GateRef CircuitBuilder::IntPtrAnd(GateRef x, GateRef y)
@@ -128,6 +143,21 @@ GateRef CircuitBuilder::IntPtrOr(GateRef x, GateRef y)
 {
     auto ptrsize = env_->Is32Bit() ? MachineType::I32 : MachineType::I64;
     return BinaryArithmetic(circuit_->Or(), ptrsize, x, y);
+}
+
+GateRef CircuitBuilder::IntPtrAdd(GateRef x, GateRef y)
+{
+    return env_->Is32Bit() ? Int32Add(x, y) : Int64Add(x, y);
+}
+
+GateRef CircuitBuilder::IntPtrSub(GateRef x, GateRef y)
+{
+    return env_->Is32Bit() ? Int32Sub(x, y) : Int64Sub(x, y);
+}
+
+GateRef CircuitBuilder::IntPtrMul(GateRef x, GateRef y)
+{
+    return env_->Is32Bit() ? Int32Mul(x, y) : Int64Mul(x, y);
 }
 
 GateRef CircuitBuilder::IntPtrDiv(GateRef x, GateRef y)

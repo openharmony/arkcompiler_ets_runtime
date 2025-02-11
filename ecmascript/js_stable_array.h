@@ -27,6 +27,25 @@
 namespace panda::ecmascript {
 class JSStableArray {
 public:
+    enum class ComparisonType: uint8_t {
+        STRICT_EQUAL,
+        SAME_VALUE_ZERO,
+    };
+
+    enum class IndexOfReturnType: uint8_t {
+        TAGGED_FOUND_INDEX,
+        TAGGED_FOUND_OR_NOT,
+        UNTAGGED_FOUND_INDEX,
+        UNTAGGED_FOUND_OR_NOT,
+    };
+
+    struct IndexOfOptions {
+        ComparisonType compType = ComparisonType::STRICT_EQUAL;
+        IndexOfReturnType returnType = IndexOfReturnType::TAGGED_FOUND_INDEX;
+        bool reversedOrder = false;
+        bool holeAsUndefined = false;
+    };
+
 #if !ENABLE_NEXT_OPTIMIZATION
     enum SeparatorFlag : int { MINUS_ONE = -1, MINUS_TWO = -2 };
 #endif

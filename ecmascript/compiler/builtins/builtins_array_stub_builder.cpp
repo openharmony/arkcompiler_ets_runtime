@@ -1196,7 +1196,12 @@ void BuiltinsArrayStubBuilder::IndexOf([[maybe_unused]] GateRef glue, GateRef th
     Variable *result, Label *exit, Label *slowPath)
 {
 #if ENABLE_NEXT_OPTIMIZATION
-    IncludesIndexOfOptimised(glue, thisValue, numArgs, MethodKind::M_INDEXOF, result, exit, slowPath);
+    IndexOfOptions options;
+    options.compType = ComparisonType::STRICT_EQUAL;
+    options.returnType = IndexOfReturnType::TAGGED_FOUND_INDEX;
+    options.holeAsUndefined = false;
+    options.reversedOrder = false;
+    return IndexOfOptimised(glue, thisValue, numArgs, result, exit, slowPath, options);
 #else
     auto env = GetEnvironment();
     Label thisIsEmpty(env);
@@ -1219,6 +1224,14 @@ void BuiltinsArrayStubBuilder::IndexOf([[maybe_unused]] GateRef glue, GateRef th
 void BuiltinsArrayStubBuilder::LastIndexOf([[maybe_unused]] GateRef glue, GateRef thisValue, GateRef numArgs,
     Variable *result, Label *exit, Label *slowPath)
 {
+#if ENABLE_NEXT_OPTIMIZATION
+    IndexOfOptions options;
+    options.compType = ComparisonType::STRICT_EQUAL;
+    options.returnType = IndexOfReturnType::TAGGED_FOUND_INDEX;
+    options.holeAsUndefined = false;
+    options.reversedOrder = true;
+    return IndexOfOptimised(glue, thisValue, numArgs, result, exit, slowPath, options);
+#else
     auto env = GetEnvironment();
     Label thisIsEmpty(env);
     // Fast path if: (1) this is an empty array; (2) fromIndex is missing
@@ -1233,6 +1246,7 @@ void BuiltinsArrayStubBuilder::LastIndexOf([[maybe_unused]] GateRef glue, GateRe
         result->WriteVariable(IntToTaggedPtr(Int32(-1)));
         Jump(exit);
     }
+#endif
 }
 
 void BuiltinsArrayStubBuilder::Pop(GateRef glue, GateRef thisValue,
@@ -2828,7 +2842,13 @@ void BuiltinsArrayStubBuilder::Includes(GateRef glue, GateRef thisValue, GateRef
     Variable *result, Label *exit, Label *slowPath)
 {
 #if ENABLE_NEXT_OPTIMIZATION
-    IncludesIndexOfOptimised(glue, thisValue, numArgs, MethodKind::M_INCLUDES, result, exit, slowPath);
+    IndexOfOptions options;
+    options.compType = ComparisonType::SAME_VALUE_ZERO;
+    options.returnType = IndexOfReturnType::TAGGED_FOUND_OR_NOT;
+    options.holeAsUndefined = true;
+    options.reversedOrder = false;
+
+    IndexOfOptimised(glue, thisValue, numArgs, result, exit, slowPath, options);
 #else
     auto env = GetEnvironment();
     Label isDictMode(env);

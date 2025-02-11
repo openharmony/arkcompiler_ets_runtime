@@ -59,25 +59,43 @@ void StubBuilder::Branch(GateRef condition, Label *trueLabel, Label *falseLabel,
     env_->SetCurrentLabel(nullptr);
 }
 
-void StubBuilder::Switch(GateRef index, Label *defaultLabel, int64_t *keysValue, Label *keysLabel, int numberOfKeys)
+template <class LabelPtrGetter>
+void StubBuilder::SwitchGeneric(GateRef index, Label *defaultLabel, Span<const int64_t> keysValue,
+                                LabelPtrGetter getIthLabelFn)
 {
+    static_assert(std::is_invocable_r_v<Label*, LabelPtrGetter, size_t>, "Invalid call signature.");
+    size_t numberOfKeys = keysValue.Size();
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     GateRef switchBranch = env_->GetBuilder()->SwitchBranch(currentControl, index, numberOfKeys);
     currentLabel->SetControl(switchBranch);
-    for (int i = 0; i < numberOfKeys; i++) {
-        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+    for (size_t i = 0; i < numberOfKeys; i++) {
         GateRef switchCase = env_->GetBuilder()->SwitchCase(switchBranch, keysValue[i]);
-        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-        keysLabel[i].AppendPredecessor(currentLabel);
-        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-        keysLabel[i].MergeControl(switchCase);
+        Label *curLabel = std::invoke(getIthLabelFn, i);
+        curLabel->AppendPredecessor(currentLabel);
+        curLabel->MergeControl(switchCase);
     }
 
     GateRef defaultCase = env_->GetBuilder()->DefaultCase(switchBranch);
     defaultLabel->AppendPredecessor(currentLabel);
     defaultLabel->MergeControl(defaultCase);
     env_->SetCurrentLabel(nullptr);
+}
+
+void StubBuilder::Switch(GateRef index, Label *defaultLabel,
+                         const int64_t *keysValue, Label *keysLabel, int numberOfKeys)
+{
+    return SwitchGeneric(index, defaultLabel, {keysValue, numberOfKeys}, [keysLabel](size_t i) {
+        return &keysLabel[i];
+    });
+}
+
+void StubBuilder::Switch(GateRef index, Label *defaultLabel,
+                         const int64_t *keysValue, Label *const *keysLabel, int numberOfKeys)
+{
+    return SwitchGeneric(index, defaultLabel, {keysValue, numberOfKeys}, [keysLabel](size_t i) {
+        return keysLabel[i];
+    });
 }
 
 void StubBuilder::LoopBegin(Label *loopHead)
@@ -6493,6 +6511,112 @@ GateRef StubBuilder::FastStringEqual(GateRef glue, GateRef left, GateRef right)
     return ret;
 }
 
+// init is -1 if leftLength  < rightLength;
+//          0 if leftLength == rightLength;
+//         +1 if leftLength  > rightLength.
+GateRef StubBuilder::StringCompareContents(GateRef glue, GateRef left, GateRef right, GateRef init, GateRef minLength)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+
+    Label loopHead(env);
+    Label loopEnd(env);
+    Label loopBody(env);
+    Label leftFlattenFastPath(env);
+    DEFVARIABLE(result, VariableType::INT32(), init);
+
+    FlatStringStubBuilder leftFlat(this);
+    leftFlat.FlattenString(glue, left, &leftFlattenFastPath);
+    Bind(&leftFlattenFastPath);
+
+    Label rightFlattenFastPath(env);
+    FlatStringStubBuilder rightFlat(this);
+    rightFlat.FlattenString(glue, right, &rightFlattenFastPath);
+    Bind(&rightFlattenFastPath);
+
+    StringInfoGateRef leftStrInfoGate(&leftFlat);
+    StringInfoGateRef rightStrInfoGate(&rightFlat);
+    DEFVARIABLE(i, VariableType::INT32(), Int32(0));
+    Jump(&loopHead);
+    LoopBegin(&loopHead);
+    {
+        BRANCH(Int32UnsignedLessThan(*i, minLength), &loopBody, &exit);
+        Bind(&loopBody);
+        {
+            BuiltinsStringStubBuilder stringBuilder(this);
+            GateRef leftStrToInt = stringBuilder.StringAt(leftStrInfoGate, *i);
+            GateRef rightStrToInt = stringBuilder.StringAt(rightStrInfoGate, *i);
+            Label notEqual(env);
+            BRANCH_NO_WEIGHT(Int32Equal(leftStrToInt, rightStrToInt), &loopEnd, &notEqual);
+            Bind(&notEqual);
+            {
+                Label leftIsLess(env);
+                Label rightIsLess(env);
+                BRANCH_NO_WEIGHT(Int32UnsignedLessThan(leftStrToInt, rightStrToInt), &leftIsLess, &rightIsLess);
+                Bind(&leftIsLess);
+                {
+                    result = Int32(-1);
+                    Jump(&exit);
+                }
+                Bind(&rightIsLess);
+                {
+                    result = Int32(1);
+                    Jump(&exit);
+                }
+            }
+        }
+        Bind(&loopEnd);
+        i = Int32Add(*i, Int32(1));
+        LoopEnd(&loopHead);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef StubBuilder::FastStringEqualWithoutRTStub(GateRef glue, GateRef left, GateRef right)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    DEFVARIABLE(result, VariableType::BOOL(), False());
+    Label exit(env);
+    Label hashcodeCompare(env);
+    Label contentsCompare(env);
+    Label lenIsOne(env);
+
+    GateRef leftLen = GetLengthFromString(left);
+    GateRef rightLen = GetLengthFromString(right);
+    BRANCH(Int32Equal(leftLen, rightLen), &hashcodeCompare, &exit);
+    Bind(&hashcodeCompare);
+    Label leftNotNeg(env);
+    GateRef leftHash = TryGetHashcodeFromString(left);
+    GateRef rightHash = TryGetHashcodeFromString(right);
+    BRANCH(Int64Equal(leftHash, Int64(-1)), &contentsCompare, &leftNotNeg);
+    Bind(&leftNotNeg);
+    {
+        Label rightNotNeg(env);
+        BRANCH(Int64Equal(rightHash, Int64(-1)), &contentsCompare, &rightNotNeg);
+        Bind(&rightNotNeg);
+        BRANCH(Int64Equal(leftHash, rightHash), &contentsCompare, &exit);
+    }
+
+    Bind(&contentsCompare);
+    {
+        GateRef compareResult = StringCompareContents(glue, left, right, Int32(0), Int32Min(leftLen, rightLen));
+        result = Equal(Int32(0), compareResult);
+        Jump(&exit);
+    }
+
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
 GateRef StubBuilder::StringCompare(GateRef glue, GateRef left, GateRef right)
 {
     auto env = GetEnvironment();
@@ -6526,54 +6650,9 @@ GateRef StubBuilder::StringCompare(GateRef glue, GateRef left, GateRef right)
     }
 
     Bind(&compareContent);
-    Label loopHead(env);
-    Label loopEnd(env);
-    Label loopBody(env);
-    Label leftFlattenFastPath(env);
-    FlatStringStubBuilder leftFlat(this);
-    leftFlat.FlattenString(glue, left, &leftFlattenFastPath);
-    Bind(&leftFlattenFastPath);
+    result = StringCompareContents(glue, left, right, *result, *minLength);
+    Jump(&exit);
 
-    Label rightFlattenFastPath(env);
-    FlatStringStubBuilder rightFlat(this);
-    rightFlat.FlattenString(glue, right, &rightFlattenFastPath);
-    Bind(&rightFlattenFastPath);
-
-    StringInfoGateRef leftStrInfoGate(&leftFlat);
-    StringInfoGateRef rightStrInfoGate(&rightFlat);
-    DEFVARIABLE(i, VariableType::INT32(), Int32(0));
-    Jump(&loopHead);
-    LoopBegin(&loopHead);
-    {
-        BRANCH(Int32UnsignedLessThan(*i, *minLength), &loopBody, &exit);
-        Bind(&loopBody);
-        {
-            BuiltinsStringStubBuilder stringBuilder(this);
-            GateRef leftStrToInt = stringBuilder.StringAt(leftStrInfoGate, *i);
-            GateRef rightStrToInt = stringBuilder.StringAt(rightStrInfoGate, *i);
-            Label notEqual(env);
-            BRANCH_NO_WEIGHT(Int32Equal(leftStrToInt, rightStrToInt), &loopEnd, &notEqual);
-            Bind(&notEqual);
-            {
-                Label leftIsLess(env);
-                Label rightIsLess(env);
-                BRANCH_NO_WEIGHT(Int32UnsignedLessThan(leftStrToInt, rightStrToInt), &leftIsLess, &rightIsLess);
-                Bind(&leftIsLess);
-                {
-                    result = Int32(-1);
-                    Jump(&exit);
-                }
-                Bind(&rightIsLess);
-                {
-                    result = Int32(1);
-                    Jump(&exit);
-                }
-            }
-        }
-        Bind(&loopEnd);
-        i = Int32Add(*i, Int32(1));
-        LoopEnd(&loopHead);
-    }
     Bind(&exit);
     auto ret = *result;
     env->SubCfgExit();

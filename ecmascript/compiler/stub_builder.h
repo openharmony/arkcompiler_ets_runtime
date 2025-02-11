@@ -141,7 +141,10 @@ public:
                        uint32_t trueWeight = BranchWeight::ONE_WEIGHT, uint32_t falseWeight = BranchWeight::ONE_WEIGHT,
                        const char *comment = nullptr);
 
-    void Switch(GateRef index, Label *defaultLabel, int64_t *keysValue, Label *keysLabel, int numberOfKeys);
+    void Switch(GateRef index, Label *defaultLabel,
+                const int64_t *keysValue, Label *keysLabel, int numberOfKeys);
+    void Switch(GateRef index, Label *defaultLabel,
+                const int64_t *keysValue, Label * const *keysLabel, int numberOfKeys);
     void LoopBegin(Label *loopHead);
     void LoopEnd(Label *loopHead);
     // LoopEnd with safepoint
@@ -195,6 +198,8 @@ public:
     GateRef DoubleMod(GateRef x, GateRef y);
     GateRef Int64Div(GateRef x, GateRef y);
     GateRef IntPtrDiv(GateRef x, GateRef y);
+    GateRef Int32Min(GateRef x, GateRef y);
+    GateRef Int32Max(GateRef x, GateRef y);
     // bit operation
     GateRef Int16Or(GateRef x, GateRef y);
     GateRef Int16And(GateRef x, GateRef y);
@@ -271,6 +276,7 @@ public:
     GateRef DoubleIsNanOrInf(GateRef x);
     GateRef DoubleAbs(GateRef x);
     GateRef DoubleIsInteger(GateRef x);
+    GateRef DoubleIsWithinInt32(GateRef x);
     GateRef DoubleTrunc(GateRef x);
     GateRef TaggedIsNull(GateRef x);
     GateRef TaggedIsUndefinedOrNull(GateRef x);
@@ -288,6 +294,7 @@ public:
     GateRef IntToTaggedInt(GateRef x);
     GateRef Int64ToTaggedInt(GateRef x);
     GateRef Int64ToTaggedIntPtr(GateRef x);
+    GateRef DoubleToTaggedDouble(GateRef x);
     GateRef DoubleToTaggedDoublePtr(GateRef x);
     GateRef BooleanToTaggedBooleanPtr(GateRef x);
     GateRef TaggedPtrToTaggedDoublePtr(GateRef x);
@@ -327,7 +334,10 @@ public:
     GateRef Int64UnsignedLessThanOrEqual(GateRef x, GateRef y);
     GateRef Int64UnsignedGreaterThan(GateRef x, GateRef y);
     GateRef Int64UnsignedGreaterThanOrEqual(GateRef x, GateRef y);
+    GateRef IntPtrLessThan(GateRef x, GateRef y);
+    GateRef IntPtrLessThanOrEqual(GateRef x, GateRef y);
     GateRef IntPtrGreaterThan(GateRef x, GateRef y);
+    GateRef IntPtrGreaterThanOrEqual(GateRef x, GateRef y);
     // cast operation
     GateRef ChangeInt64ToIntPtr(GateRef val);
     GateRef ZExtInt32ToPtr(GateRef val);
@@ -856,6 +866,7 @@ public:
     GateRef FastEqual(GateRef glue, GateRef left, GateRef right, ProfileOperation callback);
     GateRef FastStrictEqual(GateRef glue, GateRef left, GateRef right, ProfileOperation callback);
     GateRef FastStringEqual(GateRef glue, GateRef left, GateRef right);
+    GateRef FastStringEqualWithoutRTStub(GateRef glue, GateRef left, GateRef right);
     GateRef StringCompare(GateRef glue, GateRef left, GateRef right);
     GateRef FastMod(GateRef gule, GateRef left, GateRef right, ProfileOperation callback);
     GateRef FastTypeOf(GateRef left, GateRef right);
@@ -913,8 +924,12 @@ public:
 
     // ElementsKind Operations
     GateRef ValueIsSpecialHole(GateRef x);
+    GateRef ElementsKindIsInt(GateRef kind);
     GateRef ElementsKindIsIntOrHoleInt(GateRef kind);
+    GateRef ElementsKindIsNumber(GateRef kind);
     GateRef ElementsKindIsNumOrHoleNum(GateRef kind);
+    GateRef ElementsKindIsString(GateRef kind);
+    GateRef ElementsKindIsStringOrHoleString(GateRef kind);
     GateRef ElementsKindIsHeapKind(GateRef kind);
     GateRef ElementsKindHasHole(GateRef kind);
     // dstAddr/srcAddr is the address will be copied to/from.
@@ -1111,6 +1126,12 @@ private:
     void CheckDetectorName(GateRef glue, GateRef key, Label *fallthrough, Label *slow);
     GateRef CanDoubleRepresentInt(GateRef exp, GateRef expBits, GateRef fractionBits);
     GateRef CalIteratorKey(GateRef glue);
+
+    template <class LabelPtrGetter>
+    void SwitchGeneric(GateRef index, Label *defaultLabel, Span<const int64_t> keysValue,
+                       LabelPtrGetter getIthLabelFn);
+    GateRef StringCompareContents(GateRef glue, GateRef left, GateRef right, GateRef init, GateRef minLength);
+
     CallSignature *callSignature_ {nullptr};
     Environment *env_;
 };
