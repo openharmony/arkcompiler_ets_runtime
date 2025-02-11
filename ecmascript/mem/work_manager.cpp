@@ -101,13 +101,13 @@ void WorkManager::PushWorkNodeToGlobal(uint32_t threadId, bool postTask)
 // thread(DaemonThread), new a WorkNode and push it to global work stack. Other GC thread(in Taskpool) and
 // DaemonThread will get node from global work stack and continue mark. Global work stack have mutex in push
 // and pop, so it will not have data race.
-void WorkManager::PushObjectToGlobal(TaggedObject *object, bool postTask)
+void WorkManager::PushObjectToGlobal(TaggedObject *object)
 {
     WorkNode *tempNode = AllocateWorkNode();
     ASSERT(tempNode != nullptr);
     tempNode->PushObject(ToUintPtr(object));
     workStack_.Push(tempNode);
-    if (postTask && heap_->IsParallelGCEnabled() && heap_->CheckCanDistributeTask() && heap_->IsMarking()) {
+    if (heap_->IsParallelGCEnabled() && heap_->CheckCanDistributeTask() && !heap_->IsMarking()) {
         heap_->PostParallelGCTask(parallelGCTaskPhase_);
     }
 }

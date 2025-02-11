@@ -73,8 +73,7 @@ private:
     void Initialize() override;
     void InitializeMarking(uint32_t threadId);
     void DoMarking(uint32_t threadId);
-    void FinishMarking(float spendTime);
-    void Finish();
+    void Finish(float spendTime);
     template <typename Callback>
     inline bool VisitBodyInObj(TaggedObject *root, ObjectSlot start, ObjectSlot end, Callback callback);
     inline void MarkValue(uint32_t threadId, ObjectSlot &slot);
