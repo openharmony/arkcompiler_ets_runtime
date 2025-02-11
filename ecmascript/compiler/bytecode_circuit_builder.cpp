@@ -603,6 +603,42 @@ void BytecodeCircuitBuilder::RemoveInsufficientProfileRegion()
     while (!pendingList.empty()) {
         ClearUnreachableRegion(pendingList, true);
     }
+    RemoveIsolatedRegion();
+}
+
+void MarkConnection(const BytecodeRegion& curBlock, std::vector<bool>& connectedToRoot)
+{
+    ASSERT(curBlock.id < connectedToRoot.size());
+    if (connectedToRoot[curBlock.id]) {
+        return;
+    }
+    connectedToRoot[curBlock.id] = true;
+    for (auto it = curBlock.succs.begin(); it != curBlock.succs.end(); it++) {
+        BytecodeRegion* nextBlock = *it;
+        MarkConnection(*nextBlock, connectedToRoot);
+    }
+    if (curBlock.catches.size() == 0) {
+        return;
+    }
+    ASSERT(curBlock.catches.size() == 1);
+    MarkConnection(*(curBlock.catches.at(0)), connectedToRoot);
+}
+
+void BytecodeCircuitBuilder::RemoveIsolatedRegion()
+{
+    std::vector<bool> connectedToRoot(graph_.size(), false);
+    MarkConnection(RegionAt(0), connectedToRoot);
+    ChunkVector<BytecodeRegion*> pendingList(circuit_->chunk());
+    for (size_t index = 0; index < connectedToRoot.size(); ++index) {
+        auto& curBlock = RegionAt(index);
+        if (!connectedToRoot[index] && curBlock.numOfStatePreds != 0) {
+            curBlock.numOfStatePreds = 0;
+            pendingList.emplace_back(&curBlock);
+        }
+    }
+    while (!pendingList.empty()) {
+        ClearUnreachableRegion(pendingList, true);
+    }
 }
 
 void BytecodeCircuitBuilder::ComputeNumOfLoopBack()
