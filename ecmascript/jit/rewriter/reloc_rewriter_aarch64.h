@@ -26,7 +26,7 @@ class PUBLIC_API RelocWriterAArch64 : public RelocWriter {
     static const int INSTRUCT_SIZE = 4;
     static const int MAX_JUMP_SIZE = 128 * 1024 * 1024;
     public:
-        bool PUBLIC_API RewriteRelocInfo(uint8_t *codeAddr, uint8_t *jitAllocAddr, RelocMap &relocInfo) override;
+        bool PUBLIC_API RewriteRelocInfo(uint8_t *codeAddr, uint8_t *jitAllocAddr, RelocMap &relocInfo);
         virtual ~RelocWriterAArch64() = default;
 };
 
