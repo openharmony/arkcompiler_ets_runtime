@@ -53,7 +53,7 @@ private:
 };
 
 struct CompilationOptions {
-    explicit CompilationOptions(JSRuntimeOptions &runtimeOptions);
+    explicit PUBLIC_API CompilationOptions(JSRuntimeOptions &runtimeOptions);
     void ParseOption(const std::string &option, std::map<std::string, std::vector<std::string>> &optionMap) const;
     std::vector<std::string> SplitString(const std::string &str, const char ch) const;
     std::string triple_;
@@ -112,11 +112,11 @@ public:
 
     ~AotCompilerPreprocessor() = default;
 
-    bool HandleTargetCompilerMode(CompilationOptions &cOptions);
+    bool PUBLIC_API HandleTargetCompilerMode(CompilationOptions &cOptions);
 
-    bool HandlePandaFileNames(const int argc, const char **argv);
+    bool PUBLIC_API HandlePandaFileNames(const int argc, const char **argv);
 
-    void AOTInitialize();
+    void PUBLIC_API AOTInitialize();
 
     void DoPreAnalysis(CompilationOptions &cOptions);
 
@@ -125,13 +125,13 @@ public:
     void AnalyzeGraph(BCInfo &bytecodeInfo, CompilationOptions &cOptions, BytecodeInfoCollector &collector,
                       MethodLiteral *methodLiteral, MethodPcInfo &methodPCInfo);
 
-    void Process(CompilationOptions &cOptions);
+    void PUBLIC_API Process(CompilationOptions &cOptions);
 
-    void GenerateAbcFileInfos(std::unordered_map<CString, uint32_t> &fileNameToChecksumMap);
+    void PUBLIC_API GenerateAbcFileInfos(std::unordered_map<CString, uint32_t> &fileNameToChecksumMap);
 
     void GenerateBytecodeInfoCollectors(const CompilationOptions &cOptions);
 
-    bool HandleMergedPgoFile(std::unordered_map<CString, uint32_t> &fileNameToChecksumMap);
+    bool PUBLIC_API HandleMergedPgoFile(std::unordered_map<CString, uint32_t> &fileNameToChecksumMap);
 
     void GeneratePGOTypes();
 
@@ -153,9 +153,9 @@ public:
 
     bool ForbidenRebuildAOT(std::string &fileName) const;
 
-    bool HasPreloadAotFile() const;
+    bool PUBLIC_API HasPreloadAotFile() const;
 
-    bool HasExistsAOTFiles(CompilationOptions &cOptions) const;
+    bool PUBLIC_API HasExistsAOTFiles(CompilationOptions &cOptions) const;
 
     void SetIsFastCall(CString fileDesc, uint32_t methodOffset, bool isFastCall)
     {
@@ -177,7 +177,7 @@ public:
         return callMethodFlagMap_.IsAotCompile(fileDesc, methodOffset);
     }
 
-    std::string GetMainPkgArgsAppSignature() const;
+    std::string PUBLIC_API GetMainPkgArgsAppSignature() const;
 
     bool GetCompilerResult()
     {

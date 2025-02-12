@@ -83,8 +83,8 @@ public:
         return std::make_tuple(addrBeforeText, sizeBeforeText, addrAfterText, sizeAfterText);
     }
 
-    void RunAssembler(const CompilerLog &log, bool fastCompileMode, bool isJit = false,
-                      const std::string &filename = "");
+    void PUBLIC_API RunAssembler(const CompilerLog &log, bool fastCompileMode, bool isJit = false,
+                                 const std::string &filename = "");
 
     void DisassemblerFunc(std::map<uintptr_t, std::string> &addr2name, uint64_t textOffset, const CompilerLog &log,
                           const MethodLogList &logList, std::ostringstream &codeStream);
@@ -214,12 +214,13 @@ public:
     bool SetFileModeAsDefault(const std::string &filename);
 
     // save function for aot files containing normal func translated from JS/TS
-    bool SaveAOTFile(const std::string &filename, const std::string &appSignature,
-                     const std::unordered_map<CString, uint32_t> &fileNameToChecksumMap);
+    bool PUBLIC_API SaveAOTFile(const std::string &filename, const std::string &appSignature,
+                                const std::unordered_map<CString, uint32_t> &fileNameToChecksumMap);
 
-    static void SaveEmptyAOTFile(const std::string& filename, const std::string& appSignature, bool isAnFile);
+    static void PUBLIC_API SaveEmptyAOTFile(const std::string& filename, const std::string& appSignature,
+                                            bool isAnFile);
 
-    bool SaveSnapshotFile();
+    bool PUBLIC_API SaveSnapshotFile();
 
     void SetCurrentCompileFileName(CString fileName)
     {
@@ -230,7 +231,7 @@ public:
     void JitCreateLitecgModule();
     bool isAArch64() const;
 
-    bool CreateAOTCodeCommentFile(const std::string &filename);
+    bool PUBLIC_API CreateAOTCodeCommentFile(const std::string &filename);
 
     const std::string &GetAotCodeCommentFile() const
     {

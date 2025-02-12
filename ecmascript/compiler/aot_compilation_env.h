@@ -21,7 +21,7 @@
 namespace panda::ecmascript {
 class AOTCompilationEnv final : public CompilationEnv {
 public:
-    AOTCompilationEnv(EcmaVM *vm);
+    PUBLIC_API AOTCompilationEnv(EcmaVM *vm);
     ~AOTCompilationEnv() = default;
     bool IsAotCompiler() const override
     {
