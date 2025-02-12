@@ -162,7 +162,7 @@ namespace panda::ecmascript::kungfu {
     V(FunctionPrototypeBind, FUNCTION_PROTOTYPE_BIND, GateFlags::NONE_FLAG, 1, 1, 2)            \
     V(HeapObjectIsEcmaObjectCheck, HEAP_OBJECT_IS_ECMA_OBJECT, GateFlags::CHECKABLE, 1, 1, 1)   \
     V(CallTargetIsCompiledCheck, CALL_TARGET_IS_COMPILED_CHECK, GateFlags::CHECKABLE, 1, 1, 1)  \
-    V(ArrayIncludesIndexOf, ARRAY_INCLUDES_INDEXOF, GateFlags::NO_WRITE,  1, 1, 5)              \
+    V(ArrayIncludesIndexOf, ARRAY_INCLUDES_INDEXOF, GateFlags::NO_WRITE,  1, 1, 6)              \
     V(ArrayIteratorBuiltin, ARRAY_ITERATOR_BUILTIN, GateFlags::NONE_FLAG,  1, 1, 2)             \
     V(ArrayPop, ARRAY_POP, GateFlags::NONE_FLAG, 1, 1, 2)                                       \
     V(ArrayPush, ARRAY_PUSH, GateFlags::NONE_FLAG, 1, 1, 2)                                     \

@@ -281,6 +281,15 @@ public:
         return value_ == VALUE_EXCEPTION;
     }
 
+    ARK_INLINE bool IsNaN() const
+    {
+        if (!IsDouble()) {
+            return false;
+        }
+        double untagged = GetDouble();
+        return std::isnan(untagged);
+    }
+
     static ARK_INLINE bool IsImpureNaN(double value)
     {
         // Tests if the double value would break tagged double encoding.
@@ -404,7 +413,7 @@ public:
     bool IsConstructor() const;
     bool IsExtensible(JSThread *thread) const;
     bool IsInteger() const;
-    bool WithinInt32() const;
+    bool WithinInt32(bool acceptsNegativeZero = false) const;
     bool IsZero() const;
     bool IsExactlyZero() const;
     static bool IsPropertyKey(const JSHandle<JSTaggedValue> &key);

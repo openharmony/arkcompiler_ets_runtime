@@ -15,6 +15,7 @@
 
 #include "ecmascript/compiler/number_speculative_retype.h"
 
+#include "ecmascript/compiler/circuit_arg_indices.h"
 #include "ecmascript/compiler/circuit_builder-inl.h"
 
 namespace panda::ecmascript::kungfu {
@@ -2158,8 +2159,9 @@ GateRef NumberSpeculativeRetype::VisitDateNow(GateRef gate)
 
 GateRef NumberSpeculativeRetype::VisitArrayIncludesIndexOf(GateRef gate)
 {
+    using Indices = CircuitArgIndices::ArrayIncludesIndexOf;
     Environment env(gate, circuit_, &builder_);
-    GateRef callID = acc_.GetValueIn(gate, 3);
+    GateRef callID = acc_.GetValueIn(gate, Indices::CALL_ID);
     BuiltinsStubCSigns::ID id = static_cast<BuiltinsStubCSigns::ID>(acc_.GetConstantValue(callID));
     if (IsRetype()) {
         if (id == BuiltinsStubCSigns::ID::ArrayIncludes) {
@@ -2168,8 +2170,8 @@ GateRef NumberSpeculativeRetype::VisitArrayIncludesIndexOf(GateRef gate)
             return SetOutputType(gate, GateType::IntType());
         }
     }
-    GateRef findElement = acc_.GetValueIn(gate, 2);
-    acc_.ReplaceValueIn(gate, ConvertToTagged(findElement), 2); //2:find element position
+    GateRef findElement = acc_.GetValueIn(gate, Indices::TARGET);
+    acc_.ReplaceValueIn(gate, ConvertToTagged(findElement), Indices::TARGET);
     acc_.ReplaceDependIn(gate, builder_.GetDepend());
     acc_.ReplaceStateIn(gate, builder_.GetState());
     return Circuit::NullGate();

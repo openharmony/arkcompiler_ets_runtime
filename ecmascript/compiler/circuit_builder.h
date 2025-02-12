@@ -291,7 +291,7 @@ public:
 #define BRANCH_CIR_UNLIKELY(condition, trueLabel, falseLabel)                            \
     {                                                                                    \
         std::ostringstream os;                                                           \
-        os << __func__ << ": " << #trueLabel << "(likely)- " << #falseLabel;             \
+        os << __func__ << ": " << #trueLabel << "(unlikely)- " << #falseLabel;           \
         builder_.Branch(condition, trueLabel, falseLabel,                                \
             BranchWeight::ONE_WEIGHT, BranchWeight::DEOPT_WEIGHT, os.str().c_str());     \
     }
@@ -854,7 +854,7 @@ public:
                         GateRef isLittleEndian,
                         GateRef frameState);
     GateRef ArrayIncludesIndexOf(
-        GateRef thisArray, GateRef fromIndex, GateRef targetElement, GateRef CallID, GateRef ArrayKind);
+        GateRef elements, GateRef target, GateRef fromIndex, GateRef len, GateRef CallID, GateRef ArrayKind);
     GateRef ArrayIteratorBuiltin(GateRef thisArray, GateRef callID);
     GateRef ArrayForEach(GateRef thisValue, GateRef callBackFn, GateRef usingThis, uint32_t pcOffset);
     GateRef ArraySort(GateRef thisValue, GateRef callBackFn);
