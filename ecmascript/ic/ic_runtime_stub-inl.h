@@ -236,7 +236,7 @@ ARK_INLINE JSTaggedValue ICRuntimeStub::StoreICWithHandler(JSThread *thread, JST
                 if (!ClassHelper::MatchFieldType(fieldType, value)) {
                     [[maybe_unused]] EcmaHandleScope handleScope(thread);
                     THROW_TYPE_ERROR_AND_RETURN((thread), GET_MESSAGE_STRING(SetTypeMismatchedSharedProperty),
-                                                JSTaggedValue::Exception()); 
+                                                JSTaggedValue::Exception());
                 }
                 if (value.IsTreeString()) {
                     [[maybe_unused]] EcmaHandleScope handleScope(thread);
