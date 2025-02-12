@@ -81,6 +81,17 @@ JSTaggedValue BuiltinsGc::RegisterNativeFree(EcmaRuntimeCallInfo *info)
     return JSTaggedValue::Undefined();
 }
 
+JSTaggedValue BuiltinsGc::ClearWeakRefForTest(EcmaRuntimeCallInfo *info)
+{
+    ASSERT(info);
+    JSThread *thread = info->GetThread();
+    if (!((thread)->GetEcmaVM()->GetJSOptions().IsOpenArkTools())) {
+        return JSTaggedValue::Undefined();
+    }
+    thread->GetCurrentEcmaContext()->ClearKeptObjects();
+    return JSTaggedValue::Undefined();
+}
+
 JSTaggedValue BuiltinsGc::WaitForFinishGC(EcmaRuntimeCallInfo *info)
 {
     auto *heap = const_cast<Heap *>(info->GetThread()->GetEcmaVM()->GetHeap());
