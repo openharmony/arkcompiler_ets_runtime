@@ -317,31 +317,6 @@ EcmaString *EcmaStringTable::GetOrInternString(EcmaVM *vm, const uint8_t *utf8Da
     return AtomicGetOrInternStringImpl(thread, strHandle, hashcode);
 }
 
-EcmaString *EcmaStringTable::GetOrInternString(EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf8Len,
-                                               bool canBeCompress, MemSpaceType type,
-                                               bool isConstantString, uint32_t idOffset)
-{
-    ASSERT(IsSMemSpace(type));
-    ASSERT(type == MemSpaceType::SHARED_NON_MOVABLE || type == MemSpaceType::SHARED_OLD_SPACE);
-    uint32_t hashcode = EcmaStringAccessor::ComputeHashcodeUtf8(utf8Data, utf8Len, canBeCompress);
-    JSThread *thread = vm->GetJSThread();
-    EcmaString *result = GetString(thread, utf8Data, utf8Len, canBeCompress, hashcode);
-    if (result != nullptr) {
-        return result;
-    }
-    EcmaString *str = nullptr;
-    if (canBeCompress) {
-        // Constant string will be created in this branch.
-        str = EcmaStringAccessor::CreateFromUtf8(vm, utf8Data, utf8Len, canBeCompress, type, isConstantString,
-            idOffset);
-    } else {
-        str = EcmaStringAccessor::CreateFromUtf8(vm, utf8Data, utf8Len, canBeCompress, type);
-    }
-    JSHandle<EcmaString> strHandle(thread, str);
-    strHandle->SetMixHashcode(hashcode);
-    return AtomicGetOrInternStringImpl(thread, strHandle, hashcode);
-}
-
 EcmaString *EcmaStringTable::GetOrInternString(EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf16Len,
                                                MemSpaceType type)
 {
@@ -404,7 +379,7 @@ EcmaString *EcmaStringTable::TryGetInternString(JSThread *thread, const JSHandle
 
 // used in jit thread, which unsupport create jshandle
 EcmaString *EcmaStringTable::GetOrInternStringWithoutJSHandleForJit(EcmaVM *vm, const uint8_t *utf8Data,
-    uint32_t utf8Len, bool canBeCompress, MemSpaceType type, bool isConstantString, uint32_t idOffset)
+    uint32_t utf8Len, bool canBeCompress, MemSpaceType type)
 {
     ASSERT(IsSMemSpace(type));
     ASSERT(type == MemSpaceType::SHARED_NON_MOVABLE || type == MemSpaceType::SHARED_OLD_SPACE);
@@ -421,13 +396,7 @@ EcmaString *EcmaStringTable::GetOrInternStringWithoutJSHandleForJit(EcmaVM *vm, 
         return result;
     }
     EcmaString *str = nullptr;
-    if (canBeCompress) {
-        // Constant string will be created in this branch.
-        str = EcmaStringAccessor::CreateFromUtf8(vm, utf8Data, utf8Len, canBeCompress, type, isConstantString,
-            idOffset);
-    } else {
-        str = EcmaStringAccessor::CreateFromUtf8(vm, utf8Data, utf8Len, canBeCompress, type);
-    }
+    str = EcmaStringAccessor::CreateFromUtf8(vm, utf8Data, utf8Len, canBeCompress, type);
     str->SetMixHashcode(hashcode);
     InternStringThreadUnsafe(str, hashcode);
     return str;
@@ -483,52 +452,6 @@ void EcmaStringTable::SweepWeakRef(const WeakRootVisitor &visitor, uint32_t tabl
             ++it;
             LOG_ECMA(VERBOSE) << "StringTable: forward " << std::hex << object << " -> " << fwd;
         } else {
-            ++it;
-        }
-    }
-}
-
-void EcmaStringTable::RelocateConstantData(EcmaVM *vm, const JSPandaFile *jsPandaFile)
-{
-#if ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT
-    if (vm->IsCollectingScopeLockStats()) {
-        vm->IncreaseStringTableLockCount();
-    }
-#endif
-    auto thread = vm->GetJSThread();
-    for (auto &[table, mutex] : stringTable_) {
-        RuntimeLockHolder locker(thread, mutex);
-        for (auto it = table.begin(); it != table.end();) {
-            auto *object = it->second;
-            if (!EcmaStringAccessor(object).IsConstantString()) {
-                ++it;
-                continue;
-            }
-            auto constantStr = ConstantString::Cast(object);
-            if (constantStr->GetEntityId() < 0 || !jsPandaFile->Contain(constantStr->GetConstantData())) {
-                // EntityId is -1, which means this str has been relocated. Or the data is not in pandafile.
-                ++it;
-                continue;
-            }
-            uint32_t id = constantStr->GetEntityIdU32();
-            panda_file::File::StringData sd = jsPandaFile->GetStringData(EntityId(id));
-            if (constantStr->GetConstantData() != sd.data) {
-                LOG_ECMA(ERROR) << "ConstantString data pointer is inconsistent with sd.data";
-                ++it;
-                continue;
-            }
-            uint32_t strLen = sd.utf16_length;
-            if (UNLIKELY(strLen == 0)) {
-                it->second = *(vm->GetFactory()->GetEmptyString());
-            }
-            size_t byteLength = sd.is_ascii ? 1 : sizeof(uint16_t);
-            JSMutableHandle<ByteArray> newData(vm->GetJSThread(), JSTaggedValue::Undefined());
-            newData.Update(vm->GetFactory()->NewByteArray(
-                strLen, byteLength, reinterpret_cast<void *>(const_cast<uint8_t *>(sd.data)),
-                MemSpaceType::SHARED_NON_MOVABLE));
-            constantStr->SetRelocatedData(thread, newData.GetTaggedValue());
-            constantStr->SetConstantData(static_cast<uint8_t *>(newData->GetData()));
-            constantStr->SetEntityId(-1);
             ++it;
         }
     }

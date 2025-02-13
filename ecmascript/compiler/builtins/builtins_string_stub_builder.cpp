@@ -204,22 +204,10 @@ GateRef BuiltinsStringStubBuilder::FastStringCharCodeAt(GateRef glue, GateRef th
     Bind(&readyStringAt);
     {
         StringInfoGateRef stringInfoGate(&thisFlat);
-        Label isConstantString(env);
-        Label notConstantString(env);
         Label getCharByIndex(env);
         GateRef stringData = Circuit::NullGate();
-        BRANCH(IsConstantString(stringInfoGate.GetString()), &isConstantString, &notConstantString);
-        Bind(&isConstantString);
-        {
-            GateRef address = PtrAdd(stringInfoGate.GetString(), IntPtr(ConstantString::CONSTANT_DATA_OFFSET));
-            stringData = Load(VariableType::JS_ANY(), address, IntPtr(0));
-            Jump(&getCharByIndex);
-        }
-        Bind(&notConstantString);
-        {
-            stringData = PtrAdd(stringInfoGate.GetString(), IntPtr(LineEcmaString::DATA_OFFSET));
-            Jump(&getCharByIndex);
-        }
+        stringData = PtrAdd(stringInfoGate.GetString(), IntPtr(LineEcmaString::DATA_OFFSET));
+        Jump(&getCharByIndex);
         Label isUtf16(env);
         Label isUtf8(env);
         Bind(&getCharByIndex);
@@ -1121,20 +1109,12 @@ GateRef BuiltinsStringStubBuilder::GetSingleCharCodeByIndex(GateRef str, GateRef
     env->SubCfgEntry(&entry);
     DEFVARIABLE(result, VariableType::INT32(), Int32(0));
 
-    Label isConstantString(env);
     Label lineStringCheck(env);
     Label isLineString(env);
     Label slicedStringCheck(env);
     Label isSlicedString(env);
     Label exit(env);
 
-    BRANCH(IsConstantString(str), &isConstantString, &lineStringCheck);
-    Bind(&isConstantString);
-    {
-        result = GetSingleCharCodeFromConstantString(str, index);
-        Jump(&exit);
-    }
-    Bind(&lineStringCheck);
     BRANCH(IsLineString(str), &isLineString, &slicedStringCheck);
     Bind(&isLineString);
     {
@@ -1153,19 +1133,6 @@ GateRef BuiltinsStringStubBuilder::GetSingleCharCodeByIndex(GateRef str, GateRef
     auto ret = *result;
     env->SubCfgExit();
     return ret;
-}
-
-GateRef BuiltinsStringStubBuilder::GetSingleCharCodeFromConstantString(GateRef str, GateRef index)
-{
-    auto env = GetEnvironment();
-    Label entry(env);
-    env->SubCfgEntry(&entry);
-    GateRef offset = ChangeStringTaggedPointerToInt64(PtrAdd(str, IntPtr(ConstantString::CONSTANT_DATA_OFFSET)));
-    GateRef dataAddr = Load(VariableType::NATIVE_POINTER(), offset, IntPtr(0));
-    GateRef result = ZExtInt8ToInt32(Load(VariableType::INT8(), PtrAdd(dataAddr,
-        PtrMul(ZExtInt32ToPtr(index), IntPtr(sizeof(uint8_t))))));
-    env->SubCfgExit();
-    return result;
 }
 
 GateRef BuiltinsStringStubBuilder::GetSingleCharCodeFromLineString(GateRef str, GateRef index)
@@ -1203,24 +1170,10 @@ GateRef BuiltinsStringStubBuilder::GetSingleCharCodeFromSlicedString(GateRef str
     Label entry(env);
     env->SubCfgEntry(&entry);
     DEFVARIABLE(result, VariableType::INT32(), Int32(0));
-    Label isLineString(env);
-    Label notLineString(env);
-    Label exit(env);
 
     GateRef parent = Load(VariableType::JS_POINTER(), str, IntPtr(SlicedString::PARENT_OFFSET));
     GateRef startIndex = LoadStartIndex(str);
-    BRANCH(IsLineString(parent), &isLineString, &notLineString);
-    Bind(&isLineString);
-    {
-        result = GetSingleCharCodeFromLineString(parent, Int32Add(startIndex, index));
-        Jump(&exit);
-    }
-    Bind(&notLineString);
-    {
-        result = GetSingleCharCodeFromConstantString(parent, Int32Add(startIndex, index));
-        Jump(&exit);
-    }
-    Bind(&exit);
+    result = GetSingleCharCodeFromLineString(parent, Int32Add(startIndex, index));
     auto ret = *result;
     env->SubCfgExit();
     return ret;
@@ -2013,7 +1966,7 @@ void FlatStringStubBuilder::FlattenString(GateRef glue, GateRef str, Label *fast
     Label notLineString(env);
     Label exit(env);
     length_ = GetLengthFromString(str);
-    BRANCH(IsLiteralString(str), &exit, &notLineString);
+    BRANCH(IsLineString(str), &exit, &notLineString);
     Bind(&notLineString);
     {
         Label isTreeString(env);
@@ -2058,7 +2011,7 @@ void FlatStringStubBuilder::FlattenStringWithIndex(GateRef glue, GateRef str, Va
     auto env = GetEnvironment();
     Label notLineString(env);
     Label exit(env);
-    BRANCH(IsLiteralString(str), &exit, &notLineString);
+    BRANCH(IsLineString(str), &exit, &notLineString);
     Bind(&notLineString);
     {
         Label isTreeString(env);
@@ -2096,33 +2049,6 @@ void FlatStringStubBuilder::FlattenStringWithIndex(GateRef glue, GateRef str, Va
         flatString_.WriteVariable(str);
         Jump(fastPath);
     }
-}
-
-GateRef BuiltinsStringStubBuilder::GetStringDataFromLineOrConstantString(GateRef str)
-{
-    auto env = GetEnvironment();
-    Label entry(env);
-    env->SubCfgEntry(&entry);
-    Label exit(env);
-    Label isConstantString(env);
-    Label isLineString(env);
-    DEFVARIABLE(result, VariableType::NATIVE_POINTER(), IntPtr(0));
-    BRANCH(IsConstantString(str), &isConstantString, &isLineString);
-    Bind(&isConstantString);
-    {
-        GateRef address = ChangeStringTaggedPointerToInt64(PtrAdd(str, IntPtr(ConstantString::CONSTANT_DATA_OFFSET)));
-        result = Load(VariableType::NATIVE_POINTER(), address, IntPtr(0));
-        Jump(&exit);
-    }
-    Bind(&isLineString);
-    {
-        result = ChangeStringTaggedPointerToInt64(PtrAdd(str, IntPtr(LineEcmaString::DATA_OFFSET)));
-        Jump(&exit);
-    }
-    Bind(&exit);
-    auto ret = *result;
-    env->SubCfgExit();
-    return ret;
 }
 
 void BuiltinsStringStubBuilder::Concat(GateRef glue, GateRef thisValue, GateRef numArgs,
@@ -2346,13 +2272,15 @@ GateRef BuiltinsStringStubBuilder::StringAdd(GateRef glue, GateRef leftString, G
                         builder_.Bind(&canBeConcat);
                         {
                             lineString = AllocateLineString(glue, backStoreLength, canBeCompressed);
+                            GateRef leftSource = ChangeStringTaggedPointerToInt64(
+                                PtrAdd(left, IntPtr(LineEcmaString::DATA_OFFSET)));
+                            GateRef rightSource = ChangeStringTaggedPointerToInt64(
+                                PtrAdd(right, IntPtr(LineEcmaString::DATA_OFFSET)));
+                            GateRef leftDst = builder_.TaggedPointerToInt64(
+                                builder_.PtrAdd(*lineString, builder_.IntPtr(LineEcmaString::DATA_OFFSET)));
                             BRANCH_CIR(canBeCompressed, &canBeCompress, &canNotBeCompress);
                             builder_.Bind(&canBeCompress);
                             {
-                                GateRef leftSource = builder_.GetStringDataFromLineOrConstantString(left);
-                                GateRef rightSource = builder_.GetStringDataFromLineOrConstantString(right);
-                                GateRef leftDst = builder_.TaggedPointerToInt64(
-                                    builder_.PtrAdd(*lineString, builder_.IntPtr(LineEcmaString::DATA_OFFSET)));
                                 GateRef rightDst = builder_.TaggedPointerToInt64(builder_.PtrAdd(leftDst,
                                     builder_.ZExtInt32ToPtr(leftLength)));
                                 builder_.CopyChars(glue, leftDst, leftSource, leftLength,
@@ -2367,10 +2295,6 @@ GateRef BuiltinsStringStubBuilder::StringAdd(GateRef glue, GateRef leftString, G
                                 Label leftIsUtf16L(&builder_);
                                 Label rightIsUtf8L(&builder_);
                                 Label rightIsUtf16L(&builder_);
-                                GateRef leftSource = builder_.GetStringDataFromLineOrConstantString(left);
-                                GateRef rightSource = builder_.GetStringDataFromLineOrConstantString(right);
-                                GateRef leftDst = builder_.TaggedPointerToInt64(
-                                    builder_.PtrAdd(*lineString, builder_.IntPtr(LineEcmaString::DATA_OFFSET)));
                                 GateRef rightDst = builder_.TaggedPointerToInt64(builder_.PtrAdd(leftDst,
                                     builder_.PtrMul(builder_.ZExtInt32ToPtr(leftLength),
                                     builder_.IntPtr(sizeof(uint16_t)))));
@@ -2430,16 +2354,18 @@ GateRef BuiltinsStringStubBuilder::StringAdd(GateRef glue, GateRef leftString, G
                                 builder_.Int32(LineEcmaString::MAX_LENGTH)), &newLineStr, &slowPath);
                             builder_.Bind(&newLineStr);
                             {
+                                GateRef newBackingStore = AllocateLineString(glue, newBackStoreLength,
+                                                                             canBeCompressed);
+                                GateRef leftSource = ChangeStringTaggedPointerToInt64(
+                                    PtrAdd(*lineString, IntPtr(LineEcmaString::DATA_OFFSET)));
+                                GateRef rightSource = ChangeStringTaggedPointerToInt64(
+                                    PtrAdd(right, IntPtr(LineEcmaString::DATA_OFFSET)));
+                                GateRef leftDst = builder_.TaggedPointerToInt64(
+                                    builder_.PtrAdd(newBackingStore,
+                                    builder_.IntPtr(LineEcmaString::DATA_OFFSET)));
                                 BRANCH_CIR(canBeCompressed, &canBeCompress, &canNotBeCompress);
                                 builder_.Bind(&canBeCompress);
                                 {
-                                    GateRef newBackingStore = AllocateLineString(glue, newBackStoreLength,
-                                                                                 canBeCompressed);
-                                    GateRef leftSource = builder_.GetStringDataFromLineOrConstantString(*lineString);
-                                    GateRef rightSource = builder_.GetStringDataFromLineOrConstantString(right);
-                                    GateRef leftDst = builder_.TaggedPointerToInt64(
-                                        builder_.PtrAdd(newBackingStore,
-                                        builder_.IntPtr(LineEcmaString::DATA_OFFSET)));
                                     GateRef rightDst = builder_.TaggedPointerToInt64(
                                         builder_.PtrAdd(leftDst, builder_.ZExtInt32ToPtr(leftLength)));
                                     builder_.CopyChars(glue, leftDst, leftSource, leftLength,
@@ -2455,13 +2381,6 @@ GateRef BuiltinsStringStubBuilder::StringAdd(GateRef glue, GateRef leftString, G
                                 }
                                 builder_.Bind(&canNotBeCompress);
                                 {
-                                    GateRef newBackingStore = AllocateLineString(glue, newBackStoreLength,
-                                                                                 canBeCompressed);
-                                    GateRef leftSource = builder_.GetStringDataFromLineOrConstantString(*lineString);
-                                    GateRef rightSource = builder_.GetStringDataFromLineOrConstantString(right);
-                                    GateRef leftDst = builder_.TaggedPointerToInt64(
-                                        builder_.PtrAdd(newBackingStore,
-                                        builder_.IntPtr(LineEcmaString::DATA_OFFSET)));
                                     GateRef rightDst = builder_.TaggedPointerToInt64(builder_.PtrAdd(leftDst,
                                         builder_.PtrMul(builder_.ZExtInt32ToPtr(leftLength),
                                         builder_.IntPtr(sizeof(uint16_t)))));
@@ -2482,12 +2401,13 @@ GateRef BuiltinsStringStubBuilder::StringAdd(GateRef glue, GateRef leftString, G
                         {
                             Label canBeCompress(&builder_);
                             Label canNotBeCompress(&builder_);
+                            GateRef rightSource = ChangeStringTaggedPointerToInt64(
+                                PtrAdd(right, IntPtr(LineEcmaString::DATA_OFFSET)));
+                            GateRef leftDst = builder_.TaggedPointerToInt64(
+                                builder_.PtrAdd(*lineString, builder_.IntPtr(LineEcmaString::DATA_OFFSET)));
                             BRANCH_CIR(canBeCompressed, &canBeCompress, &canNotBeCompress);
                             builder_.Bind(&canBeCompress);
                             {
-                                GateRef rightSource = builder_.GetStringDataFromLineOrConstantString(right);
-                                GateRef leftDst = builder_.TaggedPointerToInt64(
-                                    builder_.PtrAdd(*lineString, builder_.IntPtr(LineEcmaString::DATA_OFFSET)));
                                 GateRef rightDst = builder_.TaggedPointerToInt64(builder_.PtrAdd(leftDst,
                                     builder_.ZExtInt32ToPtr(leftLength)));
                                 builder_.CopyChars(glue, rightDst, rightSource, rightLength,
@@ -2501,9 +2421,6 @@ GateRef BuiltinsStringStubBuilder::StringAdd(GateRef glue, GateRef leftString, G
                             }
                             builder_.Bind(&canNotBeCompress);
                             {
-                                GateRef rightSource = builder_.GetStringDataFromLineOrConstantString(right);
-                                GateRef leftDst = builder_.TaggedPointerToInt64(
-                                    builder_.PtrAdd(*lineString, builder_.IntPtr(LineEcmaString::DATA_OFFSET)));
                                 GateRef rightDst = builder_.TaggedPointerToInt64(builder_.PtrAdd(leftDst,
                                     builder_.PtrMul(builder_.ZExtInt32ToPtr(leftLength),
                                     builder_.IntPtr(sizeof(uint16_t)))));
@@ -2725,8 +2642,10 @@ GateRef BuiltinsStringStubBuilder::StringConcat(GateRef glue, GateRef leftString
                 }
                 Bind(&isUtf8Next);
                 {
-                    GateRef leftSource = GetStringDataFromLineOrConstantString(leftString);
-                    GateRef rightSource = GetStringDataFromLineOrConstantString(rightString);
+                    GateRef leftSource = ChangeStringTaggedPointerToInt64(
+                        PtrAdd(leftString, IntPtr(LineEcmaString::DATA_OFFSET)));
+                    GateRef rightSource = ChangeStringTaggedPointerToInt64(
+                        PtrAdd(rightString, IntPtr(LineEcmaString::DATA_OFFSET)));
                     GateRef leftDst = ChangeStringTaggedPointerToInt64(
                         PtrAdd(*result, IntPtr(LineEcmaString::DATA_OFFSET)));
                     GateRef rightDst = ChangeStringTaggedPointerToInt64(PtrAdd(leftDst, ZExtInt32ToPtr(leftLength)));
@@ -2740,8 +2659,10 @@ GateRef BuiltinsStringStubBuilder::StringConcat(GateRef glue, GateRef leftString
                     Label leftIsUtf16L(env);
                     Label rightIsUtf8L(env);
                     Label rightIsUtf16L(env);
-                    GateRef leftSource = GetStringDataFromLineOrConstantString(leftString);
-                    GateRef rightSource = GetStringDataFromLineOrConstantString(rightString);
+                    GateRef leftSource = ChangeStringTaggedPointerToInt64(
+                        PtrAdd(leftString, IntPtr(LineEcmaString::DATA_OFFSET)));
+                    GateRef rightSource = ChangeStringTaggedPointerToInt64(
+                        PtrAdd(rightString, IntPtr(LineEcmaString::DATA_OFFSET)));
                     GateRef leftDst = ChangeStringTaggedPointerToInt64(
                         PtrAdd(*result, IntPtr(LineEcmaString::DATA_OFFSET)));
                     GateRef rightDst = ChangeStringTaggedPointerToInt64(

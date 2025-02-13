@@ -52,17 +52,12 @@ public:
     using Compare =
         std::function<int32_t(const EcmaVM *vm, const JSHandle<EcmaString> &left, const JSHandle<EcmaString> &right)>;
 
-    static void ConcatCommonCase2(JSThread *thread, const EcmaVM *instance, bool constantString = true)
+    static void ConcatCommonCase2(JSThread *thread, const EcmaVM *instance)
     {
         uint16_t arrayBackU16NotComp[] = {88, 768, 1, 270, 345, 333};
         uint32_t lengthEcmaStrBackU16NotComp = sizeof(arrayBackU16NotComp) / sizeof(arrayBackU16NotComp[0]);
 
-        EcmaString *ecmaFrontU8 = nullptr;
-        if (constantString) {
-            ecmaFrontU8 = EcmaStringAccessor::CreateConstantString(instance, &g_arrayFrontU8[0], g_lenFrontU8, true);
-        } else {
-            ecmaFrontU8 = EcmaStringAccessor::CreateFromUtf8(instance, &g_arrayFrontU8[0], g_lenFrontU8, true);
-        }
+        EcmaString *ecmaFrontU8 = EcmaStringAccessor::CreateFromUtf8(instance, &g_arrayFrontU8[0], g_lenFrontU8, true);
         JSHandle<EcmaString> handleEcmaStrFrontU8(thread, ecmaFrontU8);
         JSHandle<EcmaString> handleEcmaStrBackU16NotComp(
             thread,

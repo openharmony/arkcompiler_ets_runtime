@@ -457,7 +457,6 @@ public:
         return (static_cast<uint32_t>(funcKind) & SENDABLE_FUNCTION_MASK) != 0;
     }
 
-    bool PUBLIC_API IsFirstMergedAbc() const;
     const void *GetBase() const
     {
         return static_cast<const void *>(pf_->GetBase());
@@ -522,8 +521,6 @@ private:
     CUnorderedMap<CString, JSRecordInfo*> jsRecordInfo_;
     CUnorderedMap<CString, CString> npmEntries_;
     bool isRecordWithBundleName_ {true};
-    static bool loadedFirstPandaFile;
-    bool isFirstPandafile_ {false};
     CreateMode mode_ {CreateMode::RUNTIME};
 };
 }  // namespace ecmascript

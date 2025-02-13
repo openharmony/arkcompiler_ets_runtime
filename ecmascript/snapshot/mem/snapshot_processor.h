@@ -65,7 +65,7 @@ public:
                          std::unordered_map<uint64_t, ObjectEncode> *data);
     void Relocate(SnapshotType type, const JSPandaFile *jsPandaFile,
                   uint64_t rootObjSize);
-    void RelocateSpaceObject(const JSPandaFile *jsPandaFile, Space* space, SnapshotType type, MethodLiteral* methods,
+    void RelocateSpaceObject(Space* space, SnapshotType type, MethodLiteral* methods,
                              size_t methodNums, size_t rootObjSize);
     void SerializePandaFileMethod();
     uintptr_t GetNewObj(size_t objectSize, TaggedObject *objectHeader);
