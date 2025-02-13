@@ -31,21 +31,22 @@ class ModuleSectionDes;
 class ElfBuilder {
 public:
     ElfBuilder(const std::vector<ModuleSectionDes> &des,
-               const std::vector<ElfSecName> &sections);
+               const std::vector<ElfSecName> &sections,
+               bool enableOptDirectCall, Triple triple);
     ~ElfBuilder();
     static constexpr uint32_t FuncEntryModuleDesIndex = 0;
     void PackELFHeader(llvm::ELF::Elf64_Ehdr &header, uint32_t version, Triple triple);
-    void PackELFSections(std::ofstream &elfFile);
-    void PackELFSegment(std::ofstream &elfFile);
-    void MergeTextSections(std::ofstream &elfFile,
+    void PackELFSections(std::fstream &elfFile);
+    void PackELFSegment(std::fstream &elfFile);
+    void MergeTextSections(std::fstream &elfFile,
         std::vector<ModuleSectionDes::ModuleRegionInfo> &moduleInfo, llvm::ELF::Elf64_Off &curSecOffset);
-    void MergeArkStackMapSections(std::ofstream &elfFile,
+    void MergeArkStackMapSections(std::fstream &elfFile,
         std::vector<ModuleSectionDes::ModuleRegionInfo> &moduleInfo, llvm::ELF::Elf64_Off &curSecOffset);
-    void MergeStrtabSections(std::ofstream &elfFile,
+    void MergeStrtabSections(std::fstream &elfFile,
         std::vector<ModuleSectionDes::ModuleRegionInfo> &moduleInfo, llvm::ELF::Elf64_Off &curSecOffset);
-    void MergeSymtabSections(std::ofstream &elfFile, std::vector<ModuleSectionDes::ModuleRegionInfo> &moduleInfo,
+    void MergeSymtabSections(std::fstream &elfFile, std::vector<ModuleSectionDes::ModuleRegionInfo> &moduleInfo,
         llvm::ELF::Elf64_Off &curSecOffset, llvm::ELF::Elf64_Off &asmStubOffset);
-    uint32_t AddAsmStubStrTab(std::ofstream &elfFile,
+    uint32_t AddAsmStubStrTab(std::fstream &elfFile,
         const std::vector<std::pair<std::string, uint32_t>> &asmStubELFInfo);
     static llvm::ELF::Elf64_Word FindShName(std::string name, uintptr_t strTabPtr, int strTabSize);
     std::map<ElfSecName, std::pair<uint64_t, uint32_t>> GetFullSecInfo() const
@@ -73,7 +74,18 @@ private:
     void Initialize();
     void SetLastSection();
     void RemoveNotNeedSection();
-    void FixSymtab(llvm::ELF::Elf64_Shdr* shdr);
+    void FixSymtab(llvm::ELF::Elf64_Shdr *shdr, llvm::ELF::Elf64_Off asmStubOffset);
+    void FixUndefinedSymbols(const std::map<std::string_view, llvm::ELF::Elf64_Sym*> &nameToSym,
+                             const std::map<std::string_view, std::vector<llvm::ELF::Elf64_Sym*>> &undefSyms,
+                             llvm::ELF::Elf64_Off asmStubOffset);
+    void CollectUndefSyms(std::map<std::string_view, llvm::ELF::Elf64_Sym *> &nameToSym,
+                          std::map<std::string_view, std::vector<llvm::ELF::Elf64_Sym *>> &undefSyms,
+                          llvm::ELF::Elf64_Sym *sy, std::string_view symName);
+    void ResolveRelocate(std::fstream &elfFile);
+    void ResolveAArch64Relocate(std::fstream &elfFile, Span<llvm::ELF::Elf64_Rela> relas,
+                            Span<llvm::ELF::Elf64_Sym> syms, uint32_t textOff);
+    void ResolveAmd64Relocate(std::fstream &elfFile, Span<llvm::ELF::Elf64_Rela> relas,
+                            Span<llvm::ELF::Elf64_Sym> syms, uint32_t textOff);
     void CalculateTextSectionSize(llvm::ELF::Elf64_Off &curOffset);
     void CalculateStrTabSectionSize(llvm::ELF::Elf64_Off &curOffset);
     void CalculateSymTabSectionSize(llvm::ELF::Elf64_Off &curOffset);
@@ -81,6 +93,9 @@ private:
     static constexpr uint32_t ASMSTUB_MODULE_NUM = 4;
     static constexpr uint32_t ShStrTableModuleDesIndex = 0;
     static constexpr uint32_t FullSecIndex = 0;
+    static constexpr int32_t IMM28_MIN = -(1l<<27);
+    static constexpr int32_t IMM28_MAX = 1l<<27;
+    static constexpr uint32_t DIV4_BITS = 2;
 
     std::vector<ModuleSectionDes> des_ {};
     std::unique_ptr<char []> shStrTabPtr_ {nullptr};
@@ -94,6 +109,8 @@ private:
     std::vector<uint32_t> stubTextOffset_ {};
     std::vector<uint32_t> asmStubStrName_ {};
     bool enableSecDump_ {false};
+    bool enableOptDirectCall_ {false};
+    Triple triple_;
     ElfSecName lastDataSection {ElfSecName::NONE};
     ElfSecName lastCodeSection {ElfSecName::NONE};
 };

@@ -36,7 +36,8 @@ public:
                                std::unordered_map<CString, uint32_t> &fileNameToChecksumMap)
     {
         bool ret = SaveAOTFile(filename, appSignature, fileNameToChecksumMap);
-        ElfBuilder testBuilder(aotInfo_.GetModuleSectionDes(), aotInfo_.GetDumpSectionNames());
+        ElfBuilder testBuilder(aotInfo_.GetModuleSectionDes(), aotInfo_.GetDumpSectionNames(), false,
+                               Triple::TRIPLE_AMD64);
         anFileSize = testBuilder.CalculateTotalFileSize();
         return ret;
     }

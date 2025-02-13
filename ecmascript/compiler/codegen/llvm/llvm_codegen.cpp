@@ -320,7 +320,13 @@ void LLVMIRGeneratorImpl::GenerateCodeForStub(Circuit *circuit, const ControlFlo
 {
     LLVMValueRef function = module_->GetFunction(index);
     const CallSignature* cs = module_->GetCSign(index);
-    LLVMIRBuilder builder(&graph, circuit, module_, function, cfg, cs->GetCallConv(), enableLog_, false, cs->GetName());
+#if ENABLE_NEXT_OPTIMIZATION
+    LLVMIRBuilder builder(&graph, circuit, module_, function, cfg, cs->GetCallConv(), enableLog_, false, cs->GetName(),
+                          true);
+#else
+    LLVMIRBuilder builder(&graph, circuit, module_, function, cfg, cs->GetCallConv(), enableLog_, false, cs->GetName(),
+                          false);
+#endif
     builder.Build();
 }
 
@@ -339,7 +345,7 @@ void LLVMIRGeneratorImpl::GenerateCode(Circuit *circuit, const ControlFlowGraph 
     }
     LLVMIRBuilder builder(&graph, circuit, module_, function, cfg, conv,
                           enableLog_, methodLiteral->IsFastCall(), methodName,
-                          enableOptInlining, enableOptBranchProfiling);
+                          false, enableOptInlining, enableOptBranchProfiling);
     builder.Build();
 }
 

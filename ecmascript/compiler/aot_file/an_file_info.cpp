@@ -38,7 +38,7 @@ bool AnFileInfo::Save(const std::string &filename, Triple triple, size_t anFileM
     AddFuncEntrySec();
     AddFileNameToChecksumSec(fileNameToChecksumMap);
 
-    ElfBuilder builder(des_, GetDumpSectionNames());
+    ElfBuilder builder(des_, GetDumpSectionNames(), false, triple);
     size_t anFileSize = builder.CalculateTotalFileSize();
     if (anFileMaxByteSize != 0) {
         if (anFileSize > anFileMaxByteSize) {
@@ -49,8 +49,7 @@ bool AnFileInfo::Save(const std::string &filename, Triple triple, size_t anFileM
             return false;
         }
     }
-
-    std::ofstream file(rawPath, std::ofstream::binary);
+    std::fstream file(rawPath, std::fstream::binary | std::fstream::out | std::fstream::trunc);
     llvm::ELF::Elf64_Ehdr header;
     builder.PackELFHeader(header, base::FileHeaderBase::ToVersionNumber(AOTFileVersion::AN_VERSION), triple);
     file.write(reinterpret_cast<char *>(&header), sizeof(llvm::ELF::Elf64_Ehdr));

@@ -43,10 +43,11 @@ namespace panda::ecmascript::kungfu {
 LLVMIRBuilder::LLVMIRBuilder(const std::vector<std::vector<GateRef>> *schedule, Circuit *circuit,
                              LLVMModule *module, LLVMValueRef function, const CompilationConfig *cfg,
                              CallSignature::CallConv callConv, bool enableLog, bool isFastCallAot,
-                             const std::string &funcName, bool enableOptInlining, bool enableBranchProfiling)
+                             const std::string &funcName, bool enableOptDirectCall, bool enableOptInlining,
+                             bool enableBranchProfiling)
     : compCfg_(cfg), scheduledGates_(schedule), circuit_(circuit), acc_(circuit), module_(module->GetModule()),
       function_(function), llvmModule_(module), callConv_(callConv), enableLog_(enableLog),
-      isFastCallAot_(isFastCallAot), enableOptInlining_(enableOptInlining),
+      isFastCallAot_(isFastCallAot), enableOptDirectCall_(enableOptDirectCall), enableOptInlining_(enableOptInlining),
       enableOptBranchProfiling_(enableBranchProfiling)
 {
     ASSERT(compCfg_->Is64Bit());
@@ -59,18 +60,19 @@ LLVMIRBuilder::LLVMIRBuilder(const std::vector<std::vector<GateRef>> *schedule, 
     LLVMSetGC(function_, "statepoint-example");
     slotSize_ = sizeof(uint64_t);
     slotType_ = GetInt64T();
-
     LLVMMetadataRef dFile = llvmModule_->GetDFileMD();
     LLVMMetadataRef funcTyMD = GetFunctionTypeMD(dFile);
     size_t funcOffset = 0;
-    dFuncMD_ = LLVMDIBuilderCreateFunction(GetDIBuilder(), dFile, funcName.c_str(), funcName.size(),
-                                           funcName.c_str(), funcName.size(), dFile, funcOffset,
-                                           funcTyMD, true, true, 0, LLVMDIFlags::LLVMDIFlagZero, false);
-    LLVMSetSubprogram(function_, dFuncMD_);
+    if (IsLogEnabled()) {
+        dFuncMD_ = LLVMDIBuilderCreateFunction(GetDIBuilder(), dFile, funcName.c_str(), funcName.size(),
+                                               funcName.c_str(), funcName.size(), dFile, funcOffset,
+                                               funcTyMD, true, true, 0, LLVMDIFlags::LLVMDIFlagZero, false);
+        LLVMSetSubprogram(function_, dFuncMD_);
+    }
     std::string triple = LLVMGetTarget(module->GetModule());
     ASSERT(GlobalTargetBuilders().count(triple) && "unsupported target");
     targetBuilder_ = GlobalTargetBuilders()[triple]();
-    ASMBarrierCall_ = targetBuilder_->GetASMBarrierCall(module);
+    ASMBarrierCall_ = targetBuilder_->GetASMBarrierCall(module, enableOptDirectCall_);
     const char* attrName = "no-builtin-memset";
     const char* attrValue = "";
     LLVMAddAttributeAtIndex(
@@ -595,6 +597,16 @@ LLVMValueRef LLVMIRBuilder::GetFunction(LLVMValueRef glue, const CallSignature *
     return callee;
 }
 
+LLVMValueRef LLVMIRBuilder::GetOrDeclareFunction(const CallSignature *signature) const
+{
+    LLVMValueRef callee = LLVMGetNamedFunction(module_, signature->GetName().c_str());
+    if (callee != nullptr) {
+        return callee;
+    }
+    auto funcType = llvmModule_->GetFuncType(signature);
+    return LLVMAddFunction(module_, signature->GetName().c_str(), funcType);
+}
+
 LLVMValueRef LLVMIRBuilder::GetFunctionFromGlobalValue([[maybe_unused]] LLVMValueRef glue,
     const CallSignature *signature, LLVMValueRef reloc) const
 {
@@ -953,11 +965,16 @@ void LLVMIRBuilder::VisitCall(GateRef gate, const std::vector<GateRef> &inList, 
     if (op == OpCode::CALL) {
         const size_t index = acc_.GetConstantValue(inList[targetIndex]);
         calleeDescriptor = CommonStubCSigns::Get(index);
-        rtoffset = GetCoStubOffset(glue, index);
-        rtbaseoffset = LLVMBuildAdd(builder_, glue, rtoffset, "");
-        callee = GetFunction(glue, calleeDescriptor, rtbaseoffset);
+        if (enableOptDirectCall_) {
+            callee = GetOrDeclareFunction(calleeDescriptor);
+        } else {
+            rtoffset = GetCoStubOffset(glue, index);
+            rtbaseoffset = LLVMBuildAdd(builder_, glue, rtoffset, "");
+            callee = GetFunction(glue, calleeDescriptor, rtbaseoffset);
+        }
         kind = GetCallExceptionKind(op);
     } else if (op == OpCode::NOGC_RUNTIME_CALL) {
+        // enableOptDirectCall_ optimization can be used for this case if the callee is asm stub.
         UpdateLeaveFrame(glue);
         const size_t index = acc_.GetConstantValue(inList[targetIndex]);
         calleeDescriptor = RuntimeStubCSigns::Get(index);
@@ -993,9 +1010,13 @@ void LLVMIRBuilder::VisitCall(GateRef gate, const std::vector<GateRef> &inList, 
     } else if (op == OpCode::ASM_CALL_BARRIER) {
         const size_t index = acc_.GetConstantValue(inList[targetIndex]);
         calleeDescriptor = RuntimeStubCSigns::Get(index);
-        rtoffset = GetRTStubOffset(glue, index);
-        rtbaseoffset = LLVMBuildAdd(builder_, glue, rtoffset, "");
-        callee = GetFunction(glue, calleeDescriptor, rtbaseoffset);
+        if (enableOptDirectCall_) {
+            callee = GetOrDeclareFunction(calleeDescriptor);
+        } else {
+            rtoffset = GetRTStubOffset(glue, index);
+            rtbaseoffset = LLVMBuildAdd(builder_, glue, rtoffset, "");
+            callee = GetFunction(glue, calleeDescriptor, rtbaseoffset);
+        }
         isNoGC = true;
     } else {
         ASSERT(op == OpCode::BUILTINS_CALL || op == OpCode::BUILTINS_CALL_WITH_ARGV);
@@ -1054,8 +1075,10 @@ void LLVMIRBuilder::VisitCall(GateRef gate, const std::vector<GateRef> &inList, 
 
     LLVMValueRef call = nullptr;
     if (op == OpCode::ASM_CALL_BARRIER) {
-        callee = LLVMBuildPointerCast(builder_, callee, llvmModule_->GetRawPtrT(), "");
-        params.insert(params.begin(), callee);
+        if (!enableOptDirectCall_) {
+            callee = LLVMBuildPointerCast(builder_, callee, llvmModule_->GetRawPtrT(), "");
+            params.insert(params.begin(), callee);
+        }
         call = LLVMBuildCall(builder_, ASMBarrierCall_, params.data(), params.size(), "");
     } else {
         LLVMTypeRef funcType = llvmModule_->GenerateFuncType(params, calleeDescriptor);

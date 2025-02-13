@@ -274,17 +274,13 @@ void Module::CollectModuleSectionDes(ModuleSectionDes &moduleDes) const
         return;
     }
     ASSERT(assembler_ != nullptr);
-    LLVMAssembler *assembler = static_cast<LLVMAssembler*>(assembler_);
+    LLVMAssembler *assembler = static_cast<LLVMAssembler *>(assembler_);
     assembler->IterateSecInfos([&](size_t i, std::pair<uint8_t *, size_t> secInfo) {
         auto curSec = ElfSection(i);
         ElfSecName sec = curSec.GetElfEnumValue();
-        if (IsRelaSection(sec)) {
-            moduleDes.EraseSec(sec);
-        } else { // aot need relocated; stub don't need collect relocated section
-            moduleDes.SetSecAddrAndSize(sec, reinterpret_cast<uint64_t>(secInfo.first), secInfo.second);
-            moduleDes.SetStartIndex(startIndex_);
-            moduleDes.SetFuncCount(funcCount_);
-        }
+        moduleDes.SetSecAddrAndSize(sec, reinterpret_cast<uint64_t>(secInfo.first), secInfo.second);
+        moduleDes.SetStartIndex(startIndex_);
+        moduleDes.SetFuncCount(funcCount_);
     });
     CollectStackMapDes(moduleDes);
 }

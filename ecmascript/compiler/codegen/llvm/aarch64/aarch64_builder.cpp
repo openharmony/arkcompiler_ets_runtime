@@ -22,13 +22,21 @@ class Aarch64TargetBuilder final : public LLVMTargetBuilder {
 public:
     ~Aarch64TargetBuilder() override = default;
 
-    LLVMValueRef GetASMBarrierCall(LLVMModule* llvmModule) override
+    LLVMValueRef GetASMBarrierCall(LLVMModule* llvmModule, bool isDirectCall) override
     {
-        std::string asmCall = "blr $0"; // call to the first input register.
-        std::string constraints = "r,{x0},{x1},{x2},{x3},"
-            // input registerds, first is the runtime check barrier stub.
+        std::string asmCall;
+        std::string inputRegs;
+        if (isDirectCall) {
+            asmCall = "bl " + RuntimeStubCSigns::GetRTName(RuntimeStubCSigns::ID_ASMFastWriteBarrier);
+            inputRegs = "{x0},{x1},{x2},{x3},";
+            // input registers are same with the sign of runtime check barrier stub.
+        } else {
+            asmCall = "blr $0"; // call to the first input register.
+            inputRegs = "r,{x0},{x1},{x2},{x3},";
+            // input registers, first is the runtime check barrier stub.
             // others are same with the sign of runtime check barrier stub.
-            "~{x15},~{nzcv},~{fpsr},~{x30}"
+        }
+        std::string constraints = inputRegs + "~{x15},~{nzcv},~{fpsr},~{x30}"
             // x15 will be used as scratch register, so mark it as clobbered, all the flag registers are also clobbered.
             // lr will be early clobbered at call.
             "~{v0},~{v1},~{v2},~{v3},~{v4},~{v5},~{v6},~{v7},~{v8},~{v9},~{v10},~{v11},~{v12},~{v13},~{v14},~{v15},"
@@ -39,7 +47,9 @@ public:
             "~{q31}";
         const CallSignature* cs = RuntimeStubCSigns::Get(RuntimeStubCSigns::ID_ASMFastWriteBarrier);
         std::vector<LLVMTypeRef> paramTys;
-        paramTys.push_back(llvmModule->GetRawPtrT()); // add the runtime check barrier stub as the first arg.
+        if (!isDirectCall) {
+            paramTys.push_back(llvmModule->GetRawPtrT()); // add the runtime check barrier stub as the first arg.
+        }
         const size_t count = cs->GetParametersCount();
         const VariableType* originParamType = cs->GetParametersType();
         for (size_t i = 0; i < count; i++) {
