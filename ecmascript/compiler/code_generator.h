@@ -52,11 +52,11 @@ struct CodeInfo {
 
     class CodeSpaceOnDemand {
     public:
-        CodeSpaceOnDemand() = default;
+        PUBLIC_API CodeSpaceOnDemand() = default;
 
         uint8_t *Alloca(uintptr_t size, bool isReq, size_t alignSize);
 
-        ~CodeSpaceOnDemand();
+        PUBLIC_API ~CodeSpaceOnDemand();
 
     private:
         static constexpr size_t SECTION_LIMIT = (1 << 29);  // 512M

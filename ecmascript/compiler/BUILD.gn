@@ -258,6 +258,7 @@ ohos_source_set("libark_jsoptimizer_set_with_maple") {
     }
     branch_protector_ret = "pac_ret"
   }
+  cflags_cc = [ "-fvisibility=hidden" ]
   sources = libark_jsoptimizer_sources
   if (enable_local_code_sign) {
     sources += [ "$js_root/ecmascript/platform/unix/ohos/code_sign.cpp" ]
