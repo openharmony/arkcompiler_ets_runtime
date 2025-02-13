@@ -96,7 +96,6 @@ public:
     std::shared_ptr<JSPandaFile> FindJSPandaFileByNormalizedName(const CString &normalizedName);
     std::shared_ptr<JSPandaFile> FindJSPandaFileByMapBase(uintptr_t mapBase);
     std::shared_ptr<JSPandaFile> FindJSPandaFile(const CString &filename);
-    std::shared_ptr<JSPandaFile> FindMergedJSPandaFile();
     void AddJSPandaFile(const std::shared_ptr<JSPandaFile> &jsPandaFile);
     void RemoveJSPandaFile(const JSPandaFile *jsPandaFile);
     void ClearNameMap();

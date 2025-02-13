@@ -222,7 +222,6 @@
       panda::ecmascript::JSPandaFile::GetFunctionKind*;
       panda::ecmascript::JSPandaFile::GetNormalizedFileDesc*;
       panda::ecmascript::JSPandaFile::GetRecordNameWithBundlePack*;
-      panda::ecmascript::JSPandaFile::IsFirstMergedAbc*;
       panda::ecmascript::JSProxy::IsArray*;
       panda::ecmascript::JSSharedMap::Set*;
       panda::ecmascript::JSTaggedValue::IsTaggedArray*;

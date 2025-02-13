@@ -603,7 +603,6 @@ private:
     bool LoadAOTFiles(const std::string &aotFileName,
                       std::function<bool(std::string fileName, uint8_t **buff, size_t *buffSize)> cb);
 #endif
-    void RelocateConstantString(const JSPandaFile *jsPandaFile);
     JSTaggedValue FindConstpoolFromContextCache(const JSPandaFile *jsPandaFile, int32_t index);
 
     void GrowUnsharedConstpoolArray(int32_t index);

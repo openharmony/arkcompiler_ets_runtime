@@ -124,33 +124,6 @@ host_unittest_action("JS_ByteArray_Test") {
   deps += hiviewdfx_deps
 }
 
-host_unittest_action("JS_ConstantString_Test") {
-  module_out_path = module_output_path
-
-  sources = [
-    # test file
-    "constant_string_test.cpp",
-  ]
-
-  configs = [
-    "../../:asm_interp_enable_config",
-    "../../:ecma_test_config",
-  ]
-
-  deps = [ "../../:libark_jsruntime_test" ]
-
-  # hiviewdfx libraries
-  external_deps = hiviewdfx_ext_deps
-  external_deps += [
-    "icu:shared_icui18n",
-    "icu:shared_icuuc",
-    "runtime_core:libarkassembler_static",
-    "runtime_core:libarkverifier",
-    "zlib:libz",
-  ]
-  deps += hiviewdfx_deps
-}
-
 host_unittest_action("JS_Dump_Test") {
   module_out_path = module_output_path
 
@@ -3458,7 +3431,6 @@ group("unittest") {
     ":JS_BigInt_Test",
     ":JS_ByteArray_Test",
     ":JS_Collator_Test",
-    ":JS_ConstantString_Test",
     ":JS_DateTimeFormat_First_Test",
     ":JS_DateTimeFormat_Second_Test",
     ":JS_DateView_Test",
@@ -3597,7 +3569,6 @@ group("host_unittest") {
     ":JS_BigInt_TestAction",
     ":JS_ByteArray_TestAction",
     ":JS_Collator_TestAction",
-    ":JS_ConstantString_TestAction",
     ":JS_DateTimeFormat_First_TestAction",
     ":JS_DateTimeFormat_Second_TestAction",
     ":JS_DateView_TestAction",
@@ -3732,7 +3703,6 @@ group("host_unittest") {
       ":JS_BigInt_TestAction",
       ":JS_ByteArray_TestAction",
       ":JS_Collator_TestAction",
-      ":JS_ConstantString_TestAction",
       ":JS_DateTimeFormat_First_TestAction",
       ":JS_DateTimeFormat_Second_TestAction",
       ":JS_DateView_TestAction",

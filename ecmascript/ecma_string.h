@@ -44,7 +44,6 @@ class JSHandle;
 class JSPandaFile;
 class EcmaVM;
 class LineEcmaString;
-class ConstantString;
 class TreeEcmaString;
 class SlicedString;
 class FlatStringInfo;
@@ -104,7 +103,6 @@ public:
 private:
     friend class EcmaStringAccessor;
     friend class LineEcmaString;
-    friend class ConstantString;
     friend class TreeEcmaString;
     friend class SlicedString;
     friend class FlatStringInfo;
@@ -113,8 +111,7 @@ private:
 
     static EcmaString *CreateEmptyString(const EcmaVM *vm);
     static EcmaString *CreateFromUtf8(const EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf8Len,
-        bool canBeCompress, MemSpaceType type = MemSpaceType::SHARED_OLD_SPACE, bool isConstantString = false,
-        uint32_t idOffset = 0);
+        bool canBeCompress, MemSpaceType type = MemSpaceType::SHARED_OLD_SPACE);
     static EcmaString *CreateFromUtf8CompressedSubString(const EcmaVM *vm, const JSHandle<EcmaString> &string,
         uint32_t offset, uint32_t utf8Len, MemSpaceType type = MemSpaceType::SHARED_OLD_SPACE);
     static EcmaString *CreateUtf16StringFromUtf8(const EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf8Len,
@@ -128,8 +125,6 @@ private:
         size_t length, bool compressed, MemSpaceType type);
     static EcmaString *CreateTreeString(const EcmaVM *vm,
         const JSHandle<EcmaString> &left, const JSHandle<EcmaString> &right, uint32_t length, bool compressed);
-    static EcmaString *CreateConstantString(const EcmaVM *vm, const uint8_t *utf8Data,
-        size_t length, bool compressed, MemSpaceType type = MemSpaceType::SHARED_OLD_SPACE, uint32_t idOffset = 0);
     static EcmaString *Concat(const EcmaVM *vm, const JSHandle<EcmaString> &left,
         const JSHandle<EcmaString> &right, MemSpaceType type = MemSpaceType::SHARED_OLD_SPACE);
     template<typename T1, typename T2>
@@ -684,10 +679,6 @@ private:
     {
         return GetClass()->IsLineString();
     }
-    bool IsConstantString() const
-    {
-        return GetClass()->IsConstantString();
-    }
     bool IsSlicedString() const
     {
         return GetClass()->IsSlicedString();
@@ -699,11 +690,6 @@ private:
     bool NotTreeString() const
     {
         return !IsTreeString();
-    }
-    bool IsLineOrConstantString() const
-    {
-        auto hclass = GetClass();
-        return hclass->IsLineString() || hclass->IsConstantString();
     }
 
     JSType GetStringType() const
@@ -841,59 +827,6 @@ public:
 };
 static_assert((LineEcmaString::DATA_OFFSET % static_cast<uint8_t>(MemAlignment::MEM_ALIGN_OBJECT)) == 0);
 
-class ConstantString : public EcmaString {
-public:
-    static constexpr size_t RELOCTAED_DATA_OFFSET = EcmaString::SIZE;
-    // ConstantData is the pointer of const string in the pandafile.
-    // String in pandafile is encoded by the utf8 format.
-    // EntityId is normally the uint32_t index in the pandafile.
-    // When the pandafile is to be removed, EntityId will become -1.
-    // The real string data will be reloacted into bytearray and stored in RelocatedData.
-    // ConstantData will also point at data of bytearray data.
-    ACCESSORS(RelocatedData, RELOCTAED_DATA_OFFSET, ENTITY_ID_OFFSET);
-    ACCESSORS_PRIMITIVE_FIELD(EntityId, int64_t, ENTITY_ID_OFFSET, CONSTANT_DATA_OFFSET);
-    ACCESSORS_NATIVE_FIELD(ConstantData, uint8_t, CONSTANT_DATA_OFFSET, LAST_OFFSET);
-    DEFINE_ALIGN_SIZE(LAST_OFFSET);
-
-    CAST_CHECK(ConstantString, IsConstantString);
-    DECL_VISIT_OBJECT(RELOCTAED_DATA_OFFSET, ENTITY_ID_OFFSET);
-
-    static ConstantString *Cast(EcmaString *str)
-    {
-        return static_cast<ConstantString *>(str);
-    }
-
-    static ConstantString *Cast(const EcmaString *str)
-    {
-        return ConstantString::Cast(const_cast<EcmaString *>(str));
-    }
-
-    static size_t ObjectSize()
-    {
-        return ConstantString::SIZE;
-    }
-
-    uint32_t GetEntityIdU32() const
-    {
-        ASSERT(GetEntityId() >= 0);
-        return static_cast<uint32_t>(GetEntityId());
-    }
-
-    template<bool verify = true>
-    uint16_t Get(int32_t index) const
-    {
-        int32_t length = static_cast<int32_t>(GetLength());
-        if (verify) {
-            if ((index < 0) || (index >= length)) {
-                return 0;
-            }
-        }
-        ASSERT(IsUtf8());
-        Span<const uint8_t> sp(GetConstantData(), length);
-        return sp[index];
-    }
-};
-
 // The substrings of another string use SlicedString to describe.
 class SlicedString : public EcmaString {
 public:
@@ -934,15 +867,12 @@ private:
             }
         }
         EcmaString *parent = EcmaString::Cast(GetParent());
-        if (parent->IsLineString()) {
-            if (parent->IsUtf8()) {
-                Span<const uint8_t> sp(parent->GetDataUtf8() + GetStartIndex(), length);
-                return sp[index];
-            }
-            Span<const uint16_t> sp(parent->GetDataUtf16() + GetStartIndex(), length);
+        ASSERT(parent->IsLineString());
+        if (parent->IsUtf8()) {
+            Span<const uint8_t> sp(parent->GetDataUtf8() + GetStartIndex(), length);
             return sp[index];
         }
-        Span<const uint8_t> sp(ConstantString::Cast(parent)->GetConstantData() + GetStartIndex(), length);
+        Span<const uint16_t> sp(parent->GetDataUtf16() + GetStartIndex(), length);
         return sp[index];
     }
 };
@@ -1092,10 +1022,9 @@ public:
     }
 
     static EcmaString *CreateFromUtf8(const EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf8Len, bool canBeCompress,
-                                      MemSpaceType type = MemSpaceType::SHARED_OLD_SPACE, bool isConstantString = false,
-                                      uint32_t idOffset = 0)
+                                      MemSpaceType type = MemSpaceType::SHARED_OLD_SPACE)
     {
-        return EcmaString::CreateFromUtf8(vm, utf8Data, utf8Len, canBeCompress, type, isConstantString, idOffset);
+        return EcmaString::CreateFromUtf8(vm, utf8Data, utf8Len, canBeCompress, type);
     }
 
     static EcmaString *CreateFromUtf8CompressedSubString(const EcmaVM *vm, const JSHandle<EcmaString> &string,
@@ -1103,12 +1032,6 @@ public:
                                                          MemSpaceType type = MemSpaceType::SHARED_OLD_SPACE)
     {
         return EcmaString::CreateFromUtf8CompressedSubString(vm, string, offset, utf8Len, type);
-    }
-
-    static EcmaString *CreateConstantString(const EcmaVM *vm, const uint8_t *utf8Data, size_t length,
-        bool compressed, MemSpaceType type = MemSpaceType::SHARED_OLD_SPACE, uint32_t idOffset = 0)
-    {
-        return EcmaString::CreateConstantString(vm, utf8Data, length, compressed, type, idOffset);
     }
 
     static EcmaString *CreateUtf16StringFromUtf8(const EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf8Len,
@@ -1175,8 +1098,6 @@ public:
     {
         if (string_->IsLineString()) {
             return LineEcmaString::ObjectSize(string_);
-        } if (string_->IsConstantString()) {
-            return ConstantString::ObjectSize();
         } else {
             return TreeEcmaString::SIZE;
         }
@@ -1185,9 +1106,6 @@ public:
     // For TreeString, the calculation result is size of LineString correspondingly.
     size_t GetFlatStringSize() const
     {
-        if (string_->IsConstantString()) {
-            return ConstantString::ObjectSize();
-        }
         return LineEcmaString::ObjectSize(string_);
     }
 
@@ -1523,19 +1441,9 @@ public:
         return string_->IsLineString();
     }
 
-    bool IsConstantString() const
-    {
-        return string_->IsConstantString();
-    }
-
     bool IsSlicedString() const
     {
         return string_->IsSlicedString();
-    }
-
-    bool IsLineOrConstantString() const
-    {
-        return string_->IsLineOrConstantString();
     }
 
     bool IsInteger() const
@@ -1563,7 +1471,7 @@ public:
         return string_->NotTreeString();
     }
 
-    // the returned string may be a linestring, constantstring, or slicestring!!
+    // the returned string may be a linestring or slicestring!!
     PUBLIC_API static EcmaString *Flatten(const EcmaVM *vm, const JSHandle<EcmaString> &string,
         MemSpaceType type = MemSpaceType::SHARED_OLD_SPACE)
     {

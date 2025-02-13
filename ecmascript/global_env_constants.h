@@ -39,7 +39,6 @@ class ObjectFactory;
     V(JSTaggedValue, FreeObjectWithTwoFieldClass, FREE_OBJECT_WITH_TWO_FIELD_CLASS_INDEX, ecma_roots_class)           \
     V(JSTaggedValue, LineStringClass, LINE_STRING_CLASS_INDEX, ecma_roots_class)                                      \
     V(JSTaggedValue, SlicedStringClass, SLICED_STRING_CLASS_INDEX, ecma_roots_class)                                  \
-    V(JSTaggedValue, ConstantStringClass, CONSTANT_STRING_CLASS_INDEX, ecma_roots_class)                              \
     V(JSTaggedValue, TreeStringClass, TREE_STRING_CLASS_INDEX, ecma_roots_class)                                      \
     V(JSTaggedValue, ArrayClass, ARRAY_CLASS_INDEX, ecma_roots_class)                                                 \
     V(JSTaggedValue, ByteArrayClass, BYTE_ARRAY_CLASS_INDEX, ecma_roots_class)                                        \
@@ -798,11 +797,6 @@ public:
     size_t GetLineStringClassIndex() const
     {
         return static_cast<size_t>(ConstantIndex::LINE_STRING_CLASS_INDEX);
-    }
-
-    size_t GetConstStringClassIndex() const
-    {
-        return static_cast<size_t>(ConstantIndex::CONSTANT_STRING_CLASS_INDEX);
     }
 
     bool IsSpecialOrUndefined(size_t index) const

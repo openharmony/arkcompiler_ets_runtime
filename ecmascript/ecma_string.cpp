@@ -54,8 +54,8 @@ EcmaString *EcmaString::Concat(const EcmaVM *vm,
     // if the result string is small, make a LineString
     bool compressed = (strLeft->IsUtf8() && strRight->IsUtf8());
     if (newLength < TreeEcmaString::MIN_TREE_ECMASTRING_LENGTH) {
-        ASSERT(strLeft->IsLineOrConstantString());
-        ASSERT(strRight->IsLineOrConstantString());
+        ASSERT(strLeft->IsLineString());
+        ASSERT(strRight->IsLineString());
         auto newString = CreateLineStringWithSpaceType(vm, newLength, compressed, type);
         // retrieve strings after gc
         strLeft = *left;
@@ -97,9 +97,6 @@ EcmaString *EcmaString::Concat(const EcmaVM *vm,
 EcmaString *EcmaString::CopyStringToOldSpace(const EcmaVM *vm, const JSHandle<EcmaString> &original,
     uint32_t length, bool compressed)
 {
-    if (original->IsConstantString()) {
-        return CreateConstantString(vm, original->GetDataUtf8(), length, MemSpaceType::OLD_SPACE);
-    }
     JSHandle<EcmaString> newString(vm->GetJSThread(),
         CreateLineStringWithSpaceType(vm, length, compressed, MemSpaceType::OLD_SPACE));
     auto strOrigin = FlattenAllString(vm, original);
@@ -200,7 +197,7 @@ bool EcmaString::SubStringIsUtf8(const EcmaVM *vm,
 
 void EcmaString::WriteData(EcmaString *src, uint32_t start, uint32_t destSize, uint32_t length)
 {
-    ASSERT(IsLineString() && !IsConstantString());
+    ASSERT(IsLineString());
     if (IsUtf8()) {
         ASSERT(src->IsUtf8());
         CVector<uint8_t> buf;
@@ -640,7 +637,7 @@ uint32_t EcmaString::CalculateConcatHashCode(const JSHandle<EcmaString> &firstSt
 // static
 bool EcmaString::CanBeCompressed(const EcmaString *string)
 {
-    ASSERT(string->IsLineOrConstantString());
+    ASSERT(string->IsLineString());
     if (string->IsUtf8()) {
         return CanBeCompressed(string->GetDataUtf8(), string->GetLength());
     }
@@ -1404,7 +1401,7 @@ FlatStringInfo EcmaString::FlattenAllString(const EcmaVM *vm, const JSHandle<Ecm
     ASSERT(IsSMemSpace(type));
     EcmaString *s = *string;
     uint32_t startIndex = 0;
-    if (s->IsLineOrConstantString()) {
+    if (s->IsLineString()) {
         return FlatStringInfo(s, startIndex, s->GetLength());
     }
     if (string->IsTreeString()) {
@@ -1424,7 +1421,7 @@ FlatStringInfo EcmaString::FlattenAllString(const EcmaVM *vm, const JSHandle<Ecm
 EcmaString *EcmaString::FlattenNoGCForSnapshot(const EcmaVM *vm, EcmaString *string)
 {
     DISALLOW_GARBAGE_COLLECTION;
-    if (string->IsLineOrConstantString()) {
+    if (string->IsLineString()) {
         return string;
     }
     if (string->IsTreeString()) {
@@ -1490,7 +1487,7 @@ const uint8_t *EcmaString::GetNonTreeUtf8Data(const EcmaString *src)
         SlicedString *str = SlicedString::Cast(string);
         return EcmaString::Cast(str->GetParent())->GetDataUtf8() + str->GetStartIndex();
     }
-    ASSERT(src->IsLineOrConstantString());
+    ASSERT(src->IsLineString());
     return string->GetDataUtf8();
 }
 
@@ -1523,7 +1520,7 @@ const uint16_t *EcmaString::GetNonTreeUtf16Data(const EcmaString *src)
         SlicedString *str = SlicedString::Cast(string);
         return EcmaString::Cast(str->GetParent())->GetDataUtf16() + str->GetStartIndex();
     }
-    ASSERT(src->IsLineOrConstantString());
+    ASSERT(src->IsLineString());
     return string->GetDataUtf16();
 }
 

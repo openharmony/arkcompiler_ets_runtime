@@ -695,14 +695,6 @@ JSHandle<JSTaggedValue> EcmaContext::GetAndClearEcmaUncaughtException() const
     return exceptionHandle;
 }
 
-void EcmaContext::RelocateConstantString(const JSPandaFile *jsPandaFile)
-{
-    if (!jsPandaFile->IsFirstMergedAbc()) {
-        return;
-    }
-    vm_->GetEcmaStringTable()->RelocateConstantData(vm_, jsPandaFile);
-}
-
 JSHandle<JSTaggedValue> EcmaContext::GetEcmaUncaughtException() const
 {
     if (!thread_->HasPendingException()) {

@@ -303,7 +303,6 @@ JSTaggedValue JsonStringifier::SerializeJSONProperty(const JSHandle<JSTaggedValu
             }
             // If Type(value) is String, return QuoteJSONString(value).
             case JSType::LINE_STRING:
-            case JSType::CONSTANT_STRING:
             case JSType::TREE_STRING:
             case JSType::SLICED_STRING: {
                 JSHandle<EcmaString> strHandle = JSHandle<EcmaString>(valHandle);

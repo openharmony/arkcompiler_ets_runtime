@@ -136,12 +136,6 @@ GateRef CircuitBuilder::IsLineString(GateRef obj)
     return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::LINE_STRING)));
 }
 
-GateRef CircuitBuilder::IsConstantString(GateRef obj)
-{
-    GateRef objectType = GetObjectType(LoadHClass(obj));
-    return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::CONSTANT_STRING)));
-}
-
 GateRef CircuitBuilder::ComputeSizeUtf8(GateRef length)
 {
     return PtrAdd(IntPtr(LineEcmaString::DATA_OFFSET), length);

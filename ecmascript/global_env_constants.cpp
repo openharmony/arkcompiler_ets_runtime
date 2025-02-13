@@ -115,8 +115,6 @@ void GlobalEnvConstants::InitSharedRootsClasses(ObjectFactory *factory)
         factory->NewSEcmaReadOnlyHClass(hClass, 0, JSType::LINE_STRING));
     SetConstant(ConstantIndex::SLICED_STRING_CLASS_INDEX,
         factory->NewSEcmaReadOnlyHClass(hClass, 0, JSType::SLICED_STRING));
-    SetConstant(ConstantIndex::CONSTANT_STRING_CLASS_INDEX,
-        factory->NewSEcmaReadOnlyHClass(hClass, 0, JSType::CONSTANT_STRING));
     SetConstant(ConstantIndex::TREE_STRING_CLASS_INDEX,
         factory->NewSEcmaReadOnlyHClass(hClass, 0, JSType::TREE_STRING));
     SetConstant(ConstantIndex::BYTE_ARRAY_CLASS_INDEX,

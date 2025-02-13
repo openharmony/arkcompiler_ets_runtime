@@ -175,7 +175,6 @@ bool JSHClass::IsJSTypeShared(JSType type)
         case JSType::JS_SENDABLE_ARRAY_BUFFER:
         case JSType::BIGINT:
         case JSType::LINE_STRING:
-        case JSType::CONSTANT_STRING:
         case JSType::SLICED_STRING:
         case JSType::TREE_STRING:
             isShared = true;

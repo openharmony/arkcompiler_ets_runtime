@@ -221,7 +221,6 @@ inline bool JSHClass::HasReferenceField()
     auto type = GetObjectType();
     switch (type) {
         case JSType::LINE_STRING:
-        case JSType::CONSTANT_STRING:
         case JSType::JS_NATIVE_POINTER:
             return false;
         default:
@@ -258,10 +257,6 @@ inline size_t JSHClass::SizeFromJSHClass(TaggedObject *header)
             break;
         case JSType::LINE_STRING:
             size = LineEcmaString::ObjectSize(reinterpret_cast<EcmaString* >(header));
-            size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
-            break;
-        case JSType::CONSTANT_STRING:
-            size = ConstantString::SIZE;
             size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
             break;
         case JSType::TREE_STRING:

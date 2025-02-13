@@ -9615,35 +9615,22 @@ GateRef StubBuilder::GetNormalStringData(const StringInfoGateRef &stringInfoGate
     Label entry(env);
     env->SubCfgEntry(&entry);
     Label exit(env);
-    Label isConstantString(env);
-    Label isLineString(env);
     Label isUtf8(env);
     Label isUtf16(env);
     DEFVARIABLE(result, VariableType::NATIVE_POINTER(), Undefined());
-    BRANCH(IsConstantString(stringInfoGate.GetString()), &isConstantString, &isLineString);
-    Bind(&isConstantString);
+    GateRef data = ChangeTaggedPointerToInt64(
+        PtrAdd(stringInfoGate.GetString(), IntPtr(LineEcmaString::DATA_OFFSET)));
+    BRANCH(IsUtf8String(stringInfoGate.GetString()), &isUtf8, &isUtf16);
+    Bind(&isUtf8);
     {
-        GateRef address = PtrAdd(stringInfoGate.GetString(), IntPtr(ConstantString::CONSTANT_DATA_OFFSET));
-        result = PtrAdd(Load(VariableType::NATIVE_POINTER(), address, IntPtr(0)),
-            ZExtInt32ToPtr(stringInfoGate.GetStartIndex()));
+        result = PtrAdd(data, ZExtInt32ToPtr(stringInfoGate.GetStartIndex()));
         Jump(&exit);
     }
-    Bind(&isLineString);
+    Bind(&isUtf16);
     {
-        GateRef data = ChangeTaggedPointerToInt64(
-            PtrAdd(stringInfoGate.GetString(), IntPtr(LineEcmaString::DATA_OFFSET)));
-        BRANCH(IsUtf8String(stringInfoGate.GetString()), &isUtf8, &isUtf16);
-        Bind(&isUtf8);
-        {
-            result = PtrAdd(data, ZExtInt32ToPtr(stringInfoGate.GetStartIndex()));
-            Jump(&exit);
-        }
-        Bind(&isUtf16);
-        {
-            GateRef offset = PtrMul(ZExtInt32ToPtr(stringInfoGate.GetStartIndex()), IntPtr(sizeof(uint16_t)));
-            result = PtrAdd(data, offset);
-            Jump(&exit);
-        }
+        GateRef offset = PtrMul(ZExtInt32ToPtr(stringInfoGate.GetStartIndex()), IntPtr(sizeof(uint16_t)));
+        result = PtrAdd(data, offset);
+        Jump(&exit);
     }
     Bind(&exit);
     auto ret = *result;

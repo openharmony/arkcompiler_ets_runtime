@@ -3123,9 +3123,6 @@ DEF_RUNTIME_STUBS(DecodeURIComponent)
         } else {
             result = RuntimeDecodeURIComponent<uint16_t>(thread, string, stringAcc.GetDataUtf16());
         }
-    } else if (stringAcc.IsConstantString()) {
-        ASSERT(stringAcc.IsUtf8());
-        result = RuntimeDecodeURIComponent<uint8_t>(thread, string, stringAcc.GetDataUtf8());
     } else {
         ASSERT(stringAcc.IsSlicedString());
         auto parent = SlicedString::Cast(string.GetTaggedValue())->GetParent();
