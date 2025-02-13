@@ -82,8 +82,8 @@ void ClassParser::GenerateHClass(const PGOHClassGenerator &generator, const PGOT
 
     // testcase: propertyaccessor2.ts. protoSampleType not find desc
     if (generator.FindHClassLayoutDesc(ctorSampleType) && generator.FindHClassLayoutDesc(protoSampleType)) {
-        generator.GenerateHClass(ctorSampleType, false);
-        generator.GenerateHClass(protoSampleType, false);
+        generator.GenerateHClass(ctorSampleType);
+        generator.GenerateHClass(protoSampleType);
 
         auto phValue = ptManager_->QueryHClass(protoPt, protoPt);
         JSHandle<JSHClass> phclass(thread, phValue);
@@ -124,7 +124,10 @@ void ObjectLiteralParser::GenerateHClass(const PGOHClassGenerator &generator, co
 
     auto rootType = ptManager_->GetRootIdByLocation(loc);
     PGOSampleType rootSampleType(rootType);
-    generator.GenerateHClass(rootSampleType, true);
+    if (!generator.IsPreprocessObjectLiteralLength()) {
+        generator.SetStatus(PGOHClassGenerator::Status::ISCACHE);
+    }
+    generator.GenerateHClass(rootSampleType);
 }
 
 bool FunctionParser::RecordTypeInfo(const PGODefineOpType &defType, const PGOTypeLocation &loc)
@@ -169,7 +172,7 @@ void FunctionParser::GenerateHClass(const PGOHClassGenerator &generator, const P
 
     // testcase: propertyaccessor2.ts. protoSampleType not find desc
     if (generator.FindHClassLayoutDesc(ctorSampleType) && generator.FindHClassLayoutDesc(protoSampleType)) {
-        generator.GenerateHClass(protoSampleType, false);
+        generator.GenerateHClass(protoSampleType);
 
         auto phValue = ptManager_->QueryHClass(protoPt, protoPt);
         JSHandle<JSHClass> phclass(thread, phValue);
@@ -198,7 +201,7 @@ bool PGOTypeParser::SkipGenerateHClass(PGOTypeRecorder typeRecorder, ProfileType
     return false;
 }
 
-void PGOTypeParser::CreatePGOType(BytecodeInfoCollector &collector)
+void PGOTypeParser::Preproccessor(BytecodeInfoCollector &collector)
 {
     const JSPandaFile *jsPandaFile = collector.GetJSPandaFile();
     PGOTypeRecorder typeRecorder(decoder_);
@@ -210,6 +213,37 @@ void PGOTypeParser::CreatePGOType(BytecodeInfoCollector &collector)
         ProtoTransType transType(ihcType, baseType.first, baseType.second, transIhcType, transPhcType);
         ptManager_->RecordProtoTransType(transType);
     });
+
+    PGOHClassGenerator::Status status = PGOHClassGenerator::Status::PREPROCESSOR;
+    typeRecorder.IterateHClassTreeDesc([this, &typeRecorder, status](PGOHClassTreeDesc *desc) {
+        auto rootType = desc->GetProfileType();
+        auto protoPt = desc->GetProtoPt();
+        bool isCache = rootType.IsObjectLiteralType();
+        if (!isCache || SkipGenerateHClass(typeRecorder, rootType, isCache, desc)) {
+            return;
+        }
+        const PGOHClassGenerator generator(typeRecorder, ptManager_, status);
+        if (rootType.IsNapiType() || rootType.IsGeneralizedPrototype() || rootType.IsConstructor()) {
+            return;
+        } else if (rootType.IsGeneralizedClassType()) {
+            generator.GenerateHClass(PGOSampleType(protoPt));
+        } else {
+            generator.GenerateHClass(PGOSampleType(rootType));
+        }
+    });
+    
+    collector.IterateAllMethods([this, jsPandaFile, &collector, status](uint32_t methodOffset) {
+        PGOTypeRecorder typeRecorder(decoder_, jsPandaFile, methodOffset);
+        const PGOHClassGenerator generator(typeRecorder, ptManager_, status);
+        ObjectLiteralParser parser(ptManager_);
+        parser.Parse(collector, typeRecorder, generator, methodOffset);
+    });
+}
+
+void PGOTypeParser::CreatePGOType(BytecodeInfoCollector &collector)
+{
+    const JSPandaFile *jsPandaFile = collector.GetJSPandaFile();
+    PGOTypeRecorder typeRecorder(decoder_);
     typeRecorder.IterateHClassTreeDesc([this, typeRecorder](PGOHClassTreeDesc *desc) {
         auto rootType = desc->GetProfileType();
         auto protoPt = desc->GetProtoPt();
@@ -217,15 +251,19 @@ void PGOTypeParser::CreatePGOType(BytecodeInfoCollector &collector)
         if (SkipGenerateHClass(typeRecorder, rootType, isCache, desc)) {
             return ;
         }
-        const PGOHClassGenerator generator(typeRecorder, ptManager_);
+        PGOHClassGenerator::Status status = PGOHClassGenerator::Status::NONE;
+        if (isCache) {
+            status = PGOHClassGenerator::Status::ISCACHE;
+        }
+        const PGOHClassGenerator generator(typeRecorder, ptManager_, status);
         if (rootType.IsNapiType()) {
             this->GenerateHClassForNapiType(rootType, generator);
         } else if (rootType.IsGeneralizedClassType()) {
-            this->GenerateHClassForClassType(rootType, protoPt, generator, isCache);
+            this->GenerateHClassForClassType(rootType, protoPt, generator);
         } else if (rootType.IsPrototype()) {
-            this->GenerateHClassForPrototype(rootType, generator, isCache);
+            this->GenerateHClassForPrototype(rootType, generator);
         } else {
-            generator.GenerateHClass(PGOSampleType(rootType), isCache);
+            generator.GenerateHClass(PGOSampleType(rootType));
         }
     });
 
@@ -247,14 +285,14 @@ void PGOTypeParser::GenerateHClassForNapiType(ProfileType rootType, const PGOHCl
 }
 
 void PGOTypeParser::GenerateHClassForClassType(ProfileType rootType, ProfileType protoPt,
-                                               const PGOHClassGenerator &generator, bool isCache)
+                                               const PGOHClassGenerator &generator)
 {
     if (!protoPt.IsGeneralizedPrototype()) {
         return;
     }
     auto phValue = ptManager_->QueryHClass(protoPt, protoPt);
     if (phValue.IsUndefined()) {
-        generator.GenerateHClass(PGOSampleType(protoPt), isCache);
+        generator.GenerateHClass(PGOSampleType(protoPt));
     }
     phValue = ptManager_->QueryHClass(protoPt, protoPt);
     if (phValue.IsUndefined()) {
@@ -268,11 +306,11 @@ void PGOTypeParser::GenerateHClassForClassType(ProfileType rootType, ProfileType
     generator.GenerateIHClass(rootSampleType, JSHandle<JSTaggedValue>::Cast(prototype));
 }
 
-void PGOTypeParser::GenerateHClassForPrototype(ProfileType rootType, const PGOHClassGenerator &generator, bool isCache)
+void PGOTypeParser::GenerateHClassForPrototype(ProfileType rootType, const PGOHClassGenerator &generator)
 {
     PGOSampleType rootSampleType(rootType);
     // When the collected object only has phc, use phc to create a prototype and store it in the IHC field.
-    generator.GenerateHClass(rootSampleType, isCache);
+    generator.GenerateHClass(rootSampleType);
     auto classType = ProfileType(rootType.GetRaw());
     classType.UpdateKind(ProfileType::Kind::ClassId);
     auto ihc = ptManager_->QueryHClass(classType, classType);

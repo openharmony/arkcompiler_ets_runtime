@@ -38,6 +38,7 @@ public:
     using TrackTypeField =
         PropertyAttributes::PropertyMetaDataField::NextField<TrackType, PropertyAttributes::TRACK_TYPE_NUM>;
     using IsSymbol = TrackTypeField::NextFlag;
+    using MaxPropsNumField = IsSymbol::NextField<uint32_t, PropertyAttributes::MAX_LITERAL_HCLASS_CACHE_BIT>;
 
     PGOHandler()
     {
@@ -68,6 +69,16 @@ public:
     void SetIsSymbol(bool isSymbol)
     {
         IsSymbol::Set(isSymbol, &value_);
+    }
+
+    void SetMaxPropsNum(uint32_t maxChildNum) const
+    {
+        MaxPropsNumField::Set(maxChildNum, &value_);
+    }
+
+    uint32_t GetMaxPropsNum() const
+    {
+        return MaxPropsNumField::Get(value_);
     }
 
     bool GetIsSymbol() const
@@ -126,7 +137,7 @@ public:
     }
 
 private:
-    uint32_t value_ { 0 };
+    mutable uint32_t value_ { 0 };
 };
 
 using PropertyDesc = std::pair<CString, PGOHandler>;

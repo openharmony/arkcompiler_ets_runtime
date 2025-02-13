@@ -543,7 +543,7 @@ public:
                                             const JSHandle<JSHClass> &objClass);
     static bool CanObjectLiteralHClassCache(size_t length);
     JSHandle<JSHClass> CreateObjectLiteralRootHClass(size_t length);
-    JSHandle<JSHClass> GetObjectLiteralRootHClass(size_t length);
+    JSHandle<JSHClass> GetObjectLiteralRootHClass(size_t literalLength, size_t maxPropsNum);
     JSHandle<JSHClass> GetObjectLiteralHClass(const JSHandle<TaggedArray> &properties, size_t length);
     // only use for creating Function.prototype and Function
     JSHandle<JSFunction> NewJSFunctionByHClass(const JSHandle<Method> &method, const JSHandle<JSHClass> &clazz,
@@ -931,7 +931,6 @@ private:
     SharedHeap *sHeap_ {nullptr};
 
     static constexpr uint32_t LENGTH_THRESHOLD = 50;
-    static constexpr int MAX_LITERAL_HCLASS_CACHE_SIZE = 63;
 
     NO_COPY_SEMANTIC(ObjectFactory);
     NO_MOVE_SEMANTIC(ObjectFactory);

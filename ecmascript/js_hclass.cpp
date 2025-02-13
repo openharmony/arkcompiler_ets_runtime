@@ -209,11 +209,11 @@ void JSHClass::Initialize(const JSThread *thread, uint32_t size, JSType type,
 }
 
 JSHandle<JSHClass> JSHClass::Clone(const JSThread *thread, const JSHandle<JSHClass> &jshclass,
-                                   bool withoutInlinedProperties, uint32_t incInlinedProperties)
+                                   bool withInlinedProperties, uint32_t inlinedProps)
 {
     JSType type = jshclass->GetObjectType();
     uint32_t size = IsJSTypeObject(type) ? jshclass->GetInlinedPropsStartSize() : jshclass->GetObjectSize();
-    uint32_t numInlinedProps = withoutInlinedProperties ? 0 : jshclass->GetInlinedProperties() + incInlinedProperties;
+    uint32_t numInlinedProps = withInlinedProperties ? inlinedProps : jshclass->GetInlinedProperties();
     JSHandle<JSHClass> newJsHClass;
     if (jshclass.GetTaggedValue().IsInSharedHeap()) {
         newJsHClass = thread->GetEcmaVM()->GetFactory()->NewSEcmaHClass(size, type, numInlinedProps);
@@ -244,12 +244,8 @@ JSHandle<JSHClass> JSHClass::CloneAndIncInlinedProperties(const JSThread *thread
     ASSERT((size % JSTaggedValue::TaggedTypeSize()) == 0);
     uint32_t maxFields = PropertyAttributes::MAX_FAST_PROPS_CAPACITY - size / JSTaggedValue::TaggedTypeSize();
     expectedOfProperties = std::min(maxFields, expectedOfProperties);
-    uint32_t incInlinedProperties = 0;
-    uint32_t inlinedProp = jshclass->GetInlinedProperties();
-    if (expectedOfProperties > inlinedProp) {
-        incInlinedProperties = expectedOfProperties - inlinedProp;
-    }
-    return JSHClass::Clone(thread, jshclass, false, incInlinedProperties);
+    uint32_t inlinedProp = std::max(expectedOfProperties, jshclass->GetInlinedProperties());
+    return JSHClass::Clone(thread, jshclass, true, inlinedProp);
 }
 
 JSHandle<JSHClass> JSHClass::CloneWithElementsKind(const JSThread *thread, const JSHandle<JSHClass> &jshclass,
@@ -303,6 +299,15 @@ void JSHClass::AddProperty(const JSThread *thread, const JSHandle<JSObject> &obj
         // The transition hclass from AOT, which does not have a prototype, needs to be reset here.
         if (newClass->IsAOT()) {
             newClass->SetPrototype(thread, jshclass->GetPrototype());
+            uint32_t newInPropsNum = newClass->GetInlinedProperties();
+            uint32_t oldInPropsNum = jshclass->GetInlinedProperties();
+            // trim
+            if (newInPropsNum < oldInPropsNum) {
+                size_t trimBytes = (oldInPropsNum - newInPropsNum) * JSTaggedValue::TaggedTypeSize();
+                ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+                factory->FillFreeObject(ToUintPtr(*obj) + newClass->GetObjectSize(),
+                                        trimBytes, RemoveSlots::YES, ToUintPtr(*obj));
+            }
         }
         // Because we currently only supports Fast ElementsKind
         RestoreElementsKindToGeneric(newClass);
@@ -1335,16 +1340,20 @@ JSHandle<JSTaggedValue> JSHClass::ParseKeyFromPGOCString(ObjectFactory* factory,
     }
 }
 
+void JSHClass::CalculateMaxNumForChild(const HClassLayoutDesc* desc, uint32_t maxNum)
+{
+    auto rootDesc = reinterpret_cast<const pgo::RootHClassLayoutDesc *>(desc);
+    rootDesc->IterateProps([&maxNum](const pgo::PropertyDesc& propDesc) {
+        auto& handler = propDesc.second;
+        uint32_t maxChildNum = std::max(maxNum, handler.GetMaxPropsNum());
+        handler.SetMaxPropsNum(maxChildNum);
+    });
+}
+
 JSHandle<JSHClass> JSHClass::CreateRootHClassFromPGO(const JSThread* thread,
                                                      const HClassLayoutDesc* desc,
-                                                     uint32_t maxNum,
-                                                     bool isCache)
+                                                     uint32_t maxNum)
 {
-    if (isCache) {
-        if (ObjectFactory::CanObjectLiteralHClassCache(maxNum)) {
-            return CreateRootHClassWithCached(thread, desc, maxNum);
-        }
-    }
     auto rootDesc = reinterpret_cast<const pgo::RootHClassLayoutDesc *>(desc);
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     uint32_t numOfProps = rootDesc->NumOfProps();
@@ -1375,21 +1384,23 @@ JSHandle<JSHClass> JSHClass::CreateRootHClassFromPGO(const JSThread* thread,
 
 JSHandle<JSHClass> JSHClass::CreateRootHClassWithCached(const JSThread* thread,
                                                         const HClassLayoutDesc* desc,
-                                                        uint32_t maxNum)
+                                                        uint32_t literalLength,
+                                                        uint32_t maxPropsNum)
 {
     auto rootDesc = reinterpret_cast<const pgo::RootHClassLayoutDesc *>(desc);
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     uint32_t index = 0;
     ASSERT(rootDesc->GetObjectSize() == JSObject::SIZE);
     ASSERT(rootDesc->GetObjectType() == JSType::JS_OBJECT);
-    JSHandle<JSHClass> hclass = factory->GetObjectLiteralRootHClass(maxNum);
-    JSHandle<LayoutInfo> layout = factory->CreateLayoutInfo(maxNum, MemSpaceType::SEMI_SPACE, GrowMode::KEEP);
+    JSHandle<JSHClass> hclass = factory->GetObjectLiteralRootHClass(literalLength, maxPropsNum);
+    JSHandle<LayoutInfo> layout = factory->CreateLayoutInfo(maxPropsNum, MemSpaceType::SEMI_SPACE, GrowMode::KEEP);
     hclass->SetPrototype(thread, JSTaggedValue::Null());
     hclass->SetLayout(thread, layout);
     hclass->SetAOT(true);
     rootDesc->IterateProps([thread, factory, &index, &hclass](const pgo::PropertyDesc& propDesc) {
         auto& cstring = propDesc.first;
         auto& handler = propDesc.second;
+        uint32_t maxPropsNum = handler.GetMaxPropsNum();
         JSHandle<JSTaggedValue> key = ParseKeyFromPGOCString(factory, cstring, handler);
         PropertyAttributes attributes = PropertyAttributes::Default();
         if (handler.SetAttribute(thread, attributes)) {
@@ -1399,7 +1410,7 @@ JSHandle<JSHClass> JSHClass::CreateRootHClassWithCached(const JSThread* thread,
         attributes.SetOffset(index++);
         auto rep = attributes.GetRepresentation();
 
-        JSHandle<JSHClass> child = SetPropertyOfObjHClass(thread, hclass, key, attributes, rep);
+        JSHandle<JSHClass> child = SetPropertyOfObjHClass(thread, hclass, key, attributes, rep, true, maxPropsNum);
         child->SetParent(thread, hclass);
         child->SetPrototype(thread, JSTaggedValue::Null());
         child->SetAOT(true);

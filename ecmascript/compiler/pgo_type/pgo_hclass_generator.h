@@ -20,34 +20,45 @@
 #include "ecmascript/js_hclass.h"
 
 namespace panda::ecmascript::kungfu {
-
 class PGOHClassGenerator {
 public:
-    PGOHClassGenerator(const PGOTypeRecorder &typeRecorder, PGOTypeManager *ptManager)
-        : typeRecorder_(typeRecorder), ptManager_(ptManager) {}
+    enum class Status: uint8_t {
+        NONE = 0x00UL,
+        PREPROCESSOR = 0x01UL,
+        ISCACHE = 0x1UL << 1,
+    };
+
+    PGOHClassGenerator(const PGOTypeRecorder &typeRecorder, PGOTypeManager *ptManager, Status status = Status::NONE)
+        : typeRecorder_(typeRecorder), ptManager_(ptManager), status_(status) {}
 
     bool FindHClassLayoutDesc(PGOSampleType type) const;
-    // The hclass of object literal needs to be created from cached
-    bool GenerateHClass(PGOSampleType type, bool isCache) const;
+    bool GenerateHClass(PGOSampleType type) const;
     bool GenerateIHClass(PGOSampleType type, const JSHandle<JSTaggedValue> &prototype) const;
 
+    bool IsCache() const;
+    bool IsPreprocessObjectLiteralLength() const;
+    void SetStatus(Status status) const;
+
 private:
-    void CaculateMaxNumOfObj(
+    void CalculateMaxNumOfObj(
         const PGOHClassTreeDesc *desc, const HClassLayoutDesc *parent, uint32_t lastNum, uint32_t &maxNum) const;
-    bool CheckIsValid(PGOSampleType type, uint32_t maxNum, bool isCache) const;
-    void CaculateMaxNumOfObjIncludeProtoTransition(PGOSampleType type, uint32_t &maxNum) const;
+    bool CheckIsValid(PGOSampleType type, uint32_t maxNum) const;
+    void CalculateMaxNumOfObjIncludeProtoTransition(PGOSampleType type, uint32_t &maxNum) const;
     JSHandle<JSHClass> CreateRootPHClass(
         ProfileType rootType, const HClassLayoutDesc *layoutDesc, uint32_t maxNum, bool isTransitionPhc) const;
     JSHandle<JSHClass> CreateRootCHClass(
         ProfileType rootType, const HClassLayoutDesc *layoutDesc, uint32_t maxNum) const;
     JSHandle<JSHClass> CreateRootHClass(
-        ProfileType rootType, const HClassLayoutDesc *layoutDesc, uint32_t maxNum, bool isCache) const;
+        ProfileType rootType, const HClassLayoutDesc *layoutDesc, uint32_t maxNum) const;
+    JSHandle<JSHClass> CreateRootHClassWithCached(
+        ProfileType rootType, const HClassLayoutDesc *layoutDesc, uint32_t literalLength, uint32_t maxPropsNum) const;
 
     void CreateChildHClass(ProfileType rootType, const PGOHClassTreeDesc *desc, const JSHandle<JSHClass> &parent,
         const HClassLayoutDesc *parentLayoutDesc) const;
 
     const PGOTypeRecorder &typeRecorder_;
     PGOTypeManager *ptManager_;
+    mutable Status status_;
 };
 }  // panda::ecmascript::kungfu
 #endif // ECMASCRIPT_COMPILER_PGO_TYPE_PGO_HCLASS_GENERATOR_H

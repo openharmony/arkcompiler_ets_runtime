@@ -4153,7 +4153,7 @@ JSHandle<JSHClass> ObjectFactory::SetLayoutInObjHClass(const JSHandle<TaggedArra
 
 bool ObjectFactory::CanObjectLiteralHClassCache(size_t length)
 {
-    return length <= MAX_LITERAL_HCLASS_CACHE_SIZE;
+    return length <= PropertyAttributes::MAX_LITERAL_HCLASS_CACHE_SIZE;
 }
 
 JSHandle<JSHClass> ObjectFactory::CreateObjectLiteralRootHClass(size_t length)
@@ -4169,22 +4169,22 @@ JSHandle<JSHClass> ObjectFactory::CreateObjectLiteralRootHClass(size_t length)
     return hclass;
 }
 
-JSHandle<JSHClass> ObjectFactory::GetObjectLiteralRootHClass(size_t length)
+JSHandle<JSHClass> ObjectFactory::GetObjectLiteralRootHClass(size_t literalLength, size_t maxPropsNum)
 {
     JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
     JSHandle<JSTaggedValue> maybeCache = env->GetObjectLiteralHClassCache();
     if (UNLIKELY(maybeCache->IsHole())) {
-        JSHandle<TaggedArray> cacheArr = NewTaggedArray(MAX_LITERAL_HCLASS_CACHE_SIZE + 1);
+        JSHandle<TaggedArray> cacheArr = NewTaggedArray(PropertyAttributes::MAX_LITERAL_HCLASS_CACHE_SIZE + 1);
         env->SetObjectLiteralHClassCache(thread_, cacheArr.GetTaggedValue());
-        JSHandle<JSHClass> objHClass = CreateObjectLiteralRootHClass(length);
-        cacheArr->Set(thread_, length, objHClass);
+        JSHandle<JSHClass> objHClass = CreateObjectLiteralRootHClass(maxPropsNum);
+        cacheArr->Set(thread_, literalLength, objHClass);
         return objHClass;
     }
     JSHandle<TaggedArray> hclassCacheArr = JSHandle<TaggedArray>::Cast(maybeCache);
-    JSTaggedValue maybeHClass = hclassCacheArr->Get(length);
+    JSTaggedValue maybeHClass = hclassCacheArr->Get(literalLength);
     if (UNLIKELY(maybeHClass.IsHole())) {
-        JSHandle<JSHClass> objHClass = CreateObjectLiteralRootHClass(length);
-        hclassCacheArr->Set(thread_, length, objHClass);
+        JSHandle<JSHClass> objHClass = CreateObjectLiteralRootHClass(maxPropsNum);
+        hclassCacheArr->Set(thread_, literalLength, objHClass);
         return objHClass;
     }
     return JSHandle<JSHClass>(thread_, maybeHClass);
@@ -4197,7 +4197,7 @@ JSHandle<JSHClass> ObjectFactory::GetObjectLiteralHClass(const JSHandle<TaggedAr
     if (!CanObjectLiteralHClassCache(length)) {
         return CreateObjectClass(properties, length);
     }
-    JSHandle<JSHClass> rootHClass = GetObjectLiteralRootHClass(length);
+    JSHandle<JSHClass> rootHClass = GetObjectLiteralRootHClass(length, length);
     return SetLayoutInObjHClass(properties, length, rootHClass);
 }
 
@@ -5249,7 +5249,7 @@ JSHandle<JSTaggedValue> ObjectFactory::CreateJSObjectWithProperties(size_t prope
 
     // At least 4 inlined slot
     int inlineProps = std::max(static_cast<int>(propertyCount), JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS);
-    JSMutableHandle<JSHClass> hclassHandle(thread_, GetObjectLiteralRootHClass(inlineProps));
+    JSMutableHandle<JSHClass> hclassHandle(thread_, GetObjectLiteralRootHClass(inlineProps, inlineProps));
     for (size_t i = 0; i < propertyCount; ++i) {
         JSMutableHandle<JSTaggedValue> key(JSNApiHelper::ToJSMutableHandle(keys[i]));
         if (key->IsString() && !EcmaStringAccessor(key.GetTaggedValue()).IsInternString()) {
@@ -5361,7 +5361,7 @@ JSHandle<JSTaggedValue> ObjectFactory::CreateJSObjectWithNamedProperties(size_t 
 
     // At least 4 inlined slot
     int inlineProps = std::max(static_cast<int>(propertyCount), JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS);
-    JSMutableHandle<JSHClass> hclassHandle(thread_, GetObjectLiteralRootHClass(inlineProps));
+    JSMutableHandle<JSHClass> hclassHandle(thread_, GetObjectLiteralRootHClass(inlineProps, inlineProps));
     for (size_t i = 0; i < propertyCount; ++i) {
         JSHandle<JSTaggedValue> key(NewFromUtf8(keys[i]));
         ASSERT(EcmaStringAccessor(key->GetTaggedObject()).IsInternString());
