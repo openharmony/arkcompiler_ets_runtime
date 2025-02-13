@@ -89,7 +89,7 @@ void PageTag(void *mem, size_t size, PageTagType type, [[maybe_unused]] const st
 
 void PageClearTag(void *mem, size_t size)
 {
-    PrctlSetVMA(mem, size, nullptr);
+    PrctlSetVMA(mem, size, "");
 }
 
 bool PageProtect(void *mem, size_t size, int prot)
