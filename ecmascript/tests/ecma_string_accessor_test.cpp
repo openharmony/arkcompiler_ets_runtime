@@ -214,7 +214,7 @@ HWTEST_F_L0(EcmaStringAccessorTest, Concat_002)
 HWTEST_F_L0(EcmaStringAccessorTest, Concat_003)
 {
     // Concat(). EcmaString made by CreateFromUtf8() and EcmaString made by CreateFromUtf16( , , , false).
-    EcmaTestCommon::ConcatCommonCase2(thread, instance, true);
+    EcmaTestCommon::ConcatCommonCase2(thread, instance);
 }
 
 /*
@@ -229,7 +229,7 @@ HWTEST_F_L0(EcmaStringAccessorTest, FastSubString_001)
     // FastSubString(). From EcmaString made by CreateFromUtf8().
     std::vector<uint8_t> arrayU8{3, 7, 19, 54, 99};
     auto func = std::bind(EcmaStringAccessor::CreateFromUtf8, std::placeholders::_1, std::placeholders::_2,
-        std::placeholders::_3, std::placeholders::_4, MemSpaceType::SHARED_OLD_SPACE, false, 0);
+        std::placeholders::_3, std::placeholders::_4, MemSpaceType::SHARED_OLD_SPACE);
     EcmaTestCommon::FastSubStringCommonCase(thread, instance, arrayU8, func);
 }
 
@@ -909,7 +909,7 @@ HWTEST_F_L0(EcmaStringAccessorTest, IndexOf_004)
     std::vector<uint16_t> ecmaStrU16NotCompTarget = {3, 39, 80};
     std::vector<uint8_t> arrayU8From{23, 25, 1, 3, 39, 80};
     auto func = std::bind(EcmaStringAccessor::CreateFromUtf8, std::placeholders::_1, std::placeholders::_2,
-        std::placeholders::_3, std::placeholders::_4, MemSpaceType::SHARED_OLD_SPACE, false, 0);
+        std::placeholders::_3, std::placeholders::_4, MemSpaceType::SHARED_OLD_SPACE);
     EcmaTestCommon::IndexOfCommonCase(thread, instance, ecmaStrU16NotCompTarget, arrayU8From, func);
 }
 
@@ -980,7 +980,7 @@ HWTEST_F_L0(EcmaStringAccessorTest, Compare_002)
 HWTEST_F_L0(EcmaStringAccessorTest, Compare_003)
 {
     auto createUtf8 = std::bind(EcmaStringAccessor::CreateFromUtf8, std::placeholders::_1, std::placeholders::_2,
-        std::placeholders::_3, std::placeholders::_4, MemSpaceType::SHARED_OLD_SPACE, false, 0);
+        std::placeholders::_3, std::placeholders::_4, MemSpaceType::SHARED_OLD_SPACE);
     auto createUtf16 = std::bind(EcmaStringAccessor::CreateFromUtf16, std::placeholders::_1, std::placeholders::_2,
         std::placeholders::_3, std::placeholders::_4, MemSpaceType::SHARED_OLD_SPACE);
     EcmaTestCommon::CompareCommonCase(thread, instance, createUtf8, createUtf16, EcmaStringAccessor::Compare);

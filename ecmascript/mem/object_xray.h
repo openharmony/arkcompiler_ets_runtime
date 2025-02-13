@@ -419,11 +419,6 @@ public:
                     LineEcmaString::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 }
                 break;
-            case JSType::CONSTANT_STRING:
-                if constexpr (visitType == VisitType::ALL_VISIT) {
-                    ConstantString::Cast(object)->VisitRangeSlot<visitType>(visitor);
-                }
-                break;
             case JSType::TREE_STRING:
                 TreeEcmaString::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;

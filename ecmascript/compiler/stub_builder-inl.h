@@ -1530,17 +1530,6 @@ inline GateRef StubBuilder::IsSlicedString(GateRef glue, GateRef obj)
     return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::SLICED_STRING)));
 }
 
-inline GateRef StubBuilder::IsConstantString(GateRef glue, GateRef obj)
-{
-    GateRef objectType = GetObjectType(LoadHClass(glue, obj));
-    return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::CONSTANT_STRING)));
-}
-
-inline GateRef StubBuilder::IsLiteralString(GateRef glue, GateRef obj)
-{
-    return env_->GetBuilder()->IsLiteralString(glue, obj);
-}
-
 inline GateRef StubBuilder::IsTreeString(GateRef glue, GateRef obj)
 {
     return env_->GetBuilder()->IsTreeString(glue, obj);

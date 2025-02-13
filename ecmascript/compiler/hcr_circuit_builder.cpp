@@ -725,24 +725,17 @@ GateRef CircuitBuilder::MigrateArrayWithKind(GateRef receiver, GateRef oldElemen
     return newGate;
 }
 
-GateRef CircuitBuilder::IsLiteralString(GateRef glue, GateRef string)
-{
-    GateRef objectType = GetObjectType(LoadHClass(glue, string));
-    return BitOr(Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::LINE_STRING))),
-                 Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::CONSTANT_STRING))));
-}
-
-// left and right both utf-8 or utf-16 and both linestring or constantstring can be concat.
+// left and right both utf-8 or utf-16 and both linestring can be concat.
 GateRef CircuitBuilder::CanBeConcat(GateRef glue, GateRef leftString, GateRef rightString, GateRef isValidOpt)
 {
-    return LogicAndBuilder(env_).And(isValidOpt).And(IsLiteralString(glue, leftString))
-        .And(IsLiteralString(glue, rightString)).Done();
+    return LogicAndBuilder(env_).And(isValidOpt).And(IsLineString(glue, leftString))
+        .And(IsLineString(glue, rightString)).Done();
 }
 
-// left and right both utf-8 or utf-16 and right is linestring or constantstring can back store.
+// left and right both utf-8 or utf-16 and right is linestring can back store.
 GateRef CircuitBuilder::CanBackStore(GateRef glue, GateRef rightString, GateRef isValidOpt)
 {
-    return LogicAndBuilder(env_).And(isValidOpt).And(IsLiteralString(glue, rightString)).Done();
+    return LogicAndBuilder(env_).And(isValidOpt).And(IsLineString(glue, rightString)).Done();
 }
 
 GateRef CircuitBuilder::NumberToString(GateRef number)

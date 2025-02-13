@@ -239,18 +239,6 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::FindJSPandaFileWithChecksum(con
     return nullptr;
 }
 
-std::shared_ptr<JSPandaFile> JSPandaFileManager::FindMergedJSPandaFile()
-{
-    LockHolder lock(jsPandaFileLock_);
-    for (const auto &iter : loadedJSPandaFiles_) {
-        const std::shared_ptr<JSPandaFile> &jsPandafile = iter.second;
-        if (jsPandafile->IsFirstMergedAbc()) {
-            return jsPandafile;
-        }
-    }
-    return nullptr;
-}
-
 std::shared_ptr<JSPandaFile> JSPandaFileManager::FindJSPandaFileUnlocked(const CString &filename)
 {
     if (filename.empty()) {

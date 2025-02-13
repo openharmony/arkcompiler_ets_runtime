@@ -814,7 +814,6 @@ public:
     inline GateRef IsSlicedString(GateRef glue, GateRef obj);
     inline GateRef IsSpecialSlicedString(GateRef glue, GateRef obj);
     inline GateRef IsLineString(GateRef glue, GateRef obj);
-    inline GateRef IsConstantString(GateRef glue, GateRef obj);
     inline GateRef TreeStringIsFlat(GateRef glue, GateRef string);
     inline GateRef GetFirstFromTreeString(GateRef glue, GateRef string);
     inline GateRef GetSecondFromTreeString(GateRef glue, GateRef string);
@@ -829,11 +828,9 @@ public:
     GateRef GetHashcodeFromString(GateRef glue, GateRef value, GateRef hir = Circuit::NullGate());
     GateRef TryGetHashcodeFromString(GateRef string);
     GateRef IsIntegerString(GateRef string);
-    GateRef IsLiteralString(GateRef glue, GateRef string);
     GateRef CanBeConcat(GateRef glue, GateRef leftString, GateRef rightString, GateRef isValidOpt);
     GateRef CanBackStore(GateRef glue, GateRef rightString, GateRef isValidOpt);
     GateRef GetRawHashFromString(GateRef value);
-    GateRef GetStringDataFromLineOrConstantString(GateRef glue, GateRef str);
     void CopyUtf8AsUtf16(GateRef glue, GateRef dst, GateRef src, GateRef sourceLength);
     void CopyChars(GateRef glue, GateRef dst, GateRef source, GateRef sourceLength,
         GateRef charSize, VariableType type);

@@ -115,16 +115,14 @@ public:
                                   const JSHandle<EcmaString> &firstString, const JSHandle<EcmaString> &secondString);
     EcmaString *GetOrInternString(EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf8Len, bool canBeCompress,
                                   MemSpaceType type = MemSpaceType::SHARED_OLD_SPACE);
-    EcmaString *GetOrInternString(EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf8Len, bool canBeCompress,
-                                  MemSpaceType type, bool isConstantString, uint32_t idOffset);
-    EcmaString *GetOrInternString(EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf16Len,  MemSpaceType type);
+    EcmaString *GetOrInternString(EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf16Len, MemSpaceType type);
     EcmaString *GetOrInternString(EcmaVM *vm, const uint16_t *utf16Data, uint32_t utf16Len, bool canBeCompress);
     // This is ONLY for JIT Thread, since JIT could not create JSHandle so need to allocate String with holding
     // lock_ --- need to support JSHandle
     EcmaString *GetOrInternStringWithoutJSHandleForJit(EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf16Len,
                                                        MemSpaceType type);
     EcmaString *GetOrInternStringWithoutJSHandleForJit(EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf8Len,
-        bool canBeCompress, MemSpaceType type, bool isConstantString, uint32_t idOffset);
+                                                       bool canBeCompress, MemSpaceType type);
     EcmaString *TryGetInternString(JSThread *thread, const JSHandle<EcmaString> &string);
     EcmaString *InsertStringToTable(EcmaVM *vm, const JSHandle<EcmaString> &strHandle);
 
