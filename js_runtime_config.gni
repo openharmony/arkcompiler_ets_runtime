@@ -48,6 +48,10 @@ declare_args() {
   TARGET = "x86_64"
   HOST_ARCH = 64
 
+  if (!defined(timeout)) {
+    timeout = 1200
+  }
+
   # If true app_aot_jit_enable_list will be placed in /etc/ark
   # Default false.
   ets_runtime_feature_enable_list = false
