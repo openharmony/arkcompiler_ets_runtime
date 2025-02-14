@@ -102,7 +102,7 @@ HWTEST_F_L0(JSAPIStackTest, Pop)
     JSHandle<JSAPIStack> toor(thread, CreateStack());
 
     // test Pop empty
-    EXPECT_EQ(toor->Pop(), JSTaggedValue::Undefined());
+    EXPECT_EQ(toor->Pop(thread), JSTaggedValue::Undefined());
 
     std::string myValue("myvalue");
     for (uint32_t i = 1; i <= NODE_NUMBERS; i++) {
@@ -116,7 +116,7 @@ HWTEST_F_L0(JSAPIStackTest, Pop)
     for (uint32_t i = NODE_NUMBERS; i >= 1; i--) {
         std::string ivalue = myValue + std::to_string(i);
         value.Update(factory->NewFromStdString(ivalue).GetTaggedValue());
-        JSTaggedValue gValue = toor->Pop();
+        JSTaggedValue gValue = toor->Pop(thread);
         EXPECT_EQ(gValue, value.GetTaggedValue());
     }
 
@@ -135,7 +135,7 @@ HWTEST_F_L0(JSAPIStackTest, Empty)
     for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
         std::string ivalue = myValue + std::to_string(i);
         value.Update(factory->NewFromStdString(ivalue).GetTaggedValue());
-        toor->Pop();
+        toor->Pop(thread);
         if (num == -1) {
             EXPECT_EQ(toor->Empty(), true);
         }

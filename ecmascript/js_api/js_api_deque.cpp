@@ -103,7 +103,7 @@ JSHandle<TaggedArray> JSAPIDeque::GrowCapacity(JSThread *thread, const JSHandle<
     return newElements;
 }
 
-JSTaggedValue JSAPIDeque::PopFirst()
+JSTaggedValue JSAPIDeque::PopFirst(JSThread *thread)
 {
     if (JSAPIDeque::IsEmpty()) {
         return JSTaggedValue::Undefined();
@@ -114,12 +114,13 @@ JSTaggedValue JSAPIDeque::PopFirst()
     uint32_t capacity = elements->GetLength();
     JSTaggedValue firstElement = elements->Get(first);
     ASSERT(capacity != 0);
+    elements->Set(thread, first, JSTaggedValue::Hole());
     first = (first + 1) % capacity;
     SetFirst(first);
     return firstElement;
 }
 
-JSTaggedValue JSAPIDeque::PopLast()
+JSTaggedValue JSAPIDeque::PopLast(JSThread *thread)
 {
     if (JSAPIDeque::IsEmpty()) {
         return JSTaggedValue::Undefined();
@@ -129,6 +130,7 @@ JSTaggedValue JSAPIDeque::PopLast()
     ASSERT(!elements->IsDictionaryMode());
     uint32_t capacity = elements->GetLength();
     ASSERT(capacity != 0);
+    elements->Set(thread, last, JSTaggedValue::Hole());
     last = (last + capacity - 1) % capacity;
     JSTaggedValue lastElement = elements->Get(last);
     SetLast(last);
