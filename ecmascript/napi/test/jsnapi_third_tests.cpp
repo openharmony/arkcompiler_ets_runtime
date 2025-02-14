@@ -745,8 +745,11 @@ HWTEST_F_L0(JSNApiTests, SetNativePtrGetter)
  */
 HWTEST_F_L0(JSNApiTests, PreFork)
 {
+    RuntimeOption option;
+    ecmascript::ThreadNativeScope nativeScope(vm_->GetJSThread());
     LocalScope scope(vm_);
     JSNApi::PreFork(vm_);
+    JSNApi::PostFork(vm_, option);
 }
 
 /*
