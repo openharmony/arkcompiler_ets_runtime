@@ -2297,6 +2297,56 @@ GateRef NewObjectStubBuilder::NewTypedArray(GateRef glue, GateRef srcTypedArray,
     return ret;
 }
 
+GateRef NewObjectStubBuilder::NewTypedArraySameType(GateRef glue, GateRef srcTypedArray, GateRef srcType,
+                                                    GateRef length)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+
+    DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
+    DEFVARIABLE(buffer, VariableType::JS_ANY(), Undefined());
+    Label slowPath(env);
+    Label next(env);
+    Label exit(env);
+    GateRef hclass = LoadHClass(srcTypedArray);
+    GateRef obj = NewJSObject(glue, hclass);
+    result = obj;
+    GateRef ctorName = Load(VariableType::JS_POINTER(), srcTypedArray,
+        IntPtr(JSTypedArray::TYPED_ARRAY_NAME_OFFSET));
+    GateRef elementSize = GetElementSizeFromType(glue, srcType);
+    GateRef newByteLength = Int32Mul(elementSize, length);
+    GateRef contentType = Load(VariableType::INT32(), srcTypedArray, IntPtr(JSTypedArray::CONTENT_TYPE_OFFSET));
+    BRANCH(Int32LessThanOrEqual(newByteLength, Int32(RangeInfo::TYPED_ARRAY_ONHEAP_MAX)), &next, &slowPath);
+    Bind(&next);
+    {
+        Label newByteArrayExit(env);
+        GateRef onHeapHClass = GetOnHeapHClassFromType(glue, srcType);
+        NewByteArray(&buffer, &newByteArrayExit, elementSize, length);
+        Bind(&newByteArrayExit);
+        StoreHClass(glue, obj, onHeapHClass);
+        Store(VariableType::JS_POINTER(), glue, obj, IntPtr(JSTypedArray::VIEWED_ARRAY_BUFFER_OFFSET), *buffer);
+        Store(VariableType::JS_POINTER(), glue, obj, IntPtr(JSTypedArray::TYPED_ARRAY_NAME_OFFSET), ctorName);
+        Store(VariableType::INT32(), glue, obj, IntPtr(JSTypedArray::BYTE_LENGTH_OFFSET), newByteLength);
+        Store(VariableType::INT32(), glue, obj, IntPtr(JSTypedArray::BYTE_OFFSET_OFFSET), Int32(0));
+        Store(VariableType::INT32(), glue, obj, IntPtr(JSTypedArray::ARRAY_LENGTH_OFFSET), length);
+        Store(VariableType::INT32(), glue, obj, IntPtr(JSTypedArray::CONTENT_TYPE_OFFSET), contentType);
+        Jump(&exit);
+    }
+
+    Bind(&slowPath);
+    {
+        result = CallRuntime(glue, RTSTUB_ID(TypedArrayCreateSameType),
+            { srcTypedArray, IntToTaggedInt(Int32(1)), IntToTaggedInt(length) });
+        Jump(&exit);
+    }
+
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
 // use NewJSObjectByConstructor need to InitializeJSObject by type
 GateRef NewObjectStubBuilder::NewJSObjectByConstructor(GateRef glue, GateRef constructor, GateRef newTarget)
 {

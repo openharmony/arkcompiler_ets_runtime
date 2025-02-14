@@ -128,6 +128,7 @@ public:
     GateRef NewTaggedSubArray(GateRef glue, GateRef srcTypedArray, GateRef elementSize, GateRef newLength,
         GateRef beginIndex, GateRef arrayCls, GateRef buffer);
     GateRef NewTypedArray(GateRef glue, GateRef srcTypedArray, GateRef srcType, GateRef length);
+    GateRef NewTypedArraySameType(GateRef glue, GateRef srcTypedArray, GateRef srcType, GateRef length);
     GateRef NewJSObjectByConstructor(GateRef glue, GateRef constructor, GateRef newTarget);
     GateRef NewFloat32ArrayObj(GateRef glue, GateRef glueGlobalEnv);
     GateRef NewFloat32ArrayWithSize(GateRef glue, GateRef size);

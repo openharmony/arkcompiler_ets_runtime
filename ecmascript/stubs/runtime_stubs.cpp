@@ -273,6 +273,21 @@ DEF_RUNTIME_STUBS(TypedArraySpeciesCreateForSubArray)
     return newArr.GetTaggedValue().GetRawData();
 }
 
+DEF_RUNTIME_STUBS(TypedArrayCreateSameType)
+{
+    RUNTIME_STUBS_HEADER(TypedArrayCreateSameType);
+    JSHandle<JSTaggedValue> obj = GetHArg<JSTaggedValue>(argv, argc, 0);    // 0: means the zeroth parameter
+    JSHandle<JSTypedArray> thisObj(obj);
+    JSTaggedValue indexValue = GetArg(argv, argc, 1);   // 1: means the first parameter
+    uint32_t index = static_cast<uint32_t>(indexValue.GetInt());
+    JSTaggedValue arrayLen = GetArg(argv, argc, 2); // 2: means the second parameter
+    uint32_t length = static_cast<uint32_t>(arrayLen.GetInt());
+    JSTaggedType args[1] = {JSTaggedValue(length).GetRawData()};
+    JSHandle<JSObject> newArr = base::TypedArrayHelper::TypedArrayCreateSameType(thread, thisObj, index, args);
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception().GetRawData());
+    return newArr.GetTaggedValue().GetRawData();
+}
+
 void RuntimeStubs::CopyTypedArrayBuffer(uintptr_t argGlue, JSTypedArray *srcArray, JSTypedArray *targetArray,
                                         int32_t srcStartPos, int32_t tarStartPos, int32_t count)
 {

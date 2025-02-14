@@ -214,6 +214,7 @@ namespace panda::ecmascript {
     V(AllocateInSNonMovable)                    \
     V(TypedArraySpeciesCreate)                  \
     V(TypedArraySpeciesCreateForSubArray)       \
+    V(TypedArrayCreateSameType)                 \
     V(CallInternalGetter)                       \
     V(CallInternalSetter)                       \
     V(CallGetPrototype)                         \

@@ -99,4 +99,12 @@ var arrSorted = arr.toSorted();
 assert_equal(arrSorted.toString(),"10,20,30,NaN");
 assert_equal(arr.toString(),"NaN,10,20,30");
 
+const arr1 = new BigUint64Array();
+const arr2 = arr1.toReversed();
+const arr3 = new Float64Array();
+arr3.__proto__ = arr2;
+const arr4 = arr3.toSorted(); // expect no crash
+assert_equal(arr4.constructor.name, "Float64Array");
+assert_equal(arr4.length, 0);
+
 test_end();
