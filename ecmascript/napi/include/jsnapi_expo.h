@@ -1824,6 +1824,9 @@ public:
     static void NotifyTaskFinished(const EcmaVM *vm);
     static bool IsMultiThreadCheckEnabled(const EcmaVM *vm);
     static uint32_t GetCurrentThreadId();
+
+    // Napi Update SubStackInfo
+    static void UpdateStackInfo(EcmaVM *vm, void *currentStackInfo, uint32_t opKind);
 private:
     static bool isForked_;
     static bool CreateRuntime(const RuntimeOption &option);

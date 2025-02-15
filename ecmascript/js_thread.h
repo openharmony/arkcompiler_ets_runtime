@@ -154,6 +154,16 @@ public:
         StatePending
     };
 
+    enum StackInfoOpKind : uint32_t {
+        SwitchToSubStackInfo = 0,
+        SwitchToMainStackInfo,
+    };
+
+    struct StackInfo {
+        uint64_t stackLimit;
+        uint64_t lastLeaveFrame;
+    };
+
     explicit JSThread(EcmaVM *vm);
     // only used in jit thread
     explicit JSThread(EcmaVM *vm, ThreadType threadType);
@@ -1332,6 +1342,16 @@ public:
         return contexts_;
     }
 
+    bool IsInSubStack() const
+    {
+        return isInSubStack_;
+    }
+
+    const StackInfo &GetMainStackInfo() const
+    {
+        return mainStackInfo_;
+    }
+
     bool IsPropertyCacheCleared() const;
 
     bool EraseContext(EcmaContext *context);
@@ -1509,6 +1529,8 @@ public:
         return isInConcurrentScope_;
     }
 
+    void UpdateStackInfo(void *stackInfo, StackInfoOpKind opKind);
+
     DateUtils *GetDateUtils() const
     {
         return dateUtils_;
@@ -1651,6 +1673,8 @@ private:
     CMap<JSHClass *, GlobalIndex> ctorHclassEntries_;
 
     CVector<EcmaContext *> contexts_;
+    bool isInSubStack_ {false};
+    StackInfo mainStackInfo_ { 0ULL, 0ULL };
     EcmaContext *currentContext_ {nullptr};
 
     Mutex suspendLock_;

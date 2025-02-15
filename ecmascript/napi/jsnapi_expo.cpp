@@ -5646,6 +5646,11 @@ uint32_t JSNApi::GetCurrentThreadId()
     return JSThread::GetCurrentThreadId();
 }
 
+void JSNApi::UpdateStackInfo(EcmaVM *vm, void *currentStackInfo, uint32_t opKind)
+{
+    vm->GetJSThread()->UpdateStackInfo(currentStackInfo, static_cast<ecmascript::JSThread::StackInfoOpKind>(opKind));
+}
+
 uintptr_t JSNApi::SetWeak(const EcmaVM *vm, uintptr_t localAddress)
 {
     if (localAddress == 0) {
