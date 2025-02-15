@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -24,6 +24,7 @@
 
 namespace panda::ecmascript {
 
+using JSTaggedType = uint64_t;
 class EcmaVM;
 
 class CrossVMOperator {
@@ -46,6 +47,8 @@ public:
         return ecmaVMInterface_.get();
     }
 
+    void MarkFromObject(JSTaggedType value);
+
 private:
     class EcmaVMInterfaceImpl final : public arkplatform::EcmaVMInterface {
     public:
@@ -54,12 +57,12 @@ private:
         EcmaVMInterfaceImpl(EcmaVM *vm): vm_(vm) {};
         ~EcmaVMInterfaceImpl() override = default;
 
-        void MarkFromObject(void *objAddress) override;
         bool StartXRefMarking() override;
     private:
         EcmaVM *vm_ {nullptr};
     };
 
+    EcmaVM *vm_ {nullptr};
     arkplatform::STSVMInterface *stsVMInterface_ = nullptr;
     std::unique_ptr<arkplatform::EcmaVMInterface> ecmaVMInterface_;
 };
