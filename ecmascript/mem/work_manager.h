@@ -199,7 +199,7 @@ public:
     bool Pop(uint32_t threadId, TaggedObject **object);
     bool PopWorkNodeFromGlobal(uint32_t threadId);
     void PushWorkNodeToGlobal(uint32_t threadId, bool postTask = true);
-    void PushObjectToGlobal(TaggedObject *object, bool postTask = true);
+    void PushObjectToGlobal(TaggedObject *object);
 
     inline void PushWeakReference(uint32_t threadId, JSTaggedType *weak)
     {

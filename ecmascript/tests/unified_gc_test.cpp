@@ -180,7 +180,6 @@ HWTEST_F_L0(UnifiedGCTest, TriggerUnifiedGCMarkTest)
     heap->TriggerUnifiedGCMark<TriggerGCType::UNIFIED_GC, GCReason::CROSSREF_CAUSE>();
     while (!thread->HasSuspendRequest()) {}
     thread->CheckSafepoint();
-    ASSERT(!heap->IsMarking() && !heap->IsReadyToConcurrentMark());
 
     EXPECT_TRUE(sharedRefNeedMark.isMarked());
     EXPECT_TRUE(!sharedRefNoNeedMark.isMarked());
@@ -199,14 +198,8 @@ HWTEST_F_L0(UnifiedGCTest, MarkFromObjectTest)
 
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
     heap->GetUnifiedGCMarker()->MarkFromObject(arrayInXRefRoot->GetHeapObject());
-    // Unified GC is not in marking. So MarkFromObject will only mark object arrayInXRefRoot and not
-    // post continue mark task to taskpool. Object arrayRefByXRefRoot should not be marked.
-    ASSERT(heap->IsReadyToConcurrentMark());
+    heap->WaitRunningTaskFinished();
     EXPECT_TRUE(IsObjectMarked(arrayInXRefRoot->GetHeapObject()));
-    EXPECT_TRUE(!IsObjectMarked(arrayRefByXRefRoot->GetHeapObject()));
-
-    // Do continue mark task in main thread. Object arrayRefByXRefRoot is marked.
-    heap->GetUnifiedGCMarker()->ProcessMarkStack(INT_VALUE_0);
     EXPECT_TRUE(IsObjectMarked(arrayRefByXRefRoot->GetHeapObject()));
 
     // Clear mark bit

@@ -14,6 +14,7 @@
  */
 
 #include "ecmascript/checkpoint/thread_state_transition.h"
+#include "ecmascript/mem/concurrent_marker.h"
 #include "ecmascript/mem/unified_gc/unified_gc_marker-inl.h"
 
 namespace panda::ecmascript {
@@ -23,6 +24,10 @@ void UnifiedGCMarker::Mark()
     {
         ThreadManagedScope runningScope(dThread_);
         SuspendAllScope scope(dThread_);
+        if (heap_->CheckOngoingConcurrentMarking()) {
+            LOG_GC(DEBUG) << "UnifiedGC after ConcurrentMarking";
+            heap_->GetConcurrentMarker()->Reset();
+        }
 #ifdef PANDA_JS_ETS_HYBRID_MODE
         ASSERT(stsVMInterface_ != nullptr);
         stsVMInterface_->StartXGCBarrier();
@@ -34,8 +39,7 @@ void UnifiedGCMarker::Mark()
         ClockScope clockScope;
         InitializeMarking(DAEMON_THREAD_INDEX);
         DoMarking(DAEMON_THREAD_INDEX);
-        FinishMarking(clockScope.TotalSpentTime());
-        Finish();
+        Finish(clockScope.TotalSpentTime());
     }
 }
 
@@ -56,7 +60,6 @@ void UnifiedGCMarker::InitializeMarking(uint32_t threadId)
 {
     CHECK_DAEMON_THREAD();
     Initialize();
-    heap_->GetJSThread()->SetMarkStatus(MarkStatus::MARKING);
     UnifiedGCMarkRootsScope scope(heap_->GetJSThread());
     MarkRoots(threadId);
 }
@@ -80,16 +83,10 @@ void UnifiedGCMarker::DoMarking(uint32_t threadId)
 #endif // PANDA_JS_ETS_HYBRID_MODE
 }
 
-void UnifiedGCMarker::FinishMarking(float spendTime)
+void UnifiedGCMarker::Finish(float spendTime)
 {
     CHECK_DAEMON_THREAD();
     SetDuration(spendTime);
-    heap_->GetJSThread()->SetMarkStatus(MarkStatus::MARK_FINISHED);
-}
-
-void UnifiedGCMarker::Finish()
-{
-    CHECK_DAEMON_THREAD();
     workManager_->Finish();
     initialized_ = false;
     heap_->Resume(TriggerGCType::UNIFIED_GC);
