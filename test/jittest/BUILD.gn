@@ -38,6 +38,7 @@ group("ark_jit_ts_test") {
     "catch_with_osr",
     "jit_test_0001",
     "jit_test_0002",
+    "wide_call_range_pref_imm16v8",
     "string_length",
     "ts_inline",
     "proxy_fast_call",
