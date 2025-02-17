@@ -1129,6 +1129,60 @@ HWTEST_F_L0(EcmaModuleTest, GetCurrentModuleName)
     EXPECT_EQ(moduleName, "");
 }
 
+HWTEST_F_L0(EcmaModuleTest, ConcatMergeFileNameToNormalized)
+{
+    CString baseFilename = "merge.abc";
+    const char *data = R"(
+        .language ECMAScript
+        .function any func_main_0(any a0, any a1, any a2) {
+            ldai 1
+            return
+        }
+    )";
+    JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
+    Parser parser;
+    auto res = parser.Parse(data);
+    std::unique_ptr<const File> pfPtr = pandasm::AsmEmitter::Emit(res.Value());
+    std::shared_ptr<JSPandaFile> pf = pfManager->NewJSPandaFile(pfPtr.release(), baseFilename);
+
+    CString requestPath = "@normalized:N&&&har/Index&1.0.0";
+    CString recordName = "";
+    CString result = "&har/Index&1.0.0";
+    CString entryPoint = ModulePathHelper::ConcatMergeFileNameToNormalized(thread, pf.get(), baseFilename, recordName,
+        requestPath);
+    EXPECT_EQ(result, entryPoint);
+
+    requestPath = "&index";
+    result = "&index";
+    entryPoint = ModulePathHelper::ConcatMergeFileNameToNormalized(thread, pf.get(), baseFilename, recordName,
+        requestPath);
+    EXPECT_EQ(result, entryPoint);
+
+    requestPath = "./@normalized:N&&&har/Index&1.0.0";
+    result = "@normalized:N&&&har/Index&1.0.0&";
+    pf->InsertJSRecordInfo(result);
+    entryPoint = ModulePathHelper::ConcatMergeFileNameToNormalized(thread, pf.get(), baseFilename, recordName,
+        requestPath);
+    EXPECT_EQ(result, entryPoint);
+
+    recordName = "pkg_modules/.ohpm/validator@13.12.0/pkg_modules/validator/index";
+    requestPath = "./lib/toDate";
+    result = "pkg_modules/.ohpm/validator@13.12.0/pkg_modules/validator/lib/toDate";
+    pf->InsertJSRecordInfo(result);
+    CUnorderedMap<CString, JSPandaFile::JSRecordInfo*> &recordInfo =
+        const_cast<CUnorderedMap<CString, JSPandaFile::JSRecordInfo*>&>(pf->GetJSRecordInfo());
+    JSPandaFile::JSRecordInfo *info = new JSPandaFile::JSRecordInfo();
+    info->npmPackageName = result;
+    recordInfo.insert({recordName, info});
+
+    entryPoint = ModulePathHelper::ConcatMergeFileNameToNormalized(thread, pf.get(), baseFilename, recordName,
+        requestPath);
+    EXPECT_EQ(result, entryPoint);
+    
+    delete info;
+    recordInfo.erase(recordName);
+}
+
 HWTEST_F_L0(EcmaModuleTest, ModuleLogger) {
     ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
     JSHandle<SourceTextModule> module1 = objectFactory->NewSourceTextModule();
