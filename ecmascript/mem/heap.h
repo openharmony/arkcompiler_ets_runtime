@@ -895,7 +895,6 @@ private:
 
     void ReclaimRegions(TriggerGCType type);
 
-    void ForceCollectGarbageWithoutDaemonThread(TriggerGCType gcType, GCReason gcReason, JSThread *thread);
     inline TaggedObject *AllocateInSOldSpace(JSThread *thread, size_t size);
     inline void InvokeSharedNativePointerCallbacks();
     struct SharedHeapSmartGCStats {

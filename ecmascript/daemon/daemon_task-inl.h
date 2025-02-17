@@ -31,7 +31,7 @@ void TriggerConcurrentMarkTaskRunner()
 template<TriggerGCType gcType, GCReason gcReason>
 TriggerConcurrentMarkTask<gcType, gcReason>::TriggerConcurrentMarkTask(JSThread *thread)
     : DaemonTask(thread, DaemonTaskType::TRIGGER_CONCURRENT_MARK, DaemonTaskGroup::GC_GROUP,
-                 &TriggerConcurrentMarkTaskRunner<gcType, gcReason>) {}
+                 &TriggerConcurrentMarkTaskRunner<gcType, gcReason>, nullptr) {}
 
 template<TriggerGCType gcType, GCReason gcReason>
 void TriggerCollectGarbageTaskRunner()
@@ -42,17 +42,23 @@ void TriggerCollectGarbageTaskRunner()
 template<TriggerGCType gcType, GCReason gcReason>
 TriggerCollectGarbageTask<gcType, gcReason>::TriggerCollectGarbageTask(JSThread *thread)
     : DaemonTask(thread, DaemonTaskType::TRIGGER_COLLECT_GARBAGE, DaemonTaskGroup::GC_GROUP,
-                 &TriggerCollectGarbageTaskRunner<gcType, gcReason>) {}
+                 &TriggerCollectGarbageTaskRunner<gcType, gcReason>, nullptr) {}
 
 inline void TerminateDaemonTaskRunner()
 {
-    DaemonThread *thread = DaemonThread::GetInstance();
-    thread->MarkTerminate();
-    thread->FinishRunningTask();
+    DaemonThread *dThread = DaemonThread::GetInstance();
+    dThread->Terminate();
+    dThread->FinishRunningTask();
 }
 
-inline TerminateDaemonTask::TerminateDaemonTask(JSThread *thread)
+inline void TerminateDaemonTaskPostTaskPrologueRunner()
+{
+    DaemonThread *dThread = DaemonThread::GetInstance();
+    dThread->RequestTermination();
+}
+
+TerminateDaemonTask::TerminateDaemonTask(JSThread *thread)
     : DaemonTask(thread, DaemonTaskType::TERMINATE_DAEMON, DaemonTaskGroup::TERMINATE_GROUP,
-                 &TerminateDaemonTaskRunner) {}
+                 &TerminateDaemonTaskRunner, &TerminateDaemonTaskPostTaskPrologueRunner) {}
 }  // namespace panda::ecmascript
 #endif //ECMASCRIPT_DAEMON_TASK_INL_H

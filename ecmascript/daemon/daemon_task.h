@@ -42,13 +42,15 @@ enum class DaemonTaskGroup : uint32_t {
     TERMINATE_GROUP = 1 << 1,
 };
 
-using TaskRunner = void(*)();
-
 class DaemonTask {
 public:
-    explicit DaemonTask(JSThread *thread, DaemonTaskType taskType, DaemonTaskGroup taskGroup, TaskRunner runner)
-        : thread_(thread), taskType_(taskType), taskGroup_(taskGroup), runner_(runner) {}
-    ~DaemonTask() = default;
+    using PostTaskPrologueRunner = void(*)();
+    using TaskRunner = void(*)();
+
+    explicit DaemonTask(JSThread *thread, DaemonTaskType taskType, DaemonTaskGroup taskGroup, TaskRunner runner,
+        PostTaskPrologueRunner postTaskPrologue) : thread_(thread), taskType_(taskType), taskGroup_(taskGroup),
+        runner_(runner), postTaskPrologue_(postTaskPrologue) {}
+    virtual ~DaemonTask() = default;
 
     JSThread *GetJSThread() const
     {
@@ -65,6 +67,13 @@ public:
         return taskGroup_;
     }
 
+    void PostTaskPrologue()
+    {
+        if (postTaskPrologue_ != nullptr) {
+            postTaskPrologue_();
+        }
+    }
+
     void Run()
     {
         runner_();
@@ -75,23 +84,27 @@ private:
     DaemonTaskType taskType_;
     DaemonTaskGroup taskGroup_;
     TaskRunner runner_;
+    PostTaskPrologueRunner postTaskPrologue_;
 };
 
 template<TriggerGCType gcType, GCReason gcReason>
 class TriggerConcurrentMarkTask : public DaemonTask {
 public:
-    explicit TriggerConcurrentMarkTask(JSThread *thread);
+    inline explicit TriggerConcurrentMarkTask(JSThread *thread);
+    ~TriggerConcurrentMarkTask() override = default;
 };
 
 template<TriggerGCType gcType, GCReason gcReason>
 class TriggerCollectGarbageTask : public DaemonTask {
 public:
-    explicit TriggerCollectGarbageTask(JSThread *thread);
+    inline explicit TriggerCollectGarbageTask(JSThread *thread);
+    ~TriggerCollectGarbageTask() override = default;
 };
 
 class TerminateDaemonTask : public DaemonTask {
 public:
-    explicit TerminateDaemonTask(JSThread *thread);
+    inline explicit TerminateDaemonTask(JSThread *thread);
+    ~TerminateDaemonTask() override = default;
 };
 }  // namespace panda::ecmascript
 #endif //ECMASCRIPT_DAEMON_TASK_H
