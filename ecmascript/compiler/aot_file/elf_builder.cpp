@@ -686,7 +686,7 @@ void ElfBuilder::PackELFSegment(std::ofstream &file)
     file.write(reinterpret_cast<char *>(&e_phoff), sizeof(e_phoff));
     file.seekp(static_cast<long>(e_phoff));
 
-    int segNum = GetSegmentNum();
+    size_t segNum = GetSegmentNum();
     auto phdrs = std::make_unique<llvm::ELF::Elf64_Phdr []>(segNum);
     std::map<ElfSecName, llvm::ELF::Elf64_Off> segmentToMaxOffset;
     std::map<ElfSecName, llvm::ELF::Elf64_Off> segmentToMaxAddress;
