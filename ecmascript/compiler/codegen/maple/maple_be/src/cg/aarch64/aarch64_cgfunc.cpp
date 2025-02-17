@@ -4503,6 +4503,25 @@ Operand *AArch64CGFunc::SelectCclz(IntrinsicopNode &intrnNode)
     return &dst;
 }
 
+RegOperand *AArch64CGFunc::SelectHeapConstant(IntrinsicopNode &node, Operand &opnd0, Operand &opnd1)
+{
+    PrimType retType = node.GetPrimType();
+    RegOperand &destReg = CreateRegisterOperandOfType(retType);
+    MOperator mOp = MOP_heap_const;
+    GetCurBB()->AppendInsn(GetInsnBuilder()->BuildInsn(mOp, destReg, opnd0, opnd1));
+    return &destReg;
+}
+
+RegOperand *AArch64CGFunc::SelectGetHeapConstantTable(IntrinsicopNode &node,
+    Operand &opnd0, Operand &opnd1, Operand &opnd2)
+{
+    PrimType retType = node.GetPrimType();
+    RegOperand &destReg = CreateRegisterOperandOfType(retType);
+    MOperator mOp = MOP_get_heap_const_table;
+    GetCurBB()->AppendInsn(GetInsnBuilder()->BuildInsn(mOp, destReg, opnd0, opnd1, opnd2));
+    return &destReg;
+}
+
 RegType AArch64CGFunc::GetRegisterType(regno_t reg) const
 {
     if (AArch64isa::IsPhysicalRegister(reg)) {

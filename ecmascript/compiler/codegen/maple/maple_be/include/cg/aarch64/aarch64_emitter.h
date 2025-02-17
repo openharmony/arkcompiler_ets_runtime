@@ -57,6 +57,8 @@ private:
     void EmitClinitTail(Emitter &emitter, const Insn &insn) const;
     void EmitLazyLoad(Emitter &emitter, const Insn &insn) const;
     void EmitAdrpLabel(Emitter &emitter, const Insn &insn) const;
+    void EmitHeapConstant(Emitter &emitter, const Insn &insn) const;
+    void EmitGetHeapConstTable(Emitter &emitter, const Insn &insn) const;
     void EmitLazyLoadStatic(Emitter &emitter, const Insn &insn) const;
     void EmitArrayClassCacheLoad(Emitter &emitter, const Insn &insn) const;
     void EmitGetAndAddInt(Emitter &emitter, const Insn &insn) const;

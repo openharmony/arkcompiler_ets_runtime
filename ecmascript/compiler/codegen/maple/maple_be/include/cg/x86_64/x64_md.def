@@ -534,6 +534,10 @@ DEFINE_MOP(MOP_cmpeqsd_r_r, {&OpndDesc::Reg128FS,&OpndDesc::Reg128FDS},0,kLtAlu,
 DEFINE_MOP(MOP_sqrts_r_r, {&OpndDesc::Reg128FS, &OpndDesc::Reg128FD},0,kLtAlu,"sqrtss","0,1",1)
 DEFINE_MOP(MOP_sqrtd_r_r, {&OpndDesc::Reg128FS, &OpndDesc::Reg128FD},0,kLtAlu,"sqrtsd","0,1",1)
 
+/* intrinsic operation */
+DEFINE_MOP(MOP_heap_const, {&OpndDesc::Reg64ID, &OpndDesc::Reg64IS, &OpndDesc::Imm64},0,kLtAlu,"__heap_constant","0,1,1",1)
+DEFINE_MOP(MOP_get_heap_const_table, {&OpndDesc::Reg64ID, &OpndDesc::Reg64IS, &OpndDesc::Imm64, &OpndDesc::Imm64},0,kLtAlu,"__get_heap_constant_table","0,1,2,3",2)
+
 /* pseudo operation */
 DEFINE_MOP(MOP_pseudo_ret_int, {&OpndDesc::Reg64IS},0,kLtUndef,"//MOP_pseudo_ret_int","", 0)
 /* end of X64 instructions */

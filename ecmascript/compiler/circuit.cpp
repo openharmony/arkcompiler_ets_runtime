@@ -499,6 +499,17 @@ GateRef Circuit::GetConstantGate(MachineType machineType, uint64_t value,
     return gate;
 }
 
+GateRef Circuit::GetHeapConstantGate(uint32_t heapConstantIndex)
+{
+    auto search = heapConstantCache_.find(heapConstantIndex);
+    if (search != heapConstantCache_.end()) {
+        return search->second;
+    }
+    auto gate = NewGate(metaBuilder_.HeapConstant(heapConstantIndex), MachineType::I64, GateType::TaggedValue());
+    heapConstantCache_[heapConstantIndex] = gate;
+    return gate;
+}
+
 GateRef Circuit::GetConstantGateWithoutCache(MachineType machineType, uint64_t value, GateType type)
 {
     auto gate = NewGate(metaBuilder_.Constant(value), machineType, type);

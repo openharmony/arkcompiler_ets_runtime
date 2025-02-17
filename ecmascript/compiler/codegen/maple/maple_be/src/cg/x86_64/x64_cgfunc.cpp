@@ -70,6 +70,17 @@ Operand *X64CGFunc::SelectCclz(IntrinsicopNode &intrinopNode)
     CHECK_FATAL(false, "NIY");
     return nullptr;
 }
+RegOperand *X64CGFunc::SelectHeapConstant(IntrinsicopNode &node, Operand &opnd0, Operand &opnd1)
+{
+    CHECK_FATAL(false, "NIY");
+    return nullptr;
+}
+RegOperand *X64CGFunc::SelectGetHeapConstantTable(IntrinsicopNode &node, Operand &opnd0,
+                                                  Operand &opnd1, Operand &opnd2)
+{
+    CHECK_FATAL(false, "NIY");
+    return nullptr;
+}
 void X64CGFunc::SelectComment(CommentNode &comment)
 {
     CHECK_FATAL(false, "NIY");

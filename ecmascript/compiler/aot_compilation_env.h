@@ -28,6 +28,11 @@ public:
         return true;
     }
 
+    bool SupportHeapConstant() const override
+    {
+        return false;
+    }
+
     JSRuntimeOptions &GetJSOptions() override;
 
     // thread
@@ -58,6 +63,8 @@ public:
 
     JSTaggedValue GetStringFromConstantPool(const uint32_t methodOffset, const uint16_t cpIdx,
         bool allowAlloc = true) const override;
+
+    JSHandle<JSTaggedValue> NewJSHandle(JSTaggedValue value) const override;
 };
 } // namespace panda::ecmascript
 #endif  // ECMASCRIPT_COMPILER_AOT_COMPILATION_ENV_H

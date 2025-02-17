@@ -81,6 +81,7 @@ GateRef EarlyElimination::VisitGate(GateRef gate)
         case OpCode::TYPED_BINARY_OP:
         case OpCode::TYPED_UNARY_OP:
         case OpCode::JSINLINETARGET_TYPE_CHECK:
+        case OpCode::JSINLINETARGET_HEAPCONSTANT_CHECK:
         case OpCode::PROTOTYPE_CHECK:
         case OpCode::LOAD_GETTER:
         case OpCode::LOAD_SETTER:
@@ -410,6 +411,12 @@ bool EarlyElimination::CheckReplacement(GateRef lhs, GateRef rhs)
         }
         case OpCode::LOAD_HCLASS_FROM_CONSTPOOL: {
             if (acc_.GetIndex(lhs) != acc_.GetIndex(rhs)) {
+                return false;
+            }
+            break;
+        }
+        case OpCode::JSINLINETARGET_HEAPCONSTANT_CHECK: {
+            if (acc_.GetFuncGT(lhs) != acc_.GetFuncGT(rhs)) {
                 return false;
             }
             break;

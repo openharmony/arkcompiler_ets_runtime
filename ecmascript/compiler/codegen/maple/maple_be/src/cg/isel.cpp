@@ -435,6 +435,15 @@ static Operand *HandleIntrinOp(const BaseNode &parent, BaseNode &expr, MPISel &i
         case INTRN_C_clz32:
         case INTRN_C_clz64:
             return iSel.SelectCclz(intrinsicopNode, *iSel.HandleExpr(expr, *expr.Opnd(0)), parent);
+        case INTRN_HEAP_CONSTANT:
+            return &iSel.SelectHeapConstant(intrinsicopNode, *iSel.HandleExpr(expr, *expr.Opnd(kInsnFirstOpnd)),
+                                            *iSel.HandleExpr(expr, *expr.Opnd(kInsnSecondOpnd)), parent);
+        case INTRN_GET_HEAP_CONSTANT_TABLE:
+            return &iSel.SelectGetHeapConstantTable(intrinsicopNode,
+                                                    *iSel.HandleExpr(expr, *expr.Opnd(kInsnFirstOpnd)),
+                                                    *iSel.HandleExpr(expr, *expr.Opnd(kInsnSecondOpnd)),
+                                                    *iSel.HandleExpr(expr, *expr.Opnd(kInsnThirdOpnd)),
+                                                    parent);
         default:
             DEBUG_ASSERT(false, "NIY, unsupported intrinsicop.");
             return nullptr;

@@ -218,6 +218,14 @@ static Operand *HandleIntrinOp(const BaseNode &parent, BaseNode &expr, CGFunc &c
         case INTRN_C_clz32:
         case INTRN_C_clz64:
             return cgFunc.SelectCclz(intrinsicopNode);
+        case INTRN_HEAP_CONSTANT:
+            return cgFunc.SelectHeapConstant(intrinsicopNode, *cgFunc.HandleExpr(expr, *expr.Opnd(kInsnFirstOpnd)),
+                                             *cgFunc.HandleExpr(expr, *expr.Opnd(kInsnSecondOpnd)));
+        case INTRN_GET_HEAP_CONSTANT_TABLE:
+            return cgFunc.SelectGetHeapConstantTable(intrinsicopNode,
+                                                     *cgFunc.HandleExpr(expr, *expr.Opnd(kInsnFirstOpnd)),
+                                                     *cgFunc.HandleExpr(expr, *expr.Opnd(kInsnSecondOpnd)),
+                                                     *cgFunc.HandleExpr(expr, *expr.Opnd(kInsnThirdOpnd)));
         default:
             DEBUG_ASSERT(false, "Should not reach here.");
             return nullptr;

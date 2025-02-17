@@ -1314,6 +1314,16 @@ void JSTaggedValue::Dump(std::ostream &os, bool isPrivacy) const
     }
 }
 
+void JSTaggedValue::DumpHeapObjAddress(std::ostream &os) const
+{
+    if (IsHeapObject()) {
+        TaggedObject *obj = IsWeak() ? GetTaggedWeakRef() : GetTaggedObject();
+        os << obj << "\n";
+    } else {
+        os << "not a heapobject\n";
+    }
+}
+
 void JSTaggedValue::D() const
 {
     Dump(std::cout);

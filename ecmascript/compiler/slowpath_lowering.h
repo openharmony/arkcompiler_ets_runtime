@@ -113,11 +113,11 @@ class SlowPathLowering {
 public:
     SlowPathLowering(Circuit *circuit, CompilationConfig *cmpCfg,
                      PassContext *ctx, const MethodLiteral *methodLiteral,
-                     bool enableLog, const std::string& name)
+                     bool enableLog, const std::string& name, const CString &recordName)
         : compilationEnv_(ctx->GetCompilationEnv()), methodLiteral_(methodLiteral),
           circuit_(circuit), acc_(circuit),
           argAcc_(circuit), builder_(circuit, cmpCfg),
-          enableLog_(enableLog), methodName_(name), glue_(acc_.GetGlueFromArgList())
+          enableLog_(enableLog), methodName_(name), recordName_(recordName), glue_(acc_.GetGlueFromArgList())
     {
         traceBc_ = cmpCfg->IsTraceBC();
         profiling_ = cmpCfg->IsProfiling();
@@ -344,6 +344,7 @@ private:
     void LowerGetUnsharedConstPool(GateRef gate);
     void LowerLdLazyExternalModuleVar(GateRef gate);
     void LowerLdLazySendableExternalModuleVar(GateRef gate);
+    GateRef GetStringFromConstPool(GateRef gate, GateRef stringId, uint32_t stringIdIdx);
 
     CompilationEnv *compilationEnv_;
     const MethodLiteral *methodLiteral_ {nullptr};
@@ -356,6 +357,7 @@ private:
     bool profiling_ {false};
     bool stressDeopt_ {false};
     std::string methodName_;
+    const CString &recordName_;
     GateRef glue_ {Circuit::NullGate()};
     CVector<GateRef> unsharedCP_;
 };

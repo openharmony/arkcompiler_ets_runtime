@@ -351,10 +351,20 @@ void JITProfiler::ConvertCall(uint32_t slotId, long bcOffset)
         calleeAbcId = abcId_;
         ASSERT(calleeMethodId <= 0);
         kind = ProfileType::Kind::BuiltinFunctionId;
-    }  else if (slotValue.IsJSFunction()) {
+    } else if (slotValue.IsJSFunction()) {
         JSFunction *callee = JSFunction::Cast(slotValue);
         Method *calleeMethod = Method::Cast(callee->GetMethod());
         calleeMethodId = static_cast<int>(calleeMethod->GetMethodId().GetOffset());
+        if (compilationEnv_->SupportHeapConstant() &&
+            calleeMethod->GetMethodLiteral()->IsTypedCall() &&
+            calleeMethod->GetFunctionKind() != FunctionKind::ARROW_FUNCTION &&
+            callee->IsCallable() &&
+            callee->IsCompiledCode()) {
+            auto *jitCompilationEnv = static_cast<JitCompilationEnv*>(compilationEnv_);
+            JSHandle<JSTaggedValue> calleeHandle = jitCompilationEnv->NewJSHandle(JSTaggedValue(callee));
+            auto heapConstantIndex = jitCompilationEnv->RecordHeapConstant(calleeHandle);
+            jitCompilationEnv->RecordCallMethodId2HeapConstantIndex(calleeMethodId, heapConstantIndex);
+        }
         calleeAbcId = PGOProfiler::GetMethodAbcId(callee);
         static_cast<JitCompilationEnv *>(compilationEnv_)
             ->UpdateFuncSlotIdMap(calleeMethodId, methodId_.GetOffset(), slotId);

@@ -188,6 +188,11 @@ private:
         const std::vector<GateRef> &args, const std::vector<GateRef> &argsFastCall, bool isNoGC);
 
     template<class TypeAccessor>
+    void ConvertCallTargetCheckToHeapConstantCheckAndLowerCall(const TypeAccessor &tacc,
+        const std::vector<GateRef> &args, const std::vector<GateRef> &argsFastCall,
+        uint32_t heapConstantIndex, bool isNoGC);
+
+    template<class TypeAccessor>
     void CheckCallTargetAndLowerCall(const TypeAccessor &tacc,
         const std::vector<GateRef> &args, const std::vector<GateRef> &argsFastCall);
 
@@ -275,7 +280,7 @@ private:
     std::unordered_map<EcmaOpcode, uint32_t> bytecodeMap_;
     std::unordered_map<EcmaOpcode, uint32_t> bytecodeHitTimeMap_;
     bool noCheck_ {false};
-    const CompilationEnv *compilationEnv_ {nullptr};
+    CompilationEnv *compilationEnv_ {nullptr};
     bool enableLoweringBuiltin_ {false};
     const CString &recordName_;
     const CallMethodFlagMap *callMethodFlagMap_;

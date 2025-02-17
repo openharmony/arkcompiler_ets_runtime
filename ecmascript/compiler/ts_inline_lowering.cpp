@@ -528,11 +528,18 @@ void TSInlineLowering::InlineFuncCheck(const InlineTypeInfoAccessor &info)
     ASSERT(acc_.GetNumValueIn(gate) > 0);
     size_t funcIndex = acc_.GetNumValueIn(gate) - 1;
     GateRef inlineFunc =  acc_.GetValueIn(gate, funcIndex);
+    GateRef ret = 0;
     // Do not load from inlineFunc because type in inlineFunc could be modified by others
     uint32_t methodOffset = info.GetCallMethodId();
-    GateRef ret = circuit_->NewGate(circuit_->JSInlineTargetTypeCheck(info.GetType()),
-        MachineType::I1, {callState, callDepend, inlineFunc, builder_.IntPtr(methodOffset), frameState},
-        GateType::NJSValue());
+    auto heapConstantIndex = info.TryGetHeapConstantFunctionIndex(methodOffset);
+    if (heapConstantIndex != JitCompilationEnv::INVALID_HEAP_CONSTANT_INDEX) {
+        GateRef heapConstant = builder_.HeapConstant(heapConstantIndex);
+        ret = circuit_->NewGate(circuit_->JSInlineTargetHeapConstantCheck(info.GetType()),
+            MachineType::I1, {callState, callDepend, inlineFunc, heapConstant, frameState}, GateType::NJSValue());
+    } else {
+        ret = circuit_->NewGate(circuit_->JSInlineTargetTypeCheck(info.GetType()), MachineType::I1,
+            {callState, callDepend, inlineFunc, builder_.IntPtr(methodOffset), frameState}, GateType::NJSValue());
+    }
     acc_.ReplaceStateIn(gate, ret);
     acc_.ReplaceDependIn(gate, ret);
 }

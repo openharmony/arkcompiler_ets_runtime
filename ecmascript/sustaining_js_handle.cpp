@@ -14,7 +14,8 @@
  */
 
 #include "ecmascript/sustaining_js_handle.h"
-
+#include "ecmascript/jit/jit_thread.h"
+#include "ecmascript/jit/jit_task.h"
 #include "ecmascript/ecma_context.h"
 
 namespace panda::ecmascript {
@@ -31,6 +32,16 @@ SustainingJSHandle::~SustainingJSHandle()
         delete block;
     }
     handleBlocks_.clear();
+}
+
+uintptr_t SustainingJSHandle::GetJsHandleSlot(const JitThread *jitThread, JSTaggedType value)
+{
+    // new handle from jit current task sustaining jshandle
+    auto jitTask = jitThread->GetCurrentTask();
+    ASSERT(jitTask != nullptr);
+    auto sustainingJSHandle = jitTask->GetSustainingJSHandle();
+    ASSERT(sustainingJSHandle != nullptr);
+    return sustainingJSHandle->GetJsHandleSlot(value);
 }
 
 uintptr_t SustainingJSHandle::GetJsHandleSlot(JSTaggedType value)

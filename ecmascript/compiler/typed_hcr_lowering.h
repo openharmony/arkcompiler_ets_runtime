@@ -200,6 +200,7 @@ private:
     void LowerTypedSuperAllocateThis(GateRef gate, GateRef glue);
     void LowerGetSuperConstructor(GateRef gate);
     void LowerJSInlineTargetTypeCheck(GateRef gate);
+    void LowerJSInlineTargetHeapConstantCheck(GateRef gate);
     void SetDeoptTypeInfo(JSType jstype, DeoptType &type, size_t &typedArrayRootHclassIndex,
         size_t &typedArrayRootHclassOnHeapIndex);
     void LowerLookupHolder(GateRef gate);

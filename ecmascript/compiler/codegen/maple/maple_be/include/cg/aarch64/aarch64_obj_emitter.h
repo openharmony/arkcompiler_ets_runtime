@@ -85,7 +85,8 @@ public:
     void UpdateMachineAndFlags(FileHeader &header) override;
     void EmitDataToDynamic();
     void EmitDataToHash();
-    void EmitIntrinsicInsn(const Insn &insn, ObjFuncEmitInfo &objFuncEmitInfo) override;
+    void EmitIntrinsicInsn(const Insn &insn, const std::vector<uint32_t> &label2Offset,
+                           ObjFuncEmitInfo &objFuncEmitInfo) override;
     void EmitSpinIntrinsicInsn(const Insn &insn, ObjFuncEmitInfo &objFuncEmitInfo) override;
 
     uint32 GetBinaryCodeForInsn(const Insn &insn, const std::vector<uint32> &label2Offset,

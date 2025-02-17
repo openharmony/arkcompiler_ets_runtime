@@ -1796,6 +1796,11 @@ void TypedBytecodeLowering::CheckThisCallTargetAndLowerCall(const TypeAccessor &
     GateRef func = tacc.GetFunc();
     GateRef gate = tacc.GetGate();
     bool isNoGC = tacc.IsNoGC();
+    auto heapConstantIndex = tacc.TryGetHeapConstantFunctionIndex(tacc.GetMethodId());
+    if (heapConstantIndex != JitCompilationEnv::INVALID_HEAP_CONSTANT_INDEX) {
+        ConvertCallTargetCheckToHeapConstantCheckAndLowerCall(tacc, args, argsFastCall, heapConstantIndex, isNoGC);
+        return;
+    }
     if (tacc.CanFastCall()) {
         CheckFastCallThisCallTarget(tacc);
         LowerFastCall(gate, func, argsFastCall, isNoGC);
@@ -1811,6 +1816,11 @@ void TypedBytecodeLowering::CheckCallTargetFromDefineFuncAndLowerCall(const Type
 {
     GateRef func = tacc.GetFunc();
     GateRef gate = tacc.GetGate();
+    auto heapConstantIndex = tacc.TryGetHeapConstantFunctionIndex(tacc.GetMethodId());
+    if (heapConstantIndex != JitCompilationEnv::INVALID_HEAP_CONSTANT_INDEX) {
+        ConvertCallTargetCheckToHeapConstantCheckAndLowerCall(tacc, args, argsFastCall, heapConstantIndex, isNoGC);
+        return;
+    }
     // NO CHECK
     if (!Uncheck()) {
         builder_.CallTargetIsCompiledCheck(func, gate);
@@ -1841,49 +1851,104 @@ bool TypedBytecodeLowering::InSameConstPool(const TypeAccessor &tacc) const
 }
 
 template<class TypeAccessor>
+void TypedBytecodeLowering::ConvertCallTargetCheckToHeapConstantCheckAndLowerCall(const TypeAccessor &tacc,
+    const std::vector<GateRef> &args, const std::vector<GateRef> &argsFastCall,
+    uint32_t heapConstantIndex, bool isNoGC)
+{
+    GateRef func = tacc.GetFunc();
+    GateRef gate = tacc.GetGate();
+    if (!Uncheck()) {
+        GateRef frameState = acc_.GetFrameState(gate);
+        GateRef res = builder_.HeapConstant(heapConstantIndex);
+#if DUMP_HEAP_OBJECT_DFX
+        Label exit(&builder_);
+        Label notEqual(&builder_);
+        buidler_.Branch(builder_.Equal(func, res), &exit, &notEqual,
+            BranchWeight::ONE_WEIGHT, BranchWeight::ONE_WEIGHT, "isEqualObject");
+        builder_.Bind(&notEqual);
+        {
+            std::vector<GateRef> params;
+            params.push_back(func);
+            builder_.CallRuntime(glue_, RTSTUB_ID(DumpHeapObjectAddress), Gate::InvalidGateRef, params, gate);
+            params.clear();
+            params.push_back(res);
+            builder_.CallRuntime(glue_, RTSTUB_ID(DumpHeapObjectAddress), Gate::InvalidGateRef, params, gate);
+            builder_.Jump(&exit);
+        }
+        builder_.Bind(&exit);
+#endif
+        builder_.DeoptCheck(builder_.Equal(func, res), frameState, DeoptType::NOTCALLTARGETHEAPOBJECT);
+        GateRef isCompiled = builder_.JudgeAotAndFastCall(func, CircuitBuilder::JudgeMethodType::HAS_AOT);
+        builder_.DeoptCheck(isCompiled, frameState, DeoptType::CALLTARGETNOTCOMPILED);
+    }
+    auto *jitCompilationEnv = static_cast<const JitCompilationEnv*>(compilationEnv_);
+    JSHandle<JSTaggedValue> heapObject = jitCompilationEnv->GetHeapConstantHandle(heapConstantIndex);
+    JSHandle<JSFunction> jsFunc = JSHandle<JSFunction>::Cast(heapObject);
+    Method *calleeMethod = Method::Cast(jsFunc->GetMethod());
+    if (calleeMethod->GetMethodLiteral()->IsFastCall()) {
+        LowerFastCall(gate, func, argsFastCall, isNoGC);
+    } else {
+        LowerCall(gate, func, args, isNoGC);
+    }
+}
+
+template<class TypeAccessor>
 void TypedBytecodeLowering::CheckCallTargetAndLowerCall(const TypeAccessor &tacc,
     const std::vector<GateRef> &args, const std::vector<GateRef> &argsFastCall)
 {
     GateRef func = tacc.GetFunc();
     if (IsLoadVtable(func)) {
         CheckThisCallTargetAndLowerCall(tacc, args, argsFastCall); // func = a.foo, func()
-    } else {
-        bool isNoGC = tacc.IsNoGC();
-        auto op = acc_.GetOpCode(func);
-        if (op == OpCode::JS_BYTECODE && (acc_.GetByteCodeOpcode(func) == EcmaOpcode::DEFINEFUNC_IMM8_ID16_IMM8 ||
-                                          acc_.GetByteCodeOpcode(func) == EcmaOpcode::DEFINEFUNC_IMM16_ID16_IMM8)) {
-            CheckCallTargetFromDefineFuncAndLowerCall(tacc, args, argsFastCall, isNoGC);
-            return;
-        }
-        int methodIndex = tacc.GetMethodIndex();
-        if (!tacc.MethodOffsetIsVaild() || methodIndex == -1) {
-            return;
-        }
-        if (!InSameConstPool(tacc)) {
-            return;
-        }
+        return;
+    }
+    bool isNoGC = tacc.IsNoGC();
+    auto op = acc_.GetOpCode(func);
+    if (op == OpCode::JS_BYTECODE && (acc_.GetByteCodeOpcode(func) == EcmaOpcode::DEFINEFUNC_IMM8_ID16_IMM8 ||
+                                      acc_.GetByteCodeOpcode(func) == EcmaOpcode::DEFINEFUNC_IMM16_ID16_IMM8)) {
+        CheckCallTargetFromDefineFuncAndLowerCall(tacc, args, argsFastCall, isNoGC);
+        return;
+    }
 
-        GateRef gate = tacc.GetGate();
-        if (tacc.CanFastCall()) {
-            if (!Uncheck()) {
-                builder_.JSCallTargetTypeCheck<TypedCallTargetCheckOp::JSCALL_FAST>(func,
-                    builder_.IntPtr(methodIndex), gate);
-            }
-            LowerFastCall(gate, func, argsFastCall, isNoGC);
-        } else {
-            if (!Uncheck()) {
-                builder_.JSCallTargetTypeCheck<TypedCallTargetCheckOp::JSCALL>(func,
-                    builder_.IntPtr(methodIndex), gate);
-            }
-            LowerCall(gate, func, args, isNoGC);
+    if (!tacc.MethodOffsetIsVaild()) {
+        return;
+    }
+    if (!InSameConstPool(tacc)) {
+        return;
+    }
+
+    auto heapConstantIndex = tacc.TryGetHeapConstantFunctionIndex(tacc.GetMethodId());
+    if (heapConstantIndex != JitCompilationEnv::INVALID_HEAP_CONSTANT_INDEX) {
+        ConvertCallTargetCheckToHeapConstantCheckAndLowerCall(tacc, args, argsFastCall, heapConstantIndex, isNoGC);
+        return;
+    }
+
+    int methodIndex = tacc.GetMethodIndex();
+    if (methodIndex == -1) {
+        return;
+    }
+
+    GateRef gate = tacc.GetGate();
+    if (tacc.CanFastCall()) {
+        if (!Uncheck()) {
+            builder_.JSCallTargetTypeCheck<TypedCallTargetCheckOp::JSCALL_FAST>(func,
+                builder_.IntPtr(methodIndex), gate);
         }
+        LowerFastCall(gate, func, argsFastCall, isNoGC);
+    } else {
+        if (!Uncheck()) {
+            builder_.JSCallTargetTypeCheck<TypedCallTargetCheckOp::JSCALL>(func,
+                builder_.IntPtr(methodIndex), gate);
+        }
+        LowerCall(gate, func, args, isNoGC);
     }
 }
 
 template<EcmaOpcode Op, class TypeAccessor>
 void TypedBytecodeLowering::LowerTypedCall(const TypeAccessor &tacc)
 {
-    if (!tacc.IsHotnessFunc()) {
+    auto heapConstantIndex = tacc.TryGetHeapConstantFunctionIndex(tacc.GetMethodId());
+    if (!tacc.IsHotnessFunc() &&
+        heapConstantIndex == JitCompilationEnv::INVALID_HEAP_CONSTANT_INDEX) {
         return;
     }
     auto methodId = tacc.GetMethodId();
@@ -2479,6 +2544,19 @@ void TypedBytecodeLowering::LowerCreateObjectWithBuffer(GateRef gate)
         valueIn.emplace_back(builder_.Int32(newClass->GetInlinedPropertiesOffset(i)));
     }
     GateRef ret = builder_.TypedCreateObjWithBuffer(valueIn);
+    if (compilationEnv_->SupportHeapConstant()) {
+        auto *jitCompilationEnv = static_cast<JitCompilationEnv*>(compilationEnv_);
+        JSHandle<JSTaggedValue> jsObjectHandle = jitCompilationEnv->NewJSHandle(obj);
+        auto methodOffset = acc_.TryGetMethodOffset(gate);
+        auto objIndex = acc_.GetConstantValue(index);
+        auto constpool = jitCompilationEnv->GetConstantPoolByMethodOffset(methodOffset);
+        ASSERT(!constpool.IsUndefined());
+        auto constpoolId = static_cast<uint32_t>(
+            ConstantPool::Cast(constpool.GetTaggedObject())->GetSharedConstpoolId().GetInt());
+        uint32_t indexInConstantTable = jitCompilationEnv->RecordHeapConstant(
+            { constpoolId, objIndex, JitCompilationEnv::IN_UNSHARED_CONSTANTPOOL }, jsObjectHandle);
+        jitCompilationEnv->RecordGate2HeapConstantIndex(ret, indexInConstantTable);
+    }
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
 }
 

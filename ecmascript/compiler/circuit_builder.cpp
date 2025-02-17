@@ -398,6 +398,11 @@ GateRef CircuitBuilder::IntPtr(int64_t val)
     return GetCircuit()->GetConstantGate(MachineType::ARCH, val, GateType::NJSValue());
 }
 
+GateRef CircuitBuilder::HeapConstant(uint32_t val)
+{
+    return GetCircuit()->GetHeapConstantGate(val);
+}
+
 GateRef CircuitBuilder::StringPtr(std::string_view str)
 {
     return GetCircuit()->GetConstantStringGate(MachineType::ARCH, str, GateType::NJSValue());

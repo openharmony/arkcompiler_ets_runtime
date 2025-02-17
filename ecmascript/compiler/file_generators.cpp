@@ -747,6 +747,13 @@ bool AOTFileGenerator::GetMemoryCodeInfos(MachineCodeDesc &machineCodeDesc)
     uint64_t stackMapPtr = reinterpret_cast<uint64_t>(moduleSectionDes.GetArkStackMapSharePtr().get());
     size_t stackMapSize = moduleSectionDes.GetArkStackMapSize();
 
+    auto *jitCompilationEnv = static_cast<JitCompilationEnv*>(compilationEnv_);
+    const auto &heapConstantTable = jitCompilationEnv->GetHeapConstantTable();
+    if (!heapConstantTable.empty()) {
+        machineCodeDesc.heapConstantTableAddr = reinterpret_cast<uintptr_t>(heapConstantTable.data());
+        machineCodeDesc.heapConstantTableSize = heapConstantTable.size() * sizeof(uintptr_t);
+    }
+
     machineCodeDesc.codeAddr = textAddr;
     machineCodeDesc.codeSize = textSize;
     machineCodeDesc.funcEntryDesAddr = funcEntryAddr;

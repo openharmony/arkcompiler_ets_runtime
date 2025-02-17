@@ -14,6 +14,8 @@
  */
 
 #include "ecmascript/jit/jit_thread.h"
+#include "ecmascript/sustaining_js_handle.h"
+#include "ecmascript/js_handle.h"
 
 namespace panda::ecmascript {
 JitThread::JitThread(JitVM *jitVM) : JSThread(jitVM, ThreadType::JIT_THREAD) {};
@@ -31,6 +33,11 @@ void JitThread::SetHostThread(JSThread *thread)
 JitVM *JitThread::GetJitVM() const
 {
     return static_cast<JitVM*>(JSThread::GetEcmaVM());
+}
+
+JSHandle<JSTaggedValue> JitThread::NewHandle(JSTaggedValue value) const
+{
+    return SustainingJSHandle::NewHandle<JSTaggedValue>(this, value.GetRawData());
 }
 
 JitVM *JitVM::Create()

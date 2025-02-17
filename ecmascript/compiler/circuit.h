@@ -65,6 +65,7 @@ public:
     panda::ecmascript::FrameType GetFrameType() const;
     void SetFrameType(panda::ecmascript::FrameType type);
     GateRef GetConstantGate(MachineType machineType, uint64_t value, GateType type);
+    GateRef GetHeapConstantGate(uint32_t heapConstantIndex);
     GateRef GetConstantGateWithoutCache(MachineType machineType, uint64_t value, GateType type);
     void ClearConstantCache(MachineType machineType, uint64_t value, GateType type);
     GateRef GetConstantStringGate(MachineType machineType, std::string_view str, GateType type);
@@ -325,6 +326,7 @@ private:
     size_t gateCount_ {0};
     TimeStamp time_;
     std::map<std::tuple<MachineType, BitField, GateType>, GateRef> constantCache_ {};
+    std::map<std::uint32_t, GateRef> heapConstantCache_;
     std::map<std::pair<BitField, GateRef>, GateRef> constantDataCache_ {};
     std::map<GateRef, GateRef> initialEnvCache_ {};
     panda::ecmascript::FrameType frameType_ {FrameType::OPTIMIZED_FRAME};

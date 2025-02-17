@@ -67,6 +67,7 @@ namespace panda::ecmascript::kungfu {
     V(NotNewObj3,                      NOTNEWOBJ3)                     \
     V(NotLegalIndex1,                  NOTLEGALIDX1)                   \
     V(NotNegativeOverflow1,            NOTNEGOV1)                      \
+    V(NotCallTargetHeapObject,         NOTCALLTARGETHEAPOBJECT)        \
     V(NotCallTarget1,                  NOTCALLTGT1)                    \
     V(NotJSCallTarget1,                NOTJSCALLTGT1)                  \
     V(NotJSCallTarget2,                NOTJSCALLTGT2)                  \

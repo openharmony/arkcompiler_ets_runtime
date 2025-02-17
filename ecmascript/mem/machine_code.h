@@ -50,6 +50,8 @@ struct MachineCodeDesc {
     size_t funcEntryDesSize {0};
     uintptr_t stackMapOrOffsetTableAddr {0};
     size_t stackMapOrOffsetTableSize {0};
+    uintptr_t heapConstantTableAddr {0};
+    size_t heapConstantTableSize {0};
     MachineCodeType codeType {MachineCodeType::FAST_JIT_CODE};
     MachineCodeArchType archType {MachineCodeArchType::X86};
 #ifdef JIT_ENABLE_CODE_SIGN
@@ -65,6 +67,7 @@ struct MachineCodeDesc {
     size_t rodataSizeAfterTextAlign {0};
     size_t funcEntryDesSizeAlign {0};
     size_t stackMapSizeAlign {0};
+    size_t heapConstantTableSizeAlign {0};
     MemDesc *memDesc {nullptr};
     bool isAsyncCompileMode {false};
 };
@@ -124,6 +127,10 @@ using JitCodeMapVisitor = std::function<void(std::map<JSTaggedType, JitCodeVecto
 //                      |          instructions addr        | 8 bytes (if JitFort enabled)
 //                      +-----------------------------------+
 //                      |           stack map size          | 4 bytes
+//                      +-----------------------------------+
+//                      |     heap constant table size      | 4 bytes
+//                      +-----------------------------------+
+//                      |     heap constant table addr      | 8 bytes
 //                      +-----------------------------------+
 //                      |             func addr             | 8 bytes
 //                      +-----------------------------------+
@@ -200,7 +207,11 @@ public:
     ACCESSORS_PRIMITIVE_FIELD(InstructionsSize, uint32_t, INSTRSIZ_OFFSET, INSTRADDR_OFFSET);
     ACCESSORS_PRIMITIVE_FIELD(InstructionsAddr, uint64_t, INSTRADDR_OFFSET, STACKMAP_OR_OFFSETTABLE_SIZE_OFFSET);
     ACCESSORS_PRIMITIVE_FIELD(StackMapOrOffsetTableSize, uint32_t,
-        STACKMAP_OR_OFFSETTABLE_SIZE_OFFSET, FUNCADDR_OFFSET);
+        STACKMAP_OR_OFFSETTABLE_SIZE_OFFSET, HEAP_CONSTANT_TABLE_SIZE_OFFSET);
+    ACCESSORS_PRIMITIVE_FIELD(HeapConstantTableSize, uint32_t,
+        HEAP_CONSTANT_TABLE_SIZE_OFFSET, HEAP_CONSTANT_TABLE_ADDR_OFFSET);
+    ACCESSORS_PRIMITIVE_FIELD(HeapConstantTableAddr, uint64_t,
+        HEAP_CONSTANT_TABLE_ADDR_OFFSET, FUNCADDR_OFFSET);
     ACCESSORS_PRIMITIVE_FIELD(FuncAddr, uint64_t, FUNCADDR_OFFSET, FPDELTA_PRVE_FRAME_SP_OFFSET);
     ACCESSORS_PRIMITIVE_FIELD(FpDeltaPrevFrameSp, uintptr_t, FPDELTA_PRVE_FRAME_SP_OFFSET, FUNC_SIZE_OFFSET);
     ACCESSORS_PRIMITIVE_FIELD(FuncSize, uint32_t, FUNC_SIZE_OFFSET, CALLEE_REGISTERNUM_OFFSET);
@@ -237,11 +248,12 @@ public:
 
     uintptr_t GetNonTextAddress() const
     {
-        return reinterpret_cast<const uintptr_t>(this) + LAST_OFFSET;
+        return reinterpret_cast<const uintptr_t>(this) + SIZE;
     }
 
     uintptr_t GetText() const;
     uint8_t *GetStackMapOrOffsetTableAddress() const;
+    uint8_t *GetHeapConstantTableAddress() const;
 
     size_t GetTextSize() const
     {
@@ -261,6 +273,10 @@ public:
                 ObjectSlot(ToUintPtr(this) + GetMachineCodeObjectSize()), VisitObjectArea::RAW_DATA);
         }
         if constexpr (visitType == VisitType::OLD_GC_VISIT) {
+            visitor(this,
+                    ObjectSlot(static_cast<uintptr_t>(GetHeapConstantTableAddr())),
+                    ObjectSlot(static_cast<uintptr_t>(GetHeapConstantTableAddr()) + GetHeapConstantTableSize()),
+                    VisitObjectArea::NORMAL);
             this->ProcessMarkObject();
         }
     }

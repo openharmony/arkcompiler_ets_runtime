@@ -97,6 +97,7 @@ enum class CallExceptionKind : bool {
     V(ChangeTaggedPointerToInt64, (GateRef gate, GateRef e1))                             \
     V(ChangeInt64ToTagged, (GateRef gate, GateRef e1))                                    \
     V(DeoptCheck, (GateRef gate))                                                         \
+    V(HeapConstant, (GateRef gate, GateRef heapConstant))                                 \
     V(TruncFloatToInt, (GateRef gate, GateRef e1))                                        \
     V(AddWithOverflow, (GateRef gate, GateRef e1, GateRef e2))                            \
     V(SubWithOverflow, (GateRef gate, GateRef e1, GateRef e2))                            \

@@ -16,6 +16,7 @@
 #include "ecmascript/jit/jit_task.h"
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/ohos/jit_tools.h"
+#include "ecmascript/compiler/jit_compilation_env.h"
 
 namespace panda::ecmascript {
 
@@ -128,6 +129,7 @@ static void ComputeAlignedSizes(MachineCodeDesc &desc)
 {
     desc.funcEntryDesSizeAlign = AlignUp(desc.funcEntryDesSize, MachineCode::TEXT_ALIGN);
     desc.stackMapSizeAlign = AlignUp(desc.stackMapOrOffsetTableSize, MachineCode::DATA_ALIGN);
+    desc.heapConstantTableSizeAlign = AlignUp(desc.heapConstantTableSize, MachineCode::DATA_ALIGN);
     desc.rodataSizeBeforeTextAlign = AlignUp(desc.rodataSizeBeforeText, MachineCode::TEXT_ALIGN);
 
     if (desc.codeType == MachineCodeType::BASELINE_CODE) {
@@ -181,7 +183,8 @@ size_t JitTask::ComputePayLoadSize(MachineCodeDesc &codeDesc)
         // payLoadSize: size of JIT generated output including native code
         size_t instructionsSize =
             codeDesc.rodataSizeBeforeTextAlign + codeDesc.codeSizeAlign + codeDesc.rodataSizeAfterTextAlign;
-        size_t payLoadSize = codeDesc.funcEntryDesSizeAlign + instructionsSize + codeDesc.stackMapSizeAlign;
+        size_t payLoadSize = codeDesc.funcEntryDesSizeAlign + instructionsSize +
+                             codeDesc.stackMapSizeAlign + codeDesc.heapConstantTableSizeAlign;
         size_t allocSize = AlignUp(payLoadSize + MachineCode::SIZE,
             static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
         LOG_JIT(DEBUG) << "InstallCode:: MachineCode Object size to allocate: "
@@ -208,7 +211,7 @@ size_t JitTask::ComputePayLoadSize(MachineCodeDesc &codeDesc)
         }
     } else {
         return codeDesc.funcEntryDesSizeAlign + codeDesc.rodataSizeBeforeTextAlign + codeDesc.codeSizeAlign +
-               codeDesc.rodataSizeAfterTextAlign + codeDesc.stackMapSizeAlign;
+               codeDesc.rodataSizeAfterTextAlign + codeDesc.stackMapSizeAlign + codeDesc.heapConstantTableSizeAlign;
     }
 }
 
@@ -243,6 +246,31 @@ void DumpJitCode(JSHandle<MachineCode> &machineCode, JSHandle<Method> &method)
     int fd = open(outFile.c_str(), O_RDWR | O_CREAT | O_TRUNC, 0644);
     jitDumpElf.WriteJitElfFile(fd);
     close(fd);
+}
+
+static void FillHeapConstantTable(JSHandle<MachineCode> &machineCodeObj, const MachineCodeDesc &codeDesc)
+{
+    if (codeDesc.heapConstantTableAddr == 0) {
+        return;
+    }
+    uint64_t *heapConstantTableAddr = reinterpret_cast<uint64_t*>(machineCodeObj->GetHeapConstantTableAddress());
+    JSHandle<JSTaggedValue> *heapConstantTableInCodeDesc =
+        reinterpret_cast<JSHandle<JSTaggedValue>*>(codeDesc.heapConstantTableAddr);
+
+    uint64_t constTableSlotNum = codeDesc.heapConstantTableSize / sizeof(uint64_t);
+    LOG_JIT(INFO) << "constant table size: " << constTableSlotNum << "\n";
+    for (uint64_t i = 0; i < constTableSlotNum; ++i) {
+        JSHandle<JSTaggedValue> heapObj = heapConstantTableInCodeDesc[i];
+        heapConstantTableAddr[i] = heapObj->GetRawData();
+        Region *heapObjRegion = Region::ObjectAddressToRange(heapObj->GetRawData());
+        Region *curMachineCodeObjRegion =
+            Region::ObjectAddressToRange(machineCodeObj.GetTaggedValue().GetRawHeapObject());
+        if (heapObjRegion->InYoungSpace()) {
+            curMachineCodeObjRegion->InsertOldToNewRSet(reinterpret_cast<uintptr_t>(&(heapConstantTableAddr[i])));
+        } else if (heapObjRegion->InSharedHeap()) {
+            curMachineCodeObjRegion->InsertLocalToShareRSet(reinterpret_cast<uintptr_t>(&(heapConstantTableAddr[i])));
+        }
+    }
 }
 
 void JitTask::InstallCode()
@@ -280,6 +308,7 @@ void JitTask::InstallCode()
         return;
     }
     machineCodeObj->SetOSROffset(offset_);
+    FillHeapConstantTable(machineCodeObj, codeDesc_);
 
     if (hostThread_->HasPendingException()) {
         // check is oom exception
@@ -449,10 +478,14 @@ JitTask::AsyncTask::AsyncTaskRunScope::AsyncTaskRunScope(JitTask *jitTask)
     JitThread *jitThread = static_cast<JitThread*>(compilerThread);
     jitvm_ = jitThread->GetJitVM();
     jitvm_->SetHostVM(jitTask_->GetHostThread());
+    jitThread->SetCurrentTask(jitTask);
 }
 
 JitTask::AsyncTask::AsyncTaskRunScope::~AsyncTaskRunScope()
 {
+    JSThread *compilerThread = jitTask_->GetCompilerThread();
+    JitThread *jitThread = static_cast<JitThread*>(compilerThread);
+    jitThread->SetCurrentTask(nullptr);
     jitvm_->ReSetHostVM();
     jitTask_->SetRunStateFinish();
 }

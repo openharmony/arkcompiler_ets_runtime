@@ -965,6 +965,16 @@ DEF_RUNTIME_STUBS(DumpObject)
     return JSTaggedValue::True().GetRawData();
 }
 
+DEF_RUNTIME_STUBS(DumpHeapObjectAddress)
+{
+    RUNTIME_STUBS_HEADER(DumpHeapObjectAddress);
+    JSHandle<JSTaggedValue> target = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
+    std::ostringstream oss;
+    target->DumpHeapObjAddress(oss);
+    LOG_ECMA(INFO) << "dump log for instance of target: " << oss.str();
+    return JSTaggedValue::True().GetRawData();
+}
+
 DEF_RUNTIME_STUBS(BigIntConstructor)
 {
     RUNTIME_STUBS_HEADER(BigIntConstructor);

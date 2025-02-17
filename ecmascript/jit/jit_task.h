@@ -234,6 +234,11 @@ public:
     }
     static size_t PUBLIC_API ComputePayLoadSize(MachineCodeDesc &codeDesc);
 
+    SustainingJSHandle *GetSustainingJSHandle()
+    {
+        return sustainingJSHandle_.get();
+    }
+
     class AsyncTask : public Task {
     public:
         explicit AsyncTask(std::shared_ptr<JitTask>jitTask, int32_t id) : Task(id), jitTask_(jitTask) { }

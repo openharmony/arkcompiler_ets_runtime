@@ -898,6 +898,17 @@ DEFINE_MOP(MOP_clinit_tail, {&OpndDesc::Reg64IS},ISATOMIC|CANTHROW|ISINTRINSIC,k
 DEFINE_MOP(MOP_pure_call, {&OpndDesc::Reg64IS, &OpndDesc::ListSrc},0,kLtBranch,"pure_call","0",1,kBranchReg,0xd63f0000)
 
 /*
+ * ldr dest, [src, slotoffset * 8]
+ */
+DEFINE_MOP(MOP_heap_const, {&OpndDesc::Reg64ID, &OpndDesc::Reg64IS, &OpndDesc::Imm64},ISINTRINSIC,kLtAlu,"__heap_constant","0,1,2",1)
+
+/*
+ * ldr dest, [src, MACHINECODE_OFFSET]
+ * ldr dest, [dest, CONSTANT_TABLE_OFFSET]
+ */
+DEFINE_MOP(MOP_get_heap_const_table, {&OpndDesc::Reg64ID, &OpndDesc::Reg64IS, &OpndDesc::Imm64, &OpndDesc::Imm64},ISINTRINSIC,kLtAlu,"__get_heap_constant_table","0,1,2,3",2)
+
+/*
  * intrinsic Unsafe.getAndAddInt
  * intrinsic_get_add_int w0, xt, wt, ws, x1, x2, w3, label
  * add    xt, x1, x2
