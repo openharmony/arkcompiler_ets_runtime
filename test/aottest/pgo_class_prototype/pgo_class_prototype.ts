@@ -70,3 +70,19 @@ const v37 = new C18();
 print(C3.valueOf);
 print(ArkTools.isTSHClass(C3));
 print(ArkTools.isAOTCompiled(C18));
+
+const v23 = Math.constructor;
+const v26 = new Proxy([Math,Math], v23);
+try {
+    v26.shift();
+} catch(e28) {
+}
+function test3() {
+    if (!new.target) { throw 'must be called with new'; }
+    this[0] = this;
+    Math.constructor.freeze(v26);
+}
+test3.prototype = v26;
+const v33 = new test3();
+v33[0] = v33;
+print(ArkTools.isTSHClass(v33));
