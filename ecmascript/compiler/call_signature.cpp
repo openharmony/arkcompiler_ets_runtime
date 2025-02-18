@@ -1087,7 +1087,7 @@ DEF_CALL_SIGNATURE(Builtins)
 DEF_CALL_SIGNATURE(BuiltinsWithArgv)
 {
     // 7 : 7 input parameters
-    CallSignature builtinsWtihArgv("Builtins", 0, 7,
+    CallSignature builtinsWtihArgv("BuiltinsWithArgv", 0, 7,
         ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
     *callSign = builtinsWtihArgv;
     std::array<VariableType, 7> params = { // 7 : 7 input parameters

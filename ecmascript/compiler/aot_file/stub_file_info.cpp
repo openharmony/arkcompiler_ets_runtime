@@ -29,8 +29,8 @@ void StubFileInfo::Save(const std::string &filename, Triple triple)
     if (!RealPath(filename, realPath, false)) {
         return;
     }
-
-    std::ofstream file(realPath.c_str(), std::ofstream::binary);
+    std::fstream file(realPath.c_str(),
+                      std::fstream::binary | std::fstream::in | std::fstream::out | std::fstream::trunc);
     if (!file.is_open()) {
         LOG_ECMA(FATAL) << "Failed to open file : " << realPath.c_str();
         UNREACHABLE();
@@ -50,8 +50,11 @@ void StubFileInfo::Save(const std::string &filename, Triple triple)
     uint64_t secSizeInfoAddr = reinterpret_cast<uint64_t>(moduleInfo.data());
     des.SetSecAddrAndSize(ElfSecName::ARK_MODULEINFO, secSizeInfoAddr, sizeof(uint32_t));
     des_[lastModuleSectionIdx].AddAsmStubELFInfo(asmStubELFInfo_);
-
-    ElfBuilder builder(des_, GetDumpSectionNames());
+#if ENABLE_NEXT_OPTIMIZATION
+    ElfBuilder builder(des_, GetDumpSectionNames(), true, triple);
+#else
+    ElfBuilder builder(des_, GetDumpSectionNames(), false, triple);
+#endif
     llvm::ELF::Elf64_Ehdr header;
     builder.PackELFHeader(header, base::FileHeaderBase::ToVersionNumber(AOTFileVersion::AN_VERSION), triple);
     file.write(reinterpret_cast<char *>(&header), sizeof(llvm::ELF::Elf64_Ehdr));
