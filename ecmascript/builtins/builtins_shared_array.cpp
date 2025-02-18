@@ -1453,7 +1453,7 @@ JSTaggedValue BuiltinsSharedArray::Push(EcmaRuntimeCallInfo *argv)
         THROW_TYPE_ERROR_AND_RETURN(thread, "out of range.", JSTaggedValue::Exception());
     }
 
-    uint32_t newLength = argc + len;
+    uint32_t newLength = argc + static_cast<uint32_t>(len);
     TaggedArray *element = TaggedArray::Cast(thisObjHandle->GetElements().GetTaggedObject());
     if (newLength > ElementAccessor::GetElementsLength(thisObjHandle)) {
         element = *JSObject::GrowElementsCapacity(thread, thisObjHandle, newLength, true);
