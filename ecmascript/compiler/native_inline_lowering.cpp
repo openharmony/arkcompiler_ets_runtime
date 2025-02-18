@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 #include "ecmascript/compiler/native_inline_lowering.h"
+#include "ecmascript/compiler/builtins/builtins_array_stub_builder.h"
 #include "ecmascript/compiler/builtins/builtins_call_signature.h"
 #include "ecmascript/global_env.h"
 
@@ -336,8 +337,7 @@ void NativeInlineLowering::RunNativeInlineLowering()
                 TryInlineFunctionPrototypeHasInstance(gate, argc, id, skipThis);
                 break;
             case BuiltinsStubCSigns::ID::ArrayIndexOf:
-                TryInlineIndexOfIncludes(gate, argc, id, skipThis);
-                break;
+            case BuiltinsStubCSigns::ID::ArrayLastIndexOf:
             case BuiltinsStubCSigns::ID::ArrayIncludes:
                 TryInlineIndexOfIncludes(gate, argc, id, skipThis);
                 break;
@@ -1478,6 +1478,7 @@ void NativeInlineLowering::TryInlineFunctionPrototypeHasInstance(GateRef gate, s
     ReplaceGateWithPendingException(gate, ret);
 }
 
+// indexOf, lastIndexOf, includes
 void NativeInlineLowering::TryInlineIndexOfIncludes(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id, bool skipThis)
 {
     if (!skipThis) {
@@ -1497,15 +1498,23 @@ void NativeInlineLowering::TryInlineIndexOfIncludes(GateRef gate, size_t argc, B
     builder_.StableArrayCheck(thisArray, kind, ArrayMetaDataAccessor::Mode::CALL_BUILTIN_METHOD);
     builder_.ElementsKindCheck(thisArray, kind, ArrayMetaDataAccessor::Mode::CALL_BUILTIN_METHOD);
     GateRef ret = Circuit::NullGate();
+    GateRef elements = builder_.GetElementsArray(thisArray);
+    GateRef thisLen = builder_.GetLengthOfJSArray(thisArray);
     GateRef callID = builder_.Int32(static_cast<int32_t>(id));
     GateRef arrayKind = builder_.Int32(Elements::ToUint(kind));
     if (argc == 1) {
-        ret = builder_.ArrayIncludesIndexOf(thisArray, builder_.Int32(0), targetElement, callID, arrayKind);
+        GateRef defaultFromIndex = (id == BuiltinsStubCSigns::ID::ArrayLastIndexOf)
+            ? builder_.Int64Sub(builder_.ZExtInt32ToInt64(thisLen), builder_.Int64(1))
+            : builder_.Int64(0);
+        ret = builder_.ArrayIncludesIndexOf(elements, targetElement, defaultFromIndex, thisLen, callID, arrayKind);
     } else {
         GateRef fromIndexHandler = acc_.GetValueIn(gate, 2);
-        builder_.DeoptCheck(builder_.TaggedIsInt(fromIndexHandler), acc_.GetFrameState(gate), DeoptType::INDEXNOTINT);
-        GateRef fromIndex = builder_.TaggedGetInt(fromIndexHandler);
-        ret = builder_.ArrayIncludesIndexOf(thisArray, fromIndex, targetElement, callID, arrayKind);
+        builder_.DeoptCheck(builder_.TaggedIsNumber(fromIndexHandler), acc_.GetFrameState(gate),
+                            DeoptType::INDEXNOTINT);
+        GateRef fromIndex = BuiltinsArrayStubBuilder(&env).MakeFromIndex(
+            fromIndexHandler, thisLen,
+            (id == BuiltinsStubCSigns::ID::ArrayLastIndexOf));
+        ret = builder_.ArrayIncludesIndexOf(elements, targetElement, fromIndex, thisLen, callID, arrayKind);
     }
     if (EnableTrace()) {
         AddTraceLogs(gate, id);

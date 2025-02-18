@@ -77,6 +77,8 @@ public:
     static JSTaggedValue HandleforEachOfStable(JSThread *thread, JSHandle<JSObject> thisObjHandle,
                                                JSHandle<JSTaggedValue> callbackFnHandle,
                                                JSHandle<JSTaggedValue> thisArgHandle, uint32_t len, uint32_t &k);
+    static JSTaggedValue Includes(JSThread *thread, JSHandle<JSTaggedValue> receiver,
+                                 JSHandle<JSTaggedValue> searchElement, uint32_t from, uint32_t len);
     static JSTaggedValue IndexOf(JSThread *thread, JSHandle<JSTaggedValue> receiver,
                                  JSHandle<JSTaggedValue> searchElement, uint32_t from, uint32_t len);
     static JSTaggedValue LastIndexOf(JSThread *thread, JSHandle<JSTaggedValue> receiver,
@@ -126,33 +128,26 @@ public:
                                                    JSHandle<JSTaggedValue> thisArgHandle, int64_t &k);
 
 private:
-    enum class IndexOfType {
-        IndexOf,
-        LastIndexOf
-    };
-
-    struct IndexOfContext {
-        JSThread *thread;
-        JSHandle<JSTaggedValue> receiver;
-        JSHandle<JSTaggedValue> searchElement;
-        uint32_t fromIndex;
-        uint32_t length;
-    };
-
     template <class Predicate>
-    static JSTaggedValue FindRawData(IndexOfContext &ctx, Predicate &&predicate);
-    template <class Predicate>
-    static JSTaggedValue FindLastRawData(IndexOfContext &ctx, Predicate &&predicate);
-    template <class Predicate>
-    static JSTaggedValue FindRawDataDispatch(IndexOfType type, IndexOfContext &ctx, Predicate &&predicate);
+    static const JSTaggedType* IndexOfElements(Span<const TaggedType> rawElements, IndexOfOptions options,
+                                               Predicate predicate);
+    static const JSTaggedType* IndexOfUndefined(Span<const JSTaggedType> elements, IndexOfOptions options,
+                                                bool isMutant);
+    static const JSTaggedType* IndexOfTaggedZero(Span<const JSTaggedType> taggedElements, IndexOfOptions options);
+    static const JSTaggedType* IndexOfInt(Span<const JSTaggedType> elements, JSTaggedValue searchElement,
+                                          IndexOfOptions options, bool isMutantInt32Array);
+    static const JSTaggedType* IndexOfDouble(Span<const JSTaggedType> elements, JSTaggedValue searchElement,
+                                             IndexOfOptions options, bool isMutantDoubleArray);
+    static const JSTaggedType* IndexOfObjectAddress(Span<const JSTaggedType> elements, JSTaggedValue searchElement,
+                                                    IndexOfOptions options);
+    static const JSTaggedType* IndexOfString(Span<const JSTaggedType> elements, JSTaggedValue searchElement,
+                                             IndexOfOptions options);
+    static const JSTaggedType* IndexOfBigInt(Span<const JSTaggedType> elements, JSTaggedValue searchElement,
+                                             IndexOfOptions options);
+    static JSTaggedValue IndexOfDispatch(JSThread *thread, JSHandle<JSTaggedValue> receiver,
+                                         JSHandle<JSTaggedValue> searchElementHandle, uint32_t from, uint32_t len,
+                                         IndexOfOptions options);
 
-    static JSTaggedValue IndexOfZero(IndexOfType type, IndexOfContext &ctx);
-    static JSTaggedValue IndexOfInt32(IndexOfType type, IndexOfContext &ctx, JSTaggedValue searchElement);
-    static JSTaggedValue IndexOfDouble(IndexOfType type, IndexOfContext &ctx, JSTaggedValue searchElement);
-    static JSTaggedValue IndexOfObjectAddress(IndexOfType type, IndexOfContext &ctx, JSTaggedValue searchElement);
-    static JSTaggedValue IndexOfString(IndexOfType type, IndexOfContext &ctx, JSTaggedValue searchElement);
-    static JSTaggedValue IndexOfBigInt(IndexOfType type, IndexOfContext &ctx, JSTaggedValue searchElement);
-    static JSTaggedValue IndexOfDispatch(IndexOfType type, IndexOfContext &ctx, JSTaggedValue searchElement);
     static JSTaggedValue UpdateArrayCapacity(JSHandle<JSObject> &thisObjHandle, uint32_t &len,
                                              uint32_t &insertCount, uint32_t &actualDeleteCount,
                                              JSHandle<JSArray> &receiver, uint32_t &start,

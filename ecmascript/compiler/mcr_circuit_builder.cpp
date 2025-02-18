@@ -1869,16 +1869,16 @@ GateRef CircuitBuilder::DataViewSet(
 }
 
 GateRef CircuitBuilder::ArrayIncludesIndexOf(
-    GateRef thisArray, GateRef fromIndex, GateRef targetElement, GateRef callID, GateRef arrayKind)
+    GateRef elements, GateRef target, GateRef fromIndex, GateRef len, GateRef callID, GateRef arrayKind)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
-    GateRef ret =
-        GetCircuit()->NewGate(circuit_->ArrayIncludesIndexOf(),
-                              MachineType::I64,
-                              {currentControl, currentDepend, thisArray, fromIndex, targetElement, callID, arrayKind},
-                              GateType::AnyType());
+    GateRef ret = GetCircuit()->NewGate(
+        circuit_->ArrayIncludesIndexOf(),
+        MachineType::I64,
+        {currentControl, currentDepend, elements, target, fromIndex, len, callID, arrayKind},
+        GateType::AnyType());
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);
     return ret;
