@@ -612,13 +612,13 @@ DEF_RUNTIME_STUBS(UpdateHClassForElementsKind)
 {
     RUNTIME_STUBS_HEADER(UpdateHClassForElementsKind);
     JSHandle<JSTaggedValue> receiver = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the first parameter
-    JSTaggedType elementsKind = GetTArg(argv, argc, 1);        // 1: means the first parameter
+    ElementsKind elementsKind = static_cast<ElementsKind>(GetTArg(argv, argc, 1));  // 1: means the first parameter
+    // 1: means the first parameter
     ASSERT(receiver->IsJSArray());
-    ElementsKind kind = Elements::FixElementsKind(static_cast<ElementsKind>(elementsKind));
     auto array = JSHandle<JSArray>(receiver);
     ASSERT(JSHClass::IsInitialArrayHClassWithElementsKind(thread, receiver->GetTaggedObject()->GetClass(),
                                                           receiver->GetTaggedObject()->GetClass()->GetElementsKind()));
-    if (!JSHClass::TransitToElementsKindUncheck(thread, JSHandle<JSObject>(array), kind)) {
+    if (!JSHClass::TransitToElementsKindUncheck(thread, JSHandle<JSObject>(array), elementsKind)) {
         return JSTaggedValue::Hole().GetRawData();
     }
 

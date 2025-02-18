@@ -63,7 +63,7 @@ public:
     virtual std::shared_ptr<pgo::PGOProfiler> GetPGOProfiler() const;
 
     // thread
-    virtual const CMap<ElementsKind, std::pair<ConstantIndex, ConstantIndex>> &GetArrayHClassIndexMap() const = 0;
+    virtual ConstantIndex GetArrayHClassIndex(ElementsKind kind, bool isProtoType) const = 0;
     virtual const BuiltinHClassEntries &GetBuiltinHClassEntries() const = 0;
     virtual JSHClass *GetBuiltinPrototypeHClass(BuiltinTypeId type) const = 0;
 

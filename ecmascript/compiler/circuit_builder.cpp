@@ -1081,50 +1081,50 @@ GateRef Variable::TryRemoveTrivialPhi(GateRef phi)
 
 GateRef CircuitBuilder::ElementsKindIsInt(GateRef kind)
 {
-    return Int32Equal(kind, Int32(static_cast<uint32_t>(ElementsKind::INT)));
+    return Int32Equal(kind, Int32(Elements::ToUint(ElementsKind::INT)));
 }
 
 GateRef CircuitBuilder::ElementsKindIsIntOrHoleInt(GateRef kind)
 {
-    GateRef kindIsInt = Int32Equal(kind, Int32(static_cast<uint32_t>(ElementsKind::INT)));
-    GateRef kindIsHoleInt = Int32Equal(kind, Int32(static_cast<uint32_t>(ElementsKind::HOLE_INT)));
+    GateRef kindIsInt = Int32Equal(kind, Int32(Elements::ToUint(ElementsKind::INT)));
+    GateRef kindIsHoleInt = Int32Equal(kind, Int32(Elements::ToUint(ElementsKind::HOLE_INT)));
     return BitOr(kindIsInt, kindIsHoleInt);
 }
 
 GateRef CircuitBuilder::ElementsKindIsNumber(GateRef kind)
 {
-    return Int32Equal(kind, Int32(static_cast<uint32_t>(ElementsKind::NUMBER)));
+    return Int32Equal(kind, Int32(Elements::ToUint(ElementsKind::NUMBER)));
 }
 
 GateRef CircuitBuilder::ElementsKindIsNumOrHoleNum(GateRef kind)
 {
-    GateRef kindIsNum = Int32Equal(kind, Int32(static_cast<uint32_t>(ElementsKind::NUMBER)));
-    GateRef kindIsHoleNum = Int32Equal(kind, Int32(static_cast<uint32_t>(ElementsKind::HOLE_NUMBER)));
+    GateRef kindIsNum = Int32Equal(kind, Int32(Elements::ToUint(ElementsKind::NUMBER)));
+    GateRef kindIsHoleNum = Int32Equal(kind, Int32(Elements::ToUint(ElementsKind::HOLE_NUMBER)));
     return BitOr(kindIsNum, kindIsHoleNum);
 }
 
 GateRef CircuitBuilder::ElementsKindIsString(GateRef kind)
 {
-    return Int32Equal(kind, Int32(static_cast<uint32_t>(ElementsKind::STRING)));
+    return Int32Equal(kind, Int32(Elements::ToUint(ElementsKind::STRING)));
 }
 
 GateRef CircuitBuilder::ElementsKindIsStringOrHoleString(GateRef kind)
 {
-    GateRef kindIsString = Int32Equal(kind, Int32(static_cast<uint32_t>(ElementsKind::STRING)));
-    GateRef kindIsHoleString = Int32Equal(kind, Int32(static_cast<uint32_t>(ElementsKind::HOLE_STRING)));
+    GateRef kindIsString = Int32Equal(kind, Int32(Elements::ToUint(ElementsKind::STRING)));
+    GateRef kindIsHoleString = Int32Equal(kind, Int32(Elements::ToUint(ElementsKind::HOLE_STRING)));
     return BitOr(kindIsString, kindIsHoleString);
 }
 
 GateRef CircuitBuilder::ElementsKindIsHeapKind(GateRef kind)
 {
-    GateRef overString = Int32GreaterThanOrEqual(kind, Int32(static_cast<uint32_t>(ElementsKind::STRING)));
-    GateRef isHoleOrNone = Int32LessThanOrEqual(kind, Int32(static_cast<uint32_t>(ElementsKind::HOLE)));
+    GateRef overString = Int32GreaterThanOrEqual(kind, Int32(Elements::ToUint(ElementsKind::STRING)));
+    GateRef isHoleOrNone = Int32LessThanOrEqual(kind, Int32(Elements::ToUint(ElementsKind::HOLE)));
     return BitOr(overString, isHoleOrNone);
 }
 
 GateRef CircuitBuilder::ElementsKindHasHole(GateRef kind)
 {
-    return Int32NotEqual(Int32And(kind, Int32(static_cast<uint32_t>(ElementsKind::HOLE))), Int32(0));
+    return Int32NotEqual(Int32And(kind, Int32(Elements::ToUint(ElementsKind::HOLE))), Int32(0));
 }
 
 GateRef CircuitBuilder::LoadBuiltinObject(size_t offset)

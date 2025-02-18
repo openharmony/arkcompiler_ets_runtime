@@ -40,9 +40,9 @@ JSRuntimeOptions &JitCompilationEnv::GetJSOptions()
     return hostThread_->GetEcmaVM()->GetJSOptions();
 }
 
-const CMap<ElementsKind, std::pair<ConstantIndex, ConstantIndex>> &JitCompilationEnv::GetArrayHClassIndexMap() const
+ConstantIndex JitCompilationEnv::GetArrayHClassIndex(ElementsKind kind, bool isProtoType) const
 {
-    return hostThread_->GetArrayHClassIndexMap();
+    return hostThread_->GetArrayInstanceHClassIndex(kind, isProtoType);
 }
 
 const BuiltinHClassEntries &JitCompilationEnv::GetBuiltinHClassEntries() const

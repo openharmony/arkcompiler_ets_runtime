@@ -218,8 +218,7 @@ HWTEST_F_L0(JSArrayTest, TrackInfo)
         values->Set(thread, i, JSTaggedValue(i));
     }
     JSHandle<JSArray> array(JSArray::CreateArrayFromList(thread, values));
-    auto intHClassIdx = thread->GetArrayHClassIndexMap().at(ElementsKind::INT).first;
-    auto hClass = JSHClass::Cast(constants->GetGlobalConstantObject(static_cast<size_t>(intHClassIdx)).GetHeapObject());
+    auto hClass = thread->GetArrayInstanceHClass(ElementsKind::INT, false);
     array->SynchronizedSetClass(thread, hClass);
     auto trackInfoHclass = JSHandle<JSHClass>::Cast(constants->GetHandledTrackInfoClass());
     auto trackInfo = TrackInfo::Cast(factory->NewObject(trackInfoHclass));
@@ -229,9 +228,8 @@ HWTEST_F_L0(JSArrayTest, TrackInfo)
     auto obj = JSHandle<JSObject>::Cast(array);
     auto floatHandle = JSHandle<JSTaggedValue>(thread, JSTaggedValue(10.1));
     ASSERT_TRUE(JSHClass::TransitToElementsKind(thread, obj, floatHandle, ElementsKind::NONE));
-    auto numberHClassIdx = thread->GetArrayHClassIndexMap().at(ElementsKind::NUMBER).first;
-    ASSERT_EQ(trackInfo->GetCachedHClass(),
-              constants->GetGlobalConstantObject(static_cast<size_t>(numberHClassIdx)));
+    auto numberHClass = JSTaggedValue(thread->GetArrayInstanceHClass(ElementsKind::NUMBER, false));
+    ASSERT_EQ(trackInfo->GetCachedHClass(), numberHClass);
     ASSERT_EQ(trackInfo->GetElementsKind(), ElementsKind::NUMBER);
 }
 }  // namespace panda::test

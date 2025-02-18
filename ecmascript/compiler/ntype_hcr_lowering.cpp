@@ -209,7 +209,7 @@ GateRef NTypeHCRLowering::NewJSArrayLiteral(GateRef glue, GateRef gate, GateRef 
     }
     GateRef hclass = Circuit::NullGate();
     // At define point, we use initial array class without IsPrototype set.
-    auto hclassIndex = compilationEnv_->GetArrayHClassIndexMap().at(kind).first;
+    auto hclassIndex = compilationEnv_->GetArrayHClassIndex(kind, false);
     hclass = builder_.GetGlobalConstantValue(hclassIndex);
 
     JSHandle<JSFunction> arrayFunc(compilationEnv_->GetGlobalEnv()->GetArrayFunction());

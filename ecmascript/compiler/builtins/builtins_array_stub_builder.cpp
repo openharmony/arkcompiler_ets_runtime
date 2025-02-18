@@ -31,7 +31,7 @@ void BuiltinsArrayStubBuilder::ElementsKindHclassCompare(GateRef glue, GateRef a
     auto env = GetEnvironment();
     Label isGeneric(env);
     GateRef elementsKind = GetElementsKindFromHClass(arrayCls);
-    GateRef notGeneric = NotEqual(elementsKind, Int32(static_cast<uint32_t>(ElementsKind::GENERIC)));
+    GateRef notGeneric = NotEqual(elementsKind, Int32(Elements::ToUint(ElementsKind::GENERIC)));
     BRANCH(notGeneric, matchCls, &isGeneric);
     Bind(&isGeneric);
     {
@@ -128,7 +128,7 @@ void BuiltinsArrayStubBuilder::With(GateRef glue, GateRef thisValue, GateRef num
                         Bind(&replaceIndex);
                         {
                             SetValueWithElementsKind(glue, newArray, *value, *k, Boolean(true),
-                                Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                                Int32(Elements::ToUint(ElementsKind::NONE)));
                             Jump(&loopEnd);
                         }
                         Bind(&notReplaceIndex);
@@ -140,13 +140,13 @@ void BuiltinsArrayStubBuilder::With(GateRef glue, GateRef thisValue, GateRef num
                             Bind(&eleIsHole);
                             {
                                 SetValueWithElementsKind(glue, newArray, Undefined(), *k, Boolean(true),
-                                    Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                                    Int32(Elements::ToUint(ElementsKind::NONE)));
                                 Jump(&loopEnd);
                             }
                             Bind(&eleNotHole);
                             {
                                 SetValueWithElementsKind(glue, newArray, ele, *k, Boolean(true),
-                                    Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                                    Int32(Elements::ToUint(ElementsKind::NONE)));
                                 Jump(&loopEnd);
                             }
                         }
@@ -250,14 +250,14 @@ void BuiltinsArrayStubBuilder::Unshift(GateRef glue, GateRef thisValue, GateRef 
                         Bind(&notHasProperty);
                         {
                             SetValueWithElementsKind(glue, thisValue, Hole(), *toKey, Boolean(false),
-                                Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                                Int32(Elements::ToUint(ElementsKind::NONE)));
                             Jump(&loopEnd);
                         }
                     }
                     Bind(&notHasException0);
                     {
                         SetValueWithElementsKind(glue, thisValue, *ele, *toKey, Boolean(false),
-                            Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                            Int32(Elements::ToUint(ElementsKind::NONE)));
                         Jump(&loopEnd);
                     }
                 }
@@ -271,7 +271,7 @@ void BuiltinsArrayStubBuilder::Unshift(GateRef glue, GateRef thisValue, GateRef 
                 GateRef value0 = GetCallArg0(numArgs);
                 // 0 : the first Element position
                 SetValueWithElementsKind(glue, thisValue, value0, Int64(0), Boolean(false),
-                    Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                    Int32(Elements::ToUint(ElementsKind::NONE)));
                 // 2 : the second param
                 BRANCH(Int64GreaterThanOrEqual(numArgs, IntPtr(2)), &numEqual2, &numEqual3);
                 Bind(&numEqual2);
@@ -279,7 +279,7 @@ void BuiltinsArrayStubBuilder::Unshift(GateRef glue, GateRef thisValue, GateRef 
                     GateRef value1 = GetCallArg1(numArgs);
                     // 1 : the second Element position
                     SetValueWithElementsKind(glue, thisValue, value1, Int64(1), Boolean(false),
-                        Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                        Int32(Elements::ToUint(ElementsKind::NONE)));
                     Jump(&numEqual3);
                 }
                 Bind(&numEqual3);
@@ -290,7 +290,7 @@ void BuiltinsArrayStubBuilder::Unshift(GateRef glue, GateRef thisValue, GateRef 
                     GateRef value2 = GetCallArg2(numArgs);
                     // 2 : the third Element position
                     SetValueWithElementsKind(glue, thisValue, value2, Int64(2), Boolean(false),
-                        Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                        Int32(Elements::ToUint(ElementsKind::NONE)));
                     Jump(&final);
                 }
                 Bind(&final);
@@ -374,7 +374,7 @@ void BuiltinsArrayStubBuilder::Shift(GateRef glue, GateRef thisValue,
                             {
                                 GateRef ele = GetTaggedValueWithElementsKind(glue, thisValue, *fromKey);
                                 SetValueWithElementsKind(glue, thisValue, ele, *toKey, Boolean(false),
-                                    Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                                    Int32(Elements::ToUint(ElementsKind::NONE)));
                                 Jump(&loopEnd);
                             }
                         }
@@ -397,7 +397,7 @@ void BuiltinsArrayStubBuilder::Shift(GateRef glue, GateRef thisValue,
                             Bind(&noTrim);
                             {
                                 SetValueWithElementsKind(glue, thisValue, Hole(), index, Boolean(false),
-                                    Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                                    Int32(Elements::ToUint(ElementsKind::NONE)));
                                 Jump(&setNewLen);
                             }
                             Bind(&setNewLen);
@@ -514,10 +514,10 @@ void BuiltinsArrayStubBuilder::Concat(GateRef glue, GateRef thisValue, GateRef n
                                     GateRef ele = GetTaggedValueWithElementsKind(glue, thisValue, *i);
                                     #if ECMASCRIPT_ENABLE_ELEMENTSKIND_ALWAY_GENERIC
                                     SetValueWithElementsKind(glue, newArray, ele, *j, Boolean(true),
-                                        Int32(static_cast<uint32_t>(ElementsKind::GENERIC)));
+                                        Int32(Elements::ToUint(ElementsKind::GENERIC)));
                                     #else
                                     SetValueWithElementsKind(glue, newArray, ele, *j, Boolean(true),
-                                        Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                                        Int32(Elements::ToUint(ElementsKind::NONE)));
                                     #endif
                                     Jump(&loopEnd);
                                 }
@@ -538,10 +538,10 @@ void BuiltinsArrayStubBuilder::Concat(GateRef glue, GateRef thisValue, GateRef n
                                     GateRef ele = GetTaggedValueWithElementsKind(glue, arg0, *k);
                                     #if ECMASCRIPT_ENABLE_ELEMENTSKIND_ALWAY_GENERIC
                                     SetValueWithElementsKind(glue, newArray, ele, *j, Boolean(true),
-                                                             Int32(static_cast<uint32_t>(ElementsKind::GENERIC)));
+                                                             Int32(Elements::ToUint(ElementsKind::GENERIC)));
                                     #else
                                     SetValueWithElementsKind(glue, newArray, ele, *j, Boolean(true),
-                                                             Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                                                             Int32(Elements::ToUint(ElementsKind::NONE)));
                                     #endif
                                     Jump(&loopEnd1);
                                 }
@@ -659,7 +659,7 @@ void BuiltinsArrayStubBuilder::Filter(GateRef glue, GateRef thisValue, GateRef n
                     Bind(&find);
                     {
                         SetValueWithElementsKind(glue, newArray, *kValue, *toIndex, Boolean(true),
-                                                 Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                                                 Int32(Elements::ToUint(ElementsKind::NONE)));
                         toIndex = Int64Add(*toIndex, Int64(1));
                         Jump(&checkArray);
                     }
@@ -859,7 +859,7 @@ void BuiltinsArrayStubBuilder::Map(GateRef glue, GateRef thisValue, GateRef numA
                 }
                 Bind(&notHasException1);
                 SetValueWithElementsKind(glue, newArray, retValue, *i, Boolean(true),
-                                         Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                                         Int32(Elements::ToUint(ElementsKind::NONE)));
                 Label lenChange(env);
                 GateRef tmpArrLen = ZExtInt32ToInt64(GetArrayLength(thisValue));
                 BRANCH(Int64LessThan(tmpArrLen, *thisArrLenVar), &lenChange, &kValueIsHole);
@@ -1166,7 +1166,7 @@ void BuiltinsArrayStubBuilder::ArrayIteratorNext(GateRef glue, GateRef thisValue
             SetValueToTaggedArray(VariableType::JS_ANY(), glue, elements, Int32(0), IntToTaggedPtr(index)); // 0: key
             SetValueToTaggedArray(VariableType::JS_ANY(), glue, elements, Int32(1), *iterValue); // 1: value
             iterValue = newBuilder.CreateArrayFromList(glue, elements,
-                Int32(static_cast<int32_t>(ElementsKind::TAGGED)));
+                Int32(Elements::ToUint(ElementsKind::TAGGED)));
             Jump(&createIterResult);
         }
     }
@@ -1330,7 +1330,7 @@ void BuiltinsArrayStubBuilder::Pop(GateRef glue, GateRef thisValue,
     Bind(&noTrim);
     {
         SetValueWithElementsKind(glue, thisValue, Hole(), index, Boolean(false),
-                                 Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                                 Int32(Elements::ToUint(ElementsKind::NONE)));
         Jump(&setNewLen);
     }
     Bind(&setNewLen);
@@ -1529,7 +1529,7 @@ void BuiltinsArrayStubBuilder::Slice(GateRef glue, GateRef thisValue, GateRef nu
 
                                 GateRef ele = GetTaggedValueWithElementsKind(glue, thisValue, Int64Add(*idx, *start));
                                 SetValueWithElementsKind(glue, newArray, ele, *idx, Boolean(true),
-                                                         Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                                                         Int32(Elements::ToUint(ElementsKind::NONE)));
                                 Jump(&loopEnd);
                             }
                             Bind(&loopEnd);
@@ -1570,7 +1570,7 @@ void BuiltinsArrayStubBuilder::Slice(GateRef glue, GateRef thisValue, GateRef nu
                                 }
                                 Bind(&setEle);
                                 SetValueWithElementsKind(glue, newArray, *ele, *idx, Boolean(true),
-                                                         Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                                                         Int32(Elements::ToUint(ElementsKind::NONE)));
                                 Jump(&loopEnd);
                             }
                             Bind(&loopEnd);
@@ -1656,7 +1656,7 @@ void BuiltinsArrayStubBuilder::ToSorted(GateRef glue, GateRef thisValue,
         {
             GateRef ele = GetTaggedValueWithElementsKind(glue, thisValue, *i);
             SetValueWithElementsKind(glue, receiver, ele, *i, Boolean(true),
-                Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                Int32(Elements::ToUint(ElementsKind::NONE)));
             Jump(&loopEnd);
         }
     }
@@ -1851,7 +1851,7 @@ GateRef BuiltinsArrayStubBuilder::DoSort(GateRef glue, GateRef receiver, bool is
                     Bind(&afterGettingpreviousValue);
                     {
                         SetValueWithElementsKind(glue, receiver, *previousValue, *j, Boolean(isToSorted),
-                            Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                            Int32(Elements::ToUint(ElementsKind::NONE)));
                         Jump(&loopEnd2);
                     }
                 }
@@ -1860,7 +1860,7 @@ GateRef BuiltinsArrayStubBuilder::DoSort(GateRef glue, GateRef receiver, bool is
                 LoopEnd(&loopHead2);
                 Bind(&loopExit2);
                 SetValueWithElementsKind(glue, receiver, *presentValue, *endIndex, Boolean(isToSorted),
-                    Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                    Int32(Elements::ToUint(ElementsKind::NONE)));
                 Jump(&loopEnd);
             }
         }
@@ -2052,8 +2052,8 @@ void BuiltinsArrayStubBuilder::Reverse(GateRef glue, GateRef thisValue, [[maybe_
     GateRef isMutantArrayEnabled = IsEnableMutantArray(glue);
     GateRef checkIntKind = LogicAndBuilder(env)
         .And(isMutantArrayEnabled)
-        .And(Int32GreaterThanOrEqual(kind, Int32(static_cast<int32_t>(ElementsKind::INT))))
-        .And(Int32LessThanOrEqual(kind, Int32(static_cast<int32_t>(ElementsKind::HOLE_INT))))
+        .And(Int32GreaterThanOrEqual(kind, Int32(Elements::ToUint(ElementsKind::INT))))
+        .And(Int32LessThanOrEqual(kind, Int32(Elements::ToUint(ElementsKind::HOLE_INT))))
         .Done();
     BRANCH(checkIntKind, &isInt, &isNotInt);
     Bind(&isInt);
@@ -2066,8 +2066,8 @@ void BuiltinsArrayStubBuilder::Reverse(GateRef glue, GateRef thisValue, [[maybe_
         Label isNotNumber(env);
         GateRef checkNumberKind = LogicAndBuilder(env)
             .And(isMutantArrayEnabled)
-            .And(Int32GreaterThanOrEqual(kind, Int32(static_cast<int32_t>(ElementsKind::NUMBER))))
-            .And(Int32LessThanOrEqual(kind, Int32(static_cast<int32_t>(ElementsKind::HOLE_NUMBER))))
+            .And(Int32GreaterThanOrEqual(kind, Int32(Elements::ToUint(ElementsKind::NUMBER))))
+            .And(Int32LessThanOrEqual(kind, Int32(Elements::ToUint(ElementsKind::HOLE_NUMBER))))
             .Done();
         BRANCH(checkNumberKind, &isNumber, &isNotNumber);
         Bind(&isNumber);
@@ -2236,13 +2236,13 @@ GateRef BuiltinsArrayStubBuilder::DoReverse(GateRef glue, GateRef thisValue, Gat
                         Bind(&lowerIsHole);
                         {
                             SetValueWithElementsKind(glue, receiver, Undefined(), *j, Boolean(true),
-                                Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                                Int32(Elements::ToUint(ElementsKind::NONE)));
                             Jump(&dealWithUpper);
                         }
                         Bind(&lowerIsNotHole);
                         {
                             SetValueWithElementsKind(glue, receiver, *lower, *j, Boolean(true),
-                                Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                                Int32(Elements::ToUint(ElementsKind::NONE)));
                             Jump(&dealWithUpper);
                         }
                         Bind(&dealWithUpper);
@@ -2251,13 +2251,13 @@ GateRef BuiltinsArrayStubBuilder::DoReverse(GateRef glue, GateRef thisValue, Gat
                             Bind(&upperIsHole);
                             {
                                 SetValueWithElementsKind(glue, receiver, Undefined(), *i, Boolean(true),
-                                    Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                                    Int32(Elements::ToUint(ElementsKind::NONE)));
                                 Jump(&loopEnd);
                             }
                             Bind(&upperIsNotHole);
                             {
                                 SetValueWithElementsKind(glue, receiver, *upper, *i, Boolean(true),
-                                    Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                                    Int32(Elements::ToUint(ElementsKind::NONE)));
                                 Jump(&loopEnd);
                             }
                         }
@@ -2265,9 +2265,9 @@ GateRef BuiltinsArrayStubBuilder::DoReverse(GateRef glue, GateRef thisValue, Gat
                     Bind(&receiverIsOrigin);
                     {
                         SetValueWithElementsKind(glue, receiver, *upper, *i, Boolean(false),
-                            Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                            Int32(Elements::ToUint(ElementsKind::NONE)));
                         SetValueWithElementsKind(glue, receiver, *lower, *j, Boolean(false),
-                            Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                            Int32(Elements::ToUint(ElementsKind::NONE)));
                         Jump(&loopEnd);
                     }
                 }
@@ -2659,7 +2659,7 @@ void BuiltinsArrayStubBuilder::Push(GateRef glue, GateRef thisValue,
             value = GetCallArg0(numArgs);
             index = Int32Add(oldLength, Int32(0)); // 0 slot index
             SetValueWithElementsKind(glue, thisValue, *value, *index, Boolean(true),
-                                     Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                                     Int32(Elements::ToUint(ElementsKind::NONE)));
             Jump(&setLength);
         }
         Bind(&twoArg);
@@ -2671,9 +2671,9 @@ void BuiltinsArrayStubBuilder::Push(GateRef glue, GateRef thisValue,
             value2 = GetCallArg1(numArgs);
             index2 = Int32Add(oldLength, Int32(1)); // 1 slot index
             SetValueWithElementsKind(glue, thisValue, *value, *index, Boolean(true),
-                                     Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                                     Int32(Elements::ToUint(ElementsKind::NONE)));
             SetValueWithElementsKind(glue, thisValue, *value2, *index2, Boolean(true),
-                                     Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                                     Int32(Elements::ToUint(ElementsKind::NONE)));
             Jump(&setLength);
         }
     }
@@ -2737,7 +2737,7 @@ void BuiltinsArrayStubBuilder::Push(GateRef glue, GateRef thisValue,
             value = GetCallArg0(numArgs);
             index = Int32Add(oldLength, Int32(0));  // 0 slot index
             SetValueWithElementsKind(glue, thisValue, *value, *index, Boolean(true),
-                                     Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                                     Int32(Elements::ToUint(ElementsKind::NONE)));
             Jump(&setLength);
         }
         Bind(&twoArg);
@@ -2745,11 +2745,11 @@ void BuiltinsArrayStubBuilder::Push(GateRef glue, GateRef thisValue,
             value = GetCallArg0(numArgs);
             index = Int32Add(oldLength, Int32(0));  // 0 slot index
             SetValueWithElementsKind(glue, thisValue, *value, *index, Boolean(true),
-                                     Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                                     Int32(Elements::ToUint(ElementsKind::NONE)));
             value = GetCallArg1(numArgs);
             index = Int32Add(oldLength, Int32(1));  // 1 slot index
             SetValueWithElementsKind(glue, thisValue, *value, *index, Boolean(true),
-                                     Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                                     Int32(Elements::ToUint(ElementsKind::NONE)));
             Jump(&setLength);
         }
     }
@@ -3059,14 +3059,14 @@ GateRef BuiltinsArrayStubBuilder::CreateSpliceDeletedArray(GateRef glue, GateRef
         Bind(&setHole);
         {
             SetValueWithElementsKind(glue, newArray, Hole(), *i, Boolean(true),
-                                     Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                                     Int32(Elements::ToUint(ElementsKind::NONE)));
             Jump(&loopEnd);
         }
         Bind(&setSrc);
         {
             GateRef val = GetTaggedValueWithElementsKind(glue, thisValue, Int32Add(start, *i));
             SetValueWithElementsKind(glue, newArray, val, *i, Boolean(true),
-                                     Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                                     Int32(Elements::ToUint(ElementsKind::NONE)));
             Jump(&loopEnd);
         }
     }
@@ -3454,7 +3454,7 @@ void BuiltinsArrayStubBuilder::Splice(GateRef glue, GateRef thisValue, GateRef n
                         Bind(&setIndexLessLen);
                         {
                             SetValueWithElementsKind(glue, thisValue, *ele, Int32Add(*i, *insertCount), Boolean(true),
-                                                     Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                                                     Int32(Elements::ToUint(ElementsKind::NONE)));
                             Jump(&loopEnd);
                         }
                     }
@@ -3497,7 +3497,7 @@ void BuiltinsArrayStubBuilder::Splice(GateRef glue, GateRef thisValue, GateRef n
                     Bind(&setHole);
                     {
                         SetValueWithElementsKind(glue, thisValue, Hole(), *idx, Boolean(true),
-                                                 Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                                                 Int32(Elements::ToUint(ElementsKind::NONE)));
                         Jump(&loopEnd1);
                     }
                 }
@@ -3523,7 +3523,7 @@ void BuiltinsArrayStubBuilder::Splice(GateRef glue, GateRef thisValue, GateRef n
                     ele = GetTaggedValueWithElementsKind(glue, thisValue, Int32Sub(Int32Add(*j, *actualDeleteCount),
                                                                                    Int32(1)));
                     SetValueWithElementsKind(glue, thisValue, *ele, Int32Sub(Int32Add(*j, *insertCount), Int32(1)),
-                                             Boolean(true), Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                                             Boolean(true), Int32(Elements::ToUint(ElementsKind::NONE)));
                     Jump(&loopEnd);
                 }
                 Bind(&loopEnd);
@@ -3540,7 +3540,7 @@ void BuiltinsArrayStubBuilder::Splice(GateRef glue, GateRef thisValue, GateRef n
                 {
                     GateRef e = GetCallArg2(numArgs);
                     SetValueWithElementsKind(glue, thisValue, e, *start, Boolean(true),
-                                             Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                                             Int32(Elements::ToUint(ElementsKind::NONE)));
                     Jump(&setArrayLen);
                 }
             }
@@ -3682,13 +3682,13 @@ void BuiltinsArrayStubBuilder::ToSpliced(GateRef glue, GateRef thisValue, GateRe
                             Bind(&eleIsHole);
                             {
                                 SetValueWithElementsKind(glue, newArray, Undefined(), *newIndex, Boolean(true),
-                                    Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                                    Int32(Elements::ToUint(ElementsKind::NONE)));
                                 Jump(&loopEnd);
                             }
                             Bind(&eleNotHole);
                             {
                                 SetValueWithElementsKind(glue, newArray, ele, *newIndex, Boolean(true),
-                                    Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                                    Int32(Elements::ToUint(ElementsKind::NONE)));
                                 Jump(&loopEnd);
                             }
                         }
@@ -3707,7 +3707,7 @@ void BuiltinsArrayStubBuilder::ToSpliced(GateRef glue, GateRef thisValue, GateRe
                         {
                             GateRef insertNum = GetCallArg2(numArgs);
                             SetValueWithElementsKind(glue, newArray, insertNum, *newIndex, Boolean(true),
-                                Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                                Int32(Elements::ToUint(ElementsKind::NONE)));
                             newIndex = Int32Add(*newIndex, Int32(1));
                             Jump(&copyAfter);
                         }
@@ -3736,13 +3736,13 @@ void BuiltinsArrayStubBuilder::ToSpliced(GateRef glue, GateRef thisValue, GateRe
                                 Bind(&ele1IsHole);
                                 {
                                     SetValueWithElementsKind(glue, newArray, Undefined(), *newIndex, Boolean(true),
-                                        Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                                        Int32(Elements::ToUint(ElementsKind::NONE)));
                                     Jump(&loopEnd1);
                                 }
                                 Bind(&ele1NotHole);
                                 {
                                     SetValueWithElementsKind(glue, newArray, ele1, *newIndex, Boolean(true),
-                                        Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                                        Int32(Elements::ToUint(ElementsKind::NONE)));
                                     Jump(&loopEnd1);
                                 }
                             }
@@ -3914,13 +3914,13 @@ void BuiltinsArrayStubBuilder::CopyWithin(GateRef glue, GateRef thisValue, GateR
                     Bind(&setHole);
                     {
                         SetValueWithElementsKind(glue, thisValue, Hole(), *copyTo,
-                            Boolean(true), Int32(static_cast<uint32_t>(ElementsKind::DICTIONARY)));
+                            Boolean(true), Int32(Elements::ToUint(ElementsKind::DICTIONARY)));
                         Jump(&loopEnd);
                     }
                     Bind(&setValue);
                     {
                         SetValueWithElementsKind(glue, thisValue, *kValue, *copyTo,
-                            Boolean(true), Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                            Boolean(true), Int32(Elements::ToUint(ElementsKind::NONE)));
                         Jump(&loopEnd);
                     }
                 }
@@ -4966,11 +4966,12 @@ void BuiltinsArrayStubBuilder::FastCreateArrayWithArgv(GateRef glue, Variable *r
 
     // set value
     DEFVARIABLE(i, VariableType::INT64(), Int64(0));
+    DEFVARIABLE(newHClass, VariableType::JS_ANY(), hclass);
     DEFVARIABLE(value, VariableType::JS_ANY(), Undefined());
 #if ECMASCRIPT_ENABLE_ELEMENTSKIND_ALWAY_GENERIC
-    DEFVARIABLE(elementKind, VariableType::INT32(), Int32(static_cast<int32_t>(ElementsKind::GENERIC)));
+    DEFVARIABLE(elementKind, VariableType::INT32(), Int32(Elements::ToUint(ElementsKind::NONE)));
 #else
-    DEFVARIABLE(elementKind, VariableType::INT32(), Int32(static_cast<int32_t>(ElementsKind::HOLE)));
+    DEFVARIABLE(elementKind, VariableType::INT32(), Int32(Elements::ToUint(ElementsKind::NONE)));
 #endif
     Label loopHead(env);
     Label loopEnd(env);
@@ -4984,12 +4985,12 @@ void BuiltinsArrayStubBuilder::FastCreateArrayWithArgv(GateRef glue, Variable *r
         Label isHole(env);
         Label notHole(env);
         value = GetArgFromArgv(*i);
-        elementKind = Int32Or(TaggedToElementKind(*value), *elementKind);
         BRANCH(TaggedIsHole(*value), &isHole, &notHole);
         Bind(&isHole);
         value = TaggedUndefined();
         Jump(&notHole);
         Bind(&notHole);
+        elementKind = Int32Or(TaggedToElementKind(*value), *elementKind);
         SetValueToTaggedArray(VariableType::JS_ANY(), glue, elements, *i, *value);
         i = Int64Add(*i, Int64(1));
         Jump(&loopEnd);
@@ -4997,9 +4998,22 @@ void BuiltinsArrayStubBuilder::FastCreateArrayWithArgv(GateRef glue, Variable *r
     Bind(&loopEnd);
     LoopEnd(&loopHead);
     Bind(&loopExit);
-
+    GateRef noneHClass = GetGlobalConstantValue(VariableType::JS_ANY(), glue, ConstantIndex::ELEMENT_NONE_HCLASS_INDEX);
+    Label useElementsKindHClass(env);
+    Label createArray(env);
+    GateRef newHClassVal = *newHClass;
+    // if the newHClass is not noneHClass, means the elementskind is not enable or "Array" is modified, then do not use
+    // specific hclass for elementskind.
+    BRANCH_LIKELY(Equal(newHClassVal, noneHClass), &useElementsKindHClass, &createArray);
+    Bind(&useElementsKindHClass);
+    {
+        // elementKind may be an invalid kind, but use it to index the hclass is supported.
+        newHClass = GetElementsKindHClass(glue, *elementKind);
+        Jump(&createArray);
+    }
+    Bind(&createArray);
     // create array object
-    GateRef arr = newBuilder.NewJSObject(glue, hclass);
+    GateRef arr = newBuilder.NewJSObject(glue, *newHClass);
     res->WriteVariable(arr);
     GateRef lengthOffset = IntPtr(JSArray::LENGTH_OFFSET);
     Store(VariableType::INT32(), glue, arr, lengthOffset, len);
@@ -5008,12 +5022,6 @@ void BuiltinsArrayStubBuilder::FastCreateArrayWithArgv(GateRef glue, Variable *r
           IntPtr(JSArray::GetInlinedPropertyOffset(JSArray::LENGTH_INLINE_PROPERTY_INDEX)), accessor);
     SetExtensibleToBitfield(glue, arr, true);
     SetElementsArray(VariableType::JS_POINTER(), glue, arr, elements);
-
-    // set elementkind if needed
-    Label enabledElementsKind(env);
-    BRANCH(IsEnableElementsKind(glue), &enabledElementsKind, exit);
-    Bind(&enabledElementsKind);
-    CallRuntime(glue, RTSTUB_ID(UpdateHClassForElementsKind), { arr, *elementKind });
     Jump(exit);
 }
 
@@ -5415,7 +5423,7 @@ void BuiltinsArrayStubBuilder::FlatMap(GateRef glue, GateRef thisValue, GateRef 
                         Jump(&setValue);
                         Bind(&setValue);
                         SetValueWithElementsKind(glue, newArray, *retValueItem, *j, Boolean(true),
-                            Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                            Int32(Elements::ToUint(ElementsKind::NONE)));
                         j = Int64Add(*j, Int64(1));
                         Jump(&loopEnd3);
                     }
@@ -5429,7 +5437,7 @@ void BuiltinsArrayStubBuilder::FlatMap(GateRef glue, GateRef thisValue, GateRef 
             Bind(&retValueIsNotJsArray);
             {
                 SetValueWithElementsKind(glue, newArray, retValue, *j, Boolean(true),
-                    Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                    Int32(Elements::ToUint(ElementsKind::NONE)));
                 j = Int64Add(*j, Int64(1));
                 Jump(&loopEnd2);
             }

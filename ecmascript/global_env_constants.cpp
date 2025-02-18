@@ -437,16 +437,24 @@ void GlobalEnvConstants::InitSpecialForSnapshot()
 
 void GlobalEnvConstants::InitElementKindHClass(const JSThread *thread, JSHandle<JSHClass> originHClass)
 {
-    auto map = thread->GetArrayHClassIndexMap();
-    for (auto iter : map) {
-        JSHandle<JSHClass> hclassWithProto = JSHClass::CloneWithElementsKind(thread, originHClass, iter.first, true);
-        if (iter.first != ElementsKind::GENERIC) {
-            JSHandle<JSHClass> hclass = JSHClass::CloneWithElementsKind(thread, originHClass, iter.first, false);
-            SetConstant(iter.second.first, hclass);
-        } else {
-            SetConstant(iter.second.first, originHClass);
-        }
-        SetConstant(iter.second.second, hclassWithProto);
+    {
+        JSHandle<JSHClass> hclass;
+#define INIT_ARRAY_HCLASS_INDEX_ARRAYS(name)                                                        \
+        hclass = JSHClass::CloneWithElementsKind(thread, originHClass, ElementsKind::name, false);  \
+        SetConstant(ConstantIndex::ELEMENT_##name##_HCLASS_INDEX, hclass);
+
+        ELEMENTS_KIND_INIT_HCLASS_LIST(INIT_ARRAY_HCLASS_INDEX_ARRAYS)
+#undef INIT_ARRAY_HCLASS_INDEX_ARRAYS
+    }
+    SetConstant(ConstantIndex::ELEMENT_HOLE_TAGGED_HCLASS_INDEX, originHClass);
+    {
+        JSHandle<JSHClass> hclass;
+#define INIT_ARRAY_HCLASS_INDEX_ARRAYS(name)                                                       \
+        hclass = JSHClass::CloneWithElementsKind(thread, originHClass, ElementsKind::name, true);  \
+        SetConstant(ConstantIndex::ELEMENT_##name##_PROTO_HCLASS_INDEX, hclass);
+
+        ELEMENTS_KIND_INIT_HCLASS_LIST(INIT_ARRAY_HCLASS_INDEX_ARRAYS)
+#undef INIT_ARRAY_HCLASS_INDEX_ARRAYS
     }
 }
 }  // namespace panda::ecmascript

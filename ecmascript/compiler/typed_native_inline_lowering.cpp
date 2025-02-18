@@ -3287,7 +3287,7 @@ void TypedNativeInlineLowering::LowerArrayFilter(GateRef gate)
                     *kValue,
                     *toIndex,
                     builder_.Boolean(true),
-                    builder_.Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                    builder_.Int32(Elements::ToUint(ElementsKind::NONE)));
                 toIndex = builder_.Int64Add(*toIndex, builder_.Int64(1));
                 builder_.Jump(&afterLoop);
             }
@@ -3382,7 +3382,7 @@ void TypedNativeInlineLowering::LowerArrayMap(GateRef gate)
                 callJs,
                 *toIndex,
                 builder_.Boolean(true),
-                builder_.Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                builder_.Int32(Elements::ToUint(ElementsKind::NONE)));
             toIndex = builder_.Int64Add(*toIndex, builder_.Int64(1));
             
             i = builder_.Int64Add(*i, builder_.Int64(1));

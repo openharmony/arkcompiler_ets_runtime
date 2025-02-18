@@ -99,8 +99,6 @@ bool EcmaContext::Initialize()
         *hClassHandle,
         GlobalEnv::SIZE,
         JSType::GLOBAL_ENV);
-    auto arrayHClassIndexMaps = Elements::InitializeHClassMap();
-    thread_->SetArrayHClassIndexMap(arrayHClassIndexMaps);
     JSHandle<GlobalEnv> globalEnv = factory_->NewGlobalEnv(*globalEnvClass);
     globalEnv->Init(thread_);
     globalEnv_ = globalEnv.GetTaggedValue();

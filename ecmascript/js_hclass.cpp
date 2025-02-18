@@ -676,18 +676,9 @@ void JSHClass::TransitionForRepChange(const JSThread *thread, const JSHandle<JSO
 bool JSHClass::IsInitialArrayHClassWithElementsKind(const JSThread *thread, const JSHClass *targetHClass,
                                                     const ElementsKind targetKind)
 {
-    const auto &arrayHClassIndexMap = thread->GetArrayHClassIndexMap();
-    auto newKindIter = arrayHClassIndexMap.find(targetKind);
-    if (newKindIter != arrayHClassIndexMap.end()) {
-        auto indexPair = newKindIter->second;
-        auto hclassVal = thread->GlobalConstants()->GetGlobalConstantObject(static_cast<size_t>(indexPair.first));
-        auto hclassWithProtoVal = thread->GlobalConstants()->
-            GetGlobalConstantObject(static_cast<size_t>(indexPair.second));
-        JSHClass *hclass = JSHClass::Cast(hclassVal.GetTaggedObject());
-        JSHClass *hclassWithProto = JSHClass::Cast(hclassWithProtoVal.GetTaggedObject());
-        return (targetHClass == hclass || targetHClass == hclassWithProto);
-    }
-    return false;
+    JSHClass *hclass = thread->GetArrayInstanceHClass(targetKind, false);
+    JSHClass *hclassWithProto = thread->GetArrayInstanceHClass(targetKind, true);
+    return targetHClass == hclass || targetHClass == hclassWithProto;
 }
 
 bool JSHClass::TransitToElementsKindUncheck(const JSThread *thread, const JSHandle<JSObject> &obj,
@@ -697,23 +688,13 @@ bool JSHClass::TransitToElementsKindUncheck(const JSThread *thread, const JSHand
     // currently we only support initial array hclass
     JSHClass *objHclass = obj->GetClass();
     if (IsInitialArrayHClassWithElementsKind(thread, objHclass, current)) {
-        const auto &arrayHClassIndexMap = thread->GetArrayHClassIndexMap();
-        auto newKindIter = arrayHClassIndexMap.find(newKind);
-        bool objHclassIsPrototype = objHclass->IsPrototype();
-        if (newKindIter != arrayHClassIndexMap.end()) {
-            auto indexPair = newKindIter->second;
-            auto index = objHclassIsPrototype ? static_cast<size_t>(indexPair.second) :
-                                                static_cast<size_t>(indexPair.first);
-            auto hclassVal = thread->GlobalConstants()->GetGlobalConstantObject(index);
-            JSHClass *hclass = JSHClass::Cast(hclassVal.GetTaggedObject());
-            obj->SynchronizedSetClass(thread, hclass);
+        JSHClass *hclass = thread->GetArrayInstanceHClass(newKind, objHclass->IsPrototype());
+        obj->SynchronizedSetClass(thread, hclass);
 #if ECMASCRIPT_ENABLE_IC
-            JSHClass::NotifyHclassChanged(thread, JSHandle<JSHClass>(thread, objHclass),
-                                          JSHandle<JSHClass>(thread, hclass));
+        JSHClass::NotifyHclassChanged(thread, JSHandle<JSHClass>(thread, objHclass),
+                                      JSHandle<JSHClass>(thread, hclass));
 #endif
-            return true;
-        }
-        LOG_ECMA(FATAL) << "Unknown newKind: " << static_cast<int32_t>(newKind);
+        return true;
     }
     return false;
 }
@@ -752,10 +733,6 @@ bool JSHClass::TransitToElementsKind(const JSThread *thread, const JSHandle<JSOb
         return false;
     }
 
-    newKind = Elements::FixElementsKind(newKind);
-    if (newKind == current) {
-        return false;
-    }
     // Currently, we only support fast array elementsKind
     ASSERT(IsInitialArrayHClassWithElementsKind(thread, object->GetJSHClass(), current));
     if (!TransitToElementsKindUncheck(thread, object, newKind)) {

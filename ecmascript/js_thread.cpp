@@ -619,17 +619,6 @@ JSHClass *JSThread::GetBuiltinExtraHClass(BuiltinTypeId type) const
     return glueData_.builtinHClassEntries_.entries[index].extraHClass;
 }
 
-JSHClass *JSThread::GetArrayInstanceHClass(ElementsKind kind, bool isPrototype) const
-{
-    auto iter = GetArrayHClassIndexMap().find(kind);
-    ASSERT(iter != GetArrayHClassIndexMap().end());
-    auto index = isPrototype ? static_cast<size_t>(iter->second.second) : static_cast<size_t>(iter->second.first);
-    auto exceptArrayHClass = GlobalConstants()->GetGlobalConstantObject(index);
-    auto exceptRecvHClass = JSHClass::Cast(exceptArrayHClass.GetTaggedObject());
-    ASSERT(exceptRecvHClass->IsJSArray());
-    return exceptRecvHClass;
-}
-
 JSHClass *JSThread::GetBuiltinPrototypeHClass(BuiltinTypeId type) const
 {
     size_t index = BuiltinHClassEntries::GetEntryIndex(type);

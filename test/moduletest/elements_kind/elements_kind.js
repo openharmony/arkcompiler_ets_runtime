@@ -1198,7 +1198,7 @@ function test84() {
 
 function test85() {
     let a = new Array(1, 2, 3);
-    if (ArkTools.getElementsKind(a) == HOLEINT) {
+    if (ArkTools.getElementsKind(a) == PACKEDINT) {
         print("test85 - success");
     } else {
         print("test85 - failed");
@@ -1207,7 +1207,7 @@ function test85() {
 
 function test86() {
     let a = new Array(1, 1.5, 3);
-    if (ArkTools.getElementsKind(a) == HOLENUMBER) {
+    if (ArkTools.getElementsKind(a) == PACKEDNUMBER) {
         print("test86 - success");
     } else {
         print("test86 - failed");
@@ -1216,7 +1216,7 @@ function test86() {
 
 function test87() {
     let a = new Array("1", 1.5, 3);
-    if (ArkTools.getElementsKind(a) == GENERIC) {
+    if (ArkTools.getElementsKind(a) == PACKEDTAGGED) {
         print("test87 - success");
     } else {
         print("test87 - failed");
@@ -1225,7 +1225,7 @@ function test87() {
 
 function test88() {
     let a = new Array("1", "2", "3");
-    if (ArkTools.getElementsKind(a) == HOLESTRING) {
+    if (ArkTools.getElementsKind(a) == PACKEDSTRING) {
         print("test88 - success");
     } else {
         print("test88 - failed");
@@ -1398,7 +1398,7 @@ function test103() {
     const array1 = [1, 2, 3, 4];
     array1.fill("6");
     // Expected output: Array [6, 6, 6, 6]
-    if (array1.length == 4 && ArkTools.getElementsKind(array1) == PACKEDTAGGED){
+    if (array1.length == 4 && ArkTools.getElementsKind(array1) == PACKEDSTRING){
         print("test103 - success");
     } else {
         print("test103 - failed");
@@ -2307,3 +2307,14 @@ function testLength() {
 
 testLength();
 
+function testDerivedElementskind() {
+    class CustomArray extends Array {
+        constructor(...args) {
+            super(...args);
+        }
+    }
+    let a = new CustomArray(1,2,3,4,5,6,7,8,9,10);
+    print(ArkTools.getElementsKind(a));
+}
+
+testDerivedElementskind();

@@ -608,7 +608,7 @@ JSTaggedValue BuiltinsArkTools::GetElementsKind(EcmaRuntimeCallInfo *info)
     JSHandle<JSTaggedValue> obj = GetCallArg(info, 0);
     JSHClass *hclass = obj->GetTaggedObject()->GetClass();
     ElementsKind kind = hclass->GetElementsKind();
-    return JSTaggedValue(static_cast<uint32_t>(kind));
+    return JSTaggedValue(Elements::ToUint(kind));
 }
 
 JSTaggedValue BuiltinsArkTools::IsRegExpReplaceDetectorValid(EcmaRuntimeCallInfo *info)
