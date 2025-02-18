@@ -455,7 +455,7 @@ void SharedOldSpace::SelectCSets()
     size_t selectedNumber = 0;
     for (; selectedNumber < collectRegionSet_.size(); selectedNumber++) {
         Region *region = collectRegionSet_[selectedNumber];
-        leftEvacuateSize -= region->AliveObject();
+        leftEvacuateSize -= static_cast<int64_t>(region->AliveObject());
         if (leftEvacuateSize > 0) {
             RemoveCSetRegion(region);
             allocator_->DetachFreeObjectSet(region);
