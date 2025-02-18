@@ -496,7 +496,8 @@ public:
     static void VisitTransitionAndUpdateObjSize(JSHClass *ownHClass, uint32_t finalInObjPropsNum);
     static uint32_t VisitTransitionAndFindMaxNumOfProps(JSHClass *ownHClass);
 
-    static JSHandle<JSTaggedValue> EnableProtoChangeMarker(const JSThread *thread, const JSHandle<JSHClass> &jshclass);
+    static JSHandle<JSTaggedValue> PUBLIC_API EnableProtoChangeMarker(
+        const JSThread *thread, const JSHandle<JSHClass> &jshclass);
     static JSHandle<JSTaggedValue> EnablePHCProtoChangeMarker(
         const JSThread *thread, const JSHandle<JSHClass> &protoClass);
 

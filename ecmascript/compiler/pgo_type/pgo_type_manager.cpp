@@ -132,6 +132,20 @@ bool PGOTypeManager::IsNapiIhc(ProfileType rootType, ProfileType childType)
     return rootType.IsNapiType() && childType.IsRootType();
 }
 
+/*                  hclassInfo
+ *      +-----------------------------------+----
+ *      |          AOT Napi Hclass          |  zero slot
+ *      +-----------------------------------+----
+ *      |              ...                  |   ^
+ *      |              ...                  |   |
+ *      |             hcData                |  pos
+ *      |              ...                  |   |
+ *      |              ...                  |   v
+ *      +-----------------------------------+----
+ *      | Object Literal Cache (maybe hole) |  last slot
+ *      +-----------------------------------+----
+ */
+
 void PGOTypeManager::GenHClassInfo()
 {
     uint32_t count = 2; // For object literal hclass cache and Napi root type.
@@ -165,7 +179,7 @@ void PGOTypeManager::GenHClassInfo()
         // It cannot be serialized if object in global env.
         JSHandle<TaggedArray> array(maybeCache);
         auto cloneResult = factory->CopyArray(array, array->GetLength(), array->GetLength());
-        hclassInfo->Set(thread_, pos++, cloneResult);
+        hclassInfo->Set(thread_, hclassInfo->GetLength() - 1, cloneResult);
     }
 
     EcmaVM *vm = thread_->GetEcmaVM();
