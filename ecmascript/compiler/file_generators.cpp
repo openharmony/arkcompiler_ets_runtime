@@ -808,6 +808,34 @@ bool AOTFileGenerator::SaveSnapshotFile()
     return true;
 }
 
+std::string AOTFileGenerator::ExtractPrefix(const std::string &filename)
+{
+    std::string file = filename.substr(filename.find_last_of('/') + 1);
+    size_t dotPos = file.find_last_of('.');
+    if (dotPos == std::string::npos) {
+        LOG_COMPILER(ERROR) << "Path: " << file << " is illegal";
+        return "";
+    }
+
+    std::string prefix = file.substr(0, dotPos);
+    return prefix;
+}
+
+std::string AOTFileGenerator::GenAotCodeCommentFileName(const std::string &filename)
+{
+    size_t lastSlashPos = filename.find_last_of('/');
+    std::string dirPath = filename.substr(0, lastSlashPos + 1);
+    std::string prefix = ExtractPrefix(filename);
+    std::string aotCodeCommentFilePath = "";
+    if (!prefix.empty()) {
+        aotCodeCommentFilePath = dirPath + "aot_code_comment_" + prefix + ".txt";
+        SetAotCodeCommentFile(aotCodeCommentFilePath);
+    } else {
+        SetAotCodeCommentFile("");
+    }
+    return aotCodeCommentFilePath;
+}
+
 bool AOTFileGenerator::CreateAOTCodeCommentFile(const std::string &filename)
 {
     if (!CreateDirIfNotExist(filename)) {
@@ -827,8 +855,12 @@ bool AOTFileGenerator::CreateAOTCodeCommentFile(const std::string &filename)
         return false;
     }
 
-    std::string aotCodeCommentFile = realPath.substr(0, index) + "/aot_code_comment.txt";
-    SetAotCodeCommentFile(aotCodeCommentFile);
+    std::string aotCodeCommentFile = GenAotCodeCommentFileName(realPath);
+    if (aotCodeCommentFile.empty()) {
+        LOG_COMPILER(ERROR) << "Failed to generate aot code comment file";
+        return false;
+    }
+
     if (FileExist(aotCodeCommentFile.c_str())) {
         if (Unlink(aotCodeCommentFile.c_str()) == -1) {
             SetAotCodeCommentFile("");
