@@ -66,6 +66,7 @@ using namespace panda::ecmascript::kungfu;
 static constexpr char16_t UTF_16[] = u"This is a char16 array";
 static constexpr const char *DUPLICATE_KEY = "duplicateKey";
 static constexpr const char *SIMPLE_KEY = "simpleKey";
+static constexpr const char ERROR_MESSAGE[] = "ErrorTest";
 namespace panda::test {
 using BuiltinsFunction = ecmascript::builtins::BuiltinsFunction;
 using PGOProfilerManager = panda::ecmascript::pgo::PGOProfilerManager;
@@ -1388,18 +1389,6 @@ HWTEST_F_L0(JSNApiTests, GetDataViewInfo)
     ASSERT_FALSE(isDataView);
 }
 
-HWTEST_F_L0(JSNApiTests, TryGetArrayLength)
-{
-    LocalScope scope(vm_);
-    int32_t length = 4;
-    Local<JSValueRef> tag = ArrayRef::New(vm_, length);
-    EXPECT_FALSE(tag->IsArrayIterator(vm_));
-    uint32_t arrayLength = 4; // define array length
-    bool isArrayOrSharedArray = true;
-    tag->TryGetArrayLength(vm_, &isArrayOrSharedArray, &arrayLength);
-    ASSERT_TRUE(isArrayOrSharedArray);
-}
-
 HWTEST_F_L0(JSNApiTests, ByteLength002)
 {
     LocalScope scope(vm_);
@@ -1518,5 +1507,151 @@ HWTEST_F_L0(JSNApiTests, UpdatePkgAliasList)
     EXPECT_EQ(vmAliasNameList.size(), 2);
     EXPECT_EQ(vmAliasNameList["aliasName1"], "pkgName1");
     EXPECT_EQ(vmAliasNameList["aliasName2"], "pkgName2");
+}
+
+HWTEST_F_L0(JSNApiTests, TryGetArrayLengthTest001)
+{
+    LocalScope scope(vm_);
+    const uint32_t ARRAY_LENGTH = 10; // 10 means array length
+    Local<ArrayRef> array = ArrayRef::New(vm_, ARRAY_LENGTH);
+    Local<JSValueRef> value(array);
+    bool isJSArray = value->IsJSArray(vm_);
+    ASSERT_EQ(isJSArray, true);
+
+    bool isPendingException = true;
+    bool isArrayOrSharedArray = false;
+    uint32_t arrayLength = 0;
+    value->TryGetArrayLength(vm_, &isPendingException, &isArrayOrSharedArray, &arrayLength);
+    ASSERT_EQ(isPendingException, false);
+    ASSERT_EQ(isArrayOrSharedArray, true);
+    ASSERT_EQ(arrayLength, ARRAY_LENGTH);
+}
+
+HWTEST_F_L0(JSNApiTests, TryGetArrayLengthTest002)
+{
+    LocalScope scope(vm_);
+    const uint32_t ARRAY_LENGTH = 10; // 10 means array length
+    Local<SendableArrayRef> sArray = SendableArrayRef::New(vm_, ARRAY_LENGTH);
+    Local<JSValueRef> value(sArray);
+    bool isSArray = value->IsSharedArray(vm_);
+    ASSERT_EQ(isSArray, true);
+
+    bool isPendingException = true;
+    bool isArrayOrSharedArray = false;
+    uint32_t arrayLength = 0;
+    value->TryGetArrayLength(vm_, &isPendingException, &isArrayOrSharedArray, &arrayLength);
+    ASSERT_EQ(isPendingException, false);
+    ASSERT_EQ(isArrayOrSharedArray, true);
+    ASSERT_EQ(arrayLength, ARRAY_LENGTH);
+}
+
+HWTEST_F_L0(JSNApiTests, TryGetArrayLengthTest003)
+{
+    LocalScope scope(vm_);
+    Local<ObjectRef> object = ObjectRef::New(vm_);
+    Local<JSValueRef> value(object);
+    bool isObject = value->IsObject(vm_);
+    ASSERT_EQ(isObject, true);
+
+    bool isPendingException = true;
+    bool isArrayOrSharedArray = false;
+    const uint32_t INIT_VALUE = 10; // 10 means a randon initial value
+    uint32_t arrayLength = INIT_VALUE;
+    value->TryGetArrayLength(vm_, &isPendingException, &isArrayOrSharedArray, &arrayLength);
+    ASSERT_EQ(isPendingException, false);
+    ASSERT_EQ(isArrayOrSharedArray, false);
+    ASSERT_EQ(arrayLength, INIT_VALUE);
+}
+
+HWTEST_F_L0(JSNApiTests, TryGetArrayLengthTest004)
+{
+    LocalScope scope(vm_);
+    // create array
+    const uint32_t ARRAY_LENGTH = 10; // 10 means array length
+    Local<ArrayRef> array = ArrayRef::New(vm_, ARRAY_LENGTH);
+    Local<JSValueRef> value(array);
+    bool isJSArray = value->IsJSArray(vm_);
+    ASSERT_EQ(isJSArray, true);
+
+    // throw error in thread
+    Local<JSValueRef> error = Exception::Error(vm_, StringRef::NewFromUtf8(vm_, ERROR_MESSAGE));
+    ASSERT_EQ(error->IsError(vm_), true);
+    JSNApi::ThrowException(vm_, error);
+    JSThread *thread = vm_->GetJSThread();
+    ASSERT_EQ(thread->HasPendingException(), true);
+
+    // test TryGetArrayLength
+    bool isPendingException = false;
+    bool isArrayOrSharedArray = false;
+    uint32_t arrayLength = ARRAY_LENGTH;
+    value->TryGetArrayLength(vm_, &isPendingException, &isArrayOrSharedArray, &arrayLength);
+    ASSERT_EQ(isPendingException, true);
+    ASSERT_EQ(isArrayOrSharedArray, true);
+    ASSERT_EQ(arrayLength, 0);
+
+    // clear exception
+    JSNApi::GetAndClearUncaughtException(vm_);
+    ASSERT_EQ(thread->HasPendingException(), false);
+}
+
+HWTEST_F_L0(JSNApiTests, TryGetArrayLengthTest005)
+{
+    LocalScope scope(vm_);
+    // create array
+    const uint32_t ARRAY_LENGTH = 10; // 10 means array length
+    Local<SendableArrayRef> sArray = SendableArrayRef::New(vm_, ARRAY_LENGTH);
+    Local<JSValueRef> value(sArray);
+    bool isSArray = value->IsSharedArray(vm_);
+    ASSERT_EQ(isSArray, true);
+
+    // throw error in thread
+    Local<JSValueRef> error = Exception::Error(vm_, StringRef::NewFromUtf8(vm_, ERROR_MESSAGE));
+    ASSERT_EQ(error->IsError(vm_), true);
+    JSNApi::ThrowException(vm_, error);
+    JSThread *thread = vm_->GetJSThread();
+    ASSERT_EQ(thread->HasPendingException(), true);
+
+    // test TryGetArrayLength
+    bool isPendingException = false;
+    bool isArrayOrSharedArray = false;
+    uint32_t arrayLength = ARRAY_LENGTH;
+    value->TryGetArrayLength(vm_, &isPendingException, &isArrayOrSharedArray, &arrayLength);
+    ASSERT_EQ(isPendingException, true);
+    ASSERT_EQ(isArrayOrSharedArray, true);
+    ASSERT_EQ(arrayLength, 0);
+
+    // clear exception
+    JSNApi::GetAndClearUncaughtException(vm_);
+    ASSERT_EQ(thread->HasPendingException(), false);
+}
+
+HWTEST_F_L0(JSNApiTests, TryGetArrayLengthTest006)
+{
+    LocalScope scope(vm_);
+    Local<ObjectRef> object = ObjectRef::New(vm_);
+    Local<JSValueRef> value(object);
+    bool isObject = value->IsObject(vm_);
+    ASSERT_EQ(isObject, true);
+
+    // throw error in thread
+    Local<JSValueRef> error = Exception::Error(vm_, StringRef::NewFromUtf8(vm_, ERROR_MESSAGE));
+    ASSERT_EQ(error->IsError(vm_), true);
+    JSNApi::ThrowException(vm_, error);
+    JSThread *thread = vm_->GetJSThread();
+    ASSERT_EQ(thread->HasPendingException(), true);
+
+    // test TryGetArrayLength
+    bool isPendingException = false;
+    bool isArrayOrSharedArray = true;
+    const uint32_t INIT_VALUE = 10; // 10 means a randon initial value
+    uint32_t arrayLength = INIT_VALUE;
+    value->TryGetArrayLength(vm_, &isPendingException, &isArrayOrSharedArray, &arrayLength);
+    ASSERT_EQ(isPendingException, true);
+    ASSERT_EQ(isArrayOrSharedArray, false);
+    ASSERT_EQ(arrayLength, INIT_VALUE);
+
+    // clear exception
+    JSNApi::GetAndClearUncaughtException(vm_);
+    ASSERT_EQ(thread->HasPendingException(), false);
 }
 } // namespace panda::test
