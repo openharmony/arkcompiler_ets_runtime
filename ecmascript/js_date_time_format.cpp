@@ -636,17 +636,18 @@ JSHandle<JSDateTimeFormat> JSDateTimeFormat::InitializeDateTimeFormat(JSThread *
     if (type != IcuCacheType::NOT_CACHE) {
         std::string cacheEntry =
             locales->IsUndefined() ? "" : EcmaStringAccessor(locales.GetTaggedValue()).ToStdString();
+        auto& intlCache = ecmaVm->GetIntlCache();
         switch (type) {
             case IcuCacheType::DEFAULT:
-                thread->GetCurrentEcmaContext()->SetIcuFormatterToCache(IcuFormatterType::SIMPLE_DATE_FORMAT_DEFAULT,
+                intlCache.SetIcuFormatterToCache(IcuFormatterType::SIMPLE_DATE_FORMAT_DEFAULT,
                     cacheEntry, simpleDateFormatIcu.release(), JSDateTimeFormat::FreeSimpleDateFormat);
                 break;
             case IcuCacheType::DATE:
-                thread->GetCurrentEcmaContext()->SetIcuFormatterToCache(IcuFormatterType::SIMPLE_DATE_FORMAT_DATE,
+                intlCache.SetIcuFormatterToCache(IcuFormatterType::SIMPLE_DATE_FORMAT_DATE,
                     cacheEntry, simpleDateFormatIcu.release(), JSDateTimeFormat::FreeSimpleDateFormat);
                 break;
             case IcuCacheType::TIME:
-                thread->GetCurrentEcmaContext()->SetIcuFormatterToCache(IcuFormatterType::SIMPLE_DATE_FORMAT_TIME,
+                intlCache.SetIcuFormatterToCache(IcuFormatterType::SIMPLE_DATE_FORMAT_TIME,
                     cacheEntry, simpleDateFormatIcu.release(), JSDateTimeFormat::FreeSimpleDateFormat);
                 break;
             default:
@@ -684,7 +685,7 @@ icu::SimpleDateFormat *JSDateTimeFormat::GetCachedIcuSimpleDateFormat(JSThread *
                                                                       IcuFormatterType type)
 {
     std::string cacheEntry = locales->IsUndefined() ? "" : EcmaStringAccessor(locales.GetTaggedValue()).ToStdString();
-    void *cachedSimpleDateFormat = thread->GetCurrentEcmaContext()->GetIcuFormatterFromCache(type, cacheEntry);
+    void *cachedSimpleDateFormat = thread->GetEcmaVM()->GetIntlCache().GetIcuFormatterFromCache(type, cacheEntry);
     if (cachedSimpleDateFormat != nullptr) {
         return reinterpret_cast<icu::SimpleDateFormat*>(cachedSimpleDateFormat);
     }

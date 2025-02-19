@@ -56,7 +56,6 @@ class GlobalIndexMap;
 class SustainingJSHandleList;
 class SustainingJSHandle;
 enum class PromiseRejectionEvent : uint8_t;
-enum class CompareStringsOption : uint8_t;
 
 template<typename T>
 class JSHandle;
@@ -84,15 +83,6 @@ class JsDebuggerManager;
 namespace kungfu {
 class PGOTypeManager;
 } // namespace kungfu
-
-enum class IcuFormatterType {
-    SIMPLE_DATE_FORMAT_DEFAULT,
-    SIMPLE_DATE_FORMAT_DATE,
-    SIMPLE_DATE_FORMAT_TIME,
-    NUMBER_FORMATTER,
-    COLLATOR,
-    ICU_FORMATTER_TYPE_COUNT
-};
 
 using HostPromiseRejectionTracker = void (*)(const EcmaVM* vm,
                                              const JSHandle<JSPromise> promise,
@@ -411,69 +401,10 @@ public:
         moduleLogger_ = moduleLogger;
     }
 
-    void SetDefaultLocale(const std::string& locale)
-    {
-        defaultLocale_ = locale;
-    }
-
-    const std::string& GetDefaultLocale() const
-    {
-        return defaultLocale_;
-    }
-
-    void InitializeDefaultLocale()
-    {
-        defaultLocale_ = "";
-    }
-
-    void ClearDefaultLocale()
-    {
-        defaultLocale_.clear();
-    }
-
-    void SetDefaultCompareStringsOption(const CompareStringsOption csOption)
-    {
-        defaultComapreStringsOption_ = csOption;
-    }
-
-    const std::optional<CompareStringsOption> GetDefaultCompareStringsOption() const
-    {
-        return defaultComapreStringsOption_;
-    }
-
-    void InitializeDefaultCompareStringsOption()
-    {
-        defaultComapreStringsOption_ = std::nullopt;
-    }
-
-    void ClearDefaultComapreStringsOption()
-    {
-        defaultComapreStringsOption_ = std::nullopt;
-    }
-
     FunctionProtoTransitionTable *GetFunctionProtoTransitionTable() const
     {
         return functionProtoTransitionTable_;
     }
-
-    // For icu objects cache
-    void SetIcuFormatterToCache(IcuFormatterType type, const std::string &locale, void *icuObj,
-                                NativePointerCallback deleteEntry = nullptr)
-    {
-        EcmaContext::IcuFormatter icuFormatter = IcuFormatter(locale, icuObj, deleteEntry);
-        icuObjCache_[static_cast<int>(type)] = icuFormatter;
-    }
-
-    ARK_INLINE void *GetIcuFormatterFromCache(IcuFormatterType type, std::string &locale)
-    {
-        auto &icuFormatter = icuObjCache_[static_cast<int>(type)];
-        if (icuFormatter.locale == locale) {
-            return icuFormatter.icuObj;
-        }
-        return nullptr;
-    }
-
-    void ClearIcuCache(JSThread *thread);
 
     EcmaRuntimeStat *GetRuntimeStat() const
     {
@@ -839,20 +770,6 @@ private:
 
     ModuleLogger *moduleLogger_ {nullptr};
 
-    std::string defaultLocale_;
-    std::optional<CompareStringsOption> defaultComapreStringsOption_;
-
-    // For icu objects cache
-    struct IcuFormatter {
-        std::string locale;
-        void *icuObj {nullptr};
-        NativePointerCallback deleteEntry {nullptr};
-
-        IcuFormatter() = default;
-        IcuFormatter(const std::string &locale, void *icuObj, NativePointerCallback deleteEntry = nullptr)
-            : locale(locale), icuObj(icuObj), deleteEntry(deleteEntry) {}
-    };
-    IcuFormatter icuObjCache_[static_cast<uint32_t>(IcuFormatterType::ICU_FORMATTER_TYPE_COUNT)];
     // Handlescope
     static const uint32_t NODE_BLOCK_SIZE_LOG2 = 10;
     static const uint32_t NODE_BLOCK_SIZE = 1U << NODE_BLOCK_SIZE_LOG2;

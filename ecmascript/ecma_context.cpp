@@ -107,8 +107,6 @@ bool EcmaContext::Initialize()
     thread_->SetEnableLazyBuiltins(builtinsLazyEnabled);
     builtins.Initialize(globalEnv, thread_, builtinsLazyEnabled);
 
-    InitializeDefaultLocale();
-    InitializeDefaultCompareStringsOption();
     SetupRegExpResultCache();
     SetupRegExpGlobalResult();
     SetupNumberToStringResultCache();
@@ -160,18 +158,6 @@ void EcmaContext::InitializeEcmaScriptRunStat()
     if (UNLIKELY(runtimeStat_ == nullptr)) {
         LOG_FULL(FATAL) << "alloc runtimeStat_ failed";
         UNREACHABLE();
-    }
-}
-
-void EcmaContext::ClearIcuCache(JSThread *thread)
-{
-    for (uint32_t i = 0; i < static_cast<uint32_t>(IcuFormatterType::ICU_FORMATTER_TYPE_COUNT); i++) {
-        auto &icuFormatter = icuObjCache_[i];
-        NativePointerCallback deleteEntry = icuFormatter.deleteEntry;
-        if (deleteEntry != nullptr) {
-            deleteEntry(thread->GetEnv(), icuFormatter.icuObj, vm_);
-        }
-        icuFormatter = EcmaContext::IcuFormatter{};
     }
 }
 
@@ -228,10 +214,6 @@ EcmaContext::~EcmaContext()
             jsPandaFile->DeleteParsedConstpoolVM(vm_);
         }
     }
-    ClearDefaultLocale();
-    ClearDefaultComapreStringsOption();
-    // clear icu cache
-    ClearIcuCache(thread_);
 
     if (runtimeStat_ != nullptr) {
         vm_->GetChunk()->Delete(runtimeStat_);
