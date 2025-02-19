@@ -312,7 +312,15 @@ TaggedObject *Heap::AllocateOldOrHugeObject(size_t size)
     if (size > MAX_REGULAR_HEAP_OBJECT_SIZE) {
         object = AllocateHugeObject(size);
     } else {
-        object = reinterpret_cast<TaggedObject *>(oldSpace_->Allocate(size));
+        object = reinterpret_cast<TaggedObject *>(oldSpace_->AllocateFast(size));
+        if (object == nullptr) {
+            bool gcSuccess = CheckAndTriggerOldGC();
+            object = reinterpret_cast<TaggedObject *>(oldSpace_->AllocateSlow(size, gcSuccess));
+        }
+        if (object == nullptr) {
+            CollectGarbage(TriggerGCType::OLD_GC, GCReason::ALLOCATION_FAILED);
+            object = reinterpret_cast<TaggedObject *>(oldSpace_->AllocateSlow(size, true));
+        }
         CHECK_OBJ_AND_THROW_OOM_ERROR(object, size, oldSpace_, "Heap::AllocateOldOrHugeObject");
     }
     return object;
