@@ -85,6 +85,7 @@ group("ark_js_moduletest") {
     "funcprotochangeobjectandnew",
     "functionapply",
     "generator",
+    "getdeletedelementsat",
     "getpropertybyindex",
     "getunmappedargs",
     "global",
@@ -114,6 +115,7 @@ group("ark_js_moduletest") {
     "multiprotoic",
     "negintmin",
     "newobjdynrange",
+    "nextinternalslowpath",
     "object",
     "objectcloneproperties",
     "objectgetownproperty",
@@ -158,6 +160,7 @@ group("ark_js_moduletest") {
     "typedarrayfill",
     "typedarrayfindlast",
     "typedarrayfrom",
+    "typedarrayiterator",
     "typedarraynan",
     "typedarraysort",
     "typedarraysubarray",
@@ -221,7 +224,10 @@ group("ark_js_moduletest") {
 
 group("ark_js_assert_moduletest") {
   testonly = true
-  assert_test_list = [ "addpropertybyname" ]
+  assert_test_list = [
+    "addpropertybyname",
+    "getvaluefrombuffer",
+  ]
 
   deps = []
   foreach(test, assert_test_list) {
@@ -236,6 +242,7 @@ group("ark_js_assert_moduletest") {
       "hugearray",
       "hugeictest",
       "multiconstpoolarray",
+      "proxyrelease",
     ]
 
     foreach(test, release_test_assert_list) {
@@ -312,6 +319,7 @@ group("ark_asm_test") {
     "funcprotochangeobjectandnew",
     "functionapply",
     "generator",
+    "getdeletedelementsat",
     "getunmappedargs",
     "global",
     "globalaccessor",
@@ -334,6 +342,7 @@ group("ark_asm_test") {
     "multiprotoic",
     "negintmin",
     "newobjdynrange",
+    "nextinternalslowpath",
     "number",
     "objectcloneproperties",
     "objectdefineproperties",
@@ -364,6 +373,7 @@ group("ark_asm_test") {
     "typedarrayfill",
     "typedarrayfindlast",
     "typedarrayfrom",
+    "typedarrayiterator",
     "typedarraynan",
     "typedarraysort",
     "typedarraytosorted",
@@ -390,6 +400,7 @@ group("ark_asm_test") {
     "sharedJSON",
     "sharedic",
     "sendable",
+    "getiterator",
   ]
 
   deps = []
@@ -423,7 +434,10 @@ group("ark_asm_test") {
 
 group("ark_asm_assert_test") {
   testonly = true
-  assert_test_list = [ "addpropertybyname" ]
+  assert_test_list = [
+    "addpropertybyname",
+    "getvaluefrombuffer",
+  ]
   deps = []
 
   foreach(test, assert_test_list) {
@@ -438,6 +452,7 @@ group("ark_asm_assert_test") {
       "hugearray",
       "hugeictest",
       "multiconstpoolarray",
+      "proxyrelease",
     ]
 
     foreach(test, release_test_assert_list) {
@@ -500,6 +515,7 @@ group("ark_asm_single_step_test") {
     "funcprotochangeobjectandnew",
     "functionapply",
     "generator",
+    "getdeletedelementsat",
     "getunmappedargs",
     "global",
     "globalaccessor",
@@ -519,6 +535,7 @@ group("ark_asm_single_step_test") {
     "multiprotoic",
     "negintmin",
     "newobjdynrange",
+    "nextinternalslowpath",
     "objectcloneproperties",
     "objecthasownproperty",
     "objectkeys",
@@ -545,6 +562,7 @@ group("ark_asm_single_step_test") {
     "typedarrayfill",
     "typedarrayfindlast",
     "typedarrayfrom",
+    "typedarrayiterator",
     "typedarraynan",
     "typedarraysort",
     "typedarraytosorted",
@@ -601,7 +619,10 @@ group("ark_asm_single_step_test") {
 
 group("ark_asm_single_step_assert_test") {
   testonly = true
-  assert_test_list = [ "addpropertybyname" ]
+  assert_test_list = [
+    "addpropertybyname",
+    "getvaluefrombuffer",
+  ]
 
   deps = []
   foreach(test, assert_test_list) {
@@ -611,7 +632,10 @@ group("ark_asm_single_step_assert_test") {
     }
   }
   if (!is_debug) {
-    release_test_assert_list = [ "multiconstpoolarray" ]
+    release_test_assert_list = [
+      "multiconstpoolarray",
+      "proxyrelease",
+    ]
 
     foreach(test, release_test_assert_list) {
       deps += [
