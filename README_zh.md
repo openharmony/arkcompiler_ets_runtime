@@ -48,7 +48,7 @@
 │   ├─ napi               # C++接口模块
 │   ├─ ohos               # 系统相关逻辑
 │   ├─ patch              # 冷、热补丁
-│   ├─ pgoProfiler        # 基于 Profile-Guided Optimization (PGO) 的性能分析器，用于性能分析与优化
+│   ├─ pgo_profiler       # 基于 Profile-Guided Optimization (PGO) 的性能分析器，用于性能分析与优化
 │   ├─ platform           # 跨平台处理
 │   ├─ quick_fix          # 快速修复命令行工具
 │   ├─ regexp             # 正则引擎模块
