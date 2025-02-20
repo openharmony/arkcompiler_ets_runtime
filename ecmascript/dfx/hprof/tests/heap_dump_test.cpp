@@ -540,9 +540,10 @@ public:
         return profiler_->MoveEvent(address, forwardAddress, size);
     }
 
-    bool DumpHeapSnapshot(Stream *stream, const DumpSnapShotOption &dumpOption, Progress *progress = nullptr) override
+    bool DumpHeapSnapshot(Stream *stream, const DumpSnapShotOption &dumpOption, Progress *progress = nullptr,
+                          std::function<void(uint8_t)> callback = [] (uint8_t) {}) override
     {
-        return profiler_->DumpHeapSnapshot(stream, dumpOption, progress);
+        return profiler_->DumpHeapSnapshot(stream, dumpOption, progress, callback);
     }
 
     void DumpHeapSnapshotForOOM(const DumpSnapShotOption &dumpOption, bool fromSharedGC = false) override

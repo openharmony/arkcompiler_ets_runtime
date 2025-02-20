@@ -126,6 +126,13 @@ struct ScopeWrapper {
 };
 #endif  // ENABLE_LOCAL_HANDLE_LEAK_DETECT
 
+enum class DumpHeapSnapshotStatus : uint8_t {
+    SUCCESS,
+    FORK_FAILED,
+    FAILED_TO_WAIT,
+    WAIT_FORK_PROCESS_TIMEOUT,
+};
+
 class HeapProfiler : public HeapProfilerInterface {
 public:
     NO_MOVE_SEMANTIC(HeapProfiler);
@@ -140,7 +147,8 @@ public:
     /**
      * dump the specific snapshot in target format
      */
-    bool DumpHeapSnapshot(Stream *stream, const DumpSnapShotOption &dumpOption, Progress *progress = nullptr) override;
+    bool DumpHeapSnapshot(Stream *stream, const DumpSnapShotOption &dumpOption, Progress *progress = nullptr,
+                          std::function<void(uint8_t)> callback = [] (uint8_t) {}) override;
     void DumpHeapSnapshotForOOM(const DumpSnapShotOption &dumpOption, bool fromSharedGC = false) override;
     void AddSnapshot(HeapSnapshot *snapshot);
 

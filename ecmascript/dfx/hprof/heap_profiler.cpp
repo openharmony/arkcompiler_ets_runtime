@@ -574,7 +574,7 @@ bool HeapProfiler::GenerateHeapSnapshot(std::string &inputFilePath, std::string 
     return serializerResult;
 }
 
-[[maybe_unused]]static void WaitProcess(pid_t pid)
+[[maybe_unused]]static void WaitProcess(pid_t pid, const std::function<void(uint8_t)> &callback)
 {
     time_t startTime = time(nullptr);
     constexpr int DUMP_TIME_OUT = 300;
@@ -582,13 +582,26 @@ bool HeapProfiler::GenerateHeapSnapshot(std::string &inputFilePath, std::string 
     while (true) {
         int status = 0;
         pid_t p = waitpid(pid, &status, WNOHANG);
-        if (p < 0 || p == pid) {
-            break;
+        if (p < 0) {
+            LOG_GC(ERROR) << "DumpHeapSnapshot wait failed ";
+            if (callback) {
+                callback(static_cast<uint8_t>(DumpHeapSnapshotStatus::FAILED_TO_WAIT));
+            }
+            return;
+        }
+        if (p == pid) {
+            if (callback) {
+                callback(static_cast<uint8_t>(DumpHeapSnapshotStatus::SUCCESS));
+            }
+            return;
         }
         if (time(nullptr) > startTime + DUMP_TIME_OUT) {
             LOG_GC(ERROR) << "DumpHeapSnapshot kill thread, wait " << DUMP_TIME_OUT << " s";
             kill(pid, SIGTERM);
-            break;
+            if (callback) {
+                callback(static_cast<uint8_t>(DumpHeapSnapshotStatus::WAIT_FORK_PROCESS_TIMEOUT));
+            }
+            return;
         }
         usleep(DEFAULT_SLEEP_TIME);
     }
@@ -982,7 +995,8 @@ void HeapProfiler::FillIdMap()
     GetChunk()->Delete(newEntryIdMap);
 }
 
-bool HeapProfiler::DumpHeapSnapshot(Stream *stream, const DumpSnapShotOption &dumpOption, Progress *progress)
+bool HeapProfiler::DumpHeapSnapshot(Stream *stream, const DumpSnapShotOption &dumpOption, Progress *progress,
+                                    std::function<void(uint8_t)> callback)
 {
     bool res = false;
     base::BlockHookScope blockScope;
@@ -1018,17 +1032,24 @@ bool HeapProfiler::DumpHeapSnapshot(Stream *stream, const DumpSnapShotOption &du
         // fork
         if ((pid = fork()) < 0) {
             LOG_ECMA(ERROR) << "DumpHeapSnapshot fork failed!";
+            if (callback) {
+                callback(static_cast<uint8_t>(DumpHeapSnapshotStatus::FORK_FAILED));
+            }
             return false;
         }
         if (pid == 0) {
             vm_->GetAssociatedJSThread()->EnableCrossThreadExecution();
             prctl(PR_SET_NAME, reinterpret_cast<unsigned long>("dump_process"), 0, 0, 0);
-            res = DoDump(stream, progress, dumpOption);
+            if (dumpOption.dumpFormat == DumpFormat::BINARY) {
+                res = BinaryDump(stream, dumpOption);
+            } else {
+                res = DoDump(stream, progress, dumpOption);
+            }
             _exit(0);
         }
     }
     if (pid != 0) {
-        std::thread thread(&WaitProcess, pid);
+        std::thread thread(&WaitProcess, pid, callback);
         thread.detach();
         stream->EndOfStream();
     }
