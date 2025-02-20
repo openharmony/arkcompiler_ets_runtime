@@ -377,6 +377,9 @@ config("ark_jsruntime_common_config") {
       "PANDA_TARGET_LINUX",
       "PANDA_USE_FUTEX",
     ]
+    if (!ark_standalone_build && current_cpu == "x64") {
+      defines += [ "PANDA_TARGET_LINUX_PREVIEWER" ]
+    }
   } else if (is_mingw) {
     cflags_cc += [
       "-std=c++17",
