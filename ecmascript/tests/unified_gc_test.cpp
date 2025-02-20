@@ -103,6 +103,20 @@ public:
     }
 };
 
+class UnifiedGCVerificationTest : public UnifiedGCTest {
+public:
+    void SetUp() override
+    {
+        JSRuntimeOptions options;
+        options.SetArkProperties(options.GetArkProperties() | ArkProperties::ENABLE_HEAP_VERIFY);
+        instance = JSNApi::CreateEcmaVM(options);
+        ASSERT_TRUE(instance != nullptr) << "Cannot create EcmaVM";
+        thread = instance->GetJSThread();
+        thread->ManagedCodeBegin();
+        scope = new EcmaHandleScope(thread);
+    }
+};
+
 HWTEST_F_L0(UnifiedGCTest, UnifiedGCMarkRootsScopeTest)
 {
     EcmaVM *vm = thread->GetEcmaVM();
@@ -209,4 +223,20 @@ HWTEST_F_L0(UnifiedGCTest, MarkFromObjectTest)
     EXPECT_TRUE(!IsObjectMarked(arrayRefByXRefRoot->GetHeapObject()));
     vm->SetEnableForceGC(true);
 }
+
+#ifdef PANDA_JS_ETS_HYBRID_MODE
+HWTEST_F_L0(UnifiedGCVerificationTest, VerifyTest)
+{
+    EcmaVM *vm = thread->GetEcmaVM();
+    vm->SetEnableForceGC(false);
+    auto stsVMInterface = std::make_unique<STSVMInterfaceTest>();
+    void *ecmaVMInterface = nullptr;
+    CrossVMOperator::DoHandshake(vm, stsVMInterface.get(), &ecmaVMInterface);
+    auto heap = vm->GetHeap();
+    heap->TriggerUnifiedGCMark<TriggerGCType::UNIFIED_GC, GCReason::CROSSREF_CAUSE>();
+    while (!thread->HasSuspendRequest()) {}
+    thread->CheckSafepoint();
+    vm->SetEnableForceGC(true);
+}
+#endif  // PANDA_JS_ETS_HYBRID_MODE
 }
