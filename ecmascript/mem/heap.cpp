@@ -91,7 +91,8 @@ bool SharedHeap::CheckAndTriggerSharedGC(JSThread *thread)
     if (thread->IsSharedConcurrentMarkingOrFinished() && !ObjectExceedMaxHeapSize()) {
         return false;
     }
-    if ((OldSpaceExceedLimit() || GetHeapObjectSize() > globalSpaceAllocLimit_) &&
+    size_t sharedGCThreshold = globalSpaceAllocLimit_ + spaceOvershoot_.load(std::memory_order_relaxed);
+    if ((OldSpaceExceedLimit() || GetHeapObjectSize() > sharedGCThreshold) &&
         !NeedStopCollection()) {
         CollectGarbage<TriggerGCType::SHARED_GC, GCReason::ALLOCATION_LIMIT>(thread);
         return true;
@@ -104,7 +105,8 @@ bool SharedHeap::CheckHugeAndTriggerSharedGC(JSThread *thread, size_t size)
     if (thread->IsSharedConcurrentMarkingOrFinished() && !ObjectExceedMaxHeapSize()) {
         return false;
     }
-    if ((sHugeObjectSpace_->CommittedSizeExceed(size) || GetHeapObjectSize() > globalSpaceAllocLimit_) &&
+    size_t sharedGCThreshold = globalSpaceAllocLimit_ + spaceOvershoot_.load(std::memory_order_relaxed);
+    if ((sHugeObjectSpace_->CommittedSizeExceed(size) || GetHeapObjectSize() > sharedGCThreshold) &&
         !NeedStopCollection()) {
         CollectGarbage<TriggerGCType::SHARED_GC, GCReason::ALLOCATION_LIMIT>(thread);
         return true;
@@ -595,6 +597,7 @@ void SharedHeap::CollectGarbageFinish(bool inDaemon, TriggerGCType gcType)
     UpdateHeapStatsAfterGC(gcType);
     // Adjust shared gc trigger threshold
     AdjustGlobalSpaceAllocLimit();
+    spaceOvershoot_.store(0, std::memory_order_relaxed);
     GetEcmaGCStats()->RecordStatisticAfterGC();
     GetEcmaGCStats()->PrintGCStatistic();
     ProcessAllGCListeners();
@@ -660,6 +663,20 @@ bool SharedHeap::NeedStopCollection()
         return true;
     }
     return false;
+}
+
+void SharedHeap::TryAdjustSpaceOvershootByConfigSize()
+{
+    if (InGC() || !IsReadyToConcurrentMark()) {
+        // no need to reserve space if SharedGC or SharedConcurrentMark is already triggered
+        return;
+    }
+    // set overshoot size to increase gc threashold larger 8MB than current heap size.
+    int64_t heapObjectSize = static_cast<int64_t>(GetHeapObjectSize());
+    int64_t remainSizeBeforeGC = static_cast<int64_t>(globalSpaceAllocLimit_) - heapObjectSize;
+    int64_t overshootSize = static_cast<int64_t>(config_.GetOldSpaceStepOvershootSize()) - remainSizeBeforeGC;
+    // overshoot size should be larger than 0.
+    spaceOvershoot_.store(std::max(overshootSize, (int64_t)0), std::memory_order_relaxed);
 }
 
 void SharedHeap::CompactHeapBeforeFork(JSThread *thread)
@@ -2333,6 +2350,12 @@ void Heap::TryIncreaseNewSpaceOvershootByConfigSize()
         static_cast<int64_t>(config_.GetOldSpaceStepOvershootSize()) - semiRemainSize;
     // overshoot size should be larger than 0.
     GetNewSpace()->SetOverShootSize(std::max(overshootSize, (int64_t)0));
+}
+
+void Heap::TryIncreaseOvershootByConfigSize()
+{
+    TryIncreaseNewSpaceOvershootByConfigSize();
+    sHeap_->TryAdjustSpaceOvershootByConfigSize();
 }
 
 bool Heap::CheckIfNeedStopCollectionByStartup()
