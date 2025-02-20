@@ -251,38 +251,36 @@ void ProfilerStubBuilder::ProfileCall(
         {
             Label icSlotValid(env);
             Label isHeapObject(env);
-            Label uninitialized(env);
             Label updateSlot(env);
+            Label resetSlot(env);
+            Label notHeapObject(env);
+            Label notOverflow(env);
 
             GateRef slotId = GetSlotID(slotInfo);
             GateRef length = GetLengthOfTaggedArray(profileTypeInfo);
             BRANCH(Int32LessThan(slotId, length), &icSlotValid, &exit);
             Bind(&icSlotValid);
             GateRef slotValue = GetValueFromTaggedArray(profileTypeInfo, slotId);
-            BRANCH(TaggedIsHeapObject(slotValue), &isHeapObject, &uninitialized);
+            BRANCH(TaggedIsHole(slotValue), &exit, &notOverflow);
+            Bind(&notOverflow);
+            BRANCH(TaggedIsHeapObject(slotValue), &isHeapObject, &notHeapObject);
+            Bind(&notHeapObject);
+            BRANCH(TaggedIsUndefined(slotValue), &updateSlot, &resetSlot);
             Bind(&isHeapObject);
             {
                 Label change(env);
-                Label resetSlot(env);
                 BRANCH(Int64Equal(slotValue, target), &exit, &change);
                 Bind(&change);
                 {
                     BRANCH(Int64Equal(ChangeTaggedPointerToInt64(slotValue), Int64(0)), &exit, &resetSlot);
                 }
-                Bind(&resetSlot);
-                {
-                    // NOTICE-PGO: lx about poly
-                    GateRef nonType = TaggedInt(0);
-                    SetValueToTaggedArray(VariableType::JS_ANY(), glue, profileTypeInfo, slotId, nonType);
-                    TryPreDumpInner(glue, func, profileTypeInfo);
-                    Jump(&exit);
-                }
             }
-            Bind(&uninitialized);
+            Bind(&resetSlot);
             {
-                // Only when slot value is undefined, it means uninitialized, so we need to update the slot.
-                // When the slot value is hole, it means slot is overflow (0xff). Otherwise, do nothing.
-                BRANCH(TaggedIsUndefined(slotValue), &updateSlot, &exit);
+                GateRef nonType = Int32(PGO_BUILTINS_STUB_ID(NONE));
+                SetValueToTaggedArray(VariableType::JS_ANY(), glue, profileTypeInfo, slotId, IntToTaggedInt(nonType));
+                TryPreDumpInner(glue, func, profileTypeInfo);
+                Jump(&exit);
             }
             Bind(&updateSlot);
             {
@@ -363,6 +361,7 @@ void ProfilerStubBuilder::ProfileNativeCall(
         Label sameValueCheck(env);
         Label invalidate(env);
         Label notOverflow(env);
+        Label notInt(env);
 
         GateRef slotId = GetSlotID(slotInfo);
         GateRef length = GetLengthOfTaggedArray(profileTypeInfo);
@@ -371,7 +370,9 @@ void ProfilerStubBuilder::ProfileNativeCall(
         GateRef slotValue = GetValueFromTaggedArray(profileTypeInfo, slotId);
         BRANCH(TaggedIsHole(slotValue), &exit, &notOverflow); // hole -- slot is overflow
         Bind(&notOverflow);
-        BRANCH(TaggedIsInt(slotValue), &updateSlot, &initSlot);
+        BRANCH(TaggedIsInt(slotValue), &updateSlot, &notInt);
+        Bind(&notInt);
+        BRANCH(TaggedIsHeapObject(slotValue), &invalidate, &initSlot);
         Bind(&updateSlot);
         GateRef oldId = TaggedGetInt(slotValue);
         BRANCH(Int32Equal(oldId, Int32(PGO_BUILTINS_STUB_ID(NONE))), &exit, &sameValueCheck);

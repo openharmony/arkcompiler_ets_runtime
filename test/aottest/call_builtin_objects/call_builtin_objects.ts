@@ -46,3 +46,18 @@ function testCallSpecificObjects(): void {
 
 testCallSpecificObjects();
 print("testCallSpecificObjects success, isAotCompiled: " + ArkTools.isAOTCompiled(testCallSpecificObjects));
+
+class B {
+    constructor() {}
+};
+function f() {
+    for (let i = 0; i < 4; i++) {
+        let A;
+        if (i&1) A = B;
+        else A = Object;
+        let a = new A();
+    }
+}
+
+f()
+print(ArkTools.isAOTDeoptimized(f));
