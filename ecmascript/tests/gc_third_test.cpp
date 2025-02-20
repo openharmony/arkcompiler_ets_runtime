@@ -651,4 +651,27 @@ HWTEST_F_L0(GCTest, InvokeAllocationInspectorTest001)
     counter->InvokeAllocationInspector(10000, 100, 100);
 }
 
+HWTEST_F_L0(GCTest, OldSpaceValidCheck)
+{
+    static constexpr size_t kLength = 10 * 1024;
+    static constexpr size_t kCount = 2;
+    static constexpr size_t kLimit = 380 * 1024 * 1024;
+    instance->GetJSOptions().SetEnableForceGC(false);
+    Heap *heap = const_cast<Heap *>(instance->GetHeap());
+    ObjectFactory *factory = heap->GetEcmaVM()->GetFactory();
+    auto array = factory->NewTaggedArray(kLength, JSTaggedValue::Hole(), MemSpaceType::OLD_SPACE);
+    heap->ShouldThrowOOMError(true);
+    heap->GetOldSpace()->IncreaseLiveObjectSize(kLimit);
+    for (size_t i = 0; i < kCount; i++) {
+        array = factory->NewTaggedArray(kLength, JSTaggedValue::Hole(), MemSpaceType::OLD_SPACE);
+        Region *objectRegion = Region::ObjectAddressToRange(*array);
+        bool inHeap = false;
+        heap->GetOldSpace()->EnumerateRegions([objectRegion, &inHeap](Region *each) {
+            if (objectRegion == each) {
+                inHeap = true;
+            }
+        });
+        EXPECT_TRUE(inHeap);
+    }
+}
 } // namespace panda::test
