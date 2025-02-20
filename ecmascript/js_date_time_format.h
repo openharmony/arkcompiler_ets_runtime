@@ -214,8 +214,6 @@ private:
 
     static std::string ToTitleCaseFunction(const std::string &input);
 
-    static bool IsValidTimeZoneInput(const std::string &input);
-
     static JSHandle<EcmaString> ToValueString(JSThread *thread, Value value);
 
     static icu::FormattedDateInterval ConstructDTFRange(JSThread *thread, const JSHandle<JSDateTimeFormat> &dtf,

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 Huawei Device Co., Ltd.
+ * Copyright (c) 2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -12,15 +12,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-try {
-    new Intl.DateTimeFormat("en" , { timeZone: "US/Alaska0" });
-} catch (e) {
-    print(e instanceof RangeError);
-}
 
-// This case aims to check stack overflow while timeZone is a long string
-try {
-    new Intl.DateTimeFormat("en", {timeZone: Array(0x8000).join("a")});
-} catch (e) {
-    print(e);
+/*
+ * @tc.name:getvaluefrombuffer
+ * @tc.desc:test BuiltinsTypedArrayStubBuilder::GetValueFromBuffer
+ * @tc.type: FUNC
+ * @tc.require: issueIBDK44
+ */
+
+// This case aims to check overflow of double in BuiltinsTypedArrayStubBuilder::GetValueFromBuffer
+{
+    let v0 = new ArrayBuffer(8);
+    let v1 = new Int32Array(v0);
+    v1[0] = 0xcafe0000;
+    v1[1] = 0xffff0000;
+    let v2 = new Float64Array(v0);
+    Array.prototype.push.apply(v0, v2);
+    assert_equal(Number.isNaN(v2[0]), true);
 }
