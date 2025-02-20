@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -21,7 +21,7 @@
 
 namespace panda::ecmascript {
 
-CrossVMOperator::CrossVMOperator(EcmaVM *vm)
+CrossVMOperator::CrossVMOperator(EcmaVM *vm) : vm_(vm)
 {
     ecmaVMInterface_ = std::make_unique<EcmaVMInterfaceImpl>(vm);
 }
@@ -36,14 +36,15 @@ void CrossVMOperator::DoHandshake(EcmaVM *vm, void *stsIface, void **ecmaIface)
     heap->GetUnifiedGCMarker()->SetSTSVMInterface(vmOperator->stsVMInterface_);
 }
 
-void CrossVMOperator::EcmaVMInterfaceImpl::MarkFromObject(void *objAddress)
+void CrossVMOperator::MarkFromObject(JSTaggedType value)
 {
-    ASSERT(objAddress != nullptr);
-    JSTaggedType object = *(reinterpret_cast<JSTaggedType *>(objAddress));
-    JSTaggedValue value(object);
-    if (value.IsHeapObject()) {
-        vm_->GetHeap()->GetUnifiedGCMarker()->MarkFromObject(value.GetHeapObject());
+    JSTaggedValue taggedValue(value);
+    if (!taggedValue.IsHeapObject()) {
+        return;
     }
+    TaggedObject *object = taggedValue.GetHeapObject();
+    auto heap = vm_->GetHeap();
+    heap->GetUnifiedGCMarker()->MarkFromObject(object);
 }
 
 bool CrossVMOperator::EcmaVMInterfaceImpl::StartXRefMarking()
