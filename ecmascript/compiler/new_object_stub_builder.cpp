@@ -2168,9 +2168,9 @@ GateRef NewObjectStubBuilder::NewTaggedSubArray(GateRef glue, GateRef srcTypedAr
 
     Label isOnHeap(env);
     Label isNotOnHeap(env);
+    Label createNewArray(env);
     Label comparePrototype(env);
-    Label samePrototype(env);
-    Label slowPath(env);
+    Label protoChanged(env);
     Label exit(env);
     DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
     DEFVARIABLE(newArrayHClass, VariableType::JS_ANY(), Undefined());
@@ -2190,12 +2190,18 @@ GateRef NewObjectStubBuilder::NewTaggedSubArray(GateRef glue, GateRef srcTypedAr
 
     Bind(&comparePrototype);
     {
-        GateRef srcPrototype = GetPrototypeFromHClass(*newArrayHClass);
-        GateRef newPrototype = GetPrototypeFromHClass(arrayCls);
-        BRANCH_LIKELY(Equal(srcPrototype, newPrototype), &samePrototype, &slowPath);
+        GateRef newPrototype = GetPrototypeFromHClass(*newArrayHClass);
+        GateRef srcPrototype = GetPrototypeFromHClass(arrayCls);
+        BRANCH_LIKELY(Equal(newPrototype, srcPrototype), &createNewArray, &protoChanged);
+        Bind(&protoChanged);
+        {
+            newArrayHClass = CallRuntime(glue, RTSTUB_ID(CloneHclass), { *newArrayHClass });
+            StorePrototype(glue, *newArrayHClass, srcPrototype);
+            Jump(&createNewArray);
+        }
     }
 
-    Bind(&samePrototype);
+    Bind(&createNewArray);
     {
         result = NewJSObject(glue, *newArrayHClass);
         GateRef newByteLength = Int32Mul(elementSize, newLength);
@@ -2206,14 +2212,6 @@ GateRef NewObjectStubBuilder::NewTaggedSubArray(GateRef glue, GateRef srcTypedAr
         Store(VariableType::INT32(), glue, *result, IntPtr(JSTypedArray::BYTE_OFFSET_OFFSET), beginByteOffset);
         Store(VariableType::INT32(), glue, *result, IntPtr(JSTypedArray::ARRAY_LENGTH_OFFSET), newLength);
         Store(VariableType::INT32(), glue, *result, IntPtr(JSTypedArray::CONTENT_TYPE_OFFSET), contentType);
-        Jump(&exit);
-    }
-
-    Bind(&slowPath);
-    {
-        result = CallRuntime(glue, RTSTUB_ID(TypedArraySpeciesCreateForSubArray),
-                             { srcTypedArray, IntToTaggedInt(Int32(3)),
-                               IntToTaggedInt(newLength), IntToTaggedInt(beginByteOffset) });
         Jump(&exit);
     }
 
