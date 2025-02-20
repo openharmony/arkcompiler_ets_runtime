@@ -66,34 +66,6 @@ bool PGOPandaFileInfos::VerifyChecksum(const PGOPandaFileInfos &pandaFileInfos, 
     return true;
 }
 
-bool PGOPandaFileInfos::ParseFromText(std::ifstream &stream)
-{
-    std::string pandaFileInfo;
-    while (std::getline(stream, pandaFileInfo)) {
-        if (pandaFileInfo.empty()) {
-            continue;
-        }
-
-        size_t start = pandaFileInfo.find_first_of(DumpUtils::ARRAY_START);
-        size_t end = pandaFileInfo.find_last_of(DumpUtils::ARRAY_END);
-        if (start == std::string::npos || end == std::string::npos || start >= end) {
-            return false;
-        }
-        auto content = pandaFileInfo.substr(start + 1, end - (start + 1) - 1);
-        std::vector<std::string> infos = StringHelper::SplitString(content, DumpUtils::BLOCK_SEPARATOR);
-        for (auto checksum : infos) {
-            uint32_t result;
-            if (!StringHelper::StrToUInt32(checksum.c_str(), &result)) {
-                LOG_ECMA(ERROR) << "checksum: " << checksum << " parse failed";
-                return false;
-            }
-            Sample(result, 0);
-        }
-        return true;
-    }
-    return true;
-}
-
 void PGOPandaFileInfos::ProcessToText(std::ofstream &stream) const
 {
     std::string pandaFileInfo = DumpUtils::NEW_LINE + DumpUtils::PANDA_FILE_INFO_HEADER;
@@ -929,49 +901,6 @@ bool PGORecordDetailInfos::ProcessToBinaryForLayout(
     stream.seekp(layoutBeginPosition, std::ofstream::beg)
         .write(reinterpret_cast<char *>(&secInfo), sizeof(SectionInfo))
         .seekp(0, std::ofstream::end);
-    return true;
-}
-
-bool PGORecordDetailInfos::ParseFromText(std::ifstream &stream)
-{
-    std::string details;
-    while (std::getline(stream, details)) {
-        if (details.empty()) {
-            continue;
-        }
-        size_t blockIndex = details.find(DumpUtils::BLOCK_AND_ARRAY_START);
-        if (blockIndex == std::string::npos) {
-            return false;
-        }
-        CString recordName = ConvertToString(details.substr(0, blockIndex));
-
-        size_t start = details.find_first_of(DumpUtils::ARRAY_START);
-        size_t end = details.find_last_of(DumpUtils::ARRAY_END);
-        if (start == std::string::npos || end == std::string::npos || start > end) {
-            return false;
-        }
-        ASSERT(end > start + 1);
-        auto content = details.substr(start + 1, end - (start + 1) - 1);
-        std::vector<std::string> infoStrings = StringHelper::SplitString(content, DumpUtils::BLOCK_SEPARATOR);
-        if (infoStrings.size() <= 0) {
-            continue;
-        }
-
-        ApEntityId recordId(0);
-        ProfileType profileType(0, recordId, ProfileType::Kind::RecordClassId);
-        auto methodInfosIter = recordInfos_.find(profileType);
-        PGOMethodInfoMap *methodInfos = nullptr;
-        if (methodInfosIter == recordInfos_.end()) {
-            methodInfos = nativeAreaAllocator_.New<PGOMethodInfoMap>();
-            recordInfos_.emplace(profileType, methodInfos);
-        } else {
-            methodInfos = methodInfosIter->second;
-        }
-        ASSERT(methodInfos != nullptr);
-        if (!methodInfos->ParseFromText(chunk_.get(), hotnessThreshold_, infoStrings)) {
-            return false;
-        }
-    }
     return true;
 }
 

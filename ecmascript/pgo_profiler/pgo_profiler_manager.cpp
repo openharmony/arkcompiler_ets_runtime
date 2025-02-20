@@ -425,24 +425,6 @@ bool PGOProfilerManager::IsForceDump() const
     return forceDump_;
 }
 
-bool PGOProfilerManager::TextToBinary(const std::string& inPath,
-                                      const std::string& outPath,
-                                      uint32_t hotnessThreshold,
-                                      ApGenMode mode)
-{
-    auto info = std::make_shared<PGOInfo>(hotnessThreshold);
-    PGOProfilerEncoder encoder(outPath, mode);
-    PGOProfilerDecoder decoder(inPath, hotnessThreshold);
-    bool ret = decoder.LoadAPTextFile(inPath);
-    if (ret) {
-        info->MergeSafe(decoder.GetPandaFileInfos());
-        info->MergeSafe(decoder.GetRecordDetailInfos());
-        ret = encoder.Save(info);
-    }
-    info->Clear();
-    return ret;
-}
-
 bool PGOProfilerManager::BinaryToText(const std::string& inPath,
                                       const std::string& outPath,
                                       uint32_t hotnessThreshold)

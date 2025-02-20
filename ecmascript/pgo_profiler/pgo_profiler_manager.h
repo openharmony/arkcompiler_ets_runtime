@@ -59,10 +59,6 @@ public:
     void SetDisableAot(bool state);
     void SetDisablePGO(bool state);
     void ForceDumpAllProfilers();
-    bool PUBLIC_API TextToBinary(const std::string& inPath,
-                                 const std::string& outPath,
-                                 uint32_t hotnessThreshold,
-                                 ApGenMode mode);
     bool PUBLIC_API BinaryToText(const std::string& inPath, const std::string& outPath, uint32_t hotnessThreshold);
     static bool PUBLIC_API MergeApFiles(const std::string &inFiles, const std::string &outPath,
                                         uint32_t hotnessThreshold, ApGenMode mode);

@@ -195,7 +195,6 @@ public:
     static bool ParseFromBinary(void *buffer, size_t bufferSize, PGOProfilerHeader **header);
     void ProcessToBinary(std::fstream &fileStream) const;
 
-    bool ParseFromText(std::ifstream &stream);
     bool ProcessToText(std::ofstream &stream) const;
 
     SectionInfo *GetPandaInfoSection() const

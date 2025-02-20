@@ -27,7 +27,6 @@ class Option {
 public:
     enum class Mode : uint8_t {
         VERSION_QUERY,
-        TO_BINARY,
         TO_TEXT,
         MERGE,
     };
@@ -60,7 +59,6 @@ public:
 
         const struct option longOptions[] = {
             {"text", required_argument, nullptr, 't'},
-            {"binary", required_argument, nullptr, 'b'},
             {"hotness-threshold", required_argument, nullptr, 's'},
             {"merge", no_argument, nullptr, 'm'},
             {"help", no_argument, nullptr, 'h'},
@@ -68,15 +66,12 @@ public:
             {nullptr, 0, nullptr, 0},
         };
 
-        const char *optstr = "tbs:hv";
+        const char *optstr = "ts:hv";
         int opt;
         while ((opt = getopt_long_only(argc, const_cast<char **>(argv), optstr, longOptions, nullptr)) != -1) {
             switch (opt) {
                 case 't':
                     mode_ = Mode::TO_TEXT;
-                    break;
-                case 'b':
-                    mode_ = Mode::TO_BINARY;
                     break;
                 case 's':
                     if (!base::StringHelper::StrToUInt32(optarg, &hotnessThreshold_)) {
@@ -114,7 +109,6 @@ public:
             "optional arguments:\n";
         const std::string PROF_DUMP_HELP_OPTION_MSG =
             "-t, --text                binary to text.\n"
-            "-b, --binary              text to binary.\n"
             "-s, --hotness-threshold   set minimum number of calls to filter method. default: 2\n"
             "-m, --merge               merge multi binary ap files into one.\n"
             "-h, --help                display this help and exit\n"
@@ -151,15 +145,6 @@ int Main(const int argc, const char **argv)
                 LOG_NO_TAG(ERROR) << "profiler dump to text success!";
             } else {
                 LOG_NO_TAG(ERROR) << "profiler dump to text failed!";
-            }
-            break;
-        }
-        case Option::Mode::TO_BINARY: {
-            if (PGOProfilerManager::GetInstance()->TextToBinary(option.GetProfInPath(), option.GetProfOutPath(),
-                                                                option.GetHotnessThreshold(), ApGenMode::OVERWRITE)) {
-                LOG_NO_TAG(ERROR) << "profiler dump to binary success!";
-            } else {
-                LOG_NO_TAG(ERROR) << "profiler dump to binary failed!";
             }
             break;
         }

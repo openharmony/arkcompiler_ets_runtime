@@ -661,31 +661,6 @@ HWTEST_F_L0(PGOProfilerTest, PGOProfilerPostTask)
     rmdir("ark-profiler9/");
 }
 
-HWTEST_F_L0(PGOProfilerTest, TextToBinary)
-{
-    mkdir("ark-profiler10/", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-
-    std::ofstream file("ark-profiler10/modules.text");
-    std::string result = "Profiler Version: 0.0.0.1\n";
-    file.write(result.c_str(), result.size());
-    result = "\nPanda file sumcheck list: [ 413775942 ]\n";
-    file.write(result.c_str(), result.size());
-    result = "\nrecordName: [ 1232/3/CALL_MODE/hello, 234/100/HOTNESS_MODE/h#ello1 ]\n";
-    file.write(result.c_str(), result.size());
-    file.close();
-
-    PGOProfilerHeader::SetStrictMatch(false);
-    ASSERT_TRUE(PGOProfilerManager::GetInstance()->TextToBinary(
-        "ark-profiler10/modules.text", "ark-profiler10/modules.ap", 2, ApGenMode::OVERWRITE));
-
-    PGOProfilerDecoder loader("ark-profiler10/modules.ap", DECODER_THRESHOLD);
-    ASSERT_TRUE(loader.LoadAndVerify({{"test", 413775942}}));
-
-    unlink("ark-profiler10/modules.ap");
-    unlink("ark-profiler10/modules.text");
-    rmdir("ark-profiler10");
-}
-
 HWTEST_F_L0(PGOProfilerTest, FailResetProfilerInWorker)
 {
     std::vector<MethodLiteral *> methodLiterals {};
