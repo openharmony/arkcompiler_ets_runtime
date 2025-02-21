@@ -1021,9 +1021,6 @@ void EcmaContext::Iterate(RootVisitor &v)
     if (!microJobQueue_.IsHole()) {
         v.VisitRoot(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&microJobQueue_)));
     }
-    if (!pointerToIndexDictionary_.IsHole()) {
-        v.VisitRoot(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&pointerToIndexDictionary_)));
-    }
 
     if (functionProtoTransitionTable_) {
         functionProtoTransitionTable_->Iterate(v);

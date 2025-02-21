@@ -1176,11 +1176,6 @@
             <option name="push" value="test/test/libark_jsruntime_test.so -> /data/test" src="out"/>
         </preparer>
     </target>
-    <target name="JS_GlobalIndexMap_Test">
-        <preparer>
-            <option name="push" value="test/test/libark_jsruntime_test.so -> /data/test" src="out"/>
-        </preparer>
-    </target>
     <target name="JS_GlueRegs_Test">
         <preparer>
             <option name="push" value="test/test/libark_jsruntime_test.so -> /data/test" src="out"/>

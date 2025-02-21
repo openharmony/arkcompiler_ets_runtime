@@ -52,7 +52,6 @@ class ConstantPool;
 class JSPromise;
 class RegExpExecResultCache;
 class EcmaHandleScope;
-class GlobalIndexMap;
 class SustainingJSHandleList;
 class SustainingJSHandle;
 enum class PromiseRejectionEvent : uint8_t;
@@ -782,7 +781,6 @@ private:
     JSTaggedValue stringSplitResultCache_ {JSTaggedValue::Hole()};
     JSTaggedValue stringToListResultCache_ {JSTaggedValue::Hole()};
     JSTaggedValue globalEnv_ {JSTaggedValue::Hole()};
-    JSTaggedValue pointerToIndexDictionary_ {JSTaggedValue::Hole()};
     JSTaggedValue regexpCache_ {JSTaggedValue::Hole()};
     JSTaggedValue regexpGlobal_ {JSTaggedValue::Hole()};
     JSTaggedValue microJobQueue_ {JSTaggedValue::Hole()};
@@ -875,7 +873,6 @@ private:
     friend class ObjectFactory;
     friend class panda::JSNApi;
     friend class AOTFileManager;
-    friend class GlobalIndexMap;
 };
 }  // namespace ecmascript
 }  // namespace panda
