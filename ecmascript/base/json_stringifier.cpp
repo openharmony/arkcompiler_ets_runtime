@@ -592,6 +592,7 @@ bool JsonStringifier::SerializeJSONObject(const JSHandle<JSTaggedValue> &value, 
 bool JsonStringifier::SerializeJSONSharedMap(const JSHandle<JSTaggedValue> &value,
                                              const JSHandle<JSTaggedValue> &replacer)
 {
+    [[maybe_unused]] ConcurrentApiScope<JSSharedMap> scope(thread_, value);
     JSHandle<JSSharedMap> sharedMap(value);
     JSHandle<LinkedHashMap> hashMap(thread_, sharedMap->GetLinkedMap());
     return SerializeLinkedHashMap(hashMap, replacer);
@@ -600,6 +601,7 @@ bool JsonStringifier::SerializeJSONSharedMap(const JSHandle<JSTaggedValue> &valu
 bool JsonStringifier::SerializeJSONSharedSet(const JSHandle<JSTaggedValue> &value,
                                              const JSHandle<JSTaggedValue> &replacer)
 {
+    [[maybe_unused]] ConcurrentApiScope<JSSharedSet> scope(thread_, value);
     JSHandle<JSSharedSet> sharedSet(value);
     JSHandle<LinkedHashSet> hashSet(thread_, sharedSet->GetLinkedSet());
     return SerializeLinkedHashSet(hashSet, replacer);
