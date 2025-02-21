@@ -213,7 +213,6 @@ public:
     }
 
     void MergeFileNameToChecksumMap(std::unordered_map<CString, uint32_t> &fileNameToChecksumMap) const;
-    bool PUBLIC_API LoadAPTextFile(const std::string& inPath);
 
 private:
     bool Load(const std::shared_ptr<PGOAbcFilePool> &externalAbcFilePool);

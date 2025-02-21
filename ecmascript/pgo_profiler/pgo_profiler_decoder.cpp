@@ -287,40 +287,4 @@ void PGOProfilerDecoder::MergeFileNameToChecksumMap(std::unordered_map<CString, 
         fileNameToChecksumMap.emplace(abcNameInDecoder, checksum);
     });
 }
-
-bool PGOProfilerDecoder::LoadAPTextFile(const std::string& inPath)
-{
-    std::string realPath;
-    if (!RealPath(inPath, realPath)) {
-        LOG_PGO(ERROR) << "real path failure, path: " << inPath;
-        return false;
-    }
-
-    std::ifstream fileStream(realPath.c_str());
-    if (!fileStream.is_open()) {
-        LOG_PGO(ERROR) << "can't open the file path " << realPath;
-        return false;
-    }
-
-    if (!header_) {
-        PGOProfilerHeader::Build(&header_, sizeof(PGOProfilerHeader));
-    }
-    if (!header_->ParseFromText(fileStream)) {
-        LOG_PGO(ERROR) << "header format error";
-        return false;
-    }
-    if (!pandaFileInfos_.ParseFromText(fileStream)) {
-        LOG_PGO(ERROR) << "panda file info format error";
-        return false;
-    }
-    if (!recordDetailInfos_) {
-        recordDetailInfos_ = std::make_shared<PGORecordDetailInfos>(hotnessThreshold_);
-    }
-    if (!recordDetailInfos_->ParseFromText(fileStream)) {
-        LOG_PGO(ERROR) << "record info format error";
-        return false;
-    }
-
-    return true;
-}
 } // namespace panda::ecmascript::pgo

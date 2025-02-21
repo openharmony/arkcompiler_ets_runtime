@@ -120,39 +120,6 @@ void PGOProfilerHeader::ProcessToBinary(std::fstream &fileStream) const
     }
 }
 
-bool PGOProfilerHeader::ParseFromText(std::ifstream &stream)
-{
-    std::string header;
-    if (std::getline(stream, header)) {
-        if (header.empty()) {
-            return false;
-        }
-        auto index = header.find(DumpUtils::BLOCK_START);
-        if (index == std::string::npos) {
-            return false;
-        }
-        auto version = header.substr(index + 1);
-        if (!InternalSetVersion(version)) {
-            return false;
-        }
-        if (!Verify()) {
-            return false;
-        }
-        if (!base::FileHeaderBase::CompatibleVerify(ELASTIC_HEADER_MINI_VERSION)) {
-            auto *pandaInfoSection = GetPandaInfoSection();
-            if (pandaInfoSection == nullptr) {
-                return false;
-            }
-            pandaInfoSection->offset_ -= sizeof(PGOProfilerHeader) - sizeof(PGOProfilerHeaderLegacy);
-        }
-        if (!base::FileHeaderBase::CompatibleVerify(MULTI_ABC_CHECKSUM_MINI_VERSION)) {
-            checksumListHasAbcId_ = false;
-        }
-        return true;
-    }
-    return false;
-}
-
 bool PGOProfilerHeader::ProcessToText(std::ofstream &stream) const
 {
     if (!Verify()) {
