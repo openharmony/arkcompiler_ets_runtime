@@ -705,21 +705,6 @@ public:
     void JoinStackPopFastPath(JSHandle<JSTaggedValue> receiver);
     void JoinStackPop(JSHandle<JSTaggedValue> receiver);
 
-    void SetJsonStringifyCache(size_t index, CVector<std::pair<CString, int>> &value)
-    {
-        stringifyCache_[index] = value;
-    }
-
-    CVector<std::pair<CString, int>> GetJsonStringifyCache(size_t index)
-    {
-        return stringifyCache_[index];
-    }
-
-    bool IsAotEntry()
-    {
-        return isAotEntry_;
-    }
-
     std::tuple<uint64_t, uint8_t *, int, kungfu::CalleeRegAndOffsetVec> CalCallSiteInfo(uintptr_t retAddr,
                                                                                         bool isDeopt) const;
 
@@ -879,10 +864,6 @@ private:
     // Join Stack
     static constexpr uint32_t MIN_JOIN_STACK_SIZE = 2;
     CVector<JSTaggedValue> joinStack_ {JSTaggedValue::Hole(), JSTaggedValue::Hole()};
-    // json stringify cache
-    static constexpr uint32_t STRINGIFY_CACHE_SIZE = 64;
-    std::array<CVector<std::pair<CString, int>>, STRINGIFY_CACHE_SIZE> stringifyCache_ {};
-    bool isAotEntry_ { false };
 
     // SustainingJSHandleList for jit compile hold ref
     SustainingJSHandleList *sustainingJSHandleList_ {nullptr};
