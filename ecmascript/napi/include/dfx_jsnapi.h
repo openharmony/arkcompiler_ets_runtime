@@ -51,7 +51,7 @@ using JsFrameInfo = ecmascript::JsFrameInfo;
 using SamplingInfo = ecmascript::SamplingInfo;
 using DebuggerPostTask = std::function<void(std::function<void()> &&)>;
 using TraceEvent = ecmascript::TraceEvent;
-using AppFreezeFilterCallback = std::function<bool(const int32_t pid)>;
+using AppFreezeFilterCallback = std::function<bool(const int32_t pid, const bool needDecreaseQuota)>;
 using DumpSnapShotOption = ecmascript::DumpSnapShotOption;
 using DumpFormat = ecmascript::DumpFormat;
 struct DumpForSnapShotStruct {

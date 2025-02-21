@@ -32,7 +32,7 @@
 #include <memory>
 
 namespace panda::ecmascript {
-using AppfreezeFilterCallback = std::function<bool(const int32_t pid)>;
+using AppfreezeFilterCallback = std::function<bool(const int32_t pid, const bool needDecreaseQuota)>;
 class Runtime {
 public:
     PUBLIC_API static Runtime *GetInstance();
