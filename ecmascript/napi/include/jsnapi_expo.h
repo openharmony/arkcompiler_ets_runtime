@@ -1601,6 +1601,8 @@ public:
                                                        const std::string &module_path);
     static Local<ObjectRef> GetModuleNameSpaceWithModuleInfo(EcmaVM *vm, const std::string &file,
                                                              const std::string &module_path);
+    static Local<ObjectRef> GetModuleNameSpaceWithPath(const EcmaVM *vm, const char *path);
+    static std::pair<std::string, std::string> ResolveOhmUrl(std::string ohmUrl);
 
     /*
      * Execute panda file from secure mem. secure memory lifecycle managed externally.
