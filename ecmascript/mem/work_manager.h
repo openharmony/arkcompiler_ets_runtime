@@ -185,7 +185,7 @@ public:
     void InitializeBase()
     {
         if (UNLIKELY(workSpace_ == 0)) {
-            LOG_ECMA(FATAL) << "workSpace is nullptr";
+            InitializeInPostFork();
         }
         spaceStart_ = workSpace_;
         spaceEnd_ = workSpace_ + WORKNODE_SPACE_SIZE;
