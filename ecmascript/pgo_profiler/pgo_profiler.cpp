@@ -1176,6 +1176,11 @@ void PGOProfiler::TryDumpProtoTransitionType(JSHClass *hclass)
         return;
     }
     JSTaggedValue phc1Root = JSHClass::FindProtoRootHClass(ihc1);
+    if (!phc1Root.IsJSHClass()) {
+        LOG_PGO(DEBUG) << "Phc1Root is not a JSHclass!";
+        return;
+    }
+
     auto transitionPrototype = GetProfileType(JSHClass::Cast(phc1Root.GetTaggedObject()), true);
     if (!transitionPrototype.IsRootType()) {
         LOG_PGO(DEBUG) << "Set as the prototype of a function again after transition happened for this prototype!";
