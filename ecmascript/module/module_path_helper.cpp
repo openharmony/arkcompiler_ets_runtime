@@ -1152,4 +1152,45 @@ bool ModulePathHelper::ValidateAbcPath(const CString &baseFileName, ValidateFile
     }
     return false;
 }
+
+std::pair<std::string, std::string> ModulePathHelper::ResolveOhmUrl(std::string ohmUrl)
+{
+    CString url(ohmUrl);
+    if (StringHelper::StringStartWith(url, PREFIX_BUNDLE)) {
+        return ResolveOhmUrlStartWithBundle(ohmUrl);
+    }
+    if (StringHelper::StringStartWith(url, PREFIX_NORMALIZED_NOT_SO)) {
+        return ResolveOhmUrlStartWithNormalized(ohmUrl);
+    }
+    LOG_FULL(FATAL) << "Invalid Ohm url, please check. OhmUrl: " << ohmUrl;
+    return {"", ""};
+}
+
+std::pair<std::string, std::string> ModulePathHelper::ResolveOhmUrlStartWithBundle(std::string ohmUrl)
+{
+    std::string moduleRequestName(ohmUrl.substr(PREFIX_BUNDLE_LEN));
+    size_t index = moduleRequestName.find('/');
+    index = moduleRequestName.find('/', index + 1);
+    if (index == std::string::npos) {
+        LOG_FULL(FATAL) << "Invalid Ohm url, please check. OhmUrl: " << ohmUrl;
+    }
+    std::string bundleAndModuleName = moduleRequestName.substr(0, index);
+    std::string filePath = moduleRequestName.substr(index + 1);
+    return {filePath, bundleAndModuleName};
+}
+
+std::pair<std::string, std::string> ModulePathHelper::ResolveOhmUrlStartWithNormalized(std::string ohmUrl)
+{
+    CVector<CString> res = SplitNormalizedOhmurl(CString(ohmUrl));
+    if (res.size() != NORMALIZED_OHMURL_ARGS_NUM) {
+        LOG_FULL(FATAL) << "Invalid Ohm url, please check. OhmUrl: " << ohmUrl;
+    }
+    std::string moduleName(res[NORMALIZED_MODULE_NAME_INDEX]);
+    std::string bundleName(res[NORMALIZED_BUNDLE_NAME_INDEX]);
+    std::string path(res[NORMALIZED_IMPORT_PATH_INDEX]);
+    if (bundleName.empty() || moduleName.empty() || path.empty()) {
+        LOG_FULL(FATAL) << "Invalid Ohm url, please check. OhmUrl: " << ohmUrl;
+    }
+    return {path, bundleName + PathHelper::SLASH_TAG + moduleName};
+}
 }  // namespace panda::ecmascript

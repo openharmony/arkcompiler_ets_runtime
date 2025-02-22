@@ -6033,6 +6033,23 @@ Local<ObjectRef> JSNApi::GetModuleNameSpaceWithModuleInfo(EcmaVM *vm, const std:
     return JSNApiHelper::ToLocal<ObjectRef>(nameSp);
 }
 
+// This interface is always used for load module on host
+Local<ObjectRef> JSNApi::GetModuleNameSpaceWithPath(const EcmaVM *vm, const char *path)
+{
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
+    auto [filePath, recordName] = ModulePathHelper::ResolvePath(path);
+    ecmascript::ThreadManagedScope managedScope(thread);
+    ecmascript::ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+    JSHandle<JSTaggedValue> moduleNamespace = moduleManager->
+        GetModuleNameSpaceFromFile(thread, recordName, filePath);
+    return JSNApiHelper::ToLocal<ObjectRef>(moduleNamespace);
+}
+
+std::pair<std::string, std::string> JSNApi::ResolveOhmUrl(std::string ohmUrl)
+{
+    return ModulePathHelper::ResolveOhmUrl(ohmUrl);
+}
+
 // ---------------------------------- Promise -------------------------------------
 Local<PromiseRef> PromiseRef::Catch(const EcmaVM *vm, Local<FunctionRef> handler)
 {
