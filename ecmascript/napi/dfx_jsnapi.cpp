@@ -66,10 +66,23 @@ void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unus
 #endif
 }
 
+void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unused]] int fd,
+                                 [[maybe_unused]] const DumpSnapShotOption &dumpOption,
+                                 [[maybe_unused]] const std::function<void(uint8_t)> &callback)
+{
+#if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
+    FileDescriptorStream stream(fd);
+    DumpHeapSnapshot(vm, &stream, dumpOption, nullptr, callback);
+#else
+    LOG_ECMA(ERROR) << "Not support arkcompiler heap snapshot";
+#endif
+}
+
 // IDE interface.
 void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unused]] Stream *stream,
                                  [[maybe_unused]] const DumpSnapShotOption &dumpOption,
-                                 [[maybe_unused]] Progress *progress)
+                                 [[maybe_unused]] Progress *progress,
+                                 [[maybe_unused]] std::function<void(uint8_t)> callback)
 {
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
     ecmascript::HeapProfilerInterface *heapProfile = ecmascript::HeapProfilerInterface::GetInstance(
@@ -89,7 +102,7 @@ void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unus
     }
 #endif  // ENABLE_DUMP_IN_FAULTLOG
 #endif  // ENABLE_LOCAL_HANDLE_LEAK_DETECT
-    heapProfile->DumpHeapSnapshot(stream, dumpOption, progress);
+    heapProfile->DumpHeapSnapshot(stream, dumpOption, progress, callback);
 #else
     LOG_ECMA(ERROR) << "Not support arkcompiler heap snapshot";
 #endif
