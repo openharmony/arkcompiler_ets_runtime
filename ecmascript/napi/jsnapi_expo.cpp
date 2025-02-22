@@ -1226,16 +1226,22 @@ void JSValueRef::GetDataViewInfo(const EcmaVM *vm,
     }
 }
 
-void JSValueRef::TryGetArrayLength(const EcmaVM *vm, bool *isArrayOrSharedArray, uint32_t *arrayLength)
+// TryGetArrayLength is only for use by the Napi
+void JSValueRef::TryGetArrayLength(const EcmaVM *vm, bool *isPendingException,
+    bool *isArrayOrSharedArray, uint32_t *arrayLength)
 {
-    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
+    JSThread *thread = vm->GetJSThread();
+    *isPendingException = thread->HasPendingException();
+    ecmascript::ThreadManagedScope managedScope(thread);
     JSTaggedValue thisValue = JSNApiHelper::ToJSTaggedValue(this);
-    if (thisValue.IsJSArray()) {
+    if (LIKELY(thisValue.IsJSArray())) {
         *isArrayOrSharedArray = true;
-        *arrayLength = JSArray::Cast(thisValue.GetTaggedObject())->GetArrayLength();
+        *arrayLength = (*isPendingException) ?
+            0 : JSArray::Cast(thisValue.GetTaggedObject())->GetArrayLength();
     } else if (thisValue.IsJSSharedArray()) {
         *isArrayOrSharedArray = true;
-        *arrayLength = ecmascript::JSSharedArray::Cast(thisValue.GetTaggedObject())->GetArrayLength();
+        *arrayLength = (*isPendingException) ?
+            0 : ecmascript::JSSharedArray::Cast(thisValue.GetTaggedObject())->GetArrayLength();
     } else {
         *isArrayOrSharedArray = false;
     }
