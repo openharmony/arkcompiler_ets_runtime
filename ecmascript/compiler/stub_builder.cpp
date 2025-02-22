@@ -8500,6 +8500,7 @@ GateRef StubBuilder::IsIn(GateRef glue, GateRef prop, GateRef obj)
     {
         auto taggedId = Int32(GET_MESSAGE_STRING_ID(InOperatorOnNonObject));
         CallRuntime(glue, RTSTUB_ID(ThrowTypeError), {IntToTaggedInt(taggedId)});
+        result = Exception();
         Jump(&exit);
     }
 

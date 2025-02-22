@@ -74,7 +74,7 @@ namespace panda::ecmascript {
     V(CanNotConvertObjectToPrimitiveValue, "Cannot convert object to primitive value")       \
     V(CanNotConvertIllageValueToString, "Cannot convert a illegal value to a String")        \
     V(CanNotConvertIllageValueToPrimitive, "Cannot convert a illegal value to a Primitive")  \
-    V(InOperatorOnNonObject, "Cannot not use 'in' operator in Non-Object")
+    V(InOperatorOnNonObject, "Cannot use 'in' operator in Non-Object")
 
 #define DEBUG_CHECK_MESSAGE_STRING_LIST(V)                                                   \
     V(IsCallable)                                                                            \
