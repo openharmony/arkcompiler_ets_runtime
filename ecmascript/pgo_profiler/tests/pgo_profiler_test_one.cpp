@@ -199,12 +199,13 @@ HWTEST_F_L0(PGOProfilerTestOne, WithWorker)
 
     JSNApi::DestroyJSVM(vm);
 
+    vm = JSNApi::CreateJSVM(option);
     PGOProfilerDecoder loader("ark-profiler-worker/modules.ap", threshhold);
     std::unordered_map<std::string, std::unordered_map<std::string, std::vector<PGOMethodId>>> methodIdInAp;
     ParseRelatedPandaFileMethods(loader, methodIdInAp);
     ASSERT_EQ(methodIdInAp.size(), 3);
     CheckApMethods(methodIdInAp);
-
+    JSNApi::DestroyJSVM(vm);
     unlink("ark-profiler-worker/modules.ap");
     rmdir("ark-profiler-worker/");
 }

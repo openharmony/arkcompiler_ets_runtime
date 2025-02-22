@@ -21,8 +21,8 @@ namespace {
 const CString OHOS_PKG_ABC_PATH_ROOT = "/ets/";  // abc file always under /ets/ dir in HAP/HSP
 }  // namespace
 bool JSPandaFile::loadedFirstPandaFile = false;
-JSPandaFile::JSPandaFile(const panda_file::File *pf, const CString &descriptor)
-    : pf_(pf), desc_(descriptor)
+JSPandaFile::JSPandaFile(const panda_file::File *pf, const CString &descriptor, CreateMode mode)
+    : pf_(pf), desc_(descriptor), mode_(mode)
 {
     ASSERT(pf_ != nullptr);
     CheckIsBundlePack();
@@ -102,13 +102,7 @@ JSPandaFile::~JSPandaFile()
     methodLiteralMap_.clear();
     ClearNameMap();
     if (methodLiterals_ != nullptr) {
-        if (isBundlePack_) {
-            JSPandaFileManager::FreeBuffer(methodLiterals_);
-        } else {
-            auto size = AlignUp(sizeof(MethodLiteral) * numMethods_, PageSize());
-            PageClearTag(methodLiterals_, size);
-            PageUnmap(MemMap(methodLiterals_, size));
-        }
+        JSPandaFileManager::FreeBuffer(methodLiterals_, sizeof(MethodLiteral) * numMethods_, isBundlePack_, mode_);
         methodLiterals_ = nullptr;
     }
 }
@@ -171,8 +165,8 @@ void JSPandaFile::InitializeUnMergedPF()
         }
     }
     jsRecordInfo_.insert({JSPandaFile::ENTRY_FUNCTION_NAME, info});
-    methodLiterals_ =
-        static_cast<MethodLiteral *>(JSPandaFileManager::AllocateBuffer(sizeof(MethodLiteral) * numMethods_));
+    methodLiterals_ = static_cast<MethodLiteral *>(
+        JSPandaFileManager::AllocateBuffer(sizeof(MethodLiteral) * numMethods_, isBundlePack_, mode_));
     methodLiteralMap_.reserve(numMethods_);
 }
 
@@ -225,10 +219,8 @@ void JSPandaFile::InitializeMergedPF()
             delete info;
         }
     }
-    auto size = AlignUp(sizeof(MethodLiteral) * numMethods_, PageSize());
-    methodLiterals_ =
-        static_cast<MethodLiteral *>(PageMap(size, PAGE_PROT_READWRITE).GetMem());
-    PageTag(methodLiterals_, size, PageTagType::METHOD_LITERAL);
+    methodLiterals_ = static_cast<MethodLiteral *>(
+        JSPandaFileManager::AllocateBuffer(sizeof(MethodLiteral) * numMethods_, isBundlePack_, mode_));
     methodLiteralMap_.reserve(numMethods_);
 }
 

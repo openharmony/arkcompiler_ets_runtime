@@ -119,8 +119,8 @@ private:
                                                                     std::string_view entryPoint);
     void ObsoleteLoadedJSPandaFile(const CString &filename);
 
-    static void *AllocateBuffer(size_t size);
-    static void FreeBuffer(void *mem);
+    static void *AllocateBuffer(size_t size, bool isBundlePack, CreateMode mode);
+    static void FreeBuffer(void *mem, size_t size, bool isBundlePack, CreateMode mode);
 
     RecursiveMutex jsPandaFileLock_;
     // JSPandaFile was shared by all vm.

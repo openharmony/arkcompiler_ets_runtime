@@ -602,9 +602,16 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::GenerateJSPandafileFromBufferCa
         thread, filename, entryPoint, bufferInfo.buffer_, bufferInfo.size_);
 }
 
-void *JSPandaFileManager::AllocateBuffer(size_t size)
+void *JSPandaFileManager::AllocateBuffer(size_t size, bool isBundlePack, CreateMode mode)
 {
-    return JSPandaFileAllocator::AllocateBuffer(size);
+    if (mode == CreateMode::DFX) {
+        return JSPandaFileAllocator::AllocateBuffer(size);
+    }
+    auto allocator = Runtime::GetInstance()->GetNativeAreaAllocator();
+    if (isBundlePack) {
+        return allocator->AllocateBuffer(size);
+    }
+    return allocator->NativeAreaPageMap(size);
 }
 
 void *JSPandaFileManager::JSPandaFileAllocator::AllocateBuffer(size_t size)
@@ -632,9 +639,16 @@ void *JSPandaFileManager::JSPandaFileAllocator::AllocateBuffer(size_t size)
     return ptr;
 }
 
-void JSPandaFileManager::FreeBuffer(void *mem)
+void JSPandaFileManager::FreeBuffer(void *mem, size_t size, bool isBundlePack, CreateMode mode)
 {
-    JSPandaFileAllocator::FreeBuffer(mem);
+    if (mode == CreateMode::DFX) {
+        return JSPandaFileAllocator::FreeBuffer(mem);
+    }
+    auto allocator = Runtime::GetInstance()->GetNativeAreaAllocator();
+    if (isBundlePack) {
+        return allocator->FreeBuffer(mem);
+    }
+    allocator->NativeAreaPageUnmap(mem, size);
 }
 
 void JSPandaFileManager::JSPandaFileAllocator::FreeBuffer(void *mem)

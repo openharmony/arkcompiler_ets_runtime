@@ -238,6 +238,11 @@ public:
         appfreezeFilterCallback_ = cb;
     }
 
+    NativeAreaAllocator *GetNativeAreaAllocator() const
+    {
+        return nativeAreaAllocator_.get();
+    }
+
 private:
     static constexpr int32_t WORKER_DESTRUCTION_COUNT = 3;
     static constexpr int32_t MIN_GC_TRIGGER_VM_COUNT = 4;

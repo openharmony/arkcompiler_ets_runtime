@@ -191,7 +191,7 @@ HWTEST_F_L0(JsStackInfoTest, TestReadMethodInfo)
     pandasm::Parser parser;
     auto res = parser.Parse(data);
     auto file = pandasm::AsmEmitter::Emit(res.Value());
-    auto jsPandaFile = std::make_shared<JSPandaFile>(file.release(), CString(filename));
+    auto jsPandaFile = std::make_shared<JSPandaFile>(file.release(), CString(filename), CreateMode::DFX);
     EXPECT_TRUE(jsPandaFile != nullptr);
     CVector<MethodInfo> result;
     const panda_file::File *pf = jsPandaFile->GetPandaFile();
@@ -230,7 +230,7 @@ HWTEST_F_L0(JsStackInfoTest, TestReadAllMethodInfos)
     pandasm::Parser parser;
     auto res = parser.Parse(data);
     auto file = pandasm::AsmEmitter::Emit(res.Value());
-    auto pf = std::make_shared<JSPandaFile>(file.release(), CString(filename));
+    auto pf = std::make_shared<JSPandaFile>(file.release(), CString(filename), CreateMode::DFX);
     EXPECT_TRUE(pf != nullptr);
     auto methods = JSStackTrace::ReadAllMethodInfos(pf);
     EXPECT_TRUE(methods.size() > 0);
@@ -284,7 +284,7 @@ HWTEST_F_L0(JsStackInfoTest, TestParseJsFrameInfo)
     pandasm::Parser parser;
     auto res = parser.Parse(data);
     auto file = pandasm::AsmEmitter::Emit(res.Value());
-    auto jsPandaFile = std::make_shared<JSPandaFile>(file.release(), CString(filename));
+    auto jsPandaFile = std::make_shared<JSPandaFile>(file.release(), CString(filename), CreateMode::DFX);
     EXPECT_TRUE(jsPandaFile != nullptr);
     auto debugExtractor = std::make_unique<DebugInfoExtractor>(jsPandaFile.get());
     auto methods = JSStackTrace::ReadAllMethodInfos(jsPandaFile);
@@ -324,8 +324,8 @@ HWTEST_F_L0(JsStackInfoTest, TestArkParseJsFrameInfo)
     auto res2 = parser2.Parse(pfdata2);
     auto file1 = pandasm::AsmEmitter::Emit(res1.Value());
     auto file2 = pandasm::AsmEmitter::Emit(res2.Value());
-    auto jsPandaFile1 = std::make_shared<JSPandaFile>(file1.release(), CString(filename1));
-    auto jsPandaFile2 = std::make_shared<JSPandaFile>(file2.release(), CString(filename2));
+    auto jsPandaFile1 = std::make_shared<JSPandaFile>(file1.release(), CString(filename1), CreateMode::DFX);
+    auto jsPandaFile2 = std::make_shared<JSPandaFile>(file2.release(), CString(filename2), CreateMode::DFX);
     EXPECT_TRUE(jsPandaFile1 != nullptr);
     EXPECT_TRUE(jsPandaFile2 != nullptr);
     auto debugExtractor1 = std::make_unique<DebugInfoExtractor>(jsPandaFile1.get());
