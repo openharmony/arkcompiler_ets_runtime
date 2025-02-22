@@ -313,33 +313,6 @@ host_unittest_action("ECMA_StringTable_Test") {
   deps += hiviewdfx_deps
 }
 
-host_unittest_action("JS_GlobalIndexMap_Test") {
-  module_out_path = module_output_path
-
-  sources = [
-    # test file
-    "global_index_map_test.cpp",
-  ]
-
-  configs = [
-    "../../:asm_interp_enable_config",
-    "../../:ecma_test_config",
-  ]
-
-  deps = [ "../../:libark_jsruntime_test" ]
-
-  # hiviewdfx libraries
-  external_deps = hiviewdfx_ext_deps
-  external_deps += [
-    "icu:shared_icui18n",
-    "icu:shared_icuuc",
-    "runtime_core:libarkassembler_static",
-    "runtime_core:libarkverifier",
-    "zlib:libz",
-  ]
-  deps += hiviewdfx_deps
-}
-
 host_unittest_action("JS_GlueRegs_Test") {
   module_out_path = module_output_path
 
@@ -3525,7 +3498,6 @@ group("unittest") {
     ":JS_Function_Test",
     ":JS_GeneratorObject_Test",
     ":JS_GlobalDictionary_Test",
-    ":JS_GlobalIndexMap_Test",
     ":JS_GlueRegs_Test",
     ":JS_Handle_Test",
     ":JS_Hclass_Test",
@@ -3666,7 +3638,6 @@ group("host_unittest") {
     ":JS_Function_TestAction",
     ":JS_GeneratorObject_TestAction",
     ":JS_GlobalDictionary_TestAction",
-    ":JS_GlobalIndexMap_TestAction",
     ":JS_GlueRegs_TestAction",
     ":JS_Handle_TestAction",
     ":JS_Hclass_TestAction",
@@ -3803,7 +3774,6 @@ group("host_unittest") {
       ":JS_Function_TestAction",
       ":JS_GeneratorObject_TestAction",
       ":JS_GlobalDictionary_TestAction",
-      ":JS_GlobalIndexMap_TestAction",
       ":JS_GlueRegs_TestAction",
       ":JS_Handle_TestAction",
       ":JS_Hclass_TestAction",

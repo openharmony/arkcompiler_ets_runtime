@@ -956,7 +956,6 @@ ecma_source = [
   "ecmascript/daemon/daemon_thread.cpp",
   "ecmascript/runtime.cpp",
   "ecmascript/runtime_lock.cpp",
-  "ecmascript/global_index_map.cpp",
   "ecmascript/shared_mm/shared_mm.cpp",
   "ecmascript/tagged_dictionary.cpp",
   "ecmascript/tagged_hash_array.cpp",

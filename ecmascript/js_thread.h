@@ -334,11 +334,6 @@ public:
         glueData_.globalConst_ = const_cast<GlobalEnvConstants*>(constants);
     }
 
-    const BuiltinEntries GetBuiltinEntries() const
-    {
-        return glueData_.builtinEntries_;
-    }
-
     BuiltinEntries* GetBuiltinEntriesPointer()
     {
         return &glueData_.builtinEntries_;
