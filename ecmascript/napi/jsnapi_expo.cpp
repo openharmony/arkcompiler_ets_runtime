@@ -156,6 +156,7 @@ constexpr std::string_view ENTRY_POINTER = "_GLOBAL::func_main_0";
 bool JSNApi::isForked_ = false;
 static Mutex *mutex = new panda::Mutex();
 StartIdleMonitorCallback JSNApi::startIdleMonitorCallback_ = nullptr;
+const static uint32_t API_VERSION_MASK = 100;
 
 // ----------------------------------- ArkCrashHolder --------------------------------------
 constexpr size_t FORMATED_FUNCPTR_LENGTH = 36; // length of dec function pointer
@@ -5650,6 +5651,11 @@ bool JSNApi::IsMultiThreadCheckEnabled(const EcmaVM *vm)
 uint32_t JSNApi::GetCurrentThreadId()
 {
     return JSThread::GetCurrentThreadId();
+}
+
+void JSNApi::SetVMAPIVersion(EcmaVM *vm, const int32_t apiVersion)
+{
+    vm->SetVMAPIVersion(static_cast<uint32_t>(apiVersion) % API_VERSION_MASK);
 }
 
 void JSNApi::UpdateStackInfo(EcmaVM *vm, void *currentStackInfo, uint32_t opKind)

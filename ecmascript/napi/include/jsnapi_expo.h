@@ -1826,6 +1826,9 @@ public:
     static bool IsMultiThreadCheckEnabled(const EcmaVM *vm);
     static uint32_t GetCurrentThreadId();
 
+    //set VM apiVersion
+    static void SetVMAPIVersion(EcmaVM *vm, const int32_t apiVersion);
+
     // Napi Update SubStackInfo
     static void UpdateStackInfo(EcmaVM *vm, void *currentStackInfo, uint32_t opKind);
 private:

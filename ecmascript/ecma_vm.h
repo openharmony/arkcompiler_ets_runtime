@@ -876,6 +876,16 @@ public:
 
     void PUBLIC_API PrintAOTSnapShotStats();
 
+    void SetVMAPIVersion(uint32_t APIVersion)
+    {
+        apiVersion_ = APIVersion;
+    }
+
+    uint32_t GetVMAPIVersion()
+    {
+        return apiVersion_;
+    }
+
 #if ECMASCRIPT_ENABLE_COLLECTING_OPCODES
     void SetBytecodeStatsStack(std::unordered_map<BytecodeInstruction::Opcode, int> &bytecodeStatsMap)
     {
@@ -915,6 +925,9 @@ private:
     EcmaStringTable *stringTable_ {nullptr};
     PUBLIC_API static bool multiThreadCheck_;
     static bool errorInfoEnhanced_;
+
+    //apiVersion states
+    uint32_t apiVersion_ = 8;
 
     // VM memory management.
     std::unique_ptr<NativeAreaAllocator> nativeAreaAllocator_;
