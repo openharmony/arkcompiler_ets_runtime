@@ -726,6 +726,7 @@ void ElfBuilder::ResolveAArch64Relocate(std::fstream &elfFile, Span<llvm::ELF::E
     using Elf64_Rela = llvm::ELF::Elf64_Rela;
     for (Elf64_Rela &rela : relas) {
         switch (rela.getType()) {
+            case llvm::ELF::R_AARCH64_JUMP26:
             case llvm::ELF::R_AARCH64_CALL26: {
                 // the reloc symbol is also in stub.an, calculate the relative offset.
                 auto symIdx = rela.getSymbol();
