@@ -29,14 +29,81 @@
 
 namespace panda::ecmascript {
 
+bool ICRuntime::GetHandler(const ObjectOperator &op, const JSHandle<JSHClass> &hclass,
+                           JSHandle<JSTaggedValue> &handlerValue)
+{
+    // Solve Global IC.
+    if (IsGlobalLoadIC(GetICKind())) {
+        // Not support global element ic
+        if (op.IsElement()) {
+            return false;
+        }
+        // Not support global not found ic
+        if (!op.IsFound()) {
+            return false;
+        }
+        // Not support global prototype ic
+        if (op.IsOnPrototype()) {
+            return false;
+        }
+        handlerValue = LoadHandler::LoadProperty(thread_, op);
+        return true;
+    }
+
+    // Solve Element IC.
+    if (op.IsElement()) {
+        // Not support not found element ic
+        if (!op.IsFound()) {
+            return false;
+        }
+        handlerValue = LoadHandler::LoadElement(thread_, op);
+        return true;
+    }
+
+    // Solve Not Found IC.
+    if (!op.IsFound()) {
+        // Not support not found ic for sendable
+        if (hclass->IsJSShared()) {
+            return false;
+        }
+        // Not support not found ic for global object
+        if (hclass->IsJSGlobalObject()) {
+            return false;
+        }
+        JSTaggedValue proto = hclass->GetPrototype();
+        // If proto is not an EcmaObject,
+        // it means that there is no need to search for the prototype chain.
+        if (!proto.IsECMAObject()) {
+            handlerValue = LoadHandler::LoadProperty(thread_, op);
+        } else {
+            handlerValue = PrototypeHandler::LoadPrototype(thread_, op, hclass);
+        }
+        return true;
+    }
+    
+    // Solve IC On itself.
+    if (!op.IsOnPrototype()) {
+        handlerValue = LoadHandler::LoadProperty(thread_, op);
+        return true;
+    }
+
+    // Solve IC On Prototype.
+    // Not support prototype ic for sendable
+    if (hclass->IsJSShared()) {
+        return false;
+    }
+    handlerValue = PrototypeHandler::LoadPrototype(thread_, op, hclass);
+    return true;
+}
+
 void ICRuntime::UpdateLoadHandler(const ObjectOperator &op, JSHandle<JSTaggedValue> key,
                                   JSHandle<JSTaggedValue> receiver)
 {
     if (icAccessor_.GetICState() == ProfileTypeAccessor::ICState::MEGA) {
         return;
     }
-    JSHandle<JSTaggedValue> handlerValue;
     ObjectFactory *factory = thread_->GetEcmaVM()->GetFactory();
+    JSHandle<JSTaggedValue> handlerValue;
     JSHandle<JSHClass> originhclass;
     if (receiver->IsNumber()) {
         receiver = JSHandle<JSTaggedValue>::Cast(factory->NewJSPrimitiveRef(PrimitiveType::PRIMITIVE_NUMBER, receiver));
@@ -45,34 +112,9 @@ void ICRuntime::UpdateLoadHandler(const ObjectOperator &op, JSHandle<JSTaggedVal
         receiver = JSHandle<JSTaggedValue>::Cast(factory->NewJSPrimitiveRef(PrimitiveType::PRIMITIVE_STRING, receiver));
     }
     JSHandle<JSHClass> hclass(GetThread(), receiver->GetTaggedObject()->GetClass());
-    // When a transition occurs without the shadow property, AOT does not trigger the
-    // notifyprototypechange behavior, so for the case where the property does not
-    // exist and the Hclass is AOT, IC needs to be abandoned.
-    if (hclass->IsAOT() && !op.IsFound()) {
+    
+    if (!GetHandler(op, hclass, handlerValue)) {
         return;
-    }
-    if (op.IsElement()) {
-        if (!op.IsFound() && hclass->IsDictionaryElement()) {
-            return;
-        }
-        handlerValue = LoadHandler::LoadElement(thread_, op);
-    } else {
-        if (!op.IsFound()) {
-            JSTaggedValue proto = hclass->GetPrototype();
-            if (!proto.IsECMAObject()) {
-                handlerValue = LoadHandler::LoadProperty(thread_, op);
-            } else {
-                handlerValue = PrototypeHandler::LoadPrototype(thread_, op, hclass);
-            }
-        } else if (!op.IsOnPrototype()) {
-            handlerValue = LoadHandler::LoadProperty(thread_, op);
-        } else {
-            // do not support global prototype ic
-            if (IsGlobalLoadIC(GetICKind())) {
-                return;
-            }
-            handlerValue = PrototypeHandler::LoadPrototype(thread_, op, hclass);
-        }
     }
 
     if (!originhclass.GetTaggedValue().IsUndefined()) {
@@ -89,10 +131,6 @@ void ICRuntime::UpdateLoadHandler(const ObjectOperator &op, JSHandle<JSTaggedVal
     if (IsNamedIC(GetICKind())) {
         icAccessor_.AddHandlerWithoutKey(JSHandle<JSTaggedValue>::Cast(hclass), handlerValue, key, MegaICCache::Load);
     } else if (op.IsElement()) {
-        // do not support global element ic
-        if (IsGlobalLoadIC(GetICKind())) {
-            return;
-        }
         icAccessor_.AddElementHandler(JSHandle<JSTaggedValue>::Cast(hclass), handlerValue);
     } else {
         icAccessor_.AddHandlerWithKey(key, JSHandle<JSTaggedValue>::Cast(hclass), handlerValue);
@@ -257,12 +295,18 @@ JSTaggedValue LoadICRuntime::LoadMiss(JSHandle<JSTaggedValue> receiver, JSHandle
         return result.GetTaggedValue();
     }
     TraceIC(GetThread(), receiver, key);
-    // do not cache element
+
+#if ENABLE_NEXT_OPTIMIZATION
+    if (!op.IsFastMode() && op.IsFound()) {
+        icAccessor_.SetAsMegaForTraceSlowMode(op);
+        return result.GetTaggedValue();
+    }
+#elif
     if (!op.IsFastMode()) {
         icAccessor_.SetAsMegaForTraceSlowMode(op);
         return result.GetTaggedValue();
     }
-
+#endif
     UpdateLoadHandler(op, key, receiver);
     return result.GetTaggedValue();
 }

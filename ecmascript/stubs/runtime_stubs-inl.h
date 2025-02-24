@@ -3189,12 +3189,7 @@ JSTaggedValue RuntimeStubs::RuntimeUpdateAOTHClass(JSThread *thread,
     const JSHandle<JSHClass> &oldhclass, const JSHandle<JSHClass> &newhclass, JSTaggedValue key)
 {
 #if ECMASCRIPT_ENABLE_IC
-    if (JSHClass::IsNeedNotifyHclassChangedForAotTransition(thread, oldhclass, key)) {
-        JSHClass::NotifyHclassChanged(thread, oldhclass, newhclass, key);
-    } else {
-        JSHClass::RefreshUsers(thread, oldhclass, newhclass);
-    }
-    JSHClass::EnablePHCProtoChangeMarker(thread, newhclass);
+    JSHClass::ProcessAotHClassTransition(thread, oldhclass, newhclass, key);
 #endif
     return JSTaggedValue::Undefined();
 }

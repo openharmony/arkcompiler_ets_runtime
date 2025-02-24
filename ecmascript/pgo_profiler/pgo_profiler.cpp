@@ -1046,8 +1046,6 @@ bool PGOProfiler::DumpICLoadByNameWithHandler(ApEntityId abcId, const CString &r
         if (CheckProtoChangeMarker(cellValue)) {
             return ret;
         }
-        auto holder = prototypeHandler->GetHolder();
-        auto holderHClass = holder.GetTaggedObject()->GetClass();
         JSTaggedValue handlerInfoVal = prototypeHandler->GetHandlerInfo();
         if (!handlerInfoVal.IsInt()) {
             return ret;
@@ -1056,6 +1054,8 @@ bool PGOProfiler::DumpICLoadByNameWithHandler(ApEntityId abcId, const CString &r
         if (HandlerBase::IsNonExist(handlerInfo)) {
             return ret;
         }
+        auto holder = prototypeHandler->GetHolder();
+        auto holderHClass = holder.GetTaggedObject()->GetClass();
         auto accessorMethodId = prototypeHandler->GetAccessorMethodId();
         if (!AddObjectInfo(abcId, recordName, methodId, bcOffset, hclass, holderHClass,
                            holderHClass, accessorMethodId)) {
@@ -1554,6 +1554,7 @@ bool PGOProfiler::AddTransitionObjectInfo(ProfileType recordType,
     PGOObjectInfo info(receiverRootType, receiverType, holdRootType, holdType, holdRootType, holdTraType,
                        accessorMethod);
     UpdatePrototypeChainInfo(receiver, hold, info);
+    
     recordInfos_->AddObjectInfo(recordType, methodId, bcOffset, info);
     return true;
 }
@@ -2053,7 +2054,11 @@ JSTaggedValue PGOProfiler::TryFindKeyInPrototypeChain(TaggedObject *currObj, JSH
                 return JSTaggedValue(currHC);
             }
         }
-        currObj = currHC->GetProto().GetTaggedObject();
+        auto proto = currHC->GetProto();
+        if (!proto.IsHeapObject()) {
+            return JSTaggedValue::Undefined();
+        }
+        currObj = proto.GetTaggedObject();
         if (JSTaggedValue(currObj).IsUndefinedOrNull()) {
             break;
         }

@@ -155,6 +155,9 @@ JSHandle<JSTaggedValue> PrototypeHandler::LoadPrototype(const JSThread *thread, 
     handler->SetHandlerInfo(thread, handlerInfo);
     if (op.IsFound()) {
         handler->SetHolder(thread, op.GetHolder());
+    } else {
+        // In "Not Found" case we set holder to Undefined().
+        handler->SetHolder(thread, JSTaggedValue::Undefined());
     }
     if (op.IsAccessorDescriptor()) {
         JSTaggedValue result = op.GetValue();
@@ -172,11 +175,8 @@ JSHandle<JSTaggedValue> PrototypeHandler::LoadPrototype(const JSThread *thread, 
             }
         }
     }
-    // ShareToLocal is prohibited
-    if (!hclass->IsJSShared()) {
-        auto result = JSHClass::EnableProtoChangeMarker(thread, hclass);
-        handler->SetProtoCell(thread, result);
-    }
+    auto result = JSHClass::EnableProtoChangeMarker(thread, hclass);
+    handler->SetProtoCell(thread, result);
     return JSHandle<JSTaggedValue>::Cast(handler);
 }
 

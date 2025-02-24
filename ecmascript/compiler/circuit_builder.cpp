@@ -777,6 +777,16 @@ GateRef CircuitBuilder::GetHasChanged(GateRef object)
     return Int32NotEqual(Int32And(bitfield, mask), Int32(0));
 }
 
+GateRef CircuitBuilder::GetNotFoundHasChanged(GateRef object)
+{
+    GateRef bitfieldOffset = IntPtr(ProtoChangeMarker::BIT_FIELD_OFFSET);
+    GateRef bitfield = Load(VariableType::INT32(), object, bitfieldOffset);
+    return Int32NotEqual(
+        Int32And(Int32LSR(bitfield, Int32(ProtoChangeMarker::NotFoundHasChangedBits::START_BIT)),
+                 Int32((1LLU << ProtoChangeMarker::NotFoundHasChangedBits::SIZE) - 1)),
+        Int32(0));
+}
+
 GateRef CircuitBuilder::GetAccessorHasChanged(GateRef object)
 {
     GateRef bitfieldOffset = IntPtr(ProtoChangeMarker::BIT_FIELD_OFFSET);

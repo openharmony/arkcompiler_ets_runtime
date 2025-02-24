@@ -373,6 +373,7 @@ public:
     GateRef GetArrayIterationKind(GateRef iter);
     GateRef GetHasChanged(GateRef object);
     GateRef GetAccessorHasChanged(GateRef object);
+    GateRef GetNotFoundHasChanged(GateRef object);
     GateRef HasDeleteProperty(GateRef hClass);
     GateRef IsOnHeap(GateRef hClass);
     GateRef IsEcmaObject(GateRef obj);

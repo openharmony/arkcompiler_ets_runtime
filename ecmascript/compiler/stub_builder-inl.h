@@ -1845,6 +1845,11 @@ inline GateRef StubBuilder::GetHasChanged(GateRef object)
     return env_->GetBuilder()->GetHasChanged(object);
 }
 
+inline GateRef StubBuilder::GetNotFoundHasChanged(GateRef object)
+{
+    return env_->GetBuilder()->GetNotFoundHasChanged(object);
+}
+
 inline GateRef StubBuilder::HclassIsPrototypeHandler(GateRef hClass)
 {
     return Int32Equal(GetObjectType(hClass),
