@@ -25,6 +25,7 @@ group("ark_deopt_test") {
     "live_out",
     "mod",
     "newobjrange",
+    "newobjrange_nodeopt",
     "polymorphic_array",
     "restore_vregs",
   ]
@@ -42,6 +43,7 @@ group("ark_deopt_test") {
       "live_out",
       "mod",
       "newobjrange",
+      "newobjrange_nodeopt",
       "polymorphic_array",
       "restore_vregs",
     ]
