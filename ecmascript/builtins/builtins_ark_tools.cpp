@@ -598,6 +598,30 @@ JSTaggedValue BuiltinsArkTools::ClearTypedOpProfiler(EcmaRuntimeCallInfo *info)
     return JSTaggedValue::Undefined();
 }
 
+JSTaggedValue BuiltinsArkTools::GetAPIVersion(EcmaRuntimeCallInfo *info)
+{
+    ASSERT(info);
+    JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+
+    return JSTaggedValue(thread->GetEcmaVM()->GetVMAPIVersion());
+}
+
+JSTaggedValue BuiltinsArkTools::SetAPIVersion(EcmaRuntimeCallInfo *info)
+{
+    ASSERT(info);
+    JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+
+    JSHandle<JSTaggedValue> value = GetCallArg(info, 0);
+    if (value->IsInt()) {
+        thread->GetEcmaVM()->SetVMAPIVersion(value->GetInt());
+    }
+    return JSTaggedValue::Undefined();
+}
+
 JSTaggedValue BuiltinsArkTools::GetElementsKind(EcmaRuntimeCallInfo *info)
 {
     ASSERT(info);

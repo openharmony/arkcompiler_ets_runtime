@@ -46,6 +46,8 @@
     V("print",                          ObjectDump,                     0, INVALID)       \
     V("removeAOTFlag",                  RemoveAOTFlag,                  1, INVALID)       \
     V("timeInUs",                       TimeInUs,                       0, INVALID)       \
+    V("getAPIVersion",                  GetAPIVersion,                  0, INVALID)       \
+    V("setAPIVersion",                  SetAPIVersion,                  1, INVALID)       \
     V("getElementsKind",                GetElementsKind,                1, INVALID)       \
     V("isAOTCompiled",                  IsAOTCompiled,                  1, INVALID)       \
     V("isSameProfileTypeInfo",          IsSameProfileTypeInfo,          2, INVALID)       \
@@ -256,6 +258,11 @@ public:
 
     // ArkTools.isOnHeap(object)
     static JSTaggedValue IsOnHeap(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue GetAPIVersion(EcmaRuntimeCallInfo *info);
+
+    // ArkTools.SetAPIVersion(number)
+    static JSTaggedValue SetAPIVersion(EcmaRuntimeCallInfo *info);
 
     // ArkTools.GetElementsKind(array)
     static JSTaggedValue GetElementsKind(EcmaRuntimeCallInfo *info);

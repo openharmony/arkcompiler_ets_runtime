@@ -15,6 +15,7 @@
 
 #include "ecmascript/js_api/js_api_arraylist.h"
 
+#include "ecmascript/base/array_helper.h"
 #include "ecmascript/containers/containers_errors.h"
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/js_function.h"
@@ -300,6 +301,49 @@ JSTaggedValue JSAPIArrayList::Set(JSThread *thread, const uint32_t index, JSTagg
     TaggedArray *elements = TaggedArray::Cast(GetElements().GetTaggedObject());
     elements->Set(thread, index, value);
     return JSTaggedValue::Undefined();
+}
+
+JSTaggedValue JSAPIArrayList::SortElements(JSThread *thread, JSHandle<TaggedArray> &elements,
+                                           JSHandle<JSTaggedValue> &callbackFnHandle)
+{
+    JSMutableHandle<JSTaggedValue> presentValue(thread, JSTaggedValue::Undefined());
+    JSMutableHandle<JSTaggedValue> middleValue(thread, JSTaggedValue::Undefined());
+    JSMutableHandle<JSTaggedValue> previousValue(thread, JSTaggedValue::Undefined());
+    uint32_t length = elements->GetLength();
+    for (uint32_t i = 1; i < length; i++) {
+        uint32_t beginIndex = 0;
+        uint32_t endIndex = i;
+        presentValue.Update(elements->Get(i));
+        while (beginIndex < endIndex) {
+            uint32_t middleIndex = (beginIndex + endIndex) / 2; // 2 : half
+            middleValue.Update(elements->Get(middleIndex));
+            double compareResult = base::ArrayHelper::SortCompare(thread, callbackFnHandle,
+                                                                  middleValue, presentValue);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            if (compareResult > 0) {
+                endIndex = middleIndex;
+            } else {
+                beginIndex = middleIndex + 1;
+            }
+        }
+        if (endIndex >= 0 && endIndex < i) {
+            for (uint32_t j = i; j > endIndex; j--) {
+                previousValue.Update(elements->Get(j - 1));
+                elements->Set(thread, j, previousValue.GetTaggedValue());
+            }
+            elements->Set(thread, endIndex, presentValue.GetTaggedValue());
+        }
+    }
+    return elements.GetTaggedValue();
+}
+
+JSTaggedValue JSAPIArrayList::SortElementsWithCopy(JSThread *thread, JSHandle<TaggedArray> &array,
+                                                   JSHandle<JSTaggedValue> &callbackFnHandle)
+{
+    uint32_t length = array->GetLength();
+    JSHandle<TaggedArray> elements = thread->GetEcmaVM()->GetFactory()->NewTaggedArray(length);
+    elements->Copy(thread, 0, 0, TaggedArray::Cast(array.GetTaggedValue()), length);
+    return SortElements(thread, elements, callbackFnHandle);
 }
 
 JSTaggedValue JSAPIArrayList::SubArrayList(JSThread *thread, const JSHandle<JSAPIArrayList> &arrayList,
