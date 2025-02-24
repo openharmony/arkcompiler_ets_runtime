@@ -1423,7 +1423,7 @@ ohos_shared_library("libark_jsruntime") {
       "$ark_third_party_root/icu/icu4c:static_icuuc",
     ]
   } else {
-    external_deps += [
+    public_external_deps = [
       "icu:shared_icui18n",
       "icu:shared_icuuc",
     ]
