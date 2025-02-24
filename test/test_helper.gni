@@ -4895,7 +4895,8 @@ template("host_jit_test_action") {
         " --asm-interpreter=true" + " --compiler-enable-jit=true" +
         " --compiler-enable-jit-pgo=true" +
         " --compiler-jit-hotness-threshold=5" + " --enable-pgo-profiler=true" +
-        " --compiler-enable-litecg=true" + " --entry-point=${_target_name_} "
+        " --compiler-enable-litecg=true" + " --enable-force-gc=false" +
+        " --entry-point=${_target_name_} "
     _jit_run_options_ += common_options
 
     if (defined(invoker.enable_osr) && invoker.enable_osr) {
