@@ -597,8 +597,7 @@ void PGOProfiler::TrySaveByDumpThread()
     // trigger save every 50 methods and duration greater than 30s
     if (methodCount_ >= MERGED_EVERY_COUNT && interval > mergeMinInterval) {
         LOG_PGO(INFO) << "trigger save task, methodCount_ = " << methodCount_;
-        // possible state: START
-        state_->SetState(State::SAVE);
+        state_->SetSaveAndNotify();
         manager_->SavePGOInfo();
         SetSaveTimestamp(std::chrono::system_clock::now());
         methodCount_ = 0;

@@ -97,6 +97,12 @@ bool PGOState::StateIsStart() const
     return state == State::START;
 }
 
+bool PGOState::StateIsSave() const
+{
+    State state = GetState();
+    return state == State::SAVE;
+}
+
 #if PRINT_STATE_CHANGE
 bool PGOState::TryChangeState(State expected, State desired)
 {
@@ -175,11 +181,20 @@ void PGOState::SetStopAndNotify()
     NotifyAllDumpWaiters();
 }
 
+void PGOState::SetSaveAndNotify()
+{
+    LockHolder lock(stateMutex_);
+    // possible state: START
+    SetState(State::SAVE);
+    NotifyAllDumpWaiters();
+}
+
 void PGOState::StartDumpBeforeDestroy()
 {
     LockHolder lock(stateMutex_);
     // possible state: STOP, SAVE, START
-    if (!StateIsStop()) {
+    // may notify after change to STOP and SAVE, we need to make sure state is STOP
+    while (!StateIsStop()) {
         WaitDump();
     }
     // possible gc state: STOP, WAITING, RUNNING
