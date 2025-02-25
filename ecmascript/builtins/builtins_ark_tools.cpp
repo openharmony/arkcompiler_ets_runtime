@@ -1452,6 +1452,7 @@ JSTaggedValue BuiltinsArkTools::WaitJitCompileFinish(EcmaRuntimeCallInfo *info)
     }
     while (!jsFunction->GetMachineCode().IsMachineCodeObject()) {
         // just spin check
+        thread->SetInstallMachineCode(true);
         thread->CheckSafepoint();
     }
     return JSTaggedValue::True();
@@ -1467,6 +1468,7 @@ JSTaggedValue BuiltinsArkTools::WaitAllJitCompileFinish(EcmaRuntimeCallInfo *inf
         return JSTaggedValue::False();
     }
     while (Jit::GetInstance()->GetRunningTaskCnt(thread->GetEcmaVM())) {
+        thread->SetInstallMachineCode(true);
         thread->CheckSafepoint();
     }
     thread->SetPGOProfilerEnable(false);
