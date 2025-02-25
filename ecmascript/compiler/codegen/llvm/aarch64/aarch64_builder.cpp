@@ -39,10 +39,9 @@ public:
         std::string constraints = inputRegs + "~{x15},~{nzcv},~{fpsr},~{x30}"
             // x15 will be used as scratch register, so mark it as clobbered, all the flag registers are also clobbered.
             // lr will be early clobbered at call.
-            "~{v0},~{v1},~{v2},~{v3},~{v4},~{v5},~{v6},~{v7},~{v8},~{v9},~{v10},~{v11},~{v12},~{v13},~{v14},~{v15},"
-            "~{v16},~{v17},~{v18},~{v19},~{v20},~{v21},~{v22},~{v23},~{v24},~{v25},~{v26},~{v27},~{v28},~{v29},~{v30},"
-            "~{v31},"
-            "~{q0},~{q1},~{q2},~{q3},~{q4},~{q5},~{q6},~{q7},~{q8},~{q9},~{q10},~{q11},~{q12},~{q13},~{q14},~{q15},"
+            "~{q0},~{q1},~{q2},~{q3},~{q4},~{q5},~{q6},~{q7},"
+            // d8 ~ d15 are callee saved in C calling conv, do not mark q8 ~ q15 clobbered, but we can't use q8 ~ q15
+            // cross such call site
             "~{q16},~{q17},~{q18},~{q19},~{q20},~{q21},~{q22},~{q23},~{q24},~{q25},~{q26},~{q27},~{q28},~{q29},~{q30},"
             "~{q31}";
         const CallSignature* cs = RuntimeStubCSigns::Get(RuntimeStubCSigns::ID_ASMFastWriteBarrier);
