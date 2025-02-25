@@ -2731,7 +2731,7 @@ GateRef StubBuilder::TaggedArraySetValue(GateRef glue, GateRef receiver, GateRef
     Label isTransToDict(env);
     Label notTransToDict(env);
     Label exit(env);
-    BRANCH(Int32GreaterThanOrEqual(index, capacity), &indexGreaterLen, &storeElement);
+    BRANCH(Int32UnsignedGreaterThanOrEqual(index, capacity), &indexGreaterLen, &storeElement);
     Bind(&indexGreaterLen);
     {
         BRANCH(ShouldTransToDict(capacity, index), &isTransToDict, &notTransToDict);
@@ -2832,7 +2832,7 @@ GateRef StubBuilder::ICStoreElement(GateRef glue, GateRef receiver, GateRef key,
                 Bind(&setElementsLength);
                 {
                     GateRef oldLength = GetArrayLength(receiver);
-                    BRANCH(Int32GreaterThanOrEqual(index, oldLength), &indexGreaterLength, &handerInfoNotJSArray);
+                    BRANCH(Int32UnsignedGreaterThanOrEqual(index, oldLength), &indexGreaterLength, &handerInfoNotJSArray);
                     Bind(&indexGreaterLength);
                     Store(VariableType::INT32(), glue, receiver,
                         IntPtr(panda::ecmascript::JSArray::LENGTH_OFFSET),
@@ -2852,7 +2852,7 @@ GateRef StubBuilder::ICStoreElement(GateRef glue, GateRef receiver, GateRef key,
             {
                 GateRef elements = GetElementsArray(receiver);
                 GateRef capacity = GetLengthOfTaggedArray(elements);
-                BRANCH(Int32GreaterThanOrEqual(index, capacity), &indexGreaterCapacity, &storeElement);
+                BRANCH(Int32UnsignedGreaterThanOrEqual(index, capacity), &indexGreaterCapacity, &storeElement);
                 Bind(&indexGreaterCapacity);
                 {
                     result = TaggedArraySetValue(glue, receiver, value, index, capacity);
@@ -2862,7 +2862,7 @@ GateRef StubBuilder::ICStoreElement(GateRef glue, GateRef receiver, GateRef key,
                     {
                         Label hole(env);
                         DEFVARIABLE(kind, VariableType::INT32(), Int32(Elements::ToUint(ElementsKind::NONE)));
-                        BRANCH(Int32GreaterThan(index, capacity), &hole, &exit);
+                        BRANCH(Int32UnsignedGreaterThan(index, capacity), &hole, &exit);
                         Bind(&hole);
                         {
                             kind = Int32(Elements::ToUint(ElementsKind::HOLE));
@@ -3981,7 +3981,7 @@ GateRef StubBuilder::GrowElementsCapacity(GateRef glue, GateRef receiver, GateRe
     NewObjectStubBuilder newBuilder(this);
     GateRef newCapacity = ComputeElementCapacity(capacity);
     GateRef elements = GetElementsArray(receiver);
-    newElements = newBuilder.CopyArray(glue, elements, capacity, newCapacity);
+    newElements = newBuilder.ExtendArrayWithOptimizationCheck(glue, elements, newCapacity);
     SetElementsArray(VariableType::JS_POINTER(), glue, receiver, *newElements);
     auto ret = *newElements;
     env->SubCfgExit();

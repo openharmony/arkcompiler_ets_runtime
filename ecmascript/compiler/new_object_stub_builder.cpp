@@ -825,6 +825,54 @@ GateRef NewObjectStubBuilder::ExtendArrayCheck(GateRef glue, GateRef elements, G
     return ret;
 }
 
+GateRef NewObjectStubBuilder::ExtendArrayWithOptimizationCheck(GateRef glue, GateRef elements, GateRef newLen)
+{
+    auto env = GetEnvironment();
+    Label subEntry(env);
+    env->SubCfgEntry(&subEntry);
+    SetGlue(glue);
+    DEFVARIABLE(array, VariableType::JS_ANY(), Undefined());
+    GateRef checkIsMutantTaggedArray = IsMutantTaggedArray(elements);
+    Label exit(env);
+    Label next(env);
+    Label slowPath(env);
+    BRANCH(Int32UnsignedLessThan(newLen, Int32(MAX_EXTEND_ARRAY_LENGTH)), &slowPath, &next);
+    Bind(&slowPath);
+    {
+        array = ExtendArrayCheck(glue, elements, newLen);
+        Jump(&exit);
+    }
+    Bind(&next);
+    {
+        Label extendMutantArray(env);
+        Label extendNormalArray(env);
+        Label afterCreate(env);
+        GateRef oldExtractLen = GetExtraLengthOfTaggedArray(elements);
+        GateRef oldL = GetLengthOfTaggedArray(elements);
+        BRANCH(checkIsMutantTaggedArray, &extendMutantArray, &extendNormalArray);
+        Bind(&extendMutantArray);
+        {
+            array = CallRuntime(glue_, RTSTUB_ID(NewMutantTaggedArray), { IntToTaggedInt(newLen) });
+            Jump(&afterCreate);
+        }
+        Bind(&extendNormalArray);
+        {
+            array = CallRuntime(glue_, RTSTUB_ID(NewTaggedArray), { IntToTaggedInt(newLen) });
+            Jump(&afterCreate);
+        }
+        Bind(&afterCreate);
+        Store(VariableType::INT32(), glue, *array, IntPtr(TaggedArray::LENGTH_OFFSET), newLen);
+        Store(VariableType::INT32(), glue, *array, IntPtr(TaggedArray::EXTRA_LENGTH_OFFSET), oldExtractLen);
+        ArrayCopy(glue, elements, GetDataPtrInTaggedArray(elements), *array,
+            GetDataPtrInTaggedArray(*array), oldL, BoolNot(checkIsMutantTaggedArray), DifferentArray);
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *array;
+    env->SubCfgExit();
+    return ret;
+}
+
 GateRef NewObjectStubBuilder::CopyArray(GateRef glue, GateRef elements, GateRef oldLen,
                                         GateRef newLen, RegionSpaceFlag spaceType)
 {
@@ -843,7 +891,7 @@ GateRef NewObjectStubBuilder::CopyArray(GateRef glue, GateRef elements, GateRef 
     {
         Label extendArray(env);
         Label notExtendArray(env);
-        BRANCH(Int32GreaterThan(newLen, oldLen), &extendArray, &notExtendArray);
+        BRANCH(Int32UnsignedGreaterThan(newLen, oldLen), &extendArray, &notExtendArray);
         Bind(&extendArray);
         {
             result = ExtendArrayCheck(glue, elements, newLen, spaceType);

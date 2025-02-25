@@ -68,7 +68,10 @@ public:
     GateRef NewJSProxy(GateRef glue, GateRef target, GateRef handler);
     GateRef NewJSArray(GateRef glue, GateRef hclass);
     GateRef NewTaggedArray(GateRef glue, GateRef len);
+    GateRef NewTaggedArrayInOld(GateRef glue, GateRef len);
     GateRef NewMutantTaggedArray(GateRef glue, GateRef len);
+    GateRef NewMutantTaggedArrayInOld(GateRef glue, GateRef len);
+    GateRef ExtendArrayWithOptimizationCheck(GateRef glue, GateRef elements, GateRef newLen);
     GateRef CopyArray(GateRef glue, GateRef elements, GateRef oldLen, GateRef newLen,
                       RegionSpaceFlag spaceType = RegionSpaceFlag::IN_YOUNG_SPACE);
     GateRef ExtendArrayCheck(GateRef glue, GateRef elements, GateRef newLen,
@@ -144,6 +147,7 @@ public:
 
 private:
     static constexpr int MAX_TAGGED_ARRAY_LENGTH = 50;
+    static constexpr int MAX_EXTEND_ARRAY_LENGTH = 2048;
     GateRef LoadTrackInfo(GateRef glue, GateRef jsFunc, TraceIdInfo traceIdInfo,
         GateRef profileTypeInfo, GateRef slotId, GateRef slotValue, GateRef arrayLiteral, ProfileOperation callback);
     GateRef LoadArrayHClassSlowPath(
