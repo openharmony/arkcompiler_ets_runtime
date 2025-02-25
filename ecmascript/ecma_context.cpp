@@ -662,7 +662,7 @@ void EcmaContext::GrowUnsharedConstpoolArray(int32_t index)
 
 void EcmaContext::ResizeUnsharedConstpoolArray(int32_t oldCapacity, int32_t minCapacity)
 {
-    int32_t newCapacity = oldCapacity << 1;
+    int32_t newCapacity = oldCapacity * 2; // 2: Double the value
     if (newCapacity - minCapacity < 0) {
         newCapacity = minCapacity;
     }
