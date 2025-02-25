@@ -49,6 +49,11 @@ void StringBuilderOptimizer::FindBuilderBegin(GateRef gate)
     auto op = acc_.GetOpCode(gate);
     if (op == OpCode::STRING_ADD) {
         concatGates_.push_back(gate);
+        GateRef right = acc_.GetValueIn(gate, 1);
+        if (!IsLiteralString(right)) {
+            SetStatus(gate, State::INVALID_OPT);
+            return;
+        }
         GateRef left = acc_.GetValueIn(gate, 0);
         if (IsLiteralString(left)) {
             if (HasConcatOrPhiUse(left)) {
