@@ -86,7 +86,21 @@ void SharedGCMarkerBase::MarkSharedModule(RootVisitor &visitor)
 
 void SharedGCMarker::ProcessMarkStack(uint32_t threadId)
 {
-    ASSERT((os::thread::GetCurrentThreadId() != DaemonThread::GetInstance()->GetThreadId()) == (threadId != 0));
+#ifndef NDEBUG
+    DaemonThread *dThread = DaemonThread::GetInstance();
+    if (UNLIKELY(!dThread->IsRunning())) {
+        // This DAEMON_THREAD_INDEX not means in daemon thread, but the daemon thread is terminated, and
+        // SharedGC is directly running in the current js thread, this maybe happen only AppSpawn
+        // trigger GC after PreFork (which is not expected), and at this time ParallelGC is disabled
+        ASSERT(threadId == DAEMON_THREAD_INDEX);
+    } else {
+        if (os::thread::GetCurrentThreadId() != dThread->GetThreadId()) {
+            ASSERT(threadId != 0);
+        } else {
+            ASSERT(threadId == 0);
+        }
+    }
+#endif
     SharedGCMarkObjectVisitor sharedGCMarkObjectVisitor(sWorkManager_, threadId);
     TaggedObject *obj = nullptr;
     while (sWorkManager_->Pop(threadId, &obj)) {
@@ -103,7 +117,21 @@ void SharedGCMarker::ProcessMarkStack(uint32_t threadId)
 
 void SharedGCMovableMarker::ProcessMarkStack(uint32_t threadId)
 {
-    ASSERT((os::thread::GetCurrentThreadId() != DaemonThread::GetInstance()->GetThreadId()) == (threadId != 0));
+#ifndef NDEBUG
+    DaemonThread *dThread = DaemonThread::GetInstance();
+    if (UNLIKELY(!dThread->IsRunning())) {
+        // This DAEMON_THREAD_INDEX not means in daemon thread, but the daemon thread is terminated, and
+        // SharedGC is directly running in the current js thread, this maybe happen only AppSpawn
+        // trigger GC after PreFork (which is not expected), and at this time ParallelGC is disabled
+        ASSERT(threadId == DAEMON_THREAD_INDEX);
+    } else {
+        if (os::thread::GetCurrentThreadId() != dThread->GetThreadId()) {
+            ASSERT(threadId != 0);
+        } else {
+            ASSERT(threadId == 0);
+        }
+    }
+#endif
     SharedFullGCMarkObjectVisitor sharedFullGCMarkObjectVisitor(this, threadId);
     TaggedObject *obj = nullptr;
     while (sWorkManager_->Pop(threadId, &obj)) {

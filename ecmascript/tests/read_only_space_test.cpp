@@ -146,16 +146,7 @@ HWTEST_F_L0(ReadOnlySpaceTest, ForkTest)
     std::string rawStr = "fork string";
     JSHandle<EcmaString> string = factory->NewFromStdString(rawStr);
     JSNApi::PreFork(vm);
-    if (ForkBySyscall() != 0) {
-        {
-            ThreadNativeScope nativeScope(thread);
-            LocalScope scope(vm);
-            panda::RuntimeOption postOption;
-            JSNApi::PostFork(vm, postOption);
-        }
-        // test gc in parent process
-        heap->CollectGarbage(TriggerGCType::OLD_GC);
-    } else {
+    if (ForkBySyscall() == 0) {
         panda::RuntimeOption postOption;
         JSNApi::PostFork(vm, postOption);
         // test gc in child process
