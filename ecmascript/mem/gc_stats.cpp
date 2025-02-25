@@ -731,7 +731,13 @@ void SharedGCStats::PrintGCMemoryStatistic()
     LOG_GC(INFO) << STATS_DESCRIPTION_FORMAT("Anno memory usage size:")
                  << STATS_DATA_FORMAT(sizeToMB(heapRegionAllocator->GetAnnoMemoryUsage())) << "MB\n"
                  << STATS_DESCRIPTION_FORMAT("Native memory usage size:")
-                 << STATS_DATA_FORMAT(sizeToMB(nativeAreaAllocator->GetNativeMemoryUsage())) << "MB\n";
+                 << STATS_DATA_FORMAT(sizeToMB(nativeAreaAllocator->GetNativeMemoryUsage())) << "MB\n"
+                 << STATS_DESCRIPTION_FORMAT("NativeBindingSize:")
+                 << STATS_DATA_FORMAT(sizeToKB(sHeap_->GetNativeSizeAfterLastGC())) << "KB\n"
+                 << STATS_DESCRIPTION_FORMAT("NativeLimitGC:")
+                 << STATS_DATA_FORMAT(sizeToKB(sHeap_->GetNativeSizeTriggerSharedGC())) << "KB\n"
+                 << STATS_DESCRIPTION_FORMAT("NativeLimitCM:")
+                 << STATS_DATA_FORMAT(sizeToKB(sHeap_->GetNativeSizeTriggerSharedCM())) << "KB\n";
 
     LOG_GC(INFO) << STATS_DESCRIPTION_FORMAT("Heap alive rate:")
         << STATS_DATA_FORMAT(double(GetRecordData(RecordData::SHARED_ALIVE_SIZE)) /

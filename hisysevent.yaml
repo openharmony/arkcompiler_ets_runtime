@@ -43,7 +43,7 @@ ARK_COMPILER_LOG:
   PGO_FILE_LEGAL: {type: BOOL, desc: pgo file is legal}
 
 ARK_GC_LONG_TIME:
-  __BASE: {type: BEHAVIOR, level: MINOR, tag: GC, desc: Long time GC event, preserve: true}
+  __BASE: {type: BEHAVIOR, level: CRITICAL, tag: GC, desc: Long time GC event, preserve: true}
   BUNDLE_NAME: {type: STRING, desc: bundleName}
   VERSION_CODE: {type: STRING, desc: VERSION CODE}
   PID: {type: INT8, desc: pid}
