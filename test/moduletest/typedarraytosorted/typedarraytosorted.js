@@ -107,4 +107,16 @@ const arr4 = arr3.toSorted(); // expect no crash
 assert_equal(arr4.constructor.name, "Float64Array");
 assert_equal(arr4.length, 0);
 
+function foo(){
+    try {
+        foo();
+    } catch (err) {
+    }
+    const arr3000 = new Uint32Array(3000);
+    const arr3000sort = arr3000.toSorted();  // expect no crash
+    assert_equal(arr3000sort.constructor.name, "Uint32Array");
+    assert_equal(arr3000sort.length, 3000);
+}
+foo();
+
 test_end();
