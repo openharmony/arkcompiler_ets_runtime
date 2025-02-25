@@ -2123,15 +2123,12 @@ void Heap::ChangeGCParams(bool inBackground)
         if (sHeap_->GetHeapObjectSize() - sHeap_->GetHeapAliveSizeAfterGC() > BACKGROUND_GROW_LIMIT &&
             sHeap_->GetCommittedSize() >= MIN_BACKGROUNG_GC_LIMIT &&
             doubleOne * sHeap_->GetHeapObjectSize() / sHeap_->GetCommittedSize() <= MIN_OBJECT_SURVIVAL_RATE) {
-            sHeap_->CollectGarbage<TriggerGCType::SHARED_FULL_GC, GCReason::SWITCH_BACKGROUND>(thread_);
+            sHeap_->CompressCollectGarbageNotWaiting<GCReason::SWITCH_BACKGROUND>(thread_);
         }
         if (GetMemGrowingType() != MemGrowingType::PRESSURE) {
             SetMemGrowingType(MemGrowingType::CONSERVATIVE);
             LOG_GC(DEBUG) << "Heap Growing Type CONSERVATIVE";
         }
-        maxMarkTaskCount_ = std::min<size_t>(ecmaVm_->GetJSOptions().GetGcThreadNum(),
-            (Taskpool::GetCurrentTaskpool()->GetTotalThreadNum() - 1) / 2);  // 2 means half.
-        maxEvacuateTaskCount_ = Taskpool::GetCurrentTaskpool()->GetTotalThreadNum() / 2; // 2 means half.
         Taskpool::GetCurrentTaskpool()->SetThreadPriority(PriorityMode::BACKGROUND);
     } else {
         LOG_GC(INFO) << "app is not inBackground";

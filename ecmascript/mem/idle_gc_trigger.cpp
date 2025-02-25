@@ -242,7 +242,7 @@ void IdleGCTrigger::TryTriggerIdleGC(TRIGGER_IDLE_GC_TYPE gcType)
         case TRIGGER_IDLE_GC_TYPE::SHARED_FULL_GC:
             if (CheckIdleOrHintFullGC<SharedHeap>(sHeap_) && !sHeap_->NeedStopCollection()) {
                 LOG_GC(INFO) << "IdleGCTrigger: trigger " << GetGCTypeName(gcType);
-                sHeap_->CollectGarbage<TriggerGCType::SHARED_FULL_GC, GCReason::IDLE>(thread_);
+                sHeap_->CompressCollectGarbageNotWaiting<GCReason::IDLE>(thread_);
             }
             break;
         case TRIGGER_IDLE_GC_TYPE::LOCAL_CONCURRENT_YOUNG_MARK:

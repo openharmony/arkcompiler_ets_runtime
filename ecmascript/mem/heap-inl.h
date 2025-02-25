@@ -1041,6 +1041,24 @@ void SharedHeap::CollectGarbage(JSThread *thread)
     WaitGCFinished(thread);
 }
 
+// This method is used only in the idle state and background switchover state.
+template<GCReason gcReason>
+void SharedHeap::CompressCollectGarbageNotWaiting(JSThread *thread)
+{
+    {
+        // lock here is outside post task to prevent the extreme case: another js thread succeeed posting a
+        // concurrentmark task, so here will directly go into WaitGCFinished, but gcFinished_ is somehow
+        // not set by that js thread before the WaitGCFinished done, and maybe cause an unexpected OOM
+        LockHolder lock(waitGCFinishedMutex_);
+        if (dThread_->CheckAndPostTask(TriggerCollectGarbageTask<TriggerGCType::SHARED_FULL_GC, gcReason>(thread))) {
+            ASSERT(gcFinished_);
+            gcFinished_ = false;
+        }
+    }
+    ASSERT(!gcFinished_);
+    SetForceGC(true);
+}
+
 template<TriggerGCType gcType, GCReason gcReason>
 void SharedHeap::PostGCTaskForTest(JSThread *thread)
 {
