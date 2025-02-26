@@ -2628,6 +2628,7 @@ void BuiltinsTypedArrayStubBuilder::Map(GateRef glue, GateRef thisValue, GateRef
         NewObjectStubBuilder newBuilder(this);
         newBuilder.SetParameters(glue, 0);
         GateRef newArray = newBuilder.NewTypedArray(glue, thisValue, jsType, TruncInt64ToInt32(thisLen));
+        GateRef newArrayType = GetObjectType(LoadHClass(newArray));
         Label loopHead(env);
         Label loopEnd(env);
         Label loopNext(env);
@@ -2639,7 +2640,7 @@ void BuiltinsTypedArrayStubBuilder::Map(GateRef glue, GateRef thisValue, GateRef
             Label notHasException1(env);
             BRANCH(Int64LessThan(*i, thisLen), &loopNext, &loopExit);
             Bind(&loopNext);
-            kValue = FastGetPropertyByIndex(glue, thisValue, TruncInt64ToInt32(*i), jsType);
+            kValue = FastGetPropertyByIndex(glue, thisValue, TruncInt64ToInt32(*i), newArrayType);
             GateRef key = Int64ToTaggedInt(*i);
             JSCallArgs callArgs(JSCallMode::CALL_THIS_ARG3_WITH_RETURN);
             callArgs.callThisArg3WithReturnArgs = { argHandle, *kValue, key, thisValue };
@@ -2653,7 +2654,7 @@ void BuiltinsTypedArrayStubBuilder::Map(GateRef glue, GateRef thisValue, GateRef
 
             Bind(&notHasException1);
             {
-                FastSetPropertyByIndex(glue, retValue, newArray, TruncInt64ToInt32(*i), jsType);
+                FastSetPropertyByIndex(glue, retValue, newArray, TruncInt64ToInt32(*i), newArrayType);
                 Jump(&loopEnd);
             }
         }
