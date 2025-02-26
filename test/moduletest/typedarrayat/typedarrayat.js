@@ -135,4 +135,8 @@ uint32.fill(65536);
 uint32.set(uint32);
 assert_equal(uint32.toString(),"65536,65536,65536,65536,65536,65536,65536,65536,65536,65536,65536");
 
+let numVal = Number(12345678901234567000); // Overflowing the int64_t range(2^63 - 1).
+let int16Val = Int16Array.of(numVal);
+assert_equal(int16Val[0], 2048);
+
 test_end();

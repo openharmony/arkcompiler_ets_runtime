@@ -594,8 +594,8 @@ void BuiltinsArrayBuffer::SetValueInBufferForByte(double val, uint8_t *block, ui
         SetTypeData(block, res, byteIndex);
         return;
     }
-    auto int64Val = static_cast<int64_t>(val);
-    auto *resArr = reinterpret_cast<T *>(&int64Val);
+    auto int32Val = base::NumberHelper::DoubleToInt(val, base::INT32_BITS);
+    auto *resArr = reinterpret_cast<T *>(&int32Val);
     res = *resArr;
     SetTypeData(block, res, byteIndex);
 }
@@ -625,14 +625,14 @@ void BuiltinsArrayBuffer::SetValueInBufferForInteger(double val, uint8_t *block,
         SetTypeData(block, res, byteIndex);
         return;
     }
-    auto int64Val = static_cast<int64_t>(val);
+    auto int32Val = base::NumberHelper::DoubleToInt(val, base::INT32_BITS);
     // NOLINTNEXTLINE(readability-braces-around-statements)
     if constexpr (std::is_same_v<T, uint16_t>) {
-        auto *pTmp = reinterpret_cast<int16_t *>(&int64Val);
+        auto *pTmp = reinterpret_cast<int16_t *>(&int32Val);
         int16_t tmp = *pTmp;
         res = static_cast<T>(tmp);
     } else {  // NOLINTNEXTLINE(readability-braces-around-statements)
-        auto *pTmp = reinterpret_cast<T *>(&int64Val);
+        auto *pTmp = reinterpret_cast<T *>(&int32Val);
         res = *pTmp;
     }
 
@@ -828,8 +828,8 @@ void BuiltinsArrayBuffer::FastSetValueInBufferForByte(uint8_t *byteBeginOffset,
     if (std::isnan(val) || std::isinf(val)) {
         res = 0;
     } else {
-        auto int64Val = static_cast<int64_t>(val);
-        auto *resArr = reinterpret_cast<T *>(&int64Val);
+        auto int32Val = base::NumberHelper::DoubleToInt(val, base::INT32_BITS);
+        auto *resArr = reinterpret_cast<T *>(&int32Val);
         res = *resArr;
     }
     FastSetTypeData(byteBeginOffset, byteEndOffset, res);
@@ -862,14 +862,14 @@ void BuiltinsArrayBuffer::FastSetValueInBufferForInteger(uint8_t *byteBeginOffse
     if (std::isnan(val) || std::isinf(val)) {
         res = 0;
     } else {
-        auto int64Val = static_cast<int64_t>(val);
+        auto int32Val = base::NumberHelper::DoubleToInt(val, base::INT32_BITS);
         // NOLINTNEXTLINE(readability-braces-around-statements)
         if constexpr (std::is_same_v<T, uint16_t>) {
-            auto *pTmp = reinterpret_cast<int16_t *>(&int64Val);
+            auto *pTmp = reinterpret_cast<int16_t *>(&int32Val);
             int16_t tmp = *pTmp;
             res = static_cast<T>(tmp);
         } else {  // NOLINTNEXTLINE(readability-braces-around-statements)
-            auto *pTmp = reinterpret_cast<T *>(&int64Val);
+            auto *pTmp = reinterpret_cast<T *>(&int32Val);
             res = *pTmp;
         }
         if (!littleEndian) {
