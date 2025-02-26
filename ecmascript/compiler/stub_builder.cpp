@@ -6520,6 +6520,7 @@ GateRef StubBuilder::FastStrictEqual(GateRef glue, GateRef left, GateRef right, 
     Label stringCompare(env);
     Label updataPGOTypeWithInternString(env);
     Label bigIntEqualCheck(env);
+    Label undefinedCheck(env);
     Label exit(env);
     BRANCH(TaggedIsNumber(left), &leftIsNumber, &leftIsNotNumber);
     Bind(&leftIsNumber);
@@ -6633,7 +6634,7 @@ GateRef StubBuilder::FastStrictEqual(GateRef glue, GateRef left, GateRef right, 
     {
         Label leftIsBigInt(env);
         Label leftIsNotBigInt(env);
-        BRANCH(TaggedIsBigInt(left), &leftIsBigInt, &exit);
+        BRANCH(TaggedIsBigInt(left), &leftIsBigInt, &undefinedCheck);
         Bind(&leftIsBigInt);
         {
             Label rightIsBigInt(env);
@@ -6647,6 +6648,16 @@ GateRef StubBuilder::FastStrictEqual(GateRef glue, GateRef left, GateRef right, 
     Bind(&updataPGOTypeWithInternString);
     {
         callback.ProfileOpType(TaggedInt(PGOSampleType::InternStringType()));
+        Jump(&exit);
+    }
+    Bind(&undefinedCheck);
+    {
+        if (!callback.IsEmpty()) {
+            Label updateProfileOpTypeWithAny(env);
+            BRANCH(TaggedIsUndefined(left), &updateProfileOpTypeWithAny, &exit);
+            Bind(&updateProfileOpTypeWithAny);
+            callback.ProfileOpType(TaggedInt(PGOSampleType::UndefinedOrNullType()));
+        }
         Jump(&exit);
     }
     Bind(&exit);
