@@ -5,3 +5,6 @@ obj/arkcompiler/ets_runtime/test/aottest/builtin_inlining/math/Ceil/builtinMathC
 
 #20471
 obj/arkcompiler/ets_runtime/test/aottest/builtin_inlining/set/Delete/builtinSetDelete
+
+#23236
+obj/arkcompiler/ets_runtime/test/moduletest/hugearray/hugearryAsmAssertContext
