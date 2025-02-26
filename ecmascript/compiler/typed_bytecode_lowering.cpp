@@ -16,9 +16,13 @@
 
 #include "ecmascript/compiler/typed_bytecode_lowering.h"
 
+#include "ecmascript/compiler/circuit_builder_helper.h"
+#include "ecmascript/compiler/variable_type.h"
 #include "ecmascript/dfx/vmstat/opt_code_profiler.h"
 #include "ecmascript/jit/jit.h"
 #include "ecmascript/js_object-inl.h"
+#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_internals.h"
 
 namespace panda::ecmascript::kungfu {
 void TypedBytecodeLowering::RunTypedBytecodeLowering()
@@ -1345,6 +1349,37 @@ GateRef TypedBytecodeLowering::LoadJSArrayByIndex(const LoadBulitinObjTypeInfoAc
     return result;
 }
 
+GateRef TypedBytecodeLowering::LoadElmentFromFloat64Array(const LoadBulitinObjTypeInfoAccessor &tacc)
+{
+    GateRef receiver = tacc.GetReceiver();
+    GateRef propKey = tacc.GetKey();
+    OnHeapMode onHeap = tacc.TryGetHeapMode();
+    auto resTemp = builder_.LoadElement<TypedLoadOp::FLOAT64ARRAY_LOAD_ELEMENT>(receiver, propKey, onHeap);
+    Label entry(&builder_);
+    builder_.SubCfgEntry(&entry);
+    Label ifTrue(&builder_);
+    Label ifFalse(&builder_);
+    Label exit(&builder_);
+    Variable result(builder_.GetCurrentEnvironment(),
+        VariableType::JS_ANY(), builder_.NextVariableId(), builder_.Undefined());
+
+    builder_.Branch(builder_.DoubleIsImpureNaN(resTemp), &ifTrue, &ifFalse);
+    builder_.Bind(&ifTrue);
+    {
+        result = builder_.Double(base::NAN_VALUE);
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&ifFalse);
+    {
+        result = resTemp;
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&exit);
+    auto res = *result;
+    builder_.SubCfgExit();
+    return res;
+}
+
 GateRef TypedBytecodeLowering::LoadTypedArrayByIndex(const LoadBulitinObjTypeInfoAccessor &tacc)
 {
     GateRef receiver = tacc.GetReceiver();
@@ -1374,8 +1409,9 @@ GateRef TypedBytecodeLowering::LoadTypedArrayByIndex(const LoadBulitinObjTypeInf
             return builder_.LoadElement<TypedLoadOp::UINT32ARRAY_LOAD_ELEMENT>(receiver, propKey, onHeap);
         case JSType::JS_FLOAT32_ARRAY:
             return builder_.LoadElement<TypedLoadOp::FLOAT32ARRAY_LOAD_ELEMENT>(receiver, propKey, onHeap);
-        case JSType::JS_FLOAT64_ARRAY:
-            return builder_.LoadElement<TypedLoadOp::FLOAT64ARRAY_LOAD_ELEMENT>(receiver, propKey, onHeap);
+        case JSType::JS_FLOAT64_ARRAY: {
+            return LoadElmentFromFloat64Array(tacc);
+        }
         default:
             LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();

@@ -206,6 +206,7 @@ private:
     GateRef LoadStringByIndex(const LoadBulitinObjTypeInfoAccessor &tacc);
     GateRef LoadJSArrayByIndex(const LoadBulitinObjTypeInfoAccessor &tacc);
     GateRef LoadTypedArrayByIndex(const LoadBulitinObjTypeInfoAccessor &tacc);
+    GateRef LoadElmentFromFloat64Array(const LoadBulitinObjTypeInfoAccessor &tacc);
     void StoreJSArrayByIndex(const StoreBulitinObjTypeInfoAccessor &tacc);
     void StoreTypedArrayByIndex(const StoreBulitinObjTypeInfoAccessor &tacc);
 
