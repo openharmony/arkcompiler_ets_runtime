@@ -46,6 +46,7 @@ struct JitCompilationOptions {
     bool compilerLogTime_;
     bool deviceIsScreenOff_;
     uint32_t hotnessThreshold_;
+    int32_t deviceThermalLevel_;
     std::string profilerIn_;
     bool isEnableArrayBoundsCheckElimination_;
     bool isEnableTypeLowering_;
