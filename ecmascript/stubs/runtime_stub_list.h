@@ -349,6 +349,7 @@ namespace panda::ecmascript {
     V(ThrowReferenceError)                      \
     V(StGlobalVar)                              \
     V(LdGlobalICVar)                            \
+    V(CloneHclass)                              \
     V(ToNumber)                                 \
     V(ToBoolean)                                \
     V(NotEq)                                    \
