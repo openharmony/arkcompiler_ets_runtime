@@ -1601,7 +1601,7 @@ public:
         return nativePointerList_.size();
     }
 
-    void StartUnifiedGCMark() const;
+    void StartUnifiedGCMark();
 
     template<TriggerGCType gcType, GCReason gcReason>
     bool TriggerUnifiedGCMark() const;

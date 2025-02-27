@@ -20,7 +20,7 @@ namespace panda::ecmascript {
 
 void TrigerUnifiedGCMarkTaskRunner()
 {
-    const Heap *heap = Runtime::GetInstance()->GetMainThread()->GetEcmaVM()->GetHeap();
+    Heap *heap = const_cast<Heap *>(Runtime::GetInstance()->GetMainThread()->GetEcmaVM()->GetHeap());
     heap->StartUnifiedGCMark();
 }
 

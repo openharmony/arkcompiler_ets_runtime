@@ -16,6 +16,7 @@
 #include "ecmascript/checkpoint/thread_state_transition.h"
 #include "ecmascript/mem/concurrent_marker.h"
 #include "ecmascript/mem/unified_gc/unified_gc_marker-inl.h"
+#include "ecmascript/mem/verification.h"
 
 namespace panda::ecmascript {
 void UnifiedGCMarker::Mark()
@@ -28,6 +29,7 @@ void UnifiedGCMarker::Mark()
             LOG_GC(DEBUG) << "UnifiedGC after ConcurrentMarking";
             heap_->GetConcurrentMarker()->Reset();
         }
+        heap_->SetMarkType(MarkType::MARK_FULL);
 #ifdef PANDA_JS_ETS_HYBRID_MODE
         ASSERT(stsVMInterface_ != nullptr);
         stsVMInterface_->StartXGCBarrier();
@@ -39,6 +41,9 @@ void UnifiedGCMarker::Mark()
         ClockScope clockScope;
         InitializeMarking(DAEMON_THREAD_INDEX);
         DoMarking(DAEMON_THREAD_INDEX);
+        if (UNLIKELY(heap_->ShouldVerifyHeap())) {
+            Verification::VerifyMark(heap_);
+        }
         Finish(clockScope.TotalSpentTime());
     }
 }
@@ -90,6 +95,11 @@ void UnifiedGCMarker::Finish(float spendTime)
     workManager_->Finish();
     initialized_ = false;
     heap_->Resume(TriggerGCType::UNIFIED_GC);
+    if (UNLIKELY(heap_->ShouldVerifyHeap())) { // LCOV_EXCL_BR_LINE
+        // verify post unified gc heap verify
+        LOG_ECMA(DEBUG) << "post unified gc heap verify";
+        Verification(heap_, VerifyKind::VERIFY_POST_GC).VerifyAll();
+    }
     dThread_->FinishRunningTask();
 #ifdef PANDA_JS_ETS_HYBRID_MODE
     stsVMInterface_->FinishXGCBarrier();

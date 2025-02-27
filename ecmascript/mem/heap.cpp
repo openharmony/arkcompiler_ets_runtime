@@ -2906,9 +2906,15 @@ void Heap::TryEnableEdenGC()
     }
 }
 
-void Heap::StartUnifiedGCMark() const
+void Heap::StartUnifiedGCMark()
 {
     ASSERT(JSThread::GetCurrent() == DaemonThread::GetInstance());
+    if (UNLIKELY(ShouldVerifyHeap())) { // LCOV_EXCL_BR_LINE
+        // pre unified gc heap verify
+        LOG_ECMA(DEBUG) << "pre unified gc heap verify";
+        ProcessSharedGCRSetWorkList();
+        Verification(this, VerifyKind::VERIFY_PRE_GC).VerifyAll();
+    }
     unifiedGCMarker_->Mark();
 }
 
