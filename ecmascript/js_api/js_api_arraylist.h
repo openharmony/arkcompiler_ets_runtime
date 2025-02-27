@@ -61,6 +61,10 @@ public:
     static JSTaggedValue ForEach(JSThread *thread, const JSHandle<JSTaggedValue> &thisHandle,
                                  const JSHandle<JSTaggedValue> &callbackFn,
                                  const JSHandle<JSTaggedValue> &thisArg);
+    static JSTaggedValue SortElements(JSThread *thread, JSHandle<TaggedArray> &array,
+                                      JSHandle<JSTaggedValue> &callbackFnHandle);
+    static JSTaggedValue SortElementsWithCopy(JSThread *thread, JSHandle<TaggedArray> &array,
+                                              JSHandle<JSTaggedValue> &callbackFnHandle);
 
     static JSTaggedValue GetIteratorObj(JSThread *thread, const JSHandle<JSAPIArrayList> &obj);
 
