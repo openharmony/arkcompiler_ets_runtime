@@ -414,4 +414,47 @@ HWTEST_F_L0(PGOProfilerTestOne, WaitDumpThenNotifyAll)
     ASSERT_NE(status1, std::future_status::timeout) << "thread 1 may freeze";
     ASSERT_NE(status2, std::future_status::timeout) << "thread 2 may freeze";
 }
+
+HWTEST_F_L0(PGOProfilerTestOne, SetSaveAndNotify)
+{
+    auto state = std::make_shared<PGOStateMock>();
+    EXPECT_TRUE(state->StateIsStop());
+    state->TryChangeState(PGOState::State::STOP, PGOState::State::START);
+    EXPECT_TRUE(state->StateIsStart());
+
+    std::mutex mtx;
+    std::condition_variable cv;
+    bool ready = false;
+
+    std::future<void> future1 = std::async(std::launch::async, [state, &mtx, &cv, &ready]() {
+        {
+            std::unique_lock<std::mutex> lock(mtx);
+            cv.wait(lock, [&ready]() { return ready; });
+        }
+        state->WaitDumpTest();
+    });
+
+    std::future<void> future2 = std::async(std::launch::async, [state, &mtx, &cv, &ready]() {
+        {
+            std::unique_lock<std::mutex> lock(mtx);
+            cv.wait(lock, [&ready]() { return ready; });
+        }
+        state->WaitDumpTest();
+    });
+
+    {
+        std::lock_guard<std::mutex> lock(mtx);
+        ready = true;
+    }
+    cv.notify_all();
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    state->SetSaveAndNotify();
+
+    auto status1 = future1.wait_for(std::chrono::seconds(2));
+    auto status2 = future2.wait_for(std::chrono::seconds(2));
+    ASSERT_NE(status1, std::future_status::timeout) << "thread 1 may freeze";
+    ASSERT_NE(status2, std::future_status::timeout) << "thread 2 may freeze";
+
+    EXPECT_TRUE(state->StateIsSave());
+}
 } // namespace panda::test

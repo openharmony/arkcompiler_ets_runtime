@@ -56,7 +56,9 @@ public:
     void ResumeByGC(PGOProfiler* profiler);
     bool StateIsStop() const;
     bool StateIsStart() const;
+    bool StateIsSave() const;
     void SetStopAndNotify();
+    void SetSaveAndNotify();
     bool SetStartIfStop();
     void WaitDump();
     void WaitGC();
