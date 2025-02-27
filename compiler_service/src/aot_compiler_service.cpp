@@ -70,6 +70,7 @@ void AotCompilerService::OnStart()
     state_ = ServiceRunningState::STATE_RUNNING;
     RegisterPowerDisconnectedListener();
     RegisterScreenStatusSubscriber();
+    RegisterThermalMgrListener();
 }
 
 bool AotCompilerService::Init()
@@ -118,6 +119,7 @@ void AotCompilerService::OnStop()
     state_ = ServiceRunningState::STATE_NOT_START;
     UnRegisterPowerDisconnectedListener();
     UnRegisterScreenStatusSubscriber();
+    UnRegisterThermalMgrListener();
 }
 
 int32_t AotCompilerService::AotCompiler(const std::unordered_map<std::string, std::string> &argsMap,
@@ -184,11 +186,27 @@ void AotCompilerService::RegisterScreenStatusSubscriber()
     EventFwk::CommonEventSubscribeInfo subscribeInfo(matchingSkills);
     screenStatusSubscriber_ = std::make_shared<ScreenStatusSubscriber>(subscribeInfo);
     if (!EventFwk::CommonEventManager::SubscribeCommonEvent(screenStatusSubscriber_)) {
-        LOG_SA(INFO) << "AotCompilerService::RegisterScreenStatusSubscriber failed";
+        LOG_SA(WARN) << "AotCompilerService::RegisterScreenStatusSubscriber failed";
         screenStatusSubscriber_ = nullptr;
     } else {
         LOG_SA(INFO) << "AotCompilerService::RegisterScreenStatusSubscriber success";
         isScreenStatusSubscribered_ = true;
+    }
+}
+
+void AotCompilerService::RegisterThermalMgrListener()
+{
+    LOG_SA(DEBUG) << "AotCompilerService::RegisterThermalMgrListener";
+    EventFwk::MatchingSkills matchingSkills;
+    matchingSkills.AddEvent(EventFwk::CommonEventSupport::COMMON_EVENT_THERMAL_LEVEL_CHANGED);
+    EventFwk::CommonEventSubscribeInfo subscribeInfo(matchingSkills);
+    thermalMgrListener_ = std::make_shared<ThermalMgrListener>(subscribeInfo);
+    if (!EventFwk::CommonEventManager::SubscribeCommonEvent(thermalMgrListener_)) {
+        LOG_SA(WARN) << "AotCompilerService::RegisterThermalMgrListener failed";
+        thermalMgrListener_ = nullptr;
+    } else {
+        LOG_SA(INFO) << "AotCompilerService::RegisterThermalMgrListener success";
+        isThermalLevelEventSubscribered_ = true;
     }
 }
 
@@ -213,10 +231,24 @@ void AotCompilerService::UnRegisterScreenStatusSubscriber()
         return;
     }
     if (!EventFwk::CommonEventManager::UnSubscribeCommonEvent(screenStatusSubscriber_)) {
-        LOG_SA(INFO) << "AotCompilerService::UnRegisterScreenStatusSubscriber failed";
+        LOG_SA(WARN) << "AotCompilerService::UnRegisterScreenStatusSubscriber failed";
     }
     screenStatusSubscriber_ = nullptr;
     isScreenStatusSubscribered_ = false;
     LOG_SA(INFO) << "AotCompilerService::UnRegisterScreenStatusSubscriber done";
+}
+
+void AotCompilerService::UnRegisterThermalMgrListener()
+{
+    LOG_SA(DEBUG) << "AotCompilerService::UnRegisterThermalMgrListener";
+    if (!isThermalLevelEventSubscribered_) {
+        return;
+    }
+    if (!EventFwk::CommonEventManager::UnSubscribeCommonEvent(thermalMgrListener_)) {
+        LOG_SA(WARN) << "AotCompilerService::UnRegisterThermalMgrListener failed";
+    }
+    thermalMgrListener_ = nullptr;
+    isThermalLevelEventSubscribered_ = false;
+    LOG_SA(INFO) << "AotCompilerService::UnRegisterThermalMgrListener done";
 }
 } // namespace OHOS::ArkCompiler

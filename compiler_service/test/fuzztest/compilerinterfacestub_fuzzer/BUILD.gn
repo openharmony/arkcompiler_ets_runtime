@@ -27,6 +27,7 @@ ohos_fuzztest("CompilerInterfaceStubFuzzTest") {
   include_dirs = compiler_service_include_dirs
   sources = aot_compiler_service_sources
   external_deps = [
+    "ability_base:want",
     "access_token:libaccesstoken_sdk",
     "access_token:libtokenid_sdk",
     "c_utils:utils",

@@ -133,7 +133,7 @@ enum CommandValues {
     OPTION_COMPILER_OPT_TYPE_LOWERING,
     OPTION_COMPILER_OPT_EARLY_ELIMINATION,
     OPTION_COMPILER_OPT_LATER_ELIMINATION,
-    OPTION_COMPILER_OPT_STRING,
+    OPTION_COMPILER_THERMAL_LEVEL,
     OPTION_COMPILER_OPT_VALUE_NUMBERING,
     OPTION_COMPILER_OPT_INLINING,
     OPTION_COMPILER_OPT_PGOTYPE,
@@ -216,6 +216,7 @@ enum CommandValues {
     OPTION_OPEN_ARK_TOOLS,
     OPTION_COMPILER_ENABLE_CONCURRENT,
     OPTION_COMPILER_OPT_FRAME_STATE_ELIMINATION,
+    OPTION_COMPILER_OPT_STRING,
     OPTION_COMPILER_EMPTY_CATCH_FUNCTION,
 };
 static_assert(OPTION_INVALID == 63); // Placeholder for invalid options
@@ -1452,6 +1453,21 @@ public:
         return WasOptionSet(OPTION_COMPILER_DEVICE_STATE);
     }
 
+    void SetThermalLevel(int32_t level)
+    {
+        deviceThermalLevel_ = level;
+    }
+
+    int32_t GetThermalLevel() const
+    {
+        return deviceThermalLevel_;
+    }
+
+    bool WasSetThermalLevel() const
+    {
+        return WasOptionSet(OPTION_COMPILER_THERMAL_LEVEL);
+    }
+
     void SetOptCodeProfiler(bool value)
     {
         optCodeProfiler_ = value;
@@ -1633,6 +1649,8 @@ public:
     }
 
     void SetOptionsForTargetCompilation();
+
+    void BindCPUCoreForTargetCompilation();
 
     void SetCompilerPipelineHostAOT(bool value)
     {
@@ -2001,6 +2019,7 @@ private:
     bool enableEdenGC_ {false};
     bool forceFullGc_ {true};
     uint32_t forceSharedGc_ {1};
+    int32_t deviceThermalLevel_ {0};
     int arkProperties_ = GetDefaultProperties();
     std::string arkBundleName_ = {""};
     size_t heapSize_ = {0};
