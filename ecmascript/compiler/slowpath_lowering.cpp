@@ -2092,34 +2092,39 @@ bool SlowPathLowering::IsDependIfStateMent(GateRef gate, size_t idx)
 void SlowPathLowering::LowerConditionJump(GateRef gate, bool isEqualJump)
 {
     GateRef value = acc_.GetValueIn(gate, 0);
+    Label ifTrue(&builder_);
+    Label ifFalse(&builder_);
 
-    Label isZero(&builder_);
-    Label notZero(&builder_);
     // GET_ACC().IsFalse()
-    Label notFalse(&builder_);
-    BRANCH_CIR(builder_.IsSpecial(value, JSTaggedValue::VALUE_FALSE), &isZero, &notFalse);
-    builder_.Bind(&notFalse);
+    Label needIntCheck(&builder_);
+    Label &checkTrue = (isEqualJump ? ifTrue : needIntCheck);
+    Label &checkFalse = (isEqualJump ? needIntCheck : ifTrue);
+    BRANCH_CIR(builder_.IsSpecial(value, JSTaggedValue::VALUE_FALSE), &checkTrue, &checkFalse);
+    builder_.Bind(&needIntCheck);
     {
         // (GET_ACC().IsInt() && GET_ACC().GetInt() == 0)
         Label isInt(&builder_);
-        Label notIntZero(&builder_);
-        BRANCH_CIR(builder_.TaggedIsInt(value), &isInt, &notIntZero);
+        Label needDoubleCheck(&builder_);
+        BRANCH_CIR(builder_.TaggedIsInt(value), &isInt, &needDoubleCheck);
         builder_.Bind(&isInt);
-        BRANCH_CIR(builder_.Equal(builder_.TaggedGetInt(value), builder_.Int32(0)), &isZero, &notIntZero);
-        builder_.Bind(&notIntZero);
+        checkTrue = (isEqualJump ? ifTrue : needDoubleCheck);
+        checkFalse = (isEqualJump ? needDoubleCheck : ifTrue);
+        BRANCH_CIR(builder_.Equal(builder_.TaggedGetInt(value), builder_.Int32(0)), &checkTrue, &checkFalse);
+        builder_.Bind(&needDoubleCheck);
         {
             // (GET_ACC().IsDouble() && GET_ACC().GetDouble() == 0.0)
             Label isDouble(&builder_);
-            BRANCH_CIR(builder_.TaggedIsDouble(value), &isDouble, &notZero);
+            BRANCH_CIR(builder_.TaggedIsDouble(value), &isDouble, &ifFalse);
             builder_.Bind(&isDouble);
-            BRANCH_CIR(builder_.Equal(builder_.GetDoubleOfTDouble(value), builder_.Double(0.0)), &isZero, &notZero);
-            builder_.Bind(&notZero);
+            checkTrue = (isEqualJump ? ifTrue : ifFalse);
+            checkFalse = (isEqualJump ? ifFalse : ifTrue);
+            BRANCH_CIR(builder_.Equal(builder_.GetDoubleOfTDouble(value), builder_.Double(0.0)),
+                &checkTrue, &checkFalse);
+            builder_.Bind(&ifFalse);
         }
     }
-    builder_.Bind(&isZero);
+    builder_.Bind(&ifTrue);
 
-    Label &ifTrue = isEqualJump ? isZero : notZero;
-    Label &ifFalse = isEqualJump ? notZero : isZero;
     auto uses = acc_.Uses(gate);
     for (auto it = uses.begin(); it != uses.end();) {
         if (acc_.GetOpCode(*it) == OpCode::IF_TRUE) {
