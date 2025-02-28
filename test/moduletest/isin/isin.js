@@ -67,3 +67,16 @@ typedArrayConstructors.forEach((ctor) => {
     isInTypedArray2(ctor);
 })
 
+/*
+ * @tc.name: isin
+ * @tc.desc: test isin. Test whether the return value of IsIn is exception while input para is not a ECMA obj.
+ * @tc.type: FUNC
+ */
+{
+    try {
+        1 in 0;
+        let tmpArr = [0];
+    } catch (e) {
+        print(e);
+    }
+}

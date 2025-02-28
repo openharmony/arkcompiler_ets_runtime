@@ -65,3 +65,4 @@ true
 0
 false
 false
+TypeError: Cannot use 'in' operator in Non-Object
