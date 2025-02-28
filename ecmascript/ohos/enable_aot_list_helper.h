@@ -131,6 +131,18 @@ private:
         data.erase(data.find_last_not_of(' ') + 1);
     }
 
+    static void RemoveComment(std::string &data)
+    {
+        size_t hashPos = data.find('#');
+        if (hashPos != std::string::npos) {
+            data = data.substr(0, hashPos);
+        }
+        size_t lastNonSpace = data.find_last_not_of(' ');
+        if (lastNonSpace != std::string::npos) {
+            data.erase(lastNonSpace + 1);
+        }
+    }
+
     void ReadEnableList(const std::string &aotJitListName)
     {
         std::string realPath;
@@ -162,6 +174,8 @@ private:
             if (appName.at(0) == '#') {
                 continue;
             }
+            // remove the comment
+            RemoveComment(appName);
             AddEnableListEntry(appName);
         }
     }
