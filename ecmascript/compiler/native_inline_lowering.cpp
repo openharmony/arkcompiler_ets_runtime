@@ -742,7 +742,7 @@ void NativeInlineLowering::TryInlineTypedArrayIteratorBuiltin(GateRef gate,
     }
 
     GateRef ret = builder_.BuildTypedArrayIterator(acc_.GetValueIn(gate, 0), op);
-    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
+    ReplaceGateWithPendingException(gate, ret);
 }
 
 void NativeInlineLowering::TryInlineMathUnaryBuiltin(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id,
