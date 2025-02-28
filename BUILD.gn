@@ -1109,6 +1109,7 @@ if (is_mingw) {
     "ecmascript/platform/windows/pandafile.cpp",
     "ecmascript/platform/windows/module.cpp",
     "ecmascript/platform/common/ecma_context.cpp",
+    "ecmascript/platform/common/parameters.cpp",
   ]
 } else {
   ecma_platform_source += [
@@ -1128,6 +1129,7 @@ if (is_mingw) {
       "ecmascript/platform/unix/mac/pandafile.cpp",
       "ecmascript/platform/unix/mac/module.cpp",
       "ecmascript/platform/common/ecma_context.cpp",
+      "ecmascript/platform/common/parameters.cpp",
     ]
   } else if (target_os == "ios") {
     ecma_platform_source += [
@@ -1140,6 +1142,7 @@ if (is_mingw) {
       "ecmascript/platform/common/pandafile.cpp",
       "ecmascript/platform/common/module.cpp",
       "ecmascript/platform/common/ecma_context.cpp",
+      "ecmascript/platform/common/parameters.cpp",
     ]
   } else if (is_ohos || target_os == "android") {
     ecma_platform_source += [
@@ -1150,6 +1153,7 @@ if (is_mingw) {
       "ecmascript/platform/unix/ohos/memory.cpp",
       "ecmascript/platform/unix/ohos/dfx_hisys_event.cpp",
       "ecmascript/platform/common/module.cpp",
+      "ecmascript/platform/unix/ohos/parameters.cpp",
     ]
 
     if (is_ohos) {
@@ -1180,6 +1184,7 @@ if (is_mingw) {
       "ecmascript/platform/unix/linux/pandafile.cpp",
       "ecmascript/platform/common/module.cpp",
       "ecmascript/platform/common/ecma_context.cpp",
+      "ecmascript/platform/common/parameters.cpp",
     ]
   } else {
     print("Invalid os!")

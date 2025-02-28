@@ -28,6 +28,7 @@
 #include "ecmascript/jsnapi_sendable.h"
 #include "ecmascript/jspandafile/js_pandafile_executor.h"
 #include "ecmascript/linked_hash_table.h"
+#include "ecmascript/module/module_logger.h"
 #include "ecmascript/module/napi_module_loader.h"
 #if defined(ENABLE_EXCEPTION_BACKTRACE)
 #include "ecmascript/platform/backtrace.h"
@@ -5800,6 +5801,26 @@ void JSNApi::SetHostPromiseRejectionTracker(EcmaVM *vm, void *cb, void* data)
     thread->GetCurrentEcmaContext()->SetPromiseRejectCallback(
         reinterpret_cast<ecmascript::PromiseRejectCallback>(cb));
     thread->GetCurrentEcmaContext()->SetData(data);
+}
+
+void JSNApi::SetTimerTaskCallback(EcmaVM *vm, TimerTaskCallback callback)
+{
+    CROSS_THREAD_CHECK(vm);
+    // register TimerTask to ark_js_runtime
+    vm->SetTimerTaskCallback(callback);
+}
+
+void JSNApi::SetCancelTimerCallback(EcmaVM *vm, CancelTimerCallback callback)
+{
+    CROSS_THREAD_CHECK(vm);
+    // register CancelTimerCallback to ark_js_runtime
+    vm->SetCancelTimerCallback(callback);
+}
+
+// post task after runtime initialized
+void JSNApi::NotifyEnvInitialized(EcmaVM *vm)
+{
+    ecmascript::ModuleLogger::SetModuleLoggerTask(vm);
 }
 
 void JSNApi::SetHostResolveBufferTracker(EcmaVM *vm,

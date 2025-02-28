@@ -104,6 +104,9 @@ using SourceMapTranslateCallback = std::function<bool(std::string& url, int& lin
     std::string &packageName)>;
 using ResolveBufferCallback =
     std::function<bool(std::string dirPath, uint8_t **buff, size_t *buffSize, std::string &errorMsg)>;
+using TimerCallbackFunc = void (*)(void *data);
+using TimerTaskCallback = void* (*)(EcmaVM *vm, void *data, TimerCallbackFunc func, uint64_t timeout, bool repeat);
+using CancelTimerCallback = void (*)(void *timerCallbackInfo);
 using UnloadNativeModuleCallback = std::function<bool(const std::string &moduleKey)>;
 using RequestAotCallback =
     std::function<int32_t(const std::string &bundleName, const std::string &moduleName, int32_t triggerMode)>;
@@ -349,6 +352,26 @@ public:
     ResolveBufferCallback GetResolveBufferCallback() const
     {
         return resolveBufferCallback_;
+    }
+
+    void SetTimerTaskCallback(TimerTaskCallback callback)
+    {
+        timerTaskCallback_ = callback;
+    }
+
+    TimerTaskCallback GetTimerTaskCallback() const
+    {
+        return timerTaskCallback_;
+    }
+
+    void SetCancelTimerCallback(CancelTimerCallback callback)
+    {
+        cancelTimerCallback_ = callback;
+    }
+
+    CancelTimerCallback GetCancelTimerCallback() const
+    {
+        return cancelTimerCallback_;
     }
 
     void SetSearchHapPathCallBack(SearchHapPathCallBack cb)
@@ -978,6 +1001,11 @@ private:
 
     // resolve path to get abc's buffer
     ResolveBufferCallback resolveBufferCallback_ {nullptr};
+
+    // set timer task to execute callback on time
+    TimerTaskCallback timerTaskCallback_ {nullptr};
+    // set cancel timer task to execute callback on time
+    CancelTimerCallback cancelTimerCallback_ {nullptr};
 
     // delete the native module and dlclose so from NativeModuleManager
     UnloadNativeModuleCallback unloadNativeModuleCallback_ {nullptr};

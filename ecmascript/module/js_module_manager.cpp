@@ -173,6 +173,10 @@ JSTaggedValue ModuleManager::GetLazyModuleValueOutterInternal(int32_t index, JST
     }
     ASSERT(moduleEnvironment.IsTaggedArray());
     JSTaggedValue resolvedBinding = TaggedArray::Cast(moduleEnvironment.GetTaggedObject())->Get(index);
+    ModuleLogger *moduleLogger = thread->GetCurrentEcmaContext()->GetModuleLogger();
+    if (moduleLogger != nullptr) {
+        return ModuleTools::ProcessLazyModuleLoadInfo(thread, currentModuleHdl, resolvedBinding, index);
+    }
     if (resolvedBinding.IsResolvedIndexBinding()) {
         JSHandle<ResolvedIndexBinding> binding(thread, resolvedBinding);
         JSTaggedValue resolvedModule = binding->GetModule();
