@@ -1153,16 +1153,20 @@ if (is_mingw) {
       "ecmascript/platform/unix/ohos/memory.cpp",
       "ecmascript/platform/unix/ohos/dfx_hisys_event.cpp",
       "ecmascript/platform/common/module.cpp",
-      "ecmascript/platform/unix/ohos/parameters.cpp",
     ]
 
     if (is_ohos) {
-      ecma_platform_source += [ "ecmascript/platform/unix/ohos/pandafile.cpp" ]
-      ecma_platform_source +=
-          [ "ecmascript/platform/unix/ohos/ecma_context.cpp" ]
+      ecma_platform_source += [
+        "ecmascript/platform/unix/ohos/pandafile.cpp",
+        "ecmascript/platform/unix/ohos/ecma_context.cpp",
+        "ecmascript/platform/unix/ohos/parameters.cpp",
+      ]
     } else {
-      ecma_platform_source += [ "ecmascript/platform/common/pandafile.cpp" ]
-      ecma_platform_source += [ "ecmascript/platform/common/ecma_context.cpp" ]
+      ecma_platform_source += [
+        "ecmascript/platform/common/pandafile.cpp",
+        "ecmascript/platform/common/ecma_context.cpp",
+        "ecmascript/platform/common/parameters.cpp",
+      ]
     }
 
     if (is_ohos && !ark_standalone_build &&
