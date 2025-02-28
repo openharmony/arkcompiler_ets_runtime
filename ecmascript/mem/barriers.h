@@ -24,7 +24,7 @@
 namespace panda::ecmascript {
 class Region;
 
-enum class WriteBarrierType : size_t { NORMAL, DESERIALIZE };
+enum class WriteBarrierType : size_t { NORMAL, DESERIALIZE, AOT_DESERIALIZE };
 
 class Barriers {
 public:
