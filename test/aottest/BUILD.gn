@@ -206,6 +206,7 @@ group("ark_aot_ts_test") {
     "loop_with_variable_exchange",
     "loops",
     "map",
+    "map_values",
     "mod",
     "modules",
     "mono_builtin",
