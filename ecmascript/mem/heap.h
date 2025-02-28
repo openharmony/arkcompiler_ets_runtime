@@ -577,6 +577,8 @@ public:
 
     bool CheckIfNeedStopCollectionByStartup();
 
+    void TryAdjustSpaceOvershootByConfigSize();
+
     bool CheckAndTriggerSharedGC(JSThread *thread);
 
     bool CheckHugeAndTriggerSharedGC(JSThread *thread, size_t size);
@@ -953,6 +955,7 @@ private:
     size_t incNativeSizeTriggerSharedCM_ {0};
     size_t incNativeSizeTriggerSharedGC_ {0};
     size_t fragmentationLimitForSharedFullGC_ {0};
+    std::atomic<size_t> spaceOvershoot_ {0};
     std::atomic<size_t> nativeSizeAfterLastGC_ {0};
     bool inHeapProfiler_ {false};
     CVector<JSNativePointer *> sharedNativePointerList_;
@@ -1376,6 +1379,8 @@ public:
 
     void TryIncreaseNewSpaceOvershootByConfigSize();
 
+    void TryIncreaseOvershootByConfigSize();
+
     bool CheckIfNeedStopCollectionByStartup();
 
     bool NeedStopCollection() override;
@@ -1432,7 +1437,7 @@ public:
         if (!IsJustFinishStartup()) {
             return false;
         }
-        TryIncreaseNewSpaceOvershootByConfigSize();
+        TryIncreaseOvershootByConfigSize();
         smartGCStats_.startupStatus_.store(StartupStatus::FINISH_STARTUP, std::memory_order_release);
         sHeap_->CancelJustFinishStartupEvent();
         return true;
@@ -1443,7 +1448,7 @@ public:
         if (!OnStartupEvent()) {
             return false;
         }
-        TryIncreaseNewSpaceOvershootByConfigSize();
+        TryIncreaseOvershootByConfigSize();
         smartGCStats_.startupStatus_.store(StartupStatus::JUST_FINISH_STARTUP, std::memory_order_release);
         sHeap_->FinishStartupEvent();
         return true;
