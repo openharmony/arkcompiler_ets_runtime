@@ -693,6 +693,9 @@ public:
 
     template<TriggerGCType gcType, GCReason gcReason>
     void CollectGarbage(JSThread *thread);
+
+    template<GCReason gcReason>
+    void CompressCollectGarbageNotWaiting(JSThread *thread);
     
     template<TriggerGCType gcType, GCReason gcReason>
     void PostGCTaskForTest(JSThread *thread);
