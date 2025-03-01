@@ -195,7 +195,7 @@ private:
     void FastFill(GateRef glue, GateRef element, GateRef start, GateRef count, GateRef value, bool needBarrier);
     void PopOptimised(GateRef glue, GateRef thisValue,
                       GateRef numArgs, Variable *result, Label *exit, Label *slowPath);
-    void ReverseOptimised(GateRef glue, GateRef thisValue, Variable *result, Label *exit, Label *slowPath);
+    void ReverseOptimised(GateRef glue, GateRef thisValue, GateRef thisLen, Variable *result, Label *exit);
     void ShiftOptimised(GateRef glue, GateRef thisValue,
                         GateRef numArgs, Variable *result, Label *exit, Label *slowPath);
     void IndexOfOptimised(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *result,

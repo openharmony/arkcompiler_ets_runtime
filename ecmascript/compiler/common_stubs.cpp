@@ -1436,6 +1436,17 @@ void BatchBarrierStubBuilder::GenerateCircuit()
     Return();
 }
 
+void ReverseBarrierStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef dstObj = PtrArgument(1);
+    GateRef dstAddr = PtrArgument(2);
+    GateRef taggedValueCount = TaggedArgument(3);
+    BarrierStubBuilder barrierBuilder(this, glue, dstObj, dstAddr, taggedValueCount);
+    barrierBuilder.DoReverseBarrier();
+    Return();
+}
+
 void MoveBarrierInRegionStubBuilder::GenerateCircuit()
 {
     GateRef glue = PtrArgument(0);

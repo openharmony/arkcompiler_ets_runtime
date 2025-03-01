@@ -2731,25 +2731,10 @@ void BuiltinsArrayStubBuilder::FastFill(GateRef glue, GateRef element, GateRef s
     env->SubCfgExit();
 }
 
-void BuiltinsArrayStubBuilder::ReverseOptimised(GateRef glue, GateRef thisValue, Variable *result,
-    Label *exit, Label *slowPath)
+void BuiltinsArrayStubBuilder::ReverseOptimised(GateRef glue, GateRef thisValue, GateRef thisLen,
+    Variable *result, Label *exit)
 {
     auto env = GetEnvironment();
-    Label isHeapObject(env);
-    Label isJsArray(env);
-    Label isStability(env);
-    Label notCOWArray(env);
-    BRANCH(TaggedIsHeapObject(thisValue), &isHeapObject, slowPath);
-    Bind(&isHeapObject);
-    BRANCH(IsJsArray(thisValue), &isJsArray, slowPath);
-    Bind(&isJsArray);
-    // don't check constructor, "Reverse" won't create new array.
-    BRANCH(IsStableJSArray(glue, thisValue), &isStability, slowPath);
-    Bind(&isStability);
-    BRANCH(IsJsCOWArray(thisValue), slowPath, &notCOWArray);
-    Bind(&notCOWArray);
-
-    GateRef thisLen = GetArrayLength(thisValue);
     GateRef hclass = LoadHClass(thisValue);
     GateRef kind = GetElementsKindFromHClass(hclass);
     Label shouldBarrier(env);
@@ -2761,7 +2746,7 @@ void BuiltinsArrayStubBuilder::ReverseOptimised(GateRef glue, GateRef thisValue,
     BRANCH(NeedBarrier(kind), &shouldBarrier, &afterReverse);
     Bind(&shouldBarrier);
     {
-        CallCommonStub(glue, CommonStubCSigns::BatchBarrier,
+        CallCommonStub(glue, CommonStubCSigns::ReverseBarrier,
             {glue, TaggedCastToIntPtr(element), TaggedCastToIntPtr(dstAddr), thisLen});
         Jump(&afterReverse);
     }

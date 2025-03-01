@@ -39,6 +39,8 @@ public:
     void DoBatchBarrier();
 
     void DoMoveBarrierInRegion(GateRef srcAddr);
+
+    void DoReverseBarrier();
 private:
     enum BitSetSelect {
         LocalToShared = 0b1,
@@ -63,6 +65,8 @@ private:
                                 GateRef length);
     void BitSetRangeMoveBackward(GateRef srcBitSet, GateRef dstBitSet, GateRef srcStart, GateRef dstStart,
                                  GateRef length);
+    void DoReverseBarrierInternal();
+    void BitSetRangeReverse(GateRef bitSet, GateRef startIdx, GateRef length);
     void DoMoveBarrierSameRegionKind(GateRef srcAddr, GateRef srcRegion, RegionKind regionKind);
     const GateRef glue_;
     const GateRef dstAddr_;
@@ -72,6 +76,8 @@ private:
     static constexpr int64_t BIT_PER_QUAD_MASK = 63;
     static constexpr int64_t BIT_PER_QUAD_LOG2 = 6;
     static constexpr int64_t BYTE_PER_QUAD_LOG2 = 3;
+    static constexpr int64_t BYTE_PER_QUAD = 8;
+    static constexpr int64_t BIT_PER_BYTE_LOG2 = 3;
     static constexpr int64_t BIT_PER_QUAD = 64;
     static constexpr int64_t ALL_ONE_MASK = -1;
     static constexpr size_t FLUSH_RANGE = GCBitset::BIT_PER_WORD * GCBitset::BIT_PER_BYTE;

@@ -212,6 +212,7 @@ void LLVMIRBuilder::InitializeHandlers()
         {OpCode::CEIL, &LLVMIRBuilder::HandleCeil},
         {OpCode::FLOOR, &LLVMIRBuilder::HandleFloor},
         {OpCode::READSP, &LLVMIRBuilder::HandleReadSp},
+        {OpCode::BITREV, &LLVMIRBuilder::HandleBitRev},
         {OpCode::FINISH_ALLOCATE, &LLVMIRBuilder::HandleFinishAllocate},
     };
     illegalOpHandlers_ = {
@@ -549,6 +550,51 @@ void LLVMIRBuilder::HandleReadSp(GateRef gate)
 {
     ASSERT(acc_.GetOpCode(gate) == OpCode::READSP);
     VisitReadSp(gate);
+}
+
+void LLVMIRBuilder::HandleBitRev(GateRef gate)
+{
+    ASSERT(acc_.GetOpCode(gate) == OpCode::BITREV);
+    std::vector<GateRef> ins;
+    acc_.GetIns(gate, ins);
+    VisitBitRev(gate, ins[0]);
+}
+
+void LLVMIRBuilder::VisitBitRev(GateRef gate, GateRef e1)
+{
+    LLVMValueRef e1Value = GetLValue(e1);
+    std::vector<LLVMValueRef> args = { e1Value };
+    std::string intrinsic;
+    switch (acc_.GetMachineType(e1)) {
+        case I8:
+            intrinsic = "llvm.bitreverse.i8";
+            break;
+        case I16:
+            intrinsic = "llvm.bitreverse.i16";
+            break;
+        case I32:
+            intrinsic = "llvm.bitreverse.i32";
+            break;
+        case I64:
+            intrinsic = "llvm.bitreverse.i64";
+            break;
+        default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
+    }
+    auto fn = LLVMGetNamedFunction(module_, intrinsic.c_str());
+    if (!fn) {
+        LLVMTypeRef type = ConvertLLVMTypeFromGate(e1);
+        /* init instrinsic function declare */
+        LLVMTypeRef paramTys1[] = { type };
+        auto fnTy = LLVMFunctionType(type, paramTys1, 1, 0);
+        fn = LLVMAddFunction(module_, intrinsic.c_str(), fnTy);
+    }
+    LLVMValueRef result = LLVMBuildCall(builder_, fn, args.data(), 1, "bitreverse");
+    Bind(gate, result);
+
+    if (IsLogEnabled()) {
+        SetDebugInfo(gate, result);
+    }
 }
 
 void LLVMIRBuilder::HandleCall(GateRef gate)

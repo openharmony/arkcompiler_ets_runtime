@@ -3375,6 +3375,21 @@ DEF_CALL_SIGNATURE(BatchBarrier)
     callSign->SetGCLeafFunction(true);
     callSign->SetCallConv(CallSignature::CallConv::CCallConv);;
 }
+DEF_CALL_SIGNATURE(ReverseBarrier)
+{
+    constexpr size_t paramCount = 4;
+    CallSignature signature("ReverseBarrier", 0, paramCount, ArgumentsOrder::DEFAULT_ORDER, VariableType::VOID());
+    *callSign = signature;
+    std::array<VariableType, paramCount> params = {
+        VariableType::NATIVE_POINTER(),
+        VariableType::NATIVE_POINTER(),
+        VariableType::NATIVE_POINTER(),
+        VariableType::INT32(),
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetGCLeafFunction(true);
+    callSign->SetCallConv(CallSignature::CallConv::CCallConv);;
+}
 
 DEF_CALL_SIGNATURE(ObjectCopy)
 {
