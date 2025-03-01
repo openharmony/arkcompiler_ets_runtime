@@ -30,7 +30,8 @@ bool IdleGCTrigger::NotifyLooperIdleStart([[maybe_unused]] int64_t timestamp, [[
     LOG_ECMA_IF(optionalLogEnabled_, DEBUG) << "IdleGCTrigger: recv once looper idle time";
     idleState_.store(true);
     if (heap_->GetJSThread()->IsMarkFinished() &&
-        heap_->GetConcurrentMarker()->IsTriggeredConcurrentMark()) {
+        heap_->GetConcurrentMarker()->IsTriggeredConcurrentMark() &&
+        thread_->IsReadyToSharedConcurrentMark()) {
         return PostIdleGCTask(TRIGGER_IDLE_GC_TYPE::LOCAL_REMARK);
     }
     if (!IsPossiblePostGCTask(TRIGGER_IDLE_GC_TYPE::LOCAL_CONCURRENT_FULL_MARK) ||
