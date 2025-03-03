@@ -496,18 +496,6 @@ void ObjectOperator::GlobalLookupProperty()
 }
 
 template<bool isElement>
-bool ObjectOperator::ShouldContinuelyLookupInProtoChain()
-{
-    if constexpr (isElement) {
-        if (holder_->IsTypedArray()) {
-            // 10.4.5.3 typedArray do not need to lookup property in prototype chain when key is element.
-            return false;
-        }
-    }
-    return true;
-}
-
-template<bool isElement>
 void ObjectOperator::TryLookupInProtoChain()
 {
     do {
@@ -527,9 +515,6 @@ void ObjectOperator::TryLookupInProtoChain()
             LookupElementInlinedProps(obj);
         } else {
             LookupPropertyInlinedProps(obj);
-        }
-        if (!ShouldContinuelyLookupInProtoChain<isElement>()) {
-            return;
         }
     } while (!IsFound());
 }
@@ -709,7 +694,7 @@ bool ObjectOperator::SetTypedArrayPropByIndex(const JSHandle<JSObject> &receiver
         JSTypedArray::FastSetPropertyByIndex(thread_, receiver.GetTaggedValue(),
                                              GetIndex(), value.GetTaggedValue(), jsType);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, false);
-    if (typedArrayProperty.IsHole() || typedArrayProperty.IsUndefined()) {
+    if (typedArrayProperty.IsHole()) {
         return false;
     }
     return true;
@@ -1039,7 +1024,7 @@ void ObjectOperator::LookupElementInlinedProps(const JSHandle<JSObject> &obj)
             JSTaggedValue val = JSTypedArray::FastElementGet(thread_,
                 JSHandle<JSTaggedValue>::Cast(obj), elementIndex_).GetValue().GetTaggedValue();
             RETURN_IF_ABRUPT_COMPLETION(thread_);
-            if (!val.IsUndefined()) {
+            if (!val.IsHole()) {
                 SetFound(elementIndex_, val, PropertyAttributes::GetDefaultAttributes(), !IsFoundDict());
             }
             return;
