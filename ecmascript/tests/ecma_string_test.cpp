@@ -1763,4 +1763,26 @@ HWTEST_F_L0(EcmaStringTest, TryToLower)
         EXPECT_FALSE(testEcmaString->IsUtf16());
     }
 }
+
+HWTEST_F_L0(EcmaStringTest, ConvertToString001)
+{
+        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+        JSHandle<EcmaString> testString = factory->NewFromASCII("bar2bazJavaScriptbaz");
+        CString str = ConvertToString(*testString, StringConvertedUsage::LOGICOPERATION, false);
+        EXPECT_EQ(str, CString("bar2bazJavaScriptbaz"));
+}
+
+HWTEST_F_L0(EcmaStringTest, ConvertToString002)
+{
+        CString str = ConvertToString(nullptr, StringConvertedUsage::LOGICOPERATION, false);
+        EXPECT_EQ(str, CString(""));
+}
+
+HWTEST_F_L0(EcmaStringTest, ConvertToString003)
+{
+        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+        JSHandle<EcmaString> testString = factory->NewFromASCII("test");
+        CString str = ConvertToString(*testString);
+        EXPECT_EQ(str, CString("test"));
+}
 }  // namespace panda::test

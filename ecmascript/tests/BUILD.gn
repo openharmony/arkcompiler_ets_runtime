@@ -205,33 +205,6 @@ host_unittest_action("ECMA_String_Test") {
   deps += hiviewdfx_deps
 }
 
-host_unittest_action("ECMA_Context_Test") {
-  module_out_path = module_output_path
-
-  sources = [
-    # test file
-    "ecma_context_test.cpp",
-  ]
-
-  configs = [
-    "../../:asm_interp_enable_config",
-    "../../:ecma_test_config",
-  ]
-
-  deps = [ "../../:libark_jsruntime_test" ]
-
-  # hiviewdfx libraries
-  external_deps = hiviewdfx_ext_deps
-  external_deps += [
-    "icu:shared_icui18n",
-    "icu:shared_icuuc",
-    "runtime_core:libarkassembler_static",
-    "runtime_core:libarkverifier",
-    "zlib:libz",
-  ]
-  deps += hiviewdfx_deps
-}
-
 host_unittest_action("ECMA_StringAccessor_Test") {
   module_out_path = module_output_path
 
@@ -3415,7 +3388,6 @@ group("unittest") {
   # deps file
   deps = [
     ":Builtins_Test",
-    ":ECMA_Context_Test",
     ":ECMA_StringAccessor_Test",
     ":ECMA_StringEquals_Test",
     ":ECMA_StringTable_Test",
@@ -3555,7 +3527,6 @@ group("host_unittest") {
   # deps file
   deps = [
     ":Builtins_TestAction",
-    ":ECMA_Context_TestAction",
     ":ECMA_StringAccessor_TestAction",
     ":ECMA_StringEquals_TestAction",
     ":ECMA_StringTable_TestAction",
@@ -3691,7 +3662,6 @@ group("host_unittest") {
   if (is_mac) {
     deps -= [
       ":Builtins_TestAction",
-      ":ECMA_Context_TestAction",
       ":ECMA_StringAccessor_TestAction",
       ":ECMA_StringEquals_TestAction",
       ":ECMA_StringTable_TestAction",

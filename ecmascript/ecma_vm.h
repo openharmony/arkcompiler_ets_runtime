@@ -227,6 +227,16 @@ public:
         return isPostForked_;
     }
 
+    void SetAgentCanSuspend(bool agentCanSuspend)
+    {
+        agentCanSuspend_ = agentCanSuspend;
+    }
+
+    bool GetAgentCanSuspend() const
+    {
+        return agentCanSuspend_;
+    }
+
     bool IsAsynTranslateClasses()
     {
         if (!GetJSOptions().IsAsyncLoadAbcTest()) {
@@ -322,6 +332,15 @@ public:
     bool ContainInDeregisterModuleList(CString module);
     JSHandle<ecmascript::JSTaggedValue> GetAndClearEcmaUncaughtException() const;
     JSHandle<ecmascript::JSTaggedValue> GetEcmaUncaughtException() const;
+
+    EcmaRuntimeStat *GetRuntimeStat() const
+    {
+        return runtimeStat_;
+    }
+
+    void InitializeEcmaScriptRunStat();
+    void SetRuntimeStatEnable(bool flag);
+
     bool IsOptionalLogEnabled() const
     {
         return optionalLogEnabled_;
@@ -1022,6 +1041,7 @@ private:
     bool icEnabled_ {true};
     bool initialized_ {false};
     bool isPostForked_ {false};
+    bool agentCanSuspend_ {true};
     GCStats *gcStats_ {nullptr};
     GCKeyStats *gcKeyStats_ {nullptr};
     EcmaStringTable *stringTable_ {nullptr};
@@ -1042,6 +1062,8 @@ private:
     AsyncNativeCallbacksPack asyncNativeCallbacksPack_ {};
     // VM execution states.
     JSThread *thread_ {nullptr};
+
+    EcmaRuntimeStat *runtimeStat_ {nullptr};
 
     CUnorderedMap<std::string, uint32_t> aotSnapShotStatsMap_;
 

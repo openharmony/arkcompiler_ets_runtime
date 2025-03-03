@@ -192,11 +192,6 @@ void InterpreterAssembly::InitStackFrame(JSThread *thread)
     InitStackFrameForSP(const_cast<JSTaggedType *>(thread->GetCurrentSPFrame()));
 }
 
-void InterpreterAssembly::InitStackFrame(EcmaContext *context)
-{
-    InitStackFrameForSP(const_cast<JSTaggedType *>(context->GetCurrentFrame()));
-}
-
 void InterpreterAssembly::InitStackFrameForSP(JSTaggedType *prevSp)
 {
     InterpretedEntryFrame *entryState = InterpretedEntryFrame::GetFrameFromSp(prevSp);

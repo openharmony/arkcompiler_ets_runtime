@@ -409,6 +409,11 @@ EcmaVM::~EcmaVM()
     }
 
     intlCache_.ClearIcuCache(this);
+    
+    if (runtimeStat_ != nullptr) {
+        chunk_.Delete(runtimeStat_);
+        runtimeStat_ = nullptr;
+    }
 
     if (debuggerManager_ != nullptr) {
         delete debuggerManager_;
@@ -458,6 +463,58 @@ EcmaVM::~EcmaVM()
     if (thread_ != nullptr) {
         delete thread_;
         thread_ = nullptr;
+    }
+}
+
+void EcmaVM::InitializeEcmaScriptRunStat()
+{
+    // NOLINTNEXTLINE(modernize-avoid-c-arrays)
+    static const char *runtimeCallerNames[] = {
+// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
+#define INTERPRETER_CALLER_NAME(name) "Interpreter::" #name,
+    INTERPRETER_CALLER_LIST(INTERPRETER_CALLER_NAME)  // NOLINTNEXTLINE(bugprone-suspicious-missing-comma)
+#undef INTERPRETER_CALLER_NAME
+// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
+#define BUILTINS_API_NAME(class, name) "BuiltinsApi::" #class "_" #name,
+    BUILTINS_API_LIST(BUILTINS_API_NAME)
+#undef BUILTINS_API_NAME
+#define ABSTRACT_OPERATION_NAME(class, name) "AbstractOperation::" #class "_" #name,
+    ABSTRACT_OPERATION_LIST(ABSTRACT_OPERATION_NAME)
+#undef ABSTRACT_OPERATION_NAME
+#define MEM_ALLOCATE_AND_GC_NAME(name) "Memory::" #name,
+    MEM_ALLOCATE_AND_GC_LIST(MEM_ALLOCATE_AND_GC_NAME)
+#undef MEM_ALLOCATE_AND_GC_NAME
+#define DEF_RUNTIME_ID(name) "Runtime::" #name,
+    RUNTIME_STUB_WITH_GC_LIST(DEF_RUNTIME_ID)
+    RUNTIME_STUB_WITH_DFX(DEF_RUNTIME_ID)
+#undef DEF_RUNTIME_ID
+    };
+    static_assert(sizeof(runtimeCallerNames) == sizeof(const char *) * ecmascript::RUNTIME_CALLER_NUMBER,
+                  "Invalid runtime caller number");
+    runtimeStat_ = chunk_.New<EcmaRuntimeStat>(runtimeCallerNames, ecmascript::RUNTIME_CALLER_NUMBER);
+    if (UNLIKELY(runtimeStat_ == nullptr)) {
+        LOG_FULL(FATAL) << "alloc runtimeStat_ failed";
+        UNREACHABLE();
+    }
+}
+
+void EcmaVM::SetRuntimeStatEnable(bool flag)
+{
+    static uint64_t start = 0;
+    if (flag) {
+        start = PandaRuntimeTimer::Now();
+        if (runtimeStat_ == nullptr) {
+            InitializeEcmaScriptRunStat();
+        }
+    } else {
+        LOG_ECMA(INFO) << "Runtime State duration:" << PandaRuntimeTimer::Now() - start << "(ns)";
+        if (runtimeStat_ != nullptr && runtimeStat_->IsRuntimeStatEnabled()) {
+            runtimeStat_->Print();
+            runtimeStat_->ResetAllCount();
+        }
+    }
+    if (runtimeStat_ != nullptr) {
+        runtimeStat_->SetRuntimeStatEnabled(flag);
     }
 }
 

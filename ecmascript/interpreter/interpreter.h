@@ -57,7 +57,6 @@ public:
     static void RunInternal(JSThread *thread, const uint8_t *pc, JSTaggedType *sp);
 #endif
     static void InitStackFrame(JSThread *thread);
-    static void InitStackFrame(EcmaContext *context);
     static size_t GetJumpSizeAfterCall(const uint8_t *prevPc);
 
     static JSTaggedValue GetRuntimeProfileTypeInfo(JSTaggedType *sp);

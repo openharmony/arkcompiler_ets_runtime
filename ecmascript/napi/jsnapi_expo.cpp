@@ -3676,9 +3676,7 @@ JSValueRef* FunctionRef::CallForNapi(const EcmaVM *vm, JSValueRef *thisObj,
         thread->CheckJSTaggedType(result.GetRawData());
 #endif
         RETURN_VALUE_IF_ABRUPT(thread, *JSValueRef::Hole(vm));
-        if (thread->GetCurrentEcmaContext()->HasKeptObjects()) {
-            thread->GetCurrentEcmaContext()->ClearKeptObjects();
-        }
+        thread->GetCurrentEcmaContext()->ClearKeptObjects();
         if (isDebugApp && dm->IsMixedDebugEnabled()) {
             dm->NotifyReturnNative();
         }

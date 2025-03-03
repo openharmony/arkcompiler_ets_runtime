@@ -64,4 +64,23 @@ HWTEST_F_L0(JSSymbolTest, SymbolEqual)
     EXPECT_FALSE(JSSymbol::Equal(*helloWord1Symbol, *helloWord2Symbol));
     EXPECT_FALSE(JSSymbol::Equal(*helloWord1Symbol, *hiWordSymbol));
 }
+
+HWTEST_F_L0(JSSymbolTest, ConvertToString001)
+{
+        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+        JSHandle<JSSymbol> symbol = factory->NewPublicSymbolWithChar("bbb");
+        CString str = ConvertToString(symbol.GetTaggedValue());
+        EXPECT_EQ(str, CString("bbb"));
+}
+
+HWTEST_F_L0(JSSymbolTest, ConvertToString002)
+{
+        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+        JSHandle<JSSymbol> symbol = factory->NewPublicSymbolWithChar("");
+        symbol->SetDescription(thread, JSTaggedValue::Undefined());
+        symbol->SetFlags(0);
+        symbol->SetHashField(0);
+        CString str = ConvertToString(symbol.GetTaggedValue());
+        EXPECT_EQ(str, CString("Symbol()"));
+}
 }  // namespace panda::test
