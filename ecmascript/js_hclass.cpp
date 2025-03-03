@@ -910,6 +910,23 @@ TransitionResult JSHClass::ConvertOrTransitionWithRep(const JSThread *thread,
     return {true, false, value.GetTaggedValue()};
 }
 
+void JSHClass::MergeRepresentation(const JSThread *thread, JSHClass *oldJsHClass, JSHClass *newJsHClass)
+{
+    JSHandle<LayoutInfo> oldLayout(thread, oldJsHClass->GetLayout());
+    JSHandle<LayoutInfo> newLayout(thread, newJsHClass->GetLayout());
+    int numberOfProps = static_cast<int>(oldJsHClass->NumberOfProps());
+    for (int i = 0; i < numberOfProps; i++) {
+        PropertyAttributes oldAttr = oldLayout->GetAttr(i);
+        PropertyAttributes newAttr = newLayout->GetAttr(i);
+        ASSERT(oldAttr.IsInlinedProps());
+        if (oldAttr.GetRepresentation() == newAttr.GetRepresentation()) {
+            continue;
+        }
+        oldAttr.SetRepresentation(newAttr.GetRepresentation());
+        oldLayout->SetNormalAttr(thread, i, oldAttr);
+    }
+}
+
 JSHandle<JSTaggedValue> JSHClass::EnableProtoChangeMarker(const JSThread *thread, const JSHandle<JSHClass> &jshclass)
 {
     JSTaggedValue proto = jshclass->GetPrototype();

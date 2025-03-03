@@ -489,6 +489,7 @@ public:
     static TransitionResult PUBLIC_API ConvertOrTransitionWithRep(const JSThread *thread,
         const JSHandle<JSObject> &receiver, const JSHandle<JSTaggedValue> &key, const JSHandle<JSTaggedValue> &value,
         PropertyAttributes &attr);
+    static void PUBLIC_API MergeRepresentation(const JSThread *thread, JSHClass *oldJsHClass, JSHClass *newJsHClass);
 
     static void UpdateFieldType(JSHClass *hclass, const PropertyAttributes &attr);
     static JSHClass *FindFieldOwnHClass(JSHClass *hclass, const PropertyAttributes &attr);

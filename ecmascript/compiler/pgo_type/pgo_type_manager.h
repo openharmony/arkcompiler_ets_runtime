@@ -156,6 +156,8 @@ public:
         }
     }
 
+    void PUBLIC_API MergeRepresentationForProtoTransition();
+
 private:
     // snapshot
     void GenHClassInfo();

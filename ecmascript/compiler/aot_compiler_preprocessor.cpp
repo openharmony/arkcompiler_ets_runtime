@@ -340,6 +340,9 @@ void AotCompilerPreprocessor::GeneratePGOTypes()
         PGOTypeParser parser(profilerDecoder_, ptManager);
         parser.CreatePGOType(collector);
     }
+    if (vm_->GetJSOptions().IsEnableOptTrackField()) {
+        ptManager->MergeRepresentationForProtoTransition();
+    }
 }
 
 void AotCompilerPreprocessor::SnapshotInitialize()
