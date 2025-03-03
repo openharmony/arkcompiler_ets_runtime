@@ -892,13 +892,20 @@ size_t JSThread::GetAsmStackLimit()
     LOG_INTERPRETER(DEBUG) << "Used stack before js stack start: "
                            << reinterpret_cast<void *>(threadStackStart - GetCurrentStackPosition());
     LOG_INTERPRETER(DEBUG) << "Current thread asm stack limit: " << reinterpret_cast<void *>(result);
-
+    uintptr_t currentThreadAsmStackLimit = result;
     // To avoid too much times of stack overflow checking, we only check stack overflow before push vregs or
     // parameters of variable length. So we need a reserved size of stack to make sure stack won't be overflowed
     // when push other data.
     result += EcmaParamConfiguration::GetDefaultReservedStackSize();
     if (threadStackStart <= result) {
-        LOG_FULL(FATAL) << "Too small stackSize to run jsvm";
+        LOG_FULL(FATAL) << "Too small stackSize to run jsvm"
+                        << ", currentStackPosition: " << reinterpret_cast<void *>(GetCurrentStackPosition())
+                        << ", stackAddr: " << reinterpret_cast<void *>(stackAddr) << ", size: " << size
+                        << ", threadStackLimit: " << reinterpret_cast<void *>(threadStackLimit)
+                        << ", Current thread stack start: " << reinterpret_cast<void *>(threadStackStart)
+                        << ", Used stack before js stack start: "
+                        << reinterpret_cast<void *>(threadStackStart - GetCurrentStackPosition())
+                        << ", Current thread asm stack limit: " << reinterpret_cast<void *>(currentThreadAsmStackLimit);
     }
     return result;
 #else
