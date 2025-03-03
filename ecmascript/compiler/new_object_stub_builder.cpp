@@ -1234,6 +1234,7 @@ GateRef NewObjectStubBuilder::EnumerateObjectProperties(GateRef glue, GateRef ob
     Label empty(env);
     Label tryGetEnumCache(env);
     Label cacheHit(env);
+    Label checkNativePointer(env);
     BRANCH(TaggedIsString(obj), &isString, &isNotString);
     Bind(&isString);
     {
@@ -1246,7 +1247,9 @@ GateRef NewObjectStubBuilder::EnumerateObjectProperties(GateRef glue, GateRef ob
         Jump(&afterObjectTransform);
     }
     Bind(&afterObjectTransform);
-    BRANCH(TaggedIsUndefinedOrNull(*object), &empty, &tryGetEnumCache);
+    BRANCH(TaggedIsUndefinedOrNull(*object), &empty, &checkNativePointer);
+    Bind(&checkNativePointer);
+    BRANCH(IsNativePointer(*object), &empty, &tryGetEnumCache);
     Bind(&tryGetEnumCache);
     GateRef enumCache = TryGetEnumCache(glue, *object);
     BRANCH(TaggedIsUndefined(enumCache), &slowpath, &cacheHit);
