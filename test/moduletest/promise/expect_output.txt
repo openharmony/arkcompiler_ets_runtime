@@ -11,6 +11,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+original === cast ? true
+value:33
 reject
 1357
 catch

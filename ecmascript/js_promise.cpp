@@ -91,6 +91,17 @@ JSHandle<PromiseCapability> JSPromise::NewPromiseCapability(JSThread *thread, co
     // 3. Let promiseCapability be a new PromiseCapability { [[Promise]]: undefined, [[Resolve]]: undefined,
     //    [[Reject]]: undefined }.
     JSHandle<PromiseCapability> promiseCapability = factory->NewPromiseCapability();
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+    if (obj == env->GetPromiseFunction()) {
+        JSHandle<JSPromise> promise = factory->NewJSPromise();
+        JSHandle<ResolvingFunctionsRecord> resolvingFunctions = JSPromise::CreateResolvingFunctions(thread, promise);
+        promiseCapability->SetPromise(thread, promise);
+        auto resolveFunc = resolvingFunctions->GetResolveFunction();
+        auto rejectFunc = resolvingFunctions->GetRejectFunction();
+        promiseCapability->SetResolve(thread, resolveFunc);
+        promiseCapability->SetReject(thread, rejectFunc);
+        return promiseCapability;
+    }
     // 4. Let executor be a new built-in function object as defined in GetCapabilitiesExecutor Functions
     //    (25.4.1.5.1).
     JSHandle<JSPromiseExecutorFunction> executor = factory->CreateJSPromiseExecutorFunction();

@@ -319,6 +319,8 @@ public:
 
     JSHandle<PromiseCapability> NewPromiseCapability();
 
+    JSHandle<JSPromise> NewJSPromise();
+
     JSHandle<PromiseReaction> NewPromiseReaction();
 
     JSHandle<PromiseRecord> NewPromiseRecord();

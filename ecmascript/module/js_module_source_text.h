@@ -425,7 +425,7 @@ private:
     static int HandleInstantiateException(JSHandle<SourceTextModule> &module,
                                           const CVector<JSHandle<SourceTextModule>> &stack, int result);
     static void HandleEvaluateResult(JSThread *thread, JSHandle<SourceTextModule> &module,
-                                     JSHandle<PromiseCapability> &capability,
+                                     JSHandle<JSPromise> &capability,
                                      const CVector<JSHandle<SourceTextModule>> &stack,
                                      const CVector<JSHandle<SourceTextModule>> &errorStack);
     static void HandleConcurrentEvaluateResult(JSThread *thread, JSHandle<SourceTextModule> &module,

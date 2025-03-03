@@ -52,3 +52,10 @@ p4.then(
         print(value);
     }
 )
+
+const original = Promise.resolve(33);
+const cast = Promise.resolve(original);
+cast.then((value) => {
+  print(`value:${value}`);
+});
+print(`original === cast ? ${original === cast}`);

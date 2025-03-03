@@ -2668,6 +2668,15 @@ JSHandle<PromiseCapability> ObjectFactory::NewPromiseCapability()
     return obj;
 }
 
+JSHandle<JSPromise> ObjectFactory::NewJSPromise()
+{
+    NewObjectHook();
+    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
+    JSHandle<JSFunction> promiseObj(env->GetPromiseFunction());
+    JSHandle<JSPromise> jsPromise = JSHandle<JSPromise>(NewJSObjectByConstructor(promiseObj));
+    return jsPromise;
+}
+
 JSHandle<PromiseReaction> ObjectFactory::NewPromiseReaction()
 {
     NewObjectHook();
