@@ -18,7 +18,7 @@
 #include "ecmascript/containers/containers_errors.h"
 #include "ecmascript/js_api/js_api_bitvector.h"
 namespace panda::ecmascript::containers {
-const static uint32_t targetApiVersion = 16;
+const static uint32_t targetApiVersion = 18;
 JSTaggedValue ContainersBitVector::BitVectorConstructor(EcmaRuntimeCallInfo* argv)
 {
     ASSERT(argv);
