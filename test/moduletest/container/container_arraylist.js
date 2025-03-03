@@ -48,7 +48,7 @@ if (globalThis["ArkPrivate"] != undefined) {
 
     {
         let temp = ArkTools.getAPIVersion();
-        ArkTools.setAPIVersion(16);
+        ArkTools.setAPIVersion(18);
         let isClear = false;
         let tempArr = new arrayList();
         tempArr.add(1);

@@ -586,7 +586,7 @@ JSTaggedValue ContainersArrayList::Sort(EcmaRuntimeCallInfo *argv)
     }
     auto obj = JSHandle<JSAPIArrayList>::Cast(self);
     JSHandle<TaggedArray> elements(thread, obj->GetElements());
-    if (thread->GetEcmaVM()->GetVMAPIVersion() < API16) {
+    if (thread->GetEcmaVM()->GetVMAPIVersion() < API18) {
         JSAPIArrayList::SortElements(thread, elements, callbackFnHandle);
     } else {
         // elements.length equal or greater than arraylist.length
