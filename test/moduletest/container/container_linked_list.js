@@ -414,5 +414,22 @@ if (globalThis["ArkPrivate"] != undefined) {
     const v1 = new LinkedList();
     v1[2147483648] = v1;
     print(v1.length);
+
+    /*
+     * @tc.name: checkcontainerloadhclass
+     * @tc.desc: Test ContainersLinkedListStubBuilder::ForEach whether judge isHeapObject
+     *           before loading hClass.
+     * @tc.type: FUNC
+     * @tc.require: issueIBQ709
+     */
+    {
+        let v1 = new LinkedList(0);
+        let arr1 = [1];
+        try {
+            Reflect.apply(v1.forEach, 123, arr1);
+        } catch (e) {
+            print(e);
+        }
+    }
 }
 export let linked_listRes = "Test LinkedList done";

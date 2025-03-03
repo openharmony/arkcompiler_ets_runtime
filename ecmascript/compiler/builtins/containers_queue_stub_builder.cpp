@@ -45,7 +45,10 @@ void ContainersQueueStubBuilder::ForEach(GateRef glue, GateRef thisValue, GateRe
     Label loopEnd(env);
     Label next(env);
     Label afterLoop(env);
+    Label thisValueIsHeapObj(env);
     GateRef callbackFnHandle;
+    BRANCH(TaggedIsHeapObject(thisValue), &thisValueIsHeapObj, slowPath);
+    Bind(&thisValueIsHeapObj);
     BRANCH(IsJSAPIQueue(*thisObj), &valueIsJSAPIQueue, &valueNotJSAPIQueue);
     Bind(&valueNotJSAPIQueue);
     {
