@@ -187,6 +187,11 @@ Local<JSValueRef> RejectCallback(JsiRuntimeCallInfo *info)
     return JSValueRef::Undefined(info->GetVM());
 }
 
+struct StackInfo {
+    uint64_t stackLimit;
+    uint64_t lastLeaveFrame;
+};
+
 /**
  * @tc.number: ffi_interface_api_105
  * @tc.name: JSValueRef_IsGeneratorObject
@@ -1653,5 +1658,25 @@ HWTEST_F_L0(JSNApiTests, TryGetArrayLengthTest006)
     // clear exception
     JSNApi::GetAndClearUncaughtException(vm_);
     ASSERT_EQ(thread->HasPendingException(), false);
+}
+
+/**
+ * @tc.number: ffi_interface_api_147
+ * @tc.name: UpdateStackInfo
+ * @tc.desc: Used to verify whether the function of update stack info was successful.
+ * @tc.type: FUNC
+ * @tc.require: parameter
+ */
+HWTEST_F_L0(JSNApiTests, UpdateStackInfo)
+{
+    LocalScope scope(vm_);
+    StackInfo stackInfo = { 0x10000, 0 };
+    uint64_t currentStackLimit = vm_->GetJSThread()->GetStackLimit();
+    JSNApi::UpdateStackInfo(vm_, &stackInfo, 0);
+    ASSERT_EQ(vm_->GetJSThread()->GetStackLimit(), 0x10000);
+    JSNApi::UpdateStackInfo(vm_, &stackInfo, 1);
+    ASSERT_EQ(vm_->GetJSThread()->GetStackLimit(), currentStackLimit);
+    JSNApi::UpdateStackInfo(vm_, nullptr, 0);
+    ASSERT_EQ(vm_->GetJSThread()->GetStackLimit(), currentStackLimit);
 }
 } // namespace panda::test
