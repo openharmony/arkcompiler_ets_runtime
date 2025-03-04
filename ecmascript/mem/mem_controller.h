@@ -52,6 +52,7 @@ public:
 
     void StartCalculationBeforeGC();
     void StopCalculationAfterGC(TriggerGCType gcType);
+    void ResetCalculationWithoutGC();
 
     void RecordAllocationForIdle();
     double GetIdleNewSpaceAllocationThroughputPerMS() const;

@@ -1277,6 +1277,7 @@ void Heap::CollectGarbageImpl(TriggerGCType gcType, GCReason reason)
                         TriggerConcurrentMarking();
                         oldGCRequested_ = true;
                         ProcessGCListeners();
+                        memController_->ResetCalculationWithoutGC();
                         return;
                     }
                     partialGC_->RunPhases();
