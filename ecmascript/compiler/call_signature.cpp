@@ -1078,7 +1078,11 @@ DEF_CALL_SIGNATURE(Builtins)
         VariableType::JS_ANY(),            // arg1
         VariableType::JS_ANY(),            // arg2
     };
+#if ENABLE_NEXT_OPTIMIZATION
+    callSign->SetVariadicArgs(false);
+#else
     callSign->SetVariadicArgs(true);
+#endif
     callSign->SetParameters(params.data());
     callSign->SetTargetKind(CallSignature::TargetKind::BUILTINS_STUB);
     callSign->SetCallConv(CallSignature::CallConv::CCallConv);
