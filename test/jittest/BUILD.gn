@@ -33,6 +33,7 @@ group("ark_jit_ts_test") {
     "data_view",
     "pgo_ldobjbyvalue_string",
     "pgo_ldobjbyvalue_symbol",
+    "pgo_stobjbyvalue",
     "construct_with_normal_function",
     "addition_assignment",
     "catch_with_osr",

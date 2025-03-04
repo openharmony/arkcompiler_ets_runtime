@@ -2840,7 +2840,7 @@ GateRef StubBuilder::ICStoreElement(GateRef glue, GateRef receiver, GateRef key,
                     if (updateHandler) {
                         Label update(env);
                         GateRef oldHandler = GetValueFromTaggedArray(profileTypeInfo, slotId);
-                        BRANCH(Equal(oldHandler, Hole()), &handerInfoNotJSArray, &update);
+                        BRANCH(Equal(oldHandler, *varHandler), &update, &handerInfoNotJSArray);
                         Bind(&update);
                         handler = Int64ToTaggedInt(UpdateSOutOfBoundsForHandler(handlerInfo));
                         SetValueToTaggedArray(VariableType::JS_ANY(), glue, profileTypeInfo, slotId, handler);
