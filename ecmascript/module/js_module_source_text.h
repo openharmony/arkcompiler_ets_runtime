@@ -293,7 +293,8 @@ public:
 
     static constexpr size_t SOURCE_TEXT_MODULE_OFFSET = ModuleRecord::SIZE;
     ACCESSORS(Environment, SOURCE_TEXT_MODULE_OFFSET, NAMESPACE_OFFSET);
-    ACCESSORS(Namespace, NAMESPACE_OFFSET, REQUESTED_MODULES_OFFSET);
+    ACCESSORS(Namespace, NAMESPACE_OFFSET, MODULE_REQUESTS_OFFSET);
+    ACCESSORS(ModuleRequests, MODULE_REQUESTS_OFFSET, REQUESTED_MODULES_OFFSET);
     ACCESSORS(RequestedModules, REQUESTED_MODULES_OFFSET, IMPORT_ENTRIES_OFFSET);
     ACCESSORS(ImportEntries, IMPORT_ENTRIES_OFFSET, LOCAL_EXPORT_ENTTRIES_OFFSET);
     ACCESSORS(LocalExportEntries, LOCAL_EXPORT_ENTTRIES_OFFSET, INDIRECT_EXPORT_ENTTRIES_OFFSET);
@@ -388,15 +389,17 @@ public:
                                      const JSHandle<SourceTextModule> &module, CList<CString> &referenceList,
                                      CString &requiredModuleName, bool printOtherCircular);
     static void CheckResolvedIndexBinding(JSThread *thread, const JSHandle<SourceTextModule> &module);
-    static void SetExportName(JSThread *thread,
-                              const JSHandle<JSTaggedValue> &moduleRequest, const JSHandle<SourceTextModule> &module,
+    static void SetExportName(JSThread *thread, const JSHandle<SourceTextModule> requestedModule,
                               CVector<std::string> &exportedNames, JSHandle<TaggedArray> &newExportStarSet);
     static void RecordEvaluatedOrError(JSThread *thread, JSHandle<SourceTextModule> module);
+    static JSHandle<JSTaggedValue> GetRequestedModule(JSThread *thread,
+                                                      const JSHandle<SourceTextModule> module,
+                                                      const JSHandle<TaggedArray> requestedModules,
+                                                      uint32_t idx);
 
 private:
     static JSHandle<JSTaggedValue> GetStarResolution(JSThread *thread, const JSHandle<JSTaggedValue> &exportName,
-                                                     const JSHandle<JSTaggedValue> &moduleRequest,
-                                                     const JSHandle<SourceTextModule> &module,
+                                                     const JSHandle<SourceTextModule> importedModule,
                                                      JSMutableHandle<JSTaggedValue> &starResolution,
                                                      CVector<std::pair<JSHandle<SourceTextModule>,
                                                      JSHandle<JSTaggedValue>>> &resolveVector);
@@ -421,7 +424,9 @@ private:
                                                              JSHandle<SourceTextModule> &module,
                                                              JSMutableHandle<JSTaggedValue> &required,
                                                              CVector<JSHandle<SourceTextModule>> &stack,
-                                                             int &index, const ExecuteTypes &executeType);
+                                                             JSHandle<TaggedArray> requestModules,
+                                                             size_t &moduleRequestsIdx, int &index,
+                                                             const ExecuteTypes &executeType);
     static int HandleInstantiateException(JSHandle<SourceTextModule> &module,
                                           const CVector<JSHandle<SourceTextModule>> &stack, int result);
     static void HandleEvaluateResult(JSThread *thread, JSHandle<SourceTextModule> &module,

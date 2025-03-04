@@ -36,16 +36,13 @@ public:
     NO_MOVE_OPERATOR(ModuleDataAccessor);
     NO_COPY_OPERATOR(ModuleDataAccessor);
 
-    void EnumerateImportEntry(JSThread *thread, const JSHandle<TaggedArray> &requestModuleArray,
-                              JSHandle<SourceTextModule> &moduleRecord);
+    void EnumerateImportEntry(JSThread *thread, JSHandle<SourceTextModule> &moduleRecord);
 
     void EnumerateLocalExportEntry(JSThread *thread, JSHandle<SourceTextModule> &moduleRecord);
 
-    void EnumerateIndirectExportEntry(JSThread *thread, const JSHandle<TaggedArray> &requestModuleArray,
-                                      JSHandle<SourceTextModule> &moduleRecord);
+    void EnumerateIndirectExportEntry(JSThread *thread, JSHandle<SourceTextModule> &moduleRecord);
 
-    void EnumerateStarExportEntry(JSThread *thread, const JSHandle<TaggedArray> &requestModuleArray,
-                                  JSHandle<SourceTextModule> &moduleRecord);
+    void EnumerateStarExportEntry(JSThread *thread, JSHandle<SourceTextModule> &moduleRecord);
     JSHandle<TaggedArray> CreatEntries(JSThread *thread, uint32_t regularImportNum, SharedTypes sharedType);
 
     panda_file::File::EntityId GetModuleDataId() const
@@ -53,22 +50,20 @@ public:
         return moduleDataId_;
     }
 
-    const std::vector<uint32_t>& getRequestModules() const
+    const std::vector<uint32_t>& getModuleRequests() const
     {
         return moduleRequests_;
     }
 
 private:
     void ReadRegularImportEntry(Span<const uint8_t> *sp, ObjectFactory *factory,
-                                const JSHandle<TaggedArray> &requestModuleArray,
                                 JSMutableHandle<JSTaggedValue> &importName,
                                 JSMutableHandle<JSTaggedValue> &localName,
-                                JSMutableHandle<JSTaggedValue> &moduleRequest);
+                                uint32_t &moduleRequestIdx);
 
     void ReadNamespaceImportEntry(Span<const uint8_t> *sp, ObjectFactory *factory,
-                                  const JSHandle<TaggedArray> &requestModuleArray,
                                   JSMutableHandle<JSTaggedValue> &localName,
-                                  JSMutableHandle<JSTaggedValue> &moduleRequest);
+                                  uint32_t &moduleRequestIdx);
 
     const JSPandaFile *pandaFile_;
     panda_file::File::EntityId moduleDataId_;
