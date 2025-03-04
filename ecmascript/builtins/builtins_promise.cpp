@@ -15,6 +15,8 @@
 
 #include "ecmascript/builtins/builtins_promise.h"
 #include "ecmascript/builtins/builtins_promise_job.h"
+#include "ecmascript/debugger/js_debugger_manager.h"
+#include "ecmascript/dfx/stackinfo/async_stack_trace.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/jobs/micro_job_queue.h"
@@ -367,6 +369,18 @@ JSTaggedValue BuiltinsPromise::Then(EcmaRuntimeCallInfo *argv)
 
     JSHandle<JSTaggedValue> onFulfilled = BuiltinsBase::GetCallArg(argv, 0);
     JSHandle<JSTaggedValue> onRejected = BuiltinsBase::GetCallArg(argv, 1);
+    if (ecmaVm->GetJsDebuggerManager()->IsAsyncStackTrace()) {
+        std::string description;
+        if (onRejected->IsUndefined()) {
+            description = "promise.then";
+        } else if (onFulfilled->IsUndefined()) {
+            description = "promise.catch";
+        } else {
+            description = "promise.finally";
+        }
+        ecmaVm->GetAsyncStackTrace()->InsertAsyncTaskStacks(
+            JSHandle<JSPromise>(thread, resultCapability->GetPromise()), description);
+    }
 
     // 7. Return PerformPromiseThen(promise, onFulfilled, onRejected, resultCapability).
     return PerformPromiseThen(thread, JSHandle<JSPromise>::Cast(promise), onFulfilled, onRejected, resultCapability);

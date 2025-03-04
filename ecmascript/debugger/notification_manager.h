@@ -18,6 +18,7 @@
 
 #include <string_view>
 
+#include "ecmascript/dfx/stackinfo/async_stack_trace.h"
 #include "ecmascript/js_handle.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/method.h"
@@ -42,6 +43,7 @@ public:
     virtual void NativeReturn(const void *nativeAddress) = 0;
     virtual void MethodEntry(JSHandle<Method> method, JSHandle<JSTaggedValue> envHandle) = 0;
     virtual void MethodExit(JSHandle<Method> method) = 0;
+    virtual void GenerateAsyncFrames(std::shared_ptr<AsyncStack> asyncStack, bool skipTopFrame) = 0;
 };
 
 class NotificationManager {
@@ -64,6 +66,13 @@ public:
                 listeners_.erase(it);
                 return;
             }
+        }
+    }
+
+    void GenerateAsyncFramesEvent(std::shared_ptr<AsyncStack> asyncStack, bool skipTopFrame) const
+    {
+        for (auto it: listeners_) {
+            it->GenerateAsyncFrames(asyncStack, skipTopFrame);
         }
     }
 

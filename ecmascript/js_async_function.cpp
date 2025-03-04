@@ -18,6 +18,8 @@
 #include "ecmascript/async_generator_helper.h"
 #include "ecmascript/builtins/builtins_promise.h"
 #include "ecmascript/builtins/builtins_promise_handler.h"
+#include "ecmascript/debugger/js_debugger_manager.h"
+#include "ecmascript/dfx/stackinfo/async_stack_trace.h"
 #include "ecmascript/generator_helper.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/interpreter/interpreter.h"
@@ -133,6 +135,10 @@ void JSAsyncFunction::AsyncFunctionAwait(JSThread *thread, const JSHandle<JSTagg
         JSPromise::NewPromiseCapability(thread, JSHandle<JSTaggedValue>::Cast(env->GetPromiseFunction()));
     RETURN_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSPromise>(thread, tcap->GetPromise())->SetPromiseIsHandled(true);
+    if (thread->GetEcmaVM()->GetJsDebuggerManager()->IsAsyncStackTrace()) {
+        thread->GetEcmaVM()->GetAsyncStackTrace()->InsertAsyncTaskStacks(
+            JSHandle<JSPromise>(thread, tcap->GetPromise()), "await");
+    }
 
     // 10.Perform ! PerformPromiseThen(promiseCapability.[[Promise]], onFulfilled, onRejected, throwawayCapability).
     JSHandle<JSObject> promise = JSHandle<JSObject>::Cast(promiseValue);

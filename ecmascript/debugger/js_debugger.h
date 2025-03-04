@@ -122,6 +122,13 @@ public:
     void RemoveAllBreakpoints() override;
     bool RemoveBreakpointsByUrl(const std::string &url) override;
     void BytecodePcChanged(JSThread *thread, JSHandle<Method> method, uint32_t bcOffset) override;
+    void GenerateAsyncFrames(std::shared_ptr<AsyncStack> asyncStack, bool skipTopFrame) override
+    {
+        if (hooks_ == nullptr) {
+            return;
+        }
+        hooks_->GenerateAsyncFrames(asyncStack, skipTopFrame);
+    }
     void LoadModule(std::string_view filename, std::string_view entryPoint) override
     {
         if (hooks_ == nullptr) {
