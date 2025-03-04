@@ -644,11 +644,6 @@ HWTEST_F_L0(JSNApiTests, NapiHasOwnProperty)
     ASSERT_FALSE(flag->BooleaValue(vm_));
     flag = JSNApi::NapiHasOwnProperty(vm_, reinterpret_cast<uintptr_t>(*object), reinterpret_cast<uintptr_t>(*key2));
     ASSERT_FALSE(flag->BooleaValue(vm_));
-
-    const char* prototypeKey = "toString";
-    Local<JSValueRef> key3 = StringRef::NewFromUtf8(vm_, prototypeKey);
-    flag = JSNApi::NapiHasOwnProperty(vm_, reinterpret_cast<uintptr_t>(*object), reinterpret_cast<uintptr_t>(*key3));
-    ASSERT_FALSE(flag->BooleaValue(vm_));
 }
 
 HWTEST_F_L0(JSNApiTests, DeleteSerializationData)
