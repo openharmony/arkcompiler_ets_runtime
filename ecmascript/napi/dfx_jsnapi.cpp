@@ -66,12 +66,13 @@ void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unus
 #endif
 }
 
-void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unused]] int fd,
+void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unused]] int& fd,
                                  [[maybe_unused]] const DumpSnapShotOption &dumpOption,
                                  [[maybe_unused]] const std::function<void(uint8_t)> &callback)
 {
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
     FileDescriptorStream stream(fd);
+    fd = -1;
     DumpHeapSnapshot(vm, &stream, dumpOption, nullptr, callback);
 #else
     LOG_ECMA(ERROR) << "Not support arkcompiler heap snapshot";

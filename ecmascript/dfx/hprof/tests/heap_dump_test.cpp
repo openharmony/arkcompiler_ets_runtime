@@ -100,18 +100,21 @@ public:
         return heapProfile->GetIdCount();
     }
 
-    bool GenerateRawHeapSnashot(const std::string &filePath)
+    bool GenerateRawHeapSnashot(const std::string &filePath, DumpFormat dumpFormat = DumpFormat::BINARY,
+                                bool isSync = true, Progress *progress = nullptr,
+                                std::function<void(uint8_t)> callback = [] (uint8_t) {})
     {
         HeapProfilerInterface *heapProfile = HeapProfilerInterface::GetInstance(instance);
         DumpSnapShotOption dumpOption;
-        dumpOption.dumpFormat = DumpFormat::BINARY;
+        dumpOption.dumpFormat = dumpFormat;
+        dumpOption.isSync = isSync;
         dumpOption.isDumpOOM = true;
         fstream outputString(filePath, std::ios::out);
         outputString.close();
         outputString.clear();
         int fd = open(filePath.c_str(), O_RDWR | O_CREAT);
         FileDescriptorStream stream(fd);
-        auto ret = heapProfile->DumpHeapSnapshot(&stream, dumpOption);
+        auto ret = heapProfile->DumpHeapSnapshot(&stream, dumpOption, progress, callback);
         stream.EndOfStream();
         return ret;
     }
@@ -1149,6 +1152,55 @@ HWTEST_F_L0(HeapDumpTest, TestHeapDumpBinaryDump)
     auto u64Ptr = reinterpret_cast<const uint64_t *>(content.c_str());
     ASSERT_TRUE(u64Ptr[1] > 0);
     std::string snapshotPath("test_binary_dump.heapsnapshot");
+    tester.DecodeRawHeapSnashot(rawHeapPath, snapshotPath);
+    ASSERT_TRUE(tester.MatchHeapDumpString(snapshotPath, "\"SharedArrayBuffer\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString(snapshotPath, "\"WeakSet\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString(snapshotPath, "\"WeakMap\""));
+}
+
+#ifdef PANDA_TARGET_ARM32
+HWTEST_F_L0(HeapDumpTest, DISABLED_TestHeapDumpBinaryDumpByForkWithCallback)
+#else
+HWTEST_F_L0(HeapDumpTest, TestHeapDumpBinaryDumpByForkWithCallback)
+#endif
+{
+    ObjectFactory *factory = ecmaVm_->GetFactory();
+    HeapDumpTestHelper tester(ecmaVm_);
+    // PROMISE_ITERATOR_RECORD
+    tester.NewPromiseIteratorRecord();
+    // PROMISE_RECORD
+    factory->NewPromiseRecord();
+    // JS_ARRAY_BUFFER
+    factory->NewJSArrayBuffer(10);
+    // JS_SHARED_ARRAY_BUFFER
+    factory->NewJSSharedArrayBuffer(10);
+    // PROMISE_REACTIONS
+    factory->NewPromiseReaction();
+    // PROMISE_CAPABILITY
+    factory->NewPromiseCapability();
+    // RESOLVING_FUNCTIONS_RECORD
+    factory->NewResolvingFunctionsRecord();
+    // JS_PROMISE
+    JSHandle<JSTaggedValue> proto = ecmaVm_->GetGlobalEnv()->GetFunctionPrototype();
+    tester.NewObject(JSPromise::SIZE, JSType::JS_PROMISE, proto);
+    // ASYNC_GENERATOR_REQUEST
+    factory->NewAsyncGeneratorRequest();
+    // JS_WEAK_SET
+    tester.NewJSWeakSet();
+    // JS_WEAK_MAP
+    tester.NewJSWeakMap();
+    std::string rawHeapPath("test_binary_dump_by_fork_with_callback.raw");
+    bool ret = tester.GenerateRawHeapSnashot(rawHeapPath, DumpFormat::BINARY, false, nullptr,
+        [] (uint8_t retCode) {
+            ASSERT_TRUE(retCode == static_cast<uint8_t>(DumpHeapSnapshotStatus::SUCCESS));
+    });
+    ASSERT_TRUE(ret);
+    std::ifstream file(rawHeapPath, std::ios::binary);
+    std::string content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+    ASSERT_TRUE(content.size() > 0);
+    auto u64Ptr = reinterpret_cast<const uint64_t *>(content.c_str());
+    ASSERT_TRUE(u64Ptr[1] > 0);
+    std::string snapshotPath("test_binary_dump_by_fork_with_callback.heapsnapshot");
     tester.DecodeRawHeapSnashot(rawHeapPath, snapshotPath);
     ASSERT_TRUE(tester.MatchHeapDumpString(snapshotPath, "\"SharedArrayBuffer\""));
     ASSERT_TRUE(tester.MatchHeapDumpString(snapshotPath, "\"WeakSet\""));
