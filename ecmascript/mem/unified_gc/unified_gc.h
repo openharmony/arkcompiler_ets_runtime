@@ -44,7 +44,7 @@ public:
 
     void StartXGCBarrier()
     {
-        stsVMInterface_->StartXGCBarrier();
+        stsVMInterface_->StartXGCBarrier(nullptr);
     }
 
     void FinishXGCBarrier()
