@@ -70,6 +70,14 @@ public:
     bool CheckIfKeyPauseTime() const;
     void SendSysEventBeforeDump(std::string type, size_t limitSize, size_t activeMemory) const;
     void ProcessLongGCEvent();
+    static bool IsIdle(GCReason gcReason)
+    {
+        if (gcReason == GCReason::IDLE || gcReason == GCReason::IDLE_NATIVE) {
+            return true;
+        }
+        return false;
+    }
+
     void IncGCCount()
     {
         gcCount_++;
