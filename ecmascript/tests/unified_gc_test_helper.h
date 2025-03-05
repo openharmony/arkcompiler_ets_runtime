@@ -85,7 +85,10 @@ public:
     void OnVMAttach() override {}
     void OnVMDetach() override {}
 
-    void StartXGCBarrier() override {}
+    bool StartXGCBarrier(const NoWorkPred &func) override
+    {
+        return true;
+    }
     bool WaitForConcurrentMark(const NoWorkPred &func) override
     {
         if (func && !func()) {
