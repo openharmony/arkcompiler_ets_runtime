@@ -445,6 +445,8 @@ void BuiltinsTypedArrayStubBuilder::Reverse(GateRef glue, GateRef thisValue, [[m
     Label isFastTypedArray(env);
     Label defaultConstr(env);
     Label notDetached(env);
+    Label notEmpty(env);
+    Label writeResult(env);
 
     BRANCH(IsEcmaObject(thisValue), &ecmaObj, slowPath);
     Bind(&ecmaObj);
@@ -456,7 +458,12 @@ void BuiltinsTypedArrayStubBuilder::Reverse(GateRef glue, GateRef thisValue, [[m
     GateRef buffer = GetViewedArrayBuffer(thisValue);
     BRANCH(IsDetachedBuffer(buffer), slowPath, &notDetached);
     Bind(&notDetached);
+    GateRef arrLen = GetArrayLength(thisValue);
+    BRANCH(Int32Equal(arrLen, Int32(0)), &writeResult, &notEmpty);
+    Bind(&notEmpty);
     CallNGCRuntime(glue, RTSTUB_ID(ReverseTypedArray), {thisValue});
+    Jump(&writeResult);
+    Bind(&writeResult);
     result->WriteVariable(thisValue);
     Jump(exit);
 }
