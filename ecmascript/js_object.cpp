@@ -389,12 +389,6 @@ bool JSObject::IsArrayLengthWritable(JSThread *thread, const JSHandle<JSObject> 
 bool JSObject::CheckAndUpdateArrayLength(JSThread *thread, const JSHandle<JSObject> &receiver,
                                          uint32_t index, ElementsKind &kind)
 {
-    if (receiver->IsTypedArray() || receiver->IsSharedTypedArray()) {
-        if (!JSTypedArray::IsValidIntegerIndex(JSHandle<JSTaggedValue>(receiver), index)) {
-            return false;
-        }
-        return true;
-    }
     if (receiver->IsJSArray()) {
         DISALLOW_GARBAGE_COLLECTION;
         JSArray *arr = JSArray::Cast(*receiver);
