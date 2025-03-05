@@ -352,6 +352,7 @@
       panda::ecmascript::kungfu::PGOTypeManager::GetReceiverHIndexByPGOObjectInfoType*;
       panda::ecmascript::kungfu::PGOTypeManager::SetCurConstantPool*;
       panda::ecmascript::kungfu::PGOTypeManager::GetSymbolIdByProfileType*;
+      panda::ecmascript::kungfu::PGOTypeManager::MergeRepresentationForProtoTransition*;
       panda::ecmascript::kungfu::PGOTypeParser::CreatePGOType*;
       panda::ecmascript::kungfu::PGOTypeParser::PGOTypeParser*;
       panda::ecmascript::kungfu::PGOTypeRecorder::GetElementsKindForCreater*;

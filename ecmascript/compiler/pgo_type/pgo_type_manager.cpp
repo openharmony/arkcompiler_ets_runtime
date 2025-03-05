@@ -360,5 +360,21 @@ int PGOTypeManager::RecordAndGetHclassIndexForJIT(JSHClass* hclass)
     return pos_++;
 }
 
-
+void PGOTypeManager::MergeRepresentationForProtoTransition()
+{
+    for (auto &protoTransType : protoTransTypes_) {
+        JSTaggedValue ihc = QueryHClass(protoTransType.ihcType, protoTransType.ihcType);
+        JSTaggedValue baseIhc = QueryHClass(protoTransType.baseRootType, protoTransType.baseType);
+        JSTaggedValue transIhc = QueryHClass(protoTransType.transIhcType, protoTransType.transIhcType);
+        JSTaggedValue transPhc = QueryHClass(protoTransType.transPhcType, protoTransType.transPhcType);
+        if (ihc.IsUndefined() || baseIhc.IsUndefined() || transIhc.IsUndefined() || transPhc.IsUndefined()) {
+            LOG_COMPILER(DEBUG) << "broken prototype transition info!";
+            continue;
+        }
+        JSHClass::MergeRepresentation(thread_, JSHClass::Cast(baseIhc.GetTaggedObject()),
+            JSHClass::Cast(transPhc.GetTaggedObject()));
+        JSHClass::MergeRepresentation(thread_, JSHClass::Cast(ihc.GetTaggedObject()),
+            JSHClass::Cast(transIhc.GetTaggedObject()));
+    }
+}
 }  // namespace panda::ecmascript
