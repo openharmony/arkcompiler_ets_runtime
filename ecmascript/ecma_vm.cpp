@@ -408,6 +408,8 @@ EcmaVM::~EcmaVM()
         }
     }
 
+    intlCache_.ClearIcuCache(this);
+
     if (debuggerManager_ != nullptr) {
         delete debuggerManager_;
         debuggerManager_ = nullptr;

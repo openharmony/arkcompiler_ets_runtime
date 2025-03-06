@@ -97,6 +97,7 @@ class EcmaStringTable;
 class JSObjectResizingStrategy;
 class Jit;
 class JitThread;
+enum class CompareStringsOption : uint8_t;
 
 using NativePtrGetter = void* (*)(void* info);
 using SourceMapCallback = std::function<std::string(const std::string& rawStack)>;
@@ -115,6 +116,79 @@ using DeviceDisconnectCallback = std::function<bool()>;
 using UncatchableErrorHandler = std::function<void(panda::TryCatch&)>;
 using OnErrorCallback = std::function<void(Local<ObjectRef> value, void *data)>;
 using StopPreLoadSoCallback = std::function<void()>;
+
+enum class IcuFormatterType: uint8_t {
+    SIMPLE_DATE_FORMAT_DEFAULT,
+    SIMPLE_DATE_FORMAT_DATE,
+    SIMPLE_DATE_FORMAT_TIME,
+    NUMBER_FORMATTER,
+    COLLATOR,
+    ICU_FORMATTER_TYPE_COUNT
+};
+
+class IntlCache {
+public:
+    IntlCache() = default;
+
+    void SetDefaultLocale(const std::string& locale)
+    {
+        defaultLocale_ = locale;
+    }
+
+    const std::string& GetDefaultLocale() const
+    {
+        return defaultLocale_;
+    }
+
+    void SetDefaultCompareStringsOption(const CompareStringsOption csOption)
+    {
+        defaultCompareStringsOption_ = csOption;
+    }
+
+    std::optional<CompareStringsOption> GetDefaultCompareStringsOption() const
+    {
+        return defaultCompareStringsOption_;
+    }
+
+    void SetIcuFormatterToCache(IcuFormatterType type, const std::string& locale, void* icuObj,
+                                NativePointerCallback deleteEntry = nullptr)
+    {
+        icuObjCache_[static_cast<int>(type)] = IcuFormatter(locale, icuObj, deleteEntry);
+    }
+
+    void* GetIcuFormatterFromCache(IcuFormatterType type, const std::string& locale) const
+    {
+        const auto& icuFormatter = icuObjCache_[static_cast<int>(type)];
+        return icuFormatter.locale == locale ? icuFormatter.icuObj : nullptr;
+    }
+
+    void ClearIcuCache(void* vmPtr)
+    {
+        for (uint32_t i = 0; i < static_cast<uint32_t>(IcuFormatterType::ICU_FORMATTER_TYPE_COUNT); ++i) {
+            auto& icuFormatter = icuObjCache_[i];
+            if (icuFormatter.deleteEntry != nullptr) {
+                // Fill nullptr into the IcuDeleteEntry's unused env (specifically for napi) field.
+                icuFormatter.deleteEntry(nullptr, icuFormatter.icuObj, vmPtr);
+            }
+        }
+    }
+
+private:
+    class IcuFormatter {
+    public:
+        std::string locale;
+        void* icuObj {nullptr};
+        NativePointerCallback deleteEntry {nullptr};
+
+        IcuFormatter() = default;
+        IcuFormatter(const std::string& locale, void* icuObj, NativePointerCallback deleteEntry = nullptr)
+            : locale(locale), icuObj(icuObj), deleteEntry(deleteEntry) {}
+    };
+
+    std::string defaultLocale_;
+    std::optional<CompareStringsOption> defaultCompareStringsOption_ {std::nullopt};
+    IcuFormatter icuObjCache_[static_cast<uint32_t>(IcuFormatterType::ICU_FORMATTER_TYPE_COUNT)];
+};
 
 class EcmaVM {
 public:
@@ -415,7 +489,7 @@ public:
     {
         return onErrorData_;
     }
-    
+
     void AddStopPreLoadCallback(const StopPreLoadSoCallback &cb)
     {
         stopPreLoadCallbacks_.emplace_back(cb);
@@ -735,7 +809,7 @@ public:
     {
         return processStartRealtime_;
     }
-    
+
     void SetProcessStartRealtime(int value)
     {
         processStartRealtime_ = value;
@@ -825,12 +899,12 @@ public:
     {
         isCollectingScopeLockStats_ = true;
     }
-    
+
     void StopCollectingScopeLockStats()
     {
         isCollectingScopeLockStats_ = false;
     }
-    
+
     int GetEnterThreadManagedScopeCount() const
     {
         return enterThreadManagedScopeCount_;
@@ -895,6 +969,11 @@ public:
     void AddAOTSnapShotStats(std::string tag, uint32_t count = 1)
     {
         aotSnapShotStatsMap_[tag] += count;
+    }
+
+    IntlCache& GetIntlCache()
+    {
+        return intlCache_;
     }
 
     void PUBLIC_API PrintAOTSnapShotStats();
@@ -1053,6 +1132,8 @@ private:
     DeviceDisconnectCallback deviceDisconnectCallback_ {nullptr};
 
     UncatchableErrorHandler uncatchableErrorHandler_ {nullptr};
+
+    IntlCache intlCache_;
 
     friend class Snapshot;
     friend class SnapshotProcessor;
