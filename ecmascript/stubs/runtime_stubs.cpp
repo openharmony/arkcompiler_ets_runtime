@@ -14,6 +14,7 @@
  */
 
 
+#include "ecmascript/js_object.h"
 #include "ecmascript/stubs/runtime_optimized_stubs-inl.h"
 #include "ecmascript/stubs/runtime_stubs-inl.h"
 #include "ecmascript/base/json_stringifier.h"
@@ -4096,8 +4097,8 @@ DEF_RUNTIME_STUBS(TraceLoadDetail)
         auto prof = JSHandle<ProfileTypeInfo>::Cast(profile);
         auto slot = slotId.GetInt();
         auto first = prof->GetIcSlot(slot);
+        auto second = prof->GetIcSlot(slot + 1);
         if (first.IsHole()) {
-            auto second = prof->GetIcSlot(slot + 1);
             if (second.IsHole()) {
                 msg += "other-mega, ";
             // 1: Call SetAsMegaDFX and set it to 1 (for placeholder purposes)..
@@ -4114,17 +4115,51 @@ DEF_RUNTIME_STUBS(TraceLoadDetail)
         } else if (first.IsUndefined()) {
             msg += "undedfine slot, ";
         } else if (first.IsWeak()) {
-            msg += "mono, ";
+            if (second.IsPrototypeHandler()) {
+                msg += "mono prototype, ";
+            } else {
+                msg += "mono, ";
+            }
         } else {
             msg += "poly, ";
         }
+#if ECMASCRIPT_ENABLE_TRACE_LOAD_MORE
+        auto AddType = [&msg] (std::string_view s, JSHandle<JSTaggedValue> value) {
+            msg += s;
+            msg += " type: ";
+            if (value->IsHeapObject()) {
+                JSHandle<JSObject> obj(value);
+                msg += JSHClass::DumpJSType(obj->GetClass()->GetObjectType());
+            }
+            msg += ", ";
+        };
+        auto AddDepth = [&thread, &msg] (JSHandle<JSTaggedValue> value) {
+            int depth = 0;
+            while (value->IsECMAObject()) {
+                depth++;
+                auto currHC = value->GetTaggedObject()->GetClass();
+                auto proto = currHC->GetProto();
+                value = JSHandle<JSTaggedValue>(thread, proto);
+            }
+            msg += "Depth: " + std::to_string(depth);
+            msg += ", ";
+        };
+        bool isNeedDepth = true;
+        bool isNeedTypeInformation = true;
+        if (isNeedTypeInformation) {
+            AddType("Receiver", receiver);
+        }
+        if (isNeedDepth) {
+            AddDepth(receiver);
+        }
+#endif
     }
     if (!receiver->IsHeapObject()) {
         msg += "prim_obj";
     } else {
         msg += "heap_obj";
     }
-    ECMA_BYTRACE_START_TRACE(HITRACE_TAG_ARK, msg);
+    ECMA_BYTRACE_START_TRACE(HITRACE_TAG_ARK, msg.c_str());
 #endif
     return JSTaggedValue::Undefined().GetRawData();
 }
