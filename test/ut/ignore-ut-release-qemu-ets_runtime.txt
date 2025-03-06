@@ -8,3 +8,6 @@ obj/arkcompiler/ets_runtime/test/aottest/builtin_inlining/set/Delete/builtinSetD
 
 #23236
 obj/arkcompiler/ets_runtime/test/moduletest/hugearray/hugearryAsmAssertContext
+
+#22100
+obj/arkcompiler/ets_runtime/ecmascript/tests/GC_NewToOldPromotion_Test
