@@ -2615,7 +2615,7 @@ JSHandle<JSForInIterator> JSObject::EnumerateObjectProperties(JSThread *thread, 
 
     JSMutableHandle<JSTaggedValue> keys(thread, JSTaggedValue::Undefined());
     JSMutableHandle<JSTaggedValue> cachedHclass(thread, JSTaggedValue::Undefined());
-    if (object->IsNull() || object->IsUndefined()) {
+    if (object->IsNull() || object->IsUndefined() || object->IsJSNativePointer()) {
         JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
         ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
         keys.Update(factory->EmptyArray());

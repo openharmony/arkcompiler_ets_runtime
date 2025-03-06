@@ -62,4 +62,14 @@ HWTEST_F_L0(JSForinIteratorTest, Create)
     JSTaggedValue n4 = JSForInIterator::NextInternal(thread, it);
     EXPECT_EQ(n4, JSTaggedValue::Undefined());
 }
+
+HWTEST_F_L0(JSForinIteratorTest, ForinNativePointer)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    int pointArr[10];
+    auto *nativePointer = pointArr;
+    JSHandle<JSNativePointer> pointer = factory->NewJSNativePointer(nativePointer);
+    JSHandle<JSForInIterator> it = JSObject::EnumerateObjectProperties(thread, JSHandle<JSTaggedValue>(pointer));
+    EXPECT_EQ(it->GetLength(), 0);
+}
 }  // namespace panda::test
