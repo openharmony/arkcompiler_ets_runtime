@@ -229,6 +229,7 @@ enum CommandValues {
     OPTION_COMPILER_TRACE_BUILTINS,
     OPTION_ENABLE_HEAP_VERIFY,
     OPTION_COMPILER_ENABLE_DFX_HISYS_EVENT,
+    OPTION_ENABLE_LOADING_STUBS_LOG,
 };
 static_assert(OPTION_INVALID == 63); // Placeholder for invalid options
 static_assert(OPTION_SPLIT_ONE == 64); // add new option at the bottom, DO NOT modify this value
@@ -397,6 +398,16 @@ public:
     void SetEnableForceGC(bool value)
     {
         enableForceGc_ = value;
+    }
+
+    bool EnableLoadingStubsLog() const
+    {
+        return enableLoadingStubsLog_;
+    }
+
+    void SetEnableLoadingStubsLog(bool value)
+    {
+        enableLoadingStubsLog_ = value;
     }
 
     bool ForceFullGC() const
@@ -2152,6 +2163,7 @@ private:
     std::string compilerExternalPkgInfo_ {};
     bool compilerEnableExternalPkg_ {true};
     bool enableForceGc_ {true};
+    bool enableLoadingStubsLog_ {false};
     bool forceFullGc_ {true};
     bool enableHeapVerify_ {true};
     uint32_t forceSharedGc_ {1};

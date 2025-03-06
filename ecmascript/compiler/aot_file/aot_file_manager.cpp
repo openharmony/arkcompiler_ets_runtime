@@ -17,6 +17,7 @@
 
 #include "ecmascript/compiler/aot_snapshot/aot_snapshot_constants.h"
 #include "ecmascript/js_file_path.h"
+#include "ecmascript/message_string.h"
 #include "ecmascript/ohos/framework_helper.h"
 #include "ecmascript/ohos/ohos_preload_app_info.h"
 #include "ecmascript/snapshot/mem/snapshot.h"
@@ -459,6 +460,46 @@ void AOTFileManager::AdjustBCStubAndDebuggerStubEntries(JSThread *thread,
     }
 }
 
+void AOTFileManager::LoadingCommonStubsLog(size_t id, Address entry)
+{
+    auto start = GET_MESSAGE_STRING_ID(Add);
+    std::string format = MessageString::GetMessageString(id + start);
+    LOG_ECMA(INFO) << "common index: " << id << " :" << format<< " addr: 0x"
+                    << std::hex <<entry;
+}
+
+void AOTFileManager::LoadingByteCodeStubsLog(size_t id, Address entry)
+{
+    auto start = GET_MESSAGE_STRING_ID(HandleLdundefined);
+    std::string format = MessageString::GetMessageString(id + start);
+    LOG_ECMA(INFO) << "bytecode index: " << id << " :" << format << " addr: 0x"
+                    << std::hex << entry;
+}
+
+void AOTFileManager::LoadingBuiltinsStubsLog(size_t id, Address entry)
+{
+    int start = GET_MESSAGE_STRING_ID(StringCharCodeAt);
+    std::string format = MessageString::GetMessageString(id + start - 1);  // -1: NONE
+    LOG_ECMA(INFO) << "builtins index: " << std::dec << id << " :" << format
+                    << " addr: 0x" << std::hex << entry;
+}
+
+void AOTFileManager::LoadingBaselineStubsLog(size_t id, Address entry)
+{
+    int start = GET_MESSAGE_STRING_ID(BaselineTryLdGLobalByNameImm8ID16);
+    std::string format = MessageString::GetMessageString(id + start - 1);  // -1: NONE
+    LOG_ECMA(INFO) << "baseline stub index: " << std::dec << id << " :" << format
+                    << " addr: 0x" << std::hex << entry;
+}
+
+void AOTFileManager::LoadingRuntimeStubsLog(size_t id, Address entry)
+{
+    int start = GET_MESSAGE_STRING_ID(CallRuntime);
+    std::string format = MessageString::GetMessageString(id + start);
+    LOG_ECMA(INFO) << "runtime index: " << std::dec << id << " :" << format
+                    << " addr: 0x" << std::hex << entry;
+}
+
 void AOTFileManager::InitializeStubEntries(const std::vector<AnFileInfo::FuncEntryDes> &stubs)
 {
     auto thread = vm_->GetAssociatedJSThread();
@@ -467,38 +508,29 @@ void AOTFileManager::InitializeStubEntries(const std::vector<AnFileInfo::FuncEnt
         auto des = stubs[i];
         if (des.IsCommonStub()) {
             thread->SetFastStubEntry(des.indexInKindOrMethodId_, des.codeAddr_);
+            if (vm_->GetJSOptions().EnableLoadingStubsLog()) {
+                LoadingCommonStubsLog(des.indexInKindOrMethodId_, des.codeAddr_);
+            }
         } else if (des.IsBCStub()) {
             thread->SetBCStubEntry(des.indexInKindOrMethodId_, des.codeAddr_);
-#if ECMASCRIPT_ENABLE_ASM_FILE_LOAD_LOG
-            auto start = GET_MESSAGE_STRING_ID(HandleLdundefined);
-            std::string format = MessageString::GetMessageString(des.indexInKindOrMethodId_ + start);
-            LOG_ECMA(DEBUG) << "bytecode index: " << des.indexInKindOrMethodId_ << " :" << format << " addr: 0x"
-                            << std::hex << des.codeAddr_;
-#endif
+            if (vm_->GetJSOptions().EnableLoadingStubsLog()) {
+                LoadingByteCodeStubsLog(des.indexInKindOrMethodId_, des.codeAddr_);
+            }
         } else if (des.IsBuiltinsStub()) {
             thread->SetBuiltinStubEntry(des.indexInKindOrMethodId_, des.codeAddr_);
-#if ECMASCRIPT_ENABLE_ASM_FILE_LOAD_LOG
-            int start = GET_MESSAGE_STRING_ID(StringCharCodeAt);
-            std::string format = MessageString::GetMessageString(des.indexInKindOrMethodId_ + start - 1);  // -1: NONE
-            LOG_ECMA(DEBUG) << "builtins index: " << std::dec << des.indexInKindOrMethodId_ << " :" << format
-                            << " addr: 0x" << std::hex << des.codeAddr_;
-#endif
+            if (vm_->GetJSOptions().EnableLoadingStubsLog()) {
+                LoadingBuiltinsStubsLog(des.indexInKindOrMethodId_, des.codeAddr_);
+            }
         } else if (des.IsBaselineStub()) {
             thread->SetBaselineStubEntry(des.indexInKindOrMethodId_, des.codeAddr_);
-#if ECMASCRIPT_ENABLE_ASM_FILE_LOAD_LOG
-            int start = GET_MESSAGE_STRING_ID(BaselineTryLdGLobalByNameImm8ID16);
-            std::string format = MessageString::GetMessageString(des.indexInKindOrMethodId_ + start - 1);  // -1: NONE
-            LOG_ECMA(DEBUG) << "baseline stub index: " << std::dec << des.indexInKindOrMethodId_ << " :" << format
-                            << " addr: 0x" << std::hex << des.codeAddr_;
-#endif
+            if (vm_->GetJSOptions().EnableLoadingStubsLog()) {
+                LoadingBaselineStubsLog(des.indexInKindOrMethodId_, des.codeAddr_);
+            }
         } else {
             thread->RegisterRTInterface(des.indexInKindOrMethodId_, des.codeAddr_);
-#if ECMASCRIPT_ENABLE_ASM_FILE_LOAD_LOG
-            int start = GET_MESSAGE_STRING_ID(CallRuntime);
-            std::string format = MessageString::GetMessageString(des.indexInKindOrMethodId_ + start);
-            LOG_ECMA(DEBUG) << "runtime index: " << std::dec << des.indexInKindOrMethodId_ << " :" << format
-                            << " addr: 0x" << std::hex << des.codeAddr_;
-#endif
+            if (vm_->GetJSOptions().EnableLoadingStubsLog()) {
+                LoadingRuntimeStubsLog(des.indexInKindOrMethodId_, des.codeAddr_);
+            }
         }
     }
     thread->CheckOrSwitchPGOStubs();
