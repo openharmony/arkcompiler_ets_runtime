@@ -18,7 +18,6 @@
 #include "ecmascript/containers/containers_errors.h"
 #include "ecmascript/js_api/js_api_bitvector.h"
 namespace panda::ecmascript::containers {
-const static uint32_t targetApiVersion = 18;
 JSTaggedValue ContainersBitVector::BitVectorConstructor(EcmaRuntimeCallInfo* argv)
 {
     ASSERT(argv);
@@ -139,17 +138,9 @@ JSTaggedValue ContainersBitVector::Has(EcmaRuntimeCallInfo* argv)
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
+    bool isHas = JSHandle<JSAPIBitVector>::Cast(self)->Has(
+        thread, JSHandle<JSAPIBitVector>::Cast(self), value, startIndex, endIndex);
 
-    EcmaVM *vm =  thread->GetEcmaVM();
-    uint32_t apiVersion = vm->GetVMAPIVersion();
-    bool isHas;
-    if (apiVersion < targetApiVersion) {
-        isHas = JSHandle<JSAPIBitVector>::Cast(self)->Has(
-            thread, JSHandle<JSAPIBitVector>::Cast(self), value, startIndex, endIndex);
-    } else {
-        isHas = JSHandle<JSAPIBitVector>::Cast(self)->Include(
-            thread, JSHandle<JSAPIBitVector>::Cast(self), value, startIndex, endIndex);
-    }
     return GetTaggedBoolean(isHas);
 }
 

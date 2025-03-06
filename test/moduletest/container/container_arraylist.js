@@ -46,24 +46,20 @@ if (globalThis["ArkPrivate"] != undefined) {
     }
     map.set("flag2", flag2);
 
-    {
-        let temp = ArkTools.getAPIVersion();
-        ArkTools.setAPIVersion(18);
-        let isClear = false;
-        let tempArr = new arrayList();
-        tempArr.add(1);
-        tempArr.add(2);
-        tempArr.add(3);
-        tempArr.sort((a, b) => {
-            if (!isClear) {
-                tempArr.clear();
-                isClear = true;
-            }
-            return a - b;
-        });
-        map.set("test arraylist sort callbackFN: expect 3, actual " + tempArr.length, tempArr.length === 3);
-        ArkTools.setAPIVersion(temp);
-    }
+    let isClear = false;
+    let tempArr = new arrayList();
+    tempArr.add(1);
+    tempArr.add(2);
+    tempArr.add(3);
+    tempArr.sort((a, b) => {
+        if (!isClear) {
+            tempArr.clear();
+            isClear = true;
+        }
+        return a - b;
+    });
+    map.set("test arraylist sort callbackFN:", tempArr.length === 3);
+
     let arr1 = new arrayList();
     let proxy = new Proxy(arr1, {});
     let testArray = []

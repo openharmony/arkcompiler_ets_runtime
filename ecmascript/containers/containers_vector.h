@@ -22,7 +22,6 @@
 namespace panda::ecmascript::containers {
 class ContainersVector : public base::BuiltinsBase {
 public:
-    constexpr static uint32_t API18 = 18;
     static JSTaggedValue VectorConstructor(EcmaRuntimeCallInfo *argv);
 
     static JSTaggedValue Add(EcmaRuntimeCallInfo *argv);

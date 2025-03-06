@@ -562,8 +562,8 @@ JSTaggedValue ContainersArrayList::SubArrayList(EcmaRuntimeCallInfo *argv)
 JSTaggedValue ContainersArrayList::Sort(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
-    JSThread *thread = argv->GetThread();
     BUILTINS_API_TRACE(argv->GetThread(), Array, Sort);
+    JSThread *thread = argv->GetThread();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     if (!self->IsJSAPIArrayList()) {
@@ -585,17 +585,38 @@ JSTaggedValue ContainersArrayList::Sort(EcmaRuntimeCallInfo *argv)
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     auto obj = JSHandle<JSAPIArrayList>::Cast(self);
-    JSHandle<TaggedArray> elements(thread, obj->GetElements());
-    if (thread->GetEcmaVM()->GetVMAPIVersion() < API18) {
-        JSAPIArrayList::SortElements(thread, elements, callbackFnHandle);
-    } else {
-        // elements.length equal or greater than arraylist.length
-        uint32_t length = obj->GetLength().GetArrayLength();
-        JSHandle<TaggedArray> res = JSHandle<TaggedArray>(thread,
-            JSAPIArrayList::SortElementsWithCopy(thread, elements, callbackFnHandle));
-        obj->SetElements(thread, res);
-        obj->SetLength(thread, JSTaggedValue(length));
+    uint32_t length = JSHandle<JSAPIArrayList>::Cast(self)->GetLength().GetArrayLength();
+    JSHandle<TaggedArray> elements = thread->GetEcmaVM()->GetFactory()->NewTaggedArray(length);
+    elements->Copy(thread, 0, 0, TaggedArray::Cast(obj->GetElements()), length);
+    JSMutableHandle<JSTaggedValue> presentValue(thread, JSTaggedValue::Undefined());
+    JSMutableHandle<JSTaggedValue> middleValue(thread, JSTaggedValue::Undefined());
+    JSMutableHandle<JSTaggedValue> previousValue(thread, JSTaggedValue::Undefined());
+    for (uint32_t i = 1; i < length; i++) {
+        uint32_t beginIndex = 0;
+        uint32_t endIndex = i;
+        presentValue.Update(elements->Get(i));
+        while (beginIndex < endIndex) {
+            uint32_t middleIndex = (beginIndex + endIndex) / 2; // 2 : half
+            middleValue.Update(elements->Get(middleIndex));
+            double compareResult = base::ArrayHelper::SortCompare(thread, callbackFnHandle,
+                                                                  middleValue, presentValue);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            if (compareResult > 0) {
+                endIndex = middleIndex;
+            } else {
+                beginIndex = middleIndex + 1;
+            }
+        }
+        if (endIndex >= 0 && endIndex < i) {
+            for (uint32_t j = i; j > endIndex; j--) {
+                previousValue.Update(elements->Get(j - 1));
+                elements->Set(thread, j, previousValue.GetTaggedValue());
+            }
+            elements->Set(thread, endIndex, presentValue.GetTaggedValue());
+        }
     }
+    obj->SetElements(thread, elements);
+    obj->SetLength(thread, JSTaggedValue(elements->GetLength()));
     return JSTaggedValue::Undefined();
 }
 

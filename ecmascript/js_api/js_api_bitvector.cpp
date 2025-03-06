@@ -132,43 +132,6 @@ bool JSAPIBitVector::Has(JSThread* thread, const JSHandle<JSAPIBitVector>& bitVe
     return false;
 }
 
-bool JSAPIBitVector::Include(JSThread* thread, const JSHandle<JSAPIBitVector>& bitVector,
-    const JSHandle<JSTaggedValue>& value, const JSHandle<JSTaggedValue>& start, const JSHandle<JSTaggedValue>& end)
-{
-    int32_t startIndex = JSTaggedValue::ToInt32(thread, start);
-    int32_t endIndex = JSTaggedValue::ToInt32(thread, end);
-    int32_t length = bitVector->GetLength();
-    if (endIndex < 0 || endIndex >= length) {
-        std::ostringstream oss;
-        oss << "The value of \"toIndex\" is out of range. It must be >= 0 && < " << length
-            << ". Received value is: " << endIndex;
-        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, oss.str().c_str());
-        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, false);
-    }
-    if (startIndex < 0 || startIndex > endIndex) {
-        std::ostringstream oss;
-        oss << "The value of \"fromIndex\" is out of range. It must be >= 0 && <= " << endIndex
-            << ". Received value is: " << startIndex;
-        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, oss.str().c_str());
-        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, false);
-    }
-    if (length == 0) {
-        return false;
-    }
-    JSHandle<JSNativePointer> np(thread, bitVector->GetNativePointer());
-    auto elements = reinterpret_cast<std::vector<std::bitset<BIT_SET_LENGTH>>*>(np->GetExternalPointer());
-    for (int index = startIndex; index <= endIndex; index++) {
-        std::pair<uint32_t, uint32_t> pair = ComputeElementIdAndBitId(index);
-        uint32_t elementId = pair.first;
-        uint32_t bitId = pair.second;
-        if ((value->IsZero() && (*elements)[elementId].test(bitId) == 0) ||
-            (!value->IsZero() && (*elements)[elementId].test(bitId) != 0)) {
-            return true;
-        }
-    }
-    return false;
-}
-
 bool JSAPIBitVector::Has(const JSTaggedValue& value) const
 {
     uint32_t length = GetSize();
