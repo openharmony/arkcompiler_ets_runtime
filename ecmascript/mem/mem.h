@@ -70,6 +70,7 @@ static constexpr double MIN_OBJECT_SURVIVAL_RATE = 0.75;
 static constexpr double MIN_SENSITIVE_OBJECT_SURVIVAL_RATE = 0.9;
 static constexpr double GROW_OBJECT_SURVIVAL_RATE = 0.8;
 static constexpr double SHRINK_OBJECT_SURVIVAL_RATE = 0.2;
+static constexpr double MIN_GC_INTERVAL_MS = 1000;
 static constexpr double LOW_ALLOCATION_SPEED_PER_MS = 1000;
 static constexpr double DEFAULT_CAPACITY_RATE = 0.6;
 // Objects which are larger than half of the region size are huge objects.

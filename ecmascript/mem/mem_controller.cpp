@@ -150,6 +150,19 @@ bool MemController::CheckLowAllocationUsageState() const
                 GetIdleOldSpaceAllocationThroughputPerMS() < LOW_ALLOCATION_RATE_PER_MS;
 }
 
+void MemController::ResetCalculationWithoutGC()
+{
+    startCounter_--;
+    if (startCounter_ != 0) {
+        return;
+    }
+    allocDurationSinceGc_ = 0.0;
+    newSpaceAllocSizeSinceGC_ = 0;
+    oldSpaceAllocSizeSinceGC_ = 0;
+    nonMovableSpaceAllocSizeSinceGC_ = 0;
+    codeSpaceAllocSizeSinceGC_ = 0;
+}
+
 void MemController::StopCalculationAfterGC(TriggerGCType gcType)
 {
     startCounter_--;
