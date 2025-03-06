@@ -341,7 +341,7 @@ GateRef ObjectOperatorStubBuilder::LookupElementInlinedProps(GateRef glue, GateR
         BuiltinsTypedArrayStubBuilder typedArrayStubBuilder(this);
         GateRef element =
             typedArrayStubBuilder.FastGetPropertyByIndex(glue, obj, elementIdx, GetObjectType(LoadHClass(obj)));
-        BRANCH(TaggedIsUndefined(element), &exit, &elementFound);
+        BRANCH(TaggedIsHole(element), &exit, &elementFound);
     }
 
     Bind(&ordinaryObject);
@@ -414,32 +414,6 @@ void ObjectOperatorStubBuilder::LookupProperty(GateRef glue, Variable *holder, G
     }
 }
 
-template <bool keyIsElement>
-GateRef ObjectOperatorStubBuilder::ShouldContinuelyLookupInProtoChain(GateRef holder)
-{
-    auto env = GetEnvironment();
-    Label entry(env);
-    env->SubCfgEntry(&entry);
-    Label exit(env);
-    Label dontContinuelyLookup(env);
-    DEFVARIABLE(result, VariableType::BOOL(), True());
-    if constexpr (keyIsElement) {
-        BRANCH(IsTypedArray(holder), &dontContinuelyLookup, &exit);
-        Bind(&dontContinuelyLookup);
-        {
-            result = False();
-            Jump(&exit);
-        }
-    } else {
-        Jump(&exit);
-    }
-
-    Bind(&exit);
-    auto ret = *result;
-    env->SubCfgExit();
-    return ret;
-}
-
 template
 void ObjectOperatorStubBuilder::LookupProperty<false>(GateRef glue, Variable *holder, GateRef key, Label *isJSProxy,
                                                       Label *ifFound, Label *notFound, GateRef hir);
@@ -488,7 +462,7 @@ void ObjectOperatorStubBuilder::TryLookupInProtoChain(GateRef glue, Variable *ho
                 } else {
                     result = LookupPropertyInlinedProps(glue, **holder, key, hir);
                 }
-                BRANCH(ShouldContinuelyLookupInProtoChain<keyIsElement>(**holder), &loopEnd, &loopExit);
+                Jump(&loopEnd);
             }
         }
     }

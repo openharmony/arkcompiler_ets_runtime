@@ -93,7 +93,6 @@ public:
                                          JSTaggedValue index, const JSHandle<JSTaggedValue> &value);
     // s12 10.4.5.9 IsValidIntegerIndex ( O, index )
     static bool IsValidIntegerIndex(const JSHandle<JSTaggedValue> &typedArray, JSTaggedValue index);
-    static bool IsValidIntegerIndex(const JSHandle<JSTaggedValue> &typedArray, uint32_t index);
     static JSTaggedValue FastGetPropertyByIndex(JSThread *thread, const JSTaggedValue typedarray, uint32_t index,
                                                 JSType jsType);
     static JSTaggedValue PUBLIC_API FastSetPropertyByIndex(JSThread *thread, const JSTaggedValue typedarray,

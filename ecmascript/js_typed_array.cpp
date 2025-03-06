@@ -460,27 +460,6 @@ bool JSTypedArray::IsValidIntegerIndex(const JSHandle<JSTaggedValue> &typedArray
     return true;
 }
 
-// sometimes index has been transformed to integer rather than JSTaggedValue
-bool JSTypedArray::IsValidIntegerIndex(const JSHandle<JSTaggedValue> &typedArray, uint32_t index)
-{
-    // 1. Assert: O is an Integer-Indexed exotic object.
-    ASSERT(typedArray->IsTypedArray() || typedArray->IsSharedTypedArray());
-    // 2. If IsDetachedBuffer(O.[[ViewedArrayBuffer]]) is true, return false.
-    JSHandle<JSTypedArray> typedarrayObj(typedArray);
-    JSTaggedValue buffer = typedarrayObj->GetViewedArrayBufferOrByteArray();
-    if (IsArrayBufferDetached(buffer)) {
-        return false;
-    }
-
-    uint32_t arrLen = typedarrayObj->GetArrayLength();
-    // 3. ℝ(index) ≥ O.[[ArrayLength]], return false.
-    if (index >= arrLen) {
-        return false;
-    }
-    // 4. Return true.
-    return true;
-}
-
 DataViewType JSTypedArray::GetTypeFromName(JSThread *thread, const JSHandle<JSTaggedValue> &typeName)
 {
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
