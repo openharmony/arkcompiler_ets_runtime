@@ -1222,7 +1222,7 @@ JSHandle<JSTaggedValue> Utf16JsonParser::Parse(EcmaString *str)
 {
     ASSERT(str != nullptr);
     uint32_t len = EcmaStringAccessor(str).GetLength();
-    CVector<uint16_t> buf(len);
+    CVector<uint16_t> buf(len + 1, 0);
     EcmaStringAccessor(str).WriteToFlatUtf16(buf.data(), len);
     Text begin = buf.data();
     return Launch(begin, begin + len);
