@@ -163,7 +163,7 @@ void SharedHeap::CollectGarbageNearOOM(JSThread *thread)
 void SharedHeap::AdjustGlobalSpaceAllocLimit()
 {
     globalSpaceAllocLimit_ = std::max(GetHeapObjectSize() * growingFactor_,
-                                      config_.GetDefaultGlobalAllocLimit() * 2); // 2: double
+                                      config_.GetDefaultGlobalAllocLimit());
     globalSpaceAllocLimit_ = std::min(std::min(globalSpaceAllocLimit_, GetCommittedSize() + growingStep_),
                                       config_.GetMaxHeapSize());
     globalSpaceConcurrentMarkLimit_ = static_cast<size_t>(globalSpaceAllocLimit_ *
