@@ -341,5 +341,22 @@ if (globalThis["ArkPrivate"] != undefined) {
     } else {
         print("Test ArrayList fail: " + flag);
     }
+
+    /*
+     * @tc.name: checkcontainerloadhclass
+     * @tc.desc: Test ContainersArrayListStubBuilder::ForEach whether judge isHeapObject
+     *           before loading hClass.
+     * @tc.type: FUNC
+     * @tc.require: issueIBQ709
+     */
+    {
+        let arrList1 = new arrayList(1);
+        let arr1 = [1];
+        try {
+            Reflect.apply(v1.forEach, 123, arr1);
+        } catch (e) {
+            print(e);
+        }
+    }
 }
 export let arraylistRes = "Test ArrayList";

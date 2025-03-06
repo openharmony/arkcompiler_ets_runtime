@@ -43,7 +43,10 @@ void ContainersCommonStubBuilder::ContainersCommonFuncCall(GateRef glue, GateRef
     Label loopEnd(env);
     Label next(env);
     Label afterLoop(env);
+    Label thisValueIsHeapObj(env);
     GateRef callbackFnHandle;
+    BRANCH(TaggedIsHeapObject(thisValue), &thisValueIsHeapObj, slowPath);
+    Bind(&thisValueIsHeapObj);
     BRANCH(IsContainer(*thisObj, type), &valueIsJSAPIVector, &valueNotJSAPIVector);
     Bind(&valueNotJSAPIVector);
     {
@@ -168,7 +171,10 @@ void ContainersCommonStubBuilder::ContainersLightWeightCall(GateRef glue, GateRe
     Label loopEnd(env);
     Label next(env);
     Label afterLoop(env);
+    Label thisValueIsHeapObj(env);
     GateRef callbackFnHandle;
+    BRANCH(TaggedIsHeapObject(thisValue), &thisValueIsHeapObj, slowPath);
+    Bind(&thisValueIsHeapObj);
     BRANCH(IsContainer(*thisObj, type), &valueIsJSAPILightWeight, &valueNotJSAPILightWeight);
     Bind(&valueNotJSAPILightWeight);
     {
@@ -283,7 +289,10 @@ void ContainersCommonStubBuilder::ContainersHashCall(GateRef glue, GateRef thisV
     Label loopEnd(env);
     Label next(env);
     Label afterLoop(env);
+    Label thisValueIsHeapObj(env);
     GateRef callbackFnHandle;
+    BRANCH(TaggedIsHeapObject(thisValue), &thisValueIsHeapObj, slowPath);
+    Bind(&thisValueIsHeapObj);
     BRANCH(IsContainer(*thisObj, type), &valueIsJSAPIHash, &valueNotJSAPIHash);
     Bind(&valueNotJSAPIHash);
     {
@@ -418,7 +427,10 @@ void ContainersCommonStubBuilder::ContainersLinkedListCall(GateRef glue, GateRef
     Label loopEnd(env);
     Label next(env);
     Label afterLoop(env);
+    Label thisValueIsHeapObj(env);
     GateRef callbackFnHandle;
+    BRANCH(TaggedIsHeapObject(thisValue), &thisValueIsHeapObj, slowPath);
+    Bind(&thisValueIsHeapObj);
     BRANCH(IsContainer(*thisObj, type), &valueIsJSAPILinkedList, &valueNotJSAPILinkedList);
     Bind(&valueNotJSAPILinkedList);
     {
