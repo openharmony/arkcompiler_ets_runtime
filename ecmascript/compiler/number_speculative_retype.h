@@ -136,6 +136,7 @@ private:
     GateRef VisitDateNow(GateRef gate);
     GateRef VisitArrayIncludesIndexOf(GateRef gate);
     GateRef VisitStringCharCodeAt(GateRef gate);
+    GateRef VisitString(GateRef gate);
 
     void ConvertForNumberBinaryOp(GateRef gate);
     void ConvertForNumberCompareOp(GateRef gate);

@@ -835,9 +835,9 @@ public:
     void SetRawHashcode(GateRef glue, GateRef str, GateRef rawHashcode, GateRef isInteger);
     GateRef StringFromSingleCharCode(GateRef gate);
     GateRef StringCharCodeAt(GateRef thisValue, GateRef posTag);
-    GateRef StringSubstring(GateRef thisValue, GateRef startTag, GateRef endTag);
+    GateRef StringSubstring(std::vector<GateRef>& args);
     GateRef StringSubStr(GateRef thisValue, GateRef intStart, GateRef lengthTag);
-    GateRef StringSlice(GateRef thisValue, GateRef startTag, GateRef endTag);
+    GateRef StringSlice(std::vector<GateRef>& args);
     GateRef NumberIsNaN(GateRef gate);
     GateRef NumberParseFloat(GateRef gate, GateRef frameState);
     GateRef NumberParseInt(GateRef gate, GateRef radix);
