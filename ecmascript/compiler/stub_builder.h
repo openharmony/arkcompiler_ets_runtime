@@ -304,6 +304,10 @@ public:
     GateRef TaggedTrue();
     GateRef TaggedFalse();
     GateRef TaggedUndefined();
+    GateRef Int64BitReverse(GateRef x);
+    GateRef Int32BitReverse(GateRef x);
+    GateRef Int16BitReverse(GateRef x);
+    GateRef Int8BitReverse(GateRef x);
     // compare operation
     GateRef Int8Equal(GateRef x, GateRef y);
     GateRef Int8GreaterThanOrEqual(GateRef x, GateRef y);

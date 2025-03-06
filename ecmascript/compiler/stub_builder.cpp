@@ -11754,6 +11754,26 @@ void StubBuilder::ArrayCopyAndHoleToUndefined(GateRef glue, GateRef srcObj, Gate
     env->SubCfgExit();
 }
 
+GateRef StubBuilder::Int64BitReverse(GateRef x)
+{
+    return env_->GetBuilder()->Int64Rev(x);
+}
+
+GateRef StubBuilder::Int32BitReverse(GateRef x)
+{
+    return env_->GetBuilder()->Int32Rev(x);
+}
+
+GateRef StubBuilder::Int16BitReverse(GateRef x)
+{
+    return env_->GetBuilder()->Int16Rev(x);
+}
+
+GateRef StubBuilder::Int8BitReverse(GateRef x)
+{
+    return env_->GetBuilder()->Int8Rev(x);
+}
+
 int64_t StubBuilder::SPECIAL_VALUE[SPECIAL_VALUE_NUM] = {
     static_cast<int64_t>(JSTaggedValue::VALUE_UNDEFINED),
     static_cast<int64_t>(JSTaggedValue::VALUE_NULL),

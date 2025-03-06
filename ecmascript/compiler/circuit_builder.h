@@ -152,7 +152,11 @@ class BuiltinLowering;
     V(FAbs, Abs, MachineType::F64)                                     \
     V(CountLeadingZeroes32, Clz32, MachineType::I32)                   \
     V(DoubleCeil, Ceil, MachineType::F64)                              \
-    V(DoubleFloor, Floor, MachineType::F64)
+    V(DoubleFloor, Floor, MachineType::F64)                            \
+    V(Int64Rev, BitRev, MachineType::I64)                              \
+    V(Int32Rev, BitRev, MachineType::I32)                              \
+    V(Int16Rev, BitRev, MachineType::I16)                              \
+    V(Int8Rev, BitRev, MachineType::I8)
 
 #define BINARY_CMP_METHOD_LIST_WITHOUT_BITWIDTH(V)                                      \
     V(DoubleLessThan, Fcmp, static_cast<BitField>(FCmpCondition::OLT))                  \

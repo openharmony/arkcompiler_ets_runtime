@@ -721,6 +721,232 @@ void BarrierStubBuilder::BitSetRangeMoveBackward(GateRef srcBitSet, GateRef dstB
     env->SubCfgExit();
 }
 
+void BarrierStubBuilder::DoReverseBarrier()
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+    Label handleMark(env);
+    Label handleBitSet(env);
+    Label doReverse(env);
+    BRANCH_NO_WEIGHT(Int32Equal(slotCount_, Int32(0)), &exit, &doReverse);
+    Bind(&doReverse);
+    BRANCH_NO_WEIGHT(InSharedHeap(objectRegion_), &handleMark, &handleBitSet);
+    Bind(&handleBitSet);
+    {
+        DoReverseBarrierInternal();
+        Jump(&handleMark);
+    }
+    Bind(&handleMark);
+    HandleMark();
+    Jump(&exit);
+    Bind(&exit);
+    env->SubCfgExit();
+}
+
+void BarrierStubBuilder::DoReverseBarrierInternal()
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+    Label inYoung(env);
+    Label inOld(env);
+    Label copyBitSet(env);
+
+    DEFVARIABLE(bitSetAddr, VariableType::NATIVE_POINTER(), IntPtr(0));
+    DEFVARIABLE(bitSetAddr2, VariableType::NATIVE_POINTER(), IntPtr(0));
+
+    GateRef localToShareOffset = IntPtr(Region::PackedData::GetLocalToShareSetOffset(env->Is32Bit()));
+    GateRef localToShareBitSetAddr =
+        GetBitSetDataAddr(objectRegion_, localToShareOffset, RTSTUB_ID(CreateLocalToShare));
+
+    GateRef localToShareSwapped = IsLocalToShareSwapped(objectRegion_);
+    BRANCH_NO_WEIGHT(InYoungGeneration(objectRegion_), &inYoung, &inOld);
+    Bind(&inYoung);
+    {
+        Label batchBarrier(env);
+        Label reverseLocalToShare(env);
+        BRANCH_UNLIKELY(localToShareSwapped, &batchBarrier, &reverseLocalToShare);
+        Bind(&batchBarrier);
+        {
+            // slowpath, localToShareRSet is swapped, it can't be reversed, just set the bitset bit by bit.
+            BarrierBatchBitSet(LocalToShared);
+            Jump(&exit);
+        }
+        Bind(&reverseLocalToShare);
+        {
+            bitSetAddr = localToShareBitSetAddr;
+            Jump(&copyBitSet);
+        }
+    }
+    Bind(&inOld);
+    {
+        GateRef oldToNewOffset = IntPtr(Region::PackedData::GetOldToNewSetOffset(env->Is32Bit()));
+        GateRef oldToNewBitSetAddr = GetBitSetDataAddr(objectRegion_, oldToNewOffset, RTSTUB_ID(CreateOldToNew));
+        // CreateOldToNew may change the RSetFlag, so load it again.
+        GateRef oldToNewSwapped = IsOldToNewSwapped(objectRegion_);
+        Label batchBarrier(env);
+        Label tryBatchBarrier(env);
+        Label copyBoth(env);
+        // both localToShareSwapped and oldToNewSwapped are not swapped.
+        BRANCH_LIKELY(BitAnd(BoolNot(localToShareSwapped), BoolNot(oldToNewSwapped)), &copyBoth, &tryBatchBarrier);
+        Bind(&copyBoth);
+        {
+            bitSetAddr = localToShareBitSetAddr;
+            bitSetAddr2 = oldToNewBitSetAddr;
+            Jump(&copyBitSet);
+        }
+        Bind(&tryBatchBarrier);
+        {
+            Label reverseOne(env);
+            BRANCH_UNLIKELY(BitAnd(localToShareSwapped, oldToNewSwapped), &batchBarrier, &reverseOne);
+            Bind(&batchBarrier);
+            {
+                // slowpath, localToShareRSet and oldToNewRSet are swapped,
+                // it can't be reversed, just set the bitset bit by bit.
+                BarrierBatchBitSet(LocalToShared | OldToNew);
+                Jump(&exit);
+            }
+            Bind(&reverseOne);
+            {
+                Label localToShareBatchBarrier(env);
+                Label oldToNewBatchBarrier(env);
+                BRANCH_NO_WEIGHT(localToShareSwapped, &localToShareBatchBarrier, &oldToNewBatchBarrier);
+                Bind(&localToShareBatchBarrier);
+                {
+                    // slowpath, localToShareRSet is swapped, it can't be reversed, just set the bitset bit by bit.
+                    // And copy oldToNewRSet.
+                    BarrierBatchBitSet(LocalToShared);
+                    bitSetAddr = oldToNewBitSetAddr;
+                    Jump(&copyBitSet);
+                }
+                Bind(&oldToNewBatchBarrier);
+                {
+                    // slowpath, oldToNewRSet is swapped, it can't be reversed, just set the bitset bit by bit.
+                    // And copy localToShareRSet.
+                    BarrierBatchBitSet(OldToNew);
+                    bitSetAddr = localToShareBitSetAddr;
+                    Jump(&copyBitSet);
+                }
+            }
+        }
+    }
+    Bind(&copyBitSet);
+    {
+        GateRef dstBitStartIdx = Int64LSR(Int64Sub(dstAddr_, objectRegion_), Int64(TAGGED_TYPE_SIZE_LOG));
+        Label begin(env);
+        Label endLoop(env);
+        Label next(env);
+        Jump(&begin);
+        LoopBegin(&begin);
+        {
+            BitSetRangeReverse(*bitSetAddr, dstBitStartIdx, ZExtInt32ToInt64(slotCount_));
+            BRANCH_UNLIKELY(IntPtrEqual(*bitSetAddr2, IntPtr(0)), &exit, &next);
+            Bind(&next);
+            {
+                bitSetAddr = *bitSetAddr2;
+                bitSetAddr2 = IntPtr(0);
+                Jump(&endLoop);
+            }
+        }
+        Bind(&endLoop);
+        LoopEnd(&begin);
+    }
+    Bind(&exit);
+    env->SubCfgExit();
+}
+
+void BarrierStubBuilder::BitSetRangeReverse(GateRef bitSet, GateRef startIdx, GateRef length)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+    // startOf <- startIdx % 64
+    GateRef startOf = Int64And(startIdx, Int64(BIT_PER_QUAD_MASK));
+    // endOf <- (startIdx + len) % 64
+    GateRef endOf = Int64And(Int64Add(startIdx, length), Int64(BIT_PER_QUAD_MASK));
+
+    // startItemIndex <- startIdx / 64
+    GateRef startItemIndex = Int64LSR(startIdx, Int64(BIT_PER_QUAD_LOG2));
+    // endItemIndex <- (startIdx + len - 1) / 64
+    GateRef endItemIndex = Int64LSR(Int64Sub(Int64Add(startIdx, length), Int64(1)), Int64(BIT_PER_QUAD_LOG2));
+
+    GateRef dstOffset = startIdx;
+    // srcOffset <- startIdx + ((64 - endOf) % 64 - startOf)
+    GateRef srcOffset = Int64Add(startIdx,
+        Int64Sub(Int64And(Int64Sub(Int64(BIT_PER_QUAD), endOf), Int64(BIT_PER_QUAD_MASK)), startOf));
+
+    // startByteIndex <- startItemIndex * 8
+    GateRef startByteIndex = Int64LSL(startItemIndex, Int64(BIT_PER_BYTE_LOG2));
+    // endByteIndex <- endItemIndex * 8
+    GateRef endByteIndex = Int64LSL(endItemIndex, Int64(BIT_PER_BYTE_LOG2));
+
+    GateRef startItem = Load(VariableType::INT64(), bitSet, startByteIndex);
+    GateRef endItem = Load(VariableType::INT64(), bitSet, endByteIndex);
+
+    // startMask <- (1 << startOf) - 1
+    GateRef startMask = Int64Sub(Int64LSL(Int64(1), startOf), Int64(1));
+    // endMask <- ~((1 << endOf) - 1)
+    GateRef endMask = Int64Not(Int64Sub(Int64LSL(Int64(1), endOf), Int64(1)));
+
+    DEFVARIABLE(vstartByteIndex, VariableType::INT64(), startByteIndex);
+    DEFVARIABLE(vendByteIndex, VariableType::INT64(), endByteIndex);
+
+    Label loopBegin1(env);
+    Label loopEnd1(env);
+    Label loopExit1(env);
+    Label startReverse(env);
+    Jump(&loopBegin1);
+    LoopBegin(&loopBegin1);
+    {
+        BRANCH_LIKELY(Int64LessThanOrEqual(*vstartByteIndex, *vendByteIndex), &startReverse, &loopExit1);
+        Bind(&startReverse);
+        {
+            GateRef item1 = Load(VariableType::INT64(), bitSet, *vstartByteIndex);
+            GateRef item2 = Load(VariableType::INT64(), bitSet, *vendByteIndex);
+            
+            // revStart <- Int64BitReverse(bitSet[vstartByteIndex])
+            // revEnd <- Int64BitReverse(bitSet[vendByteIndex])
+            GateRef revStart = Int64BitReverse(item1);
+            GateRef revEnd = Int64BitReverse(item2);
+
+            // bitSet[vstartByteIndex] <- revEnd
+            // bitSet[vendByteIndex] <- revStart
+            Store(VariableType::INT64(), glue_, bitSet, *vstartByteIndex, revEnd, MemoryAttribute::NoBarrier());
+            Store(VariableType::INT64(), glue_, bitSet, *vendByteIndex, revStart, MemoryAttribute::NoBarrier());
+
+            // vstartByteIndex <- vstartByteIndex + 8
+            // vendByteIndex <- vendByteIndex - 8
+            vstartByteIndex = Int64Add(*vstartByteIndex, Int64(BYTE_PER_QUAD));
+            vendByteIndex = Int64Sub(*vendByteIndex, Int64(BYTE_PER_QUAD));
+            Jump(&loopEnd1);
+        }
+    }
+    Bind(&loopEnd1);
+    LoopEnd(&loopBegin1);
+    Bind(&loopExit1);
+    BitSetRangeMove(bitSet, bitSet, srcOffset, dstOffset, length);
+
+    GateRef neStartMask = Int64Not(startMask);
+    GateRef neEndMask = Int64Not(endMask);
+
+    // bitSet[startByteIndex] <- (startItem & startMask) | (startItem1 & neStartMask);
+    GateRef startItem1 = Load(VariableType::INT64(), bitSet, startByteIndex);
+    GateRef resStartItem = Int64Or(Int64And(startItem, startMask), Int64And(startItem1, neStartMask));
+    Store(VariableType::INT64(), glue_, bitSet, startByteIndex, resStartItem, MemoryAttribute::NoBarrier());
+
+    // bitSet[endByteIndex] <- (resEndItem & endMask) | (endItem1 & neStartMask);
+    GateRef endItem1 = Load(VariableType::INT64(), bitSet, endByteIndex);
+    GateRef resEndItem = Int64Or(Int64And(endItem, endMask), Int64And(endItem1, neEndMask));
+    Store(VariableType::INT64(), glue_, bitSet, endByteIndex, resEndItem, MemoryAttribute::NoBarrier());
+    Jump(&exit);
+    Bind(&exit);
+    env->SubCfgExit();
+}
+
 GateRef BarrierStubBuilder::IsLocalToShareSwapped(GateRef region)
 {
     auto env = GetEnvironment();
