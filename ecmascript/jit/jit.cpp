@@ -68,7 +68,6 @@ void Jit::SetJitEnablePostFork(EcmaVM *vm, const std::string &bundleName)
         options.SetJitHotnessThreshold(threshold);
         hotnessThreshold_ = threshold;
         bundleName_ = bundleName;
-        isEnableAppPGO_ = pgo::PGOProfilerManager::GetInstance()->IsEnable();
 
         SetEnableOrDisable(options, isEnableFastJit, isEnableBaselineJit);
         if (fastJitEnable_ || baselineJitEnable_) {
@@ -82,9 +81,8 @@ void Jit::SwitchProfileStubs(EcmaVM *vm)
     JSThread *thread = vm->GetAssociatedJSThread();
     JSRuntimeOptions &options = vm->GetJSOptions();
     std::shared_ptr<PGOProfiler> pgoProfiler = vm->GetPGOProfiler();
-    if (!options.IsEnableJITPGO() || pgoProfiler == nullptr || (isApp_ && !isEnableAppPGO_)) {
+    if (!options.IsEnableJITPGO() || pgoProfiler == nullptr) {
         thread->SwitchJitProfileStubs(false);
-        options.SetEnableJITPGO(false);
     } else {
         // if not enable aot pgo
         if (!pgo::PGOProfilerManager::GetInstance()->IsEnable()) {
