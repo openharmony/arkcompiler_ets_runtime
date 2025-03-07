@@ -183,6 +183,7 @@ bool TSInlineLowering::FilterInlinedMethod(MethodLiteral* method, std::vector<co
     if (cda.GetTriesSize() != 0) {
         return false;
     }
+    bool hasReturnRoot = false;
     for (size_t i = 0; i < pcOffsets.size(); i++) {
         auto pc = pcOffsets[i];
         auto ecmaOpcode = ctx_->GetByteCodes()->GetOpcode(pc);
@@ -194,11 +195,15 @@ bool TSInlineLowering::FilterInlinedMethod(MethodLiteral* method, std::vector<co
             case EcmaOpcode::WIDE_COPYRESTARGS_PREF_IMM16:
             case EcmaOpcode::CREATEASYNCGENERATOROBJ_V8:
                 return false;
+            case EcmaOpcode::RETURN:
+            case EcmaOpcode::RETURNUNDEFINED:
+                hasReturnRoot = true;
+                break;
             default:
                 break;
         }
     }
-    return true;
+    return hasReturnRoot;
 }
 
 void TSInlineLowering::InlineCall(MethodInfo &methodInfo, MethodPcInfo &methodPCInfo, MethodLiteral* method,

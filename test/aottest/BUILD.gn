@@ -221,6 +221,7 @@ group("ark_aot_ts_test") {
     "newlexenv",
     "newobjrange",
     "newobjspread",
+    "noreturn",
     "not",
     "not_equal",
     "numberspeculativeretype",
