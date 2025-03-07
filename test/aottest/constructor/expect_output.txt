@@ -15,3 +15,5 @@
 [object Object]
 [object Object]
 TypeError: Cannot convert a illegal value to a Primitive
+hello world
+RangeError: integerIndex < 0 or integerIndex > SAFE_NUMBER

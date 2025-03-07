@@ -3128,8 +3128,11 @@ void BuiltinsTypedArrayStubBuilder::GenTypedArrayConstructor(GateRef glue, GateR
     Bind(&newTargetIsJSFunction);
     {
         Label intialHClassIsHClass(env);
+        Label intialHClassIsHeapObject(env);
         GateRef intialHClass = Load(VariableType::JS_ANY(), newTarget,
                                     IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
+        BRANCH(TaggedIsHeapObject(intialHClass), &intialHClassIsHeapObject, &slowPath1);
+        Bind(&intialHClassIsHeapObject);
         BRANCH(IsJSHClass(intialHClass), &intialHClassIsHClass, &slowPath1);
         Bind(&intialHClassIsHClass);
         {
