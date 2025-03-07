@@ -1669,17 +1669,24 @@ void SnapshotProcessor::DeserializeTaggedField(uint64_t *value, TaggedObject *ro
 
 void SnapshotProcessor::DeserializeClassWord(TaggedObject *object)
 {
+    // During AOT deserialization, setting the hclass on an object does not require atomic operations, but a write
+    // barrier is still needed to track cross-generation references.
     EncodeBit encodeBit(*reinterpret_cast<uint64_t *>(object));
     if (!builtinsDeserialize_ && encodeBit.IsGlobalConstOrBuiltins()) {
         size_t hclassIndex = encodeBit.GetNativePointerOrObjectIndex();
         auto globalConst = const_cast<GlobalEnvConstants *>(vm_->GetJSThread()->GlobalConstants());
         JSTaggedValue hclassValue = globalConst->GetGlobalConstantObject(hclassIndex);
         ASSERT(hclassValue.IsJSHClass());
-        object->SynchronizedSetClass(vm_->GetJSThread(), JSHClass::Cast(hclassValue.GetTaggedObject()));
+        object->SetClassWithoutBarrier(JSHClass::Cast(hclassValue.GetTaggedObject()));
+        WriteBarrier<WriteBarrierType::AOT_DESERIALIZE>(vm_->GetJSThread(), object, JSHClass::HCLASS_OFFSET,
+                                                        hclassValue.GetRawData());
         return;
     }
     uintptr_t hclassAddr = TaggedObjectEncodeBitToAddr(encodeBit);
-    object->SynchronizedSetClass(vm_->GetJSThread(), reinterpret_cast<JSHClass *>(hclassAddr));
+    JSHClass *hclass = reinterpret_cast<JSHClass *>(hclassAddr);
+    object->SetClassWithoutBarrier(hclass);
+    WriteBarrier<WriteBarrierType::AOT_DESERIALIZE>(vm_->GetJSThread(), object, JSHClass::HCLASS_OFFSET,
+                                                    JSTaggedValue(hclass).GetRawData());
 }
 
 SnapshotProcessor::DeserializeFieldVisitor::DeserializeFieldVisitor(SnapshotProcessor *processor)
