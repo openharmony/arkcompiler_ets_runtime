@@ -716,7 +716,7 @@ void NativeInlineLowering::TryInlineBigIntAsIntN(GateRef gate, size_t argc, Buil
     bool isUnsigned = (id == BuiltinsStubCSigns::ID::BigIntAsUintN);
     const auto* op = isUnsigned ? circuit_->BigIntAsUintN() : circuit_->BigIntAsIntN();
     GateRef ret = builder_.BuildBigIntAsIntN(op, {bits, bigint, frameState});
-    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
+    ReplaceGateWithPendingException(gate, ret);
 }
 
 void NativeInlineLowering::TryInlineTypedArrayIteratorBuiltin(GateRef gate,
