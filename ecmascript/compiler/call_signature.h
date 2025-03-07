@@ -584,6 +584,8 @@ private:
     V(JSMapValues)                              \
     V(JSSetHas)                                 \
     V(JSSetAdd)                                 \
+    V(JSProxyGetProperty)                       \
+    V(JSProxySetProperty)                       \
     V(GrowElementsCapacity)                     \
     V(CreateJSTypedArrayEntries)                \
     V(CreateJSTypedArrayKeys)                   \

@@ -513,46 +513,11 @@ bool JSProxy::HasProperty(JSThread *thread, const JSHandle<JSProxy> &proxy, cons
     return booleanTrapResult;
 }
 
-// ES6 9.5.8 [[Get]] (P, Receiver)
-OperationResult JSProxy::GetProperty(JSThread *thread, const JSHandle<JSProxy> &proxy,
-                                     const JSHandle<JSTaggedValue> &key, const JSHandle<JSTaggedValue> &receiver)
+OperationResult JSProxy::CheckGetTrapResult(JSThread *thread, const JSHandle<JSTaggedValue> &targetHandle,
+                                            const JSHandle<JSTaggedValue> &key,
+                                            const JSHandle<JSTaggedValue> &resultHandle)
 {
-    STACK_LIMIT_CHECK(thread, OperationResult(thread, JSTaggedValue::Exception(), PropertyMetaData(false)));
-    const GlobalEnvConstants *globalConst = thread->GlobalConstants();
-    // step 1 ~ 10 are almost same as GetOwnProperty
-    ASSERT(JSTaggedValue::IsPropertyKey(key));
-    JSTaggedValue handler = proxy->GetHandler();
     JSHandle<JSTaggedValue> exceptionHandle(thread, JSTaggedValue::Exception());
-    if (handler.IsNull()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "JSProxy::GetProperty: handler is Null",
-                                    OperationResult(thread, exceptionHandle.GetTaggedValue(), PropertyMetaData(false)));
-    }
-    ASSERT(handler.IsECMAObject());
-    JSHandle<JSTaggedValue> targetHandle(thread, proxy->GetTarget());
-    JSHandle<JSTaggedValue> name = globalConst->GetHandledGetString();
-    JSHandle<JSTaggedValue> trap(JSObject::GetMethod(thread, JSHandle<JSTaggedValue>(thread, handler), name));
-    // 7. ReturnIfAbrupt(trap).
-    RETURN_VALUE_IF_ABRUPT_COMPLETION(
-        thread, OperationResult(thread, exceptionHandle.GetTaggedValue(), PropertyMetaData(false)));
-
-    if (trap->IsUndefined()) {
-        return JSTaggedValue::GetProperty(thread, targetHandle, key, receiver);
-    }
-    // 9. Let trapResult be Call(trap, handler, «target, P, Receiver»).
-    JSHandle<JSTaggedValue> handlerTag(thread, proxy->GetHandler());
-    const uint32_t argsLength = 3;  // 3: «target, P, Receiver»
-    JSHandle<JSTaggedValue> undefined = globalConst->GetHandledUndefined();
-    EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, trap, handlerTag, undefined, argsLength);
-    RETURN_VALUE_IF_ABRUPT_COMPLETION(
-        thread, OperationResult(thread, exceptionHandle.GetTaggedValue(), PropertyMetaData(false)));
-    info->SetCallArg(targetHandle.GetTaggedValue(), key.GetTaggedValue(), receiver.GetTaggedValue());
-    JSTaggedValue trapResult = JSFunction::Call(info);
-    JSHandle<JSTaggedValue> resultHandle(thread, trapResult);
-
-    // 10. ReturnIfAbrupt(trapResult).
-    RETURN_VALUE_IF_ABRUPT_COMPLETION(
-        thread, OperationResult(thread, exceptionHandle.GetTaggedValue(), PropertyMetaData(false)));
-
     // 11. Let targetDesc be target.[[GetOwnProperty]](P).
     PropertyDescriptor targetDesc(thread);
     bool found = JSTaggedValue::GetOwnProperty(thread, targetHandle, key, targetDesc);
@@ -588,6 +553,76 @@ OperationResult JSProxy::GetProperty(JSThread *thread, const JSHandle<JSProxy> &
     return OperationResult(thread, resultHandle.GetTaggedValue(), PropertyMetaData(true));
 }
 
+// ES6 9.5.8 [[Get]] (P, Receiver)
+OperationResult JSProxy::GetProperty(JSThread *thread, const JSHandle<JSProxy> &proxy,
+                                     const JSHandle<JSTaggedValue> &key, const JSHandle<JSTaggedValue> &receiver)
+{
+    STACK_LIMIT_CHECK(thread, OperationResult(thread, JSTaggedValue::Exception(), PropertyMetaData(false)));
+    const GlobalEnvConstants *globalConst = thread->GlobalConstants();
+    // step 1 ~ 10 are almost same as GetOwnProperty
+    ASSERT(JSTaggedValue::IsPropertyKey(key));
+    JSTaggedValue handler = proxy->GetHandler();
+    JSHandle<JSTaggedValue> exceptionHandle(thread, JSTaggedValue::Exception());
+    if (handler.IsNull()) {
+        THROW_TYPE_ERROR_AND_RETURN(thread, "JSProxy::GetProperty: handler is Null",
+                                    OperationResult(thread, exceptionHandle.GetTaggedValue(), PropertyMetaData(false)));
+    }
+    ASSERT(handler.IsECMAObject());
+    JSHandle<JSTaggedValue> targetHandle(thread, proxy->GetTarget());
+    JSHandle<JSTaggedValue> name = globalConst->GetHandledGetString();
+    JSHandle<JSTaggedValue> trap(JSObject::FastGetMethod(thread, JSHandle<JSTaggedValue>(thread, handler), name));
+    // 7. ReturnIfAbrupt(trap).
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(
+        thread, OperationResult(thread, exceptionHandle.GetTaggedValue(), PropertyMetaData(false)));
+
+    if (trap->IsUndefined()) {
+        return JSTaggedValue::GetProperty(thread, targetHandle, key, receiver);
+    }
+    // 9. Let trapResult be Call(trap, handler, «target, P, Receiver»).
+    JSHandle<JSTaggedValue> handlerTag(thread, proxy->GetHandler());
+    const uint32_t argsLength = 3;  // 3: «target, P, Receiver»
+    JSHandle<JSTaggedValue> undefined = globalConst->GetHandledUndefined();
+    EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, trap, handlerTag, undefined, argsLength);
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(
+        thread, OperationResult(thread, exceptionHandle.GetTaggedValue(), PropertyMetaData(false)));
+    info->SetCallArg(targetHandle.GetTaggedValue(), key.GetTaggedValue(), receiver.GetTaggedValue());
+    JSTaggedValue trapResult = JSFunction::Call(info);
+    JSHandle<JSTaggedValue> resultHandle(thread, trapResult);
+
+    // 10. ReturnIfAbrupt(trapResult).
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(
+        thread, OperationResult(thread, exceptionHandle.GetTaggedValue(), PropertyMetaData(false)));
+
+    return CheckGetTrapResult(thread, targetHandle, key, resultHandle);
+}
+
+bool JSProxy::CheckSetTrapResult(JSThread *thread, const JSHandle<JSTaggedValue> &targetHandle,
+                                 const JSHandle<JSTaggedValue> &key,
+                                 const JSHandle<JSTaggedValue> &value)
+{
+    // 13. Let targetDesc be target.[[GetOwnProperty]](P).
+    PropertyDescriptor targetDesc(thread);
+    bool found = JSTaggedValue::GetOwnProperty(thread, targetHandle, key, targetDesc);
+    // 14. If targetDesc is not undefined, then
+    if (found) {
+        // a. If IsDataDescriptor(targetDesc) and targetDesc.[[Configurable]] is false and targetDesc.[[Writable]] is
+        // false, then
+        if (targetDesc.IsDataDescriptor() && !targetDesc.IsConfigurable() && !targetDesc.IsWritable()) {
+            // i. If SameValue(trapResult, targetDesc.[[Value]]) is false, throw a TypeError exception.
+            if (!JSTaggedValue::SameValue(value, targetDesc.GetValue())) {
+                THROW_TYPE_ERROR_AND_RETURN(thread, "JSProxy::SetProperty: TypeError of trapResult", false);
+            }
+        }
+        // b. If IsAccessorDescriptor(targetDesc) and targetDesc.[[Configurable]] is false, then
+        // i. If targetDesc.[[Set]] is undefined, throw a TypeError exception.
+        if (targetDesc.IsAccessorDescriptor() && !targetDesc.IsConfigurable() &&
+            targetDesc.GetSetter()->IsUndefined()) {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "JSProxy::SetProperty: TypeError of AccessorDescriptor", false);
+        }
+    }
+    return true;
+}
+
 // ES6 9.5.9 [[Set]] ( P, V, Receiver)
 bool JSProxy::SetProperty(JSThread *thread, const JSHandle<JSProxy> &proxy, const JSHandle<JSTaggedValue> &key,
                           const JSHandle<JSTaggedValue> &value, const JSHandle<JSTaggedValue> &receiver, bool mayThrow)
@@ -603,7 +638,7 @@ bool JSProxy::SetProperty(JSThread *thread, const JSHandle<JSProxy> &proxy, cons
     ASSERT(handler.IsECMAObject());
     JSHandle<JSTaggedValue> targetHandle(thread, proxy->GetTarget());
     JSHandle<JSTaggedValue> name = globalConst->GetHandledSetString();
-    JSHandle<JSTaggedValue> trap(JSObject::GetMethod(thread, JSHandle<JSTaggedValue>(thread, handler), name));
+    JSHandle<JSTaggedValue> trap(JSObject::FastGetMethod(thread, JSHandle<JSTaggedValue>(thread, handler), name));
     // 7. ReturnIfAbrupt(trap).
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
     if (trap->IsUndefined()) {
@@ -629,27 +664,7 @@ bool JSProxy::SetProperty(JSThread *thread, const JSHandle<JSProxy> &proxy, cons
         }
         return false;
     }
-    // 13. Let targetDesc be target.[[GetOwnProperty]](P).
-    PropertyDescriptor targetDesc(thread);
-    bool found = JSTaggedValue::GetOwnProperty(thread, targetHandle, key, targetDesc);
-    // 14. If targetDesc is not undefined, then
-    if (found) {
-        // a. If IsDataDescriptor(targetDesc) and targetDesc.[[Configurable]] is false and targetDesc.[[Writable]] is
-        // false, then
-        if (targetDesc.IsDataDescriptor() && !targetDesc.IsConfigurable() && !targetDesc.IsWritable()) {
-            // i. If SameValue(trapResult, targetDesc.[[Value]]) is false, throw a TypeError exception.
-            if (!JSTaggedValue::SameValue(value, targetDesc.GetValue())) {
-                THROW_TYPE_ERROR_AND_RETURN(thread, "JSProxy::SetProperty: TypeError of trapResult", false);
-            }
-        }
-        // b. If IsAccessorDescriptor(targetDesc) and targetDesc.[[Configurable]] is false, then
-        // i. If targetDesc.[[Set]] is undefined, throw a TypeError exception.
-        if (targetDesc.IsAccessorDescriptor() && !targetDesc.IsConfigurable() &&
-            targetDesc.GetSetter()->IsUndefined()) {
-            THROW_TYPE_ERROR_AND_RETURN(thread, "JSProxy::SetProperty: TypeError of AccessorDescriptor", false);
-        }
-    }
-    return true;
+    return CheckSetTrapResult(thread, targetHandle, key, value);
 }
 
 // ES6 9.5.10 [[Delete]] (P)

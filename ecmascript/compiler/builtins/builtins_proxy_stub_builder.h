@@ -23,6 +23,8 @@ class BuiltinsProxyStubBuilder : public BuiltinsStubBuilder {
 public:
     explicit BuiltinsProxyStubBuilder(StubBuilder *parent)
         : BuiltinsStubBuilder(parent) {}
+    BuiltinsProxyStubBuilder(StubBuilder *parent, GateRef glue)
+        : BuiltinsStubBuilder(parent), glue_(glue) {}
     BuiltinsProxyStubBuilder(BuiltinsStubBuilder *parent, GateRef glue, GateRef thisValue, GateRef numArgs)
         : BuiltinsStubBuilder(parent), glue_(glue), thisValue_(thisValue), numArgs_(numArgs) {}
     ~BuiltinsProxyStubBuilder() override = default;
@@ -30,6 +32,8 @@ public:
     NO_COPY_SEMANTIC(BuiltinsProxyStubBuilder);
     void GenerateCircuit() override {}
     void GenProxyConstructor(GateRef nativeCode, GateRef func, GateRef newTarget);
+    GateRef GetProperty(GateRef proxy, GateRef key, GateRef receiver);
+    GateRef SetProperty(GateRef proxy, GateRef key, GateRef value, GateRef receiver);
 
     void SetMethod(GateRef glue, GateRef proxy, GateRef method)
     {
@@ -41,6 +45,12 @@ public:
     {
         GateRef offset = IntPtr(JSProxy::TARGET_OFFSET);
         Store(VariableType::JS_ANY(), glue, proxy, offset, target);
+    }
+
+    GateRef GetHandler(GateRef proxy)
+    {
+        GateRef offset = IntPtr(JSProxy::HANDLER_OFFSET);
+        return Load(VariableType::JS_ANY(), proxy, offset);
     }
 
     void SetHandler(GateRef glue, GateRef proxy, GateRef handler)

@@ -293,11 +293,12 @@ inline GateRef StubBuilder::CallStub(GateRef glue, int index, const std::initial
     return result;
 }
 
-inline GateRef StubBuilder::CallCommonStub(GateRef glue, int index, const std::initializer_list<GateRef>& args)
+inline GateRef StubBuilder::CallCommonStub(GateRef glue, int index, const std::initializer_list<GateRef>& args,
+                                           GateRef hir)
 {
     SavePcIfNeeded(glue);
     const std::string name = CommonStubCSigns::GetName(index);
-    GateRef result = env_->GetBuilder()->CallCommonStub(glue, Circuit::NullGate(), index, args, name.c_str());
+    GateRef result = env_->GetBuilder()->CallCommonStub(glue, hir, index, args, name.c_str());
     return result;
 }
 
@@ -2628,6 +2629,11 @@ inline GateRef StubBuilder::IsFastTypeArray(GateRef jsType)
     return BitAnd(
         Int32GreaterThan(jsType, Int32(static_cast<int32_t>(JSType::JS_TYPED_ARRAY_FIRST))),
         Int32LessThanOrEqual(jsType, Int32(static_cast<int32_t>(JSType::JS_FLOAT64_ARRAY))));
+}
+
+inline GateRef StubBuilder::IsJSProxy(GateRef jsType)
+{
+    return Int32Equal(jsType, Int32(static_cast<int32_t>(JSType::JS_PROXY)));
 }
 
 inline GateRef StubBuilder::IsAccessorInternal(GateRef value)

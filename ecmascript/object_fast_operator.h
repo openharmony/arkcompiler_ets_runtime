@@ -134,6 +134,8 @@ private:
 
     static inline bool IsJSPrimitiveRef(JSType jsType);
 
+    static inline bool IsJSProxy(JSType jsType);
+
     static inline bool TryStringOrSymbolToIndex(JSTaggedValue key, uint32_t *output);
 
     static inline JSTaggedValue FastGetTypeArrayProperty(JSThread *thread, JSTaggedValue receiver, JSTaggedValue holder,

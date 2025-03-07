@@ -279,7 +279,9 @@ group("ark_js_assert_moduletest") {
       "multiconstpoolconstructor",
       "multiconstpoolfunc",
       "multiconstpoolobj",
+      "proxyget",
       "proxyrelease",
+      "proxyset",
     ]
 
     foreach(test, release_test_assert_list) {
@@ -390,7 +392,9 @@ group("ark_asm_assert_test") {
       "multiconstpoolconstructor",
       "multiconstpoolfunc",
       "multiconstpoolobj",
+      "proxyget",
       "proxyrelease",
+      "proxyset",
     ]
 
     foreach(test, release_test_assert_list) {
@@ -592,7 +596,9 @@ group("ark_asm_single_step_assert_test") {
       "multiconstpoolconstructor",
       "multiconstpoolfunc",
       "multiconstpoolobj",
+      "proxyget",
       "proxyrelease",
+      "proxyset",
     ]
 
     foreach(test, release_test_assert_list) {

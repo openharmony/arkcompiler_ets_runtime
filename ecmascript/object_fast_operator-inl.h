@@ -282,7 +282,19 @@ JSTaggedValue ObjectFastOperator::GetPropertyByName(JSThread *thread, JSTaggedVa
                     continue;
                 }
             } else if (!IsJSPrimitiveRef(jsType)) {  // not string prototype etc.
+#if ENABLE_NEXT_OPTIMIZATION
+                if (IsJSProxy(jsType)) {
+                    JSTaggedValue res = JSProxy::GetProperty(thread, JSHandle<JSProxy>(thread, holder),
+                                                             JSHandle<JSTaggedValue>(thread, key),
+                                                             JSHandle<JSTaggedValue>(thread, receiver))
+                                                             .GetValue().GetTaggedValue();
+                    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+                    return res;
+                }
                 return JSTaggedValue::Hole();
+#else
+                return JSTaggedValue::Hole();
+#endif
             }
         }
 
@@ -433,7 +445,23 @@ JSTaggedValue ObjectFastOperator::SetPropertyByName(JSThread *thread, JSTaggedVa
             } else if (IsSpecialContainer(jsType)) {
                 THROW_TYPE_ERROR_AND_RETURN(thread, "Cannot set property on Container", JSTaggedValue::Exception());
             } else {
+#if ENABLE_NEXT_OPTIMIZATION
+                if (IsJSProxy(jsType)) {
+                    if (DefineSemantics(status) && sCheckMode == SCheckMode::CHECK) {
+                        return JSTaggedValue::Hole();
+                    }
+                    bool res = JSProxy::SetProperty(thread, JSHandle<JSProxy>(thread, holder),
+                                                    JSHandle<JSTaggedValue>(thread, key),
+                                                    JSHandle<JSTaggedValue>(thread, value),
+                                                    JSHandle<JSTaggedValue>(thread, receiver), true);
+                    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+                    return JSTaggedValue(res);
+                } else {
+                    return JSTaggedValue::Hole();
+                }
+#else
                 return JSTaggedValue::Hole();
+#endif
             }
         }
         // UpdateRepresentation
@@ -1050,6 +1078,11 @@ bool ObjectFastOperator::IsString(JSType jsType)
 bool ObjectFastOperator::IsJSPrimitiveRef(JSType jsType)
 {
     return jsType == JSType::JS_PRIMITIVE_REF;
+}
+
+bool ObjectFastOperator::IsJSProxy(JSType jsType)
+{
+    return jsType == JSType::JS_PROXY;
 }
 
 JSTaggedValue ObjectFastOperator::FastGetTypeArrayProperty(JSThread *thread, JSTaggedValue receiver,

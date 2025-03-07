@@ -3459,4 +3459,37 @@ DEF_CALL_SIGNATURE(FindEntryFromNameDictionary)
     callSign->SetParameters(params.data());
     callSign->SetCallConv(CallSignature::CallConv::CCallConv);;
 }
+
+DEF_CALL_SIGNATURE(JSProxyGetProperty)
+{
+    constexpr size_t paramCount = 4;
+    CallSignature signature("JSProxyGetProperty", 0, paramCount, ArgumentsOrder::DEFAULT_ORDER,
+                            VariableType::JS_ANY());
+    *callSign = signature;
+    std::array<VariableType, paramCount> params = {
+        VariableType::NATIVE_POINTER(),  // glue
+        VariableType::JS_ANY(),          // holder
+        VariableType::JS_ANY(),          // key
+        VariableType::JS_ANY(),          // receiver
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetCallConv(CallSignature::CallConv::CCallConv);;
+}
+
+DEF_CALL_SIGNATURE(JSProxySetProperty)
+{
+    constexpr size_t paramCount = 5;
+    CallSignature signature("JSProxySetProperty", 0, paramCount, ArgumentsOrder::DEFAULT_ORDER,
+                            VariableType::JS_ANY());
+    *callSign = signature;
+    std::array<VariableType, paramCount> params = {
+        VariableType::NATIVE_POINTER(),  // glue
+        VariableType::JS_ANY(),          // holder
+        VariableType::JS_ANY(),          // key
+        VariableType::JS_ANY(),          // value
+        VariableType::JS_ANY(),          // receiver
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetCallConv(CallSignature::CallConv::CCallConv);;
+}
 }  // namespace panda::ecmascript::kungfu
