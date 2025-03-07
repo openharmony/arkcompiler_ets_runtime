@@ -1825,22 +1825,29 @@ bool Heap::CheckAndTriggerHintGC(MemoryReduceDegree degree, GCReason reason)
     return false;
 }
 
-bool Heap::CheckOngoingConcurrentMarking()
+bool Heap::CheckOngoingConcurrentMarkingImpl(ThreadType threadType, int threadIndex,
+                                             [[maybe_unused]] const char* traceName)
 {
-    if (concurrentMarker_->IsEnabled() && !thread_->IsReadyToConcurrentMark() &&
-        concurrentMarker_->IsTriggeredConcurrentMark()) {
-        TRACE_GC(GCStats::Scope::ScopeId::WaitConcurrentMarkFinished, GetEcmaVM()->GetEcmaGCStats());
-        if (thread_->IsMarking()) {
-            ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "Heap::CheckOngoingConcurrentMarking");
+    if (!concurrentMarker_->IsEnabled() || !concurrentMarker_->IsTriggeredConcurrentMark() ||
+        thread_->IsReadyToConcurrentMark()) {
+        return false;
+    }
+    TRACE_GC(GCStats::Scope::ScopeId::WaitConcurrentMarkFinished, GetEcmaVM()->GetEcmaGCStats());
+    if (thread_->IsMarking()) {
+        ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, traceName);
+        if (threadType == ThreadType::JS_THREAD) {
             MEM_ALLOCATE_AND_GC_TRACE(ecmaVm_, WaitConcurrentMarkingFinished);
-            GetNonMovableMarker()->ProcessMarkStack(MAIN_THREAD_INDEX);
+            GetNonMovableMarker()->ProcessMarkStack(threadIndex);
+            WaitConcurrentMarkingFinished();
+        } else if (threadType == ThreadType::DAEMON_THREAD) {
+            CHECK_DAEMON_THREAD();
+            GetNonMovableMarker()->ProcessMarkStack(threadIndex);
             WaitConcurrentMarkingFinished();
         }
-        WaitRunningTaskFinished();
-        memController_->RecordAfterConcurrentMark(markType_, concurrentMarker_);
-        return true;
     }
-    return false;
+    WaitRunningTaskFinished();
+    memController_->RecordAfterConcurrentMark(markType_, concurrentMarker_);
+    return true;
 }
 
 void Heap::ClearIdleTask()

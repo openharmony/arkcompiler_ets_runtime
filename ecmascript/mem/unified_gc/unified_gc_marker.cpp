@@ -25,7 +25,7 @@ void UnifiedGCMarker::Mark()
     {
         ThreadManagedScope runningScope(dThread_);
         SuspendAllScope scope(dThread_);
-        if (heap_->CheckOngoingConcurrentMarking()) {
+        if (heap_->DaemonCheckOngoingConcurrentMarking()) {
             LOG_GC(DEBUG) << "UnifiedGC after ConcurrentMarking";
             heap_->GetConcurrentMarker()->Reset();
         }
