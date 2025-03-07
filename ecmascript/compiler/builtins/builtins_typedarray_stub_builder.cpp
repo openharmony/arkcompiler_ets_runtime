@@ -1476,6 +1476,7 @@ void BuiltinsTypedArrayStubBuilder::Filter(GateRef glue, GateRef thisValue, Gate
             NewObjectStubBuilder newBuilder(this);
             newBuilder.SetParameters(glue, 0);
             GateRef newArray = newBuilder.NewTypedArray(glue, thisValue, arrayType, TruncInt64ToInt32(*newArrayLen));
+            GateRef newArrayType = GetObjectType(LoadHClass(newArray));
             BRANCH(HasPendingException(glue), &hasException2, &notHasException2);
             Bind(&hasException2);
             {
@@ -1495,7 +1496,7 @@ void BuiltinsTypedArrayStubBuilder::Filter(GateRef glue, GateRef thisValue, Gate
                 Bind(&next2);
                 {
                     GateRef kValue = arrayStubBuilder.GetTaggedValueWithElementsKind(glue, kept, *i);
-                    StoreTypedArrayElement(glue, newArray, ZExtInt32ToInt64(*i), kValue, arrayType);
+                    StoreTypedArrayElement(glue, newArray, ZExtInt32ToInt64(*i), kValue, newArrayType);
                     Jump(&loopEnd2);
                 }
             }
