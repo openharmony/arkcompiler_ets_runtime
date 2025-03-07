@@ -46,10 +46,20 @@ RegionEvacuateType ParallelEvacuator::SelectRegionEvacuateType(Region *region)
     return RegionEvacuateType::OBJECT_EVACUATE;
 }
 
+void ParallelEvacuator::CompensateOvershootSizeIfHighAliveRate(Region* region)
+{
+    double aliveRate = static_cast<double>(region->AliveObject()) / region->GetSize();
+    if (region->IsFreshRegion() || aliveRate >= STRICT_OBJECT_SURVIVAL_RATE) {
+        size_t compensateSize = static_cast<size_t>(region->GetCapacity() * (1.0 - HPPGC_NEWSPACE_SIZE_RATIO));
+        heap_->GetNewSpace()->AddOverShootSize(compensateSize);
+    }
+}
+
 bool ParallelEvacuator::TryWholeRegionEvacuate(Region *region, RegionEvacuateType type)
 {
     switch (type) {
         case RegionEvacuateType::REGION_NEW_TO_NEW:
+            CompensateOvershootSizeIfHighAliveRate(region);
             return heap_->MoveYoungRegion(region);
         case RegionEvacuateType::REGION_NEW_TO_OLD:
             return heap_->MoveYoungRegionToOld(region);

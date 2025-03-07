@@ -1376,6 +1376,8 @@ public:
 
     bool ObjectExceedMaxHeapSize() const override;
 
+    bool ObjectExceedHighSensitiveThresholdForCM() const;
+
     bool ObjectExceedJustFinishStartupThresholdForGC() const;
 
     bool ObjectExceedJustFinishStartupThresholdForCM() const;
@@ -1385,6 +1387,8 @@ public:
     void TryIncreaseOvershootByConfigSize();
 
     bool CheckIfNeedStopCollectionByStartup();
+
+    bool CheckIfNeedStopCollectionByHighSensitive();
 
     bool NeedStopCollection() override;
 
