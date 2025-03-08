@@ -133,6 +133,7 @@ private:
                                 JSHClass *hclass, JSTaggedValue &secondValue);
     void ConvertICByValueWithPoly(ApEntityId abcId, int32_t bcOffset, JSTaggedValue cacheValue, BCType type);
     void ConvertInstanceof(int32_t bcOffset, uint32_t slotId);
+    void ConvertTryldGlobalByName(uint32_t bcOffset, uint32_t slotId);
 
     // RwOpType related
     void AddObjectInfoWithMega(int32_t bcOffset);
