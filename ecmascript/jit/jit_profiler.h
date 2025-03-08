@@ -138,6 +138,7 @@ private:
                                   JSTaggedValue name, JSTaggedValue cacheValue,
                                   BCType type, uint32_t slotId);
     void ConvertInstanceof(int32_t bcOffset, uint32_t slotId);
+    void ConvertTryldGlobalByName(uint32_t bcOffset, uint32_t slotId);
 
     // RwOpType related
     void AddObjectInfoWithMega(int32_t bcOffset);

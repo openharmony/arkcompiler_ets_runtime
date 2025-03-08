@@ -89,6 +89,27 @@ void JITProfiler::ProfileBytecode(JSThread *thread, const JSHandle<ProfileTypeIn
                 ConvertICByValue(bcOffset, slotId, BCType::LOAD);
                 break;
             }
+            case EcmaOpcode::TRYLDGLOBALBYNAME_IMM8_ID16: {
+                Jit::JitLockHolder lock(thread);
+                if (!useRawProfileTypeInfo) {
+                    profileTypeInfo_ = *profileTypeInfo;
+                }
+                uint32_t slotId = READ_INST_8_0();
+                ASSERT(bcOffset >= 0);
+                ConvertTryldGlobalByName(static_cast<uint32_t>(bcOffset), slotId);
+                break;
+            }
+            case EcmaOpcode::TRYLDGLOBALBYNAME_IMM16_ID16: {
+                Jit::JitLockHolder lock(thread);
+                if (!useRawProfileTypeInfo) {
+                    profileTypeInfo_ = *profileTypeInfo;
+                }
+                uint32_t slotId = READ_INST_16_0();
+                ASSERT(bcOffset >= 0);
+                ConvertTryldGlobalByName(static_cast<uint32_t>(bcOffset), slotId);
+                break;
+            }
+
             case EcmaOpcode::STOBJBYNAME_IMM8_ID16_V8:
             case EcmaOpcode::STTHISBYNAME_IMM8_ID16:
             case EcmaOpcode::DEFINEPROPERTYBYNAME_IMM8_ID16_V8:
@@ -879,6 +900,28 @@ void JITProfiler::ConvertInstanceof(int32_t bcOffset, uint32_t slotId)
     }
     // Poly Not Consider now
     return;
+}
+
+void JITProfiler::ConvertTryldGlobalByName(uint32_t bcOffset, uint32_t slotId)
+{
+    auto *jitCompilationEnv = static_cast<JitCompilationEnv*>(compilationEnv_);
+    if (!jitCompilationEnv->SupportHeapConstant()) {
+        return;
+    }
+    JSTaggedValue handler = profileTypeInfo_->Get(slotId);
+    if (handler.IsHeapObject()) {
+        ASSERT(handler.IsPropertyBox());
+        PropertyBox *cell = PropertyBox::Cast(handler.GetTaggedObject());
+        if (cell->IsInvalid() || cell->GetValue().IsAccessorData()) {
+            return;
+        }
+        JSHandle<JSTaggedValue> boxHandle = jitCompilationEnv->NewJSHandle(handler);
+        uint32_t heapConstantIndex = jitCompilationEnv->RecordHeapConstant(boxHandle);
+        if (heapConstantIndex != JitCompilationEnv::INVALID_HEAP_CONSTANT_INDEX) {
+            jitCompilationEnv->RecordLdGlobalByNameBcOffset2HeapConstantIndex(methodId_.GetOffset(),
+                bcOffset, heapConstantIndex);
+        }
+    }
 }
 
 JSTaggedValue JITProfiler::TryFindKeyInPrototypeChain(TaggedObject *currObj, JSHClass *currHC, JSTaggedValue key)
