@@ -2395,7 +2395,9 @@ void TypedBytecodeLowering::LowerCreateObjectWithBuffer(GateRef gate)
     JSObject *objhandle = JSObject::Cast(obj);
     std::vector<uint64_t> inlinedProps;
     auto layout = LayoutInfo::Cast(newClass->GetLayout().GetTaggedObject());
-    for (uint32_t i = 0; i < newClass->GetInlinedProperties(); i++) {
+    uint32_t numOfProps = newClass->NumberOfProps();
+    uint32_t numInlinedProps = newClass->GetInlinedProperties();
+    for (uint32_t i = 0; i < numOfProps; i++) {
         auto attr = layout->GetAttr(i);
         JSTaggedValue value = objhandle->GetPropertyInlinedProps(i);
         if ((!attr.IsTaggedRep()) || value.IsUndefinedOrNull() ||
@@ -2418,7 +2420,7 @@ void TypedBytecodeLowering::LowerCreateObjectWithBuffer(GateRef gate)
     valueIn.emplace_back(index);
     valueIn.emplace_back(builder_.Int64(JSTaggedValue(newClass).GetRawData()));
     valueIn.emplace_back(acc_.GetValueIn(gate, 1));
-    for (uint32_t i = 0; i < newClass->GetInlinedProperties(); i++) {
+    for (uint32_t i = 0; i < numOfProps; i++) {
         auto attr = layout->GetAttr(i);
         GateRef prop;
         if (attr.IsIntRep()) {
@@ -2432,6 +2434,11 @@ void TypedBytecodeLowering::LowerCreateObjectWithBuffer(GateRef gate)
         } else {
             prop = builder_.Int64(inlinedProps.at(i));
         }
+        valueIn.emplace_back(prop);
+        valueIn.emplace_back(builder_.Int32(newClass->GetInlinedPropertiesOffset(i)));
+    }
+    GateRef prop = newClass->IsAOT() ? builder_.Hole() : builder_.Undefined();
+    for (uint32_t i = numOfProps; i < numInlinedProps; i++) {
         valueIn.emplace_back(prop);
         valueIn.emplace_back(builder_.Int32(newClass->GetInlinedPropertiesOffset(i)));
     }

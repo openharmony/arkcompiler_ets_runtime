@@ -435,7 +435,7 @@ public:
     void Initialize(const JSThread *thread, uint32_t size, JSType type, uint32_t inlinedProps,
         const JSHandle<JSTaggedValue> &layout);
     static JSHandle<JSHClass> Clone(const JSThread *thread, const JSHandle<JSHClass> &jshclass,
-                                    bool withoutInlinedProperties = false, uint32_t incInlinedProperties = 0);
+                                    bool withInlinedProperties = false, uint32_t inlinedProps = 0);
     static JSHandle<JSHClass> CloneAndIncInlinedProperties(const JSThread *thread, const JSHandle<JSHClass> &jshclass,
                                                            uint32_t expectedOfProperties);
     static JSHandle<JSHClass> CloneWithoutInlinedProperties(const JSThread *thread, const JSHandle<JSHClass> &jshclass);
@@ -450,7 +450,9 @@ public:
     static JSHandle<JSHClass> SetPropertyOfObjHClass(const JSThread *thread, JSHandle<JSHClass> &jshclass,
                                                      const JSHandle<JSTaggedValue> &key,
                                                      const PropertyAttributes &attr,
-                                                     const Representation &rep);
+                                                     const Representation &rep,
+                                                     bool withInlinedProperties = false,
+                                                     uint32_t numInlinedProps = 0);
     static void PUBLIC_API AddProperty(const JSThread *thread, const JSHandle<JSObject> &obj,
                                        const JSHandle<JSTaggedValue> &key, const PropertyAttributes &attr,
                                        const Representation &rep = Representation::NONE);
@@ -2073,13 +2075,14 @@ public:
 
     static CString DumpJSType(JSType type);
 
+    static void CalculateMaxNumForChild(const HClassLayoutDesc* desc, uint32_t maxNum);
     static JSHandle<JSHClass> CreateRootHClassFromPGO(const JSThread* thread,
                                                       const HClassLayoutDesc* desc,
-                                                      uint32_t maxNum,
-                                                      bool isCache);
+                                                      uint32_t maxNum);
     static JSHandle<JSHClass> CreateRootHClassWithCached(const JSThread* thread,
                                                          const HClassLayoutDesc* desc,
-                                                         uint32_t maxNum);
+                                                         uint32_t literalLength,
+                                                         uint32_t maxPropsNum);
     static JSHandle<JSHClass> CreateChildHClassFromPGO(const JSThread* thread,
                                                        const JSHandle<JSHClass>& parent,
                                                        const HClassLayoutDesc* desc);

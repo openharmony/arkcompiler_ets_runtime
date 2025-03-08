@@ -92,12 +92,12 @@ public:
     ~PGOTypeParser() = default;
 
     void PUBLIC_API CreatePGOType(BytecodeInfoCollector &collector);
+    void PUBLIC_API Preproccessor(BytecodeInfoCollector &collector);
 
 private:
     void GenerateHClassForNapiType(ProfileType rootType, const PGOHClassGenerator &generator);
-    void GenerateHClassForClassType(ProfileType rootType, ProfileType protoPt, const PGOHClassGenerator &generator,
-                                    bool isCache);
-    void GenerateHClassForPrototype(ProfileType rootType, const PGOHClassGenerator &generator, bool isCache);
+    void GenerateHClassForClassType(ProfileType rootType, ProfileType protoPt, const PGOHClassGenerator &generator);
+    void GenerateHClassForPrototype(ProfileType rootType, const PGOHClassGenerator &generator);
     bool SkipGenerateHClass(PGOTypeRecorder typeRecorder, ProfileType rootType,
                             bool isCache, PGOHClassTreeDesc *desc);
 

@@ -354,6 +354,7 @@
       panda::ecmascript::kungfu::PGOTypeManager::GetSymbolIdByProfileType*;
       panda::ecmascript::kungfu::PGOTypeManager::MergeRepresentationForProtoTransition*;
       panda::ecmascript::kungfu::PGOTypeParser::CreatePGOType*;
+      panda::ecmascript::kungfu::PGOTypeParser::Preproccessor*;
       panda::ecmascript::kungfu::PGOTypeParser::PGOTypeParser*;
       panda::ecmascript::kungfu::PGOTypeRecorder::GetElementsKindForCreater*;
       panda::ecmascript::kungfu::PGOTypeRecorder::GetElementsKindsForUser*;

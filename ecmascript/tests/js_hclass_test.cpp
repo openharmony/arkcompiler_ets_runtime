@@ -116,7 +116,7 @@ HWTEST_F_L0(JSHClassTest, Clone)
     JSHandle<JSTaggedValue> nullHandle(thread, JSTaggedValue::Null());
 
     JSHandle<JSHClass> objectClass = factory->NewEcmaHClass(JSObject::SIZE, JSType::JS_OBJECT, nullHandle);
-    // withoutInlinedProperties is false
+    // withInlinedProperties is false
     JSHandle<JSHClass> cloneClass = JSHClass::Clone(thread, objectClass, false);
     EXPECT_TRUE(*cloneClass != nullptr);
     EXPECT_TRUE(objectClass->GetObjectSize() == cloneClass->GetObjectSize());
@@ -127,8 +127,8 @@ HWTEST_F_L0(JSHClassTest, Clone)
     EXPECT_TRUE(objectClass->GetBitField1() == cloneClass->GetBitField1());
     EXPECT_TRUE(objectClass->NumberOfProps() == cloneClass->NumberOfProps());
     EXPECT_EQ(cloneClass->GetNextInlinedPropsIndex(), 0); // 0 : 0 mean index
-    // withoutInlinedProperties is true
-    cloneClass = JSHClass::Clone(thread, objectClass, true);
+    // withInlinedProperties is true
+    cloneClass = JSHClass::Clone(thread, objectClass, true, 0);
     EXPECT_TRUE(*cloneClass != nullptr);
     EXPECT_TRUE(objectClass->GetObjectSize() > cloneClass->GetObjectSize());
     EXPECT_EQ(cloneClass->GetObjectSize(), 32U); // 32 : 32 missing the size of inlinedproperties
