@@ -44,8 +44,6 @@ public:
     void LookupProperty(GateRef glue, Variable *holder, GateRef key, Label *isJSProxy, Label *ifFound, Label *notFound,
                         GateRef hir = Circuit::NullGate());
     template <bool keyIsElement>
-    GateRef ShouldContinuelyLookupInProtoChain(GateRef holder);
-    template <bool keyIsElement>
     void TryLookupInProtoChain(GateRef glue, Variable *holder, GateRef key, Label *ifFound, Label *notFound,
                                Label *isJSProxy, GateRef hir = Circuit::NullGate());
     GateRef LookupPropertyInlinedProps(GateRef glue, GateRef obj, GateRef key, GateRef hir = Circuit::NullGate());
