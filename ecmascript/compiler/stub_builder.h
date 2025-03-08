@@ -541,6 +541,7 @@ public:
     void SetBitFieldToHClass(GateRef glue, GateRef hClass, GateRef bitfield);
     void SetIsAllTaggedProp(GateRef glue, GateRef hclass, GateRef hasRep);
     void SetPrototypeToHClass(VariableType type, GateRef glue, GateRef hClass, GateRef proto);
+    GateRef GetProtoChangeDetails(GateRef hClass);
     void SetProtoChangeDetailsToHClass(VariableType type, GateRef glue, GateRef hClass,
                                        GateRef protoChange);
     void SetLayoutToHClass(VariableType type, GateRef glue, GateRef hClass, GateRef attr,

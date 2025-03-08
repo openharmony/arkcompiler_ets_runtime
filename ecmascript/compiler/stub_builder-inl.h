@@ -2239,6 +2239,12 @@ inline void StubBuilder::SetProtoChangeDetailsToHClass(VariableType type,
     Store(type, glue, hClass, offset, protoChange);
 }
 
+inline GateRef StubBuilder::GetProtoChangeDetails(GateRef hClass)
+{
+    GateRef offset = IntPtr(JSHClass::PROTO_CHANGE_DETAILS_OFFSET);
+    return Load(VariableType::JS_ANY(), hClass, offset);
+}
+
 inline void StubBuilder::SetLayoutToHClass(VariableType type, GateRef glue, GateRef hClass, GateRef attr,
                                            MemoryAttribute mAttr)
 {

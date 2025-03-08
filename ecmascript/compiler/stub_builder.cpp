@@ -3140,6 +3140,8 @@ GateRef StubBuilder::StoreWithTransition(GateRef glue, GateRef receiver, GateRef
     Label indexLessCapacity(env);
     Label capacityIsZero(env);
     Label capacityNotZero(env);
+    Label isPrototype(env);
+    Label notPrototype(env);
     DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
     GateRef newHClass;
     GateRef handlerInfo;
@@ -3154,6 +3156,13 @@ GateRef StubBuilder::StoreWithTransition(GateRef glue, GateRef receiver, GateRef
     GateRef oldHClass = LoadHClass(receiver);
     GateRef prototype = GetPrototypeFromHClass(oldHClass);
     StorePrototype(glue, newHClass, prototype);
+    BRANCH(IsPrototypeHClass(newHClass), &isPrototype, &notPrototype);
+    Bind(&isPrototype);
+    {
+        SetProtoChangeDetailsToHClass(VariableType::INT64(), glue, newHClass, GetProtoChangeDetails(oldHClass));
+        Jump(&notPrototype);
+    }
+    Bind(&notPrototype);
     // Because we currently only supports Fast ElementsKind
     GateRef oldKind = GetElementsKindFromHClass(LoadHClass(receiver));
     RestoreElementsKindToGeneric(glue, newHClass);
