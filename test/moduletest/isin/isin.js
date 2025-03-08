@@ -26,3 +26,10 @@
         print(e);
     }
 }
+
+{
+    const v5 = [-3];
+    const a8 = new Uint8Array(2);
+    v5.__proto__ = a8;
+    print(-3 in v5);
+}

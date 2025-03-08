@@ -71,16 +71,21 @@ void ObjectOperatorStubBuilder::HandleKey(GateRef glue, GateRef key, Variable *p
     Label notDouble(env);
     Label isSymbol(env);
     Label notSymbol(env);
-    Label index64To32(env);
 
-    DEFVARIABLE(index64, VariableType::INT64(), Int64(-1));
     BRANCH(TaggedIsInt(key), &isInt, &notInt);
 
     Bind(&isInt);
     {
         Label numberToString(env);
-        index64 = GetInt64OfTInt(key);
-        BRANCH(Int64GreaterThanOrEqual(*index64, Int64(0)), &index64To32, &numberToString);
+        Label indexIsValid(env);
+        DEFVARIABLE(index, VariableType::INT32(), Int32(-1));
+        index = GetInt32OfTInt(key);
+        BRANCH(Int32GreaterThanOrEqual(*index, Int32(0)), &indexIsValid, &numberToString);
+        Bind(&indexIsValid);
+        {
+            *elemKey = *index;
+            Jump(isElement);
+        }
         Bind(&numberToString);
         {
             *propKey = NumberToString(glue, key);
@@ -94,8 +99,10 @@ void ObjectOperatorStubBuilder::HandleKey(GateRef glue, GateRef key, Variable *p
     Bind(&isString);
     {
         Label toInternString(env);
+        Label index64To32(env);
         Label notInternString(env);
         Label tryFailed(env);
+        DEFVARIABLE(index64, VariableType::INT64(), Int64(-1));
         TryFastHandleStringKey(key, propKey, elemKey, isProperty, isElement, &tryFailed);
 
         Bind(&tryFailed);
@@ -111,6 +118,12 @@ void ObjectOperatorStubBuilder::HandleKey(GateRef glue, GateRef key, Variable *p
                 *propKey = CallRuntime(glue, RTSTUB_ID(NewInternalString), {**propKey});
                 Jump(isProperty);
             }
+        }
+
+        Bind(&index64To32);
+        {
+            *elemKey = TruncInt64ToInt32(*index64);
+            Jump(isElement);
         }
     }
 
@@ -181,12 +194,6 @@ void ObjectOperatorStubBuilder::HandleKey(GateRef glue, GateRef key, Variable *p
                 Jump(isProperty);
             }
         }
-    }
-
-    Bind(&index64To32);
-    {
-        *elemKey = TruncInt64ToInt32(*index64);
-        Jump(isElement);
     }
 }
 
