@@ -556,11 +556,6 @@ public:
         stageOfColdReload_ = stageOfColdReload;
     }
 
-    bool JoinStackPushFastPath(JSHandle<JSTaggedValue> receiver);
-    bool JoinStackPush(JSHandle<JSTaggedValue> receiver);
-    void JoinStackPopFastPath(JSHandle<JSTaggedValue> receiver);
-    void JoinStackPop(JSHandle<JSTaggedValue> receiver);
-
     std::tuple<uint64_t, uint8_t *, int, kungfu::CalleeRegAndOffsetVec> CalCallSiteInfo(uintptr_t retAddr,
                                                                                         bool isDeopt) const;
 
@@ -688,9 +683,6 @@ private:
     int32_t currentPrimitiveStorageIndex_ {-1};
 
     GlobalEnvConstants globalConst_;
-    // Join Stack
-    static constexpr uint32_t MIN_JOIN_STACK_SIZE = 2;
-    CVector<JSTaggedValue> joinStack_ {JSTaggedValue::Hole(), JSTaggedValue::Hole()};
 
     // SustainingJSHandleList for jit compile hold ref
     SustainingJSHandleList *sustainingJSHandleList_ {nullptr};

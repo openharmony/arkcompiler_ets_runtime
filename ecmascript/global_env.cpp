@@ -25,13 +25,16 @@ void GlobalEnv::Init(JSThread *thread)
 {
     SetRegisterSymbols(thread, SymbolTable::Create(thread));
     SetGlobalRecord(thread, GlobalDictionary::Create(thread));
+    auto* vm = thread->GetEcmaVM();
     JSTaggedValue emptyStr = thread->GlobalConstants()->GetEmptyString();
-    EcmaStringTable *stringTable = thread->GetEcmaVM()->GetEcmaStringTable();
-    stringTable->GetOrInternFlattenString(thread->GetEcmaVM(), EcmaString::Cast(emptyStr.GetTaggedObject()));
+    EcmaStringTable *stringTable = vm->GetEcmaStringTable();
+    stringTable->GetOrInternFlattenString(vm, EcmaString::Cast(emptyStr.GetTaggedObject()));
     SetTemplateMap(thread, TemplateMap::Create(thread));
     SetObjectLiteralHClassCache(thread, JSTaggedValue::Hole());
+    SetArrayJoinStack(thread, vm->GetFactory()->NewTaggedArray(ArrayJoinStack::MIN_JOIN_STACK_SIZE));
     SetJSThread(thread);
 }
+
 JSHandle<JSTaggedValue> GlobalEnv::GetSymbol(JSThread *thread, const JSHandle<JSTaggedValue> &string)
 {
     JSHandle<JSTaggedValue> symbolFunction(GetSymbolFunction());

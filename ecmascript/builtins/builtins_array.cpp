@@ -1305,12 +1305,6 @@ JSTaggedValue BuiltinsArray::Join(EcmaRuntimeCallInfo *argv)
     JSThread *thread = argv->GetThread();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
-    auto factory = thread->GetEcmaVM()->GetFactory();
-    auto context = thread->GetCurrentEcmaContext();
-    bool noCircular = context->JoinStackPushFastPath(thisHandle);
-    if (!noCircular) {
-        return factory->GetEmptyString().GetTaggedValue();
-    }
     if (thisHandle->IsStableJSArray(thread)) {
         return JSStableArray::Join(thisHandle, argv);
     }
@@ -1318,7 +1312,7 @@ JSTaggedValue BuiltinsArray::Join(EcmaRuntimeCallInfo *argv)
     // 1. Let O be ToObject(this value).
     JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
     // 2. ReturnIfAbrupt(O).
-    RETURN_EXCEPTION_AND_POP_JOINSTACK(thread, thisHandle);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSTaggedValue> thisObjVal(thisObjHandle);
 
     // 3. Let len be ToLength(Get(O, "length")).
@@ -1327,7 +1321,7 @@ JSTaggedValue BuiltinsArray::Join(EcmaRuntimeCallInfo *argv)
         THROW_TYPE_ERROR_AND_RETURN(thread, "Invalid array length", JSTaggedValue::Exception());
     }
     // 4. ReturnIfAbrupt(len).
-    RETURN_EXCEPTION_AND_POP_JOINSTACK(thread, thisHandle);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     // 5. If separator is undefined, let separator be the single-element String ",".
     // 6. Let sep be ToString(separator).
@@ -1346,17 +1340,16 @@ JSTaggedValue BuiltinsArray::Join(EcmaRuntimeCallInfo *argv)
         allocateLength = sepLength * (len - 1) + len;
     }
     if (allocateLength > EcmaString::MAX_STRING_LENGTH) {
-        context->JoinStackPopFastPath(thisHandle);
         THROW_RANGE_ERROR_AND_RETURN(thread, "Invalid string length", JSTaggedValue::Exception());
     }
     // 7. ReturnIfAbrupt(sep).
-    RETURN_EXCEPTION_AND_POP_JOINSTACK(thread, thisHandle);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     std::u16string sepStr = EcmaStringAccessor(sepStringHandle).ToU16String();
 
-    // 8. If len is zero, return the empty String.
-    if (len == 0) {
-        context->JoinStackPopFastPath(thisHandle);
-        return GetTaggedString(thread, "");
+    // 8. If len is zero or exist circular call, return the empty String.
+    if (len == 0 || !ArrayJoinStack::Push(thread, thisObjVal)) {
+        const auto* globalConst = thread->GlobalConstants();
+        return globalConst->GetEmptyString();
     }
 
     // 9. Let element0 be Get(O, "0").
@@ -1371,32 +1364,30 @@ JSTaggedValue BuiltinsArray::Join(EcmaRuntimeCallInfo *argv)
     //   e. Let R be a String value produced by concatenating S and next.
     //   f. Increase k by 1.
     std::u16string concatStr;
-    for (int64_t k = 0; k < len; k++) {
-        std::u16string nextStr;
+    uint32_t length = static_cast<uint32_t>(len);
+    for (uint32_t k = 0; k < length; k++) {
+        if (k > 0) {
+            concatStr.append(sepStr);
+        }
         JSHandle<JSTaggedValue> element = JSArray::FastGetPropertyByValue(thread, thisObjVal, k);
         RETURN_EXCEPTION_AND_POP_JOINSTACK(thread, thisHandle);
         if (!element->IsUndefined() && !element->IsNull()) {
             JSHandle<EcmaString> nextStringHandle = JSTaggedValue::ToString(thread, element);
             RETURN_EXCEPTION_AND_POP_JOINSTACK(thread, thisHandle);
-            nextStr = EcmaStringAccessor(nextStringHandle).ToU16String();
+            concatStr.append(EcmaStringAccessor(nextStringHandle).ToU16String());
         }
-        if (k > 0) {
-            concatStr.append(sepStr);
-        }
-        concatStr.append(nextStr);
         if (concatStr.size() > EcmaString::MAX_STRING_LENGTH) {
-            context->JoinStackPopFastPath(thisHandle);
+            ArrayJoinStack::Pop(thread, thisHandle);
             THROW_RANGE_ERROR_AND_RETURN(thread, "Invalid string length", JSTaggedValue::Exception());
         }
         thread->CheckSafepointIfSuspended();
     }
 
     // 14. Return R.
-    const char16_t *constChar16tData = concatStr.data();
-    auto *char16tData = const_cast<char16_t *>(constChar16tData);
-    auto *uint16tData = reinterpret_cast<uint16_t *>(char16tData);
+    auto *uint16tData = reinterpret_cast<uint16_t *>(concatStr.data());
     uint32_t u16strSize = concatStr.size();
-    context->JoinStackPopFastPath(thisHandle);
+    ArrayJoinStack::Pop(thread, thisHandle);
+    auto* factory = thread->GetEcmaVM()->GetFactory();
     return factory->NewFromUtf16Literal(uint16tData, u16strSize).GetTaggedValue();
 }
 
@@ -2625,32 +2616,23 @@ JSTaggedValue BuiltinsArray::ToLocaleString(EcmaRuntimeCallInfo *argv)
     BUILTINS_API_TRACE(argv->GetThread(), Array, ToLocaleString);
     JSThread *thread = argv->GetThread();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
-    auto ecmaVm = thread->GetEcmaVM();
-    ObjectFactory *factory = ecmaVm->GetFactory();
 
     // 1. Let O be ToObject(this value).
     JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
     JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
-    // add this to join stack to avoid circular call
-    auto context = thread->GetCurrentEcmaContext();
-    bool noCircular = context->JoinStackPushFastPath(thisHandle);
-    if (!noCircular) {
-        return factory->GetEmptyString().GetTaggedValue();
-    }
     // 2. ReturnIfAbrupt(O).
-    RETURN_EXCEPTION_AND_POP_JOINSTACK(thread, thisHandle);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSTaggedValue> thisObjVal(thisObjHandle);
 
     // 3. Let len be ToLength(Get(O, "length")).
     int64_t len = ArrayHelper::GetLength(thread, thisObjVal);
     // 4. ReturnIfAbrupt(len).
-    RETURN_EXCEPTION_AND_POP_JOINSTACK(thread, thisHandle);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
-    // 6. If len is zero, return the empty String.
-    if (len == 0) {
-        // pop this from join stack
-        context->JoinStackPopFastPath(thisHandle);
-        return GetTaggedString(thread, "");
+    // 6. If len is zero or exist circular call, return the empty String.
+    if (len == 0 || !ArrayJoinStack::Push(thread, thisObjVal)) {
+        const auto* globalConst = thread->GlobalConstants();
+        return globalConst->GetEmptyString();
     }
 
     // Inject locales and options argument into a taggedArray
@@ -2708,8 +2690,9 @@ JSTaggedValue BuiltinsArray::ToLocaleString(EcmaRuntimeCallInfo *argv)
     }
 
     // pop this from join stack
-    context->JoinStackPopFastPath(thisHandle);
+    ArrayJoinStack::Pop(thread, thisHandle);
     // 13. Return R.
+    auto* factory = thread->GetEcmaVM()->GetFactory();
     return factory->NewFromUtf8(concatStr).GetTaggedValue();
 }
 

@@ -1058,4 +1058,59 @@ void JSArray::UpdateTrackInfo(const JSThread *thread)
         trackInfo->SetCachedHClass(thread, cachedHClass);
     }
 }
+
+bool ArrayJoinStack::Push(const JSThread *thread, const JSHandle<JSTaggedValue> receiver)
+{
+    auto* vm = thread->GetEcmaVM();
+    JSHandle<GlobalEnv> globalEnv = vm->GetGlobalEnv();
+    ASSERT(globalEnv->GetArrayJoinStack()->IsTaggedArray());
+    JSHandle<TaggedArray> joinStack = JSHandle<TaggedArray>::Cast(globalEnv->GetArrayJoinStack());
+    ASSERT(joinStack->GetLength() > 0);
+    if (joinStack->Get(0) == JSTaggedValue::Hole()) {
+        joinStack->Set(thread, 0, receiver.GetTaggedValue());
+        return true;
+    }
+
+    uint32_t length = joinStack->GetLength();
+    JSTaggedValue receiverValue = receiver.GetTaggedValue();
+    for (uint32_t i = 0; i < length; ++i) {
+        JSTaggedValue visitedObj = joinStack->Get(i);
+        if (visitedObj == JSTaggedValue::Hole()) {
+            joinStack->Set(thread, i, receiverValue);
+            return true;
+        }
+        if (visitedObj == receiverValue) {
+            return false;
+        }
+    }
+    // No holes were found, grow the stack and add receiver to the end.
+    uint32_t newLength = TaggedArray::ExtendCapacityWithPadding(length);
+    JSHandle<TaggedArray> newJoinStack = vm->GetFactory()->CopyArray(joinStack, length, newLength);
+    newJoinStack->Set(thread, length, receiver);
+    globalEnv->SetArrayJoinStack(thread, newJoinStack);
+    return true;
+}
+
+void ArrayJoinStack::Pop(const JSThread *thread, const JSHandle<JSTaggedValue> receiver)
+{
+    auto* vm = thread->GetEcmaVM();
+    JSHandle<GlobalEnv> globalEnv = vm->GetGlobalEnv();
+    JSHandle<TaggedArray> joinStack = JSHandle<TaggedArray>::Cast(globalEnv->GetArrayJoinStack());
+    uint32_t length = joinStack->GetLength();
+    if (joinStack->Get(0) == receiver.GetTaggedValue() && length == MIN_JOIN_STACK_SIZE) {
+        joinStack->Set(thread, 0, JSTaggedValue::Hole());
+        return;
+    }
+    for (uint32_t i = 0; i < length; ++i) {
+        if (joinStack->Get(i) == receiver.GetTaggedValue()) {
+            if (i == 0 && length > MIN_JOIN_STACK_SIZE) {
+                JSHandle<TaggedArray> newJoinStack = vm->GetFactory()->NewTaggedArray(MIN_JOIN_STACK_SIZE);
+                globalEnv->SetArrayJoinStack(thread, newJoinStack);
+            } else {
+                joinStack->Set(thread, i, JSTaggedValue::Hole());
+            }
+            break;
+        }
+    }
+}
 }  // namespace panda::ecmascript
