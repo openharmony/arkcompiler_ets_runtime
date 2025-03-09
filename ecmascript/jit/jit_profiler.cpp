@@ -29,9 +29,11 @@ JITProfiler::JITProfiler(EcmaVM *vm) : vm_(vm)
 void JITProfiler::ProfileBytecode(JSThread *thread, const JSHandle<ProfileTypeInfo> &profileTypeInfo,
                                   ProfileTypeInfo *rawProfileTypeInfo,
                                   EntityId methodId, ApEntityId abcId, const uint8_t *pcStart, uint32_t codeSize,
-                                  [[maybe_unused]]const panda_file::File::Header *header, bool useRawProfileTypeInfo)
+                                  [[maybe_unused]]const panda_file::File::Header *header,
+                                  JSHandle<JSFunction> jsFunction, bool useRawProfileTypeInfo)
 {
     Clear();
+    jsFunction_ = jsFunction;
     if (useRawProfileTypeInfo) {
         profileTypeInfo_ = rawProfileTypeInfo;
     }
@@ -133,6 +135,18 @@ void JITProfiler::ProfileBytecode(JSThread *thread, const JSHandle<ProfileTypeIn
                 }
                 uint16_t slotId = READ_INST_16_0();
                 ConvertICByValue(bcOffset, slotId, BCType::STORE);
+                break;
+            }
+            case EcmaOpcode::LDEXTERNALMODULEVAR_IMM8: {
+                Jit::JitLockHolder lock(thread);
+                uint32_t index = READ_INST_8_0();
+                ConvertExternalModuleVar(index, bcOffset);
+                break;
+            }
+            case EcmaOpcode::WIDE_LDEXTERNALMODULEVAR_PREF_IMM16: {
+                Jit::JitLockHolder lock(thread);
+                uint32_t index = READ_INST_16_1();
+                ConvertExternalModuleVar(index, bcOffset);
                 break;
             }
             // Op
@@ -849,6 +863,21 @@ void JITProfiler::ConvertICByValueWithPoly(ApEntityId abcId, int32_t bcOffset,
         JSHClass *hclass = JSHClass::Cast(object);
         ConvertICByValueWithHandler(abcId, bcOffset, hclass, handler, type, slotId, name);
     }
+}
+
+void JITProfiler::ConvertExternalModuleVar(uint32_t index, uint32_t bcOffset)
+{
+    auto *jitCompilationEnv = static_cast<JitCompilationEnv*>(compilationEnv_);
+    auto jsfunc = *jsFunction_;
+    // check resolve
+    if (jsfunc == nullptr) {
+        return;
+    }
+    if (!ModuleManager::CheckModuleValueOutterResolved(index, jsfunc)) {
+        return;
+    }
+
+    jitCompilationEnv->SetLdExtModuleVarResolved(methodId_.GetOffset(), bcOffset);
 }
 
 void JITProfiler::ConvertInstanceof(int32_t bcOffset, uint32_t slotId)

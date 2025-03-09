@@ -35,6 +35,68 @@ JSHandle<JSTaggedValue> ModuleManager::GenerateSendableFuncModule(const JSHandle
     return SendableClassModule::GenerateSendableFuncModule(vm_->GetJSThread(), module);
 }
 
+bool ModuleManager::CheckModuleValueOutterResolved(int32_t index, JSFunction *jsFunc)
+{
+    // check module resolved, if resolved, load var from module directly for jit compiled code.
+    ASSERT(jsFunc != nullptr);
+    JSTaggedValue currentModule = jsFunc->GetModule();
+    if (!currentModule.IsSourceTextModule()) {
+        return false;
+    }
+    if (SourceTextModule::IsSendableFunctionModule(currentModule)) {
+        return false;
+    }
+    JSTaggedValue moduleEnv = reinterpret_cast<SourceTextModule*>(currentModule.GetTaggedObject())->GetEnvironment();
+    if (!moduleEnv.IsTaggedArray()) {
+        return false;
+    }
+
+    JSTaggedValue resolvedBinding = TaggedArray::Cast(moduleEnv.GetTaggedObject())->Get(index);
+    if (!resolvedBinding.IsResolvedIndexBinding()) {
+        return false;
+    }
+
+    ResolvedIndexBinding *binding = ResolvedIndexBinding::Cast(resolvedBinding.GetTaggedObject());
+    SourceTextModule *resolvedModule = reinterpret_cast<SourceTextModule*>(binding->GetModule().GetTaggedObject());
+    ModuleTypes moduleType = resolvedModule->GetTypes();
+    if (moduleType != ModuleTypes::ECMA_MODULE) {
+        return false;
+    }
+
+    JSTaggedValue resolvedModuleDict = resolvedModule->GetNameDictionary();
+    if (!resolvedModuleDict.IsTaggedArray()) {
+        return false;
+    }
+    return true;
+}
+
+JSTaggedValue ModuleManager::GetExternalModuleVarFastPathForJIT(JSThread *thread, int32_t index, JSFunction *jsFunc)
+{
+    // fast path for jit load ecma module, check resolved in compiled
+    // with CheckModuleValueOutterResolved, avoid redundancy check in runtime.
+    ASSERT(jsFunc != nullptr);
+    ASSERT(thread != nullptr);
+    if (thread->GetStageOfHotReload() == StageOfHotReload::LOAD_END_EXECUTE_PATCHMAIN) {
+        return JSTaggedValue::Hole();
+    }
+
+    JSTaggedValue currentModule = jsFunc->GetModule();
+    ASSERT(currentModule.IsSourceTextModule());
+    JSTaggedValue moduleEnvironment =
+        reinterpret_cast<SourceTextModule*>(currentModule.GetTaggedObject())->GetEnvironment();
+    ASSERT(moduleEnvironment.IsTaggedArray());
+    JSTaggedValue resolvedBinding = TaggedArray::Cast(moduleEnvironment.GetTaggedObject())->Get(index);
+    ASSERT(resolvedBinding.IsResolvedIndexBinding());
+    ResolvedIndexBinding *binding = ResolvedIndexBinding::Cast(resolvedBinding.GetTaggedObject());
+    JSTaggedValue resolvedModule = binding->GetModule();
+    int32_t bindingIndex = binding->GetIndex();
+    ASSERT(resolvedModule.IsSourceTextModule());
+    JSTaggedValue dictionary =
+        reinterpret_cast<SourceTextModule*>(resolvedModule.GetTaggedObject())->GetNameDictionary();
+    TaggedArray *array = TaggedArray::Cast(dictionary.GetTaggedObject());
+    return array->Get(bindingIndex);
+}
+
 JSHandle<SourceTextModule> ModuleManager::GetImportedModule(const CString &referencing)
 {
     auto thread = vm_->GetJSThread();

@@ -669,6 +669,7 @@ private:
     V(FindPatchModule)                               \
     V(FatalPrintMisstakenResolvedBinding)            \
     V(LoadNativeModuleFailed)                        \
+    V(GetExternalModuleVar)                          \
     V(GetValueWithBarrier)                           \
     V(ReadBarrier)                                   \
     V(ComputeStringHashcode)                         \

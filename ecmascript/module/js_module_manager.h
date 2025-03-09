@@ -107,6 +107,10 @@ public:
         return vm_->IsBundlePack();
     }
 
+    // fast path ldexternalmodulevar for jit
+    static bool CheckModuleValueOutterResolved(int32_t index, JSFunction *jsFunc);
+    static JSTaggedValue GetExternalModuleVarFastPathForJIT(JSThread *thread, int32_t index, JSFunction *jsFunc);
+
 private:
     NO_COPY_SEMANTIC(ModuleManager);
     NO_MOVE_SEMANTIC(ModuleManager);

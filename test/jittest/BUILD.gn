@@ -54,6 +54,7 @@ group("ark_jit_ts_test") {
     "uncheck_float64_to_int32",
     "retype_convert_test",
     "stack_overflow",
+    "module",
     "mega_ic_test",
     "ldobjbyvalue_mono_opt",
     "ldobjbyvalue_mono_proto",

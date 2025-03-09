@@ -785,6 +785,7 @@ bool TSInlineLowering::CalleePFIProcess(uint32_t methodOffset)
     if (!calleeFunc) {
         return false;
     }
+    auto calleeMethodHandle = jitCompilationEnv->NewJSHandle(JSTaggedValue(calleeFunc));
     auto calleeMethod = Method::Cast(calleeFunc->GetMethod());
     ASSERT(calleeMethod->GetMethodId().GetOffset() == methodOffset);
     auto profileTIVal = calleeFunc->GetProfileTypeInfo();
@@ -799,7 +800,8 @@ bool TSInlineLowering::CalleePFIProcess(uint32_t methodOffset)
     auto calleeCodeSize = calleeLiteral->GetCodeSize(calleeFile, calleeMethod->GetMethodId());
     compilationEnv_->GetPGOProfiler()->GetJITProfile()->ProfileBytecode(
         compilationEnv_->GetJSThread(), JSHandle<ProfileTypeInfo>(), profileTypeInfo, calleeMethod->GetMethodId(),
-        calleeAbcId, calleeMethod->GetBytecodeArray(), calleeCodeSize, calleeFile->GetPandaFile()->GetHeader(), true);
+        calleeAbcId, calleeMethod->GetBytecodeArray(), calleeCodeSize, calleeFile->GetPandaFile()->GetHeader(),
+        JSHandle<JSFunction>::Cast(calleeMethodHandle), true);
     return true;
 }
 

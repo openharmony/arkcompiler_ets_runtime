@@ -213,6 +213,7 @@ namespace panda::ecmascript {
     V(FindPatchModule)                         \
     V(FatalPrintMisstakenResolvedBinding)      \
     V(LoadNativeModuleFailed)                  \
+    V(GetExternalModuleVar)                    \
     V(ReadBarrier)                             \
     V(CopyCallTarget)                          \
     V(CopyArgvArray)
