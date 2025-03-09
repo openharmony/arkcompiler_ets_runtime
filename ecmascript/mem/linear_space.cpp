@@ -197,12 +197,13 @@ void SemiSpace::Restart(size_t overShootSize)
 size_t SemiSpace::CalculateNewOverShootSize()
 {
     return committedSize_ <= maximumCapacity_ ?
-           0 : AlignUp((committedSize_ - maximumCapacity_) / 2, DEFAULT_REGION_SIZE); // 2 is the half.
+           0 : AlignUp(static_cast<size_t>((committedSize_ - maximumCapacity_) * HPPGC_NEWSPACE_SIZE_RATIO),
+                       DEFAULT_REGION_SIZE);
 }
 
 bool SemiSpace::CommittedSizeIsLarge()
 {
-    return committedSize_ >= maximumCapacity_ * 2; // 2 is the half.
+    return committedSize_ >= maximumCapacity_ * 2; // 2 means double.
 }
 
 uintptr_t SemiSpace::AllocateSync(size_t size)

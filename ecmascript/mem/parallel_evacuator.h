@@ -229,6 +229,7 @@ private:
     void ProcessFromSpaceEvacuation();
     inline RegionEvacuateType SelectRegionEvacuateType(Region *region);
     inline bool TryWholeRegionEvacuate(Region *region, RegionEvacuateType type);
+    inline void CompensateOvershootSizeIfHighAliveRate(Region* region);
     void VerifyValue(TaggedObject *object, ObjectSlot slot);
     void VerifyHeapObject(TaggedObject *object);
 
