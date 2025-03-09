@@ -206,7 +206,8 @@ namespace panda::ecmascript {
     V(ReverseArray)                            \
     V(LrInt)                                   \
     V(FindPatchModule)                         \
-    V(FatalPrintMisstakenResolvedBinding)
+    V(FatalPrintMisstakenResolvedBinding)      \
+    V(GetExternalModuleVar)
 
 #define RUNTIME_STUB_WITH_GC_LIST(V)            \
     V(HeapAlloc)                                \
