@@ -47,6 +47,37 @@ static constexpr int UTF8_MIN_CODE[] = {
 static constexpr char UTF8_FIRST_CODE[] = {
     0x1f, 0xf, 0x7, 0x3, 0x1,
 };
+
+// Concatenates multiple arguments into a CString.
+// Note: For better performance, consider using AppendToBaseString with a pre-allocated CString.
+template <typename T, typename... Args>
+CString ConcatToCString(T&& first, Args&&... args)
+{
+    CString result = CString(std::forward<T>(first));
+    ((result += std::forward<Args>(args)), ...);
+    return result;
+}
+
+// Concatenates multiple arguments into a std::string.
+// Note: For better performance, consider using AppendToBaseString with a pre-allocated std::string.
+template <typename T, typename... Args>
+std::string ConcatToStdString(T&& first, Args&&... args)
+{
+    std::string result = std::string(std::forward<T>(first));
+    ((result += std::forward<Args>(args)), ...);
+    return result;
+}
+
+// Appends multiple arguments to a base string (std::string or CString).
+// Note: For better performance, pre-allocate the base string using reserve() before calling this function.
+template <typename T, typename... Args>
+void AppendToBaseString(T& base, Args&&... args)
+{
+    static_assert(std::is_same_v<T, std::string> || std::is_same_v<T, CString>,
+                  "base must be std::string or CString");
+    ((base += std::forward<Args>(args)), ...);
+}
+
 class StringHelper {
 public:
     static constexpr int INVALID_UNICODE_FROM_UTF8 = -1;
