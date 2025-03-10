@@ -170,7 +170,7 @@ void GCKeyStats::ProcessLongGCEvent()
             longGCStats->Reset();
         }
     } else {
-        if (gcReason == GCReason::IDLE) {
+        if (IsIdle(gcReason)) {
             if (!gcIsInBackground && gcTotalTime > GC_IDLE_LONG_TIME) {
                 longGCStats->SetCpuLoad(DFXHiSysEvent::GetCpuUsage());
                 DFXHiSysEvent::SendLongGCEvent(longGCStats);

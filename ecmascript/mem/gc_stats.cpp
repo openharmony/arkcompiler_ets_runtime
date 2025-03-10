@@ -542,7 +542,7 @@ bool GCStats::IsLongGC(GCReason gcReason, bool gcIsSensitive, bool gcIsInBackgro
             return true;
         }
     } else {
-        if (gcReason == GCReason::IDLE) {
+        if (GCKeyStats::IsIdle(gcReason)) {
             if (!gcIsInBackground && gcTotalTime > GCKeyStats::GC_IDLE_LONG_TIME) {
                 return true;
             } else if (gcIsInBackground && gcTotalTime > GCKeyStats::GC_BACKGROUD_IDLE_LONG_TIME) {
