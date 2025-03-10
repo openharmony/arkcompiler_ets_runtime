@@ -359,9 +359,21 @@ GateRef BuiltinsTypedArrayStubBuilder::GetValueFromBuffer(GateRef buffer, GateRe
             {
                 GateRef byteIndex = Int32Add(Int32Mul(index, Int32(base::ElementSize::FOUR)), offset);
                 GateRef block = GetDataPointFromBuffer(buffer);
-                GateRef re = Load(VariableType::INT32(), block, byteIndex);
-                result = DoubleToTaggedDoublePtr(ExtFloat32ToDouble(CastInt32ToFloat32(re)));
-                Jump(&exit);
+                GateRef tmpResult = ExtFloat32ToDouble(CastInt32ToFloat32(Load(VariableType::INT32(),
+                                                                               block, byteIndex)));
+                Label ResultIsNumber(env);
+                Label ResultIsNan(env);
+                BRANCH(env->GetBuilder()->DoubleIsImpureNaN(tmpResult), &ResultIsNan, &ResultIsNumber);
+                Bind(&ResultIsNan);
+                {
+                    result = DoubleToTaggedDoublePtr(Double(base::NAN_VALUE));
+                    Jump(&exit);
+                }
+                Bind(&ResultIsNumber);
+                {
+                    result = DoubleToTaggedDoublePtr(tmpResult);
+                    Jump(&exit);
+                }
             }
             // 2 : index of this buffer
             Bind(&labelBuffer2[2]);
