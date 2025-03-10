@@ -3097,7 +3097,9 @@ JSHandle<LayoutInfo> ObjectFactory::ExtendLayoutInfo(const JSHandle<LayoutInfo> 
 JSHandle<LayoutInfo> ObjectFactory::CopyLayoutInfo(const JSHandle<LayoutInfo> &old)
 {
     uint32_t newLength = old->GetLength();
-    return JSHandle<LayoutInfo>(CopyArray(JSHandle<TaggedArray>::Cast(old), newLength, newLength));
+    return JSHandle<LayoutInfo>(CopyArray(
+        JSHandle<TaggedArray>::Cast(old), newLength, newLength, JSTaggedValue::Hole(),
+        old.GetTaggedValue().IsInSharedHeap() ? MemSpaceType::SHARED_OLD_SPACE : MemSpaceType::SEMI_SPACE));
 }
 
 JSHandle<LayoutInfo> ObjectFactory::CopyAndReSort(const JSHandle<LayoutInfo> &old, int end, int capacity)
