@@ -2948,6 +2948,7 @@ JSTaggedValue BuiltinsArray::FlatMap(EcmaRuntimeCallInfo *argv)
     return newArrayHandle.GetTaggedValue();
 }
 
+#if ENABLE_NEXT_OPTIMIZATION
 JSTaggedValue BuiltinsArray::IncludesStable(EcmaRuntimeCallInfo *argv, const JSHandle<JSTaggedValue> &thisHandle)
 {
     int64_t length = JSHandle<JSArray>::Cast(thisHandle)->GetArrayLength();
@@ -3029,7 +3030,6 @@ JSTaggedValue BuiltinsArray::IncludesSlowPath(
 }
 
 // 23.1.3.13 Array.prototype.includes ( searchElement [ , fromIndex ] )
-#ifdef ENABLE_NEXT_OPTIMIZATION
 JSTaggedValue BuiltinsArray::Includes(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
