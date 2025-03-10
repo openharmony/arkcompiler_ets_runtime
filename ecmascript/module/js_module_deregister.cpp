@@ -100,13 +100,10 @@ void ModuleDeregister::IncreaseRegisterCounts(JSThread *thread, JSHandle<SourceT
     if (!module->GetRequestedModules().IsUndefined()) {
         JSHandle<TaggedArray> requestedModules(thread, module->GetRequestedModules());
         size_t requestedModulesLen = requestedModules->GetLength();
-        JSMutableHandle<JSTaggedValue> required(thread, thread->GlobalConstants()->GetUndefined());
         for (size_t idx = 0; idx < requestedModulesLen; idx++) {
-            required.Update(requestedModules->Get(idx));
-            JSMutableHandle<SourceTextModule> requiredModule(thread, thread->GlobalConstants()->GetUndefined());
-            JSHandle<JSTaggedValue> requiredVal = ModuleResolver::HostResolveImportedModule(thread, module, required);
+            JSHandle<SourceTextModule> requiredModule = JSHandle<SourceTextModule>::Cast(
+                SourceTextModule::GetRequestedModule(thread, module, requestedModules, idx));
             RETURN_IF_ABRUPT_COMPLETION(thread);
-            requiredModule.Update(JSHandle<SourceTextModule>::Cast(requiredVal));
             const CString moduleRecordName = module->GetEcmaModuleRecordNameString();
             CString moduleName =
                 moduleRecordName.empty() ? requiredModule->GetEcmaModuleFilenameString() : moduleRecordName;
@@ -140,13 +137,10 @@ void ModuleDeregister::DecreaseRegisterCounts(JSThread *thread, JSHandle<SourceT
     if (!module->GetRequestedModules().IsUndefined()) {
         JSHandle<TaggedArray> requestedModules(thread, module->GetRequestedModules());
         size_t requestedModulesLen = requestedModules->GetLength();
-        JSMutableHandle<JSTaggedValue> required(thread, thread->GlobalConstants()->GetUndefined());
         for (size_t idx = 0; idx < requestedModulesLen; idx++) {
-            required.Update(requestedModules->Get(idx));
-            JSMutableHandle<SourceTextModule> requiredModule(thread, thread->GlobalConstants()->GetUndefined());
-            JSHandle<JSTaggedValue> requiredVal = ModuleResolver::HostResolveImportedModule(thread, module, required);
+            JSHandle<SourceTextModule> requiredModule = JSHandle<SourceTextModule>::Cast(
+                SourceTextModule::GetRequestedModule(thread, module, requestedModules, idx));
             RETURN_IF_ABRUPT_COMPLETION(thread);
-            requiredModule.Update(JSHandle<SourceTextModule>::Cast(requiredVal));
             const CString moduleRecordName = module->GetEcmaModuleRecordNameString();
             CString moduleName =
                 moduleRecordName.empty() ? requiredModule->GetEcmaModuleFilenameString() : moduleRecordName;

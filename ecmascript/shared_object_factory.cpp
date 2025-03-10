@@ -779,6 +779,7 @@ JSHandle<SourceTextModule> ObjectFactory::NewSSourceTextModule()
     JSTaggedValue undefinedValue = thread_->GlobalConstants()->GetUndefined();
     obj->SetEnvironment(thread_, undefinedValue);
     obj->SetNamespace(thread_, undefinedValue);
+    obj->SetModuleRequests(thread_, undefinedValue);
     obj->SetRequestedModules(thread_, undefinedValue);
     obj->SetImportEntries(thread_, undefinedValue);
     obj->SetLocalExportEntries(thread_, undefinedValue);
@@ -821,7 +822,7 @@ JSHandle<ModuleNamespace> ObjectFactory::NewSModuleNamespace()
     return moduleNamespace;
 }
 
-JSHandle<ImportEntry> ObjectFactory::NewSImportEntry(const JSHandle<JSTaggedValue> &moduleRequest,
+JSHandle<ImportEntry> ObjectFactory::NewSImportEntry(const uint32_t moduleRequestIdx,
                                                      const JSHandle<JSTaggedValue> &importName,
                                                      const JSHandle<JSTaggedValue> &localName)
 {
@@ -829,7 +830,7 @@ JSHandle<ImportEntry> ObjectFactory::NewSImportEntry(const JSHandle<JSTaggedValu
     TaggedObject *header = sHeap_->AllocateOldOrHugeObject(thread_,
         JSHClass::Cast(thread_->GlobalConstants()->GetImportEntryClass().GetTaggedObject()));
     JSHandle<ImportEntry> obj(thread_, header);
-    obj->SetModuleRequest(thread_, moduleRequest);
+    obj->SetModuleRequestIndex(moduleRequestIdx);
     obj->SetImportName(thread_, importName);
     obj->SetLocalName(thread_, localName);
     return obj;
@@ -849,7 +850,7 @@ JSHandle<LocalExportEntry> ObjectFactory::NewSLocalExportEntry(const JSHandle<JS
 }
 
 JSHandle<IndirectExportEntry> ObjectFactory::NewSIndirectExportEntry(const JSHandle<JSTaggedValue> &exportName,
-                                                                     const JSHandle<JSTaggedValue> &moduleRequest,
+                                                                     const uint32_t moduleRequestIdx,
                                                                      const JSHandle<JSTaggedValue> &importName)
 {
     NewObjectHook();
@@ -857,18 +858,18 @@ JSHandle<IndirectExportEntry> ObjectFactory::NewSIndirectExportEntry(const JSHan
         JSHClass::Cast(thread_->GlobalConstants()->GetIndirectExportEntryClass().GetTaggedObject()));
     JSHandle<IndirectExportEntry> obj(thread_, header);
     obj->SetExportName(thread_, exportName);
-    obj->SetModuleRequest(thread_, moduleRequest);
+    obj->SetModuleRequestIndex(moduleRequestIdx);
     obj->SetImportName(thread_, importName);
     return obj;
 }
 
-JSHandle<StarExportEntry> ObjectFactory::NewSStarExportEntry(const JSHandle<JSTaggedValue> &moduleRequest)
+JSHandle<StarExportEntry> ObjectFactory::NewSStarExportEntry(const uint32_t moduleRequestIdx)
 {
     NewObjectHook();
     TaggedObject *header = sHeap_->AllocateOldOrHugeObject(thread_,
         JSHClass::Cast(thread_->GlobalConstants()->GetStarExportEntryClass().GetTaggedObject()));
     JSHandle<StarExportEntry> obj(thread_, header);
-    obj->SetModuleRequest(thread_, moduleRequest);
+    obj->SetModuleRequestIndex(moduleRequestIdx);
     return obj;
 }
 

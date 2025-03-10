@@ -44,17 +44,16 @@ HWTEST_F_L0(SharedObjectFactoryTest, NewSModuleNamespaceTest001)
 HWTEST_F_L0(SharedObjectFactoryTest, NewSImportEntryTest001)
 {
     ObjectFactory *factory = instance->GetFactory();
-    JSHandle<EcmaString> request = factory->NewFromASCII("request");
+    size_t requestIndex = 1;
     JSHandle<EcmaString> importName = factory->NewFromASCII("importName");
     JSHandle<EcmaString> localName = factory->NewFromASCII("localName");
 
-    JSHandle<ImportEntry> entry = factory->NewSImportEntry(JSHandle<JSTaggedValue>::Cast(request),
+    JSHandle<ImportEntry> entry = factory->NewSImportEntry(requestIndex,
                                                            JSHandle<JSTaggedValue>::Cast(importName),
                                                            JSHandle<JSTaggedValue>::Cast(localName));
     ASSERT_EQ(entry->GetImportName().GetRawData(), JSHandle<JSTaggedValue>::Cast(importName)->GetRawData());
     ASSERT_EQ(entry->GetLocalName().GetRawData(), JSHandle<JSTaggedValue>::Cast(localName)->GetRawData());
-    ASSERT_EQ(entry->GetModuleRequest().GetRawData(),
-              JSHandle<JSTaggedValue>::Cast(factory->NewFromASCII("request"))->GetRawData());
+    ASSERT_EQ(entry->GetModuleRequestIndex(), 1);
 }
 
 HWTEST_F_L0(SharedObjectFactoryTest, NewSLocalExportEntryTest001)
@@ -73,35 +72,21 @@ HWTEST_F_L0(SharedObjectFactoryTest, NewSIndirectExportEntryTest001)
 {
     ObjectFactory *factory = instance->GetFactory();
     JSHandle<IndirectExportEntry> entry = factory->NewSIndirectExportEntry(
-        JSHandle<JSTaggedValue>::Cast(factory->NewFromASCII("exportName")),
-        JSHandle<JSTaggedValue>::Cast(factory->NewFromASCII("request")),
+        JSHandle<JSTaggedValue>::Cast(factory->NewFromASCII("exportName")), 0,
         JSHandle<JSTaggedValue>::Cast(factory->NewFromASCII("importName")));
     ASSERT_EQ(entry->GetExportName().GetRawData(),
               JSHandle<JSTaggedValue>::Cast(factory->NewFromASCII("exportName"))->GetRawData());
     ASSERT_EQ(entry->GetImportName().GetRawData(),
               JSHandle<JSTaggedValue>::Cast(factory->NewFromASCII("importName"))->GetRawData());
-    ASSERT_EQ(entry->GetModuleRequest().GetRawData(),
-              JSHandle<JSTaggedValue>::Cast(factory->NewFromASCII("request"))->GetRawData());
+    ASSERT_EQ(entry->GetModuleRequestIndex(), 0);
 }
 
 HWTEST_F_L0(SharedObjectFactoryTest, NewSStarExportEntryTest001)
 {
     ObjectFactory *factory = instance->GetFactory();
 
-    JSHandle<StarExportEntry> entry =
-        factory->NewSStarExportEntry(JSHandle<JSTaggedValue>::Cast(factory->NewFromASCII("request")));
-    ASSERT_EQ(entry->GetModuleRequest().GetRawData(),
-              JSHandle<JSTaggedValue>::Cast(factory->NewFromASCII("request"))->GetRawData());
-}
-
-HWTEST_F_L0(SharedObjectFactoryTest, NewSStarExportEntryTest002)
-{
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<LayoutInfo> emptyLayout = factory->CreateSLayoutInfo(0);
-    JSHandle<JSTaggedValue> prototype = JSHandle<JSTaggedValue>(emptyLayout);
-    JSHandle<StarExportEntry> result = factory->NewSStarExportEntry(prototype);
-    EXPECT_FALSE(prototype->IsJSObject());
-    EXPECT_TRUE(*result != nullptr);
+    JSHandle<StarExportEntry> entry = factory->NewSStarExportEntry(0);
+    ASSERT_EQ(entry->GetModuleRequestIndex(), 0);
 }
 
 HWTEST_F_L0(SharedObjectFactoryTest, NewSResolvedIndexBindingRecordTest001)

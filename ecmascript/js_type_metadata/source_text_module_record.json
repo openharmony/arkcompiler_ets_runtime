@@ -12,62 +12,67 @@
             "size": 8
         },
         {
-            "name": "RequestedModules",
-            "offset": 16,
-            "size": 8
+            "name": "ModuleRequests",
+                "offset": 16,
+                "size": 8
         },
         {
-            "name": "ImportEntries",
+            "name": "RequestedModules",
             "offset": 24,
             "size": 8
         },
         {
-            "name": "LocalExportEntries",
+            "name": "ImportEntries",
             "offset": 32,
             "size": 8
         },
         {
-            "name": "IndirectExportEntries",
+            "name": "LocalExportEntries",
             "offset": 40,
             "size": 8
         },
         {
-            "name": "StarExportEntries",
+            "name": "IndirectExportEntries",
             "offset": 48,
             "size": 8
         },
         {
-            "name": "NameDictionary",
+            "name": "StarExportEntries",
             "offset": 56,
             "size": 8
         },
         {
-            "name": "CycleRoot",
+            "name": "NameDictionary",
             "offset": 64,
             "size": 8
         },
         {
-            "name": "TopLevelCapability",
+            "name": "CycleRoot",
             "offset": 72,
             "size": 8
         },
         {
-            "name": "AsyncParentModules",
+            "name": "TopLevelCapability",
             "offset": 80,
             "size": 8
         },
         {
-            "name": "SendableEnv",
+            "name": "AsyncParentModules",
             "offset": 88,
             "size": 8
         },
         {
-            "name": "Exception",
+            "name": "SendableEnv",
             "offset": 96,
+            "size": 8
+        },
+        {
+            "name": "Exception",
+            "offset": 104,
             "size": 8
         }
     ],
-    "end_offset": 152,
+    "end_offset": 160,
     "parents": [
         "MODULE_RECORD"
     ]
