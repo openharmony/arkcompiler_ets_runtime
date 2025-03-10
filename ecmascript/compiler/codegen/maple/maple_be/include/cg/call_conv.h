@@ -249,7 +249,7 @@ class CCImpl {
 public:
     CCImpl() = default;
 
-    ~CCImpl() = default;
+    virtual ~CCImpl() = default;
 
     virtual uint64 LocateNextParm(const MIRType &mirType, CCLocInfo &pLoc, bool isFirst = false,
                                   MIRFuncType *tFunc = nullptr) = 0;
