@@ -53,6 +53,70 @@ void ICStubBuilder::NamedICAccessorWithMega(Variable *cachedHandler, Label *tryI
     }
 }
 
+void ICStubBuilder::TryDesignatePrimitiveLoadIC(Label &tryDesignatePrimitive, Label &notDesignatePrimitive,
+                                                PrimitiveType primitiveType, PrimitiveLoadICInfo info)
+{
+    size_t globalEnvIndex = 0;
+    switch (primitiveType) {
+        case PrimitiveType::PRIMITIVE_BOOLEAN:
+            BRANCH(TaggedIsBoolean(receiver_), &tryDesignatePrimitive, &notDesignatePrimitive);
+            globalEnvIndex = GlobalEnv::BOOLEAN_FUNCTION_INDEX;
+            break;
+        case PrimitiveType::PRIMITIVE_NUMBER:
+            BRANCH(TaggedIsNumber(receiver_), &tryDesignatePrimitive, &notDesignatePrimitive);
+            globalEnvIndex = GlobalEnv::NUMBER_FUNCTION_INDEX;
+            break;
+        default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
+            UNREACHABLE();
+            break;
+    }
+
+    Bind(&tryDesignatePrimitive);
+    {
+        auto primitiveFunction =
+            GetGlobalEnvValue(VariableType::JS_ANY(), info.glue, info.glueGlobalEnv, globalEnvIndex);
+        GateRef ctorProtoOrHC = Load(VariableType::JS_POINTER(), info.glue,
+            primitiveFunction, IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
+        auto env = GetEnvironment();
+        Label tryPoly(env);
+        BRANCH(Equal(LoadObjectFromWeakRef(info.profileFirstValue), ctorProtoOrHC), info.tryICHandler, &tryPoly);
+        Bind(&tryPoly);
+        {
+            info.cachedHandler->WriteVariable(CheckPolyHClass(info.glue, info.profileFirstValue, ctorProtoOrHC));
+            BRANCH(TaggedIsHole(info.cachedHandler->ReadVariable()), slowPath_, info.tryICHandler);
+        }
+    }
+}
+
+void ICStubBuilder::TryPrimitiveLoadIC(Variable* cachedHandler, Label *tryICHandler)
+{
+    auto env = GetEnvironment();
+    Label profileNotUndefined(env);
+    BRANCH(TaggedIsUndefined(profileTypeInfo_), slowPath_, &profileNotUndefined);
+    Bind(&profileNotUndefined);
+    {
+        GateRef firstValue = GetValueFromTaggedArray(glue_, profileTypeInfo_, slotId_);
+        GateRef secondValue = GetValueFromTaggedArray(glue_, profileTypeInfo_, Int32Add(slotId_, Int32(1)));
+        cachedHandler->WriteVariable(secondValue);
+        Label isHeapObject(env);
+        BRANCH(TaggedIsHeapObject(firstValue), &isHeapObject, slowPath_)
+        Bind(&isHeapObject);
+        {
+            GateRef glueGlobalEnv = GetGlobalEnv(glue_);
+
+            Label isNumber(env);
+            Label notNumber(env);
+            TryDesignatePrimitiveLoadIC(isNumber, notNumber, PrimitiveType::PRIMITIVE_NUMBER,
+                { glue_, glueGlobalEnv, firstValue, tryICHandler, cachedHandler });
+            Bind(&notNumber);
+            Label isBoolean(env);
+            TryDesignatePrimitiveLoadIC(isBoolean, *slowPath_, PrimitiveType::PRIMITIVE_BOOLEAN,
+                { glue_, glueGlobalEnv, firstValue, tryICHandler, cachedHandler });
+        }
+    }
+}
+
 template<ICStubType type>
 void ICStubBuilder::NamedICAccessor(Variable* cachedHandler, Label *tryICHandler)
 {
@@ -72,12 +136,12 @@ void ICStubBuilder::NamedICAccessor(Variable* cachedHandler, Label *tryICHandler
         {
             Label isHeapObject(env);
             Label notHeapObject(env);
-            GateRef firstValue = GetValueFromTaggedArray(
-                glue_, profileTypeInfo_, slotId_);
+            GateRef firstValue = GetValueFromTaggedArray(glue_, profileTypeInfo_, slotId_);
             BRANCH(TaggedIsHeapObject(firstValue), &isHeapObject, &notHeapObject);
             Bind(&isHeapObject);
             {
-                GateRef secondValue = GetValueFromTaggedArray(glue_, profileTypeInfo_, Int32Add(slotId_, Int32(1)));
+                GateRef secondValue =
+                    GetValueFromTaggedArray(glue_, profileTypeInfo_, Int32Add(slotId_, Int32(1))); // 1: second slot
                 cachedHandler->WriteVariable(secondValue);
                 Label tryPoly(env);
                 GateRef hclass = LoadHClass(glue_, receiver_);
@@ -101,31 +165,7 @@ void ICStubBuilder::NamedICAccessor(Variable* cachedHandler, Label *tryICHandler
     }
     Bind(&receiverNotHeapObject);
     {
-        Label tryNumber(env);
-        Label profileNotUndefined(env);
-        BRANCH(TaggedIsNumber(receiver_), &tryNumber, slowPath_);
-        Bind(&tryNumber);
-        {
-            BRANCH(TaggedIsUndefined(profileTypeInfo_), slowPath_, &profileNotUndefined);
-            Bind(&profileNotUndefined);
-            {
-                GateRef firstValue = GetValueFromTaggedArray(glue_, profileTypeInfo_, slotId_);
-                GateRef secondValue = GetValueFromTaggedArray(glue_, profileTypeInfo_, Int32Add(slotId_, Int32(1)));
-                cachedHandler->WriteVariable(secondValue);
-                Label isHeapObject(env);
-                BRANCH(TaggedIsHeapObject(firstValue), &isHeapObject, slowPath_)
-                Bind(&isHeapObject);
-                {
-                    GateRef globalEnv = GetGlobalEnv(glue_);
-                    auto numberFunction = GetGlobalEnvValue(VariableType::JS_ANY(), glue_,
-                                                            globalEnv, GlobalEnv::NUMBER_FUNCTION_INDEX);
-                    GateRef ctorProtoOrHC =
-                            Load(VariableType::JS_POINTER(), glue_, numberFunction,
-                                 IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
-                    BRANCH(Equal(LoadObjectFromWeakRef(firstValue), ctorProtoOrHC), tryICHandler, slowPath_);
-                }
-            }
-        }
+        TryPrimitiveLoadIC(cachedHandler, tryICHandler);
     }
 }
 

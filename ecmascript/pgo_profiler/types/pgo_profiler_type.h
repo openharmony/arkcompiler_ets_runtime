@@ -24,6 +24,7 @@
 #include "ecmascript/elements.h"
 #include "ecmascript/js_handle.h"
 #include "ecmascript/js_hclass.h"
+#include "ecmascript/js_primitive_ref.h"
 #include "ecmascript/mem/region.h"
 #include "ecmascript/log_wrapper.h"
 #include "ecmascript/pgo_profiler/pgo_utils.h"
@@ -570,9 +571,9 @@ public:
     PGOObjectTemplate() = default;
     PGOObjectTemplate(PGOProfileType type) : receiverType_(type) {}
     PGOObjectTemplate(PGOProfileType receiverType, JSHClass *receiver, JSHClass *hold, JSHClass *holdTra,
-                      PGOSampleType accessorMethod)
+                      PGOSampleType accessorMethod, PrimitiveType primitiveType)
         : receiverType_(receiverType), receiver_(receiver), holder_(hold), holdTra_(holdTra),
-          accessorMethod_(accessorMethod) {}
+          accessorMethod_(accessorMethod), primitiveType_(primitiveType) {}
     PGOObjectTemplate(PGOProfileType receiverRootType,
                       PGOProfileType receiverType, PGOProfileType holdRootType,
                       PGOProfileType holdType, PGOProfileType holdTraRootType,
@@ -581,7 +582,7 @@ public:
           holdRootType_(holdRootType), holdType_(holdType),
           holdTraRootType_(holdTraRootType), holdTraType_(holdTraType),
           accessorMethod_(accessorMethod) {}
-    
+
     void AddPrototypePt(std::vector<std::pair<PGOProfileType, PGOProfileType>> protoChain)
     {
         protoChainMarker_ = ProtoChainMarker::EXSIT;
@@ -765,6 +766,11 @@ public:
         return holdTra_;
     }
 
+    PrimitiveType GetPrimitiveType() const
+    {
+        return primitiveType_;
+    }
+
 private:
     PGOProfileType receiverRootType_ { PGOProfileType() };
     PGOProfileType receiverType_ { PGOProfileType() };
@@ -778,6 +784,7 @@ private:
     PGOSampleType accessorMethod_ { PGOSampleType() };
     ProtoChainMarker protoChainMarker_ {ProtoChainMarker::NOT_EXSIT};
     PGOProtoChainTemplate<PGOProfileType> *protoChain_ { nullptr };
+    PrimitiveType primitiveType_ = PrimitiveType::PRIMITIVE_TYPE_INVALID;
 };
 using PGOObjectInfo = PGOObjectTemplate<ProfileType, PGOSampleType>;
 using PGOObjectInfoRef = PGOObjectTemplate<ProfileTypeRef, PGOSampleTypeRef>;
