@@ -241,7 +241,7 @@ bool JSPandaFile::IsFirstMergedAbc() const
     return false;
 }
 
-bool JSPandaFile::CheckAndGetRecordInfo(const CString &recordName, [[maybe_unused]] JSRecordInfo **recordInfo) const
+bool JSPandaFile::CheckAndGetRecordInfo(const CString &recordName, JSRecordInfo **recordInfo) const
 {
     if (IsBundlePack()) {
         *recordInfo = jsRecordInfo_.begin()->second;

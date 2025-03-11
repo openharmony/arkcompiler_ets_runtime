@@ -13,10 +13,11 @@
  * limitations under the License.
  */
 
-#include "ecmascript/jspandafile/accessor/module_data_accessor.h"
+#include "ecmascript/module/module_data_extractor.h"
+
 #include "ecmascript/builtins/builtins_json.h"
 #include "ecmascript/interpreter/interpreter.h"
-#include "ecmascript/module/module_data_extractor.h"
+#include "ecmascript/module/accessor/module_data_accessor.h"
 
 namespace panda::ecmascript {
 using StringData = panda_file::StringData;
@@ -179,11 +180,10 @@ JSTaggedValue ModuleDataExtractor::JsonParse(JSThread *thread, const JSPandaFile
     return BuiltinsJson::Parse(info);
 }
 
-bool* ModuleDataExtractor::ModuleLazyImportFlagAccessor(const JSPandaFile *pandaFile,
-    panda_file::File::EntityId module_lazy_import_flag_id)
+bool* ModuleDataExtractor::ModuleLazyImportFlagAccessor(const JSPandaFile *pandaFile, EntityId lazyImportFlagId)
 {
     auto &pf = *pandaFile->GetPandaFile();
-    auto sp = pf.GetSpanFromId(module_lazy_import_flag_id);
+    auto sp = pf.GetSpanFromId(lazyImportFlagId);
 
     uint32_t numLazyImportFlags = panda_file::helpers::Read<panda_file::ID_SIZE>(&sp);
     bool *lazyImportArray = new bool[numLazyImportFlags]();
