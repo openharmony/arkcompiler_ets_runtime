@@ -441,9 +441,8 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::LazyExecuteModule(
     }
 
     // resolve native module
-    auto [isNative, moduleType] = SourceTextModule::CheckNativeModule(recordName);
     ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
-    if (isNative) {
+    if (SourceTextModule::IsNativeModule(recordName)) {
         moduleManager->ExecuteNativeModule(thread, recordName);
         return JSTaggedValue::Undefined();
     }

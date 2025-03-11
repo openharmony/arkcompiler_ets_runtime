@@ -51,7 +51,7 @@ static constexpr char UTF8_FIRST_CODE[] = {
 // Concatenates multiple arguments into a CString.
 // Note: For better performance, consider using AppendToBaseString with a pre-allocated CString.
 template <typename T, typename... Args>
-CString ConcatToCString(T&& first, Args&&... args)
+inline CString ConcatToCString(T&& first, Args&&... args)
 {
     CString result = CString(std::forward<T>(first));
     ((result += std::forward<Args>(args)), ...);
@@ -61,7 +61,7 @@ CString ConcatToCString(T&& first, Args&&... args)
 // Concatenates multiple arguments into a std::string.
 // Note: For better performance, consider using AppendToBaseString with a pre-allocated std::string.
 template <typename T, typename... Args>
-std::string ConcatToStdString(T&& first, Args&&... args)
+inline std::string ConcatToStdString(T&& first, Args&&... args)
 {
     std::string result = std::string(std::forward<T>(first));
     ((result += std::forward<Args>(args)), ...);
@@ -71,7 +71,7 @@ std::string ConcatToStdString(T&& first, Args&&... args)
 // Appends multiple arguments to a base string (std::string or CString).
 // Note: For better performance, pre-allocate the base string using reserve() before calling this function.
 template <typename T, typename... Args>
-void AppendToBaseString(T& base, Args&&... args)
+inline void AppendToBaseString(T& base, Args&&... args)
 {
     static_assert(std::is_same_v<T, std::string> || std::is_same_v<T, CString>,
                   "base must be std::string or CString");
@@ -96,8 +96,8 @@ public:
         return str;
     }
 
-    static inline CString Replace(CString str, const CString &oldValue,
-                                  const CString &newValue)
+    template<class T>
+    static inline CString Replace(CString str, const T &oldValue, const T &newValue)
     {
         if (oldValue.empty() || oldValue == newValue) {
             return str;
@@ -462,17 +462,30 @@ public:
         return true;
     }
 
-    static bool StringStartWith(const CString& str, const CString& startStr)
+    template<class T>
+    static bool StringStartWith(const CString& str, const T& startStr)
     {
         size_t startStrLen = startStr.length();
-        return ((str.length() >= startStrLen) && (str.compare(0, startStrLen, startStr) == 0));
+        return str.length() >= startStrLen && str.compare(0, startStrLen, startStr) == 0;
     }
 
-    static bool StringEndWith(const CString& str, const CString& endStr)
+    static bool StringStartWith(const CString& str, const char startStr)
+    {
+        return !str.empty() && str[0] == startStr;
+    }
+
+    template<class T>
+    static bool StringEndWith(const CString& str, const T& endStr)
     {
         size_t endStrLen = endStr.length();
         size_t len = str.length();
-        return ((len >= endStrLen) && (str.compare(len - endStrLen, endStrLen, endStr) == 0));
+        return len >= endStrLen && str.compare(len - endStrLen, endStrLen, endStr) == 0;
+    }
+
+    static bool StringEndWith(const CString& str, const char endStr)
+    {
+        const size_t len = str.length();
+        return len > 0 && str[len - 1] == endStr;
     }
 
     static void SplitString(const CString& str, CVector<CString>& out, size_t startPos, size_t times = 0, char c = '/')

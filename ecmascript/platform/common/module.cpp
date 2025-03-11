@@ -21,17 +21,18 @@ namespace panda::ecmascript {
 CString GetOutEntryPoint(EcmaVM *vm, const CString &inputFileName)
 {
     // inputFileName: moduleName/ets/xxx/xxx.abc
-    return vm->GetBundleName() + PathHelper::SLASH_TAG + inputFileName;
+    return base::ConcatToCString(vm->GetBundleName(), PathHelper::SLASH_TAG, inputFileName);
 }
 
 CString GetBaseFileName(EcmaVM *vm, [[maybe_unused]] CString &moduleRequestName, CString &baseFileName,
     const CString &bundleName, const CString &moduleName, [[maybe_unused]] CString &recordName)
 {
     if (bundleName != vm->GetBundleName()) {
-        baseFileName = ModulePathHelper::BUNDLE_INSTALL_PATH + bundleName + PathHelper::SLASH_TAG + moduleName +
-                        PathHelper::SLASH_TAG + moduleName + ModulePathHelper::MERGE_ABC_ETS_MODULES;
+        baseFileName = base::ConcatToCString(ModulePathHelper::BUNDLE_INSTALL_PATH, bundleName, PathHelper::SLASH_TAG,
+            moduleName, PathHelper::SLASH_TAG, moduleName, ModulePathHelper::MERGE_ABC_ETS_MODULES);
     } else if (moduleName != vm->GetModuleName()) {
-        baseFileName = ModulePathHelper::BUNDLE_INSTALL_PATH + moduleName + ModulePathHelper::MERGE_ABC_ETS_MODULES;
+        baseFileName = base::ConcatToCString(ModulePathHelper::BUNDLE_INSTALL_PATH, moduleName,
+            ModulePathHelper::MERGE_ABC_ETS_MODULES);
     } else {
         // Support multi-module card service
         baseFileName = vm->GetAssetPath();

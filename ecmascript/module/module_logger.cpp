@@ -40,12 +40,12 @@ void ModuleLogger::PrintModuleLoadInfo()
 
 bool ModuleLogger::CreateResultFile(std::string &path) const
 {
-    path = FILEDIR + std::string(vm_->GetBundleName().c_str());
+    path = base::ConcatToCString(FILEDIR, vm_->GetBundleName());
     if (vm_->IsWorkerThread()) {
-        path += "_" + std::to_string(tid_);
+        base::AppendToBaseString(path, "_", std::to_string(tid_));
     }
     path += SUFFIX;
-    const mode_t defaultMode = S_IRUSR | S_IWUSR | S_IRGRP; // -rw-r--
+    constexpr mode_t defaultMode = S_IRUSR | S_IWUSR | S_IRGRP; // -rw-r--
     int fd = creat(path.c_str(), defaultMode);
     if (fd == -1) {
         LOG_ECMA(ERROR) << "file create failed, errno = "<< errno;
@@ -57,9 +57,9 @@ bool ModuleLogger::CreateResultFile(std::string &path) const
 
 bool ModuleLogger::OpenResultFile(std::string &path) const
 {
-    path = FILEDIR + std::string(vm_->GetBundleName().c_str());
+    path = base::ConcatToCString(FILEDIR, vm_->GetBundleName());
     if (vm_->IsWorkerThread()) {
-        path += "_" + std::to_string(tid_);
+        base::AppendToBaseString(path, "_", std::to_string(tid_));
     }
     path += SUFFIX;
     if (access(path.c_str(), F_OK) == 0) {
@@ -133,10 +133,11 @@ void ModuleLogger::PrintSummary() const
     }
     std::ofstream fileHandle;
     fileHandle.open(path, std::ios_base::app);
-    std::string start = "<----Summary----> Total file number: " + std::to_string(totalFileNumber_) + ", total time: " +
-                        std::to_string(totalTime_) + "ms, including used file:" + std::to_string(usedFileNumber_) +
-                        ", cost time: " + std::to_string(usedFileTime_) + "ms, and unused file: " +
-                        std::to_string(unusedFileNumber_) +", cost time: " + std::to_string(unusedFileTime_) + "ms\n";
+    std::string start = base::ConcatToStdString("<----Summary----> Total file number: ",
+        std::to_string(totalFileNumber_), ", total time: ",
+        std::to_string(totalTime_), "ms, including used file:", std::to_string(usedFileNumber_),
+        ", cost time: ", std::to_string(usedFileTime_), "ms, and unused file: ",
+        std::to_string(unusedFileNumber_), ", cost time: ", std::to_string(unusedFileTime_), "ms\n");
     fileHandle << start;
     fileHandle.close();
 }
@@ -150,23 +151,24 @@ void ModuleLogger::PrintUsedFileInfo() const
     }
     std::ofstream fileHandle;
     fileHandle.open(path, std::ios_base::app);
-    std::string start = "<----used file start----> used file: " + std::to_string(usedFileNumber_) + ", cost time: "
-                        + std::to_string(usedFileTime_) + "ms\n";
+    std::string start = base::ConcatToStdString("<----used file start----> used file: ",
+        std::to_string(usedFileNumber_), ", cost time: ", std::to_string(usedFileTime_), "ms\n");
     fileHandle << start;
     int32_t fileNumber = 1;
     for (auto &i : jsModuleLoadInfoRes_) {
         ModuleLoadInfo *info = i.second;
         if (info->isUsed) {
-            std::string content = "used file " + std::to_string(fileNumber++) + ": " + i.first.c_str() +
-                                  ", cost time: " + ToStringWithPrecision(info->time, THREE) + "ms\n";
+            std::string content = base::ConcatToStdString("used file ",
+                std::to_string(fileNumber++), ": ", i.first.c_str(),
+                ", cost time: ", ToStringWithPrecision(info->time, THREE), "ms\n");
             fileHandle << content;
             auto &upInfo = info->upLevel;
             int32_t parentModuleCount = 1;
             for (auto &k : upInfo) {
-                std::string parentInfoStr = "          parentModule " + std::to_string(parentModuleCount++) +
-                                            ": " + k.first.c_str() + " ";
+                std::string parentInfoStr = base::ConcatToStdString("          parentModule ",
+                    std::to_string(parentModuleCount++), ": ", k.first.c_str(), " ");
                 for (auto &exportN : k.second) {
-                    parentInfoStr += exportN + " ";
+                    base::AppendToBaseString(parentInfoStr, exportN, " ");
                 }
                 parentInfoStr += "\n";
                 fileHandle << parentInfoStr;
@@ -187,21 +189,21 @@ void ModuleLogger::PrintUnusedFileInfo() const
     }
     std::ofstream fileHandle;
     fileHandle.open(path, std::ios_base::app);
-    std::string start = "<----unused file start----> unused file: " + std::to_string(unusedFileNumber_) +
-                        ", cost time: "  + std::to_string(unusedFileTime_) + "ms\n";
+    std::string start = base::ConcatToStdString("<----unused file start----> unused file: ",
+        std::to_string(unusedFileNumber_), ", cost time: ", std::to_string(unusedFileTime_), "ms\n");
     fileHandle << start;
     int32_t fileNumber = 1;
     for (auto &i : jsModuleLoadInfoRes_) {
         ModuleLoadInfo *info = i.second;
         if (!info->isUsed) {
-            std::string content = "unused file " + std::to_string(fileNumber++) + ": " + i.first.c_str() +
-                                    ", cost time: " + ToStringWithPrecision(info->time, THREE) + "ms\n";
+            std::string content = base::ConcatToStdString("unused file ", std::to_string(fileNumber++), ": ",
+                i.first.c_str(), ", cost time: ", ToStringWithPrecision(info->time, THREE), "ms\n");
             fileHandle << content;
             int32_t parentNumber = 1;
             CSet<CString> parents = info->parentModules;
             for (auto &k : parents) {
-                std::string parent = "              parentModule " + std::to_string(parentNumber++) +
-                    ": " + k.c_str() + "\n";
+                std::string parent = base::ConcatToStdString("              parentModule ",
+                    std::to_string(parentNumber++), ": ", k.c_str(), "\n");
                 fileHandle << parent;
             }
         }

@@ -93,12 +93,13 @@ JSHandle<JSTaggedValue> ModuleResolver::HostResolveImportedModuleWithMerge(JSThr
     }
 
     auto moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
-    auto [isNative, moduleType] = SourceTextModule::CheckNativeModule(moduleRequestName);
-    if (isNative) {
-        if (moduleManager->IsLocalModuleLoaded(moduleRequestName)) {
-            return JSHandle<JSTaggedValue>(moduleManager->HostGetImportedModule(moduleRequestName));
+    if (SourceTextModule::IsNativeModule(moduleRequestName)) {
+        JSHandle<JSTaggedValue> cachedModule = moduleManager->TryGetImportedModule(moduleRequestName);
+        if (!cachedModule->IsUndefined()) {
+            return cachedModule;
         }
-        return ResolveNativeModule(thread, moduleRequestName, baseFilename, moduleType);
+        return ResolveNativeModule(thread, moduleRequestName, baseFilename,
+            SourceTextModule::GetNativeModuleType(moduleRequestName));
     }
     CString recordName = module->GetEcmaModuleRecordNameString();
     std::shared_ptr<JSPandaFile> pandaFile =

@@ -51,13 +51,13 @@ public:
     static std::string ToStringWithPrecision(const double num, const uint8_t n);
 
 private:
-    static constexpr const uint32_t MILLISECONDS_PER_SEC = 1000;
-    static constexpr const double DOUBLE_MILLISECONDS_PER_SEC = 1000.0;
-    static constexpr const uint8_t TWO = 2;
-    static constexpr const uint8_t THREE = 3;
-    static constexpr const uint64_t TWO_SECONDS = TWO * MILLISECONDS_PER_SEC;
-    static constexpr const char FILEDIR[] = "/data/storage/el2/base/files/";
-    static constexpr const char SUFFIX[] = "_redundant_file.txt";
+    static constexpr uint32_t MILLISECONDS_PER_SEC = 1000;
+    static constexpr double DOUBLE_MILLISECONDS_PER_SEC = 1000.0;
+    static constexpr uint8_t TWO = 2;
+    static constexpr uint8_t THREE = 3;
+    static constexpr uint64_t TWO_SECONDS = TWO * MILLISECONDS_PER_SEC;
+    static constexpr std::string_view FILEDIR = "/data/storage/el2/base/files/";
+    static constexpr std::string_view SUFFIX = "_redundant_file.txt";
 
     NO_COPY_SEMANTIC(ModuleLogger);
     NO_MOVE_SEMANTIC(ModuleLogger);

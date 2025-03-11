@@ -604,7 +604,7 @@ JSHandle<JSTaggedValue> ModuleManager::ExecuteNativeModuleMayThrowError(JSThread
         return JSHandle<JSTaggedValue>(thread, moduleRecord->GetModuleValue(thread, 0, false));
     }
 
-    auto [isNative, moduleType] = SourceTextModule::CheckNativeModule(recordName);
+    ModuleTypes moduleType = SourceTextModule::GetNativeModuleType(recordName);
     JSHandle<JSTaggedValue> moduleRecord = ModuleDataExtractor::ParseNativeModule(thread,
         recordName, "", moduleType);
     JSHandle<SourceTextModule> nativeModule =
@@ -631,7 +631,7 @@ JSHandle<JSTaggedValue> ModuleManager::ExecuteNativeModule(JSThread *thread, con
         nativeModule->SetLoadingTypes(LoadingTypes::STABLE_MODULE);
         requiredModule.Update(nativeModule);
     } else {
-        auto [isNative, moduleType] = SourceTextModule::CheckNativeModule(recordName);
+        ModuleTypes moduleType = SourceTextModule::GetNativeModuleType(recordName);
         JSHandle<JSTaggedValue> nativeModuleHandle =
             ModuleResolver::ResolveNativeModule(thread, recordName, "", moduleType);
         JSHandle<SourceTextModule> nativeModule =

@@ -234,18 +234,22 @@ JSHandle<JSTaggedValue> SourceTextModule::ResolveExport(JSThread *thread, const 
     return starResolution;
 }
 
-std::pair<bool, ModuleTypes> SourceTextModule::CheckNativeModule(const CString &moduleRequestName)
+bool SourceTextModule::IsNativeModule(const CString &moduleRequestName)
 {
     if (moduleRequestName[0] != '@' ||
         StringHelper::StringStartWith(moduleRequestName, ModulePathHelper::PREFIX_BUNDLE) ||
         StringHelper::StringStartWith(moduleRequestName, ModulePathHelper::PREFIX_PACKAGE) ||
         StringHelper::StringStartWith(moduleRequestName, ModulePathHelper::PREFIX_NORMALIZED_NOT_SO) ||
         moduleRequestName.find(':') == CString::npos) {
-        return {false, ModuleTypes::UNKNOWN};
+        return false;
     }
+    return true;
+}
 
+ModuleTypes SourceTextModule::GetNativeModuleType(const CString &moduleRequestName)
+{
     if (StringHelper::StringStartWith(moduleRequestName, ModulePathHelper::REQUIRE_NAPI_OHOS_PREFIX)) {
-        return {true, ModuleTypes::OHOS_MODULE};
+        return ModuleTypes::OHOS_MODULE;
     }
     /*
     * moduleRequestName: @app:xxx/xxx
@@ -253,12 +257,12 @@ std::pair<bool, ModuleTypes> SourceTextModule::CheckNativeModule(const CString &
     */
     if (StringHelper::StringStartWith(moduleRequestName, ModulePathHelper::REQUIRE_NAPI_APP_PREFIX) ||
         StringHelper::StringStartWith(moduleRequestName, ModulePathHelper::PREFIX_NORMALIZED_SO)) {
-        return {true, ModuleTypes::APP_MODULE};
+        return ModuleTypes::APP_MODULE;
     }
     if (StringHelper::StringStartWith(moduleRequestName, ModulePathHelper::REQUIRE_NAITVE_MODULE_PREFIX)) {
-        return {true, ModuleTypes::NATIVE_MODULE};
+        return ModuleTypes::NATIVE_MODULE;
     }
-    return {true, ModuleTypes::INTERNAL_MODULE};
+    return ModuleTypes::INTERNAL_MODULE;
 }
 
 Local<JSValueRef> SourceTextModule::GetRequireNativeModuleFunc(EcmaVM *vm, ModuleTypes moduleType)
@@ -275,7 +279,8 @@ void SourceTextModule::MakeNormalizedAppArgs(const EcmaVM *vm, std::vector<Local
     const CString &soPath, const CString &moduleName)
 {
     CString soName = ModulePathHelper::GetNormalizedPathFromOhmUrl(soPath);
-    CString path = ModulePathHelper::GetBundleNameFromNormalized(vm, soPath) + PathHelper::SLASH_TAG + moduleName;
+    CString path = base::ConcatToCString(ModulePathHelper::GetBundleNameFromNormalized(vm, soPath),
+                                         PathHelper::SLASH_TAG, moduleName);
     // use module name as so name
     arguments[0] = StringRef::NewFromUtf8(vm, soName.c_str());
     arguments.emplace_back(BooleanRef::New(vm, true));
