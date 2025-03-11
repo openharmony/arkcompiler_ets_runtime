@@ -20,6 +20,7 @@ group("ark_jit_ts_test") {
     "create_arguments",
     "deopt",
     "function_reuse",
+    "icnotfound",
     "intern_string_strict_equal_1",
     "intern_string_strict_equal_2",
     "isin",

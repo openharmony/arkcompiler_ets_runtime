@@ -176,6 +176,7 @@ group("ark_aot_ts_test") {
     "generic_instance_type_literal",
     "helloaot",
     "helloconcurrent",
+    "icnotfound",
     "ic",
     "inc",
     "inline",

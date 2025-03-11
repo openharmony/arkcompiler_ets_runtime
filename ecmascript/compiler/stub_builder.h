@@ -495,7 +495,8 @@ public:
     GateRef GetStoreAOTHandlerHandlerInfo(GateRef object);
     inline GateRef GetLengthOfJSArray(GateRef array);
     inline GateRef GetPrototype(GateRef glue, GateRef object);
-    GateRef GetHasChanged(GateRef object);
+    inline GateRef GetHasChanged(GateRef object);
+    inline GateRef GetNotFoundHasChanged(GateRef object);
     GateRef HclassIsPrototypeHandler(GateRef hClass);
     GateRef HclassIsTransitionHandler(GateRef hClass);
     GateRef HclassIsPropertyBox(GateRef hClass);

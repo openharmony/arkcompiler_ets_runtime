@@ -2531,10 +2531,12 @@ GateRef StubBuilder::LoadICWithHandler(
     Label exit(env);
     Label handlerIsInt(env);
     Label handlerNotInt(env);
+    Label handleInfoIsFound(env);
+    Label handleInfoIsNotFound(env);
     Label handlerInfoIsField(env);
     Label handlerInfoNotField(env);
     Label handlerInfoIsNonExist(env);
-    Label handlerInfoNotNonExist(env);
+    Label handlerInfoExist(env);
     Label handlerInfoIsPrimitive(env);
     Label handlerInfoNotPrimitive(env);
     Label handlerInfoIsStringLength(env);
@@ -2542,6 +2544,8 @@ GateRef StubBuilder::LoadICWithHandler(
     Label handlerIsPrototypeHandler(env);
     Label handlerNotPrototypeHandler(env);
     Label cellHasChanged(env);
+    Label cellNotFoundHasChanged(env);
+    Label cellNotFoundNotChanged(env);
     Label cellNotUndefined(env);
     Label loopHead(env);
     Label loopEnd(env);
@@ -2577,10 +2581,15 @@ GateRef StubBuilder::LoadICWithHandler(
                 }
                 Bind(&handlerInfoNotPrimitive);
                 {
-                    BRANCH(IsNonExist(handlerInfo), &handlerInfoIsNonExist, &handlerInfoNotNonExist);
+                    BRANCH(IsNonExist(handlerInfo), &handlerInfoIsNonExist, &handlerInfoExist);
+                    // For the special "Not Found" case we may generate ic by "LoadHandler::LoadProperty".
+                    // In this situation, you can trust ic without ChangeMarker.
                     Bind(&handlerInfoIsNonExist);
-                    Jump(&exit);
-                    Bind(&handlerInfoNotNonExist);
+                    {
+                        result = Undefined();
+                        Jump(&exit);
+                    }
+                    Bind(&handlerInfoExist);
                     {
                         BRANCH(IsStringLength(handlerInfo), &handlerInfoIsStringLength, &handlerInfoNotStringLength);
                         Bind(&handlerInfoNotStringLength);
@@ -2606,7 +2615,7 @@ GateRef StubBuilder::LoadICWithHandler(
         Bind(&handlerIsPrototypeHandler);
         {
             GateRef cellValue = GetPrototypeHandlerProtoCell(*handler);
-            BRANCH_LIKELY(TaggedIsUndefined(cellValue), &loopEnd, &cellNotUndefined);
+            BRANCH_UNLIKELY(TaggedIsUndefined(cellValue), &loopEnd, &cellNotUndefined);
             Bind(&cellNotUndefined);
             BRANCH(GetHasChanged(cellValue), &cellHasChanged, &loopEnd);
             Bind(&cellHasChanged);
@@ -2616,14 +2625,36 @@ GateRef StubBuilder::LoadICWithHandler(
             }
             Bind(&loopEnd);
             holder = GetPrototypeHandlerHolder(*handler);
-            handler = GetPrototypeHandlerHandlerInfo(*handler);
-            LoopEnd(&loopHead, env, glue);
+            BRANCH(Equal(*holder, Undefined()), &handleInfoIsNotFound, &handleInfoIsFound);
+            Bind(&handleInfoIsFound);
+            {
+                handler = GetPrototypeHandlerHandlerInfo(*handler);
+                LoopEnd(&loopHead, env, glue);
+            }
+
+            // For "Not Found" case (holder equals Undefined()),
+            // we should ensure that both GetNotFoundHasChanged() and GetHasChanged() return false.
+            Bind(&handleInfoIsNotFound);
+            {
+                BRANCH(GetNotFoundHasChanged(cellValue), &cellNotFoundHasChanged, &cellNotFoundNotChanged);
+                Bind(&cellNotFoundHasChanged);
+                {
+                    result = Hole();
+                    Jump(&exit);
+                }
+                Bind(&cellNotFoundNotChanged);
+                {
+                    result = Undefined();
+                    Jump(&exit);
+                }
+            }
         }
     }
     Bind(&handlerNotPrototypeHandler);
-    result = LoadGlobal(*handler);
-    Jump(&exit);
-
+    {
+        result = LoadGlobal(*handler);
+        Jump(&exit);
+    }
     Bind(&exit);
     auto ret = *result;
     env->SubCfgExit();

@@ -456,6 +456,9 @@ public:
     static void PUBLIC_API AddProperty(const JSThread *thread, const JSHandle<JSObject> &obj,
                                        const JSHandle<JSTaggedValue> &key, const PropertyAttributes &attr,
                                        const Representation &rep = Representation::NONE);
+    
+    static void ProcessAotHClassTransition(const JSThread *thread, const JSHandle<JSHClass> &jshclass,
+                                           const JSHandle<JSHClass> newHClass, const JSTaggedValue &key);
 
     inline static void RestoreElementsKindToGeneric(JSHClass *newJsHClass);
 
@@ -506,7 +509,10 @@ public:
 
     static void NotifyHclassChanged(const JSThread *thread, JSHandle<JSHClass> oldHclass, JSHandle<JSHClass> newHclass,
                                     JSTaggedValue addedKey = JSTaggedValue::Undefined());
-
+    
+    static void NotifyHClassChangedForNotFound(const JSThread *thread, const JSHandle<JSHClass> oldHclass,
+                                               const JSHandle<JSHClass> newHclass, const JSTaggedValue addedKey);
+    
     static void NotifyAccessorChanged(const JSThread *thread, JSHandle<JSHClass> hclass);
 
     static void RegisterOnProtoChain(const JSThread *thread, const JSHandle<JSHClass> &jshclass);
@@ -520,9 +526,11 @@ public:
 
     inline void UpdatePropertyMetaData(const JSThread *thread, const JSTaggedValue &key,
                                       const PropertyAttributes &metaData);
-
+    
+    template<bool isOnlyIncludeNotFound>
     static void MarkProtoChanged(const JSThread *thread, const JSHandle<JSHClass> &jshclass);
-
+    
+    template<bool isOnlyIncludeNotFound = false>
     static void NoticeThroughChain(const JSThread *thread, const JSHandle<JSHClass> &jshclass,
                                    JSTaggedValue addedKey = JSTaggedValue::Undefined());
 

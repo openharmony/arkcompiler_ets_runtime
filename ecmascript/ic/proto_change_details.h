@@ -39,9 +39,18 @@ public:
     // define BitField
     static constexpr size_t HAS_CHANGED_BITS = 1;
     static constexpr size_t ACCESSOR_HAS_CHANGED_BITS = 1;
+    static constexpr size_t NOTFOUND_HAS_CHANGED_BITS = 1;
     FIRST_BIT_FIELD(BitField, HasChanged, bool, HAS_CHANGED_BITS);
     NEXT_BIT_FIELD(BitField, AccessorHasChanged, bool, ACCESSOR_HAS_CHANGED_BITS, HasChanged);
 
+    // The "NotFoundHasChanged" flag is introduced to address a specific issue. In the "RuntimeUpdateAOTHClass",
+    // the "HasChanged" flag is not modified when a key is absent from the prototype chain. However, when using
+    // the "not found" inline cache (IC), even if the key is not in the prototype chain, it might still impact
+    // the listeners' ICs.
+    // To handle this situation, we've added the `NotFoundHasChanged` flag, which is exclusively used for the
+    // "not found" ICs.
+    NEXT_BIT_FIELD(BitField, NotFoundHasChanged, bool, NOTFOUND_HAS_CHANGED_BITS, HasChanged);
+    
     DECL_DUMP()
 };
 

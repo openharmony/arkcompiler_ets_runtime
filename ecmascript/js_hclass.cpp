@@ -289,6 +289,20 @@ void JSHClass::OptimizeAsFastElements(const JSThread *thread, JSHandle<JSObject>
     obj->GetJSHClass()->SetElementsKind(ElementsKind::HOLE_TAGGED);
 }
 
+void JSHClass::ProcessAotHClassTransition(const JSThread *thread, const JSHandle<JSHClass> &jshclass,
+                                          const JSHandle<JSHClass> newHClass, const JSTaggedValue &key)
+{
+    if (JSHClass::IsNeedNotifyHclassChangedForAotTransition(thread, jshclass, key)) {
+        JSHClass::NotifyHclassChanged(thread, jshclass, newHClass, key);
+    } else {
+#if ENABLE_NEXT_OPTIMIZATION
+        JSHClass::NotifyHClassChangedForNotFound(thread, jshclass, newHClass, key);
+#endif
+        JSHClass::RefreshUsers(thread, jshclass, newHClass);
+    }
+    JSHClass::EnablePHCProtoChangeMarker(thread, newHClass);
+}
+
 void JSHClass::AddProperty(const JSThread *thread, const JSHandle<JSObject> &obj, const JSHandle<JSTaggedValue> &key,
                            const PropertyAttributes &attr, const Representation &rep)
 {
@@ -316,13 +330,7 @@ void JSHClass::AddProperty(const JSThread *thread, const JSHandle<JSObject> &obj
         // The transition hclass from AOT, which does not have protochangemarker, needs to be reset here
         JSHandle<JSHClass> newHClass = JSHandle<JSHClass>(thread, newClass);
         if (newClass->IsAOT() && newClass->IsPrototype()) {
-            if (JSHClass::IsNeedNotifyHclassChangedForAotTransition(thread, jshclass, key.GetTaggedValue())) {
-                JSHClass::EnableProtoChangeMarker(thread, newHClass);
-                JSHClass::NotifyHclassChanged(thread, jshclass, newHClass, key.GetTaggedValue());
-            } else {
-                JSHClass::RefreshUsers(thread, jshclass, newHClass);
-            }
-            JSHClass::EnablePHCProtoChangeMarker(thread, newHClass);
+            JSHClass::ProcessAotHClassTransition(thread, jshclass, newHClass, key.GetTaggedValue());
         } else {
             if (newClass->IsPrototype()) {
                 newHClass->SetProtoChangeDetails(thread, jshclass->GetProtoChangeDetails());
@@ -960,6 +968,7 @@ JSHandle<JSTaggedValue> JSHClass::EnableProtoChangeMarker(const JSThread *thread
     }
     JSHandle<ProtoChangeMarker> markerHandle = thread->GetEcmaVM()->GetFactory()->NewProtoChangeMarker();
     markerHandle->SetHasChanged(false);
+    markerHandle->SetNotFoundHasChanged(false);
     // ShareToLocal is prohibited
     if (!protoClass->IsJSShared()) {
         protoClass->SetProtoChangeMarker(thread, markerHandle.GetTaggedValue());
@@ -981,8 +990,23 @@ JSHandle<JSTaggedValue> JSHClass::EnablePHCProtoChangeMarker(const JSThread *thr
     }
     JSHandle<ProtoChangeMarker> markerHandle = thread->GetEcmaVM()->GetFactory()->NewProtoChangeMarker();
     markerHandle->SetHasChanged(false);
+    markerHandle->SetNotFoundHasChanged(false);
     protoClass->SetProtoChangeMarker(thread, markerHandle.GetTaggedValue());
     return JSHandle<JSTaggedValue>(markerHandle);
+}
+
+void JSHClass::NotifyHClassChangedForNotFound(const JSThread *thread, JSHandle<JSHClass> oldHclass,
+                                              JSHandle<JSHClass> newHclass, JSTaggedValue addedKey)
+{
+    if (!oldHclass->IsPrototype()) {
+        return;
+    }
+    // The old hclass is the same as new one
+    if (oldHclass.GetTaggedValue() == newHclass.GetTaggedValue()) {
+        return;
+    }
+
+    JSHClass::NoticeThroughChain<true>(thread, oldHclass, addedKey);
 }
 
 void JSHClass::NotifyHclassChanged(const JSThread *thread, JSHandle<JSHClass> oldHclass, JSHandle<JSHClass> newHclass,
@@ -1022,7 +1046,7 @@ void JSHClass::NotifyHclassChanged(const JSThread *thread, JSHandle<JSHClass> ol
     if (newHclass->IsAOT() && !newHclass->IsPrototype()) {
         newHclass->SetIsPrototype(true);
     }
-    JSHClass::NoticeThroughChain(thread, oldHclass, addedKey);
+    JSHClass::NoticeThroughChain<false>(thread, oldHclass, addedKey);
     JSHClass::RefreshUsers(thread, oldHclass, newHclass);
 }
 
@@ -1144,39 +1168,6 @@ JSHandle<ProtoChangeDetails> JSHClass::GetProtoChangeDetails(const JSThread *thr
 {
     JSHandle<JSHClass> jshclass(thread, obj->GetJSHClass());
     return GetProtoChangeDetails(thread, jshclass);
-}
-
-void JSHClass::MarkProtoChanged([[maybe_unused]] const JSThread *thread, const JSHandle<JSHClass> &jshclass)
-{
-    DISALLOW_GARBAGE_COLLECTION;
-    ASSERT(jshclass->IsPrototype());
-    JSTaggedValue markerValue = jshclass->GetProtoChangeMarker();
-    if (markerValue.IsProtoChangeMarker()) {
-        ProtoChangeMarker *protoChangeMarker = ProtoChangeMarker::Cast(markerValue.GetTaggedObject());
-        protoChangeMarker->SetHasChanged(true);
-    }
-}
-
-void JSHClass::NoticeThroughChain(const JSThread *thread, const JSHandle<JSHClass> &jshclass,
-                                  JSTaggedValue addedKey)
-{
-    DISALLOW_GARBAGE_COLLECTION;
-    MarkProtoChanged(thread, jshclass);
-    JSTaggedValue protoDetailsValue = jshclass->GetProtoChangeDetails();
-    if (!protoDetailsValue.IsProtoChangeDetails()) {
-        return;
-    }
-    JSTaggedValue listenersValue = ProtoChangeDetails::Cast(protoDetailsValue.GetTaggedObject())->GetChangeListener();
-    if (!listenersValue.IsTaggedArray()) {
-        return;
-    }
-    ChangeListener *listeners = ChangeListener::Cast(listenersValue.GetTaggedObject());
-    for (uint32_t i = 0; i < listeners->GetEnd(); i++) {
-        JSTaggedValue temp = listeners->Get(i);
-        if (temp.IsJSHClass()) {
-            NoticeThroughChain(thread, JSHandle<JSHClass>(thread, listeners->Get(i).GetTaggedObject()), addedKey);
-        }
-    }
 }
 
 void JSHClass::RefreshUsers(const JSThread *thread, const JSHandle<JSHClass> &oldHclass,
@@ -1764,6 +1755,7 @@ void JSHClass::CreateSDictLayout(JSThread *thread,
     hclass->SetNumberOfProps(0);
     hclass->SetIsDictionaryMode(true);
 }
+
 bool JSHClass::IsNeedNotifyHclassChangedForAotTransition(const JSThread *thread, const JSHandle<JSHClass> &hclass,
                                                          JSTaggedValue key)
 {

@@ -18,10 +18,11 @@
 
 #include "ecmascript/js_hclass.h"
 
+#include "ecmascript/byte_array.h"
+#include "ecmascript/ic/proto_change_details.h"
 #include "ecmascript/js_bigint.h"
 #include "ecmascript/layout_info.h"
 #include "ecmascript/layout_info-inl.h"
-#include "ecmascript/byte_array.h"
 #include "ecmascript/mem/assert_scope.h"
 #include "ecmascript/transitions_dictionary.h"
 
@@ -376,6 +377,46 @@ inline void JSHClass::ObjSizeTrackingStep()
         if (finalInObjPropsNum < GetInlinedProperties()) {
             // UpdateObjSize with finalInObjPropsNum
             JSHClass::VisitTransitionAndUpdateObjSize(this, finalInObjPropsNum);
+        }
+    }
+}
+
+template<bool isOnlyIncludeNotFound>
+void JSHClass::MarkProtoChanged([[maybe_unused]] const JSThread *thread, const JSHandle<JSHClass> &jshclass)
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    ASSERT(jshclass->IsPrototype());
+    JSTaggedValue markerValue = jshclass->GetProtoChangeMarker();
+    if (markerValue.IsProtoChangeMarker()) {
+        ProtoChangeMarker *protoChangeMarker = ProtoChangeMarker::Cast(markerValue.GetTaggedObject());
+        if constexpr (isOnlyIncludeNotFound) {
+            protoChangeMarker->SetNotFoundHasChanged(true);
+        } else {
+            protoChangeMarker->SetHasChanged(true);
+        }
+    }
+}
+
+template<bool isOnlyIncludeNotFound /* = false*/>
+void JSHClass::NoticeThroughChain(const JSThread *thread, const JSHandle<JSHClass> &jshclass,
+                                  JSTaggedValue addedKey)
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    MarkProtoChanged<isOnlyIncludeNotFound>(thread, jshclass);
+    JSTaggedValue protoDetailsValue = jshclass->GetProtoChangeDetails();
+    if (!protoDetailsValue.IsProtoChangeDetails()) {
+        return;
+    }
+    JSTaggedValue listenersValue = ProtoChangeDetails::Cast(protoDetailsValue.GetTaggedObject())->GetChangeListener();
+    if (!listenersValue.IsTaggedArray()) {
+        return;
+    }
+    ChangeListener *listeners = ChangeListener::Cast(listenersValue.GetTaggedObject());
+    for (uint32_t i = 0; i < listeners->GetEnd(); i++) {
+        JSTaggedValue temp = listeners->Get(i);
+        if (temp.IsJSHClass()) {
+            NoticeThroughChain<isOnlyIncludeNotFound>(thread,
+                JSHandle<JSHClass>(thread, listeners->Get(i).GetTaggedObject()), addedKey);
         }
     }
 }

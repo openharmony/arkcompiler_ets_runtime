@@ -3525,6 +3525,7 @@ void ProtoChangeMarker::Dump(std::ostream &os) const
 {
     os << " - HasChanged: " << GetHasChanged() << "\n";
     os << " - HasAccessorChanged: " << GetAccessorHasChanged() << "\n";
+    os << " - HasNotFoundChanged" << GetNotFoundHasChanged() << "\n";
 }
 
 void MarkerCell::Dump(std::ostream &os) const
