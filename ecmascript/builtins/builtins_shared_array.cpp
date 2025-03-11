@@ -1277,6 +1277,13 @@ JSTaggedValue BuiltinsSharedArray::Join(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] ConcurrentApiScope<JSSharedArray> scope(thread, thisHandle);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
+    auto factory = thread->GetEcmaVM()->GetFactory();
+    auto context = thread->GetCurrentEcmaContext();
+    bool noCircular = context->JoinStackPushFastPath(thisHandle);
+    if (!noCircular) {
+        return factory->GetEmptyString().GetTaggedValue();
+    }
+
     return JSStableArray::Join(thisHandle, argv);
 }
 

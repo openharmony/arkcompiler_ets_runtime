@@ -421,6 +421,13 @@ function join(): void {
     print(elements.join('-'));
     print(elements.join(null));
     print(elements.join(undefined));
+
+    const elements1 = new SendableArray<string>("123", "3445", "789");
+    const elements2 = new SendableArray<SendableArray>();
+    elements2.push(elements1);
+    elements2.push(elements2);
+  
+    print(elements2.join());
 }
 
 function shift() {
