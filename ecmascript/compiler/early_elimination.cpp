@@ -94,7 +94,9 @@ GateRef EarlyElimination::VisitGate(GateRef gate)
         case OpCode::OBJECT_CONSTRUCTOR_CHECK:
         case OpCode::BOOLEAN_CONSTRUCTOR_CHECK:
         case OpCode::PROTO_CHANGE_MARKER_CHECK:
+        case OpCode::PRIMTYPE_PROTO_CHANGE_MARKER_CHECK:
         case OpCode::MONO_LOAD_PROPERTY_ON_PROTO:
+        case OpCode::PRIMITIVE_TYPE_CHECK:
         case OpCode::LOAD_BUILTIN_OBJECT:
         case OpCode::LOOK_UP_HOLDER:
         case OpCode::IS_CALLABLE_CHECK:
@@ -329,7 +331,7 @@ bool EarlyElimination::CheckReplacement(GateRef lhs, GateRef rhs)
             return false;
         }
     }
-    
+
     if (acc_.GetNumValueIn(lhs) != acc_.GetNumValueIn(rhs)) {
         return false;
     }

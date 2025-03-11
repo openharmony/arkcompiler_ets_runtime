@@ -452,7 +452,8 @@ public:
     GateRef IsStoreShared(GateRef attr);
     GateRef IsElement(GateRef attr);
     GateRef IsStringElement(GateRef attr);
-    GateRef IsNumber(GateRef attr);
+    GateRef IsNumberHandler(GateRef attr);
+    GateRef IsBooleanHandler(GateRef attr);
     GateRef IsStringLength(GateRef attr);
     GateRef IsTypedArrayElement(GateRef attr);
     GateRef IsNonExist(GateRef attr);

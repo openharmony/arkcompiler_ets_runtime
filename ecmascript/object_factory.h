@@ -185,7 +185,7 @@ class TSHClassGenerator;
 }  // namespace kungfu
 
 enum class CompletionRecordType : uint8_t;
-enum class PrimitiveType : uint8_t;
+enum PrimitiveType : uint8_t;
 enum class IterationKind : uint8_t;
 enum class MethodIndex : uint8_t;
 enum class SharedTypes : uint8_t;

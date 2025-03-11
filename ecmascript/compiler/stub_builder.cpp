@@ -1036,7 +1036,7 @@ GateRef StubBuilder::JSObjectHasProperty(GateRef glue, GateRef obj, GateRef key,
     ObjectOperatorStubBuilder opStubBuilder(this);
 
     IsNotPropertyKey(TaggedIsPropertyKey(key));
-    
+
     // 1. handle property key
     opStubBuilder.HandleKey(glue, key, &propKey, &elemKey, &isProperty, &isElement, &exit, hir);
 
@@ -1045,7 +1045,7 @@ GateRef StubBuilder::JSObjectHasProperty(GateRef glue, GateRef obj, GateRef key,
     {
         Label holderUpdated(env);
         opStubBuilder.UpdateHolder<false>(glue, &holder, *propKey, &holderUpdated);
-        
+
         Bind(&holderUpdated);
         opStubBuilder.LookupProperty<false>(glue, &holder, *propKey, &isJSProxy, &ifFound, &notFound, hir);
     }
@@ -2554,6 +2554,7 @@ GateRef StubBuilder::LoadICWithHandler(
     Label handlerInfoExist(env);
     Label handlerInfoIsPrimitive(env);
     Label handlerInfoNotPrimitive(env);
+    Label handlerInfoNotStringOrNumber(env);
     Label handlerInfoIsStringLength(env);
     Label handlerInfoNotStringLength(env);
     Label handlerIsPrototypeHandler(env);
@@ -2587,8 +2588,12 @@ GateRef StubBuilder::LoadICWithHandler(
             }
             Bind(&handlerInfoNotField);
             {
-                BRANCH(BitOr(IsStringElement(handlerInfo), IsNumber(handlerInfo)),
-                    &handlerInfoIsPrimitive, &handlerInfoNotPrimitive);
+                BRANCH(BitOr(IsStringElement(handlerInfo), IsNumberHandler(handlerInfo)),
+                    &handlerInfoIsPrimitive, &handlerInfoNotStringOrNumber);
+                Bind(&handlerInfoNotStringOrNumber);
+                {
+                    BRANCH(IsBooleanHandler(handlerInfo), &handlerInfoIsPrimitive, &handlerInfoNotPrimitive);
+                }
                 Bind(&handlerInfoIsPrimitive);
                 {
                     result = LoadFromField(*holder, handlerInfo);

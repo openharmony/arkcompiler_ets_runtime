@@ -21,6 +21,7 @@
 #include "ecmascript/compiler/compilation_env.h"
 #include "ecmascript/elements.h"
 #include "ecmascript/ecma_context.h"
+#include "ecmascript/js_primitive_ref.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/jspandafile/method_literal.h"
 #include "ecmascript/mem/c_containers.h"
@@ -142,9 +143,11 @@ private:
     void AddObjectInfoWithMega(int32_t bcOffset);
     void AddObjectInfoImplement(int32_t bcOffset, const PGOObjectInfo &info);
     bool AddTranstionObjectInfo(int32_t bcOffset, JSHClass *receiver,
-		                JSHClass *hold, JSHClass *holdTra, PGOSampleType accessorMethod);
+        JSHClass *hold, JSHClass *holdTra, PGOSampleType accessorMethod, PrimitiveType primitiveType);
     bool AddObjectInfo(ApEntityId abcId, int32_t bcOffset, JSHClass *receiver,
-		               JSHClass *hold, JSHClass *holdTra, uint32_t accessorMethodId = 0);
+                       JSHClass *hold, JSHClass *holdTra, uint32_t accessorMethodId = 0);
+    bool AddObjectInfo(ApEntityId abcId, int32_t bcOffset, JSHClass *receiver,
+        JSHClass *hold, JSHClass *holdTra, uint32_t accessorMethodId, PrimitiveType primitiveType);
     void AddBuiltinsInfo(ApEntityId abcId, int32_t bcOffset, JSHClass *receiver,
                          JSHClass *transitionHClass, OnHeapMode onHeap = OnHeapMode::NONE,
                          bool everOutOfBounds = false);

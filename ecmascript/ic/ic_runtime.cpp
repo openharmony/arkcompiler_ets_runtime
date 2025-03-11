@@ -80,7 +80,7 @@ bool ICRuntime::GetHandler(const ObjectOperator &op, const JSHandle<JSHClass> &h
         }
         return true;
     }
-    
+
     // Solve IC On itself.
     if (!op.IsOnPrototype()) {
         handlerValue = LoadHandler::LoadProperty(thread_, op);
@@ -106,13 +106,18 @@ void ICRuntime::UpdateLoadHandler(const ObjectOperator &op, JSHandle<JSTaggedVal
     JSHandle<JSTaggedValue> handlerValue;
     JSHandle<JSHClass> originhclass;
     if (receiver->IsNumber()) {
-        receiver = JSHandle<JSTaggedValue>::Cast(factory->NewJSPrimitiveRef(PrimitiveType::PRIMITIVE_NUMBER, receiver));
+        receiver = JSHandle<JSTaggedValue>::Cast(
+            factory->NewJSPrimitiveRef(PrimitiveType::PRIMITIVE_NUMBER, receiver));
     } else if (receiver->IsString()) {
         originhclass = JSHandle<JSHClass>(thread_, receiver->GetTaggedObject()->GetClass());
-        receiver = JSHandle<JSTaggedValue>::Cast(factory->NewJSPrimitiveRef(PrimitiveType::PRIMITIVE_STRING, receiver));
+        receiver = JSHandle<JSTaggedValue>::Cast(
+            factory->NewJSPrimitiveRef(PrimitiveType::PRIMITIVE_STRING, receiver));
+    } else if (receiver->IsBoolean()) {
+        receiver = JSHandle<JSTaggedValue>::Cast(
+            factory->NewJSPrimitiveRef(PrimitiveType::PRIMITIVE_BOOLEAN, receiver));
     }
     JSHandle<JSHClass> hclass(GetThread(), receiver->GetTaggedObject()->GetClass());
-    
+
     if (!GetHandler(op, hclass, handlerValue)) {
         return;
     }
@@ -255,10 +260,15 @@ JSTaggedValue LoadICRuntime::LoadValueMiss(JSHandle<JSTaggedValue> receiver, JSH
     return result.GetTaggedValue();
 }
 
+static bool IsSupportedICPrimitiveType(JSHandle<JSTaggedValue> receiver)
+{
+    return receiver->IsString() || receiver->IsNumber() || receiver->IsBoolean();
+}
+
 JSTaggedValue LoadICRuntime::LoadMiss(JSHandle<JSTaggedValue> receiver, JSHandle<JSTaggedValue> key)
 {
     if ((!receiver->IsJSObject() || receiver->HasOrdinaryGet()) &&
-         !receiver->IsString() && !receiver->IsNumber()) {
+         !IsSupportedICPrimitiveType(receiver)) {
         return LoadOrdinaryGet(receiver, key);
     }
 
@@ -564,10 +574,6 @@ void ICRuntime::TraceIC([[maybe_unused]] JSThread *thread,
     LOG_ECMA(ERROR) << strTraceIC;
 
     auto kind = ICKindToString(GetICKind());
-    bool primitiveIc = false;
-    if (receiver->IsNumber() || receiver->IsString()) {
-        primitiveIc = true;
-    }
     auto state = ProfileTypeAccessor::ICStateToString(icAccessor_.GetICState());
     if (key->IsString()) {
         auto keyStrHandle = JSHandle<EcmaString>::Cast(key);
@@ -579,8 +585,12 @@ void ICRuntime::TraceIC([[maybe_unused]] JSThread *thread,
                         << ", icstate is " << state
                         << ", slotid is:" << GetSlotId();
     }
-    if (primitiveIc) {
-        LOG_ECMA(ERROR) << "primitiveIc ";
+    if (receiver->IsNumber()) {
+        LOG_ECMA(ERROR) << "primitiveNumberIc ";
+    } else if (receiver->IsBoolean()) {
+        LOG_ECMA(ERROR) << "primitiveBooleanIc ";
+    } else if (receiver->IsString()) {
+        LOG_ECMA(ERROR) << "primitiveStringIc ";
     } else {
         JSHClass *jshclass = receiver->GetTaggedObject()->GetClass();
         LOG_ECMA(ERROR) << "receiver DictionaryMode is: " << jshclass->IsDictionaryMode()

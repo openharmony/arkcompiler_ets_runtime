@@ -580,6 +580,7 @@ public:
     GateRef MathHClassConsistencyCheck(GateRef receiver);
     GateRef HeapObjectIsEcmaObjectCheck(GateRef gate, GateRef frameState);
     GateRef ProtoChangeMarkerCheck(GateRef gate, GateRef frameState = Gate::InvalidGateRef);
+    GateRef PrimitiveTypeProtoChangeMarkerCheck(GateRef gate, GateRef frameState);
     GateRef StableArrayCheck(GateRef gate, ElementsKind kind, ArrayMetaDataAccessor::Mode mode);
     GateRef ElementsKindCheck(GateRef receiver, ElementsKind kind, ArrayMetaDataAccessor::Mode mode);
     GateRef COWArrayCheck(GateRef gate);

@@ -2004,13 +2004,22 @@ inline GateRef StubBuilder::IsStringElement(GateRef attr)
         Int32(HandlerBase::HandlerKind::STRING));
 }
 
-inline GateRef StubBuilder::IsNumber(GateRef attr)
+inline GateRef StubBuilder::IsNumberHandler(GateRef attr)
 {
     return Int32Equal(
         Int32And(
             TruncInt64ToInt32(Int64LSR(attr, Int64(HandlerBase::KindBit::START_BIT))),
             Int32((1LLU << HandlerBase::KindBit::SIZE) - 1)),
         Int32(HandlerBase::HandlerKind::NUMBER));
+}
+
+inline GateRef StubBuilder::IsBooleanHandler(GateRef attr)
+{
+    return Int32Equal(
+        Int32And(
+            TruncInt64ToInt32(Int64LSR(attr, Int64(HandlerBase::KindBit::START_BIT))),
+            Int32((1LLU << HandlerBase::KindBit::SIZE) - 1)),
+        Int32(HandlerBase::HandlerKind::BOOLEAN));
 }
 
 inline GateRef StubBuilder::IsStringLength(GateRef attr)

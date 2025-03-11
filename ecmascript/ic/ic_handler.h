@@ -22,6 +22,7 @@
 #include "ecmascript/mem/tagged_object.h"
 #include "ecmascript/object_operator.h"
 #include "ecmascript/js_function.h"
+#include "ecmascript/js_primitive_ref.h"
 
 namespace panda::ecmascript {
 class HandlerBase {
@@ -38,6 +39,7 @@ public:
         STRING_LENGTH,
         TYPED_ARRAY,
         NUMBER,
+        BOOLEAN,
         NON_EXIST,
         TOTAL_KINDS,
     };
@@ -136,9 +138,31 @@ public:
         return GetKind(handler) == HandlerKind::NUMBER;
     }
 
+    static inline bool IsBoolean(Type handler)
+    {
+        return GetKind(handler) == HandlerKind::BOOLEAN;
+    }
+
+    static inline bool IsSupportedPrimitiveTypeICHandler(Type handler)
+    {
+        return IsString(handler) || IsNumber(handler) || IsBoolean(handler);
+    }
+
     static inline bool IsStringLength(Type handler)
     {
         return GetKind(handler) == HandlerKind::STRING_LENGTH;
+    }
+
+    static inline PrimitiveType TryGetPrimitiveType(Type handler)
+    {
+        switch (GetKind(handler)) {
+            case HandlerKind::NUMBER:
+                return PrimitiveType::PRIMITIVE_NUMBER;
+            case HandlerKind::BOOLEAN:
+                return PrimitiveType::PRIMITIVE_BOOLEAN;
+            default:
+                return PrimitiveType::PRIMITIVE_TYPE_INVALID;
+        }
     }
 
     static inline bool IsElement(Type handler)
