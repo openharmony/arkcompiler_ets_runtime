@@ -147,7 +147,7 @@ void PGOProfilerManager::SavingSignalHandler(int signo)
         return;
     }
 
-    PGOProfilerManager::GetInstance()->ForceDumpAllProfilers();
+    PGOProfilerManager::GetInstance()->SetForceDump(true);
 }
 
 void PGOProfilerManager::Initialize(const std::string& outDir, uint32_t hotnessThreshold)
@@ -378,31 +378,26 @@ void PGOProfilerManager::DumpPendingProfilers()
 
 void PGOProfilerManager::TryDispatchDumpTask(PGOProfiler* profiler)
 {
-    pendingProfilers_.PushBack(profiler);
+    if (IsForceDump()) {
+        PushAllProfilersToPendingList();
+    } else {
+        pendingProfilers_.PushBack(profiler);
+    }
+    // only one pgo dump task should run at a time
     LockHolder lock(dumpTaskMutex_);
     if (IsTaskRunning()) {
         return;
     }
     SetIsTaskRunning(true);
-    // only one pgo dump task running at a time
     DispatchDumpTask();
 }
 
-void PGOProfilerManager::ForceDumpAllProfilers()
+void PGOProfilerManager::PushAllProfilersToPendingList()
 {
-    SetForceDump(true);
-    {
-        LockHolder lock(profilersMutex_);
-        for (const auto& profiler: profilers_) {
-            pendingProfilers_.PushBack(profiler.get());
-        }
+    LockHolder lock(profilersMutex_);
+    for (const auto& prof: profilers_) {
+        pendingProfilers_.PushBack(prof.get());
     }
-    LockHolder lock(dumpTaskMutex_);
-    if (IsTaskRunning()) {
-        return;
-    }
-    SetIsTaskRunning(true);
-    DispatchDumpTask();
 }
 
 bool PGOProfilerManager::IsTaskRunning() const

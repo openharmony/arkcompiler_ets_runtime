@@ -245,7 +245,8 @@ HWTEST_F_L0(PGOProfilerTestOne, ForceDump)
     });
 
     auto manager = PGOProfilerManager::GetInstance();
-    manager->ForceDumpAllProfilers();
+    manager->SetForceDump(true);
+    manager->TryDispatchDumpTask(nullptr);
     while (manager->IsTaskRunning()) {
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
