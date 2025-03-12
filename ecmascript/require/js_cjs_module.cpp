@@ -127,9 +127,8 @@ JSHandle<JSTaggedValue> CjsModule::Load(JSThread *thread, JSHandle<EcmaString> &
     InitializeModule(thread, module, recordNameHdl, dirnameHdl);
     PutIntoCache(thread, module, recordNameHdl);
 
-    JSRecordInfo *recordInfo = nullptr;
-    bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(requestEntryPoint, &recordInfo);
-    if (!hasRecord) {
+    JSRecordInfo *recordInfo = jsPandaFile->CheckAndGetRecordInfo(requestEntryPoint);
+    if (recordInfo == nullptr) {
         JSHandle<JSTaggedValue> exp(thread, JSTaggedValue::Exception());
         THROW_MODULE_NOT_FOUND_ERROR_WITH_RETURN_VALUE(thread, requestStr, recordName, exp);
     }

@@ -1188,13 +1188,13 @@ void JSFunction::InitializeForConcurrentFunction(JSThread *thread, JSHandle<JSFu
     ecmascript::CString recordName = method->GetRecordNameStr();
 
     // check ESM or CJS
-    ecmascript::JSRecordInfo *recordInfo = nullptr;
-    bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(recordName, &recordInfo);
-    if (!hasRecord) {
+    ecmascript::JSRecordInfo *recordInfo = jsPandaFile->CheckAndGetRecordInfo(recordName);
+    if (recordInfo == nullptr) {
         CString msg = "Cannot find module '" + recordName + "' , which is application Entry Point";
         LOG_ECMA(ERROR) << msg;
         return;
     }
+
     if (!jsPandaFile->IsModule(recordInfo)) {
         LOG_ECMA(DEBUG) << "Current function is not from ES Module's file.";
         return;

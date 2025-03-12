@@ -186,12 +186,13 @@ JSHandle<JSTaggedValue> ModuleResolver::HostResolveImportedModuleForHotReload(JS
     if (jsPandaFile == nullptr) { // LCOV_EXCL_BR_LINE
         LOG_FULL(FATAL) << "Load current file's panda file failed. Current file is " << moduleFileName;
     }
-    JSRecordInfo *recordInfo = nullptr;
-    bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(recordName, &recordInfo);
-    if (!hasRecord) {
+
+    JSRecordInfo *recordInfo = jsPandaFile->CheckAndGetRecordInfo(recordName);
+    if (recordInfo == nullptr) {
         CString msg = "cannot find record '" + recordName + "',please check the request path.'" + moduleFileName + "'.";
         THROW_NEW_ERROR_AND_RETURN_HANDLE(thread, ErrorType::REFERENCE_ERROR, JSTaggedValue, msg.c_str());
     }
+
     JSHandle<JSTaggedValue> moduleRecord =
         ResolveModuleWithMerge(thread, jsPandaFile.get(), recordName, recordInfo, executeType);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
@@ -216,9 +217,8 @@ JSHandle<JSTaggedValue> ModuleResolver::HostResolveImportedModuleWithMerge(JSThr
         }
         jsPandaFile = file.get();
     }
-    JSRecordInfo *recordInfo = nullptr;
-    bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(recordName, &recordInfo);
-    if (!hasRecord) {
+    JSRecordInfo *recordInfo = jsPandaFile->CheckAndGetRecordInfo(recordName);
+    if (recordInfo == nullptr) {
         CString msg = "cannot find record '" + recordName + "',please check the request path.'" + moduleFileName + "'.";
         THROW_NEW_ERROR_AND_RETURN_HANDLE(thread, ErrorType::REFERENCE_ERROR, JSTaggedValue, msg.c_str());
     }
@@ -262,9 +262,10 @@ JSHandle<JSTaggedValue> ModuleResolver::HostResolveImportedModuleBundlePack(JSTh
     if (jsPandaFile == nullptr) { // LCOV_EXCL_BR_LINE
         LOG_FULL(FATAL) << "Load current file's panda file failed. Current file is " << referencingModule;
     }
-    [[maybe_unused]] JSRecordInfo *recordInfo = nullptr;
-    ASSERT(jsPandaFile->CheckAndGetRecordInfo(referencingModule, &recordInfo) &&
-        !jsPandaFile->IsSharedModule(recordInfo));
+
+    [[maybe_unused]] JSRecordInfo *recordInfo = jsPandaFile->CheckAndGetRecordInfo(referencingModule);
+    ASSERT(recordInfo != nullptr && !jsPandaFile->IsSharedModule(recordInfo));
+
     CString moduleFileName = referencingModule;
     if (moduleManager->IsVMBundlePack()) {
         if (!AOTFileManager::GetAbsolutePath(referencingModule, moduleFileName)) {

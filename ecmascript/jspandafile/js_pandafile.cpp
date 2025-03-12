@@ -73,12 +73,11 @@ void JSPandaFile::CheckIsRecordWithBundleName(const CString &entry)
 
     CString bundleName = entry.substr(0, pos);
     size_t bundleNameLen = bundleName.length();
-    for (auto info : jsRecordInfo_) {
-        if (info.first.find(PACKAGE_PATH_SEGMENT) != CString::npos ||
-            info.first.find(NPM_PATH_SEGMENT) != CString::npos) {
+    for (auto &[recordName, _] : jsRecordInfo_) {
+        if (recordName.find(PACKAGE_PATH_SEGMENT) != CString::npos ||
+            recordName.find(NPM_PATH_SEGMENT) != CString::npos) {
             continue;
         }
-        CString recordName = info.first;
         // Confirm whether the current record is new or old by judging whether the recordName has a bundleName
         if (!(recordName.length() > bundleNameLen && (recordName.compare(0, bundleNameLen, bundleName) == 0))) {
             isRecordWithBundleName_ = false;
@@ -174,6 +173,7 @@ void JSPandaFile::InitializeMergedPF()
 {
     Span<const uint32_t> classIndexes = pf_->GetClasses();
     numClasses_ = classIndexes.size();
+    jsRecordInfo_.reserve(numClasses_);
     for (const uint32_t index : classIndexes) {
         panda_file::File::EntityId classId(index);
         if (pf_->IsExternal(classId)) {
@@ -224,48 +224,12 @@ void JSPandaFile::InitializeMergedPF()
     methodLiteralMap_.reserve(numMethods_);
 }
 
-MethodLiteral *JSPandaFile::FindMethodLiteral(uint32_t offset) const
-{
-    auto iter = methodLiteralMap_.find(offset);
-    if (iter == methodLiteralMap_.end()) {
-        return nullptr;
-    }
-    return iter->second;
-}
-
 bool JSPandaFile::IsFirstMergedAbc() const
 {
     if (isFirstPandafile_ && !IsBundlePack()) {
         return true;
     }
     return false;
-}
-
-bool JSPandaFile::CheckAndGetRecordInfo(const CString &recordName, JSRecordInfo **recordInfo) const
-{
-    if (IsBundlePack()) {
-        *recordInfo = jsRecordInfo_.begin()->second;
-        return true;
-    }
-    auto info = jsRecordInfo_.find(recordName);
-    if (info != jsRecordInfo_.end()) {
-        *recordInfo = info->second;
-        return true;
-    }
-    return false;
-}
-
-const JSRecordInfo* JSPandaFile::GetRecordInfo(const CString &recordName)
-{
-    if (IsBundlePack()) {
-        return jsRecordInfo_.begin()->second;
-    }
-    auto info = jsRecordInfo_.find(recordName);
-    if (info != jsRecordInfo_.end()) {
-        return info->second;
-    }
-    LOG_FULL(FATAL) << "Get record info failed";
-    UNREACHABLE();
 }
 
 CString JSPandaFile::GetEntryPoint(const CString &recordName) const

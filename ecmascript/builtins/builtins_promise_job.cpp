@@ -129,7 +129,6 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
     ASSERT(argv);
     BUILTINS_API_TRACE(argv->GetThread(), PromiseJob, DynamicImportJob);
     JSThread *thread = argv->GetThread();
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     EcmaVM *vm = thread->GetEcmaVM();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
@@ -196,15 +195,13 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
         LOG_FULL(FATAL) << "Load current file's panda file failed. Current file is " << fileName;
     }
 
-    JSRecordInfo *recordInfo = nullptr;
-    bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(entryPoint, &recordInfo);
-    if (!hasRecord) {
+    JSRecordInfo *recordInfo = jsPandaFile->CheckAndGetRecordInfo(entryPoint);
+    if (recordInfo == nullptr) {
         CString normalizeStr = ModulePathHelper::ReformatPath(entryPoint);
         CString msg = "Cannot find dynamic-import module '" + normalizeStr;
-        JSTaggedValue error = factory->GetJSError(ErrorType::REFERENCE_ERROR,
-            msg.c_str(), StackCheck::NO).GetTaggedValue();
-        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, CatchException(thread, reject));
+        THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(), CatchException(thread, reject));
     }
+
     if (jsPandaFile->IsJson(recordInfo)) {
         return DynamicImport::ExecuteNativeOrJsonModule(
             thread, entryPoint, ModuleTypes::JSON_MODULE, resolve, reject, jsPandaFile.get());
@@ -216,9 +213,7 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
         if (!JSPandaFileExecutor::ExecuteFromAbcFile(
             thread, fileName.c_str(), entryPoint.c_str(), false, ExecuteTypes::DYNAMIC)) {
             CString msg = "Cannot execute request dynamic-imported module : " + entryPoint;
-            JSTaggedValue error = factory->GetJSError(ErrorType::REFERENCE_ERROR, msg.c_str(),
-                                                      StackCheck::NO).GetTaggedValue();
-            THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, CatchException(thread, reject));
+            THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(), CatchException(thread, reject));
         }
     } else {
         ModuleDeregister::ReviseLoadedModuleCount(thread, moduleName);

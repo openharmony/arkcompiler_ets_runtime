@@ -122,15 +122,15 @@ JSHandle<JSTaggedValue> NapiModuleLoader::LoadModuleNameSpaceFromFile(
     if (jsPandaFile == nullptr) {
         LOG_FULL(FATAL) << "Load current file's panda file failed. Current file is " << abcFilePath;
     }
-    JSRecordInfo *recordInfo = nullptr;
-    bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(entryPoint, &recordInfo);
-    if (!hasRecord) {
+    JSRecordInfo *recordInfo = jsPandaFile->CheckAndGetRecordInfo(entryPoint);
+    if (recordInfo == nullptr) {
         LOG_FULL(ERROR) << "cannot find record '" << entryPoint <<"' in basefileName " << abcFilePath << ","
             << "from napi load module";
         CString msg = "cannot find record '" + entryPoint + "' in basefileName " + abcFilePath + "," +
             "from napi load module";
         THROW_NEW_ERROR_AND_RETURN_HANDLE(thread, ErrorType::REFERENCE_ERROR, JSTaggedValue, msg.c_str());
     }
+
     if (jsPandaFile->IsSharedModule(recordInfo)) {
         LockHolder lock(SharedModuleManager::GetInstance()->GetSharedMutex());
         return ecmascript::NapiModuleLoader::GetModuleNameSpace(

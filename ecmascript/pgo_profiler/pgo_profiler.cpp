@@ -1941,9 +1941,8 @@ ProfileType PGOProfiler::GetRecordProfileType(const std::shared_ptr<JSPandaFile>
                                               const CString &recordName)
 {
     ASSERT(pf != nullptr);
-    JSRecordInfo *recordInfo = nullptr;
-    bool hasRecord = pf->CheckAndGetRecordInfo(recordName, &recordInfo);
-    if (!hasRecord) {
+    JSRecordInfo *recordInfo = pf->CheckAndGetRecordInfo(recordName);
+    if (recordInfo == nullptr) {
         LOG_PGO(ERROR) << "Get recordInfo failed. recordName: " << recordName;
         return ProfileType::PROFILE_TYPE_NONE;
     }
