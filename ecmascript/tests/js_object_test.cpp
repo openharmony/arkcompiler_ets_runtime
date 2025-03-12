@@ -933,8 +933,6 @@ HWTEST_F_L0(JSObjectTest, ElementFastToSlow)
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj4), key1, key1);
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj4), key2, key2);
     EXPECT_TRUE(!TaggedArray::Cast(obj4->GetElements().GetTaggedObject())->IsDictionaryMode());
-    JSObject::DeleteProperty(thread, (obj4), key1);
-    EXPECT_TRUE(TaggedArray::Cast(obj4->GetElements().GetTaggedObject())->IsDictionaryMode());
 
     JSHandle<JSTaggedValue> value1001(thread, JSTaggedValue(1001));
     JSHandle<JSObject> obj100 = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(objFunc), objFunc);

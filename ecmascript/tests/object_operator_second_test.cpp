@@ -162,6 +162,7 @@ HWTEST_F_L0(ObjectOperatorTest, UpdateDateValue_001)
     JSHandle<JSTaggedValue> objFunc(thread, JSObjectTestCreate(thread));
     JSHandle<JSTaggedValue> handleKey(factory->NewFromASCII("key"));
     JSHandle<JSTaggedValue> handleKey2(thread, JSTaggedValue(2));
+    JSHandle<JSTaggedValue> handleKey3(thread, JSTaggedValue(102400));
     JSHandle<JSTaggedValue> handleValue(thread, JSTaggedValue(4));
     JSHandle<JSTaggedValue> handleValue1(thread, JSTaggedValue(5));
     ObjectOperator objectOperator1(thread, handleValue);
@@ -178,7 +179,8 @@ HWTEST_F_L0(ObjectOperatorTest, UpdateDateValue_001)
     EXPECT_EQ(resultElements->Get(objectOperator1.GetIndex()).GetInt(), 4);
 
     // object is DictionaryMode
-    JSObject::DeleteProperty(thread, handleObject, handleKey2);
+    JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(handleObject), handleKey3, handleKey);
+    JSObject::DeleteProperty(thread, handleObject, handleKey3);
     EXPECT_TRUE(objectOperator1.UpdateDataValue(handleObject, handleValue1, false));
     auto *resultDict = NumberDictionary::Cast(handleObject->GetElements().GetTaggedObject());
     EXPECT_EQ(resultDict->GetValue(objectOperator1.GetIndex()).GetInt(), 5);
