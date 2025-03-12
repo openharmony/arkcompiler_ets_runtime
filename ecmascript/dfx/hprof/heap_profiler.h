@@ -268,7 +268,7 @@ public:
         readOnlyObjects_.clear();
     }
 
-    void BinaryDump();
+    void BinaryDump(const DumpSnapShotOption &dumpOption);
 
     void VisitRoot([[maybe_unused]] Root type, ObjectSlot slot) override
     {
@@ -293,7 +293,7 @@ public:
 private:
     void DumpVersion();
     void DumpRootTable();
-    void DumpObjectTable();
+    void DumpObjectTable(const DumpSnapShotOption &dumpOption);
     void DumpObjectMemory();
     void DumpStringTable();
     void DumpSectionIndex();

@@ -947,13 +947,13 @@ bool HeapProfiler::DumpRawHeap(Stream *stream, uint32_t &fileOffset, CVector<uin
 //  * } * thread_num
 //  * 4 byte: section_offset_num size, 4 byte here
 //  * 4 byte: section_num
-bool HeapProfiler::BinaryDump(Stream *stream, [[maybe_unused]] const DumpSnapShotOption &dumpOption)
+bool HeapProfiler::BinaryDump(Stream *stream, const DumpSnapShotOption &dumpOption)
 {
     DumpSnapShotOption option;
     auto stringTable = chunk_.New<StringHashMap>(vm_);
     auto snapshot = chunk_.New<HeapSnapshot>(vm_, stringTable, option, false, entryIdMap_);
     RawHeapDump rawHeapDump(vm_, stream, snapshot, entryIdMap_);
-    rawHeapDump.BinaryDump();
+    rawHeapDump.BinaryDump(dumpOption);
     chunk_.Delete<StringHashMap>(stringTable);
     chunk_.Delete<HeapSnapshot>(snapshot);
     return true;
@@ -1392,13 +1392,13 @@ void HeapProfiler::StorePotentiallyLeakHandles(const uintptr_t handle)
 }
 #endif  // ENABLE_LOCAL_HANDLE_LEAK_DETECT
 
-void RawHeapDump::BinaryDump()
+void RawHeapDump::BinaryDump(const DumpSnapShotOption &dumpOption)
 {
     ClearVisitMark();
     DumpVersion();
     DumpRootTable();
     DumpStringTable();
-    DumpObjectTable();
+    DumpObjectTable(dumpOption);
     DumpObjectMemory();
     DumpSectionIndex();
     WriteBinBlock();
@@ -1451,7 +1451,7 @@ void RawHeapDump::DumpRootTable()
     LOG_ECMA(INFO) << "rawheap dump, root count " << rootObjCnt;
 }
 
-void RawHeapDump::DumpObjectTable()
+void RawHeapDump::DumpObjectTable(const DumpSnapShotOption &dumpOption)
 {
     secIndexVec_.push_back(fileOffset_);
     objCnt_ += readOnlyObjects_.size();
@@ -1459,11 +1459,12 @@ void RawHeapDump::DumpObjectTable()
     WriteChunk(reinterpret_cast<char *>(header), sizeof(header));
 
     uint32_t offset = header[0] * header[1];
-    auto objTableDump = [&offset, this](void *addr) {
+    auto objTableDump = [&offset, &dumpOption, this](void *addr) {
         auto obj = reinterpret_cast<TaggedObject *>(addr);
         AddrTableItem table;
         table.addr = reinterpret_cast<uint64_t>(obj);
-        table.id = entryIdMap_->GetNextId();
+        table.id = dumpOption.isDumpOOM ?
+            entryIdMap_->GetNextId() : entryIdMap_->FindOrInsertNodeId(reinterpret_cast<JSTaggedType>(addr));
         table.objSize = obj->GetClass()->SizeFromJSHClass(obj);
         table.offset = offset;
         WriteChunk(reinterpret_cast<char *>(&table), sizeof(AddrTableItem));
