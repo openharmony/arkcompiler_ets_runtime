@@ -21,6 +21,7 @@
 #include "ecmascript/js_handle.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/js_thread.h"
+#include "ecmascript/mem/concurrent_marker.h"
 #include "ecmascript/mem/heap-inl.h"
 #include "ecmascript/mem/region-inl.h"
 #include "ecmascript/mem/unified_gc/unified_gc_marker.h"
@@ -152,7 +153,7 @@ HWTEST_F_L0(UnifiedGCTest, DoHandshakeTest)
         static_cast<arkplatform::EcmaVMInterface *>(ecmaVMInterface));
 }
 
-HWTEST_F_L0(UnifiedGCTest, TriggerUnifiedGCMarkTest)
+HWTEST_F_L0(UnifiedGCTest, TriggerUnifiedGCMarkTest1)
 {
     EcmaVM *vm = thread->GetEcmaVM();
     auto stsVMInterface = std::make_unique<STSVMInterfaceTest>();
@@ -197,6 +198,20 @@ HWTEST_F_L0(UnifiedGCTest, TriggerUnifiedGCMarkTest)
 
     EXPECT_TRUE(sharedRefNeedMark.isMarked());
     EXPECT_TRUE(!sharedRefNoNeedMark.isMarked());
+}
+
+HWTEST_F_L0(UnifiedGCTest, TriggerUnifiedGCMarkTest2)
+{
+    EcmaVM *vm = thread->GetEcmaVM();
+    auto stsVMInterface = std::make_unique<STSVMInterfaceTest>();
+    void *ecmaVMInterface = nullptr;
+    CrossVMOperator::DoHandshake(vm, stsVMInterface.get(), &ecmaVMInterface);
+
+    auto heap = vm->GetHeap();
+    heap->GetConcurrentMarker()->Mark();
+    heap->TriggerUnifiedGCMark<TriggerGCType::UNIFIED_GC, GCReason::CROSSREF_CAUSE>();
+    while (!thread->HasSuspendRequest()) {}
+    thread->CheckSafepoint();
 }
 #endif  // PANDA_JS_ETS_HYBRID_MODE
 

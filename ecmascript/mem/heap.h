@@ -1229,7 +1229,17 @@ public:
     void TryTriggerIncrementalMarking() override;
     void CalculateIdleDuration();
     void UpdateWorkManager(WorkManager *workManager);
-    bool CheckOngoingConcurrentMarking() override;
+
+    bool CheckOngoingConcurrentMarking() override
+    {
+        return CheckOngoingConcurrentMarkingImpl(ThreadType::JS_THREAD, MAIN_THREAD_INDEX,
+                                                 "Heap::CheckOngoingConcurrentMarking");
+    }
+    bool DaemonCheckOngoingConcurrentMarking()
+    {
+        return CheckOngoingConcurrentMarkingImpl(ThreadType::DAEMON_THREAD, DAEMON_THREAD_INDEX,
+                                                 "Heap::DaemonCheckOngoingConcurrentMarking");
+    }
 
     inline void SwapNewSpace();
     inline void SwapOldSpace();
@@ -1637,6 +1647,8 @@ private:
     {
         pendingAsyncNativeCallbackSize_ -= bindingSize;
     }
+    bool CheckOngoingConcurrentMarkingImpl(ThreadType threadType, int threadIndex,
+                                           [[maybe_unused]] const char* traceName);
     class ParallelGCTask : public Task {
     public:
         ParallelGCTask(int32_t id, Heap *heap, ParallelGCTaskPhase taskPhase)
