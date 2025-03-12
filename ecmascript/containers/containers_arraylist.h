@@ -49,7 +49,6 @@ namespace panda::ecmascript::containers {
  * */
 class ContainersArrayList : public base::BuiltinsBase {
 public:
-    constexpr static uint32_t API18 = 18;
     static JSTaggedValue ArrayListConstructor(EcmaRuntimeCallInfo *argv);
 
     static JSTaggedValue Add(EcmaRuntimeCallInfo *argv);

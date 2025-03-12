@@ -289,24 +289,19 @@ if (globalThis["ArkPrivate"] != undefined) {
     }, v);
     map.set("test vector replaceAllElements redefine:", v.length == 0);
 
-    {
-        let temp = ArkTools.getAPIVersion();
-        ArkTools.setAPIVersion(18);
-        let isClear = false;
-        let tempArr = new FastVector();
-        tempArr.add(1);
-        tempArr.add(2);
-        tempArr.add(3);
-        tempArr.sort((a, b) => {
-            if (!isClear) {
-                tempArr.clear();
-                isClear = true;
-            }
-            return a - b;
-        });
-        map.set("test vector sort callbackFN:", tempArr.length === 3);
-        ArkTools.setAPIVersion(temp);
-    }
+    let isClear = false;
+    let tempArr = new FastVector();
+    tempArr.add(1);
+    tempArr.add(2);
+    tempArr.add(3);
+    tempArr.sort((a, b) => {
+        if (!isClear) {
+            tempArr.clear();
+            isClear = true;
+        }
+        return a - b;
+    });
+    map.set("test vector sort callbackFN:", tempArr.length === 3);
     
     flag = undefined;
     function elements(value, key, map) {

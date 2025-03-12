@@ -61,9 +61,6 @@ public:
     bool Has(const JSTaggedValue& value) const;
     static bool Has(JSThread* thread, const JSHandle<JSAPIBitVector>& bitVector, const JSHandle<JSTaggedValue>& value,
         const JSHandle<JSTaggedValue>& value1, const JSHandle<JSTaggedValue>& value2);
-    static bool Include(JSThread* thread, const JSHandle<JSAPIBitVector>& bitVector,
-        const JSHandle<JSTaggedValue>& value, const JSHandle<JSTaggedValue>& value1,
-        const JSHandle<JSTaggedValue>& value2);
 
     static JSHandle<TaggedArray> OwnKeys(JSThread* thread, const JSHandle<JSAPIBitVector>& obj);
     static JSHandle<TaggedArray> OwnEnumKeys(JSThread* thread, const JSHandle<JSAPIBitVector>& obj);
