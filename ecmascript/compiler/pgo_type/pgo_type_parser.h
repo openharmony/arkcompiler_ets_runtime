@@ -92,7 +92,6 @@ public:
     ~PGOTypeParser() = default;
 
     void PUBLIC_API CreatePGOType(BytecodeInfoCollector &collector);
-    void PUBLIC_API Preproccessor(BytecodeInfoCollector &collector);
 
 private:
     void GenerateHClassForNapiType(ProfileType rootType, const PGOHClassGenerator &generator);

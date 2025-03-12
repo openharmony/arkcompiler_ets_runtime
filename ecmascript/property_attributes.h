@@ -100,7 +100,6 @@ public:
     static constexpr uint32_t FIELD_TYPE_NUM = 8;
     static constexpr uint32_t MAX_FAST_PROPS_CAPACITY = (1U << MAX_FAST_PROPS_CAPACITY_LOG2) - 1;
     static constexpr uint32_t MAX_LITERAL_HCLASS_CACHE_SIZE = 63;
-    static constexpr uint32_t MAX_LITERAL_HCLASS_CACHE_BIT = 6;
     static constexpr unsigned BITS_PER_BYTE = 8;
 
     static constexpr uint32_t MAX_BIT_SIZE = 48;

@@ -21,11 +21,6 @@ bool PGOHClassGenerator::IsCache() const
     return status_ == Status::ISCACHE;
 }
 
-bool PGOHClassGenerator::IsPreprocessObjectLiteralLength() const
-{
-    return status_ == Status::PREPROCESSOR;
-}
-
 void PGOHClassGenerator::SetStatus(Status status) const
 {
     status_ = status;
@@ -71,28 +66,17 @@ bool PGOHClassGenerator::GenerateHClass(PGOSampleType type) const
         return false;
     }
 
-    if (IsPreprocessObjectLiteralLength()) {
-        if (!ObjectFactory::CanObjectLiteralHClassCache(maxNumOfProps)) {
-            return false;
-        }
-        ptManager_->SetMaxPropsNum(rootNumOfProps, maxNumOfProps);
-        JSHClass::CalculateMaxNumForChild(rootHClassDesc, maxNumOfProps);
+    JSHandle<JSHClass> rootHClass;
+    if (rootType.IsGeneralizedPrototype()) {
+        rootHClass = CreateRootPHClass(rootType, rootHClassDesc, maxNumOfProps, rootType.IsTransitionPrototype());
+    } else if (rootType.IsConstructor()) {
+        rootHClass = CreateRootCHClass(rootType, rootHClassDesc, maxNumOfProps);
+    } else if (IsCache() && ObjectFactory::CanObjectLiteralHClassCache(maxNumOfProps)) {
+        rootHClass = CreateRootHClassWithCached(rootType, rootHClassDesc, rootNumOfProps, maxNumOfProps);
     } else {
-        JSHandle<JSHClass> rootHClass;
-        if (rootType.IsGeneralizedPrototype()) {
-            rootHClass = CreateRootPHClass(rootType, rootHClassDesc, maxNumOfProps, rootType.IsTransitionPrototype());
-        } else if (rootType.IsConstructor()) {
-            rootHClass = CreateRootCHClass(rootType, rootHClassDesc, maxNumOfProps);
-        } else if (IsCache() && ObjectFactory::CanObjectLiteralHClassCache(maxNumOfProps)) {
-            uint32_t maxChildNum = ptManager_->GetMaxPropsNum(rootNumOfProps);
-            ASSERT(maxChildNum >= maxNumOfProps);
-            rootHClass = CreateRootHClassWithCached(rootType, rootHClassDesc,
-                                                    rootNumOfProps, maxChildNum);
-        } else {
-            rootHClass = CreateRootHClass(rootType, rootHClassDesc, maxNumOfProps);
-        }
-        CreateChildHClass(rootType, desc, rootHClass, rootHClassDesc);
+        rootHClass = CreateRootHClass(rootType, rootHClassDesc, maxNumOfProps);
     }
+    CreateChildHClass(rootType, desc, rootHClass, rootHClassDesc);
     return true;
 }
 
@@ -172,8 +156,7 @@ bool PGOHClassGenerator::CheckIsValid(PGOSampleType type, uint32_t maxNum) const
     if (maxNum > PropertyAttributes::MAX_FAST_PROPS_CAPACITY) {
         return false;
     }
-    if ((IsCache() || IsPreprocessObjectLiteralLength()) &&
-        !ObjectFactory::CanObjectLiteralHClassCache(maxNum)) {
+    if (IsCache() && !ObjectFactory::CanObjectLiteralHClassCache(maxNum)) {
         return typeRecorder_.IsValidPt(type.GetProfileType());
     }
     return true;

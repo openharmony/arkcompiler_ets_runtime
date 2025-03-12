@@ -124,9 +124,7 @@ void ObjectLiteralParser::GenerateHClass(const PGOHClassGenerator &generator, co
 
     auto rootType = ptManager_->GetRootIdByLocation(loc);
     PGOSampleType rootSampleType(rootType);
-    if (!generator.IsPreprocessObjectLiteralLength()) {
-        generator.SetStatus(PGOHClassGenerator::Status::ISCACHE);
-    }
+    generator.SetStatus(PGOHClassGenerator::Status::ISCACHE);
     generator.GenerateHClass(rootSampleType);
 }
 
@@ -201,7 +199,7 @@ bool PGOTypeParser::SkipGenerateHClass(PGOTypeRecorder typeRecorder, ProfileType
     return false;
 }
 
-void PGOTypeParser::Preproccessor(BytecodeInfoCollector &collector)
+void PGOTypeParser::CreatePGOType(BytecodeInfoCollector &collector)
 {
     const JSPandaFile *jsPandaFile = collector.GetJSPandaFile();
     PGOTypeRecorder typeRecorder(decoder_);
@@ -214,36 +212,6 @@ void PGOTypeParser::Preproccessor(BytecodeInfoCollector &collector)
         ptManager_->RecordProtoTransType(transType);
     });
 
-    PGOHClassGenerator::Status status = PGOHClassGenerator::Status::PREPROCESSOR;
-    typeRecorder.IterateHClassTreeDesc([this, &typeRecorder, status](PGOHClassTreeDesc *desc) {
-        auto rootType = desc->GetProfileType();
-        auto protoPt = desc->GetProtoPt();
-        bool isCache = rootType.IsObjectLiteralType();
-        if (!isCache || SkipGenerateHClass(typeRecorder, rootType, isCache, desc)) {
-            return;
-        }
-        const PGOHClassGenerator generator(typeRecorder, ptManager_, status);
-        if (rootType.IsNapiType() || rootType.IsGeneralizedPrototype() || rootType.IsConstructor()) {
-            return;
-        } else if (rootType.IsGeneralizedClassType()) {
-            generator.GenerateHClass(PGOSampleType(protoPt));
-        } else {
-            generator.GenerateHClass(PGOSampleType(rootType));
-        }
-    });
-    
-    collector.IterateAllMethods([this, jsPandaFile, &collector, status](uint32_t methodOffset) {
-        PGOTypeRecorder typeRecorder(decoder_, jsPandaFile, methodOffset);
-        const PGOHClassGenerator generator(typeRecorder, ptManager_, status);
-        ObjectLiteralParser parser(ptManager_);
-        parser.Parse(collector, typeRecorder, generator, methodOffset);
-    });
-}
-
-void PGOTypeParser::CreatePGOType(BytecodeInfoCollector &collector)
-{
-    const JSPandaFile *jsPandaFile = collector.GetJSPandaFile();
-    PGOTypeRecorder typeRecorder(decoder_);
     typeRecorder.IterateHClassTreeDesc([this, typeRecorder](PGOHClassTreeDesc *desc) {
         auto rootType = desc->GetProfileType();
         auto protoPt = desc->GetProtoPt();

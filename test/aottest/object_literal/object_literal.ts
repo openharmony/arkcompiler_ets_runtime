@@ -130,3 +130,24 @@ function test6() {
 test6();
 print(ArkTools.isAOTCompiled(test6))
 print(ArkTools.isAOTDeoptimized(test6))
+
+// test literal length is zero
+function test7() {
+    var x = {
+        0: 0,
+        1: 1
+    };
+    x.a = 2;
+    var y = {
+        2: 2
+    };
+    y.a = 1;
+    y.b = 2;
+    print(x.a);
+    print(x.b);
+    print(y.a);
+    print(y.b);
+}
+test7();
+print(ArkTools.isAOTCompiled(test7))
+print(ArkTools.isAOTDeoptimized(test7))

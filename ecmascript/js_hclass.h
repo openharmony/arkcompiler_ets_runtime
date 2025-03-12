@@ -435,7 +435,7 @@ public:
     void Initialize(const JSThread *thread, uint32_t size, JSType type, uint32_t inlinedProps,
         const JSHandle<JSTaggedValue> &layout);
     static JSHandle<JSHClass> Clone(const JSThread *thread, const JSHandle<JSHClass> &jshclass,
-                                    bool withInlinedProperties = false, uint32_t inlinedProps = 0);
+                                    bool specificInlinedProps = false, uint32_t specificNumInlinedProps = 0);
     static JSHandle<JSHClass> CloneAndIncInlinedProperties(const JSThread *thread, const JSHandle<JSHClass> &jshclass,
                                                            uint32_t expectedOfProperties);
     static JSHandle<JSHClass> CloneWithoutInlinedProperties(const JSThread *thread, const JSHandle<JSHClass> &jshclass);
@@ -451,8 +451,8 @@ public:
                                                      const JSHandle<JSTaggedValue> &key,
                                                      const PropertyAttributes &attr,
                                                      const Representation &rep,
-                                                     bool withInlinedProperties = false,
-                                                     uint32_t numInlinedProps = 0);
+                                                     bool specificInlinedProps = false,
+                                                     uint32_t specificNumInlinedProps = 0);
     static void PUBLIC_API AddProperty(const JSThread *thread, const JSHandle<JSObject> &obj,
                                        const JSHandle<JSTaggedValue> &key, const PropertyAttributes &attr,
                                        const Representation &rep = Representation::NONE);
@@ -2083,7 +2083,6 @@ public:
 
     static CString DumpJSType(JSType type);
 
-    static void CalculateMaxNumForChild(const HClassLayoutDesc* desc, uint32_t maxNum);
     static JSHandle<JSHClass> CreateRootHClassFromPGO(const JSThread* thread,
                                                       const HClassLayoutDesc* desc,
                                                       uint32_t maxNum);

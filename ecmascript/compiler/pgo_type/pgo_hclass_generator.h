@@ -24,8 +24,7 @@ class PGOHClassGenerator {
 public:
     enum class Status: uint8_t {
         NONE = 0x00UL,
-        PREPROCESSOR = 0x01UL,
-        ISCACHE = 0x1UL << 1,
+        ISCACHE = 0x01UL,
     };
 
     PGOHClassGenerator(const PGOTypeRecorder &typeRecorder, PGOTypeManager *ptManager, Status status = Status::NONE)
@@ -36,7 +35,6 @@ public:
     bool GenerateIHClass(PGOSampleType type, const JSHandle<JSTaggedValue> &prototype) const;
 
     bool IsCache() const;
-    bool IsPreprocessObjectLiteralLength() const;
     void SetStatus(Status status) const;
 
 private:
