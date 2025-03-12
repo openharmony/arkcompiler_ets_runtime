@@ -2138,7 +2138,13 @@ void TypedNativeInlineLowering::LowerStringSubstring(GateRef gate)
 
     GateRef thisValue = acc_.GetValueIn(gate, 0); // 0: the first parameter
     GateRef startTag = acc_.GetValueIn(gate, 1); // 1: the second parameter
-    GateRef endTag = acc_.GetValueIn(gate, 2); // 2: the third parameter
+    auto argc = acc_.GetNumValueIn(gate);
+    GateRef endTag;
+    if (argc < 3) { // 3: the 2nd parameter of substring is optional
+        endTag = builder_.GetLengthFromString(thisValue);
+    } else {
+        endTag = acc_.GetValueIn(gate, 2); // 2: the third parameter
+    }
     GateRef glue = acc_.GetGlueFromArgList();
     DEFVALUE(result, (&builder_), VariableType::JS_POINTER(), builder_.Int32ToTaggedPtr(builder_.Int32(-1)));
     DEFVALUE(start, (&builder_), VariableType::INT32(), builder_.Int32(0));
@@ -2295,7 +2301,13 @@ void TypedNativeInlineLowering::LowerStringSlice(GateRef gate)
 
     GateRef thisValue = acc_.GetValueIn(gate, 0); // 0: the first parameter
     GateRef startTag = acc_.GetValueIn(gate, 1); // 1: the second parameter
-    GateRef endTag = acc_.GetValueIn(gate, 2); // 2: the third parameter
+    auto argc = acc_.GetNumValueIn(gate);
+    GateRef endTag;
+    if (argc < 3) { // 3: the 2nd parameter of slice is optional
+        endTag = builder_.GetLengthFromString(thisValue);
+    } else {
+        endTag = acc_.GetValueIn(gate, 2); // 2: the third parameter
+    }
     GateRef glue = acc_.GetGlueFromArgList();
     DEFVALUE(result, (&builder_), VariableType::JS_POINTER(), builder_.Undefined());
     DEFVALUE(start, (&builder_), VariableType::INT32(), builder_.Int32(0));
