@@ -296,9 +296,12 @@ public:
             if (edge.stateOut != stateInput) {
                 acc_.ReplaceStateIn(currentState, edge.stateOut, regionEdge.index);
             }
-            auto dependInput = acc_.GetDep(regionEdge.dependStart, regionEdge.index);
-            if (edge.dependOut != dependInput) {
-                acc_.ReplaceDependIn(regionEdge.dependStart, edge.dependOut, regionEdge.index);
+            // fuzz: not all the region has depend edge
+            if (regionEdge.dependStart != Circuit::NullGate()) {
+                auto dependInput = acc_.GetDep(regionEdge.dependStart, regionEdge.index);
+                if (edge.dependOut != dependInput) {
+                    acc_.ReplaceDependIn(regionEdge.dependStart, edge.dependOut, regionEdge.index);
+                }
             }
         }
     }
