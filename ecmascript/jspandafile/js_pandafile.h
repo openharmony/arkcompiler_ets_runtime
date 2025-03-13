@@ -90,6 +90,8 @@ public:
     static constexpr int TYPE_SUMMARY_OFFSET_NOT_FOUND = 0;
     static constexpr int CLASSID_OFFSET_NOT_FOUND = 0;
     static constexpr int32_t PF_OFFSET = 0;
+    static constexpr uint32_t ASYN_TRANSLATE_CLSSS_COUNT = 128;
+    static constexpr uint32_t ASYN_TRANSLATE_CLSSS_MIN_COUNT = 2;
 
     JSPandaFile(const panda_file::File *pf, const CString &descriptor, CreateMode state = CreateMode::RUNTIME);
     ~JSPandaFile();
@@ -475,7 +477,7 @@ private:
 
     void SetAllMethodLiteralToMap();
 
-    size_t GetClassAndMethodIndex(size_t *methodIdx);
+    void GetClassAndMethodIndexes(std::vector<std::pair<uint32_t, uint32_t>> &indexes);
 
     static constexpr size_t VERSION_SIZE = 4;
     static constexpr std::array<uint8_t, VERSION_SIZE> OLD_VERSION {0, 0, 0, 2};
@@ -496,8 +498,8 @@ private:
     Mutex jsRecordInfoMutex_;
     ConditionVariable waitTranslateClassFinishedCV_;
     uint32_t runningTaskCount_ {0};
-    size_t classIndex_ {0};
-    size_t methodIndex_ {0};
+    uint32_t classIndex_ {0};
+    uint32_t methodIndex_ {0};
 
     CUnorderedMap<uint32_t, uint64_t> constpoolMap_;
     uint32_t numMethods_ {0};

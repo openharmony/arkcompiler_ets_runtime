@@ -453,25 +453,38 @@ void JSPandaFile::ClearNameMap()
     }
 }
 
-size_t JSPandaFile::GetClassAndMethodIndex(size_t *methodIdx)
+void JSPandaFile::GetClassAndMethodIndexes(std::vector<std::pair<uint32_t, uint32_t>> &indexes)
 {
+    // Each thread gets 128 classes each time. If less than 128, it gets 2 classes.
+    indexes.clear();
     LockHolder lock(classIndexMutex_);
-    size_t result = 0;
-    Span<const uint32_t> classIndexes = GetClasses();
-    uint32_t index = 0;
-    do {
-        result = classIndex_++;
-        if (result >= numClasses_) {
-            return result;
-        }
-        index = classIndexes[result];
-    } while (IsExternal(panda_file::File::EntityId(index)));
+    if (classIndex_ >= numClasses_) {
+        return;
+    }
+    uint32_t cnts = ASYN_TRANSLATE_CLSSS_COUNT;
+    uint32_t minCount = (Taskpool::GetCurrentTaskpool()->GetTotalThreadNum() + 1) * ASYN_TRANSLATE_CLSSS_COUNT;
+    if (numClasses_ - classIndex_ < minCount) {
+        cnts = ASYN_TRANSLATE_CLSSS_MIN_COUNT;
+    }
+    for (uint32_t i = 0; i < cnts; i++) {
+        uint32_t classIdx = 0;
+        uint32_t methodIdx = 0;
+        Span<const uint32_t> classIndexes = GetClasses();
+        uint32_t index = 0;
+        do {
+            classIdx = classIndex_++;
+            if (classIdx >= numClasses_) {
+                return;
+            }
+            index = classIndexes[classIdx];
+        } while (IsExternal(panda_file::File::EntityId(index)));
 
-    *methodIdx = methodIndex_;
-    panda_file::File::EntityId classId(classIndexes[result]);
-    panda_file::ClassDataAccessor cda(*pf_, classId);
-    methodIndex_ += cda.GetMethodsNumber();
-    return result;
+        methodIdx = methodIndex_;
+        panda_file::File::EntityId classId(classIndexes[classIdx]);
+        panda_file::ClassDataAccessor cda(*pf_, classId);
+        methodIndex_ += cda.GetMethodsNumber();
+        indexes.emplace_back(methodIdx, classIdx);
+    }
 }
 
 bool JSPandaFile::TranslateClassesTask::Run([[maybe_unused]] uint32_t threadIndex)
@@ -484,12 +497,15 @@ bool JSPandaFile::TranslateClassesTask::Run([[maybe_unused]] uint32_t threadInde
 
 void JSPandaFile::TranslateClass(JSThread *thread, const CString &methodName)
 {
-    size_t methodIdx = 0;
-    size_t classIdx = GetClassAndMethodIndex(&methodIdx);
-    while (classIdx < numClasses_) {
-        PandaFileTranslator::TranslateClass(thread, this, methodName, methodIdx, classIdx);
-        classIdx = GetClassAndMethodIndex(&methodIdx);
-    }
+    std::vector<std::pair<uint32_t, uint32_t>> indexes;
+    indexes.reserve(ASYN_TRANSLATE_CLSSS_COUNT);
+    do {
+        GetClassAndMethodIndexes(indexes);
+        uint32_t size = indexes.size();
+        for (uint32_t i = 0; i < size; i++) {
+            PandaFileTranslator::TranslateClass(thread, this, methodName, indexes[i].first, indexes[i].second);
+        }
+    } while (!indexes.empty());
 }
 
 void JSPandaFile::PostInitializeMethodTask(JSThread *thread, const std::shared_ptr<CString> &methodNamePtr)
