@@ -162,12 +162,13 @@ JSThread::~JSThread()
     }
 
     for (auto item : contexts_) {
-        GetNativeAreaAllocator()->Free(item->GetFrameBase(), sizeof(JSTaggedType) *
-            vm_->GetEcmaParamConfiguration().GetMaxStackSize());
-        item->SetFrameBase(nullptr);
         delete item;
     }
     contexts_.clear();
+    if (threadType_ == ThreadType::JS_THREAD) {
+        GetNativeAreaAllocator()->Free(glueData_.frameBase_, sizeof(JSTaggedType) *
+                                       vm_->GetEcmaParamConfiguration().GetMaxStackSize());
+    }
     GetNativeAreaAllocator()->FreeArea(regExpCache_);
 
     glueData_.frameBase_ = nullptr;
@@ -353,15 +354,12 @@ void JSThread::Iterate(RootVisitor &visitor)
     visitor.VisitRangeRoot(Root::ROOT_VM,
         ObjectSlot(glueData_.builtinEntries_.Begin()), ObjectSlot(glueData_.builtinEntries_.End()));
 
-    EcmaContext *tempContext = glueData_.currentContext_;
+    // visit stack roots
+    FrameHandler frameHandler(this);
+    frameHandler.Iterate(visitor);
     for (EcmaContext *context : contexts_) {
-        // visit stack roots
-        SwitchCurrentContext(context, true);
-        FrameHandler frameHandler(this);
-        frameHandler.Iterate(visitor);
         context->Iterate(visitor);
     }
-    SwitchCurrentContext(tempContext, true);
     // visit tagged handle storage roots
     if (vm_->GetJSOptions().EnableGlobalLeakCheck()) {
         IterateHandleWithCheck(visitor);
@@ -957,21 +955,6 @@ void JSThread::PushContext(EcmaContext *context)
     if (!glueData_.currentContext_) {
         // The first context in ecma vm.
         glueData_.currentContext_ = context;
-        context->SetFramePointers(const_cast<JSTaggedType *>(GetCurrentSPFrame()),
-            const_cast<JSTaggedType *>(GetLastLeaveFrame()),
-            const_cast<JSTaggedType *>(GetLastFp()));
-        context->SetFrameBase(glueData_.frameBase_);
-        context->SetStackLimit(glueData_.stackLimit_);
-        context->SetStackStart(glueData_.stackStart_);
-    } else {
-        // algin with 16
-        size_t maxStackSize = vm_->GetEcmaParamConfiguration().GetMaxStackSize();
-        context->SetFrameBase(static_cast<JSTaggedType *>(
-            vm_->GetNativeAreaAllocator()->Allocate(sizeof(JSTaggedType) * maxStackSize)));
-        context->SetFramePointers(context->GetFrameBase() + maxStackSize, nullptr, nullptr);
-        context->SetStackLimit(GetAsmStackLimit());
-        context->SetStackStart(GetCurrentStackPosition());
-        EcmaInterpreter::InitStackFrame(context);
     }
 }
 
@@ -984,26 +967,12 @@ void JSThread::PopContext()
 void JSThread::SwitchCurrentContext(EcmaContext *currentContext, bool isInIterate)
 {
     ASSERT(std::count(contexts_.begin(), contexts_.end(), currentContext));
-
-    glueData_.currentContext_->SetFramePointers(const_cast<JSTaggedType *>(GetCurrentSPFrame()),
-        const_cast<JSTaggedType *>(GetLastLeaveFrame()),
-        const_cast<JSTaggedType *>(GetLastFp()));
-    glueData_.currentContext_->SetFrameBase(glueData_.frameBase_);
-    glueData_.currentContext_->SetStackLimit(GetStackLimit());
-    glueData_.currentContext_->SetStackStart(GetStackStart());
     glueData_.currentContext_->SetGlobalEnv(GetGlueGlobalEnv());
     // When the glueData_.currentContext_ is not fully initialized，glueData_.globalObject_ will be hole.
     // Assigning hole to JSGlobalObject could cause a mistake at builtins initalization.
     if (!glueData_.globalObject_.IsHole()) {
         glueData_.currentContext_->GetGlobalEnv()->SetJSGlobalObject(this, glueData_.globalObject_);
     }
-
-    SetCurrentSPFrame(currentContext->GetCurrentFrame());
-    SetLastLeaveFrame(currentContext->GetLeaveFrame());
-    SetLastFp(currentContext->GetLastFp());
-    glueData_.frameBase_ = currentContext->GetFrameBase();
-    glueData_.stackLimit_ = currentContext->GetStackLimit();
-    glueData_.stackStart_ = currentContext->GetStackStart();
     if (!currentContext->GlobalEnvIsHole()) {
         SetGlueGlobalEnv(*(currentContext->GetGlobalEnv()));
         /**

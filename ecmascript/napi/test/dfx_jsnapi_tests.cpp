@@ -45,7 +45,7 @@ public:
     void SetUp() override
     {
         TestHelper::CreateEcmaVMWithScope(vm_, thread_, scope_);
-        vm_->GetJSThread()->GetCurrentEcmaContext()->SetRuntimeStatEnable(true);
+        vm_->GetJSThread()->GetEcmaVM()->SetRuntimeStatEnable(true);
         vm_->SetEnableForceGC(false);
     }
 
@@ -265,7 +265,7 @@ HWTEST_F_L0(DFXJSNApiTests, Start_Stop_HeapTracking_002)
 
 HWTEST_F_L0(DFXJSNApiTests, Start_Stop_RuntimeStat)
 {
-    EcmaRuntimeStat *ecmaRuntimeStat = vm_->GetJSThread()->GetCurrentEcmaContext()->GetRuntimeStat();
+    EcmaRuntimeStat *ecmaRuntimeStat = vm_->GetRuntimeStat();
     EXPECT_TRUE(ecmaRuntimeStat != nullptr);
 
     ecmaRuntimeStat->SetRuntimeStatEnabled(false);

@@ -136,14 +136,14 @@ void EcmaRuntimeStat::PrintAllStats() const
 EcmaRuntimeStatScope::EcmaRuntimeStatScope(EcmaVM *vm) : vm_(vm)
 {
     if (vm_->GetJSOptions().IsEnableRuntimeStat()) {
-        vm_->GetJSThread()->GetCurrentEcmaContext()->SetRuntimeStatEnable(true);
+        vm_->SetRuntimeStatEnable(true);
     }
 }
 
 EcmaRuntimeStatScope::~EcmaRuntimeStatScope()
 {
     if (vm_->GetJSOptions().IsEnableRuntimeStat()) {
-        vm_->GetJSThread()->GetCurrentEcmaContext()->SetRuntimeStatEnable(false);
+        vm_->SetRuntimeStatEnable(false);
     }
     vm_ = nullptr;
 }

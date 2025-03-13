@@ -37,7 +37,6 @@ class InterpreterAssembly {
 public:
     enum ActualNumArgsOfCall : uint8_t { CALLARG0 = 0, CALLARG1, CALLARGS2, CALLARGS3 };
     static void InitStackFrame(JSThread *thread);
-    static void InitStackFrame(EcmaContext *context);
     static JSTaggedValue Execute(EcmaRuntimeCallInfo *info);
     static JSTaggedValue GeneratorReEnterInterpreter(JSThread *thread, JSHandle<GeneratorContext> context);
     static inline size_t GetJumpSizeAfterCall(const uint8_t *prevPc);

@@ -289,15 +289,6 @@ public:
         return &waiterListNode_;
     }
 
-    void SetAllowAtomicWait(bool wait)
-    {
-        AllowAtomicWait_ = wait;
-    }
-
-    bool GetAllowAtomicWait() const
-    {
-        return AllowAtomicWait_;
-    }
     JSHandle<JSTaggedValue> GetNumberToStringResultCache() const
     {
         return JSHandle<JSTaggedValue>(reinterpret_cast<uintptr_t>(&numberToStringResultCache_));
@@ -405,13 +396,6 @@ public:
         return functionProtoTransitionTable_;
     }
 
-    EcmaRuntimeStat *GetRuntimeStat() const
-    {
-        return runtimeStat_;
-    }
-
-    void SetRuntimeStatEnable(bool flag);
-    void InitializeEcmaScriptRunStat();
     void DumpAOTInfo() const DUMP_API_ATTR;
 
     JSTaggedValue ExecuteAot(size_t actualNumArgs, JSTaggedType *args, const JSTaggedType *prevFp,
@@ -473,53 +457,6 @@ public:
     void ShrinkHandleStorage(int prevIndex);
     uintptr_t *ExpandPrimitiveStorage();
     void ShrinkPrimitiveStorage(int prevIndex);
-
-    JSTaggedType *GetCurrentFrame() const
-    {
-        return currentFrame_;
-    }
-
-    JSTaggedType *GetLeaveFrame() const
-    {
-        return leaveFrame_;
-    }
-
-    JSTaggedType *GetLastFp() const
-    {
-        return lastFp_;
-    }
-
-    void SetFramePointers(JSTaggedType *currentFrame, JSTaggedType *leaveFrame, JSTaggedType *lastFp)
-    {
-        currentFrame_ = currentFrame;
-        leaveFrame_ = leaveFrame;
-        lastFp_ = lastFp;
-    }
-    void SetFrameBase(JSTaggedType *frameBase)
-    {
-        frameBase_ = frameBase;
-    }
-    JSTaggedType *GetFrameBase() const
-    {
-        return frameBase_;
-    }
-
-    void SetStackStart(uint64_t stackStart)
-    {
-        stackStart_ = stackStart;
-    }
-    uint64_t GetStackStart() const
-    {
-        return stackStart_;
-    }
-    void SetStackLimit(uint64_t stackLimit)
-    {
-        stackLimit_ = stackLimit;
-    }
-    uint64_t GetStackLimit() const
-    {
-        return stackLimit_;
-    }
 
     PropertiesCache *GetPropertiesCache() const
     {
@@ -642,10 +579,6 @@ public:
     void RemoveSustainingJSHandle(SustainingJSHandle*);
     void ClearKeptObjects();
     void AddToKeptObjects(JSHandle<JSTaggedValue> value);
-    inline bool HasKeptObjects() const
-    {
-        return hasKeptObjects_;
-    }
 
     void ClearCachedConstantPool()
     {
@@ -715,7 +648,6 @@ private:
     JSTaggedValue regexpCache_ {JSTaggedValue::Hole()};
     JSTaggedValue regexpGlobal_ {JSTaggedValue::Hole()};
     JSTaggedValue microJobQueue_ {JSTaggedValue::Hole()};
-    EcmaRuntimeStat *runtimeStat_ {nullptr};
 
     CMap<const JSPandaFile *, CMap<int32_t, JSTaggedValue>> cachedSharedConstpools_ {};
     JSTaggedValue* unsharedConstpools_ = nullptr;
@@ -737,7 +669,6 @@ private:
     FunctionProtoTransitionTable *functionProtoTransitionTable_ {nullptr};
 
     // atomics
-    bool AllowAtomicWait_ {true};
     WaiterListNode waiterListNode_;
 
     // Registered Callbacks
@@ -768,13 +699,6 @@ private:
     std::vector<std::array<JSTaggedType, NODE_BLOCK_SIZE> *> primitiveStorageNodes_ {};
     int32_t currentPrimitiveStorageIndex_ {-1};
 
-    // Frame pointer
-    JSTaggedType *currentFrame_ {nullptr};
-    JSTaggedType *leaveFrame_ {nullptr};
-    JSTaggedType *lastFp_ {nullptr};
-    JSTaggedType *frameBase_ {nullptr};
-    uint64_t stackStart_ {0};
-    uint64_t stackLimit_ {0};
     GlobalEnvConstants globalConst_;
     // Join Stack
     static constexpr uint32_t MIN_JOIN_STACK_SIZE = 2;
@@ -782,8 +706,6 @@ private:
 
     // SustainingJSHandleList for jit compile hold ref
     SustainingJSHandleList *sustainingJSHandleList_ {nullptr};
-
-    bool hasKeptObjects_ {false};
 
     friend class EcmaHandleScope;
     friend class JSPandaFileExecutor;

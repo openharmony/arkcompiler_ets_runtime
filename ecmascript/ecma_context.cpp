@@ -129,63 +129,8 @@ bool EcmaContext::Initialize()
     return true;
 }
 
-void EcmaContext::InitializeEcmaScriptRunStat()
-{
-    // NOLINTNEXTLINE(modernize-avoid-c-arrays)
-    static const char *runtimeCallerNames[] = {
-// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define INTERPRETER_CALLER_NAME(name) "Interpreter::" #name,
-    INTERPRETER_CALLER_LIST(INTERPRETER_CALLER_NAME)  // NOLINTNEXTLINE(bugprone-suspicious-missing-comma)
-#undef INTERPRETER_CALLER_NAME
-// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define BUILTINS_API_NAME(class, name) "BuiltinsApi::" #class "_" #name,
-    BUILTINS_API_LIST(BUILTINS_API_NAME)
-#undef BUILTINS_API_NAME
-#define ABSTRACT_OPERATION_NAME(class, name) "AbstractOperation::" #class "_" #name,
-    ABSTRACT_OPERATION_LIST(ABSTRACT_OPERATION_NAME)
-#undef ABSTRACT_OPERATION_NAME
-#define MEM_ALLOCATE_AND_GC_NAME(name) "Memory::" #name,
-    MEM_ALLOCATE_AND_GC_LIST(MEM_ALLOCATE_AND_GC_NAME)
-#undef MEM_ALLOCATE_AND_GC_NAME
-#define DEF_RUNTIME_ID(name) "Runtime::" #name,
-    RUNTIME_STUB_WITH_GC_LIST(DEF_RUNTIME_ID)
-    RUNTIME_STUB_WITH_DFX(DEF_RUNTIME_ID)
-#undef DEF_RUNTIME_ID
-    };
-    static_assert(sizeof(runtimeCallerNames) == sizeof(const char *) * ecmascript::RUNTIME_CALLER_NUMBER,
-                  "Invalid runtime caller number");
-    runtimeStat_ = vm_->GetChunk()->New<EcmaRuntimeStat>(runtimeCallerNames, ecmascript::RUNTIME_CALLER_NUMBER);
-    if (UNLIKELY(runtimeStat_ == nullptr)) {
-        LOG_FULL(FATAL) << "alloc runtimeStat_ failed";
-        UNREACHABLE();
-    }
-}
-
-void EcmaContext::SetRuntimeStatEnable(bool flag)
-{
-    static uint64_t start = 0;
-    if (flag) {
-        start = PandaRuntimeTimer::Now();
-        if (runtimeStat_ == nullptr) {
-            InitializeEcmaScriptRunStat();
-        }
-    } else {
-        LOG_ECMA(INFO) << "Runtime State duration:" << PandaRuntimeTimer::Now() - start << "(ns)";
-        if (runtimeStat_ != nullptr && runtimeStat_->IsRuntimeStatEnabled()) {
-            runtimeStat_->Print();
-            runtimeStat_->ResetAllCount();
-        }
-    }
-    if (runtimeStat_ != nullptr) {
-        runtimeStat_->SetRuntimeStatEnabled(flag);
-    }
-}
-
 EcmaContext::~EcmaContext()
 {
-    if (runtimeStat_ != nullptr && runtimeStat_->IsRuntimeStatEnabled()) {
-        runtimeStat_->Print();
-    }
     for (auto n : handleStorageNodes_) {
         delete n;
     }
@@ -215,10 +160,6 @@ EcmaContext::~EcmaContext()
         }
     }
 
-    if (runtimeStat_ != nullptr) {
-        vm_->GetChunk()->Delete(runtimeStat_);
-        runtimeStat_ = nullptr;
-    }
     if (optCodeProfiler_ != nullptr) {
         delete optCodeProfiler_;
         optCodeProfiler_ = nullptr;
@@ -1303,7 +1244,6 @@ void EcmaContext::ClearKeptObjects()
         return;
     }
     GetGlobalEnv()->SetWeakRefKeepObjects(thread_, JSTaggedValue::Undefined());
-    hasKeptObjects_ = false;
 }
 
 void EcmaContext::AddToKeptObjects(JSHandle<JSTaggedValue> value)
@@ -1322,6 +1262,5 @@ void EcmaContext::AddToKeptObjects(JSHandle<JSTaggedValue> value)
     }
     linkedSet = LinkedHashSet::Add(thread_, linkedSet, value);
     globalEnv->SetWeakRefKeepObjects(thread_, linkedSet);
-    hasKeptObjects_ = true;
 }
 }  // namespace panda::ecmascript

@@ -212,10 +212,11 @@ JSTaggedValue BuiltinsAtomics::Wait(EcmaRuntimeCallInfo *argv)
 
     // 8. Let B be AgentCanSuspend().
     // 9. If B is false, throw a TypeError exception.
-    if (!thread->GetCurrentEcmaContext()->GetAllowAtomicWait()) {
+    if (!thread->GetEcmaVM()->GetAgentCanSuspend()) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "vm does not allow wait to block.",
                                     JSTaggedValue::Exception());
     }
+
     WaitResult res = WaitResult::OK;
     if (array->IsJSBigInt64Array()) {
         // AtomicHelper::Wait<int64_t>(thread, arrayBuffer, indexedPosition, v, t);
