@@ -94,11 +94,8 @@ public:
     static void FatalPrintCustom(uintptr_t fmt, ...);
     static void MarkingBarrier([[maybe_unused]] uintptr_t argGlue,
         uintptr_t object, size_t offset, TaggedObject *value);
-    static void MarkingBarrierWithEden([[maybe_unused]] uintptr_t argGlue,
-        uintptr_t object, size_t offset, TaggedObject *value);
     static void SharedGCMarkingBarrier(uintptr_t argGlue, uintptr_t object, size_t offset, TaggedObject *value);
     static JSTaggedType GetActualArgvNoGC(uintptr_t argGlue);
-    static void InsertNewToEdenRSet([[maybe_unused]] uintptr_t argGlue, uintptr_t object, size_t offset);
     static void InsertOldToNewRSet([[maybe_unused]] uintptr_t argGlue, uintptr_t object, size_t offset);
     static void InsertLocalToShareRSet([[maybe_unused]] uintptr_t argGlue, uintptr_t object, size_t offset);
     static void SetBitAtomic(GCBitset::GCBitsetWord *word, GCBitset::GCBitsetWord mask,
@@ -139,7 +136,8 @@ public:
     static void FinishObjSizeTracking(JSHClass *cls);
     static JSTaggedValue NumberHelperStringToDouble(EcmaString *str);
     static JSTaggedValue GetStringToListCacheArray(uintptr_t argGlue);
-    static int FastArraySort(JSTaggedType x, JSTaggedType y);
+    static int IntLexicographicCompare(JSTaggedType x, JSTaggedType y);
+    static int DoubleLexicographicCompare(JSTaggedType x, JSTaggedType y);
     static int FastArraySortString(uintptr_t argGlue, JSTaggedValue x, JSTaggedValue y);
     static JSTaggedValue StringToNumber(JSTaggedType numberString, int32_t radix);
     static void ArrayTrim(uintptr_t argGlue, TaggedArray *array, int64_t newLength);

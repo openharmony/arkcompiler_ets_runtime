@@ -36,7 +36,7 @@ class MethodLogList;
 
 class CompilerLog {
 public:
-    explicit CompilerLog(const std::string &logOpt);
+    explicit PUBLIC_API CompilerLog(const std::string &logOpt);
     CompilerLog() = default;
     ~CompilerLog() = default;
 
@@ -107,7 +107,7 @@ public:
 
     void SetMethodLog(const std::string &fileName, const std::string &methodName, AotMethodLogList *logList);
     void SetStubLog(const std::string& stubName, MethodLogList* logList);
-    void Print() const;
+    void PUBLIC_API Print() const;
     void AddMethodTime(const std::string& name, uint32_t id, double time);
     void AddPassTime(const std::string& name, double time);
     int GetIndex();
@@ -166,7 +166,7 @@ public:
 
 private:
     std::vector<std::string> spiltString(const std::string &str, const char ch);
-    void ParseFileMethodsName(const std::string &logMethods);
+    void PUBLIC_API ParseFileMethodsName(const std::string &logMethods);
     std::map<std::string, std::vector<std::string>> fileMethods_ {};
 };
 

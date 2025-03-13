@@ -15,16 +15,10 @@
 
 #include "cgfunc.h"
 #if DEBUG
-#include <iomanip>
 #endif
-#include <fstream>
 #include "cg.h"
-#include "insn.h"
-#include "loop.h"
-#include "mir_builder.h"
 #include "factory.h"
 #include "cfgo.h"
-#include "optimize_common.h"
 
 namespace maplebe {
 using namespace maple;

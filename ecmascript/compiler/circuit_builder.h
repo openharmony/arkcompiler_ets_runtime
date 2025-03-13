@@ -152,7 +152,11 @@ class BuiltinLowering;
     V(FAbs, Abs, MachineType::F64)                                     \
     V(CountLeadingZeroes32, Clz32, MachineType::I32)                   \
     V(DoubleCeil, Ceil, MachineType::F64)                              \
-    V(DoubleFloor, Floor, MachineType::F64)
+    V(DoubleFloor, Floor, MachineType::F64)                            \
+    V(Int64Rev, BitRev, MachineType::I64)                              \
+    V(Int32Rev, BitRev, MachineType::I32)                              \
+    V(Int16Rev, BitRev, MachineType::I16)                              \
+    V(Int8Rev, BitRev, MachineType::I8)
 
 #define BINARY_CMP_METHOD_LIST_WITHOUT_BITWIDTH(V)                                      \
     V(DoubleLessThan, Fcmp, static_cast<BitField>(FCmpCondition::OLT))                  \
@@ -206,6 +210,7 @@ public:
     GateRef GetDataOfTaggedArray(GateRef array);
     GateRef GetLengthOfJSArray(GateRef array);
     GateRef IsTypedArray(GateRef array);
+    GateRef IsSharedTypedArray(GateRef array);
     GateRef GetSuperConstructor(GateRef ctor);
     GateRef Merge(const std::vector<GateRef> &inList);
     GateRef Selector(OpCode opcode, MachineType machineType, GateRef control, const std::vector<GateRef> &values,
@@ -287,6 +292,14 @@ public:
             BranchWeight::ONE_WEIGHT, BranchWeight::DEOPT_WEIGHT, os.str().c_str());     \
     }
 
+#define BRANCH_CIR_UNLIKELY(condition, trueLabel, falseLabel)                            \
+    {                                                                                    \
+        std::ostringstream os;                                                           \
+        os << __func__ << ": " << #trueLabel << "(unlikely)- " << #falseLabel;           \
+        builder_.Branch(condition, trueLabel, falseLabel,                                \
+            BranchWeight::ONE_WEIGHT, BranchWeight::DEOPT_WEIGHT, os.str().c_str());     \
+    }
+
 #define BRANCH_NO_WEIGHT(condition, trueLabel, falseLabel)                               \
     {                                                                                    \
         std::ostringstream os;                                                           \
@@ -304,8 +317,12 @@ public:
     inline GateRef Undefined();
     inline GateRef Hole();
 
+    GateRef ElementsKindIsInt(GateRef kind);
     GateRef ElementsKindIsIntOrHoleInt(GateRef kind);
+    GateRef ElementsKindIsNumber(GateRef kind);
     GateRef ElementsKindIsNumOrHoleNum(GateRef kind);
+    GateRef ElementsKindIsString(GateRef kind);
+    GateRef ElementsKindIsStringOrHoleString(GateRef kind);
     GateRef ElementsKindIsHeapKind(GateRef kind);
     GateRef ElementsKindHasHole(GateRef kind);
 
@@ -360,6 +377,7 @@ public:
     GateRef GetArrayIterationKind(GateRef iter);
     GateRef GetHasChanged(GateRef object);
     GateRef GetAccessorHasChanged(GateRef object);
+    GateRef GetNotFoundHasChanged(GateRef object);
     GateRef HasDeleteProperty(GateRef hClass);
     GateRef IsOnHeap(GateRef hClass);
     GateRef IsEcmaObject(GateRef obj);
@@ -398,7 +416,10 @@ public:
     void Jump(Label *label);
     void Branch(GateRef condition, Label *trueLabel, Label *falseLabel,
                 uint32_t trueWeight = 1, uint32_t falseWeight = 1, const char* comment = nullptr);
-    void Switch(GateRef index, Label *defaultLabel, int64_t *keysValue, Label *keysLabel, int numberOfKeys);
+    void Switch(GateRef index, Label *defaultLabel,
+                const int64_t *keysValue, Label *keysLabel, int numberOfKeys);
+    void Switch(GateRef index, Label *defaultLabel,
+                const int64_t *keysValue, Label * const *keysLabel, int numberOfKeys);
     void LoopBegin(Label *loopHead);
     void LoopEnd(Label *loopHead);
     void LoopExit(const std::vector<Variable*> &vars, size_t diff = 1);
@@ -819,9 +840,9 @@ public:
     void SetRawHashcode(GateRef glue, GateRef str, GateRef rawHashcode, GateRef isInteger);
     GateRef StringFromSingleCharCode(GateRef gate);
     GateRef StringCharCodeAt(GateRef thisValue, GateRef posTag);
-    GateRef StringSubstring(GateRef thisValue, GateRef startTag, GateRef endTag);
+    GateRef StringSubstring(std::vector<GateRef>& args);
     GateRef StringSubStr(GateRef thisValue, GateRef intStart, GateRef lengthTag);
-    GateRef StringSlice(GateRef thisValue, GateRef startTag, GateRef endTag);
+    GateRef StringSlice(std::vector<GateRef>& args);
     GateRef NumberIsNaN(GateRef gate);
     GateRef NumberParseFloat(GateRef gate, GateRef frameState);
     GateRef NumberParseInt(GateRef gate, GateRef radix);
@@ -838,7 +859,7 @@ public:
                         GateRef isLittleEndian,
                         GateRef frameState);
     GateRef ArrayIncludesIndexOf(
-        GateRef thisArray, GateRef fromIndex, GateRef targetElement, GateRef CallID, GateRef ArrayKind);
+        GateRef elements, GateRef target, GateRef fromIndex, GateRef len, GateRef CallID, GateRef ArrayKind);
     GateRef ArrayIteratorBuiltin(GateRef thisArray, GateRef callID);
     GateRef ArrayForEach(GateRef thisValue, GateRef callBackFn, GateRef usingThis, uint32_t pcOffset);
     GateRef ArraySort(GateRef thisValue, GateRef callBackFn);
@@ -870,6 +891,9 @@ public:
     // **************************** Low IR *******************************
     inline GateRef Equal(GateRef x, GateRef y, const char* comment = nullptr);
     inline GateRef NotEqual(GateRef x, GateRef y, const char* comment = nullptr);
+    inline GateRef IntPtrAdd(GateRef x, GateRef y);
+    inline GateRef IntPtrSub(GateRef x, GateRef y);
+    inline GateRef IntPtrMul(GateRef x, GateRef y);
     inline GateRef IntPtrDiv(GateRef x, GateRef y);
     inline GateRef IntPtrOr(GateRef x, GateRef y);
     inline GateRef IntPtrLSL(GateRef x, GateRef y);
@@ -879,7 +903,10 @@ public:
     inline GateRef Int64Equal(GateRef x, GateRef y);
     inline GateRef Int8Equal(GateRef x, GateRef y);
     inline GateRef Int32Equal(GateRef x, GateRef y);
+    inline GateRef IntPtrLessThan(GateRef x, GateRef y);
+    inline GateRef IntPtrLessThanOrEqual(GateRef x, GateRef y);
     inline GateRef IntPtrGreaterThan(GateRef x, GateRef y);
+    inline GateRef IntPtrGreaterThanOrEqual(GateRef x, GateRef y);
     inline GateRef IntPtrAnd(GateRef x, GateRef y);
     inline GateRef IntPtrNot(GateRef x);
     inline GateRef IntPtrEqual(GateRef x, GateRef y);
@@ -940,6 +967,7 @@ public:
     inline GateRef DoubleIsNAN(GateRef x);
     inline GateRef DoubleIsINF(GateRef x);
     inline GateRef DoubleIsNanOrInf(GateRef x);
+    GateRef DoubleIsWithinInt32(GateRef x);
     static MachineType GetMachineTypeFromVariableType(VariableType type);
     GateRef FastToBoolean(GateRef value);
 
@@ -988,6 +1016,10 @@ private:
 
     inline void SetDepend(GateRef depend);
     inline void SetState(GateRef state);
+
+    template <class LabelPtrGetter>
+    void SwitchGeneric(GateRef index, Label *defaultLabel, Span<const int64_t> keysValue,
+                       LabelPtrGetter getIthLabelFn);
 
 #define ARITHMETIC_UNARY_OP_WITH_BITWIDTH(NAME, OPCODEID, MACHINETYPEID)                                     \
     inline GateRef NAME(GateRef x, const char* comment = nullptr)                                            \

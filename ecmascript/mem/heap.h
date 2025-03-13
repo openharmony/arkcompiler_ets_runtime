@@ -113,8 +113,6 @@ enum class StartupStatus : uint8_t {
 enum class VerifyKind {
     VERIFY_PRE_GC,
     VERIFY_POST_GC,
-    VERIFY_MARK_EDEN,
-    VERIFY_EVACUATE_EDEN,
     VERIFY_MARK_YOUNG,
     VERIFY_EVACUATE_YOUNG,
     VERIFY_MARK_FULL,
@@ -197,11 +195,6 @@ public:
     void SetMarkType(MarkType markType)
     {
         markType_ = markType;
-    }
-
-    bool IsEdenMark() const
-    {
-        return markType_ == MarkType::MARK_EDEN;
     }
 
     bool IsYoungMark() const
@@ -584,6 +577,8 @@ public:
 
     bool CheckIfNeedStopCollectionByStartup();
 
+    void TryAdjustSpaceOvershootByConfigSize();
+
     bool CheckAndTriggerSharedGC(JSThread *thread);
 
     bool CheckHugeAndTriggerSharedGC(JSThread *thread, size_t size);
@@ -698,6 +693,9 @@ public:
 
     template<TriggerGCType gcType, GCReason gcReason>
     void CollectGarbage(JSThread *thread);
+
+    template<GCReason gcReason>
+    void CompressCollectGarbageNotWaiting(JSThread *thread);
     
     template<TriggerGCType gcType, GCReason gcReason>
     void PostGCTaskForTest(JSThread *thread);
@@ -960,6 +958,7 @@ private:
     size_t incNativeSizeTriggerSharedCM_ {0};
     size_t incNativeSizeTriggerSharedGC_ {0};
     size_t fragmentationLimitForSharedFullGC_ {0};
+    std::atomic<size_t> spaceOvershoot_ {0};
     std::atomic<size_t> nativeSizeAfterLastGC_ {0};
     bool inHeapProfiler_ {false};
     CVector<JSNativePointer *> sharedNativePointerList_;
@@ -984,11 +983,6 @@ public:
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT) && defined(PANDA_TARGET_OHOS) && defined(ENABLE_HISYSEVENT)
     void SetJsDumpThresholds(size_t thresholds) const;
 #endif
-
-    EdenSpace *GetEdenSpace() const
-    {
-        return edenSpace_;
-    }
 
     // fixme: Rename NewSpace to YoungSpace.
     // This is the active young generation space that the new objects are allocated in
@@ -1176,7 +1170,7 @@ public:
      */
 
     // Young
-    inline TaggedObject *AllocateInGeneralNewSpace(size_t size);
+    inline TaggedObject *AllocateInYoungSpace(size_t size);
     inline TaggedObject *AllocateYoungOrHugeObject(JSHClass *hclass);
     inline TaggedObject *AllocateYoungOrHugeObject(JSHClass *hclass, size_t size);
     inline TaggedObject *AllocateReadOnlyOrHugeObject(JSHClass *hclass);
@@ -1264,9 +1258,6 @@ public:
     void EnumerateNonNewSpaceRegionsWithRecord(const Callback &cb) const;
 
     template<class Callback>
-    void EnumerateEdenSpaceRegions(const Callback &cb) const;
-
-    template<class Callback>
     void EnumerateNewSpaceRegions(const Callback &cb) const;
 
     template<class Callback>
@@ -1318,10 +1309,6 @@ public:
     size_t GetPromotedSize() const
     {
         return promotedSize_;
-    }
-    size_t GetEdenToYoungSize() const
-    {
-        return edenToYoungSize_;
     }
 
     size_t GetArrayBufferSize() const;
@@ -1389,13 +1376,19 @@ public:
 
     bool ObjectExceedMaxHeapSize() const override;
 
+    bool ObjectExceedHighSensitiveThresholdForCM() const;
+
     bool ObjectExceedJustFinishStartupThresholdForGC() const;
 
     bool ObjectExceedJustFinishStartupThresholdForCM() const;
 
     void TryIncreaseNewSpaceOvershootByConfigSize();
 
+    void TryIncreaseOvershootByConfigSize();
+
     bool CheckIfNeedStopCollectionByStartup();
+
+    bool CheckIfNeedStopCollectionByHighSensitive();
 
     bool NeedStopCollection() override;
 
@@ -1451,7 +1444,7 @@ public:
         if (!IsJustFinishStartup()) {
             return false;
         }
-        TryIncreaseNewSpaceOvershootByConfigSize();
+        TryIncreaseOvershootByConfigSize();
         smartGCStats_.startupStatus_.store(StartupStatus::FINISH_STARTUP, std::memory_order_release);
         sHeap_->CancelJustFinishStartupEvent();
         return true;
@@ -1462,7 +1455,7 @@ public:
         if (!OnStartupEvent()) {
             return false;
         }
-        TryIncreaseNewSpaceOvershootByConfigSize();
+        TryIncreaseOvershootByConfigSize();
         smartGCStats_.startupStatus_.store(StartupStatus::JUST_FINISH_STARTUP, std::memory_order_release);
         sHeap_->FinishStartupEvent();
         return true;
@@ -1627,28 +1620,12 @@ public:
 
     bool IsReadyToConcurrentMark() const override;
 
-    bool IsEdenGC() const
-    {
-        return gcType_ == TriggerGCType::EDEN_GC;
-    }
-
     bool IsYoungGC() const
     {
         return gcType_ == TriggerGCType::YOUNG_GC;
     }
 
-    bool IsGeneralYoungGC() const
-    {
-        return gcType_ == TriggerGCType::YOUNG_GC || gcType_ == TriggerGCType::EDEN_GC;
-    }
-
-    void EnableEdenGC();
-
-    void TryEnableEdenGC();
-
     void CheckNonMovableSpaceOOM();
-    void ReleaseEdenAllocator();
-    void InstallEdenAllocator();
     void DumpHeapSnapshotBeforeOOM(bool isFullGC = true);
     std::tuple<uint64_t, uint8_t *, int, kungfu::CalleeRegAndOffsetVec> CalCallSiteInfo(uintptr_t retAddr) const;
     MachineCode *GetMachineCodeObject(uintptr_t pc) const;
@@ -1822,7 +1799,6 @@ private:
      * Young generation spaces where most new objects are allocated.
      * (only one of the spaces is active at a time in semi space GC).
      */
-    EdenSpace *edenSpace_ {nullptr};
     SemiSpace *activeSemiSpace_ {nullptr};
     SemiSpace *inactiveSemiSpace_ {nullptr};
 
@@ -1893,7 +1869,6 @@ private:
      * which is used for GC heuristics.
      */
     MemController *memController_ {nullptr};
-    size_t edenToYoungSize_ {0};
     size_t promotedSize_ {0};
     size_t semiSpaceCopiedSize_ {0};
     size_t nativeBindingSize_{0};
@@ -1940,7 +1915,6 @@ private:
     IdleGCTrigger *idleGCTrigger_ {nullptr};
 
     bool hasOOMDump_ {false};
-    bool enableEdenGC_ {false};
 
     CVector<JSNativePointer *> nativePointerList_;
     CVector<JSNativePointer *> concurrentNativePointerList_;

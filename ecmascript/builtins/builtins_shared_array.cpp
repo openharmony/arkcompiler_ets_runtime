@@ -158,6 +158,7 @@ JSTaggedValue BuiltinsSharedArray::FromArray(JSThread *thread, const JSHandle<JS
         EcmaRuntimeCallInfo *info =
             EcmaInterpreter::NewRuntimeCallInfo(thread, mapfn, thisArgHandle, undefined, argsLength);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        ASSERT(info != nullptr);
         info->SetCallArg(mapValue.GetTaggedValue(), key.GetTaggedValue());
         JSTaggedValue callResult = JSFunction::Call(info);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -278,6 +279,7 @@ JSTaggedValue BuiltinsSharedArray::From(EcmaRuntimeCallInfo *argv)
         if (thisHandle->IsConstructor()) {
             EcmaRuntimeCallInfo *info =
                 EcmaInterpreter::NewRuntimeCallInfo(thread, thisHandle, undefined, undefined, 0);
+            ASSERT(info != nullptr);
             newArray = JSFunction::Construct(info);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         } else {
@@ -347,6 +349,7 @@ JSTaggedValue BuiltinsSharedArray::From(EcmaRuntimeCallInfo *argv)
                 EcmaRuntimeCallInfo *info =
                     EcmaInterpreter::NewRuntimeCallInfo(thread, mapfn, thisArgHandle, undefined, argsLength);
                 RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+                ASSERT(info != nullptr);
                 info->SetCallArg(nextValue.GetTaggedValue(), key.GetTaggedValue());
                 JSTaggedValue callResult = JSFunction::Call(info);
                 RETURN_VALUE_IF_ABRUPT_COMPLETION(thread,
@@ -389,6 +392,7 @@ JSTaggedValue BuiltinsSharedArray::From(EcmaRuntimeCallInfo *argv)
         EcmaRuntimeCallInfo *info =
             EcmaInterpreter::NewRuntimeCallInfo(thread, thisHandle, undefined, undefined, 1);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        ASSERT(info != nullptr);
         info->SetCallArg(JSTaggedValue(len));
         newArray = JSFunction::Construct(info);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -422,6 +426,7 @@ JSTaggedValue BuiltinsSharedArray::From(EcmaRuntimeCallInfo *argv)
             EcmaRuntimeCallInfo *info =
                 EcmaInterpreter::NewRuntimeCallInfo(thread, mapfn, thisArgHandle, undefined, argsLength);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            ASSERT(info != nullptr);
             info->SetCallArg(kValue.GetTaggedValue(), key.GetTaggedValue());
             JSTaggedValue callResult = JSFunction::Call(info);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -480,6 +485,7 @@ JSTaggedValue BuiltinsSharedArray::Create(EcmaRuntimeCallInfo *argv)
     if (thisHandle->IsConstructor()) {
         EcmaRuntimeCallInfo *info =
             EcmaInterpreter::NewRuntimeCallInfo(thread, thisHandle, undefined, undefined, 0);
+        ASSERT(info != nullptr);
         newArray = JSFunction::Construct(info);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     } else {
@@ -876,6 +882,7 @@ JSTaggedValue BuiltinsSharedArray::FilterArray(JSThread *thread, JSHandle<JSTagg
         EcmaRuntimeCallInfo *info =
         EcmaInterpreter::NewRuntimeCallInfo(thread, callbackFnHandle, thisArgHandle, undefined, argsLength);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        ASSERT(info != nullptr);
         info->SetCallArg(kValue.GetTaggedValue(), key.GetTaggedValue(), thisObjVal.GetTaggedValue());
         callResult = JSFunction::Call(info);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -1002,6 +1009,7 @@ JSTaggedValue BuiltinsSharedArray::Find(EcmaRuntimeCallInfo *argv)
         EcmaRuntimeCallInfo *info =
             EcmaInterpreter::NewRuntimeCallInfo(thread, callbackFnHandle, thisArgHandle, undefined, argsLength);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        ASSERT(info != nullptr);
         info->SetCallArg(kValue.GetTaggedValue(), key.GetTaggedValue(), thisHandle.GetTaggedValue());
         JSTaggedValue callResult = JSFunction::Call(info);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -1089,6 +1097,7 @@ JSTaggedValue BuiltinsSharedArray::FindIndex(EcmaRuntimeCallInfo *argv)
             EcmaInterpreter::NewRuntimeCallInfo(thread, callbackFnHandle.GetTaggedValue(),
             JSTaggedValue::Undefined(), JSTaggedValue::Undefined(), argsLength);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        ASSERT(info != nullptr);
         info->SetCallArg(kValue.GetTaggedValue(), JSTaggedValue(k), thisHandle.GetTaggedValue());
         auto callResult = JSFunction::Call(info);
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, callResult);
@@ -1156,6 +1165,7 @@ JSTaggedValue BuiltinsSharedArray::ForEach(EcmaRuntimeCallInfo *argv)
         EcmaRuntimeCallInfo *info =
             EcmaInterpreter::NewRuntimeCallInfo(thread, callbackFnHandle, thisArgHandle, undefined, argsLength);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        ASSERT(info != nullptr);
         info->SetCallArg(kValue.GetTaggedValue(), key.GetTaggedValue(), thisHandle.GetTaggedValue());
         JSTaggedValue funcResult = JSFunction::Call(info);
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, funcResult);
@@ -1267,6 +1277,13 @@ JSTaggedValue BuiltinsSharedArray::Join(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] ConcurrentApiScope<JSSharedArray> scope(thread, thisHandle);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
+    auto factory = thread->GetEcmaVM()->GetFactory();
+    auto context = thread->GetCurrentEcmaContext();
+    bool noCircular = context->JoinStackPushFastPath(thisHandle);
+    if (!noCircular) {
+        return factory->GetEmptyString().GetTaggedValue();
+    }
+
     return JSStableArray::Join(thisHandle, argv);
 }
 
@@ -1357,6 +1374,7 @@ JSTaggedValue BuiltinsSharedArray::Map(EcmaRuntimeCallInfo *argv)
         EcmaRuntimeCallInfo *info =
             EcmaInterpreter::NewRuntimeCallInfo(thread, callbackFnHandle, thisArgHandle, undefined, argsLength);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        ASSERT(info != nullptr);
         info->SetCallArg(kValue.GetTaggedValue(), key.GetTaggedValue(), thisHandle.GetTaggedValue());
         JSTaggedValue mapResult = JSFunction::Call(info);
         if (!mapResult.IsSharedType()) {
@@ -1476,7 +1494,7 @@ JSTaggedValue BuiltinsSharedArray::Push(EcmaRuntimeCallInfo *argv)
         THROW_TYPE_ERROR_AND_RETURN(thread, "out of range.", JSTaggedValue::Exception());
     }
 
-    uint32_t newLength = argc + len;
+    uint32_t newLength = argc + static_cast<uint32_t>(len);
     TaggedArray *element = TaggedArray::Cast(thisObjHandle->GetElements().GetTaggedObject());
     if (newLength > ElementAccessor::GetElementsLength(thisObjHandle)) {
         element = *JSObject::GrowElementsCapacity(thread, thisObjHandle, newLength, true);
@@ -1524,6 +1542,7 @@ JSTaggedValue BuiltinsSharedArray::ReduceUnStableJSArray(JSThread *thread, JSHan
         EcmaRuntimeCallInfo *info =
             EcmaInterpreter::NewRuntimeCallInfo(thread, callbackFnHandle, undefined, undefined, argsLength);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        ASSERT(info != nullptr);
         info->SetCallArg(accumulator.GetTaggedValue(), kValue.GetTaggedValue(),
                          key.GetTaggedValue(), thisHandle.GetTaggedValue());
         callResult = JSFunction::Call(info);
@@ -1931,6 +1950,7 @@ JSTaggedValue BuiltinsSharedArray::ToString(EcmaRuntimeCallInfo *argv)
     EcmaRuntimeCallInfo *info =
         EcmaInterpreter::NewRuntimeCallInfo(thread, callbackFnHandle, thisObjVal, undefined, argsLength);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    ASSERT(info != nullptr);
     info->SetCallArg(argsLength, 0, argv, 0);
     auto opResult = JSFunction::Call(info);
     return opResult;
@@ -2013,6 +2033,7 @@ JSTaggedValue BuiltinsSharedArray::ToLocaleStringInternalHandle(EcmaRuntimeCallI
             EcmaRuntimeCallInfo *info =
                 EcmaInterpreter::NewRuntimeCallInfo(thread, undefined, nextValue, undefined, 2);
             RETURN_EXCEPTION_AND_POP_JOINSTACK(thread, thisHandle);
+            ASSERT(info != nullptr);
             info->SetCallArg(locales.GetTaggedValue(), options.GetTaggedValue());
             JSTaggedValue callResult = JSFunction::Invoke(info, key);
             RETURN_EXCEPTION_AND_POP_JOINSTACK(thread, thisHandle);
@@ -2355,6 +2376,7 @@ JSTaggedValue BuiltinsSharedArray::FindLast(EcmaRuntimeCallInfo *argv)
         EcmaRuntimeCallInfo *info =
             EcmaInterpreter::NewRuntimeCallInfo(thread, callbackFnHandle, thisArgHandle, undefined, argsLength);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        ASSERT(info != nullptr);
         info->SetCallArg(kValue.GetTaggedValue(), key.GetTaggedValue(), thisHandle.GetTaggedValue());
         callResult = JSFunction::Call(info);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -2419,6 +2441,7 @@ JSTaggedValue BuiltinsSharedArray::FindLastIndex(EcmaRuntimeCallInfo *argv)
         EcmaRuntimeCallInfo *info =
             EcmaInterpreter::NewRuntimeCallInfo(thread, callbackFnHandle, thisArgHandle, undefined, argsLength);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        ASSERT(info != nullptr);
         info->SetCallArg(kValue.GetTaggedValue(), key.GetTaggedValue(), thisHandle.GetTaggedValue());
         callResult = JSFunction::Call(info);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -2613,6 +2636,7 @@ JSTaggedValue BuiltinsSharedArray::Of(EcmaRuntimeCallInfo *argv)
         EcmaRuntimeCallInfo *info =
             EcmaInterpreter::NewRuntimeCallInfo(thread, thisHandle, undefined, undefined, 1);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        ASSERT(info != nullptr);
         info->SetCallArg(JSTaggedValue(argc));
         JSTaggedValue taggedArray = JSFunction::Construct(info);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -2649,29 +2673,29 @@ JSTaggedValue BuiltinsSharedArray::Of(EcmaRuntimeCallInfo *argv)
     return newArrayHandle.GetTaggedValue();
 }
 
-uint64_t BuiltinsSharedArray::ConvertTagValueToInteger(JSThread *thread, JSHandle<JSTaggedValue>& number, int64_t len)
+int64_t BuiltinsSharedArray::ConvertTagValueToInteger(JSThread *thread, JSHandle<JSTaggedValue>& number, int64_t len)
 {
     JSTaggedNumber targetTemp = JSTaggedValue::ToInteger(thread, number);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, 0);
     double target = targetTemp.GetNumber();
     // If relativeTarget < 0, let to be max((len + relativeTarget),0); else let to be min(relativeTarget, len).
     if (target < 0) {
-        return target + len > 0 ? static_cast<uint64_t>(target + len) : 0;
+        return target + len > 0 ? static_cast<int64_t>(target + len) : 0;
     } else {
-        return target < len ? static_cast<uint64_t>(target) : len;
+        return target < len ? static_cast<int64_t>(target) : len;
     }
 }
 
-uint64_t BuiltinsSharedArray::GetNumberArgVal(JSThread *thread, EcmaRuntimeCallInfo *argv, uint32_t idx, int64_t len,
-                                              int64_t defVal)
+int64_t BuiltinsSharedArray::GetNumberArgVal(JSThread *thread, EcmaRuntimeCallInfo *argv, uint32_t idx, int64_t len,
+                                             int64_t defVal)
 {
     JSHandle<JSTaggedValue> argValue = GetCallArg(argv, idx);
 
     return argValue->IsUndefined() ? defVal : BuiltinsSharedArray::ConvertTagValueToInteger(thread, argValue, len);
 }
 
-uint64_t BuiltinsSharedArray::GetNumberArgValThrow(JSThread *thread, EcmaRuntimeCallInfo *argv, uint32_t idx,
-                                                   int64_t len, const char* err)
+int64_t BuiltinsSharedArray::GetNumberArgValThrow(JSThread *thread, EcmaRuntimeCallInfo *argv, uint32_t idx,
+                                                  int64_t len, const char* err)
 {
     JSHandle<JSTaggedValue> argValue = GetCallArg(argv, idx);
     if (UNLIKELY(argValue->IsUndefined())) {
@@ -2726,9 +2750,11 @@ JSTaggedValue BuiltinsSharedArray::CopyWithin(EcmaRuntimeCallInfo *argv)
     //   c. Let to be to + count -1.
     // 16. Else,
     //   a. Let direction = 1.
-    TaggedArray *element = TaggedArray::Cast(thisObjHandle->GetElements().GetTaggedObject());
-    element->Copy<true, true>(thread, copyTo, copyFrom, element, count);
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    if (count > 0) {
+        TaggedArray *element = TaggedArray::Cast(thisObjHandle->GetElements().GetTaggedObject());
+        element->Copy<true, true>(thread, copyTo, copyFrom, element, count);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    }
 
     // 18. Return O.
     return thisObjHandle.GetTaggedValue();
@@ -2898,6 +2924,7 @@ JSTaggedValue BuiltinsSharedArray::ReduceRightInternalHandle(EcmaRuntimeCallInfo
         EcmaRuntimeCallInfo *info =
             EcmaInterpreter::NewRuntimeCallInfo(thread, callbackFnHandle, undefined, undefined, argsLength);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        ASSERT(info != nullptr);
         info->SetCallArg(accumulator.GetTaggedValue(), kValue.GetTaggedValue(),
             key.GetTaggedValue(), thisHandle.GetTaggedValue());
         callResult = JSFunction::Call(info);

@@ -86,7 +86,6 @@ public:
     void PGODump(JSTaggedType func);
     void SuspendByGC();
     void ResumeByGC();
-    void WaitDumpIfStart();
     void HandlePGOPreDump();
     void HandlePGODumpByDumpThread();
     void ProcessReferences(const WeakRootVisitor& visitor);
@@ -101,7 +100,10 @@ public:
     void InsertSkipCtorMethodIdSafe(EntityId ctorMethodId);
     void SetSaveTimestamp(std::chrono::system_clock::time_point timestamp);
     JITProfiler* PUBLIC_API GetJITProfile();
-    void DispatchPGODumpTask();
+    void SetStopAndNotify();
+    bool SetStartIfStop();
+    void TrySaveByDumpThread();
+    void DumpBeforeDestroy();
 
 private:
     class WorkNode;
@@ -112,9 +114,6 @@ private:
         LOAD,
     };
 
-    void StopPGODumpAndNotify();
-    void StartPGODump();
-    void ForceDump();
     void ProfileBytecode(ApEntityId abcId, const CString& recordName, JSTaggedValue funcValue);
     void DumpICByName(ApEntityId abcId,
                       const CString& recordName,
@@ -260,7 +259,6 @@ private:
                                     EntityId methodId,
                                     WorkNode* current);
     WorkNode* PopFromProfileQueue();
-    void TryDispatchSaveTask();
     bool IsJSHClassNotEqual(JSHClass* receiver,
                             JSHClass* hold,
                             JSHClass* exceptRecvHClass,
@@ -276,27 +274,6 @@ private:
     bool IsSkippableObjectTypeSafe(ProfileType type);
     bool IsSkippableCtor(uint32_t entityId);
     bool InsertDefinedCtor(uint32_t entityId);
-
-    class PGOProfilerTask : public Task {
-    public:
-        explicit PGOProfilerTask(PGOProfiler* profiler, int32_t id): Task(id), profiler_(profiler) {};
-        virtual ~PGOProfilerTask() override = default;
-
-        bool Run([[maybe_unused]] uint32_t threadIndex) override
-        {
-            ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "PGOProfilerTask::Run");
-            profiler_->HandlePGODumpByDumpThread();
-            profiler_->TryDispatchSaveTask();
-            profiler_->StopPGODumpAndNotify();
-            return true;
-        }
-
-        NO_COPY_SEMANTIC(PGOProfilerTask);
-        NO_MOVE_SEMANTIC(PGOProfilerTask);
-
-    private:
-        PGOProfiler* profiler_;
-    };
 
     class WorkNode {
     public:
@@ -375,13 +352,12 @@ private:
     std::unique_ptr<NativeAreaAllocator> nativeAreaAllocator_;
     EcmaVM* vm_ {nullptr};
     bool isEnable_ {false};
-    bool isForce_ {false};
     uint32_t methodCount_ {0};
     std::chrono::system_clock::time_point saveTimestamp_;
     WorkList dumpWorkList_;
     WorkList preDumpWorkList_;
     std::shared_ptr<PGORecordDetailInfos> recordInfos_;
-    std::shared_ptr<PGOState> state_;
+    std::unique_ptr<PGOState> state_;
     PGOProfilerManager* manager_ {nullptr};
     // AOT only supports executing Defineclass bc once currently.
     // If defineclass executed multiple times, It will gives up collection.

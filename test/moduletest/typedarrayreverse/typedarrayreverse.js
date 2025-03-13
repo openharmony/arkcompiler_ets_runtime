@@ -79,4 +79,11 @@ assert_equal("Before reverse (BigInt64Array): "+bigInt64Array,"Before reverse (B
 bigInt64Array.reverse();  // 反转数组
 assert_equal("After reverse (BigInt64Array): "+bigInt64Array,"After reverse (BigInt64Array): 2000000000,0,-5000000000,5000000000");
 
+{
+    let arr1 = new Int16Array(0);
+    new Int8Array(arr1);
+    arr1.reverse();
+    assert_equal(arr1.length, 0);
+}
+
 test_end();

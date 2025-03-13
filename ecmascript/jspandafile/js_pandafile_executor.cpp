@@ -491,6 +491,7 @@ int JSPandaFileExecutor::ExecuteAbcFileWithSingletonPatternFlag(JSThread *thread
         LOG_ECMA(ERROR) << "When the route jump, Cannot find module '" << entryPoint << "'";
         return ROUTE_URI_ERROR;
     }
+
     ASSERT(jsPandaFile->IsModule(recordInfo));
     [[maybe_unused]] EcmaHandleScope scope(thread);
     ASSERT(!jsPandaFile->IsBundlePack());

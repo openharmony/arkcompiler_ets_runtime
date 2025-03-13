@@ -23,7 +23,18 @@
 #include "ecmascript/compiler/builtins/builtins_proxy_stub_builder.h"
 #include "ecmascript/compiler/builtins/builtins_reflect_stub_builder.h"
 #include "ecmascript/compiler/builtins/builtins_typedarray_stub_builder.h"
-#include "ecmascript/compiler/builtins/containers_stub_builder.h"
+#include "ecmascript/compiler/builtins/containers_arraylist_stub_builder.h"
+#include "ecmascript/compiler/builtins/containers_deque_stub_builder.h"
+#include "ecmascript/compiler/builtins/containers_hashmap_stub_builder.h"
+#include "ecmascript/compiler/builtins/containers_hashset_stub_builder.h"
+#include "ecmascript/compiler/builtins/containers_lightweightmap_stub_builder.h"
+#include "ecmascript/compiler/builtins/containers_lightweightset_stub_builder.h"
+#include "ecmascript/compiler/builtins/containers_linkedlist_stub_builder.h"
+#include "ecmascript/compiler/builtins/containers_list_stub_builder.h"
+#include "ecmascript/compiler/builtins/containers_plainarray_stub_builder.h"
+#include "ecmascript/compiler/builtins/containers_queue_stub_builder.h"
+#include "ecmascript/compiler/builtins/containers_stack_stub_builder.h"
+#include "ecmascript/compiler/builtins/containers_vector_stub_builder.h"
 #include "ecmascript/compiler/builtins/builtins_collator_stub_builder.h"
 #include "ecmascript/compiler/builtins/builtins_collection_iterator_stub_builder.h"
 #include "ecmascript/compiler/builtins/builtins_collection_stub_builder.h"
@@ -392,27 +403,26 @@ AOT_AND_BUILTINS_STUB_LIST_WITH_METHOD(DECLARE_AOT_AND_BUILTINS_STUB_BUILDER,
 #undef DECLARE_AOT_AND_BUILTINS_STUB_BUILDER
 #undef DECLARE_BUILTINS_COLLECTION_ITERATOR_STUB_BUILDER
 
-// containers stub function
-#define DECLARE_BUILTINS_WITH_CONTAINERS_STUB_BUILDER(funcName, type, method, methodType, resultVariableType)   \
-DECLARE_BUILTINS(type##funcName)                                                                                \
-{                                                                                                               \
-    auto env = GetEnvironment();                                                                                \
-    DEFVARIABLE(res, VariableType::resultVariableType(), Undefined());                                          \
-    Label exit(env);                                                                                            \
-    Label slowPath(env);                                                                                        \
-    ContainersStubBuilder containersBuilder(this);                                                              \
-    containersBuilder.method(glue, thisValue, numArgs, &res, &exit, &slowPath, ContainersType::methodType);     \
-    Bind(&slowPath);                                                                                            \
-    {                                                                                                           \
-        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget);                              \
-        Jump(&exit);                                                                                            \
-    }                                                                                                           \
-    Bind(&exit);                                                                                                \
-    Return(*res);                                                                                               \
+#define DECLARE_CONTAINERS_STUB_BUILDER(method, type, initValue)                                    \
+DECLARE_BUILTINS(type##method)                                                                      \
+{                                                                                                   \
+    auto env = GetEnvironment();                                                                    \
+    DEFVARIABLE(res, VariableType::JS_ANY(), initValue);                                            \
+    Label exit(env);                                                                                \
+    Label slowPath(env);                                                                            \
+    Containers##type##StubBuilder builder(this);                                                      \
+    builder.method(glue, thisValue, numArgs, &res, &exit, &slowPath);                               \
+    Bind(&slowPath);                                                                                \
+    {                                                                                               \
+        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget);                  \
+        Jump(&exit);                                                                                \
+    }                                                                                               \
+    Bind(&exit);                                                                                    \
+    Return(*res);                                                                                   \
 }
 
-BUILTINS_WITH_CONTAINERS_STUB_BUILDER(DECLARE_BUILTINS_WITH_CONTAINERS_STUB_BUILDER)
-#undef DECLARE_BUILTINS_WITH_CONTAINERS_STUB_BUILDER
+BUILTINS_CONTAINERS_STUB_BUILDER(DECLARE_CONTAINERS_STUB_BUILDER)
+#undef DECLARE_CONTAINERS_STUB_BUILDER
 
 DECLARE_BUILTINS(BooleanConstructor)
 {

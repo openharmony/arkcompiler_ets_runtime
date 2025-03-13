@@ -7,13 +7,8 @@
             "size": 8
         },
         {
-            "name": "ModuleRequest",
-            "offset": 8,
-            "size": 8
-        },
-        {
             "name": "ImportName",
-            "offset": 16,
+            "offset": 8,
             "size": 8
         }
     ],

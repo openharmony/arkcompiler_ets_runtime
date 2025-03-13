@@ -15,9 +15,7 @@
 
 #include <climits>
 #include <cassert>
-#include "ecmascript/compiler/baseline/baseline_compiler.h"
 #include "ecmascript/compiler/bytecode_info_collector.h"
-#include "ecmascript/js_function.h"
 #include "ecmascript/compiler/jit_compiler.h"
 #ifdef JIT_ENABLE_CODE_SIGN
 #include "jit_buffer_integrity.h"
@@ -186,6 +184,11 @@ bool BaselineCompiler::CollectMemoryCodeInfos(MachineCodeDesc &codeDesc)
     codeDesc.codeType = MachineCodeType::BASELINE_CODE;
     codeDesc.stackMapOrOffsetTableAddr = reinterpret_cast<uint64_t>(nativePcOffsetTable.GetData());
     codeDesc.stackMapOrOffsetTableSize = nativePcOffsetTable.GetSize();
+    if (vm->GetJSOptions().GetTargetTriple() == TARGET_AARCH64) {
+        codeDesc.archType = MachineCodeArchType::AArch64;
+    } else {
+        codeDesc.archType = MachineCodeArchType::X86;
+    }
 #ifdef JIT_ENABLE_CODE_SIGN
     codeDesc.codeSigner = 0;
     JitSignCode *singleton = JitSignCode::GetInstance();
@@ -196,10 +199,15 @@ bool BaselineCompiler::CollectMemoryCodeInfos(MachineCodeDesc &codeDesc)
     }
 #endif
     if (Jit::GetInstance()->IsEnableJitFort() && Jit::GetInstance()->IsEnableAsyncCopyToFort() &&
-        JitCompiler::AllocFromFortAndCopy(*compilationEnv, codeDesc) == false) {
+        JitCompiler::AllocFromFortAndCopy(*compilationEnv, codeDesc, GetBaselineAssembler().GetRelocInfo()) == false) {
         return false;
     }
     return true;
+}
+
+void BaselineCompiler::CollectBLInfo(RelocMap &relocInfo)
+{
+    relocInfo = GetBaselineAssembler().GetRelocInfo();
 }
 
 void BaselineCompiler::GetJumpToOffsets(const uint8_t *start, const uint8_t *end,

@@ -75,7 +75,7 @@ void SharedGCEvacuator::UpdateReference()
     if (sHeap_->IsParallelGCEnabled()) {
         LockHolder holder(lock_);
         parallel_ = CalculateUpdateThreadNum();
-        int32_t dTid = DaemonThread::GetInstance()->GetThreadId();
+        auto dTid = DaemonThread::GetInstance()->GetThreadId();
         for (int i = 0; i < parallel_; i++) {
             Taskpool::GetCurrentTaskpool()->PostTask(std::make_unique<UpdateReferenceTask>(dTid, this));
         }

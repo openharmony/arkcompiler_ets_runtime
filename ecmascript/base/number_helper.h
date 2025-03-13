@@ -186,6 +186,7 @@ public:
     static JSTaggedValue StringToNumber(EcmaString *string, int32_t radix);
     static JSTaggedValue StringToDoubleWithRadix(const uint8_t *start, const uint8_t *end, int radix, bool *negative);
     static CString IntToString(int number);
+    static void AppendIntToString(CString &str, int number);
     static CString IntegerToString(double number, int radix);
     static JSTaggedValue PUBLIC_API StringToBigInt(JSThread *thread, JSHandle<JSTaggedValue> strVal);
     static JSTaggedValue DoubleToExponential(JSThread *thread, double number, int digit);

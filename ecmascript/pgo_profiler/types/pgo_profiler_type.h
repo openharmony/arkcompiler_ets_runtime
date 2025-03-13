@@ -580,7 +580,7 @@ public:
           holdRootType_(holdRootType), holdType_(holdType),
           holdTraRootType_(holdTraRootType), holdTraType_(holdTraType),
           accessorMethod_(accessorMethod) {}
-
+    
     void AddPrototypePt(std::vector<std::pair<PGOProfileType, PGOProfileType>> protoChain)
     {
         protoChainMarker_ = ProtoChainMarker::EXSIT;

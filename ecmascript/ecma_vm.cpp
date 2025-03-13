@@ -118,7 +118,8 @@ void EcmaVM::PreFork()
     auto sHeap = SharedHeap::GetInstance();
     sHeap->CompactHeapBeforeFork(thread_);
     sHeap->DisableParallelGC(thread_);
-
+    heap_->GetWorkManager()->FinishInPreFork();
+    sHeap->GetWorkManager()->FinishInPreFork();
     Jit::GetInstance()->PreFork();
 }
 
@@ -129,6 +130,9 @@ void EcmaVM::PostFork()
     GetAssociatedJSThread()->PostFork();
     DaemonThread::GetInstance()->StartRunning();
     Taskpool::GetCurrentTaskpool()->Initialize();
+    heap_->GetWorkManager()->InitializeInPostFork();
+    auto sHeap = SharedHeap::GetInstance();
+    sHeap->GetWorkManager()->InitializeInPostFork();
     SetPostForked(true);
     LOG_ECMA(INFO) << "multi-thread check enabled: " << GetThreadCheckStatus();
     SignalAllReg();
@@ -142,10 +146,6 @@ void EcmaVM::PostFork()
     processStartRealtime_ = InitializeStartRealTime();
 
     Jit::GetInstance()->SetJitEnablePostFork(this, bundleName);
-    ModuleLogger *moduleLogger = thread_->GetCurrentEcmaContext()->GetModuleLogger();
-    if (moduleLogger != nullptr) {
-        moduleLogger->PostModuleLoggerTask(thread_->GetThreadId(), this);
-    }
 #if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE)
     int arkProperties = OHOS::system::GetIntParameter<int>("persist.ark.properties", -1);
     GetJSOptions().SetArkProperties(arkProperties);
@@ -190,8 +190,9 @@ void EcmaVM::InitializeForJit(JitThread *jitThread)
 
 void EcmaVM::InitializePGOProfiler()
 {
-    LOG_PGO(INFO) << "initialize pgo profiler, pgo is enable: " << IsEnablePGOProfiler()
-                  << ", is worker: " << options_.IsWorker() << ", profiler: " << pgoProfiler_;
+    LOG_PGO(INFO) << "initializing pgo profiler, pgo is " << (IsEnablePGOProfiler() ? "enabled" : "disabled")
+                  << ", worker is " << (options_.IsWorker() ? "enabled" : "disabled")
+                  << ", profiler: " << pgoProfiler_;
     bool isEnablePGOProfiler = IsEnablePGOProfiler();
     if (pgoProfiler_ == nullptr) {
         pgoProfiler_ = PGOProfilerManager::GetInstance()->BuildProfiler(this, isEnablePGOProfiler);
@@ -295,9 +296,6 @@ bool EcmaVM::Initialize()
     quickFixManager_ = new QuickFixManager();
     if (options_.GetEnableAsmInterpreter()) {
         thread_->GetCurrentEcmaContext()->LoadStubFile();
-    }
-    if (options_.EnableEdenGC()) {
-        heap_->EnableEdenGC();
     }
 
     callTimer_ = new FunctionCallTimer();
@@ -409,6 +407,8 @@ EcmaVM::~EcmaVM()
             sHeap->CollectGarbage<TriggerGCType::SHARED_GC, GCReason::WORKER_DESTRUCTION>(thread_);
         }
     }
+
+    intlCache_.ClearIcuCache(this);
 
     if (debuggerManager_ != nullptr) {
         delete debuggerManager_;

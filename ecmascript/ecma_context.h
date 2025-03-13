@@ -52,11 +52,9 @@ class ConstantPool;
 class JSPromise;
 class RegExpExecResultCache;
 class EcmaHandleScope;
-class GlobalIndexMap;
 class SustainingJSHandleList;
 class SustainingJSHandle;
 enum class PromiseRejectionEvent : uint8_t;
-enum class CompareStringsOption : uint8_t;
 
 template<typename T>
 class JSHandle;
@@ -84,15 +82,6 @@ class JsDebuggerManager;
 namespace kungfu {
 class PGOTypeManager;
 } // namespace kungfu
-
-enum class IcuFormatterType {
-    SIMPLE_DATE_FORMAT_DEFAULT,
-    SIMPLE_DATE_FORMAT_DATE,
-    SIMPLE_DATE_FORMAT_TIME,
-    NUMBER_FORMATTER,
-    COLLATOR,
-    ICU_FORMATTER_TYPE_COUNT
-};
 
 using HostPromiseRejectionTracker = void (*)(const EcmaVM* vm,
                                              const JSHandle<JSPromise> promise,
@@ -411,69 +400,10 @@ public:
         moduleLogger_ = moduleLogger;
     }
 
-    void SetDefaultLocale(const std::string& locale)
-    {
-        defaultLocale_ = locale;
-    }
-
-    const std::string& GetDefaultLocale() const
-    {
-        return defaultLocale_;
-    }
-
-    void InitializeDefaultLocale()
-    {
-        defaultLocale_ = "";
-    }
-
-    void ClearDefaultLocale()
-    {
-        defaultLocale_.clear();
-    }
-
-    void SetDefaultCompareStringsOption(const CompareStringsOption csOption)
-    {
-        defaultComapreStringsOption_ = csOption;
-    }
-
-    const std::optional<CompareStringsOption> GetDefaultCompareStringsOption() const
-    {
-        return defaultComapreStringsOption_;
-    }
-
-    void InitializeDefaultCompareStringsOption()
-    {
-        defaultComapreStringsOption_ = std::nullopt;
-    }
-
-    void ClearDefaultComapreStringsOption()
-    {
-        defaultComapreStringsOption_ = std::nullopt;
-    }
-
     FunctionProtoTransitionTable *GetFunctionProtoTransitionTable() const
     {
         return functionProtoTransitionTable_;
     }
-
-    // For icu objects cache
-    void SetIcuFormatterToCache(IcuFormatterType type, const std::string &locale, void *icuObj,
-                                NativePointerCallback deleteEntry = nullptr)
-    {
-        EcmaContext::IcuFormatter icuFormatter = IcuFormatter(locale, icuObj, deleteEntry);
-        icuObjCache_[static_cast<int>(type)] = icuFormatter;
-    }
-
-    ARK_INLINE void *GetIcuFormatterFromCache(IcuFormatterType type, std::string &locale)
-    {
-        auto &icuFormatter = icuObjCache_[static_cast<int>(type)];
-        if (icuFormatter.locale == locale) {
-            return icuFormatter.icuObj;
-        }
-        return nullptr;
-    }
-
-    void ClearIcuCache(JSThread *thread);
 
     EcmaRuntimeStat *GetRuntimeStat() const
     {
@@ -705,21 +635,6 @@ public:
     void JoinStackPopFastPath(JSHandle<JSTaggedValue> receiver);
     void JoinStackPop(JSHandle<JSTaggedValue> receiver);
 
-    void SetJsonStringifyCache(size_t index, CVector<std::pair<CString, int>> &value)
-    {
-        stringifyCache_[index] = value;
-    }
-
-    CVector<std::pair<CString, int>> GetJsonStringifyCache(size_t index)
-    {
-        return stringifyCache_[index];
-    }
-
-    bool IsAotEntry()
-    {
-        return isAotEntry_;
-    }
-
     std::tuple<uint64_t, uint8_t *, int, kungfu::CalleeRegAndOffsetVec> CalCallSiteInfo(uintptr_t retAddr,
                                                                                         bool isDeopt) const;
 
@@ -797,7 +712,6 @@ private:
     JSTaggedValue stringSplitResultCache_ {JSTaggedValue::Hole()};
     JSTaggedValue stringToListResultCache_ {JSTaggedValue::Hole()};
     JSTaggedValue globalEnv_ {JSTaggedValue::Hole()};
-    JSTaggedValue pointerToIndexDictionary_ {JSTaggedValue::Hole()};
     JSTaggedValue regexpCache_ {JSTaggedValue::Hole()};
     JSTaggedValue regexpGlobal_ {JSTaggedValue::Hole()};
     JSTaggedValue microJobQueue_ {JSTaggedValue::Hole()};
@@ -839,20 +753,6 @@ private:
 
     ModuleLogger *moduleLogger_ {nullptr};
 
-    std::string defaultLocale_;
-    std::optional<CompareStringsOption> defaultComapreStringsOption_;
-
-    // For icu objects cache
-    struct IcuFormatter {
-        std::string locale;
-        void *icuObj {nullptr};
-        NativePointerCallback deleteEntry {nullptr};
-
-        IcuFormatter() = default;
-        IcuFormatter(const std::string &locale, void *icuObj, NativePointerCallback deleteEntry = nullptr)
-            : locale(locale), icuObj(icuObj), deleteEntry(deleteEntry) {}
-    };
-    IcuFormatter icuObjCache_[static_cast<uint32_t>(IcuFormatterType::ICU_FORMATTER_TYPE_COUNT)];
     // Handlescope
     static const uint32_t NODE_BLOCK_SIZE_LOG2 = 10;
     static const uint32_t NODE_BLOCK_SIZE = 1U << NODE_BLOCK_SIZE_LOG2;
@@ -879,10 +779,6 @@ private:
     // Join Stack
     static constexpr uint32_t MIN_JOIN_STACK_SIZE = 2;
     CVector<JSTaggedValue> joinStack_ {JSTaggedValue::Hole(), JSTaggedValue::Hole()};
-    // json stringify cache
-    static constexpr uint32_t STRINGIFY_CACHE_SIZE = 64;
-    std::array<CVector<std::pair<CString, int>>, STRINGIFY_CACHE_SIZE> stringifyCache_ {};
-    bool isAotEntry_ { false };
 
     // SustainingJSHandleList for jit compile hold ref
     SustainingJSHandleList *sustainingJSHandleList_ {nullptr};
@@ -894,7 +790,6 @@ private:
     friend class ObjectFactory;
     friend class panda::JSNApi;
     friend class AOTFileManager;
-    friend class GlobalIndexMap;
 };
 }  // namespace ecmascript
 }  // namespace panda

@@ -197,4 +197,13 @@ assert_equal(numParsedObj.numberval7, 5e-324);// Number.MIN_VALUE
 assert_equal(numParsedObj.numberval8, 0);// less than Number.MIN_VALUE, expect 0
 assert_equal(numParsedObj.numberval9, 0);// less than Number.MIN_VALUE, expect 0
 
+{
+	let err = {};
+	try {
+		JSON.parse(`{"object哈哈": 42, "test":{}`)
+	} catch (error) {
+		err = error;
+	}
+	assert_equal(err.name, 'SyntaxError');
+}
 test_end();

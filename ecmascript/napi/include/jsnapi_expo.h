@@ -111,6 +111,9 @@ using JSThread = ecmascript::JSThread;
 using JSTaggedType = uint64_t;
 using ConcurrentCallback = void (*)(Local<JSValueRef> result, bool success, void *taskInfo, void *data);
 using SourceMapCallback = std::function<std::string(const std::string& rawStack)>;
+using TimerCallbackFunc = void (*)(void *data);
+using TimerTaskCallback = void* (*)(EcmaVM *vm, void *data, TimerCallbackFunc func, uint64_t timeout, bool repeat);
+using CancelTimerCallback = void (*)(void *timerCallbackInfo);
 using SourceMapTranslateCallback = std::function<bool(std::string& url, int& line, int& column,
     std::string& packageName)>;
 using DeviceDisconnectCallback = std::function<bool()>;
@@ -658,7 +661,8 @@ public:
                          void **data,
                          JSValueRef **arrayBuffer,
                          size_t *byteOffset);
-    void TryGetArrayLength(const EcmaVM *vm, bool *isArrayOrSharedArray, uint32_t *arrayLength);
+    void TryGetArrayLength(const EcmaVM *vm, bool *isPendingException,
+        bool *isArrayOrSharedArray, uint32_t *arrayLength);
 
 private:
     JSTaggedType value_;
@@ -1730,6 +1734,9 @@ public:
     static Local<JSValueRef> DeserializeValue(const EcmaVM *vm, void *recoder, void *hint);
     static void DeleteSerializationData(void *data);
     static void SetHostPromiseRejectionTracker(EcmaVM *vm, void *cb, void* data);
+    static void SetTimerTaskCallback(EcmaVM *vm, TimerTaskCallback callback);
+    static void SetCancelTimerCallback(EcmaVM *vm, CancelTimerCallback callback);
+    static void NotifyEnvInitialized(EcmaVM *vm);
     static void SetHostResolveBufferTracker(EcmaVM *vm,
         std::function<bool(std::string dirPath, uint8_t **buff, size_t *buffSize, std::string &errorMsg)> cb);
     static void SetUnloadNativeModuleCallback(EcmaVM *vm, const std::function<bool(const std::string &moduleKey)> &cb);
@@ -1824,6 +1831,12 @@ public:
     static void NotifyTaskFinished(const EcmaVM *vm);
     static bool IsMultiThreadCheckEnabled(const EcmaVM *vm);
     static uint32_t GetCurrentThreadId();
+
+    //set VM apiVersion
+    static void SetVMAPIVersion(EcmaVM *vm, const int32_t apiVersion);
+
+    // Napi Update SubStackInfo
+    static void UpdateStackInfo(EcmaVM *vm, void *currentStackInfo, uint32_t opKind);
 private:
     static bool isForked_;
     static bool CreateRuntime(const RuntimeOption &option);

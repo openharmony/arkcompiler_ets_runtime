@@ -825,6 +825,54 @@ GateRef NewObjectStubBuilder::ExtendArrayCheck(GateRef glue, GateRef elements, G
     return ret;
 }
 
+GateRef NewObjectStubBuilder::ExtendArrayWithOptimizationCheck(GateRef glue, GateRef elements, GateRef newLen)
+{
+    auto env = GetEnvironment();
+    Label subEntry(env);
+    env->SubCfgEntry(&subEntry);
+    SetGlue(glue);
+    DEFVARIABLE(array, VariableType::JS_ANY(), Undefined());
+    GateRef checkIsMutantTaggedArray = IsMutantTaggedArray(elements);
+    Label exit(env);
+    Label next(env);
+    Label slowPath(env);
+    BRANCH(Int32UnsignedLessThan(newLen, Int32(MAX_EXTEND_ARRAY_LENGTH)), &slowPath, &next);
+    Bind(&slowPath);
+    {
+        array = ExtendArrayCheck(glue, elements, newLen);
+        Jump(&exit);
+    }
+    Bind(&next);
+    {
+        Label extendMutantArray(env);
+        Label extendNormalArray(env);
+        Label afterCreate(env);
+        GateRef oldExtractLen = GetExtraLengthOfTaggedArray(elements);
+        GateRef oldL = GetLengthOfTaggedArray(elements);
+        BRANCH(checkIsMutantTaggedArray, &extendMutantArray, &extendNormalArray);
+        Bind(&extendMutantArray);
+        {
+            array = CallRuntime(glue_, RTSTUB_ID(NewMutantTaggedArray), { IntToTaggedInt(newLen) });
+            Jump(&afterCreate);
+        }
+        Bind(&extendNormalArray);
+        {
+            array = CallRuntime(glue_, RTSTUB_ID(NewTaggedArray), { IntToTaggedInt(newLen) });
+            Jump(&afterCreate);
+        }
+        Bind(&afterCreate);
+        Store(VariableType::INT32(), glue, *array, IntPtr(TaggedArray::LENGTH_OFFSET), newLen);
+        Store(VariableType::INT32(), glue, *array, IntPtr(TaggedArray::EXTRA_LENGTH_OFFSET), oldExtractLen);
+        ArrayCopy(glue, elements, GetDataPtrInTaggedArray(elements), *array,
+            GetDataPtrInTaggedArray(*array), oldL, BoolNot(checkIsMutantTaggedArray), DifferentArray);
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *array;
+    env->SubCfgExit();
+    return ret;
+}
+
 GateRef NewObjectStubBuilder::CopyArray(GateRef glue, GateRef elements, GateRef oldLen,
                                         GateRef newLen, RegionSpaceFlag spaceType)
 {
@@ -843,7 +891,7 @@ GateRef NewObjectStubBuilder::CopyArray(GateRef glue, GateRef elements, GateRef 
     {
         Label extendArray(env);
         Label notExtendArray(env);
-        BRANCH(Int32GreaterThan(newLen, oldLen), &extendArray, &notExtendArray);
+        BRANCH(Int32UnsignedGreaterThan(newLen, oldLen), &extendArray, &notExtendArray);
         Bind(&extendArray);
         {
             result = ExtendArrayCheck(glue, elements, newLen, spaceType);
@@ -2168,9 +2216,9 @@ GateRef NewObjectStubBuilder::NewTaggedSubArray(GateRef glue, GateRef srcTypedAr
 
     Label isOnHeap(env);
     Label isNotOnHeap(env);
+    Label createNewArray(env);
     Label comparePrototype(env);
-    Label samePrototype(env);
-    Label slowPath(env);
+    Label protoChanged(env);
     Label exit(env);
     DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
     DEFVARIABLE(newArrayHClass, VariableType::JS_ANY(), Undefined());
@@ -2190,12 +2238,18 @@ GateRef NewObjectStubBuilder::NewTaggedSubArray(GateRef glue, GateRef srcTypedAr
 
     Bind(&comparePrototype);
     {
-        GateRef srcPrototype = GetPrototypeFromHClass(*newArrayHClass);
-        GateRef newPrototype = GetPrototypeFromHClass(arrayCls);
-        BRANCH_LIKELY(Equal(srcPrototype, newPrototype), &samePrototype, &slowPath);
+        GateRef newPrototype = GetPrototypeFromHClass(*newArrayHClass);
+        GateRef srcPrototype = GetPrototypeFromHClass(arrayCls);
+        BRANCH_LIKELY(Equal(newPrototype, srcPrototype), &createNewArray, &protoChanged);
+        Bind(&protoChanged);
+        {
+            newArrayHClass = CallRuntime(glue, RTSTUB_ID(CloneHclass), { *newArrayHClass });
+            StorePrototype(glue, *newArrayHClass, srcPrototype);
+            Jump(&createNewArray);
+        }
     }
 
-    Bind(&samePrototype);
+    Bind(&createNewArray);
     {
         result = NewJSObject(glue, *newArrayHClass);
         GateRef newByteLength = Int32Mul(elementSize, newLength);
@@ -2206,14 +2260,6 @@ GateRef NewObjectStubBuilder::NewTaggedSubArray(GateRef glue, GateRef srcTypedAr
         Store(VariableType::INT32(), glue, *result, IntPtr(JSTypedArray::BYTE_OFFSET_OFFSET), beginByteOffset);
         Store(VariableType::INT32(), glue, *result, IntPtr(JSTypedArray::ARRAY_LENGTH_OFFSET), newLength);
         Store(VariableType::INT32(), glue, *result, IntPtr(JSTypedArray::CONTENT_TYPE_OFFSET), contentType);
-        Jump(&exit);
-    }
-
-    Bind(&slowPath);
-    {
-        result = CallRuntime(glue, RTSTUB_ID(TypedArraySpeciesCreateForSubArray),
-                             { srcTypedArray, IntToTaggedInt(Int32(3)),
-                               IntToTaggedInt(newLength), IntToTaggedInt(beginByteOffset) });
         Jump(&exit);
     }
 
@@ -2287,6 +2333,56 @@ GateRef NewObjectStubBuilder::NewTypedArray(GateRef glue, GateRef srcTypedArray,
     Bind(&slowPath);
     {
         result = CallRuntime(glue, RTSTUB_ID(TypedArraySpeciesCreate),
+            { srcTypedArray, IntToTaggedInt(Int32(1)), IntToTaggedInt(length) });
+        Jump(&exit);
+    }
+
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef NewObjectStubBuilder::NewTypedArraySameType(GateRef glue, GateRef srcTypedArray, GateRef srcType,
+                                                    GateRef length)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+
+    DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
+    DEFVARIABLE(buffer, VariableType::JS_ANY(), Undefined());
+    Label slowPath(env);
+    Label next(env);
+    Label exit(env);
+    GateRef hclass = LoadHClass(srcTypedArray);
+    GateRef obj = NewJSObject(glue, hclass);
+    result = obj;
+    GateRef ctorName = Load(VariableType::JS_POINTER(), srcTypedArray,
+        IntPtr(JSTypedArray::TYPED_ARRAY_NAME_OFFSET));
+    GateRef elementSize = GetElementSizeFromType(glue, srcType);
+    GateRef newByteLength = Int32Mul(elementSize, length);
+    GateRef contentType = Load(VariableType::INT32(), srcTypedArray, IntPtr(JSTypedArray::CONTENT_TYPE_OFFSET));
+    BRANCH(Int32LessThanOrEqual(newByteLength, Int32(RangeInfo::TYPED_ARRAY_ONHEAP_MAX)), &next, &slowPath);
+    Bind(&next);
+    {
+        Label newByteArrayExit(env);
+        GateRef onHeapHClass = GetOnHeapHClassFromType(glue, srcType);
+        NewByteArray(&buffer, &newByteArrayExit, elementSize, length);
+        Bind(&newByteArrayExit);
+        StoreHClass(glue, obj, onHeapHClass);
+        Store(VariableType::JS_POINTER(), glue, obj, IntPtr(JSTypedArray::VIEWED_ARRAY_BUFFER_OFFSET), *buffer);
+        Store(VariableType::JS_POINTER(), glue, obj, IntPtr(JSTypedArray::TYPED_ARRAY_NAME_OFFSET), ctorName);
+        Store(VariableType::INT32(), glue, obj, IntPtr(JSTypedArray::BYTE_LENGTH_OFFSET), newByteLength);
+        Store(VariableType::INT32(), glue, obj, IntPtr(JSTypedArray::BYTE_OFFSET_OFFSET), Int32(0));
+        Store(VariableType::INT32(), glue, obj, IntPtr(JSTypedArray::ARRAY_LENGTH_OFFSET), length);
+        Store(VariableType::INT32(), glue, obj, IntPtr(JSTypedArray::CONTENT_TYPE_OFFSET), contentType);
+        Jump(&exit);
+    }
+
+    Bind(&slowPath);
+    {
+        result = CallRuntime(glue, RTSTUB_ID(TypedArrayCreateSameType),
             { srcTypedArray, IntToTaggedInt(Int32(1)), IntToTaggedInt(length) });
         Jump(&exit);
     }

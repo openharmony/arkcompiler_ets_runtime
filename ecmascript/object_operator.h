@@ -353,7 +353,6 @@ private:
         JSHandle<JSObject> obj(holder_);
         LookupGlobal(obj);
     }
-    template<bool isElement> bool ShouldContinuelyLookupInProtoChain();
     template<bool isElement> void TryLookupInProtoChain();
     void LookupGlobal(const JSHandle<JSObject> &obj);
     void LookupPropertyInlinedProps(const JSHandle<JSObject> &obj);

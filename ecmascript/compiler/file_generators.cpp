@@ -274,17 +274,13 @@ void Module::CollectModuleSectionDes(ModuleSectionDes &moduleDes) const
         return;
     }
     ASSERT(assembler_ != nullptr);
-    LLVMAssembler *assembler = static_cast<LLVMAssembler*>(assembler_);
+    LLVMAssembler *assembler = static_cast<LLVMAssembler *>(assembler_);
     assembler->IterateSecInfos([&](size_t i, std::pair<uint8_t *, size_t> secInfo) {
         auto curSec = ElfSection(i);
         ElfSecName sec = curSec.GetElfEnumValue();
-        if (IsRelaSection(sec)) {
-            moduleDes.EraseSec(sec);
-        } else { // aot need relocated; stub don't need collect relocated section
-            moduleDes.SetSecAddrAndSize(sec, reinterpret_cast<uint64_t>(secInfo.first), secInfo.second);
-            moduleDes.SetStartIndex(startIndex_);
-            moduleDes.SetFuncCount(funcCount_);
-        }
+        moduleDes.SetSecAddrAndSize(sec, reinterpret_cast<uint64_t>(secInfo.first), secInfo.second);
+        moduleDes.SetStartIndex(startIndex_);
+        moduleDes.SetFuncCount(funcCount_);
     });
     CollectStackMapDes(moduleDes);
 }
@@ -758,9 +754,16 @@ bool AOTFileGenerator::GetMemoryCodeInfos(MachineCodeDesc &machineCodeDesc)
     machineCodeDesc.stackMapOrOffsetTableAddr = stackMapPtr;
     machineCodeDesc.stackMapOrOffsetTableSize = stackMapSize;
     machineCodeDesc.codeType = MachineCodeType::FAST_JIT_CODE;
+    if (cfg_.IsAArch64()) {
+        machineCodeDesc.archType = MachineCodeArchType::AArch64;
+    } else {
+        machineCodeDesc.archType = MachineCodeArchType::X86;
+    }
 
+    // modify relocating is only used in baselinjit.
+    RelocMap relocInfo = {};
     if (Jit::GetInstance()->IsEnableJitFort() && Jit::GetInstance()->IsEnableAsyncCopyToFort() &&
-        JitCompiler::AllocFromFortAndCopy(*compilationEnv_, machineCodeDesc) == false) {
+        JitCompiler::AllocFromFortAndCopy(*compilationEnv_, machineCodeDesc, relocInfo) == false) {
         return false;
     }
     return true;
@@ -805,6 +808,34 @@ bool AOTFileGenerator::SaveSnapshotFile()
     return true;
 }
 
+std::string AOTFileGenerator::ExtractPrefix(const std::string &filename)
+{
+    std::string file = filename.substr(filename.find_last_of('/') + 1);
+    size_t dotPos = file.find_last_of('.');
+    if (dotPos == std::string::npos) {
+        LOG_COMPILER(ERROR) << "Path: " << file << " is illegal";
+        return "";
+    }
+
+    std::string prefix = file.substr(0, dotPos);
+    return prefix;
+}
+
+std::string AOTFileGenerator::GenAotCodeCommentFileName(const std::string &filename)
+{
+    size_t lastSlashPos = filename.find_last_of('/');
+    std::string dirPath = filename.substr(0, lastSlashPos + 1);
+    std::string prefix = ExtractPrefix(filename);
+    std::string aotCodeCommentFilePath = "";
+    if (!prefix.empty()) {
+        aotCodeCommentFilePath = dirPath + "aot_code_comment_" + prefix + ".txt";
+        SetAotCodeCommentFile(aotCodeCommentFilePath);
+    } else {
+        SetAotCodeCommentFile("");
+    }
+    return aotCodeCommentFilePath;
+}
+
 bool AOTFileGenerator::CreateAOTCodeCommentFile(const std::string &filename)
 {
     if (!CreateDirIfNotExist(filename)) {
@@ -824,8 +855,12 @@ bool AOTFileGenerator::CreateAOTCodeCommentFile(const std::string &filename)
         return false;
     }
 
-    std::string aotCodeCommentFile = realPath.substr(0, index) + "/aot_code_comment.txt";
-    SetAotCodeCommentFile(aotCodeCommentFile);
+    std::string aotCodeCommentFile = GenAotCodeCommentFileName(realPath);
+    if (aotCodeCommentFile.empty()) {
+        LOG_COMPILER(ERROR) << "Failed to generate aot code comment file";
+        return false;
+    }
+
     if (FileExist(aotCodeCommentFile.c_str())) {
         if (Unlink(aotCodeCommentFile.c_str()) == -1) {
             SetAotCodeCommentFile("");

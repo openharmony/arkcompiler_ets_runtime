@@ -17,3 +17,4 @@ tags
 *.m
 test/regresstest/__pycache__/
 test/regresstest/ark-regress/
+.cursor

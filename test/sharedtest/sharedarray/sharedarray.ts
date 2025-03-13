@@ -337,6 +337,22 @@ function from(): void {
         return str + "cde";
     });
     print(sArr5)
+
+    let obj = {
+        0:1,
+        1:3,
+        2:5,
+        length:3
+    };
+    let sArr6 = SendableArray.from<number>(obj, (value: number) =>{
+        if (value < 4) {
+            obj[obj.length] = value + 10;
+            obj.length += 1;
+        }  
+  
+        return value;
+    });
+    print(sArr6)
 }
 
 function fromTemplate(): void {
@@ -405,6 +421,13 @@ function join(): void {
     print(elements.join('-'));
     print(elements.join(null));
     print(elements.join(undefined));
+
+    const elements1 = new SendableArray<string>("123", "3445", "789");
+    const elements2 = new SendableArray<SendableArray>();
+    elements2.push(elements1);
+    elements2.push(elements2);
+  
+    print(elements2.join());
 }
 
 function shift() {
@@ -1321,6 +1344,12 @@ function copyWithinTest() {
     print(arr);
 
     arr.copyWithin(3, -4, -2);
+    print(arr);
+
+    arr.copyWithin(2, -3, -4);
+    print(arr);
+
+    arr.copyWithin(4, 2, 1);
     print(arr);
 }
 

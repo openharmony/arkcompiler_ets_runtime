@@ -210,10 +210,7 @@ JSTaggedValue BuiltinsGc::AllocateArrayObject(EcmaRuntimeCallInfo *info)
 
 TriggerGCType BuiltinsGc::StringToGcType(JSThread *thread, JSTaggedValue cause)
 {
-    static_assert(GC_TYPE_LAST == 9, "Update this method after TrigerGCType change");
-    if (JSTaggedValue::StrictEqual(thread->GlobalConstants()->GetEdenGcCause(), cause)) {
-        return EDEN_GC;
-    }
+    static_assert(GC_TYPE_LAST == 8, "Update this method after TrigerGCType change");
     if (JSTaggedValue::StrictEqual(thread->GlobalConstants()->GetYoungGcCause(), cause)) {
         return YOUNG_GC;
     }

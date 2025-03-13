@@ -15,18 +15,23 @@
 
 #ifndef ECMASCRIPT_COMPILER_BUILTINS_CONTAINERS_QUEUE_STUB_BUILDER_H
 #define ECMASCRIPT_COMPILER_BUILTINS_CONTAINERS_QUEUE_STUB_BUILDER_H
-#include "ecmascript/compiler/stub_builder-inl.h"
+#include "ecmascript/compiler/builtins/builtins_stubs.h"
 #include "ecmascript/js_api/js_api_queue.h"
 
 namespace panda::ecmascript::kungfu {
-class ContainersQueueStubBuilder : public StubBuilder {
+class ContainersQueueStubBuilder : public BuiltinsStubBuilder {
 public:
     explicit ContainersQueueStubBuilder(StubBuilder *parent)
-        : StubBuilder(parent) {}
+        : BuiltinsStubBuilder(parent) {}
     ~ContainersQueueStubBuilder() override = default;
     NO_MOVE_SEMANTIC(ContainersQueueStubBuilder);
     NO_COPY_SEMANTIC(ContainersQueueStubBuilder);
     void GenerateCircuit() override {}
+
+#define DECLARE_CONTAINERS_QUEUE_STUB_BUILDER(method, ...)           \
+    void method(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *result, Label *exit, Label *slowPath);
+BUILTINS_WITH_CONTAINERS_QUEUE_STUB_BUILDER(DECLARE_CONTAINERS_QUEUE_STUB_BUILDER)
+#undef DECLARE_CONTAINERS_QUEUE_STUB_BUILDER
 
     GateRef GetArrayLength(GateRef obj)
     {

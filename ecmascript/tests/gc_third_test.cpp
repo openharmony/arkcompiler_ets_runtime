@@ -42,7 +42,6 @@ public:
     void SetUp() override
     {
         JSRuntimeOptions options;
-        options.SetEnableEdenGC(true);
         instance = JSNApi::CreateEcmaVM(options);
         ASSERT_TRUE(instance != nullptr) << "Cannot create EcmaVM";
         thread = instance->GetJSThread();
@@ -395,7 +394,7 @@ HWTEST_F_L0(GCTest, ReclaimTest001)
 {
     SharedHeap *heap = SharedHeap::GetInstance();
     heap->DisableParallelGC(thread);
-    heap->Reclaim(TriggerGCType::EDEN_GC);
+    heap->Reclaim(TriggerGCType::YOUNG_GC);
 }
 
 HWTEST_F_L0(GCTest, CollectGarbageTest003)
@@ -603,14 +602,14 @@ HWTEST_F_L0(GCTest, StartCalculationBeforeGCTest001)
     MemController *memController = new MemController(heap);
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
     memController->StartCalculationBeforeGC();
-    memController->StopCalculationAfterGC(TriggerGCType::EDEN_GC);
+    memController->StopCalculationAfterGC(TriggerGCType::YOUNG_GC);
 }
 
 HWTEST_F_L0(GCTest, StartCalculationBeforeGCTest002)
 {
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
     MemController *memController = new MemController(heap);
-    memController->StopCalculationAfterGC(TriggerGCType::EDEN_GC);
+    memController->StopCalculationAfterGC(TriggerGCType::YOUNG_GC);
 }
 
 HWTEST_F_L0(GCTest, DryTrunkExpandTest001)
@@ -659,4 +658,27 @@ HWTEST_F_L0(GCTest, InvokeAllocationInspectorTest001)
     counter->InvokeAllocationInspector(10000, 100, 100);
 }
 
+HWTEST_F_L0(GCTest, OldSpaceValidCheck)
+{
+    static constexpr size_t kLength = 10 * 1024;
+    static constexpr size_t kCount = 2;
+    static constexpr size_t kLimit = 380 * 1024 * 1024;
+    instance->GetJSOptions().SetEnableForceGC(false);
+    Heap *heap = const_cast<Heap *>(instance->GetHeap());
+    ObjectFactory *factory = heap->GetEcmaVM()->GetFactory();
+    auto array = factory->NewTaggedArray(kLength, JSTaggedValue::Hole(), MemSpaceType::OLD_SPACE);
+    heap->ShouldThrowOOMError(true);
+    heap->GetOldSpace()->IncreaseLiveObjectSize(kLimit);
+    for (size_t i = 0; i < kCount; i++) {
+        array = factory->NewTaggedArray(kLength, JSTaggedValue::Hole(), MemSpaceType::OLD_SPACE);
+        Region *objectRegion = Region::ObjectAddressToRange(*array);
+        bool inHeap = false;
+        heap->GetOldSpace()->EnumerateRegions([objectRegion, &inHeap](Region *each) {
+            if (objectRegion == each) {
+                inHeap = true;
+            }
+        });
+        EXPECT_TRUE(inHeap);
+    }
+}
 } // namespace panda::test

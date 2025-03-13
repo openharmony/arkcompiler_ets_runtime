@@ -17,12 +17,8 @@
 #include "ecmascript/compiler/bytecode_circuit_builder.h"
 #include "ecmascript/compiler/pgo_type/pgo_type_parser.h"
 #include "ecmascript/compiler/pass_manager.h"
-#include "ecmascript/jspandafile/program_object.h"
-#include "ecmascript/js_runtime_options.h"
 #include "ecmascript/module/module_resolver.h"
-#include "ecmascript/module/js_module_manager.h"
 #include "ecmascript/ohos/ohos_pgo_processor.h"
-#include "ecmascript/ohos/ohos_pkg_args.h"
 
 namespace panda::ecmascript::kungfu {
 
@@ -342,7 +338,16 @@ void AotCompilerPreprocessor::GeneratePGOTypes()
     for (uint32_t i = 0; i < fileInfos_.size(); ++i) {
         auto& collector = *bcInfoCollectors_[i];
         PGOTypeParser parser(profilerDecoder_, ptManager);
+        parser.Preproccessor(collector);
+    }
+
+    for (uint32_t i = 0; i < fileInfos_.size(); ++i) {
+        auto& collector = *bcInfoCollectors_[i];
+        PGOTypeParser parser(profilerDecoder_, ptManager);
         parser.CreatePGOType(collector);
+    }
+    if (vm_->GetJSOptions().IsEnableOptTrackField()) {
+        ptManager->MergeRepresentationForProtoTransition();
     }
 }
 

@@ -37,6 +37,8 @@ public:
 
     ~ICRuntime() = default;
 
+    bool GetHandler(const ObjectOperator &op, const JSHandle<JSHClass> &hclass,
+                    JSHandle<JSTaggedValue> &handlerValue);
     void UpdateLoadHandler(const ObjectOperator &op, JSHandle<JSTaggedValue> key, JSHandle<JSTaggedValue> receiver);
     void UpdateLoadStringHandler(JSHandle<JSTaggedValue> receiver);
     void UpdateTypedArrayHandler(JSHandle<JSTaggedValue> receiver);

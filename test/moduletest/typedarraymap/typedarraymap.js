@@ -48,4 +48,20 @@ for (let i = 0; i < 20; i++) {
     }
 }
 assert_equal(res3, true);
+
+{
+    let arr1 = new Uint8Array(512);
+    let i = 0;
+    while (i < 128) {
+        i++;
+    }
+    let arr2 = new Uint16Array(930);
+    function myFunc() {
+        let tmp = arr2[0];
+    }
+    arr2.__proto__ = arr1;
+    let newArr = arr2.map(myFunc);
+    assert_equal(newArr instanceof Uint8Array, true);
+}
+
 test_end();

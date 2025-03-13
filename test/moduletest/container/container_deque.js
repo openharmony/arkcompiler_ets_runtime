@@ -178,5 +178,22 @@ if (globalThis["ArkPrivate"] != undefined) {
         }
     }
     new C44(38062)
+
+    /*
+     * @tc.name: checkcontainerloadhclass
+     * @tc.desc: Test ContainersDequeStubBuilder::ForEach whether judge isHeapObject
+     *           before loading hClass.
+     * @tc.type: FUNC
+     * @tc.require: issueIBQ709
+     */
+    {
+        let v1 = new Deque(0);
+        let arr1 = [1];
+        try {
+            Reflect.apply(v1.forEach, 123, arr1);
+        } catch (e) {
+            print(e);
+        }
+    }
 }
 export let dequeRes = "Test Deque done";

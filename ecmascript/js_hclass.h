@@ -435,7 +435,7 @@ public:
     void Initialize(const JSThread *thread, uint32_t size, JSType type, uint32_t inlinedProps,
         const JSHandle<JSTaggedValue> &layout);
     static JSHandle<JSHClass> Clone(const JSThread *thread, const JSHandle<JSHClass> &jshclass,
-                                    bool withoutInlinedProperties = false, uint32_t incInlinedProperties = 0);
+                                    bool withInlinedProperties = false, uint32_t inlinedProps = 0);
     static JSHandle<JSHClass> CloneAndIncInlinedProperties(const JSThread *thread, const JSHandle<JSHClass> &jshclass,
                                                            uint32_t expectedOfProperties);
     static JSHandle<JSHClass> CloneWithoutInlinedProperties(const JSThread *thread, const JSHandle<JSHClass> &jshclass);
@@ -450,10 +450,15 @@ public:
     static JSHandle<JSHClass> SetPropertyOfObjHClass(const JSThread *thread, JSHandle<JSHClass> &jshclass,
                                                      const JSHandle<JSTaggedValue> &key,
                                                      const PropertyAttributes &attr,
-                                                     const Representation &rep);
+                                                     const Representation &rep,
+                                                     bool withInlinedProperties = false,
+                                                     uint32_t numInlinedProps = 0);
     static void PUBLIC_API AddProperty(const JSThread *thread, const JSHandle<JSObject> &obj,
                                        const JSHandle<JSTaggedValue> &key, const PropertyAttributes &attr,
                                        const Representation &rep = Representation::NONE);
+    
+    static void ProcessAotHClassTransition(const JSThread *thread, const JSHandle<JSHClass> &jshclass,
+                                           const JSHandle<JSHClass> newHClass, const JSTaggedValue &key);
 
     inline static void RestoreElementsKindToGeneric(JSHClass *newJsHClass);
 
@@ -489,6 +494,7 @@ public:
     static TransitionResult PUBLIC_API ConvertOrTransitionWithRep(const JSThread *thread,
         const JSHandle<JSObject> &receiver, const JSHandle<JSTaggedValue> &key, const JSHandle<JSTaggedValue> &value,
         PropertyAttributes &attr);
+    static void PUBLIC_API MergeRepresentation(const JSThread *thread, JSHClass *oldJsHClass, JSHClass *newJsHClass);
 
     static void UpdateFieldType(JSHClass *hclass, const PropertyAttributes &attr);
     static JSHClass *FindFieldOwnHClass(JSHClass *hclass, const PropertyAttributes &attr);
@@ -496,13 +502,17 @@ public:
     static void VisitTransitionAndUpdateObjSize(JSHClass *ownHClass, uint32_t finalInObjPropsNum);
     static uint32_t VisitTransitionAndFindMaxNumOfProps(JSHClass *ownHClass);
 
-    static JSHandle<JSTaggedValue> EnableProtoChangeMarker(const JSThread *thread, const JSHandle<JSHClass> &jshclass);
+    static JSHandle<JSTaggedValue> PUBLIC_API EnableProtoChangeMarker(
+        const JSThread *thread, const JSHandle<JSHClass> &jshclass);
     static JSHandle<JSTaggedValue> EnablePHCProtoChangeMarker(
         const JSThread *thread, const JSHandle<JSHClass> &protoClass);
 
     static void NotifyHclassChanged(const JSThread *thread, JSHandle<JSHClass> oldHclass, JSHandle<JSHClass> newHclass,
                                     JSTaggedValue addedKey = JSTaggedValue::Undefined());
-
+    
+    static void NotifyHClassChangedForNotFound(const JSThread *thread, const JSHandle<JSHClass> oldHclass,
+                                               const JSHandle<JSHClass> newHclass, const JSTaggedValue addedKey);
+    
     static void NotifyAccessorChanged(const JSThread *thread, JSHandle<JSHClass> hclass);
 
     static void RegisterOnProtoChain(const JSThread *thread, const JSHandle<JSHClass> &jshclass);
@@ -516,9 +526,11 @@ public:
 
     inline void UpdatePropertyMetaData(const JSThread *thread, const JSTaggedValue &key,
                                       const PropertyAttributes &metaData);
-
+    
+    template<bool isOnlyIncludeNotFound>
     static void MarkProtoChanged(const JSThread *thread, const JSHandle<JSHClass> &jshclass);
-
+    
+    template<bool isOnlyIncludeNotFound = false>
     static void NoticeThroughChain(const JSThread *thread, const JSHandle<JSHClass> &jshclass,
                                    JSTaggedValue addedKey = JSTaggedValue::Undefined());
 
@@ -2071,13 +2083,14 @@ public:
 
     static CString DumpJSType(JSType type);
 
+    static void CalculateMaxNumForChild(const HClassLayoutDesc* desc, uint32_t maxNum);
     static JSHandle<JSHClass> CreateRootHClassFromPGO(const JSThread* thread,
                                                       const HClassLayoutDesc* desc,
-                                                      uint32_t maxNum,
-                                                      bool isCache);
+                                                      uint32_t maxNum);
     static JSHandle<JSHClass> CreateRootHClassWithCached(const JSThread* thread,
                                                          const HClassLayoutDesc* desc,
-                                                         uint32_t maxNum);
+                                                         uint32_t literalLength,
+                                                         uint32_t maxPropsNum);
     static JSHandle<JSHClass> CreateChildHClassFromPGO(const JSThread* thread,
                                                        const JSHandle<JSHClass>& parent,
                                                        const HClassLayoutDesc* desc);

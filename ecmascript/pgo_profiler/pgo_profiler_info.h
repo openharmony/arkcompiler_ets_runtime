@@ -87,7 +87,6 @@ public:
                         const std::string &incoming) const;
 
     void ProcessToText(std::ofstream &stream) const;
-    bool ParseFromText(std::ifstream &stream);
 
     bool Checksum(const std::unordered_map<CString, uint32_t>& fileNameToChecksumMap,
                   const std::shared_ptr<PGOAbcFilePool>& abcFilePool_) const;
@@ -520,7 +519,6 @@ public:
     bool ParseFromBinary(void *buffer, PGOProfilerHeader *const header);
     void ProcessToBinary(const SaveTask *task, std::fstream &fileStream, PGOProfilerHeader *const header);
 
-    bool ParseFromText(std::ifstream &stream);
     void ProcessToText(std::ofstream &stream) const;
 
     const CMap<ProfileType, PGOMethodInfoMap *> &GetRecordInfos() const

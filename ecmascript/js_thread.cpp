@@ -619,17 +619,6 @@ JSHClass *JSThread::GetBuiltinExtraHClass(BuiltinTypeId type) const
     return glueData_.builtinHClassEntries_.entries[index].extraHClass;
 }
 
-JSHClass *JSThread::GetArrayInstanceHClass(ElementsKind kind, bool isPrototype) const
-{
-    auto iter = GetArrayHClassIndexMap().find(kind);
-    ASSERT(iter != GetArrayHClassIndexMap().end());
-    auto index = isPrototype ? static_cast<size_t>(iter->second.second) : static_cast<size_t>(iter->second.first);
-    auto exceptArrayHClass = GlobalConstants()->GetGlobalConstantObject(index);
-    auto exceptRecvHClass = JSHClass::Cast(exceptArrayHClass.GetTaggedObject());
-    ASSERT(exceptRecvHClass->IsJSArray());
-    return exceptRecvHClass;
-}
-
 JSHClass *JSThread::GetBuiltinPrototypeHClass(BuiltinTypeId type) const
 {
     size_t index = BuiltinHClassEntries::GetEntryIndex(type);
@@ -839,7 +828,13 @@ size_t JSThread::GetAsmStackLimit()
 {
 #if !defined(PANDA_TARGET_WINDOWS) && !defined(PANDA_TARGET_MACOS) && !defined(PANDA_TARGET_IOS)
     // js stack limit
-    size_t result = GetCurrentStackPosition() - EcmaParamConfiguration::GetDefalutStackSize();
+    uintptr_t currentStackPos = GetCurrentStackPosition();
+    size_t defaultStackSize = EcmaParamConfiguration::GetDefalutStackSize();
+    if (currentStackPos < defaultStackSize) {
+        LOG_FULL(FATAL) << "Too small stackSize to run jsvm"
+           << ", currentStackPos: " << reinterpret_cast<void *>(currentStackPos);
+    }
+    size_t result = currentStackPos - defaultStackSize;
     int ret = -1;
     void *stackAddr = nullptr;
     size_t size = 0;
@@ -901,15 +896,23 @@ size_t JSThread::GetAsmStackLimit()
 
     LOG_INTERPRETER(DEBUG) << "Current thread stack start: " << reinterpret_cast<void *>(threadStackStart);
     LOG_INTERPRETER(DEBUG) << "Used stack before js stack start: "
-                           << reinterpret_cast<void *>(threadStackStart - GetCurrentStackPosition());
+                           << reinterpret_cast<void *>(threadStackStart - currentStackPos);
     LOG_INTERPRETER(DEBUG) << "Current thread asm stack limit: " << reinterpret_cast<void *>(result);
-
+    uintptr_t currentThreadAsmStackLimit = result;
     // To avoid too much times of stack overflow checking, we only check stack overflow before push vregs or
     // parameters of variable length. So we need a reserved size of stack to make sure stack won't be overflowed
     // when push other data.
     result += EcmaParamConfiguration::GetDefaultReservedStackSize();
     if (threadStackStart <= result) {
-        LOG_FULL(FATAL) << "Too small stackSize to run jsvm";
+        LOG_FULL(FATAL) << "Too small stackSize to run jsvm"
+                        << ", CurrentStackPosition: " << reinterpret_cast<void *>(currentStackPos)
+                        << ", StackAddr: " << stackAddr << ", Size: " << reinterpret_cast<void *>(size)
+                        << ", ThreadStackLimit: " << reinterpret_cast<void *>(threadStackLimit)
+                        << ", ThreadStackStart: " << reinterpret_cast<void *>(threadStackStart)
+                        << ", Used stack before js stack start: "
+                        << reinterpret_cast<void *>(threadStackStart - currentStackPos)
+                        << ", Current thread asm stack limit: " << reinterpret_cast<void *>(currentThreadAsmStackLimit)
+                        << ", Result: " << reinterpret_cast<void *>(result);
     }
     return result;
 #else
@@ -1234,6 +1237,47 @@ void JSThread::TransferFromRunningToSuspended(ThreadState newState)
     ASSERT(currentThread == this);
     StoreSuspendedState(newState);
     CheckAndPassActiveBarrier();
+}
+
+void JSThread::UpdateStackInfo(void *stackInfo, StackInfoOpKind opKind)
+{
+    switch (opKind) {
+        case SwitchToSubStackInfo: {
+            StackInfo *subStackInfo = reinterpret_cast<StackInfo*>(stackInfo);
+            if (subStackInfo == nullptr) {
+                LOG_ECMA(ERROR) << "fatal error, subStack not exist";
+                break;
+            }
+            // process stackLimit
+            mainStackInfo_.stackLimit = glueData_.stackLimit_;
+            glueData_.stackLimit_ = subStackInfo->stackLimit;
+            // process lastLeaveFrame
+            mainStackInfo_.lastLeaveFrame = reinterpret_cast<uint64_t>(glueData_.leaveFrame_);
+            glueData_.leaveFrame_ =
+                reinterpret_cast<uint64_t *>(subStackInfo->lastLeaveFrame);
+            isInSubStack_ = true;
+            
+            LOG_ECMA(DEBUG) << "Switch to subStack: "
+                            << ", stack limit: " << glueData_.stackLimit_
+                            << ", stack lastLeaveFrame: " << glueData_.leaveFrame_;
+            break;
+        }
+        case SwitchToMainStackInfo: {
+            // process stackLimit
+            glueData_.stackLimit_ = mainStackInfo_.stackLimit;
+            // process lastLeaveFrame
+            glueData_.leaveFrame_ = reinterpret_cast<uint64_t *>(mainStackInfo_.lastLeaveFrame);
+            isInSubStack_ = false;
+
+            LOG_ECMA(DEBUG) << "Switch to mainStack: "
+                            << ", main stack limit: " << mainStackInfo_.stackLimit
+                            << ", main stack lastLeaveFrame: " << mainStackInfo_.lastLeaveFrame;
+            break;
+        }
+        default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
+            UNREACHABLE();
+    }
 }
 
 void JSThread::TransferToRunning()

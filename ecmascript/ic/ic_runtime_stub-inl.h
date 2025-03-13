@@ -236,7 +236,7 @@ ARK_INLINE JSTaggedValue ICRuntimeStub::StoreICWithHandler(JSThread *thread, JST
                 if (!ClassHelper::MatchFieldType(fieldType, value)) {
                     [[maybe_unused]] EcmaHandleScope handleScope(thread);
                     THROW_TYPE_ERROR_AND_RETURN((thread), GET_MESSAGE_STRING(SetTypeMismatchedSharedProperty),
-                                                JSTaggedValue::Exception()); 
+                                                JSTaggedValue::Exception());
                 }
                 if (value.IsTreeString()) {
                     [[maybe_unused]] EcmaHandleScope handleScope(thread);
@@ -304,6 +304,9 @@ JSTaggedValue ICRuntimeStub::StoreWithTS(JSThread *thread, JSTaggedValue receive
     ASSERT(handler.IsStoreAOTHandler());
     StoreAOTHandler *storeAOTHandler = StoreAOTHandler::Cast(handler.GetTaggedObject());
     auto cellValue = storeAOTHandler->GetProtoCell();
+    if (cellValue == JSTaggedValue::Undefined()) {
+        return JSTaggedValue::Hole();
+    }
     ASSERT(cellValue.IsProtoChangeMarker());
     ProtoChangeMarker *cell = ProtoChangeMarker::Cast(cellValue.GetTaggedObject());
     if (cell->GetHasChanged()) {
@@ -339,6 +342,10 @@ void ICRuntimeStub::StoreWithTransition(JSThread *thread, JSObject *receiver, JS
         handlerInfo = JSTaggedValue::UnwrapToUint64(transitionHandler->GetHandlerInfo());
     }
     JSHandle<JSHClass> newHClassHandle(thread, newHClass);
+    JSHandle<JSHClass> oldHClassHandle(thread, receiver->GetJSHClass());
+    if (newHClassHandle->IsPrototype()) {
+        newHClassHandle->SetProtoChangeDetails(thread, oldHClassHandle->GetProtoChangeDetails());
+    }
     JSHandle<JSObject> objHandle(thread, receiver);
     ElementsKind oldKind = receiver->GetJSHClass()->GetElementsKind();
     JSHClass::RestoreElementsKindToGeneric(newHClass);
@@ -384,6 +391,9 @@ JSTaggedValue ICRuntimeStub::StoreTransWithProto(JSThread *thread, JSObject *rec
     ASSERT(!receiver->GetClass()->IsJSShared());
     TransWithProtoHandler *transWithProtoHandler = TransWithProtoHandler::Cast(handler.GetTaggedObject());
     auto cellValue = transWithProtoHandler->GetProtoCell();
+    if (cellValue == JSTaggedValue::Undefined()) {
+        return JSTaggedValue::Hole();
+    }
     ASSERT(cellValue.IsProtoChangeMarker());
     ProtoChangeMarker *cell = ProtoChangeMarker::Cast(cellValue.GetTaggedObject());
     if (cell->GetHasChanged()) {
@@ -446,15 +456,28 @@ JSTaggedValue ICRuntimeStub::LoadPrototype(JSThread *thread, JSTaggedValue recei
     INTERPRETER_TRACE(thread, LoadPrototype);
     ASSERT(handler.IsPrototypeHandler());
     PrototypeHandler *prototypeHandler = PrototypeHandler::Cast(handler.GetTaggedObject());
+    auto holder = prototypeHandler->GetHolder();
     if (!receiver.IsJSShared()) {
         auto cellValue = prototypeHandler->GetProtoCell();
+        if (cellValue == JSTaggedValue::Undefined()) {
+            return JSTaggedValue::Hole();
+        }
         ASSERT(cellValue.IsProtoChangeMarker());
         ProtoChangeMarker *cell = ProtoChangeMarker::Cast(cellValue.GetTaggedObject());
         if (cell->GetHasChanged()) {
             return JSTaggedValue::Hole();
         }
+
+        // For "Not Found" case (holder equals Undefined()),
+        // we should ensure that both GetNotFoundHasChanged() and GetHasChanged() return false.
+        if (holder == JSTaggedValue::Undefined()) {
+            if (cell->GetNotFoundHasChanged()) {
+                return JSTaggedValue::Hole();
+            }
+            return JSTaggedValue::Undefined();
+        }
     }
-    auto holder = prototypeHandler->GetHolder();
+
     JSTaggedValue handlerInfo = prototypeHandler->GetHandlerInfo();
     return LoadICWithHandler(thread, receiver, holder, handlerInfo);
 }
@@ -472,9 +495,13 @@ ARK_INLINE JSTaggedValue ICRuntimeStub::LoadICWithHandler(JSThread *thread, JSTa
         if (HandlerBase::IsString(handlerInfo) || HandlerBase::IsNumber(handlerInfo)) {
             return LoadFromField(JSObject::Cast(holder.GetTaggedObject()), handlerInfo);
         }
+
+        // For the special "Not Found" case we may generate ic by "LoadHandler::LoadProperty".
+        // In this situation, you can trust ic without ChangeMarker.
         if (HandlerBase::IsNonExist(handlerInfo)) {
             return JSTaggedValue::Undefined();
         }
+
         if (HandlerBase::IsStringLength(handlerInfo)) {
             return JSTaggedNumber((EcmaStringAccessor(EcmaString::Cast(holder)).GetLength()));
         }
@@ -609,6 +636,9 @@ JSTaggedValue ICRuntimeStub::StoreElement(JSThread *thread, JSObject *receiver, 
         }
         PrototypeHandler *prototypeHandler = PrototypeHandler::Cast(handler.GetTaggedObject());
         auto cellValue = prototypeHandler->GetProtoCell();
+        if (cellValue == JSTaggedValue::Undefined()) {
+            return JSTaggedValue::Hole();
+        }
         ASSERT(cellValue.IsProtoChangeMarker());
         ProtoChangeMarker *cell = ProtoChangeMarker::Cast(cellValue.GetTaggedObject());
         if (cell->GetHasChanged()) {

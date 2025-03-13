@@ -67,11 +67,14 @@ static constexpr size_t DEFAULT_REGION_MASK = DEFAULT_REGION_SIZE - 1;
 static constexpr size_t DEFAULT_MARK_STACK_SIZE = 4_KB;
 
 static constexpr double MIN_OBJECT_SURVIVAL_RATE = 0.75;
+static constexpr double STRICT_OBJECT_SURVIVAL_RATE = 0.9;
 static constexpr double MIN_SENSITIVE_OBJECT_SURVIVAL_RATE = 0.9;
 static constexpr double GROW_OBJECT_SURVIVAL_RATE = 0.8;
 static constexpr double SHRINK_OBJECT_SURVIVAL_RATE = 0.2;
+static constexpr double MIN_GC_INTERVAL_MS = 1000;
 static constexpr double LOW_ALLOCATION_SPEED_PER_MS = 1000;
 static constexpr double DEFAULT_CAPACITY_RATE = 0.6;
+static constexpr double HPPGC_NEWSPACE_SIZE_RATIO = 0.5;
 // Objects which are larger than half of the region size are huge objects.
 // Regular objects will be allocated on regular regions and migrated on spaces.
 // They will never be moved to huge object space. So we take half of a regular

@@ -99,8 +99,6 @@ bool EcmaContext::Initialize()
         *hClassHandle,
         GlobalEnv::SIZE,
         JSType::GLOBAL_ENV);
-    auto arrayHClassIndexMaps = Elements::InitializeHClassMap();
-    thread_->SetArrayHClassIndexMap(arrayHClassIndexMaps);
     JSHandle<GlobalEnv> globalEnv = factory_->NewGlobalEnv(*globalEnvClass);
     globalEnv->Init(thread_);
     globalEnv_ = globalEnv.GetTaggedValue();
@@ -109,8 +107,6 @@ bool EcmaContext::Initialize()
     thread_->SetEnableLazyBuiltins(builtinsLazyEnabled);
     builtins.Initialize(globalEnv, thread_, builtinsLazyEnabled);
 
-    InitializeDefaultLocale();
-    InitializeDefaultCompareStringsOption();
     SetupRegExpResultCache();
     SetupRegExpGlobalResult();
     SetupNumberToStringResultCache();
@@ -124,7 +120,7 @@ bool EcmaContext::Initialize()
     if (vm_->GetJSOptions().GetTypedOpProfiler()) {
         typedOpProfiler_ = new TypedOpProfiler();
     }
-    if (vm_->GetJSOptions().EnableModuleLog() && !vm_->GetJSOptions().IsWorker()) {
+    if (vm_->GetJSOptions().EnableModuleLog()) {
         moduleLogger_ = new ModuleLogger(vm_);
     }
     functionProtoTransitionTable_ = new FunctionProtoTransitionTable(thread_);
@@ -162,18 +158,6 @@ void EcmaContext::InitializeEcmaScriptRunStat()
     if (UNLIKELY(runtimeStat_ == nullptr)) {
         LOG_FULL(FATAL) << "alloc runtimeStat_ failed";
         UNREACHABLE();
-    }
-}
-
-void EcmaContext::ClearIcuCache(JSThread *thread)
-{
-    for (uint32_t i = 0; i < static_cast<uint32_t>(IcuFormatterType::ICU_FORMATTER_TYPE_COUNT); i++) {
-        auto &icuFormatter = icuObjCache_[i];
-        NativePointerCallback deleteEntry = icuFormatter.deleteEntry;
-        if (deleteEntry != nullptr) {
-            deleteEntry(thread->GetEnv(), icuFormatter.icuObj, vm_);
-        }
-        icuFormatter = EcmaContext::IcuFormatter{};
     }
 }
 
@@ -230,10 +214,6 @@ EcmaContext::~EcmaContext()
             jsPandaFile->DeleteParsedConstpoolVM(vm_);
         }
     }
-    ClearDefaultLocale();
-    ClearDefaultComapreStringsOption();
-    // clear icu cache
-    ClearIcuCache(thread_);
 
     if (runtimeStat_ != nullptr) {
         vm_->GetChunk()->Delete(runtimeStat_);
@@ -298,10 +278,6 @@ EcmaContext::~EcmaContext()
     }
     // clear join stack
     joinStack_.clear();
-
-    for (auto v : stringifyCache_) {
-        v.clear();
-    }
 }
 
 JSTaggedValue EcmaContext::InvokeEcmaAotEntrypoint(JSHandle<JSFunction> mainFunc, JSHandle<JSTaggedValue> &thisArg,
@@ -348,7 +324,7 @@ Expected<JSTaggedValue, bool> EcmaContext::CommonInvokeEcmaEntrypoint(const JSPa
     }
     ModuleLogger *moduleLogger = GetModuleLogger();
     if (moduleLogger != nullptr) {
-        moduleLogger->SetStartTime(CString(entryPoint));
+        moduleLogger->SetStartTime(entry);
     }
     if (jsPandaFile->IsModule(recordInfo)) {
         global = undefined;
@@ -377,7 +353,7 @@ Expected<JSTaggedValue, bool> EcmaContext::CommonInvokeEcmaEntrypoint(const JSPa
     if (jsPandaFile->IsCjs(recordInfo)) {
         CJSExecution(func, global, jsPandaFile, entryPoint);
         if (moduleLogger != nullptr) {
-            moduleLogger->SetEndTime(CString(entryPoint));
+            moduleLogger->SetEndTime(entry);
         }
     } else {
         if (aotFileManager_->IsLoadMain(jsPandaFile, entry)) {
@@ -400,7 +376,7 @@ Expected<JSTaggedValue, bool> EcmaContext::CommonInvokeEcmaEntrypoint(const JSPa
             result = EcmaInterpreter::Execute(info);
         }
         if (moduleLogger != nullptr) {
-            moduleLogger->SetEndTime(CString(entryPoint));
+            moduleLogger->SetEndTime(entry);
         }
 
         if (!thread_->HasPendingException() && IsStaticImport(executeType)) {
@@ -490,7 +466,6 @@ void EcmaContext::CJSExecution(JSHandle<JSFunction> &func, JSHandle<JSTaggedValu
     RequireManager::InitializeCommonJS(thread_, cjsInfo);
     if (aotFileManager_->IsLoadMain(jsPandaFile, entryPoint.data())) {
         EcmaRuntimeStatScope runtimeStateScope(vm_);
-        isAotEntry_ = true;
         InvokeEcmaAotEntrypoint(func, thisArg, jsPandaFile, entryPoint, &cjsInfo);
     } else {
         // Execute main function
@@ -669,7 +644,7 @@ void EcmaContext::GrowUnsharedConstpoolArray(int32_t index)
 
 void EcmaContext::ResizeUnsharedConstpoolArray(int32_t oldCapacity, int32_t minCapacity)
 {
-    int32_t newCapacity = oldCapacity << 1;
+    int32_t newCapacity = oldCapacity * 2; // 2: Double the value
     if (newCapacity - minCapacity < 0) {
         newCapacity = minCapacity;
     }
@@ -735,7 +710,6 @@ JSHandle<ConstantPool> EcmaContext::FindOrCreateConstPool(const JSPandaFile *jsP
         JSHandle<ConstantPool> newConstpool = ConstantPool::CreateUnSharedConstPool(vm_, jsPandaFile, id);
         JSHandle<ConstantPool> newSConstpool;
         if (jsPandaFile->IsLoadedAOT()) {
-            // worker thread is not active.
             AotConstantpoolPatcher::SetObjectFunctionFromConstPool(thread_, newConstpool);
             newSConstpool = ConstantPool::CreateSharedConstPoolForAOT(vm_, newConstpool, index);
         } else {
@@ -747,7 +721,8 @@ JSHandle<ConstantPool> EcmaContext::FindOrCreateConstPool(const JSPandaFile *jsP
     } else if (jsPandaFile->IsLoadedAOT()) {
         // For aot, after getting the cached shared constpool,
         // worker thread need to create and bind the correspoding unshared constpool.
-        FindOrCreateUnsharedConstpool(constpool);
+        JSHandle<ConstantPool> newConstpool = JSHandle<ConstantPool>(thread_, FindOrCreateUnsharedConstpool(constpool));
+        AotConstantpoolPatcher::SetObjectFunctionFromConstPool(thread_, newConstpool);
     }
     return JSHandle<ConstantPool>(thread_, constpool);
 }
@@ -1025,9 +1000,6 @@ void EcmaContext::Iterate(RootVisitor &v)
     }
     if (!microJobQueue_.IsHole()) {
         v.VisitRoot(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&microJobQueue_)));
-    }
-    if (!pointerToIndexDictionary_.IsHole()) {
-        v.VisitRoot(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&pointerToIndexDictionary_)));
     }
 
     if (functionProtoTransitionTable_) {

@@ -42,6 +42,7 @@ EmptyCatch();
 CallSmallFunc();
 ArkTools.jitCompileAsync(EmptyCatch);
 ArkTools.jitCompileAsync(CallSmallFunc);
+ArkTools.waitJitCompileFinish(EmptyCatch);
 var ret = ArkTools.waitJitCompileFinish(CallSmallFunc);
 for (let j = 0; j < 10; j++) {
     EmptyCatch()

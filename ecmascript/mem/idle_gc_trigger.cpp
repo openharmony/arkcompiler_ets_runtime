@@ -30,7 +30,8 @@ bool IdleGCTrigger::NotifyLooperIdleStart([[maybe_unused]] int64_t timestamp, [[
     LOG_ECMA_IF(optionalLogEnabled_, DEBUG) << "IdleGCTrigger: recv once looper idle time";
     idleState_.store(true);
     if (heap_->GetJSThread()->IsMarkFinished() &&
-        heap_->GetConcurrentMarker()->IsTriggeredConcurrentMark()) {
+        heap_->GetConcurrentMarker()->IsTriggeredConcurrentMark() &&
+        thread_->IsReadyToSharedConcurrentMark()) {
         return PostIdleGCTask(TRIGGER_IDLE_GC_TYPE::LOCAL_REMARK);
     }
     if (!IsPossiblePostGCTask(TRIGGER_IDLE_GC_TYPE::LOCAL_CONCURRENT_FULL_MARK) ||
@@ -242,7 +243,7 @@ void IdleGCTrigger::TryTriggerIdleGC(TRIGGER_IDLE_GC_TYPE gcType)
         case TRIGGER_IDLE_GC_TYPE::SHARED_FULL_GC:
             if (CheckIdleOrHintFullGC<SharedHeap>(sHeap_) && !sHeap_->NeedStopCollection()) {
                 LOG_GC(INFO) << "IdleGCTrigger: trigger " << GetGCTypeName(gcType);
-                sHeap_->CollectGarbage<TriggerGCType::SHARED_FULL_GC, GCReason::IDLE>(thread_);
+                sHeap_->CompressCollectGarbageNotWaiting<GCReason::IDLE>(thread_);
             }
             break;
         case TRIGGER_IDLE_GC_TYPE::LOCAL_CONCURRENT_YOUNG_MARK:

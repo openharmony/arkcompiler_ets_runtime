@@ -19,6 +19,25 @@
 #include "ecmascript/base/builtins_base.h"
 #include "ecmascript/ecma_runtime_call_info.h"
 
+// List of functions in TreeSet.prototype, excluding the constructor and '@@' properties.
+// V(name, func, length, stubIndex)
+// where ContainersTreeSet::func refers to the native implementation of TreeSet.prototype[name].
+#define CONTAINER_TREESET_PROTOTYPE_FUNCTIONS(V)                                \
+    V("add",                    Add,                1,          INVALID)        \
+    V("remove",                 Remove,             1,          INVALID)        \
+    V("has",                    Has,                1,          INVALID)        \
+    V("getFirstValue",          GetFirstValue,      0,          INVALID)        \
+    V("getLastValue",           GetLastValue,       0,          INVALID)        \
+    V("clear",                  Clear,              0,          INVALID)        \
+    V("getLowerValue",          GetLowerValue,      1,          INVALID)        \
+    V("getHigherValue",         GetHigherValue,     1,          INVALID)        \
+    V("popFirst",               PopFirst,           0,          INVALID)        \
+    V("popLast",                PopLast,            0,          INVALID)        \
+    V("isEmpty",                IsEmpty,            0,          INVALID)        \
+    V("values",                 Values,             0,          INVALID)        \
+    V("forEach",                ForEach,            2,          INVALID)        \
+    V("entries",                Entries,            0,          INVALID)
+
 namespace panda::ecmascript::containers {
 /**
  * High performance container interface in jsapi.
@@ -50,6 +69,21 @@ public:
     static JSTaggedValue Values(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue ForEach(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue Entries(EcmaRuntimeCallInfo *argv);
+
+    // Excluding the constructor and '@@' internal properties.
+    static Span<const base::BuiltinFunctionEntry> GetTreeSetPrototypeFunctions()
+    {
+        return Span<const base::BuiltinFunctionEntry>(TREESET_PROTOTYPE_FUNCTIONS);
+    }
+
+private:
+#define CONTAINER_TREESET_FUNCTION_ENTRY(name, method, length, id) \
+    base::BuiltinFunctionEntry::Create(name, ContainersTreeSet::method, length, kungfu::BuiltinsStubCSigns::id),
+
+    static constexpr std::array TREESET_PROTOTYPE_FUNCTIONS = {
+        CONTAINER_TREESET_PROTOTYPE_FUNCTIONS(CONTAINER_TREESET_FUNCTION_ENTRY)
+    };
+#undef CONTAINER_TREESET_FUNCTION_ENTRY
 };
 }  // namespace panda::ecmascript::containers
 #endif  // ECMASCRIPT_CONTAINERS_CONTAINERS_TREESET_H_

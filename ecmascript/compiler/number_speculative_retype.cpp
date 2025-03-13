@@ -15,6 +15,7 @@
 
 #include "ecmascript/compiler/number_speculative_retype.h"
 
+#include "ecmascript/compiler/circuit_arg_indices.h"
 #include "ecmascript/compiler/circuit_builder-inl.h"
 
 namespace panda::ecmascript::kungfu {
@@ -272,10 +273,11 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
         case OpCode::MAP_ENTRIES:
         case OpCode::SET_ENTRIES:
         case OpCode::SET_VALUES:
-        case OpCode::STRING_SLICE:
+            return VisitOthersWithoutConvert(gate);
         case OpCode::STRING_SUB_STR:
         case OpCode::STRING_SUB_STRING:
-            return VisitOthersWithoutConvert(gate);
+        case OpCode::STRING_SLICE:
+            return VisitString(gate);
         case OpCode::ARRAY_INCLUDES_INDEXOF:
             return VisitArrayIncludesIndexOf(gate);
         case OpCode::STRING_CHAR_CODE_AT:
@@ -2158,8 +2160,9 @@ GateRef NumberSpeculativeRetype::VisitDateNow(GateRef gate)
 
 GateRef NumberSpeculativeRetype::VisitArrayIncludesIndexOf(GateRef gate)
 {
+    using Indices = CircuitArgIndices::ArrayIncludesIndexOf;
     Environment env(gate, circuit_, &builder_);
-    GateRef callID = acc_.GetValueIn(gate, 3);
+    GateRef callID = acc_.GetValueIn(gate, Indices::CALL_ID);
     BuiltinsStubCSigns::ID id = static_cast<BuiltinsStubCSigns::ID>(acc_.GetConstantValue(callID));
     if (IsRetype()) {
         if (id == BuiltinsStubCSigns::ID::ArrayIncludes) {
@@ -2168,8 +2171,8 @@ GateRef NumberSpeculativeRetype::VisitArrayIncludesIndexOf(GateRef gate)
             return SetOutputType(gate, GateType::IntType());
         }
     }
-    GateRef findElement = acc_.GetValueIn(gate, 2);
-    acc_.ReplaceValueIn(gate, ConvertToTagged(findElement), 2); //2:find element position
+    GateRef findElement = acc_.GetValueIn(gate, Indices::TARGET);
+    acc_.ReplaceValueIn(gate, ConvertToTagged(findElement), Indices::TARGET);
     acc_.ReplaceDependIn(gate, builder_.GetDepend());
     acc_.ReplaceStateIn(gate, builder_.GetState());
     return Circuit::NullGate();
@@ -2186,6 +2189,26 @@ GateRef NumberSpeculativeRetype::VisitStringCharCodeAt(GateRef gate)
         acc_.ReplaceValueIn(gate, ConvertToTagged(thisValue), 0);
         GateRef pos = acc_.GetValueIn(gate, 1);
         acc_.ReplaceValueIn(gate, CheckAndConvertToInt32(pos, GateType::IntType()), 1);
+        acc_.ReplaceStateIn(gate, builder_.GetState());
+        acc_.ReplaceDependIn(gate, builder_.GetDepend());
+    }
+    return Circuit::NullGate();
+}
+
+GateRef NumberSpeculativeRetype::VisitString(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    if (IsRetype()) {
+        return SetOutputType(gate, GateType::AnyType());
+    }
+    if (IsConvert()) {
+        GateRef thisValue = acc_.GetValueIn(gate, 0);
+        acc_.ReplaceValueIn(gate, ConvertToTagged(thisValue), 0);
+        auto argc = acc_.GetNumValueIn(gate);
+        for (size_t i = 1; i < argc; i++) {
+            GateRef arg = acc_.GetValueIn(gate, i);
+            acc_.ReplaceValueIn(gate, CheckAndConvertToInt32(arg, GateType::IntType()), i);
+        }
         acc_.ReplaceStateIn(gate, builder_.GetState());
         acc_.ReplaceDependIn(gate, builder_.GetDepend());
     }

@@ -518,9 +518,9 @@ void JITProfiler::HandleLoadTypePrototypeHandler(ApEntityId &abcId, int32_t &bcO
     if (cell->GetHasChanged()) {
         return;
     }
-    auto holder = prototypeHandler->GetHolder();
-    auto holderHClass = holder.GetTaggedObject()->GetClass();
     JSTaggedValue handlerInfoVal = prototypeHandler->GetHandlerInfo();
+    auto accessorMethodId = prototypeHandler->GetAccessorMethodId();
+    auto accessor = prototypeHandler->GetAccessorJSFunction();
     if (!handlerInfoVal.IsInt()) {
         return;
     }
@@ -528,8 +528,8 @@ void JITProfiler::HandleLoadTypePrototypeHandler(ApEntityId &abcId, int32_t &bcO
     if (HandlerBase::IsNonExist(handlerInfo)) {
         return;
     }
-    auto accessorMethodId = prototypeHandler->GetAccessorMethodId();
-    auto accessor = prototypeHandler->GetAccessorJSFunction();
+    auto holder = prototypeHandler->GetHolder();
+    auto holderHClass = holder.GetTaggedObject()->GetClass();
     if (accessor.IsJSFunction()) {
         auto accessorFunction = JSFunction::Cast(accessor);
         auto methodId = Method::Cast(accessorFunction->GetMethod())->GetMethodId().GetOffset();
@@ -885,7 +885,11 @@ JSTaggedValue JITProfiler::TryFindKeyInPrototypeChain(TaggedObject *currObj, JSH
                 return JSTaggedValue(currHC);
             }
         }
-        currObj = currHC->GetProto().GetTaggedObject();
+        auto proto = currHC->GetProto();
+        if (!proto.IsHeapObject()) {
+            return JSTaggedValue::Undefined();
+        }
+        currObj = proto.GetTaggedObject();
         if (JSTaggedValue(currObj).IsUndefinedOrNull()) {
             break;
         }

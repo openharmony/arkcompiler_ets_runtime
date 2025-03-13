@@ -1297,9 +1297,8 @@ void AsmInterpreterCall::ASMFastWriteBarrier(ExtendedAssembler* assembler)
     // value is not share:  0x08, 0x09, [0x0A, 0x11],                         =>  valueNotShare
     // value is young :           0x09                                        =>  needCallNotShare
     // value is not young : 0x08,       [0x0A, 0x11],                         =>  checkMark
-    ASSERT(GENERAL_YOUNG_BEGIN <= IN_YOUNG_SPACE && IN_YOUNG_SPACE < SHARED_SPACE_BEGIN &&
-        SHARED_SPACE_BEGIN <= SHARED_SWEEPABLE_SPACE_BEGIN && SHARED_SWEEPABLE_SPACE_END < IN_SHARED_READ_ONLY_SPACE &&
-        IN_SHARED_READ_ONLY_SPACE == HEAP_SPACE_END);
+    ASSERT(IN_YOUNG_SPACE < SHARED_SPACE_BEGIN && SHARED_SPACE_BEGIN <= SHARED_SWEEPABLE_SPACE_BEGIN &&
+           SHARED_SWEEPABLE_SPACE_END < IN_SHARED_READ_ONLY_SPACE && IN_SHARED_READ_ONLY_SPACE == HEAP_SPACE_END);
     __ BindAssemblerStub(RTSTUB_ID(ASMFastWriteBarrier));
     Label needCall;
     Label checkMark;
@@ -1391,23 +1390,6 @@ void AsmInterpreterCall::ASMFastWriteBarrier(ExtendedAssembler* assembler)
     {
         ASMFastSharedWriteBarrier(assembler, needCall);
     }
-}
-
-// ASMWriteBarrierWithEden(GateRef glue, GateRef obj, GateRef offset, GateRef value)
-// c calling convention, but preserve all general registers except %x15
-// %x0 - glue
-// %x1 - obj
-// %x2 - offset
-// %x3 - value
-void AsmInterpreterCall::ASMWriteBarrierWithEden(ExtendedAssembler* assembler)
-{
-    __ BindAssemblerStub(RTSTUB_ID(ASMWriteBarrierWithEden));
-    // Just for compitability, not a fast implement, should be refactored when enable EdenBarrier.
-    int32_t EdenBarrierOffset = static_cast<int32_t>(JSThread::GlueData::GetCOStubEntriesOffset(false)) +
-    kungfu::CommonStubCSigns::SetValueWithEdenBarrier * FRAME_SLOT_SIZE;
-    __ Mov(X15, EdenBarrierOffset);
-    __ Ldr(X15, MemoryOperand(X0, Register(X15), UXTX));
-    PreserveMostCall(assembler);
 }
 
 // %x0 - glue

@@ -598,6 +598,30 @@ JSTaggedValue BuiltinsArkTools::ClearTypedOpProfiler(EcmaRuntimeCallInfo *info)
     return JSTaggedValue::Undefined();
 }
 
+JSTaggedValue BuiltinsArkTools::GetAPIVersion(EcmaRuntimeCallInfo *info)
+{
+    ASSERT(info);
+    JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+
+    return JSTaggedValue(thread->GetEcmaVM()->GetVMAPIVersion());
+}
+
+JSTaggedValue BuiltinsArkTools::SetAPIVersion(EcmaRuntimeCallInfo *info)
+{
+    ASSERT(info);
+    JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+
+    JSHandle<JSTaggedValue> value = GetCallArg(info, 0);
+    if (value->IsInt()) {
+        thread->GetEcmaVM()->SetVMAPIVersion(value->GetInt());
+    }
+    return JSTaggedValue::Undefined();
+}
+
 JSTaggedValue BuiltinsArkTools::GetElementsKind(EcmaRuntimeCallInfo *info)
 {
     ASSERT(info);
@@ -608,7 +632,7 @@ JSTaggedValue BuiltinsArkTools::GetElementsKind(EcmaRuntimeCallInfo *info)
     JSHandle<JSTaggedValue> obj = GetCallArg(info, 0);
     JSHClass *hclass = obj->GetTaggedObject()->GetClass();
     ElementsKind kind = hclass->GetElementsKind();
-    return JSTaggedValue(static_cast<uint32_t>(kind));
+    return JSTaggedValue(Elements::ToUint(kind));
 }
 
 JSTaggedValue BuiltinsArkTools::IsRegExpReplaceDetectorValid(EcmaRuntimeCallInfo *info)
@@ -1452,6 +1476,7 @@ JSTaggedValue BuiltinsArkTools::WaitJitCompileFinish(EcmaRuntimeCallInfo *info)
     }
     while (!jsFunction->GetMachineCode().IsMachineCodeObject()) {
         // just spin check
+        thread->SetInstallMachineCode(true);
         thread->CheckSafepoint();
     }
     return JSTaggedValue::True();
@@ -1467,6 +1492,7 @@ JSTaggedValue BuiltinsArkTools::WaitAllJitCompileFinish(EcmaRuntimeCallInfo *inf
         return JSTaggedValue::False();
     }
     while (Jit::GetInstance()->GetRunningTaskCnt(thread->GetEcmaVM())) {
+        thread->SetInstallMachineCode(true);
         thread->CheckSafepoint();
     }
     thread->SetPGOProfilerEnable(false);

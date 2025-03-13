@@ -61,8 +61,7 @@ namespace panda::ecmascript {
     V(CallContainersArgs2ToBaseline)         \
     V(CallContainersArgs3ToBaseline)         \
     V(CallReturnWithArgvToBaseline)          \
-    V(ASMFastWriteBarrier)                   \
-    V(ASMWriteBarrierWithEden)
+    V(ASMFastWriteBarrier)
 
 #define BASELINE_TRAMPOLINE_LIST(V)                   \
     V(CallArg0AndCheckToBaseline)                     \
@@ -147,10 +146,8 @@ namespace panda::ecmascript {
     V(GetActualArgvNoGC)                       \
     V(InsertOldToNewRSet)                      \
     V(InsertLocalToShareRSet)                  \
-    V(InsertNewToEdenRSet)                     \
     V(SetBitAtomic)                            \
     V(MarkingBarrier)                          \
-    V(MarkingBarrierWithEden)                  \
     V(SharedGCMarkingBarrier)                  \
     V(DoubleToInt)                             \
     V(SaturateTruncDoubleToInt32)           \
@@ -191,7 +188,8 @@ namespace panda::ecmascript {
     V(FinishObjSizeTracking)                   \
     V(NumberHelperStringToDouble)              \
     V(GetStringToListCacheArray)               \
-    V(FastArraySort)                           \
+    V(IntLexicographicCompare)                 \
+    V(DoubleLexicographicCompare)              \
     V(FastArraySortString)                     \
     V(StringToNumber)                          \
     V(StringGetStart)                          \
@@ -215,7 +213,7 @@ namespace panda::ecmascript {
     V(AllocateInSOld)                           \
     V(AllocateInSNonMovable)                    \
     V(TypedArraySpeciesCreate)                  \
-    V(TypedArraySpeciesCreateForSubArray)       \
+    V(TypedArrayCreateSameType)                 \
     V(CallInternalGetter)                       \
     V(CallInternalSetter)                       \
     V(CallGetPrototype)                         \
@@ -479,6 +477,10 @@ namespace panda::ecmascript {
     V(FunctionDefineOwnProperty)                \
     V(DefineOwnProperty)                        \
     V(AOTEnableProtoChangeMarker)               \
+    V(JSProxyHasProperty)                       \
+    V(JSTypedArrayHasProperty)                  \
+    V(ModuleNamespaceHasProperty)               \
+    V(JSObjectHasProperty)                      \
     V(HasProperty)                              \
     V(DumpObject)                               \
     V(TryGetInternString)                       \

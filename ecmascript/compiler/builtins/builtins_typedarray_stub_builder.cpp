@@ -445,6 +445,8 @@ void BuiltinsTypedArrayStubBuilder::Reverse(GateRef glue, GateRef thisValue, [[m
     Label isFastTypedArray(env);
     Label defaultConstr(env);
     Label notDetached(env);
+    Label notEmpty(env);
+    Label writeResult(env);
 
     BRANCH(IsEcmaObject(thisValue), &ecmaObj, slowPath);
     Bind(&ecmaObj);
@@ -456,7 +458,12 @@ void BuiltinsTypedArrayStubBuilder::Reverse(GateRef glue, GateRef thisValue, [[m
     GateRef buffer = GetViewedArrayBuffer(thisValue);
     BRANCH(IsDetachedBuffer(buffer), slowPath, &notDetached);
     Bind(&notDetached);
+    GateRef arrLen = GetArrayLength(thisValue);
+    BRANCH(Int32Equal(arrLen, Int32(0)), &writeResult, &notEmpty);
+    Bind(&notEmpty);
     CallNGCRuntime(glue, RTSTUB_ID(ReverseTypedArray), {thisValue});
+    Jump(&writeResult);
+    Bind(&writeResult);
     result->WriteVariable(thisValue);
     Jump(exit);
 }
@@ -1452,7 +1459,7 @@ void BuiltinsTypedArrayStubBuilder::Filter(GateRef glue, GateRef thisValue, Gate
                             Bind(&retValueIsTrue);
                             {
                                 arrayStubBuilder.SetValueWithElementsKind(glue, kept, kValue, *newArrayLen,
-                                    Boolean(true), Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                                    Boolean(true), Int32(Elements::ToUint(ElementsKind::NONE)));
                                 newArrayLen = Int32Add(*newArrayLen, Int32(1));
                                 Jump(&loopEnd);
                             }
@@ -1469,6 +1476,7 @@ void BuiltinsTypedArrayStubBuilder::Filter(GateRef glue, GateRef thisValue, Gate
             NewObjectStubBuilder newBuilder(this);
             newBuilder.SetParameters(glue, 0);
             GateRef newArray = newBuilder.NewTypedArray(glue, thisValue, arrayType, TruncInt64ToInt32(*newArrayLen));
+            GateRef newArrayType = GetObjectType(LoadHClass(newArray));
             BRANCH(HasPendingException(glue), &hasException2, &notHasException2);
             Bind(&hasException2);
             {
@@ -1488,7 +1496,7 @@ void BuiltinsTypedArrayStubBuilder::Filter(GateRef glue, GateRef thisValue, Gate
                 Bind(&next2);
                 {
                     GateRef kValue = arrayStubBuilder.GetTaggedValueWithElementsKind(glue, kept, *i);
-                    StoreTypedArrayElement(glue, newArray, ZExtInt32ToInt64(*i), kValue, arrayType);
+                    StoreTypedArrayElement(glue, newArray, ZExtInt32ToInt64(*i), kValue, newArrayType);
                     Jump(&loopEnd2);
                 }
             }
@@ -1709,7 +1717,7 @@ void BuiltinsTypedArrayStubBuilder::With(GateRef glue, GateRef thisValue, GateRe
     GateRef jsType = GetObjectType(hclass);
     NewObjectStubBuilder newBuilder(this);
     newBuilder.SetParameters(glue, 0);
-    GateRef newArray = newBuilder.NewTypedArray(glue, thisValue, jsType, TruncInt64ToInt32(thisLen));
+    GateRef newArray = newBuilder.NewTypedArraySameType(glue, thisValue, jsType, TruncInt64ToInt32(thisLen));
     Label hasException0(env);
     Label notHasException0(env);
     BRANCH(HasPendingException(glue), &hasException0, &notHasException0);
@@ -2458,7 +2466,16 @@ void BuiltinsTypedArrayStubBuilder::ToSorted(GateRef glue, GateRef thisValue,
     GateRef thisLen = ZExtInt32ToInt64(GetArrayLength(thisValue));
     NewObjectStubBuilder newBuilder(this);
     newBuilder.SetParameters(glue, 0);
-    GateRef newArray = newBuilder.NewTypedArray(glue, thisValue, jsType, TruncInt64ToInt32(thisLen));
+    GateRef newArray = newBuilder.NewTypedArraySameType(glue, thisValue, jsType, TruncInt64ToInt32(thisLen));
+    Label hasException0(env);
+    Label notHasException0(env);
+    BRANCH(HasPendingException(glue), &hasException0, &notHasException0);
+    Bind(&hasException0);
+    {
+        result->WriteVariable(Exception());
+        Jump(exit);
+    }
+    Bind(&notHasException0);
     CallNGCRuntime(glue, RTSTUB_ID(CopyTypedArrayBuffer),
                    { glue, thisValue, newArray, Int32(0), Int32(0), TruncInt64ToInt32(thisLen) });
     DoSort(glue, newArray, result, exit, slowPath);
@@ -2628,6 +2645,7 @@ void BuiltinsTypedArrayStubBuilder::Map(GateRef glue, GateRef thisValue, GateRef
         NewObjectStubBuilder newBuilder(this);
         newBuilder.SetParameters(glue, 0);
         GateRef newArray = newBuilder.NewTypedArray(glue, thisValue, jsType, TruncInt64ToInt32(thisLen));
+        GateRef newArrayType = GetObjectType(LoadHClass(newArray));
         Label loopHead(env);
         Label loopEnd(env);
         Label loopNext(env);
@@ -2639,7 +2657,7 @@ void BuiltinsTypedArrayStubBuilder::Map(GateRef glue, GateRef thisValue, GateRef
             Label notHasException1(env);
             BRANCH(Int64LessThan(*i, thisLen), &loopNext, &loopExit);
             Bind(&loopNext);
-            kValue = FastGetPropertyByIndex(glue, thisValue, TruncInt64ToInt32(*i), jsType);
+            kValue = FastGetPropertyByIndex(glue, thisValue, TruncInt64ToInt32(*i), newArrayType);
             GateRef key = Int64ToTaggedInt(*i);
             JSCallArgs callArgs(JSCallMode::CALL_THIS_ARG3_WITH_RETURN);
             callArgs.callThisArg3WithReturnArgs = { argHandle, *kValue, key, thisValue };
@@ -2653,7 +2671,7 @@ void BuiltinsTypedArrayStubBuilder::Map(GateRef glue, GateRef thisValue, GateRef
 
             Bind(&notHasException1);
             {
-                FastSetPropertyByIndex(glue, retValue, newArray, TruncInt64ToInt32(*i), jsType);
+                FastSetPropertyByIndex(glue, retValue, newArray, TruncInt64ToInt32(*i), newArrayType);
                 Jump(&loopEnd);
             }
         }
@@ -2684,7 +2702,7 @@ void BuiltinsTypedArrayStubBuilder::ToReversed(GateRef glue, GateRef thisValue, 
     DEFVARIABLE(thisArrLen, VariableType::INT64(), ZExtInt32ToInt64(GetArrayLength(thisValue)));
     NewObjectStubBuilder newBuilder(this);
     newBuilder.SetParameters(glue, 0);
-    GateRef newArray = newBuilder.NewTypedArray(glue, thisValue, arrayType, TruncInt64ToInt32(*thisArrLen));
+    GateRef newArray = newBuilder.NewTypedArraySameType(glue, thisValue, arrayType, TruncInt64ToInt32(*thisArrLen));
     DEFVARIABLE(k, VariableType::INT64(), Int64(0));
 
     Label loopHead(env);

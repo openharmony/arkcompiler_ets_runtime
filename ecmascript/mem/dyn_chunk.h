@@ -137,6 +137,11 @@ public:
         return buf_;
     }
 
+    size_t GetCurrPos() const
+    {
+        return size_;
+    }
+
 private:
     static constexpr size_t ALLOCATE_MULTIPLIER = 2;
     static constexpr size_t U16_SIZE = 2;

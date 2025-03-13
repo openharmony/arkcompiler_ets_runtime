@@ -75,8 +75,11 @@ void ConcurrentMarker::Mark()
         + ";NativeBindingSize" + std::to_string(heap_->GetNativeBindingSize())
         + ";NativeLimitSize" + std::to_string(heap_->GetGlobalSpaceNativeLimit()));
     MEM_ALLOCATE_AND_GC_TRACE(vm_, ConcurrentMarking);
+    ASSERT(runningTaskCount_ == 0);
+    runningTaskCount_.fetch_add(1, std::memory_order_relaxed);
     InitializeMarking();
     clockScope_.Reset();
+    runningTaskCount_.fetch_sub(1, std::memory_order_relaxed);
     heap_->PostParallelGCTask(ParallelGCTaskPhase::CONCURRENT_HANDLE_GLOBAL_POOL_TASK);
 }
 
@@ -146,7 +149,6 @@ void ConcurrentMarker::Reset(bool revertCSet)
 
 void ConcurrentMarker::InitializeMarking()
 {
-    ASSERT(runningTaskCount_ == 0);
     MEM_ALLOCATE_AND_GC_TRACE(vm_, ConcurrentMarkingInitialize);
     heap_->Prepare();
     ASSERT(VerifyAllRegionsNonFresh());

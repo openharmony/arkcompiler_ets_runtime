@@ -84,7 +84,6 @@ public:
             defaultSnapshotSpaceSize_ = 512_KB;
             defaultMachineCodeSpaceSize_ = 2_MB;
             defaultGlobalAllocLimit_ = 20_MB;
-            edenSpaceTriggerConcurrentMark_ = 1_MB;
             semiSpaceTriggerConcurrentMark_ = 1_MB;
             semiSpaceStepOvershootSize_ = 2_MB;
             oldSpaceStepOvershootSize_ = 4_MB;
@@ -110,7 +109,6 @@ public:
             defaultSnapshotSpaceSize_ = 512_KB;
             defaultMachineCodeSpaceSize_ = 2_MB;
             defaultGlobalAllocLimit_ = 20_MB;
-            edenSpaceTriggerConcurrentMark_ = 1.5_MB;
             semiSpaceTriggerConcurrentMark_ = 1.5_MB;
             semiSpaceStepOvershootSize_ = 2_MB;
             oldSpaceStepOvershootSize_ = 8_MB;
@@ -136,7 +134,6 @@ public:
             defaultSnapshotSpaceSize_ = 4_MB;
             defaultMachineCodeSpaceSize_ = 8_MB;
             defaultGlobalAllocLimit_ = 20_MB;
-            edenSpaceTriggerConcurrentMark_ = 1.5_MB;
             semiSpaceTriggerConcurrentMark_ = 1.5_MB;
             semiSpaceStepOvershootSize_ = 2_MB;
             oldSpaceStepOvershootSize_ = 8_MB;
@@ -196,11 +193,6 @@ public:
     size_t GetDefaultGlobalAllocLimit() const
     {
         return defaultGlobalAllocLimit_;
-    }
-
-    size_t GetEdenSpaceTriggerConcurrentMark() const
-    {
-        return edenSpaceTriggerConcurrentMark_;
     }
 
     size_t GetSemiSpaceTriggerConcurrentMark() const
@@ -324,7 +316,6 @@ private:
     size_t defaultSnapshotSpaceSize_ {0};
     size_t defaultMachineCodeSpaceSize_ {0};
     size_t defaultGlobalAllocLimit_ {0};
-    size_t edenSpaceTriggerConcurrentMark_ {0};
     size_t semiSpaceTriggerConcurrentMark_ {0};
     size_t semiSpaceStepOvershootSize_ {0};
     size_t oldSpaceStepOvershootSize_ {0};

@@ -3288,7 +3288,9 @@ JSHandle<LayoutInfo> ObjectFactory::ExtendLayoutInfo(const JSHandle<LayoutInfo> 
 JSHandle<LayoutInfo> ObjectFactory::CopyLayoutInfo(const JSHandle<LayoutInfo> &old)
 {
     uint32_t newLength = old->GetLength();
-    return JSHandle<LayoutInfo>(CopyArray(JSHandle<TaggedArray>::Cast(old), newLength, newLength));
+    return JSHandle<LayoutInfo>(CopyArray(
+        JSHandle<TaggedArray>::Cast(old), newLength, newLength, JSTaggedValue::Hole(),
+        old.GetTaggedValue().IsInSharedHeap() ? MemSpaceType::SHARED_OLD_SPACE : MemSpaceType::SEMI_SPACE));
 }
 
 JSHandle<LayoutInfo> ObjectFactory::CopyAndReSort(const JSHandle<LayoutInfo> &old, int end, int capacity)
@@ -4151,7 +4153,7 @@ JSHandle<JSHClass> ObjectFactory::SetLayoutInObjHClass(const JSHandle<TaggedArra
 
 bool ObjectFactory::CanObjectLiteralHClassCache(size_t length)
 {
-    return length <= MAX_LITERAL_HCLASS_CACHE_SIZE;
+    return length <= PropertyAttributes::MAX_LITERAL_HCLASS_CACHE_SIZE;
 }
 
 JSHandle<JSHClass> ObjectFactory::CreateObjectLiteralRootHClass(size_t length)
@@ -4167,22 +4169,22 @@ JSHandle<JSHClass> ObjectFactory::CreateObjectLiteralRootHClass(size_t length)
     return hclass;
 }
 
-JSHandle<JSHClass> ObjectFactory::GetObjectLiteralRootHClass(size_t length)
+JSHandle<JSHClass> ObjectFactory::GetObjectLiteralRootHClass(size_t literalLength, size_t maxPropsNum)
 {
     JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
     JSHandle<JSTaggedValue> maybeCache = env->GetObjectLiteralHClassCache();
     if (UNLIKELY(maybeCache->IsHole())) {
-        JSHandle<TaggedArray> cacheArr = NewTaggedArray(MAX_LITERAL_HCLASS_CACHE_SIZE + 1);
+        JSHandle<TaggedArray> cacheArr = NewTaggedArray(PropertyAttributes::MAX_LITERAL_HCLASS_CACHE_SIZE + 1);
         env->SetObjectLiteralHClassCache(thread_, cacheArr.GetTaggedValue());
-        JSHandle<JSHClass> objHClass = CreateObjectLiteralRootHClass(length);
-        cacheArr->Set(thread_, length, objHClass);
+        JSHandle<JSHClass> objHClass = CreateObjectLiteralRootHClass(maxPropsNum);
+        cacheArr->Set(thread_, literalLength, objHClass);
         return objHClass;
     }
     JSHandle<TaggedArray> hclassCacheArr = JSHandle<TaggedArray>::Cast(maybeCache);
-    JSTaggedValue maybeHClass = hclassCacheArr->Get(length);
+    JSTaggedValue maybeHClass = hclassCacheArr->Get(literalLength);
     if (UNLIKELY(maybeHClass.IsHole())) {
-        JSHandle<JSHClass> objHClass = CreateObjectLiteralRootHClass(length);
-        hclassCacheArr->Set(thread_, length, objHClass);
+        JSHandle<JSHClass> objHClass = CreateObjectLiteralRootHClass(maxPropsNum);
+        hclassCacheArr->Set(thread_, literalLength, objHClass);
         return objHClass;
     }
     return JSHandle<JSHClass>(thread_, maybeHClass);
@@ -4195,7 +4197,7 @@ JSHandle<JSHClass> ObjectFactory::GetObjectLiteralHClass(const JSHandle<TaggedAr
     if (!CanObjectLiteralHClassCache(length)) {
         return CreateObjectClass(properties, length);
     }
-    JSHandle<JSHClass> rootHClass = GetObjectLiteralRootHClass(length);
+    JSHandle<JSHClass> rootHClass = GetObjectLiteralRootHClass(length, length);
     return SetLayoutInObjHClass(properties, length, rootHClass);
 }
 
@@ -4237,24 +4239,24 @@ TaggedObject *ObjectFactory::NewMachineCodeObject(size_t length,
 }
 
 JSHandle<MachineCode> ObjectFactory::NewMachineCodeObject(size_t length,
-    const MachineCodeDesc &desc, JSHandle<Method> &method)
+    const MachineCodeDesc &desc, JSHandle<Method> &method, RelocMap &relocInfo)
 {
     NewObjectHook();
     TaggedObject *obj = heap_->AllocateMachineCodeObject(
         JSHClass::Cast(thread_->GlobalConstants()->GetMachineCodeClass().GetTaggedObject()),
         length + MachineCode::SIZE);
-    return SetMachineCodeObjectData(obj, length, desc, method);
+    return SetMachineCodeObjectData(obj, length, desc, method, relocInfo);
 }
 
 JSHandle<MachineCode> ObjectFactory::SetMachineCodeObjectData(TaggedObject *obj, size_t length,
-    const MachineCodeDesc &desc, JSHandle<Method> &method)
+    const MachineCodeDesc &desc, JSHandle<Method> &method, RelocMap &relocInfo)
 {
     MachineCode *code = MachineCode::Cast(obj);
     if (code == nullptr) {
         LOG_FULL(FATAL) << "machine code cast failed";
         UNREACHABLE();
     }
-    if (code->SetData(desc, method, length)) {
+    if (code->SetData(desc, method, length, relocInfo)) {
         JSHandle<MachineCode> codeObj(thread_, code);
         return codeObj;
     } else {
@@ -4824,24 +4826,24 @@ JSHandle<JSAPILinkedList> ObjectFactory::NewJSAPILinkedList()
 JSHandle<ImportEntry> ObjectFactory::NewImportEntry()
 {
     JSHandle<JSTaggedValue> defautValue = thread_->GlobalConstants()->GetHandledUndefined();
-    return NewImportEntry(defautValue, defautValue, defautValue, SharedTypes::UNSENDABLE_MODULE);
+    return NewImportEntry(0, defautValue, defautValue, SharedTypes::UNSENDABLE_MODULE); // 0: random number
 }
 
-JSHandle<ImportEntry> ObjectFactory::NewImportEntry(const JSHandle<JSTaggedValue> &moduleRequest,
+JSHandle<ImportEntry> ObjectFactory::NewImportEntry(const uint32_t moduleRequestIdx,
                                                     const JSHandle<JSTaggedValue> &importName,
                                                     const JSHandle<JSTaggedValue> &localName,
                                                     SharedTypes sharedTypes)
 {
     if (sharedTypes == SharedTypes::SHARED_MODULE) {
-        return NewSImportEntry(moduleRequest, importName, localName);
+        return NewSImportEntry(moduleRequestIdx, importName, localName);
     }
     NewObjectHook();
     TaggedObject *header = heap_->AllocateYoungOrHugeObject(
         JSHClass::Cast(thread_->GlobalConstants()->GetImportEntryClass().GetTaggedObject()));
     JSHandle<ImportEntry> obj(thread_, header);
-    obj->SetModuleRequest(thread_, moduleRequest);
     obj->SetImportName(thread_, importName);
     obj->SetLocalName(thread_, localName);
+    obj->SetModuleRequestIndex(moduleRequestIdx);
     return obj;
 }
 
@@ -4871,44 +4873,43 @@ JSHandle<LocalExportEntry> ObjectFactory::NewLocalExportEntry(const JSHandle<JST
 JSHandle<IndirectExportEntry> ObjectFactory::NewIndirectExportEntry()
 {
     JSHandle<JSTaggedValue> defautValue = thread_->GlobalConstants()->GetHandledUndefined();
-    return NewIndirectExportEntry(defautValue, defautValue, defautValue, SharedTypes::UNSENDABLE_MODULE);
+    return NewIndirectExportEntry(defautValue, 0, defautValue, SharedTypes::UNSENDABLE_MODULE);
 }
 
 JSHandle<IndirectExportEntry> ObjectFactory::NewIndirectExportEntry(const JSHandle<JSTaggedValue> &exportName,
-                                                                    const JSHandle<JSTaggedValue> &moduleRequest,
+                                                                    const uint32_t moduleRequestIdx,
                                                                     const JSHandle<JSTaggedValue> &importName,
                                                                     SharedTypes sharedTypes)
 {
     if (sharedTypes == SharedTypes::SHARED_MODULE) {
-        return NewSIndirectExportEntry(exportName, moduleRequest, importName);
+        return NewSIndirectExportEntry(exportName, moduleRequestIdx, importName);
     }
     NewObjectHook();
     TaggedObject *header = heap_->AllocateYoungOrHugeObject(
         JSHClass::Cast(thread_->GlobalConstants()->GetIndirectExportEntryClass().GetTaggedObject()));
     JSHandle<IndirectExportEntry> obj(thread_, header);
     obj->SetExportName(thread_, exportName);
-    obj->SetModuleRequest(thread_, moduleRequest);
+    obj->SetModuleRequestIndex(moduleRequestIdx);
     obj->SetImportName(thread_, importName);
     return obj;
 }
 
 JSHandle<StarExportEntry> ObjectFactory::NewStarExportEntry()
 {
-    JSHandle<JSTaggedValue> defautValue = thread_->GlobalConstants()->GetHandledUndefined();
-    return NewStarExportEntry(defautValue, SharedTypes::UNSENDABLE_MODULE);
+    return NewStarExportEntry(0, SharedTypes::UNSENDABLE_MODULE);
 }
 
-JSHandle<StarExportEntry> ObjectFactory::NewStarExportEntry(const JSHandle<JSTaggedValue> &moduleRequest,
+JSHandle<StarExportEntry> ObjectFactory::NewStarExportEntry(const uint32_t moduleRequestIdx,
                                                             SharedTypes sharedTypes)
 {
     if (sharedTypes == SharedTypes::SHARED_MODULE) {
-        return NewSStarExportEntry(moduleRequest);
+        return NewSStarExportEntry(moduleRequestIdx);
     }
     NewObjectHook();
     TaggedObject *header = heap_->AllocateYoungOrHugeObject(
         JSHClass::Cast(thread_->GlobalConstants()->GetStarExportEntryClass().GetTaggedObject()));
     JSHandle<StarExportEntry> obj(thread_, header);
-    obj->SetModuleRequest(thread_, moduleRequest);
+    obj->SetModuleRequestIndex(moduleRequestIdx);
     return obj;
 }
 
@@ -4921,6 +4922,7 @@ JSHandle<SourceTextModule> ObjectFactory::NewSourceTextModule()
     JSTaggedValue undefinedValue = thread_->GlobalConstants()->GetUndefined();
     obj->SetEnvironment(thread_, undefinedValue);
     obj->SetNamespace(thread_, undefinedValue);
+    obj->SetModuleRequests(thread_, undefinedValue);
     obj->SetRequestedModules(thread_, undefinedValue);
     obj->SetImportEntries(thread_, undefinedValue);
     obj->SetLocalExportEntries(thread_, undefinedValue);
@@ -5247,7 +5249,7 @@ JSHandle<JSTaggedValue> ObjectFactory::CreateJSObjectWithProperties(size_t prope
 
     // At least 4 inlined slot
     int inlineProps = std::max(static_cast<int>(propertyCount), JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS);
-    JSMutableHandle<JSHClass> hclassHandle(thread_, GetObjectLiteralRootHClass(inlineProps));
+    JSMutableHandle<JSHClass> hclassHandle(thread_, GetObjectLiteralRootHClass(inlineProps, inlineProps));
     for (size_t i = 0; i < propertyCount; ++i) {
         JSMutableHandle<JSTaggedValue> key(JSNApiHelper::ToJSMutableHandle(keys[i]));
         if (key->IsString() && !EcmaStringAccessor(key.GetTaggedValue()).IsInternString()) {
@@ -5359,7 +5361,7 @@ JSHandle<JSTaggedValue> ObjectFactory::CreateJSObjectWithNamedProperties(size_t 
 
     // At least 4 inlined slot
     int inlineProps = std::max(static_cast<int>(propertyCount), JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS);
-    JSMutableHandle<JSHClass> hclassHandle(thread_, GetObjectLiteralRootHClass(inlineProps));
+    JSMutableHandle<JSHClass> hclassHandle(thread_, GetObjectLiteralRootHClass(inlineProps, inlineProps));
     for (size_t i = 0; i < propertyCount; ++i) {
         JSHandle<JSTaggedValue> key(NewFromUtf8(keys[i]));
         ASSERT(EcmaStringAccessor(key->GetTaggedObject()).IsInternString());

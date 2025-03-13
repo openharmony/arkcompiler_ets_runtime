@@ -34,6 +34,15 @@ public:
     static JSTaggedValue ProcessModuleNameSpaceLoadInfo(JSThread *thread,
                                                         JSHandle<SourceTextModule> currentModule,
                                                         JSHandle<SourceTextModule> requiredModule);
+    // for lazy
+    static JSTaggedValue GetLazyModuleValueFromIndexBindingForLog(
+        JSThread *thread, JSHandle<SourceTextModule> module, JSTaggedValue resolvedBinding, int32_t index);
+    
+    static JSTaggedValue GetLazyModuleValueFromRecordBindingForLog(
+        JSThread *thread, JSHandle<SourceTextModule> module, JSTaggedValue resolvedBinding, int32_t index);
+
+    static JSTaggedValue ProcessLazyModuleLoadInfo(JSThread *thread, JSHandle<SourceTextModule> currentModule,
+        JSTaggedValue resolvedBinding, int32_t index);
 };
 
 class ModuleTraceScope {

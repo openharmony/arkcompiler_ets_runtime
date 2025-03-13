@@ -62,6 +62,8 @@ public:
     uint32_t PUBLIC_API GetHClassIndexByProfileType(ProfileTyper type) const;
     int PUBLIC_API GetHolderHIndexByPGOObjectInfoType(pgo::PGOObjectInfo type, bool isAot);
     int PUBLIC_API GetReceiverHIndexByPGOObjectInfoType(pgo::PGOObjectInfo type, bool isAot);
+    uint32_t GetMaxPropsNum(uint32_t literalLength) const;
+    void SetMaxPropsNum(uint32_t literalLength, uint32_t maxPropsNum) const;
 
     JSTaggedValue PUBLIC_API QueryHClass(ProfileType rootType, ProfileType childType) ;
     JSTaggedValue PUBLIC_API QueryHClassByIndexForJIT(uint32_t hclassIndex) ;
@@ -156,6 +158,8 @@ public:
         }
     }
 
+    void PUBLIC_API MergeRepresentationForProtoTransition();
+
 private:
     // snapshot
     void GenHClassInfo();
@@ -192,6 +196,7 @@ private:
     JSTaggedValue curCP_ {JSTaggedValue::Hole()};
     int32_t curCPID_ {0};
     int32_t pos_ {0};
+    mutable std::unordered_map<uint32_t, uint32_t> maxPropsNum_ {};
 };
 }  // panda::ecmascript::kungfu
 #endif // ECMASCRIPT_COMPILER_PGO_TYPE_PGO_TYPE_MANAGER_H

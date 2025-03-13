@@ -52,6 +52,7 @@ void SparseSpace::ResetTopPointer(uintptr_t top)
 
 uintptr_t SparseSpace::Allocate(size_t size, bool allowGC)
 {
+    ASSERT(spaceType_ != MemSpaceType::OLD_SPACE);
 #if ECMASCRIPT_ENABLE_THREAD_STATE_CHECK
     if (UNLIKELY(!localHeap_->GetJSThread()->IsInRunningStateOrProfiling())) { // LOCV_EXCL_BR_LINE
         LOG_ECMA(FATAL) << "Allocate must be in jsthread running state";
@@ -410,6 +411,37 @@ void OldSpace::FreeRegionFromSpace(Region *region)
     LockHolder holder(lock_);
     RemoveRegion(region);
     DecreaseLiveObjectSize(region->AliveObject());
+}
+
+uintptr_t OldSpace::AllocateFast(size_t size)
+{
+#if ECMASCRIPT_ENABLE_THREAD_STATE_CHECK
+    if (UNLIKELY(!localHeap_->GetJSThread()->IsInRunningStateOrProfiling())) { // LOCV_EXCL_BR_LINE
+        LOG_ECMA(FATAL) << "Allocate must be in jsthread running state";
+        UNREACHABLE();
+    }
+#endif
+    auto object = allocator_->Allocate(size);
+    CHECK_OBJECT_AND_INC_OBJ_SIZE(size);
+
+    if (sweepState_ == SweepState::SWEEPING) {
+        object = AllocateAfterSweepingCompleted(size);
+        CHECK_OBJECT_AND_INC_OBJ_SIZE(size);
+    }
+    return 0;
+}
+
+uintptr_t OldSpace::AllocateSlow(size_t size, bool tryFast)
+{
+    if (tryFast) {
+        uintptr_t object = AllocateFast(size);
+        CHECK_OBJECT_AND_INC_OBJ_SIZE(size);
+    }
+    if (Expand()) {
+        uintptr_t object = allocator_->Allocate(size);
+        CHECK_OBJECT_AND_INC_OBJ_SIZE(size);
+    }
+    return 0;
 }
 
 void OldSpace::Merge(LocalSpace *localSpace)

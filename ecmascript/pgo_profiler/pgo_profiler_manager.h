@@ -23,6 +23,7 @@
 #include "ecmascript/pgo_profiler/pgo_profiler.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_decoder.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_encoder.h"
+#include "ecmascript/pgo_profiler/pgo_utils.h"
 
 namespace panda::ecmascript::pgo {
 using ApGenMode = PGOProfilerEncoder::ApGenMode;
@@ -54,15 +55,10 @@ public:
     ApGenMode GetApGenMode() const;
     void Merge(PGOProfiler* profiler);
     void RegisterSavingSignal();
-    void AsyncSave();
     bool IsDisableAot() const;
     void SetDisableAot(bool state);
     void SetDisablePGO(bool state);
-    void ForceDump();
-    bool PUBLIC_API TextToBinary(const std::string& inPath,
-                                 const std::string& outPath,
-                                 uint32_t hotnessThreshold,
-                                 ApGenMode mode);
+    void PushAllProfilersToPendingList();
     bool PUBLIC_API BinaryToText(const std::string& inPath, const std::string& outPath, uint32_t hotnessThreshold);
     static bool PUBLIC_API MergeApFiles(const std::string &inFiles, const std::string &outPath,
                                         uint32_t hotnessThreshold, ApGenMode mode);
@@ -73,7 +69,6 @@ public:
     size_t GetMaxAotMethodSize() const;
     void SetMaxAotMethodSize(uint32_t value);
     bool IsBigMethod(uint32_t methodSize) const;
-    std::shared_ptr<PGOState> GetPGOState() const;
     std::shared_ptr<PGOInfo> GetPGOInfo() const;
     bool ResetOutPathByModuleName(const std::string& moduleName);
     bool ResetOutPath(const std::string& fileName);
@@ -83,20 +78,29 @@ public:
     void PostResetOutPathTask(const std::string& moduleName);
     bool IsInitialized() const;
     static Mutex& GetPGOInfoMutex();
+    void TryDispatchDumpTask(PGOProfiler* profiler);
+    bool IsTaskRunning() const;
+    void SetIsTaskRunning(bool isTaskRunning);
+    void DumpPendingProfilers();
+    void SavePGOInfo();
+    void SetForceDump(bool forceDump);
+    bool IsForceDump() const;
+    void DispatchDumpTask();
+    bool IsProfilerDestroyed(PGOProfiler* profiler);
 
 private:
     bool InitializeData();
 
+    ConcurrentGuardValue v_;
     bool disableAot_ {false};
     bool disablePGO_ {false};
     Mutex requestAotCallbackMutex_;
     RequestAotCallback requestAotCallback_;
     std::atomic_bool enableSignalSaving_ { false };
-    Mutex profilersMutex_;
+    Mutex profilersMutex_; // protect profilers_
     std::set<std::shared_ptr<PGOProfiler>> profilers_;
     bool isApFileCompatible_ {true};
     uint32_t maxAotMethodSize_ {0};
-    std::shared_ptr<PGOState> state_;
     std::shared_ptr<PGOInfo> pgoInfo_;
     std::string outDir_;
     std::string outPath_;
@@ -107,6 +111,10 @@ private:
     std::atomic_bool hasPostModuleName_ {false};
     Mutex resetOutPathMutex_;
     ApGenMode apGenMode_ {ApGenMode::MERGE};
+    PGOPendingProfilers pendingProfilers_;
+    std::atomic_bool isTaskRunning_ {false};
+    std::atomic_bool forceDump_ {false};
+    Mutex dumpTaskMutex_; // protect dispatch dump task
 };
 
 class ResetOutPathTask : public Task {
@@ -131,6 +139,27 @@ public:
 
 private:
     std::string moduleName_;
+};
+
+class PGODumpTask : public Task {
+public:
+    explicit PGODumpTask(int32_t id): Task(id) {};
+    virtual ~PGODumpTask() override = default;
+
+    bool Run([[maybe_unused]] uint32_t threadIndex) override
+    {
+        ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "PGOProfilerTask::Run");
+        PGOProfilerManager::GetInstance()->DumpPendingProfilers();
+        return true;
+    }
+
+    TaskType GetTaskType() const override
+    {
+        return TaskType::PGO_DUMP_TASK;
+    }
+
+    NO_COPY_SEMANTIC(PGODumpTask);
+    NO_MOVE_SEMANTIC(PGODumpTask);
 };
 } // namespace panda::ecmascript::pgo
 #endif  // ECMASCRIPT_PGO_PROFILER_MANAGER_H

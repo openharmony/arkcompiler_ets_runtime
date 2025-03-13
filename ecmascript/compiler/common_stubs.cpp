@@ -320,6 +320,14 @@ void XorStubBuilder::GenerateCircuit()
     Return(operationBuilder.Xor(glue, x, y));
 }
 
+void IsInStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef prop = TaggedArgument(1); // 1: 2nd argument
+    GateRef obj = TaggedArgument(2);  // 2: 3rd argument
+    Return(IsIn(glue, prop, obj));
+}
+
 void InstanceofStubBuilder::GenerateCircuit()
 {
     GateRef glue = PtrArgument(0);
@@ -514,6 +522,14 @@ void SetPropertyByIndexWithOwnStubBuilder::GenerateCircuit()
     Return(SetPropertyByIndex(glue, receiver, index, value, true));
 }
 
+void JSTaggedValueHasPropertyStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef obj = TaggedArgument(1);
+    GateRef key = TaggedArgument(2);      // 2 : 3rd para
+    Return(HasProperty(glue, obj, key));
+}
+
 void GetPropertyByNameStubBuilder::GenerateCircuit()
 {
     GateRef glue = PtrArgument(0);
@@ -562,7 +578,6 @@ void GetPropertyByNameWithMegaStubBuilder::GenerateCircuit()
     Return(builder.LoadObjByNameWithMega(glue, receiver, megaStubCache, prop, jsFunc, slotId,
                                          ProfileOperation()));
 }
-
 
 void SetPropertyByNameWithMegaStubBuilder::GenerateCircuit()
 {
@@ -940,27 +955,7 @@ void SetNonSValueWithBarrierStubBuilder::GenerateCircuit()
     GateRef obj = TaggedArgument(1);
     GateRef offset = PtrArgument(2); // 2 : 3rd para
     GateRef value = TaggedArgument(3); // 3 : 4th para
-    SetValueWithBarrier(glue, obj, offset, value, false, MemoryAttribute::NON_SHARE);
-    Return();
-}
-
-void SetValueWithEdenBarrierStubBuilder::GenerateCircuit()
-{
-    GateRef glue = PtrArgument(0);
-    GateRef obj = TaggedArgument(1);
-    GateRef offset = PtrArgument(2); // 2 : 3rd para
-    GateRef value = TaggedArgument(3); // 3 : 4th para
-    SetValueWithBarrier(glue, obj, offset, value, true);
-    Return();
-}
-
-void SetNonSValueWithEdenBarrierStubBuilder::GenerateCircuit()
-{
-    GateRef glue = PtrArgument(0);
-    GateRef obj = TaggedArgument(1);
-    GateRef offset = PtrArgument(2); // 2 : 3rd para
-    GateRef value = TaggedArgument(3); // 3 : 4th para
-    SetValueWithBarrier(glue, obj, offset, value, true, MemoryAttribute::NON_SHARE);
+    SetValueWithBarrier(glue, obj, offset, value, MemoryAttribute::NON_SHARE);
     Return();
 }
 
@@ -970,7 +965,7 @@ void SetSValueWithBarrierStubBuilder::GenerateCircuit()
     GateRef obj = TaggedArgument(1);
     GateRef offset = PtrArgument(2); // 2 : 3rd para
     GateRef value = TaggedArgument(3); // 3 : 4th para
-    SetValueWithBarrier(glue, obj, offset, value, false, MemoryAttribute::SHARED);
+    SetValueWithBarrier(glue, obj, offset, value, MemoryAttribute::SHARED);
     Return();
 }
 
@@ -1421,7 +1416,6 @@ void GrowElementsCapacityStubBuilder::GenerateCircuit()
     Return(*result);
 }
 
-
 void SameValueStubBuilder::GenerateCircuit()
 {
     GateRef glue = PtrArgument(0);
@@ -1439,6 +1433,17 @@ void BatchBarrierStubBuilder::GenerateCircuit()
     GateRef taggedValueCount = TaggedArgument(3);
     BarrierStubBuilder barrierBuilder(this, glue, dstObj, dstAddr, taggedValueCount);
     barrierBuilder.DoBatchBarrier();
+    Return();
+}
+
+void ReverseBarrierStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef dstObj = PtrArgument(1);
+    GateRef dstAddr = PtrArgument(2);
+    GateRef taggedValueCount = TaggedArgument(3);
+    BarrierStubBuilder barrierBuilder(this, glue, dstObj, dstAddr, taggedValueCount);
+    barrierBuilder.DoReverseBarrier();
     Return();
 }
 

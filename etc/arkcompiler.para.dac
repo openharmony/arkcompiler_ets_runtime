@@ -18,7 +18,6 @@ persist.ark.longpausetime = shell:shell:0775
 persist.ark.asminterpreter = shell:shell:0775
 ark.jit.enable.litecg = shell:shell:0775
 ark.jit.hotness.threshold = shell:shell:0775
-persist.ark.edengc.enable = shell:shell:0775
 ark.jit.enable.jitframe = shell:shell:0775
 persist.ark.jit.codesign.disable = shell:shell:0775
 persist.ark.jit.enable.jitfort = shell:shell:0775

@@ -480,6 +480,16 @@ inline GateRef StubBuilder::IntPtrDiv(GateRef x, GateRef y)
     return env_->GetBuilder()->IntPtrDiv(x, y);
 }
 
+inline GateRef StubBuilder::Int32Min(GateRef x, GateRef y)
+{
+    return env_->GetBuilder()->Int32Min(x, y);
+}
+
+inline GateRef StubBuilder::Int32Max(GateRef x, GateRef y)
+{
+    return env_->GetBuilder()->Int32Max(x, y);
+}
+
 inline GateRef StubBuilder::Int32Mod(GateRef x, GateRef y)
 {
     return env_->GetBuilder()->Int32Mod(x, y);
@@ -720,14 +730,34 @@ inline GateRef StubBuilder::ValueIsSpecialHole(GateRef x)
     return env_->GetBuilder()->IsSpecialHole(x);
 }
 
+inline GateRef StubBuilder::ElementsKindIsInt(GateRef kind)
+{
+    return env_->GetBuilder()->ElementsKindIsInt(kind);
+}
+
 inline GateRef StubBuilder::ElementsKindIsIntOrHoleInt(GateRef kind)
 {
     return env_->GetBuilder()->ElementsKindIsIntOrHoleInt(kind);
 }
 
+inline GateRef StubBuilder::ElementsKindIsNumber(GateRef kind)
+{
+    return env_->GetBuilder()->ElementsKindIsNumber(kind);
+}
+
 inline GateRef StubBuilder::ElementsKindIsNumOrHoleNum(GateRef kind)
 {
     return env_->GetBuilder()->ElementsKindIsNumOrHoleNum(kind);
+}
+
+inline GateRef StubBuilder::ElementsKindIsString(GateRef kind)
+{
+    return env_->GetBuilder()->ElementsKindIsString(kind);
+}
+
+inline GateRef StubBuilder::ElementsKindIsStringOrHoleString(GateRef kind)
+{
+    return env_->GetBuilder()->ElementsKindIsStringOrHoleString(kind);
 }
 
 inline GateRef StubBuilder::ElementsKindIsHeapKind(GateRef kind)
@@ -848,6 +878,11 @@ inline GateRef StubBuilder::DoubleIsInteger(GateRef x)
     GateRef notInteger = LogicOrBuilder(env_).Or(DoubleIsNAN(x)).Or(DoubleIsINF(x))
         .Or(BoolNot(DoubleEqual(x, DoubleTrunc(x)))).Done();
     return BoolNot(notInteger);
+}
+
+inline GateRef StubBuilder::DoubleIsWithinInt32(GateRef x)
+{
+    return env_->GetBuilder()->DoubleIsWithinInt32(x);
 }
 
 inline GateRef StubBuilder::DoubleTrunc(GateRef x)
@@ -971,6 +1006,11 @@ inline GateRef StubBuilder::Int64ToTaggedInt(GateRef x)
 inline GateRef StubBuilder::Int64ToTaggedIntPtr(GateRef x)
 {
     return env_->GetBuilder()->ToTaggedIntPtr(x);
+}
+
+inline GateRef StubBuilder::DoubleToTaggedDouble(GateRef x)
+{
+    return env_->GetBuilder()->DoubleToTaggedDouble(x);
 }
 
 inline GateRef StubBuilder::DoubleToTaggedDoublePtr(GateRef x)
@@ -1164,9 +1204,24 @@ inline GateRef StubBuilder::Int64UnsignedGreaterThanOrEqual(GateRef x, GateRef y
     return env_->GetBuilder()->Int64UnsignedGreaterThanOrEqual(x, y);
 }
 
+inline GateRef StubBuilder::IntPtrLessThan(GateRef x, GateRef y)
+{
+    return env_->GetBuilder()->IntPtrLessThan(x, y);
+}
+
+inline GateRef StubBuilder::IntPtrLessThanOrEqual(GateRef x, GateRef y)
+{
+    return env_->GetBuilder()->IntPtrLessThanOrEqual(x, y);
+}
+
 inline GateRef StubBuilder::IntPtrGreaterThan(GateRef x, GateRef y)
 {
     return env_->GetBuilder()->IntPtrGreaterThan(x, y);
+}
+
+inline GateRef StubBuilder::IntPtrGreaterThanOrEqual(GateRef x, GateRef y)
+{
+    return env_->GetBuilder()->IntPtrGreaterThanOrEqual(x, y);
 }
 
 // cast operation
@@ -1790,6 +1845,11 @@ inline GateRef StubBuilder::GetHasChanged(GateRef object)
     return env_->GetBuilder()->GetHasChanged(object);
 }
 
+inline GateRef StubBuilder::GetNotFoundHasChanged(GateRef object)
+{
+    return env_->GetBuilder()->GetNotFoundHasChanged(object);
+}
+
 inline GateRef StubBuilder::HclassIsPrototypeHandler(GateRef hClass)
 {
     return Int32Equal(GetObjectType(hClass),
@@ -2182,6 +2242,12 @@ inline void StubBuilder::SetProtoChangeDetailsToHClass(VariableType type,
 {
     GateRef offset = IntPtr(JSHClass::PROTO_CHANGE_DETAILS_OFFSET);
     Store(type, glue, hClass, offset, protoChange);
+}
+
+inline GateRef StubBuilder::GetProtoChangeDetails(GateRef hClass)
+{
+    GateRef offset = IntPtr(JSHClass::PROTO_CHANGE_DETAILS_OFFSET);
+    return Load(VariableType::JS_ANY(), hClass, offset);
 }
 
 inline void StubBuilder::SetLayoutToHClass(VariableType type, GateRef glue, GateRef hClass, GateRef attr,
@@ -3035,11 +3101,6 @@ inline GateRef StubBuilder::RegionInSpace(GateRef region, RegionSpaceFlag space)
     }
 }
 
-inline GateRef StubBuilder::InEdenGeneration(GateRef region)
-{
-    return RegionInSpace(region, RegionSpaceFlag::IN_EDEN_SPACE);
-}
-
 inline GateRef StubBuilder::InYoungGeneration(GateRef region)
 {
     return RegionInSpace(region, RegionSpaceFlag::IN_YOUNG_SPACE);
@@ -3061,11 +3122,6 @@ inline GateRef StubBuilder::RegionInSpace(GateRef region, RegionSpaceFlag spaceB
         GateRef less = Int64LessThanOrEqual(spaceType, Int64(spaceEnd));
         return BitAnd(greater, less);
     }
-}
-
-inline GateRef StubBuilder::InGeneralYoungGeneration(GateRef region)
-{
-    return RegionInSpace(region, RegionSpaceFlag::GENERAL_YOUNG_BEGIN, RegionSpaceFlag::GENERAL_YOUNG_END);
 }
 
 inline GateRef StubBuilder::InGeneralOldGeneration(GateRef region)
@@ -3633,6 +3689,14 @@ inline GateRef StubBuilder::GetGlobalConstantValue(VariableType type, GateRef gl
     return env_->GetBuilder()->GetGlobalConstantValue(type, glue, index);
 }
 
+inline GateRef StubBuilder::GetGlobalConstantValue(VariableType type, GateRef glue, GateRef index)
+{
+    GateRef gConstAddr = Load(VariableType::JS_ANY(), glue,
+                              IntPtr(JSThread::GlueData::GetGlobalConstOffset(env_->Is32Bit())));
+    auto constantIndex = PtrMul(IntPtr(JSTaggedValue::TaggedTypeSize()), index);
+    return Load(type, gConstAddr, constantIndex);
+}
+
 inline GateRef StubBuilder::GetSingleCharTable(GateRef glue)
 {
     return GetGlobalConstantValue(
@@ -3820,6 +3884,11 @@ inline GateRef StubBuilder::IsStableArray(GateRef hClass)
 inline GateRef StubBuilder::IsTypedArray(GateRef obj)
 {
     return env_->GetBuilder()->IsTypedArray(obj);
+}
+
+inline GateRef StubBuilder::IsSharedTypedArray(GateRef obj)
+{
+    return env_->GetBuilder()->IsSharedTypedArray(obj);
 }
 
 inline GateRef StubBuilder::GetProfileTypeInfo(GateRef jsFunc)

@@ -113,6 +113,7 @@ enum class CallExceptionKind : bool {
     V(Floor, (GateRef gate, GateRef e1))                                                  \
     V(ReadSp, (GateRef gate))                                                             \
     V(InitVreg, (GateRef gate))                                                           \
+    V(BitRev, (GateRef gate, GateRef e1))                                                 \
     V(FinishAllocate, (GateRef gate, GateRef e1))
 
 bool IsAddIntergerType(MachineType machineType);

@@ -14,6 +14,7 @@
  */
 
 
+#include "ecmascript/js_object.h"
 #include "ecmascript/stubs/runtime_optimized_stubs-inl.h"
 #include "ecmascript/stubs/runtime_stubs-inl.h"
 #include "ecmascript/base/json_stringifier.h"
@@ -253,22 +254,17 @@ DEF_RUNTIME_STUBS(TypedArraySpeciesCreate)
     return newArr.GetTaggedValue().GetRawData();
 }
 
-DEF_RUNTIME_STUBS(TypedArraySpeciesCreateForSubArray)
+DEF_RUNTIME_STUBS(TypedArrayCreateSameType)
 {
-    RUNTIME_STUBS_HEADER(TypedArraySpeciesCreateForSubArray);
+    RUNTIME_STUBS_HEADER(TypedArrayCreateSameType);
     JSHandle<JSTaggedValue> obj = GetHArg<JSTaggedValue>(argv, argc, 0);    // 0: means the zeroth parameter
     JSHandle<JSTypedArray> thisObj(obj);
-    uint32_t argsLen = static_cast<uint32_t>(GetArg(argv, argc, 1).GetInt()); // 1: means the first parameter
-    uint32_t length = static_cast<uint32_t>(GetArg(argv, argc, 2).GetInt()); // 2: means the second parameter
-    uint32_t beginByteOffset = static_cast<uint32_t>(GetArg(argv, argc, 3).GetInt()); // 3: means the third parameter
-
-    JSTaggedValue buffer = JSTypedArray::GetOffHeapBuffer(thread, thisObj);
-    JSTaggedType args[3] = { // 3: means this stub called by TypedArray::subarray
-        buffer.GetRawData(),
-        JSTaggedValue(beginByteOffset).GetRawData(),
-        JSTaggedValue(length).GetRawData()
-    };
-    JSHandle<JSObject> newArr = base::TypedArrayHelper::TypedArraySpeciesCreate(thread, thisObj, argsLen, &args[0]);
+    JSTaggedValue indexValue = GetArg(argv, argc, 1);   // 1: means the first parameter
+    uint32_t index = static_cast<uint32_t>(indexValue.GetInt());
+    JSTaggedValue arrayLen = GetArg(argv, argc, 2); // 2: means the second parameter
+    uint32_t length = static_cast<uint32_t>(arrayLen.GetInt());
+    JSTaggedType args[1] = {JSTaggedValue(length).GetRawData()};
+    JSHandle<JSObject> newArr = base::TypedArrayHelper::TypedArrayCreateSameType(thread, thisObj, index, args);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception().GetRawData());
     return newArr.GetTaggedValue().GetRawData();
 }
@@ -597,13 +593,13 @@ DEF_RUNTIME_STUBS(UpdateHClassForElementsKind)
 {
     RUNTIME_STUBS_HEADER(UpdateHClassForElementsKind);
     JSHandle<JSTaggedValue> receiver = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the first parameter
-    JSTaggedType elementsKind = GetTArg(argv, argc, 1);        // 1: means the first parameter
+    ElementsKind elementsKind = static_cast<ElementsKind>(GetTArg(argv, argc, 1));  // 1: means the first parameter
+    // 1: means the first parameter
     ASSERT(receiver->IsJSArray());
-    ElementsKind kind = Elements::FixElementsKind(static_cast<ElementsKind>(elementsKind));
     auto array = JSHandle<JSArray>(receiver);
     ASSERT(JSHClass::IsInitialArrayHClassWithElementsKind(thread, receiver->GetTaggedObject()->GetClass(),
                                                           receiver->GetTaggedObject()->GetClass()->GetElementsKind()));
-    if (!JSHClass::TransitToElementsKindUncheck(thread, JSHandle<JSObject>(array), kind)) {
+    if (!JSHClass::TransitToElementsKindUncheck(thread, JSHandle<JSObject>(array), elementsKind)) {
         return JSTaggedValue::Hole().GetRawData();
     }
 
@@ -3327,14 +3323,6 @@ uint8_t RuntimeStubs::LrInt(double x)
     return static_cast<uint8_t>(std::lrint(x));
 }
 
-void RuntimeStubs::InsertNewToEdenRSet([[maybe_unused]] uintptr_t argGlue,
-    uintptr_t object, size_t offset)
-{
-    Region *region = Region::ObjectAddressToRange(object);
-    uintptr_t slotAddr = object + offset;
-    return region->InsertNewToEdenRSet(slotAddr);
-}
-
 void RuntimeStubs::InsertOldToNewRSet([[maybe_unused]] uintptr_t argGlue,
     uintptr_t object, size_t offset)
 {
@@ -3379,23 +3367,6 @@ void RuntimeStubs::MarkingBarrier([[maybe_unused]] uintptr_t argGlue,
 #if ECMASCRIPT_ENABLE_BARRIER_CHECK
     if (!thread->GetEcmaVM()->GetHeap()->IsAlive(JSTaggedValue(value).GetHeapObject())) {
         LOG_FULL(FATAL) << "RuntimeStubs::MarkingBarrier checked value:" << value << " is invalid!";
-    }
-#endif
-    ASSERT(thread->IsConcurrentMarkingOrFinished());
-    Barriers::UpdateWithoutEden(thread, slotAddr, objectRegion, value, valueRegion);
-}
-
-void RuntimeStubs::MarkingBarrierWithEden([[maybe_unused]] uintptr_t argGlue,
-    uintptr_t object, size_t offset, TaggedObject *value)
-{
-    uintptr_t slotAddr = object + offset;
-    Region *objectRegion = Region::ObjectAddressToRange(object);
-    Region *valueRegion = Region::ObjectAddressToRange(value);
-    ASSERT(!valueRegion->InSharedHeap());
-    auto thread = JSThread::GlueToJSThread(argGlue);
-#if ECMASCRIPT_ENABLE_BARRIER_CHECK
-    if (!thread->GetEcmaVM()->GetHeap()->IsAlive(JSTaggedValue(value).GetHeapObject())) {
-        LOG_FULL(FATAL) << "RuntimeStubs::MarkingBarrierWithEden checked value:" << value << " is invalid!";
     }
 #endif
     ASSERT(thread->IsConcurrentMarkingOrFinished());
@@ -3890,18 +3861,16 @@ DEF_RUNTIME_STUBS(ParseInt)
     return base::NumberHelper::StringToNumber(*numberString, radix).GetRawData();
 }
 
-int RuntimeStubs::FastArraySort(JSTaggedType x, JSTaggedType y)
+int RuntimeStubs::IntLexicographicCompare(JSTaggedType x, JSTaggedType y)
 {
     DISALLOW_GARBAGE_COLLECTION;
-    JSTaggedValue xValue = JSTaggedValue(x);
-    JSTaggedValue yValue = JSTaggedValue(y);
-    if (xValue.IsInt() && yValue.IsInt()) {
-        return JSTaggedValue::IntLexicographicCompare(xValue, yValue);
-    }
-    if (xValue.IsDouble() && yValue.IsDouble()) {
-        return JSTaggedValue::DoubleLexicographicCompare(xValue, yValue);
-    }
-    return -1;
+    return JSTaggedValue::IntLexicographicCompare(JSTaggedValue(x), JSTaggedValue(y));
+}
+
+int RuntimeStubs::DoubleLexicographicCompare(JSTaggedType x, JSTaggedType y)
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    return JSTaggedValue::DoubleLexicographicCompare(JSTaggedValue(x), JSTaggedValue(y));
 }
 
 int RuntimeStubs::FastArraySortString(uintptr_t argGlue, JSTaggedValue x, JSTaggedValue y)
@@ -4128,8 +4097,8 @@ DEF_RUNTIME_STUBS(TraceLoadDetail)
         auto prof = JSHandle<ProfileTypeInfo>::Cast(profile);
         auto slot = slotId.GetInt();
         auto first = prof->GetIcSlot(slot);
+        auto second = prof->GetIcSlot(slot + 1);
         if (first.IsHole()) {
-            auto second = prof->GetIcSlot(slot + 1);
             if (second.IsHole()) {
                 msg += "other-mega, ";
             // 1: Call SetAsMegaDFX and set it to 1 (for placeholder purposes)..
@@ -4146,17 +4115,51 @@ DEF_RUNTIME_STUBS(TraceLoadDetail)
         } else if (first.IsUndefined()) {
             msg += "undedfine slot, ";
         } else if (first.IsWeak()) {
-            msg += "mono, ";
+            if (second.IsPrototypeHandler()) {
+                msg += "mono prototype, ";
+            } else {
+                msg += "mono, ";
+            }
         } else {
             msg += "poly, ";
         }
+#if ECMASCRIPT_ENABLE_TRACE_LOAD_MORE
+        auto AddType = [&msg] (std::string_view s, JSHandle<JSTaggedValue> value) {
+            msg += s;
+            msg += " type: ";
+            if (value->IsHeapObject()) {
+                JSHandle<JSObject> obj(value);
+                msg += JSHClass::DumpJSType(obj->GetClass()->GetObjectType());
+            }
+            msg += ", ";
+        };
+        auto AddDepth = [&thread, &msg] (JSHandle<JSTaggedValue> value) {
+            int depth = 0;
+            while (value->IsECMAObject()) {
+                depth++;
+                auto currHC = value->GetTaggedObject()->GetClass();
+                auto proto = currHC->GetProto();
+                value = JSHandle<JSTaggedValue>(thread, proto);
+            }
+            msg += "Depth: " + std::to_string(depth);
+            msg += ", ";
+        };
+        bool isNeedDepth = true;
+        bool isNeedTypeInformation = true;
+        if (isNeedTypeInformation) {
+            AddType("Receiver", receiver);
+        }
+        if (isNeedDepth) {
+            AddDepth(receiver);
+        }
+#endif
     }
     if (!receiver->IsHeapObject()) {
         msg += "prim_obj";
     } else {
         msg += "heap_obj";
     }
-    ECMA_BYTRACE_START_TRACE(HITRACE_TAG_ARK, msg);
+    ECMA_BYTRACE_START_TRACE(HITRACE_TAG_ARK, msg.c_str());
 #endif
     return JSTaggedValue::Undefined().GetRawData();
 }
@@ -4236,13 +4239,68 @@ DEF_RUNTIME_STUBS(SetPrototypeTransition)
     return JSTaggedValue::Hole().GetRawData();
 }
 
+DEF_RUNTIME_STUBS(JSProxyHasProperty)
+{
+    RUNTIME_STUBS_HEADER(JSProxyHasProperty);
+    JSHandle<JSTaggedValue> obj = GetHArg<JSTaggedValue>(argv, argc, 0);        // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> keyHandle = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
+    bool res = false;
+    res = JSProxy::HasProperty(thread, JSHandle<JSProxy>(obj), keyHandle);
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception().GetRawData());
+    return JSTaggedValue(res).GetRawData();
+}
+
+DEF_RUNTIME_STUBS(JSTypedArrayHasProperty)
+{
+    RUNTIME_STUBS_HEADER(JSTypedArrayHasProperty);
+    JSHandle<JSTaggedValue> obj = GetHArg<JSTaggedValue>(argv, argc, 0);        // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> keyHandle = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
+    bool res = false;
+    res = JSTypedArray::HasProperty(thread, obj, keyHandle);
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception().GetRawData());
+    return JSTaggedValue(res).GetRawData();
+}
+
+DEF_RUNTIME_STUBS(ModuleNamespaceHasProperty)
+{
+    RUNTIME_STUBS_HEADER(ModuleNamespaceHasProperty);
+    JSHandle<JSTaggedValue> obj = GetHArg<JSTaggedValue>(argv, argc, 0);        // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> keyHandle = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
+    bool res = false;
+    res = ModuleNamespace::HasProperty(thread, obj, keyHandle);
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception().GetRawData());
+    return JSTaggedValue(res).GetRawData();
+}
+
+DEF_RUNTIME_STUBS(JSObjectHasProperty)
+{
+    RUNTIME_STUBS_HEADER(JSObjectHasProperty);
+    JSHandle<JSTaggedValue> obj = GetHArg<JSTaggedValue>(argv, argc, 0);        // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> keyHandle = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
+    bool res = false;
+    if (keyHandle->IsInt()) {
+        uint32_t keyToIndex = static_cast<uint32_t>(keyHandle->GetInt());
+        res = JSObject::HasProperty(thread, JSHandle<JSObject>(obj), keyToIndex);
+    } else {
+        res = JSObject::HasProperty(thread, JSHandle<JSObject>(obj), keyHandle);
+    }
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception().GetRawData());
+    return JSTaggedValue(res).GetRawData();
+}
+
 DEF_RUNTIME_STUBS(HasProperty)
 {
     RUNTIME_STUBS_HEADER(HasProperty);
     JSHandle<JSTaggedValue> obj = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
-    JSTaggedValue indexValue = GetArg(argv, argc, 1);  // 1: means the first parameter
-    uint32_t index = static_cast<uint32_t>(indexValue.GetInt());
-    bool res = JSTaggedValue::HasProperty(thread, obj, index);
+    JSTaggedValue key = GetArg(argv, argc, 1);  // 1: means the first parameter
+    bool res = false;
+    if (key.IsInt()) {
+        uint32_t keyToIndex = static_cast<uint32_t>(key.GetInt());
+        res = JSTaggedValue::HasProperty(thread, obj, keyToIndex);
+    } else {
+        JSHandle<JSTaggedValue> keyHandle(thread, key);
+        res = JSTaggedValue::HasProperty(thread, obj, keyHandle);
+    }
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception().GetRawData());
     return JSTaggedValue(res).GetRawData();
 }

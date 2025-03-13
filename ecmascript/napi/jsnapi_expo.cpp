@@ -28,6 +28,7 @@
 #include "ecmascript/jsnapi_sendable.h"
 #include "ecmascript/jspandafile/js_pandafile_executor.h"
 #include "ecmascript/linked_hash_table.h"
+#include "ecmascript/module/module_logger.h"
 #include "ecmascript/module/napi_module_loader.h"
 #if defined(ENABLE_EXCEPTION_BACKTRACE)
 #include "ecmascript/platform/backtrace.h"
@@ -156,6 +157,7 @@ constexpr std::string_view ENTRY_POINTER = "_GLOBAL::func_main_0";
 bool JSNApi::isForked_ = false;
 static Mutex *mutex = new panda::Mutex();
 StartIdleMonitorCallback JSNApi::startIdleMonitorCallback_ = nullptr;
+const static uint32_t API_VERSION_MASK = 100;
 
 // ----------------------------------- ArkCrashHolder --------------------------------------
 constexpr size_t FORMATED_FUNCPTR_LENGTH = 36; // length of dec function pointer
@@ -1226,16 +1228,22 @@ void JSValueRef::GetDataViewInfo(const EcmaVM *vm,
     }
 }
 
-void JSValueRef::TryGetArrayLength(const EcmaVM *vm, bool *isArrayOrSharedArray, uint32_t *arrayLength)
+// TryGetArrayLength is only for use by the Napi
+void JSValueRef::TryGetArrayLength(const EcmaVM *vm, bool *isPendingException,
+    bool *isArrayOrSharedArray, uint32_t *arrayLength)
 {
-    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
+    JSThread *thread = vm->GetJSThread();
+    *isPendingException = thread->HasPendingException();
+    ecmascript::ThreadManagedScope managedScope(thread);
     JSTaggedValue thisValue = JSNApiHelper::ToJSTaggedValue(this);
-    if (thisValue.IsJSArray()) {
+    if (LIKELY(thisValue.IsJSArray())) {
         *isArrayOrSharedArray = true;
-        *arrayLength = JSArray::Cast(thisValue.GetTaggedObject())->GetArrayLength();
+        *arrayLength = (*isPendingException) ?
+            0 : JSArray::Cast(thisValue.GetTaggedObject())->GetArrayLength();
     } else if (thisValue.IsJSSharedArray()) {
         *isArrayOrSharedArray = true;
-        *arrayLength = ecmascript::JSSharedArray::Cast(thisValue.GetTaggedObject())->GetArrayLength();
+        *arrayLength = (*isPendingException) ?
+            0 : ecmascript::JSSharedArray::Cast(thisValue.GetTaggedObject())->GetArrayLength();
     } else {
         *isArrayOrSharedArray = false;
     }
@@ -5500,7 +5508,7 @@ void JSNApi::PostFork(EcmaVM *vm, const RuntimeOption &option)
     JSRuntimeOptions &jsOption = vm->GetJSOptions();
     jsOption.SetEnablePGOProfiler(option.GetEnableProfile());
     jsOption.SetEnableJIT(option.GetEnableJIT());
-    jsOption.SetEnableDFXHiSysEvent(true);
+    jsOption.SetEnableDFXHiSysEvent(option.GetEnableDFXHiSysEvent());
     jsOption.SetEnableBaselineJIT(option.GetEnableBaselineJIT());
     jsOption.SetMaxAotMethodSize(JSRuntimeOptions::MAX_APP_COMPILE_METHOD_SIZE);
     ecmascript::pgo::PGOProfilerManager::GetInstance()->SetBundleName(option.GetBundleName());
@@ -5646,6 +5654,16 @@ uint32_t JSNApi::GetCurrentThreadId()
     return JSThread::GetCurrentThreadId();
 }
 
+void JSNApi::SetVMAPIVersion(EcmaVM *vm, const int32_t apiVersion)
+{
+    vm->SetVMAPIVersion(static_cast<uint32_t>(apiVersion) % API_VERSION_MASK);
+}
+
+void JSNApi::UpdateStackInfo(EcmaVM *vm, void *currentStackInfo, uint32_t opKind)
+{
+    vm->GetJSThread()->UpdateStackInfo(currentStackInfo, static_cast<ecmascript::JSThread::StackInfoOpKind>(opKind));
+}
+
 uintptr_t JSNApi::SetWeak(const EcmaVM *vm, uintptr_t localAddress)
 {
     if (localAddress == 0) {
@@ -5785,6 +5803,26 @@ void JSNApi::SetHostPromiseRejectionTracker(EcmaVM *vm, void *cb, void* data)
     thread->GetCurrentEcmaContext()->SetData(data);
 }
 
+void JSNApi::SetTimerTaskCallback(EcmaVM *vm, TimerTaskCallback callback)
+{
+    CROSS_THREAD_CHECK(vm);
+    // register TimerTask to ark_js_runtime
+    vm->SetTimerTaskCallback(callback);
+}
+
+void JSNApi::SetCancelTimerCallback(EcmaVM *vm, CancelTimerCallback callback)
+{
+    CROSS_THREAD_CHECK(vm);
+    // register CancelTimerCallback to ark_js_runtime
+    vm->SetCancelTimerCallback(callback);
+}
+
+// post task after runtime initialized
+void JSNApi::NotifyEnvInitialized(EcmaVM *vm)
+{
+    ecmascript::ModuleLogger::SetModuleLoggerTask(vm);
+}
+
 void JSNApi::SetHostResolveBufferTracker(EcmaVM *vm,
     std::function<bool(std::string dirPath, uint8_t **buff, size_t *buffSize, std::string &errorMsg)> cb)
 {
@@ -5892,7 +5930,7 @@ Local<JSValueRef> JSNApi::NapiHasOwnProperty(const EcmaVM *vm, uintptr_t nativeO
         RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
         return scope.Escape(JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread, res)));
     }
-    auto ret = JSTaggedValue(JSTaggedValue::HasOwnProperty(thread, obj, keyValue));
+    auto ret = JSTaggedValue(JSTaggedValue::HasProperty(thread, obj, keyValue));
     return scope.Escape(JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread, ret)));
 }
 

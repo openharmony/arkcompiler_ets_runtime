@@ -94,6 +94,15 @@ ohos_prebuilt_etc("compiler_service_cfg") {
   subsystem_name = "arkcompiler"
 }
 
+ohos_prebuilt_etc("ark_aot_compiler.cfg") {
+  source = "ark_aot_compiler.cfg"
+  relative_install_dir = "init"
+
+  # Set the subsystem name
+  part_name = "ets_runtime"
+  subsystem_name = "arkcompiler"
+}
+
 ohos_sa_profile("compiler_sa_profile") {
   sources = [ "sa_profile/5300.json" ]
   part_name = "ets_runtime"

@@ -1090,17 +1090,13 @@ void HeapSnapshot::FillEdgesForBinMod(char *newAddr, CUnorderedSet<uint64_t> *re
     auto object = value.GetTaggedObject();
     std::vector<Reference> referenceResources;
     auto jsHclass = object->GetClass();
-    if (jsHclass->IsJsGlobalEnv() || jsHclass->IsString()) {
-        referenceResources.emplace_back("hclass", JSTaggedValue(jsHclass));
-        if (refSet != nullptr) {
-            for (auto refAddr : *refSet) {
-                JSTaggedValue val(refAddr);
-                auto valTy = val.GetTaggedObject()->GetClass()->GetObjectType();
-                referenceResources.emplace_back(JSHClass::DumpJSType(valTy), val);
-            }
+    referenceResources.emplace_back("hclass", JSTaggedValue(jsHclass));
+    if (refSet != nullptr) {
+        for (auto refAddr : *refSet) {
+            JSTaggedValue val(refAddr);
+            auto valTy = val.GetTaggedObject()->GetClass()->GetObjectType();
+            referenceResources.emplace_back(JSHClass::DumpJSType(valTy), val);
         }
-    } else {
-        value.DumpForSnapshot(referenceResources, false);
     }
     for (auto const &it : referenceResources) {
         JSTaggedValue toValue = it.value_;

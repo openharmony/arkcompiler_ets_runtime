@@ -13,57 +13,23 @@
  * limitations under the License.
  */
 
-const typedArrayConstructors = [
-    Float64Array,
-    Float32Array,
-    Int32Array,
-    Int16Array,
-    Int8Array,
-    Uint32Array,
-    Uint16Array,
-    Uint8Array,
-    Uint8ClampedArray
-];
-
 /*
- * @tc.name:isin
- * @tc.desc:test isin. Test hasproperty in the prototype chain. 
- *                     If element index is greater than the length of the typed array, return false.
+ * @tc.name: isin
+ * @tc.desc: test isin. Test whether the return value of IsIn is exception while input para is not a ECMA obj.
  * @tc.type: FUNC
  */
-function isInTypedArray1(ctor) {
-    const typedArray = new ctor(5);
-    typedArray[1] = 42;
-
-    const obj = {};
-    obj.__proto__ = typedArray;
-
-    print(1 in obj); // True. Found in the prototype chain.
-    print(obj[1]);   // 42
-    print(2 in obj); // True. Found in the prototype chain.
-    print(obj[2]);   // 0
-    print(6 in obj); // False. Not found in the prototype chain.
+{
+    try {
+        1 in 0;
+        let tmpArr = [0];
+    } catch (e) {
+        print(e);
+    }
 }
 
-/*
- * @tc.name:isin
- * @tc.desc:test isin. Test hasproperty in the prototype chain. If property key is not a symbol, and
- *                     obj is a typedArray, do not find the property in the prototype chain.
- * @tc.type: FUNC
- */
-function isInTypedArray2(ctor) {
-    let obj1 = {};
-    obj1[6] = "b";
-
-    const typedArray = new ctor(5);
-    typedArray[1] = 42;
-    typedArray.__proto__ = obj1;
-    const obj = Object.create(typedArray);
-    print("6" in obj);
+{
+    const v5 = [-3];
+    const a8 = new Uint8Array(2);
+    v5.__proto__ = a8;
+    print(-3 in v5);
 }
-
-typedArrayConstructors.forEach((ctor) => {
-    isInTypedArray1(ctor);
-    isInTypedArray2(ctor);
-})
-

@@ -216,6 +216,14 @@ GateRef CircuitBuilder::IsTypedArray(GateRef array)
                   Int32GreaterThanOrEqual(Int32(static_cast<int32_t>(JSType::JS_TYPED_ARRAY_LAST)), type));
 }
 
+GateRef CircuitBuilder::IsSharedTypedArray(GateRef array)
+{
+    GateRef hclass = LoadHClass(array);
+    GateRef type = GetObjectType(hclass);
+    return BitAnd(Int32GreaterThan(type, Int32(static_cast<int32_t>(JSType::JS_SHARED_TYPED_ARRAY_FIRST))),
+                  Int32GreaterThanOrEqual(Int32(static_cast<int32_t>(JSType::JS_SHARED_TYPED_ARRAY_LAST)), type));
+}
+
 void CircuitBuilder::Jump(Label *label)
 {
     ASSERT(label);
@@ -244,25 +252,43 @@ void CircuitBuilder::Branch(GateRef condition, Label *trueLabel, Label *falseLab
     env_->SetCurrentLabel(nullptr);
 }
 
-void CircuitBuilder::Switch(GateRef index, Label *defaultLabel, int64_t *keysValue, Label *keysLabel, int numberOfKeys)
+template <class LabelPtrGetter>
+void CircuitBuilder::SwitchGeneric(GateRef index, Label *defaultLabel, Span<const int64_t> keysValue,
+                                   LabelPtrGetter getIthLabelFn)
 {
+    static_assert(std::is_invocable_r_v<Label*, LabelPtrGetter, size_t>, "Invalid call signature.");
+    size_t numberOfKeys = keysValue.Size();
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     GateRef switchBranch = SwitchBranch(currentControl, index, numberOfKeys);
     currentLabel->SetControl(switchBranch);
-    for (int i = 0; i < numberOfKeys; i++) {
-        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+    for (size_t i = 0; i < numberOfKeys; i++) {
         GateRef switchCase = SwitchCase(switchBranch, keysValue[i]);
-        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-        keysLabel[i].AppendPredecessor(currentLabel);
-        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-        keysLabel[i].MergeControl(switchCase);
+        Label *curLabel = std::invoke(getIthLabelFn, i);
+        curLabel->AppendPredecessor(currentLabel);
+        curLabel->MergeControl(switchCase);
     }
 
     GateRef defaultCase = DefaultCase(switchBranch);
     defaultLabel->AppendPredecessor(currentLabel);
     defaultLabel->MergeControl(defaultCase);
     env_->SetCurrentLabel(nullptr);
+}
+
+void CircuitBuilder::Switch(GateRef index, Label *defaultLabel,
+                            const int64_t *keysValue, Label *keysLabel, int numberOfKeys)
+{
+    return SwitchGeneric(index, defaultLabel, {keysValue, numberOfKeys}, [keysLabel](size_t i) {
+        return &keysLabel[i];
+    });
+}
+
+void CircuitBuilder::Switch(GateRef index, Label *defaultLabel,
+                            const int64_t *keysValue, Label * const *keysLabel, int numberOfKeys)
+{
+    return SwitchGeneric(index, defaultLabel, {keysValue, numberOfKeys}, [keysLabel](size_t i) {
+        return keysLabel[i];
+    });
 }
 
 void CircuitBuilder::LoopBegin(Label *loopHead)
@@ -751,6 +777,16 @@ GateRef CircuitBuilder::GetHasChanged(GateRef object)
     return Int32NotEqual(Int32And(bitfield, mask), Int32(0));
 }
 
+GateRef CircuitBuilder::GetNotFoundHasChanged(GateRef object)
+{
+    GateRef bitfieldOffset = IntPtr(ProtoChangeMarker::BIT_FIELD_OFFSET);
+    GateRef bitfield = Load(VariableType::INT32(), object, bitfieldOffset);
+    return Int32NotEqual(
+        Int32And(Int32LSR(bitfield, Int32(ProtoChangeMarker::NotFoundHasChangedBits::START_BIT)),
+                 Int32((1LLU << ProtoChangeMarker::NotFoundHasChangedBits::SIZE) - 1)),
+        Int32(0));
+}
+
 GateRef CircuitBuilder::GetAccessorHasChanged(GateRef object)
 {
     GateRef bitfieldOffset = IntPtr(ProtoChangeMarker::BIT_FIELD_OFFSET);
@@ -1053,30 +1089,52 @@ GateRef Variable::TryRemoveTrivialPhi(GateRef phi)
     return same;
 }
 
+GateRef CircuitBuilder::ElementsKindIsInt(GateRef kind)
+{
+    return Int32Equal(kind, Int32(Elements::ToUint(ElementsKind::INT)));
+}
+
 GateRef CircuitBuilder::ElementsKindIsIntOrHoleInt(GateRef kind)
 {
-    GateRef kindIsInt = Int32Equal(kind, Int32(static_cast<uint32_t>(ElementsKind::INT)));
-    GateRef kindIsHoleInt = Int32Equal(kind, Int32(static_cast<uint32_t>(ElementsKind::HOLE_INT)));
+    GateRef kindIsInt = Int32Equal(kind, Int32(Elements::ToUint(ElementsKind::INT)));
+    GateRef kindIsHoleInt = Int32Equal(kind, Int32(Elements::ToUint(ElementsKind::HOLE_INT)));
     return BitOr(kindIsInt, kindIsHoleInt);
+}
+
+GateRef CircuitBuilder::ElementsKindIsNumber(GateRef kind)
+{
+    return Int32Equal(kind, Int32(Elements::ToUint(ElementsKind::NUMBER)));
 }
 
 GateRef CircuitBuilder::ElementsKindIsNumOrHoleNum(GateRef kind)
 {
-    GateRef kindIsNum = Int32Equal(kind, Int32(static_cast<uint32_t>(ElementsKind::NUMBER)));
-    GateRef kindIsHoleNum = Int32Equal(kind, Int32(static_cast<uint32_t>(ElementsKind::HOLE_NUMBER)));
+    GateRef kindIsNum = Int32Equal(kind, Int32(Elements::ToUint(ElementsKind::NUMBER)));
+    GateRef kindIsHoleNum = Int32Equal(kind, Int32(Elements::ToUint(ElementsKind::HOLE_NUMBER)));
     return BitOr(kindIsNum, kindIsHoleNum);
+}
+
+GateRef CircuitBuilder::ElementsKindIsString(GateRef kind)
+{
+    return Int32Equal(kind, Int32(Elements::ToUint(ElementsKind::STRING)));
+}
+
+GateRef CircuitBuilder::ElementsKindIsStringOrHoleString(GateRef kind)
+{
+    GateRef kindIsString = Int32Equal(kind, Int32(Elements::ToUint(ElementsKind::STRING)));
+    GateRef kindIsHoleString = Int32Equal(kind, Int32(Elements::ToUint(ElementsKind::HOLE_STRING)));
+    return BitOr(kindIsString, kindIsHoleString);
 }
 
 GateRef CircuitBuilder::ElementsKindIsHeapKind(GateRef kind)
 {
-    GateRef overString = Int32GreaterThanOrEqual(kind, Int32(static_cast<uint32_t>(ElementsKind::STRING)));
-    GateRef isHoleOrNone = Int32LessThanOrEqual(kind, Int32(static_cast<uint32_t>(ElementsKind::HOLE)));
+    GateRef overString = Int32GreaterThanOrEqual(kind, Int32(Elements::ToUint(ElementsKind::STRING)));
+    GateRef isHoleOrNone = Int32LessThanOrEqual(kind, Int32(Elements::ToUint(ElementsKind::HOLE)));
     return BitOr(overString, isHoleOrNone);
 }
 
 GateRef CircuitBuilder::ElementsKindHasHole(GateRef kind)
 {
-    return Int32NotEqual(Int32And(kind, Int32(static_cast<uint32_t>(ElementsKind::HOLE))), Int32(0));
+    return Int32NotEqual(Int32And(kind, Int32(Elements::ToUint(ElementsKind::HOLE))), Int32(0));
 }
 
 GateRef CircuitBuilder::LoadBuiltinObject(size_t offset)

@@ -46,6 +46,20 @@ if (globalThis["ArkPrivate"] != undefined) {
     }
     map.set("flag2", flag2);
 
+    let isClear = false;
+    let tempArr = new arrayList();
+    tempArr.add(1);
+    tempArr.add(2);
+    tempArr.add(3);
+    tempArr.sort((a, b) => {
+        if (!isClear) {
+            tempArr.clear();
+            isClear = true;
+        }
+        return a - b;
+    });
+    map.set("test arraylist sort callbackFN:", tempArr.length === 3);
+
     let arr1 = new arrayList();
     let proxy = new Proxy(arr1, {});
     let testArray = []
@@ -322,6 +336,23 @@ if (globalThis["ArkPrivate"] != undefined) {
         print("Test ArrayList success!!!");
     } else {
         print("Test ArrayList fail: " + flag);
+    }
+
+    /*
+     * @tc.name: checkcontainerloadhclass
+     * @tc.desc: Test ContainersArrayListStubBuilder::ForEach whether judge isHeapObject
+     *           before loading hClass.
+     * @tc.type: FUNC
+     * @tc.require: issueIBQ709
+     */
+    {
+        let arrList1 = new arrayList(1);
+        let arr1 = [1];
+        try {
+            Reflect.apply(v1.forEach, 123, arr1);
+        } catch (e) {
+            print(e);
+        }
     }
 }
 export let arraylistRes = "Test ArrayList";

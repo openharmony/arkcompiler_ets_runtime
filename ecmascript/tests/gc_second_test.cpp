@@ -42,7 +42,6 @@ public:
     void SetUp() override
     {
         JSRuntimeOptions options;
-        options.SetEnableEdenGC(true);
         instance = JSNApi::CreateEcmaVM(options);
         ASSERT_TRUE(instance != nullptr) << "Cannot create EcmaVM";
         thread = instance->GetJSThread();
@@ -412,7 +411,7 @@ HWTEST_F_L0(GCTest, CheckIfNeedPrintTest001)
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
     heap->SetMarkType(MarkType::MARK_YOUNG);
     GCStats *stats = new GCStats(heap);
-    stats->SetRecordData(RecordData::EDEN_COUNT, 1);
+    stats->SetRecordData(RecordData::YOUNG_COUNT, 1);
     stats->PrintStatisticResult();
 }
 
@@ -454,7 +453,7 @@ HWTEST_F_L0(GCTest, StopCalculationAfterGCTest001)
     auto controller = new MemController(heap);
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
     controller->StartCalculationBeforeGC();
-    controller->StopCalculationAfterGC(TriggerGCType::EDEN_GC);
+    controller->StopCalculationAfterGC(TriggerGCType::YOUNG_GC);
 }
 
 HWTEST_F_L0(GCTest, RecordAllocationForIdleTest003)

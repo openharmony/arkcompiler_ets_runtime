@@ -174,7 +174,8 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFile(JSThread *threa
 std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFileSecure(JSThread *thread, const CString &filename,
     std::string_view entryPoint, uint8_t *buffer, size_t size, bool needUpdate)
 {
-    ModuleTraceScope moduleTraceScope(thread, "JSPandaFileManager::LoadJSPandaFileSecure:" + filename);
+    CString traceInfo = "JSPandaFileManager::LoadJSPandaFileSecure:" + filename;
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, traceInfo.c_str());
     if (buffer == nullptr || size == 0) {
         LOG_FULL(ERROR) << "Input buffer is empty";
         return nullptr;
@@ -602,9 +603,16 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::GenerateJSPandafileFromBufferCa
         thread, filename, entryPoint, bufferInfo.buffer_, bufferInfo.size_);
 }
 
-void *JSPandaFileManager::AllocateBuffer(size_t size)
+void *JSPandaFileManager::AllocateBuffer(size_t size, bool isBundlePack, CreateMode mode)
 {
-    return JSPandaFileAllocator::AllocateBuffer(size);
+    if (mode == CreateMode::DFX) {
+        return JSPandaFileAllocator::AllocateBuffer(size);
+    }
+    auto allocator = Runtime::GetInstance()->GetNativeAreaAllocator();
+    if (isBundlePack) {
+        return allocator->AllocateBuffer(size);
+    }
+    return allocator->NativeAreaPageMap(size);
 }
 
 void *JSPandaFileManager::JSPandaFileAllocator::AllocateBuffer(size_t size)
@@ -632,9 +640,16 @@ void *JSPandaFileManager::JSPandaFileAllocator::AllocateBuffer(size_t size)
     return ptr;
 }
 
-void JSPandaFileManager::FreeBuffer(void *mem)
+void JSPandaFileManager::FreeBuffer(void *mem, size_t size, bool isBundlePack, CreateMode mode)
 {
-    JSPandaFileAllocator::FreeBuffer(mem);
+    if (mode == CreateMode::DFX) {
+        return JSPandaFileAllocator::FreeBuffer(mem);
+    }
+    auto allocator = Runtime::GetInstance()->GetNativeAreaAllocator();
+    if (isBundlePack) {
+        return allocator->FreeBuffer(mem);
+    }
+    allocator->NativeAreaPageUnmap(mem, size);
 }
 
 void JSPandaFileManager::JSPandaFileAllocator::FreeBuffer(void *mem)

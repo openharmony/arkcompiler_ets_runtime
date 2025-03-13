@@ -78,9 +78,7 @@ public:
 
     void TearDown() override
     {
-        JSPandaFileManager::GetInstance()->RemoveJSPandaFile(pf_.get());
-        vm_ = nullptr;
-        pf_.reset();
+        DestroyJSPandaFile();
         PGOProfilerManager::GetInstance()->SetDisablePGO(false);
         PGOProfilerManager::GetInstance()->Destroy();
         PGOProfilerHeader::SetStrictMatch(strictMatch_);
@@ -207,6 +205,8 @@ protected:
     void CheckApMethodsInApFiles(const std::string &fileName,
                                  std::unordered_map<std::string, std::vector<PGOMethodId>> &recordMethodList)
     {
+        RuntimeOption option;
+        vm_ = JSNApi::CreateJSVM(option);
         std::vector<MethodLiteral *> methodLiterals {};
         CreateJSPandaFile(fileName.c_str(), methodLiterals);
         for (auto &methodLiteral : methodLiterals) {
@@ -227,6 +227,15 @@ protected:
                 break;
             }
         }
+        JSNApi::DestroyJSVM(vm_);
+    }
+
+    void DestroyJSPandaFile() {
+        RuntimeOption option;
+        vm_ = JSNApi::CreateJSVM(option);
+        JSPandaFileManager::GetInstance()->RemoveJSPandaFile(pf_.get());
+        pf_.reset();
+        JSNApi::DestroyJSVM(vm_);
     }
 
     static constexpr uint32_t DECODER_THRESHOLD = 2;
@@ -237,14 +246,13 @@ protected:
 
 HWTEST_F_L0(PGOProfilerTest, Sample)
 {
-    std::vector<MethodLiteral *> methodLiterals {};
-    CreateJSPandaFile("sample_test.abc", methodLiterals);
-
     mkdir("ark-profiler/", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
     RuntimeOption option;
     option.SetEnableProfile(true);
     option.SetProfileDir("ark-profiler/");
     vm_ = JSNApi::CreateJSVM(option);
+    std::vector<MethodLiteral *> methodLiterals {};
+    CreateJSPandaFile("sample_test.abc", methodLiterals);
     vm_->GetJSThread()->ManagedCodeBegin();
     JSHandle<ConstantPool> constPool = vm_->GetFactory()->NewSConstantPool(4);
     constPool->SetJSPandaFile(pf_.get());
@@ -279,14 +287,12 @@ HWTEST_F_L0(PGOProfilerTest, Sample)
 HWTEST_F_L0(PGOProfilerTest, Sample1)
 {
     mkdir("ark-profiler1/", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-    std::vector<MethodLiteral *> methodLiterals {};
-    CreateJSPandaFile("sample_test.abc", methodLiterals);
-
-    mkdir("ark-profiler1/", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
     RuntimeOption option;
     option.SetEnableProfile(true);
     option.SetProfileDir("ark-profiler1/");
     vm_ = JSNApi::CreateJSVM(option);
+    std::vector<MethodLiteral *> methodLiterals {};
+    CreateJSPandaFile("sample_test.abc", methodLiterals);
     vm_->GetJSThread()->ManagedCodeBegin();
     JSHandle<ConstantPool> constPool = vm_->GetFactory()->NewSConstantPool(4);
     constPool->SetJSPandaFile(pf_.get());
@@ -335,14 +341,12 @@ HWTEST_F_L0(PGOProfilerTest, Sample1)
 HWTEST_F_L0(PGOProfilerTest, Sample2)
 {
     mkdir("ark-profiler2/", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-    std::vector<MethodLiteral *> methodLiterals {};
-    CreateJSPandaFile("sample_test.abc", methodLiterals);
-
-    mkdir("ark-profiler2/", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
     RuntimeOption option;
     option.SetEnableProfile(true);
     option.SetProfileDir("ark-profiler2/");
     vm_ = JSNApi::CreateJSVM(option);
+    std::vector<MethodLiteral *> methodLiterals {};
+    CreateJSPandaFile("sample_test.abc", methodLiterals);
     vm_->GetJSThread()->ManagedCodeBegin();
     JSHandle<ConstantPool> constPool = vm_->GetFactory()->NewSConstantPool(4);
     constPool->SetJSPandaFile(pf_.get());
@@ -391,14 +395,14 @@ HWTEST_F_L0(PGOProfilerTest, Sample2)
 
 HWTEST_F_L0(PGOProfilerTest, DisEnableSample)
 {
-    std::vector<MethodLiteral *> methodLiterals {};
-    CreateJSPandaFile("sample_test.abc", methodLiterals);
-    EXPECT_GE(methodLiterals.size(), 1);
     mkdir("ark-profiler3/", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
     RuntimeOption option;
     option.SetEnableProfile(false);
     option.SetProfileDir("ark-profiler3/");
     vm_ = JSNApi::CreateJSVM(option);
+    std::vector<MethodLiteral *> methodLiterals {};
+    CreateJSPandaFile("sample_test.abc", methodLiterals);
+    EXPECT_GE(methodLiterals.size(), 1);
     vm_->GetJSThread()->ManagedCodeBegin();
     JSPandaFileManager::GetInstance()->AddJSPandaFile(pf_);
     JSHandle<ConstantPool> constPool = vm_->GetFactory()->NewSConstantPool(4);
@@ -483,20 +487,19 @@ HWTEST_F_L0(PGOProfilerTest, PGOProfilerManagerSample)
 HWTEST_F_L0(PGOProfilerTest, PGOProfilerDoubleVM)
 {
     mkdir("ark-profiler5/", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-    std::vector<MethodLiteral *> methodLiterals {};
-    CreateJSPandaFile("sample_test.abc", methodLiterals);
-    EXPECT_GE(methodLiterals.size(), 2);  // number of methods
-    mkdir("ark-profiler5/", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
     RuntimeOption option;
     option.SetEnableProfile(true);
     // outDir is empty
     option.SetProfileDir("ark-profiler5/");
     vm_ = JSNApi::CreateJSVM(option);
+    std::vector<MethodLiteral *> methodLiterals {};
+    CreateJSPandaFile("sample_test.abc", methodLiterals);
+    EXPECT_GE(methodLiterals.size(), 2);  // number of methods
     vm_->GetJSThread()->ManagedCodeBegin();
     JSPandaFileManager::GetInstance()->AddJSPandaFile(pf_);
     JSHandle<ConstantPool> constPool = vm_->GetFactory()->NewSConstantPool(4);
     constPool->SetJSPandaFile(pf_.get());
-    uint32_t checksum = 304293;
+    uint32_t checksum = pf_->GetChecksum();
     PGOProfilerManager::GetInstance()->SamplePandaFileInfo(checksum, "sample_test.abc");
     ASSERT_TRUE(vm_ != nullptr) << "Cannot create Runtime";
     // worker vm read profile enable from PGOProfilerManager singleton
@@ -558,14 +561,14 @@ HWTEST_F_L0(PGOProfilerTest, PGOProfilerDoubleVM)
 
 HWTEST_F_L0(PGOProfilerTest, PGOProfilerDecoderNoHotMethod)
 {
-    std::vector<MethodLiteral *> methodLiterals {};
-    CreateJSPandaFile("sample_test.abc", methodLiterals);
-    EXPECT_GE(methodLiterals.size(), 1);  // number of methods
     mkdir("ark-profiler8/", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
     RuntimeOption option;
     option.SetEnableProfile(true);
     option.SetProfileDir("ark-profiler8/");
     vm_ = JSNApi::CreateJSVM(option);
+    std::vector<MethodLiteral *> methodLiterals {};
+    CreateJSPandaFile("sample_test.abc", methodLiterals);
+    EXPECT_GE(methodLiterals.size(), 1);  // number of methods
     vm_->GetJSThread()->ManagedCodeBegin();
     JSPandaFileManager::GetInstance()->AddJSPandaFile(pf_);
     JSHandle<ConstantPool> constPool = vm_->GetFactory()->NewSConstantPool(4);
@@ -603,19 +606,19 @@ HWTEST_F_L0(PGOProfilerTest, PGOProfilerPostTask)
     for (uint32_t funcIdx = 0; funcIdx < 100; funcIdx++) {
         sourceStream << "  .function void foo" << std::to_string(funcIdx) << "(any a0, any a1, any a2) {}" << std::endl;
     }
-    std::vector<MethodLiteral *> methodLiterals {};
-    CreateJSPandaFile(sourceStream.str().c_str(), "ark-profiler9.abc", methodLiterals);
-    EXPECT_EQ(methodLiterals.size(), 100);  // number of methods
     mkdir("ark-profiler9/", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
     RuntimeOption option;
     option.SetEnableProfile(true);
     option.SetProfileDir("ark-profiler9/");
     vm_ = JSNApi::CreateJSVM(option);
+    std::vector<MethodLiteral *> methodLiterals {};
+    CreateJSPandaFile(sourceStream.str().c_str(), "ark-profiler9.abc", methodLiterals);
+    EXPECT_EQ(methodLiterals.size(), 100);  // number of methods
     vm_->GetJSThread()->ManagedCodeBegin();
     JSPandaFileManager::GetInstance()->AddJSPandaFile(pf_);
     JSHandle<ConstantPool> constPool = vm_->GetFactory()->NewSConstantPool(4);
     constPool->SetJSPandaFile(pf_.get());
-    uint32_t checksum = 304293;
+    uint32_t checksum = pf_->GetChecksum();
     PGOProfilerManager::GetInstance()->SetApGenMode(ApGenMode::OVERWRITE);
     PGOProfilerManager::GetInstance()->SamplePandaFileInfo(checksum, "ark-profiler9.abc");
 
@@ -661,36 +664,8 @@ HWTEST_F_L0(PGOProfilerTest, PGOProfilerPostTask)
     rmdir("ark-profiler9/");
 }
 
-HWTEST_F_L0(PGOProfilerTest, TextToBinary)
-{
-    mkdir("ark-profiler10/", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-
-    std::ofstream file("ark-profiler10/modules.text");
-    std::string result = "Profiler Version: 0.0.0.1\n";
-    file.write(result.c_str(), result.size());
-    result = "\nPanda file sumcheck list: [ 413775942 ]\n";
-    file.write(result.c_str(), result.size());
-    result = "\nrecordName: [ 1232/3/CALL_MODE/hello, 234/100/HOTNESS_MODE/h#ello1 ]\n";
-    file.write(result.c_str(), result.size());
-    file.close();
-
-    PGOProfilerHeader::SetStrictMatch(false);
-    ASSERT_TRUE(PGOProfilerManager::GetInstance()->TextToBinary(
-        "ark-profiler10/modules.text", "ark-profiler10/modules.ap", 2, ApGenMode::OVERWRITE));
-
-    PGOProfilerDecoder loader("ark-profiler10/modules.ap", DECODER_THRESHOLD);
-    ASSERT_TRUE(loader.LoadAndVerify({{"test", 413775942}}));
-
-    unlink("ark-profiler10/modules.ap");
-    unlink("ark-profiler10/modules.text");
-    rmdir("ark-profiler10");
-}
-
 HWTEST_F_L0(PGOProfilerTest, FailResetProfilerInWorker)
 {
-    std::vector<MethodLiteral *> methodLiterals {};
-    CreateJSPandaFile("sample_test.abc", methodLiterals);
-    EXPECT_GE(methodLiterals.size(), 1);  // number of methods
     mkdir("ark-profiler12/", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
     RuntimeOption option;
     // Although enableProfile is set in option, but it will not work when isWorker is set.
@@ -699,6 +674,9 @@ HWTEST_F_L0(PGOProfilerTest, FailResetProfilerInWorker)
     option.SetProfileDir("ark-profiler12/");
     // PgoProfiler is disabled as default.
     vm_ = JSNApi::CreateJSVM(option);
+    std::vector<MethodLiteral *> methodLiterals {};
+    CreateJSPandaFile("sample_test.abc", methodLiterals);
+    EXPECT_GE(methodLiterals.size(), 1);  // number of methods
     vm_->GetJSThread()->ManagedCodeBegin();
     JSPandaFileManager::GetInstance()->AddJSPandaFile(pf_);
     uint32_t checksum = pf_->GetChecksum();

@@ -55,13 +55,6 @@ bool CheckVersion(JSRuntimeOptions& runtimeOptions, AotCompilerStats& compilerSt
     return false;
 }
 
-bool IsExistsPkgInfo(AotCompilerPreprocessor &cPreprocessor)
-{
-    if (cPreprocessor.GetMainPkgArgs()) {
-        return true;
-    }
-    return false;
-}
 } // namespace
 
 int Main(const int argc, const char **argv)
@@ -112,12 +105,6 @@ int Main(const int argc, const char **argv)
             return ERR_FAIL;
         }
 
-        if (IsExistsPkgInfo(cPreprocessor)) {
-            if (AotCrashInfo::IsAotEscaped(cPreprocessor.GetMainPkgArgs()->GetPgoDir())) {
-                LOG_COMPILER(ERROR) << "Stop compile AOT because there are multiple crashes";
-                return ERR_FAIL;
-            }
-        }
         if (runtimeOptions.IsPartialCompilerMode() && cOptions.profilerIn_.empty()) {
             // no need to compile in partial mode without any ap files.
             return ERR_NO_AP;
@@ -222,10 +209,6 @@ int Main(const int argc, const char **argv)
         log.Print();
         if (runtimeOptions.IsTargetCompilerMode()) {
             compilerStats.PrintCompilerStatsLog();
-        }
-        if (IsExistsPkgInfo(cPreprocessor)) {
-            ohos::EnableAotJitListHelper::GetInstance()->AddEnableListCount(
-                ret, cPreprocessor.GetMainPkgArgs()->GetPgoDir());
         }
     }
 

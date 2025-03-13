@@ -173,6 +173,10 @@ JSTaggedValue ModuleManager::GetLazyModuleValueOutterInternal(int32_t index, JST
     }
     ASSERT(moduleEnvironment.IsTaggedArray());
     JSTaggedValue resolvedBinding = TaggedArray::Cast(moduleEnvironment.GetTaggedObject())->Get(index);
+    ModuleLogger *moduleLogger = thread->GetCurrentEcmaContext()->GetModuleLogger();
+    if (moduleLogger != nullptr) {
+        return ModuleTools::ProcessLazyModuleLoadInfo(thread, currentModuleHdl, resolvedBinding, index);
+    }
     if (resolvedBinding.IsResolvedIndexBinding()) {
         JSHandle<ResolvedIndexBinding> binding(thread, resolvedBinding);
         JSTaggedValue resolvedModule = binding->GetModule();
@@ -466,33 +470,29 @@ JSTaggedValue ModuleManager::GetModuleNamespaceInternal(int32_t index, JSTaggedV
         UNREACHABLE();
     }
     JSThread *thread = vm_->GetJSThread();
-    SourceTextModule *module = SourceTextModule::Cast(currentModule.GetTaggedObject());
-    JSTaggedValue requestedModule = module->GetRequestedModules();
-    JSTaggedValue moduleName = TaggedArray::Cast(requestedModule.GetTaggedObject())->Get(index);
-    CString moduleRecordName = module->GetEcmaModuleRecordNameString();
-    JSHandle<JSTaggedValue> requiredModule;
-    requiredModule = ModuleResolver::HostResolveImportedModule(thread,
-        JSHandle<SourceTextModule>(thread, module), JSHandle<JSTaggedValue>(thread, moduleName));
+    JSHandle<SourceTextModule> module(thread, SourceTextModule::Cast(currentModule));
+    JSHandle<TaggedArray> requestedModules(thread, module->GetRequestedModules());
+    JSHandle<SourceTextModule> requiredModule = JSHandle<SourceTextModule>::Cast(
+        SourceTextModule::GetRequestedModule(thread, module, requestedModules, index));
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception());
-    JSHandle<SourceTextModule> requiredModuleST = JSHandle<SourceTextModule>::Cast(requiredModule);
+
     ModuleLogger *moduleLogger = thread->GetCurrentEcmaContext()->GetModuleLogger();
     if (moduleLogger != nullptr) {
-        return ModuleTools::ProcessModuleNameSpaceLoadInfo(thread,
-            JSHandle<SourceTextModule>(thread, module), requiredModuleST);
+        return ModuleTools::ProcessModuleNameSpaceLoadInfo(thread, module, requiredModule);
     }
-    ModuleTypes moduleType = requiredModuleST->GetTypes();
-    // if requiredModuleST is Native module
+    ModuleTypes moduleType = requiredModule->GetTypes();
+    // if requiredModule is Native module
     if (SourceTextModule::IsNativeModule(moduleType)) {
-        return SourceTextModule::Cast(requiredModuleST.GetTaggedValue())->GetModuleValue(thread, 0, false);
+        return requiredModule->GetModuleValue(thread, 0, false);
     }
-    // if requiredModuleST is CommonJS
+    // if requiredModule is CommonJS
     if (SourceTextModule::IsCjsModule(moduleType)) {
-        CString cjsModuleName = SourceTextModule::GetModuleName(requiredModuleST.GetTaggedValue());
+        CString cjsModuleName = SourceTextModule::GetModuleName(requiredModule.GetTaggedValue());
         JSHandle<JSTaggedValue> moduleNameHandle(thread->GetEcmaVM()->GetFactory()->NewFromUtf8(cjsModuleName));
         return CjsModule::SearchFromModuleCache(thread, moduleNameHandle).GetTaggedValue();
     }
-    // if requiredModuleST is ESM
-    JSHandle<JSTaggedValue> moduleNamespace = SourceTextModule::GetModuleNamespace(thread, requiredModuleST);
+    // if requiredModule is ESM
+    JSHandle<JSTaggedValue> moduleNamespace = SourceTextModule::GetModuleNamespace(thread, requiredModule);
     ASSERT(moduleNamespace->IsModuleNamespace());
     return moduleNamespace.GetTaggedValue();
 }

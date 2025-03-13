@@ -55,8 +55,12 @@ enum class ElementsKind : uint8_t {
 
 class PUBLIC_API Elements {
 public:
-    static CMap<ElementsKind, std::pair<ConstantIndex, ConstantIndex>> InitializeHClassMap();
+    static constexpr int32_t KIND_COUNT = static_cast<uint8_t>(ElementsKind::HOLE_TAGGED) + 1;
 
+    static constexpr uint32_t ToUint(ElementsKind kind)
+    {
+        return static_cast<uint32_t>(kind);
+    }
     static std::string GetString(ElementsKind kind);
     static bool IsInt(ElementsKind kind);
     static bool IsNumber(ElementsKind kind);
@@ -80,18 +84,23 @@ public:
 
     static bool IsInNumbers(ElementsKind kind)
     {
-        return (static_cast<uint32_t>(kind) > static_cast<uint32_t>(ElementsKind::HOLE) &&
-                static_cast<uint32_t>(kind) < static_cast<uint32_t>(ElementsKind::STRING));
+        return (ToUint(kind) > ToUint(ElementsKind::HOLE) &&
+                ToUint(kind) < ToUint(ElementsKind::STRING));
     }
 
-    static bool IsHoleInt(ElementsKind kind)
+    static bool IsIntOrHoleInt(ElementsKind kind)
     {
-        return kind == ElementsKind::HOLE_INT;
+        return kind == ElementsKind::INT || kind == ElementsKind::HOLE_INT;
     }
 
-    static bool IsHoleNumber(ElementsKind kind)
+    static bool IsNumberOrHoleNumber(ElementsKind kind)
     {
-        return kind == ElementsKind::HOLE_NUMBER;
+        return kind == ElementsKind::NUMBER || kind == ElementsKind::HOLE_NUMBER;
+    }
+
+    static bool IsStringOrHoleString(ElementsKind kind)
+    {
+        return kind == ElementsKind::STRING || kind == ElementsKind::HOLE_STRING;
     }
 
     static ConstantIndex GetGlobalContantIndexByKind(ElementsKind kind);

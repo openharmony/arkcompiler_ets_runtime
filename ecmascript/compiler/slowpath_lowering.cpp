@@ -15,16 +15,11 @@
 
 #include "ecmascript/compiler/slowpath_lowering.h"
 
-#include "ecmascript/compiler/bytecodes.h"
 #include "ecmascript/compiler/call_stub_builder.h"
-#include "ecmascript/compiler/circuit_builder.h"
-#include "ecmascript/compiler/share_gate_meta_data.h"
 #include "ecmascript/dfx/vm_thread_control.h"
 #include "ecmascript/dfx/vmstat/opt_code_profiler.h"
 #include "ecmascript/js_async_generator_object.h"
-#include "ecmascript/js_generator_object.h"
 #include "ecmascript/js_runtime_options.h"
-#include "ecmascript/js_thread.h"
 #include "ecmascript/jit/jit.h"
 #include "ecmascript/lexical_env.h"
 
@@ -1528,10 +1523,16 @@ void SlowPathLowering::LowerExp(GateRef gate)
 
 void SlowPathLowering::LowerIsIn(GateRef gate)
 {
-    const int id = RTSTUB_ID(IsIn);
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
+#if ENABLE_NEXT_OPTIMIZATION
+
+    GateRef newGate = builder_.CallStub(glue_, gate, CommonStubCSigns::IsIn,
+                                        {glue_, acc_.GetValueIn(gate, 0), acc_.GetValueIn(gate, 1)});
+#else
+    const int id = RTSTUB_ID(IsIn);
     GateRef newGate = LowerCallRuntime(gate, id, {acc_.GetValueIn(gate, 0), acc_.GetValueIn(gate, 1)});
+#endif
     ReplaceHirWithValue(gate, newGate);
 }
 
@@ -1591,7 +1592,7 @@ GateRef SlowPathLowering::LowerUpdateArrayHClassAtDefine(GateRef gate, GateRef a
 {
     ElementsKind kind = acc_.TryGetElementsKind(gate);
     if (!Elements::IsGeneric(kind)) {
-        size_t hclassIndex = static_cast<size_t>(compilationEnv_->GetArrayHClassIndexMap().at(kind).first);
+        size_t hclassIndex = static_cast<size_t>(compilationEnv_->GetArrayHClassIndex(kind, false));
         GateRef gConstAddr = builder_.Load(VariableType::JS_POINTER(), glue_,
             builder_.IntPtr(JSThread::GlueData::GetGlobalConstOffset(false)));
         GateRef constantIndex = builder_.IntPtr(JSTaggedValue::TaggedTypeSize() * hclassIndex);
@@ -2091,34 +2092,39 @@ bool SlowPathLowering::IsDependIfStateMent(GateRef gate, size_t idx)
 void SlowPathLowering::LowerConditionJump(GateRef gate, bool isEqualJump)
 {
     GateRef value = acc_.GetValueIn(gate, 0);
+    Label ifTrue(&builder_);
+    Label ifFalse(&builder_);
 
-    Label isZero(&builder_);
-    Label notZero(&builder_);
     // GET_ACC().IsFalse()
-    Label notFalse(&builder_);
-    BRANCH_CIR(builder_.IsSpecial(value, JSTaggedValue::VALUE_FALSE), &isZero, &notFalse);
-    builder_.Bind(&notFalse);
+    Label needIntCheck(&builder_);
+    Label &checkTrue = (isEqualJump ? ifTrue : needIntCheck);
+    Label &checkFalse = (isEqualJump ? needIntCheck : ifTrue);
+    BRANCH_CIR(builder_.IsSpecial(value, JSTaggedValue::VALUE_FALSE), &checkTrue, &checkFalse);
+    builder_.Bind(&needIntCheck);
     {
         // (GET_ACC().IsInt() && GET_ACC().GetInt() == 0)
         Label isInt(&builder_);
-        Label notIntZero(&builder_);
-        BRANCH_CIR(builder_.TaggedIsInt(value), &isInt, &notIntZero);
+        Label needDoubleCheck(&builder_);
+        BRANCH_CIR(builder_.TaggedIsInt(value), &isInt, &needDoubleCheck);
         builder_.Bind(&isInt);
-        BRANCH_CIR(builder_.Equal(builder_.TaggedGetInt(value), builder_.Int32(0)), &isZero, &notIntZero);
-        builder_.Bind(&notIntZero);
+        checkTrue = (isEqualJump ? ifTrue : needDoubleCheck);
+        checkFalse = (isEqualJump ? needDoubleCheck : ifTrue);
+        BRANCH_CIR(builder_.Equal(builder_.TaggedGetInt(value), builder_.Int32(0)), &checkTrue, &checkFalse);
+        builder_.Bind(&needDoubleCheck);
         {
             // (GET_ACC().IsDouble() && GET_ACC().GetDouble() == 0.0)
             Label isDouble(&builder_);
-            BRANCH_CIR(builder_.TaggedIsDouble(value), &isDouble, &notZero);
+            BRANCH_CIR(builder_.TaggedIsDouble(value), &isDouble, &ifFalse);
             builder_.Bind(&isDouble);
-            BRANCH_CIR(builder_.Equal(builder_.GetDoubleOfTDouble(value), builder_.Double(0.0)), &isZero, &notZero);
-            builder_.Bind(&notZero);
+            checkTrue = (isEqualJump ? ifTrue : ifFalse);
+            checkFalse = (isEqualJump ? ifFalse : ifTrue);
+            BRANCH_CIR(builder_.Equal(builder_.GetDoubleOfTDouble(value), builder_.Double(0.0)),
+                &checkTrue, &checkFalse);
+            builder_.Bind(&ifFalse);
         }
     }
-    builder_.Bind(&isZero);
+    builder_.Bind(&ifTrue);
 
-    Label &ifTrue = isEqualJump ? isZero : notZero;
-    Label &ifFalse = isEqualJump ? notZero : isZero;
     auto uses = acc_.Uses(gate);
     for (auto it = uses.begin(); it != uses.end();) {
         if (acc_.GetOpCode(*it) == OpCode::IF_TRUE) {
@@ -3178,12 +3184,12 @@ void SlowPathLowering::LowerWideCallrangePrefImm16V8(GateRef gate)
         vec.emplace_back(acc_.GetValueIn(gate, i));
     }
 
-    vec.emplace_back(glue_);
-    vec.emplace_back(callTarget);
-    vec.emplace_back(thisObj);
+    vec1.emplace_back(glue_);
+    vec1.emplace_back(callTarget);
+    vec1.emplace_back(thisObj);
     // add args
     for (size_t i = 0; i < numIns - fixedInputsNum; i++) { // skip acc
-        vec.emplace_back(acc_.GetValueIn(gate, i));
+        vec1.emplace_back(acc_.GetValueIn(gate, i));
     }
     LowerToJSCall(gate, vec, vec1);
 }

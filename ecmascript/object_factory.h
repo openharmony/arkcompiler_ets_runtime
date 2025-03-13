@@ -543,7 +543,7 @@ public:
                                             const JSHandle<JSHClass> &objClass);
     static bool CanObjectLiteralHClassCache(size_t length);
     JSHandle<JSHClass> CreateObjectLiteralRootHClass(size_t length);
-    JSHandle<JSHClass> GetObjectLiteralRootHClass(size_t length);
+    JSHandle<JSHClass> GetObjectLiteralRootHClass(size_t literalLength, size_t maxPropsNum);
     JSHandle<JSHClass> GetObjectLiteralHClass(const JSHandle<TaggedArray> &properties, size_t length);
     // only use for creating Function.prototype and Function
     JSHandle<JSFunction> NewJSFunctionByHClass(const JSHandle<Method> &method, const JSHandle<JSHClass> &clazz,
@@ -578,8 +578,9 @@ public:
     uintptr_t NewSpaceBySnapshotAllocator(size_t size);
     TaggedObject *NewMachineCodeObject(size_t length, MachineCodeDesc &desc);
     JSHandle<MachineCode> SetMachineCodeObjectData(TaggedObject *obj, size_t length,
-        const MachineCodeDesc &desc, JSHandle<Method> &method);
-    JSHandle<MachineCode> NewMachineCodeObject(size_t length, const MachineCodeDesc &desc, JSHandle<Method> &method);
+        const MachineCodeDesc &desc, JSHandle<Method> &method, RelocMap &relocInfo);
+    JSHandle<MachineCode> NewMachineCodeObject(size_t length, const MachineCodeDesc &desc,
+                                               JSHandle<Method> &method, RelocMap &relocInfo);
     JSHandle<ClassInfoExtractor> NewClassInfoExtractor(JSHandle<JSTaggedValue> method);
     JSHandle<ClassLiteral> NewClassLiteral();
 
@@ -681,7 +682,7 @@ public:
     JSHandle<ModuleNamespace> NewModuleNamespace();
     JSHandle<NativeModuleFailureInfo> NewNativeModuleFailureInfo();
     JSHandle<ImportEntry> NewImportEntry();
-    JSHandle<ImportEntry> NewImportEntry(const JSHandle<JSTaggedValue> &moduleRequest,
+    JSHandle<ImportEntry> NewImportEntry(const uint32_t moduleRequestIdx,
                                          const JSHandle<JSTaggedValue> &importName,
                                          const JSHandle<JSTaggedValue> &localName,
                                          SharedTypes sharedTypes);
@@ -691,11 +692,11 @@ public:
         const uint32_t index, SharedTypes sharedTypes);
     JSHandle<IndirectExportEntry> NewIndirectExportEntry();
     JSHandle<IndirectExportEntry> NewIndirectExportEntry(const JSHandle<JSTaggedValue> &exportName,
-                                                         const JSHandle<JSTaggedValue> &moduleRequest,
+                                                         const uint32_t moduleRequestIdx,
                                                          const JSHandle<JSTaggedValue> &importName,
                                                          SharedTypes sharedTypes);
     JSHandle<StarExportEntry> NewStarExportEntry();
-    JSHandle<StarExportEntry> NewStarExportEntry(const JSHandle<JSTaggedValue> &moduleRequest,
+    JSHandle<StarExportEntry> NewStarExportEntry(const uint32_t moduleRequestIdx,
                                                  SharedTypes sharedTypes);
     JSHandle<SourceTextModule> NewSourceTextModule();
     JSHandle<ResolvedBinding> NewResolvedBindingRecord();
@@ -831,7 +832,7 @@ public:
 
     JSHandle<ModuleNamespace> NewSModuleNamespace();
 
-    JSHandle<ImportEntry> NewSImportEntry(const JSHandle<JSTaggedValue> &moduleRequest,
+    JSHandle<ImportEntry> NewSImportEntry(const uint32_t moduleRequestIdx,
                                          const JSHandle<JSTaggedValue> &importName,
                                          const JSHandle<JSTaggedValue> &localName);
 
@@ -839,10 +840,10 @@ public:
         const JSHandle<JSTaggedValue> &localName, const uint32_t index);
 
     JSHandle<IndirectExportEntry> NewSIndirectExportEntry(const JSHandle<JSTaggedValue> &exportName,
-                                                         const JSHandle<JSTaggedValue> &moduleRequest,
-                                                         const JSHandle<JSTaggedValue> &importName);
+                                                          const uint32_t moduleRequestIdx,
+                                                          const JSHandle<JSTaggedValue> &importName);
 
-    JSHandle<StarExportEntry> NewSStarExportEntry(const JSHandle<JSTaggedValue> &moduleRequest);
+    JSHandle<StarExportEntry> NewSStarExportEntry(const uint32_t moduleRequestIdx);
 
     JSHandle<ResolvedIndexBinding> NewSResolvedIndexBindingRecord();
 
@@ -930,7 +931,6 @@ private:
     SharedHeap *sHeap_ {nullptr};
 
     static constexpr uint32_t LENGTH_THRESHOLD = 50;
-    static constexpr int MAX_LITERAL_HCLASS_CACHE_SIZE = 63;
 
     NO_COPY_SEMANTIC(ObjectFactory);
     NO_MOVE_SEMANTIC(ObjectFactory);

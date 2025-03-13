@@ -53,7 +53,7 @@ void ElfBuilder::AddShStrTabSection()
     }
 }
 
-uint32_t ElfBuilder::AddAsmStubStrTab(std::ofstream &elfFile,
+uint32_t ElfBuilder::AddAsmStubStrTab(std::fstream &elfFile,
     const std::vector<std::pair<std::string, uint32_t>> &asmStubELFInfo)
 {
     uint32_t size = 1;
@@ -100,7 +100,9 @@ void ElfBuilder::DumpSection() const
 }
 
 ElfBuilder::ElfBuilder(const std::vector<ModuleSectionDes> &des,
-    const std::vector<ElfSecName> &sections): des_(des), sections_(sections)
+    const std::vector<ElfSecName> &sections,
+    bool enableOptDirectCall,
+    Triple triple): des_(des), sections_(sections), enableOptDirectCall_(enableOptDirectCall), triple_(triple)
 {
     Initialize();
     AddShStrTabSection();
@@ -245,7 +247,7 @@ void ElfBuilder::PackELFHeader(llvm::ELF::Elf64_Ehdr &header, uint32_t version, 
     header.e_phnum = GetSegmentNum();
 }
 
-int ElfBuilder::GetSegmentNum() const
+size_t ElfBuilder::GetSegmentNum() const
 {
     const std::map<ElfSecName, std::pair<uint64_t, uint32_t>> &sections = GetFullSecInfo();
     std::set<ElfSecName> segments;
@@ -341,7 +343,7 @@ ElfSecName ElfBuilder::GetSegmentName(const ElfSecName &secName) const
     return segName;
 }
 
-void ElfBuilder::MergeTextSections(std::ofstream &file,
+void ElfBuilder::MergeTextSections(std::fstream &file,
                                    std::vector<ModuleSectionDes::ModuleRegionInfo> &moduleInfo,
                                    llvm::ELF::Elf64_Off &curSecOffset)
 {
@@ -380,7 +382,7 @@ void ElfBuilder::MergeTextSections(std::ofstream &file,
     }
 }
 
-void ElfBuilder::MergeStrtabSections(std::ofstream &file,
+void ElfBuilder::MergeStrtabSections(std::fstream &file,
                                      std::vector<ModuleSectionDes::ModuleRegionInfo> &moduleInfo,
                                      llvm::ELF::Elf64_Off &curSecOffset)
 {
@@ -400,7 +402,7 @@ void ElfBuilder::MergeStrtabSections(std::ofstream &file,
     }
 }
 
-void ElfBuilder::MergeSymtabSections(std::ofstream &file,
+void ElfBuilder::MergeSymtabSections(std::fstream &file,
                                      std::vector<ModuleSectionDes::ModuleRegionInfo> &moduleInfo,
                                      llvm::ELF::Elf64_Off &curSecOffset,
                                      llvm::ELF::Elf64_Off &asmStubOffset)
@@ -441,7 +443,7 @@ void ElfBuilder::MergeSymtabSections(std::ofstream &file,
     }
 }
 
-void ElfBuilder::MergeArkStackMapSections(std::ofstream &file,
+void ElfBuilder::MergeArkStackMapSections(std::fstream &file,
                                           std::vector<ModuleSectionDes::ModuleRegionInfo> &moduleInfo,
                                           llvm::ELF::Elf64_Off &curSecOffset)
 {
@@ -460,11 +462,82 @@ void ElfBuilder::MergeArkStackMapSections(std::ofstream &file,
     }
 }
 
-void ElfBuilder::FixSymtab(llvm::ELF::Elf64_Shdr* shdr)
+void ElfBuilder::FixUndefinedSymbols(const std::map<std::string_view, llvm::ELF::Elf64_Sym *> &nameToSym,
+                                     const std::map<std::string_view, std::vector<llvm::ELF::Elf64_Sym *>> &undefSyms,
+                                     llvm::ELF::Elf64_Off asmStubOffset)
+{
+    if (!enableOptDirectCall_) {
+        return;
+    }
+    std::map<std::string, uint64_t> asmStubToAddr;
+    for (auto &des : des_) {
+        if (!des.HasAsmStubStrTab()) {
+            continue;
+        }
+
+        const std::vector<std::pair<std::string, uint32_t>> &asmStubELFInfo = des.GetAsmStubELFInfo();
+        ASSERT(asmStubELFInfo.size() > 0);
+        for (auto &[name, offset] : asmStubELFInfo) {
+            if (auto [result, inserted] = asmStubToAddr.try_emplace(name, asmStubOffset + offset); !inserted) {
+                LOG_COMPILER(FATAL) << "Duplicate asm symbol: " << name << std::endl;
+            }
+            if (nameToSym.find(name) != nameToSym.end()) {
+                LOG_COMPILER(FATAL) << "Duplicate asm symbol with ir symbol: " << name << std::endl;
+            }
+        }
+    }
+    uint32_t asmSecIndex = GetShIndex(ElfSecName::ARK_ASMSTUB);
+    for (auto &[name, undefSymVec] : undefSyms) {
+        auto targetSymIter = nameToSym.find(name);
+        if (targetSymIter != nameToSym.end()) {
+            for (auto undefSym : undefSymVec) {
+                // preempt with defined symbol.
+                *undefSym = *targetSymIter->second;
+            }
+            continue;
+        }
+        auto asmTargetSymIter = asmStubToAddr.find(std::string(name));
+        if (asmTargetSymIter != asmStubToAddr.end()) {
+            for (auto undefSym : undefSymVec) {
+                // preempt with defined symbol.
+                undefSym->setBindingAndType(llvm::ELF::STB_GLOBAL, llvm::ELF::STT_FUNC);
+                undefSym->st_shndx = static_cast<uint16_t>(asmSecIndex);
+                undefSym->st_value = asmTargetSymIter->second;
+                undefSym->st_other = llvm::ELF::STV_DEFAULT;
+            }
+            continue;
+        }
+        LOG_COMPILER(FATAL) << "Undefined symbol: " << name << std::endl;
+    }
+}
+
+void ElfBuilder::CollectUndefSyms(std::map<std::string_view, llvm::ELF::Elf64_Sym *> &nameToSym,
+                                  std::map<std::string_view, std::vector<llvm::ELF::Elf64_Sym *>> &undefSyms,
+                                  llvm::ELF::Elf64_Sym *sy, std::string_view symName)
+{
+    if (!enableOptDirectCall_) {
+        return;
+    }
+    if (sy->getBinding() == llvm::ELF::STB_LOCAL) {
+        // local symbol should be relocated when compiling, so skip them.
+        return;
+    }
+    if (sy->st_shndx != llvm::ELF::SHN_UNDEF) {
+        if (auto [iter, inserted] = nameToSym.try_emplace(symName, sy); !inserted) {
+            LOG_COMPILER(FATAL) << "Duplicate symbol: " << symName << std::endl;
+        }
+    } else {
+        auto [iter, inserted] = undefSyms.try_emplace(symName);
+        iter->second.push_back(sy);
+    }
+}
+
+void ElfBuilder::FixSymtab(llvm::ELF::Elf64_Shdr* shdr, llvm::ELF::Elf64_Off asmStubOffset)
 {
     using Elf64_Sym = llvm::ELF::Elf64_Sym;
     ASSERT(stubTextOffset_.size() == des_.size());
-
+    std::map<std::string_view, llvm::ELF::Elf64_Sym*> nameToSym;
+    std::map<std::string_view, std::vector<llvm::ELF::Elf64_Sym*>> undefSyms;
     uint32_t secNum = static_cast<uint32_t>(GetSecNum());
     uint32_t shStrTabIndex = GetShIndex(ElfSecName::SHSTRTAB);
     uint32_t strTabIndex = GetShIndex(ElfSecName::STRTAB);
@@ -473,14 +546,15 @@ void ElfBuilder::FixSymtab(llvm::ELF::Elf64_Shdr* shdr)
     uint32_t strTabSize = 0;
     int firstGlobal = -1;
     uint32_t count = 0;
-
     for (size_t idx = 0; idx < des_.size(); ++idx) {
+        uint64_t strTabAddr = des_[idx].GetSecAddr(ElfSecName::STRTAB);
         uint32_t secSize = des_[idx].GetSecSize(ElfSecName::SYMTAB);
         uint64_t secAddr = des_[idx].GetSecAddr(ElfSecName::SYMTAB);
         Elf64_Sym *syms = reinterpret_cast<Elf64_Sym*>(secAddr);
         size_t n = secSize / sizeof(Elf64_Sym);
         for (size_t i = 0; i < n; ++i) {
             Elf64_Sym* sy = &syms[i];
+            std::string_view symName(reinterpret_cast<char *>(strTabAddr + sy->st_name));
             if (sy->getBinding() == llvm::ELF::STB_GLOBAL && firstGlobal == -1) {
                 firstGlobal = static_cast<int>(count);
             }
@@ -495,11 +569,13 @@ void ElfBuilder::FixSymtab(llvm::ELF::Elf64_Shdr* shdr)
             }
             sy->st_name += strTabSize;
             count++;
+            CollectUndefSyms(nameToSym, undefSyms, sy, symName);
         }
         strTabSize += des_[idx].GetSecSize(ElfSecName::STRTAB);
     }
     shdr->sh_info = static_cast<uint32_t>(firstGlobal);
     shdr->sh_link = strTabIndex;
+    FixUndefinedSymbols(nameToSym, undefSyms, asmStubOffset);
 }
 
 /*
@@ -536,7 +612,7 @@ Key to Flags:
   C (compressed), x (unknown), o (OS specific), E (exclude),
   D (mbind), l (large), p (processor specific)
 */
-void ElfBuilder::PackELFSections(std::ofstream &file)
+void ElfBuilder::PackELFSections(std::fstream &file)
 {
     uint32_t moduleNum = des_.size();
     const std::map<ElfSecName, std::pair<uint64_t, uint32_t>> &sections = GetFullSecInfo();
@@ -604,10 +680,11 @@ void ElfBuilder::PackELFSections(std::ofstream &file)
                 break;
             }
             case ElfSecName::SYMTAB: {
-                FixSymtab(&curShdr);
                 uint32_t curSize = curSecOffset;
                 uint32_t asmSecIndex = GetShIndex(ElfSecName::ARK_ASMSTUB);
-                MergeSymtabSections(file, moduleInfo, curSecOffset, shdr[asmSecIndex].sh_offset);
+                uint64_t asmStubOffset = shdr[asmSecIndex].sh_offset;
+                FixSymtab(&curShdr, asmStubOffset);
+                MergeSymtabSections(file, moduleInfo, curSecOffset, asmStubOffset);
                 curShdr.sh_size = curSecOffset - curSize;
                 break;
             }
@@ -636,10 +713,131 @@ void ElfBuilder::PackELFSections(std::ofstream &file)
         LOG_COMPILER(DEBUG) << "  shdr[i].sh_entsize " << std::hex << curShdr.sh_entsize << std::endl;
         ++i;
     }
+    ResolveRelocate(file);
     uint32_t secEnd = static_cast<uint32_t>(file.tellp());
     file.seekp(sizeof(llvm::ELF::Elf64_Ehdr));
     file.write(reinterpret_cast<char *>(shdr.get()), secNum * sizeof(llvm::ELF::Elf64_Shdr));
     file.seekp(secEnd);
+}
+
+void ElfBuilder::ResolveAArch64Relocate(std::fstream &elfFile, Span<llvm::ELF::Elf64_Rela> relas,
+                                        Span<llvm::ELF::Elf64_Sym> syms, const uint32_t textOff)
+{
+    using Elf64_Rela = llvm::ELF::Elf64_Rela;
+    for (Elf64_Rela &rela : relas) {
+        switch (rela.getType()) {
+            case llvm::ELF::R_AARCH64_JUMP26:
+            case llvm::ELF::R_AARCH64_CALL26: {
+                // the reloc symbol is also in stub.an, calculate the relative offset.
+                auto symIdx = rela.getSymbol();
+                llvm::ELF::Elf64_Sym sym = syms[symIdx];
+                if (sym.getBinding() == llvm::ELF::STB_LOCAL) {
+                    break;
+                }
+                uint32_t relocOff = textOff + rela.r_offset;
+                uint32_t value = sym.st_value + rela.r_addend - relocOff;
+                // Target = Symbol Value + Addend − Relocation Address
+                if (!(IMM28_MIN <= static_cast<int32_t>(value) && static_cast<int32_t>(value) < IMM28_MAX)) {
+                    LOG_ECMA(FATAL) << "relocate target out of imm28 range: " << value << std::endl;
+                }
+                elfFile.seekg(relocOff);
+                uint32_t oldVal = 0;
+                elfFile.read(reinterpret_cast<char *>(&oldVal), sizeof(uint32_t));
+                value = (oldVal & 0xFC000000) | ((value & 0x0FFFFFFC) >> DIV4_BITS);
+                // 0xFC000000: 11111100 00000000 00000000 00000000, get the high 6 bit as the opcode.
+                // 0x0FFFFFFC: 00001111 11111111 11111111 11111100, use this mask to get imm26 from the value.
+                // the instructions must be bl or b, they accept a 26-bits imm int, so clear the low 26-bits in the old
+                // instruction(it maybe wrong because llvm backend may fill some JITEngine reloc data in it). And fill
+                // it with the calculated target.
+                elfFile.seekp(relocOff);
+                elfFile.write(reinterpret_cast<char *>(&value), sizeof(value));
+                break;
+            }
+            case llvm::ELF::R_AARCH64_ADR_PREL_PG_HI21:
+            case llvm::ELF::R_AARCH64_ADD_ABS_LO12_NC:
+                // data relocation, already handled by llvm backend, ignore it.
+                break;
+            default:
+                LOG_ECMA(FATAL) << "Unhandled relocate type: " << rela.getType() << std::endl;
+        }
+    }
+}
+
+void ElfBuilder::ResolveAmd64Relocate(std::fstream &elfFile, Span<llvm::ELF::Elf64_Rela> relas,
+                                      Span<llvm::ELF::Elf64_Sym> syms, const uint32_t textOff)
+{
+    using Elf64_Rela = llvm::ELF::Elf64_Rela;
+    for (Elf64_Rela &rela : relas) {
+        switch (rela.getType()) {
+            case llvm::ELF::R_X86_64_PLT32: {
+                // the reloc symbol is also in stub.an, so fallback to R_X86_64_PC32
+                uint32_t relocOff = textOff + rela.r_offset;
+                auto symIdx = rela.getSymbol();
+                uint32_t value = syms[symIdx].st_value + rela.r_addend - relocOff;
+                // Target = Symbol Value + Addend − Relocation Address
+                elfFile.seekp(relocOff);
+                elfFile.write(reinterpret_cast<char *>(&value), sizeof(value));
+                break;
+            }
+            case llvm::ELF::R_X86_64_PC32: {
+#ifndef NDEBUG
+                // already handled by llvm backend, just need verify it for debug.
+                auto symIdx = rela.getSymbol();
+                llvm::ELF::Elf64_Sym sym = syms[symIdx];
+                if (sym.getBinding() == llvm::ELF::STB_LOCAL) {
+                    break;
+                }
+                uint32_t relocOff = textOff + rela.r_offset;
+                uint32_t value = sym.st_value + rela.r_addend - relocOff;
+                elfFile.seekg(relocOff);
+                uint32_t oldValue = 0;
+                elfFile.read(reinterpret_cast<char *>(&oldValue), sizeof(oldValue));
+                if (oldValue != value) {
+                    LOG_ECMA(FATAL) << "Maybe incorrect relocate result, expect: " << value << ", but got: " << oldValue
+                        << " binding: " << static_cast<uint32_t>(sym.getBinding()) << std::endl;
+                }
+#endif
+                break;
+            }
+            default:
+                LOG_ECMA(FATAL) << "Unhandled relocate type: " << rela.getType() << std::endl;
+        }
+    }
+}
+
+void ElfBuilder::ResolveRelocate(std::fstream &elfFile)
+{
+    if (!enableOptDirectCall_) {
+        return;
+    }
+    elfFile.flush();
+    using Elf64_Sym = llvm::ELF::Elf64_Sym;
+    using Elf64_Rela = llvm::ELF::Elf64_Rela;
+    ASSERT(stubTextOffset_.size() == des_.size());
+
+    for (size_t idx = 0; idx < des_.size(); ++idx) {
+        uint32_t relaSecSize = des_[idx].GetSecSize(ElfSecName::RELATEXT);
+        uint64_t relaSecAddr = des_[idx].GetSecAddr(ElfSecName::RELATEXT);
+        Elf64_Rela *relas = reinterpret_cast<Elf64_Rela *>(relaSecAddr);
+        size_t relas_num = relaSecSize / sizeof(Elf64_Rela);
+
+        uint32_t symSecSize = des_[idx].GetSecSize(ElfSecName::SYMTAB);
+        uint64_t symSecAddr = des_[idx].GetSecAddr(ElfSecName::SYMTAB);
+        Elf64_Sym *syms = reinterpret_cast<Elf64_Sym *>(symSecAddr);
+        size_t syms_num = symSecSize / sizeof(Elf64_Sym);
+        const uint32_t textOff = stubTextOffset_[idx];
+        switch (triple_) {
+            case Triple::TRIPLE_AMD64:
+                ResolveAmd64Relocate(elfFile, Span(relas, relas_num), Span(syms, syms_num), textOff);
+                break;
+            case Triple::TRIPLE_AARCH64:
+                ResolveAArch64Relocate(elfFile, Span(relas, relas_num), Span(syms, syms_num), textOff);
+                break;
+            default:
+                LOG_ECMA(FATAL) << "Unsupported triple when resolving relocate: " << static_cast<uint32_t>(triple_) <<
+                    std::endl;
+        }
+    }
 }
 
 unsigned ElfBuilder::GetPFlag(ElfSecName segment) const
@@ -677,7 +875,7 @@ Program Headers:
    00     .text .ark_asmstub
    01     .shstrtab .ark_funcentry .ark_stackmaps .ark_moduleinfo
 */
-void ElfBuilder::PackELFSegment(std::ofstream &file)
+void ElfBuilder::PackELFSegment(std::fstream &file)
 {
     llvm::ELF::Elf64_Off e_phoff = static_cast<uint64_t>(file.tellp());
     long phoff = (long)offsetof(struct llvm::ELF::Elf64_Ehdr, e_phoff);
@@ -686,7 +884,7 @@ void ElfBuilder::PackELFSegment(std::ofstream &file)
     file.write(reinterpret_cast<char *>(&e_phoff), sizeof(e_phoff));
     file.seekp(static_cast<long>(e_phoff));
 
-    int segNum = GetSegmentNum();
+    size_t segNum = GetSegmentNum();
     auto phdrs = std::make_unique<llvm::ELF::Elf64_Phdr []>(segNum);
     std::map<ElfSecName, llvm::ELF::Elf64_Off> segmentToMaxOffset;
     std::map<ElfSecName, llvm::ELF::Elf64_Off> segmentToMaxAddress;

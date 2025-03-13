@@ -269,7 +269,7 @@ using StubIdType = std::variant<RuntimeStubCSigns::ID, CommonStubCSigns::ID, LLV
 class LLVMTargetBuilder {
 public:
     virtual ~LLVMTargetBuilder() = default;
-    virtual LLVMValueRef GetASMBarrierCall(LLVMModule *llvmModule_) = 0;
+    virtual LLVMValueRef GetASMBarrierCall(LLVMModule *llvmModule_, bool isDirectCall) = 0;
 };
 
 class LLVMIRBuilder {
@@ -277,7 +277,7 @@ public:
     LLVMIRBuilder(const std::vector<std::vector<GateRef>> *schedule, Circuit *circuit,
                   LLVMModule *module, LLVMValueRef function, const CompilationConfig *cfg,
                   CallSignature::CallConv callConv, bool enableLog, bool isFastCallAot, const std::string &funcName,
-                  bool enableOptInlining = false, bool enableOptBranchProfiling = true);
+                  bool enableOptDirectCall, bool enableOptInlining = false, bool enableOptBranchProfiling = true);
     ~LLVMIRBuilder();
     void Build();
 
@@ -334,6 +334,7 @@ private:
     }
     LLVMValueRef GetFunction(LLVMValueRef glue, const CallSignature *signature, LLVMValueRef rtbaseoffset,
                              const std::string &realName = "") const;
+    LLVMValueRef GetOrDeclareFunction(const CallSignature *signature) const;
     LLVMValueRef GetCallee(const std::vector<GateRef> &inList, const CallSignature *signature,
                            const std::string &realName = "");
     void CollectExraCallSiteInfo(std::vector<LLVMValueRef> &values, LLVMValueRef pcOffset,
@@ -486,6 +487,7 @@ private:
     bool enableLog_ {false};
     bool isFastCallAot_ {false};
     LLVMMetadataRef dFuncMD_ {nullptr};
+    bool enableOptDirectCall_ {false};
     bool enableOptInlining_ {false};
     bool enableOptBranchProfiling_ {true};
     LLVMValueRef ASMBarrierCall_ {nullptr};

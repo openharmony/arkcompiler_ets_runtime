@@ -39,6 +39,7 @@ namespace panda::ecmascript::kungfu {
     V(And)                            \
     V(Or)                             \
     V(Xor)                            \
+    V(IsIn)                           \
     V(Instanceof)                     \
     V(TypeOf)                         \
     V(Inc)                            \
@@ -47,6 +48,7 @@ namespace panda::ecmascript::kungfu {
     V(Not)                            \
     V(ToBooleanTrue)                  \
     V(ToBooleanFalse)                 \
+    V(JSTaggedValueHasProperty)       \
     V(GetPropertyByName)              \
     V(SetPropertyByNameWithMega)      \
     V(GetPropertyByNameWithMega)      \
@@ -79,8 +81,6 @@ namespace panda::ecmascript::kungfu {
     V(TryStoreICByValue)              \
     V(SetValueWithBarrier)            \
     V(SetNonSValueWithBarrier)        \
-    V(SetValueWithEdenBarrier)        \
-    V(SetNonSValueWithEdenBarrier)    \
     V(SetSValueWithBarrier)           \
     V(NewLexicalEnv)                  \
     V(CopyRestArgs)                   \
@@ -138,7 +138,8 @@ namespace panda::ecmascript::kungfu {
     V(VerifyBarrier)                  \
     V(MoveBarrierInRegion)            \
     V(MoveBarrierCrossRegion)         \
-    V(FindEntryFromNameDictionary)
+    V(FindEntryFromNameDictionary)    \
+    V(ReverseBarrier)
 
 #define COMMON_STUB_ID_LIST(V)          \
     COMMON_STUB_LIST(V)

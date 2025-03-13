@@ -43,14 +43,15 @@ public:
 
     void SetCallNapi(bool isCallNapi)
     {
-        JSTaggedValue method = GetMethod();
-        Method::Cast(method.GetTaggedObject())->SetCallNapi(isCallNapi);
+        uint32_t bitField = GetBitField();
+        uint32_t newValue = IsCallNapiBit::Update(bitField, isCallNapi);
+        SetBitField(newValue);
     }
 
     bool IsCallNapi() const
     {
-        JSTaggedValue method = GetMethod();
-        return Method::ConstCast(method.GetTaggedObject())->IsCallNapi();
+        uint32_t bitField = GetBitField();
+        return IsCallNapiBit::Decode(bitField);
     }
 
     FunctionKind GetFunctionKind() const
@@ -182,6 +183,7 @@ public:
     using TaskConcurrentFuncFlagBit = IsFastCallBit::NextFlag;     // offset 2
     using JitCompilingFlagBit = TaskConcurrentFuncFlagBit::NextFlag; // offset 3
     using BaselinejitCompilingFlagBit = JitCompilingFlagBit::NextFlag; // offset 4
+    using IsCallNapiBit = BaselinejitCompilingFlagBit::NextFlag; // offset 5
 
     static constexpr size_t METHOD_OFFSET = JSObject::SIZE;
     ACCESSORS(Method, METHOD_OFFSET, CODE_ENTRY_OFFSET)

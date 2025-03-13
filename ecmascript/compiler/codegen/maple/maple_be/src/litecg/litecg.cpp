@@ -14,13 +14,7 @@
  */
 
 #include "litecg.h"
-#include "mir_builder.h"
-#include "cg_option.h"
-#include "cg.h"
-#include "maple_phase_support.h"
-#include "maple_phase.h"
 #include "cg_phasemanager.h"
-#include "triple.h"
 #include "driver_options.h"
 
 namespace maple {

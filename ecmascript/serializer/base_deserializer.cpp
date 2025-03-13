@@ -639,8 +639,8 @@ void BaseDeserializer::AllocateMultiSharedRegion(SharedSparseSpace *space, size_
 
 void BaseDeserializer::AllocateToOldSpace(size_t oldSpaceSize)
 {
-    SparseSpace *space = heap_->GetOldSpace();
-    uintptr_t object = space->Allocate(oldSpaceSize, false);
+    OldSpace *space = heap_->GetOldSpace();
+    uintptr_t object = space->AllocateSlow(oldSpaceSize, true);
     if (UNLIKELY(object == 0U)) {
         if (space->CommittedSizeExceed()) {
             DeserializeFatalOutOfMemory(oldSpaceSize);

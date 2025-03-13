@@ -55,7 +55,7 @@ bool HeapSnapshotJSONSerializer::Serialize(HeapSnapshot *snapshot, Stream *strea
 string contents
 } * str_num
 */
-uint32_t HeapSnapshotJSONSerializer::DumpStringTable(StringHashMap *stringTable, Stream *stream,
+uint32_t HeapSnapshotJSONSerializer::DumpStringTable(const StringHashMap *stringTable, Stream *stream,
                                                      CUnorderedMap<uint64_t, CVector<uint64_t>> &strIdMapObjVec)
 {
     ASSERT(stringTable != nullptr);

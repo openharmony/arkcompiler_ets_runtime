@@ -63,16 +63,17 @@ CVector<std::string> SourceTextModule::GetExportedNames(JSThread *thread, const 
     auto globalConstants = thread->GlobalConstants();
     if (!entryValue.IsUndefined()) {
         JSMutableHandle<StarExportEntry> ee(thread, globalConstants->GetUndefined());
-        JSMutableHandle<JSTaggedValue> moduleRequest(thread, globalConstants->GetUndefined());
-
+        JSHandle<TaggedArray> requestedModules(thread, module->GetRequestedModules());
         // 7. For each ExportEntry Record e in module.[[StarExportEntries]], do
         JSHandle<TaggedArray> starExportEntries(thread, entryValue);
         size_t starExportEntriesLen = starExportEntries->GetLength();
         for (size_t idx = 0; idx < starExportEntriesLen; idx++) {
             ee.Update(starExportEntries->Get(idx));
             // a. Let requestedModule be ? HostResolveImportedModule(module, e.[[ModuleRequest]]).
-            moduleRequest.Update(ee->GetModuleRequest());
-            SetExportName(thread, moduleRequest, module, exportedNames, newExportStarSet);
+            JSHandle<SourceTextModule> requestedModule = JSHandle<SourceTextModule>::Cast(
+                GetRequestedModule(thread, module, requestedModules, ee->GetModuleRequestIndex()));
+            RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, exportedNames);
+            SetExportName(thread, requestedModule, exportedNames, newExportStarSet);
             RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, exportedNames);
         }
     }
@@ -213,14 +214,17 @@ JSHandle<JSTaggedValue> SourceTextModule::ResolveExport(JSThread *thread, const 
         return starResolution;
     }
     JSMutableHandle<StarExportEntry> ee(thread, globalConstants->GetUndefined());
-    JSMutableHandle<JSTaggedValue> moduleRequest(thread, globalConstants->GetUndefined());
+    JSHandle<TaggedArray> requestedModules(thread, module->GetRequestedModules());
     JSHandle<TaggedArray> starExportEntries(thread, starExportEntriesTv);
     size_t starExportEntriesLen = starExportEntries->GetLength();
     for (size_t idx = 0; idx < starExportEntriesLen; idx++) {
         ee.Update(starExportEntries->Get(idx));
-        moduleRequest.Update(ee->GetModuleRequest());
-        JSHandle<JSTaggedValue> result = GetStarResolution(thread, exportName, moduleRequest,
-                                                           module, starResolution, resolveVector);
+        // a. Let importedModule be ? HostResolveImportedModule(module, e.[[ModuleRequest]]).
+        JSHandle<SourceTextModule> requestedModule = JSHandle<SourceTextModule>::Cast(
+            GetRequestedModule(thread, module, requestedModules, ee->GetModuleRequestIndex()));
+        RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
+        JSHandle<JSTaggedValue> result = GetStarResolution(thread, exportName, requestedModule,
+                                                           starResolution, resolveVector);
         RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
         if (result->IsString() || result->IsException()) {
             return result;
@@ -495,13 +499,18 @@ std::optional<int> SourceTextModule::HandleInnerModuleInstantiation(JSThread *th
                                                                     JSHandle<SourceTextModule> &module,
                                                                     JSMutableHandle<JSTaggedValue> &required,
                                                                     CVector<JSHandle<SourceTextModule>> &stack,
-                                                                    int &index, const ExecuteTypes &executeType)
+                                                                    JSHandle<TaggedArray> requestModules,
+                                                                    size_t &moduleRequestsIdx, int &index,
+                                                                    const ExecuteTypes &executeType)
 {
     // a. Let requiredModule be ? HostResolveImportedModule(module, required).
     JSMutableHandle<SourceTextModule> requiredModule(thread, thread->GlobalConstants()->GetUndefined());
     JSHandle<JSTaggedValue> requiredVal =
         ModuleResolver::HostResolveImportedModule(thread, module, required, executeType);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, SourceTextModule::UNDEFINED_INDEX);
+    if (!SourceTextModule::IsSharedModule(JSHandle<SourceTextModule>::Cast(module))) {
+        requestModules->Set(thread, moduleRequestsIdx, requiredVal.GetTaggedValue());
+    }
     requiredModule.Update(JSHandle<SourceTextModule>::Cast(requiredVal));
 
     // b. Set index to ? InnerModuleInstantiation(requiredModule, stack, index).
@@ -547,11 +556,7 @@ int SourceTextModule::InnerModuleInstantiation(JSThread *thread, const JSHandle<
     JSHandle<SourceTextModule> module = JSHandle<SourceTextModule>::Cast(moduleRecord);
     // 2. If module.[[Status]] is one of LINKING, LINKED, EVALUATING-ASYNC, or EVALUATED, then Return index.
     ModuleStatus status = module->GetStatus();
-    if (status == ModuleStatus::INSTANTIATING ||
-        status == ModuleStatus::INSTANTIATED ||
-        status == ModuleStatus::EVALUATING_ASYNC ||
-        status == ModuleStatus::EVALUATED ||
-        status == ModuleStatus::ERRORED) {
+    if (status != ModuleStatus::UNINSTANTIATED && status != ModuleStatus::EVALUATING) {
         return index;
     }
     if (SourceTextModule::IsSharedModule(module) && status == ModuleStatus::EVALUATING) {
@@ -571,13 +576,15 @@ int SourceTextModule::InnerModuleInstantiation(JSThread *thread, const JSHandle<
     // 8. Append module to stack.
     stack.emplace_back(module);
     // 9. For each String required that is an element of module.[[RequestedModules]], do
-    if (!module->GetRequestedModules().IsUndefined()) {
+    if (!module->GetModuleRequests().IsUndefined()) {
+        JSHandle<TaggedArray> moduleRequests(thread, module->GetModuleRequests());
         JSHandle<TaggedArray> requestedModules(thread, module->GetRequestedModules());
-        size_t requestedModulesLen = requestedModules->GetLength();
+        size_t moduleRequestsLen = moduleRequests->GetLength();
         JSMutableHandle<JSTaggedValue> required(thread, thread->GlobalConstants()->GetUndefined());
-        for (size_t idx = 0; idx < requestedModulesLen; idx++) {
-            required.Update(requestedModules->Get(idx));
-            auto result = HandleInnerModuleInstantiation(thread, module, required, stack, index, executeType);
+        for (size_t idx = 0; idx < moduleRequestsLen; idx++) {
+            required.Update(moduleRequests->Get(idx));
+            auto result = HandleInnerModuleInstantiation(
+                thread, module, required, stack, requestedModules, idx, index, executeType);
             if (UNLIKELY(result.has_value())) { // exception occurs
                 return result.value();
             }
@@ -617,22 +624,19 @@ void SourceTextModule::ModuleDeclarationEnvironmentSetup(JSThread *thread,
     JSMutableHandle<JSTaggedValue> envRec(thread, module->GetEnvironment());
     ASSERT(!envRec->IsUndefined());
     // 8. For each ImportEntry Record in in module.[[ImportEntries]], do
+    JSHandle<TaggedArray> requestedModules(thread, module->GetRequestedModules());
     auto globalConstants = thread->GlobalConstants();
     JSMutableHandle<ImportEntry> in(thread, globalConstants->GetUndefined());
-    JSMutableHandle<JSTaggedValue> moduleRequest(thread, globalConstants->GetUndefined());
     JSMutableHandle<JSTaggedValue> importName(thread, globalConstants->GetUndefined());
     JSMutableHandle<JSTaggedValue> localName(thread, globalConstants->GetUndefined());
     for (size_t idx = 0; idx < importEntriesLen; idx++) {
         in.Update(importEntries->Get(idx));
         localName.Update(in->GetLocalName());
         importName.Update(in->GetImportName());
-        moduleRequest.Update(in->GetModuleRequest());
         // a. Let importedModule be ! HostResolveImportedModule(module, in.[[ModuleRequest]]).
-        JSMutableHandle<SourceTextModule> importedModule(thread, thread->GlobalConstants()->GetUndefined());
-        JSHandle<JSTaggedValue> importedVal =
-                ModuleResolver::HostResolveImportedModule(thread, module, moduleRequest);
+        JSHandle<SourceTextModule> importedModule = JSHandle<SourceTextModule>::Cast(
+            GetRequestedModule(thread, module, requestedModules, in->GetModuleRequestIndex()));
         RETURN_IF_ABRUPT_COMPLETION(thread);
-        importedModule.Update(JSHandle<SourceTextModule>::Cast(importedVal));
         // c. If in.[[ImportName]] is "*", then
         JSHandle<JSTaggedValue> starString = globalConstants->GetHandledStarString();
         if (JSTaggedValue::SameValue(importName, starString)) {
@@ -652,7 +656,7 @@ void SourceTextModule::ModuleDeclarationEnvironmentSetup(JSThread *thread,
             RETURN_IF_ABRUPT_COMPLETION(thread);
             // ii. If resolution is null or "ambiguous", throw a SyntaxError exception.
             if (resolution->IsNull() || resolution->IsString()) {
-                CString requestMod = ModulePathHelper::ReformatPath(ConvertToString(moduleRequest.GetTaggedValue()));
+                CString requestMod = ModulePathHelper::ReformatPath(GetModuleName(importedModule.GetTaggedValue()));
                 CString msg = "the requested module '" + requestMod + GetResolveErrorReason(resolution) +
                     ConvertToString(importName.GetTaggedValue());
                 if (!module->GetEcmaModuleRecordNameString().empty()) {
@@ -699,20 +703,17 @@ void SourceTextModule::ModuleDeclarationArrayEnvironmentSetup(JSThread *thread,
     // 7. Let envRec be env's EnvironmentRecord.
     JSHandle<TaggedArray> envRec = arr;
     // 8. For each ImportEntry Record in in module.[[ImportEntries]], do
+    JSHandle<TaggedArray> requestedModules(thread, module->GetRequestedModules());
     auto globalConstants = thread->GlobalConstants();
     JSMutableHandle<ImportEntry> in(thread, globalConstants->GetUndefined());
-    JSMutableHandle<JSTaggedValue> moduleRequest(thread, globalConstants->GetUndefined());
     JSMutableHandle<JSTaggedValue> importName(thread, globalConstants->GetUndefined());
     for (size_t idx = 0; idx < importEntriesLen; idx++) {
         in.Update(importEntries->Get(idx));
         importName.Update(in->GetImportName());
-        moduleRequest.Update(in->GetModuleRequest());
         // a. Let importedModule be ! HostResolveImportedModule(module, in.[[ModuleRequest]]).
-        JSMutableHandle<SourceTextModule> importedModule(thread, thread->GlobalConstants()->GetUndefined());
-        JSHandle<JSTaggedValue> importedVal =
-            ModuleResolver::HostResolveImportedModule(thread, module, moduleRequest);
+        JSHandle<SourceTextModule> importedModule = JSHandle<SourceTextModule>::Cast(
+            GetRequestedModule(thread, module, requestedModules, in->GetModuleRequestIndex()));
         RETURN_IF_ABRUPT_COMPLETION(thread);
-        importedModule.Update(JSHandle<SourceTextModule>::Cast(importedVal));
         // c. If in.[[ImportName]] is "*", then
         JSHandle<JSTaggedValue> starString = globalConstants->GetHandledStarString();
         if (JSTaggedValue::SameValue(importName, starString)) {
@@ -728,7 +729,7 @@ void SourceTextModule::ModuleDeclarationArrayEnvironmentSetup(JSThread *thread,
         RETURN_IF_ABRUPT_COMPLETION(thread);
         // ii. If resolution is null or "ambiguous", throw a SyntaxError exception.
         if (resolution->IsNull() || resolution->IsString()) {
-            CString requestMod = ModulePathHelper::ReformatPath(ConvertToString(moduleRequest.GetTaggedValue()));
+            CString requestMod = ModulePathHelper::ReformatPath(GetModuleName(importedModule.GetTaggedValue()));
             CString msg = "the requested module '" + requestMod + GetResolveErrorReason(resolution) +
                         ConvertToString(importName.GetTaggedValue());
             if (!module->GetEcmaModuleRecordNameString().empty()) {
@@ -935,16 +936,14 @@ int SourceTextModule::InnerModuleEvaluationUnsafe(JSThread *thread, const JSHand
     if (!module->GetRequestedModules().IsUndefined()) {
         JSHandle<TaggedArray> requestedModules(thread, module->GetRequestedModules());
         size_t requestedModulesLen = requestedModules->GetLength();
-        JSMutableHandle<JSTaggedValue> required(thread, thread->GlobalConstants()->GetUndefined());
         JSHandle<SourceTextModule> requiredModule;
         for (size_t idx = 0; idx < requestedModulesLen; idx++) {
             // check if requiredModule is marked lazy
             if (module->IsLazyImportModule(idx)) {
                 continue;
             }
-            required.Update(requestedModules->Get(idx));
             requiredModule = JSHandle<SourceTextModule>::Cast(
-                ModuleResolver::HostResolveImportedModule(thread, module, required));
+                GetRequestedModule(thread, module, requestedModules, idx));
             RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, index);
             if (moduleLogger != nullptr) {
                 moduleLogger->InsertParentModule(module, requiredModule);
@@ -1139,10 +1138,10 @@ int SourceTextModule::ModuleEvaluation(JSThread *thread, const JSHandle<ModuleRe
                 // skip the unused module
                 continue;
             }
-            required.Update(requestedModules->Get(idx));
-            JSMutableHandle<SourceTextModule> requiredModule(thread, thread->GlobalConstants()->GetUndefined());
-            requiredModule.Update(ModuleResolver::HostResolveImportedModule(thread, module, required));
+            JSHandle<SourceTextModule> requiredModule = JSHandle<SourceTextModule>::Cast(
+                GetRequestedModule(thread, module, requestedModules, idx));
             RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, index);
+
             ModuleTypes moduleType = requiredModule->GetTypes();
             if (SourceTextModule::IsNativeModule(moduleType)) {
                 EvaluateNativeModule(thread, requiredModule, moduleType);
@@ -1414,16 +1413,10 @@ void SourceTextModule::StoreModuleValue(JSThread *thread, const JSHandle<SourceT
     module->SetNameDictionary(thread, data);
 }
 
-void SourceTextModule::SetExportName(JSThread *thread, const JSHandle<JSTaggedValue> &moduleRequest,
-                                     const JSHandle<SourceTextModule> &module,
+void SourceTextModule::SetExportName(JSThread *thread, const JSHandle<SourceTextModule> requestedModule,
                                      CVector<std::string> &exportedNames, JSHandle<TaggedArray> &newExportStarSet)
 
 {
-    JSMutableHandle<SourceTextModule> requestedModule(thread, thread->GlobalConstants()->GetUndefined());
-    JSHandle<JSTaggedValue> requestedVal =
-            ModuleResolver::HostResolveImportedModule(thread, module, moduleRequest);
-    RETURN_IF_ABRUPT_COMPLETION(thread);
-    requestedModule.Update(JSHandle<SourceTextModule>::Cast(requestedVal));
     // b. Let starNames be ? requestedModule.GetExportedNames(exportStarSet).
     CVector<std::string> starNames =
         SourceTextModule::GetExportedNames(thread, requestedModule, newExportStarSet);
@@ -1440,19 +1433,11 @@ void SourceTextModule::SetExportName(JSThread *thread, const JSHandle<JSTaggedVa
 
 JSHandle<JSTaggedValue> SourceTextModule::GetStarResolution(JSThread *thread,
                                                             const JSHandle<JSTaggedValue> &exportName,
-                                                            const JSHandle<JSTaggedValue> &moduleRequest,
-                                                            const JSHandle<SourceTextModule> &module,
+                                                            const JSHandle<SourceTextModule> importedModule,
                                                             JSMutableHandle<JSTaggedValue> &starResolution,
                                                             CVector<std::pair<JSHandle<SourceTextModule>,
                                                             JSHandle<JSTaggedValue>>> &resolveVector)
 {
-    auto globalConstants = thread->GlobalConstants();
-    // a. Let importedModule be ? HostResolveImportedModule(module, e.[[ModuleRequest]]).
-    JSMutableHandle<SourceTextModule> importedModule(thread, thread->GlobalConstants()->GetUndefined());
-    JSHandle<JSTaggedValue> importedVal =
-            ModuleResolver::HostResolveImportedModule(thread, module, moduleRequest);
-    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
-    importedModule.Update(JSHandle<SourceTextModule>::Cast(importedVal));
     // b. Let resolution be ? importedModule.ResolveExport(exportName, resolveVector).
     auto moduleType = importedModule->GetTypes();
     bool isNativeModule = IsNativeModule(moduleType);
@@ -1467,6 +1452,7 @@ JSHandle<JSTaggedValue> SourceTextModule::GetStarResolution(JSThread *thread,
 
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
     // c. If resolution is "ambiguous", return "ambiguous".
+    auto globalConstants = thread->GlobalConstants();
     if (resolution->IsString()) { // if resolution is string, resolution must be "ambiguous"
         return globalConstants->GetHandledAmbiguousString();
     }
@@ -1581,8 +1567,8 @@ JSHandle<JSTaggedValue> SourceTextModule::ResolveIndirectExport(JSThread *thread
     auto globalConstants = thread->GlobalConstants();
     JSTaggedValue undefined = globalConstants->GetUndefined();
     JSMutableHandle<IndirectExportEntry> ee(thread, undefined);
-    JSMutableHandle<JSTaggedValue> moduleRequest(thread, undefined);
     JSMutableHandle<JSTaggedValue> importName(thread, undefined);
+    JSHandle<TaggedArray> requestedModules(thread, module->GetRequestedModules());
     JSHandle<TaggedArray> indirectExportEntries(exportEntry);
     size_t indirectExportEntriesLen = indirectExportEntries->GetLength();
     for (size_t idx = 0; idx < indirectExportEntriesLen; idx++) {
@@ -1591,9 +1577,8 @@ JSHandle<JSTaggedValue> SourceTextModule::ResolveIndirectExport(JSThread *thread
         if (JSTaggedValue::SameValue(exportName.GetTaggedValue(), ee->GetExportName())) {
             // i. Assert: module imports a specific binding for this export.
             // ii. Let importedModule be ? HostResolveImportedModule(module, e.[[ModuleRequest]]).
-            moduleRequest.Update(ee->GetModuleRequest());
-            JSMutableHandle<SourceTextModule> requestedModule(thread, undefined);
-            requestedModule.Update(ModuleResolver::HostResolveImportedModule(thread, module, moduleRequest));
+            JSHandle<SourceTextModule> requestedModule = JSHandle<SourceTextModule>::Cast(
+                GetRequestedModule(thread, module, requestedModules, ee->GetModuleRequestIndex()));
             RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
             // iii. Return importedModule.ResolveExport(e.[[ImportName]], resolveVector).
             importName.Update(ee->GetImportName());
@@ -1626,7 +1611,9 @@ void SourceTextModule::CheckResolvedBinding(JSThread *thread, const JSHandle<Sou
         RETURN_IF_ABRUPT_COMPLETION(thread);
         // b. If resolution is null or "ambiguous", throw a SyntaxError exception.
         if (resolution->IsNull() || resolution->IsString()) {
-            CString requestMod = ModulePathHelper::ReformatPath(ConvertToString(ee->GetModuleRequest()));
+            TaggedArray *requestArray = TaggedArray::Cast(module->GetModuleRequests().GetTaggedObject());
+            JSTaggedValue moduleRequest = requestArray->Get(ee->GetModuleRequestIndex());
+            CString requestMod = ModulePathHelper::ReformatPath(ConvertToString(moduleRequest));
             CString msg = "the requested module '" + requestMod + GetResolveErrorReason(resolution) +
                           ConvertToString(exportName.GetTaggedValue());
             if (!module->GetEcmaModuleRecordNameString().empty()) {
@@ -1665,7 +1652,9 @@ void SourceTextModule::CheckResolvedIndexBinding(JSThread *thread, const JSHandl
         RETURN_IF_ABRUPT_COMPLETION(thread);
         // b. If resolution is null or "ambiguous", throw a SyntaxError exception.
         if (resolution->IsNull() || resolution->IsString()) {
-            CString requestMod = ModulePathHelper::ReformatPath(ConvertToString(ee->GetModuleRequest()));
+            TaggedArray *requestArray = TaggedArray::Cast(module->GetModuleRequests().GetTaggedObject());
+            JSTaggedValue moduleRequest = requestArray->Get(ee->GetModuleRequestIndex());
+            CString requestMod = ModulePathHelper::ReformatPath(ConvertToString(moduleRequest));
             CString msg = "the requested module '" + requestMod + GetResolveErrorReason(resolution) +
                 ConvertToString(exportName.GetTaggedValue());
             if (!module->GetEcmaModuleRecordNameString().empty()) {
@@ -2010,16 +1999,16 @@ void SourceTextModule::SearchCircularImport(JSThread *thread, const CString &cir
                                             CList<CString> &referenceList,
                                             CString &requiredModuleName, bool printOtherCircular)
 {
-    if (module->GetRequestedModules().IsUndefined()) {
+    if (module->GetModuleRequests().IsUndefined()) {
         return;
     }
     auto globalConstants = thread->GlobalConstants();
-    JSHandle<TaggedArray> requestedModules(thread, module->GetRequestedModules());
-    size_t requestedModulesLen = requestedModules->GetLength();
+    JSHandle<TaggedArray> moduleRequests(thread, module->GetModuleRequests());
+    size_t moduleRequestsLen = moduleRequests->GetLength();
     JSMutableHandle<JSTaggedValue> required(thread, globalConstants->GetUndefined());
     JSMutableHandle<SourceTextModule> requiredModule(thread, globalConstants->GetUndefined());
-    for (size_t idx = 0; idx < requestedModulesLen; idx++) {
-        required.Update(requestedModules->Get(idx));
+    for (size_t idx = 0; idx < moduleRequestsLen; idx++) {
+        required.Update(moduleRequests->Get(idx));
         requiredModule.Update(JSHandle<SourceTextModule>::Cast(
             ModuleResolver::HostResolveImportedModule(thread, module, required)));
         RETURN_IF_ABRUPT_COMPLETION(thread);
@@ -2161,5 +2150,24 @@ void SourceTextModule::HandleErrorStack(JSThread *thread, const CVector<JSHandle
             LOG_FULL(INFO) << "Error module: " << mm->GetEcmaModuleRecordNameString();
         }
     }
+}
+
+JSHandle<JSTaggedValue> SourceTextModule::GetRequestedModule(JSThread *thread,
+                                                             const JSHandle<SourceTextModule> module,
+                                                             const JSHandle<TaggedArray> requestedModules,
+                                                             uint32_t idx)
+{
+    // if module is not shared or circularImport, requestedModules may not be modules.
+    if (!requestedModules.GetTaggedValue().IsUndefined()) {
+        // directly get SourceTextModule.
+        JSHandle<JSTaggedValue> moduleA(thread, requestedModules->Get(idx));
+        if (moduleA->IsSourceTextModule()) {
+            return moduleA;
+        }
+    }
+    // resolve or find module by request string.
+    JSHandle<TaggedArray> moduleRequests(thread, module->GetModuleRequests());
+    JSHandle<JSTaggedValue> moduleRequest(thread, moduleRequests->Get(idx));
+    return ModuleResolver::HostResolveImportedModule(thread, module, moduleRequest);
 }
 } // namespace panda::ecmascript

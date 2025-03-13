@@ -25,6 +25,14 @@ namespace panda::ecmascript {
 #ifdef JIT_ENABLE_CODE_SIGN
 using namespace OHOS::Security::CodeSign;
 #endif
+
+using RelocMap = std::vector<struct RelocInfo>;
+struct RelocInfo {
+    intptr_t startPc;
+    intptr_t endPc;
+    intptr_t dest;
+};
+
 enum class Triple {
     TRIPLE_AMD64,
     TRIPLE_AARCH64,
@@ -302,9 +310,25 @@ public:
         doCodeSign = true;
     }
 
+    RelocMap &GetRelocInfo()
+    {
+        return relocInfo_;
+    }
+
+    void RecordRelocInfo(intptr_t startPc, intptr_t endPc, intptr_t imm)
+    {
+        relocInfo_.push_back({startPc, endPc, imm});
+    }
+
+    size_t GetCurPos()
+    {
+        return buffer_.GetSize();
+    }
+
 private:
     DynChunk buffer_;
     bool doCodeSign = false;
+    RelocMap relocInfo_;
 };
 }  // panda::ecmascript
 #endif  // ECMASCRIPT_COMPILER_ASSEMBLER_H

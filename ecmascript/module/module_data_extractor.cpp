@@ -13,10 +13,11 @@
  * limitations under the License.
  */
 
-#include "ecmascript/jspandafile/accessor/module_data_accessor.h"
+#include "ecmascript/module/module_data_extractor.h"
+
 #include "ecmascript/builtins/builtins_json.h"
 #include "ecmascript/interpreter/interpreter.h"
-#include "ecmascript/module/module_data_extractor.h"
+#include "ecmascript/module/accessor/module_data_accessor.h"
 
 namespace panda::ecmascript {
 using StringData = panda_file::StringData;
@@ -61,22 +62,30 @@ void ModuleDataExtractor::ExtractModuleDatas(JSThread *thread, const JSPandaFile
     [[maybe_unused]] EcmaHandleScope scope(thread);
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     ModuleDataAccessor mda(jsPandaFile, moduleId);
-    const std::vector<uint32_t> &requestModules = mda.getRequestModules();
-    size_t len = requestModules.size();
-    JSHandle<TaggedArray> requestModuleArray;
-    if (SourceTextModule::IsSharedModule(moduleRecord)) {
-        requestModuleArray = factory->NewSTaggedArray(len, JSTaggedValue::Hole(), MemSpaceType::SHARED_OLD_SPACE);
+    const std::vector<uint32_t> &moduleRequests = mda.getModuleRequests();
+    size_t len = moduleRequests.size();
+    JSHandle<TaggedArray> moduleRequestArray;
+    JSHandle<TaggedArray> requestModuleArray(thread->GlobalConstants()->GetHandledUndefined());
+    bool isShared = SourceTextModule::IsSharedModule(moduleRecord);
+    if (isShared) {
+        moduleRequestArray = factory->NewSTaggedArray(len, JSTaggedValue::Hole(), MemSpaceType::SHARED_OLD_SPACE);
     } else {
+        moduleRequestArray = factory->NewTaggedArray(len);
         requestModuleArray = factory->NewTaggedArray(len);
     }
 
     for (size_t idx = 0; idx < len; idx++) {
-        StringData sd = jsPandaFile->GetStringData(panda_file::File::EntityId(requestModules[idx]));
+        StringData sd = jsPandaFile->GetStringData(panda_file::File::EntityId(moduleRequests[idx]));
         JSTaggedValue value(factory->GetRawStringFromStringTable(sd));
-        requestModuleArray->Set(thread, idx, value);
+        moduleRequestArray->Set(thread, idx, value);
     }
     if (len > 0) {
+        moduleRecord->SetModuleRequests(thread, moduleRequestArray);
+        // For .[RequestedModules], normal module will later replace by sourceTextModule
         moduleRecord->SetRequestedModules(thread, requestModuleArray);
+        if (isShared) {
+            moduleRecord->SetRequestedModules(thread, moduleRequestArray);
+        }
     }
 
     uint32_t lazyImportIdx = recordInfo->lazyImportIdx;
@@ -86,10 +95,10 @@ void ModuleDataExtractor::ExtractModuleDatas(JSThread *thread, const JSPandaFile
         moduleRecord->SetLazyImportArray(lazyImportFlags); // set module Lazy Import flag
     }
     // note the order can't change
-    mda.EnumerateImportEntry(thread, requestModuleArray, moduleRecord);
+    mda.EnumerateImportEntry(thread, moduleRecord);
     mda.EnumerateLocalExportEntry(thread, moduleRecord);
-    mda.EnumerateIndirectExportEntry(thread, requestModuleArray, moduleRecord);
-    mda.EnumerateStarExportEntry(thread, requestModuleArray, moduleRecord);
+    mda.EnumerateIndirectExportEntry(thread, moduleRecord);
+    mda.EnumerateStarExportEntry(thread, moduleRecord);
 }
 
 JSHandle<JSTaggedValue> ModuleDataExtractor::ParseCjsModule(JSThread *thread, const JSPandaFile *jsPandaFile)
@@ -171,11 +180,10 @@ JSTaggedValue ModuleDataExtractor::JsonParse(JSThread *thread, const JSPandaFile
     return BuiltinsJson::Parse(info);
 }
 
-bool* ModuleDataExtractor::ModuleLazyImportFlagAccessor(const JSPandaFile *pandaFile,
-    panda_file::File::EntityId module_lazy_import_flag_id)
+bool* ModuleDataExtractor::ModuleLazyImportFlagAccessor(const JSPandaFile *pandaFile, EntityId lazyImportFlagId)
 {
     auto &pf = *pandaFile->GetPandaFile();
-    auto sp = pf.GetSpanFromId(module_lazy_import_flag_id);
+    auto sp = pf.GetSpanFromId(lazyImportFlagId);
 
     uint32_t numLazyImportFlags = panda_file::helpers::Read<panda_file::ID_SIZE>(&sp);
     bool *lazyImportArray = new bool[numLazyImportFlags]();

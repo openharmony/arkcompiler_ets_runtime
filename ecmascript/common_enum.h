@@ -26,7 +26,6 @@ enum CheckIdleGCType {
 };
 
 enum class MarkType : uint8_t {
-    MARK_EDEN,
     MARK_YOUNG,
     MARK_FULL
 };
@@ -37,7 +36,6 @@ enum class MarkType : uint8_t {
  * For example, SemiSpace GC for young generation GC, Mark-Sweep-Compact for full GC, etc.
  */
 enum TriggerGCType {
-    EDEN_GC,
     // GC is expected to cover young space only;
     YOUNG_GC,
     // GC is expected to cover young space and necessary old spaces;

@@ -16,11 +16,7 @@
 #include "ecmascript/compiler/ic_stub_builder.h"
 #include "ecmascript/compiler/interpreter_stub-inl.h"
 #include "ecmascript/compiler/profiler_operation.h"
-#include "ecmascript/compiler/profiler_stub_builder.h"
-#include "ecmascript/compiler/rt_call_signature.h"
 #include "ecmascript/compiler/share_gate_meta_data.h"
-#include "ecmascript/compiler/stub_builder-inl.h"
-#include "ecmascript/ic/profile_type_info.h"
 
 namespace panda::ecmascript::kungfu {
 GateRef AccessObjectStubBuilder::LoadObjByName(GateRef glue, GateRef receiver, GateRef prop, const StringIdInfo &info,

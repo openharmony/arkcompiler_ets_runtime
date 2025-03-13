@@ -485,6 +485,8 @@ public:
 
     void RemoveInsufficientProfileRegion();
 
+    void RemoveIsolatedRegion();
+
     GateRef GetFrameArgs() const
     {
         return argAcc_.GetFrameArgs();

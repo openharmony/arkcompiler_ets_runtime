@@ -383,17 +383,19 @@ bool JSTaggedValue::IsGeneratorContext() const
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsGeneratorContext();
 }
 
-bool JSTaggedValue::WithinInt32() const
+bool JSTaggedValue::WithinInt32(bool acceptsNegativeZero) const
 {
-    if (!IsNumber()) {
+    if (IsInt()) {
+        return true;
+    }
+    if (!IsDouble()) {
         return false;
     }
-
-    double doubleValue = GetNumber();
+    double doubleValue = GetDouble();
     if (base::bit_cast<int64_t>(doubleValue) == base::bit_cast<int64_t>(-0.0)) {
-        return false;
+        return acceptsNegativeZero;
     }
-
+    // NaN and INF -> 0
     int32_t intvalue = base::NumberHelper::DoubleToInt(doubleValue, base::INT32_BITS);
     return doubleValue == static_cast<double>(intvalue);
 }

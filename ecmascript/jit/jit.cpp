@@ -63,12 +63,11 @@ void Jit::SetJitEnablePostFork(EcmaVM *vm, const std::string &bundleName)
         options.SetEnableAPPJIT(true);
         isApp_ = true;
         // for app threshold
-        uint32_t defaultSize = 3000;
+        uint32_t defaultSize = 150;
         uint32_t threshold = ohos::JitTools::GetJitHotnessThreshold(defaultSize);
         options.SetJitHotnessThreshold(threshold);
         hotnessThreshold_ = threshold;
         bundleName_ = bundleName;
-        isEnableAppPGO_ = pgo::PGOProfilerManager::GetInstance()->IsEnable();
 
         SetEnableOrDisable(options, isEnableFastJit, isEnableBaselineJit);
         if (fastJitEnable_ || baselineJitEnable_) {
@@ -82,9 +81,8 @@ void Jit::SwitchProfileStubs(EcmaVM *vm)
     JSThread *thread = vm->GetAssociatedJSThread();
     JSRuntimeOptions &options = vm->GetJSOptions();
     std::shared_ptr<PGOProfiler> pgoProfiler = vm->GetPGOProfiler();
-    if (!options.IsEnableJITPGO() || pgoProfiler == nullptr || (isApp_ && !isEnableAppPGO_)) {
+    if (!options.IsEnableJITPGO() || pgoProfiler == nullptr) {
         thread->SwitchJitProfileStubs(false);
-        options.SetEnableJITPGO(false);
     } else {
         // if not enable aot pgo
         if (!pgo::PGOProfilerManager::GetInstance()->IsEnable()) {
@@ -326,17 +324,9 @@ void Jit::RequestInstallCode(std::shared_ptr<JitTask> jitTask)
 
 uint32_t Jit::GetRunningTaskCnt(EcmaVM *vm)
 {
-    uint32_t cnt = 0;
-    JitTaskpool::GetCurrentTaskpool()->ForEachTask([&cnt, &vm](Task *task) {
-        JitTask::AsyncTask *asyncTask = static_cast<JitTask::AsyncTask*>(task);
-        if (asyncTask->GetHostVM() == vm) {
-            cnt ++;
-        }
-    });
     LockHolder holder(threadTaskInfoLock_);
     ThreadTaskInfo &info = threadTaskInfo_[vm->GetJSThread()];
-    auto &taskQueue = info.installJitTasks_;
-    return taskQueue.size() + cnt;
+    return info.jitTaskCnt_.load();
 }
 
 void Jit::InstallTasks(JSThread *jsThread)

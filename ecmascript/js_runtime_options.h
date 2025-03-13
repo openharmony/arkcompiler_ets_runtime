@@ -147,7 +147,6 @@ enum CommandValues {
     OPTION_INVALID,
     OPTION_SPLIT_ONE,
     OPTION_PRINT_EXECUTE_TIME,
-    OPTION_ENABLE_EDEN_GC,
     OPTION_COMPILER_DEVICE_STATE,
     OPTION_COMPILER_VERIFY_VTABLE,
     OPTION_COMPILER_SELECT_METHODS,
@@ -209,8 +208,8 @@ enum CommandValues {
     OPTION_COMPILER_BASELINEJIT_HOTNESS_THRESHOLD,
     OPTION_COMPILER_FORCE_BASELINEJIT_COMPILE_MAIN,
     OPTION_ENABLE_AOT_CRASH_ESCAPE,
-    OPTION_SPLIT_TWO,
     OPTION_COMPILER_ENABLE_JIT_FAST_COMPILE,
+    OPTION_SPLIT_TWO,
     OPTION_COMPILER_ENABLE_MEGA_IC,
     OPTION_COMPILER_BASELINE_PGO,
     OPTION_ASYNC_LOAD_ABC,
@@ -398,15 +397,6 @@ public:
     void SetEnableForceGC(bool value)
     {
         enableForceGc_ = value;
-    }
-
-    bool EnableEdenGC() const
-    {
-        return enableEdenGC_;
-    }
-
-    void SetEnableEdenGC([[maybe_unused]] bool value)
-    {
     }
 
     bool ForceFullGC() const
@@ -2162,7 +2152,6 @@ private:
     std::string compilerExternalPkgInfo_ {};
     bool compilerEnableExternalPkg_ {true};
     bool enableForceGc_ {true};
-    bool enableEdenGC_ {false};
     bool forceFullGc_ {true};
     bool enableHeapVerify_ {true};
     uint32_t forceSharedGc_ {1};

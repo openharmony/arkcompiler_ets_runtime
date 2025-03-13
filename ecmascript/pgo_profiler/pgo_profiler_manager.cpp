@@ -132,13 +132,13 @@ bool PGOProfilerManager::MergeApFiles(std::unordered_map<CString, uint32_t> &fil
 
 void PGOProfilerManager::RegisterSavingSignal()
 {
-    LOG_PGO(INFO) << "register PGO force save signal";
     if (!isInitialized_) {
         LOG_PGO(ERROR) << "can not register pgo saving signal, data is not initialized";
         return;
     }
     signal(PGO_SAVING_SIGNAL, SavingSignalHandler);
     enableSignalSaving_ = true;
+    LOG_PGO(INFO) << "PGO force save signal has been registered";
 }
 
 void PGOProfilerManager::SavingSignalHandler(int signo)
@@ -147,7 +147,7 @@ void PGOProfilerManager::SavingSignalHandler(int signo)
         return;
     }
 
-    PGOProfilerManager::GetInstance()->ForceDump();
+    PGOProfilerManager::GetInstance()->SetForceDump(true);
 }
 
 void PGOProfilerManager::Initialize(const std::string& outDir, uint32_t hotnessThreshold)
@@ -155,10 +155,8 @@ void PGOProfilerManager::Initialize(const std::string& outDir, uint32_t hotnessT
     outDir_ = outDir;
     hotnessThreshold_ = hotnessThreshold;
     pgoInfo_ = std::make_shared<PGOInfo>(hotnessThreshold);
-    state_ = std::make_shared<PGOState>();
     LOG_PGO(INFO) << "pgo profiler manager initialized, output directory: " << outDir
-                  << ", hotness threshold: " << hotnessThreshold
-                  << ", state: " << state_->ToString(state_->GetState());
+                  << ", hotness threshold: " << hotnessThreshold;
 }
 
 void PGOProfilerManager::SetBundleName(const std::string& bundleName)
@@ -198,17 +196,15 @@ bool PGOProfilerManager::RequestAot(const std::string& bundleName,
 
 void PGOProfilerManager::Destroy()
 {
-    LOG_PGO(INFO) << "attempting to destroy pgo profiler manager, pgo profiler data initialized: "
-                  << isInitialized_;
+    LOG_PGO(INFO) << "attempting to destroy PGO profiler manager, PGO profiler data is "
+                  << (isInitialized_ ? "initialized" : "not initialized");
     if (isInitialized_) {
-        PGOProfilerEncoder encoder(outPath_, apGenMode_);
+        SavePGOInfo();
         {
             LockHolder lock(GetPGOInfoMutex());
-            encoder.Save(pgoInfo_);
             pgoInfo_->Clear();
             pgoInfo_.reset();
         }
-        state_.reset();
         isInitialized_ = false;
         apGenMode_ = ApGenMode::MERGE;
         outPath_ = "";
@@ -218,7 +214,7 @@ void PGOProfilerManager::Destroy()
 
 std::shared_ptr<PGOProfiler> PGOProfilerManager::BuildProfiler(EcmaVM* vm, bool isEnable)
 {
-    LOG_PGO(INFO) << "build profiler, pgo enable: " << isEnable;
+    LOG_PGO(INFO) << "build profiler, pgo is " << (isEnable ? "enabled" : "disabled");
     if (isEnable) {
         isEnable = InitializeData();
     }
@@ -237,12 +233,11 @@ bool PGOProfilerManager::IsEnable() const
 
 bool PGOProfilerManager::InitializeData()
 {
-    LOG_PGO(INFO) << "check pgo profiler data";
     if (isInitialized_) {
         LOG_PGO(INFO) << "pgo profiler data is already initialized";
         return true;
     }
-    if (!pgoInfo_ || !state_) {
+    if (!pgoInfo_) {
         LOG_PGO(ERROR) << "pgo profiler data is not initialized properly";
         return false;
     }
@@ -254,21 +249,23 @@ bool PGOProfilerManager::InitializeData()
     if (!enableSignalSaving_) {
         RegisterSavingSignal();
     }
+    LOG_PGO(INFO) << "pgo profiler data is initialized";
     return true;
 }
 
 void PGOProfilerManager::Destroy(std::shared_ptr<PGOProfiler>& profiler)
 {
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "PGOProfilerManager::Destroy");
     LOG_PGO(INFO) << "attempting to destroy pgo profiler: " << profiler;
     if (profiler != nullptr) {
-        profiler->WaitDumpIfStart();
-        profiler->HandlePGOPreDump();
+        pendingProfilers_.Remove(profiler.get());
         {
             LockHolder lock(profilersMutex_);
             profilers_.erase(profiler);
         }
+        profiler->DumpBeforeDestroy();
         profiler.reset();
-        LOG_PGO(INFO) << "pgo profiler destroied";
+        LOG_PGO(INFO) << "pgo profiler destroyed";
     }
 }
 
@@ -310,9 +307,12 @@ bool PGOProfilerManager::GetPandaFileDesc(ApEntityId abcId, CString& desc) const
     return false;
 }
 
-void PGOProfilerManager::AsyncSave()
+void PGOProfilerManager::SavePGOInfo()
 {
-    PGOProfilerEncoder::PostSaveTask(outPath_, apGenMode_, pgoInfo_);
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "PGOProfilerManager::Save");
+    PGOProfilerEncoder encoder(outPath_, apGenMode_);
+    LockHolder lock(GetPGOInfoMutex());
+    encoder.Save(pgoInfo_);
 }
 
 bool PGOProfilerManager::IsDisableAot() const
@@ -330,32 +330,94 @@ void PGOProfilerManager::SetDisablePGO(bool state)
     disablePGO_ = state;
 }
 
-void PGOProfilerManager::ForceDump()
+void PGOProfilerManager::DispatchDumpTask()
 {
-    LockHolder lock(profilersMutex_);
-    for (const auto& profiler: profilers_) {
-        profiler->ForceDump();
-    }
-    state_->SetState(State::SAVE);
-    GetInstance()->AsyncSave();
+    Taskpool::GetCurrentTaskpool()->PostTask(std::make_unique<PGODumpTask>(GLOBAL_TASK_ID));
 }
 
-bool PGOProfilerManager::TextToBinary(const std::string& inPath,
-                                      const std::string& outPath,
-                                      uint32_t hotnessThreshold,
-                                      ApGenMode mode)
+bool PGOProfilerManager::IsProfilerDestroyed(PGOProfiler* profiler)
 {
-    auto info = std::make_shared<PGOInfo>(hotnessThreshold);
-    PGOProfilerEncoder encoder(outPath, mode);
-    PGOProfilerDecoder decoder(inPath, hotnessThreshold);
-    bool ret = decoder.LoadAPTextFile(inPath);
-    if (ret) {
-        info->MergeSafe(decoder.GetPandaFileInfos());
-        info->MergeSafe(decoder.GetRecordDetailInfos());
-        ret = encoder.Save(info);
+    LockHolder lock(profilersMutex_);
+    for (const auto& ptr: profilers_) {
+        if (ptr.get() == profiler) {
+            return false;
+        }
     }
-    info->Clear();
-    return ret;
+    return true;
+}
+
+void PGOProfilerManager::DumpPendingProfilers()
+{
+    {
+        ConcurrentGuard guard(v_, "DumpPendingProfilers");
+        std::set<PGOProfiler*> notDumpedProfilers;
+        while (!pendingProfilers_.Empty()) {
+            auto profiler = pendingProfilers_.PopFront();
+            if (profiler == nullptr || IsProfilerDestroyed(profiler)) {
+                continue;
+            }
+            if (profiler->SetStartIfStop()) {
+                profiler->HandlePGODumpByDumpThread();
+                profiler->TrySaveByDumpThread();
+                profiler->SetStopAndNotify();
+            } else if (!IsProfilerDestroyed(profiler)) {
+                notDumpedProfilers.emplace(profiler);
+            }
+        }
+        for (const auto profiler: notDumpedProfilers) {
+            pendingProfilers_.PushBack(profiler);
+        }
+        if (IsForceDump()) {
+            SavePGOInfo();
+            SetForceDump(false);
+        }
+    }
+    LockHolder lock(dumpTaskMutex_);
+    SetIsTaskRunning(false);
+}
+
+void PGOProfilerManager::TryDispatchDumpTask(PGOProfiler* profiler)
+{
+    if (IsForceDump()) {
+        PushAllProfilersToPendingList();
+    } else {
+        pendingProfilers_.PushBack(profiler);
+    }
+    // only one pgo dump task should run at a time
+    LockHolder lock(dumpTaskMutex_);
+    if (IsTaskRunning()) {
+        return;
+    }
+    SetIsTaskRunning(true);
+    DispatchDumpTask();
+}
+
+void PGOProfilerManager::PushAllProfilersToPendingList()
+{
+    LockHolder lock(profilersMutex_);
+    for (const auto& prof: profilers_) {
+        pendingProfilers_.PushBack(prof.get());
+    }
+}
+
+bool PGOProfilerManager::IsTaskRunning() const
+{
+    return isTaskRunning_;
+}
+
+void PGOProfilerManager::SetIsTaskRunning(bool isTaskRunning)
+{
+    isTaskRunning_ = isTaskRunning;
+}
+
+void PGOProfilerManager::SetForceDump(bool forceDump)
+{
+    forceDump_ = forceDump;
+}
+
+bool PGOProfilerManager::IsForceDump() const
+{
+    return forceDump_;
 }
 
 bool PGOProfilerManager::BinaryToText(const std::string& inPath,
@@ -394,11 +456,6 @@ void PGOProfilerManager::SetMaxAotMethodSize(uint32_t value)
 bool PGOProfilerManager::IsBigMethod(uint32_t methodSize) const
 {
     return maxAotMethodSize_ != 0 && methodSize > maxAotMethodSize_;
-}
-
-std::shared_ptr<PGOState> PGOProfilerManager::GetPGOState() const
-{
-    return state_;
 }
 
 std::shared_ptr<PGOInfo> PGOProfilerManager::GetPGOInfo() const

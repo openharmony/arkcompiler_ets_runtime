@@ -172,5 +172,22 @@ if (globalThis["ArkPrivate"] != undefined) {
         }
     }
     new C4(38062)
+
+    /*
+     * @tc.name: checkcontainerloadhclass
+     * @tc.desc: Test ContainersQueueStubBuilder::ForEach whether judge isHeapObject
+     *           before loading hClass.
+     * @tc.type: FUNC
+     * @tc.require: issueIBQ709
+     */
+    {
+        let v1 = new Queue(0);
+        let arr1 = [1];
+        try {
+            Reflect.apply(v1.forEach, 123, arr1);
+        } catch (e) {
+            print(e);
+        }
+    }
 }
 export let queueRes = "Test Queue done";

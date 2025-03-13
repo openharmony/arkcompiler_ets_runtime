@@ -15,18 +15,24 @@
 
 #ifndef ECMASCRIPT_COMPILER_BUILTINS_CONTAINERS_VECTOR_STUB_BUILDER_H
 #define ECMASCRIPT_COMPILER_BUILTINS_CONTAINERS_VECTOR_STUB_BUILDER_H
-#include "ecmascript/compiler/stub_builder-inl.h"
+#include "ecmascript/compiler/builtins/builtins_stubs.h"
 #include "ecmascript/js_api/js_api_vector.h"
 
 namespace panda::ecmascript::kungfu {
-class ContainersVectorStubBuilder : public StubBuilder {
+class ContainersVectorStubBuilder : public BuiltinsStubBuilder {
 public:
     explicit ContainersVectorStubBuilder(StubBuilder *parent)
-        : StubBuilder(parent) {}
+        : BuiltinsStubBuilder(parent) {}
     ~ContainersVectorStubBuilder() override = default;
     NO_MOVE_SEMANTIC(ContainersVectorStubBuilder);
     NO_COPY_SEMANTIC(ContainersVectorStubBuilder);
     void GenerateCircuit() override {}
+
+#define DECLARE_CONTAINERS_VECTOR_STUB_BUILDER(method, ...)           \
+    void method(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *result, Label *exit, Label *slowPath);
+BUILTINS_WITH_CONTAINERS_VECTOR_STUB_BUILDER(DECLARE_CONTAINERS_VECTOR_STUB_BUILDER)
+#undef DECLARE_CONTAINERS_VECTOR_STUB_BUILDER
+
     GateRef GetSize(GateRef obj)
     {
         return Load(VariableType::INT32(), obj, IntPtr(JSAPIVector::ELEMENT_COUNT_OFFSET));

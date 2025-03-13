@@ -70,7 +70,7 @@ private:
 
     inline void CanWrite()
     {
-        // Set to ModType::WRITE, expect no writer and readers
+        // Set to ModType::WRITE, expect no writers and readers
         constexpr uint32_t expectedModRecord = 0;
         constexpr uint32_t desiredModRecord = WRITE_MOD_MASK;
         uint32_t ret = Barriers::AtomicSetPrimitive(objHandle_->GetTaggedObject(),

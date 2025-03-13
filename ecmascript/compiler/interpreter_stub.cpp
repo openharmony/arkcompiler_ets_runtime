@@ -1271,7 +1271,11 @@ DECLARE_ASM_HANDLER(HandleIsinImm8V8)
 {
     GateRef v0 = ReadInst8_1(pc);
     GateRef prop = GetVregValue(sp, ZExtInt8ToPtr(v0));
-    GateRef result = CallRuntime(glue, RTSTUB_ID(IsIn), { prop, acc }); // acc is obj
+#if ENABLE_NEXT_OPTIMIZATION
+    GateRef result = IsIn(glue, prop, acc); // acc is obj
+#else
+    GateRef result = CallRuntime(glue, RTSTUB_ID(IsIn), {prop, acc}); // acc is obj
+#endif
     CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(ISIN_IMM8_V8));
 }
 
@@ -4557,8 +4561,17 @@ DECLARE_ASM_HANDLER(HandleCreateobjectwithbufferImm8Id16)
     GateRef currentEnv = GetEnvFromFrame(GetFrame(sp));
     NewObjectStubBuilder newBuilder(this);
     GateRef res = newBuilder.CreateObjectHavingMethod(glue, result, currentEnv);
+
+    auto env = GetEnvironment();
+    Label isException(env);
+    Label isNotException(env);
+    BRANCH(TaggedIsException(res), &isException, &isNotException);
+    Bind(&isException);
+    DISPATCH_LAST();
+    Bind(&isNotException);
     callback.ProfileCreateObject(res);
-    CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(CREATEOBJECTWITHBUFFER_IMM8_ID16));
+    DEFVARIABLE(varAcc, VariableType::JS_ANY(), res);
+    DISPATCH_VARACC(INT_PTR(CREATEOBJECTWITHBUFFER_IMM8_ID16));
 }
 
 DECLARE_ASM_HANDLER(HandleCreateobjectwithbufferImm16Id16)
@@ -4570,8 +4583,17 @@ DECLARE_ASM_HANDLER(HandleCreateobjectwithbufferImm16Id16)
     GateRef currentEnv = GetEnvFromFrame(GetFrame(sp));
     NewObjectStubBuilder newBuilder(this);
     GateRef res = newBuilder.CreateObjectHavingMethod(glue, result, currentEnv);
+
+    auto env = GetEnvironment();
+    Label isException(env);
+    Label isNotException(env);
+    BRANCH(TaggedIsException(res), &isException, &isNotException);
+    Bind(&isException);
+    DISPATCH_LAST();
+    Bind(&isNotException);
     callback.ProfileCreateObject(res);
-    CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(CREATEOBJECTWITHBUFFER_IMM16_ID16));
+    DEFVARIABLE(varAcc, VariableType::JS_ANY(), res);
+    DISPATCH_VARACC(INT_PTR(CREATEOBJECTWITHBUFFER_IMM16_ID16));
 }
 
 DECLARE_ASM_HANDLER(HandleDeprecatedCreateobjectwithbufferPrefImm16)

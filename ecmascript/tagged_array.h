@@ -70,7 +70,7 @@ public:
 
     bool HasDuplicateEntry() const;
 
-    bool IsGeneralNewAndNotMarking(const JSThread *thread);
+    bool IsYoungAndNotMarking(const JSThread *thread);
 
     static JSHandle<TaggedArray> SetCapacity(const JSThread *thread, const JSHandle<TaggedArray> &array,
                                              uint32_t capa);

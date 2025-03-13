@@ -13,13 +13,9 @@
  * limitations under the License.
  */
 
-#include <cstdint>
-#include <map>
 
 #include "ecmascript/compiler/assembler/aarch64/assembler_aarch64.h"
 
-#include "ecmascript/base/bit_helper.h"
-#include "ecmascript/ecma_macros.h"
 
 namespace panda::ecmascript::aarch64 {
 using namespace panda::ecmascript::base;
@@ -930,7 +926,7 @@ void AssemblerAarch64::Bl(Label *label)
     Bl(offsetImm);
 }
 
-void AssemblerAarch64::Bl(int32_t imm)
+void AssemblerAarch64::Bl(intptr_t imm)
 {
     uint32_t code = CallOpCode::BL | ((imm << BRANCH_Imm26_LOWBITS) & BRANCH_Imm26_MASK);
     EmitU32(code);

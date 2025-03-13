@@ -19,6 +19,24 @@
 #include "ecmascript/base/builtins_base.h"
 #include "ecmascript/ecma_runtime_call_info.h"
 
+// List of functions in HashMap.prototype, excluding the constructor and '@@' properties.
+// V(name, func, length, stubIndex)
+// where ContainersHashMap::func refers to the native implementation of HashMap.prototype[name].
+#define CONTAINER_HASHMAP_PROTOTYPE_FUNCTIONS(V)                                    \
+    V("set",            Set,            2,          INVALID)                        \
+    V("setAll",         SetAll,         1,          INVALID)                        \
+    V("isEmpty",        IsEmpty,        0,          INVALID)                        \
+    V("remove",         Remove,         1,          INVALID)                        \
+    V("clear",          Clear,          0,          INVALID)                        \
+    V("get",            Get,            1,          INVALID)                        \
+    V("forEach",        ForEach,        2,          HashMapForEach)                 \
+    V("hasKey",         HasKey,         1,          INVALID)                        \
+    V("hasValue",       HasValue,       1,          INVALID)                        \
+    V("replace",        Replace,        2,          INVALID)                        \
+    V("keys",           Keys,           0,          INVALID)                        \
+    V("values",         Values,         0,          INVALID)                        \
+    V("entries",        Entries,        0,          INVALID)
+
 namespace panda::ecmascript::containers {
 class ContainersHashMap : public base::BuiltinsBase {
 public:
@@ -38,6 +56,21 @@ public:
     static JSTaggedValue Clear(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue GetLength(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue IsEmpty(EcmaRuntimeCallInfo *argv);
+
+    // Excluding the constructor and '@@' internal properties.
+    static Span<const base::BuiltinFunctionEntry> GetHashMapPrototypeFunctions()
+    {
+        return Span<const base::BuiltinFunctionEntry>(HASHMAP_PROTOTYPE_FUNCTIONS);
+    }
+
+private:
+#define CONTAINER_HASHMAP_FUNCTION_ENTRY(name, method, length, id) \
+    base::BuiltinFunctionEntry::Create(name, ContainersHashMap::method, length, kungfu::BuiltinsStubCSigns::id),
+
+    static constexpr std::array HASHMAP_PROTOTYPE_FUNCTIONS = {
+        CONTAINER_HASHMAP_PROTOTYPE_FUNCTIONS(CONTAINER_HASHMAP_FUNCTION_ENTRY)
+    };
+#undef CONTAINER_HASHMAP_FUNCTION_ENTRY
 };
 }  // namespace panda::ecmascript::containers
 #endif  // ECMASCRIPT_CONTAINERS_CONTAINERS_HASHMAP_H

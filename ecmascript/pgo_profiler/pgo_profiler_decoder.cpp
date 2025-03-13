@@ -30,7 +30,7 @@ bool PGOProfilerDecoder::Load(const std::shared_ptr<PGOAbcFilePool> &externalAbc
 
     if (!PGOProfilerHeader::ParseFromBinary(addr, fileMapAddr_.GetSize(), &header_)) {
         UnLoadAPBinaryFile();
-        LOG_PGO(ERROR) << "Parse profiler header failed";
+        LOG_PGO(ERROR) << "parse profiler header failed";
         return false;
     }
     pandaFileInfos_.ParseFromBinary(addr, header_->GetPandaInfoSection());
@@ -68,7 +68,7 @@ bool PGOProfilerDecoder::LoadAndVerify(const std::unordered_map<CString, uint32_
 {
     // The file does not exist. Enter full compiler mode.
     if (inPath_.empty()) {
-        LOG_PGO(INFO) << "When the file is empty. Enter full compiler mode.";
+        LOG_PGO(INFO) << "file path is empty, enter full compiler mode.";
         Clear();
         return true;
     }
@@ -286,41 +286,5 @@ void PGOProfilerDecoder::MergeFileNameToChecksumMap(std::unordered_map<CString, 
         const CString &abcNameInDecoder = JSPandaFile::GetNormalizedFileDesc(abcFilePool_->GetEntry(abcId)->GetData());
         fileNameToChecksumMap.emplace(abcNameInDecoder, checksum);
     });
-}
-
-bool PGOProfilerDecoder::LoadAPTextFile(const std::string& inPath)
-{
-    std::string realPath;
-    if (!RealPath(inPath, realPath)) {
-        LOG_PGO(ERROR) << "real path failure, path: " << inPath;
-        return false;
-    }
-
-    std::ifstream fileStream(realPath.c_str());
-    if (!fileStream.is_open()) {
-        LOG_PGO(ERROR) << "can't open the file path " << realPath;
-        return false;
-    }
-
-    if (!header_) {
-        PGOProfilerHeader::Build(&header_, sizeof(PGOProfilerHeader));
-    }
-    if (!header_->ParseFromText(fileStream)) {
-        LOG_PGO(ERROR) << "header format error";
-        return false;
-    }
-    if (!pandaFileInfos_.ParseFromText(fileStream)) {
-        LOG_PGO(ERROR) << "panda file info format error";
-        return false;
-    }
-    if (!recordDetailInfos_) {
-        recordDetailInfos_ = std::make_shared<PGORecordDetailInfos>(hotnessThreshold_);
-    }
-    if (!recordDetailInfos_->ParseFromText(fileStream)) {
-        LOG_PGO(ERROR) << "record info format error";
-        return false;
-    }
-
-    return true;
 }
 } // namespace panda::ecmascript::pgo

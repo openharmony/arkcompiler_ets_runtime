@@ -12,6 +12,7 @@
       vtable?for?panda::ecmascript::kungfu::StringSnapshotInfo;
       vtable?for?panda::ecmascript::Taskpool;
       vtable?for?panda::ecmascript::base::Utf8JsonParser;
+      vtable?for?panda::ecmascript::tooling::JSDebugger;
 
       panda::ecmascript::COMMON_HELP_HEAD_MSG*;
       panda::ecmascript::HELP_OPTION_MSG*;
@@ -336,6 +337,7 @@
       panda::ecmascript::kungfu::ArkStackMapBuilder::Run*;
       panda::ecmascript::kungfu::PGOBCInfo::Record*;
       panda::ecmascript::SharedModuleManager::GetInstance*;
+      panda::ecmascript::kungfu::RelocWriterAArch64::*;
       panda::ecmascript::SharedModuleManager::TransferSModule*;
       panda::ecmascript::kungfu::PGOTypeManager::GetConstantPoolIDByMethodOffset*;
       panda::ecmascript::kungfu::PGOTypeManager::GetConstantPoolByMethodOffset*;
@@ -350,7 +352,9 @@
       panda::ecmascript::kungfu::PGOTypeManager::GetReceiverHIndexByPGOObjectInfoType*;
       panda::ecmascript::kungfu::PGOTypeManager::SetCurConstantPool*;
       panda::ecmascript::kungfu::PGOTypeManager::GetSymbolIdByProfileType*;
+      panda::ecmascript::kungfu::PGOTypeManager::MergeRepresentationForProtoTransition*;
       panda::ecmascript::kungfu::PGOTypeParser::CreatePGOType*;
+      panda::ecmascript::kungfu::PGOTypeParser::Preproccessor*;
       panda::ecmascript::kungfu::PGOTypeParser::PGOTypeParser*;
       panda::ecmascript::kungfu::PGOTypeRecorder::GetElementsKindForCreater*;
       panda::ecmascript::kungfu::PGOTypeRecorder::GetElementsKindsForUser*;

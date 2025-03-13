@@ -163,6 +163,8 @@ public:
     Region *TrySweepToGetSuitableRegion(size_t size);
     Region *TryToGetExclusiveRegion(size_t size);
 
+    uintptr_t AllocateFast(size_t size);
+    uintptr_t AllocateSlow(size_t size, bool tryFast);
     // CSet
     void SelectCSet();
     void CheckRegionSize();

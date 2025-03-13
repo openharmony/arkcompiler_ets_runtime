@@ -97,6 +97,7 @@ class EcmaStringTable;
 class JSObjectResizingStrategy;
 class Jit;
 class JitThread;
+enum class CompareStringsOption : uint8_t;
 
 using NativePtrGetter = void* (*)(void* info);
 using SourceMapCallback = std::function<std::string(const std::string& rawStack)>;
@@ -104,6 +105,9 @@ using SourceMapTranslateCallback = std::function<bool(std::string& url, int& lin
     std::string &packageName)>;
 using ResolveBufferCallback =
     std::function<bool(std::string dirPath, uint8_t **buff, size_t *buffSize, std::string &errorMsg)>;
+using TimerCallbackFunc = void (*)(void *data);
+using TimerTaskCallback = void* (*)(EcmaVM *vm, void *data, TimerCallbackFunc func, uint64_t timeout, bool repeat);
+using CancelTimerCallback = void (*)(void *timerCallbackInfo);
 using UnloadNativeModuleCallback = std::function<bool(const std::string &moduleKey)>;
 using RequestAotCallback =
     std::function<int32_t(const std::string &bundleName, const std::string &moduleName, int32_t triggerMode)>;
@@ -112,6 +116,79 @@ using DeviceDisconnectCallback = std::function<bool()>;
 using UncatchableErrorHandler = std::function<void(panda::TryCatch&)>;
 using OnErrorCallback = std::function<void(Local<ObjectRef> value, void *data)>;
 using StopPreLoadSoCallback = std::function<void()>;
+
+enum class IcuFormatterType: uint8_t {
+    SIMPLE_DATE_FORMAT_DEFAULT,
+    SIMPLE_DATE_FORMAT_DATE,
+    SIMPLE_DATE_FORMAT_TIME,
+    NUMBER_FORMATTER,
+    COLLATOR,
+    ICU_FORMATTER_TYPE_COUNT
+};
+
+class IntlCache {
+public:
+    IntlCache() = default;
+
+    void SetDefaultLocale(const std::string& locale)
+    {
+        defaultLocale_ = locale;
+    }
+
+    const std::string& GetDefaultLocale() const
+    {
+        return defaultLocale_;
+    }
+
+    void SetDefaultCompareStringsOption(const CompareStringsOption csOption)
+    {
+        defaultCompareStringsOption_ = csOption;
+    }
+
+    std::optional<CompareStringsOption> GetDefaultCompareStringsOption() const
+    {
+        return defaultCompareStringsOption_;
+    }
+
+    void SetIcuFormatterToCache(IcuFormatterType type, const std::string& locale, void* icuObj,
+                                NativePointerCallback deleteEntry = nullptr)
+    {
+        icuObjCache_[static_cast<int>(type)] = IcuFormatter(locale, icuObj, deleteEntry);
+    }
+
+    void* GetIcuFormatterFromCache(IcuFormatterType type, const std::string& locale) const
+    {
+        const auto& icuFormatter = icuObjCache_[static_cast<int>(type)];
+        return icuFormatter.locale == locale ? icuFormatter.icuObj : nullptr;
+    }
+
+    void ClearIcuCache(void* vmPtr)
+    {
+        for (uint32_t i = 0; i < static_cast<uint32_t>(IcuFormatterType::ICU_FORMATTER_TYPE_COUNT); ++i) {
+            auto& icuFormatter = icuObjCache_[i];
+            if (icuFormatter.deleteEntry != nullptr) {
+                // Fill nullptr into the IcuDeleteEntry's unused env (specifically for napi) field.
+                icuFormatter.deleteEntry(nullptr, icuFormatter.icuObj, vmPtr);
+            }
+        }
+    }
+
+private:
+    class IcuFormatter {
+    public:
+        std::string locale;
+        void* icuObj {nullptr};
+        NativePointerCallback deleteEntry {nullptr};
+
+        IcuFormatter() = default;
+        IcuFormatter(const std::string& locale, void* icuObj, NativePointerCallback deleteEntry = nullptr)
+            : locale(locale), icuObj(icuObj), deleteEntry(deleteEntry) {}
+    };
+
+    std::string defaultLocale_;
+    std::optional<CompareStringsOption> defaultCompareStringsOption_ {std::nullopt};
+    IcuFormatter icuObjCache_[static_cast<uint32_t>(IcuFormatterType::ICU_FORMATTER_TYPE_COUNT)];
+};
 
 class EcmaVM {
 public:
@@ -351,6 +428,26 @@ public:
         return resolveBufferCallback_;
     }
 
+    void SetTimerTaskCallback(TimerTaskCallback callback)
+    {
+        timerTaskCallback_ = callback;
+    }
+
+    TimerTaskCallback GetTimerTaskCallback() const
+    {
+        return timerTaskCallback_;
+    }
+
+    void SetCancelTimerCallback(CancelTimerCallback callback)
+    {
+        cancelTimerCallback_ = callback;
+    }
+
+    CancelTimerCallback GetCancelTimerCallback() const
+    {
+        return cancelTimerCallback_;
+    }
+
     void SetSearchHapPathCallBack(SearchHapPathCallBack cb)
     {
         SearchHapPathCallBack_ = cb;
@@ -392,7 +489,7 @@ public:
     {
         return onErrorData_;
     }
-    
+
     void AddStopPreLoadCallback(const StopPreLoadSoCallback &cb)
     {
         stopPreLoadCallbacks_.emplace_back(cb);
@@ -712,7 +809,7 @@ public:
     {
         return processStartRealtime_;
     }
-    
+
     void SetProcessStartRealtime(int value)
     {
         processStartRealtime_ = value;
@@ -802,12 +899,12 @@ public:
     {
         isCollectingScopeLockStats_ = true;
     }
-    
+
     void StopCollectingScopeLockStats()
     {
         isCollectingScopeLockStats_ = false;
     }
-    
+
     int GetEnterThreadManagedScopeCount() const
     {
         return enterThreadManagedScopeCount_;
@@ -874,7 +971,22 @@ public:
         aotSnapShotStatsMap_[tag] += count;
     }
 
+    IntlCache& GetIntlCache()
+    {
+        return intlCache_;
+    }
+
     void PUBLIC_API PrintAOTSnapShotStats();
+
+    void SetVMAPIVersion(uint32_t APIVersion)
+    {
+        apiVersion_ = APIVersion;
+    }
+
+    uint32_t GetVMAPIVersion()
+    {
+        return apiVersion_;
+    }
 
 #if ECMASCRIPT_ENABLE_COLLECTING_OPCODES
     void SetBytecodeStatsStack(std::unordered_map<BytecodeInstruction::Opcode, int> &bytecodeStatsMap)
@@ -915,6 +1027,9 @@ private:
     EcmaStringTable *stringTable_ {nullptr};
     PUBLIC_API static bool multiThreadCheck_;
     static bool errorInfoEnhanced_;
+
+    //apiVersion states
+    uint32_t apiVersion_ = 8;
 
     // VM memory management.
     std::unique_ptr<NativeAreaAllocator> nativeAreaAllocator_;
@@ -966,6 +1081,11 @@ private:
     // resolve path to get abc's buffer
     ResolveBufferCallback resolveBufferCallback_ {nullptr};
 
+    // set timer task to execute callback on time
+    TimerTaskCallback timerTaskCallback_ {nullptr};
+    // set cancel timer task to execute callback on time
+    CancelTimerCallback cancelTimerCallback_ {nullptr};
+
     // delete the native module and dlclose so from NativeModuleManager
     UnloadNativeModuleCallback unloadNativeModuleCallback_ {nullptr};
 
@@ -1012,6 +1132,8 @@ private:
     DeviceDisconnectCallback deviceDisconnectCallback_ {nullptr};
 
     UncatchableErrorHandler uncatchableErrorHandler_ {nullptr};
+
+    IntlCache intlCache_;
 
     friend class Snapshot;
     friend class SnapshotProcessor;

@@ -55,7 +55,7 @@ public:
 
     void SetEnable(bool enable)
     {
-        LOG_PGO(DEBUG) << "trace enable: " << enable;
+        LOG_PGO(DEBUG) << "pgo trace is " << (enable ? "enabled" : "disabled");
         enable_ = enable;
     }
 

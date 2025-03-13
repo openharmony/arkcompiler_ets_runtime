@@ -31,6 +31,7 @@
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/js_thread_hclass_entries.h"
 #include "ecmascript/js_thread_stub_entries.h"
+#include "ecmascript/js_thread_elements_hclass_entries.h"
 #include "ecmascript/log_wrapper.h"
 #include "ecmascript/mem/visitor.h"
 #include "ecmascript/mutator_lock.h"
@@ -152,6 +153,16 @@ public:
         StateFalse = 0,
         StateTrue,
         StatePending
+    };
+
+    enum StackInfoOpKind : uint32_t {
+        SwitchToSubStackInfo = 0,
+        SwitchToMainStackInfo,
+    };
+
+    struct StackInfo {
+        uint64_t stackLimit;
+        uint64_t lastLeaveFrame;
     };
 
     explicit JSThread(EcmaVM *vm);
@@ -323,19 +334,9 @@ public:
         glueData_.globalConst_ = const_cast<GlobalEnvConstants*>(constants);
     }
 
-    const BuiltinEntries GetBuiltinEntries() const
-    {
-        return glueData_.builtinEntries_;
-    }
-
     BuiltinEntries* GetBuiltinEntriesPointer()
     {
         return &glueData_.builtinEntries_;
-    }
-
-    const CMap<ElementsKind, std::pair<ConstantIndex, ConstantIndex>> &GetArrayHClassIndexMap() const
-    {
-        return arrayHClassIndexMap_;
     }
 
     const CMap<JSHClass *, GlobalIndex> &GetCtorHclassEntries() const
@@ -363,7 +364,20 @@ public:
 
     JSHClass *GetBuiltinInstanceHClass(BuiltinTypeId type) const;
     JSHClass *GetBuiltinExtraHClass(BuiltinTypeId type) const;
-    JSHClass *GetArrayInstanceHClass(ElementsKind kind, bool isPrototype) const;
+
+    JSHClass* GetArrayInstanceHClass(ElementsKind kind, bool isPrototype) const
+    {
+        ConstantIndex index = glueData_.arrayHClassIndexes_.GetArrayInstanceHClassIndex(kind, isPrototype);
+        auto exceptArrayHClass = GlobalConstants()->GetGlobalConstantObject(static_cast<size_t>(index));
+        auto exceptRecvHClass = JSHClass::Cast(exceptArrayHClass.GetTaggedObject());
+        ASSERT(exceptRecvHClass->IsJSArray());
+        return exceptRecvHClass;
+    }
+
+    ConstantIndex GetArrayInstanceHClassIndex(ElementsKind kind, bool isPrototype) const
+    {
+        return glueData_.arrayHClassIndexes_.GetArrayInstanceHClassIndex(kind, isPrototype);
+    }
 
     PUBLIC_API JSHClass *GetBuiltinPrototypeHClass(BuiltinTypeId type) const;
     PUBLIC_API JSHClass *GetBuiltinPrototypeOfPrototypeHClass(BuiltinTypeId type) const;
@@ -980,7 +994,8 @@ public:
                                                  base::AlignedPointer,
                                                  base::AlignedUint32,
                                                  base::AlignedBool,
-                                                 base::AlignedBool> {
+                                                 base::AlignedBool,
+                                                 ElementsHClassEntries> {
         enum class Index : size_t {
             BcStubEntriesIndex = 0,
             ExceptionIndex,
@@ -1025,6 +1040,7 @@ public:
             TaskInfoIndex,
             IsEnableMutantArrayIndex,
             IsEnableElementsKindIndex,
+            ArrayHClassIndexesIndex,
             NumOfMembers
         };
         static_assert(static_cast<size_t>(Index::NumOfMembers) == NumOfTypes);
@@ -1265,6 +1281,11 @@ public:
             return GetOffset<static_cast<size_t>(Index::IsEnableElementsKindIndex)>(isArch32);
         }
 
+        static size_t GetArrayHClassIndexesIndexOffset(bool isArch32)
+        {
+            return GetOffset<static_cast<size_t>(Index::ArrayHClassIndexesIndex)>(isArch32);
+        }
+
         alignas(EAS) BCStubEntries bcStubEntries_ {};
         alignas(EAS) JSTaggedValue exception_ {JSTaggedValue::Hole()};
         alignas(EAS) JSTaggedValue globalObject_ {JSTaggedValue::Hole()};
@@ -1308,6 +1329,7 @@ public:
         alignas(EAS) uintptr_t taskInfo_ {0};
         alignas(EAS) bool isEnableMutantArray_ {false};
         alignas(EAS) bool IsEnableElementsKind_ {false};
+        alignas(EAS) ElementsHClassEntries arrayHClassIndexes_ {};
     };
     STATIC_ASSERT_EQ_ARCH(sizeof(GlueData), GlueData::SizeArch32, GlueData::SizeArch64);
 
@@ -1330,6 +1352,16 @@ public:
     CVector<EcmaContext *> GetEcmaContexts()
     {
         return contexts_;
+    }
+
+    bool IsInSubStack() const
+    {
+        return isInSubStack_;
+    }
+
+    const StackInfo &GetMainStackInfo() const
+    {
+        return mainStackInfo_;
     }
 
     bool IsPropertyCacheCleared() const;
@@ -1509,17 +1541,7 @@ public:
         return isInConcurrentScope_;
     }
 
-    void EnableEdenGCBarriers()
-    {
-        auto setValueStub = GetFastStubEntry(kungfu::CommonStubCSigns::SetValueWithEdenBarrier);
-        SetFastStubEntry(kungfu::CommonStubCSigns::SetValueWithBarrier, setValueStub);
-        auto markStub = GetRTInterface(kungfu::RuntimeStubCSigns::ID_MarkingBarrierWithEden);
-        RegisterRTInterface(kungfu::RuntimeStubCSigns::ID_MarkingBarrier, markStub);
-        auto setNotShareValueStub = GetFastStubEntry(kungfu::CommonStubCSigns::SetNonSValueWithEdenBarrier);
-        SetFastStubEntry(kungfu::CommonStubCSigns::SetNonSValueWithBarrier, setNotShareValueStub);
-        auto asmCheckStub = GetRTInterface(kungfu::RuntimeStubCSigns::ID_ASMWriteBarrierWithEden);
-        RegisterRTInterface(kungfu::RuntimeStubCSigns::ID_ASMFastWriteBarrier, asmCheckStub);
-    }
+    void UpdateStackInfo(void *stackInfo, StackInfoOpKind opKind);
 
     DateUtils *GetDateUtils() const
     {
@@ -1570,11 +1592,6 @@ private:
     void SetCurrentEcmaContext(EcmaContext *context)
     {
         glueData_.currentContext_ = context;
-    }
-
-    void SetArrayHClassIndexMap(const CMap<ElementsKind, std::pair<ConstantIndex, ConstantIndex>> &map)
-    {
-        arrayHClassIndexMap_ = map;
     }
 
     void TransferFromRunningToSuspended(ThreadState newState);
@@ -1658,11 +1675,11 @@ private:
     // Shared heap collect local heap Rset
     bool processingLocalToSharedRset_ {false};
 
-    // { ElementsKind, (hclass, hclassWithProto) }
-    CMap<ElementsKind, std::pair<ConstantIndex, ConstantIndex>> arrayHClassIndexMap_;
     CMap<JSHClass *, GlobalIndex> ctorHclassEntries_;
 
     CVector<EcmaContext *> contexts_;
+    bool isInSubStack_ {false};
+    StackInfo mainStackInfo_ { 0ULL, 0ULL };
     EcmaContext *currentContext_ {nullptr};
 
     Mutex suspendLock_;

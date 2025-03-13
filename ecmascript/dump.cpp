@@ -2398,6 +2398,7 @@ void JSAPIList::DumpForSnapshot(std::vector<Reference> &vec) const
 {
     if (!(GetSingleList().IsInvalidValue())) {
         TaggedSingleList *list = TaggedSingleList::Cast(GetSingleList().GetTaggedObject());
+        vec.emplace_back("singleList", GetSingleList());
         list->DumpForSnapshot(vec);
     }
     JSObject::DumpForSnapshot(vec);
@@ -2439,6 +2440,7 @@ void JSAPILinkedList::DumpForSnapshot(std::vector<Reference> &vec) const
 {
     if (!(GetDoubleList().IsInvalidValue())) {
         TaggedDoubleList *list = TaggedDoubleList::Cast(GetDoubleList().GetTaggedObject());
+        vec.emplace_back("doubleList", GetDoubleList());
         list->DumpForSnapshot(vec);
     }
 
@@ -3523,6 +3525,7 @@ void ProtoChangeMarker::Dump(std::ostream &os) const
 {
     os << " - HasChanged: " << GetHasChanged() << "\n";
     os << " - HasAccessorChanged: " << GetAccessorHasChanged() << "\n";
+    os << " - HasNotFoundChanged" << GetNotFoundHasChanged() << "\n";
 }
 
 void MarkerCell::Dump(std::ostream &os) const
@@ -3587,6 +3590,9 @@ void SourceTextModule::Dump(std::ostream &os) const
     os << " - EcmaModuleRecordName: ";
     os << GetEcmaModuleRecordNameString();
     os << "\n";
+    os << " - ModuleRequests: ";
+    GetModuleRequests().Dump(os);
+    os << "\n";
     os << " - RequestedModules: ";
     GetRequestedModules().Dump(os);
     os << "\n";
@@ -3647,8 +3653,8 @@ void SourceTextModule::Dump(std::ostream &os) const
 
 void ImportEntry::Dump(std::ostream &os) const
 {
-    os << " - ModuleRequest: ";
-    GetModuleRequest().Dump(os);
+    os << " - ModuleRequestIndex: ";
+    os << GetModuleRequestIndex();
     os << "\n";
     os << " - ImportName: ";
     GetImportName().Dump(os);
@@ -3675,8 +3681,8 @@ void IndirectExportEntry::Dump(std::ostream &os) const
     os << " - ExportName: ";
     GetExportName().Dump(os);
     os << "\n";
-    os << " - ModuleRequest: ";
-    GetModuleRequest().Dump(os);
+    os << " - ModuleRequestIndex: ";
+    os << GetModuleRequestIndex();
     os << "\n";
     os << " - ImportName: ";
     GetImportName().Dump(os);
@@ -3685,8 +3691,8 @@ void IndirectExportEntry::Dump(std::ostream &os) const
 
 void StarExportEntry::Dump(std::ostream &os) const
 {
-    os << " - ModuleRequest: ";
-    GetModuleRequest().Dump(os);
+    os << " - ModuleRequestIndex: ";
+    os << GetModuleRequestIndex();
     os << "\n";
 }
 
@@ -4694,6 +4700,10 @@ void JSObject::DumpForSnapshot(std::vector<Reference> &vec) const
         vec.emplace_back(CString("__proto__"), jshclass->GetPrototype());
     }
     vec.emplace_back(CString("ArkInternalHash"), JSTaggedValue(GetHash()));
+    JSTaggedType hashField = Barriers::GetValue<JSTaggedType>(this, HASH_OFFSET);
+    if (JSTaggedValue(hashField).IsHeapObject()) {
+        vec.emplace_back(CString("HashField"), JSTaggedValue(hashField));
+    }
 
     TaggedArray *elements = TaggedArray::Cast(GetElements().GetTaggedObject());
     vec.emplace_back("(object elements)", JSTaggedValue(elements));
@@ -4785,10 +4795,12 @@ void Program::DumpForSnapshot(std::vector<Reference> &vec) const
 void LinkedNode::DumpForSnapshot(std::vector<Reference> &vec) const
 {
     JSTaggedValue next = GetNext();
-    if (next.IsUndefined() && !next.IsHole() && !next.IsNull()) {
+    if (!next.IsUndefined() && !next.IsHole() && !next.IsNull()) {
         LinkedNode *nextNode = LinkedNode::Cast(next.GetTaggedObject());
+        vec.emplace_back(CString("Next"), next);
         nextNode->DumpForSnapshot(vec);
     }
+    vec.emplace_back(CString("Key"), GetKey());
     JSTaggedValue key = GetKey();
     CString str;
     KeyToStd(str, key);
@@ -4855,7 +4867,7 @@ void COWMutantTaggedArray::DumpForSnapshot(std::vector<Reference> &vec) const
 void JSBoundFunction::DumpForSnapshot(std::vector<Reference> &vec) const
 {
     JSObject::DumpForSnapshot(vec);
-
+    vec.emplace_back(CString("Method"), GetMethod());
     vec.emplace_back(CString("BoundTarget"), GetBoundTarget());
     vec.emplace_back(CString("BoundThis"), GetBoundThis());
     vec.emplace_back(CString("BoundArguments"), GetBoundArguments());
@@ -4990,10 +5002,10 @@ void JSFinalizationRegistry::DumpForSnapshot(std::vector<Reference> &vec) const
     vec.emplace_back(CString("CleanupCallback"), GetCleanupCallback());
     if (!(GetMaybeUnregister().IsInvalidValue())) {
         LinkedHashMap *map = LinkedHashMap::Cast(GetMaybeUnregister().GetTaggedObject());
+        vec.emplace_back(CString("MaybeUnregister"), GetMaybeUnregister());
         map->DumpForSnapshot(vec);
     }
 
-    vec.emplace_back(CString("MaybeUnregister"), GetMaybeUnregister());
     vec.emplace_back(CString("Next"), GetNext());
     vec.emplace_back(CString("Prev"), GetPrev());
     JSObject::DumpForSnapshot(vec);
@@ -5062,6 +5074,7 @@ void JSAPILightWeightMap::DumpForSnapshot(std::vector<Reference> &vec) const
 {
     DISALLOW_GARBAGE_COLLECTION;
     vec.emplace_back("Hashes", GetHashes());
+    vec.emplace_back("Keys", GetKeys());
     TaggedArray *keys = TaggedArray::Cast(GetKeys().GetTaggedObject());
     TaggedArray *values = TaggedArray::Cast(GetValues().GetTaggedObject());
     uint32_t len = static_cast<uint32_t>(GetLength());
@@ -5842,6 +5855,7 @@ void SourceTextModule::DumpForSnapshot(std::vector<Reference> &vec) const
     vec.reserve(vec.size() + NUM_OF_ITEMS);
     vec.emplace_back(CString("Environment"), GetEnvironment());
     vec.emplace_back(CString("Namespace"), GetNamespace());
+    vec.emplace_back(CString("ModuleRequests"), GetModuleRequests());
     vec.emplace_back(CString("RequestedModules"), GetRequestedModules());
     vec.emplace_back(CString("ImportEntries"), GetImportEntries());
     vec.emplace_back(CString("LocalExportEntries"), GetLocalExportEntries());
@@ -5863,7 +5877,7 @@ void SourceTextModule::DumpForSnapshot(std::vector<Reference> &vec) const
 
 void ImportEntry::DumpForSnapshot(std::vector<Reference> &vec) const
 {
-    vec.emplace_back(CString("ModuleRequest"), GetModuleRequest());
+    vec.emplace_back(CString("ModuleRequestIndex"), JSTaggedValue(GetModuleRequestIndex()));
     vec.emplace_back(CString("ImportName"), GetImportName());
     vec.emplace_back(CString("LocalName"), GetLocalName());
 }
@@ -5877,13 +5891,13 @@ void LocalExportEntry::DumpForSnapshot(std::vector<Reference> &vec) const
 void IndirectExportEntry::DumpForSnapshot(std::vector<Reference> &vec) const
 {
     vec.emplace_back(CString("ExportName"), GetExportName());
-    vec.emplace_back(CString("ModuleRequest"), GetModuleRequest());
+    vec.emplace_back(CString("ModuleRequest"), JSTaggedValue(GetModuleRequestIndex()));
     vec.emplace_back(CString("ImportName"), GetImportName());
 }
 
 void StarExportEntry::DumpForSnapshot(std::vector<Reference> &vec) const
 {
-    vec.emplace_back(CString("ModuleRequest"), GetModuleRequest());
+    vec.emplace_back(CString("ModuleRequest"), JSTaggedValue(GetModuleRequestIndex()));
 }
 
 void ResolvedBinding::DumpForSnapshot(std::vector<Reference> &vec) const

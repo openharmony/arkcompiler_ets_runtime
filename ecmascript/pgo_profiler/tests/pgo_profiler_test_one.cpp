@@ -29,6 +29,25 @@ using namespace panda::ecmascript::pgo;
 using namespace panda::panda_file;
 
 namespace panda::test {
+class PGOProfilerMock : public PGOProfiler {
+public:
+    PGOProfilerMock(EcmaVM* vm, bool isEnable): PGOProfiler(vm, isEnable) {}
+    void DispatchDumpTask()
+    {
+        LOG_PGO(INFO) << "dispatch dump task";
+    }
+};
+
+class PGOStateMock : public PGOState {
+public:
+    PGOStateMock(): PGOState() {}
+    void WaitDumpTest()
+    {
+        LockHolder lock(stateMutex_);
+        WaitDump();
+    }
+};
+
 class PGOProfilerTestOne : public testing::Test {
 public:
     static void SetUpTestSuite()
@@ -147,7 +166,7 @@ protected:
     static constexpr uint32_t threshhold = 0;
 };
 
-HWTEST_F_L0(PGOProfilerTestOne, Worker)
+HWTEST_F_L0(PGOProfilerTestOne, WithWorker)
 {
     mkdir("ark-profiler-worker/", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
     RuntimeOption option;
@@ -156,7 +175,6 @@ HWTEST_F_L0(PGOProfilerTestOne, Worker)
     option.SetProfileDir("ark-profiler-worker/");
     EcmaVM* vm = JSNApi::CreateJSVM(option);
     ASSERT_TRUE(vm != nullptr) << "Cannot create Runtime";
-
     std::string targetAbcPath = std::string(TARGET_ABC_PATH) + "truck.abc";
     auto result = JSNApi::Execute(vm, targetAbcPath, "truck", false);
     EXPECT_TRUE(result);
@@ -169,26 +187,25 @@ HWTEST_F_L0(PGOProfilerTestOne, Worker)
         workerOption.SetIsWorker();
         EcmaVM* workerVm = JSNApi::CreateJSVM(workerOption);
         ASSERT_TRUE(workerVm != nullptr) << "Cannot create Worker Runtime";
-
         JSNApi::AddWorker(vm, workerVm);
-
         std::string targetAbcPath = std::string(TARGET_ABC_PATH) + "call_test.abc";
         auto result = JSNApi::Execute(workerVm, targetAbcPath, "call_test", false);
         EXPECT_TRUE(result);
-
         auto hasDeleted = JSNApi::DeleteWorker(vm, workerVm);
         EXPECT_TRUE(hasDeleted);
         JSNApi::DestroyJSVM(workerVm);
     });
     workerThread.join();
+
     JSNApi::DestroyJSVM(vm);
 
+    vm = JSNApi::CreateJSVM(option);
     PGOProfilerDecoder loader("ark-profiler-worker/modules.ap", threshhold);
     std::unordered_map<std::string, std::unordered_map<std::string, std::vector<PGOMethodId>>> methodIdInAp;
     ParseRelatedPandaFileMethods(loader, methodIdInAp);
     ASSERT_EQ(methodIdInAp.size(), 3);
     CheckApMethods(methodIdInAp);
-
+    JSNApi::DestroyJSVM(vm);
     unlink("ark-profiler-worker/modules.ap");
     rmdir("ark-profiler-worker/");
 }
@@ -228,9 +245,9 @@ HWTEST_F_L0(PGOProfilerTestOne, ForceDump)
     });
 
     auto manager = PGOProfilerManager::GetInstance();
-    auto state = manager->GetPGOState();
-    manager->ForceDump();
-    while (!state->IsStop()) {
+    manager->SetForceDump(true);
+    manager->TryDispatchDumpTask(nullptr);
+    while (manager->IsTaskRunning()) {
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
 
@@ -244,148 +261,87 @@ HWTEST_F_L0(PGOProfilerTestOne, ForceDump)
     rmdir("ark-profiler-worker/");
 }
 
-HWTEST_F_L0(PGOProfilerTestOne, PGOStateMultiThread)
+HWTEST_F_L0(PGOProfilerTestOne, SuspendThenNotify)
 {
-    RuntimeOption option;
-    option.SetEnableProfile(true);
-    EcmaVM* vm = JSNApi::CreateJSVM(option);
-    ASSERT_TRUE(vm != nullptr) << "Cannot create Runtime";
-
-    auto manager = PGOProfilerManager::GetInstance();
-    ASSERT_TRUE(manager != nullptr);
-    auto state = manager->GetPGOState();
-    ASSERT_TRUE(state != nullptr);
-
-    state->SetStartIfStop();
-    EXPECT_TRUE(state->IsStart());
-
-    std::thread thread1([state]() {
-        state->SuspendByGC();
-        state->SetStartIfPauseByGC();
-    });
-
-    std::thread thread2([state]() {
-        std::this_thread::sleep_for(std::chrono::milliseconds(500));
-        state->SetStopIfStartAndNotify();
-    });
-
-    thread1.join();
-    thread2.join();
-
-    EXPECT_TRUE(state->IsStart());
-    JSNApi::DestroyJSVM(vm);
-}
-
-HWTEST_F_L0(PGOProfilerTestOne, PGOStateMultiThread2)
-{
-    RuntimeOption option;
-    option.SetEnableProfile(true);
-    EcmaVM* vm = JSNApi::CreateJSVM(option);
-    ASSERT_TRUE(vm != nullptr) << "Cannot create Runtime";
-
-    auto manager = PGOProfilerManager::GetInstance();
-    ASSERT_TRUE(manager != nullptr);
-    auto state = manager->GetPGOState();
-    ASSERT_TRUE(state != nullptr);
-
-    manager->GetPGOState()->SetStartIfStop();
-    EXPECT_TRUE(manager->GetPGOState()->IsStart());
-
-    std::thread thread1([state]() {
-        state->SuspendByGC();
-        state->SetStartIfPauseByGC();
-    });
-
-    std::thread thread2([state]() {
-        std::this_thread::sleep_for(std::chrono::milliseconds(500));
-        state->SetStopIfStartAndNotify();
-    });
-
-    std::thread thread3([state]() {
-        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-        state->SetStopIfStartAndNotify();
-    });
-
-    thread1.join();
-    thread2.join();
-    thread3.join();
-
-    EXPECT_TRUE(manager->GetPGOState()->IsStop());
-    JSNApi::DestroyJSVM(vm);
-}
-
-HWTEST_F_L0(PGOProfilerTestOne, PGOStateMultiThread3)
-{
-    RuntimeOption option;
-    option.SetEnableProfile(true);
-    EcmaVM* vm = JSNApi::CreateJSVM(option);
-    ASSERT_TRUE(vm != nullptr) << "Cannot create Runtime";
-
-    auto manager = PGOProfilerManager::GetInstance();
-    ASSERT_TRUE(manager != nullptr);
-    auto state = manager->GetPGOState();
-    ASSERT_TRUE(state != nullptr);
-
-    manager->GetPGOState()->SetStartIfStop();
-    EXPECT_TRUE(manager->GetPGOState()->IsStart());
-
-    std::thread thread1([state]() { state->SetStopIfStartAndNotify(); });
-
-    std::thread thread2([state]() {
-        std::this_thread::sleep_for(std::chrono::milliseconds(500));
-        state->SuspendByGC();
-    });
-
-    thread1.join();
-    thread2.join();
-
-    EXPECT_TRUE(manager->GetPGOState()->IsStop());
-    JSNApi::DestroyJSVM(vm);
-}
-
-HWTEST_F_L0(PGOProfilerTestOne, PGOStateMultiThread4)
-{
-    RuntimeOption option;
-    option.SetEnableProfile(true);
-    EcmaVM* vm = JSNApi::CreateJSVM(option);
-    ASSERT_TRUE(vm != nullptr) << "Cannot create Runtime";
-
-    auto manager = PGOProfilerManager::GetInstance();
-    ASSERT_TRUE(manager != nullptr);
-    auto state = manager->GetPGOState();
-    ASSERT_TRUE(state != nullptr);
-
-    manager->GetPGOState()->SetStartIfStop();
-    EXPECT_TRUE(manager->GetPGOState()->IsStart());
+    auto state = std::make_shared<PGOState>();
+    EXPECT_TRUE(state->StateIsStop());
+    state->TryChangeState(PGOState::State::STOP, PGOState::State::START);
+    EXPECT_TRUE(state->StateIsStart());
 
     std::thread thread1([state]() { state->SuspendByGC(); });
 
     std::thread thread2([state]() {
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
-        state->SetStopIfStartAndNotify();
+        EXPECT_TRUE(state->GCIsWaiting());
+        state->SetStopAndNotify();
     });
 
     thread1.join();
     thread2.join();
 
-    EXPECT_TRUE(manager->GetPGOState()->IsGcWaiting());
-    JSNApi::DestroyJSVM(vm);
+    EXPECT_TRUE(state->GCIsRunning());
+    EXPECT_TRUE(state->StateIsStop());
 }
 
-HWTEST_F_L0(PGOProfilerTestOne, PGOStateMultiThread5)
+HWTEST_F_L0(PGOProfilerTestOne, SuspendThenNotifyThenResume)
 {
-    RuntimeOption option;
-    option.SetEnableProfile(true);
-    EcmaVM* vm = JSNApi::CreateJSVM(option);
-    ASSERT_TRUE(vm != nullptr) << "Cannot create Runtime";
+    auto state = std::make_shared<PGOState>();
+    EXPECT_TRUE(state->StateIsStop());
+    state->TryChangeState(PGOState::State::STOP, PGOState::State::START);
+    EXPECT_TRUE(state->StateIsStart());
 
-    auto manager = PGOProfilerManager::GetInstance();
-    ASSERT_TRUE(manager != nullptr);
-    auto state = manager->GetPGOState();
-    ASSERT_TRUE(state != nullptr);
+    std::thread thread1([state]() {
+        RuntimeOption option;
+        option.SetEnableProfile(true);
+        option.SetLogLevel(LOG_LEVEL::INFO);
+        option.SetProfileDir("ark-profiler-worker/");
+        EcmaVM* vm = JSNApi::CreateJSVM(option);
+        auto profiler = std::make_shared<PGOProfilerMock>(vm, true);
+        state->SuspendByGC();
+        state->ResumeByGC(profiler.get());
+        JSNApi::DestroyJSVM(vm);
+    });
 
-    state->SetStartIfStop();
-    EXPECT_TRUE(state->IsStart());
+    std::thread thread2([state]() {
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+        EXPECT_TRUE(state->GCIsWaiting());
+        state->SetStopAndNotify();
+    });
+
+    thread1.join();
+    thread2.join();
+
+    EXPECT_TRUE(state->GCIsStop());
+    EXPECT_TRUE(state->StateIsStop());
+}
+
+HWTEST_F_L0(PGOProfilerTestOne, StopSuspend)
+{
+    auto state = std::make_shared<PGOState>();
+    EXPECT_TRUE(state->StateIsStop());
+    state->TryChangeState(PGOState::State::STOP, PGOState::State::START);
+    EXPECT_TRUE(state->StateIsStart());
+
+    std::thread thread1([state]() { state->SetStopAndNotify(); });
+
+    std::thread thread2([state]() {
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+        state->SuspendByGC();
+    });
+
+    thread1.join();
+    thread2.join();
+
+    EXPECT_TRUE(state->GCIsRunning());
+    EXPECT_TRUE(state->StateIsStop());
+}
+
+HWTEST_F_L0(PGOProfilerTestOne, SuspendOrNotify)
+{
+    auto state = std::make_shared<PGOState>();
+    EXPECT_TRUE(state->StateIsStop());
+    state->TryChangeState(PGOState::State::STOP, PGOState::State::START);
+    EXPECT_TRUE(state->StateIsStart());
 
     std::mutex mtx;
     std::condition_variable cv;
@@ -404,7 +360,7 @@ HWTEST_F_L0(PGOProfilerTestOne, PGOStateMultiThread5)
             std::unique_lock<std::mutex> lock(mtx);
             cv.wait(lock, [&ready]() { return ready; });
         }
-        state->SetStopIfStartAndNotify();
+        state->SetStopAndNotify();
     });
 
     {
@@ -415,101 +371,16 @@ HWTEST_F_L0(PGOProfilerTestOne, PGOStateMultiThread5)
     thread1.join();
     thread2.join();
 
-    EXPECT_TRUE(manager->GetPGOState()->IsGcWaiting() || manager->GetPGOState()->IsStop());
-    JSNApi::DestroyJSVM(vm);
+    EXPECT_TRUE(state->GCIsWaiting() || state->GCIsRunning());
+    EXPECT_TRUE(state->StateIsStop());
 }
 
-HWTEST_F_L0(PGOProfilerTestOne, PGOStateMultiGCShouldWait)
+HWTEST_F_L0(PGOProfilerTestOne, WaitDumpThenNotifyAll)
 {
-    RuntimeOption option;
-    option.SetEnableProfile(true);
-    EcmaVM* vm = JSNApi::CreateJSVM(option);
-    ASSERT_TRUE(vm != nullptr) << "Cannot create Runtime";
-
-    auto manager = PGOProfilerManager::GetInstance();
-    ASSERT_TRUE(manager != nullptr);
-    auto state = manager->GetPGOState();
-    ASSERT_TRUE(state != nullptr);
-
-    std::mutex mtx;
-    std::condition_variable c23;
-    bool t23 = false;
-
-    std::thread thread2([state, &mtx, &c23, &t23]() {
-        {
-            std::unique_lock<std::mutex> lock(mtx);
-            c23.wait(lock, [&t23]() { return t23; });
-        }
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        if (!state->SetPauseIfStartByGC()) {
-            state->SetStartIfPauseByGC();
-        }
-    });
-
-    std::thread thread3([state, &mtx, &c23, &t23]() {
-        {
-            std::unique_lock<std::mutex> lock(mtx);
-            c23.wait(lock, [&t23]() { return t23; });
-        }
-        if (!state->SetPauseIfStartByGC()) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(500));
-            state->SetStartIfPauseByGC();
-        }
-    });
-
-    state->SetStartIfStop();
-    EXPECT_TRUE(state->IsStart());
-    {
-        std::lock_guard<std::mutex> lock(mtx);
-        t23 = true;
-    }
-    c23.notify_all();
-
-    thread2.join();
-    thread3.join();
-
-    EXPECT_TRUE(state->IsGcWaiting());
-    JSNApi::DestroyJSVM(vm);
-}
-
-HWTEST_F_L0(PGOProfilerTestOne, PGOStateMultiThread6)
-{
-    RuntimeOption option;
-    option.SetEnableProfile(true);
-    EcmaVM* vm = JSNApi::CreateJSVM(option);
-    ASSERT_TRUE(vm != nullptr) << "Cannot create Runtime";
-
-    auto manager = PGOProfilerManager::GetInstance();
-    ASSERT_TRUE(manager != nullptr);
-    auto state = manager->GetPGOState();
-    ASSERT_TRUE(state != nullptr);
-    EXPECT_TRUE(state->IsStop());
-
-    state->SuspendByGC();
-    EXPECT_EQ(state->GetGcCount(), 1);
-    EXPECT_TRUE(state->IsStop());
-
-    state->SetStartIfStopAndDispatchDumpTask(nullptr);
-    EXPECT_TRUE(state->IsStop());
-
-    std::thread thread([state]() { state->SuspendByGC(); });
-    thread.join();
-    EXPECT_EQ(state->GetGcCount(), 2);
-    EXPECT_TRUE(state->IsStop());
-
-    state->ResumeByGC(nullptr);
-    EXPECT_EQ(state->GetGcCount(), 1);
-    EXPECT_TRUE(state->IsStop());
-
-    JSNApi::DestroyJSVM(vm);
-}
-
-HWTEST_F_L0(PGOProfilerTestOne, PGOStateMultiThread7)
-{
-    auto state = std::make_shared<PGOState>();
-    EXPECT_TRUE(state->IsStop());
-    state->SetStartIfStop();
-    EXPECT_TRUE(state->IsStart());
+    auto state = std::make_shared<PGOStateMock>();
+    EXPECT_TRUE(state->StateIsStop());
+    state->TryChangeState(PGOState::State::STOP, PGOState::State::START);
+    EXPECT_TRUE(state->StateIsStart());
 
     std::mutex mtx;
     std::condition_variable cv;
@@ -520,7 +391,7 @@ HWTEST_F_L0(PGOProfilerTestOne, PGOStateMultiThread7)
             std::unique_lock<std::mutex> lock(mtx);
             cv.wait(lock, [&ready]() { return ready; });
         }
-        state->WaitDumpIfStart();
+        state->WaitDumpTest();
     });
 
     std::future<void> future2 = std::async(std::launch::async, [state, &mtx, &cv, &ready]() {
@@ -528,7 +399,7 @@ HWTEST_F_L0(PGOProfilerTestOne, PGOStateMultiThread7)
             std::unique_lock<std::mutex> lock(mtx);
             cv.wait(lock, [&ready]() { return ready; });
         }
-        state->WaitDumpIfStart();
+        state->WaitDumpTest();
     });
 
     {
@@ -537,11 +408,54 @@ HWTEST_F_L0(PGOProfilerTestOne, PGOStateMultiThread7)
     }
     cv.notify_all();
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
-    state->SetStopIfStartAndNotify();
+    state->SetStopAndNotify();
 
     auto status1 = future1.wait_for(std::chrono::seconds(2));
     auto status2 = future2.wait_for(std::chrono::seconds(2));
     ASSERT_NE(status1, std::future_status::timeout) << "thread 1 may freeze";
     ASSERT_NE(status2, std::future_status::timeout) << "thread 2 may freeze";
+}
+
+HWTEST_F_L0(PGOProfilerTestOne, SetSaveAndNotify)
+{
+    auto state = std::make_shared<PGOStateMock>();
+    EXPECT_TRUE(state->StateIsStop());
+    state->TryChangeState(PGOState::State::STOP, PGOState::State::START);
+    EXPECT_TRUE(state->StateIsStart());
+
+    std::mutex mtx;
+    std::condition_variable cv;
+    bool ready = false;
+
+    std::future<void> future1 = std::async(std::launch::async, [state, &mtx, &cv, &ready]() {
+        {
+            std::unique_lock<std::mutex> lock(mtx);
+            cv.wait(lock, [&ready]() { return ready; });
+        }
+        state->WaitDumpTest();
+    });
+
+    std::future<void> future2 = std::async(std::launch::async, [state, &mtx, &cv, &ready]() {
+        {
+            std::unique_lock<std::mutex> lock(mtx);
+            cv.wait(lock, [&ready]() { return ready; });
+        }
+        state->WaitDumpTest();
+    });
+
+    {
+        std::lock_guard<std::mutex> lock(mtx);
+        ready = true;
+    }
+    cv.notify_all();
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    state->SetSaveAndNotify();
+
+    auto status1 = future1.wait_for(std::chrono::seconds(2));
+    auto status2 = future2.wait_for(std::chrono::seconds(2));
+    ASSERT_NE(status1, std::future_status::timeout) << "thread 1 may freeze";
+    ASSERT_NE(status2, std::future_status::timeout) << "thread 2 may freeze";
+
+    EXPECT_TRUE(state->StateIsSave());
 }
 } // namespace panda::test

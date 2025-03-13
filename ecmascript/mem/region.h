@@ -41,26 +41,23 @@ enum RegionSpaceFlag {
     // If ZAP_MEM is enabled, the value of the lower 3 bits conflicts with the INVALID_VALUE.
 
     // Bits 3 to 7 are reserved to denote the space where the region is located.
-    IN_EDEN_SPACE = 0x08,
-    IN_YOUNG_SPACE = 0x09,
-    IN_SNAPSHOT_SPACE = 0x0A,
-    IN_HUGE_OBJECT_SPACE = 0x0B,
-    IN_OLD_SPACE = 0x0C,
-    IN_NON_MOVABLE_SPACE = 0x0D,
-    IN_MACHINE_CODE_SPACE = 0x0E,
-    IN_READ_ONLY_SPACE = 0X0F,
-    IN_APPSPAWN_SPACE = 0x10,
-    IN_HUGE_MACHINE_CODE_SPACE = 0x11,
-    IN_SHARED_NON_MOVABLE = 0x12,
-    IN_SHARED_OLD_SPACE = 0x13,
-    IN_SHARED_APPSPAWN_SPACE = 0X14,
-    IN_SHARED_HUGE_OBJECT_SPACE = 0x15,
-    IN_SHARED_READ_ONLY_SPACE = 0x16,
+    IN_YOUNG_SPACE = 0x08,
+    IN_SNAPSHOT_SPACE = 0x09,
+    IN_HUGE_OBJECT_SPACE = 0x0A,
+    IN_OLD_SPACE = 0x0B,
+    IN_NON_MOVABLE_SPACE = 0x0C,
+    IN_MACHINE_CODE_SPACE = 0x0D,
+    IN_READ_ONLY_SPACE = 0X0E,
+    IN_APPSPAWN_SPACE = 0x0F,
+    IN_HUGE_MACHINE_CODE_SPACE = 0x10,
+    IN_SHARED_NON_MOVABLE = 0x11,
+    IN_SHARED_OLD_SPACE = 0x12,
+    IN_SHARED_APPSPAWN_SPACE = 0X13,
+    IN_SHARED_HUGE_OBJECT_SPACE = 0x14,
+    IN_SHARED_READ_ONLY_SPACE = 0x15,
 
     VALID_SPACE_MASK = 0xFF,
 
-    GENERAL_YOUNG_BEGIN = IN_EDEN_SPACE,
-    GENERAL_YOUNG_END = IN_YOUNG_SPACE,
     GENERAL_OLD_BEGIN = IN_SNAPSHOT_SPACE,
     GENERAL_OLD_END = IN_HUGE_MACHINE_CODE_SPACE,
     SHARED_SPACE_BEGIN = IN_SHARED_NON_MOVABLE,
@@ -68,7 +65,7 @@ enum RegionSpaceFlag {
     SHARED_SWEEPABLE_SPACE_BEGIN = IN_SHARED_NON_MOVABLE,
     SHARED_SWEEPABLE_SPACE_END = IN_SHARED_HUGE_OBJECT_SPACE,
 
-    HEAP_SPACE_BEGIN = IN_EDEN_SPACE,
+    HEAP_SPACE_BEGIN = IN_YOUNG_SPACE,
     HEAP_SPACE_END = IN_SHARED_READ_ONLY_SPACE
 };
 
@@ -127,8 +124,6 @@ enum class RSetSwapFlag : uint8_t {
 static inline std::string ToSpaceTypeName(uint8_t space)
 {
     switch (space) {
-        case RegionSpaceFlag::IN_EDEN_SPACE:
-            return "eden space";
         case RegionSpaceFlag::IN_YOUNG_SPACE:
             return "young space";
         case RegionSpaceFlag::IN_SNAPSHOT_SPACE:
@@ -225,12 +220,6 @@ public:
             bitsetUpdater_.Update(LocalToShareIdx);
         }
 
-        template <RegionSpaceKind T = kind, std::enable_if_t<T == InYoung, int>  = 0>
-        ARK_INLINE void UpdateNewToEden()
-        {
-            bitsetUpdater_.Update(NewToEdenIdx);
-        }
-
         template <RegionSpaceKind T = kind, std::enable_if_t<T == InGeneralOld, int>  = 0>
         ARK_INLINE void UpdateOldToNew()
         {
@@ -267,7 +256,6 @@ public:
 
         static constexpr size_t BitSetNum = CalculateBitSetNum();
         static constexpr size_t LocalToShareIdx = 0;
-        static constexpr size_t NewToEdenIdx = 1; // NewToEden and OldToNew can't be used at same time.
         static constexpr size_t OldToNewIdx = 1;
         GCBitSetUpdater<BitSetNum> bitsetUpdater_;
         Region& region_;
@@ -361,7 +349,6 @@ public:
     bool Test(void *addr) const;
     bool Test(uintptr_t addr) const;
     // ONLY used for heap verification.
-    bool TestNewToEden(uintptr_t addr);
     bool TestOldToNew(uintptr_t addr);
     bool TestLocalToShare(uintptr_t addr);
     template <typename Visitor>
@@ -390,22 +377,12 @@ public:
     void ClearCrossRegionRSetInRange(uintptr_t start, uintptr_t end);
     void AtomicClearCrossRegionRSetInRange(uintptr_t start, uintptr_t end);
     void DeleteCrossRegionRSet();
-    // New to eden remembered set
-    void InsertNewToEdenRSet(uintptr_t addr);
-    void AtomicInsertNewToEdenRSet(uintptr_t addr);
-    void ClearNewToEdenRSet(uintptr_t addr);
     // Old to new remembered set
     void InsertOldToNewRSet(uintptr_t addr);
     void ClearOldToNewRSet(uintptr_t addr);
 
     template <typename Visitor>
-    void IterateAllNewToEdenBits(Visitor visitor);
-    template <typename Visitor>
     void IterateAllOldToNewBits(Visitor visitor);
-    RememberedSet* GetNewToEdenRSet();
-    void ClearNewToEdenRSet();
-    void ClearNewToEdenRSetInRange(uintptr_t start, uintptr_t end);
-    void DeleteNewToEdenRSet();
     void ClearOldToNewRSet();
     void ClearOldToNewRSetInRange(uintptr_t start, uintptr_t end);
     void DeleteOldToNewRSet();
@@ -463,10 +440,6 @@ public:
     {
         packedData_.flags_.spaceFlag_ = flag;
     }
-    bool InEdenSpace() const
-    {
-        return packedData_.flags_.spaceFlag_ == RegionSpaceFlag::IN_EDEN_SPACE;
-    }
 
     bool InYoungSpace() const
     {
@@ -480,13 +453,7 @@ public:
 
     bool InYoungOrOldSpace() const
     {
-        return InGeneralNewSpace() || InOldSpace();
-    }
-
-    bool InGeneralNewSpace() const
-    {
-        auto flag = packedData_.flags_.spaceFlag_;
-        return flag >= RegionSpaceFlag::GENERAL_YOUNG_BEGIN && flag <= RegionSpaceFlag::GENERAL_YOUNG_END;
+        return InYoungSpace() || InOldSpace();
     }
 
     bool InGeneralOldSpace() const
@@ -602,9 +569,9 @@ public:
         return IsGCFlagSet(RegionGCFlags::IN_SHARED_COLLECT_SET);
     }
 
-    bool InGeneralNewSpaceOrCSet() const
+    bool InYoungSpaceOrCSet() const
     {
-        return InGeneralNewSpace() || InCollectSet();
+        return InYoungSpace() || InCollectSet();
     }
 
     bool InNewToNewSet() const
@@ -938,12 +905,6 @@ public:
             return GetOffset<static_cast<size_t>(Index::MarkGCBitSetIndex)>(isArch32);
         }
 
-        static size_t GetNewToEdenSetOffset(bool isArch32)
-        {
-            // NewToEdenRSet is Union with OldToNewRSet
-            return GetOffset<static_cast<size_t>(Index::OldToNewSetIndex)>(isArch32);
-        }
-
         static size_t GetOldToNewSetOffset(bool isArch32)
         {
             return GetOffset<static_cast<size_t>(Index::OldToNewSetIndex)>(isArch32);
@@ -970,11 +931,7 @@ public:
         // or from GC_Thread during GC ClearTask.
         alignas(EAS) RegionTypeFlag typeFlag_;
         alignas(EAS) GCBitset *markGCBitset_ {nullptr};
-        // OldToNewRSet only for general OldSpace, NewToEdenRSet only for YoungSpace. Their pointers can union
-        union {
-            alignas(EAS) RememberedSet *oldToNewSet_ {nullptr};
-            alignas(EAS) RememberedSet *newToEdenSet_;
-        };
+        alignas(EAS) RememberedSet *oldToNewSet_ {nullptr};
         alignas(EAS) RememberedSet *localToShareSet_ {nullptr};
         alignas(EAS) uintptr_t begin_ {0};
         alignas(EAS) size_t bitsetSize_ {0};
@@ -992,11 +949,9 @@ private:
 
     RememberedSet *CreateRememberedSet();
     RememberedSet *GetOrCreateCrossRegionRememberedSet();
-    RememberedSet *GetOrCreateNewToEdenRememberedSet();
     RememberedSet *GetOrCreateOldToNewRememberedSet();
     RememberedSet *GetOrCreateLocalToShareRememberedSet();
 
-    inline RememberedSet *CreateNewToEdenRememberedSet();
     inline RememberedSet *CreateOldToNewRememberedSet();
     inline RememberedSet *CreateLocalToShareRememberedSet();
 
