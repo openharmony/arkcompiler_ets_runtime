@@ -200,6 +200,7 @@ size_t WorkManager::Finish()
         holder.Finish();
         aliveSize += holder.aliveSize_;
     }
+    workStack_.Clear();
     FinishBase();
     initialized_.store(false, std::memory_order_release);
     return aliveSize;
@@ -293,6 +294,7 @@ size_t SharedGCWorkManager::Finish()
             holder.allocator_ = nullptr;
         }
     }
+    workStack_.Clear();
     FinishBase();
     initialized_.store(false, std::memory_order_release);
     return aliveSize;
