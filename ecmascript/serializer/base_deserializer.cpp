@@ -287,8 +287,8 @@ size_t BaseDeserializer::ReadSingleEncodeData(uint8_t encodeFlag, uintptr_t objA
             uint32_t index = data_->ReadUint32(position_);
             uintptr_t valueAddr = thread_->GetEcmaVM()->GetSnapshotEnv()->RelocateRootObjectAddr(index);
             if (!isRoot && valueAddr > JSTaggedValue::INVALID_VALUE_LIMIT) {
-                WriteBarrier<WriteBarrierType::DESERIALIZE>(thread_, reinterpret_cast<void *>(objAddr), fieldOffset,
-                                                            static_cast<JSTaggedType>(valueAddr));
+                WriteBarrier(thread_, reinterpret_cast<void *>(objAddr), fieldOffset,
+                             static_cast<JSTaggedType>(valueAddr));
             }
             UpdateMaybeWeak(slot, valueAddr, GetAndResetWeak());
             break;
@@ -297,8 +297,8 @@ size_t BaseDeserializer::ReadSingleEncodeData(uint8_t encodeFlag, uintptr_t objA
             uint8_t type = data_->ReadUint8(position_);
             uintptr_t protoAddr = RelocateObjectProtoAddr(type);
             if (!isRoot && protoAddr > JSTaggedValue::INVALID_VALUE_LIMIT) {
-                WriteBarrier<WriteBarrierType::DESERIALIZE>(thread_, reinterpret_cast<void *>(objAddr), fieldOffset,
-                                                            static_cast<JSTaggedType>(protoAddr));
+                WriteBarrier(thread_, reinterpret_cast<void *>(objAddr), fieldOffset,
+                             static_cast<JSTaggedType>(protoAddr));
             }
             UpdateMaybeWeak(slot, protoAddr, GetAndResetWeak());
             break;
