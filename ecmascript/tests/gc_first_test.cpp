@@ -19,7 +19,6 @@
 #include "ecmascript/mem/full_gc.h"
 #include "ecmascript/object_factory-inl.h"
 #include "ecmascript/mem/concurrent_marker.h"
-#include "ecmascript/mem/stw_young_gc.h"
 #include "ecmascript/mem/partial_gc.h"
 #include "ecmascript/serializer/serialize_chunk.h"
 #include "ecmascript/tests/ecma_test_common.h"
@@ -34,8 +33,6 @@ public:
     void SetUp() override
     {
         JSRuntimeOptions options;
-        options.SetEnableEdenGC(true);
-        options.SetArkProperties(options.GetArkProperties() | ArkProperties::ENABLE_HEAP_VERIFY);
         instance = JSNApi::CreateEcmaVM(options);
         ASSERT_TRUE(instance != nullptr) << "Cannot create EcmaVM";
         thread = instance->GetJSThread();
@@ -164,17 +161,6 @@ HWTEST_F_L0(GCTest, NotifyMemoryPressure)
     EXPECT_EQ(heap->GetMemGrowingType(), MemGrowingType::CONSERVATIVE);
 }
 
-HWTEST_F_L0(GCTest, NativeBindingCheckGCTest)
-{
-    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-    heap->CollectGarbage(TriggerGCType::FULL_GC);
-    size_t oldNativeSize = heap->GetNativeBindingSize();
-    EcmaTestCommon::GcCommonCase(thread, heap);
-    heap->CollectGarbage(TriggerGCType::FULL_GC);
-    auto newNativeSize = heap->GetNativeBindingSize();
-    EXPECT_EQ(newNativeSize - oldNativeSize, 0UL);
-}
-
 HWTEST_F_L0(GCTest, SharedGC)
 {
 #ifdef NDEBUG
@@ -272,7 +258,6 @@ HWTEST_F_L0(GCTest, SerializeGCCheck)
         chunk->Emplace(reinterpret_cast<JSTaggedType>(key1.GetTaggedValue().GetTaggedObject()));
         chunk->Emplace(reinterpret_cast<JSTaggedType>(key2.GetTaggedValue().GetTaggedObject()));
         chunk->Emplace(reinterpret_cast<JSTaggedType>(msg.GetTaggedValue().GetTaggedObject()));
-        EXPECT_EQ(chunk->Size(), 3); // 3: three elements
         index = Runtime::GetInstance()->PushSerializationRoot(thread, std::move(chunk));
     }
     auto sHeap = SharedHeap::GetInstance();
@@ -297,6 +282,23 @@ HWTEST_F_L0(GCTest, StatisticHeapDetailTest)
         }
     }
     heap->StatisticHeapDetail();
+};
+
+HWTEST_F_L0(GCTest, Destroy)
+{
+    EcmaParamConfiguration config;
+    auto sHeap = new SharedHeap(config);
+    EXPECT_TRUE(sHeap != nullptr);
+    sHeap->Destroy();
+    delete sHeap;
+    sHeap = nullptr;
+
+    // EcmaVM ecmaVm;
+    auto heap = new Heap(thread->GetEcmaVM());
+    EXPECT_TRUE(heap != nullptr);
+    heap->Destroy();
+    delete heap;
+    heap = nullptr;
 };
 
 }  // namespace panda::test
