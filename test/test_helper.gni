@@ -2474,8 +2474,17 @@ template("host_aot_test_action") {
       "$target_out_dir/slowpath/${_target_name_}.ai"
   _test_aot_arg_slowpath_ = "$target_out_dir/slowpath/${_target_name_}"
   _test_aot_log_level = "info"
-  _test_expect_path_ = "${_src_dir_}/expect_output.txt"
-  _test_pgo_expect_path_ = "${_src_dir_}/pgo_expect_output.txt"
+
+  if (defined(invoker.use_error)) {
+    _expect_output_option_ = "--expect-sub-error"
+    _test_pgo_expect_path_ = invoker.use_error
+    _test_expect_path_ = invoker.use_error
+  } else {
+    _expect_output_option_ = "--expect-file"
+    _test_pgo_expect_path_ = rebase_path("${_src_dir_}/pgo_expect_output.txt")
+    _test_expect_path_ = rebase_path("${_src_dir_}/expect_output.txt")
+  }
+
   _is_test_llvm_only_ = TEST_LLVM_ONLY
   if (!TEST_LLVM_ONLY && defined(invoker.is_test_llvm_only) &&
       invoker.is_test_llvm_only) {
@@ -2500,20 +2509,22 @@ template("host_aot_test_action") {
   }
 
   if (defined(invoker.gen_expect_output) && invoker.gen_expect_output) {
-    _test_expect_path_ = "$target_out_dir/expect_output.txt"
-    _test_pgo_expect_path_ = "$target_out_dir/pgo_expect_output.txt"
-
+    _raw_expect_path_ = "$target_out_dir/expect_output.txt"
+    _raw_pgo_expect_path_ = "$target_out_dir/pgo_expect_output.txt"
+    _test_expect_path_ = rebase_path("$target_out_dir/expect_output.txt")
+    _test_pgo_expect_path_ =
+        rebase_path("$target_out_dir/pgo_expect_output.txt")
     action("${_target_name_}GenExpectOutput") {
       script = "$js_root/script/gen_expect_output.sh"
       sources = [ _test_ts_path_ ]
-      outputs = [ _test_expect_path_ ]
+      outputs = [ _raw_expect_path_ ]
       args = [ "aot" ] + rebase_path(sources + outputs)
     }
 
     action("${_target_name_}PgoGenExpectOutput") {
       script = "$js_root/script/gen_expect_output.sh"
       sources = [ _test_ts_path_ ]
-      outputs = [ _test_pgo_expect_path_ ]
+      outputs = [ _raw_pgo_expect_path_ ]
       args = [ "pgo" ] + rebase_path(sources + outputs)
     }
     _deps_ += [
@@ -2559,10 +2570,10 @@ template("host_aot_test_action") {
       extra_args += [ "--debug" ]
     }
 
-    in_puts = [
-      _test_ts_path_,
-      _test_expect_path_,
-    ]
+    in_puts = [ _test_ts_path_ ]
+    if (!defined(invoker.use_error)) {
+      in_puts += [ _test_expect_path_ ]
+    }
     out_puts = [ _test_abc_path_ ]
   }
 
@@ -2607,8 +2618,8 @@ template("host_aot_test_action") {
       _aot_run_options_,
       "--script-args",
       _script_args_,
-      "--expect-file",
-      rebase_path(_test_pgo_expect_path_),
+      _expect_output_option_,
+      _test_pgo_expect_path_,
       "--env-path",
       rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime:" +
           rebase_path(_root_out_dir_) + "/${_icu_path_}:" +
@@ -2907,8 +2918,8 @@ template("host_aot_test_action") {
       _aot_run_options_,
       "--script-args",
       _script_args_,
-      "--expect-file",
-      rebase_path(_test_expect_path_),
+      _expect_output_option_,
+      _test_expect_path_,
       "--env-path",
       rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime:" +
           rebase_path(_root_out_dir_) + "/${_icu_path_}:" +
@@ -2993,8 +3004,8 @@ template("host_aot_test_action") {
       _aot_run_options_,
       "--script-args",
       _script_args_,
-      "--expect-file",
-      rebase_path(_test_expect_path_),
+      _expect_output_option_,
+      _test_expect_path_,
       "--env-path",
       rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime:" +
           rebase_path(_root_out_dir_) + "/${_icu_path_}:" +
@@ -3052,8 +3063,8 @@ template("host_aot_test_action") {
       _script_args_,
       "--timeout-limit",
       "${_timeout_}",
-      "--expect-file",
-      rebase_path(_test_expect_path_),
+      _expect_output_option_,
+      _test_expect_path_,
       "--env-path",
       rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime:" +
           rebase_path(_root_out_dir_) + "/${_icu_path_}:" +
@@ -3347,8 +3358,8 @@ template("host_aot_test_action") {
         _aot_run_options_,
         "--script-args",
         _script_args_,
-        "--expect-file",
-        rebase_path(_test_expect_path_),
+        _expect_output_option_,
+        _test_expect_path_,
         "--env-path",
         rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime:" +
             rebase_path(_root_out_dir_) + "/${_icu_path_}:" +
@@ -3424,8 +3435,8 @@ template("host_aot_test_action") {
         _aot_run_options_,
         "--script-args",
         _script_args_,
-        "--expect-file",
-        rebase_path(_test_expect_path_),
+        _expect_output_option_,
+        _test_expect_path_,
         "--env-path",
         rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime:" +
             rebase_path(_root_out_dir_) + "/${_icu_path_}:" +
@@ -3485,8 +3496,8 @@ template("host_aot_test_action") {
         _script_args_,
         "--timeout-limit",
         "${_timeout_}",
-        "--expect-file",
-        rebase_path(_test_expect_path_),
+        _expect_output_option_,
+        _test_expect_path_,
         "--env-path",
         rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime:" +
             rebase_path(_root_out_dir_) + "/${_icu_path_}:" +
@@ -3789,8 +3800,8 @@ template("host_aot_test_action") {
         _aot_run_options_,
         "--script-args",
         _script_args_,
-        "--expect-file",
-        rebase_path(_test_expect_path_),
+        _expect_output_option_,
+        _test_expect_path_,
         "--qemu-binary-path",
         "${QEMU_INSTALLATION_PATH}/bin/qemu-${musl_arch}",
         "--qemu-ld-prefix",
@@ -3872,8 +3883,8 @@ template("host_aot_test_action") {
         _aot_run_options_,
         "--script-args",
         _script_args_,
-        "--expect-file",
-        rebase_path(_test_expect_path_),
+        _expect_output_option_,
+        _test_expect_path_,
         "--qemu-binary-path",
         "${QEMU_INSTALLATION_PATH}/bin/qemu-${musl_arch}",
         "--qemu-ld-prefix",
@@ -3937,8 +3948,8 @@ template("host_aot_test_action") {
         _aot_run_options_,
         "--script-args",
         _script_args_,
-        "--expect-file",
-        rebase_path(_test_expect_path_),
+        _expect_output_option_,
+        _test_expect_path_,
         "--qemu-binary-path",
         "${QEMU_INSTALLATION_PATH}/bin/qemu-${musl_arch}",
         "--qemu-ld-prefix",
