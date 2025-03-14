@@ -122,6 +122,15 @@ public:
         top_ = top_->Next();
         return true;
     }
+
+    void Clear()
+    {
+        if (top_ != nullptr) {
+            LOG_ECMA(ERROR) << "GlobalWorkStack is not nullptr in WorkManager::Finish.";
+        }
+        top_ = nullptr;
+    }
+
 private:
     WorkNode *top_ {nullptr};
     Mutex mtx_;
