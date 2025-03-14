@@ -36,9 +36,16 @@ JSTaggedType SnapshotEnv::RelocateRootObjectAddr(uint32_t index)
     size_t globalConstCount = globalConst->GetConstantCount();
     if (index < globalConstCount) {
         JSTaggedValue obj = globalConst->GetGlobalConstantObject(index);
+        if (obj.IsUndefined()) {
+            LOG_ECMA(FATAL) << "Relocate GlobalConstants Root undefined, index: " << index;
+        }
         return obj.GetRawData();
     }
     JSHandle<JSTaggedValue> value = vm_->GetGlobalEnv()->GetNoLazyEnvObjectByIndex(index - globalConstCount);
+    if (value->IsUndefined()) {
+        LOG_ECMA(FATAL) << "Relocate GlobalEnv Root undefined, index: " << index
+                        << ", globalConstCount:" << globalConstCount;
+    }
     return value->GetRawData();
 }
 
