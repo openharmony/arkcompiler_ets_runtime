@@ -63,8 +63,8 @@ CString PathHelper::NormalizePath(const CString &fileName)
 CString PathHelper::ResolveDirPath(const CString &fileName)
 {
     // find last '/', '\\'
-    const size_t foundPos = static_cast<int>(fileName.find_last_of("/\\"));
-    if (foundPos == -1) {
+    const size_t foundPos = fileName.find_last_of("/\\");
+    if (foundPos == CString::npos) {
         return {};
     }
     return fileName.substr(0, foundPos + 1);
