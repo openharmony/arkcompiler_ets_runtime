@@ -60,7 +60,7 @@ public:
                                                               const CString &filename, const JSPandaFile *jsPandaFile,
                                                               const JSRecordInfo* recordInfo);
     static Expected<JSTaggedValue, bool> LazyExecuteModule(JSThread *thread, CString &recordName,
-                                                           const CString &filename, bool isMergedAbc);
+                                                           const CString &filename, [[maybe_unused]]bool isMergedAbc);
     // Execute from secure mem
     static Expected<JSTaggedValue, bool> ExecuteFromBufferSecure(JSThread *thread, uint8_t *buffer, size_t size,
                                                                  std::string_view entryPoint,

@@ -52,12 +52,12 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromFile(JSThread *thr
         }
     }
 
-    JSRecordInfo *recordInfo = nullptr;
-    bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(entry, &recordInfo);
-    if (!hasRecord) {
+    JSRecordInfo *recordInfo = jsPandaFile->CheckAndGetRecordInfo(entry);
+    if (recordInfo == nullptr) {
         CString msg = "Cannot find module '" + entry + "' , which is application Entry Point";
         THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(), Unexpected(false));
     }
+
     if (jsPandaFile->IsModule(recordInfo)) {
         ThreadManagedScope managedScope(thread);
         JSHandle<JSTaggedValue> moduleRecord =
@@ -131,12 +131,12 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromBuffer(JSThread *t
     if (vm->IsNormalizedOhmUrlPack()) {
         entry = ModulePathHelper::TransformToNormalizedOhmUrl(vm, filename, normalName, entry);
     }
-    JSRecordInfo *recordInfo = nullptr;
-    bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(entry, &recordInfo);
-    if (!hasRecord) {
+    JSRecordInfo *recordInfo = jsPandaFile->CheckAndGetRecordInfo(entry);
+    if (recordInfo == nullptr) {
         CString msg = "Cannot find module '" + entry + "' , which is application Entry Point";
         THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(), Unexpected(false));
     }
+
     if (jsPandaFile->IsModule(recordInfo)) {
         return CommonExecuteBuffer(thread, normalName, entry, buffer, size, executeType);
     }
@@ -179,12 +179,12 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteModuleBuffer(
             PathHelper::AdaptOldIsaRecord(entry);
         }
     }
-    JSRecordInfo *recordInfo = nullptr;
-    bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(entry, &recordInfo);
-    if (!hasRecord) {
+    JSRecordInfo *recordInfo = jsPandaFile->CheckAndGetRecordInfo(entry);
+    if (recordInfo == nullptr) {
         CString msg = "Cannot find module '" + realEntry + "' , which is application Entry Point";
         THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(), Unexpected(false));
     }
+
     if (!jsPandaFile->IsModule(recordInfo)) {
         LOG_ECMA(FATAL) << "Input file is not esmodule";
     }
@@ -285,12 +285,12 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromBufferSecure(JSThr
     if (vm->IsNormalizedOhmUrlPack()) {
         entry = ModulePathHelper::TransformToNormalizedOhmUrl(vm, filename, normalName, entry);
     }
-    JSRecordInfo *recordInfo = nullptr;
-    bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(entry, &recordInfo);
-    if (!hasRecord) {
+    JSRecordInfo *recordInfo = jsPandaFile->CheckAndGetRecordInfo(entry);
+    if (recordInfo == nullptr) {
         CString msg = "Cannot find module '" + entry + "' , which is application Entry Point";
         THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(), Unexpected(false));
     }
+
     if (jsPandaFile->IsModule(recordInfo)) {
         return CommonExecuteBuffer(thread, normalName, entry, jsPandaFile.get());
     }
@@ -353,12 +353,12 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteModuleBufferSecure(JST
     }
 
     // will be refactored, temporarily use the function IsModule to verify realEntry
-    JSRecordInfo *recordInfo = nullptr;
-    bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(entry, &recordInfo);
-    if (!hasRecord) {
+    JSRecordInfo *recordInfo = jsPandaFile->CheckAndGetRecordInfo(entry);
+    if (recordInfo == nullptr) {
         CString msg = "Cannot find module '" + realEntry + "' , which is application Entry Point";
         THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(), Unexpected(false));
     }
+
     if (!jsPandaFile->IsModule(recordInfo)) {
         LOG_ECMA(FATAL) << "Input file is not esmodule";
     }
@@ -392,9 +392,8 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteSecureWithOhmUrl(JSThr
 #endif
     }
     AbcBufferCacheScope bufferScope(thread, filename, buffer, size, AbcBufferType::SECURE_BUFFER);
-    JSRecordInfo *recordInfo = nullptr;
-    bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(entryPoint, &recordInfo);
-    if (!hasRecord) {
+    JSRecordInfo *recordInfo = jsPandaFile->CheckAndGetRecordInfo(entryPoint);
+    if (recordInfo == nullptr) {
         CString msg = "Cannot find module '" + entryPoint + "' , which is application Entry Point";
         THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(), Unexpected(false));
     }
@@ -422,7 +421,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteSpecialModule(JSThread
 // RecordName is the ohmurl-path of js files.
 // The first js file executed could be json, cjs, native so or esm.
 Expected<JSTaggedValue, bool> JSPandaFileExecutor::LazyExecuteModule(
-    JSThread *thread, CString &recordName, const CString &filename, bool isMergedAbc)
+    JSThread *thread, CString &recordName, const CString &filename, [[maybe_unused]]bool isMergedAbc)
 {
     LOG_FULL(INFO) << "recordName : " << recordName << ", in abc : " << filename;
     CString traceInfo = "JSPandaFileExecutor::LazyExecuteModule " + filename;
@@ -447,12 +446,12 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::LazyExecuteModule(
         return JSTaggedValue::Undefined();
     }
 
-    if (isMergedAbc && !jsPandaFile->HasRecord(recordName)) {
+    const JSRecordInfo* recordInfo = jsPandaFile->CheckAndGetRecordInfo(recordName);
+    if (recordInfo == nullptr) {
         CString msg = "cannot find record '" + recordName + "', in lazy load abc: " + filename;
         THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(), Unexpected(false));
     }
 
-    const JSRecordInfo* recordInfo = jsPandaFile->GetRecordInfo(recordName);
     if (!jsPandaFile->IsModule(recordInfo)) {
         return JSPandaFileExecutor::ExecuteSpecialModule(thread, recordName, filename, jsPandaFile.get(),
             recordInfo);
@@ -484,9 +483,8 @@ int JSPandaFileExecutor::ExecuteAbcFileWithSingletonPatternFlag(JSThread *thread
     }
     CString entryPoint = ModulePathHelper::ConcatFileNameWithMerge(thread, jsPandaFile.get(),
         abcFilePath, "", entry);
-    JSRecordInfo *recordInfo = nullptr;
-    bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(entryPoint, &recordInfo);
-    if (!hasRecord) {
+    JSRecordInfo *recordInfo = jsPandaFile->CheckAndGetRecordInfo(entryPoint);
+    if (recordInfo == nullptr) {
         LOG_ECMA(ERROR) << "When the route jump, Cannot find module '" << entryPoint << "'";
         return ROUTE_URI_ERROR;
     }
@@ -529,9 +527,8 @@ bool JSPandaFileExecutor::IsExecuteModuleInAbcFile(JSThread *thread, [[maybe_unu
     }
     CString entryPoint = ModulePathHelper::ConcatFileNameWithMerge(thread, jsPandaFile.get(),
         abcFilePath, "", entry);
-    JSRecordInfo *recordInfo = nullptr;
-    bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(entryPoint, &recordInfo);
-    if (!hasRecord) {
+    JSRecordInfo *recordInfo = jsPandaFile->CheckAndGetRecordInfo(entryPoint);
+    if (recordInfo == nullptr) {
         LOG_ECMA(ERROR) << "When checking if module is in abc file, Cannot find module '" << entryPoint << "'";
         return false;
     }

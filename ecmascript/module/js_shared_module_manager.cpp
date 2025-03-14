@@ -214,9 +214,8 @@ JSHandle<JSTaggedValue> SharedModuleManager::GenerateFuncModule(JSThread *thread
 {
     CString recordName = jsPandaFile->GetRecordName(entryPoint);
     auto vm = thread->GetEcmaVM();
-    JSRecordInfo *recordInfo = nullptr;
-    [[maybe_unused]] bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(recordName, &recordInfo);
-    ASSERT(hasRecord);
+    JSRecordInfo *recordInfo = jsPandaFile->CheckAndGetRecordInfo(recordName);
+    ASSERT(recordInfo != nullptr);
     if (jsPandaFile->IsModule(recordInfo)) {
         JSHandle<SourceTextModule> module;
         if (jsPandaFile->IsSharedModule(recordInfo)) {
