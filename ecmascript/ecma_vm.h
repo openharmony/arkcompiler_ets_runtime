@@ -345,6 +345,64 @@ public:
         return optionalLogEnabled_;
     }
 
+    JSTaggedType *GetHandleScopeStorageNext() const
+    {
+        return handleScopeStorageNext_;
+    }
+
+    void SetHandleScopeStorageNext(JSTaggedType *value)
+    {
+        handleScopeStorageNext_ = value;
+    }
+
+    JSTaggedType *GetHandleScopeStorageEnd() const
+    {
+        return handleScopeStorageEnd_;
+    }
+
+    void SetHandleScopeStorageEnd(JSTaggedType *value)
+    {
+        handleScopeStorageEnd_ = value;
+    }
+
+    int GetCurrentHandleStorageIndex() const
+    {
+        return currentHandleStorageIndex_;
+    }
+
+    JSTaggedType *GetPrimitiveScopeStorageNext() const
+    {
+        return primitiveScopeStorageNext_;
+    }
+
+    void SetPrimitiveScopeStorageNext(JSTaggedType *value)
+    {
+        primitiveScopeStorageNext_ = value;
+    }
+
+    JSTaggedType *GetPrimitiveScopeStorageEnd() const
+    {
+        return primitiveScopeStorageEnd_;
+    }
+
+    void SetPrimitiveScopeStorageEnd(JSTaggedType *value)
+    {
+        primitiveScopeStorageEnd_ = value;
+    }
+
+    int GetCurrentPrimitiveStorageIndex() const
+    {
+        return currentPrimitiveStorageIndex_;
+    }
+
+    uintptr_t *ExpandHandleStorage();
+    void ShrinkHandleStorage(int prevIndex);
+    void DeleteHandleStorage();
+    uintptr_t *ExpandPrimitiveStorage();
+    void ShrinkPrimitiveStorage(int prevIndex);
+    void DeletePrimitiveStorage();
+
+    size_t IterateHandle(RootVisitor &visitor);
     void Iterate(RootVisitor &v, VMRootVisitType type);
 
     const Heap *GetHeap() const
@@ -1163,6 +1221,21 @@ private:
 #if ECMASCRIPT_ENABLE_COLLECTING_OPCODES
     std::stack<std::unordered_map<BytecodeInstruction::Opcode, int>> bytecodeStatsStack_;
 #endif
+
+    // HandleScope
+    static const uint32_t NODE_BLOCK_SIZE_LOG2 = 10;
+    static const uint32_t NODE_BLOCK_SIZE = 1U << NODE_BLOCK_SIZE_LOG2;
+    static constexpr int32_t MIN_HANDLE_STORAGE_SIZE = 2;
+    JSTaggedType *handleScopeStorageNext_ {nullptr};
+    JSTaggedType *handleScopeStorageEnd_ {nullptr};
+    std::vector<std::array<JSTaggedType, NODE_BLOCK_SIZE> *> handleStorageNodes_ {};
+    int32_t currentHandleStorageIndex_ {-1};
+    // PrimitveScope
+    static constexpr int32_t MIN_PRIMITIVE_STORAGE_SIZE = 2;
+    JSTaggedType *primitiveScopeStorageNext_ {nullptr};
+    JSTaggedType *primitiveScopeStorageEnd_ {nullptr};
+    std::vector<std::array<JSTaggedType, NODE_BLOCK_SIZE> *> primitiveStorageNodes_ {};
+    int32_t currentPrimitiveStorageIndex_ {-1};
 };
 }  // namespace ecmascript
 }  // namespace panda

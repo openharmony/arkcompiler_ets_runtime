@@ -32,10 +32,10 @@ public:
     PUBLIC_API ~EcmaHandleScope();
     static uintptr_t PUBLIC_API NewHandle(JSThread *thread, JSTaggedType value);
     static uintptr_t PUBLIC_API NewPrimitiveHandle(JSThread *thread, JSTaggedType value);
-    void OpenHandleScope(EcmaContext *context);
-    void OpenPrimitiveScope(EcmaContext *context);
-    void CloseHandleScope(EcmaContext *context);
-    void ClosePrimitiveScope(EcmaContext *context);
+    void OpenHandleScope(EcmaVM *vm);
+    void OpenPrimitiveScope(EcmaVM *vm);
+    void CloseHandleScope(EcmaVM *vm);
+    void ClosePrimitiveScope(EcmaVM *vm);
 
     JSThread *GetThread() const
     {

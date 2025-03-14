@@ -153,11 +153,11 @@ JSThread::~JSThread()
 {
     readyForGCIterating_ = false;
     if (globalStorage_ != nullptr) {
-        GetEcmaVM()->GetChunk()->Delete(globalStorage_);
+        vm_->GetChunk()->Delete(globalStorage_);
         globalStorage_ = nullptr;
     }
     if (globalDebugStorage_ != nullptr) {
-        GetEcmaVM()->GetChunk()->Delete(globalDebugStorage_);
+        vm_->GetChunk()->Delete(globalDebugStorage_);
         globalDebugStorage_ = nullptr;
     }
 
@@ -296,7 +296,7 @@ void JSThread::InvokeWeakNodeNativeFinalizeCallback()
         return;
     }
     runningNativeFinalizeCallbacks_ = true;
-    TRACE_GC(GCStats::Scope::ScopeId::InvokeNativeFinalizeCallbacks, GetEcmaVM()->GetEcmaGCStats());
+    TRACE_GC(GCStats::Scope::ScopeId::InvokeNativeFinalizeCallbacks, vm_->GetEcmaGCStats());
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "InvokeNativeFinalizeCallbacks num:"
         + std::to_string(weakNodeNativeFinalizeCallbacks_.size()));
     while (!weakNodeNativeFinalizeCallbacks_.empty()) {
@@ -314,17 +314,17 @@ void JSThread::InvokeWeakNodeNativeFinalizeCallback()
 
 bool JSThread::IsStartGlobalLeakCheck() const
 {
-    return GetEcmaVM()->GetJSOptions().IsStartGlobalLeakCheck();
+    return vm_->GetJSOptions().IsStartGlobalLeakCheck();
 }
 
 bool JSThread::EnableGlobalObjectLeakCheck() const
 {
-    return GetEcmaVM()->GetJSOptions().EnableGlobalObjectLeakCheck();
+    return vm_->GetJSOptions().EnableGlobalObjectLeakCheck();
 }
 
 bool JSThread::EnableGlobalPrimitiveLeakCheck() const
 {
-    return GetEcmaVM()->GetJSOptions().EnableGlobalPrimitiveLeakCheck();
+    return vm_->GetJSOptions().EnableGlobalPrimitiveLeakCheck();
 }
 
 bool JSThread::IsInRunningStateOrProfiling() const
@@ -416,10 +416,7 @@ void JSThread::IterateJitCodeMap(const JitCodeMapVisitor &jitCodeMapVisitor)
 
 void JSThread::IterateHandleWithCheck(RootVisitor &visitor)
 {
-    size_t handleCount = 0;
-    for (EcmaContext *context : contexts_) {
-        handleCount += context->IterateHandle(visitor);
-    }
+    size_t handleCount = vm_->IterateHandle(visitor);
 
     size_t globalCount = 0;
     static const int JS_TYPE_SUM = static_cast<int>(JSType::TYPE_LAST) + 1;
@@ -469,12 +466,12 @@ void JSThread::IterateHandleWithCheck(RootVisitor &visitor)
     }
     // Determine whether memory leakage by checking handle and global count.
     LOG_ECMA(INFO) << "Iterate root handle count:" << handleCount << ", global handle count:" << globalCount;
-    OPTIONAL_LOG(GetEcmaVM(), INFO) << "Global type Primitive count:" << primitiveCount;
+    OPTIONAL_LOG(vm_, INFO) << "Global type Primitive count:" << primitiveCount;
     // Print global object type statistic.
     static const int MIN_COUNT_THRESHOLD = 50;
     for (int i = 0; i < JS_TYPE_SUM; i++) {
         if (typeCount[i] > MIN_COUNT_THRESHOLD) {
-            OPTIONAL_LOG(GetEcmaVM(), INFO) << "Global type " << JSHClass::DumpJSType(JSType(i))
+            OPTIONAL_LOG(vm_, INFO) << "Global type " << JSHClass::DumpJSType(JSType(i))
                                             << " count:" << typeCount[i];
         }
     }
@@ -544,7 +541,7 @@ bool JSThread::DoStackOverflowCheck(const JSTaggedType *sp)
         vm_->CheckThread();
         LOG_ECMA(ERROR) << "Stack overflow! Remaining stack size is: " << (sp - glueData_.frameBase_);
         if (LIKELY(!HasPendingException())) {
-            ObjectFactory *factory = GetEcmaVM()->GetFactory();
+            ObjectFactory *factory = vm_->GetFactory();
             JSHandle<JSObject> error = factory->GetJSError(base::ErrorType::RANGE_ERROR,
                                                            "Stack overflow!", StackCheck::NO);
             SetException(error.GetTaggedValue());
@@ -560,7 +557,7 @@ bool JSThread::DoStackLimitCheck()
         vm_->CheckThread();
         LOG_ECMA(ERROR) << "Stack overflow! current:" << GetCurrentStackPosition() << " limit:" << GetStackLimit();
         if (LIKELY(!HasPendingException())) {
-            ObjectFactory *factory = GetEcmaVM()->GetFactory();
+            ObjectFactory *factory = vm_->GetFactory();
             JSHandle<JSObject> error = factory->GetJSError(base::ErrorType::RANGE_ERROR,
                                                            "Stack overflow!", StackCheck::NO);
             SetException(error.GetTaggedValue());
@@ -568,16 +565,6 @@ bool JSThread::DoStackLimitCheck()
         return true;
     }
     return false;
-}
-
-uintptr_t *JSThread::ExpandHandleStorage()
-{
-    return GetCurrentEcmaContext()->ExpandHandleStorage();
-}
-
-void JSThread::ShrinkHandleStorage(int prevIndex)
-{
-    GetCurrentEcmaContext()->ShrinkHandleStorage(prevIndex);
 }
 
 void JSThread::NotifyArrayPrototypeChangedGuardians(JSHandle<JSObject> receiver)
@@ -588,7 +575,7 @@ void JSThread::NotifyArrayPrototypeChangedGuardians(JSHandle<JSObject> receiver)
     if (!receiver->GetJSHClass()->IsPrototype() && !receiver->IsJSArray()) {
         return;
     }
-    auto env = GetEcmaVM()->GetGlobalEnv();
+    auto env = vm_->GetGlobalEnv();
     if (receiver.GetTaggedValue() == env->GetObjectFunctionPrototype().GetTaggedValue() ||
         receiver.GetTaggedValue() == env->GetArrayPrototype().GetTaggedValue()) {
         glueData_.arrayPrototypeChangedGuardians_ = false;
@@ -670,7 +657,7 @@ size_t JSThread::GetBuiltinPrototypeHClassOffset(BuiltinTypeId type, bool isArch
 
 void JSThread::CheckSwitchDebuggerBCStub()
 {
-    auto isDebug = GetEcmaVM()->GetJsDebuggerManager()->IsDebugMode();
+    auto isDebug = vm_->GetJsDebuggerManager()->IsDebugMode();
     if (LIKELY(!isDebug)) {
         if (glueData_.bcStubEntries_.Get(0) == glueData_.bcStubEntries_.Get(1)) {
             for (size_t i = 0; i < BCStubEntries::BC_HANDLER_COUNT; i++) {
@@ -743,7 +730,7 @@ void JSThread::SwitchJitProfileStubs(bool isEnablePgo)
 void JSThread::TerminateExecution()
 {
     // set the TERMINATE_ERROR to exception
-    ObjectFactory *factory = GetEcmaVM()->GetFactory();
+    ObjectFactory *factory = vm_->GetFactory();
     JSHandle<JSObject> error = factory->GetJSError(ErrorType::TERMINATION_ERROR,
         "Terminate execution!", StackCheck::NO);
     SetException(error.GetTaggedValue());
@@ -773,7 +760,7 @@ bool JSThread::PassSuspendBarrier()
 
 bool JSThread::ShouldHandleMarkingFinishedInSafepoint()
 {
-    auto heap = const_cast<Heap *>(GetEcmaVM()->GetHeap());
+    auto heap = const_cast<Heap *>(vm_->GetHeap());
     return IsMarkFinished() && heap->GetConcurrentMarker()->IsTriggeredConcurrentMark() &&
            !heap->GetOnSerializeEvent() && !heap->InSensitiveStatus() && !heap->CheckIfNeedStopCollectionByStartup();
 }
@@ -810,11 +797,11 @@ bool JSThread::CheckSafepoint()
     bool gcTriggered = false;
 #ifndef NDEBUG
     if (vm_->GetJSOptions().EnableForceGC()) {
-        GetEcmaVM()->CollectGarbage(TriggerGCType::FULL_GC);
+        vm_->CollectGarbage(TriggerGCType::FULL_GC);
         gcTriggered = true;
     }
 #endif
-    auto heap = const_cast<Heap *>(GetEcmaVM()->GetHeap());
+    auto heap = const_cast<Heap *>(vm_->GetHeap());
     // Handle exit app senstive scene
     heap->HandleExitHighSensitiveEvent();
 
@@ -836,7 +823,7 @@ bool JSThread::CheckSafepoint()
 void JSThread::CheckJSTaggedType(JSTaggedType value) const
 {
     if (JSTaggedValue(value).IsHeapObject() &&
-        !GetEcmaVM()->GetHeap()->IsAlive(reinterpret_cast<TaggedObject *>(value))) {
+        !vm_->GetHeap()->IsAlive(reinterpret_cast<TaggedObject *>(value))) {
         LOG_FULL(FATAL) << "value:" << value << " is invalid!";
     }
 }
@@ -844,7 +831,7 @@ void JSThread::CheckJSTaggedType(JSTaggedType value) const
 bool JSThread::CpuProfilerCheckJSTaggedType(JSTaggedType value) const
 {
     if (JSTaggedValue(value).IsHeapObject() &&
-        !GetEcmaVM()->GetHeap()->IsAlive(reinterpret_cast<TaggedObject *>(value))) {
+        !vm_->GetHeap()->IsAlive(reinterpret_cast<TaggedObject *>(value))) {
         return false;
     }
     return true;
@@ -1082,7 +1069,6 @@ MegaICCache *JSThread::GetStoreMegaICCache() const
     return glueData_.currentContext_->GetStoreMegaICCache();
 }
 
-
 const GlobalEnvConstants *JSThread::GetFirstGlobalConst() const
 {
     return contexts_[0]->GlobalConstants();
@@ -1112,7 +1098,7 @@ void JSThread::InitializeBuiltinObject(const std::string& key)
     auto index = builtins.GetBuiltinIndex(key);
     ASSERT(index != BuiltinIndex::NOT_FOUND);
     /*
-        If using `auto globalObject = GetEcmaVM()->GetGlobalEnv()->GetGlobalObject()` here,
+        If using `auto globalObject = vm_->GetGlobalEnv()->GetGlobalObject()` here,
         it will cause incorrect result in multi-context environment. For example:
 
         ```ts
