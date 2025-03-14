@@ -202,6 +202,7 @@ group("ark_js_assert_moduletest") {
   testonly = true
   assert_test_list = [
     "addpropertybyname",
+    "cowarray",
     "jsonparser",
     "jsonstringifier",
     "ldmodulensbyic",
@@ -325,6 +326,7 @@ group("ark_asm_assert_test") {
   testonly = true
   assert_test_list = [
     "addpropertybyname",
+    "cowarray",
     "jsonparser",
     "jsonstringifier",
     "ldmodulensbyic",
@@ -532,6 +534,7 @@ group("ark_asm_single_step_assert_test") {
   testonly = true
   assert_test_list = [
     "addpropertybyname",
+    "cowarray",
     "jsonparser",
     "jsonstringifier",
     "ldmodulensbyic",
