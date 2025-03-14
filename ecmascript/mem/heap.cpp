@@ -182,10 +182,11 @@ bool SharedHeap::ObjectExceedMaxHeapSize() const
     return OldSpaceExceedLimit() || sHugeObjectSpace_->CommittedSizeExceed();
 }
 
-void SharedHeap::StartConcurrentMarking(TriggerGCType gcType, GCReason gcReason)
+void SharedHeap::StartConcurrentMarking(TriggerGCType gcType, MarkReason markReason)
 {
     ASSERT(JSThread::GetCurrent() == dThread_);
-    sConcurrentMarker_->Mark(gcType, gcReason);
+    GetEcmaGCStats()->SetMarkReason(markReason);
+    sConcurrentMarker_->Mark(gcType);
 }
 
 bool SharedHeap::CheckCanTriggerConcurrentMarking(JSThread *thread)
@@ -1274,7 +1275,7 @@ void Heap::CollectGarbageImpl(TriggerGCType gcType, GCReason reason)
                         LOG_ECMA(INFO)
                             << "Trigger old gc here may cost long time, trigger full concurrent mark instead";
                         oldSpace_->SetOvershootSize(config_.GetOldSpaceStepOvershootSize());
-                        TriggerConcurrentMarking();
+                        TriggerConcurrentMarking(MarkReason::OLD_GC_WITHOUT_FULLMARK);
                         oldGCRequested_ = true;
                         ProcessGCListeners();
                         memController_->ResetCalculationWithoutGC();
@@ -1750,7 +1751,7 @@ bool Heap::CheckAndTriggerHintGC(MemoryReduceDegree degree, GCReason reason)
             if (idleGCTrigger_->HintGCInLowDegree<Heap>(this)) {
                 if (CheckCanTriggerConcurrentMarking()) {
                     markType_ = MarkType::MARK_FULL;
-                    TriggerConcurrentMarking();
+                    TriggerConcurrentMarking(MarkReason::HINT_GC);
                     LOG_GC(INFO) << " MemoryReduceDegree::LOW TriggerConcurrentMark.";
                     return true;
                 }
@@ -1758,7 +1759,7 @@ bool Heap::CheckAndTriggerHintGC(MemoryReduceDegree degree, GCReason reason)
             if (idleGCTrigger_->HintGCInLowDegree<SharedHeap>(sHeap_)) {
                 if (sHeap_->CheckCanTriggerConcurrentMarking(thread_)) {
                     LOG_GC(INFO) << " MemoryReduceDegree::LOW TriggerSharedConcurrentMark.";
-                    sHeap_->TriggerConcurrentMarking<TriggerGCType::SHARED_GC, GCReason::HINT_GC>(thread_);
+                    sHeap_->TriggerConcurrentMarking<TriggerGCType::SHARED_GC, MarkReason::HINT_GC>(thread_);
                     return true;
                 }
             }
@@ -1930,7 +1931,7 @@ bool Heap::CheckCanTriggerConcurrentMarking()
         (idleTask_ == IdleTaskType::NO_TASK || idleTask_ == IdleTaskType::YOUNG_GC);
 }
 
-void Heap::TryTriggerConcurrentMarking()
+void Heap::TryTriggerConcurrentMarking(MarkReason markReason)
 {
     // When concurrent marking is enabled, concurrent marking will be attempted to trigger.
     // When the size of old space or global space reaches the limit, isFullMarkNeeded will be set to true.
@@ -1946,7 +1947,7 @@ void Heap::TryTriggerConcurrentMarking()
     if (fullMarkRequested_) {
         markType_ = MarkType::MARK_FULL;
         OPTIONAL_LOG(ecmaVm_, INFO) << " fullMarkRequested, trigger full mark.";
-        TriggerConcurrentMarking();
+        TriggerConcurrentMarking(markReason);
         return;
     }
     if (InSensitiveStatus() && !ObjectExceedHighSensitiveThresholdForCM()) {
@@ -1969,14 +1970,14 @@ void Heap::TryTriggerConcurrentMarking()
             GlobalNativeSizeLargerThanLimit()) {
             markType_ = MarkType::MARK_FULL;
             OPTIONAL_LOG(ecmaVm_, INFO) << "Trigger the first full mark";
-            TriggerConcurrentMarking();
+            TriggerConcurrentMarking(markReason);
             return;
         }
     } else {
         if (oldSpaceHeapObjectSize >= oldSpaceAllocLimit || globalHeapObjectSize >= globalSpaceAllocLimit_ ||
             GlobalNativeSizeLargerThanLimit()) {
             markType_ = MarkType::MARK_FULL;
-            TriggerConcurrentMarking();
+            TriggerConcurrentMarking(markReason);
             OPTIONAL_LOG(ecmaVm_, INFO) << "Trigger full mark";
             return;
         }
@@ -1986,7 +1987,7 @@ void Heap::TryTriggerConcurrentMarking()
         double oldSpaceRemainSize = (oldSpaceAllocToLimitDuration - oldSpaceMarkDuration) * oldSpaceAllocSpeed;
         if (oldSpaceRemainSize > 0 && oldSpaceRemainSize < DEFAULT_REGION_SIZE) {
             markType_ = MarkType::MARK_FULL;
-            TriggerConcurrentMarking();
+            TriggerConcurrentMarking(markReason);
             OPTIONAL_LOG(ecmaVm_, INFO) << "Trigger full mark";
             return;
         }
@@ -1997,7 +1998,7 @@ void Heap::TryTriggerConcurrentMarking()
     if (newSpaceConcurrentMarkSpeed == 0 || newSpaceAllocSpeed == 0) {
         if (activeSemiSpace_->GetCommittedSize() >= config_.GetSemiSpaceTriggerConcurrentMark()) {
             markType_ = MarkType::MARK_YOUNG;
-            TriggerConcurrentMarking();
+            TriggerConcurrentMarking(markReason);
             OPTIONAL_LOG(ecmaVm_, INFO) << "Trigger the first semi mark" << fullGCRequested_;
         }
         return;
@@ -2015,7 +2016,7 @@ void Heap::TryTriggerConcurrentMarking()
 
     if (triggerMark) {
         markType_ = MarkType::MARK_YOUNG;
-        TriggerConcurrentMarking();
+        TriggerConcurrentMarking(markReason);
         OPTIONAL_LOG(ecmaVm_, INFO) << "Trigger semi mark";
         return;
     }
@@ -2025,11 +2026,11 @@ void Heap::TryTriggerFullMarkOrGCByNativeSize()
 {
     // In high sensitive scene and native size larger than limit, trigger old gc directly
     if (InSensitiveStatus() && GlobalNativeSizeLargerToTriggerGC()) {
-        CollectGarbage(TriggerGCType::OLD_GC, GCReason::ALLOCATION_FAILED);
+        CollectGarbage(TriggerGCType::OLD_GC, GCReason::NATIVE_LIMIT);
     } else if (GlobalNativeSizeLargerThanLimit()) {
         if (concurrentMarker_->IsEnabled()) {
             SetFullMarkRequestedState(true);
-            TryTriggerConcurrentMarking();
+            TryTriggerConcurrentMarking(MarkReason::NATIVE_LIMIT);
         } else {
             CheckAndTriggerOldGC();
         }
@@ -2045,6 +2046,7 @@ bool Heap::TryTriggerFullMarkBySharedLimit()
         }
         markType_ = MarkType::MARK_FULL;
         if (ConcurrentMarker::TryIncreaseTaskCounts()) {
+            GetEcmaGCStats()->SetMarkReason(MarkReason::SHARED_LIMIT);
             concurrentMarker_->Mark();
         } else {
             // need retry full mark request again.
@@ -2085,11 +2087,11 @@ void Heap::TryTriggerFullMarkBySharedSize(size_t size)
     if (newAllocatedSharedObjectSize_ >= NEW_ALLOCATED_SHARED_OBJECT_SIZE_LIMIT) {
         if (thread_->IsMarkFinished() && GetConcurrentMarker()->IsTriggeredConcurrentMark() &&
             !GetOnSerializeEvent() && InSensitiveStatus()) {
-            GetConcurrentMarker()->HandleMarkingFinished();
+            GetConcurrentMarker()->HandleMarkingFinished(GCReason::SHARED_LIMIT);
             newAllocatedSharedObjectSize_ = 0;
         } else if (concurrentMarker_->IsEnabled()) {
             SetFullMarkRequestedState(true);
-            TryTriggerConcurrentMarking();
+            TryTriggerConcurrentMarking(MarkReason::SHARED_LIMIT);
             newAllocatedSharedObjectSize_ = 0;
         }
     }
@@ -2134,7 +2136,7 @@ void Heap::PrepareRecordRegionsForReclaim()
     hugeMachineCodeSpace_->SetRecordRegion();
 }
 
-void Heap::TriggerConcurrentMarking()
+void Heap::TriggerConcurrentMarking(MarkReason markReason)
 {
     ASSERT(idleTask_ != IdleTaskType::INCREMENTAL_MARK);
     if (idleTask_ == IdleTaskType::YOUNG_GC && IsConcurrentFullMark()) {
@@ -2142,6 +2144,7 @@ void Heap::TriggerConcurrentMarking()
         DisableNotifyIdle();
     }
     if (concurrentMarker_->IsEnabled() && !fullGCRequested_ && ConcurrentMarker::TryIncreaseTaskCounts()) {
+        GetEcmaGCStats()->SetMarkReason(markReason);
         concurrentMarker_->Mark();
     }
 }
@@ -2283,7 +2286,7 @@ void Heap::NotifyFinishColdStart(bool isMainThread)
     LOG_GC(INFO) << "SmartGC: app cold start just finished";
 
     if (isMainThread && ObjectExceedJustFinishStartupThresholdForCM()) {
-        TryTriggerConcurrentMarking();
+        TryTriggerConcurrentMarking(MarkReason::OTHER);
     }
 
     auto startIdleMonitor = JSNApi::GetStartIdleMonitorCallback();
@@ -2342,7 +2345,7 @@ bool Heap::HandleExitHighSensitiveEvent()
         // fixme: IncrementalMarking and IdleCollection is currently not enabled
         TryTriggerIncrementalMarking();
         TryTriggerIdleCollection();
-        TryTriggerConcurrentMarking();
+        TryTriggerConcurrentMarking(MarkReason::EXIT_HIGH_SENSITIVE);
         return true;
     }
     return false;

@@ -27,7 +27,7 @@ FullGC::FullGC(Heap *heap) : heap_(heap), workManager_(heap->GetWorkManager()) {
 void FullGC::RunPhases()
 {
     GCStats *gcStats = heap_->GetEcmaVM()->GetEcmaGCStats();
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "FullGC::RunPhases;Reason"
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "FullGC::RunPhases;GCReason"
         + std::to_string(static_cast<int>(gcStats->GetGCReason()))
         + ";Sensitive" + std::to_string(static_cast<int>(heap_->GetSensitiveStatus()))
         + ";IsInBackground" + std::to_string(heap_->IsInBackground())

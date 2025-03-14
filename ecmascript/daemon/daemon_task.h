@@ -77,7 +77,7 @@ private:
     TaskRunner runner_;
 };
 
-template<TriggerGCType gcType, GCReason gcReason>
+template<TriggerGCType gcType, MarkReason markReason>
 class TriggerConcurrentMarkTask : public DaemonTask {
 public:
     explicit TriggerConcurrentMarkTask(JSThread *thread);

@@ -402,7 +402,7 @@ EcmaVM::~EcmaVM()
         // destory workervm to release mem.
         thread_->SetReadyForGCIterating(false);
         if (sHeap->CheckCanTriggerConcurrentMarking(thread_)) {
-            sHeap->TriggerConcurrentMarking<TriggerGCType::SHARED_GC, GCReason::WORKER_DESTRUCTION>(thread_);
+            sHeap->TriggerConcurrentMarking<TriggerGCType::SHARED_GC, MarkReason::WORKER_DESTRUCTION>(thread_);
         } else if (heap && !heap->InSensitiveStatus() && !sHeap->GetConcurrentMarker()->IsEnabled()) {
             sHeap->CollectGarbage<TriggerGCType::SHARED_GC, GCReason::WORKER_DESTRUCTION>(thread_);
         }

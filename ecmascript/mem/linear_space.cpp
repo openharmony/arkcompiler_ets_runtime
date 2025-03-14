@@ -52,7 +52,7 @@ uintptr_t LinearSpace::Allocate(size_t size, bool isPromoted)
                 (localHeap_->IsJustFinishStartup() && localHeap_->ObjectExceedJustFinishStartupThresholdForCM())) {
                 localHeap_->TryTriggerIncrementalMarking();
                 localHeap_->TryTriggerIdleCollection();
-                localHeap_->TryTriggerConcurrentMarking();
+                localHeap_->TryTriggerConcurrentMarking(MarkReason::ALLOCATION_LIMIT);
             }
         }
         object = allocator_.Allocate(size);

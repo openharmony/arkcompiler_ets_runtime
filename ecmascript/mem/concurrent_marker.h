@@ -108,7 +108,7 @@ public:
     void Finish();
     void ReMark();
 
-    void HandleMarkingFinished(GCReason gcReason = GCReason::ALLOCATION_LIMIT);  // call in vm thread.
+    void HandleMarkingFinished(GCReason gcReason = GCReason::HANDLE_MARKING_FINISHED);  // call in vm thread.
     void WaitMarkingFinished();  // call in main thread
     void Reset(bool revertCSet = true);
 
