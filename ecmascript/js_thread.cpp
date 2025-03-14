@@ -207,9 +207,38 @@ void JSThread::SetException(JSTaggedValue exception)
 #endif
 }
 
-void JSThread::ClearException()
+void JSThread::HandleUncaughtException(JSTaggedValue exception)
 {
-    glueData_.exception_ = JSTaggedValue::Hole();
+    [[maybe_unused]] EcmaHandleScope handleScope(this);
+    JSHandle<JSTaggedValue> exceptionHandle(this, exception);
+    if (isUncaughtExceptionRegistered_) {
+        if (vm_->GetJSThread()->IsMainThread()) {
+            return;
+        }
+        auto callback = GetOnErrorCallback();
+        if (callback) {
+            ClearException();
+            Local<ObjectRef> exceptionRef = JSNApiHelper::ToLocal<ObjectRef>(exceptionHandle);
+            callback(exceptionRef, GetOnErrorData());
+        }
+    }
+    // if caught exceptionHandle type is JSError
+    ClearException();
+    if (exceptionHandle->IsJSError()) {
+        base::ErrorHelper::PrintJSErrorInfo(this, exceptionHandle);
+        return;
+    }
+    JSHandle<EcmaString> result = JSTaggedValue::ToString(this, exceptionHandle);
+    LOG_NO_TAG(ERROR) << ConvertToString(*result);
+}
+
+void JSThread::HandleUncaughtException()
+{
+    if (!HasPendingException()) {
+        return;
+    }
+    JSTaggedValue exception = GetException();
+    HandleUncaughtException(exception);
 }
 
 JSTaggedValue JSThread::GetCurrentLexenv() const

@@ -4653,7 +4653,7 @@ void JSNApi::PrintExceptionInfo(const EcmaVM *vm)
     Local<ObjectRef> exception = GetAndClearUncaughtException(vm);
     JSHandle<JSTaggedValue> exceptionHandle = JSNApiHelper::ToJSHandle(exception);
     if (exceptionHandle->IsJSError()) {
-        vm->PrintJSErrorInfo(exceptionHandle);
+        ecmascript::base::ErrorHelper::PrintJSErrorInfo(thread, exceptionHandle);
         ThrowException(vm, exception);
         return;
     }
@@ -4665,7 +4665,8 @@ void JSNApi::PrintExceptionInfo(const EcmaVM *vm)
 
 void JSNApi::SetOnErrorCallback(EcmaVM *vm, OnErrorCallback cb, void* data)
 {
-    vm->SetOnErrorCallback(cb, data);
+    JSThread* thread = vm->GetJSThread();
+    thread->SetOnErrorCallback(cb, data);
 }
 
 #if defined(ECMASCRIPT_SUPPORT_DEBUGGER) && !defined(PANDA_TARGET_IOS)
@@ -5288,7 +5289,7 @@ bool JSNApi::ExecuteInContext(EcmaVM *vm, const std::string &fileName, const std
     if (!ecmascript::JSPandaFileExecutor::ExecuteFromAbcFile(thread, fileName.c_str(), entry, needUpdate)) {
         if (thread->HasPendingException()) {
             ecmascript::JsStackInfo::BuildCrashInfo(thread);
-            thread->GetCurrentEcmaContext()->HandleUncaughtException();
+            thread->HandleUncaughtException();
         }
         LOG_ECMA(ERROR) << "Cannot execute ark file '" << fileName
                         << "' with entry '" << entry << "'" << std::endl;
@@ -5309,7 +5310,7 @@ bool JSNApi::ExecuteForAbsolutePath(const EcmaVM *vm, const std::string &fileNam
         thread, fileName.c_str(), entry, needUpdate, executeType)) {
         if (thread->HasPendingException()) {
             ecmascript::JsStackInfo::BuildCrashInfo(thread);
-            thread->GetCurrentEcmaContext()->HandleUncaughtException();
+            thread->HandleUncaughtException();
         }
         LOG_ECMA(ERROR) << "Cannot execute absolute path ark file '" << fileName
                         << "' with entry '" << entry << "'" << std::endl;
@@ -5328,7 +5329,7 @@ bool JSNApi::Execute(const EcmaVM *vm, const std::string &fileName, const std::s
         thread, fileName.c_str(), entry, needUpdate, executeType)) {
         if (thread->HasPendingException()) {
             ecmascript::JsStackInfo::BuildCrashInfo(thread);
-            thread->GetCurrentEcmaContext()->HandleUncaughtException();
+            thread->HandleUncaughtException();
         }
         LOG_ECMA(ERROR) << "Cannot execute ark file '" << fileName
                         << "' with entry '" << entry << "'" << std::endl;
@@ -5347,7 +5348,7 @@ bool JSNApi::Execute(EcmaVM *vm, const uint8_t *data, int32_t size, const std::s
     if (!ecmascript::JSPandaFileExecutor::ExecuteFromBuffer(thread, data, size, entry, filename.c_str(), needUpdate)) {
         if (thread->HasPendingException()) {
             ecmascript::JsStackInfo::BuildCrashInfo(thread);
-            thread->GetCurrentEcmaContext()->HandleUncaughtException();
+            thread->HandleUncaughtException();
         }
         LOG_ECMA(ERROR) << "Cannot execute ark buffer file '" << filename
                         << "' with entry '" << entry << "'" << std::endl;
@@ -5366,7 +5367,7 @@ int JSNApi::ExecuteWithSingletonPatternFlag(EcmaVM *vm, const std::string &bundl
     if (!result) {
         if (thread->HasPendingException()) {
             ecmascript::JsStackInfo::BuildCrashInfo(thread);
-            thread->GetCurrentEcmaContext()->HandleUncaughtException();
+            thread->HandleUncaughtException();
         }
         LOG_ECMA(ERROR) << "Execute with singleton-pattern flag failed with bundle name is'" << bundleName
                         << "' and module name is '" << moduleName << "', entry is'" << ohmurl << "'" << std::endl;
@@ -5394,7 +5395,7 @@ bool JSNApi::ExecuteModuleBuffer(EcmaVM *vm, const uint8_t *data, int32_t size, 
     if (!ecmascript::JSPandaFileExecutor::ExecuteModuleBuffer(thread, data, size, filename.c_str(), needUpdate)) {
         if (thread->HasPendingException()) {
             ecmascript::JsStackInfo::BuildCrashInfo(thread);
-            thread->GetCurrentEcmaContext()->HandleUncaughtException();
+            thread->HandleUncaughtException();
         }
         LOG_ECMA(ERROR) << "Cannot execute module buffer file '" << filename;
         return false;
@@ -5433,7 +5434,7 @@ bool JSNApi::ExecuteSecureWithOhmUrl(EcmaVM *vm, uint8_t *data, int32_t size, co
     if (!ecmascript::JSPandaFileExecutor::ExecuteSecureWithOhmUrl(thread, data, size, filename, entryPoint)) {
         if (thread->HasPendingException()) {
             ecmascript::JsStackInfo::BuildCrashInfo(thread);
-            thread->GetCurrentEcmaContext()->HandleUncaughtException();
+            thread->HandleUncaughtException();
         }
         LOG_ECMA(ERROR) << "Cannot execute ark buffer file '" << srcFilename
                         << "' with entry '" << ohmUrl << "'" << std::endl;
@@ -5452,7 +5453,7 @@ bool JSNApi::ExecuteSecure(EcmaVM *vm, uint8_t *data, int32_t size, const std::s
                                                                   needUpdate)) {
         if (thread->HasPendingException()) {
             ecmascript::JsStackInfo::BuildCrashInfo(thread);
-            thread->GetCurrentEcmaContext()->HandleUncaughtException();
+            thread->HandleUncaughtException();
         }
         LOG_ECMA(ERROR) << "Cannot execute ark buffer file '" << filename
                         << "' with entry '" << entry << "'" << std::endl;
@@ -5471,7 +5472,7 @@ bool JSNApi::ExecuteModuleBufferSecure(EcmaVM *vm, uint8_t* data, int32_t size, 
                                                                     needUpdate)) {
         if (thread->HasPendingException()) {
             ecmascript::JsStackInfo::BuildCrashInfo(thread);
-            thread->GetCurrentEcmaContext()->HandleUncaughtException();
+            thread->HandleUncaughtException();
         }
         LOG_ECMA(ERROR) << "Cannot execute module buffer file '" << filename;
         return false;
@@ -5584,7 +5585,7 @@ bool JSNApi::HasPendingJob(const EcmaVM *vm)
 
 void JSNApi::EnableUserUncaughtErrorHandler(EcmaVM *vm)
 {
-    return vm->GetJSThread()->GetCurrentEcmaContext()->EnableUserUncaughtErrorHandler();
+    return vm->GetJSThread()->EnableUserUncaughtErrorHandler();
 }
 
 Local<ObjectRef> JSNApi::GetGlobalObject(const EcmaVM *vm)
@@ -6128,7 +6129,7 @@ Local<ObjectRef> JSNApi::GetModuleNameSpaceFromFile(EcmaVM *vm, const std::strin
     ecmascript::ThreadManagedScope managedScope(thread);
     std::pair<std::string, std::string> moduleInfo = vm->GetCurrentModuleInfo(false);
     if (thread->HasPendingException()) {
-        thread->GetCurrentEcmaContext()->HandleUncaughtException();
+        thread->HandleUncaughtException();
         return JSValueRef::Undefined(vm);
     }
     ecmascript::CString moduleName = moduleInfo.first.c_str();

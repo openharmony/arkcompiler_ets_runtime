@@ -27,11 +27,11 @@ namespace panda::ecmascript {
 #endif
     }
 
-    void CheckHasPendingException([[maybe_unused]] EcmaContext *ecmaContext, [[maybe_unused]] JSThread *thread)
+    void CheckHasPendingException([[maybe_unused]] JSThread *thread)
     {
 #if !defined(STANDALONE_MODE) && !defined(OHOS_FOR_QEMU)
         if (thread->HasPendingException()) {
-            ecmaContext->HandleUncaughtException();
+            thread->HandleUncaughtException();
         }
 #endif
     }

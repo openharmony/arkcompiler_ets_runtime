@@ -94,12 +94,6 @@ using JsAotReaderCallback = std::function<bool(std::string fileName, uint8_t **b
 #endif
 class EcmaContext {
 public:
-    enum JSErrorProps {
-        NAME,
-        MESSAGE,
-        STACK
-    };
-
     static EcmaContext *CreateAndInitialize(JSThread *thread);
     static void CheckAndDestroy(JSThread *thread, EcmaContext *context);
 
@@ -315,7 +309,6 @@ public:
     }
     JSHandle<ecmascript::JSTaggedValue> GetAndClearEcmaUncaughtException() const;
     JSHandle<ecmascript::JSTaggedValue> GetEcmaUncaughtException() const;
-    void EnableUserUncaughtErrorHandler();
 
     JSHandle<ConstantPool> AddOrUpdateConstpool(const JSPandaFile *jsPandaFile,
                                                 JSHandle<ConstantPool> constpool,
@@ -351,8 +344,6 @@ public:
     void SetObjectFunctionFromConstPool(JSHandle<ConstantPool> newConstPool);
     void CreateAllConstpool(const JSPandaFile *jsPandaFile);
 
-    void HandleUncaughtException(JSTaggedValue exception);
-    void HandleUncaughtException();
     JSHandle<GlobalEnv> GetGlobalEnv() const;
     bool GlobalEnvIsHole()
     {
@@ -361,8 +352,6 @@ public:
 
     JSHandle<job::MicroJobQueue> GetMicroJobQueue() const;
 
-    static void PrintJSErrorInfo(JSThread *thread, const JSHandle<JSTaggedValue> &exceptionInfo);
-    static CString GetJSErrorInfo(JSThread *thread, const JSHandle<JSTaggedValue> exceptionInfo, JSErrorProps key);
     void IterateMegaIC(RootVisitor &v);
     void Iterate(RootVisitor &v);
     static void MountContext(JSThread *thread);
@@ -634,7 +623,6 @@ private:
     JSThread *thread_{nullptr};
     EcmaVM *vm_{nullptr};
 
-    bool isUncaughtExceptionRegistered_ {false};
     bool initialized_ {false};
     std::atomic<bool> isProcessingPendingJob_ {false};
     ObjectFactory *factory_ {nullptr};

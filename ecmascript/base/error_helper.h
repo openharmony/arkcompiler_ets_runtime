@@ -28,9 +28,19 @@ constexpr char INTRINSIC_METHOD_NAME[] = "Intrinsic method";    // NOLINT (moder
 
 class ErrorHelper {
 public:
+    enum JSErrorProps {
+        NAME,
+        MESSAGE,
+        STACK
+    };
+
     static JSTaggedValue ErrorCommonToString(EcmaRuntimeCallInfo *argv, const ErrorType &errorType);
 
     static JSTaggedValue ErrorCommonConstructor(EcmaRuntimeCallInfo *argv, const ErrorType &errorType);
+
+    static void PrintJSErrorInfo(JSThread *thread, const JSHandle<JSTaggedValue> exceptionInfo);
+
+    static CString GetJSErrorInfo(JSThread *thread, const JSHandle<JSTaggedValue> exceptionInfo, JSErrorProps key);
 
 private:
     static JSHandle<JSTaggedValue> GetErrorJSFunction(JSThread *thread);

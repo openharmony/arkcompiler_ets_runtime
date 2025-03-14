@@ -23,7 +23,7 @@ Expected<JSTaggedValue, bool> GetPendingExceptionResult([[maybe_unused]] JSTagge
     return Unexpected(false);
 }
 
-void CheckHasPendingException([[maybe_unused]] EcmaContext *ecmaContext, [[maybe_unused]] JSThread *thread)
+void CheckHasPendingException([[maybe_unused]] JSThread *thread)
 {
     return;
 }

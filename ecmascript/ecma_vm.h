@@ -114,7 +114,6 @@ using RequestAotCallback =
 using SearchHapPathCallBack = std::function<bool(const std::string moduleName, std::string &hapPath)>;
 using DeviceDisconnectCallback = std::function<bool()>;
 using UncatchableErrorHandler = std::function<void(panda::TryCatch&)>;
-using OnErrorCallback = std::function<void(Local<ObjectRef> value, void *data)>;
 using StopPreLoadSoCallback = std::function<void()>;
 
 enum class IcuFormatterType: uint8_t {
@@ -491,22 +490,6 @@ public:
     {
         concurrentCallback_ = callback;
         concurrentData_ = data;
-    }
-
-    void SetOnErrorCallback(OnErrorCallback callback, void* data)
-    {
-        onErrorCallback_ = callback;
-        onErrorData_ = data;
-    }
-
-    OnErrorCallback GetOnErrorCallback()
-    {
-        return onErrorCallback_;
-    }
-
-    void* GetOnAllData()
-    {
-        return onErrorData_;
     }
 
     void AddStopPreLoadCallback(const StopPreLoadSoCallback &cb)
@@ -1021,10 +1004,6 @@ public:
     void PrintCollectedByteCode();
 #endif
 
-protected:
-
-    void PrintJSErrorInfo(const JSHandle<JSTaggedValue> &exceptionInfo) const;
-
 private:
     void ClearBufferData();
     void CheckStartCpuProfiler();
@@ -1114,10 +1093,6 @@ private:
     // Concurrent taskpool callback and data
     ConcurrentCallback concurrentCallback_ {nullptr};
     void *concurrentData_ {nullptr};
-
-    // Error callback
-    OnErrorCallback onErrorCallback_ {nullptr};
-    void *onErrorData_ {nullptr};
 
     // serch happath callback
     SearchHapPathCallBack SearchHapPathCallBack_ {nullptr};

@@ -22,6 +22,6 @@
 
 namespace panda::ecmascript {
     Expected<JSTaggedValue, bool> GetPendingExceptionResult([[maybe_unused]] JSTaggedValue result);
-    void CheckHasPendingException([[maybe_unused]] EcmaContext *ecmaContext, [[maybe_unused]] JSThread *thread);
+    void CheckHasPendingException([[maybe_unused]] JSThread *thread);
 } // namespace panda::ecmascript
 #endif  // ECMASCRIPT_PLATFORM_ECMA_CONTEXT_H

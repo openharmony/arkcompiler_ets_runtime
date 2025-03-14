@@ -17,6 +17,7 @@
 #include "ecmascript/base/builtins_base.h"
 #include "ecmascript/dfx/stackinfo/js_stackinfo.h"
 #include "ecmascript/interpreter/frame_handler.h"
+#include "ecmascript/platform/log.h"
 
 namespace panda::ecmascript::base {
 JSTaggedValue ErrorHelper::ErrorCommonToString(EcmaRuntimeCallInfo *argv, const ErrorType &errorType)
@@ -204,6 +205,48 @@ JSTaggedValue ErrorHelper::ErrorCommonConstructor(EcmaRuntimeCallInfo *argv,
 
     // 5. Return O.
     return nativeInstanceObj.GetTaggedValue();
+}
+
+// static
+void ErrorHelper::PrintJSErrorInfo(JSThread *thread, const JSHandle<JSTaggedValue> exceptionInfo)
+{
+    CString nameBuffer = GetJSErrorInfo(thread, exceptionInfo, JSErrorProps::NAME);
+    CString msgBuffer = GetJSErrorInfo(thread, exceptionInfo, JSErrorProps::MESSAGE);
+    CString stackBuffer = GetJSErrorInfo(thread, exceptionInfo, JSErrorProps::STACK);
+    LOG_NO_TAG(ERROR) << panda::ecmascript::previewerTag << nameBuffer << ": " << msgBuffer << "\n"
+                      << (panda::ecmascript::previewerTag.empty()
+                              ? stackBuffer
+                              : std::regex_replace(stackBuffer, std::regex(".+(\n|$)"),
+                                                   panda::ecmascript::previewerTag + "$0"));
+}
+
+// static
+CString ErrorHelper::GetJSErrorInfo(JSThread *thread, const JSHandle<JSTaggedValue> exceptionInfo, JSErrorProps key)
+{
+    JSHandle<JSTaggedValue> keyStr(thread, JSTaggedValue::Undefined());
+    switch (key) {
+        case JSErrorProps::NAME:
+            keyStr = thread->GlobalConstants()->GetHandledNameString();
+            break;
+        case JSErrorProps::MESSAGE:
+            keyStr = thread->GlobalConstants()->GetHandledMessageString();
+            break;
+        case JSErrorProps::STACK:
+            keyStr = thread->GlobalConstants()->GetHandledStackString();
+            break;
+        default:
+            LOG_ECMA(FATAL) << "this branch is unreachable " << key;
+            UNREACHABLE();
+    }
+    JSHandle<JSTaggedValue> value = JSObject::GetProperty(thread, exceptionInfo, keyStr).GetValue();
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, CString());
+    JSHandle<EcmaString> errStr = JSTaggedValue::ToString(thread, value);
+    // JSTaggedValue::ToString may cause exception. In this case, do not return, use "<error>" instead.
+    if (thread->HasPendingException()) {
+        thread->ClearException();
+        errStr = thread->GetEcmaVM()->GetFactory()->NewFromStdString("<error>");
+    }
+    return ConvertToString(*errStr);
 }
 
 JSHandle<JSTaggedValue> ErrorHelper::GetErrorJSFunction(JSThread *thread)

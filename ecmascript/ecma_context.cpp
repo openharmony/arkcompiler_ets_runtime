@@ -35,7 +35,6 @@
 #include "ecmascript/jspandafile/abc_buffer_cache.h"
 #include "ecmascript/platform/aot_crash_info.h"
 #include "ecmascript/platform/ecma_context.h"
-#include "ecmascript/platform/log.h"
 #include "ecmascript/regexp/regexp_parser_cache.h"
 #include "ecmascript/require/js_require_manager.h"
 #include "ecmascript/snapshot/mem/snapshot.h"
@@ -355,7 +354,7 @@ Expected<JSTaggedValue, bool> EcmaContext::InvokeEcmaEntrypoint(const JSPandaFil
     JSHandle<JSFunction> func(thread_, program->GetMainFunction());
     Expected<JSTaggedValue, bool> result = CommonInvokeEcmaEntrypoint(jsPandaFile, entryPoint, func, executeType);
 
-    CheckHasPendingException(this, thread_);
+    CheckHasPendingException(thread_);
     return result;
 }
 
@@ -710,87 +709,6 @@ JSHandle<JSTaggedValue> EcmaContext::GetEcmaUncaughtException() const
     }
     JSHandle<JSTaggedValue> exceptionHandle(thread_, thread_->GetException());
     return exceptionHandle;
-}
-
-void EcmaContext::EnableUserUncaughtErrorHandler()
-{
-    isUncaughtExceptionRegistered_ = true;
-}
-
-void EcmaContext::HandleUncaughtException(JSTaggedValue exception)
-{
-    [[maybe_unused]] EcmaHandleScope handleScope(thread_);
-    JSHandle<JSTaggedValue> exceptionHandle(thread_, exception);
-    if (isUncaughtExceptionRegistered_) {
-        if (vm_->GetJSThread()->IsMainThread()) {
-            return;
-        }
-        auto callback = vm_->GetOnErrorCallback();
-        if (callback) {
-            thread_->ClearException();
-            Local<ObjectRef> exceptionRef = JSNApiHelper::ToLocal<ObjectRef>(exceptionHandle);
-            callback(exceptionRef, vm_->GetOnAllData());
-        }
-    }
-    // if caught exceptionHandle type is JSError
-    thread_->ClearException();
-    if (exceptionHandle->IsJSError()) {
-        PrintJSErrorInfo(thread_, exceptionHandle);
-        return;
-    }
-    JSHandle<EcmaString> result = JSTaggedValue::ToString(thread_, exceptionHandle);
-    CString string = ConvertToString(*result);
-    LOG_NO_TAG(ERROR) << string;
-}
-
-void EcmaContext::HandleUncaughtException()
-{
-    if (!thread_->HasPendingException()) {
-        return;
-    }
-    JSTaggedValue exception = thread_->GetException();
-    HandleUncaughtException(exception);
-}
-
-// static
-void EcmaContext::PrintJSErrorInfo(JSThread *thread, const JSHandle<JSTaggedValue> &exceptionInfo)
-{
-    CString nameBuffer = GetJSErrorInfo(thread, exceptionInfo, JSErrorProps::NAME);
-    CString msgBuffer = GetJSErrorInfo(thread, exceptionInfo, JSErrorProps::MESSAGE);
-    CString stackBuffer = GetJSErrorInfo(thread, exceptionInfo, JSErrorProps::STACK);
-    LOG_NO_TAG(ERROR) << panda::ecmascript::previewerTag << nameBuffer << ": " << msgBuffer << "\n"
-                      << (panda::ecmascript::previewerTag.empty()
-                              ? stackBuffer
-                              : std::regex_replace(stackBuffer, std::regex(".+(\n|$)"),
-                                                   panda::ecmascript::previewerTag + "$0"));
-}
-
-CString EcmaContext::GetJSErrorInfo(JSThread *thread, const JSHandle<JSTaggedValue> exceptionInfo, JSErrorProps key)
-{
-    JSHandle<JSTaggedValue> keyStr(thread, JSTaggedValue::Undefined());
-    switch (key) {
-        case JSErrorProps::NAME:
-            keyStr = thread->GlobalConstants()->GetHandledNameString();
-            break;
-        case JSErrorProps::MESSAGE:
-            keyStr = thread->GlobalConstants()->GetHandledMessageString();
-            break;
-        case JSErrorProps::STACK:
-            keyStr = thread->GlobalConstants()->GetHandledStackString();
-            break;
-        default:
-            LOG_ECMA(FATAL) << "this branch is unreachable " << key;
-            UNREACHABLE();
-    }
-    JSHandle<JSTaggedValue> value = JSObject::GetProperty(thread, exceptionInfo, keyStr).GetValue();
-    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, CString());
-    JSHandle<EcmaString> errStr = JSTaggedValue::ToString(thread, value);
-    // JSTaggedValue::ToString may cause exception. In this case, do not return, use "<error>" instead.
-    if (thread->HasPendingException()) {
-        thread->ClearException();
-        errStr = thread->GetEcmaVM()->GetFactory()->NewFromStdString("<error>");
-    }
-    return ConvertToString(*errStr);
 }
 
 bool EcmaContext::HasPendingJob()

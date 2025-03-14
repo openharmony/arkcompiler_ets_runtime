@@ -670,11 +670,6 @@ void EcmaVM::PrintAOTSnapShotStats()
     aotSnapShotStatsMap_.clear();
 }
 
-void EcmaVM::PrintJSErrorInfo(const JSHandle<JSTaggedValue> &exceptionInfo) const
-{
-    EcmaContext::PrintJSErrorInfo(thread_, exceptionInfo);
-}
-
 void EcmaVM::ProcessNativeDelete(const WeakRootVisitor& visitor)
 {
     heap_->ProcessNativeDelete(visitor);
