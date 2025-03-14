@@ -28,7 +28,7 @@ JSHandle<JSTaggedValue> NapiModuleLoader::LoadModuleNameSpaceWithModuleInfo(Ecma
         "," << "modulePath:" << modulePath;
     JSThread *thread = vm->GetJSThread();
     std::shared_ptr<JSPandaFile> curJsPandaFile;
-    if (modulePath.size() != 0) {
+    if (!modulePath.empty()) {
         curJsPandaFile = JSPandaFileManager::GetInstance()->LoadJSPandaFile(
             thread, abcFilePath, requestPath, false, ExecuteTypes::NAPI);
         RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
@@ -48,10 +48,10 @@ JSHandle<JSTaggedValue> NapiModuleLoader::LoadModuleNameSpaceWithModuleInfo(Ecma
 }
 
 JSHandle<JSTaggedValue> NapiModuleLoader::LoadModuleNameSpace(EcmaVM *vm, CString requestPath,
-    CString moduleName, CString &abcFilePath)
+    const CString& moduleName, CString& abcFilePath)
 {
     JSThread *thread = vm->GetJSThread();
-    CString path = vm->GetBundleName() + PathHelper::SLASH_TAG;
+    CString path = base::ConcatToCString(vm->GetBundleName(), PathHelper::SLASH_TAG);
     // RequestPath starts with ets/xxx
     if (StringHelper::StringStartWith(requestPath, ModulePathHelper::PREFIX_ETS)) {
         path += moduleName;
@@ -60,7 +60,7 @@ JSHandle<JSTaggedValue> NapiModuleLoader::LoadModuleNameSpace(EcmaVM *vm, CStrin
         return LoadModuleNameSpaceFromFile(thread, recordNameStr, abcFilePath);
     }
     CString abcModuleName = ModulePathHelper::GetModuleNameWithBaseFile(abcFilePath);
-    CString srcPrefix = abcModuleName + ModulePathHelper::PHYCICAL_FILE_PATH;
+    CString srcPrefix = base::ConcatToCString(abcModuleName, ModulePathHelper::PHYCICAL_FILE_PATH);
     path += abcModuleName;
     // RequestPath starts with moduleName/src/main/xxx
     if (StringHelper::StringStartWith(requestPath, srcPrefix)) {
@@ -74,7 +74,7 @@ JSHandle<JSTaggedValue> NapiModuleLoader::LoadModuleNameSpace(EcmaVM *vm, CStrin
     JSThread *thread = vm->GetJSThread();
     CString moduleName = ModulePathHelper::GetModuleNameWithPath(modulePath);
     CString abcFilePath = ModulePathHelper::ConcatPandaFilePath(moduleName);
-    CString srcPrefix = moduleName + ModulePathHelper::PHYCICAL_FILE_PATH;
+    CString srcPrefix = base::ConcatToCString(moduleName, ModulePathHelper::PHYCICAL_FILE_PATH);
     // RequestPath starts with moduleName/src/main/xxx
     if (StringHelper::StringStartWith(requestPath, srcPrefix)) {
         return LoadFilePathWithinModule(thread, abcFilePath, srcPrefix, requestPath, modulePath);
@@ -82,8 +82,8 @@ JSHandle<JSTaggedValue> NapiModuleLoader::LoadModuleNameSpace(EcmaVM *vm, CStrin
     return LoadModuleNameSpaceWithModuleInfo(vm, requestPath, modulePath, abcFilePath);
 }
 
-JSHandle<JSTaggedValue> NapiModuleLoader::LoadFilePathWithinModule(JSThread *thread, CString abcFilePath,
-    CString srcPrefix, CString requestPath, CString modulePath)
+JSHandle<JSTaggedValue> NapiModuleLoader::LoadFilePathWithinModule(JSThread *thread, const CString& abcFilePath,
+    const CString& srcPrefix, const CString& requestPath, const CString& modulePath)
 {
     if (requestPath.size() > srcPrefix.size()) {
         // Sub after moduleName/src/main/
@@ -99,11 +99,10 @@ JSHandle<JSTaggedValue> NapiModuleLoader::LoadFilePathWithinModule(JSThread *thr
 }
 
 JSHandle<JSTaggedValue> NapiModuleLoader::LoadModuleNameSpaceWithPath(JSThread *thread, CString &abcFilePath,
-    CString &requestPath, CString &modulePath, const JSPandaFile *pandaFile)
+    const CString &requestPath, const CString &modulePath, const JSPandaFile *pandaFile)
 {
-    auto [isNative, moduleType] = SourceTextModule::CheckNativeModule(requestPath);
     ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
-    if (isNative) {
+    if (SourceTextModule::IsNativeModule(requestPath)) {
         JSHandle<JSTaggedValue> moduleHandle = moduleManager->LoadNativeModule(thread, requestPath);
         return moduleHandle;
     }
@@ -147,7 +146,7 @@ JSHandle<JSTaggedValue> NapiModuleLoader::GetModuleNameSpace(JSThread *thread, c
     // IsInstantiatedModule is for lazy module to execute
     if (moduleManager->NeedExecuteModule(entryPoint)) {
         if (!JSPandaFileExecutor::ExecuteFromAbcFile(
-            thread, abcFilePath, entryPoint.c_str(), false, ExecuteTypes::NAPI)) {
+            thread, abcFilePath, entryPoint, false, ExecuteTypes::NAPI)) {
             CString msg = "Cannot execute request from napi load module : " + entryPoint +
                 ", from napi load module";
             THROW_NEW_ERROR_AND_RETURN_HANDLE(thread, ErrorType::REFERENCE_ERROR, JSTaggedValue, msg.c_str());

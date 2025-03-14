@@ -25,12 +25,12 @@ CString GetOutEntryPoint(EcmaVM *vm, const CString &inputFileName)
     // in this case, the path ets does not need to be combined.
     // inputFileName: .test/xxx/xxx.abc
     if (StringHelper::StringStartWith(inputFileName, ModulePathHelper::PREVIER_TEST_DIR)) {
-        outEntryPoint = vm->GetBundleName() + PathHelper::SLASH_TAG + vm->GetModuleName() +
-                        PathHelper::SLASH_TAG + inputFileName;
+        outEntryPoint = base::ConcatToCString(vm->GetBundleName(), PathHelper::SLASH_TAG, vm->GetModuleName(),
+            PathHelper::SLASH_TAG, inputFileName);
     } else {
         // inputFileName: xxx/xxx.abc
-        outEntryPoint = vm->GetBundleName() + PathHelper::SLASH_TAG + vm->GetModuleName() +
-                        ModulePathHelper::MODULE_DEFAULE_ETS + inputFileName;
+        outEntryPoint = base::ConcatToCString(vm->GetBundleName(), PathHelper::SLASH_TAG, vm->GetModuleName(),
+            ModulePathHelper::MODULE_DEFAULE_ETS, inputFileName);
     }
     return outEntryPoint;
 }
@@ -47,10 +47,11 @@ CString GetBaseFileName(EcmaVM *vm, [[maybe_unused]] CString &moduleRequestName,
     CString currentModuleName = currentVec[1];
     PathHelper::DeleteNamespace(currentModuleName);
     if (bundleName != vm->GetBundleName()) {
-        baseFileName = ModulePathHelper::BUNDLE_INSTALL_PATH + bundleName + PathHelper::SLASH_TAG + moduleName +
-                        PathHelper::SLASH_TAG + moduleName + ModulePathHelper::MERGE_ABC_ETS_MODULES;
+        baseFileName = base::ConcatToCString(ModulePathHelper::BUNDLE_INSTALL_PATH, bundleName, PathHelper::SLASH_TAG,
+            moduleName, PathHelper::SLASH_TAG, moduleName, ModulePathHelper::MERGE_ABC_ETS_MODULES);
     } else if (currentModuleName != vm->GetModuleName()) {
-        baseFileName = ModulePathHelper::BUNDLE_INSTALL_PATH + moduleName + ModulePathHelper::MERGE_ABC_ETS_MODULES;
+        baseFileName = base::ConcatToCString(ModulePathHelper::BUNDLE_INSTALL_PATH, moduleName,
+            ModulePathHelper::MERGE_ABC_ETS_MODULES);
     }
     return baseFileName;
 }

@@ -254,7 +254,7 @@ HWTEST_F_L0(StringHelperTest, GetSpecifiedLine)
 HWTEST_F_L0(StringHelperTest, Replace)
 {
     CString sourceStr = "@arkui-x.test.path";
-    CString result = StringHelper::Replace(sourceStr, "@arkui-x.", "@ohos:");
+    CString result = StringHelper::Replace<CString>(sourceStr, "@arkui-x.", "@ohos:");
     EXPECT_STREQ(result.c_str(), "@ohos:test.path");
 }
 }  // namespace panda::test

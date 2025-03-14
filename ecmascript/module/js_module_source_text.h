@@ -155,7 +155,8 @@ public:
                                        const JSHandle<IndirectExportEntry> &exportEntry, size_t idx, uint32_t len);
     static void AddStarExportEntry(JSThread *thread, const JSHandle<SourceTextModule> &module,
                                    const JSHandle<StarExportEntry> &exportEntry, size_t idx, uint32_t len);
-    static std::pair<bool, ModuleTypes> CheckNativeModule(const CString &moduleRequestName);
+    static bool IsNativeModule(const CString &moduleRequestName);
+    static ModuleTypes GetNativeModuleType(const CString &moduleRequestName);
     static Local<JSValueRef> GetRequireNativeModuleFunc(EcmaVM *vm, ModuleTypes moduleType);
     static void MakeNormalizedAppArgs(const EcmaVM *vm, std::vector<Local<JSValueRef>> &arguments,
         const CString &soPath, const CString &moduleName);

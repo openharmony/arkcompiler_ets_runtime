@@ -61,43 +61,43 @@ enum ValidateFilePath { ABC, ETS_MODULES };
 
 class ModulePathHelper {
 public:
-    static constexpr char EXT_NAME_ABC[] = ".abc";
-    static constexpr char EXT_NAME_ETS[] = ".ets";
-    static constexpr char EXT_NAME_TS[] = ".ts";
-    static constexpr char EXT_NAME_JS[] = ".js";
-    static constexpr char EXT_NAME_JSON[] = ".json";
-    static constexpr char EXT_NAME_Z_SO[] = ".z.so";
-    static constexpr char EXT_NAME_D_TS[] = ".d.ts";
-    static constexpr char EXT_NAME_MJS[] = ".mjs";
-    static constexpr char EXT_NAME_HQF[] = ".hqf";
-    static constexpr char PREFIX_NORMALIZED[] = "@normalized:";
-    static constexpr char PREFIX_NORMALIZED_SO[] = "@normalized:Y";
-    static constexpr char PREFIX_NORMALIZED_NOT_SO[] = "@normalized:N";
-    static constexpr char PREFIX_NORMALIZED_NOT_CROSS_HAP_FILE[] = "@normalized:N&&&";
-    static constexpr char PREFIX_BUNDLE[] = "@bundle:";
-    static constexpr char PREFIX_MODULE[] = "@module:";
-    static constexpr char PREFIX_PACKAGE[] = "@package:";
-    static constexpr char PREFIX_ETS[] = "ets/";
-    static constexpr char PREFIX_LIB[] = "lib";
-    static constexpr char REQUIRE_NAITVE_MODULE_PREFIX[] = "@native:";
-    static constexpr char REQUIRE_NAPI_OHOS_PREFIX[] = "@ohos:";
-    static constexpr char REQUIRE_NAPI_APP_PREFIX[] = "@app:";
-    static constexpr char RAW_ARKUIX_PREFIX[] = "@arkui-x.";
-    static constexpr char NPM_PATH_SEGMENT[] = "node_modules";
-    static constexpr char PACKAGE_PATH_SEGMENT[] = "pkg_modules";
-    static constexpr char PACKAGE_ENTRY_FILE[] = "/index";
-    static constexpr char BUNDLE_INSTALL_PATH[] = "/data/storage/el1/bundle/";
-    static constexpr char MERGE_ABC_ETS_MODULES[] = "/ets/modules.abc";
-    static constexpr char ABC[] = ".abc";
-    static constexpr char MODULE_DEFAULE_ETS[] = "/ets/";
-    static constexpr char BUNDLE_SUB_INSTALL_PATH[] = "/data/storage/el1/";
-    static constexpr char PREVIEW_OF_ACROSS_HAP_FLAG[] = "[preview]";
-    static constexpr char PREVIER_TEST_DIR[] = ".test";
-    static constexpr char PHYCICAL_FILE_PATH[] = "/src/main";
-    static constexpr char VMA_NAME_ARKTS_CODE[] = "ArkTS Code";
-    static constexpr char ENTRY_MAIN_FUNCTION[] = "_GLOBAL::func_main_0";
-    static constexpr char ENTRY_FUNCTION_NAME[] = "func_main_0";
-    static constexpr char TRUE_FLAG[] = "true";
+    static constexpr std::string_view EXT_NAME_ABC = ".abc";
+    static constexpr std::string_view EXT_NAME_ETS = ".ets";
+    static constexpr std::string_view EXT_NAME_TS = ".ts";
+    static constexpr std::string_view EXT_NAME_JS = ".js";
+    static constexpr std::string_view EXT_NAME_JSON = ".json";
+    static constexpr std::string_view EXT_NAME_Z_SO = ".z.so";
+    static constexpr std::string_view EXT_NAME_D_TS = ".d.ts";
+    static constexpr std::string_view EXT_NAME_MJS = ".mjs";
+    static constexpr std::string_view EXT_NAME_HQF = ".hqf";
+    static constexpr std::string_view PREFIX_NORMALIZED = "@normalized:";
+    static constexpr std::string_view PREFIX_NORMALIZED_SO = "@normalized:Y";
+    static constexpr std::string_view PREFIX_NORMALIZED_NOT_SO = "@normalized:N";
+    static constexpr std::string_view PREFIX_NORMALIZED_NOT_CROSS_HAP_FILE = "@normalized:N&&&";
+    static constexpr std::string_view PREFIX_BUNDLE = "@bundle:";
+    static constexpr std::string_view PREFIX_MODULE = "@module:";
+    static constexpr std::string_view PREFIX_PACKAGE = "@package:";
+    static constexpr std::string_view PREFIX_ETS = "ets/";
+    static constexpr std::string_view PREFIX_LIB = "lib";
+    static constexpr std::string_view REQUIRE_NAITVE_MODULE_PREFIX = "@native:";
+    static constexpr std::string_view REQUIRE_NAPI_OHOS_PREFIX = "@ohos:";
+    static constexpr std::string_view REQUIRE_NAPI_APP_PREFIX = "@app:";
+    static constexpr std::string_view RAW_ARKUIX_PREFIX = "@arkui-x.";
+    static constexpr std::string_view NPM_PATH_SEGMENT = "node_modules";
+    static constexpr std::string_view PACKAGE_PATH_SEGMENT = "pkg_modules";
+    static constexpr std::string_view PACKAGE_ENTRY_FILE = "/index";
+    static constexpr std::string_view BUNDLE_INSTALL_PATH = "/data/storage/el1/bundle/";
+    static constexpr std::string_view MERGE_ABC_ETS_MODULES = "/ets/modules.abc";
+    static constexpr std::string_view ABC = ".abc";
+    static constexpr std::string_view MODULE_DEFAULE_ETS = "/ets/";
+    static constexpr std::string_view BUNDLE_SUB_INSTALL_PATH = "/data/storage/el1/";
+    static constexpr std::string_view PREVIEW_OF_ACROSS_HAP_FLAG = "[preview]";
+    static constexpr std::string_view PREVIER_TEST_DIR = ".test";
+    static constexpr std::string_view PHYCICAL_FILE_PATH = "/src/main";
+    static constexpr std::string_view VMA_NAME_ARKTS_CODE = "ArkTS Code";
+    static constexpr std::string_view ENTRY_MAIN_FUNCTION = "_GLOBAL::func_main_0";
+    static constexpr std::string_view ENTRY_FUNCTION_NAME = "func_main_0";
+    static constexpr std::string_view TRUE_FLAG = "true";
 
     static constexpr size_t MAX_PACKAGE_LEVEL = 1;
     static constexpr size_t SEGMENTS_LIMIT_TWO = 2;
@@ -175,14 +175,14 @@ public:
     static void TranstaleExpressionInput(const JSPandaFile *jsPandaFile, CString &requestPath);
     static CString GetModuleNameWithBaseFile(const CString &baseFileName);
     static CString TranslateExpressionInputWithEts(JSThread *thread, const JSPandaFile *jsPandaFile,
-                                                   CString &baseFileName, const CString &requestName);
+                                                   const CString &baseFileName, const CString &requestName);
     static void ParseCrossModuleFile(const JSPandaFile *jsPandaFile, CString &requestPath);
-    static CString ReformatPath(CString requestName);
+    static CString ReformatPath(const CString& requestName);
     static CString TranslateExpressionToNormalized(JSThread *thread, const JSPandaFile *jsPandaFile,
                                                    [[maybe_unused]] CString &baseFileName, const CString &recordName,
                                                    CString &requestPath);
-    static CVector<CString> GetPkgContextInfoListElements(EcmaVM *vm, CString &moduleName,
-                                                          CString &packageName);
+    static CVector<CString> GetPkgContextInfoListElements(EcmaVM *vm, const CString &moduleName,
+                                                          const CString &packageName);
     static CString TranslateNapiFileRequestPath(JSThread *thread, const CString &modulePath,
                                                 const CString &requestName);
     static CVector<CString> SplitNormalizedOhmurl(const CString &ohmurl);
@@ -201,13 +201,14 @@ public:
                                                                   CString &baseFileName, const CString &recordName,
                                                                   const CString &requestName);
     static void ConcatOtherNormalizedOhmurl(EcmaVM *vm, const JSPandaFile *jsPandaFile,
-                                            [[maybe_unused]] CString &baseFileName, CString &requestPath);
-    static CString ConcatNormalizedOhmurlWithData(CVector<CString> &data, CString &pkgName, CString &entryPath);
+                                            [[maybe_unused]] const CString &baseFileName, CString &requestPath);
+    static CString ConcatNormalizedOhmurlWithData(const CVector<CString> &data, const CString &pkgName,
+                                                  CString &entryPath);
     static CString GetBundleNameWithRecordName(EcmaVM *vm, const CString &recordName);
     static CString Utf8ConvertToString(JSTaggedValue str);
 
     static CString ParseFileNameToVMAName(const CString &filename);
-    static CString ConcatOtherNormalizedOhmurlWithFilePath(EcmaVM *vm, size_t filePathPos, CString &moduleName,
+    static CString ConcatOtherNormalizedOhmurlWithFilePath(EcmaVM *vm, size_t filePathPos, const CString &moduleName,
                                                            const CString &requestPath);
     static bool IsOhmUrl(const CString &str);
     static bool CheckAndGetRecordName(JSThread *thread, const CString &ohmUrl, CString &recordName);
@@ -227,7 +228,7 @@ public:
                 return hapPath.substr(0, pos).c_str();
             }
         }
-        return std::string();
+        return {};
     }
 
     /*
@@ -246,7 +247,7 @@ public:
         if (jsPandaFile->HasRecord(entryPoint)) {
             return entryPoint;
         }
-        return CString();
+        return {};
     }
 
     inline static bool IsNativeModuleRequest(const CString &requestName)
@@ -266,26 +267,24 @@ public:
      * Before: bundleName/moduleName/ets/xxx/xxx
      * After:  moduleName
      */
-    inline static CString GetModuleName(const CString recordName)
+    inline static CString GetModuleName(const CString& recordName)
     {
-        size_t pos1 = recordName.find(PathHelper::SLASH_TAG);
-        if (pos1 != CString::npos) {
+        if (size_t pos1 = recordName.find(PathHelper::SLASH_TAG); pos1 != CString::npos) {
             pos1++;
-            size_t pos2 = recordName.find(PathHelper::SLASH_TAG, pos1);
-            if (pos2 != CString::npos) {
+            if (const size_t pos2 = recordName.find(PathHelper::SLASH_TAG, pos1); pos2 != CString::npos) {
                 CString moduleName = recordName.substr(pos1, pos2 - pos1);
                 PathHelper::DeleteNamespace(moduleName);
                 return moduleName;
             }
         }
-        return CString();
+        return {};
     }
 
     /*
      * Before: &moduleName/src/xxx
      * After:  moduleName
      */
-    inline static CString GetModuleNameWithNormalizedName(const CString recordName)
+    inline static CString GetModuleNameWithNormalizedName(const CString& recordName)
     {
         size_t pos1 = recordName.find(PathHelper::NORMALIZED_OHMURL_TAG);
         if (pos1 != CString::npos) {
@@ -296,21 +295,21 @@ public:
                 return moduleName;
             }
         }
-        return CString();
+        return {};
     }
 
     /*
      * Before: bundleName/moduleName
      * After:  moduleName
      */
-    inline static CString GetModuleNameWithPath(const CString modulePath)
+    inline static CString GetModuleNameWithPath(const CString& modulePath)
     {
         size_t pos1 = modulePath.find(PathHelper::SLASH_TAG);
         if (pos1 != CString::npos) {
             pos1++;
             return modulePath.substr(pos1, modulePath.size() - pos1 + 1);
         }
-        return CString();
+        return {};
     }
     /*
      * Before: @xxx.
@@ -334,10 +333,10 @@ public:
      */
     inline static CString ConcatPandaFilePath(const CString &moduleName)
     {
-        if (moduleName.size() == 0) {
-            return CString();
+        if (moduleName.empty()) {
+            return {};
         }
-        return BUNDLE_INSTALL_PATH + moduleName + MERGE_ABC_ETS_MODULES;
+        return base::ConcatToCString(BUNDLE_INSTALL_PATH, moduleName, MERGE_ABC_ETS_MODULES);
     }
 
     inline static CString GetBundleNameFromNormalized(const EcmaVM *vm, const CString &moduleName)
@@ -348,7 +347,7 @@ public:
             return "";
         }
         CString bundleName = res[NORMALIZED_BUNDLE_NAME_INDEX];
-        if (bundleName.size() == 0) {
+        if (bundleName.empty()) {
             return vm->GetBundleName();
         }
         return bundleName;
