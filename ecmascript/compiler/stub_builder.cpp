@@ -2831,6 +2831,7 @@ GateRef StubBuilder::ICStoreElement(GateRef glue, GateRef receiver, GateRef key,
     }
     Bind(&indexNotLessZero);
     {
+        DEFVARIABLE(isOnPrototype, VariableType::BOOL(), False());
         Jump(&loopHead);
         LoopBegin(&loopHead);
         BRANCH(TaggedIsInt(*varHandler), &handlerIsInt, &handlerNotInt);
@@ -2870,11 +2871,24 @@ GateRef StubBuilder::ICStoreElement(GateRef glue, GateRef receiver, GateRef key,
                         Int32Add(index, Int32(1)));
                     if (updateHandler) {
                         Label update(env);
+                        Label setObject(env);
+                        Label setPrototype(env);
                         GateRef oldHandler = GetValueFromTaggedArray(profileTypeInfo, slotId);
-                        BRANCH(Equal(oldHandler, *varHandler), &update, &handerInfoNotJSArray);
+                        BRANCH(Equal(oldHandler, Hole()), &handerInfoNotJSArray, &update);
                         Bind(&update);
-                        handler = Int64ToTaggedInt(UpdateSOutOfBoundsForHandler(handlerInfo));
-                        SetValueToTaggedArray(VariableType::JS_ANY(), glue, profileTypeInfo, slotId, handler);
+                        {
+                            handler = Int64ToTaggedInt(UpdateSOutOfBoundsForHandler(handlerInfo));
+                            BRANCH(Equal(*isOnPrototype, False()), &setObject, &setPrototype);
+                            Bind(&setObject);
+                            {
+                                SetValueToTaggedArray(VariableType::JS_ANY(), glue, profileTypeInfo, slotId, handler);
+                                Jump(&handerInfoNotJSArray);
+                            }
+                            Bind(&setPrototype);
+                            {
+                                SetPrototypeHandlerHandlerInfo(glue, oldHandler, handler);
+                            }
+                        }
                     }
                 }
                 Jump(&handerInfoNotJSArray);
@@ -2921,6 +2935,7 @@ GateRef StubBuilder::ICStoreElement(GateRef glue, GateRef receiver, GateRef key,
             }
             Bind(&loopEnd);
             {
+                isOnPrototype = True();
                 varHandler = GetPrototypeHandlerHandlerInfo(*varHandler);
                 LoopEnd(&loopHead, env, glue);
             }

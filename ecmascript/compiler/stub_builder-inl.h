@@ -1828,6 +1828,12 @@ inline GateRef StubBuilder::GetPrototypeHandlerHandlerInfo(GateRef object)
     return Load(VariableType::JS_ANY(), object, handlerInfoOffset);
 }
 
+inline void StubBuilder::SetPrototypeHandlerHandlerInfo(GateRef glue, GateRef obj, GateRef value)
+{
+    GateRef handlerInfoOffset = IntPtr(PrototypeHandler::HANDLER_INFO_OFFSET);
+    Store(VariableType::JS_ANY(), glue, obj, handlerInfoOffset, value);
+}
+
 inline GateRef StubBuilder::GetStoreAOTHandlerHolder(GateRef object)
 {
     GateRef holderOffset = IntPtr(StoreAOTHandler::HOLDER_OFFSET);

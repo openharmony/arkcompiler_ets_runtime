@@ -15,4 +15,5 @@ import("//arkcompiler/ets_runtime/test/test_helper.gni")
 
 host_jit_test_action("pgo_stobjbyvalue") {
   deps = []
+  extra_option = " --log-info=trace --compiler-trace-deopt=true "
 }
