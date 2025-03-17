@@ -176,4 +176,4 @@ return BigNum;
 BigNum = clone();
 BigNum['default'] = BigNum.BigNum = BigNum;
 
-printf("compile success");
+print("compile success");
