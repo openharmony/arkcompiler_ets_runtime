@@ -75,13 +75,13 @@ public:
     static constexpr char COMMONJS_CLASS[] = "L_CommonJsRecord;";
     static constexpr char HASTLA_CLASS[] = "L_HasTopLevelAwait;";
 
-    static constexpr char IS_COMMON_JS[] = "isCommonjs";
-    static constexpr char IS_JSON_CONTENT[] = "jsonFileContent";
-    static constexpr char MODULE_RECORD_IDX[] = "moduleRecordIdx";
-    static constexpr char IS_SHARED_MODULE[] = "isSharedModule";
-    static constexpr char HAS_TOP_LEVEL_AWAIT[] = "hasTopLevelAwait";
-    static constexpr char LAZY_IMPORT[] = "moduleRequestPhaseIdx";
-    static constexpr char PACKAGE_NAME[] = "pkgName@";
+    static constexpr std::string_view IS_COMMON_JS = "isCommonjs";
+    static constexpr std::string_view IS_JSON_CONTENT = "jsonFileContent";
+    static constexpr std::string_view MODULE_RECORD_IDX = "moduleRecordIdx";
+    static constexpr std::string_view IS_SHARED_MODULE = "isSharedModule";
+    static constexpr std::string_view HAS_TOP_LEVEL_AWAIT = "hasTopLevelAwait";
+    static constexpr std::string_view LAZY_IMPORT = "moduleRequestPhaseIdx";
+    static constexpr std::string_view PACKAGE_NAME = "pkgName@";
     static constexpr char MERGE_ABC_NAME[] = "modules.abc";
     static constexpr char NPM_PATH_SEGMENT[] = "node_modules";
     static constexpr char PACKAGE_PATH_SEGMENT[] = "pkg_modules";

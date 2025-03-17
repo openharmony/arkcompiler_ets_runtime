@@ -53,8 +53,8 @@ void JSPandaFile::CheckIsBundlePack()
         cda.EnumerateFields([&](panda_file::FieldDataAccessor &fieldAccessor) -> void {
             panda_file::File::EntityId fieldNameId = fieldAccessor.GetNameId();
             panda_file::File::StringData sd = GetStringData(fieldNameId);
-            const char *fieldName = utf::Mutf8AsCString(sd.data);
-            if (std::strcmp(IS_COMMON_JS, fieldName) == 0 || std::strcmp(MODULE_RECORD_IDX, fieldName) == 0) {
+            std::string_view fieldName(utf::Mutf8AsCString(sd.data), sd.utf16_length);
+            if ((IS_COMMON_JS == fieldName) || (MODULE_RECORD_IDX == fieldName)) {
                 isBundlePack_ = false;
             }
         });
@@ -139,12 +139,12 @@ void JSPandaFile::InitializeUnMergedPF()
         }
         panda_file::ClassDataAccessor cda(*pf_, classId);
         numMethods_ += cda.GetMethodsNumber();
-        const char *desc = utf::Mutf8AsCString(cda.GetDescriptor());
-        if (info->moduleRecordIdx == -1 && std::strcmp(MODULE_CLASS, desc) == 0) {
+        std::string_view desc(utf::Mutf8AsCString(cda.GetDescriptor()));
+        if (info->moduleRecordIdx == -1 && MODULE_CLASS == desc) {
             cda.EnumerateFields([&](panda_file::FieldDataAccessor &fieldAccessor) -> void {
                 panda_file::File::EntityId fieldNameId = fieldAccessor.GetNameId();
                 panda_file::File::StringData sd = GetStringData(fieldNameId);
-                CString fieldName = utf::Mutf8AsCString(sd.data);
+                std::string_view fieldName(utf::Mutf8AsCString(sd.data), sd.utf16_length);
                 if (fieldName != desc_) {
                     info->moduleRecordIdx = fieldAccessor.GetValue<int32_t>().value();
                     info->classId = index;
@@ -152,14 +152,14 @@ void JSPandaFile::InitializeUnMergedPF()
                 }
             });
         }
-        if (!info->isCjs && std::strcmp(COMMONJS_CLASS, desc) == 0) {
+        if (!info->isCjs && COMMONJS_CLASS == desc) {
             info->classId = index;
             info->isCjs = true;
         }
-        if (!info->isSharedModule && std::strcmp(IS_SHARED_MODULE, desc) == 0) {
+        if (!info->isSharedModule && IS_SHARED_MODULE == desc) {
             info->isSharedModule = true;
         }
-        if (!info->hasTopLevelAwait && std::strcmp(HASTLA_CLASS, desc) == 0) {
+        if (!info->hasTopLevelAwait && HASTLA_CLASS == desc) {
             info->hasTopLevelAwait = true;
         }
     }
@@ -190,25 +190,26 @@ void JSPandaFile::InitializeMergedPF()
         cda.EnumerateFields([&](panda_file::FieldDataAccessor &fieldAccessor) -> void {
             panda_file::File::EntityId fieldNameId = fieldAccessor.GetNameId();
             panda_file::File::StringData sd = GetStringData(fieldNameId);
-            const char *fieldName = utf::Mutf8AsCString(sd.data);
-            if (std::strcmp(IS_COMMON_JS, fieldName) == 0) {
+            std::string_view fieldName(utf::Mutf8AsCString(sd.data), sd.utf16_length);
+            if (IS_COMMON_JS == fieldName) {
                 hasCjsFiled = true;
                 info->isCjs = fieldAccessor.GetValue<bool>().value();
-            } else if (std::strcmp(IS_JSON_CONTENT, fieldName) == 0) {
+            } else if (IS_JSON_CONTENT == fieldName) {
                 hasJsonFiled = true;
                 info->isJson = true;
                 info->jsonStringId = fieldAccessor.GetValue<uint32_t>().value();
-            } else if (std::strcmp(MODULE_RECORD_IDX, fieldName) == 0) {
+            } else if (MODULE_RECORD_IDX == fieldName) {
                 info->moduleRecordIdx = fieldAccessor.GetValue<int32_t>().value();
-            } else if (std::strcmp(IS_SHARED_MODULE, fieldName) == 0) {
+            } else if (IS_SHARED_MODULE == fieldName) {
                 info->isSharedModule = fieldAccessor.GetValue<bool>().value();
-            } else if (std::strcmp(HAS_TOP_LEVEL_AWAIT, fieldName) == 0) {
+            } else if (HAS_TOP_LEVEL_AWAIT == fieldName) {
                 info->hasTopLevelAwait = fieldAccessor.GetValue<bool>().value();
-            } else if (std::strcmp(LAZY_IMPORT, fieldName) == 0) {
+            } else if (LAZY_IMPORT == fieldName) {
                 info->lazyImportIdx = fieldAccessor.GetValue<uint32_t>().value();
-            } else if (std::strlen(fieldName) > PACKAGE_NAME_LEN &&
-                       std::strncmp(fieldName, PACKAGE_NAME, PACKAGE_NAME_LEN) == 0) {
-                info->npmPackageName = fieldName + PACKAGE_NAME_LEN;
+            } else if (sd.utf16_length > PACKAGE_NAME_LEN &&
+                       fieldName.substr(0, PACKAGE_NAME_LEN) == PACKAGE_NAME) {
+                std::string_view packageSuffix = fieldName.substr(PACKAGE_NAME_LEN);
+                info->npmPackageName = CString(packageSuffix);
             } else {
                 npmEntries_.emplace(recordName, fieldName);
             }
