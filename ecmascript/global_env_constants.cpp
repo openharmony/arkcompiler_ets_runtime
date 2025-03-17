@@ -103,7 +103,7 @@ void GlobalEnvConstants::InitSharedRootsClasses(ObjectFactory *factory)
 
     SetConstant(ConstantIndex::HCLASS_CLASS_INDEX, JSTaggedValue(hClass));
     // To reverse the order, the hclass of string needs to load default supers
-    SetConstant(ConstantIndex::ARRAY_CLASS_INDEX,
+    SetConstant(ConstantIndex::TAGGED_ARRAY_CLASS_INDEX,
         factory->NewSEcmaReadOnlyHClass(hClass, 0, JSType::TAGGED_ARRAY));
     SetConstant(ConstantIndex::FREE_OBJECT_WITH_NONE_FIELD_CLASS_INDEX,
                 factory->NewSEcmaReadOnlyHClass(hClass, FreeObject::NEXT_OFFSET, JSType::FREE_OBJECT_WITH_NONE_FIELD));

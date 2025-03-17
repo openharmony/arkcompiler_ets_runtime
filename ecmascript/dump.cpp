@@ -3162,10 +3162,10 @@ void PrototypeHandler::Dump(std::ostream &os) const
     GetHandlerInfo().Dump(os);
     os << "\n";
     os << " - ProtoCell: ";
-    GetHandlerInfo().Dump(os);
+    GetProtoCell().Dump(os);
     os << "\n";
     os << " - Holder: ";
-    GetHandlerInfo().Dump(os);
+    GetHolder().Dump(os);
     os << "\n";
 }
 
@@ -3187,8 +3187,8 @@ void TransWithProtoHandler::Dump(std::ostream &os) const
     os << " - TransitionHClass: ";
     GetTransitionHClass().Dump(os);
     os << "\n";
-    os << " - Holder: ";
-    GetHandlerInfo().Dump(os);
+    os << " - ProtoCell: ";
+    GetProtoCell().Dump(os);
     os << "\n";
 }
 
@@ -3198,10 +3198,10 @@ void StoreAOTHandler::Dump(std::ostream &os) const
     GetHandlerInfo().Dump(os);
     os << "\n";
     os << " - ProtoCell: ";
-    GetHandlerInfo().Dump(os);
+    GetProtoCell().Dump(os);
     os << "\n";
     os << " - Holder: ";
-    GetHandlerInfo().Dump(os);
+    GetHolder().Dump(os);
     os << "\n";
 }
 

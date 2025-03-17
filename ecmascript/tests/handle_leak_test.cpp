@@ -112,7 +112,7 @@ static void HeandleLeakTestCommon(const EcmaVM *instance, JSHandle<TaggedArray>&
 HWTEST_F_L0(HandleLeakTest, PartInitializeCheckMoreProperty)
 {
     EcmaHandleScope scope(thread);
-    JSHandle<JSHClass> arrayClass(thread->GlobalConstants()->GetHandledArrayClass());
+    JSHandle<JSHClass> arrayClass(thread->GlobalConstants()->GetHandledTaggedArrayClass());
     static constexpr int SIZE = 100;
     JSHandle<TaggedArray> newArray(thread, const_cast<Heap *>(instance->GetHeap())->AllocateNonMovableOrHugeObject(
         *arrayClass, TaggedArray::ComputeSize(JSTaggedValue::TaggedTypeSize(), SIZE)));
@@ -132,7 +132,7 @@ HWTEST_F_L0(HandleLeakTest, PartInitializeCheckMoreProperty)
 HWTEST_F_L0(HandleLeakTest, InitializeCheckMoreProperty)
 {
     EcmaHandleScope scope(thread);
-    JSHandle<JSHClass> arrayClass(thread->GlobalConstants()->GetHandledArrayClass());
+    JSHandle<JSHClass> arrayClass(thread->GlobalConstants()->GetHandledTaggedArrayClass());
     static constexpr int SIZE = 100;
     JSHandle<TaggedArray> newArray(thread, const_cast<Heap *>(instance->GetHeap())->AllocateNonMovableOrHugeObject(
         *arrayClass, TaggedArray::ComputeSize(JSTaggedValue::TaggedTypeSize(), SIZE)));

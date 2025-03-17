@@ -2795,7 +2795,7 @@ JSHandle<TaggedArray> ObjectFactory::NewTaggedArray(uint32_t length, JSTaggedVal
 
     size_t size = TaggedArray::ComputeSize(JSTaggedValue::TaggedTypeSize(), length);
     TaggedObject *header = nullptr;
-    JSHClass *arrayClass = JSHClass::Cast(thread_->GlobalConstants()->GetArrayClass().GetTaggedObject());
+    JSHClass *arrayClass = JSHClass::Cast(thread_->GlobalConstants()->GetTaggedArrayClass().GetTaggedObject());
     switch (spaceType) {
         case MemSpaceType::SEMI_SPACE:
             header = heap_->AllocateYoungOrHugeObject(arrayClass, size);
@@ -2945,7 +2945,7 @@ JSHandle<TaggedArray> ObjectFactory::NewTaggedArrayWithoutInit(uint32_t length, 
 
     size_t size = TaggedArray::ComputeSize(JSTaggedValue::TaggedTypeSize(), length);
     TaggedObject *header = nullptr;
-    auto arrayClass = JSHClass::Cast(thread_->GlobalConstants()->GetArrayClass().GetTaggedObject());
+    auto arrayClass = JSHClass::Cast(thread_->GlobalConstants()->GetTaggedArrayClass().GetTaggedObject());
     switch (spaceType) {
         case MemSpaceType::SEMI_SPACE:
             header = heap_->AllocateYoungOrHugeObject(arrayClass, size);
@@ -3051,7 +3051,7 @@ JSHandle<TaggedHashArray> ObjectFactory::NewTaggedHashArray(uint32_t length)
 
     size_t size = TaggedArray::ComputeSize(JSTaggedValue::TaggedTypeSize(), length);
     auto header = heap_->AllocateYoungOrHugeObject(
-        JSHClass::Cast(thread_->GlobalConstants()->GetArrayClass().GetTaggedObject()), size);
+        JSHClass::Cast(thread_->GlobalConstants()->GetTaggedArrayClass().GetTaggedObject()), size);
     JSHandle<TaggedHashArray> array(thread_, header);
     array->InitializeWithSpecialValue(JSTaggedValue::Hole(), length);
     return array;
@@ -3136,7 +3136,7 @@ JSHandle<TaggedArray> ObjectFactory::ExtendArray(const JSHandle<TaggedArray> &ol
     if (old->GetClass()->IsMutantTaggedArray()) {
         arrayClass = JSHClass::Cast(thread_->GlobalConstants()->GetMutantTaggedArrayClass().GetTaggedObject());
     } else {
-        arrayClass = JSHClass::Cast(thread_->GlobalConstants()->GetArrayClass().GetTaggedObject());
+        arrayClass = JSHClass::Cast(thread_->GlobalConstants()->GetTaggedArrayClass().GetTaggedObject());
     }
     TaggedObject *header = AllocObjectWithSpaceType(size, arrayClass, type);
     JSHandle<TaggedArray> newArray(thread_, header);
@@ -3180,7 +3180,7 @@ JSHandle<TaggedArray> ObjectFactory::CopyPartArray(const JSHandle<TaggedArray> &
     NewObjectHook();
     size_t size = TaggedArray::ComputeSize(JSTaggedValue::TaggedTypeSize(), newLength);
     auto header = heap_->AllocateYoungOrHugeObject(
-        JSHClass::Cast(thread_->GlobalConstants()->GetArrayClass().GetTaggedObject()), size);
+        JSHClass::Cast(thread_->GlobalConstants()->GetTaggedArrayClass().GetTaggedObject()), size);
     JSHandle<TaggedArray> newArray(thread_, header);
     newArray->InitializeWithSpecialValue(JSTaggedValue::Hole(), newLength, old->GetExtraLength());
 
@@ -3221,7 +3221,7 @@ JSHandle<TaggedArray> ObjectFactory::CopyArray(const JSHandle<TaggedArray> &old,
         if (old->GetClass()->IsMutantTaggedArray()) {
             arrayClass = JSHClass::Cast(thread_->GlobalConstants()->GetMutantTaggedArrayClass().GetTaggedObject());
         } else {
-            arrayClass = JSHClass::Cast(thread_->GlobalConstants()->GetArrayClass().GetTaggedObject());
+            arrayClass = JSHClass::Cast(thread_->GlobalConstants()->GetTaggedArrayClass().GetTaggedObject());
         }
         header = AllocObjectWithSpaceType(size, arrayClass, type);
     }
@@ -3245,7 +3245,7 @@ JSHandle<TaggedArray> ObjectFactory::CopyFromEnumCache(const JSHandle<TaggedArra
     uint32_t newLength = oldLength - EnumCache::ENUM_CACHE_HEADER_SIZE;
     size_t size = TaggedArray::ComputeSize(JSTaggedValue::TaggedTypeSize(), newLength);
     TaggedObject *header = heap_->AllocateYoungOrHugeObject(
-        JSHClass::Cast(thread_->GlobalConstants()->GetArrayClass().GetTaggedObject()), size);
+        JSHClass::Cast(thread_->GlobalConstants()->GetTaggedArrayClass().GetTaggedObject()), size);
     JSHandle<TaggedArray> newArray(thread_, header);
     newArray->SetLength(newLength);
     newArray->SetExtraLength(old->GetExtraLength());
@@ -4613,7 +4613,7 @@ JSHandle<TaggedArray> ObjectFactory::CopyDeque(const JSHandle<TaggedArray> &old,
     NewObjectHook();
     size_t size = TaggedArray::ComputeSize(JSTaggedValue::TaggedTypeSize(), newLength);
     auto header = heap_->AllocateYoungOrHugeObject(
-        JSHClass::Cast(thread_->GlobalConstants()->GetArrayClass().GetTaggedObject()), size);
+        JSHClass::Cast(thread_->GlobalConstants()->GetTaggedArrayClass().GetTaggedObject()), size);
     JSHandle<TaggedArray> newArray(thread_, header);
     newArray->InitializeWithSpecialValue(JSTaggedValue::Hole(), newLength, old->GetExtraLength());
 
@@ -4651,7 +4651,7 @@ JSHandle<TaggedArray> ObjectFactory::CopyQueue(const JSHandle<TaggedArray> &old,
     NewObjectHook();
     size_t size = TaggedArray::ComputeSize(JSTaggedValue::TaggedTypeSize(), newLength);
     auto header = heap_->AllocateYoungOrHugeObject(
-        JSHClass::Cast(thread_->GlobalConstants()->GetArrayClass().GetTaggedObject()), size);
+        JSHClass::Cast(thread_->GlobalConstants()->GetTaggedArrayClass().GetTaggedObject()), size);
     JSHandle<TaggedArray> newArray(thread_, header);
     newArray->InitializeWithSpecialValue(JSTaggedValue::Hole(), newLength, old->GetExtraLength());
 
