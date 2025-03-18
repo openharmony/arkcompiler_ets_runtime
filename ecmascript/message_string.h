@@ -77,7 +77,11 @@ namespace panda::ecmascript {
     V(ProxyGetPropertyHandlerIsNull, "JSProxy::GetProperty: handler is Null")                \
     V(ProxySetPropertyHandlerIsNull, "JSProxy::SetProperty: handler is Null")                \
     V(ProxySetPropertyReturnFalse, "JSProxy::SetProperty: 'set' return false")               \
-    V(InOperatorOnNonObject, "Cannot use 'in' operator in Non-Object")
+    V(InOperatorOnNonObject, "Cannot use 'in' operator in Non-Object")                       \
+    V(CurrentModuleUndefined, "GetModuleValueOutter currentModule failed")                   \
+    V(MisstakenResolvedBinding, "Get module value failed, mistaken ResolvedBinding")         \
+    V(CurrentModuleNotSourceTextModule, "Current module is not SourceTextModule")            \
+    V(RecordNameMustBeString, "RecordName must be string")
 
 #define DEBUG_CHECK_MESSAGE_STRING_LIST(V)                                                   \
     V(IsCallable)                                                                            \

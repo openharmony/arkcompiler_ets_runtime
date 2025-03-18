@@ -31,7 +31,7 @@ JSTaggedValue DynamicImport::ExecuteNativeOrJsonModule(JSThread *thread, const C
                                                        JSHandle<JSPromiseReactionsFunction> reject,
                                                        const JSPandaFile *jsPandaFile)
 {
-    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+    ModuleManager *moduleManager = thread->GetModuleManager();
     JSMutableHandle<JSTaggedValue> requiredModule(thread, thread->GlobalConstants()->GetUndefined());
     // IsInstantiatedModule is for lazy module to execute
     if (moduleManager->IsLocalModuleLoaded(specifierString) &&

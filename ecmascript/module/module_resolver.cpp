@@ -84,7 +84,7 @@ JSHandle<JSTaggedValue> ModuleResolver::HostResolveImportedModuleWithMerge(JSThr
     ReplaceModuleThroughFeature(thread, moduleRequestName);
 
     CString baseFilename{};
-    StageOfHotReload stageOfHotReload = thread->GetCurrentEcmaContext()->GetStageOfHotReload();
+    StageOfHotReload stageOfHotReload = thread->GetStageOfHotReload();
     if (stageOfHotReload == StageOfHotReload::BEGIN_EXECUTE_PATCHMAIN ||
         stageOfHotReload == StageOfHotReload::LOAD_END_EXECUTE_PATCHMAIN) {
         baseFilename = thread->GetEcmaVM()->GetQuickFixManager()->GetBaseFileName(module);
@@ -92,7 +92,7 @@ JSHandle<JSTaggedValue> ModuleResolver::HostResolveImportedModuleWithMerge(JSThr
         baseFilename = module->GetEcmaModuleFilenameString();
     }
 
-    auto moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+    auto moduleManager = thread->GetModuleManager();
     if (SourceTextModule::IsNativeModule(moduleRequestName)) {
         JSHandle<JSTaggedValue> cachedModule = moduleManager->TryGetImportedModule(moduleRequestName);
         if (!cachedModule->IsUndefined()) {
@@ -125,7 +125,7 @@ JSHandle<JSTaggedValue> ModuleResolver::HostResolveImportedModuleBundlePack(JSTh
     const JSHandle<JSTaggedValue> &moduleRequest,
     const ExecuteTypes &executeType)
 {
-    auto moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+    auto moduleManager = thread->GetModuleManager();
     CString moduleRequestStr = ModulePathHelper::Utf8ConvertToString(moduleRequest.GetTaggedValue());
     if (moduleManager->IsLocalModuleLoaded(moduleRequestStr)) {
         return JSHandle<JSTaggedValue>(moduleManager->HostGetImportedModule(moduleRequestStr));
@@ -161,7 +161,7 @@ JSHandle<JSTaggedValue> ModuleResolver::ResolveSharedImportedModuleWithMerge(JST
         return JSHandle<JSTaggedValue>(sharedModuleManager->GetSModule(thread, recordName));
     }
     // before resolving module completely, shared-module put into isolate -thread resolvedModules_ temporarily.
-    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+    ModuleManager *moduleManager = thread->GetModuleManager();
     JSHandle<JSTaggedValue> module = moduleManager->TryGetImportedModule(recordName);
     if (!module->IsUndefined()) {
         return module;
@@ -197,7 +197,7 @@ JSHandle<JSTaggedValue> ModuleResolver::HostResolveImportedModuleForHotReload(JS
     JSHandle<JSTaggedValue> moduleRecord =
         ResolveModuleWithMerge(thread, jsPandaFile.get(), recordName, recordInfo, executeType);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
-    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+    ModuleManager *moduleManager = thread->GetModuleManager();
     moduleManager->UpdateResolveImportedModule(recordName, moduleRecord.GetTaggedValue());
     return moduleRecord;
 }
@@ -227,7 +227,7 @@ JSHandle<JSTaggedValue> ModuleResolver::HostResolveImportedModuleWithMerge(JSThr
     if (jsPandaFile->IsSharedModule(recordInfo)) {
         return ResolveSharedImportedModuleWithMerge(thread, moduleFileName, recordName, jsPandaFile, recordInfo);
     }
-    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+    ModuleManager *moduleManager = thread->GetModuleManager();
     JSHandle<JSTaggedValue> module = moduleManager->TryGetImportedModule(recordName);
     if (!module->IsUndefined()) {
         return module;
@@ -243,7 +243,7 @@ JSHandle<JSTaggedValue> ModuleResolver::HostResolveImportedModuleBundlePackBuffe
                                                                                   const JSPandaFile *jsPandaFile,
                                                                                   const ExecuteTypes &executeType)
 {
-    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+    ModuleManager *moduleManager = thread->GetModuleManager();
     JSHandle<JSTaggedValue> module = moduleManager->TryGetImportedModule(referencingModule);
     if (!module->IsUndefined()) {
         return module;
@@ -254,7 +254,7 @@ JSHandle<JSTaggedValue> ModuleResolver::HostResolveImportedModuleBundlePack(JSTh
                                                                             const CString &referencingModule,
                                                                             const ExecuteTypes &executeType)
 {
-    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+    ModuleManager *moduleManager = thread->GetModuleManager();
     // Can not use jsPandaFile from js_pandafile_executor, need to construct with JSPandaFile::ENTRY_MAIN_FUNCTION
     std::shared_ptr<JSPandaFile> jsPandaFile =
         JSPandaFileManager::GetInstance()->LoadJSPandaFile(
@@ -305,7 +305,7 @@ JSHandle<JSTaggedValue> ModuleResolver::ResolveModuleBundlePack(JSThread *thread
     // json file can not be compiled into isolate abc.
     ASSERT(!jsPandaFile->IsJson(&recordInfo));
     ModuleDeregister::InitForDeregisterModule(moduleRecord, executeType);
-    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+    ModuleManager *moduleManager = thread->GetModuleManager();
     moduleManager->AddResolveImportedModule(moduleFileName, moduleRecord.GetTaggedValue());
     return moduleRecord;
 }
@@ -317,7 +317,7 @@ JSHandle<JSTaggedValue> ModuleResolver::ResolveNativeModule(JSThread *thread,
 {
     JSHandle<JSTaggedValue> moduleRecord =
         ModuleDataExtractor::ParseNativeModule(thread, moduleRequest, baseFileName, moduleType);
-    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+    ModuleManager *moduleManager = thread->GetModuleManager();
     moduleManager->AddResolveImportedModule(moduleRequest, moduleRecord.GetTaggedValue());
     return moduleRecord;
 }

@@ -34,7 +34,7 @@ void ModuleDeregister::FreeModuleRecord([[maybe_unused]] void *env, void *pointe
 
     // pointer is module's name, which will be deregistered.
     JSTaggedValue moduleVal =
-        thread->GetCurrentEcmaContext()->GetModuleManager()->HostGetImportedModule(pointer);
+        thread->GetModuleManager()->HostGetImportedModule(pointer);
     if (moduleVal.IsUndefined()) {
         return;
     }
@@ -62,7 +62,7 @@ void ModuleDeregister::FreeModuleRecord([[maybe_unused]] void *env, void *pointe
 void ModuleDeregister::ReviseLoadedModuleCount(JSThread *thread, const CString &moduleName)
 {
     EcmaVM *vm = thread->GetEcmaVM();
-    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+    ModuleManager *moduleManager = thread->GetModuleManager();
     if (!moduleManager->IsLocalModuleLoaded(moduleName)) {
         return;
     }
@@ -82,7 +82,7 @@ void ModuleDeregister::ReviseLoadedModuleCount(JSThread *thread, const CString &
 void ModuleDeregister::RemoveModule(JSThread *thread, JSHandle<SourceTextModule> module)
 {
     CString recordName = SourceTextModule::GetModuleName(module.GetTaggedValue());
-    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+    ModuleManager *moduleManager = thread->GetModuleManager();
     if (!thread->GetEcmaVM()->IsWorkerThread() &&
         (module->GetTypes() == ModuleTypes::APP_MODULE || module->GetTypes() == ModuleTypes::OHOS_MODULE)) {
         if (TryToRemoveSO(thread, module)) {

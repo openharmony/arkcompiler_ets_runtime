@@ -106,7 +106,7 @@ JSTaggedValue ModuleManager::GetModuleValueOutterInternal(int32_t index, JSTagge
     }
     ASSERT(moduleEnvironment.IsTaggedArray());
     JSTaggedValue resolvedBinding = TaggedArray::Cast(moduleEnvironment.GetTaggedObject())->Get(index);
-    ModuleLogger *moduleLogger = thread->GetCurrentEcmaContext()->GetModuleLogger();
+    ModuleLogger *moduleLogger = thread->GetModuleLogger();
     if (moduleLogger != nullptr) {
         return ModuleTools::ProcessModuleLoadInfo(thread, currentModuleHdl, resolvedBinding, index);
     }
@@ -119,7 +119,7 @@ JSTaggedValue ModuleManager::GetModuleValueOutterInternal(int32_t index, JSTagge
         // Support for only modifying var value of HotReload.
         // Cause patchFile exclude the record of importing modifying var. Can't reresolve moduleRecord.
         EcmaContext *context = thread->GetCurrentEcmaContext();
-        if (context->GetStageOfHotReload() == StageOfHotReload::LOAD_END_EXECUTE_PATCHMAIN) {
+        if (thread->GetStageOfHotReload() == StageOfHotReload::LOAD_END_EXECUTE_PATCHMAIN) {
             const JSHandle<JSTaggedValue> resolvedModuleOfHotReload =
                 context->FindPatchModule(module->GetEcmaModuleRecordNameString());
             if (!resolvedModuleOfHotReload->IsHole()) {
@@ -173,7 +173,7 @@ JSTaggedValue ModuleManager::GetLazyModuleValueOutterInternal(int32_t index, JST
     }
     ASSERT(moduleEnvironment.IsTaggedArray());
     JSTaggedValue resolvedBinding = TaggedArray::Cast(moduleEnvironment.GetTaggedObject())->Get(index);
-    ModuleLogger *moduleLogger = thread->GetCurrentEcmaContext()->GetModuleLogger();
+    ModuleLogger *moduleLogger = thread->GetModuleLogger();
     if (moduleLogger != nullptr) {
         return ModuleTools::ProcessLazyModuleLoadInfo(thread, currentModuleHdl, resolvedBinding, index);
     }
@@ -185,7 +185,7 @@ JSTaggedValue ModuleManager::GetLazyModuleValueOutterInternal(int32_t index, JST
         // Support for only modifying var value of HotReload.
         // Cause patchFile exclude the record of importing modifying var. Can't reresolve moduleRecord.
         EcmaContext *context = thread->GetCurrentEcmaContext();
-        if (context->GetStageOfHotReload() == StageOfHotReload::LOAD_END_EXECUTE_PATCHMAIN) {
+        if (thread->GetStageOfHotReload() == StageOfHotReload::LOAD_END_EXECUTE_PATCHMAIN) {
             const JSHandle<JSTaggedValue> resolvedModuleOfHotReload =
                 context->FindPatchModule(module->GetEcmaModuleRecordNameString());
             if (!resolvedModuleOfHotReload->IsHole()) {
@@ -476,7 +476,7 @@ JSTaggedValue ModuleManager::GetModuleNamespaceInternal(int32_t index, JSTaggedV
         SourceTextModule::GetRequestedModule(thread, requestedModules, index);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception());
 
-    ModuleLogger *moduleLogger = thread->GetCurrentEcmaContext()->GetModuleLogger();
+    ModuleLogger *moduleLogger = thread->GetModuleLogger();
     if (moduleLogger != nullptr) {
         return ModuleTools::ProcessModuleNameSpaceLoadInfo(thread, module, requiredModule);
     }

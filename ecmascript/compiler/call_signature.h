@@ -664,7 +664,9 @@ private:
     V(ReverseArray)                                  \
     V(LrInt)                                         \
     V(FindEntryFromNameDictionary)                   \
-    V(ReverseBarrier)
+    V(ReverseBarrier)                                \
+    V(FindPatchModule)                               \
+    V(FatalPrintMisstakenResolvedBinding)
 
 #define DECL_CALL_SIGNATURE(name)                                  \
 class name##CallSignature final {                                  \

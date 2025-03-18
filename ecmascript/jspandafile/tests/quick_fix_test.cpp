@@ -178,8 +178,7 @@ HWTEST_F_L0(QuickFixTest, HotReload_Instantiate)
     EXPECT_TRUE(patchFile != nullptr);
 
     CString replacedRecordName = "main";
-    EcmaContext *context = thread->GetCurrentEcmaContext();
-    context->SetStageOfHotReload(StageOfHotReload::BEGIN_EXECUTE_PATCHMAIN);
+    thread->SetStageOfHotReload(StageOfHotReload::BEGIN_EXECUTE_PATCHMAIN);
 
     JSHandle<JSTaggedValue> module = ModuleResolver::HostResolveImportedModuleForHotReload(thread,
         patchFileName, replacedRecordName);
@@ -192,7 +191,7 @@ HWTEST_F_L0(QuickFixTest, HotReload_Instantiate)
     SourceTextModule::Instantiate(thread, module);
     EXPECT_TRUE(JSHandle<SourceTextModule>::Cast(module)->GetStatus() == ModuleStatus::INSTANTIATED);
 
-    context->SetStageOfHotReload(StageOfHotReload::LOAD_END_EXECUTE_PATCHMAIN);
+    thread->SetStageOfHotReload(StageOfHotReload::LOAD_END_EXECUTE_PATCHMAIN);
     JSHandle<SourceTextModule>::Cast(module)->SetStatus(ModuleStatus::UNINSTANTIATED);
     SourceTextModule::Instantiate(thread, module);
     EXPECT_TRUE(JSHandle<SourceTextModule>::Cast(module)->GetStatus() == ModuleStatus::INSTANTIATED);

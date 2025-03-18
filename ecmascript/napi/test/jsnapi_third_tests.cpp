@@ -1351,7 +1351,7 @@ HWTEST_F_L0(JSNApiTests, NapiExternalStringCacheTest008)
 
 HWTEST_F_L0(JSNApiTests, SetExecuteMode)
 {
-    ecmascript::ModuleManager *moduleManager = thread_->GetCurrentEcmaContext()->GetModuleManager();
+    ecmascript::ModuleManager *moduleManager = thread_->GetModuleManager();
     ecmascript::ModuleExecuteMode res1 = moduleManager->GetExecuteMode();
     EXPECT_EQ(res1, ecmascript::ModuleExecuteMode::ExecuteZipMode);
 

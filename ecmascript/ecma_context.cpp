@@ -112,15 +112,11 @@ bool EcmaContext::Initialize()
     SetupStringSplitResultCache();
     SetupStringToListResultCache();
     microJobQueue_ = factory_->NewMicroJobQueue().GetTaggedValue();
-    moduleManager_ = new ModuleManager(vm_);
     ptManager_ = new kungfu::PGOTypeManager(vm_);
     optCodeProfiler_ = new OptCodeProfiler();
     abcBufferCache_ = new AbcBufferCache();
     if (vm_->GetJSOptions().GetTypedOpProfiler()) {
         typedOpProfiler_ = new TypedOpProfiler();
-    }
-    if (vm_->GetJSOptions().EnableModuleLog()) {
-        moduleLogger_ = new ModuleLogger(vm_);
     }
     functionProtoTransitionTable_ = new FunctionProtoTransitionTable(thread_);
     sustainingJSHandleList_ = new SustainingJSHandleList();
@@ -152,14 +148,6 @@ EcmaContext::~EcmaContext()
     if (typedOpProfiler_ != nullptr) {
         delete typedOpProfiler_;
         typedOpProfiler_ = nullptr;
-    }
-    if (moduleManager_ != nullptr) {
-        delete moduleManager_;
-        moduleManager_ = nullptr;
-    }
-    if (moduleLogger_ != nullptr) {
-        delete moduleLogger_;
-        moduleLogger_ = nullptr;
     }
     if (ptManager_ != nullptr) {
         delete ptManager_;
@@ -248,7 +236,7 @@ Expected<JSTaggedValue, bool> EcmaContext::CommonInvokeEcmaEntrypoint(const JSPa
         THROW_REFERENCE_ERROR_AND_RETURN(thread_, msg.c_str(), Unexpected(false));
     }
 
-    ModuleLogger *moduleLogger = GetModuleLogger();
+    ModuleLogger *moduleLogger = thread_->GetModuleLogger();
     if (moduleLogger != nullptr) {
         moduleLogger->SetStartTime(entry);
     }
@@ -262,7 +250,7 @@ Expected<JSTaggedValue, bool> EcmaContext::CommonInvokeEcmaEntrypoint(const JSPa
         if (jsPandaFile->IsSharedModule(recordInfo)) {
             module = SharedModuleManager::GetInstance()->GetSModule(thread_, entry);
         } else {
-            module = moduleManager_->HostGetImportedModule(moduleName);
+            module = thread_->GetModuleManager()->HostGetImportedModule(moduleName);
         }
         // esm -> SourceTextModule; cjs or script -> string of recordName
         module->SetSendableEnv(thread_, JSTaggedValue::Undefined());
@@ -849,9 +837,6 @@ void EcmaContext::Iterate(RootVisitor &v)
 
     if (functionProtoTransitionTable_) {
         functionProtoTransitionTable_->Iterate(v);
-    }
-    if (moduleManager_) {
-        moduleManager_->Iterate(v);
     }
     if (ptManager_) {
         ptManager_->Iterate(v);
