@@ -251,7 +251,7 @@ GateRef NTypeHCRLowering::NewJSArrayLiteral(GateRef glue, GateRef gate, GateRef 
 
 GateRef NTypeHCRLowering::NewTaggedArray(size_t length, GateRef glue)
 {
-    GateRef elementsHclass = builder_.GetGlobalConstantValue(ConstantIndex::ARRAY_CLASS_INDEX);
+    GateRef elementsHclass = builder_.GetGlobalConstantValue(ConstantIndex::TAGGED_ARRAY_CLASS_INDEX);
     GateRef elementsSize = builder_.ComputeTaggedArraySize(builder_.IntPtr(length));
 
     builder_.StartAllocate();

@@ -41,7 +41,7 @@ class ObjectFactory;
     V(JSTaggedValue, SlicedStringClass, SLICED_STRING_CLASS_INDEX, ecma_roots_class)                                  \
     V(JSTaggedValue, ConstantStringClass, CONSTANT_STRING_CLASS_INDEX, ecma_roots_class)                              \
     V(JSTaggedValue, TreeStringClass, TREE_STRING_CLASS_INDEX, ecma_roots_class)                                      \
-    V(JSTaggedValue, ArrayClass, ARRAY_CLASS_INDEX, ecma_roots_class)                                                 \
+    V(JSTaggedValue, TaggedArrayClass, TAGGED_ARRAY_CLASS_INDEX, ecma_roots_class)                                    \
     V(JSTaggedValue, ByteArrayClass, BYTE_ARRAY_CLASS_INDEX, ecma_roots_class)                                        \
     V(JSTaggedValue, ConstantPoolClass, CONSTANT_POOL_CLASS_INDEX, ecma_roots_class)                                  \
     V(JSTaggedValue, ProfileTypeInfoClass, PROFILE_TYPE_INFO_CLASS_INDEX, ecma_roots_class)                           \

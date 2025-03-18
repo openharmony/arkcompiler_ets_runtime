@@ -644,7 +644,7 @@ void NewObjectStubBuilder::NewTaggedArrayChecked(Variable *result, GateRef len, 
     // Be careful. NO GC is allowed when initization is not complete.
     Label noException(env);
     auto hclass = GetGlobalConstantValue(
-        VariableType::JS_POINTER(), glue_, ConstantIndex::ARRAY_CLASS_INDEX);
+        VariableType::JS_POINTER(), glue_, ConstantIndex::TAGGED_ARRAY_CLASS_INDEX);
     AllocateInYoung(result, exit, &noException, hclass);
     Bind(&noException);
     {
@@ -773,7 +773,7 @@ void NewObjectStubBuilder::ExtendArray(Variable *res, GateRef glue, GateRef elem
     Label afterAllocate(env);
     auto hclass = GetGlobalConstantValue(
         VariableType::JS_POINTER(), glue_,
-        isMutantArray ? ConstantIndex::MUTANT_TAGGED_ARRAY_CLASS_INDEX : ConstantIndex::ARRAY_CLASS_INDEX);
+        isMutantArray ? ConstantIndex::MUTANT_TAGGED_ARRAY_CLASS_INDEX : ConstantIndex::TAGGED_ARRAY_CLASS_INDEX);
     HeapAlloc(&array, &allocArray, spaceType, hclass);
     Bind(&allocArray);
     StoreBuiltinHClass(glue_, array.ReadVariable(), hclass);
@@ -1307,7 +1307,7 @@ GateRef NewObjectStubBuilder::NewArgumentsListObj(GateRef numArgs)
     DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
     size_ = ComputeTaggedArraySize(ZExtInt32ToPtr(numArgs));
     GateRef arrayClass = GetGlobalConstantValue(VariableType::JS_POINTER(), glue_,
-                                                ConstantIndex::ARRAY_CLASS_INDEX);
+                                                ConstantIndex::TAGGED_ARRAY_CLASS_INDEX);
     AllocateInYoung(&result, &exit, &setHClass, arrayClass);
     Bind(&setHClass);
     StoreHClass(glue_, *result, arrayClass);
