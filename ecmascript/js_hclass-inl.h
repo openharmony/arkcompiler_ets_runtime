@@ -460,7 +460,7 @@ template<bool checkDuplicateKeys /* = false*/>
 JSHandle<JSHClass> JSHClass::SetPropertyOfObjHClass(const JSThread *thread, JSHandle<JSHClass> &jshclass,
                                                     const JSHandle<JSTaggedValue> &key,
                                                     const PropertyAttributes &attr, const Representation &rep,
-                                                    bool withInlinedProperties, uint32_t numInlinedProps)
+                                                    bool specificInlinedProps, uint32_t specificNumInlinedProps)
 {
     JSHClass *newClass = jshclass->FindTransitions(
         key.GetTaggedValue(), JSTaggedValue(attr.GetPropertyMetaData()), rep);
@@ -469,7 +469,7 @@ JSHandle<JSHClass> JSHClass::SetPropertyOfObjHClass(const JSThread *thread, JSHa
         return JSHandle<JSHClass>(thread, newClass);
     }
 
-    JSHandle<JSHClass> newJsHClass = JSHClass::Clone(thread, jshclass, withInlinedProperties, numInlinedProps);
+    JSHandle<JSHClass> newJsHClass = JSHClass::Clone(thread, jshclass, specificInlinedProps, specificNumInlinedProps);
     AddPropertyToNewHClass<checkDuplicateKeys>(thread, jshclass, newJsHClass, key, attr);
     return newJsHClass;
 }

@@ -33,3 +33,9 @@ true
 false
 true
 false
+2
+undefined
+1
+2
+true
+false

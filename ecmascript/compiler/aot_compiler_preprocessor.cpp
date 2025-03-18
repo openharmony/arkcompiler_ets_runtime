@@ -338,12 +338,6 @@ void AotCompilerPreprocessor::GeneratePGOTypes()
     for (uint32_t i = 0; i < fileInfos_.size(); ++i) {
         auto& collector = *bcInfoCollectors_[i];
         PGOTypeParser parser(profilerDecoder_, ptManager);
-        parser.Preproccessor(collector);
-    }
-
-    for (uint32_t i = 0; i < fileInfos_.size(); ++i) {
-        auto& collector = *bcInfoCollectors_[i];
-        PGOTypeParser parser(profilerDecoder_, ptManager);
         parser.CreatePGOType(collector);
     }
     if (vm_->GetJSOptions().IsEnableOptTrackField()) {
