@@ -55,6 +55,7 @@ void CombinedPassVisitor::LogicallyReplaceGate(GateRef gate, GateRef replacement
         it = acc_.ReplaceIn(it, replacement);
     }
 }
+
 void CombinedPassVisitor::RelaxStateAndDepend(GateRef gate)
 {
     ReplaceGate(gate, StateDepend {acc_.GetState(gate), acc_.GetDep(gate)}, gate);
@@ -187,6 +188,7 @@ GateRef CombinedPassVisitor::VisitGate(GateRef gate)
     }
     return gate;
 }
+
 // Reverse post-order
 void CombinedPassVisitor::VisitTopGate(Edge& current)
 {

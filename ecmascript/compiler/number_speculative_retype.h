@@ -160,6 +160,7 @@ private:
     GateRef CheckAndConvertToFloat64(GateRef gate, GateType gateType,
                                     ConvertToNumber convert = ConvertToNumber::BOOL_ONLY);
     GateRef CheckAndConvertToTagged(GateRef gate, GateType gateType, ConvertToNumber convert);
+    GateRef TryConvertConstantToBool(GateRef gate);
     GateRef CheckAndConvertToBool(GateRef gate, GateType gateType);
     GateRef ConvertToTagged(GateRef gate);
     GateRef TryConvertConstant(GateRef gate, bool needInt32);

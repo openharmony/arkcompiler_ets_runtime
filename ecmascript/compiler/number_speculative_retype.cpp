@@ -819,6 +819,7 @@ GateRef NumberSpeculativeRetype::VisitIsTrueOrFalse(GateRef gate)
         } else if (paramType.IsBooleanType()) {
             valueType = GateType::BooleanType();
         }
+        
         auto input = CheckAndConvertToBool(value, valueType);
         ResizeAndSetTypeInfo(input, TypeInfo::INT1);
         acc_.ReplaceValueIn(gate, input, 0);
@@ -981,8 +982,40 @@ GateRef NumberSpeculativeRetype::VisitWithConstantValue(GateRef gate, size_t ign
     return Circuit::NullGate();
 }
 
+GateRef NumberSpeculativeRetype::TryConvertConstantToBool(GateRef gate)
+{
+    if (acc_.GetOpCode(gate) != OpCode::CONSTANT) {
+        return Circuit::NullGate();
+    }
+
+    if (acc_.GetGateType(gate).IsNJSValueType()) {
+        uint64_t rawValue = acc_.GetConstantValue(gate);
+        if (rawValue == 0) {
+            return builder_.Boolean(false);
+        } else {
+            return builder_.Boolean(true);
+        }
+    }
+
+    JSTaggedValue value(acc_.GetConstantValue(gate));
+    if (value.IsInt()) {
+        int32_t rawValue = value.GetInt();
+        if (rawValue == 0) {
+            return builder_.Boolean(false);
+        } else {
+            return builder_.Boolean(true);
+        }
+    }
+    return Circuit::NullGate();
+}
+
 GateRef NumberSpeculativeRetype::CheckAndConvertToBool(GateRef gate, GateType gateType)
 {
+    auto input = TryConvertConstantToBool(gate);
+    if (input != Circuit::NullGate()) {
+        return input;
+    }
+
     TypeInfo output = GetOutputTypeInfo(gate);
     switch (output) {
         case TypeInfo::INT1:

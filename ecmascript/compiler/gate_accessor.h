@@ -496,6 +496,7 @@ public:
     GateRef GetInitialEnvGate(GateRef depend, GateRef jsFunc) const;
     double GetFloat64FromConstant(GateRef gate) const;
     int GetInt32FromConstant(GateRef gate) const;
+    bool IsBoolType(GateRef gate) const;
     bool IsInGateNull(GateRef gate, size_t idx) const;
     bool IsSelector(GateRef g) const;
     bool IsSimpleState(GateRef g) const;

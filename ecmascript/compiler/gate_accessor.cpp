@@ -1003,6 +1003,11 @@ void GateAccessor::GetAllGates(std::vector<GateRef>& gates) const
     circuit_->GetAllGates(gates);
 }
 
+bool GateAccessor::IsBoolType(GateRef gate) const
+{
+    return GetMachineType(gate) == MachineType::I1;
+}
+
 bool GateAccessor::IsInGateNull(GateRef gate, size_t idx) const
 {
     return circuit_->IsInGateNull(gate, idx);

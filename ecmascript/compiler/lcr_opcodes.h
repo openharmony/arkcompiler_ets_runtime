@@ -35,7 +35,6 @@ namespace panda::ecmascript::kungfu {
     V(Lsl, LSL, GateFlags::NONE_FLAG, 0, 0, 2)                                                       \
     V(Lsr, LSR, GateFlags::NONE_FLAG, 0, 0, 2)                                                       \
     V(Asr, ASR, GateFlags::NONE_FLAG, 0, 0, 2)                                                       \
-    V(Sqrt, SQRT, GateFlags::NO_WRITE, 0, 0, 1)                                                      \
     V(Min, MIN, GateFlags::NO_WRITE, 0, 0, 2)                                                        \
     V(Max, MAX, GateFlags::NO_WRITE, 0, 0, 2)                                                        \
     V(AddWithOverflow, ADD_WITH_OVERFLOW, GateFlags::NONE_FLAG, 0, 0, 2)                             \
@@ -60,6 +59,7 @@ namespace panda::ecmascript::kungfu {
     V(TruncFloatToInt64, TRUNC_FLOAT_TO_INT64, GateFlags::NONE_FLAG, 0, 0, 1)    \
     V(TruncFloatToInt32, TRUNC_FLOAT_TO_INT32, GateFlags::NONE_FLAG, 0, 0, 1)    \
     V(Bitcast, BITCAST, GateFlags::NONE_FLAG, 0, 0, 1)                           \
+    V(Sqrt, SQRT, GateFlags::NO_WRITE, 0, 0, 1)                                  \
     V(Abs, ABS, GateFlags::NO_WRITE, 0, 0, 1)                                    \
     V(Clz32, CLZ32, GateFlags::NONE_FLAG, 0, 0, 1)                               \
     V(Ceil, CEIL, GateFlags::NO_WRITE, 0, 0, 1)                                  \
