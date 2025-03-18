@@ -109,14 +109,24 @@ public:
         return recordData_[GetRecordDataIndex(dataIdx)];
     }
 
-    void SetGCReason(GCReason reason)
+    void SetGCReason(GCReason gcReason)
     {
-        reason_ = reason;
+        gcReason_ = gcReason;
     }
 
     GCReason GetGCReason() const
     {
-        return reason_;
+        return gcReason_;
+    }
+
+    void SetMarkReason(MarkReason markReason)
+    {
+        markReason_ = markReason;
+    }
+
+    MarkReason GetMarkReason() const
+    {
+        return markReason_;
     }
 
     LongGCStats *GetLongGCStats()
@@ -313,7 +323,8 @@ protected:
     static constexpr size_t DEFAULT_YOUNG_CLEAR_NATIVE_OBJ_SPEED = 3_KB;
 
     GCType gcType_ {GCType::START};
-    GCReason reason_ {GCReason::OTHER};
+    GCReason gcReason_ {GCReason::OTHER};
+    MarkReason markReason_ {MarkReason::OTHER};
     float scopeDuration_[Scope::ScopeId::SCOPE_NUM] {0.0f};
     size_t recordData_[(uint8_t)RecordData::NUM_OF_DATA] {0};
     size_t gcSpeed_ [(uint8_t)SpeedData::NUM_OF_SPEED] = {

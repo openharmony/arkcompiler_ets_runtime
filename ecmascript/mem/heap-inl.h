@@ -804,7 +804,8 @@ void SharedHeap::TryTriggerConcurrentMarking(JSThread *thread)
         triggerConcurrentMark = ObjectExceedJustFinishStartupThresholdForCM();
     }
     if (triggerConcurrentMark) {
-        TriggerConcurrentMarking<TriggerGCType::SHARED_GC, GCReason::ALLOCATION_LIMIT>(thread);
+        // currently, SharedHeap::TryTriggerConcurrentMarking is called only when allocate object in SharedHeap
+        TriggerConcurrentMarking<TriggerGCType::SHARED_GC, MarkReason::ALLOCATION_LIMIT>(thread);
     }
 }
 
@@ -942,7 +943,7 @@ TaggedObject *SharedHeap::AllocateHugeObject(JSThread *thread, size_t size)
     CheckHugeAndTriggerSharedGC(thread, size);
     auto *object = reinterpret_cast<TaggedObject *>(sHugeObjectSpace_->Allocate(thread, size));
     if (UNLIKELY(object == nullptr)) {
-        CollectGarbage<TriggerGCType::SHARED_GC, GCReason::ALLOCATION_LIMIT>(thread);
+        CollectGarbage<TriggerGCType::SHARED_GC, GCReason::ALLOCATION_FAILED>(thread);
         object = reinterpret_cast<TaggedObject *>(sHugeObjectSpace_->Allocate(thread, size));
         if (UNLIKELY(object == nullptr)) {
             // if allocate huge object OOM, temporarily increase space size to avoid vm crash
@@ -1005,14 +1006,14 @@ TaggedObject *SharedHeap::AllocateSNonMovableTlab(JSThread *thread, size_t size)
     return object;
 }
 
-template<TriggerGCType gcType, GCReason gcReason>
+template<TriggerGCType gcType, MarkReason markReason>
 void SharedHeap::TriggerConcurrentMarking(JSThread *thread)
 {
     ASSERT(gcType == TriggerGCType::SHARED_GC || gcType == TriggerGCType::SHARED_PARTIAL_GC);
     // lock is outside to prevent extreme case, maybe could move update gcFinished_ into CheckAndPostTask
     // instead of an outside locking.
     LockHolder lock(waitGCFinishedMutex_);
-    if (dThread_->CheckAndPostTask(TriggerConcurrentMarkTask<gcType, gcReason>(thread))) {
+    if (dThread_->CheckAndPostTask(TriggerConcurrentMarkTask<gcType, markReason>(thread))) {
         ASSERT(gcFinished_);
         gcFinished_ = false;
     }

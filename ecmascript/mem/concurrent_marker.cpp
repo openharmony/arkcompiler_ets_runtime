@@ -64,7 +64,7 @@ void ConcurrentMarker::Mark()
     TRACE_GC(GCStats::Scope::ScopeId::ConcurrentMark, gcStats);
     LOG_GC(DEBUG) << "ConcurrentMarker: Concurrent Marking Begin";
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "ConcurrentMarker::Mark" + std::to_string(heap_->IsFullMarkRequested())
-        + ";Reason" + std::to_string(static_cast<int>(gcStats->GetGCReason()))
+        + ";MarkReason" + std::to_string(static_cast<int>(gcStats->GetMarkReason()))
         + ";Sensitive" + std::to_string(static_cast<int>(heap_->GetSensitiveStatus()))
         + ";IsInBackground" + std::to_string(heap_->IsInBackground())
         + ";Startup" + std::to_string(static_cast<int>(heap_->GetStartupStatus()))

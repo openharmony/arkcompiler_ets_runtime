@@ -65,7 +65,7 @@ public:
     {
         return isConcurrentMarking_;
     }
-    void Mark(TriggerGCType gcType, GCReason gcReason);             // In daemon thread
+    void Mark(TriggerGCType gcType);             // In daemon thread
     void ReMark();                          // In daemon thread
 
     void Reset(bool clearGCBits);    // In daemon thread
@@ -131,7 +131,6 @@ private:
     bool isConcurrentMarking_ {false};
     int32_t recursionDepth_ {0};
     TriggerGCType gcType_ {TriggerGCType::SHARED_GC};
-    GCReason gcReason_ {GCReason::OTHER};
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_MEM_SHARED_HEAP_SHARED_CONCURRENT_MARKER_H

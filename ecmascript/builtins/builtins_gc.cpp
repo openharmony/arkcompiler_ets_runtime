@@ -130,7 +130,7 @@ JSTaggedValue BuiltinsGc::StartGC(EcmaRuntimeCallInfo *info)
     }
 
     heap->SetMarkType(MarkType::MARK_FULL);
-    heap->TriggerConcurrentMarking();
+    heap->TriggerConcurrentMarking(MarkReason::EXTERNAL_TRIGGER);
 
     if (heap->GetConcurrentMarker()->IsTriggeredConcurrentMark()) {
         JSHandle<JSTaggedValue> hCallback = GetCallArg(info, 1);

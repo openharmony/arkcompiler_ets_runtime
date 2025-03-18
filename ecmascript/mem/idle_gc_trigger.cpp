@@ -59,7 +59,7 @@ void IdleGCTrigger::TryTriggerHandleMarkFinished()
     if (heap_->GetJSThread()->IsMarkFinished() && heap_->GetConcurrentMarker()->IsTriggeredConcurrentMark()
         && !heap_->GetOnSerializeEvent() && !heap_->InSensitiveStatus()) {
         heap_->SetCanThrowOOMError(false);
-        heap_->GetConcurrentMarker()->HandleMarkingFinished();
+        heap_->GetConcurrentMarker()->HandleMarkingFinished(GCReason::IDLE);
         heap_->SetCanThrowOOMError(true);
     }
 }
@@ -68,7 +68,7 @@ void IdleGCTrigger::TryTriggerLocalConcurrentMark(MarkType type)
 {
     if (heap_->GetConcurrentMarker()->IsEnabled() && heap_->CheckCanTriggerConcurrentMarking()) {
         heap_->SetMarkType(type);
-        heap_->TriggerConcurrentMarking();
+        heap_->TriggerConcurrentMarking(MarkReason::IDLE);
     }
 }
 
@@ -230,14 +230,14 @@ void IdleGCTrigger::TryTriggerIdleGC(TRIGGER_IDLE_GC_TYPE gcType)
             if (CheckIdleOrHintOldGC<SharedHeap>(sHeap_) && sHeap_->CheckCanTriggerConcurrentMarking(thread_)
                 && !sHeap_->NeedStopCollection()) {
                 LOG_GC(INFO) << "IdleGCTrigger: trigger " << GetGCTypeName(gcType);
-                sHeap_->TriggerConcurrentMarking<TriggerGCType::SHARED_PARTIAL_GC, GCReason::IDLE>(thread_);
+                sHeap_->TriggerConcurrentMarking<TriggerGCType::SHARED_PARTIAL_GC, MarkReason::IDLE>(thread_);
             }
             break;
         case TRIGGER_IDLE_GC_TYPE::SHARED_CONCURRENT_MARK:
             if (CheckIdleOrHintOldGC<SharedHeap>(sHeap_) && sHeap_->CheckCanTriggerConcurrentMarking(thread_)
                 && !sHeap_->NeedStopCollection()) {
                 LOG_GC(INFO) << "IdleGCTrigger: trigger " << GetGCTypeName(gcType);
-                sHeap_->TriggerConcurrentMarking<TriggerGCType::SHARED_GC, GCReason::IDLE>(thread_);
+                sHeap_->TriggerConcurrentMarking<TriggerGCType::SHARED_GC, MarkReason::IDLE>(thread_);
             }
             break;
         case TRIGGER_IDLE_GC_TYPE::SHARED_FULL_GC:

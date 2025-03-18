@@ -595,7 +595,7 @@ public:
 
     void WaitAllTasksFinished(JSThread *thread);
 
-    void StartConcurrentMarking(TriggerGCType gcType, GCReason gcReason);         // In daemon thread
+    void StartConcurrentMarking(TriggerGCType gcType, MarkReason markReason);         // In daemon thread
 
     // Use JSThread instead of DaemonThread to check if IsReadyToSharedConcurrentMark, to avoid an atomic load.
     bool CheckCanTriggerConcurrentMarking(JSThread *thread);
@@ -688,7 +688,7 @@ public:
 
     inline void TryTriggerConcurrentMarking(JSThread *thread);
 
-    template<TriggerGCType gcType, GCReason gcReason>
+    template<TriggerGCType gcType, MarkReason markReason>
     void TriggerConcurrentMarking(JSThread *thread);
 
     template<TriggerGCType gcType, GCReason gcReason>
@@ -1230,9 +1230,9 @@ public:
     void TriggerIdleCollection(int idleMicroSec);
     void NotifyMemoryPressure(bool inHighMemoryPressure);
 
-    void TryTriggerConcurrentMarking();
+    void TryTriggerConcurrentMarking(MarkReason markReason = MarkReason::OTHER);
     void AdjustBySurvivalRate(size_t originalNewSpaceSize);
-    void TriggerConcurrentMarking();
+    void TriggerConcurrentMarking(MarkReason markReason = MarkReason::OTHER);
     bool CheckCanTriggerConcurrentMarking();
 
     void TryTriggerIdleCollection() override;
@@ -1357,7 +1357,7 @@ public:
         if (!onSerializeEvent_ && !InSensitiveStatus()) {
             TryTriggerIncrementalMarking();
             TryTriggerIdleCollection();
-            TryTriggerConcurrentMarking();
+            TryTriggerConcurrentMarking(MarkReason::EXIT_SERIALIZE);
         }
     }
 

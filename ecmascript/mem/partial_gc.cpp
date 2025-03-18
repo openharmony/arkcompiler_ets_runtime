@@ -31,7 +31,8 @@ void PartialGC::RunPhases()
 {
     GCStats *gcStats = heap_->GetEcmaVM()->GetEcmaGCStats();
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "PartialGC::RunPhases" + std::to_string(heap_->IsConcurrentFullMark())
-        + ";Reason" + std::to_string(static_cast<int>(gcStats->GetGCReason()))
+        + ";GCReason" + std::to_string(static_cast<int>(gcStats->GetGCReason()))
+        + ";MarkReason" + std::to_string(static_cast<int>(gcStats->GetMarkReason()))
         + ";Sensitive" + std::to_string(static_cast<int>(heap_->GetSensitiveStatus()))
         + ";IsInBackground" + std::to_string(heap_->IsInBackground())
         + ";Startup" + std::to_string(static_cast<int>(heap_->GetStartupStatus()))

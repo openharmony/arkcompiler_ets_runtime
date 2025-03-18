@@ -1600,10 +1600,10 @@ JSTaggedValue BuiltinsArkTools::TriggerSharedGC(EcmaRuntimeCallInfo *info)
     SharedHeap *sHeap = SharedHeap::GetInstance();
     sHeap->WaitGCFinished(thread);
     if (JSTaggedValue::StrictEqual(globalConst->GetSharedGcCause(), type)) {
-        sHeap->TriggerConcurrentMarking<TriggerGCType::SHARED_GC, GCReason::TRIGGER_BY_JS>(thread);
+        sHeap->TriggerConcurrentMarking<TriggerGCType::SHARED_GC, MarkReason::TRIGGER_BY_JS>(thread);
         sHeap->WaitGCFinished(thread);
     } else if (JSTaggedValue::StrictEqual(globalConst->GetSharedPartialGcCause(), type)) {
-        sHeap->TriggerConcurrentMarking<TriggerGCType::SHARED_PARTIAL_GC, GCReason::TRIGGER_BY_JS>(thread);
+        sHeap->TriggerConcurrentMarking<TriggerGCType::SHARED_PARTIAL_GC, MarkReason::TRIGGER_BY_JS>(thread);
         sHeap->WaitGCFinished(thread);
     } else if (JSTaggedValue::StrictEqual(globalConst->GetSharedFullGcCause(), type)) {
         sHeap->CollectGarbage<TriggerGCType::SHARED_FULL_GC, GCReason::TRIGGER_BY_JS>(thread);

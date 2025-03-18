@@ -25,8 +25,9 @@
 namespace panda::ecmascript {
 void SharedGC::RunPhases()
 {
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedGC::RunPhases;Reason"
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedGC::RunPhases;GCReason"
         + std::to_string(static_cast<int>(sHeap_->GetEcmaGCStats()->GetGCReason()))
+        + ";MarkReason" + std::to_string(static_cast<int>(sHeap_->GetEcmaGCStats()->GetMarkReason()))
         + ";Sensitive" + std::to_string(static_cast<int>(sHeap_->GetSensitiveStatus()))
         + ";IsInBackground" + std::to_string(sHeap_->IsInBackground())
         + ";Startup" + std::to_string(static_cast<int>(sHeap_->GetStartupStatus()))

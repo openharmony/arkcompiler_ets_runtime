@@ -45,19 +45,18 @@ void SharedConcurrentMarker::MarkRoots(SharedMarkType markType)
     sHeap_->GetSharedGCMarker()->MarkRoots(sharedGCMarkRootVisitor, markType);
 }
 
-void SharedConcurrentMarker::Mark(TriggerGCType gcType, GCReason gcReason)
+void SharedConcurrentMarker::Mark(TriggerGCType gcType)
 {
     RecursionScope recurScope(this);
     gcType_ = gcType;
-    gcReason_ = gcReason;
     sHeap_->WaitSensitiveStatusFinished();
     {
         ThreadManagedScope runningScope(dThread_);
         SuspendAllScope scope(dThread_);
         TRACE_GC(GCStats::Scope::ScopeId::ConcurrentMark, sHeap_->GetEcmaGCStats());
         LOG_GC(DEBUG) << "SharedConcurrentMarker: Concurrent Marking Begin";
-        ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedConcurrentMarker::Mark;Reason"
-        + std::to_string(static_cast<int>(gcReason))
+        ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedConcurrentMarker::Mark;MarkReason"
+        + std::to_string(static_cast<int>(sHeap_->GetEcmaGCStats()->GetMarkReason()))
         + ";Sensitive" + std::to_string(static_cast<int>(sHeap_->GetSensitiveStatus()))
         + ";IsInBackground" + std::to_string(sHeap_->IsInBackground())
         + ";Startup" + std::to_string(static_cast<int>(sHeap_->GetStartupStatus()))
@@ -167,6 +166,6 @@ void SharedConcurrentMarker::FinishMarking(float spendTime)
 void SharedConcurrentMarker::HandleMarkingFinished()
 {
     sHeap_->WaitSensitiveStatusFinished();
-    sHeap_->DaemonCollectGarbage(gcType_, gcReason_);
+    sHeap_->DaemonCollectGarbage(gcType_, GCReason::HANDLE_MARKING_FINISHED);
 }
 }  // namespace panda::ecmascript
