@@ -380,7 +380,7 @@ EcmaVM::~EcmaVM()
     }
 #endif
 
-    thread_->GetCurrentEcmaContext()->GetModuleManager()->NativeObjDestory();
+    thread_->GetModuleManager()->NativeObjDestory();
 
     if (!isBundlePack_) {
         std::shared_ptr<JSPandaFile> jsPandaFile = JSPandaFileManager::GetInstance()->FindJSPandaFile(assetPath_);

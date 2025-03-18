@@ -71,7 +71,7 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFile(JSThread *threa
     }
 
     EcmaVM *vm = thread->GetEcmaVM();
-    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+    ModuleManager *moduleManager = thread->GetModuleManager();
     std::unique_ptr<const panda_file::File> pf;
     if (!vm->IsBundlePack() && moduleManager->GetExecuteMode() == ModuleExecuteMode::ExecuteBufferMode &&
         !vm->IsRestrictedWorkerThread()) {
@@ -553,7 +553,7 @@ bool JSPandaFileManager::CheckFilePath(JSThread *thread, const CString &fileName
         return true;
     }
     EcmaVM *vm = thread->GetEcmaVM();
-    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+    ModuleManager *moduleManager = thread->GetModuleManager();
     if (!vm->IsBundlePack() && moduleManager->GetExecuteMode() == ModuleExecuteMode::ExecuteBufferMode) {
         ResolveBufferCallback resolveBufferCallback = vm->GetResolveBufferCallback();
         if (resolveBufferCallback == nullptr) {

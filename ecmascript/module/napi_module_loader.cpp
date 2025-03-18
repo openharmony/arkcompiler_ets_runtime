@@ -101,7 +101,7 @@ JSHandle<JSTaggedValue> NapiModuleLoader::LoadFilePathWithinModule(JSThread *thr
 JSHandle<JSTaggedValue> NapiModuleLoader::LoadModuleNameSpaceWithPath(JSThread *thread, CString &abcFilePath,
     const CString &requestPath, const CString &modulePath, const JSPandaFile *pandaFile)
 {
-    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+    ModuleManager *moduleManager = thread->GetModuleManager();
     if (SourceTextModule::IsNativeModule(requestPath)) {
         JSHandle<JSTaggedValue> moduleHandle = moduleManager->LoadNativeModule(thread, requestPath);
         return moduleHandle;
@@ -142,7 +142,7 @@ JSHandle<JSTaggedValue> NapiModuleLoader::LoadModuleNameSpaceFromFile(
 JSHandle<JSTaggedValue> NapiModuleLoader::GetModuleNameSpace(JSThread *thread, const CString &entryPoint,
     const CString &abcFilePath)
 {
-    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+    ModuleManager *moduleManager = thread->GetModuleManager();
     // IsInstantiatedModule is for lazy module to execute
     if (moduleManager->NeedExecuteModule(entryPoint)) {
         if (!JSPandaFileExecutor::ExecuteFromAbcFile(

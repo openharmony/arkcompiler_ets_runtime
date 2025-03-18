@@ -792,7 +792,7 @@ void DebuggerApi::GetImportVariables(const EcmaVM *ecmaVm, Local<ObjectRef> &mod
             continue;
         }
         JSTaggedValue moduleValue =
-            thread->GetCurrentEcmaContext()->GetModuleManager()->GetModuleValueOutter(idx, currentModule);
+            thread->GetModuleManager()->GetModuleValueOutter(idx, currentModule);
         Local<JSValueRef> value = JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread, moduleValue));
         Local<JSValueRef> variableName = JSNApiHelper::ToLocal<JSValueRef>(name);
         PropertyAttribute descriptor(value, true, true, true);

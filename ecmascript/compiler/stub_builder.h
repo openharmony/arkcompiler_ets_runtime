@@ -1053,8 +1053,12 @@ public:
     inline GateRef GetAccessorHasChanged(GateRef obj);
     inline GateRef ComputeTaggedTypedArraySize(GateRef elementSize, GateRef length);
     GateRef ChangeTaggedPointerToInt64(GateRef x);
+    inline GateRef GetCurrentEcmaContext(GateRef glue);
     inline GateRef GetPropertiesCache(GateRef glue);
     inline GateRef GetMegaICCache(GateRef glue, MegaICCache::MegaICKind kind);
+    inline GateRef GetModuleLogger(GateRef glue);
+    inline GateRef GetStageOfHotReload(GateRef glue);
+    inline GateRef GetModuleManager(GateRef glue);
     inline void IncMegaProbeCount(GateRef glue);
     inline void IncMegaHitCount(GateRef glue);
     GateRef GetIndexFromPropertiesCache(GateRef glue, GateRef cache, GateRef cls, GateRef key,
@@ -1077,7 +1081,34 @@ public:
     GateRef GetLastLeaveFrame(GateRef glue);
     void UpdateProfileTypeInfoCellToFunction(GateRef glue, GateRef function,
                                              GateRef profileTypeInfo, GateRef slotId);
+
+    // start: Fast path of Loading Module variable.
     GateRef Loadlocalmodulevar(GateRef glue, GateRef index, GateRef module);
+    inline void ResolvedModuleMustBeSourceTextModule(GateRef resolvedModule);
+    inline void RecordNameMustBeString(GateRef recordName);
+    inline GateRef GetNameDictionary(GateRef module);
+    inline GateRef GetCurrentModuleEnv(GateRef curModule);
+    inline GateRef GetBitFieldFromSourceTextModule(GateRef curModule);
+    inline GateRef GetResolveModuleFromResolvedIndexBinding(GateRef resolvedBinding);
+    inline GateRef GetResolveModuleFromResolvedBinding(GateRef resolvedBinding);
+    inline GateRef GetIndexFromResolvedBinding(GateRef resolvedBinding);
+    inline GateRef GetModuleRecord(GateRef resolvedBinding);
+    inline GateRef GetBindingName(GateRef resolvedBinding);
+    inline GateRef IsResolvedIndexBinding(GateRef resolvedBinding);
+    inline GateRef IsResolvedBinding(GateRef resolvedBinding);
+    inline GateRef IsResolvedRecordIndexBinding(GateRef resolvedBinding);
+    inline GateRef IsResolvedRecordBinding(GateRef resolvedBinding);
+    inline GateRef IsLdEndExecPatchMain(GateRef glue);
+    inline GateRef GetModuleType(GateRef module);
+    inline GateRef IsNativeOrCjsModule(GateRef module);
+    void ModuleEnvMustBeValid(GateRef curEnv);
+    GateRef GetModuleValueByIndex(GateRef glue, GateRef module, GateRef index);
+    GateRef GetModuleValueByName(GateRef glue, GateRef module, GateRef bindingName);
+    GateRef GetResolvedRecordIndexBindingModule(GateRef glue, GateRef module, GateRef resolvedBinding);
+    GateRef GetResolvedRecordBindingModule(GateRef glue, GateRef module, GateRef resolvedBinding);
+    GateRef LoadExternalmodulevar(GateRef glue, GateRef index, GateRef curModule);
+    // end: Fast path of Loading Module variable.
+
     GateRef GetArgumentsElements(GateRef glue, GateRef argvTaggedArray, GateRef argv);
     void TryToJitReuseCompiledFunc(GateRef glue, GateRef jsFunc, GateRef profileTypeInfoCell);
     void TryToBaselineJitReuseCompiledFunc(GateRef glue, GateRef jsFunc, GateRef profileTypeInfoCell);

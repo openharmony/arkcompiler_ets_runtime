@@ -1199,7 +1199,7 @@ void JSFunction::InitializeForConcurrentFunction(JSThread *thread, JSHandle<JSFu
         LOG_ECMA(DEBUG) << "Current function is not from ES Module's file.";
         return;
     }
-    ecmascript::ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+    ecmascript::ModuleManager *moduleManager = thread->GetModuleManager();
     LOG_ECMA(DEBUG) << "CompileMode is " << (jsPandaFile->IsBundlePack() ? "jsbundle" : "esmodule");
     JSHandle<ecmascript::JSTaggedValue> moduleRecord =
         ModuleResolver::HostResolveImportedModule(thread, moduleName, recordName);

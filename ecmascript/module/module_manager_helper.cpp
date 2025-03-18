@@ -99,7 +99,7 @@ JSHandle<SourceTextModule> ModuleManagerHelper::GetResolvedRecordIndexBindingMod
     JSHandle<JSTaggedValue> recordName(thread, binding->GetModuleRecord());
     ASSERT(recordName->IsString());
     // recordName is string, find at current vm
-    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+    ModuleManager *moduleManager = thread->GetModuleManager();
     CString recordNameStr = ModulePathHelper::Utf8ConvertToString(recordName.GetTaggedValue());
     if (!moduleManager->IsEvaluatedModule(recordNameStr)) {
         auto isMergedAbc = !module->GetEcmaModuleRecordNameString().empty();
@@ -129,7 +129,7 @@ JSHandle<SourceTextModule> ModuleManagerHelper::GetResolvedRecordBindingModule(J
     ASSERT(recordName->IsString());
     CString recordNameStr = ModulePathHelper::Utf8ConvertToString(recordName.GetTaggedValue());
     // moduleRecord is string, find at current vm
-    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+    ModuleManager *moduleManager = thread->GetModuleManager();
     if (!moduleManager->IsEvaluatedModule(recordNameStr)) {
         auto isMergedAbc = !module->GetEcmaModuleRecordNameString().empty();
         CString fileName = module->GetEcmaModuleFilenameString();
@@ -149,7 +149,7 @@ JSTaggedValue ModuleManagerHelper::GetLazyModuleValueFromIndexBinding(JSThread *
     JSHandle<JSTaggedValue> recordName(thread, binding->GetModuleRecord());
     ASSERT(recordName->IsString());
     // moduleRecord is string, find at current vm
-    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+    ModuleManager *moduleManager = thread->GetModuleManager();
     CString recordNameStr = ModulePathHelper::Utf8ConvertToString(recordName.GetTaggedValue());
     JSHandle<SourceTextModule> resolvedModule;
     if (moduleManager->IsLocalModuleLoaded(recordNameStr)) {
@@ -177,7 +177,7 @@ JSTaggedValue ModuleManagerHelper::GetLazyModuleValueFromRecordBinding(
     JSHandle<JSTaggedValue> recordName(thread, binding->GetModuleRecord());
     ASSERT(recordName->IsString());
     // moduleRecord is string, find at current vm
-    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+    ModuleManager *moduleManager = thread->GetModuleManager();
     CString recordNameStr = ModulePathHelper::Utf8ConvertToString(recordName.GetTaggedValue());
     JSHandle<SourceTextModule> resolvedModule;
     if (moduleManager->IsLocalModuleLoaded(recordNameStr)) {
