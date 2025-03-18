@@ -355,6 +355,31 @@ DEF_CALL_SIGNATURE(Definefunc)
     callSign->SetCallConv(CallSignature::CallConv::CCallConv);
 }
 
+#define JIT_DEFINEFUNC_SIGNATURE(name)                                                                                 \
+    DEF_CALL_SIGNATURE(Define##name##ForJit)                                                                           \
+    {                                                                                                                  \
+        /* 7 : 7 input parameters */                                                                                   \
+        CallSignature definefunc("Define" #name "ForJit", 0, 7, ArgumentsOrder::DEFAULT_ORDER,                         \
+                                 VariableType::JS_ANY());                                                              \
+        *callSign = definefunc;                                                                                        \
+        /* 7 : 7 input parameters */                                                                                   \
+        std::array<VariableType, 7> params = {                                                                         \
+            VariableType::NATIVE_POINTER(), /* glue */                                                                 \
+            VariableType::JS_ANY(),         /* jsFunc */                                                               \
+            VariableType::JS_ANY(),         /* hclass */                                                               \
+            VariableType::JS_ANY(),         /* method */                                                               \
+            VariableType::INT32(),          /* length */                                                               \
+            VariableType::JS_ANY(),         /* lexEnv */                                                               \
+            VariableType::INT32(),          /* slotId */                                                               \
+        };                                                                                                             \
+        callSign->SetParameters(params.data());                                                                        \
+        callSign->SetCallConv(CallSignature::CallConv::CCallConv);                                                     \
+    }
+
+JIT_DEFINEFUNC_SIGNATURE(NormalFunc)
+JIT_DEFINEFUNC_SIGNATURE(ArrowFunc)
+JIT_DEFINEFUNC_SIGNATURE(BaseConstructor)
+
 DEF_CALL_SIGNATURE(DefineField)
 {
     // 4 : 4 input parameters

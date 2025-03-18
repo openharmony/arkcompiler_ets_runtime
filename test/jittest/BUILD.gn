@@ -55,6 +55,7 @@ group("ark_jit_ts_test") {
     "stack_overflow",
     "mega_ic_test",
     "module",
+    "definefunc",
   ]
 
   deps = [ "pgo_roottype_test:pgo_roottype_test" ]
