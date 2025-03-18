@@ -713,8 +713,8 @@ void ElfBuilder::PackELFSections(std::fstream &file)
         LOG_COMPILER(DEBUG) << "  shdr[i].sh_entsize " << std::hex << curShdr.sh_entsize << std::endl;
         ++i;
     }
-    ResolveRelocate(file);
     uint32_t secEnd = static_cast<uint32_t>(file.tellp());
+    ResolveRelocate(file);
     file.seekp(sizeof(llvm::ELF::Elf64_Ehdr));
     file.write(reinterpret_cast<char *>(shdr.get()), secNum * sizeof(llvm::ELF::Elf64_Shdr));
     file.seekp(secEnd);
