@@ -45,7 +45,7 @@ public:
     {
         JSHandle<JSTaggedValue> exceptionInfo(thread, module->GetException());
         if (exceptionInfo->IsJSError()) {
-            thread->GetCurrentEcmaContext()->PrintJSErrorInfo(thread, exceptionInfo);
+            base::ErrorHelper::PrintJSErrorInfo(thread, exceptionInfo);
             return;
         }
         JSHandle<EcmaString> str = JSTaggedValue::ToString(thread, exceptionInfo);

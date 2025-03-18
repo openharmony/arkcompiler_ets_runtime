@@ -1941,7 +1941,7 @@ void SourceTextModule::AsyncModuleExecutionRejected(JSThread *thread, const JSHa
         JSHandle<JSTaggedValue> exceptionHandle(thread, error);
         // if caught exceptionHandle type is JSError
         if (exceptionHandle->IsJSError()) {
-            thread->GetCurrentEcmaContext()->HandleUncaughtException(error);
+            thread->HandleUncaughtException(error);
         }
         ASSERT(JSTaggedValue::SameValue(module->GetCycleRoot(), module.GetTaggedValue()));
         JSHandle<PromiseCapability> topLevelCapability(thread, topLevelCapabilityValue);
@@ -2086,9 +2086,11 @@ void SourceTextModule::SetExceptionToModule(JSThread *thread, JSHandle<SourceTex
     }
     // process error message for share module
     if (exceptionInfo->IsJSError()) {
-        CString msg = EcmaContext::GetJSErrorInfo(thread, exceptionInfo, EcmaContext::JSErrorProps::MESSAGE);
+        CString msg = base::ErrorHelper::GetJSErrorInfo(thread, exceptionInfo,
+                                                        base::ErrorHelper::JSErrorProps::MESSAGE);
         RETURN_IF_ABRUPT_COMPLETION(thread);
-        CString stack = EcmaContext::GetJSErrorInfo(thread, exceptionInfo, EcmaContext::JSErrorProps::STACK);
+        CString stack = base::ErrorHelper::GetJSErrorInfo(thread, exceptionInfo,
+                                                          base::ErrorHelper::JSErrorProps::STACK);
         RETURN_IF_ABRUPT_COMPLETION(thread);
         CString errMsg = "Error store in module " + module->GetEcmaModuleRecordNameString() + ":\n" + msg +
                          "\n" + stack;
@@ -2111,7 +2113,7 @@ bool SourceTextModule::CheckAndThrowModuleError(JSThread *thread)
         LOG_FULL(ERROR) << "Error found in module:" << GetEcmaModuleRecordNameString();
         JSHandle<JSTaggedValue> exceptionInfo(thread, GetException());
         if (exceptionInfo->IsJSError()) {
-            thread->GetCurrentEcmaContext()->PrintJSErrorInfo(thread, exceptionInfo);
+            base::ErrorHelper::PrintJSErrorInfo(thread, exceptionInfo);
             THROW_NEW_ERROR_AND_RETURN_VALUE(thread, exceptionInfo.GetTaggedValue(), false);
         }
         JSHandle<EcmaString> message = JSTaggedValue::ToString(thread, exceptionInfo);

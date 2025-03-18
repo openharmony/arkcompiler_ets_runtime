@@ -61,7 +61,7 @@ enum class ElementsKind : uint8_t;
 class MachineCode;
 using JitCodeVector = std::vector<std::tuple<MachineCode*, std::string, uintptr_t>>;
 using JitCodeMapVisitor = std::function<void(std::map<JSTaggedType, JitCodeVector*>&)>;
-
+using OnErrorCallback = std::function<void(Local<ObjectRef> value, void *data)>;
 using WeakClearCallback = void (*)(void *);
 
 enum class MarkStatus : uint8_t {
@@ -312,7 +312,10 @@ public:
         return !glueData_.exception_.IsHole();
     }
 
-    void ClearException();
+    void ClearException()
+    {
+        glueData_.exception_ = JSTaggedValue::Hole();
+    }
 
     void SetGlobalObject(JSTaggedValue globalObject)
     {
@@ -666,6 +669,30 @@ public:
     bool ReadyForGCIterating() const
     {
         return readyForGCIterating_;
+    }
+
+    void EnableUserUncaughtErrorHandler()
+    {
+        isUncaughtExceptionRegistered_ = true;
+    }
+
+    void HandleUncaughtException();
+    void HandleUncaughtException(JSTaggedValue exception);
+
+    void SetOnErrorCallback(OnErrorCallback callback, void* data)
+    {
+        onErrorCallback_ = callback;
+        onErrorData_ = data;
+    }
+
+    OnErrorCallback GetOnErrorCallback()
+    {
+        return onErrorCallback_;
+    }
+
+    void* GetOnErrorData()
+    {
+        return onErrorData_;
     }
 
     static constexpr size_t GetGlueDataOffset()
@@ -1662,11 +1689,16 @@ private:
     bool enableStackSourceFile_ {true};
     bool enableLazyBuiltins_ {false};
     bool readyForGCIterating_ {false};
+    bool isUncaughtExceptionRegistered_ {false};
     // CpuProfiler
     bool isProfiling_ {false};
     bool gcState_ {false};
     std::atomic_bool needProfiling_ {false};
     std::string profileName_ {""};
+
+    // Error callback
+    OnErrorCallback onErrorCallback_ {nullptr};
+    void *onErrorData_ {nullptr};
 
     bool finalizationCheckState_ {false};
     // Shared heap
