@@ -1676,4 +1676,43 @@ for (let typedArrEle of iterForTypedArrEntry) {
 assert_equal(typedArrEleAssertRes,typedArrEleAssertEqual);
 assert_equal(typedArrEleAssertLengthRes,typedArrEleAssertLengthEqual);
 
+{
+    var arrayBuffer = new ArrayBuffer(8);
+    var floatArray = new Float32Array(arrayBuffer);
+    var floatArray2 = new Float32Array(1);
+    function setBit(obj, bitCount, value, isDouble) {
+        var currentBit = 1 << 31;
+        var current = 0;
+        for (var i = 0; i < bitCount; i++) {
+            currentBit = 1 << (31 - i);
+            current = current | currentBit;
+        }
+        var tmp = new Uint32Array(obj.buffer);
+        if (isDouble) {
+            tmp[1] = current;
+        }
+        else {
+            tmp[0] = current;
+        }
+    }
+
+    function testOneNan(typedArray, backup, isDouble) {
+        setBit(typedArray, 12, 1, isDouble)
+        backup[0] = typedArray[0];
+        assert_equal(isNaN(backup[0]), true);
+        assert_equal(isNaN(typedArray[0]), true);
+    }
+    testOneNan(floatArray, floatArray2, false);
+}
+
+{
+    let v0 = new ArrayBuffer(8);
+    let v1 = new Int32Array(v0);
+    v1[0] = 0xcafe0000;
+    v1[1] = 0xffff0000;
+    let v2 = new Float32Array(v0);
+    Array.prototype.push.apply(v0, v2);
+    assert_equal(Number.isNaN(v2[0]), false);
+}
+
 test_end();
