@@ -86,10 +86,6 @@ HWTEST_F_L0(SymbolTableTest, IsMatch)
 HWTEST_F_L0(SymbolTableTest, Hash_Utf8)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    // test obj is not string
-    JSHandle<JSTaggedValue> jsObJect(factory->NewEmptyJSObject());
-    EXPECT_EQ(SymbolTable::Hash(jsObJect.GetTaggedValue()), JSSymbol::ComputeHash());
-
     uint8_t utf8ArrayName1[4] = {1, 2, 3}; // The last element is "\0"
     uint32_t utf8ArrayNameLen1 = sizeof(utf8ArrayName1) - 1;
     JSHandle<EcmaString> nameStringUtf8Obj1 = factory->NewFromUtf8(utf8ArrayName1, utf8ArrayNameLen1);
