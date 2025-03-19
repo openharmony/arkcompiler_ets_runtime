@@ -1158,15 +1158,13 @@ bool JsonStringifier::SerializeKeys(const JSHandle<JSObject> &obj, const JSHandl
             LayoutInfo *layoutInfo = LayoutInfo::Cast(jsHclass->GetLayout().GetTaggedObject());
             JSTaggedValue key = layoutInfo->GetKey(i);
             if (!hasChangedToDictionaryMode) {
-                if (key.IsString() && layoutInfo->GetAttr(i).IsEnumerable()) {
+                PropertyAttributes attr(layoutInfo->GetAttr(i));
+                ASSERT(static_cast<int>(attr.GetOffset()) == i);
+                if (key.IsString() && attr.IsEnumerable()) {
                     handleKey_.Update(key);
-                    JSTaggedValue value;
-                    int index = JSHClass::FindPropertyEntry(thread_, *jsHclass, key);
-                    PropertyAttributes attr(layoutInfo->GetAttr(index));
-                    ASSERT(static_cast<int>(attr.GetOffset()) == index);
-                    value = attr.IsInlinedProps()
-                            ? obj->GetPropertyInlinedPropsWithRep(static_cast<uint32_t>(index), attr)
-                            : propertiesArr->Get(static_cast<uint32_t>(index) - jsHclass->GetInlinedProperties());
+                    JSTaggedValue value = attr.IsInlinedProps()
+                        ? obj->GetPropertyInlinedPropsWithRep(static_cast<uint32_t>(i), attr)
+                        : propertiesArr->Get(static_cast<uint32_t>(i) - jsHclass->GetInlinedProperties());
                     if (attr.IsInlinedProps() && value.IsHole()) {
                         continue;
                     }
