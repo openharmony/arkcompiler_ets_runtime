@@ -131,9 +131,3 @@ true
 {"1":1,"true":true}
 [1,true]
 [1,true]
-{"a1":1,"undefined":null}
-{"a1":1,"undefined":null}
-{"a1":1}
-["a1",null,1,true]
-["a1",null,1,true]
-["a1",1,null,true]
