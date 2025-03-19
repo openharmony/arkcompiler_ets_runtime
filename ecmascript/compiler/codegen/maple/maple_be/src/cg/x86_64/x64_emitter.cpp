@@ -14,9 +14,7 @@
  */
 
 #include "x64_emitter.h"
-#include "x64_cgfunc.h"
 #include "x64_cg.h"
-#include "insn.h"
 
 using namespace std;
 using namespace assembler;

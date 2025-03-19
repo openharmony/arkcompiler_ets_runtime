@@ -14,8 +14,6 @@
  */
 
 #include "namemangler.h"
-#include <regex>
-#include <cassert>
 #include <map>
 
 namespace namemangler {

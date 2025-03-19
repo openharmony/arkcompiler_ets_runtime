@@ -31,8 +31,6 @@ public:
 
     std::pair<CString, CString> ParseEntryPointWithUnifiedRules(EcmaVM *vm, const CString &filename,
                                                                 std::string_view entryPoint);
-    static std::pair<CString, CString> ParseAbcEntryPoint(JSThread *thread, const CString &filename,
-                                                          [[maybe_unused]] std::string_view entryPoint);
     static Expected<JSTaggedValue, bool> ExecuteFromFile(JSThread *thread, const CString &name,
                                                          CString entry, bool needUpdate = false,
                                                          bool executeFromJob = false);
@@ -48,7 +46,7 @@ public:
                                                            bool needUpdate = false, bool executeFromJob = false);
     static Expected<JSTaggedValue, bool> ExecuteModuleBuffer(JSThread *thread, const void *buffer, size_t size,
                                                              const CString &filename = "", bool needUpdate = false);
-    static Expected<JSTaggedValue, bool> CommonExecuteBuffer(JSThread *thread, bool isBundle, const CString &filename,
+    static Expected<JSTaggedValue, bool> CommonExecuteBuffer(JSThread *thread, const CString &filename,
                                                              const CString &entry, const void *buffer, size_t size,
                                                              bool executeFromJob = false);
     static Expected<JSTaggedValue, bool> Execute(JSThread *thread, const JSPandaFile *jsPandaFile,

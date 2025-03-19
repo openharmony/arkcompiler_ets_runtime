@@ -70,6 +70,7 @@ enum class PageTagType : uint8_t {
 #define PAGE_PROT_EXEC_READ 0x20
 // For safety reason, Disallow prot have both write & exec capability except in JIT.
 #define PAGE_PROT_EXEC_READWRITE 0x40
+#define PAGE_FLAG_MAP_FIXED 0x10
 #else
 #define PAGE_PROT_NONE 0
 #define PAGE_PROT_READ 1
@@ -77,6 +78,7 @@ enum class PageTagType : uint8_t {
 #define PAGE_PROT_EXEC_READ 5
 // For safety reason, Disallow prot have both write & exec capability except in JIT.
 #define PAGE_PROT_EXEC_READWRITE 7
+#define PAGE_FLAG_MAP_FIXED 0x10
 #endif
 
 // Jit Fort space protection control

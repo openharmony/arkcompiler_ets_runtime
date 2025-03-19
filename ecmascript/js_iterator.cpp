@@ -304,8 +304,10 @@ JSHandle<JSObject> JSIterator::CreateIterResultObject(JSThread *thread, const JS
 
     // 3. Perform ! CreateDataPropertyOrThrow(obj, "value", value).
     // 4. Perform ! CreateDataPropertyOrThrow(obj, "done", done).
-    obj->SetPropertyInlinedProps(thread, VALUE_INLINE_PROPERTY_INDEX, value.GetTaggedValue());
-    obj->SetPropertyInlinedProps(thread, DONE_INLINE_PROPERTY_INDEX, JSTaggedValue(done));
+    obj->SetPropertyInlinedPropsWithSize<JSIterator::SIZE, VALUE_INLINE_PROPERTY_INDEX>(
+        thread, value.GetTaggedValue());
+    obj->SetPropertyInlinedPropsWithSize<JSIterator::SIZE, DONE_INLINE_PROPERTY_INDEX>(
+        thread, JSTaggedValue(done));
     // 5. Return obj.
     return obj;
 }

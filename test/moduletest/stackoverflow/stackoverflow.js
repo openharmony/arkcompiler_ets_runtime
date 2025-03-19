@@ -22,19 +22,18 @@
 try {
     var array = new Uint8Array(1000000);
     var res = String.fromCharCode.apply(null, array);
+    assert_unreachable();
 } catch (e) {
-    if ((e instanceof RangeError)) {
-        print("stack overflow!");
-    }
+    assert_equal(e instanceof RangeError, true);
 }
 
 try {
     var array = new Uint8Array(15000);
     var res = String.fromCharCode.apply(null, array);
-    print(res.length);
+    assert_equal(res.length,15000);
 } catch (e) {
     if ((e instanceof RangeError)) {
-        print("stack overflow!");
+        assert_unreachable();
     }
 }
 
@@ -58,4 +57,5 @@ function f5(a6, a7) {
     return runNearStackLimit(f5);
 }
 f5();
-print("stack overflow success");
+
+test_end();

@@ -12,3 +12,4 @@
 # limitations under the License.
 
 -1
+[trace] Opcode: MONO_STORE_PROPERTY Count:127

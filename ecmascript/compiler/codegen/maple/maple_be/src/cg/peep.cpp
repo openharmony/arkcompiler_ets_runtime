@@ -14,9 +14,6 @@
  */
 
 #include "peep.h"
-#include "cg.h"
-#include "mpl_logging.h"
-#include "common_utils.h"
 #if TARGAARCH64
 #include "aarch64_peep.h"
 #endif

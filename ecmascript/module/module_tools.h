@@ -35,5 +35,25 @@ public:
                                                         JSHandle<SourceTextModule> currentModule,
                                                         JSHandle<SourceTextModule> requiredModule);
 };
+
+class ModuleTraceScope {
+public:
+    ModuleTraceScope(JSThread *thread, [[maybe_unused]]const CString traceInfo)
+        : enableESMTrace_(thread->GetEcmaVM()->GetJSOptions().EnableESMTrace())
+    {
+        if (enableESMTrace_) {
+            ECMA_BYTRACE_START_TRACE(HITRACE_TAG_ARK, traceInfo.c_str());
+        }
+    }
+
+    ~ModuleTraceScope()
+    {
+        if (enableESMTrace_) {
+            ECMA_BYTRACE_FINISH_TRACE(HITRACE_TAG_ARK);
+        }
+    }
+private:
+    bool enableESMTrace_ {false};
+};
 } // namespace panda::ecmascript
 #endif // ECMASCRIPT_MODULE_MODULE_TOOLS_H

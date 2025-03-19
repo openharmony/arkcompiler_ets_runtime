@@ -14,8 +14,6 @@
  */
 
 #include "operand.h"
-#include "common_utils.h"
-#include "mpl_logging.h"
 
 namespace maplebe {
 bool IsMoveWidableImmediate(uint64 val, uint32 bitLen)

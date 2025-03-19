@@ -115,6 +115,9 @@ public:
     static const uint32_t MAX_TYPED_ARRAY_INDEX = MAX_ELEMENT_INDEX;
     DECL_DUMP()
     DECL_VISIT_OBJECT_FOR_JS_OBJECT(JSObject, VIEWED_ARRAY_BUFFER_OFFSET, BYTE_LENGTH_OFFSET)
+
+private:
+    static inline bool IsArrayBufferDetached(JSTaggedValue buffer);
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_JS_TYPED_ARRAY_H

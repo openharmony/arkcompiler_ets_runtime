@@ -91,3 +91,31 @@ get 10000th element:
 3
 5
 undefined
+-0.1,-0.1,-Infinity,-Infinity,0,0,1,1,Infinity,Infinity,NaN,NaN,,,,
+-0.0000012,-0.0000012345678901234567,-1.2,-1.2345678901234568e-7,-1.2e-7,-1.7976931348623157e+308,-12.012345678901234,-120000000000000000000,-3.4e+21,-79.39773355813419,-Infinity,0,0,0.0000012,0.0000012345678901234567,0.005431,1.2,1.2345678901234568e-7,1.2e-7,1.7976931348623157e+308,1.9045e-7,12.012345678901234,120000000000000000000,1e+21,2.22507e-308,3.4e+21,340000000000000000,5562684646268003,Infinity,NaN
+0,1,2,3
+1,2,4,,
+0,1.1,2.1,3.1
+1.1,2.1,4.1,,
+[object Object],[object Object],[object Object],[object Object],[object Object]
+false,null,true,undefined,undefined
+1,2,3,4,5
+1,2,3,4,5
+1,2,3,4,5
+-1,2,3,4,5
+Symbol.toPrimitive
+Cannot convert object to primitive value
+toString
+-1,2,3,4,5
+valueOf
+Cannot convert a illegal value to a Primitive
+Cannot convert a illegal value to a String
+Fri Dec 13 2019 14:48:00 GMT+0800,Sat Dec 14 2019 14:48:00 GMT+0800,Thu Dec 12 2019 14:48:00 GMT+0800,Tue Dec 10 2019 14:48:00 GMT+0800,Wed Dec 11 2019 14:48:00 GMT+0800
+1575960480000,1576046880000,1576133280000,1576219680000,1576306080000
+---------------test for stable array sort where arr changeto dictionary array during sorting-----------
+---------------test for stable array sort where arr changeto dictionary array during sorting end-------
+---------------test for stable array sort where elements length change---------------------------------
+---------------test for stable array sort where elements length change end-----------------------------
+---------------test for string array sort---------------------------------
+a,aa,ab,aba,abb,abc,ac,b,c
+---------------test for string array sort end-----------------------------

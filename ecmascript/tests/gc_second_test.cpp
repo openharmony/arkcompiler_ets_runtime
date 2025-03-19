@@ -42,7 +42,6 @@ public:
     void SetUp() override
     {
         JSRuntimeOptions options;
-        options.SetEnableEdenGC(true);
         instance = JSNApi::CreateEcmaVM(options);
         ASSERT_TRUE(instance != nullptr) << "Cannot create EcmaVM";
         thread = instance->GetJSThread();
@@ -115,7 +114,7 @@ HWTEST_F_L0(GCTest, ColdStartForceExpand)
         }
     }
     size_t expandHeapSize = thread->GetEcmaVM()->GetHeap()->GetCommittedSize();
-    usleep(2500000);
+    usleep(10000000);
     size_t newSize = EcmaTestCommon::GcCommonCase(thread);
     EXPECT_TRUE(originalHeapSize < expandHeapSize);
     EXPECT_TRUE(expandHeapSize > newSize);
@@ -186,6 +185,30 @@ HWTEST_F_L0(GCTest, ColdStartNoConcurrentMark)
     heap->NotifyHighSensitive(true);
     heap->NotifyHighSensitive(false);
     EXPECT_TRUE(heap->HandleExitHighSensitiveEvent());
+}
+
+HWTEST_F_L0(GCTest, ColdStartGCRestrainInternal)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    heap->NotifyPostFork();
+    heap->NotifyFinishColdStartSoon();
+    std::this_thread::sleep_for(std::chrono::seconds(3));
+    if (!heap->OnStartupEvent()) {
+        StartupStatus startupStatus = heap->GetStartupStatus();
+        EXPECT_TRUE(startupStatus == StartupStatus::JUST_FINISH_STARTUP);
+    }
+}
+
+HWTEST_F_L0(GCTest, ColdStartGCRestrainExternal)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    heap->NotifyPostFork();
+    heap->NotifyFinishColdStartSoon();
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+    heap->NotifyFinishColdStart(true);
+    EXPECT_FALSE(heap->OnStartupEvent());
+    StartupStatus startupStatus = heap->GetStartupStatus();
+    EXPECT_TRUE(startupStatus == StartupStatus::JUST_FINISH_STARTUP);
 }
 
 HWTEST_F_L0(GCTest, CallbackTask)
@@ -374,15 +397,6 @@ HWTEST_F_L0(GCTest, GCReasonToStringTest001)
     ASSERT_EQ(strcmp(stats->GCReasonToString(GCReason::TRIGGER_BY_TASKPOOL), "Trigger by taskPool"), 0);
 }
 
-HWTEST_F_L0(GCTest, PrintGCMemoryStatisticTest001)
-{
-    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-    heap->SetMarkType(MarkType::MARK_EDEN);
-    GCStats *stats = new GCStats(heap);
-    stats->RecordStatisticBeforeGC(TriggerGCType::EDEN_GC, GCReason::TRIGGER_BY_ARKUI);
-    stats->PrintGCMemoryStatistic();
-}
-
 HWTEST_F_L0(GCTest, PrintGCMemoryStatisticTest002)
 {
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
@@ -397,7 +411,7 @@ HWTEST_F_L0(GCTest, CheckIfNeedPrintTest001)
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
     heap->SetMarkType(MarkType::MARK_YOUNG);
     GCStats *stats = new GCStats(heap);
-    stats->SetRecordData(RecordData::EDEN_COUNT, 1);
+    stats->SetRecordData(RecordData::YOUNG_COUNT, 1);
     stats->PrintStatisticResult();
 }
 
@@ -407,26 +421,6 @@ HWTEST_F_L0(GCTest, PrintGCSummaryStatisticTest001)
     heap->SetMarkType(MarkType::MARK_YOUNG);
     GCStats *stats = new GCStats(heap);
     stats->PrintStatisticResult();
-}
-
-HWTEST_F_L0(GCTest, RecordStatisticAfterGCTest001)
-{
-    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-    heap->SetMarkType(MarkType::MARK_YOUNG);
-    GCStats *stats = new GCStats(heap);
-    stats->RecordStatisticBeforeGC(TriggerGCType::EDEN_GC, GCReason::TRIGGER_BY_ARKUI);
-    stats->SetRecordData(RecordData::EDEN_COUNT, 1);
-    stats->RecordStatisticAfterGC();
-}
-
-HWTEST_F_L0(GCTest, RecordStatisticAfterGCTest002)
-{
-    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-    heap->SetMarkType(MarkType::MARK_EDEN);
-    GCStats *stats = new GCStats(heap);
-    stats->RecordStatisticBeforeGC(TriggerGCType::EDEN_GC, GCReason::TRIGGER_BY_ARKUI);
-    stats->SetRecordData(RecordData::EDEN_COUNT, 1);
-    stats->RecordStatisticAfterGC();
 }
 
 HWTEST_F_L0(GCTest, CalculateGrowingFactorTest001)
@@ -459,7 +453,7 @@ HWTEST_F_L0(GCTest, StopCalculationAfterGCTest001)
     auto controller = new MemController(heap);
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
     controller->StartCalculationBeforeGC();
-    controller->StopCalculationAfterGC(TriggerGCType::EDEN_GC);
+    controller->StopCalculationAfterGC(TriggerGCType::YOUNG_GC);
 }
 
 HWTEST_F_L0(GCTest, RecordAllocationForIdleTest003)

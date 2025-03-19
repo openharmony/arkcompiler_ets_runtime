@@ -28,10 +28,10 @@
         let str = "*".repeat(65536);
         Array.prototype.fill.call(obj, str);
         let res = Array.prototype.join.call(obj);
-        print(res.length);
+        assert_equal(res.length, 65536 * 65536);
     }
     catch (e) {
-        print(e.name)
+        assert_equal(e.name, "RangeError");
     }
 }
 
@@ -41,7 +41,7 @@
         arr.fill(0);
         arr.join("*".repeat(94473))
     } catch (e) {
-        print(e.name);
+        assert_equal(e.name, "RangeError");
     }
 }
 
@@ -50,6 +50,8 @@
         let arr = new Uint8Array(47237);
         arr.join("*".repeat(94473))
     } catch (e) {
-        print(e.name);
+        assert_equal(e.name, "RangeError");
     }
 }
+
+test_end();

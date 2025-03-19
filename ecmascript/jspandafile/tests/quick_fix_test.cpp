@@ -181,7 +181,7 @@ HWTEST_F_L0(QuickFixTest, HotReload_Instantiate)
     EcmaContext *context = thread->GetCurrentEcmaContext();
     context->SetStageOfHotReload(StageOfHotReload::BEGIN_EXECUTE_PATCHMAIN);
 
-    JSHandle<JSTaggedValue> module = ModuleResolver::HostResolveImportedModuleWithMergeForHotReload(thread,
+    JSHandle<JSTaggedValue> module = ModuleResolver::HostResolveImportedModuleForHotReload(thread,
         patchFileName, replacedRecordName, false);
     EXPECT_FALSE(module->IsHole());
 

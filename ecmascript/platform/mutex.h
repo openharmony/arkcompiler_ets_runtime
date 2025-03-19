@@ -20,6 +20,11 @@
 #include <atomic>
 
 #include "ecmascript/common.h"
+
+#if defined(PANDA_USE_FUTEX)
+#include "ecmascript/platform/unix/futex.h"
+#endif
+
 #ifdef DEBUG
 #define FATAL_IF_ERROR(f, rc)                           \
     do {                                                \
@@ -62,7 +67,7 @@ public:
     NO_MOVE_SEMANTIC(RecursiveMutex);
 };
 
-class RWLock {
+class PUBLIC_API RWLock {
 public:
     RWLock();
 

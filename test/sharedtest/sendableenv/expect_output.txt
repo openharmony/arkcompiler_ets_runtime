@@ -13,4 +13,5 @@
 
 sObj A:a :1
 sObj A:c :2
+c.num :5
 

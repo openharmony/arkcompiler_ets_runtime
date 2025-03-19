@@ -17,5 +17,7 @@ a.x = 1;
 try {
 	Object.entries(a)
 } catch (e) {
-	print(e instanceof RangeError);
+	assert_equal(e instanceof RangeError, true);
 }
+
+test_end();

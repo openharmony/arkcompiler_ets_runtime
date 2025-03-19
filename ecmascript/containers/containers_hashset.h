@@ -19,6 +19,19 @@
 #include "ecmascript/base/builtins_base.h"
 #include "ecmascript/ecma_runtime_call_info.h"
 
+// List of functions in HashSet.prototype, excluding the constructor and '@@' properties.
+// V(name, func, length, stubIndex)
+// where ContainersHashSet::func refers to the native implementation of HashSet.prototype[name].
+#define CONTAINER_HASHSET_PROTOTYPE_FUNCTIONS(V)                                    \
+    V("isEmpty",        IsEmpty,        0,          INVALID)                        \
+    V("has",            Has,            1,          INVALID)                        \
+    V("add",            Add,            1,          INVALID)                        \
+    V("remove",         Remove,         1,          INVALID)                        \
+    V("clear",          Clear,          0,          INVALID)                        \
+    V("values",         Values,         0,          INVALID)                        \
+    V("entries",        Entries,        0,          INVALID)                        \
+    V("forEach",        ForEach,        2,          HashSetForEach)
+
 namespace panda::ecmascript::containers {
 class ContainersHashSet : public base::BuiltinsBase {
 public:
@@ -33,6 +46,21 @@ public:
     static JSTaggedValue Values(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue Entries(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue ForEach(EcmaRuntimeCallInfo *argv);
+
+    // Excluding the constructor and '@@' internal properties.
+    static Span<const base::BuiltinFunctionEntry> GetHashSetPrototypeFunctions()
+    {
+        return Span<const base::BuiltinFunctionEntry>(HASHSET_PROTOTYPE_FUNCTIONS);
+    }
+
+private:
+#define CONTAINER_HASHSET_FUNCTION_ENTRY(name, method, length, id) \
+    base::BuiltinFunctionEntry::Create(name, ContainersHashSet::method, length, kungfu::BuiltinsStubCSigns::id),
+
+    static constexpr std::array HASHSET_PROTOTYPE_FUNCTIONS = {
+        CONTAINER_HASHSET_PROTOTYPE_FUNCTIONS(CONTAINER_HASHSET_FUNCTION_ENTRY)
+    };
+#undef CONTAINER_HASHSET_FUNCTION_ENTRY
 };
 }  // namespace panda::ecmascript::containers
 #endif  // ECMASCRIPT_CONTAINERS_CONTAINERS_HASHSET_H

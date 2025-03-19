@@ -674,6 +674,8 @@ Expr LMIRBuilder::Max(Type *type, Expr src1, Expr src2)
 inline Expr CreateExprCompare(MIRBuilder &mirBuilder, Opcode op, Type *type, Expr src1, Expr src2)
 {
     // we don't check for type mismatch and insert type-conversion here
+    DEBUG_ASSERT(type != nullptr, "type should not be nullptr");
+    DEBUG_ASSERT(src1.GetType() != nullptr, "src1.GetType() should not be nullptr");
     return Expr(mirBuilder.CreateExprCompare(op, *type, *src1.GetType(), src1.GetNode(), src2.GetNode()), type);
 }
 

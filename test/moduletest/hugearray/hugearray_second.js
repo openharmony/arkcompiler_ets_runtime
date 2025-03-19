@@ -27,3 +27,5 @@ do {
     } catch (e) {}
 } while (t++ < 18000)
 assert_equal(t, 18001);
+
+test_end();

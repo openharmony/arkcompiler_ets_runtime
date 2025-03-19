@@ -15,8 +15,6 @@
 
 #include "aarch64_memlayout.h"
 #include "aarch64_cgfunc.h"
-#include "becommon.h"
-#include "mir_nodes.h"
 
 namespace maplebe {
 using namespace maple;
@@ -284,6 +282,7 @@ uint32 AArch64MemLayout::RealStackFrameSize() const
 // fp lr located on top of args pass area.
 int32 AArch64MemLayout::GetCalleeSaveBaseLoc() const
 {
+    DEBUG_ASSERT(cgFunc != nullptr, "cgfunc shound not be nullptr");
     uint32 offset = RealStackFrameSize() - static_cast<AArch64CGFunc *>(cgFunc)->SizeOfCalleeSaved();
     offset = (offset - SizeOfArgsToStackPass()) + kAarch64SizeOfFplr - cgFunc->GetFunction().GetFrameReseverdSlot();
     offset -= static_cast<uint32>(RoundUp(GetSizeOfSegCold(), k16BitSize));

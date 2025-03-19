@@ -15,7 +15,6 @@
 
 #include "zip_file_reader_mem.h"
 
-#include <cstdlib>
 #include "securec.h"
 
 

@@ -28,13 +28,15 @@ ohos_fuzztest("BooleanRefNewBoolFuzzTest") {
 
   configs = [ "//arkcompiler/ets_runtime:ecma_test_config" ]
 
-  deps = [
-    "//arkcompiler/ets_runtime:libark_jsruntime",
-    sdk_libc_secshared_dep,
-  ]
+  deps = [ "$js_root:libark_jsruntime" ]
 
   # hiviewdfx libraries
   external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    sdk_libc_secshared_dep,
+  ]
   deps += hiviewdfx_deps
 }
 

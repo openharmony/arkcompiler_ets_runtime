@@ -16,7 +16,7 @@
 #include "ecmascript/cross_vm/cross_vm_operator.h"
 
 #include "ecmascript/ecma_vm.h"
-#include "ecmascript/mem/heap.h"
+#include "ecmascript/mem/heap-inl.h"
 #include "ecmascript/mem/unified_gc/unified_gc_marker.h"
 
 namespace panda::ecmascript {

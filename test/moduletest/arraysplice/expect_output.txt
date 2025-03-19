@@ -41,3 +41,4 @@ array.length 0
 array: 1,2,3,4
 array: 1,2,3,4
 TypeError: derived class constructor must return an object or undefined
+-3.5

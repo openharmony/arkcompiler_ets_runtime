@@ -33,8 +33,7 @@ host_unittest_action("Containers_001_Test") {
   deps = [
     "$ark_third_party_root/icu/icu4c:shared_icui18n",
     "$ark_third_party_root/icu/icu4c:shared_icuuc",
-    "../../../:libark_jsruntime_test",
-    sdk_libc_secshared_dep,
+    "$js_root:libark_jsruntime_test",
   ]
 
   # hiviewdfx libraries
@@ -59,8 +58,7 @@ host_unittest_action("Containers_002_Test") {
   deps = [
     "$ark_third_party_root/icu/icu4c:shared_icui18n",
     "$ark_third_party_root/icu/icu4c:shared_icuuc",
-    "../../../:libark_jsruntime_test",
-    sdk_libc_secshared_dep,
+    "$js_root:libark_jsruntime_test",
   ]
 
   # hiviewdfx libraries
@@ -84,8 +82,7 @@ host_unittest_action("Containers_003_Test") {
   deps = [
     "$ark_third_party_root/icu/icu4c:shared_icui18n",
     "$ark_third_party_root/icu/icu4c:shared_icuuc",
-    "//arkcompiler/ets_runtime:libark_jsruntime_test",
-    sdk_libc_secshared_dep,
+    "$js_root:libark_jsruntime_test",
   ]
 
   # hiviewdfx libraries
@@ -106,8 +103,7 @@ host_unittest_action("Containers_004_Test") {
   deps = [
     "$ark_third_party_root/icu/icu4c:shared_icui18n",
     "$ark_third_party_root/icu/icu4c:shared_icuuc",
-    "../../../:libark_jsruntime_test",
-    sdk_libc_secshared_dep,
+    "$js_root:libark_jsruntime_test",
   ]
 
   # hiviewdfx libraries

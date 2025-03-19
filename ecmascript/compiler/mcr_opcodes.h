@@ -148,8 +148,6 @@ namespace panda::ecmascript::kungfu {
     V(DateNow, DATE_NOW, GateFlags::NONE_FLAG, 1, 1, 0)                                         \
     V(SetValues, SET_VALUES, GateFlags::NO_WRITE, 1, 1, 1)                                      \
     V(SetEntries, SET_ENTRIES, GateFlags::NO_WRITE, 1, 1, 1)                                    \
-    V(MapClear, MAP_CLEAR, GateFlags::NONE_FLAG, 1, 1, 1)                                       \
-    V(SetClear, SET_CLEAR, GateFlags::NONE_FLAG, 1, 1, 1)                                       \
     V(ObjectIs, OBJECT_IS, GateFlags::NO_WRITE, 1, 1, 2)                                        \
     V(ObjectGetPrototypeOf, OBJECT_GET_PROTOTYPE_OF, GateFlags::NO_WRITE, 1, 1, 1)              \
     V(ObjectCreate, OBJECT_CREATE, GateFlags::NONE_FLAG, 1, 1, 1)                               \
@@ -163,7 +161,8 @@ namespace panda::ecmascript::kungfu {
     V(FunctionPrototypeApply, FUNCTION_PROTOTYPE_APPLY, GateFlags::NONE_FLAG, 1, 1, 3)          \
     V(FunctionPrototypeBind, FUNCTION_PROTOTYPE_BIND, GateFlags::NONE_FLAG, 1, 1, 2)            \
     V(HeapObjectIsEcmaObjectCheck, HEAP_OBJECT_IS_ECMA_OBJECT, GateFlags::CHECKABLE, 1, 1, 1)   \
-    V(ArrayIncludesIndexOf, ARRAY_INCLUDES_INDEXOF, GateFlags::NO_WRITE,  1, 1, 5)              \
+    V(CallTargetIsCompiledCheck, CALL_TARGET_IS_COMPILED_CHECK, GateFlags::CHECKABLE, 1, 1, 1)  \
+    V(ArrayIncludesIndexOf, ARRAY_INCLUDES_INDEXOF, GateFlags::NO_WRITE,  1, 1, 6)              \
     V(ArrayIteratorBuiltin, ARRAY_ITERATOR_BUILTIN, GateFlags::NONE_FLAG,  1, 1, 2)             \
     V(ArrayPop, ARRAY_POP, GateFlags::NONE_FLAG, 1, 1, 2)                                       \
     V(ArrayPush, ARRAY_PUSH, GateFlags::NONE_FLAG, 1, 1, 2)                                     \

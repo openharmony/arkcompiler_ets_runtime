@@ -29,10 +29,13 @@ MethodLiteral::MethodLiteral(EntityId methodId)
     SetMethodId(methodId);
 }
 
-void MethodLiteral::Initialize(const JSPandaFile *jsPandaFile, const JSThread *thread)
+void MethodLiteral::Initialize(const JSPandaFile *jsPandaFile, const JSThread *thread, const uint32_t offset)
 {
     const panda_file::File *pf = jsPandaFile->GetPandaFile();
     EntityId methodId = GetMethodId();
+    if (UNLIKELY(offset != 0 && methodId.GetOffset() != offset)) {
+        LOG_ECMA(FATAL) << "Invalid methodId, expected methodId: " << offset << ", actual methodId: " << methodId;
+    }
     panda_file::MethodDataAccessor mda(*pf, methodId);
     auto codeId = mda.GetCodeId().value();
     ASSERT(codeId.IsValid());
@@ -40,32 +43,49 @@ void MethodLiteral::Initialize(const JSPandaFile *jsPandaFile, const JSThread *t
     panda_file::CodeDataAccessor cda(*pf, codeId);
     nativePointerOrBytecodeArray_ = cda.GetInstructions();
     uint32_t codeSize = cda.GetCodeSize();
-    // When triggering jit compile through the execution count of the js function, set the hotness counter value to 0
-    // to ensure that the profile type info object can be created on the first execution of the js function.
-    bool cancelThreshold = (thread != nullptr && thread->GetEcmaVM()->GetJSOptions().GetJitCallThreshold() != 0);
+    // When triggering jit compile only through the execution count of the js function, set the hotness counter
+    // value to 0, to ensure that the profile type info object can be created on the first execution of the js function.
+    bool cancelThreshold = (thread != nullptr && thread->GetEcmaVM()->GetJSOptions().GetJitHotnessThreshold() == 0);
     SetHotnessCounter(EcmaInterpreter::GetHotnessCounter(codeSize, cancelThreshold));
 
     uint32_t callType = UINT32_MAX;  // UINT32_MAX means not found
     uint32_t slotSize = 0;
+    uint32_t expectedPropertyCount = MAX_EXPECTED_PROPERTY_COUNT; // MAX_EXPECTED_PROPERTY_COUNT means not found
     mda.EnumerateAnnotations([&](EntityId annotationId) {
         panda_file::AnnotationDataAccessor ada(*pf, annotationId);
-        auto *annotationName = reinterpret_cast<const char *>(pf->GetStringData(ada.GetClassId()).data);
-        if (::strcmp("L_ESCallTypeAnnotation;", annotationName) == 0) {
+        auto classIdstr = pf->GetStringData(ada.GetClassId());
+        std::string_view annotationNameView(utf::Mutf8AsCString(classIdstr.data), classIdstr.utf16_length);
+        if (annotationNameView == KCALL_TYPE_ANNOTATION) {
             uint32_t elemCount = ada.GetCount();
             for (uint32_t i = 0; i < elemCount; i++) {
                 panda_file::AnnotationDataAccessor::Elem adae = ada.GetElement(i);
-                auto *elemName = reinterpret_cast<const char *>(pf->GetStringData(adae.GetNameId()).data);
-                if (::strcmp("callType", elemName) == 0) {
+                auto nameStr = pf->GetStringData(adae.GetNameId());
+                std::string_view elemNameView(utf::Mutf8AsCString(nameStr.data), nameStr.utf16_length);
+                if (elemNameView == KCALL_TYPE_NAME) {
                     callType = adae.GetScalarValue().GetValue();
+                    break;
                 }
             }
-        } else if (::strcmp("L_ESSlotNumberAnnotation;", annotationName) == 0) {
+        } else if (annotationNameView == KSLOT_NUMBER_ANNOTATION) {
             uint32_t elemCount = ada.GetCount();
             for (uint32_t i = 0; i < elemCount; i++) {
                 panda_file::AnnotationDataAccessor::Elem adae = ada.GetElement(i);
-                auto *elemName = reinterpret_cast<const char *>(pf->GetStringData(adae.GetNameId()).data);
-                if (::strcmp("SlotNumber", elemName) == 0) {
+                auto nameStr = pf->GetStringData(adae.GetNameId());
+                std::string_view elemNameView(utf::Mutf8AsCString(nameStr.data), nameStr.utf16_length);
+                if (elemNameView == KSLOT_NUMBER_NAME) {
                     slotSize = adae.GetScalarValue().GetValue();
+                    break;
+                }
+            }
+        } else if (annotationNameView == KEXPECTED_PROPERTY_COUNT_ANNOTATION) {
+            uint32_t elemCount = ada.GetCount();
+            for (uint32_t i = 0; i < elemCount; i++) {
+                panda_file::AnnotationDataAccessor::Elem adae = ada.GetElement(i);
+                auto nameStr = pf->GetStringData(adae.GetNameId());
+                auto elemNameView = std::string_view(utf::Mutf8AsCString(nameStr.data), nameStr.utf16_length);
+                if (elemNameView == KEXPECTED_PROPERTY_COUNT_NAME) {
+                    expectedPropertyCount = adae.GetScalarValue().GetValue();
+                    break;
                 }
             }
         }
@@ -82,6 +102,7 @@ void MethodLiteral::Initialize(const JSPandaFile *jsPandaFile, const JSThread *t
                  NumArgsBits::Encode(numArgs - HaveFuncBit::Decode(callType)  // exclude func
                                              - HaveNewTargetBit::Decode(callType)  // exclude new target
                                              - HaveThisBit::Decode(callType));  // exclude this
+    SetExpectedPropertyCount(expectedPropertyCount);
     SetSlotSize(slotSize);
 }
 

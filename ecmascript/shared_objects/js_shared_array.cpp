@@ -337,15 +337,7 @@ bool JSSharedArray::DefineOwnProperty(JSThread *thread, const JSHandle<JSObject>
     // 3. Else if P is an array index, then
     // already do in step 4.
     // 4. Return OrdinaryDefineOwnProperty(A, P, Desc).
-    bool success = JSObject::OrdinaryDefineOwnProperty(thread, array, key, desc);
-    if (success) {
-        JSTaggedValue constructorKey = thread->GlobalConstants()->GetConstructorString();
-        if (key.GetTaggedValue() == constructorKey) {
-            array->GetJSHClass()->SetHasConstructor(true);
-            return true;
-        }
-    }
-    return success;
+    return JSObject::OrdinaryDefineOwnProperty(thread, array, key, desc);
 }
 
 bool JSSharedArray::IsLengthString(JSThread *thread, const JSHandle<JSTaggedValue> &key)
@@ -561,7 +553,7 @@ void JSSharedArray::DeleteInElementMode(const JSThread *thread, JSHandle<JSShare
     // fixme(hzzhouzebin) Optimize Delete later.
     uint32_t size = 0;
     for (uint32_t i = 0; i < length; i++) {
-        JSTaggedValue value = ElementAccessor::Get(JSHandle<JSObject>(obj), i);
+        JSTaggedValue value = ElementAccessor::Get(thread, JSHandle<JSObject>(obj), i);
         if (value.IsHole()) {
             continue;
         }
@@ -572,7 +564,7 @@ void JSSharedArray::DeleteInElementMode(const JSThread *thread, JSHandle<JSShare
         factory->NewTaggedArray(length, JSTaggedValue::Hole(), MemSpaceType::SHARED_OLD_SPACE));
     uint32_t newCurr = 0;
     for (uint32_t i = 0; i < length; i++) {
-        JSTaggedValue value = ElementAccessor::Get(JSHandle<JSObject>(obj), i);
+        JSTaggedValue value = ElementAccessor::Get(thread, JSHandle<JSObject>(obj), i);
         if (value.IsHole()) {
             continue;
         }

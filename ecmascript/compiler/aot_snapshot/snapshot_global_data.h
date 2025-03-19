@@ -98,15 +98,15 @@ public:
     SnapshotGlobalData() = default;
     ~SnapshotGlobalData() = default;
 
-    void Iterate(const RootVisitor &v)
+    void Iterate(RootVisitor &v)
     {
-        v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&data_)));
-        v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&curSnapshotCpArray_)));
-        v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&symbolInfo_)));
-        v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&hclassInfo_)));
-        v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&arrayInfo_)));
-        v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&constantIndexInfo_)));
-        v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&protoTransTableInfo_)));
+        v.VisitRoot(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&data_)));
+        v.VisitRoot(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&curSnapshotCpArray_)));
+        v.VisitRoot(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&symbolInfo_)));
+        v.VisitRoot(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&hclassInfo_)));
+        v.VisitRoot(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&arrayInfo_)));
+        v.VisitRoot(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&constantIndexInfo_)));
+        v.VisitRoot(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&protoTransTableInfo_)));
     }
 
     void SetData(JSTaggedValue data)

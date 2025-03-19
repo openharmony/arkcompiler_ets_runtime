@@ -2082,3 +2082,150 @@ print(findIndexArray.findIndex(element => element == "e"));
     print("succ");
     Array.prototype.__proto__ = Object.prototype;
 }
+// slice
+let sliceArray = [0, 1, 2, 3, 4, 5];
+print(sliceArray.slice(0));
+print(sliceArray.slice(-1));
+print(sliceArray.slice(1, 4));
+print(sliceArray.slice(1, 10));
+
+// Test ArrayIteratorNext for arraylike object
+{
+    const arrayLike = {
+        get length() {
+            if (this._canAccessLength) {
+                return 2;
+            } else {
+                throw new Error("Access to length is denied");
+            }
+        },
+        0: 'a',
+        1: 'b'
+    };
+    
+    const iterator = Array.prototype[Symbol.iterator].call(arrayLike);
+    
+    try {
+        iterator.next()
+    } catch {
+        print("Exception")
+    }
+}
+
+// Test ArrayIteratorNext for arraylike object
+{
+    const arrayLike = {
+        get length() {
+            return 2;
+        },
+        0: 'a',
+        1: 'b'
+    };
+  
+    // Values Iterator
+    const valuesIterator = Array.prototype[Symbol.iterator].call(arrayLike);
+    let result;
+    while (!(result = valuesIterator.next()).done) {
+        print(result.value, result.done);
+    }
+    print(result.value, result.done);
+  
+    // Keys Iterator
+    const keysIterator = Array.prototype.keys.call(arrayLike);
+    while (!(result = keysIterator.next()).done) {
+        print(result.value, result.done);
+    }
+    print(result.value, result.done);
+  
+    // Entries Iterator
+    const entriesIterator = Array.prototype.entries.call(arrayLike);
+    while (!(result = entriesIterator.next()).done) {
+        print(result.value, result.done);
+    }
+    print(result.value, result.done);
+}
+
+// Test ArrayIteratorNext for non-jsArrayIterator
+{
+    const nonArrayIterator = {
+        next: function () {
+            return { done: true, value: undefined };
+        }
+      };
+      
+    try {
+        for (const item of nonArrayIterator) {
+            throw new Error();
+        }
+    } catch (error) {
+        if (error instanceof TypeError) {
+            print('Test passed');
+        } else {
+            print('Test failed');
+        }
+    }      
+}
+
+
+let x1 = new Array(10);
+let x2 = new Array(1,2,3,undefined);
+let x3 = new Array();
+
+x1.constructor = null
+
+print(ArkTools.hasConstructor(x2));
+print(ArkTools.hasConstructor(x3));
+// pop 
+var y = new Array(10)
+for (let i = 0; i < y.length; i++) {
+    y[i] = i
+}
+print(y.pop()); //: 9
+print(y.pop()); //: 8
+print(y.pop()); //: 7
+print(y.pop()); //: 6
+print(y.pop()); //: 5
+print(y);
+// shift
+var shiftArray = new Array(10)
+for (let i = 0; i < shiftArray.length; i++) {
+    shiftArray[i] = i
+}
+print(shiftArray.shift()); //: 0
+print(shiftArray.shift()); //: 1
+print(shiftArray.shift()); //: 2
+print(shiftArray.shift()); //: 3
+print(shiftArray.shift()); //: 4
+print(shiftArray);
+// copyWithin
+let copyWithInArray = new Array(0, 1, 2, 3, 4);
+print(copyWithInArray.copyWithin(2,1,3))
+
+for (let i = 0; i < 2; i++) {
+    let copyWithInArray1 = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+    copyWithInArray1.copyWithin(1,2,3);
+    if (i == 0) {
+        print(copyWithInArray1);
+    }
+    copyWithInArray1.copyWithin(1,3,2);
+    if (i == 0) {
+        print(copyWithInArray1);
+    }
+    copyWithInArray1.copyWithin(2,1,3);
+    if (i == 0) {
+        print(copyWithInArray1);
+    }
+    copyWithInArray1.copyWithin(2,3,1);
+    if (i == 0) {
+        print(copyWithInArray1);
+    }
+    copyWithInArray1.copyWithin(3,1,2);
+    if (i == 0) {
+        print(copyWithInArray1);
+    }
+    copyWithInArray1.copyWithin(3,2,1);
+    if (i == 0) {
+        print(copyWithInArray1);
+    }
+}
+print([0, 1, 2, 3].copyWithin(0, 1, -10));

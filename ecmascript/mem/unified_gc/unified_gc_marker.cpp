@@ -66,7 +66,8 @@ void UnifiedGCMarker::InitializeMarking(uint32_t threadId)
     CHECK_DAEMON_THREAD();
     Initialize();
     UnifiedGCMarkRootsScope scope(heap_->GetJSThread());
-    MarkRoots(threadId);
+    UnifiedGCMarkRootVisitor visitor(workManager_->GetWorkNodeHolder(threadId), this);
+    MarkRoots(visitor);
 }
 
 void UnifiedGCMarker::DoMarking(uint32_t threadId)
@@ -122,22 +123,13 @@ void UnifiedGCMarker::MarkFromObject(TaggedObject *object)
 
 void UnifiedGCMarker::ProcessMarkStack(uint32_t threadId)
 {
-    auto cb = [&](ObjectSlot s) { MarkValue(threadId, s); };
-    EcmaObjectRangeVisitor visitor = [this, threadId, cb](TaggedObject *root, ObjectSlot start,
-                                                          ObjectSlot end, VisitObjectArea area) {
-        if (area == VisitObjectArea::IN_OBJECT) {
-            if (VisitBodyInObj(root, start, end, cb)) {
-                return;
-            }
-        }
-        for (ObjectSlot slot = start; slot < end; slot++) {
-            MarkValue(threadId, slot);
-        }
-    };
+    WorkNodeHolder *workNodeHolder = workManager_->GetWorkNodeHolder(threadId);
+    UnifiedGCMarkObjectVisitor visitor(workNodeHolder, this);
+
     TaggedObject *obj = nullptr;
-    while (workManager_->Pop(threadId, &obj)) {
+    while (workNodeHolder->Pop(&obj)) {
         JSHClass *jsHclass = obj->SynchronizedGetClass();
-        MarkObject(threadId, jsHclass);
+        visitor.VisitHClass(jsHclass);
         ObjectXRay::VisitObjectBody<VisitType::OLD_GC_VISIT>(obj, jsHclass, visitor);
     }
 }

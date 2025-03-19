@@ -22,7 +22,6 @@ SerializedObjectSpace BaseSerializer::GetSerializedObjectSpace(TaggedObject *obj
     auto region = Region::ObjectAddressToRange(object);
     auto flag = region->GetRegionSpaceFlag();
     switch (flag) {
-        case RegionSpaceFlag::IN_EDEN_SPACE:
         case RegionSpaceFlag::IN_OLD_SPACE:
         case RegionSpaceFlag::IN_YOUNG_SPACE:
         case RegionSpaceFlag::IN_APPSPAWN_SPACE:

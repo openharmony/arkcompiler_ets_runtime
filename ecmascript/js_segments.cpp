@@ -15,7 +15,6 @@
 
 #include "ecmascript/js_segments.h"
 
-#include <cstring>
 
 #include "ecmascript/base/builtins_base.h"
 #include "ecmascript/intl/locale_helper.h"

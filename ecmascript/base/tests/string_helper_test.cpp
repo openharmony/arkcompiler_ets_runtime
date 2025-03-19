@@ -26,6 +26,46 @@ namespace panda::test {
 class StringHelperTest : public BaseTestWithScope<true> {
 };
 
+HWTEST_F_L0(StringHelperTest, ConcatToCString)
+{
+    CString a = "Hello";
+    std::string b = "World";
+    CString result1 = ConcatToCString(a, ", ", b, '!');
+    EXPECT_STREQ(result1.c_str(), "Hello, World!");
+    CString result2 = ConcatToCString(b, ", ", a, '!');
+    EXPECT_STREQ(result2.c_str(), "World, Hello!");
+    CString result4 = ConcatToCString("x", b, ", ", a, '!');
+    EXPECT_STREQ(result4.c_str(), "xWorld, Hello!");
+}
+
+HWTEST_F_L0(StringHelperTest, ConcatToStdString)
+{
+    CString a = "Hello";
+    std::string b = "World";
+    std::string result1 = ConcatToStdString(a, ", ", b, '!');
+    EXPECT_STREQ(result1.c_str(), "Hello, World!");
+    std::string result2 = ConcatToStdString(b, ", ", a, '!');
+    EXPECT_STREQ(result2.c_str(), "World, Hello!");
+    std::string result4 = ConcatToStdString("x", b, ", ", a, '!');
+    EXPECT_STREQ(result4.c_str(), "xWorld, Hello!");
+}
+
+HWTEST_F_L0(StringHelperTest, AppendToBaseCString)
+{
+    CString a = "Hello";
+    std::string b = "World";
+    AppendToBaseString(a, ", ", b, '!');
+    EXPECT_STREQ(a.c_str(), "Hello, World!");
+}
+
+HWTEST_F_L0(StringHelperTest, AppendToBaseStdString)
+{
+    std::string a = "Hello";
+    CString b = "World";
+    AppendToBaseString(a, ", ", b, '!');
+    EXPECT_STREQ(a.c_str(), "Hello, World!");
+}
+
 HWTEST_F_L0(StringHelperTest, ReplaceAll)
 {
     CString sourceStr = "H\\e\\l\\l\\o\\W\\o\\r\\l\\d!\0";

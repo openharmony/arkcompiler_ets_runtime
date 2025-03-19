@@ -192,7 +192,7 @@ int32_t DebuggerApi::GetVregIndex(const FrameHandler *frameHandler, std::string_
     auto table = extractor->GetLocalVariableTable(method->GetMethodId());
     for (auto iter = table.begin(); iter != table.end(); iter++) {
         // if currentOffset not in variable's scope, skip it
-        if (iter->name == name.data() && currentOffset >= iter->startOffset && currentOffset <= iter->endOffset) {
+        if (iter->name == name.data() && currentOffset >= iter->startOffset && currentOffset < iter->endOffset) {
             // if there are multiple variables with the same name, get regNumber with the smallest scope
             if (iter->startOffset >= startOffset && iter->endOffset <= endOffset) {
                 regNumber = iter->regNumber;
@@ -302,6 +302,20 @@ int32_t DebuggerApi::GetObjectHash(const EcmaVM *ecmaVM, const JSHandle<JSTagged
     }
 }
 
+int32_t DebuggerApi::GetObjectHashCode(const EcmaVM *ecmaVM, const JSHandle<JSTaggedValue> &tagged)
+{
+    if (!tagged->IsECMAObject()) {
+        return 0;
+    }
+    int32_t hash = ECMAObject::Cast(tagged->GetTaggedObject())->GetHash();
+    if (hash == 0) {
+        hash = base::RandomGenerator::GenerateIdentityHash();
+        auto ecmaObjHandle = JSHandle<ECMAObject>::Cast(tagged);
+        ECMAObject::SetHash(ecmaVM->GetJSThread(), hash, ecmaObjHandle);
+    }
+    return hash;
+}
+
 void DebuggerApi::GetObjectClassName(const EcmaVM *ecmaVM, Local<JSValueRef> &tagged, std::string &className)
 {
     if (!tagged->IsObject(ecmaVM)) {
@@ -324,6 +338,11 @@ void DebuggerApi::GetObjectClassName(const EcmaVM *ecmaVM, Local<JSValueRef> &ta
 bool DebuggerApi::RemoveBreakpointsByUrl(JSDebugger *debugger, const std::string &url)
 {
     return debugger->RemoveBreakpointsByUrl(url);
+}
+
+void DebuggerApi::DisableFirstTimeFlag(JSDebugger *debugger)
+{
+    return debugger->DisableFirstTimeFlag();
 }
 
 // ScopeInfo

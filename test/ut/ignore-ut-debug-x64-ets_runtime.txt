@@ -1,1 +1,4 @@
 # Known failure list for ut - debug - x64 - ets_runtime
+
+#21813
+obj/arkcompiler/ets_runtime/test/jittest/try_catch_empty/try_catch_empty

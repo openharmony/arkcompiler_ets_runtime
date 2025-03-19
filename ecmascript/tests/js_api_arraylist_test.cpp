@@ -417,6 +417,28 @@ HWTEST_F_L0(JSAPIArrayListTest, RemoveByRange)
 }
 
 /**
+ * @tc.name: RemoveByRange and GetHeapUsedSize
+ * @tc.desc:
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F_L0(JSAPIArrayListTest, RemoveByRangeAndGetHeapUsedSize)
+{
+    JSHandle<JSAPIArrayList> arrayList(thread, CreateArrayList());
+    uint32_t addElementNums = 10; // 10: elements size
+    for (uint32_t i = 0; i < addElementNums; i++) {
+        JSHandle<JSTaggedValue> value(thread, JSTaggedValue(i));
+        JSAPIArrayList::Add(thread, arrayList, value);
+    }
+    JSHandle<JSTaggedValue> fromIndexValue(thread, JSTaggedValue(1)); // 1: start index
+    JSHandle<JSTaggedValue> toIndexValue(thread, JSTaggedValue(3)); // 3: end index
+    JSAPIArrayList::RemoveByRange(thread, arrayList, fromIndexValue, toIndexValue);
+    // test heap is normal after RemoveByRange, GetLiveObjectSize will iterate heap
+    instance->GetHeap()->GetLiveObjectSize();
+    EXPECT_EQ(arrayList->GetLength().GetInt(), 8); // 8: new length
+}
+
+/**
  * @tc.name: ReplaceAllElements
  * @tc.desc:
  * @tc.type: FUNC

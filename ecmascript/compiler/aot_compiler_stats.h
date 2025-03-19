@@ -108,7 +108,7 @@ public:
         return pgoFileLegal_;
     }
 
-    void PrintCompilerStatsLog();
+    void PUBLIC_API PrintCompilerStatsLog();
 
 private:
     void SendSysEvent() const;

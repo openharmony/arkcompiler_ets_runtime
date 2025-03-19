@@ -34,7 +34,6 @@ public:
     void SetUp() override
     {
         JSRuntimeOptions options;
-        options.SetEnableEdenGC(true);
         options.SetArkProperties(options.GetArkProperties() | ArkProperties::ENABLE_HEAP_VERIFY);
         instance = JSNApi::CreateEcmaVM(options);
         ASSERT_TRUE(instance != nullptr) << "Cannot create EcmaVM";
@@ -46,14 +45,6 @@ public:
         heap->GetSweeper()->EnableConcurrentSweep(EnableConcurrentSweepType::ENABLE);
     }
 };
-
-HWTEST_F_L0(GCTest, VerificationTest1)
-{
-    Heap *heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-    heap->SetMarkType(MarkType::MARK_EDEN);
-    auto partialGc = heap->GetPartialGC();
-    partialGc->RunPhases();
-}
 
 HWTEST_F_L0(GCTest, VerificationTest2)
 {
@@ -82,7 +73,6 @@ HWTEST_F_L0(GCTest, SharedHeapVerificationTest)
 {
     SharedHeap *sHeap = SharedHeap::GetInstance();
     JSRuntimeOptions options;
-    options.SetEnableEdenGC(true);
     options.SetArkProperties(options.GetArkProperties() | ArkProperties::ENABLE_HEAP_VERIFY);
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     sHeap->CollectGarbage<TriggerGCType::SHARED_GC, GCReason::OTHER>(thread);

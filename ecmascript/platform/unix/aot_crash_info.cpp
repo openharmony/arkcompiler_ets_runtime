@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 
-
 #include "ecmascript/platform/aot_crash_info.h"
 #if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE)
 #include "parameters.h"

@@ -178,3 +178,49 @@ function arrayInit(array, value) {
     }
 
 }
+{
+  print([0, 0, 0, 0, 0].fill());
+  print([0, 0, 0, 0, 0].fill(8));
+  print([0, 0, 0, 0, 0].fill(8, 1));
+  print([0, 0, 0, 0, 0].fill(8, 10));
+  print([0, 0, 0, 0, 0].fill(8, -5));
+  print([0, 0, 0, 0, 0].fill(8, 1, 4));
+  print([0, 0, 0, 0, 0].fill(8, 1, -1));
+  print([0, 0, 0, 0, 0].fill(8, 1, 42));
+  print([0, 0, 0, 0, 0].fill(8, -3, 42));
+  print([0, 0, 0, 0, 0].fill(8, -3, 4));
+  print([0, 0, 0, 0, 0].fill(8, -2, -1));
+  print([0, 0, 0, 0, 0].fill(8, -1, -3));
+  print([0, 0, 0, 0, 0].fill(8, undefined, 4));
+  print([ ,  ,  ,  , 0].fill(8, 1, 3));
+}
+
+function test() {
+  var t = [1,2,3];
+  function f() {
+    var h = [];
+    var a = [...arguments]
+    for(item in a) {
+      var n = new Number(a[item]);
+      if (n < 0) {
+        n = n + 0x100000;
+      }
+      h.push(n.toString(16))
+    }
+    return h;
+  }
+  var q = f;
+  t.length = 20;
+  var o = {};
+  Object.defineProperty(o,'3', {
+    get:function() {
+      var ta = [];
+      ta.fill.call(t, "nataile")
+      return 5;
+    }
+  })
+  t.__proto__ = o;
+  var j = [];
+  f.apply(null, t).toString()
+}
+try {test()} catch(err) {print(err)};

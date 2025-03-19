@@ -40,24 +40,26 @@ public:
     JSHandle<JSTaggedValue> CallJoin(JSHandle<TaggedArray> handleTagArr, JSTaggedValue sepValue) const
     {
         JSHandle<JSArray> handleArr(JSArray::CreateArrayFromList(thread, handleTagArr));
+        JSHandle<JSTaggedValue> tagArrValue = JSHandle<JSTaggedValue>::Cast(handleArr);
         auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
         ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
         ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
         ecmaRuntimeCallInfo->SetCallArg(0, sepValue);
         [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
-        JSHandle<JSTaggedValue> handleTagValEcmaStrRet(thread, JSStableArray::Join(handleArr, ecmaRuntimeCallInfo));
+        JSHandle<JSTaggedValue> handleTagValEcmaStrRet(thread, JSStableArray::Join(tagArrValue, ecmaRuntimeCallInfo));
         TestHelper::TearDownFrame(thread, prev);
         return handleTagValEcmaStrRet;
     }
 
     // tests for sep is Undefined
-    JSHandle<JSTaggedValue> CallJoin(JSHandle<TaggedArray> handleTagArr, int64_t lengthArr) const
+    JSHandle<JSTaggedValue> CallJoin(JSHandle<TaggedArray> handleTagArr, [[maybe_unused]] int64_t lengthArr) const
     {
         JSTaggedValue sepValue = JSTaggedValue::Undefined();
         return CallJoin(handleTagArr, sepValue);
     }
 
-    JSHandle<JSTaggedValue> CallJoin(JSHandle<TaggedArray> handleTagArr, std::string& sep, int64_t lengthArr) const
+    JSHandle<JSTaggedValue> CallJoin(JSHandle<TaggedArray> handleTagArr, std::string& sep,
+                                     [[maybe_unused]] int64_t lengthArr) const
     {
         ObjectFactory* objFactory = thread->GetEcmaVM()->GetFactory();
         JSTaggedValue sepValue = JSHandle<JSTaggedValue>::Cast(objFactory->NewFromStdString(sep)).GetTaggedValue();
@@ -94,7 +96,7 @@ HWTEST_F_L0(JSStableArrayTest, Push)
     JSHandle<JSObject> arrObjHandle(handleArr);
     EXPECT_EQ(handleArr->GetArrayLength(), static_cast<size_t>(lengthArr + numElementsPush));
     for (int32_t i = lengthArr; i < lengthArr + numElementsPush; i++) {
-        EXPECT_EQ(ElementAccessor::Get(arrObjHandle, i).GetNumber(), i - lengthArr);
+        EXPECT_EQ(ElementAccessor::Get(thread, arrObjHandle, i).GetNumber(), i - lengthArr);
     }
 }
 
@@ -182,7 +184,7 @@ HWTEST_F_L0(JSStableArrayTest, Splice)
     EXPECT_EQ(handleArrCombinedOfDeletedElements->GetArrayLength(), actualDeleteCount);
     JSHandle<JSObject> handleObjArrCombinedOfDeletedElements(handleTagValArrCombinedOfDeletedElements);
     for (int32_t i = 0; i < actualDeleteCount; i++) {
-        EXPECT_EQ(ElementAccessor::Get(handleObjArrCombinedOfDeletedElements, i).GetNumber(),
+        EXPECT_EQ(ElementAccessor::Get(thread, handleObjArrCombinedOfDeletedElements, i).GetNumber(),
                   (offsetStartInsert + i) * 10);
     }
 
@@ -256,10 +258,11 @@ HWTEST_F_L0(JSStableArrayTest, Join_NumberElements_UndefinedSep)
     }
     JSHandle<JSArray> handleArr(JSArray::CreateArrayFromList(thread, handleTagArr));
     std::vector<JSTaggedValue> args{};
+    JSHandle<JSTaggedValue> tagArrValue = JSHandle<JSTaggedValue>::Cast(handleArr);
     auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, args, 4);
     [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
     JSHandle<JSTaggedValue> handleTagValEcmaStrRet(thread,
-        JSStableArray::Join(handleArr, ecmaRuntimeCallInfo));
+        JSStableArray::Join(tagArrValue, ecmaRuntimeCallInfo));
     TestHelper::TearDownFrame(thread, prev);
 
     JSHandle<EcmaString> handleEcmaStrRet(handleTagValEcmaStrRet);
@@ -287,10 +290,11 @@ HWTEST_F_L0(JSStableArrayTest, Join_StringElements_UndefinedSep)
     }
     JSHandle<JSArray> handleArr(JSArray::CreateArrayFromList(thread, handleTagArr));
     std::vector<JSTaggedValue> args{};
+    JSHandle<JSTaggedValue> tagArrValue = JSHandle<JSTaggedValue>::Cast(handleArr);
     auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, args, 4);
     [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
     JSHandle<JSTaggedValue> handleTagValEcmaStrRet(thread,
-        JSStableArray::Join(handleArr, ecmaRuntimeCallInfo));
+        JSStableArray::Join(tagArrValue, ecmaRuntimeCallInfo));
     TestHelper::TearDownFrame(thread, prev);
 
     JSHandle<EcmaString> handleEcmaStrRet(handleTagValEcmaStrRet);
@@ -316,11 +320,12 @@ HWTEST_F_L0(JSStableArrayTest, Join_NumberElements_DefinedSep)
         handleTagArr->Set(thread, i, JSTaggedValue(i));
     }
     JSHandle<JSArray> handleArr(JSArray::CreateArrayFromList(thread, handleTagArr));
+    JSHandle<JSTaggedValue> tagArrValue = JSHandle<JSTaggedValue>::Cast(handleArr);
     std::vector<JSTaggedValue> args{JSHandle<JSTaggedValue>::Cast(objFactory->NewFromStdString("^")).GetTaggedValue()};
     auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, args, 6);
     [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
     JSHandle<JSTaggedValue> handleTagValEcmaStrRet(thread,
-        JSStableArray::Join(handleArr, ecmaRuntimeCallInfo));
+        JSStableArray::Join(tagArrValue, ecmaRuntimeCallInfo));
     TestHelper::TearDownFrame(thread, prev);
 
     JSHandle<EcmaString> handleEcmaStrRet(handleTagValEcmaStrRet);
@@ -347,6 +352,7 @@ HWTEST_F_L0(JSStableArrayTest, Join_StringElements_DefinedSep)
         handleTagArr->Set(thread, i, handleTagValElementEcmaStr.GetTaggedValue());
     }
     JSHandle<JSArray> handleArr(JSArray::CreateArrayFromList(thread, handleTagArr));
+    JSHandle<JSTaggedValue> tagArrValue = JSHandle<JSTaggedValue>::Cast(handleArr);
     auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
     ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
     ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
@@ -354,7 +360,7 @@ HWTEST_F_L0(JSStableArrayTest, Join_StringElements_DefinedSep)
         JSHandle<JSTaggedValue>::Cast(objFactory->NewFromStdString(" <> ")).GetTaggedValue());
     [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
     JSHandle<JSTaggedValue> handleTagValEcmaStrRet(thread,
-        JSStableArray::Join(handleArr, ecmaRuntimeCallInfo));
+        JSStableArray::Join(tagArrValue, ecmaRuntimeCallInfo));
     TestHelper::TearDownFrame(thread, prev);
 
     JSHandle<EcmaString> handleEcmaStrRet(handleTagValEcmaStrRet);
@@ -778,14 +784,14 @@ HWTEST_F_L0(JSStableArrayTest, With)
     JSHandle<TaggedArray> destTaggedArr(thread, TaggedArray::Cast(destArr->GetElements().GetTaggedObject()));
     for (uint32_t i = 0; i < ARRAY_LENGTH_4; ++i) {
         JSHandle<JSObject> arrObjHandle(handleArr);
-        EXPECT_EQ(ElementAccessor::Get(arrObjHandle, i).GetNumber(), i);
+        EXPECT_EQ(ElementAccessor::Get(thread, arrObjHandle, i).GetNumber(), i);
     }
     for (uint32_t i = 0; i < ARRAY_LENGTH_4; ++i) {
         JSHandle<JSObject> arrObjHandle(destArr);
         if (i == 2) {
-            EXPECT_EQ(ElementAccessor::Get(arrObjHandle, i).GetNumber(), INT_VALUE_666);
+            EXPECT_EQ(ElementAccessor::Get(thread, arrObjHandle, i).GetNumber(), INT_VALUE_666);
         } else {
-            EXPECT_EQ(ElementAccessor::Get(arrObjHandle, i).GetNumber(), i);
+            EXPECT_EQ(ElementAccessor::Get(thread, arrObjHandle, i).GetNumber(), i);
         }
     }
 }
@@ -811,22 +817,22 @@ HWTEST_F_L0(JSStableArrayTest, ToReversed)
         JSStableArray::ToReversed(thread, handleArr, ARRAY_LENGTH_4);
     JSHandle<JSObject> dstArrObj(thread, resultArr);
 
-    EXPECT_EQ(ElementAccessor::Get(handleArrObj,
+    EXPECT_EQ(ElementAccessor::Get(thread, handleArrObj,
         static_cast<uint32_t>(StableArrayIndex::STABLE_ARRAY_INDEX_0)).GetNumber(), INT_VALUE_0);
-    EXPECT_EQ(ElementAccessor::Get(handleArrObj,
+    EXPECT_EQ(ElementAccessor::Get(thread, handleArrObj,
         static_cast<uint32_t>(StableArrayIndex::STABLE_ARRAY_INDEX_1)).GetNumber(), INT_VALUE_1);
-    EXPECT_EQ(ElementAccessor::Get(handleArrObj,
+    EXPECT_EQ(ElementAccessor::Get(thread, handleArrObj,
         static_cast<uint32_t>(StableArrayIndex::STABLE_ARRAY_INDEX_2)).GetNumber(), INT_VALUE_2);
-    EXPECT_EQ(ElementAccessor::Get(handleArrObj,
+    EXPECT_EQ(ElementAccessor::Get(thread, handleArrObj,
         static_cast<uint32_t>(StableArrayIndex::STABLE_ARRAY_INDEX_3)).GetNumber(), INT_VALUE_3);
 
-    EXPECT_EQ(ElementAccessor::Get(dstArrObj,
+    EXPECT_EQ(ElementAccessor::Get(thread, dstArrObj,
         static_cast<uint32_t>(StableArrayIndex::STABLE_ARRAY_INDEX_0)).GetNumber(), INT_VALUE_3);
-    EXPECT_EQ(ElementAccessor::Get(dstArrObj,
+    EXPECT_EQ(ElementAccessor::Get(thread, dstArrObj,
         static_cast<uint32_t>(StableArrayIndex::STABLE_ARRAY_INDEX_1)).GetNumber(), INT_VALUE_2);
-    EXPECT_EQ(ElementAccessor::Get(dstArrObj,
+    EXPECT_EQ(ElementAccessor::Get(thread, dstArrObj,
         static_cast<uint32_t>(StableArrayIndex::STABLE_ARRAY_INDEX_2)).GetNumber(), INT_VALUE_1);
-    EXPECT_EQ(ElementAccessor::Get(dstArrObj,
+    EXPECT_EQ(ElementAccessor::Get(thread, dstArrObj,
         static_cast<uint32_t>(StableArrayIndex::STABLE_ARRAY_INDEX_3)).GetNumber(), INT_VALUE_0);
 }
 }  // namespace panda::test

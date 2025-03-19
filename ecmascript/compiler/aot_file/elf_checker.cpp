@@ -13,8 +13,6 @@
  * limitations under the License.
  */
 #include "ecmascript/compiler/aot_file/elf_checker.h"
-#include <fstream>
-#include <type_traits>
 
 namespace panda::ecmascript {
 /* Check Aligned */

@@ -35,15 +35,12 @@ class TlabAllocator;
 class SharedTlabAllocator;
 class Region;
 class WorkSpaceChunk;
+class WorkManager;
 
 enum ParallelGCTaskPhase {
-    SEMI_HANDLE_THREAD_ROOTS_TASK,
-    SEMI_HANDLE_SNAPSHOT_TASK,
-    SEMI_HANDLE_GLOBAL_POOL_TASK,
     OLD_HANDLE_GLOBAL_POOL_TASK,
     COMPRESS_HANDLE_GLOBAL_POOL_TASK,
     CONCURRENT_HANDLE_GLOBAL_POOL_TASK,
-    CONCURRENT_HANDLE_OLD_TO_NEW_TASK,
     UNIFIED_HANDLE_GLOBAL_POOL_TASK,
     UNDEFINED_TASK,
     TASK_LAST  // Count of different Task phase
@@ -131,21 +128,55 @@ private:
     Mutex mtx_;
 };
 
-struct WorkNodeHolder {
+class WorkNodeHolder {
+public:
+    WorkNodeHolder() = default;
+    ~WorkNodeHolder() = default;
+
+    NO_COPY_SEMANTIC(WorkNodeHolder);
+    NO_MOVE_SEMANTIC(WorkNodeHolder);
+
+    inline void Setup(Heap *heap, WorkManager *workManager, GlobalWorkStack *workStack);
+    inline void Destroy();
+    inline void Initialize(TriggerGCType gcType, ParallelGCTaskPhase taskPhase);
+    inline void Finish();
+
+    inline bool Push(TaggedObject *object);
+    inline bool Pop(TaggedObject **object);
+    inline bool PopWorkNodeFromGlobal();
+    inline void PushWorkNodeToGlobal(bool postTask = true);
+
+    inline void PushWeakReference(JSTaggedType *weak);
+
+    inline void IncreaseAliveSize(size_t size);
+
+    inline void IncreasePromotedSize(size_t size);
+
+    inline ProcessQueue *GetWeakReferenceQueue() const;
+
+    inline TlabAllocator *GetTlabAllocator() const;
+private:
+    Heap *heap_ {nullptr};
+    WorkManager *workManager_ {nullptr};
+    GlobalWorkStack *workStack_ {nullptr};
+    ParallelGCTaskPhase parallelGCTaskPhase_ {ParallelGCTaskPhase::UNDEFINED_TASK};
+
     WorkNode *inNode_ {nullptr};
     WorkNode *outNode_ {nullptr};
     WorkNode *cachedInNode_ {nullptr};
     ProcessQueue *weakQueue_ {nullptr};
-    std::vector<SlotNeedUpdate> pendingUpdateSlots_;
+    ContinuousStack<JSTaggedType> *continuousQueue_ {nullptr};
     TlabAllocator *allocator_ {nullptr};
-    size_t aliveSize_ = 0;
-    size_t promotedSize_ = 0;
+    size_t aliveSize_ {0};
+    size_t promotedSize_ {0};
+
+    friend class WorkManager;
 };
 
 class WorkManagerBase {
 public:
-    WorkManagerBase(NativeAreaAllocator *allocator);
-    virtual ~WorkManagerBase();
+    inline WorkManagerBase(NativeAreaAllocator *allocator);
+    inline virtual ~WorkManagerBase();
 
     WorkSpaceChunk *GetSpaceChunk() const
     {
@@ -154,6 +185,9 @@ public:
 
     void InitializeBase()
     {
+        if (UNLIKELY(workSpace_ == 0)) {
+            InitializeInPostFork();
+        }
         spaceStart_ = workSpace_;
         spaceEnd_ = workSpace_ + WORKNODE_SPACE_SIZE;
     }
@@ -166,7 +200,24 @@ public:
         }
     }
 
-    WorkNode *AllocateWorkNode();
+    void FinishInPreFork()
+    {
+        ASSERT(workSpace_ != 0);
+        GetSpaceChunk()->Free(reinterpret_cast<void *>(workSpace_));
+        workSpace_ = 0;
+        spaceStart_ = 0;
+        spaceEnd_ = 0;
+    }
+
+    void InitializeInPostFork()
+    {
+        ASSERT(workSpace_ == 0);
+        auto allocatedSpace = GetSpaceChunk()->Allocate(WORKNODE_SPACE_SIZE);
+        ASSERT(allocatedSpace != nullptr);
+        workSpace_ = ToUintPtr(allocatedSpace);
+    }
+
+    inline WorkNode *AllocateWorkNode();
     virtual size_t Finish()
     {
         LOG_ECMA(FATAL) << " WorkManagerBase Finish";
@@ -188,59 +239,14 @@ private:
 class WorkManager : public WorkManagerBase {
 public:
     WorkManager() = delete;
-    WorkManager(Heap *heap, uint32_t threadNum);
-    ~WorkManager() override;
+    inline WorkManager(Heap *heap, uint32_t threadNum);
+    inline ~WorkManager() override;
 
-    void Initialize(TriggerGCType gcType, ParallelGCTaskPhase taskPhase);
-    size_t Finish() override;
-    void Finish(size_t &aliveSize, size_t &promotedSize);
+    inline void Initialize(TriggerGCType gcType, ParallelGCTaskPhase taskPhase);
+    inline size_t Finish() override;
+    inline void Finish(size_t &aliveSize, size_t &promotedSize);
 
-    bool Push(uint32_t threadId, TaggedObject *object);
-    bool Pop(uint32_t threadId, TaggedObject **object);
-    bool PopWorkNodeFromGlobal(uint32_t threadId);
-    void PushWorkNodeToGlobal(uint32_t threadId, bool postTask = true);
-    void PushObjectToGlobal(TaggedObject *object);
-
-    inline void PushWeakReference(uint32_t threadId, JSTaggedType *weak)
-    {
-        works_.at(threadId).weakQueue_->PushBack(weak);
-    }
-
-    inline void IncreaseAliveSize(uint32_t threadId, size_t size)
-    {
-        works_.at(threadId).aliveSize_ += size;
-    }
-
-    inline void IncreasePromotedSize(uint32_t threadId, size_t size)
-    {
-        works_.at(threadId).promotedSize_ += size;
-    }
-
-    inline ProcessQueue *GetWeakReferenceQueue(uint32_t threadId) const
-    {
-        return works_.at(threadId).weakQueue_;
-    }
-
-    inline TlabAllocator *GetTlabAllocator(uint32_t threadId) const
-    {
-        return works_.at(threadId).allocator_;
-    }
-
-    inline void PushSlotNeedUpdate(uint32_t threadId, SlotNeedUpdate slot)
-    {
-        works_.at(threadId).pendingUpdateSlots_.emplace_back(slot);
-    }
-
-    inline bool GetSlotNeedUpdate(uint32_t threadId, SlotNeedUpdate *slot)
-    {
-        std::vector<SlotNeedUpdate> &pendingUpdateSlots = works_.at(threadId).pendingUpdateSlots_;
-        if (pendingUpdateSlots.empty()) {
-            return false;
-        }
-        *slot = pendingUpdateSlots.back();
-        pendingUpdateSlots.pop_back();
-        return true;
-    }
+    inline void PushObjectToGlobal(TaggedObject *object);
 
     inline uint32_t GetTotalThreadNum()
     {
@@ -252,6 +258,11 @@ public:
         return initialized_.load(std::memory_order_acquire);
     }
 
+    inline WorkNodeHolder *GetWorkNodeHolder(uint32_t threadId)
+    {
+        return &works_.at(threadId);
+    }
+
 private:
     NO_COPY_SEMANTIC(WorkManager);
     NO_MOVE_SEMANTIC(WorkManager);
@@ -259,9 +270,8 @@ private:
     Heap *heap_;
     uint32_t threadNum_;
     std::array<WorkNodeHolder, MAX_TASKPOOL_THREAD_NUM + 1> works_;
-    std::array<ContinuousStack<JSTaggedType> *, MAX_TASKPOOL_THREAD_NUM + 1> continuousQueue_;
-    GlobalWorkStack workStack_;
-    ParallelGCTaskPhase parallelGCTaskPhase_;
+    GlobalWorkStack workStack_ {};
+    ParallelGCTaskPhase parallelGCTaskPhase_ {ParallelGCTaskPhase::UNDEFINED_TASK};
     std::atomic<bool> initialized_ {false};
 };
 
@@ -276,11 +286,11 @@ struct SharedGCWorkNodeHolder {
 
 class SharedGCWorkManager : public WorkManagerBase {
 public:
-    SharedGCWorkManager(SharedHeap *heap, uint32_t threadNum);
-    ~SharedGCWorkManager() override;
+    inline SharedGCWorkManager(SharedHeap *heap, uint32_t threadNum);
+    inline ~SharedGCWorkManager() override;
 
-    void Initialize(TriggerGCType gcType, SharedParallelMarkPhase taskPhase);
-    size_t Finish() override;
+    inline void Initialize(TriggerGCType gcType, SharedParallelMarkPhase taskPhase);
+    inline size_t Finish() override;
 
     inline SharedTlabAllocator *GetTlabAllocator(uint32_t threadId) const
     {
@@ -292,13 +302,13 @@ public:
         works_.at(threadId).aliveSize_ += size;
     }
 
-    bool Push(uint32_t threadId, TaggedObject *object);
-    bool PushToLocalMarkingBuffer(WorkNode *&markingBuffer, TaggedObject *object);
-    bool Pop(uint32_t threadId, TaggedObject **object);
+    inline bool Push(uint32_t threadId, TaggedObject *object);
+    inline bool PushToLocalMarkingBuffer(WorkNode *&markingBuffer, TaggedObject *object);
+    inline bool Pop(uint32_t threadId, TaggedObject **object);
 
-    bool PopWorkNodeFromGlobal(uint32_t threadId);
-    void PushWorkNodeToGlobal(uint32_t threadId, bool postTask = true);
-    void PushLocalBufferToGlobal(WorkNode *&node, bool postTask = true);
+    inline bool PopWorkNodeFromGlobal(uint32_t threadId);
+    inline void PushWorkNodeToGlobal(uint32_t threadId, bool postTask = true);
+    inline void PushLocalBufferToGlobal(WorkNode *&node, bool postTask = true);
 
     inline void PushWeakReference(uint32_t threadId, JSTaggedType *weak)
     {

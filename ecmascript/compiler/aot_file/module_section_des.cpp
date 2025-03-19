@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 #include "ecmascript/compiler/aot_file/module_section_des.h"
-#include <iomanip>
 
 namespace panda::ecmascript {
 std::string ModuleSectionDes::GetSecName(const ElfSecName idx)
@@ -53,6 +52,8 @@ std::string ModuleSectionDes::GetSecName(const ElfSecName idx)
             return ".ark_asmstub";
         case ElfSecName::ARK_MODULEINFO:
             return ".ark_moduleinfo";
+        case ElfSecName::ARK_CHECKSUMINFO:
+            return ".ark_checksuminfo";
         default: {
             LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();

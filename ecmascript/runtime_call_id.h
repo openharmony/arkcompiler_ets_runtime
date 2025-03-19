@@ -291,7 +291,9 @@ namespace panda::ecmascript {
     V(SharedArray, Fill)                      \
     V(SharedArray, Filter)                    \
     V(SharedArray, Find)                      \
+    V(SharedArray, FindLast)                  \
     V(SharedArray, FindIndex)                 \
+    V(SharedArray, FindLastIndex)             \
     V(SharedArray, ForEach)                   \
     V(SharedArray, IndexOf)                   \
     V(SharedArray, Join)                      \
@@ -305,6 +307,7 @@ namespace panda::ecmascript {
     V(SharedArray, Sort)                      \
     V(SharedArray, Splice)                    \
     V(SharedArray, ToString)                  \
+    V(SharedArray, ToLocaleString)            \
     V(SharedArray, Unscopables)               \
     V(SharedArray, Unshift)                   \
     V(SharedArray, Values)                    \
@@ -320,6 +323,8 @@ namespace panda::ecmascript {
     V(SharedArray, LastIndexOf)               \
     V(SharedArray, Of)                        \
     V(SharedArray, CopyWithin)                \
+    V(SharedArray, Reverse)                   \
+    V(SharedArray, ReduceRight)               \
     V(ArrayBuffer, Constructor)               \
     V(ArrayBuffer, Slice)                     \
     V(ArrayBuffer, Species)                   \
@@ -473,6 +478,7 @@ namespace panda::ecmascript {
     V(Global, StartRuntimeStat)               \
     V(Global, StopRuntimeStat)                \
     V(Global, PrintOptStat)                   \
+    V(Global, PrintMegaICStat)                \
     V(Global, PrintFunctionCallStat)          \
     V(Global, CallJsBoundFunction)            \
     V(Global, CallJsProxy)                    \
@@ -891,7 +897,9 @@ namespace panda::ecmascript {
     V(SharedTypedArray, Find)                 \
     V(SharedTypedArray, FindIndex)            \
     V(SharedTypedArray, IndexOf)              \
+    V(SharedTypedArray, LastIndexOf)          \
     V(SharedTypedArray, Reduce)               \
+    V(SharedTypedArray, ReduceRight)          \
     V(SharedTypedArray, Reverse)              \
     V(SharedTypedArray, Some)                 \
     V(SharedTypedArray, ToLocaleString)       \
@@ -1251,6 +1259,7 @@ enum EcmaRuntimeCallerId {
     MEM_ALLOCATE_AND_GC_LIST(MEM_ALLOCATE_AND_GC_ID)
 #define DEF_RUNTIME_ID(name) RUNTIME_ID_##name,
     RUNTIME_STUB_WITH_GC_LIST(DEF_RUNTIME_ID)
+    RUNTIME_STUB_WITH_DFX(DEF_RUNTIME_ID)
 #undef DEF_RUNTIME_ID
     RUNTIME_CALLER_NUMBER,
 };

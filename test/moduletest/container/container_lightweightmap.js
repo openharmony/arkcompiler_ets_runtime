@@ -148,5 +148,22 @@ if (globalThis["ArkPrivate"] != undefined) {
     } else {
         print("Test LightWeightMap fail: " + flag);
     }
+
+    /*
+     * @tc.name: checkcontainerloadhclass
+     * @tc.desc: Test ContainersLightWeightMapStubBuilder::ForEach whether judge isHeapObject
+     *           before loading hClass.
+     * @tc.type: FUNC
+     * @tc.require: issueIBQ709
+     */
+    {
+        let v1 = new fastmap(0);
+        let arr1 = [1];
+        try {
+            Reflect.apply(v1.forEach, 123, arr1);
+        } catch (e) {
+            print(e);
+        }
+    }
 }
 export let lightweightmapRes = "Test LightWeightMap done";

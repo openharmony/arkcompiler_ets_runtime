@@ -15,9 +15,7 @@
 
 #include "mir_symbol.h"
 #include "mir_function.h"
-#include "reflection_analysis.h"
 #include "printing.h"
-#include "string_utils.h"
 
 namespace maple {
 using namespace namemangler;

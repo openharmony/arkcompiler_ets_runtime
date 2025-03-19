@@ -15,16 +15,10 @@
 
 #include "cgfunc.h"
 #if DEBUG
-#include <iomanip>
 #endif
-#include <fstream>
 #include "cg.h"
-#include "insn.h"
-#include "loop.h"
-#include "mir_builder.h"
 #include "factory.h"
 #include "cfgo.h"
-#include "optimize_common.h"
 
 namespace maplebe {
 using namespace maple;
@@ -483,7 +477,6 @@ CGFunc::CGFunc(MIRModule &mod, CG &cg, MIRFunction &mirFunc, BECommon &beCommon,
                StackMemPool &stackMp, MapleAllocator &allocator, uint32 funcId)
     : bbVec(allocator.Adapter()),
       referenceVirtualRegs(allocator.Adapter()),
-      referenceStackSlots(allocator.Adapter()),
       pregIdx2Opnd(mirFunc.GetPregTab()->Size(), nullptr, allocator.Adapter()),
       pRegSpillMemOperands(allocator.Adapter()),
       spillRegMemOperands(allocator.Adapter()),

@@ -166,7 +166,7 @@ public:
     static bool InsideAOT(uintptr_t pc);
     static bool AOTFileExist(const std::string &aotFileName, const std::string &extension);
     bool IsEnableAOT() const;
-    void Iterate(const RootVisitor& v);
+    void Iterate(RootVisitor& v);
 
     const std::shared_ptr<AnFileInfo> GetAnFileInfo(const JSPandaFile* jsPandaFile) const;
     bool IsLoadMain(const JSPandaFile* jsPandaFile, const CString& entry) const;

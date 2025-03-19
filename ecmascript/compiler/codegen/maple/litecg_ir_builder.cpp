@@ -15,24 +15,8 @@
 
 #include "ecmascript/compiler/codegen/maple/litecg_ir_builder.h"
 
-#include <cmath>
-#include <cstdint>
 
-#include "ecmascript/compiler/argument_accessor.h"
-#include "ecmascript/compiler/bc_call_signature.h"
-#include "ecmascript/compiler/baseline/baseline_call_signature.h"
-#include "ecmascript/compiler/circuit.h"
-#include "ecmascript/compiler/call_signature.h"
-#include "ecmascript/compiler/common_stub_csigns.h"
-#include "ecmascript/compiler/gate.h"
-#include "ecmascript/compiler/rt_call_signature.h"
 #include "ecmascript/deoptimizer/deoptimizer.h"
-#include "ecmascript/frames.h"
-#include "ecmascript/js_function.h"
-#include "ecmascript/js_thread.h"
-#include "ecmascript/method.h"
-#include "triple.h"
-#include "lmir_builder.h"
 
 namespace panda::ecmascript::kungfu {
 using FunctionBuilder = maple::litecg::LMIRBuilder::FunctionBuilder;
@@ -769,6 +753,20 @@ Expr LiteCGIRBuilder::GetGlue(const std::vector<GateRef> &inList)
     return glue;
 }
 
+LiteCGValue LiteCGIRBuilder::ConstantFoldExpr(Expr expr, BB &curBB)
+{
+    if (expr.IsRegread()) {
+        return {LiteCGValueKind::kPregKind, lmirBuilder_->GetPregIdxFromExpr(expr)};
+    }
+    auto *newNode = cf_.Fold(expr.GetNode());
+    if (newNode == nullptr || !newNode->IsConstval()) {
+        PregIdx pregIdx = lmirBuilder_->CreatePreg(expr.GetType());
+        lmirBuilder_->AppendStmt(curBB, lmirBuilder_->Regassign(expr, pregIdx));
+        return {LiteCGValueKind::kPregKind, pregIdx};
+    }
+    return {LiteCGValueKind::kConstKind, static_cast<maple::ConstvalNode*>(newNode)->GetConstVal()};
+}
+
 void LiteCGIRBuilder::SaveGate2Expr(GateRef gate, Expr expr, bool isGlueAdd)
 {
     if (isGlueAdd) {
@@ -784,16 +782,7 @@ void LiteCGIRBuilder::SaveGate2Expr(GateRef gate, Expr expr, bool isGlueAdd)
         gate2Expr_[gate] = {LiteCGValueKind::kConstKind, lmirBuilder_->GetConstFromExpr(expr)};
         return;
     }
-    auto *newNode = cf_.Fold(expr.GetNode());
-    if (newNode == nullptr || !newNode->IsConstval()) {
-        // check expr is not agg
-        BB &curBB = GetOrCreateBB(instID2bbID_[acc_.GetId(gate)]);
-        PregIdx pregIdx = lmirBuilder_->CreatePreg(expr.GetType());
-        lmirBuilder_->AppendStmt(curBB, lmirBuilder_->Regassign(expr, pregIdx));
-        gate2Expr_[gate] = {LiteCGValueKind::kPregKind, pregIdx};
-        return;
-    }
-    gate2Expr_[gate] = {LiteCGValueKind::kConstKind, static_cast<maple::ConstvalNode*>(newNode)->GetConstVal()};
+    gate2Expr_[gate] = ConstantFoldExpr(expr, GetOrCreateBB(instID2bbID_[acc_.GetId(gate)]));
 }
 
 void LiteCGIRBuilder::SaveGate2Expr(GateRef gate, PregIdx pregIdx1, PregIdx pregIdx2)
@@ -841,12 +830,8 @@ Expr LiteCGIRBuilder::GetConstant(GateRef gate)
     return lmirBuilder_->ConstVal(*constVal);
 }
 
-Expr LiteCGIRBuilder::GetExprFromGate(GateRef gate)
+Expr LiteCGIRBuilder::CreateExprFromLiteCGValue(const LiteCGValue &value)
 {
-    if (acc_.GetOpCode(gate) == OpCode::CONSTANT) {
-        return GetConstant(gate);
-    }
-    LiteCGValue value = gate2Expr_[gate];
     if (value.kind == LiteCGValueKind::kSymbolKind) {
         return lmirBuilder_->Dread(*std::get<maple::MIRSymbol*>(value.data));
     } else if (value.kind == LiteCGValueKind::kConstKind) {
@@ -858,6 +843,14 @@ Expr LiteCGIRBuilder::GetExprFromGate(GateRef gate)
     }
     ASSERT(value.kind == LiteCGValueKind::kPregKind);
     return lmirBuilder_->Regread(std::get<PregIdx>(value.data));
+}
+
+Expr LiteCGIRBuilder::GetExprFromGate(GateRef gate)
+{
+    if (acc_.GetOpCode(gate) == OpCode::CONSTANT) {
+        return GetConstant(gate);
+    }
+    return CreateExprFromLiteCGValue(gate2Expr_[gate]);
 }
 
 Expr LiteCGIRBuilder::GetExprFromGate(GateRef gate, uint32_t index)
@@ -979,6 +972,34 @@ Expr LiteCGIRBuilder::CanonicalizeToPtr(Expr expr, LiteCGType *type)
     return expr;
 }
 
+void LiteCGIRBuilder::AddDerivedrefGate(GateRef gate, Expr result)
+{
+    auto e1 = acc_.GetIn(gate, 0);
+    derivedrefGate.insert(std::pair<GateRef, Expr>(gate, result));
+    bool shouldSkip = true;
+    std::vector<GateRef> outGates;
+    acc_.GetOuts(gate, outGates);
+    for (GateRef outGate : outGates) {
+        auto op = acc_.GetOpCode(outGate);
+        if (op != OpCode::LOAD && op != OpCode::STORE_WITHOUT_BARRIER) {
+            shouldSkip = false;
+            break;
+        }
+    }
+    if (!shouldSkip) {
+        SaveGate2Expr(gate, result);
+        ASSERT(!GetExprFromGate(e1).IsDread());
+        auto e1BaseIter = derivedGate2BaseGate_.find(e1);
+        derivedGate2BaseGate_[gate] = (e1BaseIter == derivedGate2BaseGate_.end() ? e1 : e1BaseIter->second);
+    }
+}
+
+Expr LiteCGIRBuilder::GetDerivedrefExpr(GateRef gate)
+{
+    auto derivedref = derivedrefGate.find(gate);
+    return (derivedref == derivedrefGate.end()) ? GetExprFromGate(gate) : derivedref->second;
+}
+
 void LiteCGIRBuilder::VisitAdd(GateRef gate, GateRef e1, GateRef e2)
 {
     Expr e1Value = GetExprFromGate(e1);
@@ -1007,12 +1028,10 @@ void LiteCGIRBuilder::VisitAdd(GateRef gate, GateRef e1, GateRef e2)
                 (e2Type == lmirBuilder_->i64Type) ? e2Value : lmirBuilder_->Cvt(e2Type, lmirBuilder_->i64Type, e2Value);
             Expr tmp3 = lmirBuilder_->Add(lmirBuilder_->i64Type, tmp1, tmp2);
             result = lmirBuilder_->Cvt(lmirBuilder_->i64Type, returnType, tmp3);
-            SaveGate2Expr(gate, result);
-            // set the base reference of derived reference
             if (e1Type == lmirBuilder_->i64RefType) {
-                ASSERT(!e1Value.IsDread());
-                auto e1BaseIter = derivedGate2BaseGate_.find(e1);
-                derivedGate2BaseGate_[gate] = (e1BaseIter == derivedGate2BaseGate_.end() ? e1 : e1BaseIter->second);
+                AddDerivedrefGate(gate, result);
+            } else {
+                SaveGate2Expr(gate, result);
             }
             return;
         } else {
@@ -1036,7 +1055,7 @@ void LiteCGIRBuilder::HandleLoad(GateRef gate)
 
 void LiteCGIRBuilder::VisitLoad(GateRef gate, GateRef base)
 {
-    Expr baseAddr = GetExprFromGate(base);
+    Expr baseAddr = GetDerivedrefExpr(base);
 
     LiteCGType *returnType = ConvertLiteCGTypeFromGate(gate);
     LiteCGType *memType = (lmirBuilder_->IsHeapPointerType(returnType)) ? lmirBuilder_->CreateRefType(returnType)
@@ -1311,11 +1330,12 @@ bool LiteCGIRBuilder::IsOptimized() const
     return circuit_->GetFrameType() == FrameType::OPTIMIZED_FRAME;
 }
 
-CallExceptionKind LiteCGIRBuilder::GetCallExceptionKind(size_t index, OpCode op) const
+CallExceptionKind LiteCGIRBuilder::GetCallExceptionKind(OpCode op, size_t index) const
 {
+    ASSERT(op != OpCode::NOGC_RUNTIME_CALL || index != SIZE_MAX);
     bool hasPcOffset = IsOptimizedJSFunction() &&
                        ((op == OpCode::NOGC_RUNTIME_CALL && (kungfu::RuntimeStubCSigns::IsAsmStub(index))) ||
-                        (op == OpCode::CALL) || (op == OpCode::RUNTIME_CALL));
+                        (op == OpCode::CALL) || (op == OpCode::RUNTIME_CALL) || (op == OpCode::BUILTINS_CALL));
     return hasPcOffset ? CallExceptionKind::HAS_PC_OFFSET : CallExceptionKind::NO_PC_OFFSET;
 }
 
@@ -1328,7 +1348,7 @@ void LiteCGIRBuilder::VisitRuntimeCall(GateRef gate, const std::vector<GateRef> 
     Expr rtbaseOffset = lmirBuilder_->Add(glue.GetType(), glue, rtoffset);
     const CallSignature *signature = RuntimeStubCSigns::Get(std::get<RuntimeStubCSigns::ID>(stubId));
 
-    CallExceptionKind kind = GetCallExceptionKind(stubIndex, OpCode::RUNTIME_CALL);
+    CallExceptionKind kind = GetCallExceptionKind(OpCode::RUNTIME_CALL);
     bool hasPCOffset = (kind == CallExceptionKind::HAS_PC_OFFSET);
     size_t actualNumArgs = hasPCOffset ? (inList.size() - 2) : inList.size();  // 2: pcOffset and frameArgs
 
@@ -1505,7 +1525,7 @@ void LiteCGIRBuilder::VisitCall(GateRef gate, const std::vector<GateRef> &inList
         Expr rtoffset = GetCoStubOffset(glue, index);
         Expr rtbaseoffset = lmirBuilder_->Add(glue.GetType(), glue, rtoffset);
         callee = GetFunction(bb, glue, calleeDescriptor, rtbaseoffset);
-        kind = GetCallExceptionKind(index, op);
+        kind = GetCallExceptionKind(op);
     } else if (op == OpCode::NOGC_RUNTIME_CALL) {
         UpdateLeaveFrame(glue);
         const size_t index = acc_.GetConstantValue(inList[targetIndex]);
@@ -1513,7 +1533,7 @@ void LiteCGIRBuilder::VisitCall(GateRef gate, const std::vector<GateRef> &inList
         Expr rtoffset = GetRTStubOffset(glue, index);
         Expr rtbaseoffset = lmirBuilder_->Add(glue.GetType(), glue, rtoffset);
         callee = GetFunction(bb, glue, calleeDescriptor, rtbaseoffset);
-        kind = GetCallExceptionKind(index, op);
+        kind = GetCallExceptionKind(op, index);
     } else if (op == OpCode::CALL_OPTIMIZED) {
         calleeDescriptor = RuntimeStubCSigns::GetOptimizedCallSign();
         callee = GetCallee(bb, inList, calleeDescriptor, calleeDescriptor->GetName());
@@ -1536,7 +1556,7 @@ void LiteCGIRBuilder::VisitCall(GateRef gate, const std::vector<GateRef> &inList
         Expr rtoffset = GetBaselineStubOffset(glue, index);
         Expr rtbaseoffset = lmirBuilder_->Add(glue.GetType(), glue, rtoffset);
         callee = GetFunction(bb, glue, calleeDescriptor, rtbaseoffset);
-        kind = GetCallExceptionKind(index, op);
+        kind = GetCallExceptionKind(op);
     } else if (op == OpCode::ASM_CALL_BARRIER) {
         const size_t index = acc_.GetConstantValue(inList[targetIndex]);
         calleeDescriptor = RuntimeStubCSigns::Get(index);
@@ -1555,6 +1575,7 @@ void LiteCGIRBuilder::VisitCall(GateRef gate, const std::vector<GateRef> &inList
             calleeDescriptor = BuiltinsStubCSigns::BuiltinsWithArgvCSign();
         }
         callee = GetFunction(bb, glue, calleeDescriptor, rtbaseoffset);
+        kind = GetCallExceptionKind(op);
     }
 
     std::vector<Expr> params;
@@ -2538,7 +2559,7 @@ void LiteCGIRBuilder::HandleStore(GateRef gate)
 
 void LiteCGIRBuilder::VisitStore(GateRef gate, GateRef base, GateRef value)
 {
-    Expr baseAddr = GetExprFromGate(base);
+    Expr baseAddr = GetDerivedrefExpr(base);
     Expr data = GetExprFromGate(value);
 
     LiteCGType *returnType = ConvertLiteCGTypeFromGate(value);
@@ -2759,26 +2780,7 @@ void LiteCGIRBuilder::VisitSwitch(GateRef gate, GateRef input, const std::vector
 
 void LiteCGIRBuilder::HandleDeoptCheck(GateRef gate)
 {
-    int block = instID2bbID_[acc_.GetId(gate)];
-    std::vector<GateRef> outs;
-    acc_.GetOutStates(gate, outs);
-    int bbOut = instID2bbID_[acc_.GetId(outs[0])];  // 0: output
-
-    BB &trueBB = GetOrCreateBB(bbOut);
-    BB &falseBB = lmirBuilder_->CreateBB();
-    GateRef cmp = acc_.GetValueIn(gate, 0);  // 0: cond
-    Expr cond = GetExprFromGate(cmp);
-    BB &curBB = GetOrCreateBB(block);
-    lmirBuilder_->AppendStmt(curBB, lmirBuilder_->CondGoto(cond, falseBB, false));
-    lmirBuilder_->AppendStmt(curBB, lmirBuilder_->Goto(trueBB));
-    lmirBuilder_->AppendBB(curBB);
-    // deopt branch is not expected to be token as often,
-    // just put them to the end of the function
-    lmirBuilder_->AppendToLast(falseBB);
-
     VisitDeoptCheck(gate);
-    Expr returnValue = GetExprFromGate(gate);
-    lmirBuilder_->AppendStmt(falseBB, lmirBuilder_->Return(returnValue));
 }
 
 LiteCGType *LiteCGIRBuilder::GetExperimentalDeoptTy()
@@ -2811,9 +2813,9 @@ void LiteCGIRBuilder::GenDeoptEntry(std::string funcName)
     Function &func = lmirBuilder_->GetCurFunction();
     lmirModule_->SetFunction(LMIRModule::kDeoptEntryOffset, funcName, false);
 
-    Expr glue = lmirBuilder_->Dread(lmirBuilder_->GetParam(func, 0));
-    Expr check = lmirBuilder_->Dread(lmirBuilder_->GetParam(func, 1));
-    Expr depth = lmirBuilder_->Dread(lmirBuilder_->GetParam(func, 2));
+    Expr glue = lmirBuilder_->GenExprFromVar(lmirBuilder_->GetParam(func, 0));          // 0: glue
+    Expr deoptType = lmirBuilder_->GenExprFromVar(lmirBuilder_->GetParam(func, 1));     // 1: deopt_type
+    Expr depth = lmirBuilder_->GenExprFromVar(lmirBuilder_->GetParam(func, 2));         // 2: depth
 
     StubIdType stubId = RTSTUB_ID(DeoptHandlerAsm);
     int stubIndex = static_cast<int>(std::get<RuntimeStubCSigns::ID>(stubId));
@@ -2825,15 +2827,13 @@ void LiteCGIRBuilder::GenDeoptEntry(std::string funcName)
     LiteCGType *funcTypePtr = lmirBuilder_->CreatePtrType(funcType);
     LiteCGType *funcTypePtrPtr = lmirBuilder_->CreatePtrType(funcTypePtr);
     Expr callee = lmirBuilder_->Cvt(glue.GetType(), funcTypePtrPtr, funcAddr);
-
-    Var &funcVar = lmirBuilder_->CreateLocalVar(callee.GetType(), "DeoptimizeSubFunc");
-    Stmt &funcAddrNode = lmirBuilder_->Dassign(callee, funcVar);
-    lmirBuilder_->AppendStmt(bb, funcAddrNode);
+    PregIdx funcPregIdx = lmirBuilder_->CreatePreg(funcTypePtrPtr);
+    lmirBuilder_->AppendStmt(bb, lmirBuilder_->Regassign(callee, funcPregIdx));
 
     LiteCGType *returnType = lmirBuilder_->LiteCGGetFuncReturnType(funcType);
     PregIdx pregIdx = lmirBuilder_->CreatePreg(returnType);
-    std::vector<Expr> params = {glue, check, depth};
-    Stmt &callNode = lmirBuilder_->ICall(lmirBuilder_->Dread(funcVar), params, pregIdx);
+    maple::litecg::Args params = {glue, deoptType, depth};
+    Stmt &callNode = lmirBuilder_->ICall(lmirBuilder_->Regread(funcPregIdx), params, pregIdx);
     lmirBuilder_->AppendStmt(bb, callNode);
     lmirBuilder_->AppendStmt(bb, lmirBuilder_->Return(lmirBuilder_->Regread(pregIdx)));
     lmirBuilder_->AppendBB(bb);
@@ -2856,6 +2856,7 @@ Function *LiteCGIRBuilder::GetExperimentalDeopt()
         Function &curFunc = funcBuilder.Return(lmirBuilder_->LiteCGGetFuncReturnType(fnTy)).Done();
         funcBuilder.CallConvAttribute(maple::litecg::CCall);
         lmirBuilder_->SetCurFunc(curFunc);
+        lmirBuilder_->RenameFormal2Preg(curFunc);
         GenDeoptEntry(funcName);
         fn = &curFunc;
 
@@ -2916,10 +2917,8 @@ void LiteCGIRBuilder::SaveDeoptVregInfo(std::unordered_map<int, LiteCGValue> &de
                                         size_t curDepth, size_t shift, GateRef gate)
 {
     int32_t encodeIndex = Deoptimizier::EncodeDeoptVregIndex(index, curDepth, shift);
-    Expr value = ConvertToTagged(gate);
-    PregIdx pregIdx = lmirBuilder_->CreatePreg(value.GetType());
-    lmirBuilder_->AppendStmt(bb, lmirBuilder_->Regassign(value, pregIdx));
-    deoptBundleInfo.insert(std::pair<int, LiteCGValue>(encodeIndex, {LiteCGValueKind::kPregKind, pregIdx}));
+    auto deoptInfo = ConstantFoldExpr(ConvertToTagged(gate), bb);
+    deoptBundleInfo.insert(std::pair<int, LiteCGValue>(encodeIndex, deoptInfo));
 }
 
 void LiteCGIRBuilder::SaveDeoptVregInfoWithI64(std::unordered_map<int, LiteCGValue> &deoptBundleInfo, BB &bb,
@@ -2928,25 +2927,62 @@ void LiteCGIRBuilder::SaveDeoptVregInfoWithI64(std::unordered_map<int, LiteCGVal
     int32_t encodeIndex = Deoptimizier::EncodeDeoptVregIndex(index, curDepth, shift);
     Expr expr = GetExprFromGate(gate);
     Expr value = ConvertInt32ToTaggedInt(lmirBuilder_->Cvt(expr.GetType(), lmirBuilder_->i32Type, expr));
-    PregIdx pregIdx = lmirBuilder_->CreatePreg(value.GetType());
-    lmirBuilder_->AppendStmt(bb, lmirBuilder_->Regassign(value, pregIdx));
-    deoptBundleInfo.insert(std::pair<int, LiteCGValue>(encodeIndex, {LiteCGValueKind::kPregKind, pregIdx}));
+    auto deoptInfo = ConstantFoldExpr(value, bb);
+    deoptBundleInfo.insert(std::pair<int, LiteCGValue>(encodeIndex, deoptInfo));
 }
 
 void LiteCGIRBuilder::VisitDeoptCheck(GateRef gate)
 {
-    BB &bb = lmirBuilder_->GetLastAppendedBB();  // falseBB of deopt check
-    Expr glue = GetExprFromGate(acc_.GetGlueFromArgList());
+    auto deoptType = static_cast<uint32_t>(acc_.GetConstantValue(acc_.GetValueIn(gate, 2)));    // 2: deopt type
+    auto &deoptBBInfo = GetOrCreateDeoptBBInfo(gate);
+    auto getOrCreateDeoptFalseBB = [this, &deoptBBInfo, deoptType]() -> BB& {
+        auto iter = deoptBBInfo.deoptType2BB.find(deoptType);
+        if (iter != deoptBBInfo.deoptType2BB.end()) {
+            return *iter->second;
+        }
+        BB &falseBB = lmirBuilder_->CreateBB();
+        Expr constDeoptType = ConvertInt32ToTaggedInt(
+            lmirBuilder_->ConstVal(lmirBuilder_->CreateIntConst(lmirBuilder_->u32Type, deoptType)));
+        lmirBuilder_->AppendStmt(falseBB, lmirBuilder_->Regassign(constDeoptType, deoptBBInfo.deoptTypePreg));
+        lmirBuilder_->AppendStmt(falseBB, lmirBuilder_->Goto(*deoptBBInfo.deoptBB));
+        // deopt branch is not expected to be token as often,
+        // just put them to the end of the function
+        lmirBuilder_->AppendToLast(falseBB);
+
+        deoptBBInfo.deoptType2BB.emplace(deoptType, &falseBB);
+        return falseBB;
+    };
+
+    int block = instID2bbID_[acc_.GetId(gate)];
+    std::vector<GateRef> outs;
+    acc_.GetOutStates(gate, outs);
+    int bbOut = instID2bbID_[acc_.GetId(outs[0])];  // 0: output
+
+    BB &trueBB = GetOrCreateBB(bbOut);
+    BB &falseBB = getOrCreateDeoptFalseBB();
+    GateRef cmp = acc_.GetValueIn(gate, 0);  // 0: cond
+    Expr cond = GetExprFromGate(cmp);
+    BB &curBB = GetOrCreateBB(block);
+    lmirBuilder_->AppendStmt(curBB, lmirBuilder_->CondGoto(cond, falseBB, false));
+    lmirBuilder_->AppendStmt(curBB, lmirBuilder_->Goto(trueBB));
+    lmirBuilder_->AppendBB(curBB);
+}
+
+LiteCGIRBuilder::DeoptBBInfo &LiteCGIRBuilder::GetOrCreateDeoptBBInfo(GateRef gate)
+{
     GateRef deoptFrameState = acc_.GetValueIn(gate, 1);  // 1: frame state
     ASSERT(acc_.GetOpCode(deoptFrameState) == OpCode::FRAME_STATE);
+    auto iter = deoptFrameState2BB_.find(deoptFrameState);
+    if (iter != deoptFrameState2BB_.end()) {
+        return iter->second;
+    }
+    BB &bb = lmirBuilder_->CreateBB();  // deoptBB
+    Expr glue = GetExprFromGate(acc_.GetGlueFromArgList());
+
     std::vector<Expr> params;
     params.push_back(glue);                        // glue
-    GateRef deoptType = acc_.GetValueIn(gate, 2);  // 2: deopt type
-    uint64_t v = acc_.GetConstantValue(deoptType);
-    Expr constV = lmirBuilder_->ConstVal(lmirBuilder_->CreateIntConst(lmirBuilder_->u32Type, static_cast<uint32_t>(v)));
-    params.push_back(ConvertInt32ToTaggedInt(constV));  // deoptType
-    Function *callee = GetExperimentalDeopt();
-    LiteCGType *funcType = GetExperimentalDeoptTy();
+    auto deoptTypePreg = lmirBuilder_->CreatePreg(lmirBuilder_->i64RefType);
+    params.push_back(lmirBuilder_->Regread(deoptTypePreg));  // deoptType
 
     std::unordered_map<int, LiteCGValue> deoptBundleInfo;
     size_t maxDepth = 0;
@@ -3012,18 +3048,18 @@ void LiteCGIRBuilder::VisitDeoptCheck(GateRef gate)
         SaveDeoptVregInfoWithI64(deoptBundleInfo, bb, specArgcIndex, curDepth, shift, actualArgc);
         frameState = acc_.GetFrameState(frameState);
     }
+    Function *callee = GetExperimentalDeopt();
+    LiteCGType *funcType = GetExperimentalDeoptTy();
     LiteCGType *returnType = lmirBuilder_->LiteCGGetFuncReturnType(funcType);
-
-    bool returnVoid = (returnType == lmirBuilder_->voidType);
-    PregIdx returnPregIdx = returnVoid ? -1 : lmirBuilder_->CreatePreg(returnType);
-
+    PregIdx returnPregIdx = lmirBuilder_->CreatePreg(returnType);
     Stmt &callNode = lmirBuilder_->Call(*callee, params, returnPregIdx);
     lmirBuilder_->SetCallStmtDeoptBundleInfo(callNode, deoptBundleInfo);
-
     lmirBuilder_->AppendStmt(bb, callNode);
-    if (!returnVoid) {
-        SaveGate2Expr(gate, lmirBuilder_->Regread(returnPregIdx));
-    }
+    lmirBuilder_->AppendStmt(bb, lmirBuilder_->Return(lmirBuilder_->Regread(returnPregIdx)));
+    lmirBuilder_->AppendToLast(bb);
+
+    deoptFrameState2BB_.emplace(deoptFrameState, DeoptBBInfo(&bb, deoptTypePreg));
+    return deoptFrameState2BB_.at(deoptFrameState);
 }
 
 int64_t LiteCGIRBuilder::GetBitWidthFromMachineType(MachineType machineType) const

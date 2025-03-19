@@ -44,6 +44,7 @@
 #include "ecmascript/ohos/aot_tools.h"
 #include "ecmascript/checkpoint/thread_state_transition.h"
 #include "ecmascript/mem/heap-inl.h"
+#include "ecmascript/dfx/stackinfo/async_stack_trace.h"
 
 #if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE)
 #include "parameters.h"
@@ -54,7 +55,6 @@ using RandomGenerator = base::RandomGenerator;
 using PGOProfilerManager = pgo::PGOProfilerManager;
 using JitTools = ohos::JitTools;
 AOTFileManager *JsStackInfo::loader = nullptr;
-JSRuntimeOptions *JsStackInfo::options = nullptr;
 bool EcmaVM::multiThreadCheck_ = false;
 bool EcmaVM::errorInfoEnhanced_ = false;
 
@@ -89,9 +89,6 @@ EcmaVM *EcmaVM::Create(const JSRuntimeOptions &options)
     if (JsStackInfo::loader == nullptr) {
         JsStackInfo::loader = vm->GetAOTFileManager();
     }
-    if (JsStackInfo::options == nullptr) {
-        JsStackInfo::options = &(vm->GetJSOptions());
-    }
 #if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE)
     int arkProperties = OHOS::system::GetIntParameter<int>("persist.ark.properties", -1);
     vm->GetJSOptions().SetArkProperties(arkProperties);
@@ -121,7 +118,8 @@ void EcmaVM::PreFork()
     auto sHeap = SharedHeap::GetInstance();
     sHeap->CompactHeapBeforeFork(thread_);
     sHeap->DisableParallelGC(thread_);
-
+    heap_->GetWorkManager()->FinishInPreFork();
+    sHeap->GetWorkManager()->FinishInPreFork();
     Jit::GetInstance()->PreFork();
 }
 
@@ -132,6 +130,9 @@ void EcmaVM::PostFork()
     GetAssociatedJSThread()->PostFork();
     DaemonThread::GetInstance()->StartRunning();
     Taskpool::GetCurrentTaskpool()->Initialize();
+    heap_->GetWorkManager()->InitializeInPostFork();
+    auto sHeap = SharedHeap::GetInstance();
+    sHeap->GetWorkManager()->InitializeInPostFork();
     SetPostForked(true);
     LOG_ECMA(INFO) << "multi-thread check enabled: " << GetThreadCheckStatus();
     SignalAllReg();
@@ -153,10 +154,6 @@ void EcmaVM::PostFork()
     int arkProperties = OHOS::system::GetIntParameter<int>("persist.ark.properties", -1);
     GetJSOptions().SetArkProperties(arkProperties);
 #endif
-    auto startIdleMonitor = JSNApi::GetStartIdleMonitorCallback();
-    if (startIdleMonitor != nullptr) {
-        startIdleMonitor();
-    }
 #ifdef ENABLE_POSTFORK_FORCEEXPAND
     heap_->NotifyPostFork();
     heap_->NotifyFinishColdStartSoon();
@@ -197,9 +194,12 @@ void EcmaVM::InitializeForJit(JitThread *jitThread)
 
 void EcmaVM::InitializePGOProfiler()
 {
+    LOG_PGO(INFO) << "initializing pgo profiler, pgo is " << (IsEnablePGOProfiler() ? "enabled" : "disabled")
+                  << ", worker is " << (options_.IsWorker() ? "enabled" : "disabled")
+                  << ", profiler: " << pgoProfiler_;
     bool isEnablePGOProfiler = IsEnablePGOProfiler();
     if (pgoProfiler_ == nullptr) {
-        pgoProfiler_ = PGOProfilerManager::GetInstance()->Build(this, isEnablePGOProfiler);
+        pgoProfiler_ = PGOProfilerManager::GetInstance()->BuildProfiler(this, isEnablePGOProfiler);
     }
     pgo::PGOTrace::GetInstance()->SetEnable(options_.GetPGOTrace() || ohos::AotTools::GetPgoTraceEnable());
     thread_->SetPGOProfilerEnable(isEnablePGOProfiler);
@@ -219,6 +219,7 @@ void EcmaVM::DisablePGOProfilerWithAOTFile(const std::string &aotFileName)
 {
     if (AOTFileManager::AOTFileExist(aotFileName, AOTFileManager::FILE_EXTENSION_AN) ||
         AOTFileManager::AOTFileExist(aotFileName, AOTFileManager::FILE_EXTENSION_AI)) {
+        LOG_PGO(INFO) << "disable pgo profiler due to aot file exist: " << aotFileName;
         options_.SetEnablePGOProfiler(false);
         PGOProfilerManager::GetInstance()->SetDisablePGO(true);
         ResetPGOProfiler();
@@ -231,6 +232,11 @@ bool EcmaVM::IsEnablePGOProfiler() const
         return PGOProfilerManager::GetInstance()->IsEnable();
     }
     return options_.GetEnableAsmInterpreter() && options_.IsEnablePGOProfiler();
+}
+
+bool EcmaVM::IsEnableMutantArray() const
+{
+    return options_.GetEnableAsmInterpreter() && options_.IsEnableMutantArray();
 }
 
 bool EcmaVM::IsEnableElementsKind() const
@@ -280,6 +286,7 @@ bool EcmaVM::Initialize()
         UNREACHABLE();
     }
     debuggerManager_ = new tooling::JsDebuggerManager(this);
+    asyncStackTrace_ = new AsyncStackTrace(this);
     aotFileManager_ = new AOTFileManager(this);
     auto context = new EcmaContext(thread_);
     thread_->PushContext(context);
@@ -296,9 +303,6 @@ bool EcmaVM::Initialize()
     quickFixManager_ = new QuickFixManager();
     if (options_.GetEnableAsmInterpreter()) {
         thread_->GetCurrentEcmaContext()->LoadStubFile();
-    }
-    if (options_.EnableEdenGC()) {
-        heap_->EnableEdenGC();
     }
 
     callTimer_ = new FunctionCallTimer();
@@ -418,9 +422,16 @@ EcmaVM::~EcmaVM()
         }
     }
 
+    intlCache_.ClearIcuCache(this);
+
     if (debuggerManager_ != nullptr) {
         delete debuggerManager_;
         debuggerManager_ = nullptr;
+    }
+
+    if (asyncStackTrace_ != nullptr) {
+        delete asyncStackTrace_;
+        asyncStackTrace_ = nullptr;
     }
 
     if (aotFileManager_ != nullptr) {
@@ -477,7 +488,7 @@ void EcmaVM::CheckThread() const
         UNREACHABLE();
     }
     if (!Taskpool::GetCurrentTaskpool()->IsDaemonThreadOrInThreadPool(std::this_thread::get_id()) &&
-        thread_->GetThreadId() != JSThread::GetCurrentThreadId() && !thread_->IsCrossThreadExecutionEnable()) {
+        thread_->CheckMultiThread()) {
             LOG_FULL(FATAL) << "Fatal: ecma_vm cannot run in multi-thread!"
                                 << " thread:" << thread_->GetThreadId()
                                 << " currentThread:" << JSThread::GetCurrentThreadId();
@@ -490,7 +501,7 @@ JSThread *EcmaVM::GetAndFastCheckJSThread() const
     if (thread_ == nullptr) {
         LOG_FULL(FATAL) << "Fatal: ecma_vm has been destructed! vm address is: " << this;
     }
-    if (thread_->GetThreadId() != JSThread::GetCurrentThreadId() && !thread_->IsCrossThreadExecutionEnable()) {
+    if (thread_->CheckMultiThread()) {
         LOG_FULL(FATAL) << "Fatal: ecma_vm cannot run in multi-thread!"
                                 << " thread:" << thread_->GetThreadId()
                                 << " currentThread:" << JSThread::GetCurrentThreadId();
@@ -675,9 +686,9 @@ void EcmaVM::CollectGarbage(TriggerGCType gcType, panda::ecmascript::GCReason re
     heap_->CollectGarbage(gcType, reason);
 }
 
-void EcmaVM::Iterate(const RootVisitor &v, const RootRangeVisitor &rv, VMRootVisitType type)
+void EcmaVM::Iterate(RootVisitor &v, VMRootVisitType type)
 {
-    rv(Root::ROOT_VM, ObjectSlot(ToUintPtr(&internalNativeMethods_.front())),
+    v.VisitRangeRoot(Root::ROOT_VM, ObjectSlot(ToUintPtr(&internalNativeMethods_.front())),
         ObjectSlot(ToUintPtr(&internalNativeMethods_.back()) + JSTaggedValue::TaggedTypeSize()));
     if (!WIN_OR_MAC_OR_IOS_PLATFORM && snapshotEnv_!= nullptr) {
         snapshotEnv_->Iterate(v, type);
@@ -987,7 +998,20 @@ bool EcmaVM::IsHmsModule(const CString &moduleStr) const
 
 void EcmaVM::SetpkgContextInfoList(const CMap<CString, CMap<CString, CVector<CString>>> &list)
 {
+    WriteLockHolder lock(pkgContextInfoLock_);
     pkgContextInfoList_ = list;
+}
+
+void EcmaVM::StopPreLoadSoOrAbc()
+{
+    if (!stopPreLoadCallbacks_.empty()) {
+        for (StopPreLoadSoCallback &cb: stopPreLoadCallbacks_) {
+            if (cb != nullptr) {
+                cb();
+            }
+        }
+        stopPreLoadCallbacks_.clear();
+    }
 }
 
 // Initialize IcuData Path
@@ -1025,5 +1049,20 @@ int EcmaVM::InitializeStartRealTime()
     int whensys = int(timessys.tv_sec * 1000) + int(timessys.tv_nsec / 1000000);
     startRealTime = (whensys - whenpro);
     return startRealTime;
+}
+
+uint32_t EcmaVM::GetAsyncTaskId()
+{
+    return asyncStackTrace_->GetAsyncTaskId();
+}
+
+bool EcmaVM::InsertAsyncStackTrace(const JSHandle<JSPromise> &promise)
+{
+    return asyncStackTrace_->InsertAsyncStackTrace(promise);
+}
+
+bool EcmaVM::RemoveAsyncStackTrace(const JSHandle<JSPromise> &promise)
+{
+    return asyncStackTrace_->RemoveAsyncStackTrace(promise);
 }
 }  // namespace panda::ecmascript

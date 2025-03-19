@@ -25,12 +25,13 @@ namespace panda::ecmascript {
 template <VisitType visitType, size_t size>
 class JSObjectBodyIterator {
 public:
-    static inline void IterateBody(TaggedObject *root, const EcmaObjectRangeVisitor& visitor)
+    template <class DerivedVisitor>
+    static inline void IterateBody(TaggedObject *root, EcmaObjectRangeVisitor<DerivedVisitor> &visitor)
     {
         auto hclass = root->SynchronizedGetClass();
         auto objSize = hclass->GetObjectSize();
         if (objSize > size) {
-            if (hclass->IsAllTaggedProp()) {
+            if (LIKELY(hclass->IsAllTaggedProp())) {
                 IteratorRange(root, visitor, size, objSize, VisitObjectArea::NORMAL);
             } else {
                 IteratorRange(root, visitor, size, objSize, VisitObjectArea::IN_OBJECT);
@@ -38,7 +39,8 @@ public:
         }
     }
 
-    static inline void IteratorRange(TaggedObject *root, const EcmaObjectRangeVisitor& visitor,
+    template<class DerivedVisitor>
+    static inline void IteratorRange(TaggedObject *root, EcmaObjectRangeVisitor<DerivedVisitor> &visitor,
         size_t start, size_t end, VisitObjectArea area)
     {
         visitor(root, ObjectSlot(ToUintPtr(root) + start), ObjectSlot(ToUintPtr(root) + end), area);

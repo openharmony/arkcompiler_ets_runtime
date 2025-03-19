@@ -14,8 +14,6 @@
  */
 
 #include "x64_cg.h"
-#include "x64_cgfunc.h"
-#include "x64_isa.h"
 namespace maplebe {
 
 using namespace x64;

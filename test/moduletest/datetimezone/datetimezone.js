@@ -17,3 +17,10 @@ try {
 } catch (e) {
     print(e instanceof RangeError);
 }
+
+// This case aims to check stack overflow while timeZone is a long string
+try {
+    new Intl.DateTimeFormat("en", {timeZone: Array(0x8000).join("a")});
+} catch (e) {
+    print(e);
+}

@@ -329,6 +329,230 @@ function testJSONBigIntZero() {
     print(obj.id);
 }
 
+function testASONStringifyMapAndSet() {
+    let jsonText1 = '{"text":"ASON support MAP Test Start","largeNumber":112233445566778899,"people":{"name":"Mary","sex":"1","height":"165"}}';
+    let options1 = {
+        bigIntMode: BigIntMode.PARSE_AS_BIGINT,
+        parseReturnType: ParseReturnType.MAP, 
+    }
+    let map1 = JSON.parseSendable(jsonText1, undefined, options1);
+    let output1 = JSON.stringifySendable(map1);
+    print(output1);
+
+    let jsonText2 = '{"args1":true,"args2":false,"args3":null}';
+    let map2 = JSON.parseSendable(jsonText2, undefined, options1);
+    let output2 = JSON.stringifySendable(map2);
+    print(output2);
+
+    let jsonText3 = '{"people":{"name":"Mary","sex":"1","height":165,"args":{"arr":[1,2,3],"check":true,"num":null}}}';
+    let map3 = JSON.parseSendable(jsonText3, undefined, options1);
+    let output3 = JSON.stringifySendable(map3);
+    print(output3);
+
+    let jsonText4 = '{"features":{"ut":{"args":{"bizType":"SQYK","isChecked":false,"packageId":9223372036854775806}}}}';
+    let map4 = JSON.parseSendable(jsonText4, undefined, options1);
+    let output4 = JSON.stringifySendable(map4);
+    print(output4);
+
+    let set = new Set(['foo', 'bar', 'baz']);
+    let output5 = JSON.stringifySendable(set);
+    print(output5);
+
+    let sharedSet = new SendableSet(['foo', 'bar', 'baz']);
+    let output6 = JSON.stringifySendable(sharedSet);
+    print(output6);
+
+    let map5 = new Map([['foo', 1], ['bar', 2], ['baz', 3]]);
+    let output7 = JSON.stringifySendable(map5);
+    print(output7);
+
+    let arkPrivate = globalThis.ArkPrivate;
+    var HashMap = arkPrivate.Load(arkPrivate.HashMap);
+    let hashMap = new HashMap();
+    hashMap.set('foo', 1);
+    hashMap.set('bar', 2);
+    hashMap.set('baz', 3);
+    let output8 = JSON.stringifySendable(hashMap);
+    print(output8 != '{}');
+
+    var HashSet = arkPrivate.Load(arkPrivate.HashSet);
+    let hashSet = new HashSet();
+    hashSet.add('foo');
+    hashSet.add('bar');
+    hashSet.add('baz');
+    let output9 = JSON.stringifySendable(hashSet);
+    print(output9 != '{}' && output9 != '[]');
+}
+
+class SharedA {
+    v: number;
+    map: SendableMap<string, SendableArray<number>>;
+    constructor() {
+        'use sendable'
+    }
+}
+
+class A {
+    v: number;
+    map: Map<string, Array<number>>;
+    constructor() {
+    }
+}
+
+function testASONStringifyMapAndSetAndObj() {
+    let array1 = new SendableArray<number>(1, 2, 3, 4);
+    let array2 = new SendableArray<number>(3, 5, 7, 9);
+    let sharedMap = new SendableMap();
+    sharedMap.set('arr1', array1);
+    sharedMap.set('arr2', array2);
+    let output1 = JSON.stringifySendable(sharedMap);
+    let output2 = JSON.stringify(sharedMap);
+    print(output1);
+    print(output2);
+
+    let sharedA = new SharedA();
+    sharedA.v = 100;
+    sharedA.map = sharedMap;
+    let output3 = JSON.stringifySendable(sharedA);
+    print(output3);
+    let output4 = JSON.stringify(sharedA);
+    print(output4);
+
+    let sharedSet = new SendableSet([sharedA]);
+    let output5 = JSON.stringifySendable(sharedSet);
+    print(output5);
+    let output6 = JSON.stringify(sharedSet);
+    print(output6);
+
+    let array3 = new Array<number>(1, 2, 3, 4);
+    let array4 = new Array<number>(3, 5, 7, 9);
+    let set = new Set();
+    let map = new Map();
+    map.set('arr3', array3);
+    map.set('arr4', array4);
+    let output7 = JSON.stringifySendable(map);
+    print(output7);
+    let output8 = JSON.stringify(map);
+    print(output8);
+
+    let a = new A();
+    a.v = 200;
+    a.map = map;
+    let output9 = JSON.stringifySendable(a);
+    print(output9);
+    let output10 = JSON.stringify(a);
+    print(output10);
+    set.add(a);
+    let output11 = JSON.stringifySendable(set);
+    print(output11);
+    let output12 = JSON.stringify(set);
+    print(output12);
+
+    let arkPrivate = globalThis.ArkPrivate;
+    var HashMap = arkPrivate.Load(arkPrivate.HashMap);
+    let hashMap = new HashMap();
+    hashMap.set('set', set);
+    let output13 = JSON.stringifySendable(hashMap);
+    print(output13);
+    let output14 = JSON.stringify(hashMap);
+    print(output14);
+
+    var HashSet = arkPrivate.Load(arkPrivate.HashSet);
+    let hashSet = new HashSet();
+    hashSet.add(hashMap);
+    let output15 = JSON.stringifySendable(hashSet);
+    print(output15);
+    let output16 = JSON.stringify(hashSet);
+    print(output16);
+}
+
+function testASONStringifyAfterClearMapAndSet() {
+    let map1 = new Map<string | null | number | boolean, string | null | number | boolean>();
+    map1.set("a1", "A1");
+    map1.clear();
+    map1.set(1, 1);
+    map1.set(true, true);
+    let str1 = JSON.stringifySendable(map1);
+    print(str1);
+
+    let map2 = new SendableMap<string | null | number | boolean, string | null | number | boolean>();
+    map2.set("a1", "A1");
+    map2.clear();
+    map2.set(1, 1);
+    map2.set(true, true);
+    let str2 = JSON.stringifySendable(map2);
+    print(str2);
+
+    let set1 = new Set<string | null | number | boolean>();
+    set1.add("a1");
+    set1.clear();
+    set1.add(1);
+    set1.add(true);
+    let str3 = JSON.stringifySendable(set1);
+    print(str3);
+
+    let set2 = new SendableSet<string | null | number | boolean>();
+    set2.add("a1");
+    set2.clear();
+    set2.add(1);
+    set2.add(true);
+    let str4 = JSON.stringifySendable(set2);
+    print(str4);
+}
+
+function testASONStringifyMapSetAddUndefined() {
+    let map1 = new Map<string | null | number | boolean | undefined, string | null | number | boolean | undefined>();
+    map1.set("a1", 1);
+    map1.set(undefined, "a2");
+    map1.set(null, undefined);
+    map1.set(undefined, undefined);
+    map1.set(undefined, null);
+    let str1 = JSON.stringifySendable(map1);
+    print(str1);
+
+    let map2 = new SendableMap<string | null | number | boolean | undefined, string | null | number | boolean | undefined>();
+    map2.set("a1", 1);
+    map2.set(undefined, "a2");
+    map2.set(null, undefined);
+    map2.set(undefined, undefined);
+    map2.set(undefined, null);
+    let str2 = JSON.stringifySendable(map2);
+    print(str2);
+
+    let arkPrivate = globalThis.ArkPrivate;
+    var HashMap = arkPrivate.Load(arkPrivate.HashMap);
+    let hashMap = new HashMap<string | null | number | boolean | undefined, string | null | number | boolean | undefined>();
+    hashMap.set("a1", 1);
+    hashMap.set(null, undefined);
+    let str3 = JSON.stringifySendable(hashMap);
+    print(str3);
+
+    let set1 = new Set<string | null | number | boolean | undefined>();
+    set1.add("a1");
+    set1.add(undefined);
+    set1.add(1);
+    set1.add(true);
+    let str4 = JSON.stringifySendable(set1);
+    print(str4);
+
+    let set2 = new SendableSet<string | null | number | boolean | undefined>();
+    set2.add("a1");
+    set2.add(undefined);
+    set2.add(1);
+    set2.add(true);
+    let str5 = JSON.stringifySendable(set2);
+    print(str5);
+
+    var HashSet = arkPrivate.Load(arkPrivate.HashSet);
+    let hashSet = new HashSet();
+    hashSet.add("a1");
+    hashSet.add(undefined);
+    hashSet.add(1);
+    hashSet.add(true);
+    let str6 = JSON.stringifySendable(hashSet);
+    print(str6);
+}
+
 testJSONParseSendable();
 jsonRepeatCall();
 testASONBigInt();
@@ -339,3 +563,7 @@ testJSONZeroDeci();
 testASONMap();
 testIndexASON();
 testJSONBigIntZero();
+testASONStringifyMapAndSet();
+testASONStringifyMapAndSetAndObj();
+testASONStringifyAfterClearMapAndSet();
+testASONStringifyMapSetAddUndefined();

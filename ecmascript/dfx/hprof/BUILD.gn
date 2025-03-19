@@ -46,7 +46,7 @@ ohos_executable("ark_js_heap_snapshot_tool") {
   external_deps += hiviewdfx_ext_deps
   deps += hiviewdfx_deps
 
-  install_enable = true
+  install_enable = false
 
   part_name = "ets_runtime"
   subsystem_name = "arkcompiler"

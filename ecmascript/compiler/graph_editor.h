@@ -38,7 +38,7 @@ private:
     void PropagateGate(const Edge& edge);
     void PropagateMerge(const Edge& edge);
     void EliminatePhi();
-    bool HasOsrDeoptUse(GateRef gate);
+    bool FrameValueUsedInCFGTailoring(GateRef gate);
 
     Circuit *circuit_ {nullptr};
     GateAccessor acc_;

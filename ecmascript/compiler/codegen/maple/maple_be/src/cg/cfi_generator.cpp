@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 #include "cfi_generator.h"
-#include "cgfunc.h"
 #if TARGAARCH64
 #include "aarch64_cfi_generator.h"
 #include "aarch64_cgfunc.h"

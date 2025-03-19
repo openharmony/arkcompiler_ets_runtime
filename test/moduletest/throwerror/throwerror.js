@@ -23,8 +23,9 @@ function f1(a2, a3) {
 }
 try {
     ([1,2]).filter(f1);
-} catch (e) {
-    print(e.name);
+    assert_unreachable();
+} catch (error) {
+    assert_equal(error instanceof ReferenceError, true);
 }
 
 function f0(a1) {
@@ -33,8 +34,9 @@ function f0(a1) {
 const v4 = [4294967297];
 try {
     ([1,2]).reduce(f0, v4);
-} catch (e) {
-    print(e.name);
+    assert_unreachable();
+} catch (error) {
+    assert_equal(error instanceof TypeError, true);
 }
 
 function f2(a1) {
@@ -45,8 +47,9 @@ class C2 extends f2 {
 C2.__proto__ = [8069];
 try {
     new C2();
-} catch (e) {
-    print(e.name);
+    assert_unreachable();
+} catch (error) {
+    assert_equal(error instanceof TypeError, true);
 }
 
 class C3 {
@@ -54,14 +57,18 @@ class C3 {
 }
 try {
     C3(..."g2");
-} catch (e) {
-    print(e.name);
+    assert_unreachable();
+} catch (error) {
+    assert_equal(error instanceof TypeError, true);
 }
 
 try {
     const v40 = [1, -3.0];
     v40[1] = v40;
-    print(v40.flat(536870887));
+    v40.flat(536870887);
+    assert_unreachable();
 } catch (e) {
-    print(e)
+    assert_equal(e instanceof RangeError, true);
 }
+
+test_end();

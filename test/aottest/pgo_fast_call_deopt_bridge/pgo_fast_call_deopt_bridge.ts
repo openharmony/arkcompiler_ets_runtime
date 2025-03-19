@@ -66,3 +66,21 @@ function bar () {
 
 bar()
 print(ArkTools.isAOTCompiled(bar))  // pgo:false, aot:true
+
+function foo2() {
+    try {
+        for (let i39 = 10;
+            (() => {
+                i39--;
+                const v42 = this.constructor;
+                for (let i46 = 10;;) {
+                }
+            })();
+        ) {
+        }
+    } catch (error) {
+        print("Caught an error: " + error);
+    }
+}
+foo2();
+print(ArkTools.isAOTCompiled(foo2));

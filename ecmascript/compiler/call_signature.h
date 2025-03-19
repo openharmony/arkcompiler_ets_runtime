@@ -380,6 +380,7 @@ private:
     V(And)                                      \
     V(Or)                                       \
     V(Xor)                                      \
+    V(IsIn)                                     \
     V(Instanceof)                               \
     V(Inc)                                      \
     V(Dec)                                      \
@@ -403,8 +404,11 @@ private:
     V(StOwnByNameWithNameSet)                   \
     V(StObjByIndex)                             \
     V(LdObjByIndex)                             \
+    V(JSTaggedValueHasProperty)                 \
     V(SetPropertyByValueWithOwn)                \
     V(GetPropertyByName)                        \
+    V(SetPropertyByNameWithMega)                \
+    V(GetPropertyByNameWithMega)                \
     V(DeprecatedGetPropertyByName)              \
     V(GetPropertyByIndex)                       \
     V(SetPropertyByIndex)                       \
@@ -417,8 +421,6 @@ private:
     V(TryStoreICByValue)                        \
     V(SetValueWithBarrier)                      \
     V(SetNonSValueWithBarrier)                  \
-    V(SetValueWithEdenBarrier)                  \
-    V(SetNonSValueWithEdenBarrier)              \
     V(SetSValueWithBarrier)                     \
     V(NewLexicalEnv)                            \
     V(CopyRestArgs)                             \
@@ -475,6 +477,11 @@ private:
     V(CallSetter)                               \
     V(CallContainersArgs2)                      \
     V(CallContainersArgs3)                      \
+    V(CallGetterToBaseline)                     \
+    V(CallSetterToBaseline)                     \
+    V(CallContainersArgs2ToBaseline)            \
+    V(CallContainersArgs3ToBaseline)            \
+    V(CallReturnWithArgvToBaseline)             \
     V(JSCallWithArgV)                           \
     V(JSFastCallWithArgV)                       \
     V(JSFastCallWithArgVAndPushArgv)            \
@@ -503,7 +510,6 @@ private:
     V(FatalPrint)                               \
     V(FatalPrintCustom)                         \
     V(GetActualArgvNoGC)                        \
-    V(InsertNewToEdenRSet)                      \
     V(InsertOldToNewRSet)                       \
     V(InsertLocalToShareRSet)                   \
     V(SetBitAtomic)                             \
@@ -538,7 +544,6 @@ private:
     V(CallDateNow)                              \
     V(UpdateFieldType)                          \
     V(MarkingBarrier)                           \
-    V(MarkingBarrierWithEden)                   \
     V(SharedGCMarkingBarrier)                   \
     V(CallArg0)                                 \
     V(CallArg1)                                 \
@@ -587,9 +592,11 @@ private:
     V(JSSetDelete)                              \
     V(JSSetEntries)                             \
     V(JSHClassFindProtoTransitions)             \
+    V(FinishObjSizeTracking)                    \
     V(NumberHelperStringToDouble)               \
     V(GetStringToListCacheArray)                \
-    V(FastArraySort)                            \
+    V(IntLexicographicCompare)                  \
+    V(DoubleLexicographicCompare)               \
     V(FastArraySortString)                      \
     V(StringToNumber)                           \
     V(StringGetStart)                           \
@@ -626,14 +633,36 @@ private:
     V(StringIteratorNext)                            \
     V(Definefunc)                                    \
     V(DefineField)                                   \
+    V(CallArg0Stub)                                  \
+    V(CallArg1Stub)                                  \
+    V(CallArg2Stub)                                  \
+    V(CallArg3Stub)                                  \
+    V(CallThis0Stub)                                 \
+    V(CallThis1Stub)                                 \
+    V(CallThis2Stub)                                 \
+    V(CallThis3Stub)                                 \
     V(ConvertCharToInt32)                            \
     V(ConvertCharToDouble)                           \
     V(ASMFastWriteBarrier)                           \
-    V(ASMWriteBarrierWithEden)                       \
     V(VerifyBarrier)                                 \
     V(SortTypedArray)                                \
     V(ReverseTypedArray)                             \
-    V(IsFastRegExp)
+    V(IsFastRegExp)                                  \
+    V(MapIteratorNext)                               \
+    V(SetIteratorNext)                               \
+    V(CreateLocalToShare)                            \
+    V(CreateOldToNew)                                \
+    V(BatchBarrier)                                  \
+    V(ObjectCopy)                                    \
+    V(ArrayIteratorNext)                             \
+    V(GetIterator)                                   \
+    V(MoveBarrierInRegion)                           \
+    V(FillObject)                                    \
+    V(MoveBarrierCrossRegion)                        \
+    V(ReverseArray)                                  \
+    V(LrInt)                                         \
+    V(FindEntryFromNameDictionary)                   \
+    V(ReverseBarrier)
 
 #define DECL_CALL_SIGNATURE(name)                                  \
 class name##CallSignature final {                                  \

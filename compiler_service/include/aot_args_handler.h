@@ -76,6 +76,11 @@ public:
                   int32_t thermalLevel) override;
 
     void AddExpandArgs(std::vector<std::string> &argVector, int32_t thermalLevel);
+
+#ifdef ENABLE_COMPILER_SERVICE_GET_PARAMETER
+    void SetAnFileMaxSizeBySysParam(HapArgs &hapArgs);
+    void SetEnableCodeCommentBySysParam(HapArgs &hapArgs);
+#endif
 };
 
 class StaticAOTArgsParser final : public AOTArgsParserBase {

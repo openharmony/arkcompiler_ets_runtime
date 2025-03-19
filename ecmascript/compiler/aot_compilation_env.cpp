@@ -14,7 +14,6 @@
  */
 #include "ecmascript/compiler/aot_compilation_env.h"
 #include "ecmascript/compiler/pgo_type/pgo_type_manager.h"
-#include "ecmascript/ecma_context.h"
 #include "ecmascript/jspandafile/program_object.h"
 
 namespace panda::ecmascript {
@@ -33,9 +32,9 @@ JSHandle<GlobalEnv> AOTCompilationEnv::GetGlobalEnv() const
     return vm_->GetGlobalEnv();
 }
 
-const CMap<ElementsKind, std::pair<ConstantIndex, ConstantIndex>> &AOTCompilationEnv::GetArrayHClassIndexMap() const
+ConstantIndex AOTCompilationEnv::GetArrayHClassIndex(ElementsKind kind, bool isProtoType) const
 {
-    return thread_->GetArrayHClassIndexMap();
+    return thread_->GetArrayInstanceHClassIndex(kind, isProtoType);
 }
 
 const BuiltinHClassEntries &AOTCompilationEnv::GetBuiltinHClassEntries() const

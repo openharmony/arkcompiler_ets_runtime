@@ -14,13 +14,6 @@
  */
 
 #include "option.h"
-#include <iostream>
-#include <fstream>
-#include <cstring>
-#include <cctype>
-#include "driver_options.h"
-#include "mpl_logging.h"
-#include "triple.h"
 
 namespace maple {
 

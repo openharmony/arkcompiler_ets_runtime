@@ -21,7 +21,7 @@
 namespace panda::ecmascript {
 class Heap;
 class JSThread;
-struct NativeBindingInfo {
+struct NativeBindingAttachInfo {
     AttachFunc af_ {nullptr};
     void *bufferPointer_ {nullptr};
     void *hint_ = {nullptr};
@@ -30,8 +30,8 @@ struct NativeBindingInfo {
     size_t offset_ {0U};
     bool root_ {false};
 
-    NativeBindingInfo(AttachFunc af, void *bufferPointer, void *hint, void *attachData,
-                      uintptr_t objAddr, size_t offset, bool root) : af_(af), bufferPointer_(bufferPointer),
+    NativeBindingAttachInfo(AttachFunc af, void *bufferPointer, void *hint, void *attachData,
+                            uintptr_t objAddr, size_t offset, bool root) : af_(af), bufferPointer_(bufferPointer),
         hint_(hint), attachData_(attachData), objAddr_(objAddr), offset_(offset), root_(root) {}
 
     uintptr_t GetObjAddr() const
@@ -94,7 +94,7 @@ public:
 private:
     JSHandle<JSTaggedValue> DeserializeJSTaggedValue();
     uintptr_t DeserializeTaggedObject(SerializedObjectSpace space);
-    void DeserializeNativeBindingObject(NativeBindingInfo *info);
+    void DeserializeNativeBindingObject(NativeBindingAttachInfo *info);
     void DeserializeJSError(JSErrorInfo *info);
     uintptr_t RelocateObjectAddr(SerializedObjectSpace space, size_t objSize);
     JSTaggedType RelocateObjectProtoAddr(uint8_t objectType);
@@ -238,7 +238,7 @@ private:
     bool isErrorMsg_ {false};
     void *bufferPointer_ {nullptr};
     bool functionInShared_ {false};
-    CVector<NativeBindingInfo *> nativeBindingInfos_;
+    CVector<NativeBindingAttachInfo *> nativeBindingAttachInfos_;
     CVector<JSErrorInfo *> jsErrorInfos_;
     CVector<JSHandle<JSFunction>> concurrentFunctions_;
     size_t position_ {0};

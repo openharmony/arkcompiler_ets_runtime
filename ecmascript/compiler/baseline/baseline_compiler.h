@@ -83,6 +83,8 @@ public:
 
     bool CollectMemoryCodeInfos(MachineCodeDesc &codeDesc);
 
+    void CollectBLInfo(RelocMap &relocInfo);
+
     void SetPfHeaderAddr(const JSPandaFile *jsPandaFile);
 
     void GetJumpToOffsets(const uint8_t *start, const uint8_t *end, std::unordered_set<size_t> &jumpToOffsets) const;

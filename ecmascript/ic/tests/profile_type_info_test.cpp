@@ -77,27 +77,37 @@ HWTEST_F_L0(ProfileTypeInfoTest, GetICState)
     JSHandle<JSTaggedValue> newArray(factory->NewTaggedArray(2)); // 2 : test case
     JSHandle<JSTaggedValue> newBox(factory->NewPropertyBox(newValue));
 
-    uint32_t arrayLength = 6;
+    uint32_t arrayLength = 11;
+    JSHandle<JSTaggedValue> HandleKey0(factory->NewFromASCII("key0"));
     JSHandle<ProfileTypeInfo> handleProfileTypeInfo = factory->NewProfileTypeInfo(arrayLength);
     handleProfileTypeInfo->Set(thread, 1, JSTaggedValue::Hole());
-    handleProfileTypeInfo->Set(thread, 2, newArray.GetTaggedValue());
+    handleProfileTypeInfo->Set(thread, 2, JSTaggedValue::Hole());
     handleProfileTypeInfo->Set(thread, 3, newArray.GetTaggedValue());
-    handleProfileTypeInfo->Set(thread, 4, newBox.GetTaggedValue());
-    handleProfileTypeInfo->Set(thread, 5, newArray.GetTaggedValue());
+    handleProfileTypeInfo->Set(thread, 4, newArray.GetTaggedValue());
+    handleProfileTypeInfo->Set(thread, 5, newBox.GetTaggedValue());
+    handleProfileTypeInfo->Set(thread, 6, newArray.GetTaggedValue());
+    handleProfileTypeInfo->Set(thread, 7, JSTaggedValue::Hole());
+    handleProfileTypeInfo->Set(thread, 8, JSTaggedValue::Undefined());
+    handleProfileTypeInfo->Set(thread, 9, JSTaggedValue::Hole());
+    handleProfileTypeInfo->Set(thread, 10, HandleKey0.GetTaggedValue());
 
     EXPECT_TRUE(*handleProfileTypeInfo != nullptr);
     // slotId = 0
     ProfileTypeAccessor handleProfileTypeAccessor0(thread, handleProfileTypeInfo, 0, ICKind::StoreIC);
-    // slotId = 1
+    // slotId = 1,2
     ProfileTypeAccessor handleProfileTypeAccessor1(thread, handleProfileTypeInfo, 1, ICKind::GlobalLoadIC);
-    // slotId = 2
-    ProfileTypeAccessor handleProfileTypeAccessor2(thread, handleProfileTypeInfo, 2, ICKind::NamedLoadIC);
     // slotId = 3
-    ProfileTypeAccessor handleProfileTypeAccessor3(thread, handleProfileTypeInfo, 3, ICKind::LoadIC);
+    ProfileTypeAccessor handleProfileTypeAccessor2(thread, handleProfileTypeInfo, 3, ICKind::NamedLoadIC);
     // slotId = 4
-    ProfileTypeAccessor handleProfileTypeAccessor4(thread, handleProfileTypeInfo, 4, ICKind::NamedGlobalLoadIC);
+    ProfileTypeAccessor handleProfileTypeAccessor3(thread, handleProfileTypeInfo, 4, ICKind::LoadIC);
     // slotId = 5
-    ProfileTypeAccessor handleProfileTypeAccessor5(thread, handleProfileTypeInfo, 5, ICKind::GlobalStoreIC);
+    ProfileTypeAccessor handleProfileTypeAccessor4(thread, handleProfileTypeInfo, 5, ICKind::NamedGlobalLoadIC);
+    // slotId = 6
+    ProfileTypeAccessor handleProfileTypeAccessor5(thread, handleProfileTypeInfo, 6, ICKind::GlobalStoreIC);
+    // slotId = 7,8
+    ProfileTypeAccessor handleProfileTypeAccessor6(thread, handleProfileTypeInfo, 7, ICKind::GlobalLoadIC);
+    // slotId = 9,10
+    ProfileTypeAccessor handleProfileTypeAccessor7(thread, handleProfileTypeInfo, 9, ICKind::LoadIC);
 
     EXPECT_EQ(handleProfileTypeAccessor0.GetICState(), ProfileTypeAccessor::ICState::UNINIT);
     EXPECT_EQ(handleProfileTypeAccessor1.GetICState(), ProfileTypeAccessor::ICState::MEGA);
@@ -105,6 +115,8 @@ HWTEST_F_L0(ProfileTypeInfoTest, GetICState)
     EXPECT_EQ(handleProfileTypeAccessor3.GetICState(), ProfileTypeAccessor::ICState::MONO);
     EXPECT_EQ(handleProfileTypeAccessor4.GetICState(), ProfileTypeAccessor::ICState::MONO);
     EXPECT_EQ(handleProfileTypeAccessor5.GetICState(), ProfileTypeAccessor::ICState::MONO);
+    EXPECT_EQ(handleProfileTypeAccessor6.GetICState(), ProfileTypeAccessor::ICState::MEGA);
+    EXPECT_EQ(handleProfileTypeAccessor7.GetICState(), ProfileTypeAccessor::ICState::IC_MEGA);
 }
 
 /**

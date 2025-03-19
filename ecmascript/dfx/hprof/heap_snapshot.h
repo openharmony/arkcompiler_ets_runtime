@@ -149,7 +149,7 @@ public:
     {
         traceId_ = traceId;
     }
-    static Node *NewNode(Chunk *chunk, NodeId id, size_t index, const CString *name, NodeType type, size_t size,
+    static Node *NewNode(Chunk &chunk, NodeId id, size_t index, const CString *name, NodeType type, size_t size,
                          size_t nativeSize, JSTaggedType entry, bool isLive = true);
     template<typename T>
     static JSTaggedType NewAddress(T *addr)
@@ -213,8 +213,8 @@ public:
     {
         to_ = node;
     }
-    static Edge *NewEdge(Chunk *chunk, EdgeType type, Node *from, Node *to, CString *name);
-    static Edge *NewEdge(Chunk *chunk, EdgeType type, Node *from, Node *to, uint32_t index);
+    static Edge *NewEdge(Chunk &chunk, EdgeType type, Node *from, Node *to, CString *name);
+    static Edge *NewEdge(Chunk &chunk, EdgeType type, Node *from, Node *to, uint32_t index);
     static constexpr int EDGE_FIELD_COUNT = 3;
     ~Edge() = default;
 
@@ -406,10 +406,10 @@ public:
     NO_MOVE_SEMANTIC(HeapSnapshot);
     NO_COPY_SEMANTIC(HeapSnapshot);
     HeapSnapshot(const EcmaVM *vm, StringHashMap *stringTable, const DumpSnapShotOption &dumpOption,
-                 const bool trackAllocations, EntryIdMap *entryIdMap, Chunk *chunk)
+                 const bool trackAllocations, EntryIdMap *entryIdMap)
         : vm_(vm), stringTable_(stringTable), isVmMode_(dumpOption.isVmMode), isPrivate_(dumpOption.isPrivate),
           captureNumericValue_(dumpOption.captureNumericValue), trackAllocations_(trackAllocations),
-          entryIdMap_(entryIdMap), chunk_(chunk) {}
+          entryIdMap_(entryIdMap), chunk_(vm->GetNativeAreaAllocator()) {}
     ~HeapSnapshot();
     bool BuildUp(bool isSimplify = false);
     bool Verify();
@@ -445,11 +445,11 @@ public:
     }
     void AccumulateNodeSize(size_t size)
     {
-        totalNodesSize_ += static_cast<int>(size);
+        totalNodesSize_ += size;
     }
     void DecreaseNodeSize(size_t size)
     {
-        totalNodesSize_ -= static_cast<int>(size);
+        totalNodesSize_ -= size;
     }
     CString *GenerateNodeName(TaggedObject *entry);
     NodeType GenerateNodeType(TaggedObject *entry);
@@ -514,7 +514,7 @@ public:
             return stringTable_->InsertStrAndGetStringId(ParseObjectName(obj));
         }
         if (entry.IsJSFunction()) {
-            return stringTable_->InsertStrAndGetStringId(ParseFunctionName(obj));
+            return stringTable_->InsertStrAndGetStringId(ParseFunctionName(obj, true));
         }
         return 1; // 1 : invalid id
     }
@@ -535,7 +535,7 @@ private:
     Node *GenerateObjectNode(JSTaggedValue entry, size_t size, bool isInFinish = false);
     void FillEdges(bool isSimplify = false);
     void RenameFunction(const CString &edgeName, Node *entryFrom, Node *entryTo);
-    CString ParseFunctionName(TaggedObject *obj);
+    CString ParseFunctionName(TaggedObject *obj, bool isRawHeap = false);
     const CString ParseObjectName(TaggedObject *obj);
 
     Node *InsertNodeUnique(Node *node);
@@ -546,12 +546,16 @@ private:
     Node *InsertNodeAt(size_t pos, Node *node);
     Edge *InsertEdgeAt(size_t pos, Edge *edge);
 
+#if defined(ENABLE_LOCAL_HANDLE_LEAK_DETECT)
+    void LogLeakedLocalHandleBackTrace(ObjectSlot slot);
+#endif
+
     CList<Node *> nodes_ {};
     CList<Edge *> edges_ {};
     CVector<TimeStamp> timeStamps_ {};
-    int nodeCount_ {0};
-    int edgeCount_ {0};
-    int totalNodesSize_ {0};
+    uint32_t nodeCount_ {0};
+    uint32_t edgeCount_ {0};
+    size_t totalNodesSize_ {0};
     HeapEntryMap entryMap_;
     panda::ecmascript::HeapRootVisitor rootVisitor_;
     const EcmaVM *vm_;
@@ -568,7 +572,7 @@ private:
     CMap<MethodLiteral *, uint32_t> methodToTraceNodeId_;
     CVector<uint32_t> traceNodeIndex_;
     EntryIdMap* entryIdMap_;
-    Chunk *chunk_ {nullptr};
+    Chunk chunk_;
     friend class HeapSnapShotFriendTest;
 };
 

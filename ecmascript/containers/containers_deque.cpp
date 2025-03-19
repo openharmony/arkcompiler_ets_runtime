@@ -182,7 +182,7 @@ JSTaggedValue ContainersDeque::PopFirst(EcmaRuntimeCallInfo *argv)
     }
 
     JSHandle<JSAPIDeque> deque = JSHandle<JSAPIDeque>::Cast(self);
-    JSTaggedValue firstElement = deque->PopFirst();
+    JSTaggedValue firstElement = deque->PopFirst(thread);
     return firstElement;
 }
 
@@ -205,7 +205,7 @@ JSTaggedValue ContainersDeque::PopLast(EcmaRuntimeCallInfo *argv)
     }
 
     JSHandle<JSAPIDeque> deque = JSHandle<JSAPIDeque>::Cast(self);
-    JSTaggedValue lastElement = deque->PopLast();
+    JSTaggedValue lastElement = deque->PopLast(thread);
     return lastElement;
 }
 

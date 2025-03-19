@@ -15,7 +15,6 @@
 
 #include "ecmascript/js_segment_iterator.h"
 
-#include <cstring>
 
 #include "ecmascript/js_iterator.h"
 #include "ecmascript/js_segments.h"

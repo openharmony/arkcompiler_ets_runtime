@@ -27,8 +27,10 @@ function catchSubError() {
     try {
         throwError()
     } catch (e) {
-        print(e)
+        assert_equal(e,"sub_error");
     }
 }
 
 catchSubError()
+
+test_end();

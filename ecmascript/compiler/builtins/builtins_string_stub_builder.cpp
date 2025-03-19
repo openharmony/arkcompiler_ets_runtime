@@ -175,6 +175,7 @@ void BuiltinsStringStubBuilder::CharCodeAt(GateRef glue, GateRef thisValue, Gate
     Variable* res, Label *exit, Label *slowPath)
 {
     auto env = GetEnvironment();
+    res->WriteVariable(DoubleToTaggedDoublePtr(Double(base::NAN_VALUE)));
     DEFVARIABLE(pos, VariableType::INT32(), Int32(0));
     Label posIsValid(env);
     Label flattenFastPath(env);
@@ -2139,55 +2140,44 @@ void BuiltinsStringStubBuilder::Concat(GateRef glue, GateRef thisValue, GateRef 
             }
             Bind(&hasPara);
             {
-                Label argc1(env);
+                Label writeRes(env);
                 Label notArgc1(env);
-                Label argc2(env);
                 Label notArgc2(env);
                 Label argc3(env);
-                Label notArgc3(env);
                 Label arg0IsValid(env);
                 Label arg1IsValid(env);
                 Label arg2IsValid(env);
-                Label next(env);
-                Label next1(env);
+                Label notException1(env);
+                Label notException2(env);
                 GateRef arg0 = TaggedArgument(static_cast<size_t>(BuiltinsArgs::ARG0_OR_ARGV));
                 BRANCH(TaggedIsString(arg0), &arg0IsValid, slowPath);
                 Bind(&arg0IsValid);
                 {
-                    BRANCH(Int64Equal(IntPtr(1), numArgs), &argc1, &notArgc1);
-                    Bind(&argc1);
-                    {
-                        res->WriteVariable(StringConcat(glue, thisValue, arg0));
-                        Jump(exit);
-                    }
+                    result = StringConcat(glue, thisValue, arg0);
+                    BRANCH(TaggedIsException(*result), &writeRes, &notException1);
+                    Bind(&notException1);
+                    BRANCH(Int64Equal(IntPtr(1), numArgs), &writeRes, &notArgc1);
                     Bind(&notArgc1);
                     {
-                        result = StringConcat(glue, thisValue, arg0);
-                        BRANCH(TaggedIsException(*result), slowPath, &next);
-                        Bind(&next);
                         GateRef arg1 = TaggedArgument(static_cast<size_t>(BuiltinsArgs::ARG1));
                         BRANCH(TaggedIsString(arg1), &arg1IsValid, slowPath);
                         Bind(&arg1IsValid);
-                        BRANCH(Int64Equal(IntPtr(2), numArgs), &argc2, &notArgc2); // 2: number of parameters.
-                        Bind(&argc2);
-                        {
-                            res->WriteVariable(StringConcat(glue, *result, arg1));
-                            Jump(exit);
-                        }
-                        Bind(&notArgc2);
                         result = StringConcat(glue, *result, arg1);
-                        BRANCH(TaggedIsException(*result), slowPath, &next1);
-                        Bind(&next1);
+                        BRANCH(TaggedIsException(*result), &writeRes, &notException2);
+                        Bind(&notException2);
+                        BRANCH(Int64Equal(IntPtr(2), numArgs), &writeRes, &notArgc2); // 2: number of parameters.
+                        Bind(&notArgc2);
                         GateRef arg2 = TaggedArgument(static_cast<size_t>(BuiltinsArgs::ARG2));
                         BRANCH(TaggedIsString(arg2), &arg2IsValid, slowPath);
                         Bind(&arg2IsValid);
                         BRANCH(Int64Equal(IntPtr(3), numArgs), &argc3, slowPath); // 3: number of parameters.
                         Bind(&argc3);
-                        {
-                            res->WriteVariable(StringConcat(glue, *result, arg2));
-                            Jump(exit);
-                        }
+                        result = StringConcat(glue, *result, arg2);
+                        Jump(&writeRes);
                     }
+                    Bind(&writeRes);
+                    res->WriteVariable(*result);
+                    Jump(exit);
                 }
             }
         }
@@ -2708,11 +2698,12 @@ GateRef BuiltinsStringStubBuilder::StringConcat(GateRef glue, GateRef leftString
     GateRef leftLength = GetLengthFromString(leftString);
     GateRef rightLength = GetLengthFromString(rightString);
     GateRef newLength = Int32Add(leftLength, rightLength);
-    BRANCH(Int32GreaterThanOrEqual(newLength, Int32(EcmaString::MAX_STRING_LENGTH)), &throwError, &lessThanMax);
+    BRANCH(Int32UnsignedGreaterThanOrEqual(newLength, Int32(EcmaString::MAX_STRING_LENGTH)), &throwError, &lessThanMax);
     Bind(&throwError);
     {
         GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(InvalidStringLength));
         CallRuntime(glue, RTSTUB_ID(ThrowRangeError), { IntToTaggedInt(taggedId) });
+        result = Exception();
         Jump(&exit);
     }
     Bind(&lessThanMax);
@@ -2751,7 +2742,7 @@ GateRef BuiltinsStringStubBuilder::StringConcat(GateRef glue, GateRef leftString
             GateRef canBeCompressed = BitAnd(leftIsUtf8, rightIsUtf8);
             NewObjectStubBuilder newBuilder(this);
             newBuilder.SetParameters(glue, 0);
-            GateRef isTreeOrSlicedString = Int32LessThan(newLength,
+            GateRef isTreeOrSlicedString = Int32UnsignedLessThan(newLength,
                 Int32(std::min(TreeEcmaString::MIN_TREE_ECMASTRING_LENGTH,
                                SlicedString::MIN_SLICED_ECMASTRING_LENGTH)));
             BRANCH(isTreeOrSlicedString, &newLineString, &newTreeString);
@@ -2966,17 +2957,10 @@ void BuiltinsStringStubBuilder::StringIteratorNext(GateRef glue, GateRef thisVal
         Store(VariableType::INT32(), glue, thisValue, IntPtr(JSStringIterator::STRING_ITERATOR_NEXT_INDEX_OFFSET),
               Int32Add(position, Int32(1)));
         // CreateIterResultObject(firstStr, false)
-        GateRef iterResultClass = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
-                                                         ConstantIndex::ITERATOR_RESULT_CLASS);
-        Label afterNew(env);
+        Label afterCreate(env);
         NewObjectStubBuilder newBuilder(this);
-        newBuilder.SetParameters(glue, 0);
-        newBuilder.NewJSObject(&result, &afterNew, iterResultClass);
-        Bind(&afterNew);
-        SetPropertyInlinedProps(glue, *result, iterResultClass, firstStr,
-                                Int32(JSIterator::VALUE_INLINE_PROPERTY_INDEX));
-        SetPropertyInlinedProps(glue, *result, iterResultClass, TaggedFalse(),
-                                Int32(JSIterator::DONE_INLINE_PROPERTY_INDEX));
+        newBuilder.CreateJSIteratorResult(glue, &result, firstStr, TaggedFalse(), &afterCreate);
+        Bind(&afterCreate);
         res->WriteVariable(*result);
         Jump(exit);
     }
@@ -2985,17 +2969,10 @@ void BuiltinsStringStubBuilder::StringIteratorNext(GateRef glue, GateRef thisVal
         Store(VariableType::JS_POINTER(), glue, thisValue, IntPtr(JSStringIterator::ITERATED_STRING_OFFSET),
               Undefined());
         // CreateIterResultObject(undefined, true)
-        GateRef iterResultClass = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
-                                                         ConstantIndex::ITERATOR_RESULT_CLASS);
-        Label afterNew(env);
+        Label afterCreate(env);
         NewObjectStubBuilder newBuilder(this);
-        newBuilder.SetParameters(glue, 0);
-        newBuilder.NewJSObject(&result, &afterNew, iterResultClass);
-        Bind(&afterNew);
-        SetPropertyInlinedProps(glue, *result, iterResultClass, Undefined(),
-                                Int32(JSIterator::VALUE_INLINE_PROPERTY_INDEX));
-        SetPropertyInlinedProps(glue, *result, iterResultClass, TaggedTrue(),
-                                Int32(JSIterator::DONE_INLINE_PROPERTY_INDEX));
+        newBuilder.CreateJSIteratorResult(glue, &result, Undefined(), TaggedTrue(), &afterCreate);
+        Bind(&afterCreate);
         res->WriteVariable(*result);
         Jump(exit);
     }

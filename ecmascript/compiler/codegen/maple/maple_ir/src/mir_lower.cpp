@@ -14,8 +14,6 @@
  */
 
 #include "mir_lower.h"
-#include "constantfold.h"
-#include "me_option.h"
 
 #define DO_LT_0_CHECK 1
 

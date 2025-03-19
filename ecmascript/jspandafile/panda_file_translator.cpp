@@ -125,7 +125,7 @@ void PandaFileTranslator::TranslateClass(const JSThread *thread, JSPandaFile *js
 
         MethodLiteral *methodLiteral = methodLiterals + (methodIdx++);
         InitializeMemory(methodLiteral, methodId);
-        methodLiteral->Initialize(jsPandaFile, thread);
+        methodLiteral->Initialize(jsPandaFile, thread, methodOffset);
         // IsNewVersion
         panda_file::IndexAccessor indexAccessor(*pf, methodId);
         panda_file::FunctionKind funcKind = indexAccessor.GetFunctionKind();

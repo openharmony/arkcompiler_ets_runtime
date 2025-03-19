@@ -89,6 +89,19 @@ function testCreate() {
     print("Object Create:\t"+String(time)+"\tms");
 }
 
+// Tests optimization of JSArray::CreateArrayFromList() in js_array.cpp
+function testValues() {
+    const REP_COUNT = 1_000_000;
+    const obj = {};
+
+    let start = ArkTools.timeInUs();
+    for (let i = 0; i < REP_COUNT; i++) {
+        Object.values(obj); // Triggers JSArray::CreateArrayFromList()
+    }
+    let end = ArkTools.timeInUs();
+    print(`Object.values():\t${((end - start) / 1000).toFixed(3)}\tms`);
+}
+
 class Dog {
   constructor(name, breed, color, sex) {
     this.name = name;
@@ -116,4 +129,4 @@ testHasOwnProperty();
 testAssign();
 testCreate();
 testToString();
-
+testValues();

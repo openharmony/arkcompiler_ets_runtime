@@ -1,0 +1,70 @@
+# Copyright (c) 2024 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+Test case 1:
+Log: [{"value":1,"index":0,"array":[1,2,3,4]},{"value":2,"index":1,"array":[1,2,3,4]},{"value":3,"index":2,"array":[1,2,3,4]},{"value":4,"index":3,"array":[1,2,3,4]}] Result: true
+---
+Test case 2:
+Log: [{"value":1,"index":0,"array":[1,2,-3,4]},{"value":2,"index":1,"array":[1,2,-3,4]},{"value":-3,"index":2,"array":[1,2,-3,4]}] Result: false
+---
+Test case 3:
+Log: [] Result: true
+---
+Test case 4:
+Log: [{"value":10,"index":0,"array":[10]}] Result: true
+---
+Test case 5:
+Log: [{"value":3,"index":2,"array":[null,null,3,null,5]},{"value":5,"index":4,"array":[null,null,3,null,5]}] Result: true
+---
+Test case 6:
+Log: [{"value":1,"index":0,"array":[1,null,3]},{"index":1,"array":[1,null,3]}] Result: false
+---
+Test case 7:
+Log: [{"value":null,"index":0,"array":[null,1,2]}] Result: false
+---
+Test case 8:
+Log: [{"value":null,"index":0,"array":[null,1,2]}] Result: false
+---
+Test case 9:
+Log: [{"value":1,"index":0,"array":[1,2]},{"value":2,"index":1,"array":[1,2]}] Result: true
+---
+Test case 10:
+Log: [{"value":1,"index":0,"array":[1,2,3]},{"value":2,"index":1,"array":[1,2,3]}] Result: true
+---
+Test case 11:
+Log: [{"value":false,"index":0,"array":[false,0,""]},{"value":0,"index":1,"array":[false,0,""]},{"value":"","index":2,"array":[false,0,""]}] Result: true
+---
+Test case 12:
+Log: [{"value":1,"index":0,"array":[1,2,3]},{"value":2,"index":1,"array":[1,2,3]},{"value":3,"index":2,"array":[1,2,3]}] Result: true
+---
+Test case 13:
+Log: [{"value":1,"index":0,"array":[1,2,3]}] Result: false
+---
+Test case 14:
+Log: [{"value":[1,2],"index":0,"array":[[1,2],[3,4]]},{"value":[3,4],"index":1,"array":[[1,2],[3,4]]}] Result: true
+---
+Test case 15:
+Log: [{"value":{"x":3},"index":0,"array":[{"x":3},{"x":3}]},{"value":{"x":3},"index":1,"array":[{"x":3},{"x":3}]}] Result: true
+---
+Test case 16:
+Log: [{"value":1,"index":0,"array":[1,2,3]},{"value":2,"index":1,"array":[1,2,3]},{"value":3,"index":2,"array":[1,2,3]}] Result: true
+---
+Test case 17:
+Log: [{"value":1,"index":0,"array":[1,2,3]},{"value":2,"index":1,"array":[1,2,3]}] Error: Test Error
+---
+Test case 18:
+Log: [{"value":{"id":1},"index":0,"array":[{"id":1},{"id":2}]},{"value":{"id":2},"index":1,"array":[{"id":1},{"id":2}]}] Result: true
+---
+Test case 19:
+Log: [{"value":1,"index":0,"array":[1,2,3,4]},{"value":2,"index":1,"array":[1,2,3,4]},{"value":3,"index":2,"array":[1,2,3]},{"value":5,"index":3,"array":[1,2,3,5]}] Result: true
+---

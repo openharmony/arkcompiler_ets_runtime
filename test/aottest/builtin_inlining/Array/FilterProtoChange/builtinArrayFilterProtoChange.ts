@@ -68,11 +68,14 @@ function prototypeChange(){
 //: 2.5,NaN,,,false
 normalFilter()
 //aot: [trace] aot inline function name: #*#lenthChangeLess@builtinArrayFilterProtoChange caller function name: func_main_0@builtinArrayFilterProtoChange
+//aot: [trace] aot call builtin: Array.prototype.filter, caller function name:#*#lenthChangeLess@builtinArrayFilterProtoChange
 //: 1,2.5,NaN
 lenthChangeLess()
 //aot: [trace] aot inline function name: #*#lengthChangeBigToDic@builtinArrayFilterProtoChange caller function name: func_main_0@builtinArrayFilterProtoChange
+//aot: [trace] aot call builtin: Array.prototype.filter, caller function name:#*#lengthChangeBigToDic@builtinArrayFilterProtoChange
 //: 1,2.5,NaN,false,true
 lengthChangeBigToDic()
 //aot: [trace] aot inline function name: #*#prototypeChange@builtinArrayFilterProtoChange caller function name: func_main_0@builtinArrayFilterProtoChange
+//aot: [trace] aot call builtin: Array.prototype.filter, caller function name:#*#prototypeChange@builtinArrayFilterProtoChange
 //: position5,position6
 prototypeChange()

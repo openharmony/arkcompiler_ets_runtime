@@ -29,3 +29,24 @@ return target[propertyKey];
 
 Object.assign({1:2, "aa":"bb"}, proxy);
 print(log === "getget")
+
+var a = {};
+var b = { bProp: 1 };
+var date1 = new Date();
+var aSymbol = Symbol("aSymbol");
+b[aSymbol] = 2;
+b[date1] = 5;
+Object.assign(a, b);
+print(a.bProp);
+print(a[aSymbol]);
+print(a[date1]);
+
+var c = {};
+var d = { bProp: 1, two: 2, tre: 3 };
+d[aSymbol] = 6;
+d[date1] = 10;
+delete d.bProp;
+Object.assign(c, d);
+print(c.two);
+print(c[aSymbol]);
+print(d[date1]);

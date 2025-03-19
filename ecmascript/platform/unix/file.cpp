@@ -15,10 +15,6 @@
 
 #include "ecmascript/platform/file.h"
 
-#include <cerrno>
-#include <climits>
-#include <sys/mman.h>
-#include <unistd.h>
 
 #include "ecmascript/base/path_helper.h"
 #include "ecmascript/module/js_module_source_text.h"

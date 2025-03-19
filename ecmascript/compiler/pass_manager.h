@@ -134,7 +134,7 @@ public:
 
     virtual ~PassManager() = default;
 
-    void CompileValidFiles(AOTFileGenerator &generator, bool &ret, AotCompilerStats &compilerStats);
+    void PUBLIC_API CompileValidFiles(AOTFileGenerator &generator, bool &ret, AotCompilerStats &compilerStats);
 
     bool Compile(JSPandaFile *jsPandaFile, const std::string &fileName, AOTFileGenerator &generator,
                  AotCompilerStats &compilerStats, BytecodeInfoCollector &collector);

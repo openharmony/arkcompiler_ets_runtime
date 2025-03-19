@@ -45,6 +45,17 @@ public:
     }
 
 protected:
+    template <SerializeType serializeType>
+    class SerializeObjectFieldVisitor final :
+        public EcmaObjectRangeVisitor<SerializeObjectFieldVisitor<serializeType>> {
+    public:
+        explicit SerializeObjectFieldVisitor(BaseSerializer *serializer);
+        ~SerializeObjectFieldVisitor() override = default;
+
+        void VisitObjectRangeImpl(TaggedObject *root, ObjectSlot start, ObjectSlot end, VisitObjectArea area) override;
+    private:
+        BaseSerializer *serializer_ {nullptr};
+    };
     // Different serialize mode can implement this interface to custom processing
     virtual void SerializeObjectImpl(TaggedObject *object, bool isWeak = false) = 0;
     void WriteMultiRawData(uintptr_t beginAddr, size_t fieldSize);

@@ -60,6 +60,7 @@ class RSetWorkListHandler;
 class SharedConcurrentMarker;
 class SharedConcurrentSweeper;
 class SharedGC;
+class SharedGCEvacuator;
 class SharedGCMarkerBase;
 class SharedGCMarker;
 class SharedFullGC;
@@ -85,12 +86,6 @@ enum class IdleTaskType : uint8_t {
     INCREMENTAL_MARK
 };
 
-enum class MarkType : uint8_t {
-    MARK_EDEN,
-    MARK_YOUNG,
-    MARK_FULL
-};
-
 enum class MemGrowingType : uint8_t {
     HIGH_THROUGHPUT,
     CONSERVATIVE,
@@ -109,11 +104,16 @@ enum AppSensitiveStatus : uint8_t {
     EXIT_HIGH_SENSITIVE,
 };
 
+enum class StartupStatus : uint8_t {
+    BEFORE_STARTUP,
+    ON_STARTUP,
+    JUST_FINISH_STARTUP,
+    FINISH_STARTUP
+};
+
 enum class VerifyKind {
     VERIFY_PRE_GC,
     VERIFY_POST_GC,
-    VERIFY_MARK_EDEN,
-    VERIFY_EVACUATE_EDEN,
     VERIFY_MARK_YOUNG,
     VERIFY_EVACUATE_YOUNG,
     VERIFY_MARK_FULL,
@@ -186,6 +186,8 @@ public:
 
     virtual bool ObjectExceedMaxHeapSize() const = 0;
 
+    virtual void UpdateHeapStatsAfterGC(TriggerGCType gcType) = 0;
+
     MarkType GetMarkType() const
     {
         return markType_;
@@ -194,11 +196,6 @@ public:
     void SetMarkType(MarkType markType)
     {
         markType_ = markType;
-    }
-
-    bool IsEdenMark() const
-    {
-        return markType_ == MarkType::MARK_EDEN;
     }
 
     bool IsYoungMark() const
@@ -284,12 +281,12 @@ public:
 
     void SetGCState(bool inGC)
     {
-        inGC_ = inGC;
+        inGC_.store(inGC, std::memory_order_relaxed);
     }
 
     bool InGC() const
     {
-        return inGC_;
+        return inGC_.load(std::memory_order_relaxed);
     }
 
     void NotifyHeapAliveSizeAfterGC(size_t size)
@@ -300,18 +297,6 @@ public:
     size_t GetHeapAliveSizeAfterGC() const
     {
         return heapAliveSizeAfterGC_;
-    }
-
-    void UpdateHeapStatsAfterGC(TriggerGCType gcType)
-    {
-        if (gcType == TriggerGCType::EDEN_GC || gcType == TriggerGCType::YOUNG_GC) {
-            return;
-        }
-        heapAliveSizeAfterGC_ = GetHeapObjectSize();
-        fragmentSizeAfterGC_ = GetCommittedSize() - GetHeapObjectSize();
-        if (gcType == TriggerGCType::FULL_GC || gcType == TriggerGCType::SHARED_FULL_GC) {
-            heapBasicLoss_ = fragmentSizeAfterGC_;
-        }
     }
 
     size_t GetFragmentSizeAfterGC() const
@@ -365,7 +350,6 @@ public:
     void ThrowOutOfMemoryError(JSThread *thread, size_t size, std::string functionName,
         bool NonMovableObjNearOOM = false);
     void SetMachineCodeOutOfMemoryError(JSThread *thread, size_t size, std::string functionName);
-    void SetAppFreezeFilterCallback(AppFreezeFilterCallback cb);
 
 #ifndef NDEBUG
     bool TriggerCollectionOnNewObjectEnabled() const
@@ -438,7 +422,6 @@ protected:
     ConditionVariable waitTaskFinishedCV_;
     Mutex waitClearTaskFinishedMutex_;
     ConditionVariable waitClearTaskFinishedCV_;
-    AppFreezeFilterCallback appfreezeCallback_ {nullptr};
     bool clearTaskFinished_ {true};
     bool inBackground_ {false};
     bool shouldThrowOOMError_ {false};
@@ -451,7 +434,7 @@ protected:
     bool shouldVerifyHeap_ {false};
     bool isVerifying_ {false};
     bool enablePageTagThreadId_ {false};
-    bool inGC_ {false};
+    std::atomic_bool inGC_ {false};
     int32_t recursionDepth_ {0};
 #ifndef NDEBUG
     bool triggerCollectionOnNewObject_ {true};
@@ -480,7 +463,7 @@ public:
 
     void AdjustGlobalSpaceAllocLimit();
 
-    void OnMoveEvent(uintptr_t address, TaggedObject* forwardAddress, size_t size);
+    inline void OnMoveEvent(uintptr_t address, TaggedObject* forwardAddress, size_t size);
 
     class ParallelMarkTask : public Task {
     public:
@@ -535,13 +518,33 @@ public:
         return smartGCStats_.sensitiveStatus_;
     }
 
+    StartupStatus GetStartupStatus() const
+    {
+        return smartGCStats_.startupStatus_;
+    }
+
+    bool IsJustFinishStartup() const
+    {
+        return smartGCStats_.startupStatus_ == StartupStatus::JUST_FINISH_STARTUP;
+    }
+
+    bool CancelJustFinishStartupEvent()
+    {
+        LockHolder lock(smartGCStats_.sensitiveStatusMutex_);
+        if (!IsJustFinishStartup()) {
+            return false;
+        }
+        smartGCStats_.startupStatus_ = StartupStatus::FINISH_STARTUP;
+        return true;
+    }
+
     bool FinishStartupEvent() override
     {
         LockHolder lock(smartGCStats_.sensitiveStatusMutex_);
-        if (!smartGCStats_.onStartupEvent_) {
+        if (!OnStartupEvent()) {
             return false;
         }
-        smartGCStats_.onStartupEvent_ = false;
+        smartGCStats_.startupStatus_ = StartupStatus::JUST_FINISH_STARTUP;
         if (!InSensitiveStatus()) {
             smartGCStats_.sensitiveStatusCV_.Signal();
         }
@@ -551,13 +554,13 @@ public:
     // This should be called when holding lock of sensitiveStatusMutex_.
     bool OnStartupEvent() const override
     {
-        return smartGCStats_.onStartupEvent_;
+        return smartGCStats_.startupStatus_ == StartupStatus::ON_STARTUP;
     }
 
     void NotifyPostFork() override
     {
         LockHolder lock(smartGCStats_.sensitiveStatusMutex_);
-        smartGCStats_.onStartupEvent_ = true;
+        smartGCStats_.startupStatus_ = StartupStatus::ON_STARTUP;
     }
 
     void WaitSensitiveStatusFinished()
@@ -570,9 +573,22 @@ public:
 
     bool ObjectExceedMaxHeapSize() const override;
 
+    bool ObjectExceedJustFinishStartupThresholdForGC() const;
+
+    bool ObjectExceedJustFinishStartupThresholdForCM() const;
+
+    bool CheckIfNeedStopCollectionByStartup();
+
+    void TryAdjustSpaceOvershootByConfigSize();
+
     bool CheckAndTriggerSharedGC(JSThread *thread);
 
     bool CheckHugeAndTriggerSharedGC(JSThread *thread, size_t size);
+
+    bool HasCSetRegions()
+    {
+        return sOldSpace_->GetCollectSetRegionCount() > 0;
+    }
 
     void TryTriggerLocalConcurrentMarking();
 
@@ -616,6 +632,11 @@ public:
     SharedConcurrentMarker *GetConcurrentMarker() const
     {
         return sConcurrentMarker_;
+    }
+
+    SharedGCEvacuator *GetSharedGCEvacuator() const
+    {
+        return sEvacuator_;
     }
 
     SharedConcurrentSweeper *GetSweeper() const
@@ -674,6 +695,9 @@ public:
 
     template<TriggerGCType gcType, GCReason gcReason>
     void CollectGarbage(JSThread *thread);
+
+    template<GCReason gcReason>
+    void CompressCollectGarbageNotWaiting(JSThread *thread);
     
     template<TriggerGCType gcType, GCReason gcReason>
     void PostGCTaskForTest(JSThread *thread);
@@ -855,6 +879,8 @@ public:
     inline void ProcessSharedNativeDelete(const WeakRootVisitor& visitor);
     inline void PushToSharedNativePointerList(JSNativePointer* pointer);
 
+    void UpdateHeapStatsAfterGC(TriggerGCType gcType) override;
+
     class SharedGCScope {
     public:
         SharedGCScope();
@@ -888,7 +914,7 @@ private:
         Mutex sensitiveStatusMutex_;
         ConditionVariable sensitiveStatusCV_;
         AppSensitiveStatus sensitiveStatus_ {AppSensitiveStatus::NORMAL_SCENE};
-        bool onStartupEvent_ {false};
+        StartupStatus startupStatus_ {StartupStatus::BEFORE_STARTUP};
         // If the SharedHeap is almost OOM and a collect is failed, cause a GC with GCReason::ALLOCATION_FAILED,
         // must do GC at once even in sensitive status.
         bool forceGC_ {false};
@@ -925,6 +951,7 @@ private:
     SharedConcurrentSweeper *sSweeper_ {nullptr};
     SharedGC *sharedGC_ {nullptr};
     SharedFullGC *sharedFullGC_ {nullptr};
+    SharedGCEvacuator *sEvacuator_ {nullptr};
     SharedGCMarker *sharedGCMarker_ {nullptr};
     SharedGCMovableMarker *sharedGCMovableMarker_ {nullptr};
     SharedMemController *sharedMemController_ {nullptr};
@@ -933,6 +960,7 @@ private:
     size_t incNativeSizeTriggerSharedCM_ {0};
     size_t incNativeSizeTriggerSharedGC_ {0};
     size_t fragmentationLimitForSharedFullGC_ {0};
+    std::atomic<size_t> spaceOvershoot_ {0};
     std::atomic<size_t> nativeSizeAfterLastGC_ {0};
     bool inHeapProfiler_ {false};
     CVector<JSNativePointer *> sharedNativePointerList_;
@@ -958,11 +986,6 @@ public:
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT) && defined(PANDA_TARGET_OHOS) && defined(ENABLE_HISYSEVENT)
     void SetJsDumpThresholds(size_t thresholds) const;
 #endif
-
-    EdenSpace *GetEdenSpace() const
-    {
-        return edenSpace_;
-    }
 
     // fixme: Rename NewSpace to YoungSpace.
     // This is the active young generation space that the new objects are allocated in
@@ -1078,11 +1101,6 @@ public:
         return nonMovableMarker_;
     }
 
-    Marker *GetSemiGCMarker() const
-    {
-        return semiGCMarker_;
-    }
-
     Marker *GetCompressGCMarker() const
     {
         return compressGCMarker_;
@@ -1160,7 +1178,7 @@ public:
      */
 
     // Young
-    inline TaggedObject *AllocateInGeneralNewSpace(size_t size);
+    inline TaggedObject *AllocateInYoungSpace(size_t size);
     inline TaggedObject *AllocateYoungOrHugeObject(JSHClass *hclass);
     inline TaggedObject *AllocateYoungOrHugeObject(JSHClass *hclass, size_t size);
     inline TaggedObject *AllocateReadOnlyOrHugeObject(JSHClass *hclass);
@@ -1244,7 +1262,8 @@ public:
     inline void SwapNewSpace();
     inline void SwapOldSpace();
 
-    inline bool MoveYoungRegionSync(Region *region);
+    inline bool MoveYoungRegion(Region *region);
+    inline bool MoveYoungRegionToOld(Region *region);
     inline void MergeToOldSpaceSync(LocalSpace *localSpace);
 
     template<class Callback>
@@ -1255,9 +1274,6 @@ public:
 
     template<class Callback>
     void EnumerateNonNewSpaceRegionsWithRecord(const Callback &cb) const;
-
-    template<class Callback>
-    void EnumerateEdenSpaceRegions(const Callback &cb) const;
 
     template<class Callback>
     void EnumerateNewSpaceRegions(const Callback &cb) const;
@@ -1311,10 +1327,6 @@ public:
     size_t GetPromotedSize() const
     {
         return promotedSize_;
-    }
-    size_t GetEdenToYoungSize() const
-    {
-        return edenToYoungSize_;
     }
 
     size_t GetArrayBufferSize() const;
@@ -1382,6 +1394,20 @@ public:
 
     bool ObjectExceedMaxHeapSize() const override;
 
+    bool ObjectExceedHighSensitiveThresholdForCM() const;
+
+    bool ObjectExceedJustFinishStartupThresholdForGC() const;
+
+    bool ObjectExceedJustFinishStartupThresholdForCM() const;
+
+    void TryIncreaseNewSpaceOvershootByConfigSize();
+
+    void TryIncreaseOvershootByConfigSize();
+
+    bool CheckIfNeedStopCollectionByStartup();
+
+    bool CheckIfNeedStopCollectionByHighSensitive();
+
     bool NeedStopCollection() override;
 
     void SetSensitiveStatus(AppSensitiveStatus status) override
@@ -1420,22 +1446,59 @@ public:
         return smartGCStats_.sensitiveStatus_.compare_exchange_strong(expect, status, std::memory_order_seq_cst);
     }
 
+    StartupStatus GetStartupStatus() const
+    {
+        ASSERT(smartGCStats_.startupStatus_.load(std::memory_order_relaxed) == sHeap_->GetStartupStatus());
+        return smartGCStats_.startupStatus_.load(std::memory_order_relaxed);
+    }
+
+    bool IsJustFinishStartup() const
+    {
+        return GetStartupStatus() == StartupStatus::JUST_FINISH_STARTUP;
+    }
+
+    bool CancelJustFinishStartupEvent()
+    {
+        if (!IsJustFinishStartup()) {
+            return false;
+        }
+        TryIncreaseOvershootByConfigSize();
+        smartGCStats_.startupStatus_.store(StartupStatus::FINISH_STARTUP, std::memory_order_release);
+        sHeap_->CancelJustFinishStartupEvent();
+        return true;
+    }
+
     bool FinishStartupEvent() override
     {
+        if (!OnStartupEvent()) {
+            return false;
+        }
+        TryIncreaseOvershootByConfigSize();
+        smartGCStats_.startupStatus_.store(StartupStatus::JUST_FINISH_STARTUP, std::memory_order_release);
         sHeap_->FinishStartupEvent();
-        return smartGCStats_.onStartupEvent_.exchange(false, std::memory_order_relaxed) == true;
+        return true;
     }
 
     bool OnStartupEvent() const override
     {
-        return smartGCStats_.onStartupEvent_.load(std::memory_order_relaxed);
+        return GetStartupStatus() == StartupStatus::ON_STARTUP;
     }
 
     void NotifyPostFork() override
     {
         sHeap_->NotifyPostFork();
-        smartGCStats_.onStartupEvent_.store(true, std::memory_order_relaxed);
+        smartGCStats_.startupStatus_.store(StartupStatus::ON_STARTUP, std::memory_order_relaxed);
         LOG_GC(INFO) << "SmartGC: enter app cold start";
+        size_t localFirst = config_.GetMaxHeapSize();
+        size_t localSecond = config_.GetMaxHeapSize() * JUST_FINISH_STARTUP_LOCAL_THRESHOLD_RATIO;
+        auto sharedHeapConfig = sHeap_->GetEcmaParamConfiguration();
+        size_t sharedFirst = sHeap_->GetOldSpace()->GetInitialCapacity();
+        size_t sharedSecond = sharedHeapConfig.GetMaxHeapSize()
+                            * JUST_FINISH_STARTUP_SHARED_THRESHOLD_RATIO
+                            * JUST_FINISH_STARTUP_SHARED_CONCURRENT_MARK_RATIO;
+        LOG_GC(INFO) << "SmartGC: startup GC restrain, "
+            << "phase 1 threshold: local " << localFirst / 1_MB << "MB, shared " << sharedFirst / 1_MB << "MB; "
+            << "phase 2 threshold: local " << localSecond / 1_MB << "MB, shared " << sharedSecond / 1_MB << "MB";
     }
 
 #if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
@@ -1451,7 +1514,7 @@ public:
 #endif
     inline bool InHeapProfiler();
 
-    void OnMoveEvent(uintptr_t address, TaggedObject* forwardAddress, size_t size);
+    inline void OnMoveEvent(uintptr_t address, TaggedObject* forwardAddress, size_t size);
 
     // add allocationInspector to each space
     void AddAllocationInspectorToAllSpaces(AllocationInspector *inspector);
@@ -1517,6 +1580,11 @@ public:
         return nativeBindingSize_;
     }
 
+    size_t GetGlobalSpaceNativeLimit() const
+    {
+        return globalSpaceNativeLimit_;
+    }
+
     size_t GetNativeBindingSizeAfterLastGC() const
     {
         return nativeBindingSizeAfterLastGC_;
@@ -1570,28 +1638,12 @@ public:
 
     bool IsReadyToConcurrentMark() const override;
 
-    bool IsEdenGC() const
-    {
-        return gcType_ == TriggerGCType::EDEN_GC;
-    }
-
     bool IsYoungGC() const
     {
         return gcType_ == TriggerGCType::YOUNG_GC;
     }
 
-    bool IsGeneralYoungGC() const
-    {
-        return gcType_ == TriggerGCType::YOUNG_GC || gcType_ == TriggerGCType::EDEN_GC;
-    }
-
-    void EnableEdenGC();
-
-    void TryEnableEdenGC();
-
     void CheckNonMovableSpaceOOM();
-    void ReleaseEdenAllocator();
-    void InstallEdenAllocator();
     void DumpHeapSnapshotBeforeOOM(bool isFullGC = true);
     std::tuple<uint64_t, uint8_t *, int, kungfu::CalleeRegAndOffsetVec> CalCallSiteInfo(uintptr_t retAddr) const;
     MachineCode *GetMachineCodeObject(uintptr_t pc) const;
@@ -1615,8 +1667,15 @@ public:
 
     template<TriggerGCType gcType, GCReason gcReason>
     bool TriggerUnifiedGCMark() const;
+    size_t GetHeapAliveSizeExcludesYoungAfterGC() const
+    {
+        return heapAliveSizeExcludesYoungAfterGC_;
+    }
+
+    void UpdateHeapStatsAfterGC(TriggerGCType gcType) override;
 
 private:
+    void CollectGarbageImpl(TriggerGCType gcType, GCReason reason = GCReason::OTHER);
 
     static constexpr int MIN_JSDUMP_THRESHOLDS = 85;
     static constexpr int MAX_JSDUMP_THRESHOLDS = 95;
@@ -1638,7 +1697,7 @@ private:
     uint64_t GetCurrentTickMillseconds();
     void ThresholdReachedDump();
 #endif
-    void CleanCallBack();
+    void CleanCallback();
     void IncreasePendingAsyncNativeCallbackSize(size_t bindingSize)
     {
         pendingAsyncNativeCallbackSize_ += bindingSize;
@@ -1691,6 +1750,19 @@ private:
         Heap *heap_;
     };
 
+    class FinishGCRestrainTask : public Task {
+    public:
+        FinishGCRestrainTask(int32_t id, Heap *heap)
+            : Task(id), heap_(heap) {}
+        ~FinishGCRestrainTask() override = default;
+        bool Run(uint32_t threadIndex) override;
+
+        NO_COPY_SEMANTIC(FinishGCRestrainTask);
+        NO_MOVE_SEMANTIC(FinishGCRestrainTask);
+    private:
+        Heap *heap_;
+    };
+
     class DeleteCallbackTask : public Task {
     public:
         DeleteCallbackTask(int32_t id, std::vector<NativePointerCallbackData> &callbacks) : Task(id)
@@ -1714,7 +1786,7 @@ private:
          * collect garbage(e.g. in JSThread::CheckSafePoint), and skip if need, so std::atomic is almost enough.
         */
         std::atomic<AppSensitiveStatus> sensitiveStatus_ {AppSensitiveStatus::NORMAL_SCENE};
-        std::atomic<bool> onStartupEvent_ {false};
+        std::atomic<StartupStatus> startupStatus_ {StartupStatus::BEFORE_STARTUP};
     };
 
     // Some data used in SharedGC is also need to store in local heap, e.g. the temporary local mark stack.
@@ -1751,7 +1823,6 @@ private:
      * Young generation spaces where most new objects are allocated.
      * (only one of the spaces is active at a time in semi space GC).
      */
-    EdenSpace *edenSpace_ {nullptr};
     SemiSpace *activeSemiSpace_ {nullptr};
     SemiSpace *inactiveSemiSpace_ {nullptr};
 
@@ -1801,7 +1872,6 @@ private:
      *  while some others need to handle object movement.
      */
     Marker *nonMovableMarker_ {nullptr};
-    Marker *semiGCMarker_ {nullptr};
     Marker *compressGCMarker_ {nullptr};
     UnifiedGCMarker *unifiedGCMarker_ {nullptr};
 
@@ -1824,7 +1894,6 @@ private:
      * which is used for GC heuristics.
      */
     MemController *memController_ {nullptr};
-    size_t edenToYoungSize_ {0};
     size_t promotedSize_ {0};
     size_t semiSpaceCopiedSize_ {0};
     size_t nativeBindingSize_{0};
@@ -1834,6 +1903,7 @@ private:
     size_t nativeSizeOvershoot_ {0};
     size_t asyncClearNativePointerThreshold_ {0};
     size_t nativeSizeAfterLastGC_ {0};
+    size_t heapAliveSizeExcludesYoungAfterGC_ {0};
     size_t nativeBindingSizeAfterLastGC_ {0};
     size_t newAllocatedSharedObjectSize_ {0};
     // recordObjectSize_ & recordNativeSize_:
@@ -1849,6 +1919,10 @@ private:
 
     // parallel evacuator task number.
     uint32_t maxEvacuateTaskCount_ {0};
+
+    uint64_t startupDurationInMs_ {0};
+
+    Mutex setNewSpaceOvershootSizeMutex_;
 
     // Application status
 
@@ -1866,7 +1940,6 @@ private:
     IdleGCTrigger *idleGCTrigger_ {nullptr};
 
     bool hasOOMDump_ {false};
-    bool enableEdenGC_ {false};
 
     CVector<JSNativePointer *> nativePointerList_;
     CVector<JSNativePointer *> concurrentNativePointerList_;

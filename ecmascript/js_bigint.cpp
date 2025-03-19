@@ -14,10 +14,8 @@
  */
 
 #include "ecmascript/js_bigint.h"
-
 #include "ecmascript/global_env_constants-inl.h"
 #include "ecmascript/js_tagged_value-inl.h"
-#include "ecmascript/js_tagged_number.h"
 
 namespace panda::ecmascript {
 class ObjectFactory;
@@ -480,6 +478,15 @@ JSHandle<EcmaString> BigInt::ToString(JSThread *thread, JSHandle<BigInt> bigint,
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     CString result = bigint->ToStdString(conversionToRadix);
     return factory->NewFromASCII(result.c_str());
+}
+
+void BigInt::AppendToCString(CString &str, BigInt *bigint, uint32_t conversionToRadix)
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    if (bigint->GetSign()) {
+        str += "-";
+    }
+    str += BigIntHelper::Conversion(BigIntHelper::GetBinary(bigint), conversionToRadix, BINARY);
 }
 
 CString BigInt::ToStdString(uint32_t conversionToRadix) const

@@ -351,6 +351,10 @@ print("================Test Reverse================");
   let array = new ctor([1, 21, 11, 31]);
   array.reverse();
   print(array);
+
+  let array1 = new ctor(["one", "two", "three"]);
+  array1.reverse();
+  print(array1);
 });
 
 print("================Test Some================");
@@ -442,6 +446,144 @@ print("================Test IndexOf================");
   print(array.indexOf(50)); // 4
   print(array.indexOf(20, 3)); // -1
   print(array.indexOf(51)); // -1
+});
+
+print("================Test LastIndexOf================");
+[
+  SendableFloat64Array,
+  SendableFloat32Array,
+  SendableInt32Array,
+  SendableInt16Array,
+  SendableInt8Array,
+  SendableUint32Array,
+  SendableUint16Array,
+  SendableUint8Array,
+  SendableUint8ClampedArray,
+].forEach((ctor: Function) => {
+  const array = new ctor([10, 20, 30, 40, 50]);
+  print(array.lastIndexOf(50)); // 4
+  print(array.lastIndexOf(30, 1)); // -1
+  print(array.lastIndexOf(51)); // -1
+});
+
+  const array1 = new SendableFloat64Array([1.1, 20, 3.3, +51.2, -16.5]);
+  print(array1.lastIndexOf(51.2)); // 3
+  print(array1.lastIndexOf(3.3, 3)); // 2
+  print(array1.lastIndexOf(51.2, 1)); // -1
+
+  const array2 = new SendableFloat32Array([1.1, 20, 3.3, +51.2, -16.5]);
+  print(array2.lastIndexOf(51.2)); // 3
+  print(array2.lastIndexOf(3.3, 3)); // 2
+  print(array2.lastIndexOf(51.2, 3)); // -1
+
+
+print("================Test ReduceRight================");
+[
+  SendableFloat64Array,
+  SendableFloat32Array,
+  SendableInt32Array,
+  SendableInt16Array,
+  SendableInt8Array,
+  SendableUint32Array,
+  SendableUint16Array,
+  SendableUint8Array,
+  SendableUint8ClampedArray,
+].forEach((ctor: Function) => {
+  const array = new ctor([1, 2, 3, 4]);
+  print(array.reduceRight((acc: number, currValue: number) => acc + currValue)); // 10
+  print(array.reduceRight((acc: number, currValue: number) => acc + currValue, 10)); // 20
+  print(array.reduceRight<string>((acc: number, currValue: number) => "" + acc + " " + currValue, "10")); // 10, 4, 3, 2, 1
+
+  const array1 = new ctor([1, 2, 3, 4]);
+  print(array1.reduceRight((acc: number, currValue: number) => acc + currValue, undefined));
+
+  const array2 = new ctor();
+  print(array2.reduceRight((acc: number, currValue: number) => acc + currValue, 1));
+  print(array2.reduceRight((acc: number, currValue: number) => acc + currValue, undefined));
+
+  try {
+     print(array2.reduceRight((acc: number, currValue: number) => acc + currValue));
+  } catch (err) {
+     print("reduceRight failed. err: " + err + ", code: " + err.code);
+  }
+
+  try {
+      print(array2.reduceRight(1, 1));
+  } catch (err) {
+      print("reduceRight failed. err: " + err + ", code: " + err.code);
+  }
+});
+
+print("================Test ToString================");
+[
+  SendableFloat64Array,
+  SendableFloat32Array,
+  SendableInt32Array,
+  SendableInt16Array,
+  SendableInt8Array,
+  SendableUint32Array,
+  SendableUint16Array,
+  SendableUint8Array,
+  SendableUint8ClampedArray,
+].forEach((ctor: Function) => {
+  const array = new ctor([10, 20, 30, 40, 50]);
+  print(array.toString());
+});
+
+print("================Test ToLocaleString================");
+[
+  SendableFloat64Array,
+  SendableFloat32Array,
+  SendableInt32Array,
+  SendableInt16Array,
+  SendableInt8Array,
+  SendableUint32Array,
+  SendableUint16Array,
+  SendableUint8Array,
+  SendableUint8ClampedArray,
+].forEach((ctor: Function) => {
+  const array = new ctor([10, 20, 30, 40, 50]);
+  print(array.toLocaleString());
+});
+[
+  SendableInt32Array,
+  SendableInt16Array,
+  SendableInt8Array,
+  SendableUint32Array,
+  SendableUint16Array,
+  SendableUint8Array,
+  SendableUint8ClampedArray,
+].forEach((ctor: Function) => {
+  const array4 = new SendableInt32Array([1000, 2000, 3000, 4000, 5000]);
+  print(array4.toLocaleString('de-DE'));
+  print(array4.toLocaleString('fr-FR'));
+});
+[
+  SendableFloat64Array,
+  SendableFloat32Array,
+].forEach((ctor: Function) => {
+  const array5 = new SendableFloat32Array([123456.789, 2000.00]);
+  print(array5.toLocaleString('en-US', {style: 'currency', currency: 'USD'}));
+  print(array5.toLocaleString('de-DE', {style: 'currency', currency: 'USD'}));
+});
+
+print("================Test Of================");
+[
+  SendableFloat64Array,
+  SendableFloat32Array,
+  SendableInt32Array,
+  SendableInt16Array,
+  SendableInt8Array,
+  SendableUint32Array,
+  SendableUint16Array,
+  SendableUint8Array,
+  SendableUint8ClampedArray,
+].forEach((ctor: Function) => {
+  let array = ctor.of(1, 2, 3);
+  print((array instanceof ctor) + ', array: [' + array + ']');
+
+  let array1 = ctor.of("1", "2", "3", "4");
+  print((array1 instanceof ctor) + ', array: [' + array1 + ']');
 });
 
 print("================Test FindIndex================");

@@ -14,7 +14,6 @@
  */
 #include "ecmascript/compiler/stub.h"
 #include "ecmascript/compiler/stub_builder.h"
-#include "ecmascript/compiler/call_signature.h"
 
 namespace panda::ecmascript::kungfu {
 Stub::Stub(const CallSignature *callSignature, Circuit *circuit)

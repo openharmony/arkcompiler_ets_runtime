@@ -19,7 +19,6 @@
 #include "ecmascript/module/module_path_helper.h"
 #include "ecmascript/runtime_lock.h"
 
-#include <fstream>
 
 namespace panda::ecmascript {
 

@@ -60,6 +60,7 @@ enum Component {
     JIT = 1UL << 7ULL,
     BASELINEJIT = 1UL << 8ULL,
     SA = 1ULL << 9ULL,
+    PGO = 1ULL << 10ULL,
     NO_TAG = 0xFFFFFFFFULL >> 1ULL,
     ALL = 0xFFFFFFFFULL,
 };
@@ -99,6 +100,8 @@ public:
                 return "[gc] ";
             case Component::ECMASCRIPT:
                 return "[ecmascript] ";
+            case Component::PGO:
+                return "[pgo] ";
             case Component::INTERPRETER:
                 return "[interpreter] ";
             case Component::DEBUGGER:

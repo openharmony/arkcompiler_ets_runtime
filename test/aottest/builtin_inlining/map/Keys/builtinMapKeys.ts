@@ -41,14 +41,17 @@ print(myMap.keys()); //: [object Map Iterator]
 
 // Check with single param
 //aot: [trace] aot inline builtin: Map.keys, caller function name:func_main_0@builtinMapKeys
+//aot: [trace] aot call builtin: MapIterator.next, caller function name:func_main_0@builtinMapKeys
 print(myMap.keys(0).next().value); //: 0
 
 // Check with 2 params
 //aot: [trace] aot inline builtin: Map.keys, caller function name:func_main_0@builtinMapKeys
+//aot: [trace] aot call builtin: MapIterator.next, caller function name:func_main_0@builtinMapKeys
 print(myMap.keys(0, 0).next().value); //: 0
 
 // Check with 3 params
 //aot: [trace] aot inline builtin: Map.keys, caller function name:func_main_0@builtinMapKeys
+//aot: [trace] aot call builtin: MapIterator.next, caller function name:func_main_0@builtinMapKeys
 print(myMap.keys(-1, 10.2, 15).next().value); //: 0
 
 // Check own methods
@@ -62,13 +65,21 @@ print(myMap.keys().return); //: function return() { [native code] }
 for (let key of myMap.keys()) {
     print(key);
 }
+//aot: [trace] aot call builtin: MapIterator.next, caller function name:func_main_0@builtinMapKeys
 //: 0
+//aot: [trace] aot call builtin: MapIterator.next, caller function name:func_main_0@builtinMapKeys
 //: -1
+//aot: [trace] aot call builtin: MapIterator.next, caller function name:func_main_0@builtinMapKeys
 //: 2.5
+//aot: [trace] aot call builtin: MapIterator.next, caller function name:func_main_0@builtinMapKeys
 //: NaN
+//aot: [trace] aot call builtin: MapIterator.next, caller function name:func_main_0@builtinMapKeys
 //: 2000
+//aot: [trace] aot call builtin: MapIterator.next, caller function name:func_main_0@builtinMapKeys
 //: 56
+//aot: [trace] aot call builtin: MapIterator.next, caller function name:func_main_0@builtinMapKeys
 //: xyz
+//aot: [trace] aot call builtin: MapIterator.next, caller function name:func_main_0@builtinMapKeys
 
 // Replace standard builtin
 let true_keys = myMap.keys
@@ -107,20 +118,30 @@ let iter1 = myMap.keys();
 for (let key of iter1) {
     print(key);
 }
+//aot: [trace] aot call builtin: MapIterator.next, caller function name:func_main_0@builtinMapKeys
 //: 0
+//aot: [trace] aot call builtin: MapIterator.next, caller function name:func_main_0@builtinMapKeys
 //: -1
+//aot: [trace] aot call builtin: MapIterator.next, caller function name:func_main_0@builtinMapKeys
 //: 2.5
+//aot: [trace] aot call builtin: MapIterator.next, caller function name:func_main_0@builtinMapKeys
 //: NaN
+//aot: [trace] aot call builtin: MapIterator.next, caller function name:func_main_0@builtinMapKeys
 //: 2000
+//aot: [trace] aot call builtin: MapIterator.next, caller function name:func_main_0@builtinMapKeys
 //: 56
+//aot: [trace] aot call builtin: MapIterator.next, caller function name:func_main_0@builtinMapKeys
 //: xyz
+//aot: [trace] aot call builtin: MapIterator.next, caller function name:func_main_0@builtinMapKeys
 
 // Check reusing possibility
 for (let key of iter1) {
+    //aot: [trace] aot call builtin: MapIterator.next, caller function name:func_main_0@builtinMapKeys
     print(key);
 } // <nothing>
 
 // Check using out of boundaries
+//aot: [trace] aot call builtin: MapIterator.next, caller function name:func_main_0@builtinMapKeys
 print(iter1.next().value); //: undefined
 
 // Check using after deleting
@@ -128,13 +149,21 @@ print(iter1.next().value); //: undefined
 let iter2 = myMap.keys();
 //aot: [trace] aot inline builtin: Map.delete, caller function name:func_main_0@builtinMapKeys
 myMap.delete(NaN);
+//aot: [trace] aot call builtin: Map.Set, caller function name:func_main_0@builtinMapKeys
 myMap.set("xyz", -100);
 for (let key of iter2) {
     print(key);
 }
+//aot: [trace] aot call builtin: MapIterator.next, caller function name:func_main_0@builtinMapKeys
 //: 0
+//aot: [trace] aot call builtin: MapIterator.next, caller function name:func_main_0@builtinMapKeys
 //: -1
+//aot: [trace] aot call builtin: MapIterator.next, caller function name:func_main_0@builtinMapKeys
 //: 2.5
+//aot: [trace] aot call builtin: MapIterator.next, caller function name:func_main_0@builtinMapKeys
 //: 2000
+//aot: [trace] aot call builtin: MapIterator.next, caller function name:func_main_0@builtinMapKeys
 //: 56
+//aot: [trace] aot call builtin: MapIterator.next, caller function name:func_main_0@builtinMapKeys
 //: xyz
+//aot: [trace] aot call builtin: MapIterator.next, caller function name:func_main_0@builtinMapKeys

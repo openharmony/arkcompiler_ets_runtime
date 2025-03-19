@@ -109,7 +109,7 @@ public:
         std::string cacheEntry = locales->IsUndefined() ? "" :
             EcmaStringAccessor(locales.GetTaggedValue()).ToStdString();
         if (cache) {
-            void *cachedCollator = ecmaVm->GetIcuFormatterFromCache(icuType, cacheEntry);
+            void *cachedCollator = ecmaVm->GetIntlCache().GetIcuFormatterFromCache(icuType, cacheEntry);
             if (cachedCollator != nullptr) {
                 return reinterpret_cast<T *>(cachedCollator);
             }

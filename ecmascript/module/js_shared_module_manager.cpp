@@ -15,7 +15,6 @@
 #include "ecmascript/module/js_shared_module_manager.h"
 
 #include "ecmascript/jspandafile/js_pandafile_executor.h"
-#include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/module/module_manager_helper.h"
 #include "ecmascript/module/module_path_helper.h"
 #include "ecmascript/runtime_lock.h"
@@ -31,11 +30,11 @@ SharedModuleManager* SharedModuleManager::GetInstance()
     return instance;
 }
 
-void SharedModuleManager::Iterate(const RootVisitor &v)
+void SharedModuleManager::Iterate(RootVisitor &v)
 {
     for (auto &it : resolvedSharedModules_) {
         ObjectSlot slot(reinterpret_cast<uintptr_t>(&it.second));
-        v(Root::ROOT_VM, slot);
+        v.VisitRoot(Root::ROOT_VM, slot);
         ASSERT(slot.GetTaggedValue() == it.second);
     }
 }
@@ -123,6 +122,7 @@ JSHandle<SourceTextModule> SharedModuleManager::GetSModuleUnsafe(JSThread *threa
 {
     auto entry = resolvedSharedModules_.find(recordName);
     if (entry == resolvedSharedModules_.end()) {
+        // LATER DO: cause assert failed
         return JSHandle<SourceTextModule>::Cast(thread->GlobalConstants()->GetHandledUndefined());
     }
     JSHandle<JSTaggedValue> module(thread, entry->second);

@@ -142,6 +142,11 @@ public:
 #if ECMASCRIPT_ENABLE_FUNCTION_CALL_TIMER
     static JSTaggedValue PrintFunctionCallStat(EcmaRuntimeCallInfo *msg);
 #endif
+
+#if ECMASCRIPT_ENABLE_MEGA_PROFILER
+    static JSTaggedValue PrintMegaICStat(EcmaRuntimeCallInfo *msg);
+#endif
+
     // B.2.1.1 escape ( string )
     static JSTaggedValue Escape(EcmaRuntimeCallInfo *msg);
     // B.2.1.2 unescape ( string )

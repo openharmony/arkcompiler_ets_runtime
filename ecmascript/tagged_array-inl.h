@@ -44,7 +44,7 @@ inline void TaggedArray::Set(const JSThread *thread, uint32_t idx, const T &valu
     }
 }
 
-template <bool needBarrier>
+template <bool needBarrier, bool maybeOverlap>
 inline void TaggedArray::Copy(const JSThread* thread, uint32_t dstStart, uint32_t srcStart,
                               const TaggedArray* srcArray, uint32_t count)
 {
@@ -54,7 +54,7 @@ inline void TaggedArray::Copy(const JSThread* thread, uint32_t dstStart, uint32_
     size_t taggedTypeSize = JSTaggedValue::TaggedTypeSize();
     JSTaggedValue* to = reinterpret_cast<JSTaggedValue*>(ToUintPtr(GetData()) + taggedTypeSize * dstStart);
     JSTaggedValue* from = reinterpret_cast<JSTaggedValue*>(ToUintPtr(srcArray->GetData()) + taggedTypeSize * srcStart);
-    Barriers::CopyObject<needBarrier, false>(thread, this, to, from, count);
+    Barriers::CopyObject<needBarrier, maybeOverlap>(thread, this, to, from, count);
 }
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_TAGGED_ARRAY_INL_H

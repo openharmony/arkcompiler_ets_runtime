@@ -14,9 +14,6 @@
  */
 
 #include "x64_optimize_common.h"
-#include "x64_cgfunc.h"
-#include "cgbb.h"
-#include "cg.h"
 
 namespace maplebe {
 void X64InsnVisitor::ModifyJumpTarget(Operand &targetOperand, BB &bb)

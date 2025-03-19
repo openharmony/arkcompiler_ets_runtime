@@ -1,5 +1,14 @@
 # ArkCompiler JS Runtime
 
+- [ArkCompiler JS Runtime](#ArkCompiler_JS_Runtime)
+    - [Introduction](#Introduction)
+  - [Directory Structure](#Directory_Structure)
+  - [Constraints](#Constraints)
+  - [Building](#Building)
+    - [Available APIs](#Available_APIs)
+    - [Usage](#Usage)
+  - [Repositories Involved](#Repositories_Involved)
+
 ### Introduction
 
 ArkCompiler JS Runtime is the default JS runtime on OpenHarmony. It supports ECMAScript libraries and efficient container libraries. It also provides a set of native APIs for C++ and JS interaction and a variety of garbage collectors that features high performance.
@@ -17,25 +26,43 @@ For more information, see [ArkCompiler JS Runtime](https://gitee.com/openharmony
 ├─ ecmascript             # Implementation of ArkCompiler JS Runtime, including the ECMAScript library, interpreter, and memory management
 │   ├─ base               # Base helper class
 │   ├─ builtins           # ECMAScript libraries
+│   ├─ checkpoint         # Virtual machine safepoint
 │   ├─ compiler           # JS compiler
 │   ├─ containers         # Non-ECMAScript containers
+│   ├─ daemon             # Shared GC concurrent thread
+│   ├─ debugger           # JS debugger
+│   ├─ deoptimizer        # Compiler deoptimization
 │   ├─ dfx                # Memory and profiling tool
+│   ├─ extractortool      # Sourcemap parsing
 │   ├─ ic                 # Inline cache module
 │   ├─ interpreter        # JS interpreter
+│   ├─ intl               # Internationalization
+│   ├─ jit                # Jit compiler
 │   ├─ jobs               # Queue of jobs
+│   ├─ js_api             # Non-ecma standard object model
+│   ├─ js_type_metadata   # Object layout file
 │   ├─ js_vm              # Command line tool
 │   ├─ jspandafile        # abc file management module
 │   ├─ mem                # Memory management module
 │   ├─ module             # ECMAScript module
 │   ├─ napi               # C++ API module
-│   ├─ taskpool           # Task pool
+│   ├─ ohos               # System-related logic
+│   ├─ patch              # Cold patch, hot patch
+│   ├─ pgo_profiler       # A performance analyzer based on profile-guided optimization (pgo), used for performance analysis and optimization
+│   ├─ platform           # Cross-platform processing
+│   ├─ quick_fix          # Quickly fix the command-line tool
 │   ├─ regexp             # Regular expression engine module
+│   ├─ require            # Commonjs module specification
+│   ├─ sdk                # Integration of sdk tools
+│   ├─ serializer         # Serialization
+│   ├─ shared_mm          # Shared memory management module
+│   ├─ shared_objects     # Implementation of shared objects
 │   ├─ snapshot           # Snapshot module
+│   ├─ stackmap           # Location information of active variables
 │   ├─ stubs              # Runtime stub functions
+│   ├─ taskpool           # Task pool
 │   ├─ tests              # Unit test cases
-│   ├─ debugger           # JS debugger
-│   ├─ trampoline         # Trampoline function
-│   ├─ ts_type            # TS type management module
+│   ├─ ts_types           # TS type management module
 └─ test                   # Module test cases    
 ```
 

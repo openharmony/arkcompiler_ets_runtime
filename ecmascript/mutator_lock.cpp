@@ -80,7 +80,15 @@ void SuspendBarrier::Wait()
     while (true) {
         int32_t curCount = passBarrierCount_.load(std::memory_order_relaxed);
         if (LIKELY(curCount > 0)) {
-#if defined(PANDA_TARGET_OHOS)
+#if defined(PANDA_USE_FUTEX)
+            int32_t *addr = reinterpret_cast<int32_t*>(&passBarrierCount_);
+            if (futex(addr, FUTEX_WAIT_PRIVATE, curCount, nullptr, nullptr, 0) != 0) {
+                if (errno != EAGAIN && errno != EINTR) {
+                    LOG_GC(FATAL) << "SuspendBarrier::Wait failed, errno = " << errno;
+                    UNREACHABLE();
+                }
+            }
+#else
             sched_yield();
 #endif
         } else {
@@ -90,15 +98,5 @@ void SuspendBarrier::Wait()
             break;
         }
     }
-}
-
-void SuspendBarrier::PassCount(int32_t delta)
-{
-    bool done = false;
-    do {
-        int32_t curCount = passBarrierCount_.load(std::memory_order_relaxed);
-        // Reduce value by 1.
-        done = passBarrierCount_.compare_exchange_strong(curCount, curCount + delta);
-    } while (!done);
 }
 }  // namespace panda::ecmascript

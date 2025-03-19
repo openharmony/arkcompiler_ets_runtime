@@ -31,6 +31,7 @@ print(Object.getPrototypeOf(true)) //: false
 let proto = {name: "create"};
 //aot: [trace] aot inline builtin: Object.create, caller function name:func_main_0@builtinObjectObject
 print(Object.create(proto).name); //: create
+//aot: [trace] aot call builtin: Object.create, caller function name:func_main_0@builtinObjectObject
 print(Object.create(proto, {
     name: {
         value: "new create",

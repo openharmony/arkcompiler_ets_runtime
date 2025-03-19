@@ -14,19 +14,7 @@
  */
 
 #include "lower.h"
-#include <string>
-#include <cinttypes>
-#include <vector>
-#include "mir_symbol.h"
-#include "mir_function.h"
-#include "cg_option.h"
 #include "switch_lowerer.h"
-#include "intrinsic_op.h"
-#include "mir_builder.h"
-#include "opcode_info.h"
-#include "rt.h"
-#include "securec.h"
-#include "string_utils.h"
 
 namespace maplebe {
 

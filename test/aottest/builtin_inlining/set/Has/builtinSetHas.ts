@@ -87,6 +87,7 @@ mySet.has = true_has
 
 function checkObjWithSetProto() {
     let o = {};
+    //aot: [trace] aot call builtin: Object.SetPrototypeOf, caller function name:#*#checkObjWithSetProto@builtinSetHas
     Object.setPrototypeOf(o, Set.prototype);
     try {
         print((o as Set<number>).has(1));
@@ -160,7 +161,7 @@ try {
 
 // Check after clearing
 mySet.clear();
-//aot: [trace] aot inline builtin: Set.clear, caller function name:func_main_0@builtinSetHas
+//aot: [trace] aot call builtin: Set.clear, caller function name:func_main_0@builtinSetHas
 print(mySet.has(0));
 //aot: [trace] aot inline builtin: Set.has, caller function name:func_main_0@builtinSetHas
 //: false

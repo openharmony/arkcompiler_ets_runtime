@@ -261,7 +261,7 @@ public:
     using IsInlinedPropsField = IsFoundField::NextFlag;
     // 3: The bit field that represents the "Representation" of the property
     using RepresentationField = IsInlinedPropsField::NextField<Representation, 3>;
-    using OffsetField = RepresentationField::NextField<uint32_t, PropertyAttributes::OFFSET_BITFIELD_NUM>;
+    using OffsetField = RepresentationField::NextField<uint32_t, PropertyAttributes::MAX_FAST_PROPS_CAPACITY_LOG2>;
 
     explicit PropertyMetaData(uint32_t metaData) : metaData_(metaData) {}
 
@@ -371,6 +371,7 @@ public:
     void SetCallable(bool flag);
     bool IsCallable() const;
     Method *GetCallTarget() const;
+    void *GetNativePointer() const;
 
     static constexpr size_t HASH_OFFSET = TaggedObjectSize();
     static constexpr size_t SIZE = HASH_OFFSET + sizeof(JSTaggedType);
@@ -393,8 +394,8 @@ public:
 
     DECL_VISIT_OBJECT(HASH_OFFSET, SIZE);
 
-    template <VisitType visitType>
-    void VisitObjects(const EcmaObjectRangeVisitor &visitor)
+    template <VisitType visitType, class DerivedVisitor>
+    void VisitObjects(EcmaObjectRangeVisitor<DerivedVisitor> &visitor)
     {
         // no field in this object
         VisitRangeSlot<visitType>(visitor);
@@ -544,21 +545,21 @@ public:
     static OperationResult GetPropertyFromGlobal(JSThread *thread, const JSHandle<JSTaggedValue> &key);
 
     static bool SetProperty(JSThread *thread, const JSHandle<JSObject> &obj, const JSHandle<JSTaggedValue> &key,
-                            const JSHandle<JSTaggedValue> &value, bool mayThrow = false);
+                            JSHandle<JSTaggedValue> value, bool mayThrow = false);
 
     static bool SetProperty(JSThread *thread, const JSHandle<JSTaggedValue> &obj, const JSHandle<JSTaggedValue> &key,
-                            const JSHandle<JSTaggedValue> &value, bool mayThrow = false,
+                            JSHandle<JSTaggedValue> value, bool mayThrow = false,
                             SCheckMode checkMode = SCheckMode::CHECK);
 
     static bool SetProperty(JSThread *thread, const JSHandle<JSTaggedValue> &obj, const JSHandle<JSTaggedValue> &key,
-                            const JSHandle<JSTaggedValue> &value, const JSHandle<JSTaggedValue> &receiver,
+                            JSHandle<JSTaggedValue> value, const JSHandle<JSTaggedValue> &receiver,
                             bool mayThrow = false);
 
     static bool SetProperty(JSThread *thread, const JSHandle<JSTaggedValue> &obj, uint32_t index,
-                            const JSHandle<JSTaggedValue> &value, bool mayThrow = false);
+                            JSHandle<JSTaggedValue> value, bool mayThrow = false);
 
     static bool GlobalSetProperty(JSThread *thread, const JSHandle<JSTaggedValue> &key,
-                                  const JSHandle<JSTaggedValue> &value, bool mayThrow);
+                                  JSHandle<JSTaggedValue> value, bool mayThrow);
 
     // [[HasProperty]]
     static bool HasProperty(JSThread *thread, const JSHandle<JSObject> &obj, const JSHandle<JSTaggedValue> &key);
@@ -649,6 +650,7 @@ public:
     bool IsElementDict() const;
     bool IsPropertiesDict() const;
     bool IsTypedArray() const;
+    bool IsSharedTypedArray() const;
     bool PUBLIC_API ElementsAndPropertiesIsEmpty() const;
 
     static PUBLIC_API void DefinePropertyByLiteral(JSThread *thread, const JSHandle<JSObject> &obj,
@@ -692,7 +694,7 @@ public:
                                             std::vector<JSTaggedValue> &keyVector);
     std::pair<uint32_t, uint32_t> GetNumberOfEnumKeys() const;
     uint32_t GetNumberOfKeys();
-    uint32_t GetNumberOfElements();
+    uint32_t GetNumberOfElements(JSThread *thread);
 
     static JSHandle<TaggedArray> GetEnumElementKeys(JSThread *thread, const JSHandle<JSObject> &obj, int offset,
                                                     uint32_t numOfElements, uint32_t *keys);
@@ -731,6 +733,8 @@ public:
     static inline std::pair<bool, JSTaggedValue> ConvertValueWithRep(PropertyAttributes attr, JSTaggedValue value);
 
     inline void SetPropertyInlinedPropsWithRep(const JSThread *thread, uint32_t index, JSTaggedValue value);
+    template <size_t objectSize, uint32_t index, bool needBarrier = true>
+    inline void SetPropertyInlinedPropsWithSize(const JSThread* thread, JSTaggedValue value);
     template <bool needBarrier = true>
     inline void SetPropertyInlinedProps(const JSThread *thread, uint32_t index, JSTaggedValue value);
     template <bool needBarrier = true>
@@ -739,6 +743,8 @@ public:
     inline JSTaggedValue GetPropertyInlinedPropsWithRep(uint32_t index, PropertyAttributes attr) const;
     inline JSTaggedValue GetPropertyInlinedPropsWithRep(const JSHClass *hclass, uint32_t index,
         PropertyAttributes attr) const;
+    template <size_t objectSize, uint32_t index>
+    inline JSTaggedValue GetPropertyInlinedPropsWithSize() const;
     inline JSTaggedValue GetPropertyInlinedProps(uint32_t index) const;
     inline JSTaggedValue GetPropertyInlinedProps(const JSHClass *hclass, uint32_t index) const;
     inline JSTaggedValue GetProperty(const JSHClass *hclass, PropertyAttributes attr) const;
@@ -788,12 +794,14 @@ private:
 
     static bool HasMutantTaggedArrayElements(const JSHandle<JSObject> &obj);
     PropertyBox* GetGlobalPropertyBox(JSTaggedValue key);
+    static bool CheckAndUpdateArrayLength(JSThread *thread, const JSHandle<JSObject> &receiver,
+                                          uint32_t index, ElementsKind &kind);
     static bool PUBLIC_API AddElementInternal(
         JSThread *thread, const JSHandle<JSObject> &receiver, uint32_t index, const JSHandle<JSTaggedValue> &value,
         PropertyAttributes attr = PropertyAttributes(PropertyAttributes::GetDefaultAttributes()));
 
     static JSTaggedValue GetProperty(JSThread *thread, ObjectOperator *op);
-    static bool SetProperty(ObjectOperator *op, const JSHandle<JSTaggedValue> &value, bool mayThrow);
+    static bool SetProperty(ObjectOperator *op, JSHandle<JSTaggedValue> value, bool mayThrow);
     static bool SetPropertyForData(ObjectOperator *op, const JSHandle<JSTaggedValue> &value, bool *isAccessor);
     static bool SetPropertyForAccessor(ObjectOperator *op, const JSHandle<JSTaggedValue> &value);
     static void DeletePropertyInternal(JSThread *thread, const JSHandle<JSObject> &obj,
@@ -813,13 +821,13 @@ private:
     static uint32_t SetValuesOrEntries(JSThread *thread, const JSHandle<TaggedArray> &prop, uint32_t index,
                                        const JSHandle<JSTaggedValue> &key, const JSHandle<JSTaggedValue> &value,
                                        PropertyKind kind);
-    static bool IsSimpleEnumCacheValid(JSTaggedValue receiver);
-    static bool IsEnumCacheWithProtoChainInfoValid(JSTaggedValue receiver);
+    static bool IsSimpleEnumCacheValid(JSThread *thread, JSTaggedValue receiver);
+    static bool IsEnumCacheWithProtoChainInfoValid(JSThread *thread, JSTaggedValue receiver);
     static void TrimInlinePropsSpace(const JSThread *thread, const JSHandle<JSObject> &object,
                                      uint32_t numberInlinedProps);
     static bool ValidateDataDescriptorWhenConfigurable(ObjectOperator *op, const PropertyDescriptor &desc,
                                                        const PropertyDescriptor &current, SCheckMode sCheckMode);
-    static bool SetPropertyForDataDescriptor(ObjectOperator *op, const JSHandle<JSTaggedValue> &value,
+    static bool SetPropertyForDataDescriptor(ObjectOperator *op, JSHandle<JSTaggedValue> value,
                                              JSHandle<JSTaggedValue> &receiver, bool mayThrow, bool isInternalAccessor);
     static bool SetPropertyForDataDescriptorProxy(JSThread *thread, ObjectOperator *op,
                                                   const JSHandle<JSTaggedValue> &value,

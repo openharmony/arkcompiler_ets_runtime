@@ -23,6 +23,7 @@
 #include "ecmascript/module/js_module_deregister.h"
 #include "ecmascript/module/js_module_manager.h"
 #include "ecmascript/module/module_path_helper.h"
+#include "ecmascript/module/module_tools.h"
 
 namespace panda::ecmascript::builtins {
 using JSRecordInfo = ecmascript::JSPandaFile::JSRecordInfo;
@@ -147,11 +148,7 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
     CString fileName = ModulePathHelper::Utf8ConvertToString(dirPath.GetTaggedValue());
     CString requestPath = ModulePathHelper::Utf8ConvertToString(specifierString.GetTaggedValue());
     LOG_ECMA(DEBUG) << "Start importing dynamic module : " << requestPath;
-    bool enableESMTrace = thread->GetEcmaVM()->GetJSOptions().EnableESMTrace();
-    if (enableESMTrace) {
-        CString traceInfo = "DynamicImportJob: " + requestPath;
-        ECMA_BYTRACE_START_TRACE(HITRACE_TAG_ARK, traceInfo.c_str());
-    }
+    ModuleTraceScope moduleTraceScope(thread, "BuiltinsPromiseJob::DynamicImport:" + requestPath);
     std::shared_ptr<JSPandaFile> curJsPandaFile;
     CString recordNameStr;
     if (!recordName->IsUndefined()) {
@@ -232,6 +229,8 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
         // b. Let moduleRecord be ! HostResolveImportedModule(referencingScriptOrModule, specifier).
         JSHandle<SourceTextModule> moduleRecord =
             moduleManager->GetImportedModule(moduleName);
+        moduleRecord->CheckAndThrowModuleError(thread);
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, CatchException(thread, reject));
         JSHandle<JSTaggedValue> nameSp = SourceTextModule::GetModuleNamespace(thread, moduleRecord);
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, CatchException(thread, reject));
         // d. Let namespace be ? GetModuleNamespace(moduleRecord).
@@ -245,9 +244,6 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, CatchException(thread, reject));
     info->SetCallArg(moduleNamespace.GetTaggedValue());
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    if (enableESMTrace) {
-        ECMA_BYTRACE_FINISH_TRACE(HITRACE_TAG_ARK);
-    }
     return JSFunction::Call(info);
 }
 

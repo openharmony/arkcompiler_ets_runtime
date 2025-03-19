@@ -14,7 +14,6 @@
  */
 #include "ecmascript/deoptimizer/deoptimizer.h"
 
-#include <cmath>
 
 #include "ecmascript/dfx/stackinfo/js_stackinfo.h"
 #include "ecmascript/interpreter/slow_runtime_stub.h"

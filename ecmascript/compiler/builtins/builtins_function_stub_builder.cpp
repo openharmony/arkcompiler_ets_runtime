@@ -18,7 +18,6 @@
 #include "ecmascript/compiler/builtins/builtins_object_stub_builder.h"
 #include "ecmascript/compiler/call_stub_builder.h"
 #include "ecmascript/compiler/new_object_stub_builder.h"
-#include "ecmascript/compiler/stub_builder-inl.h"
 #include "ecmascript/js_arguments.h"
 
 namespace panda::ecmascript::kungfu {
@@ -60,8 +59,8 @@ void BuiltinsFunctionStubBuilder::PrototypeApply(GateRef glue, GateRef thisValue
                 BRANCH(TaggedIsHole(elements), &targetIsHole, &targetNotHole);
                 Bind(&targetIsHole);
                 {
-                    BuiltinsObjectStubBuilder objectStubBuilder(this);
-                    GateRef argList = objectStubBuilder.CreateListFromArrayLike(glue, arrayObj);
+                    NewObjectStubBuilder newBuilder(this);
+                    GateRef argList = newBuilder.CreateListFromArrayLike(glue, arrayObj);
                     // 4. ReturnIfAbrupt(argList).
                     Label isPendingException(env);
                     Label noPendingException(env);
@@ -128,6 +127,7 @@ void BuiltinsFunctionStubBuilder::PrototypeBind(GateRef glue, GateRef thisValue,
     Label targetIsHeapObject(env);
     Label targetIsCallable(env);
     Label targetIsJSFunctionOrBound(env);
+    Label findInlineProperty(env);
     Label targetNameAndLengthNotChange(env);
 
     // 1. Let Target be the this value.
@@ -141,11 +141,24 @@ void BuiltinsFunctionStubBuilder::PrototypeBind(GateRef glue, GateRef thisValue,
     Bind(&targetIsJSFunctionOrBound);
     {
         GateRef hclass = LoadHClass(target);
+        GateRef inlineProps = GetInlinedPropertiesFromHClass(hclass);
+        GateRef isPropsInRange = LogicAndBuilder(env)
+            .And(Int32UnsignedLessThan(Int32(JSFunction::LENGTH_INLINE_PROPERTY_INDEX), inlineProps))
+            .And(Int32UnsignedLessThan(Int32(JSFunction::NAME_INLINE_PROPERTY_INDEX), inlineProps))
+            .Done();
+        BRANCH(isPropsInRange, &findInlineProperty, slowPath);
+        Bind(&findInlineProperty);
+        GateRef lengthProperty = GetPropertyInlinedProps(target, hclass,
+            Int32(JSFunction::LENGTH_INLINE_PROPERTY_INDEX));
+        GateRef nameProperty = GetPropertyInlinedProps(target, hclass,
+            Int32(JSFunction::NAME_INLINE_PROPERTY_INDEX));
+        GateRef functionLengthAccessor = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
+            ConstantIndex::FUNCTION_LENGTH_ACCESSOR);
+        GateRef functionNameAccessor = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
+            ConstantIndex::FUNCTION_NAME_ACCESSOR);
         GateRef isTargetNameAndLengthNotChange = LogicAndBuilder(env)
-            .And(IntPtrEqual(GetPropertyInlinedProps(target, hclass, Int32(JSFunction::NAME_INLINE_PROPERTY_INDEX)),
-                GetGlobalConstantValue(VariableType::JS_POINTER(), glue, ConstantIndex::FUNCTION_NAME_ACCESSOR)))
-            .And(IntPtrEqual(GetPropertyInlinedProps(target, hclass, Int32(JSFunction::LENGTH_INLINE_PROPERTY_INDEX)),
-                GetGlobalConstantValue(VariableType::JS_POINTER(), glue, ConstantIndex::FUNCTION_LENGTH_ACCESSOR)))
+            .And(IntPtrEqual(functionLengthAccessor, lengthProperty))
+            .And(IntPtrEqual(functionNameAccessor, nameProperty))
             .Done();
         BRANCH(isTargetNameAndLengthNotChange, &targetNameAndLengthNotChange, slowPath);
         Bind(&targetNameAndLengthNotChange);
@@ -252,7 +265,6 @@ GateRef BuiltinsFunctionStubBuilder::BuildArgumentsListFastElements(GateRef glue
     env->SubCfgEntry(&subentry);
     DEFVARIABLE(res, VariableType::JS_ANY(), Hole());
     Label exit(env);
-    Label hasStableElements(env);
     Label targetIsStableJSArguments(env);
     Label targetNotStableJSArguments(env);
     Label targetIsInt(env);
@@ -260,65 +272,20 @@ GateRef BuiltinsFunctionStubBuilder::BuildArgumentsListFastElements(GateRef glue
     Label targetIsStableJSArray(env);
     Label targetNotStableJSArray(env);
 
-    BRANCH(HasStableElements(glue, arrayObj), &hasStableElements, &exit);
-    Bind(&hasStableElements);
+    BRANCH(IsStableJSArguments(glue, arrayObj), &targetIsStableJSArguments, &targetNotStableJSArguments);
+    Bind(&targetIsStableJSArguments);
     {
-        BRANCH(IsStableJSArguments(glue, arrayObj), &targetIsStableJSArguments, &targetNotStableJSArguments);
-        Bind(&targetIsStableJSArguments);
+        GateRef hClass = LoadHClass(arrayObj);
+        GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
+        GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
+        GateRef argmentsClass = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, GlobalEnv::ARGUMENTS_CLASS);
+        BRANCH(Int64Equal(hClass, argmentsClass), &hClassEqual, &exit);
+        Bind(&hClassEqual);
         {
-            GateRef hClass = LoadHClass(arrayObj);
-            GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
-            GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
-            GateRef argmentsClass = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv,
-                                                      GlobalEnv::ARGUMENTS_CLASS);
-            BRANCH(Int64Equal(hClass, argmentsClass), &hClassEqual, &exit);
-            Bind(&hClassEqual);
-            {
-                GateRef PropertyInlinedPropsOffset = IntPtr(JSArguments::LENGTH_INLINE_PROPERTY_INDEX);
-                GateRef result = GetPropertyInlinedProps(arrayObj, hClass, PropertyInlinedPropsOffset);
-                BRANCH(TaggedIsInt(result), &targetIsInt, &exit);
-                Bind(&targetIsInt);
-                {
-                    res = GetElementsArray(arrayObj);
-                    Label isMutantTaggedArray(env);
-                    BRANCH(IsMutantTaggedArray(*res), &isMutantTaggedArray, &exit);
-                    Bind(&isMutantTaggedArray);
-                    {
-                        NewObjectStubBuilder newBuilder(this);
-                        GateRef elementsLength = GetLengthOfTaggedArray(*res);
-                        GateRef newTaggedArgList = newBuilder.NewTaggedArray(glue, elementsLength);
-                        DEFVARIABLE(index, VariableType::INT32(), Int32(0));
-                        Label loopHead(env);
-                        Label loopEnd(env);
-                        Label afterLoop(env);
-                        Label storeValue(env);
-                        Jump(&loopHead);
-                        LoopBegin(&loopHead);
-                        {
-                            BRANCH(Int32UnsignedLessThan(*index, elementsLength), &storeValue, &afterLoop);
-                            Bind(&storeValue);
-                            {
-                                GateRef value = GetTaggedValueWithElementsKind(arrayObj, *index);
-                                SetValueToTaggedArray(VariableType::JS_ANY(), glue, newTaggedArgList, *index, value);
-                                index = Int32Add(*index, Int32(1));
-                                Jump(&loopEnd);
-                            }
-                        }
-                        Bind(&loopEnd);
-                        LoopEnd(&loopHead);
-                        Bind(&afterLoop);
-                        {
-                            res = newTaggedArgList;
-                            Jump(&exit);
-                        }
-                    }
-                }
-            }
-        }
-        Bind(&targetNotStableJSArguments);
-        {
-            BRANCH(IsStableJSArray(glue, arrayObj), &targetIsStableJSArray, &targetNotStableJSArray);
-            Bind(&targetIsStableJSArray);
+            GateRef PropertyInlinedPropsOffset = IntPtr(JSArguments::LENGTH_INLINE_PROPERTY_INDEX);
+            GateRef result = GetPropertyInlinedProps(arrayObj, hClass, PropertyInlinedPropsOffset);
+            BRANCH(TaggedIsInt(result), &targetIsInt, &exit);
+            Bind(&targetIsInt);
             {
                 res = GetElementsArray(arrayObj);
                 Label isMutantTaggedArray(env);
@@ -339,7 +306,7 @@ GateRef BuiltinsFunctionStubBuilder::BuildArgumentsListFastElements(GateRef glue
                         BRANCH(Int32UnsignedLessThan(*index, elementsLength), &storeValue, &afterLoop);
                         Bind(&storeValue);
                         {
-                            GateRef value = GetTaggedValueWithElementsKind(arrayObj, *index);
+                            GateRef value = GetTaggedValueWithElementsKind(glue, arrayObj, *index);
                             SetValueToTaggedArray(VariableType::JS_ANY(), glue, newTaggedArgList, *index, value);
                             index = Int32Add(*index, Int32(1));
                             Jump(&loopEnd);
@@ -354,11 +321,50 @@ GateRef BuiltinsFunctionStubBuilder::BuildArgumentsListFastElements(GateRef glue
                     }
                 }
             }
-            Bind(&targetNotStableJSArray);
+        }
+    }
+    Bind(&targetNotStableJSArguments);
+    {
+        BRANCH(IsStableJSArray(glue, arrayObj), &targetIsStableJSArray, &targetNotStableJSArray);
+        Bind(&targetIsStableJSArray);
+        {
+            res = GetElementsArray(arrayObj);
+            Label isMutantTaggedArray(env);
+            BRANCH(IsMutantTaggedArray(*res), &isMutantTaggedArray, &exit);
+            Bind(&isMutantTaggedArray);
             {
-                FatalPrint(glue, { Int32(GET_MESSAGE_STRING_ID(ThisBranchIsUnreachable)) });
-                Jump(&exit);
+                NewObjectStubBuilder newBuilder(this);
+                GateRef elementsLength = GetLengthOfTaggedArray(*res);
+                GateRef newTaggedArgList = newBuilder.NewTaggedArray(glue, elementsLength);
+                DEFVARIABLE(index, VariableType::INT32(), Int32(0));
+                Label loopHead(env);
+                Label loopEnd(env);
+                Label afterLoop(env);
+                Label storeValue(env);
+                Jump(&loopHead);
+                LoopBegin(&loopHead);
+                {
+                    BRANCH(Int32UnsignedLessThan(*index, elementsLength), &storeValue, &afterLoop);
+                    Bind(&storeValue);
+                    {
+                        GateRef value = GetTaggedValueWithElementsKind(glue, arrayObj, *index);
+                        SetValueToTaggedArray(VariableType::JS_ANY(), glue, newTaggedArgList, *index, value);
+                        index = Int32Add(*index, Int32(1));
+                        Jump(&loopEnd);
+                    }
+                }
+                Bind(&loopEnd);
+                LoopEnd(&loopHead);
+                Bind(&afterLoop);
+                {
+                    res = newTaggedArgList;
+                    Jump(&exit);
+                }
             }
+        }
+        Bind(&targetNotStableJSArray);
+        {
+            Jump(&exit);
         }
     }
     Bind(&exit);
@@ -504,7 +510,6 @@ void BuiltinsFunctionStubBuilder::InitializeSFunction(GateRef glue, GateRef func
     if (JSFunction::IsNormalFunctionAndCanSkipWbWhenInitialization(getKind)) {
         SetProtoOrHClassToFunction(glue, func, Hole(), MemoryAttribute::NoBarrier());
         SetWorkNodePointerToFunction(glue, func, NullPtr(), MemoryAttribute::NoBarrier());
-        SetProtoTransRootHClassToFunction(glue, func, Undefined(), MemoryAttribute::NoBarrier());
         if (JSFunction::HasAccessor(getKind)) {
             auto funcAccessor = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
                                                        ConstantIndex::FUNCTION_NAME_ACCESSOR);
@@ -520,7 +525,6 @@ void BuiltinsFunctionStubBuilder::InitializeSFunction(GateRef glue, GateRef func
         SetLexicalEnvToFunction(glue, func, Undefined(), MemoryAttribute::NoBarrier());
         SetHomeObjectToFunction(glue, func, Undefined(), MemoryAttribute::NoBarrier());
         SetProtoOrHClassToFunction(glue, func, Hole(), MemoryAttribute::NoBarrier());
-        SetProtoTransRootHClassToFunction(glue, func, Undefined(), MemoryAttribute::NoBarrier());
         SetWorkNodePointerToFunction(glue, func, NullPtr(), MemoryAttribute::NoBarrier());
         SetMethodToFunction(glue, func, Undefined(), MemoryAttribute::NoBarrier());
 
@@ -554,7 +558,7 @@ void BuiltinsFunctionStubBuilder::InitializeSFunction(GateRef glue, GateRef func
     Bind(&exit);
     auto emptyProfileTypeInfoCell = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
                                                            ConstantIndex::EMPTY_PROFILE_TYPE_INFO_CELL_INDEX);
-    SetRawProfileTypeInfoToFunction(glue, func, emptyProfileTypeInfoCell);
+    SetRawProfileTypeInfoToFunction(glue, func, emptyProfileTypeInfoCell, MemoryAttribute::NoBarrier());
     env->SubCfgExit();
     return;
 }
@@ -579,7 +583,6 @@ void BuiltinsFunctionStubBuilder::InitializeJSFunction(GateRef glue, GateRef fun
     if (JSFunction::IsNormalFunctionAndCanSkipWbWhenInitialization(getKind)) {
         SetProtoOrHClassToFunction(glue, func, Hole(), MemoryAttribute::NoBarrier());
         SetWorkNodePointerToFunction(glue, func, NullPtr(), MemoryAttribute::NoBarrier());
-        SetProtoTransRootHClassToFunction(glue, func, Undefined(), MemoryAttribute::NoBarrier());
         if (JSFunction::HasPrototype(getKind)) {
             auto funcprotoAccessor = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
                                                             ConstantIndex::FUNCTION_PROTOTYPE_ACCESSOR);
@@ -621,7 +624,6 @@ void BuiltinsFunctionStubBuilder::InitializeJSFunction(GateRef glue, GateRef fun
         SetLexicalEnvToFunction(glue, func, Undefined(), MemoryAttribute::NoBarrier());
         SetHomeObjectToFunction(glue, func, Undefined(), MemoryAttribute::NoBarrier());
         SetProtoOrHClassToFunction(glue, func, Hole(), MemoryAttribute::NoBarrier());
-        SetProtoTransRootHClassToFunction(glue, func, Undefined(), MemoryAttribute::NoBarrier());
         SetWorkNodePointerToFunction(glue, func, NullPtr(), MemoryAttribute::NoBarrier());
         SetMethodToFunction(glue, func, Undefined(), MemoryAttribute::NoBarrier());
 
@@ -685,7 +687,7 @@ void BuiltinsFunctionStubBuilder::InitializeJSFunction(GateRef glue, GateRef fun
     Bind(&exit);
     auto emptyProfileTypeInfoCell = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
                                                            ConstantIndex::EMPTY_PROFILE_TYPE_INFO_CELL_INDEX);
-    SetRawProfileTypeInfoToFunction(glue, func, emptyProfileTypeInfoCell);
+    SetRawProfileTypeInfoToFunction(glue, func, emptyProfileTypeInfoCell, MemoryAttribute::NoBarrier());
     env->SubCfgExit();
     return;
 }
@@ -703,9 +705,19 @@ void BuiltinsFunctionStubBuilder::InitializeFunctionWithMethod(GateRef glue,
 
     SetBitFieldToFunction(glue, func, Int32(0));
     SetMachineCodeToFunction(glue, func, Undefined(), MemoryAttribute::NoBarrier());
+    SetBaselineJitCodeToFunction(glue, func, Undefined(), MemoryAttribute::NoBarrier());
 
+    Label isNativeMethod(env);
+    Label checkAotStatus(env);
     Label hasCompiledStatus(env);
     Label tryInitFuncCodeEntry(env);
+    BRANCH(IsNativeMethod(method), &isNativeMethod, &checkAotStatus);
+    Bind(&isNativeMethod);
+    {
+        SetNativePointerToFunctionFromMethod(glue, func, method);
+        Jump(&exit);
+    }
+    Bind(&checkAotStatus);
     BRANCH(IsAotWithCallField(method), &hasCompiledStatus, &tryInitFuncCodeEntry);
     Bind(&hasCompiledStatus);
     {

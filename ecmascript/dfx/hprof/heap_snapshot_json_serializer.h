@@ -112,7 +112,7 @@ public:
     NO_MOVE_SEMANTIC(HeapSnapshotJSONSerializer);
     NO_COPY_SEMANTIC(HeapSnapshotJSONSerializer);
     static bool Serialize(HeapSnapshot *snapshot, Stream *stream);
-    static uint32_t DumpStringTable(StringHashMap *stringTable, Stream *stream,
+    static uint32_t DumpStringTable(const StringHashMap *stringTable, Stream *stream,
                                 CUnorderedMap<uint64_t, CVector<uint64_t>> &strIdMapObjVec);
 
 private:

@@ -30,8 +30,13 @@ function *foo2() {
 
 var p = foo2()
 var a = p.next()
-print(a.value, a.done)
+assert_equal(a.value,1);
+assert_equal(a.done, false);
 var b = p.next()
-print(b.value, b.done)
+assert_equal(b.value, 2);
+assert_equal(b.done, false);
 var c = p.next()
-print(c.value, c.done)
+assert_equal(c.value, undefined);
+assert_equal(c.done, true);
+
+test_end();

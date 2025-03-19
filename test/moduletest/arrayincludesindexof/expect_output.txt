@@ -1,0 +1,83 @@
+# Copyright (c) 2025 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+======== Testing fromIndex ========
+---- Testing Array.prototype.indexOf ----
+Result with numberIndices: 4,4,4,4,1,1,1,1,1,-1,-1,-1,-1,-1,-1,1,1,1
+Result with nonNumberIndices: 1,1,1,1,1,1,2,2,3,3,1
+OK: TypeError raised for bigint index
+OK: TypeError raised for object index
+---- Testing Array.prototype.lastIndexOf ----
+Result with numberIndices: 4,4,4,4,-1,-1,-1,-1,-1,4,4,4,4,4,4,-1,-1,-1
+Result with nonNumberIndices: -1,-1,1,1,-1,-1,2,2,3,3,-1
+OK: TypeError raised for bigint index
+OK: TypeError raised for object index
+---- Testing Array.prototype.includes ----
+Result with numberIndices: true,true,true,true,true,true,true,true,true,false,false,false,false,false,false,true,true,true
+Result with nonNumberIndices: true,true,true,true,true,true,true,true,true,true,true
+OK: TypeError raised for bigint index
+OK: TypeError raised for object index
+======== Testing comparision ========
+[0] Target = 1 (number): indexOf => 0 lastIndexOf => 1 includes => true
+[1] Target = 1 (number): indexOf => 0 lastIndexOf => 1 includes => true
+[2] Target = -1 (number): indexOf => 2 lastIndexOf => 2 includes => true
+[3] Target = 0 (number): indexOf => 3 lastIndexOf => 5 includes => true
+[4] Target = 0 (number): indexOf => 3 lastIndexOf => 5 includes => true
+[5] Target = 0 (number): indexOf => 3 lastIndexOf => 5 includes => true
+[6] Target = Infinity (number): indexOf => 6 lastIndexOf => 6 includes => true
+[7] Target = -Infinity (number): indexOf => 7 lastIndexOf => 7 includes => true
+[8] Target = NaN (number): indexOf => -1 lastIndexOf => -1 includes => true
+[9] Target = NaN (number): indexOf => -1 lastIndexOf => -1 includes => true
+[10] Target = true (boolean): indexOf => 10 lastIndexOf => 10 includes => true
+[11] Target = false (boolean): indexOf => 11 lastIndexOf => 11 includes => true
+[12] Target = null (object): indexOf => 12 lastIndexOf => 12 includes => true
+[13] Target = undefined (undefined): indexOf => -1 lastIndexOf => -1 includes => true
+[14] Target = 1 (string): indexOf => 14 lastIndexOf => 14 includes => true
+[15] Target = 0 (string): indexOf => 15 lastIndexOf => 15 includes => true
+[16] Target = 1.0 (string): indexOf => 16 lastIndexOf => 16 includes => true
+[17] Target = 0.0 (string): indexOf => 17 lastIndexOf => 17 includes => true
+[18] Target = 1 (bigint): indexOf => 18 lastIndexOf => 18 includes => true
+[19] Target = 0 (bigint): indexOf => 19 lastIndexOf => 19 includes => true
+[20] Target = [object Object] (object): indexOf => 20 lastIndexOf => 20 includes => true
+[21] Target = 0 (object): indexOf => 21 lastIndexOf => 21 includes => true
+[22] Target = NaN (number): indexOf => -1 lastIndexOf => -1 includes => true
+[23] Target = [object Object] (object): indexOf => -1 lastIndexOf => -1 includes => false
+[24] Target = 0 (object): indexOf => -1 lastIndexOf => -1 includes => false
+[25] Target = 0 (object): indexOf => -1 lastIndexOf => -1 includes => false
+[26] Target = 1 (object): indexOf => -1 lastIndexOf => -1 includes => false
+Index = undefined: indexOf => 12 lastIndexOf => 12 includes => true
+======== Testing with non-generic ElementsKind ========
+ElementsKind of intArr = 2
+[intArr] Target = 1 (number): indexOf => 10 lastIndexOf => 10 includes => true
+[intArr] Target = 1 (number): indexOf => 10 lastIndexOf => 10 includes => true
+[intArr] Target = 1.125 (number): indexOf => -1 lastIndexOf => -1 includes => false
+[intArr] Target = 1 (string): indexOf => -1 lastIndexOf => -1 includes => false
+[intArr] Target = 1 (bigint): indexOf => -1 lastIndexOf => -1 includes => false
+ElementsKind of doubleArr = 6
+[doubleArr] Target = 1 (number): indexOf => 10 lastIndexOf => 10 includes => true
+[doubleArr] Target = 1 (number): indexOf => 10 lastIndexOf => 10 includes => true
+[doubleArr] Target = 1.125 (number): indexOf => 8 lastIndexOf => 8 includes => true
+[doubleArr] Target = 1 (string): indexOf => -1 lastIndexOf => -1 includes => false
+[doubleArr] Target = 1 (bigint): indexOf => -1 lastIndexOf => -1 includes => false
+ElementsKind of strArr = 8
+[strArr] Target = 1 (number): indexOf => -1 lastIndexOf => -1 includes => false
+[strArr] Target = 1 (number): indexOf => -1 lastIndexOf => -1 includes => false
+[strArr] Target = 1.125 (number): indexOf => -1 lastIndexOf => -1 includes => false
+[strArr] Target = 1 (string): indexOf => 10 lastIndexOf => 10 includes => true
+[strArr] Target = 1 (bigint): indexOf => -1 lastIndexOf => -1 includes => false
+ElementsKind of bigintArr = 16
+[bigintArr] Target = 1 (number): indexOf => -1 lastIndexOf => -1 includes => false
+[bigintArr] Target = 1 (number): indexOf => -1 lastIndexOf => -1 includes => false
+[bigintArr] Target = 1.125 (number): indexOf => -1 lastIndexOf => -1 includes => false
+[bigintArr] Target = 1 (string): indexOf => -1 lastIndexOf => -1 includes => false
+[bigintArr] Target = 1 (bigint): indexOf => 10 lastIndexOf => 10 includes => true

@@ -29,7 +29,6 @@ host_unittest_action("AssemblerTest") {
     "$ark_root/libpandafile:libarkfile_static",
     "$js_root:libark_jsruntime_test_set",
     "$js_root/ecmascript/compiler:libark_jsoptimizer_set",
-    sdk_libc_secshared_dep,
   ]
 
   # hiviewdfx libraries
@@ -49,7 +48,6 @@ host_unittest_action("TypedArrayLoweringTest") {
     "$ark_root/libpandafile:libarkfile_static",
     "$js_root:libark_jsruntime_test_set",
     "$js_root/ecmascript/compiler:libark_jsoptimizer_set",
-    sdk_libc_secshared_dep,
   ]
   external_deps = [ "zlib:libz" ]
 }
@@ -66,7 +64,6 @@ host_unittest_action("DeadCodeEliminationTest") {
     "$ark_root/libpandafile:libarkfile_static",
     "$js_root:libark_jsruntime_test_set",
     "$js_root/ecmascript/compiler:libark_jsoptimizer_set",
-    sdk_libc_secshared_dep,
   ]
 }
 
@@ -82,7 +79,6 @@ host_unittest_action("CombinedPassVisitorTest") {
     "$ark_root/libpandafile:libarkfile_static",
     "$js_root:libark_jsruntime_test_set",
     "$js_root/ecmascript/compiler:libark_jsoptimizer_set",
-    sdk_libc_secshared_dep,
   ]
 }
 
@@ -98,7 +94,6 @@ host_unittest_action("LoopOptimizationTest") {
     "$ark_root/libpandafile:libarkfile_static",
     "$js_root:libark_jsruntime_test_set",
     "$js_root/ecmascript/compiler:libark_jsoptimizer_set",
-    sdk_libc_secshared_dep,
   ]
   external_deps = [ "zlib:libz" ]
 }
@@ -115,7 +110,6 @@ host_unittest_action("ConstantFoldingTest") {
     "$ark_root/libpandafile:libarkfile_static",
     "$js_root:libark_jsruntime_test_set",
     "$js_root/ecmascript/compiler:libark_jsoptimizer_set",
-    sdk_libc_secshared_dep,
   ]
   external_deps = [ "zlib:libz" ]
 }
@@ -133,7 +127,6 @@ host_unittest_action("GlobalValueNumberingTest") {
     "$ark_root/libpandafile:libarkfile_static",
     "$js_root:libark_jsruntime_test_set",
     "$js_root/ecmascript/compiler:libark_jsoptimizer_set",
-    sdk_libc_secshared_dep,
   ]
   external_deps = [ "zlib:libz" ]
 }
@@ -150,7 +143,6 @@ host_unittest_action("InstructionCombineTest") {
     "$ark_root/libpandafile:libarkfile_static",
     "$js_root:libark_jsruntime_test_set",
     "$js_root/ecmascript/compiler:libark_jsoptimizer_set",
-    sdk_libc_secshared_dep,
   ]
   external_deps = [ "zlib:libz" ]
 }
@@ -167,7 +159,6 @@ host_unittest_action("CreateEmptyFileTest") {
     "$ark_root/libpandafile:libarkfile_static",
     "$js_root:libark_jsruntime_test_set",
     "$js_root/ecmascript/compiler:libark_jsoptimizer_set",
-    sdk_libc_secshared_dep,
   ]
   external_deps = [ "zlib:libz" ]
 }
@@ -184,7 +175,6 @@ host_unittest_action("AotVersionTest") {
     "$ark_root/libpandafile:libarkfile_static",
     "$js_root:libark_jsruntime_test_set",
     "$js_root/ecmascript/compiler:libark_jsoptimizer_set",
-    sdk_libc_secshared_dep,
   ]
   external_deps = [ "zlib:libz" ]
 }
@@ -201,7 +191,6 @@ host_unittest_action("NumberSpeculativeRetypeTest") {
     "$ark_root/libpandafile:libarkfile_static",
     "$js_root:libark_jsruntime_test_set",
     "$js_root/ecmascript/compiler:libark_jsoptimizer_set",
-    sdk_libc_secshared_dep,
   ]
   external_deps = [ "zlib:libz" ]
 }

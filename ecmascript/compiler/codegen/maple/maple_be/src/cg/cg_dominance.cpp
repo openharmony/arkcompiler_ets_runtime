@@ -14,8 +14,6 @@
  */
 
 #include "cg_dominance.h"
-#include <set>
-#include "cg_option.h"
 #include "cgfunc.h"
 
 /*

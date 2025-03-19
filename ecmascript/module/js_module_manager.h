@@ -71,6 +71,7 @@ public:
     bool IsEvaluatedModule(const CString &referencing);
     bool IsInstantiatedModule(const CString &referencing);
     bool IsLocalModuleInstantiated(const CString &referencing);
+    bool NeedExecuteModule(const CString &referencing);
 
     JSHandle<JSTaggedValue> LoadNativeModule(JSThread *thread, const CString &key);
 
@@ -82,14 +83,12 @@ public:
                                               const CString &filename, const JSPandaFile *jsPandaFile);
     JSHandle<JSTaggedValue> ExecuteCjsModule(JSThread *thread, const CString &recordName,
                                              const JSPandaFile *jsPandaFile);
-    JSHandle<JSTaggedValue> GetModuleNameSpaceFromFile(
-        JSThread *thread, const CString &recordNameStr, const CString &baseFileName);
 
     JSTaggedValue GetCurrentModule();
     JSHandle<JSTaggedValue> GenerateSendableFuncModule(const JSHandle<JSTaggedValue> &module);
 
     JSHandle<JSTaggedValue> TryGetImportedModule(const CString& referencing);
-    void Iterate(const RootVisitor &v);
+    void Iterate(RootVisitor &v);
     void AddToInstantiatingSModuleList(const CString &record);
     ModuleExecuteMode GetExecuteMode() const
     {

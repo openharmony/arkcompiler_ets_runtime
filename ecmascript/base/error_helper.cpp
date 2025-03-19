@@ -228,7 +228,7 @@ JSHandle<JSTaggedValue> ErrorHelper::GetErrorJSFunction(JSThread *thread)
 JSHandle<EcmaString> ErrorHelper::BuildEcmaStackTrace(JSThread *thread, std::string &stack,
                                                       const JSHandle<JSObject> &jsErrorObj)
 {
-    std::string data = JsStackInfo::BuildJsStackTrace(thread, false, jsErrorObj);
+    std::string data = JsStackInfo::BuildJsStackTrace(thread, false, jsErrorObj, true);
     if (data.size() > MAX_ERROR_SIZE) {
         // find last line break from 0 to MAX_ERROR_SIZE
         size_t pos = data.rfind('\n', MAX_ERROR_SIZE);

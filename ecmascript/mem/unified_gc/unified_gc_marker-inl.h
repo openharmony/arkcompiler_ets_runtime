@@ -18,38 +18,40 @@
 
 #include "ecmascript/mem/unified_gc/unified_gc_marker.h"
 
+#include "ecmascript/layout_info.h"
+#include "ecmascript/mem/work_manager-inl.h"
+
 namespace panda::ecmascript {
 
-template <typename Callback>
-ARK_INLINE bool UnifiedGCMarker::VisitBodyInObj(TaggedObject *root, ObjectSlot start, ObjectSlot end,
-                                                Callback callback)
+UnifiedGCMarkRootVisitor::UnifiedGCMarkRootVisitor(WorkNodeHolder *workNodeHolder, UnifiedGCMarker *marker)
+    : workNodeHolder_(workNodeHolder), marker_(marker) {}
+
+void UnifiedGCMarkRootVisitor::VisitRoot([[maybe_unused]] Root type, ObjectSlot slot)
 {
-    auto hclass = root->SynchronizedGetClass();
-    int index = 0;
-    auto layout = LayoutInfo::UncheckCast(hclass->GetLayout().GetTaggedObject());
-    ObjectSlot realEnd = start;
-    realEnd += layout->GetPropertiesCapacity();
-    end = end > realEnd ? realEnd : end;
-    for (ObjectSlot slot = start; slot < end; slot++) {
-        auto attr = layout->GetAttr(index++);
-        if (attr.IsTaggedRep()) {
-            callback(slot);
-        }
-    }
-    return true;
+    HandleSlot(slot);
 }
 
-inline void UnifiedGCMarker::MarkValue(uint32_t threadId, ObjectSlot &slot)
+void UnifiedGCMarkRootVisitor::VisitRangeRoot([[maybe_unused]] Root type, ObjectSlot start, ObjectSlot end)
+{
+    for (ObjectSlot slot = start; slot < end; slot++) {
+        HandleSlot(slot);
+    }
+}
+
+void UnifiedGCMarkRootVisitor::VisitBaseAndDerivedRoot([[maybe_unused]] Root type, [[maybe_unused]] ObjectSlot base,
+                                                       [[maybe_unused]] ObjectSlot derived,
+                                                       [[maybe_unused]] uintptr_t baseOldObject)
+{
+    // It is only used to update the derived value. The mark of OldGC does not need to update slot
+}
+
+void UnifiedGCMarkRootVisitor::HandleSlot(ObjectSlot slot)
 {
     JSTaggedValue value(slot.GetTaggedType());
-    if (value.IsHeapObject() && !value.IsWeakForHeapObject()) {
-        ASSERT(!value.IsHole());
-        MarkObject(threadId, value.GetTaggedObject());
+    if (!value.IsHeapObject()) {
+        return;
     }
-}
-
-inline void UnifiedGCMarker::MarkObject(uint32_t threadId, TaggedObject *object)
-{
+    TaggedObject *object = value.GetTaggedObject();
     Region *objectRegion = Region::ObjectAddressToRange(object);
 
     if (objectRegion->InSharedHeap()) {
@@ -57,11 +59,69 @@ inline void UnifiedGCMarker::MarkObject(uint32_t threadId, TaggedObject *object)
     }
 
 #ifdef PANDA_JS_ETS_HYBRID_MODE
-    HandleJSXRefObject(object);
+    marker_->HandleJSXRefObject(object);
 #endif // PANDA_JS_ETS_HYBRID_MODE
 
     if (objectRegion->AtomicMark(object)) {
-        workManager_->Push(threadId, object);
+        workNodeHolder_->Push(object);
+    }
+}
+
+UnifiedGCMarkObjectVisitor::UnifiedGCMarkObjectVisitor(WorkNodeHolder *workNodeHolder, UnifiedGCMarker *marker)
+    : workNodeHolder_(workNodeHolder), marker_(marker) {}
+
+void UnifiedGCMarkObjectVisitor::VisitObjectRangeImpl(TaggedObject *root, ObjectSlot start, ObjectSlot end,
+                                                      VisitObjectArea area)
+{
+    if (UNLIKELY(area == VisitObjectArea::IN_OBJECT)) {
+        JSHClass *hclass = root->SynchronizedGetClass();
+        ASSERT(!hclass->IsAllTaggedProp());
+        int index = 0;
+        LayoutInfo *layout = LayoutInfo::UncheckCast(hclass->GetLayout().GetTaggedObject());
+        ObjectSlot realEnd = start;
+        realEnd += layout->GetPropertiesCapacity();
+        end = end > realEnd ? realEnd : end;
+        for (ObjectSlot slot = start; slot < end; slot++) {
+            PropertyAttributes attr = layout->GetAttr(index++);
+            if (attr.IsTaggedRep()) {
+                HandleSlot(slot);
+            }
+        }
+        return;
+    }
+    for (ObjectSlot slot = start; slot < end; slot++) {
+        HandleSlot(slot);
+    }
+}
+
+void UnifiedGCMarkObjectVisitor::HandleSlot(ObjectSlot slot)
+{
+    JSTaggedValue value(slot.GetTaggedType());
+    if (!value.IsHeapObject() || value.IsWeakForHeapObject()) {
+        return;
+    }
+    TaggedObject *object = value.GetTaggedObject();
+    Region *objectRegion = Region::ObjectAddressToRange(object);
+    if (objectRegion->InSharedHeap()) {
+        return;
+    }
+#ifdef PANDA_JS_ETS_HYBRID_MODE
+    marker_->HandleJSXRefObject(object);
+#endif // PANDA_JS_ETS_HYBRID_MODE
+    if (objectRegion->AtomicMark(object)) {
+        workNodeHolder_->Push(object);
+    }
+}
+
+void UnifiedGCMarkObjectVisitor::VisitObjectHClassImpl(TaggedObject *hclass)
+{
+    ASSERT(hclass->GetClass()->IsHClass());
+    Region *hclassRegion = Region::ObjectAddressToRange(hclass);
+    if (!hclassRegion->InSharedHeap()) {
+        ASSERT(hclassRegion->InNonMovableSpace() || hclassRegion->InReadOnlySpace());
+        if (hclassRegion->AtomicMark(hclass)) {
+            workNodeHolder_->Push(hclass);
+        }
     }
 }
 
@@ -74,38 +134,5 @@ inline void UnifiedGCMarker::HandleJSXRefObject(TaggedObject *object)
     }
 }
 #endif // PANDA_JS_ETS_HYBRID_MODE
-
-inline void UnifiedGCMarker::HandleRoots(uint32_t threadId, [[maybe_unused]] Root type, ObjectSlot slot)
-{
-    JSTaggedValue value(slot.GetTaggedType());
-    if (value.IsHeapObject()) {
-        MarkObject(threadId, value.GetTaggedObject());
-    }
-}
-
-inline void UnifiedGCMarker::HandleRangeRoots(uint32_t threadId, [[maybe_unused]] Root type, ObjectSlot start,
-    ObjectSlot end)
-{
-    for (ObjectSlot slot = start; slot < end; slot++) {
-        JSTaggedValue value(slot.GetTaggedType());
-        if (value.IsHeapObject()) {
-            MarkObject(threadId, value.GetTaggedObject());
-        }
-    }
-}
-
-inline void UnifiedGCMarker::HandleDerivedRoots([[maybe_unused]] Root type, [[maybe_unused]] ObjectSlot base,
-                                                [[maybe_unused]] ObjectSlot derived,
-                                                [[maybe_unused]] uintptr_t baseOldObject)
-{
-}
-
-inline void UnifiedGCMarker::HandleNewToEdenRSet([[maybe_unused]] uint32_t threadId, [[maybe_unused]] Region *region)
-{
-}
-
-inline void UnifiedGCMarker::HandleOldToNewRSet([[maybe_unused]] uint32_t threadId, [[maybe_unused]] Region *region)
-{
-}
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_MEM_UNIFIED_GC_UNIFIED_GC_MARKER_INL_H

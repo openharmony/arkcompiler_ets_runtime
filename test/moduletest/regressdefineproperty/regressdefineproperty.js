@@ -19,8 +19,9 @@ function f() {
 }
 try{
     f();
+    assert_unreachable();
 } catch (e) {
-    print(e instanceof TypeError)
+    assert_equal(e instanceof TypeError, true)
 }
 
 function f1() {
@@ -29,25 +30,30 @@ function f1() {
 }
 try{
     f1();
+    assert_unreachable();
 } catch (e) {
-    print(e instanceof TypeError)
+    assert_equal(e instanceof TypeError, true)
 }
 
 let array = [];
 Object.defineProperty(array, 'length', {writable: false});
-print(array.length);
+assert_equal(array.length, 0);
 try {
     array.shift()
+    assert_unreachable();
+    assert_unreachable();
 } catch (e) {
-   print(e instanceof TypeError)
+    assert_equal(e instanceof TypeError, true)
 }
 let object = { length: 0 };
 Object.defineProperty(object, 'length', {writable: false});
-print(object.length);
+assert_equal(object.length, 0);
 try {
     Array.prototype.shift.call(object)
+    assert_unreachable();
 } catch {
-    print("true")
+    var str = "true";
+    assert_equal(str, "true")
 }
 
 Object.defineProperty(this, 'x', {
@@ -57,7 +63,7 @@ Object.defineProperty(this, 'x', {
 Object.defineProperty(this, 'x', {
   value: 10
 });
-print(JSON.stringify(Object.getOwnPropertyDescriptor(this, 'x')));
+assert_equal(JSON.stringify(Object.getOwnPropertyDescriptor(this, 'x')), '{"value":10,"writable":false,"enumerable":false,"configurable":true}');
 
 const o1 = {
   k: 1
@@ -68,7 +74,7 @@ for (let i = 0; i < 1100; i++) {
     enumerable: false
   });
 }
-print(JSON.stringify(o1))
+assert_equal(JSON.stringify(o1), '{"k":1}')
 
 function fn() { };
 let v0 = function fn1() { }.bind(fn);
@@ -76,4 +82,6 @@ Object.defineProperty(v0, "length", {
   writable: true
 })
 v0.length = 42;
-print(v0.length)
+assert_equal(v0.length, 42)
+
+test_end();

@@ -88,4 +88,9 @@ void SetSecurityLabel(const std::string& path)
         LOG_ECMA(WARN) << "set label failed! level: " << DEFAULT_DATA_LEVEL << ", file: " << path;
     }
 }
+
+void InitializeMallocConfig()
+{
+    LOG_ECMA(INFO) << "Initialize Malloc Config in mac not support";
+}
 }  // namespace panda::ecmascript

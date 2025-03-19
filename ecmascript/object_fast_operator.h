@@ -72,8 +72,8 @@ public:
                                                   bool *isCallGetter = nullptr);
 
     template <Status status = Status::None>
-    static inline JSTaggedValue TrySetPropertyByNameThroughCacheAtLocal(JSThread *thread, JSTaggedValue receiver,
-                                                                        JSTaggedValue key, JSTaggedValue value);
+    static inline JSTaggedValue TrySetPropertyByNameThroughCacheAtLocal(JSThread *thread,
+        JSHandle<JSTaggedValue> receiver, JSHandle<JSTaggedValue> key, JSHandle<JSTaggedValue> value);
 
     template <Status status = Status::None>
     static inline JSTaggedValue SetPropertyByName(JSThread *thread, JSTaggedValue receiver, JSTaggedValue key,
@@ -115,7 +115,6 @@ public:
 
     static inline JSTaggedValue CallGetter(JSThread *thread, JSTaggedValue receiver, JSTaggedValue holder,
                                            JSTaggedValue value);
-    static inline JSTaggedValue FastGetPropertyByPorpsIndex(JSThread *thread, JSTaggedValue receiver, uint32_t index);
 
     static inline int64_t TryToElementsIndex(JSTaggedValue key);
 private:

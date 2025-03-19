@@ -68,7 +68,10 @@ public:
     GateRef NewJSProxy(GateRef glue, GateRef target, GateRef handler);
     GateRef NewJSArray(GateRef glue, GateRef hclass);
     GateRef NewTaggedArray(GateRef glue, GateRef len);
+    GateRef NewTaggedArrayInOld(GateRef glue, GateRef len);
     GateRef NewMutantTaggedArray(GateRef glue, GateRef len);
+    GateRef NewMutantTaggedArrayInOld(GateRef glue, GateRef len);
+    GateRef ExtendArrayWithOptimizationCheck(GateRef glue, GateRef elements, GateRef newLen);
     GateRef CopyArray(GateRef glue, GateRef elements, GateRef oldLen, GateRef newLen,
                       RegionSpaceFlag spaceType = RegionSpaceFlag::IN_YOUNG_SPACE);
     GateRef ExtendArrayCheck(GateRef glue, GateRef elements, GateRef newLen,
@@ -78,7 +81,7 @@ public:
     void ExtendMutantArray(Variable *result, GateRef glue, GateRef elements, GateRef newLen, Label *exit,
                            RegionSpaceFlag spaceType = RegionSpaceFlag::IN_YOUNG_SPACE);
     GateRef NewJSArrayWithSize(GateRef hclass, GateRef size);
-    GateRef NewEmptyJSArrayWithHClass(GateRef hclass);
+    GateRef NewJSArrayWithHClass(GateRef hclass, GateRef length);
     GateRef NewJSForinIterator(GateRef glue, GateRef receiver, GateRef keys, GateRef cachedHclass);
     GateRef LoadHClassFromMethod(GateRef glue, GateRef method);
     GateRef LoadSHClassFromMethod(GateRef glue, GateRef method);
@@ -96,8 +99,8 @@ public:
     void FillArgumentsList(GateRef argumentsList, GateRef sp, GateRef startIdx, GateRef numArgs);
     GateRef NewArgumentsListObj(GateRef numArgs);
     void NewArgumentsObj(Variable *result, Label *exit, GateRef argumentsList, GateRef numArgs);
-    void AssignRestArg(Variable *result, Label *exit, GateRef sp, GateRef startIdx, GateRef numArgs,
-                       GateRef intialHClass);
+    // Requires result to be array of arguments
+    void AssignRestArg(Variable *result, Label *exit, GateRef sp, GateRef startIdx, GateRef numArgs);
     void AllocLineStringObject(Variable *result, Label *exit, GateRef length, bool compressed);
     void AllocSlicedStringObject(Variable *result, Label *exit, GateRef from, GateRef length,
         FlatStringStubBuilder *flatString);
@@ -128,6 +131,7 @@ public:
     GateRef NewTaggedSubArray(GateRef glue, GateRef srcTypedArray, GateRef elementSize, GateRef newLength,
         GateRef beginIndex, GateRef arrayCls, GateRef buffer);
     GateRef NewTypedArray(GateRef glue, GateRef srcTypedArray, GateRef srcType, GateRef length);
+    GateRef NewTypedArraySameType(GateRef glue, GateRef srcTypedArray, GateRef srcType, GateRef length);
     GateRef NewJSObjectByConstructor(GateRef glue, GateRef constructor, GateRef newTarget);
     GateRef NewFloat32ArrayObj(GateRef glue, GateRef glueGlobalEnv);
     GateRef NewFloat32ArrayWithSize(GateRef glue, GateRef size);
@@ -136,8 +140,14 @@ public:
     GateRef NewProfileTypeInfoCell(GateRef glue, GateRef value);
     GateRef GetElementSizeFromType(GateRef glue, GateRef type);
     GateRef GetOnHeapHClassFromType(GateRef glue, GateRef type);
+    GateRef GetNotOnHeapHClassFromType(GateRef glue, GateRef type);
+    GateRef CreateArrayFromList(GateRef glue, GateRef elements, GateRef kind);
+    GateRef CreateListFromArrayLike(GateRef glue, GateRef arrayObj);
+    void CreateJSIteratorResult(GateRef glue, Variable *res, GateRef value, GateRef done, Label *exit);
+
 private:
     static constexpr int MAX_TAGGED_ARRAY_LENGTH = 50;
+    static constexpr int MAX_EXTEND_ARRAY_LENGTH = 2048;
     GateRef LoadTrackInfo(GateRef glue, GateRef jsFunc, TraceIdInfo traceIdInfo,
         GateRef profileTypeInfo, GateRef slotId, GateRef slotValue, GateRef arrayLiteral, ProfileOperation callback);
     GateRef LoadArrayHClassSlowPath(
@@ -150,6 +160,7 @@ private:
     void AllocateInSOld(Variable *result, Label *exit, GateRef hclass);
     void InitializeTaggedArrayWithSpeicalValue(Label *exit,
         GateRef array, GateRef value, GateRef start, GateRef length);
+    void InitializeObject(Variable *result);
     GateRef glue_ {Circuit::NullGate()};
     GateRef size_ {0};
 };

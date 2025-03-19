@@ -14,11 +14,9 @@
  */
 #include "ecmascript/compiler/aot_file/aot_file_manager.h"
 
-#include <utility>
 
 #include "ecmascript/compiler/aot_snapshot/aot_snapshot_constants.h"
 #include "ecmascript/js_file_path.h"
-#include "ecmascript/message_string.h"
 #include "ecmascript/ohos/framework_helper.h"
 #include "ecmascript/ohos/ohos_preload_app_info.h"
 #include "ecmascript/snapshot/mem/snapshot.h"
@@ -46,14 +44,14 @@ void AOTLiteralInfo::SetObjectToCache(JSThread *thread, uint32_t index, JSTagged
     Set(thread, index, value);
 }
 
-void AOTFileManager::Iterate(const RootVisitor &v)
+void AOTFileManager::Iterate(RootVisitor &v)
 {
     for (auto &iter : aiDatum_) {
         auto &aiData = iter.second;
         for (auto &eachFileData : aiData) {
             auto &cpMap = eachFileData.second.multiCpsMap_;
             for (auto &eachCpPair : cpMap) {
-                v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&eachCpPair.second)));
+                v.VisitRoot(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&eachCpPair.second)));
             }
         }
     }
@@ -234,6 +232,11 @@ void AOTFileManager::BindPreloadedPandaFilesInAotFile(const std::string &moduleN
             continue;
         }
         if (!abcFile->IsLoadedAOT()) {
+            if (!anFileDataManager->SafeCheckFilenameToChecksum(abcNormalizedName, abcFile->GetChecksum())) {
+                LOG_ECMA(ERROR) << "BindPreloadedPandaFilesInAotFile failed because of different checksum: "
+                                << abcNormalizedName;
+                continue;
+            }
             abcFile->SetAOTFileInfoIndex(aotFileInfoIndex);
             LOG_ECMA(INFO) << "Bind file: " << abcNormalizedName << ", aotFileInfoIndex: " << aotFileInfoIndex
                            << " in module: " << moduleName;
@@ -272,6 +275,10 @@ void AOTFileManager::BindPandaFileInAotFile(const std::string &aotFileBaseName, 
         // not existed in an file.
         LOG_ECMA(WARN) << "Bind panda file to AOT failed. " << abcNormalizedName << " not found for "
                        << aotFileBaseName;
+        return;
+    }
+    if (!anFileDataManager->SafeCheckFilenameToChecksum(abcNormalizedName, jsPandaFile->GetChecksum())) {
+        LOG_ECMA(ERROR) << "checksum is different,BindPandaFileInAotFile failed " << abcNormalizedName;
         return;
     }
     jsPandaFile->SetAOTFileInfoIndex(aotFileInfoIndex);

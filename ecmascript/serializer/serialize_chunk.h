@@ -43,6 +43,12 @@ public:
         top_ += JSTaggedValue::TaggedTypeSize();
     }
 
+    void Set(size_t index, JSTaggedType value)
+    {
+        ASSERT(begin_ + index * JSTaggedValue::TaggedTypeSize() < top_);
+        *reinterpret_cast<JSTaggedType *>(begin_ + index * JSTaggedValue::TaggedTypeSize()) = value;
+    }
+
     JSTaggedType Get(size_t index) const
     {
         ASSERT(begin_ + index * JSTaggedValue::TaggedTypeSize() < top_);
@@ -86,10 +92,10 @@ public:
         return (top_ - begin_) / JSTaggedValue::TaggedTypeSize();
     }
 
-    void Iterate(const RootVisitor &v)
+    void Iterate(RootVisitor &v)
     {
         for (uintptr_t slot = begin_; slot < top_; slot += JSTaggedValue::TaggedTypeSize()) {
-            v(Root::ROOT_VM, ObjectSlot(slot));
+            v.VisitRoot(Root::ROOT_VM, ObjectSlot(slot));
         }
     }
 

@@ -36,12 +36,16 @@ static ARK_INLINE void WriteBarrier(const JSThread *thread, void *obj, size_t of
     Region *objectRegion = Region::ObjectAddressToRange(static_cast<TaggedObject *>(obj));
     Region *valueRegion = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(value));
 #if ECMASCRIPT_ENABLE_BARRIER_CHECK
-    if (!thread->GetEcmaVM()->GetHeap()->IsAlive(JSTaggedValue(value).GetHeapObject())) {
-        LOG_FULL(FATAL) << "WriteBarrier checked value:" << value << " is invalid!";
+    // During the AOT deserialization process, the address of hclass is set on the object first, but in reality, the
+    // object layout of hclass has not been fully initialized, so this check needs to be skipped.
+    if constexpr (writeType != WriteBarrierType::AOT_DESERIALIZE) {
+        if (!thread->GetEcmaVM()->GetHeap()->IsAlive(JSTaggedValue(value).GetHeapObject())) {
+            LOG_FULL(FATAL) << "WriteBarrier checked value:" << value << " is invalid!";
+        }
     }
 #endif
     uintptr_t slotAddr = ToUintPtr(obj) + offset;
-    if (objectRegion->InGeneralOldSpace() && valueRegion->InGeneralNewSpace()) {
+    if (objectRegion->InGeneralOldSpace() && valueRegion->InYoungSpace()) {
         // Should align with '8' in 64 and 32 bit platform
         ASSERT((slotAddr % static_cast<uint8_t>(MemAlignment::MEM_ALIGN_OBJECT)) == 0);
         objectRegion->InsertOldToNewRSet(slotAddr);
@@ -52,8 +56,6 @@ static ARK_INLINE void WriteBarrier(const JSThread *thread, void *obj, size_t of
         }
 #endif
         objectRegion->InsertLocalToShareRSet(slotAddr);
-    } else if (valueRegion->InEdenSpace() && objectRegion->InYoungSpace()) {
-        objectRegion->InsertNewToEdenRSet(slotAddr);
     }
     ASSERT(!objectRegion->InSharedHeap() || valueRegion->InSharedHeap());
     if (!valueRegion->InSharedHeap() && thread->IsConcurrentMarkingOrFinished()) {
@@ -63,7 +65,8 @@ static ARK_INLINE void WriteBarrier(const JSThread *thread, void *obj, size_t of
         // can't be "not shared heap" and "in SharedSweepableSpace" at the same time. So using "if - else if" is safe.
     } else if (valueRegion->InSharedSweepableSpace() && thread->IsSharedConcurrentMarkingOrFinished()) {
         if constexpr (writeType != WriteBarrierType::DESERIALIZE) {
-            Barriers::UpdateShared(thread, reinterpret_cast<TaggedObject *>(value), valueRegion);
+            Barriers::UpdateShared(thread, slotAddr, objectRegion, reinterpret_cast<TaggedObject *>(value),
+                                   valueRegion);
         } else {
             // In deserialize, will never add references from old object(not allocated by deserialing) to
             // new object(allocated by deserializing), only two kinds of references(new->old, new->new) will
@@ -71,6 +74,9 @@ static ARK_INLINE void WriteBarrier(const JSThread *thread, void *obj, size_t of
             // SharedGC::MarkRoots, so just mark all the new object is enough, do not need to push them to
             // workmanager and recursively visit slots of that.
             ASSERT(DaemonThread::GetInstance()->IsConcurrentMarkingOrFinished());
+            if (valueRegion->InSCollectSet() && objectRegion->InSharedHeap()) {
+                objectRegion->AtomicInsertCrossRegionRSet(slotAddr);
+            }
             valueRegion->AtomicMark(JSTaggedValue(value).GetHeapObject());
         }
     }
@@ -102,12 +108,16 @@ inline void Barriers::SynchronizedSetObject(const JSThread *thread, void *obj, s
     }
 }
 
-static inline void CopyMaybeOverlap(JSTaggedValue* dst, JSTaggedValue* src, size_t count)
+static inline void CopyMaybeOverlap(JSTaggedValue* dst, const JSTaggedValue* src, size_t count)
 {
-    std::copy_n(src, count, dst);
+    if (dst > src && dst < src + count) {
+        std::copy_backward(src, src + count, dst + count);
+    } else {
+        std::copy_n(src, count, dst);
+    }
 }
 
-static inline void CopyNoOverlap(JSTaggedValue* __restrict__ dst, JSTaggedValue* __restrict__ src, size_t count)
+static inline void CopyNoOverlap(JSTaggedValue* __restrict__ dst, const JSTaggedValue* __restrict__ src, size_t count)
 {
     std::copy_n(src, count, dst);
 }
@@ -117,7 +127,7 @@ ARK_NOINLINE bool BatchBitSet(const JSThread* thread, Region* objectRegion, JSTa
 
 template <bool needWriteBarrier, bool maybeOverlap>
 void Barriers::CopyObject(const JSThread *thread, const TaggedObject *dstObj, JSTaggedValue *dstAddr,
-                          JSTaggedValue *srcAddr, size_t count)
+                          const JSTaggedValue *srcAddr, size_t count)
 {
     // NOTE: The logic in CopyObject should be synced with WriteBarrier.
     // if any new feature/bugfix be added in CopyObject, it should also be added to WriteBarrier.
@@ -162,13 +172,14 @@ void Barriers::CopyObject(const JSThread *thread, const TaggedObject *dstObj, JS
             // value can't be "not shared heap" and "in SharedSweepableSpace" at the same time. So using "if - else if"
             // is safe.
         } else if (sharedMarking && valueRegion->InSharedSweepableSpace()) {
-            Barriers::UpdateShared(thread, taggedValue.GetTaggedObject(), valueRegion);
+            const uintptr_t slotAddr = ToUintPtr(dstAddr) + JSTaggedValue::TaggedTypeSize() * i;
+            Barriers::UpdateShared(thread, slotAddr, objectRegion, taggedValue.GetTaggedObject(), valueRegion);
         }
     }
 }
 
 template <bool maybeOverlap>
-inline void Barriers::CopyObjectPrimitive(JSTaggedValue* dst, JSTaggedValue* src, size_t count)
+inline void Barriers::CopyObjectPrimitive(JSTaggedValue* dst, const JSTaggedValue* src, size_t count)
 {
     // Copy Primitive value don't need thread.
     ASSERT((ToUintPtr(dst) % static_cast<uint8_t>(MemAlignment::MEM_ALIGN_OBJECT)) == 0);

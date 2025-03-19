@@ -14,7 +14,6 @@
  */
 
 #include "aarch64_cgfunc.h"
-#include "becommon.h"
 #include "aarch64_call_conv.h"
 
 namespace maplebe {

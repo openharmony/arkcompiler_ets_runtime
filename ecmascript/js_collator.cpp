@@ -334,7 +334,7 @@ JSHandle<JSCollator> JSCollator::InitializeCollator(JSThread *thread,
     if (forIcuCache) {
         std::string cacheEntry =
             locales->IsUndefined() ? "" : EcmaStringAccessor(locales.GetTaggedValue()).ToStdString();
-        thread->GetCurrentEcmaContext()->SetIcuFormatterToCache(IcuFormatterType::COLLATOR,
+        ecmaVm->GetIntlCache().SetIcuFormatterToCache(IcuFormatterType::COLLATOR,
             cacheEntry, icuCollator.release(), JSCollator::FreeIcuCollator);
     } else {
         SetIcuCollator(thread, collator, icuCollator.release(), JSCollator::FreeIcuCollator);
@@ -348,7 +348,7 @@ icu::Collator *JSCollator::GetCachedIcuCollator(JSThread *thread, const JSTagged
 {
     std::string cacheEntry = locales.IsUndefined() ? "" : EcmaStringAccessor(locales).ToStdString();
     void *cachedCollator =
-        thread->GetCurrentEcmaContext()->GetIcuFormatterFromCache(IcuFormatterType::COLLATOR, cacheEntry);
+        thread->GetEcmaVM()->GetIntlCache().GetIcuFormatterFromCache(IcuFormatterType::COLLATOR, cacheEntry);
     if (cachedCollator != nullptr) {
         return reinterpret_cast<icu::Collator*>(cachedCollator);
     }
@@ -502,19 +502,19 @@ CompareStringsOption JSCollator::CompareStringsOptionFor(JSThread* thread,
                                                          JSHandle<JSTaggedValue> locales)
 {
     if (locales->IsUndefined()) {
-        auto context = thread->GetCurrentEcmaContext();
-        auto defaultCompareOption = context->GetDefaultCompareStringsOption();
+        auto& intlCache = thread->GetEcmaVM()->GetIntlCache();
+        auto defaultCompareOption = intlCache.GetDefaultCompareStringsOption();
         if (defaultCompareOption.has_value()) {
             return defaultCompareOption.value();
         }
         auto defaultLocale = intl::LocaleHelper::StdStringDefaultLocale(thread);
         for (const char *fastLocale : FAST_LOCALE) {
             if (strcmp(fastLocale, defaultLocale.c_str()) == 0) {
-                context->SetDefaultCompareStringsOption(CompareStringsOption::TRY_FAST_PATH);
+                intlCache.SetDefaultCompareStringsOption(CompareStringsOption::TRY_FAST_PATH);
                 return CompareStringsOption::TRY_FAST_PATH;
             }
         }
-        context->SetDefaultCompareStringsOption(CompareStringsOption::NONE);
+        intlCache.SetDefaultCompareStringsOption(CompareStringsOption::NONE);
         return CompareStringsOption::NONE;
     }
 
@@ -783,7 +783,7 @@ JSTaggedValue JSCollator::CompareStrings(JSThread *thread, const icu::Collator *
     if (*string1 == *string2) {
         return JSTaggedValue(UCollationResult::UCOL_EQUAL);
     }
-    
+
     // Since Unicode has ignorable characters,
     // we cannot return early for 0-length strings.
     auto flatString1 = JSHandle<EcmaString>(thread, EcmaStringAccessor::Flatten(thread->GetEcmaVM(), string1));
@@ -807,7 +807,7 @@ JSTaggedValue JSCollator::FastCachedCompareStrings(JSThread *thread, JSHandle<JS
     if (*string1 == *string2) {
         return JSTaggedValue(UCollationResult::UCOL_EQUAL);
     }
-    
+
     // Since Unicode has ignorable characters,
     // we cannot return early for 0-length strings.
     auto flatString1 = JSHandle<EcmaString>(thread, EcmaStringAccessor::Flatten(thread->GetEcmaVM(), string1));

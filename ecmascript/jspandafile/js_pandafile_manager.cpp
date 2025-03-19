@@ -20,7 +20,9 @@
 #include "ecmascript/jspandafile/js_pandafile_executor.h"
 #include "ecmascript/module/module_path_helper.h"
 #include "ecmascript/module/module_message_helper.h"
+#include "ecmascript/module/module_tools.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
+#include "ecmascript/platform/pandafile.h"
 
 namespace panda::ecmascript {
 using PGOProfilerManager = pgo::PGOProfilerManager;
@@ -71,9 +73,7 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFile(JSThread *threa
         !vm->IsRestrictedWorkerThread()) {
         ResolveBufferCallback resolveBufferCallback = vm->GetResolveBufferCallback();
         if (resolveBufferCallback == nullptr) {
-#if defined(PANDA_TARGET_WINDOWS) || defined(PANDA_TARGET_MACOS)
-            LOG_NO_TAG(ERROR) << "[ArkRuntime Log] Importing shared package is not supported in the Previewer.";
-#endif
+            LoadJSPandaFileFailLog("[ArkRuntime Log] Importing shared package is not supported in the Previewer.");
             LOG_FULL(FATAL) << "resolveBufferCallback is nullptr";
             return nullptr;
         }
@@ -92,18 +92,12 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFile(JSThread *threa
         std::string errorMsg;
         bool getBuffer = resolveBufferCallback(hspPath, &data, &dataSize, errorMsg);
         if (!getBuffer) {
-#if defined(PANDA_TARGET_WINDOWS) || defined(PANDA_TARGET_MACOS)
-            LOG_NO_TAG(INFO) << "[ArkRuntime Log] Importing shared package in the Previewer.";
-#endif
+            LoadJSPandaFileFailLog("[ArkRuntime Log] Importing shared package in the Previewer.");
             LOG_FULL(FATAL) << "resolveBufferCallback get hsp buffer failed, hsp path:" << filename
                 << ", errorMsg:" << errorMsg;
             return nullptr;
         }
-#if defined(PANDA_TARGET_ANDROID) || defined(PANDA_TARGET_IOS)
-        pf = panda_file::OpenPandaFileFromMemory(data, dataSize);
-#else
-        pf = panda_file::OpenPandaFileFromSecureMemory(data, dataSize);
-#endif
+        pf = OpenPandaFileFromMemory(data, dataSize);
     } else if (vm->IsRestrictedWorkerThread()) {
         // ReadOnly
         pf = panda_file::OpenPandaFileOrZip(filename);
@@ -150,17 +144,7 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFile(JSThread *threa
             return jsPandaFile;
         }
     }
-#if defined(PANDA_TARGET_PREVIEW)
-    auto pf = panda_file::OpenPandaFileFromMemory(buffer, size);
-#else
-    CString tag = ModulePathHelper::ParseFileNameToVMAName(filename);
-    constexpr size_t PR_SET_VMA_ANON_NAME_MAX_LEN = 80;
-    constexpr size_t ANON_FLAG_LEN = 7; // [anon:]
-    if (tag.length() > PR_SET_VMA_ANON_NAME_MAX_LEN - ANON_FLAG_LEN) {
-        tag = CString(ModulePathHelper::VMA_NAME_ARKTS_CODE);
-    }
-    auto pf = panda_file::OpenPandaFileFromMemory(buffer, size, tag.c_str());
-#endif
+    auto pf = ParseAndOpenPandaFile(buffer, size, filename);
     if (pf == nullptr) {
         LOG_ECMA(ERROR) << "open file " << filename << " error";
         return nullptr;
@@ -181,10 +165,8 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFile(JSThread *threa
 std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFileSecure(JSThread *thread, const CString &filename,
     std::string_view entryPoint, uint8_t *buffer, size_t size, bool needUpdate)
 {
-    bool enableESMTrace = thread->GetEcmaVM()->GetJSOptions().EnableESMTrace();
-    if (enableESMTrace) {
-        ECMA_BYTRACE_START_TRACE(HITRACE_TAG_ARK, "JSPandaFileManager::LoadJSPandaFileSecure");
-    }
+    CString traceInfo = "JSPandaFileManager::LoadJSPandaFileSecure:" + filename;
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, traceInfo.c_str());
     if (buffer == nullptr || size == 0) {
         LOG_FULL(ERROR) << "Input buffer is empty";
         return nullptr;
@@ -222,9 +204,6 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFileSecure(JSThread 
         GetJSPtExtractorAndExtract(jsPandaFile.get());
     }
 #endif
-    if (enableESMTrace) {
-        ECMA_BYTRACE_FINISH_TRACE(HITRACE_TAG_ARK);
-    }
     return jsPandaFile;
 }
 
@@ -615,9 +594,16 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::GenerateJSPandafileFromBufferCa
         thread, filename, entryPoint, bufferInfo.buffer_, bufferInfo.size_);
 }
 
-void *JSPandaFileManager::AllocateBuffer(size_t size)
+void *JSPandaFileManager::AllocateBuffer(size_t size, bool isBundlePack, CreateMode mode)
 {
-    return JSPandaFileAllocator::AllocateBuffer(size);
+    if (mode == CreateMode::DFX) {
+        return JSPandaFileAllocator::AllocateBuffer(size);
+    }
+    auto allocator = Runtime::GetInstance()->GetNativeAreaAllocator();
+    if (isBundlePack) {
+        return allocator->AllocateBuffer(size);
+    }
+    return allocator->NativeAreaPageMap(size);
 }
 
 void *JSPandaFileManager::JSPandaFileAllocator::AllocateBuffer(size_t size)
@@ -645,9 +631,16 @@ void *JSPandaFileManager::JSPandaFileAllocator::AllocateBuffer(size_t size)
     return ptr;
 }
 
-void JSPandaFileManager::FreeBuffer(void *mem)
+void JSPandaFileManager::FreeBuffer(void *mem, size_t size, bool isBundlePack, CreateMode mode)
 {
-    JSPandaFileAllocator::FreeBuffer(mem);
+    if (mode == CreateMode::DFX) {
+        return JSPandaFileAllocator::FreeBuffer(mem);
+    }
+    auto allocator = Runtime::GetInstance()->GetNativeAreaAllocator();
+    if (isBundlePack) {
+        return allocator->FreeBuffer(mem);
+    }
+    allocator->NativeAreaPageUnmap(mem, size);
 }
 
 void JSPandaFileManager::JSPandaFileAllocator::FreeBuffer(void *mem)

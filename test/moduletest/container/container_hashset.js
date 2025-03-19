@@ -119,6 +119,27 @@ if (globalThis["ArkPrivate"] != undefined) {
     })
     map.set("test forEach:", true);
 
+    // test HashSet RBTree
+    let collisionSet = new fastset();
+    let count = 0;
+
+    collisionSet.add(1224);
+    collisionSet.add(1288);
+    collisionSet.add(1464);
+    collisionSet.add(4312);
+    collisionSet.add(5128);
+    collisionSet.add(5896);
+    collisionSet.add(6600);
+    collisionSet.add(6776);
+    collisionSet.add(8424);
+    collisionSet.add(9400);
+    collisionSet.forEach((value, key, hashMap) => {
+        count += value;
+    });
+    if (count != 50512) {
+        print("test RBTree forEach fail. count = " + count);
+    }
+
     // test isEmpty: false
     map.set("test isEmpty:", !proxy.isEmpty());
 

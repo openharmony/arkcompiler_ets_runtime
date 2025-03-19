@@ -23,6 +23,7 @@
 #include "ecmascript/common.h"
 #include "ecmascript/mem/clock_scope.h"
 #include "ecmascript/mem/mem_common.h"
+#include "ecmascript/mem/long_gc_stats.h"
 #include "libpandabase/macros.h"
 
 namespace panda::ecmascript {
@@ -30,11 +31,11 @@ class Heap;
 class SharedHeap;
 
 enum class GCType : int {
-    PARTIAL_EDEN_GC,
     PARTIAL_YOUNG_GC,
     PARTIAL_OLD_GC,
     COMPRESS_GC,
     SHARED_GC,
+    SHARED_PARTIAL_GC,
     SHARED_FULL_GC,
     OTHER,
     START,
@@ -71,16 +72,28 @@ class GCStats {
     using Duration = std::chrono::duration<uint64_t, std::nano>;
 
 public:
-    explicit GCStats(const Heap *heap) : heap_(heap) {}
+    explicit GCStats(const Heap *heap) : heap_(heap)
+    {
+        longGCStats_ = new LongGCStats();
+    }
     GCStats(const Heap *heap, size_t longPuaseTime) : heap_(heap),
-        longPauseTime_(longPuaseTime) {}
-    virtual ~GCStats() = default;
+        longPauseTime_(longPuaseTime)
+    {
+        longGCStats_ = new LongGCStats();
+    }
+    virtual ~GCStats()
+    {
+        if (longGCStats_ != nullptr) {
+            delete longGCStats_;
+            longGCStats_ = nullptr;
+        }
+    };
 
     virtual void PrintStatisticResult();
     virtual void PrintGCMemoryStatistic();
     bool CheckIfLongTimePause();
     virtual void PrintGCStatistic();
-
+    GCType GetGCType(TriggerGCType gcType);
     float GetGCSpeed(SpeedData data)
     {
         return gcSpeed_[(uint8_t)data];
@@ -106,11 +119,16 @@ public:
         return reason_;
     }
 
+    LongGCStats *GetLongGCStats()
+    {
+        return longGCStats_;
+    }
+
+    bool IsLongGC(GCReason gcReason, bool gcIsSensitive, bool gcIsInBackground, float gcTotalTime);
+
     const char *GetGCTypeName()
     {
         switch (gcType_) {
-            case GCType::PARTIAL_EDEN_GC:
-                return "HPP EdenGC";
             case GCType::PARTIAL_YOUNG_GC:
                 return "HPP YoungGC";
             case GCType::PARTIAL_OLD_GC:
@@ -119,6 +137,8 @@ public:
                 return "CompressGC";
             case GCType::SHARED_GC:
                 return "SharedGC";
+            case GCType::SHARED_PARTIAL_GC:
+                return "SharedPartialGC";
             case GCType::SHARED_FULL_GC:
                 return "SharedCompressGC";
             default:
@@ -131,15 +151,6 @@ public:
 
     double GetAvgSurvivalRate()
     {
-        if (gcType_ == GCType::PARTIAL_EDEN_GC) {
-            size_t commitSize = GetRecordData(RecordData::EDEN_TOTAL_COMMIT);
-            if (commitSize == 0) {
-                return 0;
-            }
-            double copiedRate = double(GetRecordData(RecordData::EDEN_TOTAL_ALIVE)) / commitSize;
-            double promotedRate = double(GetRecordData(RecordData::EDEN_TOTAL_PROMOTE)) / commitSize;
-            return std::min(copiedRate + promotedRate, 1.0);
-        }
         double copiedRate = double(GetRecordData(RecordData::YOUNG_TOTAL_ALIVE)) /
                             GetRecordData(RecordData::YOUNG_TOTAL_COMMIT);
         double promotedRate = double(GetRecordData(RecordData::YOUNG_TOTAL_PROMOTE)) /
@@ -220,10 +231,11 @@ protected:
     void PrintVerboseGCStatistic();
     void PrintGCDurationStatistic();
     void PrintGCSummaryStatistic(GCType type = GCType::START);
-    GCType GetGCType(TriggerGCType gcType);
     void InitializeRecordList();
     float GetConcurrrentMarkDuration();
-
+    void GCFinishTrace();
+    virtual void ProcessBeforeLongGCStats();
+    virtual void ProcessAfterLongGCStats();
     int GetRecordDurationIndex(RecordDuration durationIdx)
     {
         return (int)durationIdx - (int)RecordDuration::FIRST_DATA;
@@ -314,6 +326,8 @@ protected:
 
     NO_COPY_SEMANTIC(GCStats);
     NO_MOVE_SEMANTIC(GCStats);
+private:
+    LongGCStats *longGCStats_;
 };
 
 class SharedGCStats : public GCStats {
@@ -335,6 +349,9 @@ public:
 private:
     void PrintSharedGCDuration();
     void PrintSharedGCSummaryStatistic();
+    void SharedGCFinishTrace();
+    void ProcessAfterLongGCStats() override;
+    void ProcessBeforeLongGCStats() override;
 
     const SharedHeap *sHeap_ {nullptr};
     bool enableGCTracer_ {false};

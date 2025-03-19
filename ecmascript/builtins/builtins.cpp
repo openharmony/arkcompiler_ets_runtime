@@ -81,7 +81,6 @@
 #include "ecmascript/shared_objects/js_shared_map_iterator.h"
 #include "ecmascript/shared_objects/js_shared_set_iterator.h"
 #include "ecmascript/marker_cell.h"
-#include "ecmascript/runtime.h"
 #ifdef ARK_SUPPORT_INTL
 #include "ecmascript/builtins/builtins_collator.h"
 #include "ecmascript/builtins/builtins_date_time_format.h"
@@ -105,7 +104,6 @@
 #include "ecmascript/js_segment_iterator.h"
 #endif
 
-#include "ohos/init_data.h"
 
 namespace panda::ecmascript {
 using Number = builtins::BuiltinsNumber;
@@ -291,7 +289,7 @@ void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread, bool
     }
 
     thread->CheckSafepointIfSuspended();
-    InitializeArray(env, objFuncPrototypeVal);
+    InitializeArray(env, objFuncPrototypeVal, isRealm);
     if (lazyInit) {
         LazyInitializeDate(env);
         LazyInitializeSet(env);
@@ -378,6 +376,7 @@ void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread, bool
     InitializeCjsRequire(env);
     InitializeDefaultExportOfScript(env);
     InitializePropertyDetector(env, lazyInit);
+    InitializeNapiHClass(env, objFuncClass);
     JSHandle<JSHClass> generatorFuncClass =
         factory_->CreateFunctionClass(FunctionKind::GENERATOR_FUNCTION, JSFunction::SIZE, JSType::JS_GENERATOR_FUNCTION,
                                       env->GetGeneratorFunctionPrototype());
@@ -395,7 +394,7 @@ void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread, bool
     thread_->ResetGuardians();
 
     thread->CheckSafepointIfSuspended();
-    if (vm_->GetJSOptions().IsEnableLoweringBuiltin()) {
+    if (vm_->GetJSOptions().IsEnableLoweringBuiltin() && !isRealm) {
         if (!lazyInit) {
             thread_->InitializeBuiltinObject();
         }
@@ -412,6 +411,13 @@ void Builtins::InitializePropertyDetector(const JSHandle<GlobalEnv> &env, bool l
     env->Set##name(thread_, name##detector);
     GLOBAL_ENV_DETECTOR_FIELDS(INITIALIZE_PROPERTY_DETECTOR)
 #undef INITIALIZE_PROPERTY_DETECTOR
+}
+
+void Builtins::InitializeNapiHClass(const JSHandle<GlobalEnv> &env,
+                                    const JSHandle<JSHClass> &objFuncClass) const
+{
+    JSHandle<JSHClass> newJsHClass = JSHClass::Clone(thread_, objFuncClass);
+    env->SetObjectFunctionNapiClass(thread_, newJsHClass);
 }
 
 void Builtins::SetLazyAccessor(const JSHandle<JSObject> &object, const JSHandle<JSTaggedValue> &key,
@@ -452,6 +458,10 @@ void Builtins::InitializeGlobalObject(const JSHandle<GlobalEnv> &env, const JSHa
 
 #if ECMASCRIPT_ENABLE_OPT_CODE_PROFILER
     SetFunction(env, globalObject, "printOptStat", Global::PrintOptStat, 0);
+#endif
+
+#if ECMASCRIPT_ENABLE_MEGA_PROFILER
+    SetFunction(env, globalObject, "printMegaICStat", Global::PrintMegaICStat, 0);
 #endif
 
 #if ECMASCRIPT_ENABLE_FUNCTION_CALL_TIMER
@@ -1347,6 +1357,7 @@ void Builtins::InitializeSet(const JSHandle<GlobalEnv> &env, JSHandle<JSTaggedVa
     // Set.prototype_or_hclass
     JSHandle<JSHClass> setFuncInstanceHClass =
         factory_->NewEcmaHClass(JSSet::SIZE, JSType::JS_SET, setFuncPrototypeValue);
+    env->SetSetClass(thread_, setFuncInstanceHClass);
     // Set() = new Function()
     JSHandle<JSTaggedValue> setFunction(
         NewBuiltinConstructor(env, setFuncPrototype, BuiltinsSet::SetConstructor, "Set", FunctionLength::ZERO,
@@ -1410,6 +1421,7 @@ void Builtins::LazyInitializeSet(const JSHandle<GlobalEnv> &env)
     env->SetBuiltinsSetFunction(thread_, accessor);
     env->SetSetPrototype(thread_, accessor);
     env->SetSetProtoValuesFunction(thread_, accessor);
+    env->SetSetClass(thread_, accessor);
 }
 
 void Builtins::InitializeMap(const JSHandle<GlobalEnv> &env, JSHandle<JSTaggedValue> objFuncPrototypeVal) const
@@ -2146,11 +2158,12 @@ void Builtins::InitializeRegExp(const JSHandle<GlobalEnv> &env)
     globalConst->SetConstant(ConstantIndex::JS_REGEXP_CLASS_INDEX, regexpFuncInstanceHClass.GetTaggedValue());
 }
 
-void Builtins::InitializeArray(const JSHandle<GlobalEnv> &env, const JSHandle<JSTaggedValue> &objFuncPrototypeVal) const
+void Builtins::InitializeArray(const JSHandle<GlobalEnv> &env, const JSHandle<JSTaggedValue> &objFuncPrototypeVal,
+                               bool isRealm) const
 {
     [[maybe_unused]] EcmaHandleScope scope(thread_);
     // Arraybase.prototype
-    JSHandle<JSHClass> arrBaseFuncInstanceHClass = factory_->CreateJSArrayInstanceClass(
+    JSHandle<JSHClass> arrBaseFuncInstanceHClass = JSArray::CreateJSArrayPrototypeClass(thread_, factory_,
         objFuncPrototypeVal, BuiltinsArray::GetNumPrototypeInlinedProperties());
     // Since we don't want the operations on the array prototype to go through the IR code.
     // Specially we set the bit of the array prototype to true.
@@ -2165,8 +2178,11 @@ void Builtins::InitializeArray(const JSHandle<GlobalEnv> &env, const JSHandle<JS
     //  Array.prototype_or_hclass
     JSMutableHandle<JSHClass> arrFuncInstanceHClass(thread_, JSTaggedValue::Undefined());
     arrFuncInstanceHClass.Update(factory_->CreateJSArrayInstanceClass(arrFuncPrototypeValue));
+    env->SetArrayClass(thread_, arrFuncInstanceHClass);
     auto globalConstant = const_cast<GlobalEnvConstants *>(thread_->GlobalConstants());
-    globalConstant->InitElementKindHClass(thread_, arrFuncInstanceHClass);
+    if (!isRealm) {
+        globalConstant->InitElementKindHClass(thread_, arrFuncInstanceHClass);
+    }
     if (thread_->GetEcmaVM()->IsEnableElementsKind()) {
         // for all JSArray, the initial ElementsKind should be NONE
         // For PGO, currently we do not support elementsKind for builtins
@@ -2179,10 +2195,11 @@ void Builtins::InitializeArray(const JSHandle<GlobalEnv> &env, const JSHandle<JS
         arrFuncInstanceHClass.Update(hclassVal);
     }
 
+    JSHandle<JSHClass> arrayFunctionHClass = JSArray::CreateJSArrayFunctionClass(thread_, factory_, env);
     // Array = new Function()
     JSHandle<JSObject> arrayFunction(
         NewBuiltinConstructor(env, arrFuncPrototype, BuiltinsArray::ArrayConstructor, "Array", FunctionLength::ONE,
-                              BUILTINS_STUB_ID(ArrayConstructor)));
+                              BUILTINS_STUB_ID(ArrayConstructor), arrayFunctionHClass));
     JSHandle<JSFunction> arrayFuncFunction(arrayFunction);
 
     // Set the [[Realm]] internal slot of F to the running execution context's Realm
@@ -2215,11 +2232,13 @@ void Builtins::InitializeArray(const JSHandle<GlobalEnv> &env, const JSHandle<JS
     }
 
     // 22.1.2.5 get %Array% [ @@species ]
-    JSHandle<JSTaggedValue> speciesSymbol = env->GetSpeciesSymbol();
     JSHandle<JSTaggedValue> speciesGetter =
         CreateGetter(env, BuiltinsArray::Species, "[Symbol.species]", FunctionLength::ZERO);
-    SetGetter(JSHandle<JSObject>(arrayFunction), speciesSymbol, speciesGetter);
-
+    JSHandle<AccessorData> speciesAccessor = factory_->NewAccessorData();
+    speciesAccessor->SetGetter(thread_, speciesGetter);
+    arrayFunction->SetPropertyInlinedProps(thread_, JSArray::ARRAY_FUNCTION_SPECIES_INDEX,
+                                           speciesAccessor.GetTaggedValue());
+    globalConstant->SetConstant(ConstantIndex::ARRAY_SPECIES_ACCESSOR, speciesAccessor.GetTaggedValue());
     constexpr int arrProtoLen = 0;
     JSHandle<JSTaggedValue> keyString = thread_->GlobalConstants()->GetHandledLengthString();
     PropertyDescriptor descriptor(thread_, JSHandle<JSTaggedValue>(thread_, JSTaggedValue(arrProtoLen)), true, false,
@@ -2240,8 +2259,10 @@ void Builtins::InitializeArray(const JSHandle<GlobalEnv> &env, const JSHandle<JS
     env->SetArrayFunction(thread_, arrayFunction);
     env->SetArrayPrototype(thread_, arrFuncPrototype);
 
-    thread_->SetInitialBuiltinHClass(BuiltinTypeId::ARRAY, arrayFunction->GetJSHClass(),
-        *arrFuncInstanceHClass, arrFuncPrototype->GetJSHClass());
+    if (!isRealm) {
+        thread_->SetInitialBuiltinHClass(BuiltinTypeId::ARRAY, arrayFunction->GetJSHClass(),
+                                         *arrFuncInstanceHClass, arrFuncPrototype->GetJSHClass());
+    }
 }
 
 void Builtins::InitializeTypedArray(const JSHandle<GlobalEnv> &env, JSHandle<JSTaggedValue> objFuncPrototypeVal) const
@@ -2733,10 +2754,17 @@ void Builtins::LazyInitializeDataView(const JSHandle<GlobalEnv> &env) const
 JSHandle<JSFunction> Builtins::NewBuiltinConstructor(const JSHandle<GlobalEnv> &env,
                                                      const JSHandle<JSObject> &prototype, EcmaEntrypoint ctorFunc,
                                                      std::string_view name, int length,
-                                                     kungfu::BuiltinsStubCSigns::ID builtinId) const
+                                                     kungfu::BuiltinsStubCSigns::ID builtinId,
+                                                     JSHandle<JSHClass> hclass) const
 {
-    JSHandle<JSFunction> ctor =
-        factory_->NewJSFunction(env, reinterpret_cast<void *>(ctorFunc), FunctionKind::BUILTIN_CONSTRUCTOR, builtinId);
+    JSHandle<Method> target = factory_->NewMethodForNativeFunction(reinterpret_cast<void *>(ctorFunc),
+                                                                   FunctionKind::BUILTIN_CONSTRUCTOR, builtinId);
+    JSHandle<JSFunction> ctor;
+    if (!hclass.IsEmpty()) {
+        ctor = factory_->NewJSFunctionByHClass(target, hclass);
+    } else {
+        ctor = factory_->NewJSFunction(env, target);
+    }
     InitializeCtor(env, prototype, ctor, name, length);
     return ctor;
 }
@@ -2760,6 +2788,14 @@ JSHandle<JSFunction> Builtins::NewBuiltinCjsCtor(const JSHandle<GlobalEnv> &env,
     return ctor;
 }
 
+void Builtins::RegisterBuiltinToGlobal(kungfu::BuiltinsStubCSigns::ID builtinId, JSHandle<JSFunction> function) const
+{
+    auto globalConst = const_cast<GlobalEnvConstants *>(thread_->GlobalConstants());
+    if (IS_TYPED_BUILTINS_ID(builtinId) || IS_TYPED_INLINE_BUILTINS_ID(builtinId)) {
+        globalConst->SetConstant(GET_TYPED_CONSTANT_INDEX(builtinId), function);
+    }
+}
+
 JSHandle<JSFunction> Builtins::NewFunction(const JSHandle<GlobalEnv> &env, const JSHandle<JSTaggedValue> &key,
                                            EcmaEntrypoint func, int length,
                                            kungfu::BuiltinsStubCSigns::ID builtinId) const
@@ -2771,9 +2807,7 @@ JSHandle<JSFunction> Builtins::NewFunction(const JSHandle<GlobalEnv> &env, const
     JSHandle<JSFunctionBase> baseFunction(function);
     auto globalConst = const_cast<GlobalEnvConstants *>(thread_->GlobalConstants());
     JSFunction::SetFunctionName(thread_, baseFunction, key, globalConst->GetHandledUndefined());
-    if (IS_TYPED_BUILTINS_ID(builtinId) || IS_TYPED_INLINE_BUILTINS_ID(builtinId)) {
-        globalConst->SetConstant(GET_TYPED_CONSTANT_INDEX(builtinId), function);
-    }
+    RegisterBuiltinToGlobal(builtinId, function);
     return function;
 }
 
@@ -2864,6 +2898,7 @@ JSHandle<JSTaggedValue> Builtins::SetAndReturnFunctionAtSymbol(const JSHandle<Gl
     JSHandle<JSFunctionBase> baseFunction(function);
     JSHandle<JSTaggedValue> handleUndefine(thread_, JSTaggedValue::Undefined());
     JSFunction::SetFunctionName(thread_, baseFunction, nameString, handleUndefine);
+    RegisterBuiltinToGlobal(builtinId, function);
     // NOLINTNEXTLINE(readability-braces-around-statements, bugprone-suspicious-semicolon)
     if constexpr (flag == JSSymbol::SYMBOL_TO_PRIMITIVE_TYPE) {
         PropertyDescriptor descriptor(thread_, JSHandle<JSTaggedValue>::Cast(function), false, false, true);
@@ -2908,6 +2943,7 @@ JSHandle<JSTaggedValue> Builtins::CreateGetter(const JSHandle<GlobalEnv> &env, E
     JSFunction::SetFunctionLength(thread_, function, JSTaggedValue(length));
     JSHandle<JSTaggedValue> prefix = thread_->GlobalConstants()->GetHandledGetString();
     JSFunction::SetFunctionName(thread_, JSHandle<JSFunctionBase>(function), key, prefix);
+    RegisterBuiltinToGlobal(builtinId, function);
     return JSHandle<JSTaggedValue>(function);
 }
 
@@ -2986,10 +3022,7 @@ void Builtins::SetFuncToObjAndGlobal(const JSHandle<GlobalEnv> &env, const JSHan
     JSHandle<JSFunctionBase> baseFunction(function);
     JSHandle<JSTaggedValue> handleUndefine(thread_, JSTaggedValue::Undefined());
     JSFunction::SetFunctionName(thread_, baseFunction, keyString, handleUndefine);
-    if (IS_TYPED_BUILTINS_ID(builtinId) || IS_TYPED_INLINE_BUILTINS_ID(builtinId)) {
-        auto globalConst = const_cast<GlobalEnvConstants *>(thread_->GlobalConstants());
-        globalConst->SetConstant(GET_TYPED_CONSTANT_INDEX(builtinId), function);
-    }
+    RegisterBuiltinToGlobal(builtinId, function);
     PropertyDescriptor descriptor(thread_, JSHandle<JSTaggedValue>::Cast(function), true, false, true);
     JSObject::DefineOwnProperty(thread_, obj, keyString, descriptor);
     JSObject::DefineOwnProperty(thread_, globalObject, keyString, descriptor);

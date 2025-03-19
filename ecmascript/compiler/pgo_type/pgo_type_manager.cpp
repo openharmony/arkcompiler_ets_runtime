@@ -18,16 +18,16 @@
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/layout_info-inl.h"
 namespace panda::ecmascript::kungfu {
-void PGOTypeManager::Iterate(const RootVisitor &v)
+void PGOTypeManager::Iterate(RootVisitor &v)
 {
     for (auto &iter : hcData_) {
         for (auto &hclassIter : iter.second) {
-            v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&(hclassIter.second))));
+            v.VisitRoot(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&(hclassIter.second))));
         }
     }
     aotSnapshot_.Iterate(v);
     for (auto &iter : hclassInfoLocal_) {
-        v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&(iter))));
+        v.VisitRoot(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&(iter))));
     }
 }
 
@@ -75,7 +75,7 @@ uint32_t PGOTypeManager::GetSymbolCountFromHClassData()
                 uint32_t len = hclass->NumberOfProps();
                 for (uint32_t i = 0; i < len; i++) {
                     JSTaggedValue key = layoutInfo->GetKey(i);
-                    if (key.IsSymbol()) {
+                    if (key.IsSymbol() && JSSymbol::Cast(key)->HasId()) {
                         count++;
                     }
                 }
@@ -105,7 +105,7 @@ void PGOTypeManager::GenSymbolInfo()
                 uint32_t len = hclass->NumberOfProps();
                 for (uint32_t i = 0; i < len; i++) {
                     JSTaggedValue symbol = layoutInfo->GetKey(i);
-                    if (symbol.IsSymbol()) {
+                    if (symbol.IsSymbol() && JSSymbol::Cast(symbol)->HasId()) {
                         JSSymbol* symbolPtr = JSSymbol::Cast(symbol.GetTaggedObject());
                         uint64_t symbolId = symbolPtr->GetPrivateId();
                         uint64_t slotIndex = JSSymbol::GetSlotIndex(symbolId);
@@ -126,16 +126,36 @@ void PGOTypeManager::GenSymbolInfo()
     aotSnapshot_.StoreSymbolInfo(symbolInfo);
 }
 
+bool PGOTypeManager::IsNapiIhc(ProfileType rootType, ProfileType childType)
+{
+    // If the rootType is NapiType and the childType is root, it must be napi object's ihc.
+    return rootType.IsNapiType() && childType.IsRootType();
+}
+
+/*                  hclassInfo
+ *      +-----------------------------------+----
+ *      |          AOT Napi Hclass          |  zero slot
+ *      +-----------------------------------+----
+ *      |              ...                  |   ^
+ *      |              ...                  |   |
+ *      |             hcData                |  pos
+ *      |              ...                  |   |
+ *      |              ...                  |   v
+ *      +-----------------------------------+----
+ *      | Object Literal Cache (maybe hole) |  last slot
+ *      +-----------------------------------+----
+ */
+
 void PGOTypeManager::GenHClassInfo()
 {
-    uint32_t count = 1; // For object literal hclass cache
+    uint32_t count = 2; // For object literal hclass cache and Napi root type.
     for (auto& root: hcData_) {
         count += root.second.size();
     }
 
     ObjectFactory* factory = thread_->GetEcmaVM()->GetFactory();
     JSHandle<TaggedArray> hclassInfo = factory->NewTaggedArray(count);
-    uint32_t pos = 0;
+    uint32_t pos = 1; // 1: the first one is the napi object's ihc.
     profileTyperToHClassIndex_.clear();
     for (auto& root: hcData_) {
         ProfileType rootType = root.first;
@@ -143,8 +163,13 @@ void PGOTypeManager::GenHClassInfo()
             ProfileType childType = child.first;
             JSTaggedType hclass = child.second;
             ProfileTyper key = std::make_pair(rootType, childType);
-            profileTyperToHClassIndex_.emplace(key, pos);
-            hclassInfo->Set(thread_, pos++, JSTaggedValue(hclass));
+            if (IsNapiIhc(rootType, childType)) {
+                profileTyperToHClassIndex_.emplace(key, 0);
+                hclassInfo->Set(thread_, 0, JSTaggedValue(hclass));
+            } else {
+                profileTyperToHClassIndex_.emplace(key, pos);
+                hclassInfo->Set(thread_, pos++, JSTaggedValue(hclass));
+            }
         }
     }
     // The cache of Object literal serializes to last index of AOTHClassInfo.
@@ -154,7 +179,7 @@ void PGOTypeManager::GenHClassInfo()
         // It cannot be serialized if object in global env.
         JSHandle<TaggedArray> array(maybeCache);
         auto cloneResult = factory->CopyArray(array, array->GetLength(), array->GetLength());
-        hclassInfo->Set(thread_, pos++, cloneResult);
+        hclassInfo->Set(thread_, hclassInfo->GetLength() - 1, cloneResult);
     }
 
     EcmaVM *vm = thread_->GetEcmaVM();
@@ -173,7 +198,7 @@ void PGOTypeManager::GenProtoTransitionInfo()
         JSTaggedValue transIhc = QueryHClass(protoTransType.transIhcType, protoTransType.transIhcType);
         JSTaggedValue transPhc = QueryHClass(protoTransType.transPhcType, protoTransType.transPhcType);
         if (ihc.IsUndefined() || baseIhc.IsUndefined() || transIhc.IsUndefined() || transPhc.IsUndefined()) {
-            LOG_COMPILER(ERROR) << "broken prototype transition info!";
+            LOG_COMPILER(DEBUG) << "broken prototype transition info!";
             continue;
         }
         transitionTable->InsertTransitionItem(thread_,
@@ -335,5 +360,41 @@ int PGOTypeManager::RecordAndGetHclassIndexForJIT(JSHClass* hclass)
     return pos_++;
 }
 
+void PGOTypeManager::MergeRepresentationForProtoTransition()
+{
+    for (auto &protoTransType : protoTransTypes_) {
+        JSTaggedValue ihc = QueryHClass(protoTransType.ihcType, protoTransType.ihcType);
+        JSTaggedValue baseIhc = QueryHClass(protoTransType.baseRootType, protoTransType.baseType);
+        JSTaggedValue transIhc = QueryHClass(protoTransType.transIhcType, protoTransType.transIhcType);
+        JSTaggedValue transPhc = QueryHClass(protoTransType.transPhcType, protoTransType.transPhcType);
+        if (ihc.IsUndefined() || baseIhc.IsUndefined() || transIhc.IsUndefined() || transPhc.IsUndefined()) {
+            LOG_COMPILER(DEBUG) << "broken prototype transition info!";
+            continue;
+        }
+        JSHClass::MergeRepresentation(thread_, JSHClass::Cast(baseIhc.GetTaggedObject()),
+            JSHClass::Cast(transPhc.GetTaggedObject()));
+        JSHClass::MergeRepresentation(thread_, JSHClass::Cast(ihc.GetTaggedObject()),
+            JSHClass::Cast(transIhc.GetTaggedObject()));
+    }
+}
 
+uint32_t PGOTypeManager::GetMaxPropsNum(uint32_t literalLength) const
+{
+    auto it = maxPropsNum_.find(literalLength);
+    if (it != maxPropsNum_.end()) {
+        return it->second;
+    }
+    LOG_ECMA(FATAL) << "this branch is unreachable";
+    UNREACHABLE();
+}
+
+void PGOTypeManager::SetMaxPropsNum(uint32_t literalLength, uint32_t maxPropsNum) const
+{
+    auto it = maxPropsNum_.find(literalLength);
+    if (it != maxPropsNum_.end()) {
+        it->second = std::max(it->second, maxPropsNum);
+    } else {
+        maxPropsNum_[literalLength] = maxPropsNum;
+    }
+}
 }  // namespace panda::ecmascript

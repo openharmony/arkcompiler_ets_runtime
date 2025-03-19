@@ -226,7 +226,7 @@ private:
     void SpeculateNumber(const UnOpTypeInfoAccessor& tacc);
     void SpeculateConditionJump(const ConditionJumpTypeInfoAccessor &tacc, bool flag);
     void SpeculateCallBuiltin(GateRef gate, GateRef func, const std::vector<GateRef> &args,
-                              BuiltinsStubCSigns::ID id, bool isThrow, bool isSideEffect = false);
+                              BuiltinsStubCSigns::ID id, bool isThrow);
     void SpeculateCallBuiltinFromGlobal(GateRef gate, const std::vector<GateRef> &args,
                                         BuiltinsStubCSigns::ID id, bool isThrow, bool isSideEffect = false);
     void DeleteConstDataIfNoUser(GateRef gate);
@@ -236,6 +236,7 @@ private:
     bool IsTrueOrFalseHasProfileType(GateRef gate) const;
     int32_t GetEcmaOpCodeListIndex(EcmaOpcode ecmaOpCode);
     void ParseOptBytecodeRange();
+    void ReplaceGateWithPendingException(GateRef glue, GateRef gate, GateRef state, GateRef depend, GateRef value);
 
     const JSPandaFile* GetCalleePandaFile(GateRef gate);
 

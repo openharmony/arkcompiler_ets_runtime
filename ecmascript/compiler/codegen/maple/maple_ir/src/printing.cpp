@@ -15,7 +15,6 @@
 
 #include "printing.h"
 #include "mir_module.h"
-#include "types_def.h"
 
 #include <iomanip>
 

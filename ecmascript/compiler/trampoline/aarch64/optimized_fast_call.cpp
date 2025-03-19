@@ -15,17 +15,7 @@
 
 #include "ecmascript/compiler/trampoline/aarch64/common_call.h"
 
-#include "ecmascript/compiler/assembler/assembler.h"
-#include "ecmascript/compiler/argument_accessor.h"
-#include "ecmascript/compiler/rt_call_signature.h"
-#include "ecmascript/deoptimizer/deoptimizer.h"
-#include "ecmascript/ecma_runtime_call_info.h"
-#include "ecmascript/frames.h"
-#include "ecmascript/js_function.h"
-#include "ecmascript/method.h"
-#include "ecmascript/js_thread.h"
 #include "ecmascript/message_string.h"
-#include "ecmascript/runtime_call_id.h"
 
 namespace panda::ecmascript::aarch64 {
 using Label = panda::ecmascript::Label;

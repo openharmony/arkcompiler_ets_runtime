@@ -41,3 +41,13 @@ print(undefinedValue && 1);
 print(nullValue && 1);
 print(arr && 1);
 print(obj && 1);
+
+function foo(options) {
+    if (options) {
+        print(options);
+    } 
+}
+
+foo(true);
+foo(undefined);
+foo(true);

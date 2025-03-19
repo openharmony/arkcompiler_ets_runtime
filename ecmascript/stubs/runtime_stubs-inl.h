@@ -396,6 +396,9 @@ JSTaggedValue RuntimeStubs::RuntimeAsyncFunctionResolveOrReject(JSThread *thread
     JSHandle<JSAsyncFuncObject> asyncFuncObjHandle(asyncFuncObj);
     JSHandle<JSPromise> promise(thread, asyncFuncObjHandle->GetPromise());
 
+    if (thread->GetEcmaVM()->GetJSOptions().EnablePendingCheak()) {
+        thread->GetEcmaVM()->RemoveAsyncStackTrace(promise);
+    }
     // ActivePromise
     JSHandle<ResolvingFunctionsRecord> reactions = JSPromise::CreateResolvingFunctions(thread, promise);
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
@@ -518,7 +521,7 @@ JSTaggedValue RuntimeStubs::RuntimeStArraySpread(JSThread *thread, const JSHandl
         JSHandle<JSObject> dstObj(dst);
         ElementAccessor::CopyJSArrayObject(thread, srcObj, dstObj, length);
         for (uint32_t i = 0; i < length; i++) {
-            JSHandle<JSTaggedValue> reg(thread, ElementAccessor::Get(srcObj, i));
+            JSHandle<JSTaggedValue> reg(thread, ElementAccessor::Get(thread, srcObj, i));
             if (reg->IsHole()) {
                 JSHandle<JSTaggedValue> reg2(thread, JSArray::FastGetPropertyByValue(thread, src, i).GetTaggedValue());
                 RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -956,12 +959,7 @@ JSTaggedValue RuntimeStubs::RuntimeCreateClassWithBuffer(JSThread *thread,
         chc.Update(aotLiteralInfo->GetChc());
     }
 
-    JSHandle<JSTaggedValue> sendableEnv(thread, JSTaggedValue::Undefined());
-    if (module->GetTaggedObject()->GetClass()->IsSourceTextModule()) {
-        JSHandle<SourceTextModule> moduleRecord = JSHandle<SourceTextModule>::Cast(module);
-        sendableEnv = JSHandle<JSTaggedValue>(thread, moduleRecord->GetSendableEnv());
-    }
-    JSTaggedValue literalObj = ConstantPool::GetClassLiteralFromCache(thread, cp, literalId, entry, sendableEnv);
+    JSTaggedValue literalObj = ConstantPool::GetClassLiteralFromCache(thread, cp, literalId, entry);
 
     JSHandle<ClassLiteral> classLiteral(thread, literalObj);
     JSHandle<TaggedArray> arrayHandle(thread, classLiteral->GetArray());
@@ -1487,6 +1485,9 @@ JSTaggedValue RuntimeStubs::RuntimeAsyncFunctionEnter(JSThread *thread)
     JSHandle<JSFunction> promiseFunc(globalEnv->GetPromiseFunction());
 
     JSHandle<JSPromise> promiseObject(factory->NewJSObjectByConstructor(promiseFunc));
+    if (thread->GetEcmaVM()->GetJSOptions().EnablePendingCheak()) {
+        thread->GetEcmaVM()->InsertAsyncStackTrace(promiseObject);
+    }
     promiseObject->SetPromiseState(PromiseState::PENDING);
     // 2. create asyncfuncobj
     JSHandle<JSAsyncFuncObject> asyncFuncObj = factory->NewJSAsyncFuncObject();
@@ -2727,7 +2728,8 @@ JSTaggedValue RuntimeStubs::RuntimeGetUnmapedJSArgumentObj(JSThread *thread, con
     JSHandle<JSArguments> obj = factory->NewJSArguments();
     // 4. Perform DefinePropertyOrThrow(obj, "length", PropertyDescriptor{[[Value]]: len, [[Writable]]: true,
     // [[Enumerable]]: false, [[Configurable]]: true}).
-    obj->SetPropertyInlinedProps(thread, JSArguments::LENGTH_INLINE_PROPERTY_INDEX, JSTaggedValue(len));
+    obj->SetPropertyInlinedPropsWithSize<JSArguments::SIZE, JSArguments::LENGTH_INLINE_PROPERTY_INDEX>(
+        thread, JSTaggedValue(len));
     // 5. Let index be 0.
     // 6. Repeat while index < len,
     //    a. Let val be argumentsList[index].
@@ -2737,16 +2739,18 @@ JSTaggedValue RuntimeStubs::RuntimeGetUnmapedJSArgumentObj(JSThread *thread, con
     // 7. Perform DefinePropertyOrThrow(obj, @@iterator, PropertyDescriptor
     // {[[Value]]:%ArrayProto_values%,
     // [[Writable]]: true, [[Enumerable]]: false, [[Configurable]]: true}).
-    obj->SetPropertyInlinedProps(thread, JSArguments::ITERATOR_INLINE_PROPERTY_INDEX,
-                                 globalEnv->GetArrayProtoValuesFunction().GetTaggedValue());
+    obj->SetPropertyInlinedPropsWithSize<JSArguments::SIZE, JSArguments::ITERATOR_INLINE_PROPERTY_INDEX>(
+        thread, globalEnv->GetArrayProtoValuesFunction().GetTaggedValue());
     // 8. Perform DefinePropertyOrThrow(obj, "caller", PropertyDescriptor {[[Get]]: %ThrowTypeError%,
     // [[Set]]: %ThrowTypeError%, [[Enumerable]]: false, [[Configurable]]: false}).
     JSHandle<JSTaggedValue> accessorCaller = globalEnv->GetArgumentsCallerAccessor();
-    obj->SetPropertyInlinedProps(thread, JSArguments::CALLER_INLINE_PROPERTY_INDEX, accessorCaller.GetTaggedValue());
+    obj->SetPropertyInlinedPropsWithSize<JSArguments::SIZE, JSArguments::CALLER_INLINE_PROPERTY_INDEX>(
+        thread, accessorCaller.GetTaggedValue());
     // 9. Perform DefinePropertyOrThrow(obj, "callee", PropertyDescriptor {[[Get]]: %ThrowTypeError%,
     // [[Set]]: %ThrowTypeError%, [[Enumerable]]: false, [[Configurable]]: false}).
     JSHandle<JSTaggedValue> accessorCallee = globalEnv->GetArgumentsCalleeAccessor();
-    obj->SetPropertyInlinedProps(thread, JSArguments::CALLEE_INLINE_PROPERTY_INDEX, accessorCallee.GetTaggedValue());
+    obj->SetPropertyInlinedPropsWithSize<JSArguments::SIZE, JSArguments::CALLEE_INLINE_PROPERTY_INDEX>(
+        thread, accessorCallee.GetTaggedValue());
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     // 11. Return obj
     return obj.GetTaggedValue();
@@ -2862,6 +2866,7 @@ JSTaggedValue RuntimeStubs::RuntimeOptConstructProxy(JSThread *thread, JSHandle<
                                                      JSHandle<JSTaggedValue> newTgt, JSHandle<JSTaggedValue> preArgs,
                                                      JSHandle<TaggedArray> args)
 {
+    STACK_LIMIT_CHECK(thread, JSTaggedValue::Exception());
     // step 1 ~ 4 get ProxyHandler and ProxyTarget
     JSHandle<JSTaggedValue> handler(thread, ctor->GetHandler());
     if (handler->IsNull()) {
@@ -3466,6 +3471,39 @@ uint32_t RuntimeStubs::RuntimeGetBytecodePcOfstForBaseline(const JSHandle<JSFunc
     auto bytecodePcOffset = static_cast<uint32_t>(bytecodeStart - thisMethod->GetBytecodeArray());
     LOG_BASELINEJIT(DEBUG) << "current bytecodePc offset: " << bytecodePcOffset;
     return bytecodePcOffset;
+}
+
+uintptr_t RuntimeStubs::RuntimeGetNativePcOfstForBaseline(const JSHandle<JSFunction> &func, uint64_t bytecodePos)
+{
+    const uint8_t *bytecodePc = reinterpret_cast<uint8_t*>(bytecodePos);
+    // Compute current nativePc according to bytecodePc
+    LOG_BASELINEJIT(DEBUG) << "bytecodePc address: " << std::hex << reinterpret_cast<uintptr_t>(bytecodePc);
+    auto opcode = kungfu::Bytecodes::GetOpcode(bytecodePc);
+    LOG_BASELINEJIT(DEBUG) << "bytecode: " << kungfu::GetEcmaOpcodeStr(opcode);
+    const Method *thisMethod = Method::Cast(func->GetMethod().GetTaggedObject());
+    LOG_TRACE(INFO) << "deopt to baseline method name: " << thisMethod->GetMethodName();
+    const uint8_t *bytecodeStart = thisMethod->GetBytecodeArray();
+    const uint8_t *bytecodeEnd = bytecodeStart + thisMethod->GetCodeSize();
+    ASSERT(bytecodeStart < bytecodeEnd);
+    LOG_BASELINEJIT(DEBUG) << "bytecodePc start: " << std::hex << reinterpret_cast<uintptr_t>(bytecodeStart);
+    LOG_BASELINEJIT(DEBUG) << "bytecodePc end: " << std::hex << reinterpret_cast<uintptr_t>(bytecodeEnd);
+    ASSERT(bytecodeEnd >= bytecodeStart && bytecodePc <= bytecodeEnd);
+
+    const MachineCode *machineCode = MachineCode::Cast(func->GetBaselineCode().GetTaggedObject());
+    const uintptr_t nativePcStart = machineCode->GetFuncAddr();
+    LOG_BASELINEJIT(DEBUG) << "baselineCode nativeStart address: " << std::hex << nativePcStart;
+    const uint8_t *offsetTableAddr = machineCode->GetStackMapOrOffsetTableAddress();
+    const uint32_t offsetTableSize = machineCode->GetStackMapOrOffsetTableSize();
+    uintptr_t nativePc = nativePcStart;
+    uint32_t pcOffsetIndex = 0;
+    uint8_t *bytecodetmp = const_cast<uint8_t*>(bytecodeStart);
+    while (bytecodetmp < bytecodePc && pcOffsetIndex < offsetTableSize) {
+        nativePc += static_cast<uintptr_t>(offsetTableAddr[pcOffsetIndex++]);
+        opcode = kungfu::Bytecodes::GetOpcode(bytecodetmp);
+        bytecodetmp += BytecodeInstruction::Size(opcode);
+    }
+    LOG_BASELINEJIT(DEBUG) << "baselineCode nativePc address: " << std::hex << nativePc;
+    return nativePc;
 }
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_STUBS_RUNTIME_STUBS_INL_H

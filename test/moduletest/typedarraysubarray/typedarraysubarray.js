@@ -26,24 +26,26 @@ function testTypeArrayAt1(ctor) {
     let result = [];
     let obj = new ctor([10, 11, 12, 13, 14]);
     let result1 = obj.subarray(0, 5);
-    print(result1);
+    assert_equal(result1.toString(),"10,11,12,13,14");
     result1 = obj.subarray(-1, 1);
-    print(result1.length);
+    assert_equal(result1.length,0);
     result1 = obj.subarray(2, 10);
-    print(result1);
+    assert_equal(result1.toString(),"12,13,14");
     result1 = obj.subarray(2, -10);
-    print(result1.length);
+    assert_equal(result1.length,0);
 }
 
 var v0 = new Uint8Array(64);
 try {
   v0 = v0.subarray(64);
 } catch (e) {
-  print(e);
+  assert_unreachable();
 }
 try {
   v0 = v0.subarray(64);
 } catch (e) {
-  print(e);
+  assert_unreachable();
 }
-print(v0);
+assert_equal(v0.toString(),"");
+
+test_end();

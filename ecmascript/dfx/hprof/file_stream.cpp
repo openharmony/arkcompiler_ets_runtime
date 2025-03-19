@@ -15,13 +15,7 @@
 
 #include "ecmascript/dfx/hprof/file_stream.h"
 
-#include <cerrno>
 #include <climits>
-#include <cstdio>
-#include <cstdlib>
-#include <cstring>
-#include <ios>
-#include <ostream>
 #include <unistd.h>
 
 #include "ecmascript/log_wrapper.h"

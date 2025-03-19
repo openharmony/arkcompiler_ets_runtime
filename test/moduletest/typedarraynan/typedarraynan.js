@@ -36,23 +36,25 @@ try {
 } catch(err) {
 }
 v20.set(v19);
-print(v19[0]);
-print(v20[0]);
-print(v20[1]);
+assert_equal(v19[0],4294967291);
+assert_equal(v20[0],4294967296);
+assert_equal(v20[1].toString(),"NaN");
 
 var buffer = new ArrayBuffer(8);
 var array1 = new Int32Array(buffer);
 array1[0] = -5;
 array1[1] = -5;
 var array2 = new Float64Array(buffer);
-print(array2[0]);
+assert_equal(array2[0].toString(),"NaN");
 
 array2[0] = 9007199254740991;
-print(array1[0]);
-print(array1[1]);
-print(array2[0]);
+assert_equal(array1[0],-1);
+assert_equal(array1[1],1128267775);
+assert_equal(array2[0],9007199254740991);
 
 array2[0] = NaN;
-print(array1[0]);
-print(array1[1]);
-print(array2[0]);
+assert_equal(array1[0],0);
+assert_equal(array1[1],2146959360);
+assert_equal(array2[0].toString(),"NaN");
+
+test_end();

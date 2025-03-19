@@ -14,9 +14,7 @@
  */
 
 #include "x64_standardize.h"
-#include "x64_isa.h"
 #include "x64_cg.h"
-#include "insn.h"
 
 namespace maplebe {
 #define DEFINE_MAPPING(ABSTRACT_IR, X64_MOP, ...) {ABSTRACT_IR, X64_MOP},

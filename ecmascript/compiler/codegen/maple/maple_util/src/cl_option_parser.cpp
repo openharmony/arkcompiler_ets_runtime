@@ -14,14 +14,6 @@
  */
 
 #include "cl_option.h"
-#include "cl_parser.h"
-
-#include "mpl_logging.h"
-
-#include <climits>
-#include <cstdint>
-#include <ostream>
-#include <string>
 
 using namespace maplecl;
 

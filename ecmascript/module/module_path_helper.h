@@ -132,7 +132,7 @@ public:
     static constexpr size_t PKGINFO_IS_SO_INDEX = 11;
 
     static CString PUBLIC_API ConcatFileNameWithMerge(JSThread *thread, const JSPandaFile *jsPandaFile,
-                                                      CString &baseFileName, CString recordName, CString requestName);
+        CString &baseFileName, const CString &recordName, const CString &requestName);
     static void ParseAbcPathAndOhmUrl(EcmaVM *vm, const CString &inputFileName, CString &outBaseFileName,
                                       CString &outEntryPoint);
     static CString ConcatUnifiedOhmUrl(const CString &bundleName, const CString &pkgname, const CString &entryPath,
@@ -143,6 +143,7 @@ public:
         const CString &path, const CString &version);
     static CString ConcatHspFileNameCrossBundle(const CString &bundleName, const CString &moduleName);
     static CString ConcatHspFileName(const CString &moduleName);
+    static CString ThrowInvalidOhmurlError(EcmaVM *vm, const CString &oldEntryPoint);
     static CString TransformToNormalizedOhmUrl(EcmaVM *vm, const CString &inputFileName, const CString &baseFileName,
         const CString &oldEntryPoint);
     static CString ParseUrl(EcmaVM *vm, const CString &recordName);

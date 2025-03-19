@@ -56,14 +56,14 @@ uintptr_t SustainingJSHandle::Expand()
     return reinterpret_cast<uintptr_t>(blockNext_);
 }
 
-void SustainingJSHandle::Iterate(const RootRangeVisitor &rv)
+void SustainingJSHandle::Iterate(RootVisitor &v)
 {
     size_t size = handleBlocks_.size();
     for (size_t i = 0; i < size; ++i) {
         auto block = handleBlocks_.at(i);
         auto start = block->data();
         auto end = (i != (size - 1)) ? &(block->data()[BLOCK_SIZE]) : blockNext_;
-        rv(ecmascript::Root::ROOT_HANDLE, ObjectSlot(ToUintPtr(start)), ObjectSlot(ToUintPtr(end)));
+        v.VisitRangeRoot(Root::ROOT_HANDLE, ObjectSlot(ToUintPtr(start)), ObjectSlot(ToUintPtr(end)));
     }
 }
 
@@ -104,11 +104,11 @@ void SustainingJSHandleList::RemoveSustainingJSHandle(SustainingJSHandle *sustai
     }
 }
 
-void SustainingJSHandleList::Iterate(const RootRangeVisitor &rv)
+void SustainingJSHandleList::Iterate(RootVisitor &v)
 {
     LockHolder lock(mutex_);
     for (auto handles = listHead_; handles != nullptr; handles = handles->next_) {
-        handles->Iterate(rv);
+        handles->Iterate(v);
     }
 }
 }  // namespace panda::ecmascript

@@ -15,18 +15,24 @@
 
 #ifndef ECMASCRIPT_COMPILER_BUILTINS_CONTAINERS_STACK_STUB_BUILDER_H
 #define ECMASCRIPT_COMPILER_BUILTINS_CONTAINERS_STACK_STUB_BUILDER_H
-#include "ecmascript/compiler/stub_builder-inl.h"
+#include "ecmascript/compiler/builtins/builtins_stubs.h"
 #include "ecmascript/js_api/js_api_stack.h"
 
 namespace panda::ecmascript::kungfu {
-class ContainersStackStubBuilder : public StubBuilder {
+class ContainersStackStubBuilder : public BuiltinsStubBuilder {
 public:
     explicit ContainersStackStubBuilder(StubBuilder *parent)
-        : StubBuilder(parent) {}
+        : BuiltinsStubBuilder(parent) {}
     ~ContainersStackStubBuilder() override = default;
     NO_MOVE_SEMANTIC(ContainersStackStubBuilder);
     NO_COPY_SEMANTIC(ContainersStackStubBuilder);
     void GenerateCircuit() override {}
+
+#define DECLARE_CONTAINERS_STACK_STUB_BUILDER(method, ...)           \
+    void method(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *result, Label *exit, Label *slowPath);
+BUILTINS_WITH_CONTAINERS_STACK_STUB_BUILDER(DECLARE_CONTAINERS_STACK_STUB_BUILDER)
+#undef DECLARE_CONTAINERS_STACK_STUB_BUILDER
+
     GateRef GetSize(GateRef obj)
     {
         GateRef top = Load(VariableType::INT32(), obj, IntPtr(JSAPIStack::TOP_OFFSET));

@@ -1,0 +1,3 @@
+moduleLazyImport.js;moduleLazyImport;esm;moduleLazyImport.js;xxmoduleLazyImportxx
+asyncUseLazyImport.ts;asyncUseLazyImport;esm;asyncUseLazyImport.ts;xxasyncUseLazyImportxx
+lazyExport.js;lazyExport;esm;lazyExport.js;xxlazyExportxx

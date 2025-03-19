@@ -18,6 +18,7 @@ declare interface ArkTools {
 }
 declare function print(arg:any):string;
 let arr = ["a",2,3,4];
+//aot: [trace] aot call builtin: Array.prototype.push, caller function name:func_main_0@builtinArrayPush
 print(arr.push()) //: 4
 
 function testArrayPushagrs1() {
@@ -40,6 +41,7 @@ testArrayPushagrs1();
 function testArrayPushagrs2() {
     print("testArrayPushagrs2") //: testArrayPushagrs2
     let arr = ["a",2,3,4];
+    //aot: [trace] aot call builtin: Array.prototype.push, caller function name:#*#testArrayPushagrs2@builtinArrayPush
     print(arr.push(1,2)) //: 6
     print(arr[4])   //: 1
     print(arr[5])   //: 2
@@ -84,6 +86,7 @@ function testArrayPushNotStableArray4() {
         //aot: [trace] aot inline builtin: Array.prototype.push, caller function name:#*#testArrayPushNotStableArray4@builtinArrayPush
         arr.push(i);
     }
+    //aot: [trace] aot call builtin: Array.prototype.push, caller function name:#*#testArrayPushNotStableArray4@builtinArrayPush
     print(arr.push()) //: 1028
 }
 testArrayPushNotStableArray4()
@@ -128,7 +131,9 @@ function testArrayPushMaxLength(){
       };
     
     try {
+        //aot: [trace] aot call builtin: Function.prototype.call, caller function name:#*#testArrayLikePush@builtinArrayPush
         Array.prototype.push.call(arrayLike, 1);
+        //aot: [trace] aot call builtin: Function.prototype.call, caller function name:#*#testArrayLikePush@builtinArrayPush
         Array.prototype.push.call(arrayLike, 2);
         if (arrayLike.length === 2 && arrayLike[0] === 1 && arrayLike[1] === 2) {
           print("Array-like push succeeded"); //: Array-like push succeeded

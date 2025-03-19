@@ -17,17 +17,7 @@
 #include "ecmascript/interpreter/interpreter_assembly.h"
 #include "ecmascript/interpreter/slow_runtime_stub.h"
 #include "ecmascript/js_async_generator_object.h"
-#include "ecmascript/js_generator_object.h"
-#include "ecmascript/js_tagged_value.h"
-#include "ecmascript/jit/jit_task.h"
-#include "ecmascript/mem/concurrent_marker.h"
-#include "ecmascript/module/js_module_manager.h"
-#include "ecmascript/module/js_module_source_text.h"
-#include "ecmascript/runtime_call_id.h"
 #include "ecmascript/stubs/runtime_stubs.h"
-#include "ecmascript/sendable_env.h"
-#include "ecmascript/template_string.h"
-#include "ecmascript/checkpoint/thread_state_transition.h"
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
 #include "ecmascript/dfx/cpu_profiler/cpu_profiler.h"
 #endif
@@ -622,12 +612,12 @@ JSTaggedValue EcmaInterpreter::ExecuteNative(EcmaRuntimeCallInfo *info)
     thread->SetCurrentSPFrame(newSp);
     thread->CheckSafepoint();
     ECMAObject *callTarget = reinterpret_cast<ECMAObject*>(info->GetFunctionValue().GetTaggedObject());
-    Method *method = callTarget->GetCallTarget();
+    void *nativePointer = callTarget->GetNativePointer();
     LOG_INST() << "Entry: Runtime Call.";
     JSTaggedValue tagged;
     {
         ASSERT(thread == JSThread::GetCurrent());
-        tagged = reinterpret_cast<EcmaEntrypoint>(const_cast<void *>(method->GetNativePointer()))(info);
+        tagged = reinterpret_cast<EcmaEntrypoint>(nativePointer)(info);
     }
     LOG_INST() << "Exit: Runtime Call.";
 
@@ -1421,8 +1411,8 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
             thread->SetCurrentSPFrame(newSp);
             LOG_INST() << "Entry: Runtime Call.";
             SAVE_PC();
-            JSTaggedValue retValue = reinterpret_cast<EcmaEntrypoint>(
-                const_cast<void *>(methodHandle->GetNativePointer()))(ecmaRuntimeCallInfo);
+            void *nativePointer = funcObject->GetNativePointer();
+            JSTaggedValue retValue = reinterpret_cast<EcmaEntrypoint>(nativePointer)(ecmaRuntimeCallInfo);
             thread->SetCurrentSPFrame(sp);
             HANDLE_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             LOG_INST() << "Exit: Runtime Call.";
@@ -3295,7 +3285,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                 thread->SetCurrentSPFrame(newSp);
                 LOG_INST() << "Entry: Runtime SuperCall ";
                 JSTaggedValue retValue = reinterpret_cast<EcmaEntrypoint>(
-                    const_cast<void *>(methodHandle->GetNativePointer()))(ecmaRuntimeCallInfo);
+                    superCtorFunc->GetNativePointer())(ecmaRuntimeCallInfo);
                 thread->SetCurrentSPFrame(sp);
 
                 HANDLE_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -3431,7 +3421,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                 thread->SetCurrentSPFrame(newSp);
                 LOG_INST() << "Entry: Runtime SuperCall ";
                 JSTaggedValue retValue = reinterpret_cast<EcmaEntrypoint>(
-                    const_cast<void *>(methodHandle->GetNativePointer()))(ecmaRuntimeCallInfo);
+                    superCtorFunc->GetNativePointer())(ecmaRuntimeCallInfo);
                 thread->SetCurrentSPFrame(sp);
 
                 HANDLE_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -3567,7 +3557,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                 thread->SetCurrentSPFrame(newSp);
                 LOG_INST() << "Entry: Runtime SuperCall ";
                 JSTaggedValue retValue = reinterpret_cast<EcmaEntrypoint>(
-                    const_cast<void *>(methodHandle->GetNativePointer()))(ecmaRuntimeCallInfo);
+                    superCtorFunc->GetNativePointer())(ecmaRuntimeCallInfo);
                 thread->SetCurrentSPFrame(sp);
 
                 HANDLE_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -3703,7 +3693,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                 thread->SetCurrentSPFrame(newSp);
                 LOG_INST() << "Entry: Runtime SuperCall ";
                 JSTaggedValue retValue = reinterpret_cast<EcmaEntrypoint>(
-                    const_cast<void *>(methodHandle->GetNativePointer()))(ecmaRuntimeCallInfo);
+                    superCtorFunc->GetNativePointer())(ecmaRuntimeCallInfo);
                 thread->SetCurrentSPFrame(sp);
 
                 HANDLE_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -4109,7 +4099,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                 LOG_INST() << "Entry: Runtime New.";
                 SAVE_PC();
                 JSTaggedValue retValue = reinterpret_cast<EcmaEntrypoint>(
-                    const_cast<void *>(methodHandle->GetNativePointer()))(ecmaRuntimeCallInfo);
+                    ctorFunc->GetNativePointer())(ecmaRuntimeCallInfo);
                 thread->SetCurrentSPFrame(sp);
                 HANDLE_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
                 LOG_INST() << "Exit: Runtime New.";
@@ -4245,7 +4235,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                 LOG_INST() << "Entry: Runtime New.";
                 SAVE_PC();
                 JSTaggedValue retValue = reinterpret_cast<EcmaEntrypoint>(
-                    const_cast<void *>(methodHandle->GetNativePointer()))(ecmaRuntimeCallInfo);
+                    ctorFunc->GetNativePointer())(ecmaRuntimeCallInfo);
                 thread->SetCurrentSPFrame(sp);
                 HANDLE_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
                 LOG_INST() << "Exit: Runtime New.";
@@ -4380,7 +4370,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                 LOG_INST() << "Entry: Runtime New.";
                 SAVE_PC();
                 JSTaggedValue retValue = reinterpret_cast<EcmaEntrypoint>(
-                    const_cast<void *>(methodHandle->GetNativePointer()))(ecmaRuntimeCallInfo);
+                    ctorFunc->GetNativePointer())(ecmaRuntimeCallInfo);
                 thread->SetCurrentSPFrame(sp);
                 HANDLE_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
                 LOG_INST() << "Exit: Runtime New.";

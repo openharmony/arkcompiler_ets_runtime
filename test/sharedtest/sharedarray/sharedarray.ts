@@ -204,8 +204,15 @@ function fill() {
 // remove
 function pop() {
     print("Start Test pop")
-    const sharedArray = new SendableArray<number>(5, 12, 8, 130, 44);
-    print("poped: " + sharedArray.pop());
+    const sharedArray = new SendableArray<number>(5, 12, 8, 130, 44, 10, 20, 30, 100, 50, 80, 90, 150, 200);
+    let sharedArray2 = sharedArray.concat(sharedArray).concat(sharedArray).concat(sharedArray).concat(sharedArray);
+    print(sharedArray2.length);
+    let len = sharedArray2.length;
+    for (let idx = 0; idx < 10; ++idx) {
+        sharedArray2.pop();
+        print(sharedArray2)
+    }
+    print(sharedArray2.length);
 }
 
 // update
@@ -275,6 +282,77 @@ function from(): void {
     // trigger string cache
     SendableArray.from("hello");
     print(SendableArray.from("hello"));
+    try {
+        print(SendableArray.from.call({}, [1,2,3]))
+    } catch (err) {
+        print("Create from sendable list failed without constructor functions. err: " + err + ", code: " + err.code);
+    }
+  
+    let sArr = SendableArray.from<string>(['A', 'B', 'C'], (str: string) => 'S' + str);
+    print(sArr);
+    let sArr1 = SendableArray.from<string>(sArr, (str: string) => 'S' + str);
+    print(sArr1);
+  
+    try {
+        let sArr2 = SendableArray.from<string>(sArr, (str: string) =>{
+            return new SuperUnSharedClass(1);
+        });
+        print(sArr2);
+    } catch (err) {
+        print("Create from sendable array. err: " + err + ", code: " + err.code);
+    }
+  
+    try {
+        let sArr2 = SendableArray.from<SuperClass>(sArr, (str: string) =>{
+            return new SuperClass(1);
+        });
+        sArr2.forEach((element: SubClass) => print(element.num)); // 5, 8, 44
+    } catch (err) {
+        print("Create from sendable array. err: " + err + ", code: " + err.code);
+    }
+  
+    let normalArr = new Array<number>(3,2,1,5);
+    let sArr3 = SendableArray.from<number>(normalArr, (num: number) =>{
+        normalArr.pop();
+        return num += 1;
+    });
+    print(sArr3)
+
+    let normalArr1 = new Array<number>(3,2,1,5);
+    let sArr4 = SendableArray.from<number>(normalArr1, (num: number) =>{
+        if (num < 3) {
+          normalArr1.push(num + 1);
+        }  
+  
+        return num += 1;
+    });
+    print(sArr4)
+
+    let normalArr2 = new Array<string>("abcd","bcde","cdef","cfgh");
+    let sArr5 = SendableArray.from<number>(normalArr2, (str: string) =>{
+        if (str.length <= 4) {
+            normalArr2.push(str + "cde");
+        }  
+  
+        return str + "cde";
+    });
+    print(sArr5)
+
+    let obj = {
+        0:1,
+        1:3,
+        2:5,
+        length:3
+    };
+    let sArr6 = SendableArray.from<number>(obj, (value: number) =>{
+        if (value < 4) {
+            obj[obj.length] = value + 10;
+            obj.length += 1;
+        }  
+  
+        return value;
+    });
+    print(sArr6)
 }
 
 function fromTemplate(): void {
@@ -298,6 +376,12 @@ function push(): void {
     let array: SendableArray<number> = new SendableArray<number>(1, 3, 5);
     array.push(2, 4, 6);
     print("Elements pushed: " + array);
+    let array1 = new SendableArray<number>();
+    array1.push(1);
+    array1.push(2);
+    array1.push(3);
+    array1.push(7, 8, 9);
+    print("Elements pushed: " + array1);
 }
 
 function concat(): void {
@@ -347,13 +431,38 @@ function shift() {
 
     const emptyArray = new SendableArray<number>();
     print(emptyArray.shift());
+
+    const array2 = new SendableArray<number>(2, 4, 6, 100, 50, 60, 70);
+    let array3 = array2.concat(array2).concat(array2).concat(array2).concat(array2).concat(array2).concat(array2);
+    print(array3);
+    print(array3.length);
+    let len = array3.length;
+    for (let idx = 0; idx < 10; ++idx) {
+        array3.shift();
+        print(array3);
+    }
+    print(array3.length)
 }
 
 function unshift() {
     print("Start Test unshift")
     const array = SendableArray.from<number>([1, 2, 3]);
-    print(array.unshift(4, 5));
+    print(array);
     print(array.length);
+    print(array.unshift(4, 5));
+    print(array);
+    print(array.length);
+
+    let arr2 = array.concat(array).concat(array).concat(array).concat(array).concat(array).concat(array);
+    print(arr2);
+    print(arr2.length);
+    let arr3 = arr2.concat(arr2);
+    print(arr3);
+    print(arr3.length);
+    print(arr2.unshift(arr3));
+    print(arr2);
+    print(arr2.length);
+    
 }
 
 function slice() {
@@ -445,6 +554,11 @@ function filter() {
     );
     const result = array2.filter<SubClass>((value: SuperClass, index: number, obj: Array<SuperClass>) => value instanceof SubClass);
     result.forEach((element: SubClass) => print(element.num)); // 5, 8, 44
+
+    const words1 = new SendableArray<string>('spray', 'elite', 'exuberant', 'destruction', 'present');
+    let words2 = words1.concat(words).concat(words).concat(words).concat(words).concat(words).concat(words).concat(words);
+    print(words2)
+    print(words2.filter((word: string) => word.length > 10))
 }
 
 function reduce() {
@@ -475,6 +589,8 @@ class C3 {
 function splice() {
     print("Start Test splice")
     const array = new SendableArray<string>('Jan', 'March', 'April', 'June');
+    print(array.splice());
+    print(array);
     array.splice(1, 0, 'Feb', 'Oct');
     print(array); // "Jan", "Feb", "Oct", "March", "April", "June"
     const removeArray = array.splice(4, 2, 'May');
@@ -1222,6 +1338,149 @@ function copyWithinTest() {
 
     arr.copyWithin(3, -4, -2);
     print(arr);
+
+    arr.copyWithin(2, -3, -4);
+    print(arr);
+
+    arr.copyWithin(4, 2, 1);
+    print(arr);
+}
+
+function findLast() {
+    print("Start Test findLast")
+    const array1 = new SendableArray<number>(5, 12, 8, 130, 44);
+
+    const found = array1.findLast((element: number) => element > 100);
+    print("" + found); // 130
+
+    const found2 = array1.findLast((element: number) => element > 200);
+    print("" + found2); // undefined
+
+    try {
+        const found3 = array1.findLast(130);
+        print("" + found3);
+    } catch (err) {
+        print("findLast failed. err: " + err + ", code: " + err.code);
+    }
+
+    const array2 = new SendableArray<SuperClass>(
+      new SubClass(5),
+      new SubClass(32),
+      new SubClass(8),
+      new SubClass(130),
+      new SubClass(44),
+    );
+    const result: SubClass | undefined = array2.findLast<SubClass>(
+      (value: SuperClass, index: number, obj: SendableArray<SuperClass>) => value instanceof SubClass,
+    );
+    print(result.strProp); // 44
+}
+
+function findLastIndex() {
+    print("Start Test findLastIndex")
+    const array1 = new SendableArray<number>(5, 12, 8, 130, 44);
+
+    try {
+        const found3 = array1.findLastIndex(130);
+        print("" + found3);
+    } catch (err) {
+        print("findLastIndex failed. err: " + err + ", code: " + err.code);
+    }
+
+    const found = array1.findLastIndex((element: number) => element > 100);
+    print("find index1: " + found); // 3
+
+    const found2 = array1.findLastIndex((element: number) => element > 200);
+    print("find index2: " + found2); // -1
+
+    const array2 = new SendableArray<SuperClass>(
+      new SubClass(5),
+      new SubClass(32),
+      new SubClass(8),
+      new SubClass(130),
+      new SubClass(44),
+    );
+    const result: SubClass | undefined = array2.findLastIndex<SubClass>(
+      (value: SuperClass, index: number, obj: SendableArray<SuperClass>) => value instanceof SubClass,
+    );
+    print(result); // index is 4
+}
+
+function reduceRight() {
+    print("Start Test reduceRight")
+    const array = new SendableArray<number>(1, 2, 3, 4);
+    print(array.reduceRight((acc: number, currValue: number) => acc + currValue)); // 10
+
+    print(array.reduceRight((acc: number, currValue: number) => acc + currValue, 10)); // 20
+
+    print(array.reduceRight<string>((acc: number, currValue: number) => "" + acc + " " + currValue, "10")); // 10, 4, 3, 2, 1
+
+    const array1 = new SendableArray<number>(1, 2, 3, 4);
+    print(array1.reduceRight((acc: number, currValue: number) => acc + currValue, undefined));
+
+    const array2 = new SendableArray<number>();
+    print(array2.reduceRight((acc: number, currValue: number) => acc + currValue, 1));
+    print(array2.reduceRight((acc: number, currValue: number) => acc + currValue, undefined));
+
+    try {
+       print(array2.reduceRight((acc: number, currValue: number) => acc + currValue));
+    } catch (err) {
+       print("reduceRight failed. err: " + err + ", code: " + err.code);
+    }
+
+    try {
+        print(array2.reduceRight(1, 1));
+    } catch (err) {
+        print("reduceRight failed. err: " + err + ", code: " + err.code);
+    }
+}
+
+function reverse() {
+    print("Start Test reverse")
+    const array1 = new SendableArray<number>(1, 2, 3, 4);
+    print(array1.reverse());
+	print(array1);
+
+	const array2 = new SendableArray<number>("one", "two", "three");
+    print(array2.reverse());
+	print(array2);
+}
+
+function toStringTest() {
+    print("Start Test toString")
+    const array1 = new SendableArray<number>(1, 2, 3, 4);
+    print(array1.toString());
+
+	const array2 = new SendableArray<string>("one", "two", "three");
+    print(array2.toString());
+
+	const array3 = new SendableArray<number>(null, undefined, 3, 4, 5);
+	print(array3.toString());
+}
+
+function toLocaleStringTest() {
+    print("Start Test toLocaleString")
+    const array1 = new SendableArray<number>(1, 2, 3, 4);
+    print(array1.toLocaleString());
+
+	const array2 = new SendableArray<string>("one", "two", "three");
+    print(array2.toLocaleString());
+
+	const array3 = new SendableArray<number>(null, undefined, 3, 4, 5);
+	print(array3.toLocaleString());
+
+    const array4 = new SendableArray(1000, 2000, 3000, 4000, 5000);
+    print(array4.toLocaleString('de-DE'));
+    print(array4.toLocaleString('fr-FR'));
+
+    const array5 = new SendableArray<number>(123456.789, 2000.00);
+    print(array5.toLocaleString('en-US', {style: 'currency', currency: 'USD'}));
+    print(array5.toLocaleString('de-DE', {style: 'currency', currency: 'USD'}));
+
+    let array6 = new SendableArray<number>(123456.789, 2000.00);
+    let array7 = new SendableArray<number>(3, 4, 5);
+    array6.push(array7);
+    print(array6.toLocaleString('de-DE', {style: 'currency', currency: 'USD'}));
 }
 
 at()
@@ -1304,3 +1563,11 @@ isArrayTest();
 lastIndexOfTest();
 ofTest();
 copyWithinTest();
+
+findLast();
+findLastIndex();
+reduceRight();
+reverse();
+
+toStringTest();
+toLocaleStringTest();

@@ -17,29 +17,59 @@ sAge getter
 sAge setter
 parent.field = 0
 Parent.sField = 0
+Parent.123 = 123
+Parent.s123 = parent
+Parent.aa = aa
+Parent.560 = 560
+Parent.cc = 10
 age getter
 age setter
 sAge getter
 sAge setter
 parent.field = 0
 Parent.sField = 0
+Parent.123 = 123
+Parent.s123 = parent
+Parent.aa = aa
+Parent.560 = 560
+Parent.cc = 10
 child.childField = 0
+child.45 = 45
+child.855 = 855
+child.ff = false
 age getter
 age setter
 sAge getter
 sAge setter
 parent.field = 0
 Parent.sField = 0
+Parent.123 = 123
+Parent.s123 = parent
+Parent.aa = aa
+Parent.560 = 560
+Parent.cc = 10
 child.a1017 = a1017
+child.100 = 100
+child.101 = 101
 age getter
 age setter
 sAge getter
 sAge setter
 parent.field = 0
 Parent.sField = 0
+Parent.123 = 123
+Parent.s123 = parent
+Parent.aa = aa
+Parent.560 = 560
+Parent.cc = 10
 child.a1017 = a1017
+child.100 = 100
+child.101 = 101
 child.childField = 0
+child.102 = 102
+child.103 = 103
 [IC] Fail to assign member in dict mode with mismatched value. err: TypeError: Cannot set sendable property with mismatched type, loopIndex: 1000
 StaticDict getter 1020
+StaticDict.104 = 104
+123
 sField
-TypeError: Cannot add property in prevent extensions

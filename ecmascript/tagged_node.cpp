@@ -16,7 +16,6 @@
 #include "ecmascript/tagged_node.h"
 
 #include "ecmascript/tagged_hash_array.h"
-#include "ecmascript/tagged_queue.h"
 
 namespace panda::ecmascript {
 JSHandle<RBTreeNode> LinkedNode::Treeing(JSThread *thread, const JSHandle<LinkedNode> &head)

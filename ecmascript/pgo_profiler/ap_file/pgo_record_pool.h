@@ -94,9 +94,32 @@ public:
         return pool_->TryAdd(value, entryId);
     }
 
+    bool TryAddSafe(const CString& value, ApEntityId& entryId)
+    {
+        WriteLockHolder lock(poolLock_);
+        return TryAdd(value, entryId);
+    }
+
     bool GetEntryId(const CString &value, ApEntityId &entryId) const
     {
         return pool_->GetEntryId(value, entryId);
+    }
+
+    bool GetEntryIdSafe(const CString& value, ApEntityId& entryId)
+    {
+        ReadLockHolder lock(poolLock_);
+        return GetEntryId(value, entryId);
+    }
+
+    bool GetPandaFileDescSafe(ApEntityId abcId, CString& desc)
+    {
+        ReadLockHolder lock(poolLock_);
+        const auto* entry = GetEntry(abcId);
+        if (entry == nullptr) {
+            return false;
+        }
+        desc = entry->GetData();
+        return true;
     }
 
     const Entry *GetEntry(ApEntityId entryId) const
@@ -114,6 +137,12 @@ public:
         pool_->Clear();
     }
 
+    void ClearSafe()
+    {
+        WriteLockHolder lock(poolLock_);
+        Clear();
+    }
+
     std::shared_ptr<PoolType> &GetPool()
     {
         return pool_;
@@ -123,6 +152,7 @@ protected:
     NO_COPY_SEMANTIC(PGOStringPool);
     NO_MOVE_SEMANTIC(PGOStringPool);
     std::shared_ptr<PoolType> pool_;
+    RWLock poolLock_;
 };
 
 class PGORecordPool : public PGOFileSectionInterface {
@@ -281,7 +311,12 @@ public:
             GetPool()->GetValueToId().try_emplace(entry.second.GetData(), entry.first);
         }
     }
-};
 
+    void CopySafe(const std::shared_ptr<PGOAbcFilePool>& pool)
+    {
+        WriteLockHolder lock(poolLock_);
+        Copy(pool);
+    }
+};
 }  // namespace panda::ecmascript::pgo
-#endif  // ECMASCRIPT_PGO_PROFILER_AP_FILE_PGO_RECORD_POOL_H
+#endif // ECMASCRIPT_PGO_PROFILER_AP_FILE_PGO_RECORD_POOL_H

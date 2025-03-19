@@ -52,6 +52,7 @@ void SparseSpace::ResetTopPointer(uintptr_t top)
 
 uintptr_t SparseSpace::Allocate(size_t size, bool allowGC)
 {
+    ASSERT(spaceType_ != MemSpaceType::OLD_SPACE);
 #if ECMASCRIPT_ENABLE_THREAD_STATE_CHECK
     if (UNLIKELY(!localHeap_->GetJSThread()->IsInRunningStateOrProfiling())) { // LOCV_EXCL_BR_LINE
         LOG_ECMA(FATAL) << "Allocate must be in jsthread running state";
@@ -197,7 +198,7 @@ void SparseSpace::SortSweepingRegion()
 {
     // Sweep low alive object size at first
     std::sort(sweepingList_.begin(), sweepingList_.end(), [](Region *first, Region *second) {
-        return first->AliveObject() < second->AliveObject();
+        return first->AliveObject() > second->AliveObject();
     });
 }
 
@@ -230,15 +231,6 @@ Region *SparseSpace::GetSweptRegionSafe()
     return region;
 }
 
-void SparseSpace::FreeRegionFromSpace(Region *region)
-{
-    region->ResetSwept();
-    region->MergeOldToNewRSetForCS();
-    region->MergeLocalToShareRSetForCS();
-    RemoveRegion(region);
-    DecreaseLiveObjectSize(region->AliveObject());
-}
-
 Region *SparseSpace::TryToGetSuitableSweptRegion(size_t size)
 {
     if (sweepState_ != SweepState::SWEEPING) {
@@ -251,7 +243,6 @@ Region *SparseSpace::TryToGetSuitableSweptRegion(size_t size)
     for (auto iter = sweptList_.begin(); iter != sweptList_.end(); iter++) {
         if (allocator_->MatchFreeObjectSet(*iter, size)) {
             Region *region = *iter;
-            FreeRegionFromSpace(region);
             sweptList_.erase(iter);
             return region;
         }
@@ -377,7 +368,6 @@ Region *OldSpace::TrySweepToGetSuitableRegion(size_t size)
         // and return for local space to use
         // otherwise, we add region to sweptList_.
         if (allocator_->MatchFreeObjectSet(availableRegion, size)) {
-            FreeRegionFromSpace(availableRegion);
             return availableRegion;
         } else {
             AddSweptRegionSafe(availableRegion);
@@ -388,25 +378,70 @@ Region *OldSpace::TrySweepToGetSuitableRegion(size_t size)
 
 Region *OldSpace::TryToGetExclusiveRegion(size_t size)
 {
-    LockHolder lock(lock_);
-    uintptr_t result = allocator_->LookupSuitableFreeObject(size);
-    if (result != 0) {
-        // Remove region from global old space
-        Region *region = Region::ObjectAddressToRange(result);
-        RemoveRegion(region);
-        allocator_->DetachFreeObjectSet(region);
-        DecreaseLiveObjectSize(region->AliveObject());
-        return region;
-    }
     if (sweepState_ == SweepState::SWEEPING) {
         Region *availableRegion = nullptr;
         availableRegion = TryToGetSuitableSweptRegion(size);
-        if (availableRegion != nullptr) {
-            return availableRegion;
+        if (availableRegion == nullptr) {
+            availableRegion = TrySweepToGetSuitableRegion(size);
         }
-        return TrySweepToGetSuitableRegion(size);
+        if (availableRegion) {
+            FreeRegionFromSpace(availableRegion);
+        }
+        return availableRegion;
+    } else {
+        LockHolder lock(lock_);
+        uintptr_t result = allocator_->LookupSuitableFreeObject(size);
+        if (result != 0) {
+            // Remove region from global old space
+            Region *region = Region::ObjectAddressToRange(result);
+            RemoveRegion(region);
+            allocator_->DetachFreeObjectSet(region);
+            DecreaseLiveObjectSize(region->AliveObject());
+            return region;
+        }
     }
     return nullptr;
+}
+
+void OldSpace::FreeRegionFromSpace(Region *region)
+{
+    region->ResetSwept();
+    region->MergeOldToNewRSetForCS();
+    region->MergeLocalToShareRSetForCS();
+    LockHolder holder(lock_);
+    RemoveRegion(region);
+    DecreaseLiveObjectSize(region->AliveObject());
+}
+
+uintptr_t OldSpace::AllocateFast(size_t size)
+{
+#if ECMASCRIPT_ENABLE_THREAD_STATE_CHECK
+    if (UNLIKELY(!localHeap_->GetJSThread()->IsInRunningStateOrProfiling())) { // LOCV_EXCL_BR_LINE
+        LOG_ECMA(FATAL) << "Allocate must be in jsthread running state";
+        UNREACHABLE();
+    }
+#endif
+    auto object = allocator_->Allocate(size);
+    CHECK_OBJECT_AND_INC_OBJ_SIZE(size);
+
+    if (sweepState_ == SweepState::SWEEPING) {
+        object = AllocateAfterSweepingCompleted(size);
+        CHECK_OBJECT_AND_INC_OBJ_SIZE(size);
+    }
+    return 0;
+}
+
+uintptr_t OldSpace::AllocateSlow(size_t size, bool tryFast)
+{
+    if (tryFast) {
+        uintptr_t object = AllocateFast(size);
+        CHECK_OBJECT_AND_INC_OBJ_SIZE(size);
+    }
+    if (Expand()) {
+        uintptr_t object = allocator_->Allocate(size);
+        CHECK_OBJECT_AND_INC_OBJ_SIZE(size);
+    }
+    return 0;
 }
 
 void OldSpace::Merge(LocalSpace *localSpace)
@@ -550,6 +585,52 @@ void OldSpace::ReclaimCSet()
     collectRegionSet_.clear();
 }
 
+bool OldSpace::SwapRegion(Region *region, SemiSpace *fromSpace)
+{
+    if (committedSize_ + region->GetCapacity() > maximumCapacity_) {
+        return false;
+    }
+    fromSpace->RemoveRegion(region);
+    region->InitializeFreeObjectSets();
+    region->ResetRegionFlag(RegionSpaceFlag::IN_OLD_SPACE, RegionGCFlags::IN_NEW_TO_OLD_SET);
+
+    regionList_.AddNodeToFront(region);
+    IncreaseCommitted(region->GetCapacity());
+    IncreaseObjectSize(region->GetSize());
+    IncreaseLiveObjectSize(region->AliveObject());
+    return true;
+}
+
+void OldSpace::PrepareSweepNewToOldRegions()
+{
+    EnumerateRegions([this](Region *current) {
+        if (current->InNewToOldSet()) {
+            ASSERT(!current->IsGCFlagSet(RegionGCFlags::HAS_BEEN_SWEPT));
+            if (UNLIKELY(localHeap_->ShouldVerifyHeap() &&
+                current->IsGCFlagSet(RegionGCFlags::HAS_BEEN_SWEPT))) { // LOCV_EXCL_BR_LINE
+                LOG_ECMA(FATAL) << "Region should not be swept before PrepareSweeping: " << current;
+            }
+            current->ResetWasted();
+            current->SwapOldToNewRSetForCS();
+            current->SwapLocalToShareRSetForCS();
+            current->ClearGCFlag(RegionGCFlags::IN_NEW_TO_OLD_SET);
+            AddSweepingRegion(current);
+        }
+    });
+    sweepState_ = SweepState::SWEEPING;
+}
+
+void OldSpace::SweepNewToOldRegions()
+{
+    EnumerateRegions([this](Region *current) {
+        if (current->InNewToOldSet()) {
+            current->ResetWasted();
+            current->ClearGCFlag(RegionGCFlags::IN_NEW_TO_OLD_SET);
+            FreeRegion(current);
+        }
+    });
+}
+
 LocalSpace::LocalSpace(Heap *heap, size_t initialCapacity, size_t maximumCapacity)
     : SparseSpace(heap, LOCAL_SPACE, initialCapacity, maximumCapacity) {}
 
@@ -596,6 +677,12 @@ NonMovableSpace::NonMovableSpace(Heap *heap, size_t initialCapacity, size_t maxi
 AppSpawnSpace::AppSpawnSpace(Heap *heap, size_t initialCapacity)
     : SparseSpace(heap, MemSpaceType::APPSPAWN_SPACE, initialCapacity, initialCapacity)
 {
+}
+
+uintptr_t AppSpawnSpace::AllocateSync(size_t size)
+{
+    LockHolder holder(mutex_);
+    return Allocate(size);
 }
 
 void AppSpawnSpace::IterateOverMarkedObjects(const std::function<void(TaggedObject *object)> &visitor) const
@@ -651,6 +738,9 @@ MachineCodeSpace::~MachineCodeSpace()
 
 void MachineCodeSpace::PrepareSweeping()
 {
+    // fill free obj before sparse space prepare sweeping rebuild freelist, as may fail set free obj
+    // when iterate machine code space in GetMachineCodeObject
+    allocator_->FillBumpPointer();
     SparseSpace::PrepareSweeping();
     if (jitFort_) {
         jitFort_->PrepareSweeping();

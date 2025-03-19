@@ -421,6 +421,11 @@ private:
         return enableFastJIT_;
     }
 
+    bool GetEnableDFXHiSysEvent() const
+    {
+        return enableDFXHiSysEvent_;
+    }
+
     bool GetEnableBaselineJIT() const
     {
         return enableBaselineJIT_;
@@ -449,6 +454,7 @@ private:
     bool enableProfile_ {false};
     std::string profileDir_ {};
     bool enableFastJIT_ {false};
+    bool enableDFXHiSysEvent_ {true};
     bool enableBaselineJIT_ {false};
     std::map<std::string, int32_t> aotCompileStatusMap_;
     friend JSNApi;

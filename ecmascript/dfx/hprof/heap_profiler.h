@@ -25,6 +25,9 @@
 #include "ecmascript/dfx/hprof/progress.h"
 #include "ecmascript/dfx/hprof/string_hashmap.h"
 #include "ecmascript/mem/c_containers.h"
+#if defined(ENABLE_LOCAL_HANDLE_LEAK_DETECT)
+#include "ecmascript/mem/clock_scope.h"
+#endif
 
 namespace panda::ecmascript {
 class HeapSnapshot;
@@ -40,6 +43,7 @@ public:
 
     static constexpr uint64_t SEQ_STEP = 2;
     std::pair<bool, NodeId> FindId(JSTaggedType addr);
+    NodeId FindOrInsertNodeId(JSTaggedType addr);
     bool InsertId(JSTaggedType addr, NodeId id);
     bool EraseId(JSTaggedType addr);
     bool Move(JSTaggedType oldAddr, JSTaggedType forwardAddr);
@@ -111,6 +115,24 @@ struct NewAddr {
     }
 };
 
+#if defined(ENABLE_LOCAL_HANDLE_LEAK_DETECT)
+struct ScopeWrapper {
+    LocalScope *localScope_ {nullptr};
+    EcmaHandleScope *ecmaHandleScope_ {nullptr};
+    ClockScope clockScope_;
+
+    ScopeWrapper(LocalScope *localScope, EcmaHandleScope *ecmaHandleScope)
+        : localScope_(localScope), ecmaHandleScope_(ecmaHandleScope) {}
+};
+#endif  // ENABLE_LOCAL_HANDLE_LEAK_DETECT
+
+enum class DumpHeapSnapshotStatus : uint8_t {
+    SUCCESS,
+    FORK_FAILED,
+    FAILED_TO_WAIT,
+    WAIT_FORK_PROCESS_TIMEOUT,
+};
+
 class HeapProfiler : public HeapProfilerInterface {
 public:
     NO_MOVE_SEMANTIC(HeapProfiler);
@@ -125,7 +147,8 @@ public:
     /**
      * dump the specific snapshot in target format
      */
-    bool DumpHeapSnapshot(Stream *stream, const DumpSnapShotOption &dumpOption, Progress *progress = nullptr) override;
+    bool DumpHeapSnapshot(Stream *stream, const DumpSnapShotOption &dumpOption, Progress *progress = nullptr,
+                          std::function<void(uint8_t)> callback = [] (uint8_t) {}) override;
     void DumpHeapSnapshotForOOM(const DumpSnapShotOption &dumpOption, bool fromSharedGC = false) override;
     void AddSnapshot(HeapSnapshot *snapshot);
 
@@ -153,6 +176,21 @@ public:
         return const_cast<StringHashMap *>(&stringTable_);
     }
     bool GenerateHeapSnapshot(std::string &inputFilePath, std::string &outputPath) override;
+#if defined(ENABLE_LOCAL_HANDLE_LEAK_DETECT)
+    bool IsStartLocalHandleLeakDetect() const;
+    void SwitchStartLocalHandleLeakDetect();
+    void IncreaseScopeCount();
+    void DecreaseScopeCount();
+    void PushToActiveScopeStack(LocalScope *localScope, EcmaHandleScope *ecmaHandleScope);
+    void PopFromActiveScopeStack();
+    void ClearHandleBackTrace();
+    std::string_view GetBackTraceOfHandle(uintptr_t handle) const;
+    void WriteToLeakStackTraceFd(std::ostringstream &buffer) const;
+    void SetLeakStackTraceFd(int32_t fd);
+    int32_t GetLeakStackTraceFd() const;
+    void CloseLeakStackTraceFd();
+    void StorePotentiallyLeakHandles(uintptr_t handle);
+#endif  // ENABLE_LOCAL_HANDLE_LEAK_DETECT
 
 private:
     /**
@@ -181,6 +219,11 @@ private:
                          CUnorderedMap<uint64_t, CVector<uint64_t>> &strIdMapObjVec);
     uint32_t GenRootTable(Stream *stream);
     bool DumpRawHeap(Stream *stream, uint32_t &fileOffset, CVector<uint32_t> &secIndexVec);
+#if defined(ENABLE_LOCAL_HANDLE_LEAK_DETECT)
+    uint32_t GetScopeCount() const;
+    std::shared_ptr<ScopeWrapper> GetLastActiveScope() const;
+    bool InsertHandleBackTrace(uintptr_t handle, const std::string &backTrace);
+#endif  // ENABLE_LOCAL_HANDLE_LEAK_DETECT
 
     const size_t MAX_NUM_HPROF = 5;  // ~10MB
     const EcmaVM *vm_;
@@ -192,7 +235,98 @@ private:
     Chunk chunk_;
     std::unique_ptr<HeapSampling> heapSampling_ {nullptr};
     Mutex mutex_;
+#if defined(ENABLE_LOCAL_HANDLE_LEAK_DETECT)
+    static const long LOCAL_HANDLE_LEAK_TIME_MS {5000};
+    bool startLocalHandleLeakDetect_ {false};
+    uint32_t scopeCount_ {0};
+    std::stack<std::shared_ptr<ScopeWrapper>> activeScopeStack_;
+    std::map<uintptr_t, std::string> handleBackTrace_;
+    int32_t leakStackTraceFd_ {-1};
+#endif  // ENABLE_LOCAL_HANDLE_LEAK_DETECT
+
     friend class HeapProfilerFriendTest;
+};
+
+class RawHeapDump final : public RootVisitor, public EcmaObjectRangeVisitor<RawHeapDump> {
+public:
+    RawHeapDump(const EcmaVM *vm, Stream *stream, HeapSnapshot *snapshot, EntryIdMap* entryIdMap)
+        : vm_(vm), stream_(stream), snapshot_(snapshot), entryIdMap_(entryIdMap), chunk_(vm->GetNativeAreaAllocator()),
+          startTime_(std::chrono::steady_clock::now())
+    {
+        buffer_ = chunk_.NewArray<char>(PER_GROUP_MEM_SIZE);
+    }
+
+    ~RawHeapDump()
+    {
+        auto endTime = std::chrono::steady_clock::now();
+        double duration = std::chrono::duration<double>(endTime - startTime_).count();
+        LOG_ECMA(INFO) << "rawheap dump sucess, cost " << duration << 's';
+        chunk_.Delete<char>(buffer_);
+        strIdMapObjVec_.clear();
+        secIndexVec_.clear();
+        roots_.clear();
+        readOnlyObjects_.clear();
+    }
+
+    void BinaryDump();
+
+    void VisitRoot([[maybe_unused]] Root type, ObjectSlot slot) override
+    {
+        HandleRootValue(slot.GetTaggedValue());
+    }
+
+    void VisitRangeRoot([[maybe_unused]] Root type, ObjectSlot start, ObjectSlot end) override
+    {
+        for (ObjectSlot slot = start; slot < end; slot++) {
+            HandleRootValue(slot.GetTaggedValue());
+        }
+    }
+
+    void VisitBaseAndDerivedRoot([[maybe_unused]] Root type, [[maybe_unused]] ObjectSlot base,
+        [[maybe_unused]] ObjectSlot derived, [[maybe_unused]] uintptr_t baseOldObject) override
+    {
+        // do nothing
+    }
+
+    void VisitObjectRangeImpl(TaggedObject *root, ObjectSlot start, ObjectSlot end, VisitObjectArea area) override;
+
+private:
+    void DumpVersion();
+    void DumpRootTable();
+    void DumpObjectTable();
+    void DumpObjectMemory();
+    void DumpStringTable();
+    void DumpSectionIndex();
+
+    void WriteU64(uint64_t number);
+    void WriteChunk(char *data, size_t size);
+    void MaybeWriteBuffer();
+    void WriteBinBlock();
+    void UpdateStringTable(TaggedObject *object);
+    void HandleRootValue(JSTaggedValue value);
+    void IterateMarkedObjects(const std::function<void(void *)> &visitor);
+    void ProcessMarkObjectsFromRoot(TaggedObject *root);
+    bool MarkObject(TaggedObject *object);
+    void ClearVisitMark();
+    void EndVisitMark();
+
+    const char versionID[VERSION_ID_SIZE] = {0};  // 0: current version id
+
+    const EcmaVM *vm_ {nullptr};
+    Stream *stream_ {nullptr};
+    HeapSnapshot *snapshot_ {nullptr};
+    EntryIdMap *entryIdMap_ {nullptr};
+    char *buffer_ {nullptr};
+    Chunk chunk_;
+    CUnorderedMap<uint64_t, CVector<uint64_t>> strIdMapObjVec_ {};
+    CUnorderedSet<TaggedObject*> roots_ {};
+    CUnorderedSet<TaggedObject*> readOnlyObjects_ {};
+    CVector<uint32_t> secIndexVec_ {};
+    CQueue<TaggedObject *> bfsQueue_ {};
+    size_t objCnt_ = 0;
+    size_t bufIndex_ = 0;
+    uint32_t fileOffset_ = 0;
+    std::chrono::time_point<std::chrono::steady_clock> startTime_;
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_DFX_HPROF_HEAP_PROFILER_H

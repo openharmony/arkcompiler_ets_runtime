@@ -16,7 +16,6 @@
 #include "ecmascript/compiler/builtins/builtins_collator_stub_builder.h"
 
 #include "ecmascript/compiler/new_object_stub_builder.h"
-#include "ecmascript/js_collator.h"
 
 namespace panda::ecmascript::kungfu {
 void BuiltinsCollatorStubBuilder::ResolvedOptions(GateRef glue, GateRef thisValue, [[maybe_unused]] GateRef numArgs,

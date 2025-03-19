@@ -21,3 +21,5 @@
  */
 var string = "hugearray test start"
 assert_equal(string, "hugearray test start")
+
+test_end();

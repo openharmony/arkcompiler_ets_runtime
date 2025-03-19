@@ -265,6 +265,8 @@ void GlobalEnvConstants::InitSharedMiscellanious(JSThread *thread, ObjectFactory
     SetConstant(ConstantIndex::HOLE_INDEX, JSTaggedValue::Hole());
     SetConstant(ConstantIndex::TRUE_INDEX, JSTaggedValue::True());
     SetConstant(ConstantIndex::FALSE_INDEX, JSTaggedValue::False());
+    // Constant Symbols
+    SetConstant(ConstantIndex::PROTO_TRANS_ROOT_HCLASS_SYMBOL_INDEX, factory->NewSConstantPrivateSymbol());
     // Emptys
     auto vm = thread->GetEcmaVM();
     SetConstant(ConstantIndex::EMPTY_STRING_OBJECT_INDEX, JSTaggedValue(EcmaStringAccessor::CreateEmptyString(vm)));
@@ -275,6 +277,37 @@ void GlobalEnvConstants::InitSharedMiscellanious(JSThread *thread, ObjectFactory
     SetConstant(ConstantIndex::UINT64_MAX_BIGINT_INDEX, BigInt::CreateUint64MaxBigInt(thread));
     SetConstant(ConstantIndex::INT64_MAX_BIGINT_INDEX, BigInt::CreateInt64MaxBigInt(thread));
     SetConstant(ConstantIndex::EMPTY_PROFILE_TYPE_INFO_CELL_INDEX, factory->NewSEmptyProfileTypeInfoCell());
+    // Native function method
+    SetConstant(ConstantIndex::NORMAL_FUNCTION_METHOD_INDEX,
+                factory->NewSEmptyNativeFunctionMethod(FunctionKind::NORMAL_FUNCTION));
+    SetConstant(ConstantIndex::GETTER_FUNCTION_METHOD_INDEX,
+                factory->NewSEmptyNativeFunctionMethod(FunctionKind::GETTER_FUNCTION));
+    SetConstant(ConstantIndex::SETTER_FUNCTION_METHOD_INDEX,
+                factory->NewSEmptyNativeFunctionMethod(FunctionKind::SETTER_FUNCTION));
+    SetConstant(ConstantIndex::ARROW_FUNCTION_METHOD_INDEX,
+                factory->NewSEmptyNativeFunctionMethod(FunctionKind::ARROW_FUNCTION));
+    SetConstant(ConstantIndex::ASYNC_ARROW_FUNCTION_METHOD_INDEX,
+                factory->NewSEmptyNativeFunctionMethod(FunctionKind::ASYNC_ARROW_FUNCTION));
+    SetConstant(ConstantIndex::CONCURRENT_FUNCTION_METHOD_INDEX,
+                factory->NewSEmptyNativeFunctionMethod(FunctionKind::CONCURRENT_FUNCTION));
+    SetConstant(ConstantIndex::ASYNC_FUNCTION_METHOD_INDEX,
+                factory->NewSEmptyNativeFunctionMethod(FunctionKind::ASYNC_FUNCTION));
+    SetConstant(ConstantIndex::BASE_CONSTRUCTOR_METHOD_INDEX,
+                factory->NewSEmptyNativeFunctionMethod(FunctionKind::BASE_CONSTRUCTOR));
+    SetConstant(ConstantIndex::CLASS_CONSTRUCTOR_METHOD_INDEX,
+                factory->NewSEmptyNativeFunctionMethod(FunctionKind::CLASS_CONSTRUCTOR));
+    SetConstant(ConstantIndex::BUILTIN_PROXY_CONSTRUCTOR_METHOD_INDEX,
+                factory->NewSEmptyNativeFunctionMethod(FunctionKind::BUILTIN_PROXY_CONSTRUCTOR));
+    SetConstant(ConstantIndex::BUILTIN_CONSTRUCTOR_METHOD_INDEX,
+                factory->NewSEmptyNativeFunctionMethod(FunctionKind::BUILTIN_CONSTRUCTOR));
+    SetConstant(ConstantIndex::DERIVED_CONSTRUCTOR_METHOD_INDEX,
+                factory->NewSEmptyNativeFunctionMethod(FunctionKind::DERIVED_CONSTRUCTOR));
+    SetConstant(ConstantIndex::GENERATOR_FUNCTION_METHOD_INDEX,
+                factory->NewSEmptyNativeFunctionMethod(FunctionKind::GENERATOR_FUNCTION));
+    SetConstant(ConstantIndex::NONE_FUNCTION_METHOD_INDEX,
+                factory->NewSEmptyNativeFunctionMethod(FunctionKind::NONE_FUNCTION));
+    SetConstant(ConstantIndex::ASYNC_GENERATOR_FUNCTION_METHOD_INDEX,
+                factory->NewSEmptyNativeFunctionMethod(FunctionKind::ASYNC_GENERATOR_FUNCTION));
 }
 
 void GlobalEnvConstants::InitRootsClassesPartOne(JSHClass *hClass, ObjectFactory *factory)
@@ -406,16 +439,24 @@ void GlobalEnvConstants::InitSpecialForSnapshot()
 
 void GlobalEnvConstants::InitElementKindHClass(const JSThread *thread, JSHandle<JSHClass> originHClass)
 {
-    auto map = thread->GetArrayHClassIndexMap();
-    for (auto iter : map) {
-        JSHandle<JSHClass> hclassWithProto = JSHClass::CloneWithElementsKind(thread, originHClass, iter.first, true);
-        if (iter.first != ElementsKind::GENERIC) {
-            JSHandle<JSHClass> hclass = JSHClass::CloneWithElementsKind(thread, originHClass, iter.first, false);
-            SetConstant(iter.second.first, hclass);
-        } else {
-            SetConstant(iter.second.first, originHClass);
-        }
-        SetConstant(iter.second.second, hclassWithProto);
+    {
+        JSHandle<JSHClass> hclass;
+#define INIT_ARRAY_HCLASS_INDEX_ARRAYS(name)                                                        \
+        hclass = JSHClass::CloneWithElementsKind(thread, originHClass, ElementsKind::name, false);  \
+        SetConstant(ConstantIndex::ELEMENT_##name##_HCLASS_INDEX, hclass);
+
+        ELEMENTS_KIND_INIT_HCLASS_LIST(INIT_ARRAY_HCLASS_INDEX_ARRAYS)
+#undef INIT_ARRAY_HCLASS_INDEX_ARRAYS
+    }
+    SetConstant(ConstantIndex::ELEMENT_HOLE_TAGGED_HCLASS_INDEX, originHClass);
+    {
+        JSHandle<JSHClass> hclass;
+#define INIT_ARRAY_HCLASS_INDEX_ARRAYS(name)                                                       \
+        hclass = JSHClass::CloneWithElementsKind(thread, originHClass, ElementsKind::name, true);  \
+        SetConstant(ConstantIndex::ELEMENT_##name##_PROTO_HCLASS_INDEX, hclass);
+
+        ELEMENTS_KIND_INIT_HCLASS_LIST(INIT_ARRAY_HCLASS_INDEX_ARRAYS)
+#undef INIT_ARRAY_HCLASS_INDEX_ARRAYS
     }
 }
 }  // namespace panda::ecmascript

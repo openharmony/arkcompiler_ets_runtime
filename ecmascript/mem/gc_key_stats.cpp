@@ -15,9 +15,6 @@
 
 #include "ecmascript/mem/gc_key_stats.h"
 
-#include <iostream>
-#include <cstring>
-
 #ifdef ENABLE_HISYSEVENT
 #include "hisysevent.h"
 #endif
@@ -27,6 +24,7 @@
 
 #include "ecmascript/mem/heap-inl.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
+#include "ecmascript/platform/dfx_hisys_event.h"
 
 namespace panda::ecmascript {
 using PGOProfilerManager = pgo::PGOProfilerManager;
@@ -146,4 +144,52 @@ void GCKeyStats::InitializeRecordList()
     lastSendTimestamp_ = Clock::now();
 }
 
+/*
+| The Judgment criteria of Long GC
+|  IsInBackground  |  IsSensitive or Idle |  GCTime |
+| -----------------| ---------------------|---------|
+|       false      |       Sensitive      |    33   |
+|       false      |  !Sensitive & !Idle  |    33   |
+|       true       |         Idle         |    200  |
+|       true       |        !Idle         |    200  |
+|       true       |         Idle         |    500  |
+*/
+void GCKeyStats::ProcessLongGCEvent()
+{
+    if (!DFXHiSysEvent::IsEnableDFXHiSysEvent() || !heap_->GetEcmaVM()->GetJSOptions().IsEnableDFXHiSysEvent()) {
+        return;
+    }
+    LongGCStats *longGCStats = gcStats_->GetLongGCStats();
+    GCReason gcReason = gcStats_->GetGCReason();
+    bool gcIsSensitive = longGCStats->GetGCIsSensitive();
+    bool gcIsInBackground = longGCStats->GetGCIsInBackground();
+    float gcTotalTime = longGCStats->GetGCTotalTime();
+    if (gcIsSensitive) {
+        if (gcTotalTime > GC_SENSITIVE_LONG_TIME) {
+            DFXHiSysEvent::SendLongGCEvent(longGCStats);
+            longGCStats->Reset();
+        }
+    } else {
+        if (IsIdle(gcReason)) {
+            if (!gcIsInBackground && gcTotalTime > GC_IDLE_LONG_TIME) {
+                longGCStats->SetCpuLoad(DFXHiSysEvent::GetCpuUsage());
+                DFXHiSysEvent::SendLongGCEvent(longGCStats);
+                longGCStats->Reset();
+            } else if (gcIsInBackground && gcTotalTime > GC_BACKGROUD_IDLE_LONG_TIME) {
+                longGCStats->SetCpuLoad(DFXHiSysEvent::GetCpuUsage());
+                DFXHiSysEvent::SendLongGCEvent(longGCStats);
+                longGCStats->Reset();
+            }
+        } else {
+            if (!gcIsInBackground && gcTotalTime > GC_NOT_SENSITIVE_LONG_TIME) {
+                DFXHiSysEvent::SendLongGCEvent(longGCStats);
+                longGCStats->Reset();
+            } else if (gcIsInBackground && gcTotalTime > GC_BACKGROUD_LONG_TIME) {
+                longGCStats->SetCpuLoad(DFXHiSysEvent::GetCpuUsage());
+                DFXHiSysEvent::SendLongGCEvent(longGCStats);
+                longGCStats->Reset();
+            }
+        }
+    }
+}
 } // namespace panda::ecmascript

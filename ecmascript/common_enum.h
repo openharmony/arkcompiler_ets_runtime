@@ -25,13 +25,17 @@ enum CheckIdleGCType {
     LOOPER
 };
 
+enum class MarkType : uint8_t {
+    MARK_YOUNG,
+    MARK_FULL
+};
+
 /*
  * TriggerGCType is categorized according to the scope the GC expects to cover.
  * Different GC algorithms may be applied to different GC types.
  * For example, SemiSpace GC for young generation GC, Mark-Sweep-Compact for full GC, etc.
  */
 enum TriggerGCType {
-    EDEN_GC,
     // GC is expected to cover young space only;
     YOUNG_GC,
     // GC is expected to cover young space and necessary old spaces;
@@ -41,6 +45,7 @@ enum TriggerGCType {
     // GC is expected to compress objects into appspawn space;
     APPSPAWN_FULL_GC,
     SHARED_GC,
+    SHARED_PARTIAL_GC,
     SHARED_FULL_GC,
     APPSPAWN_SHARED_FULL_GC,
     UNIFIED_GC,

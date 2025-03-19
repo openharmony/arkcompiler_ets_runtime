@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 
-#include <set>
 #include "emit.h"
 
 namespace maplebe {

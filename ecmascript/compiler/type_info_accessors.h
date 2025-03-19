@@ -186,6 +186,11 @@ public:
         return pgoType_.IsBoolean();
     }
 
+    inline bool IsUndefinedOrNullType() const
+    {
+        return pgoType_.IsUndefinedOrNull();
+    }
+
     inline ParamType GetParamType() const
     {
         return PGOSampleTypeToParamType();
@@ -725,6 +730,14 @@ public:
                               const CallMethodFlagMap *callMethodFlagMap = nullptr);
     NO_COPY_SEMANTIC(CallThis2TypeInfoAccessor);
     NO_MOVE_SEMANTIC(CallThis2TypeInfoAccessor);
+
+    std::vector<GateRef> GetArgs()
+    {
+        return { thisObj_, a0_, a1_ };
+    }
+private:
+    GateRef a0_;
+    GateRef a1_;
 };
 
 class CallThis3TypeInfoAccessor final : public CallThisTypeInfoAccessor {

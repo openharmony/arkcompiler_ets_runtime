@@ -14,8 +14,6 @@
  */
 
 #include "x64_cgfunc.h"
-#include "becommon.h"
-#include "abi.h"
 #include "x64_call_conv.h"
 namespace maplebe {
 using namespace maple;

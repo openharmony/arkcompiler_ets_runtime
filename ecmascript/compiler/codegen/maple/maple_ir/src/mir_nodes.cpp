@@ -15,15 +15,8 @@
 
 #include "mir_nodes.h"
 
-#include <algorithm>
-#include <stack>
 
-#include "maple_string.h"
 #include "mir_function.h"
-#include "namemangler.h"
-#include "opcode_info.h"
-#include "printing.h"
-#include "utils.h"
 
 namespace maple {
 MIRModule *theMIRModule = nullptr;

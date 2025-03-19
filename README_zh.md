@@ -26,24 +26,39 @@
 ├─ ecmascript             # 方舟ArkTS运行时实现，包括ECMAScript标准库、解释器、内存管理等
 │   ├─ base               # 基础帮助类
 │   ├─ builtins           # ECMAScript标准库
+│   ├─ checkpoint         # 虚拟机安全点
 │   ├─ compiler           # 编译器
 │   ├─ containers         # 非ECMAScript标准容器类库
+│   ├─ daemon             # Shared GC并发线程名
 │   ├─ debugger           # 调试器
+│   ├─ deoptimizer        # 编译器逆优化
 │   ├─ dfx                # 内存与性能分析工具
+│   ├─ extractortool      # sourcemap解析
 │   ├─ ic                 # 内联缓存模块
 │   ├─ interpreter        # 解释器
+│   ├─ intl               # 国际化
+│   ├─ jit                # jit编译器
 │   ├─ jobs               # 微任务队列
 │   ├─ js_api             # 非ECMA标准对象模型
+│   ├─ js_type_metadata   # 对象布局文件
 │   ├─ js_vm              # 命令行工具
 │   ├─ jspandafile        # abc文件管理模块
 │   ├─ mem                # 内存管理模块
 │   ├─ module             # ECMAScript module模块
 │   ├─ napi               # C++接口模块
+│   ├─ ohos               # 系统相关逻辑
+│   ├─ patch              # 冷、热补丁
+│   ├─ pgo_profiler       # 基于 Profile-Guided Optimization (PGO) 的性能分析器，用于性能分析与优化
+│   ├─ platform           # 跨平台处理
 │   ├─ quick_fix          # 快速修复命令行工具
 │   ├─ regexp             # 正则引擎模块
 │   ├─ require            # CommonJS规范module模块
+│   ├─ sdk                # sdk工具集成
+│   ├─ serializer         # 序列化
 │   ├─ shared_mm          # 共享内存管理模块
+│   ├─ shared_objects     # 共享对象实现
 │   ├─ snapshot           # 快照模块
+│   ├─ stackmap           # 活跃变量的位置信息
 │   ├─ stubs              # runtime桩函数
 │   ├─ taskpool           # 任务池
 │   ├─ tests              # 单元测试用例

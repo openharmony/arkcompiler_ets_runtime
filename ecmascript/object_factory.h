@@ -229,6 +229,8 @@ public:
 
     JSHandle<JSObject> NewEmptyJSObject(uint32_t inlinedProps = JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS);
 
+    JSHandle<JSHClass> GetHClassByFunctionKind(const JSHandle<GlobalEnv> &env, FunctionKind kind);
+
     // use for others create, prototype is Function.prototype
     // use for native function
     JSHandle<JSFunction> NewJSFunction(const JSHandle<GlobalEnv> &env, const void *nativeFunc = nullptr,
@@ -258,6 +260,7 @@ public:
 
     JSHandle<JSObject> OrdinaryNewJSObjectCreate(const JSHandle<JSTaggedValue> &proto);
 
+    JSHandle<JSObject> CreateNapiObject();
     JSHandle<JSObject> CreateNullJSObject();
 
     JSHandle<JSFunction> NewAotFunction(uint32_t numArgs, uintptr_t codeEntry);
@@ -540,15 +543,22 @@ public:
                                             const JSHandle<JSHClass> &objClass);
     static bool CanObjectLiteralHClassCache(size_t length);
     JSHandle<JSHClass> CreateObjectLiteralRootHClass(size_t length);
-    JSHandle<JSHClass> GetObjectLiteralRootHClass(size_t length);
+    JSHandle<JSHClass> GetObjectLiteralRootHClass(size_t literalLength, size_t maxPropsNum);
     JSHandle<JSHClass> GetObjectLiteralHClass(const JSHandle<TaggedArray> &properties, size_t length);
     // only use for creating Function.prototype and Function
     JSHandle<JSFunction> NewJSFunctionByHClass(const JSHandle<Method> &method, const JSHandle<JSHClass> &clazz,
                                                MemSpaceType type = MemSpaceType::SEMI_SPACE);
+    // for native function
+    JSTaggedValue GetReadOnlyMethodForNativeFunction(FunctionKind kind);
+    JSHandle<JSFunction> NewNativeFunctionByHClass(const JSHandle<JSHClass> &clazz,
+                                                   const void *nativeFunc,
+                                                   FunctionKind kind,
+                                                   MemSpaceType type = MemSpaceType::SEMI_SPACE);
     JSHandle<JSFunction> NewJSFunctionByHClass(const void *func, const JSHandle<JSHClass> &clazz,
                                                FunctionKind kind = FunctionKind::NORMAL_FUNCTION);
     JSHandle<JSFunction> NewJSFunctionByHClassWithoutAccessor(const void *func,
         const JSHandle<JSHClass> &clazz, FunctionKind kind = FunctionKind::NORMAL_FUNCTION);
+
     JSHandle<Method> NewMethod(const MethodLiteral *methodLiteral, MemSpaceType spaceType = OLD_SPACE);
 
     JSHandle<Method> NewMethod(const JSPandaFile *jsPandaFile, MethodLiteral *methodLiteral,
@@ -568,8 +578,9 @@ public:
     uintptr_t NewSpaceBySnapshotAllocator(size_t size);
     TaggedObject *NewMachineCodeObject(size_t length, MachineCodeDesc &desc);
     JSHandle<MachineCode> SetMachineCodeObjectData(TaggedObject *obj, size_t length,
-        const MachineCodeDesc &desc, JSHandle<Method> &method);
-    JSHandle<MachineCode> NewMachineCodeObject(size_t length, const MachineCodeDesc &desc, JSHandle<Method> &method);
+        const MachineCodeDesc &desc, JSHandle<Method> &method, RelocMap &relocInfo);
+    JSHandle<MachineCode> NewMachineCodeObject(size_t length, const MachineCodeDesc &desc,
+                                               JSHandle<Method> &method, RelocMap &relocInfo);
     JSHandle<ClassInfoExtractor> NewClassInfoExtractor(JSHandle<JSTaggedValue> method);
     JSHandle<ClassLiteral> NewClassLiteral();
 
@@ -776,6 +787,11 @@ public:
 
     JSHandle<JSFunction> NewSFunctionByHClass(const JSHandle<Method> &methodHandle,
                                               const JSHandle<JSHClass> &hclass);
+    // for native function
+    JSHandle<JSFunction> NewNativeSFunctionByHClass(const JSHandle<JSHClass> &hclass,
+                                                    const void *nativeFunc,
+                                                    FunctionKind kind);
+
     JSHandle<JSFunction> NewSFunctionByHClass(const void *func, const JSHandle<JSHClass> &hclass,
         FunctionKind kind,
         kungfu::BuiltinsStubCSigns::ID builtinId = kungfu::BuiltinsStubCSigns::INVALID,
@@ -860,6 +876,8 @@ public:
 
     JSHandle<ProfileTypeInfoCell> NewSEmptyProfileTypeInfoCell();
 
+    JSHandle<Method> NewSEmptyNativeFunctionMethod(FunctionKind kind);
+
     JSHandle<FunctionTemplate> NewSFunctionTemplate(
         const JSHandle<Method> &method, const JSHandle<JSTaggedValue> &module, int32_t length);
 
@@ -888,6 +906,7 @@ public:
     JSHandle<AccessorData> NewSInternalAccessor(void *setter, void *getter);
 
     JSHandle<JSSymbol> NewSWellKnownSymbol(const JSHandle<JSTaggedValue> &name);
+    JSHandle<JSSymbol> NewSConstantPrivateSymbol();
     JSHandle<JSSymbol> NewSEmptySymbol();
     JSHandle<JSSymbol> NewSWellKnownSymbolWithChar(std::string_view description);
     JSHandle<JSSymbol> NewSPublicSymbolWithChar(std::string_view description);
@@ -895,7 +914,8 @@ public:
     JSHandle<SendableEnv> NewSendableEnv(int numSlots);
     JSHandle<JSFunction> NewJSSendableFunction(const JSHandle<Method> &methodHandle);
 
-    void SetCodeEntryToFunctionFromMethod(const JSHandle<JSFunction> &func, const JSHandle<Method> &mothed);
+    void SetCodeEntryToFunctionFromMethod(const JSHandle<JSFunction> &func, const JSHandle<Method> &method);
+    void SetNativePointerToFunctionFromMethod(const JSHandle<JSFunctionBase> &func, const JSHandle<Method> &method);
 
 private:
     friend class GlobalEnv;
@@ -914,7 +934,6 @@ private:
     SharedHeap *sHeap_ {nullptr};
 
     static constexpr uint32_t LENGTH_THRESHOLD = 50;
-    static constexpr int MAX_LITERAL_HCLASS_CACHE_SIZE = 63;
 
     NO_COPY_SEMANTIC(ObjectFactory);
     NO_MOVE_SEMANTIC(ObjectFactory);
@@ -931,8 +950,6 @@ private:
     // used to create nonmovable js_object
     JSHandle<JSObject> NewNonMovableJSObject(const JSHandle<JSHClass> &jshclass);
 
-    // used to create nonmovable utf8 string at global constants
-    JSHandle<EcmaString> NewFromASCIINonMovable(std::string_view data);
     // used to create read only utf8 string at global constants
     JSHandle<EcmaString> NewFromASCIIReadOnly(std::string_view data);
 
@@ -953,7 +970,6 @@ private:
     JSHandle<EcmaString> GetStringFromStringTable(const uint8_t *utf8Data, uint32_t utf8Len, bool canBeCompress) const;
     JSHandle<EcmaString> GetCompressedSubStringFromStringTable(const JSHandle<EcmaString> &string, uint32_t offset,
                                                                uint32_t utf8Len) const;
-    JSHandle<EcmaString> GetStringFromStringTableNonMovable(const uint8_t *utf8Data, uint32_t utf8Len) const;
     JSHandle<EcmaString> GetStringFromStringTableReadOnly(const uint8_t *utf8Data, uint32_t utf8Len,
                                                           bool canBeCompress = true) const;
     // For MUtf-8 string data
@@ -968,14 +984,14 @@ private:
     JSHandle<EcmaString> GetStringFromStringTable(const uint16_t *utf16Data, uint32_t utf16Len,
                                                   bool canBeCompress) const;
 
-    JSHandle<EcmaString> GetStringFromStringTable(EcmaString *string) const;
-
     JSHandle<EcmaString> GetStringFromStringTable(const JSHandle<EcmaString> &firstString,
                                                   const JSHandle<EcmaString> &secondString);
 
     JSHandle<JSHClass> CreateJSArguments(const JSHandle<GlobalEnv> &env);
+
     JSHandle<JSHClass> CreateJSArrayInstanceClass(JSHandle<JSTaggedValue> proto,
                                                   uint32_t inlinedProps = JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS);
+
     JSHandle<JSHClass> CreateJSRegExpInstanceClass(JSHandle<JSTaggedValue> proto);
 
     inline TaggedObject *AllocObjectWithSpaceType(size_t size, JSHClass *cls, MemSpaceType type);
@@ -995,6 +1011,9 @@ private:
                                                                         const Local<JSValueRef> *values);
 
     JSHandle<MutantTaggedArray> NewMutantTaggedArrayWithoutInit(uint32_t length, MemSpaceType spaceType);
+    void MergeSendableClassElementsDic(JSHandle<TaggedArray> &elements,
+                                       const JSHandle<JSTaggedValue> &elementsDicOfCtorVal,
+                                       const JSHandle<JSTaggedValue> &elementsDicOfTrgVal);
 
     friend class Builtins;    // create builtins object need hclass
     friend class JSFunction;  // create prototype_or_hclass need hclass

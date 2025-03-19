@@ -13,9 +13,7 @@
  * limitations under the License.
  */
 
-#include "aarch64_cgfunc.h"
 #include "aarch64_cg.h"
-#include "becommon.h"
 
 namespace maplebe {
 using namespace maple;
@@ -97,6 +95,14 @@ Insn *AArch64RegInfo::BuildLdrInsn(uint32 regSize, PrimType stype, RegOperand &p
 {
     AArch64CGFunc *a64CGFunc = static_cast<AArch64CGFunc *>(GetCurrFunction());
     return &a64CGFunc->GetInsnBuilder()->BuildInsn(a64CGFunc->PickLdInsn(regSize, stype), phyOpnd, memOpnd);
+}
+
+bool AArch64RegInfo::IsMovFromRegtoReg(MOperator mOp, Insn &insn)
+{
+    if (insn.IsMove() && (mOp == MOP_xmovrr || mOp == MOP_wmovrr)) {
+        return true;
+    }
+    return false;
 }
 
 MemOperand *AArch64RegInfo::GetOrCreatSpillMem(regno_t vrNum, uint32 bitSize)

@@ -157,7 +157,7 @@ print(mySet.has(7));
 //aot: [trace] aot inline builtin: Set.has, caller function name:func_main_0@builtinSetAdd
 //: false
 mySet.clear();
-//aot: [trace] aot inline builtin: Set.clear, caller function name:func_main_0@builtinSetAdd
+//aot: [trace] aot call builtin: Set.clear, caller function name:func_main_0@builtinSetAdd
 
 let throwingObj = new Throwing();
 try {
@@ -184,6 +184,7 @@ try {
 
 function checkObjWithSetProto() {
     let o = {};
+    //aot: [trace] aot call builtin: Object.SetPrototypeOf, caller function name:#*#checkObjWithSetProto@builtinSetAdd
     Object.setPrototypeOf(o, Set.prototype);
     try {
         o.add(1);

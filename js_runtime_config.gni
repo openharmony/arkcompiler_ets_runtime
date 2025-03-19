@@ -31,6 +31,9 @@ declare_args() {
   # Set pgo profdata path.
   ets_runtime_feature_pgo_path = ""
 
+  # Enable -Bsymbolic to reduce overhead of intra-library calls.
+  ets_runtime_feature_enable_bsymbolic = true
+
   # Defaults for fort
   ets_runtime_support_jit_code_sign = false
   enable_jit_code_sign = false
@@ -44,6 +47,10 @@ declare_args() {
 
   TARGET = "x86_64"
   HOST_ARCH = 64
+
+  if (!defined(timeout)) {
+    timeout = 1200
+  }
 
   # If true app_aot_jit_enable_list will be placed in /etc/ark
   # Default false.
@@ -85,7 +92,7 @@ compile_llvm_online = false
 if (enable_fuzz_option) {
   run_with_asan = true
 }
-enable_leak_check = false
+enable_handle_leak_detect = false
 enable_cow_array = true
 enable_coverage = false
 enable_asm_assert = false
@@ -116,8 +123,7 @@ if (defined(is_arkui_x) && is_arkui_x && target_os == "ios") {
   sdk_libc_secshared_dep =
       "$ark_third_party_root/bounds_checking_function:libsec_static"
 } else {
-  sdk_libc_secshared_dep =
-      "$ark_third_party_root/bounds_checking_function:libsec_shared"
+  sdk_libc_secshared_dep = "bounds_checking_function:libsec_shared"
 }
 sdk_libc_secshared_config =
     "$ark_third_party_root/bounds_checking_function:libsec_public_config"
@@ -163,7 +169,10 @@ if (enable_hilog) {
   hiviewdfx_ext_deps += [ "hilog:libhilog" ]
 }
 if (enable_hisysevent) {
-  hiviewdfx_ext_deps += [ "hisysevent:libhisysevent" ]
+  hiviewdfx_ext_deps += [
+    "hisysevent:libhisysevent",
+    "hiview:libucollection_client",
+  ]
 }
 
 enable_sanitize = is_ohos && is_standard_system && !ark_standalone_build &&
@@ -241,12 +250,7 @@ template("libark_jsruntime_common_set") {
       cflags_cc += [ "-fvisibility=hidden" ]
     }
 
-    external_deps = []
-
-    if (enable_dump_in_faultlog) {
-      external_deps += [ "libuv:uv" ]
-    }
-
+    external_deps = [ "libuv:uv" ]
     if (target_name == "libark_jsruntime_arm_set" && is_ohos &&
         is_standard_system && !is_arkui_x) {
       defines += [ "ENABLE_FFRT_INTERFACES" ]

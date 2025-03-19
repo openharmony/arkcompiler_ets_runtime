@@ -62,8 +62,8 @@
 // where BuiltinsSharedTypedArray::func refers to the native implementation.
 #define BUILTIN_SHARED_TYPED_ARRAY_PROTOTYPE_GETTERS(V)                                                     \
     V("buffer",     GetBuffer,     INVALID) /* get %TypedArray%.prototype.buffer */                         \
-    V("byteLength", GetByteLength, TypedArrayGetByteLength) /* get %TypedArray%.prototype.byteLength */     \
-    V("byteOffset", GetByteOffset, TypedArrayGetByteOffset) /* get %TypedArray%.prototype.byteOffset */     \
+    V("byteLength", GetByteLength, INVALID) /* get %TypedArray%.prototype.byteLength */     \
+    V("byteOffset", GetByteOffset, INVALID) /* get %TypedArray%.prototype.byteOffset */     \
     V("length",     GetLength,     INVALID) /* get %TypedArray%.prototype.length */
 
 // List of functions in %TypedArray%.prototype, excluding the constructor and '@@' properties.
@@ -92,6 +92,8 @@
     V("includes",       Includes,       1, INVALID)                                     \
     /* %TypedArray%.prototype.indexOf ( searchElement [ , fromIndex ] ) */              \
     V("indexOf",        IndexOf,        1, INVALID)                                     \
+    /* %TypedArray%.prototype.lastIndexOf ( searchElement [ , fromIndex ] ) */          \
+    V("lastIndexOf",    LastIndexOf,    1, INVALID)                                     \
     /* %TypedArray%.prototype.join ( separator ) */                                     \
     V("join",           Join,           1, INVALID)                                     \
     /* %TypedArray%.prototype.keys ( ) */                                               \
@@ -100,6 +102,8 @@
     V("map",            Map,            1, INVALID)                                     \
     /* %TypedArray%.prototype.reduce ( callbackfn [ , initialValue ] ) */               \
     V("reduce",         Reduce,         1, INVALID)                                     \
+    /* %TypedArray%.prototype.reduceRight ( callbackfn [ , initialValue ] ) */          \
+    V("reduceRight",    ReduceRight,    1, INVALID)                                     \
     /* %TypedArray%.prototype.reverse ( ) */                                            \
     V("reverse",        Reverse,        0, INVALID)                                     \
     /* %TypedArray%.prototype.set ( source [ , offset ] ) */                            \
@@ -154,11 +158,13 @@ public:
     static JSTaggedValue FindIndex(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue ForEach(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue IndexOf(EcmaRuntimeCallInfo *argv);
+    static JSTaggedValue LastIndexOf(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue Join(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue Keys(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue GetLength(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue Map(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue Reduce(EcmaRuntimeCallInfo *argv);
+    static JSTaggedValue ReduceRight(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue Reverse(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue Set(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue Slice(EcmaRuntimeCallInfo *argv);

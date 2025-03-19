@@ -14,11 +14,7 @@
  */
 
 #include "mir_function.h"
-#include <cstdio>
-#include <iostream>
-#include "mir_nodes.h"
 #include "printing.h"
-#include "string_utils.h"
 
 namespace {
 using namespace maple;

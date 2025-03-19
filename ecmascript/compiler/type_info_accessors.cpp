@@ -15,12 +15,7 @@
 
 #include "ecmascript/compiler/type_info_accessors.h"
 
-#include "ecmascript/base/number_helper.h"
-#include "ecmascript/compiler/circuit.h"
-#include "ecmascript/compiler/pgo_type/pgo_type_manager.h"
 #include "ecmascript/global_env.h"
-#include "ecmascript/global_env_fields.h"
-#include "ecmascript/jspandafile/program_object.h"
 
 namespace panda::ecmascript::kungfu {
 ParamType TypeInfoAccessor::PGOSampleTypeToParamType() const
@@ -452,6 +447,8 @@ CallThis2TypeInfoAccessor::CallThis2TypeInfoAccessor(const CompilationEnv *env, 
 {
     argc_ = 2; // 2: number of argc
     func_ = acc_.GetValueIn(gate, 3); // 3: func
+    a0_ = acc_.GetValueIn(gate, 1); // 1: arg0
+    a1_ = acc_.GetValueIn(gate, 2); // 2: arg1
 }
 
 CallThis3TypeInfoAccessor::CallThis3TypeInfoAccessor(const CompilationEnv *env, Circuit *circuit, GateRef gate,

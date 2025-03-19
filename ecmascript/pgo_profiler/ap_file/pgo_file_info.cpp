@@ -17,6 +17,7 @@
 namespace panda::ecmascript::pgo {
 using StringHelper = base::StringHelper;
 bool PGOProfilerHeader::strictMatch_ = true;
+bool PGOProfilerHeader::checksumListHasAbcId_ = true;
 
 bool PGOProfilerHeader::BuildFromLegacy(void *buffer, PGOProfilerHeader **header)
 {
@@ -119,36 +120,6 @@ void PGOProfilerHeader::ProcessToBinary(std::fstream &fileStream) const
     }
 }
 
-bool PGOProfilerHeader::ParseFromText(std::ifstream &stream)
-{
-    std::string header;
-    if (std::getline(stream, header)) {
-        if (header.empty()) {
-            return false;
-        }
-        auto index = header.find(DumpUtils::BLOCK_START);
-        if (index == std::string::npos) {
-            return false;
-        }
-        auto version = header.substr(index + 1);
-        if (!InternalSetVersion(version)) {
-            return false;
-        }
-        if (!Verify()) {
-            return false;
-        }
-        if (!base::FileHeaderBase::CompatibleVerify(ELASTIC_HEADER_MINI_VERSION)) {
-            auto *pandaInfoSection = GetPandaInfoSection();
-            if (pandaInfoSection == nullptr) {
-                return false;
-            }
-            pandaInfoSection->offset_ -= sizeof(PGOProfilerHeader) - sizeof(PGOProfilerHeaderLegacy);
-        }
-        return true;
-    }
-    return false;
-}
-
 bool PGOProfilerHeader::ProcessToText(std::ofstream &stream) const
 {
     if (!Verify()) {
@@ -157,7 +128,7 @@ bool PGOProfilerHeader::ProcessToText(std::ofstream &stream) const
     stream << DumpUtils::VERSION_HEADER << InternalGetVersion() << DumpUtils::NEW_LINE;
     stream << "Compatible an file version: " << ConvToStr(GetCompatibleAnVersion()) << DumpUtils::NEW_LINE;
     if (SupportFileConsistency()) {
-        stream << "FileSize: " << GetFileSize() << " ,HeaderSize: " << GetHeaderSize() << " ,Checksum: " << std::hex
+        stream << "FileSize: " << GetFileSize() << ", HeaderSize: " << GetHeaderSize() << ", Checksum: " << std::hex
                << GetChecksum() << DumpUtils::NEW_LINE;
     }
     return true;

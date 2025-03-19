@@ -30,25 +30,28 @@ public:
 
 class LiteCGStackMapInfo : public CGStackMapInfo {
 public:
+    using LLVMPc2CallSiteInfo = LLVMStackMapType::Pc2CallSiteInfo;
+    using LLVMCallSiteInfo = LLVMStackMapType::CallSiteInfo;
+    using LLVMPc2Deopt = LLVMStackMapType::Pc2Deopt;
+    using LLVMDwarfRegAndOffsetType = LLVMStackMapType::DwarfRegAndOffsetType;
+    using LLVMDeoptInfoType = LLVMStackMapType::DeoptInfoType;
+    using LLVMLargeInt = LLVMStackMapType::LargeInt;
+    using LLVMIntType = LLVMStackMapType::IntType;
+    using LLVMOffsetType = LLVMStackMapType::OffsetType;
+    using LLVMDwarfRegType = LLVMStackMapType::DwarfRegType;
+
+    using LiteCGPc2CallSiteInfo = LiteCGStackMapType::Pc2CallSiteInfo;
+    using LiteCGPc2Deopt = LiteCGStackMapType::Pc2Deopt;
+
     LiteCGStackMapInfo() : CGStackMapInfo() {}
     ~LiteCGStackMapInfo() = default;
 
-    const std::vector<LiteCGStackMapType::Pc2CallSiteInfo> &GetCallSiteInfoVec() const
-    {
-        return pc2CallSiteInfoVec_;
-    }
-
-    const std::vector<LiteCGStackMapType::Pc2Deopt> &GetDeoptInfoVec() const
-    {
-        return pc2DeoptVec_;
-    }
-
-    void AppendCallSiteInfo(const LiteCGStackMapType::Pc2CallSiteInfo &callSiteInfo)
+    void AppendCallSiteInfo(const LiteCGPc2CallSiteInfo &callSiteInfo)
     {
         pc2CallSiteInfoVec_.push_back(callSiteInfo);
     }
 
-    void AppendDeoptInfo(const LiteCGStackMapType::Pc2Deopt &deoptInfo)
+    void AppendDeoptInfo(const LiteCGPc2Deopt &deoptInfo)
     {
         pc2DeoptVec_.push_back(deoptInfo);
     }
@@ -58,12 +61,15 @@ public:
         return kLiteCGStackMapInfo;
     }
 
-    void ConvertToLLVMStackMapInfo(
-        std::vector<LLVMStackMapType::Pc2CallSiteInfo> &pc2StackMapsVec,
-        std::vector<LLVMStackMapType::Pc2Deopt> &pc2DeoptInfoVec, Triple triple) const;
+    void ConvertToLLVMStackMapInfo(std::vector<LLVMPc2CallSiteInfo> &pc2StackMapsVec,
+                                   std::vector<LLVMPc2Deopt> &pc2DeoptInfoVec, Triple triple) const;
 private:
-    std::vector<LiteCGStackMapType::Pc2CallSiteInfo> pc2CallSiteInfoVec_;
-    std::vector<LiteCGStackMapType::Pc2Deopt> pc2DeoptVec_;
+    std::vector<LiteCGPc2CallSiteInfo> pc2CallSiteInfoVec_;
+    std::vector<LiteCGPc2Deopt> pc2DeoptVec_;
+
+    void ConvertToLLVMPc2CallSiteInfo(LLVMPc2CallSiteInfo &pc2CallSiteInfo,
+                                      const LiteCGPc2CallSiteInfo &liteCGPc2CallSiteInfo, int fpReg) const;
+    void ConvertToLLVMPv2Deopt(LLVMPc2Deopt &pc2DeoptInfo, const LiteCGPc2Deopt &liteCGPc2DeoptInfo, int fpReg) const;
 };
 } // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_LITECG_STACKMAP_TYPE_H

@@ -42,7 +42,7 @@ inline void RSetItem::MergeBack()
 inline void RSetWorkListHandler::EnumerateRegions(const Heap *heap)
 {
     heap->EnumerateRegions([this](Region *region) {
-        RememberedSet *rset = region->ExtractLocalToShareRSet();
+        RememberedSet *rset = region->CollectLocalToShareRSet();
         if (rset != nullptr) {
             items_.emplace_back(region, rset);
         }

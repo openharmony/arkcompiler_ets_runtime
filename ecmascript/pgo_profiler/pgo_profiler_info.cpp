@@ -14,12 +14,6 @@
  */
 
 #include "ecmascript/pgo_profiler/pgo_profiler_info.h"
-#include <cstdint>
-#include <fstream>
-#include <iomanip>
-#include <memory>
-#include <utility>
-#include "ecmascript/js_thread.h"
 #include "ecmascript/ohos/framework_helper.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
 #include "libpandafile/bytecode_instruction-inl.h"
@@ -40,7 +34,7 @@ void PGOPandaFileInfos::ProcessToBinary(std::fstream &fileStream, SectionInfo *i
     fileStream.seekp(info->offset_);
     info->number_ = fileInfos_.size();
     for (auto localInfo : fileInfos_) {
-        fileStream.write(reinterpret_cast<char *>(&localInfo), localInfo.Size());
+        fileStream.write(reinterpret_cast<char *>(&localInfo), FileInfo::Size());
     }
     info->size_ = static_cast<uint32_t>(fileStream.tellp()) - info->offset_;
 }
@@ -48,8 +42,14 @@ void PGOPandaFileInfos::ProcessToBinary(std::fstream &fileStream, SectionInfo *i
 void PGOPandaFileInfos::Merge(const PGOPandaFileInfos &pandaFileInfos)
 {
     for (const auto &info : pandaFileInfos.fileInfos_) {
-        fileInfos_.emplace(info.GetChecksum());
+        fileInfos_.emplace(info.GetChecksum(), info.GetAbcId());
     }
+}
+
+void PGOPandaFileInfos::MergeSafe(const PGOPandaFileInfos& pandaFileInfos)
+{
+    WriteLockHolder lock(fileInfosLock_);
+    Merge(pandaFileInfos);
 }
 
 bool PGOPandaFileInfos::VerifyChecksum(const PGOPandaFileInfos &pandaFileInfos, const std::string &base,
@@ -66,34 +66,6 @@ bool PGOPandaFileInfos::VerifyChecksum(const PGOPandaFileInfos &pandaFileInfos, 
     return true;
 }
 
-bool PGOPandaFileInfos::ParseFromText(std::ifstream &stream)
-{
-    std::string pandaFileInfo;
-    while (std::getline(stream, pandaFileInfo)) {
-        if (pandaFileInfo.empty()) {
-            continue;
-        }
-
-        size_t start = pandaFileInfo.find_first_of(DumpUtils::ARRAY_START);
-        size_t end = pandaFileInfo.find_last_of(DumpUtils::ARRAY_END);
-        if (start == std::string::npos || end == std::string::npos || start >= end) {
-            return false;
-        }
-        auto content = pandaFileInfo.substr(start + 1, end - (start + 1) - 1);
-        std::vector<std::string> infos = StringHelper::SplitString(content, DumpUtils::BLOCK_SEPARATOR);
-        for (auto checksum : infos) {
-            uint32_t result;
-            if (!StringHelper::StrToUInt32(checksum.c_str(), &result)) {
-                LOG_ECMA(ERROR) << "checksum: " << checksum << " parse failed";
-                return false;
-            }
-            Sample(result);
-        }
-        return true;
-    }
-    return true;
-}
-
 void PGOPandaFileInfos::ProcessToText(std::ofstream &stream) const
 {
     std::string pandaFileInfo = DumpUtils::NEW_LINE + DumpUtils::PANDA_FILE_INFO_HEADER;
@@ -104,6 +76,7 @@ void PGOPandaFileInfos::ProcessToText(std::ofstream &stream) const
         } else {
             isFirst = false;
         }
+        pandaFileInfo += (std::to_string(info.GetAbcId()) + DumpUtils::BLOCK_START);
         pandaFileInfo += std::to_string(info.GetChecksum());
     }
 
@@ -111,13 +84,56 @@ void PGOPandaFileInfos::ProcessToText(std::ofstream &stream) const
     stream << pandaFileInfo;
 }
 
-bool PGOPandaFileInfos::Checksum(uint32_t checksum) const
+bool PGOPandaFileInfos::Checksum(const std::unordered_map<CString, uint32_t>& fileNameToChecksumMap,
+                                 const std::shared_ptr<PGOAbcFilePool>& abcFilePool) const
 {
-    if (fileInfos_.find(checksum) == fileInfos_.end()) {
-        LOG_ECMA(ERROR) << "Checksum verification failed. Please ensure that the .abc and .ap match.";
-        return false;
+    for (const auto& fileNameToChecksumPair: fileNameToChecksumMap) {
+        ApEntityId abcId(0);
+        abcFilePool->GetEntryIdByNormalizedName(fileNameToChecksumPair.first, abcId);
+        FileInfo tempInfo = FileInfo(fileNameToChecksumPair.second, abcId);
+        auto it = fileInfos_.find(tempInfo);
+        if (it != fileInfos_.end()) {
+            if (it->GetChecksum() != tempInfo.GetChecksum()) {
+                LOG_ECMA(ERROR)
+                    << "Checksum verification failed. Please ensure that the "
+                       ".abc and .ap match. Fail file: "
+                    << fileNameToChecksumPair.first << "\n"
+                    << " compile file checksum: "
+                    << fileNameToChecksumPair.second
+                    << " recorded checksum in ap file: " << it->GetChecksum();
+                return false;
+            }
+        }
     }
     return true;
+}
+
+bool PGOPandaFileInfos::Checksum(const std::unordered_map<CString, uint32_t>& fileNameToChecksumMap) const
+{
+    for (const auto& fileNameToChecksumPair: fileNameToChecksumMap) {
+        for (const auto &fileInfo : fileInfos_) {
+            if (fileInfo.GetChecksum() == fileNameToChecksumPair.second) {
+                return true;
+            }
+        }
+    }
+    LOG_ECMA(ERROR) << "Checksum verification failed. Please ensure that the .abc and .ap match.";
+    return false;
+}
+
+void PGOPandaFileInfos::UpdateFileInfosAbcID(const PGOContext &context)
+{
+    std::set<FileInfo> newFileInfos;
+    auto oldToNewInfoMap = context.GetAbcIdRemap();
+    for (const auto &fileInfo : fileInfos_) {
+        auto changeInfo = oldToNewInfoMap.find(fileInfo.GetAbcId());
+        if (changeInfo != oldToNewInfoMap.end()) {
+            newFileInfos.emplace(fileInfo.GetChecksum(), changeInfo->second);
+        } else {
+            newFileInfos.emplace(fileInfo);
+        }
+    }
+    fileInfos_.swap(newFileInfos);
 }
 
 void PGOMethodInfo::ProcessToText(std::string &text) const
@@ -440,10 +456,11 @@ void PGOMethodInfoMap::ProcessToText(uint32_t threshold, const CString &recordNa
         if (isFirst) {
             profilerString += DumpUtils::NEW_LINE;
             profilerString += recordName;
-            profilerString += DumpUtils::BLOCK_AND_ARRAY_START;
+            profilerString += DumpUtils::BLOCK_START + DumpUtils::SPACE + DumpUtils::ARRAY_START;
+            profilerString += DumpUtils::NEW_LINE + DumpUtils::ALIGN;
             isFirst = false;
         } else {
-            profilerString += DumpUtils::BLOCK_SEPARATOR + DumpUtils::SPACE;
+            profilerString += DumpUtils::BLOCK_SEPARATOR + DumpUtils::NEW_LINE + DumpUtils::ALIGN;
         }
         methodInfo->ProcessToText(profilerString);
         profilerString += DumpUtils::ELEMENT_SEPARATOR;
@@ -461,7 +478,7 @@ void PGOMethodInfoMap::ProcessToText(uint32_t threshold, const CString &recordNa
         }
     }
     if (!isFirst) {
-        profilerString += (DumpUtils::SPACE + DumpUtils::ARRAY_END + DumpUtils::NEW_LINE);
+        profilerString += (DumpUtils::NEW_LINE + DumpUtils::ARRAY_END + DumpUtils::NEW_LINE);
         stream << profilerString;
     }
 }
@@ -737,6 +754,12 @@ void PGORecordDetailInfos::Merge(const PGORecordDetailInfos &recordInfos)
     }
 }
 
+void PGORecordDetailInfos::MergeSafe(const PGORecordDetailInfos& recordInfos)
+{
+    LockHolder lock(mutex_);
+    Merge(recordInfos);
+}
+
 bool PGORecordDetailInfos::ParseFromBinary(void *buffer, PGOProfilerHeader *const header)
 {
     header_ = header;
@@ -881,49 +904,6 @@ bool PGORecordDetailInfos::ProcessToBinaryForLayout(
     return true;
 }
 
-bool PGORecordDetailInfos::ParseFromText(std::ifstream &stream)
-{
-    std::string details;
-    while (std::getline(stream, details)) {
-        if (details.empty()) {
-            continue;
-        }
-        size_t blockIndex = details.find(DumpUtils::BLOCK_AND_ARRAY_START);
-        if (blockIndex == std::string::npos) {
-            return false;
-        }
-        CString recordName = ConvertToString(details.substr(0, blockIndex));
-
-        size_t start = details.find_first_of(DumpUtils::ARRAY_START);
-        size_t end = details.find_last_of(DumpUtils::ARRAY_END);
-        if (start == std::string::npos || end == std::string::npos || start > end) {
-            return false;
-        }
-        ASSERT(end > start + 1);
-        auto content = details.substr(start + 1, end - (start + 1) - 1);
-        std::vector<std::string> infoStrings = StringHelper::SplitString(content, DumpUtils::BLOCK_SEPARATOR);
-        if (infoStrings.size() <= 0) {
-            continue;
-        }
-
-        ApEntityId recordId(0);
-        ProfileType profileType(0, recordId, ProfileType::Kind::RecordClassId);
-        auto methodInfosIter = recordInfos_.find(profileType);
-        PGOMethodInfoMap *methodInfos = nullptr;
-        if (methodInfosIter == recordInfos_.end()) {
-            methodInfos = nativeAreaAllocator_.New<PGOMethodInfoMap>();
-            recordInfos_.emplace(profileType, methodInfos);
-        } else {
-            methodInfos = methodInfosIter->second;
-        }
-        ASSERT(methodInfos != nullptr);
-        if (!methodInfos->ParseFromText(chunk_.get(), hotnessThreshold_, infoStrings)) {
-            return false;
-        }
-    }
-    return true;
-}
-
 void PGORecordDetailInfos::ProcessToText(std::ofstream &stream) const
 {
     std::string profilerString;
@@ -931,15 +911,17 @@ void PGORecordDetailInfos::ProcessToText(std::ofstream &stream) const
     for (auto layoutInfoIter : hclassTreeDescInfos_) {
         if (isFirst) {
             profilerString += DumpUtils::NEW_LINE;
-            profilerString += DumpUtils::ARRAY_START + DumpUtils::SPACE;
+            profilerString += DumpUtils::ARRAY_START + DumpUtils::NEW_LINE;
+            profilerString += DumpUtils::ALIGN;
             isFirst = false;
         } else {
-            profilerString += DumpUtils::BLOCK_SEPARATOR + DumpUtils::SPACE;
+            profilerString += DumpUtils::BLOCK_SEPARATOR + DumpUtils::NEW_LINE;
+            profilerString += DumpUtils::ALIGN;
         }
         profilerString += PGOHClassTreeDescInner::GetTypeString(layoutInfoIter);
     }
     if (!isFirst) {
-        profilerString += (DumpUtils::SPACE + DumpUtils::ARRAY_END + DumpUtils::NEW_LINE);
+        profilerString += (DumpUtils::NEW_LINE + DumpUtils::ARRAY_END + DumpUtils::NEW_LINE);
         stream << profilerString;
     }
     for (auto iter = recordInfos_.begin(); iter != recordInfos_.end(); iter++) {
@@ -982,6 +964,12 @@ void PGORecordDetailInfos::Clear()
     abcIdRemap_.clear();
     chunk_ = std::make_unique<Chunk>(&nativeAreaAllocator_);
     InitSections();
+}
+
+void PGORecordDetailInfos::ClearSafe()
+{
+    LockHolder lock(mutex_);
+    Clear();
 }
 
 bool PGORecordSimpleInfos::Match(const CString &abcNormalizedDesc, const CString &recordName, EntityId methodId)

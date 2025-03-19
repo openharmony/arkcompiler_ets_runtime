@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 
-#include <iomanip>
 
 #include "ecmascript/runtime_call_id.h"
 

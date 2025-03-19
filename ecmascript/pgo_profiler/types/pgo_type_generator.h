@@ -28,10 +28,12 @@ class PGOTypeGenerator {
 public:
     static ProfileType GenerateProfileType(JSTaggedType child, ProfileType rootType)
     {
-        CString result = JSHClass::DumpToString(child);
-        uint32_t traceId = ComputeHashCode(result);
-        ProfileType type(rootType.GetAbcId(), traceId, rootType.GetKind());
-        return type;
+        std::pair<bool, CString> result = JSHClass::DumpToString(child);
+        uint32_t traceId = ComputeHashCode(result.second);
+        if (result.first) {
+            return ProfileType(rootType.GetAbcId(), traceId, ProfileType::Kind::InvalidId);
+        }
+        return ProfileType(rootType.GetAbcId(), traceId, rootType.GetKind());
     }
 
 private:
