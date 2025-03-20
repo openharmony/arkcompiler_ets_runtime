@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -32,7 +32,9 @@ const std::string TARGET_COMPILER_MODE = "target-compiler-mode";
 const std::string COMPILER_PKG_INFO = "compiler-pkg-info";
 const std::string COMPILER_ENABLE_AOT_CODE_COMMENT = "compiler-enable-aot-code-comment";
 const std::string COMPILER_LOG_OPT = "compiler-log";
-const std::string LANGUAGE_VERSION = "language-version";
+const std::string COMPILER_AN_FILE_MAX_SIZE = "compiler-an-file-max-size";
+
+const std::string CODE_LANGUAGE = "codeLanguage";
 } // namespace ArgsIdx
 
 namespace Symbols {

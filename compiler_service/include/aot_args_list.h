@@ -144,12 +144,18 @@ std::unordered_set<std::string> AotArgsList {
     "compiler-baseline-pgo",
 };
 
-std::unordered_set<std::string> StaicAotArgsList {
+std::unordered_set<std::string> StaticAotArgsList {
     "boot-panda-files",
     "paoc-panda-files",
     "paoc-output",
     "load-runtimes",
     "paoc-use-cha",
+};
+
+std::vector<std::string> StaticAotDefaultArgs {
+    "--load-runtimes=ets",
+    "--compiler-enable-fast-interop=false",
+    "--paoc-zip-panda-file=ets/modules_static.abc"
 };
 } // namespace OHOS::ArkCompiler
 #endif // OHOS_ARKCOMPILER_AOT_ARGS_LIST_H
