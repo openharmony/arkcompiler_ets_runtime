@@ -923,7 +923,7 @@ HWTEST_F_L0(JSNApiTests, JSNApi_ExecutePendingJob)
 {
     LocalScope scope(vm_);
     JSNApi::ExecutePendingJob(vm_);
-    bool res = EcmaVM::ConstCast(vm_)->GetJSThread()->GetCurrentEcmaContext()->ExecutePromisePendingJob();
+    bool res = EcmaVM::ConstCast(vm_)->ExecutePromisePendingJob();
     EXPECT_TRUE(res);
 }
 

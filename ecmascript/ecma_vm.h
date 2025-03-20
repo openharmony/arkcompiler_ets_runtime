@@ -20,6 +20,7 @@
 
 #include "ecmascript/base/config.h"
 #include "ecmascript/builtins/builtins_method_index.h"
+#include "ecmascript/js_handle.h"
 #include "ecmascript/js_runtime_options.h"
 #include "ecmascript/mem/c_containers.h"
 #include "ecmascript/mem/c_string.h"
@@ -115,6 +116,12 @@ using SearchHapPathCallBack = std::function<bool(const std::string moduleName, s
 using DeviceDisconnectCallback = std::function<bool()>;
 using UncatchableErrorHandler = std::function<void(panda::TryCatch&)>;
 using StopPreLoadSoCallback = std::function<void()>;
+using HostPromiseRejectionTracker = void (*)(const EcmaVM* vm,
+                                             const JSHandle<JSPromise> promise,
+                                             const JSHandle<JSTaggedValue> reason,
+                                             PromiseRejectionEvent operation,
+                                             void* data);
+using PromiseRejectCallback = void (*)(void* info);
 
 enum class IcuFormatterType: uint8_t {
     SIMPLE_DATE_FORMAT_DEFAULT,
@@ -1048,6 +1055,45 @@ public:
         return apiVersion_;
     }
 
+    JSHandle<job::MicroJobQueue> GetMicroJobQueue() const;
+
+    bool HasPendingJob() const;
+
+    bool ExecutePromisePendingJob();
+
+    void SetPromiseRejectCallback(PromiseRejectCallback cb)
+    {
+        promiseRejectCallback_ = cb;
+    }
+
+    PromiseRejectCallback GetPromiseRejectCallback() const
+    {
+        return promiseRejectCallback_;
+    }
+
+    void SetHostPromiseRejectionTracker(HostPromiseRejectionTracker cb)
+    {
+        hostPromiseRejectionTracker_ = cb;
+    }
+
+    void PromiseRejectionTracker(const JSHandle<JSPromise> &promise,
+                                 const JSHandle<JSTaggedValue> &reason, PromiseRejectionEvent operation)
+    {
+        if (hostPromiseRejectionTracker_ != nullptr) {
+            hostPromiseRejectionTracker_(this, promise, reason, operation, data_);
+        }
+    }
+
+    void SetPromiseRejectInfoData(void* data)
+    {
+        data_ = data;
+    }
+
+    bool IsExecutingPendingJob() const
+    {
+        return isProcessingPendingJob_.load();
+    }
+
 #if ECMASCRIPT_ENABLE_COLLECTING_OPCODES
     void SetBytecodeStatsStack(std::unordered_map<BytecodeInstruction::Opcode, int> &bytecodeStatsMap)
     {
@@ -1065,7 +1111,7 @@ public:
 private:
     void ClearBufferData();
     void CheckStartCpuProfiler();
-
+    void SetMicroJobQueue(job::MicroJobQueue *queue);
     // For Internal Native MethodLiteral.
     void GenerateInternalNativeMethods();
     void CacheToGlobalConstants(JSTaggedValue value, ConstantIndex constant);
@@ -1207,6 +1253,14 @@ private:
     int processStartRealtime_ = 0;
 
     bool enableJitLogSkip_ = true;
+
+    // Registered Callbacks
+    PromiseRejectCallback promiseRejectCallback_ {nullptr};
+    HostPromiseRejectionTracker hostPromiseRejectionTracker_ {nullptr};
+    void* data_{nullptr};
+
+    JSTaggedValue microJobQueue_ {JSTaggedValue::Hole()};
+    std::atomic<bool> isProcessingPendingJob_ {false};
 
 #if ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT
     // Stats for Thread-State-Transition and String-Table Locks

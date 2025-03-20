@@ -69,7 +69,7 @@ HWTEST_F_L0(JSAsyncFunctionTest, AsyncFunctionAwait)
     JSAsyncFunction::AsyncFunctionAwait(thread, asyncFuncObj, valueHandle);
 
     // check AsyncPromise queue and queue cannot execute
-    auto microJobQueue = thread->GetCurrentEcmaContext()->GetMicroJobQueue();
+    auto microJobQueue = thread->GetEcmaVM()->GetMicroJobQueue();
     EXPECT_FALSE(microJobQueue->GetPromiseJobQueue().IsUndefined());
     // promiese is undefined.
     EXPECT_TRUE(asyncFuncObj->GetPromise().IsUndefined());

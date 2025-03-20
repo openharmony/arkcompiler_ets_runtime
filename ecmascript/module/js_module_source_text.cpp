@@ -859,7 +859,7 @@ JSTaggedValue SourceTextModule::Evaluate(JSThread *thread, const JSHandle<Source
     SourceTextModule::InnerModuleEvaluation(thread, module, stack, errorStack, 0, buffer, size, executeType);
     HandleEvaluateResult(thread, module, capability, stack, errorStack);
     if (!thread->HasPendingException() && IsStaticImport(executeType)) {
-        job::MicroJobQueue::ExecutePendingJob(thread, thread->GetCurrentEcmaContext()->GetMicroJobQueue());
+        job::MicroJobQueue::ExecutePendingJob(thread, thread->GetEcmaVM()->GetMicroJobQueue());
     }
     ModuleLogger *moduleLogger = thread->GetCurrentEcmaContext()->GetModuleLogger();
     if ((moduleLogger != nullptr) && IsStaticImport(executeType)) {
@@ -883,7 +883,7 @@ int SourceTextModule::EvaluateForConcurrent(JSThread *thread, const JSHandle<Sou
     if (thread->HasPendingException()) {
         return result;
     } else {
-        job::MicroJobQueue::ExecutePendingJob(thread, thread->GetCurrentEcmaContext()->GetMicroJobQueue());
+        job::MicroJobQueue::ExecutePendingJob(thread, thread->GetEcmaVM()->GetMicroJobQueue());
         return SourceTextModule::UNDEFINED_INDEX;
     }
 }

@@ -1283,8 +1283,7 @@ bool DebuggerApi::CheckPromiseQueueSize(const EcmaVM *ecmaVm)
     auto *debuggerMgr = ecmaVm->GetJsDebuggerManager();
     uint32_t queueSizeEntry = debuggerMgr->GetPromiseQueueSizeRecordOfTopFrame();
     JSThread *thread = ecmaVm->GetJSThread();
-    EcmaContext *context = thread->GetCurrentEcmaContext();
-    uint32_t queueSizeCurrent = job::MicroJobQueue::GetPromiseQueueSize(thread, context->GetMicroJobQueue());
+    uint32_t queueSizeCurrent = job::MicroJobQueue::GetPromiseQueueSize(thread, ecmaVm->GetMicroJobQueue());
     return queueSizeEntry == queueSizeCurrent;
 }
 

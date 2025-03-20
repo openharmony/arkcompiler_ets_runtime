@@ -2027,7 +2027,7 @@ bool PromiseCapabilityRef::Resolve(const EcmaVM *vm, uintptr_t value)
     JSFunction::Call(info);
     RETURN_VALUE_IF_ABRUPT(thread, false);
 
-    thread->GetCurrentEcmaContext()->ExecutePromisePendingJob();
+    EcmaVM::ConstCast(vm)->ExecutePromisePendingJob();
     RETURN_VALUE_IF_ABRUPT(thread, false);
     thread->GetCurrentEcmaContext()->ClearKeptObjects();
     return true;
@@ -2054,7 +2054,7 @@ bool PromiseCapabilityRef::Resolve(const EcmaVM *vm, Local<JSValueRef> value)
     JSFunction::Call(info);
     RETURN_VALUE_IF_ABRUPT(thread, false);
 
-    thread->GetCurrentEcmaContext()->ExecutePromisePendingJob();
+    EcmaVM::ConstCast(vm)->ExecutePromisePendingJob();
     RETURN_VALUE_IF_ABRUPT(thread, false);
     thread->GetCurrentEcmaContext()->ClearKeptObjects();
     return true;
@@ -2082,7 +2082,7 @@ bool PromiseCapabilityRef::Reject(const EcmaVM *vm, uintptr_t reason)
     JSFunction::Call(info);
     RETURN_VALUE_IF_ABRUPT(thread, false);
 
-    thread->GetCurrentEcmaContext()->ExecutePromisePendingJob();
+    EcmaVM::ConstCast(vm)->ExecutePromisePendingJob();
     RETURN_VALUE_IF_ABRUPT(thread, false);
     thread->GetCurrentEcmaContext()->ClearKeptObjects();
     return true;
@@ -2110,7 +2110,7 @@ bool PromiseCapabilityRef::Reject(const EcmaVM *vm, Local<JSValueRef> reason)
     JSFunction::Call(info);
     RETURN_VALUE_IF_ABRUPT(thread, false);
 
-    thread->GetCurrentEcmaContext()->ExecutePromisePendingJob();
+    EcmaVM::ConstCast(vm)->ExecutePromisePendingJob();
     RETURN_VALUE_IF_ABRUPT(thread, false);
     thread->GetCurrentEcmaContext()->ClearKeptObjects();
     return true;
@@ -3982,9 +3982,8 @@ FunctionCallScope::~FunctionCallScope()
 {
     vm_->DecreaseCallDepth();
     if (vm_->IsTopLevelCallDepth()) {
-        JSThread *thread = vm_->GetJSThread();
         ecmascript::ThreadManagedScope managedScope(vm_->GetJSThread());
-        thread->GetCurrentEcmaContext()->ExecutePromisePendingJob();
+        vm_->ExecutePromisePendingJob();
     }
 }
 
@@ -5570,13 +5569,13 @@ bool JSNApi::HasPendingException(const EcmaVM *vm)
 
 bool JSNApi::IsExecutingPendingJob(const EcmaVM *vm)
 {
-    return vm->GetAssociatedJSThread()->GetCurrentEcmaContext()->IsExecutingPendingJob();
+    return EcmaVM::ConstCast(vm)->IsExecutingPendingJob();
 }
 
 bool JSNApi::HasPendingJob(const EcmaVM *vm)
 {
     ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
-    return vm->GetAssociatedJSThread()->GetCurrentEcmaContext()->HasPendingJob();
+    return EcmaVM::ConstCast(vm)->HasPendingJob();
 }
 
 void JSNApi::EnableUserUncaughtErrorHandler(EcmaVM *vm)
@@ -5597,7 +5596,7 @@ void JSNApi::ExecutePendingJob(const EcmaVM *vm)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK(vm);
     ecmascript::ThreadManagedScope managedScope(thread);
-    EcmaVM::ConstCast(vm)->GetJSThread()->GetCurrentEcmaContext()->ExecutePromisePendingJob();
+    EcmaVM::ConstCast(vm)->ExecutePromisePendingJob();
 }
 
 uintptr_t JSNApi::GetHandleAddr(const EcmaVM *vm, uintptr_t localAddress)
@@ -5779,8 +5778,7 @@ void HostPromiseRejectionTracker(const EcmaVM *vm,
                                  void* data)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK(vm);
-    ecmascript::PromiseRejectCallback promiseRejectCallback =
-        thread->GetCurrentEcmaContext()->GetPromiseRejectCallback();
+    ecmascript::PromiseRejectCallback promiseRejectCallback = vm->GetPromiseRejectCallback();
     if (promiseRejectCallback != nullptr) {
         Local<JSValueRef> promiseVal = JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>::Cast(promise));
         PromiseRejectInfo promiseRejectInfo(promiseVal, JSNApiHelper::ToLocal<JSValueRef>(reason),
@@ -5792,10 +5790,9 @@ void HostPromiseRejectionTracker(const EcmaVM *vm,
 void JSNApi::SetHostPromiseRejectionTracker(EcmaVM *vm, void *cb, void* data)
 {
     CROSS_THREAD_CHECK(vm);
-    thread->GetCurrentEcmaContext()->SetHostPromiseRejectionTracker(HostPromiseRejectionTracker);
-    thread->GetCurrentEcmaContext()->SetPromiseRejectCallback(
-        reinterpret_cast<ecmascript::PromiseRejectCallback>(cb));
-    thread->GetCurrentEcmaContext()->SetData(data);
+    vm->SetHostPromiseRejectionTracker(HostPromiseRejectionTracker);
+    vm->SetPromiseRejectCallback(reinterpret_cast<ecmascript::PromiseRejectCallback>(cb));
+    vm->SetPromiseRejectInfoData(data);
 }
 
 void JSNApi::SetTimerTaskCallback(EcmaVM *vm, TimerTaskCallback callback)
@@ -5862,7 +5859,7 @@ void JSNApi::SetHostEnqueueJob(const EcmaVM *vm, Local<JSValueRef> cb, QueueType
     ecmascript::ThreadManagedScope scope(thread);
     JSHandle<JSFunction> fun = JSHandle<JSFunction>::Cast(JSNApiHelper::ToJSHandle(cb));
     JSHandle<TaggedArray> array = vm->GetFactory()->EmptyArray();
-    JSHandle<MicroJobQueue> job = thread->GetCurrentEcmaContext()->GetMicroJobQueue();
+    JSHandle<MicroJobQueue> job = vm->GetMicroJobQueue();
     MicroJobQueue::EnqueueJob(thread, job, queueType, fun, array);
 }
 
