@@ -134,6 +134,14 @@ public:
         // host no need skip jit log
         return false;
     }
+
+    static std::string GetJitMethodDichotomy(std::string value)
+    {
+    #ifdef GET_PARAMETER_FOR_JIT
+        return OHOS::system::GetParameter("persist.ark.jit.method.dichotomy", value);
+    #endif
+        return value;
+    }
 };
 }
 #endif  // ECMASCRIPT_JIT_TOOLS_H

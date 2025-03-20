@@ -72,6 +72,28 @@ private:
     Tier tier_;
 };
 
+class MethodNameCollector {
+public:
+    void Init(EcmaVM *vm);
+    inline void Collect(const std::string& methodFullName) const;
+    ~MethodNameCollector();
+private:
+    mutable std::ofstream file_;
+    bool enable_ {false};
+    bool isInit_ {false};
+};
+
+class MethodNameFilter {
+public:
+    void Init(EcmaVM *vm);
+    inline bool NeedCompiledByJit(const std::string& methodFullName) const;
+    ~MethodNameFilter();
+private:
+    std::set<std::string> methodFullNames;
+    bool enable_ {false};
+    bool isInit_ {false};
+};
+
 class CompileDecision {
 public:
     CompileDecision(EcmaVM *vm, JSHandle<JSFunction> &jsFunction, CompilerTier tier,
@@ -101,6 +123,16 @@ public:
         return compileMode_;
     }
 
+    static inline MethodNameCollector &GetMethodNameCollector()
+    {
+        return methodNameCollector;
+    }
+
+    static inline MethodNameFilter &GetMethodNameFilter()
+    {
+        return methodNameFilter;
+    }
+
 private:
     bool IsGoodCompilationRequest() const;
     bool IsSupportFunctionKind() const;
@@ -114,6 +146,8 @@ private:
     CompilerTier tier_;
     int32_t osrOffset_;
     JitCompileMode compileMode_;
+    static MethodNameCollector methodNameCollector;
+    static MethodNameFilter methodNameFilter;
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_JIT_JIT_COMPILE_DECISION_H

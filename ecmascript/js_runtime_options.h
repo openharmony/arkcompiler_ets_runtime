@@ -232,6 +232,8 @@ enum CommandValues {
     OPTION_COMPILER_ENABLE_DFX_HISYS_EVENT,
     OPTION_ENABLE_LOADING_STUBS_LOG,
     OPTION_COMPILER_ENABLE_MERGE_POLY,
+    OPTION_COMPILER_JIT_METHOD_DICHOTOMY,
+    OPTION_COMPILER_JIT_METHOD_PATH,
 };
 static_assert(OPTION_INVALID == 63); // Placeholder for invalid options
 static_assert(OPTION_SPLIT_ONE == 64); // add new option at the bottom, DO NOT modify this value
@@ -2150,6 +2152,36 @@ public:
         return enableMergePoly_;
     }
 
+    void SetJitMethodDichotomy(std::string jitMethodDichotomy)
+    {
+        jitMethodDichotomy_ = jitMethodDichotomy;
+    }
+
+    std::string GetJitMethodDichotomy() const
+    {
+        return jitMethodDichotomy_;
+    }
+
+    bool IsEnableJitMethodCollect() const
+    {
+        return jitMethodDichotomy_ == "collect";
+    }
+
+    bool IsEnableJitMethodFilter() const
+    {
+        return jitMethodDichotomy_ == "filter";
+    }
+
+    void SetJitMethodPath(std::string jitMethodPath)
+    {
+        jitMethodPath_ = jitMethodPath;
+    }
+
+    std::string GetJitMethodPath() const
+    {
+        return jitMethodPath_;
+    }
+
 public:
     static constexpr int32_t MAX_APP_COMPILE_METHOD_SIZE = 4_KB;
 
@@ -2350,6 +2382,8 @@ private:
     uint64_t CompilerAnFileMaxByteSize_ {0_MB};
     bool enableJitVerifyPass_ {true};
     bool enableMergePoly_ {true};
+    std::string jitMethodDichotomy_ {"disable"};
+    std::string jitMethodPath_ {"method_compiled_by_jit.cfg"};
 };
 } // namespace panda::ecmascript
 
