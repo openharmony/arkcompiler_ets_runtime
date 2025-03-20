@@ -1266,6 +1266,16 @@ void JSFunction::SetJitHotnessCnt(uint16_t cnt)
     }
 }
 
+uint16_t JSFunction::GetJitHotnessCnt() const
+{
+    JSTaggedValue profileTypeInfoVal = GetProfileTypeInfo();
+    if (!profileTypeInfoVal.IsUndefined()) {
+        ProfileTypeInfo *profileTypeInfo = ProfileTypeInfo::Cast(profileTypeInfoVal.GetTaggedObject());
+        return profileTypeInfo->GetJitHotnessCnt();
+    }
+    return 0;
+}
+
 void JSFunctionBase::ClearCompiledCodeFlags()
 {
     SetCompiledCodeBit(false);
