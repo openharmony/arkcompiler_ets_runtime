@@ -206,6 +206,11 @@ private:
     using FileNameToMultiConstantPoolMap = CMap<CString, PandaCpInfo>;
     using AIDatum = CUnorderedMap<uint32_t, FileNameToMultiConstantPoolMap>; // key: ai file index
 
+    void LoadingCommonStubsLog(size_t id, Address entry);
+    void LoadingByteCodeStubsLog(size_t id, Address entry);
+    void LoadingBuiltinsStubsLog(size_t id, Address entry);
+    void LoadingBaselineStubsLog(size_t id, Address entry);
+    void LoadingRuntimeStubsLog(size_t id, Address entry);
     static void PrintAOTEntry(const JSPandaFile *file, const Method *method, uintptr_t entry);
     void InitializeStubEntries(const std::vector<AnFileInfo::FuncEntryDes>& stubs);
     static void AdjustBCStubAndDebuggerStubEntries(JSThread *thread,

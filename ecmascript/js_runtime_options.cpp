@@ -75,6 +75,7 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--compiler-opt-code-profiler:         Enable opt code Bytecode Statistics for aot runtime. Default: 'false'\n"
     "--compiler-opt-bc-range:              Range list for EcmaOpCode range Example '1:2,5:8'\n"
     "--compiler-opt-bc-range-help:         Range list for EcmaOpCode range help. Default: 'false''\n"
+    "--enable-loading-stubs-log:           Enable Loading Stubs Log. Default: 'false'\n"
     "--enable-force-gc:                    Enable force gc when allocating object. Default: 'true'\n"
     "--force-shared-gc-frequency:          How frequency force shared gc . Default: '1'\n"
     "--enable-ic:                          Switch of inline cache. Default: 'true'\n"
@@ -235,6 +236,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"compiler-opt-code-profiler", required_argument, nullptr, OPTION_COMPILER_OPT_CODE_PROFILER},
         {"compiler-opt-bc-range", required_argument, nullptr, OPTION_COMPILER_OPT_BC_RANGE},
         {"compiler-opt-bc-range-help", required_argument, nullptr, OPTION_COMPILER_OPT_BC_RANGE_HELP},
+        {"enable-loading-stubs-log", required_argument, nullptr, OPTION_ENABLE_LOADING_STUBS_LOG},
         {"enable-force-gc", required_argument, nullptr, OPTION_ENABLE_FORCE_GC},
         {"enable-ic", required_argument, nullptr, OPTION_ENABLE_IC},
         {"enable-runtime-stat", required_argument, nullptr, OPTION_ENABLE_RUNTIME_STAT},
@@ -581,6 +583,14 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 ret = ParseBoolParam(&argBool);
                 if (ret) {
                     SetEnableForceGC(argBool);
+                } else {
+                    return false;
+                }
+                break;
+            case OPTION_ENABLE_LOADING_STUBS_LOG:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetEnableLoadingStubsLog(argBool);
                 } else {
                     return false;
                 }
