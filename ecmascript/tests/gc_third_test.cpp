@@ -16,8 +16,16 @@
 #include <chrono>
 #include <thread>
 
+#include "assembler/assembly-emitter.h"
+#include "assembler/assembly-parser.h"
+
 #include "ecmascript/builtins/builtins_ark_tools.h"
+#include "ecmascript/containers/containers_bitvector.h"
 #include "ecmascript/ecma_vm.h"
+#include "ecmascript/js_api/js_api_bitvector.h"
+#include "ecmascript/jspandafile/js_pandafile.h"
+#include "ecmascript/jspandafile/js_pandafile_manager.h"
+#include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/mem/full_gc.h"
 #include "ecmascript/object_factory-inl.h"
 #include "ecmascript/mem/concurrent_marker.h"
@@ -26,6 +34,7 @@
 #include "ecmascript/mem/mem_controller.h"
 #include "ecmascript/mem/incremental_marker.h"
 #include "ecmascript/mem/shared_heap/shared_concurrent_marker.h"
+#include "ecmascript/mem/shared_heap/shared_concurrent_sweeper.h"
 #include "ecmascript/mem/gc_key_stats.h"
 #include "ecmascript/mem/gc_stats.h"
 #include "ecmascript/mem/allocation_inspector.h"
@@ -35,6 +44,8 @@
 using namespace panda;
 
 using namespace panda::ecmascript;
+using namespace panda::panda_file;
+using namespace panda::pandasm;
 
 namespace panda::test {
 class GCTest : public BaseTestWithScope<false> {
@@ -681,4 +692,57 @@ HWTEST_F_L0(GCTest, OldSpaceValidCheck)
         EXPECT_TRUE(inHeap);
     }
 }
+
+HWTEST_F_L0(GCTest, DisableSharedConcurrentSweep)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    SharedHeap *sHeap = SharedHeap::GetInstance();
+    sHeap->GetSweeper()->ConfigConcurrentSweep(false);
+    {
+        [[maybe_unused]] ecmascript::EcmaHandleScope baseScope(thread);
+        [[maybe_unused]] JSHandle<EcmaString> key1(factory->NewFromASCII("error1"));
+        [[maybe_unused]] JSHandle<EcmaString> key2(factory->NewFromASCII("error2"));
+        [[maybe_unused]] JSHandle<EcmaString> msg(factory->NewFromASCII("this is error"));
+        [[maybe_unused]] JSHandle<EcmaString> key3(factory->NewFromASCII("error3"));
+        [[maybe_unused]] JSHandle<EcmaString> key4(factory->NewFromASCII("error4"));
+        [[maybe_unused]] JSHandle<EcmaString> msg2(factory->NewFromASCII("this is error2"));
+        auto* newBitSetVector = new std::vector<std::bitset<JSAPIBitVector::BIT_SET_LENGTH>>();
+        int32_t capacity = 256;
+        std::bitset<JSAPIBitVector::BIT_SET_LENGTH> initBitSet;
+        newBitSetVector->resize(capacity, initBitSet);
+        auto deleter = []([[maybe_unused]] void *env, void *pointer, [[maybe_unused]] void *data) {
+            if (pointer == nullptr) {
+                return;
+            }
+            delete reinterpret_cast<std::vector<std::bitset<JSAPIBitVector::BIT_SET_LENGTH>> *>(pointer);
+        };
+        [[maybe_unused]] JSHandle<JSNativePointer> pointer = factory->NewSJSNativePointer(newBitSetVector,
+                                                                                          deleter,
+                                                                                          newBitSetVector);
+        const char *filename1 = "__JSPandaFileManagerTest1.pa";
+        const char *filename2 = "__JSPandaFileManagerTest2.pa";
+        const char *data = R"(
+            .function void foo() {}
+        )";
+        JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
+        Parser parser;
+        auto res = parser.Parse(data);
+        std::unique_ptr<const File> pfPtr1 = pandasm::AsmEmitter::Emit(res.Value());
+        std::unique_ptr<const File> pfPtr2 = pandasm::AsmEmitter::Emit(res.Value());
+        std::shared_ptr<JSPandaFile> pf1 = pfManager->NewJSPandaFile(pfPtr1.release(), CString(filename1));
+        std::shared_ptr<JSPandaFile> pf2 = pfManager->NewJSPandaFile(pfPtr2.release(), CString(filename2));
+        pfManager->AddJSPandaFile(pf1);
+        pfManager->AddJSPandaFile(pf2);
+
+        JSHandle<ConstantPool> constpool1 = instance->GetFactory()->NewSConstantPool(1);
+        JSHandle<ConstantPool> constpool2 = instance->GetFactory()->NewSConstantPool(2);
+        constpool1 = Runtime::GetInstance()->AddOrUpdateConstpool(pf1.get(), constpool1, 0);
+        constpool2 = Runtime::GetInstance()->AddOrUpdateConstpool(pf2.get(), constpool2, 0);
+    }
+    sHeap->CollectGarbage<TriggerGCType::SHARED_GC, GCReason::OTHER>(thread);
+    sHeap->WaitGCFinished(thread);
+    sHeap->CollectGarbage<TriggerGCType::SHARED_GC, GCReason::OTHER>(thread);
+    sHeap->WaitGCFinished(thread);
+    sHeap->GetSweeper()->ConfigConcurrentSweep(true);
+};
 } // namespace panda::test
