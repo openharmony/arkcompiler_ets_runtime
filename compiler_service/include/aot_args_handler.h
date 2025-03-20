@@ -87,16 +87,16 @@ class StaticAOTArgsParser final : public AOTArgsParserBase {
 public:
     int32_t Parse(const std::unordered_map<std::string, std::string> &argsMap, HapArgs &hapArgs,
                   int32_t thermalLevel) override;
-};
 
-enum class LanguageVersion {
-    DEFAULT = 0,  // JS, TS, dynamic ArkTS
-    STATIC = 1    // static ArkTS
+    bool ParseBootPandaFiles(std::string &bootfiles);
+
+    std::string ParseLocation(std::string &anfilePath);
 };
 
 class AOTArgsParserFactory {
 public:
-    static std::unique_ptr<AOTArgsParserBase> GetParser(const std::unordered_map<std::string, std::string> &argsMap);
+    static std::optional<std::unique_ptr<AOTArgsParserBase>> GetParser(const std::unordered_map<std::string,
+                                                                       std::string> &argsMap);
 };
 } // namespace OHOS::ArkCompiler
 #endif // OHOS_ARKCOMPILER_AOT_ARGS_HANDLER_H
