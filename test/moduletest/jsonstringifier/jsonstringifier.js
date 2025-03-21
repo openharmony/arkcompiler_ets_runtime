@@ -305,4 +305,19 @@ assert_equal(JSON.stringify(testspaceobj, null, Infinity),testspaceobjAssert);
     }
 }
 
+{
+  let obj = {};
+  for (let i = 0; i < 9; i++) {
+      obj["k" + i] = "value" + i;
+  }
+  let exceptStr1 = '{"k0":"value0","k1":"value1","k2":"value2","k3":"value3","k4":"value4","k5":"value5","k6":"value6","k7":"value7","k8":"value8"}';
+  assert_equal(JSON.stringify(obj), exceptStr1);
+
+  for (let i = 9; i < 20; i++) {
+      obj["k" + i] = "value" + i;
+  }
+  let exceptStr2 = '{"k0":"value0","k1":"value1","k2":"value2","k3":"value3","k4":"value4","k5":"value5","k6":"value6","k7":"value7","k8":"value8","k9":"value9","k10":"value10","k11":"value11","k12":"value12","k13":"value13","k14":"value14","k15":"value15","k16":"value16","k17":"value17","k18":"value18","k19":"value19"}';
+  assert_equal(JSON.stringify(obj), exceptStr2);
+}
+
 test_end();
