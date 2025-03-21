@@ -275,7 +275,6 @@ void JsStackInfo::BuildCrashInfo(bool isJsCrash, uintptr_t pc, JSThread *thread)
 std::vector<struct JsFrameInfo> JsStackInfo::BuildJsStackInfo(JSThread *thread, bool currentStack)
 {
     std::vector<struct JsFrameInfo> jsFrame;
-    uintptr_t *native = nullptr;
     JSTaggedType *current = const_cast<JSTaggedType *>(thread->GetCurrentFrame());
     FrameIterator it(current, thread);
     for (; !it.Done(); it.Advance<GCVisitedFlag::HYBRID_STACK>()) {
@@ -287,10 +286,6 @@ std::vector<struct JsFrameInfo> JsStackInfo::BuildJsStackInfo(JSThread *thread, 
             continue;
         }
         struct JsFrameInfo frameInfo;
-        if (native != nullptr) {
-            frameInfo.nativePointer = native;
-            native = nullptr;
-        }
         if (!method->IsNativeWithCallField()) {
             std::string name = method->ParseFunctionName();
             if (name.empty()) {
@@ -327,14 +322,6 @@ std::vector<struct JsFrameInfo> JsStackInfo::BuildJsStackInfo(JSThread *thread, 
             jsFrame.push_back(std::move(frameInfo));
             if (currentStack) {
                 return jsFrame;
-            }
-        } else {
-            JSTaggedValue function = it.GetFunction();
-            JSHandle<JSTaggedValue> extraInfoValue(
-                thread, JSFunctionBase::Cast(function.GetTaggedObject())->GetFunctionExtraInfo());
-            if (extraInfoValue->IsJSNativePointer()) {
-                JSHandle<JSNativePointer> extraInfo(extraInfoValue);
-                native = reinterpret_cast<uintptr_t *>(extraInfo->GetData());
             }
         }
     }
