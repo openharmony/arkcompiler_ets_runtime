@@ -1600,7 +1600,7 @@ public:
     static Local<ObjectRef> GetModuleNameSpaceFromFile(EcmaVM *vm, const std::string &file,
                                                        const std::string &module_path);
     static Local<ObjectRef> GetModuleNameSpaceWithModuleInfo(EcmaVM *vm, const std::string &file,
-                                                             const std::string &module_path);
+                                                             const std::string &module_path, bool isHybrid = false);
     static Local<ObjectRef> GetModuleNameSpaceWithPath(const EcmaVM *vm, const char *path);
     static std::pair<std::string, std::string> ResolveOhmUrl(std::string ohmUrl);
 
@@ -1681,8 +1681,8 @@ public:
     static Local<JSValueRef> DeserializeValue(const EcmaVM *vm, void *recoder, void *hint);
     static void DeleteSerializationData(void *data);
     static void SetHostPromiseRejectionTracker(EcmaVM *vm, void *cb, void* data);
-    static void SetHostResolveBufferTracker(EcmaVM *vm,
-        std::function<bool(std::string dirPath, uint8_t **buff, size_t *buffSize, std::string &errorMsg)> cb);
+    static void SetHostResolveBufferTracker(EcmaVM *vm, std::function<bool(std::string dirPath, bool isHybrid,
+                                            uint8_t **buff, size_t *buffSize, std::string &errorMsg)> cb);
     static void SetUnloadNativeModuleCallback(EcmaVM *vm, const std::function<bool(const std::string &moduleKey)> &cb);
     static void SetNativePtrGetter(EcmaVM *vm, void* cb);
     static void SetSourceMapCallback(EcmaVM *vm, SourceMapCallback cb);

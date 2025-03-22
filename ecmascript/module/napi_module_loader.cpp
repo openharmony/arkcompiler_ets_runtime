@@ -21,7 +21,7 @@
 
 namespace panda::ecmascript {
 JSHandle<JSTaggedValue> NapiModuleLoader::LoadModuleNameSpaceWithModuleInfo(EcmaVM *vm, CString &requestPath,
-    CString &modulePath)
+    CString &modulePath, bool isHybrid)
 {
     LOG_ECMA(DEBUG) << "NapiModuleLoader::LoadModuleNameSpaceWithModuleInfo requestPath:" << requestPath <<
         "," << "modulePath:" << modulePath;
@@ -30,13 +30,14 @@ JSHandle<JSTaggedValue> NapiModuleLoader::LoadModuleNameSpaceWithModuleInfo(Ecma
     JSThread *thread = vm->GetJSThread();
     std::shared_ptr<JSPandaFile> curJsPandaFile;
     if (modulePath.size() != 0) {
-        bool isValid = JSPandaFileManager::GetInstance()->CheckFilePath(thread, abcFilePath);
+        bool isValid = JSPandaFileManager::GetInstance()->CheckFilePath(thread, abcFilePath, isHybrid);
         if (!isValid) {
             CString msg = "Load file with filename '" + abcFilePath +
                 "' failed, module name '" + requestPath + "'" + ", from napi load module";
             THROW_NEW_ERROR_AND_RETURN_HANDLE(thread, ErrorType::REFERENCE_ERROR, JSTaggedValue, msg.c_str());
         }
-        curJsPandaFile = JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, abcFilePath, requestPath);
+        curJsPandaFile =
+            JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, abcFilePath, requestPath, false, isHybrid);
         if (vm->IsNormalizedOhmUrlPack()) {
             ModulePathHelper::TranslateExpressionToNormalized(thread, curJsPandaFile.get(), abcFilePath, "",
                 requestPath);
