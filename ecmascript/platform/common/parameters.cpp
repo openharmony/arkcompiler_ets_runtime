@@ -20,4 +20,9 @@ namespace panda::ecmascript {
     {
         return defaultTime;
     }
+
+    size_t GetPoolSize(size_t defaultSize)
+    {
+        return defaultSize;
+    }
 }  // namespace panda::ecmascript

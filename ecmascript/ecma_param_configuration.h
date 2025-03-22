@@ -25,7 +25,9 @@
 namespace panda::ecmascript {
 static constexpr size_t DEFAULT_HEAP_SIZE = 448_MB;                 // Recommended range: 128-448MB
 static constexpr size_t DEFAULT_WORKER_HEAP_SIZE = 768_MB;          // Recommended range: 128_MB, LargeHeap: 768_MB
+static constexpr size_t MAX_WORKER_HEAP_SIZE = 1024_MB;
 static constexpr size_t DEFAULT_SHARED_HEAP_SIZE = 778_MB;
+static constexpr size_t MAX_SHARED_HEAP_SIZE = 2048_MB;
 static constexpr size_t MAX_HEAP_SIZE = 1024_MB;
 
 class EcmaParamConfiguration {
@@ -41,15 +43,19 @@ public:
     {
         switch (heapType) {
             case HeapType::WORKER_HEAP:
-                if (heapSize > LOW_MEMORY && heapSize < DEFAULT_WORKER_HEAP_SIZE) {
+                if (heapSize >= LOW_MEMORY && heapSize < MAX_WORKER_HEAP_SIZE) {
                     maxHeapSize_ = heapSize;
+                } else if (heapSize >= MAX_WORKER_HEAP_SIZE) {
+                    maxHeapSize_ = MAX_WORKER_HEAP_SIZE;
                 } else {
                     maxHeapSize_ = DEFAULT_WORKER_HEAP_SIZE;
                 }
                 break;
             case HeapType::SHARED_HEAP:
-                 if (heapSize > LOW_MEMORY && heapSize < DEFAULT_SHARED_HEAP_SIZE) {
+                 if (heapSize >= LOW_MEMORY && heapSize < MAX_SHARED_HEAP_SIZE) {
                     maxHeapSize_ = heapSize;
+                } else if (heapSize >= MAX_SHARED_HEAP_SIZE) {
+                    maxHeapSize_ = MAX_SHARED_HEAP_SIZE;
                 } else {
                     maxHeapSize_ = DEFAULT_SHARED_HEAP_SIZE;
                 };
@@ -60,11 +66,10 @@ public:
                 } else {
                     maxHeapSize_ = poolSize; // pool is too small, no memory left for worker
                 }
-                if (heapSize > LOW_MEMORY && heapSize < DEFAULT_HEAP_SIZE) {
+                if (heapSize >= LOW_MEMORY && heapSize <= MAX_HEAP_SIZE) {
                     maxHeapSize_ = heapSize;
-                }
-                if (heapSize >= DEFAULT_HEAP_SIZE && heapSize <= MAX_HEAP_SIZE) {
-                    maxHeapSize_ = heapSize;
+                } else if (heapSize > MAX_HEAP_SIZE) {
+                    maxHeapSize_ = MAX_HEAP_SIZE;
                 }
         }
         Initialize();

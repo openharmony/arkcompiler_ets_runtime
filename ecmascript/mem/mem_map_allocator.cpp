@@ -15,6 +15,7 @@
 
 #include "ecmascript/mem/mem_map_allocator.h"
 #include "ecmascript/platform/os.h"
+#include "ecmascript/platform/parameters.h"
 
 namespace panda::ecmascript {
 MemMapAllocator *MemMapAllocator::GetInstance()
@@ -203,7 +204,8 @@ void MemMapAllocator::Free(void *mem, size_t size, bool isRegular)
 void MemMapAllocator::AdapterSuitablePoolCapacity()
 {
     size_t physicalSize = PhysicalSize();
-    capacity_ = std::min<size_t>(physicalSize * DEFAULT_CAPACITY_RATE, MAX_MEM_POOL_CAPACITY);
+    size_t poolSize = GetPoolSize(MAX_MEM_POOL_CAPACITY);
+    capacity_ = std::min<size_t>(physicalSize * DEFAULT_CAPACITY_RATE, poolSize);
     LOG_GC(INFO) << "Ark Auto adapter memory pool capacity:" << capacity_;
 }
 
