@@ -150,18 +150,6 @@ void GCStats::PrintGCMemoryStatistic()
                     << STATS_DATA_FORMAT(sizeToKB(heap_->GetNonMovableSpace()->GetHeapObjectSize())) << "KB"
                     << "     committed:"
                     << STATS_DATA_FORMAT(sizeToKB(heap_->GetNonMovableSpace()->GetCommittedSize())) << "KB\n"
-                    << "MachineCodeSpace used:"
-                    << STATS_DATA_FORMAT(sizeToKB(heap_->GetMachineCodeSpace()->GetHeapObjectSize())) << "KB"
-                    << "     committed:"
-                    << STATS_DATA_FORMAT(sizeToKB(heap_->GetMachineCodeSpace()->GetCommittedSize())) << "KB\n"
-                    << "HugeMachineCodeSpace used:"
-                    << STATS_DATA_FORMAT(sizeToKB(heap_->GetHugeMachineCodeSpace()->GetHeapObjectSize())) << "KB"
-                    << "     committed:"
-                    << STATS_DATA_FORMAT(sizeToKB(heap_->GetHugeMachineCodeSpace()->GetCommittedSize())) << "KB\n"
-                    << "SnapshotSpace    used:"
-                    << STATS_DATA_FORMAT(sizeToKB(heap_->GetSnapshotSpace()->GetHeapObjectSize())) << "KB"
-                    << "     committed:"
-                    << STATS_DATA_FORMAT(sizeToKB(heap_->GetSnapshotSpace()->GetCommittedSize())) << "KB\n"
                     << "AppSpawnSpace    used:"
                     << STATS_DATA_FORMAT(sizeToKB(heap_->GetAppSpawnSpace()->GetHeapObjectSize())) << "KB"
                     << "     committed:"
@@ -178,8 +166,6 @@ void GCStats::PrintGCMemoryStatistic()
                     << STATS_DESCRIPTION_FORMAT("ArrayBufferNativeSize:")
                     << STATS_DATA_FORMAT(sizeToKB(heap_->GetNativeAreaAllocator()->GetArrayBufferNativeSize()))
                     << "KB\n"
-                    << STATS_DESCRIPTION_FORMAT("RegExpByteCodeNativeSize:")
-                    << STATS_DATA_FORMAT(sizeToKB(heap_->GetNativeAreaAllocator()->GetRegExpNativeSize())) << "KB\n"
                     << STATS_DESCRIPTION_FORMAT("ChunkNativeSize:")
                     << STATS_DATA_FORMAT(sizeToKB(heap_->GetNativeAreaAllocator()->GetChunkNativeSize())) << "KB";
     switch (gcType_) {
