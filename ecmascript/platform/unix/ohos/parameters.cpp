@@ -29,4 +29,13 @@ namespace panda::ecmascript {
         return defaultTime;
 #endif
     }
+
+    size_t GetPoolSize(size_t defaultSize)
+    {
+#if !defined(STANDALONE_MODE)
+        return OHOS::system::GetUintParameter<size_t>("persist.ark.heap.poolsize", defaultSize / 1_MB) * 1_MB;
+#else
+        return defaultSize;
+#endif
+    }
 }  // namespace panda::ecmascript

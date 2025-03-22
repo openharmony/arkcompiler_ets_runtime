@@ -16,9 +16,13 @@
 #ifndef ECMASCRIPT_PLATFORM_PARAMETERS_H
 #define ECMASCRIPT_PLATFORM_PARAMETERS_H
 
+#include "ecmascript/mem/mem_common.h"
+
 #include <cstdint>
 
 namespace panda::ecmascript {
     uint64_t GetImportDuration(uint64_t defaultTime);
+
+    size_t GetPoolSize(size_t defaultSize);
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_PLATFORM_PARAMETERS_H
