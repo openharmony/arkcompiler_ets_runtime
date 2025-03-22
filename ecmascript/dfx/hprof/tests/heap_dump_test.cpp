@@ -303,7 +303,7 @@ public:
         JSHandle<JSTaggedValue> arrayEmpty(thread, factory->NewJSArray().GetTaggedValue());
         JSHandle<JSTaggedValue> keys(thread, factory->EmptyArray().GetTaggedValue());
         JSHandle<JSTaggedValue> hclass(thread, JSTaggedValue::Undefined());
-        return factory->NewJSForinIterator(arrayEmpty, keys, hclass);
+        return factory->NewJSForinIterator(arrayEmpty, keys, hclass, static_cast<uint32_t>(EnumCacheKind::NONE));
     }
 
     // JS_REG_EXP_ITERATOR

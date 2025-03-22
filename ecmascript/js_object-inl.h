@@ -515,29 +515,6 @@ inline uint32_t JSObject::SetValuesOrEntries(JSThread *thread, const JSHandle<Ta
     return index;
 }
 
-inline void JSObject::SetEnumCacheKind(JSThread *thread, TaggedArray *array, EnumCacheKind kind)
-{
-    array->Set(thread, EnumCache::ENUM_CACHE_KIND_OFFSET, JSTaggedValue(static_cast<uint8_t>(kind)));
-}
-
-inline EnumCacheKind JSObject::GetEnumCacheKind(JSThread *thread, TaggedArray *array)
-{
-    return static_cast<EnumCacheKind>(array->Get(thread, EnumCache::ENUM_CACHE_KIND_OFFSET).GetInt());
-}
-
-inline EnumCacheKind JSObject::GetEnumCacheKind(JSThread *thread, JSTaggedValue enumCache)
-{
-    if (enumCache.IsUndefinedOrNull()) {
-        return EnumCacheKind::NONE;
-    }
-    JSTaggedValue emptyArray = thread->GlobalConstants()->GetEmptyArray();
-    if (enumCache == emptyArray) {
-        return EnumCacheKind::SIMPLE;
-    }
-    TaggedArray *array = TaggedArray::Cast(enumCache.GetTaggedObject());
-    return JSObject::GetEnumCacheKind(thread, array);
-}
-
 inline JSTaggedValue JSObject::GetPrototype(JSTaggedValue obj)
 {
     JSHClass *hclass = obj.GetTaggedObject()->GetClass();
@@ -551,7 +528,7 @@ inline bool JSObject::IsDepulicateKeys(JSThread *thread, JSHandle<TaggedArray> k
         return false;
     }
     JSMutableHandle<JSTaggedValue> value(thread, JSTaggedValue::Undefined());
-    for (int32_t i = EnumCache::ENUM_CACHE_HEADER_SIZE; i < lastLength; i++) {
+    for (int32_t i = 0; i < lastLength; i++) {
         value.Update(keys->Get(i));
         bool has = JSTaggedValue::Equal(thread, value, key);
         if (has) {
@@ -570,6 +547,8 @@ inline bool JSObject::IsDepulicateKeys(JSThread *thread, JSHandle<TaggedArray> k
     return false;
 }
 
+// For the for-in iterator, we need to determine whether to output this key based on this flag.
+// So we need to reset it here.
 inline void JSObject::ClearHasDeleteProperty(JSHandle<JSTaggedValue> object)
 {
     object->GetTaggedObject()->GetClass()->SetHasDeleteProperty(false);

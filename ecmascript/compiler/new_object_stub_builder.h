@@ -82,7 +82,8 @@ public:
                            RegionSpaceFlag spaceType = RegionSpaceFlag::IN_YOUNG_SPACE);
     GateRef NewJSArrayWithSize(GateRef hclass, GateRef size);
     GateRef NewJSArrayWithHClass(GateRef hclass, GateRef length);
-    GateRef NewJSForinIterator(GateRef glue, GateRef receiver, GateRef keys, GateRef cachedHclass);
+    GateRef NewJSForinIterator(GateRef glue, GateRef receiver, GateRef keys, GateRef cachedHclass,
+                               GateRef EnumCacheKind);
     GateRef LoadHClassFromMethod(GateRef glue, GateRef method);
     GateRef LoadSHClassFromMethod(GateRef glue, GateRef method);
     GateRef NewJSFunction(GateRef glue, GateRef method,
@@ -138,6 +139,7 @@ public:
     GateRef NewTypedArrayFromCtor(GateRef glue, GateRef ctor, GateRef length, Label *slowPath);
     void NewByteArray(Variable *result, Label *exit, GateRef elementSize, GateRef length);
     GateRef NewProfileTypeInfoCell(GateRef glue, GateRef value);
+    GateRef NewEnumCache(GateRef glue);
     GateRef GetElementSizeFromType(GateRef glue, GateRef type);
     GateRef GetOnHeapHClassFromType(GateRef glue, GateRef type);
     GateRef GetNotOnHeapHClassFromType(GateRef glue, GateRef type);

@@ -17,6 +17,7 @@
 
 #include "ecmascript/compiler/new_object_stub_builder.h"
 #include "ecmascript/deoptimizer/deoptimizer.h"
+#include "ecmascript/enum_cache.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_array_iterator.h"
 #include "ecmascript/js_primitive_ref.h"
@@ -668,6 +669,12 @@ GateRef CircuitBuilder::GetProtoChangeMarkerFromHClass(GateRef hClass)
     return Load(VariableType::JS_ANY(), hClass, offset);
 }
 
+GateRef CircuitBuilder::GetCacheKindFromForInIterator(GateRef iter)
+{
+    GateRef offset = IntPtr(JSForInIterator::CACHE_KIND_OFFSET);
+    return Load(VariableType::INT32(), iter, offset);
+}
+
 GateRef CircuitBuilder::GetLengthFromForInIterator(GateRef iter)
 {
     GateRef offset = IntPtr(JSForInIterator::LENGTH_OFFSET);
@@ -692,7 +699,7 @@ GateRef CircuitBuilder::GetObjectFromForInIterator(GateRef iter)
     return Load(VariableType::JS_ANY(), iter, offset);
 }
 
-GateRef CircuitBuilder::GetCachedHclassFromForInIterator(GateRef iter)
+GateRef CircuitBuilder::GetCachedHClassFromForInIterator(GateRef iter)
 {
     GateRef offset = IntPtr(JSForInIterator::CACHED_HCLASS_OFFSET);
     return Load(VariableType::JS_ANY(), iter, offset);
@@ -718,6 +725,12 @@ void CircuitBuilder::SetIndexOfForInIterator(GateRef glue, GateRef iter, GateRef
     Store(VariableType::INT32(), glue, iter, offset, index);
 }
 
+void CircuitBuilder::SetCacheKindForInIterator(GateRef glue, GateRef iter, GateRef cacheKind)
+{
+    GateRef offset = IntPtr(JSForInIterator::CACHE_KIND_OFFSET);
+    Store(VariableType::INT32(), glue, iter, offset, cacheKind);
+}
+
 void CircuitBuilder::SetKeysOfForInIterator(GateRef glue, GateRef iter, GateRef keys)
 {
     GateRef offset = IntPtr(JSForInIterator::KEYS_OFFSET);
@@ -730,7 +743,7 @@ void CircuitBuilder::SetObjectOfForInIterator(GateRef glue, GateRef iter, GateRe
     Store(VariableType::JS_ANY(), glue, iter, offset, object);
 }
 
-void CircuitBuilder::SetCachedHclassOfForInIterator(GateRef glue, GateRef iter, GateRef hclass)
+void CircuitBuilder::SetCachedHClassOfForInIterator(GateRef glue, GateRef iter, GateRef hclass)
 {
     GateRef offset = IntPtr(JSForInIterator::CACHED_HCLASS_OFFSET);
     Store(VariableType::JS_ANY(), glue, iter, offset, hclass);

@@ -254,6 +254,7 @@ struct Reference;
         ACCESSOR_DATA,     /* /////////////////////////////////////////////////////////////////////////////-PADDING */ \
         INTERNAL_ACCESSOR, /* /////////////////////////////////////////////////////////////////////////////-PADDING */ \
         SYMBOL, /* ////////////////////////////////////////////////////////////////////////////////////////-PADDING */ \
+        ENUM_CACHE, /* ////////////////////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_GENERATOR_CONTEXT, /* //////////////////////////////////////////////////////////////////////////-PADDING */ \
         PROTOTYPE_HANDLER,    /* //////////////////////////////////////////////////////////////////////////-PADDING */ \
         TRANSITION_HANDLER,   /* //////////////////////////////////////////////////////////////////////////-PADDING */ \
@@ -340,35 +341,6 @@ struct Reference;
 enum class JSType : uint8_t {
     JSTYPE_DECL,
 };
-
-// EnumCache:
-// +-----------------+----------------------+
-// |      value      |     status           |
-// +-----------------+----------------------+
-// |      null       |    uninitialized     |
-// ------------------------------------------
-// |    undefined    | a fast path to check |
-// |                 | simple enum cache    |
-// ------------------------------------------
-// |   empty array   |  enum keys is empty  |
-// ------------------------------------------
-// | non-empty array |  non-empty enum keys |
-// +----------------------------------------+
-// structure of non-empty array of EnumCache:
-// 0: an int value indicating enum cache kind
-// 1-n: enum keys
-namespace EnumCache {
-static constexpr uint32_t ENUM_CACHE_HEADER_SIZE = 1;
-static constexpr uint32_t ENUM_CACHE_KIND_OFFSET = 0;
-enum class EnumCacheKind : uint8_t {
-    NONE = 0,
-    SIMPLE,        // simple enum cache(used in for-in)
-                   // make sure EnumCache is empty array only for SIMPLE
-    PROTOCHAIN,    // enum cache with prototype chain info(used in for-in)
-    ONLY_OWN_KEYS  // enum cache with only own enum keys(used in Json.stringify and Object.keys)
-};
-
-}  // namespace EnumCache
 
 struct TransitionResult {
     bool isTagged;
@@ -523,7 +495,10 @@ public:
                                                               const JSHandle<JSHClass> &jshclass);
 
     static JSHandle<ProtoChangeDetails> GetProtoChangeDetails(const JSThread *thread, const JSHandle<JSObject> &obj);
-
+    
+    static JSHandle<TaggedArray> GetEnumCacheOwnWithOutCheck(const JSThread *thread,
+                                                             const JSHandle<JSHClass> &jshclass);
+    
     inline void UpdatePropertyMetaData(const JSThread *thread, const JSTaggedValue &key,
                                       const PropertyAttributes &metaData);
     
@@ -1452,6 +1427,12 @@ public:
     {
         return GetObjectType() == JSType::PROPERTY_BOX;
     }
+    
+    inline bool IsEnumCache() const
+    {
+        return GetObjectType() == JSType::ENUM_CACHE;
+    }
+
     inline bool IsProtoChangeMarker() const
     {
         return GetObjectType() == JSType::PROTO_CHANGE_MARKER;
@@ -2049,8 +2030,8 @@ public:
     ACCESSORS(Parent, PARENT_OFFSET, PROTO_CHANGE_MARKER_OFFSET);
     ACCESSORS(ProtoChangeMarker, PROTO_CHANGE_MARKER_OFFSET, PROTO_CHANGE_DETAILS_OFFSET);
     ACCESSORS(ProtoChangeDetails, PROTO_CHANGE_DETAILS_OFFSET, ENUM_CACHE_OFFSET);
-    ACCESSORS(EnumCache, ENUM_CACHE_OFFSET, PROFILE_TYPE);
-    ACCESSORS_PRIMITIVE_FIELD(ProfileType, uint64_t, PROFILE_TYPE, BIT_FIELD_OFFSET);
+    ACCESSORS(EnumCache, ENUM_CACHE_OFFSET, PROFILE_TYPE_OFFSET);
+    ACCESSORS_PRIMITIVE_FIELD(ProfileType, uint64_t, PROFILE_TYPE_OFFSET, BIT_FIELD_OFFSET);
     ACCESSORS_PRIMITIVE_FIELD(BitField, uint32_t, BIT_FIELD_OFFSET, BIT_FIELD1_OFFSET);
     ACCESSORS_PRIMITIVE_FIELD(BitField1, uint32_t, BIT_FIELD1_OFFSET, LAST_OFFSET);
     DEFINE_ALIGN_SIZE(LAST_OFFSET);
@@ -2099,7 +2080,7 @@ public:
     static bool UpdateChildLayoutDescByPGO(const JSHClass* hclass, HClassLayoutDesc* childDesc);
     static std::pair<bool, CString> DumpToString(JSTaggedType hclassVal);
 
-    DECL_VISIT_OBJECT(PROTOTYPE_OFFSET, PROFILE_TYPE);
+    DECL_VISIT_OBJECT(PROTOTYPE_OFFSET, PROFILE_TYPE_OFFSET);
     inline JSHClass *FindProtoTransitions(const JSTaggedValue &key, const JSTaggedValue &proto);
     inline bool HasTransitions() const
     {

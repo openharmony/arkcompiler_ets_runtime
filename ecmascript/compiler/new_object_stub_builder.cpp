@@ -931,7 +931,8 @@ GateRef NewObjectStubBuilder::CopyArray(GateRef glue, GateRef elements, GateRef 
     return ret;
 }
 
-GateRef NewObjectStubBuilder::NewJSForinIterator(GateRef glue, GateRef receiver, GateRef keys, GateRef cachedHclass)
+GateRef NewObjectStubBuilder::NewJSForinIterator(GateRef glue, GateRef receiver, GateRef keys, GateRef cachedHClass,
+                                                 GateRef EnumCacheKind)
 {
     auto env = GetEnvironment();
     GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
@@ -940,9 +941,10 @@ GateRef NewObjectStubBuilder::NewJSForinIterator(GateRef glue, GateRef receiver,
     GateRef iter = NewJSObject(glue, hclass);
     // init JSForinIterator
     SetObjectOfForInIterator(glue, iter, receiver);
-    SetCachedHclassOfForInIterator(glue, iter, cachedHclass);
+    SetCachedHClassOfForInIterator(glue, iter, cachedHClass);
     SetKeysOfForInIterator(glue, iter, keys);
-    SetIndexOfForInIterator(glue, iter, Int32(EnumCache::ENUM_CACHE_HEADER_SIZE));
+    SetIndexOfForInIterator(glue, iter, Int32(0));
+    SetCacheKindForInIterator(glue, iter, EnumCacheKind);
     GateRef length = GetLengthOfTaggedArray(keys);
     SetLengthOfForInIterator(glue, iter, length);
     return iter;
@@ -1248,13 +1250,14 @@ GateRef NewObjectStubBuilder::EnumerateObjectProperties(GateRef glue, GateRef ob
     Bind(&cacheHit);
     {
         GateRef hclass = LoadHClass(*object);
-        result = NewJSForinIterator(glue, *object, enumCache, hclass);
+        result = NewJSForinIterator(glue, *object, enumCache, hclass, GetEnumCacheKindFromEnumCache(enumCache));
         Jump(&exit);
     }
     Bind(&empty);
     {
         GateRef emptyArray = GetEmptyArray(glue);
-        result = NewJSForinIterator(glue, Undefined(), emptyArray, Undefined());
+        result = NewJSForinIterator(glue, Undefined(), emptyArray, Undefined(),
+                                    Int32(static_cast<int32_t>(EnumCacheKind::SIMPLE)));
         Jump(&exit);
     }
 
@@ -1764,23 +1767,23 @@ GateRef NewObjectStubBuilder::FastNewThisObject(GateRef glue, GateRef ctor)
     Label isJSObject(env);
 
     DEFVARIABLE(thisObj, VariableType::JS_ANY(), Undefined());
-    auto protoOrHclass = Load(VariableType::JS_ANY(), ctor,
+    auto protoOrHClass = Load(VariableType::JS_ANY(), ctor,
         IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
-    BRANCH(TaggedIsHeapObject(protoOrHclass), &isHeapObject, &callRuntime);
+    BRANCH(TaggedIsHeapObject(protoOrHClass), &isHeapObject, &callRuntime);
     Bind(&isHeapObject);
-    BRANCH(IsJSHClass(protoOrHclass), &checkJSObject, &callRuntime);
+    BRANCH(IsJSHClass(protoOrHClass), &checkJSObject, &callRuntime);
     Bind(&checkJSObject);
-    auto objectType = GetObjectType(protoOrHclass);
+    auto objectType = GetObjectType(protoOrHClass);
     BRANCH(Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::JS_OBJECT))), &isJSObject, &callRuntime);
     Bind(&isJSObject);
     {
-        auto funcProto = GetPrototypeFromHClass(protoOrHclass);
+        auto funcProto = GetPrototypeFromHClass(protoOrHClass);
         BRANCH(IsEcmaObject(funcProto), &newObject, &callRuntime);
     }
     Bind(&newObject);
     {
         SetParameters(glue, 0);
-        NewJSObject(&thisObj, &exit, protoOrHclass);
+        NewJSObject(&thisObj, &exit, protoOrHClass);
     }
     Bind(&callRuntime);
     {
@@ -1808,20 +1811,20 @@ GateRef NewObjectStubBuilder::FastSuperAllocateThis(GateRef glue, GateRef superC
     BRANCH(IsJSFunction(newTarget), &isFunction, &callRuntime);
     Bind(&isFunction);
     DEFVARIABLE(thisObj, VariableType::JS_ANY(), Undefined());
-    DEFVARIABLE(protoOrHclass, VariableType::JS_ANY(), Undefined());
-    protoOrHclass = Load(VariableType::JS_ANY(), newTarget,
+    DEFVARIABLE(protoOrHClass, VariableType::JS_ANY(), Undefined());
+    protoOrHClass = Load(VariableType::JS_ANY(), newTarget,
         IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
-    BRANCH(TaggedIsHeapObject(*protoOrHclass), &isHeapObject, &callRuntime);
+    BRANCH(TaggedIsHeapObject(*protoOrHClass), &isHeapObject, &callRuntime);
     Bind(&isHeapObject);
-    BRANCH(IsJSHClass(*protoOrHclass), &checkJSObject, &callRuntime);
+    BRANCH(IsJSHClass(*protoOrHClass), &checkJSObject, &callRuntime);
     Bind(&checkJSObject);
-    auto objectType = GetObjectType(*protoOrHclass);
+    auto objectType = GetObjectType(*protoOrHClass);
     BRANCH(Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::JS_OBJECT))),
         &newObject, &callRuntime);
     Bind(&newObject);
     {
         SetParameters(glue, 0);
-        NewJSObject(&thisObj, &exit, *protoOrHclass);
+        NewJSObject(&thisObj, &exit, *protoOrHClass);
     }
     Bind(&callRuntime);
     {
@@ -2599,6 +2602,37 @@ GateRef NewObjectStubBuilder::NewProfileTypeInfoCell(GateRef glue, GateRef value
     Store(VariableType::JS_POINTER(), glue, *result, baselineCodeOffset, Hole());
     GateRef handleOffset = IntPtr(ProfileTypeInfoCell::HANDLE_OFFSET);
     Store(VariableType::JS_POINTER(), glue, *result, handleOffset, Undefined());
+
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef NewObjectStubBuilder::NewEnumCache(GateRef glue)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    
+    Label initialize(env);
+    DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
+    
+    auto hclass = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
+        ConstantIndex::ENUM_CACHE_CLASS_INDEX);
+    GateRef size = GetObjectSizeFromHClass(hclass);
+    SetParameters(glue, size);
+    HeapAlloc(&result, &initialize, RegionSpaceFlag::IN_YOUNG_SPACE, hclass);
+    Bind(&initialize);
+    Store(VariableType::JS_POINTER(), glue, result.ReadVariable(), IntPtr(0), hclass);
+    GateRef enumCacheKindOffset = IntPtr(EnumCache::ENUM_CACHE_KIND_OFFSET);
+    Store(VariableType::INT32(), glue, *result, enumCacheKindOffset,
+        Int32(static_cast<uint32_t>(EnumCacheKind::NONE)));
+    GateRef enumCacheAllOffset = IntPtr(EnumCache::ENUM_CACHE_ALL_OFFSET);
+    Store(VariableType::JS_POINTER(), glue, *result, enumCacheAllOffset, Null());
+    GateRef enumCacheOwnOffset = IntPtr(EnumCache::ENUM_CACHE_OWN_OFFSET);
+    Store(VariableType::JS_POINTER(), glue, *result, enumCacheOwnOffset, Null());
+    GateRef enumCacheProtoChainOffset = IntPtr(EnumCache::PROTO_CHAIN_INFO_ENUM_CACHE_OFFSET);
+    Store(VariableType::JS_POINTER(), glue, *result, enumCacheProtoChainOffset, Null());
 
     auto ret = *result;
     env->SubCfgExit();

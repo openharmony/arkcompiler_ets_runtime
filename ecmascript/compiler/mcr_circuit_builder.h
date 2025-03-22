@@ -297,6 +297,26 @@ GateRef CircuitBuilder::TaggedIsStringOrSymbol(GateRef obj)
     return ret;
 }
 
+GateRef CircuitBuilder::TaggedIsEnumCache(GateRef obj)
+{
+    Label entry(env_);
+    SubCfgEntry(&entry);
+    Label exit(env_);
+    DEFVALUE(result, env_, VariableType::BOOL(), False());
+    Label isHeapObject(env_);
+    BRANCH(TaggedIsHeapObject(obj), &isHeapObject, &exit);
+    Bind(&isHeapObject);
+    {
+        GateRef objType = GetObjectType(LoadHClass(obj));
+        result = Equal(objType, Int32(static_cast<int32_t>(JSType::ENUM_CACHE)));
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    SubCfgExit();
+    return ret;
+}
+
 GateRef CircuitBuilder::TaggedIsProtoChangeMarker(GateRef obj)
 {
     Label entry(env_);

@@ -735,7 +735,7 @@ void BuiltinsObjectStubBuilder::LayoutInfoGetAllEnumKeys(GateRef end, GateRef of
     env->SubCfgExit();
 }
 
-GateRef BuiltinsObjectStubBuilder::CopyFromEnumCache(GateRef glue, GateRef elements)
+GateRef BuiltinsObjectStubBuilder::CopyFromKeyArray(GateRef glue, GateRef elements)
 {
     auto env = GetEnvironment();
     Label subEntry(env);
@@ -743,27 +743,11 @@ GateRef BuiltinsObjectStubBuilder::CopyFromEnumCache(GateRef glue, GateRef eleme
     Label exit(env);
     DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
     DEFVARIABLE(index, VariableType::INT32(), Int32(0));
-    DEFVARIABLE(newLen, VariableType::INT32(), Int32(0));
     NewObjectStubBuilder newBuilder(this);
 
-    Label lenIsZero(env);
-    Label lenNotZero(env);
-    Label afterLenCon(env);
-    GateRef oldLen = GetLengthOfTaggedArray(elements);
-    BRANCH(Int32Equal(oldLen, Int32(0)), &lenIsZero, &lenNotZero);
-    {
-        Bind(&lenIsZero);
-        {
-            newLen = Int32(0);
-            Jump(&afterLenCon);
-        }
-        Bind(&lenNotZero);
-        newLen = Int32Sub(oldLen, Int32(EnumCache::ENUM_CACHE_HEADER_SIZE));
-        Jump(&afterLenCon);
-    }
-    Bind(&afterLenCon);
-    GateRef array = newBuilder.NewTaggedArray(glue, *newLen);
-    Store(VariableType::INT32(), glue, array, IntPtr(TaggedArray::LENGTH_OFFSET), *newLen);
+    GateRef newLen = GetLengthOfTaggedArray(elements);
+    GateRef array = newBuilder.NewTaggedArray(glue, newLen);
+    Store(VariableType::INT32(), glue, array, IntPtr(TaggedArray::LENGTH_OFFSET), newLen);
     GateRef oldExtractLen = GetExtraLengthOfTaggedArray(elements);
     Store(VariableType::INT32(), glue, array, IntPtr(TaggedArray::EXTRA_LENGTH_OFFSET), oldExtractLen);
     Label loopHead(env);
@@ -773,11 +757,10 @@ GateRef BuiltinsObjectStubBuilder::CopyFromEnumCache(GateRef glue, GateRef eleme
     Jump(&loopHead);
     LoopBegin(&loopHead);
     {
-        BRANCH(Int32UnsignedLessThan(*index, *newLen), &storeValue, &afterLoop);
+        BRANCH(Int32UnsignedLessThan(*index, newLen), &storeValue, &afterLoop);
         Bind(&storeValue);
         {
-            GateRef value = GetValueFromTaggedArray(elements, Int32Add(*index,
-                Int32(EnumCache::ENUM_CACHE_HEADER_SIZE)));
+            GateRef value = GetValueFromTaggedArray(elements, *index);
             SetValueToTaggedArray(VariableType::JS_ANY(), glue, array, *index, value);
             index = Int32Add(*index, Int32(1));
             Jump(&loopEnd);
@@ -831,47 +814,48 @@ GateRef BuiltinsObjectStubBuilder::GetAllEnumKeys(GateRef glue, GateRef obj)
         BRANCH(Int32GreaterThan(num, Int32(0)), &hasProps, &notHasProps);
         Bind(&hasProps);
         {
-            Label isOnlyOwnKeys(env);
-            Label notOnlyOwnKeys(env);
+            Label hasEnumCacheOwn(env);
+            Label notHasEnumCacheOwn(env);
+            Label inSharedHeap(env);
+            Label notInSharedHeap(env);
             GateRef layout = GetLayoutFromHClass(hclass);
             GateRef numOfKeys = GetNumKeysFromLayoutInfo(num, layout);
-            // JSObject::GetAllEnumKeys
-            GateRef enumCache = GetEnumCacheFromHClass(hclass);
-            GateRef kind = GetEnumCacheKind(glue, enumCache);
-            BRANCH(Int32Equal(kind, Int32(static_cast<int32_t>(EnumCacheKind::ONLY_OWN_KEYS))),
-                &isOnlyOwnKeys, &notOnlyOwnKeys);
-            Bind(&isOnlyOwnKeys);
+            GateRef hclassRegion = ObjectAddressToRange(hclass);
+            BRANCH(InSharedHeap(hclassRegion), &inSharedHeap, &notInSharedHeap);
+            Bind(&notInSharedHeap);
             {
-                result = CopyFromEnumCache(glue, enumCache);
-                Jump(&exit);
+                GateRef enumCache = GetOrCreateEnumCacheFromHClass(glue, hclass);
+                GateRef enumCacheOwn = GetEnumCacheOwnFromEnumCache(enumCache);
+                BRANCH(TaggedIsNull(enumCacheOwn), &notHasEnumCacheOwn, &hasEnumCacheOwn);
+                Bind(&hasEnumCacheOwn);
+                {
+                    result = CopyFromKeyArray(glue, enumCacheOwn);
+                    Jump(&exit);
+                }
+                Bind(&notHasEnumCacheOwn);
+                {
+                    Label numNotZero(env);
+                    BRANCH(Int32GreaterThan(numOfKeys, Int32(0)), &numNotZero, &notHasProps);
+                    Bind(&numNotZero);
+                    NewObjectStubBuilder newBuilder(this);
+                    GateRef keyArray = newBuilder.NewTaggedArray(glue, numOfKeys);
+                    LayoutInfoGetAllEnumKeys(num, Int32(0), keyArray, layout);
+                    GateRef enumCacheOwnOffset = IntPtr(EnumCache::ENUM_CACHE_OWN_OFFSET);
+                    Store(VariableType::JS_ANY(), glue, enumCache, enumCacheOwnOffset, keyArray);
+                    result = CopyFromKeyArray(glue, keyArray);
+                    Jump(&exit);
+                }
             }
-            Bind(&notOnlyOwnKeys);
+            Bind(&inSharedHeap);
             {
-                Label numNotZero(env);
-                Label inSharedHeap(env);
-                Label notInSharedHeap(env);
-                BRANCH(Int32GreaterThan(numOfKeys, Int32(0)), &numNotZero, &notHasProps);
-                Bind(&numNotZero);
-                NewObjectStubBuilder newBuilder(this);
-                GateRef keyArray = newBuilder.NewTaggedArray(glue,
-                    Int32Add(numOfKeys, Int32(static_cast<int32_t>(EnumCache::ENUM_CACHE_HEADER_SIZE))));
-                LayoutInfoGetAllEnumKeys(num, Int32(EnumCache::ENUM_CACHE_HEADER_SIZE), keyArray, layout);
-                SetValueToTaggedArray(VariableType::JS_ANY(), glue, keyArray,
-                    Int32(EnumCache::ENUM_CACHE_KIND_OFFSET),
-                    IntToTaggedInt(Int32(static_cast<int32_t>(EnumCacheKind::ONLY_OWN_KEYS))));
-                GateRef hclassRegion = ObjectAddressToRange(hclass);
-                BRANCH(InSharedHeap(hclassRegion), &inSharedHeap, &notInSharedHeap);
-                Bind(&inSharedHeap);
-                {
-                    result = CopyFromEnumCache(glue, keyArray);
-                    Jump(&exit);
-                }
-                Bind(&notInSharedHeap);
-                {
-                    SetEnumCacheToHClass(VariableType::JS_ANY(), glue, hclass, keyArray);
-                    result = CopyFromEnumCache(glue, keyArray);
-                    Jump(&exit);
-                }
+                Label numNotZeroShared(env);
+                BRANCH(Int32GreaterThan(numOfKeys, Int32(0)), &numNotZeroShared, &notHasProps);
+                Bind(&numNotZeroShared);
+                NewObjectStubBuilder newBuilderShared(this);
+                GateRef keyArrayShared = newBuilderShared.NewTaggedArray(glue, numOfKeys);
+                LayoutInfoGetAllEnumKeys(num, Int32(0), keyArrayShared, layout);
+                result = CopyFromKeyArray(glue, keyArrayShared);
+                Jump(&exit);
             }
         }
         Bind(&notHasProps);

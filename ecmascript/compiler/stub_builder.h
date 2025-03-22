@@ -279,6 +279,7 @@ public:
     GateRef DoubleIsWithinInt32(GateRef x);
     GateRef DoubleTrunc(GateRef x);
     GateRef TaggedIsNull(GateRef x);
+    GateRef TaggedIsNotNull(GateRef x);
     GateRef TaggedIsUndefinedOrNull(GateRef x);
     GateRef TaggedIsUndefinedOrNullOrHole(GateRef x);
     GateRef TaggedIsTrue(GateRef x);
@@ -889,39 +890,47 @@ public:
 
     // for-in
     GateRef NextInternal(GateRef glue, GateRef iter);
+    GateRef GetCacheKindFromForInIterator(GateRef iter);
     GateRef GetLengthFromForInIterator(GateRef iter);
     GateRef GetIndexFromForInIterator(GateRef iter);
     GateRef GetKeysFromForInIterator(GateRef iter);
     GateRef GetObjectFromForInIterator(GateRef iter);
-    GateRef GetCachedHclassFromForInIterator(GateRef iter);
+    GateRef GetCachedHClassFromForInIterator(GateRef iter);
     void SetLengthOfForInIterator(GateRef glue, GateRef iter, GateRef length);
     void SetIndexOfForInIterator(GateRef glue, GateRef iter, GateRef index);
+    void SetCacheKindForInIterator(GateRef glue, GateRef iter, GateRef cacheKind);
     void SetKeysOfForInIterator(GateRef glue, GateRef iter, GateRef keys);
     void SetObjectOfForInIterator(GateRef glue, GateRef iter, GateRef object);
-    void SetCachedHclassOfForInIterator(GateRef glue, GateRef iter, GateRef hclass);
+    void SetCachedHClassOfForInIterator(GateRef glue, GateRef iter, GateRef hclass);
     void IncreaseIteratorIndex(GateRef glue, GateRef iter, GateRef index);
     void SetNextIndexOfArrayIterator(GateRef glue, GateRef iter, GateRef nextIndex);
     void IncreaseArrayIteratorIndex(GateRef glue, GateRef iter, GateRef index);
     void SetIteratedArrayOfArrayIterator(GateRef glue, GateRef iter, GateRef iteratedArray);
     void SetBitFieldOfArrayIterator(GateRef glue, GateRef iter, GateRef kind);
     GateRef GetArrayIterationKind(GateRef iter);
-    GateRef GetEnumCacheKind(GateRef glue, GateRef enumCache);
+    GateRef GetEnumCacheKindFromEnumCache(GateRef enumCache);
+    GateRef GetEnumCacheOwnFromEnumCache(GateRef enumCache);
+    GateRef GetEnumCacheAllFromEnumCache(GateRef enumCache);
+    GateRef GetProtoChainInfoEnumCacheFromEnumCache(GateRef enumCache);
     GateRef GetEmptyArray(GateRef glue);
     GateRef IsEnumCacheValid(GateRef receiver, GateRef cachedHclass, GateRef kind);
     GateRef NeedCheckProperty(GateRef receiver);
 
     GateRef EnumerateObjectProperties(GateRef glue, GateRef obj);
+    GateRef GetOrCreateEnumCacheFromHClass(GateRef glue, GateRef hClass);
     GateRef GetFunctionPrototype(GateRef glue, size_t index);
     GateRef ToPrototypeOrObj(GateRef glue, GateRef obj);
     GateRef ToPropertyKey(GateRef glue, GateRef tagged);
+    GateRef TaggedIsEnumCache(GateRef obj);
     GateRef TaggedIsPropertyKey(GateRef obj);
     GateRef HasProperty(GateRef glue, GateRef obj, GateRef key, GateRef hir = Circuit::NullGate());
     GateRef IsIn(GateRef glue, GateRef prop, GateRef obj);
     GateRef IsSpecialKeysObject(GateRef obj);
     GateRef IsSlowKeysObject(GateRef obj);
+    GateRef IsSimpleEnumCacheValid(GateRef glue, GateRef obj);
+    GateRef IsProtoChainCacheValid(GateRef glue, GateRef obj);
     GateRef TryGetEnumCache(GateRef glue, GateRef obj);
     GateRef GetNumberOfElements(GateRef glue, GateRef obj);
-    GateRef IsSimpleEnumCacheValid(GateRef glue, GateRef obj);
     GateRef IsEnumCacheWithProtoChainInfoValid(GateRef glue, GateRef obj);
 
     // Exception handle

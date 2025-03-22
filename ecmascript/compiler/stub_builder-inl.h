@@ -25,6 +25,7 @@
 #include "ecmascript/compiler/bc_call_signature.h"
 #include "ecmascript/compiler/baseline/baseline_call_signature.h"
 #include "ecmascript/ecma_context.h"
+#include "ecmascript/enum_cache.h"
 #include "ecmascript/global_dictionary.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/global_env_constants.h"
@@ -937,6 +938,11 @@ inline GateRef StubBuilder::DoubleTrunc(GateRef x)
 inline GateRef StubBuilder::TaggedIsNull(GateRef x)
 {
     return env_->GetBuilder()->TaggedIsNull(x);
+}
+
+inline GateRef StubBuilder::TaggedIsNotNull(GateRef x)
+{
+    return env_->GetBuilder()->TaggedIsNotNull(x);
 }
 
 inline GateRef StubBuilder::TaggedIsUndefinedOrNull(GateRef x)
@@ -1878,6 +1884,11 @@ inline GateRef StubBuilder::GetEmptyArray(GateRef glue)
     return env_->GetBuilder()->GetEmptyArray(glue);
 }
 
+inline GateRef StubBuilder::GetCacheKindFromForInIterator(GateRef iter)
+{
+    return env_->GetBuilder()->GetCacheKindFromForInIterator(iter);
+}
+
 inline GateRef StubBuilder::GetLengthFromForInIterator(GateRef iter)
 {
     return env_->GetBuilder()->GetLengthFromForInIterator(iter);
@@ -1898,9 +1909,9 @@ inline GateRef StubBuilder::GetObjectFromForInIterator(GateRef iter)
     return env_->GetBuilder()->GetObjectFromForInIterator(iter);
 }
 
-inline GateRef StubBuilder::GetCachedHclassFromForInIterator(GateRef iter)
+inline GateRef StubBuilder::GetCachedHClassFromForInIterator(GateRef iter)
 {
-    return env_->GetBuilder()->GetCachedHclassFromForInIterator(iter);
+    return env_->GetBuilder()->GetCachedHClassFromForInIterator(iter);
 }
 
 inline void StubBuilder::SetLengthOfForInIterator(GateRef glue, GateRef iter, GateRef length)
@@ -1913,6 +1924,11 @@ inline void StubBuilder::SetIndexOfForInIterator(GateRef glue, GateRef iter, Gat
     env_->GetBuilder()->SetIndexOfForInIterator(glue, iter, index);
 }
 
+inline void StubBuilder::SetCacheKindForInIterator(GateRef glue, GateRef iter, GateRef cacheKind)
+{
+    env_->GetBuilder()->SetCacheKindForInIterator(glue, iter, cacheKind);
+}
+
 inline void StubBuilder::SetKeysOfForInIterator(GateRef glue, GateRef iter, GateRef keys)
 {
     env_->GetBuilder()->SetKeysOfForInIterator(glue, iter, keys);
@@ -1923,9 +1939,9 @@ inline void StubBuilder::SetObjectOfForInIterator(GateRef glue, GateRef iter, Ga
     env_->GetBuilder()->SetObjectOfForInIterator(glue, iter, object);
 }
 
-inline void StubBuilder::SetCachedHclassOfForInIterator(GateRef glue, GateRef iter, GateRef hclass)
+inline void StubBuilder::SetCachedHClassOfForInIterator(GateRef glue, GateRef iter, GateRef hclass)
 {
-    env_->GetBuilder()->SetCachedHclassOfForInIterator(glue, iter, hclass);
+    env_->GetBuilder()->SetCachedHClassOfForInIterator(glue, iter, hclass);
 }
 
 inline void StubBuilder::IncreaseIteratorIndex(GateRef glue, GateRef iter, GateRef index)
@@ -3713,6 +3729,11 @@ inline GateRef StubBuilder::IsEnableElementsKind(GateRef glue)
 {
     GateRef offset = IntPtr(JSThread::GlueData::GetIsEnableElementsKindOffset(env_->Is32Bit()));
     return Load(VariableType::BOOL(), glue, offset);
+}
+
+inline GateRef StubBuilder::TaggedIsEnumCache(GateRef obj)
+{
+    return env_->GetBuilder()->TaggedIsEnumCache(obj);
 }
 
 inline GateRef StubBuilder::GetGlobalEnvValue(VariableType type, GateRef env, size_t index)

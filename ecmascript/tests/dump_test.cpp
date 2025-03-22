@@ -734,11 +734,12 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 break;
             }
             case JSType::JS_FORIN_ITERATOR: {
-                CHECK_DUMP_FIELDS(JSObject::SIZE, JSForInIterator::SIZE, 4U);
+                CHECK_DUMP_FIELDS(JSObject::SIZE, JSForInIterator::SIZE, 5U);
                 JSHandle<JSTaggedValue> array(thread, factory->NewJSArray().GetTaggedValue());
                 JSHandle<JSTaggedValue> keys(thread, factory->EmptyArray().GetTaggedValue());
                 JSHandle<JSTaggedValue> hclass(thread, JSTaggedValue::Undefined());
-                JSHandle<JSForInIterator> forInIter = factory->NewJSForinIterator(array, keys, hclass);
+                JSHandle<JSForInIterator> forInIter =
+                    factory->NewJSForinIterator(array, keys, hclass, static_cast<uint32_t>(EnumCacheKind::NONE));
                 DUMP_FOR_HANDLE(forInIter);
                 break;
             }
@@ -1090,6 +1091,12 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), PropertyBox::SIZE, 1U);
                 JSHandle<PropertyBox> PropertyBox = factory->NewPropertyBox(globalConst->GetHandledEmptyArray());
                 DUMP_FOR_HANDLE(PropertyBox);
+                break;
+            }
+            case JSType::ENUM_CACHE: {
+                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), EnumCache::SIZE, 4U);
+                JSHandle<EnumCache> enumCache = factory->NewEnumCache();
+                DUMP_FOR_HANDLE(enumCache);
                 break;
             }
             case JSType::PROTO_CHANGE_MARKER: {

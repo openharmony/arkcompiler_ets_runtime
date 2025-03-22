@@ -18,6 +18,7 @@
 
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/ecma_vm.h"
+#include "ecmascript/enum_cache.h"
 #include "ecmascript/filter_helper.h"
 #include "ecmascript/ic/property_box.h"
 #include "ecmascript/js_handle.h"
@@ -46,7 +47,6 @@ namespace builtins {
     class BuiltinsArkTools;
 }
 
-using EnumCacheKind = EnumCache::EnumCacheKind;
 using SCheckMode = JSShared::SCheckMode;
 
 // Integrity level for objects
@@ -575,7 +575,7 @@ public:
 
     static JSHandle<TaggedArray> GetAllPropertyKeys(JSThread *thread, const JSHandle<JSObject> &obj, uint32_t filter);
 
-    static void CollectEnumKeysAlongProtoChain(JSThread *thread, const JSHandle<JSObject> &obj,
+    static void CollectEnumKeys(JSThread *thread, const JSHandle<JSObject> &obj,
                                                JSHandle<TaggedArray> keyArray, uint32_t *keys,
                                                JSHandle<TaggedQueue> shadowQueue, int32_t lastLength = -1);
 
@@ -698,7 +698,7 @@ public:
 
     static JSHandle<TaggedArray> GetEnumElementKeys(JSThread *thread, const JSHandle<JSObject> &obj, int offset,
                                                     uint32_t numOfElements, uint32_t *keys);
-    static void CollectEnumElementsAlongProtoChain(JSThread *thread, const JSHandle<JSObject> &obj, int offset,
+    static void CollectEnumElements(JSThread *thread, const JSHandle<JSObject> &obj, int offset,
                                                    JSHandle<TaggedArray> elementArray, uint32_t *keys,
                                                    int32_t lastLength = -1);
     static void GetEnumElementKeys(JSThread *thread, const JSHandle<JSObject> &obj, int offset,
@@ -763,10 +763,24 @@ public:
 
     static bool IsDepulicateKeys(JSThread *thread, JSHandle<TaggedArray> keys, int32_t lastLength,
                                  JSHandle<TaggedQueue> shadowQueue, JSHandle<JSTaggedValue> key);
+    static JSHandle<EnumCache> GetOrCreateEnumCache(JSThread *thread, JSHandle<JSHClass> jsHClass);
+    static inline void SetEnumCacheKind([[maybe_unused]] const JSThread *thread,
+                                        JSHandle<EnumCache> enumCache, const EnumCacheKind kind)
+    {
+        enumCache->SetEnumCacheKind(static_cast<uint32_t>(kind));
+    }
 
-    static void SetEnumCacheKind(JSThread *thread, TaggedArray *array, EnumCacheKind kind);
-    static EnumCacheKind GetEnumCacheKind(JSThread *thread, TaggedArray *array);
-    static EnumCacheKind GetEnumCacheKind(JSThread *thread, JSTaggedValue enumCache);
+    static inline EnumCacheKind GetEnumCacheKind(JSTaggedValue enumCache)
+    {
+        if (!enumCache.IsEnumCache()) {
+            return EnumCacheKind::NONE;
+        }
+        EnumCacheKind kind = static_cast<EnumCacheKind>(EnumCache::Cast(enumCache)->GetEnumCacheKind());
+        ASSERT(kind == EnumCacheKind::NONE ||
+               kind == EnumCacheKind::SIMPLE ||
+               kind == EnumCacheKind::PROTOCHAIN);
+        return kind;
+    }
 
     static void ClearHasDeleteProperty(JSHandle<JSTaggedValue> object);
 
@@ -822,7 +836,7 @@ private:
                                        const JSHandle<JSTaggedValue> &key, const JSHandle<JSTaggedValue> &value,
                                        PropertyKind kind);
     static bool IsSimpleEnumCacheValid(JSThread *thread, JSTaggedValue receiver);
-    static bool IsEnumCacheWithProtoChainInfoValid(JSThread *thread, JSTaggedValue receiver);
+    static bool IsProtoChainCacheValid(JSThread *thread, JSTaggedValue receiver);
     static void TrimInlinePropsSpace(const JSThread *thread, const JSHandle<JSObject> &object,
                                      uint32_t numberInlinedProps);
     static bool ValidateDataDescriptorWhenConfigurable(ObjectOperator *op, const PropertyDescriptor &desc,

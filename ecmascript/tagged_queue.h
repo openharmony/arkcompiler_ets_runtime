@@ -20,6 +20,7 @@
 #include "ecmascript/js_thread.h"
 #include "ecmascript/tagged_array.h"
 #include "ecmascript/tagged_array-inl.h"
+#include "ecmascript/object_factory.h"
 
 namespace panda::ecmascript {
 class TaggedQueue : public TaggedArray {

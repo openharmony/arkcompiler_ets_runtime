@@ -7,7 +7,7 @@
             "size": 8
         },
         {
-            "name": "CachedHclass",
+            "name": "CachedHClass",
             "offset": 8,
             "size": 8
         },
@@ -17,7 +17,7 @@
             "size": 8
         }
     ],
-    "end_offset": 32,
+    "end_offset": 36,
     "parents": [
         "JS_OBJECT"
     ]

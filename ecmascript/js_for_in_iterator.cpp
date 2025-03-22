@@ -16,29 +16,35 @@
 #include "ecmascript/js_for_in_iterator.h"
 
 #include "ecmascript/base/builtins_base.h"
+#include "ecmascript/enum_cache.h"
 #include "ecmascript/ic/proto_change_details.h"
 #include "ecmascript/js_object-inl.h"
+#include "ecmascript/js_tagged_value.h"
 
 namespace panda::ecmascript {
 using BuiltinsBase = base::BuiltinsBase;
-bool JSForInIterator::IsEnumCacheValid(JSTaggedValue receiver, JSTaggedValue cachedHclass, EnumCacheKind kind)
+bool JSForInIterator::IsEnumCacheValid(JSTaggedValue receiver, JSTaggedValue cachedHClass, EnumCacheKind kind)
 {
     DISALLOW_GARBAGE_COLLECTION;
     JSHClass *hclass = receiver.GetTaggedObject()->GetClass();
-    if (JSTaggedValue(hclass) != cachedHclass) {
+    if (JSTaggedValue(hclass) != cachedHClass) {
         return false;
     }
     if (kind == EnumCacheKind::SIMPLE) {
         return true;
     }
-    ASSERT(kind == EnumCacheKind::PROTOCHAIN);
-    JSTaggedValue proto = hclass->GetPrototype();
-    if (!proto.IsECMAObject()) {
+    if (kind == EnumCacheKind::NONE) {
         return false;
     }
-    JSTaggedValue protoChangeMarker = proto.GetTaggedObject()->GetClass()->GetProtoChangeMarker();
-    if (protoChangeMarker.IsProtoChangeMarker()) {
-        if (!ProtoChangeMarker::Cast(protoChangeMarker.GetTaggedObject())->GetHasChanged()) {
+    ASSERT(kind == EnumCacheKind::PROTOCHAIN);
+    JSTaggedValue proto = hclass->GetPrototype();
+    if (!proto.IsHeapObject()) {
+        return true;
+    }
+    JSTaggedValue enumCache = proto.GetTaggedObject()->GetClass()->GetEnumCache();
+    if (enumCache.IsEnumCache()) {
+        JSTaggedValue enumCacheAll = EnumCache::Cast(enumCache.GetTaggedObject())->GetEnumCacheAll();
+        if (enumCacheAll != JSTaggedValue::Null()) {
             return true;
         }
     }
@@ -83,9 +89,9 @@ JSTaggedValue JSForInIterator::NextInternal(JSThread *thread, const JSHandle<JSF
     }
     JSTaggedValue taggedKeys = it->GetKeys();
     JSTaggedValue receiver = it->GetObject();
-    EnumCacheKind kind = JSObject::GetEnumCacheKind(thread, taggedKeys);
+    EnumCacheKind kind = static_cast<EnumCacheKind>(it->GetCacheKind());
     TaggedArray *keys = TaggedArray::Cast(taggedKeys.GetTaggedObject());
-    if (IsEnumCacheValid(receiver, it->GetCachedHclass(), kind)) {
+    if (IsEnumCacheValid(receiver, it->GetCachedHClass(), kind)) {
         JSTaggedValue key = keys->Get(index);
         index++;
         it->SetIndex(index);

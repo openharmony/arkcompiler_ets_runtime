@@ -485,6 +485,9 @@ public:
             case JSType::SYMBOL:
                 JSSymbol::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
+            case JSType::ENUM_CACHE:
+                EnumCache::Cast(object)->VisitRangeSlot<visitType>(visitor);
+                break;
             case JSType::JS_GENERATOR_CONTEXT:
                 GeneratorContext::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
