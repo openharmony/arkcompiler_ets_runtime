@@ -518,8 +518,14 @@ HWTEST_F_L0(JSNApiTests, CreateNativeObject)
         },
         nullptr, nativeBindingSize);
     Local<ObjectRef> object = ObjectRef::New(vm_);
+    ASSERT_FALSE(object->IsNativeBindingObject(vm_));
     bool result = object->ConvertToNativeBindingObject(vm_, nativeInfo);
     ASSERT_TRUE(result);
+    ASSERT_TRUE(object->IsNativeBindingObject(vm_));
+    Local<NativePointerRef> nativeInfo1 = object->GetNativeBindingPointer(vm_);
+    auto info1 = static_cast<panda::JSNApi::NativeBindingInfo *>(nativeInfo1->Value());
+    ASSERT_EQ(info, info1);
+
     Local<JSValueRef> key = StringRef::NewFromUtf8(vm_, "TestKey");
     Local<JSValueRef> value = ObjectRef::New(vm_);
     PropertyAttribute attribute(value, true, true, true);

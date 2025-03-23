@@ -13,7 +13,7 @@
 
 import("../../test_helper.gni")
 
-host_moduletest_action("require") {
+host_moduletest_assert_action("require") {
   deps = []
   entry_point = "--entry-point=require"
   is_commonjs = true

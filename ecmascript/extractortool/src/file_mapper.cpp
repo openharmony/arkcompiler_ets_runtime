@@ -14,7 +14,6 @@
  */
 
 #include "file_mapper.h"
-#include <memory>
 #include <sys/mman.h>
 #include "zip_file_reader.h"
 

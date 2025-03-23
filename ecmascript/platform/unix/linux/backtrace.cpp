@@ -16,7 +16,6 @@
 #include "ecmascript/platform/backtrace.h"
 
 #include <execinfo.h>
-#include <unistd.h>
 
 #include "ecmascript/mem/mem.h"
 

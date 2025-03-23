@@ -204,7 +204,7 @@ HWTEST_F_L0(HeapTrackerTest, FormatString)
     dumpOption.isPrivate = isPrivate;
     dumpOption.captureNumericValue = captureNumericValue;
     HeapSnapshot heapSnapshot(instance, heapProfiler.GetEcmaStringTable(), dumpOption, traceAllocation,
-                              heapProfiler.GetEntryIdMap(), instance->GetChunk());
+                              heapProfiler.GetEntryIdMap());
 
     StringHashMap stringHashMap(instance);
     CString ret = "H\"e\rl\nl\\o\t W\fo\31rld!";

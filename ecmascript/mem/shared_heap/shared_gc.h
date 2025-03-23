@@ -23,8 +23,10 @@
 #include "ecmascript/mem/mark_word.h"
 #include "ecmascript/mem/mem.h"
 #include "ecmascript/mem/work_manager.h"
+#include "ecmascript/mem/shared_heap/shared_gc_marker.h"
 
 namespace panda::ecmascript {
+class SharedGCEvacuator;
 class SharedGC : public GarbageCollector {
 public:
     explicit SharedGC(SharedHeap *heap) : sHeap_(heap), sWorkManager_(heap->GetWorkManager()) {}
@@ -41,7 +43,10 @@ protected:
     void Finish() override;
 
 private:
+    void MarkRoots(SharedMarkType markType);
     void UpdateRecordWeakReference();
+    void Evacuate();
+    void PreSweep();
 
     SharedHeap *sHeap_ {nullptr};
     SharedGCWorkManager *sWorkManager_ {nullptr};

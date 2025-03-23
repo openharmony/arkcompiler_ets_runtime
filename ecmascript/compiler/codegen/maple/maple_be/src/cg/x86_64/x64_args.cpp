@@ -14,8 +14,6 @@
  */
 
 #include "x64_cg.h"
-#include "x64_isa.h"
-#include "x64_MPISel.h"
 
 namespace maplebe {
 using namespace maple;

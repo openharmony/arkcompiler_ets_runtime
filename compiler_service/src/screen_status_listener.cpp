@@ -15,8 +15,6 @@
 
 #include "screen_status_listener.h"
 
-#include "common_event_manager.h"
-#include "common_event_support.h"
 
 #include "aot_compiler_impl.h"
 #include "ecmascript/log_wrapper.h"

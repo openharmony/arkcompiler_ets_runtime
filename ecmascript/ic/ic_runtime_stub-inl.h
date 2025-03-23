@@ -122,7 +122,7 @@ ARK_INLINE JSTaggedValue ICRuntimeStub::TryLoadICByValue(JSThread *thread, JSTag
         auto hclass = receiver.GetTaggedObject()->GetClass();
         if (firstValue.GetWeakReferentUnChecked() == hclass) {
             if (HandlerBase::IsNormalElement(secondValue.GetNumber())) {
-                return LoadElement(JSObject::Cast(receiver.GetTaggedObject()), key);
+                return LoadElement(thread, JSObject::Cast(receiver.GetTaggedObject()), key);
             } else if (HandlerBase::IsTypedArrayElement(secondValue.GetNumber())) {
                 return LoadTypedArrayElement(thread, receiver, key);
             }
@@ -232,9 +232,21 @@ ARK_INLINE JSTaggedValue ICRuntimeStub::StoreICWithHandler(JSThread *thread, JST
         if (isShared) {
             SharedFieldType fieldType { HandlerBase::GetFieldType(handlerInfo) };
             bool hasAccessor = HandlerBase::IsAccessor(handlerInfo);
-            if (!hasAccessor && !ClassHelper::MatchFieldType(fieldType, value)) {
-                THROW_TYPE_ERROR_AND_RETURN((thread), GET_MESSAGE_STRING(SetTypeMismatchedSharedProperty),
-                                            JSTaggedValue::Exception());
+            if (!hasAccessor) {
+                if (!ClassHelper::MatchFieldType(fieldType, value)) {
+                    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+                    THROW_TYPE_ERROR_AND_RETURN((thread), GET_MESSAGE_STRING(SetTypeMismatchedSharedProperty),
+                                                JSTaggedValue::Exception());
+                }
+                if (value.IsTreeString()) {
+                    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+                    JSHandle<JSTaggedValue> objHandle(thread, receiver);
+                    JSHandle<JSTaggedValue> holderHandle(thread, holder);
+                    JSHandle<JSTaggedValue> valueHandle(thread, value);
+                    value = JSTaggedValue::PublishSharedValue(thread, valueHandle).GetTaggedValue();
+                    receiver = objHandle.GetTaggedValue();
+                    holder = holderHandle.GetTaggedValue();
+                }
             }
             HandlerBase::ClearSharedStoreKind(handlerInfo);
             return StoreICWithHandler(thread, receiver, holder, value,
@@ -327,6 +339,10 @@ void ICRuntimeStub::StoreWithTransition(JSThread *thread, JSObject *receiver, JS
         handlerInfo = JSTaggedValue::UnwrapToUint64(transitionHandler->GetHandlerInfo());
     }
     JSHandle<JSHClass> newHClassHandle(thread, newHClass);
+    JSHandle<JSHClass> oldHClassHandle(thread, receiver->GetJSHClass());
+    if (newHClassHandle->IsPrototype()) {
+        newHClassHandle->SetProtoChangeDetails(thread, oldHClassHandle->GetProtoChangeDetails());
+    }
     JSHandle<JSObject> objHandle(thread, receiver);
     ElementsKind oldKind = receiver->GetJSHClass()->GetElementsKind();
     JSHClass::RestoreElementsKindToGeneric(newHClass);
@@ -485,7 +501,7 @@ ARK_INLINE JSTaggedValue ICRuntimeStub::LoadICWithElementHandler(JSThread *threa
         auto handlerInfo = JSTaggedValue::UnwrapToUint64(handler);
         HandlerBase::PrintLoadHandler(handlerInfo, std::cout);
         if (HandlerBase::IsNormalElement(handlerInfo)) {
-            return LoadElement(JSObject::Cast(receiver.GetTaggedObject()), key);
+            return LoadElement(thread, JSObject::Cast(receiver.GetTaggedObject()), key);
         } else if (HandlerBase::IsTypedArrayElement(handlerInfo)) {
             return LoadTypedArrayElement(thread, receiver, key);
         }
@@ -495,7 +511,7 @@ ARK_INLINE JSTaggedValue ICRuntimeStub::LoadICWithElementHandler(JSThread *threa
     return JSTaggedValue::Hole();
 }
 
-ARK_INLINE JSTaggedValue ICRuntimeStub::LoadElement(JSObject *receiver, JSTaggedValue key)
+ARK_INLINE JSTaggedValue ICRuntimeStub::LoadElement(JSThread *thread, JSObject *receiver, JSTaggedValue key)
 {
     auto index = TryToElementsIndex(key);
     if (index < 0) {
@@ -506,7 +522,7 @@ ARK_INLINE JSTaggedValue ICRuntimeStub::LoadElement(JSObject *receiver, JSTagged
         return JSTaggedValue::Hole();
     }
 
-    JSTaggedValue value = ElementAccessor::Get(receiver, elementIndex);
+    JSTaggedValue value = ElementAccessor::Get(thread, receiver, elementIndex);
     // TaggedArray elements
     return value;
 }

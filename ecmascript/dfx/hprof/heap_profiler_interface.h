@@ -16,6 +16,7 @@
 #ifndef ECMASCRIPT_DFX_HPROF_HEAP_PROFILER_INTERFACE_H
 #define ECMASCRIPT_DFX_HPROF_HEAP_PROFILER_INTERFACE_H
 
+#include <functional>
 #include <memory>
 
 #include "libpandabase/macros.h"
@@ -55,7 +56,8 @@ public:
     virtual void AllocationEvent(TaggedObject *address, size_t size) = 0;
     virtual void MoveEvent(uintptr_t address, TaggedObject *forwardAddress, size_t size)= 0;
     virtual bool DumpHeapSnapshot(Stream *stream, const DumpSnapShotOption &dumpOption,
-                                  Progress *progress = nullptr) = 0;
+                                  Progress *progress = nullptr,
+                                  std::function<void(uint8_t)> callback = [] (uint8_t) {}) = 0;
     // Provide an internal interface for oom dump.
     // If `fromSharedGC` is set, means that OOM happened during SharedGC, and should do Dump then Fatal at once
     // SharedGC complete, caller Must call this during `SuspendAll`.

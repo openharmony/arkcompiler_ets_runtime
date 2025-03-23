@@ -17,6 +17,7 @@
 #define ECMASCRIPT_TAGGED_OBJECT_HEADER_H
 
 #include "ecmascript/mem/mark_word.h"
+#include "ecmascript/mem/shared_heap/shared_value_helper.h"
 
 namespace panda::ecmascript {
 class JSHClass;

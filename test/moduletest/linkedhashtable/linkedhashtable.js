@@ -28,18 +28,21 @@ let flag1 = (parseObj.code === 800000005) &
 let i = Number.parseFloat("800000002");
 let obj2 = {i: "aaa", 800000003: "bbbbbb", get a() {}};
 let flag2 = (i === 800000002) & (obj2[800000002] === obj2[i])
+let flagStr = "";
 if (flag1 && flag2) {
-    print("test linkedhashtable success!!!");
+    flagStr = "test linkedhashtable success!!!";
 } else {
-    print("test linkedhashtable failed!!!");
+    flagStr = "test linkedhashtable failed!!!";
 }
+assert_equal(flagStr,"test linkedhashtable success!!!");
 
 var s=new Set([0]);
 for(var x of s){
     s.add(x+1);
-    print(x)
     if(x>3){
         s.clear();
         s.clear();
     }
 }
+
+test_end();

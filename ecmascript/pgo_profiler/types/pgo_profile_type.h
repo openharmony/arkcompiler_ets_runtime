@@ -58,7 +58,9 @@ public:
         GlobalsId,
         JITClassId,
         TransitionClassId,      // function class id after set prototype
-        TransitionPrototypeId   // function prototype id after set prototype
+        TransitionPrototypeId,   // function prototype id after set prototype
+        NapiId,
+        InvalidId,
     };
 
     static constexpr uint32_t RECORD_ID_FOR_BUNDLE = 1;
@@ -339,6 +341,16 @@ public:
     bool IsTransitionPrototype() const
     {
         return GetKind() == Kind::TransitionPrototypeId;
+    }
+
+    bool IsNapiType() const
+    {
+        return GetKind() == Kind::NapiId;
+    }
+
+    bool IsInvalidType() const
+    {
+        return GetKind() == Kind::InvalidId;
     }
 
     bool IsTransitionType() const

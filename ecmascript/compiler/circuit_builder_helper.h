@@ -26,7 +26,7 @@ namespace panda::ecmascript::kungfu {
 
 class CompilationConfig {
 public:
-    explicit CompilationConfig(const std::string &triple, const JSRuntimeOptions *options = nullptr);
+    explicit PUBLIC_API CompilationConfig(const std::string &triple, const JSRuntimeOptions *options = nullptr);
     ~CompilationConfig() = default;
 
     inline bool Is32Bit() const

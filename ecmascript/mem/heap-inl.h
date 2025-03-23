@@ -18,6 +18,7 @@
 
 #include "ecmascript/mem/heap.h"
 
+#include "ecmascript/base/block_hook_scope.h"
 #include "ecmascript/js_native_pointer.h"
 #include "ecmascript/daemon/daemon_task-inl.h"
 #include "ecmascript/dfx/hprof/heap_tracker.h"
@@ -145,12 +146,6 @@ void Heap::EnumerateNonNewSpaceRegionsWithRecord(const Callback &cb) const
 }
 
 template<class Callback>
-void Heap::EnumerateEdenSpaceRegions(const Callback &cb) const
-{
-    edenSpace_->EnumerateRegions(cb);
-}
-
-template<class Callback>
 void Heap::EnumerateNewSpaceRegions(const Callback &cb) const
 {
     activeSemiSpace_->EnumerateRegions(cb);
@@ -170,7 +165,6 @@ void Heap::EnumerateNonMovableRegions(const Callback &cb) const
 template<class Callback>
 void Heap::EnumerateRegions(const Callback &cb) const
 {
-    edenSpace_->EnumerateRegions(cb);
     activeSemiSpace_->EnumerateRegions(cb);
     oldSpace_->EnumerateRegions(cb);
     if (!isCSetClearing_.load(std::memory_order_acquire)) {
@@ -187,7 +181,6 @@ void Heap::EnumerateRegions(const Callback &cb) const
 template<class Callback>
 void Heap::IterateOverObjects(const Callback &cb, bool isSimplify) const
 {
-    edenSpace_->IterateOverObjects(cb);
     activeSemiSpace_->IterateOverObjects(cb);
     oldSpace_->IterateOverObjects(cb);
     nonMovableSpace_->IterateOverObjects(cb);
@@ -214,15 +207,15 @@ TaggedObject *Heap::AllocateYoungOrHugeObject(size_t size)
     if (size > MAX_REGULAR_HEAP_OBJECT_SIZE) {
         object = AllocateHugeObject(size);
     } else {
-        object = AllocateInGeneralNewSpace(size);
+        object = AllocateInYoungSpace(size);
         if (object == nullptr) {
             if (!HandleExitHighSensitiveEvent()) {
                 CollectGarbage(SelectGCType(), GCReason::ALLOCATION_FAILED);
             }
-            object = AllocateInGeneralNewSpace(size);
+            object = AllocateInYoungSpace(size);
             if (object == nullptr) {
                 CollectGarbage(SelectGCType(), GCReason::ALLOCATION_FAILED);
-                object = AllocateInGeneralNewSpace(size);
+                object = AllocateInYoungSpace(size);
                 CHECK_OBJ_AND_THROW_OOM_ERROR(object, size, activeSemiSpace_, "Heap::AllocateYoungOrHugeObject");
             }
         }
@@ -230,14 +223,8 @@ TaggedObject *Heap::AllocateYoungOrHugeObject(size_t size)
     return object;
 }
 
-TaggedObject *Heap::AllocateInGeneralNewSpace(size_t size)
+TaggedObject *Heap::AllocateInYoungSpace(size_t size)
 {
-    if (enableEdenGC_) {
-        auto object = reinterpret_cast<TaggedObject *>(edenSpace_->Allocate(size));
-        if (object != nullptr) {
-            return object;
-        }
-    }
     return reinterpret_cast<TaggedObject *>(activeSemiSpace_->Allocate(size));
 }
 
@@ -267,9 +254,14 @@ uintptr_t Heap::AllocateYoungSync(size_t size)
     return activeSemiSpace_->AllocateSync(size);
 }
 
-bool Heap::MoveYoungRegionSync(Region *region)
+bool Heap::MoveYoungRegion(Region *region)
 {
     return activeSemiSpace_->SwapRegion(region, inactiveSemiSpace_);
+}
+
+bool Heap::MoveYoungRegionToOld(Region *region)
+{
+    return oldSpace_->SwapRegion(region, inactiveSemiSpace_);
 }
 
 void Heap::MergeToOldSpaceSync(LocalSpace *localSpace)
@@ -320,7 +312,15 @@ TaggedObject *Heap::AllocateOldOrHugeObject(size_t size)
     if (size > MAX_REGULAR_HEAP_OBJECT_SIZE) {
         object = AllocateHugeObject(size);
     } else {
-        object = reinterpret_cast<TaggedObject *>(oldSpace_->Allocate(size));
+        object = reinterpret_cast<TaggedObject *>(oldSpace_->AllocateFast(size));
+        if (object == nullptr) {
+            bool gcSuccess = CheckAndTriggerOldGC();
+            object = reinterpret_cast<TaggedObject *>(oldSpace_->AllocateSlow(size, gcSuccess));
+        }
+        if (object == nullptr) {
+            CollectGarbage(TriggerGCType::OLD_GC, GCReason::ALLOCATION_FAILED);
+            object = reinterpret_cast<TaggedObject *>(oldSpace_->AllocateSlow(size, true));
+        }
         CHECK_OBJ_AND_THROW_OOM_ERROR(object, size, oldSpace_, "Heap::AllocateOldOrHugeObject");
     }
     return object;
@@ -539,7 +539,7 @@ TaggedObject *Heap::AllocateSharedNonMovableSpaceFromTlab(JSThread *thread, size
         if (thread->IsJitThread()) {
             LOG_ECMA(FATAL) << "jit thread not allowed";
         }
-        if (thread->GetThreadId() != JSThread::GetCurrentThreadId() && !thread->IsCrossThreadExecutionEnable()) {
+        if (thread->CheckMultiThread()) {
             LOG_FULL(FATAL) << "Fatal: ecma_vm cannot run in multi-thread!"
                             << "thread:" << thread->GetThreadId()
                             << " currentThread:" << JSThread::GetCurrentThreadId();
@@ -576,7 +576,7 @@ TaggedObject *Heap::AllocateSharedOldSpaceFromTlab(JSThread *thread, size_t size
         if (thread->IsJitThread()) {
             LOG_ECMA(FATAL) << "jit thread not allowed";
         }
-        if (thread->GetThreadId() != JSThread::GetCurrentThreadId() && !thread->IsCrossThreadExecutionEnable()) {
+        if (thread->CheckMultiThread()) {
             LOG_FULL(FATAL) << "Fatal: ecma_vm cannot run in multi-thread!"
                             << "thread:" << thread->GetThreadId()
                             << " currentThread:" << JSThread::GetCurrentThreadId();
@@ -642,6 +642,32 @@ void Heap::SwapOldSpace()
 #endif
 }
 
+void Heap::OnMoveEvent([[maybe_unused]] uintptr_t address, [[maybe_unused]] TaggedObject* forwardAddress,
+                       [[maybe_unused]] size_t size)
+{
+#if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
+    HeapProfilerInterface *profiler = GetEcmaVM()->GetHeapProfile();
+    if (profiler != nullptr) {
+        base::BlockHookScope blockScope;
+        profiler->MoveEvent(address, forwardAddress, size);
+    }
+#endif
+}
+
+void SharedHeap::OnMoveEvent([[maybe_unused]] uintptr_t address, [[maybe_unused]] TaggedObject* forwardAddress,
+                             [[maybe_unused]] size_t size)
+{
+#if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
+    Runtime::GetInstance()->GCIterateThreadListWithoutLock([&](JSThread *thread) {
+        HeapProfilerInterface *profiler = thread->GetEcmaVM()->GetHeapProfile();
+        if (profiler != nullptr) {
+            base::BlockHookScope blockScope;
+            profiler->MoveEvent(address, forwardAddress, size);
+        }
+    });
+#endif
+}
+
 void SharedHeap::SwapOldSpace()
 {
     sCompressSpace_->SetInitialCapacity(sOldSpace_->GetInitialCapacity());
@@ -660,7 +686,6 @@ void Heap::ReclaimRegions(TriggerGCType gcType)
         region->ClearMarkGCBitset();
         region->ClearCrossRegionRSet();
         region->ResetAliveObject();
-        region->DeleteNewToEdenRSet();
         region->ClearGCFlag(RegionGCFlags::IN_NEW_TO_NEW_SET);
     });
     size_t cachedSize = inactiveSemiSpace_->GetInitialCapacity();
@@ -688,7 +713,7 @@ void Heap::ReclaimRegions(TriggerGCType gcType)
 // only call in js-thread
 void Heap::ClearSlotsRange(Region *current, uintptr_t freeStart, uintptr_t freeEnd)
 {
-    if (!current->InGeneralNewSpace()) {
+    if (!current->InYoungSpace()) {
         // This clear may exist data race with concurrent sweeping, so use CAS
         current->AtomicClearSweepingOldToNewRSetInRange(freeStart, freeEnd);
         current->ClearOldToNewRSetInRange(freeStart, freeEnd);
@@ -700,8 +725,7 @@ void Heap::ClearSlotsRange(Region *current, uintptr_t freeStart, uintptr_t freeE
 
 size_t Heap::GetCommittedSize() const
 {
-    size_t result = edenSpace_->GetCommittedSize() +
-                    activeSemiSpace_->GetCommittedSize() +
+    size_t result = activeSemiSpace_->GetCommittedSize() +
                     oldSpace_->GetCommittedSize() +
                     hugeObjectSpace_->GetCommittedSize() +
                     nonMovableSpace_->GetCommittedSize() +
@@ -715,8 +739,7 @@ size_t Heap::GetCommittedSize() const
 
 size_t Heap::GetHeapObjectSize() const
 {
-    size_t result = edenSpace_->GetHeapObjectSize() +
-                    activeSemiSpace_->GetHeapObjectSize() +
+    size_t result = activeSemiSpace_->GetHeapObjectSize() +
                     oldSpace_->GetHeapObjectSize() +
                     hugeObjectSpace_->GetHeapObjectSize() +
                     nonMovableSpace_->GetHeapObjectSize() +
@@ -740,8 +763,7 @@ void Heap::NotifyRecordMemorySize()
 
 size_t Heap::GetRegionCount() const
 {
-    size_t result = edenSpace_->GetRegionCount() +
-        activeSemiSpace_->GetRegionCount() +
+    size_t result = activeSemiSpace_->GetRegionCount() +
         oldSpace_->GetRegionCount() +
         oldSpace_->GetCollectSetRegionCount() +
         appSpawnSpace_->GetRegionCount() +
@@ -777,7 +799,11 @@ void SharedHeap::TryTriggerConcurrentMarking(JSThread *thread)
     if (!CheckCanTriggerConcurrentMarking(thread)) {
         return;
     }
-    if (GetHeapObjectSize() >= globalSpaceConcurrentMarkLimit_) {
+    bool triggerConcurrentMark = (GetHeapObjectSize() >= globalSpaceConcurrentMarkLimit_);
+    if (triggerConcurrentMark && (OnStartupEvent() || IsJustFinishStartup())) {
+        triggerConcurrentMark = ObjectExceedJustFinishStartupThresholdForCM();
+    }
+    if (triggerConcurrentMark) {
         TriggerConcurrentMarking<TriggerGCType::SHARED_GC, GCReason::ALLOCATION_LIMIT>(thread);
     }
 }
@@ -982,7 +1008,7 @@ TaggedObject *SharedHeap::AllocateSNonMovableTlab(JSThread *thread, size_t size)
 template<TriggerGCType gcType, GCReason gcReason>
 void SharedHeap::TriggerConcurrentMarking(JSThread *thread)
 {
-    ASSERT(gcType == TriggerGCType::SHARED_GC);
+    ASSERT(gcType == TriggerGCType::SHARED_GC || gcType == TriggerGCType::SHARED_PARTIAL_GC);
     // lock is outside to prevent extreme case, maybe could move update gcFinished_ into CheckAndPostTask
     // instead of an outside locking.
     LockHolder lock(waitGCFinishedMutex_);
@@ -995,7 +1021,8 @@ void SharedHeap::TriggerConcurrentMarking(JSThread *thread)
 template<TriggerGCType gcType, GCReason gcReason>
 void SharedHeap::CollectGarbage(JSThread *thread)
 {
-    ASSERT(gcType == TriggerGCType::SHARED_GC || gcType == TriggerGCType::SHARED_FULL_GC);
+    ASSERT(gcType == TriggerGCType::SHARED_GC || gcType == TriggerGCType::SHARED_PARTIAL_GC ||
+        gcType == TriggerGCType::SHARED_FULL_GC);
 #ifndef NDEBUG
     ASSERT(!thread->HasLaunchedSuspendAll());
 #endif
@@ -1020,10 +1047,29 @@ void SharedHeap::CollectGarbage(JSThread *thread)
     WaitGCFinished(thread);
 }
 
+// This method is used only in the idle state and background switchover state.
+template<GCReason gcReason>
+void SharedHeap::CompressCollectGarbageNotWaiting(JSThread *thread)
+{
+    {
+        // lock here is outside post task to prevent the extreme case: another js thread succeeed posting a
+        // concurrentmark task, so here will directly go into WaitGCFinished, but gcFinished_ is somehow
+        // not set by that js thread before the WaitGCFinished done, and maybe cause an unexpected OOM
+        LockHolder lock(waitGCFinishedMutex_);
+        if (dThread_->CheckAndPostTask(TriggerCollectGarbageTask<TriggerGCType::SHARED_FULL_GC, gcReason>(thread))) {
+            ASSERT(gcFinished_);
+            gcFinished_ = false;
+        }
+    }
+    ASSERT(!gcFinished_);
+    SetForceGC(true);
+}
+
 template<TriggerGCType gcType, GCReason gcReason>
 void SharedHeap::PostGCTaskForTest(JSThread *thread)
 {
-    ASSERT(gcType == TriggerGCType::SHARED_GC || gcType == TriggerGCType::SHARED_FULL_GC);
+    ASSERT(gcType == TriggerGCType::SHARED_GC ||gcType == TriggerGCType::SHARED_PARTIAL_GC ||
+        gcType == TriggerGCType::SHARED_FULL_GC);
 #ifndef NDEBUG
     ASSERT(!thread->HasLaunchedSuspendAll());
 #endif
@@ -1099,7 +1145,7 @@ void SharedHeap::ProcessSharedNativeDelete(const WeakRootVisitor& visitor)
 void Heap::ProcessNativeDelete(const WeakRootVisitor& visitor)
 {
     // ProcessNativeDelete should be limited to OldGC or FullGC only
-    if (!IsGeneralYoungGC()) {
+    if (!IsYoungGC()) {
         auto& asyncNativeCallbacksPack = GetEcmaVM()->GetAsyncNativePointerCallbacksPack();
         auto iter = nativePointerList_.begin();
         ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "ProcessNativeDeleteNum:" + std::to_string(nativePointerList_.size()));
@@ -1139,7 +1185,7 @@ void Heap::ProcessNativeDelete(const WeakRootVisitor& visitor)
 void Heap::ProcessReferences(const WeakRootVisitor& visitor)
 {
     // process native ref should be limited to OldGC or FullGC only
-    if (!IsGeneralYoungGC()) {
+    if (!IsYoungGC()) {
         auto& asyncNativeCallbacksPack = GetEcmaVM()->GetAsyncNativePointerCallbacksPack();
         ResetNativeBindingSize();
         // array buffer

@@ -23,6 +23,7 @@ group("ark_aot_builtin_inlining_Array_test") {
     "Includes",
     "IndexOf",
     "Keys",
+    "LastIndexOf",
     "Pop",
     "Push",
     "PopProtoChange",

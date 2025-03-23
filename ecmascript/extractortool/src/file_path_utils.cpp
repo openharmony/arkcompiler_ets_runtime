@@ -17,7 +17,6 @@
 
 #include <fstream>
 #include <regex>
-#include <vector>
 #include "constants.h"
 #include <atomic>
 #include <chrono>

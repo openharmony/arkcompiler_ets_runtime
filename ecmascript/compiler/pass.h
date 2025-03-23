@@ -750,7 +750,11 @@ public:
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
         Scheduler::Run(data->GetCircuit(), data->GetCfg(), data->GetMethodName(), enableLog);
         Chunk chunk(data->GetNativeAreaAllocator());
+#if ENABLE_NEXT_OPTIMIZATION
         PostSchedule(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk, true).Run(data->GetCfg());
+#else
+        PostSchedule(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk, false).Run(data->GetCfg());
+#endif
         return true;
     }
 };
@@ -783,9 +787,11 @@ public:
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
         bool licm = data->GetPassOptions()->EnableOptLoopInvariantCodeMotion();
         bool liteCG = data->GetPassContext()->GetCompilationEnv()->GetJSOptions().IsCompilerEnableLiteCG();
+        bool enableStoreBarrier = data->GetPassContext()->GetCompilationEnv()->GetJSOptions().IsStoreBarrierOpt();
         GraphLinearizer(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk, false, licm, liteCG)
             .Run(data->GetCfg());
-        PostSchedule(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk, true).Run(data->GetCfg());
+        PostSchedule(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk, enableStoreBarrier)
+            .Run(data->GetCfg());
         return true;
     }
 };

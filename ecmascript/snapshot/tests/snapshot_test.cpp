@@ -268,23 +268,35 @@ HWTEST_F_L0(SnapshotTest, SerializeBuiltins)
         options2.SetArkProperties(ArkProperties::ENABLE_SNAPSHOT_DESERIALIZE);
         EcmaVM *ecmaVm2 = JSNApi::CreateEcmaVM(options2);
         EXPECT_TRUE(ecmaVm2->GetGlobalEnv()->GetClass()->GetObjectType() == JSType::GLOBAL_ENV);
-        auto globalConst = const_cast<GlobalEnvConstants *>(ecmaVm2->GetJSThread()->GlobalConstants());
-        globalConst->VisitRangeSlot([]([[maybe_unused]] Root type, ObjectSlot start, ObjectSlot end) {
-            size_t sharedBeginHclassIndex = static_cast<size_t>(ConstantIndex::SHARED_HCLASS_BEGIN);
-            size_t sharedHclassEndIndex = static_cast<size_t>(ConstantIndex::SHARED_HCLASS_END);
-            size_t hclassBeginIndex = static_cast<size_t>(ConstantIndex::NON_SHARED_HCLASS_BEGIN);
-            size_t hclassEndIndex = static_cast<size_t>(ConstantIndex::NON_SHARED_HCLASS_END);
-            size_t index = sharedBeginHclassIndex;
-            while (start < end) {
-                JSTaggedValue object(start.GetTaggedType());
-                start++;
-                if ((index >= sharedBeginHclassIndex && index <= sharedHclassEndIndex) ||
-                    (index >= hclassBeginIndex && index <= hclassEndIndex)) {
-                    EXPECT_TRUE(object.IsJSHClass());
+        class TestRootVisitor final : public RootVisitor {
+        public:
+            TestRootVisitor() = default;
+            ~TestRootVisitor() = default;
+
+            void VisitRoot([[maybe_unused]] Root type, [[maybe_unused]] ObjectSlot slot) override {}
+            void VisitRangeRoot([[maybe_unused]] Root type, ObjectSlot start, ObjectSlot end) override
+            {
+                size_t sharedBeginHclassIndex = static_cast<size_t>(ConstantIndex::SHARED_HCLASS_BEGIN);
+                size_t sharedHclassEndIndex = static_cast<size_t>(ConstantIndex::SHARED_HCLASS_END);
+                size_t hclassBeginIndex = static_cast<size_t>(ConstantIndex::NON_SHARED_HCLASS_BEGIN);
+                size_t hclassEndIndex = static_cast<size_t>(ConstantIndex::NON_SHARED_HCLASS_END);
+                size_t index = sharedBeginHclassIndex;
+                while (start < end) {
+                    JSTaggedValue object(start.GetTaggedType());
+                    start++;
+                    if ((index >= sharedBeginHclassIndex && index <= sharedHclassEndIndex) ||
+                        (index >= hclassBeginIndex && index <= hclassEndIndex)) {
+                        EXPECT_TRUE(object.IsJSHClass());
+                    }
+                    index++;
                 }
-                index++;
             }
-        });
+            void VisitBaseAndDerivedRoot([[maybe_unused]] Root type, [[maybe_unused]] ObjectSlot base,
+                [[maybe_unused]] ObjectSlot derived, [[maybe_unused]] uintptr_t baseOldObject) override {}
+        };
+        TestRootVisitor testRootVisitor;
+        auto globalConst = const_cast<GlobalEnvConstants *>(ecmaVm2->GetJSThread()->GlobalConstants());
+        globalConst->Iterate(testRootVisitor);
         JSNApi::DestroyJSVM(ecmaVm2);
     });
     {

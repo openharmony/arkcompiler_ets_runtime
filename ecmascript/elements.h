@@ -37,26 +37,30 @@ namespace panda::ecmascript {
     V(HOLE_TAGGED)
 
 enum class ElementsKind : uint8_t {
-    NONE = 0x00UL,
-    HOLE = 0x01UL,
-    INT = 0x1UL << 1,      // 2
-    NUMBER = (0x1UL << 2) | INT, // 6
-    STRING = 0x1UL << 3,   // 8
-    OBJECT = 0x1UL << 4,   // 16
-    TAGGED = 0x1EUL,       // 30
-    HOLE_INT = HOLE | INT,
-    HOLE_NUMBER = HOLE | NUMBER,
-    HOLE_STRING = HOLE | STRING,
-    HOLE_OBJECT = HOLE | OBJECT,
-    HOLE_TAGGED = HOLE | TAGGED,
+    NONE = 0x00UL,                                  // 0
+    HOLE = 0x01UL,                                  // 1
+    INT = 0x1UL << 1,                               // 2
+    NUMBER = (0x1UL << 2) | INT,                    // 6
+    STRING = 0x1UL << 3,                            // 8
+    OBJECT = 0x1UL << 4,                            // 16
+    TAGGED = 0x1EUL,                                // 30
+    HOLE_INT = HOLE | INT,                          // 3
+    HOLE_NUMBER = HOLE | NUMBER,                    // 7
+    HOLE_STRING = HOLE | STRING,                    // 9
+    HOLE_OBJECT = HOLE | OBJECT,                    // 17
+    HOLE_TAGGED = HOLE | TAGGED,                    // 31
     GENERIC = HOLE_TAGGED,
     DICTIONARY = HOLE_TAGGED,
 };
 
 class PUBLIC_API Elements {
 public:
-    static CMap<ElementsKind, std::pair<ConstantIndex, ConstantIndex>> InitializeHClassMap();
+    static constexpr int32_t KIND_COUNT = static_cast<uint8_t>(ElementsKind::HOLE_TAGGED) + 1;
 
+    static constexpr uint32_t ToUint(ElementsKind kind)
+    {
+        return static_cast<uint32_t>(kind);
+    }
     static std::string GetString(ElementsKind kind);
     static bool IsInt(ElementsKind kind);
     static bool IsNumber(ElementsKind kind);
@@ -80,24 +84,54 @@ public:
 
     static bool IsInNumbers(ElementsKind kind)
     {
-        return (static_cast<uint32_t>(kind) > static_cast<uint32_t>(ElementsKind::HOLE) &&
-                static_cast<uint32_t>(kind) < static_cast<uint32_t>(ElementsKind::STRING));
+        return (ToUint(kind) > ToUint(ElementsKind::HOLE) &&
+                ToUint(kind) < ToUint(ElementsKind::STRING));
     }
 
-    static bool IsHoleInt(ElementsKind kind)
+    static bool IsIntOrHoleInt(ElementsKind kind)
     {
-        return kind == ElementsKind::HOLE_INT;
+        return kind == ElementsKind::INT || kind == ElementsKind::HOLE_INT;
     }
 
-    static bool IsHoleNumber(ElementsKind kind)
+    static bool IsNumberOrHoleNumber(ElementsKind kind)
     {
-        return kind == ElementsKind::HOLE_NUMBER;
+        return kind == ElementsKind::NUMBER || kind == ElementsKind::HOLE_NUMBER;
+    }
+
+    static bool IsStringOrHoleString(ElementsKind kind)
+    {
+        return kind == ElementsKind::STRING || kind == ElementsKind::HOLE_STRING;
     }
 
     static ConstantIndex GetGlobalContantIndexByKind(ElementsKind kind);
     static ElementsKind MergeElementsKind(ElementsKind curKind, ElementsKind newKind);
     static ElementsKind FixElementsKind(ElementsKind oldKind);
+    static inline ElementsKind ToElementsKind(JSTaggedValue value)
+    {
+        ElementsKind valueKind = ElementsKind::NONE;
+        if (value.IsInt()) {
+            valueKind = ElementsKind::INT;
+        } else if (value.IsDouble()) {
+            valueKind = ElementsKind::NUMBER;
+        } else if (value.IsString()) {
+            valueKind = ElementsKind::STRING;
+        } else if (value.IsHeapObject()) {
+            valueKind = ElementsKind::OBJECT;
+        } else if (value.IsHole()) {
+            valueKind = ElementsKind::HOLE;
+        } else {
+            valueKind = ElementsKind::TAGGED;
+        }
+        return valueKind;
+    }
     static ElementsKind ToElementsKind(JSTaggedValue value, ElementsKind kind);
+
+    static ElementsKind MergeElementsKindNoFix(JSTaggedValue value, ElementsKind curKind, ElementsKind newKind)
+    {
+        return static_cast<ElementsKind>(static_cast<uint8_t>(ToElementsKind(value)) | static_cast<uint8_t>(curKind) |
+            static_cast<uint8_t>(newKind));
+    }
+
     static void MigrateArrayWithKind(const JSThread *thread, const JSHandle<JSObject> &object,
                                      const ElementsKind oldKind, const ElementsKind newKind);
 private:

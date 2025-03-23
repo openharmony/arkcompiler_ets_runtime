@@ -15,14 +15,9 @@
 
 #include "ecmascript/dfx/cpu_profiler/cpu_profiler.h"
 
-#include <atomic>
-#include <chrono>
-#include <climits>
-#include <fstream>
 
 #include "ecmascript/compiler/aot_file/aot_file_manager.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
-#include "ecmascript/platform/ffrt.h"
 
 #if defined(ENABLE_FFRT_INTERFACES)
 #include "c/executor_task.h"

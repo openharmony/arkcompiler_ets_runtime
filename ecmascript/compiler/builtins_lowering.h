@@ -23,7 +23,9 @@
 namespace panda::ecmascript::kungfu {
 class BuiltinLowering {
 public:
-    explicit BuiltinLowering(Circuit *circuit): circuit_(circuit), builder_(circuit), acc_(circuit) {}
+    BuiltinLowering(Circuit *circuit, CompilationConfig *cmpCfg, bool traceBuiltins)
+        : circuit_(circuit), builder_(circuit, cmpCfg), acc_(circuit), traceBuiltins_(traceBuiltins)
+    {}
     ~BuiltinLowering() = default;
     void LowerTypedCallBuitin(GateRef gate);
     GateRef LowerCallTargetCheck(Environment *env, GateRef gate);
@@ -38,7 +40,7 @@ private:
     GateRef IntToTaggedIntPtr(GateRef x);
     GateRef LowerCallRuntime(GateRef glue, GateRef gate, int index, const std::vector<GateRef> &args,
                              bool useLabel = false);
-    void ReplaceHirWithValue(GateRef hirGate, GateRef value, bool noThrow = false);
+    void ReplaceHirWithValue(GateRef hirGate, GateRef value);
     GateRef LowerCallTargetCheckDefault(GateRef gate, BuiltinsStubCSigns::ID id);
     GateRef LowerCallTargetCheckWithGlobalEnv(GateRef gate, BuiltinsStubCSigns::ID id);
     GateRef LowerCallTargetCheckWithDetector(GateRef gate, BuiltinsStubCSigns::ID id);
@@ -49,10 +51,13 @@ private:
     void LowerIteratorReturn(GateRef gate, BuiltinsStubCSigns::ID id);
     void LowerNumberConstructor(GateRef gate);
     void LowerGlobalDecodeURIComponent(GateRef gate);
+    void LowerCallBuiltinStub(GateRef gate, BuiltinsStubCSigns::ID id);
+    void AddTraceLogs(GateRef gate, BuiltinsStubCSigns::ID id);
 
     Circuit *circuit_ {nullptr};
     CircuitBuilder builder_;
     GateAccessor acc_;
+    bool traceBuiltins_ {false};
 };
 }  // panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_BUILTIN_LOWERING_H

@@ -102,8 +102,11 @@ private:
     GateRef loopBackDepend_ {Circuit::NullGate()};
     GateRef mergeState_ {Circuit::NullGate()};
     GateRef mergeDepend_ {Circuit::NullGate()};
+    // number of merged phi nodes
     size_t currentIndex_ {0};
+    // index of next loop merge phi
     size_t loopBackIndex_ {0};
+    // index of next merge phi
     size_t mergeIndex_ {0};
     bool needStateSplit_ {false};
     friend class FrameStateBuilder;
@@ -123,6 +126,7 @@ public:
     ~FrameStateBuilder();
 
     void DoBytecodeAnalysis();
+    void AnalyzeLiveness();
     void AdvanceToNextBc(const BytecodeInfo &bytecodeInfo, FrameLiveOut* liveout, uint32_t bcId);
     void UpdateFrameValues(const BytecodeInfo &bytecodeInfo, uint32_t bcId,
         GateRef gate);

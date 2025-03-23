@@ -196,6 +196,11 @@ Local<JSValueRef> RejectCallback(JsiRuntimeCallInfo *info)
     return JSValueRef::Undefined(info->GetVM());
 }
 
+struct StackInfo {
+    uint64_t stackLimit;
+    uint64_t lastLeaveFrame;
+};
+
 /**
  * @tc.number: ffi_interface_api_105
  * @tc.name: JSValueRef_IsGeneratorObject
@@ -755,8 +760,11 @@ HWTEST_F_L0(JSNApiTests, SetNativePtrGetter)
  */
 HWTEST_F_L0(JSNApiTests, PreFork)
 {
+    RuntimeOption option;
+    ecmascript::ThreadNativeScope nativeScope(vm_->GetJSThread());
     LocalScope scope(vm_);
     JSNApi::PreFork(vm_);
+    JSNApi::PostFork(vm_, option);
 }
 
 /*
@@ -1446,26 +1454,84 @@ HWTEST_F_L0(JSNApiTests, GetData002)
     jsiRuntimeCallInfo->GetData();
 }
 
-HWTEST_F_L0(JSNApiTests, XRefGlobalHandleAddr)
+HWTEST_F_L0(JSNApiTests, SetStopPreLoadSoCallback)
 {
-    JSHandle<TaggedArray> weakRefArray = vm_->GetFactory()->NewTaggedArray(2, JSTaggedValue::Hole());
-    uintptr_t xRefArrayAddress;
-    vm_->SetEnableForceGC(false);
-    {
-        [[maybe_unused]] EcmaHandleScope scope(thread_);
-        JSHandle<JSTaggedValue> xRefArray = JSArray::ArrayCreate(thread_, JSTaggedNumber(1));
-        JSHandle<JSTaggedValue> normalArray = JSArray::ArrayCreate(thread_, JSTaggedNumber(2));
-        xRefArrayAddress = JSNApiGetXRefGlobalHandleAddr(vm_, xRefArray.GetAddress());
-        weakRefArray->Set(thread_, 0, xRefArray.GetTaggedValue().CreateAndGetWeakRef());
-        weakRefArray->Set(thread_, 1, normalArray.GetTaggedValue().CreateAndGetWeakRef());
-    }
-    vm_->CollectGarbage(TriggerGCType::FULL_GC);
-    EXPECT_TRUE(!weakRefArray->Get(0).IsUndefined());
-    EXPECT_TRUE(weakRefArray->Get(1).IsUndefined());
+    auto callback = []()->void {
+        LOG_FULL(INFO) << "Call stopPreLoadSoCallback";
+    };
+    JSNApi::SetStopPreLoadSoCallback(vm_, callback);
+    auto stopPreLoadCallbacks = vm_->GetStopPreLoadCallbacks();
+    EXPECT_EQ(stopPreLoadCallbacks.size(), 1);
+    vm_->StopPreLoadSoOrAbc();
 
-    JSNApiDisposeXRefGlobalHandleAddr(vm_, xRefArrayAddress);
-    vm_->CollectGarbage(TriggerGCType::FULL_GC);
-    vm_->SetEnableForceGC(true);
-    EXPECT_TRUE(weakRefArray->Get(0).IsUndefined());
+    stopPreLoadCallbacks = vm_->GetStopPreLoadCallbacks();
+    EXPECT_EQ(stopPreLoadCallbacks.size(), 0);
+}
+
+HWTEST_F_L0(JSNApiTests, UpdatePkgContextInfoList)
+{
+    std::map<std::string, std::vector<std::vector<std::string>>> pkgList;
+    std::vector<std::string> entryList = {
+        "entry",
+        "packageName", "entry",
+        "bundleName", "",
+        "moduleName", "",
+        "version", "",
+        "entryPath", "src/main/",
+        "isSO", "false"
+    };
+    pkgList["entry"] = {entryList};
+    JSNApi::SetpkgContextInfoList(vm_, pkgList);
+
+    std::map<std::string, std::vector<std::vector<std::string>>> newPkgList;
+    std::vector<std::string> hspList = {
+        "hsp",
+        "packageName", "hsp",
+        "bundleName", "",
+        "moduleName", "",
+        "version", "1.1.0",
+        "entryPath", "Index.ets",
+        "isSO", "false"
+    };
+    newPkgList["hsp"] = {hspList};
+    JSNApi::UpdatePkgContextInfoList(vm_, newPkgList);
+
+    CMap<CString, CMap<CString, CVector<CString>>> vmPkgList = vm_->GetPkgContextInfoList();
+    EXPECT_EQ(vmPkgList.size(), 2);
+    EXPECT_EQ(vmPkgList["entry"]["entry"].size(), 12);
+    EXPECT_EQ(vmPkgList["hsp"].size(), 1);
+    EXPECT_EQ(vmPkgList["hsp"]["hsp"].size(), 12);
+}
+
+HWTEST_F_L0(JSNApiTests, UpdatePkgNameList)
+{
+    std::map<std::string, std::string> pkgNameList;
+    pkgNameList["moduleName1"] = "pkgName1";
+    JSNApi::SetPkgNameList(vm_, pkgNameList);
+
+    std::map<std::string, std::string> newPkgNameList;
+    newPkgNameList["moduleName2"] = "pkgName2";
+    JSNApi::UpdatePkgNameList(vm_, newPkgNameList);
+
+    CMap<CString, CString> vmPkgNameList = vm_->GetPkgNameList();
+    EXPECT_EQ(vmPkgNameList.size(), 2);
+    EXPECT_EQ(vmPkgNameList["moduleName1"], "pkgName1");
+    EXPECT_EQ(vmPkgNameList["moduleName2"], "pkgName2");
+}
+
+HWTEST_F_L0(JSNApiTests, UpdatePkgAliasList)
+{
+    std::map<std::string, std::string> aliasNameList;
+    aliasNameList["aliasName1"] = "pkgName1";
+    JSNApi::SetPkgAliasList(vm_, aliasNameList);
+
+    std::map<std::string, std::string> newAliasNameList;
+    newAliasNameList["aliasName2"] = "pkgName2";
+    JSNApi::UpdatePkgAliasList(vm_, newAliasNameList);
+
+    CMap<CString, CString> vmAliasNameList = vm_->GetPkgAliasList();
+    EXPECT_EQ(vmAliasNameList.size(), 2);
+    EXPECT_EQ(vmAliasNameList["aliasName1"], "pkgName1");
+    EXPECT_EQ(vmAliasNameList["aliasName2"], "pkgName2");
 }
 } // namespace panda::test

@@ -23,4 +23,7 @@ function foo2() {
     return "foo2"
 }
 
-print(foo(), foo2())
+assert_equal(foo(), "foo");
+assert_equal(foo2(), "foo2");
+
+test_end();

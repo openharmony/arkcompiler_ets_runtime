@@ -13,17 +13,12 @@
  * limitations under the License.
  */
 
-#include <codecvt>
-#include <iomanip>
-#include <iostream>
-#include <string>
 
 #include "ecmascript/dfx/hprof/heap_snapshot.h"
 #include "ecmascript/global_dictionary-inl.h"
 #include "ecmascript/vtable.h"
 #include "ecmascript/linked_hash_table.h"
 #include "ecmascript/tagged_tree.h"
-#include "ecmascript/mem/object_xray.h"
 #ifdef ARK_SUPPORT_INTL
 #include "ecmascript/js_bigint.h"
 #include "ecmascript/js_collator.h"
@@ -627,6 +622,8 @@ static void DumpHClass(const JSHClass *jshclass, std::ostream &os, bool withDeta
     os << "| NumberOfProps :" << std::dec << jshclass->NumberOfProps();
     os << "| InlinedProperties :" << std::dec << jshclass->GetInlinedProperties();
     os << "| IsAOT :" << std::boolalpha << jshclass->IsAOT();
+    os << "| HasCtor :" << std::boolalpha << jshclass->HasConstructor();
+    os << "| IsStable :" << std::boolalpha << jshclass->IsStableElements();
     os << "\n";
 }
 
@@ -1723,9 +1720,6 @@ void JSFunction::Dump(std::ostream &os) const
     os << " - Module: ";
     GetModule().Dump(os);
     os << "\n";
-    os << " - ProtoTransRootHClass: ";
-    GetProtoTransRootHClass().Dump(os);
-    os << "\n";
     JSObject::Dump(os);
 }
 
@@ -2407,6 +2401,7 @@ void JSAPIList::DumpForSnapshot(std::vector<Reference> &vec) const
 {
     if (!(GetSingleList().IsInvalidValue())) {
         TaggedSingleList *list = TaggedSingleList::Cast(GetSingleList().GetTaggedObject());
+        vec.emplace_back("singleList", GetSingleList());
         list->DumpForSnapshot(vec);
     }
     JSObject::DumpForSnapshot(vec);
@@ -2448,6 +2443,7 @@ void JSAPILinkedList::DumpForSnapshot(std::vector<Reference> &vec) const
 {
     if (!(GetDoubleList().IsInvalidValue())) {
         TaggedDoubleList *list = TaggedDoubleList::Cast(GetDoubleList().GetTaggedObject());
+        vec.emplace_back("doubleList", GetDoubleList());
         list->DumpForSnapshot(vec);
     }
 
@@ -3614,8 +3610,8 @@ void SourceTextModule::Dump(std::ostream &os) const
     os << " - Status: ";
     os << static_cast<int32_t>(GetStatus());
     os << "\n";
-    os << " - EvaluationError: ";
-    os << GetEvaluationError();
+    os << " - Exception: ";
+    GetException().Dump(os);
     os << "\n";
     os << " - DFSIndex: ";
     os << GetDFSIndex();
@@ -4704,6 +4700,10 @@ void JSObject::DumpForSnapshot(std::vector<Reference> &vec) const
         vec.emplace_back(CString("__proto__"), jshclass->GetPrototype());
     }
     vec.emplace_back(CString("ArkInternalHash"), JSTaggedValue(GetHash()));
+    JSTaggedType hashField = Barriers::GetValue<JSTaggedType>(this, HASH_OFFSET);
+    if (JSTaggedValue(hashField).IsHeapObject()) {
+        vec.emplace_back(CString("HashField"), JSTaggedValue(hashField));
+    }
 
     TaggedArray *elements = TaggedArray::Cast(GetElements().GetTaggedObject());
     vec.emplace_back("(object elements)", JSTaggedValue(elements));
@@ -4772,7 +4772,6 @@ void JSFunction::DumpForSnapshot(std::vector<Reference> &vec) const
     vec.emplace_back(CString("RawProfileTypeInfo"), GetRawProfileTypeInfo());
     vec.emplace_back(CString("HomeObject"), GetHomeObject());
     vec.emplace_back(CString("Module"), GetModule());
-    vec.emplace_back(CString("ProtoTransRootHClass"), GetProtoTransRootHClass());
     vec.emplace_back(CString("Method"), GetMethod());
     if ((!GetMethod().IsNull()) && (!GetMethod().IsUndefined())) {
         vec.emplace_back(CString("FunctionKind"), JSTaggedValue(static_cast<int>(GetFunctionKind())));
@@ -4796,10 +4795,12 @@ void Program::DumpForSnapshot(std::vector<Reference> &vec) const
 void LinkedNode::DumpForSnapshot(std::vector<Reference> &vec) const
 {
     JSTaggedValue next = GetNext();
-    if (next.IsUndefined() && !next.IsHole() && !next.IsNull()) {
+    if (!next.IsUndefined() && !next.IsHole() && !next.IsNull()) {
         LinkedNode *nextNode = LinkedNode::Cast(next.GetTaggedObject());
+        vec.emplace_back(CString("Next"), next);
         nextNode->DumpForSnapshot(vec);
     }
+    vec.emplace_back(CString("Key"), GetKey());
     JSTaggedValue key = GetKey();
     CString str;
     KeyToStd(str, key);
@@ -4866,7 +4867,7 @@ void COWMutantTaggedArray::DumpForSnapshot(std::vector<Reference> &vec) const
 void JSBoundFunction::DumpForSnapshot(std::vector<Reference> &vec) const
 {
     JSObject::DumpForSnapshot(vec);
-
+    vec.emplace_back(CString("Method"), GetMethod());
     vec.emplace_back(CString("BoundTarget"), GetBoundTarget());
     vec.emplace_back(CString("BoundThis"), GetBoundThis());
     vec.emplace_back(CString("BoundArguments"), GetBoundArguments());
@@ -5001,10 +5002,10 @@ void JSFinalizationRegistry::DumpForSnapshot(std::vector<Reference> &vec) const
     vec.emplace_back(CString("CleanupCallback"), GetCleanupCallback());
     if (!(GetMaybeUnregister().IsInvalidValue())) {
         LinkedHashMap *map = LinkedHashMap::Cast(GetMaybeUnregister().GetTaggedObject());
+        vec.emplace_back(CString("MaybeUnregister"), GetMaybeUnregister());
         map->DumpForSnapshot(vec);
     }
 
-    vec.emplace_back(CString("MaybeUnregister"), GetMaybeUnregister());
     vec.emplace_back(CString("Next"), GetNext());
     vec.emplace_back(CString("Prev"), GetPrev());
     JSObject::DumpForSnapshot(vec);
@@ -5073,6 +5074,7 @@ void JSAPILightWeightMap::DumpForSnapshot(std::vector<Reference> &vec) const
 {
     DISALLOW_GARBAGE_COLLECTION;
     vec.emplace_back("Hashes", GetHashes());
+    vec.emplace_back("Keys", GetKeys());
     TaggedArray *keys = TaggedArray::Cast(GetKeys().GetTaggedObject());
     TaggedArray *values = TaggedArray::Cast(GetValues().GetTaggedObject());
     uint32_t len = static_cast<uint32_t>(GetLength());
@@ -5859,7 +5861,7 @@ void SourceTextModule::DumpForSnapshot(std::vector<Reference> &vec) const
     vec.emplace_back(CString("IndirectExportEntries"), GetIndirectExportEntries());
     vec.emplace_back(CString("StarExportEntries"), GetStarExportEntries());
     vec.emplace_back(CString("Status"), JSTaggedValue(static_cast<int32_t>(GetStatus())));
-    vec.emplace_back(CString("EvaluationError"), JSTaggedValue(GetEvaluationError()));
+    vec.emplace_back(CString("Exception"), GetException());
     vec.emplace_back(CString("DFSIndex"), JSTaggedValue(GetDFSIndex()));
     vec.emplace_back(CString("DFSAncestorIndex"), JSTaggedValue(GetDFSAncestorIndex()));
     vec.emplace_back(CString("NameDictionary"), GetNameDictionary());

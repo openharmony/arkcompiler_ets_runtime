@@ -28,13 +28,11 @@ ohos_fuzztest("BuiltinsArrayBufferSetValueInBufferForByteFuzzTest") {
 
   configs = [ "//arkcompiler/ets_runtime:ecma_test_config" ]
 
-  deps = [
-    "//arkcompiler/ets_runtime:libark_jsruntime_test",
-    sdk_libc_secshared_dep,
-  ]
+  deps = [ "../../../:libark_jsruntime_test" ]
 
   # hiviewdfx libraries
   external_deps = hiviewdfx_ext_deps
+  external_deps += [ sdk_libc_secshared_dep ]
   deps += hiviewdfx_deps
 }
 

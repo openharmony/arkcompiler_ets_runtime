@@ -15,7 +15,6 @@
 
 #include "maple_phase_manager.h"
 #include "cgfunc.h"
-#include "mpl_timer.h"
 
 namespace maple {
 using cgFuncOptTy = MapleFunctionPhase<maplebe::CGFunc>;

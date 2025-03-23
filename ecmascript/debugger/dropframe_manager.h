@@ -65,10 +65,10 @@ private:
     void AddLexPropertiesToRecord(JSThread *thread, BytecodeInstruction &bcIns, uint16_t &newEnvCount,
         std::set<std::pair<uint16_t, uint16_t>> &modifiedLexVarPos, JSHandle<JSTaggedValue> envHandle);
 
-    std::stack<std::vector<std::tuple<JSHandle<JSTaggedValue>, uint16_t, JSHandle<JSTaggedValue>>>> modifiedLexVar_;
-    std::stack<uint32_t> promiseQueueSizeRecord_;
-    std::stack<MethodType> methodType_;
-    std::stack<std::tuple<JSPandaFile*, panda_file::File::EntityId>> methodInfo_;
+    std::stack<std::vector<std::tuple<JSHandle<JSTaggedValue>, uint16_t, JSHandle<JSTaggedValue>>>> modifiedLexVar_ {};
+    std::stack<uint32_t> promiseQueueSizeRecord_ {};
+    std::stack<MethodType> methodType_ {};
+    std::stack<std::tuple<JSPandaFile*, panda_file::File::EntityId>> methodInfo_ {};
 
     friend class DropframeManagerFriendTest;
 };

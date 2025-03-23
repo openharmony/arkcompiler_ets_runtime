@@ -38,8 +38,7 @@ host_unittest_action("ExtractorToolTest") {
   deps = [
     "$ark_third_party_root/icu/icu4c:shared_icui18n",
     "$ark_third_party_root/icu/icu4c:shared_icuuc",
-    "../../../:libark_jsruntime_test",
-    sdk_libc_secshared_dep,
+    "$js_root:libark_jsruntime_test",
   ]
 
   # hiviewdfx libraries

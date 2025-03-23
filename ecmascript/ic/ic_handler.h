@@ -57,9 +57,10 @@ public:
     using InlinedPropsBit = KindBit::NextFlag;                                                              // [4, 5)
     using AccessorBit = InlinedPropsBit::NextFlag;                                                          // [5, 6)
     using IsJSArrayBit = AccessorBit::NextFlag;                                                             // [6, 7)
-    using OffsetBit = IsJSArrayBit::NextField<uint32_t, PropertyAttributes::OFFSET_BITFIELD_NUM>;           // [7, 17)
+    using OffsetBit = IsJSArrayBit::NextField<uint32_t, PropertyAttributes::MAX_FAST_PROPS_CAPACITY_LOG2>;  // [7, 17)
     using RepresentationBit = OffsetBit::NextField<Representation, PropertyAttributes::REPRESENTATION_NUM>; // [17, 19)
-    using AttrIndexBit = RepresentationBit::NextField<uint32_t, PropertyAttributes::OFFSET_BITFIELD_NUM>;   // [19, 29)
+    using AttrIndexBit =
+        RepresentationBit::NextField<uint32_t, PropertyAttributes::MAX_FAST_PROPS_CAPACITY_LOG2>;           // [19, 29)
     using IsOnHeapBit = AttrIndexBit::NextFlag;                                                             // [29, 30)
     using NeedSkipInPGODumpBit  = IsOnHeapBit::NextFlag;                                                    // [30, 31)
     static_assert(NeedSkipInPGODumpBit::END_BIT <= MAX_BIT_SIZE, "load handler overflow");

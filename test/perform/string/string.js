@@ -511,3 +511,19 @@
     const time3 = time2 - time1;
     print("   This is a test string    string trim : " + time3);
 }
+
+// Tests optimization of JSIterator::CreateIterResultObject in js_array.cpp
+{
+    const REP_COUNT = 1_000_000;
+    const str = "a";
+
+    const time1 = ArkTools.timeInUs();
+    for (let i = 0; i < REP_COUNT; i++) {
+        for (const c of str) { // Triggers JSIterator::CreateIterResultObject
+            break;
+        }
+    }
+    const time2 = ArkTools.timeInUs();
+    const durationMs = ((time2 - time1) / 1000).toFixed(3);
+    print(`Testing JSArray::CreateArrayFromList(): Time used = ${durationMs} ms.`)
+}

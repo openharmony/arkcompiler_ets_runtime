@@ -45,10 +45,18 @@ function ICTest() {
 ICTest();
 ICTest();
 
-print("test successful !!!");
-
 let obj2 = {};
 for(let i=0; i<100; i++){
     obj2[Uint16Array] = 1;
 }
-print("store obj by value successful!!!")
+
+function f(v) {
+  for (let i = 0;i < 100; i++){}
+  Number.prototype.__proto__ = ['tr'];
+  v.__proto__.__proto__[Symbol.replace] = "abc";
+}
+f(1);
+f(1);
+f(1);
+
+test_end();

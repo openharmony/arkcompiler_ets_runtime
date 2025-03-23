@@ -18,7 +18,6 @@
 #include "ecmascript/global_env_constants-inl.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/js_tagged_value-inl.h"
-#include "ecmascript/object_factory.h"
 #include "ecmascript/module/module_path_helper.h"
 
 namespace panda::ecmascript {

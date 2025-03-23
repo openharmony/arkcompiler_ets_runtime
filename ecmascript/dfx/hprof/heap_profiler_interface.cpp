@@ -16,7 +16,6 @@
 #include "ecmascript/dfx/hprof/heap_profiler_interface.h"
 #include "ecmascript/dfx/hprof/heap_profiler.h"
 
-#include "ecmascript/ecma_vm.h"
 
 namespace panda::ecmascript {
 HeapProfilerInterface *HeapProfilerInterface::GetInstance(EcmaVM *vm)

@@ -20,10 +20,12 @@
  * @tc.require: issueI5NO8G
  */
 (() => {
+	let value1 = "";
+	let value2 = "";
     function WrapperFunc(propertyDesc) {
         const method = propertyDesc.value
         propertyDesc.value = () => {
-            print("wrapper call")
+            value1 = "wrapper call";
             method()
         }
     }
@@ -34,11 +36,15 @@
     }
     class RawClass {
         printString() {
-            print("raw function")
+            value2 = "raw function";
         }
     }
     decorate(RawClass.prototype, "printString")
     globalThis.cls = new RawClass()
     globalThis.cls.printString()
+    
+    assert_equal(value1,"wrapper call");
+    assert_equal(value2,"raw function");
+    
+    test_end();
 })()
-

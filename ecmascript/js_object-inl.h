@@ -244,6 +244,11 @@ inline bool JSObject::IsTypedArray() const
     return GetJSHClass()->IsTypedArray();
 }
 
+inline bool JSObject::IsSharedTypedArray() const
+{
+    return GetJSHClass()->IsJSSharedTypedArray();
+}
+
 std::pair<bool, JSTaggedValue> JSObject::ConvertValueWithRep(PropertyAttributes attr, JSTaggedValue value)
 {
     if (attr.IsDoubleRep()) {
@@ -277,6 +282,17 @@ void JSObject::SetPropertyInlinedPropsWithRep(const JSThread *thread, uint32_t i
     }
 }
 
+template <size_t objectSize, uint32_t index, bool needBarrier>
+void JSObject::SetPropertyInlinedPropsWithSize(const JSThread *thread, JSTaggedValue value)
+{
+    constexpr uint32_t offset = static_cast<uint32_t>(objectSize + index * JSTaggedValue::TaggedTypeSize());
+    if constexpr (needBarrier) {
+        SET_VALUE_WITH_BARRIER(thread, this, offset, value);
+    } else {
+        SET_VALUE_PRIMITIVE(this, offset, value);
+    }
+}
+
 template <bool needBarrier>
 void JSObject::SetPropertyInlinedProps(const JSThread *thread, uint32_t index, JSTaggedValue value)
 {
@@ -298,6 +314,13 @@ JSTaggedValue JSObject::GetPropertyInlinedPropsWithRep(const JSHClass *hclass, u
         value = JSTaggedValue(static_cast<int32_t>(value.GetRawData()));
     }
     return value;
+}
+
+template <size_t objectSize, uint32_t index>
+JSTaggedValue JSObject::GetPropertyInlinedPropsWithSize() const
+{
+    constexpr uint32_t offset = static_cast<uint32_t>(objectSize + index * JSTaggedValue::TaggedTypeSize());
+    return JSTaggedValue(GET_VALUE(this, offset));
 }
 
 JSTaggedValue JSObject::GetPropertyInlinedProps(uint32_t index) const
@@ -558,7 +581,7 @@ inline std::pair<JSHandle<TaggedArray>, JSHandle<TaggedArray>> JSObject::GetOwnE
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     std::pair<uint32_t, uint32_t> numOfKeys = obj->GetNumberOfEnumKeys();
     uint32_t numOfEnumKeys = numOfKeys.first;
-    uint32_t numOfElements = obj->GetNumberOfElements();
+    uint32_t numOfElements = obj->GetNumberOfElements(thread);
     JSHandle<TaggedArray> elementArray = numOfElements > 0 ? JSObject::GetEnumElementKeys(
         thread, obj, 0, numOfElements, copyLengthOfElements) : factory->EmptyArray();
     JSHandle<TaggedArray> keyArray = numOfEnumKeys > 0 ? JSObject::GetAllEnumKeys(

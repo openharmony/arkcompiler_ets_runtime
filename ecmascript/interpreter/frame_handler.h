@@ -258,13 +258,10 @@ public:
     }
 
     // for Frame GC.
-    void Iterate(const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor,
-        const RootBaseAndDerivedVisitor &derivedVisitor);
-    void IterateFrameChain(JSTaggedType *start, const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor,
-        const RootBaseAndDerivedVisitor &derivedVisitor) const;
-    void IterateAssembleStack(const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor,
-        const RootBaseAndDerivedVisitor &derivedVisitor);
-    void IterateEcmaRuntimeCallInfo(const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor);
+    void Iterate(RootVisitor &visitor);
+    void IterateFrameChain(JSTaggedType *start, RootVisitor &visitor) const;
+    void IterateAssembleStack(RootVisitor &visitor);
+    void IterateEcmaRuntimeCallInfo(RootVisitor &visitor);
 
 private:
     FrameType GetFrameType() const

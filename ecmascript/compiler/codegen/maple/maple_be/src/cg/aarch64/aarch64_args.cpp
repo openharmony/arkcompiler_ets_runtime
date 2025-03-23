@@ -14,9 +14,6 @@
  */
 
 #include "aarch64_args.h"
-#include <fstream>
-#include "aarch64_cgfunc.h"
-#include "aarch64_cg.h"
 
 namespace maplebe {
 using namespace maple;

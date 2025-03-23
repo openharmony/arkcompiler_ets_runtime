@@ -50,3 +50,17 @@ try {
 } catch (error) {
     print(error.name)
 }
+
+let obj = { length: 20, 0: "foo", 19: "bar", 5: "foobar"};
+Array.prototype.reverse.call(obj);
+print(obj[0]);
+print(obj[14]);
+print(obj[19]);
+
+const arr = [];
+arr[1] = 1;
+arr[5] = 5;
+arr[9] = undefined;
+arr.length = 10;
+arr.reverse();
+print(arr);

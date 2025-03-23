@@ -14,10 +14,6 @@
  */
 
 #include "cl_option.h"
-#include "cl_parser.h"
-#include <algorithm>
-#include <iterator>
-#include "mpl_logging.h"
 
 using namespace maplecl;
 

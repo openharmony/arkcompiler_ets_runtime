@@ -14,8 +14,6 @@
  */
 
 #include "ecmascript/compiler/graph_linearizer.h"
-#include "ecmascript/compiler/gate.h"
-#include "ecmascript/compiler/scheduler.h"
 
 namespace panda::ecmascript::kungfu {
 void GraphLinearizer::Run(ControlFlowGraph &result)

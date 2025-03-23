@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 #include "target_registry.h"
-#include "becommon.h"
 
 namespace maplebe {
 using namespace maple;

@@ -622,6 +622,7 @@ public:
     bool IsNoBarrier(GateRef gate) const;
     void GetIns(GateRef gate, std::vector<GateRef>& ins) const;
 
+    bool TryGetMegaProp(GateRef gate) const;
     TypedBinOp GetRevCompareOpForTypedBinOp(TypedBinOp op);
     TypedBinOp GetSwapCompareOpForTypedBinOp(TypedBinOp op);
     void UpdateOnHeapMode(GateRef gate, OnHeapMode onHeapMode);

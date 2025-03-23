@@ -1362,6 +1362,7 @@ HWTEST_F_L0(JSObjectTest, CreateObjectFromProperties)
     heap->GetSweeper()->EnsureAllTaskFinished();
     Verification(heap).VerifyAll();
     auto sHeap = SharedHeap::GetInstance();
+    sHeap->WaitGCFinished(thread);
     SuspendAllScope suspendScope(thread);
     SharedHeapVerification(sHeap, VerifyKind::VERIFY_PRE_SHARED_GC).VerifyAll();
     EXPECT_TRUE(newObj->GetClass()->IsDictionaryMode());

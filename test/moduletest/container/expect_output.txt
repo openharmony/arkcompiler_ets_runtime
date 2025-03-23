@@ -15,17 +15,22 @@ true
 BusinessError: Container is empty
 BusinessError: Container is empty
 Test ArrayList success!!!
+BusinessError: The forEach method cannot be bound
 Test Deque success!!!
 {}
 BusinessError: Container is empty
 0
+BusinessError: The forEach method cannot be bound
 Test HashMap success!!!
+BusinessError: The forEach method cannot be bound
 Test HashSet success!!!
 Test LightWeightMap success!!!
+BusinessError: The forEach method cannot be bound
 Test LightWeightSet success!!!
 Test LinkedList success!!!
 BusinessError: Container is empty
 0
+BusinessError: The forEach method cannot be bound
 Test List success!!!
 Test PlainArray success!!!
 BusinessError: Container is empty
@@ -34,6 +39,7 @@ Test Queue success!!!
 6
 BusinessError: Container is empty
 BusinessError: Container is empty
+BusinessError: The forEach method cannot be bound
 Test Stack success!!!
 BusinessError: Container is empty
 BusinessError: Container is empty

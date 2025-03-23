@@ -13,6 +13,6 @@
 
 import("//arkcompiler/ets_runtime/test/test_helper.gni")
 
-host_aot_test_action("isin") {
+host_aot_js_test_action("isin") {
   deps = []
 }

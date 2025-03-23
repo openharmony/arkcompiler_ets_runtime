@@ -27,9 +27,8 @@ namespace OHOS {
     {
         FuzzedDataProvider dataProvider(data, size);
 
-        // generate random output path and boudlename
-        std::string outDir = "/tmp/fuzz_test_" + std::to_string(dataProvider.ConsumeIntegral<uint32_t>());
-        std::string bundleName = dataProvider.ConsumeRandomLengthString(20);
+        // generate random output path
+        std::string path = "/tmp/fuzz_test" + std::to_string(dataProvider.ConsumeIntegral<uint32_t>());
 
         // generat random hotnessThreshold and ApGenMode
         uint32_t hotnessThreshold = dataProvider.ConsumeIntegral<uint32_t>();
@@ -37,14 +36,10 @@ namespace OHOS {
             dataProvider.ConsumeIntegralInRange<int>(0, 1)
         );
 
-        PGOProfilerEncoder encoder(outDir, hotnessThreshold, mode);
-
-        encoder.SetBundleName(bundleName);
-        encoder.Save();
-
-        // cleanup
-        encoder.Destroy();
-        std::remove(outDir.c_str());
+        auto info = std::make_shared<PGOInfo>(hotnessThreshold);
+        PGOProfilerEncoder encoder(path, mode);
+        encoder.Save(info);
+        std::remove(path.c_str());
     }
 }
 

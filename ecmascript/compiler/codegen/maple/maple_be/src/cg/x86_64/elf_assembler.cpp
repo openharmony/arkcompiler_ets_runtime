@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 
-#include <climits>
 #include "assembler/elf_assembler.h"
 
 namespace assembler {

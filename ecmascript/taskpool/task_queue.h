@@ -19,6 +19,8 @@
 #include <algorithm>
 #include <atomic>
 #include <deque>
+#include <map>
+#include <chrono>
 #include <memory>
 #include <functional>
 
@@ -26,6 +28,7 @@
 #include "ecmascript/platform/mutex.h"
 
 namespace panda::ecmascript {
+using SteadyTimePoint = std::chrono::steady_clock::time_point;
 class TaskQueue {
 public:
     TaskQueue() = default;
@@ -35,6 +38,7 @@ public:
     NO_MOVE_SEMANTIC(TaskQueue);
 
     void PostTask(std::unique_ptr<Task> task);
+    void PostDelayedTask(std::unique_ptr<Task> task, uint64_t delayMilliseconds);
     std::unique_ptr<Task> PopTask();
 
     void Terminate();
@@ -42,7 +46,19 @@ public:
     void ForEachTask(const std::function<void(Task*)> &f);
 
 private:
+    void MoveExpiredTask();
+    void WaitForTask();
+
     std::deque<std::unique_ptr<Task>> tasks_;
+
+    struct DelayedTaskCompare {
+        bool operator()(const SteadyTimePoint& left, const SteadyTimePoint& right) const
+        {
+            return (std::chrono::duration_cast<std::chrono::duration<double>>(right - left)).count() > 0;
+        }
+    };
+
+    std::multimap<SteadyTimePoint, std::unique_ptr<Task>, DelayedTaskCompare> delayedTasks_;
 
     std::atomic_bool terminate_ = false;
     Mutex mtx_;

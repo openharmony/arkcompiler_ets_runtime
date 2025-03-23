@@ -143,6 +143,7 @@ void SharedConcurrentSweeper::TryFillSweptRegion()
 
 bool SharedConcurrentSweeper::SweeperTask::Run([[maybe_unused]] uint32_t threadIndex)
 {
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedConcurrentSweeper::Sweep");
     if (type_ == SHARED_NON_MOVABLE) {
         sweeper_->AsyncSweepSpace(SHARED_NON_MOVABLE, false);
         if (!isFullGC_) {

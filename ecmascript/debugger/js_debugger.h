@@ -91,7 +91,7 @@ public:
     }
 };
 
-class JSDebugger : public JSDebugInterface, RuntimeListener {
+class PUBLIC_API JSDebugger : public JSDebugInterface, RuntimeListener {
 public:
     explicit JSDebugger(const EcmaVM *vm) : ecmaVm_(vm)
     {
@@ -167,6 +167,14 @@ public:
     void SetSingleStepStatus(bool status)
     {
         singleStepOnDebuggerStmt_ = status;
+    }
+    // Used by Launch Accelerate mode
+    void DisableFirstTimeFlag()
+    {
+        if (hooks_ == nullptr) {
+            return;
+        }
+        hooks_->DisableFirstTimeFlag();
     }
 private:
     std::unique_ptr<PtMethod> FindMethod(const JSPtLocation &location) const;

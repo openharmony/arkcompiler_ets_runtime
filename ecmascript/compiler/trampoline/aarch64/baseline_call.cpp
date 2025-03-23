@@ -14,8 +14,6 @@
  */
 
 #include "ecmascript/compiler/trampoline/aarch64/common_call.h"
-#include "ecmascript/js_thread.h"
-#include "ecmascript/compiler/assembler/aarch64/extend_assembler.h"
 
 namespace panda::ecmascript::aarch64 {
 using Label = panda::ecmascript::Label;

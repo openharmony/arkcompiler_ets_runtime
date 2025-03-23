@@ -15,7 +15,6 @@
 
 #include "ecmascript/js_displaynames.h"
 
-#include <cstring>
 
 #include "ecmascript/intl/locale_helper.h"
 #include "ecmascript/object_factory-inl.h"

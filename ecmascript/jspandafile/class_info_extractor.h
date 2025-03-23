@@ -43,11 +43,13 @@ class ClassInfoExtractor : public TaggedObject {
 public:
     static constexpr uint8_t NON_STATIC_RESERVED_LENGTH = 1;
     static constexpr uint8_t STATIC_RESERVED_LENGTH = 3;
+    static constexpr uint8_t SENDABLE_STATIC_RESERVED_LENGTH = 4; // add elements for sendable class
 
     static constexpr uint8_t CONSTRUCTOR_INDEX = 0;
     static constexpr uint8_t LENGTH_INDEX = 0;
     static constexpr uint8_t NAME_INDEX = 1;
     static constexpr uint8_t PROTOTYPE_INDEX = 2;
+    static constexpr uint8_t SENDABLE_ELEMENTS_INDEX = 3;
 
     struct ExtractContentsDetail {
         uint32_t extractBegin;
@@ -172,11 +174,12 @@ public:
 
     static void PUBLIC_API AddFieldTypeToHClass(JSThread *thread, const JSHandle<TaggedArray> &fieldTypeArray,
                                                 uint32_t length, const JSHandle<NameDictionary> &nameDict,
-                                                const JSHandle<JSHClass> &hclass);
+                                                const JSHandle<JSHClass> &hclass,
+                                                JSHandle<NumberDictionary> &elementsDic, bool &hasElement);
 
     static void PUBLIC_API AddFieldTypeToHClass(JSThread *thread, const JSHandle<TaggedArray> &fieldTypeArray,
         uint32_t length, const JSHandle<LayoutInfo> &layout, const JSHandle<JSHClass> &hclass,
-        size_t start, const JSHandle<NumberDictionary> &elementsDic = JSHandle<NumberDictionary>(),
+        JSHandle<NumberDictionary> &elementsDic, bool &hasElement, size_t start,
         std::vector<JSHandle<JSTaggedValue>> &&propertyList = std::vector<JSHandle<JSTaggedValue>>());
 private:
     static SharedFieldType FromFieldType(FieldType type)
@@ -199,8 +202,9 @@ private:
     static void UpdateAccessorFunction(JSThread *thread, const JSMutableHandle<JSTaggedValue> &value,
                                        const JSHandle<JSTaggedValue> &homeObject, const JSHandle<JSFunction> &ctor);
 
-    static void AddFieldTypeToDict(JSThread *thread, const JSHandle<TaggedArray> &fieldTypeArray, uint32_t length,
-                                   JSMutableHandle<NameDictionary> &dict,
+    static void AddFieldTypeToDict(JSThread *thread, const JSHandle<TaggedArray> &fieldTypeArray,
+                                   uint32_t length, JSMutableHandle<NameDictionary> &dict,
+                                   JSHandle<NumberDictionary> &elementsDic, bool &hasElement,
                                    PropertyAttributes attributes = PropertyAttributes::Default(true, true, false));
 
     static bool TryUpdateExistValue(JSThread *thread, JSMutableHandle<JSTaggedValue> &existValue,

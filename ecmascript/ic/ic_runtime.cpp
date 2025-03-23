@@ -15,10 +15,16 @@
 
 #include "ecmascript/ic/ic_runtime.h"
 #include "ecmascript/ic/ic_handler.h"
-#include "ecmascript/dfx/stackinfo/js_stackinfo.h"
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/interpreter/slow_runtime_stub.h"
+#include "ecmascript/ic/mega_ic_cache.h"
+#include "ecmascript/ic/profile_type_info.h"
+#include "ecmascript/interpreter/slow_runtime_stub.h"
+#include "ecmascript/js_function.h"
+#include "ecmascript/js_hclass-inl.h"
+#include "ecmascript/js_hclass.h"
 #include "ecmascript/js_primitive_ref.h"
+#include "ecmascript/js_tagged_value.h"
 #include "ecmascript/shared_objects/js_shared_array.h"
 
 namespace panda::ecmascript {
@@ -28,9 +34,6 @@ void ICRuntime::UpdateLoadHandler(const ObjectOperator &op, JSHandle<JSTaggedVal
 {
     if (icAccessor_.GetICState() == ProfileTypeAccessor::ICState::MEGA) {
         return;
-    }
-    if (IsNamedIC(GetICKind())) {
-        key = JSHandle<JSTaggedValue>();
     }
     JSHandle<JSTaggedValue> handlerValue;
     ObjectFactory *factory = thread_->GetEcmaVM()->GetFactory();
@@ -75,8 +78,16 @@ void ICRuntime::UpdateLoadHandler(const ObjectOperator &op, JSHandle<JSTaggedVal
     if (!originhclass.GetTaggedValue().IsUndefined()) {
         hclass = originhclass;
     }
-    if (key.IsEmpty()) {
-        icAccessor_.AddHandlerWithoutKey(JSHandle<JSTaggedValue>::Cast(hclass), handlerValue);
+    if (IsMegaIC() && receiver->IsHeapObject()) {
+        MegaICCache *cache = thread_->GetLoadMegaICCache();
+        ASSERT(cache != nullptr);
+        cache->Set(receiver->GetTaggedObject()->GetClass(), key.GetTaggedValue(), handlerValue.GetTaggedValue(),
+                   thread_);
+        return;
+    }
+
+    if (IsNamedIC(GetICKind())) {
+        icAccessor_.AddHandlerWithoutKey(JSHandle<JSTaggedValue>::Cast(hclass), handlerValue, key, MegaICCache::Load);
     } else if (op.IsElement()) {
         // do not support global element ic
         if (IsGlobalLoadIC(GetICKind())) {
@@ -112,14 +123,11 @@ void ICRuntime::UpdateTypedArrayHandler(JSHandle<JSTaggedValue> receiver)
 void ICRuntime::UpdateStoreHandler(const ObjectOperator &op, JSHandle<JSTaggedValue> key,
                                    JSHandle<JSTaggedValue> receiver)
 {
+    JSHandle<JSTaggedValue> handlerValue;
+    ASSERT(op.IsFound());
     if (icAccessor_.GetICState() == ProfileTypeAccessor::ICState::MEGA) {
         return;
     }
-    if (IsNamedIC(GetICKind())) {
-        key = JSHandle<JSTaggedValue>();
-    }
-    JSHandle<JSTaggedValue> handlerValue;
-    ASSERT(op.IsFound());
 
     if (op.IsTransition()) {
         if (op.IsOnPrototype()) {
@@ -139,8 +147,14 @@ void ICRuntime::UpdateStoreHandler(const ObjectOperator &op, JSHandle<JSTaggedVa
         handlerValue = StoreHandler::StoreProperty(thread_, op);
     }
 
-    if (key.IsEmpty()) {
-        icAccessor_.AddHandlerWithoutKey(receiverHClass_, handlerValue);
+    if (IsMegaIC() && receiver->IsHeapObject()) {
+        MegaICCache *cache = thread_->GetStoreMegaICCache();
+        cache->Set(JSHClass::Cast(receiverHClass_->GetTaggedObject()), **key, **handlerValue, thread_);
+        return;
+    }
+
+    if (IsNamedIC(GetICKind())) {
+        icAccessor_.AddHandlerWithoutKey(receiverHClass_, handlerValue, key, MegaICCache::Store);
     } else if (op.IsElement()) {
         // do not support global element ic
         if (IsGlobalStoreIC(GetICKind())) {
@@ -245,7 +259,7 @@ JSTaggedValue LoadICRuntime::LoadMiss(JSHandle<JSTaggedValue> receiver, JSHandle
     TraceIC(GetThread(), receiver, key);
     // do not cache element
     if (!op.IsFastMode()) {
-        icAccessor_.SetAsMega();
+        icAccessor_.SetAsMegaForTraceSlowMode(op);
         return result.GetTaggedValue();
     }
 

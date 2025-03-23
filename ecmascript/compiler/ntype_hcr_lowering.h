@@ -54,7 +54,8 @@ private:
 
     GateRef LoadFromConstPool(GateRef unsharedConstPool, size_t index, size_t valVecType);
     GateRef NewActualArgv(GateRef gate, GateRef glue);
-    GateRef NewJSArrayLiteral(GateRef glue, GateRef gate, GateRef elements, GateRef length, uint32_t hintLength = 0);
+    GateRef NewJSArrayLiteral(
+        GateRef glue, GateRef gate, GateRef elements, GateRef length, uint32_t hintLength = 0);
     GateRef NewTaggedArray(size_t length, GateRef glue);
     GateRef CreateElementsWithLength(GateRef gate, GateRef glue, size_t arrayLength);
     GateRef LowerCallRuntime(GateRef glue, GateRef hirGate, int index, const std::vector<GateRef> &args,

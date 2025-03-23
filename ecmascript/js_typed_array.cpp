@@ -91,10 +91,7 @@ bool JSTypedArray::HasProperty(JSThread *thread, const JSHandle<JSTaggedValue> &
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
         if (!numericIndex.IsUndefined()) {
             JSTaggedValue buffer = typedarrayObj->GetViewedArrayBufferOrByteArray();
-            if (!buffer.IsSendableArrayBuffer() && BuiltinsArrayBuffer::IsDetachedBuffer(buffer)) {
-                THROW_TYPE_ERROR_AND_RETURN(thread, "Is Detached Buffer", false);
-            }
-            if (buffer.IsSendableArrayBuffer() && BuiltinsSendableArrayBuffer::IsDetachedBuffer(buffer)) {
+            if (IsArrayBufferDetached(buffer)) {
                 THROW_TYPE_ERROR_AND_RETURN(thread, "Is Detached Buffer", false);
             }
             if (!numericIndex.IsInteger()) {
@@ -201,15 +198,7 @@ bool JSTypedArray::DefineOwnProperty(JSThread *thread, const JSHandle<JSTaggedVa
         }
     }
     // 4. Return OrdinaryDefineOwnProperty(O, P, Desc).
-    bool result = JSObject::OrdinaryDefineOwnProperty(thread, JSHandle<JSObject>::Cast(typedarrayObj), key, desc);
-    if (result) {
-        JSTaggedValue constructorKey = thread->GlobalConstants()->GetConstructorString();
-        if (key.GetTaggedValue() == constructorKey) {
-            typedarrayObj->GetJSHClass()->SetHasConstructor(true);
-            return true;
-        }
-    }
-    return result;
+    return JSObject::OrdinaryDefineOwnProperty(thread, JSHandle<JSObject>::Cast(typedarrayObj), key, desc);
 }
 
 // 9.4.5.4 [[Get]] ( P, Receiver )
@@ -445,13 +434,11 @@ OperationResult JSTypedArray::IntegerIndexedElementGet(JSThread *thread, const J
 bool JSTypedArray::IsValidIntegerIndex(const JSHandle<JSTaggedValue> &typedArray, JSTaggedValue index)
 {
     // 1. Assert: O is an Integer-Indexed exotic object.
+    ASSERT(typedArray->IsTypedArray() || typedArray->IsSharedTypedArray());
     // 2. If IsDetachedBuffer(O.[[ViewedArrayBuffer]]) is true, return false.
     JSHandle<JSTypedArray> typedarrayObj(typedArray);
     JSTaggedValue buffer = typedarrayObj->GetViewedArrayBufferOrByteArray();
-    if (!buffer.IsSendableArrayBuffer() && BuiltinsArrayBuffer::IsDetachedBuffer(buffer)) {
-        return false;
-    }
-    if (buffer.IsSendableArrayBuffer() && BuiltinsSendableArrayBuffer::IsDetachedBuffer(buffer)) {
+    if (IsArrayBufferDetached(buffer)) {
         return false;
     }
     // 3. If ! IsIntegralNumber(index) is false, return false.
@@ -528,15 +515,10 @@ bool JSTypedArray::FastCopyElementToArray(JSThread *thread, const JSHandle<JSTag
     ASSERT(typedArray->IsTypedArray() || typedArray->IsSharedTypedArray());
     // 3. Let buffer be the value of O’s [[ViewedArrayBuffer]] internal slot.
     JSHandle<JSTypedArray> typedarrayObj(typedArray);
-    JSHandle<JSTaggedValue> bufferHandle = JSHandle<JSTaggedValue>(thread,
-                                                                   typedarrayObj->GetViewedArrayBufferOrByteArray());
     // 4. If IsDetachedBuffer(buffer) is true, throw a TypeError exception.
-    if (!bufferHandle.GetTaggedValue().IsSendableArrayBuffer() &&
-        BuiltinsArrayBuffer::IsDetachedBuffer(bufferHandle.GetTaggedValue())) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "Is Detached Buffer", false);
-    }
-    if (bufferHandle.GetTaggedValue().IsSendableArrayBuffer() &&
-        BuiltinsSendableArrayBuffer::IsDetachedBuffer(bufferHandle.GetTaggedValue())) {
+    JSHandle<JSTaggedValue> bufferHandle =
+        JSHandle<JSTaggedValue>(thread, typedarrayObj->GetViewedArrayBufferOrByteArray());
+    if (IsArrayBufferDetached(bufferHandle.GetTaggedValue())) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "Is Detached Buffer", false);
     }
 
@@ -573,10 +555,7 @@ OperationResult JSTypedArray::FastElementGet(JSThread *thread, const JSHandle<JS
     JSTaggedValue buffer = typedarrayObj->GetViewedArrayBufferOrByteArray();
     // 10.4.5.15 TypedArrayGetElement ( O, index )
     //  1. If IsValidIntegerIndex(O, index) is false, return undefined.
-    if (!buffer.IsSendableArrayBuffer() && BuiltinsArrayBuffer::IsDetachedBuffer(buffer)) {
-        return OperationResult(thread, JSTaggedValue::Undefined(), PropertyMetaData(true));
-    }
-    if (buffer.IsSendableArrayBuffer() && BuiltinsSendableArrayBuffer::IsDetachedBuffer(buffer)) {
+    if (IsArrayBufferDetached(buffer)) {
         return OperationResult(thread, JSTaggedValue::Undefined(), PropertyMetaData(true));
     }
 
@@ -688,10 +667,7 @@ JSTaggedValue JSTypedArray::FastGetPropertyByIndex(JSThread *thread, const JSTag
     // Let buffer be the value of O’s [[ViewedArrayBuffer]] internal slot.
     JSTypedArray *typedarrayObj = JSTypedArray::Cast(typedarray.GetTaggedObject());
     JSTaggedValue buffer = typedarrayObj->GetViewedArrayBufferOrByteArray();
-    if (!buffer.IsSendableArrayBuffer() && BuiltinsArrayBuffer::IsDetachedBuffer(buffer)) {
-        return JSTaggedValue::Undefined();
-    }
-    if (buffer.IsSendableArrayBuffer() && BuiltinsSendableArrayBuffer::IsDetachedBuffer(buffer)) {
+    if (IsArrayBufferDetached(buffer)) {
         return JSTaggedValue::Undefined();
     }
 
@@ -847,5 +823,16 @@ bool JSTypedArray::FastTypedArrayFill(JSThread *thread, const JSHandle<JSTaggedV
             byteBeginOffset, byteEndOffset, elementType, numValue.GetNumber(), true);
     }
     return true;
+}
+
+inline bool JSTypedArray::IsArrayBufferDetached(JSTaggedValue buffer)
+{
+    if (!buffer.IsSendableArrayBuffer() && BuiltinsArrayBuffer::IsDetachedBuffer(buffer)) {
+        return true;
+    }
+    if (buffer.IsSendableArrayBuffer() && BuiltinsSendableArrayBuffer::IsDetachedBuffer(buffer)) {
+        return true;
+    }
+    return false;
 }
 }  // namespace panda::ecmascript

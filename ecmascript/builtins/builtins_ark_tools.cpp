@@ -15,15 +15,10 @@
 
 #include "ecmascript/builtins/builtins_ark_tools.h"
 
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
 #include "ecmascript/dfx/stackinfo/js_stackinfo.h"
 #include "ecmascript/dfx/vmstat/opt_code_profiler.h"
 #include "ecmascript/mem/verification.h"
-#include "ecmascript/module/js_module_source_text.h"
 #include "ecmascript/property_detector-inl.h"
-#include "ecmascript/js_arraybuffer.h"
 #include "ecmascript/interpreter/fast_runtime_stub-inl.h"
 #include "ecmascript/linked_hash_table.h"
 #include "builtins_typedarray.h"
@@ -112,6 +107,18 @@ JSTaggedValue BuiltinsArkTools::DumpHClass(EcmaRuntimeCallInfo *info)
     return JSTaggedValue::Undefined();
 }
 
+JSTaggedValue BuiltinsArkTools::GetInlinedPropertiesCount(EcmaRuntimeCallInfo *info)
+{
+    ASSERT(info);
+    JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+
+    JSHandle<JSTaggedValue> obj = GetCallArg(info, 0);
+    JSHClass *objHclass = obj->GetTaggedObject()->GetClass();
+    return JSTaggedValue(objHclass->GetInlinedProperties());
+}
+
 JSTaggedValue BuiltinsArkTools::IsTSHClass(EcmaRuntimeCallInfo *info)
 {
     ASSERT(info);
@@ -151,6 +158,18 @@ JSTaggedValue BuiltinsArkTools::IsSlicedString(EcmaRuntimeCallInfo *info)
     return GetTaggedBoolean(str->IsSlicedString());
 }
 
+JSTaggedValue BuiltinsArkTools::IsTreeString(EcmaRuntimeCallInfo *info)
+{
+    ASSERT(info);
+    JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+
+    ASSERT(info->GetArgsNumber() == 1);
+    JSHandle<JSTaggedValue> str = GetCallArg(info, 0);
+    return GetTaggedBoolean(str->IsTreeString());
+}
+
 JSTaggedValue BuiltinsArkTools::IsStableJsArray(EcmaRuntimeCallInfo *info)
 {
     DISALLOW_GARBAGE_COLLECTION;
@@ -162,6 +181,20 @@ JSTaggedValue BuiltinsArkTools::IsStableJsArray(EcmaRuntimeCallInfo *info)
     ASSERT(info->GetArgsNumber() == 1);
     JSHandle<JSTaggedValue> object = GetCallArg(info, 0);
     return (object->IsStableJSArray(thread)) ?
+        GetTaggedBoolean(true) : GetTaggedBoolean(false);
+}
+
+JSTaggedValue BuiltinsArkTools::HasConstructor(EcmaRuntimeCallInfo *info)
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    ASSERT(info);
+    JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+
+    ASSERT(info->GetArgsNumber() == 1);
+    JSHandle<JSTaggedValue> object = GetCallArg(info, 0);
+    return (object->IsHeapObject() && object->GetHeapObject()->GetClass()->HasConstructor()) ?
         GetTaggedBoolean(true) : GetTaggedBoolean(false);
 }
 
@@ -304,6 +337,18 @@ JSTaggedValue BuiltinsArkTools::HashCode(EcmaRuntimeCallInfo *info)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> key = GetCallArg(info, 0);
     return JSTaggedValue(LinkedHash::Hash(thread, key.GetTaggedValue()));
+}
+
+JSTaggedValue BuiltinsArkTools::PrintMegaICStat(EcmaRuntimeCallInfo *info)
+{
+    JSThread *thread = info->GetThread();
+    BUILTINS_API_TRACE(thread, Global, PrintMegaICStat);
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+    // start vm runtime stat statistic
+#if ECMASCRIPT_ENABLE_MEGA_PROFILER
+    thread->GetCurrentEcmaContext()->PrintMegaICStat();
+#endif
+    return JSTaggedValue::Undefined();
 }
 
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
@@ -553,6 +598,30 @@ JSTaggedValue BuiltinsArkTools::ClearTypedOpProfiler(EcmaRuntimeCallInfo *info)
     return JSTaggedValue::Undefined();
 }
 
+JSTaggedValue BuiltinsArkTools::GetAPIVersion(EcmaRuntimeCallInfo *info)
+{
+    ASSERT(info);
+    JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+
+    return JSTaggedValue(thread->GetEcmaVM()->GetVMAPIVersion());
+}
+
+JSTaggedValue BuiltinsArkTools::SetAPIVersion(EcmaRuntimeCallInfo *info)
+{
+    ASSERT(info);
+    JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+
+    JSHandle<JSTaggedValue> value = GetCallArg(info, 0);
+    if (value->IsInt()) {
+        thread->GetEcmaVM()->SetVMAPIVersion(value->GetInt());
+    }
+    return JSTaggedValue::Undefined();
+}
+
 JSTaggedValue BuiltinsArkTools::GetElementsKind(EcmaRuntimeCallInfo *info)
 {
     ASSERT(info);
@@ -563,7 +632,7 @@ JSTaggedValue BuiltinsArkTools::GetElementsKind(EcmaRuntimeCallInfo *info)
     JSHandle<JSTaggedValue> obj = GetCallArg(info, 0);
     JSHClass *hclass = obj->GetTaggedObject()->GetClass();
     ElementsKind kind = hclass->GetElementsKind();
-    return JSTaggedValue(static_cast<uint32_t>(kind));
+    return JSTaggedValue(Elements::ToUint(kind));
 }
 
 JSTaggedValue BuiltinsArkTools::IsRegExpReplaceDetectorValid(EcmaRuntimeCallInfo *info)
@@ -1407,6 +1476,7 @@ JSTaggedValue BuiltinsArkTools::WaitJitCompileFinish(EcmaRuntimeCallInfo *info)
     }
     while (!jsFunction->GetMachineCode().IsMachineCodeObject()) {
         // just spin check
+        thread->SetInstallMachineCode(true);
         thread->CheckSafepoint();
     }
     return JSTaggedValue::True();
@@ -1422,12 +1492,30 @@ JSTaggedValue BuiltinsArkTools::WaitAllJitCompileFinish(EcmaRuntimeCallInfo *inf
         return JSTaggedValue::False();
     }
     while (Jit::GetInstance()->GetRunningTaskCnt(thread->GetEcmaVM())) {
+        thread->SetInstallMachineCode(true);
         thread->CheckSafepoint();
     }
     thread->SetPGOProfilerEnable(false);
     thread->CheckOrSwitchPGOStubs();
     thread->GetEcmaVM()->GetJSOptions().SetEnablePGOProfiler(false);
     return JSTaggedValue::True();
+}
+
+JSTaggedValue BuiltinsArkTools::IsInFastJit(EcmaRuntimeCallInfo *info)
+{
+    JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+
+    JSTaggedType *currentFrame = const_cast<JSTaggedType*>(thread->GetCurrentFrame());
+    for (FrameIterator it(currentFrame, thread); !it.Done(); it.Advance<GCVisitedFlag::VISITED>()) {
+        if (!it.IsJSFrame()) {
+            continue;
+        }
+        return (it.IsOptimizedJSFunctionFrame() || it.IsFastJitFunctionFrame() ?
+            JSTaggedValue::True() : JSTaggedValue::False());
+    }
+    return JSTaggedValue::False();
 }
 
 JSTaggedValue BuiltinsArkTools::StartRuntimeStat(EcmaRuntimeCallInfo *msg)
@@ -1460,13 +1548,22 @@ JSTaggedValue BuiltinsArkTools::IterateFrame(EcmaRuntimeCallInfo *info)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     JSTaggedType *currentFrame = const_cast<JSTaggedType *>(thread->GetCurrentFrame());
-    RootVisitor visitor = []([[maybe_unused]] Root type, [[maybe_unused]] ObjectSlot slot) {};
-    RootBaseAndDerivedVisitor derivedVisitor = []([[maybe_unused]] Root Type, [[maybe_unused]] ObjectSlot base,
-                                                  [[maybe_unused]] ObjectSlot derived,
-                                                  [[maybe_unused]] uintptr_t baseOldObject) {};
+
+    class DummyRootVisitor final : public RootVisitor {
+    public:
+        DummyRootVisitor() = default;
+        ~DummyRootVisitor() = default;
+
+        void VisitRoot([[maybe_unused]] Root type, [[maybe_unused]] ObjectSlot slot) override {}
+        void VisitRangeRoot([[maybe_unused]] Root type, [[maybe_unused]] ObjectSlot start,
+            [[maybe_unused]] ObjectSlot end) override {}
+        void VisitBaseAndDerivedRoot([[maybe_unused]] Root type, [[maybe_unused]] ObjectSlot base,
+            [[maybe_unused]] ObjectSlot derived, [[maybe_unused]] uintptr_t baseOldObject) override {}
+    };
+    DummyRootVisitor visitor;
 
     for (FrameIterator it(currentFrame, thread); !it.Done(); it.Advance<GCVisitedFlag::VISITED>()) {
-        bool ret = it.IteratorStackMap(visitor, derivedVisitor);
+        bool ret = it.IteratorStackMap(visitor);
         FrameType type = it.GetFrameType();
         int delta = it.ComputeDelta();
         kungfu::CalleeRegAndOffsetVec calleeRegInfo;
@@ -1492,6 +1589,28 @@ JSTaggedValue BuiltinsArkTools::IterateFrame(EcmaRuntimeCallInfo *info)
     return JSTaggedValue::Undefined();
 }
 
+JSTaggedValue BuiltinsArkTools::TriggerSharedGC(EcmaRuntimeCallInfo *info)
+{
+    ASSERT(info);
+    JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+    JSTaggedValue type = GetCallArg(info, 0).GetTaggedValue();
+    auto globalConst = thread->GlobalConstants();
+    SharedHeap *sHeap = SharedHeap::GetInstance();
+    sHeap->WaitGCFinished(thread);
+    if (JSTaggedValue::StrictEqual(globalConst->GetSharedGcCause(), type)) {
+        sHeap->TriggerConcurrentMarking<TriggerGCType::SHARED_GC, GCReason::TRIGGER_BY_JS>(thread);
+        sHeap->WaitGCFinished(thread);
+    } else if (JSTaggedValue::StrictEqual(globalConst->GetSharedPartialGcCause(), type)) {
+        sHeap->TriggerConcurrentMarking<TriggerGCType::SHARED_PARTIAL_GC, GCReason::TRIGGER_BY_JS>(thread);
+        sHeap->WaitGCFinished(thread);
+    } else if (JSTaggedValue::StrictEqual(globalConst->GetSharedFullGcCause(), type)) {
+        sHeap->CollectGarbage<TriggerGCType::SHARED_FULL_GC, GCReason::TRIGGER_BY_JS>(thread);
+    }
+    return JSTaggedValue::Undefined();
+}
+
 JSTaggedValue BuiltinsArkTools::InYoungSpace(EcmaRuntimeCallInfo *info)
 {
     RETURN_IF_DISALLOW_ARKTOOLS(info->GetThread());
@@ -1510,5 +1629,13 @@ JSTaggedValue BuiltinsArkTools::InOldSpace(EcmaRuntimeCallInfo *info)
     CHECK(arg->IsHeapObject());
     Region *region = Region::ObjectAddressToRange(arg->GetTaggedObject());
     return JSTaggedValue(region->InOldSpace());
+}
+
+JSTaggedValue BuiltinsArkTools::CreateNapiObject(EcmaRuntimeCallInfo *msg)
+{
+    JSThread *thread = msg->GetThread();
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<JSObject> jsObject(factory->CreateNapiObject());
+    return jsObject.GetTaggedValue();
 }
 } // namespace panda::ecmascript::builtins

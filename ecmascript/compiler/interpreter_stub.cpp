@@ -13,30 +13,14 @@
  * limitations under the License.
  */
 
-#include <initializer_list>
-#include "ecmascript/base/number_helper.h"
 #include "ecmascript/compiler/access_object_stub_builder.h"
-#include "ecmascript/compiler/bc_call_signature.h"
 #include "ecmascript/compiler/call_stub_builder.h"
-#include "ecmascript/compiler/codegen/llvm/llvm_ir_builder.h"
-#include "ecmascript/compiler/ic_stub_builder.h"
 #include "ecmascript/compiler/interpreter_stub-inl.h"
-#include "ecmascript/compiler/new_object_stub_builder.h"
 #include "ecmascript/compiler/operations_stub_builder.h"
 #include "ecmascript/compiler/profiler_stub_builder.h"
-#include "ecmascript/compiler/stub_builder-inl.h"
-#include "ecmascript/compiler/variable_type.h"
 #include "ecmascript/dfx/vm_thread_control.h"
-#include "ecmascript/global_env_constants.h"
-#include "ecmascript/ic/profile_type_info.h"
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/interpreter/interpreter_assembly.h"
-#include "ecmascript/js_array.h"
-#include "ecmascript/js_function.h"
-#include "ecmascript/js_generator_object.h"
-#include "ecmascript/message_string.h"
-#include "ecmascript/tagged_hash_table.h"
-#include "libpandafile/bytecode_instruction-inl.h"
 
 namespace panda::ecmascript::kungfu {
 #define DECLARE_ASM_HANDLER_BASE(name, needPrint, V, format)                                      \
@@ -594,7 +578,8 @@ DECLARE_ASM_HANDLER(HandleCopyrestargsImm8)
     GateRef lengthOffset = IntPtr(JSArray::LENGTH_OFFSET);
     Store(VariableType::INT32(), glue, *res, lengthOffset, TruncInt64ToInt32(numArgs));
     GateRef accessor = GetGlobalConstantValue(VariableType::JS_ANY(), glue, ConstantIndex::ARRAY_LENGTH_ACCESSOR);
-    SetPropertyInlinedProps(glue, *res, intialHClass, accessor, Int32(JSArray::LENGTH_INLINE_PROPERTY_INDEX));
+    Store(VariableType::JS_ANY(), glue, *res,
+          IntPtr(JSArray::GetInlinedPropertyOffset(JSArray::LENGTH_INLINE_PROPERTY_INDEX)), accessor);
     SetExtensibleToBitfield(glue, *res, true);
     Label setArgumentsBegin(env);
     Label setArgumentsAgain(env);
@@ -1286,7 +1271,11 @@ DECLARE_ASM_HANDLER(HandleIsinImm8V8)
 {
     GateRef v0 = ReadInst8_1(pc);
     GateRef prop = GetVregValue(sp, ZExtInt8ToPtr(v0));
-    GateRef result = CallRuntime(glue, RTSTUB_ID(IsIn), { prop, acc }); // acc is obj
+#if ENABLE_NEXT_OPTIMIZATION
+    GateRef result = IsIn(glue, prop, acc); // acc is obj
+#else
+    GateRef result = CallRuntime(glue, RTSTUB_ID(IsIn), {prop, acc}); // acc is obj
+#endif
     CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(ISIN_IMM8_V8));
 }
 
@@ -2732,9 +2721,9 @@ DECLARE_ASM_HANDLER(HandleReturn)
     {
         GateRef varProfileTypeInfoVal = *varProfileTypeInfo;
         GateRef isProfileDumpedAndJitCompiled = LogicAndBuilder(env)
-            .And(ProfilerStubBuilder(env).IsProfileTypeInfoDumped(varProfileTypeInfoVal, callback))
             .And(ProfilerStubBuilder(env).IsCompiledOrTryCompile(glue, GetFunctionFromFrame(frame),
-                varProfileTypeInfoVal, callback))
+                varProfileTypeInfoVal, callback, pc))
+            .And(ProfilerStubBuilder(env).IsProfileTypeInfoDumped(varProfileTypeInfoVal, callback))
             .Done();
         BRANCH(isProfileDumpedAndJitCompiled, &tryContinue, &updateHotness);
     }
@@ -2831,9 +2820,9 @@ DECLARE_ASM_HANDLER(HandleReturnundefined)
     {
         GateRef varProfileTypeInfoVal = *varProfileTypeInfo;
         GateRef isProfileDumpedAndJitCompiled = LogicAndBuilder(env)
-            .And(ProfilerStubBuilder(env).IsProfileTypeInfoDumped(varProfileTypeInfoVal, callback))
             .And(ProfilerStubBuilder(env).IsCompiledOrTryCompile(glue, GetFunctionFromFrame(frame),
-                varProfileTypeInfoVal, callback))
+                varProfileTypeInfoVal, callback, pc))
+            .And(ProfilerStubBuilder(env).IsProfileTypeInfoDumped(varProfileTypeInfoVal, callback))
             .Done();
         BRANCH(isProfileDumpedAndJitCompiled, &tryContinue, &updateHotness);
     }
@@ -4572,8 +4561,17 @@ DECLARE_ASM_HANDLER(HandleCreateobjectwithbufferImm8Id16)
     GateRef currentEnv = GetEnvFromFrame(GetFrame(sp));
     NewObjectStubBuilder newBuilder(this);
     GateRef res = newBuilder.CreateObjectHavingMethod(glue, result, currentEnv);
+
+    auto env = GetEnvironment();
+    Label isException(env);
+    Label isNotException(env);
+    BRANCH(TaggedIsException(res), &isException, &isNotException);
+    Bind(&isException);
+    DISPATCH_LAST();
+    Bind(&isNotException);
     callback.ProfileCreateObject(res);
-    CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(CREATEOBJECTWITHBUFFER_IMM8_ID16));
+    DEFVARIABLE(varAcc, VariableType::JS_ANY(), res);
+    DISPATCH_VARACC(INT_PTR(CREATEOBJECTWITHBUFFER_IMM8_ID16));
 }
 
 DECLARE_ASM_HANDLER(HandleCreateobjectwithbufferImm16Id16)
@@ -4585,8 +4583,17 @@ DECLARE_ASM_HANDLER(HandleCreateobjectwithbufferImm16Id16)
     GateRef currentEnv = GetEnvFromFrame(GetFrame(sp));
     NewObjectStubBuilder newBuilder(this);
     GateRef res = newBuilder.CreateObjectHavingMethod(glue, result, currentEnv);
+
+    auto env = GetEnvironment();
+    Label isException(env);
+    Label isNotException(env);
+    BRANCH(TaggedIsException(res), &isException, &isNotException);
+    Bind(&isException);
+    DISPATCH_LAST();
+    Bind(&isNotException);
     callback.ProfileCreateObject(res);
-    CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(CREATEOBJECTWITHBUFFER_IMM16_ID16));
+    DEFVARIABLE(varAcc, VariableType::JS_ANY(), res);
+    DISPATCH_VARACC(INT_PTR(CREATEOBJECTWITHBUFFER_IMM16_ID16));
 }
 
 DECLARE_ASM_HANDLER(HandleDeprecatedCreateobjectwithbufferPrefImm16)
@@ -5573,6 +5580,7 @@ DECLARE_ASM_HANDLER(HandleDefineFieldByNameImm8Id16V8)
     DEFINE_BY_NAME(Boolean(false));
     CHECK_EXCEPTION_WITH_ACC(*result, INT_PTR(DEFINEFIELDBYNAME_IMM8_ID16_V8));
 }
+
 DECLARE_ASM_HANDLER(HandleDefinePropertyByNameImm8Id16V8)
 {
     auto env = GetEnvironment();
@@ -5580,7 +5588,6 @@ DECLARE_ASM_HANDLER(HandleDefinePropertyByNameImm8Id16V8)
     DEFINE_BY_NAME(Boolean(true));
     CHECK_EXCEPTION_WITH_ACC(*result, INT_PTR(DEFINEPROPERTYBYNAME_IMM8_ID16_V8));
 }
-
 
 DECLARE_ASM_HANDLER(HandleCallRuntimeDefineFieldByValuePrefImm8V8V8)
 {
@@ -5597,14 +5604,14 @@ DECLARE_ASM_HANDLER(HandleCallRuntimeDefineFieldByIndexPrefImm8Imm32V8)
     GateRef index = ReadInst32_2(pc);
     GateRef v0 = ReadInst8_6(pc);
     GateRef obj = GetVregValue(sp, ZExtInt8ToPtr(v0));
-    GateRef propKey = IntToTaggedInt(index);
+    GateRef propKey = IntToTaggedPtr(index);
     GateRef res = DefineField(glue, obj, propKey, acc);  // acc as value
     CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(CALLRUNTIME_DEFINEFIELDBYINDEX_PREF_IMM8_IMM32_V8));
 }
 
 DECLARE_ASM_HANDLER(HandleCallRuntimeToPropertyKeyPrefNone)
 {
-    GateRef res = CallRuntime(glue, RTSTUB_ID(ToPropertyKey), {acc});
+    GateRef res = ToPropertyKey(glue, acc);
     CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(CALLRUNTIME_TOPROPERTYKEY_PREF_NONE));
 }
 

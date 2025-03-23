@@ -70,7 +70,6 @@
 #include "ecmascript/containers/containers_treeset.h"
 #include "ecmascript/containers/containers_vector.h"
 #include "ecmascript/containers/containers_bitvector.h"
-#include "ecmascript/runtime.h"
 #include "ecmascript/runtime_lock.h"
 #ifdef ARK_SUPPORT_INTL
 #include "ecmascript/builtins/builtins_collator.h"
@@ -1229,11 +1228,11 @@ void SnapshotProcessor::DeserializeSpaceObject(uintptr_t beginAddr, Space* space
         regionIndexMap_.emplace(regionIndex, region);
 
         ASAN_UNPOISON_MEMORY_REGION(reinterpret_cast<void *>(region->packedData_.begin_), liveObjectSize);
-        if (memcpy_s(ToVoidPtr(region->packedData_.begin_),
-                     liveObjectSize,
-                     ToVoidPtr(objectBeginAddr),
-                     liveObjectSize) != EOK) {
-            LOG_FULL(FATAL) << "memcpy_s failed";
+        if (errno_t ret = memcpy_s(ToVoidPtr(region->packedData_.begin_),
+                                   liveObjectSize,
+                                   ToVoidPtr(objectBeginAddr),
+                                   liveObjectSize); ret != EOK) {
+            LOG_FULL(FATAL) << "memcpy_s failed: " << ret;
             UNREACHABLE();
         }
 
@@ -1331,7 +1330,7 @@ void SnapshotProcessor::DeserializeString(uintptr_t stringBegin, uintptr_t strin
             auto hashcode = EcmaStringAccessor(str).GetHashcode();
             RuntimeLockHolder locker(thread,
                 stringTable->stringTable_[EcmaStringTable::GetTableId(hashcode)].mutex_);
-            auto strFromTable = stringTable->GetStringWithHashThreadUnsafe(str, hashcode);
+            auto strFromTable = stringTable->GetStringThreadUnsafe(str, hashcode);
             if (strFromTable) {
                 deserializeStringVector_.emplace_back(thread, strFromTable);
             } else {
@@ -1427,6 +1426,30 @@ void SnapshotProcessor::AddRootObjectToAOTFileManager(SnapshotType type, const C
     }
 }
 
+SnapshotProcessor::SerializeObjectVisitor::SerializeObjectVisitor(SnapshotProcessor *processor, uintptr_t snapshotObj,
+    CQueue<TaggedObject *> *queue, std::unordered_map<uint64_t, ObjectEncode> *data)
+    : processor_(processor), snapshotObj_(snapshotObj), queue_(queue), data_(data) {}
+
+void SnapshotProcessor::SerializeObjectVisitor::VisitObjectRangeImpl(TaggedObject *root, ObjectSlot start,
+                                                                     ObjectSlot end, VisitObjectArea area)
+{
+    int index = 0;
+    for (ObjectSlot slot = start; slot < end; slot++) {
+        if (area == VisitObjectArea::NATIVE_POINTER) {
+            auto nativePointer = *reinterpret_cast<void **>(slot.SlotAddress());
+            processor_->SetObjectEncodeField(snapshotObj_, slot.SlotAddress() - ToUintPtr(root),
+                                             processor_->NativePointerToEncodeBit(nativePointer).GetValue());
+        } else {
+            if (processor_->VisitObjectBodyWithRep(root, slot, snapshotObj_, index, area)) {
+                continue;
+            }
+            auto fieldAddr = reinterpret_cast<JSTaggedType *>(slot.SlotAddress());
+            processor_->SetObjectEncodeField(snapshotObj_, slot.SlotAddress() - ToUintPtr(root),
+                                             processor_->SerializeTaggedField(fieldAddr, queue_, data_));
+        }
+    }
+}
+
 void SnapshotProcessor::SerializeObject(TaggedObject *objectHeader, CQueue<TaggedObject *> *queue,
                                         std::unordered_map<uint64_t, ObjectEncode> *data)
 {
@@ -1444,25 +1467,7 @@ void SnapshotProcessor::SerializeObject(TaggedObject *objectHeader, CQueue<Tagge
     EncodeBit encodeBit = SerializeObjectHeader(objectHeader, static_cast<size_t>(objectType), queue, data);
     SetObjectEncodeField(snapshotObj, 0, encodeBit.GetValue());
 
-    auto visitor = [this, snapshotObj, queue, data](TaggedObject *root, ObjectSlot start, ObjectSlot end,
-                                                    VisitObjectArea area) {
-        int index = 0;
-        for (ObjectSlot slot = start; slot < end; slot++) {
-            if (area == VisitObjectArea::NATIVE_POINTER) {
-                auto nativePointer = *reinterpret_cast<void **>(slot.SlotAddress());
-                SetObjectEncodeField(snapshotObj, slot.SlotAddress() - ToUintPtr(root),
-                                     NativePointerToEncodeBit(nativePointer).GetValue());
-            } else {
-                if (VisitObjectBodyWithRep(root, slot, snapshotObj, index, area)) {
-                    continue;
-                }
-                auto fieldAddr = reinterpret_cast<JSTaggedType *>(slot.SlotAddress());
-                SetObjectEncodeField(snapshotObj, slot.SlotAddress() - ToUintPtr(root),
-                                     SerializeTaggedField(fieldAddr, queue, data));
-            }
-        }
-    };
-
+    SerializeObjectVisitor visitor(this, snapshotObj, queue, data);
     ObjectXRay::VisitObjectBody<VisitType::SNAPSHOT_VISIT>(objectHeader, objectHeader->GetClass(), visitor);
 }
 
@@ -1547,9 +1552,9 @@ void SnapshotProcessor::RelocateSpaceObject(const JSPandaFile *jsPandaFile, Spac
             DeserializeField(objectHeader);
             if (builtinsDeserialize_ &&
                 (JSType(objType) >= JSType::STRING_FIRST && JSType(objType) <= JSType::STRING_LAST)) {
-                auto str = reinterpret_cast<EcmaString *>(begin);
+                EcmaString *str = reinterpret_cast<EcmaString *>(begin);
                 EcmaStringAccessor(str).ClearInternString();
-                stringTable->InsertStringIfNotExistThreadUnsafe(str);
+                stringTable->GetOrInternFlattenString(vm_, str);
                 if (JSType(objType) == JSType::CONSTANT_STRING) {
                     auto constantStr = ConstantString::Cast(str);
                     uint32_t id = constantStr->GetEntityIdU32();
@@ -1637,7 +1642,7 @@ void SnapshotProcessor::DeserializeTaggedField(uint64_t *value, TaggedObject *ro
         Region *rootRegion = Region::ObjectAddressToRange(ToUintPtr(root));
         uintptr_t taggedObjectAddr = TaggedObjectEncodeBitToAddr(encodeBit);
         Region *valueRegion = Region::ObjectAddressToRange(taggedObjectAddr);
-        if (rootRegion->InGeneralOldSpace() && valueRegion->InGeneralNewSpace()) {
+        if (rootRegion->InGeneralOldSpace() && valueRegion->InYoungSpace()) {
             // Should align with '8' in 64 and 32 bit platform
             ASSERT((ToUintPtr(value) % static_cast<uint8_t>(MemAlignment::MEM_ALIGN_OBJECT)) == 0);
             rootRegion->InsertOldToNewRSet((uintptr_t)value);
@@ -1664,32 +1669,45 @@ void SnapshotProcessor::DeserializeTaggedField(uint64_t *value, TaggedObject *ro
 
 void SnapshotProcessor::DeserializeClassWord(TaggedObject *object)
 {
+    // During AOT deserialization, setting the hclass on an object does not require atomic operations, but a write
+    // barrier is still needed to track cross-generation references.
     EncodeBit encodeBit(*reinterpret_cast<uint64_t *>(object));
     if (!builtinsDeserialize_ && encodeBit.IsGlobalConstOrBuiltins()) {
         size_t hclassIndex = encodeBit.GetNativePointerOrObjectIndex();
         auto globalConst = const_cast<GlobalEnvConstants *>(vm_->GetJSThread()->GlobalConstants());
         JSTaggedValue hclassValue = globalConst->GetGlobalConstantObject(hclassIndex);
         ASSERT(hclassValue.IsJSHClass());
-        object->SynchronizedSetClass(vm_->GetJSThread(), JSHClass::Cast(hclassValue.GetTaggedObject()));
+        object->SetClassWithoutBarrier(JSHClass::Cast(hclassValue.GetTaggedObject()));
+        WriteBarrier<WriteBarrierType::AOT_DESERIALIZE>(vm_->GetJSThread(), object, JSHClass::HCLASS_OFFSET,
+                                                        hclassValue.GetRawData());
         return;
     }
     uintptr_t hclassAddr = TaggedObjectEncodeBitToAddr(encodeBit);
-    object->SynchronizedSetClass(vm_->GetJSThread(), reinterpret_cast<JSHClass *>(hclassAddr));
+    JSHClass *hclass = reinterpret_cast<JSHClass *>(hclassAddr);
+    object->SetClassWithoutBarrier(hclass);
+    WriteBarrier<WriteBarrierType::AOT_DESERIALIZE>(vm_->GetJSThread(), object, JSHClass::HCLASS_OFFSET,
+                                                    JSTaggedValue(hclass).GetRawData());
+}
+
+SnapshotProcessor::DeserializeFieldVisitor::DeserializeFieldVisitor(SnapshotProcessor *processor)
+    : processor_(processor) {}
+
+void SnapshotProcessor::DeserializeFieldVisitor::VisitObjectRangeImpl(TaggedObject *root, ObjectSlot start,
+                                                                      ObjectSlot end, VisitObjectArea area)
+{
+    for (ObjectSlot slot = start; slot < end; slot++) {
+        auto encodeBitAddr = reinterpret_cast<uint64_t *>(slot.SlotAddress());
+        if (area == VisitObjectArea::NATIVE_POINTER) {
+            processor_->DeserializeNativePointer(encodeBitAddr);
+        } else {
+            processor_->DeserializeTaggedField(encodeBitAddr, root);
+        }
+    }
 }
 
 void SnapshotProcessor::DeserializeField(TaggedObject *objectHeader)
 {
-    auto visitor = [this]([[maybe_unused]] TaggedObject *root, ObjectSlot start, ObjectSlot end, VisitObjectArea area) {
-        for (ObjectSlot slot = start; slot < end; slot++) {
-            auto encodeBitAddr = reinterpret_cast<uint64_t *>(slot.SlotAddress());
-            if (area == VisitObjectArea::NATIVE_POINTER) {
-                DeserializeNativePointer(encodeBitAddr);
-            } else {
-                DeserializeTaggedField(encodeBitAddr, root);
-            }
-        }
-    };
-
+    DeserializeFieldVisitor visitor(this);
     ObjectXRay::VisitObjectBody<VisitType::SNAPSHOT_VISIT>(objectHeader, objectHeader->GetClass(), visitor);
 }
 

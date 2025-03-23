@@ -26,7 +26,6 @@
 #include "ecmascript/builtins/builtins_shared_set.h"
 #include "ecmascript/builtins/builtins_shared_typedarray.h"
 #include "ecmascript/containers/containers_bitvector.h"
-#include "ecmascript/containers/containers_private.h"
 #include "ecmascript/js_api/js_api_bitvector.h"
 #include "ecmascript/shared_objects/js_shared_array.h"
 #include "ecmascript/shared_objects/js_sendable_arraybuffer.h"

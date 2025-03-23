@@ -59,7 +59,7 @@ GateRef CircuitBuilder::IsJSObject(GateRef obj)
     Label heapObj(env_);
     Label exit(env_);
     GateRef isHeapObject = TaggedIsHeapObject(obj);
-    BRANCH_CIR2(isHeapObject, &heapObj, &exit);
+    BRANCH(isHeapObject, &heapObj, &exit);
     Bind(&heapObj);
     {
         GateRef objectType = GetObjectType(LoadHClass(obj));
@@ -88,6 +88,20 @@ GateRef CircuitBuilder::IsCallable(GateRef obj)
     GateRef bitfieldOffset = IntPtr(JSHClass::BIT_FIELD_OFFSET);
     GateRef bitfield = Load(VariableType::INT32(), hClass, bitfieldOffset);
     return IsCallableFromBitField(bitfield);
+}
+
+GateRef CircuitBuilder::AlreadyDeopt(GateRef method)
+{
+    GateRef extraLiteralInfoOffset = IntPtr(Method::EXTRA_LITERAL_INFO_OFFSET);
+    GateRef extraLiteralInfo = Load(VariableType::INT64(), method, extraLiteralInfoOffset);
+    return AlreadyDeoptFromExtraLiteralInfo(extraLiteralInfo);
+}
+
+GateRef CircuitBuilder::AlreadyDeoptFromExtraLiteralInfo(GateRef callfield)
+{
+    return NotEqual(Int64And(Int64LSR(callfield, Int64(Method::DeoptTypeBits::START_BIT)),
+                             Int64((1LU << Method::DeoptTypeBits::SIZE) - 1)),
+                    Int64(0));
 }
 
 GateRef CircuitBuilder::IsPrototypeHClass(GateRef hClass)

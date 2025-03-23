@@ -14,8 +14,6 @@
  */
 
 #include "intrinsics.h"
-#include "mir_module.h"
-#include "mir_type.h"
 #include "mir_builder.h"
 
 namespace maple {

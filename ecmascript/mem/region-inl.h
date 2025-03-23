@@ -43,29 +43,13 @@ inline RememberedSet *Region::GetOrCreateCrossRegionRememberedSet()
     return crossRegionSet_;
 }
 
-ARK_NOINLINE RememberedSet* Region::CreateNewToEdenRememberedSet()
-{
-    LockHolder lock(*lock_);
-    if (packedData_.newToEdenSet_ == nullptr) {
-        packedData_.newToEdenSet_ = CreateRememberedSet();
-    }
-    return packedData_.newToEdenSet_;
-}
-
-inline RememberedSet *Region::GetOrCreateNewToEdenRememberedSet()
-{
-    if (UNLIKELY(packedData_.newToEdenSet_ == nullptr)) {
-        return CreateNewToEdenRememberedSet();
-    }
-    return packedData_.newToEdenSet_;
-}
-
 ARK_NOINLINE RememberedSet* Region::CreateOldToNewRememberedSet()
 {
     LockHolder lock(*lock_);
     if (packedData_.oldToNewSet_ == nullptr) {
         if (sweepingOldToNewRSet_ != nullptr && IsGCFlagSet(RegionGCFlags::HAS_BEEN_SWEPT)) {
             packedData_.oldToNewSet_ = sweepingOldToNewRSet_;
+            ClearRSetSwapFlag(RSetSwapFlag::OLD_TO_NEW_SWAPPED_MASK);
             sweepingOldToNewRSet_ = nullptr;
         } else {
             packedData_.oldToNewSet_ = CreateRememberedSet();
@@ -88,6 +72,7 @@ ARK_NOINLINE RememberedSet* Region::CreateLocalToShareRememberedSet()
     if (packedData_.localToShareSet_ == nullptr) {
         if (sweepingLocalToShareRSet_ != nullptr && IsGCFlagSet(RegionGCFlags::HAS_BEEN_SWEPT)) {
             packedData_.localToShareSet_ = sweepingLocalToShareRSet_;
+            ClearRSetSwapFlag(RSetSwapFlag::LOCAL_TO_SHARE_SWAPPED_MASK);
             sweepingLocalToShareRSet_ = nullptr;
         } else {
             packedData_.localToShareSet_ = CreateRememberedSet();
@@ -117,6 +102,7 @@ inline void Region::MergeLocalToShareRSetForCS()
         DeleteSweepingLocalToShareRSet();
         sweepingLocalToShareRSet_ = nullptr;
     }
+    ClearRSetSwapFlag(RSetSwapFlag::LOCAL_TO_SHARE_SWAPPED_MASK);
 }
 
 inline void Region::MergeOldToNewRSetForCS()
@@ -132,6 +118,7 @@ inline void Region::MergeOldToNewRSetForCS()
         DeleteSweepingOldToNewRSet();
         sweepingOldToNewRSet_ = nullptr;
     }
+    ClearRSetSwapFlag(RSetSwapFlag::OLD_TO_NEW_SWAPPED_MASK);
 }
 
 inline void Region::MergeLocalToShareRSetForCM(RememberedSet *set)
@@ -142,6 +129,7 @@ inline void Region::MergeLocalToShareRSetForCM(RememberedSet *set)
         packedData_.localToShareSet_->Merge(set);
         nativeAreaAllocator_->Free(set, set->Size());
     }
+    ClearRSetSwapFlag(RSetSwapFlag::LOCAL_TO_SHARE_COLLECTED_MASK);
 }
 
 inline GCBitset *Region::GetMarkGCBitset() const
@@ -159,7 +147,6 @@ inline bool Region::AtomicMark(void *address)
 
 inline bool Region::NonAtomicMark(void *address)
 {
-    ASSERT(IsFreshRegion());
     auto addrPtr = reinterpret_cast<uintptr_t>(address);
     ASSERT(InRange(addrPtr));
     return packedData_.markGCBitset_->SetBit<AccessType::NON_ATOMIC>(
@@ -186,18 +173,6 @@ inline bool Region::Test(uintptr_t addrPtr) const
 }
 
 // ONLY used for heap verification.
-inline bool Region::TestNewToEden(uintptr_t addr)
-{
-    ASSERT(InRange(addr));
-    // Only used for heap verification, so donot need to use lock
-    auto set = packedData_.newToEdenSet_;
-    if (set == nullptr) {
-        return false;
-    }
-    return set->TestBit(ToUintPtr(this), addr);
-}
-
-// ONLY used for heap verification.
 inline bool Region::TestOldToNew(uintptr_t addr)
 {
     ASSERT(InRange(addr));
@@ -221,7 +196,7 @@ inline bool Region::TestLocalToShare(uintptr_t addr)
 }
 
 template <typename Visitor>
-inline void Region::IterateAllMarkedBits(Visitor visitor) const
+inline void Region::IterateAllMarkedBits(Visitor &&visitor) const
 {
     packedData_.markGCBitset_->IterateMarkedBitsConst(
         reinterpret_cast<uintptr_t>(this), packedData_.bitsetSize_, visitor);
@@ -251,10 +226,13 @@ inline bool Region::HasLocalToShareRememberedSet() const
     return packedData_.localToShareSet_ != nullptr;
 }
 
-inline RememberedSet *Region::ExtractLocalToShareRSet()
+inline RememberedSet *Region::CollectLocalToShareRSet()
 {
     RememberedSet *set = packedData_.localToShareSet_;
     packedData_.localToShareSet_ = nullptr;
+    if (set != nullptr) {
+        SetRSetSwapFlag(RSetSwapFlag::LOCAL_TO_SHARE_COLLECTED_MASK);
+    }
     return set;
 }
 
@@ -358,24 +336,6 @@ inline void Region::DeleteCrossRegionRSet()
     }
 }
 
-inline void Region::InsertNewToEdenRSet(uintptr_t addr)
-{
-    auto set = GetOrCreateNewToEdenRememberedSet();
-    set->Insert(ToUintPtr(this), addr);
-}
-
-inline void Region::AtomicInsertNewToEdenRSet(uintptr_t addr)
-{
-    auto set = GetOrCreateNewToEdenRememberedSet();
-    set->AtomicInsert(ToUintPtr(this), addr);
-}
-
-inline void Region::ClearNewToEdenRSet(uintptr_t addr)
-{
-    auto set = GetOrCreateNewToEdenRememberedSet();
-    set->ClearBit(ToUintPtr(this), addr);
-}
-
 inline void Region::InsertOldToNewRSet(uintptr_t addr)
 {
     auto set = GetOrCreateOldToNewRememberedSet();
@@ -386,14 +346,6 @@ inline void Region::ClearOldToNewRSet(uintptr_t addr)
 {
     auto set = GetOrCreateOldToNewRememberedSet();
     set->ClearBit(ToUintPtr(this), addr);
-}
-
-template <typename Visitor>
-inline void Region::IterateAllNewToEdenBits(Visitor visitor)
-{
-    if (packedData_.newToEdenSet_ != nullptr) {
-        packedData_.newToEdenSet_->IterateAllMarkedBits(ToUintPtr(this), visitor);
-    }
 }
 
 template <typename Visitor>
@@ -417,33 +369,6 @@ inline void Region::IterateAllSweepingRSetBits(Visitor visitor)
 {
     if (sweepingOldToNewRSet_ != nullptr) {
         sweepingOldToNewRSet_->IterateAllMarkedBits(ToUintPtr(this), visitor);
-    }
-}
-
-inline RememberedSet *Region::GetNewToEdenRSet()
-{
-    return  packedData_.newToEdenSet_;
-}
-
-inline void Region::ClearNewToEdenRSet()
-{
-    if (packedData_.newToEdenSet_ != nullptr) {
-        packedData_.newToEdenSet_->ClearAll();
-    }
-}
-
-inline void Region::ClearNewToEdenRSetInRange(uintptr_t start, uintptr_t end)
-{
-    if (packedData_.newToEdenSet_ != nullptr) {
-        packedData_.newToEdenSet_->ClearRange(ToUintPtr(this), start, end);
-    }
-}
-
-inline void Region::DeleteNewToEdenRSet()
-{
-    if (packedData_.newToEdenSet_ != nullptr) {
-        nativeAreaAllocator_->Free(packedData_.newToEdenSet_, packedData_.newToEdenSet_->Size());
-        packedData_.newToEdenSet_ = nullptr;
     }
 }
 
@@ -496,6 +421,18 @@ inline uint8_t Region::GetRegionSpaceFlag()
     return packedData_.flags_.spaceFlag_;
 }
 
+inline void Region::SetRSetSwapFlag(RSetSwapFlag mask)
+{
+    ASSERT(((packedData_.RSetSwapFlag_ & static_cast<uint8_t>(mask)) == 0) && "RSetSwapFlag should be 0");
+    packedData_.RSetSwapFlag_ |= static_cast<uint8_t>(mask);
+}
+
+inline void Region::ClearRSetSwapFlag(RSetSwapFlag mask)
+{
+    ASSERT(((packedData_.RSetSwapFlag_ & static_cast<uint8_t>(mask)) != 0) && "RSetSwapFlag should not be 0");
+    packedData_.RSetSwapFlag_ &= ~static_cast<uint8_t>(mask);
+}
+
 template <Region::RegionSpaceKind kind>
 ARK_INLINE void Region::Updater<kind>::Flush()
 {
@@ -514,10 +451,6 @@ ARK_INLINE void Region::Updater<kind>::Consume(size_t idx, uintptr_t updateAddre
 {
     if (idx == LocalToShareIdx) {
         auto set = region_.GetOrCreateLocalToShareRememberedSet();
-        set->InsertRange(ToUintPtr(&region_), updateAddress, mask);
-    }
-    if (kind == InYoung && idx == NewToEdenIdx) {
-        auto set = region_.GetOrCreateNewToEdenRememberedSet();
         set->InsertRange(ToUintPtr(&region_), updateAddress, mask);
     }
     if (kind == InGeneralOld && idx == OldToNewIdx) {

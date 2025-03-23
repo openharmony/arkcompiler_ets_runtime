@@ -636,17 +636,18 @@ JSHandle<JSDateTimeFormat> JSDateTimeFormat::InitializeDateTimeFormat(JSThread *
     if (type != IcuCacheType::NOT_CACHE) {
         std::string cacheEntry =
             locales->IsUndefined() ? "" : EcmaStringAccessor(locales.GetTaggedValue()).ToStdString();
+        auto& intlCache = ecmaVm->GetIntlCache();
         switch (type) {
             case IcuCacheType::DEFAULT:
-                thread->GetCurrentEcmaContext()->SetIcuFormatterToCache(IcuFormatterType::SIMPLE_DATE_FORMAT_DEFAULT,
+                intlCache.SetIcuFormatterToCache(IcuFormatterType::SIMPLE_DATE_FORMAT_DEFAULT,
                     cacheEntry, simpleDateFormatIcu.release(), JSDateTimeFormat::FreeSimpleDateFormat);
                 break;
             case IcuCacheType::DATE:
-                thread->GetCurrentEcmaContext()->SetIcuFormatterToCache(IcuFormatterType::SIMPLE_DATE_FORMAT_DATE,
+                intlCache.SetIcuFormatterToCache(IcuFormatterType::SIMPLE_DATE_FORMAT_DATE,
                     cacheEntry, simpleDateFormatIcu.release(), JSDateTimeFormat::FreeSimpleDateFormat);
                 break;
             case IcuCacheType::TIME:
-                thread->GetCurrentEcmaContext()->SetIcuFormatterToCache(IcuFormatterType::SIMPLE_DATE_FORMAT_TIME,
+                intlCache.SetIcuFormatterToCache(IcuFormatterType::SIMPLE_DATE_FORMAT_TIME,
                     cacheEntry, simpleDateFormatIcu.release(), JSDateTimeFormat::FreeSimpleDateFormat);
                 break;
             default:
@@ -684,7 +685,7 @@ icu::SimpleDateFormat *JSDateTimeFormat::GetCachedIcuSimpleDateFormat(JSThread *
                                                                       IcuFormatterType type)
 {
     std::string cacheEntry = locales->IsUndefined() ? "" : EcmaStringAccessor(locales.GetTaggedValue()).ToStdString();
-    void *cachedSimpleDateFormat = thread->GetCurrentEcmaContext()->GetIcuFormatterFromCache(type, cacheEntry);
+    void *cachedSimpleDateFormat = thread->GetEcmaVM()->GetIntlCache().GetIcuFormatterFromCache(type, cacheEntry);
     if (cachedSimpleDateFormat != nullptr) {
         return reinterpret_cast<icu::SimpleDateFormat*>(cachedSimpleDateFormat);
     }
@@ -1654,31 +1655,23 @@ std::string JSDateTimeFormat::ToTitleCaseFunction(const std::string &input)
     return result;
 }
 
-bool JSDateTimeFormat::IsValidTimeZoneInput(const std::string &input)
-{
-    std::regex r("[a-zA-Z_\\-/]*");
-    bool isValid = regex_match(input, r);
-    return isValid;
-}
-
 std::string JSDateTimeFormat::ToTitleCaseTimezonePosition(const std::string &input)
 {
-    if (!IsValidTimeZoneInput(input)) {
-        return std::string();
-    }
     std::vector<std::string> titleEntry;
     std::vector<std::string> charEntry;
-    int32_t leftPosition = 0;
-    int32_t titleLength = 0;
-    for (int32_t i = 0; i < static_cast<int>(input.length()); i++) {
+    uint32_t leftPosition = 0;
+    uint32_t titleLength = 0;
+    for (size_t i = 0; i < input.length(); i++) {
         if (input[i] == '_' || input[i] == '-' || input[i] == '/') {
             std::string s(1, input[i]);
             charEntry.emplace_back(s);
             titleLength = i - leftPosition;
             titleEntry.emplace_back(input.substr(leftPosition, titleLength));
             leftPosition = i + 1;
-        } else {
+        } else if (JSLocale::IsAsciiAlpha(input[i]) || input[i] == '\\') {
             continue;
+        } else {
+            return std::string();
         }
     }
     ASSERT(input.length() >= static_cast<size_t>(leftPosition));

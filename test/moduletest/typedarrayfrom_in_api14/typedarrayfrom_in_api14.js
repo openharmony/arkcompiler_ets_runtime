@@ -21,52 +21,59 @@
 
 let int8Arr = new Int8Array();
 let it = int8Arr[Symbol.iterator]();
+let proto = "proto";
 it.__proto__["next"] = function() {
-    print("get value");
+    proto = "get value";
     return { value:undefined, done:true };
 }
 let newInt8Arr = Int8Array.from(int8Arr);
-print(newInt8Arr.length);
+assert_equal(newInt8Arr.length,0);
+assert_equal(proto,"get value");
 
 try {
   let int8Arr = new Int8Array();
   let it = int8Arr[Symbol.iterator]();
   it.__proto__["next"] = new Map()[Symbol.iterator]().__proto__["next"];
   let newInt8Arr = Int8Array.from(int8Arr);
-  print(newInt8Arr.length);
+  newInt8Arr.length;
+  assert_unreachable();
 } catch (e) {
-  print(e);
+    assert_equal(e instanceof TypeError, true);
 }
 
 int8Arr = new Int8Array();
 int8Arr.__proto__.__proto__[Symbol.iterator] = function* () {
-    print("generator next");
+    proto = "generator next";
     yield 1;
     yield 2;
 }
 newInt8Arr = Int8Array.from(int8Arr);
-print(newInt8Arr.length);
+assert_equal(newInt8Arr.length,2);
+assert_equal(proto,"generator next");
 
 int8Arr.__proto__.__proto__[Symbol.iterator] = function() {
   return {
     next: function() {
-      print("get value");
+      proto = "get value2";
       return { value:undefined, done:true };
     }
 }
 };
 it = int8Arr[Symbol.iterator]();
 newInt8Arr = Int8Array.from(int8Arr);
-print(newInt8Arr.length);
+assert_equal(newInt8Arr.length,0);
+assert_equal(proto,"get value2");
 
 let arr = new Array(10);
+let arrProto = "proto";
 it = arr[Symbol.iterator]();
 it.__proto__["next"] = function() {
-  print("get value");
+  arrProto = "get value";
   return { value:undefined, done:true };
 }
 let newArr = Int8Array.from(arr);
-print(newArr.length);
+assert_equal(newArr.length,0);
+assert_equal(arrProto,"get value");
 
 const v1 = ([-4.0,415.6053436378277,0.0,-33773.81284924084,-5.0]).__proto__;
 v1[Symbol.iterator] = 1;
@@ -82,9 +89,10 @@ class C4 extends f2 {
 }
 try {
     new C3()  // since ES2021, default ctor of derivative class does not call Array.prototype[Symbol.iterator]
-    print("new C3 success");
     new C4()  // spread syntax still calls Array.prototype[Symbol.iterator]
-    print("new C4 success");  // this line should be unreachable
+    assert_unreachable();// this line should be unreachable
 } catch (e) {
-    print(e);
+    assert_equal(e instanceof TypeError, true);
 }
+
+test_end();

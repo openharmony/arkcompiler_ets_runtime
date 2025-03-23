@@ -55,16 +55,19 @@ libark_jsoptimizer_sources = [
   "assembler/x64/macro_assembler_x64.cpp",
   "assembler_module.cpp",
   "async_function_lowering.cpp",
+  "barrier_stub_builder.cpp",
   "base/depend_chain_helper.cpp",
   "baseline/baseline_assembler.cpp",
   "baseline/baseline_call_signature.cpp",
   "baseline/baseline_compiler.cpp",
   "baseline/baseline_stubs.cpp",
   "bc_call_signature.cpp",
+  "builtins/builtins_array_indexof_stub_builder.cpp",
   "builtins/builtins_array_stub_builder.cpp",
   "builtins/builtins_array_stub_builder_next_optimization.cpp",
   "builtins/builtins_call_signature.cpp",
   "builtins/builtins_collator_stub_builder.cpp",
+  "builtins/builtins_collection_iterator_stub_builder.cpp",
   "builtins/builtins_collection_stub_builder.cpp",
   "builtins/builtins_dataview_stub_builder.cpp",
   "builtins/builtins_function_stub_builder.cpp",
@@ -76,7 +79,19 @@ libark_jsoptimizer_sources = [
   "builtins/builtins_string_stub_builder.cpp",
   "builtins/builtins_stubs.cpp",
   "builtins/builtins_typedarray_stub_builder.cpp",
+  "builtins/containers_arraylist_stub_builder.cpp",
+  "builtins/containers_deque_stub_builder.cpp",
+  "builtins/containers_hashmap_stub_builder.cpp",
+  "builtins/containers_hashset_stub_builder.cpp",
+  "builtins/containers_lightweightmap_stub_builder.cpp",
+  "builtins/containers_lightweightset_stub_builder.cpp",
+  "builtins/containers_linkedlist_stub_builder.cpp",
+  "builtins/containers_list_stub_builder.cpp",
+  "builtins/containers_plainarray_stub_builder.cpp",
+  "builtins/containers_queue_stub_builder.cpp",
+  "builtins/containers_stack_stub_builder.cpp",
   "builtins/containers_stub_builder.cpp",
+  "builtins/containers_vector_stub_builder.cpp",
   "builtins/linked_hashtable_stub_builder.cpp",
   "builtins_lowering.cpp",
   "bytecode_circuit_builder.cpp",
@@ -135,6 +150,7 @@ libark_jsoptimizer_sources = [
   "number_speculative_lowering.cpp",
   "number_speculative_retype.cpp",
   "number_speculative_runner.cpp",
+  "object_operator_stub_builder.cpp",
   "operations_stub_builder.cpp",
   "pass_manager.cpp",
   "post_schedule.cpp",
@@ -242,6 +258,7 @@ ohos_source_set("libark_jsoptimizer_set_with_maple") {
     }
     branch_protector_ret = "pac_ret"
   }
+  cflags_cc = [ "-fvisibility=hidden" ]
   sources = libark_jsoptimizer_sources
   if (enable_local_code_sign) {
     sources += [ "$js_root/ecmascript/platform/unix/ohos/code_sign.cpp" ]
@@ -507,7 +524,12 @@ action("gen_stub_file") {
   root_out_dir_with_host_toolchain =
       get_label_info(":ark_stub_compiler(${host_toolchain})", "root_out_dir")
 
-  if (current_toolchain == host_toolchain) {
+  if (current_os == "linux" && current_cpu == "arm64") {
+    stub_option =
+        " --stub-file=" + rebase_path(stub_file_gen_dir) + "/stub.an" +
+        " --compiler-target-triple=aarch64-unknown-linux-gnu" +
+        " --compiler-log=allasm" + " --log-level=info"
+  } else if (current_toolchain == host_toolchain) {
     stub_option = " --stub-file=" + rebase_path(stub_file_gen_dir) + "/stub.an"
   } else if (current_cpu == "x86_64") {
     stub_option =
@@ -550,7 +572,7 @@ action("gen_stub_file") {
   ]
   outputs = [ "$stub_file_gen_dir/stub.an" ]
   if (is_ohos) {
-    outputs += [ "$stub_file_gen_dir/stub_code_comment.txt" ]
+    outputs += [ "$stub_file_gen_dir/stub_code_comment.zip" ]
   }
 }
 

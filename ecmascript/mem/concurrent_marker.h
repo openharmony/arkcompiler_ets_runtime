@@ -149,6 +149,7 @@ private:
         duration_ = duration;
     }
 
+    void MarkRoots();
     void InitializeMarking();
     bool ShouldNotifyMarkingFinished();  // call in GC thread.
     void FinishMarking();   // call in GC thread.

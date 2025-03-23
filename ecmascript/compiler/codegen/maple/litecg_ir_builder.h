@@ -107,6 +107,15 @@ private:
         IS_BASE,
         UNKNOW
     };
+    struct DeoptBBInfo {
+        maple::litecg::BB *deoptBB = nullptr;
+        maple::litecg::PregIdx deoptTypePreg = 0;
+        std::map<uint32_t, maple::litecg::BB*> deoptType2BB;
+
+        DeoptBBInfo(maple::litecg::BB *bb, maple::litecg::PregIdx preg) : deoptBB(bb), deoptTypePreg(preg)
+        {}
+        ~DeoptBBInfo() = default;
+    };
     const std::vector<std::vector<GateRef>> *scheduledGates_ {nullptr};
     const Circuit *circuit_ {nullptr};
     LMIRModule *lmirModule_ {nullptr};
@@ -131,7 +140,9 @@ private:
     std::map<GateRef, maple::litecg::PregIdx> derivedPhiGate2BasePhiPreg_;
     std::map<GateRef, GateRef> derivedGate2BaseGate_; // derived reference gate to base reference gate map
     std::map<GateRef, bool> derivedGateCache_; // cache whether the phi reference is derived, base or unknow
+    std::map<GateRef, DeoptBBInfo> deoptFrameState2BB_;
     maple::ConstantFold cf_;
+    std::unordered_map<GateRef, maple::litecg::Expr> derivedrefGate;
 
 #define DECLAREVISITLOWEROPCODE(name, signature) void Visit##name signature;
     OPCODES(DECLAREVISITLOWEROPCODE)
@@ -145,8 +156,10 @@ private:
             usedOpcodeSet.insert(op);
         }
     }
+    maple::litecg::LiteCGValue ConstantFoldExpr(maple::litecg::Expr expr, maple::litecg::BB &curBB);
     void SaveGate2Expr(GateRef gate, maple::litecg::Expr expr, bool isGlueAdd = false);
     void SaveGate2Expr(GateRef gate, maple::litecg::PregIdx pregIdx1, maple::litecg::PregIdx pregIdx2);
+    maple::litecg::Expr CreateExprFromLiteCGValue(const maple::litecg::LiteCGValue &value);
     maple::litecg::Expr GetExprFromGate(GateRef gate);
     maple::litecg::Expr GetExprFromGate(GateRef gate, uint32_t index);
     maple::litecg::Expr GetConstant(GateRef gate);
@@ -171,7 +184,7 @@ private:
                                     maple::litecg::Expr rtbaseoffset, const std::string &realName = "") const;
     bool IsOptimizedJSFunction() const;
     bool IsOptimized() const;
-    CallExceptionKind GetCallExceptionKind(size_t index, OpCode op) const;
+    CallExceptionKind GetCallExceptionKind(OpCode op, size_t index = SIZE_MAX) const;
     maple::litecg::Expr GetRTStubOffset(maple::litecg::Expr glue, int index) const;
     maple::litecg::Expr GetCoStubOffset(maple::litecg::Expr glue, int index) const;
     maple::litecg::Expr GetBaselineStubOffset(maple::litecg::Expr glue, int index) const;
@@ -219,6 +232,9 @@ private:
         return enableLog_;
     }
     void VisitBinaryOpWithOverflow(GateRef gate, GateRef e1, GateRef e2, maple::litecg::IntrinsicId intrinsicId);
+    void AddDerivedrefGate(GateRef gate, maple::litecg::Expr result);
+    maple::litecg::Expr GetDerivedrefExpr(GateRef gate);
+    DeoptBBInfo &GetOrCreateDeoptBBInfo(GateRef gate);
 };
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_LITECG_IR_BUILDER_H

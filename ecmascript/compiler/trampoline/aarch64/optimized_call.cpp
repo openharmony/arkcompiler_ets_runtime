@@ -15,17 +15,8 @@
 
 #include "ecmascript/compiler/trampoline/aarch64/common_call.h"
 
-#include "ecmascript/compiler/assembler/assembler.h"
-#include "ecmascript/compiler/argument_accessor.h"
-#include "ecmascript/compiler/rt_call_signature.h"
 #include "ecmascript/deoptimizer/deoptimizer.h"
-#include "ecmascript/ecma_runtime_call_info.h"
-#include "ecmascript/frames.h"
-#include "ecmascript/js_function.h"
-#include "ecmascript/method.h"
-#include "ecmascript/js_thread.h"
 #include "ecmascript/message_string.h"
-#include "ecmascript/runtime_call_id.h"
 
 namespace panda::ecmascript::aarch64 {
 using Label = panda::ecmascript::Label;
@@ -501,7 +492,7 @@ void OptimizedCall::JSCallInternal(ExtendedAssembler *assembler, Register jsfunc
             __ Tbnz(callField, MethodLiteral::IsFastBuiltinBit::START_BIT, &lCallBuiltinStub);
         }
         __ Bind(&lCallNativeCpp);
-        __ Ldr(nativeFuncAddr, MemoryOperand(method, Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET));
+        __ Ldr(nativeFuncAddr, MemoryOperand(jsfunc, JSFunctionBase::CODE_ENTRY_OFFSET));
         CallBuiltinTrampoline(assembler);
     }
 
@@ -518,7 +509,7 @@ void OptimizedCall::JSCallInternal(ExtendedAssembler *assembler, Register jsfunc
         __ Add(builtinStub, glue, Operand(Register(X5).W(), UXTW, FRAME_SLOT_SIZE_LOG2));
         __ Ldr(builtinStub, MemoryOperand(builtinStub, JSThread::GlueData::GetBuiltinsStubEntriesOffset(false)));
 
-        __ Ldr(Register(X1), MemoryOperand(method, Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET));
+        __ Ldr(Register(X1), MemoryOperand(jsfunc, JSFunctionBase::CODE_ENTRY_OFFSET));
         __ Ldr(Register(X2), MemoryOperand(sp, DOUBLE_SLOT_SIZE));  // get jsfunc
         __ Ldr(Register(X3), MemoryOperand(sp, TRIPLE_SLOT_SIZE));  // get newtarget
         __ Ldr(Register(X4), MemoryOperand(sp, QUADRUPLE_SLOT_SIZE));  // get this
@@ -610,10 +601,12 @@ void OptimizedCall::JSCallInternal(ExtendedAssembler *assembler, Register jsfunc
     }
     __ Bind(&jsProxy);
     {
+        Register nativeFuncAddr(X4);
         __ Ldr(method, MemoryOperand(jsfunc, JSProxy::METHOD_OFFSET));
         __ Ldr(callField, MemoryOperand(method, Method::CALL_FIELD_OFFSET));
         __ Ldr(actualArgC, MemoryOperand(sp, 0));
-        __ B(&callNativeMethod);
+        __ Ldr(nativeFuncAddr, MemoryOperand(method, Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET));
+        CallBuiltinTrampoline(assembler);
     }
     __ Bind(&nonCallable);
     {
@@ -1334,7 +1327,7 @@ void OptimizedCall::CallOptimized(ExtendedAssembler *assembler)
     __ Br(codeAddr);
 }
 
-void OptimizedCall::DeoptEnterAsmInterp(ExtendedAssembler *assembler)
+void OptimizedCall::DeoptEnterAsmInterpOrBaseline(ExtendedAssembler *assembler)
 {
     // rdi
     Register glueRegister = __ GlueRegister();
@@ -1381,6 +1374,65 @@ void OptimizedCall::DeoptEnterAsmInterp(ExtendedAssembler *assembler)
 
     Register callTargetRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::CALL_TARGET);
     Register methodRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::METHOD);
+    __ Ldr(callTargetRegister, MemoryOperand(frameStateBase, AsmInterpretedFrame::GetFunctionOffset(false)));
+    // get baseline code
+    __ Ldr(opRegister, MemoryOperand(callTargetRegister, JSFunction::BASELINECODE_OFFSET));
+    Label baselineCodeUndefined;
+    __ Cmp(opRegister, Immediate(JSTaggedValue::VALUE_UNDEFINED));
+    __ B(Condition::EQ, &baselineCodeUndefined);
+
+    // check is compiling
+    __ Cmp(opRegister, Immediate(JSTaggedValue::VALUE_HOLE));
+    __ B(Condition::EQ, &baselineCodeUndefined);
+    {
+        // x20 is free and callee save
+        Register newSpRegister = X20;
+        // get new sp
+        __ Add(newSpRegister, currentSlotRegister, Immediate(AsmInterpretedFrame::GetSize(false)));
+        __ Align16(currentSlotRegister);
+        __ Mov(sp, currentSlotRegister);
+
+        // save glue, callTarget
+        __ Stp(glueRegister, callTargetRegister, MemoryOperand(sp, -DOUBLE_SLOT_SIZE, AddrMode::PREINDEX));
+        // callee save
+        __ CalleeSave();
+
+        // get bytecode pc
+        Register bytecodePc = opRegister;
+        __ Ldr(bytecodePc, MemoryOperand(frameStateBase, AsmInterpretedFrame::GetPcOffset(false)));
+        // get func
+        Register func(X1);
+        func = callTargetRegister;
+        Register argC(X2);
+        Register runtimeId(X3);
+        __ Mov(argC, Immediate(2)); // 2: argc
+        __ Mov(runtimeId, Immediate(RTSTUB_ID(GetNativePcOfstForBaseline)));
+        // get native pc offset in baselinecode by bytecodePc in func
+        __ Stp(func, bytecodePc, MemoryOperand(sp, -DOUBLE_SLOT_SIZE, AddrMode::PREINDEX));
+        __ Stp(runtimeId, argC, MemoryOperand(sp, -DOUBLE_SLOT_SIZE, AddrMode::PREINDEX));
+        __ CallAssemblerStub(RTSTUB_ID(CallRuntime), false);
+
+        // 2: skip runtimeId argc func bytecodePc
+        __ Add(sp, sp, Immediate(2 * DOUBLE_SLOT_SIZE));
+
+        __ CalleeRestore();
+        // restore glue, callTarget
+        __ Ldp(X19, callTargetRegister, MemoryOperand(sp, DOUBLE_SLOT_SIZE, AddrMode::POSTINDEX));
+        // restore method, fp
+        __ Ldr(methodRegister, MemoryOperand(callTargetRegister, JSFunctionBase::METHOD_OFFSET));
+        __ Mov(X21, methodRegister);
+        __ Mov(Register(FP), newSpRegister);
+
+        // update pc
+        const int64_t pcOffsetFromSp = -24; // -24: 3 slots, frameType, prevFrame, pc
+        __ Mov(opRegister, Immediate(BASELINEJIT_PC_FLAG));
+        __ Stur(opRegister, MemoryOperand(Register(FP), pcOffsetFromSp));
+
+        // jmp to baselinecode
+        __ Br(X0);
+    }
+
+    __ Bind(&baselineCodeUndefined);
     {
         // X19, fp, x20, x21,      x22,     x23,  x24
         // glue sp   pc  constpool  profile  acc   hotness
@@ -1450,7 +1502,7 @@ void OptimizedCall::DeoptHandlerAsm(ExtendedAssembler *assembler)
     PopAsmInterpBridgeFrame(assembler);
     __ Ret();
     __ Bind(&target);
-    DeoptEnterAsmInterp(assembler);
+    DeoptEnterAsmInterpOrBaseline(assembler);
 
     __ Bind(&stackOverflow);
     {

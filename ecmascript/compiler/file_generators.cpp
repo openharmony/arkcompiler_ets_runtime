@@ -15,15 +15,11 @@
 
 #include "ecmascript/compiler/file_generators.h"
 
-#include "ecmascript/common.h"
-#include "ecmascript/compiler/aot_file/aot_file_manager.h"
 #include "ecmascript/compiler/pgo_type/pgo_type_manager.h"
-#include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
 #include "ecmascript/platform/code_sign.h"
 #include "ecmascript/platform/directory.h"
 #include "ecmascript/platform/os.h"
 #include "ecmascript/snapshot/mem/snapshot.h"
-#include "ecmascript/stackmap/ark_stackmap_builder.h"
 #include "ecmascript/stackmap/llvm/llvm_stackmap_parser.h"
 #ifdef COMPILE_MAPLE
 #include "ecmascript/compiler/codegen/maple/litecg_codegen.h"
@@ -34,8 +30,6 @@
 #include "ecmascript/compiler/jit_signcode.h"
 #endif
 #endif
-#include "ecmascript/jit/jit.h"
-#include "ecmascript/jit/jit_task.h"
 #include "ecmascript/compiler/jit_compiler.h"
 
 namespace panda::ecmascript::kungfu {
@@ -280,17 +274,13 @@ void Module::CollectModuleSectionDes(ModuleSectionDes &moduleDes) const
         return;
     }
     ASSERT(assembler_ != nullptr);
-    LLVMAssembler *assembler = static_cast<LLVMAssembler*>(assembler_);
+    LLVMAssembler *assembler = static_cast<LLVMAssembler *>(assembler_);
     assembler->IterateSecInfos([&](size_t i, std::pair<uint8_t *, size_t> secInfo) {
         auto curSec = ElfSection(i);
         ElfSecName sec = curSec.GetElfEnumValue();
-        if (IsRelaSection(sec)) {
-            moduleDes.EraseSec(sec);
-        } else { // aot need relocated; stub don't need collect relocated section
-            moduleDes.SetSecAddrAndSize(sec, reinterpret_cast<uint64_t>(secInfo.first), secInfo.second);
-            moduleDes.SetStartIndex(startIndex_);
-            moduleDes.SetFuncCount(funcCount_);
-        }
+        moduleDes.SetSecAddrAndSize(sec, reinterpret_cast<uint64_t>(secInfo.first), secInfo.second);
+        moduleDes.SetStartIndex(startIndex_);
+        moduleDes.SetFuncCount(funcCount_);
     });
     CollectStackMapDes(moduleDes);
 }
@@ -653,7 +643,8 @@ bool AOTFileGenerator::CreateDirIfNotExist(const std::string &filename)
     return panda::ecmascript::SetDirModeAsDefault(path);
 }
 
-bool AOTFileGenerator::SaveAOTFile(const std::string &filename, const std::string &appSignature)
+bool AOTFileGenerator::SaveAOTFile(const std::string &filename, const std::string &appSignature,
+                                   const std::unordered_map<CString, uint32_t> &fileNameToChecksumMap)
 {
     if (aotInfo_.GetTotalCodeSize() == 0) {
         LOG_COMPILER(WARN) << "error: code size of generated an file is empty!";
@@ -666,7 +657,7 @@ bool AOTFileGenerator::SaveAOTFile(const std::string &filename, const std::strin
     PrintMergedCodeComment();
     GenerateMergedStackmapSection();
     aotInfo_.GenerateMethodToEntryIndexMap();
-    if (!aotInfo_.Save(filename, cfg_.GetTriple())) {
+    if (!aotInfo_.Save(filename, cfg_.GetTriple(), anFileMaxByteSize_, fileNameToChecksumMap)) {
         LOG_COMPILER(ERROR) << "Fail to save an file: " << filename;
         return false;
     }
@@ -763,9 +754,16 @@ bool AOTFileGenerator::GetMemoryCodeInfos(MachineCodeDesc &machineCodeDesc)
     machineCodeDesc.stackMapOrOffsetTableAddr = stackMapPtr;
     machineCodeDesc.stackMapOrOffsetTableSize = stackMapSize;
     machineCodeDesc.codeType = MachineCodeType::FAST_JIT_CODE;
+    if (cfg_.IsAArch64()) {
+        machineCodeDesc.archType = MachineCodeArchType::AArch64;
+    } else {
+        machineCodeDesc.archType = MachineCodeArchType::X86;
+    }
 
+    // modify relocating is only used in baselinjit.
+    RelocMap relocInfo = {};
     if (Jit::GetInstance()->IsEnableJitFort() && Jit::GetInstance()->IsEnableAsyncCopyToFort() &&
-        JitCompiler::AllocFromFortAndCopy(*compilationEnv_, machineCodeDesc) == false) {
+        JitCompiler::AllocFromFortAndCopy(*compilationEnv_, machineCodeDesc, relocInfo) == false) {
         return false;
     }
     return true;
@@ -810,6 +808,34 @@ bool AOTFileGenerator::SaveSnapshotFile()
     return true;
 }
 
+std::string AOTFileGenerator::ExtractPrefix(const std::string &filename)
+{
+    std::string file = filename.substr(filename.find_last_of('/') + 1);
+    size_t dotPos = file.find_last_of('.');
+    if (dotPos == std::string::npos) {
+        LOG_COMPILER(ERROR) << "Path: " << file << " is illegal";
+        return "";
+    }
+
+    std::string prefix = file.substr(0, dotPos);
+    return prefix;
+}
+
+std::string AOTFileGenerator::GenAotCodeCommentFileName(const std::string &filename)
+{
+    size_t lastSlashPos = filename.find_last_of('/');
+    std::string dirPath = filename.substr(0, lastSlashPos + 1);
+    std::string prefix = ExtractPrefix(filename);
+    std::string aotCodeCommentFilePath = "";
+    if (!prefix.empty()) {
+        aotCodeCommentFilePath = dirPath + "aot_code_comment_" + prefix + ".txt";
+        SetAotCodeCommentFile(aotCodeCommentFilePath);
+    } else {
+        SetAotCodeCommentFile("");
+    }
+    return aotCodeCommentFilePath;
+}
+
 bool AOTFileGenerator::CreateAOTCodeCommentFile(const std::string &filename)
 {
     if (!CreateDirIfNotExist(filename)) {
@@ -829,8 +855,12 @@ bool AOTFileGenerator::CreateAOTCodeCommentFile(const std::string &filename)
         return false;
     }
 
-    std::string aotCodeCommentFile = realPath.substr(0, index) + "/aot_code_comment.txt";
-    SetAotCodeCommentFile(aotCodeCommentFile);
+    std::string aotCodeCommentFile = GenAotCodeCommentFileName(realPath);
+    if (aotCodeCommentFile.empty()) {
+        LOG_COMPILER(ERROR) << "Failed to generate aot code comment file";
+        return false;
+    }
+
     if (FileExist(aotCodeCommentFile.c_str())) {
         if (Unlink(aotCodeCommentFile.c_str()) == -1) {
             SetAotCodeCommentFile("");
@@ -839,7 +869,14 @@ bool AOTFileGenerator::CreateAOTCodeCommentFile(const std::string &filename)
         }
     }
 
-    std::ofstream file(aotCodeCommentFile.c_str(), std::ofstream::app);
+    std::string aotRealPath;
+    if (!panda::ecmascript::RealPath(aotCodeCommentFile, aotRealPath, false)) {
+        SetAotCodeCommentFile("");
+        LOG_COMPILER(ERROR) << "Fail to get realPath: " << aotCodeCommentFile;
+        return false;
+    }
+
+    std::ofstream file(aotRealPath.c_str(), std::ofstream::app);
     if (!file.is_open()) {
         SetAotCodeCommentFile("");
         LOG_COMPILER(ERROR) << "Failed to create " << aotCodeCommentFile;

@@ -213,7 +213,7 @@ public:
     explicit FunctionProtoTransitionTable(const JSThread *thread);
     virtual ~FunctionProtoTransitionTable();
 
-    void Iterate(const RootVisitor &v);
+    void Iterate(RootVisitor &v);
 
     void InsertTransitionItem(const JSThread *thread,
                               JSHandle<JSTaggedValue> ihc,

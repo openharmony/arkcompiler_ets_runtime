@@ -36,6 +36,7 @@ public:
           typeInfos_(typeInfos), chunk_(chunk) {}
     GateRef VisitGate(GateRef gate);
     void setState(NumberSpeculativeRetype::State state);
+    void ConvertMonoAccessorValueIn(GateRef gate);
 
 private:
 

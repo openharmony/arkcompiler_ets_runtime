@@ -16,12 +16,9 @@
 #include "ecmascript/compiler/bytecode_info_collector.h"
 
 #include "ecmascript/jspandafile/literal_data_extractor.h"
-#include "ecmascript/module/module_path_helper.h"
-#include "ecmascript/pgo_profiler/pgo_profiler_decoder.h"
 #include "libpandafile/code_data_accessor.h"
 #include "libpandafile/class_data_accessor-inl.h"
 #include "libpandafile/index_accessor.h"
-#include "libpandafile/method_data_accessor-inl.h"
 
 namespace panda::ecmascript::kungfu {
 template<class T, class... Args>

@@ -39,3 +39,48 @@ var result1 = arr4.with(4, 100);
 print(result1);
 var result2 = arr5.with(4, 100);
 print(result2);
+
+let outputs = []
+// testCase1: use only one parameter in Array.prototype.with()
+const caseOneArr1 = [0, 1, 2, 3, 4, 5, , 7, 8, undefined];
+outputs.push(caseOneArr1.indexOf(undefined));
+const caseOneArr2 = caseOneArr1.with(2);
+outputs.push(caseOneArr2.indexOf(undefined));
+
+// testCase2: mixed-type array
+const caseTwoArray1 = [1, "two", 3, "four"];
+const caseTwoArray2 = caseTwoArray1.with(2, "three");
+outputs.push(caseTwoArray2);
+
+// testCase3: replace undefined or null
+const caseThreeArray1 = [undefined, null, 3, 4];
+const caseThreeArray2 = caseThreeArray1.with(0, 1);
+const caseThreeArray3 = caseThreeArray1.with(1, "two");
+outputs.push(caseThreeArray2);
+outputs.push(caseThreeArray3);
+
+// testCase4: replace by boolean, object or function
+const caseFourArray1 = [1, "two", 3, "four"];
+const caseFourArray2 = caseFourArray1.with(0, false);
+const caseFourArray3 = caseFourArray1.with(1, { key: "value" });
+const caseFourArray4 = caseFourArray1.with(2, () => "world");
+outputs.push(caseFourArray2);
+outputs.push(caseFourArray3);
+outputs.push(caseFourArray4);
+
+// testCase5: deal with sparse array
+const caseFiveArray1 = [1, , 3, , 5];
+const caseFiveArray2 = caseFiveArray1.with(1, "two");
+outputs.push(caseFiveArray2);
+
+// testCase6: deal with indices that are negative or out of bounds
+const caseSixArray1 = [1, 2, 3, 4];
+const caseSixArray2 = caseSixArray1.with(-1, 2);
+outputs.push(caseSixArray2);
+try {
+    print(caseSixArray1.with(-6, 2));
+} catch (error) {
+    print(error);
+}
+
+print(outputs.map(out => JSON.stringify(out)).join('\n'));

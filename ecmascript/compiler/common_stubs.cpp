@@ -15,26 +15,20 @@
 
 #include "ecmascript/compiler/common_stubs.h"
 
-#include "ecmascript/base/number_helper.h"
+#include "ecmascript/compiler/barrier_stub_builder.h"
 #include "ecmascript/compiler/access_object_stub_builder.h"
 #include "ecmascript/compiler/builtins/builtins_array_stub_builder.h"
-#include "ecmascript/compiler/builtins/builtins_string_stub_builder.h"
+#include "ecmascript/compiler/builtins/builtins_collection_iterator_stub_builder.h"
 #include "ecmascript/compiler/builtins/linked_hashtable_stub_builder.h"
-#include "ecmascript/compiler/circuit_builder.h"
-#include "ecmascript/compiler/codegen/llvm/llvm_ir_builder.h"
-#include "ecmascript/compiler/interpreter_stub.h"
+#include "ecmascript/compiler/call_stub_builder.h"
+#include "ecmascript/compiler/gate.h"
 #include "ecmascript/compiler/new_object_stub_builder.h"
 #include "ecmascript/compiler/operations_stub_builder.h"
-#include "ecmascript/compiler/stub_builder-inl.h"
-#include "ecmascript/compiler/variable_type.h"
-#include "ecmascript/js_array.h"
-#include "ecmascript/js_map.h"
-#include "ecmascript/js_map_iterator.h"
+#include "ecmascript/compiler/share_gate_meta_data.h"
 #include "ecmascript/js_set.h"
 #include "ecmascript/js_set_iterator.h"
 #include "ecmascript/linked_hash_table.h"
-#include "ecmascript/message_string.h"
-#include "ecmascript/tagged_hash_table.h"
+#include "ecmascript/runtime_call_id.h"
 
 namespace panda::ecmascript::kungfu {
 using namespace panda::ecmascript;
@@ -88,6 +82,54 @@ void DefinefuncStubBuilder::GenerateCircuit()
     }
     Bind(&exit);
     Return(*result);
+}
+
+void CallArg0StubStubBuilder::GenerateCircuit()
+{
+    CallCoStubBuilder callBuilder(this, EcmaOpcode::CALLARG0_IMM8);
+    Return(callBuilder.CallStubDispatch());
+}
+
+void CallArg1StubStubBuilder::GenerateCircuit()
+{
+    CallCoStubBuilder callBuilder(this, EcmaOpcode::CALLARG1_IMM8_V8);
+    Return(callBuilder.CallStubDispatch());
+}
+
+void CallArg2StubStubBuilder::GenerateCircuit()
+{
+    CallCoStubBuilder callBuilder(this, EcmaOpcode::CALLARGS2_IMM8_V8_V8);
+    Return(callBuilder.CallStubDispatch());
+}
+
+void CallArg3StubStubBuilder::GenerateCircuit()
+{
+    CallCoStubBuilder callBuilder(this, EcmaOpcode::CALLARGS3_IMM8_V8_V8_V8);
+    Return(callBuilder.CallStubDispatch());
+}
+
+void CallThis0StubStubBuilder::GenerateCircuit()
+{
+    CallCoStubBuilder callBuilder(this, EcmaOpcode::CALLTHIS0_IMM8_V8);
+    Return(callBuilder.CallStubDispatch());
+}
+
+void CallThis1StubStubBuilder::GenerateCircuit()
+{
+    CallCoStubBuilder callBuilder(this, EcmaOpcode::CALLTHIS1_IMM8_V8_V8);
+    Return(callBuilder.CallStubDispatch());
+}
+
+void CallThis2StubStubBuilder::GenerateCircuit()
+{
+    CallCoStubBuilder callBuilder(this, EcmaOpcode::CALLTHIS2_IMM8_V8_V8_V8);
+    Return(callBuilder.CallStubDispatch());
+}
+
+void CallThis3StubStubBuilder::GenerateCircuit()
+{
+    CallCoStubBuilder callBuilder(this, EcmaOpcode::CALLTHIS3_IMM8_V8_V8_V8_V8);
+    Return(callBuilder.CallStubDispatch());
 }
 
 void ConvertCharToInt32StubBuilder::GenerateCircuit()
@@ -278,6 +320,14 @@ void XorStubBuilder::GenerateCircuit()
     Return(operationBuilder.Xor(glue, x, y));
 }
 
+void IsInStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef prop = TaggedArgument(1); // 1: 2nd argument
+    GateRef obj = TaggedArgument(2);  // 2: 3rd argument
+    Return(IsIn(glue, prop, obj));
+}
+
 void InstanceofStubBuilder::GenerateCircuit()
 {
     GateRef glue = PtrArgument(0);
@@ -398,7 +448,7 @@ void CopyRestArgsStubBuilder::GenerateCircuit()
     arrayObj = newBuilder.NewJSArrayWithSize(intialHClass, *actualRestNum);
 
     GateRef args = GetArgumentsElements(glue, argvTaggedArray, *argv);
-    newBuilder.AssignRestArg(&arrayObj, &afterCreateArrayObj, args, startIdx, *actualRestNum, intialHClass);
+    newBuilder.AssignRestArg(&arrayObj, &afterCreateArrayObj, args, startIdx, *actualRestNum);
     Bind(&afterCreateArrayObj);
     Return(*arrayObj);
 }
@@ -472,6 +522,14 @@ void SetPropertyByIndexWithOwnStubBuilder::GenerateCircuit()
     Return(SetPropertyByIndex(glue, receiver, index, value, true));
 }
 
+void JSTaggedValueHasPropertyStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef obj = TaggedArgument(1);
+    GateRef key = TaggedArgument(2);      // 2 : 3rd para
+    Return(HasProperty(glue, obj, key));
+}
+
 void GetPropertyByNameStubBuilder::GenerateCircuit()
 {
     GateRef glue = PtrArgument(0);
@@ -506,6 +564,33 @@ void SetPropertyByNameStubBuilder::GenerateCircuit()
     StringIdInfo info(0, 0, StringIdInfo::Offset::INVALID, StringIdInfo::Length::INVALID);
     GateRef profileTypeInfo = UpdateProfileTypeInfo(glue, jsFunc);
     Return(builder.StoreObjByName(glue, receiver, id, info, value, profileTypeInfo, slotId, ProfileOperation()));
+}
+
+void GetPropertyByNameWithMegaStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef receiver = TaggedArgument(1);
+    GateRef megaStubCache = PtrArgument(3);
+    GateRef prop = TaggedArgument(4);
+    GateRef jsFunc = TaggedArgument(5); // 5 : 6th para
+    GateRef slotId = Int32Argument(6); // 6 : 7th para
+    AccessObjectStubBuilder builder(this, jsFunc);
+    Return(builder.LoadObjByNameWithMega(glue, receiver, megaStubCache, prop, jsFunc, slotId,
+                                         ProfileOperation()));
+}
+
+void SetPropertyByNameWithMegaStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef receiver = TaggedArgument(1);
+    GateRef value = TaggedPointerArgument(3); // 3 : 4th para
+    GateRef megaStubCache = PtrArgument(4); // 4 : 5th para
+    GateRef prop = TaggedArgument(5); // 5 : 6th para
+    GateRef jsFunc = TaggedArgument(6); // 6 : 7th para
+    GateRef slotId = Int32Argument(7); // 7 : 8th para
+    AccessObjectStubBuilder builder(this, jsFunc);
+    Return(builder.StoreObjByNameWithMega(glue, receiver, value, megaStubCache, prop, jsFunc, slotId,
+                                          ProfileOperation()));
 }
 
 void DeprecatedSetPropertyByNameStubBuilder::GenerateCircuit()
@@ -870,27 +955,7 @@ void SetNonSValueWithBarrierStubBuilder::GenerateCircuit()
     GateRef obj = TaggedArgument(1);
     GateRef offset = PtrArgument(2); // 2 : 3rd para
     GateRef value = TaggedArgument(3); // 3 : 4th para
-    SetValueWithBarrier(glue, obj, offset, value, false, MemoryAttribute::NON_SHARE);
-    Return();
-}
-
-void SetValueWithEdenBarrierStubBuilder::GenerateCircuit()
-{
-    GateRef glue = PtrArgument(0);
-    GateRef obj = TaggedArgument(1);
-    GateRef offset = PtrArgument(2); // 2 : 3rd para
-    GateRef value = TaggedArgument(3); // 3 : 4th para
-    SetValueWithBarrier(glue, obj, offset, value, true);
-    Return();
-}
-
-void SetNonSValueWithEdenBarrierStubBuilder::GenerateCircuit()
-{
-    GateRef glue = PtrArgument(0);
-    GateRef obj = TaggedArgument(1);
-    GateRef offset = PtrArgument(2); // 2 : 3rd para
-    GateRef value = TaggedArgument(3); // 3 : 4th para
-    SetValueWithBarrier(glue, obj, offset, value, true, MemoryAttribute::NON_SHARE);
+    SetValueWithBarrier(glue, obj, offset, value, MemoryAttribute::NON_SHARE);
     Return();
 }
 
@@ -900,7 +965,7 @@ void SetSValueWithBarrierStubBuilder::GenerateCircuit()
     GateRef obj = TaggedArgument(1);
     GateRef offset = PtrArgument(2); // 2 : 3rd para
     GateRef value = TaggedArgument(3); // 3 : 4th para
-    SetValueWithBarrier(glue, obj, offset, value, false, MemoryAttribute::SHARED);
+    SetValueWithBarrier(glue, obj, offset, value, MemoryAttribute::SHARED);
     Return();
 }
 
@@ -1138,7 +1203,7 @@ CREATE_ITERATOR_STUB_BUILDER(CreateJSMapIterator, Map, KEY_AND_VALUE)
 
 void StringIteratorNextStubBuilder::GenerateCircuit()
 {
-    auto env = GetEnvironment();                                                                                 \
+    auto env = GetEnvironment();
     Label exit(env);
     Label slowpath(env);
 
@@ -1156,6 +1221,69 @@ void StringIteratorNextStubBuilder::GenerateCircuit()
     }
     Bind(&exit);
     Return(*result);
+}
+
+void ArrayIteratorNextStubBuilder::GenerateCircuit()
+{
+    auto env = GetEnvironment();
+    Label exit(env);
+    Label slowpath(env);
+
+    GateRef glue = PtrArgument(0);
+    GateRef obj = TaggedArgument(1);
+
+    DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
+
+    BuiltinsArrayStubBuilder builder(this);
+    builder.ArrayIteratorNext(glue, obj, Gate::InvalidGateRef, &result, &exit, &slowpath);
+    Bind(&slowpath);
+    {
+        result = CallRuntime(glue, RTSTUB_ID(ArrayIteratorNext), { obj });
+        Jump(&exit);
+    }
+    Bind(&exit);
+    Return(*result);
+}
+
+void MapIteratorNextStubBuilder::GenerateCircuit()
+{
+    auto env = GetEnvironment();
+    Label exit(env);
+
+    GateRef glue = PtrArgument(0);
+    GateRef obj = TaggedArgument(1);
+
+    DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
+
+    BuiltinsCollectionIteratorStubBuilder<JSMapIterator> builder(this, glue, obj, Gate::InvalidGateRef);
+    builder.Next(&result, &exit);
+    Bind(&exit);
+    Return(*result);
+}
+
+void SetIteratorNextStubBuilder::GenerateCircuit()
+{
+    auto env = GetEnvironment();
+    Label exit(env);
+
+    GateRef glue = PtrArgument(0);
+    GateRef obj = TaggedArgument(1);
+
+    DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
+
+    BuiltinsCollectionIteratorStubBuilder<JSSetIterator> builder(this, glue, obj, Gate::InvalidGateRef);
+    builder.Next(&result, &exit);
+    Bind(&exit);
+    Return(*result);
+}
+
+void GetIteratorStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef obj = TaggedArgument(1);
+
+    GateRef res = GetIterator(glue, obj, ProfileOperation());
+    Return(res);
 }
 
 void JSMapGetStubBuilder::GenerateCircuit()
@@ -1288,7 +1416,6 @@ void GrowElementsCapacityStubBuilder::GenerateCircuit()
     Return(*result);
 }
 
-
 void SameValueStubBuilder::GenerateCircuit()
 {
     GateRef glue = PtrArgument(0);
@@ -1296,6 +1423,62 @@ void SameValueStubBuilder::GenerateCircuit()
     GateRef right = TaggedArgument(2U);
     GateRef result = SameValue(glue, left, right);
     Return(result);
+}
+
+void BatchBarrierStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef dstObj = PtrArgument(1);
+    GateRef dstAddr = PtrArgument(2);
+    GateRef taggedValueCount = TaggedArgument(3);
+    BarrierStubBuilder barrierBuilder(this, glue, dstObj, dstAddr, taggedValueCount);
+    barrierBuilder.DoBatchBarrier();
+    Return();
+}
+
+void ReverseBarrierStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef dstObj = PtrArgument(1);
+    GateRef dstAddr = PtrArgument(2);
+    GateRef taggedValueCount = TaggedArgument(3);
+    BarrierStubBuilder barrierBuilder(this, glue, dstObj, dstAddr, taggedValueCount);
+    barrierBuilder.DoReverseBarrier();
+    Return();
+}
+
+void MoveBarrierInRegionStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef dstObj = PtrArgument(1);
+    GateRef dstAddr = PtrArgument(2);
+    GateRef count = Int32Argument(3);
+    GateRef srcAddr = PtrArgument(4);
+    BarrierStubBuilder barrierBuilder(this, glue, dstObj, dstAddr, count);
+    barrierBuilder.DoMoveBarrierInRegion(srcAddr);
+    Return();
+}
+
+void MoveBarrierCrossRegionStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef dstObj = PtrArgument(1);
+    GateRef dstAddr = PtrArgument(2);
+    GateRef count = Int32Argument(3);
+    GateRef srcAddr = PtrArgument(4);
+    GateRef srcObj = PtrArgument(5);
+    BarrierStubBuilder barrierBuilder(this, glue, dstObj, dstAddr, count);
+    barrierBuilder.DoMoveBarrierCrossRegion(srcAddr, srcObj);
+    Return();
+}
+
+void FindEntryFromNameDictionaryStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef taggedArray = PtrArgument(1);
+    GateRef key = PtrArgument(2);
+    GateRef entry = FindEntryFromNameDictionary(glue, taggedArray, key);
+    Return(entry);
 }
 
 CallSignature CommonStubCSigns::callSigns_[CommonStubCSigns::NUM_OF_STUBS];

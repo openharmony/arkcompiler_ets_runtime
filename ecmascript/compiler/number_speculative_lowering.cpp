@@ -13,18 +13,7 @@
  * limitations under the License.
  */
 
-#include "ecmascript/compiler/share_gate_meta_data.h"
-#include "ecmascript/compiler/number_gate_info.h"
-#include "ecmascript/compiler/type.h"
-#include "ecmascript/compiler/typed_hcr_lowering.h"
-#include "ecmascript/compiler/builtins_lowering.h"
-#include "ecmascript/compiler/new_object_stub_builder.h"
 #include "ecmascript/compiler/number_speculative_lowering.h"
-#include "ecmascript/deoptimizer/deoptimizer.h"
-#include "ecmascript/js_arraybuffer.h"
-#include "ecmascript/js_locale.h"
-#include "ecmascript/js_native_pointer.h"
-#include "ecmascript/js_object.h"
 
 namespace panda::ecmascript::kungfu {
 
@@ -41,6 +30,7 @@ void NumberSpeculativeLowering::Run()
             }
             default: {
                 VisitGate(gate);
+                break;
             }
         }
     }
@@ -469,8 +459,8 @@ void NumberSpeculativeLowering::VisitBooleanJump(GateRef gate)
 
 void NumberSpeculativeLowering::VisitUndefinedStrictEqOrUndefinedStrictNotEq(GateRef gate)
 {
-    ASSERT(acc_.GetTypedBinaryOp(gate) == TypedBinOp::TYPED_STRICTEQ ||
-           acc_.GetTypedBinaryOp(gate) == TypedBinOp::TYPED_STRICTNOTEQ);
+    ASSERT((acc_.GetTypedBinaryOp(gate) == TypedBinOp::TYPED_STRICTEQ) ||
+           (acc_.GetTypedBinaryOp(gate) == TypedBinOp::TYPED_STRICTNOTEQ));
     GateRef left = acc_.GetValueIn(gate, 0);
     GateRef right = acc_.GetValueIn(gate, 1);
     ASSERT(acc_.IsUndefinedOrNullOrHole(left) || acc_.IsUndefinedOrNullOrHole(right));
@@ -488,8 +478,8 @@ void NumberSpeculativeLowering::VisitUndefinedStrictEqOrUndefinedStrictNotEq(Gat
 
 void NumberSpeculativeLowering::VisitUndefinedEqOrUndefinedNotEq(GateRef gate)
 {
-    ASSERT(acc_.GetTypedBinaryOp(gate) == TypedBinOp::TYPED_EQ ||
-           acc_.GetTypedBinaryOp(gate) == TypedBinOp::TYPED_NOTEQ);
+    ASSERT((acc_.GetTypedBinaryOp(gate) == TypedBinOp::TYPED_EQ) ||
+           (acc_.GetTypedBinaryOp(gate) == TypedBinOp::TYPED_NOTEQ));
     GateRef left = acc_.GetValueIn(gate, 0);
     GateRef right = acc_.GetValueIn(gate, 1);
     ASSERT(acc_.IsUndefinedOrNullOrHole(left) || acc_.IsUndefinedOrNullOrHole(right));
@@ -615,7 +605,7 @@ void NumberSpeculativeLowering::VisitLoadElement(GateRef gate)
 void NumberSpeculativeLowering::VisitLoadProperty(GateRef gate)
 {
     TypeInfo output = GetOutputType(gate);
-    if (output == TypeInfo::INT32 || output == TypeInfo::FLOAT64) {
+    if ((output == TypeInfo::INT32) || (output == TypeInfo::FLOAT64)) {
         Environment env(gate, circuit_, &builder_);
         ASSERT(acc_.GetNumValueIn(gate) == 2);  // 2: receiver, plr
         GateRef receiver = acc_.GetValueIn(gate, 0);

@@ -16,6 +16,7 @@
 #include "ecmascript/mem/heap-inl.h"
 #include "ecmascript/mem/jit_fort.h"
 #include "ecmascript/jit/jit.h"
+#include "ecmascript/platform/os.h"
 #if defined(JIT_ENABLE_CODE_SIGN) && !defined(JIT_FORT_DISABLE)
 #include <sys/ioctl.h>
 #include <sys/prctl.h>
@@ -44,6 +45,7 @@ JitFort::JitFort()
     memDescPool_ = new MemDescPool(jitFortBegin_, jitFortSize_);
     allocator_ = new FreeListAllocator<MemDesc>(nullptr, memDescPool_, this);
     InitRegions();
+    PrctlSetVMA(jitFortMem_.GetMem(), jitFortSize_, "ArkTS Code Jit");
     LOG_JIT(DEBUG) << "JitFort Begin " << (void *)JitFortBegin() << " end " << (void *)(JitFortBegin() + JitFortSize());
 }
 

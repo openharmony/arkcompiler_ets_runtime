@@ -21,13 +21,13 @@
  */
 // test spread Array
 var arr1 = [...Array(16).keys()];
-print(arr1.length);
-print(arr1);
+assert_equal(arr1.length,16);
+assert_equal(arr1,[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
 
 var arr2 = [1, 2, 4, 6, 7, 8, 9, 54];
 var arr3 = [...arr2];
-print(arr3.length);
-print(arr3);
+assert_equal(arr3.length,8);
+assert_equal(arr3,[1, 2, 4, 6, 7, 8, 9, 54]);
 
 // test spread Set
 const set1 = new Set();
@@ -37,12 +37,12 @@ set1.add(13);
 set1.add(23);
 
 var arr4 = [...set1.keys()];
-print(arr4.length);
-print(arr4);
+assert_equal(arr4.length,3);
+assert_equal(arr4,[42, 13, 23]);
 
 var arr5 = [...set1];
-print(arr5.length);
-print(arr5);
+assert_equal(arr5.length,3);
+assert_equal(arr5,[42, 13, 23]);
 
 // test spread map
 const map1 = new Map();
@@ -51,12 +51,12 @@ map1.set('b', 2);
 map1.set('c', 3);
 
 var arr6 = [...map1.keys()];
-print(arr6.length);
-print(arr6);
+assert_equal(arr6.length,3);
+assert_equal(arr6,["a", "b", "c"]);
 
 var arr7 = [...map1.values()];
-print(arr7.length);
-print(arr7);
+assert_equal(arr7.length,3);
+assert_equal(arr7,[1, 2, 3]);
 
 // test change Symbol.iterator
 let iterFunc = function *() {
@@ -64,29 +64,35 @@ let iterFunc = function *() {
     yield 2;
     yield 3;
 }
-print(...map1);
+let expandedMap = [...map1];
+assert_equal(JSON.stringify(expandedMap),JSON.stringify([["a", 1], ["b", 2], ["c", 3]]));
 Map.prototype[Symbol.iterator] = iterFunc;
-print(...map1);
+let objkey1 = [...map1];
+assert_equal(objkey1,[1, 2, 3]);
 
 let set  = new Set()
 set.add('a');
 set.add('b');
 set.add('c');
-print(...set);
+let objkey2 = [...set];
+assert_equal(objkey2,["a", "b", "c"]);
 Set.prototype[Symbol.iterator] = iterFunc;
-print(...set);
+let objkey3 = [...set];
+assert_equal(objkey3,[1, 2, 3]);
 
 let uint8 = new Uint8Array(2);
-print(...uint8);
+let objkey4 = [...uint8];
+assert_equal(objkey4,[0, 0]);
 Uint8Array.prototype[Symbol.iterator] = iterFunc;
-print(...uint8);
+let objkey5 = [...uint8];
+assert_equal(objkey5,[1, 2, 3]);
 
 let arr8 = ['foo'];
 let warn1 = print.bind(print);
 function show1(message, ...args) {
     return warn1(message, ...args);
 }
-show1(...arr8);
+assert_equal(...arr8,'foo');
 
 let arr9 = ['foo'];
 let warn2 = print.bind(print);
@@ -99,18 +105,21 @@ const handler = {
     }
 };
 let proxy = new Proxy(show2, handler);
-proxy(...arr9);
+assert_equal(...arr9,"foo");
 
 let fruits1 = ['Apple']
 let fruits2 = ['Apple', 'Banana']
-print(...fruits2)
+let objkey6 = [...fruits2];
+assert_equal(objkey6,["Apple", "Banana"]);
 Array.prototype[Symbol.iterator] = function* () {
     yield 1;
     yield 2;
     yield 3;
 }
-print(...fruits1)
-print(...fruits2)
+let objkey7 = [...fruits1];
+assert_equal(objkey7,['Apple']);
+let objkey8 = [...fruits2];
+assert_equal(objkey8,['Apple', 'Banana']);
 
 // test spread array when encounter situations like [...arr, elem1, elem2] with arr be StableJSArray 
 function appendChild(newNode) { 
@@ -125,9 +134,12 @@ for (let i = 0; i < 5; ++i) {
     el.appendChild(text); 
     app.appendChild(el);
 }
+let objkey9 = [];
 for (let i = 0; i < 5; ++i) { 
-    print(app.childNodes[i].childNodes[0].childNodes[0].content); 
+    objkey9.push(app.childNodes[i].childNodes[0].childNodes[0].content); 
 }
+assert_equal(objkey9,[0, 1, 2, 3, 4]);
+
 let result = []
 try {
     class C29 {};
@@ -136,8 +148,10 @@ try {
 } catch (err) {
     result.push(err.name == "TypeError");
 }
-print(result)
+assert_equal(result,[true]);
 
 let arr=[];
-print([,...arr].length)
-print([,...''].length)
+assert_equal([,...arr].length,1);
+assert_equal([,...''].length,1);
+
+test_end();

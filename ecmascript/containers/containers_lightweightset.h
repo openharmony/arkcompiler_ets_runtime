@@ -19,6 +19,28 @@
 #include "ecmascript/base/builtins_base.h"
 #include "ecmascript/ecma_runtime_call_info.h"
 
+// List of functions in LightWeightSet.prototype, excluding the constructor and '@@' properties.
+// V(name, func, length, stubIndex)
+// where ContainersLightWeightSet::func refers to the native implementation of LightWeightSet.prototype[name].
+#define CONTAINER_LIGHTWEIGHTSET_PROTOTYPE_FUNCTIONS(V)                                             \
+    V("add",                    Add,                    1,          INVALID)                        \
+    V("addAll",                 AddAll,                 1,          INVALID)                        \
+    V("isEmpty",                IsEmpty,                0,          INVALID)                        \
+    V("getValueAt",             GetValueAt,             1,          INVALID)                        \
+    V("hasAll",                 HasAll,                 1,          INVALID)                        \
+    V("has",                    Has,                    1,          INVALID)                        \
+    V("equal",                  Equal,                  1,          INVALID)                        \
+    V("increaseCapacityTo",     IncreaseCapacityTo,     1,          INVALID)                        \
+    V("forEach",                ForEach,                2,          LightWeightSetForEach)          \
+    V("getIndexOf",             GetIndexOf,             1,          INVALID)                        \
+    V("remove",                 Remove,                 1,          INVALID)                        \
+    V("removeAt",               RemoveAt,               1,          INVALID)                        \
+    V("clear",                  Clear,                  0,          INVALID)                        \
+    V("toString",               ToString,               0,          INVALID)                        \
+    V("toArray",                ToArray,                0,          INVALID)                        \
+    V("values",                 Values,                 0,          INVALID)                        \
+    V("entries",                Entries,                0,          INVALID)
+
 namespace panda::ecmascript::containers {
 class ContainersLightWeightSet : public base::BuiltinsBase {
 public:
@@ -43,6 +65,21 @@ public:
     static JSTaggedValue GetIteratorObj(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue Values(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue Entries(EcmaRuntimeCallInfo *argv);
+
+    // Excluding the constructor and '@@' internal properties.
+    static Span<const base::BuiltinFunctionEntry> GetLightWeightSetPrototypeFunctions()
+    {
+        return Span<const base::BuiltinFunctionEntry>(LIGHTWEIGHTSET_PROTOTYPE_FUNCTIONS);
+    }
+
+private:
+#define CONTAINER_LIGHTWEIGHTSET_FUNCTION_ENTRY(name, method, length, id) \
+    base::BuiltinFunctionEntry::Create(name, ContainersLightWeightSet::method, length, kungfu::BuiltinsStubCSigns::id),
+
+    static constexpr std::array LIGHTWEIGHTSET_PROTOTYPE_FUNCTIONS = {
+        CONTAINER_LIGHTWEIGHTSET_PROTOTYPE_FUNCTIONS(CONTAINER_LIGHTWEIGHTSET_FUNCTION_ENTRY)
+    };
+#undef CONTAINER_LIGHTWEIGHTSET_FUNCTION_ENTRY
 };
 }  // namespace panda::ecmascript::containers
 #endif  // ECMASCRIPT_CONTAINERS_CONTAINERS_LIGHT_WEIGHT_SET_H

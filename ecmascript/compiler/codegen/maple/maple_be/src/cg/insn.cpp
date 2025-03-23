@@ -14,7 +14,6 @@
  */
 
 #include "insn.h"
-#include "isa.h"
 #include "cg.h"
 namespace maplebe {
 bool Insn::IsMachineInstruction() const

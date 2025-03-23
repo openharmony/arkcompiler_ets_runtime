@@ -16,15 +16,6 @@
 #include "cl_option.h"
 #include "cl_parser.h"
 
-#include "mpl_logging.h"
-
-#include <cstddef>
-#include <deque>
-#include <iostream>
-#include <string>
-#include <string_view>
-#include <set>
-
 using namespace maplecl;
 
 CommandLine &CommandLine::GetCommandLine()

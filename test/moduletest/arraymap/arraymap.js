@@ -63,3 +63,26 @@ print(result == instance);
   print(v0)
 }
 
+{
+  const arr1 = [1, 2, 3, '4', 5];
+  const result1 = arr1.map(item => typeof item === 'string' ? parseInt(item) : item * 2);
+  print(result1); // [2, 4, 6, 4, 10]
+
+  const arr2 = [1, 2, 3];
+  const result2 = arr2.map(num => Array(num).fill(num));
+  print(result2); // [[1], [2, 2], [3, 3, 3]]
+
+  const arr3 = [1, 2, 3, 4];
+  const result3 = arr3.map(num => {
+    if (num === 3) return undefined;
+    return num;
+  }).filter(item => item !== undefined);
+  print(result3); // [1, 2, 4]
+
+  const arr4 = [1, 2, 3, 4, 5];
+  const result4 = arr4.map((num, index, array) => {
+    if (index === 2) array.push(6);
+    return num * 2;
+  });
+  print(result4); // [2, 4, 6, 8, 10]
+}

@@ -79,7 +79,7 @@ std::pair<JSTaggedValue, bool> ObjectFastOperator::HasOwnProperty(JSThread *thre
             if (ElementAccessor::GetElementsLength(receiverObj) <= index) {
                 return std::make_pair(JSTaggedValue::Hole(), true);
             }
-            JSTaggedValue value = ElementAccessor::Get(receiverObj, index);
+            JSTaggedValue value = ElementAccessor::Get(thread, receiverObj, index);
             return std::make_pair(value, true);
         } else {
             NumberDictionary *dictionary =
@@ -138,7 +138,7 @@ JSTaggedValue ObjectFastOperator::TryFastHasProperty(JSThread *thread, JSTaggedV
         JSHandle<JSObject> receiverObj(thread, receiver);
         if (!ElementAccessor::IsDictionaryMode(receiverObj)) {
             if (index < ElementAccessor::GetElementsLength(receiverObj)) {
-                JSTaggedValue value = ElementAccessor::Get(receiverObj, index);
+                JSTaggedValue value = ElementAccessor::Get(thread, receiverObj, index);
                 return value.IsHole() ? JSTaggedValue::Hole() : JSTaggedValue::True();
             }
         }
@@ -210,7 +210,7 @@ JSTaggedValue ObjectFastOperator::TryFastGetPropertyByIndex(JSThread *thread, JS
     if (!hclass->IsDictionaryElement()) {
         ASSERT(!ElementAccessor::IsDictionaryMode(currentHolder));
         if (index < ElementAccessor::GetElementsLength(currentHolder)) {
-            JSTaggedValue value = ElementAccessor::Get(currentHolder, index);
+            JSTaggedValue value = ElementAccessor::Get(thread, currentHolder, index);
             if (!value.IsHole()) {
                 return value;
             }
@@ -342,15 +342,16 @@ JSTaggedValue ObjectFastOperator::GetPropertyByName(JSThread *thread, JSTaggedVa
 }
 
 template<ObjectFastOperator::Status status>
-JSTaggedValue ObjectFastOperator::TrySetPropertyByNameThroughCacheAtLocal(JSThread *thread, JSTaggedValue receiver,
-                                                                          JSTaggedValue key, JSTaggedValue value)
+JSTaggedValue ObjectFastOperator::TrySetPropertyByNameThroughCacheAtLocal(JSThread *thread,
+    JSHandle<JSTaggedValue> receiver, JSHandle<JSTaggedValue> key, JSHandle<JSTaggedValue> value)
 {
     bool isTagged = true;
-    JSTaggedValue originValue = value;
-    auto *hclass = receiver.GetTaggedObject()->GetClass();
+    JSTaggedValue setValue = value.GetTaggedValue();
+    JSTaggedValue receiverVal = receiver.GetTaggedValue();
+    JSHClass *hclass = receiverVal.GetTaggedObject()->GetClass();
     if (LIKELY(!hclass->IsDictionaryMode())) {
-        ASSERT(!TaggedArray::Cast(JSObject::Cast(receiver)->GetProperties().GetTaggedObject())->IsDictionaryMode());
-        int entry = JSHClass::FindPropertyEntry(thread, hclass, key);
+        ASSERT(!TaggedArray::Cast(JSObject::Cast(receiverVal)->GetProperties().GetTaggedObject())->IsDictionaryMode());
+        int entry = JSHClass::FindPropertyEntry(thread, hclass, key.GetTaggedValue());
         if (entry != -1) {
             LayoutInfo *layoutInfo = LayoutInfo::Cast(hclass->GetLayout().GetTaggedObject());
             PropertyAttributes attr(layoutInfo->GetAttr(entry));
@@ -359,9 +360,9 @@ JSTaggedValue ObjectFastOperator::TrySetPropertyByNameThroughCacheAtLocal(JSThre
                 if (DefineSemantics(status)) {
                     return JSTaggedValue::Hole();
                 }
-                auto accessor = JSObject::Cast(receiver)->GetProperty(hclass, attr);
-                if (ShouldCallSetter(receiver, receiver, accessor, attr)) {
-                    return CallSetter(thread, receiver, value, accessor);
+                auto accessor = JSObject::Cast(receiverVal)->GetProperty(hclass, attr);
+                if (ShouldCallSetter(receiverVal, receiverVal, accessor, attr)) {
+                    return CallSetter(thread, receiverVal, value.GetTaggedValue(), accessor);
                 }
             }
             if (UNLIKELY(!attr.IsWritable())) {
@@ -372,32 +373,37 @@ JSTaggedValue ObjectFastOperator::TrySetPropertyByNameThroughCacheAtLocal(JSThre
                 THROW_TYPE_ERROR_AND_RETURN(thread, GET_MESSAGE_STRING(SetReadOnlyProperty),
                                             JSTaggedValue::Exception());
             }
-            if (hclass->IsAOT()) {
-                auto attrVal = JSObject::Cast(receiver)->GetProperty(hclass, attr);
-                if (attrVal.IsHole()) {
-                    return JSTaggedValue::Hole();
-                }
-                JSHandle<JSObject> objHandle(thread, receiver);
-                JSHandle<JSTaggedValue> valueHandle(thread, value);
-                ElementsKind oldKind = objHandle->GetJSHClass()->GetElementsKind();
-                auto actualValue = JSHClass::ConvertOrTransitionWithRep(thread, objHandle,
-                    JSHandle<JSTaggedValue>(thread, key), valueHandle, attr);
-                JSObject::TryMigrateToGenericKindForJSObject(thread, objHandle, oldKind);
-                receiver = objHandle.GetTaggedValue();
-                originValue = valueHandle.GetTaggedValue();
-                value = actualValue.value;
-                isTagged = actualValue.isTagged;
-            }
-            if (receiver.IsJSShared()) {
-                if (!ClassHelper::MatchFieldType(attr.GetSharedFieldType(), originValue)) {
+            if (receiverVal.IsJSShared()) {
+                SharedFieldType type = attr.GetSharedFieldType();
+                if (!ClassHelper::MatchFieldType(type, value.GetTaggedValue())) {
                     THROW_TYPE_ERROR_AND_RETURN((thread), GET_MESSAGE_STRING(SetTypeMismatchedSharedProperty),
                                                 JSTaggedValue::Exception());
                 }
+                if (UNLIKELY(value->IsTreeString())) {
+                    value = JSTaggedValue::PublishSharedValue(thread, value);   // may gc
+                    setValue = value.GetTaggedValue();
+                    receiverVal = receiver.GetTaggedValue();
+                    hclass = receiverVal.GetTaggedObject()->GetClass();
+                }
+            }
+            if (hclass->IsAOT()) {
+                auto attrVal = JSObject::Cast(receiverVal)->GetProperty(hclass, attr);
+                if (attrVal.IsHole()) {
+                    return JSTaggedValue::Hole();
+                }
+                JSHandle<JSObject> objHandle(receiver);
+                ElementsKind oldKind = hclass->GetElementsKind();
+                auto actualValue = JSHClass::ConvertOrTransitionWithRep(thread, objHandle,
+                    key, value, attr);
+                JSObject::TryMigrateToGenericKindForJSObject(thread, objHandle, oldKind);
+                receiverVal = receiver.GetTaggedValue();
+                setValue = actualValue.value;
+                isTagged = actualValue.isTagged;
             }
             if (isTagged) {
-                JSObject::Cast(receiver)->SetProperty<true>(thread, hclass, attr, value);
+                JSObject::Cast(receiverVal)->SetProperty<true>(thread, hclass, attr, setValue);
             } else {
-                JSObject::Cast(receiver)->SetProperty<false>(thread, hclass, attr, value);
+                JSObject::Cast(receiverVal)->SetProperty<false>(thread, hclass, attr, setValue);
             }
             return JSTaggedValue::Undefined();
         }
@@ -471,10 +477,22 @@ JSTaggedValue ObjectFastOperator::SetPropertyByName(JSThread *thread, JSTaggedVa
                 if (UNLIKELY(holder != receiver)) {
                     break;
                 }
-                if (holder.IsJSShared() && (sCheckMode == SCheckMode::CHECK)) {
-                    if (!ClassHelper::MatchFieldType(attr.GetSharedFieldType(), value)) {
+                if (holder.IsJSShared()) {
+                    SharedFieldType type = attr.GetSharedFieldType();
+                    if (sCheckMode == SCheckMode::CHECK && !ClassHelper::MatchFieldType(type, value)) {
+                        [[maybe_unused]] EcmaHandleScope handleScope(thread);
                         THROW_TYPE_ERROR_AND_RETURN((thread), GET_MESSAGE_STRING(SetTypeMismatchedSharedProperty),
                                                     JSTaggedValue::Exception());
+                    }
+                    if (UNLIKELY(value.IsTreeString())) {
+                        [[maybe_unused]] EcmaHandleScope handleScope(thread);
+                        JSHandle<JSObject> objHandle(thread, receiver);
+                        JSHandle<JSTaggedValue> keyHandle(thread, key);
+                        JSHandle<JSTaggedValue> valueHandle(thread, value);
+                        value = JSTaggedValue::PublishSharedValue(thread, valueHandle).GetTaggedValue();
+                        receiver = objHandle.GetTaggedValue();
+                        hclass = objHandle->GetJSHClass();  // This may not need since hclass is non-movable
+                        key = keyHandle.GetTaggedValue();
                     }
                 }
                 JSHandle<JSObject> objHandle(thread, receiver);
@@ -518,10 +536,19 @@ JSTaggedValue ObjectFastOperator::SetPropertyByName(JSThread *thread, JSTaggedVa
                 if (UNLIKELY(holder != receiver)) {
                     break;
                 }
-                if ((sCheckMode == SCheckMode::CHECK) && holder.IsJSShared()) {
-                    if (!ClassHelper::MatchFieldType(attr.GetDictSharedFieldType(), value)) {
+                if (holder.IsJSShared()) {
+                    SharedFieldType type = attr.GetDictSharedFieldType();
+                    if (sCheckMode == SCheckMode::CHECK && !ClassHelper::MatchFieldType(type, value)) {
+                        [[maybe_unused]] EcmaHandleScope handleScope(thread);
                         THROW_TYPE_ERROR_AND_RETURN((thread), GET_MESSAGE_STRING(SetTypeMismatchedSharedProperty),
                                                     JSTaggedValue::Exception());
+                    }
+                    if (UNLIKELY(value.IsTreeString())) {
+                        [[maybe_unused]] EcmaHandleScope handleScope(thread);
+                        JSHandle<NameDictionary> dictHandle(thread, dict);
+                        JSHandle<JSTaggedValue> valueHandle(thread, value);
+                        value = JSTaggedValue::PublishSharedValue(thread, valueHandle).GetTaggedValue();
+                        dict = *dictHandle;
                     }
                 }
                 dict->UpdateValue(thread, entry, value);
@@ -600,7 +627,7 @@ JSTaggedValue ObjectFastOperator::GetPropertyByIndex(JSThread *thread, JSTaggedV
         if (!hclass->IsDictionaryElement()) {
             ASSERT(!ElementAccessor::IsDictionaryMode(currentHolder));
             if (index < ElementAccessor::GetElementsLength(currentHolder)) {
-                JSTaggedValue value = ElementAccessor::Get(currentHolder, index);
+                JSTaggedValue value = ElementAccessor::Get(thread, currentHolder, index);
                 if (!value.IsHole()) {
                     return value;
                 }
@@ -662,7 +689,7 @@ JSTaggedValue ObjectFastOperator::SetPropertyByIndex(JSThread *thread, JSTaggedV
                 break;
             }
             if (index < elements->GetLength()) {
-                JSTaggedValue oldValue = ElementAccessor::Get(arrayHandler, index);
+                JSTaggedValue oldValue = ElementAccessor::Get(thread, arrayHandler, index);
                 if (!oldValue.IsHole()) {
                     if (holder.IsJSCOWArray()) {
                         [[maybe_unused]] EcmaHandleScope handleScope(thread);
@@ -684,7 +711,7 @@ JSTaggedValue ObjectFastOperator::SetPropertyByIndex(JSThread *thread, JSTaggedV
             int entry = dict->FindEntry(JSTaggedValue(static_cast<int>(index)));
             if (entry != -1) {
                 auto attr = dict->GetAttributes(entry);
-                if (UNLIKELY(!attr.IsWritable() || !attr.IsConfigurable())) {
+                if (UNLIKELY((!attr.IsWritable() || !attr.IsConfigurable()) && !hclass->IsJSShared())) {
                     return JSTaggedValue::Hole();
                 }
                 if (UNLIKELY(holder != receiver)) {
@@ -880,10 +907,6 @@ PropertyAttributes ObjectFastOperator::AddPropertyByName(JSThread *thread, JSHan
 {
     INTERPRETER_TRACE(thread, AddPropertyByName);
 
-    if ((objHandle->IsJSArray() || objHandle->IsTypedArray()) &&
-        keyHandle.GetTaggedValue() == thread->GlobalConstants()->GetConstructorString()) {
-        objHandle->GetJSHClass()->SetHasConstructor(true);
-    }
     int32_t nextInlinedPropsIndex = objHandle->GetJSHClass()->GetNextInlinedPropsIndex();
     if (nextInlinedPropsIndex >= 0) {
         attr.SetOffset(nextInlinedPropsIndex);
@@ -1235,28 +1258,6 @@ bool ObjectFastOperator::GetNumFromString(const char *str, int len, int *index, 
     *num = value;
     *index = indexStr;
     return true;
-}
-
-JSTaggedValue ObjectFastOperator::FastGetPropertyByPorpsIndex(JSThread *thread,
-                                                              JSTaggedValue receiver, uint32_t index)
-{
-    JSTaggedValue value = JSTaggedValue::Hole();
-    JSObject *obj = JSObject::Cast(receiver);
-    TaggedArray *properties = TaggedArray::Cast(obj->GetProperties().GetTaggedObject());
-    if (!properties->IsDictionaryMode()) {
-        JSHClass *jsHclass = obj->GetJSHClass();
-        LayoutInfo *layoutInfo = LayoutInfo::Cast(jsHclass->GetLayout().GetTaggedObject());
-        PropertyAttributes attr = layoutInfo->GetAttr(index);
-        value = obj->GetProperty(jsHclass, attr);
-    } else {
-        NameDictionary *dict = NameDictionary::Cast(properties);
-        value = dict->GetValue(index);
-    }
-    if (UNLIKELY(value.IsAccessor())) {
-        return CallGetter(thread, JSTaggedValue(obj), JSTaggedValue(obj), value);
-    }
-    ASSERT(!value.IsAccessor());
-    return value;
 }
 }
 #endif  // ECMASCRIPT_OBJECT_FAST_OPERATOR_INL_H

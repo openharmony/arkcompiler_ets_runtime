@@ -23,9 +23,10 @@ function foo(a) {
     var b = 2;
     var c = 3
     function bar() {
-        print(a, b, c)
     }
     bar()
 }
 
 foo(1)
+
+test_end();

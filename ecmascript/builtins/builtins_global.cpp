@@ -15,10 +15,6 @@
 
 #include "ecmascript/builtins/builtins_global.h"
 
-#include <random>
-#include <sstream>
-#include <string>
-#include <vector>
 
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/js_object-inl.h"
@@ -822,6 +818,18 @@ JSTaggedValue BuiltinsGlobal::PrintOptStat(EcmaRuntimeCallInfo *msg)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     // start vm runtime stat statistic
     thread->GetCurrentEcmaContext()->PrintOptStat();
+    return JSTaggedValue::Undefined();
+}
+#endif
+
+#if ECMASCRIPT_ENABLE_MEGA_PROFILER
+JSTaggedValue BuiltinsGlobal::PrintMegaICStat(EcmaRuntimeCallInfo *msg)
+{
+    JSThread *thread = msg->GetThread();
+    BUILTINS_API_TRACE(thread, Global, PrintMegaICStat);
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+    // start vm runtime stat statistic
+    thread->GetCurrentEcmaContext()->PrintMegaICStat();
     return JSTaggedValue::Undefined();
 }
 #endif

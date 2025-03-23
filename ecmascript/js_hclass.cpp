@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 
-#include <algorithm>
 
 #include "ecmascript/ecma_context.h"
 #include "ecmascript/global_env_constants-inl.h"
@@ -147,6 +146,7 @@ void JSHClass::InitializeWithDefaultValue(const JSThread *thread, uint32_t size,
     SetProtoChangeMarker(thread, JSTaggedValue::Null());
     SetProtoChangeDetails(thread, JSTaggedValue::Null());
     SetEnumCache(thread, JSTaggedValue::Null());
+    SetConstructionCounter(0);
 }
 
 bool JSHClass::IsJSTypeShared(JSType type)
@@ -209,11 +209,11 @@ void JSHClass::Initialize(const JSThread *thread, uint32_t size, JSType type,
 }
 
 JSHandle<JSHClass> JSHClass::Clone(const JSThread *thread, const JSHandle<JSHClass> &jshclass,
-                                   bool withoutInlinedProperties, uint32_t incInlinedProperties)
+                                   bool withInlinedProperties, uint32_t inlinedProps)
 {
     JSType type = jshclass->GetObjectType();
     uint32_t size = IsJSTypeObject(type) ? jshclass->GetInlinedPropsStartSize() : jshclass->GetObjectSize();
-    uint32_t numInlinedProps = withoutInlinedProperties ? 0 : jshclass->GetInlinedProperties() + incInlinedProperties;
+    uint32_t numInlinedProps = withInlinedProperties ? inlinedProps : jshclass->GetInlinedProperties();
     JSHandle<JSHClass> newJsHClass;
     if (jshclass.GetTaggedValue().IsInSharedHeap()) {
         newJsHClass = thread->GetEcmaVM()->GetFactory()->NewSEcmaHClass(size, type, numInlinedProps);
@@ -234,6 +234,18 @@ JSHandle<JSHClass> JSHClass::Clone(const JSThread *thread, const JSHandle<JSHCla
     }
 
     return newJsHClass;
+}
+
+JSHandle<JSHClass> JSHClass::CloneAndIncInlinedProperties(const JSThread *thread, const JSHandle<JSHClass> &jshclass,
+                                                          uint32_t expectedOfProperties)
+{
+    uint32_t size = jshclass->IsJSObject() ?
+        jshclass->GetInlinedPropsStartSize() : jshclass->GetObjectSize();
+    ASSERT((size % JSTaggedValue::TaggedTypeSize()) == 0);
+    uint32_t maxFields = PropertyAttributes::MAX_FAST_PROPS_CAPACITY - size / JSTaggedValue::TaggedTypeSize();
+    expectedOfProperties = std::min(maxFields, expectedOfProperties);
+    uint32_t inlinedProp = std::max(expectedOfProperties, jshclass->GetInlinedProperties());
+    return JSHClass::Clone(thread, jshclass, true, inlinedProp);
 }
 
 JSHandle<JSHClass> JSHClass::CloneWithElementsKind(const JSThread *thread, const JSHandle<JSHClass> &jshclass,
@@ -287,6 +299,15 @@ void JSHClass::AddProperty(const JSThread *thread, const JSHandle<JSObject> &obj
         // The transition hclass from AOT, which does not have a prototype, needs to be reset here.
         if (newClass->IsAOT()) {
             newClass->SetPrototype(thread, jshclass->GetPrototype());
+            uint32_t newInPropsNum = newClass->GetInlinedProperties();
+            uint32_t oldInPropsNum = jshclass->GetInlinedProperties();
+            // trim
+            if (newInPropsNum < oldInPropsNum) {
+                size_t trimBytes = (oldInPropsNum - newInPropsNum) * JSTaggedValue::TaggedTypeSize();
+                ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+                factory->FillFreeObject(ToUintPtr(*obj) + newClass->GetObjectSize(),
+                                        trimBytes, RemoveSlots::YES, ToUintPtr(*obj));
+            }
         }
         // Because we currently only supports Fast ElementsKind
         RestoreElementsKindToGeneric(newClass);
@@ -303,6 +324,9 @@ void JSHClass::AddProperty(const JSThread *thread, const JSHandle<JSObject> &obj
             }
             JSHClass::EnablePHCProtoChangeMarker(thread, newHClass);
         } else {
+            if (newClass->IsPrototype()) {
+                newHClass->SetProtoChangeDetails(thread, jshclass->GetProtoChangeDetails());
+            }
             JSHClass::NotifyHclassChanged(thread, jshclass, newHClass, key.GetTaggedValue());
         }
 #endif
@@ -660,18 +684,9 @@ void JSHClass::TransitionForRepChange(const JSThread *thread, const JSHandle<JSO
 bool JSHClass::IsInitialArrayHClassWithElementsKind(const JSThread *thread, const JSHClass *targetHClass,
                                                     const ElementsKind targetKind)
 {
-    const auto &arrayHClassIndexMap = thread->GetArrayHClassIndexMap();
-    auto newKindIter = arrayHClassIndexMap.find(targetKind);
-    if (newKindIter != arrayHClassIndexMap.end()) {
-        auto indexPair = newKindIter->second;
-        auto hclassVal = thread->GlobalConstants()->GetGlobalConstantObject(static_cast<size_t>(indexPair.first));
-        auto hclassWithProtoVal = thread->GlobalConstants()->
-            GetGlobalConstantObject(static_cast<size_t>(indexPair.second));
-        JSHClass *hclass = JSHClass::Cast(hclassVal.GetTaggedObject());
-        JSHClass *hclassWithProto = JSHClass::Cast(hclassWithProtoVal.GetTaggedObject());
-        return (targetHClass == hclass || targetHClass == hclassWithProto);
-    }
-    return false;
+    JSHClass *hclass = thread->GetArrayInstanceHClass(targetKind, false);
+    JSHClass *hclassWithProto = thread->GetArrayInstanceHClass(targetKind, true);
+    return targetHClass == hclass || targetHClass == hclassWithProto;
 }
 
 bool JSHClass::TransitToElementsKindUncheck(const JSThread *thread, const JSHandle<JSObject> &obj,
@@ -681,23 +696,13 @@ bool JSHClass::TransitToElementsKindUncheck(const JSThread *thread, const JSHand
     // currently we only support initial array hclass
     JSHClass *objHclass = obj->GetClass();
     if (IsInitialArrayHClassWithElementsKind(thread, objHclass, current)) {
-        const auto &arrayHClassIndexMap = thread->GetArrayHClassIndexMap();
-        auto newKindIter = arrayHClassIndexMap.find(newKind);
-        bool objHclassIsPrototype = objHclass->IsPrototype();
-        if (newKindIter != arrayHClassIndexMap.end()) {
-            auto indexPair = newKindIter->second;
-            auto index = objHclassIsPrototype ? static_cast<size_t>(indexPair.second) :
-                                                static_cast<size_t>(indexPair.first);
-            auto hclassVal = thread->GlobalConstants()->GetGlobalConstantObject(index);
-            JSHClass *hclass = JSHClass::Cast(hclassVal.GetTaggedObject());
-            obj->SynchronizedSetClass(thread, hclass);
+        JSHClass *hclass = thread->GetArrayInstanceHClass(newKind, objHclass->IsPrototype());
+        obj->SynchronizedSetClass(thread, hclass);
 #if ECMASCRIPT_ENABLE_IC
-            JSHClass::NotifyHclassChanged(thread, JSHandle<JSHClass>(thread, objHclass),
-                                          JSHandle<JSHClass>(thread, hclass));
+        JSHClass::NotifyHclassChanged(thread, JSHandle<JSHClass>(thread, objHclass),
+                                      JSHandle<JSHClass>(thread, hclass));
 #endif
-            return true;
-        }
-        LOG_ECMA(FATAL) << "Unknown newKind: " << static_cast<int32_t>(newKind);
+        return true;
     }
     return false;
 }
@@ -729,26 +734,31 @@ bool JSHClass::TransitToElementsKind(const JSThread *thread, const JSHandle<JSOb
     if (Elements::IsGeneric(current)) {
         return false;
     }
-    auto newKind = Elements::ToElementsKind(value.GetTaggedValue(), kind);
+
     // Merge current kind and new kind
-    newKind = Elements::MergeElementsKind(current, newKind);
+    ElementsKind newKind = Elements::MergeElementsKindNoFix(value.GetTaggedValue(), current, kind);
     if (newKind == current) {
         return false;
     }
+
     // Currently, we only support fast array elementsKind
     ASSERT(IsInitialArrayHClassWithElementsKind(thread, object->GetJSHClass(), current));
     if (!TransitToElementsKindUncheck(thread, object, newKind)) {
         return false;
     }
 
-    if (!thread->GetEcmaVM()->IsEnableElementsKind()) {
+    if (thread->IsEnableElementsKind() || thread->IsPGOProfilerEnable()) {
         // Update TrackInfo
-        if (!thread->IsPGOProfilerEnable()) {
-            return true;
-        }
-        auto trackInfoVal = JSHandle<JSArray>(object)->GetTrackInfo();
-        thread->GetEcmaVM()->GetPGOProfiler()->UpdateTrackElementsKind(trackInfoVal, newKind);
+        JSHandle<JSArray>(object)->UpdateTrackInfo(thread);
+    }
+
+    if (!thread->IsPGOProfilerEnable()) {
         return true;
+    }
+    JSTaggedValue trackInfoVal = JSHandle<JSArray>(object)->GetTrackInfo();
+    if (trackInfoVal.IsHeapObject() && trackInfoVal.IsWeak()) {
+        TrackInfo *trackInfo = TrackInfo::Cast(trackInfoVal.GetWeakReferentUnChecked());
+        thread->GetEcmaVM()->GetPGOProfiler()->UpdateTrackInfo(JSTaggedValue(trackInfo));
     }
     return true;
 }
@@ -809,6 +819,66 @@ void JSHClass::VisitAndUpdateLayout(JSHClass *ownHClass, const PropertyAttribute
     }
 }
 
+void JSHClass::VisitTransitionAndUpdateObjSize(JSHClass *ownHClass, uint32_t finalInObjPropsNum)
+{
+    uint32_t size = ownHClass->GetInlinedPropsStartSize();
+    uint32_t objectSize = size + finalInObjPropsNum * JSTaggedValue::TaggedTypeSize();
+    std::queue<JSHClass *> backHClass;
+    backHClass.push(ownHClass);
+    while (!backHClass.empty()) {
+        JSHClass *current = backHClass.front();
+        backHClass.pop();
+        current->SetObjectSize(objectSize);
+        auto transitions = current->GetTransitions();
+        if (transitions.IsUndefined()) {
+            continue;
+        }
+        if (transitions.IsWeak()) {
+            auto cache = transitions.GetTaggedWeakRef();
+            backHClass.push(JSHClass::Cast(cache));
+            continue;
+        }
+
+        ASSERT(transitions.IsTaggedArray());
+        TransitionsDictionary *dict = TransitionsDictionary::Cast(transitions.GetTaggedObject());
+        dict->IterateEntryValue([&backHClass] (JSHClass *cache) {
+            backHClass.push(JSHClass::Cast(cache));
+        });
+    }
+}
+
+uint32_t JSHClass::VisitTransitionAndFindMaxNumOfProps(JSHClass *ownHClass)
+{
+    std::queue<JSHClass *> backHClass;
+    backHClass.push(ownHClass);
+    uint32_t maxNumOfProps = 0;
+    while (!backHClass.empty()) {
+        JSHClass *current = backHClass.front();
+        uint32_t numOfProps = current->NumberOfProps();
+        if (numOfProps > maxNumOfProps) {
+            maxNumOfProps = numOfProps;
+        }
+        backHClass.pop();
+
+        auto transitions = current->GetTransitions();
+        if (transitions.IsUndefined()) {
+            continue;
+        }
+        if (transitions.IsWeak()) {
+            auto cache = transitions.GetTaggedWeakRef();
+            backHClass.push(JSHClass::Cast(cache));
+            continue;
+        }
+
+        ASSERT(transitions.IsTaggedArray());
+        TransitionsDictionary *dict = TransitionsDictionary::Cast(transitions.GetTaggedObject());
+        dict->IterateEntryValue([&backHClass] (JSHClass *cache) {
+            backHClass.push(JSHClass::Cast(cache));
+        });
+    }
+    return maxNumOfProps;
+}
+
 TransitionResult JSHClass::ConvertOrTransitionWithRep(const JSThread *thread,
     const JSHandle<JSObject> &receiver, const JSHandle<JSTaggedValue> &key, const JSHandle<JSTaggedValue> &value,
     PropertyAttributes &attr)
@@ -846,6 +916,23 @@ TransitionResult JSHClass::ConvertOrTransitionWithRep(const JSThread *thread,
         }
     }
     return {true, false, value.GetTaggedValue()};
+}
+
+void JSHClass::MergeRepresentation(const JSThread *thread, JSHClass *oldJsHClass, JSHClass *newJsHClass)
+{
+    JSHandle<LayoutInfo> oldLayout(thread, oldJsHClass->GetLayout());
+    JSHandle<LayoutInfo> newLayout(thread, newJsHClass->GetLayout());
+    int numberOfProps = static_cast<int>(oldJsHClass->NumberOfProps());
+    for (int i = 0; i < numberOfProps; i++) {
+        PropertyAttributes oldAttr = oldLayout->GetAttr(i);
+        PropertyAttributes newAttr = newLayout->GetAttr(i);
+        ASSERT(oldAttr.IsInlinedProps());
+        if (oldAttr.GetRepresentation() == newAttr.GetRepresentation()) {
+            continue;
+        }
+        oldAttr.SetRepresentation(newAttr.GetRepresentation());
+        oldLayout->SetNormalAttr(thread, i, oldAttr);
+    }
 }
 
 JSHandle<JSTaggedValue> JSHClass::EnableProtoChangeMarker(const JSThread *thread, const JSHandle<JSHClass> &jshclass)
@@ -1256,16 +1343,20 @@ JSHandle<JSTaggedValue> JSHClass::ParseKeyFromPGOCString(ObjectFactory* factory,
     }
 }
 
+void JSHClass::CalculateMaxNumForChild(const HClassLayoutDesc* desc, uint32_t maxNum)
+{
+    auto rootDesc = reinterpret_cast<const pgo::RootHClassLayoutDesc *>(desc);
+    rootDesc->IterateProps([&maxNum](const pgo::PropertyDesc& propDesc) {
+        auto& handler = propDesc.second;
+        uint32_t maxChildNum = std::max(maxNum, handler.GetMaxPropsNum());
+        handler.SetMaxPropsNum(maxChildNum);
+    });
+}
+
 JSHandle<JSHClass> JSHClass::CreateRootHClassFromPGO(const JSThread* thread,
                                                      const HClassLayoutDesc* desc,
-                                                     uint32_t maxNum,
-                                                     bool isCache)
+                                                     uint32_t maxNum)
 {
-    if (isCache) {
-        if (ObjectFactory::CanObjectLiteralHClassCache(maxNum)) {
-            return CreateRootHClassWithCached(thread, desc, maxNum);
-        }
-    }
     auto rootDesc = reinterpret_cast<const pgo::RootHClassLayoutDesc *>(desc);
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     uint32_t numOfProps = rootDesc->NumOfProps();
@@ -1296,21 +1387,23 @@ JSHandle<JSHClass> JSHClass::CreateRootHClassFromPGO(const JSThread* thread,
 
 JSHandle<JSHClass> JSHClass::CreateRootHClassWithCached(const JSThread* thread,
                                                         const HClassLayoutDesc* desc,
-                                                        uint32_t maxNum)
+                                                        uint32_t literalLength,
+                                                        uint32_t maxPropsNum)
 {
     auto rootDesc = reinterpret_cast<const pgo::RootHClassLayoutDesc *>(desc);
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     uint32_t index = 0;
     ASSERT(rootDesc->GetObjectSize() == JSObject::SIZE);
     ASSERT(rootDesc->GetObjectType() == JSType::JS_OBJECT);
-    JSHandle<JSHClass> hclass = factory->GetObjectLiteralRootHClass(maxNum);
-    JSHandle<LayoutInfo> layout = factory->CreateLayoutInfo(maxNum, MemSpaceType::SEMI_SPACE, GrowMode::KEEP);
+    JSHandle<JSHClass> hclass = factory->GetObjectLiteralRootHClass(literalLength, maxPropsNum);
+    JSHandle<LayoutInfo> layout = factory->CreateLayoutInfo(maxPropsNum, MemSpaceType::SEMI_SPACE, GrowMode::KEEP);
     hclass->SetPrototype(thread, JSTaggedValue::Null());
     hclass->SetLayout(thread, layout);
     hclass->SetAOT(true);
     rootDesc->IterateProps([thread, factory, &index, &hclass](const pgo::PropertyDesc& propDesc) {
         auto& cstring = propDesc.first;
         auto& handler = propDesc.second;
+        uint32_t maxPropsNum = handler.GetMaxPropsNum();
         JSHandle<JSTaggedValue> key = ParseKeyFromPGOCString(factory, cstring, handler);
         PropertyAttributes attributes = PropertyAttributes::Default();
         if (handler.SetAttribute(thread, attributes)) {
@@ -1320,7 +1413,7 @@ JSHandle<JSHClass> JSHClass::CreateRootHClassWithCached(const JSThread* thread,
         attributes.SetOffset(index++);
         auto rep = attributes.GetRepresentation();
 
-        JSHandle<JSHClass> child = SetPropertyOfObjHClass(thread, hclass, key, attributes, rep);
+        JSHandle<JSHClass> child = SetPropertyOfObjHClass(thread, hclass, key, attributes, rep, true, maxPropsNum);
         child->SetParent(thread, hclass);
         child->SetPrototype(thread, JSTaggedValue::Null());
         child->SetAOT(true);
@@ -1429,12 +1522,13 @@ bool JSHClass::UpdateRootLayoutDescByPGO(const JSHClass* hclass, HClassLayoutDes
     return true;
 }
 
-CString JSHClass::DumpToString(JSTaggedType hclassVal)
+std::pair<bool, CString> JSHClass::DumpToString(JSTaggedType hclassVal)
 {
     DISALLOW_GARBAGE_COLLECTION;
     auto hclass = JSHClass::Cast(JSTaggedValue(hclassVal).GetTaggedObject());
+    bool isInvalid = false;
     if (hclass->IsDictionaryMode()) {
-        return "";
+        return std::make_pair(isInvalid, "");
     }
 
     CString result;
@@ -1451,15 +1545,22 @@ CString JSHClass::DumpToString(JSTaggedType hclassVal)
             value += defaultAttr.GetValue();
             result += ToCString(value);
         } else if (key.IsSymbol()) {
-            result += JSSymbol::Cast(key)->GetPrivateId();
-            auto attr = layout->GetAttr(i);
-            result += static_cast<int32_t>(attr.GetTrackType());
-            result += attr.GetPropertyMetaData();
+            auto symbol = JSSymbol::Cast(key);
+            if (symbol->HasId()) {
+                result += JSSymbol::Cast(key)->GetPrivateId();
+                auto attr = layout->GetAttr(i);
+                result += static_cast<int32_t>(attr.GetTrackType());
+                result += attr.GetPropertyMetaData();
+            } else {
+                isInvalid = true;
+                result = "";
+                break;
+            }
         } else {
             LOG_ECMA(FATAL) << "JSHClass::DumpToString UNREACHABLE";
         }
     }
-    return result;
+    return std::make_pair(isInvalid, result);
 }
 
 PropertyLookupResult JSHClass::LookupPropertyInBuiltinHClass(const JSThread *thread, JSHClass *hclass,

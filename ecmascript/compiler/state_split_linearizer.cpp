@@ -14,7 +14,6 @@
  */
 
 #include "ecmascript/compiler/state_split_linearizer.h"
-#include "ecmascript/compiler/scheduler.h"
 
 namespace panda::ecmascript::kungfu {
 void StateSplitLinearizer::Run()

@@ -24,4 +24,7 @@ var obj = {
     }
 }
 
-print(obj.foo(), obj.foo2())
+assert_equal(obj.foo(), "foo");
+assert_equal(obj.foo2(), "foo2");
+
+test_end();

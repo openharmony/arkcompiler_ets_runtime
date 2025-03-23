@@ -253,20 +253,29 @@ private:
         BUILTIN_ARRAY_PROTOTYPE_FUNCTIONS(BUILTIN_ARRAY_FUNCTION_ENTRY)
     };
 #undef BUILTIN_ARRAY_FUNCTION_ENTRY
+
+#if ENABLE_NEXT_OPTIMIZATION
+    static JSTaggedValue IncludesStable(
+        EcmaRuntimeCallInfo *argv, const JSHandle<JSTaggedValue> &thisHandle);
+    static JSTaggedValue IncludesSlowPath(
+        EcmaRuntimeCallInfo *argv, const JSHandle<JSTaggedValue> &thisHandle);
+    static JSTaggedValue IncludesSlowPath(
+        EcmaRuntimeCallInfo *argv, const JSHandle<JSTaggedValue> &thisObjVal, int64_t length, int64_t fromIndex);
+#endif
+
     static JSTaggedValue IndexOfStable(
-        EcmaRuntimeCallInfo *argv, JSThread *thread, const JSHandle<JSTaggedValue> &thisHandle);
+        EcmaRuntimeCallInfo *argv, const JSHandle<JSTaggedValue> &thisHandle);
     static JSTaggedValue IndexOfSlowPath(
-        EcmaRuntimeCallInfo *argv, JSThread *thread, const JSHandle<JSTaggedValue> &thisHandle);
+        EcmaRuntimeCallInfo *argv, const JSHandle<JSTaggedValue> &thisHandle);
     static JSTaggedValue IndexOfSlowPath(
-        EcmaRuntimeCallInfo *argv, JSThread *thread, const JSHandle<JSTaggedValue> &thisObjVal,
-        int64_t length, int64_t fromIndex);
+        EcmaRuntimeCallInfo *argv, const JSHandle<JSTaggedValue> &thisObjVal, int64_t length, int64_t fromIndex);
 
     static JSTaggedValue LastIndexOfStable(
-        EcmaRuntimeCallInfo *argv, JSThread *thread, const JSHandle<JSTaggedValue> &thisHandle);
+        EcmaRuntimeCallInfo *argv, const JSHandle<JSTaggedValue> &thisHandle);
     static JSTaggedValue LastIndexOfSlowPath(
-        EcmaRuntimeCallInfo *argv, JSThread *thread, const JSHandle<JSTaggedValue> &thisHandle);
+        EcmaRuntimeCallInfo *argv, const JSHandle<JSTaggedValue> &thisHandle);
     static JSTaggedValue LastIndexOfSlowPath(
-        EcmaRuntimeCallInfo *argv, JSThread *thread, const JSHandle<JSTaggedValue> &thisObjVal, int64_t fromIndex);
+        EcmaRuntimeCallInfo *argv, const JSHandle<JSTaggedValue> &thisObjVal, int64_t fromIndex);
 };
 }  // namespace panda::ecmascript::builtins
 

@@ -14,8 +14,6 @@
  */
 
 #include "ecmascript/compiler/lexical_env_specialization_pass.h"
-#include "ecmascript/compiler/bytecodes.h"
-#include "ecmascript/compiler/scheduler.h"
 
 namespace panda::ecmascript::kungfu {
 void LexicalEnvSpecializationPass::Initialize()

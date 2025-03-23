@@ -132,6 +132,18 @@ PGOTypeRef PGOTypeRecorder::GetPGOType(int32_t offset) const
     return PGOTypeRef::NoneType();
 }
 
+bool PGOTypeRecorder::IsInsufficientProfile(int32_t offset) const
+{
+    // Normally, JIT will definitely enable profiling, and the bytecode will definitely be able to find the
+    // corresponding information in bcOffsetBoolmap_.
+    if (bcOffsetBoolMap_.find(offset) != bcOffsetBoolMap_.end()) {
+        return bcOffsetBoolMap_.at(offset);
+    } else {
+        // When JIT does not open profiling, it is necessary to discard the tag to avoid generating unexpected Deopt.
+        return false;
+    }
+}
+
 bool PGOTypeRecorder::IsValidPt(ProfileType type) const
 {
     auto abcId = type.GetAbcId();

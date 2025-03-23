@@ -131,6 +131,21 @@ HWTEST_F_L0(JSAPIVectorTest, RemoveByIndexAndRemove)
     toor->Dump();
 }
 
+HWTEST_F_L0(JSAPIVectorTest, RemoveByRangeAndGetHeapUsedSize)
+{
+    uint32_t NODE_NUMBERS = 9;
+    uint32_t fromIndex = 1;
+    uint32_t toIndex = 3;
+    JSMutableHandle<JSTaggedValue> value(thread, JSTaggedValue::Undefined());
+
+    std::string myValue("myvalue");
+    auto toor = TestCommon(value, myValue, NODE_NUMBERS);
+    JSAPIVector::RemoveByRange(thread, toor, fromIndex, toIndex);
+    // test heap is normal after RemoveByRange, GetLiveObjectSize will iterate heap
+    instance->GetHeap()->GetLiveObjectSize();
+    EXPECT_EQ(toor->GetLength(), static_cast<int32_t>(NODE_NUMBERS - (toIndex - fromIndex)));
+}
+
 HWTEST_F_L0(JSAPIVectorTest, ClearAndisEmpty)
 {
     constexpr uint32_t NODE_NUMBERS = 9;

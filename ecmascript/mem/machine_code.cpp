@@ -16,6 +16,8 @@
 #include "ecmascript/mem/machine_code.h"
 #include "ecmascript/compiler/aot_file/func_entry_des.h"
 #include "ecmascript/jit/jit.h"
+#include "ecmascript/jit/rewriter/reloc_rewriter_aarch64.h"
+#include "ecmascript/jit/rewriter/reloc_rewriter.h"
 #if ECMASCRIPT_ENABLE_CAST_CHECK
 #include "ecmascript/js_tagged_value-inl.h"
 #endif
@@ -114,11 +116,11 @@ bool MachineCode::SetNonText(const MachineCodeDesc &desc, EntityId methodId)
     return true;
 }
 
-bool MachineCode::SetData(const MachineCodeDesc &desc, JSHandle<Method> &method, size_t dataSize)
+bool MachineCode::SetData(const MachineCodeDesc &desc, JSHandle<Method> &method, size_t dataSize, RelocMap &relocInfo)
 {
     DISALLOW_GARBAGE_COLLECTION;
     if (desc.codeType == MachineCodeType::BASELINE_CODE) {
-        return SetBaselineCodeData(desc, method, dataSize);
+        return SetBaselineCodeData(desc, method, dataSize, relocInfo);
     }
 
     SetOSROffset(MachineCode::INVALID_OSR_OFFSET);
@@ -161,7 +163,7 @@ bool MachineCode::SetData(const MachineCodeDesc &desc, JSHandle<Method> &method,
 }
 
 bool MachineCode::SetBaselineCodeData(const MachineCodeDesc &desc,
-                                      JSHandle<Method> &method, size_t dataSize)
+                                      JSHandle<Method> &method, size_t dataSize, RelocMap &relocInfo)
 {
     DISALLOW_GARBAGE_COLLECTION;
 
@@ -188,6 +190,12 @@ bool MachineCode::SetBaselineCodeData(const MachineCodeDesc &desc,
         ASSERT(IsAligned(reinterpret_cast<uintptr_t>(textStart), TEXT_ALIGN));
     }
     uint8_t *pText = textStart;
+
+    // relocating for baselinejit opt
+    if (desc.archType == MachineCodeArchType::AArch64 && desc.codeType == MachineCodeType::BASELINE_CODE) {
+        kungfu::RelocWriterAArch64 reWriter;
+        reWriter.RewriteRelocInfo((uint8_t*)desc.codeAddr, pText, relocInfo);
+    }
 
     if (!Jit::GetInstance()->IsEnableJitFort() || !Jit::GetInstance()->IsEnableAsyncCopyToFort() ||
         !desc.isAsyncCompileMode) {

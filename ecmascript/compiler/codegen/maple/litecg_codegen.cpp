@@ -18,20 +18,10 @@
 #include "ecmascript/base/llvm_helper.h"
 #endif
 
-#include <cstring>
-#include <iomanip>
-#include <vector>
 
-#include "ecmascript/compiler/call_signature.h"
-#include "ecmascript/compiler/codegen/maple/litecg_ir_builder.h"
 #include "ecmascript/compiler/codegen/maple/maple_be/include/litecg/litecg.h"
-#include "ecmascript/compiler/codegen/maple/maple_be/include/litecg/lmir_builder.h"
 #include "ecmascript/compiler/compiler_log.h"
-#include "ecmascript/ecma_macros.h"
-#include "ecmascript/mem/region.h"
-#include "ecmascript/object_factory.h"
 #include "ecmascript/stackmap/litecg/litecg_stackmap_type.h"
-#include "ecmascript/stackmap/llvm/llvm_stackmap_parser.h"
 #ifdef JIT_ENABLE_CODE_SIGN
 #include "jit_buffer_integrity.h"
 #include "ecmascript/compiler/jit_signcode.h"
@@ -117,7 +107,7 @@ void LiteCGAssembler::Run(const CompilerLog &log, [[maybe_unused]] bool fastComp
 #ifdef JIT_ENABLE_CODE_SIGN
     isJit &= JitFort::IsResourceAvailable();
     if (isJit) {
-        JitCodeSignerBase *jitSigner = CreateJitCodeSigner(JitBufferIntegrityLevel::Level0);
+        JitCodeSigner *jitSigner = CreateJitCodeSigner();
         JitSignCode *singleton = JitSignCode::GetInstance();
         singleton->Reset();
         singleton->SetCodeSigner(jitSigner);

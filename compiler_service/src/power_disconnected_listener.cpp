@@ -16,7 +16,6 @@
 #include "power_disconnected_listener.h"
 #include "aot_compiler_impl.h"
 #include "ecmascript/log_wrapper.h"
-
 namespace OHOS::ArkCompiler {
 PowerDisconnectedListener::PowerDisconnectedListener(const EventFwk::CommonEventSubscribeInfo &subscribeInfo)
     : EventFwk::CommonEventSubscriber(subscribeInfo)

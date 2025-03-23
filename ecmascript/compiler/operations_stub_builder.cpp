@@ -14,8 +14,6 @@
  */
 
 #include "ecmascript/compiler/operations_stub_builder.h"
-#include "ecmascript/compiler/interpreter_stub-inl.h"
-#include "ecmascript/compiler/rt_call_signature.h"
 #include "ecmascript/compiler/stub_builder-inl.h"
 
 namespace panda::ecmascript::kungfu {

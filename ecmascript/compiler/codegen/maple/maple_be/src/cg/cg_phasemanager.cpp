@@ -14,14 +14,8 @@
  */
 
 #include "cg_phasemanager.h"
-#include <vector>
-#include <string>
-#include "cg_option.h"
-#include "args.h"
 #include "label_creation.h"
-#include "isel.h"
 #include "offset_adjust.h"
-#include "emit.h"
 #include "reg_alloc.h"
 #if TARGAARCH64
 #include "aarch64_emitter.h"
@@ -36,7 +30,6 @@
 #include "x64_emitter.h"
 #include "string_utils.h"
 #endif
-#include "triple.h"
 
 namespace maplebe {
 #define CLANG (module.GetSrcLang() == kSrcLangC)

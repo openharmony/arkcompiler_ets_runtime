@@ -82,7 +82,7 @@ int CircuitBuilder::NextVariableId()
 
 void CircuitBuilder::HandleException(GateRef result, Label *success, Label *fail, Label *exit)
 {
-    BRANCH_CIR2(Equal(result, ExceptionConstant()), fail, success);
+    BRANCH(Equal(result, ExceptionConstant()), fail, success);
     Bind(fail);
     {
         Jump(exit);
@@ -91,7 +91,7 @@ void CircuitBuilder::HandleException(GateRef result, Label *success, Label *fail
 
 void CircuitBuilder::HandleException(GateRef result, Label *success, Label *fail, Label *exit, GateRef exceptionVal)
 {
-    BRANCH_CIR2(Equal(result, exceptionVal), fail, success);
+    BRANCH(Equal(result, exceptionVal), fail, success);
     Bind(fail);
     {
         Jump(exit);

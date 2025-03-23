@@ -22,21 +22,31 @@ class X64TargetBuilder final : public LLVMTargetBuilder {
 public:
     ~X64TargetBuilder() override = default;
 
-    LLVMValueRef GetASMBarrierCall(LLVMModule* llvmModule) override
+    LLVMValueRef GetASMBarrierCall(LLVMModule *llvmModule, bool isDirectCall) override
     {
-        std::string asmCall = "call *${0:c}"; // call to the first input register.
-        std::string constraints = "r,{rdi},{rsi},{rdx},{rcx},"
-        // input registerds, first is the runtime check barrier stub.
-        // others are same with the sign of runtime check barrier stub.
-        "~{r11},~{dirflag},~{fpsr},~{flags},"
-        // r11 will be used as scratch register, so mark it as clobbered, all the flag registers are also clobbered.
-        "~{xmm0},~{xmm1},~{xmm2},~{xmm3},~{xmm4},~{xmm5},~{xmm6},~{xmm7},"
-        "~{xmm8},~{xmm9},~{xmm10},~{xmm11},~{xmm12},~{xmm13},~{xmm14},~{xmm15}";
+        std::string asmCall;
+        std::string inputRegs;
+        if (isDirectCall) {
+            asmCall = "call " + RuntimeStubCSigns::GetRTName(RuntimeStubCSigns::ID_ASMFastWriteBarrier);
+            inputRegs = "{rdi},{rsi},{rdx},{rcx},";
+            // input registers are same with the sign of runtime check barrier stub.
+        } else {
+            asmCall = "call *${0:c}"; // call to the first input register.
+            inputRegs = "r,{rdi},{rsi},{rdx},{rcx},";
+            // input registers, first is the runtime check barrier stub.
+            // others are same with the sign of runtime check barrier stub.
+        }
+        std::string constraints = inputRegs + "~{r11},~{dirflag},~{fpsr},~{flags},"
+            // r11 will be used as scratch register, so mark it as clobbered, all the flag registers are also clobbered.
+            "~{xmm0},~{xmm1},~{xmm2},~{xmm3},~{xmm4},~{xmm5},~{xmm6},~{xmm7},"
+            "~{xmm8},~{xmm9},~{xmm10},~{xmm11},~{xmm12},~{xmm13},~{xmm14},~{xmm15}";
         // can't promise the vector registers are preserved, so mark them clobbered.
         // NOTE: if AVX512 or more vector registers are enabled, need add them to clobber list.
-        const CallSignature* cs = RuntimeStubCSigns::Get(RuntimeStubCSigns::ID_ASMFastWriteBarrier);
+        const CallSignature *cs = RuntimeStubCSigns::Get(RuntimeStubCSigns::ID_ASMFastWriteBarrier);
         std::vector<LLVMTypeRef> paramTys;
-        paramTys.push_back(llvmModule->GetRawPtrT()); // add the runtime check barrier stub as the first arg.
+        if (!isDirectCall) {
+            paramTys.push_back(llvmModule->GetRawPtrT()); // add the runtime check barrier stub as the first arg.
+        }
         const size_t count = cs->GetParametersCount();
         const VariableType* originParamType = cs->GetParametersType();
         for (size_t i = 0; i < count; i++) {

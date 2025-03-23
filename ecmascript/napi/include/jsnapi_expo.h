@@ -117,6 +117,8 @@ using SourceMapCallback = std::function<std::string(const std::string& rawStack)
 using SourceMapTranslateCallback = std::function<bool(std::string& url, int& line, int& column)>;
 using DeviceDisconnectCallback = std::function<bool()>;
 using QueueType = ecmascript::job::QueueType;
+using OnErrorCallback = std::function<void(Local<ObjectRef> value, void *data)>;
+using StopPreLoadSoCallback = std::function<void()>;
 
 #define ECMA_DISALLOW_COPY(className)      \
     className(const className &) = delete; \
@@ -518,6 +520,7 @@ public:
     bool IsString(const EcmaVM *vm);
     bool IsSymbol(const EcmaVM *vm);
     bool IsObject(const EcmaVM *vm);
+    bool IsNativeBindingObject(const EcmaVM *vm);
     bool IsArray(const EcmaVM *vm);
     bool IsJSArray(const EcmaVM *vm);
     bool IsConstructor(const EcmaVM *vm);
@@ -568,6 +571,9 @@ public:
     bool IsJSSharedInt32Array(const EcmaVM *vm);
     bool IsJSSharedUint32Array(const EcmaVM *vm);
     bool IsJSSharedFloat32Array(const EcmaVM *vm);
+    bool IsJSSharedFloat64Array(const EcmaVM *vm);
+    bool IsJSSharedBigInt64Array(const EcmaVM *vm);
+    bool IsJSSharedBigUint64Array(const EcmaVM *vm);
 
     bool IsGeneratorObject(const EcmaVM *vm);
     bool IsJSPrimitiveSymbol(const EcmaVM *vm);
@@ -805,6 +811,7 @@ public:
                                                        Local<FunctionRef> getter,
                                                        Local<FunctionRef> setter);
     bool ConvertToNativeBindingObject(const EcmaVM *vm, Local<NativePointerRef> value);
+    Local<NativePointerRef> GetNativeBindingPointer(const EcmaVM *vm);
     bool Set(const EcmaVM *vm, Local<JSValueRef> key, Local<JSValueRef> value);
     bool Set(const EcmaVM *vm, const char *utf8, Local<JSValueRef> value);
     bool Set(const EcmaVM *vm, uint32_t key, Local<JSValueRef> value);
@@ -1237,16 +1244,34 @@ public:
                                       int32_t length);
 };
 
+class ECMA_PUBLIC_API SharedFloat64ArrayRef : public SendableTypedArrayRef {
+public:
+    static Local<SharedFloat64ArrayRef> New(const EcmaVM *vm, Local<SendableArrayBufferRef> buffer,
+                                            int32_t byteOffset, int32_t length);
+};
+
 class ECMA_PUBLIC_API BigInt64ArrayRef : public TypedArrayRef {
 public:
     static Local<BigInt64ArrayRef> New(const EcmaVM *vm, Local<ArrayBufferRef> buffer, int32_t byteOffset,
                                       int32_t length);
 };
 
+class ECMA_PUBLIC_API SharedBigInt64ArrayRef : public SendableTypedArrayRef {
+public:
+    static Local<SharedBigInt64ArrayRef> New(const EcmaVM *vm, Local<SendableArrayBufferRef> buffer,
+                                            int32_t byteOffset, int32_t length);
+};
+
 class ECMA_PUBLIC_API BigUint64ArrayRef : public TypedArrayRef {
 public:
     static Local<BigUint64ArrayRef> New(const EcmaVM *vm, Local<ArrayBufferRef> buffer, int32_t byteOffset,
                                       int32_t length);
+};
+
+class ECMA_PUBLIC_API SharedBigUint64ArrayRef : public SendableTypedArrayRef {
+public:
+    static Local<SharedBigUint64ArrayRef> New(const EcmaVM *vm, Local<SendableArrayBufferRef> buffer,
+                                            int32_t byteOffset, int32_t length);
 };
 
 class ECMA_PUBLIC_API Exception {
@@ -1505,6 +1530,7 @@ public:
         const char *libraryPath;
         bool isDebugMode = false;
         int port = -1;
+        bool isFaApp = false;
     };
     using DebuggerPostTask = std::function<void(std::function<void()>&&)>;
 
@@ -1519,6 +1545,8 @@ public:
         void *detachFunc = nullptr;
         void *detachData = nullptr;
         void *hint = nullptr;
+        void *detachedFinalizer = nullptr;
+        void *detachedHint = nullptr;
     };
 
     // JSVM
@@ -1532,11 +1560,13 @@ public:
     };
 
     enum class ECMA_PUBLIC_API TRIGGER_IDLE_GC_TYPE : uint8_t {
-        LOCAL_CONCURRENT_MARK = 1,
-        LOCAL_REMARK = 1 << 1,
-        FULL_GC = 1 << 2,
-        SHARED_CONCURRENT_MARK = 1 << 3,
-        SHARED_FULL_GC = 1 << 4,
+        LOCAL_CONCURRENT_YOUNG_MARK = 1,
+        LOCAL_CONCURRENT_FULL_MARK = 1 << 1,
+        LOCAL_REMARK = 1 << 2,
+        FULL_GC = 1 << 3,
+        SHARED_CONCURRENT_MARK = 1 << 4,
+        SHARED_CONCURRENT_PARTIAL_MARK = 1 << 5,
+        SHARED_FULL_GC = 1 << 6,
     };
 
     enum class ECMA_PUBLIC_API MemoryReduceDegree : uint8_t {
@@ -1641,6 +1671,7 @@ public:
     // Exception
     static void ThrowException(const EcmaVM *vm, Local<JSValueRef> error);
     static void PrintExceptionInfo(const EcmaVM *vm);
+    static void SetOnErrorCallback(EcmaVM *vm, OnErrorCallback cb, void* data);
     static Local<ObjectRef> GetAndClearUncaughtException(const EcmaVM *vm);
     static Local<ObjectRef> GetUncaughtException(const EcmaVM *vm);
     static bool IsExecutingPendingJob(const EcmaVM *vm);
@@ -1669,7 +1700,7 @@ public:
     static void NotifyNativeReturn(const EcmaVM *vm, const void *nativeAddress);
     static void NotifyLoadModule(const EcmaVM *vm);
     static void NotifyUIIdle(const EcmaVM *vm, int idleTime);
-    static void NotifyLooperIdleStart(const EcmaVM *vm, int64_t timestamp, int idleTime);
+    static bool NotifyLooperIdleStart(const EcmaVM *vm, int64_t timestamp, int idleTime);
     static void NotifyLooperIdleEnd(const EcmaVM *vm, int64_t timestamp);
     static bool IsJSMainThreadOfEcmaVM(const EcmaVM *vm);
     static void SetDeviceDisconnectCallback(EcmaVM *vm, DeviceDisconnectCallback cb);
@@ -1715,13 +1746,19 @@ public:
     static void SetAssetPath(EcmaVM *vm, const std::string &assetPath);
     static void SetMockModuleList(EcmaVM *vm, const std::map<std::string, std::string> &list);
     static void SetPkgNameList(EcmaVM *vm, const std::map<std::string, std::string> &list);
+    static void UpdatePkgNameList(EcmaVM *vm, const std::map<std::string, std::string> &list);
     static std::string GetPkgName(EcmaVM *vm, const std::string &moduleName);
     static void SetPkgAliasList(EcmaVM *vm, const std::map<std::string, std::string> &list);
+    static void UpdatePkgAliasList(EcmaVM *vm, const std::map<std::string, std::string> &list);
     static void SetHmsModuleList(EcmaVM *vm, const std::vector<panda::HmsMap> &list);
     static void SetModuleInfo(EcmaVM *vm, const std::string &assetPath, const std::string &entryPoint);
     static void SetpkgContextInfoList(EcmaVM *vm, const std::map<std::string,
         std::vector<std::vector<std::string>>> &list);
+    static void UpdatePkgContextInfoList(EcmaVM *vm,
+        const std::map<std::string, std::vector<std::vector<std::string>>> &list);
     static void SetExecuteBufferMode(const EcmaVM *vm);
+    // Stop preloading so task callback.
+    static void SetStopPreLoadSoCallback(EcmaVM *vm, const StopPreLoadSoCallback &callback);
     static void SetLoop(EcmaVM *vm, void *loop);
     static void SetWeakFinalizeTaskCallback(EcmaVM *vm, const WeakFinalizeTaskCallback &callback);
     static void SetAsyncCleanTaskCallback(EcmaVM *vm, const NativePointerTaskCallback &callback);
@@ -1739,6 +1776,7 @@ public:
     static std::pair<std::string, std::string> GetCurrentModuleInfo(EcmaVM *vm, bool needRecordName = false);
     static std::string NormalizePath(const std::string &string);
     static void AllowCrossThreadExecution(EcmaVM *vm);
+    static bool CheckAndSetAllowCrossThreadExecution(EcmaVM *vm);
     static void SynchronizVMInfo(EcmaVM *vm, const EcmaVM *hostVM);
     static bool IsProfiling(EcmaVM *vm);
     static void SetProfilerState(const EcmaVM *vm, bool value);
@@ -1768,6 +1806,12 @@ public:
     static void NotifyTaskFinished(const EcmaVM *vm);
     static bool IsMultiThreadCheckEnabled(const EcmaVM *vm);
     static uint32_t GetCurrentThreadId();
+
+    //set VM apiVersion
+    static void SetVMAPIVersion(EcmaVM *vm, const int32_t apiVersion);
+
+    // Napi Update SubStackInfo
+    static void UpdateStackInfo(EcmaVM *vm, void *currentStackInfo, uint32_t opKind);
 private:
     static bool isForked_;
     static bool CreateRuntime(const RuntimeOption &option);

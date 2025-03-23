@@ -69,11 +69,13 @@ function prototypeChange(){
 //: false
 normalForEach()
 //aot: [trace] aot inline function name: #*#lenthChangeLess@builtinArrayForEachProtoChange caller function name: func_main_0@builtinArrayForEachProtoChange
+//aot: [trace] aot call builtin: Array.prototype.foreach, caller function name:#*#lenthChangeLess@builtinArrayForEachProtoChange
 //: 1
 //: 2.5
 //: NaN
 lenthChangeLess()
 //aot: [trace] aot inline function name: #*#lengthChangeBigToDic@builtinArrayForEachProtoChange caller function name: func_main_0@builtinArrayForEachProtoChange
+//aot: [trace] aot call builtin: Array.prototype.foreach, caller function name:#*#lengthChangeBigToDic@builtinArrayForEachProtoChange
 //: 1
 //: 2.5
 //: NaN
@@ -81,6 +83,7 @@ lenthChangeLess()
 //: true
 lengthChangeBigToDic()
 //aot: [trace] aot inline function name: #*#prototypeChange@builtinArrayForEachProtoChange caller function name: func_main_0@builtinArrayForEachProtoChange
+//aot: [trace] aot call builtin: Array.prototype.foreach, caller function name:#*#prototypeChange@builtinArrayForEachProtoChange
 //: position5
 //: position6
 prototypeChange()

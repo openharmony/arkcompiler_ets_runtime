@@ -40,8 +40,7 @@ public:
     void GetConstInfo(uintptr_t callsite, LLVMStackMapType::ConstInfo& info, uint8_t *stackmapAddr = nullptr) const;
     void GetMethodOffsetInfo(uintptr_t callSiteAddr, std::map<uint32_t, uint32_t>& info,
                              uint8_t *stackmapAddr) const;
-    bool IteratorStackMap(const RootVisitor& visitor,
-                          const RootBaseAndDerivedVisitor& derivedVisitor,
+    bool IteratorStackMap(RootVisitor& visitor,
                           uintptr_t callSiteAddr, uintptr_t callsiteFp,
                           uintptr_t callSiteSp, uint8_t *stackmapAddr) const;
     void GetArkDeopt(uintptr_t callSiteAddr, uint8_t *stackmapAddr, std::vector<ARKDeopt>& deopts) const;

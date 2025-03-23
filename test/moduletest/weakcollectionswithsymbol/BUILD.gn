@@ -13,23 +13,23 @@
 
 import("//arkcompiler/ets_runtime/test/test_helper.gni")
 
-host_moduletest_action("weakmapsymbolkey") {
+host_moduletest_assert_action("weakmapsymbolkey") {
   deps = []
 }
 
-host_moduletest_action("weaksetsymbolvalue") {
+host_moduletest_assert_action("weaksetsymbolvalue") {
   deps = []
 }
 
-host_moduletest_action("weakrefforsymbol") {
+host_moduletest_assert_action("weakrefforsymbol") {
   deps = []
 }
 
-host_moduletest_action("finalizationregistrywithsymbol") {
+host_moduletest_assert_action("finalizationregistrywithsymbol") {
   deps = []
 }
 
-host_moduletest_action("weakcollectionswithsymbol") {
+host_moduletest_assert_action("weakcollectionswithsymbol") {
   extra_modules = [
     "weakmapsymbolkey",
     "weaksetsymbolvalue",

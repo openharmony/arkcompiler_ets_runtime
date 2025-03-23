@@ -136,6 +136,7 @@ public:
     RegOperand *GetOrCreatePhyRegOperand(regno_t regNO, uint32 size, RegType kind, uint32 flag = 0) override;
     Insn *BuildStrInsn(uint32 regSize, PrimType stype, RegOperand &phyOpnd, MemOperand &memOpnd) override;
     Insn *BuildLdrInsn(uint32 regSize, PrimType stype, RegOperand &phyOpnd, MemOperand &memOpnd) override;
+    bool IsMovFromRegtoReg(MOperator mOp, Insn &insn) override;
     MemOperand *GetOrCreatSpillMem(regno_t vrNum, uint32 bitSize) override;
     MemOperand *AdjustMemOperandIfOffsetOutOfRange(MemOperand *memOpnd, const RegNoPair &regNoPair, bool isDest,
                                                    Insn &insn, bool &isOutOfRange) override;

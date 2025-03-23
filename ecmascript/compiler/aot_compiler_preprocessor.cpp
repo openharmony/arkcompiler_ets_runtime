@@ -17,12 +17,8 @@
 #include "ecmascript/compiler/bytecode_circuit_builder.h"
 #include "ecmascript/compiler/pgo_type/pgo_type_parser.h"
 #include "ecmascript/compiler/pass_manager.h"
-#include "ecmascript/jspandafile/program_object.h"
-#include "ecmascript/js_runtime_options.h"
 #include "ecmascript/module/module_resolver.h"
-#include "ecmascript/module/js_module_manager.h"
 #include "ecmascript/ohos/ohos_pgo_processor.h"
-#include "ecmascript/ohos/ohos_pkg_args.h"
 
 namespace panda::ecmascript::kungfu {
 
@@ -80,6 +76,7 @@ CompilationOptions::CompilationOptions(JSRuntimeOptions &runtimeOptions)
     if (!optionSkipMethods.empty()) {
         ParseOption(optionSkipMethods, optionSkipMethods_);
     }
+    anFileMaxByteSize_ = runtimeOptions.GetCompilerAnFileMaxByteSize();
 }
 
 std::vector<std::string> CompilationOptions::SplitString(const std::string &str, const char ch) const
@@ -256,32 +253,22 @@ void AotCompilerPreprocessor::AnalyzeGraph(BCInfo &bytecodeInfo, CompilationOpti
     m->DestroyModule();
 }
 
-uint32_t AotCompilerPreprocessor::GenerateAbcFileInfos()
+void AotCompilerPreprocessor::GenerateAbcFileInfos(std::unordered_map<CString, uint32_t> &fileNameToChecksumMap)
 {
     size_t size = pandaFileNames_.size();
-    uint32_t checksum = 0;
     for (size_t i = 0; i < size; ++i) {
         const auto &fileName = pandaFileNames_.at(i);
-        auto extendedFilePath = panda::os::file::File::GetExtendedFilePath(fileName);
+        std::string extendedFilePath = panda::os::file::File::GetExtendedFilePath(fileName);
         std::shared_ptr<JSPandaFile> jsPandaFile = CreateAndVerifyJSPandaFile(extendedFilePath);
         AbcFileInfo fileInfo(extendedFilePath, jsPandaFile);
         if (jsPandaFile == nullptr) {
             LOG_COMPILER(ERROR) << "Cannot execute panda file '" << extendedFilePath << "'";
             continue;
         }
-
-        if (runtimeOptions_.IsTargetCompilerMode()) {
-            if (fileName.compare(mainPkgName_) == 0) {
-                checksum = jsPandaFile->GetChecksum();
-            }
-        } else {
-            checksum = jsPandaFile->GetChecksum();
-        }
-
+        fileNameToChecksumMap.emplace(jsPandaFile->GetNormalizedFileDesc(), jsPandaFile->GetChecksum());
         ResolveModule(jsPandaFile.get(), extendedFilePath);
         fileInfos_.emplace_back(fileInfo);
     }
-    return checksum;
 }
 
 void AotCompilerPreprocessor::GenerateBytecodeInfoCollectors(const CompilationOptions &cOptions)
@@ -295,9 +282,9 @@ void AotCompilerPreprocessor::GenerateBytecodeInfoCollectors(const CompilationOp
     }
 }
 
-bool AotCompilerPreprocessor::HandleMergedPgoFile(uint32_t checksum)
+bool AotCompilerPreprocessor::HandleMergedPgoFile(std::unordered_map<CString, uint32_t> &fileNameToChecksumMap)
 {
-    return PGOProfilerManager::MergeApFiles(checksum, profilerDecoder_);
+    return PGOProfilerManager::MergeApFiles(fileNameToChecksumMap, profilerDecoder_);
 }
 
 std::shared_ptr<JSPandaFile> AotCompilerPreprocessor::CreateAndVerifyJSPandaFile(const std::string &fileName)
@@ -338,7 +325,7 @@ void AotCompilerPreprocessor::ResolveModule(const JSPandaFile *jsPandaFile, cons
     for (auto info: recordInfo) {
         if (jsPandaFile->IsModule(info.second)) {
             auto recordName = info.first;
-            ModuleResolver::ResolveImportedModuleWithMerge(thread, fileName.c_str(), recordName, false);
+            ModuleResolver::HostResolveImportedModule(thread, fileName.c_str(), recordName);
             SharedModuleManager::GetInstance()->TransferSModule(thread);
         }
     }
@@ -350,7 +337,16 @@ void AotCompilerPreprocessor::GeneratePGOTypes()
     for (uint32_t i = 0; i < fileInfos_.size(); ++i) {
         auto& collector = *bcInfoCollectors_[i];
         PGOTypeParser parser(profilerDecoder_, ptManager);
+        parser.Preproccessor(collector);
+    }
+
+    for (uint32_t i = 0; i < fileInfos_.size(); ++i) {
+        auto& collector = *bcInfoCollectors_[i];
+        PGOTypeParser parser(profilerDecoder_, ptManager);
         parser.CreatePGOType(collector);
+    }
+    if (vm_->GetJSOptions().IsEnableOptTrackField()) {
+        ptManager->MergeRepresentationForProtoTransition();
     }
 }
 

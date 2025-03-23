@@ -14,7 +14,6 @@
  */
 
 #include "phase_driver.h"
-#include "mpl_timer.h"
 
 namespace maple {
 thread_local PhaseDriverImpl *PhaseDriver::phaseImplLocal = nullptr;

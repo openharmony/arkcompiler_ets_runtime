@@ -14,7 +14,6 @@
  */
 
 #include "ecmascript/js_generator_object.h"
-
 #include "ecmascript/generator_helper.h"
 #include "ecmascript/js_iterator.h"
 #include "ecmascript/js_object-inl.h"

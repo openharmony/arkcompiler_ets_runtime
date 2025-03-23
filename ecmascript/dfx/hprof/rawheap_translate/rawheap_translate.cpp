@@ -13,10 +13,7 @@
  * limitations under the License.
  */
 
-#include <algorithm>
-#include <sstream>
 #include "ecmascript/dfx/hprof/rawheap_translate/rawheap_translate.h"
-#include "ecmascript/dfx/hprof/rawheap_translate/utils.h"
 
 namespace rawheap_translate {
 bool RawHeapTranslate::Translate(const std::string &rawheapPath)

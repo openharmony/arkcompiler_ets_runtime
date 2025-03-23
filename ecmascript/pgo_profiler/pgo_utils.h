@@ -16,15 +16,18 @@
 #ifndef ECMASCRIPT_PGO_PROFILER_PGO_UTILS_H
 #define ECMASCRIPT_PGO_PROFILER_PGO_UTILS_H
 
+#include <algorithm>
 #include <list>
+#include <mutex>
 #include <string>
+
+#include "libpandafile/file.h"
+#include "mem/mem.h"
 
 #include "ecmascript/common.h"
 #include "ecmascript/log.h"
 #include "ecmascript/log_wrapper.h"
 #include "ecmascript/platform/mutex.h"
-#include "libpandafile/file.h"
-#include "mem/mem.h"
 
 namespace panda::ecmascript::pgo {
 static constexpr Alignment ALIGN_SIZE = Alignment::LOG_ALIGN_4;
@@ -41,6 +44,7 @@ public:
     static const std::string ARRAY_END;
     static const std::string NEW_LINE;
     static const std::string SPACE;
+    static const std::string ALIGN;
     static const std::string BLOCK_AND_ARRAY_START;
     static const std::string VERSION_HEADER;
     static const std::string PANDA_FILE_INFO_HEADER;
@@ -78,52 +82,15 @@ private:
     static std::string GetBriefApName(const std::string &ohosModuleName);
 };
 
-class ConcurrentGuardValues {
+class ConcurrentGuardValue {
 public:
     mutable std::atomic_int last_tid {0};
     mutable std::atomic_int count {0};
-    static const int MAX_LOG_COUNT = 30;
-
-    void AddLog(std::string str)
-    {
-        LockHolder lock(mutex_);
-        if (log_.size() >= MAX_LOG_COUNT) {
-            log_.pop_front();
-        }
-        log_.push_back(str + ", tid: " + std::to_string(Gettid()));
-    }
-
-    void AddLogWithDebugLog(std::string str)
-    {
-        AddLog(str);
-        LOG_ECMA(DEBUG) << str;
-    }
-
-    void ClearLog()
-    {
-        LockHolder lock(mutex_);
-        log_.clear();
-    }
-
-    void PrintLog()
-    {
-        LockHolder lock(mutex_);
-        std::ostringstream os;
-        os << "concurrent guard logs: " << std::endl;
-        for (auto& str: log_) {
-            os << str << std::endl;
-        }
-        LOG_ECMA(INFO) << os.str();
-    }
 
     int Gettid()
     {
         return os::thread::GetCurrentThreadId();
     }
-
-private:
-    std::list<std::string> log_;
-    Mutex mutex_;
 };
 
 class ConcurrentGuard {
@@ -131,16 +98,15 @@ private:
     std::string operation_;
 
 public:
-    ConcurrentGuard(ConcurrentGuardValues& v, std::string operation = ""): operation_(operation), v_(v)
+    ConcurrentGuard(ConcurrentGuardValue& v, std::string operation = "ConcurrentGuard")
+        : operation_(operation), v_(v)
     {
-        v_.AddLogWithDebugLog("[ConcurrentGuard] " + operation_ + " start");
         auto tid = v_.Gettid();
         auto except = 0;
-        // Support reenter
-        if (!v_.count.compare_exchange_strong(except, 1) && v_.last_tid != tid) {
-            v_.PrintLog();
-            LOG_ECMA(FATAL) << "[ConcurrentGuard] total thead count should be 0, but get " << except
-                            << ", current tid: " << tid << ", last tid: " << v_.last_tid;
+        auto desired = 1;
+        if (!v_.count.compare_exchange_strong(except, desired) && v_.last_tid != tid) {
+            LOG_PGO(FATAL) << "[" << operation_ << "] total thead count should be 0, but get " << except
+                           << ", current tid: " << tid << ", last tid: " << v_.last_tid;
         }
         v_.last_tid = tid;
     }
@@ -148,17 +114,78 @@ public:
     {
         auto tid = v_.Gettid();
         auto except = 1;
-        // Support reenter
-        if (!v_.count.compare_exchange_strong(except, 0) && v_.last_tid != tid) {
-            v_.PrintLog();
-            LOG_ECMA(FATAL) << "[ConcurrentGuard] total thead count should be 1, but get " << except
-                            << ", current tid: " << tid << ", last tid: " << v_.last_tid;
+        auto desired = 0;
+        if (!v_.count.compare_exchange_strong(except, desired) && v_.last_tid != tid) {
+            LOG_PGO(FATAL) << "[" << operation_ << "] total thead count should be 1, but get " << except
+                           << ", current tid: " << tid << ", last tid: " << v_.last_tid;
         }
-        v_.AddLogWithDebugLog("[ConcurrentGuard] " + operation_ + " end");
     };
 
 private:
-    ConcurrentGuardValues& v_;
+    ConcurrentGuardValue& v_;
+};
+
+class PGOProfiler;
+class PGOPendingProfilers {
+public:
+    void PushBack(PGOProfiler* value)
+    {
+        WriteLockHolder lock(listMutex_);
+        if (std::find(list_.begin(), list_.end(), value) == list_.end()) {
+            list_.push_back(value);
+        }
+    }
+
+    PGOProfiler* PopFront()
+    {
+        WriteLockHolder lock(listMutex_);
+        if (list_.empty()) {
+            return nullptr;
+        }
+        PGOProfiler* value = list_.front();
+        list_.pop_front();
+        return value;
+    }
+
+    PGOProfiler* Front() const
+    {
+        ReadLockHolder lock(listMutex_);
+        if (list_.empty()) {
+            return nullptr;
+        }
+        return list_.front();
+    }
+
+    void Pop()
+    {
+        WriteLockHolder lock(listMutex_);
+        if (list_.empty()) {
+            return;
+        }
+        list_.pop_front();
+    }
+
+    bool Empty() const
+    {
+        ReadLockHolder lock(listMutex_);
+        return list_.empty();
+    }
+
+    size_t Size() const
+    {
+        ReadLockHolder lock(listMutex_);
+        return list_.size();
+    }
+
+    void Remove(PGOProfiler* profiler)
+    {
+        WriteLockHolder lock(listMutex_);
+        list_.remove(profiler);
+    }
+
+private:
+    std::list<PGOProfiler*> list_;
+    mutable RWLock listMutex_;
 };
 }  // namespace panda::ecmascript::pgo
-#endif  // ECMASCRIPT_PGO_PROFILER_PGO_UTILS_H
+#endif // ECMASCRIPT_PGO_PROFILER_PGO_UTILS_H

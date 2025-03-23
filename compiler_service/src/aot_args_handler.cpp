@@ -102,6 +102,27 @@ int32_t AOTArgsParserBase::FindArgsIdxToString(const std::unordered_map<std::str
     return ERR_OK;
 }
 
+#ifdef ENABLE_COMPILER_SERVICE_GET_PARAMETER
+void AOTArgsParser::SetAnFileMaxSizeBySysParam(HapArgs &hapArgs)
+{
+    int anFileMaxSize = OHOS::system::GetIntParameter<int>("ark.aot.compiler_an_file_max_size", -1);
+    if (anFileMaxSize >= 0) {
+        hapArgs.argVector.emplace_back(Symbols::PREFIX + ArgsIdx::COMPILER_AN_FILE_MAX_SIZE + Symbols::EQ +
+                                        std::to_string(anFileMaxSize));
+    }
+}
+
+void AOTArgsParser::SetEnableCodeCommentBySysParam(HapArgs &hapArgs)
+{
+    bool enableAotCodeComment = OHOS::system::GetBoolParameter("ark.aot.code_comment.enable", false);
+    if (enableAotCodeComment) {
+        hapArgs.argVector.emplace_back(Symbols::PREFIX + ArgsIdx::COMPILER_ENABLE_AOT_CODE_COMMENT + Symbols::EQ +
+                                        "true");
+        hapArgs.argVector.emplace_back(Symbols::PREFIX + ArgsIdx::COMPILER_LOG_OPT + Symbols::EQ + "allasm");
+    }
+}
+#endif
+
 int32_t AOTArgsParser::Parse(const std::unordered_map<std::string, std::string> &argsMap, HapArgs &hapArgs,
                              int32_t thermalLevel)
 {
@@ -127,15 +148,10 @@ int32_t AOTArgsParser::Parse(const std::unordered_map<std::string, std::string> 
         }
     }
 
-    #ifdef ENABLE_COMPILER_SERVICE_GET_PARAMETER
-    bool enableAotCodeComment = OHOS::system::GetBoolParameter("ark.aot.code_comment.enable", false);
-    if (enableAotCodeComment) {
-        hapArgs.argVector.emplace_back(Symbols::PREFIX + ArgsIdx::COMPILER_ENABLE_AOT_CODE_COMMENT +
-            Symbols::EQ + "true");
-        hapArgs.argVector.emplace_back(Symbols::PREFIX + ArgsIdx::COMPILER_LOG_OPT +
-            Symbols::EQ + "allasm");
-    }
-    #endif
+#ifdef ENABLE_COMPILER_SERVICE_GET_PARAMETER
+    SetEnableCodeCommentBySysParam(hapArgs);
+    SetAnFileMaxSizeBySysParam(hapArgs);
+#endif
 
     hapArgs.argVector.emplace_back(abcPath);
     return ERR_OK;

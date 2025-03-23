@@ -23,6 +23,9 @@
 try {
     let obj={__proto__:Uint16Array.prototype}
     obj.filter(obj);
+    assert_unreachable();
 } catch (e) {
-    print(e.name)   
+    assert_equal(e instanceof TypeError, true);
 }
+
+test_end();

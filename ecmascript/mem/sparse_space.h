@@ -49,6 +49,7 @@ enum class SweepState : uint8_t {
 
 namespace panda::ecmascript {
 class LocalSpace;
+class SemiSpace;
 
 class SparseSpace : public Space {
 public:
@@ -81,7 +82,6 @@ public:
     Region *GetSweepingRegionSafe();
     void AddSweptRegionSafe(Region *region);
     Region *GetSweptRegionSafe();
-    void FreeRegionFromSpace(Region *region);
     Region *TryToGetSuitableSweptRegion(size_t size);
 
     void FreeRegion(Region *current, bool isMain = true);
@@ -163,11 +163,18 @@ public:
     Region *TrySweepToGetSuitableRegion(size_t size);
     Region *TryToGetExclusiveRegion(size_t size);
 
+    uintptr_t AllocateFast(size_t size);
+    uintptr_t AllocateSlow(size_t size, bool tryFast);
     // CSet
     void SelectCSet();
     void CheckRegionSize();
     void RevertCSet();
     void ReclaimCSet();
+
+    bool SwapRegion(Region *region, SemiSpace *fromSpace);
+
+    void PrepareSweepNewToOldRegions();
+    void SweepNewToOldRegions();
 
     unsigned long GetSelectedRegionNumber() const
     {
@@ -223,6 +230,8 @@ private:
     static constexpr unsigned long long PARTIAL_GC_INITIAL_COLLECT_REGION_SIZE = 24;
     static constexpr size_t PARTIAL_GC_MIN_COLLECT_REGION_SIZE = 5;
 
+    void FreeRegionFromSpace(Region *region);
+
     CVector<Region *> collectRegionSet_;
     Mutex lock_;
     size_t mergeSize_ {0};
@@ -246,7 +255,11 @@ public:
     NO_COPY_SEMANTIC(AppSpawnSpace);
     NO_MOVE_SEMANTIC(AppSpawnSpace);
 
+    uintptr_t AllocateSync(size_t size);
+
     void IterateOverMarkedObjects(const std::function<void(TaggedObject *object)> &visitor) const;
+private:
+    Mutex mutex_;
 };
 
 class LocalSpace : public SparseSpace {

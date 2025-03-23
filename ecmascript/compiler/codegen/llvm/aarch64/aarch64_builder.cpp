@@ -22,24 +22,33 @@ class Aarch64TargetBuilder final : public LLVMTargetBuilder {
 public:
     ~Aarch64TargetBuilder() override = default;
 
-    LLVMValueRef GetASMBarrierCall(LLVMModule* llvmModule) override
+    LLVMValueRef GetASMBarrierCall(LLVMModule* llvmModule, bool isDirectCall) override
     {
-        std::string asmCall = "blr $0"; // call to the first input register.
-        std::string constraints = "r,{x0},{x1},{x2},{x3},"
-            // input registerds, first is the runtime check barrier stub.
+        std::string asmCall;
+        std::string inputRegs;
+        if (isDirectCall) {
+            asmCall = "bl " + RuntimeStubCSigns::GetRTName(RuntimeStubCSigns::ID_ASMFastWriteBarrier);
+            inputRegs = "{x0},{x1},{x2},{x3},";
+            // input registers are same with the sign of runtime check barrier stub.
+        } else {
+            asmCall = "blr $0"; // call to the first input register.
+            inputRegs = "r,{x0},{x1},{x2},{x3},";
+            // input registers, first is the runtime check barrier stub.
             // others are same with the sign of runtime check barrier stub.
-            "~{x15},~{nzcv},~{fpsr},~{x30}"
+        }
+        std::string constraints = inputRegs + "~{x15},~{nzcv},~{fpsr},~{x30}"
             // x15 will be used as scratch register, so mark it as clobbered, all the flag registers are also clobbered.
             // lr will be early clobbered at call.
-            "~{v0},~{v1},~{v2},~{v3},~{v4},~{v5},~{v6},~{v7},~{v8},~{v9},~{v10},~{v11},~{v12},~{v13},~{v14},~{v15},"
-            "~{v16},~{v17},~{v18},~{v19},~{v20},~{v21},~{v22},~{v23},~{v24},~{v25},~{v26},~{v27},~{v28},~{v29},~{v30},"
-            "~{v31},"
-            "~{q0},~{q1},~{q2},~{q3},~{q4},~{q5},~{q6},~{q7},~{q8},~{q9},~{q10},~{q11},~{q12},~{q13},~{q14},~{q15},"
+            "~{q0},~{q1},~{q2},~{q3},~{q4},~{q5},~{q6},~{q7},"
+            // d8 ~ d15 are callee saved in C calling conv, do not mark q8 ~ q15 clobbered, but we can't use q8 ~ q15
+            // cross such call site
             "~{q16},~{q17},~{q18},~{q19},~{q20},~{q21},~{q22},~{q23},~{q24},~{q25},~{q26},~{q27},~{q28},~{q29},~{q30},"
             "~{q31}";
         const CallSignature* cs = RuntimeStubCSigns::Get(RuntimeStubCSigns::ID_ASMFastWriteBarrier);
         std::vector<LLVMTypeRef> paramTys;
-        paramTys.push_back(llvmModule->GetRawPtrT()); // add the runtime check barrier stub as the first arg.
+        if (!isDirectCall) {
+            paramTys.push_back(llvmModule->GetRawPtrT()); // add the runtime check barrier stub as the first arg.
+        }
         const size_t count = cs->GetParametersCount();
         const VariableType* originParamType = cs->GetParametersType();
         for (size_t i = 0; i < count; i++) {

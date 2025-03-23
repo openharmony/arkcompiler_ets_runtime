@@ -158,7 +158,7 @@ JSTaggedValue ContainersStack::Pop(EcmaRuntimeCallInfo *argv)
     }
 
     JSHandle<JSAPIStack> stack = JSHandle<JSAPIStack>::Cast(self);
-    JSTaggedValue jsValue = stack->Pop();
+    JSTaggedValue jsValue = stack->Pop(thread);
     return jsValue;
 }
 

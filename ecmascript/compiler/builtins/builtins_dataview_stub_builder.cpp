@@ -17,8 +17,6 @@
 
 #include "ecmascript/builtins/builtins_arraybuffer.h"
 #include "ecmascript/compiler/builtins/builtins_typedarray_stub_builder.h"
-#include "ecmascript/compiler/new_object_stub_builder.h"
-#include "ecmascript/compiler/stub_builder-inl.h"
 
 namespace panda::ecmascript::kungfu {
 template <DataViewType type>
@@ -70,7 +68,7 @@ void BuiltinsDataViewStubBuilder::SetTypedValue(GateRef glue, GateRef thisValue,
                 Bind(&checkOffset);
                 {
                     GateRef size = ZExtInt32ToInt64(GetByteLength(thisValue));
-                    GateRef elementSize = ZExtInt32ToInt64(GetElementSize(type));
+                    GateRef elementSize = GetElementSize(type);
                     GateRef indexInt64 = ZExtInt32ToInt64(index);
                     BRANCH(Int64UnsignedGreaterThan(Int64Add(indexInt64, elementSize), size), slowPath, &setValue);
                     Bind(&setValue);
@@ -201,21 +199,21 @@ GateRef BuiltinsDataViewStubBuilder::GetElementSize(DataViewType type)
         case DataViewType::INT8:
         case DataViewType::UINT8:
         case DataViewType::UINT8_CLAMPED:
-            size = Int32(1);
+            size = Int64(1);
             break;
         case DataViewType::INT16:
         case DataViewType::UINT16:
-            size = Int32(2);  // 2 means the length
+            size = Int64(2);  // 2 means the length
             break;
         case DataViewType::INT32:
         case DataViewType::UINT32:
         case DataViewType::FLOAT32:
-            size = Int32(4);  // 4 means the length
+            size = Int64(4);  // 4 means the length
             break;
         case DataViewType::FLOAT64:
         case DataViewType::BIGINT64:
         case DataViewType::BIGUINT64:
-            size = Int32(8);  // 8 means the length
+            size = Int64(8);  // 8 means the length
             break;
         default:
             LOG_ECMA(FATAL) << "this branch is unreachable";

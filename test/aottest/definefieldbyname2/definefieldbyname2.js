@@ -146,3 +146,5 @@ class A {
 }
 const a = new A();
 print(a.a);
+ArkTools.printTypedOpProfiler("MONO_STORE_PROPERTY");
+ArkTools.clearTypedOpProfiler();

@@ -86,6 +86,10 @@ public:
         return sizeof(JSTaggedType);
     }
 
+    static JSHandle<JSTaggedValue> PublishSharedValue(JSThread *thread, JSHandle<JSTaggedValue> value);
+
+    static JSHandle<JSTaggedValue> PublishSharedValueSlow(JSThread *thread, JSHandle<JSTaggedValue> value);
+
     static constexpr size_t SizeArch32 = sizeof(JSTaggedType);
 
     static constexpr size_t SizeArch64 = sizeof(JSTaggedType);
@@ -277,6 +281,15 @@ public:
         return value_ == VALUE_EXCEPTION;
     }
 
+    ARK_INLINE bool IsNaN() const
+    {
+        if (!IsDouble()) {
+            return false;
+        }
+        double untagged = GetDouble();
+        return std::isnan(untagged);
+    }
+
     static ARK_INLINE bool IsImpureNaN(double value)
     {
         // Tests if the double value would break tagged double encoding.
@@ -400,7 +413,7 @@ public:
     bool IsConstructor() const;
     bool IsExtensible(JSThread *thread) const;
     bool IsInteger() const;
-    bool WithinInt32() const;
+    bool WithinInt32(bool acceptsNegativeZero = false) const;
     bool IsZero() const;
     bool IsExactlyZero() const;
     static bool IsPropertyKey(const JSHandle<JSTaggedValue> &key);
@@ -513,7 +526,6 @@ public:
     bool PUBLIC_API IsJSCOWArray() const;
     bool IsStableJSArray(JSThread *thread) const;
     bool IsStableJSArguments(JSThread *thread) const;
-    bool HasStableElements(JSThread *thread) const;
     bool IsTypedArray() const;
     bool IsJSTypedArray() const;
     bool IsJSInt8Array() const;
@@ -703,6 +715,7 @@ public:
     static ComparisonResult Compare(JSThread *thread, const JSHandle<JSTaggedValue> &x,
                                     const JSHandle<JSTaggedValue> &y);
     static int IntLexicographicCompare(JSTaggedValue x, JSTaggedValue y);
+    static int DoubleLexicographicCompare(JSTaggedValue x, JSTaggedValue y);
     static ComparisonResult StrictNumberCompare(double x, double y);
     static bool StrictNumberEquals(double x, double y);
     static bool StrictIntEquals(int x, int y);
@@ -710,6 +723,7 @@ public:
 
     static JSHandle<JSTaggedValue> ToPrototypeOrObj(JSThread *thread, const JSHandle<JSTaggedValue> &obj);
     inline uint32_t GetKeyHashCode() const;
+    uint32_t GetStringKeyHashCode() const;
     static JSTaggedValue GetSuperBase(JSThread *thread, const JSHandle<JSTaggedValue> &obj);
     static JSTaggedValue TryCastDoubleToInt32(double d);
 
@@ -718,6 +732,7 @@ public:
     void Dump(std::ostream &os, bool isPrivacy = false) const DUMP_API_ATTR;
     void D() const DUMP_API_ATTR;
     void DumpForSnapshot(std::vector<Reference> &vec, bool isVmMode = true) const;
+    static void DesensitizedDump(const JSHandle<JSTaggedValue> &obj);
     static void DV(JSTaggedType val) DUMP_API_ATTR;
     friend std::ostream& operator<<(std::ostream& os, const JSTaggedValue& value)
     {

@@ -22,7 +22,17 @@
 function Test262Error(message) {
     this.message = message;
 }
-
+{
+    let v0 = new Proxy(Promise, Promise);
+    v0.get = () => { return v0; }
+    let log = [];
+    try {
+        "test".match(v0);
+    } catch (error) {
+        log.push(error.name);
+    }
+    print(log[0]);
+}
 RegExp.prototype.exec = function() {
     throw new Test262Error();
 };

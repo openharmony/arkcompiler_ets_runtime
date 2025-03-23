@@ -26,12 +26,14 @@
 namespace panda::ecmascript {
 struct StateVisit;
 enum class ModuleStatus : uint8_t {
+    // don't change order
     UNINSTANTIATED = 0x01,
     INSTANTIATING,
     INSTANTIATED,
     EVALUATING,
     EVALUATING_ASYNC,
-    EVALUATED
+    EVALUATED,
+    ERRORED
 };
 
 enum class ModuleTypes : uint8_t {
@@ -109,12 +111,13 @@ public:
 
     // 15.2.1.16.5.1 InnerModuleEvaluation ( module, stack, index )
     static int InnerModuleEvaluation(JSThread *thread, const JSHandle<SourceTextModule> &moduleRecord,
-        CVector<JSHandle<SourceTextModule>> &stack, int index, const void *buffer = nullptr,
-        size_t size = 0, bool executeFromJob = false);
+        CVector<JSHandle<SourceTextModule>> &stack, CVector<JSHandle<SourceTextModule>> &errorStack,
+        int index, const void *buffer = nullptr, size_t size = 0, bool executeFromJob = false);
 
     static int InnerModuleEvaluationUnsafe(JSThread *thread,
         const JSHandle<ModuleRecord> &moduleRecord, CVector<JSHandle<SourceTextModule>> &stack,
-        int index, const void *buffer, size_t size, bool executeFromJob);
+        CVector<JSHandle<SourceTextModule>> &errorStack, int index, const void *buffer,
+        size_t size, bool executeFromJob);
     // 15.2.1.16.5.2 ModuleExecution ( module )
     static Expected<JSTaggedValue, bool> ModuleExecution(JSThread *thread, const JSHandle<SourceTextModule> &module,
                                  const void *buffer = nullptr, size_t size = 0, bool executeFromJob = false);
@@ -163,6 +166,7 @@ public:
         const JSHandle<SourceTextModule> &requiredModule, ModuleTypes moduleType);
     static bool LoadNativeModule(JSThread *thread, const JSHandle<SourceTextModule> &requiredModule,
                                  ModuleTypes moduleType);
+    bool CheckAndThrowModuleError(JSThread *thread);
     inline static bool IsNativeModule(ModuleTypes moduleType)
     {
         return moduleType == ModuleTypes::OHOS_MODULE ||
@@ -296,8 +300,8 @@ public:
     ACCESSORS(CycleRoot, CYCLE_ROOT_OFFSET, TOP_LEVEL_CAPABILITY_OFFSET);
     ACCESSORS(TopLevelCapability, TOP_LEVEL_CAPABILITY_OFFSET, ASYNC_PARENT_MODULES_OFFSET);
     ACCESSORS(AsyncParentModules, ASYNC_PARENT_MODULES_OFFSET, SENDABLE_ENV_OFFSET);
-    ACCESSORS(SendableEnv, SENDABLE_ENV_OFFSET, EVALUATION_ERROR_OFFSET);
-    ACCESSORS_PRIMITIVE_FIELD(EvaluationError, int32_t, EVALUATION_ERROR_OFFSET, DFS_ANCESTOR_INDEX_OFFSET);
+    ACCESSORS(SendableEnv, SENDABLE_ENV_OFFSET, EXCEPTION_OFFSET);
+    ACCESSORS(Exception, EXCEPTION_OFFSET, DFS_ANCESTOR_INDEX_OFFSET);
     ACCESSORS_PRIMITIVE_FIELD(DFSAncestorIndex, int32_t, DFS_ANCESTOR_INDEX_OFFSET, DFS_INDEX_OFFSET);
     ACCESSORS_PRIMITIVE_FIELD(DFSIndex, int32_t, DFS_INDEX_OFFSET, ASYNC_EVALUATION_OFFSET);
     ACCESSORS_PRIMITIVE_FIELD(AsyncEvaluatingOrdinal, uint32_t, ASYNC_EVALUATION_OFFSET, PENDING_DEPENDENCIES_OFFSET);
@@ -330,7 +334,7 @@ public:
     static_assert(static_cast<size_t>(SharedTypes::TOTAL_KINDS) <= (1 << IS_SHARED_TYPE_BITS));
 
     DECL_DUMP()
-    DECL_VISIT_OBJECT(SOURCE_TEXT_MODULE_OFFSET, EVALUATION_ERROR_OFFSET)
+    DECL_VISIT_OBJECT(SOURCE_TEXT_MODULE_OFFSET, DFS_ANCESTOR_INDEX_OFFSET)
 
     // 15.2.1.16.5 Evaluate()
     static JSTaggedValue Evaluate(JSThread *thread, const JSHandle<SourceTextModule> &module,
@@ -341,7 +345,7 @@ public:
                                       const JSHandle<JSTaggedValue> &moduleHdl,
                                       bool executeFromJob = false);
 
-    static void EvaluateNativeModule(JSThread *thread, JSHandle<SourceTextModule> nativeModule,
+    static bool EvaluateNativeModule(JSThread *thread, JSHandle<SourceTextModule> nativeModule,
                                      ModuleTypes moduleType);
 
     JSTaggedValue GetModuleValue(JSThread *thread, int32_t index, bool isThrow);
@@ -383,6 +387,8 @@ public:
     static void SetExportName(JSThread *thread,
                               const JSHandle<JSTaggedValue> &moduleRequest, const JSHandle<SourceTextModule> &module,
                               CVector<std::string> &exportedNames, JSHandle<TaggedArray> &newExportStarSet);
+    static void RecordEvaluatedOrError(JSThread *thread, JSHandle<SourceTextModule> module);
+
 private:
     static JSHandle<JSTaggedValue> GetStarResolution(JSThread *thread, const JSHandle<JSTaggedValue> &exportName,
                                                      const JSHandle<JSTaggedValue> &moduleRequest,
@@ -416,11 +422,18 @@ private:
                                           const CVector<JSHandle<SourceTextModule>> &stack, int result);
     static void HandleEvaluateResult(JSThread *thread, JSHandle<SourceTextModule> &module,
                                      JSHandle<PromiseCapability> &capability,
-                                     const CVector<JSHandle<SourceTextModule>> &stack, int result);
+                                     const CVector<JSHandle<SourceTextModule>> &stack,
+                                     const CVector<JSHandle<SourceTextModule>> &errorStack);
     static void HandleConcurrentEvaluateResult(JSThread *thread, JSHandle<SourceTextModule> &module,
-                                     const CVector<JSHandle<SourceTextModule>> &stack, int result);
+                                               const CVector<JSHandle<SourceTextModule>> &stack,
+                                               const CVector<JSHandle<SourceTextModule>> &errorStack);
     bool IsAsyncEvaluating();
-
+    static void HandleEvaluateException(JSThread *thread,
+                                        const CVector<JSHandle<SourceTextModule>> &stack,
+                                        JSHandle<JSTaggedValue> exception);
+    static void HandleErrorStack(JSThread *thread, const CVector<JSHandle<SourceTextModule>> &errorStack);
+    static void SetExceptionToModule(JSThread *thread, JSHandle<SourceTextModule> module,
+                                     JSTaggedValue exception);
     friend class EcmaModuleTest;
     friend class SharedModuleManager;
 };

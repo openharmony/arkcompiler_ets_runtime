@@ -19,36 +19,44 @@
 #include "ecmascript/tagged_array-inl.h"
 
 namespace panda::ecmascript {
-JSTaggedValue ElementAccessor::Get(JSHandle<JSObject> receiver, uint32_t idx)
+JSTaggedValue ElementAccessor::Get(const JSThread *thread, JSHandle<JSObject> receiver, uint32_t idx)
 {
     TaggedArray *elements = TaggedArray::Cast(receiver->GetElements());
     ASSERT(idx < elements->GetLength());
-    ElementsKind kind = receiver->GetClass()->GetElementsKind();
-    if (!elements->GetClass()->IsMutantTaggedArray()) {
-        kind = ElementsKind::GENERIC;
-    }
     // Note: Here we can't statically decide the element type is a primitive or heap object, especially for
     //       dynamically-typed languages like JavaScript. So we simply skip the read-barrier.
     size_t offset = JSTaggedValue::TaggedTypeSize() * idx;
     // NOLINTNEXTLINE(readability-braces-around-statements, bugprone-suspicious-semicolon)
     JSTaggedType rawValue = Barriers::GetValue<JSTaggedType>(elements->GetData(), offset);
-    return GetTaggedValueWithElementsKind(rawValue, kind);
+    if (UNLIKELY(thread->IsEnableMutantArray())) {
+        ElementsKind kind = receiver->GetClass()->GetElementsKind();
+        if (!elements->GetClass()->IsMutantTaggedArray()) {
+            kind = ElementsKind::GENERIC;
+        }
+        return GetTaggedValueWithElementsKind(rawValue, kind);
+    } else {
+        return JSTaggedValue(rawValue);
+    }
 }
 
-JSTaggedValue ElementAccessor::Get(JSObject *receiver, uint32_t idx)
+JSTaggedValue ElementAccessor::Get(const JSThread *thread, JSObject *receiver, uint32_t idx)
 {
     TaggedArray *elements = TaggedArray::Cast(receiver->GetElements());
     ASSERT(idx < elements->GetLength());
-    ElementsKind kind = receiver->GetClass()->GetElementsKind();
-    if (!elements->GetClass()->IsMutantTaggedArray()) {
-        kind = ElementsKind::GENERIC;
-    }
     // Note: Here we can't statically decide the element type is a primitive or heap object, especially for
     //       dynamically-typed languages like JavaScript. So we simply skip the read-barrier.
     size_t offset = JSTaggedValue::TaggedTypeSize() * idx;
     // NOLINTNEXTLINE(readability-braces-around-statements, bugprone-suspicious-semicolon)
     JSTaggedType rawValue = Barriers::GetValue<JSTaggedType>(elements->GetData(), offset);
-    return GetTaggedValueWithElementsKind(rawValue, kind);
+    if (UNLIKELY(thread->IsEnableMutantArray())) {
+        ElementsKind kind = receiver->GetClass()->GetElementsKind();
+        if (!elements->GetClass()->IsMutantTaggedArray()) {
+            kind = ElementsKind::GENERIC;
+        }
+        return GetTaggedValueWithElementsKind(rawValue, kind);
+    } else {
+        return JSTaggedValue(rawValue);
+    }
 }
 
 JSTaggedValue ElementAccessor::FastGet(JSHandle<TaggedArray> elements, uint32_t idx, ElementsKind kind)
@@ -157,7 +165,7 @@ void ElementAccessor::CopyJSArrayObject(const JSThread *thread, JSHandle<JSObjec
     ASSERT(effectiveLength <= GetElementsLength(srcObj));
     ASSERT(effectiveLength <= GetElementsLength(dstObj));
     for (uint32_t i = 0; i < effectiveLength; i++) {
-        JSHandle<JSTaggedValue> value(thread, Get(srcObj, i));
+        JSHandle<JSTaggedValue> value(thread, Get(thread, srcObj, i));
         Set(thread, dstObj, i, value, true);
     }
 }
@@ -168,7 +176,7 @@ void ElementAccessor::CopyJSArrayToTaggedArray(const JSThread *thread, JSHandle<
     ASSERT(effectiveLength <= GetElementsLength(srcObj));
     ASSERT(effectiveLength <= dstElements->GetLength());
     for (uint32_t i = 0; i < effectiveLength; i++) {
-        JSHandle<JSTaggedValue> value(thread, Get(srcObj, i));
+        JSHandle<JSTaggedValue> value(thread, Get(thread, srcObj, i));
         dstElements->Set(thread, i, value);
     }
 }

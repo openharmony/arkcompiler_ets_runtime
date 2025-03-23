@@ -15,9 +15,6 @@
 
 #include "zip_file_reader_io.h"
 
-#include <cstdlib>
-
-
 namespace panda {
 namespace ecmascript {
 std::string ZipFileReaderIo::ReadBuffer(size_t startPos, size_t bufferSize)

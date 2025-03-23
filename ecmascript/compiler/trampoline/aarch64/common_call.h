@@ -111,7 +111,7 @@ public:
 
     static void GenJSCallWithArgV(ExtendedAssembler *assembler, int id);
 private:
-    static void DeoptEnterAsmInterp(ExtendedAssembler *assembler);
+    static void DeoptEnterAsmInterpOrBaseline(ExtendedAssembler *assembler);
     static void JSCallCheck(ExtendedAssembler *assembler, Register jsfunc, Register taggedValue,
                             Label *nonCallable, Label *notJSFunction);
     static void ThrowNonCallableInternal(ExtendedAssembler *assembler, Register sp);
@@ -213,9 +213,17 @@ public:
 
     static void CallReturnWithArgv([[maybe_unused]]ExtendedAssembler *assembler);
 
-    static void ASMFastWriteBarrier(ExtendedAssembler *assembler);
+    static void CallGetterToBaseline(ExtendedAssembler *assembler);
 
-    static void ASMWriteBarrierWithEden(ExtendedAssembler *assembler);
+    static void CallSetterToBaseline(ExtendedAssembler *assembler);
+
+    static void CallContainersArgs2ToBaseline(ExtendedAssembler *assembler);
+
+    static void CallContainersArgs3ToBaseline(ExtendedAssembler *assembler);
+
+    static void CallReturnWithArgvToBaseline(ExtendedAssembler *assembler);
+
+    static void ASMFastWriteBarrier(ExtendedAssembler *assembler);
 
     static void ASMFastSharedWriteBarrier(ExtendedAssembler *assembler, Label& needCall);
 private:
@@ -266,7 +274,7 @@ private:
     static void CallBCStub(ExtendedAssembler *assembler, Register &newSp, Register &glue,
         Register &callTarget, Register &method, Register &pc, Register &temp);
 
-    static void CallNativeEntry(ExtendedAssembler *assembler);
+    static void CallNativeEntry(ExtendedAssembler *assembler, bool isJsProxy);
 
     static void CallFastBuiltin(ExtendedAssembler *assembler, Label *callNativeBuiltin);
 

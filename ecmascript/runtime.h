@@ -32,6 +32,7 @@
 #include <memory>
 
 namespace panda::ecmascript {
+using AppfreezeFilterCallback = std::function<bool(const int32_t pid)>;
 class Runtime {
 public:
     PUBLIC_API static Runtime *GetInstance();
@@ -45,7 +46,7 @@ public:
 
     void SuspendAll(JSThread *current);
     void ResumeAll(JSThread *current);
-    void IterateSerializeRoot(const RootVisitor &v);
+    void IterateSerializeRoot(RootVisitor &v);
 
     JSThread *GetMainThread() const
     {
@@ -104,6 +105,8 @@ public:
     {
         return stringTable_.get();
     }
+
+    void IterateSharedRoot(RootVisitor &visitor);
 
     inline SerializationChunk *GetSerializeRootMapValue([[maybe_unused]] JSThread *thread,
         uint32_t dataIndex)
@@ -214,7 +217,7 @@ public:
         return false;
     }
 
-    void IterateCachedStringRoot(const RootRangeVisitor &v)
+    void IterateCachedStringRoot(RootVisitor &v)
     {
         if ((externalRegisteredStringTable_ == nullptr) || (registeredStringTableSize_ <= 0)) {
             return;
@@ -222,7 +225,22 @@ public:
         auto begin = ObjectSlot(reinterpret_cast<uintptr_t>(externalRegisteredStringTable_));
         auto end = ObjectSlot(reinterpret_cast<uintptr_t>(externalRegisteredStringTable_ +
             registeredStringTableSize_));
-        v(Root::ROOT_VM, begin, end);
+        v.VisitRangeRoot(Root::ROOT_VM, begin, end);
+    }
+
+    AppfreezeFilterCallback GetAppFreezeFilterCallback() const
+    {
+        return appfreezeFilterCallback_;
+    }
+
+    void SetAppFreezeFilterCallback(AppfreezeFilterCallback cb)
+    {
+        appfreezeFilterCallback_ = cb;
+    }
+
+    NativeAreaAllocator *GetNativeAreaAllocator() const
+    {
+        return nativeAreaAllocator_.get();
     }
 
 private:
@@ -303,6 +321,9 @@ private:
     // for shared native pointer
     std::vector<std::pair<NativePointerCallback, std::pair<void *, void *>>> sharedNativePointerCallbacks_ {};
 
+    // for appfreeze filter function
+    AppFreezeFilterCallback appfreezeFilterCallback_ {nullptr};
+    
     friend class EcmaVM;
     friend class JSThread;
     friend class SharedHeap;

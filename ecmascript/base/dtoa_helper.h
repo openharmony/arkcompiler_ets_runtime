@@ -163,7 +163,7 @@ public:
     static constexpr uint32_t TEN6POW = 1000000;
     static constexpr uint32_t TEN7POW = 10000000;
     static constexpr uint32_t TEN8POW = 100000000;
-
+    static constexpr uint32_t TEN9POW = 1000000000;
     // DiyFp is a floating-point number type, consists of a uint64 significand and one integer exponent.
     struct DiyFp {
         DiyFp() : f(), e() {}

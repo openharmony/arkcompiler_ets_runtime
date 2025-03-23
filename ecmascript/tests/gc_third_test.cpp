@@ -42,7 +42,6 @@ public:
     void SetUp() override
     {
         JSRuntimeOptions options;
-        options.SetEnableEdenGC(true);
         instance = JSNApi::CreateEcmaVM(options);
         ASSERT_TRUE(instance != nullptr) << "Cannot create EcmaVM";
         thread = instance->GetJSThread();
@@ -271,14 +270,6 @@ HWTEST_F_L0(GCTest, CheckAndTriggerHintGCTest006)
 #endif
 }
 
-HWTEST_F_L0(GCTest, CalculateIdleDurationTest001)
-{
-    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-    heap->SetMarkType(MarkType::MARK_EDEN);
-    ASSERT_EQ(heap->GetMarkType(), MarkType::MARK_EDEN);
-    heap->CalculateIdleDuration();
-}
-
 HWTEST_F_L0(GCTest, CalculateIdleDurationTest002)
 {
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
@@ -372,14 +363,6 @@ HWTEST_F_L0(GCTest, TriggerIdleCollectionTest004)
     heap->TriggerIdleCollection(1000);
 }
 
-HWTEST_F_L0(GCTest, TriggerIdleCollectionTest005)
-{
-    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-    heap->SetIdleTask(IdleTaskType::FINISH_MARKING);
-    heap->SetMarkType(MarkType::MARK_EDEN);
-    heap->TriggerIdleCollection(1000);
-}
-
 HWTEST_F_L0(GCTest, TriggerIdleCollectionTest006)
 {
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
@@ -411,21 +394,7 @@ HWTEST_F_L0(GCTest, ReclaimTest001)
 {
     SharedHeap *heap = SharedHeap::GetInstance();
     heap->DisableParallelGC(thread);
-    heap->Reclaim(TriggerGCType::EDEN_GC);
-}
-
-HWTEST_F_L0(GCTest, CollectGarbageTest001)
-{
-    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-    heap->CollectGarbage(TriggerGCType::EDEN_GC, GCReason::IDLE);
-}
-
-HWTEST_F_L0(GCTest, CollectGarbageTest002)
-{
-    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-    heap->SetMarkType(MarkType::MARK_FULL);
-    ASSERT_EQ(heap->GetMarkType(), MarkType::MARK_FULL);
-    heap->CollectGarbage(TriggerGCType::EDEN_GC, GCReason::IDLE);
+    heap->Reclaim(TriggerGCType::YOUNG_GC);
 }
 
 HWTEST_F_L0(GCTest, CollectGarbageTest003)
@@ -533,35 +502,6 @@ HWTEST_F_L0(GCTest, SelectGCTypeTest002)
     ASSERT_EQ(heap->SelectGCType(), OLD_GC);
 }
 
-HWTEST_F_L0(GCTest, CollectGarbageTest004)
-{
-    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-    thread->EnableCrossThreadExecution();
-    heap->CollectGarbage(TriggerGCType::EDEN_GC, GCReason::TRIGGER_BY_TASKPOOL);
-}
-
-HWTEST_F_L0(GCTest, CollectGarbageTest005)
-{
-    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-    heap->SetOnSerializeEvent(true);
-    heap->CollectGarbage(TriggerGCType::EDEN_GC, GCReason::TRIGGER_BY_TASKPOOL);
-}
-
-HWTEST_F_L0(GCTest, CollectGarbageTest006)
-{
-    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-    heap->SetOnSerializeEvent(true);
-    thread->EnableCrossThreadExecution();
-    heap->CollectGarbage(TriggerGCType::EDEN_GC, GCReason::TRIGGER_BY_TASKPOOL);
-}
-
-HWTEST_F_L0(GCTest, CollectGarbageTest007)
-{
-    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-    heap->GetConcurrentMarker()->ConfigConcurrentMark(false);
-    heap->CollectGarbage(TriggerGCType::EDEN_GC, GCReason::TRIGGER_BY_TASKPOOL);
-}
-
 HWTEST_F_L0(GCTest, CollectGarbageTest008)
 {
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
@@ -575,15 +515,6 @@ HWTEST_F_L0(GCTest, CollectGarbageTest009)
     heap->GetConcurrentMarker()->EnableConcurrentMarking(EnableConcurrentMarkType::REQUEST_DISABLE);
     ASSERT_TRUE(heap->GetConcurrentMarker()->IsRequestDisabled());
     heap->CollectGarbage(TriggerGCType::YOUNG_GC, GCReason::TRIGGER_BY_TASKPOOL);
-}
-
-HWTEST_F_L0(GCTest, AdjustBySurvivalRateTest001)
-{
-    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-    heap->SetMarkType(MarkType::MARK_EDEN);
-    heap->AdjustBySurvivalRate(100);
-    heap->SetMarkType(MarkType::MARK_YOUNG);
-    heap->AdjustBySurvivalRate(100);
 }
 
 HWTEST_F_L0(GCTest, TryTriggerIdleCollectionTest007)
@@ -600,15 +531,6 @@ HWTEST_F_L0(GCTest, TryTriggerFullMarkBySharedLimitTest004)
     heap->TryTriggerFullMarkBySharedLimit();
     heap->GetConcurrentMarker()->ConfigConcurrentMark(false);
     heap->TryTriggerFullMarkBySharedLimit();
-}
-
-HWTEST_F_L0(GCTest, TriggerConcurrentMarkingTest002)
-{
-    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-    heap->SetMarkType(MarkType::MARK_FULL);
-    heap->TriggerConcurrentMarking();
-    heap->SetMarkType(MarkType::MARK_EDEN);
-    heap->TriggerConcurrentMarking();
 }
 
 HWTEST_F_L0(GCTest, TriggerConcurrentMarkingTest003)
@@ -680,14 +602,14 @@ HWTEST_F_L0(GCTest, StartCalculationBeforeGCTest001)
     MemController *memController = new MemController(heap);
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
     memController->StartCalculationBeforeGC();
-    memController->StopCalculationAfterGC(TriggerGCType::EDEN_GC);
+    memController->StopCalculationAfterGC(TriggerGCType::YOUNG_GC);
 }
 
 HWTEST_F_L0(GCTest, StartCalculationBeforeGCTest002)
 {
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
     MemController *memController = new MemController(heap);
-    memController->StopCalculationAfterGC(TriggerGCType::EDEN_GC);
+    memController->StopCalculationAfterGC(TriggerGCType::YOUNG_GC);
 }
 
 HWTEST_F_L0(GCTest, DryTrunkExpandTest001)
@@ -736,4 +658,27 @@ HWTEST_F_L0(GCTest, InvokeAllocationInspectorTest001)
     counter->InvokeAllocationInspector(10000, 100, 100);
 }
 
+HWTEST_F_L0(GCTest, OldSpaceValidCheck)
+{
+    static constexpr size_t kLength = 10 * 1024;
+    static constexpr size_t kCount = 2;
+    static constexpr size_t kLimit = 380 * 1024 * 1024;
+    instance->GetJSOptions().SetEnableForceGC(false);
+    Heap *heap = const_cast<Heap *>(instance->GetHeap());
+    ObjectFactory *factory = heap->GetEcmaVM()->GetFactory();
+    auto array = factory->NewTaggedArray(kLength, JSTaggedValue::Hole(), MemSpaceType::OLD_SPACE);
+    heap->ShouldThrowOOMError(true);
+    heap->GetOldSpace()->IncreaseLiveObjectSize(kLimit);
+    for (size_t i = 0; i < kCount; i++) {
+        array = factory->NewTaggedArray(kLength, JSTaggedValue::Hole(), MemSpaceType::OLD_SPACE);
+        Region *objectRegion = Region::ObjectAddressToRange(*array);
+        bool inHeap = false;
+        heap->GetOldSpace()->EnumerateRegions([objectRegion, &inHeap](Region *each) {
+            if (objectRegion == each) {
+                inHeap = true;
+            }
+        });
+        EXPECT_TRUE(inHeap);
+    }
+}
 } // namespace panda::test

@@ -311,7 +311,7 @@ public:
     }
     static JSTaggedValue CreateCacheTable(const JSThread *thread);
     static JSTaggedValue FindCachedResult(const JSThread *thread, const JSHandle<StringSplitResultCache> &cache,
-        const JSHandle<EcmaString> &string, const JSHandle<EcmaString> &pattern, bool isOneByte = false);
+        const JSHandle<EcmaString> &string, const JSHandle<EcmaString> &pattern);
     static void SetCachedResult(const JSThread *thread, const JSHandle<StringSplitResultCache> &cache,
         const JSHandle<EcmaString> &string, const JSHandle<EcmaString> &pattern,
         const JSHandle<TaggedArray> &result);

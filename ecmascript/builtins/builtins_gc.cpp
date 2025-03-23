@@ -14,7 +14,6 @@
  */
 
 #include "ecmascript/builtins/builtins_gc.h"
-#include "ecmascript/mem/concurrent_marker.h"
 #include "ecmascript/mem/heap-inl.h"
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/interpreter/interpreter-inl.h"
@@ -119,9 +118,9 @@ JSTaggedValue BuiltinsGc::StartGC(EcmaRuntimeCallInfo *info)
     if (cause == GC_TYPE_LAST) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "Invalid GC trigger type", JSTaggedValue::Exception());
     }
-
     switch (cause) {
         case SHARED_GC:
+        case SHARED_PARTIAL_GC:
             SharedHeap::GetInstance()->CollectGarbage<TriggerGCType::SHARED_GC, GCReason::EXTERNAL_TRIGGER>(thread);
             return JSTaggedValue(0);
         case SHARED_FULL_GC:
@@ -135,7 +134,6 @@ JSTaggedValue BuiltinsGc::StartGC(EcmaRuntimeCallInfo *info)
         default:
             break;
     }
-
     if (cause != OLD_GC) {
         // except OLD_GC all run in place implicitly
         heap->CollectGarbage(cause, GCReason::EXTERNAL_TRIGGER);
@@ -224,9 +222,6 @@ JSTaggedValue BuiltinsGc::AllocateArrayObject(EcmaRuntimeCallInfo *info)
 TriggerGCType BuiltinsGc::StringToGcType(JSThread *thread, JSTaggedValue cause)
 {
     static_assert(GC_TYPE_LAST == 9, "Update this method after TrigerGCType change");
-    if (JSTaggedValue::StrictEqual(thread->GlobalConstants()->GetEdenGcCause(), cause)) {
-        return EDEN_GC;
-    }
     if (JSTaggedValue::StrictEqual(thread->GlobalConstants()->GetYoungGcCause(), cause)) {
         return YOUNG_GC;
     }
@@ -241,6 +236,9 @@ TriggerGCType BuiltinsGc::StringToGcType(JSThread *thread, JSTaggedValue cause)
     }
     if (JSTaggedValue::StrictEqual(thread->GlobalConstants()->GetSharedGcCause(), cause)) {
         return SHARED_GC;
+    }
+    if (JSTaggedValue::StrictEqual(thread->GlobalConstants()->GetSharedPartialGcCause(), cause)) {
+        return SHARED_PARTIAL_GC;
     }
     if (JSTaggedValue::StrictEqual(thread->GlobalConstants()->GetSharedFullGcCause(), cause)) {
         return SHARED_FULL_GC;

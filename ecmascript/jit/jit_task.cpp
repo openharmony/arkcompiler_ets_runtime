@@ -270,10 +270,10 @@ void JitTask::InstallCode()
             return;
         }
         machineCodeObj = hostThread_->GetEcmaVM()->GetFactory()->SetMachineCodeObjectData(
-            machineCode, size, codeDesc_, methodHandle);
+            machineCode, size, codeDesc_, methodHandle, relocInfo_);
     } else {
         machineCodeObj = hostThread_->GetEcmaVM()->GetFactory()->NewMachineCodeObject(
-            size, codeDesc_, methodHandle);
+            size, codeDesc_, methodHandle, relocInfo_);
     }
     if (machineCodeObj.GetAddress() == ToUintPtr(nullptr)) {
         // skip install
@@ -304,7 +304,14 @@ void JitTask::InstallCode()
             heap->GetMachineCodeSpace()->MarkJitFortMemInstalled(machineCodeObj.GetObject<MachineCode>());
         }
     }
-    jsFunction_->SetJitCompilingFlag(false);
+
+    if (compilerTier_.IsFast()) {
+        jsFunction_->SetJitCompilingFlag(false);
+        jsFunction_->SetJitHotnessCnt(0);
+    } else {
+        ASSERT(compilerTier_.IsBaseLine());
+        jsFunction_->SetBaselinejitCompilingFlag(false);
+    }
 }
 
 void JitTask::InstallCodeByCompilerTier(JSHandle<MachineCode> &machineCodeObj,
@@ -329,6 +336,7 @@ void JitTask::InstallCodeByCompilerTier(JSHandle<MachineCode> &machineCodeObj,
         ASSERT(compilerTier_.IsBaseLine());
         methodHandle->SetDeoptThreshold(hostThread_->GetEcmaVM()->GetJSOptions().GetDeoptThreshold());
         jsFunction_->SetBaselineCode(hostThread_, machineCodeObj);
+        jsFunction_->SetBaselineJitCodeCache(hostThread_, machineCodeObj);
         LOG_BASELINEJIT(DEBUG) <<"Install baseline jit machine code:" << GetMethodName();
     }
 }

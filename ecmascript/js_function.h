@@ -43,14 +43,15 @@ public:
 
     void SetCallNapi(bool isCallNapi)
     {
-        JSTaggedValue method = GetMethod();
-        Method::Cast(method.GetTaggedObject())->SetCallNapi(isCallNapi);
+        uint32_t bitField = GetBitField();
+        uint32_t newValue = IsCallNapiBit::Update(bitField, isCallNapi);
+        SetBitField(newValue);
     }
 
     bool IsCallNapi() const
     {
-        JSTaggedValue method = GetMethod();
-        return Method::ConstCast(method.GetTaggedObject())->IsCallNapi();
+        uint32_t bitField = GetBitField();
+        return IsCallNapiBit::Decode(bitField);
     }
 
     FunctionKind GetFunctionKind() const
@@ -139,6 +140,39 @@ public:
         return JitCompilingFlagBit::Decode(bitField);
     }
 
+    void SetBaselinejitCompilingFlag(bool value)
+    {
+        uint32_t bitField = GetBitField();
+        uint32_t newValue = BaselinejitCompilingFlagBit::Update(bitField, value);
+        SetBitField(newValue);
+    }
+
+    bool IsBaselinejitCompiling() const
+    {
+        uint32_t bitField = GetBitField();
+        return BaselinejitCompilingFlagBit::Decode(bitField);
+    }
+
+    uintptr_t GetCodeEntry() const
+    {
+        return GetCodeEntryOrNativePointer();
+    }
+
+    void SetCodeEntry(uintptr_t codeEntry)
+    {
+        SetCodeEntryOrNativePointer(codeEntry);
+    }
+
+    void *GetNativePointer() const
+    {
+        return reinterpret_cast<void *>(GetCodeEntryOrNativePointer());
+    }
+
+    void SetNativePointer(void *nativePointer)
+    {
+        SetCodeEntryOrNativePointer(ToUintPtr(nativePointer));
+    }
+
     JSTaggedValue GetFunctionExtraInfo() const;
 
     /* compiled code flag field */
@@ -148,10 +182,12 @@ public:
 
     using TaskConcurrentFuncFlagBit = IsFastCallBit::NextFlag;     // offset 2
     using JitCompilingFlagBit = TaskConcurrentFuncFlagBit::NextFlag; // offset 3
+    using BaselinejitCompilingFlagBit = JitCompilingFlagBit::NextFlag; // offset 4
+    using IsCallNapiBit = BaselinejitCompilingFlagBit::NextFlag; // offset 5
 
     static constexpr size_t METHOD_OFFSET = JSObject::SIZE;
     ACCESSORS(Method, METHOD_OFFSET, CODE_ENTRY_OFFSET)
-    ACCESSORS_PRIMITIVE_FIELD(CodeEntry, uintptr_t, CODE_ENTRY_OFFSET, LENGTH_OFFSET)
+    ACCESSORS_PRIMITIVE_FIELD(CodeEntryOrNativePointer, uintptr_t, CODE_ENTRY_OFFSET, LENGTH_OFFSET)
     ACCESSORS_PRIMITIVE_FIELD(Length, uint32_t, LENGTH_OFFSET, BIT_FIELD_OFFSET)
     ACCESSORS_PRIMITIVE_FIELD(BitField, uint32_t, BIT_FIELD_OFFSET, LAST_OFFSET)
     DEFINE_ALIGN_SIZE(LAST_OFFSET);
@@ -226,8 +262,8 @@ public:
     static void SetFunctionPrototypeOrInstanceHClass(const JSThread *thread, const JSHandle<JSFunction> &fun,
                                                      JSTaggedValue protoOrHClass);
 
-    static EcmaString* GetFunctionNameString(JSThread *thread, JSHandle<EcmaString> concatString,
-                                             ObjectFactory *factory, JSHandle<JSTaggedValue> target);
+    static EcmaString* GetFunctionNameString(ObjectFactory *factory, JSHandle<EcmaString> concatString,
+                                             JSHandle<JSTaggedValue> target);
 
     inline bool HasInitialClass() const
     {
@@ -336,6 +372,7 @@ public:
     static void UpdateProfileTypeInfoCell(JSThread *thread, JSHandle<FunctionTemplate> literalFunc,
                                           JSHandle<JSFunction> targetFunc);
     void SetJitMachineCodeCache(const JSThread *thread, const JSHandle<MachineCode> &machineCode);
+    void SetBaselineJitCodeCache(const JSThread *thread, const JSHandle<MachineCode> &machineCode);
     void ClearMachineCode(const JSThread *thread);
 
     JSTaggedValue GetNativeFunctionExtraInfo() const;
@@ -354,6 +391,7 @@ public:
     bool IsSendableOrConcurrentFunction() const;
     bool IsSharedFunction() const;
 
+    static uint32_t CalcuExpotedOfProperties(const JSHandle<JSFunction> &fun, bool *isStartSlackTracking);
     static void InitializeJSFunction(JSThread *thread, const JSHandle<JSFunction> &func,
                                      FunctionKind kind = FunctionKind::NORMAL_FUNCTION);
     static void InitializeSFunction(JSThread *thread, const JSHandle<JSFunction> &func,
@@ -371,8 +409,7 @@ public:
     ACCESSORS(BaselineCode, BASELINECODE_OFFSET, RAW_PROFILE_TYPE_INFO_OFFSET)
     ACCESSORS(RawProfileTypeInfo, RAW_PROFILE_TYPE_INFO_OFFSET, HOME_OBJECT_OFFSET)
     ACCESSORS(HomeObject, HOME_OBJECT_OFFSET, ECMA_MODULE_OFFSET)
-    ACCESSORS(Module, ECMA_MODULE_OFFSET, PROTO_TRANS_ROOT_HCLASS_OFFSET)
-    ACCESSORS(ProtoTransRootHClass, PROTO_TRANS_ROOT_HCLASS_OFFSET, WORK_NODE_POINTER_OFFSET)
+    ACCESSORS(Module, ECMA_MODULE_OFFSET, WORK_NODE_POINTER_OFFSET)
     ACCESSORS_PRIMITIVE_FIELD(WorkNodePointer, uintptr_t, WORK_NODE_POINTER_OFFSET, LAST_OFFSET)
     DEFINE_ALIGN_SIZE(LAST_OFFSET);
 
@@ -403,6 +440,11 @@ public:
 
     // 9.4.1.2[[Construct]](argumentsList, newTarget)
     static JSTaggedValue ConstructInternal(EcmaRuntimeCallInfo *info);
+
+    static constexpr uint32_t GetInlinedPropertyOffset(uint32_t index)
+    {
+        return JSBoundFunction::SIZE + index * JSTaggedValue::TaggedTypeSize();
+    }
 
     static constexpr size_t BOUND_TARGET_OFFSET = JSFunctionBase::SIZE;
     ACCESSORS(BoundTarget, BOUND_TARGET_OFFSET, BOUND_THIS_OFFSET);

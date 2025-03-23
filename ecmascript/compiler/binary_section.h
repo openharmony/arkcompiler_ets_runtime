@@ -41,6 +41,7 @@ enum class ElfSecName : uint8_t {
     ARK_FUNCENTRY,
     ARK_STACKMAP,
     ARK_MODULEINFO,
+    ARK_CHECKSUMINFO,
     SIZE
 };
 
@@ -118,7 +119,8 @@ public:
             case ElfSecName::ARK_FUNCENTRY:
             case ElfSecName::ARK_ASMSTUB:
             case ElfSecName::ARK_STACKMAP:
-            case ElfSecName::ARK_MODULEINFO: {
+            case ElfSecName::ARK_MODULEINFO:
+            case ElfSecName::ARK_CHECKSUMINFO: {
                 saveForAot = true;
                 break;
             }
@@ -168,7 +170,7 @@ public:
             {ElfSecName::ARK_FUNCENTRY, {llvm::ELF::SHF_WRITE, llvm::ELF::SHF_ALLOC}},
             {ElfSecName::ARK_STACKMAP, {llvm::ELF::SHF_WRITE, llvm::ELF::SHF_ALLOC}},
             {ElfSecName::ARK_MODULEINFO, {llvm::ELF::SHF_WRITE, llvm::ELF::SHF_ALLOC}},
-        };
+            {ElfSecName::ARK_CHECKSUMINFO, {llvm::ELF::SHF_WRITE, llvm::ELF::SHF_ALLOC}}};
         auto it = nameToTypeAndFlag.find(value_);
         if (it == nameToTypeAndFlag.end()) {
             return;

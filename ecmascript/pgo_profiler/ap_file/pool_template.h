@@ -27,7 +27,7 @@
 #include "ecmascript/mem/c_string.h"
 #include "ecmascript/pgo_profiler/ap_file/pgo_file_info.h"
 #include "ecmascript/pgo_profiler/pgo_utils.h"
-#include "macros.h"
+#include "ecmascript/pgo_profiler/types/pgo_profile_type.h"
 
 namespace panda::ecmascript::pgo {
 template <typename Entry, typename V>

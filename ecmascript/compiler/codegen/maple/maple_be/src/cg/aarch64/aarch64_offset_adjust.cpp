@@ -14,7 +14,6 @@
  */
 
 #include "aarch64_offset_adjust.h"
-#include "aarch64_cgfunc.h"
 #include "aarch64_cg.h"
 
 namespace maplebe {

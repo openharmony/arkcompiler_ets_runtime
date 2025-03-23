@@ -14,8 +14,6 @@
  */
 
 #include "ecmascript/compiler/hcr_circuit_builder.h"
-#include "ecmascript/compiler/common_stub_csigns.h"
-#include "ecmascript/js_thread.h"
 #include "ecmascript/compiler/circuit_builder-inl.h"
 
 namespace panda::ecmascript::kungfu {
@@ -60,6 +58,24 @@ GateRef CircuitBuilder::CallStub(GateRef glue, GateRef hirGate, int index, const
     const CallSignature *cs = env_->IsBaselineBuiltin() ? BaselineStubCSigns::Get(index) :
                                                           CommonStubCSigns::Get(index);
     ASSERT(cs->IsCommonStub() || cs->IsBaselineStub());
+    GateRef target = IntPtr(index);
+    auto label = GetCurrentLabel();
+    auto depend = label->GetDepend();
+    GateRef result;
+    if (GetCircuit()->IsOptimizedOrFastJit()) {
+        ASSERT(hirGate != Circuit::NullGate());
+        result = Call(cs, glue, target, depend, args, hirGate, comment);
+    } else {
+        result = Call(cs, glue, target, depend, args, Circuit::NullGate(), comment);
+    }
+    return result;
+}
+
+GateRef CircuitBuilder::CallCommonStub(GateRef glue, GateRef hirGate, int index, const std::vector<GateRef> &args,
+                                       const char *comment)
+{
+    const CallSignature *cs = CommonStubCSigns::Get(index);
+    ASSERT(cs->IsCommonStub());
     GateRef target = IntPtr(index);
     auto label = GetCurrentLabel();
     auto depend = label->GetDepend();
@@ -179,14 +195,19 @@ GateRef CircuitBuilder::CallBCHandler(GateRef glue, GateRef target, const std::v
 }
 
 GateRef CircuitBuilder::CallBuiltin(GateRef glue, GateRef target, const std::vector<GateRef> &args,
-                                    const char* comment)
+                                    GateRef hir, const char* comment)
 {
-    ASSERT(!GetCircuit()->IsOptimizedOrFastJit());
     const CallSignature *cs = BuiltinsStubCSigns::BuiltinsCSign();
     ASSERT(cs->IsBuiltinsStub());
     auto label = GetCurrentLabel();
     auto depend = label->GetDepend();
-    GateRef result = Call(cs, glue, target, depend, args, Circuit::NullGate(), comment);
+    GateRef result;
+    if (GetCircuit()->IsOptimizedOrFastJit()) {
+        ASSERT(hir != Circuit::NullGate());
+        result = Call(cs, glue, target, depend, args, hir, comment);
+    } else {
+        result = Call(cs, glue, target, depend, args, Circuit::NullGate(), comment);
+    }
     return result;
 }
 
@@ -570,34 +591,6 @@ void CircuitBuilder::SetPropertyInlinedProps(GateRef glue, GateRef obj, GateRef 
     GateRef propOffset = Int32Mul(Int32Add(inlinedPropsStart, attrOffset),
         Int32(JSTaggedValue::TaggedTypeSize()));
     Store(type, glue, obj, ZExtInt32ToPtr(propOffset), value);
-}
-
-GateRef CircuitBuilder::IsStabelArray(GateRef glue, GateRef obj)
-{
-    Label subentry(env_);
-    env_->SubCfgEntry(&subentry);
-    DEFVALUE(result, env_, VariableType::BOOL(), False());
-    Label exit(env_);
-    Label targetIsHeapObject(env_);
-    Label targetIsStableArray(env_);
-
-    BRANCH_CIR2(TaggedIsHeapObject(obj), &targetIsHeapObject, &exit);
-    Bind(&targetIsHeapObject);
-    {
-        GateRef jsHclass = LoadHClass(obj);
-        BRANCH_CIR2(IsStableArray(jsHclass), &targetIsStableArray, &exit);
-        Bind(&targetIsStableArray);
-        {
-            GateRef guardiansOffset =
-                IntPtr(JSThread::GlueData::GetArrayElementsGuardiansOffset(false));
-            result = Load(VariableType::BOOL(), glue, guardiansOffset);
-            Jump(&exit);
-        }
-    }
-    Bind(&exit);
-    auto res = *result;
-    env_->SubCfgExit();
-    return res;
 }
 
 GateRef CircuitBuilder::StoreModuleVar(GateRef jsFunc, GateRef index, GateRef value)

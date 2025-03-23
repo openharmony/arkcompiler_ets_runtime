@@ -172,6 +172,7 @@ print(specialArray.indexOf(5)) //: 9
 print(specialArray.indexOf(5.5)) //: 10
 
 print('unusual cases') //: unusual cases
+//aot: [trace] aot call builtin: Array.prototype.indexOf, caller function name:func_main_0@builtinArrayIndexOf
 print(specialArray.indexOf()) //: 4
 //aot: [trace] aot inline builtin: Array.prototype.indexOf, caller function name:func_main_0@builtinArrayIndexOf
 print(specialArray.indexOf(() => {})) //: -1
@@ -338,6 +339,7 @@ function indexOfCase4() {
           return -100
       }
   }
+  //aot: [trace] aot call builtin: Object.SetPrototypeOf, caller function name:#*#indexOfCase4@builtinArrayIndexOf
   Object.setPrototypeOf(arr2, notArray)
 
   //aot: [trace] Check Type: NotStableArray1

@@ -64,8 +64,11 @@ public:
     // progress pointer is used to report the object number for IDE.
     // isVmMode means the internal class in vm is visible. isPrivate means the number and string is not visible.
     static void DumpHeapSnapshot(const EcmaVM *vm, const std::string &path, const DumpSnapShotOption &dumpOption);
+    static void DumpHeapSnapshot(const EcmaVM *vm, int& fd, const DumpSnapShotOption &dumpOption,
+                                 const std::function<void(uint8_t)> &callback);
     static void DumpHeapSnapshot(const EcmaVM *vm, Stream *stream, const DumpSnapShotOption &dumpOption,
-                                 Progress *progress = nullptr);
+                                 Progress *progress = nullptr,
+                                 std::function<void(uint8_t)> callback = [] (uint8_t) {});
     static void DumpCpuProfile(const EcmaVM *vm);
     static void DumpHeapSnapshot(const EcmaVM *vm, const DumpSnapShotOption &dumpOption);
     static void DumpHeapSnapshot(const EcmaVM *vm, const DumpSnapShotOption &dumpOption, uint32_t tid);
@@ -104,10 +107,11 @@ public:
     static void NotifyIdleStatusControl(const EcmaVM *vm, std::function<void(bool)> callback);
     static void NotifyIdleTime(const EcmaVM *vm, int idleMicroSec);
     static void NotifyMemoryPressure(EcmaVM *vm, bool inHighMemoryPressure);
-    static void NotifyFinishColdStart(EcmaVM *vm, bool isConvinced);
+    static void NotifyFinishColdStart(EcmaVM *vm, [[maybe_unused]] bool isConvinced);
     static void NotifyHighSensitive(EcmaVM *vm, bool isStart);
     static bool BuildJsStackInfoList(const EcmaVM *hostVm, uint32_t tid, std::vector<JsFrameInfo>& jsFrames);
     static int32_t GetObjectHash(const EcmaVM *vm, Local<JSValueRef> nativeObject);
+    static int32_t GetObjectHashCode(const EcmaVM *vm, Local<JSValueRef> nativeObject);
 
     // cpuprofiler
     static bool StopCpuProfilerForColdStart(const EcmaVM *vm);
@@ -154,6 +158,7 @@ public:
     static void TranslateJSStackInfo(const EcmaVM *vm, std::string &url, int32_t &line, int32_t &column);
 
     static uint32_t GetCurrentThreadId();
+    static void RegisterAsyncDetectCallBack(const EcmaVM *vm);
 };
 }
 #endif

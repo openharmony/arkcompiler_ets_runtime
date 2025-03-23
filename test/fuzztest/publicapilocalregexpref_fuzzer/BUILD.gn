@@ -27,15 +27,15 @@ ohos_fuzztest("PublicApiLocalRegExpRefFuzzTest") {
 
   configs = [ "$js_root:ecma_test_config" ]
 
-  deps = [
-    "$ark_third_party_root/icu/icu4c:shared_icui18n",
-    "$ark_third_party_root/icu/icu4c:shared_icuuc",
-    "$js_root:libark_jsruntime_test",
-    sdk_libc_secshared_dep,
-  ]
+  deps = [ "$js_root:libark_jsruntime_test" ]
 
   # hiviewdfx libraries
   external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    sdk_libc_secshared_dep,
+  ]
   deps += hiviewdfx_deps
 }
 

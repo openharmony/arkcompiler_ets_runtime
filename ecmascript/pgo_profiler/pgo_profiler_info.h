@@ -52,9 +52,9 @@ class PGOContext;
 
 class PGOPandaFileInfos {
 public:
-    void Sample(uint32_t checksum)
+    void Sample(uint32_t checksum, uint32_t abcId)
     {
-        fileInfos_.emplace(checksum);
+        fileInfos_.emplace(checksum, abcId);
     }
 
     void Clear()
@@ -62,36 +62,58 @@ public:
         fileInfos_.clear();
     }
 
+    uint32_t GetFileInfosSzie() const
+    {
+        return fileInfos_.size();
+    }
+
+    void SampleSafe(uint32_t checksum, uint32_t abcId)
+    {
+        WriteLockHolder lock(fileInfosLock_);
+        Sample(checksum, abcId);
+    }
+
+    void ClearSafe()
+    {
+        WriteLockHolder lock(fileInfosLock_);
+        Clear();
+    }
+
     void ParseFromBinary(void *buffer, SectionInfo *const info);
     void ProcessToBinary(std::fstream &fileStream, SectionInfo *info) const;
     void Merge(const PGOPandaFileInfos &pandaFileInfos);
+    void MergeSafe(const PGOPandaFileInfos& pandaFileInfos);
     bool VerifyChecksum(const PGOPandaFileInfos &pandaFileInfos, const std::string &base,
                         const std::string &incoming) const;
 
     void ProcessToText(std::ofstream &stream) const;
-    bool ParseFromText(std::ifstream &stream);
 
-    bool Checksum(uint32_t checksum) const;
+    bool Checksum(const std::unordered_map<CString, uint32_t>& fileNameToChecksumMap,
+                  const std::shared_ptr<PGOAbcFilePool>& abcFilePool_) const;
+    bool Checksum(const std::unordered_map<CString, uint32_t>& fileNameToChecksumMap) const;
+    void UpdateFileInfosAbcID(const PGOContext &context);
+
+    template <typename Callback>
+    void ForEachFileInfo(Callback callback) const
+    {
+        for (const auto &fileInfo : fileInfos_) {
+            callback(fileInfo.GetChecksum(), fileInfo.GetAbcId());
+        }
+    }
 
 private:
     class FileInfo {
     public:
         FileInfo() = default;
-        FileInfo(uint32_t checksum) : size_(LastSize()), checksum_(checksum) {}
-
-        static size_t LastSize()
+        FileInfo(uint32_t checksum, uint32_t abcId) : abcId_(abcId), checksum_(checksum) {}
+        static size_t Size()
         {
             return sizeof(FileInfo);
         }
 
-        size_t Size() const
-        {
-            return static_cast<size_t>(size_);
-        }
-
         bool operator<(const FileInfo &right) const
         {
-            return checksum_ < right.checksum_;
+            return abcId_ < right.abcId_;
         }
 
         uint32_t GetChecksum() const
@@ -99,13 +121,19 @@ private:
             return checksum_;
         }
 
+        uint32_t GetAbcId() const
+        {
+            return abcId_;
+        }
+
     private:
         // Support extended fields
-        uint32_t size_;
+        uint32_t abcId_;
         uint32_t checksum_;
     };
 
     std::set<FileInfo> fileInfos_;
+    RWLock fileInfosLock_;
 };
 
 class PGOMethodInfo {
@@ -465,6 +493,7 @@ public:
     ~PGORecordDetailInfos() override;
 
     void Clear();
+    void ClearSafe();
     void InitSections();
 
     // If it is a new method, return true.
@@ -483,13 +512,13 @@ public:
     bool IsDumped(ProfileType rootType, ProfileType curType) const;
 
     void Merge(const PGORecordDetailInfos &recordInfos);
+    void MergeSafe(const PGORecordDetailInfos& recordInfos);
 
     void UpdateLayout();
 
     bool ParseFromBinary(void *buffer, PGOProfilerHeader *const header);
     void ProcessToBinary(const SaveTask *task, std::fstream &fileStream, PGOProfilerHeader *const header);
 
-    bool ParseFromText(std::ifstream &stream);
     void ProcessToText(std::ofstream &stream) const;
 
     const CMap<ProfileType, PGOMethodInfoMap *> &GetRecordInfos() const
@@ -567,6 +596,7 @@ private:
     std::shared_ptr<PGOProtoTransitionPool> protoTransitionPool_;
     std::shared_ptr<PGOProfileTypePool> profileTypePool_;
     mutable std::map<ApEntityId, ApEntityId> abcIdRemap_;
+    Mutex mutex_;
 };
 
 class PGORecordSimpleInfos : public PGOContext {

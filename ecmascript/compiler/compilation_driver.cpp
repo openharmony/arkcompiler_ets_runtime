@@ -17,7 +17,6 @@
 
 #include "ecmascript/compiler/file_generators.h"
 #include "ecmascript/compiler/pgo_type/pgo_type_manager.h"
-#include "ecmascript/jspandafile/method_literal.h"
 
 namespace panda::ecmascript::kungfu {
 CompilationDriver::CompilationDriver(PGOProfilerDecoder &profilerDecoder,

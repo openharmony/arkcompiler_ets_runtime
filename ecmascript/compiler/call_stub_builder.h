@@ -16,6 +16,7 @@
 #ifndef ECMASCRIPT_COMPILER_CALL_STUB_BUILDER_H
 #define ECMASCRIPT_COMPILER_CALL_STUB_BUILDER_H
 
+#include <cstddef>
 #include "ecmascript/compiler/profiler_operation.h"
 #include "ecmascript/compiler/stub_builder.h"
 
@@ -107,6 +108,36 @@ struct JSCallArgs {
     };
 };
 
+class CallCoStubBuilder : public StubBuilder {
+public:
+    explicit CallCoStubBuilder(StubBuilder *parent, EcmaOpcode op)
+        : StubBuilder(parent)
+    {
+        this->op_ = op;
+    }
+    ~CallCoStubBuilder() override = default;
+    NO_MOVE_SEMANTIC(CallCoStubBuilder);
+    NO_COPY_SEMANTIC(CallCoStubBuilder);
+    void GenerateCircuit() override {}
+    void PrepareArgs(std::vector<GateRef> &args, std::vector<GateRef> &argsFastCall);
+    GateRef CallStubDispatch();
+    std::tuple<bool, size_t, size_t> GetOpInfo();
+    static void LowerFastCall(GateRef gate, GateRef glue, CircuitBuilder &builder, GateRef func, GateRef argc,
+                              const std::vector<GateRef> &args, const std::vector<GateRef> &fastCallArgs,
+                              Variable *result, Label *exit, bool isNew);
+ 
+ private:
+    GateRef glue_ { Circuit::NullGate() };
+    GateRef actualArgc_ { Circuit::NullGate() };
+    GateRef actualArgv_ { Circuit::NullGate() };
+    GateRef func_ { Circuit::NullGate() };
+    GateRef newTarget_ { Circuit::NullGate() };
+    GateRef hirGate_ { Circuit::NullGate() };
+    EcmaOpcode op_;
+    GateRef thisObj_ { Circuit::NullGate() };
+};
+
+
 class CallStubBuilder : public StubBuilder {
 public:
     explicit CallStubBuilder(StubBuilder *parent, GateRef glue, GateRef func, GateRef actualNumArgs, GateRef jumpSize,
@@ -167,12 +198,13 @@ private:
 
     void JSCallInit(Label *exit, Label *funcIsHeapObject, Label *funcIsCallable, Label *funcNotCallable);
     void JSCallNative(Label *exit);
+    void JSCallNativeInner(Label *exit, bool isJsProxy);
     void JSCallJSFunction(Label *exit, Label *noNeedCheckException = nullptr);
     void JSFastAotCall(Label *exit);
     void JSSlowAotCall(Label *exit);
     GateRef CallConstructorBridge(const int idxForAot, const std::vector<GateRef> &argsForAot);
     void CallBridge(GateRef code, GateRef expectedNum, Label *exit);
-    void JSCallAsmInterpreter(bool hasBaselineCode, Label *methodNotAot, Label *exit, Label *noNeedCheckException);
+    void JSCallAsmInterpreter(bool hasBaselineCode, Label *exit, Label *noNeedCheckException);
 
     int PrepareIdxForNative();
     std::vector<GateRef> PrepareArgsForNative();
@@ -194,7 +226,7 @@ private:
     std::vector<GateRef> PrepareBasicArgsForAsmInterpreter();
     std::vector<GateRef> PrepareAppendArgsForAsmInterpreter();
 
-    void CallFastBuiltin(Label* notFastBuiltins, Label *exit);
+    void CallFastBuiltin(Label* notFastBuiltins, Label *exit, GateRef hir = Circuit::NullGate());
     std::vector<GateRef> PrepareArgsForFastBuiltin();
     std::vector<GateRef> PrepareBasicArgsForFastBuiltin();
     std::vector<GateRef> PrepareAppendArgsForFastBuiltin();

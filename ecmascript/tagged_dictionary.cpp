@@ -467,16 +467,16 @@ FunctionProtoTransitionTable::~FunctionProtoTransitionTable()
     fakeParentMap_.clear();
 }
 
-void FunctionProtoTransitionTable::Iterate(const RootVisitor &v)
+void FunctionProtoTransitionTable::Iterate(RootVisitor &v)
 {
-    v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&protoTransitionTable_)));
+    v.VisitRoot(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&protoTransitionTable_)));
     for (auto &iter : fakeParentMap_) {
-        v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&iter.first)));
-        v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&iter.second)));
+        v.VisitRoot(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&iter.first)));
+        v.VisitRoot(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&iter.second)));
     }
     for (auto &iter : fakeChildMap_) {
-        v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&iter.first)));
-        v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&iter.second)));
+        v.VisitRoot(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&iter.first)));
+        v.VisitRoot(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&iter.second)));
     }
 }
 

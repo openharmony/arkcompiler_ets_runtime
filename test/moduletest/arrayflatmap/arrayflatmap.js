@@ -14,6 +14,17 @@
  */
 
 {
+    let arr = [1, , 2, , 3];
+    let res = arr.flatMap(x => [x]);
+    print(JSON.stringify(res));
+}
+{
+    let arr = new Array(3000);
+    arr[200] = 1;
+    let res = arr.flatMap(x => [x]);
+    print(JSON.stringify(res));
+}
+{
     class MyArray extends Array {
         static get [Symbol.species]() {
             return this;

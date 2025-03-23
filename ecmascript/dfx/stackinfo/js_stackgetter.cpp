@@ -301,7 +301,7 @@ void *JsStackGetter::GetMethodIdentifier(Method *method, const FrameIterator &it
             JSNativePointer *extraInfo = JSNativePointer::Cast(extraInfoValue.GetTaggedObject());
             return reinterpret_cast<void *>(extraInfo->GetData());
         }
-        return const_cast<void *>(method->GetNativePointer());
+        return function->GetNativePointer();
     }
 
     MethodLiteral *methodLiteral = method->GetMethodLiteral();

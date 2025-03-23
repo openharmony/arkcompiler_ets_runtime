@@ -24,47 +24,49 @@ var str = String.fromCharCode(0);
 var str1 = String.fromCharCode(56);
 var str2 = String.fromCharCode(90);
 var str3 = String.fromCharCode(113);
-print(str1);
-print(str2);
-print(str3);
+assert_equal(str1,"8");
+assert_equal(str2,"Z");
+assert_equal(str3,"q");
 var obj = {};
 obj[str1] = 'jjj1';
 obj[str2] = 'jjj2';
 obj[str3] = 'jjj3';
-print(obj[8]);
-print(obj.Z);
-print(obj.q);
+assert_equal(obj[8],"jjj1");
+assert_equal(obj.Z,"jjj2");
+assert_equal(obj.q,"jjj3");
 
 var str4 = "wode每一天";
 var str5 = "wodekk";
-print(str4.charAt(4));
-print(str5.charAt(4));
+assert_equal(str4.charAt(4),"每");
+assert_equal(str5.charAt(4),"k");
 obj[str5.charAt(4)] = 'jjj4';
-print(obj.k);
+assert_equal(obj.k,"jjj4");
 
 
 var str6 = "wojjj*432$@#$";
 var str7 = "Π我的gljds&(%怕jfd"
-print(str6.codePointAt(3));
-print(str6.codePointAt(9));
-print(str6.codePointAt(12));
-print(str6.codePointAt(28));
-print(str7.codePointAt(0));
-print(str6.codePointAt(1));
-print(str6.codePointAt(12));
-print(str6.codePointAt(284));
+assert_equal(str6.codePointAt(3),106);
+assert_equal(str6.codePointAt(9),36);
+assert_equal(str6.codePointAt(12),36);
+assert_equal(str6.codePointAt(28),undefined);
+assert_equal(str7.codePointAt(0),928);
+assert_equal(str6.codePointAt(1),111);
+assert_equal(str6.codePointAt(12),36);
+assert_equal(str6.codePointAt(284),undefined);
 
 var str8 = "meiyou";
 var str9 = "haodeha";
 var str10 = "wodeyisishi";
-print(str8.concat(str9));
-print(str8.concat(str9, str10));
-print(str8.concat(str9, '  hh ', str10));
+assert_equal(str8.concat(str9),"meiyouhaodeha");
+assert_equal(str8.concat(str9, str10),"meiyouhaodehawodeyisishi");
+assert_equal(str8.concat(str9, '  hh ', str10),"meiyouhaodeha  hh wodeyisishi");
 
 var str11 = "djfaDJKLAD";
 var str12 = "djfaDJKLADf大家发";
 var str13 = "DJKLAD";
 
-print(str11.toLowerCase());
-print(str12.toLowerCase());
-print(str13.toLowerCase());
+assert_equal(str11.toLowerCase(),"djfadjklad");
+assert_equal(str12.toLowerCase(),"djfadjkladf大家发");
+assert_equal(str13.toLowerCase(),"djklad");
+
+test_end();

@@ -14,3 +14,63 @@
 2
 0
 TypeError: is not callable
+FindIndex Test case 1:
+Log: [{"value":1,"index":0,"array":[1,2,3,4]},{"value":2,"index":1,"array":[1,2,3,4]},{"value":3,"index":2,"array":[1,2,3,4]}] Result: 2
+---
+FindIndex Test case 2:
+Log: [{"value":1,"index":0,"array":[1,2,3,4]},{"value":2,"index":1,"array":[1,2,3,4]},{"value":3,"index":2,"array":[1,2,3,4]},{"value":4,"index":3,"array":[1,2,3,4]}] Result: -1
+---
+FindIndex Test case 3:
+Log: [] Result: -1
+---
+FindIndex Test case 4:
+Log: [{"value":false,"index":0,"array":[false,0,""]}] Result: 0
+---
+FindIndex Test case 5:
+Log: [{"value":1,"index":0,"array":[1,2,3,4]},{"value":2,"index":1,"array":[1,2,3,4]},{"value":3,"index":2,"array":[1,2,3,4]}] Result: 2
+---
+FindIndex Test case 6:
+Log: [{"value":null,"index":0,"array":[null,1,2]},{"value":1,"index":1,"array":[null,1,2]}] Result: 1
+---
+FindIndex Test case 7:
+Log: [{"value":1,"index":0,"array":[1,2,3]},{"value":2,"index":1,"array":[1,2,3]},{"value":3,"index":2,"array":[1,2,3,4]}] Result: 2
+---
+FindIndex Test case 8:
+Log: [{"value":null,"index":0,"array":[null,1,2]},{"value":1,"index":1,"array":[null,1,2]}] Result: 1
+---
+FindIndex Test case 9:
+Log: [{"value":1,"index":0,"array":[1,2,3]},{"value":2,"index":1,"array":[1,2,3]},{"value":3,"index":2,"array":[1,2,3]}] Result: -1
+---
+FindIndex Test case 10:
+Log: [{"value":1,"index":0,"array":[1,2,3]}] Result: 0
+---
+FindIndex Test case 11:
+Log: [{"value":1,"index":0,"array":[1,2,3,4]},{"value":2,"index":1,"array":[1,2,3,4]},{"value":3,"index":2,"array":[1,2,3,4]}] Result: 2
+---
+FindIndex Test case 12:
+Log: [{"value":{"id":1},"index":0,"array":[{"id":1},{"id":2}]},{"value":{"id":2},"index":1,"array":[{"id":1},{"id":2}]}] Result: 1
+---
+FindIndex Test case 13:
+Log: [{"value":{"x":2},"index":0,"array":[{"x":2},{"x":2}]}] Result: 0
+---
+FindIndex Test case 14:
+Log: [] Result: -1
+---
+FindIndex Test case 15:
+Log: [{"value":1,"index":0,"array":[1,2,3]},{"value":2,"index":1,"array":[1,2,3]},{"value":3,"index":2,"array":[1,4,3]}] Result: -1
+---
+FindIndex Test case 16:
+Log: [{"value":[1],"index":0,"array":[[1],[2],[3]]},{"value":[2],"index":1,"array":[[1],[2],[3]]}] Result: 1
+---
+FindIndex Test case 17:
+Log: [{"value":1,"index":0,"array":[1,2,3,-1,5]},{"value":2,"index":1,"array":[1,2,3,-1,5]},{"value":3,"index":2,"array":[1,2,3,-1,5]},{"value":-1,"index":3,"array":[1,2,3,-1,5]}] Result: 3
+---
+FindIndex Test case 18:
+Log: [{"value":"apple","index":0,"array":["apple","banana","cherry"]},{"value":"banana","index":1,"array":["apple","banana","cherry"]}] Result: 1
+---
+FindIndex Test case 19:
+Log: [{"value":{"name":"Alice"},"index":0,"array":[{"name":"Alice"},{"name":"Bob"}]},{"value":{"name":"Bob"},"index":1,"array":[{"name":"Alice"},{"name":"Bob"}]}] Result: 1
+---
+FindIndex Test case 20:
+Log: [{"value":{"age":30},"index":0,"array":[{"age":30},{"age":25},{"age":30}]}] Result: 0
+---

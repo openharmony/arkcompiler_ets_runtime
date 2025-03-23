@@ -14,7 +14,6 @@
  */
 
 #include "ecmascript/jit/compile_decision.h"
-#include "ecmascript/jit/jit.h"
 #include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/ic/profile_type_info.h"
 
@@ -32,9 +31,12 @@ CString CompileDecision::GetMethodInfo() const
 CString CompileDecision::GetMethodName() const
 {
     Method *method = Method::Cast(jsFunction_->GetMethod().GetTaggedObject());
+    ASSERT(method != nullptr);
     auto jSPandaFile = method->GetJSPandaFile();
-    ASSERT(jSPandaFile != nullptr);
-    CString fileDesc = jSPandaFile->GetJSPandaFileDesc();
+    CString fileDesc;
+    if (jSPandaFile != nullptr) {
+        fileDesc = jSPandaFile->GetJSPandaFileDesc();
+    }
     return fileDesc + ":" + method->GetRecordNameStr() + "." + CString(method->GetMethodName());
 }
 
@@ -116,7 +118,11 @@ bool CompileDecision::IsSupportFunctionKind() const
 
 bool CompileDecision::CheckJsFunctionStatus() const
 {
-    if (jsFunction_->IsJitCompiling()) {
+    if (tier_.IsFast() && jsFunction_->IsJitCompiling()) {
+        return false;
+    }
+
+    if (tier_.IsBaseLine() && jsFunction_->IsBaselinejitCompiling()) {
         return false;
     }
 

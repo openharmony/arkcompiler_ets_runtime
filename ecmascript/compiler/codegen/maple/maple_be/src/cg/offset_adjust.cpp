@@ -18,7 +18,6 @@
 #include "aarch64_offset_adjust.h"
 #endif
 
-#include "cgfunc.h"
 
 namespace maplebe {
 using namespace maple;

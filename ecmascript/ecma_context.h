@@ -17,8 +17,12 @@
 
 #include <cstdint>
 #include <optional>
+#include "ecmascript/base/aligned_struct.h"
 #include "ecmascript/base/config.h"
 #include "ecmascript/common.h"
+#include "ecmascript/dfx/vmstat/opt_code_profiler.h"
+#include "ecmascript/frames.h"
+#include "ecmascript/ic/mega_ic_cache.h"
 #include "ecmascript/js_handle.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/mem/c_containers.h"
@@ -36,6 +40,7 @@ class File;
 }  // namespace panda_file
 
 namespace ecmascript {
+class AotConstantpoolPatcher;
 class GlobalEnv;
 class ObjectFactory;
 class EcmaRuntimeStat;
@@ -46,11 +51,9 @@ class ConstantPool;
 class JSPromise;
 class RegExpExecResultCache;
 class EcmaHandleScope;
-class GlobalIndexMap;
 class SustainingJSHandleList;
 class SustainingJSHandle;
 enum class PromiseRejectionEvent : uint8_t;
-enum class CompareStringsOption : uint8_t;
 
 template<typename T>
 class JSHandle;
@@ -79,15 +82,6 @@ namespace kungfu {
 class PGOTypeManager;
 } // namespace kungfu
 
-enum class IcuFormatterType {
-    SIMPLE_DATE_FORMAT_DEFAULT,
-    SIMPLE_DATE_FORMAT_DATE,
-    SIMPLE_DATE_FORMAT_TIME,
-    NUMBER_FORMATTER,
-    COLLATOR,
-    ICU_FORMATTER_TYPE_COUNT
-};
-
 using HostPromiseRejectionTracker = void (*)(const EcmaVM* vm,
                                              const JSHandle<JSPromise> promise,
                                              const JSHandle<JSTaggedValue> reason,
@@ -99,6 +93,12 @@ using JsAotReaderCallback = std::function<bool(std::string fileName, uint8_t **b
 #endif
 class EcmaContext {
 public:
+    enum JSErrorProps {
+        NAME,
+        MESSAGE,
+        STACK
+    };
+
     static EcmaContext *CreateAndInitialize(JSThread *thread);
     static void CheckAndDestroy(JSThread *thread, EcmaContext *context);
 
@@ -107,6 +107,73 @@ public:
 
     EcmaContext(JSThread *thread);
     ~EcmaContext();
+    struct EcmaData
+        : public base::AlignedStruct<JSTaggedValue::TaggedTypeSize(),
+                                     base::AlignedPointer,
+#if ECMASCRIPT_ENABLE_MEGA_PROFILER
+                                     base::AlignedPointer,
+                                     base::AlignedUint64,
+                                     base::AlignedUint64,
+                                     base::AlignedUint64>
+#else
+                                     base::AlignedPointer>
+#endif
+                                     {
+        enum class Index : size_t {
+            LoadMegaICCacheIndex,
+            StoreMegaICCacheIndex,
+            PropertiesCacheIndex,
+#if ECMASCRIPT_ENABLE_MEGA_PROFILER
+            megaUpdateCountIndex,
+            megaProbesCountIndex,
+            megaHitCountIndex,
+#endif
+            NumOfMembers
+        };
+#if ECMASCRIPT_ENABLE_MEGA_PROFILER
+        static_assert(static_cast<size_t>(Index::NumOfMembers) == 6);
+#else
+        static_assert(static_cast<size_t>(Index::NumOfMembers) == 3);
+#endif
+        static size_t GetLoadMegaICCacheOffset(bool isArch32)
+        {
+            return GetOffset<static_cast<size_t>(Index::LoadMegaICCacheIndex)>(
+                isArch32);
+        }
+
+        static size_t GetStoreMegaICCacheOffset(bool isArch32)
+        {
+            return GetOffset<static_cast<size_t>(Index::StoreMegaICCacheIndex)>(
+                isArch32);
+        }
+
+        static size_t GetPropertiesCacheOffset(bool isArch32)
+        {
+            return GetOffset<static_cast<size_t>(Index::PropertiesCacheIndex)>(
+                isArch32);
+        }
+#if ECMASCRIPT_ENABLE_MEGA_PROFILER
+        static size_t GetMegaProbesCountOffset(bool isArch32)
+        {
+            return GetOffset<static_cast<size_t>(Index::megaProbesCountIndex)>(
+                isArch32);
+        }
+
+        static size_t GetMegaHitCountOffset(bool isArch32)
+        {
+            return GetOffset<static_cast<size_t>(Index::megaHitCountIndex)>(
+                isArch32);
+        }
+#endif
+        alignas(EAS) MegaICCache *loadMegaICCache_{nullptr};
+        alignas(EAS) MegaICCache *storeMegaICCache_{nullptr};
+        alignas(EAS) PropertiesCache *propertiesCache_{nullptr};
+#if ECMASCRIPT_ENABLE_MEGA_PROFILER
+        alignas(EAS) uint64_t megaUpdateCount_ {0};
+        alignas(EAS) uint64_t megaProbesCount_ {0};
+        alignas(EAS) uint64_t megaHitCount {0};
+#endif
+    };
 
     EcmaVM *GetEcmaVM() const
     {
@@ -123,23 +190,6 @@ public:
     bool HasPendingJob();
 
     bool ExecutePromisePendingJob();
-
-    bool IsInPendingJob() const
-    {
-        return pendingJobEnterCount > 0;
-    }
-
-    void AddPendingJobEnterCount()
-    {
-        ASSERT(pendingJobEnterCount < std::numeric_limits<uint64_t>::max());
-        ++pendingJobEnterCount;
-    }
-
-    void MinusPendingJobEnterCount()
-    {
-        ASSERT(IsInPendingJob());
-        --pendingJobEnterCount;
-    }
 
     static EcmaContext *ConstCast(const EcmaContext *context)
     {
@@ -305,6 +355,8 @@ public:
 
     JSHandle<ConstantPool> PUBLIC_API FindOrCreateConstPool(const JSPandaFile *jsPandaFile,
                                                             panda_file::File::EntityId id);
+    void SetPrototypeForTransitions(JSTaggedValue trans, JSTaggedValue proto);
+    void SetObjectFunctionFromConstPool(JSHandle<ConstantPool> newConstPool);
     void CreateAllConstpool(const JSPandaFile *jsPandaFile);
 
     void HandleUncaughtException(JSTaggedValue exception);
@@ -318,7 +370,9 @@ public:
     JSHandle<job::MicroJobQueue> GetMicroJobQueue() const;
 
     static void PrintJSErrorInfo(JSThread *thread, const JSHandle<JSTaggedValue> &exceptionInfo);
-    void Iterate(const RootVisitor &v, const RootRangeVisitor &rv);
+    static CString GetJSErrorInfo(JSThread *thread, const JSHandle<JSTaggedValue> exceptionInfo, JSErrorProps key);
+    void IterateMegaIC(RootVisitor &v);
+    void Iterate(RootVisitor &v);
     static void MountContext(JSThread *thread);
     static void UnmountContext(JSThread *thread);
     void SetMicroJobQueue(job::MicroJobQueue *queue);
@@ -345,69 +399,10 @@ public:
         moduleLogger_ = moduleLogger;
     }
 
-    void SetDefaultLocale(const std::string& locale)
-    {
-        defaultLocale_ = locale;
-    }
-
-    const std::string& GetDefaultLocale() const
-    {
-        return defaultLocale_;
-    }
-
-    void InitializeDefaultLocale()
-    {
-        defaultLocale_ = "";
-    }
-
-    void ClearDefaultLocale()
-    {
-        defaultLocale_.clear();
-    }
-
-    void SetDefaultCompareStringsOption(const CompareStringsOption csOption)
-    {
-        defaultComapreStringsOption_ = csOption;
-    }
-
-    const std::optional<CompareStringsOption> GetDefaultCompareStringsOption() const
-    {
-        return defaultComapreStringsOption_;
-    }
-
-    void InitializeDefaultCompareStringsOption()
-    {
-        defaultComapreStringsOption_ = std::nullopt;
-    }
-
-    void ClearDefaultComapreStringsOption()
-    {
-        defaultComapreStringsOption_ = std::nullopt;
-    }
-
     FunctionProtoTransitionTable *GetFunctionProtoTransitionTable() const
     {
         return functionProtoTransitionTable_;
     }
-
-    // For icu objects cache
-    void SetIcuFormatterToCache(IcuFormatterType type, const std::string &locale, void *icuObj,
-                                NativePointerCallback deleteEntry = nullptr)
-    {
-        EcmaContext::IcuFormatter icuFormatter = IcuFormatter(locale, icuObj, deleteEntry);
-        icuObjCache_[static_cast<int>(type)] = icuFormatter;
-    }
-
-    ARK_INLINE void *GetIcuFormatterFromCache(IcuFormatterType type, std::string &locale)
-    {
-        auto &icuFormatter = icuObjCache_[static_cast<int>(type)];
-        if (icuFormatter.locale == locale) {
-            return icuFormatter.icuObj;
-        }
-        return nullptr;
-    }
-
-    void ClearIcuCache(JSThread *thread);
 
     EcmaRuntimeStat *GetRuntimeStat() const
     {
@@ -447,38 +442,6 @@ public:
         return currentHandleStorageIndex_;
     }
 
-#ifdef ECMASCRIPT_ENABLE_HANDLE_LEAK_CHECK
-    void HandleScopeCountAdd()
-    {
-        handleScopeCount_++;
-    }
-
-    void HandleScopeCountDec()
-    {
-        handleScopeCount_--;
-    }
-
-    void PrimitiveScopeCountAdd()
-    {
-        primitiveScopeCount_++;
-    }
-
-    void PrimitiveScopeCountDec()
-    {
-        primitiveScopeCount_--;
-    }
-#endif
-
-    void SetLastHandleScope(EcmaHandleScope *scope)
-    {
-        lastHandleScope_ = scope;
-    }
-
-    EcmaHandleScope *GetLastHandleScope() const
-    {
-        return lastHandleScope_;
-    }
-
     JSTaggedType *GetPrimitiveScopeStorageNext() const
     {
         return primitiveScopeStorageNext_;
@@ -504,17 +467,7 @@ public:
         return currentPrimitiveStorageIndex_;
     }
 
-    void SetLastPrimitiveScope(EcmaHandleScope *scope)
-    {
-        lastPrimitiveScope_ = scope;
-    }
-
-    EcmaHandleScope *GetLastPrimitiveScope() const
-    {
-        return lastPrimitiveScope_;
-    }
-
-    size_t IterateHandle(const RootRangeVisitor &rangeVisitor);
+    size_t IterateHandle(RootVisitor &visitor);
     uintptr_t *ExpandHandleStorage();
     void ShrinkHandleStorage(int prevIndex);
     uintptr_t *ExpandPrimitiveStorage();
@@ -569,8 +522,68 @@ public:
 
     PropertiesCache *GetPropertiesCache() const
     {
-        return propertiesCache_;
+        return ecmaData_.propertiesCache_;
     }
+
+    MegaICCache *GetLoadMegaICCache() const
+    {
+        return ecmaData_.loadMegaICCache_;
+    }
+
+    MegaICCache *GetStoreMegaICCache() const
+    {
+        return ecmaData_.storeMegaICCache_;
+    }
+#if ECMASCRIPT_ENABLE_MEGA_PROFILER
+    uint64_t GetMegaProbeCount() const
+    {
+        return ecmaData_.megaProbesCount_;
+    }
+
+    uint64_t GetMegaHitCount() const
+    {
+        return ecmaData_.megaHitCount;
+    }
+
+    uint64_t GetMegaUpdateCount() const
+    {
+        return ecmaData_.megaUpdateCount_;
+    }
+
+    void IncMegaUpdateCount()
+    {
+        ecmaData_.megaUpdateCount_++;
+    }
+
+    void ClearMegaStat()
+    {
+        ecmaData_.megaHitCount = 0;
+        ecmaData_.megaProbesCount_ = 0;
+        ecmaData_.megaUpdateCount_ = 0;
+    }
+    void PrintMegaICStat()
+    {
+        const int precision = 2;
+        const double percent = 100.0;
+        LOG_ECMA(INFO)
+            << "------------------------------------------------------------"
+            << "---------------------------------------------------------";
+        LOG_ECMA(INFO) << "MegaUpdateCount: " << GetMegaUpdateCount();
+        LOG_ECMA(INFO) << "MegaHitCount: " << GetMegaHitCount();
+        LOG_ECMA(INFO) << "MegaProbeCount: " << GetMegaProbeCount();
+        LOG_ECMA(INFO) << "MegaHitRate: " << std::fixed
+                       << std::setprecision(precision)
+                       << (GetMegaProbeCount() > 0
+                               ? static_cast<double>(GetMegaHitCount()) /
+                                     GetMegaProbeCount() * percent
+                               : 0.0)
+                       << "%";
+        LOG_ECMA(INFO)
+            << "------------------------------------------------------------"
+            << "---------------------------------------------------------";
+        ClearMegaStat();
+    }
+#endif
     void ClearBufferData();
     const GlobalEnvConstants *GlobalConstants() const
     {
@@ -621,21 +634,6 @@ public:
     void JoinStackPopFastPath(JSHandle<JSTaggedValue> receiver);
     void JoinStackPop(JSHandle<JSTaggedValue> receiver);
 
-    void SetJsonStringifyCache(size_t index, CVector<std::pair<CString, int>> &value)
-    {
-        stringifyCache_[index] = value;
-    }
-
-    CVector<std::pair<CString, int>> GetJsonStringifyCache(size_t index)
-    {
-        return stringifyCache_[index];
-    }
-
-    bool IsAotEntry()
-    {
-        return isAotEntry_;
-    }
-
     std::tuple<uint64_t, uint8_t *, int, kungfu::CalleeRegAndOffsetVec> CalCallSiteInfo(uintptr_t retAddr,
                                                                                         bool isDeopt) const;
 
@@ -674,20 +672,33 @@ private:
     void RelocateConstantString(const JSPandaFile *jsPandaFile);
     JSTaggedValue FindConstpoolFromContextCache(const JSPandaFile *jsPandaFile, int32_t index);
 
-    void CheckUnsharedConstpoolArrayLimit(int32_t index)
+    void GrowUnsharedConstpoolArray(int32_t index);
+    void ResizeUnsharedConstpoolArray(int32_t oldCapacity, int32_t minCapacity);
+    void ClearUnsharedConstpoolArray()
     {
-        if (index >= UNSHARED_CONSTANTPOOL_COUNT) {
-            LOG_ECMA(FATAL) << "the unshared constpool array need to expanding capacity, index :" << index;
-            UNREACHABLE();
+        if (unsharedConstpools_ != nullptr) {
+            delete[] unsharedConstpools_;
+            unsharedConstpools_ = nullptr;
+            thread_->SetUnsharedConstpools(reinterpret_cast<uintptr_t>(nullptr));
+            thread_->SetUnsharedConstpoolsArrayLen(0);
         }
+    }
+
+    int32_t GetUnsharedConstpoolsArrayLen() const
+    {
+        return unsharedConstpoolsArrayLen_;
+    }
+
+    void SetUnsharedConstpoolsArrayLen(int32_t len)
+    {
+        unsharedConstpoolsArrayLen_ = len;
     }
 
     NO_MOVE_SEMANTIC(EcmaContext);
     NO_COPY_SEMANTIC(EcmaContext);
-
-    PropertiesCache *propertiesCache_ {nullptr};
-    JSThread *thread_ {nullptr};
-    EcmaVM *vm_ {nullptr};
+    EcmaData ecmaData_;
+    JSThread *thread_{nullptr};
+    EcmaVM *vm_{nullptr};
 
     bool isUncaughtExceptionRegistered_ {false};
     bool initialized_ {false};
@@ -700,14 +711,14 @@ private:
     JSTaggedValue stringSplitResultCache_ {JSTaggedValue::Hole()};
     JSTaggedValue stringToListResultCache_ {JSTaggedValue::Hole()};
     JSTaggedValue globalEnv_ {JSTaggedValue::Hole()};
-    JSTaggedValue pointerToIndexDictionary_ {JSTaggedValue::Hole()};
     JSTaggedValue regexpCache_ {JSTaggedValue::Hole()};
     JSTaggedValue regexpGlobal_ {JSTaggedValue::Hole()};
     JSTaggedValue microJobQueue_ {JSTaggedValue::Hole()};
     EcmaRuntimeStat *runtimeStat_ {nullptr};
 
     CMap<const JSPandaFile *, CMap<int32_t, JSTaggedValue>> cachedSharedConstpools_ {};
-    std::array<JSTaggedValue, UNSHARED_CONSTANTPOOL_COUNT> unsharedConstpools_ {};
+    JSTaggedValue* unsharedConstpools_ = nullptr;
+    int32_t unsharedConstpoolsArrayLen_ = UNSHARED_CONSTANTPOOL_COUNT;
     static constexpr int32_t SHARED_CONSTPOOL_KEY_NOT_FOUND = INT32_MAX; // INT32_MAX :invalid value.
 
     // for HotReload of module.
@@ -741,20 +752,6 @@ private:
 
     ModuleLogger *moduleLogger_ {nullptr};
 
-    std::string defaultLocale_;
-    std::optional<CompareStringsOption> defaultComapreStringsOption_;
-
-    // For icu objects cache
-    struct IcuFormatter {
-        std::string locale;
-        void *icuObj {nullptr};
-        NativePointerCallback deleteEntry {nullptr};
-
-        IcuFormatter() = default;
-        IcuFormatter(const std::string &locale, void *icuObj, NativePointerCallback deleteEntry = nullptr)
-            : locale(locale), icuObj(icuObj), deleteEntry(deleteEntry) {}
-    };
-    IcuFormatter icuObjCache_[static_cast<uint32_t>(IcuFormatterType::ICU_FORMATTER_TYPE_COUNT)];
     // Handlescope
     static const uint32_t NODE_BLOCK_SIZE_LOG2 = 10;
     static const uint32_t NODE_BLOCK_SIZE = 1U << NODE_BLOCK_SIZE_LOG2;
@@ -763,18 +760,12 @@ private:
     JSTaggedType *handleScopeStorageEnd_ {nullptr};
     std::vector<std::array<JSTaggedType, NODE_BLOCK_SIZE> *> handleStorageNodes_ {};
     int32_t currentHandleStorageIndex_ {-1};
-#ifdef ECMASCRIPT_ENABLE_HANDLE_LEAK_CHECK
-    int32_t handleScopeCount_ {0};
-    int32_t primitiveScopeCount_ {0};
-#endif
-    EcmaHandleScope *lastHandleScope_ {nullptr};
     // PrimitveScope
     static constexpr int32_t MIN_PRIMITIVE_STORAGE_SIZE = 2;
     JSTaggedType *primitiveScopeStorageNext_ {nullptr};
     JSTaggedType *primitiveScopeStorageEnd_ {nullptr};
     std::vector<std::array<JSTaggedType, NODE_BLOCK_SIZE> *> primitiveStorageNodes_ {};
     int32_t currentPrimitiveStorageIndex_ {-1};
-    EcmaHandleScope *lastPrimitiveScope_ {nullptr};
 
     // Frame pointer
     JSTaggedType *currentFrame_ {nullptr};
@@ -787,24 +778,17 @@ private:
     // Join Stack
     static constexpr uint32_t MIN_JOIN_STACK_SIZE = 2;
     CVector<JSTaggedValue> joinStack_ {JSTaggedValue::Hole(), JSTaggedValue::Hole()};
-    // json stringify cache
-    static constexpr uint32_t STRINGIFY_CACHE_SIZE = 64;
-    std::array<CVector<std::pair<CString, int>>, STRINGIFY_CACHE_SIZE> stringifyCache_ {};
-    bool isAotEntry_ { false };
 
     // SustainingJSHandleList for jit compile hold ref
     SustainingJSHandleList *sustainingJSHandleList_ {nullptr};
 
     bool hasKeptObjects_ {false};
 
-    uint64_t pendingJobEnterCount {0};
-
     friend class EcmaHandleScope;
     friend class JSPandaFileExecutor;
     friend class ObjectFactory;
     friend class panda::JSNApi;
     friend class AOTFileManager;
-    friend class GlobalIndexMap;
 };
 }  // namespace ecmascript
 }  // namespace panda

@@ -150,7 +150,8 @@ var a124=124;
 var a125=125;
 var a126=126;
 for(let i=0;i<5;i++){
-    print("test store global var ic __proto__")
     var __proto__ = null;
 }
 // do not add any code 
+
+test_end();

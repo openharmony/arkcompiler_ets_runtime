@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 
-#include "ecmascript/dfx/hprof/rawheap_translate/rawheap_translate.h"
 #include "ecmascript/dfx/hprof/rawheap_translate/serializer.h"
 
 namespace rawheap_translate {

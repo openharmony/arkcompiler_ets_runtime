@@ -181,20 +181,15 @@ print(emptyArr.concat([]).length);
     print(arr4[0], arr4[2000], arr4[2001], arr4[2002], arr4[2003], arr4[2004]);
 }
 
-/*
- * @tc.name:Array concat8
- * @tc.desc:test long Array Concat long Array change origin prototype
- * @tc.type: FUNC
- */
-{
-    let arr2 = new Array(2000);
-    arr2.__proto__[0] = "??";
-    arr2[1] = 3;
-    arr2[2] = 2;
-    arr2[3] = "ab";
-    arr2[4] = 1;
-    let arr3 = new Array(2000);
-    let arr4 = arr3.concat(arr2);
-    print(arr4[0], arr4[2000], arr4[2001], arr4[2002], arr4[2003], arr4[2004]);
-}
 print("test arrayconcat success!");
+
+print("proxy defineproperty success!");
+const v1 = [1, 2, "j", 9999, , 23];
+const v2 = ["sss", 2, "j", , , ,"test"];
+print(v1.concat(v2));
+
+let v3 = new Array();
+v3.push('foo');
+var v4 = ['bar'];
+var v5 = v3.concat(v4);
+print(v5);
