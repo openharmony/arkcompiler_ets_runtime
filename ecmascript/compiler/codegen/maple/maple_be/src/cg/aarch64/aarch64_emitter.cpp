@@ -349,6 +349,14 @@ void AArch64AsmEmitter::EmitAArch64Insn(maplebe::Emitter &emitter, Insn &insn) c
             EmitAdrpLabel(emitter, insn);
             return;
         }
+        case MOP_get_heap_const_table: {
+            EmitGetHeapConstTable(emitter, insn);
+            return;
+        }
+        case MOP_heap_const: {
+            EmitHeapConstant(emitter, insn);
+            return;
+        }
         case MOP_lazy_tail: {
             /* No need to emit this pseudo instruction. */
             return;
@@ -766,6 +774,62 @@ void AArch64AsmEmitter::EmitAdrpLabel(Emitter &emitter, const Insn &insn) const
     (void)emitter.Emit("\n");
     free(idx);
     idx = nullptr;
+#endif
+}
+
+void AArch64AsmEmitter::EmitHeapConstant(Emitter &emitter, const Insn &insn) const
+{
+#ifdef ARK_LITECG_DEBUG
+    /* ldr    reg1, [reg0, offset]
+     */
+    const InsnDesc *md = &AArch64CG::kMd[MOP_heap_const];
+
+    Operand &opnd0 = insn.GetOperand(kInsnFirstOpnd);
+    Operand &opnd1 = insn.GetOperand(kInsnSecondOpnd);
+    Operand &opnd2 = insn.GetOperand(kInsnThirdOpnd);
+    const OpndDesc *prop0 = md->opndMD[0];
+    A64OpndEmitVisitor visitor(emitter, prop0);
+    (void)emitter.Emit("\t").Emit("ldr").Emit("\t");
+    opnd0.Accept(visitor);
+    (void)emitter.Emit(", [");
+    opnd1.Accept(visitor);
+    (void)emitter.Emit(",#");
+    uint64 slotIndex = static_cast<ImmOperand&>(opnd2).GetValue();
+    (void)emitter.Emit(slotIndex * k8ByteSize).Emit("]  // __heap_constant(");
+    opnd2.Accept(visitor);
+    (void)emitter.Emit(")\n");
+#endif
+}
+
+void AArch64AsmEmitter::EmitGetHeapConstTable(Emitter &emitter, const Insn &insn) const
+{
+#ifdef ARK_LITECG_DEBUG
+    /* ldr    reg0, [reg1, offset1]
+     * ldr    reg0, [reg0, offset2]
+     */
+    const InsnDesc *md = &AArch64CG::kMd[MOP_get_heap_const_table];
+
+    Operand &opnd0 = insn.GetOperand(kInsnFirstOpnd);
+    Operand &opnd1 = insn.GetOperand(kInsnSecondOpnd);
+    Operand &opnd2 = insn.GetOperand(kInsnThirdOpnd);
+    Operand &opnd3 = insn.GetOperand(kInsnFourthOpnd);
+    const OpndDesc *prop0 = md->opndMD[0];
+    A64OpndEmitVisitor visitor(emitter, prop0);
+    (void)emitter.Emit("\t").Emit("ldr").Emit("\t");
+    opnd0.Accept(visitor);
+    (void)emitter.Emit(", [");
+    opnd1.Accept(visitor);
+    (void)emitter.Emit(",");
+    opnd2.Accept(visitor);
+    (void)emitter.Emit("]\n");
+
+    (void)emitter.Emit("\t").Emit("ldr").Emit("\t");
+    opnd0.Accept(visitor);
+    (void)emitter.Emit(", [");
+    opnd0.Accept(visitor);
+    (void)emitter.Emit(",");
+    opnd3.Accept(visitor);
+    (void)emitter.Emit("]    // __ get_heap_constant_table\n");
 #endif
 }
 

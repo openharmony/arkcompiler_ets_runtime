@@ -19,6 +19,7 @@
 #include "ecmascript/compiler/aot_compiler_preprocessor.h"
 #include "ecmascript/compiler/argument_accessor.h"
 #include "ecmascript/compiler/pgo_type/pgo_type_manager.h"
+#include "ecmascript/compiler/jit_compilation_env.h"
 #include "ecmascript/enum_conversion.h"
 #include "ecmascript/global_index.h"
 #include "ecmascript/jspandafile/program_object.h"
@@ -45,6 +46,21 @@ public:
         return gate_;
     }
 
+    uint32_t TryGetHeapConstantFunctionIndex(uint32_t callMethodId) const
+    {
+        if (compilationEnv_ == nullptr || !compilationEnv_->SupportHeapConstant()) {
+            return JitCompilationEnv::INVALID_HEAP_CONSTANT_INDEX;
+        }
+        ASSERT(compilationEnv_->IsJitCompiler());
+        auto *jitCompilationEnv = static_cast<const JitCompilationEnv*>(compilationEnv_);
+        const auto &callMethodId2HeapConstantIndex = jitCompilationEnv->GetCallMethodId2HeapConstantIndex();
+        auto itr = callMethodId2HeapConstantIndex.find(callMethodId);
+        if (itr != callMethodId2HeapConstantIndex.end()) {
+            return itr->second;
+        }
+        return JitCompilationEnv::INVALID_HEAP_CONSTANT_INDEX;
+    }
+
     static bool IsTrustedBooleanType(GateAccessor acc, GateRef gate);
 
     static bool IsTrustedNumberType(GateAccessor acc, GateRef gate);
@@ -58,7 +74,7 @@ public:
         return IsTrustedBooleanType(acc, gate) || IsTrustedNumberType(acc, gate) ||
                IsTrustedStringType(env, circuit, chunk, acc, gate);
     }
-    
+
     inline bool IsAot() const
     {
         return isAot_;
@@ -946,7 +962,7 @@ public:
     {
         return receiver_;
     }
-    
+
     static bool IsMegaType(const PGORWOpType *pgoTypes)
     {
         for (uint32_t i = 0; i < pgoTypes->GetCount(); ++i) {

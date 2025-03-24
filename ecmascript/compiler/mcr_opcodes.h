@@ -212,19 +212,20 @@ namespace panda::ecmascript::kungfu {
     V(MonoStorePropertyLookUpProto, MONO_STORE_PROPERTY_LOOK_UP_PROTO, GateFlags::HAS_FRAME_STATE, 1, 1, 5)  \
     V(MonoStoreProperty, MONO_STORE_PROPERTY, GateFlags::HAS_FRAME_STATE, 1, 1, 7)
 
-#define MCR_GATE_META_DATA_LIST_WITH_GATE_TYPE(V)                                          \
-    V(PrimitiveTypeCheck, PRIMITIVE_TYPE_CHECK, GateFlags::CHECKABLE, 1, 1, 1)             \
-    V(TypedArrayCheck, TYPED_ARRAY_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                   \
-    V(LoadTypedArrayLength, LOAD_TYPED_ARRAY_LENGTH, GateFlags::NO_WRITE, 1, 1, 1)         \
-    V(TypedBinaryOp, TYPED_BINARY_OP, GateFlags::NO_WRITE, 1, 1, 2)                         \
-    V(TypedUnaryOp, TYPED_UNARY_OP, GateFlags::NO_WRITE, 1, 1, 1)                          \
-    V(TypedConditionJump, TYPED_CONDITION_JUMP, GateFlags::NO_WRITE, 1, 1, 1)              \
-    V(TypedConvert, TYPE_CONVERT, GateFlags::NO_WRITE, 1, 1, 1)                            \
-    V(CheckAndConvert, CHECK_AND_CONVERT, GateFlags::CHECKABLE, 1, 1, 1)                   \
-    V(Convert, CONVERT, GateFlags::NONE_FLAG, 0, 0, 1)                                     \
-    V(JSInlineTargetTypeCheck, JSINLINETARGET_TYPE_CHECK, GateFlags::CHECKABLE, 1, 1, 2)   \
-    V(TypeOfCheck, TYPE_OF_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                           \
-    V(TypeOf, TYPE_OF, GateFlags::NO_WRITE, 1, 1, 0)                                       \
+#define MCR_GATE_META_DATA_LIST_WITH_GATE_TYPE(V)                                                           \
+    V(PrimitiveTypeCheck, PRIMITIVE_TYPE_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                              \
+    V(TypedArrayCheck, TYPED_ARRAY_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                                    \
+    V(LoadTypedArrayLength, LOAD_TYPED_ARRAY_LENGTH, GateFlags::NO_WRITE, 1, 1, 1)                          \
+    V(TypedBinaryOp, TYPED_BINARY_OP, GateFlags::NO_WRITE, 1, 1, 2)                                         \
+    V(TypedUnaryOp, TYPED_UNARY_OP, GateFlags::NO_WRITE, 1, 1, 1)                                           \
+    V(TypedConditionJump, TYPED_CONDITION_JUMP, GateFlags::NO_WRITE, 1, 1, 1)                               \
+    V(TypedConvert, TYPE_CONVERT, GateFlags::NO_WRITE, 1, 1, 1)                                             \
+    V(CheckAndConvert, CHECK_AND_CONVERT, GateFlags::CHECKABLE, 1, 1, 1)                                    \
+    V(Convert, CONVERT, GateFlags::NONE_FLAG, 0, 0, 1)                                                      \
+    V(JSInlineTargetTypeCheck, JSINLINETARGET_TYPE_CHECK, GateFlags::CHECKABLE, 1, 1, 2)                    \
+    V(JSInlineTargetHeapConstantCheck, JSINLINETARGET_HEAPCONSTANT_CHECK, GateFlags::CHECKABLE, 1, 1, 2)    \
+    V(TypeOfCheck, TYPE_OF_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                                            \
+    V(TypeOf, TYPE_OF, GateFlags::NO_WRITE, 1, 1, 0)                                                        \
     V(TypedCallTargetCheckOp, TYPED_CALLTARGETCHECK_OP, GateFlags::CHECKABLE, 1, 1, 2)
 
 // NOTICE-PGO: wx typedcalltargetcheckop can adopt different number of valueIn

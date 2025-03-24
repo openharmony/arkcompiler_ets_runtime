@@ -530,7 +530,7 @@ public:
         TimeScope timescope("SlowPathLoweringPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
         SlowPathLowering lowering(data->GetCircuit(), data->GetCompilerConfig(), data->GetPassContext(),
-                                  data->GetMethodLiteral(), enableLog, data->GetMethodName());
+                                  data->GetMethodLiteral(), enableLog, data->GetMethodName(), data->GetRecordName());
         lowering.CallRuntimeLowering();
         return true;
     }

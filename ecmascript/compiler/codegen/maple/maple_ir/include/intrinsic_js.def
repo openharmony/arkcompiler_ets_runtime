@@ -22,3 +22,7 @@ DEF_MIR_INTRINSIC(MUL_WITH_OVERFLOW,\
                   "__mul_with_overflow", kArgTyI32, kArgTyI32, kArgTyI32)
 DEF_MIR_INTRINSIC(JS_PURE_CALL,\
                   "__jsop_purecall", kArgTyDynany, kArgTyDynany, kArgTyDynany, kArgTyDynany, kArgTyDynany, kArgTyDynany, kArgTyDynany, kArgTyDynany)
+DEF_MIR_INTRINSIC(HEAP_CONSTANT,\
+                  "__heap_constant", kArgTyI64, kArgTyI64, kArgTyI64)
+DEF_MIR_INTRINSIC(GET_HEAP_CONSTANT_TABLE,\
+                  "__get_heap_constant_table", kArgTyI64, kArgTyI64, kArgTyI64)

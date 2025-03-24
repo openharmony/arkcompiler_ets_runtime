@@ -238,6 +238,7 @@
       panda::ecmascript::Jit::IsEnableFastJit*;
       panda::ecmascript::Jit::IsEnableBaselineJit*;
       panda::ecmascript::JitTask::ComputePayLoadSize*;
+      panda::ecmascript::JitThread::NewHandle*;
       panda::ecmascript::HugeMachineCodeSpace::AllocateFort*;
       panda::ecmascript::MachineCodeSpace::JitFortAllocate*;
       panda::ecmascript::JitFort::IsResourceAvailable*;

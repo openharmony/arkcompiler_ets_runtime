@@ -902,6 +902,8 @@ bool CGLowerer::IsIntrinsicCallHandledAtLowerLevel(MIRIntrinsicID intrinsic) con
         case INTRN_SUB_WITH_OVERFLOW:
         case INTRN_MUL_WITH_OVERFLOW:
         case INTRN_JS_PURE_CALL:
+        case INTRN_HEAP_CONSTANT:
+        case INTRN_GET_HEAP_CONSTANT_TABLE:
             return true;
         default: {
             return false;

@@ -109,4 +109,9 @@ JSTaggedValue AOTCompilationEnv::GetStringFromConstantPool(const uint32_t method
 {
     return ptManager_->GetStringFromConstantPool(methodOffset, cpIdx);
 }
+
+JSHandle<JSTaggedValue> AOTCompilationEnv::NewJSHandle(JSTaggedValue value) const
+{
+    return JSHandle<JSTaggedValue>(thread_, value);
+}
 } // namespace panda::ecmascript

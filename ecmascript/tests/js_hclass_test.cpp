@@ -72,9 +72,9 @@ HWTEST_F_L0(JSHClassTest, SizeFromJSHClass)
     objectClass = factory->NewEcmaHClass(MachineCode::SIZE, JSType::MACHINE_CODE_OBJECT, nullHandle);
     objectSize = objectClass->SizeFromJSHClass(*objectClass);
 #if defined(PANDA_TARGET_AMD64) || defined(PANDA_TARGET_ARM64)
-    EXPECT_EQ(objectSize, 328U);
+    EXPECT_EQ(objectSize, 344U);
 #else
-    EXPECT_EQ(objectSize, 200U);
+    EXPECT_EQ(objectSize, 216U);
 #endif
     // size is an integral multiple of eight
     objectClass = factory->NewEcmaHClass(JSObject::SIZE - 1, JSType::JS_OBJECT, nullHandle);
@@ -443,7 +443,7 @@ HWTEST_F_L0(JSHClassTest, ProxyHClassClone)
 
     JSHandle<JSProxy> proxy = JSProxy::ProxyCreate(thread,
         JSHandle<JSTaggedValue>(target), JSHandle<JSTaggedValue>(handler));
-    
+
     JSHandle<JSHClass> hclass(thread, proxy->GetClass());
     EXPECT_FALSE(hclass->IsJSObject());
     EXPECT_GT(hclass->GetObjectSize(), 0);

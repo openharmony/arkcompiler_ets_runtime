@@ -80,6 +80,7 @@ JSTaggedValue ConstantPool::GetStringFromCacheForJit(JSThread *thread, JSTaggedV
     if (!allowAlloc && val.IsHole()) {
         return JSTaggedValue::Undefined();
     }
+
     if (val.IsHole()) {
         JSPandaFile *jsPandaFile = taggedPool->GetJSPandaFile();
         panda_file::File::EntityId id = taggedPool->GetEntityId(index);

@@ -70,7 +70,7 @@ void ObjEmitter::EmitInstructions(ObjFuncEmitInfo &objFuncEmitInfo, std::vector<
 
             /* get binary code and save in buffer */
             if (insn->GetDesc()->IsIntrinsic()) {
-                EmitIntrinsicInsn(*insn, objFuncEmitInfo);
+                EmitIntrinsicInsn(*insn, label2Offset, objFuncEmitInfo);
             } else if (insn->GetDesc()->IsSpecialIntrinsic()) {
                 EmitSpinIntrinsicInsn(*insn, objFuncEmitInfo);
             } else {

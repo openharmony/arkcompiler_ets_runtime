@@ -1453,6 +1453,32 @@ void X64Emitter::EmitInsn(Insn &insn, uint32 funcUniqueId)
         case x64::MOP_sqrtd_r_r:
             assmbler.Sqrtsd_r(TransferReg(opnd0), TransferReg(opnd1));
             break;
+        case x64::MOP_get_heap_const_table: {
+            // get machineCode from jsFunction
+            Mem machineCodeMem;
+            machineCodeMem.base = TransferReg(opnd1);
+            machineCodeMem.disp.second = TransferImm(&insn.GetOperand(kInsnThirdOpnd)).first;
+            machineCodeMem.SetMemType();
+            assmbler.Mov(kQ, machineCodeMem, TransferReg(opnd0));
+            // get constantTable from machineCode
+            Mem constantTableMem;
+            constantTableMem.base = TransferReg(opnd0);
+            constantTableMem.disp.second = TransferImm(&insn.GetOperand(kInsnFourthOpnd)).first;
+            constantTableMem.SetMemType();
+            assmbler.Mov(kQ, constantTableMem, TransferReg(opnd0));
+            break;
+        }
+        case x64::MOP_heap_const: {
+            auto heapConstantTable = TransferReg(opnd1);
+            auto &opnd2 = insn.GetOperand(kInsnThirdOpnd); // heapConstantIndex
+            auto indexInConstantTable = TransferImm(&opnd2).first;
+            Mem heapConstMem;
+            heapConstMem.base = heapConstantTable;
+            heapConstMem.disp.second = indexInConstantTable * k8ByteSize;
+            heapConstMem.SetMemType();
+            assmbler.Mov(kQ, heapConstMem, TransferReg(opnd0));
+            break;
+        }
         default: {
             insn.Dump();
             LogInfo::MapleLogger() << "\n";

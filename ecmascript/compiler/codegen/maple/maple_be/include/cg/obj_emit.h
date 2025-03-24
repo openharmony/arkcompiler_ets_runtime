@@ -537,7 +537,8 @@ public:
 
 protected:
     virtual void InsertNopInsn(ObjFuncEmitInfo &objFuncEmitInfo) const = 0;
-    virtual void EmitIntrinsicInsn(const Insn &insn, ObjFuncEmitInfo &objFuncEmitInfo) = 0;
+    virtual void EmitIntrinsicInsn(const Insn &insn, const std::vector<uint32> &label2Offset,
+                                   ObjFuncEmitInfo &objFuncEmitInfo) = 0;
     virtual void EmitSpinIntrinsicInsn(const Insn &insn, ObjFuncEmitInfo &objFuncEmitInfo) = 0;
 
     MapleString fileName;

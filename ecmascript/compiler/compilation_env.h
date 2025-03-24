@@ -90,6 +90,10 @@ public:
     // GlobalConstants
     virtual const GlobalEnvConstants *GlobalConstants() const = 0;
 
+    virtual JSHandle<JSTaggedValue> NewJSHandle(JSTaggedValue value) const = 0;
+
+    virtual bool SupportHeapConstant() const = 0;
+
     virtual JSThread *GetHostThread() const
     {
         ASSERT(0);
@@ -107,7 +111,7 @@ public:
         ASSERT(0);
         return nullptr;
     }
-    
+
     virtual const uint8_t *GetMethodPcStart() const
     {
         ASSERT(0);

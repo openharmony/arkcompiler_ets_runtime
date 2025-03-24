@@ -97,10 +97,11 @@ GateRef TSHCROptPass::ConvertStringEqualToConst(GateRef left, GateRef right)
 
     auto leftMethodOffset = acc_.TryGetMethodOffset(left);
     auto rightMethodOffset = acc_.TryGetMethodOffset(right);
-    JSTaggedValue leftStr = GetStringFromConstantPool(leftMethodOffset, leftId);
-    // jit: disallow alloc jsstring, across gc point
-    JSTaggedValue rightStr = GetStringFromConstantPool(rightMethodOffset, rightId, false);
-    if (leftStr == JSTaggedValue::Undefined() || rightStr == JSTaggedValue::Undefined()) {
+    JSHandle<JSTaggedValue> leftStr =
+        compilationEnv_->NewJSHandle(GetStringFromConstantPool(leftMethodOffset, leftId));
+    JSHandle<JSTaggedValue> rightStr =
+        compilationEnv_->NewJSHandle(GetStringFromConstantPool(rightMethodOffset, rightId));
+    if (leftStr->IsUndefined() || rightStr->IsUndefined()) {
         return Circuit::NullGate();
     }
     if (leftStr == rightStr) {

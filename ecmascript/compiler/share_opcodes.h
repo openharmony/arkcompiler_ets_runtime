@@ -68,6 +68,7 @@ namespace panda::ecmascript::kungfu {
 
 #define SHARE_GATE_META_DATA_LIST_WITH_VALUE(V)                                         \
     V(Constant, CONSTANT, GateFlags::NONE_FLAG, 0, 0, 0)                                \
+    V(HeapConstant, HEAP_CONSTANT, GateFlags::NONE_FLAG, 0, 0, 0)                       \
     V(FrameArgs, FRAME_ARGS, GateFlags::HAS_FRAME_STATE, 0, 0, 7)                       \
     V(FrameState, FRAME_STATE, GateFlags::HAS_FRAME_STATE, 0, 0, 2)                     \
     V(IfBranch, IF_BRANCH, GateFlags::CONTROL, 1, 0, 1)                                 \

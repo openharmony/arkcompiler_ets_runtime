@@ -225,6 +225,7 @@ void SlowPathLowering::ReplaceHirToThrowCall(GateRef hirGate, GateRef value)
 
 void SlowPathLowering::Lower(GateRef gate)
 {
+    Jit::JitLockHolder lock(compilationEnv_, "SlowPathLowering::Lower");
     EcmaOpcode ecmaOpcode = acc_.GetByteCodeOpcode(gate);
     // initialize label manager
     Environment env(gate, circuit_, &builder_);
@@ -1197,12 +1198,40 @@ void SlowPathLowering::LowerThrowUndefinedIfHole(GateRef gate)
     acc_.ReplaceHirWithIfBranch(gate, successControl, failControl, Circuit::NullGate());
 }
 
+GateRef SlowPathLowering::GetStringFromConstPool(GateRef gate, GateRef stringId, uint32_t stringIdIdx = 0)
+{
+    if (compilationEnv_->SupportHeapConstant()) {
+        auto *jitCompilationEnv = static_cast<JitCompilationEnv*>(compilationEnv_);
+        JSTaggedValue strObj = JSTaggedValue::Undefined();
+        uint32_t stringIndex = acc_.GetConstantValue(acc_.GetValueIn(gate, stringIdIdx));
+        auto methodOffset = acc_.TryGetMethodOffset(gate);
+        // the allowAlloc is false, because GetStringFromCacheForJit can't set value to constpool,
+        // which lead to can't find strObj in runtime
+        strObj = jitCompilationEnv->GetStringFromConstantPool(methodOffset, stringIndex, false);
+        if (!strObj.IsUndefined()) {
+            JSHandle<JSTaggedValue> strObjHandle = jitCompilationEnv->NewJSHandle(strObj);
+            auto constpool = jitCompilationEnv->GetConstantPoolByMethodOffset(methodOffset);
+            ASSERT(!constpool.IsUndefined());
+            auto constpoolId = static_cast<uint32_t>(
+                ConstantPool::Cast(constpool.GetTaggedObject())->GetSharedConstpoolId().GetInt());
+            uint32_t indexInConstantTable = jitCompilationEnv->RecordHeapConstant(
+                { constpoolId, stringIndex, JitCompilationEnv::IN_SHARED_CONSTANTPOOL }, strObjHandle);
+            GateRef res = builder_.HeapConstant(indexInConstantTable);
+            return res;
+        }
+    }
+    GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
+    GateRef sharedConstPool = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::SHARED_CONST_POOL);
+    GateRef module = builder_.GetModuleFromFunction(jsFunc);
+    GateRef res = builder_.GetObjectFromConstPool(
+        glue_, gate, sharedConstPool, Circuit::NullGate(), module, stringId, ConstPoolType::STRING);
+    return res;
+}
+
 void SlowPathLowering::LowerThrowUndefinedIfHoleWithName(GateRef gate)
 {
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
-    GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
-    GateRef sharedConstPool = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::SHARED_CONST_POOL);
     GateRef hole = acc_.GetValueIn(gate, 1);
     Label successExit(&builder_);
     Label exceptionExit(&builder_);
@@ -1215,10 +1244,8 @@ void SlowPathLowering::LowerThrowUndefinedIfHoleWithName(GateRef gate)
     }
     builder_.Bind(&isHole);
     {
-        GateRef module = builder_.GetModuleFromFunction(jsFunc);
-        GateRef obj = builder_.GetObjectFromConstPool(glue_, gate, sharedConstPool, Circuit::NullGate(), module,
-                                                      builder_.ZExtInt16ToInt32(acc_.GetValueIn(gate, 0)),
-                                                      ConstPoolType::STRING);
+        GateRef stringId = builder_.ZExtInt16ToInt32(acc_.GetValueIn(gate, 0));
+        GateRef obj = GetStringFromConstPool(gate, stringId);
         LowerCallRuntime(gate, RTSTUB_ID(ThrowUndefinedIfHole), {obj}, true);
         builder_.Jump(&exceptionExit);
     }
@@ -1611,8 +1638,35 @@ void SlowPathLowering::LowerCreateObjectWithBuffer(GateRef gate)
     GateRef unsharedConstPool = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::UNSHARED_CONST_POOL);
     GateRef index = acc_.GetValueIn(gate, 0);
     GateRef module = builder_.GetModuleFromFunction(jsFunc);
-    GateRef obj = builder_.GetObjectFromConstPool(glue_, gate, sharedConstPool, unsharedConstPool, module,
-                                                  builder_.TruncInt64ToInt32(index), ConstPoolType::OBJECT_LITERAL);
+    GateRef obj = 0;
+    auto GetObjectFromConstpoolForJit = [&]() -> bool {
+        if (!compilationEnv_->SupportHeapConstant()) {
+            return false;
+        }
+        auto *jitCompilationEnv = static_cast<JitCompilationEnv*>(compilationEnv_);
+        uint32_t objIndex = acc_.GetConstantValue(index);
+        auto methodOffset = acc_.TryGetMethodOffset(gate);
+        JSTaggedValue constpool = jitCompilationEnv->GetConstantPoolByMethodOffset(methodOffset);
+        if (constpool.IsUndefined()) {
+            return false;
+        }
+        JSTaggedValue objInConstpool =
+            jitCompilationEnv->GetObjectLiteralFromCache(constpool, objIndex, recordName_);
+        if (objInConstpool.IsUndefined()) {
+            return false;
+        }
+        JSHandle<JSTaggedValue> objHandle = jitCompilationEnv->NewJSHandle(objInConstpool);
+        auto constpoolId = static_cast<uint32_t>(
+            ConstantPool::Cast(constpool.GetTaggedObject())->GetSharedConstpoolId().GetInt());
+        uint32_t indexInConstantTable = jitCompilationEnv->RecordHeapConstant(
+            { constpoolId, objIndex, JitCompilationEnv::IN_UNSHARED_CONSTANTPOOL }, objHandle);
+        obj = builder_.HeapConstant(indexInConstantTable);
+        return true;
+    };
+    if (!GetObjectFromConstpoolForJit()) {
+        obj = builder_.GetObjectFromConstPool(glue_, gate, sharedConstPool, unsharedConstPool, module,
+            builder_.TruncInt64ToInt32(index), ConstPoolType::OBJECT_LITERAL);
+    }
     GateRef lexEnv = acc_.GetValueIn(gate, 1);
     GateRef result = builder_.CallStub(glue_, gate, CommonStubCSigns::CreateObjectHavingMethod, {glue_, obj, lexEnv});
     ReplaceHirWithValue(gate, result);
@@ -1665,12 +1719,8 @@ void SlowPathLowering::LowerLdBigInt(GateRef gate)
 {
     // 1: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 1);
-    GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
-    GateRef sharedConstPool = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::SHARED_CONST_POOL);
     GateRef stringId = builder_.TruncInt64ToInt32(acc_.GetValueIn(gate, 0));
-    GateRef module = builder_.GetModuleFromFunction(jsFunc);
-    GateRef numberBigInt = builder_.GetObjectFromConstPool(glue_, gate, sharedConstPool, Circuit::NullGate(), module,
-                                                           stringId, ConstPoolType::STRING);
+    GateRef numberBigInt = GetStringFromConstPool(gate, stringId);
     GateRef result = LowerCallRuntime(gate, RTSTUB_ID(LdBigInt), {numberBigInt}, true);
     ReplaceHirWithValue(gate, result);
 }
@@ -2216,12 +2266,8 @@ void SlowPathLowering::LowerCreateRegExpWithLiteral(GateRef gate)
     const int id = RTSTUB_ID(CreateRegExpWithLiteral);
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
-    GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
-    GateRef sharedConstPool = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::SHARED_CONST_POOL);
     GateRef stringId = builder_.TruncInt64ToInt32(acc_.GetValueIn(gate, 0));
-    GateRef module = builder_.GetModuleFromFunction(jsFunc);
-    GateRef pattern = builder_.GetObjectFromConstPool(glue_, gate, sharedConstPool, Circuit::NullGate(), module,
-                                                      stringId, ConstPoolType::STRING);
+    GateRef pattern = GetStringFromConstPool(gate, stringId);
     GateRef flags = acc_.GetValueIn(gate, 1);
     GateRef newGate = LowerCallRuntime(gate, id, { pattern, builder_.ToTaggedInt(flags) }, true);
     ReplaceHirWithValue(gate, newGate);
@@ -2261,12 +2307,8 @@ void SlowPathLowering::LowerStOwnByName(GateRef gate)
 {
     // 3: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 3);
-    GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
-    GateRef sharedConstPool = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::SHARED_CONST_POOL);
     GateRef stringId = builder_.TruncInt64ToInt32(acc_.GetValueIn(gate, 0));
-    GateRef module = builder_.GetModuleFromFunction(jsFunc);
-    GateRef propKey = builder_.GetObjectFromConstPool(glue_, gate, sharedConstPool, Circuit::NullGate(), module,
-                                                      stringId, ConstPoolType::STRING);
+    GateRef propKey = GetStringFromConstPool(gate, stringId);
     GateRef receiver = acc_.GetValueIn(gate, 1);
     GateRef accValue = acc_.GetValueIn(gate, 2);
     // we do not need to merge outValueGate, so using GateRef directly instead of using Variable
@@ -2356,12 +2398,8 @@ void SlowPathLowering::LowerTryStGlobalByName(GateRef gate)
 
 void SlowPathLowering::LowerStConstToGlobalRecord(GateRef gate, bool isConst)
 {
-    GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
-    GateRef sharedConstPool = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::SHARED_CONST_POOL);
     GateRef stringId = builder_.TruncInt64ToInt32(acc_.GetValueIn(gate, 0));
-    GateRef module = builder_.GetModuleFromFunction(jsFunc);
-    GateRef propKey = builder_.GetObjectFromConstPool(glue_, gate, sharedConstPool, Circuit::NullGate(), module,
-                                                      stringId, ConstPoolType::STRING);
+    GateRef propKey = GetStringFromConstPool(gate, stringId);
     acc_.SetDep(gate, propKey);
     // 2 : number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
@@ -2393,12 +2431,8 @@ void SlowPathLowering::LowerStOwnByNameWithNameSet(GateRef gate)
 {
     // 3: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 3);
-    GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
-    GateRef sharedConstPool = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::SHARED_CONST_POOL);
     GateRef stringId = builder_.TruncInt64ToInt32(acc_.GetValueIn(gate, 0));
-    GateRef module = builder_.GetModuleFromFunction(jsFunc);
-    GateRef propKey = builder_.GetObjectFromConstPool(glue_, gate, sharedConstPool, Circuit::NullGate(), module,
-                                                      stringId, ConstPoolType::STRING);
+    GateRef propKey = GetStringFromConstPool(gate, stringId);
     GateRef receiver = acc_.GetValueIn(gate, 1);
     GateRef accValue = acc_.GetValueIn(gate, 2);
     Label successExit(&builder_);
@@ -2552,11 +2586,8 @@ void SlowPathLowering::LowerLdSuperByName(GateRef gate)
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
     GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
-    GateRef sharedConstPool = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::SHARED_CONST_POOL);
     GateRef stringId = builder_.TruncInt64ToInt32(acc_.GetValueIn(gate, 0));
-    GateRef module = builder_.GetModuleFromFunction(jsFunc);
-    GateRef prop = builder_.GetObjectFromConstPool(glue_, gate, sharedConstPool, Circuit::NullGate(), module, stringId,
-                                                   ConstPoolType::STRING);
+    GateRef prop = GetStringFromConstPool(gate, stringId);
     GateRef result =
         LowerCallRuntime(gate, RTSTUB_ID(OptLdSuperByValue), {acc_.GetValueIn(gate, 1), prop, jsFunc}, true);
     ReplaceHirWithValue(gate, result);
@@ -2567,11 +2598,8 @@ void SlowPathLowering::LowerStSuperByName(GateRef gate)
     // 3: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 3);
     GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
-    GateRef sharedConstPool = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::SHARED_CONST_POOL);
     GateRef stringId = builder_.TruncInt64ToInt32(acc_.GetValueIn(gate, 0));
-    GateRef module = builder_.GetModuleFromFunction(jsFunc);
-    GateRef prop = builder_.GetObjectFromConstPool(glue_, gate, sharedConstPool, Circuit::NullGate(), module, stringId,
-                                                   ConstPoolType::STRING);
+    GateRef prop = GetStringFromConstPool(gate, stringId);
     auto args2 = { acc_.GetValueIn(gate, 1), prop, acc_.GetValueIn(gate, 2), jsFunc };
     GateRef result = LowerCallRuntime(gate, RTSTUB_ID(OptStSuperByValue), args2, true);
     ReplaceHirWithValue(gate, result);
@@ -2952,6 +2980,30 @@ void SlowPathLowering::LowerGetResumeMode(GateRef gate)
     ReplaceHirWithValue(gate, *result, true);
 }
 
+static uint32_t TryGetMethodHeapConstantIndex(CompilationEnv *compilationEnv, const GateAccessor &acc, GateRef gate)
+{
+    if (!compilationEnv->SupportHeapConstant()) {
+        return JitCompilationEnv::INVALID_HEAP_CONSTANT_INDEX;
+    }
+    auto *jitCompilationEnv = static_cast<JitCompilationEnv*>(compilationEnv);
+    auto methodOffset = acc.TryGetMethodOffset(gate);
+    JSTaggedValue constpool = jitCompilationEnv->GetConstantPoolByMethodOffset(methodOffset);
+    if (constpool.IsUndefined()) {
+        return JitCompilationEnv::INVALID_HEAP_CONSTANT_INDEX;
+    }
+    uint32_t methodIndex = acc.GetConstantValue(acc.GetValueIn(gate, 0));
+    JSTaggedValue methodObj = jitCompilationEnv->GetMethodFromCache(constpool, methodIndex);
+    if (methodObj.IsUndefined()) {
+        return JitCompilationEnv::INVALID_HEAP_CONSTANT_INDEX;
+    }
+    JSHandle<JSTaggedValue> methodHandle = jitCompilationEnv->NewJSHandle(methodObj);
+    auto constpoolId = static_cast<uint32_t>(
+        ConstantPool::Cast(constpool.GetTaggedObject())->GetSharedConstpoolId().GetInt());
+    uint32_t indexInConstantTable = jitCompilationEnv->RecordHeapConstant(
+        { constpoolId, methodIndex, JitCompilationEnv::IN_SHARED_CONSTANTPOOL }, methodHandle);
+    return indexInConstantTable;
+}
+
 void SlowPathLowering::LowerDefineMethod(GateRef gate)
 {
     // 5: number of value inputs
@@ -2960,8 +3012,15 @@ void SlowPathLowering::LowerDefineMethod(GateRef gate)
     GateRef sharedConstPool = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::SHARED_CONST_POOL);
     GateRef methodId = builder_.TruncInt64ToInt32(acc_.GetValueIn(gate, 0));
     GateRef module = builder_.GetModuleFromFunction(jsFunc);
-    auto method = builder_.GetObjectFromConstPool(glue_, gate, sharedConstPool, Circuit::NullGate(), module, methodId,
-                                                  ConstPoolType::METHOD);
+    GateRef method = 0;
+
+    uint32_t indexInConstantTable = TryGetMethodHeapConstantIndex(compilationEnv_, acc_, gate);
+    if (indexInConstantTable != JitCompilationEnv::INVALID_HEAP_CONSTANT_INDEX) {
+        method = builder_.HeapConstant(indexInConstantTable);
+    } else {
+        method = builder_.GetObjectFromConstPool(
+            glue_, gate, sharedConstPool, Circuit::NullGate(), module, methodId, ConstPoolType::METHOD);
+    }
     GateRef length = acc_.GetValueIn(gate, 1);
     GateRef env = acc_.GetValueIn(gate, 2); // 2: Get current env
     GateRef homeObject = acc_.GetValueIn(gate, 4);  // 4: homeObject
@@ -3486,13 +3545,9 @@ void SlowPathLowering::LowerDefineFieldByName(GateRef gate)
 {
     // 4: number of value inputs + acc
     ASSERT(acc_.GetNumValueIn(gate) == 4);
-    GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
-    GateRef sharedConstPool = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::SHARED_CONST_POOL);
     GateRef stringId = builder_.TruncInt64ToInt32(acc_.GetValueIn(gate, 1));
     GateRef obj = acc_.GetValueIn(gate, 2);
-    GateRef module = builder_.GetModuleFromFunction(jsFunc);
-    GateRef propKey = builder_.GetObjectFromConstPool(glue_, gate, sharedConstPool, Circuit::NullGate(), module,
-                                                      stringId, ConstPoolType::STRING);
+    GateRef propKey = GetStringFromConstPool(gate, stringId, 1); // 1: index of the stringId
     GateRef value = acc_.GetValueIn(gate, 3);  // acc
 
     GateRef newGate = builder_.CallStub(glue_, gate, CommonStubCSigns::DefineField,
@@ -3619,11 +3674,7 @@ void SlowPathLowering::LowerSendableLocalModule(GateRef gate)
 void SlowPathLowering::LowerLdStr(GateRef gate)
 {
     GateRef stringId = builder_.TruncInt64ToInt32(acc_.GetValueIn(gate, 0));
-    GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
-    GateRef sharedConstPool = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::SHARED_CONST_POOL);
-    GateRef module = builder_.GetModuleFromFunction(jsFunc);
-    GateRef res = builder_.GetObjectFromConstPool(glue_, gate, sharedConstPool, Circuit::NullGate(), module, stringId,
-                                                  ConstPoolType::STRING);
+    GateRef res = GetStringFromConstPool(gate, stringId);
     ReplaceHirWithValue(gate, res);
 }
 

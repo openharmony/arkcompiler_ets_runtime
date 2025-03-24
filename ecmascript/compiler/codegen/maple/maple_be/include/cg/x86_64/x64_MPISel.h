@@ -45,6 +45,10 @@ public:
     Operand *SelectCclz(IntrinsicopNode &node, Operand &opnd0, const BaseNode &parent) override;
     Operand *SelectCctz(IntrinsicopNode &node, Operand &opnd0, const BaseNode &parent) override;
     Operand *SelectSqrt(UnaryNode &node, Operand &opnd0, const BaseNode &parent) override;
+    RegOperand &SelectHeapConstant(
+        IntrinsicopNode &node, Operand &opnd0, Operand &opnd1, const BaseNode &parent) override;
+    RegOperand &SelectGetHeapConstantTable(
+        IntrinsicopNode &node, Operand &opnd0, Operand &opnd1, Operand &opnd2, const BaseNode &parent) override;
 
 private:
     MemOperand &GetOrCreateMemOpndFromSymbol(const MIRSymbol &symbol, FieldID fieldId = 0) const override;

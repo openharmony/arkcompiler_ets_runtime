@@ -18,15 +18,43 @@
 
 #include "ecmascript/compiler/compilation_env.h"
 #include "ecmascript/ic/profile_type_info.h"
+#include "ecmascript/jit/jit_thread.h"
 
 namespace panda::ecmascript {
 class JitCompilationEnv final : public CompilationEnv {
 public:
+    static constexpr uint32_t INVALID_HEAP_CONSTANT_INDEX = std::numeric_limits<uint32_t>::max();
+    enum ConstantType : uint8_t {
+        IN_SHARED_CONSTANTPOOL,
+        IN_UNSHARED_CONSTANTPOOL
+    };
+
+    struct ConstantPoolHeapConstant {
+        uint32_t constpoolId;
+        uint32_t index;
+        ConstantType constType;
+
+        bool operator < (const ConstantPoolHeapConstant &heapConstant) const
+        {
+            if (index != heapConstant.index) {
+                return index < heapConstant.index;
+            }
+            if (constType != heapConstant.constType) {
+                return constType < heapConstant.constType;
+            }
+            return constpoolId < heapConstant.constpoolId;
+        }
+    };
+
     JitCompilationEnv(EcmaVM *vm, EcmaVM *hVm, JSHandle<JSFunction> &jsFunction);
     ~JitCompilationEnv() = default;
     bool IsJitCompiler() const override
     {
         return true;
+    }
+    bool SupportHeapConstant() const override
+    {
+        return hostThread_->GetEcmaVM()->GetJSOptions().IsCompilerEnableLiteCG();
     }
     JSRuntimeOptions &GetJSOptions() override;
     // thread
@@ -75,7 +103,7 @@ public:
     {
         return methodLiteral_;
     }
-    
+
     const uint8_t *GetMethodPcStart() const override
     {
         return pcStart_;
@@ -91,6 +119,11 @@ public:
         profileTypeInfo_ = info;
     }
 
+    const std::vector<JSHandle<JSTaggedValue>> &GetHeapConstantTable() const
+    {
+        return heapConstantInfo_.heapConstantTable;
+    }
+
     void UpdateFuncSlotIdMap(uint32_t calleeOffset, uint32_t callerOffset, uint32_t slotId)
     {
         if (functionSlotIdMap_.find(calleeOffset) != functionSlotIdMap_.end()) {
@@ -104,6 +137,45 @@ public:
     }
 
     JSFunction *GetJsFunctionByMethodOffset(uint32_t methodOffset) const;
+
+    uint32_t RecordHeapConstant(const JSHandle<JSTaggedValue> &heapObj)
+    {
+        heapConstantInfo_.heapConstantTable.push_back(heapObj);
+        ASSERT(heapConstantInfo_.heapConstantTable.size() < INVALID_HEAP_CONSTANT_INDEX);
+        size_t index = heapConstantInfo_.heapConstantTable.size() - 1;
+        return static_cast<uint32_t>(index);
+    }
+
+    uint32_t RecordHeapConstant(ConstantPoolHeapConstant heapConstant, const JSHandle<JSTaggedValue> &heapObj);
+
+    JSHandle<JSTaggedValue> NewJSHandle(JSTaggedValue value) const override
+    {
+        ASSERT(thread_->IsJitThread());
+        auto jitThread = static_cast<JitThread*>(thread_);
+        return jitThread->NewHandle(value);
+    }
+
+    JSHandle<JSTaggedValue> GetHeapConstantHandle(uint32_t heapConstantIndex) const;
+
+    void RecordGate2HeapConstantIndex(uint32_t gate, uint32_t heapConstantIndex)
+    {
+        heapConstantInfo_.gate2HeapConstantIndex[gate] = heapConstantIndex;
+    }
+
+    const std::map<int32_t, uint32_t> &GetGate2HeapConstantIndex() const
+    {
+        return heapConstantInfo_.gate2HeapConstantIndex;
+    }
+
+    void RecordCallMethodId2HeapConstantIndex(uint32_t callMethodId, uint32_t heapConstantIndex)
+    {
+        heapConstantInfo_.callMethodId2HeapConstantIndex[callMethodId] = heapConstantIndex;
+    }
+
+    const std::unordered_map<uint32_t, uint32_t> &GetCallMethodId2HeapConstantIndex() const
+    {
+        return heapConstantInfo_.callMethodId2HeapConstantIndex;
+    }
 private:
     JSThread *hostThread_ {nullptr};
     JSHandle<JSFunction> jsFunction_;
@@ -114,6 +186,12 @@ private:
     JSHandle<ProfileTypeInfo> profileTypeInfo_;
     std::map<uint32_t, uint32_t> functionSlotIdMap_;
     std::map<uint32_t, uint32_t> callee2CallerMap_;
+    struct HeapConstantInfo {
+        std::vector<JSHandle<JSTaggedValue>> heapConstantTable;
+        std::map<ConstantPoolHeapConstant, uint32_t> constPoolHeapConstant2Index;
+        std::map<int32_t, uint32_t> gate2HeapConstantIndex;
+        std::unordered_map<uint32_t, uint32_t> callMethodId2HeapConstantIndex;
+    } heapConstantInfo_;
 };
 } // namespace panda::ecmascript
 #endif  // ECMASCRIPT_COMPILER_JIT_COMPILATION_ENV_H

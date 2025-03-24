@@ -1,7 +1,7 @@
 {
     "name": "MACHINE_CODE_OBJECT",
     "offsets": [],
-    "end_offset": 312,
+    "end_offset": 324,
     "parents": [
         "TAGGED_OBJECT"
     ]

@@ -63,9 +63,9 @@ private:
         return methodName_;
     }
 
-    JSTaggedValue GetStringFromConstantPool(uint32_t methodOffset, uint32_t cpIdx, bool allowAlloc = true) const
+    JSTaggedValue GetStringFromConstantPool(uint32_t methodOffset, uint32_t cpIdx) const
     {
-        return compilationEnv_->GetStringFromConstantPool(methodOffset, cpIdx, allowAlloc);
+        return compilationEnv_->GetStringFromConstantPool(methodOffset, cpIdx);
     }
 
     GateRef VisitTypedBinaryOp(GateRef gate);

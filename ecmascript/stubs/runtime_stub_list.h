@@ -483,6 +483,7 @@ namespace panda::ecmascript {
     V(JSObjectHasProperty)                      \
     V(HasProperty)                              \
     V(DumpObject)                               \
+    V(DumpHeapObjectAddress)                    \
     V(TryGetInternString)                       \
     V(FastCopyFromArrayToTypedArray)            \
     V(BigIntConstructor)                        \

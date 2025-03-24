@@ -77,6 +77,9 @@ void LiteCGIRBuilder::BuildInstID2BBIDMap()
     for (size_t bbIdx = 0; bbIdx < scheduledGates_->size(); bbIdx++) {
         const std::vector<GateRef> &bb = scheduledGates_->at(bbIdx);
         for (size_t instIdx = bb.size(); instIdx > 0; instIdx--) {
+            if (!constantTableInfo.needConstantTable && acc_.GetOpCode(bb[instIdx - 1]) == OpCode::HEAP_CONSTANT) {
+                constantTableInfo.needConstantTable = true;
+            }
             GateId gateId = acc_.GetId(bb[instIdx - 1]);
             instID2bbID_[gateId] = static_cast<int>(bbIdx);
         }
@@ -330,6 +333,10 @@ void LiteCGIRBuilder::HandleBB(const std::vector<GateRef> &bb, std::unordered_se
             case OpCode::CONSTANT:
                 HandleConstant(gate);
                 InsertUsedOpcodeSet(usedOpcodeSet, OpCode::CONSTANT);
+                break;
+            case OpCode::HEAP_CONSTANT:
+                HandleHeapConstant(gate);
+                InsertUsedOpcodeSet(usedOpcodeSet, OpCode::HEAP_CONSTANT);
                 break;
             case OpCode::ZEXT:
                 HandleZExtInt(gate);
@@ -609,6 +616,7 @@ void LiteCGIRBuilder::AssistGenPrologue(const size_t reservedSlotsSize, FrameTyp
             SaveByteCodePcOnOptJSFuncFrame(value);
             SaveJSFuncOnOptJSFuncFrame(function, value, funcIndex);
             SaveFrameTypeOnFrame(function, frameType);
+            LoadConstantTableIfNeeded(value);
         }
     }
 }
@@ -649,6 +657,7 @@ void LiteCGIRBuilder::GenPrologue(maple::litecg::Function &function)
             if (argth == funcIndex) {
                 SaveJSFuncOnOptJSFuncFrame(function, value, funcIndex);
                 SaveFrameTypeOnFrame(function, frameType);
+                LoadConstantTableIfNeeded(value);
             }
         }
     } else if (frameType == FrameType::FASTJIT_FUNCTION_FRAME) {
@@ -688,6 +697,23 @@ void LiteCGIRBuilder::SaveByteCodePcOnOptJSFuncFrame(maple::litecg::Var &value)
                           lmirBuilder_->CreatePtrType(slotType_), frameByteCodePcSlotAddr);
     auto &stmt = lmirBuilder_->Iassign(byteCodePc, byteCodePcAddr, byteCodePcAddr.GetType());
     lmirBuilder_->AppendStmt(GetFirstBB(), stmt);
+}
+
+void LiteCGIRBuilder::LoadConstantTableIfNeeded(maple::litecg::Var &value)
+{
+    if (!constantTableInfo.needConstantTable) {
+        return;
+    }
+    auto machineCodeOffset = lmirBuilder_->ConstVal(
+        lmirBuilder_->CreateIntConst(lmirBuilder_->i64PtrType, JSFunction::MACHINECODE_OFFSET));
+    auto constantTableOffset = lmirBuilder_->ConstVal(
+        lmirBuilder_->CreateIntConst(lmirBuilder_->i64PtrType, MachineCode::HEAP_CONSTANT_TABLE_ADDR_OFFSET));
+    std::vector<Expr> args = { lmirBuilder_->GenExprFromVar(value), machineCodeOffset, constantTableOffset };
+    auto intrinsicOp = lmirBuilder_->IntrinsicOp(
+        IntrinsicId::INTRN_GET_HEAP_CONSTANT_TABLE, lmirBuilder_->i64PtrType, args);
+    PregIdx pregIdx = lmirBuilder_->CreatePreg(lmirBuilder_->i64PtrType);
+    lmirBuilder_->AppendStmt(GetFirstBB(), lmirBuilder_->Regassign(intrinsicOp, pregIdx));
+    constantTableInfo.constTable = pregIdx;
 }
 
 void LiteCGIRBuilder::SaveJSFuncOnOptJSFuncFrame(maple::litecg::Function &function, maple::litecg::Var &value,
@@ -947,6 +973,16 @@ void LiteCGIRBuilder::HandleConstant(GateRef gate)
     // no need to deal with constant separately
     (void)gate;
     return;
+}
+
+void LiteCGIRBuilder::HandleHeapConstant(GateRef gate)
+{
+    std::bitset<64> value = acc_.GetConstantValue(gate); // 64: for bit width
+    Const &constVal = lmirBuilder_->CreateIntConst(lmirBuilder_->u64Type, static_cast<uint64_t>(value.to_ulong()));
+    ASSERT(constantTableInfo.needConstantTable);
+    std::vector<Expr> args = { lmirBuilder_->Regread(constantTableInfo.constTable), lmirBuilder_->ConstVal(constVal) };
+    auto intrinsicOp = lmirBuilder_->IntrinsicOp(IntrinsicId::INTRN_HEAP_CONSTANT, lmirBuilder_->i64RefType, args);
+    SaveGate2Expr(gate, intrinsicOp);
 }
 
 void LiteCGIRBuilder::HandleAdd(GateRef gate)

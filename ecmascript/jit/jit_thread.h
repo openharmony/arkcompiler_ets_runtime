@@ -22,6 +22,7 @@
 
 namespace panda::ecmascript {
 class JitVM;
+class JitTask;
 class JitThread final : public JSThread {
 public:
     JitThread(JitVM *jitVM);
@@ -30,8 +31,21 @@ public:
     void SetHostThread(JSThread *thread);
     JitVM *GetJitVM() const;
 
+    void SetCurrentTask(JitTask *task)
+    {
+        curJitTask_ = task;
+    }
+
+    JitTask *GetCurrentTask() const
+    {
+        return curJitTask_;
+    }
+
+    JSHandle<JSTaggedValue> PUBLIC_API NewHandle(JSTaggedValue value) const;
+
 private:
     JSThread *hostThread_ {nullptr};
+    JitTask *curJitTask_ {nullptr};
 };
 
 class JitVM final : public EcmaVM {

@@ -38,10 +38,17 @@ public:
         return JSHandle<T>(GetJsHandleSlot(value));
     }
 
+    template <typename T>
+    static JSHandle<T> NewHandle(const JitThread *thread, JSTaggedType value)
+    {
+        return JSHandle<T>(GetJsHandleSlot(thread, value));
+    }
+
     void Iterate(RootVisitor &v);
 
 private:
     uintptr_t GetJsHandleSlot(JSTaggedType value);
+    static uintptr_t GetJsHandleSlot(const JitThread *thread, JSTaggedType value);
     uintptr_t Expand();
 
     EcmaVM *vm_ { nullptr };

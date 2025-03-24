@@ -92,13 +92,22 @@ void NTypeHCRLowering::LowerCreateArrayWithBuffer(GateRef gate, GateRef glue)
     GateRef module = builder_.GetModuleFromFunction(jsFunc);
     GateRef unsharedConstpool = argAcc.GetFrameArgsIn(frameState, FrameArgIdx::UNSHARED_CONST_POOL);
     GateRef sharedConstpool = argAcc.GetFrameArgsIn(frameState, FrameArgIdx::SHARED_CONST_POOL);
-    GateRef cachedArray = builder_.GetObjectFromConstPool(glue, gate, sharedConstpool, unsharedConstpool,
-                                                          module, builder_.TruncInt64ToInt32(index),
-                                                          ConstPoolType::ARRAY_LITERAL);
-    GateRef literialElements = builder_.GetElementsArray(cachedArray);
+
     uint32_t cpIdVal = static_cast<uint32_t>(acc_.GetConstantValue(cpId));
     JSTaggedValue arr = GetArrayLiteralValue(cpIdVal, constPoolIndex);
     ASSERT(!arr.IsUndefined());
+    GateRef cachedArray = 0;
+    if (compilationEnv_->SupportHeapConstant()) {
+        auto *jitCompilationEnv = static_cast<JitCompilationEnv*>(compilationEnv_);
+        JSHandle<JSTaggedValue> arrHandle = jitCompilationEnv->NewJSHandle(arr);
+        uint32_t indexInConstantTable = jitCompilationEnv->RecordHeapConstant(
+            { cpIdVal, constPoolIndex, JitCompilationEnv::IN_UNSHARED_CONSTANTPOOL }, arrHandle);
+        cachedArray = builder_.HeapConstant(indexInConstantTable);
+    } else {
+        cachedArray = builder_.GetObjectFromConstPool(glue, gate, sharedConstpool, unsharedConstpool,
+            module, builder_.TruncInt64ToInt32(index), ConstPoolType::ARRAY_LITERAL);
+    }
+    GateRef literialElements = builder_.GetElementsArray(cachedArray);
     DISALLOW_GARBAGE_COLLECTION;
     JSArray *arrayHandle = JSArray::Cast(arr.GetTaggedObject());
     TaggedArray *arrayLiteral = TaggedArray::Cast(arrayHandle->GetElements());

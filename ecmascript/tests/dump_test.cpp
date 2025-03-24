@@ -482,9 +482,9 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
     } while (false)
 
 #if defined(PANDA_TARGET_AMD64) || defined(PANDA_TARGET_ARM64)
-    static const unsigned int machineCodeSize = 39;
+    static const unsigned int machineCodeSize = 41;
 #else
-    static const unsigned int machineCodeSize = 23;
+    static const unsigned int machineCodeSize = 25;
 #endif
 
 #define NEW_OBJECT_AND_DUMP(ClassName, TypeName)                                                \

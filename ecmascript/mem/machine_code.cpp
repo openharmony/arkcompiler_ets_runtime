@@ -18,6 +18,7 @@
 #include "ecmascript/jit/jit.h"
 #include "ecmascript/jit/rewriter/reloc_rewriter_aarch64.h"
 #include "ecmascript/jit/rewriter/reloc_rewriter.h"
+#include "ecmascript/compiler/jit_compilation_env.h"
 #if ECMASCRIPT_ENABLE_CAST_CHECK
 #include "ecmascript/js_tagged_value-inl.h"
 #endif
@@ -131,14 +132,18 @@ bool MachineCode::SetData(const MachineCodeDesc &desc, JSHandle<Method> &method,
 
     SetInstructionsSize(instrSize);
     SetStackMapOrOffsetTableSize(desc.stackMapSizeAlign);
+    SetHeapConstantTableSize(desc.heapConstantTableSizeAlign);
+    SetHeapConstantTableAddr(reinterpret_cast<uint64_t>(GetHeapConstantTableAddress()));
     SetPayLoadSizeInBytes(dataSize);
     if (Jit::GetInstance()->IsEnableJitFort()) {
         SetInstructionsAddr(desc.instructionsAddr);
         ASSERT(desc.instructionsAddr != 0);
-        ASSERT(dataSize == (desc.funcEntryDesSizeAlign + desc.stackMapSizeAlign) ||
-               dataSize == (desc.funcEntryDesSizeAlign + instrSize + desc.stackMapSizeAlign));
+        ASSERT(dataSize == (desc.funcEntryDesSizeAlign + desc.stackMapSizeAlign + desc.heapConstantTableSizeAlign) ||
+               dataSize == (desc.funcEntryDesSizeAlign + instrSize + desc.stackMapSizeAlign +
+                            desc.heapConstantTableSizeAlign));
     } else {
-        ASSERT(dataSize == (desc.funcEntryDesSizeAlign + instrSize + desc.stackMapSizeAlign));
+        ASSERT(dataSize == (desc.funcEntryDesSizeAlign + instrSize +
+                            desc.stackMapSizeAlign + desc.heapConstantTableSizeAlign));
     }
     if (!SetText(desc)) {
         return false;
@@ -271,6 +276,11 @@ uint8_t *MachineCode::GetStackMapOrOffsetTableAddress() const
     } else {
         return reinterpret_cast<uint8_t*>(GetText() + GetInstructionsSize());
     }
+}
+
+uint8_t *MachineCode::GetHeapConstantTableAddress() const
+{
+    return reinterpret_cast<uint8_t*>(GetStackMapOrOffsetTableAddress() + GetStackMapOrOffsetTableSize());
 }
 
 void MachineCode::ProcessMarkObject()

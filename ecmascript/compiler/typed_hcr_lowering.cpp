@@ -82,6 +82,9 @@ GateRef TypedHCRLowering::VisitGate(GateRef gate)
         case OpCode::JSINLINETARGET_TYPE_CHECK:
             LowerJSInlineTargetTypeCheck(gate);
             break;
+        case OpCode::JSINLINETARGET_HEAPCONSTANT_CHECK:
+            LowerJSInlineTargetHeapConstantCheck(gate);
+            break;
         case OpCode::TYPE_CONVERT:
             LowerTypeConvert(gate);
             break;
@@ -1652,6 +1655,16 @@ void TypedHCRLowering::LowerJSInlineTargetTypeCheck(GateRef gate)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
+void TypedHCRLowering::LowerJSInlineTargetHeapConstantCheck(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef frameState = GetFrameState(gate);
+    auto func = acc_.GetValueIn(gate, 0);
+    auto heapConstant = acc_.GetValueIn(gate, 1); // 1: the second value, heapConstant
+    builder_.DeoptCheck(builder_.Equal(func, heapConstant), frameState, DeoptType::NOTCALLTARGETHEAPOBJECT);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
+}
+
 void TypedHCRLowering::LowerTypedNewAllocateThis(GateRef gate, GateRef glue)
 {
     Environment env(gate, circuit_, &builder_);
@@ -2994,6 +3007,24 @@ void TypedHCRLowering::StorePropertyOnHolder(GateRef holder, GateRef value, Prop
     }
 }
 
+static GateRef GetOldObject(CompilationEnv *compilationEnv, CircuitBuilder &builder,
+    const GateAccessor &acc, GateRef glue, GateRef gate)
+{
+    if (compilationEnv->SupportHeapConstant()) {
+        auto *jitCompilationEnv = static_cast<JitCompilationEnv*>(compilationEnv);
+        const auto &gate2HeapConstantIndex = jitCompilationEnv->GetGate2HeapConstantIndex();
+        auto itr = gate2HeapConstantIndex.find(gate);
+        // object must be found in unshared constpool,
+        // which is ensured by TypedBytecodeLowering::LowerCreateObjectWithBuffer
+        ASSERT(itr != gate2HeapConstantIndex.end());
+        return builder.HeapConstant(itr->second);
+    }
+    GateRef frameState = acc.GetFrameState(gate);
+    GateRef index = acc.GetValueIn(gate, 1); // 1: index
+    return builder.GetObjectByIndexFromConstPool(
+        glue, gate, frameState, builder.TruncInt64ToInt32(index), ConstPoolType::OBJECT_LITERAL);
+}
+
 void TypedHCRLowering::LowerTypedCreateObjWithBuffer(GateRef gate, GateRef glue)
 {
     Environment env(gate, circuit_, &builder_);
@@ -3002,12 +3033,10 @@ void TypedHCRLowering::LowerTypedCreateObjWithBuffer(GateRef gate, GateRef glue)
     Label notEqual(&builder_);
     Label exit(&builder_);
     GateRef objSize = acc_.GetValueIn(gate, 0); // 0: objSize
-    GateRef index = acc_.GetValueIn(gate, 1); // 1: index
     GateRef lexEnv = acc_.GetValueIn(gate, 3); // 3: lexenv
     size_t numValueIn = acc_.GetNumValueIn(gate);
-    GateRef frameState = acc_.GetFrameState(gate);
-    GateRef oldObj = builder_.GetObjectByIndexFromConstPool(glue, gate, frameState, builder_.TruncInt64ToInt32(index),
-                                                            ConstPoolType::OBJECT_LITERAL);
+
+    GateRef oldObj = GetOldObject(compilationEnv_, builder_, acc_, glue, gate);
     GateRef hclass = builder_.LoadConstOffset(VariableType::JS_POINTER(), oldObj, JSObject::HCLASS_OFFSET);
     GateRef emptyArray = builder_.GetGlobalConstantValue(ConstantIndex::EMPTY_ARRAY_OBJECT_INDEX);
     GateRef objectSize = builder_.GetObjectSizeFromHClass(hclass);

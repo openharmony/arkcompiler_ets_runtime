@@ -915,6 +915,31 @@ Operand *X64MPIsel::SelectCclz(IntrinsicopNode &node, Operand &opnd0, const Base
     SelectIntCvt(destReg, tmp3, retType, origPrimType);
     return &destReg;
 }
+RegOperand &X64MPIsel::SelectHeapConstant(IntrinsicopNode &node, Operand &opnd0,
+                                          Operand &opnd1, const BaseNode &parent)
+{
+    PrimType retType = node.GetPrimType();
+    RegOperand &destReg =
+        cgFunc->GetOpndBuilder()->CreateVReg(GetPrimTypeBitSize(retType), cgFunc->GetRegTyFromPrimTy(retType));
+    MOperator mOp = x64::MOP_heap_const;
+    Insn &insn = cgFunc->GetInsnBuilder()->BuildInsn(mOp, X64CG::kMd[mOp]);
+    insn.AddOpndChain(destReg).AddOpndChain(opnd0).AddOpndChain(opnd1);
+    cgFunc->GetCurBB()->AppendInsn(insn);
+    return destReg;
+}
+
+RegOperand &X64MPIsel::SelectGetHeapConstantTable(IntrinsicopNode &node, Operand &opnd0,
+    Operand &opnd1, Operand &opnd2, const BaseNode &parent)
+{
+    PrimType retType = node.GetPrimType();
+    RegOperand &destReg =
+        cgFunc->GetOpndBuilder()->CreateVReg(GetPrimTypeBitSize(retType), cgFunc->GetRegTyFromPrimTy(retType));
+    MOperator mOp = x64::MOP_get_heap_const_table;
+    Insn &insn = cgFunc->GetInsnBuilder()->BuildInsn(mOp, X64CG::kMd[mOp]);
+    insn.AddOpndChain(destReg).AddOpndChain(opnd0).AddOpndChain(opnd1).AddOpndChain(opnd2);
+    cgFunc->GetCurBB()->AppendInsn(insn);
+    return destReg;
+}
 
 RegOperand &X64MPIsel::GetTargetBasicPointer(PrimType primType)
 {

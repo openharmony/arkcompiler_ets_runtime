@@ -784,6 +784,7 @@ bool JSThread::CheckSafepoint()
         vmThreadControl_->SuspendVM();
     }
     if (HasInstallMachineCode()) {
+        Jit::JitGCLockHolder lock(this);
         vm_->GetJit()->InstallTasks(this);
         SetInstallMachineCode(false);
     }
@@ -1240,7 +1241,7 @@ void JSThread::UpdateStackInfo(void *stackInfo, StackInfoOpKind opKind)
             glueData_.leaveFrame_ =
                 reinterpret_cast<uint64_t *>(subStackInfo->lastLeaveFrame);
             isInSubStack_ = true;
-            
+
             LOG_ECMA(DEBUG) << "Switch to subStack: "
                             << ", stack limit: " << glueData_.stackLimit_
                             << ", stack lastLeaveFrame: " << glueData_.leaveFrame_;

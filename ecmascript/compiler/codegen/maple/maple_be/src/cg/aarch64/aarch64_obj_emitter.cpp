@@ -1637,7 +1637,8 @@ uint32 AArch64ObjEmitter::EncodeLogicaImm(uint64 imm, uint32 size) const
     return (n << kShiftTwelve) | (immr << kShiftSix) | (imms & 0x3f);
 }
 
-void AArch64ObjEmitter::EmitIntrinsicInsn(const Insn &insn, ObjFuncEmitInfo &objFuncEmitInfo)
+void AArch64ObjEmitter::EmitIntrinsicInsn(const Insn &insn, const std::vector<uint32> &label2Offset,
+                                          ObjFuncEmitInfo &objFuncEmitInfo)
 {
     switch (insn.GetMachineOpcode()) {
         // adrp    xd, label
@@ -1650,6 +1651,31 @@ void AArch64ObjEmitter::EmitIntrinsicInsn(const Insn &insn, ObjFuncEmitInfo &obj
             binInsn = AArch64CG::kMd[MOP_xaddrri12].GetMopEncode();
             binInsn |= opnd | (opnd << kShiftFive);
             objFuncEmitInfo.AppendTextData(binInsn, k4ByteSize);
+            break;
+        }
+        case MOP_get_heap_const_table: {
+            AArch64CGFunc &cgFunc = static_cast<AArch64CGFunc&>(objFuncEmitInfo.GetCGFunc());
+            RegOperand &destReg = static_cast<RegOperand&>(insn.GetOperand(kInsnFirstOpnd));
+            RegOperand &jsFuncReg = static_cast<RegOperand&>(insn.GetOperand(kInsnSecondOpnd));
+            ImmOperand &machineCodeOffset = static_cast<ImmOperand&>(insn.GetOperand(kInsnThirdOpnd));
+            ImmOperand &constTableOffset = static_cast<ImmOperand&>(insn.GetOperand(kInsnFourthOpnd));
+            Operand &machineCodeMemOpnd = cgFunc.CreateMemOpnd(jsFuncReg, machineCodeOffset.GetValue(), k64BitSize);
+            Insn &ldrMachineCodeInsn = cgFunc.GetInsnBuilder()->BuildInsn(MOP_xldr, destReg, machineCodeMemOpnd);
+            EncodeInstruction(ldrMachineCodeInsn, label2Offset, objFuncEmitInfo);
+            Operand &constTableMemOpnd = cgFunc.CreateMemOpnd(destReg, constTableOffset.GetValue(), k64BitSize);
+            Insn &ldrConstantTableInsn = cgFunc.GetInsnBuilder()->BuildInsn(MOP_xldr, destReg, constTableMemOpnd);
+            EncodeInstruction(ldrConstantTableInsn, label2Offset, objFuncEmitInfo);
+            break;
+        }
+        case MOP_heap_const: {
+            AArch64CGFunc &cgFunc = static_cast<AArch64CGFunc&>(objFuncEmitInfo.GetCGFunc());
+            RegOperand &destReg = static_cast<RegOperand&>(insn.GetOperand(kInsnFirstOpnd));
+            RegOperand &constTableStart = static_cast<RegOperand&>(insn.GetOperand(kInsnSecondOpnd));
+            ImmOperand &constSlotIndex = static_cast<ImmOperand&>(insn.GetOperand(kInsnThirdOpnd));
+            Operand &constSlotMem = cgFunc.CreateMemOpnd(
+                constTableStart, constSlotIndex.GetValue() * k8ByteSize, k64BitSize);
+            Insn &ldrConstantInsn = cgFunc.GetInsnBuilder()->BuildInsn(MOP_xldr, destReg, constSlotMem);
+            EncodeInstruction(ldrConstantInsn, label2Offset, objFuncEmitInfo);
             break;
         }
         default:

@@ -143,6 +143,10 @@ private:
     std::map<GateRef, DeoptBBInfo> deoptFrameState2BB_;
     maple::ConstantFold cf_;
     std::unordered_map<GateRef, maple::litecg::Expr> derivedrefGate;
+    struct ConstTableInfo {
+        bool needConstantTable = false;
+        maple::litecg::PregIdx constTable;
+    } constantTableInfo;
 
 #define DECLAREVISITLOWEROPCODE(name, signature) void Visit##name signature;
     OPCODES(DECLAREVISITLOWEROPCODE)
@@ -220,6 +224,7 @@ private:
     void GenPrologue(maple::litecg::Function &function);
     void AssistGenPrologue(const size_t reservedSlotsSize, FrameType frameType, maple::litecg::Function &function);
     void SaveByteCodePcOnOptJSFuncFrame(maple::litecg::Var &value);
+    void LoadConstantTableIfNeeded(maple::litecg::Var &value);
     void SaveJSFuncOnOptJSFuncFrame(maple::litecg::Function &function, maple::litecg::Var &value, int funcIndex);
     void SaveFrameTypeOnFrame(maple::litecg::Function &function, FrameType frameType);
     bool IsInterpreted() const;

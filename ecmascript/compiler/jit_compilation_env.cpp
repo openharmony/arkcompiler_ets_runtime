@@ -15,6 +15,7 @@
 #include "ecmascript/compiler/jit_compilation_env.h"
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/ic/ic_handler.h"
+#include "ecmascript/jit/jit_thread.h"
 
 namespace panda::ecmascript {
 // jit
@@ -229,5 +230,26 @@ JSFunction *JitCompilationEnv::GetJsFunctionByMethodOffset(uint32_t methodOffset
         return nullptr;
     }
     return currFunc;
+}
+
+uint32_t JitCompilationEnv::RecordHeapConstant(
+    ConstantPoolHeapConstant heapConstant, const JSHandle<JSTaggedValue> &heapObj)
+{
+    auto itr = heapConstantInfo_.constPoolHeapConstant2Index.find(heapConstant);
+    if (itr != heapConstantInfo_.constPoolHeapConstant2Index.end()) {
+        return itr->second;
+    }
+    heapConstantInfo_.heapConstantTable.push_back(heapObj);
+    ASSERT(heapConstantInfo_.heapConstantTable.size() < INVALID_HEAP_CONSTANT_INDEX);
+    uint32_t index = static_cast<uint32_t>(heapConstantInfo_.heapConstantTable.size() - 1);
+    heapConstantInfo_.constPoolHeapConstant2Index.insert(
+        std::pair<ConstantPoolHeapConstant, uint32_t>(heapConstant, index));
+    return index;
+}
+
+JSHandle<JSTaggedValue> JitCompilationEnv::GetHeapConstantHandle(uint32_t heapConstantIndex) const
+{
+    ASSERT(heapConstantIndex < heapConstantInfo_.heapConstantTable.size());
+    return heapConstantInfo_.heapConstantTable[heapConstantIndex];
 }
 } // namespace panda::ecmascript
