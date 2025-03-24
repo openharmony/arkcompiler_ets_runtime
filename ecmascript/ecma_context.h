@@ -51,7 +51,6 @@ class JSPandaFile;
 class ConstantPool;
 class JSPromise;
 class RegExpExecResultCache;
-class EcmaHandleScope;
 class SustainingJSHandleList;
 class SustainingJSHandle;
 enum class PromiseRejectionEvent : uint8_t;
@@ -391,62 +390,6 @@ public:
                              bool needPushArgv);
     void LoadStubFile();
 
-    JSTaggedType *GetHandleScopeStorageNext() const
-    {
-        return handleScopeStorageNext_;
-    }
-
-    void SetHandleScopeStorageNext(JSTaggedType *value)
-    {
-        handleScopeStorageNext_ = value;
-    }
-
-    JSTaggedType *GetHandleScopeStorageEnd() const
-    {
-        return handleScopeStorageEnd_;
-    }
-
-    void SetHandleScopeStorageEnd(JSTaggedType *value)
-    {
-        handleScopeStorageEnd_ = value;
-    }
-
-    int GetCurrentHandleStorageIndex() const
-    {
-        return currentHandleStorageIndex_;
-    }
-
-    JSTaggedType *GetPrimitiveScopeStorageNext() const
-    {
-        return primitiveScopeStorageNext_;
-    }
-
-    void SetPrimitiveScopeStorageNext(JSTaggedType *value)
-    {
-        primitiveScopeStorageNext_ = value;
-    }
-
-    JSTaggedType *GetPrimitiveScopeStorageEnd() const
-    {
-        return primitiveScopeStorageEnd_;
-    }
-
-    void SetPrimitiveScopeStorageEnd(JSTaggedType *value)
-    {
-        primitiveScopeStorageEnd_ = value;
-    }
-
-    int GetCurrentPrimitiveStorageIndex() const
-    {
-        return currentPrimitiveStorageIndex_;
-    }
-
-    size_t IterateHandle(RootVisitor &visitor);
-    uintptr_t *ExpandHandleStorage();
-    void ShrinkHandleStorage(int prevIndex);
-    uintptr_t *ExpandPrimitiveStorage();
-    void ShrinkPrimitiveStorage(int prevIndex);
-
     PropertiesCache *GetPropertiesCache() const
     {
         return ecmaData_.propertiesCache_;
@@ -672,21 +615,6 @@ private:
 
     ModuleLogger *moduleLogger_ {nullptr};
 
-    // Handlescope
-    static const uint32_t NODE_BLOCK_SIZE_LOG2 = 10;
-    static const uint32_t NODE_BLOCK_SIZE = 1U << NODE_BLOCK_SIZE_LOG2;
-    static constexpr int32_t MIN_HANDLE_STORAGE_SIZE = 2;
-    JSTaggedType *handleScopeStorageNext_ {nullptr};
-    JSTaggedType *handleScopeStorageEnd_ {nullptr};
-    std::vector<std::array<JSTaggedType, NODE_BLOCK_SIZE> *> handleStorageNodes_ {};
-    int32_t currentHandleStorageIndex_ {-1};
-    // PrimitveScope
-    static constexpr int32_t MIN_PRIMITIVE_STORAGE_SIZE = 2;
-    JSTaggedType *primitiveScopeStorageNext_ {nullptr};
-    JSTaggedType *primitiveScopeStorageEnd_ {nullptr};
-    std::vector<std::array<JSTaggedType, NODE_BLOCK_SIZE> *> primitiveStorageNodes_ {};
-    int32_t currentPrimitiveStorageIndex_ {-1};
-
     GlobalEnvConstants globalConst_;
     // Join Stack
     static constexpr uint32_t MIN_JOIN_STACK_SIZE = 2;
@@ -695,7 +623,6 @@ private:
     // SustainingJSHandleList for jit compile hold ref
     SustainingJSHandleList *sustainingJSHandleList_ {nullptr};
 
-    friend class EcmaHandleScope;
     friend class JSPandaFileExecutor;
     friend class ObjectFactory;
     friend class panda::JSNApi;

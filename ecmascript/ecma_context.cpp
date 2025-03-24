@@ -130,20 +130,6 @@ bool EcmaContext::Initialize()
 
 EcmaContext::~EcmaContext()
 {
-    for (auto n : handleStorageNodes_) {
-        delete n;
-    }
-    handleStorageNodes_.clear();
-    currentHandleStorageIndex_ = -1;
-    handleScopeStorageNext_ = handleScopeStorageEnd_ = nullptr;
-
-    for (auto n : primitiveStorageNodes_) {
-        delete n;
-    }
-    primitiveStorageNodes_.clear();
-    currentPrimitiveStorageIndex_ = -1;
-    primitiveScopeStorageNext_ = primitiveScopeStorageEnd_ = nullptr;
-
     if (vm_->IsEnableBaselineJit() || vm_->IsEnableFastJit()) {
         // clear jit task
         vm_->GetJit()->ClearTask(this);
@@ -877,16 +863,6 @@ void EcmaContext::Iterate(RootVisitor &v)
         regExpParserCache_->Clear();
     }
     IterateMegaIC(v);
-    if (!vm_->GetJSOptions().EnableGlobalLeakCheck() && currentHandleStorageIndex_ != -1) {
-        // IterateHandle when disableGlobalLeakCheck.
-        int32_t nid = currentHandleStorageIndex_;
-        for (int32_t i = 0; i <= nid; ++i) {
-            auto node = handleStorageNodes_.at(i);
-            auto start = node->data();
-            auto end = (i != nid) ? &(node->data()[NODE_BLOCK_SIZE]) : handleScopeStorageNext_;
-            v.VisitRangeRoot(Root::ROOT_HANDLE, ObjectSlot(ToUintPtr(start)), ObjectSlot(ToUintPtr(end)));
-        }
-    }
 
     if (sustainingJSHandleList_) {
         sustainingJSHandleList_->Iterate(v);
@@ -901,127 +877,6 @@ void EcmaContext::Iterate(RootVisitor &v)
     auto end = ObjectSlot(ToUintPtr(&unsharedConstpools_[GetUnsharedConstpoolsArrayLen() - 1]) +
         JSTaggedValue::TaggedTypeSize());
     v.VisitRangeRoot(Root::ROOT_VM, start, end);
-}
-
-size_t EcmaContext::IterateHandle(RootVisitor &visitor)
-{
-    // EnableGlobalLeakCheck.
-    size_t handleCount = 0;
-    if (currentHandleStorageIndex_ != -1) {
-        int32_t nid = currentHandleStorageIndex_;
-        for (int32_t i = 0; i <= nid; ++i) {
-            auto node = handleStorageNodes_.at(i);
-            auto start = node->data();
-            auto end = (i != nid) ? &(node->data()[NODE_BLOCK_SIZE]) : handleScopeStorageNext_;
-            visitor.VisitRangeRoot(Root::ROOT_HANDLE, ObjectSlot(ToUintPtr(start)), ObjectSlot(ToUintPtr(end)));
-            handleCount += (ToUintPtr(end) - ToUintPtr(start)) / sizeof(JSTaggedType);
-        }
-    }
-    return handleCount;
-}
-
-uintptr_t *EcmaContext::ExpandHandleStorage()
-{
-    uintptr_t *result = nullptr;
-    int32_t lastIndex = static_cast<int32_t>(handleStorageNodes_.size()) - 1;
-    if (currentHandleStorageIndex_ == lastIndex) {
-        auto n = new std::array<JSTaggedType, NODE_BLOCK_SIZE>();
-        handleStorageNodes_.push_back(n);
-        currentHandleStorageIndex_++;
-        result = reinterpret_cast<uintptr_t *>(&n->data()[0]);
-        handleScopeStorageEnd_ = &n->data()[NODE_BLOCK_SIZE];
-    } else {
-        currentHandleStorageIndex_++;
-        auto lastNode = handleStorageNodes_[currentHandleStorageIndex_];
-        result = reinterpret_cast<uintptr_t *>(&lastNode->data()[0]);
-        handleScopeStorageEnd_ = &lastNode->data()[NODE_BLOCK_SIZE];
-    }
-
-    return result;
-}
-
-void EcmaContext::ShrinkHandleStorage(int prevIndex)
-{
-    currentHandleStorageIndex_ = prevIndex;
-    int32_t lastIndex = static_cast<int32_t>(handleStorageNodes_.size()) - 1;
-#if ECMASCRIPT_ENABLE_ZAP_MEM
-    uintptr_t size = ToUintPtr(handleScopeStorageEnd_) - ToUintPtr(handleScopeStorageNext_);
-    if (currentHandleStorageIndex_ != -1) {
-        if (memset_s(handleScopeStorageNext_, size, 0, size) != EOK) {
-            LOG_FULL(FATAL) << "memset_s failed";
-            UNREACHABLE();
-        }
-    }
-    for (int32_t i = currentHandleStorageIndex_ + 1; i < lastIndex; i++) {
-        if (memset_s(handleStorageNodes_[i],
-                     NODE_BLOCK_SIZE * sizeof(JSTaggedType), 0,
-                     NODE_BLOCK_SIZE * sizeof(JSTaggedType)) !=
-                     EOK) {
-            LOG_FULL(FATAL) << "memset_s failed";
-            UNREACHABLE();
-        }
-    }
-#endif
-
-    if (lastIndex > MIN_HANDLE_STORAGE_SIZE && currentHandleStorageIndex_ < MIN_HANDLE_STORAGE_SIZE) {
-        for (int i = MIN_HANDLE_STORAGE_SIZE; i < lastIndex; i++) {
-            auto node = handleStorageNodes_.back();
-            delete node;
-            handleStorageNodes_.pop_back();
-        }
-    }
-}
-
-uintptr_t *EcmaContext::ExpandPrimitiveStorage()
-{
-    uintptr_t *result = nullptr;
-    int32_t lastIndex = static_cast<int32_t>(primitiveStorageNodes_.size()) - 1;
-    if (currentPrimitiveStorageIndex_ == lastIndex) {
-        auto n = new std::array<JSTaggedType, NODE_BLOCK_SIZE>();
-        primitiveStorageNodes_.push_back(n);
-        currentPrimitiveStorageIndex_++;
-        result = reinterpret_cast<uintptr_t *>(&n->data()[0]);
-        primitiveScopeStorageEnd_ = &n->data()[NODE_BLOCK_SIZE];
-    } else {
-        currentPrimitiveStorageIndex_++;
-        auto lastNode = primitiveStorageNodes_[currentPrimitiveStorageIndex_];
-        result = reinterpret_cast<uintptr_t *>(&lastNode->data()[0]);
-        primitiveScopeStorageEnd_ = &lastNode->data()[NODE_BLOCK_SIZE];
-    }
-
-    return result;
-}
-
-void EcmaContext::ShrinkPrimitiveStorage(int prevIndex)
-{
-    currentPrimitiveStorageIndex_ = prevIndex;
-    int32_t lastIndex = static_cast<int32_t>(primitiveStorageNodes_.size()) - 1;
-#if ECMASCRIPT_ENABLE_ZAP_MEM
-    uintptr_t size = ToUintPtr(primitiveScopeStorageEnd_) - ToUintPtr(primitiveScopeStorageNext_);
-    if (currentPrimitiveStorageIndex_ != -1) {
-        if (memset_s(primitiveScopeStorageNext_, size, 0, size) != EOK) {
-            LOG_FULL(FATAL) << "memset_s failed";
-            UNREACHABLE();
-        }
-    }
-    for (int32_t i = currentPrimitiveStorageIndex_ + 1; i < lastIndex; i++) {
-        if (memset_s(primitiveStorageNodes_[i],
-                     NODE_BLOCK_SIZE * sizeof(JSTaggedType), 0,
-                     NODE_BLOCK_SIZE * sizeof(JSTaggedType)) !=
-                     EOK) {
-            LOG_FULL(FATAL) << "memset_s failed";
-            UNREACHABLE();
-        }
-    }
-#endif
-
-    if (lastIndex > MIN_PRIMITIVE_STORAGE_SIZE && currentPrimitiveStorageIndex_ < MIN_PRIMITIVE_STORAGE_SIZE) {
-        for (int i = MIN_PRIMITIVE_STORAGE_SIZE; i < lastIndex; i++) {
-            auto node = primitiveStorageNodes_.back();
-            delete node;
-            primitiveStorageNodes_.pop_back();
-        }
-    }
 }
 
 void EcmaContext::LoadStubFile()
