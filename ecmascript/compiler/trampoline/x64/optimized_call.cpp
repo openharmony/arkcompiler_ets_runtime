@@ -513,7 +513,7 @@ void OptimizedCall::GenJSCall(ExtendedAssembler *assembler, bool isNew)
         __ Shr(MethodLiteral::BuiltinIdBits::START_BIT, methodExtraLiteralInfo);
         __ Andl(((1LU <<  MethodLiteral::BuiltinIdBits::SIZE) - 1), methodExtraLiteralInfo);  // get builtin stub id
         if (!isNew) {
-            __ Cmpl(kungfu::BuiltinsStubCSigns::BUILTINS_CONSTRUCTOR_STUB_FIRST, methodExtraLiteralInfo);
+            __ Cmpl(BUILTINS_STUB_ID(BUILTINS_CONSTRUCTOR_STUB_FIRST), methodExtraLiteralInfo);
             __ Jnb(&lCallNativeCpp);
         }
 

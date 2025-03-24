@@ -232,7 +232,7 @@ JSHandle<Method> ObjectFactory::NewSMethodForNativeFunction(const void *func, Fu
     auto method = NewSMethod(nullptr, spaceType);
     method->SetNativePointer(const_cast<void *>(func));
     method->SetNativeBit(true);
-    if (builtinId != kungfu::BuiltinsStubCSigns::INVALID) {
+    if (builtinId != BUILTINS_STUB_ID(INVALID)) {
         bool isFast = kungfu::BuiltinsStubCSigns::IsFastBuiltin(builtinId);
         method->SetFastBuiltinBit(isFast);
         method->SetBuiltinId(static_cast<uint8_t>(builtinId));
@@ -279,7 +279,7 @@ JSHandle<JSFunction> ObjectFactory::NewSFunctionWithAccessor(const void *func, c
     FunctionKind kind, kungfu::BuiltinsStubCSigns::ID builtinId, MemSpaceType spaceType)
 {
     ASSERT(spaceType == SHARED_NON_MOVABLE || spaceType == SHARED_OLD_SPACE);
-    if (builtinId != kungfu::BuiltinsStubCSigns::INVALID) {
+    if (builtinId != BUILTINS_STUB_ID(INVALID)) {
         JSHandle<Method> method = NewSMethodForNativeFunction(func, kind, builtinId, spaceType);
         return NewSFunctionByHClass(method, hclass);
     }
@@ -294,7 +294,7 @@ JSHandle<JSFunction> ObjectFactory::NewSFunctionByHClass(const void *func, const
     JSHandle<JSFunction> function(NewSharedOldSpaceJSObject(hclass));
     hclass->SetCallable(true);
     JSFunction::InitializeWithDefaultValue(thread_, function);
-    if (builtinId != kungfu::BuiltinsStubCSigns::INVALID) {
+    if (builtinId != BUILTINS_STUB_ID(INVALID)) {
         JSHandle<Method> method = NewSMethodForNativeFunction(func, kind, builtinId, spaceType);
         function->SetMethod(thread_, method);
     } else {

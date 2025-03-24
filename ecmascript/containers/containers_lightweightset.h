@@ -74,7 +74,7 @@ public:
 
 private:
 #define CONTAINER_LIGHTWEIGHTSET_FUNCTION_ENTRY(name, method, length, id) \
-    base::BuiltinFunctionEntry::Create(name, ContainersLightWeightSet::method, length, kungfu::BuiltinsStubCSigns::id),
+    base::BuiltinFunctionEntry::Create(name, ContainersLightWeightSet::method, length, BUILTINS_STUB_ID(id)),
 
     static constexpr std::array LIGHTWEIGHTSET_PROTOTYPE_FUNCTIONS = {
         CONTAINER_LIGHTWEIGHTSET_PROTOTYPE_FUNCTIONS(CONTAINER_LIGHTWEIGHTSET_FUNCTION_ENTRY)

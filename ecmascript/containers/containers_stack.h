@@ -51,7 +51,7 @@ public:
 
 private:
 #define CONTAINER_STACK_FUNCTION_ENTRY(name, method, length, id) \
-    base::BuiltinFunctionEntry::Create(name, ContainersStack::method, length, kungfu::BuiltinsStubCSigns::id),
+    base::BuiltinFunctionEntry::Create(name, ContainersStack::method, length, BUILTINS_STUB_ID(id)),
 
     static constexpr std::array STACK_PROTOTYPE_FUNCTIONS = {
         CONTAINER_STACK_PROTOTYPE_FUNCTIONS(CONTAINER_STACK_FUNCTION_ENTRY)

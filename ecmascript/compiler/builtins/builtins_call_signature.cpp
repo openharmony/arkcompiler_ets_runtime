@@ -24,26 +24,26 @@ CallSignature BuiltinsStubCSigns::builtinsWithArgvCSign_;
 
 void BuiltinsStubCSigns::Initialize()
 {
-#define COMMON_INIT(name)                                            \
-    callSigns_[name].SetID(name);                                    \
-    callSigns_[name].SetName(std::string("BuiltinStub_") + #name);   \
-    callSigns_[name].SetConstructor(                                 \
-    [](void* env) {                                                  \
-        return static_cast<void*>(                                   \
-            new name##StubBuilder(&callSigns_[name],                 \
-                static_cast<Environment*>(env)));                    \
+#define COMMON_INIT(name)                                                   \
+    callSigns_[ID::name].SetID(ID::name);                                   \
+    callSigns_[ID::name].SetName(std::string("BuiltinStub_") + #name);      \
+    callSigns_[ID::name].SetConstructor(                                    \
+    [](void* env) {                                                         \
+        return static_cast<void*>(                                          \
+            new name##StubBuilder(&callSigns_[ID::name],                    \
+                static_cast<Environment*>(env)));                           \
     });
 
-#define INIT_BUILTINS_METHOD(name)                                   \
-    BuiltinsCallSignature::Initialize(&callSigns_[name]);            \
+#define INIT_BUILTINS_METHOD(name)                                          \
+    BuiltinsCallSignature::Initialize(&callSigns_[ID::name]);               \
     COMMON_INIT(name)
 
-#define INIT_BUILTINS_METHOD_DYN(name, type, ...)                    \
-    BuiltinsCallSignature::Initialize(&callSigns_[type##name]);      \
+#define INIT_BUILTINS_METHOD_DYN(name, type, ...)                           \
+    BuiltinsCallSignature::Initialize(&callSigns_[ID::type##name]);         \
     COMMON_INIT(type##name)
 
-#define INIT_BUILTINS_CONSTRUCTOR_METHOD(name)                       \
-    BuiltinsWithArgvCallSignature::Initialize(&callSigns_[name]);    \
+#define INIT_BUILTINS_CONSTRUCTOR_METHOD(name)                              \
+    BuiltinsWithArgvCallSignature::Initialize(&callSigns_[ID::name]);       \
     COMMON_INIT(name)
 
     BUILTINS_STUB_LIST(INIT_BUILTINS_METHOD, INIT_BUILTINS_METHOD_DYN, INIT_BUILTINS_CONSTRUCTOR_METHOD)

@@ -84,7 +84,7 @@ public:
     static void *GetDataPointFromBuffer(JSTaggedValue arrBuf, uint32_t byteOffset = 0);
 private:
 #define BUILTIN_ARRAY_BUFFER_ENTRY(name, func, length, id) \
-    BuiltinFunctionEntry::Create(name, BuiltinsSendableArrayBuffer::func, length, kungfu::BuiltinsStubCSigns::id),
+    BuiltinFunctionEntry::Create(name, BuiltinsSendableArrayBuffer::func, length, BUILTINS_STUB_ID(id)),
 
     static constexpr std::array ARRAY_BUFFER_FUNCTIONS = {
         BUILTIN_ARRAY_BUFFER_FUNCTIONS(BUILTIN_ARRAY_BUFFER_ENTRY)

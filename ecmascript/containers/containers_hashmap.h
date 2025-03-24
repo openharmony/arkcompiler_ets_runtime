@@ -65,7 +65,7 @@ public:
 
 private:
 #define CONTAINER_HASHMAP_FUNCTION_ENTRY(name, method, length, id) \
-    base::BuiltinFunctionEntry::Create(name, ContainersHashMap::method, length, kungfu::BuiltinsStubCSigns::id),
+    base::BuiltinFunctionEntry::Create(name, ContainersHashMap::method, length, BUILTINS_STUB_ID(id)),
 
     static constexpr std::array HASHMAP_PROTOTYPE_FUNCTIONS = {
         CONTAINER_HASHMAP_PROTOTYPE_FUNCTIONS(CONTAINER_HASHMAP_FUNCTION_ENTRY)

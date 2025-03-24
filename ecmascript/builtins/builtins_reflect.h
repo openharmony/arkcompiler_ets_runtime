@@ -109,7 +109,7 @@ public:
 
 private:
 #define BUILTINS_REFLECT_FUNCTION_ENTRY(name, method, length, id) \
-    base::BuiltinFunctionEntry::Create(name, BuiltinsReflect::method, length, kungfu::BuiltinsStubCSigns::id),
+    base::BuiltinFunctionEntry::Create(name, BuiltinsReflect::method, length, BUILTINS_STUB_ID(id)),
 
     static constexpr std::array REFLECT_FUNCTIONS  = {
         BUILTIN_REFLECT_FUNCTIONS(BUILTINS_REFLECT_FUNCTION_ENTRY)

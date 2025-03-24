@@ -81,7 +81,7 @@ public:
 
 private:
 #define CONTAINER_LIGHTWEIGHTMAP_FUNCTION_ENTRY(name, method, length, id) \
-    base::BuiltinFunctionEntry::Create(name, ContainersLightWeightMap::method, length, kungfu::BuiltinsStubCSigns::id),
+    base::BuiltinFunctionEntry::Create(name, ContainersLightWeightMap::method, length, BUILTINS_STUB_ID(id)),
 
     static constexpr std::array LIGHTWEIGHTMAP_PROTOTYPE_FUNCTIONS = {
         CONTAINER_LIGHTWEIGHTMAP_PROTOTYPE_FUNCTIONS(CONTAINER_LIGHTWEIGHTMAP_FUNCTION_ENTRY)

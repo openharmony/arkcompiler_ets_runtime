@@ -204,7 +204,7 @@ public:
     ~ObjectFactory() = default;
     JSHandle<Method> NewMethodForNativeFunction(const void *func, FunctionKind kind = FunctionKind::NORMAL_FUNCTION,
                                                 kungfu::BuiltinsStubCSigns::ID builtinId =
-                                                kungfu::BuiltinsStubCSigns::INVALID,
+                                                BUILTINS_STUB_ID(INVALID),
                                                 MemSpaceType methodSpaceType = SHARED_OLD_SPACE);
 
     JSHandle<ProfileTypeInfo> NewProfileTypeInfo(uint32_t length);
@@ -235,12 +235,12 @@ public:
     // use for native function
     JSHandle<JSFunction> NewJSFunction(const JSHandle<GlobalEnv> &env, const void *nativeFunc = nullptr,
                                        FunctionKind kind = FunctionKind::NORMAL_FUNCTION,
-                                       kungfu::BuiltinsStubCSigns::ID builtinId = kungfu::BuiltinsStubCSigns::INVALID,
+                                       kungfu::BuiltinsStubCSigns::ID builtinId = BUILTINS_STUB_ID(INVALID),
                                        MemSpaceType methodSpaceType = SHARED_OLD_SPACE);
     JSHandle<JSFunction> NewSFunction(const JSHandle<GlobalEnv> &env,
                                       const void *nativeFunc = nullptr,
                                       FunctionKind kind = FunctionKind::NORMAL_FUNCTION,
-                                      kungfu::BuiltinsStubCSigns::ID builtinId = kungfu::BuiltinsStubCSigns::INVALID,
+                                      kungfu::BuiltinsStubCSigns::ID builtinId = BUILTINS_STUB_ID(INVALID),
                                       MemSpaceType spaceType = SHARED_OLD_SPACE);
     void InitializeMethod(const MethodLiteral *methodLiteral, JSHandle<Method> &method);
     // use for method
@@ -256,7 +256,7 @@ public:
     JSHandle<JSFunction> NewSpecificTypedArrayFunction(const JSHandle<GlobalEnv> &env,
                                                        const void *nativeFunc = nullptr,
                                                        kungfu::BuiltinsStubCSigns::ID builtinId =
-                                                       kungfu::BuiltinsStubCSigns::INVALID);
+                                                       BUILTINS_STUB_ID(INVALID));
 
     JSHandle<JSObject> OrdinaryNewJSObjectCreate(const JSHandle<JSTaggedValue> &proto);
 
@@ -779,7 +779,7 @@ public:
 
     JSHandle<Method> NewSMethodForNativeFunction(const void *func, FunctionKind kind = FunctionKind::NORMAL_FUNCTION,
                                                 kungfu::BuiltinsStubCSigns::ID builtinId =
-                                                kungfu::BuiltinsStubCSigns::INVALID,
+                                                BUILTINS_STUB_ID(INVALID),
                                                 MemSpaceType spaceType = SHARED_OLD_SPACE);
 
     JSHandle<JSFunction> NewSFunctionByHClass(const JSHandle<Method> &methodHandle,
@@ -791,14 +791,14 @@ public:
 
     JSHandle<JSFunction> NewSFunctionByHClass(const void *func, const JSHandle<JSHClass> &hclass,
         FunctionKind kind,
-        kungfu::BuiltinsStubCSigns::ID builtinId = kungfu::BuiltinsStubCSigns::INVALID,
+        kungfu::BuiltinsStubCSigns::ID builtinId = BUILTINS_STUB_ID(INVALID),
         MemSpaceType spaceType = SHARED_OLD_SPACE);
 
     JSHandle<JSFunction> NewSFunctionWithAccessor(
         const void *func,
         const JSHandle<JSHClass> &hclass,
         FunctionKind kind,
-        kungfu::BuiltinsStubCSigns::ID builtinId = kungfu::BuiltinsStubCSigns::INVALID,
+        kungfu::BuiltinsStubCSigns::ID builtinId = BUILTINS_STUB_ID(INVALID),
         MemSpaceType spaceType = SHARED_OLD_SPACE);
 
     JSHandle<Method> NewSMethod(const MethodLiteral *methodLiteral, MemSpaceType methodSpaceType = SHARED_OLD_SPACE);

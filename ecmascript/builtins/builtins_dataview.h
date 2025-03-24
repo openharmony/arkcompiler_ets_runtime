@@ -125,7 +125,7 @@ public:
 
 private:
 #define BUILTIN_DATA_VIEW_FUNCTION_ENTRY(name, func, length, id) \
-    base::BuiltinFunctionEntry::Create(name, BuiltinsDataView::func, length, kungfu::BuiltinsStubCSigns::id),
+    base::BuiltinFunctionEntry::Create(name, BuiltinsDataView::func, length, BUILTINS_STUB_ID(id)),
 
     static constexpr std::array DATA_VIEW_PROTOTYPE_FUNCTIONS = {
         BUILTIN_DATA_VIEW_PROTOTYPE_FUNCTIONS(BUILTIN_DATA_VIEW_FUNCTION_ENTRY)

@@ -122,7 +122,7 @@ JSHandle<Method> ObjectFactory::NewMethodForNativeFunction(const void *func, Fun
     auto method = NewSMethod(nullptr, methodSpaceType);
     method->SetNativePointer(const_cast<void *>(func));
     method->SetNativeBit(true);
-    if (builtinId != kungfu::BuiltinsStubCSigns::INVALID) {
+    if (builtinId != BUILTINS_STUB_ID(INVALID)) {
         bool isFast = kungfu::BuiltinsStubCSigns::IsFastBuiltin(builtinId);
         method->SetFastBuiltinBit(isFast);
         method->SetBuiltinId(static_cast<uint8_t>(builtinId));
@@ -1851,7 +1851,7 @@ JSHandle<JSFunction> ObjectFactory::NewJSFunction(const JSHandle<GlobalEnv> &env
                                                   MemSpaceType methodSpaceType)
 {
     JSHandle<JSHClass> hclass = GetHClassByFunctionKind(env, kind);
-    if (builtinId != kungfu::BuiltinsStubCSigns::INVALID) {
+    if (builtinId != BUILTINS_STUB_ID(INVALID)) {
         JSHandle<Method> method = NewMethodForNativeFunction(nativeFunc, kind, builtinId, methodSpaceType);
         return NewJSFunctionByHClass(method, hclass);
     }
@@ -1873,7 +1873,7 @@ JSHandle<JSFunction> ObjectFactory::NewSFunction(const JSHandle<GlobalEnv> &env,
                                                  MemSpaceType spaceType)
 {
     JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetSFunctionClassWithoutProto());
-    if (builtinId != kungfu::BuiltinsStubCSigns::INVALID) {
+    if (builtinId != BUILTINS_STUB_ID(INVALID)) {
         JSHandle<Method> method = NewSMethodForNativeFunction(nativeFunc, kind, builtinId, spaceType);
         return NewSFunctionByHClass(method, hclass);
     }
@@ -2253,7 +2253,7 @@ JSHandle<JSFunction> ObjectFactory::NewSpecificTypedArrayFunction(const JSHandle
                                                                   kungfu::BuiltinsStubCSigns::ID builtinId)
 {
     JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetSpecificTypedArrayFunctionClass());
-    if (builtinId != kungfu::BuiltinsStubCSigns::INVALID) {
+    if (builtinId != BUILTINS_STUB_ID(INVALID)) {
         JSHandle<Method> method = NewMethodForNativeFunction(nativeFunc, FunctionKind::BUILTIN_CONSTRUCTOR, builtinId);
         return NewJSFunctionByHClass(method, hclass);
     }

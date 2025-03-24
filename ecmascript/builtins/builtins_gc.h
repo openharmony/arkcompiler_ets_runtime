@@ -49,7 +49,7 @@ public:
 
 private:
 #define BUILTINS_GC_FUNCTION_ENTRY(name, method, length, id) \
-    base::BuiltinFunctionEntry::Create(name, BuiltinsGc::method, length, kungfu::BuiltinsStubCSigns::id),
+    base::BuiltinFunctionEntry::Create(name, BuiltinsGc::method, length, BUILTINS_STUB_ID(id)),
 
 // List of functions in ArkTools.GC, extension of JS engine.
 // where BuiltinsGc::func refers to the native implementation of GC[name].

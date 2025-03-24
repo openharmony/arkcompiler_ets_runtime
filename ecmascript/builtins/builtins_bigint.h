@@ -74,7 +74,7 @@ public:
 
 private:
 #define BUILTIN_BIGINT_FUNCTION_ENTRY(name, func, length, builtinId) \
-    base::BuiltinFunctionEntry::Create(name, BuiltinsBigInt::func, length, kungfu::BuiltinsStubCSigns::builtinId),
+    base::BuiltinFunctionEntry::Create(name, BuiltinsBigInt::func, length, BUILTINS_STUB_ID(builtinId)),
 
     static inline std::array BIGINT_FUNCTIONS = {
         BUILTIN_BIGINT_FUNCTIONS(BUILTIN_BIGINT_FUNCTION_ENTRY)

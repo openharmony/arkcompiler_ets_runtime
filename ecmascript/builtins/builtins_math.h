@@ -181,7 +181,7 @@ private:
 #undef BUILTIN_MATH_CONSTANT_ENTRY
 
 #define BUILTIN_MATH_FUNCTION_ENTRY(name, func, length, builtinId) \
-    base::BuiltinFunctionEntry::Create(name, BuiltinsMath::func, length, kungfu::BuiltinsStubCSigns::builtinId),
+    base::BuiltinFunctionEntry::Create(name, BuiltinsMath::func, length, BUILTINS_STUB_ID(builtinId)),
 
     static constexpr std::array MATH_FUNCTIONS = {
         BUILTIN_MATH_FUNCTIONS(BUILTIN_MATH_FUNCTION_ENTRY)

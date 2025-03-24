@@ -16,7 +16,7 @@
 #ifndef ECMASCRIPT_COMPILER_BUILTINS_CALL_SIGNATURE_H
 #define ECMASCRIPT_COMPILER_BUILTINS_CALL_SIGNATURE_H
 
-#include "ecmascript/compiler/builtins/builtins_call_signature_list.h"
+#include "ecmascript/compiler/builtins/builtins_call_signature_id_properties.h"
 #include "ecmascript/base/config.h"
 #include "ecmascript/compiler/call_signature.h"
 #include "ecmascript/global_env_constants.h"
@@ -25,24 +25,10 @@ namespace panda::ecmascript::kungfu {
 
 class BuiltinsStubCSigns {
 public:
-    enum ID {
-#define DEF_STUB_ID(name) name,
-#define DEF_STUB_ID_DYN(name, type, ...) type##name,
-        PADDING_BUILTINS_STUB_LIST(DEF_STUB_ID)
-        BUILTINS_STUB_LIST(DEF_STUB_ID, DEF_STUB_ID_DYN, DEF_STUB_ID)
-        NUM_OF_BUILTINS_STUBS,
-        BUILTINS_NOSTUB_LIST(DEF_STUB_ID)
-        AOT_BUILTINS_STUB_LIST(DEF_STUB_ID)
-        AOT_BUILTINS_INLINE_LIST(DEF_STUB_ID)
-#undef DEF_STUB_ID_DYN
-#undef DEF_STUB_ID
-        NUM_OF_BUILTINS_ID,
-        BUILTINS_CONSTRUCTOR_STUB_FIRST = BooleanConstructor,
-        TYPED_BUILTINS_FIRST = JsonStringify,
-        TYPED_BUILTINS_LAST = IteratorProtoReturn,
-        INVALID = 0xFFFF,
-    };
+    using ID = stubcsigns::BuiltinsStubCSignsID;
     static_assert(ID::NONE == 0);
+    static constexpr int NONE = ID::NONE;
+    static constexpr int NUM_OF_BUILTINS_STUBS = ID::NUM_OF_BUILTINS_STUBS;
 
     static void Initialize();
 
@@ -92,7 +78,7 @@ public:
 
     static bool IsAOTCallThisBuiltin([[maybe_unused]]ID builtinId)
     {
-#define BUILTINS_ID(METHOD, OBJECT, ...)  OBJECT##METHOD,
+#define BUILTINS_ID(METHOD, OBJECT, ...)  ID::OBJECT##METHOD,
         static std::unordered_set<BuiltinsStubCSigns::ID> callThisBuiltinsIds = {
             BUILTINS_METHOD_STUB_LIST(BUILTINS_ID, BUILTINS_ID, BUILTINS_ID, BUILTINS_ID)
         };
@@ -106,7 +92,7 @@ public:
 
     static bool IsTypedInlineBuiltin(ID builtinId)
     {
-        if (TYPED_BUILTINS_INLINE_FIRST <= builtinId && builtinId <= TYPED_BUILTINS_INLINE_LAST) {
+        if (ID::TYPED_BUILTINS_INLINE_FIRST <= builtinId && builtinId <= ID::TYPED_BUILTINS_INLINE_LAST) {
             return true;
         }
         if (BuiltinsStubCSigns::ID::DataViewSetInt32 <= builtinId &&
@@ -520,6 +506,8 @@ public:
 
     static std::string GetBuiltinName(ID id)
     {
+        // Note: this function will be refactored soon in future.
+        using namespace stubcsigns;
         static const std::map<BuiltinsStubCSigns::ID, const std::string> builtinId2Str = {
             {MathAcos, "Math.acos"},
             {MathAcosh, "Math.acosh"},
@@ -651,111 +639,6 @@ public:
         return "unnamed-builtin-"+std::to_string(id);
     }
 
-    static ID GetBuiltinId(std::string idStr)
-    {
-        static const std::map<const std::string, BuiltinsStubCSigns::ID> str2BuiltinId = {
-            {"acos", MathAcos},
-            {"acosh", MathAcosh},
-            {"asin", MathAsin},
-            {"asinh", MathAsinh},
-            {"atan", MathAtan},
-            {"atan2", MathAtan2},
-            {"atanh", MathAtanh},
-            {"cos", MathCos},
-            {"cosh", MathCosh},
-            {"sign", MathSign},
-            {"sin", MathSin},
-            {"sinh", MathSinh},
-            {"tan", MathTan},
-            {"tanh", MathTanh},
-            {"log", MathLog},
-            {"log2", MathLog2},
-            {"log10", MathLog10},
-            {"log1p", MathLog1p},
-            {"exp", MathExp},
-            {"expm1", MathExpm1},
-            {"clz32", MathClz32},
-            {"sqrt", MathSqrt},
-            {"cbrt", MathCbrt},
-            {"abs", MathAbs},
-            {"pow", MathPow},
-            {"trunc", MathTrunc},
-            {"round", MathRound},
-            {"fround", MathFRound},
-            {"ceil", MathCeil},
-            {"floor", MathFloor},
-            {"imul", MathImul},
-            {"max", MathMax},
-            {"min", MathMin},
-            {"localeCompare", StringLocaleCompare},
-            {"next", StringIteratorProtoNext},
-            {"sort", ArraySort},
-            {"stringify", JsonStringify},
-            {"getTime", DateGetTime},
-            {"now", DateNow},
-            {"isFinite", GlobalIsFinite},
-            {"isNan", GlobalIsNan},
-            {"asIntN", BigIntAsIntN},
-            {"asUintN", BigIntAsUintN},
-            {"mapDelete", MapDelete},
-            {"setDelete", SetDelete},
-            {"BigInt", BigIntConstructor},
-            {"charCodeAt", StringCharCodeAt},
-            {"substring", StringSubstring},
-            {"substr", StringSubStr},
-            {"slice", StringSlice},
-            {"is", ObjectIs},
-            {"getPrototypeOf", ObjectGetPrototypeOf},
-            {"create", ObjectCreate},
-            {"isPrototypeOf", ObjectIsPrototypeOf},
-            {"hasOwnProperty", ObjectHasOwnProperty},
-            {"reflectGetPrototypeOf", ReflectGetPrototypeOf},
-            {"get", ReflectGet},
-            {"has", ReflectHas},
-            {"construct", ReflectConstruct},
-            {"ReflectApply", ReflectApply},
-            {"apply", FunctionPrototypeApply},
-            {"bind", FunctionPrototypeBind},
-            {"call", FunctionPrototypeCall},
-            {"hasInstance", FunctionPrototypeHasInstance},
-            {"includes", ArrayIncludes},
-            {"indexOf", ArrayIndexOf},
-            {"entries", ArrayEntries},
-            {"values", ArrayValues},
-            {"keys", ArrayKeys},
-            {"find", ArrayFind},
-            {"findIndex", ArrayFindIndex},
-            {"foreach", ArrayForEach},
-            {"filter", ArrayFilter},
-            {"some", ArraySome},
-            {"map", ArrayMap},
-            {"every", ArrayEvery},
-            {"pop", ArrayPop},
-            {"push", ArrayPush},
-            {"slice", ArraySlice},
-            {"getUint8", DataViewGetUint8},
-            {"getInt8", DataViewGetInt8},
-            {"getUint16", DataViewGetUint16},
-            {"getInt16", DataViewGetInt16},
-            {"getUint32", DataViewGetUint32},
-            {"getInt32", DataViewGetInt32},
-            {"getFloat32", DataViewGetFloat32},
-            {"getFloat64", DataViewGetFloat64},
-            {"setUint8", DataViewSetUint8},
-            {"setInt8", DataViewSetInt8},
-            {"setUint16", DataViewSetUint16},
-            {"setInt16", DataViewSetInt16},
-            {"setUint32", DataViewSetUint32},
-            {"setInt32", DataViewSetInt32},
-            {"setFloat32", DataViewSetFloat32},
-            {"setFloat64", DataViewSetFloat64},
-        };
-        if (str2BuiltinId.count(idStr) > 0) {
-            return str2BuiltinId.at(idStr);
-        }
-        return NONE;
-    }
-
 private:
     static CallSignature callSigns_[NUM_OF_BUILTINS_STUBS];
     static CallSignature builtinsCSign_;
@@ -775,9 +658,9 @@ enum class BuiltinsArgs : size_t {
     NUM_OF_INPUTS,
 };
 
-#define BUILTINS_STUB_ID(name) kungfu::BuiltinsStubCSigns::name
+#define BUILTINS_STUB_ID(name) (::panda::ecmascript::kungfu::BuiltinsStubCSigns::ID::name)
 // to distinguish with the positive method offset of js function
-#define PGO_BUILTINS_STUB_ID(name) ((-1) * kungfu::BuiltinsStubCSigns::name)
+#define PGO_BUILTINS_STUB_ID(name) ((-1) * (::panda::ecmascript::kungfu::BuiltinsStubCSigns::ID::name))
 #define IS_TYPED_BUILTINS_ID(id) kungfu::BuiltinsStubCSigns::IsTypedBuiltin(id)
 #define IS_TYPED_INLINE_BUILTINS_ID(id) kungfu::BuiltinsStubCSigns::IsTypedInlineBuiltin(id)
 #define IS_TYPED_BUILTINS_NUMBER_ID(id) kungfu::BuiltinsStubCSigns::IsTypedBuiltinNumber(id)

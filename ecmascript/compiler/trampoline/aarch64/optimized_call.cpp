@@ -503,7 +503,7 @@ void OptimizedCall::JSCallInternal(ExtendedAssembler *assembler, Register jsfunc
         __ Ldr(Register(X5), MemoryOperand(method, Method::EXTRA_LITERAL_INFO_OFFSET));  // get extra literal
         __ And(Register(X5).W(), Register(X5).W(), LogicalImmediate::Create(0xff, RegWSize));
         if (!isNew) {
-            __ Cmp(Register(X5).W(), Immediate(kungfu::BuiltinsStubCSigns::BUILTINS_CONSTRUCTOR_STUB_FIRST));
+            __ Cmp(Register(X5).W(), Immediate(BUILTINS_STUB_ID(BUILTINS_CONSTRUCTOR_STUB_FIRST)));
             __ B(Condition::GE, &lCallNativeCpp);
         }
         __ Add(builtinStub, glue, Operand(Register(X5).W(), UXTW, FRAME_SLOT_SIZE_LOG2));

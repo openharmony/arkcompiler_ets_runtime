@@ -195,7 +195,7 @@ public:
 
 private:
 #define BUILTIN_OBJECT_FUNCTION_ENTRY(name, func, length, id) \
-    base::BuiltinFunctionEntry::Create(name, BuiltinsObject::func, length, kungfu::BuiltinsStubCSigns::id),
+    base::BuiltinFunctionEntry::Create(name, BuiltinsObject::func, length, BUILTINS_STUB_ID(id)),
 
     static constexpr std::array OBJECT_FUNCTIONS = {
         BUILTIN_OBJECT_FUNCTIONS(BUILTIN_OBJECT_FUNCTION_ENTRY)

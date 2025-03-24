@@ -77,7 +77,7 @@ public:
 
 private:
 #define CONTAINER_LIST_FUNCTION_ENTRY(name, method, length, id) \
-    base::BuiltinFunctionEntry::Create(name, ContainersList::method, length, kungfu::BuiltinsStubCSigns::id),
+    base::BuiltinFunctionEntry::Create(name, ContainersList::method, length, BUILTINS_STUB_ID(id)),
 
     static constexpr std::array LIST_PROTOTYPE_FUNCTIONS = {
         CONTAINER_LIST_PROTOTYPE_FUNCTIONS(CONTAINER_LIST_FUNCTION_ENTRY)

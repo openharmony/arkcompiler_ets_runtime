@@ -71,7 +71,7 @@ public:
 
 private:
 #define CONTAINER_PLAINARRAY_FUNCTION_ENTRY(name, method, length, id) \
-    base::BuiltinFunctionEntry::Create(name, ContainersPlainArray::method, length, kungfu::BuiltinsStubCSigns::id),
+    base::BuiltinFunctionEntry::Create(name, ContainersPlainArray::method, length, BUILTINS_STUB_ID(id)),
 
     static constexpr std::array PLAINARRAY_PROTOTYPE_FUNCTIONS = {
         CONTAINER_PLAINARRAY_PROTOTYPE_FUNCTIONS(CONTAINER_PLAINARRAY_FUNCTION_ENTRY)

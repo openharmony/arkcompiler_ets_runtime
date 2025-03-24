@@ -97,7 +97,7 @@ public:
 
 private:
 #define BUILTIN_SYMBOL_FUNCTION_ENTRY(name, func, length, id) \
-    base::BuiltinFunctionEntry::Create(name, BuiltinsSymbol::func, length, kungfu::BuiltinsStubCSigns::id),
+    base::BuiltinFunctionEntry::Create(name, BuiltinsSymbol::func, length, BUILTINS_STUB_ID(id)),
 
     static constexpr std::array SYMBOL_FUNCTIONS = {
         BUILTIN_SYMBOL_FUNCTIONS(BUILTIN_SYMBOL_FUNCTION_ENTRY)

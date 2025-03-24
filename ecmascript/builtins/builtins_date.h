@@ -292,7 +292,7 @@ public:
 
 private:
 #define BUILTIN_DATE_FUNCTION_ENTRY(name, func, length, builtinId) \
-    base::BuiltinFunctionEntry::Create(name, BuiltinsDate::func, length, kungfu::BuiltinsStubCSigns::builtinId),
+    base::BuiltinFunctionEntry::Create(name, BuiltinsDate::func, length, BUILTINS_STUB_ID(builtinId)),
 
     static constexpr std::array DATE_FUNCTIONS = {
         BUILTIN_DATE_FUNCTIONS(BUILTIN_DATE_FUNCTION_ENTRY)

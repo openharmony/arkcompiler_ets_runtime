@@ -89,7 +89,7 @@ public:
     }
 private:
 #define BUILTIN_MAP_FUNCTION_ENTRY(name, func, length, id) \
-    base::BuiltinFunctionEntry::Create(name, BuiltinsSharedMap::func, length, kungfu::BuiltinsStubCSigns::id),
+    base::BuiltinFunctionEntry::Create(name, BuiltinsSharedMap::func, length, BUILTINS_STUB_ID(id)),
 
     static constexpr std::array MAP_PROTOTYPE_FUNCTIONS = {
         BUILTIN_MAP_PROTOTYPE_FUNCTIONS(BUILTIN_MAP_FUNCTION_ENTRY)
