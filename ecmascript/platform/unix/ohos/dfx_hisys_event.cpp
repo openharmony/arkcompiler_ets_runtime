@@ -40,6 +40,7 @@ void DFXHiSysEvent::SendLongGCEvent([[maybe_unused]] LongGCStats *longGCStats)
         "TID", syscall(SYS_gettid),
         "GC_TYPE", longGCStats->GetGCType(),
         "GC_REASON", longGCStats->GetGCReason(),
+        "MARK_REASON", longGCStats->GetMarkReason(),
         "GC_IS_SENSITIVE", static_cast<int>(longGCStats->GetGCIsSensitive()),
         "GC_IS_INBACKGROUND", static_cast<int>(longGCStats->GetGCIsInBackground()),
         "GC_TOTAL_TIME", longGCStats->GetGCTotalTime(),

@@ -27,6 +27,7 @@ public:
     {
         gcType_ = 0;
         gcReason_ = 0;
+        markReason_ = 0;
         gcIsSensitive_ = false;
         gcIsInBackground_ = false;
         gcTotalTime_ = 0.0f;
@@ -80,6 +81,15 @@ public:
     void SetGCReason(size_t gcReason)
     {
         gcReason_ = gcReason;
+    }
+
+    size_t GetMarkReason() const
+    {
+        return markReason_;
+    }
+    void SetMarkReason(size_t markReason)
+    {
+        markReason_ = markReason;
     }
 
     bool GetGCIsSensitive() const
@@ -373,6 +383,7 @@ public:
 private:
     size_t gcType_ = 0;
     size_t gcReason_ = 0;
+    size_t markReason_ = 0;
     bool gcIsSensitive_ = false;
     bool gcIsInBackground_ = false;
     float gcTotalTime_ = 0.0f;
