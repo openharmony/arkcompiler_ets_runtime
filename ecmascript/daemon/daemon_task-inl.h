@@ -44,6 +44,17 @@ TriggerCollectGarbageTask<gcType, gcReason>::TriggerCollectGarbageTask(JSThread 
     : DaemonTask(thread, DaemonTaskType::TRIGGER_COLLECT_GARBAGE, DaemonTaskGroup::GC_GROUP,
                  &TriggerCollectGarbageTaskRunner<gcType, gcReason>) {}
 
+template<TriggerGCType gcType, GCReason gcReason>
+void TriggerUnifiedGCMarkTaskRunner()
+{
+    SharedHeap::GetInstance()->StartUnifiedGCMark(gcType, gcReason);
+}
+
+template<TriggerGCType gcType, GCReason gcReason>
+TriggerUnifiedGCMarkTask<gcType, gcReason>::TriggerUnifiedGCMarkTask(JSThread *thread)
+    : DaemonTask(thread, DaemonTaskType::TRIGGER_UNIFIED_GC_MARK, DaemonTaskGroup::GC_GROUP,
+                 &TriggerUnifiedGCMarkTaskRunner<gcType, gcReason>) {}
+
 inline void TerminateDaemonTaskRunner()
 {
     DaemonThread *thread = DaemonThread::GetInstance();

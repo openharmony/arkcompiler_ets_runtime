@@ -30,6 +30,7 @@
 #include "ecmascript/mem/shared_heap/shared_gc.h"
 #include "ecmascript/mem/shared_heap/shared_full_gc.h"
 #include "ecmascript/mem/shared_heap/shared_concurrent_marker.h"
+#include "ecmascript/mem/unified_gc/unified_gc.h"
 #include "ecmascript/mem/unified_gc/unified_gc_marker.h"
 #include "ecmascript/mem/verification.h"
 #include "ecmascript/runtime_call_id.h"
@@ -297,6 +298,10 @@ void SharedHeap::Destroy()
         delete sharedMemController_;
         sharedMemController_ = nullptr;
     }
+    if (unifiedGC_ != nullptr) {
+        delete unifiedGC_;
+        unifiedGC_ = nullptr;
+    }
 
     dThread_ = nullptr;
 }
@@ -315,6 +320,7 @@ void SharedHeap::PostInitialization(const GlobalEnvConstants *globalEnvConstants
         EnableConcurrentSweepType::ENABLE : EnableConcurrentSweepType::CONFIG_DISABLE);
     sharedGC_ = new SharedGC(this);
     sharedFullGC_ = new SharedFullGC(this);
+    unifiedGC_ = new UnifiedGC();
 }
 
 void SharedHeap::PostGCMarkingTask(SharedParallelMarkPhase sharedTaskPhase)
@@ -754,6 +760,50 @@ void SharedHeap::DumpHeapSnapshotBeforeOOM([[maybe_unused]]bool isFullGC, [[mayb
     }
 #endif // ENABLE_DUMP_IN_FAULTLOG
 #endif // ECMASCRIPT_SUPPORT_SNAPSHOT
+}
+
+void SharedHeap::StartUnifiedGCMark([[maybe_unused]]TriggerGCType gcType, [[maybe_unused]]GCReason gcReason)
+{
+    ASSERT(gcType == TriggerGCType::UNIFIED_GC && gcReason == GCReason::CROSSREF_CAUSE);
+    ASSERT(JSThread::GetCurrent() == dThread_);
+    {
+        ThreadManagedScope runningScope(dThread_);
+        SuspendAllScope scope(dThread_);
+        Runtime *runtime = Runtime::GetInstance();
+        std::vector<RecursionScope> recurScopes;
+        // The approximate size is enough, because even if some thread creates and registers after here, it will keep
+        // waiting in transition to RUNNING state before JSThread::SetReadyForGCIterating.
+        recurScopes.reserve(runtime->ApproximateThreadListSize());
+        runtime->GCIterateThreadList([&recurScopes](JSThread *thread) {
+            Heap *heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+            recurScopes.emplace_back(heap, HeapType::LOCAL_HEAP);
+        });
+#ifdef PANDA_JS_ETS_HYBRID_MODE
+        unifiedGC_->StartXGCBarrier();
+#endif // PANDA_JS_ETS_HYBRID_MODE
+        runtime->GCIterateThreadList([gcType](JSThread *thread) {
+            Heap *heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+            if (UNLIKELY(heap->ShouldVerifyHeap())) { // LCOV_EXCL_BR_LINE
+                // pre unified gc heap verify
+                LOG_ECMA(DEBUG) << "pre unified gc heap verify";
+                heap->ProcessSharedGCRSetWorkList();
+                Verification(heap, VerifyKind::VERIFY_PRE_GC).VerifyAll();
+            }
+            heap->SetGCType(gcType);
+        });
+        unifiedGC_->RunPhases();
+        runtime->GCIterateThreadList([](JSThread *thread) {
+            Heap *heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+            if (UNLIKELY(heap->ShouldVerifyHeap())) { // LCOV_EXCL_BR_LINE
+                // post unified gc heap verify
+                LOG_ECMA(DEBUG) << "post unified gc heap verify";
+                Verification(heap, VerifyKind::VERIFY_POST_GC).VerifyAll();
+            }
+        });
+#ifdef PANDA_JS_ETS_HYBRID_MODE
+        unifiedGC_->FinishXGCBarrier();
+#endif // PANDA_JS_ETS_HYBRID_MODE
+    }
 }
 
 Heap::Heap(EcmaVM *ecmaVm)
@@ -2875,54 +2925,6 @@ void BaseHeap::WaitClearTaskFinished()
     while (!clearTaskFinished_) {
         waitClearTaskFinishedCV_.Wait(&waitClearTaskFinishedMutex_);
     }
-}
-
-void Heap::ReleaseEdenAllocator()
-{
-    auto topAddress = activeSemiSpace_->GetAllocationTopAddress();
-    auto endAddress = activeSemiSpace_->GetAllocationEndAddress();
-    if (!topAddress || !endAddress) {
-        return;
-    }
-    thread_->ReSetNewSpaceAllocationAddress(topAddress, endAddress);
-}
-
-void Heap::InstallEdenAllocator()
-{
-    if (!enableEdenGC_) {
-        return;
-    }
-    auto topAddress = edenSpace_->GetAllocationTopAddress();
-    auto endAddress = edenSpace_->GetAllocationEndAddress();
-    if (!topAddress || !endAddress) {
-        return;
-    }
-    thread_->ReSetNewSpaceAllocationAddress(topAddress, endAddress);
-}
-
-void Heap::EnableEdenGC()
-{
-    enableEdenGC_ = true;
-    thread_->EnableEdenGCBarriers();
-}
-
-void Heap::TryEnableEdenGC()
-{
-    if (ohos::OhosParams::IsEdenGCEnable()) {
-        EnableEdenGC();
-    }
-}
-
-void Heap::StartUnifiedGCMark()
-{
-    ASSERT(JSThread::GetCurrent() == DaemonThread::GetInstance());
-    if (UNLIKELY(ShouldVerifyHeap())) { // LCOV_EXCL_BR_LINE
-        // pre unified gc heap verify
-        LOG_ECMA(DEBUG) << "pre unified gc heap verify";
-        ProcessSharedGCRSetWorkList();
-        Verification(this, VerifyKind::VERIFY_PRE_GC).VerifyAll();
-    }
-    unifiedGCMarker_->Mark();
 }
 
 }  // namespace panda::ecmascript
