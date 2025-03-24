@@ -19,92 +19,35 @@
 #include "ecmascript/mem/verification.h"
 
 namespace panda::ecmascript {
-void UnifiedGCMarker::Mark()
-{
-    RecursionScope recurScope(this);
-    {
-        ThreadManagedScope runningScope(dThread_);
-        SuspendAllScope scope(dThread_);
-        if (heap_->DaemonCheckOngoingConcurrentMarking()) {
-            LOG_GC(DEBUG) << "UnifiedGC after ConcurrentMarking";
-            heap_->GetConcurrentMarker()->Reset();
-        }
-        heap_->SetMarkType(MarkType::MARK_FULL);
-#ifdef PANDA_JS_ETS_HYBRID_MODE
-        ASSERT(stsVMInterface_ != nullptr);
-        stsVMInterface_->StartXGCBarrier();
-#endif // PANDA_JS_ETS_HYBRID_MODE
-        TRACE_GC(GCStats::Scope::ScopeId::Mark, heap_->GetEcmaVM()->GetEcmaGCStats());
-        LOG_GC(DEBUG) << "UnifiedGCMarker: Mark Begin";
-        ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "UnifiedGCMarker::Mark");
-        CHECK_DAEMON_THREAD();
-        ClockScope clockScope;
-        InitializeMarking(DAEMON_THREAD_INDEX);
-        DoMarking(DAEMON_THREAD_INDEX);
-        if (UNLIKELY(heap_->ShouldVerifyHeap())) {
-            Verification::VerifyMark(heap_);
-        }
-        Finish(clockScope.TotalSpentTime());
-    }
-}
 
 void UnifiedGCMarker::Initialize()
 {
+    if (initialized_.load(std::memory_order_acquire)) {
+        return;
+    }
     LockHolder holder(initializeMutex_);
-    if (!initialized_) {
+    if (!initialized_.load(std::memory_order_relaxed)) {
         heap_->UnifiedGCPrepare();
         heap_->GetAppSpawnSpace()->EnumerateRegions([](Region *current) {
             current->ClearMarkGCBitset();
         });
         workManager_->Initialize(TriggerGCType::UNIFIED_GC, ParallelGCTaskPhase::UNIFIED_HANDLE_GLOBAL_POOL_TASK);
-        initialized_ = true;
+        initialized_.store(true, std::memory_order_release);
     }
 }
 
-void UnifiedGCMarker::InitializeMarking(uint32_t threadId)
+void UnifiedGCMarker::InitialMark(uint32_t threadId)
 {
-    CHECK_DAEMON_THREAD();
-    Initialize();
     UnifiedGCMarkRootsScope scope(heap_->GetJSThread());
     UnifiedGCMarkRootVisitor visitor(workManager_->GetWorkNodeHolder(threadId), this);
     MarkRoots(visitor);
 }
 
-void UnifiedGCMarker::DoMarking(uint32_t threadId)
+void UnifiedGCMarker::Finish()
 {
-    CHECK_DAEMON_THREAD();
-    ProcessMarkStack(threadId);
-    heap_->WaitRunningTaskFinished();
-#ifdef PANDA_JS_ETS_HYBRID_MODE
-    auto noMarkTaskCheck = [heap = this->heap_]() -> bool {
-        return heap->GetRunningTaskCount() == 0;
-    };
-    while (!stsVMInterface_->WaitForConcurrentMark(noMarkTaskCheck)) {
-        heap_->WaitRunningTaskFinished();
-    }
-    stsVMInterface_->RemarkStartBarrier();
-    while (!stsVMInterface_->WaitForRemark(noMarkTaskCheck)) {
-        heap_->WaitRunningTaskFinished();
-    }
-#endif // PANDA_JS_ETS_HYBRID_MODE
-}
-
-void UnifiedGCMarker::Finish(float spendTime)
-{
-    CHECK_DAEMON_THREAD();
-    SetDuration(spendTime);
+    initialized_.store(false, std::memory_order_relaxed);
     workManager_->Finish();
-    initialized_ = false;
     heap_->Resume(TriggerGCType::UNIFIED_GC);
-    if (UNLIKELY(heap_->ShouldVerifyHeap())) { // LCOV_EXCL_BR_LINE
-        // verify post unified gc heap verify
-        LOG_ECMA(DEBUG) << "post unified gc heap verify";
-        Verification(heap_, VerifyKind::VERIFY_POST_GC).VerifyAll();
-    }
-    dThread_->FinishRunningTask();
-#ifdef PANDA_JS_ETS_HYBRID_MODE
-    stsVMInterface_->FinishXGCBarrier();
-#endif // PANDA_JS_ETS_HYBRID_MODE
 }
 
 void UnifiedGCMarker::MarkFromObject(TaggedObject *object)

@@ -1084,6 +1084,13 @@ void SharedHeap::PostGCTaskForTest(JSThread *thread)
     }
 }
 
+template<TriggerGCType gcType, GCReason gcReason>
+bool SharedHeap::TriggerUnifiedGCMark(JSThread *thread) const
+{
+    ASSERT(gcType == TriggerGCType::UNIFIED_GC && gcReason == GCReason::CROSSREF_CAUSE);
+    return DaemonThread::GetInstance()->CheckAndPostTask(TriggerUnifiedGCMarkTask<gcType, gcReason>(thread));
+}
+
 static void SwapBackAndPop(CVector<JSNativePointer*>& vec, CVector<JSNativePointer*>::iterator& iter)
 {
     *iter = vec.back();
@@ -1269,14 +1276,6 @@ void Heap::ClearNativePointerList()
         iter->Destroy(thread_);
     }
     nativePointerList_.clear();
-}
-
-template<TriggerGCType gcType, GCReason gcReason>
-bool Heap::TriggerUnifiedGCMark() const
-{
-    ASSERT(gcType == TriggerGCType::UNIFIED_GC);
-    ASSERT(gcReason == GCReason::CROSSREF_CAUSE);
-    return DaemonThread::GetInstance()->CheckAndPostTask(TrigerUnifiedGCMarkTask(thread_));
 }
 
 }  // namespace panda::ecmascript

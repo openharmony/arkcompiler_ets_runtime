@@ -17,6 +17,7 @@
 
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/mem/heap-inl.h"
+#include "ecmascript/mem/unified_gc/unified_gc.h"
 #include "ecmascript/mem/unified_gc/unified_gc_marker.h"
 
 namespace panda::ecmascript {
@@ -31,9 +32,11 @@ void CrossVMOperator::DoHandshake(EcmaVM *vm, void *stsIface, void **ecmaIface)
 {
     auto vmOperator = vm->GetCrossVMOperator();
     *ecmaIface = vmOperator->ecmaVMInterface_.get();
-    vmOperator->stsVMInterface_ = reinterpret_cast<arkplatform::STSVMInterface *>(stsIface);
-    auto heap = vm->GetHeap();
-    heap->GetUnifiedGCMarker()->SetSTSVMInterface(vmOperator->stsVMInterface_);
+    vmOperator->stsVMInterface_ = static_cast<arkplatform::STSVMInterface *>(stsIface);
+    UnifiedGC *unifiedGC = SharedHeap::GetInstance()->GetUnifiedGC();
+    if (unifiedGC->GetSTSVMInterface() == nullptr) {
+        unifiedGC->SetSTSVMInterface(vmOperator->stsVMInterface_);
+    }
 }
 
 void CrossVMOperator::MarkFromObject(JSTaggedType value)
@@ -49,7 +52,8 @@ void CrossVMOperator::MarkFromObject(JSTaggedType value)
 
 bool CrossVMOperator::EcmaVMInterfaceImpl::StartXRefMarking()
 {
-    return vm_->GetHeap()->TriggerUnifiedGCMark<TriggerGCType::UNIFIED_GC, GCReason::CROSSREF_CAUSE>();
+    return SharedHeap::GetInstance()->TriggerUnifiedGCMark<
+        TriggerGCType::UNIFIED_GC, GCReason::CROSSREF_CAUSE>(vm_->GetJSThread());
 }
 
 }  // namespace panda::ecmascript

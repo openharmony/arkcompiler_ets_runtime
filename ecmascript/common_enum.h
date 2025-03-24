@@ -27,7 +27,8 @@ enum CheckIdleGCType {
 
 enum class MarkType : uint8_t {
     MARK_YOUNG,
-    MARK_FULL
+    MARK_FULL,
+    MARK_UNIFIED
 };
 
 /*

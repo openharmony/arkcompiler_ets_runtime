@@ -3198,6 +3198,7 @@ host_unittest_action("Unified_GC_Test") {
 
   sources = [
     # test file
+    "unified_gc_multi_vm_test.cpp",
     "unified_gc_test.cpp",
   ]
 

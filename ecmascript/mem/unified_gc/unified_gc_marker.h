@@ -25,6 +25,30 @@
 
 namespace panda::ecmascript {
 
+class UnifiedGCMarker : public Marker {
+public:
+    UnifiedGCMarker(Heap *heap)
+        : Marker(heap) {}
+    ~UnifiedGCMarker() override = default;
+
+    void Initialize() override;
+    void InitialMark(uint32_t threadId);
+    void MarkFromObject(TaggedObject *object);
+    void ProcessMarkStack(uint32_t threadId) override;
+    void Finish();
+
+private:
+    friend class UnifiedGCMarkRootVisitor;
+    friend class UnifiedGCMarkObjectVisitor;
+
+#ifdef PANDA_JS_ETS_HYBRID_MODE
+    inline void HandleJSXRefObject(TaggedObject *object);
+#endif // PANDA_JS_ETS_HYBRID_MODE
+
+    std::atomic<bool> initialized_ {false};
+    Mutex initializeMutex_;
+};
+
 class UnifiedGCMarkRootVisitor final : public RootVisitor {
 public:
     inline explicit UnifiedGCMarkRootVisitor(WorkNodeHolder *workNodeHolder, UnifiedGCMarker *marker);
@@ -58,72 +82,6 @@ private:
     [[maybe_unused]]UnifiedGCMarker *marker_ {nullptr};
 };
 
-class UnifiedGCMarker : public Marker {
-public:
-    UnifiedGCMarker(Heap *heap)
-        : Marker(heap),
-          dThread_(DaemonThread::GetInstance()) {}
-    ~UnifiedGCMarker() override = default;
-
-    void Mark();
-    void MarkFromObject(TaggedObject *object);
-    void ProcessMarkStack(uint32_t threadId) override;
-#ifdef PANDA_JS_ETS_HYBRID_MODE
-    void SetSTSVMInterface(arkplatform::STSVMInterface *stsIface)
-    {
-        stsVMInterface_ = stsIface;
-    }
-#endif // PANDA_JS_ETS_HYBRID_MODE
-
-private:
-    NO_COPY_SEMANTIC(UnifiedGCMarker);
-    NO_MOVE_SEMANTIC(UnifiedGCMarker);
-
-    friend class UnifiedGCMarkRootVisitor;
-    friend class UnifiedGCMarkObjectVisitor;
-    class RecursionScope {
-    public:
-        explicit RecursionScope(UnifiedGCMarker* uMarker) : uMarker_(uMarker)
-        {
-            if (uMarker_->recursionDepth_++ != 0) {
-                LOG_GC(FATAL) << "Recursion in UnifiedGCMarker Constructor, depth: "
-                              << uMarker_->recursionDepth_;
-            }
-        }
-        ~RecursionScope()
-        {
-            if (--uMarker_->recursionDepth_ != 0) {
-                LOG_GC(FATAL) << "Recursion in UnifiedGCMarker Destructor, depth: "
-                              << uMarker_->recursionDepth_;
-            }
-        }
-    private:
-        UnifiedGCMarker* uMarker_ {nullptr};
-    };
-
-    void SetDuration(double duration)
-    {
-        duration_ = duration;
-    }
-
-    void Initialize() override;
-    void InitializeMarking(uint32_t threadId);
-    void DoMarking(uint32_t threadId);
-    void Finish(float spendTime);
-#ifdef PANDA_JS_ETS_HYBRID_MODE
-    inline void HandleJSXRefObject(TaggedObject *object);
-#endif // PANDA_JS_ETS_HYBRID_MODE
-
-    bool initialized_ {false};
-    Mutex initializeMutex_;
-    DaemonThread *dThread_ {nullptr};
-#ifdef PANDA_JS_ETS_HYBRID_MODE
-    arkplatform::STSVMInterface *stsVMInterface_ {nullptr};
-#endif // PANDA_JS_ETS_HYBRID_MODE
-    int32_t recursionDepth_ {0};
-    double duration_ {0.0};
-};
-
 class UnifiedGCMarkRootsScope {
 public:
     explicit UnifiedGCMarkRootsScope(JSThread *jsThread): jsThread_(jsThread)
@@ -141,4 +99,5 @@ private:
     NO_COPY_SEMANTIC(UnifiedGCMarkRootsScope);
 };
 }  // namespace panda::ecmascript
+
 #endif  // ECMASCRIPT_MEM_UNIFIED_GC_UNIFIED_GC_MARKER_H
