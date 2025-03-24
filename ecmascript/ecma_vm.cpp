@@ -47,6 +47,7 @@
 #include "ecmascript/regexp/regexp_parser_cache.h"
 #include "ecmascript/snapshot/mem/snapshot.h"
 #include "ecmascript/stubs/runtime_stubs.h"
+#include "ecmascript/sustaining_js_handle.h"
 
 #if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE)
 #include "parameters.h"
@@ -315,6 +316,7 @@ bool EcmaVM::Initialize()
     microJobQueue_ = factory_->NewMicroJobQueue().GetTaggedValue();
     if (IsEnableFastJit() || IsEnableBaselineJit()) {
         Jit::GetInstance()->ConfigJit(this);
+        sustainingJSHandleList_ = new SustainingJSHandleList();
     }
     initialized_ = true;
     regExpParserCache_ = new RegExpParserCache();
@@ -408,6 +410,11 @@ EcmaVM::~EcmaVM()
         heap_->Destroy();
         delete heap_;
         heap_ = nullptr;
+    }
+
+    if (sustainingJSHandleList_ != nullptr) {
+        delete sustainingJSHandleList_;
+        sustainingJSHandleList_ = nullptr;
     }
 
     SharedHeap *sHeap = SharedHeap::GetInstance();
@@ -788,6 +795,9 @@ void EcmaVM::Iterate(RootVisitor &v, VMRootVisitType type)
         v.VisitRangeRoot(Root::ROOT_VM, ObjectSlot(ToUintPtr(unsharedConstpools_)),
             ObjectSlot(ToUintPtr(&unsharedConstpools_[GetUnsharedConstpoolsArrayLen() - 1]) +
             JSTaggedValue::TaggedTypeSize()));
+    }
+    if (sustainingJSHandleList_) {
+        sustainingJSHandleList_->Iterate(v);
     }
 }
 
@@ -1589,4 +1599,17 @@ std::optional<std::reference_wrapper<CMap<int32_t, JSTaggedValue>>> EcmaVM::Find
     return Runtime::GetInstance()->FindConstpools(jsPandaFile);
 }
 
+void EcmaVM::AddSustainingJSHandle(SustainingJSHandle *sustainingHandle)
+{
+    if (sustainingJSHandleList_) {
+        sustainingJSHandleList_->AddSustainingJSHandle(sustainingHandle);
+    }
+}
+
+void EcmaVM::RemoveSustainingJSHandle(SustainingJSHandle *sustainingHandle)
+{
+    if (sustainingJSHandleList_) {
+        sustainingJSHandleList_->RemoveSustainingJSHandle(sustainingHandle);
+    }
+}
 }  // namespace panda::ecmascript

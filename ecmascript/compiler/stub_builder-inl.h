@@ -4081,43 +4081,35 @@ inline void StubBuilder::SetArrayBufferByteLength(GateRef glue, GateRef buffer, 
 
 inline GateRef StubBuilder::GetPropertiesCache(GateRef glue)
 {
-    GateRef currentContextOffset = IntPtr(JSThread::GlueData::GetCurrentContextOffset(env_->Is32Bit()));
-    GateRef currentContext = Load(VariableType::NATIVE_POINTER(), glue, currentContextOffset);
-    GateRef propertiesCacheOffset = IntPtr(EcmaContext::EcmaData::GetPropertiesCacheOffset(env_->Is32Bit()));
-    return Load(VariableType::NATIVE_POINTER(), currentContext, propertiesCacheOffset);
+    GateRef propertiesCacheOffset = IntPtr(JSThread::GlueData::GetPropertiesCacheOffset(env_->Is32Bit()));
+    return Load(VariableType::NATIVE_POINTER(), glue, propertiesCacheOffset);
 }
 
 inline GateRef StubBuilder::GetMegaICCache(GateRef glue, MegaICCache::MegaICKind kind)
 {
-    GateRef currentContextOffset = IntPtr(JSThread::GlueData::GetCurrentContextOffset(env_->Is32Bit()));
-    GateRef currentContext = Load(VariableType::NATIVE_POINTER(), glue, currentContextOffset);
     GateRef megaICCache_Offset;
     if (kind == MegaICCache::Load) {
-        megaICCache_Offset = IntPtr(EcmaContext::EcmaData::GetLoadMegaICCacheOffset(env_->Is32Bit()));
+        megaICCache_Offset = IntPtr(JSThread::GlueData::GetLoadMegaICCacheOffset(env_->Is32Bit()));
     } else {
-        megaICCache_Offset = IntPtr(EcmaContext::EcmaData::GetStoreMegaICCacheOffset(env_->Is32Bit()));
+        megaICCache_Offset = IntPtr(JSThread::GlueData::GetStoreMegaICCacheOffset(env_->Is32Bit()));
     }
-    return Load(VariableType::NATIVE_POINTER(), currentContext, megaICCache_Offset);
+    return Load(VariableType::NATIVE_POINTER(), glue, megaICCache_Offset);
 }
 
 inline void StubBuilder::IncMegaProbeCount([[maybe_unused]]GateRef glue)
 {
 #if ECMASCRIPT_ENABLE_MEGA_PROFILER
-    GateRef currentContextOffset = IntPtr(JSThread::GlueData::GetCurrentContextOffset(env_->Is32Bit()));
-    GateRef currentContext = Load(VariableType::NATIVE_POINTER(), glue, currentContextOffset);
-    GateRef megaProbeCountOffset = IntPtr(EcmaContext::EcmaData::GetMegaProbesCountOffset(env_->Is32Bit()));
-    GateRef before = Load(VariableType::INT64(), currentContext, megaProbeCountOffset);
-    Store(VariableType::INT64(), glue, currentContext, megaProbeCountOffset, Int64Add(before, Int64(1)));
+    GateRef megaProbeCountOffset = IntPtr(JSThread::GlueData::GetMegaProbesCountOffset(env_->Is32Bit()));
+    GateRef before = Load(VariableType::INT64(), glue, megaProbeCountOffset);
+    Store(VariableType::INT64(), glue, glue, megaProbeCountOffset, Int64Add(before, Int64(1)));
 #endif
 }
 inline void StubBuilder::IncMegaHitCount([[maybe_unused]]GateRef glue)
 {
 #if ECMASCRIPT_ENABLE_MEGA_PROFILER
-    GateRef currentContextOffset = IntPtr(JSThread::GlueData::GetCurrentContextOffset(env_->Is32Bit()));
-    GateRef currentContext = Load(VariableType::NATIVE_POINTER(), glue, currentContextOffset);
-    GateRef megaHitCountOffset = IntPtr(EcmaContext::EcmaData::GetMegaHitCountOffset(env_->Is32Bit()));
-    GateRef before = Load(VariableType::INT64(), currentContext, megaHitCountOffset);
-    Store(VariableType::INT64(), glue, currentContext, megaHitCountOffset, Int64Add(before, Int64(1)));
+    GateRef megaHitCountOffset = IntPtr(JSThread::GlueData::GetMegaHitCountOffset(env_->Is32Bit()));
+    GateRef before = Load(VariableType::INT64(), glue, megaHitCountOffset);
+    Store(VariableType::INT64(), glue, glue, megaHitCountOffset, Int64Add(before, Int64(1)));
 #endif
 }
 

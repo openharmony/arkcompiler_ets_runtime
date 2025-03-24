@@ -131,6 +131,12 @@ JSThread::JSThread(EcmaVM *vm) : id_(os::thread::GetCurrentThreadId()), vm_(vm)
     vmThreadControl_ = new VmThreadControl(this);
     SetBCStubStatus(BCStubStatus::NORMAL_BC_STUB);
     dateUtils_ = new DateUtils();
+
+    glueData_.propertiesCache_ = new PropertiesCache();
+    if (vm_->GetJSOptions().IsEnableMegaIC()) {
+        glueData_.loadMegaICCache_ = new MegaICCache();
+        glueData_.storeMegaICCache_ = new MegaICCache();
+    }
 }
 
 JSThread::JSThread(EcmaVM *vm, ThreadType threadType) : id_(os::thread::GetCurrentThreadId()),
@@ -159,6 +165,19 @@ JSThread::~JSThread()
     if (globalDebugStorage_ != nullptr) {
         vm_->GetChunk()->Delete(globalDebugStorage_);
         globalDebugStorage_ = nullptr;
+    }
+
+    if (glueData_.loadMegaICCache_ != nullptr) {
+        delete glueData_.loadMegaICCache_;
+        glueData_.loadMegaICCache_ = nullptr;
+    }
+    if (glueData_.storeMegaICCache_ != nullptr) {
+        delete glueData_.storeMegaICCache_;
+        glueData_.storeMegaICCache_ = nullptr;
+    }
+    if (glueData_.propertiesCache_ != nullptr) {
+        delete glueData_.propertiesCache_;
+        glueData_.propertiesCache_ = nullptr;
     }
 
     for (auto item : contexts_) {
@@ -375,6 +394,16 @@ void JSThread::SetJitCodeMap(JSTaggedType exception,  MachineCode* machineCode, 
     }
 }
 
+void JSThread::IterateMegaIC(RootVisitor &v)
+{
+    if (glueData_.loadMegaICCache_ != nullptr) {
+        glueData_.loadMegaICCache_->Iterate(v);
+    }
+    if (glueData_.storeMegaICCache_ != nullptr) {
+        glueData_.storeMegaICCache_->Iterate(v);
+    }
+}
+
 void JSThread::Iterate(RootVisitor &visitor)
 {
     if (!glueData_.exception_.IsHole()) {
@@ -407,6 +436,12 @@ void JSThread::Iterate(RootVisitor &visitor)
             LOG_ECMA(WARN) << "Global reference count is " << globalCount << ",It exceed the upper limit 100000!";
             hasCheckedGlobalCount = true;
         }
+    }
+
+    IterateMegaIC(visitor);
+
+    if (glueData_.propertiesCache_ != nullptr) {
+        glueData_.propertiesCache_->Clear();
     }
 }
 void JSThread::IterateJitCodeMap(const JitCodeMapVisitor &jitCodeMapVisitor)
@@ -1055,17 +1090,17 @@ void JSThread::ClearVMCachedConstantPool()
 
 PropertiesCache *JSThread::GetPropertiesCache() const
 {
-    return glueData_.currentContext_->GetPropertiesCache();
+    return glueData_.propertiesCache_;
 }
 
 MegaICCache *JSThread::GetLoadMegaICCache() const
 {
-    return glueData_.currentContext_->GetLoadMegaICCache();
+    return glueData_.loadMegaICCache_;
 }
 
 MegaICCache *JSThread::GetStoreMegaICCache() const
 {
-    return glueData_.currentContext_->GetStoreMegaICCache();
+    return glueData_.storeMegaICCache_;
 }
 
 const GlobalEnvConstants *JSThread::GetFirstGlobalConst() const
@@ -1128,10 +1163,8 @@ void JSThread::InitializeBuiltinObject()
 
 bool JSThread::IsPropertyCacheCleared() const
 {
-    for (EcmaContext *context : contexts_) {
-        if (!context->GetPropertiesCache()->IsCleared()) {
-            return false;
-        }
+    if (!GetPropertiesCache()->IsCleared()) {
+        return false;
     }
     return true;
 }

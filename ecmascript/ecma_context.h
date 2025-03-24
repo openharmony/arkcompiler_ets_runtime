@@ -88,73 +88,6 @@ public:
 
     EcmaContext(JSThread *thread);
     ~EcmaContext();
-    struct EcmaData
-        : public base::AlignedStruct<JSTaggedValue::TaggedTypeSize(),
-                                     base::AlignedPointer,
-#if ECMASCRIPT_ENABLE_MEGA_PROFILER
-                                     base::AlignedPointer,
-                                     base::AlignedUint64,
-                                     base::AlignedUint64,
-                                     base::AlignedUint64>
-#else
-                                     base::AlignedPointer>
-#endif
-                                     {
-        enum class Index : size_t {
-            LoadMegaICCacheIndex,
-            StoreMegaICCacheIndex,
-            PropertiesCacheIndex,
-#if ECMASCRIPT_ENABLE_MEGA_PROFILER
-            megaUpdateCountIndex,
-            megaProbesCountIndex,
-            megaHitCountIndex,
-#endif
-            NumOfMembers
-        };
-#if ECMASCRIPT_ENABLE_MEGA_PROFILER
-        static_assert(static_cast<size_t>(Index::NumOfMembers) == 6);
-#else
-        static_assert(static_cast<size_t>(Index::NumOfMembers) == 3);
-#endif
-        static size_t GetLoadMegaICCacheOffset(bool isArch32)
-        {
-            return GetOffset<static_cast<size_t>(Index::LoadMegaICCacheIndex)>(
-                isArch32);
-        }
-
-        static size_t GetStoreMegaICCacheOffset(bool isArch32)
-        {
-            return GetOffset<static_cast<size_t>(Index::StoreMegaICCacheIndex)>(
-                isArch32);
-        }
-
-        static size_t GetPropertiesCacheOffset(bool isArch32)
-        {
-            return GetOffset<static_cast<size_t>(Index::PropertiesCacheIndex)>(
-                isArch32);
-        }
-#if ECMASCRIPT_ENABLE_MEGA_PROFILER
-        static size_t GetMegaProbesCountOffset(bool isArch32)
-        {
-            return GetOffset<static_cast<size_t>(Index::megaProbesCountIndex)>(
-                isArch32);
-        }
-
-        static size_t GetMegaHitCountOffset(bool isArch32)
-        {
-            return GetOffset<static_cast<size_t>(Index::megaHitCountIndex)>(
-                isArch32);
-        }
-#endif
-        alignas(EAS) MegaICCache *loadMegaICCache_{nullptr};
-        alignas(EAS) MegaICCache *storeMegaICCache_{nullptr};
-        alignas(EAS) PropertiesCache *propertiesCache_{nullptr};
-#if ECMASCRIPT_ENABLE_MEGA_PROFILER
-        alignas(EAS) uint64_t megaUpdateCount_ {0};
-        alignas(EAS) uint64_t megaProbesCount_ {0};
-        alignas(EAS) uint64_t megaHitCount {0};
-#endif
-    };
 
     EcmaVM *GetEcmaVM() const
     {
@@ -208,7 +141,6 @@ public:
         return globalEnv_.IsHole();
     }
 
-    void IterateMegaIC(RootVisitor &v);
     void Iterate(RootVisitor &v);
     static void MountContext(JSThread *thread);
     static void UnmountContext(JSThread *thread);
@@ -246,70 +178,6 @@ public:
                              bool needPushArgv);
     void LoadStubFile();
 
-    PropertiesCache *GetPropertiesCache() const
-    {
-        return ecmaData_.propertiesCache_;
-    }
-
-    MegaICCache *GetLoadMegaICCache() const
-    {
-        return ecmaData_.loadMegaICCache_;
-    }
-
-    MegaICCache *GetStoreMegaICCache() const
-    {
-        return ecmaData_.storeMegaICCache_;
-    }
-#if ECMASCRIPT_ENABLE_MEGA_PROFILER
-    uint64_t GetMegaProbeCount() const
-    {
-        return ecmaData_.megaProbesCount_;
-    }
-
-    uint64_t GetMegaHitCount() const
-    {
-        return ecmaData_.megaHitCount;
-    }
-
-    uint64_t GetMegaUpdateCount() const
-    {
-        return ecmaData_.megaUpdateCount_;
-    }
-
-    void IncMegaUpdateCount()
-    {
-        ecmaData_.megaUpdateCount_++;
-    }
-
-    void ClearMegaStat()
-    {
-        ecmaData_.megaHitCount = 0;
-        ecmaData_.megaProbesCount_ = 0;
-        ecmaData_.megaUpdateCount_ = 0;
-    }
-    void PrintMegaICStat()
-    {
-        const int precision = 2;
-        const double percent = 100.0;
-        LOG_ECMA(INFO)
-            << "------------------------------------------------------------"
-            << "---------------------------------------------------------";
-        LOG_ECMA(INFO) << "MegaUpdateCount: " << GetMegaUpdateCount();
-        LOG_ECMA(INFO) << "MegaHitCount: " << GetMegaHitCount();
-        LOG_ECMA(INFO) << "MegaProbeCount: " << GetMegaProbeCount();
-        LOG_ECMA(INFO) << "MegaHitRate: " << std::fixed
-                       << std::setprecision(precision)
-                       << (GetMegaProbeCount() > 0
-                               ? static_cast<double>(GetMegaHitCount()) /
-                                     GetMegaProbeCount() * percent
-                               : 0.0)
-                       << "%";
-        LOG_ECMA(INFO)
-            << "------------------------------------------------------------"
-            << "---------------------------------------------------------";
-        ClearMegaStat();
-    }
-#endif
     const GlobalEnvConstants *GlobalConstants() const
     {
         return &globalConst_;
@@ -383,7 +251,6 @@ private:
 
     NO_MOVE_SEMANTIC(EcmaContext);
     NO_COPY_SEMANTIC(EcmaContext);
-    EcmaData ecmaData_;
     JSThread *thread_{nullptr};
     EcmaVM *vm_{nullptr};
 
@@ -416,9 +283,6 @@ private:
     ModuleLogger *moduleLogger_ {nullptr};
 
     GlobalEnvConstants globalConst_;
-
-    // SustainingJSHandleList for jit compile hold ref
-    SustainingJSHandleList *sustainingJSHandleList_ {nullptr};
 
     friend class JSPandaFileExecutor;
     friend class ObjectFactory;
