@@ -795,24 +795,17 @@ JSHandle<JSTaggedValue> SourceTextModule::GetModuleNamespace(JSThread *thread,
 }
 
 void SourceTextModule::HandleEvaluateResult(JSThread *thread, JSHandle<SourceTextModule> &module,
-    JSHandle<PromiseCapability> &capability, const CVector<JSHandle<SourceTextModule>> &stack,
+    JSHandle<JSPromise> &capability, const CVector<JSHandle<SourceTextModule>> &stack,
     const CVector<JSHandle<SourceTextModule>> &errorStack)
 {
     ModuleStatus status;
-    const GlobalEnvConstants *globalConst = thread->GlobalConstants();
     // 9. If result is an abrupt completion, then
     if (thread->HasPendingException()) {
         JSHandle<JSTaggedValue> exception(thread, thread->GetException());
         HandleEvaluateException(thread, stack, exception);
         // b. Assert: module.[[Status]] is "evaluated" and module.[[EvaluationError]] is result.
         //d. Perform ! Call(capability.[[Reject]], undefined, « result.[[Value]] »).
-        JSHandle<JSTaggedValue> reject(thread, capability->GetReject());
-        JSHandle<JSTaggedValue> undefined = globalConst->GetHandledUndefined();
-        EcmaRuntimeCallInfo *info =
-            EcmaInterpreter::NewRuntimeCallInfo(thread, reject, undefined, undefined, 1);
-        RETURN_IF_ABRUPT_COMPLETION(thread);
-        info->SetCallArg(exception.GetTaggedValue());
-        [[maybe_unused]] JSTaggedValue res = JSFunction::Call(info);
+        JSPromise::RejectPromise(thread, capability, exception);
         RETURN_IF_ABRUPT_COMPLETION(thread);
         return;
     }
@@ -854,10 +847,8 @@ JSTaggedValue SourceTextModule::Evaluate(JSThread *thread, const JSHandle<Source
     CVector<JSHandle<SourceTextModule>> stack;
     CVector<JSHandle<SourceTextModule>> errorStack;
     // 6. Let capability be ! NewPromiseCapability(%Promise%).
-    auto vm = thread->GetEcmaVM();
-    JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
-    JSHandle<PromiseCapability> capability =
-        JSPromise::NewPromiseCapability(thread, JSHandle<JSTaggedValue>::Cast(env->GetPromiseFunction()));
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<JSPromise> capability = factory->NewJSPromise();
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     // 7. Set module.[[TopLevelCapability]] to capability.
     if (!SourceTextModule::IsSharedModule(module)) {
@@ -875,7 +866,7 @@ JSTaggedValue SourceTextModule::Evaluate(JSThread *thread, const JSHandle<Source
         moduleLogger->InsertEntryPointModule(module);
     }
     // Return capability.[[Promise]].
-    return capability->GetPromise();
+    return capability.GetTaggedValue();
 }
 
 int SourceTextModule::EvaluateForConcurrent(JSThread *thread, const JSHandle<SourceTextModule> &module,
@@ -1838,14 +1829,9 @@ void SourceTextModule::AsyncModuleExecutionFulfilled(JSThread *thread, const JSH
     JSTaggedValue topLevelCapabilityValue = module->GetTopLevelCapability();
     if (!topLevelCapabilityValue.IsUndefined()) {
         ASSERT(JSTaggedValue::SameValue(module->GetCycleRoot(), module.GetTaggedValue()));
-        JSHandle<PromiseCapability> topLevelCapability(thread, topLevelCapabilityValue);
-        JSHandle<JSTaggedValue> resolve(thread, topLevelCapability->GetResolve());
-        JSHandle<JSTaggedValue> undefined = globalConstants->GetHandledUndefined();
-        EcmaRuntimeCallInfo *info =
-            EcmaInterpreter::NewRuntimeCallInfo(thread, resolve, undefined, undefined, 1);
-        RETURN_IF_ABRUPT_COMPLETION(thread);
-        info->SetCallArg(JSTaggedValue::Undefined());
-        [[maybe_unused]] JSTaggedValue res = JSFunction::Call(info);
+        JSHandle<JSPromise> topLevelCapability(thread, JSPromise::Cast(topLevelCapabilityValue.GetTaggedObject()));
+        JSHandle<JSTaggedValue> undefinedValue = globalConstants->GetHandledUndefined();
+        JSPromise::FulfillPromise(thread, topLevelCapability, undefinedValue);
         RETURN_IF_ABRUPT_COMPLETION(thread);
     }
     // 8. Let execList be a new empty List.
@@ -1884,14 +1870,10 @@ void SourceTextModule::AsyncModuleExecutionFulfilled(JSThread *thread, const JSH
                 JSTaggedValue capabilityValue = m->GetTopLevelCapability();
                 if (!capabilityValue.IsUndefined()) {
                     ASSERT(JSTaggedValue::SameValue(m->GetCycleRoot(), m.GetTaggedValue()));
-                    JSHandle<PromiseCapability> topLevelCapability(thread, capabilityValue);
-                    JSHandle<JSTaggedValue> resolve(thread, topLevelCapability->GetResolve());
-                    JSHandle<JSTaggedValue> undefined = globalConstants->GetHandledUndefined();
-                    EcmaRuntimeCallInfo *info =
-                            EcmaInterpreter::NewRuntimeCallInfo(thread, resolve, undefined, undefined, 1);
-                    RETURN_IF_ABRUPT_COMPLETION(thread);
-                    info->SetCallArg(JSTaggedValue::Undefined());
-                    [[maybe_unused]] JSTaggedValue res = JSFunction::Call(info);
+                    JSHandle<JSPromise> topLevelCapability(thread,
+                        JSPromise::Cast(topLevelCapabilityValue.GetTaggedObject()));
+                    JSHandle<JSTaggedValue> undefinedValue = globalConstants->GetHandledUndefined();
+                    JSPromise::FulfillPromise(thread, topLevelCapability, undefinedValue);
                     RETURN_IF_ABRUPT_COMPLETION(thread);
                 }
             }
@@ -1944,14 +1926,8 @@ void SourceTextModule::AsyncModuleExecutionRejected(JSThread *thread, const JSHa
             thread->HandleUncaughtException(error);
         }
         ASSERT(JSTaggedValue::SameValue(module->GetCycleRoot(), module.GetTaggedValue()));
-        JSHandle<PromiseCapability> topLevelCapability(thread, topLevelCapabilityValue);
-        JSHandle<JSTaggedValue> reject(thread, topLevelCapability->GetReject());
-        JSHandle<JSTaggedValue> undefined = globalConstants->GetHandledUndefined();
-        EcmaRuntimeCallInfo *info =
-            EcmaInterpreter::NewRuntimeCallInfo(thread, reject, undefined, undefined, 1);
-        RETURN_IF_ABRUPT_COMPLETION(thread);
-        info->SetCallArg(error);
-        [[maybe_unused]] JSTaggedValue res = JSFunction::Call(info);
+        JSHandle<JSPromise> topLevelCapability(thread, JSPromise::Cast(topLevelCapabilityValue.GetTaggedObject()));
+        JSPromise::RejectPromise(thread, topLevelCapability, exceptionHandle);
         RETURN_IF_ABRUPT_COMPLETION(thread);
     }
 }
