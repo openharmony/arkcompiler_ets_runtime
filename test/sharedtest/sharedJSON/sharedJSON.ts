@@ -500,6 +500,59 @@ function testASONStringifyAfterClearMapAndSet() {
     print(str4);
 }
 
+function testASONStringifyMapSetAddUndefined() {
+    let map1 = new Map<string | null | number | boolean | undefined, string | null | number | boolean | undefined>();
+    map1.set("a1", 1);
+    map1.set(undefined, "a2");
+    map1.set(null, undefined);
+    map1.set(undefined, undefined);
+    map1.set(undefined, null);
+    let str1 = JSON.stringifySendable(map1);
+    print(str1);
+
+    let map2 = new SendableMap<string | null | number | boolean | undefined, string | null | number | boolean | undefined>();
+    map2.set("a1", 1);
+    map2.set(undefined, "a2");
+    map2.set(null, undefined);
+    map2.set(undefined, undefined);
+    map2.set(undefined, null);
+    let str2 = JSON.stringifySendable(map2);
+    print(str2);
+
+    let arkPrivate = globalThis.ArkPrivate;
+    var HashMap = arkPrivate.Load(arkPrivate.HashMap);
+    let hashMap = new HashMap<string | null | number | boolean | undefined, string | null | number | boolean | undefined>();
+    hashMap.set("a1", 1);
+    hashMap.set(null, undefined);
+    let str3 = JSON.stringifySendable(hashMap);
+    print(str3);
+
+    let set1 = new Set<string | null | number | boolean | undefined>();
+    set1.add("a1");
+    set1.add(undefined);
+    set1.add(1);
+    set1.add(true);
+    let str4 = JSON.stringifySendable(set1);
+    print(str4);
+
+    let set2 = new SendableSet<string | null | number | boolean | undefined>();
+    set2.add("a1");
+    set2.add(undefined);
+    set2.add(1);
+    set2.add(true);
+    let str5 = JSON.stringifySendable(set2);
+    print(str5);
+
+    var HashSet = arkPrivate.Load(arkPrivate.HashSet);
+    let hashSet = new HashSet();
+    hashSet.add("a1");
+    hashSet.add(undefined);
+    hashSet.add(1);
+    hashSet.add(true);
+    let str6 = JSON.stringifySendable(hashSet);
+    print(str6);
+}
+
 testJSONParseSendable();
 jsonRepeatCall();
 testASONBigInt();
@@ -513,3 +566,4 @@ testJSONBigIntZero();
 testASONStringifyMapAndSet();
 testASONStringifyMapAndSetAndObj();
 testASONStringifyAfterClearMapAndSet();
+testASONStringifyMapSetAddUndefined();
