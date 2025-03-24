@@ -30,12 +30,11 @@
 #pragma GCC diagnostic ignored "-Wgnu-zero-variadic-macro-arguments"
 #endif
 #include "hilog/log.h"
+#endif
 #undef LOG_DOMAIN
 #define LOG_DOMAIN 0xD003F00
 #undef LOG_TAG
 #define LOG_TAG "ArkCompiler"
-#endif
-
 
 using LOG_LEVEL = panda::RuntimeOption::LOG_LEVEL;
 enum Level {

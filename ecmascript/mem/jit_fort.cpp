@@ -328,6 +328,7 @@ void JitFort::InitJitFortResource()
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "JIT::InitJitFortResource");
     if (!Jit::GetInstance()->IsAppJit()) {
         int fd = open("/dev/xpm", O_RDWR);
+        fdsan_exchange_owner_tag(fd, 0, LOG_DOMAIN);
         if (fd < 0) {
             isResourceAvailable_ = false;
             LOG_JIT(ERROR) << "Failed to init jitfort resource, open xpm failed: " << strerror(errno);
@@ -337,10 +338,10 @@ void JitFort::InitJitFortResource()
         if (rc < 0) {
             isResourceAvailable_ = false;
             LOG_JIT(ERROR) << "Failed to init jitfort resource, enable xpm failed: " << strerror(errno);
-            close(fd);
+            fdsan_close_with_tag(fd, LOG_DOMAIN);
             return;
         }
-        close(fd);
+        fdsan_close_with_tag(fd, LOG_DOMAIN);
     }
     constexpr int prSetJitFort = 0x6a6974;
     constexpr int jitFortInit = 5;
