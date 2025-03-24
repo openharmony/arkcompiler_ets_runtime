@@ -106,6 +106,17 @@ inline bool JSTaggedValue::SameValue(const JSHandle<JSTaggedValue> &xHandle, con
     return SameValue(xHandle.GetTaggedValue(), yHandle.GetTaggedValue());
 }
 
+inline bool JSTaggedValue::SameValueString(const JSHandle<JSTaggedValue> &xHandle,
+                                           const JSHandle<JSTaggedValue> &yHandle)
+{
+    return SameValueString(xHandle.GetTaggedValue(), yHandle.GetTaggedValue());
+}
+
+inline bool JSTaggedValue::SameValueString(const JSTaggedValue &x, const JSTaggedValue &y)
+{
+    return StringCompare(EcmaString::Cast(x.GetTaggedObject()), EcmaString::Cast(y.GetTaggedObject()));
+}
+
 inline bool JSTaggedValue::SameValueZero(const JSTaggedValue &x, const JSTaggedValue &y)
 {
     if (x == y) {

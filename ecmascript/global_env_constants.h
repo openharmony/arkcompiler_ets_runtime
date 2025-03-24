@@ -482,6 +482,7 @@ class ObjectFactory;
     V(UpperString,                    UPPER_INDEX,                           "upper")                       \
     V(LowerString,                    LOWER_INDEX,                           "lower")                       \
     V(DefaultString,                  DEFAULT_INDEX,                         "default")                     \
+    V(NotInitializedString,           NOT_INITIALIZED_INDEX,                 " is not initialized")         \
     V(SharedString,                   SHARED_INDEX,                          "shared")                      \
     V(StartRangeString,               START_RANGE_INDEX,                     "startRange")                  \
     V(EndRangeString,                 END_RANGE_INDEX,                       "endRange")                    \
