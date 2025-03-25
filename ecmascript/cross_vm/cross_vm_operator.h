@@ -48,7 +48,8 @@ public:
     }
 
     void MarkFromObject(JSTaggedType value);
-
+    bool IsObjectAlive(JSTaggedType value);
+    bool IsValidHeapObject(JSTaggedType value);
 private:
     class EcmaVMInterfaceImpl final : public arkplatform::EcmaVMInterface {
     public:

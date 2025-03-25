@@ -120,6 +120,34 @@ static inline bool IsObjectMarked(TaggedObject *object)
     return objectRegion->Test(object);
 }
 
+HWTEST_F_L0(UnifiedGCTest, IsObjectAliveTest)
+{
+    EcmaVM *vm = thread->GetEcmaVM();
+    vm->SetEnableForceGC(false);
+
+    JSHandle<JSTaggedValue> arrayInXRefRoot = JSArray::ArrayCreate(thread, JSTaggedNumber(INT_VALUE_1));
+    JSHandle<JSTaggedValue> arrayRefByXRefRoot = JSArray::ArrayCreate(thread, JSTaggedNumber(INT_VALUE_2));
+    thread->NewXRefGlobalHandle(arrayInXRefRoot.GetTaggedType());
+    JSArray::FastSetPropertyByValue(thread, arrayInXRefRoot, INT_VALUE_0, arrayRefByXRefRoot);
+
+    auto oldArray = vm->GetFactory()->NewFromASCII("123");
+    EXPECT_TRUE(!panda::JSNApi::IsObjectAlive(vm, reinterpret_cast<uintptr_t>(&oldArray)));
+}
+
+HWTEST_F_L0(UnifiedGCTest, IsValidHeapObjectTest)
+{
+    EcmaVM *vm = thread->GetEcmaVM();
+    vm->SetEnableForceGC(false);
+
+    JSHandle<JSTaggedValue> arrayInXRefRoot = JSArray::ArrayCreate(thread, JSTaggedNumber(INT_VALUE_1));
+    JSHandle<JSTaggedValue> arrayRefByXRefRoot = JSArray::ArrayCreate(thread, JSTaggedNumber(INT_VALUE_2));
+    thread->NewXRefGlobalHandle(arrayInXRefRoot.GetTaggedType());
+    JSArray::FastSetPropertyByValue(thread, arrayInXRefRoot, INT_VALUE_0, arrayRefByXRefRoot);
+
+    auto oldArray = vm->GetFactory()->NewFromASCII("123");
+    EXPECT_TRUE(!panda::JSNApi::IsValidHeapObject(vm, reinterpret_cast<uintptr_t>(&oldArray)));
+}
+
 HWTEST_F_L0(UnifiedGCTest, MarkFromObjectTest)
 {
     EcmaVM *vm = thread->GetEcmaVM();

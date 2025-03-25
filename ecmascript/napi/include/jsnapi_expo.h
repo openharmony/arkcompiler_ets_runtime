@@ -439,6 +439,8 @@ public:
     void FreeGlobalHandleAddr();
     void FreeXRefGlobalHandleAddr();
     void MarkFromObject();
+    bool IsObjectAlive() const;
+    bool IsValidHeapObject() const;
 
     inline T *operator*() const
     {
@@ -1768,6 +1770,9 @@ public:
     static void NotifyTaskFinished(const EcmaVM *vm);
     static bool IsMultiThreadCheckEnabled(const EcmaVM *vm);
     static uint32_t GetCurrentThreadId();
+    static bool IsObjectAlive(const EcmaVM *vm, uintptr_t addr);
+    static bool IsValidHeapObject(const EcmaVM *vm, uintptr_t addr);
+
 private:
     static bool isForked_;
     static bool CreateRuntime(const RuntimeOption &option);
