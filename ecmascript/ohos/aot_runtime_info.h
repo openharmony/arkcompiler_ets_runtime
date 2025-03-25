@@ -351,6 +351,9 @@ protected:
     virtual void SetRuntimeInfo(const char *realOutPath, char lines[][BUFFER_SIZE], int length) const
     {
         int fd = open(realOutPath,  O_WRONLY | O_CREAT | O_TRUNC, 0666);
+#ifdef PANDA_TARGET_OHOS
+        fdsan_exchange_owner_tag(fd, 0, LOG_DOMAIN);
+#endif
         if (fd == -1) {
             return;
         }
@@ -360,12 +363,19 @@ protected:
                 write(fd, "\n", 1);
             }
         }
+#ifdef PANDA_TARGET_OHOS
+        fdsan_close_with_tag(fd, LOG_DOMAIN);
+#else
         close(fd);
+#endif
     }
 
     void GetRuntimeInfoByPath(char lines[][BUFFER_SIZE], const char *realOutPath, const char *soBuildId) const
     {
         int fd = open(realOutPath, O_RDONLY);
+#ifdef PANDA_TARGET_OHOS
+        fdsan_exchange_owner_tag(fd, 0, LOG_DOMAIN);
+#endif
         if (fd == -1) {
             return;
         }
@@ -385,7 +395,11 @@ protected:
                 token = strtok_r(NULL, "\n", &saveptr);
             }
         }
+#ifdef PANDA_TARGET_OHOS
+        fdsan_close_with_tag(fd, LOG_DOMAIN);
+#else
         close(fd);
+#endif
     }
 
     void ParseELFSectionsForBuildId(ecmascript::MemMap &fileMap, char *buildId, int length) const

@@ -95,6 +95,7 @@ public:
                 return false;
             }
             fd_t fd = open(realPath.c_str(), FILE_RDONLY);
+            fdsan_exchange_owner_tag(fd, 0, LOG_DOMAIN);
             if (fd == INVALID_FD) {
                 LOG_ECMA(ERROR) << realPath.c_str() << " file open failed";
                 dlclose(handle);

@@ -164,14 +164,23 @@ public:
         }
 #if defined(CODE_ENCRYPTION_ENABLE)
         int fd = open(DEV_APP_CRYPTO_PATH, O_RDONLY);
+#ifdef PANDA_TARGET_OHOS
+        fdsan_exchange_owner_tag(fd, 0, LOG_DOMAIN);
+#endif
         DecryptSetKey(fd);
         uint32_t offStart = offset;
         offStart &= -PAGE_SIZE;
         MemMap fileMapMem = FileMapForAlignAddressByFd(HapVerifyFd, PAGE_PROT_READ, offset, offStart);
         offset = offset - offStart;
+#ifdef PANDA_TARGET_OHOS
+        if (fileMapMem.GetOriginAddr() == nullptr) {
+            fdsan_close_with_tag(fd, LOG_DOMAIN);
+        }
+#else
         if (fileMapMem.GetOriginAddr() == nullptr) {
             close(fd);
         }
+#endif
 #else
         MemMap fileMapMem = FileMap(realPath.c_str(), FILE_RDONLY, PAGE_PROT_READ);
 #endif
@@ -185,8 +194,13 @@ public:
         FileUnMap(fileMapMem);
         fileMapMem.Reset();
 #if defined(CODE_ENCRYPTION_ENABLE)
+#ifdef PANDA_TARGET_OHOS
+        DecryptRemoveKey(fd);
+        fdsan_close_with_tag(fd, LOG_DOMAIN);
+#else
         DecryptRemoveKey(fd);
         close(fd);
+#endif
 #endif
         return true;
     }
