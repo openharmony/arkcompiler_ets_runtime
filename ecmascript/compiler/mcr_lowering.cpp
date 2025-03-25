@@ -130,6 +130,7 @@ GateRef MCRLowering::VisitGate(GateRef gate)
             break;
         case OpCode::STRING_ADD:
             LowerStringAdd(gate);
+            break;
         default:
             break;
     }
