@@ -612,6 +612,24 @@ void Global<T>::FreeXRefGlobalHandleAddr()
         }
         JSNApi::MarkFromObject(vm_, address_);
     }
+
+    template<typename T>
+    bool Global<T>::IsObjectAlive() const
+    {
+        if (address_ == 0) {
+            return false ;
+        }
+        return JSNApi::IsObjectAlive(vm_, address_);
+    }
+
+    template<typename T>
+    bool Global<T>::IsValidHeapObject() const
+    {
+        if (address_ == 0) {
+            return false;
+        }
+        return JSNApi::IsValidHeapObject(vm_, address_);
+    }
 #endif // PANDA_JS_ETS_HYBRID_MODE
 
 template<typename T>

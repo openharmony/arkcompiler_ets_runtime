@@ -5733,6 +5733,24 @@ void JSNApi::MarkFromObject(const EcmaVM *vm, uintptr_t addr)
     JSTaggedType value = *(reinterpret_cast<JSTaggedType *>(addr));
     vm->GetCrossVMOperator()->MarkFromObject(value);
 }
+
+bool JSNApi::IsObjectAlive(const EcmaVM *vm, uintptr_t addr)
+{
+    if (addr == 0 || !reinterpret_cast<ecmascript::Node *>(addr)->IsUsing()) {
+        return false;
+    }
+    JSTaggedType value = *(reinterpret_cast<JSTaggedType *>(addr));
+    return vm->GetCrossVMOperator()->IsObjectAlive(value);
+}
+
+bool JSNApi::IsValidHeapObject(const EcmaVM *vm, uintptr_t addr)
+{
+    if (addr == 0 || !reinterpret_cast<ecmascript::Node *>(addr)->IsUsing()) {
+        return false;
+    }
+    JSTaggedType value = *(reinterpret_cast<JSTaggedType *>(addr));
+    return vm->GetCrossVMOperator()->IsValidHeapObject(value);
+}
 #endif // PANDA_JS_ETS_HYBRID_MODE
 
 void *JSNApi::SerializeValue(const EcmaVM *vm, Local<JSValueRef> value, Local<JSValueRef> transfer,
