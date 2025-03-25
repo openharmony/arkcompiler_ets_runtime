@@ -78,7 +78,7 @@ public:
 
 private:
 #define CONTAINER_TREESET_FUNCTION_ENTRY(name, method, length, id) \
-    base::BuiltinFunctionEntry::Create(name, ContainersTreeSet::method, length, kungfu::BuiltinsStubCSigns::id),
+    base::BuiltinFunctionEntry::Create(name, ContainersTreeSet::method, length, BUILTINS_STUB_ID(id)),
 
     static constexpr std::array TREESET_PROTOTYPE_FUNCTIONS = {
         CONTAINER_TREESET_PROTOTYPE_FUNCTIONS(CONTAINER_TREESET_FUNCTION_ENTRY)

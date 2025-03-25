@@ -119,7 +119,7 @@ protected:
 
 private:
 #define BUILTIN_ARRAY_BUFFER_ENTRY(name, func, length, id)                                                             \
-    base::BuiltinFunctionEntry::Create((name), (BuiltinsArrayBuffer::func), (length), (kungfu::BuiltinsStubCSigns::id)),
+    base::BuiltinFunctionEntry::Create((name), (BuiltinsArrayBuffer::func), (length), (BUILTINS_STUB_ID(id))),
 
     static constexpr std::array ARRAY_BUFFER_FUNCTIONS = {BUILTIN_ARRAY_BUFFER_FUNCTIONS(BUILTIN_ARRAY_BUFFER_ENTRY)};
 #undef BUILTIN_ARRAY_BUFFER_ENTRY

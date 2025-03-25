@@ -166,7 +166,7 @@ private:
 #define BUILTIN_GLOBAL_CONSTANT_ENTRY(name, var) \
     base::BuiltinConstantEntry::Create(name, BuiltinsGlobal::var),
 #define BUILTIN_GLOBAL_FUNCTION_ENTRY(name, func, length, id) \
-    base::BuiltinFunctionEntry::Create(name, BuiltinsGlobal::func, length, kungfu::BuiltinsStubCSigns::id),
+    base::BuiltinFunctionEntry::Create(name, BuiltinsGlobal::func, length, BUILTINS_STUB_ID(id)),
 
     static inline std::array GLOBAL_CONSTANTS = {
         BUILTIN_GLOBAL_CONSTANTS(BUILTIN_GLOBAL_CONSTANT_ENTRY)

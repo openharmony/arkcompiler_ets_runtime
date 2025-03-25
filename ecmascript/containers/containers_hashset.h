@@ -55,7 +55,7 @@ public:
 
 private:
 #define CONTAINER_HASHSET_FUNCTION_ENTRY(name, method, length, id) \
-    base::BuiltinFunctionEntry::Create(name, ContainersHashSet::method, length, kungfu::BuiltinsStubCSigns::id),
+    base::BuiltinFunctionEntry::Create(name, ContainersHashSet::method, length, BUILTINS_STUB_ID(id)),
 
     static constexpr std::array HASHSET_PROTOTYPE_FUNCTIONS = {
         CONTAINER_HASHSET_PROTOTYPE_FUNCTIONS(CONTAINER_HASHSET_FUNCTION_ENTRY)

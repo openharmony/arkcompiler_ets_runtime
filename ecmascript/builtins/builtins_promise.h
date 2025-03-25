@@ -99,7 +99,7 @@ public:
 
 private:
 #define BUILTIN_PROMISE_FUNCTION_ENTRY(name, method, length, id) \
-    base::BuiltinFunctionEntry::Create(name, BuiltinsPromise::method, length, kungfu::BuiltinsStubCSigns::id),
+    base::BuiltinFunctionEntry::Create(name, BuiltinsPromise::method, length, BUILTINS_STUB_ID(id)),
 
     static constexpr std::array PROMISE_FUNCTIONS  = {
         BUILTIN_PROMISE_FUNCTIONS(BUILTIN_PROMISE_FUNCTION_ENTRY)

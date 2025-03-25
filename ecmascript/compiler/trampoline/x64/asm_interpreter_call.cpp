@@ -976,7 +976,7 @@ void AsmInterpreterCall::CallFastBuiltin(ExtendedAssembler *assembler, Label *ca
     __ Shr(MethodLiteral::BuiltinIdBits::START_BIT, temp1);
     __ Andl((1LU << MethodLiteral::BuiltinIdBits::SIZE) - 1, temp1);
 
-    __ Cmpl(static_cast<int32_t>(kungfu::BuiltinsStubCSigns::BUILTINS_CONSTRUCTOR_STUB_FIRST), temp1);
+    __ Cmpl(static_cast<int32_t>(BUILTINS_STUB_ID(BUILTINS_CONSTRUCTOR_STUB_FIRST)), temp1);
     __ Jge(callNativeBuiltin);
 
     __ Cmpq(Immediate(3), argc); // 3: number of args

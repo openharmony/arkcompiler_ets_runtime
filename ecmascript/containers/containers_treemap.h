@@ -83,7 +83,7 @@ public:
 
 private:
 #define CONTAINER_TREEMAP_FUNCTION_ENTRY(name, method, length, id) \
-    base::BuiltinFunctionEntry::Create(name, ContainersTreeMap::method, length, kungfu::BuiltinsStubCSigns::id),
+    base::BuiltinFunctionEntry::Create(name, ContainersTreeMap::method, length, BUILTINS_STUB_ID(id)),
 
     static constexpr std::array TREEMAP_PROTOTYPE_FUNCTIONS = {
         CONTAINER_TREEMAP_PROTOTYPE_FUNCTIONS(CONTAINER_TREEMAP_FUNCTION_ENTRY)

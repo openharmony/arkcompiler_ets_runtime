@@ -83,7 +83,7 @@ public:
 
 private:
 #define CONTAINER_ARRAYLIST_FUNCTION_ENTRY(name, method, length, id) \
-    base::BuiltinFunctionEntry::Create(name, ContainersArrayList::method, length, kungfu::BuiltinsStubCSigns::id),
+    base::BuiltinFunctionEntry::Create(name, ContainersArrayList::method, length, BUILTINS_STUB_ID(id)),
 
     static constexpr std::array ARRAYLIST_PROTOTYPE_FUNCTIONS = {
         CONTAINER_ARRAYLIST_PROTOTYPE_FUNCTIONS(CONTAINER_ARRAYLIST_FUNCTION_ENTRY)

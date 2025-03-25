@@ -41,7 +41,7 @@ void BuiltinLowering::LowerTypedCallBuitin(GateRef gate)
         case BUILTINS_STUB_ID(SetProtoIterator):
         case BUILTINS_STUB_ID(StringProtoIterator):
         case BUILTINS_STUB_ID(ArrayProtoIterator):
-        case BUILTINS_STUB_ID(TypeArrayProtoIterator):
+        case BUILTINS_STUB_ID(TypedArrayProtoIterator):
             LowerBuiltinIterator(gate, id);
             break;
         case BUILTINS_STUB_ID(MapIteratorProtoNext):
@@ -235,7 +235,7 @@ GateRef BuiltinLowering::LowerCallTargetCheck(Environment *env, GateRef gate)
         case BuiltinsStubCSigns::ID::SetProtoIterator:
         case BuiltinsStubCSigns::ID::StringProtoIterator:
         case BuiltinsStubCSigns::ID::ArrayProtoIterator:
-        case BuiltinsStubCSigns::ID::TypeArrayProtoIterator: {
+        case BuiltinsStubCSigns::ID::TypedArrayProtoIterator: {
             return LowerCallTargetCheckWithDetector(gate, id);
         }
         case BuiltinsStubCSigns::ID::DateGetTime:
@@ -300,7 +300,7 @@ GateRef BuiltinLowering::LowerCallTargetCheckWithDetector(GateRef gate, Builtins
             detectorIndex = GlobalEnv::ARRAY_ITERATOR_DETECTOR_INDEX;
             break;
         }
-        case BuiltinsStubCSigns::ID::TypeArrayProtoIterator: {
+        case BuiltinsStubCSigns::ID::TypedArrayProtoIterator: {
             expectType = JSType::JS_TYPED_ARRAY_FIRST;
             detectorIndex = GlobalEnv::TYPED_ARRAY_ITERATOR_DETECTOR_INDEX;
             break;
@@ -374,7 +374,7 @@ GateRef BuiltinLowering::CheckPara(GateRef gate, GateRef funcCheck)
         case BuiltinsStubCSigns::ID::SetProtoIterator:
         case BuiltinsStubCSigns::ID::StringProtoIterator:
         case BuiltinsStubCSigns::ID::ArrayProtoIterator:
-        case BuiltinsStubCSigns::ID::TypeArrayProtoIterator:
+        case BuiltinsStubCSigns::ID::TypedArrayProtoIterator:
         case BuiltinsStubCSigns::ID::MapIteratorProtoNext:
         case BuiltinsStubCSigns::ID::SetIteratorProtoNext:
         case BuiltinsStubCSigns::ID::StringIteratorProtoNext:
@@ -426,7 +426,7 @@ void BuiltinLowering::LowerBuiltinIterator(GateRef gate, BuiltinsStubCSigns::ID 
             result = LowerCallRuntime(glue, gate, RTSTUB_ID(NewJSArrayIterator), { obj }, true);
             break;
         }
-        case BUILTINS_STUB_ID(TypeArrayProtoIterator): {
+        case BUILTINS_STUB_ID(TypedArrayProtoIterator): {
             result = LowerCallRuntime(glue, gate, RTSTUB_ID(NewJSTypedArrayIterator), { obj }, true);
             break;
         }

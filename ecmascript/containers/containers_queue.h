@@ -48,7 +48,7 @@ public:
 
 private:
 #define CONTAINER_QUEUE_FUNCTION_ENTRY(name, method, length, id) \
-    base::BuiltinFunctionEntry::Create(name, ContainersQueue::method, length, kungfu::BuiltinsStubCSigns::id),
+    base::BuiltinFunctionEntry::Create(name, ContainersQueue::method, length, BUILTINS_STUB_ID(id)),
 
     static constexpr std::array QUEUE_PROTOTYPE_FUNCTIONS = {
         CONTAINER_QUEUE_PROTOTYPE_FUNCTIONS(CONTAINER_QUEUE_FUNCTION_ENTRY)

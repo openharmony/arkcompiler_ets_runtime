@@ -83,7 +83,7 @@ private:
     static void FreeBitsetVectorPointer([[maybe_unused]] void *env, void *pointer, void *data);
 
 #define BUILTIN_BITVECTOR_FUNCTION_ENTRY(name, func, length, id) \
-    base::BuiltinFunctionEntry::Create(name, ContainersBitVector::func, length, kungfu::BuiltinsStubCSigns::id),
+    base::BuiltinFunctionEntry::Create(name, ContainersBitVector::func, length, BUILTINS_STUB_ID(id)),
 
     static constexpr std::array BITVECTOR_PROTOTYPE_FUNCTIONS = {
         BUILTIN_BITVECTOR_PROTOTYPE_FUNCTIONS(BUILTIN_BITVECTOR_FUNCTION_ENTRY)

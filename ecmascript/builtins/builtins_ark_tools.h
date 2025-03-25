@@ -455,7 +455,7 @@ public:
 
 private:
 #define BUILTINS_ARK_TOOLS_FUNCTION_ENTRY(name, method, length, id) \
-    base::BuiltinFunctionEntry::Create(name, BuiltinsArkTools::method, length, kungfu::BuiltinsStubCSigns::id),
+    base::BuiltinFunctionEntry::Create(name, BuiltinsArkTools::method, length, BUILTINS_STUB_ID(id)),
 
     static constexpr std::array ARK_TOOLS_FUNCTIONS  = {
         BUILTIN_ARK_TOOLS_FUNCTIONS(BUILTINS_ARK_TOOLS_FUNCTION_ENTRY)

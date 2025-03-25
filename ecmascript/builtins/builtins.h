@@ -60,7 +60,7 @@ private:
     JSHandle<JSFunction> NewBuiltinConstructor(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &prototype,
                                                EcmaEntrypoint ctorFunc, std::string_view name, int length,
                                                kungfu::BuiltinsStubCSigns::ID builtinId =
-                                               kungfu::BuiltinsStubCSigns::INVALID,
+                                               BUILTINS_STUB_ID(INVALID),
                                                JSHandle<JSHClass> hclass = JSHandle<JSHClass>()) const;
 
     JSHandle<JSFunction> NewBuiltinCjsCtor(const JSHandle<GlobalEnv> &env,
@@ -71,7 +71,7 @@ private:
     JSHandle<JSFunction> NewFunction(const JSHandle<GlobalEnv> &env, const JSHandle<JSTaggedValue> &key,
                                      EcmaEntrypoint func, int length,
                                      kungfu::BuiltinsStubCSigns::ID builtinId =
-                                         kungfu::BuiltinsStubCSigns::INVALID) const;
+                                         BUILTINS_STUB_ID(INVALID)) const;
 
     void InitializeNapiHClass(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &objFuncClass) const;
     void InitializePropertyDetector(const JSHandle<GlobalEnv> &env, bool lazyInit) const;
@@ -306,25 +306,25 @@ private:
 
     void SetFunction(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &obj, std::string_view key,
                      EcmaEntrypoint func, int length, kungfu::BuiltinsStubCSigns::ID builtinId =
-                     kungfu::BuiltinsStubCSigns::INVALID) const;
+                     BUILTINS_STUB_ID(INVALID)) const;
 
     void SetFunction(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &obj, const JSHandle<JSTaggedValue> &key,
                      EcmaEntrypoint func, int length, kungfu::BuiltinsStubCSigns::ID builtinId =
-                     kungfu::BuiltinsStubCSigns::INVALID) const;
+                     BUILTINS_STUB_ID(INVALID)) const;
 
     JSHandle<JSFunction> SetAndReturnFunction(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &obj,
                                               const char *key, EcmaEntrypoint func, int length,
                                               kungfu::BuiltinsStubCSigns::ID builtinId =
-                                              kungfu::BuiltinsStubCSigns::INVALID) const ;
+                                              BUILTINS_STUB_ID(INVALID)) const ;
 
     JSHandle<JSFunction> SetAndReturnFunction(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &obj,
                                               const JSHandle<JSTaggedValue> &key, EcmaEntrypoint func, int length,
                                               kungfu::BuiltinsStubCSigns::ID builtinId =
-                                              kungfu::BuiltinsStubCSigns::INVALID) const;
+                                              BUILTINS_STUB_ID(INVALID)) const;
 
     void SetFuncToObjAndGlobal(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &globalObject,
                                const JSHandle<JSObject> &obj, std::string_view key, EcmaEntrypoint func, int length,
-                               kungfu::BuiltinsStubCSigns::ID builtinId = kungfu::BuiltinsStubCSigns::INVALID);
+                               kungfu::BuiltinsStubCSigns::ID builtinId = BUILTINS_STUB_ID(INVALID));
 
     template<int type = JSSymbol::SYMBOL_DEFAULT_TYPE>
     void SetFunctionAtSymbol(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &obj,
@@ -339,7 +339,7 @@ private:
                                                          EcmaEntrypoint func,
                                                          int length,
                                                          kungfu::BuiltinsStubCSigns::ID builtinId =
-                                                         kungfu::BuiltinsStubCSigns::INVALID) const;
+                                                         BUILTINS_STUB_ID(INVALID)) const;
 
     void SetStringTagSymbol(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &obj,
                             std::string_view key) const;
@@ -347,12 +347,12 @@ private:
     JSHandle<JSTaggedValue> CreateGetter(const JSHandle<GlobalEnv> &env, EcmaEntrypoint func,
                                          std::string_view name, int length,
                                          kungfu::BuiltinsStubCSigns::ID builtinId =
-                                         kungfu::BuiltinsStubCSigns::INVALID) const;
+                                         BUILTINS_STUB_ID(INVALID)) const;
 
     JSHandle<JSTaggedValue> CreateGetter(const JSHandle<GlobalEnv> &env, EcmaEntrypoint func,
                                          JSHandle<JSTaggedValue> key, int length,
                                          kungfu::BuiltinsStubCSigns::ID builtinId =
-                                         kungfu::BuiltinsStubCSigns::INVALID) const;
+                                         BUILTINS_STUB_ID(INVALID)) const;
 
     void SetConstant(const JSHandle<JSObject> &obj, std::string_view key, JSTaggedValue value) const;
 
@@ -371,11 +371,11 @@ private:
 
     void SetInlineFunction(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &obj,
                            const JSHandle<JSTaggedValue> &key, EcmaEntrypoint func, uint32_t index, int length,
-                           kungfu::BuiltinsStubCSigns::ID builtinId = kungfu::BuiltinsStubCSigns::INVALID) const;
+                           kungfu::BuiltinsStubCSigns::ID builtinId = BUILTINS_STUB_ID(INVALID)) const;
 
     void SetInlineFunction(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &obj, std::string_view key,
                            EcmaEntrypoint func, uint32_t index, int length,
-                           kungfu::BuiltinsStubCSigns::ID builtinId = kungfu::BuiltinsStubCSigns::INVALID) const;
+                           kungfu::BuiltinsStubCSigns::ID builtinId = BUILTINS_STUB_ID(INVALID)) const;
 
     JSHandle<JSFunction> SetInlineFunctionAndRetJSFunction(const JSHandle<GlobalEnv> &env,
         const JSHandle<JSObject> &obj, std::string_view key,
@@ -473,15 +473,15 @@ private:
     JSHandle<JSFunction> NewSFunction(const JSHandle<GlobalEnv> &env, const JSHandle<JSTaggedValue> &key,
                                       EcmaEntrypoint func, int length,
                                       kungfu::BuiltinsStubCSigns::ID builtinId =
-                                      kungfu::BuiltinsStubCSigns::INVALID) const;
+                                      BUILTINS_STUB_ID(INVALID)) const;
 
     void SetSFunction(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &obj, std::string_view key,
                       EcmaEntrypoint func, uint32_t index, int length, kungfu::BuiltinsStubCSigns::ID builtinId =
-                      kungfu::BuiltinsStubCSigns::INVALID) const;
+                      BUILTINS_STUB_ID(INVALID)) const;
 
     void SetSFunction(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &obj,
                       const JSHandle<JSTaggedValue> &key, EcmaEntrypoint func, uint32_t index, int length,
-                      kungfu::BuiltinsStubCSigns::ID builtinId = kungfu::BuiltinsStubCSigns::INVALID) const;
+                      kungfu::BuiltinsStubCSigns::ID builtinId = BUILTINS_STUB_ID(INVALID)) const;
     void SetSAccessor(const JSHandle<JSObject> &obj, uint32_t index,
                       const JSHandle<JSTaggedValue> &getter, const JSHandle<JSTaggedValue> &setter) const;
 

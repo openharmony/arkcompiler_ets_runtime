@@ -93,7 +93,7 @@ private:
     };
 
 #define BUILTIN_FUNCTION_FUNCTION_ENTRY(name, func, length, id) \
-    base::BuiltinFunctionEntry::Create(name, BuiltinsFunction::func, length, kungfu::BuiltinsStubCSigns::id),
+    base::BuiltinFunctionEntry::Create(name, BuiltinsFunction::func, length, BUILTINS_STUB_ID(id)),
 
     static constexpr std::array FUNCTION_PROTOTYPE_FUNCTIONS = {
         BUILTIN_FUNCTION_PROTOTYPE_FUNCTIONS(BUILTIN_FUNCTION_FUNCTION_ENTRY)

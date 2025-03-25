@@ -266,10 +266,10 @@ public:
 
 private:
 #define BUILTIN_TYPED_ARRAY_FUNCTION_ENTRY(name, func, length, id) \
-    base::BuiltinFunctionEntry::Create(name, BuiltinsTypedArray::func, length, kungfu::BuiltinsStubCSigns::id),
+    base::BuiltinFunctionEntry::Create(name, BuiltinsTypedArray::func, length, BUILTINS_STUB_ID(id)),
 #define BUILTIN_TYPED_ARRAY_ACCESSOR_ENTRY(name, func, id)                          \
     base::BuiltinFunctionEntry::Create<base::BuiltinFunctionEntry::IsAccessorBit>(  \
-        name, BuiltinsTypedArray::func, 0, kungfu::BuiltinsStubCSigns::id),
+        name, BuiltinsTypedArray::func, 0, BUILTINS_STUB_ID(id)),
 
     static constexpr std::array TYPED_ARRAY_FUNCTIONS = {
         BUILTIN_TYPED_ARRAY_FUNCTIONS(BUILTIN_TYPED_ARRAY_FUNCTION_ENTRY)

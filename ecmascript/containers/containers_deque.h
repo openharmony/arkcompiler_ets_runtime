@@ -56,7 +56,7 @@ public:
 
 private:
 #define CONTAINER_DEQUE_FUNCTION_ENTRY(name, method, length, id) \
-    base::BuiltinFunctionEntry::Create(name, ContainersDeque::method, length, kungfu::BuiltinsStubCSigns::id),
+    base::BuiltinFunctionEntry::Create(name, ContainersDeque::method, length, BUILTINS_STUB_ID(id)),
 
     static constexpr std::array DEQUE_PROTOTYPE_FUNCTIONS = {
         CONTAINER_DEQUE_PROTOTYPE_FUNCTIONS(CONTAINER_DEQUE_FUNCTION_ENTRY)

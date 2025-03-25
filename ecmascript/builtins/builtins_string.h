@@ -271,7 +271,7 @@ public:
 
 private:
 #define BUILTIN_STRING_FUNCTION_ENTRY(name, method, length, builtinId) \
-    base::BuiltinFunctionEntry::Create(name, BuiltinsString::method, length, kungfu::BuiltinsStubCSigns::builtinId),
+    base::BuiltinFunctionEntry::Create(name, BuiltinsString::method, length, BUILTINS_STUB_ID(builtinId)),
 
     static constexpr std::array STRING_FUNCTIONS = {
         BUILTIN_STRING_FUNCTIONS(BUILTIN_STRING_FUNCTION_ENTRY)

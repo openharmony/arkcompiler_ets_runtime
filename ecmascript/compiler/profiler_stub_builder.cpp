@@ -704,7 +704,7 @@ GateRef ProfilerStubBuilder::GetIterationFunctionId(GateRef glue, GateRef iterat
     BRANCH(Int64Equal(iterator, *maybeFunc), &isTypedArrayProtoValues, &exit);
     Bind(&isTypedArrayProtoValues);
     {
-        functionId = Int32(PGO_BUILTINS_STUB_ID(TypeArrayProtoIterator));
+        functionId = Int32(PGO_BUILTINS_STUB_ID(TypedArrayProtoIterator));
         Jump(&exit);
     }
     Bind(&exit);

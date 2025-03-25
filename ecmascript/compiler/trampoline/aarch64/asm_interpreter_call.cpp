@@ -1947,7 +1947,7 @@ void AsmInterpreterCall::CallFastBuiltin(ExtendedAssembler *assembler, Label *ca
     // get builtinid
     __ Ldr(builtinId, MemoryOperand(method, Method::EXTRA_LITERAL_INFO_OFFSET));  // get extra literal
     __ And(builtinId.W(), builtinId.W(), LogicalImmediate::Create(0xff, RegWSize));
-    __ Cmp(builtinId.W(), Immediate(kungfu::BuiltinsStubCSigns::BUILTINS_CONSTRUCTOR_STUB_FIRST));
+    __ Cmp(builtinId.W(), Immediate(BUILTINS_STUB_ID(BUILTINS_CONSTRUCTOR_STUB_FIRST)));
     __ B(Condition::GE, callNativeBuiltin);
 
     __ Cmp(argc, Immediate(3)); // 3: number of args

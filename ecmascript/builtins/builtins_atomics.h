@@ -89,7 +89,7 @@ public:
 
 private:
 #define BUILTINS_ATOMICS_FUNCTION_ENTRY(name, method, length, id) \
-    base::BuiltinFunctionEntry::Create(name, BuiltinsAtomics::method, length, kungfu::BuiltinsStubCSigns::id),
+    base::BuiltinFunctionEntry::Create(name, BuiltinsAtomics::method, length, BUILTINS_STUB_ID(id)),
 
     static constexpr std::array ATOMICS_FUNCTIONS  = {
         BUILTIN_ATOMICS_FUNCTIONS(BUILTINS_ATOMICS_FUNCTION_ENTRY)

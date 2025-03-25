@@ -80,7 +80,7 @@ public:
 
 private:
 #define CONTAINER_LINKEDLIST_FUNCTION_ENTRY(name, method, length, id) \
-    base::BuiltinFunctionEntry::Create(name, ContainersLinkedList::method, length, kungfu::BuiltinsStubCSigns::id),
+    base::BuiltinFunctionEntry::Create(name, ContainersLinkedList::method, length, BUILTINS_STUB_ID(id)),
 
     static constexpr std::array LINKEDLIST_PROTOTYPE_FUNCTIONS = {
         CONTAINER_LINKEDLIST_PROTOTYPE_FUNCTIONS(CONTAINER_LINKEDLIST_FUNCTION_ENTRY)

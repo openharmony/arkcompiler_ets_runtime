@@ -482,15 +482,15 @@ void Builtins::InitializeGlobalObject(const JSHandle<GlobalEnv> &env, const JSHa
     // Global object function
     SetFunction(env, globalObject, "eval", Global::NotSupportEval, FunctionLength::ONE);
     SetFunction(env, globalObject, "isFinite", Global::IsFinite, FunctionLength::ONE,
-                kungfu::BuiltinsStubCSigns::GlobalIsFinite);
+                BUILTINS_STUB_ID(GlobalIsFinite));
     SetFunction(env, globalObject, "isNaN", Global::IsNaN, FunctionLength::ONE,
-                kungfu::BuiltinsStubCSigns::GlobalIsNan);
+                BUILTINS_STUB_ID(GlobalIsNan));
     SetFunction(env, globalObject, "decodeURI", Global::DecodeURI, FunctionLength::ONE);
     SetFunction(env, globalObject, "encodeURI", Global::EncodeURI, FunctionLength::ONE);
     SetFunction(env, globalObject, "escape", Global::Escape, FunctionLength::ONE);
     SetFunction(env, globalObject, "unescape", Global::Unescape, FunctionLength::ONE);
     SetFunction(env, globalObject, "decodeURIComponent", Global::DecodeURIComponent, FunctionLength::ONE,
-                kungfu::BuiltinsStubCSigns::GlobalDecodeURIComponent);
+                BUILTINS_STUB_ID(GlobalDecodeURIComponent));
     SetFunction(env, globalObject, "encodeURIComponent", Global::EncodeURIComponent, FunctionLength::ONE);
     SetFunction(env, globalObject, "__getCurrentModuleName__", Global::GetCurrentModuleName, FunctionLength::ZERO);
     SetFunction(env, globalObject, "__getCurrentBundleName__", Global::GetCurrentBundleName, FunctionLength::ZERO);
@@ -927,7 +927,7 @@ void Builtins::InitializeBigInt(const JSHandle<GlobalEnv> &env, const JSHandle<J
     // BigInt = new Function()
     JSHandle<JSObject> bigIntFunction(
         NewBuiltinConstructor(env, bigIntFuncPrototype, BuiltinsBigInt::BigIntConstructor, "BigInt",
-                              FunctionLength::ONE, kungfu::BuiltinsStubCSigns::BigIntConstructor));
+                              FunctionLength::ONE, BUILTINS_STUB_ID(BigIntConstructor)));
     JSFunction::SetFunctionPrototypeOrInstanceHClass(thread_,
                                                      JSHandle<JSFunction>(bigIntFunction),
                                                      bigIntFuncInstanceHClass.GetTaggedValue());
@@ -2071,7 +2071,7 @@ void Builtins::InitializeRegExp(const JSHandle<GlobalEnv> &env)
     JSHandle<JSFunction>(execFunc)->SetLexicalEnv(thread_, env);
 
     JSHandle<JSTaggedValue> flagsGetter = CreateGetter(env, RegExp::GetFlags, "flags", FunctionLength::ZERO,
-        kungfu::BuiltinsStubCSigns::RegExpGetFlags);
+        BUILTINS_STUB_ID(RegExpGetFlags));
     JSHandle<JSTaggedValue> flagsKey(globalConstants->GetHandledFlagsString());
     SetGetter(regPrototype, flagsKey, flagsGetter);
     JSHandle<JSFunction>(flagsGetter)->SetLexicalEnv(thread_, env);
@@ -2389,7 +2389,7 @@ void Builtins::Initialize##Type(const JSHandle<GlobalEnv> &env, const JSHandle<J
     /* %TypedArray% = new Function() */                                                                         \
     JSHandle<JSFunction> arrayFunction = factory_->NewSpecificTypedArrayFunction(                               \
         env, reinterpret_cast<void *>(BuiltinsTypedArray::Type##Constructor),                                   \
-        kungfu::BuiltinsStubCSigns::Type##Constructor);                                                         \
+        BUILTINS_STUB_ID(Type##Constructor));                                                                   \
     InitializeCtor(env, arrFuncPrototype, arrayFunction, #Type, FunctionLength::THREE);                         \
                                                                                                                 \
     arrayFunction->SetProtoOrHClass(thread_, arrFuncInstanceHClass.GetTaggedValue());                           \
@@ -3508,7 +3508,7 @@ void Builtins::InitializeCollator(const JSHandle<GlobalEnv> &env)
 
     // 11.3.4 Intl.Collator.prototype.resolvedOptions ()
     SetFunction(env, collatorPrototype, "resolvedOptions", Collator::ResolvedOptions, FunctionLength::ZERO,
-                kungfu::BuiltinsStubCSigns::CollatorResolvedOptions);
+                BUILTINS_STUB_ID(CollatorResolvedOptions));
 }
 
 void Builtins::InitializePluralRules(const JSHandle<GlobalEnv> &env)

@@ -296,7 +296,7 @@
     V(SetProtoIterator)                                 \
     V(StringProtoIterator)                              \
     V(ArrayProtoIterator)                               \
-    V(TypeArrayProtoIterator)                           \
+    V(TypedArrayProtoIterator)                          \
     V(IteratorProtoReturn)                              \
     NEXT_AOT_BUILTINS_STUB_LIST(V)
 

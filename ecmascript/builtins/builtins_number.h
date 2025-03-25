@@ -152,7 +152,7 @@ private:
 #undef BUILTIN_NUMBER_CONSTANT_ENTRY
 
 #define BUILTIN_NUMBER_FUNCTION_ENTRY(name, func, length, id) \
-    base::BuiltinFunctionEntry::Create(name, BuiltinsNumber::func, length, kungfu::BuiltinsStubCSigns::id),
+    base::BuiltinFunctionEntry::Create(name, BuiltinsNumber::func, length, BUILTINS_STUB_ID(id)),
 
     static constexpr std::array NUMBER_NON_GLOBAL_FUNCTIONS = {
         BUILTIN_NUMBER_NON_GLOBAL_FUNCTIONS(BUILTIN_NUMBER_FUNCTION_ENTRY)

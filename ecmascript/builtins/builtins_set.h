@@ -84,7 +84,7 @@ public:
 
 private:
 #define BUILTIN_SET_FUNCTION_ENTRY(name, func, length, id) \
-    base::BuiltinFunctionEntry::Create(name, BuiltinsSet::func, length, kungfu::BuiltinsStubCSigns::id),
+    base::BuiltinFunctionEntry::Create(name, BuiltinsSet::func, length, BUILTINS_STUB_ID(id)),
 
     static constexpr std::array SET_PROTOTYPE_FUNCTIONS = {
         BUILTIN_SET_PROTOTYPE_FUNCTIONS(BUILTIN_SET_FUNCTION_ENTRY)

@@ -229,7 +229,7 @@ private:
                                           JSHandle<JSObject>& newArrayHandle);
 
 #define BUILTIN_SENDABLE_ARRAY_FUNCTION_ENTRY(name, method, length, id) \
-    base::BuiltinFunctionEntry::Create(name, BuiltinsSharedArray::method, length, kungfu::BuiltinsStubCSigns::id),
+    base::BuiltinFunctionEntry::Create(name, BuiltinsSharedArray::method, length, BUILTINS_STUB_ID(id)),
 
     static constexpr std::array SENDABLE_ARRAY_FUNCTIONS  = {
         BUILTIN_SHARED_ARRAY_FUNCTIONS(BUILTIN_SENDABLE_ARRAY_FUNCTION_ENTRY)

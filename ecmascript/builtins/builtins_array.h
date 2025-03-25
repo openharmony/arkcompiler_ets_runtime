@@ -244,7 +244,7 @@ public:
     static JSTaggedValue ReduceRightInner(EcmaRuntimeCallInfo *argv, int64_t len);
 private:
 #define BUILTIN_ARRAY_FUNCTION_ENTRY(name, method, length, id) \
-    base::BuiltinFunctionEntry::Create(name, BuiltinsArray::method, length, kungfu::BuiltinsStubCSigns::id),
+    base::BuiltinFunctionEntry::Create(name, BuiltinsArray::method, length, BUILTINS_STUB_ID(id)),
 
     static constexpr std::array ARRAY_FUNCTIONS  = {
         BUILTIN_ARRAY_FUNCTIONS(BUILTIN_ARRAY_FUNCTION_ENTRY)

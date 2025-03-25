@@ -1536,7 +1536,7 @@ void CallStubBuilder::CallFastBuiltin(Label* notFastBuiltins, Label *exit, GateR
     Bind(&isFastBuiltins);
     GateRef builtinId = GetBuiltinId(method_);
     if (IsCallModeSupportCallBuiltin()) {
-        BRANCH(Int32GreaterThanOrEqual(builtinId, Int32(kungfu::BuiltinsStubCSigns::BUILTINS_CONSTRUCTOR_STUB_FIRST)),
+        BRANCH(Int32GreaterThanOrEqual(builtinId, Int32(BUILTINS_STUB_ID(BUILTINS_CONSTRUCTOR_STUB_FIRST))),
             notFastBuiltins, &supportCall);
         Bind(&supportCall);
     }
