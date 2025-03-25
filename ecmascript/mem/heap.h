@@ -50,6 +50,7 @@ class HeapProfiler;
 class IncrementalMarker;
 class JSNativePointer;
 class Marker;
+class UnifiedGC;
 class UnifiedGCMarker;
 class MemController;
 class IdleGCTrigger;
@@ -118,6 +119,7 @@ enum class VerifyKind {
     VERIFY_EVACUATE_YOUNG,
     VERIFY_MARK_FULL,
     VERIFY_EVACUATE_OLD,
+    VERIFY_MARK_UNIFIED,
     VERIFY_EVACUATE_FULL,
     VERIFY_SHARED_RSET_POST_FULL_GC,
     VERIFY_PRE_SHARED_GC,
@@ -211,6 +213,16 @@ public:
     bool IsConcurrentFullMark() const
     {
         return markType_ == MarkType::MARK_FULL;
+    }
+
+    bool IsUnifiedMark() const
+    {
+        return markType_ == MarkType::MARK_UNIFIED;
+    }
+
+    void SetGCType(TriggerGCType gcType)
+    {
+        gcType_ = gcType;
     }
 
     TriggerGCType GetGCType() const
@@ -644,6 +656,11 @@ public:
         return sSweeper_;
     }
 
+    UnifiedGC *GetUnifiedGC() const
+    {
+        return unifiedGC_;
+    }
+
     bool IsParallelGCEnabled() const
     {
         return parallelGC_;
@@ -894,6 +911,10 @@ public:
 
     void CheckInHeapProfiler();
 
+    void StartUnifiedGCMark(TriggerGCType gcType, GCReason gcReason);
+    template<TriggerGCType gcType, GCReason gcReason>
+    bool TriggerUnifiedGCMark(JSThread *thread) const;
+
 private:
     void ProcessAllGCListeners();
     void CollectGarbageFinish(bool inDaemon, TriggerGCType gcType);
@@ -955,6 +976,7 @@ private:
     SharedGCMarker *sharedGCMarker_ {nullptr};
     SharedGCMovableMarker *sharedGCMovableMarker_ {nullptr};
     SharedMemController *sharedMemController_ {nullptr};
+    UnifiedGC *unifiedGC_ {nullptr};
     size_t growingFactor_ {0};
     size_t growingStep_ {0};
     size_t incNativeSizeTriggerSharedCM_ {0};
@@ -1643,6 +1665,11 @@ public:
         return gcType_ == TriggerGCType::YOUNG_GC;
     }
 
+    bool IsUnifiedGC() const
+    {
+        return gcType_ == TriggerGCType::UNIFIED_GC;
+    }
+
     void CheckNonMovableSpaceOOM();
     void DumpHeapSnapshotBeforeOOM(bool isFullGC = true);
     std::tuple<uint64_t, uint8_t *, int, kungfu::CalleeRegAndOffsetVec> CalCallSiteInfo(uintptr_t retAddr) const;
@@ -1663,10 +1690,6 @@ public:
         return nativePointerList_.size();
     }
 
-    void StartUnifiedGCMark();
-
-    template<TriggerGCType gcType, GCReason gcReason>
-    bool TriggerUnifiedGCMark() const;
     size_t GetHeapAliveSizeExcludesYoungAfterGC() const
     {
         return heapAliveSizeExcludesYoungAfterGC_;

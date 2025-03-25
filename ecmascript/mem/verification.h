@@ -75,6 +75,7 @@ private:
     void VerifyMarkYoung(TaggedObject *obj, ObjectSlot slot, TaggedObject *value) const;
     void VerifyEvacuateYoung(TaggedObject *obj, ObjectSlot slot, TaggedObject *value) const;
     void VerifyMarkFull(TaggedObject *obj, ObjectSlot slot, TaggedObject *value) const;
+    void VerifyMarkUnified(TaggedObject *obj, ObjectSlot slot, TaggedObject *value) const;
     void VerifyEvacuateOld(TaggedObject *obj, ObjectSlot slot, TaggedObject *value) const;
     void VerifyEvacuateFull(TaggedObject *obj, ObjectSlot slot, TaggedObject *value) const;
     void VerifySharedRSetPostFullGC(TaggedObject *obj, ObjectSlot slot, TaggedObject *value) const;

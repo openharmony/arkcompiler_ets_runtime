@@ -130,7 +130,8 @@ inline void UnifiedGCMarker::HandleJSXRefObject(TaggedObject *object)
 {
     JSTaggedValue value(object);
     if (value.IsJSXRefObject()) {
-        stsVMInterface_->MarkFromObject(JSObject::Cast(object)->GetNativePointerField(0));
+        auto stsVMInterface = heap_->GetEcmaVM()->GetCrossVMOperator()->GetSTSVMInterface();
+        stsVMInterface->MarkFromObject(JSObject::Cast(object)->GetNativePointerField(0));
     }
 }
 #endif // PANDA_JS_ETS_HYBRID_MODE
