@@ -27,7 +27,8 @@ namespace panda::ecmascript {
 struct StateVisit;
 enum class ModuleStatus : uint8_t {
     // don't change order
-    UNINSTANTIATED = 0x01,
+    UNINSTANTIATED = 0x0,
+    PREINSTANTIATING,
     INSTANTIATING,
     INSTANTIATED,
     EVALUATING,
@@ -100,23 +101,19 @@ public:
     static JSHandle<JSTaggedValue> ResolveCjsStarExport(JSThread *thread,
                                                         const JSHandle<SourceTextModule> &cjsModule,
                                                         const JSHandle<JSTaggedValue> &exportName);
-    // 15.2.1.16.4.1 InnerModuleInstantiation ( module, stack, index )
-    static int InnerModuleInstantiation(JSThread *thread,
-        const JSHandle<ModuleRecord> &moduleRecord, CVector<JSHandle<SourceTextModule>> &stack,
-        int index, const ExecuteTypes &executeType = ExecuteTypes::STATIC);
 
     // 15.2.1.16.4.2 ModuleDeclarationEnvironmentSetup ( module )
     static void ModuleDeclarationEnvironmentSetup(JSThread *thread, const JSHandle<SourceTextModule> &module);
     static void ModuleDeclarationArrayEnvironmentSetup(JSThread *thread, const JSHandle<SourceTextModule> &module);
 
     // 15.2.1.16.5.1 InnerModuleEvaluation ( module, stack, index )
-    static int InnerModuleEvaluation(JSThread *thread, const JSHandle<SourceTextModule> &moduleRecord,
+    static int InnerModuleEvaluation(JSThread *thread, JSHandle<SourceTextModule> &moduleRecord,
         CVector<JSHandle<SourceTextModule>> &stack, CVector<JSHandle<SourceTextModule>> &errorStack,
         int index, const void *buffer = nullptr, size_t size = 0,
         const ExecuteTypes &executeType = ExecuteTypes::STATIC);
 
     static int InnerModuleEvaluationUnsafe(JSThread *thread,
-        const JSHandle<ModuleRecord> &moduleRecord, CVector<JSHandle<SourceTextModule>> &stack,
+        JSHandle<SourceTextModule> &module, CVector<JSHandle<SourceTextModule>> &stack,
         CVector<JSHandle<SourceTextModule>> &errorStack, int index, const void *buffer,
         size_t size, const ExecuteTypes &executeType);
     // 15.2.1.16.5.2 ModuleExecution ( module )
@@ -378,7 +375,7 @@ public:
     static std::optional<std::set<uint32_t>> GetConcurrentRequestedModules(const JSHandle<Method> &method);
     static int EvaluateForConcurrent(JSThread *thread, const JSHandle<SourceTextModule> &module,
                                      const JSHandle<Method> &method);
-    static int ModuleEvaluation(JSThread *thread, const JSHandle<ModuleRecord> &moduleRecord,
+    static int ModuleEvaluation(JSThread *thread, const JSHandle<SourceTextModule> &module,
                                 int index, const JSHandle<Method> &method);
     static void CheckCircularImportTool(JSThread *thread, const CString &circularModuleRecordName,
                                         CList<CString> &referenceList, bool printOtherCircular = false);
@@ -393,10 +390,16 @@ public:
     static void SetExportName(JSThread *thread, const JSHandle<SourceTextModule> requestedModule,
                               CVector<std::string> &exportedNames, JSHandle<TaggedArray> &newExportStarSet);
     static void RecordEvaluatedOrError(JSThread *thread, JSHandle<SourceTextModule> module);
-    static JSHandle<JSTaggedValue> GetRequestedModule(JSThread *thread,
-                                                      const JSHandle<SourceTextModule> module,
-                                                      const JSHandle<TaggedArray> requestedModules,
-                                                      uint32_t idx);
+    static JSHandle<SourceTextModule> GetRequestedModule(JSThread *thread,
+                                                         const JSHandle<TaggedArray> requestedModules,
+                                                         uint32_t idx);
+    static bool PreModuleInstantiation(JSThread *thread,
+                                       JSHandle<SourceTextModule> module,
+                                       const ExecuteTypes &executeType);
+    static int FinishModuleInstantiation(JSThread *thread,
+                                         JSHandle<SourceTextModule> module,
+                                         CVector<JSHandle<SourceTextModule>> &stack,
+                                         int index);
 
 private:
     static JSHandle<JSTaggedValue> GetStarResolution(JSThread *thread, const JSHandle<JSTaggedValue> &exportName,
@@ -421,15 +424,9 @@ private:
                                       const JSTaggedValue &dictionary);
     static void DFSModuleInstantiation(JSHandle<SourceTextModule> &module,
                                        CVector<JSHandle<SourceTextModule>> &stack);
-    static std::optional<int> HandleInnerModuleInstantiation(JSThread *thread,
-                                                             JSHandle<SourceTextModule> &module,
-                                                             JSMutableHandle<JSTaggedValue> &required,
-                                                             CVector<JSHandle<SourceTextModule>> &stack,
-                                                             JSHandle<TaggedArray> requestModules,
-                                                             size_t &moduleRequestsIdx, int &index,
-                                                             const ExecuteTypes &executeType);
     static int HandleInstantiateException(JSHandle<SourceTextModule> &module,
                                           const CVector<JSHandle<SourceTextModule>> &stack, int result);
+    static void HandlePreInstantiationException(JSThread *thread, JSHandle<SourceTextModule> module);
     static void HandleEvaluateResult(JSThread *thread, JSHandle<SourceTextModule> &module,
                                      JSHandle<JSPromise> &capability,
                                      const CVector<JSHandle<SourceTextModule>> &stack,

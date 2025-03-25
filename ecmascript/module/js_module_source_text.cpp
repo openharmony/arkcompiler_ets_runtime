@@ -70,8 +70,8 @@ CVector<std::string> SourceTextModule::GetExportedNames(JSThread *thread, const 
         for (size_t idx = 0; idx < starExportEntriesLen; idx++) {
             ee.Update(starExportEntries->Get(idx));
             // a. Let requestedModule be ? HostResolveImportedModule(module, e.[[ModuleRequest]]).
-            JSHandle<SourceTextModule> requestedModule = JSHandle<SourceTextModule>::Cast(
-                GetRequestedModule(thread, module, requestedModules, ee->GetModuleRequestIndex()));
+            JSHandle<SourceTextModule> requestedModule =
+                GetRequestedModule(thread, requestedModules, ee->GetModuleRequestIndex());
             RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, exportedNames);
             SetExportName(thread, requestedModule, exportedNames, newExportStarSet);
             RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, exportedNames);
@@ -220,8 +220,8 @@ JSHandle<JSTaggedValue> SourceTextModule::ResolveExport(JSThread *thread, const 
     for (size_t idx = 0; idx < starExportEntriesLen; idx++) {
         ee.Update(starExportEntries->Get(idx));
         // a. Let importedModule be ? HostResolveImportedModule(module, e.[[ModuleRequest]]).
-        JSHandle<SourceTextModule> requestedModule = JSHandle<SourceTextModule>::Cast(
-            GetRequestedModule(thread, module, requestedModules, ee->GetModuleRequestIndex()));
+        JSHandle<SourceTextModule> requestedModule =
+            GetRequestedModule(thread, requestedModules, ee->GetModuleRequestIndex());
         RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
         JSHandle<JSTaggedValue> result = GetStarResolution(thread, exportName, requestedModule,
                                                            starResolution, resolveVector);
@@ -410,6 +410,33 @@ bool SourceTextModule::EvaluateNativeModule(JSThread *thread, JSHandle<SourceTex
     return true;
 }
 
+
+void SourceTextModule::HandlePreInstantiationException(JSThread *thread, JSHandle<SourceTextModule> module)
+{
+    if (module->GetStatus() != ModuleStatus::PREINSTANTIATING) {
+        return;
+    }
+    module->SetStatus(ModuleStatus::UNINSTANTIATED);
+    if (!module->GetRequestedModules().IsUndefined()) {
+        JSHandle<TaggedArray> requestedModules(thread, module->GetRequestedModules());
+        size_t requestedModulesLen = requestedModules->GetLength();
+        for (size_t idx = 0; idx < requestedModulesLen; idx++) {
+            JSHandle<JSTaggedValue> request(thread, requestedModules->Get(idx));
+            if (request->IsSourceTextModule()) {
+                HandlePreInstantiationException(thread, JSHandle<SourceTextModule>::Cast(request));
+            } else if (request->IsString()) {
+                ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+                CString requestStr = ModulePathHelper::Utf8ConvertToString(request.GetTaggedValue());
+                JSHandle<SourceTextModule> mm = moduleManager->GetImportedModule(requestStr);
+                HandlePreInstantiationException(thread, mm);
+            } else {
+                // else request is hole;
+                break;
+            }
+        }
+    }
+}
+
 int SourceTextModule::HandleInstantiateException([[maybe_unused]] JSHandle<SourceTextModule> &module,
                                                  const CVector<JSHandle<SourceTextModule>> &stack, int result)
 {
@@ -444,12 +471,16 @@ int SourceTextModule::Instantiate(JSThread *thread, const JSHandle<JSTaggedValue
     ASSERT(status == ModuleStatus::UNINSTANTIATED || status == ModuleStatus::INSTANTIATED ||
            status == ModuleStatus::EVALUATING_ASYNC || status == ModuleStatus::EVALUATED ||
            status == ModuleStatus::ERRORED);
+    // 4. Let result be InnerModuleInstantiation(module, stack, 0).
+    int result = SourceTextModule::PreModuleInstantiation(thread, module, executeType);
+    // 5. If result is an abrupt completion, then
+    if (thread->HasPendingException()) {
+        HandlePreInstantiationException(thread, module);
+        return result;
+    }
     // 3. Let stack be a new empty List.
     CVector<JSHandle<SourceTextModule>> stack;
-    // 4. Let result be InnerModuleInstantiation(module, stack, 0).
-    JSHandle<ModuleRecord> moduleRecord = JSHandle<ModuleRecord>::Cast(module);
-    int result = SourceTextModule::InnerModuleInstantiation(thread, moduleRecord, stack, 0, executeType);
-    // 5. If result is an abrupt completion, then
+    result = FinishModuleInstantiation(thread, module, stack, 0);
     if (thread->HasPendingException()) {
         return HandleInstantiateException(module, stack, result);
     }
@@ -500,76 +531,77 @@ void SourceTextModule::DFSModuleInstantiation(JSHandle<SourceTextModule> &module
     }
 }
 
-std::optional<int> SourceTextModule::HandleInnerModuleInstantiation(JSThread *thread,
-                                                                    JSHandle<SourceTextModule> &module,
-                                                                    JSMutableHandle<JSTaggedValue> &required,
-                                                                    CVector<JSHandle<SourceTextModule>> &stack,
-                                                                    JSHandle<TaggedArray> requestModules,
-                                                                    size_t &moduleRequestsIdx, int &index,
-                                                                    const ExecuteTypes &executeType)
-{
-    // a. Let requiredModule be ? HostResolveImportedModule(module, required).
-    JSMutableHandle<SourceTextModule> requiredModule(thread, thread->GlobalConstants()->GetUndefined());
-    JSHandle<JSTaggedValue> requiredVal =
-        ModuleResolver::HostResolveImportedModule(thread, module, required, executeType);
-    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, SourceTextModule::UNDEFINED_INDEX);
-    if (!SourceTextModule::IsSharedModule(JSHandle<SourceTextModule>::Cast(module))) {
-        requestModules->Set(thread, moduleRequestsIdx, requiredVal.GetTaggedValue());
-    }
-    requiredModule.Update(JSHandle<SourceTextModule>::Cast(requiredVal));
-
-    // b. Set index to ? InnerModuleInstantiation(requiredModule, stack, index).
-    JSHandle<ModuleRecord> requiredModuleRecord = JSHandle<ModuleRecord>::Cast(requiredModule);
-    index = SourceTextModule::InnerModuleInstantiation(thread,
-        requiredModuleRecord, stack, index, executeType);
-    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, index);
-    // c. Assert: requiredModule.[[Status]] is one of LINKING, LINKED, EVALUATING-ASYNC, or EVALUATED.
-    ModuleStatus requiredModuleStatus = requiredModule->GetStatus();
-    ASSERT(requiredModuleStatus == ModuleStatus::INSTANTIATING ||
-           requiredModuleStatus == ModuleStatus::INSTANTIATED ||
-           requiredModuleStatus == ModuleStatus::EVALUATING_ASYNC ||
-           requiredModuleStatus == ModuleStatus::EVALUATED ||
-           requiredModuleStatus == ModuleStatus::ERRORED);
-    // d. Assert: requiredModule.[[Status]] is "instantiating" if and only if requiredModule is in stack.
-    // e. If requiredModule.[[Status]] is "instantiating", then
-    if (requiredModuleStatus == ModuleStatus::INSTANTIATING) {
-        // d. Assert: requiredModule.[[Status]] is "instantiating" if and only if requiredModule is in stack.
-        ASSERT(std::find(stack.begin(), stack.end(), requiredModule) != stack.end());
-        // i. Assert: requiredModule is a Source Text Module Record.
-        // ii. Set module.[[DFSAncestorIndex]] to min(
-        //    module.[[DFSAncestorIndex]], requiredModule.[[DFSAncestorIndex]]).
-        int dfsAncIdx = std::min(module->GetDFSAncestorIndex(), requiredModule->GetDFSAncestorIndex());
-        module->SetDFSAncestorIndex(dfsAncIdx);
-    }
-    return std::nullopt;
-}
-
-int SourceTextModule::InnerModuleInstantiation(JSThread *thread, const JSHandle<ModuleRecord> &moduleRecord,
-    CVector<JSHandle<SourceTextModule>> &stack, int index, const ExecuteTypes &executeType)
+bool SourceTextModule::PreModuleInstantiation(JSThread *thread,
+    JSHandle<SourceTextModule> module, const ExecuteTypes &executeType)
 {
     // Add a safepoint here to check if a suspension is needed.
     thread->CheckSafepointIfSuspended();
-    // 1. If module is not a Source Text Module Record, then
-    if (!moduleRecord.GetTaggedValue().IsSourceTextModule()) {
-        STACK_LIMIT_CHECK(thread, SourceTextModule::UNDEFINED_INDEX);
-        SourceTextModule::Instantiate(thread, JSHandle<JSTaggedValue>::Cast(moduleRecord));
-        //  a. Perform ? module.Instantiate().
-        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, index);
-        //  b. Return index.
-        return index;
+    ModuleStatus status = module->GetStatus();
+    ASSERT(status != ModuleStatus::INSTANTIATING);
+    if (status != ModuleStatus::UNINSTANTIATED && status != ModuleStatus::EVALUATING) {
+        return true;
     }
-    JSHandle<SourceTextModule> module = JSHandle<SourceTextModule>::Cast(moduleRecord);
+    bool isShared = SourceTextModule::IsSharedModule(module);
+    if (isShared && status == ModuleStatus::EVALUATING) {
+        LOG_FULL(INFO) << "circular dependency occurred of shared-module";
+        return true;
+    }
+    module->SetStatus(ModuleStatus::PREINSTANTIATING);
+    JSHandle<TaggedArray> moduleRequests(thread, module->GetModuleRequests());
+    // 9. For each String required that is an element of module.[[RequestedModules]], do
+    if (!moduleRequests.GetTaggedValue().IsUndefined()) {
+        JSHandle<TaggedArray> requestedModules(thread, module->GetRequestedModules());
+        size_t moduleRequestsLen = moduleRequests->GetLength();
+        JSMutableHandle<JSTaggedValue> required(thread, thread->GlobalConstants()->GetUndefined());
+        JSHandle<TaggedArray> sharedRequestedModules(thread, thread->GlobalConstants()->GetUndefined());
+        if (isShared) {
+            sharedRequestedModules = thread->GetEcmaVM()->GetFactory()->NewTaggedArray(moduleRequestsLen);
+        }
+        for (size_t idx = 0; idx < moduleRequestsLen; idx++) {
+            required.Update(moduleRequests->Get(idx));
+            JSHandle<JSTaggedValue> requiredModule =
+                ModuleResolver::HostResolveImportedModule(thread, module, required, executeType);
+            RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
+            if (!isShared) {
+                requestedModules->Set(thread, idx, requiredModule.GetTaggedValue());
+            } else {
+                JSHandle<EcmaString> requireModuleName =
+                    thread->GetEcmaVM()->GetFactory()->NewFromUtf8(GetModuleName(requiredModule.GetTaggedValue()));
+                requestedModules->Set(thread, idx, requireModuleName.GetTaggedValue());
+                sharedRequestedModules->Set(thread, idx, requiredModule.GetTaggedValue());
+            }
+        }
+        // In case of circularImport, we need resolve separately.
+        if (isShared) {
+            requestedModules = sharedRequestedModules;
+        }
+        size_t requestedModulesLen = requestedModules->GetLength();
+        for (size_t idx = 0; idx < requestedModulesLen; idx++) {
+            JSHandle<SourceTextModule> requestedModule = GetRequestedModule(thread, requestedModules, idx);
+            RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
+            PreModuleInstantiation(thread, requestedModule, executeType);
+            RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
+        }
+    }
+    return true;
+}
+
+int SourceTextModule::FinishModuleInstantiation(JSThread *thread, JSHandle<SourceTextModule> module,
+    CVector<JSHandle<SourceTextModule>> &stack, int index)
+{
+    // Add a safepoint here to check if a suspension is needed.
+    thread->CheckSafepointIfSuspended();
+    // ArkTS module doesn't implement other module Record, delete follow branch.
+    // 1. If module is not a Source Text Module Record, then
+        //  a. Perform ? module.Instantiate().
+        //  b. Return index.
     // 2. If module.[[Status]] is one of LINKING, LINKED, EVALUATING-ASYNC, or EVALUATED, then Return index.
     ModuleStatus status = module->GetStatus();
-    if (status != ModuleStatus::UNINSTANTIATED && status != ModuleStatus::EVALUATING) {
+    if (status >= ModuleStatus::INSTANTIATING) {
         return index;
     }
-    if (SourceTextModule::IsSharedModule(module) && status == ModuleStatus::EVALUATING) {
-        LOG_FULL(INFO) << "circular dependency occurred of shared-module";
-        return index;
-    }
-    // 3. Assert: module.[[Status]] is "uninstantiated".
-    ASSERT(status == ModuleStatus::UNINSTANTIATED);
+    // 3. Assert: module.[[Status]] is "PREINSTANTIATING".
+    ASSERT(status == ModuleStatus::PREINSTANTIATING);
     // 4. Set module.[[Status]] to "instantiating".
     module->SetStatus(ModuleStatus::INSTANTIATING);
     // 5. Set module.[[DFSIndex]] to index.
@@ -581,17 +613,28 @@ int SourceTextModule::InnerModuleInstantiation(JSThread *thread, const JSHandle<
     // 8. Append module to stack.
     stack.emplace_back(module);
     // 9. For each String required that is an element of module.[[RequestedModules]], do
-    if (!module->GetModuleRequests().IsUndefined()) {
-        JSHandle<TaggedArray> moduleRequests(thread, module->GetModuleRequests());
+    if (!module->GetRequestedModules().IsUndefined()) {
         JSHandle<TaggedArray> requestedModules(thread, module->GetRequestedModules());
-        size_t moduleRequestsLen = moduleRequests->GetLength();
-        JSMutableHandle<JSTaggedValue> required(thread, thread->GlobalConstants()->GetUndefined());
-        for (size_t idx = 0; idx < moduleRequestsLen; idx++) {
-            required.Update(moduleRequests->Get(idx));
-            auto result = HandleInnerModuleInstantiation(
-                thread, module, required, stack, requestedModules, idx, index, executeType);
-            if (UNLIKELY(result.has_value())) { // exception occurs
-                return result.value();
+        size_t requestedModulesLen = requestedModules->GetLength();
+        for (size_t idx = 0; idx < requestedModulesLen; idx++) {
+            JSHandle<SourceTextModule> requiredModule =
+                GetRequestedModule(thread, requestedModules, idx);
+            index = FinishModuleInstantiation(thread, requiredModule, stack, index);
+            RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, index);
+            // c. Assert: requiredModule.[[Status]] is one of LINKING, LINKED, EVALUATING-ASYNC, or EVALUATED.
+            ModuleStatus requiredModuleStatus = requiredModule->GetStatus();
+            ASSERT(requiredModuleStatus >= ModuleStatus::INSTANTIATING &&
+                   requiredModuleStatus != ModuleStatus::EVALUATING);
+            // d. Assert: requiredModule.[[Status]] is "instantiating" if and only if requiredModule is in stack.
+            // e. If requiredModule.[[Status]] is "instantiating", then
+            if (requiredModuleStatus == ModuleStatus::INSTANTIATING) {
+                // d. Assert: requiredModule.[[Status]] is "instantiating" if and only if requiredModule is in stack.
+                ASSERT(std::find(stack.begin(), stack.end(), requiredModule) != stack.end());
+                // i. Assert: requiredModule is a Source Text Module Record.
+                // ii. Set module.[[DFSAncestorIndex]] to min(
+                //    module.[[DFSAncestorIndex]], requiredModule.[[DFSAncestorIndex]]).
+                int dfsAncIdx = std::min(module->GetDFSAncestorIndex(), requiredModule->GetDFSAncestorIndex());
+                module->SetDFSAncestorIndex(dfsAncIdx);
             }
         }
     }
@@ -640,7 +683,7 @@ void SourceTextModule::ModuleDeclarationEnvironmentSetup(JSThread *thread,
         importName.Update(in->GetImportName());
         // a. Let importedModule be ! HostResolveImportedModule(module, in.[[ModuleRequest]]).
         JSHandle<SourceTextModule> importedModule = JSHandle<SourceTextModule>::Cast(
-            GetRequestedModule(thread, module, requestedModules, in->GetModuleRequestIndex()));
+            GetRequestedModule(thread, requestedModules, in->GetModuleRequestIndex()));
         RETURN_IF_ABRUPT_COMPLETION(thread);
         // c. If in.[[ImportName]] is "*", then
         JSHandle<JSTaggedValue> starString = globalConstants->GetHandledStarString();
@@ -716,8 +759,8 @@ void SourceTextModule::ModuleDeclarationArrayEnvironmentSetup(JSThread *thread,
         in.Update(importEntries->Get(idx));
         importName.Update(in->GetImportName());
         // a. Let importedModule be ! HostResolveImportedModule(module, in.[[ModuleRequest]]).
-        JSHandle<SourceTextModule> importedModule = JSHandle<SourceTextModule>::Cast(
-            GetRequestedModule(thread, module, requestedModules, in->GetModuleRequestIndex()));
+        JSHandle<SourceTextModule> importedModule =
+            GetRequestedModule(thread, requestedModules, in->GetModuleRequestIndex());
         RETURN_IF_ABRUPT_COMPLETION(thread);
         // c. If in.[[ImportName]] is "*", then
         JSHandle<JSTaggedValue> starString = globalConstants->GetHandledStarString();
@@ -877,8 +920,7 @@ int SourceTextModule::EvaluateForConcurrent(JSThread *thread, const JSHandle<Sou
     [[maybe_unused]] ModuleStatus status = module->GetStatus();
     ASSERT((status == ModuleStatus::INSTANTIATED || status == ModuleStatus::EVALUATED));
     // 4. Let result be InnerModuleEvaluation(module, stack, 0)
-    JSHandle<ModuleRecord> moduleRecord = JSHandle<ModuleRecord>::Cast(module);
-    int result = SourceTextModule::ModuleEvaluation(thread, moduleRecord, 0, method);
+    int result = SourceTextModule::ModuleEvaluation(thread, module, 0, method);
     // 5. If result is an abrupt completion, then
     if (thread->HasPendingException()) {
         return result;
@@ -888,26 +930,11 @@ int SourceTextModule::EvaluateForConcurrent(JSThread *thread, const JSHandle<Sou
     }
 }
 
-int SourceTextModule::InnerModuleEvaluationUnsafe(JSThread *thread, const JSHandle<ModuleRecord> &moduleRecord,
+int SourceTextModule::InnerModuleEvaluationUnsafe(JSThread *thread, JSHandle<SourceTextModule> &module,
     CVector<JSHandle<SourceTextModule>> &stack, CVector<JSHandle<SourceTextModule>> &errorStack,
     int index, const void *buffer, size_t size, const ExecuteTypes &executeType)
 {
     STACK_LIMIT_CHECK(thread, index);
-    if (!moduleRecord.GetTaggedValue().IsSourceTextModule()) {
-        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, index);
-        JSTaggedValue promise = SourceTextModule::Evaluate(thread, JSHandle<SourceTextModule>::Cast(moduleRecord));
-        PromiseState state = JSPromise::Cast(moduleRecord.GetTaggedValue().GetTaggedObject())->GetPromiseState();
-        ASSERT(state != PromiseState::PENDING);
-        if (state == PromiseState::REJECTED) {
-            ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-            JSTaggedValue promiseResult = JSPromise::Cast(promise.GetTaggedObject())->GetPromiseResult();
-            JSHandle<JSObject> error =
-                factory->GetJSError(base::ErrorType::ERROR, nullptr, StackCheck::NO);
-            THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error.GetTaggedValue(), promiseResult.GetInt());
-        }
-        return index;
-    }
-    JSHandle<SourceTextModule> module = JSHandle<SourceTextModule>::Cast(moduleRecord);
     ModuleStatus status = module->GetStatus();
     if (status >= ModuleStatus::EVALUATING_ASYNC) {
         if (status == ModuleStatus::ERRORED) {
@@ -938,8 +965,7 @@ int SourceTextModule::InnerModuleEvaluationUnsafe(JSThread *thread, const JSHand
             if (module->IsLazyImportModule(idx)) {
                 continue;
             }
-            requiredModule = JSHandle<SourceTextModule>::Cast(
-                GetRequestedModule(thread, module, requestedModules, idx));
+            requiredModule = GetRequestedModule(thread, requestedModules, idx);
             RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, index);
             if (moduleLogger != nullptr) {
                 moduleLogger->InsertParentModule(module, requiredModule);
@@ -1057,16 +1083,15 @@ ModuleStatus SourceTextModule::GetModuleEvaluatingType(JSThread *thread, StateVi
     return module->GetStatus();
 }
 
-int SourceTextModule::InnerModuleEvaluation(JSThread *thread, const JSHandle<SourceTextModule> &module,
+int SourceTextModule::InnerModuleEvaluation(JSThread *thread, JSHandle<SourceTextModule> &module,
                                             CVector<JSHandle<SourceTextModule>> &stack,
                                             CVector<JSHandle<SourceTextModule>> &errorStack,
                                             int index, const void *buffer, size_t size, const ExecuteTypes &executeType)
 {
     bool isShared = IsSharedModule(module);
-    JSHandle<ModuleRecord> moduleRecord = JSHandle<ModuleRecord>::Cast(module);
     if (!isShared) {
         return SourceTextModule::InnerModuleEvaluationUnsafe(
-            thread, moduleRecord, stack, errorStack, index, buffer, size, executeType);
+            thread, module, stack, errorStack, index, buffer, size, executeType);
     } else {
         StateVisit &stateVisit = SharedModuleManager::GetInstance()->findModuleMutexWithLock(thread, module);
         ModuleStatus status = module->GetStatus();
@@ -1083,7 +1108,7 @@ int SourceTextModule::InnerModuleEvaluation(JSThread *thread, const JSHandle<Sou
         if (status == ModuleStatus::INSTANTIATED) {
             stateVisit.threadId = thread->GetThreadId();
             int idx = SourceTextModule::InnerModuleEvaluationUnsafe(
-                thread, moduleRecord, stack, errorStack, index, buffer, size, executeType);
+                thread, module, stack, errorStack, index, buffer, size, executeType);
             return idx;
         }
         return index;
@@ -1120,10 +1145,9 @@ void SourceTextModule::HandleConcurrentEvaluateResult(JSThread *thread, JSHandle
     ASSERT(stack.empty());
 }
 
-int SourceTextModule::ModuleEvaluation(JSThread *thread, const JSHandle<ModuleRecord> &moduleRecord,
+int SourceTextModule::ModuleEvaluation(JSThread *thread, const JSHandle<SourceTextModule> &module,
                                        int index, const JSHandle<Method> &method)
 {
-    JSHandle<SourceTextModule> module = JSHandle<SourceTextModule>::Cast(moduleRecord);
     if (!module->GetRequestedModules().IsUndefined()) {
         JSHandle<TaggedArray> requestedModules(thread, module->GetRequestedModules());
         size_t requestedModulesLen = requestedModules->GetLength();
@@ -1134,8 +1158,7 @@ int SourceTextModule::ModuleEvaluation(JSThread *thread, const JSHandle<ModuleRe
                 // skip the unused module
                 continue;
             }
-            JSHandle<SourceTextModule> requiredModule = JSHandle<SourceTextModule>::Cast(
-                GetRequestedModule(thread, module, requestedModules, idx));
+            JSHandle<SourceTextModule> requiredModule = GetRequestedModule(thread, requestedModules, idx);
             RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, index);
 
             ModuleTypes moduleType = requiredModule->GetTypes();
@@ -1573,8 +1596,8 @@ JSHandle<JSTaggedValue> SourceTextModule::ResolveIndirectExport(JSThread *thread
         if (JSTaggedValue::SameValue(exportName.GetTaggedValue(), ee->GetExportName())) {
             // i. Assert: module imports a specific binding for this export.
             // ii. Let importedModule be ? HostResolveImportedModule(module, e.[[ModuleRequest]]).
-            JSHandle<SourceTextModule> requestedModule = JSHandle<SourceTextModule>::Cast(
-                GetRequestedModule(thread, module, requestedModules, ee->GetModuleRequestIndex()));
+            JSHandle<SourceTextModule> requestedModule =
+                GetRequestedModule(thread, requestedModules, ee->GetModuleRequestIndex());
             RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
             // iii. Return importedModule.ResolveExport(e.[[ImportName]], resolveVector).
             importName.Update(ee->GetImportName());
@@ -2135,22 +2158,18 @@ void SourceTextModule::HandleErrorStack(JSThread *thread, const CVector<JSHandle
     }
 }
 
-JSHandle<JSTaggedValue> SourceTextModule::GetRequestedModule(JSThread *thread,
-                                                             const JSHandle<SourceTextModule> module,
-                                                             const JSHandle<TaggedArray> requestedModules,
-                                                             uint32_t idx)
+JSHandle<SourceTextModule> SourceTextModule::GetRequestedModule(JSThread *thread,
+                                                                const JSHandle<TaggedArray> requestedModules,
+                                                                uint32_t idx)
 {
-    // if module is not shared or circularImport, requestedModules may not be modules.
-    if (!requestedModules.GetTaggedValue().IsUndefined()) {
-        // directly get SourceTextModule.
-        JSHandle<JSTaggedValue> moduleA(thread, requestedModules->Get(idx));
-        if (moduleA->IsSourceTextModule()) {
-            return moduleA;
-        }
+    JSHandle<JSTaggedValue> request(thread, requestedModules->Get(idx));
+    if (request->IsSourceTextModule()) {
+        // current is normal module: directly get require SourceTextModule.
+        return JSHandle<SourceTextModule>::Cast(request);
     }
-    // resolve or find module by request string.
-    JSHandle<TaggedArray> moduleRequests(thread, module->GetModuleRequests());
-    JSHandle<JSTaggedValue> moduleRequest(thread, moduleRequests->Get(idx));
-    return ModuleResolver::HostResolveImportedModule(thread, module, moduleRequest);
+    // current is shared module: resolve or find request module by request string.
+    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+    CString requestStr = ModulePathHelper::Utf8ConvertToString(request.GetTaggedValue());
+    return moduleManager->GetImportedModule(requestStr);
 }
 } // namespace panda::ecmascript

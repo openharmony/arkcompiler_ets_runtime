@@ -65,10 +65,11 @@ void ModuleDataExtractor::ExtractModuleDatas(JSThread *thread, const JSPandaFile
     const std::vector<uint32_t> &moduleRequests = mda.getModuleRequests();
     size_t len = moduleRequests.size();
     JSHandle<TaggedArray> moduleRequestArray;
-    JSHandle<TaggedArray> requestModuleArray(thread->GlobalConstants()->GetHandledUndefined());
+    JSHandle<TaggedArray> requestModuleArray;
     bool isShared = SourceTextModule::IsSharedModule(moduleRecord);
     if (isShared) {
         moduleRequestArray = factory->NewSTaggedArray(len, JSTaggedValue::Hole(), MemSpaceType::SHARED_OLD_SPACE);
+        requestModuleArray = factory->NewSTaggedArray(len, JSTaggedValue::Hole(), MemSpaceType::SHARED_OLD_SPACE);
     } else {
         moduleRequestArray = factory->NewTaggedArray(len);
         requestModuleArray = factory->NewTaggedArray(len);
@@ -81,11 +82,8 @@ void ModuleDataExtractor::ExtractModuleDatas(JSThread *thread, const JSPandaFile
     }
     if (len > 0) {
         moduleRecord->SetModuleRequests(thread, moduleRequestArray);
-        // For .[RequestedModules], normal module will later replace by sourceTextModule
+        // For .[RequestedModules], will later replace by sourceTextModule/recordName
         moduleRecord->SetRequestedModules(thread, requestModuleArray);
-        if (isShared) {
-            moduleRecord->SetRequestedModules(thread, moduleRequestArray);
-        }
     }
 
     uint32_t lazyImportIdx = recordInfo->lazyImportIdx;
