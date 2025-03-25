@@ -112,6 +112,9 @@ JSHandle<JSTaggedValue> SourceTextModule::ResolveExportObject(JSThread *thread,
         return JSHandle<JSTaggedValue>::Cast(factory->NewResolvedIndexBindingRecord(module, -1));
     }
     if (exports->IsNativeModuleFailureInfo()) {
+        if (!EcmaVM::GetErrorInfoEnhance()) {
+            return globalConstants->GetHandledNull();
+        }
         return JSHandle<JSTaggedValue>::Cast(factory->NewResolvedIndexBindingRecord(module, -1));
     }
     if (exports->IsJSObject()) {
@@ -379,15 +382,19 @@ bool SourceTextModule::LoadNativeModule(JSThread *thread, const JSHandle<SourceT
     [[maybe_unused]] LocalScope scope(vm);
     
     auto exportObject = LoadNativeModuleImpl(vm, thread, requiredModule, moduleType);
-    if (UNLIKELY(exportObject->IsUndefined())) {
-        CString fileName = requiredModule->GetEcmaModuleFilenameString();
-        CString moduleName = ModulePathHelper::GetModuleNameWithBaseFile(fileName);
-        LOG_FULL(ERROR) << "export objects of native so is undefined, so name is " << moduleName;
+    if (UNLIKELY(exportObject->IsNativeModuleFailureInfoObject(vm))) {
+        if (EcmaVM::GetErrorInfoEnhance()) {
+            SourceTextModule::StoreModuleValue(thread, requiredModule, 0, JSNApiHelper::ToJSHandle(exportObject));
+        }
+        requiredModule->SetException(thread, JSNApiHelper::ToJSHandle(exportObject));
+        LOG_FULL(ERROR) << "export objects of native so is undefined, so name is " <<
+            requiredModule->GetEcmaModuleRecordNameString();
         return false;
     }
-    if (UNLIKELY(exportObject->IsNativeModuleFailureInfoObject(vm))) {
-        SourceTextModule::StoreModuleValue(thread, requiredModule, 0, JSNApiHelper::ToJSHandle(exportObject));
-        LOG_FULL(ERROR) << "loading fails, NativeModuleErrorObject is returned";
+    if (UNLIKELY(exportObject->IsUndefined())) {
+        CString fileName = requiredModule->GetEcmaModuleFilenameString();
+        LOG_FULL(ERROR) << "export objects of native so is undefined, so name is " <<
+            requiredModule->GetEcmaModuleRecordNameString();
         return false;
     }
     ASSERT(!thread->HasPendingException());
