@@ -18,7 +18,7 @@ module_output_path = "ets_runtime"
 
 metadata_file_path = "//arkcompiler/ets_runtime/ecmascript/js_type_metadata/"
 
-target_test_path = "/tests/unittest/ets_runtime/resource/obj/arkcompiler/ets_runtime/ecmascript/dfx/hprof/tests"
+target_test_path = "/obj/arkcompiler/ets_runtime/ecmascript/dfx/hprof/tests"
 
 test_js_path = "//arkcompiler/ets_runtime/ecmascript/dfx/hprof/tests/js_files/"
 
