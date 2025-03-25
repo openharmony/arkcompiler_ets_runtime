@@ -1095,6 +1095,34 @@ public:
     {
         return isProcessingPendingJob_.load();
     }
+    JSTaggedValue PUBLIC_API FindUnsharedConstpool(JSTaggedValue sharedConstpool);
+    JSTaggedValue PUBLIC_API FindOrCreateUnsharedConstpool(JSTaggedValue sharedConstpool);
+    void EraseUnusedConstpool(const JSPandaFile *jsPandaFile, int32_t index, int32_t constpoolIndex);
+    JSTaggedValue PUBLIC_API FindConstpool(const JSPandaFile *jsPandaFile, int32_t index);
+    // For new version instruction.
+    JSTaggedValue PUBLIC_API FindConstpool(const JSPandaFile *jsPandaFile, panda_file::File::EntityId id);
+    bool HasCachedConstpool(const JSPandaFile *jsPandaFile) const;
+    JSHandle<ConstantPool> AddOrUpdateConstpool(const JSPandaFile *jsPandaFile,
+                                                JSHandle<ConstantPool> constpool,
+                                                int32_t index = 0);
+    void SetUnsharedConstpool(JSHandle<ConstantPool> sharedConstpool, JSTaggedValue unsharedConstpool);
+    void SetUnsharedConstpool(int32_t constpoolIndex, JSTaggedValue unsharedConstpool);
+    void CreateAllConstpool(const JSPandaFile *jsPandaFile);
+    std::optional<std::reference_wrapper<CMap<int32_t, JSTaggedValue>>> FindConstpools(const JSPandaFile *jsPandaFile);
+    void UpdateConstpoolWhenDeserialAI(const std::string& fileName,
+                                       JSHandle<ConstantPool> aiCP,
+                                       int32_t index = 0);
+    JSHandle<ConstantPool> PUBLIC_API FindOrCreateConstPool(const JSPandaFile *jsPandaFile,
+                                                            panda_file::File::EntityId id);
+    void ClearCachedConstantPool()
+    {
+        cachedSharedConstpools_.clear();
+    }
+
+    JSTaggedValue *GetUnsharedConstpoolsPointer() const
+    {
+        return unsharedConstpools_;
+    }
 
 #if ECMASCRIPT_ENABLE_COLLECTING_OPCODES
     void SetBytecodeStatsStack(std::unordered_map<BytecodeInstruction::Opcode, int> &bytecodeStatsMap)
@@ -1123,11 +1151,39 @@ public:
 
 private:
     void ClearBufferData();
+    void ClearConstpoolBufferData();
     void CheckStartCpuProfiler();
     void SetMicroJobQueue(job::MicroJobQueue *queue);
     // For Internal Native MethodLiteral.
     void GenerateInternalNativeMethods();
     void CacheToGlobalConstants(JSTaggedValue value, ConstantIndex constant);
+
+    JSTaggedValue FindConstpoolFromContextCache(const JSPandaFile *jsPandaFile, int32_t index);
+    void AddContextConstpoolCache(const JSPandaFile *jsPandaFile,
+                                  JSHandle<ConstantPool> constpool,
+                                  int32_t index);
+    JSTaggedValue FindCachedConstpoolAndLoadAiIfNeeded(const JSPandaFile *jsPandaFile, int32_t index);
+    void GrowUnsharedConstpoolArray(int32_t index);
+    void ResizeUnsharedConstpoolArray(int32_t oldCapacity, int32_t minCapacity);
+    void ClearUnsharedConstpoolArray()
+    {
+        if (unsharedConstpools_ != nullptr) {
+            delete[] unsharedConstpools_;
+            unsharedConstpools_ = nullptr;
+            thread_->SetUnsharedConstpools(reinterpret_cast<uintptr_t>(nullptr));
+            thread_->SetUnsharedConstpoolsArrayLen(0);
+        }
+    }
+
+    int32_t GetUnsharedConstpoolsArrayLen() const
+    {
+        return unsharedConstpoolsArrayLen_;
+    }
+
+    void SetUnsharedConstpoolsArrayLen(int32_t len)
+    {
+        unsharedConstpoolsArrayLen_ = len;
+    }
 
     NO_MOVE_SEMANTIC(EcmaVM);
     NO_COPY_SEMANTIC(EcmaVM);
@@ -1143,6 +1199,13 @@ private:
     EcmaStringTable *stringTable_ {nullptr};
     PUBLIC_API static bool multiThreadCheck_;
     static bool errorInfoEnhanced_;
+
+    // for constpool.The shared constpool includes string, method, sendable classLiteral, etc.
+    // The unshared constpool includes objectLiteral, arrayLiteral, unsendable classLiteral, etc.
+    CMap<const JSPandaFile *, CMap<int32_t, JSTaggedValue>> cachedSharedConstpools_ {};
+    JSTaggedValue* unsharedConstpools_ = nullptr;
+    int32_t unsharedConstpoolsArrayLen_ = UNSHARED_CONSTANTPOOL_COUNT;
+    static constexpr int32_t SHARED_CONSTPOOL_KEY_NOT_FOUND = INT32_MAX; // INT32_MAX :invalid value.
 
     //apiVersion states
     uint32_t apiVersion_ = 8;

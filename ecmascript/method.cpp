@@ -123,7 +123,7 @@ JSHandle<Method> Method::Create(JSThread *thread, const JSPandaFile *jsPandaFile
 
     JSHandle<Method> method;
     method = vm->GetFactory()->NewSMethod(methodLiteral);
-    JSHandle<ConstantPool> newConstpool = thread->GetCurrentEcmaContext()->FindOrCreateConstPool(jsPandaFile, methodId);
+    JSHandle<ConstantPool> newConstpool = vm->FindOrCreateConstPool(jsPandaFile, methodId);
     method->SetConstantPool(thread, newConstpool);
     return method;
 }

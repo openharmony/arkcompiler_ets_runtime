@@ -42,7 +42,7 @@ uint32_t PGOTypeManager::GetConstantPoolIDByMethodOffset(const uint32_t methodOf
 JSTaggedValue PGOTypeManager::GetConstantPoolByMethodOffset(const uint32_t methodOffset) const
 {
     uint32_t cpId = GetConstantPoolIDByMethodOffset(methodOffset);
-    return thread_->GetCurrentEcmaContext()->FindConstpool(curJSPandaFile_, cpId);
+    return thread_->GetEcmaVM()->FindConstpool(curJSPandaFile_, cpId);
 }
 
 JSTaggedValue PGOTypeManager::GetStringFromConstantPool(const uint32_t methodOffset, const uint16_t cpIdx) const

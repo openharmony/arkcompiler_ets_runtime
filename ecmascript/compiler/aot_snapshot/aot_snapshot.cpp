@@ -68,8 +68,7 @@ void AOTSnapshot::GenerateSnapshotConstantPools(const CMap<int32_t, JSTaggedValu
 void AOTSnapshot::StoreConstantPoolInfo(BytecodeInfoCollector *bcInfoCollector)
 {
     const JSPandaFile *jsPandaFile = bcInfoCollector->GetJSPandaFile();
-    const CMap<int32_t, JSTaggedValue> &allConstantPools = vm_->GetJSThread()->
-        GetCurrentEcmaContext()->FindConstpools(jsPandaFile).value();
+    const CMap<int32_t, JSTaggedValue> &allConstantPools = vm_->FindConstpools(jsPandaFile).value();
     pgo::ApEntityId fileId = INVALID_INDEX;
     if (!pgo::PGOProfilerManager::GetInstance()->GetPandaFileId(jsPandaFile->GetJSPandaFileDesc(), fileId)) {
         LOG_COMPILER(ERROR) << "StoreConstantPoolInfo failed. no file id found for "

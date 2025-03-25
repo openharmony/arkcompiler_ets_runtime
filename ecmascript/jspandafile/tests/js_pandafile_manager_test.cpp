@@ -154,11 +154,11 @@ HWTEST_F_L0(JSPandaFileManagerTest, MultiEcmaVM_Add_Find_Remove_JSPandaFile)
     pfManager->AddJSPandaFile(pf1);
     pfManager->AddJSPandaFile(pf2);
 
-    EcmaContext *context = instance->GetJSThread()->GetCurrentEcmaContext();
+    EcmaVM *vm = instance->GetJSThread()->GetEcmaVM();
     JSHandle<ConstantPool> constpool1 = instance->GetFactory()->NewSConstantPool(1);
     JSHandle<ConstantPool> constpool2 = instance->GetFactory()->NewSConstantPool(2);
-    constpool1 = context->AddOrUpdateConstpool(pf1.get(), constpool1, 0);
-    constpool2 = context->AddOrUpdateConstpool(pf2.get(), constpool2, 0);
+    constpool1 = vm->AddOrUpdateConstpool(pf1.get(), constpool1, 0);
+    constpool2 = vm->AddOrUpdateConstpool(pf2.get(), constpool2, 0);
 
     std::thread t1([&]() {
         EcmaVM *instance1;
@@ -168,7 +168,7 @@ HWTEST_F_L0(JSPandaFileManagerTest, MultiEcmaVM_Add_Find_Remove_JSPandaFile)
         std::shared_ptr<JSPandaFile> loadedPf1 = pfManager->LoadJSPandaFile(
             thread1, filename1, JSPandaFile::ENTRY_MAIN_FUNCTION, false, ExecuteTypes::STATIC);
         EXPECT_TRUE(pf1 == loadedPf1);
-        EXPECT_TRUE(instance1->GetJSThread()->GetCurrentEcmaContext()->HasCachedConstpool(pf1.get()));
+        EXPECT_TRUE(instance1->GetJSThread()->GetEcmaVM()->HasCachedConstpool(pf1.get()));
         TestHelper::DestroyEcmaVMWithScope(instance1, scope1); // Remove 'instance1' when ecmaVM destruct.
     });
     {
@@ -202,10 +202,9 @@ void CreateJSPandaFileAndConstpool(EcmaVM *vm)
 
     [[maybe_unused]] EcmaHandleScope handleScope(vm->GetJSThread());
     JSHandle<ConstantPool> constpool = vm->GetFactory()->NewSConstantPool(1);
-    auto context = vm->GetJSThread()->GetCurrentEcmaContext();
-    constpool = context->AddOrUpdateConstpool(pf.get(), constpool, 0);
+    constpool = vm->AddOrUpdateConstpool(pf.get(), constpool, 0);
     JSHandle<ConstantPool> newConstpool = vm->GetFactory()->NewConstantPool(1);
-    context->SetUnsharedConstpool(constpool, newConstpool.GetTaggedValue());
+    vm->SetUnsharedConstpool(constpool, newConstpool.GetTaggedValue());
 }
 
 HWTEST_F_L0(JSPandaFileManagerTest, GC_Add_Find_Remove_JSPandaFile)

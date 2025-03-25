@@ -196,39 +196,11 @@ public:
     JSHandle<ecmascript::JSTaggedValue> GetAndClearEcmaUncaughtException() const;
     JSHandle<ecmascript::JSTaggedValue> GetEcmaUncaughtException() const;
 
-    JSHandle<ConstantPool> AddOrUpdateConstpool(const JSPandaFile *jsPandaFile,
-                                                JSHandle<ConstantPool> constpool,
-                                                int32_t index = 0);
-    void AddContextConstpoolCache(const JSPandaFile *jsPandaFile,
-                                  JSHandle<ConstantPool> constpool,
-                                  int32_t index);
-
-    void UpdateConstpoolWhenDeserialAI(const std::string& fileName,
-                                       JSHandle<ConstantPool> aiCP,
-                                       int32_t index = 0);
-
-    bool HasCachedConstpool(const JSPandaFile *jsPandaFile) const;
-
-    void SetUnsharedConstpool(JSHandle<ConstantPool> sharedConstpool, JSTaggedValue unsharedConstpool);
-    void SetUnsharedConstpool(int32_t constpoolIndex, JSTaggedValue unsharedConstpool);
-
-    JSTaggedValue PUBLIC_API FindConstpool(const JSPandaFile *jsPandaFile, int32_t index);
-    // For new version instruction.
-    JSTaggedValue PUBLIC_API FindConstpool(const JSPandaFile *jsPandaFile, panda_file::File::EntityId id);
-    JSTaggedValue PUBLIC_API FindOrCreateUnsharedConstpool(JSTaggedValue sharedConstpool);
-    JSTaggedValue PUBLIC_API FindUnsharedConstpool(JSTaggedValue sharedConstpool);
     void PUBLIC_API LoadProtoTransitionTable(JSTaggedValue constpool);
     void PUBLIC_API ResetProtoTransitionTableOnConstpool(JSTaggedValue constpool);
-    JSTaggedValue FindCachedConstpoolAndLoadAiIfNeeded(const JSPandaFile *jsPandaFile, int32_t index);
-    void EraseUnusedConstpool(const JSPandaFile *jsPandaFile, int32_t index, int32_t constpoolIndex);
-    std::optional<std::reference_wrapper<CMap<int32_t, JSTaggedValue>>> FindConstpools(
-        const JSPandaFile *jsPandaFile);
 
-    JSHandle<ConstantPool> PUBLIC_API FindOrCreateConstPool(const JSPandaFile *jsPandaFile,
-                                                            panda_file::File::EntityId id);
     void SetPrototypeForTransitions(JSTaggedValue trans, JSTaggedValue proto);
     void SetObjectFunctionFromConstPool(JSHandle<ConstantPool> newConstPool);
-    void CreateAllConstpool(const JSPandaFile *jsPandaFile);
 
     JSHandle<GlobalEnv> GetGlobalEnv() const;
     bool GlobalEnvIsHole()
@@ -338,7 +310,6 @@ public:
         ClearMegaStat();
     }
 #endif
-    void ClearBufferData();
     const GlobalEnvConstants *GlobalConstants() const
     {
         return &globalConst_;
@@ -391,11 +362,6 @@ public:
     void ClearKeptObjects();
     void AddToKeptObjects(JSHandle<JSTaggedValue> value);
 
-    void ClearCachedConstantPool()
-    {
-        cachedSharedConstpools_.clear();
-    }
-
 private:
     void CJSExecution(JSHandle<JSFunction> &func, JSHandle<JSTaggedValue> &thisArg,
                       const JSPandaFile *jsPandaFile, std::string_view entryPoint);
@@ -414,29 +380,6 @@ private:
     bool LoadAOTFiles(const std::string &aotFileName,
                       std::function<bool(std::string fileName, uint8_t **buff, size_t *buffSize)> cb);
 #endif
-    JSTaggedValue FindConstpoolFromContextCache(const JSPandaFile *jsPandaFile, int32_t index);
-
-    void GrowUnsharedConstpoolArray(int32_t index);
-    void ResizeUnsharedConstpoolArray(int32_t oldCapacity, int32_t minCapacity);
-    void ClearUnsharedConstpoolArray()
-    {
-        if (unsharedConstpools_ != nullptr) {
-            delete[] unsharedConstpools_;
-            unsharedConstpools_ = nullptr;
-            thread_->SetUnsharedConstpools(reinterpret_cast<uintptr_t>(nullptr));
-            thread_->SetUnsharedConstpoolsArrayLen(0);
-        }
-    }
-
-    int32_t GetUnsharedConstpoolsArrayLen() const
-    {
-        return unsharedConstpoolsArrayLen_;
-    }
-
-    void SetUnsharedConstpoolsArrayLen(int32_t len)
-    {
-        unsharedConstpoolsArrayLen_ = len;
-    }
 
     NO_MOVE_SEMANTIC(EcmaContext);
     NO_COPY_SEMANTIC(EcmaContext);
@@ -449,11 +392,6 @@ private:
 
     // VM execution states.
     JSTaggedValue globalEnv_ {JSTaggedValue::Hole()};
-
-    CMap<const JSPandaFile *, CMap<int32_t, JSTaggedValue>> cachedSharedConstpools_ {};
-    JSTaggedValue* unsharedConstpools_ = nullptr;
-    int32_t unsharedConstpoolsArrayLen_ = UNSHARED_CONSTANTPOOL_COUNT;
-    static constexpr int32_t SHARED_CONSTPOOL_KEY_NOT_FOUND = INT32_MAX; // INT32_MAX :invalid value.
 
     // for HotReload of module.
     CMap<CString, JSHandle<JSTaggedValue>> cachedPatchModules_ {};

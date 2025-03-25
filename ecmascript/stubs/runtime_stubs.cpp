@@ -1378,7 +1378,7 @@ DEF_RUNTIME_STUBS(GetObjectLiteralFromCache)
     JSHandle<JSTaggedValue> constpool = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
     JSTaggedValue index = GetArg(argv, argc, 1);  // 1: means the first parameter
     JSHandle<JSTaggedValue> module = GetHArg<JSTaggedValue>(argv, argc, 2);  // 2: means the second parameter
-    JSTaggedValue cp = thread->GetCurrentEcmaContext()->FindOrCreateUnsharedConstpool(constpool.GetTaggedValue());
+    JSTaggedValue cp = thread->GetEcmaVM()->FindOrCreateUnsharedConstpool(constpool.GetTaggedValue());
     return ConstantPool::GetLiteralFromCache<ConstPoolType::OBJECT_LITERAL>(
         thread, cp, index.GetInt(), module.GetTaggedValue()).GetRawData();
 }
@@ -1389,7 +1389,7 @@ DEF_RUNTIME_STUBS(GetArrayLiteralFromCache)
     JSHandle<JSTaggedValue> constpool = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
     JSTaggedValue index = GetArg(argv, argc, 1);  // 1: means the first parameter
     JSHandle<JSTaggedValue> module = GetHArg<JSTaggedValue>(argv, argc, 2);  // 2: means the second parameter
-    JSTaggedValue cp = thread->GetCurrentEcmaContext()->FindOrCreateUnsharedConstpool(constpool.GetTaggedValue());
+    JSTaggedValue cp = thread->GetEcmaVM()->FindOrCreateUnsharedConstpool(constpool.GetTaggedValue());
     return ConstantPool::GetLiteralFromCache<ConstPoolType::ARRAY_LITERAL>(
         thread, cp, index.GetInt(), module.GetTaggedValue()).GetRawData();
 }

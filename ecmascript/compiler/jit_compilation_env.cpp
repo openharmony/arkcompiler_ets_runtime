@@ -98,7 +98,7 @@ JSTaggedValue JitCompilationEnv::FindOrCreateUnsharedConstpool([[maybe_unused]] 
         return JSTaggedValue::Undefined();
     }
     ASSERT(!ConstantPool::CheckUnsharedConstpool(constpool));
-    JSTaggedValue unSharedConstpool = hostThread_->GetCurrentEcmaContext()->FindUnsharedConstpool(constpool);
+    JSTaggedValue unSharedConstpool = hostThread_->GetEcmaVM()->FindUnsharedConstpool(constpool);
     return unSharedConstpool;
 }
 

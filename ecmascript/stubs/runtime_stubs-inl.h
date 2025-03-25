@@ -951,7 +951,7 @@ JSTaggedValue RuntimeStubs::RuntimeCreateClassWithBuffer(JSThread *thread,
     JSMutableHandle<JSTaggedValue> chc(thread, JSTaggedValue::Undefined());
 
     JSHandle<ConstantPool> cp(thread,
-        thread->GetCurrentEcmaContext()->FindOrCreateUnsharedConstpool(constpoolHandle.GetTaggedValue()));
+        thread->GetEcmaVM()->FindOrCreateUnsharedConstpool(constpoolHandle.GetTaggedValue()));
     JSTaggedValue val = cp->GetObjectFromCache(literalId);
     if (val.IsAOTLiteralInfo()) {
         JSHandle<AOTLiteralInfo> aotLiteralInfo(thread, val);
@@ -2304,7 +2304,7 @@ JSTaggedValue RuntimeStubs::RuntimeDefinefunc(JSThread *thread, const JSHandle<J
     //AOT ihc infos always in unshareConstpool
     //If is runing on AOT,unshareConstpool is definitely not a hole
     //So wo can skip if unshareConstpool is hole
-    JSTaggedValue unsharedCp = thread->GetCurrentEcmaContext()->FindUnsharedConstpool(constpoolHandle.GetTaggedValue());
+    JSTaggedValue unsharedCp = thread->GetEcmaVM()->FindUnsharedConstpool(constpoolHandle.GetTaggedValue());
     if (!unsharedCp.IsHole()) {
         JSHandle<ConstantPool> unsharedCpHandle(thread, unsharedCp);
         JSTaggedValue val = unsharedCpHandle->GetObjectFromCache(methodId);
@@ -3221,7 +3221,7 @@ JSTaggedValue RuntimeStubs::RuntimeCreatePrivateProperty(JSThread *thread, JSTag
     JSHandle<ConstantPool> handleConstpool(thread, constpool);
     JSHandle<JSTaggedValue> handleModule(thread, module);
     JSHandle<ConstantPool> unsharedConstpoolHandle(
-        thread, thread->GetCurrentEcmaContext()->FindOrCreateUnsharedConstpool(constpool));
+        thread, thread->GetEcmaVM()->FindOrCreateUnsharedConstpool(constpool));
     CString entry = ModuleManager::GetRecordName(handleModule.GetTaggedValue());
     uint32_t length = handleLexicalEnv->GetLength() - LexicalEnv::RESERVED_ENV_LENGTH;
     uint32_t startIndex = 0;

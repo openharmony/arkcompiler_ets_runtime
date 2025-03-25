@@ -153,10 +153,10 @@
       panda::ecmascript::Deoptimizier::EncodeDeoptVregIndex*;
       panda::ecmascript::DynChunk::Emit*;
       panda::ecmascript::DynChunk::EmitChar*;
-      panda::ecmascript::EcmaContext::FindConstpool*;
-      panda::ecmascript::EcmaContext::FindOrCreateConstPool*;
-      panda::ecmascript::EcmaContext::FindUnsharedConstpool*;
-      panda::ecmascript::EcmaContext::FindOrCreateUnsharedConstpool*;
+      panda::ecmascript::EcmaVM::FindConstpool*;
+      panda::ecmascript::EcmaVM::FindOrCreateConstPool*;
+      panda::ecmascript::EcmaVM::FindUnsharedConstpool*;
+      panda::ecmascript::EcmaVM::FindOrCreateUnsharedConstpool*;
       panda::ecmascript::EcmaRuntimeStat::StartCount*;
       panda::ecmascript::EcmaRuntimeStat::StopCount*;
       panda::ecmascript::EcmaString::ComputeHashcode*;
