@@ -14,6 +14,7 @@
  */
 
 #include "ecmascript/builtins/builtins_promise.h"
+#include "ecmascript/builtins/builtins_promise_handler.h"
 #include "ecmascript/builtins/builtins_promise_job.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/interpreter/interpreter.h"
@@ -230,45 +231,14 @@ JSTaggedValue BuiltinsPromise::Resolve(EcmaRuntimeCallInfo *argv)
     JSThread *thread = argv->GetThread();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
-    const GlobalEnvConstants *globalConst = thread->GlobalConstants();
     // 1. Let C be the this value.
     JSHandle<JSTaggedValue> thisValue = GetThis(argv);
     // 2. If Type(C) is not Object, throw a TypeError exception.
     if (!thisValue->IsECMAObject()) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "Resolve: this value is not object", JSTaggedValue::Exception());
     }
-    // 3. If IsPromise(x) is true,
-    //     a. Let xConstructor be Get(x, "constructor").
-    //     b. ReturnIfAbrupt(xConstructor).
-    //     c. If SameValue(xConstructor, C) is true, return x.
     JSHandle<JSTaggedValue> xValue = BuiltinsBase::GetCallArg(argv, 0);
-    if (xValue->IsJSPromise()) {
-        JSHandle<JSTaggedValue> ctorKey(globalConst->GetHandledConstructorString());
-        JSHandle<JSTaggedValue> ctorValue = JSObject::GetProperty(thread, xValue, ctorKey).GetValue();
-        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        if (JSTaggedValue::SameValue(ctorValue.GetTaggedValue(), thisValue.GetTaggedValue())) {
-            JSHandle<JSObject> value = JSHandle<JSObject>::Cast(xValue);
-            return value.GetTaggedValue();
-        }
-    }
-    // 4. Let promiseCapability be NewPromiseCapability(C).
-    // 5. ReturnIfAbrupt(promiseCapability).
-    JSHandle<PromiseCapability> promiseCapability = JSPromise::NewPromiseCapability(thread, thisValue);
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-
-    // 6. Let resolveResult be Call(promiseCapability.[[Resolve]], undefined, «x»).
-    // 7. ReturnIfAbrupt(resolveResult).
-    JSHandle<JSTaggedValue> resolve(thread, promiseCapability->GetResolve());
-    JSHandle<JSTaggedValue> undefined = globalConst->GetHandledUndefined();
-    EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, resolve, undefined, undefined, 1);
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    info->SetCallArg(xValue.GetTaggedValue());
-    JSFunction::Call(info);
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-
-    // 8. Return promiseCapability.[[Promise]].
-    JSHandle<JSObject> promise(thread, promiseCapability->GetPromise());
-    return promise.GetTaggedValue();
+    return BuiltinsPromiseHandler::PromiseResolve(thread, thisValue, xValue).GetTaggedValue();
 }
 
 // 25.4.4.4 Promise.reject ( r )

@@ -29,9 +29,6 @@ JSTaggedValue BuiltinsPromiseHandler::Resolve(EcmaRuntimeCallInfo *argv)
     BUILTINS_API_TRACE(argv->GetThread(), PromiseHandler, Resolve);
     JSThread *thread = argv->GetThread();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    auto ecmaVm = thread->GetEcmaVM();
-    JSHandle<GlobalEnv> env = ecmaVm->GetGlobalEnv();
 
     // 1. Assert: F has a [[Promise]] internal slot whose value is an Object.
     JSHandle<JSPromiseReactionsFunction> resolve = JSHandle<JSPromiseReactionsFunction>::Cast(GetConstructor(argv));
@@ -41,60 +38,14 @@ JSTaggedValue BuiltinsPromiseHandler::Resolve(EcmaRuntimeCallInfo *argv)
     // 3. Let alreadyResolved be the value of F's [[AlreadyResolved]] internal slot.
     // 4. If alreadyResolved.[[value]] is true, return undefined.
     // 5. Set alreadyResolved.[[value]] to true.
-    JSHandle<JSPromise> resolvePromise(thread, resolve->GetPromise());
     JSHandle<PromiseRecord> alreadyResolved(thread, resolve->GetAlreadyResolved());
     if (alreadyResolved->GetValue().IsTrue()) {
         return JSTaggedValue::Undefined();
     }
     alreadyResolved->SetValue(thread, JSTaggedValue::True());
-
-    // 6. If SameValue(resolution, promise) is true, then
-    //     a. Let selfResolutionError be a newly created TypeError object.
-    //     b. Return RejectPromise(promise, selfResolutionError).
+    JSHandle<JSPromise> resolvePromise(thread, resolve->GetPromise());
     JSHandle<JSTaggedValue> resolution = BuiltinsBase::GetCallArg(argv, 0);
-    if (JSTaggedValue::SameValue(resolution.GetTaggedValue(), resolvePromise.GetTaggedValue())) {
-        JSHandle<JSObject> resolutionError = factory->GetJSError(ErrorType::TYPE_ERROR,
-            "Resolve: The promise and resolution cannot be the same.", StackCheck::NO);
-        JSPromise::RejectPromise(thread, resolvePromise, JSHandle<JSTaggedValue>::Cast(resolutionError));
-        return JSTaggedValue::Undefined();
-    }
-    // 7. If Type(resolution) is not Object, then
-    //     a. Return FulfillPromise(promise, resolution).
-    if (!resolution.GetTaggedValue().IsECMAObject()) {
-        JSPromise::FulfillPromise(thread, resolvePromise, resolution);
-        return JSTaggedValue::Undefined();
-    }
-    // 8. Let then be Get(resolution, "then").
-    // 9. If then is an abrupt completion, then
-    //     a. Return RejectPromise(promise, then.[[value]]).
-    JSHandle<JSTaggedValue> thenKey(thread->GlobalConstants()->GetHandledPromiseThenString());
-    JSHandle<JSTaggedValue> thenValue = JSObject::GetProperty(thread, resolution, thenKey).GetValue();
-    if (thread->HasPendingException()) {
-        if (!thenValue->IsJSError()) {
-            thenValue = JSHandle<JSTaggedValue>(thread, thread->GetException());
-        }
-        thread->ClearException();
-        return JSPromise::RejectPromise(thread, resolvePromise, thenValue);
-    }
-    // 10. Let thenAction be then.[[value]].
-    // 11. If IsCallable(thenAction) is false, then
-    //     a. Return FulfillPromise(promise, resolution).
-    if (!thenValue->IsCallable()) {
-        JSPromise::FulfillPromise(thread, resolvePromise, resolution);
-        return JSTaggedValue::Undefined();
-    }
-    // 12. Perform EnqueueJob ("PromiseJobs", PromiseResolveThenableJob, «promise, resolution, thenAction»)
-    JSHandle<TaggedArray> arguments = factory->NewTaggedArray(3);  // 3: 3 means three args stored in array
-    arguments->Set(thread, 0, resolvePromise);
-    arguments->Set(thread, 1, resolution);
-    arguments->Set(thread, 2, thenValue);  // 2: 2 means index of array is 2
-
-    JSHandle<JSFunction> promiseResolveThenableJob(env->GetPromiseResolveThenableJob());
-    JSHandle<job::MicroJobQueue> job = ecmaVm->GetMicroJobQueue();
-    job::MicroJobQueue::EnqueueJob(thread, job, job::QueueType::QUEUE_PROMISE, promiseResolveThenableJob, arguments);
-
-    // 13. Return undefined.
-    return JSTaggedValue::Undefined();
+    return InnerResolve(thread, resolvePromise, resolution);
 }
 
 // es6 25.4.1.3.1 Promise Reject Functions
@@ -341,6 +292,7 @@ JSHandle<JSTaggedValue> BuiltinsPromiseHandler::PromiseResolve(JSThread *thread,
 {
     BUILTINS_API_TRACE(thread, PromiseHandler, PromiseResolve);
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     // 1. Assert: Type(C) is Object.
     ASSERT_PRINT(constructor->IsECMAObject(), "PromiseResolve : is not callable");
     // 2. If IsPromise(x) is true, then
@@ -353,6 +305,12 @@ JSHandle<JSTaggedValue> BuiltinsPromiseHandler::PromiseResolve(JSThread *thread,
         if (JSTaggedValue::SameValue(ctorValue, constructor)) {
             return xValue;
         }
+    }
+    if (constructor == env->GetPromiseFunction()) {
+        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+        JSHandle<JSPromise> promise = factory->NewJSPromise();
+        InnerResolve(thread, promise, xValue);
+        return JSHandle<JSTaggedValue>(thread, promise.GetTaggedValue());
     }
     // 3. Let promiseCapability be ? NewPromiseCapability(C).
     // 4. ReturnIfAbrupt(promiseCapability)
@@ -562,6 +520,59 @@ JSTaggedValue BuiltinsPromiseHandler::AnyRejectElementFunction(EcmaRuntimeCallIn
         return JSFunction::Call(info);
     }
     // 11. Return undefined.
+    return JSTaggedValue::Undefined();
+}
+
+JSTaggedValue BuiltinsPromiseHandler::InnerResolve(JSThread *thread, const JSHandle<JSPromise> &promise,
+    const JSHandle<JSTaggedValue> &resolution)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    auto ecmaVm = thread->GetEcmaVM();
+    JSHandle<GlobalEnv> env = ecmaVm->GetGlobalEnv();
+    // 6. If SameValue(resolution, promise) is true, then
+    //     a. Let selfResolutionError be a newly created TypeError object.
+    //     b. Return RejectPromise(promise, selfResolutionError).
+    if (JSTaggedValue::SameValue(resolution.GetTaggedValue(), promise.GetTaggedValue())) {
+        JSHandle<JSObject> resolutionError = factory->GetJSError(ErrorType::TYPE_ERROR,
+            "Resolve: The promise and resolution cannot be the same.", StackCheck::NO);
+        JSPromise::RejectPromise(thread, promise, JSHandle<JSTaggedValue>::Cast(resolutionError));
+        return JSTaggedValue::Undefined();
+    }
+    // 7. If Type(resolution) is not Object, then
+    //     a. Return FulfillPromise(promise, resolution).
+    if (!resolution.GetTaggedValue().IsECMAObject()) {
+        JSPromise::FulfillPromise(thread, promise, resolution);
+        return JSTaggedValue::Undefined();
+    }
+    // 8. Let then be Get(resolution, "then").
+    // 9. If then is an abrupt completion, then
+    //     a. Return RejectPromise(promise, then.[[value]]).
+    JSHandle<JSTaggedValue> thenKey(thread->GlobalConstants()->GetHandledPromiseThenString());
+    JSHandle<JSTaggedValue> thenValue = JSObject::GetProperty(thread, resolution, thenKey).GetValue();
+    if (thread->HasPendingException()) {
+        if (!thenValue->IsJSError()) {
+            thenValue = JSHandle<JSTaggedValue>(thread, thread->GetException());
+        }
+        thread->ClearException();
+        return JSPromise::RejectPromise(thread, promise, thenValue);
+    }
+    // 10. Let thenAction be then.[[value]].
+    // 11. If IsCallable(thenAction) is false, then
+    //     a. Return FulfillPromise(promise, resolution).
+    if (!thenValue->IsCallable()) {
+        JSPromise::FulfillPromise(thread, promise, resolution);
+        return JSTaggedValue::Undefined();
+    }
+    // 12. Perform EnqueueJob ("PromiseJobs", PromiseResolveThenableJob, «promise, resolution, thenAction»)
+    JSHandle<TaggedArray> arguments = factory->NewTaggedArray(3);  // 3: 3 means three args stored in array
+    arguments->Set(thread, 0, promise);
+    arguments->Set(thread, 1, resolution);
+    arguments->Set(thread, 2, thenValue);  // 2: 2 means index of array is 2
+
+    JSHandle<JSFunction> promiseResolveThenableJob(env->GetPromiseResolveThenableJob());
+    JSHandle<job::MicroJobQueue> job = thread->GetEcmaVM()->GetMicroJobQueue();
+    job::MicroJobQueue::EnqueueJob(thread, job, job::QueueType::QUEUE_PROMISE, promiseResolveThenableJob, arguments);
+        // 13. Return undefined.
     return JSTaggedValue::Undefined();
 }
 }  // namespace panda::ecmascript::builtins
