@@ -115,6 +115,7 @@ group("ark_js_moduletest") {
     "multiprotoic",
     "negintmin",
     "newobjdynrange",
+    "newtaggedsubarray",
     "nextinternalslowpath",
     "object",
     "objectcloneproperties",
@@ -228,6 +229,7 @@ group("ark_js_assert_moduletest") {
   assert_test_list = [
     "addpropertybyname",
     "getvaluefrombuffer",
+    "typedarraymap",
   ]
 
   deps = []
@@ -343,6 +345,7 @@ group("ark_asm_test") {
     "multiprotoic",
     "negintmin",
     "newobjdynrange",
+    "newtaggedsubarray",
     "nextinternalslowpath",
     "number",
     "objectcloneproperties",
@@ -439,6 +442,7 @@ group("ark_asm_assert_test") {
   assert_test_list = [
     "addpropertybyname",
     "getvaluefrombuffer",
+    "typedarraymap",
   ]
   deps = []
 
@@ -537,6 +541,7 @@ group("ark_asm_single_step_test") {
     "multiprotoic",
     "negintmin",
     "newobjdynrange",
+    "newtaggedsubarray",
     "nextinternalslowpath",
     "objectcloneproperties",
     "objecthasownproperty",
@@ -625,6 +630,7 @@ group("ark_asm_single_step_assert_test") {
   assert_test_list = [
     "addpropertybyname",
     "getvaluefrombuffer",
+    "typedarraymap",
   ]
 
   deps = []
