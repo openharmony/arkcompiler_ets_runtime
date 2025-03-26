@@ -182,13 +182,14 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
             return VisitTypeConvert(gate);
         case OpCode::FRAME_STATE:
             return VisitFrameState(gate);
+        case OpCode::OBJECT_TYPE_CHECK:
+            return VisitObjectTypeCheck(gate);
         case OpCode::CALL_GETTER:
         case OpCode::CALL_SETTER:
         case OpCode::CONSTRUCT:
         case OpCode::CALL_NEW:
         case OpCode::TYPEDCALL:
         case OpCode::TYPEDFASTCALL:
-        case OpCode::OBJECT_TYPE_CHECK:
         case OpCode::CALLINTERNAL:
             return VisitWithConstantValue(gate, PROPERTY_LOOKUP_RESULT_INDEX);
         case OpCode::LOOP_EXIT_VALUE:
@@ -960,6 +961,18 @@ GateRef NumberSpeculativeRetype::VisitOthersWithoutConvert(GateRef gate, GateTyp
 {
     if (IsRetype()) {
         return SetOutputType(gate, outputType);
+    }
+    return Circuit::NullGate();
+}
+
+GateRef NumberSpeculativeRetype::VisitObjectTypeCheck(GateRef gate)
+{
+    if (IsRetype()) {
+        return SetOutputType(gate, GateType::AnyType());
+    }
+    if (IsConvert()) {
+        GateRef input = acc_.GetValueIn(gate, 0);
+        acc_.ReplaceValueIn(gate, ConvertToTagged(input), 0);
     }
     return Circuit::NullGate();
 }

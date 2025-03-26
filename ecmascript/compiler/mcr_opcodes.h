@@ -170,7 +170,8 @@ namespace panda::ecmascript::kungfu {
 
 #define MCR_GATE_META_DATA_LIST_WITH_PC_OFFSET(V)                                                            \
     V(TypedCallBuiltin, TYPED_CALL_BUILTIN, GateFlags::CHECKABLE, 1, 1, value)                               \
-    V(TypedCallBuiltinSideEffect, TYPED_CALL_BUILTIN_SIDE_EFFECT, GateFlags::HAS_FRAME_STATE, 1, 1, value)
+    V(TypedCallBuiltinSideEffect, TYPED_CALL_BUILTIN_SIDE_EFFECT, GateFlags::HAS_FRAME_STATE, 1, 1, value)   \
+    V(ObjectTypeCheck, OBJECT_TYPE_CHECK, GateFlags::CHECKABLE, 1, 1, value)
 
 #define MCR_GATE_META_DATA_LIST_FOR_CALL(V)                                    \
     V(TypedCall, TYPEDCALL, GateFlags::HAS_FRAME_STATE, 1, 1, value)           \
@@ -183,7 +184,6 @@ namespace panda::ecmascript::kungfu {
     V(LoadElement,                 LOAD_ELEMENT,                   GateFlags::NO_WRITE,  1, 1, 2)       \
     V(StoreElement,                STORE_ELEMENT,                  GateFlags::NONE_FLAG, 1, 1, 3)       \
     V(StoreMemory,                 STORE_MEMORY,                   GateFlags::NONE_FLAG, 1, 1, 3)       \
-    V(ObjectTypeCheck,             OBJECT_TYPE_CHECK,              GateFlags::CHECKABLE, 1, 1, 2)       \
     V(StableArrayCheck,            STABLE_ARRAY_CHECK,             GateFlags::CHECKABLE, 1, 1, 1)       \
     V(LoadArrayLength,             LOAD_ARRAY_LENGTH,              GateFlags::NO_WRITE,  1, 1, 1)       \
     V(ElementsKindCheck,           ELEMENTSKIND_CHECK,             GateFlags::CHECKABLE, 1, 1, 1)       \

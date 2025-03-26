@@ -208,6 +208,7 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "                                      'filter': only compile specified methods during JIT runtime.\n"
     "--compiler-jit-method-path:           Store method names for jit method dichotomy.\n"
     "                                      Default: 'method_compiled_by_jit.cfg'\n"
+    "--compiler-enable-merge-poly:         Enable poly-merge optimization for ldobjbyname. Default: 'true'\n"
     // Please add new options above this line for keep a blank line after help message.
     "\n";
 
@@ -361,6 +362,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"compiler-trace-builtins", required_argument, nullptr, OPTION_COMPILER_TRACE_BUILTINS},
         {"compiler-jit-method-dichotomy", required_argument, nullptr, OPTION_COMPILER_JIT_METHOD_DICHOTOMY},
         {"compiler-jit-method-path", required_argument, nullptr, OPTION_COMPILER_JIT_METHOD_PATH},
+        {"compiler-enable-merge-poly", required_argument, nullptr, OPTION_COMPILER_ENABLE_MERGE_POLY},
         {nullptr, 0, nullptr, 0},
     };
 
@@ -1423,6 +1425,14 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 break;
             case OPTION_COMPILER_JIT_METHOD_PATH:
                 SetJitMethodPath(optarg);
+                break;
+            case OPTION_COMPILER_ENABLE_MERGE_POLY:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetEnableMergePoly(argBool);
+                } else {
+                    return false;
+                }
                 break;
             default:
                 LOG_ECMA(ERROR) << "Invalid option\n";

@@ -134,7 +134,6 @@ private:
     void LowerIndexCheck(GateRef gate);
     void LowerObjectTypeCheck(GateRef gate);
     void LowerSimpleHClassCheck(GateRef gate);
-    GateRef BuildCompareHClass(GateRef gate, GateRef frameState);
     void LowerStableArrayCheck(GateRef gate);
     void LowerTypedArrayCheck(GateRef gate);
     void LowerEcmaStringCheck(GateRef gate);

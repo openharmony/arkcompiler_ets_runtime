@@ -92,6 +92,7 @@ struct CompilationOptions {
     bool isEnableInductionVariableAnalysis_ {false};
     bool isEnableVerifierPass_ {true};
     bool isEnableBaselinePgo_ {false};
+    bool isEnableMergePoly_ {true};
     bool enableAotCodeComment_ {false};
     std::map<std::string, std::vector<std::string>> optionSelectMethods_;
     std::map<std::string, std::vector<std::string>> optionSkipMethods_;

@@ -123,6 +123,7 @@ private:
     GateRef VisitTypeConvert(GateRef gate);
     GateRef VisitFrameState(GateRef gate);
     GateRef VisitIsTrueOrFalse(GateRef gate);
+    GateRef VisitObjectTypeCheck(GateRef gate);
     GateRef VisitWithConstantValue(GateRef gate, size_t ignoreIndex);
     GateRef VisitIntermediateValue(GateRef gate);
     GateRef VisitEqualCompareOrNotEqualCompare(GateRef gate);

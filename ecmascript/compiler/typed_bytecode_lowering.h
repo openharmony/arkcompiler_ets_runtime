@@ -37,6 +37,7 @@ public:
                          bool enableTypeLog,
                          const std::string& name,
                          bool enableLoweringBuiltin,
+                         bool enableMergePoly,
                          const CString& recordName,
                          const CallMethodFlagMap* callMethodFlagMap,
                          PGOProfilerDecoder *decoder,
@@ -60,6 +61,7 @@ public:
           noCheck_(ctx->GetCompilationEnv()->GetJSOptions().IsCompilerNoCheck()),
           compilationEnv_(ctx->GetCompilationEnv()),
           enableLoweringBuiltin_(enableLoweringBuiltin),
+          enableMergePoly_(enableMergePoly),
           recordName_(recordName),
           callMethodFlagMap_(callMethodFlagMap),
           decoder_(decoder),
@@ -282,6 +284,7 @@ private:
     bool noCheck_ {false};
     CompilationEnv *compilationEnv_ {nullptr};
     bool enableLoweringBuiltin_ {false};
+    bool enableMergePoly_ {true};
     const CString &recordName_;
     const CallMethodFlagMap *callMethodFlagMap_;
     PGOProfilerDecoder *decoder_ {nullptr};

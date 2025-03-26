@@ -20,6 +20,31 @@
 
 namespace panda::ecmascript::kungfu {
 
+GateRef CircuitBuilder::ObjectTypeCheck(bool isHeapObject, GateRef gate, const std::vector<int>& hclassIndexList,
+                                        GateRef frameState)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    if (frameState == Circuit::NullGate()) {
+        frameState = acc_.FindNearestFrameState(currentDepend);
+    }
+    ObjectTypeAccessor accessor(isHeapObject);
+    std::vector<GateRef> gateList;
+    gateList.emplace_back(currentControl);
+    gateList.emplace_back(currentDepend);
+    gateList.emplace_back(gate);
+    for (auto index : hclassIndexList) {
+        gateList.emplace_back(Int32(index));
+    }
+    gateList.emplace_back(frameState);
+    GateRef ret = GetCircuit()->NewGate(circuit_->ObjectTypeCheck(hclassIndexList.size() + 1, accessor.ToValue()),
+        MachineType::I1, gateList, GateType::NJSValue()); // 1 : gate.
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
 GateRef CircuitBuilder::ObjectTypeCheck(bool isHeapObject, GateRef gate, GateRef hclassIndex,
                                         GateRef frameState)
 {
@@ -30,8 +55,8 @@ GateRef CircuitBuilder::ObjectTypeCheck(bool isHeapObject, GateRef gate, GateRef
         frameState = acc_.FindNearestFrameState(currentDepend);
     }
     ObjectTypeAccessor accessor(isHeapObject);
-    GateRef ret = GetCircuit()->NewGate(circuit_->ObjectTypeCheck(accessor.ToValue()), MachineType::I1,
-        {currentControl, currentDepend, gate, hclassIndex, frameState}, GateType::NJSValue());
+    GateRef ret = GetCircuit()->NewGate(circuit_->ObjectTypeCheck(2, accessor.ToValue()), // 2 : gate and hclass
+        MachineType::I1, {currentControl, currentDepend, gate, hclassIndex, frameState}, GateType::NJSValue());
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);
     return ret;
