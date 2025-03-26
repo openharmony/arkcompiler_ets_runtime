@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -209,7 +209,7 @@ int32_t AotCompilerImpl::AOTLocalCodeSign(std::vector<int16_t> &sigData) const
         LOG_SA(ERROR) << "failed to sign the aot file";
         return ERR_AOT_COMPILER_SIGNATURE_FAILED;
     }
-    LOG_SA(DEBUG) << "aot file local sign success";
+    LOG_SA(INFO) << "aot file local sign success";
     uint8_t *dataPtr = sig.GetBuffer();
     for (uint32_t i = 0; i < sig.GetSize(); ++i) {
         sigData.emplace_back(static_cast<int16_t>(dataPtr[i]));
