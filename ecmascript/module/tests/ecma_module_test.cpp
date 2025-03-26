@@ -2167,7 +2167,7 @@ HWTEST_F_L0(EcmaModuleTest, EvaluateNativeModule3)
 }
 
 
-HWTEST_F_L0(EcmaModuleTest, InnerModuleInstantiation)
+HWTEST_F_L0(EcmaModuleTest, ModuleInstantiation)
 {
     auto vm = thread->GetEcmaVM();
     ObjectFactory *objectFactory = vm->GetFactory();
@@ -2178,7 +2178,8 @@ HWTEST_F_L0(EcmaModuleTest, InnerModuleInstantiation)
     module->SetStatus(ModuleStatus::UNINSTANTIATED);
     module->SetIsNewBcVersion(false);
     CVector<JSHandle<SourceTextModule>> stack;
-    int index = SourceTextModule::InnerModuleInstantiation(thread, JSHandle<ModuleRecord>::Cast(module), stack, 1);
+    SourceTextModule::PreModuleInstantiation(thread, module, ExecuteTypes::STATIC);
+    int index = SourceTextModule::FinishModuleInstantiation(thread, module, stack, 1);
     EXPECT_EQ(index, 2);
 }
 
@@ -2591,7 +2592,7 @@ HWTEST_F_L0(EcmaModuleTest, GetBundleNameWithRecordName)
     EXPECT_EQ(res, expectRes);
 }
 
-HWTEST_F_L0(EcmaModuleTest, InnerModuleInstantiation_ReEnterTest)
+HWTEST_F_L0(EcmaModuleTest, ModuleInstantiation_ReEnterTest)
 {
     auto vm = thread->GetEcmaVM();
     ObjectFactory *objectFactory = vm->GetFactory();
@@ -2603,8 +2604,14 @@ HWTEST_F_L0(EcmaModuleTest, InnerModuleInstantiation_ReEnterTest)
     module->SetIsNewBcVersion(true);
     module->SetSharedType(SharedTypes::SHARED_MODULE);
     CVector<JSHandle<SourceTextModule>> stack;
-    int index = SourceTextModule::InnerModuleInstantiation(thread, JSHandle<ModuleRecord>::Cast(module), stack, 1);
+    SourceTextModule::PreModuleInstantiation(thread, module, ExecuteTypes::STATIC);
+    int index = SourceTextModule::FinishModuleInstantiation(thread, module, stack, 1);
     EXPECT_EQ(index, 1);
+    module->SetStatus(ModuleStatus::EVALUATING);
+    module->SetSharedType(SharedTypes::UNSENDABLE_MODULE);
+    SourceTextModule::PreModuleInstantiation(thread, module, ExecuteTypes::STATIC);
+    index = SourceTextModule::FinishModuleInstantiation(thread, module, stack, 1);
+    EXPECT_EQ(index, 2);
 }
 
 HWTEST_F_L0(EcmaModuleTest, TransformToNormalizedOhmUrl)
@@ -4236,7 +4243,8 @@ HWTEST_F_L0(EcmaModuleTest, CheckAndThrowModuleError)
 
 HWTEST_F_L0(EcmaModuleTest, ModuleStatusOrder)
 {
-    EXPECT_EQ(static_cast<int>(ModuleStatus::UNINSTANTIATED), 0x01);
+    EXPECT_EQ(static_cast<int>(ModuleStatus::UNINSTANTIATED), 0x00);
+    EXPECT_EQ(static_cast<int>(ModuleStatus::PREINSTANTIATING), 0x01);
     EXPECT_EQ(static_cast<int>(ModuleStatus::INSTANTIATING), 0x02);
     EXPECT_EQ(static_cast<int>(ModuleStatus::INSTANTIATED), 0x03);
     EXPECT_EQ(static_cast<int>(ModuleStatus::EVALUATING), 0x04);

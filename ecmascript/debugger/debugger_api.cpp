@@ -743,8 +743,8 @@ void DebuggerApi::GetIndirectExportVariables(const EcmaVM *ecmaVm, Local<ObjectR
         JSTaggedValue key = ee->GetImportName();
         name.Update(key);
         if (key.IsString()) {
-            JSHandle<JSTaggedValue> importModule =
-                SourceTextModule::GetRequestedModule(thread, module, requestedModules, ee->GetModuleRequestIndex());
+            JSHandle<JSTaggedValue> importModule = JSHandle<JSTaggedValue>::Cast(
+                SourceTextModule::GetRequestedModule(thread, requestedModules, ee->GetModuleRequestIndex()));
             RETURN_IF_ABRUPT_COMPLETION(thread);
             std::string importName = EcmaStringAccessor(ee->GetImportName()).ToStdString();
             Local<JSValueRef> value = GetModuleValue(ecmaVm, importModule, importName);
@@ -780,8 +780,8 @@ void DebuggerApi::GetImportVariables(const EcmaVM *ecmaVm, Local<ObjectRef> &mod
         JSTaggedValue localName = ee->GetLocalName();
         name.Update(localName);
         if (JSTaggedValue::SameValue(key, starString.GetTaggedValue())) {
-            JSHandle<JSTaggedValue> importModule =
-                SourceTextModule::GetRequestedModule(thread, module, requestedModules, ee->GetModuleRequestIndex());
+            JSHandle<JSTaggedValue> importModule = JSHandle<JSTaggedValue>::Cast(
+                SourceTextModule::GetRequestedModule(thread, requestedModules, ee->GetModuleRequestIndex()));
             RETURN_IF_ABRUPT_COMPLETION(thread);
             Local<ObjectRef> importModuleObj = ObjectRef::New(ecmaVm);
             GetLocalExportVariables(ecmaVm, importModuleObj, importModule, true);

@@ -472,8 +472,8 @@ JSTaggedValue ModuleManager::GetModuleNamespaceInternal(int32_t index, JSTaggedV
     JSThread *thread = vm_->GetJSThread();
     JSHandle<SourceTextModule> module(thread, SourceTextModule::Cast(currentModule));
     JSHandle<TaggedArray> requestedModules(thread, module->GetRequestedModules());
-    JSHandle<SourceTextModule> requiredModule = JSHandle<SourceTextModule>::Cast(
-        SourceTextModule::GetRequestedModule(thread, module, requestedModules, index));
+    JSHandle<SourceTextModule> requiredModule =
+        SourceTextModule::GetRequestedModule(thread, requestedModules, index);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception());
 
     ModuleLogger *moduleLogger = thread->GetCurrentEcmaContext()->GetModuleLogger();

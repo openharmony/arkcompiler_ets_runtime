@@ -101,8 +101,8 @@ void ModuleDeregister::IncreaseRegisterCounts(JSThread *thread, JSHandle<SourceT
         JSHandle<TaggedArray> requestedModules(thread, module->GetRequestedModules());
         size_t requestedModulesLen = requestedModules->GetLength();
         for (size_t idx = 0; idx < requestedModulesLen; idx++) {
-            JSHandle<SourceTextModule> requiredModule = JSHandle<SourceTextModule>::Cast(
-                SourceTextModule::GetRequestedModule(thread, module, requestedModules, idx));
+            JSHandle<SourceTextModule> requiredModule =
+                SourceTextModule::GetRequestedModule(thread, requestedModules, idx);
             RETURN_IF_ABRUPT_COMPLETION(thread);
             const CString moduleRecordName = module->GetEcmaModuleRecordNameString();
             CString moduleName =
@@ -138,8 +138,8 @@ void ModuleDeregister::DecreaseRegisterCounts(JSThread *thread, JSHandle<SourceT
         JSHandle<TaggedArray> requestedModules(thread, module->GetRequestedModules());
         size_t requestedModulesLen = requestedModules->GetLength();
         for (size_t idx = 0; idx < requestedModulesLen; idx++) {
-            JSHandle<SourceTextModule> requiredModule = JSHandle<SourceTextModule>::Cast(
-                SourceTextModule::GetRequestedModule(thread, module, requestedModules, idx));
+            JSHandle<SourceTextModule> requiredModule =
+                SourceTextModule::GetRequestedModule(thread, requestedModules, idx);
             RETURN_IF_ABRUPT_COMPLETION(thread);
             const CString moduleRecordName = module->GetEcmaModuleRecordNameString();
             CString moduleName =
