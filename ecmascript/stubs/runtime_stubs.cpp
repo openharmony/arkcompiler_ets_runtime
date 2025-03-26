@@ -2185,6 +2185,13 @@ DEF_RUNTIME_STUBS(StGlobalVar)
     return RuntimeStGlobalVar(thread, prop, value).GetRawData();
 }
 
+DEF_RUNTIME_STUBS(CloneHclass)
+{
+    RUNTIME_STUBS_HEADER(CloneHclass);
+    JSHandle<JSHClass> objHclass = GetHArg<JSHClass>(argv, argc, 0);      // 0: means the zeroth parameter
+    return JSHClass::Clone(thread, objHclass).GetTaggedValue().GetRawData();
+}
+
 DEF_RUNTIME_STUBS(ToNumber)
 {
     RUNTIME_STUBS_HEADER(ToNumber);
