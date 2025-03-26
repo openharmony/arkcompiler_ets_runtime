@@ -16,6 +16,8 @@
 #ifndef ECMASCRIPT_MEM_UNIFIED_GC_UNIFIED_GC_H
 #define ECMASCRIPT_MEM_UNIFIED_GC_UNIFIED_GC_H
 
+#include <atomic>
+
 #ifdef PANDA_JS_ETS_HYBRID_MODE
 #include "ecmascript/cross_vm/cross_vm_operator.h"
 #endif // PANDA_JS_ETS_HYBRID_MODE
@@ -42,9 +44,17 @@ public:
         return stsVMInterface_;
     }
 
-    void StartXGCBarrier()
+    void SetInterruptUnifiedGC(bool isInterruptUnifiedGC)
     {
-        stsVMInterface_->StartXGCBarrier(nullptr);
+        isInterruptUnifiedGC_.store(isInterruptUnifiedGC, std::memory_order_relaxed);
+    }
+
+    bool StartXGCBarrier()
+    {
+        static const auto StartXGCCheck = []() -> bool {
+            return !isInterruptUnifiedGC_.load(std::memory_order_acquire);
+        };
+        return stsVMInterface_->StartXGCBarrier(StartXGCCheck);
     }
 
     void FinishXGCBarrier()
@@ -56,6 +66,7 @@ public:
 private:
 #ifdef PANDA_JS_ETS_HYBRID_MODE
     arkplatform::STSVMInterface *stsVMInterface_ {nullptr};
+    static std::atomic<bool> isInterruptUnifiedGC_;
 #endif // PANDA_JS_ETS_HYBRID_MODE
 };
 }  // namespace panda::ecmascript

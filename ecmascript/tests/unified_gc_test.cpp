@@ -172,6 +172,21 @@ HWTEST_F_L0(UnifiedGCTest, MarkFromObjectTest)
     vm->SetEnableForceGC(true);
 }
 
+HWTEST_F_L0(UnifiedGCTest, TriggerUnifiedGCFailTest)
+{
+    EcmaVM *vm = thread->GetEcmaVM();
+    auto stsVMInterface = std::make_unique<STSVMInterfaceTest>();
+    void *ecmaVMInterface = nullptr;
+    CrossVMOperator::DoHandshake(vm, stsVMInterface.get(), &ecmaVMInterface);
+
+    CrossReferenceObjectBuilder CrossReferenceObject(vm, thread);
+    SharedHeap::GetInstance()->TriggerUnifiedGCMark<TriggerGCType::UNIFIED_GC, GCReason::CROSSREF_CAUSE>(thread);
+    vm->GetCrossVMOperator()->GetEcmaVMInterface()->NotifyXGCInterruption();
+    while (!thread->HasSuspendRequest()) {}
+    thread->WaitSuspension();
+    CrossReferenceObject.CheckResultAfterUnifiedGCTriggerFail();
+}
+
 HWTEST_F_L0(UnifiedGCVerificationTest, VerifyUnifiedGCMarkTest)
 {
     EcmaVM *vm = thread->GetEcmaVM();

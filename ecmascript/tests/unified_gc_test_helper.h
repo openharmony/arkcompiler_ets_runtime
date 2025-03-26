@@ -87,22 +87,16 @@ public:
 
     bool StartXGCBarrier(const NoWorkPred &func) override
     {
-        return true;
+        return !func || func();
     }
     bool WaitForConcurrentMark(const NoWorkPred &func) override
     {
-        if (func && !func()) {
-            return false;
-        }
-        return true;
+        return !func || func();
     }
     void RemarkStartBarrier() override {}
     bool WaitForRemark(const NoWorkPred &func) override
     {
-        if (func && !func()) {
-            return false;
-        }
-        return true;
+        return !func || func();
     }
     void FinishXGCBarrier() override {}
 };
@@ -180,6 +174,16 @@ public:
     {
         for (auto sharedRef : sharedRefsNeedMark_) {
             EXPECT_TRUE(sharedRef->isMarked());
+        }
+        for (auto sharedRef : sharedRefsNoNeedMark_) {
+            EXPECT_TRUE(!sharedRef->isMarked());
+        }
+    }
+
+    void CheckResultAfterUnifiedGCTriggerFail()
+    {
+        for (auto sharedRef : sharedRefsNeedMark_) {
+            EXPECT_TRUE(!sharedRef->isMarked());
         }
         for (auto sharedRef : sharedRefsNoNeedMark_) {
             EXPECT_TRUE(!sharedRef->isMarked());
