@@ -21,7 +21,7 @@ namespace panda::ecmascript {
 class NapiModuleLoader {
 public:
     static JSHandle<JSTaggedValue> LoadModuleNameSpaceWithModuleInfo(EcmaVM *vm, CString &requestPath,
-                                                                     CString &modulePath);
+                                                                     CString &modulePath, bool isHybrid = false);
     static JSHandle<JSTaggedValue> LoadModuleNameSpaceWithPath(JSThread *thread, CString &abcFilePath,
         CString &requestPath, CString &modulePath, const JSPandaFile *pandaFile);
 
