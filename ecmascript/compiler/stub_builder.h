@@ -161,7 +161,8 @@ public:
                           const std::vector<GateRef>& args, GateRef hir = Circuit::NullGate());
     GateRef GetAotCodeAddr(GateRef jsFunc);
     GateRef CallStub(GateRef glue, int index, const std::initializer_list<GateRef>& args);
-    GateRef CallCommonStub(GateRef glue, int index, const std::initializer_list<GateRef>& args);
+    GateRef CallCommonStub(GateRef glue, int index, const std::initializer_list<GateRef>& args,
+                           GateRef hir = Circuit::NullGate());
     GateRef CallBuiltinRuntime(GateRef glue, const std::initializer_list<GateRef>& args, bool isNew = false);
     GateRef CallBuiltinRuntimeWithNewTarget(GateRef glue, const std::initializer_list<GateRef>& args);
     void DebugPrint(GateRef thread, std::initializer_list<GateRef> args);
@@ -999,6 +1000,7 @@ public:
     GateRef GetBaselineCodeAddr(GateRef baselineCode);
 
     GateRef IsFastTypeArray(GateRef jsType);
+    GateRef IsJSProxy(GateRef jsType);
     GateRef GetTypeArrayPropertyByName(GateRef glue, GateRef receiver, GateRef holder, GateRef key, GateRef jsType);
     GateRef SetTypeArrayPropertyByName(GateRef glue, GateRef receiver, GateRef holder, GateRef key, GateRef value,
                                        GateRef jsType);

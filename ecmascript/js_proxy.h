@@ -50,6 +50,9 @@ public:
     {
         return GetProperty(thread, proxy, key, JSHandle<JSTaggedValue>::Cast(proxy));
     }
+    static OperationResult CheckGetTrapResult(JSThread *thread, const JSHandle<JSTaggedValue> &targetHandle,
+                                              const JSHandle<JSTaggedValue> &key,
+                                              const JSHandle<JSTaggedValue> &resultHandle);
     static OperationResult GetProperty(JSThread *thread, const JSHandle<JSProxy> &proxy,
                                        const JSHandle<JSTaggedValue> &key, const JSHandle<JSTaggedValue> &receiver);
     // ES6 9.5.9 [[Set]] ( P, V, Receiver)
@@ -58,6 +61,9 @@ public:
     {
         return SetProperty(thread, proxy, key, value, JSHandle<JSTaggedValue>::Cast(proxy), mayThrow);
     }
+    static bool CheckSetTrapResult(JSThread *thread, const JSHandle<JSTaggedValue> &targetHandle,
+                                   const JSHandle<JSTaggedValue> &key,
+                                   const JSHandle<JSTaggedValue> &value);
     static bool SetProperty(JSThread *thread, const JSHandle<JSProxy> &proxy, const JSHandle<JSTaggedValue> &key,
                             const JSHandle<JSTaggedValue> &value, const JSHandle<JSTaggedValue> &receiver,
                             bool mayThrow = false);

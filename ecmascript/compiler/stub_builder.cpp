@@ -16,6 +16,7 @@
 #include "ecmascript/compiler/call_stub_builder.h"
 #include "ecmascript/compiler/access_object_stub_builder.h"
 #include "ecmascript/compiler/builtins/builtins_array_stub_builder.h"
+#include "ecmascript/compiler/builtins/builtins_proxy_stub_builder.h"
 #include "ecmascript/compiler/builtins/builtins_typedarray_stub_builder.h"
 #include "ecmascript/compiler/builtins/builtins_collection_stub_builder.h"
 #include "ecmascript/compiler/new_object_stub_builder.h"
@@ -3682,8 +3683,34 @@ GateRef StubBuilder::GetPropertyByName(GateRef glue, GateRef receiver, GateRef k
             BRANCH(IsJSPrimitiveRef(*holder), &notSIndexObj, &notJsPrimitiveRef);
             Bind(&notJsPrimitiveRef);  // not string prototype etc.
             {
+#if ENABLE_NEXT_OPTIMIZATION
+                Label isJsProxy(env);
+                Label notJsProxy(env);
+                BRANCH(IsJSProxy(jsType), &isJsProxy, &notJsProxy);
+                Bind(&isJsProxy);
+                {
+                    result = CallCommonStub(glue, CommonStubCSigns::JSProxyGetProperty,
+                                            {glue, *holder, key, receiver}, hir);
+                    Label isPendingException(env);
+                    Label noPendingException(env);
+                    BRANCH(HasPendingException(glue), &isPendingException, &noPendingException);
+                    Bind(&isPendingException);
+                    {
+                        result = Exception();
+                        Jump(&exit);
+                    }
+                    Bind(&noPendingException);
+                    Jump(&exit);
+                }
+                Bind(&notJsProxy);
+                {
+                    result = Hole();
+                    Jump(&exit);
+                }
+#else
                 result = Hole();
                 Jump(&exit);
+#endif
             }
         }
         Bind(&notSIndexObj);
@@ -4757,8 +4784,38 @@ GateRef StubBuilder::SetPropertyByName(GateRef glue, GateRef receiver, GateRef k
         }
         Bind(&notSpecialContainer);
         {
+#if ENABLE_NEXT_OPTIMIZATION
+            Label isJsProxy(env);
+            Label notJsProxy(env);
+            BRANCH(IsJSProxy(jsType), &isJsProxy, &notJsProxy);
+            Bind(&isJsProxy);
+            {
+                if (defineSemantics) {
+                    Jump(&exit);
+                } else {
+                    result = CallCommonStub(glue, CommonStubCSigns::JSProxySetProperty,
+                                            {glue, *holder, key, value, receiver});
+                    Label isPendingException(env);
+                    Label noPendingException(env);
+                    BRANCH(HasPendingException(glue), &isPendingException, &noPendingException);
+                    Bind(&isPendingException);
+                    {
+                        result = Exception();
+                        Jump(&exit);
+                    }
+                    Bind(&noPendingException);
+                    Jump(&exit);
+                }
+            }
+            Bind(&notJsProxy);
+            {
+                result = Hole();
+                Jump(&exit);
+            }
+#else
             result = Hole();
             Jump(&exit);
+#endif
         }
     }
     Bind(&notSIndexObj);

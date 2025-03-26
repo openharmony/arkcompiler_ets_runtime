@@ -19,6 +19,7 @@
 #include "ecmascript/compiler/access_object_stub_builder.h"
 #include "ecmascript/compiler/builtins/builtins_array_stub_builder.h"
 #include "ecmascript/compiler/builtins/builtins_collection_iterator_stub_builder.h"
+#include "ecmascript/compiler/builtins/builtins_proxy_stub_builder.h"
 #include "ecmascript/compiler/builtins/linked_hashtable_stub_builder.h"
 #include "ecmascript/compiler/call_stub_builder.h"
 #include "ecmascript/compiler/gate.h"
@@ -1317,6 +1318,29 @@ void JSSetHasStubBuilder::GenerateCircuit()
     LinkedHashTableStubBuilder<LinkedHashSet, LinkedHashSetObject> builder(this, glue);
     GateRef linkedTable = builder.GetLinked(obj);
     Return(builder.Has(linkedTable, key));
+}
+
+void JSProxyGetPropertyStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef holder = TaggedArgument(1);
+    GateRef key = TaggedArgument(2U);
+    GateRef receiver = TaggedArgument(3U);
+    BuiltinsProxyStubBuilder proxyStubBuilder(this, glue);
+    GateRef result = proxyStubBuilder.GetProperty(holder, key, receiver);
+    Return(result);
+}
+
+void JSProxySetPropertyStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef holder = TaggedArgument(1);
+    GateRef key = TaggedArgument(2U);
+    GateRef value = TaggedArgument(3U);
+    GateRef receiver = TaggedArgument(4U);
+    BuiltinsProxyStubBuilder proxyStubBuilder(this, glue);
+    GateRef result = proxyStubBuilder.SetProperty(holder, key, value, receiver);
+    Return(result);
 }
 
 void CreateJSTypedArrayEntriesStubBuilder::GenerateCircuit()

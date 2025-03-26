@@ -4249,6 +4249,44 @@ DEF_RUNTIME_STUBS(SetPrototypeTransition)
     return JSTaggedValue::Hole().GetRawData();
 }
 
+DEF_RUNTIME_STUBS(JSProxyGetProperty)
+{
+    RUNTIME_STUBS_HEADER(JSProxyGetProperty);
+    JSHandle<JSTaggedValue> obj = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> keyHandle = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
+    JSHandle<JSTaggedValue> receiver = GetHArg<JSTaggedValue>(argv, argc, 2); // 2: means the second parameter
+    return JSProxy::GetProperty(thread, JSHandle<JSProxy>(obj), keyHandle, receiver).GetValue()->GetRawData();
+}
+
+DEF_RUNTIME_STUBS(JSProxySetProperty)
+{
+    RUNTIME_STUBS_HEADER(JSProxySetProperty);
+    JSHandle<JSTaggedValue> obj = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> keyHandle = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
+    JSHandle<JSTaggedValue> valueHandle = GetHArg<JSTaggedValue>(argv, argc, 2); // 2: means the second parameter
+    JSHandle<JSTaggedValue> receiver = GetHArg<JSTaggedValue>(argv, argc, 3); // 3: means the third parameter
+    return JSTaggedValue(JSProxy::SetProperty(thread, JSHandle<JSProxy>(obj), keyHandle,
+                                              valueHandle, receiver, true)).GetRawData();
+}
+
+DEF_RUNTIME_STUBS(CheckGetTrapResult)
+{
+    RUNTIME_STUBS_HEADER(CheckGetTrapResult);
+    JSHandle<JSTaggedValue> targetHandle = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> keyHandle = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
+    JSHandle<JSTaggedValue> resutlHandle = GetHArg<JSTaggedValue>(argv, argc, 2);  // 2: means the second parameter
+    return JSProxy::CheckGetTrapResult(thread, targetHandle, keyHandle, resutlHandle).GetValue()->GetRawData();
+}
+
+DEF_RUNTIME_STUBS(CheckSetTrapResult)
+{
+    RUNTIME_STUBS_HEADER(CheckSetTrapResult);
+    JSHandle<JSTaggedValue> targetHandle = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> keyHandle = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
+    JSHandle<JSTaggedValue> valueHandle = GetHArg<JSTaggedValue>(argv, argc, 2);  // 2: means the second parameter
+    return JSTaggedValue(JSProxy::CheckSetTrapResult(thread, targetHandle, keyHandle, valueHandle)).GetRawData();
+}
+
 DEF_RUNTIME_STUBS(JSProxyHasProperty)
 {
     RUNTIME_STUBS_HEADER(JSProxyHasProperty);

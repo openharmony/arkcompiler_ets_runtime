@@ -105,6 +105,8 @@ namespace panda::ecmascript::kungfu {
     V(JSMapHas)                       \
     V(JSSetHas)                       \
     V(JSSetAdd)                       \
+    V(JSProxyGetProperty)             \
+    V(JSProxySetProperty)             \
     V(CreateJSTypedArrayEntries)      \
     V(CreateJSTypedArrayKeys)         \
     V(CreateJSTypedArrayValues)       \
