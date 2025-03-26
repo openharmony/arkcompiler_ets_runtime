@@ -101,6 +101,19 @@ HWTEST_F_L0(UnifiedGCTest, TriggerUnifiedGCMarkTest2)
     thread->WaitSuspension();
 }
 
+HWTEST_F_L0(UnifiedGCTest, TriggerUnifiedGCMarkTest3)
+{
+    EcmaVM *vm = thread->GetEcmaVM();
+    auto stsVMInterface = std::make_unique<STSVMInterfaceTest>();
+    void *ecmaVMInterface = nullptr;
+    CrossVMOperator::DoHandshake(vm, stsVMInterface.get(), &ecmaVMInterface);
+
+    SharedHeap::GetInstance()->TriggerUnifiedGCMark<TriggerGCType::UNIFIED_GC, GCReason::CROSSREF_CAUSE>(thread);
+    while (!thread->HasSuspendRequest()) {}
+    thread->WaitSuspension();
+    vm->CollectGarbage(TriggerGCType::YOUNG_GC);
+}
+
 static inline bool IsObjectMarked(TaggedObject *object)
 {
     Region *objectRegion = Region::ObjectAddressToRange(object);

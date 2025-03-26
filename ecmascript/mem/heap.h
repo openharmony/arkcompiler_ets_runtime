@@ -119,7 +119,6 @@ enum class VerifyKind {
     VERIFY_EVACUATE_YOUNG,
     VERIFY_MARK_FULL,
     VERIFY_EVACUATE_OLD,
-    VERIFY_MARK_UNIFIED,
     VERIFY_EVACUATE_FULL,
     VERIFY_SHARED_RSET_POST_FULL_GC,
     VERIFY_PRE_SHARED_GC,
@@ -216,11 +215,6 @@ public:
     bool IsConcurrentFullMark() const
     {
         return markType_ == MarkType::MARK_FULL;
-    }
-
-    bool IsUnifiedMark() const
-    {
-        return markType_ == MarkType::MARK_UNIFIED;
     }
 
     void SetGCType(TriggerGCType gcType)
