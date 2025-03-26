@@ -315,16 +315,6 @@ void PGOProfilerManager::SavePGOInfo()
     encoder.Save(pgoInfo_);
 }
 
-bool PGOProfilerManager::IsDisableAot() const
-{
-    return disableAot_;
-}
-
-void PGOProfilerManager::SetDisableAot(bool state)
-{
-    disableAot_ = state;
-}
-
 void PGOProfilerManager::SetDisablePGO(bool state)
 {
     disablePGO_ = state;

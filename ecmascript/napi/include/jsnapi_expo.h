@@ -1616,7 +1616,6 @@ public:
     static void RegisterUncatchableErrorHandler(EcmaVM *ecmaVm, const UncatchableErrorHandler &handler);
 
     // aot load
-    static void LoadAotFileInternal(EcmaVM *vm, const std::string &moduleName, std::string &aotFileName);
     static void LoadAotFile(EcmaVM *vm, const std::string &moduleName);
 #if defined(CROSS_PLATFORM) && defined(ANDROID_PLATFORM)
     static void LoadAotFile(EcmaVM *vm, [[maybe_unused]] const std::string &bundleName,

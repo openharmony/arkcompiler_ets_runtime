@@ -121,7 +121,7 @@ bool AOTFileManager::LoadAiFile([[maybe_unused]] const std::string &filename)
 #endif
 }
 
-bool AOTFileManager::LoadAiFile(const JSPandaFile *jsPandaFile)
+bool AOTFileManager::LoadAiFile(const JSPandaFile *jsPandaFile, EcmaVM *vm)
 {
     uint32_t anFileInfoIndex = jsPandaFile->GetAOTFileInfoIndex();
     // this abc file does not have corresponding an file
@@ -136,25 +136,47 @@ bool AOTFileManager::LoadAiFile(const JSPandaFile *jsPandaFile)
     }
 
     std::string aiFilename = "";
+    AnFileDataManager *anFileDataManager = AnFileDataManager::GetInstance();
     // device side aot compile success
-    if (AnFileDataManager::GetInstance()->IsEnable()) {
-        std::string moduleName(vm_->GetModuleName());
-        std::string aotFileName;
-        JSNApi::LoadAotFileInternal(vm_, moduleName, aotFileName);
-        aiFilename = aotFileName + FILE_EXTENSION_AI;
+    if (anFileDataManager->IsEnable()) {
+        std::string moduleName = anFileDataManager->SafeGetAnFileNameNoSuffix(anFileInfoIndex);
+        aiFilename = GetAOTFileFullPath(vm, moduleName);
     } else {
         std::string moduleName = JSFilePath::GetHapName(jsPandaFile);
         std::string hapPath = jsPandaFile->GetJSPandaFileHapPath().c_str();
-        aiFilename = OhosPreloadAppInfo::GetPreloadAOTFileName(hapPath, moduleName) + FILE_EXTENSION_AI;
+        aiFilename = OhosPreloadAppInfo::GetPreloadAOTFileName(hapPath, moduleName);
     }
 
     if (aiFilename.empty()) {
         LOG_ECMA(INFO) << "current thread can not find ai file";
         return false;
     }
-
+    aiFilename += FILE_EXTENSION_AI;
     LoadAiFile(aiFilename);
     return true;
+}
+
+// static
+std::string AOTFileManager::GetAOTFileFullPath(EcmaVM *vm, const std::string &moduleName)
+{
+    if (vm->GetJSOptions().WasAOTOutputFileSet()) {
+        return vm->GetJSOptions().GetAOTOutputFile();
+    }
+#if defined(CROSS_PLATFORM) && defined(ANDROID_PLATFORM)
+    else if (vm->GetJSOptions().GetEnableAOT())
+#else
+    else if (ecmascript::AnFileDataManager::GetInstance()->IsEnable())
+#endif
+    {
+        return ecmascript::AnFileDataManager::GetInstance()->GetDir() + moduleName;
+    } else {
+        std::string hapPath = "";
+        ecmascript::SearchHapPathCallBack callback = vm->GetSearchHapPathCallBack();
+        if (callback) {
+            callback(moduleName, hapPath);
+        }
+        return ecmascript::OhosPreloadAppInfo::GetPreloadAOTFileName(hapPath, moduleName);
+    }
 }
 
 const std::shared_ptr<AnFileInfo> AOTFileManager::GetAnFileInfo(const JSPandaFile *jsPandaFile) const
