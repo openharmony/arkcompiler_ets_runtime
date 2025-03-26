@@ -35,6 +35,7 @@ group("ark_aot_js_test") {
     "induction_variable",
     "lower_jscode_0001",
     "lower_jscode_0002",
+    "fallback_type_conversion",
   ]
 
   deps = []
