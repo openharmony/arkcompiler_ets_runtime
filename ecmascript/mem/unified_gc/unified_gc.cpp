@@ -28,16 +28,9 @@ void UnifiedGC::RunPhases()
             LOG_GC(DEBUG) << "UnifiedGC after ConcurrentMarking";
             heap->GetConcurrentMarker()->Reset();
         }
-        heap->SetMarkType(MarkType::MARK_UNIFIED);
     });
     Initialize();
     Mark();
-    Runtime::GetInstance()->GCIterateThreadList([](JSThread *thread) {
-        Heap *heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-        if (UNLIKELY(heap->ShouldVerifyHeap())) {
-            Verification::VerifyMark(heap);
-        }
-    });
     Finish();
 }
 
