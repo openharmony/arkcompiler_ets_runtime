@@ -18,6 +18,7 @@
 #include "ecmascript/base/json_stringifier.h"
 #include "ecmascript/base/typed_array_helper-inl.h"
 #include "ecmascript/builtins/builtins_object.h"
+#include "ecmascript/shared_objects/concurrent_api_scope.h"
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
 #include "ecmascript/dfx/cpu_profiler/cpu_profiler.h"
 #endif
@@ -3938,6 +3939,8 @@ Local<JSValueRef> SendableArrayRef::GetValueAt(const EcmaVM *vm, Local<JSValueRe
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     ecmascript::ThreadManagedScope managedScope(thread);
     JSHandle<JSTaggedValue> object = JSNApiHelper::ToJSHandle(obj);
+    // Add Concurrent check for shared array
+    [[maybe_unused]] ecmascript::ConcurrentApiScope<ecmascript::JSSharedArray> scope(thread, object);
     JSHandle<JSTaggedValue> result = ecmascript::JSSharedArray::FastGetPropertyByValue(thread, object, index);
     return JSNApiHelper::ToLocal<JSValueRef>(result);
 }
