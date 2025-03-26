@@ -76,4 +76,10 @@ bool CrossVMOperator::EcmaVMInterfaceImpl::StartXRefMarking()
         TriggerGCType::UNIFIED_GC, GCReason::CROSSREF_CAUSE>(vm_->GetJSThread());
 }
 
+void CrossVMOperator::EcmaVMInterfaceImpl::NotifyXGCInterruption()
+{
+    UnifiedGC *unifiedGC = SharedHeap::GetInstance()->GetUnifiedGC();
+    unifiedGC->SetInterruptUnifiedGC(true);
+}
+
 }  // namespace panda::ecmascript

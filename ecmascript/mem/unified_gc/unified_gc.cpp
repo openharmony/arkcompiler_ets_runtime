@@ -20,6 +20,10 @@
 #include "ecmascript/mem/verification.h"
 
 namespace panda::ecmascript {
+#ifdef PANDA_JS_ETS_HYBRID_MODE
+std::atomic<bool> UnifiedGC::isInterruptUnifiedGC_ {false};
+#endif // PANDA_JS_ETS_HYBRID_MODE
+
 void UnifiedGC::RunPhases()
 {
     Runtime::GetInstance()->GCIterateThreadList([](JSThread *thread) {
@@ -57,7 +61,7 @@ void UnifiedGC::Mark()
         heap->GetUnifiedGCMarker()->ProcessMarkStack(DAEMON_THREAD_INDEX);
     });
 #ifdef PANDA_JS_ETS_HYBRID_MODE
-    auto noMarkTaskCheck = []() -> bool {
+    static const auto noMarkTaskCheck = []() -> bool {
         bool noMarkTask = true;
         Runtime::GetInstance()->GCIterateThreadList([&noMarkTask](JSThread *thread) {
             Heap *heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
