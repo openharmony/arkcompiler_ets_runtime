@@ -22,6 +22,7 @@
 #include <vector>
 
 #include "ecmascript/elements.h"
+#include "ecmascript/js_handle.h"
 #include "ecmascript/js_hclass.h"
 #include "ecmascript/mem/region.h"
 #include "ecmascript/log_wrapper.h"
@@ -795,6 +796,26 @@ public:
         }
     }
 
+    void SetName(JSHandle<JSTaggedValue> name)
+    {
+        name_ = name;
+    }
+
+    void SetNameIdx(uint32_t nameIdx)
+    {
+        nameIdx_ = nameIdx;
+    }
+
+    uint32_t GetNameIdx() const
+    {
+        return nameIdx_;
+    }
+
+    JSHandle<JSTaggedValue> GetName() const
+    {
+        return name_;
+    }
+    
     void Merge(const PGORWOpTemplate &type)
     {
         for (uint32_t i = 0; i < type.count_; i++) {
@@ -840,6 +861,8 @@ public:
 private:
     static constexpr int POLY_CASE_NUM = 4;
     uint32_t count_ = 0;
+    uint32_t nameIdx_ = -1;
+    JSHandle<JSTaggedValue> name_;
     PGOObjectInfoType infos_[POLY_CASE_NUM];
 };
 using PGORWOpType = PGORWOpTemplate<PGOObjectInfo>;

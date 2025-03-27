@@ -40,6 +40,12 @@ GateRef TypedHCRLowering::VisitGate(GateRef gate)
         case OpCode::TYPED_ARRAY_CHECK:
             LowerTypedArrayCheck(gate);
             break;
+        case OpCode::STRING_KEY_CHECK:
+            LowerStringKeyCheck(gate);
+            break;
+        case OpCode::INTERN_STRING_KEY_CHECK:
+            LowerInternStringKeyCheck(gate);
+            break;
         case OpCode::ECMA_STRING_CHECK:
             LowerEcmaStringCheck(gate);
             break;
@@ -428,6 +434,34 @@ void TypedHCRLowering::LowerTypedArrayCheck(GateRef gate)
         GateRef check2 = builder_.Equal(receiverHClass, rootOnHeapHclass);
         builder_.DeoptCheck(builder_.BitOr(check1, check2), frameState, deoptType);
     }
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
+}
+
+void TypedHCRLowering::LowerStringKeyCheck(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef frameState = GetFrameState(gate);
+    GateRef key = acc_.GetValueIn(gate, 0);
+    GateRef value = acc_.GetValueIn(gate, 1);
+    builder_.DeoptCheck(builder_.TaggedIsString(key), frameState, DeoptType::NOTSTRING1);
+    builder_.DeoptCheck(builder_.StringEqual(key, value),
+                        frameState, DeoptType::KEYMISSMATCH);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
+}
+
+void TypedHCRLowering::LowerInternStringKeyCheck(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef frameState = GetFrameState(gate);
+    GateRef key = acc_.GetValueIn(gate, 0);
+    GateRef value = acc_.GetValueIn(gate, 1);
+    builder_.HeapObjectCheck(key, frameState);
+    GateRef isString = builder_.TaggedObjectIsString(key);
+    builder_.DeoptCheck(isString, frameState, DeoptType::NOTSTRING1);
+    GateRef isInternString = builder_.IsInternString(key);
+    builder_.DeoptCheck(isInternString, frameState, DeoptType::NOTINTERNSTRING1);
+    GateRef isEqual = builder_.Equal(value, key);
+    builder_.DeoptCheck(isEqual, frameState, DeoptType::KEYMISSMATCH);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 

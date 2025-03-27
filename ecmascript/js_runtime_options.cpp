@@ -194,6 +194,7 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--async-load-abc:                     Enable asynchronous load abc. Default: 'true'\n"
     "--async-load-abc-test:                Enable asynchronous load abc test. Default: 'false'\n"
     "--compiler-enable-store-barrier:      Enable store barrier optimization. Default: 'true'\n"
+    "--compiler-enable-ldobjvalue-opt:     Enable ldobjvalue optimization. Default: 'true'\n"
     "--compiler-enable-concurrent:         Enable concurrent compile(only support in ark_stub_compiler).\n"
     "--compile-enable-jit-verify-pass:     Enable jit compile with verify pass. Default: 'false'\n\n"
     "                                      Default: 'true'\n"
@@ -347,6 +348,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"async-load-abc", required_argument, nullptr, OPTION_ASYNC_LOAD_ABC},
         {"async-load-abc-test", required_argument, nullptr, OPTION_ASYNC_LOAD_ABC_TEST},
         {"compiler-enable-store-barrier", required_argument, nullptr, OPTION_COMPILER_ENABLE_STORE_BARRIER_OPT},
+        {"compiler-enable-ldobjvalue-opt", required_argument, nullptr, OPTION_COMPILER_ENABLE_LDOBJVALUE_OPT},
         {"compiler-enable-concurrent", required_argument, nullptr, OPTION_COMPILER_ENABLE_CONCURRENT},
         {"compiler-opt-frame-state-elimination", required_argument, nullptr,
             OPTION_COMPILER_OPT_FRAME_STATE_ELIMINATION},
@@ -1354,6 +1356,14 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 ret = ParseBoolParam(&argBool);
                 if (ret) {
                     SetStoreBarrierOpt(argBool);
+                } else {
+                    return false;
+                }
+                break;
+            case OPTION_COMPILER_ENABLE_LDOBJVALUE_OPT:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetLdObjValueOpt(argBool);
                 } else {
                     return false;
                 }

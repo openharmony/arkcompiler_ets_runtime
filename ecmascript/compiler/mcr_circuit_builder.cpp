@@ -181,6 +181,32 @@ GateRef CircuitBuilder::COWArrayCheck(GateRef gate)
     return ret;
 }
 
+GateRef CircuitBuilder::StringKeyCheck(GateRef key, GateRef value)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    auto frameState = acc_.FindNearestFrameState(currentDepend);
+    GateRef ret = GetCircuit()->NewGate(circuit_->StringKeyCheck(),
+        MachineType::I1, {currentControl, currentDepend, key, value, frameState}, GateType::NJSValue());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
+GateRef CircuitBuilder::InternStringKeyCheck(GateRef key, GateRef value)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    auto frameState = acc_.FindNearestFrameState(currentDepend);
+    GateRef ret = GetCircuit()->NewGate(circuit_->InternStringKeyCheck(),
+        MachineType::I1, {currentControl, currentDepend, key, value, frameState}, GateType::NJSValue());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
 GateRef CircuitBuilder::EcmaStringCheck(GateRef gate)
 {
     auto currentLabel = env_->GetCurrentLabel();

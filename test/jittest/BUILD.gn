@@ -55,6 +55,11 @@ group("ark_jit_ts_test") {
     "retype_convert_test",
     "stack_overflow",
     "mega_ic_test",
+    "ldobjbyvalue_mono_opt",
+    "ldobjbyvalue_mono_proto",
+    "ldobjbyvalue_mono_proto_getter",
+    "ldobjbyvalue_deopt_string_check",
+    "ldobjbyvalue_deopt_key_check",
   ]
 
   deps = [ "pgo_roottype_test:pgo_roottype_test" ]

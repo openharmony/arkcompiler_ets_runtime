@@ -586,6 +586,8 @@ public:
     GateRef ElementsKindCheck(GateRef receiver, ElementsKind kind, ArrayMetaDataAccessor::Mode mode);
     GateRef COWArrayCheck(GateRef gate);
     GateRef EcmaStringCheck(GateRef gate);
+    GateRef StringKeyCheck(GateRef key, GateRef value);
+    GateRef InternStringKeyCheck(GateRef key, GateRef value);
     GateRef InternStringCheck(GateRef gate);
     GateRef EcmaMapCheck(GateRef gate);
     GateRef FlattenTreeStringCheck(GateRef gate);

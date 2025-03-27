@@ -59,7 +59,7 @@ public:
     }
 
     NativeAreaAllocator *GetNativeAreaAllocator() const;
-    virtual JSRuntimeOptions &GetJSOptions() = 0;
+    virtual JSRuntimeOptions &GetJSOptions() const = 0;
     virtual std::shared_ptr<pgo::PGOProfiler> GetPGOProfiler() const;
 
     // thread

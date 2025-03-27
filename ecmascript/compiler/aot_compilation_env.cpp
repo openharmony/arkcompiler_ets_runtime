@@ -22,7 +22,7 @@ AOTCompilationEnv::AOTCompilationEnv(EcmaVM *vm) : CompilationEnv(vm)
     ptManager_ = vm->GetPTManager();
 }
 
-JSRuntimeOptions &AOTCompilationEnv::GetJSOptions()
+JSRuntimeOptions &AOTCompilationEnv::GetJSOptions() const
 {
     return vm_->GetJSOptions();
 }

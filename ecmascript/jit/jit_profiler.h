@@ -84,6 +84,7 @@ public:
         chunk_ = chunk;
     }
 private:
+    static const int INVALID_METHOD_INDEX = 0;
     enum class BCType : uint8_t {
         STORE,
         LOAD,
@@ -106,8 +107,10 @@ private:
                         JSHClass *hclass, JSTaggedValue &secondValue, uint32_t slotId);
     void HandleLoadTypeInt(ApEntityId &abcId, int32_t &bcOffset,
                            JSHClass *hclass, JSTaggedValue &secondValue);
-    void HandleLoadTypePrototypeHandler(ApEntityId &abcId, int32_t &bcOffset,
-                                        JSHClass *hclass, JSTaggedValue &secondValue, uint32_t slotId);
+    void HandleLoadTypePrototypeHandler(
+        ApEntityId &abcId, int32_t &bcOffset, JSHClass *hclass,
+        JSTaggedValue &secondValue, uint32_t slotId,
+        JSTaggedValue = JSTaggedValue::Undefined());
     void HandleOtherTypes(ApEntityId &abcId, int32_t &bcOffset,
                           JSHClass *hclass, JSTaggedValue &secondValue, uint32_t slotId);
     void HandleTransitionHandler(ApEntityId &abcId, int32_t &bcOffset,
@@ -121,8 +124,8 @@ private:
     void ConvertICByNameWithPoly(ApEntityId abcId, int32_t bcOffset, JSTaggedValue cacheValue, BCType type,
                                  uint32_t slotId);
     void ConvertICByValue(int32_t bcOffset, uint32_t slotId, BCType type);
-    void ConvertICByValueWithHandler(ApEntityId abcId, int32_t bcOffset, JSHClass *hclass,
-		                     JSTaggedValue secondValue, BCType type);
+    void ConvertICByValueWithHandler(ApEntityId abcId, int32_t bcOffset, JSHClass *hclass, JSTaggedValue secondValue,
+                                     BCType type, uint32_t slotId, JSTaggedValue name = JSTaggedValue::Undefined());
     void HandleStoreType(ApEntityId &abcId, int32_t &bcOffset,
                          JSHClass *hclass, JSTaggedValue &secondValue);
     void HandleTransition(ApEntityId &abcId, int32_t &bcOffset,
@@ -131,16 +134,20 @@ private:
                               JSHClass *hclass, JSTaggedValue &secondValue);
     void HandlePrototypeHandler(ApEntityId &abcId, int32_t &bcOffset,
                                 JSHClass *hclass, JSTaggedValue &secondValue);
-    void ConvertICByValueWithPoly(ApEntityId abcId, int32_t bcOffset, JSTaggedValue cacheValue, BCType type);
+    void ConvertICByValueWithPoly(ApEntityId abcId, int32_t bcOffset,
+                                  JSTaggedValue name, JSTaggedValue cacheValue,
+                                  BCType type, uint32_t slotId);
     void ConvertInstanceof(int32_t bcOffset, uint32_t slotId);
 
     // RwOpType related
     void AddObjectInfoWithMega(int32_t bcOffset);
-    void AddObjectInfoImplement(int32_t bcOffset, const PGOObjectInfo &info);
-    bool AddTranstionObjectInfo(int32_t bcOffset, JSHClass *receiver,
-		                JSHClass *hold, JSHClass *holdTra, PGOSampleType accessorMethod);
+    void AddObjectInfoImplement(int32_t bcOffset, const PGOObjectInfo &info,
+                                JSTaggedValue name = JSTaggedValue::Undefined());
+    bool AddTranstionObjectInfo(int32_t bcOffset, JSHClass *receiver, JSHClass *hold, JSHClass *holdTra,
+                                PGOSampleType accessorMethod, JSTaggedValue name = JSTaggedValue::Undefined());
     bool AddObjectInfo(ApEntityId abcId, int32_t bcOffset, JSHClass *receiver,
-		               JSHClass *hold, JSHClass *holdTra, uint32_t accessorMethodId = 0);
+                       JSHClass *hold, JSHClass *holdTra, uint32_t accessorMethodId = INVALID_METHOD_INDEX,
+                       JSTaggedValue name = JSTaggedValue::Undefined());
     void AddBuiltinsInfo(ApEntityId abcId, int32_t bcOffset, JSHClass *receiver,
                          JSHClass *transitionHClass, OnHeapMode onHeap = OnHeapMode::NONE,
                          bool everOutOfBounds = false);

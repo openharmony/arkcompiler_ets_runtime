@@ -33,7 +33,7 @@ public:
         return false;
     }
 
-    JSRuntimeOptions &GetJSOptions() override;
+    JSRuntimeOptions &GetJSOptions() const override;
 
     // thread
     ConstantIndex GetArrayHClassIndex(ElementsKind kind, bool isProtoType) const override;
