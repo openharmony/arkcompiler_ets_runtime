@@ -272,8 +272,7 @@
 #define RETURN_EXCEPTION_AND_POP_JOINSTACK(thread, value)       \
     do {                                                        \
         if ((thread)->HasPendingException()) {                  \
-            auto ecmaContext = thread->GetCurrentEcmaContext(); \
-            ecmaContext->JoinStackPopFastPath(value);           \
+            ArrayJoinStack::Pop(thread, value);                 \
             return JSTaggedValue::Exception();                  \
         }                                                       \
     } while (false)

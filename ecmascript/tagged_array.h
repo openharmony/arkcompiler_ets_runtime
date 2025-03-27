@@ -30,6 +30,7 @@ class TaggedArray : public TaggedObject {
 public:
     static constexpr uint32_t MAX_ARRAY_INDEX = std::numeric_limits<uint32_t>::max();
     static constexpr uint32_t MAX_END_UNUSED = 4;
+    static constexpr uint32_t EXTEND_PADDING_LENGTH = 16U;
 
     CAST_CHECK(TaggedArray, IsTaggedArray);
 
@@ -53,6 +54,11 @@ public:
                                                const JSHandle<TaggedArray> &second);
     static JSHandle<TaggedArray> AppendSkipHole(const JSThread *thread, const JSHandle<TaggedArray> &first,
                                                        const JSHandle<TaggedArray> &second, uint32_t copyLength);
+
+    static inline uint32_t ExtendCapacityWithPadding(uint32_t oldCapacity)
+    {
+        return oldCapacity + (oldCapacity >> 1U) + EXTEND_PADDING_LENGTH;
+    }
 
     static size_t ComputeSize(size_t elemSize, uint32_t length)
     {

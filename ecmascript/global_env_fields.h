@@ -233,7 +233,8 @@
     V(JSTaggedValue, CjsRequireFunction, CJS_REQUIRE_FUNCTION_INDEX)                                \
     V(JSTaggedValue, GlobalPatch, GLOBAL_PATCH)                                                     \
     V(JSTaggedValue, ExportOfScript, DEFAULT_EXPORT_OF_SCRIPT)                                      \
-    V(JSTaggedValue, NativeModuleFailureInfoClass, NATIVE_MODULE_FAILURE_INFO_CLASS)
+    V(JSTaggedValue, NativeModuleFailureInfoClass, NATIVE_MODULE_FAILURE_INFO_CLASS)                \
+    V(JSTaggedValue, ArrayJoinStack, ARRAY_JOIN_STACK)
 
 #define GLOBAL_ENV_SHARED_FIELDS(V)                                                                              \
     V(JSTaggedValue, SObjectFunction, SHARED_OBJECT_FUNCTION_INDEX)                                              \
