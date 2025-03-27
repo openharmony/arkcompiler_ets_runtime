@@ -172,7 +172,6 @@ public:
             {JSType::CLASS_LITERAL, {"Array", "CLASS_LITERAL"}},
             {JSType::COMPLETION_RECORD, {"Value", "COMPLETION_RECORD"}},
             {JSType::CONSTANT_POOL, {"CONSTANT_POOL"}},
-            {JSType::CONSTANT_STRING, {"RelocatedData", "CONSTANT_STRING"}},
             {JSType::COW_MUTANT_TAGGED_ARRAY, {"COW_MUTANT_TAGGED_ARRAY"}},
             {JSType::COW_TAGGED_ARRAY, {"COW_TAGGED_ARRAY"}},
             {JSType::EXTRA_PROFILE_TYPE_INFO, {"ReceiverObject", "HolderObject", "EXTRA_PROFILE_TYPE_INFO"}},
@@ -445,8 +444,6 @@ public:
             {JSType::COMPLETION_RECORD, {CompletionRecord::VALUE_OFFSET,
                                          CompletionRecord::SIZE - CompletionRecord::VALUE_OFFSET}},
             {JSType::CONSTANT_POOL, {0}},
-            {JSType::CONSTANT_STRING, {ConstantString::RELOCTAED_DATA_OFFSET,
-                                       ConstantString::LAST_OFFSET - ConstantString::RELOCTAED_DATA_OFFSET}},
             {JSType::COW_MUTANT_TAGGED_ARRAY, {0}},
             {JSType::COW_TAGGED_ARRAY, {0}},
             {JSType::EXTRA_PROFILE_TYPE_INFO, {
@@ -1037,7 +1034,6 @@ public:
             {JSType::CLASS_LITERAL, {"TAGGED_OBJECT"}},
             {JSType::COMPLETION_RECORD, {"RECORD"}},
             {JSType::CONSTANT_POOL, {"TAGGED_ARRAY"}},
-            {JSType::CONSTANT_STRING, {"ECMA_STRING"}},
             {JSType::COW_MUTANT_TAGGED_ARRAY, {"MUTANT_TAGGED_ARRAY"}},
             {JSType::COW_TAGGED_ARRAY, {"TAGGED_ARRAY"}},
             {JSType::EXTRA_PROFILE_TYPE_INFO, {"TAGGED_OBJECT"}},
@@ -1271,7 +1267,6 @@ public:
             {JSType::CLASS_LITERAL, {ClassLiteral::IS_AOT_USED_OFFSET - ClassLiteral::ARRAY_OFFSET}},
             {JSType::COMPLETION_RECORD, {CompletionRecord::BIT_FIELD_OFFSET - CompletionRecord::VALUE_OFFSET}},
             {JSType::CONSTANT_POOL, {}},
-            {JSType::CONSTANT_STRING, {ConstantString::ENTITY_ID_OFFSET - ConstantString::RELOCTAED_DATA_OFFSET}},
             {JSType::COW_MUTANT_TAGGED_ARRAY, {}},
             {JSType::COW_TAGGED_ARRAY, {}},
             {JSType::EXTRA_PROFILE_TYPE_INFO, {
@@ -2304,19 +2299,6 @@ HWTEST_F_L0(JSMetadataTest, TestConstantPoolMetadata)
     tester.ReadAndParseMetadataJson(metadataFilePath, metadata);
     ASSERT_TRUE(metadata.status == JSMetadataTestHelper::INITIALIZED);
     ASSERT_TRUE(tester.Test(JSType::CONSTANT_POOL, metadata));
-}
-
-HWTEST_F_L0(JSMetadataTest, TestConstantStringMetadata)
-{
-#if defined(PANDA_TARGET_AMD64) || defined(PANDA_TARGET_ARM64)
-    JSMetadataTestHelper tester {};
-    std::string metadataFilePath = METADATA_SOURCE_FILE_DIR"constant_string.json";
-    JSMetadataTestHelper::Metadata metadata {};
-
-    tester.ReadAndParseMetadataJson(metadataFilePath, metadata);
-    ASSERT_TRUE(metadata.status == JSMetadataTestHelper::INITIALIZED);
-    ASSERT_TRUE(tester.Test(JSType::CONSTANT_STRING, metadata));
-#endif
 }
 
 HWTEST_F_L0(JSMetadataTest, TestCowMutantTaggedArrayMetadata)

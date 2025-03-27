@@ -411,8 +411,6 @@ public:
     GateRef IsString(GateRef obj);
     GateRef IsLineString(GateRef obj);
     GateRef IsSlicedString(GateRef obj);
-    GateRef IsConstantString(GateRef obj);
-    GateRef IsLiteralString(GateRef obj);
     GateRef IsTreeString(GateRef obj);
     GateRef TreeStringIsFlat(GateRef string);
     GateRef TaggedIsBigInt(GateRef obj);

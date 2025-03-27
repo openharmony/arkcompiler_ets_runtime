@@ -80,14 +80,6 @@ EcmaString *ObjectFactory::AllocSlicedStringObject(MemSpaceType type)
         JSHClass::Cast(thread_->GlobalConstants()->GetSlicedStringClass().GetTaggedObject()), type));
 }
 
-EcmaString *ObjectFactory::AllocConstantStringObject(MemSpaceType type)
-{
-    ASSERT(IsSMemSpace(type));
-    NewSObjectHook();
-    return reinterpret_cast<EcmaString *>(AllocObjectWithSpaceType(ConstantString::SIZE,
-        JSHClass::Cast(thread_->GlobalConstants()->GetConstantStringClass().GetTaggedObject()), type));
-}
-
 EcmaString *ObjectFactory::AllocTreeStringObject()
 {
     NewSObjectHook();

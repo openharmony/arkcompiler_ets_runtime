@@ -37,21 +37,16 @@ inline EcmaString *EcmaString::CreateEmptyString(const EcmaVM *vm)
 
 /* static */
 inline EcmaString *EcmaString::CreateFromUtf8(const EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf8Len,
-                                              bool canBeCompress, MemSpaceType type, bool isConstantString,
-                                              uint32_t idOffset)
+                                              bool canBeCompress, MemSpaceType type)
 {
     if (utf8Len == 0) {
         return vm->GetFactory()->GetEmptyString().GetObject<EcmaString>();
     }
     EcmaString *string = nullptr;
     if (canBeCompress) {
-        if (isConstantString) {
-            string = CreateConstantString(vm, utf8Data, utf8Len, canBeCompress, type, idOffset);
-        } else {
-            string = CreateLineStringWithSpaceType(vm, utf8Len, true, type);
-            ASSERT(string != nullptr);
-            std::copy(utf8Data, utf8Data + utf8Len, string->GetDataUtf8Writable());
-        }
+        string = CreateLineStringWithSpaceType(vm, utf8Len, true, type);
+        ASSERT(string != nullptr);
+        std::copy(utf8Data, utf8Data + utf8Len, string->GetDataUtf8Writable());
     } else {
         auto utf16Len = base::utf_helper::Utf8ToUtf16Size(utf8Data, utf8Len);
         string = CreateLineStringWithSpaceType(vm, utf16Len, false, type);
@@ -189,21 +184,6 @@ inline SlicedString *EcmaString::CreateSlicedString(const EcmaVM *vm, MemSpaceTy
     return slicedString;
 }
 
-inline EcmaString *EcmaString::CreateConstantString(const EcmaVM *vm, const uint8_t *utf8Data,
-    size_t length, bool compressed, MemSpaceType type, uint32_t idOffset)
-{
-    ASSERT(IsSMemSpace(type));
-    auto string = ConstantString::Cast(vm->GetFactory()->AllocConstantStringObject(type));
-    auto thread = vm->GetJSThread();
-    string->SetLength(length, compressed);
-    string->SetRawHashcode(0);
-    string->SetConstantData(const_cast<uint8_t *>(utf8Data));
-    // The string might be serialized, the const data will be replaced by index in the panda file.
-    string->SetEntityId(idOffset);
-    string->SetRelocatedData(thread, JSTaggedValue::Undefined(), BarrierMode::SKIP_BARRIER);
-    return string;
-}
-
 /*
  * In the multi-thread optimization scenario, start the application.
  * 1.The thread executes until CheckThread () acquires the lock.
@@ -285,10 +265,7 @@ inline uint16_t *EcmaString::GetData() const
 inline const uint8_t *EcmaString::GetDataUtf8() const
 {
     ASSERT_PRINT(IsUtf8(), "EcmaString: Read data as utf8 for utf16 string");
-    if (IsLineString()) {
-        return reinterpret_cast<uint8_t *>(GetData());
-    }
-    return ConstantString::Cast(this)->GetConstantData();
+    return reinterpret_cast<uint8_t *>(GetData());
 }
 
 inline const uint16_t *EcmaString::GetDataUtf16() const
@@ -300,9 +277,6 @@ inline const uint16_t *EcmaString::GetDataUtf16() const
 inline uint8_t *EcmaString::GetDataUtf8Writable()
 {
     ASSERT_PRINT(IsUtf8(), "EcmaString: Read data as utf8 for utf16 string");
-    if (IsConstantString()) {
-        return ConstantString::Cast(this)->GetConstantData();
-    }
     return reinterpret_cast<uint8_t *>(GetData());
 }
 
@@ -334,8 +308,6 @@ inline uint16_t EcmaString::At(int32_t index) const
     switch (GetStringType()) {
         case JSType::LINE_STRING:
             return LineEcmaString::Cast(this)->Get<verify>(index);
-        case JSType::CONSTANT_STRING:
-            return ConstantString::Cast(this)->Get<verify>(index);
         case JSType::SLICED_STRING:
             return SlicedString::Cast(this)->Get<verify>(index);
         case JSType::TREE_STRING:
@@ -389,11 +361,6 @@ void EcmaString::WriteToFlat(EcmaString *src, Char *buf, uint32_t maxLength)
                 }
                 return;
             }
-            case JSType::CONSTANT_STRING: {
-                ASSERT(src->IsUtf8());
-                CopyChars(buf, src->GetDataUtf8(), length);
-                return;
-            }
             case JSType::TREE_STRING: {
                 TreeEcmaString *treeSrc = TreeEcmaString::Cast(src);
                 EcmaString *first = EcmaString::Cast(treeSrc->GetFirst());
@@ -420,7 +387,7 @@ void EcmaString::WriteToFlat(EcmaString *src, Char *buf, uint32_t maxLength)
                     if (length > firstLength) {
                         if (secondLength == 1) {
                             buf[firstLength] = static_cast<Char>(second->At<false>(0));
-                        } else if ((second->IsLineOrConstantString()) && second->IsUtf8()) {
+                        } else if ((second->IsLineString()) && second->IsUtf8()) {
                             CopyChars(buf + firstLength, second->GetDataUtf8(), secondLength);
                         } else {
                             WriteToFlat(second, buf + firstLength, maxLength - firstLength);
@@ -467,11 +434,6 @@ void EcmaString::WriteToFlatWithPos(EcmaString *src, Char *buf, uint32_t length,
                 } else {
                     CopyChars(buf, src->GetDataUtf16() + pos, length);
                 }
-                return;
-            }
-            case JSType::CONSTANT_STRING: {
-                ASSERT(src->IsUtf8());
-                CopyChars(buf, src->GetDataUtf8() + pos, length);
                 return;
             }
             case JSType::TREE_STRING: {

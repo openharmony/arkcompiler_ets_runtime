@@ -87,8 +87,7 @@ JSTaggedValue ConstantPool::GetStringFromCacheForJit(JSThread *thread, JSTaggedV
         auto foundStr = jsPandaFile->GetStringData(id);
         EcmaVM *vm = thread->GetEcmaVM();
         ObjectFactory *factory = vm->GetFactory();
-        auto string = factory->GetRawStringFromStringTableWithoutJSHandle(foundStr, MemSpaceType::SHARED_OLD_SPACE,
-            jsPandaFile->IsFirstMergedAbc(), id.GetOffset());
+        auto string = factory->GetRawStringFromStringTableWithoutJSHandle(foundStr, MemSpaceType::SHARED_OLD_SPACE);
         val = JSTaggedValue(string);
     }
     return val;
@@ -113,8 +112,7 @@ JSTaggedValue ConstantPool::GetStringFromCache(JSThread *thread, JSTaggedValue c
         EcmaVM *vm = thread->GetEcmaVM();
         ObjectFactory *factory = vm->GetFactory();
         JSHandle<ConstantPool> constpoolHandle(thread, constpool);
-        auto string = factory->GetRawStringFromStringTable(foundStr, MemSpaceType::SHARED_OLD_SPACE,
-            jsPandaFile->IsFirstMergedAbc(), id.GetOffset());
+        auto string = factory->GetRawStringFromStringTable(foundStr, MemSpaceType::SHARED_OLD_SPACE);
 
         val = JSTaggedValue(string);
         CASSetObjectToCache(thread, constpoolHandle.GetTaggedValue(), index, val);
