@@ -88,12 +88,3 @@ try {
 } catch (e) {
     print(e.name)
 }
-
-var A = {};
-function Func() { }
-Func.prototype = A;
-print(A instanceof Func);
-
-var proto_desc = Object.getOwnPropertyDescriptor(RegExp, "prototype");
-var proto = proto_desc.value;
-print(proto instanceof RegExp);
