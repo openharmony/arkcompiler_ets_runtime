@@ -85,10 +85,27 @@ bool FileStream::WriteChunk(char *data, int32_t size)
     return true;
 }
 
+FileDescriptorStream::FileDescriptorStream(int32_t fd) : fd_(fd)
+{
+#if defined(PANDA_TARGET_OHOS)
+    fdsan_exchange_owner_tag(fd, 0, LOG_DOMAIN);
+#endif
+}
+
+FileDescriptorStream::~FileDescriptorStream()
+{
+    EndOfStream();
+}
+
 void FileDescriptorStream::EndOfStream()
 {
     if (Good()) {
+#if defined(PANDA_TARGET_OHOS)
+        fdsan_close_with_tag(fd_, LOG_DOMAIN);
+#else
         close(fd_);
+#endif
+        fd_ = -1;
     }
 }
 

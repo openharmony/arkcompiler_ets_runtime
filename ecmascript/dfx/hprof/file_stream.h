@@ -62,8 +62,8 @@ private:
 
 class FileDescriptorStream : public Stream {
 public:
-    explicit FileDescriptorStream(int32_t fd): fd_(fd) {}
-    ~FileDescriptorStream() override = default;
+    explicit FileDescriptorStream(int32_t fd);
+    ~FileDescriptorStream() override;
 
     void EndOfStream() override;
 

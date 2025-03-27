@@ -237,7 +237,7 @@ HWTEST_F_L0(HeapTrackerTest, FileDescriptorStreamWriteChunk)
     testString = "Hello!";
     strSize = testString.size();
     isFileStream = tmpFileStream.WriteChunk(testString.data(), strSize);
-    close(fd);
+    tmpFileStream.EndOfStream();
     EXPECT_TRUE(!isFileStream);
 
     std::string fileName = "test.StreamWriteChunk";
@@ -251,7 +251,7 @@ HWTEST_F_L0(HeapTrackerTest, FileDescriptorStreamWriteChunk)
     isFileStream = fileStream.WriteChunk(testString.data(), strSize);
     EXPECT_TRUE(isFileStream);
     std::remove(fileName.c_str());
-    close(fd);
+    fileStream.EndOfStream();
 }
 
 HWTEST_F_L0(HeapTrackerTest, AddNodeToTree)
