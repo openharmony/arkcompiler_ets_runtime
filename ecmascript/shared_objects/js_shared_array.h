@@ -116,8 +116,7 @@ public:
 
     static bool PropertyKeyToArrayIndex(JSThread *thread, const JSHandle<JSTaggedValue> &key, uint32_t *output);
 
-    static JSTaggedValue LengthGetter(JSThread *thread, const JSHandle<JSObject> &self,
-                                      SCheckMode mode = SCheckMode::CHECK);
+    static JSTaggedValue LengthGetter(JSThread *thread, const JSHandle<JSObject> &self);
 
     static bool LengthSetter(JSThread *thread, const JSHandle<JSObject> &self, const JSHandle<JSTaggedValue> &value,
                              bool mayThrow = false);
