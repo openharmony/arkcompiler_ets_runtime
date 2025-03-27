@@ -52,3 +52,28 @@ function f0() {
 
 Object.defineProperty(f0, "length", { enumerable: true, get: f0 });
 print(f0.length);
+
+/*
+ * @tc.name: definepropertybyname
+ * @tc.desc: test handler of definepropertybyname
+ * @tc.type: FUNC
+ * @tc.require: issueIBSERN
+ */
+{
+    let arr = [];
+    function testFunc(p1) {
+        for (let i = 0; i < 200; i++) {}
+        let obj1 = {
+            __proto__: arr,
+            "d": p1,
+        };
+        return obj1;
+    }
+    testFunc(123);
+    Object.defineProperty(arr, "d", { value: 66 });
+    try {
+        testFunc(456);
+    } catch (e) {
+        print(e);
+    }
+}

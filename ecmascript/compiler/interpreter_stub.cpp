@@ -400,7 +400,7 @@ void name##StubBuilder::GenerateCircuitImpl(GateRef glue, GateRef sp, GateRef pc
         /* IC do the same thing as stobjbyname */                                                                    \
         AccessObjectStubBuilder builder(this);                                                                       \
         StringIdInfo info(constpool, pc, StringIdInfo::Offset::BYTE_1, StringIdInfo::Length::BITS_16);               \
-        result = builder.StoreObjByName(glue, receiver, 0, info, acc, profileTypeInfo, slotId, callback);            \
+        result = builder.StOwnICByName(glue, receiver, 0, info, acc, profileTypeInfo, slotId, callback);             \
         Jump(&exit);                                                                                                 \
     }                                                                                                                \
     Bind(&slowPath);                                                                                                 \

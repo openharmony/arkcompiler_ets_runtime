@@ -41,6 +41,8 @@ public:
     GateRef DeprecatedLoadObjByName(GateRef glue, GateRef receiver, GateRef propKey);
     GateRef StoreObjByName(GateRef glue, GateRef receiver, GateRef prop, const StringIdInfo &info, GateRef value,
         GateRef profileTypeInfo, GateRef slotId, ProfileOperation callback = ProfileOperation());
+    GateRef StOwnICByName(GateRef glue, GateRef receiver, GateRef prop, const StringIdInfo &info, GateRef value,
+        GateRef profileTypeInfo, GateRef slotId, ProfileOperation callback = ProfileOperation());
     GateRef StoreObjByNameWithMega(GateRef glue, GateRef receiver, GateRef value, GateRef megaStubCache,
                                    GateRef propKey, GateRef jsFunc, GateRef slotId,
                                    ProfileOperation callback = ProfileOperation());

@@ -328,7 +328,7 @@ JSTaggedValue LoadICRuntime::LoadTypedArrayValueMiss(JSHandle<JSTaggedValue> rec
 }
 
 JSTaggedValue StoreICRuntime::StoreMiss(JSHandle<JSTaggedValue> receiver, JSHandle<JSTaggedValue> key,
-                                        JSHandle<JSTaggedValue> value, bool isOwn)
+                                        JSHandle<JSTaggedValue> value, bool isOwn, bool isDefPropByName)
 {
     ICKind kind = GetICKind();
     if (IsValueIC(kind)) {
@@ -383,7 +383,7 @@ JSTaggedValue StoreICRuntime::StoreMiss(JSHandle<JSTaggedValue> receiver, JSHand
     // If op is Accessor, it may change the properties of receiver or receiver's proto,
     // causing IC compute errors, so move SetPropertyForAccessor to be executed after UpdateStoreHandler.
     bool isAccessor = false;
-    if (isOwn) {
+    if (isOwn && !isDefPropByName) {
         bool enumerable = !(receiver->IsClassPrototype() || receiver->IsClassConstructor());
         PropertyDescriptor desc(thread_, value, true, enumerable, true);
         success = JSObject::DefineOwnProperty(thread_, &op, desc);
