@@ -124,9 +124,8 @@ public:
 
     class TimeScope : public ClockScope {
     public:
-        explicit TimeScope(EcmaVM *vm, CString message, CompilerTier tier, bool outPutLog = true,
-            bool isDebugLevel = false)
-            : vm_(vm), message_(message), tier_(tier), outPutLog_(outPutLog), isDebugLevel_(isDebugLevel) {}
+        PUBLIC_API explicit TimeScope(EcmaVM *vm, CString message, CompilerTier tier, bool outPutLog = true,
+            bool isDebugLevel = false);
         explicit TimeScope(EcmaVM *vm)
             : vm_(vm), message_(""), tier_(CompilerTier::Tier::FAST), outPutLog_(false), isDebugLevel_(true) {}
         PUBLIC_API ~TimeScope();
