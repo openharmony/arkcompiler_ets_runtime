@@ -947,5 +947,8 @@ assert_equal(res8.flags,'g');
     assert_equal(e instanceof SyntaxError, true);
   }
 }
-
+{
+  let reg = /a(?:|x)$/
+  assert_equal(JSON.stringify(reg.exec("ax")), '["ax"]')
+}
 test_end();
