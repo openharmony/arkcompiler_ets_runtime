@@ -423,11 +423,11 @@ bool JSFunction::OrdinaryHasInstance(JSThread *thread, const JSHandle<JSTaggedVa
     //    d.If SameValue(P, O) is true, return true.
     JSMutableHandle<JSTaggedValue> object(thread, obj.GetTaggedValue());
     while (!object->IsNull()) {
-        object.Update(JSTaggedValue::GetPrototype(thread, object));
-        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
         if (JSTaggedValue::SameValue(object, constructorPrototype)) {
             return true;
         }
+        object.Update(JSTaggedValue::GetPrototype(thread, object));
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
     }
     return false;
 }
