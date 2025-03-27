@@ -444,6 +444,22 @@ void Jit::ChangeTaskPoolState(bool inBackground)
     }
 }
 
+Jit::TimeScope::TimeScope(EcmaVM *vm, CString message, CompilerTier tier, bool outPutLog, bool isDebugLevel)
+    : vm_(vm), message_(message), tier_(tier), outPutLog_(outPutLog), isDebugLevel_(isDebugLevel)
+{
+    if (outPutLog_) {
+        if (isDebugLevel_) {
+            LOG_JIT(DEBUG) << tier_ << message_ << " begin.";
+        } else {
+            auto bundleName = vm_->GetBundleName();
+            if (vm_->GetEnableJitLogSkip() && bundleName != "" && message_.find(bundleName) == std::string::npos) {
+                return;
+            }
+            LOG_JIT(INFO) << tier_ << message_ << " begin.";
+        }
+    }
+}
+
 Jit::TimeScope::~TimeScope()
 {
     if (!outPutLog_) {
