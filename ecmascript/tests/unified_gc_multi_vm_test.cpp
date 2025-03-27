@@ -106,6 +106,22 @@ public:
         Destroy();
     }
 
+    void TriggerYoungGCTest()
+    {
+        Init();
+
+        void *ecmaVMInterface = nullptr;
+        CrossVMOperator::DoHandshake(vm, stsVMInterface, &ecmaVMInterface);
+
+        CrossReferenceObjectBuilder CrossReferenceObject(vm, thread);
+        while (!thread->HasSuspendRequest()) {}
+        thread->WaitSuspension();
+        vm->CollectGarbage(TriggerGCType::YOUNG_GC);
+        CrossReferenceObject.CheckResultAfterUnifiedGC();
+
+        Destroy();
+    }
+
     void HeapVerifyTest()
     {
         JSRuntimeOptions options;
@@ -337,6 +353,37 @@ HWTEST_F_L0(UnifiedGCMultiVMTest, MultiVMUnifiedGCMarkTest4)
     SharedHeap::GetInstance()->TriggerUnifiedGCMark<TriggerGCType::UNIFIED_GC, GCReason::CROSSREF_CAUSE>(thread);
     while (!thread->HasSuspendRequest()) {}
     thread->WaitSuspension();
+    CrossReferenceObject.CheckResultAfterUnifiedGC();
+    t1.join();
+    t2.join();
+    t3.join();
+}
+
+HWTEST_F_L0(UnifiedGCMultiVMTest, MultiVMUnifiedGCMarkTest5)
+{
+    SuspendBarrier barrier(INT_VALUE_4);
+    EcmaVM *vm = thread->GetEcmaVM();
+    auto stsVMInterface = std::make_unique<STSVMInterfaceTest>();
+
+    UnifiedGCMultiVMTestSuite testVM1(stsVMInterface.get(), &barrier);
+    UnifiedGCMultiVMTestSuite testVM2(stsVMInterface.get(), &barrier);
+    UnifiedGCMultiVMTestSuite testVM3(stsVMInterface.get(), &barrier);
+    std::thread t1(&UnifiedGCMultiVMTestSuite::TriggerYoungGCTest, testVM1);
+    std::thread t2(&UnifiedGCMultiVMTestSuite::TriggerYoungGCTest, testVM2);
+    std::thread t3(&UnifiedGCMultiVMTestSuite::TriggerYoungGCTest, testVM3);
+    {
+        ThreadSuspensionScope suspensionScope(thread);
+        barrier.PassStrongly();
+        barrier.Wait();
+    }
+
+    void *ecmaVMInterface = nullptr;
+    CrossVMOperator::DoHandshake(vm, stsVMInterface.get(), &ecmaVMInterface);
+    CrossReferenceObjectBuilder CrossReferenceObject(vm, thread);
+    SharedHeap::GetInstance()->TriggerUnifiedGCMark<TriggerGCType::UNIFIED_GC, GCReason::CROSSREF_CAUSE>(thread);
+    while (!thread->HasSuspendRequest()) {}
+    thread->WaitSuspension();
+    vm->CollectGarbage(TriggerGCType::YOUNG_GC);
     CrossReferenceObject.CheckResultAfterUnifiedGC();
     t1.join();
     t2.join();

@@ -140,9 +140,6 @@ void VerifyObjectVisitor::VerifyHeapObjectSlotLegal(ObjectSlot slot,
         case VerifyKind::VERIFY_MARK_FULL:
             VerifyMarkFull(object, slot, slotValue.GetTaggedObject());
             break;
-        case VerifyKind::VERIFY_MARK_UNIFIED:
-            VerifyMarkUnified(object, slot, slotValue.GetTaggedObject());
-            break;
         case VerifyKind::VERIFY_EVACUATE_OLD:
             VerifyEvacuateOld(object, slot, slotValue.GetTaggedObject());
             break;
@@ -248,28 +245,6 @@ void VerifyObjectVisitor::VerifyMarkFull(TaggedObject *object, ObjectSlot slot, 
     if (!objectRegion->InSharedHeap() && valueRegion->InSharedSweepableSpace()) {
         if (!objectRegion->TestLocalToShare(slot.SlotAddress())) {
             LogErrorForObjSlot(heap_, "Verify MarkFull: Local object, slot local_to_share bit = 0, "
-                "but SharedHeap object.", object, slot, value);
-        }
-    } // LCOV_EXCL_STOP
-}
-
-void VerifyObjectVisitor::VerifyMarkUnified(TaggedObject *object, ObjectSlot slot, TaggedObject *value) const
-{
-    Region *objectRegion = Region::ObjectAddressToRange(object);
-    Region *valueRegion = Region::ObjectAddressToRange(value);
-    if (objectRegion->InGeneralOldSpace() && valueRegion->InYoungSpace()) { // LCOV_EXCL_START
-        if (!objectRegion->TestOldToNew(slot.SlotAddress())) {
-            LogErrorForObjSlot(heap_, "Verify MarkUnified: Old object, slot miss old_to_new bit.", object, slot, value);
-        }
-    }
-    if (objectRegion->Test(object)) {
-        if (!valueRegion->InSharedHeap() && !valueRegion->Test(value)) {
-            LogErrorForObjSlot(heap_, "Verify MarkUnified: Marked object, slot miss gc_mark bit.", object, slot, value);
-        }
-    }
-    if (!objectRegion->InSharedHeap() && valueRegion->InSharedSweepableSpace()) {
-        if (!objectRegion->TestLocalToShare(slot.SlotAddress())) {
-            LogErrorForObjSlot(heap_, "Verify MarkUnified: Local object, slot local_to_share bit = 0, "
                 "but SharedHeap object.", object, slot, value);
         }
     } // LCOV_EXCL_STOP
@@ -428,9 +403,6 @@ void Verification::VerifyMark(Heap *heap)
         case MarkType::MARK_FULL:
             Verification(heap, VerifyKind::VERIFY_MARK_FULL).VerifyAll();
             break;
-        case MarkType::MARK_UNIFIED:
-            Verification(heap, VerifyKind::VERIFY_MARK_UNIFIED).VerifyAll();
-            break;
     }
 }
 
@@ -443,10 +415,6 @@ void Verification::VerifyEvacuate(Heap *heap)
             break;
         case MarkType::MARK_FULL:
             Verification(heap, VerifyKind::VERIFY_EVACUATE_OLD).VerifyAll();
-            break;
-        case MarkType::MARK_UNIFIED:
-            LOG_GC(ERROR) << "Unified GC does not need verify evacuate";
-            UNREACHABLE();
             break;
     }
 }
