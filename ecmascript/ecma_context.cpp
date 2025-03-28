@@ -111,7 +111,6 @@ bool EcmaContext::Initialize()
     SetupNumberToStringResultCache();
     SetupStringSplitResultCache();
     SetupStringToListResultCache();
-    microJobQueue_ = factory_->NewMicroJobQueue().GetTaggedValue();
     moduleManager_ = new ModuleManager(vm_);
     ptManager_ = new kungfu::PGOTypeManager(vm_);
     optCodeProfiler_ = new OptCodeProfiler();
@@ -305,7 +304,7 @@ Expected<JSTaggedValue, bool> EcmaContext::CommonInvokeEcmaEntrypoint(const JSPa
 
         if (!thread_->HasPendingException() && IsStaticImport(executeType)) {
             JSHandle<JSTaggedValue> handleResult(thread_, result);
-            job::MicroJobQueue::ExecutePendingJob(thread_, GetMicroJobQueue());
+            job::MicroJobQueue::ExecutePendingJob(thread_, vm_->GetMicroJobQueue());
             result = handleResult.GetTaggedValue();
         }
     }
@@ -687,34 +686,6 @@ JSHandle<JSTaggedValue> EcmaContext::GetEcmaUncaughtException() const
     return exceptionHandle;
 }
 
-bool EcmaContext::HasPendingJob()
-{
-    // This interface only determines whether PromiseJobQueue is empty, rather than ScriptJobQueue.
-    if (UNLIKELY(thread_->HasTerminated())) {
-        return false;
-    }
-    TaggedQueue* promiseQueue = TaggedQueue::Cast(GetMicroJobQueue()->GetPromiseJobQueue().GetTaggedObject());
-    return !promiseQueue->Empty();
-}
-
-bool EcmaContext::ExecutePromisePendingJob()
-{
-    if (isProcessingPendingJob_) {
-        LOG_ECMA(DEBUG) << "EcmaVM::ExecutePromisePendingJob can not reentrant";
-        return false;
-    }
-    if (!thread_->HasPendingException()) {
-        isProcessingPendingJob_ = true;
-        job::MicroJobQueue::ExecutePendingJob(thread_, GetMicroJobQueue());
-        if (thread_->HasPendingException()) {
-            JsStackInfo::BuildCrashInfo(thread_);
-        }
-        isProcessingPendingJob_ = false;
-        return true;
-    }
-    return false;
-}
-
 void EcmaContext::ClearBufferData()
 {
     cachedSharedConstpools_.clear();
@@ -731,20 +702,9 @@ void EcmaContext::SetGlobalEnv(GlobalEnv *global)
     }
 }
 
-void EcmaContext::SetMicroJobQueue(job::MicroJobQueue *queue)
-{
-    ASSERT(queue != nullptr);
-    microJobQueue_ = JSTaggedValue(queue);
-}
-
 JSHandle<GlobalEnv> EcmaContext::GetGlobalEnv() const
 {
     return JSHandle<GlobalEnv>(reinterpret_cast<uintptr_t>(&globalEnv_));
-}
-
-JSHandle<job::MicroJobQueue> EcmaContext::GetMicroJobQueue() const
-{
-    return JSHandle<job::MicroJobQueue>(reinterpret_cast<uintptr_t>(&microJobQueue_));
 }
 
 void EcmaContext::MountContext(JSThread *thread)
@@ -832,9 +792,6 @@ void EcmaContext::Iterate(RootVisitor &v)
     }
     if (!stringToListResultCache_.IsHole()) {
         v.VisitRoot(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&stringToListResultCache_)));
-    }
-    if (!microJobQueue_.IsHole()) {
-        v.VisitRoot(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&microJobQueue_)));
     }
 
     if (functionProtoTransitionTable_) {

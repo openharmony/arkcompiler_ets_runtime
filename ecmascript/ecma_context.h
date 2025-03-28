@@ -49,7 +49,6 @@ class RegExpParserCache;
 class JSPandaFileManager;
 class JSPandaFile;
 class ConstantPool;
-class JSPromise;
 class RegExpExecResultCache;
 class SustainingJSHandleList;
 class SustainingJSHandle;
@@ -59,7 +58,6 @@ template<typename T>
 class JSHandle;
 class JSThread;
 class JSFunction;
-class JSPromise;
 class JSTaggedValue;
 class EcmaVM;
 class ModuleManager;
@@ -72,9 +70,6 @@ struct CJSInfo;
 class FunctionProtoTransitionTable;
 class ModuleLogger;
 
-namespace job {
-class MicroJobQueue;
-}  // namespace job
 namespace tooling {
 class JsDebuggerManager;
 }  // namespace tooling
@@ -82,12 +77,6 @@ namespace kungfu {
 class PGOTypeManager;
 } // namespace kungfu
 
-using HostPromiseRejectionTracker = void (*)(const EcmaVM* vm,
-                                             const JSHandle<JSPromise> promise,
-                                             const JSHandle<JSTaggedValue> reason,
-                                             PromiseRejectionEvent operation,
-                                             void* data);
-using PromiseRejectCallback = void (*)(void* info);
 #if defined(CROSS_PLATFORM) && defined(ANDROID_PLATFORM)
 using JsAotReaderCallback = std::function<bool(std::string fileName, uint8_t **buff, size_t *buffSize)>;
 #endif
@@ -176,15 +165,6 @@ public:
 
     bool Initialize();
 
-    bool IsExecutingPendingJob() const
-    {
-        return isProcessingPendingJob_.load();
-    }
-
-    bool HasPendingJob();
-
-    bool ExecutePromisePendingJob();
-
     static EcmaContext *ConstCast(const EcmaContext *context)
     {
         return const_cast<EcmaContext *>(context);
@@ -214,33 +194,7 @@ public:
     {
         return thread_;
     }
-    PromiseRejectCallback GetPromiseRejectCallback() const
-    {
-        return promiseRejectCallback_;
-    }
 
-    void SetPromiseRejectCallback(PromiseRejectCallback cb)
-    {
-        promiseRejectCallback_ = cb;
-    }
-
-    void SetData(void* data)
-    {
-        data_ = data;
-    }
-
-    void PromiseRejectionTracker(const JSHandle<JSPromise> &promise,
-                                 const JSHandle<JSTaggedValue> &reason, PromiseRejectionEvent operation)
-    {
-        if (hostPromiseRejectionTracker_ != nullptr) {
-            hostPromiseRejectionTracker_(vm_, promise, reason, operation, data_);
-        }
-    }
-
-    void SetHostPromiseRejectionTracker(HostPromiseRejectionTracker cb)
-    {
-        hostPromiseRejectionTracker_ = cb;
-    }
     void SetupRegExpResultCache();
     void SetupNumberToStringResultCache();
     void SetupStringSplitResultCache();
@@ -349,13 +303,10 @@ public:
         return globalEnv_.IsHole();
     }
 
-    JSHandle<job::MicroJobQueue> GetMicroJobQueue() const;
-
     void IterateMegaIC(RootVisitor &v);
     void Iterate(RootVisitor &v);
     static void MountContext(JSThread *thread);
     static void UnmountContext(JSThread *thread);
-    void SetMicroJobQueue(job::MicroJobQueue *queue);
     void SetGlobalEnv(GlobalEnv *global);
     void PrintOptStat();
 
@@ -561,7 +512,6 @@ private:
     EcmaVM *vm_{nullptr};
 
     bool initialized_ {false};
-    std::atomic<bool> isProcessingPendingJob_ {false};
     ObjectFactory *factory_ {nullptr};
 
     // VM execution states.
@@ -572,7 +522,6 @@ private:
     JSTaggedValue globalEnv_ {JSTaggedValue::Hole()};
     JSTaggedValue regexpCache_ {JSTaggedValue::Hole()};
     JSTaggedValue regexpGlobal_ {JSTaggedValue::Hole()};
-    JSTaggedValue microJobQueue_ {JSTaggedValue::Hole()};
 
     CMap<const JSPandaFile *, CMap<int32_t, JSTaggedValue>> cachedSharedConstpools_ {};
     JSTaggedValue* unsharedConstpools_ = nullptr;
@@ -595,11 +544,6 @@ private:
 
     // atomics
     WaiterListNode waiterListNode_;
-
-    // Registered Callbacks
-    PromiseRejectCallback promiseRejectCallback_ {nullptr};
-    HostPromiseRejectionTracker hostPromiseRejectionTracker_ {nullptr};
-    void* data_{nullptr};
 
     // opt code Profiler
     OptCodeProfiler *optCodeProfiler_ {nullptr};

@@ -159,7 +159,7 @@ HWTEST_F_L0(BuiltinsWeakRefTest, Deref3)
     }
     vm->CollectGarbage(TriggerGCType::FULL_GC);
     if (!thread->HasPendingException()) {
-        job::MicroJobQueue::ExecutePendingJob(thread, vm->GetJSThread()->GetCurrentEcmaContext()->GetMicroJobQueue());
+        job::MicroJobQueue::ExecutePendingJob(thread, vm->GetMicroJobQueue());
     }
     vm->SetEnableForceGC(true);
     ASSERT_TRUE(!result2.IsUndefined());

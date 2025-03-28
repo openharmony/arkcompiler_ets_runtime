@@ -300,6 +300,7 @@ bool EcmaVM::Initialize()
 
     callTimer_ = new FunctionCallTimer();
     strategy_ = new ThroughputJSObjectResizingStrategy();
+    microJobQueue_ = factory_->NewMicroJobQueue().GetTaggedValue();
     if (IsEnableFastJit() || IsEnableBaselineJit()) {
         Jit::GetInstance()->ConfigJit(this);
     }
@@ -740,7 +741,9 @@ void EcmaVM::Iterate(RootVisitor &v, VMRootVisitType type)
     if (aotFileManager_) {
         aotFileManager_->Iterate(v);
     }
-
+    if (!microJobQueue_.IsHole()) {
+        v.VisitRoot(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&microJobQueue_)));
+    }
     if (!options_.EnableGlobalLeakCheck() && currentHandleStorageIndex_ != -1) {
         // IterateHandle when disableGlobalLeakCheck.
         int32_t nid = currentHandleStorageIndex_;
@@ -1257,5 +1260,44 @@ bool EcmaVM::InsertAsyncStackTrace(const JSHandle<JSPromise> &promise)
 bool EcmaVM::RemoveAsyncStackTrace(const JSHandle<JSPromise> &promise)
 {
     return asyncStackTrace_->RemoveAsyncStackTrace(promise);
+}
+
+JSHandle<job::MicroJobQueue> EcmaVM::GetMicroJobQueue() const
+{
+    return JSHandle<job::MicroJobQueue>(reinterpret_cast<uintptr_t>(&microJobQueue_));
+}
+
+void EcmaVM::SetMicroJobQueue(job::MicroJobQueue *queue)
+{
+    ASSERT(queue != nullptr);
+    microJobQueue_ = JSTaggedValue(queue);
+}
+
+bool EcmaVM::HasPendingJob() const
+{
+    // This interface only determines whether PromiseJobQueue is empty, rather than ScriptJobQueue.
+    if (UNLIKELY(thread_->HasTerminated())) {
+        return false;
+    }
+    TaggedQueue* promiseQueue = TaggedQueue::Cast(GetMicroJobQueue()->GetPromiseJobQueue().GetTaggedObject());
+    return !promiseQueue->Empty();
+}
+
+bool EcmaVM::ExecutePromisePendingJob()
+{
+    if (isProcessingPendingJob_) {
+        LOG_ECMA(DEBUG) << "EcmaVM::ExecutePromisePendingJob can not reentrant";
+        return false;
+    }
+    if (!thread_->HasPendingException()) {
+        isProcessingPendingJob_ = true;
+        job::MicroJobQueue::ExecutePendingJob(thread_, GetMicroJobQueue());
+        if (thread_->HasPendingException()) {
+            JsStackInfo::BuildCrashInfo(thread_);
+        }
+        isProcessingPendingJob_ = false;
+        return true;
+    }
+    return false;
 }
 }  // namespace panda::ecmascript

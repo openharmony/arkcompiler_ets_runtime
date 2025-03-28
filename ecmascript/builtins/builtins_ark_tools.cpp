@@ -235,7 +235,7 @@ JSTaggedValue BuiltinsArkTools::ExcutePendingJob(EcmaRuntimeCallInfo *info)
     RETURN_IF_DISALLOW_ARKTOOLS(thread);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
-    thread->GetCurrentEcmaContext()->ExecutePromisePendingJob();
+    thread->GetEcmaVM()->ExecutePromisePendingJob();
     return JSTaggedValue::True();
 }
 
@@ -1246,7 +1246,7 @@ JSTaggedValue BuiltinsArkTools::EnqueueMicrotask([[maybe_unused]] EcmaRuntimeCal
     CHECK(info->GetCallArg(0)->IsJSFunction());
     JSHandle<JSFunction> func(info->GetCallArg(0));
 
-    JSHandle<job::MicroJobQueue> queue = thread->GetCurrentEcmaContext()->GetMicroJobQueue();
+    JSHandle<job::MicroJobQueue> queue = thread->GetEcmaVM()->GetMicroJobQueue();
     JSHandle<TaggedArray> argv(thread->GlobalConstants()->GetHandledEmptyArray());
 
     job::MicroJobQueue::EnqueueJob(thread, queue, job::QueueType::QUEUE_PROMISE, func, argv);
@@ -1311,7 +1311,7 @@ JSTaggedValue BuiltinsArkTools::PerformMicrotaskCheckpoint([[maybe_unused]] Ecma
     JSThread *thread = info->GetThread();
     RETURN_IF_DISALLOW_ARKTOOLS(thread);
     ASSERT(info && info->GetArgsNumber() == 0);
-    thread->GetCurrentEcmaContext()->ExecutePromisePendingJob();
+    thread->GetEcmaVM()->ExecutePromisePendingJob();
     return JSTaggedValue::Undefined();
 }
 

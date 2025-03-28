@@ -278,8 +278,7 @@ void DropframeManager::MergeLexModifyRecordOfTopFrame(JSThread *thread)
 
 void DropframeManager::PushPromiseQueueSizeRecord(JSThread *thread)
 {
-    EcmaContext *context = thread->GetCurrentEcmaContext();
-    uint32_t queueSize = job::MicroJobQueue::GetPromiseQueueSize(thread, context->GetMicroJobQueue());
+    uint32_t queueSize = job::MicroJobQueue::GetPromiseQueueSize(thread, thread->GetEcmaVM()->GetMicroJobQueue());
     promiseQueueSizeRecord_.push(queueSize);
 }
 

@@ -1366,8 +1366,7 @@ void SnapshotProcessor::HandleRootObject(SnapshotType type, uintptr_t rootObject
                 vm_->GetJSThread()->GetCurrentEcmaContext()->SetGlobalEnv(
                     reinterpret_cast<GlobalEnv *>(rootObjectAddr));
             } else if (JSType(objType) == JSType::MICRO_JOB_QUEUE) {
-                vm_->GetJSThread()->GetCurrentEcmaContext()->SetMicroJobQueue(
-                    reinterpret_cast<job::MicroJobQueue *>(rootObjectAddr));
+                vm_->SetMicroJobQueue(reinterpret_cast<job::MicroJobQueue *>(rootObjectAddr));
             }
             break;
         }
