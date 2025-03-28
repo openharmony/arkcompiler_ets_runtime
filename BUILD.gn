@@ -1444,6 +1444,7 @@ ohos_shared_library("libark_jsruntime") {
 }
 
 ohos_shared_library("libark_jsruntime_test") {
+  testonly = true
   stack_protector_ret = false
   deps = [ ":libark_jsruntime_test_set" ]
   public_configs = [ "$js_root:ark_jsruntime_public_config" ]
@@ -1475,8 +1476,7 @@ ohos_shared_library("libark_jsruntime_test") {
     output_extension = "so"
   }
 
-  part_name = "ets_runtime"
-  subsystem_name = "arkcompiler"
+  subsystem_name = "test"
 }
 
 ohos_prebuilt_etc("app_aot_jit_enable_list") {
