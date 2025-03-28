@@ -441,6 +441,8 @@ public:
     void FreeGlobalHandleAddr();
     void FreeXRefGlobalHandleAddr();
     void MarkFromObject();
+    bool IsObjectAlive() const;
+    bool IsValidHeapObject() const;
 
     inline T *operator*() const
     {
@@ -1806,6 +1808,8 @@ public:
     static void NotifyTaskFinished(const EcmaVM *vm);
     static bool IsMultiThreadCheckEnabled(const EcmaVM *vm);
     static uint32_t GetCurrentThreadId();
+    static bool IsObjectAlive(const EcmaVM *vm, uintptr_t addr);
+    static bool IsValidHeapObject(const EcmaVM *vm, uintptr_t addr);
 
     //set VM apiVersion
     static void SetVMAPIVersion(EcmaVM *vm, const int32_t apiVersion);

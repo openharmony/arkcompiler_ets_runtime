@@ -50,6 +50,26 @@ void CrossVMOperator::MarkFromObject(JSTaggedType value)
     heap->GetUnifiedGCMarker()->MarkFromObject(object);
 }
 
+bool CrossVMOperator::IsObjectAlive(JSTaggedType value)
+{
+    JSTaggedValue taggedValue(value);
+    if (!taggedValue.IsHeapObject()) {
+        return false;
+    }
+    TaggedObject *object = taggedValue.GetHeapObject();
+    return vm_->GetHeap()->IsAlive(object);
+}
+
+bool CrossVMOperator::IsValidHeapObject(JSTaggedType value)
+{
+    JSTaggedValue taggedValue(value);
+    if (!taggedValue.IsHeapObject()) {
+        return false;
+    }
+    TaggedObject *object = taggedValue.GetHeapObject();
+    return vm_->GetHeap()->ContainObject(object);
+}
+
 bool CrossVMOperator::EcmaVMInterfaceImpl::StartXRefMarking()
 {
     return SharedHeap::GetInstance()->TriggerUnifiedGCMark<
