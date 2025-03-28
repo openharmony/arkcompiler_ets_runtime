@@ -1949,7 +1949,8 @@ template("host_aot_js_test_action") {
 
       _aot_run_options_ =
           " --aot-file=" + rebase_path(_test_aot_arg_litecg_) +
-          " --asm-interpreter=true" + " --entry-point=${_target_name_}"
+          " --asm-interpreter=true" + " --entry-point=${_target_name_}" +
+          " --open-ark-tools=true"
 
       _icu_data_path_options_ =
           " --icu-data-path=" + rebase_path("//third_party/icu/ohos_icu4j/data")
@@ -2028,7 +2029,8 @@ template("host_aot_js_test_action") {
 
       _aot_run_options_ =
           " --aot-file=" + rebase_path(_test_aot_arg_litecg_) +
-          " --asm-interpreter=true" + " --entry-point=${_target_name_}"
+          " --asm-interpreter=true" + " --entry-point=${_target_name_}" +
+          " --open-ark-tools=true"
 
       if (defined(invoker.is_enable_enableArkTools) &&
           invoker.is_enable_enableArkTools) {
@@ -3762,7 +3764,8 @@ template("host_aot_test_action") {
 
       _aot_run_options_ =
           " --aot-file=" + rebase_path(_test_aot_arg_litecg_) +
-          " --asm-interpreter=true" + " --entry-point=${_target_name_}"
+          " --asm-interpreter=true" + " --entry-point=${_target_name_}" +
+          " --open-ark-tools=true"
 
       _icu_data_path_options_ =
           " --icu-data-path=" + rebase_path("//third_party/icu/ohos_icu4j/data")
@@ -3844,7 +3847,8 @@ template("host_aot_test_action") {
 
       _aot_run_options_ =
           " --aot-file=" + rebase_path(_test_aot_arg_litecg_) +
-          " --asm-interpreter=true" + " --entry-point=${_target_name_}"
+          " --asm-interpreter=true" + " --entry-point=${_target_name_}" +
+          " --open-ark-tools=true"
 
       _icu_data_path_options_ =
           " --icu-data-path=" + rebase_path("//third_party/icu/ohos_icu4j/data")
@@ -3925,7 +3929,8 @@ template("host_aot_test_action") {
 
       _aot_run_options_ =
           " --aot-file=" + rebase_path(_test_aot_arg_slowpath_litecg_) +
-          " --asm-interpreter=true" + " --entry-point=${_target_name_}"
+          " --asm-interpreter=true" + " --entry-point=${_target_name_}" +
+          " --open-ark-tools=true"
 
       _icu_data_path_options_ =
           " --icu-data-path=" + rebase_path("//third_party/icu/ohos_icu4j/data")

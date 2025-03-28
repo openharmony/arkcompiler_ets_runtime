@@ -14,33 +14,13 @@
 false
 0
 [builtins] IterateFrameType: 13
-[builtins] IterateFrameDelta: 0
-[builtins] IterateFrameCalleeRegInfo: 0
 [builtins] IterateFrameType: 11
-[builtins] IterateFrameDelta: 0
-[builtins] IterateFrameCalleeRegInfo: 0
 [builtins] IterateFrameType: 11
-[builtins] IterateFrameDelta: 0
-[builtins] IterateFrameCalleeRegInfo: 0
 [builtins] DeoptIterateFrameType: 13
-[builtins] DeoptIterateFrameDelta: 0
-[builtins] DeoptIterateFrameCalleeRegInfo: 0
 [builtins] DeoptIterateFrameType: 11
-[builtins] DeoptIterateFrameDelta: 0
-[builtins] DeoptIterateFrameCalleeRegInfo: 0
 [builtins] DeoptIterateFrameType: 11
-[builtins] DeoptIterateFrameDelta: 0
-[builtins] DeoptIterateFrameCalleeRegInfo: 0
 [builtins] DeoptIterateFrameType: 11
-[builtins] DeoptIterateFrameDelta: 0
-[builtins] DeoptIterateFrameCalleeRegInfo: 0
 [builtins] DeoptIterateFrameType: 11
-[builtins] DeoptIterateFrameDelta: 0
-[builtins] DeoptIterateFrameCalleeRegInfo: 0
 [builtins] DeoptIterateFrameType: 11
-[builtins] DeoptIterateFrameDelta: 0
-[builtins] DeoptIterateFrameCalleeRegInfo: 0
 [builtins] DeoptIterateFrameType: 19
-[builtins] DeoptIterateFrameDelta: 0
-[builtins] DeoptIterateFrameCalleeRegInfo: 0
 0
