@@ -20,6 +20,7 @@
 #include "ecmascript/base/number_helper.h"
 #include "ecmascript/compiler/builtins/builtins_call_signature.h"
 #include "ecmascript/ecma_string.h"
+#include "ecmascript/enum_cache.h"
 #include "ecmascript/js_function_kind.h"
 #include "ecmascript/js_handle.h"
 #include "ecmascript/js_hclass.h"
@@ -169,6 +170,7 @@ class TransitionHandler;
 class PrototypeHandler;
 class TransWithProtoHandler;
 class StoreAOTHandler;
+class EnumCache;
 class PropertyBox;
 class ProtoChangeMarker;
 class ProtoChangeDetails;
@@ -391,12 +393,15 @@ public:
     JSHandle<TaggedArray> PUBLIC_API NewDictionaryArray(uint32_t length);
     JSHandle<JSForInIterator> NewJSForinIterator(const JSHandle<JSTaggedValue> &obj,
                                                  const JSHandle<JSTaggedValue> keys,
-                                                 const JSHandle<JSTaggedValue> cachedHclass);
+                                                 const JSHandle<JSTaggedValue> cachedHclass,
+                                                 const uint32_t enumCacheKind);
 
     JSHandle<ByteArray> NewByteArray(uint32_t length, uint32_t size, void *srcData = nullptr,
                                      MemSpaceType spaceType = MemSpaceType::SEMI_SPACE);
 
     JSHandle<PropertyBox> NewPropertyBox(const JSHandle<JSTaggedValue> &name);
+    
+    JSHandle<EnumCache> NewEnumCache();
 
     JSHandle<ProtoChangeMarker> NewProtoChangeMarker();
 
@@ -414,7 +419,7 @@ public:
                                                JSTaggedValue initVal = JSTaggedValue::Hole(),
                                                MemSpaceType type = MemSpaceType::SEMI_SPACE,
                                                ElementsKind kind = ElementsKind::GENERIC);
-    JSHandle<TaggedArray> CopyFromEnumCache(const JSHandle<TaggedArray> &old);
+    JSHandle<TaggedArray> CopyFromKeyArray(const JSHandle<TaggedArray> &old);
     JSHandle<TaggedArray> CloneProperties(const JSHandle<TaggedArray> &old);
     JSHandle<TaggedArray> CloneProperties(const JSHandle<TaggedArray> &old, const JSHandle<JSTaggedValue> &env,
                                           const JSHandle<JSObject> &obj);

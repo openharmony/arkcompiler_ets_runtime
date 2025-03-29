@@ -66,6 +66,7 @@ class ObjectFactory;
     V(JSTaggedValue, PromiseResolvingFunctionsRecordClass, PROMISE_RESOLVING_FUNCTIONS_CLASS_INDEX, ecma_roots_class) \
     V(JSTaggedValue, MicroJobQueueClass, MICRO_JOB_QUEUE_CLASS_INDEX, ecma_roots_class)                               \
     V(JSTaggedValue, PendingJobClass, PENDING_JOB_CLASS_INDEX, ecma_roots_class)                                      \
+    V(JSTaggedValue, EnumCacheClass, ENUM_CACHE_CLASS_INDEX, ecma_roots_class)                                        \
     V(JSTaggedValue, ProtoChangeMarkerClass, PROTO_CHANGE_MARKER_CLASS_INDEX, ecma_roots_class)                       \
     V(JSTaggedValue, ProtoChangeDetailsClass, PROTO_CHANGE_DETAILS_CLASS_INDEX, ecma_roots_class)                     \
     V(JSTaggedValue, MarkerCellClass, MARKER_CELL_CLASS_INDEX, ecma_roots_class)                                      \

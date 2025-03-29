@@ -15,19 +15,23 @@
 
 #include "ecmascript/property_accessor.h"
 
+#include "ecmascript/ic/proto_change_details.h"
+#include "ecmascript/js_handle.h"
 #include "ecmascript/js_object-inl.h"
+#include "ecmascript/js_tagged_value.h"
 
 namespace panda::ecmascript {
 PropertyAccessor::PropertyAccessor(JSThread *thread, JSHandle<JSTaggedValue> object)
     : thread_(thread),
       receiver_(thread, object.GetTaggedValue()),
       fastKeysArray_(thread, JSTaggedValue::Undefined()),
-      cachedHclass_(thread, JSTaggedValue::Undefined()),
+      cachedHClass_(thread, JSTaggedValue::Undefined()),
+      enumCache_(thread, JSTaggedValue::Undefined()),
       keyLength_(0),
       shadowKeyLength_(0),
       onlyHasSimpleProperties_(true),
-      canUseEnumCache_(true),
       hasSlowProperties_(false),
+      hasPrototypeChainEnumCache_(false),
       slowKeysArray_(thread, JSTaggedValue::Undefined()),
       acutalKeyLength_(0)
 {
@@ -36,21 +40,23 @@ PropertyAccessor::PropertyAccessor(JSThread *thread, JSHandle<JSTaggedValue> obj
 
 void PropertyAccessor::PreLoad()
 {
+    JSHandle<JSObject> receiverObj(receiver_);
+    JSHandle<JSHClass> jsHClass(thread_, receiverObj->GetJSHClass());
     if (receiver_->IsSlowKeysObject()) {
         hasSlowProperties_ = true;
         return;
     }
-    JSHandle<JSObject> receiverObj(receiver_);
-    JSHClass *jshclass = receiverObj->GetJSHClass();
-    if (jshclass->IsDictionaryMode()) {
+    enumCache_ = JSHandle<JSTaggedValue>::Cast(
+        JSObject::GetOrCreateEnumCache(thread_, jsHClass));
+    cachedHClass_.Update(jsHClass);
+    if (jsHClass->IsDictionaryMode()) {
         onlyHasSimpleProperties_ = false;
-        canUseEnumCache_ = false;
     }
     uint32_t numOfElements = receiverObj->GetNumberOfElements(thread_);
     if (numOfElements > 0) {
         AccumulateKeyLength(numOfElements);
         onlyHasSimpleProperties_ = false;
-        canUseEnumCache_ = false;
+        tryPrototypeChainEnumCache_ = false;
     }
     std::pair<uint32_t, uint32_t> numOfKeys = receiverObj->GetNumberOfEnumKeys();
     uint32_t numOfEnumKeys = numOfKeys.first;
@@ -61,14 +67,26 @@ void PropertyAccessor::PreLoad()
     if (numOfShadowKeys > 0) {
         AccumulateShadowKeyLength(numOfShadowKeys);
     }
-
+    CopyKeyLengthToSelf();
+    hasPrototypeChainEnumCache_ = HasPrototypeChainEnumCache();
     CollectPrototypeInfo();
     if (hasSlowProperties_ || !onlyHasSimpleProperties_) {
         return;
     }
-    ASSERT(canUseEnumCache_);
-    // fast path
+    ASSERT(!hasSlowProperties_ && onlyHasSimpleProperties_);
+    // Fath path for simple properties.
     InitSimplePropertiesEnumCache();
+}
+
+bool PropertyAccessor::HasPrototypeChainEnumCache()
+{
+    JSTaggedValue current = JSTaggedValue::GetPrototype(thread_, receiver_);
+    if (!current.IsHeapObject()) {
+        tryPrototypeChainEnumCache_ = false;
+        return false;
+    }
+    JSTaggedValue enumCache = current.GetTaggedObject()->GetClass()->GetEnumCache();
+    return enumCache.IsEnumCacheAllValid();
 }
 
 void PropertyAccessor::CollectPrototypeInfo()
@@ -86,7 +104,8 @@ void PropertyAccessor::CollectPrototypeInfo()
         if (numOfCurrentElements > 0) {
             AccumulateKeyLength(numOfCurrentElements);
             onlyHasSimpleProperties_ = false;
-            canUseEnumCache_ = false;
+            hasPrototypeChainEnumCache_ = false;
+            tryPrototypeChainEnumCache_ = false;
         }
         std::pair<uint32_t, uint32_t> numOfKeys = currentObj->GetNumberOfEnumKeys();
         uint32_t numOfEnumKeys = numOfKeys.first;
@@ -101,39 +120,56 @@ void PropertyAccessor::CollectPrototypeInfo()
         JSHClass *jshclass = currentObj->GetJSHClass();
         if (jshclass->IsDictionaryMode()) {
             onlyHasSimpleProperties_ = false;
-            canUseEnumCache_ = false;
-        }
-        if (onlyHasSimpleProperties_) {
-            // a fast path to check simple enum cache
-            jshclass->SetEnumCache(thread_, JSTaggedValue::Undefined());
+            hasPrototypeChainEnumCache_ = false;
+            tryPrototypeChainEnumCache_ = false;
         }
         current = JSObject::GetPrototype(current);
     }
 }
 
+// For simple enumCache, set the ProtoChainInfoEnumCache of
+// the receiver's prototype to JSTaggedValue::UNDEFINED.
+// Additionally, enable the proto change marker to ensure that if the receiver's prototype chain changes,
+// the ProtoChainInfoEnumCache of the receiver's prototype becomes JSTaggedValue::NULL.
 void PropertyAccessor::InitSimplePropertiesEnumCache()
 {
     ObjectFactory *factory = thread_->GetEcmaVM()->GetFactory();
     JSHandle<JSObject> receiverObj(receiver_);
+    JSHClass *jsHClass = receiverObj->GetJSHClass();
+
     ASSERT(receiverObj->GetNumberOfElements(thread_) == 0);
     ASSERT(!receiver_->IsInSharedHeap());
+
     JSMutableHandle<TaggedArray> keyArray(thread_, JSTaggedValue::Undefined());
     if (keyLength_ == 0) {
         keyArray.Update(factory->EmptyArray());
         SetActualKeyLength(0);
     } else {
-        uint32_t arraySize = keyLength_ + EnumCache::ENUM_CACHE_HEADER_SIZE;
+        uint32_t arraySize = keyLength_;
         JSHandle<TaggedArray> newArray = thread_->GetEcmaVM()->GetFactory()->NewTaggedArray(arraySize);
-        uint32_t length = JSObject::GetAllEnumKeys(thread_, receiverObj, EnumCache::ENUM_CACHE_HEADER_SIZE, newArray);
+        uint32_t length = JSObject::GetAllEnumKeys(thread_, receiverObj, 0, newArray);
         SetActualKeyLength(length);
-        JSObject::SetEnumCacheKind(thread_, *newArray, EnumCacheKind::SIMPLE);
         keyArray.Update(newArray);
     }
+
+    // Set proto's ProtoChainInfoEnumCache to JSTaggedValue::NULL and enable proto's ChangeMarker.
+    JSTaggedValue proto = JSObject::GetPrototype(receiver_.GetTaggedValue());
+    if (proto.IsHeapObject()) {
+        JSHandle<EnumCache> enumCache = JSObject::GetOrCreateEnumCache(thread_,
+            JSHandle<JSHClass>(thread_, proto.GetTaggedObject()->GetClass()));
+        enumCache->SetProtoChainInfoEnumCache(thread_, JSTaggedValue::Undefined());
+        JSHClass::EnableProtoChangeMarker(thread_, JSHandle<JSHClass>(thread_, jsHClass));
+    }
+
+    JSObject::SetEnumCacheKind(thread_, JSHandle<EnumCache>::Cast(enumCache_), EnumCacheKind::SIMPLE);
     JSObject::ClearHasDeleteProperty(receiver_);
-    JSHClass *jsHclass = receiverObj->GetJSHClass();
-    jsHclass->SetEnumCache(thread_, keyArray.GetTaggedValue());
     fastKeysArray_.Update(keyArray.GetTaggedValue());
-    cachedHclass_.Update(JSTaggedValue(jsHclass));
+}
+
+inline void PropertyAccessor::CopyKeyLengthToSelf()
+{
+    keyLengthSelf_ = keyLength_;
+    shadowKeyLengthSelf_ = shadowKeyLength_;
 }
 
 inline void PropertyAccessor::AccumulateKeyLength(uint32_t length)
@@ -146,9 +182,14 @@ inline void PropertyAccessor::AccumulateShadowKeyLength(uint32_t length)
     shadowKeyLength_ += length;
 }
 
-JSHandle<JSTaggedValue> PropertyAccessor::GetCachedHclass()
+JSHandle<JSTaggedValue> PropertyAccessor::GetCachedHClass() const
 {
-    return cachedHclass_;
+    return cachedHClass_;
+}
+
+JSHandle<JSTaggedValue> PropertyAccessor::GetEnumCache() const
+{
+    return enumCache_;
 }
 
 uint32_t PropertyAccessor::GetActualKeyLength() const
@@ -161,58 +202,186 @@ inline void PropertyAccessor::SetActualKeyLength(uint32_t length)
     acutalKeyLength_ = length;
 }
 
-void PropertyAccessor::AddKeysEndIfNeeded(JSHandle<TaggedArray> keys)
+void PropertyAccessor::AddUndefinedEndIfNeeded(JSHandle<TaggedArray> keys)
 {
     // when has duplicated keys
     if (acutalKeyLength_ < keyLength_) {
-        keys->Set(thread_, acutalKeyLength_ + EnumCache::ENUM_CACHE_HEADER_SIZE, JSTaggedValue::Undefined());
+        keys->Set(thread_, acutalKeyLength_, JSTaggedValue::Undefined());
     }
 }
 
-void PropertyAccessor::TryInitEnumCacheWithProtoChainInfo()
+void PropertyAccessor::AddUndefinedEndIfNeeded(JSHandle<TaggedArray> keys,
+                                               const uint32_t keyLength, const uint32_t acutalKeyLength)
 {
-#if ECMASCRIPT_ENABLE_IC
-    if (!canUseEnumCache_) {
-        JSObject::SetEnumCacheKind(thread_, TaggedArray::Cast(fastKeysArray_->GetTaggedObject()), EnumCacheKind::NONE);
-        return;
+    if (acutalKeyLength < keyLength) {
+        keys->Set(thread_, acutalKeyLength, JSTaggedValue::Undefined());
     }
+}
+
+JSHandle<TaggedArray> PropertyAccessor::GetChainKeys(const JSHandle<JSTaggedValue> &receiver,
+                                                     const uint32_t keyLength,
+                                                     const uint32_t shadowKeyLength)
+{
+    ObjectFactory *factory = thread_->GetEcmaVM()->GetFactory();
+    uint32_t arraySize = keyLength;
+    JSHandle<TaggedArray> keyArray = factory->NewTaggedArray(arraySize);
+    JSHandle<TaggedQueue> shadowQueue = factory->NewTaggedQueue(shadowKeyLength + 1);
+    uint32_t keysNum = 0;
+    JSMutableHandle<JSTaggedValue> current(thread_, receiver);
+    while (current->IsHeapObject()) {
+        JSObject::AppendOwnEnumPropertyKeys(thread_, JSHandle<JSObject>(current), keyArray, &keysNum, shadowQueue);
+        RETURN_HANDLE_IF_ABRUPT_COMPLETION(TaggedArray, thread_);
+        JSObject::ClearHasDeleteProperty(current);
+        current.Update(JSObject::GetPrototype(current.GetTaggedValue()));
+    }
+    AddUndefinedEndIfNeeded(keyArray, keyLength, keysNum);
+    return keyArray;
+}
+
+JSHandle<JSTaggedValue> PropertyAccessor::GetKeysFastWithoutCache()
+{
+    JSHandle<TaggedArray> keyArray = GetChainKeys(receiver_, keyLength_, shadowKeyLength_);
+    return JSHandle<JSTaggedValue>::Cast(keyArray);
+}
+
+std::pair<JSHandle<TaggedArray>, JSHandle<TaggedQueue>> PropertyAccessor::GetOwnKeysWithoutCache()
+{
+    ObjectFactory *factory = thread_->GetEcmaVM()->GetFactory();
+    uint32_t arraySize = keyLengthSelf_;
+    JSHandle<TaggedArray> keyArrayOnReceiver = factory->NewTaggedArray(arraySize);
+    JSHandle<TaggedQueue> shadowQueueOnReceiver = factory->NewTaggedQueue(shadowKeyLengthSelf_ + 1);
+    uint32_t keysNum = 0;
+    JSObject::AppendOwnEnumPropertyKeys(thread_, JSHandle<JSObject>(receiver_),
+                                        keyArrayOnReceiver, &keysNum, shadowQueueOnReceiver);
+    AddUndefinedEndIfNeeded(keyArrayOnReceiver, arraySize, keysNum);
+    return std::make_pair(keyArrayOnReceiver, shadowQueueOnReceiver);
+}
+
+bool PropertyAccessor::IsObjectWithoutKey() const
+{
+    return keyLengthSelf_ == 0 && shadowKeyLengthSelf_ == 0;
+}
+
+std::pair<JSHandle<TaggedArray>, JSHandle<TaggedQueue>> PropertyAccessor::GetOwnKeys()
+{
+    if (IsObjectWithoutKey()) {
+        ObjectFactory *factory = thread_->GetEcmaVM()->GetFactory();
+        JSHandle<TaggedArray> keyArrayOnReceiver = factory->NewTaggedArray(0);
+        JSHandle<TaggedQueue> shadowQueueOnReceiver = factory->NewTaggedQueue(0);
+        return std::make_pair(keyArrayOnReceiver, shadowQueueOnReceiver);
+    }
+
+    return GetOwnKeysWithoutCache();
+}
+
+JSHandle<TaggedArray> PropertyAccessor::GetAndSetChainKeys(const JSHandle<JSTaggedValue> &proto,
+                                                           const uint32_t keyLength,
+                                                           const uint32_t shadowKeyLength)
+{
+    JSHandle<TaggedArray> keyArrayOnPrototypeChain = GetChainKeys(proto, keyLength, shadowKeyLength);
     ASSERT(!receiver_->IsInSharedHeap());
     ASSERT(!onlyHasSimpleProperties_);
-    JSHandle<JSObject> receiverObj(receiver_);
-    JSHandle<JSHClass> jsHclass(thread_, receiverObj->GetJSHClass());
-    jsHclass->SetEnumCache(thread_, fastKeysArray_.GetTaggedValue());
-    JSObject::SetEnumCacheKind(
-        thread_, TaggedArray::Cast(fastKeysArray_->GetTaggedObject()), EnumCacheKind::PROTOCHAIN);
-    cachedHclass_.Update(jsHclass);
-    JSHClass::EnableProtoChangeMarker(thread_, jsHclass);
-#endif
+    JSHandle<JSObject> protoObj(proto);
+    JSHandle<JSHClass> jsHClass(thread_, protoObj->GetJSHClass());
+    JSHandle<EnumCache> enumCacheProto = JSObject::GetOrCreateEnumCache(thread_, jsHClass);
+    
+    // receiver's ProtoChainInfoEnumCache == proto's EnumCacheAll.
+    JSHandle<EnumCache>::Cast(enumCache_)->
+        SetProtoChainInfoEnumCache(thread_, keyArrayOnPrototypeChain.GetTaggedValue());
+    enumCacheProto->SetEnumCacheAll(thread_, keyArrayOnPrototypeChain.GetTaggedValue());
+    JSHClass::EnablePHCProtoChangeMarker(thread_, jsHClass);
+    return keyArrayOnPrototypeChain;
+}
+
+void PropertyAccessor::AddKey(const JSHandle<JSTaggedValue> &value,
+                              JSHandle<TaggedArray>& allKeys, uint32_t& allKeysLength,
+                              const JSHandle<TaggedArray> &keyArrayOnReceiver,
+                              const JSHandle<TaggedQueue> &shadowQueueOnReceiver)
+{
+    uint32_t receiverKeysLength = keyArrayOnReceiver->GetLength();
+    JSMutableHandle<JSTaggedValue> key(thread_, JSTaggedValue::Undefined());
+    for (uint32_t i = 0; i < receiverKeysLength; i++) {
+        key.Update(keyArrayOnReceiver->Get(i));
+        if (JSTaggedValue::Equal(thread_, key, value)) {
+            return;
+        }
+    }
+
+    uint32_t shadowKeysSize = shadowQueueOnReceiver->Size();
+    for (uint32_t i = 0; i < shadowKeysSize; i++) {
+        key.Update(shadowQueueOnReceiver->Get(i));
+        if (JSTaggedValue::Equal(thread_, key, value)) {
+            return;
+        }
+    }
+    allKeys->Set(thread_, allKeysLength++, value);
+}
+
+JSHandle<TaggedArray> PropertyAccessor::CombineKeys(const JSHandle<TaggedArray> &keyArrayOnReceiver,
+                                                    const JSHandle<TaggedArray> &keyArrayOnPrototypeChain,
+                                                    const JSHandle<TaggedQueue> &shadowQueueOnReceiver)
+{
+    uint32_t receiverKeysLength = keyArrayOnReceiver->GetLength();
+    uint32_t PrototypeChainKeysLength = keyArrayOnPrototypeChain->GetLength();
+    uint32_t allKeysLength = receiverKeysLength;
+    ObjectFactory *factory = thread_->GetEcmaVM()->GetFactory();
+    uint32_t arraySize = receiverKeysLength + PrototypeChainKeysLength;
+    JSHandle<TaggedArray> allKeys = factory->NewTaggedArray(arraySize);
+    allKeys->Copy(thread_, 0, 0, keyArrayOnReceiver.GetObject<TaggedArray>(), receiverKeysLength);
+    JSMutableHandle<JSTaggedValue> value(thread_, JSTaggedValue::Undefined());
+    for (uint32_t i = 0; i < PrototypeChainKeysLength; i++) {
+        value.Update(keyArrayOnPrototypeChain->Get(i));
+        AddKey(value, allKeys, allKeysLength, keyArrayOnReceiver, shadowQueueOnReceiver);
+    }
+    AddUndefinedEndIfNeeded(allKeys, arraySize, allKeysLength);
+    return allKeys;
+}
+
+JSHandle<JSTaggedValue> PropertyAccessor::GetKeysFastWithPrototypeChainEnumCache()
+{
+    auto [keyArrayOnReceiver, shadowQueueOnReceiver] = GetOwnKeys();
+    JSHandle<TaggedArray> keyArrayOnPrototypeChain;
+    auto proto = JSTaggedValue::GetPrototype(thread_, receiver_);
+    JSHandle<JSTaggedValue> protoHandle(thread_, proto);
+    if (hasPrototypeChainEnumCache_) {
+        EnumCache* enumCacheProto = EnumCache::Cast(proto.GetTaggedObject()->GetClass()->GetEnumCache());
+        JSHandle<JSTaggedValue> keyValueOnPrototypeChain(thread_, enumCacheProto->GetEnumCacheAll());
+        keyArrayOnPrototypeChain = JSHandle<TaggedArray>::Cast(keyValueOnPrototypeChain);
+        JSHandle<EnumCache>::Cast(enumCache_)->
+            SetProtoChainInfoEnumCache(thread_, keyArrayOnPrototypeChain.GetTaggedValue());
+    } else {
+        keyArrayOnPrototypeChain = GetAndSetChainKeys(protoHandle,
+            keyLength_ - keyLengthSelf_, shadowKeyLength_ - shadowKeyLengthSelf_);
+    }
+    
+    JSHandle<TaggedArray> allKeys = CombineKeys(keyArrayOnReceiver, keyArrayOnPrototypeChain, shadowQueueOnReceiver);
+    return JSHandle<JSTaggedValue>::Cast(allKeys);
 }
 
 JSHandle<JSTaggedValue> PropertyAccessor::GetKeysFast()
 {
+    // Fath path for simple properties.
     if (!fastKeysArray_->IsUndefined()) {
-        AddKeysEndIfNeeded(JSHandle<TaggedArray>(thread_, fastKeysArray_.GetTaggedValue()));
+        AddUndefinedEndIfNeeded(JSHandle<TaggedArray>(thread_, fastKeysArray_.GetTaggedValue()));
+        JSHandle<EnumCache>::Cast(enumCache_)->SetEnumCacheAll(thread_, fastKeysArray_.GetTaggedValue());
         return fastKeysArray_;
     }
+
     if (hasSlowProperties_) {
         return JSHandle<JSTaggedValue>(thread_, JSTaggedValue::Undefined());
     }
-    ObjectFactory *factory = thread_->GetEcmaVM()->GetFactory();
-    uint32_t arraySize = keyLength_ + EnumCache::ENUM_CACHE_HEADER_SIZE;
-    JSHandle<TaggedArray> keyArray = factory->NewTaggedArray(arraySize);
-    JSHandle<TaggedQueue> shadowQueue = factory->NewTaggedQueue(shadowKeyLength_ + 1);
-    uint32_t keysNum = EnumCache::ENUM_CACHE_HEADER_SIZE;
-    JSMutableHandle<JSTaggedValue> current(thread_, receiver_);
-    while (current->IsHeapObject()) {
-        JSObject::AppendOwnEnumPropertyKeys(thread_, JSHandle<JSObject>(current), keyArray, &keysNum, shadowQueue);
-        RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread_);
-        JSObject::ClearHasDeleteProperty(current);
-        current.Update(JSObject::GetPrototype(current.GetTaggedValue()));
+
+    ASSERT(!receiver_->IsInSharedHeap());
+    ASSERT(!onlyHasSimpleProperties_);
+    
+    if (tryPrototypeChainEnumCache_) {
+        // This handles the case where prototype chain and self have no elements or slow keys.
+        fastKeysArray_.Update(GetKeysFastWithPrototypeChainEnumCache());
+        JSHandle<EnumCache>::Cast(enumCache_)->SetEnumCacheAll(thread_, fastKeysArray_.GetTaggedValue());
+    } else {
+        fastKeysArray_.Update(GetKeysFastWithoutCache());
     }
-    SetActualKeyLength(keysNum - EnumCache::ENUM_CACHE_HEADER_SIZE);
-    AddKeysEndIfNeeded(keyArray);
-    fastKeysArray_.Update(keyArray.GetTaggedValue());
-    TryInitEnumCacheWithProtoChainInfo();
+    JSObject::SetEnumCacheKind(thread_, JSHandle<EnumCache>::Cast(enumCache_), EnumCacheKind::PROTOCHAIN);
     return fastKeysArray_;
 }
 
@@ -273,13 +442,13 @@ void PropertyAccessor::PushRemainingKeys(JSHandle<JSObject> object, std::vector<
 void PropertyAccessor::MergeRemainings(const std::vector<JSHandle<TaggedArray>> &remainings,
                                        const std::vector<JSHandle<JSTaggedValue>> &visited)
 {
-    uint32_t arraySize = keyLength_ + EnumCache::ENUM_CACHE_HEADER_SIZE;
+    uint32_t arraySize = keyLength_;
     JSHandle<TaggedArray> keyArray = thread_->GetEcmaVM()->GetFactory()->NewTaggedArray(arraySize);
 
     JSMutableHandle<TaggedArray> remaining(thread_, JSTaggedValue::Undefined());
     JSMutableHandle<JSTaggedValue> keyHandle(thread_, JSTaggedValue::Undefined());
     JSMutableHandle<JSTaggedValue> objHandle(thread_, JSTaggedValue::Undefined());
-    uint32_t index = EnumCache::ENUM_CACHE_HEADER_SIZE;
+    uint32_t index = 0;
     uint32_t numberOfRemaining = remainings.size();
     for (uint32_t i = 0; i < numberOfRemaining; i++) {
         remaining.Update(remainings[i]);
@@ -305,9 +474,8 @@ void PropertyAccessor::MergeRemainings(const std::vector<JSHandle<TaggedArray>> 
             }
         }
     }
-    SetActualKeyLength(index - EnumCache::ENUM_CACHE_HEADER_SIZE);
-    AddKeysEndIfNeeded(keyArray);
+    SetActualKeyLength(index);
+    AddUndefinedEndIfNeeded(keyArray);
     slowKeysArray_.Update(keyArray.GetTaggedValue());
-    JSObject::SetEnumCacheKind(thread_, *keyArray, EnumCacheKind::NONE);
 }
 }  // namespace panda::ecmascript

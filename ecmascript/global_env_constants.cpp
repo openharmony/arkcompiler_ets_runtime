@@ -15,6 +15,7 @@
 
 #include "ecmascript/global_env_constants.h"
 
+#include "ecmascript/enum_cache.h"
 #include "ecmascript/ecma_string-inl.h"
 #include "ecmascript/free_object.h"
 #include "ecmascript/ic/ic_handler.h"
@@ -182,6 +183,8 @@ void GlobalEnvConstants::InitSharedRootsClasses(ObjectFactory *factory)
         factory->NewSEcmaReadOnlyHClass(hClass, job::MicroJobQueue::SIZE, JSType::MICRO_JOB_QUEUE));
     SetConstant(ConstantIndex::PENDING_JOB_CLASS_INDEX,
         factory->NewSEcmaReadOnlyHClass(hClass, job::PendingJob::SIZE, JSType::PENDING_JOB));
+    SetConstant(ConstantIndex::ENUM_CACHE_CLASS_INDEX,
+        factory->NewSEcmaReadOnlyHClass(hClass, EnumCache::SIZE, JSType::ENUM_CACHE));
     SetConstant(ConstantIndex::PROTO_CHANGE_MARKER_CLASS_INDEX,
         factory->NewSEcmaReadOnlyHClass(hClass, ProtoChangeMarker::SIZE, JSType::PROTO_CHANGE_MARKER));
     SetConstant(ConstantIndex::PROTO_CHANGE_DETAILS_CLASS_INDEX,

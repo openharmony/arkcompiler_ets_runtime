@@ -16,6 +16,7 @@
 
 #include "ecmascript/ecma_context.h"
 #include "ecmascript/global_env_constants-inl.h"
+#include "ecmascript/js_tagged_value.h"
 #include "ecmascript/pgo_profiler/pgo_profiler.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_layout.h"
 #include "ecmascript/ic/proto_change_details.h"
@@ -1158,6 +1159,11 @@ JSHandle<ProtoChangeDetails> JSHClass::GetProtoChangeDetails(const JSThread *thr
 {
     JSHandle<JSHClass> jshclass(thread, obj->GetJSHClass());
     return GetProtoChangeDetails(thread, jshclass);
+}
+
+JSHandle<TaggedArray> JSHClass::GetEnumCacheOwnWithOutCheck(const JSThread *thread, const JSHandle<JSHClass> &jshclass)
+{
+    return JSHandle<TaggedArray>(thread, EnumCache::Cast(jshclass->GetEnumCache())->GetEnumCacheOwn());
 }
 
 void JSHClass::RefreshUsers(const JSThread *thread, const JSHandle<JSHClass> &oldHclass,

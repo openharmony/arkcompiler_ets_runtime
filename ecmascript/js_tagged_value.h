@@ -675,6 +675,7 @@ public:
     bool IsTransWithProtoHandler() const;
     bool IsStoreAOTHandler() const;
     bool IsPropertyBox() const;
+    bool IsEnumCache() const;
     bool IsProtoChangeMarker() const;
     bool IsProtoChangeDetails() const;
     bool IsMarkerCell() const;
@@ -708,6 +709,9 @@ public:
 
     bool PUBLIC_API IsInSharedHeap() const;
     bool IsInSharedSweepableSpace() const;
+    bool IsEnumCacheAllValid() const;
+    bool IsEnumCacheOwnValid() const;
+    bool IsEnumCacheProtoInfoUndefined() const;
     static bool IsSameTypeOrHClass(JSTaggedValue x, JSTaggedValue y);
 
     static ComparisonResult Compare(JSThread *thread, const JSHandle<JSTaggedValue> &x,

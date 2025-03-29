@@ -33,18 +33,20 @@ public:
     static JSTaggedValue Next(EcmaRuntimeCallInfo *msg);
 
     static constexpr size_t OBJECT_OFFSET = JSObject::SIZE;
+
     ACCESSORS(Object, OBJECT_OFFSET, CACHED_HCLASS_OFFSET)
-    ACCESSORS(CachedHclass, CACHED_HCLASS_OFFSET, KEYS_OFFSET)
-    ACCESSORS(Keys, KEYS_OFFSET, INDEX_OFFSET)
+    ACCESSORS(CachedHClass, CACHED_HCLASS_OFFSET, KEYS_OFFSET)
+    ACCESSORS(Keys, KEYS_OFFSET, CACHE_KIND_OFFSET)
+    ACCESSORS_PRIMITIVE_FIELD(CacheKind, uint32_t, CACHE_KIND_OFFSET, INDEX_OFFSET)
     ACCESSORS_PRIMITIVE_FIELD(Index, uint32_t, INDEX_OFFSET, LENGTH_OFFSET)
     ACCESSORS_PRIMITIVE_FIELD(Length, uint32_t, LENGTH_OFFSET, LAST_OFFSET)
     DEFINE_ALIGN_SIZE(LAST_OFFSET);
 
-    DECL_VISIT_OBJECT_FOR_JS_OBJECT(JSObject, OBJECT_OFFSET, INDEX_OFFSET)
+    DECL_VISIT_OBJECT_FOR_JS_OBJECT(JSObject, OBJECT_OFFSET, CACHE_KIND_OFFSET)
     DECL_DUMP()
 
 private:
-    static bool IsEnumCacheValid(JSTaggedValue receiver, JSTaggedValue cachedHclass, EnumCacheKind kind);
+    static bool IsEnumCacheValid(JSTaggedValue receiver, JSTaggedValue cachedHClass, EnumCacheKind kind);
     static bool NeedCheckProperty(JSTaggedValue receiver);
     static bool HasProperty(JSThread *thread, JSHandle<JSTaggedValue> receiver, JSHandle<JSTaggedValue> key);
 };

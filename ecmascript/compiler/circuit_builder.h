@@ -360,16 +360,18 @@ public:
     GateRef GetPrototypeFromHClass(GateRef hClass);
     GateRef GetEnumCacheFromHClass(GateRef hClass);
     GateRef GetProtoChangeMarkerFromHClass(GateRef hClass);
+    GateRef GetCacheKindFromForInIterator(GateRef iter);
     GateRef GetLengthFromForInIterator(GateRef iter);
     GateRef GetIndexFromForInIterator(GateRef iter);
     GateRef GetKeysFromForInIterator(GateRef iter);
     GateRef GetObjectFromForInIterator(GateRef iter);
-    GateRef GetCachedHclassFromForInIterator(GateRef iter);
+    GateRef GetCachedHClassFromForInIterator(GateRef iter);
     void SetLengthOfForInIterator(GateRef glue, GateRef iter, GateRef length);
+    void SetCacheKindForInIterator(GateRef glue, GateRef iter, GateRef cacheKind);
     void SetIndexOfForInIterator(GateRef glue, GateRef iter, GateRef index);
     void SetKeysOfForInIterator(GateRef glue, GateRef iter, GateRef keys);
     void SetObjectOfForInIterator(GateRef glue, GateRef iter, GateRef object);
-    void SetCachedHclassOfForInIterator(GateRef glue, GateRef iter, GateRef hclass);
+    void SetCachedHClassOfForInIterator(GateRef glue, GateRef iter, GateRef hclass);
     void IncreaseIteratorIndex(GateRef glue, GateRef iter, GateRef index);
     void IncreaseArrayIteratorIndex(GateRef glue, GateRef iter, GateRef index);
     void SetNextIndexOfArrayIterator(GateRef glue, GateRef iter, GateRef nextIndex);
@@ -790,6 +792,7 @@ public:
     inline GateRef TaggedIsStableArray(GateRef glue, GateRef obj);
     inline GateRef TaggedIsStringOrSymbol(GateRef obj);
     inline GateRef TaggedIsSymbol(GateRef obj);
+    inline GateRef TaggedIsEnumCache(GateRef obj);
     inline GateRef TaggedIsProtoChangeMarker(GateRef obj);
     inline GateRef TaggedObjectIsJSMap(GateRef obj);
     inline GateRef TaggedObjectIsJSSet(GateRef obj);
@@ -876,7 +879,11 @@ public:
     GateRef IsASCIICharacter(GateRef gate);
 
     // for in
-    GateRef GetEnumCacheKind(GateRef glue, GateRef enumCache);
+    inline GateRef GetEnumCacheKindFromEnumCache(GateRef enumCache);
+    inline GateRef GetEnumCacheOwnFromEnumCache(GateRef enumCache);
+    inline GateRef GetEnumCacheAllFromEnumCache(GateRef enumCache);
+    inline GateRef GetProtoChainInfoEnumCacheFromEnumCache(GateRef enumCache);
+
     GateRef IsEnumCacheValid(GateRef receiver, GateRef cachedHclass, GateRef kind);
     GateRef NeedCheckProperty(GateRef receiver);
 

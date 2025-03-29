@@ -213,6 +213,24 @@ inline bool JSTaggedValue::IsInSharedSweepableSpace() const
     return false;
 }
 
+inline bool JSTaggedValue::IsEnumCacheAllValid() const
+{
+    return IsEnumCache() &&
+           EnumCache::Cast(GetTaggedObject())->IsEnumCacheAllValid();
+}
+
+inline bool JSTaggedValue::IsEnumCacheOwnValid() const
+{
+    return IsEnumCache() &&
+           EnumCache::Cast(GetTaggedObject())->IsEnumCacheOwnValid();
+}
+
+inline bool JSTaggedValue::IsEnumCacheProtoInfoUndefined() const
+{
+    return IsEnumCache() &&
+           EnumCache::Cast(GetTaggedObject())->IsEnumCacheProtoInfoUndefined();
+}
+
 inline bool JSTaggedValue::IsNumber() const
 {
     return IsInt() || IsDouble();
@@ -981,6 +999,11 @@ inline bool JSTaggedValue::IsStoreAOTHandler() const
 inline bool JSTaggedValue::IsPropertyBox() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsPropertyBox();
+}
+
+inline bool JSTaggedValue::IsEnumCache() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsEnumCache();
 }
 
 inline bool JSTaggedValue::IsProtoChangeDetails() const

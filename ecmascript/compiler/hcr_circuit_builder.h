@@ -214,6 +214,32 @@ GateRef CircuitBuilder::LoadPrototypeOfPrototypeHClass(GateRef object)
     return LoadHClass(objectPrototypeOfPrototype);
 }
 
+GateRef CircuitBuilder::GetEnumCacheKindFromEnumCache(GateRef enumCache)
+{
+    GateRef enumCacheKind = Load(VariableType::INT32(), enumCache, IntPtr(EnumCache::ENUM_CACHE_KIND_OFFSET));
+    return enumCacheKind;
+}
+
+GateRef CircuitBuilder::GetEnumCacheOwnFromEnumCache(GateRef enumCache)
+{
+    GateRef enumCacheOwn = Load(VariableType::JS_ANY(), enumCache,
+        IntPtr(EnumCache::ENUM_CACHE_OWN_OFFSET));
+    return enumCacheOwn;
+}
+
+GateRef CircuitBuilder::GetEnumCacheAllFromEnumCache(GateRef enumCache)
+{
+    GateRef enumCacheAll = Load(VariableType::JS_ANY(), enumCache, IntPtr(EnumCache::ENUM_CACHE_ALL_OFFSET));
+    return enumCacheAll;
+}
+
+GateRef CircuitBuilder::GetProtoChainInfoEnumCacheFromEnumCache(GateRef enumCache)
+{
+    GateRef protoChainInfoEnumCache = Load(VariableType::JS_ANY(), enumCache,
+        IntPtr(EnumCache::PROTO_CHAIN_INFO_ENUM_CACHE_OFFSET));
+    return protoChainInfoEnumCache;
+}
+
 GateRef CircuitBuilder::GetObjectSizeFromHClass(GateRef hClass)
 {
     // NOTE: check for special case of string and TAGGED_ARRAY

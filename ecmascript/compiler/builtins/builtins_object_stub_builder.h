@@ -42,7 +42,7 @@ BUILTINS_WITH_OBJECT_STUB_BUILDER(DECLARE_BUILTINS_OBJECT_STUB_BUILDER)
 private:
     GateRef GetNumKeysFromLayoutInfo(GateRef end, GateRef layoutInfo);
     GateRef GetNumKeysFromDictionary(GateRef array);
-    GateRef CopyFromEnumCache(GateRef glue, GateRef elements);
+    GateRef CopyFromKeyArray(GateRef glue, GateRef elements);
     GateRef GetAllEnumKeys(GateRef glue, GateRef obj);
     GateRef GetEnumElementKeys(GateRef glue, GateRef obj);
     GateRef GetAllElementKeys(GateRef glue, GateRef obj, GateRef offset, GateRef array);

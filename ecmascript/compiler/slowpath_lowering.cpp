@@ -2214,9 +2214,9 @@ void SlowPathLowering::LowerGetNextPropName(GateRef gate)
     builder_.Bind(&notFinish);
     GateRef keys = builder_.GetKeysFromForInIterator(iter);
     GateRef receiver = builder_.GetObjectFromForInIterator(iter);
-    GateRef cachedHclass = builder_.GetCachedHclassFromForInIterator(iter);
-    GateRef kind = builder_.GetEnumCacheKind(glue_, keys);
-    BRANCH_CIR(builder_.IsEnumCacheValid(receiver, cachedHclass, kind), &fastGetKey, &notEnumCacheValid);
+    GateRef cachedHClass = builder_.GetCachedHClassFromForInIterator(iter);
+    GateRef kind = builder_.GetCacheKindFromForInIterator(iter);
+    BRANCH_CIR(builder_.IsEnumCacheValid(receiver, cachedHClass, kind), &fastGetKey, &notEnumCacheValid);
     builder_.Bind(&notEnumCacheValid);
     BRANCH_CIR(builder_.NeedCheckProperty(receiver), &slowpath, &fastGetKey);
     builder_.Bind(&fastGetKey);

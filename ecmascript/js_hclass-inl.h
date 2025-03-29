@@ -377,11 +377,16 @@ inline void JSHClass::ObjSizeTrackingStep()
 }
 
 template<bool isOnlyIncludeNotFound>
-void JSHClass::MarkProtoChanged([[maybe_unused]] const JSThread *thread, const JSHandle<JSHClass> &jshclass)
+void JSHClass::MarkProtoChanged(const JSThread *thread, const JSHandle<JSHClass> &jshclass)
 {
     DISALLOW_GARBAGE_COLLECTION;
     ASSERT(jshclass->IsPrototype());
+    JSTaggedValue enumCache = jshclass->GetEnumCache();
     JSTaggedValue markerValue = jshclass->GetProtoChangeMarker();
+    // Used in for-in.
+    if (enumCache.IsEnumCache()) {
+        EnumCache::Cast(enumCache)->SetInvalidState(thread);
+    }
     if (markerValue.IsProtoChangeMarker()) {
         ProtoChangeMarker *protoChangeMarker = ProtoChangeMarker::Cast(markerValue.GetTaggedObject());
         if constexpr (isOnlyIncludeNotFound) {

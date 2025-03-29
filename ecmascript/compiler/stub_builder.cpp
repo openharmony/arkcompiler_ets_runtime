@@ -8269,9 +8269,24 @@ GateRef StubBuilder::JSAPIContainerGet(GateRef glue, GateRef receiver, GateRef i
     return ret;
 }
 
-GateRef StubBuilder::GetEnumCacheKind(GateRef glue, GateRef enumCache)
+GateRef StubBuilder::GetEnumCacheKindFromEnumCache(GateRef enumCache)
 {
-    return env_->GetBuilder()->GetEnumCacheKind(glue, enumCache);
+    return env_->GetBuilder()->GetEnumCacheKindFromEnumCache(enumCache);
+}
+
+GateRef StubBuilder::GetEnumCacheOwnFromEnumCache(GateRef enumCache)
+{
+    return env_->GetBuilder()->GetEnumCacheOwnFromEnumCache(enumCache);
+}
+
+GateRef StubBuilder::GetEnumCacheAllFromEnumCache(GateRef enumCache)
+{
+    return env_->GetBuilder()->GetEnumCacheAllFromEnumCache(enumCache);
+}
+
+GateRef StubBuilder::GetProtoChainInfoEnumCacheFromEnumCache(GateRef enumCache)
+{
+    return env_->GetBuilder()->GetProtoChainInfoEnumCacheFromEnumCache(enumCache);
 }
 
 GateRef StubBuilder::IsEnumCacheValid(GateRef receiver, GateRef cachedHclass, GateRef kind)
@@ -8303,8 +8318,8 @@ GateRef StubBuilder::NextInternal(GateRef glue, GateRef iter)
     Bind(&notFinish);
     GateRef keys = GetKeysFromForInIterator(iter);
     GateRef receiver = GetObjectFromForInIterator(iter);
-    GateRef cachedHclass = GetCachedHclassFromForInIterator(iter);
-    GateRef kind = GetEnumCacheKind(glue, keys);
+    GateRef cachedHclass = GetCachedHClassFromForInIterator(iter);
+    GateRef kind = GetCacheKindFromForInIterator(iter);
     BRANCH(IsEnumCacheValid(receiver, cachedHclass, kind), &fastGetKey, &notEnumCacheValid);
     Bind(&notEnumCacheValid);
     BRANCH(NeedCheckProperty(receiver), &slowpath, &fastGetKey);
@@ -8317,6 +8332,38 @@ GateRef StubBuilder::NextInternal(GateRef glue, GateRef iter)
     Bind(&slowpath);
     {
         result = CallRuntime(glue, RTSTUB_ID(GetNextPropNameSlowpath), { iter });
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef StubBuilder::GetOrCreateEnumCacheFromHClass(GateRef glue, GateRef hClass)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+
+    Label isEnumCache(env);
+    Label notEnumCache(env);
+    Label exit(env);
+    DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
+
+    GateRef enumCache = GetEnumCacheFromHClass(hClass);
+    BRANCH(TaggedIsEnumCache(enumCache), &isEnumCache, &notEnumCache);
+    Bind(&isEnumCache);
+    {
+        result = enumCache;
+        Jump(&exit);
+    }
+    Bind(&notEnumCache);
+    {
+        NewObjectStubBuilder newBuilder(this);
+        GateRef enumCacheNew = newBuilder.NewEnumCache(glue);
+        SetEnumCacheToHClass(VariableType::JS_POINTER(), glue, hClass, enumCacheNew);
+        result = enumCacheNew;
         Jump(&exit);
     }
     Bind(&exit);
@@ -8729,6 +8776,9 @@ GateRef StubBuilder::GetNumberOfElements(GateRef glue, GateRef obj)
     return ret;
 }
 
+// When receiver and receiver's prototype chain have no elements
+// and ProtoChainInfoEnumCache of receiver's proto == JSTaggedValue::Undefined,
+// the SimpleEnumCache valid.
 GateRef StubBuilder::IsSimpleEnumCacheValid(GateRef glue, GateRef obj)
 {
     auto env = GetEnvironment();
@@ -8739,45 +8789,67 @@ GateRef StubBuilder::IsSimpleEnumCacheValid(GateRef glue, GateRef obj)
     DEFVARIABLE(current, VariableType::JS_ANY(), Undefined());
 
     Label receiverHasNoElements(env);
+    Label protoIsHeapObject(env);
+    Label afterLoop(env);
+    Label isProtoEnumCache(env);
+    Label isKeyUndefined(env);
 
+    // Check no elements on self.
     GateRef numOfElements = GetNumberOfElements(glue, obj);
     BRANCH(Int32GreaterThan(numOfElements, Int32(0)), &exit, &receiverHasNoElements);
+    
     Bind(&receiverHasNoElements);
+    // Since current isn't a heapObject, the receiver's proto chain has no keys.
+    current = GetPrototypeFromHClass(LoadHClass(obj));
+    BRANCH_LIKELY(TaggedIsHeapObject(*current), &protoIsHeapObject, &afterLoop);
+
+    // Check protoChainInfoEnumCache of receiver's proto == JSTaggedValue::Undefined.
+    Bind(&protoIsHeapObject);
+    {
+        GateRef protoHClass = LoadHClass(*current);
+        GateRef enumCacheProto = GetEnumCacheFromHClass(protoHClass);
+        BRANCH(TaggedIsEnumCache(enumCacheProto), &isProtoEnumCache, &exit);
+        Bind(&isProtoEnumCache);
+        GateRef keyProto = GetProtoChainInfoEnumCacheFromEnumCache(enumCacheProto);
+        BRANCH(TaggedIsUndefined(keyProto), &isKeyUndefined, &exit);
+    }
+
+    // Check no elements on prototype chain.
+    Bind(&isKeyUndefined);
     {
         Label loopHead(env);
         Label loopEnd(env);
-        Label afterLoop(env);
         Label currentHasNoElements(env);
-        Label enumCacheIsUndefined(env);
-        current = GetPrototypeFromHClass(LoadHClass(obj));
-        BRANCH(TaggedIsHeapObject(*current), &loopHead, &afterLoop);
+        Jump(&loopHead);
         LoopBegin(&loopHead);
         {
             GateRef numOfCurrentElements = GetNumberOfElements(glue, *current);
             BRANCH(Int32GreaterThan(numOfCurrentElements, Int32(0)), &exit, &currentHasNoElements);
             Bind(&currentHasNoElements);
             GateRef hclass = LoadHClass(*current);
-            GateRef protoEnumCache = GetEnumCacheFromHClass(hclass);
-            BRANCH(TaggedIsUndefined(protoEnumCache), &enumCacheIsUndefined, &exit);
-            Bind(&enumCacheIsUndefined);
             current = GetPrototypeFromHClass(hclass);
             BRANCH(TaggedIsHeapObject(*current), &loopEnd, &afterLoop);
         }
         Bind(&loopEnd);
         LoopEnd(&loopHead);
-        Bind(&afterLoop);
-        {
-            result = True();
-            Jump(&exit);
-        }
     }
+    
+    Bind(&afterLoop);
+    {
+        result = True();
+        Jump(&exit);
+    }
+
     Bind(&exit);
     auto ret = *result;
     env->SubCfgExit();
     return ret;
 }
 
-GateRef StubBuilder::IsEnumCacheWithProtoChainInfoValid(GateRef glue, GateRef obj)
+// When receiver and receiver's prototype chain have no elements,
+// and receiver.proto.EnumCacheAll == receiver.ProtoChainInfoEnumCache,
+// the ProtoChainEnumCache valid.
+GateRef StubBuilder::IsProtoChainCacheValid(GateRef glue, GateRef obj)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -8787,21 +8859,40 @@ GateRef StubBuilder::IsEnumCacheWithProtoChainInfoValid(GateRef glue, GateRef ob
     DEFVARIABLE(current, VariableType::JS_ANY(), Undefined());
 
     Label receiverHasNoElements(env);
-    Label prototypeIsEcmaObj(env);
-    Label isProtoChangeMarker(env);
-    Label protoNotChanged(env);
+    Label prototypeIsHeapObj(env);
+    Label isEnumCache(env);
+    Label isCacheEqual(env);
 
+    // Check no elements on self.
     GateRef numOfElements = GetNumberOfElements(glue, obj);
     BRANCH(Int32GreaterThan(numOfElements, Int32(0)), &exit, &receiverHasNoElements);
+    
     Bind(&receiverHasNoElements);
-    GateRef prototype = GetPrototypeFromHClass(LoadHClass(obj));
-    BRANCH(IsEcmaObject(prototype), &prototypeIsEcmaObj, &exit);
-    Bind(&prototypeIsEcmaObj);
-    GateRef protoChangeMarker = GetProtoChangeMarkerFromHClass(LoadHClass(prototype));
-    BRANCH(TaggedIsProtoChangeMarker(protoChangeMarker), &isProtoChangeMarker, &exit);
-    Bind(&isProtoChangeMarker);
-    BRANCH(GetHasChanged(protoChangeMarker), &exit, &protoNotChanged);
-    Bind(&protoNotChanged);
+    GateRef hClass = LoadHClass(obj);
+    GateRef prototype = GetPrototypeFromHClass(hClass);
+    BRANCH(TaggedIsHeapObject(prototype), &prototypeIsHeapObj, &exit);
+    
+    // Check receiver.proto.EnumCacheAll == receiver.ProtoChainInfoEnumCache.
+    Bind(&prototypeIsHeapObj);
+    GateRef protoHClass = LoadHClass(prototype);
+    GateRef enumCacheOwn = GetEnumCacheFromHClass(hClass);
+    GateRef enumCacheProto = GetEnumCacheFromHClass(protoHClass);
+    GateRef checkEnumCache = LogicAndBuilder(env)
+                             .And(TaggedIsEnumCache(enumCacheOwn))
+                             .And(TaggedIsEnumCache(enumCacheProto))
+                             .Done();
+    BRANCH(checkEnumCache, &isEnumCache, &exit);
+    Bind(&isEnumCache);
+    GateRef keyOwn = GetProtoChainInfoEnumCacheFromEnumCache(enumCacheOwn);
+    GateRef keyProto = GetEnumCacheAllFromEnumCache(enumCacheProto);
+    GateRef checkKey = LogicAndBuilder(env)
+                       .And(Equal(keyOwn, keyProto))
+                       .And(TaggedIsNotNull(keyOwn))
+                       .Done();
+    BRANCH(checkKey, &isCacheEqual, &exit);
+    
+    // Check no elements on prototype chain.
+    Bind(&isCacheEqual);
     {
         Label loopHead(env);
         Label loopEnd(env);
@@ -8825,6 +8916,7 @@ GateRef StubBuilder::IsEnumCacheWithProtoChainInfoValid(GateRef glue, GateRef ob
             Jump(&exit);
         }
     }
+
     Bind(&exit);
     auto ret = *result;
     env->SubCfgExit();
@@ -8839,6 +8931,7 @@ GateRef StubBuilder::TryGetEnumCache(GateRef glue, GateRef obj)
     Label exit(env);
     DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
 
+    Label isEnumCache(env);
     Label notSlowKeys(env);
     Label notDictionaryMode(env);
     Label checkSimpleEnumCache(env);
@@ -8852,7 +8945,9 @@ GateRef StubBuilder::TryGetEnumCache(GateRef glue, GateRef obj)
     BRANCH(IsDictionaryModeByHClass(hclass), &exit, &notDictionaryMode);
     Bind(&notDictionaryMode);
     GateRef enumCache = GetEnumCacheFromHClass(hclass);
-    GateRef kind = GetEnumCacheKind(glue, enumCache);
+    BRANCH(TaggedIsEnumCache(enumCache), &isEnumCache, &exit);
+    Bind(&isEnumCache);
+    GateRef kind = GetEnumCacheKindFromEnumCache(enumCache);
     BRANCH(Int32Equal(kind, Int32(static_cast<int32_t>(EnumCacheKind::SIMPLE))),
            &checkSimpleEnumCache, &notSimpleEnumCache);
     Bind(&checkSimpleEnumCache);
@@ -8860,15 +8955,17 @@ GateRef StubBuilder::TryGetEnumCache(GateRef glue, GateRef obj)
         BRANCH(IsSimpleEnumCacheValid(glue, obj), &enumCacheValid, &exit);
     }
     Bind(&notSimpleEnumCache);
-    BRANCH(Int32Equal(kind, Int32(static_cast<int32_t>(EnumCacheKind::PROTOCHAIN))),
-           &checkEnumCacheWithProtoChainInfo, &exit);
+    {
+        BRANCH(Int32Equal(kind, Int32(static_cast<int32_t>(EnumCacheKind::PROTOCHAIN))),
+            &checkEnumCacheWithProtoChainInfo, &exit);
+    }
     Bind(&checkEnumCacheWithProtoChainInfo);
     {
-        BRANCH(IsEnumCacheWithProtoChainInfoValid(glue, obj), &enumCacheValid, &exit);
+        BRANCH(IsProtoChainCacheValid(glue, obj), &enumCacheValid, &exit);
     }
     Bind(&enumCacheValid);
     {
-        result = enumCache;
+        result = GetEnumCacheAllFromEnumCache(enumCache);
         Jump(&exit);
     }
     Bind(&exit);
