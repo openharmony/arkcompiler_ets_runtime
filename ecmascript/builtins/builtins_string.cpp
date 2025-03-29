@@ -1020,7 +1020,7 @@ JSTaggedValue BuiltinsString::Replace(EcmaRuntimeCallInfo *argv)
     ObjectFactory *factory = ecmaVm->GetFactory();
 
     if (searchTag->IsJSRegExp() && replaceTag->IsString()) {
-        JSHandle<RegExpExecResultCache> cacheTable(thread->GetCurrentEcmaContext()->GetRegExpCache());
+        JSHandle<RegExpExecResultCache> cacheTable(env->GetRegExpCache());
         JSHandle<JSRegExp> re(searchTag);
         JSHandle<JSTaggedValue> pattern(thread, re->GetOriginalSource());
         JSHandle<JSTaggedValue> flags(thread, re->GetOriginalFlags());
@@ -1681,7 +1681,7 @@ JSTaggedValue BuiltinsString::CreateArrayFromString(JSThread *thread, EcmaVM *ec
     bool isOneByte = isUtf8 & canBeCompressed;
     JSHandle<EcmaString> seperatorString = thread->GetEcmaVM()->GetFactory()->GetEmptyString();
     if (lim == UINT32_MAX - 1) {
-        JSHandle<StringSplitResultCache> cacheTable(thread->GetCurrentEcmaContext()->GetStringSplitResultCache());
+        JSHandle<StringSplitResultCache> cacheTable(thread->GetGlobalEnv()->GetStringSplitResultCache());
         JSTaggedValue cacheResult = StringSplitResultCache::FindCachedResult(thread, cacheTable, thisString,
             seperatorString);
         if (cacheResult != JSTaggedValue::Undefined()) {
@@ -1705,7 +1705,7 @@ JSTaggedValue BuiltinsString::CreateArrayFromString(JSThread *thread, EcmaVM *ec
     }
     JSHandle<JSArray> resultArray = JSArray::CreateArrayFromList(thread, array);
     if (lim == UINT32_MAX - 1) {
-        JSHandle<StringSplitResultCache> cacheTable(thread->GetCurrentEcmaContext()->GetStringSplitResultCache());
+        JSHandle<StringSplitResultCache> cacheTable(thread->GetGlobalEnv()->GetStringSplitResultCache());
         StringSplitResultCache::SetCachedResult(thread, cacheTable, thisString, seperatorString, array);
     }
     return resultArray.GetTaggedValue();
@@ -1741,7 +1741,7 @@ JSTaggedValue BuiltinsString::CreateArrayThisStringAndSeperatorStringAreNotEmpty
     uint32_t thisLength, uint32_t seperatorLength, uint32_t lim)
 {
     if (lim == UINT32_MAX - 1) {
-        JSHandle<StringSplitResultCache> cacheTable(thread->GetCurrentEcmaContext()->GetStringSplitResultCache());
+        JSHandle<StringSplitResultCache> cacheTable(thread->GetGlobalEnv()->GetStringSplitResultCache());
         JSTaggedValue cacheResult = StringSplitResultCache::FindCachedResult(thread, cacheTable, thisString,
             seperatorString);
         if (cacheResult != JSTaggedValue::Undefined()) {
@@ -1786,7 +1786,7 @@ JSTaggedValue BuiltinsString::CreateArrayThisStringAndSeperatorStringAreNotEmpty
             newElements->Set(thread, posArrLength, elementTag);
         }
         if (lim == UINT32_MAX - 1) {
-            JSHandle<StringSplitResultCache> cacheTable(thread->GetCurrentEcmaContext()->GetStringSplitResultCache());
+            JSHandle<StringSplitResultCache> cacheTable(thread->GetGlobalEnv()->GetStringSplitResultCache());
             StringSplitResultCache::SetCachedResult(thread, cacheTable, thisString, seperatorString, newElements);
         }
     });
@@ -2304,7 +2304,7 @@ JSTaggedValue BuiltinsString::Pad(EcmaRuntimeCallInfo *argv, bool isStart)
 
 JSTaggedValue BuiltinsString::StringToList(JSThread *thread, JSHandle<EcmaString> &str)
 {
-    JSHandle<StringToListResultCache> cacheTable(thread->GetCurrentEcmaContext()->GetStringToListResultCache());
+    JSHandle<StringToListResultCache> cacheTable(thread->GetGlobalEnv()->GetStringToListResultCache());
     JSTaggedValue cacheResult = StringToListResultCache::FindCachedResult(thread, cacheTable, str);
     if (cacheResult != JSTaggedValue::Undefined()) {
         JSHandle<JSTaggedValue> resultArray(JSArray::CreateArrayFromList(thread,
@@ -2339,7 +2339,7 @@ JSTaggedValue BuiltinsString::StringToList(JSThread *thread, JSHandle<EcmaString
 
 JSTaggedValue BuiltinsString::StringToSList(JSThread *thread, JSHandle<EcmaString> &str)
 {
-    JSHandle<StringToListResultCache> cacheTable(thread->GetCurrentEcmaContext()->GetStringToListResultCache());
+    JSHandle<StringToListResultCache> cacheTable(thread->GetGlobalEnv()->GetStringToListResultCache());
     JSTaggedValue cacheResult = StringToListResultCache::FindCachedResult(thread, cacheTable, str);
     if (cacheResult != JSTaggedValue::Undefined()) {
         JSHandle<JSTaggedValue> resultArray(

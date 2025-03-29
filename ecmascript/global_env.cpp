@@ -15,9 +15,12 @@
 
 #include "ecmascript/global_env.h"
 
+#include "ecmascript/builtins/builtins_number.h"
+#include "ecmascript/builtins/builtins_regexp.h"
+#include "ecmascript/builtins/builtins_string.h"
+#include "ecmascript/ecma_string_table.h"
 #include "ecmascript/global_dictionary.h"
 #include "ecmascript/symbol_table.h"
-#include "ecmascript/ecma_string_table.h"
 #include "ecmascript/template_map.h"
 
 namespace panda::ecmascript {
@@ -32,6 +35,11 @@ void GlobalEnv::Init(JSThread *thread)
     SetTemplateMap(thread, TemplateMap::Create(thread));
     SetObjectLiteralHClassCache(thread, JSTaggedValue::Hole());
     SetArrayJoinStack(thread, vm->GetFactory()->NewTaggedArray(ArrayJoinStack::MIN_JOIN_STACK_SIZE));
+    SetNumberToStringResultCache(thread, builtins::NumberToStringResultCache::CreateCacheTable(thread));
+    SetStringSplitResultCache(thread, builtins::StringSplitResultCache::CreateCacheTable(thread));
+    SetStringToListResultCache(thread, builtins::StringToListResultCache::CreateCacheTable(thread));
+    SetRegExpCache(thread, builtins::RegExpExecResultCache::CreateCacheTable(thread));
+    SetRegExpGlobalResult(thread, builtins::RegExpGlobalResult::CreateGlobalResultTable(thread));
     SetJSThread(thread);
 }
 

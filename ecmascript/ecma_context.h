@@ -195,40 +195,10 @@ public:
         return thread_;
     }
 
-    void SetupRegExpResultCache();
-    void SetupNumberToStringResultCache();
-    void SetupStringSplitResultCache();
-    void SetupStringToListResultCache();
-    JSHandle<JSTaggedValue> GetRegExpCache() const
-    {
-        return JSHandle<JSTaggedValue>(reinterpret_cast<uintptr_t>(&regexpCache_));
-    }
-
     RegExpParserCache *GetRegExpParserCache() const
     {
         ASSERT(regExpParserCache_ != nullptr);
         return regExpParserCache_;
-    }
-
-    void SetRegExpCache(JSTaggedValue newCache)
-    {
-        regexpCache_ = newCache;
-    }
-    uintptr_t GetExpCacheAddress()
-    {
-        return reinterpret_cast<uintptr_t>(&regexpCache_);
-    }
-
-    void SetupRegExpGlobalResult();
-
-    JSHandle<JSTaggedValue> GetRegExpGlobalResult() const
-    {
-        return JSHandle<JSTaggedValue>(reinterpret_cast<uintptr_t>(&regexpGlobal_));
-    }
-
-    void SetRegExpGlobalResult(JSTaggedValue newResult)
-    {
-        regexpGlobal_ = newResult;
     }
 
     WaiterListNode *GetWaiterListNode()
@@ -236,30 +206,6 @@ public:
         return &waiterListNode_;
     }
 
-    JSHandle<JSTaggedValue> GetNumberToStringResultCache() const
-    {
-        return JSHandle<JSTaggedValue>(reinterpret_cast<uintptr_t>(&numberToStringResultCache_));
-    }
-
-    void SetNumberToStringResultCache(JSTaggedValue newCache)
-    {
-        numberToStringResultCache_ = newCache;
-    }
-
-    JSHandle<JSTaggedValue> GetStringSplitResultCache() const
-    {
-        return JSHandle<JSTaggedValue>(reinterpret_cast<uintptr_t>(&stringSplitResultCache_));
-    }
-
-    JSHandle<JSTaggedValue> GetStringToListResultCache() const
-    {
-        return JSHandle<JSTaggedValue>(reinterpret_cast<uintptr_t>(&stringToListResultCache_));
-    }
-
-    void SetStringSplitResultCache(JSTaggedValue newCache)
-    {
-        stringSplitResultCache_ = newCache;
-    }
     JSHandle<ecmascript::JSTaggedValue> GetAndClearEcmaUncaughtException() const;
     JSHandle<ecmascript::JSTaggedValue> GetEcmaUncaughtException() const;
 
@@ -516,12 +462,7 @@ private:
 
     // VM execution states.
     RegExpParserCache *regExpParserCache_ {nullptr};
-    JSTaggedValue numberToStringResultCache_ {JSTaggedValue::Hole()};
-    JSTaggedValue stringSplitResultCache_ {JSTaggedValue::Hole()};
-    JSTaggedValue stringToListResultCache_ {JSTaggedValue::Hole()};
     JSTaggedValue globalEnv_ {JSTaggedValue::Hole()};
-    JSTaggedValue regexpCache_ {JSTaggedValue::Hole()};
-    JSTaggedValue regexpGlobal_ {JSTaggedValue::Hole()};
 
     CMap<const JSPandaFile *, CMap<int32_t, JSTaggedValue>> cachedSharedConstpools_ {};
     JSTaggedValue* unsharedConstpools_ = nullptr;

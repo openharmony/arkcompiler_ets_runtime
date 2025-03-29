@@ -3430,7 +3430,7 @@ JSTaggedValue RuntimeStubs::GetStringToListCacheArray(uintptr_t argGlue)
 {
     DISALLOW_GARBAGE_COLLECTION;
     auto thread = JSThread::GlueToJSThread(argGlue);
-    return thread->GetCurrentEcmaContext()->GetStringToListResultCache().GetTaggedValue();
+    return thread->GetGlobalEnv()->GetStringToListResultCache().GetTaggedValue();
 }
 
 double RuntimeStubs::TimeClip(double time)

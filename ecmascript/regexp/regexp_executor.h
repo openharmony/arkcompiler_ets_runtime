@@ -17,9 +17,11 @@
 #define ECMASCRIPT_REGEXP_REGEXP_EXECUTOR_H
 
 #include "ecmascript/builtins/builtins_regexp.h"
-#include "ecmascript/regexp/regexp_parser.h"
-#include "ecmascript/mem/regexp_cached_chunk.h"
+#include "ecmascript/global_env.h"
+#include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/js_handle.h"
+#include "ecmascript/mem/regexp_cached_chunk.h"
+#include "ecmascript/regexp/regexp_parser.h"
 
 namespace panda::ecmascript {
 class RegExpExecutor {
