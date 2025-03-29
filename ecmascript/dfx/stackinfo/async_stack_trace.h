@@ -18,10 +18,115 @@
 
 #include <string>
 #include "ecmascript/mem/c_containers.h"
-#include "ecmascript/dfx/stackinfo/js_stackinfo.h"
 
 namespace panda::ecmascript {
 class JSPromise;
+
+// for async stack trace
+static constexpr int32_t MAX_CALL_STACK_SIZE_TO_CAPTURE = 200;
+class PUBLIC_API StackFrame {
+public:
+    StackFrame() = default;
+    ~StackFrame() = default;
+
+    const std::string &GetFunctionName() const
+    {
+        return functionName_;
+    }
+
+    void SetFunctionName(std::string &functionName)
+    {
+        functionName_ = functionName;
+    }
+
+    const std::string &GetUrl() const
+    {
+        return url_;
+    }
+
+    void SetUrl(std::string &url)
+    {
+        url_ = url;
+    }
+
+    int32_t GetLineNumber() const
+    {
+        return lineNumber_;
+    }
+
+    void SetLineNumber(int32_t lineNumber)
+    {
+        lineNumber_ = lineNumber;
+    }
+
+    int32_t GetColumnNumber() const
+    {
+        return columnNumber_;
+    }
+
+    void SetColumnNumber(int32_t columnNumber)
+    {
+        columnNumber_ = columnNumber;
+    }
+
+    int32_t GetScriptId() const
+    {
+        return scriptId_;
+    }
+
+    void SetScriptId(int32_t scriptId)
+    {
+        scriptId_ = scriptId;
+    }
+
+private:
+    std::string functionName_;
+    std::string url_;
+    int32_t lineNumber_;
+    int32_t columnNumber_;
+    // For debugger
+    int32_t scriptId_;
+};
+
+class AsyncStack {
+public:
+    AsyncStack() = default;
+
+    const std::string &GetDescription() const
+    {
+        return description_;
+    }
+
+    void SetDescription(const std::string &description)
+    {
+        description_ = description;
+    }
+
+    const std::weak_ptr<AsyncStack> &GetAsyncParent() const
+    {
+        return asyncParent_;
+    }
+
+    void SetAsyncParent(const std::shared_ptr<AsyncStack> &asyncParent)
+    {
+        asyncParent_ = asyncParent;
+    }
+
+    const std::vector<std::shared_ptr<StackFrame>> &GetFrames() const
+    {
+        return frames_;
+    }
+
+    void SetFrames(const std::vector<std::shared_ptr<StackFrame>> &frames)
+    {
+        frames_ = frames;
+    }
+private:
+    std::string description_;
+    std::vector<std::shared_ptr<StackFrame>> frames_;
+    std::weak_ptr<AsyncStack> asyncParent_;
+};
+
 class AsyncStackTrace {
 public:
     explicit AsyncStackTrace(EcmaVM *vm);
@@ -33,6 +138,14 @@ public:
     bool InsertAsyncStackTrace(const JSHandle<JSPromise> &promise);
 
     bool RemoveAsyncStackTrace(const JSHandle<JSPromise> &promise);
+
+    bool InsertAsyncTaskStacks(const JSHandle<JSPromise> &promise, const std::string &description);
+
+    bool InsertCurrentAsyncTaskStack(const JSTaggedValue &PromiseReaction);
+
+    bool RemoveAsyncTaskStack(const JSTaggedValue &PromiseReaction);
+
+    std::shared_ptr<AsyncStack> GetCurrentAsyncParent();
 
     CMap<uint32_t, std::pair<std::string, int64_t>> GetAsyncStackTrace()
     {
@@ -58,6 +171,9 @@ private:
 
     // { promiseid , (jsStack, time) }
     CMap<uint32_t, std::pair<std::string, int64_t>> asyncStackTrace_;
+
+    std::vector<std::shared_ptr<AsyncStack>> currentAsyncParent_;
+    CMap<int32_t, std::shared_ptr<AsyncStack>> asyncTaskStacks_;
 };
 } // namespace panda::ecmascript
 #endif  // ECMASCRIPT_STACKINFO_STACK_TRACE_H

@@ -196,6 +196,8 @@ public:
     static Local<JSValueRef> GetVectorValue(const EcmaVM *ecmaVm, Local<JSValueRef> value,
                                             Global<MapRef> internalObjects);
 
+    static std::shared_ptr<AsyncStack> GetCurrentAsyncParent(const EcmaVM *ecmaVm);
+
     static bool CheckPromiseQueueSize(const EcmaVM *ecmaVm);
     static bool CheckIsSendableMethod(const EcmaVM *ecmaVm);
     static bool IsMainThread();

@@ -150,6 +150,16 @@ public:
         isSignalInterrupt_ = isSignalInterrupt;
     }
 
+    bool IsAsyncStackTrace() const
+    {
+        return asyncStackTrace_;
+    }
+
+    void SetAsyncStackTrace(bool asyncStackTrace)
+    {
+        asyncStackTrace_ = asyncStackTrace;
+    }
+
     void SetEvalFrameHandler(std::shared_ptr<FrameHandler> frameHandler)
     {
         frameHandler_ = frameHandler;
@@ -273,6 +283,7 @@ private:
     bool isMixedStackEnabled_ { false };
     bool isSignalInterrupt_ {false};
     bool isObjHashDisplayEnabled_ { true };
+    bool asyncStackTrace_ {false};
     ProtocolHandler *debuggerHandler_ {nullptr};
     LibraryHandle debuggerLibraryHandle_ {nullptr};
     ObjectUpdaterFunc *updaterFunc_ {nullptr};

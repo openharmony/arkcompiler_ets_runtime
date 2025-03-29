@@ -270,6 +270,12 @@ void Tracing::GetBufferUseage(double &percentFull, uint32_t &eventCount, double 
     value = percentFull;
 }
 
+void Tracing::GenerateAsyncFrames([[maybe_unused]] std::shared_ptr<AsyncStack> asyncStack,
+                                  [[maybe_unused]] bool skipTopFrame)
+{
+    return;
+}
+
 void Tracing::LoadModule([[maybe_unused]] std::string_view name, [[maybe_unused]] std::string_view)
 {
     return;

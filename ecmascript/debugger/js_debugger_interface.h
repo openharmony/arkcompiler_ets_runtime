@@ -18,9 +18,9 @@
 
 #include <string_view>
 
-#include "ecmascript/napi/include/jsnapi.h"
 #include "ecmascript/debugger/js_pt_location.h"
-
+#include "ecmascript/dfx/stackinfo/async_stack_trace.h"
+#include "ecmascript/napi/include/jsnapi.h"
 namespace panda::ecmascript {
 class Method;
 
@@ -99,6 +99,8 @@ public:
     virtual void SendableMethodEntry(JSHandle<Method> method) = 0;
 
     virtual void DisableFirstTimeFlag() = 0;
+
+    virtual void GenerateAsyncFrames(std::shared_ptr<AsyncStack> asyncStack, bool skipTopFrame) = 0;
 
     virtual ~PtHooks() = default;
 

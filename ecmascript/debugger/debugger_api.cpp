@@ -16,6 +16,7 @@
 #include "ecmascript/debugger/debugger_api.h"
 
 #include "ecmascript/debugger/js_debugger.h"
+#include "ecmascript/dfx/stackinfo/async_stack_trace.h"
 #include "ecmascript/interpreter/slow_runtime_stub.h"
 #include "ecmascript/interpreter/fast_runtime_stub-inl.h"
 #include "ecmascript/tagged_hash_array.h"
@@ -1276,6 +1277,11 @@ Local<JSValueRef> DebuggerApi::GetVectorValue(const EcmaVM *ecmaVm, Local<JSValu
     }
     AddInternalProperties(ecmaVm, jsValueRef, ArkInternalValueType::Entry, internalObjects);
     return jsValueRef;
+}
+
+std::shared_ptr<AsyncStack> DebuggerApi::GetCurrentAsyncParent(const EcmaVM *ecmaVm)
+{
+    return ecmaVm->GetAsyncStackTrace()->GetCurrentAsyncParent();
 }
 
 bool DebuggerApi::CheckPromiseQueueSize(const EcmaVM *ecmaVm)

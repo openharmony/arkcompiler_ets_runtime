@@ -112,6 +112,9 @@
       panda::ecmascript::pgo::ProfileType::PROFILE_TYPE_NONE;
       panda::ecmascript::containers::ContainerError::*;
       panda::ecmascript::NativeAreaAllocator::*;
+      panda::ecmascript::StackFrame::*;
+      panda::ecmascript::AsyncStack::*;
+      panda::ecmascript::AsyncStackTrace::*;
 
       panda::os::thread::*;
       panda::panda_file::File::MAGIC;
