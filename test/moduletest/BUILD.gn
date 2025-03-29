@@ -253,6 +253,7 @@ group("ark_js_assert_moduletest") {
     "yieldstar",
     "esmnestedimportcjs",
     "regexp",
+    "regexpcache",
     "deregistermodule",
     "getpropertybyic",
     "regressbufferdetach",

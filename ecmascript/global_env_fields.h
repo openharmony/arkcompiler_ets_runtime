@@ -234,7 +234,12 @@
     V(JSTaggedValue, GlobalPatch, GLOBAL_PATCH)                                                     \
     V(JSTaggedValue, ExportOfScript, DEFAULT_EXPORT_OF_SCRIPT)                                      \
     V(JSTaggedValue, NativeModuleFailureInfoClass, NATIVE_MODULE_FAILURE_INFO_CLASS)                \
-    V(JSTaggedValue, ArrayJoinStack, ARRAY_JOIN_STACK)
+    V(JSTaggedValue, ArrayJoinStack, ARRAY_JOIN_STACK)                                              \
+    V(JSTaggedValue, NumberToStringResultCache, NUMBER_TO_STRING_RESULT_CACHE_INDEX)                \
+    V(JSTaggedValue, StringSplitResultCache, STRING_SPLIT_RESULT_CACHE_INDEX)                       \
+    V(JSTaggedValue, StringToListResultCache, STRING_TO_LIST_RESULT_CACHE_INDEX)                    \
+    V(JSTaggedValue, RegExpCache, REGEXP_CACHE_INDEX)                                               \
+    V(JSTaggedValue, RegExpGlobalResult, REGEXP_GLOBAL_RESULT_INDEX)
 
 #define GLOBAL_ENV_SHARED_FIELDS(V)                                                                              \
     V(JSTaggedValue, SObjectFunction, SHARED_OBJECT_FUNCTION_INDEX)                                              \

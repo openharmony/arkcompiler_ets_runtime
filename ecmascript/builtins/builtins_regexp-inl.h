@@ -17,6 +17,7 @@
 #define ECMASCRIPT_BUILTINS_BUILTINS_REGEXP_INL_H
 
 #include "ecmascript/ecma_context.h"
+#include "ecmascript/global_env.h"
 
 namespace panda::ecmascript::builtins {
 
@@ -24,7 +25,7 @@ namespace panda::ecmascript::builtins {
 template <int N>
 JSTaggedValue RegExpGlobalResult::GetCapture(JSThread *thread)
 {
-    JSHandle<builtins::RegExpGlobalResult> globalTable(thread->GetCurrentEcmaContext()->GetRegExpGlobalResult());
+    JSHandle<builtins::RegExpGlobalResult> globalTable(thread->GetGlobalEnv()->GetRegExpGlobalResult());
     JSTaggedValue res = globalTable->Get(CAPTURE_START_INDEX + N - 1);
     int captureNum = globalTable->GetTotalCaptureCounts().GetInt();
     if (res.IsHole() && (N < captureNum)) {

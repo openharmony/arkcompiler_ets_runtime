@@ -16,8 +16,6 @@
 #include "ecmascript/ecma_context.h"
 
 #include "ecmascript/builtins/builtins.h"
-#include "ecmascript/builtins/builtins_regexp.h"
-#include "ecmascript/builtins/builtins_number.h"
 #include "ecmascript/compiler/aot_constantpool_patcher.h"
 #include "ecmascript/compiler/pgo_type/pgo_type_manager.h"
 #include "ecmascript/compiler/rt_call_signature.h"
@@ -106,11 +104,6 @@ bool EcmaContext::Initialize()
     thread_->SetEnableLazyBuiltins(builtinsLazyEnabled);
     builtins.Initialize(globalEnv, thread_, builtinsLazyEnabled);
 
-    SetupRegExpResultCache();
-    SetupRegExpGlobalResult();
-    SetupNumberToStringResultCache();
-    SetupStringSplitResultCache();
-    SetupStringToListResultCache();
     moduleManager_ = new ModuleManager(vm_);
     ptManager_ = new kungfu::PGOTypeManager(vm_);
     optCodeProfiler_ = new OptCodeProfiler();
@@ -737,31 +730,6 @@ void EcmaContext::CheckAndDestroy(JSThread *thread, EcmaContext *context)
     LOG_ECMA(FATAL) << "CheckAndDestroy a nonexistent context.";
 }
 
-void EcmaContext::SetupRegExpResultCache()
-{
-    regexpCache_ = builtins::RegExpExecResultCache::CreateCacheTable(thread_);
-}
-
-void EcmaContext::SetupRegExpGlobalResult()
-{
-    regexpGlobal_ = builtins::RegExpGlobalResult::CreateGlobalResultTable(thread_);
-}
-
-void EcmaContext::SetupNumberToStringResultCache()
-{
-    numberToStringResultCache_ = builtins::NumberToStringResultCache::CreateCacheTable(thread_);
-}
-
-void EcmaContext::SetupStringSplitResultCache()
-{
-    stringSplitResultCache_ = builtins::StringSplitResultCache::CreateCacheTable(thread_);
-}
-
-void EcmaContext::SetupStringToListResultCache()
-{
-    stringToListResultCache_ = builtins::StringToListResultCache::CreateCacheTable(thread_);
-}
-
 void EcmaContext::IterateMegaIC(RootVisitor &v)
 {
     if (ecmaData_.loadMegaICCache_ != nullptr) {
@@ -778,21 +746,6 @@ void EcmaContext::Iterate(RootVisitor &v)
     globalConst_.Iterate(v);
 
     v.VisitRoot(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&globalEnv_)));
-    if (!regexpCache_.IsHole()) {
-        v.VisitRoot(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&regexpCache_)));
-    }
-    if (!regexpGlobal_.IsHole()) {
-        v.VisitRoot(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&regexpGlobal_)));
-    }
-    if (!numberToStringResultCache_.IsHole()) {
-        v.VisitRoot(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&numberToStringResultCache_)));
-    }
-    if (!stringSplitResultCache_.IsHole()) {
-        v.VisitRoot(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&stringSplitResultCache_)));
-    }
-    if (!stringToListResultCache_.IsHole()) {
-        v.VisitRoot(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&stringToListResultCache_)));
-    }
 
     if (functionProtoTransitionTable_) {
         functionProtoTransitionTable_->Iterate(v);
