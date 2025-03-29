@@ -112,7 +112,7 @@ public:
     JSThread *thread {nullptr};
 };
 
-HWTEST_F_L0(HeapTrackerTest, DISABLED_GenDumpFileName_001)
+HWTEST_F_L0(HeapTrackerTest, GenDumpFileName_001)
 {
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     HeapProfilerInterface *heapProfile = HeapProfilerInterface::GetInstance(instance);
@@ -148,7 +148,7 @@ HWTEST_F_L0(HeapTrackerTest, DISABLED_GenDumpFileName_001)
     HeapProfilerInterface::Destroy(instance);
 }
 
-HWTEST_F_L0(HeapTrackerTest, DISABLED_GenDumpFileName_002)
+HWTEST_F_L0(HeapTrackerTest, GenDumpFileName_002)
 {
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     HeapProfilerInterface *heapProfile = HeapProfilerInterface::GetInstance(instance);
@@ -177,6 +177,7 @@ HWTEST_F_L0(HeapTrackerTest, DISABLED_GenDumpFileName_002)
     TestProgress testProgress;
     DumpSnapShotOption dumpOption;
     dumpOption.dumpFormat = DumpFormat::BINARY;
+    dumpOption.isDumpOOM = true;
     dumpOption.isVmMode = true;
     dumpOption.isPrivate = true;
     dumpOption.captureNumericValue = false;
@@ -184,7 +185,7 @@ HWTEST_F_L0(HeapTrackerTest, DISABLED_GenDumpFileName_002)
     HeapProfilerInterface::Destroy(instance);
 }
 
-HWTEST_F_L0(HeapTrackerTest, DISABLED_GenDumpFileName_003)
+HWTEST_F_L0(HeapTrackerTest, GenDumpFileName_003)
 {
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     HeapProfilerInterface *heapProfile = HeapProfilerInterface::GetInstance(instance);
@@ -220,7 +221,7 @@ HWTEST_F_L0(HeapTrackerTest, DISABLED_GenDumpFileName_003)
     HeapProfilerInterface::Destroy(instance);
 }
 
-HWTEST_F_L0(HeapTrackerTest, DISABLED_GenDumpFileName_004)
+HWTEST_F_L0(HeapTrackerTest, GenDumpFileName_004)
 {
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     HeapProfilerInterface *heapProfile = HeapProfilerInterface::GetInstance(instance);
@@ -256,7 +257,7 @@ HWTEST_F_L0(HeapTrackerTest, DISABLED_GenDumpFileName_004)
     HeapProfilerInterface::Destroy(instance);
 }
 
-HWTEST_F_L0(HeapTrackerTest, DISABLED_FileDescriptorStreamEndOfStream)
+HWTEST_F_L0(HeapTrackerTest, FileDescriptorStreamEndOfStream)
 {
     int fd = 3;
     FileDescriptorStream fileStream(fd);

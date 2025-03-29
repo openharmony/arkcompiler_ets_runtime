@@ -721,7 +721,7 @@ HWTEST_F_L0(HeapDumpTest, TestHeapDumpFunctionUrl)
     ASSERT_TRUE(funcTempMatched);
 }
 
-HWTEST_F_L0(HeapDumpTest, DISABLED_TestAllocationMassiveMoveNode)
+HWTEST_F_L0(HeapDumpTest, TestAllocationMassiveMoveNode)
 {
     const std::string abcFileName = HPROF_TEST_ABC_FILES_DIR"allocation.abc";
     HeapProfilerInterface *heapProfile = HeapProfilerInterface::GetInstance(ecmaVm_);
