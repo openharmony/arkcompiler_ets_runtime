@@ -104,7 +104,7 @@ public:
     ~StoreICRuntime() = default;
 
     JSTaggedValue StoreMiss(JSHandle<JSTaggedValue> receiver, JSHandle<JSTaggedValue> key,
-                                 JSHandle<JSTaggedValue> value, bool isOwn = false);
+                            JSHandle<JSTaggedValue> value, bool isOwn = false, bool isDefPropByName = false);
     
     JSTaggedValue StoreTypedArrayValueMiss(JSHandle<JSTaggedValue> receiver, JSHandle<JSTaggedValue> key,
                                            JSHandle<JSTaggedValue> value);

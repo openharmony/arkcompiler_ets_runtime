@@ -315,6 +315,7 @@ namespace panda::ecmascript {
     V(SetClassConstructorLength)                \
     V(LoadICByName)                             \
     V(StoreICByName)                            \
+    V(StoreOwnICByName)                         \
     V(UpdateHotnessCounter)                     \
     V(CheckSafePoint)                           \
     V(PGODump)                                  \

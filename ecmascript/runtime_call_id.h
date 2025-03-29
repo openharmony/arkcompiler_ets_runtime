@@ -143,6 +143,7 @@ namespace panda::ecmascript {
     V(TryStoreICByName)              \
     V(StoreOwnICByValue)             \
     V(StoreICByName)                 \
+    V(StoreOwnICByName)              \
     V(TryStoreICByValue)             \
     V(StoreICByValue)                \
     V(NotifyInlineCache)             \
