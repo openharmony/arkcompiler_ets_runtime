@@ -17,10 +17,56 @@
 #include "ecmascript/js_runtime_options.h"
 #include "ecmascript/tests/test_helper.h"
 
+#include <csetjmp>
+#include <csignal>
 using namespace panda::ecmascript;
 
 namespace panda::test {
 class EcmaVMTest : public BaseTestWithOutScope {
+};
+
+static sigjmp_buf g_env;
+static bool g_abortFlag = false;
+class EcmaVmIterator : public RootVisitor {
+public:
+    EcmaVmIterator() = default;
+    ~EcmaVmIterator() = default;
+
+    void VisitRoot([[maybe_unused]] Root type, [[maybe_unused]] ObjectSlot slot) override
+    {
+    }
+
+    void VisitRangeRoot([[maybe_unused]] Root type, [[maybe_unused]] ObjectSlot start,
+        [[maybe_unused]] ObjectSlot end) override
+    {
+        CHECK_NO_HANDLE_ALLOC;
+    }
+
+    void VisitBaseAndDerivedRoot([[maybe_unused]] Root type, [[maybe_unused]] ObjectSlot base,
+        [[maybe_unused]] ObjectSlot derived, [[maybe_unused]] uintptr_t baseOldObject) override
+    {
+    }
+
+    static void ProcessHandleAlocAbort(int sig)
+    {
+        g_abortFlag = true;
+        siglongjmp(g_env, sig);
+    }
+
+    static int RegisterSignal()
+    {
+        struct sigaction act;
+        act.sa_handler = ProcessHandleAlocAbort;
+        sigemptyset(&act.sa_mask);
+        sigaddset(&act.sa_mask, SIGQUIT);
+        act.sa_flags = SA_RESETHAND;
+        return sigaction(SIGABRT, &act, nullptr);
+    }
+
+    static void ResetAbortFlag()
+    {
+        g_abortFlag = false;
+    }
 };
 
 /*
@@ -100,6 +146,48 @@ HWTEST_F_L0(EcmaVMTest, DumpExceptionObject)
     int arkProperties = thread->GetEcmaVM()->GetJSOptions().GetArkProperties();
     ecmaVm->GetJSOptions().SetArkProperties(arkProperties | ArkProperties::EXCEPTION_BACKTRACE);
     EXPECT_TRUE(ecmaVm->GetJSOptions().EnableExceptionBacktrace());
+    JSNApi::DestroyJSVM(ecmaVm);
+}
+
+HWTEST_F_L0(EcmaVMTest, TestHandleAlocate)
+{
+    RuntimeOption option;
+    option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
+    EcmaVM *ecmaVm = JSNApi::CreateJSVM(option);
+    [[maybe_unused]]HeapProfilerInterface *heapProfile = HeapProfilerInterface::GetInstance(ecmaVm);
+
+    ObjectFactory *factory = ecmaVm->GetFactory();
+    // JS_ARRAY_BUFFER
+    factory->NewJSArrayBuffer(10);
+    // JS_SHARED_ARRAY_BUFFER
+    factory->NewJSSharedArrayBuffer(10);
+    // PROMISE_REACTIONS
+    factory->NewPromiseReaction();
+    // PROMISE_CAPABILITY
+    factory->NewPromiseCapability();
+    // PROMISE_RECORD
+    factory->NewPromiseRecord();
+    // RESOLVING_FUNCTIONS_RECORD
+    factory->NewResolvingFunctionsRecord();
+
+    ASSERT_TRUE(EcmaVmIterator::RegisterSignal() != -1);
+    EcmaVmIterator ecmaVmIterator;
+    auto ret = sigsetjmp(g_env, 1);
+    if (ret != SIGABRT) {
+        ecmaVm->Iterate(ecmaVmIterator, VMRootVisitType::HEAP_SNAPSHOT);
+    } else {
+        EXPECT_TRUE(g_abortFlag);
+    }
+
+    ASSERT_TRUE(EcmaVmIterator::RegisterSignal() != -1);
+    EcmaVmIterator::ResetAbortFlag();
+    ret = sigsetjmp(g_env, 1);
+    if (ret != SIGABRT) {
+        ecmaVm->IterateHandle(ecmaVmIterator);
+    } else {
+        EXPECT_TRUE(g_abortFlag);
+    }
+
     JSNApi::DestroyJSVM(ecmaVm);
 }
 }  // namespace panda::ecmascript

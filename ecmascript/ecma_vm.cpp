@@ -743,6 +743,7 @@ void EcmaVM::Iterate(RootVisitor &v, VMRootVisitType type)
 
     if (!options_.EnableGlobalLeakCheck() && currentHandleStorageIndex_ != -1) {
         // IterateHandle when disableGlobalLeakCheck.
+        DISALLOW_HANDLE_ALLOC;
         int32_t nid = currentHandleStorageIndex_;
         for (int32_t i = 0; i <= nid; ++i) {
             auto node = handleStorageNodes_.at(i);
@@ -758,6 +759,7 @@ size_t EcmaVM::IterateHandle(RootVisitor &visitor)
     // EnableGlobalLeakCheck.
     size_t handleCount = 0;
     if (currentHandleStorageIndex_ != -1) {
+        DISALLOW_HANDLE_ALLOC;
         int32_t nid = currentHandleStorageIndex_;
         for (int32_t i = 0; i <= nid; ++i) {
             auto node = handleStorageNodes_.at(i);
