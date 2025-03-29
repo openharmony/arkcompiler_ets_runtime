@@ -105,7 +105,6 @@ uintptr_t EcmaHandleScope::NewHandle(JSThread *thread, JSTaggedType value)
     vm->SetHandleScopeStorageNext(result + 1);
     *result = value;
 #if defined(ENABLE_LOCAL_HANDLE_LEAK_DETECT)
-    EcmaVM *vm = thread->GetEcmaVM();
     auto heapProfiler = reinterpret_cast<HeapProfiler *>(HeapProfilerInterface::GetInstance(vm));
     if (heapProfiler->IsStartLocalHandleLeakDetect()) {
         heapProfiler->StorePotentiallyLeakHandles(reinterpret_cast<uintptr_t>(result));
@@ -133,7 +132,6 @@ uintptr_t EcmaHandleScope::NewPrimitiveHandle(JSThread *thread, JSTaggedType val
     vm->SetPrimitiveScopeStorageNext(result + 1);
     *result = value;
 #if defined(ENABLE_LOCAL_HANDLE_LEAK_DETECT)
-    EcmaVM *vm = thread->GetEcmaVM();
     auto heapProfiler = reinterpret_cast<HeapProfiler *>(HeapProfilerInterface::GetInstance(vm));
     if (heapProfiler->IsStartLocalHandleLeakDetect()) {
         heapProfiler->StorePotentiallyLeakHandles(reinterpret_cast<uintptr_t>(result));
