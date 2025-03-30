@@ -740,7 +740,7 @@ void JSNumberFormat::InitializeNumberFormat(JSThread *thread, const JSHandle<JSN
         std::string cacheEntry =
             locales->IsUndefined() ? "" : EcmaStringAccessor(locales.GetTaggedValue()).ToStdString();
         auto formatterPointer = new icu::number::LocalizedNumberFormatter(icuNumberFormatter);
-        thread->GetCurrentEcmaContext()->SetIcuFormatterToCache(IcuFormatterType::NUMBER_FORMATTER, cacheEntry,
+        ecmaVm->GetIntlCache().SetIcuFormatterToCache(IcuFormatterType::NUMBER_FORMATTER, cacheEntry,
             formatterPointer, JSNumberFormat::FreeIcuNumberformat);
     } else {
         // Set numberFormat.[[IcuNumberForma]] to handleNumberFormatter
@@ -768,7 +768,7 @@ icu::number::LocalizedNumberFormatter *JSNumberFormat::GetCachedIcuNumberFormatt
     const JSHandle<JSTaggedValue> &locales)
 {
     std::string cacheEntry = locales->IsUndefined() ? "" : EcmaStringAccessor(locales.GetTaggedValue()).ToStdString();
-    void *cachedNumberFormatter = thread->GetCurrentEcmaContext()->GetIcuFormatterFromCache(
+    void *cachedNumberFormatter = thread->GetEcmaVM()->GetIntlCache().GetIcuFormatterFromCache(
         IcuFormatterType::NUMBER_FORMATTER, cacheEntry);
     if (cachedNumberFormatter) {
         return reinterpret_cast<icu::number::LocalizedNumberFormatter*>(cachedNumberFormatter);

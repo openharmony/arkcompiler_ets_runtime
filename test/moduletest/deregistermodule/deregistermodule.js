@@ -15,7 +15,7 @@
 
 async function f(number) {
   let module = await import('./test.js');
-  print(module.name + number);
+  assert_equal(module.name + number, 'Tyrion' + number);
   markModuleCollectable(module);
 }
 
@@ -27,8 +27,10 @@ function deregister (){
 
 deregister().then(r=>{
   f(1).then(()=>{ // test for esm functioned well when second loading.
-    print("second load");
+    assert_equal("second load","second load");
     ArkTools.forceFullGC();
     f(2); // test whether the module has been successfully uninstalled.
   });
-  print(r);});
+  assert_equal(r,done);});
+
+test_end();

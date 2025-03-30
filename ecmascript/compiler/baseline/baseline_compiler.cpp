@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
-#include "ecmascript/compiler/baseline/baseline_compiler.h"
+#include <climits>
+#include <cassert>
 #include "ecmascript/compiler/bytecode_info_collector.h"
-#include "ecmascript/js_function.h"
 #include "ecmascript/compiler/jit_compiler.h"
 #ifdef JIT_ENABLE_CODE_SIGN
 #include "jit_buffer_integrity.h"
@@ -114,7 +114,7 @@ static ARK_INLINE void SetupCodeSigner([[maybe_unused]] EcmaVM *vm)
     if (enableCodeSign && JitFort::IsResourceAvailable()) {
         JitSignCode *singleton = JitSignCode::GetInstance();
         singleton->Reset();
-        JitCodeSignerBase *jitSigner = CreateJitCodeSigner(JitBufferIntegrityLevel::Level0);
+        JitCodeSigner *jitSigner = CreateJitCodeSigner();
         singleton->SetCodeSigner(jitSigner);
         LOG_INST() << "  Created Code Signer for baseline compilation: " << std::hex << (uintptr_t)jitSigner << "\n";
     }
@@ -184,6 +184,11 @@ bool BaselineCompiler::CollectMemoryCodeInfos(MachineCodeDesc &codeDesc)
     codeDesc.codeType = MachineCodeType::BASELINE_CODE;
     codeDesc.stackMapOrOffsetTableAddr = reinterpret_cast<uint64_t>(nativePcOffsetTable.GetData());
     codeDesc.stackMapOrOffsetTableSize = nativePcOffsetTable.GetSize();
+    if (vm->GetJSOptions().GetTargetTriple() == TARGET_AARCH64) {
+        codeDesc.archType = MachineCodeArchType::AArch64;
+    } else {
+        codeDesc.archType = MachineCodeArchType::X86;
+    }
 #ifdef JIT_ENABLE_CODE_SIGN
     codeDesc.codeSigner = 0;
     JitSignCode *singleton = JitSignCode::GetInstance();
@@ -194,10 +199,15 @@ bool BaselineCompiler::CollectMemoryCodeInfos(MachineCodeDesc &codeDesc)
     }
 #endif
     if (Jit::GetInstance()->IsEnableJitFort() && Jit::GetInstance()->IsEnableAsyncCopyToFort() &&
-        JitCompiler::AllocFromFortAndCopy(*compilationEnv, codeDesc) == false) {
+        JitCompiler::AllocFromFortAndCopy(*compilationEnv, codeDesc, GetBaselineAssembler().GetRelocInfo()) == false) {
         return false;
     }
     return true;
+}
+
+void BaselineCompiler::CollectBLInfo(RelocMap &relocInfo)
+{
+    relocInfo = GetBaselineAssembler().GetRelocInfo();
 }
 
 void BaselineCompiler::GetJumpToOffsets(const uint8_t *start, const uint8_t *end,
@@ -1396,6 +1406,8 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(CREATEEMPTYOBJECT)
 BYTECODE_BASELINE_HANDLER_IMPLEMENT(CREATEEMPTYARRAY_IMM8)
 {
     uint8_t slotId = READ_INST_8_0();
+    ASSERT((bytecodeArray - pfHeaderAddr) >= std::numeric_limits<int32_t>::min());
+    ASSERT((bytecodeArray - pfHeaderAddr) <= std::numeric_limits<int32_t>::max());
     auto traceId = static_cast<int32_t>(bytecodeArray - pfHeaderAddr);
 
     auto *thread = vm->GetAssociatedJSThread();
@@ -1417,6 +1429,8 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(CREATEEMPTYARRAY_IMM8)
 BYTECODE_BASELINE_HANDLER_IMPLEMENT(CREATEEMPTYARRAY_IMM16)
 {
     uint16_t slotId = READ_INST_16_0();
+    ASSERT((bytecodeArray - pfHeaderAddr) >= std::numeric_limits<int32_t>::min());
+    ASSERT((bytecodeArray - pfHeaderAddr) <= std::numeric_limits<int32_t>::max());
     auto traceId = static_cast<int32_t>(bytecodeArray - pfHeaderAddr);
 
     auto *thread = vm->GetAssociatedJSThread();
@@ -1578,6 +1592,8 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(CREATEARRAYWITHBUFFER_IMM8_ID16)
 {
     uint8_t slotId = READ_INST_8_0();
     uint16_t literalId = READ_INST_16_1();
+    ASSERT((bytecodeArray - pfHeaderAddr) >= std::numeric_limits<int32_t>::min());
+    ASSERT((bytecodeArray - pfHeaderAddr) <= std::numeric_limits<int32_t>::max());
     auto traceId = static_cast<int32_t>(bytecodeArray - pfHeaderAddr);
 
     auto *thread = vm->GetAssociatedJSThread();
@@ -1601,6 +1617,8 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(CREATEARRAYWITHBUFFER_IMM16_ID16)
 {
     uint16_t slotId = READ_INST_16_0();
     uint16_t literalId = READ_INST_16_2();
+    ASSERT((bytecodeArray - pfHeaderAddr) >= std::numeric_limits<int32_t>::min());
+    ASSERT((bytecodeArray - pfHeaderAddr) <= std::numeric_limits<int32_t>::max());
     auto traceId = static_cast<int32_t>(bytecodeArray - pfHeaderAddr);
 
     auto *thread = vm->GetAssociatedJSThread();
@@ -1815,6 +1833,7 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(LDLOCALMODULEVAR_IMM8)
 
     std::vector<BaselineParameter> parameters;
     parameters.emplace_back(BaselineSpecialParameter::GLUE);
+    parameters.emplace_back(BaselineSpecialParameter::SP);
     parameters.emplace_back(index);
     GetBaselineAssembler().CallBuiltin(builtinAddress, parameters);
     GetBaselineAssembler().SaveResultIntoAcc();
@@ -2513,6 +2532,7 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(DEFINEGETTERSETTERBYVALUE_V8_V8_V8_V8)
 
 BYTECODE_BASELINE_HANDLER_IMPLEMENT(DEFINECLASSWITHBUFFER_IMM8_ID16_ID16_IMM16_V8)
 {
+    uint8_t slotId = READ_INST_8_0();
     int16_t methodId = READ_INST_16_1();
     int16_t literalId = READ_INST_16_3();
     int16_t count = READ_INST_16_5();
@@ -2526,10 +2546,11 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(DEFINECLASSWITHBUFFER_IMM8_ID16_ID16_IMM16_V
     std::vector<BaselineParameter> parameters;
     parameters.emplace_back(BaselineSpecialParameter::GLUE);
     parameters.emplace_back(BaselineSpecialParameter::SP);
-    parameters.emplace_back(methodId);
-    parameters.emplace_back(literalId);
+    uint32_t methodAndLiteralId = static_cast<uint32_t>(methodId) | (static_cast<uint32_t>(literalId) << TWO_BYTE_SIZE);
+    parameters.emplace_back(static_cast<int32_t>(methodAndLiteralId));
     parameters.emplace_back(count);
     parameters.emplace_back(v0);
+    parameters.emplace_back(static_cast<int32_t>(slotId));
     GetBaselineAssembler().CallBuiltin(builtinAddress, parameters);
     GetBaselineAssembler().SaveResultIntoAcc();
 }
@@ -5635,6 +5656,16 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(CALLRUNTIME_LDSENDABLEEXTERNALMODULEVAR_PREF
 }
 
 BYTECODE_BASELINE_HANDLER_IMPLEMENT(CALLRUNTIME_LDSENDABLEVAR_PREF_IMM4_IMM4)
+{
+    (void)bytecodeArray;
+}
+
+BYTECODE_BASELINE_HANDLER_IMPLEMENT(CALLRUNTIME_LDSENDABLELOCALMODULEVAR_PREF_IMM8)
+{
+    (void)bytecodeArray;
+}
+
+BYTECODE_BASELINE_HANDLER_IMPLEMENT(CALLRUNTIME_WIDELDSENDABLELOCALMODULEVAR_PREF_IMM16)
 {
     (void)bytecodeArray;
 }

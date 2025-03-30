@@ -42,6 +42,8 @@ public:
         resolvedSharedModules_.clear();
     }
 
+    JSTaggedValue GetSendableModuleValueInner(JSThread *thread, int32_t index, JSTaggedValue jsFunc);
+
     JSTaggedValue GetSendableModuleValue(JSThread *thread, int32_t index, JSTaggedValue jsFunc);
 
     JSTaggedValue GetSendableModuleValueImpl(JSThread *thread, int32_t index, JSTaggedValue currentModule) const;
@@ -50,7 +52,7 @@ public:
 
     JSTaggedValue GetLazySendableModuleValueImpl(JSThread *thread, int32_t index, JSTaggedValue currentModule) const;
 
-    void Iterate(const RootVisitor &v);
+    void Iterate(RootVisitor &v);
 
     StateVisit &findModuleMutexWithLock(JSThread *thread, const JSHandle<SourceTextModule> &module);
 
@@ -82,6 +84,11 @@ public:
     }
     void SharedNativeObjDestory();
 
+    RecursiveMutex& GetSharedMutex()
+    {
+        return sharedMutex_;
+    }
+
 private:
     SharedModuleManager() = default;
     ~SharedModuleManager() = default;
@@ -97,6 +104,7 @@ private:
     CUnorderedMap<CString, JSTaggedValue> resolvedSharedModules_;
     CMap<CString, StateVisit> sharedModuleMutex_;
     Mutex mutex_;
+    RecursiveMutex sharedMutex_;
 
     friend class SourceTextModule;
     friend class EcmaContext;

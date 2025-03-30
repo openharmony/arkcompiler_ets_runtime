@@ -55,8 +55,7 @@ host_unittest_action("Jsnapi_001_Test") {
   deps = [
     "$ark_third_party_root/icu/icu4c:shared_icui18n",
     "$ark_third_party_root/icu/icu4c:shared_icuuc",
-    "../../../:libark_jsruntime_test",
-    sdk_libc_secshared_dep,
+    "$js_root:libark_jsruntime_test",
   ]
 
   foreach(file, test_js_files) {
@@ -82,8 +81,7 @@ host_unittest_action("Jsnapi_002_Test") {
   deps = [
     "$ark_third_party_root/icu/icu4c:shared_icui18n",
     "$ark_third_party_root/icu/icu4c:shared_icuuc",
-    "../../../:libark_jsruntime_test",
-    sdk_libc_secshared_dep,
+    "$js_root:libark_jsruntime_test",
   ]
 
   foreach(file, test_js_files) {
@@ -109,8 +107,7 @@ host_unittest_action("Jsnapi_003_Test") {
   deps = [
     "$ark_third_party_root/icu/icu4c:shared_icui18n",
     "$ark_third_party_root/icu/icu4c:shared_icuuc",
-    "../../../:libark_jsruntime_test",
-    sdk_libc_secshared_dep,
+    "$js_root:libark_jsruntime_test",
   ]
 
   foreach(file, test_js_files) {
@@ -136,8 +133,7 @@ host_unittest_action("Jsnapi_004_Test") {
   deps = [
     "$ark_third_party_root/icu/icu4c:shared_icui18n",
     "$ark_third_party_root/icu/icu4c:shared_icuuc",
-    "../../../:libark_jsruntime_test",
-    sdk_libc_secshared_dep,
+    "$js_root:libark_jsruntime_test",
   ]
 
   foreach(file, test_js_files) {
@@ -160,8 +156,7 @@ host_unittest_action("Jsnapi_Sendable_Test") {
   deps = [
     "$ark_third_party_root/icu/icu4c:shared_icui18n",
     "$ark_third_party_root/icu/icu4c:shared_icuuc",
-    "../../../:libark_jsruntime_test",
-    sdk_libc_secshared_dep,
+    "$js_root:libark_jsruntime_test",
   ]
 
   foreach(file, test_js_files) {
@@ -186,7 +181,6 @@ host_unittest_action("FFIWorkLoadTest") {
     "$ark_third_party_root/icu/icu4c:shared_icui18n",
     "$ark_third_party_root/icu/icu4c:shared_icuuc",
     "$js_root:libark_jsruntime_test",
-    sdk_libc_secshared_dep,
   ]
 
   # hiviewdfx libraries
@@ -209,7 +203,6 @@ host_unittest_action("JsnapiSample") {
     "$ark_third_party_root/icu/icu4c:shared_icui18n",
     "$ark_third_party_root/icu/icu4c:shared_icuuc",
     "$js_root:libark_jsruntime_test",
-    sdk_libc_secshared_dep,
   ]
 
   # hiviewdfx libraries

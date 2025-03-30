@@ -14,8 +14,7 @@
  */
 
 #include "reg_alloc_lsra.h"
-#include "loop.h"
-#include <queue>
+#include "aarch64_cg.h"
 
 namespace maplebe {
 namespace {
@@ -404,6 +403,7 @@ void LSRALinearScanRegAllocator::SetupLiveInterval(Operand &opnd, Insn &insn, bo
 
     LiveInterval *li = nullptr;
     uint32 regNO = regOpnd.GetRegisterNumber();
+    DEBUG_ASSERT(regNO <= liveIntervalsArray.size() - 1, "index out of range");
     if (liveIntervalsArray[regNO] == nullptr) {
         li = memPool->New<LiveInterval>(*memPool);
         li->SetRegNO(regNO);
@@ -1177,6 +1177,7 @@ void LSRALinearScanRegAllocator::InsertCallerSave(Insn &insn, Operand &opnd, boo
     RegOperand *phyOpnd = nullptr;
 
     phyOpnd = regInfo->GetOrCreatePhyRegOperand(static_cast<regno_t>(rli->GetAssignedReg()), regSize, regType);
+
     std::string comment;
     bool isOutOfRange = false;
     auto tmpReg = static_cast<regno_t>(intSpillRegSet[spillIdx] + firstIntReg);
@@ -1295,7 +1296,7 @@ void LSRALinearScanRegAllocator::SpillOperand(Insn &insn, Operand &opnd, bool is
     auto tmpReg = static_cast<regno_t>(intSpillRegSet[spillIdx] + firstIntReg);
 
     bool isOutOfRange = false;
-    auto *phyOpnd = regInfo->GetOrCreatePhyRegOperand(static_cast<regno_t>(spReg), regSize, regType);
+    RegOperand *phyOpnd = GetSpillPhyRegOperand(insn, static_cast<regno_t>(spReg), regSize, regType);
     li->SetAssignedReg(phyOpnd->GetRegisterNumber());
 
     MemOperand *memOpnd = nullptr;
@@ -1347,6 +1348,27 @@ void LSRALinearScanRegAllocator::SpillOperand(Insn &insn, Operand &opnd, bool is
         }
         insn.GetBB()->InsertInsnBefore(insn, *ldInsn);
     }
+}
+
+RegOperand *LSRALinearScanRegAllocator::GetSpillPhyRegOperand(Insn &insn, regno_t regNo, uint32 regSize,
+                                                              RegType regType)
+{
+    RegOperand *phyOpnd = nullptr;
+    phyOpnd = regInfo->GetOrCreatePhyRegOperand(regNo, regSize, regType);
+    MOperator mOp = insn.GetMachineOpcode();
+    if (regInfo->IsMovFromRegtoReg(mOp, insn)) {
+        auto &regOpnd1 = static_cast<RegOperand &>(insn.GetOperand(1));
+        auto &regOpnd0 = static_cast<RegOperand &>(insn.GetOperand(0));
+        if ((!regInfo->IsVirtualRegister(regOpnd1)) && (regInfo->IsVirtualRegister(regOpnd0))) {
+            phyOpnd = &regOpnd1;
+        } else if ((regInfo->IsVirtualRegister(regOpnd1)) && (!regInfo->IsVirtualRegister(regOpnd0))) {
+            phyOpnd = &regOpnd0;
+        } else if ((regInfo->IsVirtualRegister(regOpnd1)) && (regInfo->IsVirtualRegister(regOpnd0))) {
+            multiVregMov = true;
+        }
+    }
+    CHECK_FATAL(phyOpnd != nullptr, "SpillOperand: valid physical register operand");
+    return phyOpnd;
 }
 
 /* find the lowest li that meets the constraints related to li0 form current active */
@@ -1415,7 +1437,7 @@ uint32 LSRALinearScanRegAllocator::HandleSpillForLi(LiveInterval &li)
     FindLowestPrioInActive(spillLi, &li, regType);
 
     if (spillLi == nullptr || li.GetStackSlot() == kSpilled || li.GetRefCount() <= spillLi->GetRefCount() ||
-        freeUntilPos[spillLi->GetAssignedReg()] < li.GetLastUse()) {
+        spillLi->GetLastUse() < li.GetLastUse()) {
         /* spill current li */
         #ifdef ARK_LITECG_DEBUG
         if (needDump) {
@@ -1428,8 +1450,6 @@ uint32 LSRALinearScanRegAllocator::HandleSpillForLi(LiveInterval &li)
     DEBUG_ASSERT(spillLi != nullptr, "spillLi is null in LSRALinearScanRegAllocator::HandleSpillForLi");
 
     uint32 newRegNO = spillLi->GetAssignedReg();
-    DEBUG_ASSERT(freeUntilPos[newRegNO] >= li.GetLastUse(), "phyReg has small free range.");
-
     #ifdef ARK_LITECG_DEBUG
     if (needDump) {
         LogInfo::MapleLogger() << "Flexible Spill: " << spillLi->GetRegNO() << " instead of " << li.GetRegNO() << ".\n";
@@ -1815,6 +1835,20 @@ void LSRALinearScanRegAllocator::FinalizeDefRegisters(Insn &insn, uint32 &spillI
             insn.SetOperand(i, *newList);
         }
     }
+    MOperator mOp = insn.GetMachineOpcode();
+    if (insn.GetPrev() && multiVregMov) {
+        if (regInfo->IsMovFromRegtoReg(mOp, insn) && insn.GetPrev()->IsLoad()) {
+            auto &regOpndPrev = static_cast<RegOperand &>(insn.GetPrev()->GetOperand(0));
+            auto &regOpnd = static_cast<RegOperand &>(insn.GetOperand(1));
+            auto &regOpndDest = static_cast<RegOperand &>(insn.GetOperand(0));
+            if ((!regInfo->IsVirtualRegister(regOpndPrev)) && (!regInfo->IsVirtualRegister(regOpnd)) &&
+                (regOpndPrev == regOpnd)) {
+                insn.SetOperand(1, regOpndDest);
+                insn.GetPrev()->SetOperand(0, regOpndDest);
+            }
+        }
+    }
+    multiVregMov = false;
 }
 void LSRALinearScanRegAllocator::FinalizeFreeReferenceSpillStack(Insn &insn)
 {

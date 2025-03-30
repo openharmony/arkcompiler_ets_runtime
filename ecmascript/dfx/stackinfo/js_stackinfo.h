@@ -42,16 +42,25 @@ void ParseJsFrameInfo(JSPandaFile *jsPandaFile, DebugInfoExtractor *debugExtract
 
 static constexpr uint16_t URL_MAX = 1024;
 static constexpr uint16_t FUNCTIONNAME_MAX = 1024;
+static constexpr uint16_t PACKAGENAME_MAX = 1024;
+
+struct ArkStepParam {
+    uintptr_t *fp;
+    uintptr_t *sp;
+    uintptr_t *pc;
+    bool *isJsFrame;
+};
 
 struct JsFrameInfo {
     std::string functionName;
     std::string fileName;
+    std::string packageName;
     std::string pos;
-    uintptr_t *nativePointer = nullptr;
 };
 
 struct JsFunction {
     char functionName[FUNCTIONNAME_MAX];
+    char packageName[PACKAGENAME_MAX];
     char url[URL_MAX];
     int32_t line;
     int32_t column;
@@ -79,15 +88,6 @@ struct CodeInfo {
         : offset(offset), methodId(methodId), codeSize(codeSize) {}
 };
 
-struct JsFrameDebugInfo {
-    EntityId methodId;
-    uint32_t offset;
-    std::string hapPath;
-    std::string filePath;
-    JsFrameDebugInfo(EntityId methodId, uint32_t offset, std::string &hapPath, std::string &filePath)
-        : methodId(methodId), offset(offset), hapPath(hapPath), filePath(filePath) {}
-};
-
 struct ArkUnwindParam {
     void *ctx;
     ReadMemFunc readMem;
@@ -105,6 +105,7 @@ struct ArkUnwindParam {
 
 struct JsFrame {
     char functionName[FUNCTIONNAME_MAX];
+    char packageName[PACKAGENAME_MAX];
     char url[URL_MAX];
     int32_t line;
     int32_t column;
@@ -121,8 +122,7 @@ public:
     static std::optional<MethodInfo> ReadMethodInfo(panda_file::MethodDataAccessor &mda);
     static CVector<MethodInfo> ReadAllMethodInfos(std::shared_ptr<JSPandaFile> jsPandaFile);
     static std::optional<CodeInfo> TranslateByteCodePc(uintptr_t realPc, const CVector<MethodInfo> &vec);
-    bool GetJsFrameInfo(uintptr_t byteCodePc, uintptr_t methodId, uintptr_t mapBase,
-                        uintptr_t loadOffset, JsFunction *jsFunction);
+    bool GetJsFrameInfo(uintptr_t byteCodePc, uintptr_t mapBase, uintptr_t loadOffset, JsFunction *jsFunction);
     static void AddReference();
     static void ReleaseReference();
 private:
@@ -184,13 +184,14 @@ private:
     };
 public:
     static std::string BuildInlinedMethodTrace(const JSPandaFile *pf, std::map<uint32_t, uint32_t> &methodOffsets);
-    static inline std::string BuildJsStackTrace(JSThread *thread, bool needNative)
+    static inline std::string BuildJsStackTrace(JSThread *thread, bool needNative, bool needNativeStack = true)
     {
         // If jsErrorObj not be pass in, MachineCode object of its stack frame while not be keep alive
         JSHandle<JSObject> jsErrorObj;
-        return BuildJsStackTrace(thread, needNative, jsErrorObj);
+        return BuildJsStackTrace(thread, needNative, jsErrorObj, needNativeStack);
     }
-    static std::string BuildJsStackTrace(JSThread *thread, bool needNative, const JSHandle<JSObject> &jsErrorObj);
+    static std::string BuildJsStackTrace(JSThread *thread, bool needNative,
+                                         const JSHandle<JSObject> &jsErrorObj, bool needNativeStack);
     static std::vector<JsFrameInfo> BuildJsStackInfo(JSThread *thread, bool currentStack = false);
     static std::string BuildMethodTrace(Method *method, uint32_t pcOffset, LastBuilderCache &lastCache,
                                         bool enableStackSourceFile = true);
@@ -215,25 +216,20 @@ private:
 } // namespace panda::ecmascript
 #endif  // ECMASCRIPT_DFX_STACKINFO_JS_STACKINFO_H
 extern "C" int ark_parse_js_frame_info(
-    uintptr_t byteCodePc, uintptr_t methodId, uintptr_t mapBase, uintptr_t loadOffset, uint8_t *data,
+    uintptr_t byteCodePc, uintptr_t mapBase, uintptr_t loadOffset, uint8_t *data,
     uint64_t dataSize, uintptr_t extractorptr, panda::ecmascript::JsFunction *jsFunction);
-extern "C" int ark_translate_js_frame_info(
-    uint8_t *data, size_t dataSize, panda::ecmascript::JsFunction *jsFunction);
 extern "C" int step_ark_with_record_jit(panda::ecmascript::ArkUnwindParam *arkUnwindParam);
 extern "C" int ark_write_jit_code(
     void *ctx, panda::ecmascript::ReadMemFunc readMem, int fd, const uintptr_t *const jitCodeArray,
     const size_t jitSize);
 extern "C" int step_ark(
-    void *ctx, panda::ecmascript::ReadMemFunc readMem, uintptr_t *fp, uintptr_t *sp,
-    uintptr_t *pc, uintptr_t *methodId, bool *isJsFrame);
+    void *ctx, panda::ecmascript::ReadMemFunc readMem, panda::ecmascript::ArkStepParam *arkStepParam);
 extern "C" int ark_create_js_symbol_extractor(uintptr_t *extractorptr);
 extern "C" int ark_destory_js_symbol_extractor(uintptr_t extractorptr);
 extern "C" int ark_parse_js_file_info(
-    uintptr_t byteCodePc, uintptr_t methodId, uintptr_t mapBase, const char* filePath, uintptr_t extractorptr,
+    uintptr_t byteCodePc, uintptr_t mapBase, const char* filePath, uintptr_t extractorptr,
     panda::ecmascript::JsFunction *jsFunction);
-extern "C" int get_ark_native_frame_info(
-    int pid, uintptr_t *pc, uintptr_t *fp, uintptr_t *sp, panda::ecmascript::JsFrame *jsFrame, size_t &size);
-extern "C" int ark_parse_js_frame_info_local(uintptr_t byteCodePc, uintptr_t methodId, uintptr_t mapBase,
+extern "C" int ark_parse_js_frame_info_local(uintptr_t byteCodePc, uintptr_t mapBase,
     uintptr_t loadOffset, panda::ecmascript::JsFunction *jsFunction);
 extern "C" int ark_create_local();
 extern "C" int ark_destroy_local();

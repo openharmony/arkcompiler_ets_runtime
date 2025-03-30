@@ -43,24 +43,34 @@ print(items0); //: [object Array Iterator]
 
 //aot: [trace] aot inline builtin: TypedArray.values, caller function name:func_main_0@builtinTypedArrayValues
 let items1 = myArray.values();
+//aot: [trace] aot call builtin: ArrayIterator.next, caller function name:func_main_0@builtinTypedArrayValues
 print(items1.next().value); //: 10
 
 //aot: [trace] aot inline builtin: TypedArray.values, caller function name:func_main_0@builtinTypedArrayValues
 let items2 = myArray.values();
+//aot: [trace] aot call builtin: ArrayIterator.next, caller function name:func_main_0@builtinTypedArrayValues
 items2.next();
+//aot: [trace] aot call builtin: ArrayIterator.next, caller function name:func_main_0@builtinTypedArrayValues
 print(items2.next().value); //: 20
 
 //aot: [trace] aot inline builtin: TypedArray.values, caller function name:func_main_0@builtinTypedArrayValues
 let items3 = myArray.values();
+//aot: [trace] aot call builtin: ArrayIterator.next, caller function name:func_main_0@builtinTypedArrayValues
 items3.next();
+//aot: [trace] aot call builtin: ArrayIterator.next, caller function name:func_main_0@builtinTypedArrayValues
 items3.next();
+//aot: [trace] aot call builtin: ArrayIterator.next, caller function name:func_main_0@builtinTypedArrayValues
 print(items3.next().value); //: 30
 
 //aot: [trace] aot inline builtin: TypedArray.values, caller function name:func_main_0@builtinTypedArrayValues
 let items4 = myArray.values();
+//aot: [trace] aot call builtin: ArrayIterator.next, caller function name:func_main_0@builtinTypedArrayValues
 items4.next();
+//aot: [trace] aot call builtin: ArrayIterator.next, caller function name:func_main_0@builtinTypedArrayValues
 items4.next();
+//aot: [trace] aot call builtin: ArrayIterator.next, caller function name:func_main_0@builtinTypedArrayValues
 items4.next();
+//aot: [trace] aot call builtin: ArrayIterator.next, caller function name:func_main_0@builtinTypedArrayValues
 print(items4.next().value); //: undefined
 
 // Check own methods
@@ -74,9 +84,13 @@ print(myArray.values().return); //: function return() { [native code] }
 for (let item of myArray.values()) {
     print(item);
 }
+//aot: [trace] aot call builtin: ArrayIterator.next, caller function name:func_main_0@builtinTypedArrayValues
 //: 10
+//aot: [trace] aot call builtin: ArrayIterator.next, caller function name:func_main_0@builtinTypedArrayValues
 //: 20
+//aot: [trace] aot call builtin: ArrayIterator.next, caller function name:func_main_0@builtinTypedArrayValues
 //: 30
+//aot: [trace] aot call builtin: ArrayIterator.next, caller function name:func_main_0@builtinTypedArrayValues
 
 // Replace standard builtin
 let restore = myArray.values
@@ -115,13 +129,19 @@ let items5 = myArray.values();
 for (let item of items5) {
     print(item);
 }
+//aot: [trace] aot call builtin: ArrayIterator.next, caller function name:func_main_0@builtinTypedArrayValues
 //: 10
+//aot: [trace] aot call builtin: ArrayIterator.next, caller function name:func_main_0@builtinTypedArrayValues
 //: 20
+//aot: [trace] aot call builtin: ArrayIterator.next, caller function name:func_main_0@builtinTypedArrayValues
 //: 30
+//aot: [trace] aot call builtin: ArrayIterator.next, caller function name:func_main_0@builtinTypedArrayValues
 
 // Check reusing possibility
 for (let item of items5) {
+    //aot: [trace] aot call builtin: ArrayIterator.next, caller function name:func_main_0@builtinTypedArrayValues
     print(item);
 } // <nothing>
 
+//aot: [trace] aot call builtin: ArrayIterator.next, caller function name:func_main_0@builtinTypedArrayValues
 print(items5.next().value); //: undefined

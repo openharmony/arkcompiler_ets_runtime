@@ -13,27 +13,16 @@
  * limitations under the License.
  */
 
-#include <string>
-#include <cstring>
-#include <cstdlib>
 
-#include "ecmascript/compiler/circuit_builder.h"
 #include "ecmascript/compiler/typed_bytecode_lowering.h"
 
-#include "ecmascript/base/string_helper.h"
-#include "ecmascript/builtin_entries.h"
-#include "ecmascript/compiler/bytecodes.h"
-#include "ecmascript/compiler/circuit.h"
-#include "ecmascript/compiler/type_info_accessors.h"
+#include "ecmascript/compiler/circuit_builder_helper.h"
+#include "ecmascript/compiler/variable_type.h"
 #include "ecmascript/dfx/vmstat/opt_code_profiler.h"
-#include "ecmascript/enum_conversion.h"
-#include "ecmascript/js_tagged_value.h"
-#include "ecmascript/jspandafile/js_pandafile.h"
-#include "ecmascript/jspandafile/js_pandafile_manager.h"
-#include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/jit/jit.h"
 #include "ecmascript/js_object-inl.h"
-#include "ecmascript/layout_info-inl.h"
+#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value_internals.h"
 
 namespace panda::ecmascript::kungfu {
 void TypedBytecodeLowering::RunTypedBytecodeLowering()
@@ -1360,6 +1349,37 @@ GateRef TypedBytecodeLowering::LoadJSArrayByIndex(const LoadBulitinObjTypeInfoAc
     return result;
 }
 
+GateRef TypedBytecodeLowering::LoadElmentFromFloat64Array(const LoadBulitinObjTypeInfoAccessor &tacc)
+{
+    GateRef receiver = tacc.GetReceiver();
+    GateRef propKey = tacc.GetKey();
+    OnHeapMode onHeap = tacc.TryGetHeapMode();
+    auto resTemp = builder_.LoadElement<TypedLoadOp::FLOAT64ARRAY_LOAD_ELEMENT>(receiver, propKey, onHeap);
+    Label entry(&builder_);
+    builder_.SubCfgEntry(&entry);
+    Label ifTrue(&builder_);
+    Label ifFalse(&builder_);
+    Label exit(&builder_);
+    Variable result(builder_.GetCurrentEnvironment(),
+        VariableType::JS_ANY(), builder_.NextVariableId(), builder_.Undefined());
+
+    builder_.Branch(builder_.DoubleIsImpureNaN(resTemp), &ifTrue, &ifFalse);
+    builder_.Bind(&ifTrue);
+    {
+        result = builder_.Double(base::NAN_VALUE);
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&ifFalse);
+    {
+        result = resTemp;
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&exit);
+    auto res = *result;
+    builder_.SubCfgExit();
+    return res;
+}
+
 GateRef TypedBytecodeLowering::LoadTypedArrayByIndex(const LoadBulitinObjTypeInfoAccessor &tacc)
 {
     GateRef receiver = tacc.GetReceiver();
@@ -1389,8 +1409,9 @@ GateRef TypedBytecodeLowering::LoadTypedArrayByIndex(const LoadBulitinObjTypeInf
             return builder_.LoadElement<TypedLoadOp::UINT32ARRAY_LOAD_ELEMENT>(receiver, propKey, onHeap);
         case JSType::JS_FLOAT32_ARRAY:
             return builder_.LoadElement<TypedLoadOp::FLOAT32ARRAY_LOAD_ELEMENT>(receiver, propKey, onHeap);
-        case JSType::JS_FLOAT64_ARRAY:
-            return builder_.LoadElement<TypedLoadOp::FLOAT64ARRAY_LOAD_ELEMENT>(receiver, propKey, onHeap);
+        case JSType::JS_FLOAT64_ARRAY: {
+            return LoadElmentFromFloat64Array(tacc);
+        }
         default:
             LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
@@ -1603,7 +1624,8 @@ void TypedBytecodeLowering::LowerTypedNewObjRange(GateRef gate)
     }
     bool needPushArgv = (expectedArgc != actualArgc);
     GateRef result = builder_.CallNew(gate, args, needPushArgv);
-    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
+    ReplaceGateWithPendingException(acc_.GetGlueFromArgList(), gate, builder_.GetState(),
+        builder_.GetDepend(), result);
 }
 
 bool TypedBytecodeLowering::TryLowerNewBuiltinConstructor(GateRef gate)
@@ -1640,7 +1662,8 @@ bool TypedBytecodeLowering::TryLowerNewBuiltinConstructor(GateRef gate)
     if (constructGate == Circuit::NullGate()) {
         return false;
     }
-    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), constructGate);
+    ReplaceGateWithPendingException(acc_.GetGlueFromArgList(), gate, builder_.GetState(),
+        builder_.GetDepend(), constructGate);
     return true;
 }
 
@@ -1680,20 +1703,22 @@ void TypedBytecodeLowering::LowerTypedSuperCall(GateRef gate)
     }
 
     GateRef constructGate = builder_.Construct(gate, args);
-    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), constructGate);
+    ReplaceGateWithPendingException(acc_.GetGlueFromArgList(), gate, builder_.GetState(),
+        builder_.GetDepend(), constructGate);
 }
 
 void TypedBytecodeLowering::SpeculateCallBuiltin(GateRef gate, GateRef func, const std::vector<GateRef> &args,
-                                                 BuiltinsStubCSigns::ID id, bool isThrow, bool isSideEffect)
+                                                 BuiltinsStubCSigns::ID id, bool isThrow)
 {
     if (!Uncheck()) {
         builder_.CallTargetCheck(gate, func, builder_.IntPtr(static_cast<int64_t>(id)), {args[0]});
     }
 
-    GateRef result = builder_.TypedCallBuiltin(gate, args, id, isSideEffect);
+    GateRef result = builder_.TypedCallBuiltin(gate, args, id, IS_SIDE_EFFECT_BUILTINS_ID(id));
 
     if (isThrow) {
-        acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
+        ReplaceGateWithPendingException(acc_.GetGlueFromArgList(), gate, builder_.GetState(),
+            builder_.GetDepend(), result);
     } else {
         acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
     }
@@ -1705,7 +1730,8 @@ void TypedBytecodeLowering::SpeculateCallBuiltinFromGlobal(GateRef gate, const s
     GateRef result = builder_.TypedCallBuiltin(gate, args, id, isSideEffect);
 
     if (isThrow) {
-        acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
+        ReplaceGateWithPendingException(acc_.GetGlueFromArgList(), gate, builder_.GetState(),
+            builder_.GetDepend(), result);
     } else {
         acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
     }
@@ -1717,7 +1743,8 @@ void TypedBytecodeLowering::LowerFastCall(GateRef gate, GateRef func,
     builder_.StartCallTimer(glue_, gate, {glue_, func, builder_.True()}, true);
     GateRef result = builder_.TypedFastCall(gate, argsFastCall, isNoGC);
     builder_.EndCallTimer(glue_, gate, {glue_, func}, true);
-    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
+    ReplaceGateWithPendingException(acc_.GetGlueFromArgList(), gate, builder_.GetState(),
+        builder_.GetDepend(), result);
 }
 
 void TypedBytecodeLowering::LowerCall(GateRef gate, GateRef func,
@@ -1726,7 +1753,8 @@ void TypedBytecodeLowering::LowerCall(GateRef gate, GateRef func,
     builder_.StartCallTimer(glue_, gate, {glue_, func, builder_.True()}, true);
     GateRef result = builder_.TypedCall(gate, args, isNoGC);
     builder_.EndCallTimer(glue_, gate, {glue_, func}, true);
-    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
+    ReplaceGateWithPendingException(acc_.GetGlueFromArgList(), gate, builder_.GetState(),
+        builder_.GetDepend(), result);
 }
 
 template<class TypeAccessor>
@@ -1784,6 +1812,9 @@ void TypedBytecodeLowering::CheckCallTargetFromDefineFuncAndLowerCall(const Type
     GateRef func = tacc.GetFunc();
     GateRef gate = tacc.GetGate();
     // NO CHECK
+    if (!Uncheck()) {
+        builder_.CallTargetIsCompiledCheck(func, gate);
+    }
     if (tacc.CanFastCall()) {
         LowerFastCall(gate, func, argsFastCall, isNoGC);
     } else {
@@ -2105,7 +2136,7 @@ void TypedBytecodeLowering::LowerTypedCallthis0(GateRef gate)
     BuiltinsStubCSigns::ID pgoFuncId = tacc.TryGetPGOBuiltinMethodId();
     if (!IS_INVALID_ID(pgoFuncId) && IS_TYPED_BUILTINS_ID_CALL_THIS0(pgoFuncId)) {
         AddProfiling(gate);
-        SpeculateCallBuiltin(gate, tacc.GetFunc(), { tacc.GetThisObj() }, pgoFuncId, true, true);
+        SpeculateCallBuiltin(gate, tacc.GetFunc(), {tacc.GetThisObj()}, pgoFuncId, true);
         return;
     }
     if (!tacc.CanOptimizeAsFastCall()) {
@@ -2123,7 +2154,7 @@ void TypedBytecodeLowering::LowerTypedCallthis1(GateRef gate)
     BuiltinsStubCSigns::ID pgoFuncId = tacc.TryGetPGOBuiltinMethodId();
     if (!IS_INVALID_ID(pgoFuncId) && IS_TYPED_BUILTINS_ID_CALL_THIS1(pgoFuncId)) {
         AddProfiling(gate);
-        SpeculateCallBuiltin(gate, tacc.GetFunc(), { tacc.GetArgs() }, pgoFuncId, true);
+        SpeculateCallBuiltin(gate, tacc.GetFunc(), {tacc.GetArgs()}, pgoFuncId, true);
         return;
     }
     if (!tacc.CanOptimizeAsFastCall()) {
@@ -2138,6 +2169,12 @@ void TypedBytecodeLowering::LowerTypedCallthis2(GateRef gate)
         return;
     }
     CallThis2TypeInfoAccessor tacc(compilationEnv_, circuit_, gate, GetCalleePandaFile(gate), callMethodFlagMap_);
+    BuiltinsStubCSigns::ID pgoFuncId = tacc.TryGetPGOBuiltinMethodId();
+    if (!IS_INVALID_ID(pgoFuncId) && IS_TYPED_BUILTINS_ID_CALL_THIS2(pgoFuncId)) {
+        AddProfiling(gate);
+        SpeculateCallBuiltin(gate, tacc.GetFunc(), { tacc.GetArgs() }, pgoFuncId, true);
+        return;
+    }
     if (!tacc.CanOptimizeAsFastCall()) {
         return;
     }
@@ -2282,7 +2319,7 @@ void TypedBytecodeLowering::LowerGetIterator(GateRef gate)
     }
     AddProfiling(gate);
     GateRef obj = tacc.GetCallee();
-    SpeculateCallBuiltin(gate, obj, { obj }, id, true, true);
+    SpeculateCallBuiltin(gate, obj, { obj }, id, true);
 }
 
 void TypedBytecodeLowering::LowerTypedTryLdGlobalByName(GateRef gate)
@@ -2394,7 +2431,9 @@ void TypedBytecodeLowering::LowerCreateObjectWithBuffer(GateRef gate)
     JSObject *objhandle = JSObject::Cast(obj);
     std::vector<uint64_t> inlinedProps;
     auto layout = LayoutInfo::Cast(newClass->GetLayout().GetTaggedObject());
-    for (uint32_t i = 0; i < newClass->GetInlinedProperties(); i++) {
+    uint32_t numOfProps = newClass->NumberOfProps();
+    uint32_t numInlinedProps = newClass->GetInlinedProperties();
+    for (uint32_t i = 0; i < numOfProps; i++) {
         auto attr = layout->GetAttr(i);
         JSTaggedValue value = objhandle->GetPropertyInlinedProps(i);
         if ((!attr.IsTaggedRep()) || value.IsUndefinedOrNull() ||
@@ -2417,7 +2456,7 @@ void TypedBytecodeLowering::LowerCreateObjectWithBuffer(GateRef gate)
     valueIn.emplace_back(index);
     valueIn.emplace_back(builder_.Int64(JSTaggedValue(newClass).GetRawData()));
     valueIn.emplace_back(acc_.GetValueIn(gate, 1));
-    for (uint32_t i = 0; i < newClass->GetInlinedProperties(); i++) {
+    for (uint32_t i = 0; i < numOfProps; i++) {
         auto attr = layout->GetAttr(i);
         GateRef prop;
         if (attr.IsIntRep()) {
@@ -2434,7 +2473,27 @@ void TypedBytecodeLowering::LowerCreateObjectWithBuffer(GateRef gate)
         valueIn.emplace_back(prop);
         valueIn.emplace_back(builder_.Int32(newClass->GetInlinedPropertiesOffset(i)));
     }
+    GateRef prop = newClass->IsAOT() ? builder_.Hole() : builder_.Undefined();
+    for (uint32_t i = numOfProps; i < numInlinedProps; i++) {
+        valueIn.emplace_back(prop);
+        valueIn.emplace_back(builder_.Int32(newClass->GetInlinedPropertiesOffset(i)));
+    }
     GateRef ret = builder_.TypedCreateObjWithBuffer(valueIn);
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
+}
+
+void TypedBytecodeLowering::ReplaceGateWithPendingException(GateRef glue, GateRef gate, GateRef state, GateRef depend,
+                                                            GateRef value)
+{
+    auto condition = builder_.HasPendingException(glue);
+    GateRef ifBranch = builder_.Branch(state, condition, 1, BranchWeight::DEOPT_WEIGHT, "checkException");
+    GateRef ifTrue = builder_.IfTrue(ifBranch);
+    GateRef ifFalse = builder_.IfFalse(ifBranch);
+    GateRef eDepend = builder_.DependRelay(ifTrue, depend);
+    GateRef sDepend = builder_.DependRelay(ifFalse, depend);
+
+    StateDepend success(ifFalse, sDepend);
+    StateDepend exception(ifTrue, eDepend);
+    acc_.ReplaceHirWithIfBranch(gate, success, exception, value);
 }
 }  // namespace panda::ecmascript

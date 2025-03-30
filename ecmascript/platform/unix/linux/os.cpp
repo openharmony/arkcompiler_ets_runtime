@@ -16,12 +16,9 @@
 #include "ecmascript/platform/os.h"
 
 #include <malloc.h>
-#include <sched.h>
 #include <sys/mman.h>
 #include <sys/prctl.h>
 #include <sys/ptrace.h>
-#include <sys/sysinfo.h>
-#include <sys/types.h>
 #include <sys/xattr.h>
 #include <unistd.h>
 

@@ -67,11 +67,14 @@ static constexpr size_t DEFAULT_REGION_MASK = DEFAULT_REGION_SIZE - 1;
 static constexpr size_t DEFAULT_MARK_STACK_SIZE = 4_KB;
 
 static constexpr double MIN_OBJECT_SURVIVAL_RATE = 0.75;
+static constexpr double STRICT_OBJECT_SURVIVAL_RATE = 0.9;
 static constexpr double MIN_SENSITIVE_OBJECT_SURVIVAL_RATE = 0.9;
 static constexpr double GROW_OBJECT_SURVIVAL_RATE = 0.8;
 static constexpr double SHRINK_OBJECT_SURVIVAL_RATE = 0.2;
+static constexpr double MIN_GC_INTERVAL_MS = 1000;
 static constexpr double LOW_ALLOCATION_SPEED_PER_MS = 1000;
 static constexpr double DEFAULT_CAPACITY_RATE = 0.6;
+static constexpr double HPPGC_NEWSPACE_SIZE_RATIO = 0.5;
 // Objects which are larger than half of the region size are huge objects.
 // Regular objects will be allocated on regular regions and migrated on spaces.
 // They will never be moved to huge object space. So we take half of a regular
@@ -94,6 +97,7 @@ static constexpr double TRIGGER_OLDGC_NATIVE_SIZE_LIMIT = 20_MB;
 static constexpr size_t IDLE_GC_YOUNG_SPACE = 3_MB;
 
 static constexpr double LOW_ALLOCATION_RATE_PER_MS = 10;
+static constexpr double IDLE_PATIAL_GC_SPACE_SIZE_LIMIT_RATE = 0.65f;
 static constexpr double IDLE_SPACE_SIZE_LIMIT_RATE = 0.8f;
 static constexpr double IDLE_SPACE_SIZE_MIN_INC_RATIO = 1.1f;
 static constexpr double IDLE_FRAGMENT_SIZE_RATIO = 0.1f;
@@ -102,6 +106,16 @@ static constexpr size_t IDLE_SPACE_SIZE_MIN_INC_STEP = 5_MB;
 static constexpr size_t IDLE_SPACE_SIZE_MIN_INC_STEP_FULL = 1_MB;
 static constexpr size_t IDLE_MIN_EXPECT_RECLAIM_SIZE = 1_MB;
 static constexpr size_t IDLE_BINDING_NATIVE_MIN_INC_SIZE = 10_MB;
+
+// cold start
+static constexpr uint64_t DEFAULT_STARTUP_DURATION_MS = 2000;
+static constexpr uint64_t MIN_CONFIGURABLE_STARTUP_DURATION_MS = 2000;
+static constexpr uint64_t MAX_CONFIGURABLE_STARTUP_DURATION_MS = 5000;
+static constexpr uint64_t FINISH_STARTUP_TIMEPOINT_MS = 8000;
+static constexpr double JUST_FINISH_STARTUP_LOCAL_THRESHOLD_RATIO = 0.25;
+static constexpr double JUST_FINISH_STARTUP_SHARED_THRESHOLD_RATIO = 0.25;
+static constexpr double JUST_FINISH_STARTUP_LOCAL_CONCURRENT_MARK_RATIO = 0.9;
+static constexpr double JUST_FINISH_STARTUP_SHARED_CONCURRENT_MARK_RATIO = 0.75;
 
 using TaggedType = uint64_t;
 static constexpr uint32_t TAGGED_TYPE_SIZE = sizeof(TaggedType);

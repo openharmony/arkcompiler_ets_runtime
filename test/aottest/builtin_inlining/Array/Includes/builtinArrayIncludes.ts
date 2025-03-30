@@ -188,6 +188,7 @@ print(specialArray.includes(5)) //: true
 print(specialArray.includes(5.5)) //: true
 
 print('unusual cases') //: unusual cases
+//aot: [trace] aot call builtin: Array.prototype.includes, caller function name:func_main_0@builtinArrayIncludes
 print(specialArray.includes()) //: true
 //aot: [trace] aot inline builtin: Array.prototype.includes, caller function name:func_main_0@builtinArrayIncludes
 print(specialArray.includes(() => {})) //: false
@@ -355,6 +356,7 @@ function includesCase4() {
           return -100
       }
   }
+  //aot: [trace] aot call builtin: Object.SetPrototypeOf, caller function name:#*#includesCase4@builtinArrayIncludes
   Object.setPrototypeOf(arr2, notArray)
 
   //aot: [trace] Check Type: NotStableArray1

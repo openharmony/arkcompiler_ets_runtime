@@ -63,12 +63,11 @@ void Jit::SetJitEnablePostFork(EcmaVM *vm, const std::string &bundleName)
         options.SetEnableAPPJIT(true);
         isApp_ = true;
         // for app threshold
-        uint32_t defaultSize = 3000;
+        uint32_t defaultSize = 150;
         uint32_t threshold = ohos::JitTools::GetJitHotnessThreshold(defaultSize);
         options.SetJitHotnessThreshold(threshold);
         hotnessThreshold_ = threshold;
         bundleName_ = bundleName;
-        isEnableAppPGO_ = pgo::PGOProfilerManager::GetInstance()->IsEnable();
 
         SetEnableOrDisable(options, isEnableFastJit, isEnableBaselineJit);
         if (fastJitEnable_ || baselineJitEnable_) {
@@ -82,9 +81,8 @@ void Jit::SwitchProfileStubs(EcmaVM *vm)
     JSThread *thread = vm->GetAssociatedJSThread();
     JSRuntimeOptions &options = vm->GetJSOptions();
     std::shared_ptr<PGOProfiler> pgoProfiler = vm->GetPGOProfiler();
-    if (!options.IsEnableJITPGO() || pgoProfiler == nullptr || (isApp_ && !isEnableAppPGO_)) {
+    if (!options.IsEnableJITPGO() || pgoProfiler == nullptr) {
         thread->SwitchJitProfileStubs(false);
-        options.SetEnableJITPGO(false);
     } else {
         // if not enable aot pgo
         if (!pgo::PGOProfilerManager::GetInstance()->IsEnable()) {
@@ -111,7 +109,7 @@ void Jit::ConfigOptions(EcmaVM *vm) const
     bool jitEnableLitecg = ohos::JitTools::IsJitEnableLitecg(options.IsCompilerEnableLiteCG());
     options.SetCompilerEnableLiteCG(jitEnableLitecg);
 
-    uint8_t jitCallThreshold = ohos::JitTools::GetJitCallThreshold(options.GetJitCallThreshold());
+    uint16_t jitCallThreshold = ohos::JitTools::GetJitCallThreshold(options.GetJitCallThreshold());
     options.SetJitCallThreshold(jitCallThreshold);
 
     uint32_t jitHotnessThreshold = GetHotnessThreshold();
@@ -122,6 +120,9 @@ void Jit::ConfigOptions(EcmaVM *vm) const
 
     bool jitEnableJitFort = ohos::JitTools::GetEnableJitFort(options.GetEnableJitFort());
     options.SetEnableJitFort(jitEnableJitFort);
+
+    bool jitEnableVerifyPass = ohos::JitTools::GetEnableJitVerifyPass(options.IsEnableJitVerifyPass());
+    options.SetEnableJitVerifyPass(jitEnableVerifyPass);
 
     bool jitEnableAsyncCopyToFort = ohos::JitTools::GetEnableAsyncCopyToFort(options.GetEnableAsyncCopyToFort());
     options.SetEnableAsyncCopyToFort(jitEnableAsyncCopyToFort);
@@ -167,6 +168,7 @@ void Jit::SetEnableOrDisable(const JSRuntimeOptions &options, bool isEnableFastJ
     if (initialized_) {
         fastJitEnable_ = isEnableFastJit;
         baselineJitEnable_ = isEnableBaselineJit;
+        hotnessThreshold_ = options.GetJitHotnessThreshold();
     }
 }
 
@@ -180,6 +182,7 @@ void Jit::Destroy()
     initialized_ = false;
     fastJitEnable_ = false;
     baselineJitEnable_ = false;
+    ASSERT(jitResources_ != nullptr);
     jitResources_->Destroy();
     jitResources_ = nullptr;
 }
@@ -275,7 +278,12 @@ void Jit::Compile(EcmaVM *vm, const CompileDecision &decision)
     TimeScope scope(vm, msg, tier, true, true);
 
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, ConvertToStdString("JIT::Compile:" + methodInfo));
-    jsFunction->SetJitCompilingFlag(true);
+    if (tier.IsFast()) {
+        jsFunction->SetJitCompilingFlag(true);
+    } else {
+        ASSERT(tier.IsBaseLine());
+        jsFunction->SetBaselinejitCompilingFlag(true);
+    }
     GetJitDfx()->SetTriggerCount(tier);
 
     {
@@ -316,25 +324,20 @@ void Jit::RequestInstallCode(std::shared_ptr<JitTask> jitTask)
 
 uint32_t Jit::GetRunningTaskCnt(EcmaVM *vm)
 {
-    uint32_t cnt = 0;
-    JitTaskpool::GetCurrentTaskpool()->ForEachTask([&cnt, &vm](Task *task) {
-        JitTask::AsyncTask *asyncTask = static_cast<JitTask::AsyncTask*>(task);
-        if (asyncTask->GetHostVM() == vm) {
-            cnt ++;
-        }
-    });
     LockHolder holder(threadTaskInfoLock_);
     ThreadTaskInfo &info = threadTaskInfo_[vm->GetJSThread()];
-    auto &taskQueue = info.installJitTasks_;
-    return taskQueue.size() + cnt;
+    return info.jitTaskCnt_.load();
 }
 
 void Jit::InstallTasks(JSThread *jsThread)
 {
-    LockHolder holder(threadTaskInfoLock_);
-    ThreadTaskInfo &info = threadTaskInfo_[jsThread];
-    auto &taskQueue = info.installJitTasks_;
-
+    std::deque<std::shared_ptr<JitTask>> taskQueue;
+    {
+        LockHolder holder(threadTaskInfoLock_);
+        ThreadTaskInfo &info = threadTaskInfo_[jsThread];
+        taskQueue = info.installJitTasks_;
+        info.installJitTasks_.clear();
+    }
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, ConvertToStdString("Jit::InstallTasks count:" + ToCString(taskQueue.size())));
 
     for (auto it = taskQueue.begin(); it != taskQueue.end(); it++) {
@@ -342,7 +345,6 @@ void Jit::InstallTasks(JSThread *jsThread)
         // check task state
         task->InstallCode();
     }
-    taskQueue.clear();
 }
 
 bool Jit::JitCompile(void *compiler, JitTask *jitTask)

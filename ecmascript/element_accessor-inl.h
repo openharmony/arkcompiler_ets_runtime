@@ -40,19 +40,21 @@ inline void ElementAccessor::Set(const JSThread *thread, JSHandle<JSObject> rece
     
     TaggedArray *elements = TaggedArray::Cast(receiver->GetElements());
     ASSERT(idx < elements->GetLength());
-    size_t offset = JSTaggedValue::TaggedTypeSize() * idx;
-
-    ElementsKind kind = receiver->GetClass()->GetElementsKind();
-    if (!elements->GetClass()->IsMutantTaggedArray()) {
-        kind = ElementsKind::GENERIC;
-    }
-
-    JSTaggedType convertedValue = ConvertTaggedValueWithElementsKind(value.GetTaggedValue(), kind);
-    // NOLINTNEXTLINE(readability-braces-around-statements, bugprone-suspicious-semicolon)
-    if (value.GetTaggedValue().IsHeapObject()) {
-        Barriers::SetObject<true>(thread, elements->GetData(), offset, convertedValue);
-    } else {  // NOLINTNEXTLINE(readability-misleading-indentation)
-        Barriers::SetPrimitive<JSTaggedType>(elements->GetData(), offset, convertedValue);
+    if (UNLIKELY(thread->IsEnableMutantArray())) {
+        ElementsKind kind = receiver->GetClass()->GetElementsKind();
+        if (!elements->GetClass()->IsMutantTaggedArray()) {
+            kind = ElementsKind::GENERIC;
+        }
+        JSTaggedType convertedValue = ConvertTaggedValueWithElementsKind(value.GetTaggedValue(), kind);
+        size_t offset = JSTaggedValue::TaggedTypeSize() * idx;
+        // NOLINTNEXTLINE(readability-braces-around-statements, bugprone-suspicious-semicolon)
+        if (value.GetTaggedValue().IsHeapObject()) {
+            Barriers::SetObject<true>(thread, elements->GetData(), offset, convertedValue);
+        } else {  // NOLINTNEXTLINE(readability-misleading-indentation)
+            Barriers::SetPrimitive<JSTaggedType>(elements->GetData(), offset, convertedValue);
+        }
+    } else {
+        elements->Set(thread, idx, value);
     }
 }
 

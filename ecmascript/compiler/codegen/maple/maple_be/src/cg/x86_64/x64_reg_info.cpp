@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 
-#include "becommon.h"
 #include "x64_cgfunc.h"
 #include "x64_reg_info.h"
 
@@ -121,6 +120,11 @@ Insn *X64RegInfo::BuildLdrInsn(uint32 regSize, PrimType stype, RegOperand &phyOp
     Insn &insn = GetCurrFunction()->GetInsnBuilder()->BuildInsn(mOp, X64CG::kMd[mOp]);
     insn.AddOpndChain(memOpnd).AddOpndChain(phyOpnd);
     return &insn;
+}
+
+bool X64RegInfo::IsMovFromRegtoReg(MOperator mOp, Insn &insn)
+{
+    return false;
 }
 
 void X64RegInfo::FreeSpillRegMem(regno_t vrNum)

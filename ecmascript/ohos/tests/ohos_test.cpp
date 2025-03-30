@@ -49,8 +49,9 @@ public:
     {
         runtimeOptions_.SetPGOProfilerPath("");
         runtimeOptions_.SetTargetCompilerMode("partial");
-        runtimeOptions_.SetAOTOutputFile("/data/local/ark-cache/com.ohos.test/arm64/phone");
-        runtimeOptions_.SetCompilerPkgJsonInfo(BuildOhosPkgJson("/data/local/ark-profile/100/com.ohos.test"));
+        runtimeOptions_.SetAOTOutputFile("/data/app/el1/public/aot_compiler/ark_cache/com.ohos.test/arm64/phone");
+        runtimeOptions_.SetCompilerPkgJsonInfo(
+            BuildOhosPkgJson("/data/app/el1/100/aot_compiler/ark_profile/com.ohos.test"));
         runtimeOptions_.SetCompilerFrameworkAbcPath("/etc/abc/framework");
         runtimeOptions_.SetCompilerEnableExternalPkg(true);
         runtimeOptions_.SetCompilerExternalPkgJsonInfo(BuildOhosExternalPkgJson());
@@ -169,7 +170,7 @@ HWTEST_F_L0(OhosTest, OhosPkgArgsParsePgoDir)
     AotCompilerPreprocessor preProcessor(vm_, runtimeOptions_, pkgArgsMap, decoder, pandaFileNames);
     OhosPkgArgs::ParseArgs(preProcessor, cOptions);
 
-    ASSERT_EQ(preProcessor.GetMainPkgArgs()->GetPgoDir(), "/data/local/ark-profile/100/com.ohos.test");
+    ASSERT_EQ(preProcessor.GetMainPkgArgs()->GetPgoDir(), "/data/app/el1/100/aot_compiler/ark_profile/com.ohos.test");
 }
 
 HWTEST_F_L0(OhosTest, UseBaselineApFromPgoDir)

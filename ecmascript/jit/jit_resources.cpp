@@ -15,8 +15,6 @@
 
 #include "ecmascript/jit/jit_resources.h"
 #include "ecmascript/jit/jit_task.h"
-#include "ecmascript/platform/file.h"
-#include "ecmascript/taskpool/taskpool.h"
 #include "ecmascript/ohos/jit_tools.h"
 
 namespace panda::ecmascript {

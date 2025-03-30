@@ -52,3 +52,22 @@ true
 {"value":3,"writable":true,"enumerable":true,"configurable":true}
 {"value":3,"writable":true,"enumerable":true,"configurable":true}
 {"writable":false,"enumerable":false,"configurable":false}
+8
+8
+8
+2
+3
+5
+1000
+10
+7
+6
+3
+7
+7
+7
+7
+3
+{"value":{},"writable":false,"enumerable":false,"configurable":false}
+Cannot get source code of funtion
+{"key1":{"enumerable":false,"configurable":false}}

@@ -151,7 +151,7 @@ private:
     {
         return methodName_;
     }
-
+    bool enableMegaIC(GateRef gate);
     void ReplaceHirWithPendingException(GateRef hirGate, GateRef state, GateRef depend, GateRef value);
     void ReplaceHirWithValue(GateRef hirGate, GateRef value, bool noThrow = false);
     void ReplaceHirToThrowCall(GateRef hirGate, GateRef callGate);
@@ -169,19 +169,17 @@ private:
     void LowerGetIterator(GateRef gate);
     void LowerGetAsyncIterator(GateRef gate);
     void LowerToJSCall(GateRef hirGate, const std::vector<GateRef> &args, const std::vector<GateRef> &argsFastCall);
-    void LowerFastCall(GateRef gate, GateRef glue, GateRef func, GateRef argc, const std::vector<GateRef> &args,
-        const std::vector<GateRef> &fastCallArgs, Variable *result, Label *exit, bool isNew);
     void LowerNewFastCall(GateRef gate, GateRef glue, GateRef func, bool needPushArgv,
         const std::vector<GateRef> &args, const std::vector<GateRef> &fastCallArgs,
         Variable *result, Label *exit);
-    void LowerCallArg0(GateRef gate);
-    void LowerCallArg1Imm8V8(GateRef gate);
-    void LowerCallThisArg1(GateRef gate);
-    void LowerCallargs2Imm8V8V8(GateRef gate);
-    void LowerCallthis2Imm8V8V8V8(GateRef gate);
-    void LowerCallthis0Imm8V8(GateRef gate);
-    void LowerCallargs3Imm8V8V8(GateRef gate);
-    void LowerCallthis3Imm8V8V8V8V8(GateRef gate);
+    void LowerCallArg0Stub(GateRef gate);
+    void LowerCallArg1Stub(GateRef gate);
+    void LowerCallArg2Stub(GateRef gate);
+    void LowerCallArg3Stub(GateRef gate);
+    void LowerCallThis0Stub(GateRef gate);
+    void LowerCallThis1Stub(GateRef gate);
+    void LowerCallThis2Stub(GateRef gate);
+    void LowerCallThis3Stub(GateRef gate);
     void LowerCallthisrangeImm8Imm8V8(GateRef gate);
     void LowerWideCallthisrangePrefImm16V8(GateRef gate);
     void LowerCallSpread(GateRef gate);
@@ -242,6 +240,7 @@ private:
     void LowerExternalModule(GateRef gate);
     void LowerGetModuleNamespace(GateRef gate);
     void LowerSendableExternalModule(GateRef gate);
+    void LowerSendableLocalModule(GateRef gate);
     void LowerSuperCall(GateRef gate);
     void LowerSuperCallArrow(GateRef gate);
     void LowerSuperCallSpread(GateRef gate);
@@ -335,7 +334,6 @@ private:
     void LowerToPropertyKey(GateRef gate);
     void LowerCreatePrivateProperty(GateRef gate);
     void LowerDefinePrivateProperty(GateRef gate);
-    void LowerCallInit(GateRef gate);
     void LowerDefineSendableClass(GateRef gate);
     void LowerLdSendableClass(GateRef gate);
     void LowerGetEnv(GateRef gate);

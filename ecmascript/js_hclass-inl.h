@@ -18,10 +18,11 @@
 
 #include "ecmascript/js_hclass.h"
 
+#include "ecmascript/byte_array.h"
+#include "ecmascript/ic/proto_change_details.h"
 #include "ecmascript/js_bigint.h"
 #include "ecmascript/layout_info.h"
 #include "ecmascript/layout_info-inl.h"
-#include "ecmascript/byte_array.h"
 #include "ecmascript/mem/assert_scope.h"
 #include "ecmascript/transitions_dictionary.h"
 
@@ -350,6 +351,76 @@ inline int JSHClass::FindPropertyEntry(const JSThread *thread, JSHClass *hclass,
     return entry;
 }
 
+inline void JSHClass::CompleteObjSizeTracking()
+{
+    if (!IsObjSizeTrackingInProgress()) {
+        return;
+    }
+    uint32_t finalInObjPropsNum = JSHClass::VisitTransitionAndFindMaxNumOfProps(this);
+    if (finalInObjPropsNum < GetInlinedProperties()) {
+        // UpdateObjSize with finalInObjPropsNum
+        JSHClass::VisitTransitionAndUpdateObjSize(this, finalInObjPropsNum);
+    }
+    SetConstructionCounter(0); // fini ObjSizeTracking
+}
+
+inline void JSHClass::ObjSizeTrackingStep()
+{
+    if (!IsObjSizeTrackingInProgress()) {
+        return;
+    }
+    uint32_t constructionCounter = GetConstructionCounter();
+    ASSERT(constructionCounter != 0);
+    SetConstructionCounter(--constructionCounter);
+    if (constructionCounter == 0) {
+        uint32_t finalInObjPropsNum = JSHClass::VisitTransitionAndFindMaxNumOfProps(this);
+        if (finalInObjPropsNum < GetInlinedProperties()) {
+            // UpdateObjSize with finalInObjPropsNum
+            JSHClass::VisitTransitionAndUpdateObjSize(this, finalInObjPropsNum);
+        }
+    }
+}
+
+template<bool isOnlyIncludeNotFound>
+void JSHClass::MarkProtoChanged([[maybe_unused]] const JSThread *thread, const JSHandle<JSHClass> &jshclass)
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    ASSERT(jshclass->IsPrototype());
+    JSTaggedValue markerValue = jshclass->GetProtoChangeMarker();
+    if (markerValue.IsProtoChangeMarker()) {
+        ProtoChangeMarker *protoChangeMarker = ProtoChangeMarker::Cast(markerValue.GetTaggedObject());
+        if constexpr (isOnlyIncludeNotFound) {
+            protoChangeMarker->SetNotFoundHasChanged(true);
+        } else {
+            protoChangeMarker->SetHasChanged(true);
+        }
+    }
+}
+
+template<bool isOnlyIncludeNotFound /* = false*/>
+void JSHClass::NoticeThroughChain(const JSThread *thread, const JSHandle<JSHClass> &jshclass,
+                                  JSTaggedValue addedKey)
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    MarkProtoChanged<isOnlyIncludeNotFound>(thread, jshclass);
+    JSTaggedValue protoDetailsValue = jshclass->GetProtoChangeDetails();
+    if (!protoDetailsValue.IsProtoChangeDetails()) {
+        return;
+    }
+    JSTaggedValue listenersValue = ProtoChangeDetails::Cast(protoDetailsValue.GetTaggedObject())->GetChangeListener();
+    if (!listenersValue.IsTaggedArray()) {
+        return;
+    }
+    ChangeListener *listeners = ChangeListener::Cast(listenersValue.GetTaggedObject());
+    for (uint32_t i = 0; i < listeners->GetEnd(); i++) {
+        JSTaggedValue temp = listeners->Get(i);
+        if (temp.IsJSHClass()) {
+            NoticeThroughChain<isOnlyIncludeNotFound>(thread,
+                JSHandle<JSHClass>(thread, listeners->Get(i).GetTaggedObject()), addedKey);
+        }
+    }
+}
+
 template<bool checkDuplicateKeys /* = false*/>
 void JSHClass::AddPropertyToNewHClass(const JSThread *thread, JSHandle<JSHClass> &jshclass,
                                       JSHandle<JSHClass> &newJsHClass,
@@ -378,12 +449,18 @@ void JSHClass::AddPropertyToNewHClass(const JSThread *thread, JSHandle<JSHClass>
 
     // Add newClass to old hclass's transitions.
     AddTransitions(thread, jshclass, newJsHClass, key, attr);
+
+    if UNLIKELY(key.GetTaggedValue() == thread->GlobalConstants()->GetConstructorString()
+        && (jshclass->IsJSArray() || jshclass->IsTypedArray())) {
+        newJsHClass->SetHasConstructor(true);
+    }
 }
 
 template<bool checkDuplicateKeys /* = false*/>
 JSHandle<JSHClass> JSHClass::SetPropertyOfObjHClass(const JSThread *thread, JSHandle<JSHClass> &jshclass,
                                                     const JSHandle<JSTaggedValue> &key,
-                                                    const PropertyAttributes &attr, const Representation &rep)
+                                                    const PropertyAttributes &attr, const Representation &rep,
+                                                    bool specificInlinedProps, uint32_t specificNumInlinedProps)
 {
     JSHClass *newClass = jshclass->FindTransitions(
         key.GetTaggedValue(), JSTaggedValue(attr.GetPropertyMetaData()), rep);
@@ -392,7 +469,7 @@ JSHandle<JSHClass> JSHClass::SetPropertyOfObjHClass(const JSThread *thread, JSHa
         return JSHandle<JSHClass>(thread, newClass);
     }
 
-    JSHandle<JSHClass> newJsHClass = JSHClass::Clone(thread, jshclass);
+    JSHandle<JSHClass> newJsHClass = JSHClass::Clone(thread, jshclass, specificInlinedProps, specificNumInlinedProps);
     AddPropertyToNewHClass<checkDuplicateKeys>(thread, jshclass, newJsHClass, key, attr);
     return newJsHClass;
 }

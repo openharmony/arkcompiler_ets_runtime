@@ -56,8 +56,12 @@ namespace panda::ecmascript {
     V(CallContainersArgs2)                   \
     V(CallContainersArgs3)                   \
     V(CallReturnWithArgv)                    \
-    V(ASMFastWriteBarrier)                   \
-    V(ASMWriteBarrierWithEden)
+    V(CallGetterToBaseline)                  \
+    V(CallSetterToBaseline)                  \
+    V(CallContainersArgs2ToBaseline)         \
+    V(CallContainersArgs3ToBaseline)         \
+    V(CallReturnWithArgvToBaseline)          \
+    V(ASMFastWriteBarrier)
 
 #define BASELINE_TRAMPOLINE_LIST(V)                   \
     V(CallArg0AndCheckToBaseline)                     \
@@ -120,6 +124,11 @@ namespace panda::ecmascript {
     V(JSFastCallWithArgV)                    \
     V(JSFastCallWithArgVAndPushArgv)
 
+#define RUNTIME_STUB_WITH_DFX(V)                \
+    V(TraceLoadGetter)                          \
+    V(TraceLoadSlowPath)                        \
+    V(TraceLoadDetail)                          \
+    V(TraceLoadEnd)
 
 #define RUNTIME_STUB_WITHOUT_GC_LIST(V)        \
     V(Dump)                                    \
@@ -137,10 +146,8 @@ namespace panda::ecmascript {
     V(GetActualArgvNoGC)                       \
     V(InsertOldToNewRSet)                      \
     V(InsertLocalToShareRSet)                  \
-    V(InsertNewToEdenRSet)                     \
     V(SetBitAtomic)                            \
     V(MarkingBarrier)                          \
-    V(MarkingBarrierWithEden)                  \
     V(SharedGCMarkingBarrier)                  \
     V(DoubleToInt)                             \
     V(SaturateTruncDoubleToInt32)           \
@@ -178,9 +185,11 @@ namespace panda::ecmascript {
     V(EndCallTimer)                            \
     V(BigIntSameValueZero)                     \
     V(JSHClassFindProtoTransitions)            \
+    V(FinishObjSizeTracking)                   \
     V(NumberHelperStringToDouble)              \
     V(GetStringToListCacheArray)               \
-    V(FastArraySort)                           \
+    V(IntLexicographicCompare)                 \
+    V(DoubleLexicographicCompare)              \
     V(FastArraySortString)                     \
     V(StringToNumber)                          \
     V(StringGetStart)                          \
@@ -189,26 +198,28 @@ namespace panda::ecmascript {
     V(SortTypedArray)                          \
     V(ReverseTypedArray)                       \
     V(CopyTypedArrayBuffer)                    \
-    V(IsFastRegExp)
+    V(IsFastRegExp)                            \
+    V(CreateLocalToShare)                      \
+    V(CreateOldToNew)                          \
+    V(ObjectCopy)                              \
+    V(FillObject)                              \
+    V(ReverseArray)                            \
+    V(LrInt)
 
 #define RUNTIME_STUB_WITH_GC_LIST(V)            \
-    V(AddElementInternal)                       \
     V(HeapAlloc)                                \
     V(AllocateInYoung)                          \
     V(AllocateInOld)                            \
     V(AllocateInSOld)                           \
     V(AllocateInSNonMovable)                    \
     V(TypedArraySpeciesCreate)                  \
+    V(TypedArrayCreateSameType)                 \
     V(CallInternalGetter)                       \
     V(CallInternalSetter)                       \
     V(CallGetPrototype)                         \
     V(RegularJSObjDeletePrototype)              \
     V(CallJSObjDeletePrototype)                 \
     V(ToPropertyKey)                            \
-    V(ToPropertyKeyValue)                       \
-    V(ToPropertyKeyWritable)                    \
-    V(ToPropertyKeyEnumerable)                  \
-    V(ToPropertyKeyConfigurable)                \
     V(NewJSPrimitiveRef)                        \
     V(ThrowTypeError)                           \
     V(MismatchError)                            \
@@ -323,6 +334,7 @@ namespace panda::ecmascript {
     V(LdExternalModuleVarByIndex)               \
     V(LdExternalModuleVarByIndexWithModule)     \
     V(LdSendableExternalModuleVarByIndex)       \
+    V(LdSendableLocalModuleVarByIndex)          \
     V(LdLazyExternalModuleVarByIndex)           \
     V(LdLazySendableExternalModuleVarByIndex)   \
     V(LdLocalModuleVarByIndexOnJSFunc)          \
@@ -465,6 +477,10 @@ namespace panda::ecmascript {
     V(FunctionDefineOwnProperty)                \
     V(DefineOwnProperty)                        \
     V(AOTEnableProtoChangeMarker)               \
+    V(JSProxyHasProperty)                       \
+    V(JSTypedArrayHasProperty)                  \
+    V(ModuleNamespaceHasProperty)               \
+    V(JSObjectHasProperty)                      \
     V(HasProperty)                              \
     V(DumpObject)                               \
     V(TryGetInternString)                       \
@@ -483,13 +499,17 @@ namespace panda::ecmascript {
     V(OptSuperCallForwardAllArgs)               \
     V(GetCollationValueFromIcuCollator)         \
     V(DecodeURIComponent)                       \
-    V(GetAllFlagsInternal)
-
+    V(GetAllFlagsInternal)                      \
+    V(SlowSharedObjectStoreBarrier)             \
+    V(GetNativePcOfstForBaseline)               \
+    V(AotCallBuiltinTrace)                      \
+    V(NumberBigIntNativePointerToString)
 
 #define RUNTIME_STUB_LIST(V)                     \
     RUNTIME_ASM_STUB_LIST(V)                     \
     RUNTIME_STUB_WITHOUT_GC_LIST(V)              \
     RUNTIME_STUB_WITH_GC_LIST(V)                 \
+    RUNTIME_STUB_WITH_DFX(V)                     \
     TEST_RUNTIME_STUB_GC_LIST(V)
 
 }  // namespace panda::ecmascript

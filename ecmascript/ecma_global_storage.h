@@ -496,7 +496,7 @@ public:
     }
 
     template<class Callback>
-    void IterateUsageGlobal(Callback callback)
+    void IterateUsageGlobal(Callback &&callback)
     {
         IterateNodeList<Callback, T>(callback, topGlobalNodes_);
         if (nodeKind_ == NodeKind::UNIFIED_NODE) {

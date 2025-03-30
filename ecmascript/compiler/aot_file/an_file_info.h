@@ -30,7 +30,8 @@ public:
     using FuncEntryIndexKey = std::pair<std::string, uint32_t>; // (compilefileName, MethodID)
     AnFileInfo() = default;
     ~AnFileInfo() override = default;
-    bool PUBLIC_API Save(const std::string &filename, Triple triple);
+    bool PUBLIC_API Save(const std::string &filename, Triple triple, size_t anFileMaxByteSize,
+                         const std::unordered_map<CString, uint32_t> &fileNameToChecksumMap);
     void AddModuleDes(ModuleSectionDes &moduleDes)
     {
         des_.emplace_back(moduleDes);
@@ -94,9 +95,9 @@ public:
     void PUBLIC_API GenerateMethodToEntryIndexMap();
 
     void Dump() const;
+    static const std::vector<ElfSecName> &GetDumpSectionNames();
 
 private:
-    static const std::vector<ElfSecName> &GetDumpSectionNames();
     using EntryKey = std::pair<uint32_t, uint32_t>;
     bool LoadInternal(const std::string &filename);
     bool Load(const std::string &filename);
@@ -105,8 +106,10 @@ private:
         (std::string fileName, uint8_t **buff, size_t *buffSize)> ReadAOTCallBack);
 #endif
     void ParseFunctionEntrySection(ModuleSectionDes &moduleDes);
+    bool ParseChecksumInfo(ModuleSectionDes &moduleDes);
     void UpdateFuncEntries();
     void AddFuncEntrySec();
+    void AddFileNameToChecksumSec(const std::unordered_map<CString, uint32_t> &fileNameToChecksumMap);
     uint64_t curTextSecOffset_ {0};
     // Future work: add main entry mapping to ai file
     std::map<EntryKey, MainFuncEntry> mainEntryMap_ {};

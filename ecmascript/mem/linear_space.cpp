@@ -48,10 +48,11 @@ uintptr_t LinearSpace::Allocate(size_t size, bool isPromoted)
     }
     if (Expand(isPromoted)) {
         if (!isPromoted) {
-            if (!localHeap_->NeedStopCollection() || localHeap_->IsNearGCInSensitive()) {
+            if (!localHeap_->NeedStopCollection() || localHeap_->IsNearGCInSensitive() ||
+                (localHeap_->IsJustFinishStartup() && localHeap_->ObjectExceedJustFinishStartupThresholdForCM())) {
                 localHeap_->TryTriggerIncrementalMarking();
                 localHeap_->TryTriggerIdleCollection();
-                localHeap_->TryTriggerConcurrentMarking();
+                localHeap_->TryTriggerConcurrentMarking(MarkReason::ALLOCATION_LIMIT);
             }
         }
         object = allocator_.Allocate(size);
@@ -83,7 +84,7 @@ uintptr_t LinearSpace::Allocate(size_t size, bool isPromoted)
 bool LinearSpace::Expand(bool isPromoted)
 {
     if (committedSize_ >= initialCapacity_ + overShootSize_ + outOfMemoryOvershootSize_ &&
-        !localHeap_->NeedStopCollection()) {
+        (isPromoted || !localHeap_->NeedStopCollection())) {
         return false;
     }
 
@@ -172,180 +173,6 @@ void LinearSpace::InvokeAllocationInspector(Address object, size_t size, size_t 
     allocationCounter_.AdvanceAllocationInspector(alignedSize);
 }
 
-EdenSpace::EdenSpace(Heap *heap, size_t initialCapacity, size_t maximumCapacity)
-    : LinearSpace(heap, MemSpaceType::EDEN_SPACE, initialCapacity, maximumCapacity)
-{
-    size_t memSize = AlignUp(maximumCapacity_, DEFAULT_REGION_SIZE);
-    memMap_ = PageMap(memSize, PAGE_PROT_READWRITE, DEFAULT_REGION_SIZE);
-    JSThread::ThreadId threadId = 0;
-    if (heap->EnablePageTagThreadId()) {
-        threadId = heap->GetJSThread()->GetThreadId();
-    }
-    PageTag(memMap_.GetMem(), memMap_.GetSize(), PageTagType::HEAP, ToSpaceTypeName(MemSpaceType::EDEN_SPACE),
-            threadId);
-    auto mem = ToUintPtr(memMap_.GetMem());
-    auto count = memMap_.GetSize() / DEFAULT_REGION_SIZE;
-    while (count-- > 0) {
-        freeRegions_.emplace_back(ToVoidPtr(mem), DEFAULT_REGION_SIZE);
-        mem = mem + DEFAULT_REGION_SIZE;
-    }
-}
-
-EdenSpace::~EdenSpace()
-{
-    PageUnmap(memMap_);
-}
-
-void EdenSpace::Initialize()
-{
-    auto region = AllocRegion();
-    if (UNLIKELY(region == nullptr)) { // LCOV_EXCL_BR_LINE
-        LOG_GC(ERROR) << "EdenSpace::Initialize: region is nullptr";
-        return;
-    }
-    AddRegion(region);
-    allocator_.Reset(region->GetBegin(), region->GetEnd());
-    localHeap_->InstallEdenAllocator();
-}
-
-void EdenSpace::Restart()
-{
-    overShootSize_ = 0;
-    survivalObjectSize_ = 0;
-    allocateAfterLastGC_ = 0;
-    isFull_ = false;
-    Initialize();
-}
-
-uintptr_t EdenSpace::AllocateSync(size_t size)
-{
-    LockHolder lock(lock_);
-    return Allocate(size);
-}
-
-uintptr_t EdenSpace::Allocate(size_t size)
-{
-    if (isFull_) {
-        return 0;
-    }
-    auto object = allocator_.Allocate(size);
-    if (object != 0) {
-#ifdef ECMASCRIPT_SUPPORT_HEAPSAMPLING
-        // can not heap sampling in gc.
-        InvokeAllocationInspector(object, size, size);
-#endif
-        return object;
-    }
-    if (Expand()) {
-        if (!localHeap_->NeedStopCollection()) {
-            localHeap_->TryTriggerIncrementalMarking();
-            localHeap_->TryTriggerIdleCollection();
-            localHeap_->TryTriggerConcurrentMarking();
-        }
-        object = allocator_.Allocate(size);
-    } else {
-        isFull_ = true;
-        localHeap_->ReleaseEdenAllocator();
-    }
-#ifdef ECMASCRIPT_SUPPORT_HEAPSAMPLING
-    if (object != 0) {
-        InvokeAllocationInspector(object, size, size);
-    }
-#endif
-    return object;
-}
-
-Region *EdenSpace::AllocRegion()
-{
-    if (freeRegions_.empty()) {
-        return nullptr;
-    }
-    auto memmap = freeRegions_.back();
-    freeRegions_.pop_back();
-    heapRegionAllocator_->IncreaseAnnoMemoryUsage(memmap.GetSize());
-    auto mem = reinterpret_cast<uintptr_t>(memmap.GetMem());
-    // Check that the address is 256K byte aligned
-    LOG_ECMA_IF(AlignUp(mem, PANDA_POOL_ALIGNMENT_IN_BYTES) != mem, FATAL) << "region not align by 256KB";
-
-    // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-    uintptr_t begin = AlignUp(mem + sizeof(Region), static_cast<size_t>(MemAlignment::MEM_ALIGN_REGION));
-    uintptr_t end = mem + memmap.GetSize();
-    auto region = new (ToVoidPtr(mem)) Region(localHeap_->GetNativeAreaAllocator(), mem, begin, end,
-                                              GetRegionFlag(), RegionTypeFlag::DEFAULT);
-    region->Initialize();
-    return region;
-}
-
-bool EdenSpace::Expand()
-{
-    Region *region = AllocRegion();
-    if (region == nullptr) {
-        return false;
-    }
-
-    uintptr_t top = allocator_.GetTop();
-    auto currentRegion = GetCurrentRegion();
-    if (currentRegion != nullptr) {
-        if (currentRegion->HasAgeMark()) {
-            allocateAfterLastGC_ +=
-                currentRegion->GetAllocatedBytes(top) - currentRegion->GetAllocatedBytes(waterLine_);
-        } else {
-            allocateAfterLastGC_ += currentRegion->GetAllocatedBytes(top);
-        }
-        currentRegion->SetHighWaterMark(top);
-    }
-    allocator_.Reset(region->GetBegin(), region->GetEnd());
-    AddRegion(region);
-    return true;
-}
-
-void EdenSpace::ReclaimRegions([[maybe_unused]] size_t cachedSize)
-{
-    const auto spaceName = ToSpaceTypeName(MemSpaceType::EDEN_SPACE);
-    EnumerateRegions([this, &spaceName](Region *current) {
-        LOG_GC(DEBUG) << "Clear region from: " << current << " to " << spaceName;
-        current->DeleteLocalToShareRSet();
-        DecreaseCommitted(current->GetCapacity());
-        DecreaseObjectSize(current->GetSize());
-        current->Invalidate();
-        current->ClearMembers();
-        void *mem = ToVoidPtr(current->GetAllocateBase());
-        size_t memSize = current->GetCapacity();
-        freeRegions_.emplace_back(mem, memSize);
-        heapRegionAllocator_->DecreaseAnnoMemoryUsage(memSize);
-    });
-    regionList_.Clear();
-    committedSize_ = 0;
-}
-
-size_t EdenSpace::GetHeapObjectSize() const
-{
-    return survivalObjectSize_ + allocateAfterLastGC_;
-}
-
-size_t EdenSpace::GetSurvivalObjectSize() const
-{
-    return survivalObjectSize_;
-}
-
-void EdenSpace::SetOverShootSize(size_t size)
-{
-    overShootSize_ = size;
-}
-
-size_t EdenSpace::GetAllocatedSizeSinceGC(uintptr_t top) const
-{
-    size_t currentRegionSize = 0;
-    auto currentRegion = GetCurrentRegion();
-    if (currentRegion != nullptr) {
-        currentRegionSize = currentRegion->GetAllocatedBytes(top);
-        if (currentRegion->HasAgeMark()) {
-            currentRegionSize -= currentRegion->GetAllocatedBytes(waterLine_);
-        }
-    }
-    return allocateAfterLastGC_ + currentRegionSize;
-}
-
 SemiSpace::SemiSpace(Heap *heap, size_t initialCapacity, size_t maximumCapacity)
     : LinearSpace(heap, MemSpaceType::SEMI_SPACE, initialCapacity, maximumCapacity),
       minimumCapacity_(initialCapacity) {}
@@ -370,12 +197,13 @@ void SemiSpace::Restart(size_t overShootSize)
 size_t SemiSpace::CalculateNewOverShootSize()
 {
     return committedSize_ <= maximumCapacity_ ?
-           0 : AlignUp((committedSize_ - maximumCapacity_) / 2, DEFAULT_REGION_SIZE); // 2 is the half.
+           0 : AlignUp(static_cast<size_t>((committedSize_ - maximumCapacity_) * HPPGC_NEWSPACE_SIZE_RATIO),
+                       DEFAULT_REGION_SIZE);
 }
 
 bool SemiSpace::CommittedSizeIsLarge()
 {
-    return committedSize_ >= maximumCapacity_ * 2; // 2 is the half.
+    return committedSize_ >= maximumCapacity_ * 2; // 2 means double.
 }
 
 uintptr_t SemiSpace::AllocateSync(size_t size)
@@ -386,7 +214,6 @@ uintptr_t SemiSpace::AllocateSync(size_t size)
 
 bool SemiSpace::SwapRegion(Region *region, SemiSpace *fromSpace)
 {
-    LockHolder lock(lock_);
     if (committedSize_ + region->GetCapacity() > maximumCapacity_ + overShootSize_) {
         return false;
     }
@@ -454,6 +281,7 @@ bool SemiSpace::AdjustCapacity(size_t allocatedSizeSinceGC, JSThread *thread)
     double curObjectSurvivalRate = static_cast<double>(survivalObjectSize_) / allocatedSizeSinceGC;
     double committedSurvivalRate = static_cast<double>(committedSize) / initialCapacity_;
     SetOverShootSize(0);
+    double allocSpeed = localHeap_->GetMemController()->GetNewSpaceAllocationThroughputPerMS();
     if (curObjectSurvivalRate > GROW_OBJECT_SURVIVAL_RATE || committedSurvivalRate > GROW_OBJECT_SURVIVAL_RATE) {
         size_t newCapacity = initialCapacity_ * GROWING_FACTOR;
         while (committedSize >= newCapacity && newCapacity < maximumCapacity_) {
@@ -470,12 +298,21 @@ bool SemiSpace::AdjustCapacity(size_t allocatedSizeSinceGC, JSThread *thread)
                 JSObjectResizingStrategy::PROPERTIES_GROW_SIZE * 2);   // 2: double
         }
         return true;
+    } else if (initialCapacity_ < (MIN_GC_INTERVAL_MS * allocSpeed) &&
+        initialCapacity_ < maximumCapacity_) {
+        size_t newCapacity = initialCapacity_ * GROWING_FACTOR;
+        SetInitialCapacity(std::min(newCapacity, maximumCapacity_));
+        if (newCapacity == maximumCapacity_) {
+            localHeap_->GetJSObjectResizingStrategy()->UpdateGrowStep(
+                thread,
+                JSObjectResizingStrategy::PROPERTIES_GROW_SIZE * 2);   // 2: double
+        }
+        return true;
     } else if (curObjectSurvivalRate < SHRINK_OBJECT_SURVIVAL_RATE) {
         if (initialCapacity_ <= minimumCapacity_) {
             return false;
         }
-        double speed = localHeap_->GetMemController()->GetNewSpaceAllocationThroughputPerMS();
-        if (speed > LOW_ALLOCATION_SPEED_PER_MS) {
+        if (allocSpeed > LOW_ALLOCATION_SPEED_PER_MS) {
             return false;
         }
         size_t newCapacity = initialCapacity_ / GROWING_FACTOR;

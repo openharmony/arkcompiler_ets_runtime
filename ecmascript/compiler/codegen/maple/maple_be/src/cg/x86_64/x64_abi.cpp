@@ -13,8 +13,6 @@
  * limitations under the License.
  */
 
-#include "x64_cgfunc.h"
-#include "becommon.h"
 #include "x64_isa.h"
 
 namespace maplebe {

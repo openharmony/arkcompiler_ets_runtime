@@ -55,6 +55,7 @@ class GCStats;
 class GCKeyStats;
 class CpuProfiler;
 class Tracing;
+class AsyncStackTrace;
 class RegExpExecResultCache;
 class JSPromise;
 enum class PromiseRejectionEvent : uint8_t;
@@ -100,18 +101,97 @@ class EcmaStringTable;
 class JSObjectResizingStrategy;
 class Jit;
 class JitThread;
+enum class CompareStringsOption : uint8_t;
 
 using NativePtrGetter = void* (*)(void* info);
 using SourceMapCallback = std::function<std::string(const std::string& rawStack)>;
-using SourceMapTranslateCallback = std::function<bool(std::string& url, int& line, int& column)>;
+using SourceMapTranslateCallback = std::function<bool(std::string& url, int& line, int& column,
+    std::string &packageName)>;
 using ResolveBufferCallback =
     std::function<bool(std::string dirPath, bool isHybrid, uint8_t **buff, size_t *buffSize, std::string &errorMsg)>;
+using TimerCallbackFunc = void (*)(void *data);
+using TimerTaskCallback = void* (*)(EcmaVM *vm, void *data, TimerCallbackFunc func, uint64_t timeout, bool repeat);
+using CancelTimerCallback = void (*)(void *timerCallbackInfo);
 using UnloadNativeModuleCallback = std::function<bool(const std::string &moduleKey)>;
 using RequestAotCallback =
     std::function<int32_t(const std::string &bundleName, const std::string &moduleName, int32_t triggerMode)>;
 using SearchHapPathCallBack = std::function<bool(const std::string moduleName, std::string &hapPath)>;
 using DeviceDisconnectCallback = std::function<bool()>;
 using UncatchableErrorHandler = std::function<void(panda::TryCatch&)>;
+using StopPreLoadSoCallback = std::function<void()>;
+
+enum class IcuFormatterType: uint8_t {
+    SIMPLE_DATE_FORMAT_DEFAULT,
+    SIMPLE_DATE_FORMAT_DATE,
+    SIMPLE_DATE_FORMAT_TIME,
+    NUMBER_FORMATTER,
+    COLLATOR,
+    ICU_FORMATTER_TYPE_COUNT
+};
+
+class IntlCache {
+public:
+    IntlCache() = default;
+
+    void SetDefaultLocale(const std::string& locale)
+    {
+        defaultLocale_ = locale;
+    }
+
+    const std::string& GetDefaultLocale() const
+    {
+        return defaultLocale_;
+    }
+
+    void SetDefaultCompareStringsOption(const CompareStringsOption csOption)
+    {
+        defaultCompareStringsOption_ = csOption;
+    }
+
+    std::optional<CompareStringsOption> GetDefaultCompareStringsOption() const
+    {
+        return defaultCompareStringsOption_;
+    }
+
+    void SetIcuFormatterToCache(IcuFormatterType type, const std::string& locale, void* icuObj,
+                                NativePointerCallback deleteEntry = nullptr)
+    {
+        icuObjCache_[static_cast<int>(type)] = IcuFormatter(locale, icuObj, deleteEntry);
+    }
+
+    void* GetIcuFormatterFromCache(IcuFormatterType type, const std::string& locale) const
+    {
+        const auto& icuFormatter = icuObjCache_[static_cast<int>(type)];
+        return icuFormatter.locale == locale ? icuFormatter.icuObj : nullptr;
+    }
+
+    void ClearIcuCache(void* vmPtr)
+    {
+        for (uint32_t i = 0; i < static_cast<uint32_t>(IcuFormatterType::ICU_FORMATTER_TYPE_COUNT); ++i) {
+            auto& icuFormatter = icuObjCache_[i];
+            if (icuFormatter.deleteEntry != nullptr) {
+                // Fill nullptr into the IcuDeleteEntry's unused env (specifically for napi) field.
+                icuFormatter.deleteEntry(nullptr, icuFormatter.icuObj, vmPtr);
+            }
+        }
+    }
+
+private:
+    class IcuFormatter {
+    public:
+        std::string locale;
+        void* icuObj {nullptr};
+        NativePointerCallback deleteEntry {nullptr};
+
+        IcuFormatter() = default;
+        IcuFormatter(const std::string& locale, void* icuObj, NativePointerCallback deleteEntry = nullptr)
+            : locale(locale), icuObj(icuObj), deleteEntry(deleteEntry) {}
+    };
+
+    std::string defaultLocale_;
+    std::optional<CompareStringsOption> defaultCompareStringsOption_ {std::nullopt};
+    IcuFormatter icuObjCache_[static_cast<uint32_t>(IcuFormatterType::ICU_FORMATTER_TYPE_COUNT)];
+};
 
 class EcmaVM {
 public:
@@ -150,6 +230,16 @@ public:
         return isPostForked_;
     }
 
+    void SetAgentCanSuspend(bool agentCanSuspend)
+    {
+        agentCanSuspend_ = agentCanSuspend;
+    }
+
+    bool GetAgentCanSuspend() const
+    {
+        return agentCanSuspend_;
+    }
+
     bool IsAsynTranslateClasses()
     {
         if (!GetJSOptions().IsAsyncLoadAbcTest()) {
@@ -168,6 +258,7 @@ public:
     void DisablePGOProfilerWithAOTFile(const std::string &aotFileName);
 
     bool PUBLIC_API IsEnablePGOProfiler() const;
+    bool PUBLIC_API IsEnableMutantArray() const;
     bool PUBLIC_API IsEnableElementsKind() const;
 
     bool Initialize();
@@ -244,12 +335,21 @@ public:
     bool ContainInDeregisterModuleList(CString module);
     JSHandle<ecmascript::JSTaggedValue> GetAndClearEcmaUncaughtException() const;
     JSHandle<ecmascript::JSTaggedValue> GetEcmaUncaughtException() const;
+
+    EcmaRuntimeStat *GetRuntimeStat() const
+    {
+        return runtimeStat_;
+    }
+
+    void InitializeEcmaScriptRunStat();
+    void SetRuntimeStatEnable(bool flag);
+
     bool IsOptionalLogEnabled() const
     {
         return optionalLogEnabled_;
     }
 
-    void Iterate(const RootVisitor &v, const RootRangeVisitor &rv, VMRootVisitType type);
+    void Iterate(RootVisitor &v, VMRootVisitType type);
 
     const Heap *GetHeap() const
     {
@@ -273,6 +373,17 @@ public:
     }
     void ProcessNativeDelete(const WeakRootVisitor &visitor);
     void ProcessReferences(const WeakRootVisitor &visitor);
+
+    AsyncStackTrace *GetAsyncStackTrace() const
+    {
+        return asyncStackTrace_;
+    }
+
+    uint32_t GetAsyncTaskId();
+
+    bool InsertAsyncStackTrace(const JSHandle<JSPromise> &promise);
+
+    bool RemoveAsyncStackTrace(const JSHandle<JSPromise> &promise);
 
     SnapshotEnv *GetSnapshotEnv() const
     {
@@ -339,6 +450,26 @@ public:
         return resolveBufferCallback_;
     }
 
+    void SetTimerTaskCallback(TimerTaskCallback callback)
+    {
+        timerTaskCallback_ = callback;
+    }
+
+    TimerTaskCallback GetTimerTaskCallback() const
+    {
+        return timerTaskCallback_;
+    }
+
+    void SetCancelTimerCallback(CancelTimerCallback callback)
+    {
+        cancelTimerCallback_ = callback;
+    }
+
+    CancelTimerCallback GetCancelTimerCallback() const
+    {
+        return cancelTimerCallback_;
+    }
+
     void SetSearchHapPathCallBack(SearchHapPathCallBack cb)
     {
         SearchHapPathCallBack_ = cb;
@@ -364,6 +495,18 @@ public:
         concurrentCallback_ = callback;
         concurrentData_ = data;
     }
+
+    void AddStopPreLoadCallback(const StopPreLoadSoCallback &cb)
+    {
+        stopPreLoadCallbacks_.emplace_back(cb);
+    }
+
+    CVector<StopPreLoadSoCallback> GetStopPreLoadCallbacks() const
+    {
+        return stopPreLoadCallbacks_;
+    }
+
+    void StopPreLoadSoOrAbc();
 
     void TriggerConcurrentCallback(JSTaggedValue result, JSTaggedValue hint);
 
@@ -410,23 +553,33 @@ public:
     // UnifiedOhmUrlPack means app compiles ohmurl using old format like "@bundle:",
     // or new unified rules like "@normalize:"
     // if pkgContextInfoList is empty, means use old ohmurl packing.
-    bool IsNormalizedOhmUrlPack() const
+    bool IsNormalizedOhmUrlPack()
     {
+        ReadLockHolder lock(pkgContextInfoLock_);
         return !pkgContextInfoList_.empty();
     }
 
     void SetPkgNameList(const CMap<CString, CString> &list)
     {
+        WriteLockHolder lock(pkgNameListLock_);
         pkgNameList_ = list;
     }
 
-    CMap<CString, CString> GetPkgNameList() const
+    void UpdatePkgNameList(const CMap<CString, CString> &list)
     {
+        WriteLockHolder lock(pkgNameListLock_);
+        pkgNameList_.insert(list.begin(), list.end());
+    }
+
+    CMap<CString, CString> GetPkgNameList()
+    {
+        ReadLockHolder lock(pkgNameListLock_);
         return pkgNameList_;
     }
 
-    inline CString GetPkgName(const CString &moduleName) const
+    inline CString GetPkgName(const CString &moduleName)
     {
+        ReadLockHolder lock(pkgNameListLock_);
         auto it = pkgNameList_.find(moduleName);
         if (it == pkgNameList_.end()) {
             LOG_ECMA(INFO) << " Get Pkg Name failed";
@@ -435,13 +588,21 @@ public:
         return it->second;
     }
 
-    inline CMap<CString, CMap<CString, CVector<CString>>> GetPkgContextInfoLit() const
+    void UpdatePkgContextInfoList(const CMap<CString, CMap<CString, CVector<CString>>> &list)
     {
+        WriteLockHolder lock(pkgContextInfoLock_);
+        pkgContextInfoList_.insert(list.begin(), list.end());
+    }
+
+    inline CMap<CString, CMap<CString, CVector<CString>>> GetPkgContextInfoList()
+    {
+        ReadLockHolder lock(pkgContextInfoLock_);
         return pkgContextInfoList_;
     }
 
-    inline CString GetPkgNameWithAlias(const CString &alias) const
+    inline CString GetPkgNameWithAlias(const CString &alias)
     {
+        ReadLockHolder lock(pkgAliasListLock_);
         auto it = pkgAliasList_.find(alias);
         if (it == pkgAliasList_.end()) {
             return alias;
@@ -451,11 +612,19 @@ public:
 
     void SetPkgAliasList(const CMap<CString, CString> &list)
     {
+        WriteLockHolder lock(pkgAliasListLock_);
         pkgAliasList_ = list;
     }
 
-    CMap<CString, CString> GetPkgAliasList() const
+    void UpdatePkgAliasList(const CMap<CString, CString> &list)
     {
+        WriteLockHolder lock(pkgAliasListLock_);
+        pkgAliasList_.insert(list.begin(), list.end());
+    }
+
+    CMap<CString, CString> GetPkgAliasList()
+    {
+        ReadLockHolder lock(pkgAliasListLock_);
         return pkgAliasList_;
     }
 
@@ -646,7 +815,7 @@ public:
     {
         return processStartRealtime_;
     }
-    
+
     void SetProcessStartRealtime(int value)
     {
         processStartRealtime_ = value;
@@ -736,12 +905,12 @@ public:
     {
         isCollectingScopeLockStats_ = true;
     }
-    
+
     void StopCollectingScopeLockStats()
     {
         isCollectingScopeLockStats_ = false;
     }
-    
+
     int GetEnterThreadManagedScopeCount() const
     {
         return enterThreadManagedScopeCount_;
@@ -808,7 +977,22 @@ public:
         aotSnapShotStatsMap_[tag] += count;
     }
 
+    IntlCache& GetIntlCache()
+    {
+        return intlCache_;
+    }
+
     void PUBLIC_API PrintAOTSnapShotStats();
+
+    void SetVMAPIVersion(uint32_t APIVersion)
+    {
+        apiVersion_ = APIVersion;
+    }
+
+    uint32_t GetVMAPIVersion()
+    {
+        return apiVersion_;
+    }
 
 #if ECMASCRIPT_ENABLE_COLLECTING_OPCODES
     void SetBytecodeStatsStack(std::unordered_map<BytecodeInstruction::Opcode, int> &bytecodeStatsMap)
@@ -851,11 +1035,15 @@ private:
     bool icEnabled_ {true};
     bool initialized_ {false};
     bool isPostForked_ {false};
+    bool agentCanSuspend_ {true};
     GCStats *gcStats_ {nullptr};
     GCKeyStats *gcKeyStats_ {nullptr};
     EcmaStringTable *stringTable_ {nullptr};
     PUBLIC_API static bool multiThreadCheck_;
     static bool errorInfoEnhanced_;
+
+    //apiVersion states
+    uint32_t apiVersion_ = 8;
 
     // VM memory management.
     std::unique_ptr<NativeAreaAllocator> nativeAreaAllocator_;
@@ -869,6 +1057,8 @@ private:
     // VM execution states.
     JSThread *thread_ {nullptr};
 
+    EcmaRuntimeStat *runtimeStat_ {nullptr};
+
     CUnorderedMap<std::string, uint32_t> aotSnapShotStatsMap_;
 
     // VM resources.
@@ -876,6 +1066,10 @@ private:
     bool optionalLogEnabled_ {false};
     // Debugger
     tooling::JsDebuggerManager *debuggerManager_ {nullptr};
+
+    // DFX
+    AsyncStackTrace *asyncStackTrace_ {nullptr};
+
     // isBundle means app compile mode is JSBundle
     bool isBundlePack_ {true};
 #if !WIN_OR_MAC_OR_IOS_PLATFORM
@@ -890,6 +1084,11 @@ private:
     CMap<CString, CString> pkgNameList_;
     CMap<CString, CMap<CString, CVector<CString>>> pkgContextInfoList_;
     CMap<CString, CString> pkgAliasList_;
+    RWLock pkgContextInfoLock_;
+    RWLock pkgAliasListLock_;
+    RWLock pkgNameListLock_;
+
+    CVector<StopPreLoadSoCallback> stopPreLoadCallbacks_;
     NativePtrGetter nativePtrGetter_ {nullptr};
     SourceMapCallback sourceMapCallback_ {nullptr};
     SourceMapTranslateCallback sourceMapTranslateCallback_ {nullptr};
@@ -897,6 +1096,11 @@ private:
 
     // resolve path to get abc's buffer
     ResolveBufferCallback resolveBufferCallback_ {nullptr};
+
+    // set timer task to execute callback on time
+    TimerTaskCallback timerTaskCallback_ {nullptr};
+    // set cancel timer task to execute callback on time
+    CancelTimerCallback cancelTimerCallback_ {nullptr};
 
     // delete the native module and dlclose so from NativeModuleManager
     UnloadNativeModuleCallback unloadNativeModuleCallback_ {nullptr};
@@ -940,6 +1144,8 @@ private:
     DeviceDisconnectCallback deviceDisconnectCallback_ {nullptr};
 
     UncatchableErrorHandler uncatchableErrorHandler_ {nullptr};
+
+    IntlCache intlCache_;
 
     friend class Snapshot;
     friend class SnapshotProcessor;

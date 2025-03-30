@@ -15,12 +15,14 @@
 
 #include "ecmascript/compiler/aot_file/an_file_info.h"
 
-#include <cerrno>
+#include "ecmascript/compiler/aot_file/aot_checksum_helper.h"
 #include "ecmascript/compiler/aot_file/elf_builder.h"
 #include "ecmascript/compiler/aot_file/elf_reader.h"
+#include "ecmascript/log_wrapper.h"
 
 namespace panda::ecmascript {
-bool AnFileInfo::Save(const std::string &filename, Triple triple)
+bool AnFileInfo::Save(const std::string &filename, Triple triple, size_t anFileMaxByteSize,
+                      const std::unordered_map<CString, uint32_t> &fileNameToChecksumMap)
 {
     std::string realPath;
     if (!RealPath(filename, realPath, false)) {
@@ -32,16 +34,34 @@ bool AnFileInfo::Save(const std::string &filename, Triple triple)
         return false;
     };
 
-    std::ofstream file(rawPath, std::ofstream::binary);
     SetStubNum(entries_.size());
     AddFuncEntrySec();
+    AddFileNameToChecksumSec(fileNameToChecksumMap);
 
-    ElfBuilder builder(des_, GetDumpSectionNames());
+    ElfBuilder builder(des_, GetDumpSectionNames(), false, triple);
+    size_t anFileSize = builder.CalculateTotalFileSize();
+    if (anFileMaxByteSize != 0) {
+        if (anFileSize > anFileMaxByteSize) {
+            LOG_COMPILER(ERROR) << "Expected AN file size " << anFileSize << " bytes ("
+                                << (static_cast<double>(anFileSize) / 1_MB) << "MB) "
+                                << "exceeds maximum allowed size of " << (static_cast<double>(anFileMaxByteSize) / 1_MB)
+                                << "MB";
+            return false;
+        }
+    }
+    std::fstream file(rawPath, std::fstream::binary | std::fstream::out | std::fstream::trunc);
     llvm::ELF::Elf64_Ehdr header;
     builder.PackELFHeader(header, base::FileHeaderBase::ToVersionNumber(AOTFileVersion::AN_VERSION), triple);
     file.write(reinterpret_cast<char *>(&header), sizeof(llvm::ELF::Elf64_Ehdr));
     builder.PackELFSections(file);
     builder.PackELFSegment(file);
+    if (static_cast<size_t>(file.tellp()) != anFileSize) {
+        LOG_COMPILER(ERROR) << "Error to save an file: file size " << file.tellp()
+                            << " not equal calculated size: " << anFileSize;
+        file.close();
+        TryRemoveAnFile(rawPath);
+        return false;
+    }
     file.close();
     return true;
 }
@@ -66,6 +86,10 @@ bool AnFileInfo::LoadInternal(const std::string &filename)
     reader.ParseELFSections(des, secs);
     if (!reader.ParseELFSegment()) {
         LOG_ECMA(ERROR) << "modify mmap area permission failed";
+        return false;
+    }
+    if (!ParseChecksumInfo(des)) {
+        LOG_ECMA(ERROR) << "Parse checksum info failed, stop load aot";
         return false;
     }
     ParseFunctionEntrySection(des);
@@ -145,6 +169,21 @@ void AnFileInfo::ParseFunctionEntrySection(ModuleSectionDes &des)
     des.SetFuncCount(entryNum_);
 }
 
+bool AnFileInfo::ParseChecksumInfo(ModuleSectionDes &des)
+{
+    uint64_t secAddr = des.GetSecAddr(ElfSecName::ARK_CHECKSUMINFO);
+    uint32_t secSize = des.GetSecSize(ElfSecName::ARK_CHECKSUMINFO);
+    const char *data = reinterpret_cast<const char *>(secAddr);
+    std::unordered_map<CString, uint32_t> checksumInfoMap;
+    if (!AOTChecksumHelper::DeserializeChecksumMapFromChar(data, secSize, checksumInfoMap)) {
+        LOG_COMPILER(ERROR) << "Deserialize checksum info from .an file failed!";
+        return false;
+    }
+
+    AnFileDataManager::GetInstance()->UnsafeMergeChecksumInfo(checksumInfoMap);
+    return true;
+}
+
 void AnFileInfo::UpdateFuncEntries()
 {
     ModuleSectionDes &des = des_[0];
@@ -171,8 +210,9 @@ const std::vector<ElfSecName> &AnFileInfo::GetDumpSectionNames()
         ElfSecName::SYMTAB,
         ElfSecName::SHSTRTAB,
         ElfSecName::ARK_STACKMAP,
-        ElfSecName::ARK_FUNCENTRY
-    };
+        ElfSecName::ARK_FUNCENTRY,
+        ElfSecName::ARK_CHECKSUMINFO
+        };
     return secNames;
 }
 
@@ -217,6 +257,15 @@ void AnFileInfo::AddFuncEntrySec()
     uint64_t funcEntryAddr = reinterpret_cast<uint64_t>(entries_.data());
     uint32_t funcEntrySize = sizeof(FuncEntryDes) * entryNum_;
     des.SetSecAddrAndSize(ElfSecName::ARK_FUNCENTRY, funcEntryAddr, funcEntrySize);
+}
+
+void AnFileInfo::AddFileNameToChecksumSec(const std::unordered_map<CString, uint32_t> &fileNameToChecksumMap)
+{
+    AOTChecksumHelper::SerializeChecksumMapToVector(fileNameToChecksumMap, checksumDataVector_);
+    ModuleSectionDes &des = des_[ElfBuilder::FuncEntryModuleDesIndex];
+    uint64_t checksumInfoAddr = reinterpret_cast<uint64_t>(checksumDataVector_.data());
+    uint32_t checksumInfoSize = checksumDataVector_.size();
+    des.SetSecAddrAndSize(ElfSecName::ARK_CHECKSUMINFO, checksumInfoAddr, checksumInfoSize);
 }
 
 void AnFileInfo::GenerateMethodToEntryIndexMap()

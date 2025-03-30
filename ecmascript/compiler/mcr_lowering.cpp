@@ -13,17 +13,9 @@
  * limitations under the License.
  */
 #include "ecmascript/compiler/mcr_lowering.h"
-#include "ecmascript/compiler/argument_accessor.h"
-#include "ecmascript/compiler/bytecodes.h"
-#include "ecmascript/compiler/share_gate_meta_data.h"
-#include "ecmascript/compiler/share_opcodes.h"
 #include "ecmascript/compiler/pgo_type/pgo_type_manager.h"
 #include "ecmascript/global_env.h"
-#include "ecmascript/js_function.h"
-#include "ecmascript/js_hclass.h"
-#include "ecmascript/js_thread.h"
 #include "ecmascript/jspandafile/program_object.h"
-#include "ecmascript/message_string.h"
 #include "ecmascript/compiler/builtins/builtins_string_stub_builder.h"
 namespace panda::ecmascript::kungfu {
 

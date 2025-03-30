@@ -192,11 +192,6 @@ void InterpreterAssembly::InitStackFrame(JSThread *thread)
     InitStackFrameForSP(const_cast<JSTaggedType *>(thread->GetCurrentSPFrame()));
 }
 
-void InterpreterAssembly::InitStackFrame(EcmaContext *context)
-{
-    InitStackFrameForSP(const_cast<JSTaggedType *>(context->GetCurrentFrame()));
-}
-
 void InterpreterAssembly::InitStackFrameForSP(JSTaggedType *prevSp)
 {
     InterpretedEntryFrame *entryState = InterpretedEntryFrame::GetFrameFromSp(prevSp);
@@ -3321,6 +3316,20 @@ void InterpreterAssembly::HandleCallRuntimeWideLdsendableexternalmodulevarPrefIm
     DISPATCH(CALLRUNTIME_WIDELDSENDABLEEXTERNALMODULEVAR_PREF_IMM16);
 }
 
+void InterpreterAssembly::HandleCallRuntimeWideLdsendablelocalmodulevarPrefImm16(
+    JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
+    JSTaggedValue acc, int16_t hotnessCounter)
+{
+    int32_t index = READ_INST_16_1();
+    JSTaggedValue thisFunc = GetFunction(sp);
+    LOG_INST() << "intrinsics::ldsendablelocalmodulevar index:" << index;
+
+    JSTaggedValue moduleVar = SlowRuntimeStub::LdSendableLocalModuleVar(thread, index, thisFunc);
+    INTERPRETER_RETURN_IF_ABRUPT(moduleVar);
+    SET_ACC(moduleVar);
+    DISPATCH(CALLRUNTIME_WIDELDSENDABLELOCALMODULEVAR_PREF_IMM16);
+}
+
 void InterpreterAssembly::HandleWideLdlocalmodulevarPrefImm16(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
@@ -3569,7 +3578,7 @@ void InterpreterAssembly::HandleWideSupercallarrowrangePrefImm16V8(
             thread->SetCurrentSPFrame(newSp);
             LOG_INST() << "Entry: Runtime SuperCall ";
             JSTaggedValue retValue = reinterpret_cast<EcmaEntrypoint>(
-                const_cast<void *>(methodHandle->GetNativePointer()))(ecmaRuntimeCallInfo);
+                superCtorFunc->GetNativePointer())(ecmaRuntimeCallInfo);
             thread->SetCurrentSPFrame(sp);
 
             if (UNLIKELY(thread->HasPendingException())) {
@@ -3712,7 +3721,7 @@ void InterpreterAssembly::HandleWideSupercallthisrangePrefImm16V8(
             thread->SetCurrentSPFrame(newSp);
             LOG_INST() << "Entry: Runtime SuperCall ";
             JSTaggedValue retValue = reinterpret_cast<EcmaEntrypoint>(
-                const_cast<void *>(methodHandle->GetNativePointer()))(ecmaRuntimeCallInfo);
+                superCtorFunc->GetNativePointer())(ecmaRuntimeCallInfo);
             thread->SetCurrentSPFrame(sp);
 
             if (UNLIKELY(thread->HasPendingException())) {
@@ -3902,7 +3911,7 @@ void InterpreterAssembly::HandleWideNewobjrangePrefImm16V8(
             LOG_INST() << "Entry: Runtime New.";
             SAVE_PC();
             JSTaggedValue retValue = reinterpret_cast<EcmaEntrypoint>(
-                const_cast<void *>(methodHandle->GetNativePointer()))(ecmaRuntimeCallInfo);
+                ctorFunc->GetNativePointer())(ecmaRuntimeCallInfo);
             thread->SetCurrentSPFrame(sp);
             if (UNLIKELY(thread->HasPendingException())) {
                 INTERPRETER_GOTO_EXCEPTION_HANDLER();
@@ -7052,7 +7061,7 @@ void InterpreterAssembly::HandleSupercallarrowrangeImm8Imm8V8(
             thread->SetCurrentSPFrame(newSp);
             LOG_INST() << "Entry: Runtime SuperCall ";
             JSTaggedValue retValue = reinterpret_cast<EcmaEntrypoint>(
-                const_cast<void *>(methodHandle->GetNativePointer()))(ecmaRuntimeCallInfo);
+                superCtorFunc->GetNativePointer())(ecmaRuntimeCallInfo);
             thread->SetCurrentSPFrame(sp);
 
             if (UNLIKELY(thread->HasPendingException())) {
@@ -7195,7 +7204,7 @@ void InterpreterAssembly::HandleSupercallthisrangeImm8Imm8V8(
             thread->SetCurrentSPFrame(newSp);
             LOG_INST() << "Entry: Runtime SuperCall ";
             JSTaggedValue retValue = reinterpret_cast<EcmaEntrypoint>(
-                const_cast<void *>(methodHandle->GetNativePointer()))(ecmaRuntimeCallInfo);
+                superCtorFunc->GetNativePointer())(ecmaRuntimeCallInfo);
             thread->SetCurrentSPFrame(sp);
 
             if (UNLIKELY(thread->HasPendingException())) {
@@ -7373,7 +7382,7 @@ void InterpreterAssembly::HandleNewobjrangeImm16Imm8V8(
             LOG_INST() << "Entry: Runtime New.";
             SAVE_PC();
             JSTaggedValue retValue = reinterpret_cast<EcmaEntrypoint>(
-                const_cast<void *>(methodHandle->GetNativePointer()))(ecmaRuntimeCallInfo);
+                ctorFunc->GetNativePointer())(ecmaRuntimeCallInfo);
             thread->SetCurrentSPFrame(sp);
             if (UNLIKELY(thread->HasPendingException())) {
                 INTERPRETER_GOTO_EXCEPTION_HANDLER();
@@ -7515,7 +7524,7 @@ void InterpreterAssembly::HandleNewobjrangeImm8Imm8V8(
             LOG_INST() << "Entry: Runtime New.";
             SAVE_PC();
             JSTaggedValue retValue = reinterpret_cast<EcmaEntrypoint>(
-                const_cast<void *>(methodHandle->GetNativePointer()))(ecmaRuntimeCallInfo);
+                ctorFunc->GetNativePointer())(ecmaRuntimeCallInfo);
             thread->SetCurrentSPFrame(sp);
             if (UNLIKELY(thread->HasPendingException())) {
                 INTERPRETER_GOTO_EXCEPTION_HANDLER();

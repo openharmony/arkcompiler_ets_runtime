@@ -107,31 +107,25 @@ public:
     {
         return hashcode & SEGMENT_MASK;
     }
-    void InternEmptyString(JSThread *thread, EcmaString *emptyStr);
-    EcmaString *GetOrInternString(EcmaVM *vm,
-                                  const JSHandle<EcmaString> &firstString,
-                                  const JSHandle<EcmaString> &secondString);
-    EcmaString *GetOrInternStringWithoutLock(JSThread *thread,
-                                             const JSHandle<EcmaString> &firstString,
-                                             const JSHandle<EcmaString> &secondString, uint32_t hashcode);
-    EcmaString *GetOrInternString(EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf8Len, bool canBeCompress);
-    EcmaString *GetOrInternStringWithoutLock(EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf8Len,
-                                             bool canBeCompress, uint32_t hashcode);
-    EcmaString *CreateAndInternStringNonMovable(EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf8Len);
-    EcmaString *CreateAndInternStringReadOnly(EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf8Len,
-                                              bool canBeCompress);
-    EcmaString *GetOrInternString(EcmaVM *vm, const uint16_t *utf16Data, uint32_t utf16Len, bool canBeCompress);
-    EcmaString *GetOrInternString(EcmaVM *vm, EcmaString *string);
-    EcmaString *GetOrInternCompressedSubString(EcmaVM *vm, const JSHandle<EcmaString> &string,
+    EcmaString *GetOrInternFlattenString(EcmaVM *vm, EcmaString *string);
+    EcmaString *GetOrInternStringFromCompressedSubString(EcmaVM *vm, const JSHandle<EcmaString> &string,
         uint32_t offset, uint32_t utf8Len);
-    EcmaString *GetOrInternStringWithSpaceType(EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf8Len,
+    EcmaString *GetOrInternString(EcmaVM *vm, EcmaString *string);
+    EcmaString *GetOrInternString(EcmaVM *vm,
+                                  const JSHandle<EcmaString> &firstString, const JSHandle<EcmaString> &secondString);
+    EcmaString *GetOrInternString(EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf8Len, bool canBeCompress,
+                                  MemSpaceType type = MemSpaceType::SHARED_OLD_SPACE);
+    EcmaString *GetOrInternString(EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf8Len, bool canBeCompress,
+                                  MemSpaceType type, bool isConstantString, uint32_t idOffset);
+    EcmaString *GetOrInternString(EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf16Len,  MemSpaceType type);
+    EcmaString *GetOrInternString(EcmaVM *vm, const uint16_t *utf16Data, uint32_t utf16Len, bool canBeCompress);
+    // This is ONLY for JIT Thread, since JIT could not create JSHandle so need to allocate String with holding
+    // lock_ --- need to support JSHandle
+    EcmaString *GetOrInternStringWithoutJSHandleForJit(EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf16Len,
+                                                       MemSpaceType type);
+    EcmaString *GetOrInternStringWithoutJSHandleForJit(EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf8Len,
         bool canBeCompress, MemSpaceType type, bool isConstantString, uint32_t idOffset);
-    EcmaString *GetOrInternStringWithSpaceType(EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf16Len,
-                                               MemSpaceType type);
-    EcmaString *GetOrInternStringWithSpaceTypeWithoutJSHandle(EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf16Len,
-                                                              MemSpaceType type);
     EcmaString *TryGetInternString(JSThread *thread, const JSHandle<EcmaString> &string);
-    void InsertStringToTableWithHashThreadUnsafe(EcmaString* string, uint32_t hashcode);
     EcmaString *InsertStringToTable(EcmaVM *vm, const JSHandle<EcmaString> &strHandle);
 
     void SweepWeakRef(const WeakRootVisitor &visitor);
@@ -150,20 +144,43 @@ private:
     NO_COPY_SEMANTIC(EcmaStringTable);
     NO_MOVE_SEMANTIC(EcmaStringTable);
 
-    std::pair<EcmaString *, uint32_t> GetStringThreadUnsafe(const JSHandle<EcmaString> &firstString,
-                                                            const JSHandle<EcmaString> &secondString,
-                                                            uint32_t hashcode) const;
-    std::pair<EcmaString *, uint32_t> GetStringThreadUnsafe(const uint8_t *utf8Data, uint32_t utf8Len,
-                                                            bool canBeCompress, uint32_t hashcode) const;
-    std::pair<EcmaString *, uint32_t> GetStringThreadUnsafe(const uint16_t *utf16Data,
-                                                            uint32_t utf16Len, uint32_t hashcode) const;
-    EcmaString *GetStringWithHashThreadUnsafe(EcmaString *string, uint32_t hashcode) const;
     EcmaString *GetStringThreadUnsafe(EcmaString *string, uint32_t hashcode) const;
-
     void InternStringThreadUnsafe(EcmaString *string, uint32_t hashcode);
-    EcmaString *GetOrInternStringThreadUnsafe(EcmaVM *vm, EcmaString *string);
+    EcmaString *AtomicGetOrInternStringImpl(JSThread *thread, const JSHandle<EcmaString> string, uint32_t hashcode);
 
-    void InsertStringIfNotExistThreadUnsafe(EcmaString *string);
+    EcmaString *GetStringFromCompressedSubString(JSThread *thread, const JSHandle<EcmaString> string, uint32_t offset,
+                                                 uint32_t utf8Len, uint32_t hashcode);
+    EcmaString *GetString(JSThread *thread, const JSHandle<EcmaString> string, uint32_t hashcode);
+    EcmaString *GetString(JSThread *thread, const JSHandle<EcmaString> firstString,
+                          const JSHandle<EcmaString> secondString, uint32_t hashcode);
+    // utf8Data MUST NOT on JSHeap
+    EcmaString *GetString(JSThread *thread, const uint8_t *utf8Data, uint32_t utf8Len, bool canBeCompress,
+                          uint32_t hashcode);
+    // utf16Data MUST NOT on JSHeap
+    EcmaString *GetString(JSThread *thread, const uint16_t *utf16Data, uint32_t utf16Len, uint32_t hashcode);
+
+    // This used only for SnapShot.
+    void InsertStringToTableWithHashThreadUnsafe(EcmaString* string, uint32_t hashcode);
+    /**
+     *
+     * These are some "incorrect" functions, whcih need to fix the call chain to be removed.
+     *
+    */
+    // This should only call in Debugger Signal, and need to fix and remove
+    EcmaString *GetOrInternStringThreadUnsafe(EcmaVM *vm,
+                                              const JSHandle<EcmaString> firstString,
+                                              const JSHandle<EcmaString> secondString);
+    // This should only call in Debugger Signal, and need to fix and remove
+    EcmaString *GetOrInternStringThreadUnsafe(EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf8Len,
+                                              bool canBeCompress);
+    // This should only call in Debugger Signal, and need to fix and remove
+    EcmaString *GetStringThreadUnsafe(const JSHandle<EcmaString> firstString, const JSHandle<EcmaString> secondString,
+                                      uint32_t hashcode) const;
+    // This should only call in Debugger Signal or from JIT, and need to fix and remove
+    EcmaString *GetStringThreadUnsafe(const uint8_t *utf8Data, uint32_t utf8Len, bool canBeCompress,
+                                      uint32_t hashcode) const;
+    // This should only call in JIT Thread, and need to fix and remove
+    EcmaString *GetStringThreadUnsafe(const uint16_t *utf16Data, uint32_t utf16Len, uint32_t hashcode) const;
 
     struct Segment {
         CUnorderedMultiMap<uint32_t, EcmaString *> table_;

@@ -27,12 +27,11 @@ for (let i = 0; i < 200; i++) {
 for (let i = 0; i < 100; i++) {
     arr.length = 1025;
 }
-print("test successful !!!");
+
 for (let i = 0; i < 100; i++) {
     const v77 = {};
     v77.__proto__ = null;
 }
-print("test set __proto__ null successful")
 
 let bad_proto = {
     get __proto__(){
@@ -41,7 +40,6 @@ let bad_proto = {
 }
 let obj = {};
 obj.__proto__ = bad_proto;
-print("test set bad_proto successful!");
 
 let obj1 = {};
 Object.defineProperty(obj1, 'foo', {
@@ -61,4 +59,62 @@ obj.foo = 'some value';
 for (let i = 0; i < 20; i++) {
     obj.bar = 'new value';
 }
-print("test accessor ic successful!");
+
+{
+    let o = {};
+    o["a"] = String.prototype;
+    for (let i = 0; i < 2; i++) {
+        let o1;
+        if (o1) {
+            o["a"]= o1;
+        } else {
+            o1 = o["a"];
+        }
+        for (let j = 0; j < 50; j++) {
+            let o2 = new Object(-63);
+            if (o2) {
+                o["a"] = o2;
+            } else {
+                o2 = o["a"];
+            }
+            let o3 = o1.valueOf();
+            if (o3) {
+                o["a"] = o3;
+            } else {
+                o3 = o["a"];
+            }
+            // o3 is Number when i = 0 and o3 is Int when i = 1
+            try {
+                o3.x = "telu";
+            } catch(e) {}
+        }
+    }
+}
+
+(function test1() {
+    let warmUpObj, testObj, Foo;
+    function SetUp() {
+        Foo = function () {}
+        Foo.prototype.a = 0;
+        warmUpObj = new Foo();
+        testObj = new Foo();
+    }
+    SetUp();
+
+    function test(o) {
+        for (let i  = 0;i < 1000; i++){}
+        o.a = 10;
+    }
+    test(warmUpObj);
+    Object.defineProperty(Foo.prototype, "a", {writable: false});
+    try {
+        test(testObj);
+        assert_unreachable();
+    } catch(e) {
+        print("cannot adjust");
+    }
+    let passed = testObj.a == Foo.prototype.a;
+    assert_equal(passed, true);
+})();
+
+test_end();

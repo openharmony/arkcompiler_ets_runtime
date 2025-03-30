@@ -20,30 +20,38 @@
 
 namespace panda::ecmascript {
 
+template <SerializeType serializeType>
+BaseSerializer::SerializeObjectFieldVisitor<serializeType>::SerializeObjectFieldVisitor(BaseSerializer *serializer)
+    : serializer_(serializer) {}
+
+template <SerializeType serializeType>
+void BaseSerializer::SerializeObjectFieldVisitor<serializeType>::VisitObjectRangeImpl(TaggedObject *root,
+    ObjectSlot start, ObjectSlot end, VisitObjectArea area)
+{
+    switch (area) {
+        case VisitObjectArea::RAW_DATA:
+            serializer_->WriteMultiRawData(start.SlotAddress(), end.SlotAddress() - start.SlotAddress());
+            break;
+        case VisitObjectArea::NATIVE_POINTER:
+            if (serializeType == SerializeType::VALUE_SERIALIZE) {
+                serializer_->WriteMultiRawData(start.SlotAddress(), end.SlotAddress() - start.SlotAddress());
+            }
+            break;
+        case VisitObjectArea::IN_OBJECT: {
+            serializer_->SerializeInObjField(root, start, end);
+            break;
+        }
+        default:
+            serializer_->SerializeTaggedObjField(serializeType, root, start, end);
+            break;
+    }
+}
+
 template<SerializeType serializeType>
 void BaseSerializer::SerializeObjectField(TaggedObject *object)
 {
-    auto visitor = [this](TaggedObject *root, ObjectSlot start, ObjectSlot end, VisitObjectArea area) {
-        switch (area) {
-            case VisitObjectArea::RAW_DATA:
-                WriteMultiRawData(start.SlotAddress(), end.SlotAddress() - start.SlotAddress());
-                break;
-            case VisitObjectArea::NATIVE_POINTER:
-                if (serializeType == SerializeType::VALUE_SERIALIZE) {
-                    WriteMultiRawData(start.SlotAddress(), end.SlotAddress() - start.SlotAddress());
-                }
-                break;
-            case VisitObjectArea::IN_OBJECT: {
-                SerializeInObjField(root, start, end);
-                break;
-            }
-            default:
-                SerializeTaggedObjField(serializeType, root, start, end);
-                break;
-        }
-    };
-
-    ObjectXRay::VisitObjectBody<VisitType::ALL_VISIT>(object, object->GetClass(), visitor);
+    SerializeObjectFieldVisitor<serializeType> serializeObjectFieldVisitor(this);
+    ObjectXRay::VisitObjectBody<VisitType::ALL_VISIT>(object, object->GetClass(), serializeObjectFieldVisitor);
 }
 
 template<SerializeType serializeType>

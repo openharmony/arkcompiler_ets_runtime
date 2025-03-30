@@ -24,7 +24,6 @@ namespace panda::ecmascript {
 using EntityId = panda_file::File::EntityId;
 
 class ModuleDataExtractor {
-private:
 public:
     ModuleDataExtractor() = default;
     virtual ~ModuleDataExtractor() = default;
@@ -45,8 +44,9 @@ public:
     static JSHandle<JSTaggedValue> ParseNativeModule(JSThread *thread, const CString &moduleRequestName,
                                                      const CString &baseFileName, ModuleTypes moduleType);
     static JSTaggedValue JsonParse(JSThread *thread, const JSPandaFile *jsPandaFile, CString entryPoint);
-    static bool *ModuleLazyImportFlagAccessor(const JSPandaFile *pandaFile,
-        panda_file::File::EntityId module_lazy_import_flag_id);
+
+private:
+    static bool *ModuleLazyImportFlagAccessor(const JSPandaFile *pandaFile, EntityId lazyImportFlagId);
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_MODULE_MODULE_DATA_EXTRACTOR_H

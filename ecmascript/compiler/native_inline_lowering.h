@@ -38,7 +38,7 @@ public:
           methodName_(name),
           nocheck_(ctx->GetCompilationEnv()->GetJSOptions().IsCompilerNoCheck()),
           traceInline_(ctx->GetCompilationEnv()->GetJSOptions().GetTraceInline()),
-          enableElementsKind_(ctx->GetCompilationEnv()->GetJSOptions().IsEnableElementsKind()),
+          enableMutantArray_(ctx->GetCompilationEnv()->GetJSOptions().IsEnableMutantArray()),
           compilationEnv_(ctx->GetCompilationEnv()),
           chunk_(chunk) {}
     ~NativeInlineLowering() = default;
@@ -144,7 +144,7 @@ private:
     std::string methodName_;
     bool nocheck_;
     bool traceInline_;
-    bool enableElementsKind_;
+    bool enableMutantArray_;
     const CompilationEnv *compilationEnv_ {nullptr};
     Chunk* chunk_ {nullptr};
 };

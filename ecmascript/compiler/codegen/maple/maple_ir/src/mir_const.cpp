@@ -15,7 +15,6 @@
 
 #include "mir_const.h"
 #include "mir_function.h"
-#include "global_tables.h"
 #include "printing.h"
 #include <iomanip>
 

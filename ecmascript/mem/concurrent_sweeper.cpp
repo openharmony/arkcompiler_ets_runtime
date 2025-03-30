@@ -67,6 +67,20 @@ void ConcurrentSweeper::Sweep(bool fullGC)
     heap_->GetHugeMachineCodeSpace()->Sweep();
 }
 
+void ConcurrentSweeper::SweepNewToOldRegions()
+{
+    if (ConcurrentSweepEnabled()) {
+        heap_->GetOldSpace()->PrepareSweepNewToOldRegions();
+        isSweeping_ = true;
+        startSpaceType_ = OLD_SPACE;
+        for (int type = startSpaceType_; type < FREE_LIST_NUM; type++) {
+            remainingTaskNum_[type] = FREE_LIST_NUM - startSpaceType_;
+        }
+    } else {
+        heap_->GetOldSpace()->SweepNewToOldRegions();
+    }
+}
+
 void ConcurrentSweeper::AsyncSweepSpace(MemSpaceType type, bool isMain)
 {
     auto space = heap_->GetSpaceWithType(type);
@@ -161,6 +175,7 @@ void ConcurrentSweeper::ClearRSetInRange(Region *current, uintptr_t freeStart, u
 
 bool ConcurrentSweeper::SweeperTask::Run([[maybe_unused]] uint32_t threadIndex)
 {
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "ConcurrentSweeper::Sweep");
     uint32_t sweepTypeNum = FREE_LIST_NUM - startSpaceType_;
     for (size_t i = startSpaceType_; i < FREE_LIST_NUM; i++) {
         auto type = static_cast<MemSpaceType>(((i + type_) % sweepTypeNum) + startSpaceType_);

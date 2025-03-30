@@ -148,7 +148,7 @@ public:
     }
 
     template <typename Visitor>
-    void IterateMarkedBitsConst(uintptr_t begin, size_t bitSize, Visitor visitor) const
+    void IterateMarkedBitsConst(uintptr_t begin, size_t bitSize, Visitor &&visitor) const
     {
         auto words = Words();
         uint32_t wordCount = WordCount(bitSize);
@@ -226,7 +226,7 @@ private:
             }
             oldValueBeforeCAS = oldValue;
             std::atomic_compare_exchange_strong_explicit(word, &oldValue, oldValue & (~mask),
-                std::memory_order_release, std::memory_order_relaxed);
+                std::memory_order_relaxed, std::memory_order_relaxed);
         } while (oldValue != oldValueBeforeCAS);
         return true;
     }
@@ -264,7 +264,7 @@ inline bool GCBitset::SetBit<AccessType::ATOMIC>(uintptr_t offset)
         }
         oldValueBeforeCAS = oldValue;
         std::atomic_compare_exchange_strong_explicit(word, &oldValue, oldValue | mask,
-            std::memory_order_release, std::memory_order_relaxed);
+            std::memory_order_relaxed, std::memory_order_relaxed);
     } while (oldValue != oldValueBeforeCAS);
     return true;
 }

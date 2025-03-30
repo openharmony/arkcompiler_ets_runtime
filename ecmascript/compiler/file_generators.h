@@ -83,8 +83,8 @@ public:
         return std::make_tuple(addrBeforeText, sizeBeforeText, addrAfterText, sizeAfterText);
     }
 
-    void RunAssembler(const CompilerLog &log, bool fastCompileMode, bool isJit = false,
-                      const std::string &filename = "");
+    void PUBLIC_API RunAssembler(const CompilerLog &log, bool fastCompileMode, bool isJit = false,
+                                 const std::string &filename = "");
 
     void DisassemblerFunc(std::map<uintptr_t, std::string> &addr2name, uint64_t textOffset, const CompilerLog &log,
                           const MethodLogList &logList, std::ostringstream &codeStream);
@@ -185,8 +185,14 @@ protected:
 class AOTFileGenerator : public FileGenerator {
 public:
     AOTFileGenerator(const CompilerLog *log, const MethodLogList *logList, CompilationEnv *env,
-                     const std::string &triple, bool useLiteCG = false)
-        : FileGenerator(log, logList), compilationEnv_(env), cfg_(triple), useLiteCG_(useLiteCG) {}
+                     const std::string &triple, bool useLiteCG = false, size_t anFileMaxByteSize = 0)
+        : FileGenerator(log, logList),
+          cfg_(triple),
+          compilationEnv_(env),
+          useLiteCG_(useLiteCG),
+          anFileMaxByteSize_(anFileMaxByteSize)
+    {
+    }
 
     ~AOTFileGenerator() override = default;
 
@@ -208,11 +214,13 @@ public:
     bool SetFileModeAsDefault(const std::string &filename);
 
     // save function for aot files containing normal func translated from JS/TS
-    bool SaveAOTFile(const std::string &filename, const std::string &appSignature);
+    bool PUBLIC_API SaveAOTFile(const std::string &filename, const std::string &appSignature,
+                                const std::unordered_map<CString, uint32_t> &fileNameToChecksumMap);
 
-    static void SaveEmptyAOTFile(const std::string& filename, const std::string& appSignature, bool isAnFile);
+    static void PUBLIC_API SaveEmptyAOTFile(const std::string& filename, const std::string& appSignature,
+                                            bool isAnFile);
 
-    bool SaveSnapshotFile();
+    bool PUBLIC_API SaveSnapshotFile();
 
     void SetCurrentCompileFileName(CString fileName)
     {
@@ -223,7 +231,9 @@ public:
     void JitCreateLitecgModule();
     bool isAArch64() const;
 
-    bool CreateAOTCodeCommentFile(const std::string &filename);
+    std::string ExtractPrefix(const std::string &filename);
+    std::string GenAotCodeCommentFileName(const std::string &filename);
+    bool PUBLIC_API CreateAOTCodeCommentFile(const std::string &filename);
 
     const std::string &GetAotCodeCommentFile() const
     {
@@ -235,22 +245,25 @@ public:
         aotCodeCommentFile_ = filename;
     }
 
+protected:
+    AnFileInfo aotInfo_;
+    CompilationConfig cfg_;
+
 private:
     // collect aot component info
     void CollectCodeInfo(Module *module, uint32_t moduleIdx);
 
     uint64_t RollbackTextSize(Module *module);
 
-    AnFileInfo aotInfo_;
     CGStackMapInfo *stackMapInfo_ = nullptr;
     CompilationEnv *compilationEnv_ {nullptr};
-    CompilationConfig cfg_;
     std::string curCompileFileName_;
     // MethodID->EntryIndex
     std::map<uint32_t, uint32_t> methodToEntryIndexMap_ {};
     const bool useLiteCG_;
     CodeInfo::CodeSpaceOnDemand jitCodeSpace_ {};
     std::string aotCodeCommentFile_ = "";
+    size_t anFileMaxByteSize_ {0_MB};
 };
 
 enum class StubFileKind {

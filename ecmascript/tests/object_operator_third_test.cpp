@@ -272,11 +272,13 @@ HWTEST_F_L0(ObjectOperatorTest, Property_Add_004)
 
 HWTEST_F_L0(ObjectOperatorTest, Property_DeleteElement1)
 {
+    uint32_t index = 1; // key value
+    uint32_t index2 = 102400;
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSTaggedValue> handleKey0(thread, JSTaggedValue(0));
     JSHandle<JSTaggedValue> handleKey1(thread, JSTaggedValue(1));
+    JSHandle<JSTaggedValue> handleKey(thread, JSTaggedValue(102400));
     JSHandle<JSTaggedValue> handleValue(thread, JSTaggedValue(2));
-    uint32_t index = 1; // key value
     PropertyAttributes handleAttr(index);
 
     // object is not DictionaryMode
@@ -288,18 +290,22 @@ HWTEST_F_L0(ObjectOperatorTest, Property_DeleteElement1)
     TaggedArray *handleElements = TaggedArray::Cast(handleObject1->GetElements().GetTaggedObject());
     EXPECT_EQ(handleElements->Get(index).GetInt(), 1);
 
-    ObjectOperator objectOperator1(thread, JSHandle<JSTaggedValue>(handleObject1), index);
+    JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(handleObject1), handleKey, handleKey);
+    ObjectOperator objectOperator1(thread, JSHandle<JSTaggedValue>(handleObject1), index2);
     objectOperator1.DeletePropertyInHolder();
+
     TaggedArray *resultElements = TaggedArray::Cast(handleObject1->GetElements().GetTaggedObject());
-    EXPECT_EQ(resultElements->Get(index).GetInt(), 0);
+    EXPECT_EQ(resultElements->Get(index).GetInt(), 1);
     auto resultDict1 = NumberDictionary::Cast(handleObject1->GetElements().GetTaggedObject());
     EXPECT_TRUE(resultDict1->IsDictionaryMode());
-    EXPECT_TRUE(JSObject::GetProperty(thread, handleObject1, handleKey1).GetValue()->IsUndefined());
+    EXPECT_TRUE(JSObject::GetProperty(thread, handleObject1, handleKey).GetValue()->IsUndefined());
     // object is DictionaryMode
     JSHandle<JSObject> handleObject2 =
         factory->NewJSObjectByConstructor(JSHandle<JSFunction>(objFunc), objFunc);
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(handleObject2), handleKey0, handleKey0);
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(handleObject2), handleKey1, handleKey1);
+    JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(handleObject2), handleKey, handleKey);
+    
     JSObject::DeleteProperty(thread, (handleObject2), handleKey1);
     ObjectOperator objectOperator2(thread, JSHandle<JSTaggedValue>(handleObject2), index - 1);
     objectOperator2.DeletePropertyInHolder();

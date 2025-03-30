@@ -37,3 +37,15 @@ print(JSON.stringify(Array.prototype[Symbol.unscopables]));
 print(Symbol('foo').toString());
 
 print(Symbol.for("foo").toString());
+
+{
+    let syArr = [];
+    for (let i = 0; i < 100; i++) {
+        syArr.push(Symbol());
+    }
+    let hashSet = new Set();
+    for (let i = 0; i < 100; i++) {
+        hashSet.add(ArkTools.hashCode(syArr[i]));
+    }
+    print(hashSet.size)
+}

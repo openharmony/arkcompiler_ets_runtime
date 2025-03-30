@@ -15,8 +15,6 @@
 
 #include "aarch64_proepilog.h"
 #include "aarch64_cg.h"
-#include "cg_option.h"
-#include "cgfunc.h"
 
 #define PROEPILOG_DUMP CG_DEBUG_FUNC(cgFunc)
 namespace maplebe {

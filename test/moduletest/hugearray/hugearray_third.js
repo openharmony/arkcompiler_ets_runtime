@@ -25,3 +25,5 @@ while (arr2.length) {
     arr2.pop();
 }
 assert_equal(arr2.length, 0);
+
+test_end();

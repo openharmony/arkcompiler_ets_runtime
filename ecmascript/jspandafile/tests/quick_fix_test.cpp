@@ -181,20 +181,20 @@ HWTEST_F_L0(QuickFixTest, HotReload_Instantiate)
     EcmaContext *context = thread->GetCurrentEcmaContext();
     context->SetStageOfHotReload(StageOfHotReload::BEGIN_EXECUTE_PATCHMAIN);
 
-    JSHandle<JSTaggedValue> module = ModuleResolver::HostResolveImportedModuleWithMergeForHotReload(thread,
-        patchFileName, replacedRecordName, false);
+    JSHandle<JSTaggedValue> module = ModuleResolver::HostResolveImportedModuleForHotReload(thread,
+        patchFileName, replacedRecordName);
     EXPECT_FALSE(module->IsHole());
 
     JSHandle<Program> program =
         JSPandaFileManager::GetInstance()->GenerateProgram(instance, patchFile.get(), replacedRecordName);
     EXPECT_FALSE(program.IsEmpty());
 
-    SourceTextModule::Instantiate(thread, module, false);
+    SourceTextModule::Instantiate(thread, module);
     EXPECT_TRUE(JSHandle<SourceTextModule>::Cast(module)->GetStatus() == ModuleStatus::INSTANTIATED);
 
     context->SetStageOfHotReload(StageOfHotReload::LOAD_END_EXECUTE_PATCHMAIN);
     JSHandle<SourceTextModule>::Cast(module)->SetStatus(ModuleStatus::UNINSTANTIATED);
-    SourceTextModule::Instantiate(thread, module, false);
+    SourceTextModule::Instantiate(thread, module);
     EXPECT_TRUE(JSHandle<SourceTextModule>::Cast(module)->GetStatus() == ModuleStatus::INSTANTIATED);
 }
 

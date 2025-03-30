@@ -24,81 +24,48 @@
 #include "ecmascript/taskpool/taskpool.h"
 
 namespace panda::ecmascript {
+ParallelEvacuator::ParallelEvacuator(Heap *heap) : heap_(heap), updateRootVisitor_(this),
+    setObjectFieldRSetVisitor_(this) {}
+
 // Move regions with a survival rate of more than 75% to new space
 // Move regions when young space overshoot size is larger than max capacity.
-bool ParallelEvacuator::IsWholeRegionEvacuate(Region *region)
+RegionEvacuateType ParallelEvacuator::SelectRegionEvacuateType(Region *region)
 {
-    if ((static_cast<double>(region->AliveObject()) / region->GetSize()) > MIN_OBJECT_SURVIVAL_RATE &&
-        !region->HasAgeMark()) {
-        return true;
+    double aliveRate = static_cast<double>(region->AliveObject()) / region->GetSize();
+    if (UNLIKELY(region->HasAgeMark())) {
+        return RegionEvacuateType::OBJECT_EVACUATE;
+    } else if (region->BelowAgeMark()) {
+        if (aliveRate >= MIN_OBJECT_SURVIVAL_RATE) {
+            return RegionEvacuateType::REGION_NEW_TO_OLD;
+        }
+        return RegionEvacuateType::OBJECT_EVACUATE;
     }
-    if (heap_->GetFromSpaceDuringEvacuation()->CommittedSizeIsLarge() && !region->HasAgeMark()) {
-        return true;
+    if (aliveRate >= MIN_OBJECT_SURVIVAL_RATE || heap_->GetFromSpaceDuringEvacuation()->CommittedSizeIsLarge()) {
+        return RegionEvacuateType::REGION_NEW_TO_NEW;
     }
-    return false;
+    return RegionEvacuateType::OBJECT_EVACUATE;
 }
 
-bool ParallelEvacuator::WholeRegionEvacuate(Region *region)
+void ParallelEvacuator::CompensateOvershootSizeIfHighAliveRate(Region* region)
 {
-    if (region->IsFreshRegion()) {
-        ASSERT(region->InYoungSpace());
-        return heap_->MoveYoungRegionSync(region);
+    double aliveRate = static_cast<double>(region->AliveObject()) / region->GetSize();
+    if (region->IsFreshRegion() || aliveRate >= STRICT_OBJECT_SURVIVAL_RATE) {
+        size_t compensateSize = static_cast<size_t>(region->GetCapacity() * (1.0 - HPPGC_NEWSPACE_SIZE_RATIO));
+        heap_->GetNewSpace()->AddOverShootSize(compensateSize);
     }
-    bool isInYoung = region->InYoungSpace();
-    bool isBelowAgeMark = region->BelowAgeMark();
-    if (isInYoung && !isBelowAgeMark && IsWholeRegionEvacuate(region) && heap_->MoveYoungRegionSync(region)) {
-        return true;
-    }
-    return false;
 }
 
-template <typename Callback>
-bool ParallelEvacuator::VisitBodyInObj(
-    TaggedObject *root, ObjectSlot start, ObjectSlot end, Callback callback)
+bool ParallelEvacuator::TryWholeRegionEvacuate(Region *region, RegionEvacuateType type)
 {
-    auto hclass = root->GetClass();
-    ASSERT(!hclass->IsAllTaggedProp());
-    int index = 0;
-    TaggedObject *dst = hclass->GetLayout().GetTaggedObject();
-    auto layout = LayoutInfo::UncheckCast(dst);
-    ObjectSlot realEnd = start;
-    realEnd += layout->GetPropertiesCapacity();
-    end = end > realEnd ? realEnd : end;
-    for (ObjectSlot slot = start; slot < end; slot++) {
-        auto attr = layout->GetAttr(index++);
-        if (attr.IsTaggedRep()) {
-            callback(slot);
-        }
+    switch (type) {
+        case RegionEvacuateType::REGION_NEW_TO_NEW:
+            CompensateOvershootSizeIfHighAliveRate(region);
+            return heap_->MoveYoungRegion(region);
+        case RegionEvacuateType::REGION_NEW_TO_OLD:
+            return heap_->MoveYoungRegionToOld(region);
+        default:
+            return false;
     }
-    return true;
-}
-
-bool ParallelEvacuator::UpdateNewToEdenObjectSlot(ObjectSlot &slot)
-{
-    JSTaggedValue value(slot.GetTaggedType());
-    if (!value.IsHeapObject()) {
-        return false;
-    }
-    TaggedObject *object = value.GetHeapObject();
-    Region *valueRegion = Region::ObjectAddressToRange(object);
-
-    // It is only update edenSpace object when iterate NewToEdenRSet
-    if (!valueRegion->InEdenSpace()) {
-        return false;
-    }
-    MarkWord markWord(object);
-    if (markWord.IsForwardingAddress()) {
-        TaggedObject *dst = markWord.ToForwardingAddress();
-        if (value.IsWeakForHeapObject()) {
-            dst = JSTaggedValue(dst).CreateAndGetWeakRef().GetRawTaggedObject();
-        }
-        slot.Update(dst);
-    } else {
-        if (value.IsWeakForHeapObject()) {
-            slot.Clear();
-        }
-    }
-    return false;
 }
 
 bool ParallelEvacuator::UpdateForwardedOldToNewObjectSlot(TaggedObject *object, ObjectSlot &slot, bool isWeak)
@@ -121,7 +88,6 @@ bool ParallelEvacuator::UpdateForwardedOldToNewObjectSlot(TaggedObject *object, 
     return false;
 }
 
-template<bool IsEdenGC>
 bool ParallelEvacuator::UpdateOldToNewObjectSlot(ObjectSlot &slot)
 {
     JSTaggedValue value(slot.GetTaggedType());
@@ -130,30 +96,46 @@ bool ParallelEvacuator::UpdateOldToNewObjectSlot(ObjectSlot &slot)
     }
     TaggedObject *object = value.GetHeapObject();
     Region *valueRegion = Region::ObjectAddressToRange(object);
-    if constexpr (IsEdenGC) {
-        // only object in EdenSpace will be collect in EdenGC
-        if (valueRegion->InEdenSpace()) {
+    // It is only update old to new object when iterate OldToNewRSet
+    if (valueRegion->InYoungSpace()) {
+        if (!valueRegion->InNewToNewSet()) {
             return UpdateForwardedOldToNewObjectSlot(object, slot, value.IsWeakForHeapObject());
-        } else {
-            // Keep oldToNewRSet when object is YoungSpace
-            return valueRegion->InYoungSpace();
         }
-    } else {
-        // It is only update old to new object when iterate OldToNewRSet
-        if (valueRegion->InGeneralNewSpace()) {
-            if (!valueRegion->InNewToNewSet()) {
-                return UpdateForwardedOldToNewObjectSlot(object, slot, value.IsWeakForHeapObject());
-            }
-            // move region from fromspace to tospace
-            if (valueRegion->Test(object)) {
-                return true;
-            }
-            if (value.IsWeakForHeapObject()) {
-                slot.Clear();
-            }
+        // move region from fromspace to tospace
+        if (valueRegion->Test(object)) {
+            return true;
+        }
+        if (value.IsWeakForHeapObject()) {
+            slot.Clear();
+        }
+    } else if (valueRegion->InNewToOldSet()) {
+        if (value.IsWeakForHeapObject() && !valueRegion->Test(object)) {
+            slot.Clear();
         }
     }
     return false;
+}
+
+ParallelEvacuator::UpdateRootVisitor::UpdateRootVisitor(ParallelEvacuator *evacuator) : evacuator_(evacuator) {}
+
+void ParallelEvacuator::UpdateRootVisitor::VisitRoot([[maybe_unused]] Root type, ObjectSlot slot)
+{
+    evacuator_->UpdateObjectSlot(slot);
+}
+
+void ParallelEvacuator::UpdateRootVisitor::VisitRangeRoot([[maybe_unused]] Root type, ObjectSlot start, ObjectSlot end)
+{
+    for (ObjectSlot slot = start; slot < end; slot++) {
+        evacuator_->UpdateObjectSlot(slot);
+    }
+}
+
+void ParallelEvacuator::UpdateRootVisitor::VisitBaseAndDerivedRoot([[maybe_unused]] Root type, ObjectSlot base,
+                                                                   ObjectSlot derived, uintptr_t baseOldObject)
+{
+    if (JSTaggedValue(base.GetTaggedType()).IsHeapObject()) {
+        derived.Update(base.GetTaggedType() + derived.GetTaggedType() - baseOldObject);
+    }
 }
 
 void ParallelEvacuator::UpdateObjectSlot(ObjectSlot &slot)
@@ -194,50 +176,64 @@ void ParallelEvacuator::UpdateWeakObjectSlot(TaggedObject *value, ObjectSlot &sl
     slot.Update(weakRef);
 }
 
-template<TriggerGCType gcType>
-void ParallelEvacuator::UpdateObjectSlotOpt(ObjectSlot &slot)
+template<TriggerGCType gcType, bool needUpdateLocalToShare>
+void ParallelEvacuator::UpdateNewObjectSlot(ObjectSlot &slot)
 {
     JSTaggedValue value(slot.GetTaggedType());
     if (value.IsHeapObject()) {
-        if (UpdateWeakObjectSlotOpt<gcType>(value, slot)) {
+        Region *objectRegion = Region::ObjectAddressToRange(value.GetRawData());
+        ASSERT(objectRegion != nullptr);
+        if constexpr (needUpdateLocalToShare == true) {
+            if (objectRegion->InSharedSweepableSpace()) {
+                Region *rootRegion = Region::ObjectAddressToRange(slot.SlotAddress());
+                rootRegion->InsertLocalToShareRSet(slot.SlotAddress());
+                return;
+            }
+        }
+        if constexpr (gcType == TriggerGCType::YOUNG_GC) {
+            if (!objectRegion->InYoungSpace()) {
+                if (value.IsWeakForHeapObject() && objectRegion->InNewToOldSet() &&
+                    !objectRegion->Test(value.GetRawData())) {
+                    slot.Clear();
+                }
+                return;
+            }
+        } else if constexpr (gcType == TriggerGCType::OLD_GC) {
+            if (!objectRegion->InYoungSpaceOrCSet()) {
+                if (value.IsWeakForHeapObject() && !objectRegion->InSharedHeap() &&
+                        (objectRegion->GetMarkGCBitset() == nullptr || !objectRegion->Test(value.GetRawData()))) {
+                    slot.Clear();
+                }
+                return;
+            }
+        } else {
+            LOG_GC(FATAL) << "UpdateNewObjectSlot: not support gcType yet";
+            UNREACHABLE();
+        }
+        if (objectRegion->InNewToNewSet()) {
+            if (value.IsWeakForHeapObject() && !objectRegion->Test(value.GetRawData())) {
+                slot.Clear();
+            }
             return;
         }
-        MarkWord markWord(value.GetTaggedObject());
-        if (markWord.IsForwardingAddress()) {
-            auto dst = reinterpret_cast<JSTaggedType>(markWord.ToForwardingAddress());
-            slot.Update(dst);
+        UpdateObjectSlotValue(value, slot);
+    }
+}
+
+void ParallelEvacuator::UpdateCrossRegionObjectSlot(ObjectSlot &slot)
+{
+    JSTaggedValue value(slot.GetTaggedType());
+    if (value.IsHeapObject()) {
+        Region *objectRegion = Region::ObjectAddressToRange(value.GetRawData());
+        ASSERT(objectRegion != nullptr);
+        if (objectRegion->InCollectSet()) {
+            UpdateObjectSlotValue(value, slot);
         }
     }
 }
 
-template<TriggerGCType gcType>
-bool ParallelEvacuator::UpdateWeakObjectSlotOpt(JSTaggedValue value, ObjectSlot &slot)
+void ParallelEvacuator::UpdateObjectSlotValue(JSTaggedValue value, ObjectSlot &slot)
 {
-    // if need to update slot as non-weak then return FALSE, else return TRUE
-    Region *objectRegion = Region::ObjectAddressToRange(value.GetRawData());
-    ASSERT(objectRegion != nullptr);
-    if constexpr (gcType == TriggerGCType::YOUNG_GC) {
-        if (!objectRegion->InGeneralNewSpace()) {
-            return true;
-        }
-    } else if constexpr (gcType == TriggerGCType::OLD_GC) {
-        if (!objectRegion->InGeneralNewSpaceOrCSet()) {
-            if (value.IsWeakForHeapObject() && !objectRegion->InSharedHeap() &&
-                    (objectRegion->GetMarkGCBitset() == nullptr || !objectRegion->Test(value.GetRawData()))) {
-                slot.Clear();
-            }
-            return true;
-        }
-    } else {
-        LOG_GC(FATAL) << "UpdateWeakObjectSlotOpt: not support gcType yet";
-        UNREACHABLE();
-    }
-    if (objectRegion->InNewToNewSet()) {
-        if (value.IsWeakForHeapObject() && !objectRegion->Test(value.GetRawData())) {
-            slot.Clear();
-        }
-        return true;
-    }
     if (value.IsWeakForHeapObject()) {
         MarkWord markWord(value.GetWeakReferent());
         if (markWord.IsForwardingAddress()) {
@@ -246,60 +242,49 @@ bool ParallelEvacuator::UpdateWeakObjectSlotOpt(JSTaggedValue value, ObjectSlot 
         } else {
             slot.Clear();
         }
-        return true;
+    } else {
+        MarkWord markWord(value.GetTaggedObject());
+        if (markWord.IsForwardingAddress()) {
+            auto dst = reinterpret_cast<JSTaggedType>(markWord.ToForwardingAddress());
+            slot.Update(dst);
+        }
     }
-    return false;
 }
 
-void ParallelEvacuator::UpdateLocalToShareRSet(TaggedObject *object, JSHClass *cls)
+ParallelEvacuator::SetObjectFieldRSetVisitor::SetObjectFieldRSetVisitor(ParallelEvacuator *evacuator)
+    : evacuator_(evacuator) {}
+
+void ParallelEvacuator::SetObjectFieldRSetVisitor::VisitObjectRangeImpl(TaggedObject *root, ObjectSlot start,
+    ObjectSlot end, VisitObjectArea area)
 {
-    Region *region = Region::ObjectAddressToRange(object);
-    ASSERT(!region->InSharedHeap());
-    auto callbackWithCSet = [this, region](TaggedObject *root, ObjectSlot start, ObjectSlot end, VisitObjectArea area) {
-        if (area == VisitObjectArea::IN_OBJECT) {
-            if (VisitBodyInObj(root, start, end, [&](ObjectSlot slot) { SetLocalToShareRSet(slot, region); })) {
-                return;
-            };
-        }
+    Region *rootRegion = Region::ObjectAddressToRange(root);
+    if (UNLIKELY(area == VisitObjectArea::IN_OBJECT)) {
+        JSHClass *hclass = root->GetClass();
+        ASSERT(!hclass->IsAllTaggedProp());
+        int index = 0;
+        TaggedObject *dst = hclass->GetLayout().GetTaggedObject();
+        LayoutInfo *layout = LayoutInfo::UncheckCast(dst);
+        ObjectSlot realEnd = start;
+        realEnd += layout->GetPropertiesCapacity();
+        end = end > realEnd ? realEnd : end;
         for (ObjectSlot slot = start; slot < end; slot++) {
-            SetLocalToShareRSet(slot, region);
+            auto attr = layout->GetAttr(index++);
+            if (attr.IsTaggedRep()) {
+                evacuator_->SetObjectRSet(slot, rootRegion);
+            }
         }
-    };
-    ObjectXRay::VisitObjectBody<VisitType::OLD_GC_VISIT>(object, cls, callbackWithCSet);
-}
-
-void ParallelEvacuator::SetLocalToShareRSet(ObjectSlot slot, Region *region)
-{
-    ASSERT(!region->InSharedHeap());
-    JSTaggedType value = slot.GetTaggedType();
-    if (!JSTaggedValue(value).IsHeapObject()) {
         return;
     }
-    Region *valueRegion = Region::ObjectAddressToRange(value);
-    if (valueRegion->InSharedSweepableSpace()) {
-        region->AtomicInsertLocalToShareRSet(slot.SlotAddress());
-    }
+    for (ObjectSlot slot = start; slot < end; slot++) {
+        evacuator_->SetObjectRSet(slot, rootRegion);
+    };
 }
 
-template<bool SetEdenObject>
 void ParallelEvacuator::SetObjectFieldRSet(TaggedObject *object, JSHClass *cls)
 {
-    Region *region = Region::ObjectAddressToRange(object);
-    auto callbackWithCSet = [this, region](TaggedObject *root, ObjectSlot start, ObjectSlot end, VisitObjectArea area) {
-        if (area == VisitObjectArea::IN_OBJECT) {
-            if (VisitBodyInObj(root, start, end,
-                               [&](ObjectSlot slot) { SetObjectRSet<SetEdenObject>(slot, region); })) {
-                return;
-            };
-        }
-        for (ObjectSlot slot = start; slot < end; slot++) {
-            SetObjectRSet<SetEdenObject>(slot, region);
-        }
-    };
-    ObjectXRay::VisitObjectBody<VisitType::OLD_GC_VISIT>(object, cls, callbackWithCSet);
+    ObjectXRay::VisitObjectBody<VisitType::OLD_GC_VISIT>(object, cls, setObjectFieldRSetVisitor_);
 }
 
-template<bool SetEdenObject>
 void ParallelEvacuator::SetObjectRSet(ObjectSlot slot, Region *region)
 {
     JSTaggedType value = slot.GetTaggedType();
@@ -307,24 +292,20 @@ void ParallelEvacuator::SetObjectRSet(ObjectSlot slot, Region *region)
         return;
     }
     Region *valueRegion = Region::ObjectAddressToRange(value);
-    if constexpr (SetEdenObject) {
-        if (region->InYoungSpace() && valueRegion->InEdenSpace()) {
-            region->AtomicInsertNewToEdenRSet(slot.SlotAddress());
-        } else if (valueRegion->InSharedSweepableSpace()) {
-            region->AtomicInsertLocalToShareRSet(slot.SlotAddress());
+    if (valueRegion->InYoungSpace()) {
+        region->InsertOldToNewRSet(slot.SlotAddress());
+    } else if (valueRegion->InNewToOldSet()) {
+        if (JSTaggedValue(value).IsWeakForHeapObject() && !valueRegion->Test(value)) {
+            slot.Clear();
         }
-    } else {
-        if (valueRegion->InGeneralNewSpace()) {
-            region->InsertOldToNewRSet(slot.SlotAddress());
-        }  else if (valueRegion->InSharedSweepableSpace()) {
-            region->InsertLocalToShareRSet(slot.SlotAddress());
-        } else if (valueRegion->InCollectSet()) {
-            region->InsertCrossRegionRSet(slot.SlotAddress());
-        } else if (JSTaggedValue(value).IsWeakForHeapObject()) {
-            if (heap_->IsConcurrentFullMark() && !valueRegion->InSharedHeap() &&
-                    (valueRegion->GetMarkGCBitset() == nullptr || !valueRegion->Test(value))) {
-                slot.Clear();
-            }
+    } else if (valueRegion->InSharedSweepableSpace()) {
+        region->InsertLocalToShareRSet(slot.SlotAddress());
+    } else if (valueRegion->InCollectSet()) {
+        region->InsertCrossRegionRSet(slot.SlotAddress());
+    } else if (JSTaggedValue(value).IsWeakForHeapObject()) {
+        if (heap_->IsConcurrentFullMark() && !valueRegion->InSharedHeap() &&
+                (valueRegion->GetMarkGCBitset() == nullptr || !valueRegion->Test(value))) {
+            slot.Clear();
         }
     }
 }
@@ -355,17 +336,7 @@ TaggedObject* ParallelEvacuator::UpdateAddressAfterEvacation(TaggedObject *oldAd
     if (!objectRegion) {
         return nullptr;
     }
-    if (heap_->IsEdenMark()) {
-        if (!objectRegion->InEdenSpace()) {
-            return oldAddress;
-        }
-        MarkWord markWord(oldAddress);
-        if (markWord.IsForwardingAddress()) {
-            return markWord.ToForwardingAddress();
-        }
-        return nullptr;
-    }
-    if (objectRegion->InGeneralNewSpaceOrCSet()) {
+    if (objectRegion->InYoungSpaceOrCSet()) {
         if (objectRegion->InNewToNewSet()) {
             if (objectRegion->Test(oldAddress)) {
                 return oldAddress;
@@ -376,6 +347,8 @@ TaggedObject* ParallelEvacuator::UpdateAddressAfterEvacation(TaggedObject *oldAd
                 return markWord.ToForwardingAddress();
             }
         }
+        return nullptr;
+    } else if (objectRegion->InNewToOldSet() && !objectRegion->Test(oldAddress)) {
         return nullptr;
     }
     if (heap_->IsConcurrentFullMark()) {

@@ -13,10 +13,7 @@
  * limitations under the License.
  */
 
-#include <iostream>
 #include "ecmascript/ecma_vm.h"
-#include "ecmascript/js_runtime_options.h"
-#include "ecmascript/napi/include/jsnapi.h"
 
 namespace panda::ecmascript {
 

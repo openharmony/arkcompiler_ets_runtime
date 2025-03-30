@@ -15,7 +15,6 @@
 
 #include "ecmascript/dfx/hprof/heap_sampling.h"
 
-#include "ecmascript/base/number_helper.h"
 
 namespace panda::ecmascript {
 HeapSampling::HeapSampling(const EcmaVM *vm, Heap *const heap, uint64_t interval, int stackDepth)

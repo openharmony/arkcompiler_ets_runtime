@@ -14,23 +14,26 @@
  */
 
 #include "ecmascript/mem/shared_heap/shared_full_gc.h"
+
 #include "ecmascript/mem/shared_heap/shared_concurrent_marker.h"
 #include "ecmascript/mem/shared_heap/shared_concurrent_sweeper.h"
 #include "ecmascript/mem/shared_heap/shared_gc_marker-inl.h"
-#include "ecmascript/runtime.h"
 
 namespace panda::ecmascript {
 void SharedFullGC::RunPhases()
 {
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedFullGC::RunPhases"
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedFullGC::RunPhases;GCReason"
         + std::to_string(static_cast<int>(sHeap_->GetEcmaGCStats()->GetGCReason()))
         + ";Sensitive" + std::to_string(static_cast<int>(sHeap_->GetSensitiveStatus()))
         + ";IsInBackground" + std::to_string(sHeap_->IsInBackground())
-        + ";Startup" + std::to_string(sHeap_->OnStartupEvent())
+        + ";Startup" + std::to_string(static_cast<int>(sHeap_->GetStartupStatus()))
         + ";Old" + std::to_string(sHeap_->GetOldSpace()->GetCommittedSize())
         + ";huge" + std::to_string(sHeap_->GetHugeObjectSpace()->GetCommittedSize())
         + ";NonMov" + std::to_string(sHeap_->GetNonMovableSpace()->GetCommittedSize())
-        + ";TotCommit" + std::to_string(sHeap_->GetCommittedSize()));
+        + ";TotCommit" + std::to_string(sHeap_->GetCommittedSize())
+        + ";NativeBindingSize" + std::to_string(sHeap_->GetNativeSizeAfterLastGC())
+        + ";NativeLimitGC" + std::to_string(sHeap_->GetNativeSizeTriggerSharedGC())
+        + ";NativeLimitCM" + std::to_string(sHeap_->GetNativeSizeTriggerSharedCM()));
     TRACE_GC(GCStats::Scope::ScopeId::TotalGC, sHeap_->GetEcmaGCStats());
     Initialize();
     Mark();
@@ -49,6 +52,7 @@ void SharedFullGC::Initialize()
     }
     sHeap_->GetAppSpawnSpace()->EnumerateRegions([](Region *current) {
         current->ClearMarkGCBitset();
+        current->ClearCrossRegionRSet();
     });
     sHeap_->EnumerateOldSpaceRegions([](Region *current) {
         ASSERT(current->InSharedSweepableSpace());
@@ -57,13 +61,20 @@ void SharedFullGC::Initialize()
     sWorkManager_->Initialize(TriggerGCType::SHARED_FULL_GC, SharedParallelMarkPhase::SHARED_COMPRESS_TASK);
 }
 
+void SharedFullGC::MarkRoots(SharedMarkType markType, VMRootVisitType type)
+{
+    SharedGCMovableMarker *marker = static_cast<SharedGCMovableMarker*>(sHeap_->GetSharedGCMovableMarker());
+    SharedFullGCMarkRootVisitor sharedFullGCMarkRootVisitor(marker, DAEMON_THREAD_INDEX);
+    marker->MarkRoots(sharedFullGCMarkRootVisitor, markType, type);
+}
+
 void SharedFullGC::Mark()
 {
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedFullGC::Mark");
     TRACE_GC(GCStats::Scope::ScopeId::Mark, sHeap_->GetEcmaGCStats());
     SharedGCMovableMarker *marker = sHeap_->GetSharedGCMovableMarker();
 
-    marker->MarkRoots(DAEMON_THREAD_INDEX, SharedMarkType::NOT_CONCURRENT_MARK, VMRootVisitType::UPDATE_ROOT);
+    MarkRoots(SharedMarkType::NOT_CONCURRENT_MARK, VMRootVisitType::UPDATE_ROOT);
     marker->DoMark<SharedMarkType::NOT_CONCURRENT_MARK>(DAEMON_THREAD_INDEX);
     marker->MergeBackAndResetRSetWorkListHandler();
     sHeap_->WaitRunningTaskFinished();

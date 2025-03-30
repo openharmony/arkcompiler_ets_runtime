@@ -77,6 +77,8 @@
     V("sort", Sort, 1, INVALID)                                                  \
     /* SharedArray.prototype.toString ( ) */                                     \
     V("toString", ToString, 0, INVALID)                                          \
+    /* SharedArray.prototype.toLocaleString ( [ reserved1 [ , reserved2 ] ] ) */ \
+    V("toLocaleString", ToLocaleString, 0, INVALID)                              \
     /* SharedArray.prototype.values ( ) */                                       \
     /* SharedArray.prototype.unshift ( ...items ) */                             \
     V("unshift", Unshift, 1, INVALID)                                            \
@@ -91,21 +93,19 @@
     V("some", Some, 1, INVALID)                                                  \
     /* SendableArray.prototype.lastIndexOf ( searchElement [ , fromIndex ] ) */  \
     V("lastIndexOf", LastIndexOf, 1, INVALID)                                    \
+	/* SharedArray.prototype.copyWithin ( target, start [ , end ] ) */           \
     V("copyWithin", CopyWithin, 2, INVALID)                                      \
+	/* SharedArray.prototype.reduceRight ( callbackfn [ , initialValue ] ) */    \
+    V("reduceRight", ReduceRight, 1, INVALID)                                    \
+    /*  SharedArray.prototype.reverse ( )               */                       \
+    V("reverse", Reverse, 0, INVALID)                                            \
+	/* SharedArray.prototype.findLast ( predicate [ , thisArg ] ) */             \
+    V("findLast", FindLast, 1, INVALID)                                          \
+    /* SharedArray.prototype.findLastIndex ( predicate [ , thisArg ] ) */        \
+    V("findLastIndex", FindLastIndex, 1, INVALID)                                \
     // fixme(hzzhouzebin) Support later.
     // /* SharedArray.prototype.with ( index, value ) */                            \
     // V("with", With, 2, INVALID)                                                  \
-    // /* SharedArray.prototype.reduceRight ( callbackfn [ , initialValue ] ) */    \
-    // V("reduceRight", ReduceRight, 1, INVALID)                                    \
-    // /* SharedArray.prototype.reverse ( ) */                                      \
-    // V("reverse", Reverse, 0, INVALID)                                            \
-    // /* SharedArray.prototype.copyWithin ( target, start [ , end ] ) */           \
-    // /* SharedArray.prototype.findLast ( predicate [ , thisArg ] ) */             \
-    // V("findLast", FindLast, 1, INVALID)                                          \
-    // /* SharedArray.prototype.findLastIndex ( predicate [ , thisArg ] ) */        \
-    // V("findLastIndex", FindLastIndex, 1, INVALID)                                \
-    // /* SharedArray.prototype.toLocaleString ( [ reserved1 [ , reserved2 ] ] ) */ \
-    // V("toLocaleString", ToLocaleString, 0, INVALID)                              \
     // /* SharedArray.prototype.toReversed ( ) */                                   \
     // V("toReversed", ToReversed, 0, INVALID)                                      \
     // /* SharedArray.prototype.toSorted ( comparefn ) */                           \
@@ -142,6 +142,7 @@ public:
     static JSTaggedValue Splice(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue Sort(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue ToString(EcmaRuntimeCallInfo *argv);
+    static JSTaggedValue ToLocaleString(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue Unshift(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue Values(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue Unscopables(EcmaRuntimeCallInfo *argv);
@@ -154,6 +155,10 @@ public:
     static JSTaggedValue LastIndexOf(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue Of(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue CopyWithin(EcmaRuntimeCallInfo *argv);
+    static JSTaggedValue FindLast(EcmaRuntimeCallInfo *argv);
+    static JSTaggedValue FindLastIndex(EcmaRuntimeCallInfo *argv);
+    static JSTaggedValue Reverse(EcmaRuntimeCallInfo *argv);
+    static JSTaggedValue ReduceRight(EcmaRuntimeCallInfo *argv);
 
     // Excluding the '@@' internal properties
     static Span<const base::BuiltinFunctionEntry> GetSharedArrayFunctions()
@@ -177,11 +182,11 @@ public:
         return GetSharedArrayPrototypeFunctions().Size() + 4;
     }
     static JSTaggedValue ReduceUnStableJSArray(JSThread *thread, JSHandle<JSTaggedValue> &thisHandle,
-        JSHandle<JSTaggedValue> &thisObjVal, int64_t k, int64_t len, JSMutableHandle<JSTaggedValue> &accumulator,
+        JSHandle<JSObject> &thisObjHandle, int64_t k, int64_t len, JSMutableHandle<JSTaggedValue> &accumulator,
         JSHandle<JSTaggedValue> &callbackFnHandle);
 
     static JSTaggedValue FilterArray(JSThread *thread, JSHandle<JSTaggedValue> &thisArgHandle,
-        JSHandle<JSTaggedValue> &thisObjVal, JSHandle<JSObject> newArrayHandle,
+        JSHandle<JSTaggedValue> &thisObjVal, JSHandle<JSObject>& newArrayHandle,
         JSHandle<JSTaggedValue> &callbackFnHandle);
 
     static Span<const std::pair<std::string_view, bool>> GetPrototypeProperties()
@@ -193,19 +198,36 @@ public:
         return Span<const std::pair<std::string_view, bool>>(ARRAY_FUNCTION_PROPERTIES);
     }
 
-    static inline uint64_t ConvertTagValueToInteger(JSThread *thread, JSHandle<JSTaggedValue>& number, int64_t len);
-    static inline uint64_t GetNumberArgVal(JSThread *thread, EcmaRuntimeCallInfo *argv, uint32_t idx, int64_t len,
-                                           int64_t defVal);
-    static inline uint64_t GetNumberArgValThrow(JSThread *thread, EcmaRuntimeCallInfo *argv, uint32_t idx,
-                                                int64_t len, const char* err);
+    static inline int64_t ConvertTagValueToInteger(JSThread *thread, JSHandle<JSTaggedValue>& number, int64_t len);
+    static inline int64_t GetNumberArgVal(JSThread *thread, EcmaRuntimeCallInfo *argv, uint32_t idx, int64_t len,
+                                          int64_t defVal);
+    static inline int64_t GetNumberArgValThrow(JSThread *thread, EcmaRuntimeCallInfo *argv, uint32_t idx,
+                                               int64_t len, const char* err);
 
     static inline void SetElementValue(JSThread *thread, JSHandle<JSObject> arrHandle, uint32_t key,
                                        const JSHandle<JSTaggedValue> &value);
+    static inline JSTaggedValue FastReverse(JSThread *thread, JSHandle<TaggedArray>& elements,
+                                            uint32_t lower, uint32_t len, ElementsKind kind);
 
 private:
     static inline JSTaggedValue GetElementByKey(JSThread *thread, JSHandle<JSObject>& thisObjHandle, uint32_t index);
-    static JSTaggedValue PopInner(EcmaRuntimeCallInfo *argv, JSHandle<JSTaggedValue> &thisHandle,
-                                  JSHandle<JSObject> &thisObjHandle);
+    static inline JSTaggedValue PopInner(EcmaRuntimeCallInfo *argv, JSHandle<JSTaggedValue> &thisHandle,
+                                         JSHandle<JSObject> &thisObjHandle);
+    static inline int64_t FillNewTaggedArray(JSThread *thread, EcmaRuntimeCallInfo *argv, int argc,
+                                             int64_t newArrayIdx, JSHandle<TaggedArray> &eleArray);
+    static inline int64_t CalNewArrayLen(JSThread *thread, EcmaRuntimeCallInfo *argv, int argc);
+    static inline JSTaggedValue IndexOfStable(EcmaRuntimeCallInfo *argv, JSThread *thread,
+                                              const JSHandle<JSTaggedValue> &thisHandle);
+    static inline JSTaggedValue FromSharedArray(JSThread *thread, const JSHandle<JSTaggedValue>& items,
+                                                JSHandle<JSObject>& newArrayHandle);
+    static inline JSTaggedValue FromArrayNoMaping(JSThread *thread, const JSHandle<JSTaggedValue>& items,
+                                                  JSHandle<JSObject>& newArrayHandle);
+    template<bool itemIsSharedArray>
+    static inline JSTaggedValue FromArray(JSThread *thread, const JSHandle<JSTaggedValue>& items,
+                                          const JSHandle<JSTaggedValue>& thisArgHandle,
+                                          const JSHandle<JSTaggedValue> mapfn,
+                                          JSHandle<JSObject>& newArrayHandle);
+
 #define BUILTIN_SENDABLE_ARRAY_FUNCTION_ENTRY(name, method, length, id) \
     base::BuiltinFunctionEntry::Create(name, BuiltinsSharedArray::method, length, kungfu::BuiltinsStubCSigns::id),
 
@@ -228,6 +250,10 @@ private:
                                              const JSHandle<JSTaggedValue> &thisHandle);
     static JSTaggedValue LastIndexOfSlowPath(EcmaRuntimeCallInfo *argv, JSThread *thread,
                                              const JSHandle<JSTaggedValue> &thisObjVal, int64_t fromIndex);
+    static JSTaggedValue ToLocaleStringInternalHandle(EcmaRuntimeCallInfo *argv, JSThread *thread,
+            EcmaContext *context, ObjectFactory *factory, const JSHandle<JSTaggedValue> &thisHandle, int64_t len);
+    static JSTaggedValue ReduceRightInternalHandle(EcmaRuntimeCallInfo *argv, JSThread *thread,
+            const JSHandle<JSTaggedValue> &thisHandle, JSHandle<JSObject>& thisObjHandle, uint32_t argc, int64_t len);
 
 #define ARRAY_PROPERTIES_PAIR(name, func, length, id) \
     std::pair<std::string_view, bool>(name, false),

@@ -128,11 +128,10 @@ public:
     ObjectXRay() = default;
     ~ObjectXRay() = default;
 
-    static inline void VisitVMRoots(EcmaVM *vm, const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor,
-        const RootBaseAndDerivedVisitor &derivedVisitor, VMRootVisitType type)
+    static inline void VisitVMRoots(EcmaVM *vm, RootVisitor &visitor, VMRootVisitType type)
     {
-        vm->Iterate(visitor, rangeVisitor, type);
-        vm->GetAssociatedJSThread()->Iterate(visitor, rangeVisitor, derivedVisitor);
+        vm->Iterate(visitor, type);
+        vm->GetAssociatedJSThread()->Iterate(visitor);
     }
 
     static inline void VisitJitCodeMap(EcmaVM *vm, const JitCodeMapVisitor &updater)
@@ -140,8 +139,9 @@ public:
         vm->GetJSThread()->IterateJitCodeMap(updater);
     }
 
-    template<VisitType visitType>
-    static inline void VisitObjectBody(TaggedObject *object, JSHClass *klass, const EcmaObjectRangeVisitor &visitor)
+    template<VisitType visitType, class DerivedVisitor>
+    static inline void VisitObjectBody(TaggedObject *object, JSHClass *klass,
+                                       EcmaObjectRangeVisitor<DerivedVisitor> &visitor)
     {
         // handle body
         JSType type = klass->GetObjectType();

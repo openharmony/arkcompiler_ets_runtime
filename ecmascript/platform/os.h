@@ -33,6 +33,7 @@ long PtracePeektext(int pid, uintptr_t addr);
 PUBLIC_API void BindSmallCpuCore();
 PUBLIC_API void BindMidCpuCore();
 PUBLIC_API void SetSecurityLabel(const std::string& path);
+PUBLIC_API void InitializeMallocConfig();
 void PUBLIC_API *PageMapExecFortSpace(void *addr, size_t size, int prot);
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_PLATFORM_OS_H

@@ -17,6 +17,7 @@
 
 #include "ecmascript/compiler/interpreter_stub.h"
 #include "ecmascript/compiler/profiler_operation.h"
+#include "ecmascript/compiler/share_gate_meta_data.h"
 #include "ecmascript/compiler/stub_builder.h"
 
 namespace panda::ecmascript::kungfu {
@@ -35,15 +36,16 @@ public:
 
     GateRef LoadObjByName(GateRef glue, GateRef receiver, GateRef prop, const StringIdInfo &info,
                           GateRef profileTypeInfo, GateRef slotId, ProfileOperation callback = ProfileOperation());
+    GateRef LoadObjByNameWithMega(GateRef glue, GateRef receiver, GateRef megaStubCache, GateRef propKey,
+                                  GateRef jsFunc, GateRef slotId, ProfileOperation callback = ProfileOperation());
     GateRef DeprecatedLoadObjByName(GateRef glue, GateRef receiver, GateRef propKey);
     GateRef StoreObjByName(GateRef glue, GateRef receiver, GateRef prop, const StringIdInfo &info, GateRef value,
         GateRef profileTypeInfo, GateRef slotId, ProfileOperation callback = ProfileOperation());
-    GateRef LoadPrivatePropertyByName(GateRef glue,
-                                      GateRef receiver,
-                                      GateRef key,
-                                      GateRef profileTypeInfo,
-                                      GateRef slotId,
-                                      ProfileOperation callback);
+    GateRef StoreObjByNameWithMega(GateRef glue, GateRef receiver, GateRef value, GateRef megaStubCache,
+                                   GateRef propKey, GateRef jsFunc, GateRef slotId,
+                                   ProfileOperation callback = ProfileOperation());
+    GateRef LoadPrivatePropertyByName(GateRef glue, GateRef receiver, GateRef key, GateRef profileTypeInfo,
+                                      GateRef slotId, ProfileOperation callback);
     GateRef StorePrivatePropertyByName(GateRef glue,
                                        GateRef receiver,
                                        GateRef key,

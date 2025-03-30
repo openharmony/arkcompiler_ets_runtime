@@ -15,7 +15,6 @@
 
 #include "ecmascript/compiler/builtins/linked_hashtable_stub_builder.h"
 
-#include "ecmascript/compiler/builtins/builtins_stubs.h"
 #include "ecmascript/compiler/call_stub_builder.h"
 #include "ecmascript/compiler/hash_stub_builder.h"
 #include "ecmascript/compiler/new_object_stub_builder.h"
@@ -309,8 +308,15 @@ GateRef LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::
     Label loopEnd(env);
     Label next(env);
     Label loopExit(env);
+    Label noNumberOfDeletedElements(env);
 
-    Jump(&loopHead);
+    BRANCH(Int32Equal(GetNumberOfDeletedElements(linkedTable), Int32(-1)), &noNumberOfDeletedElements, &loopHead);
+    Bind(&noNumberOfDeletedElements);
+    {
+        res = entry;
+        Jump(&exit);
+    }
+
     LoopBegin(&loopHead);
     {
         BRANCH(Int32GreaterThanOrEqual(*currentEntry, Int32(0)), &next, &loopExit);

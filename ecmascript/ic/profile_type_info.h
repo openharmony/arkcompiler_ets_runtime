@@ -16,7 +16,9 @@
 #ifndef ECMASCRIPT_IC_PROFILE_TYPE_INFO_H
 #define ECMASCRIPT_IC_PROFILE_TYPE_INFO_H
 
+#include "ecmascript/ic/mega_ic_cache.h"
 #include "ecmascript/js_function.h"
+#include "ecmascript/js_tagged_value.h"
 #include "ecmascript/tagged_array.h"
 #include "ecmascript/tagged_dictionary.h"
 
@@ -136,9 +138,7 @@ public:
     static constexpr size_t OSR_HOTNESS_THRESHOLD_OFFSET_FROM_BITFIELD = 8;  // 8 : 8 byte offset from bitfield
     static constexpr size_t OSR_CNT_OFFSET_FROM_OSR_THRESHOLD = 2;  // 2 : 2 byte offset from osr hotness threshold
     static constexpr size_t BASELINEJIT_HOTNESS_THRESHOLD_OFFSET_FROM_BITFIELD = 12; // 12: bytes offset from bitfield
-    static constexpr size_t JIT_CALL_THRESHOLD_OFFSET_FROM_BITFIELD = 14;  // 12 : 12 byte offset from bitfield
-    // 1 : 1 byte offset from jit call threshold
-    static constexpr size_t JIT_CALL_CNT_OFFSET_FROM_JIT_CALL_THRESHOLD = 1;
+    static constexpr size_t JIT_CALL_CNT_OFFSET_FROM_BITFIELD = 14;  // 14 : 14 byte offset from bitfield
 
     static ProfileTypeInfo *Cast(TaggedObject *object)
     {
@@ -192,7 +192,6 @@ public:
         SetOsrHotnessThreshold(INITIAL_OSR_HOTNESS_THRESHOLD);
         SetOsrHotnessCnt(INITIAL_OSR_HOTNESS_CNT);
         SetJitCallThreshold(INITIAL_JIT_CALL_THRESHOLD);
-        SetJitCallCnt(INITIAL_JIT_CALL_CNT);
     }
 
     inline void InitializeExtraInfoMap()
@@ -284,14 +283,9 @@ public:
         Barriers::SetPrimitive(GetData(), GetBaselineJitHotnessThresholdBitfieldOffset(), count);
     }
 
-    uint8_t GetJitCallThreshold() const
+    void SetJitCallThreshold(uint16_t count)
     {
-        return Barriers::GetValue<uint8_t>(GetData(), GetJitCallThresholdBitfieldOffset());
-    }
-
-    void SetJitCallThreshold(uint8_t count)
-    {
-        Barriers::SetPrimitive(GetData(), GetJitCallThresholdBitfieldOffset(), count);
+        Barriers::SetPrimitive(GetData(), GetJitCallCntBitfieldOffset(), count);
     }
 
     uint16_t GetJitHotnessCnt() const
@@ -307,11 +301,6 @@ public:
     void SetOsrHotnessCnt(uint16_t count)
     {
         Barriers::SetPrimitive(GetData(), GetOsrHotnessCntBitfieldOffset(), count);
-    }
-
-    void SetJitCallCnt(uint8_t count)
-    {
-        Barriers::SetPrimitive(GetData(), GetJitCallCntBitfieldOffset(), count);
     }
 
     inline JSTaggedValue GetIcSlot(uint32_t idx) const
@@ -418,15 +407,10 @@ private:
         return GetOsrHotnessThresholdBitfieldOffset() + OSR_CNT_OFFSET_FROM_OSR_THRESHOLD;
     }
 
-    // jit call threshold(8bits) + count(8bits)
-    inline size_t GetJitCallThresholdBitfieldOffset() const
-    {
-        return GetBitfieldOffset() + JIT_CALL_THRESHOLD_OFFSET_FROM_BITFIELD;
-    }
-
+    // jit call count(16bits)
     inline size_t GetJitCallCntBitfieldOffset() const
     {
-        return GetJitCallThresholdBitfieldOffset() + JIT_CALL_CNT_OFFSET_FROM_JIT_CALL_THRESHOLD;
+        return GetBitfieldOffset() + JIT_CALL_CNT_OFFSET_FROM_BITFIELD;
     }
 };
 
@@ -440,20 +424,34 @@ public:
         UNINIT,
         MONO,
         POLY,
+        IC_MEGA,
         MEGA,
     };
+
+#if ECMASCRIPT_ENABLE_TRACE_LOAD
+    enum MegaState {
+        NONE,
+        NOTFOUND_MEGA,
+        DICT_MEGA,
+    };
+#endif
 
     ProfileTypeAccessor(JSThread* thread, JSHandle<ProfileTypeInfo> profileTypeInfo, uint32_t slotId, ICKind kind)
         : thread_(thread), profileTypeInfo_(profileTypeInfo), slotId_(slotId), kind_(kind)
     {
+        enableICMega_ = thread_->GetEcmaVM()->GetJSOptions().IsEnableMegaIC();
     }
     ~ProfileTypeAccessor() = default;
-
+    ICState GetMegaState() const;
     ICState GetICState() const;
     static std::string ICStateToString(ICState state);
-    void AddHandlerWithoutKey(JSHandle<JSTaggedValue> hclass, JSHandle<JSTaggedValue> handler) const;
+    void AddHandlerWithoutKey(JSHandle<JSTaggedValue> hclass, JSHandle<JSTaggedValue> handler,
+                              JSHandle<JSTaggedValue> keyForMegaIC = JSHandle<JSTaggedValue>(),
+                              MegaICCache::MegaICKind kind = MegaICCache::MegaICKind::None) const;
     void AddWithoutKeyPoly(JSHandle<JSTaggedValue> hclass, JSHandle<JSTaggedValue> handler, uint32_t index,
-                           JSTaggedValue profileData) const;
+                           JSTaggedValue profileData, JSHandle<JSTaggedValue> keyForMegaIC = JSHandle<JSTaggedValue>(),
+                           MegaICCache::MegaICKind kind = MegaICCache::MegaICKind::None) const;
+
     void AddElementHandler(JSHandle<JSTaggedValue> hclass, JSHandle<JSTaggedValue> handler) const;
     void AddHandlerWithKey(JSHandle<JSTaggedValue> key, JSHandle<JSTaggedValue> hclass,
                            JSHandle<JSTaggedValue> handler) const;
@@ -470,6 +468,8 @@ public:
         return JSTaggedValue(value.GetWeakReferent());
     }
     void SetAsMega() const;
+    void SetAsMegaForTraceSlowMode(ObjectOperator& op) const;
+    void SetAsMegaForTrace(JSTaggedValue value) const;
 
     ICKind GetKind() const
     {
@@ -486,6 +486,7 @@ private:
     JSHandle<ProfileTypeInfo> profileTypeInfo_;
     uint32_t slotId_;
     ICKind kind_;
+    bool enableICMega_;
 };
 }  // namespace panda::ecmascript
 

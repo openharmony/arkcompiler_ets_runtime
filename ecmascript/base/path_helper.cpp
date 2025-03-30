@@ -26,7 +26,7 @@ CString PathHelper::NormalizePath(const CString &fileName)
         fileName[fileName.size() - 1] != SLASH_TAG)) {
         return fileName;
     }
-    CString res = "";
+    CString res;
     size_t prev = 0;
     size_t curr = fileName.find(SLASH_TAG);
     CVector<CString> elems;
@@ -46,8 +46,8 @@ CString PathHelper::NormalizePath(const CString &fileName)
     if (prev != fileName.size()) {
         elems.push_back(fileName.substr(prev));
     }
-    for (auto e : elems) {
-        if (res.size() == 0 && fileName.at(0) != SLASH_TAG) {
+    for (auto& e : elems) {
+        if (res.empty() && fileName[0] != SLASH_TAG) {
             res.append(e);
             continue;
         }
@@ -63,9 +63,9 @@ CString PathHelper::NormalizePath(const CString &fileName)
 CString PathHelper::ResolveDirPath(const CString &fileName)
 {
     // find last '/', '\\'
-    int foundPos = static_cast<int>(fileName.find_last_of("/\\"));
-    if (foundPos == -1) {
-        return CString();
+    const size_t foundPos = fileName.find_last_of("/\\");
+    if (foundPos == CString::npos) {
+        return {};
     }
     return fileName.substr(0, foundPos + 1);
 }

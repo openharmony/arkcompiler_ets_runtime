@@ -14,10 +14,8 @@
  */
 
 #include "ecmascript/pgo_profiler/pgo_profiler_decoder.h"
-#include <memory>
 
 #include "ecmascript/platform/file.h"
-#include "ecmascript/pgo_profiler/pgo_profiler_info.h"
 
 namespace panda::ecmascript::pgo {
 bool PGOProfilerDecoder::Load(const std::shared_ptr<PGOAbcFilePool> &externalAbcFilePool)
@@ -32,7 +30,7 @@ bool PGOProfilerDecoder::Load(const std::shared_ptr<PGOAbcFilePool> &externalAbc
 
     if (!PGOProfilerHeader::ParseFromBinary(addr, fileMapAddr_.GetSize(), &header_)) {
         UnLoadAPBinaryFile();
-        LOG_ECMA(ERROR) << "Parse profiler header failed";
+        LOG_PGO(ERROR) << "parse profiler header failed";
         return false;
     }
     pandaFileInfos_.ParseFromBinary(addr, header_->GetPandaInfoSection());
@@ -41,31 +39,40 @@ bool PGOProfilerDecoder::Load(const std::shared_ptr<PGOAbcFilePool> &externalAbc
         recordSimpleInfos_ = std::make_unique<PGORecordSimpleInfos>(hotnessThreshold_);
     }
     LoadAbcIdPool(externalAbcFilePool, *recordSimpleInfos_, addr);
+    if (header_->SupportMultiAbcChecksum()) {
+        pandaFileInfos_.UpdateFileInfosAbcID(*recordSimpleInfos_);
+    }
     recordSimpleInfos_->ParseFromBinary(addr, header_, abcFilePool_);
+
     UnLoadAPBinaryFile();
 
     isLoaded_ = true;
     return true;
 }
 
-bool PGOProfilerDecoder::Verify(uint32_t checksum)
+bool PGOProfilerDecoder::Verify(const std::unordered_map<CString, uint32_t>& fileNameToChecksumMap)
 {
     if (!isLoaded_) {
         return false;
     }
     // Notice: lx maybe can support method checksum;
-    return pandaFileInfos_.Checksum(checksum);
+    if (header_->SupportMultiAbcChecksum()) {
+        return pandaFileInfos_.Checksum(fileNameToChecksumMap, abcFilePool_);
+    } else {
+        return pandaFileInfos_.Checksum(fileNameToChecksumMap);
+    }
 }
 
-bool PGOProfilerDecoder::LoadAndVerify(uint32_t checksum, const std::shared_ptr<PGOAbcFilePool> &externalAbcFilePool)
+bool PGOProfilerDecoder::LoadAndVerify(const std::unordered_map<CString, uint32_t>& fileNameToChecksumMap,
+                                       const std::shared_ptr<PGOAbcFilePool>& externalAbcFilePool)
 {
     // The file does not exist. Enter full compiler mode.
     if (inPath_.empty()) {
-        LOG_ECMA(INFO) << "When the file is empty. Enter full compiler mode.";
+        LOG_PGO(INFO) << "file path is empty, enter full compiler mode.";
         Clear();
         return true;
     }
-    if (Load(externalAbcFilePool) && Verify(checksum)) {
+    if (Load(externalAbcFilePool) && Verify(fileNameToChecksumMap)) {
         return true;
     }
     return false;
@@ -84,7 +91,7 @@ bool PGOProfilerDecoder::LoadFull(const std::shared_ptr<PGOAbcFilePool> &externa
 
     if (!PGOProfilerHeader::ParseFromBinary(addr, fileMapAddr_.GetSize(), &header_)) {
         UnLoadAPBinaryFile();
-        LOG_ECMA(ERROR) << "Parse profiler header failed";
+        LOG_PGO(ERROR) << "parse profiler header failed";
         return false;
     }
     pandaFileInfos_.ParseFromBinary(addr, header_->GetPandaInfoSection());
@@ -93,6 +100,9 @@ bool PGOProfilerDecoder::LoadFull(const std::shared_ptr<PGOAbcFilePool> &externa
     }
 
     LoadAbcIdPool(externalAbcFilePool, *recordDetailInfos_, addr);
+    if (header_->SupportMultiAbcChecksum()) {
+        pandaFileInfos_.UpdateFileInfosAbcID(*recordDetailInfos_);
+    }
     if (!recordDetailInfos_->ParseFromBinary(addr, header_)) {
         return false;
     }
@@ -131,11 +141,11 @@ bool PGOProfilerDecoder::SaveAPTextFile(const std::string &outPath)
     }
     std::ofstream fileStream(realOutPath.c_str());
     if (!fileStream.is_open()) {
-        LOG_ECMA(ERROR) << "The file path(" << realOutPath << ") open failure!";
+        LOG_PGO(ERROR) << "The file path(" << realOutPath << ") open failure!";
         return false;
     }
     if (header_ == nullptr) {
-        LOG_ECMA(FATAL) << "PGOProfilerDecoder::SaveAPTextFile:header_ is nullptr";
+        LOG_PGO(FATAL) << "PGOProfilerDecoder::SaveAPTextFile:header_ is nullptr";
     }
     if (!header_->ProcessToText(fileStream)) {
         return false;
@@ -155,13 +165,13 @@ bool PGOProfilerDecoder::LoadAPBinaryFile(int prot)
 
     static const std::string endString = ".ap";
     if (realPath.compare(realPath.length() - endString.length(), endString.length(), endString)) {
-        LOG_ECMA(ERROR) << "The file path( " << realPath << ") does not end with .ap";
+        LOG_PGO(ERROR) << "the file path( " << realPath << ") does not end with '.ap'";
         return false;
     }
-    LOG_ECMA(INFO) << "Load profiler from file:" << realPath;
+    LOG_PGO(INFO) << "load profiler from file " << realPath;
     fileMapAddr_ = FileMap(realPath.c_str(), FILE_RDONLY, prot);
     if (fileMapAddr_.GetOriginAddr() == nullptr) {
-        LOG_ECMA(ERROR) << "File mmap failed";
+        LOG_PGO(ERROR) << "file mmap failed";
         return false;
     }
     return true;
@@ -268,5 +278,13 @@ void PGOProfilerDecoder::Merge(const PGOProfilerDecoder &decoder)
     }
     pandaFileInfos_.Merge(decoder.GetPandaFileInfos());
     recordSimpleInfos_->Merge(decoder.GetRecordSimpleInfos());
+}
+
+void PGOProfilerDecoder::MergeFileNameToChecksumMap(std::unordered_map<CString, uint32_t> &fileNameToChecksumMap) const
+{
+    pandaFileInfos_.ForEachFileInfo([this, &fileNameToChecksumMap](uint32_t checksum, uint32_t abcId) {
+        const CString &abcNameInDecoder = JSPandaFile::GetNormalizedFileDesc(abcFilePool_->GetEntry(abcId)->GetData());
+        fileNameToChecksumMap.emplace(abcNameInDecoder, checksum);
+    });
 }
 } // namespace panda::ecmascript::pgo

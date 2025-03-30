@@ -24,8 +24,10 @@
     /* Function */                                                                                  \
     V(JSTaggedValue, ObjectFunction, OBJECT_FUNCTION_INDEX)                                         \
     V(JSTaggedValue, ObjectFunctionClass, OBJECT_FUNCTION_CLASS_INDEX)                              \
+    V(JSTaggedValue, ObjectFunctionNapiClass, OBJECT_FUNCTION_NAPI_CLASS_INDEX)                     \
     V(JSTaggedValue, ObjectFunctionPrototype, OBJECT_FUNCTION_PROTOTYPE_INDEX)                      \
     V(JSTaggedValue, ObjectFunctionPrototypeClass, OBJECT_FUNCTION_PROTOTYPE_CLASS_INDEX)           \
+    V(JSTaggedValue, ObjectFunctionTsNapiClass, OBJECT_FUNCTION_TS_NAPI_CLASS_INDEX)                \
     V(JSTaggedValue, FunctionFunction, FUNCTION_FUNCTION_INDEX)                                     \
     V(JSTaggedValue, FunctionPrototype, FUNCTION_PROTOTYPE_INDEX)                                   \
     V(JSTaggedValue, NumberFunction, NUMBER_FUNCTION_INDEX)                                         \
@@ -63,6 +65,8 @@
     V(JSTaggedValue, BigInt64ArrayFunctionPrototype, BIGINT64_ARRAY_FUNCTION_PROTOTYPE_INDEX)       \
     V(JSTaggedValue, BigUint64ArrayFunctionPrototype, BIGUINT64_ARRAY_FUNCTION_PROTOTYPE_INDEX)     \
     V(JSTaggedValue, MapClass, MAP_CLASS_INDEX)                                                     \
+    V(JSTaggedValue, SetClass, SET_CLASS_INDEX)                                                     \
+    V(JSTaggedValue, ArrayClass, ARRAY_CLASS_INDEX)                                                 \
     V(JSTaggedValue, Int8ArrayRootHclass, INT8_ARRAY_ROOT_HCLASS_INDEX)                             \
     V(JSTaggedValue, Uint8ArrayRootHclass, UINT8_ARRAY_ROOT_HCLASS_INDEX)                           \
     V(JSTaggedValue, Uint8ClampedArrayRootHclass, UINT8_CLAMPED_ARRAY_ROOT_HCLASS_INDEX)            \
@@ -229,7 +233,6 @@
     V(JSTaggedValue, CjsRequireFunction, CJS_REQUIRE_FUNCTION_INDEX)                                \
     V(JSTaggedValue, GlobalPatch, GLOBAL_PATCH)                                                     \
     V(JSTaggedValue, ExportOfScript, DEFAULT_EXPORT_OF_SCRIPT)                                      \
-    V(JSTaggedValue, JsonObjectHclassCache, JSON_OBJECT_HCLASS_CACHE)                               \
     V(JSTaggedValue, NativeModuleFailureInfoClass, NATIVE_MODULE_FAILURE_INFO_CLASS)
 
 #define GLOBAL_ENV_SHARED_FIELDS(V)                                                                              \

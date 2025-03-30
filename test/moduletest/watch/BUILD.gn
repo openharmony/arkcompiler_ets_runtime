@@ -13,7 +13,7 @@
 
 import("//arkcompiler/ets_runtime/test/test_helper.gni")
 
-host_moduletest_action("watch") {
+host_moduletest_assert_action("watch") {
   entry_point = "--entry-point=_GLOBAL::#*#func_main_watch"
   deps = []
 }

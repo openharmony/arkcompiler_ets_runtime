@@ -483,3 +483,366 @@ print(sortNumber7[0]);
 print(sortNumber7[2]);
 print(sortNumber7[4]);
 print(sortNumber7[6]);
+// double sort
+{
+    let array1 = new Array();
+    array1[0] = NaN;
+    array1[1] = 0.0;
+    array1[2] = 1;
+    array1[3] = -0.1;
+    array1[4] = Infinity;
+    array1[5] = -Infinity;
+    array1[10] = NaN;
+    array1[11] = 0.0;
+    array1[12] = 1;
+    array1[13] = -0.1;
+    array1[14] = Infinity;
+    array1[15] = -Infinity;
+    print(array1.toSorted());
+
+    array1 = [5562684646268003, 0.005431, 0.00000019045, -79.39773355813419,
+        1e21, 340000000000000000, 12.01234567890123456789, 0.000001234567890123456789, Infinity,
+        -Infinity, 1.7976931348623157e+308, -1.7976931348623157e+308, 2.22507e-308,
+        0.0000001234567890123456789, 3.4e21, 1.2e20, 1.2e0, 1.2e-6, 1.2e-7, NaN, -12.01234567890123456789,
+        -0.000001234567890123456789, -0.0000001234567890123456789, -3.4e21, -1.2e20, -1.2e0, -1.2e-6, -1.2e-7,
+        0.0, 0
+    ];
+    print(array1.toSorted());
+}
+
+{
+    // double sort need barrier
+    let arrayInt = new Array(3,2,1,0);
+    print(arrayInt.sort());
+    let arrayHoleInt = new Array(4);
+    arrayHoleInt[1] = 4;
+    arrayHoleInt[3] = 2;
+    arrayHoleInt[4] = 1;
+    print(arrayHoleInt.sort());
+
+    let arrayNumber = new Array(3.1, 2.1, 1.1, 0);
+    print(arrayNumber.sort());
+    let arrayHoleNumber = new Array(4);
+    arrayHoleNumber[1] = 4.1;
+    arrayHoleNumber[3] = 2.1;
+    arrayHoleNumber[4] = 1.1;
+    print(arrayHoleNumber.sort());
+}
+
+{
+    let array1;
+    function arrayToString(arr) {
+        return arr.map(e => {
+            if (e === undefined) {
+                return 'undefined'; 
+            }
+            return e == null ? "null" : e.toString();
+        });
+    }
+    // object toString
+    function objectToSorted(){
+        let array1 = new Array();
+        array1 = new Array();
+        for (let i = 0; i < 5; i++) array1[i] = { ["obj" + i]: i };
+        return array1.toSorted();
+    }
+    // has hole,undefined,false,true,null
+    function specialValueToSorted() {
+        array1 = new Array();
+        array1[1] = undefined;
+        array1[2] = false;
+        array1[3] = true;
+        array1[4] = null;
+        return array1.toSorted();
+    
+    }
+    // Symbol element toSorted
+    function symbolToSorted() {
+        array1 = new Array();
+        for (let i = 0; i < 5; i++){
+            array1[i] = {
+                [Symbol.toPrimitive](hint) {
+                    return 5 - i;
+                },
+            };
+        }
+        return array1.toSorted();
+    }
+    // number element toSorted
+    function numberToSorted() {
+       array1 = new Array();
+        for (let i = 0; i < 5; i++) {
+            array1[i] = 5-i;
+        }
+        return array1.toSorted(); 
+    }
+    // bigint element toSorted
+    function bigIntToSorted() {
+        array1 = new Array();
+        array1[0] = 5n;
+        array1[1] = 4n;
+        array1[2] = 3n;
+        array1[3] = 2n;
+        array1[4] = 1n;
+        return array1.toSorted(); 
+    }
+    // object rewrite toString element toSorted
+    function objectRewriteToSorted() {
+        class Cat{
+        }
+        Cat.prototype.toString = function () {
+            return -1;
+        }
+        array1 = new Array();
+        array1[0] = 5;
+        array1[1] = 4;
+        array1[2] = 3;
+        array1[3] = 2;
+        array1[4] = new Cat();
+        return array1.toSorted(); 
+    }
+    // symbol throw error element toSorted
+    function symbolThrowToSorted() {
+        array1 = new Array();
+        array1[0] = 5;
+        array1[1] = 4;
+        array1[2] = 3;
+        array1[3] = 2;
+        array1[4] = {
+                [Symbol.toPrimitive](hint) {
+                    throw new Error("Symbol.toPrimitive");
+                }
+            };
+        return array1.toSorted(); 
+    }
+
+    // symbol return object element toSorted
+    function symbolNotStringToSorted() {
+        array1 = new Array();
+        array1[0] = 5;
+        array1[1] = 4;
+        array1[2] = 3;
+        array1[3] = 2;
+        array1[4] = {
+                [Symbol.toPrimitive](hint) {
+                    return {};
+                }
+            };
+        return array1.toSorted(); 
+    }
+
+    // object toString throw error toSorted
+    function objectToStringThrowErrorToSorted() {
+        class Cat{
+        }
+        Cat.prototype.toString = function () {
+            throw new Error("toString");
+        }
+        array1 = new Array();
+        array1[0] = 5;
+        array1[1] = 4;
+        array1[2] = 3;
+        array1[3] = 2;
+        array1[4] = new Cat();
+        return array1.toSorted(); 
+    }
+
+    // object valueOf element toSorted
+    function objectValueOfToSorted() {
+        class Cat{
+        }
+        Cat.prototype.toString = function () {
+            return {};
+        }
+        Cat.prototype.valueOf = function () {
+            return -1;
+        }
+        array1 = new Array();
+        array1[0] = 5;
+        array1[1] = 4;
+        array1[2] = 3;
+        array1[3] = 2;
+        array1[4] = new Cat();
+        return array1.toSorted(); 
+    }
+
+    // object valueOf throw error toSorted
+    function objectValueOfThrowErrorToSorted() {
+        class Cat{
+        }
+        Cat.prototype.toString = function () {
+            return {};
+        }
+        Cat.prototype.valueOf = function () {
+            throw new Error("valueOf");
+        }
+        array1 = new Array();
+        array1[0] = 5;
+        array1[1] = 4;
+        array1[2] = 3;
+        array1[3] = 2;
+        array1[4] = new Cat();
+        return array1.toSorted(); 
+    }
+
+    // object valueOf toString return {} toSorted
+    function objectNoStringToSorted() {
+        class Cat{
+        }
+        Cat.prototype.toString = function () {
+            return {};
+        }
+        Cat.prototype.valueOf = function () {
+            return {};
+        }
+        array1 = new Array();
+        array1[0] = 5;
+        array1[1] = 4;
+        array1[2] = 3;
+        array1[3] = 2;
+        array1[4] = new Cat();
+        return array1.toSorted(); 
+    }
+    // Cannot convert a illegal value to a String; toSorted
+    function CannotConvertIllegalValueToStringToSorted() {
+        array1 = new Array();
+        array1[0] = Symbol("1");
+        array1[1] = Symbol("1");
+        array1[2] = Symbol("1");
+        array1[3] = Symbol("1");
+        array1[4] = Symbol("1");
+        return array1.toSorted(); 
+    }
+
+    // date hint sort
+    function dateHintSort()
+    {
+        // default datehint string sort;
+        let a = new Date('10 December 2019 14:48');
+        let a1 = new Date('10 December 2019 14:48');
+        let b = new Date('11 December 2019 14:48');
+        let b1 = new Date('11 December 2019 14:48');
+        let c = new Date('12 December 2019 14:48');
+        let c1 = new Date('12 December 2019 14:48');
+        let d = new Date('13 December 2019 14:48');
+        let d1 = new Date('13 December 2019 14:48');
+        let e = new Date('14 December 2019 14:48');
+        let e1 = new Date('14 December 2019 14:48');
+        let dateHint = [a, b, c, d, e];
+        // Fri Dec 13 2019 14:48:00 GMT+0800,Sat Dec 14 2019 14:48:00 GMT+0800,Thu Dec 12 2019 14:48:00 GMT+0800,Tue Dec 10 2019 14:48:00 GMT+0800,Wed Dec 11 2019 14:48:00 GMT+0800
+        print(dateHint.sort());
+        a[Symbol.toPrimitive] = (hint)=>{
+            return a1[Symbol.toPrimitive]('number');
+        };
+        b[Symbol.toPrimitive] = (hint)=>{
+            return b1[Symbol.toPrimitive]('number');
+        };
+        c[Symbol.toPrimitive] = (hint)=>{
+            return c1[Symbol.toPrimitive]('number');
+        };
+        d[Symbol.toPrimitive] = (hint)=>{
+            return d1[Symbol.toPrimitive]('number');
+        };
+        e[Symbol.toPrimitive] = (hint)=>{
+            return e1[Symbol.toPrimitive]('number');
+        };
+        print(dateHint.sort());
+    }
+    // [object Object],[object Object],[object Object],[object Object],[object Object]
+    print(objectToSorted());
+    // false,null,true,undefined,undefined
+    print(arrayToString(specialValueToSorted()));
+    // 1,2,3,4,5
+    print(symbolToSorted());
+    // 1,2,3,4,5
+    print(numberToSorted());
+    // 1,2,3,4,5
+    print(bigIntToSorted());
+    // -1,2,3,4,5
+    print(objectRewriteToSorted());
+    // Symbol.toPrimitive
+    try {
+        symbolThrowToSorted()
+    } catch (e) {
+        print(e.message);
+    }
+    // Cannot convert object to primitive value
+    try {
+        symbolNotStringToSorted();
+    } catch (e) {
+        print(e.message);
+    }
+    // toString
+    try {
+        objectToStringThrowErrorToSorted()
+    } catch (e) {
+        print(e.message);
+    }
+    // -1,2,3,4,5
+    print(objectValueOfToSorted());
+    // valueOf
+    try {
+        objectValueOfThrowErrorToSorted()
+    } catch (e) {
+        print(e.message);
+    }
+    // Cannot convert object to primitive value
+    try {
+        objectNoStringToSorted();
+    } catch (e) {
+        print(e.message);
+    }
+    // Cannot convert a illegal value to a String
+    try {
+        CannotConvertIllegalValueToStringToSorted();
+    } catch (e) {
+        print(e.message);
+    }
+    dateHintSort();
+}
+
+
+{
+    print("---------------test for stable array sort where arr changeto dictionary array during sorting-----------")
+    let arr = new Array(20);
+    let haschang = false;
+    for (let i = 0; i < arr.length; i++) {
+        arr[i] = i;
+    }
+    arr[1] = {
+        toString() {
+            if (!haschang) {
+                arr.length = 102400;
+            }
+            return -999;
+        }
+    }
+    arr.sort();
+    arr.splice(-1, 1);
+    print("---------------test for stable array sort where arr changeto dictionary array during sorting end-------")
+}
+{
+    print("---------------test for stable array sort where elements length change---------------------------------")
+    let arr = new Array(20);
+    let haschang = false;
+    for (let i = 0; i < arr.length; i++) {
+        arr[i] = i;
+    }
+    arr[1] = {
+        toString() {
+            if (!haschang) {
+                arr.splice(-1, 1);
+            }
+            return -999;
+        }
+    }
+    arr.sort();
+    arr.splice(-1, 1)
+    print("---------------test for stable array sort where elements length change end-----------------------------")
+}
+{
+    print("---------------test for string array sort---------------------------------")
+    let arr = new Array("aa","ab","ac","abc","abb","aba","a","b","c",);
+    print(arr.toSorted());
+    print("---------------test for string array sort end-----------------------------")
+}

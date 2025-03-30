@@ -12,39 +12,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <atomic>
-#include <chrono>
-#include <fcntl.h>
 #include <sys/wait.h>
 #include <sys/prctl.h>
-#include <sys/stat.h>
-#include <sys/syscall.h>
-#include <thread>
-#include <unistd.h>
 #include "ecmascript/dfx/hprof/heap_profiler.h"
 
 #include "ecmascript/checkpoint/thread_state_transition.h"
 #include "ecmascript/dfx/hprof/heap_snapshot.h"
-#include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/mem/heap-inl.h"
 #include "ecmascript/mem/shared_heap/shared_concurrent_sweeper.h"
 #include "ecmascript/base/block_hook_scope.h"
 #include "ecmascript/dfx/hprof/heap_root_visitor.h"
 #include "ecmascript/mem/object_xray.h"
+#include "ecmascript/platform/backtrace.h"
 
 #if defined(ENABLE_DUMP_IN_FAULTLOG)
 #include "faultloggerd_client.h"
+#include "heap_profiler.h"
 #endif
 
 namespace panda::ecmascript {
-static pid_t ForkBySyscall(void)
-{
-#ifdef SYS_fork
-    return syscall(SYS_fork);
-#else
-    return syscall(SYS_clone, SIGCHLD, 0);
-#endif
-}
 
 std::pair<bool, NodeId> EntryIdMap::FindId(JSTaggedType addr)
 {
@@ -54,6 +40,17 @@ std::pair<bool, NodeId> EntryIdMap::FindId(JSTaggedType addr)
     } else {
         return std::make_pair(true, it->second);
     }
+}
+
+NodeId EntryIdMap::FindOrInsertNodeId(JSTaggedType addr)
+{
+    auto it = idMap_.find(addr);
+    if (it != idMap_.end()) {
+        return it->second;
+    }
+    NodeId id = GetNextId();
+    idMap_.emplace(addr, id);
+    return id;
 }
 
 bool EntryIdMap::InsertId(JSTaggedType addr, NodeId id)
@@ -159,6 +156,20 @@ void HeapProfiler::DumpHeapSnapshotForOOM([[maybe_unused]] const DumpSnapShotOpt
 #if defined(ENABLE_DUMP_IN_FAULTLOG)
     // Write in faultlog for heap leak.
     int32_t fd;
+#if defined(PANDA_TARGET_ARM32)
+    DumpSnapShotOption doDumpOption;
+    doDumpOption.dumpFormat = DumpFormat::JSON;
+    doDumpOption.isFullGC = dumpOption.isFullGC;
+    doDumpOption.isSimplify = true;
+    doDumpOption.isBeforeFill = false;
+    fd = RequestFileDescriptor(static_cast<int32_t>(FaultLoggerType::JS_HEAP_SNAPSHOT));
+    if (fd < 0) {
+        LOG_ECMA(ERROR) << "OOM Dump Write FD failed, fd" << fd;
+        return;
+    }
+    FileDescriptorStream stream(fd);
+    DumpHeapSnapshot(&stream, doDumpOption);
+#else
     if (dumpOption.isDumpOOM && dumpOption.dumpFormat == DumpFormat::BINARY) {
         fd = RequestFileDescriptor(static_cast<int32_t>(FaultLoggerType::JS_RAW_SNAPSHOT));
     } else {
@@ -174,6 +185,7 @@ void HeapProfiler::DumpHeapSnapshotForOOM([[maybe_unused]] const DumpSnapShotOpt
     } else {
         DumpHeapSnapshotFromSharedGC(&stream, dumpOption);
     }
+#endif
 #endif
 }
 
@@ -267,28 +279,42 @@ static uint64_t VisitMember(ObjectSlot &slot, uint64_t objAddr, CUnorderedSet<ui
     return newAddr;
 }
 
-CUnorderedMap<uint64_t, CUnorderedSet<uint64_t>> VisitObj(CUnorderedMap<uint64_t, NewAddr *> &objMap)
-{
-    CUnorderedSet<uint64_t> notFoundObj;
-    CUnorderedMap<uint64_t, CUnorderedSet<uint64_t>> refSetMap; // old addr map to ref set
-    auto visitor = [&notFoundObj, &objMap, &refSetMap] (TaggedObject *root, ObjectSlot start,
-                                                        ObjectSlot end, VisitObjectArea area) {
+class VisitObjVisitor final : public EcmaObjectRangeVisitor<VisitObjVisitor> {
+public:
+    explicit VisitObjVisitor(CUnorderedSet<uint64_t> &notFoundObj, CUnorderedMap<uint64_t, NewAddr *> &objMap,
+                             CUnorderedMap<uint64_t, CUnorderedSet<uint64_t>> &refSetMap)
+        : notFoundObj_(notFoundObj), objMap_(objMap), refSetMap_(refSetMap) {}
+    ~VisitObjVisitor() = default;
+
+    void VisitObjectRangeImpl(TaggedObject *root, ObjectSlot start, ObjectSlot end, VisitObjectArea area)
+    {
         if (area == VisitObjectArea::RAW_DATA || area == VisitObjectArea::NATIVE_POINTER) {
             return;
         }
         auto jsHclass = root->GetClass();
         auto objAddr = reinterpret_cast<uint64_t>(root);
         CUnorderedSet<uint64_t> *refSet = nullptr;
-        if (refSetMap.find(objAddr) != refSetMap.end()) {
-            refSet = &refSetMap[objAddr];
+        if (refSetMap_.find(objAddr) != refSetMap_.end()) {
+            refSet = &refSetMap_[objAddr];
         }
         for (ObjectSlot slot = start; slot < end; slot++) {
-            auto newAddr = VisitMember(slot, objAddr, notFoundObj, jsHclass, objMap);
+            auto newAddr = VisitMember(slot, objAddr, notFoundObj_, jsHclass, objMap_);
             if (jsHclass->IsJsGlobalEnv() && refSet != nullptr && newAddr != 0LL) {
                 refSet->insert(newAddr);
             }
         }
-    };
+    }
+private:
+    CUnorderedSet<uint64_t> &notFoundObj_;
+    CUnorderedMap<uint64_t, NewAddr *> &objMap_;
+    CUnorderedMap<uint64_t, CUnorderedSet<uint64_t>> &refSetMap_;
+};
+
+CUnorderedMap<uint64_t, CUnorderedSet<uint64_t>> VisitObj(CUnorderedMap<uint64_t, NewAddr *> &objMap)
+{
+    CUnorderedSet<uint64_t> notFoundObj;
+    CUnorderedMap<uint64_t, CUnorderedSet<uint64_t>> refSetMap; // old addr map to ref set
+    VisitObjVisitor visitor(notFoundObj, objMap, refSetMap);
     for (auto objInfo : objMap) {
         auto newAddr = objInfo.second->Data();
         auto jsHclassAddr = *reinterpret_cast<uint64_t *>(newAddr);
@@ -526,7 +552,7 @@ bool HeapProfiler::GenerateHeapSnapshot(std::string &inputFilePath, std::string 
     auto strTabMap = DecodeStrTable(GetEcmaStringTable(), file, sections[2], sections[3]);
     file.close();
     DumpSnapShotOption dp;
-    auto *snapshot = new HeapSnapshot(vm_, GetEcmaStringTable(), dp, false, entryIdMap_, GetChunk());
+    auto *snapshot = new HeapSnapshot(vm_, GetEcmaStringTable(), dp, false, entryIdMap_);
     LOG_ECMA(INFO) << "ark raw heap decode generate nodes=" << objMap.size();
     snapshot->GenerateNodeForBinMod(objMap, rootSet, strTabMap);
     rootSet.clear();
@@ -548,7 +574,7 @@ bool HeapProfiler::GenerateHeapSnapshot(std::string &inputFilePath, std::string 
     return serializerResult;
 }
 
-[[maybe_unused]]static void WaitProcess(pid_t pid)
+[[maybe_unused]]static void WaitProcess(pid_t pid, const std::function<void(uint8_t)> &callback)
 {
     time_t startTime = time(nullptr);
     constexpr int DUMP_TIME_OUT = 300;
@@ -556,13 +582,26 @@ bool HeapProfiler::GenerateHeapSnapshot(std::string &inputFilePath, std::string 
     while (true) {
         int status = 0;
         pid_t p = waitpid(pid, &status, WNOHANG);
-        if (p < 0 || p == pid) {
-            break;
+        if (p < 0) {
+            LOG_GC(ERROR) << "DumpHeapSnapshot wait failed ";
+            if (callback) {
+                callback(static_cast<uint8_t>(DumpHeapSnapshotStatus::FAILED_TO_WAIT));
+            }
+            return;
+        }
+        if (p == pid) {
+            if (callback) {
+                callback(static_cast<uint8_t>(DumpHeapSnapshotStatus::SUCCESS));
+            }
+            return;
         }
         if (time(nullptr) > startTime + DUMP_TIME_OUT) {
             LOG_GC(ERROR) << "DumpHeapSnapshot kill thread, wait " << DUMP_TIME_OUT << " s";
             kill(pid, SIGTERM);
-            break;
+            if (callback) {
+                callback(static_cast<uint8_t>(DumpHeapSnapshotStatus::WAIT_FORK_PROCESS_TIMEOUT));
+            }
+            return;
         }
         usleep(DEFAULT_SLEEP_TIME);
     }
@@ -608,39 +647,84 @@ static CUnorderedSet<TaggedObject*> GetRootObjects(const EcmaVM *vm)
 {
     CUnorderedSet<TaggedObject*> result {};
     HeapRootVisitor visitor;
-    uint32_t rootCnt1 = 0;
-    RootVisitor rootEdgeBuilder = [&result, &rootCnt1](
-        [[maybe_unused]] Root type, ObjectSlot slot) {
-        JSTaggedValue value((slot).GetTaggedType());
-        if (!value.IsHeapObject()) {
-            return;
-        }
-        ++rootCnt1;
-        TaggedObject *root = value.GetTaggedObject();
-        result.insert(root);
-    };
-    RootBaseAndDerivedVisitor rootBaseEdgeBuilder = []
-        ([[maybe_unused]] Root type, [[maybe_unused]] ObjectSlot base, [[maybe_unused]] ObjectSlot derived,
-         [[maybe_unused]] uintptr_t baseOldObject) {
-    };
-    uint32_t rootCnt2 = 0;
-    RootRangeVisitor rootRangeEdgeBuilder = [&result, &rootCnt2]([[maybe_unused]] Root type,
-        ObjectSlot start, ObjectSlot end) {
-        for (ObjectSlot slot = start; slot < end; slot++) {
+
+    class EdgeBuilderRootVisitor final : public RootVisitor {
+    public:
+        explicit EdgeBuilderRootVisitor(CUnorderedSet<TaggedObject*> &result) : result_(result) {}
+        ~EdgeBuilderRootVisitor() = default;
+
+        void VisitRoot([[maybe_unused]] Root type, ObjectSlot slot) override
+        {
             JSTaggedValue value((slot).GetTaggedType());
             if (!value.IsHeapObject()) {
-                continue;
+                return;
             }
-            ++rootCnt2;
             TaggedObject *root = value.GetTaggedObject();
-            result.insert(root);
+            result_.insert(root);
         }
+
+        void VisitRangeRoot([[maybe_unused]] Root type, ObjectSlot start, ObjectSlot end) override
+        {
+            for (ObjectSlot slot = start; slot < end; slot++) {
+                JSTaggedValue value((slot).GetTaggedType());
+                if (!value.IsHeapObject()) {
+                    continue;
+                }
+                TaggedObject *root = value.GetTaggedObject();
+                result_.insert(root);
+            }
+        }
+
+        void VisitBaseAndDerivedRoot([[maybe_unused]] Root type, [[maybe_unused]] ObjectSlot base,
+            [[maybe_unused]] ObjectSlot derived, [[maybe_unused]] uintptr_t baseOldObject) override {}
+    private:
+        CUnorderedSet<TaggedObject*> &result_;
     };
-    visitor.VisitHeapRoots(vm->GetJSThread(), rootEdgeBuilder, rootRangeEdgeBuilder, rootBaseEdgeBuilder);
-    SharedModuleManager::GetInstance()->Iterate(rootEdgeBuilder);
-    Runtime::GetInstance()->IterateCachedStringRoot(rootRangeEdgeBuilder);
+    EdgeBuilderRootVisitor edgeBuilderRootVisitor(result);
+
+    visitor.VisitHeapRoots(vm->GetJSThread(), edgeBuilderRootVisitor);
+    SharedModuleManager::GetInstance()->Iterate(edgeBuilderRootVisitor);
+    Runtime::GetInstance()->IterateCachedStringRoot(edgeBuilderRootVisitor);
     return result;
 }
+
+class GetNotFoundObjVisitor final : public EcmaObjectRangeVisitor<GetNotFoundObjVisitor> {
+public:
+    explicit GetNotFoundObjVisitor(CUnorderedSet<TaggedObject *> &notFoundObjSet,
+                                   CUnorderedSet<TaggedObject*> &allHeapObjSet)
+        : notFoundObjSet_(notFoundObjSet), allHeapObjSet_(allHeapObjSet) {}
+    ~GetNotFoundObjVisitor() = default;
+
+    void VisitObjectRangeImpl([[maybe_unused]] TaggedObject *root, ObjectSlot start, ObjectSlot end,
+                              VisitObjectArea area)
+    {
+        if (area == VisitObjectArea::RAW_DATA || area == VisitObjectArea::NATIVE_POINTER) {
+            return;
+        }
+        for (ObjectSlot slot = start; slot < end; slot++) {
+            auto taggedPointerAddr = reinterpret_cast<uint64_t **>(slot.SlotAddress());
+            JSTaggedValue value(reinterpret_cast<TaggedObject *>(*taggedPointerAddr));
+            auto originalAddr = reinterpret_cast<uint64_t>(*taggedPointerAddr);
+            if (!value.IsHeapObject() || originalAddr == 0) {
+                continue;
+            }
+            if (value.IsWeakForHeapObject()) {
+                originalAddr -= 1;
+            }
+            if (allHeapObjSet_.find(reinterpret_cast<TaggedObject *>(originalAddr)) != allHeapObjSet_.end()) {
+                continue;
+            }
+            auto obj = reinterpret_cast<TaggedObject *>(*taggedPointerAddr);
+            if (notFoundObjSet_.find(obj) != notFoundObjSet_.end()) {
+                continue;
+            }
+            notFoundObjSet_.insert(obj);
+        }
+    }
+private:
+    CUnorderedSet<TaggedObject *> &notFoundObjSet_;
+    CUnorderedSet<TaggedObject*> &allHeapObjSet_;
+};
 
 size_t GetNotFoundObj(const EcmaVM *vm)
 {
@@ -657,31 +741,7 @@ size_t GetNotFoundObj(const EcmaVM *vm)
     LOG_ECMA(INFO) << "ark raw heap dump GetNotFound heap count:" << allHeapObjSet.size()
                    << ", heap size=" << heapTotalSize;
     CUnorderedSet<TaggedObject *> notFoundObjSet {};
-    auto visitor = [&notFoundObjSet, &allHeapObjSet] ([[maybe_unused]]TaggedObject *root, ObjectSlot start,
-                                                      ObjectSlot end, VisitObjectArea area) {
-        if (area == VisitObjectArea::RAW_DATA || area == VisitObjectArea::NATIVE_POINTER) {
-            return;
-        }
-        for (ObjectSlot slot = start; slot < end; slot++) {
-            auto taggedPointerAddr = reinterpret_cast<uint64_t **>(slot.SlotAddress());
-            JSTaggedValue value(reinterpret_cast<TaggedObject *>(*taggedPointerAddr));
-            auto originalAddr = reinterpret_cast<uint64_t>(*taggedPointerAddr);
-            if (!value.IsHeapObject() || originalAddr == 0) {
-                continue;
-            }
-            if (value.IsWeakForHeapObject()) {
-                originalAddr -= 1;
-            }
-            if (allHeapObjSet.find(reinterpret_cast<TaggedObject *>(originalAddr)) != allHeapObjSet.end()) {
-                continue;
-            }
-            auto obj = reinterpret_cast<TaggedObject *>(*taggedPointerAddr);
-            if (notFoundObjSet.find(obj) != notFoundObjSet.end()) {
-                continue;
-            }
-            notFoundObjSet.insert(obj);
-        }
-    };
+    GetNotFoundObjVisitor visitor(notFoundObjSet, allHeapObjSet);
     for (auto obj : allHeapObjSet) {
         ObjectXRay::VisitObjectBody<VisitType::OLD_GC_VISIT>(obj, obj->GetClass(), visitor);
     }
@@ -830,7 +890,7 @@ bool HeapProfiler::DumpRawHeap(Stream *stream, uint32_t &fileOffset, CVector<uin
     CUnorderedMap<char *, uint32_t> objTabMap; // buf map table num
     CUnorderedMap<uint64_t, CVector<uint64_t>> strIdMapObjVec; // string id map to objs vector
     DumpSnapShotOption op;
-    auto snapshot = GetChunk()->New<HeapSnapshot>(vm_, GetEcmaStringTable(), op, false, entryIdMap_, GetChunk());
+    auto snapshot = GetChunk()->New<HeapSnapshot>(vm_, GetEcmaStringTable(), op, false, entryIdMap_);
     uint32_t objTotalNum = GenObjTable(objTabMap, snapshot, strIdMapObjVec);
     LOG_ECMA(INFO) << "ark raw heap dump DumpRawHeap totalObjNumber=" << objTotalNum;
     CVector<CVector<std::pair<char *, uint32_t>>> allMemBuf(objTabMap.size(), CVector<std::pair<char *, uint32_t>>());
@@ -887,32 +947,16 @@ bool HeapProfiler::DumpRawHeap(Stream *stream, uint32_t &fileOffset, CVector<uin
 //  * } * thread_num
 //  * 4 byte: section_offset_num size, 4 byte here
 //  * 4 byte: section_num
-bool HeapProfiler::BinaryDump(Stream *stream, [[maybe_unused]] const DumpSnapShotOption &dumpOption)
+bool HeapProfiler::BinaryDump(Stream *stream, const DumpSnapShotOption &dumpOption)
 {
-    char versionID[VERSION_ID_SIZE] = { 0 };
-    LOG_ECMA(INFO) << "ark raw heap dump start, version is: " << versionID;
-    stream->WriteBinBlock(versionID, VERSION_ID_SIZE);
-    CQueue<CVector<TaggedObject *>> needStrObjQue;
-    // a vector to index all sections, [offset, section_size, offset, section_size, ...]
-    CVector<uint32_t> secIndexVec(2); // 2 : section head size
-    uint32_t fileOffset = VERSION_ID_SIZE;
-    secIndexVec[0] = fileOffset;
-    LOG_ECMA(INFO) << "ark raw heap dump GenRootTable";
-    auto rootSectionSize = GenRootTable(stream);
-    secIndexVec[1] = rootSectionSize; // root section offset
-    fileOffset += rootSectionSize; // root section size
-    DumpRawHeap(stream, fileOffset, secIndexVec);
-    secIndexVec.push_back(secIndexVec.size()); // 4 byte is section num
-    secIndexVec.push_back(sizeof(uint32_t)); // the penultimate is section index data bytes number
-    stream->WriteBinBlock(reinterpret_cast<char *>(secIndexVec.data()), secIndexVec.size() *sizeof(uint32_t));
-#ifdef OHOS_UNIT_TEST
-    LOG_ECMA(INFO) << "ark raw heap dump UT check obj self-contained";
-    size_t ret = GetNotFoundObj(vm_);
-    return ret == 0;
-#else
-    LOG_ECMA(INFO) << "ark raw heap dump finished num=" << secIndexVec.size();
+    DumpSnapShotOption option;
+    auto stringTable = chunk_.New<StringHashMap>(vm_);
+    auto snapshot = chunk_.New<HeapSnapshot>(vm_, stringTable, option, false, entryIdMap_);
+    RawHeapDump rawHeapDump(vm_, stream, snapshot, entryIdMap_);
+    rawHeapDump.BinaryDump(dumpOption);
+    chunk_.Delete<StringHashMap>(stringTable);
+    chunk_.Delete<HeapSnapshot>(snapshot);
     return true;
-#endif
 }
 
 void HeapProfiler::FillIdMap()
@@ -951,7 +995,8 @@ void HeapProfiler::FillIdMap()
     GetChunk()->Delete(newEntryIdMap);
 }
 
-bool HeapProfiler::DumpHeapSnapshot(Stream *stream, const DumpSnapShotOption &dumpOption, Progress *progress)
+bool HeapProfiler::DumpHeapSnapshot(Stream *stream, const DumpSnapShotOption &dumpOption, Progress *progress,
+                                    std::function<void(uint8_t)> callback)
 {
     bool res = false;
     base::BlockHookScope blockScope;
@@ -985,19 +1030,26 @@ bool HeapProfiler::DumpHeapSnapshot(Stream *stream, const DumpSnapShotOption &du
             FillIdMap();
         }
         // fork
-        if ((pid = ForkBySyscall()) < 0) {
+        if ((pid = fork()) < 0) {
             LOG_ECMA(ERROR) << "DumpHeapSnapshot fork failed!";
+            if (callback) {
+                callback(static_cast<uint8_t>(DumpHeapSnapshotStatus::FORK_FAILED));
+            }
             return false;
         }
         if (pid == 0) {
             vm_->GetAssociatedJSThread()->EnableCrossThreadExecution();
             prctl(PR_SET_NAME, reinterpret_cast<unsigned long>("dump_process"), 0, 0, 0);
-            res = DoDump(stream, progress, dumpOption);
+            if (dumpOption.dumpFormat == DumpFormat::BINARY) {
+                res = BinaryDump(stream, dumpOption);
+            } else {
+                res = DoDump(stream, progress, dumpOption);
+            }
             _exit(0);
         }
     }
     if (pid != 0) {
-        std::thread thread(&WaitProcess, pid);
+        std::thread thread(&WaitProcess, pid, callback);
         thread.detach();
         stream->EndOfStream();
     }
@@ -1044,8 +1096,8 @@ bool HeapProfiler::UpdateHeapTracking(Stream *stream)
         vm_->CollectGarbage(TriggerGCType::OLD_GC);
         ForceSharedGC();
         SuspendAllScope suspendScope(vm_->GetAssociatedJSThread());
-        snapshot->RecordSampleTime();
         UpdateHeapObjects(snapshot);
+        snapshot->RecordSampleTime();
     }
 
     if (stream != nullptr) {
@@ -1163,7 +1215,7 @@ HeapSnapshot *HeapProfiler::MakeHeapSnapshot(SampleType sampleType, const DumpSn
     switch (sampleType) {
         case SampleType::ONE_SHOT: {
             auto *snapshot = GetChunk()->New<HeapSnapshot>(vm_, GetEcmaStringTable(), dumpOption,
-                                                           traceAllocation, entryIdMap_, GetChunk());
+                                                           traceAllocation, entryIdMap_);
             if (snapshot == nullptr) {
                 LOG_FULL(FATAL) << "alloc snapshot failed";
                 UNREACHABLE();
@@ -1173,7 +1225,7 @@ HeapSnapshot *HeapProfiler::MakeHeapSnapshot(SampleType sampleType, const DumpSn
         }
         case SampleType::REAL_TIME: {
             auto *snapshot = GetChunk()->New<HeapSnapshot>(vm_, GetEcmaStringTable(), dumpOption,
-                                                           traceAllocation, entryIdMap_, GetChunk());
+                                                           traceAllocation, entryIdMap_);
             if (snapshot == nullptr) {
                 LOG_FULL(FATAL) << "alloc snapshot failed";
                 UNREACHABLE();
@@ -1227,5 +1279,384 @@ const struct SamplingInfo *HeapProfiler::GetAllocationProfile()
         return nullptr;
     }
     return heapSampling_->GetAllocationProfile();
+}
+
+#if defined(ENABLE_LOCAL_HANDLE_LEAK_DETECT)
+bool HeapProfiler::IsStartLocalHandleLeakDetect() const
+{
+    return startLocalHandleLeakDetect_;
+}
+
+void HeapProfiler::SwitchStartLocalHandleLeakDetect()
+{
+    startLocalHandleLeakDetect_ = !startLocalHandleLeakDetect_;
+}
+
+void HeapProfiler::IncreaseScopeCount()
+{
+    ++scopeCount_;
+}
+
+void HeapProfiler::DecreaseScopeCount()
+{
+    --scopeCount_;
+}
+
+uint32_t HeapProfiler::GetScopeCount() const
+{
+    return scopeCount_;
+}
+
+void HeapProfiler::PushToActiveScopeStack(LocalScope *localScope, EcmaHandleScope *ecmaHandleScope)
+{
+    activeScopeStack_.emplace(std::make_shared<ScopeWrapper>(localScope, ecmaHandleScope));
+}
+
+void HeapProfiler::PopFromActiveScopeStack()
+{
+    if (!activeScopeStack_.empty()) {
+        activeScopeStack_.pop();
+    }
+}
+
+std::shared_ptr<ScopeWrapper> HeapProfiler::GetLastActiveScope() const
+{
+    if (!activeScopeStack_.empty()) {
+        return activeScopeStack_.top();
+    }
+    return nullptr;
+}
+
+void HeapProfiler::ClearHandleBackTrace()
+{
+    handleBackTrace_.clear();
+}
+
+std::string_view HeapProfiler::GetBackTraceOfHandle(const uintptr_t handle) const
+{
+    const auto it = handleBackTrace_.find(handle);
+    if (it != handleBackTrace_.end()) {
+        return std::string_view(it->second);
+    }
+    return "";
+}
+
+bool HeapProfiler::InsertHandleBackTrace(uintptr_t handle, const std::string &backTrace)
+{
+    auto [iter, inserted] = handleBackTrace_.insert_or_assign(handle, backTrace);
+    return inserted;
+}
+
+void HeapProfiler::WriteToLeakStackTraceFd(std::ostringstream &buffer) const
+{
+    if (leakStackTraceFd_ < 0) {
+        return;
+    }
+    buffer << std::endl;
+    DPrintf(reinterpret_cast<fd_t>(leakStackTraceFd_), buffer.str());
+    buffer.str("");
+}
+
+void HeapProfiler::SetLeakStackTraceFd(const int32_t fd)
+{
+    leakStackTraceFd_ = fd;
+}
+
+int32_t HeapProfiler::GetLeakStackTraceFd() const
+{
+    return leakStackTraceFd_;
+}
+
+void HeapProfiler::CloseLeakStackTraceFd()
+{
+    if (leakStackTraceFd_ != -1) {
+        FSync(reinterpret_cast<fd_t>(leakStackTraceFd_));
+        Close(reinterpret_cast<fd_t>(leakStackTraceFd_));
+        leakStackTraceFd_ = -1;
+    }
+}
+
+void HeapProfiler::StorePotentiallyLeakHandles(const uintptr_t handle)
+{
+    bool isDetectedByScopeCount { GetScopeCount() <= 1 };
+    bool isDetectedByScopeTime { false };
+    if (auto lastScope = GetLastActiveScope()) {
+        auto timeSinceLastScopeCreate = lastScope->clockScope_.TotalSpentTime();
+        isDetectedByScopeTime = timeSinceLastScopeCreate >= LOCAL_HANDLE_LEAK_TIME_MS;
+    }
+    if (isDetectedByScopeCount || isDetectedByScopeTime) {
+        std::ostringstream stack;
+        Backtrace(stack, true);
+        InsertHandleBackTrace(handle, stack.str());
+    }
+}
+#endif  // ENABLE_LOCAL_HANDLE_LEAK_DETECT
+
+void RawHeapDump::BinaryDump(const DumpSnapShotOption &dumpOption)
+{
+    ClearVisitMark();
+    DumpVersion();
+    DumpRootTable();
+    DumpStringTable();
+    DumpObjectTable(dumpOption);
+    DumpObjectMemory();
+    DumpSectionIndex();
+    WriteBinBlock();
+    EndVisitMark();
+}
+
+void RawHeapDump::VisitObjectRangeImpl(TaggedObject *root, ObjectSlot start, ObjectSlot end, VisitObjectArea area)
+{
+    if (area == VisitObjectArea::RAW_DATA || area == VisitObjectArea::NATIVE_POINTER) {
+        return;
+    }
+    auto hclass = reinterpret_cast<TaggedObject *>(root->GetClass());
+    if (MarkObject(hclass)) {
+        bfsQueue_.emplace(hclass);
+    }
+    for (ObjectSlot slot = start; slot < end; slot++) {
+        auto value = slot.GetTaggedValue();
+        if (!value.IsHeapObject()) {
+            continue;
+        }
+        auto obj = value.GetWeakReferentUnChecked();
+        if (MarkObject(obj)) {
+            bfsQueue_.emplace(obj);
+        }
+    }
+}
+
+void RawHeapDump::DumpVersion()
+{
+    WriteChunk(const_cast<char *>(versionID), VERSION_ID_SIZE);
+    LOG_ECMA(INFO) << "rawheap dump, version " << std::string(versionID);
+}
+
+void RawHeapDump::DumpRootTable()
+{
+    HeapRootVisitor rootVisitor;
+    rootVisitor.VisitHeapRoots(vm_->GetJSThread(), *this);
+    SharedModuleManager::GetInstance()->Iterate(*this);
+    Runtime::GetInstance()->IterateCachedStringRoot(*this);
+
+    secIndexVec_.push_back(fileOffset_);
+    uint32_t rootObjCnt = roots_.size();
+    uint32_t rootTableHeader[2] = {rootObjCnt, sizeof(TaggedObject *)};
+    WriteChunk(reinterpret_cast<char *>(rootTableHeader), sizeof(rootTableHeader));
+    for (auto &root : roots_) {
+        uint64_t addr = reinterpret_cast<uint64_t>(root);
+        WriteU64(addr);
+    }
+    secIndexVec_.push_back(sizeof(TaggedObject *) * rootObjCnt + sizeof(rootTableHeader));
+    LOG_ECMA(INFO) << "rawheap dump, root count " << rootObjCnt;
+}
+
+void RawHeapDump::DumpObjectTable(const DumpSnapShotOption &dumpOption)
+{
+    secIndexVec_.push_back(fileOffset_);
+    objCnt_ += readOnlyObjects_.size();
+    uint32_t header[2] = {objCnt_, sizeof(AddrTableItem)};
+    WriteChunk(reinterpret_cast<char *>(header), sizeof(header));
+
+    uint32_t offset = header[0] * header[1];
+    auto objTableDump = [&offset, &dumpOption, this](void *addr) {
+        auto obj = reinterpret_cast<TaggedObject *>(addr);
+        AddrTableItem table;
+        table.addr = reinterpret_cast<uint64_t>(obj);
+        table.id = dumpOption.isDumpOOM ?
+            entryIdMap_->GetNextId() : entryIdMap_->FindOrInsertNodeId(reinterpret_cast<JSTaggedType>(addr));
+        table.objSize = obj->GetClass()->SizeFromJSHClass(obj);
+        table.offset = offset;
+        WriteChunk(reinterpret_cast<char *>(&table), sizeof(AddrTableItem));
+        if (obj->GetClass()->IsString()) {
+            offset += sizeof(JSHClass *);
+        } else {
+            offset += table.objSize;
+        }
+    };
+    IterateMarkedObjects(objTableDump);
+    LOG_ECMA(INFO) << "rawheap dump, object total count " << objCnt_;
+}
+
+void RawHeapDump::DumpObjectMemory()
+{
+    uint32_t startOffset = static_cast<uint32_t>(fileOffset_);
+    auto objMemDump = [this](void *addr) {
+        auto obj = reinterpret_cast<TaggedObject *>(addr);
+        size_t size = obj->GetClass()->SizeFromJSHClass(obj);
+        if (obj->GetClass()->IsString()) {
+            size = sizeof(JSHClass *);
+        }
+        WriteChunk(reinterpret_cast<char *>(obj), size);
+    };
+    IterateMarkedObjects(objMemDump);
+    // 2: means headers
+    secIndexVec_.push_back(fileOffset_ - startOffset + objCnt_ * sizeof(AddrTableItem) + sizeof(uint32_t) * 2);
+    LOG_ECMA(INFO) << "rawheap dump, object memory " << fileOffset_ - startOffset;
+}
+
+void RawHeapDump::DumpStringTable()
+{
+    for (auto obj : readOnlyObjects_) {
+        UpdateStringTable(obj);
+    }
+    WriteBinBlock();
+    secIndexVec_.push_back(fileOffset_);
+    auto size = HeapSnapshotJSONSerializer::DumpStringTable(snapshot_->GetEcmaStringTable(), stream_, strIdMapObjVec_);
+    fileOffset_ += size;
+    secIndexVec_.push_back(size);
+    auto capcity = snapshot_->GetEcmaStringTable()->GetCapcity();
+    LOG_ECMA(INFO) << "rawheap dump, string table capcity " << capcity << ", size " << size;
+}
+
+void RawHeapDump::DumpSectionIndex()
+{
+    secIndexVec_.push_back(secIndexVec_.size());
+    secIndexVec_.push_back(sizeof(uint32_t));
+    WriteChunk(reinterpret_cast<char *>(secIndexVec_.data()), secIndexVec_.size() * sizeof(uint32_t));
+    LOG_ECMA(INFO) << "rawheap dump, section count " << secIndexVec_.size();
+}
+
+void RawHeapDump::WriteU64(uint64_t number)
+{
+    if (PER_GROUP_MEM_SIZE - bufIndex_ < sizeof(uint64_t)) {
+        stream_->WriteBinBlock(buffer_, bufIndex_);
+        bufIndex_ = 0;
+    }
+    *reinterpret_cast<uint64_t *>(buffer_ + bufIndex_) = number;
+    bufIndex_ += sizeof(uint64_t);
+    fileOffset_ += sizeof(uint64_t);
+}
+
+void RawHeapDump::WriteChunk(char *data, size_t size)
+{
+    while (size > 0) {
+        MaybeWriteBuffer();
+        size_t remainderSize = PER_GROUP_MEM_SIZE - bufIndex_;
+        size_t writeSize = size < remainderSize ? size : remainderSize;
+        if (writeSize <= 0) {
+            break;
+        }
+        if (memcpy_s(buffer_ + bufIndex_, remainderSize, data, writeSize) != 0) {
+            LOG_ECMA(ERROR) << "rawheap dump, WriteChunk failed, write size " <<
+                               writeSize << ", remainder size " << remainderSize;
+            break;
+        }
+        data += writeSize;
+        size -= writeSize;
+        bufIndex_ += writeSize;
+        fileOffset_ += writeSize;
+    }
+}
+
+void RawHeapDump::MaybeWriteBuffer()
+{
+    if (UNLIKELY(bufIndex_ == PER_GROUP_MEM_SIZE)) {
+        WriteBinBlock();
+    }
+}
+
+void RawHeapDump::WriteBinBlock()
+{
+    if (bufIndex_ <= 0) {
+        return;
+    }
+    if (!stream_->WriteBinBlock(buffer_, bufIndex_)) {
+        LOG_ECMA(ERROR) << "rawheap dump, WriteBinBlock failed, write size " << bufIndex_;
+    }
+    bufIndex_ = 0;
+}
+
+
+void RawHeapDump::UpdateStringTable(TaggedObject *object)
+{
+    StringId strId = snapshot_->GenerateStringId(object);
+    if (strId == 1) {  // 1 : invalid str id
+        return;
+    }
+    auto vec = strIdMapObjVec_.find(strId);
+    if (vec != strIdMapObjVec_.end()) {
+        vec->second.push_back(reinterpret_cast<uint64_t>(object));
+    } else {
+        CVector<uint64_t> objVec;
+        objVec.push_back(reinterpret_cast<uint64_t>(object));
+        strIdMapObjVec_.emplace(strId, objVec);
+    }
+}
+
+void RawHeapDump::HandleRootValue(JSTaggedValue value)
+{
+    if (!value.IsHeapObject()) {
+        return;
+    }
+    TaggedObject *root = value.GetWeakReferentUnChecked();
+    ProcessMarkObjectsFromRoot(root);
+    roots_.insert(root);
+}
+
+void RawHeapDump::IterateMarkedObjects(const std::function<void(void *)> &visitor)
+{
+    auto cb = [&visitor](Region *region) {
+        region->IterateAllMarkedBits(visitor);
+    };
+    vm_->GetHeap()->EnumerateRegions(cb);
+    SharedHeap::GetInstance()->EnumerateOldSpaceRegions(cb);
+
+    for (auto obj : readOnlyObjects_) {
+        visitor(obj);
+    }
+}
+
+void RawHeapDump::ProcessMarkObjectsFromRoot(TaggedObject *root)
+{
+    if (!MarkObject(root)) {
+        return;
+    }
+    bfsQueue_.emplace(root);
+    while (!bfsQueue_.empty()) {
+        auto object = bfsQueue_.front();
+        bfsQueue_.pop();
+        if (object->GetClass()->IsString()) {
+            MarkObject(reinterpret_cast<TaggedObject*>(object->GetClass()));
+            continue;
+        }
+        ObjectXRay::VisitObjectBody<VisitType::OLD_GC_VISIT>(object, object->GetClass(), *this);
+    }
+}
+
+bool RawHeapDump::MarkObject(TaggedObject *object)
+{
+    Region *region = Region::ObjectAddressToRange(object);
+    if (region->InReadOnlySpace() || region->InSharedReadOnlySpace()) {
+        readOnlyObjects_.insert(object);
+        return false;
+    }
+    if (!region->NonAtomicMark(object)) {
+        return false;
+    }
+    UpdateStringTable(object);
+    ++objCnt_;
+    return true;
+}
+
+void RawHeapDump::ClearVisitMark()
+{
+    auto cb = [](Region *region) {
+        region->ClearMarkGCBitset();
+    };
+    vm_->GetHeap()->EnumerateRegions(cb);
+    SharedHeap::GetInstance()->EnumerateOldSpaceRegions(cb);
+}
+
+void RawHeapDump::EndVisitMark()
+{
+    auto cb = [](Region *region) {
+        if (region->InAppSpawnSpace() || region->InSharedAppSpawnSpace()) {
+            return;
+        }
+        region->ClearMarkGCBitset();
+    };
+    vm_->GetHeap()->EnumerateRegions(cb);
+    SharedHeap::GetInstance()->EnumerateOldSpaceRegions(cb);
 }
 }  // namespace panda::ecmascript

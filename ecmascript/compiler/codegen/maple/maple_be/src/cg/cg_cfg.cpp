@@ -17,14 +17,10 @@
 #if TARGAARCH64
 #include "aarch64_insn.h"
 #endif
-#include "cg_option.h"
-#include "mpl_logging.h"
 #if TARGX86_64
 #include "x64_cgfunc.h"
 #include "cg.h"
 #endif
-#include "triple.h"
-#include <cstdlib>
 
 namespace maplebe {
 void CGCFG::BuildCFG()

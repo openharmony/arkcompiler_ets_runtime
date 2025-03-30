@@ -26,11 +26,13 @@
 #define BUILTIN_ARK_TOOLS_FUNCTIONS_COMMON(V)                                             \
     V("compareHClass",                  CompareHClass,                  2, INVALID)       \
     V("dumpHClass",                     DumpHClass,                     1, INVALID)       \
+    V("getInlinedPropertiesCount",      GetInlinedPropertiesCount,      1, INVALID)       \
     V("excutePendingJob",               ExcutePendingJob,               0, INVALID)       \
     V("forceFullGC",                    ForceFullGC,                    0, INVALID)       \
     V("getHClass",                      GetHClass,                      1, INVALID)       \
     V("getLexicalEnv",                  GetLexicalEnv,                  1, INVALID)       \
     V("isSlicedString",                 IsSlicedString,                 1, INVALID)       \
+    V("isTreeString",                   IsTreeString,                   1, INVALID)       \
     V("hiddenStackSourceFile",          HiddenStackSourceFile,          0, INVALID)       \
     V("hintGC",                         HintGC,                         0, INVALID)       \
     V("isNotHoleProperty",              IsNotHoleProperty,              2, INVALID)       \
@@ -44,6 +46,8 @@
     V("print",                          ObjectDump,                     0, INVALID)       \
     V("removeAOTFlag",                  RemoveAOTFlag,                  1, INVALID)       \
     V("timeInUs",                       TimeInUs,                       0, INVALID)       \
+    V("getAPIVersion",                  GetAPIVersion,                  0, INVALID)       \
+    V("setAPIVersion",                  SetAPIVersion,                  1, INVALID)       \
     V("getElementsKind",                GetElementsKind,                1, INVALID)       \
     V("isAOTCompiled",                  IsAOTCompiled,                  1, INVALID)       \
     V("isSameProfileTypeInfo",          IsSameProfileTypeInfo,          2, INVALID)       \
@@ -57,7 +61,9 @@
     V("hashCode",                       HashCode,                       1, ArkToolsHashCode)    \
     V("startRuntimeStat",               StartRuntimeStat,               0, INVALID)       \
     V("stopRuntimeStat",                StopRuntimeStat,                0, INVALID)       \
-    V("iterateFrame",                   IterateFrame,                   0, INVALID)
+    V("printMegaICStat",                PrintMegaICStat,                0, INVALID)       \
+    V("iterateFrame",                   IterateFrame,                   0, INVALID)       \
+    V("triggerSharedGC",                TriggerSharedGC,                0, INVALID)
 
 // List of mock ArkTools extension builtins
 #define BUILTIN_ARK_TOOLS_FUNCTIONS_REGRESS(V)                                                                \
@@ -132,11 +138,14 @@
     V("isBeingInterpreted",                        IsBeingInterpreted,                        0, INVALID)     \
     V("clearFunctionFeedback",                     ClearFunctionFeedback,                     1, INVALID)     \
     V("inYoungSpace",                              InYoungSpace,                              1, INVALID)     \
-    V("inOldSpace",                                InOldSpace,                                1, INVALID)
+    V("inOldSpace",                                InOldSpace,                                1, INVALID)     \
+    V("createNapiObject",                          CreateNapiObject,                          0, INVALID)     \
+    V("hasConstructor",                            HasConstructor,                            1, INVALID)     \
 
 #define BUILTIN_ARK_TOOLS_FUNCTIONS_JITCOMPILE(V)                                                             \
     V("jitCompileSync",                            JitCompileSync,                            1, INVALID)     \
     V("jitCompileAsync",                           JitCompileAsync,                           1, INVALID)     \
+    V("isInFastJit",                               IsInFastJit,                               0, INVALID)     \
     V("waitJitCompileFinish",                      WaitJitCompileFinish,                      1, INVALID)     \
     V("waitAllJitCompileFinish",                   WaitAllJitCompileFinish,                   0, INVALID)
 
@@ -187,6 +196,8 @@ public:
 
     static JSTaggedValue DumpHClass(EcmaRuntimeCallInfo *info);
 
+    static JSTaggedValue GetInlinedPropertiesCount(EcmaRuntimeCallInfo *info);
+
     // return whether the hclass used for object is created by AOT
     static JSTaggedValue IsTSHClass(EcmaRuntimeCallInfo *info);
 
@@ -194,7 +205,11 @@ public:
 
     static JSTaggedValue IsSlicedString(EcmaRuntimeCallInfo *info);
 
+    static JSTaggedValue IsTreeString(EcmaRuntimeCallInfo *info);
+
     static JSTaggedValue IsStableJsArray(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue HasConstructor(EcmaRuntimeCallInfo *info);
 
     static JSTaggedValue IsNotHoleProperty(EcmaRuntimeCallInfo *info);
 
@@ -211,6 +226,8 @@ public:
     static JSTaggedValue CheckCircularImport(EcmaRuntimeCallInfo *info);
 
     static JSTaggedValue HashCode(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue PrintMegaICStat(EcmaRuntimeCallInfo *info);
 
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
     static JSTaggedValue StartCpuProfiler(EcmaRuntimeCallInfo *info);
@@ -241,6 +258,11 @@ public:
 
     // ArkTools.isOnHeap(object)
     static JSTaggedValue IsOnHeap(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue GetAPIVersion(EcmaRuntimeCallInfo *info);
+
+    // ArkTools.SetAPIVersion(number)
+    static JSTaggedValue SetAPIVersion(EcmaRuntimeCallInfo *info);
 
     // ArkTools.GetElementsKind(array)
     static JSTaggedValue GetElementsKind(EcmaRuntimeCallInfo *info);
@@ -401,6 +423,8 @@ public:
 
     static JSTaggedValue SetForceSlowPath(EcmaRuntimeCallInfo *info);
 
+    static JSTaggedValue CreateNapiObject(EcmaRuntimeCallInfo *info);
+
     static JSTaggedValue NotifyContextDisposed(EcmaRuntimeCallInfo *info);
 
     static JSTaggedValue OptimizeObjectForAddingMultipleProperties(EcmaRuntimeCallInfo *info);
@@ -411,6 +435,7 @@ public:
 
     static JSTaggedValue JitCompileSync(EcmaRuntimeCallInfo *info);
     static JSTaggedValue JitCompileAsync(EcmaRuntimeCallInfo *info);
+    static JSTaggedValue IsInFastJit(EcmaRuntimeCallInfo *info);
     static JSTaggedValue WaitJitCompileFinish(EcmaRuntimeCallInfo *info);
     static JSTaggedValue WaitAllJitCompileFinish(EcmaRuntimeCallInfo *info);
 
@@ -418,6 +443,7 @@ public:
     static JSTaggedValue StopRuntimeStat(EcmaRuntimeCallInfo *info);
     
     static JSTaggedValue IterateFrame(EcmaRuntimeCallInfo *info);
+    static JSTaggedValue TriggerSharedGC(EcmaRuntimeCallInfo *info);
 
     static JSTaggedValue InYoungSpace(EcmaRuntimeCallInfo *info);
     static JSTaggedValue InOldSpace(EcmaRuntimeCallInfo *info);

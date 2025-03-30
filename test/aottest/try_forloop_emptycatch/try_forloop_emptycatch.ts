@@ -45,3 +45,16 @@ function f4() {
   }
 }
 print(ArkTools.isAOTCompiled(f4));
+
+class C0 {}
+const v0 = new C0()
+const v1 = new Uint16Array(128)
+function f5() {
+    for (const v in v1) {
+        const v2 = new Uint16Array(128)
+        try { v0.p(128) } catch (e) {}
+        for (let i = v2; i; i--) {}
+    }
+}
+f5()
+print(ArkTools.isAOTCompiled(f5));

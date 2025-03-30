@@ -15,7 +15,6 @@
 #include "ecmascript/module/js_shared_module_manager.h"
 
 #include "ecmascript/jspandafile/js_pandafile_executor.h"
-#include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/module/module_manager_helper.h"
 #include "ecmascript/module/module_path_helper.h"
 #include "ecmascript/runtime_lock.h"
@@ -31,13 +30,40 @@ SharedModuleManager* SharedModuleManager::GetInstance()
     return instance;
 }
 
-void SharedModuleManager::Iterate(const RootVisitor &v)
+void SharedModuleManager::Iterate(RootVisitor &v)
 {
     for (auto &it : resolvedSharedModules_) {
         ObjectSlot slot(reinterpret_cast<uintptr_t>(&it.second));
-        v(Root::ROOT_VM, slot);
+        v.VisitRoot(Root::ROOT_VM, slot);
         ASSERT(slot.GetTaggedValue() == it.second);
     }
+}
+
+JSTaggedValue SharedModuleManager::GetSendableModuleValueInner(JSThread* thread, int32_t index, JSTaggedValue jsFunc)
+{
+    ModuleManager* moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+    JSTaggedValue currentModule = JSFunction::Cast(jsFunc.GetTaggedObject())->GetModule();
+    if (currentModule.IsUndefined()) { // LCOV_EXCL_BR_LINE
+        LOG_FULL(FATAL) << "GetSendableModuleValueInner currentModule is undefined";
+    }
+    if (!SourceTextModule::IsSendableFunctionModule(currentModule)) {
+        return SourceTextModule::Cast(currentModule)->GetModuleValue(thread, index, false);
+    }
+    CString referenceName = SourceTextModule::GetModuleName(currentModule);
+    if (moduleManager->IsModuleLoaded(referenceName)) {
+        JSHandle<SourceTextModule> currentModuleHdl = moduleManager->GetImportedModule(referenceName);
+        if (currentModuleHdl->GetStatus() > ModuleStatus::INSTANTIATED) {
+            return currentModuleHdl->GetModuleValue(thread, index, false);
+        }
+    }
+    JSHandle<SourceTextModule> currentModuleHdl(thread, currentModule);
+    auto isMergedAbc = !currentModuleHdl->GetEcmaModuleRecordNameString().empty();
+    CString fileName = currentModuleHdl->GetEcmaModuleFilenameString();
+    if (!JSPandaFileExecutor::LazyExecuteModule(thread, referenceName, fileName, isMergedAbc)) { // LCOV_EXCL_BR_LINE
+        LOG_ECMA(FATAL) << "GetSendableModuleValueInner LazyExecuteModule failed";
+    }
+    ASSERT(moduleManager->IsModuleLoaded(referenceName));
+    return moduleManager->GetImportedModule(referenceName)->GetModuleValue(thread, index, false);
 }
 
 JSTaggedValue SharedModuleManager::GetSendableModuleValue(JSThread *thread, int32_t index, JSTaggedValue jsFunc)
@@ -123,6 +149,7 @@ JSHandle<SourceTextModule> SharedModuleManager::GetSModuleUnsafe(JSThread *threa
 {
     auto entry = resolvedSharedModules_.find(recordName);
     if (entry == resolvedSharedModules_.end()) {
+        // LATER DO: cause assert failed
         return JSHandle<SourceTextModule>::Cast(thread->GlobalConstants()->GetHandledUndefined());
     }
     JSHandle<JSTaggedValue> module(thread, entry->second);
@@ -187,9 +214,8 @@ JSHandle<JSTaggedValue> SharedModuleManager::GenerateFuncModule(JSThread *thread
 {
     CString recordName = jsPandaFile->GetRecordName(entryPoint);
     auto vm = thread->GetEcmaVM();
-    JSRecordInfo *recordInfo = nullptr;
-    [[maybe_unused]] bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(recordName, &recordInfo);
-    ASSERT(hasRecord);
+    JSRecordInfo *recordInfo = jsPandaFile->CheckAndGetRecordInfo(recordName);
+    ASSERT(recordInfo != nullptr);
     if (jsPandaFile->IsModule(recordInfo)) {
         JSHandle<SourceTextModule> module;
         if (jsPandaFile->IsSharedModule(recordInfo)) {

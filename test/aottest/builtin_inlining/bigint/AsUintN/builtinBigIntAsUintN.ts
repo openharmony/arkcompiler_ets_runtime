@@ -127,6 +127,14 @@ print(BigInt.asUintN(64, -max64 - 1n)); //: 0
 //aot: [trace] aot inline builtin: BigInt.asUintN, caller function name:func_main_0@builtinBigIntAsUintN
 print(BigInt.asUintN(64, -max64 - 2n)); //: 18446744073709551615
 
+try {
+    const v10 = BigInt.asUintN(268435439, 127n)
+    const v11 = [7];
+} catch(e) {
+    //aot: [trace] aot inline builtin: BigInt.asUintN, caller function name:func_main_0@builtinBigIntAsUintN
+    print("catch e") //: catch e
+}
+
 // Replace standard builtin
 let true_asUintN = BigInt.asUintN
 BigInt.asUintN = replace

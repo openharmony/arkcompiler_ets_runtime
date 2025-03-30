@@ -19,7 +19,6 @@
  * @tc.type: FUNC
  * @tc.require: issueI7J2VN
  */
-print("weakrefforsymbol test start");
 
 let target1 = Symbol("symbol1");
 let wr1 = new WeakRef(target1);
@@ -28,10 +27,8 @@ let target2 = Symbol.for("symbol2");
 try {
     let wr2 = new WeakRef(target2);
 } catch (err) {
-    print(err.name);
+    assert_equal(err instanceof TypeError, true);
 }
-
-print("wr1.deref() == target1 " + (wr1.deref() == target1));
 
 const symbolFuncsRef = [
     Symbol.asyncIterator,
@@ -49,9 +46,28 @@ const symbolFuncsRef = [
     Symbol.unscopables
 ];
 
+const symbolFuncsRefAssertLsit = [
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true
+];
+let symbolFuncsRefResLsit = [];
+
 symbolFuncsRef.forEach(function (ctor, i) {
     let wr = new WeakRef(ctor);
-    print(i + " wr.deref() == ctor " + (wr.deref() == ctor));
+    symbolFuncsRefResLsit.push(wr.deref() == ctor);
 });
 
-print("weakrefforsymbol test end");
+assert_equal(symbolFuncsRefResLsit, symbolFuncsRefAssertLsit);
+
+test_end();

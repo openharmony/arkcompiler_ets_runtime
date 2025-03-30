@@ -50,3 +50,5 @@ var r7 = x7 & y7;
 assert_equal(r7, 15);
 
 // not supported type: string, bigint
+
+test_end();

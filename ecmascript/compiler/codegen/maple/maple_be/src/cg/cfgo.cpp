@@ -14,10 +14,7 @@
  */
 
 #include "cfgo.h"
-#include "cgbb.h"
 #include "cg.h"
-#include "loop.h"
-#include "mpl_logging.h"
 
 /*
  * This phase traverses all basic block of cgFunc and finds special

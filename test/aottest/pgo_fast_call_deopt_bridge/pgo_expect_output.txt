@@ -24,3 +24,5 @@ long params2:
 47
 gc
 false
+Caught an error: TypeError: Cannot read property constructor of undefined
+false

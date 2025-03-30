@@ -360,20 +360,20 @@ JSHandle<EcmaString> LocaleHelper::DefaultLocale(JSThread *thread)
 
 const std::string& LocaleHelper::StdStringDefaultLocale(JSThread *thread)
 {
-    auto context = thread->GetCurrentEcmaContext();
-    const std::string& cachedLocale = context->GetDefaultLocale();
+    auto& intlCache = thread->GetEcmaVM()->GetIntlCache();
+    const std::string& cachedLocale = intlCache.GetDefaultLocale();
     if (!cachedLocale.empty()) {
         return cachedLocale;
     }
     icu::Locale defaultLocale;
     if (strcmp(defaultLocale.getName(), "en_US_POSIX") == 0 || strcmp(defaultLocale.getName(), "c") == 0) {
-        context->SetDefaultLocale("en-US");
+        intlCache.SetDefaultLocale("en-US");
     } else if (defaultLocale.isBogus() != 0) {
-        context->SetDefaultLocale("und");
+        intlCache.SetDefaultLocale("und");
     } else {
-        context->SetDefaultLocale(ToStdStringLanguageTag(thread, defaultLocale));
+        intlCache.SetDefaultLocale(ToStdStringLanguageTag(thread, defaultLocale));
     }
-    return context->GetDefaultLocale();
+    return intlCache.GetDefaultLocale();
 }
 
 void LocaleHelper::HandleLocaleExtension(size_t &start, size_t &extensionEnd, const std::string result, size_t len)

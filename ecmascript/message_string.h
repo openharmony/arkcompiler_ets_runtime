@@ -66,7 +66,15 @@ namespace panda::ecmascript {
     V(DefineFieldField, "DefineField: obj is not Object")                                    \
     V(IsNotPropertyKey, "key is not a property key")                                         \
     V(CreateDataPropertyFailed, "failed to create data property")                            \
-    V(ValueIsNonSObject, "value is not a shared object")
+    V(ValueIsNonSObject, "value is not a shared object")                                     \
+    V(MapIteratorTypeError, "this value is not a map iterator")                              \
+    V(SetIteratorTypeError, "this value is not a set iterator")                              \
+    V(LengthError, "length must be positive integer")                                        \
+    V(IterNotObject, "JSIterator::GetIterator: iter is not object")                          \
+    V(CanNotConvertObjectToPrimitiveValue, "Cannot convert object to primitive value")       \
+    V(CanNotConvertIllageValueToString, "Cannot convert a illegal value to a String")        \
+    V(CanNotConvertIllageValueToPrimitive, "Cannot convert a illegal value to a Primitive")  \
+    V(InOperatorOnNonObject, "Cannot use 'in' operator in Non-Object")
 
 #define DEBUG_CHECK_MESSAGE_STRING_LIST(V)                                                   \
     V(IsCallable)                                                                            \
@@ -94,6 +102,8 @@ public:
         ASM_INTERPRETER_BC_STUB_LIST(DEF_MESSAGE_ID, DEF_MESSAGE_ID, DEF_MESSAGE_ID)
         ASM_INTERPRETER_SECOND_BC_STUB_ID_LIST(DEF_MESSAGE_ID)
         ASM_INTERPRETER_BC_HELPER_STUB_LIST(DEF_MESSAGE_ID)
+        BASELINE_COMPILER_BUILTIN_LIST(DEF_MESSAGE_ID)
+        COMMON_STUB_LIST(DEF_MESSAGE_ID)
 #define DEF_MESSAGE_ID_DYN(name, ...) DEF_MESSAGE_ID(name)
         ASM_INTERPRETER_BC_PROFILER_STUB_LIST(DEF_MESSAGE_ID_DYN)
 #undef DEF_MESSAGE_ID_DYN

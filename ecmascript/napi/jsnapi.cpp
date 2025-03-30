@@ -14,7 +14,6 @@
  */
 
 
-#include <array>
 #include <cstdint>
 #include <fcntl.h>
 #include <sys/types.h>

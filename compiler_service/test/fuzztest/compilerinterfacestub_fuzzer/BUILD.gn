@@ -44,8 +44,7 @@ ohos_fuzztest("CompilerInterfaceStubFuzzTest") {
     "samgr:samgr_proxy",
   ]
   defines = []
-  if (defined(global_parts_info) &&
-      !defined(global_parts_info.security_code_signature)) {
+  if (code_sign_enable_test) {
     external_deps += [ "code_signature:liblocal_code_sign_sdk" ]
     defines += [ "CODE_SIGN_ENABLE" ]
   }

@@ -40,18 +40,60 @@ enum class VisitObjectArea {
 enum class VisitType : size_t { SEMI_GC_VISIT, OLD_GC_VISIT, SNAPSHOT_VISIT, ALL_VISIT };
 enum class VMRootVisitType : uint8_t { MARK, UPDATE_ROOT, VERIFY, HEAP_SNAPSHOT };
 
-using RootVisitor = std::function<void(Root type, ObjectSlot p)>;
-using RootRangeVisitor = std::function<void(Root type, ObjectSlot start, ObjectSlot end)>;
-using RootBaseAndDerivedVisitor =
-    std::function<void(Root type, ObjectSlot base, ObjectSlot derived, uintptr_t baseOldObject)>;
-using EcmaObjectRangeVisitor = std::function<void(TaggedObject *root, ObjectSlot start, ObjectSlot end,
-                                                  VisitObjectArea area)>;
+class RootVisitor {
+public:
+    RootVisitor() = default;
+    virtual ~RootVisitor() = default;
+
+    NO_MOVE_SEMANTIC(RootVisitor);
+    NO_COPY_SEMANTIC(RootVisitor);
+
+    virtual void VisitRoot([[maybe_unused]] Root type, [[maybe_unused]] ObjectSlot slot) = 0;
+
+    virtual void VisitRangeRoot([[maybe_unused]] Root type, [[maybe_unused]] ObjectSlot start,
+        [[maybe_unused]] ObjectSlot end) = 0;
+
+    virtual void VisitBaseAndDerivedRoot([[maybe_unused]] Root type, [[maybe_unused]] ObjectSlot base,
+        [[maybe_unused]] ObjectSlot derived, [[maybe_unused]] uintptr_t baseOldObject) = 0;
+};
 using WeakRootVisitor = std::function<TaggedObject *(TaggedObject *p)>;
+
+template <class DerivedVisitor>
+class EcmaObjectRangeVisitor {
+public:
+    EcmaObjectRangeVisitor() = default;
+    virtual ~EcmaObjectRangeVisitor() = default;
+
+    NO_MOVE_SEMANTIC(EcmaObjectRangeVisitor);
+    NO_COPY_SEMANTIC(EcmaObjectRangeVisitor);
+
+    void operator()(TaggedObject *root, ObjectSlot start, ObjectSlot end, VisitObjectArea area)
+    {
+        static_cast<DerivedVisitor*>(this)->VisitObjectRangeImpl(root, start, end, area);
+    }
+
+    void VisitHClass(TaggedObject *hclass)
+    {
+        static_cast<DerivedVisitor*>(this)->VisitObjectHClassImpl(hclass);
+    }
+
+    virtual void VisitObjectRangeImpl([[maybe_unused]] TaggedObject *root, [[maybe_unused]] ObjectSlot start,
+                                      [[maybe_unused]] ObjectSlot end, [[maybe_unused]] VisitObjectArea area)
+    {
+        UNREACHABLE();
+    }
+
+    virtual void VisitObjectHClassImpl([[maybe_unused]] TaggedObject *hclass)
+    {
+        UNREACHABLE();
+    }
+};
 
 template <VisitType visitType, size_t size>
 class PrimitiveObjectBodyIterator {
 public:
-    static inline void IterateBody(TaggedObject *root, const EcmaObjectRangeVisitor& visitor)
+    template<class DerivedVisitor>
+    static inline void IterateBody(TaggedObject *root, EcmaObjectRangeVisitor<DerivedVisitor> &visitor)
     {
         if constexpr (visitType == VisitType::ALL_VISIT) {
             constexpr size_t hclassEnd = sizeof(JSTaggedType);
@@ -69,8 +111,8 @@ template <VisitType visitType, size_t startOffset, size_t endOffset,
           size_t size, size_t startSize = sizeof(JSTaggedType)>
 class ObjectBodyIterator {
 public:
-    template <VisitObjectArea area, bool visitHClass>
-    static inline void IterateBody(TaggedObject *root, const EcmaObjectRangeVisitor& visitor)
+    template <VisitObjectArea area, bool visitHClass, class DerivedVisitor>
+    static inline void IterateBody(TaggedObject *root, EcmaObjectRangeVisitor<DerivedVisitor> &visitor)
     {
         if constexpr (visitType == VisitType::ALL_VISIT) {
             if constexpr (visitHClass) {
@@ -88,29 +130,34 @@ public:
         }
     }
 
-    static inline void IterateRefBody(TaggedObject *root, const EcmaObjectRangeVisitor& visitor)
+    template <class DerivedVisitor>
+    static inline void IterateRefBody(TaggedObject *root, EcmaObjectRangeVisitor<DerivedVisitor> &visitor)
     {
         IterateBody<VisitObjectArea::NORMAL, true>(root, visitor);
     }
 
-    static inline void IterateNativeBody(TaggedObject *root, const EcmaObjectRangeVisitor& visitor)
+    template <class DerivedVisitor>
+    static inline void IterateNativeBody(TaggedObject *root, EcmaObjectRangeVisitor<DerivedVisitor> &visitor)
     {
         IterateBody<VisitObjectArea::NATIVE_POINTER, true>(root, visitor);
     }
 
-    static inline void IterateDerivedRefBody(TaggedObject *root, const EcmaObjectRangeVisitor& visitor)
+    template <class DerivedVisitor>
+    static inline void IterateDerivedRefBody(TaggedObject *root, EcmaObjectRangeVisitor<DerivedVisitor> &visitor)
     {
         IterateBody<VisitObjectArea::NORMAL, false>(root, visitor);
     }
 
-    static inline void IterateHClass(TaggedObject *root, const EcmaObjectRangeVisitor& visitor)
+    template <class DerivedVisitor>
+    static inline void IterateHClass(TaggedObject *root, EcmaObjectRangeVisitor<DerivedVisitor> &visitor)
     {
         size_t hclassEnd = sizeof(JSTaggedType);
         visitor(root, ObjectSlot(ToUintPtr(root)),
             ObjectSlot(ToUintPtr(root) + hclassEnd), VisitObjectArea::NORMAL);
     }
 
-    static inline void IterateBefore(TaggedObject *root, const EcmaObjectRangeVisitor& visitor)
+    template <class DerivedVisitor>
+    static inline void IterateBefore(TaggedObject *root, EcmaObjectRangeVisitor<DerivedVisitor> &visitor)
     {
         if constexpr (startOffset > startSize) {
             ASSERT(startOffset != endOffset);
@@ -118,14 +165,16 @@ public:
         }
     }
 
-    static inline void IterateAfter(TaggedObject *root, const EcmaObjectRangeVisitor& visitor)
+    template <class DerivedVisitor>
+    static inline void IterateAfter(TaggedObject *root, EcmaObjectRangeVisitor<DerivedVisitor> &visitor)
     {
         if constexpr (size > endOffset) {
             IteratorRange(root, visitor, endOffset, size);
         }
     }
 
-    static inline void IteratorRange(TaggedObject *root, const EcmaObjectRangeVisitor& visitor,
+    template <class DerivedVisitor>
+    static inline void IteratorRange(TaggedObject *root, EcmaObjectRangeVisitor<DerivedVisitor> &visitor,
         size_t start, size_t end)
     {
         visitor(root, ObjectSlot(ToUintPtr(root) + start),
@@ -136,7 +185,8 @@ public:
 template <VisitType visitType, size_t startOffset>
 class ArrayBodyIterator {
 public:
-    static inline void IterateBody(TaggedObject *root, const EcmaObjectRangeVisitor& visitor,
+    template <class DerivedVisitor>
+    static inline void IterateBody(TaggedObject *root, EcmaObjectRangeVisitor<DerivedVisitor> &visitor,
         size_t refLength, size_t length)
     {
         if constexpr (visitType == VisitType::ALL_VISIT) {
@@ -152,7 +202,8 @@ public:
         }
     }
 
-    static inline void IterateBefore(TaggedObject *root, const EcmaObjectRangeVisitor& visitor)
+    template <class DerivedVisitor>
+    static inline void IterateBefore(TaggedObject *root, EcmaObjectRangeVisitor<DerivedVisitor> &visitor)
     {
         size_t hclassEnd = sizeof(JSTaggedType);
         ASSERT(startOffset > hclassEnd);
@@ -160,7 +211,8 @@ public:
         IteratorRange(root, visitor, hclassEnd, startOffset);
     }
 
-    static inline void IterateAfter(TaggedObject *root, const EcmaObjectRangeVisitor& visitor,
+    template <class DerivedVisitor>
+    static inline void IterateAfter(TaggedObject *root, EcmaObjectRangeVisitor<DerivedVisitor> &visitor,
         size_t refLength, size_t length)
     {
         if (length > refLength) {
@@ -170,7 +222,8 @@ public:
         }
     }
 
-    static inline void IteratorRange(TaggedObject *root, const EcmaObjectRangeVisitor& visitor,
+    template <class DerivedVisitor>
+    static inline void IteratorRange(TaggedObject *root, EcmaObjectRangeVisitor<DerivedVisitor> &visitor,
         size_t start, size_t end)
     {
         visitor(root, ObjectSlot(ToUintPtr(root) + start),

@@ -14,13 +14,8 @@
  */
 
 #include "aarch64_emitter.h"
-#include <sys/stat.h>
-#include "aarch64_cgfunc.h"
-#include "aarch64_cg.h"
 #include "metadata_layout.h"
-#include "cfi.h"
 #include "aarch64_obj_emitter.h"
-#include "operand.h"
 
 namespace {
 using namespace maple;

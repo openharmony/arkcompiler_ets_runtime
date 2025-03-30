@@ -14,7 +14,6 @@
  */
 
 #include "ecmascript/jspandafile/js_pandafile.h"
-
 #include "ecmascript/jspandafile/program_object.h"
 
 namespace panda::ecmascript {
@@ -22,8 +21,8 @@ namespace {
 const CString OHOS_PKG_ABC_PATH_ROOT = "/ets/";  // abc file always under /ets/ dir in HAP/HSP
 }  // namespace
 bool JSPandaFile::loadedFirstPandaFile = false;
-JSPandaFile::JSPandaFile(const panda_file::File *pf, const CString &descriptor)
-    : pf_(pf), desc_(descriptor)
+JSPandaFile::JSPandaFile(const panda_file::File *pf, const CString &descriptor, CreateMode mode)
+    : pf_(pf), desc_(descriptor), mode_(mode)
 {
     ASSERT(pf_ != nullptr);
     CheckIsBundlePack();
@@ -54,8 +53,8 @@ void JSPandaFile::CheckIsBundlePack()
         cda.EnumerateFields([&](panda_file::FieldDataAccessor &fieldAccessor) -> void {
             panda_file::File::EntityId fieldNameId = fieldAccessor.GetNameId();
             panda_file::File::StringData sd = GetStringData(fieldNameId);
-            const char *fieldName = utf::Mutf8AsCString(sd.data);
-            if (std::strcmp(IS_COMMON_JS, fieldName) == 0 || std::strcmp(MODULE_RECORD_IDX, fieldName) == 0) {
+            std::string_view fieldName(utf::Mutf8AsCString(sd.data), sd.utf16_length);
+            if ((IS_COMMON_JS == fieldName) || (MODULE_RECORD_IDX == fieldName)) {
                 isBundlePack_ = false;
             }
         });
@@ -74,12 +73,11 @@ void JSPandaFile::CheckIsRecordWithBundleName(const CString &entry)
 
     CString bundleName = entry.substr(0, pos);
     size_t bundleNameLen = bundleName.length();
-    for (auto info : jsRecordInfo_) {
-        if (info.first.find(PACKAGE_PATH_SEGMENT) != CString::npos ||
-            info.first.find(NPM_PATH_SEGMENT) != CString::npos) {
+    for (auto &[recordName, _] : jsRecordInfo_) {
+        if (recordName.find(PACKAGE_PATH_SEGMENT) != CString::npos ||
+            recordName.find(NPM_PATH_SEGMENT) != CString::npos) {
             continue;
         }
-        CString recordName = info.first;
         // Confirm whether the current record is new or old by judging whether the recordName has a bundleName
         if (!(recordName.length() > bundleNameLen && (recordName.compare(0, bundleNameLen, bundleName) == 0))) {
             isRecordWithBundleName_ = false;
@@ -103,13 +101,7 @@ JSPandaFile::~JSPandaFile()
     methodLiteralMap_.clear();
     ClearNameMap();
     if (methodLiterals_ != nullptr) {
-        if (isBundlePack_) {
-            JSPandaFileManager::FreeBuffer(methodLiterals_);
-        } else {
-            auto size = AlignUp(sizeof(MethodLiteral) * numMethods_, PageSize());
-            PageClearTag(methodLiterals_, size);
-            PageUnmap(MemMap(methodLiterals_, size));
-        }
+        JSPandaFileManager::FreeBuffer(methodLiterals_, sizeof(MethodLiteral) * numMethods_, isBundlePack_, mode_);
         methodLiterals_ = nullptr;
     }
 }
@@ -147,12 +139,12 @@ void JSPandaFile::InitializeUnMergedPF()
         }
         panda_file::ClassDataAccessor cda(*pf_, classId);
         numMethods_ += cda.GetMethodsNumber();
-        const char *desc = utf::Mutf8AsCString(cda.GetDescriptor());
-        if (info->moduleRecordIdx == -1 && std::strcmp(MODULE_CLASS, desc) == 0) {
+        std::string_view desc(utf::Mutf8AsCString(cda.GetDescriptor()));
+        if (info->moduleRecordIdx == -1 && MODULE_CLASS == desc) {
             cda.EnumerateFields([&](panda_file::FieldDataAccessor &fieldAccessor) -> void {
                 panda_file::File::EntityId fieldNameId = fieldAccessor.GetNameId();
                 panda_file::File::StringData sd = GetStringData(fieldNameId);
-                CString fieldName = utf::Mutf8AsCString(sd.data);
+                std::string_view fieldName(utf::Mutf8AsCString(sd.data), sd.utf16_length);
                 if (fieldName != desc_) {
                     info->moduleRecordIdx = fieldAccessor.GetValue<int32_t>().value();
                     info->classId = index;
@@ -160,20 +152,20 @@ void JSPandaFile::InitializeUnMergedPF()
                 }
             });
         }
-        if (!info->isCjs && std::strcmp(COMMONJS_CLASS, desc) == 0) {
+        if (!info->isCjs && COMMONJS_CLASS == desc) {
             info->classId = index;
             info->isCjs = true;
         }
-        if (!info->isSharedModule && std::strcmp(IS_SHARED_MODULE, desc) == 0) {
+        if (!info->isSharedModule && IS_SHARED_MODULE == desc) {
             info->isSharedModule = true;
         }
-        if (!info->hasTopLevelAwait && std::strcmp(HASTLA_CLASS, desc) == 0) {
+        if (!info->hasTopLevelAwait && HASTLA_CLASS == desc) {
             info->hasTopLevelAwait = true;
         }
     }
     jsRecordInfo_.insert({JSPandaFile::ENTRY_FUNCTION_NAME, info});
-    methodLiterals_ =
-        static_cast<MethodLiteral *>(JSPandaFileManager::AllocateBuffer(sizeof(MethodLiteral) * numMethods_));
+    methodLiterals_ = static_cast<MethodLiteral *>(
+        JSPandaFileManager::AllocateBuffer(sizeof(MethodLiteral) * numMethods_, isBundlePack_, mode_));
     methodLiteralMap_.reserve(numMethods_);
 }
 
@@ -181,6 +173,9 @@ void JSPandaFile::InitializeMergedPF()
 {
     Span<const uint32_t> classIndexes = pf_->GetClasses();
     numClasses_ = classIndexes.size();
+    CString traceInfo = "JSPandaFile::InitializeMergedPF:" + ToCString(numClasses_);
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, traceInfo.c_str());
+    jsRecordInfo_.reserve(numClasses_);
     for (const uint32_t index : classIndexes) {
         panda_file::File::EntityId classId(index);
         if (pf_->IsExternal(classId)) {
@@ -197,25 +192,26 @@ void JSPandaFile::InitializeMergedPF()
         cda.EnumerateFields([&](panda_file::FieldDataAccessor &fieldAccessor) -> void {
             panda_file::File::EntityId fieldNameId = fieldAccessor.GetNameId();
             panda_file::File::StringData sd = GetStringData(fieldNameId);
-            const char *fieldName = utf::Mutf8AsCString(sd.data);
-            if (std::strcmp(IS_COMMON_JS, fieldName) == 0) {
+            std::string_view fieldName(utf::Mutf8AsCString(sd.data), sd.utf16_length);
+            if (IS_COMMON_JS == fieldName) {
                 hasCjsFiled = true;
                 info->isCjs = fieldAccessor.GetValue<bool>().value();
-            } else if (std::strcmp(IS_JSON_CONTENT, fieldName) == 0) {
+            } else if (IS_JSON_CONTENT == fieldName) {
                 hasJsonFiled = true;
                 info->isJson = true;
                 info->jsonStringId = fieldAccessor.GetValue<uint32_t>().value();
-            } else if (std::strcmp(MODULE_RECORD_IDX, fieldName) == 0) {
+            } else if (MODULE_RECORD_IDX == fieldName) {
                 info->moduleRecordIdx = fieldAccessor.GetValue<int32_t>().value();
-            } else if (std::strcmp(IS_SHARED_MODULE, fieldName) == 0) {
+            } else if (IS_SHARED_MODULE == fieldName) {
                 info->isSharedModule = fieldAccessor.GetValue<bool>().value();
-            } else if (std::strcmp(HAS_TOP_LEVEL_AWAIT, fieldName) == 0) {
+            } else if (HAS_TOP_LEVEL_AWAIT == fieldName) {
                 info->hasTopLevelAwait = fieldAccessor.GetValue<bool>().value();
-            } else if (std::strcmp(LAZY_IMPORT, fieldName) == 0) {
+            } else if (LAZY_IMPORT == fieldName) {
                 info->lazyImportIdx = fieldAccessor.GetValue<uint32_t>().value();
-            } else if (std::strlen(fieldName) > PACKAGE_NAME_LEN &&
-                       std::strncmp(fieldName, PACKAGE_NAME, PACKAGE_NAME_LEN) == 0) {
-                info->npmPackageName = fieldName + PACKAGE_NAME_LEN;
+            } else if (sd.utf16_length > PACKAGE_NAME_LEN &&
+                       fieldName.substr(0, PACKAGE_NAME_LEN) == PACKAGE_NAME) {
+                std::string_view packageSuffix = fieldName.substr(PACKAGE_NAME_LEN);
+                info->npmPackageName = CString(packageSuffix);
             } else {
                 npmEntries_.emplace(recordName, fieldName);
             }
@@ -226,20 +222,9 @@ void JSPandaFile::InitializeMergedPF()
             delete info;
         }
     }
-    auto size = AlignUp(sizeof(MethodLiteral) * numMethods_, PageSize());
-    methodLiterals_ =
-        static_cast<MethodLiteral *>(PageMap(size, PAGE_PROT_READWRITE).GetMem());
-    PageTag(methodLiterals_, size, PageTagType::METHOD_LITERAL);
+    methodLiterals_ = static_cast<MethodLiteral *>(
+        JSPandaFileManager::AllocateBuffer(sizeof(MethodLiteral) * numMethods_, isBundlePack_, mode_));
     methodLiteralMap_.reserve(numMethods_);
-}
-
-MethodLiteral *JSPandaFile::FindMethodLiteral(uint32_t offset) const
-{
-    auto iter = methodLiteralMap_.find(offset);
-    if (iter == methodLiteralMap_.end()) {
-        return nullptr;
-    }
-    return iter->second;
 }
 
 bool JSPandaFile::IsFirstMergedAbc() const
@@ -248,33 +233,6 @@ bool JSPandaFile::IsFirstMergedAbc() const
         return true;
     }
     return false;
-}
-
-bool JSPandaFile::CheckAndGetRecordInfo(const CString &recordName, [[maybe_unused]] JSRecordInfo **recordInfo) const
-{
-    if (IsBundlePack()) {
-        *recordInfo = jsRecordInfo_.begin()->second;
-        return true;
-    }
-    auto info = jsRecordInfo_.find(recordName);
-    if (info != jsRecordInfo_.end()) {
-        *recordInfo = info->second;
-        return true;
-    }
-    return false;
-}
-
-const JSRecordInfo* JSPandaFile::GetRecordInfo(const CString &recordName)
-{
-    if (IsBundlePack()) {
-        return jsRecordInfo_.begin()->second;
-    }
-    auto info = jsRecordInfo_.find(recordName);
-    if (info != jsRecordInfo_.end()) {
-        return info->second;
-    }
-    LOG_FULL(FATAL) << "Get record info failed";
-    UNREACHABLE();
 }
 
 CString JSPandaFile::GetEntryPoint(const CString &recordName) const
@@ -462,30 +420,42 @@ void JSPandaFile::ClearNameMap()
     }
 }
 
-size_t JSPandaFile::GetClassAndMethodIndex(size_t *methodIdx)
+void JSPandaFile::GetClassAndMethodIndexes(std::vector<std::pair<uint32_t, uint32_t>> &indexes)
 {
+    // Each thread gets 128 classes each time. If less than 128, it gets 2 classes.
+    indexes.clear();
     LockHolder lock(classIndexMutex_);
-    size_t result = 0;
-    Span<const uint32_t> classIndexes = GetClasses();
-    uint32_t index = 0;
-    do {
-        result = classIndex_++;
-        if (result >= numClasses_) {
-            return result;
-        }
-        index = classIndexes[result];
-    } while (IsExternal(panda_file::File::EntityId(index)));
+    if (classIndex_ >= numClasses_) {
+        return;
+    }
+    uint32_t cnts = ASYN_TRANSLATE_CLSSS_COUNT;
+    uint32_t minCount = (Taskpool::GetCurrentTaskpool()->GetTotalThreadNum() + 1) * ASYN_TRANSLATE_CLSSS_COUNT;
+    if (numClasses_ - classIndex_ < minCount) {
+        cnts = ASYN_TRANSLATE_CLSSS_MIN_COUNT;
+    }
+    for (uint32_t i = 0; i < cnts; i++) {
+        uint32_t classIdx = 0;
+        uint32_t methodIdx = 0;
+        Span<const uint32_t> classIndexes = GetClasses();
+        uint32_t index = 0;
+        do {
+            classIdx = classIndex_++;
+            if (classIdx >= numClasses_) {
+                return;
+            }
+            index = classIndexes[classIdx];
+        } while (IsExternal(panda_file::File::EntityId(index)));
 
-    *methodIdx = methodIndex_;
-    panda_file::File::EntityId classId(classIndexes[result]);
-    panda_file::ClassDataAccessor cda(*pf_, classId);
-    methodIndex_ += cda.GetMethodsNumber();
-    return result;
+        methodIdx = methodIndex_;
+        panda_file::File::EntityId classId(classIndexes[classIdx]);
+        panda_file::ClassDataAccessor cda(*pf_, classId);
+        methodIndex_ += cda.GetMethodsNumber();
+        indexes.emplace_back(methodIdx, classIdx);
+    }
 }
 
 bool JSPandaFile::TranslateClassesTask::Run([[maybe_unused]] uint32_t threadIndex)
 {
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "TranslateClassesTask::Run");
     jsPandaFile_->TranslateClass(thread_, *methodNamePtr_);
     jsPandaFile_->ReduceTaskCount();
     return true;
@@ -493,12 +463,16 @@ bool JSPandaFile::TranslateClassesTask::Run([[maybe_unused]] uint32_t threadInde
 
 void JSPandaFile::TranslateClass(JSThread *thread, const CString &methodName)
 {
-    size_t methodIdx = 0;
-    size_t classIdx = GetClassAndMethodIndex(&methodIdx);
-    while (classIdx < numClasses_) {
-        PandaFileTranslator::TranslateClass(thread, this, methodName, methodIdx, classIdx);
-        classIdx = GetClassAndMethodIndex(&methodIdx);
-    }
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "JSPandaFile::TranslateClass");
+    std::vector<std::pair<uint32_t, uint32_t>> indexes;
+    indexes.reserve(ASYN_TRANSLATE_CLSSS_COUNT);
+    do {
+        GetClassAndMethodIndexes(indexes);
+        uint32_t size = indexes.size();
+        for (uint32_t i = 0; i < size; i++) {
+            PandaFileTranslator::TranslateClass(thread, this, methodName, indexes[i].first, indexes[i].second);
+        }
+    } while (!indexes.empty());
 }
 
 void JSPandaFile::PostInitializeMethodTask(JSThread *thread, const std::shared_ptr<CString> &methodNamePtr)
@@ -534,6 +508,8 @@ void JSPandaFile::ReduceTaskCount()
 void JSPandaFile::SetAllMethodLiteralToMap()
 {
     // async to optimize SetAllMethodLiteralToMap later
+    CString traceInfo = "JSPandaFile::SetAllMethodLiteralToMap:" + ToCString(numMethods_);
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, traceInfo.c_str());
     MethodLiteral *methodLiterals = GetMethodLiterals();
     size_t methodIdx = 0;
     while (methodIdx < numMethods_) {

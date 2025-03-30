@@ -15,6 +15,7 @@
 
 #include "ecmascript/mem/native_area_allocator.h"
 
+#include "ecmascript/platform/map.h"
 #include "ecmascript/platform/os.h"
 
 #if ECMASCRIPT_ENABLE_ZAP_MEM
@@ -129,6 +130,45 @@ void NativeAreaAllocator::FreeBuffer(void *mem)
 #endif
     // NOLINTNEXTLINE(cppcoreguidelines-no-malloc)
     free(mem);
+}
+
+void *NativeAreaAllocator::NativeAreaPageMap(size_t size)
+{
+    if (size == 0) { // LOCV_EXCL_BR_LINE
+        LOG_ECMA_MEM(FATAL) << "size must have a size bigger than 0";
+        UNREACHABLE();
+    }
+    // NOLINTNEXTLINE(cppcoreguidelines-no-malloc)
+    size = AlignUp(size, PageSize());
+    void *ptr = PageMap(size, PAGE_PROT_READWRITE).GetMem();
+    PageTag(ptr, size, PageTagType::METHOD_LITERAL);
+#if ECMASCRIPT_ENABLE_ZAP_MEM
+    if (memset_s(ptr, size, INVALID_VALUE, size) != EOK) { // LOCV_EXCL_BR_LINE
+        LOG_FULL(FATAL) << "memset_s failed";
+        UNREACHABLE();
+    }
+#endif
+    IncreaseNativeMemoryUsage(size);
+    return ptr;
+}
+
+void NativeAreaAllocator::NativeAreaPageUnmap(void *mem, size_t size)
+{
+    if (mem == nullptr) {
+        return;
+    }
+    size = AlignUp(size, PageSize());
+    DecreaseNativeMemoryUsage(size);
+
+#if ECMASCRIPT_ENABLE_ZAP_MEM
+    if (memset_s(mem, size, INVALID_VALUE, size) != EOK) { // LOCV_EXCL_BR_LINE
+        LOG_FULL(FATAL) << "memset_s failed";
+        UNREACHABLE();
+    }
+#endif
+    // NOLINTNEXTLINE(cppcoreguidelines-no-malloc)
+    PageClearTag(mem, size);
+    PageUnmap(MemMap(mem, size));
 }
 
 void NativeAreaAllocator::FreeBufferFunc([[maybe_unused]] void *env, void *buffer, void *data)

@@ -302,6 +302,7 @@ print(m.has(-1));
 
 function checkObjWithSetProto() {
     let o = {};
+    //aot: [trace] aot call builtin: Object.SetPrototypeOf, caller function name:#*#checkObjWithSetProto@builtinSetAdd
     Object.setPrototypeOf(o, Set.prototype);
     try {
         o.add(1);

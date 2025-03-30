@@ -64,14 +64,11 @@ for (let i = 0; i < 100; i++) {
   }
 }
 
-print("primitiveic load success")
-
 for(let i=0;i<2;i++){
   let obj={};
   let x=obj.__proto__;
   Object.freeze(x);
 }
-print("load ic by name test2 success!")
 
 function f(a, b) {
   a.name;
@@ -82,7 +79,6 @@ for (let i = 0; i < 100; i++) {
   f(120, 1);
   f(Number, 1);
 }
-print("load Number ic by name success!")
 
 function f(a, b) {
   a.valueOf();
@@ -94,9 +90,22 @@ for (let i = 0; i < 100; i++) {
 for (let i = 0; i < 100; i++) {
   f(120, 1);
 }
-print("load Number ic by name success1!")
 
-print('================Test proto SendableTypedArray IC================');
+const testProtoIcSuccessAssert = [];
+const testProtoIcFailAssert = [
+	"SendableFloat64Array",
+	"SendableFloat32Array",
+	"SendableInt32Array",
+	"SendableInt16Array",
+	"SendableInt8Array",
+	"SendableUint32Array",
+	"SendableUint16Array",
+	"SendableUint8Array",
+	"SendableUint8ClampedArray"
+];
+let testProtoIcSuccess = [];
+let testProtoIcFail = [];
+
 function testProtoIc(ctor) {
   for (let i = 0; i < 100; i++) { };
   let obj = new ctor(100);
@@ -110,9 +119,9 @@ function testProtoIc(ctor) {
     let obj3 = {
       __proto__: obj2,
     };
-    print(ctor.name, 'set proto with sendable object success.');
+    testProtoIcSuccess.push(ctor.name);
   } catch (err) {
-    print(ctor.name, 'set proto with sendable object failed. err: ' + err);
+    testProtoIcFail.push(ctor.name);
   }
 }
 
@@ -129,23 +138,24 @@ function testProtoIc(ctor) {
 ].forEach((ctor) => {
   testProtoIc(ctor);
 });
-print('================Test proto SendableTypedArray IC success!================');
+
+assert_equal(testProtoIcSuccess,testProtoIcSuccessAssert)
+assert_equal(testProtoIcFail,testProtoIcFailAssert)
+
 function f(){return 1};
 Object.defineProperty(this,"g",{
     get:f,
     set:f,
 })
 for(let i=0;i<2;i++){
-    print(g)
+  assert_equal(g,1)
 }
-print("load global ic with accessor success!");
 
 function func1(o, v) {
   let  res;
   for (let i = 0; i < 100; i++) {
       res=o.x;
       if (res != v) {
-          print("Error");
       }
   }
   return res;
@@ -161,10 +171,9 @@ function func1(o, v) {
   };
   o[102500] = 1;
   o["test"] = "test";
-  print(func1(o, 1));
+  assert_equal(func1(o, 1),1);
   Object.defineProperty(o, "x", { value: 2 });
-  print("change")
-  print(func1(o, 2));
+  assert_equal(func1(o, 2),2);
 }
 
 {
@@ -181,9 +190,8 @@ function func1(o, v) {
   };
   pro2[102500] = 1;
   pro2["test"] = "test";
-  print(func1(o, 1));
+  assert_equal(func1(o, 1),1);
   Object.defineProperty(pro2, "x", { value: 2 });
-  print("change")
   func1(o, 2);
 }
 
@@ -205,11 +213,13 @@ function func1(o, v) {
   pro2[102500] = 1;
   pro2["test"] = "test";
   for (let i = 0; i < 2; i++) {
-      print(getNumber(o))
+    assert_equal(getNumber(o).toString(),'function Number() { [native code] }')
   }
   Object.defineProperty(o, "Number", { value: 2 });
-  print("change")
+
   for (let i = 0; i < 2; i++) {
-      print(getNumber(o))
+    assert_equal(getNumber(o),2)
   }
 }
+
+test_end();

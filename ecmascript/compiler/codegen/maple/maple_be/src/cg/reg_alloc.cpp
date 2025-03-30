@@ -14,11 +14,6 @@
  */
 
 #include "reg_alloc.h"
-#include "live.h"
-#include "loop.h"
-#include "cg_dominance.h"
-#include "mir_lower.h"
-#include "securec.h"
 #include "reg_alloc_lsra.h"
 #include "cg.h"
 

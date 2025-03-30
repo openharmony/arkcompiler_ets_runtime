@@ -23,20 +23,20 @@ class EcmaStringTableTest : public BaseTestWithScope<false> {
 };
 
 /**
- * @tc.name: InternEmptyString
+ * @tc.name: GetOrInternFlattenString_EmptyString
  * @tc.desc: Write empty string emptyStr to the Intern pool and takes the hash code as its index.
  * @tc.type: FUNC
  * @tc.require:
  */
-HWTEST_F_L0(EcmaStringTableTest, InternEmptyString)
+HWTEST_F_L0(EcmaStringTableTest, GetOrInternFlattenString_EmptyString)
 {
     EcmaStringTable *table = thread->GetEcmaVM()->GetEcmaStringTable();
 
     JSHandle<EcmaString> emptyEcmaStrHandle(thread, EcmaStringAccessor::CreateEmptyString(thread->GetEcmaVM()));
     EXPECT_TRUE(!EcmaStringAccessor(emptyEcmaStrHandle).IsInternString());
 
-    table->InternEmptyString(thread, *emptyEcmaStrHandle);
-    EXPECT_TRUE(EcmaStringAccessor(emptyEcmaStrHandle).IsInternString());
+    table->GetOrInternFlattenString(thread->GetEcmaVM(), *emptyEcmaStrHandle);
+    EXPECT_TRUE(!EcmaStringAccessor(emptyEcmaStrHandle).IsInternString());
 }
 
 /**

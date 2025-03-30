@@ -18,7 +18,8 @@ function func() {
   let a = "hijklmn";
   let b = "abcdefg";
   //aot: [trace] aot inline function name: #*#func@builtinStringLocaleCompare caller function name: func_main_0@builtinStringLocaleCompare
-  //: 1
+  //aot: [trace] aot call builtin: String.LocaleCompare, caller function name:#*#func@builtinStringLocaleCompare
   print(a.localeCompare(b));
+  //: 1
 }
 func();

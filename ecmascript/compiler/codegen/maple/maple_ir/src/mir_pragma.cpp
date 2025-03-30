@@ -14,11 +14,6 @@
  */
 
 #include "mir_pragma.h"
-#include "mir_nodes.h"
-#include "mir_function.h"
-#include "printing.h"
-#include "maple_string.h"
-#include <iomanip>
 
 namespace {
 enum Status {

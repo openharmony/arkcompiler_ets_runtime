@@ -66,6 +66,7 @@ using namespace panda::ecmascript::kungfu;
 static constexpr char16_t UTF_16[] = u"This is a char16 array";
 static constexpr const char *DUPLICATE_KEY = "duplicateKey";
 static constexpr const char *SIMPLE_KEY = "simpleKey";
+static constexpr const char ERROR_MESSAGE[] = "ErrorTest";
 namespace panda::test {
 using BuiltinsFunction = ecmascript::builtins::BuiltinsFunction;
 using PGOProfilerManager = panda::ecmascript::pgo::PGOProfilerManager;
@@ -195,6 +196,11 @@ Local<JSValueRef> RejectCallback(JsiRuntimeCallInfo *info)
     CheckReject(info);
     return JSValueRef::Undefined(info->GetVM());
 }
+
+struct StackInfo {
+    uint64_t stackLimit;
+    uint64_t lastLeaveFrame;
+};
 
 /**
  * @tc.number: ffi_interface_api_105
@@ -755,8 +761,11 @@ HWTEST_F_L0(JSNApiTests, SetNativePtrGetter)
  */
 HWTEST_F_L0(JSNApiTests, PreFork)
 {
+    RuntimeOption option;
+    ecmascript::ThreadNativeScope nativeScope(vm_->GetJSThread());
     LocalScope scope(vm_);
     JSNApi::PreFork(vm_);
+    JSNApi::PostFork(vm_, option);
 }
 
 /*
@@ -1395,18 +1404,6 @@ HWTEST_F_L0(JSNApiTests, GetDataViewInfo)
     ASSERT_FALSE(isDataView);
 }
 
-HWTEST_F_L0(JSNApiTests, TryGetArrayLength)
-{
-    LocalScope scope(vm_);
-    int32_t length = 4;
-    Local<JSValueRef> tag = ArrayRef::New(vm_, length);
-    EXPECT_FALSE(tag->IsArrayIterator(vm_));
-    uint32_t arrayLength = 4; // define array length
-    bool isArrayOrSharedArray = true;
-    tag->TryGetArrayLength(vm_, &isArrayOrSharedArray, &arrayLength);
-    ASSERT_TRUE(isArrayOrSharedArray);
-}
-
 HWTEST_F_L0(JSNApiTests, ByteLength002)
 {
     LocalScope scope(vm_);
@@ -1444,6 +1441,253 @@ HWTEST_F_L0(JSNApiTests, GetData002)
         TestHelper::CreateEcmaRuntimeCallInfo(vm_->GetJSThread(), JSTaggedValue::Undefined(), argvLength);
     JsiRuntimeCallInfo *jsiRuntimeCallInfo = reinterpret_cast<JsiRuntimeCallInfo *>(ecmaRuntimeCallInfo);
     jsiRuntimeCallInfo->GetData();
+}
+
+HWTEST_F_L0(JSNApiTests, SetStopPreLoadSoCallback)
+{
+    auto callback = []()->void {
+        LOG_FULL(INFO) << "Call stopPreLoadSoCallback";
+    };
+    JSNApi::SetStopPreLoadSoCallback(vm_, callback);
+    auto stopPreLoadCallbacks = vm_->GetStopPreLoadCallbacks();
+    EXPECT_EQ(stopPreLoadCallbacks.size(), 1);
+    vm_->StopPreLoadSoOrAbc();
+
+    stopPreLoadCallbacks = vm_->GetStopPreLoadCallbacks();
+    EXPECT_EQ(stopPreLoadCallbacks.size(), 0);
+}
+
+HWTEST_F_L0(JSNApiTests, UpdatePkgContextInfoList)
+{
+    std::map<std::string, std::vector<std::vector<std::string>>> pkgList;
+    std::vector<std::string> entryList = {
+        "entry",
+        "packageName", "entry",
+        "bundleName", "",
+        "moduleName", "",
+        "version", "",
+        "entryPath", "src/main/",
+        "isSO", "false"
+    };
+    pkgList["entry"] = {entryList};
+    JSNApi::SetpkgContextInfoList(vm_, pkgList);
+
+    std::map<std::string, std::vector<std::vector<std::string>>> newPkgList;
+    std::vector<std::string> hspList = {
+        "hsp",
+        "packageName", "hsp",
+        "bundleName", "",
+        "moduleName", "",
+        "version", "1.1.0",
+        "entryPath", "Index.ets",
+        "isSO", "false"
+    };
+    newPkgList["hsp"] = {hspList};
+    JSNApi::UpdatePkgContextInfoList(vm_, newPkgList);
+
+    CMap<CString, CMap<CString, CVector<CString>>> vmPkgList = vm_->GetPkgContextInfoList();
+    EXPECT_EQ(vmPkgList.size(), 2);
+    EXPECT_EQ(vmPkgList["entry"]["entry"].size(), 12);
+    EXPECT_EQ(vmPkgList["hsp"].size(), 1);
+    EXPECT_EQ(vmPkgList["hsp"]["hsp"].size(), 12);
+}
+
+HWTEST_F_L0(JSNApiTests, UpdatePkgNameList)
+{
+    std::map<std::string, std::string> pkgNameList;
+    pkgNameList["moduleName1"] = "pkgName1";
+    JSNApi::SetPkgNameList(vm_, pkgNameList);
+
+    std::map<std::string, std::string> newPkgNameList;
+    newPkgNameList["moduleName2"] = "pkgName2";
+    JSNApi::UpdatePkgNameList(vm_, newPkgNameList);
+
+    CMap<CString, CString> vmPkgNameList = vm_->GetPkgNameList();
+    EXPECT_EQ(vmPkgNameList.size(), 2);
+    EXPECT_EQ(vmPkgNameList["moduleName1"], "pkgName1");
+    EXPECT_EQ(vmPkgNameList["moduleName2"], "pkgName2");
+}
+
+HWTEST_F_L0(JSNApiTests, UpdatePkgAliasList)
+{
+    std::map<std::string, std::string> aliasNameList;
+    aliasNameList["aliasName1"] = "pkgName1";
+    JSNApi::SetPkgAliasList(vm_, aliasNameList);
+
+    std::map<std::string, std::string> newAliasNameList;
+    newAliasNameList["aliasName2"] = "pkgName2";
+    JSNApi::UpdatePkgAliasList(vm_, newAliasNameList);
+
+    CMap<CString, CString> vmAliasNameList = vm_->GetPkgAliasList();
+    EXPECT_EQ(vmAliasNameList.size(), 2);
+    EXPECT_EQ(vmAliasNameList["aliasName1"], "pkgName1");
+    EXPECT_EQ(vmAliasNameList["aliasName2"], "pkgName2");
+}
+
+HWTEST_F_L0(JSNApiTests, TryGetArrayLengthTest001)
+{
+    LocalScope scope(vm_);
+    const uint32_t ARRAY_LENGTH = 10; // 10 means array length
+    Local<ArrayRef> array = ArrayRef::New(vm_, ARRAY_LENGTH);
+    Local<JSValueRef> value(array);
+    bool isJSArray = value->IsJSArray(vm_);
+    ASSERT_EQ(isJSArray, true);
+
+    bool isPendingException = true;
+    bool isArrayOrSharedArray = false;
+    uint32_t arrayLength = 0;
+    value->TryGetArrayLength(vm_, &isPendingException, &isArrayOrSharedArray, &arrayLength);
+    ASSERT_EQ(isPendingException, false);
+    ASSERT_EQ(isArrayOrSharedArray, true);
+    ASSERT_EQ(arrayLength, ARRAY_LENGTH);
+}
+
+HWTEST_F_L0(JSNApiTests, TryGetArrayLengthTest002)
+{
+    LocalScope scope(vm_);
+    const uint32_t ARRAY_LENGTH = 10; // 10 means array length
+    Local<SendableArrayRef> sArray = SendableArrayRef::New(vm_, ARRAY_LENGTH);
+    Local<JSValueRef> value(sArray);
+    bool isSArray = value->IsSharedArray(vm_);
+    ASSERT_EQ(isSArray, true);
+
+    bool isPendingException = true;
+    bool isArrayOrSharedArray = false;
+    uint32_t arrayLength = 0;
+    value->TryGetArrayLength(vm_, &isPendingException, &isArrayOrSharedArray, &arrayLength);
+    ASSERT_EQ(isPendingException, false);
+    ASSERT_EQ(isArrayOrSharedArray, true);
+    ASSERT_EQ(arrayLength, ARRAY_LENGTH);
+}
+
+HWTEST_F_L0(JSNApiTests, TryGetArrayLengthTest003)
+{
+    LocalScope scope(vm_);
+    Local<ObjectRef> object = ObjectRef::New(vm_);
+    Local<JSValueRef> value(object);
+    bool isObject = value->IsObject(vm_);
+    ASSERT_EQ(isObject, true);
+
+    bool isPendingException = true;
+    bool isArrayOrSharedArray = false;
+    const uint32_t INIT_VALUE = 10; // 10 means a randon initial value
+    uint32_t arrayLength = INIT_VALUE;
+    value->TryGetArrayLength(vm_, &isPendingException, &isArrayOrSharedArray, &arrayLength);
+    ASSERT_EQ(isPendingException, false);
+    ASSERT_EQ(isArrayOrSharedArray, false);
+    ASSERT_EQ(arrayLength, INIT_VALUE);
+}
+
+HWTEST_F_L0(JSNApiTests, TryGetArrayLengthTest004)
+{
+    LocalScope scope(vm_);
+    // create array
+    const uint32_t ARRAY_LENGTH = 10; // 10 means array length
+    Local<ArrayRef> array = ArrayRef::New(vm_, ARRAY_LENGTH);
+    Local<JSValueRef> value(array);
+    bool isJSArray = value->IsJSArray(vm_);
+    ASSERT_EQ(isJSArray, true);
+
+    // throw error in thread
+    Local<JSValueRef> error = Exception::Error(vm_, StringRef::NewFromUtf8(vm_, ERROR_MESSAGE));
+    ASSERT_EQ(error->IsError(vm_), true);
+    JSNApi::ThrowException(vm_, error);
+    JSThread *thread = vm_->GetJSThread();
+    ASSERT_EQ(thread->HasPendingException(), true);
+
+    // test TryGetArrayLength
+    bool isPendingException = false;
+    bool isArrayOrSharedArray = false;
+    uint32_t arrayLength = ARRAY_LENGTH;
+    value->TryGetArrayLength(vm_, &isPendingException, &isArrayOrSharedArray, &arrayLength);
+    ASSERT_EQ(isPendingException, true);
+    ASSERT_EQ(isArrayOrSharedArray, true);
+    ASSERT_EQ(arrayLength, 0);
+
+    // clear exception
+    JSNApi::GetAndClearUncaughtException(vm_);
+    ASSERT_EQ(thread->HasPendingException(), false);
+}
+
+HWTEST_F_L0(JSNApiTests, TryGetArrayLengthTest005)
+{
+    LocalScope scope(vm_);
+    // create array
+    const uint32_t ARRAY_LENGTH = 10; // 10 means array length
+    Local<SendableArrayRef> sArray = SendableArrayRef::New(vm_, ARRAY_LENGTH);
+    Local<JSValueRef> value(sArray);
+    bool isSArray = value->IsSharedArray(vm_);
+    ASSERT_EQ(isSArray, true);
+
+    // throw error in thread
+    Local<JSValueRef> error = Exception::Error(vm_, StringRef::NewFromUtf8(vm_, ERROR_MESSAGE));
+    ASSERT_EQ(error->IsError(vm_), true);
+    JSNApi::ThrowException(vm_, error);
+    JSThread *thread = vm_->GetJSThread();
+    ASSERT_EQ(thread->HasPendingException(), true);
+
+    // test TryGetArrayLength
+    bool isPendingException = false;
+    bool isArrayOrSharedArray = false;
+    uint32_t arrayLength = ARRAY_LENGTH;
+    value->TryGetArrayLength(vm_, &isPendingException, &isArrayOrSharedArray, &arrayLength);
+    ASSERT_EQ(isPendingException, true);
+    ASSERT_EQ(isArrayOrSharedArray, true);
+    ASSERT_EQ(arrayLength, 0);
+
+    // clear exception
+    JSNApi::GetAndClearUncaughtException(vm_);
+    ASSERT_EQ(thread->HasPendingException(), false);
+}
+
+HWTEST_F_L0(JSNApiTests, TryGetArrayLengthTest006)
+{
+    LocalScope scope(vm_);
+    Local<ObjectRef> object = ObjectRef::New(vm_);
+    Local<JSValueRef> value(object);
+    bool isObject = value->IsObject(vm_);
+    ASSERT_EQ(isObject, true);
+
+    // throw error in thread
+    Local<JSValueRef> error = Exception::Error(vm_, StringRef::NewFromUtf8(vm_, ERROR_MESSAGE));
+    ASSERT_EQ(error->IsError(vm_), true);
+    JSNApi::ThrowException(vm_, error);
+    JSThread *thread = vm_->GetJSThread();
+    ASSERT_EQ(thread->HasPendingException(), true);
+
+    // test TryGetArrayLength
+    bool isPendingException = false;
+    bool isArrayOrSharedArray = true;
+    const uint32_t INIT_VALUE = 10; // 10 means a randon initial value
+    uint32_t arrayLength = INIT_VALUE;
+    value->TryGetArrayLength(vm_, &isPendingException, &isArrayOrSharedArray, &arrayLength);
+    ASSERT_EQ(isPendingException, true);
+    ASSERT_EQ(isArrayOrSharedArray, false);
+    ASSERT_EQ(arrayLength, INIT_VALUE);
+
+    // clear exception
+    JSNApi::GetAndClearUncaughtException(vm_);
+    ASSERT_EQ(thread->HasPendingException(), false);
+}
+
+/**
+ * @tc.number: ffi_interface_api_147
+ * @tc.name: UpdateStackInfo
+ * @tc.desc: Used to verify whether the function of update stack info was successful.
+ * @tc.type: FUNC
+ * @tc.require: parameter
+ */
+HWTEST_F_L0(JSNApiTests, UpdateStackInfo)
+{
+    LocalScope scope(vm_);
+    StackInfo stackInfo = { 0x10000, 0 };
+    uint64_t currentStackLimit = vm_->GetJSThread()->GetStackLimit();
+    JSNApi::UpdateStackInfo(vm_, &stackInfo, 0);
+    ASSERT_EQ(vm_->GetJSThread()->GetStackLimit(), 0x10000);
+    JSNApi::UpdateStackInfo(vm_, &stackInfo, 1);
+    ASSERT_EQ(vm_->GetJSThread()->GetStackLimit(), currentStackLimit);
+    JSNApi::UpdateStackInfo(vm_, nullptr, 0);
+    ASSERT_EQ(vm_->GetJSThread()->GetStackLimit(), currentStackLimit);
 }
 
 HWTEST_F_L0(JSNApiTests, XRefGlobalHandleAddr)

@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 
-
 #include "ecmascript/platform/aot_crash_info.h"
 #if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE)
 #include "parameters.h"
@@ -110,9 +109,7 @@ void AotCrashInfo::SetOptionPGOProfiler(JSRuntimeOptions *options, const std::st
 #ifdef AOT_ESCAPE_ENABLE
     if (ohos::EnableAotJitListHelper::GetInstance()->IsEnableAot(bundleName)) {
         options->SetEnablePGOProfiler(true);
-        if (options->GetAOTHasException() ||
-            ohos::EnableAotJitListHelper::GetInstance()->IsAotCompileSuccessOnce() ||
-            IsAotEscaped()) {
+        if (options->GetAOTHasException() || ecmascript::AnFileDataManager::GetInstance()->IsEnable()) {
             options->SetEnablePGOProfiler(false);
             LOG_ECMA(INFO) << "Aot has compile success once or escaped.";
         }

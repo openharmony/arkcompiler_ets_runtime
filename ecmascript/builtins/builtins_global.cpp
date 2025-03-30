@@ -15,10 +15,6 @@
 
 #include "ecmascript/builtins/builtins_global.h"
 
-#include <random>
-#include <sstream>
-#include <string>
-#include <vector>
 
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/js_object-inl.h"
@@ -736,7 +732,9 @@ JSTaggedValue BuiltinsGlobal::LoadNativeModule(EcmaRuntimeCallInfo *msg)
     CString requestPath = ModulePathHelper::Utf8ConvertToString(input.GetTaggedValue());
     CString abcFilePath = fileName.c_str();
     if (moduleName.size() != 0) {
-        curJsPandaFile = JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, abcFilePath, requestPath);
+        curJsPandaFile = JSPandaFileManager::GetInstance()->LoadJSPandaFile(
+            thread, abcFilePath, requestPath, false, ExecuteTypes::STATIC);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         if (curJsPandaFile == nullptr) {
             errorMsg = "Load native module failed, filename '" + abcFilePath +
                 ", module name '" + requestPath;
@@ -799,7 +797,7 @@ JSTaggedValue BuiltinsGlobal::StartRuntimeStat(EcmaRuntimeCallInfo *msg)
     BUILTINS_API_TRACE(thread, Global, StartRuntimeStat);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     // start vm runtime stat statistic
-    thread->GetCurrentEcmaContext()->SetRuntimeStatEnable(true);
+    thread->GetEcmaVM()->SetRuntimeStatEnable(true);
     return JSTaggedValue::Undefined();
 }
 
@@ -808,8 +806,8 @@ JSTaggedValue BuiltinsGlobal::StopRuntimeStat(EcmaRuntimeCallInfo *msg)
     JSThread *thread = msg->GetThread();
     BUILTINS_API_TRACE(thread, Global, StopRuntimeStat);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
-    // start vm runtime stat statistic
-    thread->GetCurrentEcmaContext()->SetRuntimeStatEnable(false);
+    // stop vm runtime stat statistic
+    thread->GetEcmaVM()->SetRuntimeStatEnable(false);
     return JSTaggedValue::Undefined();
 }
 #endif
@@ -822,6 +820,18 @@ JSTaggedValue BuiltinsGlobal::PrintOptStat(EcmaRuntimeCallInfo *msg)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     // start vm runtime stat statistic
     thread->GetCurrentEcmaContext()->PrintOptStat();
+    return JSTaggedValue::Undefined();
+}
+#endif
+
+#if ECMASCRIPT_ENABLE_MEGA_PROFILER
+JSTaggedValue BuiltinsGlobal::PrintMegaICStat(EcmaRuntimeCallInfo *msg)
+{
+    JSThread *thread = msg->GetThread();
+    BUILTINS_API_TRACE(thread, Global, PrintMegaICStat);
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+    // start vm runtime stat statistic
+    thread->GetCurrentEcmaContext()->PrintMegaICStat();
     return JSTaggedValue::Undefined();
 }
 #endif

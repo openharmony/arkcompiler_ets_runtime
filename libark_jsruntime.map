@@ -12,10 +12,13 @@
       vtable?for?panda::ecmascript::kungfu::StringSnapshotInfo;
       vtable?for?panda::ecmascript::Taskpool;
       vtable?for?panda::ecmascript::base::Utf8JsonParser;
+      vtable?for?panda::ecmascript::tooling::JSDebugger;
 
       panda::ecmascript::COMMON_HELP_HEAD_MSG*;
       panda::ecmascript::HELP_OPTION_MSG*;
       panda::ecmascript::COMPILER_HELP_HEAD_MSG*;
+
+      panda::ArkCrashHolder*;
 
       panda::ArrayBufferRef::*;
       panda::SendableArrayBufferRef::*;
@@ -65,6 +68,9 @@
       panda::SharedInt32ArrayRef::*;
       panda::SharedUint32ArrayRef::*;
       panda::SharedFloat32ArrayRef::*;
+      panda::SharedFloat64ArrayRef::*;
+      panda::SharedBigInt64ArrayRef::*;
+      panda::SharedBigUint64ArrayRef::*;
       panda::SharedUint8ClampedArrayRef::*;
       panda::ProxyRef::*;
       panda::StringRef::*;
@@ -164,6 +170,7 @@
       panda::ecmascript::EcmaStringAccessor::ToStdString*;
       panda::ecmascript::EcmaVM::CheckThread*;
       panda::ecmascript::EcmaVM::GetGlobalEnv*;
+      panda::ecmascript::EcmaVM::IsEnableMutantArray*;
       panda::ecmascript::EcmaVM::IsEnableElementsKind*;
       panda::ecmascript::EcmaVM::IsEnablePGOProfiler*;
       panda::ecmascript::EcmaVM::IsEnableJit*;
@@ -252,8 +259,7 @@
       panda::ecmascript::MethodLiteral::ParseFunctionName*;
       panda::ecmascript::ModuleManager::GetRecordName*;
       panda::ecmascript::ModuleManager::HostGetImportedModule*;
-      panda::ecmascript::ModuleResolver::HostResolveImportedModuleWithMerge*;
-      panda::ecmascript::ModuleResolver::ResolveImportedModuleWithMerge*;
+      panda::ecmascript::ModuleResolver::HostResolveImportedModule*;
       panda::ecmascript::ModuleManagerHelper::GetModuleValue*;
       panda::ecmascript::ModuleManagerHelper::GetNativeModuleValue*;
       panda::ecmascript::ModuleManagerHelper::GetModuleValueFromIndexBinding*;
@@ -308,7 +314,6 @@
       panda::ecmascript::PageUnmap*;
       panda::ecmascript::PageSize*;
       panda::ecmascript::PagePreRead*;
-      panda::ecmascript::pgo::PGOProfiler::GetMethodAbcId*;
       panda::ecmascript::RealPath*;
       panda::ecmascript::SetDirModeAsDefault*;
       panda::ecmascript::SetFileModeAsDefault*;
@@ -333,6 +338,7 @@
       panda::ecmascript::kungfu::ArkStackMapBuilder::Run*;
       panda::ecmascript::kungfu::PGOBCInfo::Record*;
       panda::ecmascript::SharedModuleManager::GetInstance*;
+      panda::ecmascript::kungfu::RelocWriterAArch64::*;
       panda::ecmascript::SharedModuleManager::TransferSModule*;
       panda::ecmascript::kungfu::PGOTypeManager::GetConstantPoolIDByMethodOffset*;
       panda::ecmascript::kungfu::PGOTypeManager::GetConstantPoolByMethodOffset*;
@@ -347,11 +353,14 @@
       panda::ecmascript::kungfu::PGOTypeManager::GetReceiverHIndexByPGOObjectInfoType*;
       panda::ecmascript::kungfu::PGOTypeManager::SetCurConstantPool*;
       panda::ecmascript::kungfu::PGOTypeManager::GetSymbolIdByProfileType*;
+      panda::ecmascript::kungfu::PGOTypeManager::MergeRepresentationForProtoTransition*;
       panda::ecmascript::kungfu::PGOTypeParser::CreatePGOType*;
+      panda::ecmascript::kungfu::PGOTypeParser::Preproccessor*;
       panda::ecmascript::kungfu::PGOTypeParser::PGOTypeParser*;
       panda::ecmascript::kungfu::PGOTypeRecorder::GetElementsKindForCreater*;
       panda::ecmascript::kungfu::PGOTypeRecorder::GetElementsKindsForUser*;
       panda::ecmascript::kungfu::PGOTypeRecorder::GetElementsLength*;
+      panda::ecmascript::kungfu::PGOTypeRecorder::IsInsufficientProfile*;
       panda::ecmascript::kungfu::PGOTypeRecorder::GetPGOType*;
       panda::ecmascript::kungfu::PGOTypeRecorder::GetRegionSpaceFlag*;
       panda::ecmascript::kungfu::PGOTypeRecorder::GetTransitionElementsKindForUser*;
@@ -368,11 +377,8 @@
       panda::ecmascript::pgo::ApNameUtils::GetOhosPkgApName*;
       panda::ecmascript::pgo::ApNameUtils::GetRuntimeApName*;
       panda::ecmascript::pgo::PGOMethodInfo::CalcChecksum*;
-      panda::ecmascript::pgo::PGOProfiler::ProfileCreateObject*;
-      panda::ecmascript::pgo::PGOProfiler::RecordProfileType*;
-      panda::ecmascript::pgo::PGOProfiler::GetMethodAbcId*;
-      panda::ecmascript::pgo::PGOProfilerManager::GetInstance*;
-      panda::ecmascript::pgo::PGOProfilerManager::MergeApFiles*;
+      panda::ecmascript::pgo::PGOProfiler::*;
+      panda::ecmascript::pgo::PGOProfilerManager::*;
       panda::ecmascript::JITProfiler::ProfileBytecode*;
       panda::panda_file::ClassDataAccessor::ClassDataAccessor*;
       panda::panda_file::CodeDataAccessor::CatchBlock::CatchBlock*;
@@ -383,11 +389,10 @@
       panda::panda_file::MethodDataAccessor::MethodDataAccessor*;
       panda::ecmascript::JitCompilationEnv::GetMethodFromCache*;
       panda::ecmascript::SetAppFreezeFilterCallback*;
+      panda::ecmascript::InitializeMallocConfig*;
     };
     extern "C" {
-      get_ark_native_frame_info;
       ark_parse_js_frame_info;
-      ark_translate_js_frame_info;
       step_ark;
       ark_create_js_symbol_extractor;
       ark_destory_js_symbol_extractor;

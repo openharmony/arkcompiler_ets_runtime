@@ -15,9 +15,6 @@
 
 #include "ecmascript/dfx/cpu_profiler/samples_record.h"
 
-#include <climits>
-#include <sys/syscall.h>
-#include <unistd.h>
 
 #include "ecmascript/dfx/cpu_profiler/cpu_profiler.h"
 #include "ecmascript/dfx/tracing/tracing.h"
@@ -605,7 +602,8 @@ void SamplesRecord::TranslateUrlPositionBySourceMap(struct FrameInfo &codeEntry)
     if (codeEntry.url.empty()) {
         return;
     }
-    if (!sourceMapTranslateCallback_(codeEntry.url, codeEntry.lineNumber, codeEntry.columnNumber)) {
+    if (!sourceMapTranslateCallback_(codeEntry.url, codeEntry.lineNumber, codeEntry.columnNumber,
+                                     codeEntry.packageName)) {
         size_t find = codeEntry.url.rfind("_.js");
         if (find == std::string::npos) {
             size_t start = codeEntry.url.find("entry/");

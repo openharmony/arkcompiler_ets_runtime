@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 
-#include <semaphore.h>
 #include "ecmascript/napi/include/dfx_jsnapi.h"
 
 #include "ecmascript/base/block_hook_scope.h"
@@ -23,9 +22,11 @@
 #include "ecmascript/debugger/js_debugger_manager.h"
 #include "ecmascript/dfx/stackinfo/js_stackinfo.h"
 #include "ecmascript/dfx/tracing/tracing.h"
+#include "ecmascript/dfx/stackinfo/async_stack_trace.h"
 #include "ecmascript/mem/heap-inl.h"
 #include "ecmascript/jit/jit.h"
 #include "ecmascript/dfx/vm_thread_control.h"
+#include "ecmascript/dfx/hprof/heap_profiler.h"
 
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
 #include "ecmascript/dfx/cpu_profiler/cpu_profiler.h"
@@ -65,15 +66,44 @@ void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unus
 #endif
 }
 
+void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unused]] int& fd,
+                                 [[maybe_unused]] const DumpSnapShotOption &dumpOption,
+                                 [[maybe_unused]] const std::function<void(uint8_t)> &callback)
+{
+#if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
+    FileDescriptorStream stream(fd);
+    fd = -1;
+    DumpHeapSnapshot(vm, &stream, dumpOption, nullptr, callback);
+#else
+    LOG_ECMA(ERROR) << "Not support arkcompiler heap snapshot";
+#endif
+}
+
 // IDE interface.
 void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unused]] Stream *stream,
                                  [[maybe_unused]] const DumpSnapShotOption &dumpOption,
-                                 [[maybe_unused]] Progress *progress)
+                                 [[maybe_unused]] Progress *progress,
+                                 [[maybe_unused]] std::function<void(uint8_t)> callback)
 {
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
     ecmascript::HeapProfilerInterface *heapProfile = ecmascript::HeapProfilerInterface::GetInstance(
         const_cast<EcmaVM *>(vm));
-    heapProfile->DumpHeapSnapshot(stream, dumpOption, progress);
+
+#if defined (ENABLE_LOCAL_HANDLE_LEAK_DETECT)
+#if defined (ENABLE_DUMP_IN_FAULTLOG)
+    auto heapProfiler = reinterpret_cast<ecmascript::HeapProfiler *>(heapProfile);
+    heapProfiler->SwitchStartLocalHandleLeakDetect();
+    if (heapProfiler->IsStartLocalHandleLeakDetect()) {
+        int32_t fd = RequestFileDescriptor(static_cast<int32_t>(FaultLoggerType::JS_STACKTRACE));
+        if (fd < 0) {
+            LOG_ECMA(ERROR) << "[LocalHandleLeakDetect] Failed on request file descriptor";
+        } else {
+            heapProfiler->SetLeakStackTraceFd(fd);
+        }
+    }
+#endif  // ENABLE_DUMP_IN_FAULTLOG
+#endif  // ENABLE_LOCAL_HANDLE_LEAK_DETECT
+    heapProfile->DumpHeapSnapshot(stream, dumpOption, progress, callback);
 #else
     LOG_ECMA(ERROR) << "Not support arkcompiler heap snapshot";
 #endif
@@ -83,6 +113,9 @@ void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unus
 
 void DFXJSNApi::DumpCpuProfile([[maybe_unused]] const EcmaVM *vm)
 {
+#if ECMASCRIPT_ENABLE_MEGA_PROFILER
+    vm->GetJSThread()->GetCurrentEcmaContext()->PrintMegaICStat();
+#endif
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
 #if defined(ENABLE_DUMP_IN_FAULTLOG)
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
@@ -415,12 +448,12 @@ void DFXJSNApi::PrintStatisticResult(const EcmaVM *vm)
 
 void DFXJSNApi::StartRuntimeStat(EcmaVM *vm)
 {
-    vm->GetJSThread()->GetCurrentEcmaContext()->SetRuntimeStatEnable(true);
+    vm->GetJSThread()->GetEcmaVM()->SetRuntimeStatEnable(true);
 }
 
 void DFXJSNApi::StopRuntimeStat(EcmaVM *vm)
 {
-    vm->GetJSThread()->GetCurrentEcmaContext()->SetRuntimeStatEnable(false);
+    vm->GetJSThread()->GetEcmaVM()->SetRuntimeStatEnable(false);
 }
 
 size_t DFXJSNApi::GetArrayBufferSize(const EcmaVM *vm)
@@ -511,11 +544,11 @@ void DFXJSNApi::SetJsDumpThresholds([[maybe_unused]] EcmaVM *vm, [[maybe_unused]
 #endif
 }
 
-void DFXJSNApi::SetAppFreezeFilterCallback(const EcmaVM *vm, AppFreezeFilterCallback cb)
+void DFXJSNApi::SetAppFreezeFilterCallback([[maybe_unused]] const EcmaVM *vm, AppFreezeFilterCallback cb)
 {
-    const_cast<ecmascript::Heap *>(vm->GetHeap())->SetAppFreezeFilterCallback(cb);
-    ecmascript::SharedHeap* sHeap = ecmascript::SharedHeap::GetInstance();
-    sHeap->SetAppFreezeFilterCallback(cb);
+    if (ecmascript::Runtime::GetInstance()->GetAppFreezeFilterCallback() == nullptr && cb != nullptr) {
+        ecmascript::Runtime::GetInstance()->SetAppFreezeFilterCallback(cb);
+    }
 }
 
 void DFXJSNApi::NotifyApplicationState(EcmaVM *vm, bool inBackground)
@@ -541,14 +574,9 @@ void DFXJSNApi::NotifyMemoryPressure(EcmaVM *vm, bool inHighMemoryPressure)
     const_cast<ecmascript::Heap *>(vm->GetHeap())->NotifyMemoryPressure(inHighMemoryPressure);
 }
 
-void DFXJSNApi::NotifyFinishColdStart(EcmaVM *vm, bool isConvinced)
+void DFXJSNApi::NotifyFinishColdStart(EcmaVM *vm, [[maybe_unused]] bool isConvinced)
 {
     ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
-    if (isConvinced) {
-        const_cast<ecmascript::Heap *>(vm->GetHeap())->NotifyFinishColdStart();
-    } else {
-        const_cast<ecmascript::Heap *>(vm->GetHeap())->NotifyFinishColdStartSoon();
-    }
 }
 
 void DFXJSNApi::NotifyHighSensitive(EcmaVM *vm, bool isStart)
@@ -859,10 +887,18 @@ bool DFXJSNApi::BuildJsStackInfoList(const EcmaVM *hostVm, uint32_t tid, std::ve
     return false;
 }
 
+//When some objects invoke GetObjectHash, the return result is 0.
+//The GetObjectHashCode function is added to rectify the fault.
 int32_t DFXJSNApi::GetObjectHash(const EcmaVM *vm, Local<JSValueRef> nativeObject)
 {
     JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(nativeObject);
     return ecmascript::tooling::DebuggerApi::GetObjectHash(vm, obj);
+}
+
+int32_t DFXJSNApi::GetObjectHashCode(const EcmaVM *vm, Local<JSValueRef> nativeObject)
+{
+    JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(nativeObject);
+    return ecmascript::tooling::DebuggerApi::GetObjectHashCode(vm, obj);
 }
 
 bool DFXJSNApi::StartSampling([[maybe_unused]] const EcmaVM *vm, [[maybe_unused]] uint64_t samplingInterval)
@@ -1008,12 +1044,13 @@ void DFXJSNApi::GetTracingBufferUseage([[maybe_unused]] const EcmaVM *vm, [[mayb
 #endif
 }
 
-void DFXJSNApi::TranslateJSStackInfo(const EcmaVM *vm, std::string &url, int32_t &line, int32_t &column)
+void DFXJSNApi::TranslateJSStackInfo(const EcmaVM *vm, std::string &url, int32_t &line, int32_t &column,
+    std::string &packageName)
 {
     auto cb = vm->GetSourceMapTranslateCallback();
     if (cb == nullptr) {
         LOG_ECMA(ERROR) << "Translate failed, callback function is nullptr.";
-    } else if (!cb(url, line, column)) {
+    } else if (!cb(url, line, column, packageName)) {
         LOG_ECMA(ERROR) << "Translate failed, url: " << url;
     }
 }
@@ -1021,5 +1058,10 @@ void DFXJSNApi::TranslateJSStackInfo(const EcmaVM *vm, std::string &url, int32_t
 uint32_t DFXJSNApi::GetCurrentThreadId()
 {
     return JSThread::GetCurrentThreadId();
+}
+
+void DFXJSNApi::RegisterAsyncDetectCallBack(const EcmaVM *vm)
+{
+    vm->GetAsyncStackTrace()->RegisterAsyncDetectCallBack();
 }
 } // namespace panda

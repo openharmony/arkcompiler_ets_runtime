@@ -330,6 +330,16 @@ public:
         });
     }
 
+    bool CheckHasInvalidType() const
+    {
+        for (auto iter : transitionLayout_) {
+            if (iter.first.IsInvalidType()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
 private:
     template<typename Callback>
     void IterateAll(Callback callback) const
@@ -582,9 +592,7 @@ public:
             auto rootLayoutDesc = reinterpret_cast<RootHClassLayoutDesc *>(layoutDesc);
             rootLayoutDesc->IterateProps([&text, &isLayoutFirst] (const PropertyDesc &propDesc) {
                 if (!isLayoutFirst) {
-                    text += DumpUtils::TYPE_SEPARATOR + DumpUtils::SPACE;
-                } else {
-                    text += DumpUtils::ARRAY_START;
+                    text += DumpUtils::SPACE + DumpUtils::TYPE_SEPARATOR + DumpUtils::SPACE;
                 }
                 isLayoutFirst = false;
                 text += propDesc.first;

@@ -48,5 +48,3 @@ print(result2.groups);
 
 var regexpFlags = new RegExp("", "dgimsuy").flags;
 print(regexpFlags);
-
-print(Reflect.set({}, 4294967284, {}, new Int32Array()))

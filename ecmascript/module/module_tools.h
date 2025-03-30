@@ -34,6 +34,35 @@ public:
     static JSTaggedValue ProcessModuleNameSpaceLoadInfo(JSThread *thread,
                                                         JSHandle<SourceTextModule> currentModule,
                                                         JSHandle<SourceTextModule> requiredModule);
+    // for lazy
+    static JSTaggedValue GetLazyModuleValueFromIndexBindingForLog(
+        JSThread *thread, JSHandle<SourceTextModule> module, JSTaggedValue resolvedBinding, int32_t index);
+    
+    static JSTaggedValue GetLazyModuleValueFromRecordBindingForLog(
+        JSThread *thread, JSHandle<SourceTextModule> module, JSTaggedValue resolvedBinding, int32_t index);
+
+    static JSTaggedValue ProcessLazyModuleLoadInfo(JSThread *thread, JSHandle<SourceTextModule> currentModule,
+        JSTaggedValue resolvedBinding, int32_t index);
+};
+
+class ModuleTraceScope {
+public:
+    ModuleTraceScope(JSThread *thread, [[maybe_unused]]const CString traceInfo)
+        : enableESMTrace_(thread->GetEcmaVM()->GetJSOptions().EnableESMTrace())
+    {
+        if (enableESMTrace_) {
+            ECMA_BYTRACE_START_TRACE(HITRACE_TAG_ARK, traceInfo.c_str());
+        }
+    }
+
+    ~ModuleTraceScope()
+    {
+        if (enableESMTrace_) {
+            ECMA_BYTRACE_FINISH_TRACE(HITRACE_TAG_ARK);
+        }
+    }
+private:
+    bool enableESMTrace_ {false};
 };
 } // namespace panda::ecmascript
 #endif // ECMASCRIPT_MODULE_MODULE_TOOLS_H

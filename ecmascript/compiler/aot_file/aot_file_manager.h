@@ -166,7 +166,7 @@ public:
     static bool InsideAOT(uintptr_t pc);
     static bool AOTFileExist(const std::string &aotFileName, const std::string &extension);
     bool IsEnableAOT() const;
-    void Iterate(const RootVisitor& v);
+    void Iterate(RootVisitor& v);
 
     const std::shared_ptr<AnFileInfo> GetAnFileInfo(const JSPandaFile* jsPandaFile) const;
     bool IsLoadMain(const JSPandaFile* jsPandaFile, const CString& entry) const;
@@ -206,6 +206,11 @@ private:
     using FileNameToMultiConstantPoolMap = CMap<CString, PandaCpInfo>;
     using AIDatum = CUnorderedMap<uint32_t, FileNameToMultiConstantPoolMap>; // key: ai file index
 
+    void LoadingCommonStubsLog(size_t id, Address entry);
+    void LoadingByteCodeStubsLog(size_t id, Address entry);
+    void LoadingBuiltinsStubsLog(size_t id, Address entry);
+    void LoadingBaselineStubsLog(size_t id, Address entry);
+    void LoadingRuntimeStubsLog(size_t id, Address entry);
     static void PrintAOTEntry(const JSPandaFile *file, const Method *method, uintptr_t entry);
     void InitializeStubEntries(const std::vector<AnFileInfo::FuncEntryDes>& stubs);
     static void AdjustBCStubAndDebuggerStubEntries(JSThread *thread,

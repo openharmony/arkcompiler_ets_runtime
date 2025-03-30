@@ -18,7 +18,7 @@ module_output_path = "ets_runtime"
 
 metadata_file_path = "//arkcompiler/ets_runtime/ecmascript/js_type_metadata/"
 
-target_test_path = "/tests/unittest/arkcompiler/ets_runtime/resource/obj/arkcompiler/ets_runtime/ecmascript/dfx/hprof/tests"
+target_test_path = "/tests/unittest/ets_runtime/resource/obj/arkcompiler/ets_runtime/ecmascript/dfx/hprof/tests"
 
 test_js_path = "//arkcompiler/ets_runtime/ecmascript/dfx/hprof/tests/js_files/"
 
@@ -59,7 +59,6 @@ host_unittest_action("HeapDumpTest") {
     "$ark_third_party_root/icu/icu4c:shared_icui18n",
     "$ark_third_party_root/icu/icu4c:shared_icuuc",
     "../../../../:libark_jsruntime_test",
-    sdk_libc_secshared_dep,
   ]
 
   foreach(file, test_js_files) {
@@ -97,7 +96,6 @@ host_unittest_action("HeapSnapShotTest") {
     "$ark_third_party_root/icu/icu4c:shared_icui18n",
     "$ark_third_party_root/icu/icu4c:shared_icuuc",
     "../../../../:libark_jsruntime_test",
-    sdk_libc_secshared_dep,
   ]
 
   foreach(file, test_js_files) {
@@ -135,7 +133,6 @@ host_unittest_action("HeapTrackerFirstTest") {
     "$ark_third_party_root/icu/icu4c:shared_icui18n",
     "$ark_third_party_root/icu/icu4c:shared_icuuc",
     "../../../../:libark_jsruntime_test",
-    sdk_libc_secshared_dep,
   ]
 
   # hiviewdfx libraries
@@ -157,7 +154,6 @@ host_unittest_action("HeapTrackerSecondTest") {
     "$ark_third_party_root/icu/icu4c:shared_icui18n",
     "$ark_third_party_root/icu/icu4c:shared_icuuc",
     "../../../../:libark_jsruntime_test",
-    sdk_libc_secshared_dep,
   ]
 
   # hiviewdfx libraries
@@ -179,7 +175,6 @@ host_unittest_action("HeapTrackerThirdTest") {
     "$ark_third_party_root/icu/icu4c:shared_icui18n",
     "$ark_third_party_root/icu/icu4c:shared_icuuc",
     "../../../../:libark_jsruntime_test",
-    sdk_libc_secshared_dep,
   ]
 
   # hiviewdfx libraries
@@ -200,8 +195,7 @@ host_unittest_action("HProfTest") {
   deps = [
     "$ark_third_party_root/icu/icu4c:shared_icui18n",
     "$ark_third_party_root/icu/icu4c:shared_icuuc",
-    "//arkcompiler/ets_runtime:libark_jsruntime_test",
-    sdk_libc_secshared_dep,
+    "$js_root:libark_jsruntime_test",
   ]
 
   # hiviewdfx libraries
@@ -224,7 +218,6 @@ host_unittest_action("HeapSamplingTest") {
     "$ark_third_party_root/icu/icu4c:shared_icui18n",
     "$ark_third_party_root/icu/icu4c:shared_icuuc",
     "$js_root:libark_jsruntime_test",
-    sdk_libc_secshared_dep,
   ]
 
   # hiviewdfx libraries
@@ -248,7 +241,6 @@ host_unittest_action("RawHeapTranslateTest") {
     "$ark_third_party_root/icu/icu4c:shared_icui18n",
     "$ark_third_party_root/icu/icu4c:shared_icuuc",
     "$js_root:libark_jsruntime_test",
-    sdk_libc_secshared_dep,
   ]
 
   cflags_cc = [ "-std=c++17" ]
@@ -290,7 +282,6 @@ host_unittest_action("JSMetadataTest") {
     "$ark_third_party_root/icu/icu4c:shared_icui18n",
     "$ark_third_party_root/icu/icu4c:shared_icuuc",
     "../../../../:libark_jsruntime_test",
-    sdk_libc_secshared_dep,
   ]
 
   if (is_ohos && is_standard_system) {

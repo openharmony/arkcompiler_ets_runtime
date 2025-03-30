@@ -14,6 +14,7 @@
  */
 #include "ecmascript/compiler/aot_file/an_file_data_manager.h"
 #include "ecmascript/js_file_path.h"
+#include "ecmascript/mem/c_string.h"
 #include "ecmascript/platform/file.h"
 
 namespace panda::ecmascript {
@@ -180,6 +181,85 @@ std::shared_ptr<StubFileInfo> AnFileDataManager::SafeGetStubFileInfo()
 {
     ReadLockHolder lock(lock_);
     return loadedStub_;
+}
+
+void AnFileDataManager::SafeMergeChecksumInfo(const std::unordered_map<CString, uint32_t> &fileNameToChecksumMap)
+{
+    WriteLockHolder lock(lock_);
+    UnsafeMergeChecksumInfo(fileNameToChecksumMap);
+}
+
+// this method is not thread safe,please make sure have lock
+void AnFileDataManager::UnsafeMergeChecksumInfo(const std::unordered_map<CString, uint32_t> &fileNameToChecksumMap)
+{
+    if (fullFileNameToChecksumMap_.empty()) {
+        fullFileNameToChecksumMap_ = fileNameToChecksumMap;
+        return;
+    }
+    for (const auto &newPair : fileNameToChecksumMap) {
+        bool alreadyHasChecksum = false;
+        for (auto &fullPair : fullFileNameToChecksumMap_) {
+            if (fullPair.first == newPair.first) {
+                alreadyHasChecksum = true;
+                VerifyChecksumOrSetToInvalid(newPair, fullPair);
+                break;
+            }
+        }
+        if (!alreadyHasChecksum) {
+            fullFileNameToChecksumMap_.emplace(newPair.first, newPair.second);
+        }
+    }
+}
+
+void AnFileDataManager::VerifyChecksumOrSetToInvalid(const std::pair<CString, uint32_t> &newPair,
+                                                     std::pair<const CString, uint32_t> &fullPair)
+{
+    if (fullPair.second == static_cast<uint32_t>(-1)) {
+        LOG_ECMA(ERROR) << "MergeChecksumInfo fail because checksum is INVALID. "
+                        << " file name: " << newPair.first;
+        return;
+    }
+    if (newPair.second != fullPair.second) {
+        LOG_ECMA(ERROR) << "MergeChecksumInfo fail because of different checksum, set to INVALID. "
+                        << " file name: " << newPair.first << "old checksum: " << fullPair.second
+                        << " new checksum: " << newPair.second;
+        fullPair.second = static_cast<uint32_t>(-1);
+    }
+}
+
+const std::unordered_map<CString, uint32_t> &AnFileDataManager::SafeGetfullFileNameToChecksumMap()
+{
+    ReadLockHolder lock(lock_);
+    return UnsafeGetfullFileNameToChecksumMap();
+}
+
+const std::unordered_map<CString, uint32_t> &AnFileDataManager::UnsafeGetfullFileNameToChecksumMap() const
+{
+    return fullFileNameToChecksumMap_;
+}
+
+bool AnFileDataManager::SafeCheckFilenameToChecksum(const CString &fileName, uint32_t checksum)
+{
+    ReadLockHolder lock(lock_);
+    return UnsafeCheckFilenameToChecksum(fileName, checksum);
+}
+
+bool AnFileDataManager::UnsafeCheckFilenameToChecksum(const CString &fileName, uint32_t checksum)
+{
+    for (const auto &fileNameToChecksumPair : fullFileNameToChecksumMap_) {
+        if (fileName == fileNameToChecksumPair.first) {
+            if (fileNameToChecksumPair.second == static_cast<uint32_t>(-1) ||
+                fileNameToChecksumPair.second != checksum) {
+                LOG_COMPILER(ERROR) << "an file verify checksum fail: checksum is invalid or different. FileName: "
+                                    << fileName << " old checksum: " << fileNameToChecksumPair.second
+                                    << " provided new checksum " << checksum;
+                return false;
+            } else {
+                return true;
+            }
+        }
+    }
+    return true;
 }
 
 // Using for cpuprofiler to check if the ReadLock can be held in signal handler, to avoid the reentrancy deadlock.

@@ -134,6 +134,9 @@ bool ValueSerializer::WriteValue(JSThread *thread,
                 break;
             }
             void *buffer = detachNative(info->env, info->nativeValue, info->hint, info->detachData);
+            if (info->detachedFinalizer != nullptr) {
+                data_->AddNativeBindingDetachInfo(info, buffer);
+            }
             data_->EmitU64(reinterpret_cast<uint64_t>(buffer), static_cast<size_t>(entry.first));
         }
     }
@@ -147,6 +150,18 @@ bool ValueSerializer::WriteValue(JSThread *thread,
         return false;
     }
     if (!chunkEmpty) {
+        [[maybe_unused]] EcmaHandleScope scope(thread_);
+        JSMutableHandle<JSTaggedValue> strHandle(thread_, JSTaggedValue::Undefined());
+        SerializationChunk *chunk = Runtime::GetInstance()->GetSerializeRootMapValue(thread_, index);
+        size_t size = chunk->Size();
+        for (size_t i = 0; i < size; ++i) {
+            JSTaggedValue val(chunk->Get(i));
+            if (UNLIKELY(val.IsTreeString())) {
+                strHandle.Update(val);
+                JSHandle<JSTaggedValue> flattenStr(JSTaggedValue::PublishSharedValue(thread, strHandle));
+                chunk->Set(i, flattenStr.GetTaggedType());
+            }
+        }
         data_->SetDataIndex(index);
     }
     size_t maxSerializerSize = vm_->GetEcmaParamConfiguration().GetMaxJSSerializerSize();
@@ -175,23 +190,25 @@ void ValueSerializer::SerializeObjectImpl(TaggedObject *object, bool isWeak)
         return;
     }
     Region *region = Region::ObjectAddressToRange(object);
-    if (object->GetClass()->IsString() || object->GetClass()->IsMethod() || region->InSharedReadOnlySpace() ||
+    JSHClass *objClass = object->GetClass();
+    if (objClass->IsString() || objClass->IsMethod() || objClass->IsJSSharedFunction() ||
+        objClass->IsJSSharedAsyncFunction() || region->InSharedReadOnlySpace() ||
         (serializeSharedEvent_ == 0 && region->InSharedHeap())) {
         SerializeSharedObject(object);
         return;
     }
-    if (object->GetClass()->IsNativeBindingObject()) {
+    if (objClass->IsNativeBindingObject()) {
         SerializeNativeBindingObject(object);
         return;
     }
-    if (object->GetClass()->IsJSError()) {
+    if (objClass->IsJSError()) {
         SerializeJSError(object);
         return;
     }
     bool arrayBufferDeferDetach = false;
     JSTaggedValue trackInfo;
     JSTaggedType hashfield = JSTaggedValue::VALUE_ZERO;
-    JSType type = object->GetClass()->GetObjectType();
+    JSType type = objClass->GetObjectType();
     // serialize prologue
     switch (type) {
         case JSType::JS_ARRAY_BUFFER: {
@@ -262,7 +279,7 @@ void ValueSerializer::SerializeObjectImpl(TaggedObject *object, bool isWeak)
         serializeSharedEvent_--;
     }
     if (arrayBufferDeferDetach) {
-        ASSERT(object->GetClass()->IsArrayBuffer());
+        ASSERT(objClass->IsArrayBuffer());
         JSArrayBuffer *arrayBuffer = reinterpret_cast<JSArrayBuffer *>(object);
         arrayBuffer->Detach(thread_, arrayBuffer->GetWithNativeAreaAllocator(), true);
     }

@@ -62,9 +62,6 @@ static size_t MakeArgListWithHole(JSThread *thread, TaggedArray *argv, int lengt
 static std::pair<TaggedArray*, size_t> BuildArgumentsListFast(JSThread *thread,
                                                               const JSHandle<JSTaggedValue> &arrayObj)
 {
-    if (!arrayObj->HasStableElements(thread)) {
-        return std::make_pair(nullptr, 0);
-    }
     if (arrayObj->IsStableJSArguments(thread)) {
         JSHandle<JSArguments> argList = JSHandle<JSArguments>::Cast(arrayObj);
         TaggedArray *elements = TaggedArray::Cast(argList->GetElements().GetTaggedObject());
@@ -72,7 +69,8 @@ static std::pair<TaggedArray*, size_t> BuildArgumentsListFast(JSThread *thread,
         if (argList->GetClass() != env->GetArgumentsClass().GetObject<JSHClass>()) {
             return std::make_pair(nullptr, 0);
         }
-        auto result = argList->GetPropertyInlinedProps(JSArguments::LENGTH_INLINE_PROPERTY_INDEX);
+        auto result = argList->GetPropertyInlinedPropsWithSize<
+            JSArguments::SIZE, JSArguments::LENGTH_INLINE_PROPERTY_INDEX>();
         if (!result.IsInt()) {
             return std::make_pair(nullptr, 0);
         }
@@ -88,7 +86,7 @@ static std::pair<TaggedArray*, size_t> BuildArgumentsListFast(JSThread *thread,
             JSHandle<TaggedArray> newElements = thread->GetEcmaVM()->GetFactory()->
                                                 NewTaggedArray(elementsLength, JSTaggedValue::Undefined());
             for (int i = 0; i < elementsLength; ++i) {
-                JSTaggedValue value = ElementAccessor::Get(obj, i);
+                JSTaggedValue value = ElementAccessor::Get(thread, obj, i);
                 newElements->Set(thread, i, value);
             }
             elements = *newElements;
@@ -103,10 +101,8 @@ static std::pair<TaggedArray*, size_t> BuildArgumentsListFast(JSThread *thread,
         }
         size_t res = MakeArgListWithHole(thread, elements, length);
         return std::make_pair(elements, res);
-    } else {
-        LOG_ECMA(FATAL) << "this branch is unreachable";
-        UNREACHABLE();
     }
+    return std::make_pair(nullptr, 0);
 }
 }  // anonymous namespace
 

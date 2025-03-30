@@ -15,12 +15,9 @@
 
 #include "ecmascript/mem/incremental_marker.h"
 
-#include <ctime>
-#include <regex>
-#include <sys/time.h>
-
 #include "ecmascript/mem/concurrent_marker.h"
-#include "ecmascript/mem/parallel_marker-inl.h"
+#include "ecmascript/mem/parallel_marker.h"
+#include "ecmascript/mem/old_gc_visitor-inl.h"
 #include "ecmascript/runtime_call_id.h"
 
 namespace panda::ecmascript {
@@ -55,13 +52,21 @@ void IncrementalMarker::TriggerIncrementalMark(int64_t idleMicroSec)
     }
 }
 
+void IncrementalMarker::MarkRoots()
+{
+    ASSERT(heap_->IsFullMark());
+    OldGCMarkRootVisitor oldGCMarkRootVisitor(workManager_->GetWorkNodeHolder(MAIN_THREAD_INDEX));
+    heap_->GetNonMovableMarker()->MarkRoots(oldGCMarkRootVisitor);
+}
+
 void IncrementalMarker::Mark()
 {
     LOG_GC(DEBUG) << "IncrementalMarker: Incremental Marking Begin";
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "IncrementalMarker::Mark");
     MEM_ALLOCATE_AND_GC_TRACE(vm_, IncrementalMarking);
     Initialize();
-    heap_->GetNonMovableMarker()->MarkRoots(MAIN_THREAD_INDEX);
+    MarkRoots();
+    workManager_->GetWorkNodeHolder(MAIN_THREAD_INDEX)->PushWorkNodeToGlobal(false);
     states_ = IncrementalGCStates::INCREMENTAL_MARK;
 }
 

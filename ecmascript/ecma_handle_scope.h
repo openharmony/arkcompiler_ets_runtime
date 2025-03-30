@@ -17,11 +17,6 @@
 #define ECMASCRIPT_HANDLE_SCOPE_H
 
 #include "ecmascript/js_tagged_value.h"
-#ifdef ECMASCRIPT_ENABLE_HANDLE_LEAK_CHECK
-#include "ecmascript/platform/backtrace.h"
-#include "ecmascript/log_wrapper.h"
-#include "ecmascript/mem/clock_scope.h"
-#endif
 
 namespace panda::ecmascript {
 class JSThread;
@@ -55,11 +50,6 @@ private:
     JSTaggedType *prevPrimitiveNext_;
     JSTaggedType *prevPrimitiveEnd_;
     int prevPrimitiveStorageIndex_ {-1};
-#ifdef ECMASCRIPT_ENABLE_HANDLE_LEAK_CHECK
-    ClockScope scope_;
-    EcmaHandleScope *prevHandleScope_ {nullptr};
-    EcmaHandleScope *prevPrimitiveScope_ {nullptr};
-#endif
 
     NO_COPY_SEMANTIC(EcmaHandleScope);
     NO_MOVE_SEMANTIC(EcmaHandleScope);

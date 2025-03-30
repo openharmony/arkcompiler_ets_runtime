@@ -79,11 +79,11 @@ JSHandle<JSTaggedValue> BaseDeserializer::DeserializeJSTaggedValue()
     concurrentFunctions_.clear();
 
     // new native binding object here
-    for (auto nativeBindingInfo : nativeBindingInfos_) {
+    for (auto nativeBindingInfo : nativeBindingAttachInfos_) {
         DeserializeNativeBindingObject(nativeBindingInfo);
         delete nativeBindingInfo;
     }
-    nativeBindingInfos_.clear();
+    nativeBindingAttachInfos_.clear();
 
     // new js error here
     for (auto jsErrorInfo : jsErrorInfos_) {
@@ -116,7 +116,7 @@ void BaseDeserializer::DeserializeObjectField(uintptr_t start, uintptr_t end)
     }
 }
 
-void BaseDeserializer::DeserializeNativeBindingObject(NativeBindingInfo *info)
+void BaseDeserializer::DeserializeNativeBindingObject(NativeBindingAttachInfo *info)
 {
     [[maybe_unused]] EcmaHandleScope scope(thread_);
     AttachFunc af = info->af_;
@@ -182,7 +182,9 @@ void BaseDeserializer::HandleNewObjectEncodeFlag(SerializedObjectSpace space,  u
     if (object->GetClass()->IsJSNativePointer()) {
         JSNativePointer *nativePointer = reinterpret_cast<JSNativePointer *>(object);
         if (nativePointer->GetDeleter() != nullptr) {
-            thread_->GetEcmaVM()->PushToNativePointerList(nativePointer);
+            if (!JSTaggedValue::Cast(object).IsInSharedHeap()) {
+                thread_->GetEcmaVM()->PushToNativePointerList(nativePointer);
+            }
         }
     } else if (object->GetClass()->IsJSFunction()) {
         JSFunction* func = reinterpret_cast<JSFunction *>(object);
@@ -258,7 +260,7 @@ size_t BaseDeserializer::ReadSingleEncodeData(uint8_t encodeFlag, uintptr_t objA
         }
         case (uint8_t)EncodeFlag::REFERENCE: {
             uint32_t valueIndex = data_->ReadUint32(position_);
-            JSTaggedType valueAddr = objectVector_[valueIndex];
+            JSTaggedType valueAddr = objectVector_.at(valueIndex);
             UpdateMaybeWeak(slot, valueAddr, GetAndResetWeak());
             WriteBarrier<WriteBarrierType::DESERIALIZE>(thread_, reinterpret_cast<void *>(objAddr), fieldOffset,
                                                         valueAddr);
@@ -330,8 +332,8 @@ size_t BaseDeserializer::ReadSingleEncodeData(uint8_t encodeFlag, uintptr_t objA
             void *hint = reinterpret_cast<void *>(data_->ReadJSTaggedType(position_));
             void *attachData = reinterpret_cast<void *>(data_->ReadJSTaggedType(position_));
             // defer new native binding object until deserialize finish
-            nativeBindingInfos_.push_back(new NativeBindingInfo(af, bufferPointer, hint, attachData,
-                                                                objAddr, fieldOffset, isRoot));
+            nativeBindingAttachInfos_.push_back(new NativeBindingAttachInfo(af, bufferPointer, hint, attachData,
+                                                                            objAddr, fieldOffset, isRoot));
             break;
         }
         case (uint8_t)EncodeFlag::JS_ERROR: {
@@ -637,8 +639,8 @@ void BaseDeserializer::AllocateMultiSharedRegion(SharedSparseSpace *space, size_
 
 void BaseDeserializer::AllocateToOldSpace(size_t oldSpaceSize)
 {
-    SparseSpace *space = heap_->GetOldSpace();
-    uintptr_t object = space->Allocate(oldSpaceSize, false);
+    OldSpace *space = heap_->GetOldSpace();
+    uintptr_t object = space->AllocateSlow(oldSpaceSize, true);
     if (UNLIKELY(object == 0U)) {
         if (space->CommittedSizeExceed()) {
             DeserializeFatalOutOfMemory(oldSpaceSize);

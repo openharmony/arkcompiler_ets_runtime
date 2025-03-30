@@ -36,7 +36,6 @@ enum class MarkType : uint8_t {
  * For example, SemiSpace GC for young generation GC, Mark-Sweep-Compact for full GC, etc.
  */
 enum TriggerGCType {
-    EDEN_GC,
     // GC is expected to cover young space only;
     YOUNG_GC,
     // GC is expected to cover young space and necessary old spaces;
@@ -46,6 +45,7 @@ enum TriggerGCType {
     // GC is expected to compress objects into appspawn space;
     APPSPAWN_FULL_GC,
     SHARED_GC,
+    SHARED_PARTIAL_GC,
     SHARED_FULL_GC,
     APPSPAWN_SHARED_FULL_GC,
     UNIFIED_GC,
@@ -60,13 +60,32 @@ enum class GCReason : uint8_t {
     EXTERNAL_TRIGGER,
     WORKER_DESTRUCTION,
     TRIGGER_BY_JS,
+    HINT_GC,
+    NATIVE_LIMIT,
+    SHARED_LIMIT,
+    IDLE_NATIVE,
+    HANDLE_MARKING_FINISHED,
     TRIGGER_BY_ARKUI,
     TRIGGER_BY_ABILITY,
     TRIGGER_BY_MEM_TOOLS,
     TRIGGER_BY_TASKPOOL,
+    OTHER
+};
+
+enum class MarkReason : uint8_t {
+    ALLOCATION_LIMIT,
+    OLD_GC_WITHOUT_FULLMARK,
+    IDLE,
+    EXIT_HIGH_SENSITIVE,
+    EXTERNAL_TRIGGER,
+    WORKER_DESTRUCTION,
+    TRIGGER_BY_JS,
     HINT_GC,
     IDLE_NATIVE,
     CROSSREF_CAUSE,
+    NATIVE_LIMIT,
+    SHARED_LIMIT,
+    EXIT_SERIALIZE,
     OTHER
 };
 

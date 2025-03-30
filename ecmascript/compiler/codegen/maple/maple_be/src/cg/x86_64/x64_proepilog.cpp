@@ -14,9 +14,6 @@
  */
 
 #include "x64_proepilog.h"
-#include "x64_memlayout.h"
-#include "x64_isa.h"
-#include "isel.h"
 #include "x64_cg.h"
 
 namespace maplebe {

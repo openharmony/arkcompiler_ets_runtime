@@ -17,17 +17,11 @@
 
 #include "ecmascript/compiler/builtins/builtins_function_stub_builder.h"
 #include "ecmascript/compiler/builtins/builtins_proxy_stub_builder.h"
+#include "ecmascript/compiler/builtins/builtins_typedarray_stub_builder.h"
 #include "ecmascript/compiler/number_gate_info.h"
-#include "ecmascript/compiler/stub_builder-inl.h"
-#include "ecmascript/compiler/stub_builder.h"
-#include "ecmascript/ecma_string.h"
 #include "ecmascript/global_env.h"
-#include "ecmascript/global_env_constants.h"
 #include "ecmascript/js_arguments.h"
-#include "ecmascript/js_object.h"
-#include "ecmascript/js_thread.h"
 #include "ecmascript/lexical_env.h"
-#include "ecmascript/mem/mem.h"
 #include "ecmascript/js_array_iterator.h"
 #include "ecmascript/js_map_iterator.h"
 #include "ecmascript/js_set_iterator.h"
@@ -77,8 +71,7 @@ GateRef NewObjectStubBuilder::NewJSArrayWithSize(GateRef hclass, GateRef size)
     Label enabledElementsKind(env);
     Label notEmptyArray(env);
     Label initObj(env);
-    GateRef isElementsKindEnabled = IsEnableElementsKind(glue_);
-    BRANCH(isElementsKindEnabled, &enabledElementsKind, &initObj);
+    BRANCH(IsEnableElementsKind(glue_), &enabledElementsKind, &initObj);
     Bind(&enabledElementsKind);
     {
         // For new Array(Len), the elementsKind should be Hole
@@ -107,19 +100,18 @@ GateRef NewObjectStubBuilder::NewJSArrayWithSize(GateRef hclass, GateRef size)
     return result;
 }
 
-GateRef NewObjectStubBuilder::NewEmptyJSArrayWithHClass(GateRef hclass)
+GateRef NewObjectStubBuilder::NewJSArrayWithHClass(GateRef hclass, GateRef length)
 {
     auto env = GetEnvironment();
     Label entry(env);
     Label exit(env);
     env->SubCfgEntry(&entry);
     GateRef result = NewJSObject(glue_, hclass);
-    Label enabledElementsKind(env);
+    Label enabledMutantArray(env);
     Label initObj(env);
-    GateRef isElementsKindEnabled = IsEnableElementsKind(glue_);
     DEFVARIABLE(array, VariableType::JS_ANY(), Undefined());
-    BRANCH_UNLIKELY(isElementsKindEnabled, &enabledElementsKind, &initObj);
-    Bind(&enabledElementsKind);
+    BRANCH_UNLIKELY(IsEnableMutantArray(glue_), &enabledMutantArray, &initObj);
+    Bind(&enabledMutantArray);
     {
         Label initMutantArray(env);
         GateRef kind = GetElementsKindFromHClass(hclass);
@@ -127,11 +119,11 @@ GateRef NewObjectStubBuilder::NewEmptyJSArrayWithHClass(GateRef hclass)
         BRANCH_NO_WEIGHT(needMutant, &initMutantArray, &initObj);
         Bind(&initMutantArray);
         {
-            NewMutantTaggedArrayChecked(&array, Int32(0), &exit);
+            NewMutantTaggedArrayChecked(&array, length, &exit);
         }
     }
     Bind(&initObj);
-    NewTaggedArrayChecked(&array, Int32(0), &exit);
+    NewTaggedArrayChecked(&array, length, &exit);
     Bind(&exit);
     auto arrayRet = *array;
     env->SubCfgExit();
@@ -433,6 +425,17 @@ void NewObjectStubBuilder::NewJSObject(Variable *result, Label *exit, GateRef hc
         DEFVARIABLE(initValue, VariableType::JS_ANY(), Undefined());
         Label isAOT(env);
         Label initialize(env);
+        Label inProgress(env);
+        Label notInProgress(env);
+        GateRef isObjSizeTrackingInProgress = IsObjSizeTrackingInProgress(hclass);
+        Branch(isObjSizeTrackingInProgress, &inProgress, &notInProgress);
+        Bind(&inProgress);
+        {
+            initValue = GetGlobalConstantValue(
+                VariableType::JS_POINTER(), glue_, ConstantIndex::FREE_OBJECT_WITH_NONE_FIELD_CLASS_INDEX);
+            Jump(&initialize);
+        }
+        Bind(&notInProgress);
         BRANCH(IsAOTHClass(hclass), &isAOT, &initialize);
         Bind(&isAOT);
         {
@@ -447,15 +450,22 @@ void NewObjectStubBuilder::NewJSObject(Variable *result, Label *exit, GateRef hc
             result->ReadVariable(), *initValue, Int32(JSObject::SIZE), ChangeIntPtrToInt32(size_),
             MemoryAttribute::NoBarrier());
         Bind(&afterInitialize);
-        auto emptyArray = GetGlobalConstantValue(
-            VariableType::JS_POINTER(), glue_, ConstantIndex::EMPTY_ARRAY_OBJECT_INDEX);
-        GateRef hashOffset = IntPtr(ECMAObject::HASH_OFFSET);
-        Store(VariableType::INT64(), glue_, result->ReadVariable(), hashOffset, Int64(JSTaggedValue(0).GetRawData()));
-        SetPropertiesArray(VariableType::INT64(),
-                           glue_, result->ReadVariable(), emptyArray, MemoryAttribute::NoBarrier());
-        SetElementsArray(VariableType::INT64(),
-                         glue_, result->ReadVariable(), emptyArray, MemoryAttribute::NoBarrier());
-        Jump(exit);
+        Label objSizeTrackingStep(env);
+        InitializeObject(result);
+        Branch(isObjSizeTrackingInProgress, &objSizeTrackingStep, exit);
+        Bind(&objSizeTrackingStep);
+        {
+            Label calcuFinalCount(env);
+            GateRef count = GetConstructionCounter(hclass);
+            GateRef nextCount = Int32Sub(count, Int32(1));
+            SetConstructionCounter(glue_, hclass, nextCount);
+            Branch(Int32Equal(nextCount, Int32(0)), &calcuFinalCount, exit);
+            Bind(&calcuFinalCount);
+            {
+                CallNGCRuntime(glue_, RTSTUB_ID(FinishObjSizeTracking), { hclass });
+                Jump(exit);
+            }
+        }
     }
     Bind(&hasPendingException);
     {
@@ -490,14 +500,7 @@ void NewObjectStubBuilder::NewSObject(Variable *result, Label *exit, GateRef hcl
             result->ReadVariable(), *initValue, Int32(JSObject::SIZE), ChangeIntPtrToInt32(size_),
             MemoryAttribute::NoBarrier());
         Bind(&afterInitialize);
-        auto emptyArray = GetGlobalConstantValue(
-            VariableType::JS_POINTER(), glue_, ConstantIndex::EMPTY_ARRAY_OBJECT_INDEX);
-        GateRef hashOffset = IntPtr(ECMAObject::HASH_OFFSET);
-        Store(VariableType::INT64(), glue_, result->ReadVariable(), hashOffset, Int64(JSTaggedValue(0).GetRawData()));
-        SetPropertiesArray(VariableType::INT64(),
-                           glue_, result->ReadVariable(), emptyArray, MemoryAttribute::NoBarrier());
-        SetElementsArray(VariableType::INT64(),
-                         glue_, result->ReadVariable(), emptyArray, MemoryAttribute::NoBarrier());
+        InitializeObject(result);
         Jump(exit);
     }
 }
@@ -585,14 +588,7 @@ void NewObjectStubBuilder::NewJSObject(Variable *result, Label *exit, GateRef hc
         result->ReadVariable(), *initValue, Int32(JSObject::SIZE), ChangeIntPtrToInt32(size_),
         MemoryAttribute::NoBarrier());
     Bind(&afterInitialize);
-    auto emptyArray = GetGlobalConstantValue(
-        VariableType::JS_POINTER(), glue_, ConstantIndex::EMPTY_ARRAY_OBJECT_INDEX);
-    GateRef hashOffset = IntPtr(ECMAObject::HASH_OFFSET);
-    Store(VariableType::INT64(), glue_, result->ReadVariable(), hashOffset, Int64(JSTaggedValue(0).GetRawData()));
-    SetPropertiesArray(VariableType::INT64(),
-                       glue_, result->ReadVariable(), emptyArray, MemoryAttribute::NoBarrier());
-    SetElementsArray(VariableType::INT64(),
-                     glue_, result->ReadVariable(), emptyArray, MemoryAttribute::NoBarrier());
+    InitializeObject(result);
     Jump(exit);
 }
 
@@ -648,7 +644,7 @@ void NewObjectStubBuilder::NewTaggedArrayChecked(Variable *result, GateRef len, 
     // Be careful. NO GC is allowed when initization is not complete.
     Label noException(env);
     auto hclass = GetGlobalConstantValue(
-        VariableType::JS_POINTER(), glue_, ConstantIndex::ARRAY_CLASS_INDEX);
+        VariableType::JS_POINTER(), glue_, ConstantIndex::TAGGED_ARRAY_CLASS_INDEX);
     AllocateInYoung(result, exit, &noException, hclass);
     Bind(&noException);
     {
@@ -777,43 +773,29 @@ void NewObjectStubBuilder::ExtendArray(Variable *res, GateRef glue, GateRef elem
     Label afterAllocate(env);
     auto hclass = GetGlobalConstantValue(
         VariableType::JS_POINTER(), glue_,
-        isMutantArray ? ConstantIndex::MUTANT_TAGGED_ARRAY_CLASS_INDEX : ConstantIndex::ARRAY_CLASS_INDEX);
+        isMutantArray ? ConstantIndex::MUTANT_TAGGED_ARRAY_CLASS_INDEX : ConstantIndex::TAGGED_ARRAY_CLASS_INDEX);
     HeapAlloc(&array, &allocArray, spaceType, hclass);
     Bind(&allocArray);
-    {
-        StoreBuiltinHClass(glue_, array.ReadVariable(), hclass);
-        InitializeTaggedArrayWithSpeicalValue(&afterAllocate,
-            array.ReadVariable(), isMutantArray ? SpecialHole() : Hole(), Int32(0), newLen);
-    }
-    Bind(&afterAllocate);
-    Store(VariableType::INT32(), glue, *array, IntPtr(TaggedArray::LENGTH_OFFSET), newLen);
+    StoreBuiltinHClass(glue_, array.ReadVariable(), hclass);
+    Store(VariableType::INT32(), glue_, *array, IntPtr(TaggedArray::LENGTH_OFFSET), newLen);
     GateRef oldExtractLen = GetExtraLengthOfTaggedArray(elements);
     Store(VariableType::INT32(), glue, *array, IntPtr(TaggedArray::EXTRA_LENGTH_OFFSET), oldExtractLen);
     GateRef oldL = GetLengthOfTaggedArray(elements);
-    Label loopHead(env);
-    Label loopEnd(env);
-    Label afterLoop(env);
-    Label storeValue(env);
-    Jump(&loopHead);
-    LoopBegin(&loopHead);
-    {
-        BRANCH(Int32UnsignedLessThan(*index, oldL), &storeValue, &afterLoop);
-        Bind(&storeValue);
-        {
-            if (isMutantArray) {
-                GateRef value = GetValueFromMutantTaggedArray(elements, *index);
-                SetValueToTaggedArray(VariableType::INT64(), glue, *array, *index, value);
-            } else {
-                GateRef value = GetValueFromTaggedArray(elements, *index);
-                SetValueToTaggedArray(VariableType::JS_ANY(), glue, *array, *index, value);
-            }
-            index = Int32Add(*index, Int32(1));
-            Jump(&loopEnd);
-        }
+    Label afterCopy(env);
+    GateRef startOffset = Int32Mul(oldL, Int32(JSTaggedValue::TaggedTypeSize()));
+    GateRef endOffset = Int32Mul(newLen, Int32(JSTaggedValue::TaggedTypeSize()));
+    GateRef srcDataPtr = GetDataPtrInTaggedArray(elements);
+    GateRef dstDataPtr = GetDataPtrInTaggedArray(*array);
+    if (isMutantArray) {
+        ArrayCopy(glue, elements, srcDataPtr, *array, dstDataPtr, oldL, Boolean(false), DifferentArray);
+        InitializeWithSpeicalValue(&afterCopy, dstDataPtr, SpecialHole(), startOffset,
+                                   endOffset, MemoryAttribute::NoBarrier());
+    } else {
+        ArrayCopy(glue, elements, srcDataPtr, *array, dstDataPtr, oldL, Boolean(true), DifferentArray);
+        InitializeWithSpeicalValue(&afterCopy, dstDataPtr, Hole(), startOffset, endOffset,
+                                   MemoryAttribute::NoBarrier());
     }
-    Bind(&loopEnd);
-    LoopEnd(&loopHead, env, glue);
-    Bind(&afterLoop);
+    Bind(&afterCopy);
     {
         *res = *array;
         Jump(exit);
@@ -843,6 +825,54 @@ GateRef NewObjectStubBuilder::ExtendArrayCheck(GateRef glue, GateRef elements, G
     return ret;
 }
 
+GateRef NewObjectStubBuilder::ExtendArrayWithOptimizationCheck(GateRef glue, GateRef elements, GateRef newLen)
+{
+    auto env = GetEnvironment();
+    Label subEntry(env);
+    env->SubCfgEntry(&subEntry);
+    SetGlue(glue);
+    DEFVARIABLE(array, VariableType::JS_ANY(), Undefined());
+    GateRef checkIsMutantTaggedArray = IsMutantTaggedArray(elements);
+    Label exit(env);
+    Label next(env);
+    Label slowPath(env);
+    BRANCH(Int32UnsignedLessThan(newLen, Int32(MAX_EXTEND_ARRAY_LENGTH)), &slowPath, &next);
+    Bind(&slowPath);
+    {
+        array = ExtendArrayCheck(glue, elements, newLen);
+        Jump(&exit);
+    }
+    Bind(&next);
+    {
+        Label extendMutantArray(env);
+        Label extendNormalArray(env);
+        Label afterCreate(env);
+        GateRef oldExtractLen = GetExtraLengthOfTaggedArray(elements);
+        GateRef oldL = GetLengthOfTaggedArray(elements);
+        BRANCH(checkIsMutantTaggedArray, &extendMutantArray, &extendNormalArray);
+        Bind(&extendMutantArray);
+        {
+            array = CallRuntime(glue_, RTSTUB_ID(NewMutantTaggedArray), { IntToTaggedInt(newLen) });
+            Jump(&afterCreate);
+        }
+        Bind(&extendNormalArray);
+        {
+            array = CallRuntime(glue_, RTSTUB_ID(NewTaggedArray), { IntToTaggedInt(newLen) });
+            Jump(&afterCreate);
+        }
+        Bind(&afterCreate);
+        Store(VariableType::INT32(), glue, *array, IntPtr(TaggedArray::LENGTH_OFFSET), newLen);
+        Store(VariableType::INT32(), glue, *array, IntPtr(TaggedArray::EXTRA_LENGTH_OFFSET), oldExtractLen);
+        ArrayCopy(glue, elements, GetDataPtrInTaggedArray(elements), *array,
+            GetDataPtrInTaggedArray(*array), oldL, BoolNot(checkIsMutantTaggedArray), DifferentArray);
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *array;
+    env->SubCfgExit();
+    return ret;
+}
+
 GateRef NewObjectStubBuilder::CopyArray(GateRef glue, GateRef elements, GateRef oldLen,
                                         GateRef newLen, RegionSpaceFlag spaceType)
 {
@@ -851,7 +881,6 @@ GateRef NewObjectStubBuilder::CopyArray(GateRef glue, GateRef elements, GateRef 
     env->SubCfgEntry(&subEntry);
     Label exit(env);
     DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
-    NewObjectStubBuilder newBuilder(this);
     Label emptyArray(env);
     Label notEmptyArray(env);
     BRANCH(Int32Equal(newLen, Int32(0)), &emptyArray, &notEmptyArray);
@@ -862,7 +891,7 @@ GateRef NewObjectStubBuilder::CopyArray(GateRef glue, GateRef elements, GateRef 
     {
         Label extendArray(env);
         Label notExtendArray(env);
-        BRANCH(Int32GreaterThan(newLen, oldLen), &extendArray, &notExtendArray);
+        BRANCH(Int32UnsignedGreaterThan(newLen, oldLen), &extendArray, &notExtendArray);
         Bind(&extendArray);
         {
             result = ExtendArrayCheck(glue, elements, newLen, spaceType);
@@ -878,40 +907,22 @@ GateRef NewObjectStubBuilder::CopyArray(GateRef glue, GateRef elements, GateRef 
             BRANCH(checkIsMutantTaggedArray, &isMutantTaggedArray, &isNotMutantTaggedArray);
             Bind(&isMutantTaggedArray);
             {
-                array = newBuilder.NewMutantTaggedArray(glue, newLen);
+                array = NewMutantTaggedArray(glue, newLen);
                 Jump(&afterInitializeElements);
             }
             Bind(&isNotMutantTaggedArray);
             {
-                array = newBuilder.NewTaggedArray(glue, newLen);
+                array = NewTaggedArray(glue, newLen);
                 Jump(&afterInitializeElements);
             }
             Bind(&afterInitializeElements);
             Store(VariableType::INT32(), glue, *array, IntPtr(TaggedArray::LENGTH_OFFSET), newLen);
             GateRef oldExtractLen = GetExtraLengthOfTaggedArray(elements);
             Store(VariableType::INT32(), glue, *array, IntPtr(TaggedArray::EXTRA_LENGTH_OFFSET), oldExtractLen);
-            Label afterCopy(env);
-
-            Label copyToTaggedArray(env);
-            Label copyToMutantTaggedArray(env);
-            BRANCH(checkIsMutantTaggedArray, &copyToMutantTaggedArray, &copyToTaggedArray);
-            Bind(&copyToTaggedArray);
-            {
-                ArrayCopy<NotOverlap>(glue, GetDataPtrInTaggedArray(elements), *array, GetDataPtrInTaggedArray(*array),
-                                      newLen);
-                Jump(&afterCopy);
-            }
-            Bind(&copyToMutantTaggedArray);
-            {
-                ArrayCopy<NotOverlap>(glue, GetDataPtrInTaggedArray(elements), *array, GetDataPtrInTaggedArray(*array),
-                                      newLen, MemoryAttribute::NoBarrier());
-                Jump(&afterCopy);
-            }
-            Bind(&afterCopy);
-            {
-                result = *array;
-                Jump(&exit);
-            }
+            ArrayCopy(glue, elements, GetDataPtrInTaggedArray(elements), *array,
+                      GetDataPtrInTaggedArray(*array), newLen, BoolNot(checkIsMutantTaggedArray), DifferentArray);
+            result = *array;
+            Jump(&exit);
         }
     }
     Bind(&exit);
@@ -1165,20 +1176,21 @@ GateRef NewObjectStubBuilder::NewJSBoundFunction(GateRef glue, GateRef target, G
     result = NewJSObject(glue, hclass);
     GateRef nameAccessor = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
                                                   ConstantIndex::FUNCTION_NAME_ACCESSOR);
-    SetPropertyInlinedProps(glue, *result, hclass, nameAccessor,
-                            Int32(JSFunction::NAME_INLINE_PROPERTY_INDEX), VariableType::JS_ANY(),
-                            MemoryAttribute::NoBarrier());
+    Store(VariableType::JS_POINTER(), glue, *result,
+          IntPtr(JSBoundFunction::GetInlinedPropertyOffset(JSFunction::NAME_INLINE_PROPERTY_INDEX)), nameAccessor,
+          MemoryAttribute::NoBarrier());
     GateRef lengthAccessor = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
                                                     ConstantIndex::FUNCTION_LENGTH_ACCESSOR);
-    SetPropertyInlinedProps(glue, *result, hclass, lengthAccessor,
-                            Int32(JSFunction::LENGTH_INLINE_PROPERTY_INDEX), VariableType::JS_ANY(),
-                            MemoryAttribute::NoBarrier());
+    Store(VariableType::JS_POINTER(), glue, *result,
+          IntPtr(JSBoundFunction::GetInlinedPropertyOffset(JSFunction::LENGTH_INLINE_PROPERTY_INDEX)), lengthAccessor,
+          MemoryAttribute::NoBarrier());
     SetJSObjectTaggedField(glue, *result, JSBoundFunction::BOUND_TARGET_OFFSET, target);
     SetJSObjectTaggedField(glue, *result, JSBoundFunction::BOUND_THIS_OFFSET, boundThis);
     SetJSObjectTaggedField(glue, *result, JSBoundFunction::BOUND_ARGUMENTS_OFFSET, args);
     GateRef method = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
                                             ConstantIndex::BOUND_FUNCTION_METHOD_INDEX);
     SetMethodToFunction(glue, *result, method);
+    SetNativePointerToFunctionFromMethod(glue, *result, method);
 
     Label targetIsHeapObject(env);
     Label targetIsConstructor(env);
@@ -1295,7 +1307,7 @@ GateRef NewObjectStubBuilder::NewArgumentsListObj(GateRef numArgs)
     DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
     size_ = ComputeTaggedArraySize(ZExtInt32ToPtr(numArgs));
     GateRef arrayClass = GetGlobalConstantValue(VariableType::JS_POINTER(), glue_,
-                                                ConstantIndex::ARRAY_CLASS_INDEX);
+                                                ConstantIndex::TAGGED_ARRAY_CLASS_INDEX);
     AllocateInYoung(&result, &exit, &setHClass, arrayClass);
     Bind(&setHClass);
     StoreHClass(glue_, *result, arrayClass);
@@ -1340,34 +1352,38 @@ void NewObjectStubBuilder::NewArgumentsObj(Variable *result, Label *exit,
     Label setArgumentsObjProperties(env);
     BRANCH(TaggedIsException(result->ReadVariable()), exit, &setArgumentsObjProperties);
     Bind(&setArgumentsObjProperties);
-    SetPropertyInlinedProps(glue_, result->ReadVariable(), argumentsClass, IntToTaggedInt(numArgs),
-                            Int32(JSArguments::LENGTH_INLINE_PROPERTY_INDEX));
+    Store(VariableType::JS_ANY(), glue_, result->ReadVariable(),
+          IntPtr(JSArguments::GetInlinedPropertyOffset(JSArguments::LENGTH_INLINE_PROPERTY_INDEX)),
+          IntToTaggedInt(numArgs));
     SetElementsArray(VariableType::JS_ANY(), glue_, result->ReadVariable(), argumentsList);
     GateRef arrayProtoValuesFunction = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv,
                                                          GlobalEnv::ARRAY_PROTO_VALUES_FUNCTION_INDEX);
-    SetPropertyInlinedProps(glue_, result->ReadVariable(), argumentsClass, arrayProtoValuesFunction,
-                            Int32(JSArguments::ITERATOR_INLINE_PROPERTY_INDEX));
+    Store(VariableType::JS_ANY(), glue_, result->ReadVariable(),
+          IntPtr(JSArguments::GetInlinedPropertyOffset(JSArguments::ITERATOR_INLINE_PROPERTY_INDEX)),
+          arrayProtoValuesFunction);
     GateRef accessorCaller = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv,
                                                GlobalEnv::ARGUMENTS_CALLER_ACCESSOR);
-    SetPropertyInlinedProps(glue_, result->ReadVariable(), argumentsClass, accessorCaller,
-                            Int32(JSArguments::CALLER_INLINE_PROPERTY_INDEX));
+    Store(VariableType::JS_ANY(), glue_, result->ReadVariable(),
+          IntPtr(JSArguments::GetInlinedPropertyOffset(JSArguments::CALLER_INLINE_PROPERTY_INDEX)),
+          accessorCaller);
     GateRef accessorCallee = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv,
                                                GlobalEnv::ARGUMENTS_CALLEE_ACCESSOR);
-    SetPropertyInlinedProps(glue_, result->ReadVariable(), argumentsClass, accessorCallee,
-                            Int32(JSArguments::CALLEE_INLINE_PROPERTY_INDEX));
+    Store(VariableType::JS_ANY(), glue_, result->ReadVariable(),
+          IntPtr(JSArguments::GetInlinedPropertyOffset(JSArguments::CALLEE_INLINE_PROPERTY_INDEX)),
+          accessorCallee);
     Jump(exit);
 }
 
 void NewObjectStubBuilder::AssignRestArg(Variable *result, Label *exit,
-    GateRef sp, GateRef startIdx, GateRef numArgs, GateRef intialHClass)
+    GateRef sp, GateRef startIdx, GateRef numArgs)
 {
     auto env = GetEnvironment();
     DEFVARIABLE(i, VariableType::INT32(), Int32(0));
     GateRef lengthOffset = IntPtr(JSArray::LENGTH_OFFSET);
     Store(VariableType::INT32(), glue_, result->ReadVariable(), lengthOffset, TruncInt64ToInt32(numArgs));
     GateRef accessor = GetGlobalConstantValue(VariableType::JS_ANY(), glue_, ConstantIndex::ARRAY_LENGTH_ACCESSOR);
-    SetPropertyInlinedProps(glue_, result->ReadVariable(), intialHClass, accessor,
-                            Int32(JSArray::LENGTH_INLINE_PROPERTY_INDEX));
+    Store(VariableType::JS_ANY(), glue_, result->ReadVariable(),
+          IntPtr(JSArray::GetInlinedPropertyOffset(JSArray::LENGTH_INLINE_PROPERTY_INDEX)), accessor);
     SetExtensibleToBitfield(glue_, result->ReadVariable(), true);
     Label setArgumentsBegin(env);
     Label setArgumentsAgain(env);
@@ -1401,16 +1417,20 @@ void NewObjectStubBuilder::NewJSArrayLiteral(Variable *result, Label *exit, Regi
                                TruncInt64ToInt32(size_), MemoryAttribute::NoBarrier());
     Bind(&afterInitialize);
     GateRef hashOffset = IntPtr(ECMAObject::HASH_OFFSET);
-    Store(VariableType::INT64(), glue_, result->ReadVariable(), hashOffset, Int64(JSTaggedValue(0).GetRawData()));
+    Store(VariableType::INT64(), glue_, result->ReadVariable(), hashOffset, Int64(JSTaggedValue(0).GetRawData()),
+          MemoryAttribute::NoBarrier());
 
     GateRef propertiesOffset = IntPtr(JSObject::PROPERTIES_OFFSET);
     GateRef elementsOffset = IntPtr(JSObject::ELEMENTS_OFFSET);
     GateRef lengthOffset = IntPtr(JSArray::LENGTH_OFFSET);
     GateRef trackInfoOffset = IntPtr(JSArray::TRACK_INFO_OFFSET);
     if (isEmptyArray) {
-        Store(VariableType::JS_POINTER(), glue_, result->ReadVariable(), propertiesOffset, obj);
-        Store(VariableType::JS_POINTER(), glue_, result->ReadVariable(), elementsOffset, obj);
-        Store(VariableType::INT32(), glue_, result->ReadVariable(), lengthOffset, Int32(0));
+        Store(VariableType::JS_POINTER(), glue_, result->ReadVariable(), propertiesOffset, obj,
+              MemoryAttribute::NoBarrier());
+        Store(VariableType::JS_POINTER(), glue_, result->ReadVariable(), elementsOffset, obj,
+              MemoryAttribute::NoBarrier());
+        Store(VariableType::INT32(), glue_, result->ReadVariable(), lengthOffset, Int32(0),
+              MemoryAttribute::NoBarrier());
     } else {
         auto newProperties = Load(VariableType::JS_POINTER(), obj, propertiesOffset);
         Store(VariableType::JS_POINTER(), glue_, result->ReadVariable(), propertiesOffset, newProperties);
@@ -1419,7 +1439,8 @@ void NewObjectStubBuilder::NewJSArrayLiteral(Variable *result, Label *exit, Regi
         Store(VariableType::JS_POINTER(), glue_, result->ReadVariable(), elementsOffset, newElements);
 
         GateRef arrayLength = Load(VariableType::INT32(), obj, lengthOffset);
-        Store(VariableType::INT32(), glue_, result->ReadVariable(), lengthOffset, arrayLength);
+        Store(VariableType::INT32(), glue_, result->ReadVariable(), lengthOffset, arrayLength,
+              MemoryAttribute::NoBarrier());
     }
     Store(VariableType::JS_POINTER(), glue_, result->ReadVariable(), trackInfoOffset, trackInfo);
 
@@ -1649,7 +1670,18 @@ void NewObjectStubBuilder::InitializeTaggedArrayWithSpeicalValue(Label *exit,
     auto dataOffset = Int32Add(offset, Int32(TaggedArray::DATA_OFFSET));
     offset = Int32Mul(length, Int32(JSTaggedValue::TaggedTypeSize()));
     auto endOffset = Int32Add(offset, Int32(TaggedArray::DATA_OFFSET));
-    InitializeWithSpeicalValue(exit, array, value, dataOffset, endOffset);
+    InitializeWithSpeicalValue(exit, array, value, dataOffset, endOffset, MemoryAttribute::NoBarrier());
+}
+
+void NewObjectStubBuilder::InitializeObject(Variable *result)
+{
+    auto emptyArray =
+        GetGlobalConstantValue(VariableType::JS_POINTER(), glue_, ConstantIndex::EMPTY_ARRAY_OBJECT_INDEX);
+    GateRef hashOffset = IntPtr(ECMAObject::HASH_OFFSET);
+    Store(VariableType::INT64(), glue_, result->ReadVariable(), hashOffset, Int64(JSTaggedValue(0).GetRawData()),
+          MemoryAttribute::NoBarrier());
+    SetPropertiesArray(VariableType::INT64(), glue_, result->ReadVariable(), emptyArray, MemoryAttribute::NoBarrier());
+    SetElementsArray(VariableType::INT64(), glue_, result->ReadVariable(), emptyArray, MemoryAttribute::NoBarrier());
 }
 
 void NewObjectStubBuilder::AllocLineStringObject(Variable *result, Label *exit, GateRef length, bool compressed)
@@ -2094,12 +2126,7 @@ void NewObjectStubBuilder::CreateJSCollectionIterator(
     Bind(&noException);
     {
         StoreBuiltinHClass(glue_, result->ReadVariable(), iteratorHClass);
-        GateRef hashOffset = IntPtr(ECMAObject::HASH_OFFSET);
-        Store(VariableType::INT64(), glue_, result->ReadVariable(), hashOffset, Int64(JSTaggedValue(0).GetRawData()));
-        auto emptyArray = GetGlobalConstantValue(
-            VariableType::JS_POINTER(), glue_, ConstantIndex::EMPTY_ARRAY_OBJECT_INDEX);
-        SetPropertiesArray(VariableType::INT64(), glue_, result->ReadVariable(), emptyArray);
-        SetElementsArray(VariableType::INT64(), glue_, result->ReadVariable(), emptyArray);
+        InitializeObject(result);
 
         // GetLinked
         GateRef linked = Load(VariableType::JS_ANY(), thisValue, IntPtr(linkedOffset));
@@ -2150,12 +2177,7 @@ void NewObjectStubBuilder::CreateJSTypedArrayIterator(Variable *result, Label *e
     Bind(&noException);
     {
         StoreBuiltinHClass(glue_, result->ReadVariable(), iteratorHClass);
-        GateRef hashOffset = IntPtr(ECMAObject::HASH_OFFSET);
-        Store(VariableType::INT64(), glue_, result->ReadVariable(), hashOffset, Int64(JSTaggedValue(0).GetRawData()));
-        auto emptyArray = GetGlobalConstantValue(
-            VariableType::JS_POINTER(), glue_, ConstantIndex::EMPTY_ARRAY_OBJECT_INDEX);
-        SetPropertiesArray(VariableType::INT64(), glue_, result->ReadVariable(), emptyArray);
-        SetElementsArray(VariableType::INT64(), glue_, result->ReadVariable(), emptyArray);
+        InitializeObject(result);
 
         GateRef iteratorOffset = IntPtr(JSArrayIterator::ITERATED_ARRAY_OFFSET);
         Store(VariableType::JS_POINTER(), glue_, result->ReadVariable(), iteratorOffset, thisValue,
@@ -2186,22 +2208,62 @@ GateRef NewObjectStubBuilder::NewTaggedSubArray(GateRef glue, GateRef srcTypedAr
     auto env = GetEnvironment();
     Label entry(env);
     env->SubCfgEntry(&entry);
-    DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
     GateRef constructorName = Load(VariableType::JS_POINTER(), srcTypedArray,
         IntPtr(JSTypedArray::TYPED_ARRAY_NAME_OFFSET));
     GateRef srcByteOffset = Load(VariableType::INT32(), srcTypedArray, IntPtr(JSTypedArray::BYTE_OFFSET_OFFSET));
     GateRef contentType = Load(VariableType::INT32(), srcTypedArray, IntPtr(JSTypedArray::CONTENT_TYPE_OFFSET));
     GateRef beginByteOffset = Int32Add(srcByteOffset, Int32Mul(beginIndex, elementSize));
 
-    GateRef obj = NewJSObject(glue, arrayCls);
-    result = obj;
-    GateRef newByteLength = Int32Mul(elementSize, newLength);
-    Store(VariableType::JS_POINTER(), glue, obj, IntPtr(JSTypedArray::VIEWED_ARRAY_BUFFER_OFFSET), buffer);
-    Store(VariableType::JS_POINTER(), glue, obj, IntPtr(JSTypedArray::TYPED_ARRAY_NAME_OFFSET), constructorName);
-    Store(VariableType::INT32(), glue, obj, IntPtr(JSTypedArray::BYTE_LENGTH_OFFSET), newByteLength);
-    Store(VariableType::INT32(), glue, obj, IntPtr(JSTypedArray::BYTE_OFFSET_OFFSET), beginByteOffset);
-    Store(VariableType::INT32(), glue, obj, IntPtr(JSTypedArray::ARRAY_LENGTH_OFFSET), newLength);
-    Store(VariableType::INT32(), glue, obj, IntPtr(JSTypedArray::CONTENT_TYPE_OFFSET), contentType);
+    Label isOnHeap(env);
+    Label isNotOnHeap(env);
+    Label createNewArray(env);
+    Label comparePrototype(env);
+    Label protoChanged(env);
+    Label exit(env);
+    DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
+    DEFVARIABLE(newArrayHClass, VariableType::JS_ANY(), Undefined());
+    GateRef srcType = GetObjectType(arrayCls);
+
+    BRANCH(env->GetBuilder()->IsOnHeap(arrayCls), &isOnHeap, &isNotOnHeap);
+    Bind(&isOnHeap);
+    {
+        newArrayHClass = GetOnHeapHClassFromType(glue, srcType);
+        Jump(&comparePrototype);
+    }
+    Bind(&isNotOnHeap);
+    {
+        newArrayHClass = GetNotOnHeapHClassFromType(glue, srcType);
+        Jump(&comparePrototype);
+    }
+
+    Bind(&comparePrototype);
+    {
+        GateRef newPrototype = GetPrototypeFromHClass(*newArrayHClass);
+        GateRef srcPrototype = GetPrototypeFromHClass(arrayCls);
+        BRANCH_LIKELY(Equal(newPrototype, srcPrototype), &createNewArray, &protoChanged);
+        Bind(&protoChanged);
+        {
+            newArrayHClass = CallRuntime(glue, RTSTUB_ID(CloneHclass), { *newArrayHClass });
+            StorePrototype(glue, *newArrayHClass, srcPrototype);
+            Jump(&createNewArray);
+        }
+    }
+
+    Bind(&createNewArray);
+    {
+        result = NewJSObject(glue, *newArrayHClass);
+        GateRef newByteLength = Int32Mul(elementSize, newLength);
+        Store(VariableType::JS_POINTER(), glue, *result, IntPtr(JSTypedArray::VIEWED_ARRAY_BUFFER_OFFSET), buffer);
+        Store(VariableType::JS_POINTER(), glue, *result, IntPtr(JSTypedArray::TYPED_ARRAY_NAME_OFFSET),
+              constructorName);
+        Store(VariableType::INT32(), glue, *result, IntPtr(JSTypedArray::BYTE_LENGTH_OFFSET), newByteLength);
+        Store(VariableType::INT32(), glue, *result, IntPtr(JSTypedArray::BYTE_OFFSET_OFFSET), beginByteOffset);
+        Store(VariableType::INT32(), glue, *result, IntPtr(JSTypedArray::ARRAY_LENGTH_OFFSET), newLength);
+        Store(VariableType::INT32(), glue, *result, IntPtr(JSTypedArray::CONTENT_TYPE_OFFSET), contentType);
+        Jump(&exit);
+    }
+
+    Bind(&exit);
     auto ret = *result;
     env->SubCfgExit();
     return ret;
@@ -2271,6 +2333,56 @@ GateRef NewObjectStubBuilder::NewTypedArray(GateRef glue, GateRef srcTypedArray,
     Bind(&slowPath);
     {
         result = CallRuntime(glue, RTSTUB_ID(TypedArraySpeciesCreate),
+            { srcTypedArray, IntToTaggedInt(Int32(1)), IntToTaggedInt(length) });
+        Jump(&exit);
+    }
+
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef NewObjectStubBuilder::NewTypedArraySameType(GateRef glue, GateRef srcTypedArray, GateRef srcType,
+                                                    GateRef length)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+
+    DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
+    DEFVARIABLE(buffer, VariableType::JS_ANY(), Undefined());
+    Label slowPath(env);
+    Label next(env);
+    Label exit(env);
+    GateRef hclass = LoadHClass(srcTypedArray);
+    GateRef obj = NewJSObject(glue, hclass);
+    result = obj;
+    GateRef ctorName = Load(VariableType::JS_POINTER(), srcTypedArray,
+        IntPtr(JSTypedArray::TYPED_ARRAY_NAME_OFFSET));
+    GateRef elementSize = GetElementSizeFromType(glue, srcType);
+    GateRef newByteLength = Int32Mul(elementSize, length);
+    GateRef contentType = Load(VariableType::INT32(), srcTypedArray, IntPtr(JSTypedArray::CONTENT_TYPE_OFFSET));
+    BRANCH(Int32LessThanOrEqual(newByteLength, Int32(RangeInfo::TYPED_ARRAY_ONHEAP_MAX)), &next, &slowPath);
+    Bind(&next);
+    {
+        Label newByteArrayExit(env);
+        GateRef onHeapHClass = GetOnHeapHClassFromType(glue, srcType);
+        NewByteArray(&buffer, &newByteArrayExit, elementSize, length);
+        Bind(&newByteArrayExit);
+        StoreHClass(glue, obj, onHeapHClass);
+        Store(VariableType::JS_POINTER(), glue, obj, IntPtr(JSTypedArray::VIEWED_ARRAY_BUFFER_OFFSET), *buffer);
+        Store(VariableType::JS_POINTER(), glue, obj, IntPtr(JSTypedArray::TYPED_ARRAY_NAME_OFFSET), ctorName);
+        Store(VariableType::INT32(), glue, obj, IntPtr(JSTypedArray::BYTE_LENGTH_OFFSET), newByteLength);
+        Store(VariableType::INT32(), glue, obj, IntPtr(JSTypedArray::BYTE_OFFSET_OFFSET), Int32(0));
+        Store(VariableType::INT32(), glue, obj, IntPtr(JSTypedArray::ARRAY_LENGTH_OFFSET), length);
+        Store(VariableType::INT32(), glue, obj, IntPtr(JSTypedArray::CONTENT_TYPE_OFFSET), contentType);
+        Jump(&exit);
+    }
+
+    Bind(&slowPath);
+    {
+        result = CallRuntime(glue, RTSTUB_ID(TypedArrayCreateSameType),
             { srcTypedArray, IntToTaggedInt(Int32(1)), IntToTaggedInt(length) });
         Jump(&exit);
     }
@@ -2457,7 +2569,7 @@ void NewObjectStubBuilder::NewByteArray(Variable *result, Label *exit, GateRef e
         auto startOffset = Int32(ByteArray::DATA_OFFSET);
         static_assert(static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT) == 8);
         InitializeWithSpeicalValue(&initializeExit, result->ReadVariable(), Int64(0), startOffset,
-                                   TruncPtrToInt32(size));
+                                   TruncPtrToInt32(size), MemoryAttribute::NoBarrier());
         Bind(&initializeExit);
         Store(VariableType::INT32(), glue_, result->ReadVariable(), IntPtr(ByteArray::ARRAY_LENGTH_OFFSET), length);
         Store(VariableType::INT32(), glue_, result->ReadVariable(), IntPtr(ByteArray::BYTE_LENGTH_OFFSET), elementSize);
@@ -2483,6 +2595,8 @@ GateRef NewObjectStubBuilder::NewProfileTypeInfoCell(GateRef glue, GateRef value
     SetValueToProfileTypeInfoCell(glue, *result, value);
     GateRef machineCodeOffset = IntPtr(ProfileTypeInfoCell::MACHINE_CODE_OFFSET);
     Store(VariableType::JS_POINTER(), glue, *result, machineCodeOffset, Hole());
+    GateRef baselineCodeOffset = IntPtr(ProfileTypeInfoCell::BASELINE_CODE_OFFSET);
+    Store(VariableType::JS_POINTER(), glue, *result, baselineCodeOffset, Hole());
     GateRef handleOffset = IntPtr(ProfileTypeInfoCell::HANDLE_OFFSET);
     Store(VariableType::JS_POINTER(), glue, *result, handleOffset, Undefined());
 
@@ -2723,5 +2837,262 @@ GateRef NewObjectStubBuilder::GetOnHeapHClassFromType(GateRef glue, GateRef type
     auto ret = *result;
     env->SubCfgExit();
     return ret;
+}
+
+GateRef NewObjectStubBuilder::GetNotOnHeapHClassFromType(GateRef glue, GateRef type)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+
+    DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
+    GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
+    GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
+    Label defaultLabel(env);
+    Label exit(env);
+    Label labelBuffer[11] = {
+        Label(env), Label(env), Label(env), Label(env), Label(env), Label(env),
+        Label(env), Label(env), Label(env), Label(env), Label(env) };
+    int64_t valueBuffer[11] = {
+        static_cast<int64_t>(JSType::JS_INT8_ARRAY),
+        static_cast<int64_t>(JSType::JS_UINT8_ARRAY),
+        static_cast<int64_t>(JSType::JS_UINT8_CLAMPED_ARRAY),
+        static_cast<int64_t>(JSType::JS_INT16_ARRAY),
+        static_cast<int64_t>(JSType::JS_UINT16_ARRAY),
+        static_cast<int64_t>(JSType::JS_INT32_ARRAY),
+        static_cast<int64_t>(JSType::JS_UINT32_ARRAY),
+        static_cast<int64_t>(JSType::JS_FLOAT32_ARRAY),
+        static_cast<int64_t>(JSType::JS_FLOAT64_ARRAY),
+        static_cast<int64_t>(JSType::JS_BIGINT64_ARRAY),
+        static_cast<int64_t>(JSType::JS_BIGUINT64_ARRAY) };
+
+    // 11 : this switch has 11 case
+    Switch(type, &defaultLabel, valueBuffer, labelBuffer, 11);
+    // 0 : index of this buffer
+    Bind(&labelBuffer[0]);
+    {
+        result = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv,
+                                   GlobalEnv::INT8_ARRAY_ROOT_HCLASS_INDEX);
+        Jump(&exit);
+    }
+    // 1 : index of this buffer
+    Bind(&labelBuffer[1]);
+    {
+        result = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv,
+                                   GlobalEnv::UINT8_ARRAY_ROOT_HCLASS_INDEX);
+        Jump(&exit);
+    }
+    // 2 : index of this buffer
+    Bind(&labelBuffer[2]);
+    {
+        result = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv,
+                                   GlobalEnv::UINT8_CLAMPED_ARRAY_ROOT_HCLASS_INDEX);
+        Jump(&exit);
+    }
+    // 3 : index of this buffer
+    Bind(&labelBuffer[3]);
+    {
+        result = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv,
+                                   GlobalEnv::INT16_ARRAY_ROOT_HCLASS_INDEX);
+        Jump(&exit);
+    }
+    // 4 : index of this buffer
+    Bind(&labelBuffer[4]);
+    {
+        result = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv,
+                                   GlobalEnv::UINT16_ARRAY_ROOT_HCLASS_INDEX);
+        Jump(&exit);
+    }
+    // 5 : index of this buffer
+    Bind(&labelBuffer[5]);
+    {
+        result = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv,
+                                   GlobalEnv::INT32_ARRAY_ROOT_HCLASS_INDEX);
+        Jump(&exit);
+    }
+    // 6 : index of this buffer
+    Bind(&labelBuffer[6]);
+    {
+        result = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv,
+                                   GlobalEnv::UINT32_ARRAY_ROOT_HCLASS_INDEX);
+        Jump(&exit);
+    }
+    // 7 : index of this buffer
+    Bind(&labelBuffer[7]);
+    {
+        result = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv,
+                                   GlobalEnv::FLOAT32_ARRAY_ROOT_HCLASS_INDEX);
+        Jump(&exit);
+    }
+    // 8 : index of this buffer
+    Bind(&labelBuffer[8]);
+    {
+        result = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv,
+                                   GlobalEnv::FLOAT64_ARRAY_ROOT_HCLASS_INDEX);
+        Jump(&exit);
+    }
+    // 9 : index of this buffer
+    Bind(&labelBuffer[9]);
+    {
+        result = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv,
+                                   GlobalEnv::BIGINT64_ARRAY_ROOT_HCLASS_INDEX);
+        Jump(&exit);
+    }
+    // 10 : index of this buffer
+    Bind(&labelBuffer[10]);
+    {
+        result = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv,
+                                   GlobalEnv::BIGUINT64_ARRAY_ROOT_HCLASS_INDEX);
+        Jump(&exit);
+    }
+    Bind(&defaultLabel);
+    {
+        FatalPrint(glue, { Int32(GET_MESSAGE_STRING_ID(ThisBranchIsUnreachable)) });
+        Jump(&exit);
+    }
+
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef NewObjectStubBuilder::CreateArrayFromList(GateRef glue, GateRef elements, GateRef kind)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    GateRef accessor = GetGlobalConstantValue(VariableType::JS_ANY(), glue, ConstantIndex::ARRAY_LENGTH_ACCESSOR);
+    GateRef intialHClass = GetElementsKindHClass(glue, kind);
+    GateRef len = GetLengthOfTaggedArray(elements);
+    GateRef result = NewJSObject(glue, intialHClass);
+    SetPropertyInlinedProps(glue, result, intialHClass, accessor, Int32(JSArray::LENGTH_INLINE_PROPERTY_INDEX));
+    SetArrayLength(glue, result, len);
+    SetExtensibleToBitfield(glue, result, true);
+    SetElementsArray(VariableType::JS_POINTER(), glue, result, elements);
+    auto ret = result;
+    env->SubCfgExit();
+    return ret;
+}
+GateRef NewObjectStubBuilder::CreateListFromArrayLike(GateRef glue, GateRef arrayObj)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    DEFVARIABLE(res, VariableType::JS_ANY(), Hole());
+    DEFVARIABLE(index, VariableType::INT32(), Int32(0));
+    Label exit(env);
+
+    // 3. If Type(obj) is Object, throw a TypeError exception.
+    Label targetIsHeapObject(env);
+    Label targetIsEcmaObject(env);
+    Label targetNotEcmaObject(env);
+    BRANCH(TaggedIsHeapObject(arrayObj), &targetIsHeapObject, &targetNotEcmaObject);
+    Bind(&targetIsHeapObject);
+    BRANCH(TaggedObjectIsEcmaObject(arrayObj), &targetIsEcmaObject, &targetNotEcmaObject);
+    Bind(&targetNotEcmaObject);
+    {
+        GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(TargetTypeNotObject));
+        CallRuntime(glue, RTSTUB_ID(ThrowTypeError), {IntToTaggedInt(taggedId)});
+        Jump(&exit);
+    }
+    Bind(&targetIsEcmaObject);
+    {
+        Label targetIsTypeArray(env);
+        Label targetNotTypeArray(env);
+        BRANCH(IsTypedArray(arrayObj), &targetIsTypeArray, &targetNotTypeArray);
+        Bind(&targetIsTypeArray);
+        {
+            GateRef int32Len = GetLengthOfJSTypedArray(arrayObj);
+            GateRef array = NewTaggedArray(glue, int32Len);
+            BuiltinsTypedArrayStubBuilder arrayStubBuilder(this);
+            arrayStubBuilder.FastCopyElementToArray(glue, arrayObj, array);
+            // c. ReturnIfAbrupt(next).
+            Label noPendingException1(env);
+            BRANCH(HasPendingException(glue), &exit, &noPendingException1);
+            Bind(&noPendingException1);
+            {
+                res = array;
+                Jump(&exit);
+            }
+        }
+        Bind(&targetNotTypeArray);
+        // 4. Let len be ToLength(Get(obj, "length")).
+        GateRef lengthString =
+            GetGlobalConstantValue(VariableType::JS_POINTER(), glue, ConstantIndex::LENGTH_STRING_INDEX);
+        GateRef value = FastGetPropertyByName(glue, arrayObj, lengthString, ProfileOperation());
+        GateRef number = ToLength(glue, value);
+        // 5. ReturnIfAbrupt(len).
+        Label noPendingException2(env);
+        BRANCH(HasPendingException(glue), &exit, &noPendingException2);
+        Bind(&noPendingException2);
+        {
+            Label indexInRange(env);
+            Label indexOutRange(env);
+
+            GateRef doubleLen = GetDoubleOfTNumber(number);
+            BRANCH(DoubleGreaterThan(doubleLen, Double(JSObject::MAX_ELEMENT_INDEX)), &indexOutRange, &indexInRange);
+            Bind(&indexOutRange);
+            {
+                GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(LenGreaterThanMax));
+                CallRuntime(glue, RTSTUB_ID(ThrowTypeError), {IntToTaggedInt(taggedId)});
+                Jump(&exit);
+            }
+            Bind(&indexInRange);
+            {
+                // 8. Repeat while index < len
+                GateRef int32Length = DoubleToInt(glue, doubleLen);
+                GateRef array = NewTaggedArray(glue, int32Length);
+                Label loopHead(env);
+                Label loopEnd(env);
+                Label afterLoop(env);
+                Label noPendingException3(env);
+                Label storeValue(env);
+                Jump(&loopHead);
+                LoopBegin(&loopHead);
+                {
+                    BRANCH(Int32UnsignedLessThan(*index, int32Length), &storeValue, &afterLoop);
+                    Bind(&storeValue);
+                    {
+                        GateRef next = FastGetPropertyByIndex(glue, arrayObj, *index, ProfileOperation());
+                        // c. ReturnIfAbrupt(next).
+                        BRANCH(HasPendingException(glue), &exit, &noPendingException3);
+                        Bind(&noPendingException3);
+                        SetValueToTaggedArray(VariableType::JS_ANY(), glue, array, *index, next);
+                        index = Int32Add(*index, Int32(1));
+                        Jump(&loopEnd);
+                    }
+                }
+                Bind(&loopEnd);
+                LoopEnd(&loopHead, env, glue);
+                Bind(&afterLoop);
+                {
+                    res = array;
+                    Jump(&exit);
+                }
+            }
+        }
+    }
+    Bind(&exit);
+    GateRef ret = *res;
+    env->SubCfgExit();
+    return ret;
+}
+
+void NewObjectStubBuilder::CreateJSIteratorResult(GateRef glue, Variable *res, GateRef value, GateRef done, Label *exit)
+{
+    auto env = GetEnvironment();
+    GateRef iterResultClass = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
+                                                     ConstantIndex::ITERATOR_RESULT_CLASS);
+    Label afterNew(env);
+    SetParameters(glue, 0);
+    NewJSObject(res, &afterNew, iterResultClass);
+    Bind(&afterNew);
+    Store(VariableType::JS_POINTER(), glue, res->ReadVariable(),
+          IntPtr(JSIterator::GetInlinedPropertyOffset(JSIterator::VALUE_INLINE_PROPERTY_INDEX)), value);
+    Store(VariableType::JS_POINTER(), glue, res->ReadVariable(),
+          IntPtr(JSIterator::GetInlinedPropertyOffset(JSIterator::DONE_INLINE_PROPERTY_INDEX)), done);
+
+    Jump(exit);
 }
 }  // namespace panda::ecmascript::kungfu

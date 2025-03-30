@@ -127,9 +127,8 @@ JSHandle<JSTaggedValue> CjsModule::Load(JSThread *thread, JSHandle<EcmaString> &
     InitializeModule(thread, module, recordNameHdl, dirnameHdl);
     PutIntoCache(thread, module, recordNameHdl);
 
-    JSRecordInfo *recordInfo = nullptr;
-    bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(requestEntryPoint, &recordInfo);
-    if (!hasRecord) {
+    JSRecordInfo *recordInfo = jsPandaFile->CheckAndGetRecordInfo(requestEntryPoint);
+    if (recordInfo == nullptr) {
         JSHandle<JSTaggedValue> exp(thread, JSTaggedValue::Exception());
         THROW_MODULE_NOT_FOUND_ERROR_WITH_RETURN_VALUE(thread, requestStr, recordName, exp);
     }
@@ -145,7 +144,7 @@ JSHandle<JSTaggedValue> CjsModule::Load(JSThread *thread, JSHandle<EcmaString> &
     // Execute required JSPandaFile
     RequireExecution(thread, filename, requestEntryPoint);
     if (thread->HasPendingException()) {
-        thread->GetCurrentEcmaContext()->HandleUncaughtException();
+        thread->HandleUncaughtException();
         return thread->GlobalConstants()->GetHandledUndefined();
     }
     // Search from Module.cache after execution.
@@ -160,7 +159,9 @@ JSHandle<JSTaggedValue> CjsModule::Load(JSThread *thread, JSHandle<EcmaString> &
 void CjsModule::RequireExecution(JSThread *thread, const CString &mergedFilename, const CString &requestEntryPoint)
 {
     std::shared_ptr<JSPandaFile> jsPandaFile =
-        JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, mergedFilename, requestEntryPoint);
+        JSPandaFileManager::GetInstance()->LoadJSPandaFile(
+            thread, mergedFilename, requestEntryPoint, false, ExecuteTypes::STATIC);
+    RETURN_IF_ABRUPT_COMPLETION(thread);
     if (jsPandaFile == nullptr) {
         LOG_FULL(FATAL) << "Load current file's panda file failed. Current file is " <<  mergedFilename;
     }

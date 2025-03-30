@@ -140,8 +140,10 @@ public:
     // define BitField
     static constexpr size_t PROMISE_STATE_BITS = 2;
     static constexpr size_t PROMISE_IS_HANDLED_BITS = 1;
+    static constexpr size_t ASYNC_TASK_ID_BITS = 22;
     FIRST_BIT_FIELD(BitField, PromiseState, PromiseState, PROMISE_STATE_BITS)
     NEXT_BIT_FIELD(BitField, PromiseIsHandled, bool, PROMISE_IS_HANDLED_BITS, PromiseState)
+    NEXT_BIT_FIELD(BitField, AsyncTaskId, uint32_t, ASYNC_TASK_ID_BITS, PromiseIsHandled)
 
     DECL_VISIT_OBJECT_FOR_JS_OBJECT(JSObject, PROMISE_RESULT_OFFSET, BIT_FIELD_OFFSET)
     DECL_DUMP()

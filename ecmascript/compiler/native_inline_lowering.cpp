@@ -13,21 +13,9 @@
  * limitations under the License.
  */
 #include "ecmascript/compiler/native_inline_lowering.h"
-#include "ecmascript/builtins/builtins_number.h"
-#include "ecmascript/builtins/builtins_string.h"
-#include "ecmascript/base/number_helper.h"
+#include "ecmascript/compiler/builtins/builtins_array_stub_builder.h"
 #include "ecmascript/compiler/builtins/builtins_call_signature.h"
-#include "ecmascript/compiler/circuit.h"
-#include "ecmascript/compiler/circuit_builder-inl.h"
-#include "ecmascript/compiler/circuit_builder_helper.h"
-#include "ecmascript/compiler/share_gate_meta_data.h"
-#include "ecmascript/js_dataview.h"
-#include "ecmascript/compiler/circuit.h"
-#include "ecmascript/compiler/new_object_stub_builder.h"
 #include "ecmascript/global_env.h"
-#include "ecmascript/js_iterator.h"
-#include "ecmascript/js_thread.h"
-#include "ecmascript/message_string.h"
 
 namespace panda::ecmascript::kungfu {
 
@@ -276,15 +264,6 @@ void NativeInlineLowering::RunNativeInlineLowering()
             case BuiltinsStubCSigns::ID::MapHas:
                 InlineStubBuiltin(gate, 1U, argc, id, circuit_->MapHas(), skipThis);
                 break;
-            case BuiltinsStubCSigns::ID::MapKeys:
-                InlineStubBuiltin(gate, 0U, argc, id, circuit_->MapKeys(), skipThis);
-                break;
-            case BuiltinsStubCSigns::ID::MapValues:
-                InlineStubBuiltin(gate, 0U, argc, id, circuit_->MapValues(), skipThis);
-                break;
-            case BuiltinsStubCSigns::ID::MapEntries:
-                InlineStubBuiltin(gate, 0U, argc, id, circuit_->MapEntries(), skipThis);
-                break;
             case BuiltinsStubCSigns::ID::SetHas:
                 InlineStubBuiltin(gate, 1U, argc, id, circuit_->SetHas(), skipThis);
                 break;
@@ -300,20 +279,8 @@ void NativeInlineLowering::RunNativeInlineLowering()
             case BuiltinsStubCSigns::ID::SetDelete:
                 InlineStubBuiltin(gate, 1U, argc, id, circuit_->SetDelete(), skipThis);
                 break;
-            case BuiltinsStubCSigns::ID::SetValues:
-                InlineStubBuiltin(gate, 0U, argc, id, circuit_->SetValues(), skipThis);
-                break;
-            case BuiltinsStubCSigns::ID::SetEntries:
-                InlineStubBuiltin(gate, 0U, argc, id, circuit_->SetEntries(), skipThis);
-                break;
             case BuiltinsStubCSigns::ID::BigIntConstructor:
                 TryInlineBigIntConstructor(gate, argc, skipThis);
-                break;
-            case BuiltinsStubCSigns::ID::MapClear:
-                InlineStubBuiltin(gate, 0U, argc, id, circuit_->MapClear(), skipThis);
-                break;
-            case BuiltinsStubCSigns::ID::SetClear:
-                InlineStubBuiltin(gate, 0U, argc, id, circuit_->SetClear(), skipThis);
                 break;
             case BuiltinsStubCSigns::ID::ArraySort:
                 TryInlineArraySort(gate, argc, id, skipThis);
@@ -355,8 +322,7 @@ void NativeInlineLowering::RunNativeInlineLowering()
                 TryInlineFunctionPrototypeHasInstance(gate, argc, id, skipThis);
                 break;
             case BuiltinsStubCSigns::ID::ArrayIndexOf:
-                TryInlineIndexOfIncludes(gate, argc, id, skipThis);
-                break;
+            case BuiltinsStubCSigns::ID::ArrayLastIndexOf:
             case BuiltinsStubCSigns::ID::ArrayIncludes:
                 TryInlineIndexOfIncludes(gate, argc, id, skipThis);
                 break;
@@ -388,7 +354,9 @@ void NativeInlineLowering::RunNativeInlineLowering()
                 TryInlineArrayPush(gate, argc, id, skipThis);
                 break;
             case BuiltinsStubCSigns::ID::ArraySlice:
-                TryInlineArraySlice(gate, argc, id, skipThis);
+                // disable slice inline because builtin call is faster than inline implementation.
+                // and the elementsKind in inline implementation is missed.
+                TryInlineArraySlice(gate, argc, id, false);
                 break;
             default:
                 break;
@@ -439,7 +407,7 @@ void NativeInlineLowering::TryInlineStringFromCharCode(GateRef gate, size_t argc
     }
 
     GateRef ret = builder_.StringFromSingleCharCode(tacc.GetArg0());
-    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), ret);
+    ReplaceGateWithPendingException(gate, ret);
 }
 
 void NativeInlineLowering::TryInlineStringCharCodeAt(GateRef gate, size_t argc, bool skipThis)
@@ -482,7 +450,6 @@ void NativeInlineLowering::TryInlineStringSubstring(GateRef gate, size_t argc, b
         CallThis1TypeInfoAccessor tacc(compilationEnv_, circuit_, gate);
         GateRef thisValue = acc_.GetValueIn(gate, 0);
         GateRef startTag = tacc.GetArg0();
-        GateRef endTag = builder_.GetLengthFromString(thisValue);
         if (!Uncheck()) {
             builder_.CallTargetCheck(gate, tacc.GetFunc(),
                                      builder_.IntPtr(static_cast<int64_t>(BuiltinsStubCSigns::ID::StringSubstring)),
@@ -491,7 +458,8 @@ void NativeInlineLowering::TryInlineStringSubstring(GateRef gate, size_t argc, b
             auto param_check = builder_.TaggedIsNumber(startTag);
             builder_.DeoptCheck(param_check, acc_.GetFrameState(gate), DeoptType::BUILTIN_INLINING_TYPE_GUARD);
         }
-        ret = builder_.StringSubstring(thisValue, startTag, endTag);
+        std::vector<GateRef> args {thisValue, startTag};
+        ret = builder_.StringSubstring(args);
     } else {
         GateRef thisValue = acc_.GetValueIn(gate, 0);
         GateRef startTag = acc_.GetValueIn(gate, 1);
@@ -505,7 +473,8 @@ void NativeInlineLowering::TryInlineStringSubstring(GateRef gate, size_t argc, b
                 .And(builder_.TaggedIsNumber(endTag)).Done();
             builder_.DeoptCheck(param_check, acc_.GetFrameState(gate), DeoptType::BUILTIN_INLINING_TYPE_GUARD);
         }
-        ret = builder_.StringSubstring(thisValue, startTag, endTag);
+        std::vector<GateRef> args {thisValue, startTag, endTag};
+        ret = builder_.StringSubstring(args);
     }
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
 }
@@ -566,7 +535,6 @@ void NativeInlineLowering::TryInlineStringSlice(GateRef gate, size_t argc, bool 
         CallThis1TypeInfoAccessor tacc(compilationEnv_, circuit_, gate);
         GateRef thisValue = acc_.GetValueIn(gate, 0);
         GateRef startTag = tacc.GetArg0();
-        GateRef endTag = builder_.GetLengthFromString(thisValue);
         if (!Uncheck()) {
             builder_.CallTargetCheck(gate, tacc.GetFunc(),
                                      builder_.IntPtr(static_cast<int64_t>(BuiltinsStubCSigns::ID::StringSlice)),
@@ -575,7 +543,8 @@ void NativeInlineLowering::TryInlineStringSlice(GateRef gate, size_t argc, bool 
             auto param_check = builder_.TaggedIsNumber(startTag);
             builder_.DeoptCheck(param_check, acc_.GetFrameState(gate), DeoptType::BUILTIN_INLINING_TYPE_GUARD);
         }
-        ret = builder_.StringSlice(thisValue, startTag, endTag);
+        std::vector<GateRef> args {thisValue, startTag};
+        ret = builder_.StringSlice(args);
     } else {
         GateRef thisValue = acc_.GetValueIn(gate, 0);
         GateRef startTag = acc_.GetValueIn(gate, 1);
@@ -589,7 +558,8 @@ void NativeInlineLowering::TryInlineStringSlice(GateRef gate, size_t argc, bool 
                 .And(builder_.TaggedIsNumber(endTag)).Done();
             builder_.DeoptCheck(param_check, acc_.GetFrameState(gate), DeoptType::BUILTIN_INLINING_TYPE_GUARD);
         }
-        ret = builder_.StringSlice(thisValue, startTag, endTag);
+        std::vector<GateRef> args {thisValue, startTag, endTag};
+        ret = builder_.StringSlice(args);
     }
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
 }
@@ -736,7 +706,7 @@ void NativeInlineLowering::TryInlineBigIntAsIntN(GateRef gate, size_t argc, Buil
     bool isUnsigned = (id == BuiltinsStubCSigns::ID::BigIntAsUintN);
     const auto* op = isUnsigned ? circuit_->BigIntAsUintN() : circuit_->BigIntAsIntN();
     GateRef ret = builder_.BuildBigIntAsIntN(op, {bits, bigint, frameState});
-    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
+    ReplaceGateWithPendingException(gate, ret);
 }
 
 void NativeInlineLowering::TryInlineTypedArrayIteratorBuiltin(GateRef gate,
@@ -759,7 +729,7 @@ void NativeInlineLowering::TryInlineTypedArrayIteratorBuiltin(GateRef gate,
     }
 
     GateRef ret = builder_.BuildTypedArrayIterator(acc_.GetValueIn(gate, 0), op);
-    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
+    ReplaceGateWithPendingException(gate, ret);
 }
 
 void NativeInlineLowering::TryInlineMathUnaryBuiltin(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id,
@@ -1495,6 +1465,7 @@ void NativeInlineLowering::TryInlineFunctionPrototypeHasInstance(GateRef gate, s
     ReplaceGateWithPendingException(gate, ret);
 }
 
+// indexOf, lastIndexOf, includes
 void NativeInlineLowering::TryInlineIndexOfIncludes(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id, bool skipThis)
 {
     if (!skipThis) {
@@ -1514,15 +1485,23 @@ void NativeInlineLowering::TryInlineIndexOfIncludes(GateRef gate, size_t argc, B
     builder_.StableArrayCheck(thisArray, kind, ArrayMetaDataAccessor::Mode::CALL_BUILTIN_METHOD);
     builder_.ElementsKindCheck(thisArray, kind, ArrayMetaDataAccessor::Mode::CALL_BUILTIN_METHOD);
     GateRef ret = Circuit::NullGate();
+    GateRef elements = builder_.GetElementsArray(thisArray);
+    GateRef thisLen = builder_.GetLengthOfJSArray(thisArray);
     GateRef callID = builder_.Int32(static_cast<int32_t>(id));
-    GateRef arrayKind = builder_.Int32(static_cast<int32_t>(kind));
+    GateRef arrayKind = builder_.Int32(Elements::ToUint(kind));
     if (argc == 1) {
-        ret = builder_.ArrayIncludesIndexOf(thisArray, builder_.Int32(0), targetElement, callID, arrayKind);
+        GateRef defaultFromIndex = (id == BuiltinsStubCSigns::ID::ArrayLastIndexOf)
+            ? builder_.Int64Sub(builder_.ZExtInt32ToInt64(thisLen), builder_.Int64(1))
+            : builder_.Int64(0);
+        ret = builder_.ArrayIncludesIndexOf(elements, targetElement, defaultFromIndex, thisLen, callID, arrayKind);
     } else {
         GateRef fromIndexHandler = acc_.GetValueIn(gate, 2);
-        builder_.DeoptCheck(builder_.TaggedIsInt(fromIndexHandler), acc_.GetFrameState(gate), DeoptType::INDEXNOTINT);
-        GateRef fromIndex = builder_.TaggedGetInt(fromIndexHandler);
-        ret = builder_.ArrayIncludesIndexOf(thisArray, fromIndex, targetElement, callID, arrayKind);
+        builder_.DeoptCheck(builder_.TaggedIsNumber(fromIndexHandler), acc_.GetFrameState(gate),
+                            DeoptType::INDEXNOTINT);
+        GateRef fromIndex = BuiltinsArrayStubBuilder(&env).MakeFromIndex(
+            fromIndexHandler, thisLen,
+            (id == BuiltinsStubCSigns::ID::ArrayLastIndexOf));
+        ret = builder_.ArrayIncludesIndexOf(elements, targetElement, fromIndex, thisLen, callID, arrayKind);
     }
     if (EnableTrace()) {
         AddTraceLogs(gate, id);
@@ -1797,8 +1776,8 @@ void NativeInlineLowering::TryInlineArrayPush(GateRef gate, size_t argc, Builtin
 {
     // To ensure that the Inline code is as small as possible,
     // FastPath only processes the case when the number of elements to push equals 1
-    // and elementsKinds is not enabled.
-    if (!skipThis || argc != 1 || enableElementsKind_) {
+    // and mutantArray is not enabled.
+    if (!skipThis || argc != 1 || enableMutantArray_) {
         return;
     }
     Environment env(gate, circuit_, &builder_);

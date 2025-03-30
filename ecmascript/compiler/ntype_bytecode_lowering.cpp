@@ -18,9 +18,7 @@
 #include "ecmascript/compiler/type_info_accessors.h"
 #include "ecmascript/dfx/vmstat/opt_code_profiler.h"
 #include "ecmascript/js_hclass-inl.h"
-#include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/jit/jit.h"
-#include "ecmascript/layout_info.h"
 #include "ecmascript/lexical_env.h"
 
 namespace panda::ecmascript::kungfu {
@@ -240,7 +238,7 @@ void NTypeBytecodeLowering::LowerNTypedCopyRestArgs(GateRef gate)
     ElementsKind kind = acc_.TryGetElementsKind(gate);
     GateRef arguments =
         builder_.CreateArguments(kind, CreateArgumentsAccessor::Mode::REST_ARGUMENTS, restIdx);
-    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), arguments);
+    ReplaceGateWithPendingException(gate, builder_.GetState(), builder_.GetDepend(), arguments);
 }
 
 void NTypeBytecodeLowering::LowerNTypedGetUnmappedArgs(GateRef gate)
@@ -251,7 +249,7 @@ void NTypeBytecodeLowering::LowerNTypedGetUnmappedArgs(GateRef gate)
     ElementsKind kind = acc_.TryGetElementsKind(gate);
     GateRef arguments =
         builder_.CreateArguments(kind, CreateArgumentsAccessor::Mode::UNMAPPED_ARGUMENTS, restIdx);
-    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), arguments);
+    ReplaceGateWithPendingException(gate, builder_.GetState(), builder_.GetDepend(), arguments);
 }
 
 void NTypeBytecodeLowering::LowerNTypedStownByIndex(GateRef gate)
@@ -345,7 +343,7 @@ void NTypeBytecodeLowering::LowerStModuleVar(GateRef gate)
     GateRef index = acc_.GetValueIn(gate, 0);
     GateRef value = acc_.GetValueIn(gate, 1);
     builder_.StoreModuleVar(jsFunc, index, value);
-    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
+    ReplaceGateWithPendingException(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
 void NTypeBytecodeLowering::LowerNTypedStOwnByName(GateRef gate)
@@ -384,5 +382,20 @@ void NTypeBytecodeLowering::LowerNTypedStOwnByName(GateRef gate)
     GateRef accValue = acc_.GetValueIn(gate, 2); // 2: accValue
     builder_.StoreConstOffset(VariableType::JS_ANY(), receiver, hclass->GetInlinedPropertiesOffset(offset), accValue);
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), Circuit::NullGate());
+}
+
+void NTypeBytecodeLowering::ReplaceGateWithPendingException(GateRef gate, GateRef state, GateRef depend, GateRef value)
+{
+    auto glue = acc_.GetGlueFromArgList();
+    auto condition = builder_.HasPendingException(glue);
+    GateRef ifBranch = builder_.Branch(state, condition, 1, BranchWeight::DEOPT_WEIGHT, "checkException");
+    GateRef ifTrue = builder_.IfTrue(ifBranch);
+    GateRef ifFalse = builder_.IfFalse(ifBranch);
+    GateRef eDepend = builder_.DependRelay(ifTrue, depend);
+    GateRef sDepend = builder_.DependRelay(ifFalse, depend);
+
+    StateDepend success(ifFalse, sDepend);
+    StateDepend exception(ifTrue, eDepend);
+    acc_.ReplaceHirWithIfBranch(gate, success, exception, value);
 }
 }

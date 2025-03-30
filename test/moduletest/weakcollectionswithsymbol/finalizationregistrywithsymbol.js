@@ -19,10 +19,9 @@
  * @tc.type: FUNC
  * @tc.require: issueI7J2VN
  */
-print("finalizationregistrywithsymbol test start");
 
 var fr = new FinalizationRegistry((value) => {
-    print(value + " destroyed");
+    assert_equal(value + " destroyed","symbol 2 destroyed");
 })
 
 let s = Symbol("symbol");
@@ -33,11 +32,12 @@ fr.register(ss, "symbol 2", Symbol.matchAll);
 try {
     fr.register(Symbol.for("symbol2"), "symbol 2");
 } catch (err) {
-    print(err.name);
+    assert_equal(err instanceof TypeError, true);
 }
 
 fr.unregister(Symbol.match);
 s = {};
 ss = {};
 ArkTools.forceFullGC();
-print("finalizationregistrywithsymbol test end");
+
+test_end();

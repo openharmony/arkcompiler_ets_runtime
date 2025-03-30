@@ -578,6 +578,7 @@ public:
                             JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
                             JSHClass::Cast(ihcVal.GetTaggedObject())->SetPrototype(thread,
                                                                                    env->GetObjectFunctionPrototype());
+                            JSHClass::EnableProtoChangeMarker(thread, JSHandle<JSHClass>(thread, ihcVal));
                         }
                     }
                     JSHandle<JSObject> obj = JSObject::CreateObjectFromProperties(thread, properties, ihcVal);

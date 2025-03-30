@@ -16,7 +16,7 @@
 class A {
     constructor() {
         REPLACE_FUNC_FOO1
-        print("A")
+        assert_equal("A", "A");
     }
     foo() {
         REPLACE_FUNC_FOO2
@@ -25,4 +25,6 @@ class A {
 }
 
 var a = new A()
-print(a.foo())
+assert_equal(a.foo(), "foo");
+
+test_end();

@@ -232,11 +232,8 @@ bool RegExpExecutor::ExecuteInternal(const DynChunk &byteCode, uint32_t pcEnd)
                 break;
             }
             default: {
-                LOG_ECMA(ERROR) << "opCode overflow, OpCode: " << static_cast<int32_t>(opCode)
+                LOG_ECMA(FATAL) << "opCode overflow, OpCode: " << static_cast<int32_t>(opCode)
                                 << " CurrentPc: " << static_cast<int32_t>(GetCurrentPC()) << " pcEnd: " << pcEnd;
-                std::ostringstream oss;
-                RegExpOpCode::DumpRegExpOpCode(oss, byteCode, pcEnd);
-                LOG_ECMA(FATAL) << oss.str();
                 UNREACHABLE();
             }
         }

@@ -431,6 +431,7 @@ public:
     void SolveMemOpndDeoptInfo(const MemOperand &memOpnd, DeoptInfo &deoptInfo, int32 deoptVregNO) const;
     void CollectDeoptInfo();
     void SpillOperand(Insn &insn, Operand &opnd, bool isDef, uint32 spillIdx);
+    RegOperand *GetSpillPhyRegOperand(Insn &insn, regno_t regNo, uint32 regSize, RegType regType);
     regno_t HandleSpillForLi(LiveInterval &li);
     MemOperand *GetSpillMem(uint32 vregNO, bool isDest, Insn &insn, regno_t regNO, bool &isOutOfRange,
                             uint32 bitSize) const;
@@ -493,6 +494,7 @@ private:
     regno_t maxVregNum = 0;
     bool spillAll = false;
     bool needExtraSpillReg = false;
+    bool multiVregMov = false; /*mov vreg vreg*/
     uint64 spillCount = 0;
     uint64 reloadCount = 0;
     uint64 callerSaveSpillCount = 0;

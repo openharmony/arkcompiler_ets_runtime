@@ -20,7 +20,6 @@
 #include "ecmascript/global_env.h"
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/js_object-inl.h"
-#include "ecmascript/module/js_module_manager.h"
 #include "ecmascript/module/module_resolver.h"
 #include "ecmascript/object_factory-inl.h"
 #include "ecmascript/pgo_profiler/pgo_profiler.h"
@@ -100,10 +99,10 @@ void JSFunction::InitializeWithDefaultValue(JSThread *thread, const JSHandle<JSF
     func->SetRawProfileTypeInfo(thread, thread->GlobalConstants()->GetEmptyProfileTypeInfoCell(), SKIP_BARRIER);
     func->SetMethod(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
     func->SetModule(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
-    func->SetProtoTransRootHClass(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
     func->SetCodeEntry(reinterpret_cast<uintptr_t>(nullptr));
     func->ClearCompiledCodeFlags();
     func->SetTaskConcurrentFuncFlag(0); // 0 : default value
+    func->SetCallNapi(false);
 }
 
 JSHandle<JSObject> JSFunction::NewJSFunctionPrototype(JSThread *thread, const JSHandle<JSFunction> &func)
@@ -148,7 +147,17 @@ JSHClass *JSFunction::GetOrCreateInitialJSHClass(JSThread *thread, const JSHandl
     }
 
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<JSHClass> hclass = factory->NewEcmaHClass(JSObject::SIZE, JSType::JS_OBJECT, proto);
+    JSHandle<JSHClass> hclass;
+    if (thread->GetEcmaVM()->GetJSOptions().IsEnableInlinePropertyOptimization()) {
+        bool isStartObjSizeTracking = true;
+        uint32_t expectedOfProperties = JSFunction::CalcuExpotedOfProperties(fun, &isStartObjSizeTracking);
+        hclass = factory->NewEcmaHClass(JSObject::SIZE, expectedOfProperties, JSType::JS_OBJECT, proto);
+        if (isStartObjSizeTracking) {
+            hclass->StartObjSizeTracking();
+        }
+    } else {
+        hclass = factory->NewEcmaHClass(JSObject::SIZE, JSType::JS_OBJECT, proto);
+    }
     fun->SetProtoOrHClass(thread, hclass);
     if (thread->GetEcmaVM()->IsEnablePGOProfiler()) {
         if (!needProfileTransition) {
@@ -158,6 +167,32 @@ JSHClass *JSFunction::GetOrCreateInitialJSHClass(JSThread *thread, const JSHandl
         }
     }
     return *hclass;
+}
+
+uint32_t JSFunction::CalcuExpotedOfProperties(const JSHandle<JSFunction> &fun, bool *isStartObjSizeTracking)
+{
+    JSTaggedValue prototype = fun.GetTaggedValue();
+    uint32_t expectedPropertyCount = 0;
+    while (prototype.IsJSFunction()) {
+        JSTaggedValue method = JSFunction::Cast(prototype.GetTaggedObject())->GetMethod();
+        uint32_t count = Method::Cast(method.GetTaggedObject())->GetExpectedPropertyCount();
+        prototype = JSObject::GetPrototype(prototype);
+        // if equal MAX_EXPECTED_PROPERTY_COUNT means none expectedProperty in method
+        if (count == MethodLiteral::MAX_EXPECTED_PROPERTY_COUNT) {
+            continue;
+        }
+        expectedPropertyCount += count;
+    }
+    expectedPropertyCount += JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS;
+    // if equal DEFAULT_CAPACITY_OF_IN_OBJECTS mean none expectedProperty in func
+    if (expectedPropertyCount == JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS) {
+        *isStartObjSizeTracking = false;
+        return expectedPropertyCount;
+    }
+    if (expectedPropertyCount > PropertyAttributes::MAX_FAST_PROPS_CAPACITY) {
+        return PropertyAttributes::MAX_FAST_PROPS_CAPACITY;
+    }
+    return expectedPropertyCount;
 }
 
 JSTaggedValue JSFunction::PrototypeGetter(JSThread *thread, const JSHandle<JSObject> &self)
@@ -181,6 +216,7 @@ bool JSFunction::PrototypeSetter(JSThread *thread, const JSHandle<JSObject> &sel
     if (protoOrHClass.IsJSHClass()) {
         // need transition
         JSHandle<JSHClass> hclass(thread, JSHClass::Cast(protoOrHClass.GetTaggedObject()));
+        hclass->CompleteObjSizeTracking();
         JSHandle<JSHClass> newClass = JSHClass::SetPrototypeWithNotification(thread, hclass, value);
         func->SetProtoOrHClass(thread, newClass);
         // Forbide to profile for changing the function prototype after an instance of the function has been created
@@ -224,22 +260,19 @@ void JSFunction::SetFunctionPrototypeOrInstanceHClass(const JSThread *thread, co
     }
 }
 
-EcmaString* JSFunction::GetFunctionNameString(JSThread *thread, JSHandle<EcmaString> concatString,
-                                              ObjectFactory *factory, JSHandle<JSTaggedValue> target)
+EcmaString* JSFunction::GetFunctionNameString(ObjectFactory *factory, JSHandle<EcmaString> concatString,
+                                              JSHandle<JSTaggedValue> target)
 {
-    JSTaggedValue method = JSHandle<JSFunction>::Cast(target)->GetMethod();
-    JSHandle<EcmaString> newString = factory->ConcatFromString(concatString, factory->GetEmptyString());
-    if (!method.IsUndefined()) {
-        Method *targetObj = Method::Cast(method.GetTaggedObject());
-        std::string funcName = targetObj->ParseFunctionName();
-        if (!funcName.empty()) {
-            JSHandle<JSTaggedValue> methodName(thread,
-                                               factory->NewFromStdString(funcName).GetTaggedValue());
-            JSHandle<EcmaString> functionName = JSHandle<EcmaString>::Cast(methodName);
-            newString = factory->ConcatFromString(concatString, functionName);
+    if (target->IsJSFunction()) {
+        JSTaggedValue method = JSHandle<JSFunction>::Cast(target)->GetMethod();
+        if (!method.IsUndefined()) {
+            std::string funcName = Method::Cast(method.GetTaggedObject())->ParseFunctionName();
+            if (!funcName.empty()) {
+                return *factory->ConcatFromString(concatString, factory->NewFromStdString(funcName));
+            }
         }
     }
-    return *newString;
+    return *concatString;
 }
 
 JSTaggedValue JSFunction::NameGetter(JSThread *thread, const JSHandle<JSObject> &self)
@@ -261,7 +294,7 @@ JSTaggedValue JSFunction::NameGetter(JSThread *thread, const JSHandle<JSObject> 
 
         EcmaString *newString;
         if (!targetName->IsString()) {
-            newString = GetFunctionNameString(thread, concatString, factory, target);
+            newString = GetFunctionNameString(factory, concatString, target);
         } else {
             JSHandle<EcmaString> functionName = JSHandle<EcmaString>::Cast(targetName);
             newString = *factory->ConcatFromString(concatString, functionName);
@@ -904,10 +937,18 @@ JSHandle<JSHClass> JSFunction::GetOrCreateDerivedJSHClass(JSThread *thread, JSHa
     if (protoOrHClass.IsJSHClass()) {
         return JSHandle<JSHClass>(thread, protoOrHClass);
     }
-
-    JSHandle<JSHClass> newJSHClass = JSHClass::Clone(thread, ctorInitialJSHClass);
-    if (ctorInitialJSHClass->IsJSArray()) {
-        newJSHClass->SetIsJSArrayPrototypeModified(true);
+    JSHandle<JSHClass> newJSHClass;
+    if (thread->GetEcmaVM()->GetJSOptions().IsEnableInlinePropertyOptimization()) {
+        bool isStartObjSizeTracking = true;
+        uint32_t expectedOfProperties = CalcuExpotedOfProperties(derived, &isStartObjSizeTracking);
+        if (isStartObjSizeTracking) {
+            newJSHClass = JSHClass::CloneAndIncInlinedProperties(thread, ctorInitialJSHClass, expectedOfProperties);
+            newJSHClass->StartObjSizeTracking();
+        } else {
+            newJSHClass = JSHClass::Clone(thread, ctorInitialJSHClass);
+        }
+    } else {
+        newJSHClass = JSHClass::Clone(thread, ctorInitialJSHClass);
     }
     newJSHClass->SetElementsKind(ElementsKind::GENERIC);
     // guarante derived has function prototype
@@ -1087,6 +1128,16 @@ void JSFunction::SetJitMachineCodeCache(const JSThread *thread, const JSHandle<M
     handleRaw->SetMachineCode(thread, machineCode.GetTaggedValue().CreateAndGetWeakRef(), WRITE_BARRIER);
 }
 
+void JSFunction::SetBaselineJitCodeCache(const JSThread *thread, const JSHandle<MachineCode> &machineCode)
+{
+    JSHandle<ProfileTypeInfoCell> handleRaw(thread, GetRawProfileTypeInfo());
+    if (handleRaw->IsEmptyProfileTypeInfoCell(thread)) {
+        LOG_BASELINEJIT(ERROR) << "skip set baselinejit cache, as profileTypeInfoCell is empty.";
+        return;
+    }
+    handleRaw->SetBaselineCode(thread, machineCode.GetTaggedValue().CreateAndGetWeakRef(), WRITE_BARRIER);
+}
+
 JSTaggedValue JSFunctionBase::GetFunctionExtraInfo() const
 {
     JSTaggedType hashField = Barriers::GetValue<JSTaggedType>(this, HASH_OFFSET);
@@ -1137,27 +1188,21 @@ void JSFunction::InitializeForConcurrentFunction(JSThread *thread, JSHandle<JSFu
     ecmascript::CString recordName = method->GetRecordNameStr();
 
     // check ESM or CJS
-    ecmascript::JSRecordInfo *recordInfo = nullptr;
-    bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(recordName, &recordInfo);
-    if (!hasRecord) {
+    ecmascript::JSRecordInfo *recordInfo = jsPandaFile->CheckAndGetRecordInfo(recordName);
+    if (recordInfo == nullptr) {
         CString msg = "Cannot find module '" + recordName + "' , which is application Entry Point";
         LOG_ECMA(ERROR) << msg;
         return;
     }
+
     if (!jsPandaFile->IsModule(recordInfo)) {
         LOG_ECMA(DEBUG) << "Current function is not from ES Module's file.";
         return;
     }
     ecmascript::ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
-    JSHandle<ecmascript::JSTaggedValue> moduleRecord;
-    // check compileMode
-    if (jsPandaFile->IsBundlePack()) {
-        LOG_ECMA(DEBUG) << "CompileMode is jsbundle";
-        moduleRecord = ModuleResolver::HostResolveImportedModuleBundlePack(thread, moduleName);
-    } else {
-        LOG_ECMA(DEBUG) << "CompileMode is esmodule";
-        moduleRecord = ModuleResolver::HostResolveImportedModuleWithMerge(thread, moduleName, recordName);
-    }
+    LOG_ECMA(DEBUG) << "CompileMode is " << (jsPandaFile->IsBundlePack() ? "jsbundle" : "esmodule");
+    JSHandle<ecmascript::JSTaggedValue> moduleRecord =
+        ModuleResolver::HostResolveImportedModule(thread, moduleName, recordName);
     RETURN_IF_ABRUPT_COMPLETION(thread);
     ecmascript::SourceTextModule::Instantiate(thread, moduleRecord);
     RETURN_IF_ABRUPT_COMPLETION(thread);

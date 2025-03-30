@@ -27,7 +27,7 @@ function func1(a) {
 for (let j = 300; j > 0; j--) {
     func1(obj);
 }
-print(obj[i]);
+assert_equal(obj[i],'icsuccess');
 
 // PoC testcase
 const arr = []
@@ -41,7 +41,6 @@ for (let i = 0; i < 20; i++) {
 }
 const v3 = new Uint8Array(128);
 v3[arr];
-print("test successful !!!");
 
 var obj1 = {
     0: 0,
@@ -50,10 +49,17 @@ var obj1 = {
     4294967295: 3,
     4294967296: 4,
 }
-
+let obj1Key = [];
+let obj1Value = [];
+let obj1AssertKey = ['0', '2147483647', '2147483648', '4294967295', '4294967296'];
+let obj1AssertValue = [0, 1, 2, 3, 4];
 for (let item in obj1) {
-    print(item + " " + obj1[item]);
+    obj1Key.push(item);
+    obj1Value.push(obj1[item]);
 }
+assert_equal(obj1Key, obj1AssertKey);
+assert_equal(obj1Value, obj1AssertValue);
+
 // test ic
 var lineStr = "方舟ArK TypeScript RuntimekTS运行时（ARK TypeScript Runtime）K TypeScript Runtime是OppeScript RK TypeScripK TypeScript Runtimet Runtimeuntime）是OpeK TypeScript RuntimenHarmony上ArkTS应用使用的运行时。包含ArkTS/JS对象的分配enHarmonypeScript Runtime）是OpenHarmony上ArkTS应用使用的运行时。包含ArkTS/JS对象的分配上ArkTS应用使用peScript Runtime）是OpenHarmony上ArkTS应用使用的运行时。包含ArkTS/JS对象的分配的运行时。包含ArkTS/JS对象的分配器以及垃圾回收器（GC）、符合ECMAScript规范的标准库、用于运行ARK前端组件生成的方舟字节码（ARK Bytecode简称abc）的解释器、用于加速的内联缓存、静态类型编译器、运行时的C++/C函数接口（NAPI）等模块.";
 var str = "方舟ArkTS运行时（ARK TypeScript Runtime）是OpenHarmony上ArkTS应用使用的运行时。包含ArkTS/JS对象的分配器以及垃圾回收器（GC）、符合ECMAScript规范的标准库、用于运行ARK前端组件生成的方舟字节码（ARK Bytecode简称abc）的解释器、用于加速的内联缓存、静态类型编译器、运行时的C++/C函数接口（NAPI）等模块.";
@@ -83,7 +89,6 @@ for (let i = 0; i < 100; i++) {
     let arr = [0];
     arr[0] = arr;
 }
-print("load ic by COWArray Success")
 
 function g(o, v) {
     let res;
@@ -91,6 +96,7 @@ function g(o, v) {
         res = o[1];
         if (res != v) {
             print("Error ",res);
+            assert_unreachable();
         }
     }
     return res;
@@ -101,10 +107,9 @@ function g(o, v) {
         __proto__: pro };
     o[102500] = 1;
     o["test"] = "test";
-    print(g(o, 1));
+    assert_equal(g(o, 1),1);
     Object.defineProperty(o, "1", { value: 2 });
-    print("change")
-    print(g(o, 2));
+    assert_equal(g(o, 2),2);
 }
 {
     let pro = new Uint8Array(10);
@@ -113,9 +118,9 @@ function g(o, v) {
         __proto__: pro };
     o[102500] = 1;
     o["test"] = "test";
-    print(g(o, 1));
+    assert_equal(g(o, 1),1);
     Object.defineProperty(o, "1", { value: 2 });
-    print("change")
-    print(g(o, 2));
+    assert_equal(g(o, 2),2);
 }
-print("ic load success");
+
+test_end();

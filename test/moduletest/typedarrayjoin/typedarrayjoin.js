@@ -39,7 +39,7 @@ const separator = {
 
 constructors.forEach(([constructor, arr]) => {
   typedArray = new constructor(arr);
-  print(typedArray.join(separator) == '*');
+  assert_equal(typedArray.join(separator) == '*',true);
 });
 
 let typedArrays;
@@ -54,6 +54,8 @@ BigInt.prototype.toLocaleString = detachBuffer;
 
 constructs.forEach(([constructor, arr]) => {
   typedArrays = new constructor(arr);
-  print(typedArrays.join() == '0,1');
-  print(typedArrays.toLocaleString() == 'a,');
+  assert_equal(typedArrays.join() == '0,1',true);
+  assert_equal(typedArrays.toLocaleString() == 'a,',true);
 });
+
+test_end();

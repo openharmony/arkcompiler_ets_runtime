@@ -19,7 +19,7 @@ const str = "Umbridge has been reading your mail, Harry."
   str.__proto__.__proto__[Symbol.replace] =
     () => { monkey_called = true; };
   str.replace(str);
-  print(monkey_called);
+  assert_equal(monkey_called, true);
 }
 
 {
@@ -27,7 +27,7 @@ const str = "Umbridge has been reading your mail, Harry."
   str.__proto__.__proto__[Symbol.search] =
     () => { monkey_called = true; };
   str.search(str);
-  print(monkey_called);
+  assert_equal(monkey_called, true);
 }
 
 {
@@ -35,5 +35,7 @@ const str = "Umbridge has been reading your mail, Harry."
   str.__proto__.__proto__[Symbol.match] =
     () => { monkey_called = true; };
   str.match(str);
-  print(monkey_called);
+  assert_equal(monkey_called, true);
 }
+
+test_end();

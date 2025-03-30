@@ -82,3 +82,5 @@ function TestIfCase() {
 }
 
 TestIfCase();
+
+test_end();

@@ -20,6 +20,7 @@
 #include <string>
 
 #include "ecmascript/compiler/aot_compiler_preprocessor.h"
+#include "ecmascript/compiler/aot_file/an_file_data_manager.h"
 #include "ecmascript/dfx/stackinfo/js_stackinfo.h"
 #include "ecmascript/ohos/ohos_pkg_args.h"
 #include "ecmascript/ecma_vm.h"

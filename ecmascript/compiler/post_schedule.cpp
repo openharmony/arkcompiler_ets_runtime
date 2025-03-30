@@ -15,10 +15,8 @@
 
 #include "ecmascript/compiler/post_schedule.h"
 
-#include <ecmascript/stubs/runtime_stubs.h>
 
 #include "ecmascript/compiler/circuit_builder-inl.h"
-#include "ecmascript/js_thread.h"
 
 namespace panda::ecmascript::kungfu {
 void PostSchedule::Run(ControlFlowGraph &cfg)

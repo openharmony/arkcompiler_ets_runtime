@@ -61,9 +61,9 @@ public:
 
     JSTaggedValue GetTail();
 
-    JSTaggedValue PopFirst();
+    JSTaggedValue PopFirst(JSThread *thread);
 
-    JSTaggedValue PopLast();
+    JSTaggedValue PopLast(JSThread *thread);
 
     JSTaggedValue Get(const uint32_t index);
 

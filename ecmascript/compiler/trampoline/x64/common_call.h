@@ -84,7 +84,7 @@ public:
 
     static void GenJSCallWithArgV(ExtendedAssembler *assembler, int id);
 private:
-    static void DeoptEnterAsmInterp(ExtendedAssembler *assembler);
+    static void DeoptEnterAsmInterpOrBaseline(ExtendedAssembler *assembler);
     static void JSCallCheck(ExtendedAssembler *assembler, Register jsFuncReg,
                             Label *lNonCallable, Label *lNotJSFunction, Label *lJSFunctionCall);
     static void ThrowNonCallableInternal(ExtendedAssembler *assembler, Register glueReg);
@@ -176,6 +176,16 @@ public:
 
     static void CallReturnWithArgv(ExtendedAssembler *assembler);
 
+    static void CallGetterToBaseline(ExtendedAssembler *assembler);
+
+    static void CallSetterToBaseline(ExtendedAssembler *assembler);
+
+    static void CallContainersArgs2ToBaseline(ExtendedAssembler *assembler);
+
+    static void CallContainersArgs3ToBaseline(ExtendedAssembler *assembler);
+
+    static void CallReturnWithArgvToBaseline(ExtendedAssembler *assembler);
+
     static void ResumeCaughtFrameAndDispatch(ExtendedAssembler *assembler);
 
     static void ResumeUncaughtFrameAndReturn(ExtendedAssembler *assembler);
@@ -183,8 +193,6 @@ public:
     static void ResumeRspAndRollback(ExtendedAssembler *assembler);
 
     static void ASMFastWriteBarrier(ExtendedAssembler *assembler);
-
-    static void ASMWriteBarrierWithEden(ExtendedAssembler *assembler);
 private:
     static void PushFrameState(ExtendedAssembler *assembler, Register prevSpRegister, Register fpRegister,
         Register callTargetRegister, Register thisRegister, Register methodRegister, Register pcRegister,
@@ -212,7 +220,7 @@ private:
     static void PushVregs(ExtendedAssembler *assembler, Label *stackOverflow, FrameTransitionType type);
     static void DispatchCall(ExtendedAssembler *assembler, Register pcRegister, Register newSpRegister,
                              Register callTargetRegister, Register methodRegister, Register accRegister = rInvalid);
-    static void CallNativeEntry(ExtendedAssembler *assembler);
+    static void CallNativeEntry(ExtendedAssembler *assembler, bool isJsProxy);
     static void CallFastBuiltin(ExtendedAssembler *assembler, Label *callNativeBuiltin);
     static void CallNativeWithArgv(ExtendedAssembler *assembler, bool callNew, bool hasNewTarget = false);
     static void CallNativeInternal(ExtendedAssembler *assembler, Register nativeCode);

@@ -14,7 +14,6 @@
  */
 
 #include "proepilog.h"
-#include "cgfunc.h"
 #include "cg.h"
 
 namespace maplebe {

@@ -19,6 +19,32 @@
 #include "ecmascript/base/builtins_base.h"
 #include "ecmascript/ecma_runtime_call_info.h"
 
+// List of functions in LightWeightMap.prototype, excluding the constructor and '@@' properties.
+// V(name, func, length, stubIndex)
+// where ContainersLightWeightMap::func refers to the native implementation of LightWeightMap.prototype[name].
+#define CONTAINER_LIGHTWEIGHTMAP_PROTOTYPE_FUNCTIONS(V)                                             \
+    V("hasAll",                 HasAll,                 1,          INVALID)                        \
+    V("hasKey",                 HasKey,                 1,          INVALID)                        \
+    V("hasValue",               HasValue,               1,          INVALID)                        \
+    V("increaseCapacityTo",     IncreaseCapacityTo,     1,          INVALID)                        \
+    V("entries",                Entries,                0,          INVALID)                        \
+    V("get",                    Get,                    1,          INVALID)                        \
+    V("getIndexOfKey",          GetIndexOfKey,          1,          INVALID)                        \
+    V("getIndexOfValue",        GetIndexOfValue,        1,          INVALID)                        \
+    V("isEmpty",                IsEmpty,                0,          INVALID)                        \
+    V("getKeyAt",               GetKeyAt,               1,          INVALID)                        \
+    V("keys",                   Keys,                   0,          INVALID)                        \
+    V("setAll",                 SetAll,                 1,          INVALID)                        \
+    V("set",                    Set,                    2,          INVALID)                        \
+    V("remove",                 Remove,                 1,          INVALID)                        \
+    V("removeAt",               RemoveAt,               1,          INVALID)                        \
+    V("clear",                  Clear,                  0,          INVALID)                        \
+    V("setValueAt",             SetValueAt,             2,          INVALID)                        \
+    V("toString",               ToString,               0,          INVALID)                        \
+    V("getValueAt",             GetValueAt,             1,          INVALID)                        \
+    V("values",                 Values,                 0,          INVALID)                        \
+    V("forEach",                ForEach,                2,          LightWeightMapForEach)
+
 namespace panda::ecmascript::containers {
 class ContainersLightWeightMap : public base::BuiltinsBase {
 public:
@@ -46,6 +72,21 @@ public:
     static JSTaggedValue GetValueAt(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue Values(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue GetIteratorObj(EcmaRuntimeCallInfo *argv);
+
+    // Excluding the constructor and '@@' internal properties.
+    static Span<const base::BuiltinFunctionEntry> GetLightWeightMapPrototypeFunctions()
+    {
+        return Span<const base::BuiltinFunctionEntry>(LIGHTWEIGHTMAP_PROTOTYPE_FUNCTIONS);
+    }
+
+private:
+#define CONTAINER_LIGHTWEIGHTMAP_FUNCTION_ENTRY(name, method, length, id) \
+    base::BuiltinFunctionEntry::Create(name, ContainersLightWeightMap::method, length, kungfu::BuiltinsStubCSigns::id),
+
+    static constexpr std::array LIGHTWEIGHTMAP_PROTOTYPE_FUNCTIONS = {
+        CONTAINER_LIGHTWEIGHTMAP_PROTOTYPE_FUNCTIONS(CONTAINER_LIGHTWEIGHTMAP_FUNCTION_ENTRY)
+    };
+#undef CONTAINER_LIGHTWEIGHTMAP_FUNCTION_ENTRY
 };
 }  // namespace panda::ecmascript::containers
 #endif  // ECMASCRIPT_CONTAINERS_CONTAINERS_LIGHTWEIGHTMAP_H

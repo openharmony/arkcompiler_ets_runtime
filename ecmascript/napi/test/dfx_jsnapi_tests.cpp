@@ -29,6 +29,7 @@ using namespace panda;
 using namespace panda::ecmascript;
 
 namespace panda::test {
+using FunctionForRef = Local<JSValueRef> (*)(JsiRuntimeCallInfo *);
 class DFXJSNApiTests : public testing::Test {
 public:
     static void SetUpTestCase()
@@ -44,7 +45,7 @@ public:
     void SetUp() override
     {
         TestHelper::CreateEcmaVMWithScope(vm_, thread_, scope_);
-        vm_->GetJSThread()->GetCurrentEcmaContext()->SetRuntimeStatEnable(true);
+        vm_->GetJSThread()->GetEcmaVM()->SetRuntimeStatEnable(true);
         vm_->SetEnableForceGC(false);
     }
 
@@ -264,7 +265,7 @@ HWTEST_F_L0(DFXJSNApiTests, Start_Stop_HeapTracking_002)
 
 HWTEST_F_L0(DFXJSNApiTests, Start_Stop_RuntimeStat)
 {
-    EcmaRuntimeStat *ecmaRuntimeStat = vm_->GetJSThread()->GetCurrentEcmaContext()->GetRuntimeStat();
+    EcmaRuntimeStat *ecmaRuntimeStat = vm_->GetRuntimeStat();
     EXPECT_TRUE(ecmaRuntimeStat != nullptr);
 
     ecmaRuntimeStat->SetRuntimeStatEnabled(false);
@@ -651,9 +652,10 @@ HWTEST_F_L0(DFXJSNApiTests, StopTracing)
 HWTEST_F_L0(DFXJSNApiTests, TranslateJSStackInfo)
 {
     std::string resultUrl = "";
-    auto cb = [&resultUrl](std::string& url, int& line, int& column) -> bool {
+    auto cb = [&resultUrl](std::string& url, int& line, int& column, std::string& packageName) -> bool {
         line = 0;
         column = 0;
+        packageName = "name";
         if (url.find("TranslateJSStackInfo", 0) != std::string::npos) {
             resultUrl = "true";
             return true;
@@ -666,20 +668,86 @@ HWTEST_F_L0(DFXJSNApiTests, TranslateJSStackInfo)
     std::string url = "TranslateJSStackInfo";
     int32_t line = 0;
     int32_t column = 0;
-    DFXJSNApi::TranslateJSStackInfo(vm_, url, line, column);
+    std::string packageName = "";
+    DFXJSNApi::TranslateJSStackInfo(vm_, url, line, column, packageName);
 
     vm_->SetSourceMapTranslateCallback(cb);
     url = "Translate";
-    DFXJSNApi::TranslateJSStackInfo(vm_, url, line, column);
+    DFXJSNApi::TranslateJSStackInfo(vm_, url, line, column, packageName);
     ASSERT_STREQ(resultUrl.c_str(), "false");
 
     url = "TranslateJSStackInfo";
-    DFXJSNApi::TranslateJSStackInfo(vm_, url, line, column);
+    DFXJSNApi::TranslateJSStackInfo(vm_, url, line, column, packageName);
     ASSERT_STREQ(resultUrl.c_str(), "true");
 }
 
 HWTEST_F_L0(DFXJSNApiTests, GetCurrentThreadId)
 {
     ASSERT_EQ(DFXJSNApi::GetCurrentThreadId(), JSThread::GetCurrentThreadId());
+}
+
+Local<JSValueRef> FunctionCallback(JsiRuntimeCallInfo *info)
+{
+    EscapeLocalScope scope(info->GetVM());
+    return scope.Escape(ArrayRef::New(info->GetVM(), info->GetArgsNumber()));
+}
+
+HWTEST_F_L0(DFXJSNApiTests, GetObjectHashCode_1)
+{
+    LocalScope scope(vm_);
+    Local<FunctionRef> functioncallback = FunctionRef::New(vm_, FunctionCallback);
+    struct Data {
+        int32_t length;
+    };
+    const int32_t length = 15;
+    Data *data = new Data();
+    data->length = length;
+    functioncallback->SetData(vm_, data);
+    auto hash = DFXJSNApi::GetObjectHashCode(vm_, functioncallback);
+    ASSERT_TRUE(hash != 0);
+}
+
+HWTEST_F_L0(DFXJSNApiTests, GetObjectHashCode_2)
+{
+    Local<ObjectRef> object = ObjectRef::New(vm_);
+    object->SetNativePointerFieldCount(vm_, 10);
+    auto hash = DFXJSNApi::GetObjectHashCode(vm_, object);
+    ASSERT_TRUE(hash != 0);
+}
+
+HWTEST_F_L0(DFXJSNApiTests, GetObjectHash_3)
+{
+    Local<ObjectRef> object = ObjectRef::New(vm_);
+    auto hash = DFXJSNApi::GetObjectHash(vm_, object);
+    ASSERT_TRUE(hash != 0);
+}
+
+HWTEST_F_L0(DFXJSNApiTests, GetObjectHashCode_3)
+{
+    Local<ObjectRef> object = ObjectRef::New(vm_);
+    auto hash = DFXJSNApi::GetObjectHashCode(vm_, object);
+    ASSERT_TRUE(hash != 0);
+}
+
+HWTEST_F_L0(DFXJSNApiTests, GetObjectHash_4)
+{
+    Local<ObjectRef> object = ObjectRef::New(vm_);
+    NativePointerCallback callBack = nullptr;
+    void *vp1 = static_cast<void *>(new std::string("test"));
+    void *vp2 = static_cast<void *>(new std::string("test"));
+    object->SetNativePointerField(vm_, 33, vp1, callBack, vp2);
+    auto hash = DFXJSNApi::GetObjectHash(vm_, object);
+    ASSERT_TRUE(hash != 0);
+}
+
+HWTEST_F_L0(DFXJSNApiTests, GetObjectHashCode_4)
+{
+    Local<ObjectRef> object = ObjectRef::New(vm_);
+    NativePointerCallback callBack = nullptr;
+    void *vp1 = static_cast<void *>(new std::string("test"));
+    void *vp2 = static_cast<void *>(new std::string("test"));
+    object->SetNativePointerField(vm_, 33, vp1, callBack, vp2);
+    auto hash = DFXJSNApi::GetObjectHashCode(vm_, object);
+    ASSERT_TRUE(hash != 0);
 }
 } // namespace panda::test

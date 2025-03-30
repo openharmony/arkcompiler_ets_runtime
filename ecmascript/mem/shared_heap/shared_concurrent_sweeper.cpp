@@ -33,7 +33,13 @@ void SharedConcurrentSweeper::PostTask(bool isFullGC)
         }
         Taskpool::GetCurrentTaskpool()->PostTask(
             std::make_unique<SweeperTask>(tid, this, SHARED_NON_MOVABLE, isFullGC));
+    } else {
+        if (!isFullGC_) {
+            sHeap_->GetOldSpace()->Sweep();
+        }
+        sHeap_->GetNonMovableSpace()->Sweep();
     }
+    sHeap_->GetHugeObjectSpace()->Sweep();
 }
 
 void SharedConcurrentSweeper::Sweep(bool isFullGC)
@@ -53,13 +59,7 @@ void SharedConcurrentSweeper::Sweep(bool isFullGC)
         sHeap_->GetNonMovableSpace()->PrepareSweeping();
         // Prepare
         isSweeping_ = true;
-    } else {
-        if (!isFullGC_) {
-            sHeap_->GetOldSpace()->Sweep();
-        }
-        sHeap_->GetNonMovableSpace()->Sweep();
     }
-    sHeap_->GetHugeObjectSpace()->Sweep();
 }
 
 void SharedConcurrentSweeper::AsyncSweepSpace(MemSpaceType type, bool isMain)
@@ -143,6 +143,7 @@ void SharedConcurrentSweeper::TryFillSweptRegion()
 
 bool SharedConcurrentSweeper::SweeperTask::Run([[maybe_unused]] uint32_t threadIndex)
 {
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedConcurrentSweeper::Sweep");
     if (type_ == SHARED_NON_MOVABLE) {
         sweeper_->AsyncSweepSpace(SHARED_NON_MOVABLE, false);
         if (!isFullGC_) {

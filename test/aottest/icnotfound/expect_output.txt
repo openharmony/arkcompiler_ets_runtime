@@ -1,0 +1,24 @@
+# Copyright (c) 2025 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+Test for NotFoud IC Case.
+Test1 ans: 23067
+Test2 ans: 21902
+Test3 ans: 21991
+Test4 ans: 21991
+Test5 ans: 46990
+Test6 ans: 23067
+Test7 ans: 23067
+Test8 ans: 23067
+Test9 ans: 23067
+Test10 ans: 233

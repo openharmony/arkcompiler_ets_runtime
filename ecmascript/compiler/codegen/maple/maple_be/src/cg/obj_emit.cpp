@@ -14,8 +14,6 @@
  */
 
 #include "obj_emit.h"
-#include "namemangler.h"
-#include "cg.h"
 
 namespace maplebe {
 using namespace maple;

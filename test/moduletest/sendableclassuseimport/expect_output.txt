@@ -11,6 +11,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+SendableLocalClass, SendableUseLocalModuleValue::static block
+sendableLocalFunc, SendableUseLocalModuleValue::static block
+LocalClass, SendableUseLocalModuleValue::static block
+localFunc, SendableUseLocalModuleValue::static block
+SendableLocalClass, InStaticSendableClass::foo
+sendableLocalFunc, InStaticSendableClass::foo
+LocalClass, InStaticSendableClass::foo
+localFunc, InStaticSendableClass::foo
+SendableLocalClass, InStaticClass::foo
+sendableLocalFunc, InStaticClass::foo
+LocalClass, InStaticClass::foo
+localFunc, InStaticClass::foo
 (This is strA!)
 testOneLevelContext
 (This is strA!)(This is strB!)
@@ -18,3 +30,11 @@ testImportFunction
 foo():(This is strA!)
 testImportFunction
 ClassB: foo():(This is strB!)foo2
+SendableLocalClass, SendableUseLocalModuleValue::start
+sendableLocalFunc, SendableUseLocalModuleValue::start
+LocalClass, SendableUseLocalModuleValue::start
+localFunc, SendableUseLocalModuleValue::start
+SendableLocalClass, SendableFuncUseLocalModuleValue
+sendableLocalFunc, SendableFuncUseLocalModuleValue
+LocalClass, SendableFuncUseLocalModuleValue
+localFunc, SendableFuncUseLocalModuleValue

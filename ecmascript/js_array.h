@@ -25,17 +25,27 @@
 namespace panda::ecmascript {
 enum class ArrayMode : uint8_t { UNDEFINED = 0, DICTIONARY, LITERAL };
 // ecma6 9.4.2 Array Exotic Object
-class JSArray : public JSObject {
+class JSArray final : public JSObject {
 public:
+    // array instance property:
     static constexpr int LENGTH_INLINE_PROPERTY_INDEX = 0;
-
+    // array prototype property:
+    static constexpr int CONSTRUCTOR_INLINE_PROPERTY_INDEX = 1;
+    // array constructor property:
+    static constexpr int ARRAY_FUNCTION_INLINE_PROPERTY_NUM = 7;
+    static constexpr int ARRAY_FUNCTION_SPECIES_INDEX = 0;
     CAST_CHECK(JSArray, IsJSArray);
 
+    static JSTaggedValue CheckStableArrayAndGet(JSThread *thread, const JSHandle<JSObject> &thisObjHandle,
+                                                uint32_t index);
+    static void CheckStableArrayAndSet(JSThread *thread, const JSHandle<JSObject> &thisObjHandle,
+                                       uint32_t index, JSMutableHandle<JSTaggedValue> &value);
     static PUBLIC_API JSHandle<JSTaggedValue> ArrayCreate(JSThread *thread, JSTaggedNumber length,
                                                           ArrayMode mode = ArrayMode::UNDEFINED);
     static JSHandle<JSTaggedValue> ArrayCreate(JSThread *thread, JSTaggedNumber length,
                                                const JSHandle<JSTaggedValue> &newTarget,
                                                ArrayMode mode = ArrayMode::UNDEFINED);
+    static JSTaggedValue GetConstructorOrSpeciesInlinedProp(JSTaggedValue object, uint32_t inlinePropIndex);
     static JSTaggedValue ArraySpeciesCreate(JSThread *thread, const JSHandle<JSObject> &originalArray,
                                             JSTaggedNumber length);
     static bool ArraySetLength(JSThread *thread, const JSHandle<JSObject> &array, const PropertyDescriptor &desc);
@@ -86,6 +96,11 @@ public:
     static const uint32_t MAX_ARRAY_INDEX = MAX_ELEMENT_INDEX;
     DECL_DUMP()
 
+    static uint32_t GetInlinedPropertyOffset(uint32_t index)
+    {
+        return JSArray::SIZE + index * JSTaggedValue::TaggedTypeSize();
+    }
+
     static int32_t GetArrayLengthOffset()
     {
         return LENGTH_OFFSET;
@@ -121,8 +136,12 @@ public:
                                      const JSHandle<JSTaggedValue> &value);
     static JSHandle<TaggedArray> ToTaggedArray(JSThread *thread, const JSHandle<JSTaggedValue> &obj);
     static void PUBLIC_API CheckAndCopyArray(const JSThread *thread, JSHandle<JSArray> obj);
+    static void CheckAndSetPrototypeModified(JSThread *thread, const JSHandle<JSObject> &newArrayHandle);
     static void SetCapacity(JSThread *thread, const JSHandle<JSObject> &array, uint32_t oldLen, uint32_t newLen,
                             bool isNew = false);
+    static void TransformElementsKindAfterSetCapacity(JSThread *thread, const JSHandle<JSObject> &array,
+                                                      [[maybe_unused]] uint32_t oldLen, uint32_t newLen,
+                                                      [[maybe_unused]] bool isNew);
     static void SortElements(JSThread *thread, const JSHandle<TaggedArray> &elements,
                              const JSHandle<JSTaggedValue> &fn);
     static void SortElementsByObject(JSThread *thread, const JSHandle<JSObject> &thisObjHandle,
@@ -134,6 +153,12 @@ public:
     static void MergeSortedElements(JSThread *thread, const JSHandle<TaggedArray> &elements,
         const JSHandle<JSTaggedValue> &fn, int64_t startIdx, int64_t middleIdx, int64_t endIdx);
 
+    static JSHandle<JSHClass> CreateJSArrayPrototypeClass(const JSThread *thread, ObjectFactory *factory,
+                                                          JSHandle<JSTaggedValue> proto, uint32_t inlinedProps);
+
+    static JSHandle<JSHClass> CreateJSArrayFunctionClass(const JSThread *thread, ObjectFactory *factory,
+                                                         const JSHandle<GlobalEnv> &env);
+
     template <class Callback>
     static JSTaggedValue ArrayCreateWithInit(JSThread *thread, uint32_t length, const Callback &cb)
     {
@@ -144,6 +169,8 @@ public:
         cb(newElements, length);
         return array.GetTaggedValue();
     }
+
+    void UpdateTrackInfo(const JSThread *thread);
 };
 
 class TrackInfo : public TaggedObject {

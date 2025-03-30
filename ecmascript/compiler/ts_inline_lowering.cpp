@@ -12,13 +12,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "ecmascript/compiler/ts_inline_lowering.h"
 
-#include "ecmascript/compiler/bytecode_circuit_builder.h"
-#include "ecmascript/compiler/bytecodes.h"
-#include "ecmascript/compiler/compiler_log.h"
 #include "ecmascript/compiler/pass.h"
-#include "ecmascript/compiler/type_info_accessors.h"
 
 namespace panda::ecmascript::kungfu {
 void TSInlineLowering::RunTSInlineLowering()
@@ -188,6 +183,7 @@ bool TSInlineLowering::FilterInlinedMethod(MethodLiteral* method, std::vector<co
     if (cda.GetTriesSize() != 0) {
         return false;
     }
+    bool hasReturnRoot = false;
     for (size_t i = 0; i < pcOffsets.size(); i++) {
         auto pc = pcOffsets[i];
         auto ecmaOpcode = ctx_->GetByteCodes()->GetOpcode(pc);
@@ -199,11 +195,15 @@ bool TSInlineLowering::FilterInlinedMethod(MethodLiteral* method, std::vector<co
             case EcmaOpcode::WIDE_COPYRESTARGS_PREF_IMM16:
             case EcmaOpcode::CREATEASYNCGENERATOROBJ_V8:
                 return false;
+            case EcmaOpcode::RETURN:
+            case EcmaOpcode::RETURNUNDEFINED:
+                hasReturnRoot = true;
+                break;
             default:
                 break;
         }
     }
-    return true;
+    return hasReturnRoot;
 }
 
 void TSInlineLowering::InlineCall(MethodInfo &methodInfo, MethodPcInfo &methodPCInfo, MethodLiteral* method,
@@ -233,6 +233,9 @@ void TSInlineLowering::InlineCall(MethodInfo &methodInfo, MethodPcInfo &methodPC
             BuildFrameStateChain(info, builder);
         }
         TimeScope timeScope("BytecodeToCircuit", methodName, method->GetMethodId().GetOffset(), log);
+        if (compilationEnv_->IsJitCompiler()) {
+            builder.SetJitCompile();
+        }
         builder.BytecodeToCircuit();
     }
 

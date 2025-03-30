@@ -16,6 +16,8 @@
 #ifndef ECMASCRIPT_MUTATOR_LOCK_H
 #define ECMASCRIPT_MUTATOR_LOCK_H
 
+#include <limits.h>
+
 #include "ecmascript/platform/mutex.h"
 
 namespace panda::ecmascript {
@@ -49,14 +51,15 @@ public:
 
     void Wait();
 
-    void Pass()
-    {
-        PassCount(-1);
-    }
-
     void PassStrongly()
     {
-        passBarrierCount_.fetch_sub(1, std::memory_order_seq_cst);
+        [[maybe_unused]] int32_t oldCount = passBarrierCount_.fetch_sub(1, std::memory_order_seq_cst);
+#if defined(PANDA_USE_FUTEX)
+        if (oldCount == 1) {
+            int32_t *addr = reinterpret_cast<int32_t*>(&passBarrierCount_);
+            futex(addr, FUTEX_WAKE_PRIVATE, INT_MAX, nullptr, nullptr, 0);
+        }
+#endif
     }
 
     void Initialize(int32_t count)
@@ -64,14 +67,7 @@ public:
         passBarrierCount_.store(count, std::memory_order_relaxed);
     }
 
-    void Increment(int32_t delta)
-    {
-        PassCount(delta);
-        Wait();
-    }
-
 private:
-    void PassCount(int32_t delta);
     std::atomic<int32_t> passBarrierCount_;
 };
 

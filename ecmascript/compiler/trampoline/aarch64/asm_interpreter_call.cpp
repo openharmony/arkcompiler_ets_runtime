@@ -15,18 +15,8 @@
 
 #include "ecmascript/compiler/trampoline/aarch64/common_call.h"
 
-#include "ecmascript/compiler/assembler/assembler.h"
-#include "ecmascript/compiler/argument_accessor.h"
-#include "ecmascript/compiler/rt_call_signature.h"
-#include "ecmascript/ecma_runtime_call_info.h"
-#include "ecmascript/frames.h"
-#include "ecmascript/js_function.h"
-#include "ecmascript/mem/machine_code.h"
-#include "ecmascript/method.h"
-#include "ecmascript/js_thread.h"
 #include "ecmascript/js_generator_object.h"
 #include "ecmascript/message_string.h"
-#include "ecmascript/runtime_call_id.h"
 
 namespace panda::ecmascript::aarch64 {
 using Label = panda::ecmascript::Label;
@@ -95,10 +85,10 @@ void AsmInterpreterCall::AsmInterpEntryDispatch(ExtendedAssembler *assembler)
         __ Tst(bitFieldRegister,
             LogicalImmediate::Create(static_cast<int64_t>(1ULL << JSHClass::CallableBit::START_BIT), RegXSize));
         __ B(Condition::EQ, &notCallable);
-        // fall through
+        CallNativeEntry(assembler, true);
     }
     __ Bind(&callNativeEntry);
-    CallNativeEntry(assembler);
+    CallNativeEntry(assembler, false);
     __ Bind(&callJSFunctionEntry);
     {
         __ Tbnz(callFieldRegister, MethodLiteral::IsNativeBit::START_BIT, &callNativeEntry);
@@ -1107,6 +1097,95 @@ void AsmInterpreterCall::CallReturnWithArgv(ExtendedAssembler *assembler)
     }
 }
 
+// c++ calling convention
+// X0 - glue
+// X1 - callTarget
+// X2 - method
+// X3 - callField
+// X4 - receiver
+// X5 - value
+void AsmInterpreterCall::CallGetterToBaseline(ExtendedAssembler *assembler)
+{
+    __ BindAssemblerStub(RTSTUB_ID(CallGetterToBaseline));
+    Label target;
+
+    PushAsmInterpBridgeFrame(assembler);
+    __ Bl(&target);
+    PopAsmInterpBridgeFrame(assembler);
+    __ Ret();
+    __ Bind(&target);
+    {
+        JSCallCommonEntry(assembler, JSCallMode::CALL_GETTER, FrameTransitionType::OTHER_TO_BASELINE_CHECK);
+    }
+}
+
+void AsmInterpreterCall::CallSetterToBaseline(ExtendedAssembler *assembler)
+{
+    __ BindAssemblerStub(RTSTUB_ID(CallSetterToBaseline));
+    Label target;
+    PushAsmInterpBridgeFrame(assembler);
+    __ Bl(&target);
+    PopAsmInterpBridgeFrame(assembler);
+    __ Ret();
+    __ Bind(&target);
+    {
+        JSCallCommonEntry(assembler, JSCallMode::CALL_SETTER, FrameTransitionType::OTHER_TO_BASELINE_CHECK);
+    }
+}
+
+void AsmInterpreterCall::CallContainersArgs2ToBaseline(ExtendedAssembler *assembler)
+{
+    __ BindAssemblerStub(RTSTUB_ID(CallContainersArgs2ToBaseline));
+    Label target;
+    PushAsmInterpBridgeFrame(assembler);
+    __ Bl(&target);
+    PopAsmInterpBridgeFrame(assembler);
+    __ Ret();
+    __ Bind(&target);
+    {
+        JSCallCommonEntry(assembler, JSCallMode::CALL_THIS_ARG2_WITH_RETURN,
+                          FrameTransitionType::OTHER_TO_BASELINE_CHECK);
+    }
+}
+
+void AsmInterpreterCall::CallContainersArgs3ToBaseline(ExtendedAssembler *assembler)
+{
+    __ BindAssemblerStub(RTSTUB_ID(CallContainersArgs3ToBaseline));
+    Label target;
+    PushAsmInterpBridgeFrame(assembler);
+    __ Bl(&target);
+    PopAsmInterpBridgeFrame(assembler);
+    __ Ret();
+    __ Bind(&target);
+    {
+        JSCallCommonEntry(assembler, JSCallMode::CALL_THIS_ARG3_WITH_RETURN,
+                          FrameTransitionType::OTHER_TO_BASELINE_CHECK);
+    }
+}
+
+// c++ calling convention
+// X0 - glue
+// X1 - callTarget
+// X2 - method
+// X3 - callField
+// X4 - arg0(argc)
+// X5 - arg1(arglist)
+// X6 - arg3(argthis)
+void AsmInterpreterCall::CallReturnWithArgvToBaseline(ExtendedAssembler *assembler)
+{
+    __ BindAssemblerStub(RTSTUB_ID(CallReturnWithArgvToBaseline));
+    Label target;
+    PushAsmInterpBridgeFrame(assembler);
+    __ Bl(&target);
+    PopAsmInterpBridgeFrame(assembler);
+    __ Ret();
+    __ Bind(&target);
+    {
+        JSCallCommonEntry(assembler, JSCallMode::CALL_THIS_ARGV_WITH_RETURN,
+                          FrameTransitionType::OTHER_TO_OTHER);
+    }
+}
+
 // preserve all the general registers, except x15 and callee saved registers/
 // and call x15
 void AsmInterpreterCall::PreserveMostCall(ExtendedAssembler* assembler)
@@ -1218,9 +1297,8 @@ void AsmInterpreterCall::ASMFastWriteBarrier(ExtendedAssembler* assembler)
     // value is not share:  0x08, 0x09, [0x0A, 0x11],                         =>  valueNotShare
     // value is young :           0x09                                        =>  needCallNotShare
     // value is not young : 0x08,       [0x0A, 0x11],                         =>  checkMark
-    ASSERT(GENERAL_YOUNG_BEGIN <= IN_YOUNG_SPACE && IN_YOUNG_SPACE < SHARED_SPACE_BEGIN &&
-        SHARED_SPACE_BEGIN <= SHARED_SWEEPABLE_SPACE_BEGIN && SHARED_SWEEPABLE_SPACE_END < IN_SHARED_READ_ONLY_SPACE &&
-        IN_SHARED_READ_ONLY_SPACE == HEAP_SPACE_END);
+    ASSERT(IN_YOUNG_SPACE < SHARED_SPACE_BEGIN && SHARED_SPACE_BEGIN <= SHARED_SWEEPABLE_SPACE_BEGIN &&
+           SHARED_SWEEPABLE_SPACE_END < IN_SHARED_READ_ONLY_SPACE && IN_SHARED_READ_ONLY_SPACE == HEAP_SPACE_END);
     __ BindAssemblerStub(RTSTUB_ID(ASMFastWriteBarrier));
     Label needCall;
     Label checkMark;
@@ -1312,23 +1390,6 @@ void AsmInterpreterCall::ASMFastWriteBarrier(ExtendedAssembler* assembler)
     {
         ASMFastSharedWriteBarrier(assembler, needCall);
     }
-}
-
-// ASMWriteBarrierWithEden(GateRef glue, GateRef obj, GateRef offset, GateRef value)
-// c calling convention, but preserve all general registers except %x15
-// %x0 - glue
-// %x1 - obj
-// %x2 - offset
-// %x3 - value
-void AsmInterpreterCall::ASMWriteBarrierWithEden(ExtendedAssembler* assembler)
-{
-    __ BindAssemblerStub(RTSTUB_ID(ASMWriteBarrierWithEden));
-    // Just for compitability, not a fast implement, should be refactored when enable EdenBarrier.
-    int32_t EdenBarrierOffset = static_cast<int32_t>(JSThread::GlueData::GetCOStubEntriesOffset(false)) +
-    kungfu::CommonStubCSigns::SetValueWithEdenBarrier * FRAME_SLOT_SIZE;
-    __ Mov(X15, EdenBarrierOffset);
-    __ Ldr(X15, MemoryOperand(X0, Register(X15), UXTX));
-    PreserveMostCall(assembler);
 }
 
 // %x0 - glue
@@ -1829,20 +1890,24 @@ void AsmInterpreterCall::CallBCStub(ExtendedAssembler *assembler, Register &newS
     __ Br(temp);
 }
 
-void AsmInterpreterCall::CallNativeEntry(ExtendedAssembler *assembler)
+void AsmInterpreterCall::CallNativeEntry(ExtendedAssembler *assembler, bool isJsProxy)
 {
     Label callFastBuiltin;
     Label callNativeBuiltin;
     Register glue(X0);
     Register argv(X5);
-    Register method(X2);
     Register function(X1);
     Register nativeCode(X7);
     Register temp(X9);
-    Register callFieldRegister(X3);
     // get native pointer
-    __ Ldr(nativeCode, MemoryOperand(method, Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET));
-    __ Tbnz(callFieldRegister, MethodLiteral::IsFastBuiltinBit::START_BIT, &callFastBuiltin);
+    if (isJsProxy) {
+        Register method(X2);
+        __ Ldr(nativeCode, MemoryOperand(method, Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET));
+    } else {
+        Register callFieldRegister(X3);
+        __ Ldr(nativeCode, MemoryOperand(function, JSFunctionBase::CODE_ENTRY_OFFSET));
+        __ Tbnz(callFieldRegister, MethodLiteral::IsFastBuiltinBit::START_BIT, &callFastBuiltin);
+    }
 
     __ Bind(&callNativeBuiltin);
     Register sp(SP);

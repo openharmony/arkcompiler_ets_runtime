@@ -50,6 +50,7 @@ public:
 #define DECLARE_RUNTIME_STUBS(name) \
     static JSTaggedType name(uintptr_t argGlue, uint32_t argc, uintptr_t argv);
     RUNTIME_STUB_WITH_GC_LIST(DECLARE_RUNTIME_STUBS)
+    RUNTIME_STUB_WITH_DFX(DECLARE_RUNTIME_STUBS)
     TEST_RUNTIME_STUB_GC_LIST(DECLARE_RUNTIME_STUBS)
 #undef DECLARE_RUNTIME_STUBS
 
@@ -93,17 +94,15 @@ public:
     static void FatalPrintCustom(uintptr_t fmt, ...);
     static void MarkingBarrier([[maybe_unused]] uintptr_t argGlue,
         uintptr_t object, size_t offset, TaggedObject *value);
-    static void MarkingBarrierWithEden([[maybe_unused]] uintptr_t argGlue,
-        uintptr_t object, size_t offset, TaggedObject *value);
-    static void SharedGCMarkingBarrier([[maybe_unused]] uintptr_t argGlue, TaggedObject *value);
+    static void SharedGCMarkingBarrier(uintptr_t argGlue, uintptr_t object, size_t offset, TaggedObject *value);
     static JSTaggedType GetActualArgvNoGC(uintptr_t argGlue);
-    static void InsertNewToEdenRSet([[maybe_unused]] uintptr_t argGlue, uintptr_t object, size_t offset);
     static void InsertOldToNewRSet([[maybe_unused]] uintptr_t argGlue, uintptr_t object, size_t offset);
     static void InsertLocalToShareRSet([[maybe_unused]] uintptr_t argGlue, uintptr_t object, size_t offset);
     static void SetBitAtomic(GCBitset::GCBitsetWord *word, GCBitset::GCBitsetWord mask,
                              GCBitset::GCBitsetWord oldValue);
     static int32_t DoubleToInt(double x, size_t bits);
     static int32_t SaturateTruncDoubleToInt32(double x);
+    static uint8_t LrInt(double x);
     static double FloatMod(double x, double y);
     static double FloatAcos(double x);
     static double FloatAcosh(double x);
@@ -134,9 +133,11 @@ public:
     static bool BigIntEquals(JSTaggedType left, JSTaggedType right);
     static bool BigIntSameValueZero(JSTaggedType key, JSTaggedType other);
     static JSTaggedValue JSHClassFindProtoTransitions(JSHClass *cls, JSTaggedValue key, JSTaggedValue proto);
+    static void FinishObjSizeTracking(JSHClass *cls);
     static JSTaggedValue NumberHelperStringToDouble(EcmaString *str);
     static JSTaggedValue GetStringToListCacheArray(uintptr_t argGlue);
-    static int FastArraySort(JSTaggedType x, JSTaggedType y);
+    static int IntLexicographicCompare(JSTaggedType x, JSTaggedType y);
+    static int DoubleLexicographicCompare(JSTaggedType x, JSTaggedType y);
     static int FastArraySortString(uintptr_t argGlue, JSTaggedValue x, JSTaggedValue y);
     static JSTaggedValue StringToNumber(JSTaggedType numberString, int32_t radix);
     static void ArrayTrim(uintptr_t argGlue, TaggedArray *array, int64_t newLength);
@@ -150,11 +151,15 @@ public:
 
     static int32_t StringGetStart(bool isUtf8, EcmaString *srcString, int32_t length, int32_t startIndex);
     static int32_t StringGetEnd(bool isUtf8, EcmaString *srcString, int32_t start, int32_t length, int32_t startIndex);
-    static void CopyTypedArrayBuffer(JSTypedArray *srcArray, JSTypedArray *targetArray, int32_t srcStartPos,
-                                     int32_t tarStartPos, int32_t count, int32_t elementSize);
+    static void CopyTypedArrayBuffer(uintptr_t argGlue, JSTypedArray *srcArray, JSTypedArray *targetArray,
+                                     int32_t srcStartPos, int32_t tarStartPos, int32_t count);
     static inline uint32_t RuntimeGetBytecodePcOfstForBaseline(const JSHandle<JSFunction> &func, uintptr_t nativePc);
     static void ReverseTypedArray(JSTypedArray *typedArray);
     static void SortTypedArray(JSTypedArray *typedArray);
+    static inline uintptr_t RuntimeGetNativePcOfstForBaseline(const JSHandle<JSFunction> &func, uint64_t bytecodePos);
+    static void ObjectCopy(JSTaggedType *dst, JSTaggedType *src, uint32_t count);
+    static void FillObject(JSTaggedType *dst, JSTaggedType value, uint32_t count);
+    static void ReverseArray(JSTaggedType *dst, uint32_t length);
 private:
     static void DumpToStreamWithHint(std::ostream &out, std::string_view prompt, JSTaggedValue value);
 
@@ -297,6 +302,7 @@ private:
         JSHandle<JSTaggedValue> moduleHdl);
     static inline JSTaggedValue RuntimeLdSendableExternalModuleVar(JSThread *thread, int32_t index,
                                                                    JSTaggedValue jsFunc);
+    static inline JSTaggedValue RuntimeLdSendableLocalModuleVar(JSThread *thread, int32_t index, JSTaggedValue jsFunc);
     static inline JSTaggedValue RuntimeLdExternalModuleVar(JSThread *thread, int32_t index,
                                                            JSTaggedValue jsFunc);
     static inline JSTaggedValue RuntimeLdLazySendableExternalModuleVar(JSThread *thread, int32_t index,
@@ -531,6 +537,8 @@ private:
                                                      const JSHandle<EcmaString> &str, std::u16string &sStr);
     static inline bool IsFastRegExp(uintptr_t argGlue, JSTaggedValue thisValue);
 
+    static inline RememberedSet* CreateLocalToShare(Region *region);
+    static inline RememberedSet* CreateOldToNew(Region *region);
     static inline uint8_t GetValueFromTwoHex(uint8_t front, uint8_t behind);
     friend class SlowRuntimeStub;
 };

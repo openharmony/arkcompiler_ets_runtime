@@ -163,7 +163,7 @@ HWTEST_F_L0(ICRuntimeStubTest, StoreICAndLoadIC_ByName)
     JSHandle<JSTaggedValue> handleValue(thread, JSTaggedValue(1));
     JSHandle<JSTaggedValue> handleStoreVal(thread, JSTaggedValue(2));
 
-    uint32_t arrayLength = 1U;
+    uint32_t arrayLength = 2U;
     JSHandle<TaggedArray> handleTaggedArray = factory->NewTaggedArray(arrayLength);
     JSHandle<ProfileTypeInfo> handleProfileTypeInfo = JSHandle<ProfileTypeInfo>::Cast(handleTaggedArray);
 
@@ -557,9 +557,9 @@ HWTEST_F_L0(ICRuntimeStubTest, Element_StoreAndLoad)
         ICRuntimeStub::StoreElement(thread, *handleArrObj, hanldeIntKey, JSTaggedValue(3), JSTaggedValue(handlerInfo));
 
     EXPECT_TRUE(resultValue.IsUndefined());
-    EXPECT_EQ(ICRuntimeStub::LoadElement(*handleArrObj, hanldeIntKey).GetInt(), 3);
+    EXPECT_EQ(ICRuntimeStub::LoadElement(thread, *handleArrObj, hanldeIntKey).GetInt(), 3);
     EXPECT_EQ(JSObject::GetProperty(thread, handleArrObj, lengthKey).GetValue()->GetInt(), 5);
-    EXPECT_TRUE(ICRuntimeStub::LoadElement(*handleArrObj, JSTaggedValue(2)).IsHole());
+    EXPECT_TRUE(ICRuntimeStub::LoadElement(thread, *handleArrObj, JSTaggedValue(2)).IsHole());
 }
 
 HWTEST_F_L0(ICRuntimeStubTest, TryToElementsIndex)

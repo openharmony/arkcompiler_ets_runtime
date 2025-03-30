@@ -19,7 +19,7 @@
  * @tc.type: FUNC
  * @tc.require: issueI7J2VN
  */
-print("weakmapsymbolkey test start");
+
 let wm = new WeakMap();
 let o = {};
 wm.set(o, 0);
@@ -30,17 +30,17 @@ let s2 = Symbol.for("symbol2");
 try {
     wm.set(s2, 2);
 } catch (err) {
-    print(err.name);
+    assert_equal(err instanceof TypeError, true);
 }
 
-print("wm.has(s1) " + wm.has(s1));
-print("wm.get(s1) " + wm.get(s1));
-print("wm.delete(s1) " + wm.delete(s1));
-print("wm.has(s1) " + wm.has(s1));
+assert_equal(wm.has(s1),true);
+assert_equal(wm.get(s1),1);
+assert_equal(wm.delete(s1),true);
+assert_equal(wm.has(s1),false);
 
-print("wm.has(s2) " + wm.has(s2));
-print("wm.get(s2) " + wm.get(s2));
-print("wm.delete(s2) " + wm.delete(s2));
+assert_equal(wm.has(s2),false);
+assert_equal(wm.get(s2),undefined);
+assert_equal(wm.delete(s2),false);
 
 const symbolFuncsSet = [
     Symbol.asyncIterator,
@@ -62,5 +62,6 @@ symbolFuncsSet.forEach(function (ctor, i) {
     wm.set(ctor, i);
 });
 
-print("wm.get(Symbol.match) == 4 " + (wm.get(Symbol.match) == 4));
-print("weakmapsymbolkey test end");
+assert_equal(wm.get(Symbol.match) == 4,true);
+
+test_end();

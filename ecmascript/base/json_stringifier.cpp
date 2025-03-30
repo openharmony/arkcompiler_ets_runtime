@@ -17,8 +17,13 @@
 
 #include "ecmascript/global_dictionary-inl.h"
 #include "ecmascript/interpreter/interpreter.h"
+#include "ecmascript/js_api/js_api_hashset.h"
+#include "ecmascript/js_map.h"
 #include "ecmascript/js_primitive_ref.h"
+#include "ecmascript/js_set.h"
 #include "ecmascript/object_fast_operator-inl.h"
+#include "ecmascript/shared_objects/js_shared_map.h"
+#include "ecmascript/tagged_hash_array.h"
 
 namespace panda::ecmascript::base {
 constexpr int GAP_MAX_LEN = 10;
@@ -145,10 +150,9 @@ void JsonStringifier::AddDeduplicateProp(const JSHandle<JSTaggedValue> &property
 
 bool JsonStringifier::CalculateNumberGap(JSTaggedValue gap)
 {
-    double numValue = gap.GetNumber();
-    int num = static_cast<int>(numValue);
-    if (num > 0) {
-        int gapLength = std::min(num, GAP_MAX_LEN);
+    double value = std::min(gap.GetNumber(), 10.0); // means GAP_MAX_LEN.
+    if (value > 0) {
+        int gapLength = static_cast<int>(value);
         gap_.append(gapLength, ' ');
         gap_.append("\0");
     }
@@ -235,6 +239,7 @@ JSHandle<JSTaggedValue> JsonStringifier::SerializeHolder(const JSHandle<JSTagged
 JSTaggedValue JsonStringifier::SerializeJSONProperty(const JSHandle<JSTaggedValue> &value,
                                                      const JSHandle<JSTaggedValue> &replacer)
 {
+    STACK_LIMIT_CHECK(thread_, JSTaggedValue::Exception());
     JSTaggedValue tagValue = value.GetTaggedValue();
     if (!tagValue.IsHeapObject()) {
         JSTaggedType type = tagValue.GetRawData();
@@ -256,7 +261,11 @@ JSTaggedValue JsonStringifier::SerializeJSONProperty(const JSHandle<JSTaggedValu
                 if (tagValue.IsNumber()) {
                     // a. If value is finite, return ToString(value).
                     if (std::isfinite(tagValue.GetNumber())) {
+#if ENABLE_NEXT_OPTIMIZATION
+                        ConvertAndAppendToString(result_, *base::NumberHelper::NumberToString(thread_, tagValue));
+#else
                         result_ += ConvertToString(*base::NumberHelper::NumberToString(thread_, tagValue));
+#endif
                     } else {
                         // b. Else, return "null".
                         result_ += "null";
@@ -300,8 +309,12 @@ JSTaggedValue JsonStringifier::SerializeJSONProperty(const JSHandle<JSTaggedValu
                 JSHandle<EcmaString> strHandle = JSHandle<EcmaString>(valHandle);
                 auto string = JSHandle<EcmaString>(thread_,
                     EcmaStringAccessor::Flatten(thread_->GetEcmaVM(), strHandle));
+#if ENABLE_NEXT_OPTIMIZATION
+                ConvertQuotedAndAppendToString(result_, *string, StringConvertedUsage::LOGICOPERATION);
+#else
                 CString str = ConvertToString(*string, StringConvertedUsage::LOGICOPERATION);
                 JsonHelper::AppendValueToQuotedString(str, result_);
+#endif
                 return tagValue;
             }
             case JSType::JS_PRIMITIVE_REF: {
@@ -315,15 +328,79 @@ JSTaggedValue JsonStringifier::SerializeJSONProperty(const JSHandle<JSTaggedValu
                 if (transformType_ == TransformType::NORMAL) {
                     THROW_TYPE_ERROR_AND_RETURN(thread_, "cannot serialize a BigInt", JSTaggedValue::Exception());
                 } else {
+#if ENABLE_NEXT_OPTIMIZATION
+                    BigInt::AppendToCString(result_, BigInt::Cast(valHandle->GetTaggedObject()));
+#else
                     JSHandle<BigInt> thisBigint(thread_, valHandle.GetTaggedValue());
                     auto bigIntStr = BigInt::ToString(thread_, thisBigint);
                     result_ += ConvertToString(*bigIntStr);
+#endif
                     return tagValue;
                 }
             }
             case JSType::JS_NATIVE_POINTER: {
                 result_ += "{}";
                 return tagValue;
+            }
+            case JSType::JS_SHARED_MAP: {
+                if (transformType_ == TransformType::SENDABLE) {
+                    CheckStackPushSameValue(valHandle);
+                    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
+                    SerializeJSONSharedMap(valHandle, replacer);
+                    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
+                    return tagValue;
+                }
+                [[fallthrough]];
+            }
+            case JSType::JS_MAP: {
+                if (transformType_ == TransformType::SENDABLE) {
+                    CheckStackPushSameValue(valHandle);
+                    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
+                    SerializeJSONMap(valHandle, replacer);
+                    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
+                    return tagValue;
+                }
+                [[fallthrough]];
+            }
+            case JSType::JS_SET: {
+                if (transformType_ == TransformType::SENDABLE) {
+                    CheckStackPushSameValue(valHandle);
+                    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
+                    SerializeJSONSet(valHandle, replacer);
+                    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
+                    return tagValue;
+                }
+                [[fallthrough]];
+            }
+            case JSType::JS_SHARED_SET: {
+                if (transformType_ == TransformType::SENDABLE) {
+                    CheckStackPushSameValue(valHandle);
+                    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
+                    SerializeJSONSharedSet(valHandle, replacer);
+                    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
+                    return tagValue;
+                }
+                [[fallthrough]];
+            }
+            case JSType::JS_API_HASH_MAP: {
+                if (transformType_ == TransformType::SENDABLE) {
+                    CheckStackPushSameValue(valHandle);
+                    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
+                    SerializeJSONHashMap(valHandle, replacer);
+                    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
+                    return tagValue;
+                }
+                [[fallthrough]];
+            }
+            case JSType::JS_API_HASH_SET: {
+                if (transformType_ == TransformType::SENDABLE) {
+                    CheckStackPushSameValue(valHandle);
+                    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
+                    SerializeJSONHashSet(valHandle, replacer);
+                    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
+                    return tagValue;
+                }
+                [[fallthrough]];
             }
             default: {
                 if (!tagValue.IsCallable()) {
@@ -346,6 +423,33 @@ JSTaggedValue JsonStringifier::SerializeJSONProperty(const JSHandle<JSTaggedValu
     return JSTaggedValue::Undefined();
 }
 
+#if ENABLE_NEXT_OPTIMIZATION
+void JsonStringifier::SerializeObjectKey(const JSHandle<JSTaggedValue> &key, bool hasContent)
+{
+    if (hasContent) {
+        result_ += ",";
+    }
+    if (!gap_.empty()) {
+        result_.append("\n").append(indent_);
+    }
+    if (key->IsString()) {
+        ConvertQuotedAndAppendToString(result_, EcmaString::Cast(key->GetTaggedObject()),
+                                       StringConvertedUsage::LOGICOPERATION);
+    } else if (key->IsInt()) {
+        result_ += "\"";
+        NumberHelper::AppendIntToString(result_, static_cast<int32_t>(key->GetInt()));
+        result_ += "\"";
+    } else {
+        ConvertQuotedAndAppendToString(result_, *JSTaggedValue::ToString(thread_, key),
+                                       StringConvertedUsage::LOGICOPERATION);
+    }
+    
+    result_ += ":";
+    if (!gap_.empty()) {
+        result_ += " ";
+    }
+}
+#else
 void JsonStringifier::SerializeObjectKey(const JSHandle<JSTaggedValue> &key, bool hasContent)
 {
     CString stepBegin;
@@ -371,6 +475,7 @@ void JsonStringifier::SerializeObjectKey(const JSHandle<JSTaggedValue> &key, boo
     result_ += ":";
     result_ += stepEnd;
 }
+#endif
 
 bool JsonStringifier::PushValue(const JSHandle<JSTaggedValue> &value)
 {
@@ -394,7 +499,11 @@ void JsonStringifier::PopValue()
 
 bool JsonStringifier::SerializeJSONObject(const JSHandle<JSTaggedValue> &value, const JSHandle<JSTaggedValue> &replacer)
 {
+#if ENABLE_NEXT_OPTIMIZATION
+    uint32_t preIndentLength = indent_.size();
+#else
     CString stepback = indent_;
+#endif
     indent_ += gap_;
 
     result_ += "{";
@@ -427,7 +536,7 @@ bool JsonStringifier::SerializeJSONObject(const JSHandle<JSTaggedValue> &value, 
             }
         } else {
             uint32_t numOfKeys = obj->GetNumberOfKeys();
-            uint32_t numOfElements = obj->GetNumberOfElements();
+            uint32_t numOfElements = obj->GetNumberOfElements(thread_);
             if (numOfElements > 0) {
                 hasContent = JsonStringifier::SerializeElements(obj, replacer, hasContent);
                 RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, false);
@@ -460,6 +569,15 @@ bool JsonStringifier::SerializeJSONObject(const JSHandle<JSTaggedValue> &value, 
             }
         }
     }
+#if ENABLE_NEXT_OPTIMIZATION
+    if (hasContent && gap_.length() != 0) {
+        result_ += "\n";
+        result_ += std::string_view(indent_.data(), preIndentLength);
+    }
+    result_ += "}";
+    PopValue();
+    indent_.resize(preIndentLength); // reset indent_ after recursion
+#else
     if (hasContent && gap_.length() != 0) {
         result_ += "\n";
         result_ += stepback;
@@ -467,9 +585,269 @@ bool JsonStringifier::SerializeJSONObject(const JSHandle<JSTaggedValue> &value, 
     result_ += "}";
     PopValue();
     indent_ = stepback;
+#endif
     return true;
 }
 
+bool JsonStringifier::SerializeJSONSharedMap(const JSHandle<JSTaggedValue> &value,
+                                             const JSHandle<JSTaggedValue> &replacer)
+{
+    [[maybe_unused]] ConcurrentApiScope<JSSharedMap> scope(thread_, value);
+    JSHandle<JSSharedMap> sharedMap(value);
+    JSHandle<LinkedHashMap> hashMap(thread_, sharedMap->GetLinkedMap());
+    return SerializeLinkedHashMap(hashMap, replacer);
+}
+
+bool JsonStringifier::SerializeJSONSharedSet(const JSHandle<JSTaggedValue> &value,
+                                             const JSHandle<JSTaggedValue> &replacer)
+{
+    [[maybe_unused]] ConcurrentApiScope<JSSharedSet> scope(thread_, value);
+    JSHandle<JSSharedSet> sharedSet(value);
+    JSHandle<LinkedHashSet> hashSet(thread_, sharedSet->GetLinkedSet());
+    return SerializeLinkedHashSet(hashSet, replacer);
+}
+
+bool JsonStringifier::SerializeJSONMap(const JSHandle<JSTaggedValue> &value,
+                                       const JSHandle<JSTaggedValue> &replacer)
+{
+    JSHandle<JSMap> jsMap(value);
+    JSHandle<LinkedHashMap> hashMap(thread_, jsMap->GetLinkedMap());
+    return SerializeLinkedHashMap(hashMap, replacer);
+}
+
+bool JsonStringifier::SerializeJSONSet(const JSHandle<JSTaggedValue> &value,
+                                       const JSHandle<JSTaggedValue> &replacer)
+{
+    JSHandle<JSSet> jsSet(value);
+    JSHandle<LinkedHashSet> hashSet(thread_, jsSet->GetLinkedSet());
+    return SerializeLinkedHashSet(hashSet, replacer);
+}
+
+bool JsonStringifier::SerializeJSONHashMap(const JSHandle<JSTaggedValue> &value,
+                                           const JSHandle<JSTaggedValue> &replacer)
+{
+#if ENABLE_NEXT_OPTIMIZATION
+    uint32_t preIndentLength = indent_.size();
+#else
+    CString stepback = indent_;
+#endif
+    result_ += "{";
+    JSHandle<JSAPIHashMap> hashMap(value);
+    JSHandle<TaggedHashArray> table(thread_, hashMap->GetTable());
+    uint32_t len = table->GetLength();
+    ObjectFactory *factory = thread_->GetEcmaVM()->GetFactory();
+    JSMutableHandle<TaggedQueue> queue(thread_, factory->NewTaggedQueue(0));
+    JSMutableHandle<TaggedNode> node(thread_, JSTaggedValue::Undefined());
+    JSMutableHandle<JSTaggedValue> keyHandle(thread_, JSTaggedValue::Undefined());
+    JSMutableHandle<JSTaggedValue> valueHandle(thread_, JSTaggedValue::Undefined());
+    uint32_t index = 0;
+    bool needRemove = false;
+    while (index < len) {
+        node.Update(TaggedHashArray::GetCurrentNode(thread_, queue, table, index));
+        if (node.GetTaggedValue().IsHole()) {
+            continue;
+        }
+        keyHandle.Update(node->GetKey());
+        valueHandle.Update(node->GetValue());
+        if (UNLIKELY(!keyHandle->IsString())) {
+            result_ += "\"";
+            SerializeJSONProperty(keyHandle, replacer);
+            result_ += "\"";
+        } else {
+            SerializeJSONProperty(keyHandle, replacer);
+        }
+        result_ += ":";
+        SerializeJSONProperty(valueHandle, replacer);
+        result_ += ",";
+        needRemove = true;
+    }
+    if (needRemove) {
+        result_.pop_back();
+    }
+    result_ += "}";
+    PopValue();
+#if ENABLE_NEXT_OPTIMIZATION
+    indent_.resize(preIndentLength); // reset indent_ after recursion
+#else
+    indent_ = stepback;
+#endif
+    return true;
+}
+
+bool JsonStringifier::SerializeJSONHashSet(const JSHandle<JSTaggedValue> &value,
+                                           const JSHandle<JSTaggedValue> &replacer)
+{
+#if ENABLE_NEXT_OPTIMIZATION
+    uint32_t preIndentLength = indent_.size();
+#else
+    CString stepback = indent_;
+#endif
+    result_ += "[";
+    JSHandle<JSAPIHashSet> hashSet(value);
+    JSHandle<TaggedHashArray> table(thread_, hashSet->GetTable());
+    uint32_t len = table->GetLength();
+    ObjectFactory *factory = thread_->GetEcmaVM()->GetFactory();
+    JSMutableHandle<TaggedQueue> queue(thread_, factory->NewTaggedQueue(0));
+    JSMutableHandle<TaggedNode> node(thread_, JSTaggedValue::Undefined());
+    JSMutableHandle<JSTaggedValue> currentKey(thread_, JSTaggedValue::Undefined());
+    uint32_t index = 0;
+    bool needRemove = false;
+    while (index < len) {
+        node.Update(TaggedHashArray::GetCurrentNode(thread_, queue, table, index));
+        if (node.GetTaggedValue().IsHole()) {
+            continue;
+        }
+        currentKey.Update(node->GetKey());
+        SerializeJSONProperty(currentKey, replacer);
+        result_ += ",";
+        needRemove = true;
+    }
+    if (needRemove) {
+        result_.pop_back();
+    }
+    result_ += "]";
+    PopValue();
+#if ENABLE_NEXT_OPTIMIZATION
+    indent_.resize(preIndentLength); // reset indent_ after recursion
+#else
+    indent_ = stepback;
+#endif
+    return true;
+}
+
+bool JsonStringifier::SerializeLinkedHashMap(const JSHandle<LinkedHashMap> &hashMap,
+                                             const JSHandle<JSTaggedValue> &replacer)
+{
+#if ENABLE_NEXT_OPTIMIZATION
+    uint32_t preIndentLength = indent_.size();
+#else
+    CString stepback = indent_;
+#endif
+    result_ += "{";
+    int index = 0;
+    int totalElements = hashMap->NumberOfElements() + hashMap->NumberOfDeletedElements();
+    JSMutableHandle<JSTaggedValue> keyHandle(thread_, JSTaggedValue::Undefined());
+    JSMutableHandle<JSTaggedValue> valHandle(thread_, JSTaggedValue::Undefined());
+    bool needRemove = false;
+    while (index < totalElements) {
+        keyHandle.Update(hashMap->GetKey(index++));
+        valHandle.Update(hashMap->GetValue(index - 1));
+        if (keyHandle->IsHole()) {
+            continue;
+        }
+        if (UNLIKELY(!keyHandle->IsString())) {
+            result_ += "\"";
+            SerializeJSONProperty(keyHandle, replacer);
+            result_ += "\"";
+        } else {
+            SerializeJSONProperty(keyHandle, replacer);
+        }
+        result_ += ":";
+        SerializeJSONProperty(valHandle, replacer);
+        result_ += ",";
+        needRemove = true;
+    }
+    if (needRemove) {
+        result_.pop_back();
+    }
+    result_ += "}";
+    PopValue();
+#if ENABLE_NEXT_OPTIMIZATION
+    indent_.resize(preIndentLength); // reset indent_ after recursion
+#else
+    indent_ = stepback;
+#endif
+    return true;
+}
+
+bool JsonStringifier::SerializeLinkedHashSet(const JSHandle<LinkedHashSet> &hashSet,
+                                             const JSHandle<JSTaggedValue> &replacer)
+{
+#if ENABLE_NEXT_OPTIMIZATION
+    uint32_t preIndentLength = indent_.size();
+#else
+    CString stepback = indent_;
+#endif
+    result_ += "[";
+    JSMutableHandle<JSTaggedValue> keyHandle(thread_, JSTaggedValue::Undefined());
+    bool needRemove = false;
+
+    int index = 0;
+    int totalElements = hashSet->NumberOfElements() + hashSet->NumberOfDeletedElements();
+    while (index < totalElements) {
+        keyHandle.Update(hashSet->GetKey(index++));
+        if (keyHandle->IsHole()) {
+            continue;
+        }
+        SerializeJSONProperty(keyHandle, replacer);
+        result_ += ",";
+        needRemove = true;
+    }
+    if (needRemove) {
+        result_.pop_back();
+    }
+    result_ += "]";
+    PopValue();
+#if ENABLE_NEXT_OPTIMIZATION
+    indent_.resize(preIndentLength); // reset indent_ after recursion
+#else
+    indent_ = stepback;
+#endif
+    return true;
+}
+
+#if ENABLE_NEXT_OPTIMIZATION
+bool JsonStringifier::SerializeJSProxy(const JSHandle<JSTaggedValue> &object, const JSHandle<JSTaggedValue> &replacer)
+{
+    bool isContain = PushValue(object);
+    if (isContain) {
+        THROW_TYPE_ERROR_AND_RETURN(thread_, "stack contains value, usually caused by circular structure", true);
+    }
+
+    uint32_t preIndentLength = indent_.size();
+    CString stepBegin;
+    indent_ += gap_;
+
+    if (!gap_.empty()) {
+        stepBegin += "\n";
+        stepBegin += indent_;
+    }
+    result_ += "[";
+    JSHandle<JSProxy> proxy(object);
+    JSHandle<JSTaggedValue> lengthKey = thread_->GlobalConstants()->GetHandledLengthString();
+    JSHandle<JSTaggedValue> lenghHandle = JSProxy::GetProperty(thread_, proxy, lengthKey).GetValue();
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, false);
+    JSTaggedNumber lenNumber = JSTaggedValue::ToLength(thread_, lenghHandle);
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, false);
+    uint32_t length = lenNumber.ToUint32();
+    for (uint32_t i = 0; i < length; i++) {
+        handleKey_.Update(JSTaggedValue(i));
+        JSHandle<JSTaggedValue> valHandle = JSProxy::GetProperty(thread_, proxy, handleKey_).GetValue();
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, false);
+        if (i > 0) {
+            result_ += ",";
+        }
+        result_ += stepBegin;
+        JSTaggedValue serializeValue = GetSerializeValue(object, handleKey_, valHandle, replacer);
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, false);
+        handleValue_.Update(serializeValue);
+        JSTaggedValue res = SerializeJSONProperty(handleValue_, replacer);
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, false);
+        if (res.IsUndefined()) {
+            result_ += "null";
+        }
+    }
+
+    if (length > 0 && !gap_.empty()) {
+        result_ += "\n";
+        result_ += std::string_view(indent_.data(), preIndentLength);
+    }
+    result_ += "]";
+    PopValue();
+    indent_.resize(preIndentLength); // reset indent_ after recursion
+    return true;
+}
+#else
 bool JsonStringifier::SerializeJSProxy(const JSHandle<JSTaggedValue> &object, const JSHandle<JSTaggedValue> &replacer)
 {
     bool isContain = PushValue(object);
@@ -520,6 +898,7 @@ bool JsonStringifier::SerializeJSProxy(const JSHandle<JSTaggedValue> &object, co
     indent_ = stepback;
     return true;
 }
+#endif
 
 bool JsonStringifier::SerializeJSArray(const JSHandle<JSTaggedValue> &value, const JSHandle<JSTaggedValue> &replacer)
 {
@@ -529,7 +908,11 @@ bool JsonStringifier::SerializeJSArray(const JSHandle<JSTaggedValue> &value, con
         THROW_TYPE_ERROR_AND_RETURN(thread_, "stack contains value, usually caused by circular structure", true);
     }
 
+#if ENABLE_NEXT_OPTIMIZATION
+    uint32_t preIndentLength = indent_.size();
+#else
     CString stepback = indent_;
+#endif
     CString stepBegin;
     indent_ += gap_;
 
@@ -573,16 +956,51 @@ bool JsonStringifier::SerializeJSArray(const JSHandle<JSTaggedValue> &value, con
 
         if (!gap_.empty()) {
             result_ += "\n";
+#if ENABLE_NEXT_OPTIMIZATION
+            result_ += std::string_view(indent_.data(), preIndentLength);
+#else
             result_ += stepback;
+#endif
         }
     }
 
     result_ += "]";
     PopValue();
+#if ENABLE_NEXT_OPTIMIZATION
+    indent_.resize(preIndentLength); // reset indent_ after recursion
+#else
     indent_ = stepback;
+#endif
     return true;
 }
 
+#if ENABLE_NEXT_OPTIMIZATION
+void JsonStringifier::SerializePrimitiveRef(const JSHandle<JSTaggedValue> &primitiveRef)
+{
+    JSTaggedValue primitive = JSPrimitiveRef::Cast(primitiveRef.GetTaggedValue().GetTaggedObject())->GetValue();
+    if (primitive.IsString()) {
+        auto priStr = JSTaggedValue::ToString(thread_, primitiveRef);
+        RETURN_IF_ABRUPT_COMPLETION(thread_);
+        ConvertQuotedAndAppendToString(result_, *priStr, StringConvertedUsage::LOGICOPERATION);
+    } else if (primitive.IsNumber()) {
+        auto priNum = JSTaggedValue::ToNumber(thread_, primitiveRef);
+        RETURN_IF_ABRUPT_COMPLETION(thread_);
+        if (std::isfinite(priNum.GetNumber())) {
+            ConvertAndAppendToString(result_, *base::NumberHelper::NumberToString(thread_, priNum));
+        } else {
+            result_ += "null";
+        }
+    } else if (primitive.IsBoolean()) {
+        result_ += primitive.IsTrue() ? "true" : "false";
+    } else if (primitive.IsBigInt()) {
+        if (transformType_ == TransformType::NORMAL) {
+            THROW_TYPE_ERROR(thread_, "cannot serialize a BigInt");
+        } else {
+            BigInt::AppendToCString(result_, BigInt::Cast(primitive.GetTaggedObject()));
+        }
+    }
+}
+#else
 void JsonStringifier::SerializePrimitiveRef(const JSHandle<JSTaggedValue> &primitiveRef)
 {
     JSTaggedValue primitive = JSPrimitiveRef::Cast(primitiveRef.GetTaggedValue().GetTaggedObject())->GetValue();
@@ -611,6 +1029,7 @@ void JsonStringifier::SerializePrimitiveRef(const JSHandle<JSTaggedValue> &primi
         }
     }
 }
+#endif
 
 bool JsonStringifier::SerializeElements(const JSHandle<JSObject> &obj, const JSHandle<JSTaggedValue> &replacer,
                                         bool hasContent)
@@ -618,9 +1037,9 @@ bool JsonStringifier::SerializeElements(const JSHandle<JSObject> &obj, const JSH
     if (!ElementAccessor::IsDictionaryMode(obj)) {
         uint32_t elementsLen = ElementAccessor::GetElementsLength(obj);
         for (uint32_t i = 0; i < elementsLen; ++i) {
-            if (!ElementAccessor::Get(obj, i).IsHole()) {
+            if (!ElementAccessor::Get(thread_, obj, i).IsHole()) {
                 handleKey_.Update(JSTaggedValue(i));
-                handleValue_.Update(ElementAccessor::Get(obj, i));
+                handleValue_.Update(ElementAccessor::Get(thread_, obj, i));
                 hasContent = JsonStringifier::AppendJsonString(obj, replacer, hasContent);
                 RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, false);
             }
@@ -739,15 +1158,13 @@ bool JsonStringifier::SerializeKeys(const JSHandle<JSObject> &obj, const JSHandl
             LayoutInfo *layoutInfo = LayoutInfo::Cast(jsHclass->GetLayout().GetTaggedObject());
             JSTaggedValue key = layoutInfo->GetKey(i);
             if (!hasChangedToDictionaryMode) {
-                if (key.IsString() && layoutInfo->GetAttr(i).IsEnumerable()) {
+                PropertyAttributes attr(layoutInfo->GetAttr(i));
+                ASSERT(static_cast<int>(attr.GetOffset()) == i);
+                if (key.IsString() && attr.IsEnumerable()) {
                     handleKey_.Update(key);
-                    JSTaggedValue value;
-                    int index = JSHClass::FindPropertyEntry(thread_, *jsHclass, key);
-                    PropertyAttributes attr(layoutInfo->GetAttr(index));
-                    ASSERT(static_cast<int>(attr.GetOffset()) == index);
-                    value = attr.IsInlinedProps()
-                            ? obj->GetPropertyInlinedPropsWithRep(static_cast<uint32_t>(index), attr)
-                            : propertiesArr->Get(static_cast<uint32_t>(index) - jsHclass->GetInlinedProperties());
+                    JSTaggedValue value = attr.IsInlinedProps()
+                        ? obj->GetPropertyInlinedPropsWithRep(static_cast<uint32_t>(i), attr)
+                        : propertiesArr->Get(static_cast<uint32_t>(i) - jsHclass->GetInlinedProperties());
                     if (attr.IsInlinedProps() && value.IsHole()) {
                         continue;
                     }

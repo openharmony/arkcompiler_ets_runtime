@@ -14,5 +14,7 @@
  */
 module.exports = {
     name: "testcjs",
-    foo: function () {print("testcjs foo")}
+    foo: function () {
+        var str = "testcjs foo"
+        assert_equal(str,"testcjs foo")}
 }

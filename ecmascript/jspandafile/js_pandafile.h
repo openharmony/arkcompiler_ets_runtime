@@ -30,6 +30,11 @@
 
 namespace panda {
 namespace ecmascript {
+enum class CreateMode : uint8_t {
+    RUNTIME = 0,
+    DFX,
+};
+
 class JSPandaFile {
 public:
     struct JSRecordInfo {
@@ -70,13 +75,13 @@ public:
     static constexpr char COMMONJS_CLASS[] = "L_CommonJsRecord;";
     static constexpr char HASTLA_CLASS[] = "L_HasTopLevelAwait;";
 
-    static constexpr char IS_COMMON_JS[] = "isCommonjs";
-    static constexpr char IS_JSON_CONTENT[] = "jsonFileContent";
-    static constexpr char MODULE_RECORD_IDX[] = "moduleRecordIdx";
-    static constexpr char IS_SHARED_MODULE[] = "isSharedModule";
-    static constexpr char HAS_TOP_LEVEL_AWAIT[] = "hasTopLevelAwait";
-    static constexpr char LAZY_IMPORT[] = "moduleRequestPhaseIdx";
-    static constexpr char PACKAGE_NAME[] = "pkgName@";
+    static constexpr std::string_view IS_COMMON_JS = "isCommonjs";
+    static constexpr std::string_view IS_JSON_CONTENT = "jsonFileContent";
+    static constexpr std::string_view MODULE_RECORD_IDX = "moduleRecordIdx";
+    static constexpr std::string_view IS_SHARED_MODULE = "isSharedModule";
+    static constexpr std::string_view HAS_TOP_LEVEL_AWAIT = "hasTopLevelAwait";
+    static constexpr std::string_view LAZY_IMPORT = "moduleRequestPhaseIdx";
+    static constexpr std::string_view PACKAGE_NAME = "pkgName@";
     static constexpr char MERGE_ABC_NAME[] = "modules.abc";
     static constexpr char NPM_PATH_SEGMENT[] = "node_modules";
     static constexpr char PACKAGE_PATH_SEGMENT[] = "pkg_modules";
@@ -85,8 +90,10 @@ public:
     static constexpr int TYPE_SUMMARY_OFFSET_NOT_FOUND = 0;
     static constexpr int CLASSID_OFFSET_NOT_FOUND = 0;
     static constexpr int32_t PF_OFFSET = 0;
+    static constexpr uint32_t ASYN_TRANSLATE_CLSSS_COUNT = 128;
+    static constexpr uint32_t ASYN_TRANSLATE_CLSSS_MIN_COUNT = 2;
 
-    JSPandaFile(const panda_file::File *pf, const CString &descriptor);
+    JSPandaFile(const panda_file::File *pf, const CString &descriptor, CreateMode state = CreateMode::RUNTIME);
     ~JSPandaFile();
 
     class TranslateClassesTask : public Task {
@@ -106,7 +113,7 @@ public:
         std::shared_ptr<CString> methodNamePtr_;
     };
 
-    const CString &GetJSPandaFileDesc() const
+    inline const CString &GetJSPandaFileDesc() const
     {
         return desc_;
     }
@@ -125,12 +132,12 @@ public:
 
     static CString PUBLIC_API GetNormalizedFileDesc(const CString &desc);
 
-    uint32_t GetChecksum() const
+    inline uint32_t GetChecksum() const
     {
         return checksum_;
     }
 
-    const panda_file::File *GetPandaFile() const
+    inline const panda_file::File *GetPandaFile() const
     {
         return pf_;
     }
@@ -140,29 +147,20 @@ public:
     CString GetRecordName(EntityId methodId);
     CString PUBLIC_API GetRecordNameWithBundlePack(EntityId methodIdx);
 
-    MethodLiteral* GetMethodLiterals() const
+    inline MethodLiteral* GetMethodLiterals() const
     {
         return methodLiterals_;
     }
 
-    void SetMethodLiteralToMap(MethodLiteral *methodLiteral)
+    inline void SetMethodLiteralToMap(MethodLiteral *methodLiteral)
     {
         ASSERT(methodLiteral != nullptr);
         methodLiteralMap_.emplace(methodLiteral->GetMethodId().GetOffset(), methodLiteral);
     }
 
-    const std::unordered_map<uint32_t, MethodLiteral *> &GetMethodLiteralMap() const
+    inline const std::unordered_map<uint32_t, MethodLiteral *> &GetMethodLiteralMap() const
     {
         return methodLiteralMap_;
-    }
-
-    MethodLiteral *GetMethodLiteralByIndex(uint32_t index) const
-    {
-        auto info = methodLiteralMap_.find(index);
-        if (info != methodLiteralMap_.end()) {
-            return info->second;
-        }
-        return nullptr;
     }
 
     uint32_t GetNumMethods() const
@@ -186,7 +184,7 @@ public:
         }
 
         if (isNewVersion) {
-            for (auto recordInfo : jsRecordInfo_) {
+            for (const auto &recordInfo : jsRecordInfo_) {
                 LOG_ECMA(ERROR) << "All current record info: " << recordInfo.first;
             }
             LOG_ECMA(FATAL) << "can not get main method index: " << recordName;
@@ -228,9 +226,16 @@ public:
         }
     }
 
-    PUBLIC_API MethodLiteral *FindMethodLiteral(uint32_t offset) const;
+    inline PUBLIC_API MethodLiteral *FindMethodLiteral(uint32_t offset) const
+    {
+        auto iter = methodLiteralMap_.find(offset);
+        if (iter == methodLiteralMap_.end()) {
+            return nullptr;
+        }
+        return iter->second;
+    }
 
-    int GetModuleRecordIdx(const CString &recordName = ENTRY_FUNCTION_NAME) const
+    inline int GetModuleRecordIdx(const CString &recordName = ENTRY_FUNCTION_NAME) const
     {
         if (IsBundlePack()) {
             return jsRecordInfo_.begin()->second->moduleRecordIdx;
@@ -255,7 +260,7 @@ public:
         return false;
     }
 
-    Span<const uint32_t> GetClasses() const
+    inline Span<const uint32_t> GetClasses() const
     {
         return pf_->GetClasses();
     }
@@ -312,33 +317,43 @@ public:
         return pf_->GetHeader()->file_size;
     }
 
-    bool CheckAndGetRecordInfo(const CString &recordName, JSRecordInfo **recordInfo) const;
+    inline JSRecordInfo* CheckAndGetRecordInfo(const CString &recordName) const
+    {
+        if (UNLIKELY(IsBundlePack())) {
+            return jsRecordInfo_.begin()->second;
+        }
 
-    const JSRecordInfo* GetRecordInfo(const CString &recordName);
+        auto info = jsRecordInfo_.find(recordName);
+        if (info != jsRecordInfo_.end()) {
+            return info->second;
+        }
+
+        return nullptr;
+    }
 
     CString GetJsonStringId(const JSRecordInfo &jsRecordInfo) const;
 
-    bool PUBLIC_API IsModule(const JSRecordInfo *jsRecordInfo) const
+    inline bool PUBLIC_API IsModule(const JSRecordInfo *jsRecordInfo) const
     {
         return jsRecordInfo->moduleRecordIdx != -1;
     }
 
-    bool IsCjs(const JSRecordInfo *jsRecordInfo) const
+    inline bool IsCjs(const JSRecordInfo *jsRecordInfo) const
     {
         return jsRecordInfo->isCjs;
     }
 
-    bool IsJson(const JSRecordInfo *jsRecordInfo) const
+    inline bool IsJson(const JSRecordInfo *jsRecordInfo) const
     {
         return jsRecordInfo->isJson;
     }
 
-    bool IsSharedModule(const JSRecordInfo *jsRecordInfo) const
+    inline bool IsSharedModule(const JSRecordInfo *jsRecordInfo) const
     {
         return jsRecordInfo->isSharedModule;
     }
 
-    bool IsBundlePack() const
+    inline bool IsBundlePack() const
     {
         return isBundlePack_;
     }
@@ -353,12 +368,12 @@ public:
         return static_cast<uint32_t>(GetPandaFile()->GetUniqId());
     }
 
-    bool IsNewVersion() const
+    inline bool IsNewVersion() const
     {
         return isNewVersion_;
     }
 
-    bool HasRecord(const CString &recordName) const
+    inline bool HasRecord(const CString &recordName) const
     {
         return jsRecordInfo_.find(recordName) != jsRecordInfo_.end();
     }
@@ -429,7 +444,7 @@ public:
         return (name == PATCH_FUNCTION_NAME_0) || (name == ENTRY_FUNCTION_NAME);
     }
 
-    void DeleteParsedConstpoolVM(const EcmaVM *vm)
+    inline void DeleteParsedConstpoolVM(const EcmaVM *vm)
     {
         for (auto &recordInfo : jsRecordInfo_) {
             recordInfo.second->vmListOfParsedConstPool.erase(vm);
@@ -470,7 +485,7 @@ private:
 
     void SetAllMethodLiteralToMap();
 
-    size_t GetClassAndMethodIndex(size_t *methodIdx);
+    void GetClassAndMethodIndexes(std::vector<std::pair<uint32_t, uint32_t>> &indexes);
 
     static constexpr size_t VERSION_SIZE = 4;
     static constexpr std::array<uint8_t, VERSION_SIZE> OLD_VERSION {0, 0, 0, 2};
@@ -491,8 +506,8 @@ private:
     Mutex jsRecordInfoMutex_;
     ConditionVariable waitTranslateClassFinishedCV_;
     uint32_t runningTaskCount_ {0};
-    size_t classIndex_ {0};
-    size_t methodIndex_ {0};
+    uint32_t classIndex_ {0};
+    uint32_t methodIndex_ {0};
 
     CUnorderedMap<uint32_t, uint64_t> constpoolMap_;
     uint32_t numMethods_ {0};
@@ -508,7 +523,8 @@ private:
     CUnorderedMap<CString, CString> npmEntries_;
     bool isRecordWithBundleName_ {true};
     static bool loadedFirstPandaFile;
-    bool isFirstPandafile_{false};
+    bool isFirstPandafile_ {false};
+    CreateMode mode_ {CreateMode::RUNTIME};
 };
 }  // namespace ecmascript
 }  // namespace panda

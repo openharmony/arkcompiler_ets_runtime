@@ -61,7 +61,6 @@ host_unittest_action("ThreadTerminationTest") {
   deps = [
     "$ark_root/assembler:libarkassembler_static",
     "$js_root:libark_jsruntime_test",
-    sdk_libc_secshared_dep,
   ]
 
   foreach(file, test_js_files) {

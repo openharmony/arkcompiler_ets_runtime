@@ -163,7 +163,7 @@ public:
         return static_cast<int32_t>(Type::HEAP_OBJECT);
     }
 
-    static int32_t UndefineOrNullType()
+    static int32_t UndefinedOrNullType()
     {
         return static_cast<int32_t>(Type::UNDEFINED_OR_NULL);
     }
@@ -392,6 +392,11 @@ public:
         return type_.index() == 0 && GetPrimitiveType() == Type::HEAP_OBJECT;
     }
 
+    bool IsUndefinedOrNull() const
+    {
+        return type_.index() == 0 && GetPrimitiveType() == Type::UNDEFINED_OR_NULL;
+    }
+
     bool IsNumber() const
     {
         if (type_.index() != 0) {
@@ -575,7 +580,7 @@ public:
           holdRootType_(holdRootType), holdType_(holdType),
           holdTraRootType_(holdTraRootType), holdTraType_(holdTraType),
           accessorMethod_(accessorMethod) {}
-
+    
     void AddPrototypePt(std::vector<std::pair<PGOProfileType, PGOProfileType>> protoChain)
     {
         protoChainMarker_ = ProtoChainMarker::EXSIT;
@@ -600,21 +605,15 @@ public:
 
     std::string GetInfoString() const
     {
-        std::string result = "(receiverRoot";
-        result += receiverRootType_.GetTypeString();
-        result += ", receiver";
-        result += receiverType_.GetTypeString();
-        result += ", holdRoot";
-        result += holdRootType_.GetTypeString();
-        result += ", hold";
-        result += holdType_.GetTypeString();
-        result += ", holdTraRoot";
-        result += holdTraRootType_.GetTypeString();
-        result += ", holdTra";
-        result += holdTraType_.GetTypeString();
-        result += ", accessorMethod";
-        result += accessorMethod_.GetTypeString();
-        result += ")";
+        std::string result = "      ";
+        result += "(\n        receiverRoot" + receiverRootType_.GetTypeString();
+        result += ",\n        receiver" + receiverType_.GetTypeString();
+        result += ",\n        holdRoot" + holdRootType_.GetTypeString();
+        result += ",\n        hold" + holdType_.GetTypeString();
+        result += ",\n        holdTraRoot" + holdTraRootType_.GetTypeString();
+        result += ",\n        holdTra" + holdTraType_.GetTypeString();
+        result += ",\n        accessorMethod:" + accessorMethod_.GetTypeString();
+        result += "\n      )";
         return result;
     }
 
@@ -867,19 +866,14 @@ public:
 
     std::string GetTypeString() const
     {
-        std::string result = "(local";
-        result += type_.GetTypeString();
-        result += ", ctor";
-        result += ctorPt_.GetTypeString();
-        result += ", proto";
-        result += protoPt_.GetTypeString();
-        result += ", elementsKind:";
-        result += std::to_string(static_cast<int32_t>(kind_));
+        std::string result = "";
+        result += "      local" + type_.GetTypeString();
+        result += ",\n      ctor" + ctorPt_.GetTypeString();
+        result += ",\n      proto" + protoPt_.GetTypeString();
+        result += ",\n      elementsKind:" + std::to_string(static_cast<int32_t>(kind_));
         if (elementsLength_ > 0 && spaceFlag_ != RegionSpaceFlag::UNINITIALIZED) {
-            result += ", size: ";
-            result += std::to_string(elementsLength_);
-            result += ", space; ";
-            result += ToSpaceTypeName(spaceFlag_);
+            result += ",\n      size: " + std::to_string(elementsLength_);
+            result += ",\n      space; " + ToSpaceTypeName(spaceFlag_);
         }
         return result;
     }
@@ -1230,6 +1224,11 @@ public:
     bool IsBoolean() const
     {
         return GetPGOSampleType()->IsBoolean();
+    }
+
+    bool IsUndefinedOrNull() const
+    {
+        return GetPGOSampleType()->IsUndefinedOrNull();
     }
 
     bool IsString() const

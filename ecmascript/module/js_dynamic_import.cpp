@@ -13,12 +13,9 @@
  * limitations under the License.
  */
 
-#include "ecmascript/ecma_context.h"
 #include "ecmascript/module/js_dynamic_import.h"
 #include "ecmascript/base/path_helper.h"
-#include "ecmascript/builtins/builtins_promise_job.h"
 #include "ecmascript/interpreter/interpreter.h"
-#include "ecmascript/js_function.h"
 #include "ecmascript/module/js_module_deregister.h"
 #include "ecmascript/module/js_module_manager.h"
 #include "ecmascript/module/module_data_extractor.h"
@@ -42,6 +39,8 @@ JSTaggedValue DynamicImport::ExecuteNativeOrJsonModule(JSThread *thread, const C
         ModuleDeregister::ReviseLoadedModuleCount(thread, specifierString);
         JSHandle<SourceTextModule> moduleRecord =
             moduleManager->HostGetImportedModule(specifierString);
+        moduleRecord->CheckAndThrowModuleError(thread);
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, BuiltinsPromiseJob::CatchException(thread, reject));
         requiredModule.Update(moduleRecord);
     } else {
         JSHandle<SourceTextModule> moduleRecord(thread, thread->GlobalConstants()->GetUndefined());
@@ -50,15 +49,17 @@ JSTaggedValue DynamicImport::ExecuteNativeOrJsonModule(JSThread *thread, const C
             JSHandle<JSTaggedValue> nativeModuleHld =
                 ModuleResolver::ResolveNativeModule(thread, specifierString, "", moduleType);
             moduleRecord = JSHandle<SourceTextModule>::Cast(nativeModuleHld);
-            if (!SourceTextModule::LoadNativeModule(thread, moduleRecord, moduleType)) {
+            if (!SourceTextModule::EvaluateNativeModule(thread, moduleRecord, moduleType)) {
                 LOG_FULL(ERROR) << " dynamically loading native module" << specifierString << " failed";
             }
         } else {
             // json
             moduleRecord = JSHandle<SourceTextModule>::Cast(ModuleDataExtractor::ParseJsonModule(
                 thread, jsPandaFile, jsPandaFile->GetJSPandaFileDesc(), specifierString));
+            SourceTextModule::RecordEvaluatedOrError(thread, moduleRecord);
+            RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, BuiltinsPromiseJob::CatchException(thread, reject));
         }
-        moduleRecord->SetStatus(ModuleStatus::EVALUATED);
+        moduleManager->AddResolveImportedModule(specifierString, moduleRecord.GetTaggedValue());
         moduleRecord->SetLoadingTypes(LoadingTypes::DYNAMITC_MODULE);
         moduleRecord->SetRegisterCounts(1);
         thread->GetEcmaVM()->PushToDeregisterModuleList(specifierString);

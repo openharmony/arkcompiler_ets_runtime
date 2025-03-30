@@ -14,14 +14,7 @@
  */
 
 #include "mir_type.h"
-#include "mir_symbol.h"
-#include "printing.h"
-#include "namemangler.h"
-#include "global_tables.h"
 #include "mir_builder.h"
-#include "cfg_primitive_types.h"
-#include "string_utils.h"
-#include "triple.h"
 #if MIR_FEATURE_FULL
 
 namespace maple {

@@ -14,8 +14,6 @@
  */
 
 #include "ecmascript/compiler/gate.h"
-#include <iostream>
-#include <sstream>
 
 namespace panda::ecmascript::kungfu {
 void Gate::CheckNullInput() const

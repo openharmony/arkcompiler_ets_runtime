@@ -41,3 +41,22 @@ class B {
 let sObj = new B();
 print("sObj A:a :" + sObj.b.a);
 print("sObj A:c :" + sObj.d);
+
+class C {
+  public num: number = 0;
+  constructor(num: number) {
+      "use sendable"
+      this.num = num;
+  }
+  PrintNum() {
+    print("c.num :" + this.num);
+  }
+}
+
+function testObjLiteral() {
+ let b = { toString() {} };
+ let c = new C(5);
+ c.PrintNum();
+}
+
+testObjLiteral()

@@ -13,22 +13,22 @@
 
 import("../../test_helper.gni")
 
-host_moduletest_action("cjsC") {
+host_moduletest_assert_action("cjsC") {
   deps = []
   is_commonjs = true
 }
 
-host_moduletest_action("cjsD") {
+host_moduletest_assert_action("cjsD") {
   deps = []
   is_commonjs = true
 }
 
-host_moduletest_action("esmB") {
+host_moduletest_assert_action("esmB") {
   deps = []
   is_module = true
 }
 
-host_moduletest_action("esmnestedimportcjs") {
+host_moduletest_assert_action("esmnestedimportcjs") {
   deps = [
     ":gen_cjsC_abc",
     ":gen_cjsD_abc",

@@ -14,9 +14,7 @@
  */
 
 #include "aarch64_optimize_common.h"
-#include "aarch64_cg.h"
 #include "aarch64_cgfunc.h"
-#include "cgbb.h"
 
 namespace maplebe {
 void AArch64InsnVisitor::ModifyJumpTarget(Operand &targetOperand, BB &bb)

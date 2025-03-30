@@ -15,11 +15,7 @@
 
 #include "mir_module.h"
 #include <fstream>
-#include "mir_const.h"
-#include "mir_preg.h"
-#include "mir_function.h"
 #include "mir_builder.h"
-#include "intrinsics.h"
 
 namespace maple {
 #if MIR_FEATURE_FULL  // to avoid compilation error when MIR_FEATURE_FULL=0

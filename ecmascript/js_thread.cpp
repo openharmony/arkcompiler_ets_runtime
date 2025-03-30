@@ -96,7 +96,8 @@ JSThread *JSThread::Create(EcmaVM *vm)
 
     jsThread->glueData_.stackLimit_ = GetAsmStackLimit();
     jsThread->glueData_.stackStart_ = GetCurrentStackPosition();
-    jsThread->glueData_.isEnableElementsKind_ = vm->IsEnableElementsKind();
+    jsThread->glueData_.isEnableMutantArray_ = vm->IsEnableMutantArray();
+    jsThread->glueData_.IsEnableElementsKind_ = vm->IsEnableElementsKind();
     jsThread->SetThreadId();
 
     RegisterThread(jsThread);
@@ -194,12 +195,13 @@ JSThread::~JSThread()
     }
 
     for (auto item : contexts_) {
-        GetNativeAreaAllocator()->Free(item->GetFrameBase(), sizeof(JSTaggedType) *
-            vm_->GetEcmaParamConfiguration().GetMaxStackSize());
-        item->SetFrameBase(nullptr);
         delete item;
     }
     contexts_.clear();
+    if (threadType_ == ThreadType::JS_THREAD) {
+        GetNativeAreaAllocator()->Free(glueData_.frameBase_, sizeof(JSTaggedType) *
+                                       vm_->GetEcmaParamConfiguration().GetMaxStackSize());
+    }
     GetNativeAreaAllocator()->FreeArea(regExpCache_);
 
     glueData_.frameBase_ = nullptr;
@@ -238,9 +240,38 @@ void JSThread::SetException(JSTaggedValue exception)
 #endif
 }
 
-void JSThread::ClearException()
+void JSThread::HandleUncaughtException(JSTaggedValue exception)
 {
-    glueData_.exception_ = JSTaggedValue::Hole();
+    [[maybe_unused]] EcmaHandleScope handleScope(this);
+    JSHandle<JSTaggedValue> exceptionHandle(this, exception);
+    if (isUncaughtExceptionRegistered_) {
+        if (vm_->GetJSThread()->IsMainThread()) {
+            return;
+        }
+        auto callback = GetOnErrorCallback();
+        if (callback) {
+            ClearException();
+            Local<ObjectRef> exceptionRef = JSNApiHelper::ToLocal<ObjectRef>(exceptionHandle);
+            callback(exceptionRef, GetOnErrorData());
+        }
+    }
+    // if caught exceptionHandle type is JSError
+    ClearException();
+    if (exceptionHandle->IsJSError()) {
+        base::ErrorHelper::PrintJSErrorInfo(this, exceptionHandle);
+        return;
+    }
+    JSHandle<EcmaString> result = JSTaggedValue::ToString(this, exceptionHandle);
+    LOG_NO_TAG(ERROR) << ConvertToString(*result);
+}
+
+void JSThread::HandleUncaughtException()
+{
+    if (!HasPendingException()) {
+        return;
+    }
+    JSTaggedValue exception = GetException();
+    HandleUncaughtException(exception);
 }
 
 JSTaggedValue JSThread::GetCurrentLexenv() const
@@ -298,6 +329,7 @@ void JSThread::InvokeWeakNodeNativeFinalizeCallback()
         return;
     }
     runningNativeFinalizeCallbacks_ = true;
+    TRACE_GC(GCStats::Scope::ScopeId::InvokeNativeFinalizeCallbacks, GetEcmaVM()->GetEcmaGCStats());
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "InvokeNativeFinalizeCallbacks num:"
         + std::to_string(weakNodeNativeFinalizeCallbacks_.size()));
     while (!weakNodeNativeFinalizeCallbacks_.empty()) {
@@ -376,33 +408,29 @@ void JSThread::SetJitCodeMap(JSTaggedType exception,  MachineCode* machineCode, 
     }
 }
 
-void JSThread::Iterate(const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor,
-    const RootBaseAndDerivedVisitor &derivedVisitor)
+void JSThread::Iterate(RootVisitor &visitor)
 {
     if (!glueData_.exception_.IsHole()) {
-        visitor(Root::ROOT_VM, ObjectSlot(ToUintPtr(&glueData_.exception_)));
+        visitor.VisitRoot(Root::ROOT_VM, ObjectSlot(ToUintPtr(&glueData_.exception_)));
     }
-    rangeVisitor(
-        Root::ROOT_VM, ObjectSlot(glueData_.builtinEntries_.Begin()), ObjectSlot(glueData_.builtinEntries_.End()));
+    visitor.VisitRangeRoot(Root::ROOT_VM,
+        ObjectSlot(glueData_.builtinEntries_.Begin()), ObjectSlot(glueData_.builtinEntries_.End()));
 
-    EcmaContext *tempContext = glueData_.currentContext_;
+    // visit stack roots
+    FrameHandler frameHandler(this);
+    frameHandler.Iterate(visitor);
     for (EcmaContext *context : contexts_) {
-        // visit stack roots
-        SwitchCurrentContext(context, true);
-        FrameHandler frameHandler(this);
-        frameHandler.Iterate(visitor, rangeVisitor, derivedVisitor);
-        context->Iterate(visitor, rangeVisitor);
+        context->Iterate(visitor);
     }
-    SwitchCurrentContext(tempContext, true);
     // visit tagged handle storage roots
     if (vm_->GetJSOptions().EnableGlobalLeakCheck()) {
-        IterateHandleWithCheck(visitor, rangeVisitor);
+        IterateHandleWithCheck(visitor);
     } else {
         size_t globalCount = 0;
-        auto callback = [visitor, &globalCount](Node *node) {
+        auto callback = [&visitor, &globalCount](Node *node) {
             JSTaggedValue value(node->GetObject());
             if (value.IsHeapObject()) {
-                visitor(ecmascript::Root::ROOT_HANDLE, ecmascript::ObjectSlot(node->GetObjectAddress()));
+                visitor.VisitRoot(Root::ROOT_HANDLE, ecmascript::ObjectSlot(node->GetObjectAddress()));
             }
             globalCount++;
         };
@@ -420,11 +448,11 @@ void JSThread::IterateJitCodeMap(const JitCodeMapVisitor &jitCodeMapVisitor)
     jitCodeMapVisitor(jitCodeMaps_);
 }
 
-void JSThread::IterateHandleWithCheck(const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor)
+void JSThread::IterateHandleWithCheck(RootVisitor &visitor)
 {
     size_t handleCount = 0;
     for (EcmaContext *context : contexts_) {
-        handleCount += context->IterateHandle(rangeVisitor);
+        handleCount += context->IterateHandle(visitor);
     }
 
     size_t globalCount = 0;
@@ -434,12 +462,12 @@ void JSThread::IterateHandleWithCheck(const RootVisitor &visitor, const RootRang
     bool isStopObjectLeakCheck = EnableGlobalObjectLeakCheck() && !IsStartGlobalLeakCheck() && stackTraceFd_ > 0;
     bool isStopPrimitiveLeakCheck = EnableGlobalPrimitiveLeakCheck() && !IsStartGlobalLeakCheck() && stackTraceFd_ > 0;
     std::ostringstream buffer;
-    auto callback = [this, visitor, &globalCount, &typeCount, &primitiveCount,
+    auto callback = [this, &visitor, &globalCount, &typeCount, &primitiveCount,
         isStopObjectLeakCheck, isStopPrimitiveLeakCheck, &buffer](DebugNode *node) {
         node->MarkCount();
         JSTaggedValue value(node->GetObject());
         if (value.IsHeapObject()) {
-            visitor(ecmascript::Root::ROOT_HANDLE, ecmascript::ObjectSlot(node->GetObjectAddress()));
+            visitor.VisitRoot(Root::ROOT_HANDLE, ecmascript::ObjectSlot(node->GetObjectAddress()));
             TaggedObject *object = value.GetTaggedObject();
             MarkWord word(value.GetTaggedObject());
             if (word.IsForwardingAddress()) {
@@ -652,17 +680,6 @@ JSHClass *JSThread::GetBuiltinExtraHClass(BuiltinTypeId type) const
     return glueData_.builtinHClassEntries_.entries[index].extraHClass;
 }
 
-JSHClass *JSThread::GetArrayInstanceHClass(ElementsKind kind, bool isPrototype) const
-{
-    auto iter = GetArrayHClassIndexMap().find(kind);
-    ASSERT(iter != GetArrayHClassIndexMap().end());
-    auto index = isPrototype ? static_cast<size_t>(iter->second.second) : static_cast<size_t>(iter->second.first);
-    auto exceptArrayHClass = GlobalConstants()->GetGlobalConstantObject(index);
-    auto exceptRecvHClass = JSHClass::Cast(exceptArrayHClass.GetTaggedObject());
-    ASSERT(exceptRecvHClass->IsJSArray());
-    return exceptRecvHClass;
-}
-
 JSHClass *JSThread::GetBuiltinPrototypeHClass(BuiltinTypeId type) const
 {
     size_t index = BuiltinHClassEntries::GetEntryIndex(type);
@@ -788,22 +805,29 @@ bool JSThread::PassSuspendBarrier()
     return false;
 }
 
+bool JSThread::ShouldHandleMarkingFinishedInSafepoint()
+{
+    auto heap = const_cast<Heap *>(GetEcmaVM()->GetHeap());
+    return IsMarkFinished() && heap->GetConcurrentMarker()->IsTriggeredConcurrentMark() &&
+           !heap->GetOnSerializeEvent() && !heap->InSensitiveStatus() && !heap->CheckIfNeedStopCollectionByStartup();
+}
+
 bool JSThread::CheckSafepoint()
 {
     ResetCheckSafePointStatus();
 
-    if (HasTerminationRequest()) {
+    if UNLIKELY(HasTerminationRequest()) {
         TerminateExecution();
         SetVMTerminated(true);
         SetTerminationRequest(false);
     }
 
-    if (HasSuspendRequest()) {
+    if UNLIKELY(HasSuspendRequest()) {
         WaitSuspension();
     }
 
     // vmThreadControl_ 's thread_ is current JSThread's this.
-    if (VMNeedSuspension()) {
+    if UNLIKELY(VMNeedSuspension()) {
         vmThreadControl_->SuspendVM();
     }
     if (HasInstallMachineCode()) {
@@ -812,7 +836,7 @@ bool JSThread::CheckSafepoint()
     }
 
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
-    if (needProfiling_.load() && !isProfiling_) {
+    if UNLIKELY(needProfiling_.load() && !isProfiling_) {
         DFXJSNApi::StartCpuProfilerForFile(vm_, profileName_, CpuProfiler::INTERVAL_OF_INNER_START);
         SetNeedProfiling(false);
     }
@@ -829,13 +853,12 @@ bool JSThread::CheckSafepoint()
     heap->HandleExitHighSensitiveEvent();
 
     // Do not trigger local gc during the shared gc processRset process.
-    if (IsProcessingLocalToSharedRset()) {
+    if UNLIKELY(IsProcessingLocalToSharedRset()) {
         return false;
     }
     // After concurrent mark finish, should trigger gc here to avoid create much floating garbage
     // except in serialize or high sensitive event
-    if (IsMarkFinished() && heap->GetConcurrentMarker()->IsTriggeredConcurrentMark()
-        && !heap->GetOnSerializeEvent() && !heap->InSensitiveStatus()) {
+    if UNLIKELY(ShouldHandleMarkingFinishedInSafepoint()) {
         heap->SetCanThrowOOMError(false);
         heap->GetConcurrentMarker()->HandleMarkingFinished();
         heap->SetCanThrowOOMError(true);
@@ -866,7 +889,13 @@ size_t JSThread::GetAsmStackLimit()
 {
 #if !defined(PANDA_TARGET_WINDOWS) && !defined(PANDA_TARGET_MACOS) && !defined(PANDA_TARGET_IOS)
     // js stack limit
-    size_t result = GetCurrentStackPosition() - EcmaParamConfiguration::GetDefalutStackSize();
+    uintptr_t currentStackPos = GetCurrentStackPosition();
+    size_t defaultStackSize = EcmaParamConfiguration::GetDefalutStackSize();
+    if (currentStackPos < defaultStackSize) {
+        LOG_FULL(FATAL) << "Too small stackSize to run jsvm"
+           << ", currentStackPos: " << reinterpret_cast<void *>(currentStackPos);
+    }
+    size_t result = currentStackPos - defaultStackSize;
     int ret = -1;
     void *stackAddr = nullptr;
     size_t size = 0;
@@ -928,15 +957,23 @@ size_t JSThread::GetAsmStackLimit()
 
     LOG_INTERPRETER(DEBUG) << "Current thread stack start: " << reinterpret_cast<void *>(threadStackStart);
     LOG_INTERPRETER(DEBUG) << "Used stack before js stack start: "
-                           << reinterpret_cast<void *>(threadStackStart - GetCurrentStackPosition());
+                           << reinterpret_cast<void *>(threadStackStart - currentStackPos);
     LOG_INTERPRETER(DEBUG) << "Current thread asm stack limit: " << reinterpret_cast<void *>(result);
-
+    uintptr_t currentThreadAsmStackLimit = result;
     // To avoid too much times of stack overflow checking, we only check stack overflow before push vregs or
     // parameters of variable length. So we need a reserved size of stack to make sure stack won't be overflowed
     // when push other data.
     result += EcmaParamConfiguration::GetDefaultReservedStackSize();
     if (threadStackStart <= result) {
-        LOG_FULL(FATAL) << "Too small stackSize to run jsvm";
+        LOG_FULL(FATAL) << "Too small stackSize to run jsvm"
+                        << ", CurrentStackPosition: " << reinterpret_cast<void *>(currentStackPos)
+                        << ", StackAddr: " << stackAddr << ", Size: " << reinterpret_cast<void *>(size)
+                        << ", ThreadStackLimit: " << reinterpret_cast<void *>(threadStackLimit)
+                        << ", ThreadStackStart: " << reinterpret_cast<void *>(threadStackStart)
+                        << ", Used stack before js stack start: "
+                        << reinterpret_cast<void *>(threadStackStart - currentStackPos)
+                        << ", Current thread asm stack limit: " << reinterpret_cast<void *>(currentThreadAsmStackLimit)
+                        << ", Result: " << reinterpret_cast<void *>(result);
     }
     return result;
 #else
@@ -981,21 +1018,6 @@ void JSThread::PushContext(EcmaContext *context)
     if (!glueData_.currentContext_) {
         // The first context in ecma vm.
         glueData_.currentContext_ = context;
-        context->SetFramePointers(const_cast<JSTaggedType *>(GetCurrentSPFrame()),
-            const_cast<JSTaggedType *>(GetLastLeaveFrame()),
-            const_cast<JSTaggedType *>(GetLastFp()));
-        context->SetFrameBase(glueData_.frameBase_);
-        context->SetStackLimit(glueData_.stackLimit_);
-        context->SetStackStart(glueData_.stackStart_);
-    } else {
-        // algin with 16
-        size_t maxStackSize = vm_->GetEcmaParamConfiguration().GetMaxStackSize();
-        context->SetFrameBase(static_cast<JSTaggedType *>(
-            vm_->GetNativeAreaAllocator()->Allocate(sizeof(JSTaggedType) * maxStackSize)));
-        context->SetFramePointers(context->GetFrameBase() + maxStackSize, nullptr, nullptr);
-        context->SetStackLimit(GetAsmStackLimit());
-        context->SetStackStart(GetCurrentStackPosition());
-        EcmaInterpreter::InitStackFrame(context);
     }
 }
 
@@ -1008,26 +1030,12 @@ void JSThread::PopContext()
 void JSThread::SwitchCurrentContext(EcmaContext *currentContext, bool isInIterate)
 {
     ASSERT(std::count(contexts_.begin(), contexts_.end(), currentContext));
-
-    glueData_.currentContext_->SetFramePointers(const_cast<JSTaggedType *>(GetCurrentSPFrame()),
-        const_cast<JSTaggedType *>(GetLastLeaveFrame()),
-        const_cast<JSTaggedType *>(GetLastFp()));
-    glueData_.currentContext_->SetFrameBase(glueData_.frameBase_);
-    glueData_.currentContext_->SetStackLimit(GetStackLimit());
-    glueData_.currentContext_->SetStackStart(GetStackStart());
     glueData_.currentContext_->SetGlobalEnv(GetGlueGlobalEnv());
     // When the glueData_.currentContext_ is not fully initialized，glueData_.globalObject_ will be hole.
     // Assigning hole to JSGlobalObject could cause a mistake at builtins initalization.
     if (!glueData_.globalObject_.IsHole()) {
         glueData_.currentContext_->GetGlobalEnv()->SetJSGlobalObject(this, glueData_.globalObject_);
     }
-
-    SetCurrentSPFrame(currentContext->GetCurrentFrame());
-    SetLastLeaveFrame(currentContext->GetLeaveFrame());
-    SetLastFp(currentContext->GetLastFp());
-    glueData_.frameBase_ = currentContext->GetFrameBase();
-    glueData_.stackLimit_ = currentContext->GetStackLimit();
-    glueData_.stackStart_ = currentContext->GetStackStart();
     if (!currentContext->GlobalEnvIsHole()) {
         SetGlueGlobalEnv(*(currentContext->GetGlobalEnv()));
         /**
@@ -1097,6 +1105,17 @@ PropertiesCache *JSThread::GetPropertiesCache() const
 {
     return glueData_.currentContext_->GetPropertiesCache();
 }
+
+MegaICCache *JSThread::GetLoadMegaICCache() const
+{
+    return glueData_.currentContext_->GetLoadMegaICCache();
+}
+
+MegaICCache *JSThread::GetStoreMegaICCache() const
+{
+    return glueData_.currentContext_->GetStoreMegaICCache();
+}
+
 
 const GlobalEnvConstants *JSThread::GetFirstGlobalConst() const
 {
@@ -1250,6 +1269,47 @@ void JSThread::TransferFromRunningToSuspended(ThreadState newState)
     ASSERT(currentThread == this);
     StoreSuspendedState(newState);
     CheckAndPassActiveBarrier();
+}
+
+void JSThread::UpdateStackInfo(void *stackInfo, StackInfoOpKind opKind)
+{
+    switch (opKind) {
+        case SwitchToSubStackInfo: {
+            StackInfo *subStackInfo = reinterpret_cast<StackInfo*>(stackInfo);
+            if (subStackInfo == nullptr) {
+                LOG_ECMA(ERROR) << "fatal error, subStack not exist";
+                break;
+            }
+            // process stackLimit
+            mainStackInfo_.stackLimit = glueData_.stackLimit_;
+            glueData_.stackLimit_ = subStackInfo->stackLimit;
+            // process lastLeaveFrame
+            mainStackInfo_.lastLeaveFrame = reinterpret_cast<uint64_t>(glueData_.leaveFrame_);
+            glueData_.leaveFrame_ =
+                reinterpret_cast<uint64_t *>(subStackInfo->lastLeaveFrame);
+            isInSubStack_ = true;
+
+            LOG_ECMA(DEBUG) << "Switch to subStack: "
+                            << ", stack limit: " << glueData_.stackLimit_
+                            << ", stack lastLeaveFrame: " << glueData_.leaveFrame_;
+            break;
+        }
+        case SwitchToMainStackInfo: {
+            // process stackLimit
+            glueData_.stackLimit_ = mainStackInfo_.stackLimit;
+            // process lastLeaveFrame
+            glueData_.leaveFrame_ = reinterpret_cast<uint64_t *>(mainStackInfo_.lastLeaveFrame);
+            isInSubStack_ = false;
+
+            LOG_ECMA(DEBUG) << "Switch to mainStack: "
+                            << ", main stack limit: " << mainStackInfo_.stackLimit
+                            << ", main stack lastLeaveFrame: " << mainStackInfo_.lastLeaveFrame;
+            break;
+        }
+        default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
+            UNREACHABLE();
+    }
 }
 
 void JSThread::TransferToRunning()

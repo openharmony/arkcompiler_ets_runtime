@@ -14,12 +14,7 @@
  */
 
 #include "cg_option.h"
-#include <fstream>
-#include <unordered_map>
 #include "cg_options.h"
-#include "driver_options.h"
-#include "mpl_logging.h"
-#include "string_utils.h"
 #include "triple.h"
 #include "option.h"
 

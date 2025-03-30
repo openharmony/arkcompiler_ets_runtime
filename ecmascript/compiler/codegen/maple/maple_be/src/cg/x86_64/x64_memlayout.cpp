@@ -14,9 +14,6 @@
  */
 
 #include "x64_memlayout.h"
-#include "x64_cgfunc.h"
-#include "becommon.h"
-#include "mir_nodes.h"
 #include "x64_call_conv.h"
 #include "cg.h"
 

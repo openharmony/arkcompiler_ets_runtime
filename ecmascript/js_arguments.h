@@ -32,6 +32,11 @@ public:
 
     CAST_NO_CHECK(JSArguments);
 
+    static constexpr uint32_t GetInlinedPropertyOffset(uint32_t index)
+    {
+        return JSObject::SIZE + index * JSTaggedValue::TaggedTypeSize();
+    }
+
     // 9.4.4.1 [[GetOwnProperty]] (P)
     static bool GetOwnProperty(JSThread *thread, const JSHandle<JSArguments> &args, const JSHandle<JSTaggedValue> &key,
                                PropertyDescriptor &desc);

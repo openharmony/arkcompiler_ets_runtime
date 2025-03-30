@@ -69,3 +69,11 @@ class C3 extends Array {
     }
 }
 try { new C3(C3, Array, Array, C3); } catch (err) {print(err)};
+
+var v0 = [-8.4, 1.34, -3.5, 3.34];
+Object.defineProperty(v0, "toString", {
+    get: function() {},
+    set: function(value) {}
+});
+var v1 = v0.splice(2, 1);
+print(v1);

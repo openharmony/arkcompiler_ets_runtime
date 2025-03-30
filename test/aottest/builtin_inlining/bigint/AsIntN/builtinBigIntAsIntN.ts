@@ -151,6 +151,14 @@ printAsIntN(3, 25n); //: 1
 //aot: [trace] aot inline builtin: BigInt.asIntN, caller function name:func_main_0@builtinBigIntAsIntN
 print(true_asintn(3, 25n)); //: 1
 
+try {
+    const v10 = BigInt.asIntN(268435439, 127n)
+    const v11 = [7];
+} catch(e) {
+    //aot: [trace] aot inline builtin: BigInt.asIntN, caller function name:func_main_0@builtinBigIntAsIntN
+    print("catch e") //: catch e
+}
+
 // Call standard builtin with non-number param
 //aot: [trace] aot inline builtin: BigInt.asIntN, caller function name:#*#doAsIntN@builtinBigIntAsIntN
 //aot: [trace] Check Type: NotNumber1

@@ -337,7 +337,7 @@ public:
     void Br(const Register &rn);
     void Blr(const Register &rn);
     void Bl(Label *label);
-    void Bl(int32_t imm);
+    void Bl(intptr_t imm);
     void Cbz(const Register &rt, int32_t imm);
     void Cbz(const Register &rt, Label *label);
     void Cbnz(const Register &rt, int32_t imm);

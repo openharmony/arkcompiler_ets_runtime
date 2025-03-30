@@ -60,17 +60,20 @@ private:
     JSHandle<JSFunction> NewBuiltinConstructor(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &prototype,
                                                EcmaEntrypoint ctorFunc, std::string_view name, int length,
                                                kungfu::BuiltinsStubCSigns::ID builtinId =
-                                               kungfu::BuiltinsStubCSigns::INVALID) const;
+                                               kungfu::BuiltinsStubCSigns::INVALID,
+                                               JSHandle<JSHClass> hclass = JSHandle<JSHClass>()) const;
 
     JSHandle<JSFunction> NewBuiltinCjsCtor(const JSHandle<GlobalEnv> &env,
                                            const JSHandle<JSObject> &prototype, EcmaEntrypoint ctorFunc,
                                            std::string_view name, int length) const;
+    void RegisterBuiltinToGlobal(kungfu::BuiltinsStubCSigns::ID builtinId, JSHandle<JSFunction> function) const;
 
     JSHandle<JSFunction> NewFunction(const JSHandle<GlobalEnv> &env, const JSHandle<JSTaggedValue> &key,
                                      EcmaEntrypoint func, int length,
                                      kungfu::BuiltinsStubCSigns::ID builtinId =
-                                     kungfu::BuiltinsStubCSigns::INVALID) const;
+                                         kungfu::BuiltinsStubCSigns::INVALID) const;
 
+    void InitializeNapiHClass(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &objFuncClass) const;
     void InitializePropertyDetector(const JSHandle<GlobalEnv> &env, bool lazyInit) const;
 
     void SetLazyAccessor(const JSHandle<JSObject> &object, const JSHandle<JSTaggedValue> &key,
@@ -110,7 +113,8 @@ private:
 
     void InitializeSymbolWithRealm(const JSHandle<GlobalEnv> &realm, const JSHandle<JSHClass> &objFuncInstanceHClass);
 
-    void InitializeArray(const JSHandle<GlobalEnv> &env, const JSHandle<JSTaggedValue> &objFuncPrototypeVal) const;
+    void InitializeArray(const JSHandle<GlobalEnv> &env, const JSHandle<JSTaggedValue> &objFuncPrototypeVal,
+                         bool isRealm) const;
 
     JSHandle<JSObject> InitializeArrayPrototype(JSHandle<JSHClass> &arrBaseFuncInstanceHClass) const;
     

@@ -16,6 +16,16 @@
 #include "ecmascript/compiler/pgo_type/pgo_hclass_generator.h"
 
 namespace panda::ecmascript::kungfu {
+bool PGOHClassGenerator::IsCache() const
+{
+    return status_ == Status::ISCACHE;
+}
+
+void PGOHClassGenerator::SetStatus(Status status) const
+{
+    status_ = status;
+}
+
 bool PGOHClassGenerator::FindHClassLayoutDesc(PGOSampleType type) const
 {
     PGOHClassTreeDesc *desc;
@@ -29,7 +39,7 @@ bool PGOHClassGenerator::FindHClassLayoutDesc(PGOSampleType type) const
     return true;
 }
 
-bool PGOHClassGenerator::GenerateHClass(PGOSampleType type, bool isCache) const
+bool PGOHClassGenerator::GenerateHClass(PGOSampleType type) const
 {
     auto thread = ptManager_->GetJSThread();
     JSHandle<JSTaggedValue> result(thread, JSTaggedValue::Undefined());
@@ -37,6 +47,11 @@ bool PGOHClassGenerator::GenerateHClass(PGOSampleType type, bool isCache) const
     if (!typeRecorder_.GetHClassTreeDesc(type, &desc)) {
         return false;
     }
+
+    if (desc->CheckHasInvalidType()) {
+        return false;
+    }
+
     auto rootType = type.GetProfileType();
     auto rootHClassDesc = desc->GetHClassLayoutDesc(rootType);
     if (rootHClassDesc == nullptr) {
@@ -45,9 +60,9 @@ bool PGOHClassGenerator::GenerateHClass(PGOSampleType type, bool isCache) const
 
     uint32_t rootNumOfProps = reinterpret_cast<RootHClassLayoutDesc *>(rootHClassDesc)->NumOfProps();
     uint32_t maxNumOfProps = rootNumOfProps;
-    CaculateMaxNumOfObj(desc, rootHClassDesc, rootNumOfProps, maxNumOfProps);
-    CaculateMaxNumOfObjIncludeProtoTransition(type, maxNumOfProps);
-    if (!CheckIsValid(type, maxNumOfProps, isCache)) {
+    CalculateMaxNumOfObj(desc, rootHClassDesc, rootNumOfProps, maxNumOfProps);
+    CalculateMaxNumOfObjIncludeProtoTransition(type, maxNumOfProps);
+    if (!CheckIsValid(type, maxNumOfProps)) {
         return false;
     }
 
@@ -56,20 +71,26 @@ bool PGOHClassGenerator::GenerateHClass(PGOSampleType type, bool isCache) const
         rootHClass = CreateRootPHClass(rootType, rootHClassDesc, maxNumOfProps, rootType.IsTransitionPrototype());
     } else if (rootType.IsConstructor()) {
         rootHClass = CreateRootCHClass(rootType, rootHClassDesc, maxNumOfProps);
+    } else if (IsCache() && ObjectFactory::CanObjectLiteralHClassCache(maxNumOfProps)) {
+        rootHClass = CreateRootHClassWithCached(rootType, rootHClassDesc, rootNumOfProps, maxNumOfProps);
     } else {
-        rootHClass = CreateRootHClass(rootType, rootHClassDesc, maxNumOfProps, isCache);
+        rootHClass = CreateRootHClass(rootType, rootHClassDesc, maxNumOfProps);
     }
-
     CreateChildHClass(rootType, desc, rootHClass, rootHClassDesc);
     return true;
 }
 
-bool PGOHClassGenerator::GenerateIHClass(PGOSampleType type, const JSHandle<JSObject> &prototype) const
+bool PGOHClassGenerator::GenerateIHClass(PGOSampleType type, const JSHandle<JSTaggedValue> &prototype) const
 {
     PGOHClassTreeDesc *desc;
     if (!typeRecorder_.GetHClassTreeDesc(type, &desc)) {
         return false;
     }
+
+    if (desc->CheckHasInvalidType()) {
+        return false;
+    }
+
     auto rootType = type.GetProfileType();
     auto rootHClassDesc = desc->GetHClassLayoutDesc(rootType);
     if (rootHClassDesc == nullptr) {
@@ -79,13 +100,13 @@ bool PGOHClassGenerator::GenerateIHClass(PGOSampleType type, const JSHandle<JSOb
 
     uint32_t rootNumOfProps = reinterpret_cast<RootHClassLayoutDesc *>(rootHClassDesc)->NumOfProps();
     uint32_t maxNumOfProps = rootNumOfProps;
-    CaculateMaxNumOfObj(desc, rootHClassDesc, rootNumOfProps, maxNumOfProps);
-    CaculateMaxNumOfObjIncludeProtoTransition(type, maxNumOfProps);
+    CalculateMaxNumOfObj(desc, rootHClassDesc, rootNumOfProps, maxNumOfProps);
+    CalculateMaxNumOfObjIncludeProtoTransition(type, maxNumOfProps);
     if (maxNumOfProps > PropertyAttributes::MAX_FAST_PROPS_CAPACITY) {
         return false;
     }
 
-    JSHandle<JSHClass> rootHClass = CreateRootHClass(rootType, rootHClassDesc, maxNumOfProps, false);
+    JSHandle<JSHClass> rootHClass = CreateRootHClass(rootType, rootHClassDesc, maxNumOfProps);
     auto thread = ptManager_->GetJSThread();
     rootHClass->SetProto(thread, prototype);
 
@@ -93,7 +114,7 @@ bool PGOHClassGenerator::GenerateIHClass(PGOSampleType type, const JSHandle<JSOb
     return true;
 }
 
-void PGOHClassGenerator::CaculateMaxNumOfObjIncludeProtoTransition(PGOSampleType type, uint32_t &maxNum) const
+void PGOHClassGenerator::CalculateMaxNumOfObjIncludeProtoTransition(PGOSampleType type, uint32_t &maxNum) const
 {
     auto rootType = type.GetProfileType();
     std::vector<ProfileType> transPhcs = ptManager_->FindAllTransPhcByBaseType(rootType);
@@ -109,12 +130,12 @@ void PGOHClassGenerator::CaculateMaxNumOfObjIncludeProtoTransition(PGOSampleType
         }
         uint32_t rootNumOfProps = reinterpret_cast<RootHClassLayoutDesc *>(rootHClassDesc)->NumOfProps();
         uint32_t maxNumOfProps = rootNumOfProps;
-        CaculateMaxNumOfObj(desc, rootHClassDesc, rootNumOfProps, maxNumOfProps);
+        CalculateMaxNumOfObj(desc, rootHClassDesc, rootNumOfProps, maxNumOfProps);
         maxNum = std::max(maxNum, maxNumOfProps);
     }
 }
 
-void PGOHClassGenerator::CaculateMaxNumOfObj(
+void PGOHClassGenerator::CalculateMaxNumOfObj(
     const PGOHClassTreeDesc *desc, const HClassLayoutDesc *parent, uint32_t lastNum, uint32_t &maxNum) const
 {
     if (lastNum > maxNum) {
@@ -125,17 +146,17 @@ void PGOHClassGenerator::CaculateMaxNumOfObj(
         if (layoutDesc == nullptr) {
             return true;
         }
-        CaculateMaxNumOfObj(desc, layoutDesc, lastNum + 1, maxNum);
+        CalculateMaxNumOfObj(desc, layoutDesc, lastNum + 1, maxNum);
         return true;
     });
 }
 
-bool PGOHClassGenerator::CheckIsValid(PGOSampleType type, uint32_t maxNum, bool isCache) const
+bool PGOHClassGenerator::CheckIsValid(PGOSampleType type, uint32_t maxNum) const
 {
     if (maxNum > PropertyAttributes::MAX_FAST_PROPS_CAPACITY) {
         return false;
     }
-    if (isCache && !ObjectFactory::CanObjectLiteralHClassCache(maxNum)) {
+    if (IsCache() && !ObjectFactory::CanObjectLiteralHClassCache(maxNum)) {
         return typeRecorder_.IsValidPt(type.GetProfileType());
     }
     return true;
@@ -144,7 +165,7 @@ bool PGOHClassGenerator::CheckIsValid(PGOSampleType type, uint32_t maxNum, bool 
 JSHandle<JSHClass> PGOHClassGenerator::CreateRootPHClass(
     ProfileType rootType, const HClassLayoutDesc *layoutDesc, uint32_t maxNum, bool isTransitionPhc) const
 {
-    JSHandle<JSHClass> rootHClass = CreateRootHClass(rootType, layoutDesc, maxNum, false);
+    JSHandle<JSHClass> rootHClass = CreateRootHClass(rootType, layoutDesc, maxNum);
     // transition phc is for common function now
     if (!isTransitionPhc) {
         rootHClass->SetClassPrototype(true);
@@ -156,7 +177,7 @@ JSHandle<JSHClass> PGOHClassGenerator::CreateRootPHClass(
 JSHandle<JSHClass> PGOHClassGenerator::CreateRootCHClass(
     ProfileType rootType, const HClassLayoutDesc *layoutDesc, uint32_t maxNum) const
 {
-    JSHandle<JSHClass> rootHClass = CreateRootHClass(rootType, layoutDesc, maxNum, false);
+    JSHandle<JSHClass> rootHClass = CreateRootHClass(rootType, layoutDesc, maxNum);
     rootHClass->SetClassConstructor(true);
     rootHClass->SetConstructor(true);
     rootHClass->SetCallable(true);
@@ -164,13 +185,27 @@ JSHandle<JSHClass> PGOHClassGenerator::CreateRootCHClass(
 }
 
 JSHandle<JSHClass> PGOHClassGenerator::CreateRootHClass(
-    ProfileType rootType, const HClassLayoutDesc *layoutDesc, uint32_t maxNum, bool isCache) const
+    ProfileType rootType, const HClassLayoutDesc *layoutDesc, uint32_t maxNum) const
 {
     auto thread = ptManager_->GetJSThread();
     auto hclassValue = ptManager_->QueryHClass(rootType, rootType);
     JSHandle<JSHClass> rootHClass(thread, hclassValue);
     if (hclassValue.IsUndefined()) {
-        rootHClass = JSHClass::CreateRootHClassFromPGO(thread, layoutDesc, maxNum, isCache);
+        rootHClass = JSHClass::CreateRootHClassFromPGO(thread, layoutDesc, maxNum);
+        ptManager_->RecordHClass(rootType, rootType, rootHClass.GetTaggedType());
+    }
+    return rootHClass;
+}
+
+JSHandle<JSHClass> PGOHClassGenerator::CreateRootHClassWithCached(
+    ProfileType rootType, const HClassLayoutDesc *layoutDesc,
+    uint32_t literalLength, uint32_t maxPropsNum) const
+{
+    auto thread = ptManager_->GetJSThread();
+    auto hclassValue = ptManager_->QueryHClass(rootType, rootType);
+    JSHandle<JSHClass> rootHClass(thread, hclassValue);
+    if (hclassValue.IsUndefined()) {
+        rootHClass = JSHClass::CreateRootHClassWithCached(thread, layoutDesc, literalLength, maxPropsNum);
         ptManager_->RecordHClass(rootType, rootType, rootHClass.GetTaggedType());
     }
     return rootHClass;

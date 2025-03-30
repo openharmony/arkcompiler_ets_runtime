@@ -31,24 +31,60 @@
 #include "ecmascript/platform/mutex.h"
 
 namespace panda::ecmascript {
+enum RegionEvacuateType {
+    REGION_NEW_TO_NEW,
+    REGION_NEW_TO_OLD,
+    OBJECT_EVACUATE,
+};
 class ParallelEvacuator {
 public:
-    explicit ParallelEvacuator(Heap *heap) : heap_(heap) {}
+    explicit ParallelEvacuator(Heap *heap);
     ~ParallelEvacuator() = default;
     void Initialize();
     void Finalize();
     void Evacuate();
+    void SweepNewToOldRegions();
 
     size_t GetPromotedSize() const
     {
         return promotedSize_;
     }
-
-    size_t GetEdenToYoungSize() const
-    {
-        return edenToYoungSize_;
-    }
 private:
+    class UpdateRootVisitor final : public RootVisitor {
+    public:
+        explicit UpdateRootVisitor(ParallelEvacuator *evacuator);
+        ~UpdateRootVisitor() = default;
+
+        void VisitRoot([[maybe_unused]] Root type, ObjectSlot slot) override;
+        void VisitRangeRoot([[maybe_unused]] Root type, ObjectSlot start, ObjectSlot end) override;
+        void VisitBaseAndDerivedRoot([[maybe_unused]] Root type, ObjectSlot base, ObjectSlot derived,
+                                     uintptr_t baseOldObject) override;
+    private:
+        ParallelEvacuator *evacuator_ {nullptr};
+    };
+
+    class SetObjectFieldRSetVisitor final : public EcmaObjectRangeVisitor<SetObjectFieldRSetVisitor> {
+    public:
+        explicit SetObjectFieldRSetVisitor(ParallelEvacuator *evacuator);
+        ~SetObjectFieldRSetVisitor() = default;
+
+        void VisitObjectRangeImpl(TaggedObject *root, ObjectSlot start, ObjectSlot end, VisitObjectArea area);
+    private:
+        ParallelEvacuator *evacuator_ {nullptr};
+    };
+
+    template <TriggerGCType gcType, bool needUpdateLocalToShare>
+    class UpdateNewObjectFieldVisitor final :
+        public EcmaObjectRangeVisitor<UpdateNewObjectFieldVisitor<gcType, needUpdateLocalToShare>> {
+    public:
+        explicit UpdateNewObjectFieldVisitor(ParallelEvacuator *evacuator);
+        ~UpdateNewObjectFieldVisitor() = default;
+
+        void VisitObjectRangeImpl(TaggedObject *root, ObjectSlot start, ObjectSlot end, VisitObjectArea area);
+    private:
+        ParallelEvacuator *evacuator_ {nullptr};
+    };
+
     class EvacuationTask : public Task {
     public:
         EvacuationTask(int32_t id, uint32_t idOrder, ParallelEvacuator *evacuator);
@@ -82,7 +118,7 @@ private:
     public:
         Workload(ParallelEvacuator *evacuator, Region *region) : evacuator_(evacuator), region_(region) {};
         virtual ~Workload() = default;
-        virtual bool Process(bool isMain) = 0;
+        virtual bool Process(bool isMain, uint32_t threadIndex) = 0;
         inline Region *GetRegion() const
         {
             return region_;
@@ -128,24 +164,15 @@ private:
     public:
         EvacuateWorkload(ParallelEvacuator *evacuator, Region *region) : Workload(evacuator, region) {}
         ~EvacuateWorkload() override = default;
-        bool Process(bool isMain) override;
+        bool Process(bool isMain, uint32_t threadIndex) override;
     };
 
     class UpdateRSetWorkload : public Workload {
     public:
-        UpdateRSetWorkload(ParallelEvacuator *evacuator, Region *region, bool isEdenGC)
-            : Workload(evacuator, region), isEdenGC_(isEdenGC) {}
+        UpdateRSetWorkload(ParallelEvacuator *evacuator, Region *region)
+            : Workload(evacuator, region) {}
         ~UpdateRSetWorkload() override = default;
-        bool Process(bool isMain) override;
-    private:
-        bool isEdenGC_;
-    };
-
-    class UpdateNewToEdenRSetWorkload : public Workload {
-    public:
-        UpdateNewToEdenRSetWorkload(ParallelEvacuator *evacuator, Region *region) : Workload(evacuator, region) {}
-        ~UpdateNewToEdenRSetWorkload() override = default;
-        bool Process(bool isMain) override;
+        bool Process(bool isMain, uint32_t threadIndex) override;
     };
 
     class UpdateNewRegionWorkload : public Workload {
@@ -153,7 +180,7 @@ private:
         UpdateNewRegionWorkload(ParallelEvacuator *evacuator, Region *region, bool isYoungGC)
             : Workload(evacuator, region), isYoungGC_(isYoungGC) {}
         ~UpdateNewRegionWorkload() override = default;
-        bool Process(bool isMain) override;
+        bool Process(bool isMain, uint32_t threadIndex) override;
     private:
         bool isYoungGC_;
     };
@@ -163,7 +190,17 @@ private:
         UpdateAndSweepNewRegionWorkload(ParallelEvacuator *evacuator, Region *region, bool isYoungGC)
             : Workload(evacuator, region), isYoungGC_(isYoungGC) {}
         ~UpdateAndSweepNewRegionWorkload() override = default;
-        bool Process(bool isMain) override;
+        bool Process(bool isMain, uint32_t threadIndex) override;
+    private:
+        bool isYoungGC_;
+    };
+
+    class UpdateNewToOldEvacuationWorkload : public Workload {
+    public:
+        UpdateNewToOldEvacuationWorkload(ParallelEvacuator *evacuator, Region *region, bool isYoungGC)
+            : Workload(evacuator, region), isYoungGC_(isYoungGC) {}
+        ~UpdateNewToOldEvacuationWorkload() override = default;
+        bool Process(bool isMain, uint32_t threadIndex) override;
     private:
         bool isYoungGC_;
     };
@@ -180,22 +217,19 @@ private:
 
     void UpdateTrackInfo();
 
-    bool ProcessWorkloads(bool isMain = false);
+    bool ProcessWorkloads(bool isMain = false, uint32_t threadIndex = 0);
 
     void EvacuateSpace();
     bool EvacuateSpace(TlabAllocator *allocation, uint32_t threadIndex, uint32_t idOrder, bool isMain = false);
     void UpdateRecordWeakReferenceInParallel(uint32_t idOrder);
     void EvacuateRegion(TlabAllocator *allocator, Region *region, std::unordered_set<JSTaggedType> &trackSet);
-    template<bool SetEdenObject>
     inline void SetObjectFieldRSet(TaggedObject *object, JSHClass *cls);
-    template<bool SetEdenObject>
     inline void SetObjectRSet(ObjectSlot slot, Region *region);
 
-    inline void UpdateLocalToShareRSet(TaggedObject *object, JSHClass *cls);
-    inline void SetLocalToShareRSet(ObjectSlot slot, Region *region);
-
-    inline bool IsWholeRegionEvacuate(Region *region);
-    inline bool WholeRegionEvacuate(Region *region);
+    void ProcessFromSpaceEvacuation();
+    inline RegionEvacuateType SelectRegionEvacuateType(Region *region);
+    inline bool TryWholeRegionEvacuate(Region *region, RegionEvacuateType type);
+    inline void CompensateOvershootSizeIfHighAliveRate(Region* region);
     void VerifyValue(TaggedObject *object, ObjectSlot slot);
     void VerifyHeapObject(TaggedObject *object);
 
@@ -203,46 +237,48 @@ private:
     void UpdateRoot();
     template<TriggerGCType gcType>
     void UpdateWeakReferenceOpt();
-    template<bool IsEdenGC>
     void UpdateRSet(Region *region);
-    void UpdateNewToEdenRSetReference(Region *region);
-    template<TriggerGCType gcType>
+    template<TriggerGCType gcType, bool needUpdateLocalToShare>
     void UpdateNewRegionReference(Region *region);
-    template<TriggerGCType gcType>
+    template<TriggerGCType gcType, bool needUpdateLocalToShare>
     void UpdateAndSweepNewRegionReference(Region *region);
+    template<TriggerGCType gcType, bool needUpdateLocalToShare>
+    void UpdateNewObjectField(TaggedObject *object, JSHClass *cls,
+        UpdateNewObjectFieldVisitor<gcType, needUpdateLocalToShare> &updateFieldVisito);
     template<TriggerGCType gcType>
-    void UpdateNewObjectField(TaggedObject *object, JSHClass *cls);
+    void UpdateNewToOldEvacuationReference(Region *region, uint32_t threadIndex);
 
-    template<typename Callback>
-    inline bool VisitBodyInObj(TaggedObject *root, ObjectSlot start, ObjectSlot end, Callback callback);
     inline bool UpdateForwardedOldToNewObjectSlot(TaggedObject *object, ObjectSlot &slot, bool isWeak);
-    template<bool IsEdenGC>
     inline bool UpdateOldToNewObjectSlot(ObjectSlot &slot);
-    inline bool UpdateNewToEdenObjectSlot(ObjectSlot &slot);
     inline void UpdateObjectSlot(ObjectSlot &slot);
-    template<TriggerGCType gcType>
-    inline void UpdateObjectSlotOpt(ObjectSlot &slot);
     inline void UpdateWeakObjectSlot(TaggedObject *object, ObjectSlot &slot);
-    template<TriggerGCType gcType>
-    inline bool UpdateWeakObjectSlotOpt(JSTaggedValue value, ObjectSlot &slot);
+    inline void UpdateCrossRegionObjectSlot(ObjectSlot &slot);
+    template<TriggerGCType gcType, bool needUpdateLocalToShare>
+    inline void UpdateNewObjectSlot(ObjectSlot &slot);
+    inline void UpdateObjectSlotValue(JSTaggedValue value, ObjectSlot &slot);
 
     inline int CalculateEvacuationThreadNum();
     inline int CalculateUpdateThreadNum();
     void WaitFinished();
 
     Heap *heap_;
+    UpdateRootVisitor updateRootVisitor_;
+    SetObjectFieldRSetVisitor setObjectFieldRSetVisitor_;
     TlabAllocator *allocator_ {nullptr};
 
     uintptr_t waterLine_ = 0;
     std::unordered_set<JSTaggedType> arrayTrackInfoSets_[MAX_TASKPOOL_THREAD_NUM + 1];
+    bool hasNewToOldRegions_ {false};
     uint32_t evacuateTaskNum_ = 0;
     std::atomic_int parallel_ = 0;
     Mutex mutex_;
     ConditionVariable condition_;
     std::atomic<size_t> promotedSize_ = 0;
-    std::atomic<size_t> edenToYoungSize_ = 0;
     WorkloadSet evacuateWorkloadSet_;
     WorkloadSet updateWorkloadSet_;
+
+    template<TriggerGCType gcType>
+    friend class SlotUpdateRangeVisitor;
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_MEM_PARALLEL_EVACUATOR_H

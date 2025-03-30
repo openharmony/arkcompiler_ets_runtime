@@ -111,7 +111,7 @@ EnqueueJobTrace::EnqueueJobTrace(JSThread *thread, const JSHandle<PendingJob> &p
         int columnNumber = std::stoi(jsFrameInfo.pos.substr(pos + 1));
         auto sourceMapcb = thread->GetEcmaVM()->GetSourceMapTranslateCallback();
         if (sourceMapcb != nullptr && !jsFrameInfo.fileName.empty()) {
-            sourceMapcb(jsFrameInfo.fileName, lineNumber, columnNumber);
+            sourceMapcb(jsFrameInfo.fileName, lineNumber, columnNumber, jsFrameInfo.packageName);
         }
     }
 

@@ -45,3 +45,10 @@ Object.defineProperties(obj1, {
 print(obj1.foo);
 print(obj1.bar);
 print(obj1.hhh);
+
+function f0() {
+    return 1;
+}
+
+Object.defineProperty(f0, "length", { enumerable: true, get: f0 });
+print(f0.length);

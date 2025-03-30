@@ -14,24 +14,33 @@
 group("ark_jit_ts_test") {
   testonly = true
   test_list = [
+    "lower_jscode_0001",
+    "lower_jscode_0002",
     "arguments",
     "create_arguments",
+    "deopt",
     "function_reuse",
+    "icnotfound",
     "intern_string_strict_equal_1",
     "intern_string_strict_equal_2",
+    "isin",
     "try_catch_empty",
     "ldobjbyname",
     "for_loop",
+    "for_of",
     "typed_array",
     "while_loop",
     "exception",
     "data_view",
-
+    "pgo_ldobjbyvalue_string",
+    "pgo_ldobjbyvalue_symbol",
+    "pgo_stobjbyvalue",
     "construct_with_normal_function",
     "addition_assignment",
     "catch_with_osr",
     "jit_test_0001",
     "jit_test_0002",
+    "wide_call_range_pref_imm16v8",
     "string_length",
     "ts_inline",
     "proxy_fast_call",
@@ -43,6 +52,8 @@ group("ark_jit_ts_test") {
     "inc",
     "uncheck_float64_to_int32",
     "retype_convert_test",
+    "stack_overflow",
+    "mega_ic_test",
   ]
 
   deps = [ "pgo_roottype_test:pgo_roottype_test" ]

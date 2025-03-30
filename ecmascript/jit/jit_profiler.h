@@ -66,9 +66,14 @@ public:
     {
         return bcOffsetPGODefOpTypeMap_;
     }
+    std::unordered_map<int32_t, bool> GetBoolMap()
+    {
+        return bcOffsetBoolMap_;
+    }
     void InitJITProfiler()
     {
-        ptManager_ = vm_->GetJSThread()->GetCurrentEcmaContext()->GetPTManager();
+        mainThread_ = vm_->GetJSThread();
+        ptManager_ = mainThread_->GetCurrentEcmaContext()->GetPTManager();
     }
     void SetCompilationEnv(CompilationEnv *env)
     {
@@ -135,11 +140,11 @@ private:
     bool AddTranstionObjectInfo(int32_t bcOffset, JSHClass *receiver,
 		                JSHClass *hold, JSHClass *holdTra, PGOSampleType accessorMethod);
     bool AddObjectInfo(ApEntityId abcId, int32_t bcOffset, JSHClass *receiver,
-		       JSHClass *hold, JSHClass *holdTra, uint32_t accessorMethodId = 0);
+		               JSHClass *hold, JSHClass *holdTra, uint32_t accessorMethodId = 0);
     void AddBuiltinsInfo(ApEntityId abcId, int32_t bcOffset, JSHClass *receiver,
                          JSHClass *transitionHClass, OnHeapMode onHeap = OnHeapMode::NONE,
                          bool everOutOfBounds = false);
-    void AddBuiltinsGlobalInfo(ApEntityId abcId, int32_t bcOffset, GlobalIndex globalsId);
+    void AddBuiltinsGlobalInfo(ApEntityId abcId, int32_t bcOffset, GlobalIndex globalId);
     bool AddBuiltinsInfoByNameInInstance(ApEntityId abcId, int32_t bcOffset, JSHClass *receiver);
     bool AddBuiltinsInfoByNameInProt(ApEntityId abcId, int32_t bcOffset, JSHClass *receiver, JSHClass *hold);
 
@@ -161,9 +166,20 @@ private:
         }
     }
 
+    inline void SetBcOffsetBool(uint32_t offset, bool isInsufficientProfile = false)
+    {
+        bcOffsetBoolMap_[offset] = isInsufficientProfile;
+    }
+
+    inline bool IsIncompleteProfileTypeInfo();
+    inline bool SlotValueIsUndefined(uint32_t slotId);
+    inline void UpdateBcOffsetBool(uint32_t offset, uint32_t slotId);
+    inline void UpdateBcOffsetBoolWithNearSlotId(uint32_t offset, uint32_t slotId);
+
     void Clear();
 
     EcmaVM *vm_ { nullptr };
+    JSThread *mainThread_ {nullptr};
     kungfu::PGOTypeManager *ptManager_ { nullptr };
     ProfileTypeInfo* profileTypeInfo_ { nullptr };
     ApEntityId abcId_ { 0 };
@@ -171,6 +187,7 @@ private:
     std::unordered_map<int32_t, const PGOSampleType*> bcOffsetPGOOpTypeMap_ {};
     std::unordered_map<int32_t, const PGORWOpType*> bcOffsetPGORwTypeMap_ {};
     std::unordered_map<int32_t, const PGODefineOpType*> bcOffsetPGODefOpTypeMap_{};
+    std::unordered_map<int32_t, bool> bcOffsetBoolMap_ {};
     RecursiveMutex mutex_;
     CompilationEnv *compilationEnv_ {nullptr};
     Chunk *chunk_ {nullptr};

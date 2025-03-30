@@ -13,29 +13,13 @@
  * limitations under the License.
  */
 
-#include <chrono>
-#include <iostream>
-#include <memory>
 
-#include "ecmascript/base/string_helper.h"
 #include "ecmascript/checkpoint/thread_state_transition.h"
-#include "ecmascript/compiler/aot_compilation_env.h"
-#include "ecmascript/compiler/aot_compiler_preprocessor.h"
-#include "ecmascript/compiler/aot_file/aot_file_manager.h"
 #include "ecmascript/compiler/pass_manager.h"
-#include "ecmascript/ecma_string.h"
-#include "ecmascript/js_runtime_options.h"
-#include "ecmascript/log.h"
 #include "ecmascript/log_wrapper.h"
-#include "ecmascript/napi/include/jsnapi.h"
-#include "ecmascript/ohos/enable_aot_list_helper.h"
-#include "ecmascript/ohos/ohos_pkg_args.h"
 #include "ecmascript/ohos/ohos_pkg_verifier.h"
 #include "ecmascript/platform/aot_crash_info.h"
-#include "ecmascript/platform/file.h"
-#include "ecmascript/platform/filesystem.h"
 
-#include "ecmascript/compiler/aot_compiler_stats.h"
 
 namespace panda::ecmascript::kungfu {
 namespace {
@@ -71,13 +55,6 @@ bool CheckVersion(JSRuntimeOptions& runtimeOptions, AotCompilerStats& compilerSt
     return false;
 }
 
-bool IsExistsPkgInfo(AotCompilerPreprocessor &cPreprocessor)
-{
-    if (cPreprocessor.GetMainPkgArgs()) {
-        return true;
-    }
-    return false;
-}
 } // namespace
 
 int Main(const int argc, const char **argv)
@@ -128,12 +105,6 @@ int Main(const int argc, const char **argv)
             return ERR_FAIL;
         }
 
-        if (IsExistsPkgInfo(cPreprocessor)) {
-            if (AotCrashInfo::IsAotEscaped(cPreprocessor.GetMainPkgArgs()->GetPgoDir())) {
-                LOG_COMPILER(ERROR) << "Stop compile AOT because there are multiple crashes";
-                return ERR_FAIL;
-            }
-        }
         if (runtimeOptions.IsPartialCompilerMode() && cOptions.profilerIn_.empty()) {
             // no need to compile in partial mode without any ap files.
             return ERR_NO_AP;
@@ -151,18 +122,18 @@ int Main(const int argc, const char **argv)
         profilerDecoder.SetHotnessThreshold(cOptions.hotnessThreshold_);
         profilerDecoder.SetInPath(cOptions.profilerIn_);
         cPreprocessor.AOTInitialize();
-        uint32_t checksum = cPreprocessor.GenerateAbcFileInfos();
+        std::unordered_map<CString, uint32_t> fileNameToChecksumMap;
+        cPreprocessor.GenerateAbcFileInfos(fileNameToChecksumMap);
 
         if (runtimeOptions.IsTargetCompilerMode() && (cPreprocessor.HasExistsAOTFiles(cOptions) ||
             cPreprocessor.HasPreloadAotFile())) {
             LOG_COMPILER(ERROR) << "The AOT file already exists and will not be compiled anymore";
             return ERR_OK;
         }
-
         ret = cPreprocessor.GetCompilerResult();
         // Notice: lx move load pandaFileHead and verify before GeneralAbcFileInfos.
         // need support multiple abc
-        auto isPgoMerged = cPreprocessor.HandleMergedPgoFile(checksum);
+        auto isPgoMerged = cPreprocessor.HandleMergedPgoFile(fileNameToChecksumMap);
         if (CheckVersion(runtimeOptions, compilerStats, isPgoMerged)) {
             return ERR_CHECK_VERSION;
         }
@@ -215,13 +186,10 @@ int Main(const int argc, const char **argv)
                                 cOptions.optBCRange_);
 
         bool isEnableLiteCG = runtimeOptions.IsCompilerEnableLiteCG();
-        if (ohos::EnableAotJitListHelper::GetInstance()->IsEnableAot(bundleName)) {
-            isEnableLiteCG = true;
-        }
-        vm->GetJSOptions().SetCompilerEnableLiteCG(isEnableLiteCG);
         compilerStats.SetIsLiteCg(isEnableLiteCG);
 
-        AOTFileGenerator generator(&log, &logList, &aotCompilationEnv, cOptions.triple_, isEnableLiteCG);
+        AOTFileGenerator generator(&log, &logList, &aotCompilationEnv, cOptions.triple_, isEnableLiteCG,
+                                   cOptions.anFileMaxByteSize_);
         if (runtimeOptions.IsTargetCompilerMode() && runtimeOptions.IsEnableAotCodeComment()) {
             if (!generator.CreateAOTCodeCommentFile(cOptions.outputFileName_ + AOTFileManager::FILE_EXTENSION_AN)) {
                 LOG_COMPILER(ERROR) << "Generate aot code comment file failed.";
@@ -231,7 +199,8 @@ int Main(const int argc, const char **argv)
         if (compilerStats.GetCompilerMethodCount() == 0) {
             return runtimeOptions.IsPartialCompilerMode() ? ERR_AN_EMPTY : ERR_OK;
         }
-        if (!generator.SaveAOTFile(cOptions.outputFileName_ + AOTFileManager::FILE_EXTENSION_AN, appSignature)) {
+        if (!generator.SaveAOTFile(cOptions.outputFileName_ + AOTFileManager::FILE_EXTENSION_AN, appSignature,
+                                   fileNameToChecksumMap)) {
             return ERR_AN_FAIL;
         }
         if (!generator.SaveSnapshotFile()) {
@@ -240,10 +209,6 @@ int Main(const int argc, const char **argv)
         log.Print();
         if (runtimeOptions.IsTargetCompilerMode()) {
             compilerStats.PrintCompilerStatsLog();
-        }
-        if (IsExistsPkgInfo(cPreprocessor)) {
-            ohos::EnableAotJitListHelper::GetInstance()->AddEnableListCount(
-                ret, cPreprocessor.GetMainPkgArgs()->GetPgoDir());
         }
     }
 

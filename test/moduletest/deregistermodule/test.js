@@ -15,4 +15,5 @@
 
 export {name};
 const name = 'Tyrion';
-print("loading test.js...")
+
+test_end();

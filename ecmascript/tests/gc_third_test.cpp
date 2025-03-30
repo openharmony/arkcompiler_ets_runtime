@@ -16,8 +16,16 @@
 #include <chrono>
 #include <thread>
 
+#include "assembler/assembly-emitter.h"
+#include "assembler/assembly-parser.h"
+
 #include "ecmascript/builtins/builtins_ark_tools.h"
+#include "ecmascript/containers/containers_bitvector.h"
 #include "ecmascript/ecma_vm.h"
+#include "ecmascript/js_api/js_api_bitvector.h"
+#include "ecmascript/jspandafile/js_pandafile.h"
+#include "ecmascript/jspandafile/js_pandafile_manager.h"
+#include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/mem/full_gc.h"
 #include "ecmascript/object_factory-inl.h"
 #include "ecmascript/mem/concurrent_marker.h"
@@ -26,6 +34,7 @@
 #include "ecmascript/mem/mem_controller.h"
 #include "ecmascript/mem/incremental_marker.h"
 #include "ecmascript/mem/shared_heap/shared_concurrent_marker.h"
+#include "ecmascript/mem/shared_heap/shared_concurrent_sweeper.h"
 #include "ecmascript/mem/gc_key_stats.h"
 #include "ecmascript/mem/gc_stats.h"
 #include "ecmascript/mem/allocation_inspector.h"
@@ -35,6 +44,8 @@
 using namespace panda;
 
 using namespace panda::ecmascript;
+using namespace panda::panda_file;
+using namespace panda::pandasm;
 
 namespace panda::test {
 class GCTest : public BaseTestWithScope<false> {
@@ -42,7 +53,6 @@ public:
     void SetUp() override
     {
         JSRuntimeOptions options;
-        options.SetEnableEdenGC(true);
         instance = JSNApi::CreateEcmaVM(options);
         ASSERT_TRUE(instance != nullptr) << "Cannot create EcmaVM";
         thread = instance->GetJSThread();
@@ -271,14 +281,6 @@ HWTEST_F_L0(GCTest, CheckAndTriggerHintGCTest006)
 #endif
 }
 
-HWTEST_F_L0(GCTest, CalculateIdleDurationTest001)
-{
-    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-    heap->SetMarkType(MarkType::MARK_EDEN);
-    ASSERT_EQ(heap->GetMarkType(), MarkType::MARK_EDEN);
-    heap->CalculateIdleDuration();
-}
-
 HWTEST_F_L0(GCTest, CalculateIdleDurationTest002)
 {
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
@@ -372,14 +374,6 @@ HWTEST_F_L0(GCTest, TriggerIdleCollectionTest004)
     heap->TriggerIdleCollection(1000);
 }
 
-HWTEST_F_L0(GCTest, TriggerIdleCollectionTest005)
-{
-    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-    heap->SetIdleTask(IdleTaskType::FINISH_MARKING);
-    heap->SetMarkType(MarkType::MARK_EDEN);
-    heap->TriggerIdleCollection(1000);
-}
-
 HWTEST_F_L0(GCTest, TriggerIdleCollectionTest006)
 {
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
@@ -411,21 +405,7 @@ HWTEST_F_L0(GCTest, ReclaimTest001)
 {
     SharedHeap *heap = SharedHeap::GetInstance();
     heap->DisableParallelGC(thread);
-    heap->Reclaim(TriggerGCType::EDEN_GC);
-}
-
-HWTEST_F_L0(GCTest, CollectGarbageTest001)
-{
-    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-    heap->CollectGarbage(TriggerGCType::EDEN_GC, GCReason::IDLE);
-}
-
-HWTEST_F_L0(GCTest, CollectGarbageTest002)
-{
-    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-    heap->SetMarkType(MarkType::MARK_FULL);
-    ASSERT_EQ(heap->GetMarkType(), MarkType::MARK_FULL);
-    heap->CollectGarbage(TriggerGCType::EDEN_GC, GCReason::IDLE);
+    heap->Reclaim(TriggerGCType::YOUNG_GC);
 }
 
 HWTEST_F_L0(GCTest, CollectGarbageTest003)
@@ -533,35 +513,6 @@ HWTEST_F_L0(GCTest, SelectGCTypeTest002)
     ASSERT_EQ(heap->SelectGCType(), OLD_GC);
 }
 
-HWTEST_F_L0(GCTest, CollectGarbageTest004)
-{
-    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-    thread->EnableCrossThreadExecution();
-    heap->CollectGarbage(TriggerGCType::EDEN_GC, GCReason::TRIGGER_BY_TASKPOOL);
-}
-
-HWTEST_F_L0(GCTest, CollectGarbageTest005)
-{
-    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-    heap->SetOnSerializeEvent(true);
-    heap->CollectGarbage(TriggerGCType::EDEN_GC, GCReason::TRIGGER_BY_TASKPOOL);
-}
-
-HWTEST_F_L0(GCTest, CollectGarbageTest006)
-{
-    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-    heap->SetOnSerializeEvent(true);
-    thread->EnableCrossThreadExecution();
-    heap->CollectGarbage(TriggerGCType::EDEN_GC, GCReason::TRIGGER_BY_TASKPOOL);
-}
-
-HWTEST_F_L0(GCTest, CollectGarbageTest007)
-{
-    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-    heap->GetConcurrentMarker()->ConfigConcurrentMark(false);
-    heap->CollectGarbage(TriggerGCType::EDEN_GC, GCReason::TRIGGER_BY_TASKPOOL);
-}
-
 HWTEST_F_L0(GCTest, CollectGarbageTest008)
 {
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
@@ -575,15 +526,6 @@ HWTEST_F_L0(GCTest, CollectGarbageTest009)
     heap->GetConcurrentMarker()->EnableConcurrentMarking(EnableConcurrentMarkType::REQUEST_DISABLE);
     ASSERT_TRUE(heap->GetConcurrentMarker()->IsRequestDisabled());
     heap->CollectGarbage(TriggerGCType::YOUNG_GC, GCReason::TRIGGER_BY_TASKPOOL);
-}
-
-HWTEST_F_L0(GCTest, AdjustBySurvivalRateTest001)
-{
-    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-    heap->SetMarkType(MarkType::MARK_EDEN);
-    heap->AdjustBySurvivalRate(100);
-    heap->SetMarkType(MarkType::MARK_YOUNG);
-    heap->AdjustBySurvivalRate(100);
 }
 
 HWTEST_F_L0(GCTest, TryTriggerIdleCollectionTest007)
@@ -600,15 +542,6 @@ HWTEST_F_L0(GCTest, TryTriggerFullMarkBySharedLimitTest004)
     heap->TryTriggerFullMarkBySharedLimit();
     heap->GetConcurrentMarker()->ConfigConcurrentMark(false);
     heap->TryTriggerFullMarkBySharedLimit();
-}
-
-HWTEST_F_L0(GCTest, TriggerConcurrentMarkingTest002)
-{
-    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-    heap->SetMarkType(MarkType::MARK_FULL);
-    heap->TriggerConcurrentMarking();
-    heap->SetMarkType(MarkType::MARK_EDEN);
-    heap->TriggerConcurrentMarking();
 }
 
 HWTEST_F_L0(GCTest, TriggerConcurrentMarkingTest003)
@@ -680,14 +613,14 @@ HWTEST_F_L0(GCTest, StartCalculationBeforeGCTest001)
     MemController *memController = new MemController(heap);
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
     memController->StartCalculationBeforeGC();
-    memController->StopCalculationAfterGC(TriggerGCType::EDEN_GC);
+    memController->StopCalculationAfterGC(TriggerGCType::YOUNG_GC);
 }
 
 HWTEST_F_L0(GCTest, StartCalculationBeforeGCTest002)
 {
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
     MemController *memController = new MemController(heap);
-    memController->StopCalculationAfterGC(TriggerGCType::EDEN_GC);
+    memController->StopCalculationAfterGC(TriggerGCType::YOUNG_GC);
 }
 
 HWTEST_F_L0(GCTest, DryTrunkExpandTest001)
@@ -736,4 +669,80 @@ HWTEST_F_L0(GCTest, InvokeAllocationInspectorTest001)
     counter->InvokeAllocationInspector(10000, 100, 100);
 }
 
+HWTEST_F_L0(GCTest, OldSpaceValidCheck)
+{
+    static constexpr size_t kLength = 10 * 1024;
+    static constexpr size_t kCount = 2;
+    static constexpr size_t kLimit = 380 * 1024 * 1024;
+    instance->GetJSOptions().SetEnableForceGC(false);
+    Heap *heap = const_cast<Heap *>(instance->GetHeap());
+    ObjectFactory *factory = heap->GetEcmaVM()->GetFactory();
+    auto array = factory->NewTaggedArray(kLength, JSTaggedValue::Hole(), MemSpaceType::OLD_SPACE);
+    heap->ShouldThrowOOMError(true);
+    heap->GetOldSpace()->IncreaseLiveObjectSize(kLimit);
+    for (size_t i = 0; i < kCount; i++) {
+        array = factory->NewTaggedArray(kLength, JSTaggedValue::Hole(), MemSpaceType::OLD_SPACE);
+        Region *objectRegion = Region::ObjectAddressToRange(*array);
+        bool inHeap = false;
+        heap->GetOldSpace()->EnumerateRegions([objectRegion, &inHeap](Region *each) {
+            if (objectRegion == each) {
+                inHeap = true;
+            }
+        });
+        EXPECT_TRUE(inHeap);
+    }
+}
+
+HWTEST_F_L0(GCTest, DisableSharedConcurrentSweep)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    SharedHeap *sHeap = SharedHeap::GetInstance();
+    sHeap->GetSweeper()->ConfigConcurrentSweep(false);
+    {
+        [[maybe_unused]] ecmascript::EcmaHandleScope baseScope(thread);
+        [[maybe_unused]] JSHandle<EcmaString> key1(factory->NewFromASCII("error1"));
+        [[maybe_unused]] JSHandle<EcmaString> key2(factory->NewFromASCII("error2"));
+        [[maybe_unused]] JSHandle<EcmaString> msg(factory->NewFromASCII("this is error"));
+        [[maybe_unused]] JSHandle<EcmaString> key3(factory->NewFromASCII("error3"));
+        [[maybe_unused]] JSHandle<EcmaString> key4(factory->NewFromASCII("error4"));
+        [[maybe_unused]] JSHandle<EcmaString> msg2(factory->NewFromASCII("this is error2"));
+        auto* newBitSetVector = new std::vector<std::bitset<JSAPIBitVector::BIT_SET_LENGTH>>();
+        int32_t capacity = 256;
+        std::bitset<JSAPIBitVector::BIT_SET_LENGTH> initBitSet;
+        newBitSetVector->resize(capacity, initBitSet);
+        auto deleter = []([[maybe_unused]] void *env, void *pointer, [[maybe_unused]] void *data) {
+            if (pointer == nullptr) {
+                return;
+            }
+            delete reinterpret_cast<std::vector<std::bitset<JSAPIBitVector::BIT_SET_LENGTH>> *>(pointer);
+        };
+        [[maybe_unused]] JSHandle<JSNativePointer> pointer = factory->NewSJSNativePointer(newBitSetVector,
+                                                                                          deleter,
+                                                                                          newBitSetVector);
+        const char *filename1 = "__JSPandaFileManagerTest1.pa";
+        const char *filename2 = "__JSPandaFileManagerTest2.pa";
+        const char *data = R"(
+            .function void foo() {}
+        )";
+        JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
+        Parser parser;
+        auto res = parser.Parse(data);
+        std::unique_ptr<const File> pfPtr1 = pandasm::AsmEmitter::Emit(res.Value());
+        std::unique_ptr<const File> pfPtr2 = pandasm::AsmEmitter::Emit(res.Value());
+        std::shared_ptr<JSPandaFile> pf1 = pfManager->NewJSPandaFile(pfPtr1.release(), CString(filename1));
+        std::shared_ptr<JSPandaFile> pf2 = pfManager->NewJSPandaFile(pfPtr2.release(), CString(filename2));
+        pfManager->AddJSPandaFile(pf1);
+        pfManager->AddJSPandaFile(pf2);
+
+        JSHandle<ConstantPool> constpool1 = instance->GetFactory()->NewSConstantPool(1);
+        JSHandle<ConstantPool> constpool2 = instance->GetFactory()->NewSConstantPool(2);
+        constpool1 = Runtime::GetInstance()->AddOrUpdateConstpool(pf1.get(), constpool1, 0);
+        constpool2 = Runtime::GetInstance()->AddOrUpdateConstpool(pf2.get(), constpool2, 0);
+    }
+    sHeap->CollectGarbage<TriggerGCType::SHARED_GC, GCReason::OTHER>(thread);
+    sHeap->WaitGCFinished(thread);
+    sHeap->CollectGarbage<TriggerGCType::SHARED_GC, GCReason::OTHER>(thread);
+    sHeap->WaitGCFinished(thread);
+    sHeap->GetSweeper()->ConfigConcurrentSweep(true);
+};
 } // namespace panda::test

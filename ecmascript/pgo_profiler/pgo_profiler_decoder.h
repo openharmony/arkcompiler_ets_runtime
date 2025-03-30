@@ -41,8 +41,8 @@ public:
 
     bool PUBLIC_API Match(const JSPandaFile *jsPandaFile, const CString &recordName, PGOMethodId methodId);
 
-    bool PUBLIC_API LoadAndVerify(uint32_t checksum,
-                                  const std::shared_ptr<PGOAbcFilePool> &externalAbcFilePool = nullptr);
+    bool PUBLIC_API LoadAndVerify(const std::unordered_map<CString, uint32_t>& fileNameToChecksumMap,
+                                  const std::shared_ptr<PGOAbcFilePool>& externalAbcFilePool = nullptr);
     bool PUBLIC_API LoadFull(const std::shared_ptr<PGOAbcFilePool> &externalAbcFilePool = nullptr);
     void PUBLIC_API Clear();
 
@@ -212,9 +212,11 @@ public:
         return header_->IsCompatibleWithAOTFile();
     }
 
+    void MergeFileNameToChecksumMap(std::unordered_map<CString, uint32_t> &fileNameToChecksumMap) const;
+
 private:
     bool Load(const std::shared_ptr<PGOAbcFilePool> &externalAbcFilePool);
-    bool Verify(uint32_t checksum);
+    bool Verify(const std::unordered_map<CString, uint32_t>& fileNameToChecksumMap);
 
     bool LoadAPBinaryFile(int prot = PAGE_PROT_READ);
     void UnLoadAPBinaryFile();

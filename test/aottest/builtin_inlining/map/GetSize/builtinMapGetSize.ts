@@ -51,14 +51,16 @@ myMap.delete(-200);
 print(myMap.size); //: 6
 
 // Check after inserting elements
+//aot: [trace] aot call builtin: Map.Set, caller function name:func_main_0@builtinMapGetSize
 myMap.set(2000, 1e-98);
 print(myMap.size); //: 6
+//aot: [trace] aot call builtin: Map.Set, caller function name:func_main_0@builtinMapGetSize
 myMap.set(133.33, -1);
 print(myMap.size); //: 7
 
 // Check after clearing
 myMap.clear();
-//aot: [trace] aot inline builtin: Map.clear, caller function name:func_main_0@builtinMapGetSize
+//aot: [trace] aot call builtin: Map.clear, caller function name:func_main_0@builtinMapGetSize
 print(myMap.size); //: 0
 
 // Check deoptimization

@@ -15,8 +15,6 @@
 
 #include "ecmascript/platform/mutex.h"
 
-#include <cstring>
-#include <ctime>
 
 namespace panda::ecmascript {
 

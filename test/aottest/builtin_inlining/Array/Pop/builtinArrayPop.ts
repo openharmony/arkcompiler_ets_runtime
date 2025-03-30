@@ -150,6 +150,7 @@ function popCase3() {
 
   //aot: [trace] aot inline builtin: Array.prototype.pop, caller function name:#*#popCase3@builtinArrayPop
   print(marr.pop(500)); //: 2
+  //aot: [trace] aot call builtin: Object.SetPrototypeOf, caller function name:#*#popCase3@builtinArrayPop
   Object.setPrototypeOf(marr, mimicArray)
 
   //aot: [trace] Check Type: BuiltinInstanceHClassMismatch
@@ -167,6 +168,7 @@ function popCase4() {
           return -100
       }
   }
+  //aot: [trace] aot call builtin: Object.SetPrototypeOf, caller function name:#*#popCase4@builtinArrayPop
   Object.setPrototypeOf(arr2, notArray)
 
   //aot: [trace] aot inline builtin: Array.prototype.pop, caller function name:#*#popCase4@builtinArrayPop

@@ -53,9 +53,7 @@ public:
 
     static inline uint32_t ComputeHash()
     {
-        uint32_t hashSeed = static_cast<uint32_t>(LINEAR_SEED + std::time(nullptr));
-        uint32_t hash = hashSeed * LINEAR_X + LINEAR_Y;
-        return hash;
+        return static_cast<uint32_t>(base::RandomGenerator::GenerateIdentityHash());
     }
 
     bool HasId() const

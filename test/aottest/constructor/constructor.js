@@ -64,3 +64,17 @@ try {
 } catch(e) {
   print(e);
 }
+
+class C27 extends Uint8ClampedArray {
+  constructor(a29) {
+    super(a29);
+    print("hello world");
+  }
+}
+new C27(1);
+function test(){}
+try {
+  Reflect.construct(C27, [-1], test);
+} catch(e) {
+  print(e);
+}

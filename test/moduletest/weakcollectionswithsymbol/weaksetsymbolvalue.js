@@ -19,7 +19,6 @@
  * @tc.type: FUNC
  * @tc.require: issueI7J2VN
  */
-print("weaksetsymbolvalue test start");
 let ws = new WeakSet();
 let sym1 = Symbol("symbol1");
 ws.add(sym1);
@@ -28,15 +27,15 @@ let sym2 = Symbol.for("symbol2");
 try {
     ws.add(sym2);
 } catch (err) {
-    print(err.name);
+    assert_equal(err instanceof TypeError, true);
 }
 
-print("ws.has(sym1) " + ws.has(sym1));
-print("ws.delete(sym1) " + ws.delete(sym1));
-print("ws.has(sym1) " + ws.has(sym1));
+assert_equal(ws.has(sym1),true);
+assert_equal(ws.delete(sym1),true);
+assert_equal(ws.has(sym1),false);
 
-print("ws.has(sym2) " + ws.has(sym2));
-print("ws.delete(sym2) " + ws.delete(sym2));
+assert_equal(ws.has(sym2),false);
+assert_equal(ws.delete(sym2),false);
 
 const symbolFuncsValue = [
     Symbol.asyncIterator,
@@ -58,5 +57,6 @@ symbolFuncsValue.forEach(function (ctor, i) {
     ws.add(ctor, i);
 });
 
-print("ws.has(Symbol.match) " + ws.has(Symbol.match));
-print("weaksetsymbolvalue test end");
+assert_equal(ws.has(Symbol.match),true);
+
+test_end();

@@ -115,7 +115,7 @@ void RegExpParser::Parse()
     buffer_.PutU32(FLAGS_OFFSET, flags_);
     buffer_.PutU32(PREFILTER_OFFSET, expectedChar);
 #ifndef _NO_DEBUG_
-    RegExpOpCode::DumpRegExpOpCode(std::cout, buffer_, buffer.GetSize());
+    RegExpOpCode::DumpRegExpOpCode(std::cout, buffer_, buffer_.GetSize());
 #endif
 }
 
@@ -134,7 +134,7 @@ void RegExpParser::ParseDisjunction(bool isBackward)
     if (isError_) {
         return;
     }
-    uint32_t para = 0;
+    uint32_t para = RegExpOpCode::INVALID_PARA;
     do {
         if (c0_ == '|') {
             SplitNextOpCode splitOp;
@@ -209,7 +209,7 @@ void RegExpParser::ParseDisjunction(bool isBackward)
                 bool isEnd = false;
                 do {
                     uint32_t paraTmp = buffer_.GetU32(pos + 1);
-                    if (paraTmp == 0) {
+                    if (paraTmp == RegExpOpCode::INVALID_PARA) {
                         isEnd = true;
                     }
                     buffer_.PutU32(pos + 1, para);
@@ -1511,9 +1511,7 @@ int RegExpParser::ParseClassEscape(RangeSet *atom)
             CString valueName;
             if (!ParseUnicodePropertyValueCharacters(propertyName, valueName) ||
                 !ParseUnicodePropertyClassRange(propertyName, valueName, atom, negate)) {
-                char *originExpression = (char *)base_;
-                CString expression(originExpression);
-                CString msg = "Invalid regular expression :" + expression;
+                CString msg = "Invalid regular expression of unicode";
                 ParseError(msg.c_str());
             }
             result = CLASS_RANGE_BASE;

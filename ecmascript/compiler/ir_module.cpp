@@ -15,7 +15,6 @@
 
 #include "ecmascript/compiler/ir_module.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
-#include "ecmascript/jspandafile/debug_info_extractor.h"
 
 namespace panda::ecmascript::kungfu {
 

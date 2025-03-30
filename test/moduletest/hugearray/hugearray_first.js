@@ -28,3 +28,5 @@ for (let i = 0; i < 100000; i++) {
     }
 }
 assert_equal(arr.length, 33333);
+
+test_end();

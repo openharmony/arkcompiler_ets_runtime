@@ -120,7 +120,7 @@ public:
         ecmaVm->CollectGarbage(TriggerGCType::OLD_GC);
 
         EXPECT_FALSE(res.IsEmpty());
-        EXPECT_TRUE(res->IsTreeString());
+        EXPECT_TRUE(res->IsLineString());
 
         Destroy();
     }
@@ -1035,6 +1035,15 @@ public:
     void TearDown() override
     {
         TestHelper::DestroyEcmaVMWithScope(ecmaVm, scope);
+    }
+
+    void Reset()
+    {
+        TestHelper::DestroyEcmaVMWithScope(ecmaVm, scope);
+        thread = nullptr;
+        ecmaVm = nullptr;
+        scope = nullptr;
+        TestHelper::CreateEcmaVMWithScope(ecmaVm, thread, scope);
     }
 
     JSThread *thread {nullptr};
@@ -2480,6 +2489,7 @@ HWTEST_F_L0(JSSerializerTest, SerializeJSSharedSetBasic1)
 
 HWTEST_F_L0(JSSerializerTest, SerializeMultiThreadJSSharedSet)
 {
+    Reset();
     JSHandle<JSSharedSet> jsSet = CreateSSet(thread);
     ValueSerializer *serializer = new ValueSerializer(thread);
     bool success = serializer->WriteValue(thread, JSHandle<JSTaggedValue>(jsSet),

@@ -325,7 +325,6 @@ group("fuzztest") {
     "objectrefgetownproperty_fuzzer:fuzztest",
     "objectrefsetprototype_fuzzer:fuzztest",
     "objectset_fuzzer:fuzztest",
-    "parsefromtext_fuzzer:fuzztest",
     "primitiverefgetvalue_fuzzer:fuzztest",
     "promiseref_fuzzer:fuzztest",
     "promiserejectinfo_fuzzer:fuzztest",

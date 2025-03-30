@@ -36,3 +36,18 @@ true
 Cannot convert a BigInt value to a number
 Cannot convert a BigInt value to a number
 Cannot convert a BigInt value to a number
+,,,,
+8,8,8,8,8
+0,8,8,8,8
+0,0,0,0,0
+8,8,8,8,8
+0,8,8,8,0
+0,8,8,8,0
+0,8,8,8,8
+0,0,8,8,8
+0,0,8,8,0
+0,0,0,8,0
+0,0,0,0,0
+8,8,8,8,0
+,8,8,,0
+TypeError: Cannot set property when setter is undefined

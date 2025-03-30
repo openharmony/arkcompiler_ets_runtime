@@ -16,6 +16,7 @@
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/base/json_parser.h"
 #include "ecmascript/linked_hash_table.h"
+#include "ecmascript/ecma_string_table.h"
 
 namespace panda::ecmascript::base {
 
@@ -25,7 +26,7 @@ JSHandle<JSTaggedValue> JsonParser<T>::Launch(Text begin, Text end)
     // check empty
     if (UNLIKELY(begin == end)) {
         return JSHandle<JSTaggedValue>(thread_, [&]() -> JSTaggedValue {
-            THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Text in JSON", JSTaggedValue::Exception());
+            THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Text in JSON: Empty Text", JSTaggedValue::Exception());
         }());
     }
     end_ = end - 1;
@@ -165,7 +166,8 @@ JSTaggedValue JsonParser<T>::ParseJSONText()
                     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
                     break;
                 default:
-                    THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Text in JSON", JSTaggedValue::Exception());
+                    THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Text in JSON: Invalid Token",
+                                                  JSTaggedValue::Exception());
             }
             break;
         }
@@ -177,7 +179,7 @@ JSTaggedValue JsonParser<T>::ParseJSONText()
                     ASSERT(elementsList.empty());
                     ASSERT(propertyList.empty());
                     if (current_ <= range_) {
-                        THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Text in JSON",
+                        THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Text in JSON: Remaining Text Before Return",
                                                       JSTaggedValue::Exception());
                     }
                     return parseValue.GetTaggedValue();
@@ -358,22 +360,12 @@ JSHandle<JSTaggedValue> JsonParser<T>::CreateSJsonObject(JsonContinuation contin
             JSHandle<JSTaggedValue>(jsonPrototype), JSHandle<JSTaggedValue>(layout));
         JSHandle<NumberDictionary> elementsDic = NumberDictionary::CreateInSharedHeap(thread_);
         bool hasElement = false;
-        SendableClassDefiner::AddFieldTypeToHClass(thread_, propertyArray, size, layout, hclass, start,
-                                                   elementsDic, std::move(propertyList));
+        SendableClassDefiner::AddFieldTypeToHClass(thread_, propertyArray, size, layout, hclass, elementsDic,
+                                                   hasElement, start, std::move(propertyList));
         JSHandle<JSObject> obj = factory_->NewSharedOldSpaceJSObject(hclass);
         uint32_t index = 0;
         size = (hclass->GetInlinedProperties() << 1);
         for (size_t i = 0; i < size; i += 2) { // 2: prop name and value
-            int64_t eleIndex = ObjectFastOperator::TryToElementsIndex(propertyList[start + i].GetTaggedValue());
-            if (eleIndex >= 0) {
-                if (!hasElement) {
-                    hasElement = true;
-                }
-                int entry = elementsDic->FindEntry(JSTaggedValue(static_cast<int>(eleIndex)));
-                elementsDic->UpdateValue(thread_, entry, propertyList[start + i + 1].GetTaggedValue());
-                index++;
-                continue;
-            }
             obj->SetPropertyInlinedProps(thread_, index++, propertyList[start + i + 1].GetTaggedValue());
         }
         if (hasElement) {
@@ -558,12 +550,11 @@ JSTaggedValue JsonParser<T>::ConvertToNumber(const std::string &str, bool negati
     errno = 0; // reset errno to 0 to avoid errno has been changed
     double v = std::strtod(str.c_str(), nullptr);
     if (errno == ERANGE) {
+        // errno is ERANGE mean double value greater than DBL_MAX(1.79e+308) or less than DBL_MIN(2.22e-308),
+        // by compromising precision, std::strtod support representation allows even smaller
+        // values up to about 5e-324(Number.MIN_VALUE).
         errno = 0;
-        if (v > 0) {
-            return JSTaggedValue(base::POSITIVE_INFINITY);
-        } else if (v < 0) {
-            return JSTaggedValue(-base::POSITIVE_INFINITY);
-        }
+        return JSTaggedValue(v);
     }
     errno = 0;
     if (negative && v == 0) {
@@ -582,7 +573,8 @@ JSTaggedValue JsonParser<T>::ConvertToNumber(const std::string &str, bool negati
             if (value.IsBigInt()) {
                 return value;
             }
-            THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Text in JSON", JSTaggedValue::Exception());
+            THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Text in JSON: ConvertToNumber Fail",
+                                          JSTaggedValue::Exception());
         }
         return JSTaggedValue::TryCastDoubleToInt32(v);
     } else {
@@ -859,13 +851,15 @@ JSTaggedValue JsonParser<T>::ParseLiteralTrue()
     static const char literalTrue[] = "true";
     uint32_t remainingLength = range_ - current_;
     if (UNLIKELY(remainingLength < 3)) { // 3: literalTrue length - 1
-        THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Text in JSON", JSTaggedValue::Exception());
+        THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Text in JSON: ParseLiteralTrue Fail",
+                                      JSTaggedValue::Exception());
     }
     bool isMatch = MatchText(literalTrue, 4); // 4: literalTrue length
     if (LIKELY(isMatch)) {
         return JSTaggedValue::True();
     }
-    THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Text in JSON", JSTaggedValue::Exception());
+    THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Text in JSON: ParseLiteralTrue Fail",
+                                  JSTaggedValue::Exception());
 }
 
 template<typename T>
@@ -874,13 +868,15 @@ JSTaggedValue JsonParser<T>::ParseLiteralFalse()
     static const char literalFalse[] = "false";
     uint32_t remainingLength = range_ - current_;
     if (UNLIKELY(remainingLength < 4)) { // 4: literalFalse length - 1
-        THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Text in JSON", JSTaggedValue::Exception());
+        THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Text in JSON: ParseLiteralFalse Fail",
+                                      JSTaggedValue::Exception());
     }
     bool isMatch = MatchText(literalFalse, 5); // 5: literalFalse length
     if (LIKELY(isMatch)) {
         return JSTaggedValue::False();
     }
-    THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Text in JSON", JSTaggedValue::Exception());
+    THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Text in JSON: ParseLiteralFalse Fail",
+                                  JSTaggedValue::Exception());
 }
 
 template<typename T>
@@ -889,13 +885,15 @@ JSTaggedValue JsonParser<T>::ParseLiteralNull()
     static const char literalNull[] = "null";
     uint32_t remainingLength = range_ - current_;
     if (UNLIKELY(remainingLength < 3)) { // 3: literalNull length - 1
-        THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Text in JSON", JSTaggedValue::Exception());
+        THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Text in JSON: ParseLiteralNull Fail",
+                                      JSTaggedValue::Exception());
     }
     bool isMatch = MatchText(literalNull, 4); // 4: literalNull length
     if (LIKELY(isMatch)) {
         return JSTaggedValue::Null();
     }
-    THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Text in JSON", JSTaggedValue::Exception());
+    THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Text in JSON: ParseLiteralNull Fail",
+                                  JSTaggedValue::Exception());
 }
 
 template<typename T>
@@ -1158,6 +1156,12 @@ JSHandle<JSTaggedValue> Utf8JsonParser::ParseString(bool inObjOrArrOrMap)
             uint32_t strLength = end_ - current_;
             ASSERT(strLength <= static_cast<size_t>(UINT32_MAX));
             current_ = end_ + 1;
+            auto *utf8Data = EcmaStringAccessor(sourceString_).GetDataUtf8() + offset;
+            if (strLength == 1 && EcmaStringAccessor::IsASCIICharacter(utf8Data[0])) {
+                int32_t ch = static_cast<int32_t>(utf8Data[0]);
+                JSHandle<SingleCharTable> singleCharTable(thread_, thread_->GetSingleCharTable());
+                return JSHandle<JSTaggedValue>(thread_, singleCharTable->GetStringFromSingleCharTable(ch));
+            }
             return JSHandle<JSTaggedValue>::Cast(factory_->NewCompressedUtf8SubString(
                 sourceString_, offset, strLength));
         }
@@ -1218,7 +1222,7 @@ JSHandle<JSTaggedValue> Utf16JsonParser::Parse(EcmaString *str)
 {
     ASSERT(str != nullptr);
     uint32_t len = EcmaStringAccessor(str).GetLength();
-    CVector<uint16_t> buf(len);
+    CVector<uint16_t> buf(len + 1, 0);
     EcmaStringAccessor(str).WriteToFlatUtf16(buf.data(), len);
     Text begin = buf.data();
     return Launch(begin, begin + len);

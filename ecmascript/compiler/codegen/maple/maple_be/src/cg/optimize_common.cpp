@@ -15,11 +15,6 @@
 
 #include "optimize_common.h"
 #include <fstream>
-#include "cgbb.h"
-#include "cg.h"
-#include "cg_option.h"
-#include "loop.h"
-#include "securec.h"
 
 /* This file provides common class and function for cfgo and ico. */
 namespace maplebe {

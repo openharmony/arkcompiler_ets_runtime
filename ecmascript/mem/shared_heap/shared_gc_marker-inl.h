@@ -22,6 +22,7 @@
 #include "ecmascript/mem/heap-inl.h"
 #include "ecmascript/mem/region-inl.h"
 #include "ecmascript/mem/tlab_allocator-inl.h"
+#include "ecmascript/mem/work_manager-inl.h"
 
 namespace panda::ecmascript {
 inline void SharedGCMarker::MarkObject(uint32_t threadId, TaggedObject *object, [[maybe_unused]] ObjectSlot &slot)
@@ -40,26 +41,6 @@ inline void SharedGCMarkerBase::MarkObjectFromJSThread(WorkNode *&localBuffer, T
     ASSERT(objectRegion->InSharedHeap());
     if (!objectRegion->InSharedReadOnlySpace() && objectRegion->AtomicMark(object)) {
         sWorkManager_->PushToLocalMarkingBuffer(localBuffer, object);
-    }
-}
-
-inline void SharedGCMarker::MarkValue(uint32_t threadId, ObjectSlot &slot)
-{
-    JSTaggedValue value(slot.GetTaggedType());
-    if (value.IsInSharedSweepableSpace()) {
-        if (!value.IsWeakForHeapObject()) {
-            MarkObject(threadId, value.GetTaggedObject(), slot);
-        } else {
-            RecordWeakReference(threadId, reinterpret_cast<JSTaggedType *>(slot.SlotAddress()));
-        }
-    }
-}
-
-inline void SharedGCMarkerBase::HandleRoots(uint32_t threadId, [[maybe_unused]] Root type, ObjectSlot slot)
-{
-    JSTaggedValue value(slot.GetTaggedType());
-    if (value.IsInSharedSweepableSpace()) {
-        MarkObject(threadId, value.GetTaggedObject(), slot);
     }
 }
 
@@ -83,40 +64,6 @@ inline void SharedGCMarkerBase::HandleLocalRangeRoots(uint32_t threadId, [[maybe
             MarkObject(threadId, value.GetTaggedObject(), slot);
         }
     }
-}
-
-void SharedGCMarker::HandleLocalDerivedRoots([[maybe_unused]] Root type, [[maybe_unused]] ObjectSlot base,
-                                             [[maybe_unused]] ObjectSlot derived,
-                                             [[maybe_unused]] uintptr_t baseOldObject)
-{
-    // It is only used to update the derived value. The mark of share GC does not need to update slot
-}
-
-void SharedGCMovableMarker::HandleLocalDerivedRoots([[maybe_unused]] Root type, ObjectSlot base,
-                                                    ObjectSlot derived, uintptr_t baseOldObject)
-{
-    if (JSTaggedValue(base.GetTaggedType()).IsHeapObject()) {
-        derived.Update(base.GetTaggedType() + derived.GetTaggedType() - baseOldObject);
-    }
-}
-
-template <typename Callback>
-ARK_INLINE bool SharedGCMarkerBase::VisitBodyInObj(TaggedObject *root, ObjectSlot start, ObjectSlot end,
-                                                   Callback callback)
-{
-    auto hclass = root->SynchronizedGetClass();
-    int index = 0;
-    auto layout = LayoutInfo::UncheckCast(hclass->GetLayout().GetTaggedObject());
-    ObjectSlot realEnd = start;
-    realEnd += layout->GetPropertiesCapacity();
-    end = end > realEnd ? realEnd : end;
-    for (ObjectSlot slot = start; slot < end; slot++) {
-        auto attr = layout->GetAttr(index++);
-        if (attr.IsTaggedRep()) {
-            callback(slot);
-        }
-    }
-    return true;
 }
 
 inline void SharedGCMarkerBase::RecordWeakReference(uint32_t threadId, JSTaggedType *slot)

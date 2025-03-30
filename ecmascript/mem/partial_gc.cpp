@@ -18,7 +18,9 @@
 #include "ecmascript/mem/concurrent_marker.h"
 #include "ecmascript/mem/incremental_marker.h"
 #include "ecmascript/mem/parallel_evacuator.h"
-#include "ecmascript/mem/parallel_marker-inl.h"
+#include "ecmascript/mem/parallel_marker.h"
+#include "ecmascript/mem/old_gc_visitor-inl.h"
+#include "ecmascript/mem/young_gc_visitor-inl.h"
 #include "ecmascript/runtime_call_id.h"
 #include "ecmascript/mem/verification.h"
 
@@ -29,14 +31,17 @@ void PartialGC::RunPhases()
 {
     GCStats *gcStats = heap_->GetEcmaVM()->GetEcmaGCStats();
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "PartialGC::RunPhases" + std::to_string(heap_->IsConcurrentFullMark())
-        + ";Reason" + std::to_string(static_cast<int>(gcStats->GetGCReason()))
+        + ";GCReason" + std::to_string(static_cast<int>(gcStats->GetGCReason()))
+        + ";MarkReason" + std::to_string(static_cast<int>(gcStats->GetMarkReason()))
         + ";Sensitive" + std::to_string(static_cast<int>(heap_->GetSensitiveStatus()))
         + ";IsInBackground" + std::to_string(heap_->IsInBackground())
-        + ";Startup" + std::to_string(heap_->OnStartupEvent())
+        + ";Startup" + std::to_string(static_cast<int>(heap_->GetStartupStatus()))
         + ";ConMark" + std::to_string(static_cast<int>(heap_->GetJSThread()->GetMarkStatus()))
         + ";Young" + std::to_string(heap_->GetNewSpace()->GetCommittedSize())
         + ";Old" + std::to_string(heap_->GetOldSpace()->GetCommittedSize())
-        + ";TotalCommit" + std::to_string(heap_->GetCommittedSize()));
+        + ";TotalCommit" + std::to_string(heap_->GetCommittedSize())
+        + ";NativeBindingSize" + std::to_string(heap_->GetNativeBindingSize())
+        + ";NativeLimitSize" + std::to_string(heap_->GetGlobalSpaceNativeLimit()));
     TRACE_GC(GCStats::Scope::ScopeId::TotalGC, gcStats);
     MEM_ALLOCATE_AND_GC_TRACE(heap_->GetEcmaVM(), PartialGC_RunPhases);
     bool mainThreadInForeground = heap_->GetJSThread()->IsMainThreadFast() && !heap_->IsInBackground();
@@ -115,6 +120,17 @@ void PartialGC::Finish()
     }
 }
 
+void PartialGC::MarkRoots()
+{
+    if (heap_->IsYoungMark()) {
+        YoungGCMarkRootVisitor youngGCMarkRootVisitor(workManager_->GetWorkNodeHolder(MAIN_THREAD_INDEX));
+        heap_->GetNonMovableMarker()->MarkRoots(youngGCMarkRootVisitor);
+    } else {
+        OldGCMarkRootVisitor oldGCMarkRootVisitor(workManager_->GetWorkNodeHolder(MAIN_THREAD_INDEX));
+        heap_->GetNonMovableMarker()->MarkRoots(oldGCMarkRootVisitor);
+    }
+}
+
 void PartialGC::Mark()
 {
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "PartialGC::Mark");
@@ -123,25 +139,17 @@ void PartialGC::Mark()
         heap_->GetConcurrentMarker()->ReMark();
         return;
     }
-    heap_->GetNonMovableMarker()->MarkRoots(MAIN_THREAD_INDEX);
+    MarkRoots();
+    workManager_->GetWorkNodeHolder(MAIN_THREAD_INDEX)->PushWorkNodeToGlobal(false);
     if (heap_->IsConcurrentFullMark()) {
         heap_->GetNonMovableMarker()->ProcessMarkStack(MAIN_THREAD_INDEX);
-    } else if (heap_->IsEdenMark()) {
-        {
-            ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "GC::ProcessOldToNew");
-            heap_->GetNonMovableMarker()->ProcessOldToNew(MAIN_THREAD_INDEX);
-        }
-        {
-            ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "GC::ProcessNewToEden");
-            heap_->GetNonMovableMarker()->ProcessNewToEden(MAIN_THREAD_INDEX);
-        }
-        heap_->GetNonMovableMarker()->ProcessSnapshotRSet(MAIN_THREAD_INDEX);
     } else if (heap_->IsYoungMark()) {
+        NonMovableMarker *marker = static_cast<NonMovableMarker*>(heap_->GetNonMovableMarker());
         {
             ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "GC::ProcessOldToNew");
-            heap_->GetNonMovableMarker()->ProcessOldToNew(MAIN_THREAD_INDEX);
+            marker->ProcessOldToNew(MAIN_THREAD_INDEX);
         }
-        heap_->GetNonMovableMarker()->ProcessSnapshotRSet(MAIN_THREAD_INDEX);
+        marker->ProcessSnapshotRSet(MAIN_THREAD_INDEX);
     }
     heap_->WaitRunningTaskFinished();
     // MarkJitCodeMap must be call after other mark work finish to make sure which jserror object js alive.
@@ -168,10 +176,7 @@ void PartialGC::ProcessNativeDelete()
     WeakRootVisitor gcUpdateWeak = [this](TaggedObject *header) -> TaggedObject* {
         Region *objectRegion = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(header));
         ASSERT(!objectRegion->InSharedHeap());
-        if (heap_->IsEdenMark() && !objectRegion->InEdenSpace()) {
-            return header;
-        }
-        if (!objectRegion->InGeneralNewSpaceOrCSet() && heap_->IsYoungMark()) {
+        if (!objectRegion->InYoungSpaceOrCSet() && heap_->IsYoungMark()) {
             return header;
         }
         if (!objectRegion->Test(header)) {

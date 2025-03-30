@@ -34,7 +34,8 @@ public:
     JSHandle<Program> GenerateProgram(EcmaVM *vm, const JSPandaFile *jsPandaFile, std::string_view entryPoint);
 
     std::shared_ptr<JSPandaFile> LoadJSPandaFile(JSThread *thread, const CString &filename, std::string_view entryPoint,
-                                                 bool needUpdate = false, bool isHybrid = false);
+                                                 bool needUpdate = false, bool isHybrid = false,
+                                                 const ExecuteTypes &executeType = ExecuteTypes::STATIC));
 
     std::shared_ptr<JSPandaFile> LoadJSPandaFile(JSThread *thread, const CString &filename, std::string_view entryPoint,
                                                  const void *buffer, size_t size, bool needUpdate = false);
@@ -118,8 +119,8 @@ private:
                                                                     std::string_view entryPoint);
     void ObsoleteLoadedJSPandaFile(const CString &filename);
 
-    static void *AllocateBuffer(size_t size);
-    static void FreeBuffer(void *mem);
+    static void *AllocateBuffer(size_t size, bool isBundlePack, CreateMode mode);
+    static void FreeBuffer(void *mem, size_t size, bool isBundlePack, CreateMode mode);
 
     RecursiveMutex jsPandaFileLock_;
     // JSPandaFile was shared by all vm.

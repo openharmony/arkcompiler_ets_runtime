@@ -36,6 +36,7 @@ public:
           typeInfos_(typeInfos), chunk_(chunk) {}
     GateRef VisitGate(GateRef gate);
     void setState(NumberSpeculativeRetype::State state);
+    void ConvertMonoAccessorValueIn(GateRef gate);
 
 private:
 
@@ -135,6 +136,7 @@ private:
     GateRef VisitDateNow(GateRef gate);
     GateRef VisitArrayIncludesIndexOf(GateRef gate);
     GateRef VisitStringCharCodeAt(GateRef gate);
+    GateRef VisitString(GateRef gate);
 
     void ConvertForNumberBinaryOp(GateRef gate);
     void ConvertForNumberCompareOp(GateRef gate);

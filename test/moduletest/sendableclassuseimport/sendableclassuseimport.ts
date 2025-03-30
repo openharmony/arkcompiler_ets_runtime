@@ -25,6 +25,7 @@ declare function print(str: any): string;
 
 import lazy {Test1, foo2} from "./func"
 import {strA, strB} from "./string"
+import {SendableUseLocalModuleValue, sendableFuncUseLocalModuleValue} from './sendableUseLocalModuleValue'
 
 class SendableClassA {
     static staticField: string = strA;
@@ -76,3 +77,6 @@ class SendableClassB extends SendableClassA {
 
 let sObjb = new SendableClassB("ClassB: ");
 sObjb.testImportFunction()
+
+new SendableUseLocalModuleValue().start();
+sendableFuncUseLocalModuleValue();

@@ -22,16 +22,16 @@
 
 namespace panda::ecmascript {
 
-template<TriggerGCType gcType, GCReason gcReason>
+template<TriggerGCType gcType, MarkReason markReason>
 void TriggerConcurrentMarkTaskRunner()
 {
-    SharedHeap::GetInstance()->StartConcurrentMarking(gcType, gcReason);
+    SharedHeap::GetInstance()->StartConcurrentMarking(gcType, markReason);
 }
 
-template<TriggerGCType gcType, GCReason gcReason>
-TriggerConcurrentMarkTask<gcType, gcReason>::TriggerConcurrentMarkTask(JSThread *thread)
+template<TriggerGCType gcType, MarkReason markReason>
+TriggerConcurrentMarkTask<gcType, markReason>::TriggerConcurrentMarkTask(JSThread *thread)
     : DaemonTask(thread, DaemonTaskType::TRIGGER_CONCURRENT_MARK, DaemonTaskGroup::GC_GROUP,
-                 &TriggerConcurrentMarkTaskRunner<gcType, gcReason>) {}
+                 &TriggerConcurrentMarkTaskRunner<gcType, markReason>) {}
 
 template<TriggerGCType gcType, GCReason gcReason>
 void TriggerCollectGarbageTaskRunner()

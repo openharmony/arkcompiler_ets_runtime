@@ -15,6 +15,10 @@ import("//arkcompiler/ets_frontend/es2panda/es2abc_config.gni")
 import("//arkcompiler/ets_runtime/js_runtime_config.gni")
 import("$build_root/toolchain/toolchain.gni")
 
+if (!ark_standalone_build && is_ohos) {
+  import("//build/ohos.gni")
+}
+
 group("ark_js_packages") {
   deps = []
 
@@ -115,6 +119,7 @@ group("ark_js_unittest") {
     "ecmascript/module/tests:unittest",
     "ecmascript/napi/test:unittest",
     "ecmascript/napi/test:workload_test",
+    "ecmascript/platform/unix/ohos/tests:unittest",
     "ecmascript/regexp/tests:unittest",
     "ecmascript/require/tests:unittest",
     "ecmascript/serializer/tests:unittest",
@@ -125,7 +130,10 @@ group("ark_js_unittest") {
     deps += [ "test/fuzztest:fuzztest" ]
   }
   if (current_cpu == "arm64") {
-    deps += [ "ecmascript/pgo_profiler/tests:unittest" ]
+    deps += [
+      "ecmascript/compiler/aot_file/tests:host_unittest",
+      "ecmascript/pgo_profiler/tests:unittest",
+    ]
   }
 }
 
@@ -143,6 +151,7 @@ group("ark_unittest") {
   deps += [  # Register the executable block name of the unit test script here
     "ecmascript/base/tests:host_unittest",
     "ecmascript/builtins/tests:host_unittest",
+    "ecmascript/compiler/aot_file/tests:host_unittest",
     "ecmascript/compiler/codegen/maple/test:host_unittest",
     "ecmascript/containers/tests:host_unittest",
     "ecmascript/dfx/cpu_profiler/tests:host_unittest",
@@ -156,6 +165,7 @@ group("ark_unittest") {
     "ecmascript/module/tests:host_unittest",
     "ecmascript/napi/test:host_unittest",
     "ecmascript/pgo_profiler/tests:host_unittest",
+    "ecmascript/platform/unix/ohos/tests:host_unittest",
     "ecmascript/regexp/tests:host_unittest",
     "ecmascript/require/tests:host_unittest",
     "ecmascript/serializer/tests:host_unittest",
@@ -183,7 +193,10 @@ ohos_static_library("ark_runtime_host_unittest") {
   ]
 
   # js bytecode test
-  deps += [ "$js_root/test/moduletest:ark_js_moduletest" ]
+  deps += [
+    "$js_root/test/moduletest:ark_js_assert_moduletest",
+    "$js_root/test/moduletest:ark_js_moduletest",
+  ]
 
   # quickfix test
   deps += [ "$js_root/test/quickfix:ark_quickfix_test" ]
@@ -204,11 +217,18 @@ ohos_static_library("ark_runtime_host_unittest") {
 
       #"$js_root/test/moduletest:ark_asm_single_step_test",
       "$js_root/test/deopttest:ark_deopt_test",
+
+      # Temporarily closed
+      # "$js_root/test/deopttest:ark_deopt_to_baseline_test",
+      "$js_root/test/moduletest:ark_asm_assert_test",
       "$js_root/test/moduletest:ark_asm_test",
     ]
 
     if (is_mac) {
-      deps -= [ "$js_root/test/moduletest:ark_asm_test" ]
+      deps -= [
+        "$js_root/test/moduletest:ark_asm_assert_test",
+        "$js_root/test/moduletest:ark_asm_test",
+      ]
     }
   }
   part_name = "ets_runtime"
@@ -290,7 +310,10 @@ config("hiviewdfx_config") {
     defines += [ "ENABLE_HILOG" ]
   }
   if (enable_hisysevent) {
-    defines += [ "ENABLE_HISYSEVENT" ]
+    defines += [
+      "ENABLE_HISYSEVENT",
+      "ENABLE_UCOLLECTION",
+    ]
   }
   if (enable_unwinder) {
     defines += [ "ENABLE_UNWINDER" ]
@@ -446,6 +469,10 @@ config("ark_jsruntime_common_config") {
     defines += [ "PANDA_TARGET_OHOS" ]
   }
 
+  if (is_qemu_runtime && is_ohos) {
+    defines += [ "OHOS_FOR_QEMU" ]
+  }
+
   if (!is_mac && target_os != "ios" && !use_libfuzzer && !enable_lto_O0) {
     cflags_cc += [ "-flto=thin" ]
     ldflags += [ "-flto=thin" ]
@@ -525,8 +552,8 @@ config("ark_jsruntime_common_config") {
     }
   }
 
-  if (enable_leak_check || enable_gc_dfx_options || is_asan) {
-    defines += [ "ECMASCRIPT_ENABLE_HANDLE_LEAK_CHECK" ]
+  if (enable_handle_leak_detect) {
+    defines += [ "ENABLE_LOCAL_HANDLE_LEAK_DETECT" ]
   }
 
   if (is_ohos && is_standard_system) {
@@ -573,8 +600,8 @@ config("ecma_test_config") {
     "$js_root:ark_jsruntime_common_config",
   ]
 
-  if (enable_leak_check || is_asan) {
-    defines = [ "ECMASCRIPT_ENABLE_HANDLE_LEAK_CHECK" ]
+  if (enable_handle_leak_detect) {
+    defines = [ "ENABLE_LOCAL_HANDLE_LEAK_DETECT" ]
   }
   if (!is_mac) {
     ldflags = [ "-Wl,-rpath=\$ORIGIN/" ]
@@ -608,7 +635,6 @@ ecma_source = [
   "ecmascript/base/builtins_base.cpp",
   "ecmascript/base/dtoa_helper.cpp",
   "ecmascript/base/error_helper.cpp",
-  "ecmascript/base/fast_json_stringifier.cpp",
   "ecmascript/base/json_helper.cpp",
   "ecmascript/base/json_parser.cpp",
   "ecmascript/base/json_stringifier.cpp",
@@ -671,11 +697,13 @@ ecma_source = [
   "ecmascript/byte_array.cpp",
   "ecmascript/ohos/code_decrypt.cpp",
   "ecmascript/ohos/enable_aot_list_helper.cpp",
+  "ecmascript/compiler/aot_constantpool_patcher.cpp",
   "ecmascript/compiler/aot_file/elf_builder.cpp",
   "ecmascript/compiler/aot_file/elf_reader.cpp",
   "ecmascript/compiler/aot_file/elf_checker.cpp",
   "ecmascript/compiler/aot_file/an_file_data_manager.cpp",
   "ecmascript/compiler/aot_file/an_file_info.cpp",
+  "ecmascript/compiler/aot_file/aot_checksum_helper.cpp",
   "ecmascript/compiler/aot_file/aot_file_info.cpp",
   "ecmascript/compiler/aot_file/stub_file_info.cpp",
   "ecmascript/compiler/aot_file/gdb_jit.cpp",
@@ -712,6 +740,7 @@ ecma_source = [
   "ecmascript/debugger/js_debugger_manager.cpp",
   "ecmascript/deoptimizer/calleeReg.cpp",
   "ecmascript/deoptimizer/deoptimizer.cpp",
+  "ecmascript/dfx/stackinfo/async_stack_trace.cpp",
   "ecmascript/dfx/dump_code/jit_dump_elf.cpp",
   "ecmascript/dfx/native_module_failure_info.cpp",
   "ecmascript/dfx/stackinfo/js_stackinfo.cpp",
@@ -738,6 +767,7 @@ ecma_source = [
   "ecmascript/ic/ic_handler.cpp",
   "ecmascript/ic/ic_runtime.cpp",
   "ecmascript/ic/profile_type_info.cpp",
+  "ecmascript/ic/mega_ic_cache.cpp",
   "ecmascript/ic/property_box.cpp",
   "ecmascript/ic/proto_change_details.cpp",
   "ecmascript/interpreter/frame_handler.cpp",
@@ -746,6 +776,7 @@ ecma_source = [
   "ecmascript/interpreter/interpreter-inl.cpp",
   "ecmascript/interpreter/slow_runtime_stub.cpp",
   "ecmascript/intl/locale_helper.cpp",
+  "ecmascript/jit/rewriter/reloc_rewriter_aarch64.cpp",
   "ecmascript/jit/compile_decision.cpp",
   "ecmascript/jit/jit.cpp",
   "ecmascript/jit/jit_dfx.cpp",
@@ -759,7 +790,6 @@ ecma_source = [
   "ecmascript/jspandafile/class_info_extractor.cpp",
   "ecmascript/jspandafile/debug_info_extractor.cpp",
   "ecmascript/jspandafile/literal_data_extractor.cpp",
-  "ecmascript/jspandafile/accessor/module_data_accessor.cpp",
   "ecmascript/jspandafile/panda_file_translator.cpp",
   "ecmascript/jspandafile/js_pandafile_executor.cpp",
   "ecmascript/jspandafile/scope_info_extractor.cpp",
@@ -866,6 +896,7 @@ ecma_source = [
   "ecmascript/mem/shared_heap/shared_concurrent_marker.cpp",
   "ecmascript/mem/shared_heap/shared_concurrent_sweeper.cpp",
   "ecmascript/mem/shared_heap/shared_gc.cpp",
+  "ecmascript/mem/shared_heap/shared_gc_evacuator.cpp",
   "ecmascript/mem/shared_heap/shared_full_gc.cpp",
   "ecmascript/mem/shared_heap/shared_gc_marker.cpp",
   "ecmascript/mem/shared_heap/shared_space.cpp",
@@ -876,9 +907,9 @@ ecma_source = [
   "ecmascript/mem/thread_local_allocation_buffer.cpp",
   "ecmascript/mem/verification.cpp",
   "ecmascript/mem/work_space_chunk.cpp",
-  "ecmascript/mem/work_manager.cpp",
   "ecmascript/mem/allocation_inspector.cpp",
   "ecmascript/mem/jit_fort.cpp",
+  "ecmascript/module/accessor/module_data_accessor.cpp",
   "ecmascript/module/js_module_manager.cpp",
   "ecmascript/module/js_dynamic_import.cpp",
   "ecmascript/module/js_module_namespace.cpp",
@@ -909,6 +940,8 @@ ecma_source = [
   "ecmascript/pgo_profiler/pgo_profiler_layout.cpp",
   "ecmascript/pgo_profiler/pgo_profiler_manager.cpp",
   "ecmascript/pgo_profiler/pgo_utils.cpp",
+  "ecmascript/pgo_profiler/pgo_state.cpp",
+  "ecmascript/pgo_profiler/pgo_info.cpp",
   "ecmascript/pgo_profiler/ap_file/pgo_method_type_set.cpp",
   "ecmascript/pgo_profiler/types/pgo_profile_type.cpp",
   "ecmascript/property_accessor.cpp",
@@ -938,7 +971,6 @@ ecma_source = [
   "ecmascript/daemon/daemon_thread.cpp",
   "ecmascript/runtime.cpp",
   "ecmascript/runtime_lock.cpp",
-  "ecmascript/global_index_map.cpp",
   "ecmascript/shared_mm/shared_mm.cpp",
   "ecmascript/tagged_dictionary.cpp",
   "ecmascript/tagged_hash_array.cpp",
@@ -1083,13 +1115,20 @@ config("include_llvm") {
 
 if (is_mingw) {
   ecma_platform_source += [
+    "ecmascript/platform/common/dfx_crash_obj.cpp",
     "ecmascript/platform/windows/backtrace.cpp",
+    "ecmascript/platform/windows/async_detect.cpp",
     "ecmascript/platform/windows/map.cpp",
     "ecmascript/platform/windows/file.cpp",
     "ecmascript/platform/windows/os.cpp",
     "ecmascript/platform/windows/time.cpp",
     "ecmascript/platform/windows/log.cpp",
     "ecmascript/platform/windows/aot_crash_info.cpp",
+    "ecmascript/platform/windows/dfx_hisys_event.cpp",
+    "ecmascript/platform/windows/pandafile.cpp",
+    "ecmascript/platform/windows/module.cpp",
+    "ecmascript/platform/common/ecma_context.cpp",
+    "ecmascript/platform/common/parameters.cpp",
   ]
 } else {
   ecma_platform_source += [
@@ -1100,27 +1139,75 @@ if (is_mingw) {
   ]
   if (is_mac) {
     ecma_platform_source += [
+      "ecmascript/platform/common/dfx_crash_obj.cpp",
       "ecmascript/platform/unix/mac/os.cpp",
       "ecmascript/platform/unix/mac/backtrace.cpp",
+      "ecmascript/platform/unix/mac/async_detect.cpp",
       "ecmascript/platform/unix/mac/log.cpp",
+      "ecmascript/platform/unix/mac/dfx_hisys_event.cpp",
+      "ecmascript/platform/unix/mac/pandafile.cpp",
+      "ecmascript/platform/unix/mac/module.cpp",
+      "ecmascript/platform/common/ecma_context.cpp",
+      "ecmascript/platform/common/parameters.cpp",
     ]
   } else if (target_os == "ios") {
     ecma_platform_source += [
       "ecmascript/platform/unix/mac/os.cpp",
       "ecmascript/platform/unix/mac/backtrace.cpp",
+      "ecmascript/platform/unix/mac/async_detect.cpp",
+      "ecmascript/platform/common/dfx_crash_obj.cpp",
       "ecmascript/platform/common/log.cpp",
+      "ecmascript/platform/unix/mac/dfx_hisys_event.cpp",
+      "ecmascript/platform/common/pandafile.cpp",
+      "ecmascript/platform/common/module.cpp",
+      "ecmascript/platform/common/ecma_context.cpp",
+      "ecmascript/platform/common/parameters.cpp",
     ]
   } else if (is_ohos || target_os == "android") {
     ecma_platform_source += [
       "ecmascript/platform/unix/linux/os.cpp",
       "ecmascript/platform/unix/ohos/backtrace.cpp",
+      "ecmascript/platform/unix/ohos/async_detect.cpp",
       "ecmascript/platform/common/log.cpp",
+      "ecmascript/platform/unix/ohos/memory.cpp",
+      "ecmascript/platform/unix/ohos/dfx_hisys_event.cpp",
+      "ecmascript/platform/common/module.cpp",
     ]
+
+    if (is_ohos) {
+      ecma_platform_source += [
+        "ecmascript/platform/unix/ohos/pandafile.cpp",
+        "ecmascript/platform/unix/ohos/ecma_context.cpp",
+        "ecmascript/platform/unix/ohos/parameters.cpp",
+      ]
+    } else {
+      ecma_platform_source += [
+        "ecmascript/platform/common/pandafile.cpp",
+        "ecmascript/platform/common/ecma_context.cpp",
+        "ecmascript/platform/common/parameters.cpp",
+      ]
+    }
+
+    if (is_ohos && !ark_standalone_build &&
+        (current_cpu == "arm64" || current_cpu == "arm")) {
+      ecma_platform_source +=
+          [ "ecmascript/platform/unix/ohos/dfx_crash_obj.cpp" ]
+    } else {
+      ecma_platform_source += [ "ecmascript/platform/common/dfx_crash_obj.cpp" ]
+    }
   } else if (is_linux) {
     ecma_platform_source += [
       "ecmascript/platform/unix/linux/os.cpp",
       "ecmascript/platform/unix/linux/backtrace.cpp",
+      "ecmascript/platform/unix/linux/async_detect.cpp",
+      "ecmascript/platform/common/dfx_crash_obj.cpp",
       "ecmascript/platform/common/log.cpp",
+      "ecmascript/platform/unix/linux/memory.cpp",
+      "ecmascript/platform/unix/linux/dfx_hisys_event.cpp",
+      "ecmascript/platform/unix/linux/pandafile.cpp",
+      "ecmascript/platform/common/module.cpp",
+      "ecmascript/platform/common/ecma_context.cpp",
+      "ecmascript/platform/common/parameters.cpp",
     ]
   } else {
     print("Invalid os!")
@@ -1187,7 +1274,10 @@ ohos_source_set("libark_jsruntime_test_set") {
   defines += [ "STUB_AN_FILE=\"${stub_an_file_path}\"" ]
 
   deps = []
-  external_deps = [ "zlib:libz" ]
+  external_deps = [
+    "libuv:uv",
+    "zlib:libz",
+  ]
   if (enable_hilog) {
     external_deps += [ "hilog:libhilog" ]
   }
@@ -1202,10 +1292,6 @@ ohos_source_set("libark_jsruntime_test_set") {
       "icu:shared_icui18n",
       "icu:shared_icuuc",
     ]
-  }
-
-  if (enable_dump_in_faultlog) {
-    external_deps += [ "libuv:uv" ]
   }
 
   if (!is_arkui_x) {
@@ -1227,8 +1313,8 @@ ohos_source_set("libark_jsruntime_test_set") {
     deps += [ "$js_root/ecmascript/compiler:libark_mock_stub_set" ]
   }
 
-  if (enable_leak_check || is_asan) {
-    defines += [ "ECMASCRIPT_ENABLE_HANDLE_LEAK_CHECK" ]
+  if (enable_handle_leak_detect) {
+    defines += [ "ENABLE_LOCAL_HANDLE_LEAK_DETECT" ]
   }
 
   public_configs = [ "$js_root:ark_jsruntime_public_config" ]
@@ -1303,6 +1389,19 @@ ohos_source_set("libark_jsruntime_static") {
   subsystem_name = "arkcompiler"
 }
 
+config("arkjs_runtime_lto_link_config") {
+  ldflags = []
+  if (!ark_standalone_build && is_ohos && enhanced_opt && is_clang &&
+      (target_cpu == "arm" || target_cpu == "arm64")) {
+    if (ets_runtime_feature_enable_bsymbolic) {
+      ldflags += [ "-Wl,-Bsymbolic" ]
+    }
+    if (ets_runtime_feature_enable_pgo && enable_enhanced_opt) {
+      ldflags += [ "-Wl,--aarch64-inline-plt" ]
+    }
+  }
+}
+
 ohos_shared_library("libark_jsruntime") {
   stack_protector_ret = false
   if (enable_sanitize) {
@@ -1359,7 +1458,7 @@ ohos_shared_library("libark_jsruntime") {
       "$ark_third_party_root/icu/icu4c:static_icuuc",
     ]
   } else {
-    external_deps += [
+    public_external_deps = [
       "icu:shared_icui18n",
       "icu:shared_icuuc",
     ]
@@ -1367,6 +1466,8 @@ ohos_shared_library("libark_jsruntime") {
   innerapi_tags = [ "platformsdk_indirect" ]
   part_name = "ets_runtime"
   subsystem_name = "arkcompiler"
+
+  configs = [ ":arkjs_runtime_lto_link_config" ]
 }
 
 ohos_shared_library("libark_jsruntime_test") {

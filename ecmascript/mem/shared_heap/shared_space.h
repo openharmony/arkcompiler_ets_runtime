@@ -143,6 +143,12 @@ class SharedOldSpace : public SharedSparseSpace {
 public:
     SharedOldSpace(SharedHeap *heap, size_t initialCapacity, size_t maximumCapacity);
     ~SharedOldSpace() override = default;
+    NO_COPY_SEMANTIC(SharedOldSpace);
+    NO_MOVE_SEMANTIC(SharedOldSpace);
+
+    static constexpr int64_t MAX_EVACUATION_SIZE = 2_MB;
+    static constexpr size_t MIN_COLLECT_REGION_SIZE = 5;
+
     size_t GetMergeSize() const
     {
         return mergeSize_;
@@ -159,10 +165,31 @@ public:
     }
 
     void Merge(SharedLocalSpace *localSpace);
-    NO_COPY_SEMANTIC(SharedOldSpace);
-    NO_MOVE_SEMANTIC(SharedOldSpace);
+    void SelectCSets();
+    void RevertCSets();
+    void ReclaimCSets();
+    void AddCSetRegion(Region *region);
+    void RemoveCSetRegion(Region *region);
+
+    template<class Callback>
+    void EnumerateCollectRegionSet(Callback &&cb) const
+    {
+        for (Region *region : collectRegionSet_) {
+            if (region != nullptr) {
+                cb(region);
+            }
+        }
+    }
+
+    size_t GetCollectSetRegionCount() const
+    {
+        return collectRegionSet_.size();
+    }
+
+private:
     Mutex lock_;
     size_t mergeSize_ {0};
+    std::vector<Region *> collectRegionSet_;
 };
 
 class SharedLocalSpace : public SharedSparseSpace {

@@ -33,6 +33,11 @@ enum class MachineCodeType : uint8_t {
     FAST_JIT_CODE,
 };
 
+enum class MachineCodeArchType : uint8_t {
+    AArch64,
+    X86,
+};
+
 struct MachineCodeDesc {
     uintptr_t rodataAddrBeforeText {0};
     size_t rodataSizeBeforeText {0};
@@ -46,6 +51,7 @@ struct MachineCodeDesc {
     uintptr_t stackMapOrOffsetTableAddr {0};
     size_t stackMapOrOffsetTableSize {0};
     MachineCodeType codeType {MachineCodeType::FAST_JIT_CODE};
+    MachineCodeArchType archType {MachineCodeArchType::X86};
 #ifdef JIT_ENABLE_CODE_SIGN
     uintptr_t codeSigner {0};
 #endif
@@ -242,12 +248,12 @@ public:
         return GetInstructionsSize();
     }
 
-    bool SetData(const MachineCodeDesc &desc, JSHandle<Method> &method, size_t dataSize);
+    bool SetData(const MachineCodeDesc &desc, JSHandle<Method> &method, size_t dataSize, RelocMap &relocInfo);
     bool SetText(const MachineCodeDesc &desc);
     bool SetNonText(const MachineCodeDesc &desc, EntityId methodId);
 
-    template <VisitType visitType>
-    void VisitRangeSlot(const EcmaObjectRangeVisitor &visitor)
+    template <VisitType visitType, class DerivedVisitor>
+    void VisitRangeSlot(EcmaObjectRangeVisitor<DerivedVisitor> &visitor)
     {
         ASSERT(visitType == VisitType::ALL_VISIT || visitType == VisitType::OLD_GC_VISIT);
         if constexpr (visitType == VisitType::ALL_VISIT) {
@@ -291,7 +297,8 @@ public:
         Barriers::SetPrimitive(this, OSR_EXECUTE_CNT_OFFSET, count);
     }
 private:
-    bool SetBaselineCodeData(const MachineCodeDesc &desc, JSHandle<Method> &method, size_t dataSize);
+    bool SetBaselineCodeData(const MachineCodeDesc &desc, JSHandle<Method> &method,
+                             size_t dataSize, RelocMap &relocInfo);
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_MEM_MACHINE_CODE_H

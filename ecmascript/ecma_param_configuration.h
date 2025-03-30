@@ -25,7 +25,9 @@
 namespace panda::ecmascript {
 static constexpr size_t DEFAULT_HEAP_SIZE = 448_MB;                 // Recommended range: 128-448MB
 static constexpr size_t DEFAULT_WORKER_HEAP_SIZE = 768_MB;          // Recommended range: 128_MB, LargeHeap: 768_MB
+static constexpr size_t MAX_WORKER_HEAP_SIZE = 1024_MB;
 static constexpr size_t DEFAULT_SHARED_HEAP_SIZE = 778_MB;
+static constexpr size_t MAX_SHARED_HEAP_SIZE = 2048_MB;
 static constexpr size_t MAX_HEAP_SIZE = 1024_MB;
 
 class EcmaParamConfiguration {
@@ -41,15 +43,19 @@ public:
     {
         switch (heapType) {
             case HeapType::WORKER_HEAP:
-                if (heapSize > LOW_MEMORY && heapSize < DEFAULT_WORKER_HEAP_SIZE) {
+                if (heapSize >= LOW_MEMORY && heapSize < MAX_WORKER_HEAP_SIZE) {
                     maxHeapSize_ = heapSize;
+                } else if (heapSize >= MAX_WORKER_HEAP_SIZE) {
+                    maxHeapSize_ = MAX_WORKER_HEAP_SIZE;
                 } else {
                     maxHeapSize_ = DEFAULT_WORKER_HEAP_SIZE;
                 }
                 break;
             case HeapType::SHARED_HEAP:
-                 if (heapSize > LOW_MEMORY && heapSize < DEFAULT_SHARED_HEAP_SIZE) {
+                 if (heapSize >= LOW_MEMORY && heapSize < MAX_SHARED_HEAP_SIZE) {
                     maxHeapSize_ = heapSize;
+                } else if (heapSize >= MAX_SHARED_HEAP_SIZE) {
+                    maxHeapSize_ = MAX_SHARED_HEAP_SIZE;
                 } else {
                     maxHeapSize_ = DEFAULT_SHARED_HEAP_SIZE;
                 };
@@ -60,11 +66,10 @@ public:
                 } else {
                     maxHeapSize_ = poolSize; // pool is too small, no memory left for worker
                 }
-                if (heapSize > LOW_MEMORY && heapSize < DEFAULT_HEAP_SIZE) {
+                if (heapSize >= LOW_MEMORY && heapSize <= MAX_HEAP_SIZE) {
                     maxHeapSize_ = heapSize;
-                }
-                if (heapSize >= DEFAULT_HEAP_SIZE && heapSize <= MAX_HEAP_SIZE) {
-                    maxHeapSize_ = heapSize;
+                } else if (heapSize > MAX_HEAP_SIZE) {
+                    maxHeapSize_ = MAX_HEAP_SIZE;
                 }
         }
         Initialize();
@@ -80,11 +85,10 @@ public:
             minSemiSpaceSize_ = 2_MB;
             maxSemiSpaceSize_ = 4_MB;
             defaultReadOnlySpaceSize_ = 256_KB;
-            defaultNonMovableSpaceSize_ = 2_MB;
+            defaultNonMovableSpaceSize_ = 4_MB;
             defaultSnapshotSpaceSize_ = 512_KB;
             defaultMachineCodeSpaceSize_ = 2_MB;
             defaultGlobalAllocLimit_ = 20_MB;
-            edenSpaceTriggerConcurrentMark_ = 1_MB;
             semiSpaceTriggerConcurrentMark_ = 1_MB;
             semiSpaceStepOvershootSize_ = 2_MB;
             oldSpaceStepOvershootSize_ = 4_MB;
@@ -93,7 +97,7 @@ public:
             minAllocLimitGrowingStep_ = 2_MB;
             minNativeLimitGrowingStep_ = 16_MB;
             minGrowingStep_ = 4_MB;
-            maxStackSize_ = 128_KB;
+            maxStackSize_ = 64_KB;
             maxJSSerializerSize_ = 8_MB;
             sharedHeapLimitGrowingFactor_ = 2; // 2: growing factor
             sharedHeapLimitGrowingStep_ = 20_MB;
@@ -110,7 +114,6 @@ public:
             defaultSnapshotSpaceSize_ = 512_KB;
             defaultMachineCodeSpaceSize_ = 2_MB;
             defaultGlobalAllocLimit_ = 20_MB;
-            edenSpaceTriggerConcurrentMark_ = 1.5_MB;
             semiSpaceTriggerConcurrentMark_ = 1.5_MB;
             semiSpaceStepOvershootSize_ = 2_MB;
             oldSpaceStepOvershootSize_ = 8_MB;
@@ -136,7 +139,6 @@ public:
             defaultSnapshotSpaceSize_ = 4_MB;
             defaultMachineCodeSpaceSize_ = 8_MB;
             defaultGlobalAllocLimit_ = 20_MB;
-            edenSpaceTriggerConcurrentMark_ = 1.5_MB;
             semiSpaceTriggerConcurrentMark_ = 1.5_MB;
             semiSpaceStepOvershootSize_ = 2_MB;
             oldSpaceStepOvershootSize_ = 8_MB;
@@ -196,11 +198,6 @@ public:
     size_t GetDefaultGlobalAllocLimit() const
     {
         return defaultGlobalAllocLimit_;
-    }
-
-    size_t GetEdenSpaceTriggerConcurrentMark() const
-    {
-        return edenSpaceTriggerConcurrentMark_;
     }
 
     size_t GetSemiSpaceTriggerConcurrentMark() const
@@ -324,7 +321,6 @@ private:
     size_t defaultSnapshotSpaceSize_ {0};
     size_t defaultMachineCodeSpaceSize_ {0};
     size_t defaultGlobalAllocLimit_ {0};
-    size_t edenSpaceTriggerConcurrentMark_ {0};
     size_t semiSpaceTriggerConcurrentMark_ {0};
     size_t semiSpaceStepOvershootSize_ {0};
     size_t oldSpaceStepOvershootSize_ {0};
