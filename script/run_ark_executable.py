@@ -55,9 +55,13 @@ def get_env_path_from_rsp(script_file: str) -> list:
 
 def get_command_and_env_path(args: object) -> [str, str]:
     """get command and environment path from args for running excutable."""
-    env_path_list = list(set(get_env_path_from_rsp(args.script_file)))
-    env_path_list.append(args.clang_lib_path)
-    env_path = ":".join(env_path_list)
+    if args.arkjsvmpath is None:
+        env_path_list = list(set(get_env_path_from_rsp(args.script_file)))
+        env_path_list.append(args.clang_lib_path)
+        env_path = ":".join(env_path_list)
+    else:
+        env_path_list = list()
+        env_path = ""
     if args.qemu_binary_path:
         if not os.path.exists(args.qemu_binary_path):
             print("Have you set up environment for running executables with qemu?\n" \
@@ -94,6 +98,9 @@ def parse_args() -> object:
     parser.add_argument('--qemu-binary-path', help='path to qemu binary, run executable with qemu if assigned')
     parser.add_argument('--qemu-ld-prefix', help='elf interpreter prefix')
     parser.add_argument('--expect-sub-error', help='use error output to compare result')
+    parser.add_argument('--L', help='qemu lib path')
+    parser.add_argument('--arkjsvmpath', help='ark_js_vm_path')
+    parser.add_argument('--test-abc-path', help='abc path')
     args = parser.parse_args()
     return args
 

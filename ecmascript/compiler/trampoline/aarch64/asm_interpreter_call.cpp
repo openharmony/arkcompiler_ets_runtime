@@ -202,7 +202,7 @@ void AsmInterpreterCall::JSCallCommonFastPath(ExtendedAssembler *assembler, JSCa
         Register opRegister = __ TempRegister1();
         PushArgsWithArgv(assembler, glueRegister, numRegister, argvRegister, opRegister,
                          currentSlotRegister, pushCallThis, stackOverflow);
-    } else if (argc > 0) {
+    } else {
         if (argc > 2) { // 2: call arg2
             Register arg2 = __ CallDispatcherArgument(kungfu::CallDispatchInputs::ARG2);
             __ Str(arg2, MemoryOperand(currentSlotRegister, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));
@@ -214,6 +214,13 @@ void AsmInterpreterCall::JSCallCommonFastPath(ExtendedAssembler *assembler, JSCa
         if (argc > 0) {
             Register arg0 = __ CallDispatcherArgument(kungfu::CallDispatchInputs::ARG0);
             __ Str(arg0, MemoryOperand(currentSlotRegister, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));
+        }
+        if (stackOverflow != nullptr) {
+            [[maybe_unused]] TempRegister1Scope scope(assembler);
+            Register op = __ TempRegister1();
+            Register numRegister = __ AvailableRegister2();
+            __ Mov(numRegister, Immediate(argc));
+            StackOverflowCheck(assembler, glueRegister, currentSlotRegister, numRegister, op, stackOverflow);
         }
     }
 }
