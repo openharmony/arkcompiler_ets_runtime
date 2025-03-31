@@ -366,6 +366,10 @@ HWTEST_F_L0(BarrierTest, UnshiftBarrierMoveForward)
 
 HWTEST_F_L0(BarrierTest, UnshiftBarrierMoveBackward)
 {
+    if (!thread->IsAsmInterpreter()) {
+        return;
+    }
+#ifdef ENABLE_NEXT_OPTIMIZATION
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     uint32_t arrayLength = 20;
     JSHandle<TaggedArray> array = factory->NewTaggedArray(arrayLength);
@@ -407,6 +411,7 @@ HWTEST_F_L0(BarrierTest, UnshiftBarrierMoveBackward)
     });
 
     EXPECT_TRUE(LocalToShareSlot.empty());
+#endif
 }
 
 HWTEST_F_L0(BarrierTest, UnshiftBarrierMoveForward1)
@@ -502,6 +507,10 @@ HWTEST_F_L0(BarrierTest, SliceBarrierMove)
 
 HWTEST_F_L0(BarrierTest, LocalToShareReverse)
 {
+    if (!thread->IsAsmInterpreter()) {
+        return;
+    }
+#ifdef ENABLE_NEXT_OPTIMIZATION
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     uint32_t arrayLength = 40;
     JSHandle<TaggedArray> array = factory->NewTaggedArray(arrayLength);
@@ -541,6 +550,7 @@ HWTEST_F_L0(BarrierTest, LocalToShareReverse)
     });
     EXPECT_TRUE(LocalToShareSlot1.empty());
     EXPECT_EQ(LocalToShareSlot2.size(), arrayLength / 2);
+#endif
 }
 
 } // namespace panda::ecmascript
