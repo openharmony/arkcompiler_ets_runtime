@@ -690,7 +690,7 @@ JSTaggedValue JSStableArray::Join(JSHandle<JSTaggedValue> receiverValue, EcmaRun
         }
         SetSepValue(sepStringHandle, sep, sepLength);
     }
-    if (len == 0 || !ArrayJoinStack::Push(thread, receiverValue)) {
+    if (length == 0 || !ArrayJoinStack::Push(thread, receiverValue)) {
         return globalConst->GetEmptyString();
     }
     JSHandle<JSObject> obj(thread, receiverValue.GetTaggedValue());
@@ -768,7 +768,7 @@ JSTaggedValue JSStableArray::Join(JSHandle<JSTaggedValue> receiverValue, EcmaRun
                  "isOneByte does not match the real value!");
     JSHandle<JSTaggedValue> stringValue(thread, newString);
     ArrayJoinStack::Pop(thread, receiverValue);
-    return newString.GetTaggedValue();
+    return stringValue.GetTaggedValue();
 }
 #endif
 
