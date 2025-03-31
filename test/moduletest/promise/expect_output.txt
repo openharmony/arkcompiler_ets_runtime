@@ -12,6 +12,16 @@
 # limitations under the License.
 
 original === cast ? true
+test:1
+success
+test:2
+success
+test:3
+success
+test:4
+success
+test:5
+success
 value:33
 reject
 1357

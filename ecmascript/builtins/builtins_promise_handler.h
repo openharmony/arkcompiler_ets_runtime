@@ -55,6 +55,9 @@ public:
     static JSTaggedValue AllSettledRejectElementFunction(EcmaRuntimeCallInfo *argv);
 
     static JSTaggedValue AnyRejectElementFunction(EcmaRuntimeCallInfo *argv);
+
+    static JSTaggedValue InnerResolve(JSThread *thread, const JSHandle<JSPromise> &promise,
+                                      const JSHandle<JSTaggedValue> &resolution);
 };
 }  // namespace panda::ecmascript::builtins
 

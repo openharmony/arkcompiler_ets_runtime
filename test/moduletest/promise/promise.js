@@ -59,3 +59,70 @@ cast.then((value) => {
   print(`value:${value}`);
 });
 print(`original === cast ? ${original === cast}`);
+
+function testCase(description, testFn) {
+    print(`test:${description}`);
+    try {
+        testFn();
+        print("success");
+    } catch (error) {
+        console.error(`fail: ${error.message}`);
+    }
+}
+
+async function checkResolved(promise, expected) {
+    const result = await promise;
+    if (result !== expected) {
+        throw new Error(`expected ${expected}，actual ${result}`);
+    }
+}
+
+async function checkRejected(promise, expectedError) {
+    try {
+        await promise;
+        throw new Error("Expected promise rejected, but actually resolved");
+    } catch (error) {
+        if (error !== expectedError && error.message !== expectedError.message) {
+            throw new Error(`expected ${expectedError}，actual ${error}`);
+        }
+    }
+}
+
+
+async function runTests() {
+    testCase("1", async () => {
+        const original = Promise.resolve("original");
+        await checkResolved(Promise.resolve(original), "original");
+    });
+
+    testCase("2", async () => {
+        const rejected = Promise.reject("error");
+        await checkRejected(Promise.resolve(rejected), "error");
+    });
+
+    testCase("3", async () => {
+        const thenable = {
+            then: function(resolve) {
+                resolve("thenable");
+            }
+        };
+        await checkResolved(Promise.resolve(thenable), "thenable");
+    });
+
+    testCase("4", async () => {
+        const result = Promise.resolve(10)
+            .then(x => x * 2)
+            .then(x => x + 5);
+        await checkResolved(result, 25);
+    });
+
+    testCase("5", async () => {
+        const asyncAdd = (a, b) =>
+            new Promise(resolve => setTimeout(() => resolve(a + b), 10));
+        const result = Promise.resolve(10)
+            .then(x => asyncAdd(x, 5))
+            .then(x => asyncAdd(x, 3));
+        await checkResolved(result, 18);
+    });
+}
+runTests();
