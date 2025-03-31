@@ -6134,7 +6134,7 @@ Local<ObjectRef> JSNApi::GetExportObject(EcmaVM *vm, const std::string &file, co
         ModulePathHelper::ParseAbcPathAndOhmUrl(vm, entry, name, entry);
         std::shared_ptr<JSPandaFile> jsPandaFile =
             JSPandaFileManager::GetInstance()->LoadJSPandaFile(
-                thread, name, entry.c_str(), false, ecmascript::ExecuteTypes::STATIC);
+                thread, name, entry.c_str(), false, false, ecmascript::ExecuteTypes::STATIC);
         if (jsPandaFile == nullptr) {
             JSHandle<JSTaggedValue> exportObj(thread, JSTaggedValue::Null());
             return JSNApiHelper::ToLocal<ObjectRef>(exportObj);
@@ -6207,21 +6207,22 @@ Local<ObjectRef> JSNApi::ExecuteNativeModule(EcmaVM *vm, const std::string &key)
     return JSNApiHelper::ToLocal<ObjectRef>(exportObj);
 }
 
-Local<ObjectRef> JSNApi::GetModuleNameSpaceFromFile(EcmaVM *vm, const std::string &file)
-{
-    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
-    ecmascript::ThreadManagedScope managedScope(thread);
-    std::pair<std::string, std::string> moduleInfo = vm->GetCurrentModuleInfo(false);
-    if (thread->HasPendingException()) {
-        thread->HandleUncaughtException();
-        return JSValueRef::Undefined(vm);
+    Local<ObjectRef> JSNApi::GetModuleNameSpaceFromFile(EcmaVM *vm, const std::string &file)
+    {
+        CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
+        ecmascript::ThreadManagedScope managedScope(thread);
+        std::pair<std::string, std::string> moduleInfo = vm->GetCurrentModuleInfo(false);
+        if (thread->HasPendingException()) {
+            thread->HandleUncaughtException();
+            return JSValueRef::Undefined(vm);
+        }
+        ecmascript::CString moduleName = moduleInfo.first.c_str();
+        ecmascript::CString abcPath = moduleInfo.second.c_str();
+        JSHandle<JSTaggedValue> moduleNamespace = ecmascript::NapiModuleLoader::LoadModuleNameSpace(vm,
+                                                                                                    file.c_str(), moduleName, abcPath);
+        return JSNApiHelper::ToLocal<ObjectRef>(moduleNamespace);
     }
-    ecmascript::CString moduleName = moduleInfo.first.c_str();
-    ecmascript::CString abcPath = moduleInfo.second.c_str();
-    JSHandle<JSTaggedValue> moduleNamespace = ecmascript::NapiModuleLoader::LoadModuleNameSpace(vm,
-        file.c_str(), moduleName, abcPath);
-    return JSNApiHelper::ToLocal<ObjectRef>(moduleNamespace);
-}
+
 
 Local<ObjectRef> JSNApi::GetModuleNameSpaceWithModuleInfo(EcmaVM *vm, const std::string &file,
                                                           const std::string &module_path, bool isHybrid)
@@ -6231,19 +6232,17 @@ Local<ObjectRef> JSNApi::GetModuleNameSpaceWithModuleInfo(EcmaVM *vm, const std:
     ecmascript::CString requestPath = file.c_str();
     ecmascript::CString modulePath = module_path.c_str();
     JSHandle<JSTaggedValue> nameSp = ecmascript::NapiModuleLoader::LoadModuleNameSpace(vm,
-        requestPath, modulePath);
+                                                                                       requestPath, modulePath, isHybrid);
     return JSNApiHelper::ToLocal<ObjectRef>(nameSp);
 }
 
-// This interface is always used for load module on host
 Local<ObjectRef> JSNApi::GetModuleNameSpaceWithPath(const EcmaVM *vm, const char *path)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     auto [filePath, recordName] = ModulePathHelper::ResolvePath(path);
     ecmascript::ThreadManagedScope managedScope(thread);
-    ecmascript::ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
-    JSHandle<JSTaggedValue> moduleNamespace = moduleManager->
-        GetModuleNameSpaceFromFile(thread, recordName, filePath);
+    JSHandle<JSTaggedValue> moduleNamespace = ecmascript::NapiModuleLoader::LoadModuleNameSpaceFromFile(thread,
+                                                                                                        recordName, filePath);
     return JSNApiHelper::ToLocal<ObjectRef>(moduleNamespace);
 }
 

@@ -434,7 +434,7 @@ void JSThread::Iterate(RootVisitor &visitor)
             }
             globalCount++;
         };
-        globalStorage_->IterateUsageGlobal<decltype(callback)>(callback);
+        globalStorage_->IterateUsageGlobal(callback);
         static bool hasCheckedGlobalCount = false;
         static const size_t WARN_GLOBAL_COUNT = 100000;
         if (!hasCheckedGlobalCount && globalCount >= WARN_GLOBAL_COUNT) {
@@ -495,7 +495,7 @@ void JSThread::IterateHandleWithCheck(RootVisitor &visitor)
         }
         globalCount++;
     };
-    globalDebugStorage_->IterateUsageGlobal<decltype(callback)>(callback);
+    globalDebugStorage_->IterateUsageGlobal(callback);
     if (isStopObjectLeakCheck || isStopPrimitiveLeakCheck) {
         buffer << "Global leak check success!";
         WriteToStackTraceFd(buffer);

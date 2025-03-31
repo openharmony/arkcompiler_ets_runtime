@@ -255,7 +255,7 @@ public:
     inline size_t Finish() override;
     inline void Finish(size_t &aliveSize, size_t &promotedSize);
 
-    void PushObjectToGlobal(TaggedObject *object);
+    inline void PushObjectToGlobal(TaggedObject *object);
 
     inline uint32_t GetTotalThreadNum()
     {

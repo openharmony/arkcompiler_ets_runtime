@@ -93,6 +93,7 @@ std::unordered_set<std::string> AotArgsList {
     "compiler-target-triple",
     "enable-print-execute-time",
     "enable-pgo-profiler",
+    "enable-mutant-array",
     "enable-elements-kind",
     "compiler-pgo-profiler-path",
     "compiler-pgo-hotness-threshold",
@@ -142,6 +143,7 @@ std::unordered_set<std::string> AotArgsList {
     "compiler-baselinejit-hotness-threshold",
     "compiler-force-baselinejit-compile-main",
     "compiler-baseline-pgo",
+    "compiler-trace-builtins",
 };
 
 std::unordered_set<std::string> StaticAotArgsList {

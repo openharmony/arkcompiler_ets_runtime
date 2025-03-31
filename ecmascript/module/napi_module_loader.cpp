@@ -22,39 +22,33 @@
 
 namespace panda::ecmascript {
 JSHandle<JSTaggedValue> NapiModuleLoader::LoadModuleNameSpaceWithModuleInfo(EcmaVM *vm, CString &requestPath,
-    CString &modulePath, bool isHybrid, CString &abcFilePath)
+                                                                             CString &modulePath, CString &abcFilePath, bool isHybrid)
 {
     LOG_ECMA(INFO) << "NapiModuleLoader::LoadModuleNameSpaceWithModuleInfo requestPath:" << requestPath <<
-        "," << "modulePath:" << modulePath;
+                   "," << "modulePath:" << modulePath;
     JSThread *thread = vm->GetJSThread();
     std::shared_ptr<JSPandaFile> curJsPandaFile;
     if (!modulePath.empty()) {
-        bool isValid = JSPandaFileManager::GetInstance()->CheckFilePath(thread, abcFilePath, isHybrid);
-        if (!isValid) {
-            CString msg = "Load file with filename '" + abcFilePath +
-                "' failed, module name '" + requestPath + "'" + ", from napi load module";
-            THROW_NEW_ERROR_AND_RETURN_HANDLE(thread, ErrorType::REFERENCE_ERROR, JSTaggedValue, msg.c_str());
-        }
-        curJsPandaFile =
-            JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, abcFilePath, requestPath, false, isHybrid, ExecuteTypes::NAPI);
+        curJsPandaFile = JSPandaFileManager::GetInstance()->LoadJSPandaFile(
+                thread, abcFilePath, requestPath, false, isHybrid, ExecuteTypes::NAPI);
         RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
         if (curJsPandaFile == nullptr) {
             LOG_FULL(FATAL) << "Load current file's panda file failed. Current file is " << abcFilePath;
         }
         if (vm->IsNormalizedOhmUrlPack()) {
             ModulePathHelper::TranslateExpressionToNormalized(thread, curJsPandaFile.get(), abcFilePath, "",
-                requestPath);
+                                                              requestPath);
         } else if (ModulePathHelper::NeedTranstale(requestPath)) {
             ModulePathHelper::TranstaleExpressionInput(curJsPandaFile.get(), requestPath);
         }
     }
     JSHandle<JSTaggedValue> nameSp = LoadModuleNameSpaceWithPath(thread, abcFilePath, requestPath, modulePath,
-        curJsPandaFile.get());
+                                                                 curJsPandaFile.get());
     return nameSp;
 }
 
 JSHandle<JSTaggedValue> NapiModuleLoader::LoadModuleNameSpace(EcmaVM *vm, CString requestPath,
-    const CString& moduleName, CString& abcFilePath)
+                                                              const CString& moduleName, CString& abcFilePath, bool isHybrid)
 {
     JSThread *thread = vm->GetJSThread();
     CString path = base::ConcatToCString(vm->GetBundleName(), PathHelper::SLASH_TAG);
@@ -70,12 +64,12 @@ JSHandle<JSTaggedValue> NapiModuleLoader::LoadModuleNameSpace(EcmaVM *vm, CStrin
     path += abcModuleName;
     // RequestPath starts with moduleName/src/main/xxx
     if (StringHelper::StringStartWith(requestPath, srcPrefix)) {
-        return LoadFilePathWithinModule(thread, abcFilePath, srcPrefix, requestPath, path);
+        return LoadFilePathWithinModule(thread, abcFilePath, srcPrefix, requestPath, path, isHybrid);
     }
-    return LoadModuleNameSpaceWithModuleInfo(vm, requestPath, path, abcFilePath);
+    return LoadModuleNameSpaceWithModuleInfo(vm, requestPath, path, abcFilePath, isHybrid);
 }
 
-JSHandle<JSTaggedValue> NapiModuleLoader::LoadModuleNameSpace(EcmaVM *vm, CString requestPath, CString modulePath)
+JSHandle<JSTaggedValue> NapiModuleLoader::LoadModuleNameSpace(EcmaVM *vm, CString requestPath, CString modulePath, bool isHybrid)
 {
     JSThread *thread = vm->GetJSThread();
     CString moduleName = ModulePathHelper::GetModuleNameWithPath(modulePath);
@@ -83,20 +77,20 @@ JSHandle<JSTaggedValue> NapiModuleLoader::LoadModuleNameSpace(EcmaVM *vm, CStrin
     CString srcPrefix = base::ConcatToCString(moduleName, ModulePathHelper::PHYCICAL_FILE_PATH);
     // RequestPath starts with moduleName/src/main/xxx
     if (StringHelper::StringStartWith(requestPath, srcPrefix)) {
-        return LoadFilePathWithinModule(thread, abcFilePath, srcPrefix, requestPath, modulePath);
+        return LoadFilePathWithinModule(thread, abcFilePath, srcPrefix, requestPath, modulePath, isHybrid);
     }
-    return LoadModuleNameSpaceWithModuleInfo(vm, requestPath, modulePath, abcFilePath);
+    return LoadModuleNameSpaceWithModuleInfo(vm, requestPath, modulePath, abcFilePath, isHybrid);
 }
 
 JSHandle<JSTaggedValue> NapiModuleLoader::LoadFilePathWithinModule(JSThread *thread, const CString& abcFilePath,
-    const CString& srcPrefix, const CString& requestPath, const CString& modulePath)
+    const CString& srcPrefix, const CString& requestPath, const CString& modulePath, bool isHybrid)
 {
     if (requestPath.size() > srcPrefix.size()) {
         // Sub after moduleName/src/main/
         CString fileName = requestPath.substr(srcPrefix.size() + 1);
         CString recordNameStr = ModulePathHelper::TranslateNapiFileRequestPath(thread, modulePath, fileName);
         LOG_ECMA(DEBUG) << "NapiModuleLoader::LoadFilePathWithinModule: Concated recordName " << recordNameStr;
-        return LoadModuleNameSpaceFromFile(thread, recordNameStr, abcFilePath);
+        return LoadModuleNameSpaceFromFile(thread, recordNameStr, abcFilePath, isHybrid);
     } else {
         CString msg = "cannot find record '" + requestPath + "' in basefileName " + abcFilePath + "," +
             "from napi load module";
@@ -119,10 +113,10 @@ JSHandle<JSTaggedValue> NapiModuleLoader::LoadModuleNameSpaceWithPath(JSThread *
 }
 
 JSHandle<JSTaggedValue> NapiModuleLoader::LoadModuleNameSpaceFromFile(
-    JSThread *thread, const CString &entryPoint, const CString &abcFilePath)
+    JSThread *thread, const CString &entryPoint, const CString &abcFilePath, bool isHybrid)
 {
     std::shared_ptr<JSPandaFile> jsPandaFile =
-        JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, abcFilePath, entryPoint, false, ExecuteTypes::NAPI);
+        JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, abcFilePath, entryPoint, false, isHybrid, ExecuteTypes::NAPI);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
     if (jsPandaFile == nullptr) {
         LOG_FULL(FATAL) << "Load current file's panda file failed. Current file is " << abcFilePath;

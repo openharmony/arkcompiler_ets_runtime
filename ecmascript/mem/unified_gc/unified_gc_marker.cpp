@@ -1,17 +1,17 @@
 /*
- * Copyright (c) 2025 Huawei Device Co., Ltd.
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+* Copyright (c) 2025 Huawei Device Co., Ltd.
+* Licensed under the Apache License, Version 2.0 (the "License");
+* you may not use this file except in compliance with the License.
+* You may obtain a copy of the License at
+*
+*     http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing, software
+* distributed under the License is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+* See the License for the specific language governing permissions and
+* limitations under the License.
+*/
 
 #include "ecmascript/checkpoint/thread_state_transition.h"
 #include "ecmascript/mem/concurrent_marker.h"
@@ -39,7 +39,8 @@ void UnifiedGCMarker::Initialize()
 void UnifiedGCMarker::InitialMark(uint32_t threadId)
 {
     UnifiedGCMarkRootsScope scope(heap_->GetJSThread());
-    MarkRoots(threadId);
+    UnifiedGCMarkRootVisitor visitor(workManager_->GetWorkNodeHolder(threadId), this);
+    MarkRoots(visitor);
 }
 
 void UnifiedGCMarker::Finish()
@@ -65,22 +66,13 @@ void UnifiedGCMarker::MarkFromObject(TaggedObject *object)
 
 void UnifiedGCMarker::ProcessMarkStack(uint32_t threadId)
 {
-    auto cb = [&](ObjectSlot s) { MarkValue(threadId, s); };
-    EcmaObjectRangeVisitor visitor = [this, threadId, cb](TaggedObject *root, ObjectSlot start,
-                                                          ObjectSlot end, VisitObjectArea area) {
-        if (area == VisitObjectArea::IN_OBJECT) {
-            if (VisitBodyInObj(root, start, end, cb)) {
-                return;
-            }
-        }
-        for (ObjectSlot slot = start; slot < end; slot++) {
-            MarkValue(threadId, slot);
-        }
-    };
+    WorkNodeHolder *workNodeHolder = workManager_->GetWorkNodeHolder(threadId);
+    UnifiedGCMarkObjectVisitor visitor(workNodeHolder, this);
+
     TaggedObject *obj = nullptr;
-    while (workManager_->Pop(threadId, &obj)) {
+    while (workNodeHolder->Pop(&obj)) {
         JSHClass *jsHclass = obj->SynchronizedGetClass();
-        MarkObject(threadId, jsHclass);
+        visitor.VisitHClass(jsHclass);
         ObjectXRay::VisitObjectBody<VisitType::OLD_GC_VISIT>(obj, jsHclass, visitor);
     }
 }

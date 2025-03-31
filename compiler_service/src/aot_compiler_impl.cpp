@@ -33,94 +33,6 @@ AotCompilerImpl& AotCompilerImpl::GetInstance()
     return aotCompiler;
 }
 
-int32_t AotCompilerImpl::FindArgsIdxToInteger(const std::unordered_map<std::string, std::string> &argsMap,
-                                              const std::string &keyName, int32_t &bundleID)
-{
-    if (argsMap.find(keyName) == argsMap.end()) {
-        return ERR_AOT_COMPILER_PARAM_FAILED;
-    }
-    if (argsMap.at(keyName).empty() || !isdigit(argsMap.at(keyName).at(0))) {
-        return ERR_AOT_COMPILER_PARAM_FAILED;
-    }
-    size_t sz;
-    bundleID = static_cast<int32_t>(std::stoi(argsMap.at(keyName), &sz));
-    if (sz < static_cast<size_t>(argsMap.at(keyName).size())) {
-        LOG_SA(ERROR) << "trigger exception as converting string to integer";
-        return ERR_AOT_COMPILER_PARAM_FAILED;
-    }
-    return ERR_OK;
-}
-
-int32_t AotCompilerImpl::FindArgsIdxToString(const std::unordered_map<std::string, std::string> &argsMap,
-                                             const std::string &keyName, std::string &bundleArg)
-{
-    if (argsMap.find(keyName) == argsMap.end()) {
-        return ERR_AOT_COMPILER_PARAM_FAILED;
-    }
-    bundleArg = argsMap.at(keyName);
-    return ERR_OK;
-}
-
-int32_t AotCompilerImpl::PrepareArgs(const std::unordered_map<std::string, std::string> &argsMap)
-{
-    for (const auto &arg : argsMap) {
-        LOG_SA(DEBUG) << arg.first << ": " << arg.second;
-    }
-    std::lock_guard<std::mutex> lock(hapArgsMutex_);
-    std::string abcPath;
-    if ((FindArgsIdxToInteger(argsMap, ArgsIdx::BUNDLE_UID, hapArgs_.bundleUid) != ERR_OK)   ||
-        (FindArgsIdxToInteger(argsMap, ArgsIdx::BUNDLE_GID, hapArgs_.bundleGid) != ERR_OK)   ||
-        (FindArgsIdxToString(argsMap, ArgsIdx::AN_FILE_NAME, hapArgs_.fileName) != ERR_OK)   ||
-        (FindArgsIdxToString(argsMap, ArgsIdx::APP_SIGNATURE, hapArgs_.signature) != ERR_OK) ||
-        (FindArgsIdxToString(argsMap, ArgsIdx::ABC_PATH, abcPath) != ERR_OK)) {
-        LOG_SA(ERROR) << "aot compiler Args parsing error";
-        return ERR_AOT_COMPILER_PARAM_FAILED;
-    }
-    hapArgs_.argVector.clear();
-    hapArgs_.argVector.emplace_back(Cmds::ARK_AOT_COMPILER);
-    // service process add aot compile args here
-    AddExpandArgs(hapArgs_.argVector);
-    for (auto &argPair : argsMap) {
-        if (AotArgsSet.find(argPair.first) != AotArgsSet.end()) {
-            hapArgs_.argVector.emplace_back(Symbols::PREFIX + argPair.first + Symbols::EQ + argPair.second);
-        }
-    }
-#ifdef ENABLE_COMPILER_SERVICE_GET_PARAMETER
-    SetEnableCodeCommentBySysParam();
-    SetAnFileMaxSizeBySysParam();
-#endif
-    hapArgs_.argVector.emplace_back(abcPath);
-    return ERR_OK;
-}
-
-#ifdef ENABLE_COMPILER_SERVICE_GET_PARAMETER
-void AotCompilerImpl::SetAnFileMaxSizeBySysParam()
-{
-    int anFileMaxSize = OHOS::system::GetIntParameter<int>("ark.aot.compiler_an_file_max_size", -1);
-    if (anFileMaxSize >= 0) {
-        hapArgs_.argVector.emplace_back(Symbols::PREFIX + ArgsIdx::COMPILER_AN_FILE_MAX_SIZE + Symbols::EQ +
-                                        std::to_string(anFileMaxSize));
-    }
-}
-
-void AotCompilerImpl::SetEnableCodeCommentBySysParam()
-{
-    bool enableAotCodeComment = OHOS::system::GetBoolParameter("ark.aot.code_comment.enable", false);
-    if (enableAotCodeComment) {
-        hapArgs_.argVector.emplace_back(Symbols::PREFIX + ArgsIdx::COMPILER_ENABLE_AOT_CODE_COMMENT + Symbols::EQ +
-                                        "true");
-        hapArgs_.argVector.emplace_back(Symbols::PREFIX + ArgsIdx::COMPILER_LOG_OPT + Symbols::EQ + "allasm");
-    }
-}
-#endif
-
-void AotCompilerImpl::GetBundleId(int32_t &bundleUid, int32_t &bundleGid) const
-{
-    std::lock_guard<std::mutex> lock(hapArgsMutex_);
-    bundleUid = hapArgs_.bundleUid;
-    bundleGid = hapArgs_.bundleGid;
-}
-
 void AotCompilerImpl::DropCapabilities() const
 {
     LOG_SA(INFO) << "begin to drop capabilities";
@@ -153,7 +65,6 @@ void AotCompilerImpl::DropCapabilities() const
     }
     LOG_SA(INFO) << "drop capabilities success";
 }
-
 void AotCompilerImpl::ExecuteInChildProcess() const
 {
     std::vector<const char*> argv = argsHandler_->GetAotArgs();

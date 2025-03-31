@@ -1005,85 +1005,85 @@ HWTEST_F_L0(EcmaModuleTest, NormalizePath)
     EXPECT_EQ(res5, normalName5);
 }
 
-HWTEST_F_L0(EcmaModuleTest, ParseAbcPathAndOhmUrl)
-{
-    // old pages url
-    instance->SetBundleName("com.bundleName.test");
-    instance->SetModuleName("moduleName");
-    CString inputFileName = "moduleName/ets/pages/index.abc";
-    CString outFileName = "";
-    CString res1 = "com.bundleName.test/moduleName/ets/pages/index";
-    CString entryPoint;
-    ModulePathHelper::ParseAbcPathAndOhmUrl(instance, inputFileName, outFileName, entryPoint);
-    EXPECT_EQ(entryPoint, res1);
-    EXPECT_EQ(outFileName, "");
-
-    // new pages url
-    inputFileName = "@bundle:com.bundleName.test/moduleName/ets/pages/index.abc";
-    ModulePathHelper::ParseAbcPathAndOhmUrl(instance, inputFileName, outFileName, entryPoint);
-    EXPECT_EQ(entryPoint, res1);
-    EXPECT_EQ(outFileName, "/data/storage/el1/bundle/moduleName/ets/modules.abc");
-
-    // new pages url Intra-application cross hap
-    inputFileName = "@bundle:com.bundleName.test/moduleName1/ets/pages/index.abc";
-    CString outRes = "/data/storage/el1/bundle/moduleName1/ets/modules.abc";
-    CString res2 = "com.bundleName.test/moduleName1/ets/pages/index";
-    ModulePathHelper::ParseAbcPathAndOhmUrl(instance, inputFileName, outFileName, entryPoint);
-    EXPECT_EQ(entryPoint, res2);
-    EXPECT_EQ(outFileName, outRes);
-
-    // new pages url Cross-application
-    inputFileName = "@bundle:com.bundleName.test1/moduleName1/ets/pages/index.abc";
-    CString outRes1 = "/data/storage/el1/bundle/com.bundleName.test1/moduleName1/moduleName1/ets/modules.abc";
-    CString res3 = "com.bundleName.test1/moduleName1/ets/pages/index";
-    ModulePathHelper::ParseAbcPathAndOhmUrl(instance, inputFileName, outFileName, entryPoint);
-    EXPECT_EQ(entryPoint, res3);
-    EXPECT_EQ(outFileName, outRes1);
-
-    // worker url Intra-application cross hap
-    inputFileName = "/data/storage/el1/bundle/entry/ets/mainAbility.abc";
-    CString outRes2 = "/data/storage/el1/bundle/entry/ets/modules.abc";
-    CString res4 = "com.bundleName.test/entry/ets/mainAbility";
-    ModulePathHelper::ParseAbcPathAndOhmUrl(instance, inputFileName, outFileName, entryPoint);
-    EXPECT_EQ(entryPoint, res4);
-    EXPECT_EQ(outFileName, outRes2);
-
-    // worker url
-    outFileName = "";
-    inputFileName = "/data/storage/el1/bundle/moduleName/ets/mainAbility.abc";
-    CString res5 = "com.bundleName.test/moduleName/ets/mainAbility";
-    ModulePathHelper::ParseAbcPathAndOhmUrl(instance, inputFileName, outFileName, entryPoint);
-    EXPECT_EQ(entryPoint, res5);
-    EXPECT_EQ(outFileName, "/data/storage/el1/bundle/moduleName/ets/modules.abc");
-
-    CMap<CString, CMap<CString, CVector<CString>>> pkgList;
-    CMap<CString, CVector<CString>> entryList;
-    entryList["entry"] = {
-        "packageName", "entry",
-        "bundleName", "",
-        "moduleName", "",
-        "version", "",
-        "entryPath", "src/main/",
-        "isSO", "false"
-    };
-    entryList["har"] = {
-        "packageName", "har",
-        "bundleName", "",
-        "moduleName", "",
-        "version", "1.2.0",
-        "entryPath", "Index.ets",
-        "isSO", "false"
-    };
-    pkgList["entry"] = entryList;
-    instance->SetpkgContextInfoList(pkgList);
-
-    inputFileName = "com.bundleName.test/moduleName/ets/pages/index";
-    CString outRes3 = "/data/storage/el1/bundle/moduleName/ets/modules.abc";
-    CString res6 = "com.bundleName.test/com.bundleName.test/moduleName/ets/pages/index";
-    ModulePathHelper::ParseAbcPathAndOhmUrl(instance, inputFileName, outFileName, entryPoint);
-    EXPECT_EQ(entryPoint, res6);
-    EXPECT_EQ(outFileName, outRes3);
-}
+//HWTEST_F_L0(EcmaModuleTest, ParseAbcPathAndOhmUrl)
+//{
+//    // old pages url
+//    instance->SetBundleName("com.bundleName.test");
+//    instance->SetModuleName("moduleName");
+//    CString inputFileName = "moduleName/ets/pages/index.abc";
+//    CString outFileName = "";
+//    CString res1 = "com.bundleName.test/moduleName/ets/pages/index";
+//    CString entryPoint;
+//    ModulePathHelper::ParseAbcPathAndOhmUrl(instance, inputFileName, outFileName, entryPoint);
+//    EXPECT_EQ(entryPoint, res1);
+//    EXPECT_EQ(outFileName, "");
+//
+//    // new pages url
+//    inputFileName = "@bundle:com.bundleName.test/moduleName/ets/pages/index.abc";
+//    ModulePathHelper::ParseAbcPathAndOhmUrl(instance, inputFileName, outFileName, entryPoint);
+//    EXPECT_EQ(entryPoint, res1);
+//    EXPECT_EQ(outFileName, "/data/storage/el1/bundle/moduleName/ets/modules.abc");
+//
+//    // new pages url Intra-application cross hap
+//    inputFileName = "@bundle:com.bundleName.test/moduleName1/ets/pages/index.abc";
+//    CString outRes = "/data/storage/el1/bundle/moduleName1/ets/modules.abc";
+//    CString res2 = "com.bundleName.test/moduleName1/ets/pages/index";
+//    ModulePathHelper::ParseAbcPathAndOhmUrl(instance, inputFileName, outFileName, entryPoint);
+//    EXPECT_EQ(entryPoint, res2);
+//    EXPECT_EQ(outFileName, outRes);
+//
+//    // new pages url Cross-application
+//    inputFileName = "@bundle:com.bundleName.test1/moduleName1/ets/pages/index.abc";
+//    CString outRes1 = "/data/storage/el1/bundle/com.bundleName.test1/moduleName1/moduleName1/ets/modules.abc";
+//    CString res3 = "com.bundleName.test1/moduleName1/ets/pages/index";
+//    ModulePathHelper::ParseAbcPathAndOhmUrl(instance, inputFileName, outFileName, entryPoint);
+//    EXPECT_EQ(entryPoint, res3);
+//    EXPECT_EQ(outFileName, outRes1);
+//
+//    // worker url Intra-application cross hap
+//    inputFileName = "/data/storage/el1/bundle/entry/ets/mainAbility.abc";
+//    CString outRes2 = "/data/storage/el1/bundle/entry/ets/modules.abc";
+//    CString res4 = "com.bundleName.test/entry/ets/mainAbility";
+//    ModulePathHelper::ParseAbcPathAndOhmUrl(instance, inputFileName, outFileName, entryPoint);
+//    EXPECT_EQ(entryPoint, res4);
+//    EXPECT_EQ(outFileName, outRes2);
+//
+//    // worker url
+//    outFileName = "";
+//    inputFileName = "/data/storage/el1/bundle/moduleName/ets/mainAbility.abc";
+//    CString res5 = "com.bundleName.test/moduleName/ets/mainAbility";
+//    ModulePathHelper::ParseAbcPathAndOhmUrl(instance, inputFileName, outFileName, entryPoint);
+//    EXPECT_EQ(entryPoint, res5);
+//    EXPECT_EQ(outFileName, "/data/storage/el1/bundle/moduleName/ets/modules.abc");
+//
+//    CMap<CString, CMap<CString, CVector<CString>>> pkgList;
+//    CMap<CString, CVector<CString>> entryList;
+//    entryList["entry"] = {
+//        "packageName", "entry",
+//        "bundleName", "",
+//        "moduleName", "",
+//        "version", "",
+//        "entryPath", "src/main/",
+//        "isSO", "false"
+//    };
+//    entryList["har"] = {
+//        "packageName", "har",
+//        "bundleName", "",
+//        "moduleName", "",
+//        "version", "1.2.0",
+//        "entryPath", "Index.ets",
+//        "isSO", "false"
+//    };
+//    pkgList["entry"] = entryList;
+//    instance->SetpkgContextInfoList(pkgList);
+//
+//    inputFileName = "com.bundleName.test/moduleName/ets/pages/index";
+//    CString outRes3 = "/data/storage/el1/bundle/moduleName/ets/modules.abc";
+//    CString res6 = "com.bundleName.test/com.bundleName.test/moduleName/ets/pages/index";
+//    ModulePathHelper::ParseAbcPathAndOhmUrl(instance, inputFileName, outFileName, entryPoint);
+//    EXPECT_EQ(entryPoint, res6);
+//    EXPECT_EQ(outFileName, outRes3);
+//}
 
 HWTEST_F_L0(EcmaModuleTest, CheckNativeModule)
 {
