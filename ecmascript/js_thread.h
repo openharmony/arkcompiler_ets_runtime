@@ -1396,7 +1396,7 @@ public:
     const GlobalEnvConstants *GetFirstGlobalConst() const;
     bool IsAllContextsInitialized() const;
     bool IsReadyToUpdateDetector() const;
-    Area *GetOrCreateRegExpCache();
+    Area *GetOrCreateRegExpCacheArea();
 
     void InitializeBuiltinObject(const std::string& key);
     void InitializeBuiltinObject();
@@ -1655,7 +1655,7 @@ private:
     std::atomic<ThreadId> id_ {0};
     EcmaVM *vm_ {nullptr};
     void *env_ {nullptr};
-    Area *regExpCache_ {nullptr};
+    Area *regExpCacheArea_ {nullptr};
 
     // MM: handles, global-handles, and aot-stubs.
     int nestedLevel_ = 0;

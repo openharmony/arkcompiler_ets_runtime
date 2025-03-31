@@ -33,7 +33,6 @@
 #include "ecmascript/jspandafile/abc_buffer_cache.h"
 #include "ecmascript/platform/aot_crash_info.h"
 #include "ecmascript/platform/ecma_context.h"
-#include "ecmascript/regexp/regexp_parser_cache.h"
 #include "ecmascript/require/js_require_manager.h"
 #include "ecmascript/snapshot/mem/snapshot.h"
 #include "ecmascript/stubs/runtime_stubs.h"
@@ -79,7 +78,6 @@ bool EcmaContext::Initialize()
         ecmaData_.loadMegaICCache_ = new MegaICCache();
         ecmaData_.storeMegaICCache_ = new MegaICCache();
     }
-    regExpParserCache_ = new RegExpParserCache();
     unsharedConstpools_ = new(std::nothrow) JSTaggedValue[GetUnsharedConstpoolsArrayLen()];
     if (unsharedConstpools_ == nullptr) {
         LOG_ECMA(FATAL) << "allocate unshared constpool array fail during initing";
@@ -156,10 +154,6 @@ EcmaContext::~EcmaContext()
     if (ptManager_ != nullptr) {
         delete ptManager_;
         ptManager_ = nullptr;
-    }
-    if (regExpParserCache_ != nullptr) {
-        delete regExpParserCache_;
-        regExpParserCache_ = nullptr;
     }
     if (aotFileManager_ != nullptr) {
         aotFileManager_ = nullptr;
@@ -758,9 +752,6 @@ void EcmaContext::Iterate(RootVisitor &v)
     }
     if (ecmaData_.propertiesCache_ != nullptr) {
         ecmaData_.propertiesCache_->Clear();
-    }
-    if (regExpParserCache_ != nullptr) {
-        regExpParserCache_->Clear();
     }
     IterateMegaIC(v);
 

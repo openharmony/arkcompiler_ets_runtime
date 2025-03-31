@@ -2372,7 +2372,7 @@ JSTaggedValue BuiltinsRegExp::RegExpInitialize(JSThread *thread, const JSHandle<
     // 9. 10.
     Chunk chunk(thread->GetNativeAreaAllocator());
     RegExpParser parser = RegExpParser(thread, &chunk);
-    RegExpParserCache *regExpParserCache = thread->GetCurrentEcmaContext()->GetRegExpParserCache();
+    RegExpParserCache *regExpParserCache = thread->GetEcmaVM()->GetRegExpParserCache();
     CVector<CString> groupName;
     auto getCache = regExpParserCache->GetCache(*patternStrHandle, flagsBits, groupName);
     if (getCache.first.IsHole()) {

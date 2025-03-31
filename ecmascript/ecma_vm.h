@@ -30,6 +30,7 @@
 #include "ecmascript/napi/include/dfx_jsnapi.h"
 #include "ecmascript/napi/include/jsnapi.h"
 #include "ecmascript/taskpool/taskpool.h"
+#include "ecmascript/waiter_list.h"
 #include "libpandafile/bytecode_instruction-inl.h"
 
 namespace panda {
@@ -54,6 +55,7 @@ class CpuProfiler;
 class Tracing;
 class AsyncStackTrace;
 class RegExpExecResultCache;
+class RegExpParserCache;
 class JSPromise;
 enum class PromiseRejectionEvent : uint8_t;
 enum class Concurrent { YES, NO };
@@ -1108,6 +1110,17 @@ public:
     void PrintCollectedByteCode();
 #endif
 
+    RegExpParserCache *GetRegExpParserCache() const
+    {
+        ASSERT(regExpParserCache_ != nullptr);
+        return regExpParserCache_;
+    }
+
+    WaiterListNode *GetWaiterListNode()
+    {
+        return &waiterListNode_;
+    }
+
 private:
     void ClearBufferData();
     void CheckStartCpuProfiler();
@@ -1290,6 +1303,10 @@ private:
     JSTaggedType *primitiveScopeStorageEnd_ {nullptr};
     std::vector<std::array<JSTaggedType, NODE_BLOCK_SIZE> *> primitiveStorageNodes_ {};
     int32_t currentPrimitiveStorageIndex_ {-1};
+    // RegExpParserCache
+    RegExpParserCache *regExpParserCache_ {nullptr};
+    // WaiterListNode(atomics)
+    WaiterListNode waiterListNode_;
 };
 }  // namespace ecmascript
 }  // namespace panda

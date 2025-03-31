@@ -23,7 +23,7 @@ RegExpCachedChunk::RegExpCachedChunk(JSThread *JSThread) : jsThread_(JSThread)
 {
     ASSERT(jsThread_ != nullptr);
     allocator_ = jsThread_->GetNativeAreaAllocator();
-    currentArea_ = jsThread_->GetOrCreateRegExpCache();
+    currentArea_ = jsThread_->GetOrCreateRegExpCacheArea();
     ptr_ = currentArea_->GetBegin();
     end_ = currentArea_->GetEnd();
 }
