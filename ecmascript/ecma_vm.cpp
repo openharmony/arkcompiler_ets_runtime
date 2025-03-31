@@ -25,7 +25,7 @@
 #include "ecmascript/builtins/builtins_object.h"
 #include "ecmascript/builtins/builtins_promise_handler.h"
 #include "ecmascript/builtins/builtins_proxy.h"
-#include "ecmascript/jit/jit_task.h"
+#include "ecmascript/checkpoint/thread_state_transition.h"
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
 #include "ecmascript/dfx/cpu_profiler/cpu_profiler.h"
 #endif
@@ -33,18 +33,19 @@
 #include "ecmascript/dfx/hprof/heap_profiler.h"
 #include "ecmascript/dfx/hprof/heap_profiler_interface.h"
 #endif
+#include "ecmascript/dfx/stackinfo/async_stack_trace.h"
 #include "ecmascript/dfx/tracing/tracing.h"
 #include "ecmascript/dfx/vmstat/function_call_timer.h"
+#include "ecmascript/jit/jit_task.h"
+#include "ecmascript/mem/heap-inl.h"
 #include "ecmascript/mem/shared_heap/shared_concurrent_marker.h"
 #include "ecmascript/module/module_logger.h"
-#include "ecmascript/pgo_profiler/pgo_trace.h"
-#include "ecmascript/snapshot/mem/snapshot.h"
-#include "ecmascript/stubs/runtime_stubs.h"
 #include "ecmascript/ohos/jit_tools.h"
 #include "ecmascript/ohos/aot_tools.h"
-#include "ecmascript/checkpoint/thread_state_transition.h"
-#include "ecmascript/mem/heap-inl.h"
-#include "ecmascript/dfx/stackinfo/async_stack_trace.h"
+#include "ecmascript/pgo_profiler/pgo_trace.h"
+#include "ecmascript/regexp/regexp_parser_cache.h"
+#include "ecmascript/snapshot/mem/snapshot.h"
+#include "ecmascript/stubs/runtime_stubs.h"
 
 #if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE)
 #include "parameters.h"
@@ -305,6 +306,7 @@ bool EcmaVM::Initialize()
         Jit::GetInstance()->ConfigJit(this);
     }
     initialized_ = true;
+    regExpParserCache_ = new RegExpParserCache();
     return true;
 }
 
@@ -467,6 +469,11 @@ EcmaVM::~EcmaVM()
     if (thread_ != nullptr) {
         delete thread_;
         thread_ = nullptr;
+    }
+
+    if (regExpParserCache_ != nullptr) {
+        delete regExpParserCache_;
+        regExpParserCache_ = nullptr;
     }
 }
 
@@ -753,6 +760,10 @@ void EcmaVM::Iterate(RootVisitor &v, VMRootVisitType type)
             auto end = (i != nid) ? &(node->data()[NODE_BLOCK_SIZE]) : handleScopeStorageNext_;
             v.VisitRangeRoot(Root::ROOT_HANDLE, ObjectSlot(ToUintPtr(start)), ObjectSlot(ToUintPtr(end)));
         }
+    }
+
+    if (regExpParserCache_ != nullptr) {
+        regExpParserCache_->Clear();
     }
 }
 

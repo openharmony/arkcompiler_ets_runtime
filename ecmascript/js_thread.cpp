@@ -169,12 +169,12 @@ JSThread::~JSThread()
         GetNativeAreaAllocator()->Free(glueData_.frameBase_, sizeof(JSTaggedType) *
                                        vm_->GetEcmaParamConfiguration().GetMaxStackSize());
     }
-    GetNativeAreaAllocator()->FreeArea(regExpCache_);
+    GetNativeAreaAllocator()->FreeArea(regExpCacheArea_);
 
     glueData_.frameBase_ = nullptr;
     nativeAreaAllocator_ = nullptr;
     heapRegionAllocator_ = nullptr;
-    regExpCache_ = nullptr;
+    regExpCacheArea_ = nullptr;
     if (vmThreadControl_ != nullptr) {
         delete vmThreadControl_;
         vmThreadControl_ = nullptr;
@@ -1085,12 +1085,12 @@ bool JSThread::IsReadyToUpdateDetector() const
     return !GetEnableLazyBuiltins() && IsAllContextsInitialized();
 }
 
-Area *JSThread::GetOrCreateRegExpCache()
+Area *JSThread::GetOrCreateRegExpCacheArea()
 {
-    if (regExpCache_ == nullptr) {
-        regExpCache_ = nativeAreaAllocator_->AllocateArea(MAX_REGEXP_CACHE_SIZE);
+    if (regExpCacheArea_ == nullptr) {
+        regExpCacheArea_ = nativeAreaAllocator_->AllocateArea(MAX_REGEXP_CACHE_SIZE);
     }
-    return regExpCache_;
+    return regExpCacheArea_;
 }
 
 void JSThread::InitializeBuiltinObject(const std::string& key)

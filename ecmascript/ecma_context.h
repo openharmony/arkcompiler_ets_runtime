@@ -30,7 +30,6 @@
 #include "ecmascript/module/js_module_execute_type.h"
 #include "ecmascript/patch/patch_loader.h"
 #include "ecmascript/stackmap/ark_stackmap.h"
-#include "ecmascript/waiter_list.h"
 #include "global_handle_collection.h"
 #include "libpandafile/file.h"
 
@@ -45,7 +44,6 @@ class AotConstantpoolPatcher;
 class GlobalEnv;
 class ObjectFactory;
 class EcmaRuntimeStat;
-class RegExpParserCache;
 class JSPandaFileManager;
 class JSPandaFile;
 class ConstantPool;
@@ -193,17 +191,6 @@ public:
     ARK_INLINE JSThread *GetJSThread() const
     {
         return thread_;
-    }
-
-    RegExpParserCache *GetRegExpParserCache() const
-    {
-        ASSERT(regExpParserCache_ != nullptr);
-        return regExpParserCache_;
-    }
-
-    WaiterListNode *GetWaiterListNode()
-    {
-        return &waiterListNode_;
     }
 
     JSHandle<ecmascript::JSTaggedValue> GetAndClearEcmaUncaughtException() const;
@@ -461,7 +448,6 @@ private:
     ObjectFactory *factory_ {nullptr};
 
     // VM execution states.
-    RegExpParserCache *regExpParserCache_ {nullptr};
     JSTaggedValue globalEnv_ {JSTaggedValue::Hole()};
 
     CMap<const JSPandaFile *, CMap<int32_t, JSTaggedValue>> cachedSharedConstpools_ {};
@@ -482,9 +468,6 @@ private:
 
     // for recording the transition of function prototype
     FunctionProtoTransitionTable *functionProtoTransitionTable_ {nullptr};
-
-    // atomics
-    WaiterListNode waiterListNode_;
 
     // opt code Profiler
     OptCodeProfiler *optCodeProfiler_ {nullptr};
