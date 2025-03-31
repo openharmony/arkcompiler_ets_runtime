@@ -792,16 +792,6 @@ StmtNode *CGLowerer::LowerDassignToThreadLocal(StmtNode &stmt, const BlockNode &
     if (!stIdx.IsGlobal()) {
         return result;
     }
-    MIRSymbol *symbol = GlobalTables::GetGsymTable().GetSymbolFromStidx(stIdx.Idx());
-    DEBUG_ASSERT(symbol != nullptr, "symbol should not be nullptr");
-    if (symbol->IsThreadLocal()) {
-        //  iassign <* u32> 0 (regread u64 %addr, dread u32 $x)
-        auto addr = ExtractSymbolAddress(stIdx);
-        auto ptrType = GlobalTables::GetTypeTable().GetOrCreatePointerType(*symbol->GetType());
-        auto iassign =
-            mirModule.GetMIRBuilder()->CreateStmtIassign(*ptrType, dAssign.GetFieldID(), addr, dAssign.GetRHS());
-        result = iassign;
-    }
     uint32 newTypeTableSize = GlobalTables::GetTypeTable().GetTypeTableSize();
     if (newTypeTableSize != oldTypeTableSize) {
         beCommon.AddNewTypeAfterBecommon(oldTypeTableSize, newTypeTableSize);
