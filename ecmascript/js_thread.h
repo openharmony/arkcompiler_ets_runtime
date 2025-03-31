@@ -1391,7 +1391,7 @@ public:
     bool IsPropertyCacheCleared() const;
 
     bool EraseContext(EcmaContext *context);
-    void ClearContextCachedConstantPool();
+    void ClearVMCachedConstantPool();
 
     const GlobalEnvConstants *GetFirstGlobalConst() const;
     bool IsAllContextsInitialized() const;

@@ -505,7 +505,7 @@ public:
         }
 
         if (!taggedPool->GetJSPandaFile()->IsNewVersion()) {
-            JSTaggedValue unsharedCp = thread->GetCurrentEcmaContext()->FindOrCreateUnsharedConstpool(constpool);
+            JSTaggedValue unsharedCp = thread->GetEcmaVM()->FindOrCreateUnsharedConstpool(constpool);
             taggedPool = ConstantPool::Cast(unsharedCp.GetTaggedObject());
             return taggedPool->Get(index);
         }

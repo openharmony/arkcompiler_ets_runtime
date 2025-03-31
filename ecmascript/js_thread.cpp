@@ -1048,11 +1048,9 @@ bool JSThread::EraseContext(EcmaContext *context)
     return false;
 }
 
-void JSThread::ClearContextCachedConstantPool()
+void JSThread::ClearVMCachedConstantPool()
 {
-    for (EcmaContext *context : contexts_) {
-        context->ClearCachedConstantPool();
-    }
+    vm_->ClearCachedConstantPool();
 }
 
 PropertiesCache *JSThread::GetPropertiesCache() const

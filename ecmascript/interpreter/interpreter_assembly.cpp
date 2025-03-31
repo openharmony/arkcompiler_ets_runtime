@@ -7921,7 +7921,7 @@ JSTaggedValue InterpreterAssembly::GetUnsharedConstpool(JSThread* thread, JSTagg
 {
     AsmInterpretedFrame *state = reinterpret_cast<AsmInterpretedFrame *>(sp) - 1;
     Method *method = JSFunction::Cast(state->function.GetTaggedObject())->GetCallTarget();
-    return thread->GetCurrentEcmaContext()->FindOrCreateUnsharedConstpool(method->GetConstantPool());
+    return thread->GetEcmaVM()->FindOrCreateUnsharedConstpool(method->GetConstantPool());
 }
 
 JSTaggedValue InterpreterAssembly::GetModule(JSTaggedType *sp)

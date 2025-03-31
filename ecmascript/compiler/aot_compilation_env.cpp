@@ -49,29 +49,29 @@ JSHClass *AOTCompilationEnv::GetBuiltinPrototypeHClass(BuiltinTypeId type) const
 
 JSTaggedValue AOTCompilationEnv::FindConstpool(const JSPandaFile *jsPandaFile, panda_file::File::EntityId id) const
 {
-    return thread_->GetCurrentEcmaContext()->FindConstpool(jsPandaFile, id);
+    return thread_->GetEcmaVM()->FindConstpool(jsPandaFile, id);
 }
 
 JSTaggedValue AOTCompilationEnv::FindConstpool(const JSPandaFile *jsPandaFile, int32_t index) const
 {
-    return thread_->GetCurrentEcmaContext()->FindConstpool(jsPandaFile, index);
+    return thread_->GetEcmaVM()->FindConstpool(jsPandaFile, index);
 }
 
 JSTaggedValue AOTCompilationEnv::FindOrCreateUnsharedConstpool(const uint32_t methodOffset) const
 {
     JSTaggedValue cp = ptManager_->GetConstantPoolByMethodOffset(methodOffset);
-    return thread_->GetCurrentEcmaContext()->FindOrCreateUnsharedConstpool(cp);
+    return thread_->GetEcmaVM()->FindOrCreateUnsharedConstpool(cp);
 }
 
 JSTaggedValue AOTCompilationEnv::FindOrCreateUnsharedConstpool(JSTaggedValue sharedConstpool) const
 {
-    return thread_->GetCurrentEcmaContext()->FindOrCreateUnsharedConstpool(sharedConstpool);
+    return thread_->GetEcmaVM()->FindOrCreateUnsharedConstpool(sharedConstpool);
 }
 
 JSHandle<ConstantPool> AOTCompilationEnv::FindOrCreateConstPool(const JSPandaFile *jsPandaFile,
     panda_file::File::EntityId id)
 {
-    return thread_->GetCurrentEcmaContext()->FindOrCreateConstPool(jsPandaFile, id);
+    return thread_->GetEcmaVM()->FindOrCreateConstPool(jsPandaFile, id);
 }
 
 JSTaggedValue AOTCompilationEnv::GetConstantPoolByMethodOffset(const uint32_t methodOffset) const

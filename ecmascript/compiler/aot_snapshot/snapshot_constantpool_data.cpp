@@ -240,7 +240,7 @@ void MethodSnapshotInfo::StoreDataToGlobalData(SnapshotGlobalData &globalData,
     for (auto item : info_) {
         const ItemData &data = item.second;
         JSHandle<ConstantPool> cp(thread_,
-            thread_->GetCurrentEcmaContext()->FindConstpool(jsPandaFile_, data.constantPoolId_));
+            thread_->GetEcmaVM()->FindConstpool(jsPandaFile_, data.constantPoolId_));
         uint32_t methodOffset = cp->GetEntityId(data.constantPoolIdx_).GetOffset();
 
         uint32_t snapshotCpArrIdx = globalData.GetCpArrIdxByConstanPoolId(data.constantPoolId_);
@@ -388,9 +388,9 @@ void ArrayLiteralSnapshotInfo::StoreDataToGlobalData(SnapshotGlobalData &globalD
 
 JSHandle<ConstantPool> BaseSnapshotInfo::GetUnsharedConstpool(const ItemData &data)
 {
-    EcmaContext *context = thread_->GetCurrentEcmaContext();
-    JSTaggedValue shareCp = context->FindConstpool(jsPandaFile_, data.constantPoolId_);
-    JSHandle<ConstantPool> cp(thread_, context->FindOrCreateUnsharedConstpool(shareCp));
+    EcmaVM *vm = thread_->GetEcmaVM();
+    JSTaggedValue shareCp = vm->FindConstpool(jsPandaFile_, data.constantPoolId_);
+    JSHandle<ConstantPool> cp(thread_, vm->FindOrCreateUnsharedConstpool(shareCp));
     return cp;
 }
 

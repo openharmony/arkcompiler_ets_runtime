@@ -145,7 +145,7 @@ void SharedGC::Sweep()
         thread->IterateWeakEcmaGlobalStorage(gcUpdateWeak, GCKind::SHARED_GC);
         const_cast<Heap*>(thread->GetEcmaVM()->GetHeap())->ResetTlab();
         if (needClearCache) {
-            thread->ClearContextCachedConstantPool();
+            thread->ClearVMCachedConstantPool();
         }
     });
 
