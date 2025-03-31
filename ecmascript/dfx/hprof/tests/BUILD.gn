@@ -50,6 +50,10 @@ host_unittest_action("HeapDumpTest") {
 
   sources = [
     # test file
+    "../rawheap_translate/metadata_parse.cpp",
+    "../rawheap_translate/rawheap_translate.cpp",
+    "../rawheap_translate/string_hashmap.cpp",
+    "../rawheap_translate/utils.cpp",
     "heap_dump_test.cpp",
   ]
 
@@ -77,8 +81,10 @@ host_unittest_action("HeapDumpTest") {
     "HPROF_TEST_ABC_FILES_DIR=\"${test_abc_dir}\"",
   ]
 
+  external_deps = [ "cJSON:cjson_static" ]
+
   # hiviewdfx libraries
-  external_deps = hiviewdfx_ext_deps
+  external_deps += hiviewdfx_ext_deps
   deps += hiviewdfx_deps
 }
 

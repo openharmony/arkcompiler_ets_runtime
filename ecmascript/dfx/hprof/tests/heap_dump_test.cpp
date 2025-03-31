@@ -18,6 +18,7 @@
 #include "ecmascript/dfx/hprof/heap_snapshot.h"
 #include "ecmascript/dfx/hprof/heap_profiler.h"
 #include "ecmascript/dfx/hprof/heap_root_visitor.h"
+#include "ecmascript/dfx/hprof/rawheap_translate/rawheap_translate.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/js_api/js_api_arraylist.h"
@@ -127,6 +128,25 @@ public:
         outputString.clear();
         auto ret = heapProfile->GenerateHeapSnapshot(inputPath, outputPath);
         return ret;
+    }
+
+    bool DecodeRawHeapObjectTable(std::string &filePath, CSet<JSTaggedType> &result)
+    {
+        uint64_t fileSize = rawheap_translate::GetFileSize(filePath);
+        std::ifstream file(filePath, std::ios::binary);
+        rawheap_translate::RawHeapTranslate translator;
+
+        std::vector<uint32_t> sections;
+        if (!translator.ReadSectionInfo(file, fileSize, sections) ||
+            !translator.ReadObjTableBySection(file, sections)) {
+            return false;
+        }
+
+        for (auto &it : translator.nodesMap_) {
+            result.insert(it.first);
+        }
+        GTEST_LOG_(INFO) << "DecodeRawHeapObjectTable count " << translator.nodesMap_.size();
+        return true;
     }
 
     bool MatchHeapDumpString(const std::string &filePath, std::string targetStr)
@@ -1120,42 +1140,33 @@ HWTEST_F_L0(HeapDumpTest, TestHeapDumpBinaryDump)
 {
     ObjectFactory *factory = ecmaVm_->GetFactory();
     HeapDumpTestHelper tester(ecmaVm_);
-    // PROMISE_ITERATOR_RECORD
-    tester.NewPromiseIteratorRecord();
-    // PROMISE_RECORD
-    factory->NewPromiseRecord();
-    // JS_ARRAY_BUFFER
-    factory->NewJSArrayBuffer(10);
-    // JS_SHARED_ARRAY_BUFFER
-    factory->NewJSSharedArrayBuffer(10);
-    // PROMISE_REACTIONS
-    factory->NewPromiseReaction();
-    // PROMISE_CAPABILITY
-    factory->NewPromiseCapability();
-    // RESOLVING_FUNCTIONS_RECORD
-    factory->NewResolvingFunctionsRecord();
-    // JS_PROMISE
-    JSHandle<JSTaggedValue> proto = ecmaVm_->GetGlobalEnv()->GetFunctionPrototype();
-    tester.NewObject(JSPromise::SIZE, JSType::JS_PROMISE, proto);
-    // ASYNC_GENERATOR_REQUEST
-    factory->NewAsyncGeneratorRequest();
-    // JS_WEAK_SET
-    tester.NewJSWeakSet();
-    // JS_WEAK_MAP
-    tester.NewJSWeakMap();
+    auto obj1 = tester.NewPromiseIteratorRecord();          // PROMISE_ITERATOR_RECORD
+    auto obj2 = factory->NewPromiseRecord();                // PROMISE_RECORD
+    auto obj3 = factory->NewJSArrayBuffer(10);              // JS_ARRAY_BUFFER
+    auto obj4 = factory->NewJSSharedArrayBuffer(10);        // JS_SHARED_ARRAY_BUFFER
+    auto obj5 = factory->NewPromiseReaction();              // PROMISE_REACTIONS
+    auto obj6 = factory->NewPromiseCapability();            // PROMISE_CAPABILITY
+    auto obj7 = factory->NewResolvingFunctionsRecord();     // RESOLVING_FUNCTIONS_RECORD
+    auto obj8 = factory->NewAsyncGeneratorRequest();        // ASYNC_GENERATOR_REQUEST
+    auto obj9 = tester.NewJSWeakSet();                      // JS_WEAK_SET
+    auto obj10 = tester.NewJSWeakMap();                     // JS_WEAK_MAP
+
     std::string rawHeapPath("test_binary_dump.raw");
-    bool ret = tester.GenerateRawHeapSnashot(rawHeapPath);
-    ASSERT_TRUE(ret);
-    std::ifstream file(rawHeapPath, std::ios::binary);
-    std::string content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
-    ASSERT_TRUE(content.size() > 0);
-    auto u64Ptr = reinterpret_cast<const uint64_t *>(content.c_str());
-    ASSERT_TRUE(u64Ptr[1] > 0);
-    std::string snapshotPath("test_binary_dump.heapsnapshot");
-    tester.DecodeRawHeapSnashot(rawHeapPath, snapshotPath);
-    ASSERT_TRUE(tester.MatchHeapDumpString(snapshotPath, "\"SharedArrayBuffer\""));
-    ASSERT_TRUE(tester.MatchHeapDumpString(snapshotPath, "\"WeakSet\""));
-    ASSERT_TRUE(tester.MatchHeapDumpString(snapshotPath, "\"WeakMap\""));
+    ASSERT_TRUE(tester.GenerateRawHeapSnashot(rawHeapPath));
+
+    CSet<JSTaggedType> dumpObjects;
+    ASSERT_TRUE(tester.DecodeRawHeapObjectTable(rawHeapPath, dumpObjects));
+
+    ASSERT_TRUE(dumpObjects.find(obj1.GetTaggedType()) != dumpObjects.end());
+    ASSERT_TRUE(dumpObjects.find(obj2.GetTaggedType()) != dumpObjects.end());
+    ASSERT_TRUE(dumpObjects.find(obj3.GetTaggedType()) != dumpObjects.end());
+    ASSERT_TRUE(dumpObjects.find(obj4.GetTaggedType()) != dumpObjects.end());
+    ASSERT_TRUE(dumpObjects.find(obj5.GetTaggedType()) != dumpObjects.end());
+    ASSERT_TRUE(dumpObjects.find(obj6.GetTaggedType()) != dumpObjects.end());
+    ASSERT_TRUE(dumpObjects.find(obj7.GetTaggedType()) != dumpObjects.end());
+    ASSERT_TRUE(dumpObjects.find(obj8.GetTaggedType()) != dumpObjects.end());
+    ASSERT_TRUE(dumpObjects.find(obj9.GetTaggedType()) != dumpObjects.end());
+    ASSERT_TRUE(dumpObjects.find(obj10.GetTaggedType()) != dumpObjects.end());
 }
 
 #ifdef PANDA_TARGET_ARM32
