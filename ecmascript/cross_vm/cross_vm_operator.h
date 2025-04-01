@@ -59,6 +59,7 @@ private:
         ~EcmaVMInterfaceImpl() override = default;
 
         bool StartXRefMarking() override;
+        void NotifyXGCInterruption() override;
     private:
         EcmaVM *vm_ {nullptr};
     };

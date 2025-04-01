@@ -839,7 +839,11 @@ void SharedHeap::StartUnifiedGCMark([[maybe_unused]]TriggerGCType gcType, [[mayb
             recurScopes.emplace_back(heap, HeapType::LOCAL_HEAP);
         });
 #ifdef PANDA_JS_ETS_HYBRID_MODE
-        unifiedGC_->StartXGCBarrier();
+        if (!unifiedGC_->StartXGCBarrier()) {
+            unifiedGC_->SetInterruptUnifiedGC(false);
+            dThread_->FinishRunningTask();
+            return;
+        }
 #endif // PANDA_JS_ETS_HYBRID_MODE
         runtime->GCIterateThreadList([gcType](JSThread *thread) {
             Heap *heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());

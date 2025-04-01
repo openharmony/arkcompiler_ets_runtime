@@ -174,6 +174,21 @@ public:
         Destroy();
     }
 
+    void TriggerUnifiedGCFailTest()
+    {
+        Init();
+
+        void *ecmaVMInterface = nullptr;
+        CrossVMOperator::DoHandshake(vm, stsVMInterface, &ecmaVMInterface);
+
+        CrossReferenceObjectBuilder CrossReferenceObject(vm, thread);
+        while (!thread->HasSuspendRequest()) {}
+        thread->WaitSuspension();
+        CrossReferenceObject.CheckResultAfterUnifiedGCTriggerFail();
+
+        Destroy();
+    }
+
 private:
     void Init()
     {
@@ -426,6 +441,37 @@ HWTEST_F_L0(UnifiedGCMultiVMTest, MultiVMMarkFromObjectTest)
     EXPECT_TRUE(!IsObjectMarked(arrayInXRefRoot->GetHeapObject()));
     EXPECT_TRUE(!IsObjectMarked(arrayRefByXRefRoot->GetHeapObject()));
     vm->SetEnableForceGC(true);
+    t1.join();
+    t2.join();
+    t3.join();
+}
+
+HWTEST_F_L0(UnifiedGCMultiVMTest, MultiVMTriggerUnifiedGCFailTest)
+{
+    SuspendBarrier barrier(INT_VALUE_4);
+    EcmaVM *vm = thread->GetEcmaVM();
+    auto stsVMInterface = std::make_unique<STSVMInterfaceTest>();
+
+    UnifiedGCMultiVMTestSuite testVM1(stsVMInterface.get(), &barrier);
+    UnifiedGCMultiVMTestSuite testVM2(stsVMInterface.get(), &barrier);
+    UnifiedGCMultiVMTestSuite testVM3(stsVMInterface.get(), &barrier);
+    std::thread t1(&UnifiedGCMultiVMTestSuite::TriggerUnifiedGCFailTest, testVM1);
+    std::thread t2(&UnifiedGCMultiVMTestSuite::TriggerUnifiedGCFailTest, testVM2);
+    std::thread t3(&UnifiedGCMultiVMTestSuite::TriggerUnifiedGCFailTest, testVM3);
+    {
+        ThreadSuspensionScope suspensionScope(thread);
+        barrier.PassStrongly();
+        barrier.Wait();
+    }
+
+    void *ecmaVMInterface = nullptr;
+    CrossVMOperator::DoHandshake(vm, stsVMInterface.get(), &ecmaVMInterface);
+    CrossReferenceObjectBuilder CrossReferenceObject(vm, thread);
+    SharedHeap::GetInstance()->TriggerUnifiedGCMark<TriggerGCType::UNIFIED_GC, GCReason::CROSSREF_CAUSE>(thread);
+    vm->GetCrossVMOperator()->GetEcmaVMInterface()->NotifyXGCInterruption();
+    while (!thread->HasSuspendRequest()) {}
+    thread->WaitSuspension();
+    CrossReferenceObject.CheckResultAfterUnifiedGCTriggerFail();
     t1.join();
     t2.join();
     t3.join();
