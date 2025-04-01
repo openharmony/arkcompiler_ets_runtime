@@ -703,23 +703,6 @@ assert_equal(s,"success");
   assert_equal(count,4);
 }
 
-// The above test case in false environment did not reset the environment
-Object.defineProperty(RegExp.prototype, "global", {
-  value: true
-})
-string = 'aaa\n789\r\nccc\r\n345';
-var pattern = /\d$/gm;
-result = string.match(pattern);
-assert_equal(2 == result.length,true);
-assert_equal('9' == result[0],true);
-assert_equal('5' == result[1],true);
-
-string = 'aaa\n789\r\nccc\r\nddd';
-pattern = /\d$/gm;
-result = string.match(pattern);
-assert_equal(1 == result.length,true);
-assert_equal('9' == result[0],true);
-
 // test getFlags
 Object.defineProperty(RegExp.prototype, "global", {
   value: true

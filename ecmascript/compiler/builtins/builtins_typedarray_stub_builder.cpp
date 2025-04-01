@@ -1000,7 +1000,6 @@ void BuiltinsTypedArrayStubBuilder::ReduceRight(GateRef glue, GateRef thisValue,
     Label callbackFnHandleCallable(env);
     Label noTypeError(env);
     Label typedArray(env);
-    Label notDetached(env);
 
     BRANCH(IsEcmaObject(thisValue), &ecmaObj, slowPath);
     Bind(&ecmaObj);
@@ -1008,9 +1007,6 @@ void BuiltinsTypedArrayStubBuilder::ReduceRight(GateRef glue, GateRef thisValue,
     Bind(&typedArray);
     BRANCH(HasConstructor(thisValue), slowPath, &defaultConstr);
     Bind(&defaultConstr);
-    GateRef buffer = GetViewedArrayBuffer(thisValue);
-    BRANCH(IsDetachedBuffer(buffer), slowPath, &notDetached);
-    Bind(&notDetached);
     GateRef thisLen = GetArrayLength(thisValue);
     BRANCH(Int64GreaterThanOrEqual(numArgs, IntPtr(1)), &atLeastOneArg, slowPath);
     Bind(&atLeastOneArg);
@@ -1108,7 +1104,6 @@ void BuiltinsTypedArrayStubBuilder::Reduce(GateRef glue, GateRef thisValue, Gate
     Label callbackFnHandleCallable(env);
     Label noTypeError(env);
     Label typedArray(env);
-    Label notDetached(env);
 
     BRANCH(IsEcmaObject(thisValue), &ecmaObj, slowPath);
     Bind(&ecmaObj);
@@ -1116,9 +1111,6 @@ void BuiltinsTypedArrayStubBuilder::Reduce(GateRef glue, GateRef thisValue, Gate
     Bind(&typedArray);
     BRANCH(HasConstructor(thisValue), slowPath, &defaultConstr);
     Bind(&defaultConstr);
-    GateRef buffer = GetViewedArrayBuffer(thisValue);
-    BRANCH(IsDetachedBuffer(buffer), slowPath, &notDetached);
-    Bind(&notDetached);
     GateRef thisLen = GetArrayLength(thisValue);
     BRANCH(Int64GreaterThanOrEqual(numArgs, IntPtr(1)), &atLeastOneArg, slowPath);
     Bind(&atLeastOneArg);

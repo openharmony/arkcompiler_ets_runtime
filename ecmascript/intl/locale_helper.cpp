@@ -268,6 +268,7 @@ bool LocaleHelper::IsStructurallyValidLanguageTag(const JSHandle<EcmaString> &ta
     std::string tagCollection = ConvertToStdString(tag);
     std::vector<std::string> containers;
     std::string substring;
+    std::set<std::string> uniqueSubtags;
     size_t address = 1;
     for (auto it = tagCollection.begin(); it != tagCollection.end(); it++) {
         if (*it != '-' && it != tagCollection.end() - 1) {
@@ -277,26 +278,17 @@ bool LocaleHelper::IsStructurallyValidLanguageTag(const JSHandle<EcmaString> &ta
                 substring += *it;
             }
             containers.push_back(substring);
-            if (!IsVariantSubtag(substring, containers)) {
-                return false;
+            if (IsVariantSubtag(substring)) {
+                std::transform(substring.begin(), substring.end(), substring.begin(), AsciiAlphaToLower);
+                if (!uniqueSubtags.insert(substring).second) {
+                    return false;
+                }
             }
             substring.clear();
         }
     }
     bool result = DealwithLanguageTag(containers, address);
     return result;
-}
-
-bool LocaleHelper::IsVariantSubtag(std::string substring, std::vector<std::string> containers)
-{
-    if (IsVariantSubtag(substring)) {
-        std::transform(substring.begin(), substring.end(), substring.begin(), AsciiAlphaToLower);
-        // Ignore the first tag when checking for duplicate subtags.
-        if (std::count(containers.begin(), containers.end(), substring) > INTL_INDEX_TWO) {
-            return false;
-        }
-    }
-    return true;
 }
 
 std::string LocaleHelper::ConvertToStdString(const JSHandle<EcmaString> &ecmaStr)

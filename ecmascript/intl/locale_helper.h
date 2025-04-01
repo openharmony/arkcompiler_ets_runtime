@@ -197,8 +197,6 @@ private:
         }
         return res;
     }
-
-    static bool IsVariantSubtag(std::string substring, std::vector<std::string> containers);
 };
 }
 #endif  // ECMASCRIPT_BASE_LOCALE_HELPER_H

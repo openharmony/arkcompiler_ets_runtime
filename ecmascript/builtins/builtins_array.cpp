@@ -1746,6 +1746,7 @@ JSTaggedValue BuiltinsArray::Reduce(EcmaRuntimeCallInfo *argv)
     JSThread *thread = argv->GetThread();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
+    uint32_t argc = argv->GetArgsNumber();
     // 1. Let O be ToObject(this value).
     JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
     JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
@@ -1754,23 +1755,9 @@ JSTaggedValue BuiltinsArray::Reduce(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> thisObjVal(thisObjHandle);
 
     // 3. Let len be ToLength(Get(O, "length")).
-    int64_t len = ArrayHelper::GetArrayLength(thread, thisObjVal);
+    int64_t len = ArrayHelper::GetLength(thread, thisObjVal);
     // 4. ReturnIfAbrupt(len).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    return ReduceInner(argv, len);
-}
-
-JSTaggedValue BuiltinsArray::ReduceInner(EcmaRuntimeCallInfo *argv, int64_t len)
-{
-    ASSERT(argv);
-    JSThread *thread = argv->GetThread();
-    uint32_t argc = argv->GetArgsNumber();
-    // 1. Let O be ToObject(this value).
-    JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
-    JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
-    // 2. ReturnIfAbrupt(O).
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    JSHandle<JSTaggedValue> thisObjVal(thisObjHandle);
 
     // 5. If IsCallable(callbackfn) is false, throw a TypeError exception.
     JSHandle<JSTaggedValue> callbackFnHandle = GetCallArg(argv, 0);
@@ -1832,25 +1819,6 @@ JSTaggedValue BuiltinsArray::ReduceRight(EcmaRuntimeCallInfo *argv)
     BUILTINS_API_TRACE(argv->GetThread(), Array, ReduceRight);
     JSThread *thread = argv->GetThread();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
-
-    // 1. Let O be ToObject(this value).
-    JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
-    JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
-    // 2. ReturnIfAbrupt(O).
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    JSHandle<JSTaggedValue> thisObjVal(thisObjHandle);
-
-    // 3. Let len be ToLength(Get(O, "length")).
-    int64_t len = ArrayHelper::GetArrayLength(thread, thisObjVal);
-    // 4. ReturnIfAbrupt(len).
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    return ReduceRightInner(argv, len);
-}
-
-JSTaggedValue BuiltinsArray::ReduceRightInner(EcmaRuntimeCallInfo *argv, int64_t len)
-{
-    ASSERT(argv);
-    JSThread *thread = argv->GetThread();
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
 
     uint32_t argc = argv->GetArgsNumber();
@@ -1861,6 +1829,11 @@ JSTaggedValue BuiltinsArray::ReduceRightInner(EcmaRuntimeCallInfo *argv, int64_t
     // 2. ReturnIfAbrupt(O).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSTaggedValue> thisObjVal(thisObjHandle);
+
+    // 3. Let len be ToLength(Get(O, "length")).
+    int64_t len = ArrayHelper::GetLength(thread, thisObjVal);
+    // 4. ReturnIfAbrupt(len).
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     // 5. If IsCallable(callbackfn) is false, throw a TypeError exception.
     JSHandle<JSTaggedValue> callbackFnHandle = GetCallArg(argv, 0);

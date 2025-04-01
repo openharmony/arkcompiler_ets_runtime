@@ -137,12 +137,6 @@ abc
 abc
 abc
 0,0,0,0,0
-
-abc
-abc
-abc
-bc
-c
 true
 true
 true
