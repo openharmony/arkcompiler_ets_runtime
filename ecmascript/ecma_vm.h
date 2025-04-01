@@ -100,6 +100,8 @@ class EcmaStringTable;
 class JSObjectResizingStrategy;
 class Jit;
 class JitThread;
+class SustainingJSHandle;
+class SustainingJSHandleList;
 enum class CompareStringsOption : uint8_t;
 
 using NativePtrGetter = void* (*)(void* info);
@@ -1148,6 +1150,8 @@ public:
     {
         return &waiterListNode_;
     }
+    void AddSustainingJSHandle(SustainingJSHandle *sustainingHandle);
+    void RemoveSustainingJSHandle(SustainingJSHandle *sustainingHandle);
 
 private:
     void ClearBufferData();
@@ -1324,6 +1328,8 @@ private:
     Mutex mutex_;
     bool isEnableOsr_ {false};
     bool isJitCompileVM_ {false};
+    // SustainingJSHandleList for jit compile hold ref
+    SustainingJSHandleList *sustainingJSHandleList_ {nullptr};
 
     // process StartRealTime
     int processStartRealtime_ = 0;

@@ -72,11 +72,6 @@ bool EcmaContext::Initialize()
     LOG_ECMA(DEBUG) << "EcmaContext::Initialize";
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "EcmaContext::Initialize");
     [[maybe_unused]] EcmaHandleScope scope(thread_);
-    ecmaData_.propertiesCache_ = new PropertiesCache();
-    if (vm_->GetJSOptions().IsEnableMegaIC()) {
-        ecmaData_.loadMegaICCache_ = new MegaICCache();
-        ecmaData_.storeMegaICCache_ = new MegaICCache();
-    }
 
     thread_->SetGlobalConst(&globalConst_);
     globalConst_.Init(thread_);
@@ -104,7 +99,6 @@ bool EcmaContext::Initialize()
         moduleLogger_ = new ModuleLogger(vm_);
     }
     functionProtoTransitionTable_ = new FunctionProtoTransitionTable(thread_);
-    sustainingJSHandleList_ = new SustainingJSHandleList();
     initialized_ = true;
     return true;
 }
@@ -148,22 +142,7 @@ EcmaContext::~EcmaContext()
     if (aotFileManager_ != nullptr) {
         aotFileManager_ = nullptr;
     }
-    if (ecmaData_.loadMegaICCache_ != nullptr) {
-        delete ecmaData_.loadMegaICCache_;
-        ecmaData_.loadMegaICCache_ = nullptr;
-    }
-    if (ecmaData_.storeMegaICCache_ != nullptr) {
-        delete ecmaData_.storeMegaICCache_;
-        ecmaData_.storeMegaICCache_ = nullptr;
-    }
-    if (ecmaData_.propertiesCache_ != nullptr) {
-        delete ecmaData_.propertiesCache_;
-        ecmaData_.propertiesCache_ = nullptr;
-    }
-    if (sustainingJSHandleList_ != nullptr) {
-        delete sustainingJSHandleList_;
-        sustainingJSHandleList_ = nullptr;
-    }
+
     if (functionProtoTransitionTable_ != nullptr) {
         delete functionProtoTransitionTable_;
         functionProtoTransitionTable_ = nullptr;
@@ -455,16 +434,6 @@ void EcmaContext::CheckAndDestroy(JSThread *thread, EcmaContext *context)
     LOG_ECMA(FATAL) << "CheckAndDestroy a nonexistent context.";
 }
 
-void EcmaContext::IterateMegaIC(RootVisitor &v)
-{
-    if (ecmaData_.loadMegaICCache_ != nullptr) {
-        ecmaData_.loadMegaICCache_->Iterate(v);
-    }
-    if (ecmaData_.storeMegaICCache_ != nullptr) {
-        ecmaData_.storeMegaICCache_->Iterate(v);
-    }
-}
-
 void EcmaContext::Iterate(RootVisitor &v)
 {
     // visit global Constant
@@ -480,14 +449,6 @@ void EcmaContext::Iterate(RootVisitor &v)
     }
     if (ptManager_) {
         ptManager_->Iterate(v);
-    }
-    if (ecmaData_.propertiesCache_ != nullptr) {
-        ecmaData_.propertiesCache_->Clear();
-    }
-    IterateMegaIC(v);
-
-    if (sustainingJSHandleList_) {
-        sustainingJSHandleList_->Iterate(v);
     }
 }
 
@@ -555,20 +516,6 @@ std::tuple<uint64_t, uint8_t *, int, kungfu::CalleeRegAndOffsetVec> EcmaContext:
 {
     auto loader = aotFileManager_;
     return loader->CalCallSiteInfo(retAddr, isDeopt);
-}
-
-void EcmaContext::AddSustainingJSHandle(SustainingJSHandle *sustainingHandle)
-{
-    if (sustainingJSHandleList_) {
-        sustainingJSHandleList_->AddSustainingJSHandle(sustainingHandle);
-    }
-}
-
-void EcmaContext::RemoveSustainingJSHandle(SustainingJSHandle *sustainingHandle)
-{
-    if (sustainingJSHandleList_) {
-        sustainingJSHandleList_->RemoveSustainingJSHandle(sustainingHandle);
-    }
 }
 
 void EcmaContext::ClearKeptObjects()

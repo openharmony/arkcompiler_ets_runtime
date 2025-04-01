@@ -123,7 +123,7 @@ private:
 
     std::array<PropertyKey, CACHE_LENGTH> keys_{};
 
-    friend class EcmaContext;
+    friend class JSThread;
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_IC_PROPERTIES_CACHE_H
