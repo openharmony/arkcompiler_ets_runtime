@@ -1501,7 +1501,7 @@ void FindEntryFromNameDictionaryStubBuilder::GenerateCircuit()
     GateRef glue = PtrArgument(0);
     GateRef taggedArray = PtrArgument(1);
     GateRef key = PtrArgument(2);
-    GateRef entry = FindEntryFromNameDictionary(glue, taggedArray, key);
+    GateRef entry = FindEntryFromHashTable<NameDictionary>(glue, taggedArray, key);
     Return(entry);
 }
 
