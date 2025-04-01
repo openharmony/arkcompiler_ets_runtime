@@ -72,6 +72,8 @@ CString JSHClass::DumpJSType(JSType type)
             return "NativePointer";
         case JSType::JS_OBJECT:
             return "Object";
+        case JSType::JS_XREF_OBJECT:
+            return "XRefObject";
         case JSType::JS_SHARED_OBJECT:
             return  "SharedObject";
         case JSType::JS_FUNCTION_BASE:
@@ -686,6 +688,7 @@ static void DumpObject(TaggedObject *obj, std::ostream &os, bool isPrivacy)
         case JSType::JS_NATIVE_POINTER:
             break;
         case JSType::JS_OBJECT:
+        case JSType::JS_XREF_OBJECT:
         case JSType::JS_SHARED_OBJECT:
         case JSType::JS_GLOBAL_OBJECT:
         case JSType::JS_ERROR:
@@ -3966,6 +3969,7 @@ static void DumpObject(TaggedObject *obj, std::vector<Reference> &vec, bool isVm
         case JSType::JS_NATIVE_POINTER:
             break;
         case JSType::JS_OBJECT:
+        case JSType::JS_XREF_OBJECT:
         case JSType::JS_ERROR:
         case JSType::JS_EVAL_ERROR:
         case JSType::JS_RANGE_ERROR:

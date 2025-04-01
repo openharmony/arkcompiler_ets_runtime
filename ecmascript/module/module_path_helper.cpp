@@ -186,7 +186,22 @@ void ModulePathHelper::ParseAbcPathAndOhmUrl(EcmaVM *vm, const CString &inputFil
             outEntryPoint = inputFileName.substr(PREFIX_BUNDLE_LEN);
             outBaseFileName = ParseUrl(vm, outEntryPoint);
         } else {
-            outEntryPoint = GetOutEntryPoint(vm, inputFileName);
+#if !defined(PANDA_TARGET_WINDOWS) && !defined(PANDA_TARGET_MACOS) && !defined(PANDA_TARGET_LINUX_PREVIEWER)
+            // inputFileName: moduleName/ets/xxx/xxx.abc
+            outEntryPoint = vm->GetBundleName() + PathHelper::SLASH_TAG + inputFileName;
+#else
+            // if the inputFileName starts with '.test', the preview test page is started.
+            // in this case, the path ets does not need to be combined.
+            // inputFileName: .test/xxx/xxx.abc
+            if (StringHelper::StringStartWith(inputFileName, PREVIER_TEST_DIR)) {
+                outEntryPoint = vm->GetBundleName() + PathHelper::SLASH_TAG + vm->GetModuleName() +
+                                PathHelper::SLASH_TAG + inputFileName;
+            } else {
+                // inputFileName: xxx/xxx.abc
+                outEntryPoint = vm->GetBundleName() + PathHelper::SLASH_TAG + vm->GetModuleName() +
+                                MODULE_DEFAULE_ETS + inputFileName;
+            }
+#endif
         }
     }
     if (StringHelper::StringEndWith(outEntryPoint, EXT_NAME_ABC)) {
@@ -1127,5 +1142,46 @@ bool ModulePathHelper::ValidateAbcPath(const CString &baseFileName, ValidateFile
         }
     }
     return false;
+}
+
+std::pair<std::string, std::string> ModulePathHelper::ResolveOhmUrl(std::string ohmUrl)
+{
+    CString url(ohmUrl);
+    if (StringHelper::StringStartWith(url, PREFIX_BUNDLE)) {
+        return ResolveOhmUrlStartWithBundle(ohmUrl);
+    }
+    if (StringHelper::StringStartWith(url, PREFIX_NORMALIZED_NOT_SO)) {
+        return ResolveOhmUrlStartWithNormalized(ohmUrl);
+    }
+    LOG_FULL(FATAL) << "Invalid Ohm url, please check. OhmUrl: " << ohmUrl;
+    return {"", ""};
+}
+
+std::pair<std::string, std::string> ModulePathHelper::ResolveOhmUrlStartWithBundle(std::string ohmUrl)
+{
+    std::string moduleRequestName(ohmUrl.substr(PREFIX_BUNDLE_LEN));
+    size_t index = moduleRequestName.find('/');
+    index = moduleRequestName.find('/', index + 1);
+    if (index == std::string::npos) {
+        LOG_FULL(FATAL) << "Invalid Ohm url, please check. OhmUrl: " << ohmUrl;
+    }
+    std::string bundleAndModuleName = moduleRequestName.substr(0, index);
+    std::string filePath = moduleRequestName.substr(index + 1);
+    return {filePath, bundleAndModuleName};
+}
+
+std::pair<std::string, std::string> ModulePathHelper::ResolveOhmUrlStartWithNormalized(std::string ohmUrl)
+{
+    CVector<CString> res = SplitNormalizedOhmurl(CString(ohmUrl));
+    if (res.size() != NORMALIZED_OHMURL_ARGS_NUM) {
+        LOG_FULL(FATAL) << "Invalid Ohm url, please check. OhmUrl: " << ohmUrl;
+    }
+    std::string moduleName(res[NORMALIZED_MODULE_NAME_INDEX]);
+    std::string bundleName(res[NORMALIZED_BUNDLE_NAME_INDEX]);
+    std::string path(res[NORMALIZED_IMPORT_PATH_INDEX]);
+    if (bundleName.empty() || moduleName.empty() || path.empty()) {
+        LOG_FULL(FATAL) << "Invalid Ohm url, please check. OhmUrl: " << ohmUrl;
+    }
+    return {path, bundleName + PathHelper::SLASH_TAG + moduleName};
 }
 }  // namespace panda::ecmascript

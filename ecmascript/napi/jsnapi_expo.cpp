@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2023 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -2289,6 +2289,17 @@ Local<StringRef> StringRef::GetNapiWrapperString(const EcmaVM *vm)
     return JSNApiHelper::ToLocal<StringRef>(napiWrapperString);
 }
 
+Local<StringRef> StringRef::GetProxyNapiWrapperString(const EcmaVM *vm)
+{
+    // Omit exception check because ark calls here may not
+    // cause side effect even pending exception exists.
+    CROSS_THREAD_CHECK(vm);
+    ecmascript::ThreadManagedScope managedScope(thread);
+    JSHandle<JSTaggedValue> proxyNapiWapperString = thread->GlobalConstants()->GetHandledProxyNapiWrapperString();
+    return JSNApiHelper::ToLocal<StringRef>(proxyNapiWapperString);
+}
+
+
 Local<TypedArrayRef> StringRef::EncodeIntoUint8Array(const EcmaVM *vm)
 {
     CROSS_THREAD_CHECK(vm);
@@ -2533,6 +2544,15 @@ Local<ObjectRef> ObjectRef::New(const EcmaVM *vm)
     ecmascript::ThreadManagedScope managedScope(thread);
     ObjectFactory *factory = vm->GetFactory();
     JSHandle<JSTaggedValue> object(factory->CreateNapiObject());
+    return JSNApiHelper::ToLocal<ObjectRef>(object);
+}
+
+Local<ObjectRef> ObjectRef::NewJSXRefObject(const EcmaVM *vm)
+{
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
+    ecmascript::ThreadManagedScope managedScope(thread);
+    ObjectFactory *factory = vm->GetFactory();
+    JSHandle<JSTaggedValue> object(factory->NewJSXRefObject());
     return JSNApiHelper::ToLocal<ObjectRef>(object);
 }
 
@@ -4171,7 +4191,7 @@ void JSNApi::SetAssetPath(EcmaVM *vm, const std::string &assetPath)
 {
     ecmascript::CString path = assetPath.c_str();
     // check input assetPath
-#if !defined(PANDA_TARGET_WINDOWS) && !defined(PANDA_TARGET_MACOS)
+#if !defined(PANDA_TARGET_WINDOWS) && !defined(PANDA_TARGET_MACOS) && !defined(PANDA_TARGET_LINUX_PREVIEWER)
     if (!ModulePathHelper::ValidateAbcPath(path, ecmascript::ValidateFilePath::ABC)) {
         LOG_FULL(FATAL) << "Invalid input assetPath: " << assetPath.c_str();
     }
@@ -4552,6 +4572,21 @@ void JSNApi::DestroyJSVM(EcmaVM *ecmaVm)
     }
     ecmaVm->GetJSThread()->ManagedCodeBegin();
     EcmaVM::Destroy(ecmaVm);
+}
+
+void JSNApi::SetStackInfo(const EcmaVM *vm, const panda::StackInfo &info)
+{
+    JSThread *thread = vm->GetJSThread();
+    thread->SetStackStart(info.stackStart);
+    thread->SetStackLimit(info.stackStart - info.stackSize);
+}
+
+panda::StackInfo JSNApi::GetStackInfo(const EcmaVM *vm)
+{
+    JSThread *thread = vm->GetJSThread();
+    size_t stackStart = thread->GetStackStart();
+    size_t stackSize = stackStart - thread->GetStackLimit();
+    return {stackStart, stackSize};
 }
 
 void JSNApi::RegisterUncatchableErrorHandler(EcmaVM *ecmaVm, const UncatchableErrorHandler &handler)
@@ -5626,6 +5661,17 @@ uintptr_t JSNApi::GetGlobalHandleAddr(const EcmaVM *vm, uintptr_t localAddress)
     return thread->NewGlobalHandle(value);
 }
 
+uintptr_t JSNApi::GetXRefGlobalHandleAddr(const EcmaVM *vm, uintptr_t localAddress)
+{
+    if (localAddress == 0) {
+        return 0;
+    }
+    CROSS_THREAD_CHECK(vm);
+    ecmascript::ThreadManagedScope scope(thread);
+    JSTaggedType value = *(reinterpret_cast<JSTaggedType *>(localAddress));
+    return thread->NewXRefGlobalHandle(value);
+}
+
 int JSNApi::GetStartRealTime(const EcmaVM *vm)
 {
     ecmascript::ThreadManagedScope scope(vm->GetJSThread());
@@ -5718,6 +5764,44 @@ void JSNApi::DisposeGlobalHandleAddr(const EcmaVM *vm, uintptr_t addr)
     ecmascript::ThreadManagedScope scope(thread);
     thread->DisposeGlobalHandle(addr);
 }
+
+void JSNApi::DisposeXRefGlobalHandleAddr(const EcmaVM *vm, uintptr_t addr)
+{
+    if (addr == 0 || !reinterpret_cast<ecmascript::Node *>(addr)->IsUsing()) {
+        return;
+    }
+    CROSS_THREAD_CHECK(vm);
+    thread->DisposeXRefGlobalHandle(addr);
+}
+
+#ifdef PANDA_JS_ETS_HYBRID_MODE
+void JSNApi::MarkFromObject(const EcmaVM *vm, uintptr_t addr)
+{
+    if (addr == 0 || !reinterpret_cast<ecmascript::Node *>(addr)->IsUsing()) {
+        return;
+    }
+    JSTaggedType value = *(reinterpret_cast<JSTaggedType *>(addr));
+    vm->GetCrossVMOperator()->MarkFromObject(value);
+}
+
+bool JSNApi::IsObjectAlive(const EcmaVM *vm, uintptr_t addr)
+{
+    if (addr == 0 || !reinterpret_cast<ecmascript::Node *>(addr)->IsUsing()) {
+        return false;
+    }
+    JSTaggedType value = *(reinterpret_cast<JSTaggedType *>(addr));
+    return vm->GetCrossVMOperator()->IsObjectAlive(value);
+}
+
+bool JSNApi::IsValidHeapObject(const EcmaVM *vm, uintptr_t addr)
+{
+    if (addr == 0 || !reinterpret_cast<ecmascript::Node *>(addr)->IsUsing()) {
+        return false;
+    }
+    JSTaggedType value = *(reinterpret_cast<JSTaggedType *>(addr));
+    return vm->GetCrossVMOperator()->IsValidHeapObject(value);
+}
+#endif // PANDA_JS_ETS_HYBRID_MODE
 
 void *JSNApi::SerializeValue(const EcmaVM *vm, Local<JSValueRef> value, Local<JSValueRef> transfer,
                              Local<JSValueRef> cloneList, bool defaultTransfer, bool defaultCloneShared)
@@ -5823,7 +5907,7 @@ void JSNApi::NotifyEnvInitialized(EcmaVM *vm)
 }
 
 void JSNApi::SetHostResolveBufferTracker(EcmaVM *vm,
-    std::function<bool(std::string dirPath, uint8_t **buff, size_t *buffSize, std::string &errorMsg)> cb)
+    std::function<bool(std::string dirPath, bool isHybrid, uint8_t **buff, size_t *buffSize, std::string &errorMsg)> cb)
 {
     vm->SetResolveBufferCallback(cb);
 }
@@ -6050,7 +6134,7 @@ Local<ObjectRef> JSNApi::GetExportObject(EcmaVM *vm, const std::string &file, co
         ModulePathHelper::ParseAbcPathAndOhmUrl(vm, entry, name, entry);
         std::shared_ptr<JSPandaFile> jsPandaFile =
             JSPandaFileManager::GetInstance()->LoadJSPandaFile(
-                thread, name, entry.c_str(), false, ecmascript::ExecuteTypes::STATIC);
+                thread, name, entry.c_str(), false, false, ecmascript::ExecuteTypes::STATIC);
         if (jsPandaFile == nullptr) {
             JSHandle<JSTaggedValue> exportObj(thread, JSTaggedValue::Null());
             return JSNApiHelper::ToLocal<ObjectRef>(exportObj);
@@ -6123,32 +6207,48 @@ Local<ObjectRef> JSNApi::ExecuteNativeModule(EcmaVM *vm, const std::string &key)
     return JSNApiHelper::ToLocal<ObjectRef>(exportObj);
 }
 
-Local<ObjectRef> JSNApi::GetModuleNameSpaceFromFile(EcmaVM *vm, const std::string &file)
-{
-    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
-    ecmascript::ThreadManagedScope managedScope(thread);
-    std::pair<std::string, std::string> moduleInfo = vm->GetCurrentModuleInfo(false);
-    if (thread->HasPendingException()) {
-        thread->HandleUncaughtException();
-        return JSValueRef::Undefined(vm);
+    Local<ObjectRef> JSNApi::GetModuleNameSpaceFromFile(EcmaVM *vm, const std::string &file)
+    {
+        CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
+        ecmascript::ThreadManagedScope managedScope(thread);
+        std::pair<std::string, std::string> moduleInfo = vm->GetCurrentModuleInfo(false);
+        if (thread->HasPendingException()) {
+            thread->HandleUncaughtException();
+            return JSValueRef::Undefined(vm);
+        }
+        ecmascript::CString moduleName = moduleInfo.first.c_str();
+        ecmascript::CString abcPath = moduleInfo.second.c_str();
+        JSHandle<JSTaggedValue> moduleNamespace = ecmascript::NapiModuleLoader::LoadModuleNameSpace(vm,
+                                                                                                    file.c_str(), moduleName, abcPath);
+        return JSNApiHelper::ToLocal<ObjectRef>(moduleNamespace);
     }
-    ecmascript::CString moduleName = moduleInfo.first.c_str();
-    ecmascript::CString abcPath = moduleInfo.second.c_str();
-    JSHandle<JSTaggedValue> moduleNamespace = ecmascript::NapiModuleLoader::LoadModuleNameSpace(vm,
-        file.c_str(), moduleName, abcPath);
-    return JSNApiHelper::ToLocal<ObjectRef>(moduleNamespace);
-}
+
 
 Local<ObjectRef> JSNApi::GetModuleNameSpaceWithModuleInfo(EcmaVM *vm, const std::string &file,
-                                                          const std::string &module_path)
+                                                          const std::string &module_path, bool isHybrid)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     ecmascript::ThreadManagedScope managedScope(thread);
     ecmascript::CString requestPath = file.c_str();
     ecmascript::CString modulePath = module_path.c_str();
     JSHandle<JSTaggedValue> nameSp = ecmascript::NapiModuleLoader::LoadModuleNameSpace(vm,
-        requestPath, modulePath);
+                                                                                       requestPath, modulePath, isHybrid);
     return JSNApiHelper::ToLocal<ObjectRef>(nameSp);
+}
+
+Local<ObjectRef> JSNApi::GetModuleNameSpaceWithPath(const EcmaVM *vm, const char *path)
+{
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
+    auto [filePath, recordName] = ModulePathHelper::ResolvePath(path);
+    ecmascript::ThreadManagedScope managedScope(thread);
+    JSHandle<JSTaggedValue> moduleNamespace = ecmascript::NapiModuleLoader::LoadModuleNameSpaceFromFile(thread,
+                                                                                                        recordName, filePath);
+    return JSNApiHelper::ToLocal<ObjectRef>(moduleNamespace);
+}
+
+std::pair<std::string, std::string> JSNApi::ResolveOhmUrl(std::string ohmUrl)
+{
+    return ModulePathHelper::ResolveOhmUrl(ohmUrl);
 }
 
 // ---------------------------------- Promise -------------------------------------
@@ -6557,4 +6657,13 @@ bool ExternalStringCache::HasCachedString([[maybe_unused]] const EcmaVM *vm, uin
     ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return instance->HasCachedString(propertyIndex);
 }
+
+#ifdef PANDA_JS_ETS_HYBRID_MODE
+void HandshakeHelper::DoHandshake([[maybe_unused]] EcmaVM *vm, void *stsIface, void **ecmaIface)
+{
+    ecmascript::CrossVMOperator::DoHandshake(vm, stsIface, ecmaIface);
+}
+#endif  // PANDA_JS_ETS_HYBRID_MODE
+
+
 } // namespace panda

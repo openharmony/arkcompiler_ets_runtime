@@ -133,6 +133,7 @@ class ObjectFactory;
     V(JSTaggedValue, JSAPIIteratorFuncHClass, JS_API_ITERATOR_FUNC_CLASS_INDEX, ecma_roots_class)                     \
     V(JSTaggedValue, JSAPIAsyncIteratorFuncHClass, JS_API_ASYNCITERATOR_FUNC_CLASS_INDEX, ecma_roots_class)           \
     V(JSTaggedValue, ObjectClass, OBJECT_HCLASS_INDEX, initial_object_hclass)                                         \
+    V(JSTaggedValue, XRefObjectClass, XREF_OBJECT_HCLASS_INDEX, ecma_roots_class)                                     \
     V(JSTaggedValue, IteratorResultClass, ITERATOR_RESULT_CLASS, ecma_roots_class)                                    \
     V(JSTaggedValue, ClassPrototypeClass, CLASS_PROTOTYPE_HCLASS_INDEX, ecma_roots_class)                             \
     V(JSTaggedValue, ClassConstructorClass, CLASS_CONSTRUCTOR_HCLASS_INDEX, ecma_roots_class)                         \
@@ -551,6 +552,7 @@ class ObjectFactory;
     V(CjsExportsString,               CJS_EXPORTS_INDEX,                     "exports")                     \
     V(CjsCacheString,                 CJS_CACHE_INDEX,                       "_cache")                      \
     V(NapiWrapperString,              NAPI_WRAPPER_INDEX,                    "_napiwrapper")                \
+    V(ProxyNapiWrapperString,         PROXY_NAPI_WRAPPER_INDEX,              "_proxynapiwrapper")           \
     /* for require native module */                                                                         \
     V(RequireNativeModuleString,      REQUIRE_NATIVE_MOUDULE_FUNC_INDEX,     "requireNativeModule")         \
     V(RequireNapiString,              REQUIRE_NAPI_FUNC_INDEX,               "requireNapi")                 \
@@ -584,6 +586,7 @@ class ObjectFactory;
     V(SharedPartialGcCause,           SHARED_PARTIAL_GC_CAUSE,               "shared_partial")              \
     V(SharedFullGcCause,              SHARED_FULL_GC_CAUSE,                  "shared_full")                 \
     V(AppSpawnSharedFullGcCause,      APP_SPAWN_SHARED_FULL_GC_CAUSE,        "app_spawn_shared_full")       \
+    V(UnifiedGcCause,                 UNIFIED_GC_CAUSE,                      "unified")                     \
     V(SymbolLeftParentheses,          SYMBOL_LEFT_PARENTHESES,               "Symbol(")
 
 /* GlobalConstant */

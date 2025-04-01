@@ -45,7 +45,7 @@ Runtime::~Runtime()
         iter++;
     }
     globalSharedConstpools_.clear();
-    delete externalRegisteredStringTable_;
+    delete[] externalRegisteredStringTable_;
     externalRegisteredStringTable_ = nullptr;
 }
 

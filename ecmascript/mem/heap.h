@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -50,6 +50,8 @@ class HeapProfiler;
 class IncrementalMarker;
 class JSNativePointer;
 class Marker;
+class UnifiedGC;
+class UnifiedGCMarker;
 class MemController;
 class IdleGCTrigger;
 class NativeAreaAllocator;
@@ -212,6 +214,11 @@ public:
         return markType_ == MarkType::MARK_FULL;
     }
 
+    void SetGCType(TriggerGCType gcType)
+    {
+        gcType_ = gcType;
+    }
+
     TriggerGCType GetGCType() const
     {
         return gcType_;
@@ -344,6 +351,7 @@ public:
     void IncreaseTaskCount();
     void ReduceTaskCount();
     void WaitRunningTaskFinished();
+    uint32_t GetRunningTaskCount();
     void WaitClearTaskFinished();
     void ThrowOutOfMemoryError(JSThread *thread, size_t size, std::string functionName,
         bool NonMovableObjNearOOM = false);
@@ -642,6 +650,11 @@ public:
         return sSweeper_;
     }
 
+    UnifiedGC *GetUnifiedGC() const
+    {
+        return unifiedGC_;
+    }
+
     bool IsParallelGCEnabled() const
     {
         return parallelGC_;
@@ -696,7 +709,7 @@ public:
 
     template<GCReason gcReason>
     void CompressCollectGarbageNotWaiting(JSThread *thread);
-    
+
     template<TriggerGCType gcType, GCReason gcReason>
     void PostGCTaskForTest(JSThread *thread);
 
@@ -892,6 +905,10 @@ public:
 
     void CheckInHeapProfiler();
 
+    void StartUnifiedGCMark(TriggerGCType gcType, GCReason gcReason);
+    template<TriggerGCType gcType, GCReason gcReason>
+    bool TriggerUnifiedGCMark(JSThread *thread) const;
+
 private:
     void ProcessAllGCListeners();
     void CollectGarbageFinish(bool inDaemon, TriggerGCType gcType);
@@ -953,6 +970,7 @@ private:
     SharedGCMarker *sharedGCMarker_ {nullptr};
     SharedGCMovableMarker *sharedGCMovableMarker_ {nullptr};
     SharedMemController *sharedMemController_ {nullptr};
+    UnifiedGC *unifiedGC_ {nullptr};
     size_t growingFactor_ {0};
     size_t growingStep_ {0};
     size_t incNativeSizeTriggerSharedCM_ {0};
@@ -974,6 +992,7 @@ public:
     void Initialize();
     void Destroy() override;
     void Prepare();
+    void UnifiedGCPrepare();
     void GetHeapPrepare();
     void Resume(TriggerGCType gcType);
     void ResumeForAppSpawn();
@@ -1101,6 +1120,11 @@ public:
     Marker *GetCompressGCMarker() const
     {
         return compressGCMarker_;
+    }
+
+    UnifiedGCMarker *GetUnifiedGCMarker() const
+    {
+        return unifiedGCMarker_;
     }
 
     EcmaVM *GetEcmaVM() const
@@ -1239,7 +1263,17 @@ public:
     void TryTriggerIncrementalMarking() override;
     void CalculateIdleDuration();
     void UpdateWorkManager(WorkManager *workManager);
-    bool CheckOngoingConcurrentMarking() override;
+
+    bool CheckOngoingConcurrentMarking() override
+    {
+        return CheckOngoingConcurrentMarkingImpl(ThreadType::JS_THREAD, MAIN_THREAD_INDEX,
+                                                 "Heap::CheckOngoingConcurrentMarking");
+    }
+    bool DaemonCheckOngoingConcurrentMarking()
+    {
+        return CheckOngoingConcurrentMarkingImpl(ThreadType::DAEMON_THREAD, DAEMON_THREAD_INDEX,
+                                                 "Heap::DaemonCheckOngoingConcurrentMarking");
+    }
 
     inline void SwapNewSpace();
     inline void SwapOldSpace();
@@ -1625,6 +1659,11 @@ public:
         return gcType_ == TriggerGCType::YOUNG_GC;
     }
 
+    bool IsUnifiedGC() const
+    {
+        return gcType_ == TriggerGCType::UNIFIED_GC;
+    }
+
     void CheckNonMovableSpaceOOM();
     void DumpHeapSnapshotBeforeOOM(bool isFullGC = true);
     std::tuple<uint64_t, uint8_t *, int, kungfu::CalleeRegAndOffsetVec> CalCallSiteInfo(uintptr_t retAddr) const;
@@ -1684,6 +1723,8 @@ private:
     {
         pendingAsyncNativeCallbackSize_ -= bindingSize;
     }
+    bool CheckOngoingConcurrentMarkingImpl(ThreadType threadType, int threadIndex,
+                                           [[maybe_unused]] const char* traceName);
     class ParallelGCTask : public Task {
     public:
         ParallelGCTask(int32_t id, Heap *heap, ParallelGCTaskPhase taskPhase)
@@ -1849,6 +1890,7 @@ private:
      */
     Marker *nonMovableMarker_ {nullptr};
     Marker *compressGCMarker_ {nullptr};
+    UnifiedGCMarker *unifiedGCMarker_ {nullptr};
 
     // Work manager managing the tasks mostly generated in the GC mark phase.
     WorkManager *workManager_ {nullptr};

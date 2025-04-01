@@ -18,6 +18,10 @@
 
 #include <mutex>
 
+#ifdef PANDA_JS_ETS_HYBRID_MODE
+#include "ecmascript/cross_vm/cross_vm_operator.h"
+#endif  // PANDA_JS_ETS_HYBRID_MODE
+
 #include "ecmascript/base/config.h"
 #include "ecmascript/builtins/builtins_method_index.h"
 #include "ecmascript/js_runtime_options.h"
@@ -104,7 +108,7 @@ using SourceMapCallback = std::function<std::string(const std::string& rawStack)
 using SourceMapTranslateCallback = std::function<bool(std::string& url, int& line, int& column,
     std::string &packageName)>;
 using ResolveBufferCallback =
-    std::function<bool(std::string dirPath, uint8_t **buff, size_t *buffSize, std::string &errorMsg)>;
+    std::function<bool(std::string dirPath, bool isHybrid, uint8_t **buff, size_t *buffSize, std::string &errorMsg)>;
 using TimerCallbackFunc = void (*)(void *data);
 using TimerTaskCallback = void* (*)(EcmaVM *vm, void *data, TimerCallbackFunc func, uint64_t timeout, bool repeat);
 using CancelTimerCallback = void (*)(void *timerCallbackInfo);
@@ -1004,6 +1008,17 @@ public:
     void PrintCollectedByteCode();
 #endif
 
+#ifdef PANDA_JS_ETS_HYBRID_MODE
+    CrossVMOperator* GetCrossVMOperator() const
+    {
+        return crossVMOperator_;
+    }
+#endif  // PANDA_JS_ETS_HYBRID_MODE
+
+protected:
+
+    void PrintJSErrorInfo(const JSHandle<JSTaggedValue> &exceptionInfo) const;
+
 private:
     void ClearBufferData();
     void CheckStartCpuProfiler();
@@ -1149,6 +1164,10 @@ private:
     int processStartRealtime_ = 0;
 
     bool enableJitLogSkip_ = true;
+
+#ifdef PANDA_JS_ETS_HYBRID_MODE
+    CrossVMOperator* crossVMOperator_ {nullptr};
+#endif // PANDA_JS_ETS_HYBRID_MODE
 
 #if ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT
     // Stats for Thread-State-Transition and String-Table Locks

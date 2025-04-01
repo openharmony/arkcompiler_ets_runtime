@@ -74,9 +74,6 @@ HWTEST_F_L0(GCTest, SharedHeapVerificationTest)
     SharedHeap *sHeap = SharedHeap::GetInstance();
     JSRuntimeOptions options;
     options.SetArkProperties(options.GetArkProperties() | ArkProperties::ENABLE_HEAP_VERIFY);
-    auto nativeAreaAllocator_ = std::make_unique<NativeAreaAllocator>();
-    auto heapRegionAllocator_ = std::make_unique<HeapRegionAllocator>();
-    sHeap->Initialize(nativeAreaAllocator_.get(), heapRegionAllocator_.get(), options, DaemonThread::GetInstance());
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     sHeap->CollectGarbage<TriggerGCType::SHARED_GC, GCReason::OTHER>(thread);
     auto oldSizebase = sHeap->GetOldSpace()->GetHeapObjectSize();
