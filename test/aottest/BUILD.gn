@@ -325,6 +325,7 @@ group("ark_aot_ts_test") {
     "stsuperbyname",
     "sub",
     "supercall",
+    "supercall_inline",
     "supercallspread",
     "supercallforward",
     "suspendgenerator",

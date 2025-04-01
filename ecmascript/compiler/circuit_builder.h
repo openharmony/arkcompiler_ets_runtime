@@ -605,6 +605,8 @@ public:
     GateRef CallTargetCheck(GateRef gate, GateRef function, GateRef id, const char* comment = nullptr);
     GateRef CallTargetCheck(GateRef gate, GateRef function, GateRef id, std::vector<GateRef> params,
                             const char* comment = nullptr);
+    GateRef InlineSuperCtorCheck(GateRef gate, GateRef function, GateRef newTarget, GateRef methodOffset,
+                                 const char* comment = nullptr);
     template<TypedCallTargetCheckOp Op>
     GateRef JSCallTargetTypeCheck(GateRef func, GateRef methodIndex, GateRef gate);
     template<TypedCallTargetCheckOp Op>
@@ -641,7 +643,7 @@ public:
     GateRef TypedConditionJump(MachineType type, TypedJumpOp jumpOp, uint32_t weight, ParamType paramType,
                                const std::vector<GateRef>& inList);
     GateRef TypedNewAllocateThis(GateRef ctor, GateRef hclass, GateRef size, GateRef frameState);
-    GateRef TypedSuperAllocateThis(GateRef superCtor, GateRef newTarget, GateRef frameState);
+    GateRef TypedSuperAllocateThis(GateRef superCtor, GateRef newTarget);
     template<TypedBinOp Op>
     inline GateRef TypedBinaryOp(GateRef x, GateRef y, ParamType paramType);
     template<TypedUnOp Op>

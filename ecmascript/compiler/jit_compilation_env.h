@@ -176,6 +176,16 @@ public:
     {
         return heapConstantInfo_.callMethodId2HeapConstantIndex;
     }
+
+    void RecordOnlyInlineMethodId2HeapConstantIndex(uint32_t callMethodId, uint32_t heapConstantIndex)
+    {
+        heapConstantInfo_.onlyInlineMethodId2HeapConstantIndex[callMethodId] = heapConstantIndex;
+    }
+
+    const std::unordered_map<uint32_t, uint32_t> &GetOnlyInlineMethodId2HeapConstantIndex() const
+    {
+        return heapConstantInfo_.onlyInlineMethodId2HeapConstantIndex;
+    }
 private:
     JSThread *hostThread_ {nullptr};
     JSHandle<JSFunction> jsFunction_;
@@ -191,6 +201,7 @@ private:
         std::map<ConstantPoolHeapConstant, uint32_t> constPoolHeapConstant2Index;
         std::map<int32_t, uint32_t> gate2HeapConstantIndex;
         std::unordered_map<uint32_t, uint32_t> callMethodId2HeapConstantIndex;
+        std::unordered_map<uint32_t, uint32_t> onlyInlineMethodId2HeapConstantIndex;
     } heapConstantInfo_;
 };
 } // namespace panda::ecmascript

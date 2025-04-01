@@ -196,6 +196,7 @@
       panda::ecmascript::ForceCreateDirectory*;
       panda::ecmascript::GetFileDelimiter*;
       panda::ecmascript::GetPathSeparator*;
+      panda::ecmascript::interpreter::InterpreterAssembly::GetCallSize*;
       panda::ecmascript::Heap::AddGCListener*;
       panda::ecmascript::Heap::RemoveGCListener*;
       panda::ecmascript::LinkedHashMap::Create*;
