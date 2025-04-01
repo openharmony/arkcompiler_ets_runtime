@@ -113,7 +113,6 @@ group("ark_js_unittest") {
     "ecmascript/dfx/stackinfo/tests:unittest",
     "ecmascript/extractortool/tests:unittest",
     "ecmascript/ic/tests:unittest",
-    "ecmascript/jit/tests:unittest",
     "ecmascript/jobs/tests:unittest",
     "ecmascript/jspandafile/tests:unittest",
     "ecmascript/module/tests:unittest",
@@ -134,6 +133,9 @@ group("ark_js_unittest") {
       "ecmascript/compiler/aot_file/tests:host_unittest",
       "ecmascript/pgo_profiler/tests:unittest",
     ]
+  }
+  if (current_cpu == "arm64" || current_cpu == "amd64") {
+    deps += [ "ecmascript/jit/tests:unittest" ]
   }
 }
 
