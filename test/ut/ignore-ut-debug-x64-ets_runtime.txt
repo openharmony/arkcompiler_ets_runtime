@@ -2,3 +2,6 @@
 
 #21813
 obj/arkcompiler/ets_runtime/test/jittest/try_catch_empty/try_catch_empty
+
+#24219
+obj/arkcompiler/ets_runtime/ecmascript/tests/JS_Barrier_Test
