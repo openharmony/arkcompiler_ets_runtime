@@ -4226,6 +4226,16 @@ inline void StubBuilder::ResolvedModuleMustBeSourceTextModule([[maybe_unused]] G
     ASM_ASSERT(GET_MESSAGE_STRING_ID(CurrentModuleNotSourceTextModule), IsSourceTextModule(resolvedModule));
 }
 
+inline void StubBuilder::ModuleEnvMustBeDefined([[maybe_unused]] GateRef curEnv)
+{
+    ASM_ASSERT(GET_MESSAGE_STRING_ID(ModuleEnvMustBeDefined), BoolNot(TaggedIsUndefined(curEnv)));
+}
+
+inline void StubBuilder::CheckIsResolvedIndexBinding([[maybe_unused]] GateRef resolution)
+{
+    ASM_ASSERT(GET_MESSAGE_STRING_ID(CheckIsResolvedIndexBinding), IsResolvedIndexBinding(resolution));
+}
+
 inline void StubBuilder::RecordNameMustBeString([[maybe_unused]] GateRef recordName)
 {
     ASM_ASSERT(GET_MESSAGE_STRING_ID(RecordNameMustBeString), TaggedIsString(recordName));
@@ -4322,7 +4332,7 @@ inline GateRef StubBuilder::GetModuleType(GateRef module)
                     Int32((1LU << SourceTextModule::MODULE_TYPE_BITS) - 1));
 }
 
-inline GateRef StubBuilder::IsNativeOrCjsModule(GateRef module)
+inline GateRef StubBuilder::IsNativeModule(GateRef module)
 {
     GateRef moduleType = GetModuleType(module);
     return LogicOrBuilder(env_)
@@ -4330,8 +4340,20 @@ inline GateRef StubBuilder::IsNativeOrCjsModule(GateRef module)
         .Or(Int32Equal(moduleType, Int32(static_cast<int>(ModuleTypes::APP_MODULE))))
         .Or(Int32Equal(moduleType, Int32(static_cast<int>(ModuleTypes::NATIVE_MODULE))))
         .Or(Int32Equal(moduleType, Int32(static_cast<int>(ModuleTypes::INTERNAL_MODULE))))
-        .Or(Int32Equal(moduleType, Int32(static_cast<int>(ModuleTypes::CJS_MODULE))))
         .Done();
+}
+
+inline GateRef StubBuilder::IsCjsModule(GateRef module)
+{
+    GateRef moduleType = GetModuleType(module);
+    return Int32Equal(moduleType, Int32(static_cast<int>(ModuleTypes::CJS_MODULE)));
+}
+
+inline GateRef StubBuilder::GetCjsModuleFunction(GateRef glue)
+{
+    GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env_->Is32Bit()));
+    GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
+    return GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, GlobalEnv::CJS_MODULE_FUNCTION_INDEX);
 }
 } //  namespace panda::ecmascript::kungfu
 #endif // ECMASCRIPT_COMPILER_STUB_INL_H

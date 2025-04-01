@@ -1990,35 +1990,50 @@ DEF_RUNTIME_STUBS(ProcessModuleLoadInfo)
     return ModuleTools::ProcessModuleLoadInfo(thread, curModuleHdl, resolvedBinding, index).GetRawData();
 }
 
-DEF_RUNTIME_STUBS(GetNativeOrCjsModuleValue)
+DEF_RUNTIME_STUBS(GetModuleName)
 {
-    RUNTIME_STUBS_HEADER(GetNativeOrCjsModuleValue);
-    JSTaggedValue module = GetArg(argv, argc, 0); // 0: means the first parameter
+    RUNTIME_STUBS_HEADER(GetModuleName);
+    JSTaggedValue curModule = GetArg(argv, argc, 0); // 0: means the zeroth parameter
+    CString cjsModuleName = SourceTextModule::GetModuleName(curModule);
+    JSHandle<JSTaggedValue> moduleNameHandle(thread->GetEcmaVM()->GetFactory()->NewFromUtf8(cjsModuleName));
+    return moduleNameHandle.GetTaggedValue().GetRawData();
+}
+
+DEF_RUNTIME_STUBS(ThrowExportsIsHole)
+{
+    RUNTIME_STUBS_HEADER(ThrowExportsIsHole);
+    JSTaggedValue curModule = GetArg(argv, argc, 0); // 0: means the zeroth parameter
+    CString errorMsg = "Loading cjs module:" + SourceTextModule::GetModuleName(curModule) + ", failed";
+    THROW_NEW_ERROR_WITH_MSG_AND_RETURN_VALUE(thread, ErrorType::SYNTAX_ERROR, errorMsg.c_str(),
+                                              JSTaggedValue::Exception().GetRawData());
+}
+
+DEF_RUNTIME_STUBS(NewResolvedIndexBindingRecord)
+{
+    RUNTIME_STUBS_HEADER(NewResolvedIndexBindingRecord);
+    JSHandle<SourceTextModule> module = GetHArg<SourceTextModule>(argv, argc, 0); // 0: means the zeroth parameter
     int32_t index =
-        JSTaggedValue::ToInt32(thread, GetHArg<JSTaggedValue>(argv, argc, 1));  // 1: means the first parameter
-    return ModuleManagerHelper::GetNativeOrCjsModuleValue(thread, module, index).GetRawData();
+        JSTaggedValue::ToInt32(thread, GetHArg<JSTaggedValue>(argv, argc, 1)); // 1: means the first parameter
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    return JSHandle<JSTaggedValue>::Cast(factory->NewResolvedIndexBindingRecord(module, index))->GetRawData();
 }
 
-DEF_RUNTIME_STUBS(GetNativeOrCjsExports)
+DEF_RUNTIME_STUBS(HandleResolutionIsNullOrString)
 {
-    RUNTIME_STUBS_HEADER(GetNativeOrCjsExports);
-    JSTaggedValue module = GetArg(argv, argc, 0); // 0: means the first parameter
-    return ModuleManagerHelper::GetNativeOrCjsExports(thread, module).GetTaggedValue().GetRawData();
-}
-
-DEF_RUNTIME_STUBS(UpdateBindingAndGetModuleValue)
-{
-    RUNTIME_STUBS_HEADER(UpdateBindingAndGetModuleValue);
-    JSHandle<SourceTextModule> curModuleHandle =
-        GetHArg<SourceTextModule>(argv, argc, 0); // 0: means the zeroth parameter
-    JSHandle<SourceTextModule> resolvedModuleHandle =
+    RUNTIME_STUBS_HEADER(HandleResolutionIsNullOrString);
+    JSHandle<SourceTextModule> module = GetHArg<SourceTextModule>(argv, argc, 0); // 0: means the zeroth parameter
+    JSHandle<SourceTextModule> requiredModule =
         GetHArg<SourceTextModule>(argv, argc, 1); // 1: means the first parameter
-    int32_t index =
-        JSTaggedValue::ToInt32(thread, GetHArg<JSTaggedValue>(argv, argc, 2));  // 2: means the second parameter
-    JSTaggedValue resolvedBinding = GetArg(argv, argc, 3); // 3: means the third parameter
-    ResolvedBinding *binding = ResolvedBinding::Cast(resolvedBinding.GetTaggedObject());
-    return ModuleManagerHelper::UpdateBindingAndGetModuleValue(thread, curModuleHandle, resolvedModuleHandle, index,
-                                                               binding->GetBindingName()).GetRawData();
+    JSTaggedValue bindingName = GetArg(argv, argc, 2); // 2: means the second parameter
+    JSHandle<JSTaggedValue> resolution = GetHArg<JSTaggedValue>(argv, argc, 3); // 3: means the third parameter
+    CString requestMod =
+        ModulePathHelper::ReformatPath(SourceTextModule::GetModuleName(requiredModule.GetTaggedValue()));
+    CString recordStr = ModulePathHelper::ReformatPath(SourceTextModule::GetModuleName(module.GetTaggedValue()));
+    CString msg = "the requested module '" + requestMod + SourceTextModule::GetResolveErrorReason(resolution) +
+        ModulePathHelper::Utf8ConvertToString(bindingName) +
+        "' which imported by '" + recordStr + "'";
+    THROW_NEW_ERROR_WITH_MSG_AND_RETURN_VALUE(
+        thread, ErrorType::SYNTAX_ERROR, msg.c_str(), JSTaggedValue::Exception().GetRawData());
 }
 
 DEF_RUNTIME_STUBS(CheckAndThrowModuleError)
@@ -4639,6 +4654,12 @@ void RuntimeStubs::FatalPrintMisstakenResolvedBinding(int32_t index, JSTaggedVal
     LOG_ECMA(FATAL) << "Get module value failed, mistaken ResolvedBinding"
         << ", index: " << index << ", currentModule: " << oss.str();
     UNREACHABLE();
+}
+
+void RuntimeStubs::LoadNativeModuleFailed(JSTaggedValue curModule)
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    LOG_FULL(WARN) << "Load native module failed, so is " << SourceTextModule::GetModuleName(curModule);
 }
 
 void RuntimeStubs::Initialize(JSThread *thread)

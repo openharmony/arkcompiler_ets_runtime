@@ -206,7 +206,8 @@ namespace panda::ecmascript {
     V(ReverseArray)                            \
     V(LrInt)                                   \
     V(FindPatchModule)                         \
-    V(FatalPrintMisstakenResolvedBinding)
+    V(FatalPrintMisstakenResolvedBinding)      \
+    V(LoadNativeModuleFailed)
 
 #define RUNTIME_STUB_WITH_GC_LIST(V)            \
     V(HeapAlloc)                                \
@@ -344,9 +345,10 @@ namespace panda::ecmascript {
     V(LdExternalModuleVarByIndexOnJSFunc)       \
     V(LdModuleVar)                              \
     V(ProcessModuleLoadInfo)                    \
-    V(GetNativeOrCjsModuleValue)                \
-    V(GetNativeOrCjsExports)                    \
-    V(UpdateBindingAndGetModuleValue)           \
+    V(GetModuleName)                            \
+    V(ThrowExportsIsHole)                       \
+    V(NewResolvedIndexBindingRecord)            \
+    V(HandleResolutionIsNullOrString)           \
     V(CheckAndThrowModuleError)                 \
     V(GetResolvedRecordIndexBindingModule)      \
     V(GetResolvedRecordBindingModule)           \

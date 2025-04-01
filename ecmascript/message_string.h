@@ -81,6 +81,8 @@ namespace panda::ecmascript {
     V(CurrentModuleUndefined, "GetModuleValueOutter currentModule failed")                   \
     V(MisstakenResolvedBinding, "Get module value failed, mistaken ResolvedBinding")         \
     V(CurrentModuleNotSourceTextModule, "Current module is not SourceTextModule")            \
+    V(ModuleEnvMustBeDefined, "Environment of current module must not be undefined")         \
+    V(CheckIsResolvedIndexBinding, "Current resolution must be ResolvedIndexBinding")        \
     V(RecordNameMustBeString, "RecordName must be string")
 
 #define DEBUG_CHECK_MESSAGE_STRING_LIST(V)                                                   \

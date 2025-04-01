@@ -1363,7 +1363,6 @@ JSTaggedValue SourceTextModule::GetValueFromExportObject(JSThread *thread, JSHan
     if (UNLIKELY(value.IsAccessor())) {
         return FastRuntimeStub::CallGetter(thread, JSTaggedValue(obj), JSTaggedValue(obj), value);
     }
-    ASSERT(!value.IsAccessor());
     return value;
 }
 
