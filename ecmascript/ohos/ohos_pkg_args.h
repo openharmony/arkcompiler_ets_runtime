@@ -63,7 +63,11 @@ public:
     ~OhosPkgArgs()
     {
         if (GetPkgFd() != -1) {
+#ifdef PANDA_TARGET_OHOS
+            fdsan_close_with_tag(GetPkgFd(), LOG_DOMAIN);
+#else
             close(GetPkgFd());
+#endif
             SetPkgFd(-1);
         }
     }
