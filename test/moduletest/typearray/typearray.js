@@ -1371,32 +1371,6 @@ try {
 var arr_fill1 = new Uint8ClampedArray([0, 0, 0]).fill(2.50000);
 assert_equal(arr_fill1.toString(),"3,3,3")
 
-function sum(a, b) { return a + b; }
-var arr_shadow_length = new Uint8Array([11, 22]);
-Object.defineProperty(arr_shadow_length, 'length', {value: 1});
-assert_equal(Array.prototype.reduce.call(arr_shadow_length, sum, 0) == 11,true);
-assert_equal(Array.prototype.reduceRight.call(arr_shadow_length, sum, 0) == 11,true);
-assert_equal(Uint8Array.prototype.reduce.length == 1,true);
-assert_equal(Uint8Array.prototype.reduceRight.length == 1,true);
-
-var arr_reduce = new Uint8Array([11, 22]);
-ArkTools.arrayBufferDetach(arr_reduce.buffer);
-try {
-    arr_reduce.reduce(sum, 0);
-    assert_unreachable();
-} catch (e) {
-    assert_equal(e instanceof TypeError,true);
-}
-
-var arr_reduceRight = new Uint8Array([11, 22]);
-ArkTools.arrayBufferDetach(arr_reduceRight.buffer);
-try {
-    arr_reduceRight.reduceRight(sum, 0);
-    assert_unreachable();
-} catch (e) {
-    assert_equal(e instanceof TypeError, true);
-}
-
 try {
     var obj = {intt8: Int8Array};
     print(obj.intt8(16));

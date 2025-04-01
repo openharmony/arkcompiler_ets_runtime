@@ -161,8 +161,7 @@ public:
     {
         if (IsEOF() ||
             // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-            ((flags_ & RegExpParser::FLAG_MULTILINE) != 0
-             && (PeekChar(currentPtr_, inputEnd_) == '\n' || PeekChar(currentPtr_, inputEnd_) == '\r'))) {
+            ((flags_ & RegExpParser::FLAG_MULTILINE) != 0 && PeekChar(currentPtr_, inputEnd_) == '\n')) {
             Advance(opCode);
         } else {
             if (MatchFailed()) {

@@ -238,10 +238,6 @@ public:
     static JSTaggedValue MapUnStableJSArray(JSThread *thread, JSHandle<JSTaggedValue> &thisArgHandle,
         JSHandle<JSTaggedValue> &thisObjVal, int64_t k, int64_t len, JSHandle<JSObject> newArrayHandle,
         JSHandle<JSTaggedValue> &callbackFnHandle);
-
-    static JSTaggedValue ReduceInner(EcmaRuntimeCallInfo *argv, int64_t len);
-
-    static JSTaggedValue ReduceRightInner(EcmaRuntimeCallInfo *argv, int64_t len);
 private:
 #define BUILTIN_ARRAY_FUNCTION_ENTRY(name, method, length, id) \
     base::BuiltinFunctionEntry::Create(name, BuiltinsArray::method, length, BUILTINS_STUB_ID(id)),

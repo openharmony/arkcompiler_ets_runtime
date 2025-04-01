@@ -379,16 +379,6 @@ print('abc'.padEnd(5, ''))
 
 let arr1 = [0,0,0,0,0];
 print(arr1.toString("a"));
-const abc_str = "abc";
-const negativeHeapNumber = -1 * 2**32;
-const positiveHeapNumber = 2**32;
-print(abc_str.substr(positiveHeapNumber));
-print(abc_str.substr(negativeHeapNumber, positiveHeapNumber));
-print(abc_str.substr(-abc_str.length, positiveHeapNumber));
-print(abc_str.substr(0, positiveHeapNumber));
-print(abc_str.substr(-2, positiveHeapNumber));
-print(abc_str.substr(-1, positiveHeapNumber));
-
 {
     function f(n) { return "cba".endsWith("a", n); }
     print(f());
