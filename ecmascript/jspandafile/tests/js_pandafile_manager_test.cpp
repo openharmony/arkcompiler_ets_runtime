@@ -376,7 +376,7 @@ HWTEST_F_L0(JSPandaFileManagerTest, GetJSPandaFileByBufferFiles)
     std::shared_ptr<JSPandaFile> pf = pfManager->NewJSPandaFile(pfPtr.release(), CString(fileName));
     std::shared_ptr<JSPandaFile> jsPandaFile;
     pfManager->AddJSPandaFile(pf);
-    AbcBufferCache *abcBufferCache = thread->GetCurrentEcmaContext()->GetAbcBufferCache();
+    AbcBufferCache *abcBufferCache = thread->GetEcmaVM()->GetAbcBufferCache();
     abcBufferCache->AddAbcBufferToCache(CString(fileName), (void *)data, sizeof(data), AbcBufferType::NORMAL_BUFFER);
     AbcBufferInfo bufferInfo = abcBufferCache->FindJSPandaFileInAbcBufferCache(CString(fileName));
     EXPECT_TRUE(bufferInfo.buffer_ != nullptr);

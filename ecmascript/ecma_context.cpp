@@ -29,7 +29,6 @@
 #include "ecmascript/jit/jit.h"
 #include "ecmascript/linked_hash_table.h"
 #include "ecmascript/module/module_logger.h"
-#include "ecmascript/jspandafile/abc_buffer_cache.h"
 #include "ecmascript/platform/aot_crash_info.h"
 #include "ecmascript/platform/ecma_context.h"
 #include "ecmascript/require/js_require_manager.h"
@@ -90,7 +89,6 @@ bool EcmaContext::Initialize()
 
     ptManager_ = new kungfu::PGOTypeManager(vm_);
     optCodeProfiler_ = new OptCodeProfiler();
-    abcBufferCache_ = new AbcBufferCache();
     if (vm_->GetJSOptions().GetTypedOpProfiler()) {
         typedOpProfiler_ = new TypedOpProfiler();
     }
@@ -134,10 +132,6 @@ EcmaContext::~EcmaContext()
     if (functionProtoTransitionTable_ != nullptr) {
         delete functionProtoTransitionTable_;
         functionProtoTransitionTable_ = nullptr;
-    }
-    if (abcBufferCache_ != nullptr) {
-        delete abcBufferCache_;
-        abcBufferCache_ = nullptr;
     }
 }
 
