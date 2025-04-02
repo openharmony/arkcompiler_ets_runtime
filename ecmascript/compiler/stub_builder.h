@@ -491,6 +491,7 @@ public:
     GateRef GetStoreAOTHandlerProtoCell(GateRef object);
     GateRef GetPrototypeHandlerHolder(GateRef object);
     GateRef GetPrototypeHandlerHandlerInfo(GateRef object);
+    void SetPrototypeHandlerHandlerInfo(GateRef glue, GateRef obj, GateRef value);
     GateRef GetStoreAOTHandlerHolder(GateRef object);
     GateRef GetStoreAOTHandlerHandlerInfo(GateRef object);
     inline GateRef GetLengthOfJSArray(GateRef array);

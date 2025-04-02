@@ -12,7 +12,9 @@
 # limitations under the License.
 
 3
-3
+set
+get
+5
 true
 set
 get
@@ -20,3 +22,6 @@ get
 1
 get
 4
+done
+true
+done

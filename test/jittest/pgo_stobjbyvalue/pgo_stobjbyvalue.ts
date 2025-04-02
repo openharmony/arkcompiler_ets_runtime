@@ -18,16 +18,37 @@ declare function print(arg: any): string;
 
 var leak;
 function test3() {
-var a = [1];
-a[1] = 2;
-return a[0] + a[1];
+    var a = [1];
+    a[1] = 2;
+    return a[0] + a[1];
 }
 
 print(test3());
-print(test3());
 Object.defineProperty(Array.prototype, "1", { get: function () { print("get"); return 4; }, set: function () { leak = this; print("set"); } });
+print(test3());
 ArkTools.jitCompileAsync(test3);
 print(ArkTools.waitJitCompileFinish(test3));
 print(test3());
 print(leak[0]);
 print(leak[1]);
+
+class Index {
+    constructor() {
+        this.textArray = new Array(27);
+    }
+    setElement() {
+        for (let i = 0; i < 40; i++) {
+            this.textArray[i] = 1;
+        }
+    }
+}
+
+function main() {
+    let indexObj = new Index()
+    indexObj.setElement()
+    print("done")
+}
+main()
+ArkTools.jitCompileAsync(main);
+print(ArkTools.waitJitCompileFinish(main));
+main()
