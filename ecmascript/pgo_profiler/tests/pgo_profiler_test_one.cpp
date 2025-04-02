@@ -290,19 +290,32 @@ HWTEST_F_L0(PGOProfilerTestOne, SuspendThenNotifyThenResume)
     state->TryChangeState(PGOState::State::STOP, PGOState::State::START);
     EXPECT_TRUE(state->StateIsStart());
 
-    std::thread thread1([state]() {
+    std::mutex mtx;
+    std::condition_variable cv;
+    bool gcWaiting = false;
+
+    std::thread thread1([state, &mtx, &cv, &gcWaiting]() {
         RuntimeOption option;
         option.SetEnableProfile(true);
         option.SetLogLevel(LOG_LEVEL::INFO);
         option.SetProfileDir("ark-profiler-worker/");
         EcmaVM* vm = JSNApi::CreateJSVM(option);
         auto profiler = std::make_shared<PGOProfilerMock>(vm, true);
+        {
+            std::lock_guard<std::mutex> lock(mtx);
+            gcWaiting = true;
+            cv.notify_one();
+        }
         state->SuspendByGC();
         state->ResumeByGC(profiler.get());
         JSNApi::DestroyJSVM(vm);
     });
 
-    std::thread thread2([state]() {
+    std::thread thread2([state, &mtx, &cv, &gcWaiting]() {
+        {
+            std::unique_lock<std::mutex> lock(mtx);
+            cv.wait(lock, [&gcWaiting]() { return gcWaiting; });
+        }
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
         EXPECT_TRUE(state->GCIsWaiting());
         state->SetStopAndNotify();

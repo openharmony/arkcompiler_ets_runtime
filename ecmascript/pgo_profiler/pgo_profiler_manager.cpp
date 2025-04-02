@@ -336,19 +336,26 @@ bool PGOProfilerManager::IsProfilerDestroyed(PGOProfiler* profiler)
     return true;
 }
 
-void PGOProfilerManager::DumpPendingProfilers()
+void PGOProfilerManager::DumpPendingProfilersByDumpThread()
 {
     {
         ConcurrentGuard guard(v_, "DumpPendingProfilers");
         std::set<PGOProfiler*> notDumpedProfilers;
+#if defined(OHOS_GET_PARAMETER)
+        bool resetCPUCore = false;
+        if (!pendingProfilers_.Empty()) {
+            resetCPUCore = true;
+            BindMidCpuCore();
+        }
+#endif
         while (!pendingProfilers_.Empty()) {
             auto profiler = pendingProfilers_.PopFront();
             if (profiler == nullptr || IsProfilerDestroyed(profiler)) {
                 continue;
             }
             if (profiler->SetStartIfStop()) {
-                profiler->HandlePGODumpByDumpThread();
-                profiler->TrySaveByDumpThread();
+                profiler->HandlePGODump();
+                profiler->TrySave();
                 profiler->SetStopAndNotify();
             } else if (!IsProfilerDestroyed(profiler)) {
                 notDumpedProfilers.emplace(profiler);
@@ -357,6 +364,11 @@ void PGOProfilerManager::DumpPendingProfilers()
         for (const auto profiler: notDumpedProfilers) {
             pendingProfilers_.PushBack(profiler);
         }
+#if defined(OHOS_GET_PARAMETER)
+        if (resetCPUCore) {
+            BindAllCpuCore();
+        }
+#endif
         if (IsForceDump()) {
             SavePGOInfo();
             SetForceDump(false);

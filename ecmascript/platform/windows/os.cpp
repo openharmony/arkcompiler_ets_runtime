@@ -63,6 +63,11 @@ void BindMidCpuCore()
     LOG_ECMA(INFO) << "Bind Mid Core in windows not support";
 }
 
+void BindAllCpuCore()
+{
+    LOG_ECMA(INFO) << "Bind All Core in windows not support";
+}
+
 void *PageMapExecFortSpace(void *addr, [[maybe_unused]] size_t size, [[maybe_unused]] int prot)
 {
     // basically no op
