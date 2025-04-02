@@ -87,7 +87,7 @@ public:
     void SuspendByGC();
     void ResumeByGC();
     void HandlePGOPreDump();
-    void HandlePGODumpByDumpThread();
+    void HandlePGODump();
     void ProcessReferences(const WeakRootVisitor& visitor);
     void Iterate(RootVisitor& visitor);
     void UpdateTrackArrayLength(JSTaggedValue trackInfoVal, uint32_t newSize);
@@ -102,7 +102,7 @@ public:
     JITProfiler* PUBLIC_API GetJITProfile();
     void SetStopAndNotify();
     bool SetStartIfStop();
-    void TrySaveByDumpThread();
+    void TrySave();
     void DumpBeforeDestroy();
 
 private:
@@ -347,8 +347,8 @@ private:
     };
 
 private:
-    static constexpr uint32_t MERGED_EVERY_COUNT = 50;
-    static constexpr uint32_t MS_PRE_SECOND = 1000;
+    static constexpr uint32_t MERGED_EVERY_COUNT {50};
+    static constexpr uint32_t MS_PRE_SECOND {1000};
     std::unique_ptr<NativeAreaAllocator> nativeAreaAllocator_;
     EcmaVM* vm_ {nullptr};
     bool isEnable_ {false};

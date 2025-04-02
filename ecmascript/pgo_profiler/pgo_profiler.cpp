@@ -511,7 +511,7 @@ void PGOProfiler::DumpBeforeDestroy()
     }
     LOG_PGO(INFO) << "dump profiler before destroy: " << this;
     state_->StartDumpBeforeDestroy();
-    HandlePGODumpByDumpThread();
+    HandlePGODump();
     HandlePGOPreDump();
     state_->SetStopAndNotify();
 }
@@ -553,9 +553,9 @@ void PGOProfiler::HandlePGOPreDump()
     });
 }
 
-void PGOProfiler::HandlePGODumpByDumpThread()
+void PGOProfiler::HandlePGODump()
 {
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "PGOProfiler::HandlePGODumpByDumpThread");
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "PGOProfiler::HandlePGODump");
     if (!isEnable_ || !vm_->GetJSOptions().IsEnableProfileDump()) {
         return;
     }
@@ -603,7 +603,7 @@ void PGOProfiler::HandlePGODumpByDumpThread()
     }
 }
 
-void PGOProfiler::TrySaveByDumpThread()
+void PGOProfiler::TrySave()
 {
     if (manager_->IsForceDump()) {
         return;
@@ -636,7 +636,7 @@ PGOProfiler::WorkNode* PGOProfiler::PopFromProfileQueue()
     return node;
 }
 
-void PGOProfiler::ProfileBytecode(ApEntityId abcId, const CString &recordName, JSTaggedValue funcValue)
+void PGOProfiler::ProfileBytecode(ApEntityId abcId, const CString& recordName, JSTaggedValue funcValue)
 {
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "PGOProfiler::ProfileBytecode");
     ClockScope start;
