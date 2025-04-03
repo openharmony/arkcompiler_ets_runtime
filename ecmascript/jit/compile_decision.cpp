@@ -16,8 +16,117 @@
 #include "ecmascript/jit/compile_decision.h"
 #include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/ic/profile_type_info.h"
+#include "ecmascript/platform/aot_crash_info.h"
 
 namespace panda::ecmascript {
+std::string GetFileName(const std::string& fileName, bool isApp)
+{
+    if (isApp) {
+        std::string pathOnMobile;
+        std::string sanboxPath = panda::os::file::File::GetExtendedFilePath(AotCrashInfo::GetSandBoxPath());
+        if (ecmascript::RealPath(sanboxPath, pathOnMobile, false)) {
+            return pathOnMobile + "/method_compiled_by_jit.cfg";
+        } else {
+            LOG_JIT(ERROR) << "get method_compiled_by_jit.cfg path fail: " << sanboxPath;
+            return "";
+        }
+    }
+    return fileName;
+}
+
+void MethodNameCollector::Init(EcmaVM *vm)
+{
+    if (vm == nullptr || isInit_) {
+        return;
+    }
+    if (!(vm->GetJSOptions().IsEnableJitMethodCollect())) {
+        return;
+    }
+    enable_ = true;
+    std::string fileName = vm->GetJSOptions().GetJitMethodPath();
+    fileName = GetFileName(fileName, vm->GetJSOptions().IsEnableAPPJIT());
+    if (fileName.empty()) {
+        return;
+    }
+    file_.open(fileName.c_str(), std::ofstream::out | std::ofstream::trunc);
+    if (!file_.is_open()) {
+        LOG_JIT(ERROR) << "open method_compiled_by_jit.cfg fail: " << fileName;
+        return;
+    }
+    LOG_JIT(INFO) << "open method_compiled_by_jit.cfg succ: " << fileName;
+    isInit_ = true;
+}
+
+void MethodNameCollector::Collect(const std::string& methodFullName) const
+{
+    if (enable_ && isInit_) {
+        file_ << methodFullName << std::endl;
+    }
+}
+
+MethodNameCollector::~MethodNameCollector()
+{
+    if (enable_ && isInit_) {
+        ASSERT(file_.is_open());
+        file_.close();
+    }
+    isInit_ = false;
+    enable_ = false;
+}
+
+void MethodNameFilter::Init(EcmaVM *vm)
+{
+    if (vm == nullptr || isInit_) {
+        return;
+    }
+    if (!(vm->GetJSOptions().IsEnableJitMethodFilter())) {
+        return;
+    }
+    enable_ = true;
+    std::string fileName = vm->GetJSOptions().GetJitMethodPath();
+    fileName = GetFileName(fileName, vm->GetJSOptions().IsEnableAPPJIT());
+    if (fileName.empty()) {
+        return;
+    }
+    std::ifstream file(fileName.c_str());
+    if (!file.is_open()) {
+        LOG_JIT(INFO) << "open method_compiled_by_jit.cfg fail: " << fileName;
+        return;
+    }
+    LOG_JIT(INFO) << "open method_compiled_by_jit.cfg succ: " << fileName;
+    std::string methodFullName;
+    while (getline(file, methodFullName)) {
+        if (methodFullName.empty()) {
+            continue;
+        }
+        methodFullNames.insert(methodFullName);
+    }
+    if (methodFullNames.empty()) {
+        LOG_JIT(INFO) << "the number of method names is 0.";
+        return;
+    }
+    isInit_ = true;
+}
+
+bool MethodNameFilter::NeedCompiledByJit(const std::string& methodFullName) const
+{
+    if (enable_ && isInit_) {
+        return methodFullNames.find(methodFullName) != methodFullNames.end();
+    }
+    // When filtering is not enabled, all JS functions need to be compiled.
+    return true;
+}
+
+MethodNameFilter::~MethodNameFilter()
+{
+    methodFullNames.clear();
+    enable_ = false;
+    isInit_ = false;
+}
+
+MethodNameCollector CompileDecision::methodNameCollector;
+MethodNameFilter CompileDecision::methodNameFilter;
+
 CompileDecision::CompileDecision(EcmaVM *vm, JSHandle<JSFunction> &jsFunction, CompilerTier tier,
     int32_t osrOffset, JitCompileMode mode) : vm_(vm), jsFunction_(jsFunction),
     tier_(tier), osrOffset_(osrOffset), compileMode_(mode) { }
@@ -85,6 +194,11 @@ bool CompileDecision::IsJsFunctionSupportCompile() const
     Method *method = Method::Cast(jsFunction_->GetMethod().GetTaggedObject());
     if (vm_->IsEnableOsr() && osrOffset_ != MachineCode::INVALID_OSR_OFFSET && method->HasCatchBlock()) {
         LOG_JIT(DEBUG) << "skip jit task, as osr does not support catch blocks: " << GetMethodInfo();
+        return false;
+    }
+    methodNameCollector.Collect(std::string(GetMethodName()));
+    if (!methodNameFilter.NeedCompiledByJit(std::string(GetMethodName()))) {
+        LOG_JIT(DEBUG) << "skip jit task, as not the compilation target:" << GetMethodInfo();
         return false;
     }
     return true;

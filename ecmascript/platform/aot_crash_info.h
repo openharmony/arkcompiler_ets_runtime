@@ -57,7 +57,7 @@ public:
     static bool PUBLIC_API IsAotEscaped(const std::string &pgoRealPath = "");
     static bool IsJitEscape();
     static bool GetAotEscapeDisable();
-    static std::string GetSandBoxPath();
+    static std::string PUBLIC_API GetSandBoxPath();
     static int GetAotCrashCount();
     static int GetJitCrashCount();
     static int GetJsCrashCount();

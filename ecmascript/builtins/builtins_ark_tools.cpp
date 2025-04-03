@@ -1475,6 +1475,10 @@ JSTaggedValue BuiltinsArkTools::WaitJitCompileFinish(EcmaRuntimeCallInfo *info)
         return JSTaggedValue::False();
     }
     while (!jsFunction->GetMachineCode().IsMachineCodeObject()) {
+        if (jsFunction->GetJitHotnessCnt() == ProfileTypeInfo::JIT_DISABLE_FLAG) {
+            // The current function is not compiled for some reason.
+            break;
+        }
         // just spin check
         thread->SetInstallMachineCode(true);
         thread->CheckSafepoint();

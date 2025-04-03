@@ -203,6 +203,11 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "                                      Default : 'false'\n"
     "--compiler-an-file-max-size:          Max size of compiler .an file in MB. '0' means Default\n"
     "                                      Default: No limit for Host, '100' for TargetCompilerMode\n"
+    "--compiler-jit-method-dichotomy:      Find problematic method by dichotomy. Default: 'disable'\n"
+    "                                      'collect': collect methods during JIT runtime.\n"
+    "                                      'filter': only compile specified methods during JIT runtime.\n"
+    "--compiler-jit-method-path:           Store method names for jit method dichotomy.\n"
+    "                                      Default: 'method_compiled_by_jit.cfg'\n"
     // Please add new options above this line for keep a blank line after help message.
     "\n";
 
@@ -354,8 +359,9 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"compile-enable-jit-verify-pass", required_argument, nullptr, OPTION_ENABLE_JIT_VERIFY_PASS},
         {"compiler-an-file-max-size", required_argument, nullptr, OPTION_COMPILER_AN_FILE_MAX_SIZE},
         {"compiler-trace-builtins", required_argument, nullptr, OPTION_COMPILER_TRACE_BUILTINS},
+        {"compiler-jit-method-dichotomy", required_argument, nullptr, OPTION_COMPILER_JIT_METHOD_DICHOTOMY},
+        {"compiler-jit-method-path", required_argument, nullptr, OPTION_COMPILER_JIT_METHOD_PATH},
         {nullptr, 0, nullptr, 0},
-        
     };
 
     int index = 0;
@@ -1411,6 +1417,12 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 } else {
                     return false;
                 }
+                break;
+            case OPTION_COMPILER_JIT_METHOD_DICHOTOMY:
+                SetJitMethodDichotomy(optarg);
+                break;
+            case OPTION_COMPILER_JIT_METHOD_PATH:
+                SetJitMethodPath(optarg);
                 break;
             default:
                 LOG_ECMA(ERROR) << "Invalid option\n";
