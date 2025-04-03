@@ -1511,6 +1511,12 @@ HWTEST_F_L0(EcmaModuleTest, TranslateExpressionToNormalized4)
     CString result = ModulePathHelper::TranslateExpressionToNormalized(thread, nullptr, baseFileName, "",
         requestPath);
     EXPECT_EQ(result, "@normalized:Y&&&har&1.2.0");
+    
+    baseFileName = "D:\\test\\entry\\.preview\\default\\intermediates\\assets\\default\\ets\\modules.abc";
+    instance->SetModuleName("entry");
+    result = ModulePathHelper::TranslateExpressionToNormalized(thread, nullptr, baseFileName, "",
+        requestPath);
+    EXPECT_EQ(result, "@normalized:Y&&&har&1.2.0");
 }
 
 HWTEST_F_L0(EcmaModuleTest, TranslateExpressionToNormalized5)
