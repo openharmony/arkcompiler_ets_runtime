@@ -65,10 +65,10 @@ void BindSmallCpuCore()
     cpu_set_t cpuset;
 
     CPU_ZERO(&cpuset);
-    CPU_SET(0, &cpuset); // 0: bind this process to cpu0
-    CPU_SET(1, &cpuset); // 1: bind this process to cpu1
-    CPU_SET(2, &cpuset); // 2: bind this process to cpu2
-    CPU_SET(3, &cpuset); // 3: bind this process to cpu3
+    CPU_SET(0, &cpuset); // 0: bind this thread to cpu0
+    CPU_SET(1, &cpuset); // 1: bind this thread to cpu1
+    CPU_SET(2, &cpuset); // 2: bind this thread to cpu2
+    CPU_SET(3, &cpuset); // 3: bind this thread to cpu3
 
     if (sched_setaffinity(0, sizeof(cpuset), &cpuset) == -1) {
         LOG_ECMA(ERROR) << "Set CPU affinity failed";
@@ -81,6 +81,20 @@ void BindMidCpuCore()
 
     CPU_ZERO(&cpuset);
     for (size_t i = 0; i < 7; i++) { // 7: 0-3 little core, 4-6 mid core
+        CPU_SET(i, &cpuset);
+    }
+
+    if (sched_setaffinity(0, sizeof(cpuset), &cpuset) == -1) {
+        LOG_ECMA(ERROR) << "Set CPU affinity failed";
+    }
+}
+
+void BindAllCpuCore()
+{
+    cpu_set_t cpuset;
+
+    CPU_ZERO(&cpuset);
+    for (size_t i = 0; i < NumberOfCpuCore(); i++) {
         CPU_SET(i, &cpuset);
     }
 
