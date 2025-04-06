@@ -320,7 +320,7 @@ Local<JSValueRef> SourceTextModule::LoadNativeModuleImpl(EcmaVM *vm, JSThread *t
 {
     CString moduleRequestName = requiredModule->GetEcmaModuleRecordNameString();
     ModuleTraceScope moduleTraceScope(thread, "SourceTextModule::LoadNativeModule:" + moduleRequestName);
-    ModuleLogger *moduleLogger = thread->GetCurrentEcmaContext()->GetModuleLogger();
+    ModuleLogger *moduleLogger = thread->GetModuleLogger();
     if (moduleLogger != nullptr) {
         moduleLogger->SetStartTime(moduleRequestName);
     }
@@ -425,7 +425,7 @@ void SourceTextModule::HandlePreInstantiationException(JSThread *thread, JSHandl
             if (request->IsSourceTextModule()) {
                 HandlePreInstantiationException(thread, JSHandle<SourceTextModule>::Cast(request));
             } else if (request->IsString()) {
-                ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+                ModuleManager *moduleManager = thread->GetModuleManager();
                 CString requestStr = ModulePathHelper::Utf8ConvertToString(request.GetTaggedValue());
                 JSHandle<SourceTextModule> mm = moduleManager->GetImportedModule(requestStr);
                 HandlePreInstantiationException(thread, mm);
@@ -904,7 +904,7 @@ JSTaggedValue SourceTextModule::Evaluate(JSThread *thread, const JSHandle<Source
     if (!thread->HasPendingException() && IsStaticImport(executeType)) {
         job::MicroJobQueue::ExecutePendingJob(thread, thread->GetEcmaVM()->GetMicroJobQueue());
     }
-    ModuleLogger *moduleLogger = thread->GetCurrentEcmaContext()->GetModuleLogger();
+    ModuleLogger *moduleLogger = thread->GetModuleLogger();
     if ((moduleLogger != nullptr) && IsStaticImport(executeType)) {
         moduleLogger->InsertEntryPointModule(module);
     }
@@ -954,8 +954,7 @@ int SourceTextModule::InnerModuleEvaluationUnsafe(JSThread *thread, JSHandle<Sou
     module->SetPendingAsyncDependencies(0);
     index++;
     stack.emplace_back(module);
-    EcmaContext *context = thread->GetCurrentEcmaContext();
-    ModuleLogger *moduleLogger = context->GetModuleLogger();
+    ModuleLogger *moduleLogger = thread->GetModuleLogger();
     if (!module->GetRequestedModules().IsUndefined()) {
         JSHandle<TaggedArray> requestedModules(thread, module->GetRequestedModules());
         size_t requestedModulesLen = requestedModules->GetLength();
@@ -1021,7 +1020,7 @@ int SourceTextModule::InnerModuleEvaluationUnsafe(JSThread *thread, JSHandle<Sou
         // a. Assert: module.[[AsyncEvaluation]] is false and was never previously set to true.
         ASSERT(module->GetAsyncEvaluatingOrdinal() == NOT_ASYNC_EVALUATED);
         // b. Set module.[[AsyncEvaluation]] to true.
-        auto moduleManager = context->GetModuleManager();
+        auto moduleManager = thread->GetModuleManager();
         module->SetAsyncEvaluatingOrdinal(moduleManager->NextModuleAsyncEvaluatingOrdinal());
         // d. If module.[[PendingAsyncDependencies]] = 0, perform ExecuteAsyncModule(module).
         if (pendingAsyncDependencies == 0) {
@@ -1185,7 +1184,7 @@ Expected<JSTaggedValue, bool> SourceTextModule::ModuleExecution(JSThread *thread
     const JSHandle<SourceTextModule> &module, const void *buffer, size_t size, const ExecuteTypes &executeType)
 {
     CString moduleFilenameStr {};
-    if (thread->GetCurrentEcmaContext()->GetStageOfHotReload() == StageOfHotReload::LOAD_END_EXECUTE_PATCHMAIN) {
+    if (thread->GetStageOfHotReload() == StageOfHotReload::LOAD_END_EXECUTE_PATCHMAIN) {
         moduleFilenameStr = thread->GetEcmaVM()->GetQuickFixManager()->GetBaseFileName(module);
     } else {
         moduleFilenameStr = module->GetEcmaModuleFilenameString();
@@ -1986,7 +1985,7 @@ void SourceTextModule::CheckCircularImportTool(JSThread *thread, const CString &
 {
     referenceList.push_back(circularModuleRecordName);
     JSMutableHandle<SourceTextModule> moduleRecord(thread, thread->GlobalConstants()->GetUndefined());
-    auto moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+    auto moduleManager = thread->GetModuleManager();
     if (moduleManager->IsLocalModuleLoaded(circularModuleRecordName)) {
         moduleRecord.Update(moduleManager->HostGetImportedModule(circularModuleRecordName));
     } else {
@@ -2168,7 +2167,7 @@ JSHandle<SourceTextModule> SourceTextModule::GetRequestedModule(JSThread *thread
         return JSHandle<SourceTextModule>::Cast(request);
     }
     // current is shared module: resolve or find request module by request string.
-    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+    ModuleManager *moduleManager = thread->GetModuleManager();
     CString requestStr = ModulePathHelper::Utf8ConvertToString(request.GetTaggedValue());
     return moduleManager->GetImportedModule(requestStr);
 }

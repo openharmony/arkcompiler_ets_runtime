@@ -20,6 +20,8 @@
 #include "ecmascript/js_date.h"
 #include "ecmascript/js_object-inl.h"
 #include "ecmascript/js_tagged_value.h"
+#include "ecmascript/module/module_logger.h"
+#include "ecmascript/module/js_module_manager.h"
 #include "ecmascript/runtime_call_id.h"
 
 #if !defined(PANDA_TARGET_WINDOWS) && !defined(PANDA_TARGET_MACOS) && !defined(PANDA_TARGET_IOS)
@@ -137,6 +139,11 @@ JSThread::JSThread(EcmaVM *vm) : id_(os::thread::GetCurrentThreadId()), vm_(vm)
         glueData_.loadMegaICCache_ = new MegaICCache();
         glueData_.storeMegaICCache_ = new MegaICCache();
     }
+
+    glueData_.moduleManager_ = new ModuleManager(vm_);
+    if (vm_->GetJSOptions().EnableModuleLog()) {
+        glueData_.moduleLogger_ = new ModuleLogger(vm_);
+    }
 }
 
 JSThread::JSThread(EcmaVM *vm, ThreadType threadType) : id_(os::thread::GetCurrentThreadId()),
@@ -205,6 +212,14 @@ JSThread::~JSThread()
     if (dateUtils_ != nullptr) {
         delete dateUtils_;
         dateUtils_ = nullptr;
+    }
+    if (glueData_.moduleManager_ != nullptr) {
+        delete glueData_.moduleManager_;
+        glueData_.moduleManager_ = nullptr;
+    }
+    if (glueData_.moduleLogger_ != nullptr) {
+        delete glueData_.moduleLogger_;
+        glueData_.moduleLogger_ = nullptr;
     }
 }
 
@@ -442,6 +457,11 @@ void JSThread::Iterate(RootVisitor &visitor)
 
     if (glueData_.propertiesCache_ != nullptr) {
         glueData_.propertiesCache_->Clear();
+    }
+
+    ModuleManager *moduleManager = GetModuleManager();
+    if (moduleManager) {
+        moduleManager->Iterate(visitor);
     }
 }
 void JSThread::IterateJitCodeMap(const JitCodeMapVisitor &jitCodeMapVisitor)

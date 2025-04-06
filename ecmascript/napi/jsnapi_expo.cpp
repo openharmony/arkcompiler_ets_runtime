@@ -4313,7 +4313,7 @@ void JSNApi::UpdatePkgContextInfoList(EcmaVM *vm,
 void JSNApi::SetExecuteBufferMode(const EcmaVM *vm)
 {
     ecmascript::ModuleManager *moduleManager =
-        vm->GetAssociatedJSThread()->GetCurrentEcmaContext()->GetModuleManager();
+        vm->GetAssociatedJSThread()->GetModuleManager();
     moduleManager->SetExecuteMode(ecmascript::ModuleExecuteMode::ExecuteBufferMode);
 }
 
@@ -4436,9 +4436,9 @@ void JSNApi::SynchronizVMInfo(EcmaVM *vm, const EcmaVM *hostVM)
     vm->SetpkgContextInfoList(const_cast<EcmaVM *>(hostVM)->GetPkgContextInfoList());
 
     ecmascript::ModuleManager *vmModuleManager =
-        vm->GetAssociatedJSThread()->GetCurrentEcmaContext()->GetModuleManager();
+        vm->GetAssociatedJSThread()->GetModuleManager();
     ecmascript::ModuleManager *hostVMModuleManager =
-        hostVM->GetAssociatedJSThread()->GetCurrentEcmaContext()->GetModuleManager();
+        hostVM->GetAssociatedJSThread()->GetModuleManager();
     vmModuleManager->SetExecuteMode(hostVMModuleManager->GetExecuteMode());
     vm->SetResolveBufferCallback(hostVM->GetResolveBufferCallback());
 }
@@ -6032,7 +6032,7 @@ Local<ObjectRef> JSNApi::GetExportObject(EcmaVM *vm, const std::string &file, co
             PathHelper::AdaptOldIsaRecord(entry);
         }
     }
-    ecmascript::ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+    ecmascript::ModuleManager *moduleManager = thread->GetModuleManager();
     JSHandle<ecmascript::SourceTextModule> ecmaModule = moduleManager->GetImportedModule(entry);
     if (ecmaModule->GetIsNewBcVersion()) {
         int index = ecmascript::ModuleManager::GetExportObjectIndex(vm, ecmaModule, key.c_str());
@@ -6053,7 +6053,7 @@ Local<ObjectRef> JSNApi::GetExportObjectFromBuffer(EcmaVM *vm, const std::string
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     ecmascript::ThreadManagedScope scope(thread);
-    ecmascript::ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+    ecmascript::ModuleManager *moduleManager = thread->GetModuleManager();
     JSHandle<ecmascript::SourceTextModule> ecmaModule = moduleManager->GetImportedModule(file.c_str());
     if (ecmaModule->GetIsNewBcVersion()) {
         int index = ecmascript::ModuleManager::GetExportObjectIndex(vm, ecmaModule, key.c_str());
@@ -6079,7 +6079,7 @@ Local<ObjectRef> JSNApi::GetExportObjectFromOhmUrl(EcmaVM *vm, const std::string
         LOG_FULL(FATAL) << "ExecuteSecureWithOhmUrl: Invalid input OhmUrl: " << ohmUrl;
         return JSValueRef::Undefined(vm);
     }
-    ecmascript::ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+    ecmascript::ModuleManager *moduleManager = thread->GetModuleManager();
     JSHandle<ecmascript::SourceTextModule> ecmaModule = moduleManager->GetImportedModule(recordName.c_str());
     int index = ecmascript::ModuleManager::GetExportObjectIndex(vm, ecmaModule, key.c_str());
     JSTaggedValue result = ecmaModule->GetModuleValue(thread, index, false);
@@ -6091,7 +6091,7 @@ Local<ObjectRef> JSNApi::ExecuteNativeModule(EcmaVM *vm, const std::string &key)
 {
     ecmascript::ThreadManagedScope scope(vm->GetJSThread());
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
-    ecmascript::ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+    ecmascript::ModuleManager *moduleManager = thread->GetModuleManager();
     JSHandle<JSTaggedValue> exportObj = moduleManager->LoadNativeModule(thread, key.c_str());
     return JSNApiHelper::ToLocal<ObjectRef>(exportObj);
 }

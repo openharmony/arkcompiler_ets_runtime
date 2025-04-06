@@ -170,7 +170,7 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
         }
     }
     // resolve native module
-    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+    ModuleManager *moduleManager = thread->GetModuleManager();
     if (SourceTextModule::IsNativeModule(requestPath)) {
         return DynamicImport::ExecuteNativeOrJsonModule(thread, requestPath,
             SourceTextModule::GetNativeModuleType(requestPath), resolve, reject);

@@ -757,7 +757,7 @@ JSTaggedValue BuiltinsGlobal::LoadNativeModule(EcmaRuntimeCallInfo *msg)
         }
     }
 
-    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+    ModuleManager *moduleManager = thread->GetModuleManager();
     auto exportObject = moduleManager->ExecuteNativeModuleMayThrowError(thread, requestPath);
     return exportObject.GetTaggedValue();
 }

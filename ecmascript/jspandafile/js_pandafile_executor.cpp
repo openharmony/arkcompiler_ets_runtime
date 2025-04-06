@@ -196,7 +196,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::CommonExecuteBuffer(JSThread 
     const CString &filename, const CString &entry, const void *buffer, size_t size, const ExecuteTypes &executeType)
 {
     [[maybe_unused]] EcmaHandleScope scope(thread);
-    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+    ModuleManager *moduleManager = thread->GetModuleManager();
     moduleManager->SetExecuteMode(ModuleExecuteMode::ExecuteBufferMode);
     JSHandle<JSTaggedValue> moduleRecord =
         ModuleResolver::HostResolveImportedModule(thread, filename, entry, buffer, size, executeType);
@@ -221,7 +221,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::Execute(JSThread *thread, con
 
     Expected<JSTaggedValue, bool> result;
 
-    if (context->GetStageOfHotReload() == StageOfHotReload::BEGIN_EXECUTE_PATCHMAIN) {
+    if (thread->GetStageOfHotReload() == StageOfHotReload::BEGIN_EXECUTE_PATCHMAIN) {
         result = context->InvokeEcmaEntrypointForHotReload(jsPandaFile, entryPoint, executeType);
     } else {
         QuickFixManager *quickFixManager = thread->GetEcmaVM()->GetQuickFixManager();
@@ -301,7 +301,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::CommonExecuteBuffer(JSThread 
     const CString &entry, const JSPandaFile *jsPandaFile)
 {
     [[maybe_unused]] EcmaHandleScope scope(thread);
-    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+    ModuleManager *moduleManager = thread->GetModuleManager();
     moduleManager->SetExecuteMode(ModuleExecuteMode::ExecuteBufferMode);
     JSHandle<JSTaggedValue> moduleRecord =
         ModuleResolver::HostResolveImportedModule(thread, filename, entry, jsPandaFile, ExecuteTypes::STATIC);
@@ -403,7 +403,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteSecureWithOhmUrl(JSThr
 Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteSpecialModule(JSThread *thread, const CString &recordName,
     const CString &filename, const JSPandaFile *jsPandaFile, const JSRecordInfo* recordInfo)
 {
-    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+    ModuleManager *moduleManager = thread->GetModuleManager();
 
     if (jsPandaFile->IsCjs(recordInfo)) {
         moduleManager->ExecuteCjsModule(thread, recordName, jsPandaFile);
@@ -440,7 +440,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::LazyExecuteModule(
     }
 
     // resolve native module
-    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+    ModuleManager *moduleManager = thread->GetModuleManager();
     if (SourceTextModule::IsNativeModule(recordName)) {
         moduleManager->ExecuteNativeModule(thread, recordName);
         return JSTaggedValue::Undefined();

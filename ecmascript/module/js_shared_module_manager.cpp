@@ -41,7 +41,7 @@ void SharedModuleManager::Iterate(RootVisitor &v)
 
 JSTaggedValue SharedModuleManager::GetSendableModuleValueInner(JSThread* thread, int32_t index, JSTaggedValue jsFunc)
 {
-    ModuleManager* moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+    ModuleManager* moduleManager = thread->GetModuleManager();
     JSTaggedValue currentModule = JSFunction::Cast(jsFunc.GetTaggedObject())->GetModule();
     if (currentModule.IsUndefined()) { // LCOV_EXCL_BR_LINE
         LOG_FULL(FATAL) << "GetSendableModuleValueInner currentModule is undefined";
@@ -181,7 +181,7 @@ void SharedModuleManager::InsertInSModuleManager(JSThread *thread, const CString
 
 void SharedModuleManager::TransferSModule(JSThread *thread)
 {
-    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+    ModuleManager *moduleManager = thread->GetModuleManager();
     CVector<CString> instantiatingSModuleList = moduleManager->GetInstantiatingSModuleList();
     for (auto s:instantiatingSModuleList) {
         JSHandle<SourceTextModule> module = moduleManager->HostGetImportedModule(s);
@@ -221,7 +221,7 @@ JSHandle<JSTaggedValue> SharedModuleManager::GenerateFuncModule(JSThread *thread
         if (jsPandaFile->IsSharedModule(recordInfo)) {
             return JSHandle<JSTaggedValue>(GetSModule(thread, entryPoint));
         } else {
-            ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+            ModuleManager *moduleManager = thread->GetModuleManager();
             module = moduleManager->HostGetImportedModule(recordName);
         }
 
