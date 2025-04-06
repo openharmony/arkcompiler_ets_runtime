@@ -1714,6 +1714,9 @@ public:
                                 Local<JSValueRef> cloneList,
                                 bool defaultTransfer = false,
                                 bool defaultCloneShared = true);
+    static void* SerializeValueWithError(const EcmaVM *vm, Local<JSValueRef> data, Local<JSValueRef> transfer,
+                                         Local<JSValueRef> cloneList, std::string &error, bool defaultTransfer = false,
+                                         bool defaultCloneShared = true);
     static Local<JSValueRef> DeserializeValue(const EcmaVM *vm, void *recoder, void *hint);
     static void DeleteSerializationData(void *data);
     static void SetHostPromiseRejectionTracker(EcmaVM *vm, void *cb, void* data);

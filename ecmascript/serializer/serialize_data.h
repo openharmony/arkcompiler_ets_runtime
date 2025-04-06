@@ -470,6 +470,16 @@ public:
         nativeBindingDetachInfos_.insert(detachInfo);
     }
 
+    void SetErrorMessage(const std::string &errorMessage)
+    {
+        errorMessage_ = errorMessage;
+    } 
+
+    const std::string &GetErrorMessage() const
+    {
+        return errorMessage_;
+    }
+
 private:
     static constexpr size_t U8_SIZE = 1;
     static constexpr size_t U16_SIZE = 2;
@@ -489,6 +499,7 @@ private:
     size_t sharedOldSpaceSize_ {0};
     size_t sharedNonMovableSpaceSize_ {0};
     bool incompleteData_ {false};
+    std::string errorMessage_;
 #ifdef USE_CMC_GC
     std::vector<size_t> regularRemainSizeVector_ {};
     std::vector<size_t> pinRemainSizeVector_ {};
