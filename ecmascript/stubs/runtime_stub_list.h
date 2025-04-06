@@ -211,7 +211,8 @@ namespace panda::ecmascript {
     V(LrInt)                                   \
     V(FindPatchModule)                         \
     V(FatalPrintMisstakenResolvedBinding)      \
-    V(LoadNativeModuleFailed)
+    V(LoadNativeModuleFailed)                  \
+    V(ReadBarrier)
 
 #define RUNTIME_STUB_WITH_GC_LIST(V)            \
     V(HeapAlloc)                                \

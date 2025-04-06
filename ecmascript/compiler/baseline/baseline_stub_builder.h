@@ -25,6 +25,7 @@
 
 namespace panda::ecmascript::kungfu {
 
+// currently deprecated
 class BaselineStubBuilder : public StubBuilder {
 public:
     static_assert(false);

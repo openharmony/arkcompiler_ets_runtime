@@ -35,26 +35,26 @@ BUILTINS_WITH_CONTAINERS_PLAINARRAY_STUB_BUILDER(DECLARE_CONTAINERS_PLAINARRAY_S
 
     GateRef GetSize(GateRef obj)
     {
-        return Load(VariableType::INT32(), obj, IntPtr(JSAPIPlainArray::LENGTH_OFFSET));
+        return LoadPrimitive(VariableType::INT32(), obj, IntPtr(JSAPIPlainArray::LENGTH_OFFSET));
     }
 
-    GateRef Get(GateRef obj, GateRef index)
+    GateRef Get(GateRef glue, GateRef obj, GateRef index)
     {
         GateRef elementsOffset = IntPtr(JSAPIPlainArray::VALUES_OFFSET);
-        GateRef elements = Load(VariableType::JS_POINTER(), obj, elementsOffset);
-        return GetValueFromTaggedArray(elements, index);
+        GateRef elements = Load(VariableType::JS_POINTER(), glue, obj, elementsOffset);
+        return GetValueFromTaggedArray(glue, elements, index);
     }
 
-    GateRef GetKey(GateRef obj, GateRef index)
+    GateRef GetKey(GateRef glue, GateRef obj, GateRef index)
     {
         GateRef elementsOffset = IntPtr(JSAPIPlainArray::KEYS_OFFSET);
-        GateRef elements = Load(VariableType::JS_POINTER(), obj, elementsOffset);
-        return GetValueFromTaggedArray(elements, index);
+        GateRef elements = Load(VariableType::JS_POINTER(), glue, obj, elementsOffset);
+        return GetValueFromTaggedArray(glue, elements, index);
     }
     void Set(GateRef glue, GateRef obj, GateRef index, GateRef value)
     {
         GateRef elementsOffset = IntPtr(JSObject::ELEMENTS_OFFSET);
-        GateRef elements = Load(VariableType::JS_POINTER(), obj, elementsOffset);
+        GateRef elements = Load(VariableType::JS_POINTER(), glue, obj, elementsOffset);
         SetValueToTaggedArray(VariableType::JS_ANY(), glue, elements, index, value);
     }
 };

@@ -192,7 +192,7 @@ HWTEST_F_L0(LoopOptimizationTest, LoopLoadConstOptimizationTest)
     auto arg2 = builder.Arguments(2);
     acc.SetMachineType(arg2, MachineType::ARCH);
     auto bits = ecmascript::kungfu::LoadStoreAccessor::ToValue(ecmascript::kungfu::MemoryAttribute::Default());
-    GateRef invariant = circuit.NewGate(circuit.Load(bits), MachineType::I32,
+    GateRef invariant = circuit.NewGate(circuit.LoadWithoutBarrier(bits), MachineType::I32,
         { circuit.GetDependRoot(), arg2 }, GateType::NJSValue());
 
     DEFVALUE(index, (&builder), VariableType::INT32(), builder.Int32(0));
@@ -208,7 +208,7 @@ HWTEST_F_L0(LoopOptimizationTest, LoopLoadConstOptimizationTest)
 
     builder.Branch(builder.Int32LessThan(*index, invariant), &loopBody, &loopExit);
     builder.Bind(&loopBody);
-    auto variant = builder.Load(VariableType::INT32(), arg1, builder.PtrAdd(arg2, *index));
+    auto variant = builder.LoadWithoutBarrier(VariableType::INT32(), arg1, builder.PtrAdd(arg2, *index));
     sum = builder.Int32Add(*sum, variant);
     index = builder.Int32Add(*index, builder.Int32(1));
     builder.LoopEnd(&loopHead);

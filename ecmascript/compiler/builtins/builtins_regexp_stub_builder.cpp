@@ -23,7 +23,7 @@ void BuiltinsRegExpStubBuilder::GetFlags(GateRef glue, GateRef thisValue,
 {
     auto env = GetEnvironment();
     Label isEcmaObject(env);
-    BRANCH(IsEcmaObject(thisValue), &isEcmaObject, slowPath);
+    BRANCH(IsEcmaObject(glue, thisValue), &isEcmaObject, slowPath);
     Bind(&isEcmaObject);
     Label fastRegExpPath(env);
     GateRef fastRegExp = CallNGCRuntime(glue, RTSTUB_ID(IsFastRegExp), {glue, thisValue});
@@ -154,7 +154,7 @@ GateRef BuiltinsRegExpStubBuilder::TryToFastGetProperty(GateRef glue, GateRef th
     }
     Bind(&notHasException);
     {
-        result = FastToBoolean(property);
+        result = FastToBoolean(glue, property);
         Jump(&exit);
     }
     Bind(&exit);

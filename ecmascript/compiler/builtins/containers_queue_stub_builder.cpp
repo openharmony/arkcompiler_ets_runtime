@@ -49,14 +49,14 @@ void ContainersQueueStubBuilder::ForEach(GateRef glue, GateRef thisValue, GateRe
     GateRef callbackFnHandle;
     BRANCH(TaggedIsHeapObject(thisValue), &thisValueIsHeapObj, slowPath);
     Bind(&thisValueIsHeapObj);
-    BRANCH(IsJSAPIQueue(*thisObj), &valueIsJSAPIQueue, &valueNotJSAPIQueue);
+    BRANCH(IsJSAPIQueue(glue, *thisObj), &valueIsJSAPIQueue, &valueNotJSAPIQueue);
     Bind(&valueNotJSAPIQueue);
     {
-        BRANCH(IsJsProxy(*thisObj), &objIsJSProxy, &objNotJSProxy);
+        BRANCH(IsJsProxy(glue, *thisObj), &objIsJSProxy, &objNotJSProxy);
         Bind(&objIsJSProxy);
         {
-            GateRef tempObj = GetTarget(*thisObj);
-            BRANCH(IsJSAPIQueue(tempObj), &objIsJSAPIQueue, slowPath);
+            GateRef tempObj = GetTarget(glue, *thisObj);
+            BRANCH(IsJSAPIQueue(glue, tempObj), &objIsJSAPIQueue, slowPath);
             Bind(&objIsJSAPIQueue);
             {
                 thisObj = tempObj;
@@ -79,7 +79,7 @@ void ContainersQueueStubBuilder::ForEach(GateRef glue, GateRef thisValue, GateRe
             callbackFnHandle = GetCallArg0(numArgs);
             BRANCH(TaggedIsHeapObject(callbackFnHandle), &isHeapObj, slowPath);
             Bind(&isHeapObj);
-            BRANCH(IsCallable(callbackFnHandle), &isCall, &notCall);
+            BRANCH(IsCallable(glue, callbackFnHandle), &isCall, &notCall);
             Bind(&notCall);
             Jump(slowPath);
             Bind(&isCall);
@@ -95,7 +95,7 @@ void ContainersQueueStubBuilder::ForEach(GateRef glue, GateRef thisValue, GateRe
     }
     Bind(&nextCount);
     {
-        length = GetArrayLength(*thisObj);
+        length = GetArrayLength(glue, *thisObj);
         Jump(&loopHead);
         LoopBegin(&loopHead);
         {
@@ -106,8 +106,8 @@ void ContainersQueueStubBuilder::ForEach(GateRef glue, GateRef thisValue, GateRe
             BRANCH(Int32LessThan(*k, *length), &next, &afterLoop);
             Bind(&next);
             {
-                kValue = Get(*thisObj, *index);
-                index = GetNextPosition(*thisObj, *index);
+                kValue = Get(glue, *thisObj, *index);
+                index = GetNextPosition(glue, *thisObj, *index);
                 key = IntToTaggedInt(*k);
                 JSCallArgs callArgs(JSCallMode::CALL_THIS_ARG3_WITH_RETURN);
                 callArgs.callThisArg3WithReturnArgs = { *thisArg, *kValue, *key, *thisObj };

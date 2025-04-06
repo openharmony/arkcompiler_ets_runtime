@@ -163,7 +163,7 @@ void MCRLowering::LowerLoadConstOffset(GateRef gate)
     GateRef receiver = acc_.GetValueIn(gate, 0);
     GateRef offset = builder_.IntPtr(acc_.GetOffset(gate));
     VariableType type = VariableType(acc_.GetMachineType(gate), acc_.GetGateType(gate));
-    GateRef result = builder_.Load(type, receiver, offset, acc_.GetMemoryAttribute(gate));
+    GateRef result = builder_.Load(type, glue_, receiver, offset, acc_.GetMemoryAttribute(gate));
     acc_.ReplaceGate(gate, Circuit::NullGate(), builder_.GetDepend(), result);
 }
 
@@ -175,8 +175,8 @@ void MCRLowering::LowerLoadHClassFromConstpool(GateRef gate)
     if (!env_->IsJitCompiler()) {
         GateRef constPoolSize = builder_.GetLengthOfTaggedArray(constpool);
         GateRef valVecIndex = builder_.Int32Sub(constPoolSize, builder_.Int32(ConstantPool::AOT_HCLASS_INFO_INDEX));
-        GateRef valVec = builder_.GetValueFromTaggedArray(constpool, valVecIndex);
-        GateRef hclass = builder_.GetValueFromTaggedArray(valVec, builder_.Int32(index));
+        GateRef valVec = builder_.GetValueFromTaggedArray(glue_, constpool, valVecIndex);
+        GateRef hclass = builder_.GetValueFromTaggedArray(glue_, valVec, builder_.Int32(index));
         acc_.ReplaceGate(gate, Circuit::NullGate(), builder_.GetDepend(), hclass);
     } else {
         JSTaggedValue hclass = env_->GetPTManager()->QueryHClassByIndexForJIT(index);
@@ -232,27 +232,27 @@ void MCRLowering::LowerIsSpecificObjectType(GateRef gate)
     GateRef result;
     switch (expectType) {
         case JSType::JS_MAP: {
-            result = builder_.TaggedObjectIsJSMap(obj);
+            result = builder_.TaggedObjectIsJSMap(glue_, obj);
             break;
         }
         case JSType::JS_SET: {
-            result = builder_.TaggedObjectIsJSSet(obj);
+            result = builder_.TaggedObjectIsJSSet(glue_, obj);
             break;
         }
         case JSType::JS_DATE: {
-            result = builder_.TaggedObjectIsJSDate(obj);
+            result = builder_.TaggedObjectIsJSDate(glue_, obj);
             break;
         }
         case JSType::JS_ARRAY: {
-            result = builder_.TaggedObjectIsJSArray(obj);
+            result = builder_.TaggedObjectIsJSArray(glue_, obj);
             break;
         }
         case JSType::STRING_FIRST: {
-            result = builder_.TaggedObjectIsString(obj);
+            result = builder_.TaggedObjectIsString(glue_, obj);
             break;
         }
         case JSType::JS_TYPED_ARRAY_FIRST: {
-            result = builder_.TaggedObjectIsTypedArray(obj);
+            result = builder_.TaggedObjectIsTypedArray(glue_, obj);
             break;
         }
         default: {
@@ -798,7 +798,7 @@ void MCRLowering::LowerGetGlobalEnv(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
     GateRef glueGlobalEnvOffset = builder_.IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(false));
-    GateRef glueGlobalEnv = builder_.Load(VariableType::JS_POINTER(), glue_, glueGlobalEnvOffset);
+    GateRef glueGlobalEnv = builder_.Load(VariableType::JS_POINTER(), glue_, glue_, glueGlobalEnvOffset);
     acc_.ReplaceGate(gate, Circuit::NullGate(), builder_.GetDepend(), glueGlobalEnv);
 }
 
@@ -808,7 +808,7 @@ void MCRLowering::LowerGetGlobalEnvObj(GateRef gate)
     GateRef globalEnv = acc_.GetValueIn(gate, 0);
     size_t index = acc_.GetIndex(gate);
     GateRef offset = builder_.IntPtr(GlobalEnv::HEADER_SIZE + JSTaggedValue::TaggedTypeSize() * index);
-    GateRef object = builder_.Load(VariableType::JS_ANY(), globalEnv, offset);
+    GateRef object = builder_.Load(VariableType::JS_ANY(), glue_, globalEnv, offset);
     acc_.ReplaceGate(gate, Circuit::NullGate(), builder_.GetDepend(), object);
 }
 
@@ -818,8 +818,8 @@ void MCRLowering::LowerGetGlobalEnvObjHClass(GateRef gate)
     GateRef globalEnv = acc_.GetValueIn(gate, 0);
     size_t index = acc_.GetIndex(gate);
     GateRef offset = builder_.IntPtr(GlobalEnv::HEADER_SIZE + JSTaggedValue::TaggedTypeSize() * index);
-    GateRef object = builder_.Load(VariableType::JS_ANY(), globalEnv, offset);
-    auto hclass = builder_.Load(VariableType::JS_POINTER(), object,
+    GateRef object = builder_.Load(VariableType::JS_ANY(), glue_, globalEnv, offset);
+    auto hclass = builder_.Load(VariableType::JS_POINTER(), glue_, object,
                                 builder_.IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
     acc_.ReplaceGate(gate, Circuit::NullGate(), builder_.GetDepend(), hclass);
 }
@@ -828,10 +828,10 @@ void MCRLowering::LowerGetGlobalConstantValue(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
     size_t index = acc_.GetIndex(gate);
-    GateRef gConstAddr = builder_.Load(VariableType::JS_POINTER(), glue_,
+    GateRef gConstAddr = builder_.LoadWithoutBarrier(VariableType::JS_POINTER(), glue_,
         builder_.IntPtr(JSThread::GlueData::GetGlobalConstOffset(false)));
     GateRef constantIndex = builder_.IntPtr(JSTaggedValue::TaggedTypeSize() * index);
-    GateRef result = builder_.Load(VariableType::JS_POINTER(), gConstAddr, constantIndex);
+    GateRef result = builder_.Load(VariableType::JS_POINTER(), glue_, gConstAddr, constantIndex);
     acc_.ReplaceGate(gate, Circuit::NullGate(), builder_.GetDepend(), result);
 }
 
@@ -915,7 +915,7 @@ void MCRLowering::LowerIsDataViewCheck(GateRef gate)
     Environment env(gate, circuit_, &builder_);
     GateRef frameState = acc_.GetFrameState(gate);
     GateRef obj = acc_.GetValueIn(gate, 0);
-    GateRef isDataView = builder_.CheckJSType(obj, JSType::JS_DATA_VIEW);
+    GateRef isDataView = builder_.CheckJSType(glue_, obj, JSType::JS_DATA_VIEW);
     builder_.DeoptCheck(isDataView, frameState, DeoptType::ISNOTDATAVIEW);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
@@ -1013,7 +1013,7 @@ void MCRLowering::LowerMigrateFromRawValueToHeapValues(GateRef gate)
     GateRef object = acc_.GetValueIn(gate, 0);
     GateRef needCOW = acc_.GetValueIn(gate, 1);
     GateRef isIntKind = acc_.GetValueIn(gate, 2);
-    GateRef elements = builder_.GetElementsArray(object);
+    GateRef elements = builder_.GetElementsArray(glue_, object);
     GateRef length = builder_.GetLengthOfTaggedArray(elements);
     Label createCOW(&builder_);
     Label createNormal(&builder_);
@@ -1100,7 +1100,7 @@ void MCRLowering::LowerMigrateFromHeapValueToRawValue(GateRef gate)
     GateRef needCOW = acc_.GetValueIn(gate, 1);
     GateRef isIntKind = acc_.GetValueIn(gate, 2);
 
-    GateRef elements = builder_.GetElementsArray(object);
+    GateRef elements = builder_.GetElementsArray(glue_, object);
     GateRef length = builder_.GetLengthOfTaggedArray(elements);
     Label createCOW(&builder_);
     Label createNormal(&builder_);
@@ -1136,7 +1136,7 @@ void MCRLowering::LowerMigrateFromHeapValueToRawValue(GateRef gate)
         {
             Label convertToInt(&builder_);
             Label convertToDouble(&builder_);
-            GateRef value = builder_.GetValueFromTaggedArray(elements, *index);
+            GateRef value = builder_.GetValueFromTaggedArray(glue_, elements, *index);
             BRANCH_CIR(builder_.TaggedIsHole(value), &storeSpecialHole, &storeNormalValue);
             builder_.Bind(&storeSpecialHole);
             {
@@ -1198,7 +1198,7 @@ void MCRLowering::LowerMigrateFromHoleIntToHoleNumber(GateRef gate)
     Environment env(gate, circuit_, &builder_);
     GateRef object = acc_.GetValueIn(gate, 0);
     Label exit(&builder_);
-    GateRef elements = builder_.GetElementsArray(object);
+    GateRef elements = builder_.GetElementsArray(glue_, object);
     GateRef length = builder_.GetLengthOfTaggedArray(elements);
     DEFVALUE(index, (&builder_), VariableType::INT32(), builder_.Int32(0));
     Label loopHead(&builder_);
@@ -1246,7 +1246,7 @@ void MCRLowering::LowerMigrateFromHoleNumberToHoleInt(GateRef gate)
     Environment env(gate, circuit_, &builder_);
     GateRef object = acc_.GetValueIn(gate, 0);
     Label exit(&builder_);
-    GateRef elements = builder_.GetElementsArray(object);
+    GateRef elements = builder_.GetElementsArray(glue_, object);
     GateRef length = builder_.GetLengthOfTaggedArray(elements);
     DEFVALUE(index, (&builder_), VariableType::INT32(), builder_.Int32(0));
     Label loopHead(&builder_);
@@ -1295,7 +1295,7 @@ void MCRLowering::LowerHeapObjectIsEcmaObject(GateRef gate)
     GateRef frameState = acc_.GetFrameState(gate);
     GateRef value = acc_.GetValueIn(gate, 0);
 
-    GateRef isEcmaObject = builder_.TaggedObjectIsEcmaObject(value);
+    GateRef isEcmaObject = builder_.TaggedObjectIsEcmaObject(glue_, value);
     builder_.DeoptCheck(isEcmaObject, frameState, DeoptType::NOT_ECMA_OBJECT);
 
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
@@ -1307,7 +1307,7 @@ void MCRLowering::LowerIsCallableCheck(GateRef gate)
     GateRef func = acc_.GetValueIn(gate, 0);
     GateRef frameState = acc_.GetFrameState(gate);
     GateRef isCallable = LogicAndBuilder(&env).And(builder_.TaggedIsHeapObject(func))
-        .And(builder_.IsCallable(func)).Done();
+        .And(builder_.IsCallable(glue_, func)).Done();
     builder_.DeoptCheck(isCallable, frameState, DeoptType::NOTCALLABLE);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }

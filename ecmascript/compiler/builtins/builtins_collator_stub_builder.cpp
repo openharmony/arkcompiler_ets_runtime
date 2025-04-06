@@ -31,12 +31,12 @@ void BuiltinsCollatorStubBuilder::ResolvedOptions(GateRef glue, GateRef thisValu
 
     BRANCH_LIKELY(TaggedIsHeapObject(thisValue), &isHeapObject, slowPath);
     Bind(&isHeapObject);
-    BRANCH_LIKELY(IsJSCollator(thisValue), &isJsCollator, slowPath);
+    BRANCH_LIKELY(IsJSCollator(glue, thisValue), &isJsCollator, slowPath);
 
     Bind(&isJsCollator);
     GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
-    GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
-    GateRef funCtor = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, GlobalEnv::OBJECT_FUNCTION_INDEX);
+    GateRef glueGlobalEnv = LoadPrimitive(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
+    GateRef funCtor = GetGlobalEnvValue(VariableType::JS_ANY(), glue, glueGlobalEnv, GlobalEnv::OBJECT_FUNCTION_INDEX);
 
     NewObjectStubBuilder newObjectStubBuilder(this);
     GateRef initialOptions = newObjectStubBuilder.NewJSObjectByConstructor(glue, funCtor, funCtor);
@@ -44,7 +44,7 @@ void BuiltinsCollatorStubBuilder::ResolvedOptions(GateRef glue, GateRef thisValu
 
     // [[Locale]]
     GateRef localeKey = GetGlobalConstantValue(VariableType::JS_ANY(), glue, ConstantIndex::LOCALE_STRING_INDEX);
-    GateRef locale = Load(VariableType::JS_ANY(), thisValue, IntPtr(JSCollator::LOCALE_OFFSET));
+    GateRef locale = Load(VariableType::JS_ANY(), glue, thisValue, IntPtr(JSCollator::LOCALE_OFFSET));
     CreateDataPropertyOrThrow(glue, *options, localeKey, locale);
     ReturnExceptionIfAbruptCompletion(glue);
 
@@ -70,7 +70,7 @@ void BuiltinsCollatorStubBuilder::ResolvedOptions(GateRef glue, GateRef thisValu
     // [[Collation]]
     Label undefined(env);
     Label notUndefined(env);
-    GateRef collation = Load(VariableType::JS_ANY(), thisValue, IntPtr(JSCollator::COLLATION_OFFSET));
+    GateRef collation = Load(VariableType::JS_ANY(), glue, thisValue, IntPtr(JSCollator::COLLATION_OFFSET));
     GateRef collationKey = GetGlobalConstantValue(VariableType::JS_ANY(), glue,
                                                   ConstantIndex::COLLATION_STRING_CLASS_INDEX);
     DEFVARIABLE(collationVar, VariableType::JS_ANY(), collation);
@@ -105,7 +105,7 @@ template <typename BitType>
 GateRef BuiltinsCollatorStubBuilder::GetBitField(GateRef collator)
 {
     GateRef bitFieldOffset = IntPtr(JSCollator::BIT_FIELD_OFFSET);
-    GateRef bitfield = Load(VariableType::INT32(), collator, bitFieldOffset);
+    GateRef bitfield = LoadPrimitive(VariableType::INT32(), collator, bitFieldOffset);
     GateRef bits = Int32And(Int32LSR(bitfield, Int32(BitType::START_BIT)),
                             Int32((1LU << BitType::SIZE) - 1));
     return bits;

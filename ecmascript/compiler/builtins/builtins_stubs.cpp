@@ -155,11 +155,11 @@ GateRef BuiltinsStubBuilder::GetCallArg2(GateRef numArg)
     return res;
 }
 
-GateRef BuiltinsStubBuilder::GetArgFromArgv(GateRef index, GateRef numArgs, bool needCheck)
+GateRef BuiltinsStubBuilder::GetArgFromArgv(GateRef glue, GateRef index, GateRef numArgs, bool needCheck)
 {
     if (!needCheck) {
         GateRef argv = GetArgv();
-        return Load(VariableType::JS_ANY(), argv, PtrMul(index, IntPtr(JSTaggedValue::TaggedTypeSize())));
+        return Load(VariableType::JS_ANY(), glue, argv, PtrMul(index, IntPtr(JSTaggedValue::TaggedTypeSize())));
     }
     auto env = GetEnvironment();
     Label entry(env);
@@ -171,7 +171,7 @@ GateRef BuiltinsStubBuilder::GetArgFromArgv(GateRef index, GateRef numArgs, bool
     Bind(&validIndex);
     {
         GateRef argv = GetArgv();
-        arg = Load(VariableType::JS_ANY(), argv, PtrMul(index, IntPtr(JSTaggedValue::TaggedTypeSize())));
+        arg = Load(VariableType::JS_ANY(), glue, argv, PtrMul(index, IntPtr(JSTaggedValue::TaggedTypeSize())));
         Jump(&exit);
     }
     Bind(&exit);
@@ -437,13 +437,13 @@ DECLARE_BUILTINS(BooleanConstructor)
 
     BRANCH(TaggedIsHeapObject(newTarget), &newTargetIsHeapObject, &slowPath);
     Bind(&newTargetIsHeapObject);
-    BRANCH(IsJSFunction(newTarget), &newTargetIsJSFunction, &slowPath);
+    BRANCH(IsJSFunction(glue, newTarget), &newTargetIsJSFunction, &slowPath);
     Bind(&newTargetIsJSFunction);
     {
         Label intialHClassIsHClass(env);
-        GateRef intialHClass = Load(VariableType::JS_ANY(), newTarget,
+        GateRef intialHClass = Load(VariableType::JS_ANY(), glue, newTarget,
                                     IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
-        BRANCH(IsJSHClass(intialHClass), &intialHClassIsHClass, &slowPath1);
+        BRANCH(IsJSHClass(glue, intialHClass), &intialHClassIsHClass, &slowPath1);
         Bind(&intialHClassIsHClass);
         {
             NewObjectStubBuilder newBuilder(this);
@@ -453,8 +453,8 @@ DECLARE_BUILTINS(BooleanConstructor)
             Bind(&afterNew);
             {
                 GateRef valueOffset = IntPtr(JSPrimitiveRef::VALUE_OFFSET);
-                GateRef value = GetArgFromArgv(IntPtr(0), numArgs, true);
-                Store(VariableType::INT64(), glue, *res, valueOffset, FastToBoolean(value));
+                GateRef value = GetArgFromArgv(glue, IntPtr(0), numArgs, true);
+                Store(VariableType::INT64(), glue, *res, valueOffset, FastToBoolean(glue, value));
                 Jump(&exit);
             }
         }
@@ -490,13 +490,13 @@ DECLARE_BUILTINS(DateConstructor)
 
     BRANCH(TaggedIsHeapObject(newTarget), &newTargetIsHeapObject, &slowPath);
     Bind(&newTargetIsHeapObject);
-    BRANCH(IsJSFunction(newTarget), &newTargetIsJSFunction, &slowPath);
+    BRANCH(IsJSFunction(glue, newTarget), &newTargetIsJSFunction, &slowPath);
     Bind(&newTargetIsJSFunction);
     {
         Label intialHClassIsHClass(env);
-        GateRef intialHClass = Load(VariableType::JS_ANY(), newTarget,
+        GateRef intialHClass = Load(VariableType::JS_ANY(), glue, newTarget,
                                     IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
-        BRANCH(IsJSHClass(intialHClass), &intialHClassIsHClass, &slowPath1);
+        BRANCH(IsJSHClass(glue, intialHClass), &intialHClassIsHClass, &slowPath1);
         Bind(&intialHClassIsHClass);
         {
             Label oneArg(env);
@@ -507,7 +507,7 @@ DECLARE_BUILTINS(DateConstructor)
             Bind(&oneArg);
             {
                 Label valueIsNumber(env);
-                GateRef value = GetArgFromArgv(IntPtr(0));
+                GateRef value = GetArgFromArgv(glue, IntPtr(0));
                 BRANCH(TaggedIsNumber(value), &valueIsNumber, &slowPath);
                 Bind(&valueIsNumber);
                 {
@@ -522,9 +522,9 @@ DECLARE_BUILTINS(DateConstructor)
                 Bind(&threeArgs);
                 {
                     Label numberYearMonthDay(env);
-                    GateRef year = GetArgFromArgv(IntPtr(0));
-                    GateRef month = GetArgFromArgv(IntPtr(1));
-                    GateRef day = GetArgFromArgv(IntPtr(2));
+                    GateRef year = GetArgFromArgv(glue, IntPtr(0));
+                    GateRef month = GetArgFromArgv(glue, IntPtr(1));
+                    GateRef day = GetArgFromArgv(glue, IntPtr(2));
                     BRANCH(IsNumberYearMonthDay(year, month, day), &numberYearMonthDay, &slowPath);
                     Bind(&numberYearMonthDay);
                     {
@@ -590,14 +590,14 @@ DECLARE_BUILTINS(ArrayConstructor)
 DECLARE_BUILTINS(MapConstructor)
 {
     LinkedHashTableStubBuilder<LinkedHashMap, LinkedHashMapObject> hashTableBuilder(this, glue);
-    GateRef arg0 = GetArgFromArgv(IntPtr(0), numArgs, true);
+    GateRef arg0 = GetArgFromArgv(glue, IntPtr(0), numArgs, true);
     hashTableBuilder.GenMapSetConstructor(nativeCode, func, newTarget, thisValue, numArgs, arg0, GetArgv());
 }
 
 DECLARE_BUILTINS(SetConstructor)
 {
     LinkedHashTableStubBuilder<LinkedHashSet, LinkedHashSetObject> hashTableBuilder(this, glue);
-    GateRef arg0 = GetArgFromArgv(IntPtr(0), numArgs, true);
+    GateRef arg0 = GetArgFromArgv(glue, IntPtr(0), numArgs, true);
     hashTableBuilder.GenMapSetConstructor(nativeCode, func, newTarget, thisValue, numArgs, arg0, GetArgv());
 }
 

@@ -77,6 +77,7 @@
     {                                                                                                         \
         /* Note: We can't statically decide the element type is a primitive or heap object, especially for */ \
         /*       dynamically-typed languages like JavaScript. So we simply skip the read-barrier.          */ \
+        /* use thread in Barriers::GetValue */                                                                \
         return JSTaggedValue(Barriers::GetValue<JSTaggedType>(this, offset));                                 \
     }                                                                                                         \
     template<typename T>                                                                                      \

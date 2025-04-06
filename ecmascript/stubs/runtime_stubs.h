@@ -95,6 +95,7 @@ public:
     static void MarkingBarrier([[maybe_unused]] uintptr_t argGlue,
         uintptr_t object, size_t offset, TaggedObject *value);
     static void SharedGCMarkingBarrier(uintptr_t argGlue, uintptr_t object, size_t offset, TaggedObject *value);
+    static JSTaggedType ReadBarrier(uintptr_t argGlue, uintptr_t addr);
     static JSTaggedType GetActualArgvNoGC(uintptr_t argGlue);
     static void InsertOldToNewRSet([[maybe_unused]] uintptr_t argGlue, uintptr_t object, size_t offset);
     static void InsertLocalToShareRSet([[maybe_unused]] uintptr_t argGlue, uintptr_t object, size_t offset);

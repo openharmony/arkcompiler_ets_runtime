@@ -68,35 +68,35 @@ public:
     void ContainersLinkedListCall(GateRef glue, GateRef thisValue, GateRef numArgs,
         Variable* result, Label *exit, Label *slowPath, ContainersType type);
 
-    GateRef IsContainer(GateRef obj, ContainersType type)
+    GateRef IsContainer(GateRef glue, GateRef obj, ContainersType type)
     {
         switch (type) {
             case ContainersType::VECTOR_FOREACH:
             case ContainersType::VECTOR_REPLACEALLELEMENTS:
-                return IsJSAPIVector(obj);
+                return IsJSAPIVector(glue, obj);
             case ContainersType::STACK_FOREACH:
-                return IsJSAPIStack(obj);
+                return IsJSAPIStack(glue, obj);
             case ContainersType::PLAINARRAY_FOREACH:
-                return IsJSAPIPlainArray(obj);
+                return IsJSAPIPlainArray(glue, obj);
             case ContainersType::QUEUE_FOREACH:
-                return IsJSAPIQueue(obj);
+                return IsJSAPIQueue(glue, obj);
             case ContainersType::DEQUE_FOREACH:
-                return IsJSAPIDeque(obj);
+                return IsJSAPIDeque(glue, obj);
             case ContainersType::LIGHTWEIGHTMAP_FOREACH:
-                return IsJSAPILightWeightMap(obj);
+                return IsJSAPILightWeightMap(glue, obj);
             case ContainersType::LIGHTWEIGHTSET_FOREACH:
-                return IsJSAPILightWeightSet(obj);
+                return IsJSAPILightWeightSet(glue, obj);
             case ContainersType::HASHMAP_FOREACH:
-                return IsJSAPIHashMap(obj);
+                return IsJSAPIHashMap(glue, obj);
             case ContainersType::HASHSET_FOREACH:
-                return IsJSAPIHashSet(obj);
+                return IsJSAPIHashSet(glue, obj);
             case ContainersType::LINKEDLIST_FOREACH:
-                return IsJSAPILinkedList(obj);
+                return IsJSAPILinkedList(glue, obj);
             case ContainersType::LIST_FOREACH:
-                return IsJSAPIList(obj);
+                return IsJSAPIList(glue, obj);
             case ContainersType::ARRAYLIST_FOREACH:
             case ContainersType::ARRAYLIST_REPLACEALLELEMENTS:
-                return IsJSAPIArrayList(obj);
+                return IsJSAPIArrayList(glue, obj);
             default:
                 LOG_ECMA(FATAL) << "this branch is unreachable";
                 UNREACHABLE();
@@ -164,51 +164,51 @@ public:
         return false;
     }
 
-    GateRef ContainerGetSize(GateRef obj, ContainersType type)
+    GateRef ContainerGetSize(GateRef glue, GateRef obj, ContainersType type)
     {
         switch (type) {
             case ContainersType::VECTOR_FOREACH:
             case ContainersType::VECTOR_REPLACEALLELEMENTS: {
-                return Load(VariableType::INT32(), obj, IntPtr(JSAPIVector::ELEMENT_COUNT_OFFSET));
+                return LoadPrimitive(VariableType::INT32(), obj, IntPtr(JSAPIVector::ELEMENT_COUNT_OFFSET));
             }
             case ContainersType::STACK_FOREACH: {
-                GateRef top = Load(VariableType::INT32(), obj, IntPtr(JSAPIStack::TOP_OFFSET));
+                GateRef top = LoadPrimitive(VariableType::INT32(), obj, IntPtr(JSAPIStack::TOP_OFFSET));
                 return Int32Add(top, Int32(1));
             }
             case ContainersType::PLAINARRAY_FOREACH: {
-                return Load(VariableType::INT32(), obj, IntPtr(JSAPIPlainArray::LENGTH_OFFSET));
+                return LoadPrimitive(VariableType::INT32(), obj, IntPtr(JSAPIPlainArray::LENGTH_OFFSET));
             }
             case ContainersType::ARRAYLIST_REPLACEALLELEMENTS:
             case ContainersType::ARRAYLIST_FOREACH: {
-                GateRef len = Load(VariableType::JS_ANY(), obj, IntPtr(JSAPIArrayList::LENGTH_OFFSET));
+                GateRef len = Load(VariableType::JS_ANY(), glue, obj, IntPtr(JSAPIArrayList::LENGTH_OFFSET));
                 return TaggedGetInt(len);
             }
             case ContainersType::LIGHTWEIGHTSET_FOREACH: {
-                return Load(VariableType::INT32(), obj, IntPtr(JSAPILightWeightSet::LENGTH_OFFSET));
+                return LoadPrimitive(VariableType::INT32(), obj, IntPtr(JSAPILightWeightSet::LENGTH_OFFSET));
             }
             case ContainersType::LIGHTWEIGHTMAP_FOREACH: {
-                return Load(VariableType::INT32(), obj, IntPtr(JSAPILightWeightMap::LWP_LENGTH_OFFSET));
+                return LoadPrimitive(VariableType::INT32(), obj, IntPtr(JSAPILightWeightMap::LWP_LENGTH_OFFSET));
             }
             case ContainersType::HASHMAP_FOREACH: {
                 GateRef tableOffset = IntPtr(JSAPIHashMap::HASHMAP_TABLE_INDEX);
-                GateRef table = Load(VariableType::JS_POINTER(), obj, tableOffset);
+                GateRef table = Load(VariableType::JS_POINTER(), glue, obj, tableOffset);
                 return GetLengthOfTaggedArray(table);
             }
             case ContainersType::HASHSET_FOREACH: {
                 GateRef tableOffset = IntPtr(JSAPIHashSet::HASHSET_TABLE_INDEX);
-                GateRef table = Load(VariableType::JS_POINTER(), obj, tableOffset);
+                GateRef table = Load(VariableType::JS_POINTER(), glue, obj, tableOffset);
                 return GetLengthOfTaggedArray(table);
             }
             case ContainersType::LINKEDLIST_FOREACH: {
                 GateRef tableOffset = IntPtr(JSAPILinkedList::DOUBLE_LIST_OFFSET);
-                GateRef table = Load(VariableType::JS_POINTER(), obj, tableOffset);
-                GateRef value = GetValueFromTaggedArray(table, Int32(TaggedDoubleList::NUMBER_OF_NODE_INDEX));
+                GateRef table = Load(VariableType::JS_POINTER(), glue, obj, tableOffset);
+                GateRef value = GetValueFromTaggedArray(glue, table, Int32(TaggedDoubleList::NUMBER_OF_NODE_INDEX));
                 return TaggedGetInt(value);
             }
             case ContainersType::LIST_FOREACH: {
                 GateRef tableOffset = IntPtr(JSAPIList::SINGLY_LIST_OFFSET);
-                GateRef table = Load(VariableType::JS_POINTER(), obj, tableOffset);
-                GateRef value = GetValueFromTaggedArray(table, Int32(TaggedSingleList::NUMBER_OF_NODE_INDEX));
+                GateRef table = Load(VariableType::JS_POINTER(), glue, obj, tableOffset);
+                GateRef value = GetValueFromTaggedArray(glue, table, Int32(TaggedSingleList::NUMBER_OF_NODE_INDEX));
                 return TaggedGetInt(value);
             }
             default:
@@ -218,40 +218,40 @@ public:
         return False();
     }
 
-    GateRef ContainerGetValue(GateRef obj, GateRef index, ContainersType type)
+    GateRef ContainerGetValue(GateRef glue, GateRef obj, GateRef index, ContainersType type)
     {
         switch (type) {
             case ContainersType::VECTOR_FOREACH:
             case ContainersType::VECTOR_REPLACEALLELEMENTS: {
                 GateRef elementsOffset = IntPtr(JSObject::ELEMENTS_OFFSET);
-                GateRef elements = Load(VariableType::JS_POINTER(), obj, elementsOffset);
-                return GetValueFromTaggedArray(elements, index);
+                GateRef elements = Load(VariableType::JS_POINTER(), glue, obj, elementsOffset);
+                return GetValueFromTaggedArray(glue, elements, index);
             }
             case ContainersType::STACK_FOREACH: {
                 GateRef elementsOffset = IntPtr(JSObject::ELEMENTS_OFFSET);
-                GateRef elements = Load(VariableType::JS_POINTER(), obj, elementsOffset);
-                return GetValueFromTaggedArray(elements, index);
+                GateRef elements = Load(VariableType::JS_POINTER(), glue, obj, elementsOffset);
+                return GetValueFromTaggedArray(glue, elements, index);
             }
             case ContainersType::PLAINARRAY_FOREACH: {
                 GateRef elementsOffset = IntPtr(JSAPIPlainArray::VALUES_OFFSET);
-                GateRef elements = Load(VariableType::JS_POINTER(), obj, elementsOffset);
-                return GetValueFromTaggedArray(elements, index);
+                GateRef elements = Load(VariableType::JS_POINTER(), glue, obj, elementsOffset);
+                return GetValueFromTaggedArray(glue, elements, index);
             }
             case ContainersType::ARRAYLIST_REPLACEALLELEMENTS:
             case ContainersType::ARRAYLIST_FOREACH: {
                 GateRef elementsOffset = IntPtr(JSObject::ELEMENTS_OFFSET);
-                GateRef elements = Load(VariableType::JS_POINTER(), obj, elementsOffset);
-                return GetValueFromTaggedArray(elements, index);
+                GateRef elements = Load(VariableType::JS_POINTER(), glue, obj, elementsOffset);
+                return GetValueFromTaggedArray(glue, elements, index);
             }
             case ContainersType::LIGHTWEIGHTSET_FOREACH: {
                 GateRef valuesOffset = IntPtr(JSAPILightWeightSet::VALUES_OFFSET);
-                GateRef values = Load(VariableType::JS_POINTER(), obj, valuesOffset);
-                return GetValueFromTaggedArray(values, index);
+                GateRef values = Load(VariableType::JS_POINTER(), glue, obj, valuesOffset);
+                return GetValueFromTaggedArray(glue, values, index);
             }
             case ContainersType::LIGHTWEIGHTMAP_FOREACH: {
                 GateRef valuesOffset = IntPtr(JSAPILightWeightMap::LWP_VALUES_OFFSET);
-                GateRef values = Load(VariableType::JS_POINTER(), obj, valuesOffset);
-                return GetValueFromTaggedArray(values, index);
+                GateRef values = Load(VariableType::JS_POINTER(), glue, obj, valuesOffset);
+                return GetValueFromTaggedArray(glue, values, index);
             }
             default:
                 LOG_ECMA(FATAL) << "this branch is unreachable";
@@ -260,18 +260,18 @@ public:
         return False();
     }
 
-    GateRef ContainerGetKey(GateRef obj, GateRef index, ContainersType type)
+    GateRef ContainerGetKey(GateRef glue, GateRef obj, GateRef index, ContainersType type)
     {
         switch (type) {
             case ContainersType::LIGHTWEIGHTMAP_FOREACH: {
                 GateRef keysOffset = IntPtr(JSAPILightWeightMap::LWP_KEYS_OFFSET);
-                GateRef keys = Load(VariableType::JS_POINTER(), obj, keysOffset);
-                return GetValueFromTaggedArray(keys, index);
+                GateRef keys = Load(VariableType::JS_POINTER(), glue, obj, keysOffset);
+                return GetValueFromTaggedArray(glue, keys, index);
             }
             case ContainersType::LIGHTWEIGHTSET_FOREACH: {
                 GateRef valuesOffset = IntPtr(JSAPILightWeightSet::VALUES_OFFSET);
-                GateRef values = Load(VariableType::JS_POINTER(), obj, valuesOffset);
-                return GetValueFromTaggedArray(values, index);
+                GateRef values = Load(VariableType::JS_POINTER(), glue, obj, valuesOffset);
+                return GetValueFromTaggedArray(glue, values, index);
             }
             default:
                 LOG_ECMA(FATAL) << "this branch is unreachable";
@@ -280,28 +280,28 @@ public:
         return False();
     }
 
-    GateRef ContainerGetNode(GateRef obj, GateRef index, ContainersType type)
+    GateRef ContainerGetNode(GateRef glue, GateRef obj, GateRef index, ContainersType type)
     {
         switch (type) {
             case ContainersType::HASHMAP_FOREACH: {
                 GateRef tableOffset = IntPtr(JSAPIHashMap::HASHMAP_TABLE_INDEX);
-                GateRef table = Load(VariableType::JS_POINTER(), obj, tableOffset);
-                return GetValueFromTaggedArray(table, index);
+                GateRef table = Load(VariableType::JS_POINTER(), glue, obj, tableOffset);
+                return GetValueFromTaggedArray(glue, table, index);
             }
             case ContainersType::HASHSET_FOREACH: {
                 GateRef tableOffset = IntPtr(JSAPIHashSet::HASHSET_TABLE_INDEX);
-                GateRef table = Load(VariableType::JS_POINTER(), obj, tableOffset);
-                return GetValueFromTaggedArray(table, index);
+                GateRef table = Load(VariableType::JS_POINTER(), glue, obj, tableOffset);
+                return GetValueFromTaggedArray(glue, table, index);
             }
             case ContainersType::LINKEDLIST_FOREACH: {
                 GateRef tableOffset = IntPtr(JSAPILinkedList::DOUBLE_LIST_OFFSET);
-                GateRef table = Load(VariableType::JS_POINTER(), obj, tableOffset);
-                return GetValueFromTaggedArray(table, index);
+                GateRef table = Load(VariableType::JS_POINTER(), glue, obj, tableOffset);
+                return GetValueFromTaggedArray(glue, table, index);
             }
             case ContainersType::LIST_FOREACH: {
                 GateRef tableOffset = IntPtr(JSAPIList::SINGLY_LIST_OFFSET);
-                GateRef table = Load(VariableType::JS_POINTER(), obj, tableOffset);
-                return GetValueFromTaggedArray(table, index);
+                GateRef table = Load(VariableType::JS_POINTER(), glue, obj, tableOffset);
+                return GetValueFromTaggedArray(glue, table, index);
             }
             default:
                 LOG_ECMA(FATAL) << "this branch is unreachable";
@@ -310,11 +310,11 @@ public:
         return False();
     }
 
-    GateRef PlainArrayGetKey(GateRef obj, GateRef index)
+    GateRef PlainArrayGetKey(GateRef glue, GateRef obj, GateRef index)
     {
         GateRef elementsOffset = IntPtr(JSAPIPlainArray::KEYS_OFFSET);
-        GateRef elements = Load(VariableType::JS_POINTER(), obj, elementsOffset);
-        return GetValueFromTaggedArray(elements, index);
+        GateRef elements = Load(VariableType::JS_POINTER(), glue, obj, elementsOffset);
+        return GetValueFromTaggedArray(glue, elements, index);
     }
 };
 }  // namespace panda::ecmascript::kungfu

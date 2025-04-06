@@ -34,15 +34,15 @@ GateRef HashStubBuilder::GetHash(GateRef key)
     Label slowGetHash(env);
     Label symbolKey(env);
     Label stringCheck(env);
-    BRANCH(TaggedIsSymbol(key), &symbolKey, &stringCheck);
+    BRANCH(TaggedIsSymbol(glue_, key), &symbolKey, &stringCheck);
 
     Bind(&symbolKey);
-    res = Load(VariableType::INT32(), key, IntPtr(JSSymbol::HASHFIELD_OFFSET));
+    res = LoadPrimitive(VariableType::INT32(), key, IntPtr(JSSymbol::HASHFIELD_OFFSET));
     Jump(&exit);
     Bind(&stringCheck);
     Label stringKey(env);
     Label objectCheck(env);
-    BRANCH(TaggedIsString(key), &stringKey, &objectCheck);
+    BRANCH(TaggedIsString(glue_, key), &stringKey, &objectCheck);
     Bind(&stringKey);
     res = GetHashcodeFromString(glue_, key);
     Jump(&exit);
@@ -54,7 +54,7 @@ GateRef HashStubBuilder::GetHash(GateRef key)
 
     Bind(&heapObjectKey);
     Label ecmaObjectKey(env);
-    BRANCH(TaggedObjectIsEcmaObject(key), &ecmaObjectKey, &slowGetHash);
+    BRANCH(TaggedObjectIsEcmaObject(glue_, key), &ecmaObjectKey, &slowGetHash);
     Bind(&ecmaObjectKey);
     CalcHashcodeForObject(glue_, key, &res, &exit);
 

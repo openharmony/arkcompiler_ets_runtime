@@ -58,6 +58,10 @@ void PostSchedule::GenerateExtraBB(ControlFlowGraph &cfg)
                     needRetraverse = VisitStore(current, cfg, bbIdx, instIdx);
                     break;
                 }
+                case OpCode::LOAD: {
+                    needRetraverse = VisitLoad(current, cfg, bbIdx, instIdx);
+                    break;
+                }
                 default: {
                     break;
                 }
@@ -223,13 +227,13 @@ void PostSchedule::LoweringHeapAllocAndPrepareScheduleGate(GateRef gate,
     GateRef endAddrOffset = circuit_->GetConstantGateWithoutCache(MachineType::I64, endOffset, GateType::NJSValue());
     GateRef topAddrAddr = builder_.PtrAdd(glue, topAddrOffset);
     GateRef endAddrAddr = builder_.PtrAdd(glue, endAddrOffset);
-    GateRef topAddress = builder_.Load(VariableType::NATIVE_POINTER(), topAddrAddr);
-    GateRef endAddress = builder_.Load(VariableType::NATIVE_POINTER(), endAddrAddr);
+    GateRef topAddress = builder_.LoadFromAddressWithoutBarrier(VariableType::NATIVE_POINTER(), topAddrAddr);
+    GateRef endAddress = builder_.LoadFromAddressWithoutBarrier(VariableType::NATIVE_POINTER(), endAddrAddr);
     GateRef addrOffset = circuit_->GetConstantGateWithoutCache(MachineType::I64, 0, GateType::NJSValue());
     GateRef rawTopAddr = builder_.PtrAdd(topAddress, addrOffset);
     GateRef rawEndAddr = builder_.PtrAdd(endAddress, addrOffset);
-    GateRef top = builder_.Load(VariableType::JS_POINTER(), rawTopAddr);
-    GateRef end = builder_.Load(VariableType::JS_POINTER(), rawEndAddr);
+    GateRef top = builder_.LoadFromAddressWithoutBarrier(VariableType::JS_POINTER(), rawTopAddr);
+    GateRef end = builder_.LoadFromAddressWithoutBarrier(VariableType::JS_POINTER(), rawEndAddr);
 
     GateRef newTop = builder_.PtrAdd(top, size);
     GateRef condition = builder_.Int64GreaterThan(newTop, end);
@@ -393,7 +397,7 @@ bool PostSchedule::VisitStore(GateRef gate, ControlFlowGraph &cfg, size_t bbIdx,
     std::vector<GateRef> currentBBGates;
     std::vector<GateRef> barrierBBGates;
     std::vector<GateRef> endBBGates;
-    MemoryAttribute::Barrier kind = GetWriteBarrierKind(gate);
+    MemoryAttribute::Barrier kind = GetBarrierKind(gate);
     switch (kind) {
         case MemoryAttribute::Barrier::UNKNOWN_BARRIER: {
             LoweringStoreUnknownBarrierAndPrepareScheduleGate(gate, currentBBGates, barrierBBGates, endBBGates);
@@ -421,7 +425,7 @@ bool PostSchedule::VisitStore(GateRef gate, ControlFlowGraph &cfg, size_t bbIdx,
     return false;
 }
 
-MemoryAttribute::Barrier PostSchedule::GetWriteBarrierKind(GateRef gate)
+MemoryAttribute::Barrier PostSchedule::GetBarrierKind(GateRef gate)
 {
     MemoryAttribute mAttr = acc_.GetMemoryAttribute(gate);
     if (!acc_.IsGCRelated(gate)) {
@@ -601,6 +605,65 @@ void PostSchedule::LoweringStoreUnknownBarrierAndPrepareScheduleGate(GateRef gat
         PrepareToScheduleNewGate(ifFalse, endBBGates);
     }
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
+}
+
+bool PostSchedule::VisitLoad(GateRef gate, ControlFlowGraph &cfg, size_t bbIdx, size_t instIdx)
+{
+    std::vector<GateRef> currentBBGates;
+    MemoryAttribute::Barrier kind = GetBarrierKind(gate);
+    switch (kind) {
+        case MemoryAttribute::Barrier::UNKNOWN_BARRIER:
+        case MemoryAttribute::Barrier::NEED_BARRIER:
+        case MemoryAttribute::Barrier::NO_BARRIER: {
+            LoweringLoadNoBarrierAndPrepareScheduleGate(gate, currentBBGates);
+            ReplaceGateDirectly(currentBBGates, cfg, bbIdx, instIdx);
+            return false;
+        }
+        default:
+            UNREACHABLE();
+            break;
+    }
+    return false;
+}
+
+void PostSchedule::LoweringLoadWithBarrierAndPrepareScheduleGate(GateRef gate, std::vector<GateRef> &currentBBGates)
+{
+    Environment env(gate, circuit_, &builder_);
+
+    GateRef glue = acc_.GetValueIn(gate, 0);
+    GateRef addr = acc_.GetValueIn(gate, 1);
+    VariableType type = VariableType(acc_.GetMachineType(gate), acc_.GetGateType(gate));
+    
+    // Directly call ReadBarrier, to be optimized
+    int index = CommonStubCSigns::GetValueWithBarrier;
+    const CallSignature *cs = CommonStubCSigns::Get(index);
+    ASSERT(cs->IsCommonStub());
+    GateRef target = circuit_->GetConstantGateWithoutCache(MachineType::ARCH, index, GateType::NJSValue());
+    GateRef reservedFrameArgs = circuit_->GetConstantGateWithoutCache(MachineType::I64, 0, GateType::NJSValue());
+    GateRef reservedPc = circuit_->GetConstantGateWithoutCache(MachineType::I64, 0, GateType::NJSValue());
+    GateRef loadWithBarrier = builder_.Call(cs, glue, target, builder_.GetDepend(),
+                                        { glue, addr, reservedFrameArgs, reservedPc },
+                                        Circuit::NullGate(), "load barrier");
+    {
+        PrepareToScheduleNewGate(loadWithBarrier, currentBBGates);
+        PrepareToScheduleNewGate(reservedPc, currentBBGates);
+        PrepareToScheduleNewGate(reservedFrameArgs, currentBBGates);
+        PrepareToScheduleNewGate(target, currentBBGates);
+    }
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), loadWithBarrier);
+}
+
+void PostSchedule::LoweringLoadNoBarrierAndPrepareScheduleGate(GateRef gate, std::vector<GateRef> &currentBBGates)
+{
+    Environment env(gate, circuit_, &builder_);
+
+    GateRef addr = acc_.GetValueIn(gate, 1);
+    VariableType type = VariableType(acc_.GetMachineType(gate), acc_.GetGateType(gate));
+    GateRef loadWithoutBarrier = builder_.LoadFromAddressWithoutBarrier(type, addr, acc_.GetMemoryAttribute(gate));
+    {
+        PrepareToScheduleNewGate(loadWithoutBarrier, currentBBGates);
+    }
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), loadWithoutBarrier);
 }
 
 void PostSchedule::PrintGraph(const char* title, ControlFlowGraph &cfg)

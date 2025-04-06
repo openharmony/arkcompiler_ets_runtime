@@ -377,7 +377,7 @@ void ToBooleanTrueStubBuilder::GenerateCircuit()
     GateRef glue = PtrArgument(0);
     (void)glue;
     GateRef x = TaggedArgument(1);
-    Return(FastToBoolean(x, true));
+    Return(FastToBoolean(glue, x, true));
 }
 
 void ToBooleanFalseStubBuilder::GenerateCircuit()
@@ -385,7 +385,7 @@ void ToBooleanFalseStubBuilder::GenerateCircuit()
     GateRef glue = PtrArgument(0);
     (void)glue;
     GateRef x = TaggedArgument(1);
-    Return(FastToBoolean(x, false));
+    Return(FastToBoolean(glue, x, false));
 }
 
 void NewLexicalEnvStubBuilder::GenerateCircuit()
@@ -798,7 +798,7 @@ void TryLoadICByNameStubBuilder::GenerateCircuit()
     BRANCH(TaggedIsHeapObject(receiver), &receiverIsHeapObject, &receiverNotHeapObject);
     Bind(&receiverIsHeapObject);
     {
-        GateRef hclass = LoadHClass(receiver);
+        GateRef hclass = LoadHClass(glue, receiver);
         BRANCH(Equal(LoadObjectFromWeakRef(firstValue), hclass),
                &hclassEqualFirstValue,
                &hclassNotEqualFirstValue);
@@ -808,7 +808,7 @@ void TryLoadICByNameStubBuilder::GenerateCircuit()
         }
         Bind(&hclassNotEqualFirstValue);
         {
-            GateRef cachedHandler = CheckPolyHClass(firstValue, hclass);
+            GateRef cachedHandler = CheckPolyHClass(glue, firstValue, hclass);
             BRANCH(TaggedIsHole(cachedHandler), &receiverNotHeapObject, &cachedHandlerNotHole);
             Bind(&cachedHandlerNotHole);
             {
@@ -840,7 +840,7 @@ void TryLoadICByValueStubBuilder::GenerateCircuit()
     BRANCH(TaggedIsHeapObject(receiver), &receiverIsHeapObject, &receiverNotHeapObject);
     Bind(&receiverIsHeapObject);
     {
-        GateRef hclass = LoadHClass(receiver);
+        GateRef hclass = LoadHClass(glue, receiver);
         BRANCH(Equal(LoadObjectFromWeakRef(firstValue), hclass),
                &hclassEqualFirstValue,
                &hclassNotEqualFirstValue);
@@ -851,7 +851,7 @@ void TryLoadICByValueStubBuilder::GenerateCircuit()
             BRANCH(Int64Equal(firstValue, key), &firstValueEqualKey, &receiverNotHeapObject);
             Bind(&firstValueEqualKey);
             {
-                auto cachedHandler = CheckPolyHClass(secondValue, hclass);
+                auto cachedHandler = CheckPolyHClass(glue, secondValue, hclass);
                 BRANCH(TaggedIsHole(cachedHandler), &receiverNotHeapObject, &cachedHandlerNotHole);
                 Bind(&cachedHandlerNotHole);
                 Return(LoadICWithHandler(glue, receiver, receiver, cachedHandler, ProfileOperation()));
@@ -878,7 +878,7 @@ void TryStoreICByNameStubBuilder::GenerateCircuit()
     BRANCH(TaggedIsHeapObject(receiver), &receiverIsHeapObject, &receiverNotHeapObject);
     Bind(&receiverIsHeapObject);
     {
-        GateRef hclass = LoadHClass(receiver);
+        GateRef hclass = LoadHClass(glue, receiver);
         BRANCH(Equal(LoadObjectFromWeakRef(firstValue), hclass),
                &hclassEqualFirstValue,
                &hclassNotEqualFirstValue);
@@ -888,7 +888,7 @@ void TryStoreICByNameStubBuilder::GenerateCircuit()
         }
         Bind(&hclassNotEqualFirstValue);
         {
-            GateRef cachedHandler = CheckPolyHClass(firstValue, hclass);
+            GateRef cachedHandler = CheckPolyHClass(glue, firstValue, hclass);
             BRANCH(TaggedIsHole(cachedHandler), &receiverNotHeapObject, &cachedHandlerNotHole);
             Bind(&cachedHandlerNotHole);
             {
@@ -918,7 +918,7 @@ void TryStoreICByValueStubBuilder::GenerateCircuit()
     BRANCH(TaggedIsHeapObject(receiver), &receiverIsHeapObject, &receiverNotHeapObject);
     Bind(&receiverIsHeapObject);
     {
-        GateRef hclass = LoadHClass(receiver);
+        GateRef hclass = LoadHClass(glue, receiver);
         BRANCH(Equal(LoadObjectFromWeakRef(firstValue), hclass),
                &hclassEqualFirstValue,
                &hclassNotEqualFirstValue);
@@ -929,7 +929,7 @@ void TryStoreICByValueStubBuilder::GenerateCircuit()
             BRANCH(Int64Equal(firstValue, key), &firstValueEqualKey, &receiverNotHeapObject);
             Bind(&firstValueEqualKey);
             {
-                GateRef cachedHandler = CheckPolyHClass(secondValue, hclass);
+                GateRef cachedHandler = CheckPolyHClass(glue, secondValue, hclass);
                 BRANCH(TaggedIsHole(cachedHandler), &receiverNotHeapObject, &cachedHandlerNotHole);
                 Bind(&cachedHandlerNotHole);
                 Return(StoreICWithHandler(glue, receiver, receiver, value, cachedHandler));
@@ -978,6 +978,14 @@ void VerifyBarrierStubBuilder::GenerateCircuit()
     GateRef value = TaggedArgument(3); // 3 : 4th para
     VerifyBarrier(glue, obj, offset, value);
     Return();
+}
+
+void GetValueWithBarrierStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef addr = TaggedArgument(1);
+    GateRef value = GetValueWithBarrier(glue, addr);
+    Return(value);
 }
 
 void NewThisObjectCheckedStubBuilder::GenerateCircuit()
@@ -1041,8 +1049,8 @@ void JsBoundCallInternalStubBuilder::GenerateCircuit()
     GateRef thisValue = TaggedPointerArgument(4); // this
     GateRef newTarget = TaggedPointerArgument(5); // new target
     DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
-    GateRef method = GetMethodFromFunction(func);
-    GateRef callfield = Load(VariableType::INT64(), method, IntPtr(Method::CALL_FIELD_OFFSET));
+    GateRef method = GetMethodFromFunction(glue, func);
+    GateRef callfield = LoadPrimitive(VariableType::INT64(), method, IntPtr(Method::CALL_FIELD_OFFSET));
     GateRef expectedNum = Int64And(Int64LSR(callfield, Int64(MethodLiteral::NumArgsBits::START_BIT)),
         Int64((1LU << MethodLiteral::NumArgsBits::SIZE) - 1));
     GateRef expectedArgc = Int64Add(expectedNum, Int64(NUM_MANDATORY_JSFUNC_ARGS));
@@ -1087,10 +1095,11 @@ void JsBoundCallInternalStubBuilder::GenerateCircuit()
 
 void GetSingleCharCodeByIndexStubBuilder::GenerateCircuit()
 {
+    GateRef glue = PtrArgument(0);
     GateRef str = TaggedArgument(1);
     GateRef index = Int32Argument(2);
     BuiltinsStringStubBuilder builder(this);
-    GateRef result = builder.GetSingleCharCodeByIndex(str, index);
+    GateRef result = builder.GetSingleCharCodeByIndex(glue, str, index);
     Return(result);
 }
 

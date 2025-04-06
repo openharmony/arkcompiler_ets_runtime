@@ -667,7 +667,9 @@ private:
     V(ReverseBarrier)                                \
     V(FindPatchModule)                               \
     V(FatalPrintMisstakenResolvedBinding)            \
-    V(LoadNativeModuleFailed)
+    V(LoadNativeModuleFailed)                        \
+    V(GetValueWithBarrier)                           \
+    V(ReadBarrier)
 
 #define DECL_CALL_SIGNATURE(name)                                  \
 class name##CallSignature final {                                  \

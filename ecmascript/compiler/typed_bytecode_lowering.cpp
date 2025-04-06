@@ -716,16 +716,16 @@ void TypedBytecodeLowering::LowerTypedLdPrivateProperty(GateRef gate)
 
     DEFVALUE(result, (&builder_), VariableType::JS_ANY(), builder_.Undefined());
     GateRef frameState = acc_.FindNearestFrameState(builder_.GetDepend());
-    GateRef key = builder_.GetKeyFromLexivalEnv(
+    GateRef key = builder_.GetKeyFromLexivalEnv(glue_,
         tacc.GetLexicalEnv(), builder_.TaggedGetInt(levelIndex), builder_.TaggedGetInt(slotIndex));
 
     builder_.HeapObjectCheck(key, frameState);
     if (tacc.IsAccessor()) {
-        builder_.DeoptCheck(builder_.IsJSFunction(key), frameState, DeoptType::NOTJSFUNCTION);
+        builder_.DeoptCheck(builder_.IsJSFunction(glue_, key), frameState, DeoptType::NOTJSFUNCTION);
         result = builder_.CallPrivateGetter(gate, receiver, key);
         builder_.Jump(&exit);
     } else {
-        builder_.DeoptCheck(builder_.TaggedIsSymbol(key), frameState, DeoptType::NOTSYMBOL);
+        builder_.DeoptCheck(builder_.TaggedIsSymbol(glue_, key), frameState, DeoptType::NOTSYMBOL);
         builder_.ObjectTypeCheck(false, receiver, builder_.Int32(tacc.GetExpectedHClassIndex(0)), frameState);
         result = BuildNamedPropertyAccess(gate, receiver, receiver, tacc.GetAccessInfo(0).Plr());
         builder_.Jump(&exit);
@@ -753,16 +753,16 @@ void TypedBytecodeLowering::LowerTypedStPrivateProperty(GateRef gate)
     GateRef value = tacc.GetValue();
 
     GateRef frameState = acc_.FindNearestFrameState(builder_.GetDepend());
-    GateRef key = builder_.GetKeyFromLexivalEnv(
+    GateRef key = builder_.GetKeyFromLexivalEnv(glue_,
         tacc.GetLexicalEnv(), builder_.TaggedGetInt(levelIndex), builder_.TaggedGetInt(slotIndex));
 
     builder_.HeapObjectCheck(key, frameState);
     if (tacc.IsAccessor()) {
-        builder_.DeoptCheck(builder_.IsJSFunction(key), frameState, DeoptType::NOTJSFUNCTION);
+        builder_.DeoptCheck(builder_.IsJSFunction(glue_, key), frameState, DeoptType::NOTJSFUNCTION);
         builder_.CallPrivateSetter(gate, receiver, key, value);
         builder_.Jump(&exit);
     } else {
-        builder_.DeoptCheck(builder_.TaggedIsSymbol(key), frameState, DeoptType::NOTSYMBOL);
+        builder_.DeoptCheck(builder_.TaggedIsSymbol(glue_, key), frameState, DeoptType::NOTSYMBOL);
         builder_.ObjectTypeCheck(false, receiver, builder_.Int32(tacc.GetExpectedHClassIndex(0)), frameState);
         BuildNamedPropertyAccess(
             gate, receiver, receiver, value, tacc.GetAccessInfo(0).Plr(), tacc.GetExpectedHClassIndex(0));

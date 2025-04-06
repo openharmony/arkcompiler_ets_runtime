@@ -82,6 +82,11 @@ static ARK_INLINE void WriteBarrier(const JSThread *thread, void *obj, size_t of
     }
 }
 
+/* template<bool atomic>
+static ARK_INLINE JSTaggedType ReadBarrier(const JSThread *thread, const void *obj, size_t offset)
+{
+} */
+
 template<bool needWriteBarrier>
 inline void Barriers::SetObject(const JSThread *thread, void *obj, size_t offset, JSTaggedType value)
 {

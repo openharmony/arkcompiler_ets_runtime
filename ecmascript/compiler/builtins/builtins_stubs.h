@@ -36,32 +36,32 @@ public:
 
     inline GateRef GetGlue(GateRef info)
     {
-        return Load(VariableType::NATIVE_POINTER(), info,
+        return LoadPrimitive(VariableType::NATIVE_POINTER(), info,
             IntPtr(EcmaRuntimeCallInfo::GetThreadOffset(GetEnvironment()->IsArch32Bit())));
     }
 
     inline GateRef GetNumArgs(GateRef info)
     {
-        return Load(VariableType::INT64(), info,
+        return LoadPrimitive(VariableType::INT64(), info,
             IntPtr(EcmaRuntimeCallInfo::GetNumArgsOffset(GetEnvironment()->IsArch32Bit())));
     }
 
     inline GateRef GetFunction(GateRef info)
     {
-        return Load(VariableType::JS_ANY(), info,
+        return Load(VariableType::JS_ANY(), GetGlue(info), info,
             IntPtr(EcmaRuntimeCallInfo::GetStackArgsOffset(GetEnvironment()->IsArch32Bit())));
     }
 
     inline GateRef GetNewTarget(GateRef info)
     {
         GateRef newTargetOffset = IntPtr(EcmaRuntimeCallInfo::GetNewTargetOffset(GetEnvironment()->IsArch32Bit()));
-        return Load(VariableType::JS_ANY(), info, newTargetOffset);
+        return Load(VariableType::JS_ANY(), GetGlue(info), info, newTargetOffset);
     }
 
     inline GateRef GetThis(GateRef info)
     {
         GateRef thisOffset = IntPtr(EcmaRuntimeCallInfo::GetThisOffset(GetEnvironment()->IsArch32Bit()));
-        return Load(VariableType::JS_ANY(), info, thisOffset);
+        return Load(VariableType::JS_ANY(), GetGlue(info), info, thisOffset);
     }
 
     GateRef GetCallArg0(GateRef numArg);
@@ -73,7 +73,7 @@ public:
         return PtrArgument(static_cast<size_t>(BuiltinsArgs::ARG0_OR_ARGV));
     }
 
-    GateRef GetArgFromArgv(GateRef index, GateRef numArgs = Gate::InvalidGateRef, bool needCheck = false);
+    GateRef GetArgFromArgv(GateRef glue, GateRef index, GateRef numArgs = Gate::InvalidGateRef, bool needCheck = false);
 
     GateRef CallSlowPath(GateRef nativeCode, GateRef glue, GateRef thisValue, GateRef numArgs, GateRef func,
                          GateRef newTarget);
