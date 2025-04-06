@@ -59,7 +59,7 @@ public:
     {
         GateRef oldValue = ZExtInt1ToInt32(value);
         GateRef offset = IntPtr(JSProxy::BIT_FIELD_OFFSET);
-        GateRef bitfield = Load(VariableType::INT32(), proxy, offset);
+        GateRef bitfield = LoadPrimitive(VariableType::INT32(), proxy, offset);
         GateRef mask = Int32LSL(
             Int32((1LU << JSProxy::IsRevokedBits::SIZE) - 1),
             Int32(JSProxy::IsRevokedBits::START_BIT));

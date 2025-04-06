@@ -77,7 +77,7 @@ void BuiltinsStringStubBuilder::FromCharCode(GateRef glue, [[maybe_unused]] Gate
                 Bind(&canBeCompress);
                 {
                     GateRef singleCharTable = GetSingleCharTable(glue);
-                    res->WriteVariable(GetValueFromTaggedArray(singleCharTable, ZExtInt16ToInt32(*value)));
+                    res->WriteVariable(GetValueFromTaggedArray(glue, singleCharTable, ZExtInt16ToInt32(*value)));
                     Jump(exit);
                 }
                 Bind(&canNotBeCompress);
@@ -123,7 +123,7 @@ void BuiltinsStringStubBuilder::CharAt(GateRef glue, GateRef thisValue, GateRef 
     {
         BRANCH(TaggedIsHeapObject(thisValue), &thisIsHeapobject, slowPath);
         Bind(&thisIsHeapobject);
-        BRANCH(IsString(thisValue), &isString, slowPath);
+        BRANCH(IsString(glue, thisValue), &isString, slowPath);
         Bind(&isString);
         {
             FlatStringStubBuilder thisFlat(this);
@@ -208,11 +208,11 @@ GateRef BuiltinsStringStubBuilder::FastStringCharCodeAt(GateRef glue, GateRef th
         Label notConstantString(env);
         Label getCharByIndex(env);
         GateRef stringData = Circuit::NullGate();
-        BRANCH(IsConstantString(stringInfoGate.GetString()), &isConstantString, &notConstantString);
+        BRANCH(IsConstantString(glue, stringInfoGate.GetString()), &isConstantString, &notConstantString);
         Bind(&isConstantString);
         {
             GateRef address = PtrAdd(stringInfoGate.GetString(), IntPtr(ConstantString::CONSTANT_DATA_OFFSET));
-            stringData = Load(VariableType::JS_ANY(), address, IntPtr(0));
+            stringData = Load(VariableType::JS_ANY(), glue, address, IntPtr(0));
             Jump(&getCharByIndex);
         }
         Bind(&notConstantString);
@@ -229,14 +229,14 @@ GateRef BuiltinsStringStubBuilder::FastStringCharCodeAt(GateRef glue, GateRef th
         {
             charPosition = PtrMul(ZExtInt32ToPtr(*index), IntPtr(sizeof(uint16_t)));
             result = Int64ToTaggedIntPtr((ZExtInt16ToInt64(
-                Load(VariableType::INT16(), PtrAdd(stringData, charPosition)))));
+                LoadPrimitive(VariableType::INT16(), PtrAdd(stringData, charPosition)))));
             Jump(&exit);
         }
         Bind(&isUtf8);
         {
             charPosition = PtrMul(ZExtInt32ToPtr(*index), IntPtr(sizeof(uint8_t)));
             result = Int64ToTaggedIntPtr((ZExtInt8ToInt64(
-                Load(VariableType::INT8(), PtrAdd(stringData, charPosition)))));
+                LoadPrimitive(VariableType::INT8(), PtrAdd(stringData, charPosition)))));
             Jump(&exit);
         }
     }
@@ -262,7 +262,7 @@ void BuiltinsStringStubBuilder::CodePointAt(GateRef glue, GateRef thisValue, Gat
         thisFlat.FlattenString(glue, thisValue, &flattenFastPath);
         Bind(&flattenFastPath);
         StringInfoGateRef stringInfoGate(&thisFlat);
-        GateRef first = StringAt(stringInfoGate, *pos);
+        GateRef first = StringAt(glue, stringInfoGate, *pos);
         GateRef posVal = *pos;
         GateRef firstIsValid = LogicOrBuilder(env)
             .Or(Int32UnsignedLessThan(first, Int32(base::utf_helper::DECODE_LEAD_LOW)))
@@ -271,7 +271,7 @@ void BuiltinsStringStubBuilder::CodePointAt(GateRef glue, GateRef thisValue, Gat
             .Done();
         BRANCH(firstIsValid, &returnFirst, &getNextChar);
         Bind(&getNextChar);
-        GateRef second = StringAt(stringInfoGate, Int32Add(*pos, Int32(1)));
+        GateRef second = StringAt(glue, stringInfoGate, Int32Add(*pos, Int32(1)));
         GateRef secondIsValid = BitOr(Int32UnsignedLessThan(second, Int32(base::utf_helper::DECODE_TRAIL_LOW)),
             Int32UnsignedGreaterThan(second, Int32(base::utf_helper::DECODE_TRAIL_HIGH)));
         BRANCH(secondIsValid, &returnFirst, slowPath);
@@ -304,7 +304,7 @@ void BuiltinsStringStubBuilder::CheckParamsAndGetPosition(GateRef glue, GateRef 
     {
         BRANCH(TaggedIsHeapObject(thisValue), &thisIsHeapobject, slowPath);
         Bind(&thisIsHeapobject);
-        BRANCH(IsString(thisValue), &isString, slowPath);
+        BRANCH(IsString(glue, thisValue), &isString, slowPath);
         Bind(&isString);
         {
             GateRef thisLen = GetLengthFromString(thisValue);
@@ -364,13 +364,13 @@ void BuiltinsStringStubBuilder::IndexOf(GateRef glue, GateRef thisValue, GateRef
     {
         BRANCH(TaggedIsHeapObject(thisValue), &thisIsHeapobject, slowPath);
         Bind(&thisIsHeapobject);
-        BRANCH(IsString(thisValue), &isString, slowPath);
+        BRANCH(IsString(glue, thisValue), &isString, slowPath);
         Bind(&isString);
         {
             GateRef searchTag = GetCallArg0(numArgs);
             BRANCH(TaggedIsHeapObject(searchTag), &searchTagIsHeapObject, slowPath);
             Bind(&searchTagIsHeapObject);
-            BRANCH(IsString(searchTag), &isSearchString, slowPath);
+            BRANCH(IsString(glue, searchTag), &isSearchString, slowPath);
             Bind(&isSearchString);
             {
                 GateRef thisLen = GetLengthFromString(thisValue);
@@ -417,7 +417,7 @@ void BuiltinsStringStubBuilder::IndexOf(GateRef glue, GateRef thisValue, GateRef
                         Bind(&flattenFastPath1);
                         StringInfoGateRef thisStringInfoGate(&thisFlat);
                         StringInfoGateRef searchStringInfoGate(&searchFlat);
-                        GateRef resPos = StringIndexOf(thisStringInfoGate, searchStringInfoGate, *pos);
+                        GateRef resPos = StringIndexOf(glue, thisStringInfoGate, searchStringInfoGate, *pos);
                         BRANCH(Int32GreaterThanOrEqual(resPos, Int32(0)), &resPosGreaterZero, exit);
                         Bind(&resPosGreaterZero);
                         {
@@ -473,7 +473,7 @@ void BuiltinsStringStubBuilder::Substring(GateRef glue, GateRef thisValue, GateR
     {
         BRANCH(TaggedIsHeapObject(thisValue), &thisIsHeapobject, slowPath);
         Bind(&thisIsHeapobject);
-        BRANCH(IsString(thisValue), &isString, slowPath);
+        BRANCH(IsString(glue, thisValue), &isString, slowPath);
         Bind(&isString);
         {
             Label next(env);
@@ -605,7 +605,7 @@ void BuiltinsStringStubBuilder::SubStr(GateRef glue, GateRef thisValue, GateRef 
     {
         BRANCH(TaggedIsHeapObject(thisValue), &thisIsHeapobject, slowPath);
         Bind(&thisIsHeapobject);
-        BRANCH(IsString(thisValue), &isString, slowPath);
+        BRANCH(IsString(glue, thisValue), &isString, slowPath);
         Bind(&isString);
         {
             Label next(env);
@@ -746,13 +746,13 @@ GateRef BuiltinsStringStubBuilder::GetSubString(GateRef glue, GateRef thisValue,
         Bind(&isSingleChar);
         {
             StringInfoGateRef stringInfoGate1(&thisFlat);
-            GateRef charCode = StringAt(stringInfoGate1, from);
+            GateRef charCode = StringAt(glue, stringInfoGate1, from);
             GateRef canStoreAsUtf8 = IsASCIICharacter(charCode);
             BRANCH(canStoreAsUtf8, &getStringFromSingleCharTable, &fastSubstring);
             Bind(&getStringFromSingleCharTable);
             {
                 GateRef singleCharTable = GetSingleCharTable(glue);
-                result = GetValueFromTaggedArray(singleCharTable, ZExtInt16ToInt32(charCode));
+                result = GetValueFromTaggedArray(glue, singleCharTable, ZExtInt16ToInt32(charCode));
                 Jump(&exit);
             }
         }
@@ -766,7 +766,7 @@ GateRef BuiltinsStringStubBuilder::GetSubString(GateRef glue, GateRef thisValue,
             {
                 StringInfoGateRef stringInfoGate(&thisFlat);
                 GateRef fromOffset = PtrMul(ZExtInt32ToPtr(from), IntPtr(sizeof(uint16_t) / sizeof(uint8_t)));
-                GateRef source = PtrAdd(GetNormalStringData(stringInfoGate), fromOffset);
+                GateRef source = PtrAdd(GetNormalStringData(glue, stringInfoGate), fromOffset);
                 GateRef canBeCompressed = CanBeCompressed(source, len, true);
                 BRANCH(canBeCompressed, &isUtf8, &sliceString);
                 Bind(&isUtf8);
@@ -776,7 +776,7 @@ GateRef BuiltinsStringStubBuilder::GetSubString(GateRef glue, GateRef thisValue,
                     newBuilder.AllocLineStringObject(&result, &afterNew, len, true);
                     Bind(&afterNew);
                     {
-                        GateRef source1 = PtrAdd(GetNormalStringData(stringInfoGate), fromOffset);
+                        GateRef source1 = PtrAdd(GetNormalStringData(glue, stringInfoGate), fromOffset);
                         GateRef dst =
                             ChangeStringTaggedPointerToInt64(PtrAdd(*result, IntPtr(LineEcmaString::DATA_OFFSET)));
                         CopyUtf16AsUtf8(glue, dst, source1, len);
@@ -845,18 +845,18 @@ void BuiltinsStringStubBuilder::Replace(GateRef glue, GateRef thisValue, GateRef
             GateRef replaceTag = GetCallArg1(numArgs);
             BRANCH(TaggedIsHeapObject(replaceTag), &replaceIsHeapObj, slowPath);
             Bind(&replaceIsHeapObj);
-            BRANCH(LogicOrBuilder(env).Or(IsJSRegExp(searchTag)).Or(IsEcmaObject(searchTag)).Done(), slowPath, &next);
+            BRANCH(LogicOrBuilder(env).Or(IsJSRegExp(glue, searchTag)).Or(IsEcmaObject(glue, searchTag)).Done(), slowPath, &next);
             Bind(&next);
             {
                 Label allAreStrings(env);
-                GateRef allIsString = LogicAndBuilder(env).And(IsString(thisValue)).And(IsString(searchTag))
-                    .And(IsString(replaceTag)).Done();
+                GateRef allIsString = LogicAndBuilder(env).And(IsString(glue, thisValue)).And(IsString(glue, searchTag))
+                    .And(IsString(glue, replaceTag)).Done();
                 BRANCH(allIsString, &allAreStrings, slowPath);
                 Bind(&allAreStrings);
                 {
                     Label replaceTagNotCallable(env);
 
-                    GateRef replaceTagIsCallable = IsCallable(replaceTag);
+                    GateRef replaceTagIsCallable = IsCallable(glue, replaceTag);
 
                     BRANCH(replaceTagIsCallable, slowPath, &replaceTagNotCallable);
                     Bind(&replaceTagNotCallable);
@@ -874,7 +874,7 @@ void BuiltinsStringStubBuilder::Replace(GateRef glue, GateRef thisValue, GateRef
                         searchFlat.FlattenString(glue, searchTag, &searchFlattenFastPath);
                         Bind(&searchFlattenFastPath);
                         StringInfoGateRef searchStringInfoGate(&searchFlat);
-                        GateRef pos = StringIndexOf(thisStringInfoGate, searchStringInfoGate, Int32(-1));
+                        GateRef pos = StringIndexOf(glue, thisStringInfoGate, searchStringInfoGate, Int32(-1));
                         BRANCH(Int32Equal(pos, Int32(-1)), &noReplace, &nextProcess);
                         Bind(&noReplace);
                         {
@@ -891,7 +891,7 @@ void BuiltinsStringStubBuilder::Replace(GateRef glue, GateRef thisValue, GateRef
                                 Label replHandleIsString(env);
 
                                 GateRef replHandle = GetSubstitution(glue, searchTag, thisValue, pos, replaceTag);
-                                BRANCH(IsString(replHandle), &replHandleIsString, slowPath);
+                                BRANCH(IsString(glue, replHandle), &replHandleIsString, slowPath);
                                 Bind(&replHandleIsString);
                                 {
                                     GateRef tailPos = Int32Add(pos, searchStringInfoGate.GetLength());
@@ -988,7 +988,7 @@ void BuiltinsStringStubBuilder::Slice(GateRef glue, GateRef thisValue, GateRef n
 
         BRANCH(TaggedIsHeapObject(thisValue), &thisIsHeapObj, slowPath);
         Bind(&thisIsHeapObj);
-        BRANCH(IsString(thisValue), &isString, slowPath);
+        BRANCH(IsString(glue, thisValue), &isString, slowPath);
         Bind(&isString);
         {
             Label startTagDefined(env);
@@ -1072,7 +1072,7 @@ void BuiltinsStringStubBuilder::Trim(GateRef glue, GateRef thisValue, GateRef nu
 
         BRANCH(TaggedIsHeapObject(thisValue), &thisIsHeapObj, slowPath);
         Bind(&thisIsHeapObj);
-        BRANCH(IsString(thisValue), &thisIsString, slowPath);
+        BRANCH(IsString(glue, thisValue), &thisIsString, slowPath);
         Bind(&thisIsString);
         GateRef result = EcmaStringTrim(glue, thisValue, Int32(0)); // 0: mode = TrimMode::TRIM
         res->WriteVariable(result);
@@ -1080,7 +1080,7 @@ void BuiltinsStringStubBuilder::Trim(GateRef glue, GateRef thisValue, GateRef nu
     }
 }
 
-GateRef BuiltinsStringStubBuilder::StringAt(const StringInfoGateRef &stringInfoGate, GateRef index)
+GateRef BuiltinsStringStubBuilder::StringAt(GateRef glue, const StringInfoGateRef &stringInfoGate, GateRef index)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -1093,17 +1093,17 @@ GateRef BuiltinsStringStubBuilder::StringAt(const StringInfoGateRef &stringInfoG
     Label doIntOp(env);
     Label leftIsNumber(env);
     Label rightIsNumber(env);
-    GateRef dataUtf16 = GetNormalStringData(stringInfoGate);
+    GateRef dataUtf16 = GetNormalStringData(glue, stringInfoGate);
     BRANCH(IsUtf16String(stringInfoGate.GetString()), &isUtf16, &isUtf8);
     Bind(&isUtf16);
     {
-        result = ZExtInt16ToInt32(Load(VariableType::INT16(), PtrAdd(dataUtf16,
+        result = ZExtInt16ToInt32(LoadPrimitive(VariableType::INT16(), PtrAdd(dataUtf16,
             PtrMul(ZExtInt32ToPtr(index), IntPtr(sizeof(uint16_t))))));
         Jump(&exit);
     }
     Bind(&isUtf8);
     {
-        result = ZExtInt8ToInt32(Load(VariableType::INT8(), PtrAdd(dataUtf16,
+        result = ZExtInt8ToInt32(LoadPrimitive(VariableType::INT8(), PtrAdd(dataUtf16,
             PtrMul(ZExtInt32ToPtr(index), IntPtr(sizeof(uint8_t))))));
         Jump(&exit);
     }
@@ -1113,7 +1113,7 @@ GateRef BuiltinsStringStubBuilder::StringAt(const StringInfoGateRef &stringInfoG
     return ret;
 }
 
-GateRef BuiltinsStringStubBuilder::GetSingleCharCodeByIndex(GateRef str, GateRef index)
+GateRef BuiltinsStringStubBuilder::GetSingleCharCodeByIndex(GateRef glue, GateRef str, GateRef index)
 {
     // Note: This method cannot handle treestring.
     auto env = GetEnvironment();
@@ -1128,24 +1128,24 @@ GateRef BuiltinsStringStubBuilder::GetSingleCharCodeByIndex(GateRef str, GateRef
     Label isSlicedString(env);
     Label exit(env);
 
-    BRANCH(IsConstantString(str), &isConstantString, &lineStringCheck);
+    BRANCH(IsConstantString(glue, str), &isConstantString, &lineStringCheck);
     Bind(&isConstantString);
     {
         result = GetSingleCharCodeFromConstantString(str, index);
         Jump(&exit);
     }
     Bind(&lineStringCheck);
-    BRANCH(IsLineString(str), &isLineString, &slicedStringCheck);
+    BRANCH(IsLineString(glue, str), &isLineString, &slicedStringCheck);
     Bind(&isLineString);
     {
         result = GetSingleCharCodeFromLineString(str, index);
         Jump(&exit);
     }
     Bind(&slicedStringCheck);
-    BRANCH(IsSlicedString(str), &isSlicedString, &exit);
+    BRANCH(IsSlicedString(glue, str), &isSlicedString, &exit);
     Bind(&isSlicedString);
     {
-        result = GetSingleCharCodeFromSlicedString(str, index);
+        result = GetSingleCharCodeFromSlicedString(glue, str, index);
         Jump(&exit);
     }
 
@@ -1161,8 +1161,8 @@ GateRef BuiltinsStringStubBuilder::GetSingleCharCodeFromConstantString(GateRef s
     Label entry(env);
     env->SubCfgEntry(&entry);
     GateRef offset = ChangeStringTaggedPointerToInt64(PtrAdd(str, IntPtr(ConstantString::CONSTANT_DATA_OFFSET)));
-    GateRef dataAddr = Load(VariableType::NATIVE_POINTER(), offset, IntPtr(0));
-    GateRef result = ZExtInt8ToInt32(Load(VariableType::INT8(), PtrAdd(dataAddr,
+    GateRef dataAddr = LoadPrimitive(VariableType::NATIVE_POINTER(), offset, IntPtr(0));
+    GateRef result = ZExtInt8ToInt32(LoadPrimitive(VariableType::INT8(), PtrAdd(dataAddr,
         PtrMul(ZExtInt32ToPtr(index), IntPtr(sizeof(uint8_t))))));
     env->SubCfgExit();
     return result;
@@ -1181,13 +1181,13 @@ GateRef BuiltinsStringStubBuilder::GetSingleCharCodeFromLineString(GateRef str, 
     BRANCH(IsUtf16String(str), &isUtf16, &isUtf8);
     Bind(&isUtf16);
     {
-        result = ZExtInt16ToInt32(Load(VariableType::INT16(), PtrAdd(dataAddr,
+        result = ZExtInt16ToInt32(LoadPrimitive(VariableType::INT16(), PtrAdd(dataAddr,
             PtrMul(ZExtInt32ToPtr(index), IntPtr(sizeof(uint16_t))))));
         Jump(&exit);
     }
     Bind(&isUtf8);
     {
-        result = ZExtInt8ToInt32(Load(VariableType::INT8(), PtrAdd(dataAddr,
+        result = ZExtInt8ToInt32(LoadPrimitive(VariableType::INT8(), PtrAdd(dataAddr,
             PtrMul(ZExtInt32ToPtr(index), IntPtr(sizeof(uint8_t))))));
         Jump(&exit);
     }
@@ -1197,7 +1197,7 @@ GateRef BuiltinsStringStubBuilder::GetSingleCharCodeFromLineString(GateRef str, 
     return ret;
 }
 
-GateRef BuiltinsStringStubBuilder::GetSingleCharCodeFromSlicedString(GateRef str, GateRef index)
+GateRef BuiltinsStringStubBuilder::GetSingleCharCodeFromSlicedString(GateRef glue, GateRef str, GateRef index)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -1207,9 +1207,9 @@ GateRef BuiltinsStringStubBuilder::GetSingleCharCodeFromSlicedString(GateRef str
     Label notLineString(env);
     Label exit(env);
 
-    GateRef parent = Load(VariableType::JS_POINTER(), str, IntPtr(SlicedString::PARENT_OFFSET));
-    GateRef startIndex = Load(VariableType::INT32(), str, IntPtr(SlicedString::STARTINDEX_OFFSET));
-    BRANCH(IsLineString(parent), &isLineString, &notLineString);
+    GateRef parent = Load(VariableType::JS_POINTER(), glue, str, IntPtr(SlicedString::PARENT_OFFSET));
+    GateRef startIndex = LoadPrimitive(VariableType::INT32(), str, IntPtr(SlicedString::STARTINDEX_OFFSET));
+    BRANCH(IsLineString(glue, parent), &isLineString, &notLineString);
     Bind(&isLineString);
     {
         result = GetSingleCharCodeFromLineString(parent, Int32Add(startIndex, index));
@@ -1245,7 +1245,7 @@ GateRef BuiltinsStringStubBuilder::CreateStringBySingleCharCode(GateRef glue, Ga
     Bind(&utf8);
     {
         GateRef singleCharTable = GetSingleCharTable(glue);
-        result = GetValueFromTaggedArray(singleCharTable, charCode);
+        result = GetValueFromTaggedArray(glue, singleCharTable, charCode);
         Jump(&exit);
     }
     Bind(&utf16);
@@ -1290,19 +1290,19 @@ GateRef BuiltinsStringStubBuilder::CreateFromEcmaString(GateRef glue, GateRef in
     Label isUtf16(env);
     Label isUtf8(env);
     Label allocString(env);
-    GateRef dataUtf = GetNormalStringData(stringInfoGate);
+    GateRef dataUtf = GetNormalStringData(glue, stringInfoGate);
     BRANCH(IsUtf16String(stringInfoGate.GetString()), &isUtf16, &isUtf8);
     Bind(&isUtf16);
     {
         GateRef dataAddr = PtrAdd(dataUtf, PtrMul(ZExtInt32ToPtr(index), IntPtr(sizeof(uint16_t))));
-        data = Load(VariableType::INT16(), dataAddr);
+        data = LoadPrimitive(VariableType::INT16(), dataAddr);
         canBeCompressed = CanBeCompressed(dataAddr, Int32(1), true);
         Jump(&allocString);
     }
     Bind(&isUtf8);
     {
         GateRef dataAddr = PtrAdd(dataUtf, PtrMul(ZExtInt32ToPtr(index), IntPtr(sizeof(uint8_t))));
-        data = ZExtInt8ToInt16(Load(VariableType::INT8(), dataAddr));
+        data = ZExtInt8ToInt16(LoadPrimitive(VariableType::INT8(), dataAddr));
         canBeCompressed = CanBeCompressed(dataAddr, Int32(1), false);
         Jump(&allocString);
     }
@@ -1317,7 +1317,7 @@ GateRef BuiltinsStringStubBuilder::CreateFromEcmaString(GateRef glue, GateRef in
         Bind(&isUtf8Next);
         {
             GateRef singleCharTable = GetSingleCharTable(glue);
-            result = GetValueFromTaggedArray(singleCharTable, ZExtInt16ToInt32(*data));
+            result = GetValueFromTaggedArray(glue, singleCharTable, ZExtInt16ToInt32(*data));
             Jump(&exit);
         }
         Bind(&isUtf16Next);
@@ -1416,7 +1416,7 @@ GateRef BuiltinsStringStubBuilder::FastSubUtf8String(GateRef glue, GateRef from,
     Bind(&afterNew);
     {
         GateRef dst = ChangeStringTaggedPointerToInt64(PtrAdd(*result, IntPtr(LineEcmaString::DATA_OFFSET)));
-        GateRef source = PtrAdd(GetNormalStringData(stringInfoGate), ZExtInt32ToPtr(from));
+        GateRef source = PtrAdd(GetNormalStringData(glue, stringInfoGate), ZExtInt32ToPtr(from));
         CopyChars(glue, dst, source, len, IntPtr(sizeof(uint8_t)), VariableType::INT8());
         Jump(&exit);
     }
@@ -1441,7 +1441,7 @@ GateRef BuiltinsStringStubBuilder::FastSubUtf16String(GateRef glue, GateRef from
     Label isUtf16Next(env);
 
     GateRef fromOffset = PtrMul(ZExtInt32ToPtr(from), IntPtr(sizeof(uint16_t) / sizeof(uint8_t)));
-    GateRef source = PtrAdd(GetNormalStringData(stringInfoGate), fromOffset);
+    GateRef source = PtrAdd(GetNormalStringData(glue, stringInfoGate), fromOffset);
     GateRef canBeCompressed = CanBeCompressed(source, len, true);
     NewObjectStubBuilder newBuilder(this);
     newBuilder.SetParameters(glue, 0);
@@ -1457,7 +1457,7 @@ GateRef BuiltinsStringStubBuilder::FastSubUtf16String(GateRef glue, GateRef from
     }
     Bind(&afterNew);
     {
-        GateRef source1 = PtrAdd(GetNormalStringData(stringInfoGate), fromOffset);
+        GateRef source1 = PtrAdd(GetNormalStringData(glue, stringInfoGate), fromOffset);
         GateRef dst = ChangeStringTaggedPointerToInt64(PtrAdd(*result, IntPtr(LineEcmaString::DATA_OFFSET)));
         BRANCH(canBeCompressed, &isUtf8Next, &isUtf16Next);
         Bind(&isUtf8Next);
@@ -1502,7 +1502,7 @@ GateRef BuiltinsStringStubBuilder::GetSubstitution(GateRef glue, GateRef searchS
     replaceFlat.FlattenString(glue, replaceString, &replaceFlattenFastPath);
     Bind(&replaceFlattenFastPath);
     StringInfoGateRef replaceStringInfoGate(&replaceFlat);
-    GateRef nextDollarIndex = StringIndexOf(replaceStringInfoGate, dollarStringInfoGate, Int32(-1));
+    GateRef nextDollarIndex = StringIndexOf(glue, replaceStringInfoGate, dollarStringInfoGate, Int32(-1));
     BRANCH(Int32LessThan(nextDollarIndex, Int32(0)), &notFound, &slowPath);
     Bind(&notFound);
     {
@@ -1558,9 +1558,9 @@ void BuiltinsStringStubBuilder::CopyChars(GateRef glue, GateRef dst, GateRef sou
         Bind(&body);
         {
             len = Int32Sub(*len, Int32(elemInBatch));
-            GateRef elem = Load(VariableType::INT64(), *sourceTmp);
+            GateRef elem = LoadPrimitive(VariableType::INT64(), *sourceTmp);
             Store(VariableType::INT64(), glue, *dstTmp, IntPtr(0), elem);
-            elem = Load(VariableType::INT64(), PtrAdd(*sourceTmp, IntPtr(sizeof(int64_t))));
+            elem = LoadPrimitive(VariableType::INT64(), PtrAdd(*sourceTmp, IntPtr(sizeof(int64_t))));
             Store(VariableType::INT64(), glue, *dstTmp, IntPtr(sizeof(int64_t)), elem);
             Jump(&loopEnd);
         }
@@ -1581,7 +1581,7 @@ void BuiltinsStringStubBuilder::CopyChars(GateRef glue, GateRef dst, GateRef sou
         BRANCH_NO_WEIGHT(Int32GreaterThanOrEqual(*len, Int32(elemInInt64)), &storeTail8_16, &storeTail0_8);
         Bind(&storeTail8_16);
         {
-            GateRef elem = Load(VariableType::INT64(), *sourceTmp);
+            GateRef elem = LoadPrimitive(VariableType::INT64(), *sourceTmp);
             Store(VariableType::INT64(), glue, *dstTmp, IntPtr(0), elem);
             len = Int32Sub(*len, Int32(elemInInt64));
             sourceTmp = PtrAdd(*sourceTmp, IntPtr(sizeof(int64_t)));
@@ -1601,7 +1601,7 @@ void BuiltinsStringStubBuilder::CopyChars(GateRef glue, GateRef dst, GateRef sou
                 Bind(&body);
                 {
                     len = Int32Sub(*len, Int32(1));
-                    GateRef i = Load(type, *sourceTmp);
+                    GateRef i = Load(type, glue, *sourceTmp);
                     Store(type, glue, *dstTmp, IntPtr(0), i);
                     Jump(&tailLoopEnd);
                 }
@@ -1637,11 +1637,11 @@ GateRef BuiltinsStringStubBuilder::CanBeCompressed(GateRef data, GateRef len, bo
         Bind(&nextCount);
         {
             if (isUtf16) {
-                GateRef tmp = Load(VariableType::INT16(), data,
+                GateRef tmp = LoadPrimitive(VariableType::INT16(), data,
                     PtrMul(ZExtInt32ToPtr(*i), IntPtr(sizeof(uint16_t))));
                 BRANCH(IsASCIICharacter(ZExtInt16ToInt32(tmp)), &loopEnd, &isNotASCIICharacter);
             } else {
-                GateRef tmp = Load(VariableType::INT8(), data,
+                GateRef tmp = LoadPrimitive(VariableType::INT8(), data,
                     PtrMul(ZExtInt32ToPtr(*i), IntPtr(sizeof(uint8_t))));
                 BRANCH(IsASCIICharacter(ZExtInt8ToInt32(tmp)), &loopEnd, &isNotASCIICharacter);
             }
@@ -1686,7 +1686,7 @@ void BuiltinsStringStubBuilder::CopyUtf8AsUtf16(GateRef glue, GateRef dst, GateR
         Bind(&next);
         {
             len = Int32Sub(*len, Int32(1));
-            GateRef i = Load(VariableType::INT8(), *sourceTmp);
+            GateRef i = LoadPrimitive(VariableType::INT8(), *sourceTmp);
             Store(VariableType::INT16(), glue, *dstTmp, IntPtr(0), ZExtInt8ToInt16(i));
             Jump(&loopEnd);
         }
@@ -1727,7 +1727,7 @@ void BuiltinsStringStubBuilder::CopyUtf16AsUtf8(GateRef glue, GateRef dst, GateR
         Bind(&next);
         {
             len = Int32Sub(*len, Int32(1));
-            GateRef i = Load(VariableType::INT16(), *sourceTmp);
+            GateRef i = LoadPrimitive(VariableType::INT16(), *sourceTmp);
             Store(VariableType::INT8(), glue, *dstTmp, IntPtr(0), TruncInt16ToInt8(i));
             Jump(&loopEnd);
         }
@@ -1746,7 +1746,7 @@ void BuiltinsStringStubBuilder::CopyUtf16AsUtf8(GateRef glue, GateRef dst, GateR
 
 GateRef BuiltinsStringStubBuilder::GetUtf16Data(GateRef stringData, GateRef index)
 {
-    return ZExtInt16ToInt32(Load(VariableType::INT16(), PtrAdd(stringData,
+    return ZExtInt16ToInt32(LoadPrimitive(VariableType::INT16(), PtrAdd(stringData,
         PtrMul(ZExtInt32ToPtr(index), IntPtr(sizeof(uint16_t))))));
 }
 
@@ -1757,7 +1757,7 @@ GateRef BuiltinsStringStubBuilder::IsASCIICharacter(GateRef data)
 
 GateRef BuiltinsStringStubBuilder::GetUtf8Data(GateRef stringData, GateRef index)
 {
-    return ZExtInt8ToInt32(Load(VariableType::INT8(), PtrAdd(stringData,
+    return ZExtInt8ToInt32(LoadPrimitive(VariableType::INT8(), PtrAdd(stringData,
         PtrMul(ZExtInt32ToPtr(index), IntPtr(sizeof(uint8_t))))));
 }
 
@@ -1785,9 +1785,9 @@ GateRef BuiltinsStringStubBuilder::StringIndexOf(GateRef lhsData, bool lhsIsUtf8
     Label nextCount2(env);
     GateRef first;
     if (rhsIsUtf8) {
-        first = ZExtInt8ToInt32(Load(VariableType::INT8(), rhsData));
+        first = ZExtInt8ToInt32(LoadPrimitive(VariableType::INT8(), rhsData));
     } else {
-        first = ZExtInt16ToInt32(Load(VariableType::INT16(), rhsData));
+        first = ZExtInt16ToInt32(LoadPrimitive(VariableType::INT16(), rhsData));
     }
     Jump(&loopHead);
     LoopBegin(&loopHead);
@@ -1900,7 +1900,7 @@ void BuiltinsStringStubBuilder::StoreHasBackingStore(GateRef glue, GateRef objec
     Store(VariableType::INT32(), glue, object, IntPtr(SlicedString::BACKING_STORE_FLAG), hasBackingStore);
 }
 
-GateRef BuiltinsStringStubBuilder::StringIndexOf(const StringInfoGateRef &lStringInfoGate,
+GateRef BuiltinsStringStubBuilder::StringIndexOf(GateRef glue, const StringInfoGateRef &lStringInfoGate,
     const StringInfoGateRef &rStringInfoGate, GateRef pos)
 {
     auto env = GetEnvironment();
@@ -1948,8 +1948,8 @@ GateRef BuiltinsStringStubBuilder::StringIndexOf(const StringInfoGateRef &lStrin
                     GateRef posRMax = Int32Add(*posTag, rhsCount);
                     BRANCH(Int32GreaterThan(posRMax, lhsCount), &exit, &posRMaxNotGreaterLhs);
                     Bind(&posRMaxNotGreaterLhs);
-                    GateRef rhsData = GetNormalStringData(rStringInfoGate);
-                    GateRef lhsData = GetNormalStringData(lStringInfoGate);
+                    GateRef rhsData = GetNormalStringData(glue, rStringInfoGate);
+                    GateRef lhsData = GetNormalStringData(glue, lStringInfoGate);
                     BRANCH(IsUtf8String(rStringInfoGate.GetString()), &rhsIsUtf8, &rhsIsUtf16);
                     Bind(&rhsIsUtf8);
                     {
@@ -1999,21 +1999,21 @@ void FlatStringStubBuilder::FlattenString(GateRef glue, GateRef str, Label *fast
     Label notLineString(env);
     Label exit(env);
     length_ = GetLengthFromString(str);
-    BRANCH(IsLiteralString(str), &exit, &notLineString);
+    BRANCH(IsLiteralString(glue, str), &exit, &notLineString);
     Bind(&notLineString);
     {
         Label isTreeString(env);
         Label notTreeString(env);
         Label isSlicedString(env);
-        BRANCH(IsTreeString(str), &isTreeString, &notTreeString);
+        BRANCH(IsTreeString(glue, str), &isTreeString, &notTreeString);
         Bind(&isTreeString);
         {
             Label isFlat(env);
             Label notFlat(env);
-            BRANCH(TreeStringIsFlat(str), &isFlat, &notFlat);
+            BRANCH(TreeStringIsFlat(glue, str), &isFlat, &notFlat);
             Bind(&isFlat);
             {
-                flatString_.WriteVariable(GetFirstFromTreeString(str));
+                flatString_.WriteVariable(GetFirstFromTreeString(glue, str));
                 Jump(fastPath);
             }
             Bind(&notFlat);
@@ -2023,10 +2023,10 @@ void FlatStringStubBuilder::FlattenString(GateRef glue, GateRef str, Label *fast
             }
         }
         Bind(&notTreeString);
-        BRANCH(IsSlicedString(str), &isSlicedString, &exit);
+        BRANCH(IsSlicedString(glue, str), &isSlicedString, &exit);
         Bind(&isSlicedString);
         {
-            flatString_.WriteVariable(GetParentFromSlicedString(str));
+            flatString_.WriteVariable(GetParentFromSlicedString(glue, str));
             startIndex_.WriteVariable(GetStartIndexFromSlicedString(str));
             Jump(fastPath);
         }
@@ -2044,21 +2044,21 @@ void FlatStringStubBuilder::FlattenStringWithIndex(GateRef glue, GateRef str, Va
     auto env = GetEnvironment();
     Label notLineString(env);
     Label exit(env);
-    BRANCH(IsLiteralString(str), &exit, &notLineString);
+    BRANCH(IsLiteralString(glue, str), &exit, &notLineString);
     Bind(&notLineString);
     {
         Label isTreeString(env);
         Label notTreeString(env);
         Label isSlicedString(env);
-        BRANCH(IsTreeString(str), &isTreeString, &notTreeString);
+        BRANCH(IsTreeString(glue, str), &isTreeString, &notTreeString);
         Bind(&isTreeString);
         {
             Label isFlat(env);
             Label notFlat(env);
-            BRANCH(TreeStringIsFlat(str), &isFlat, &notFlat);
+            BRANCH(TreeStringIsFlat(glue, str), &isFlat, &notFlat);
             Bind(&isFlat);
             {
-                flatString_.WriteVariable(GetFirstFromTreeString(str));
+                flatString_.WriteVariable(GetFirstFromTreeString(glue, str));
                 Jump(fastPath);
             }
             Bind(&notFlat);
@@ -2068,10 +2068,10 @@ void FlatStringStubBuilder::FlattenStringWithIndex(GateRef glue, GateRef str, Va
             }
         }
         Bind(&notTreeString);
-        BRANCH(IsSlicedString(str), &isSlicedString, &exit);
+        BRANCH(IsSlicedString(glue, str), &isSlicedString, &exit);
         Bind(&isSlicedString);
         {
-            flatString_.WriteVariable(GetParentFromSlicedString(str));
+            flatString_.WriteVariable(GetParentFromSlicedString(glue, str));
             startIndex_.WriteVariable(GetStartIndexFromSlicedString(str));
             index->WriteVariable(Int32Add(*startIndex_, index->ReadVariable()));
             Jump(fastPath);
@@ -2084,7 +2084,7 @@ void FlatStringStubBuilder::FlattenStringWithIndex(GateRef glue, GateRef str, Va
     }
 }
 
-GateRef BuiltinsStringStubBuilder::GetStringDataFromLineOrConstantString(GateRef str)
+GateRef BuiltinsStringStubBuilder::GetStringDataFromLineOrConstantString(GateRef glue, GateRef str)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -2093,11 +2093,11 @@ GateRef BuiltinsStringStubBuilder::GetStringDataFromLineOrConstantString(GateRef
     Label isConstantString(env);
     Label isLineString(env);
     DEFVARIABLE(result, VariableType::NATIVE_POINTER(), IntPtr(0));
-    BRANCH(IsConstantString(str), &isConstantString, &isLineString);
+    BRANCH(IsConstantString(glue, str), &isConstantString, &isLineString);
     Bind(&isConstantString);
     {
         GateRef address = ChangeStringTaggedPointerToInt64(PtrAdd(str, IntPtr(ConstantString::CONSTANT_DATA_OFFSET)));
-        result = Load(VariableType::NATIVE_POINTER(), address, IntPtr(0));
+        result = LoadPrimitive(VariableType::NATIVE_POINTER(), address, IntPtr(0));
         Jump(&exit);
     }
     Bind(&isLineString);
@@ -2127,7 +2127,7 @@ void BuiltinsStringStubBuilder::Concat(GateRef glue, GateRef thisValue, GateRef 
 
         BRANCH(TaggedIsHeapObject(thisValue), &thisIsHeapObj, slowPath);
         Bind(&thisIsHeapObj);
-        BRANCH(IsString(thisValue), &isString, slowPath);
+        BRANCH(IsString(glue, thisValue), &isString, slowPath);
         Bind(&isString);
         {
             Label noPara(env);
@@ -2150,7 +2150,7 @@ void BuiltinsStringStubBuilder::Concat(GateRef glue, GateRef thisValue, GateRef 
                 Label notException1(env);
                 Label notException2(env);
                 GateRef arg0 = TaggedArgument(static_cast<size_t>(BuiltinsArgs::ARG0_OR_ARGV));
-                BRANCH(TaggedIsString(arg0), &arg0IsValid, slowPath);
+                BRANCH(TaggedIsString(glue, arg0), &arg0IsValid, slowPath);
                 Bind(&arg0IsValid);
                 {
                     result = StringConcat(glue, thisValue, arg0);
@@ -2160,7 +2160,7 @@ void BuiltinsStringStubBuilder::Concat(GateRef glue, GateRef thisValue, GateRef 
                     Bind(&notArgc1);
                     {
                         GateRef arg1 = TaggedArgument(static_cast<size_t>(BuiltinsArgs::ARG1));
-                        BRANCH(TaggedIsString(arg1), &arg1IsValid, slowPath);
+                        BRANCH(TaggedIsString(glue, arg1), &arg1IsValid, slowPath);
                         Bind(&arg1IsValid);
                         result = StringConcat(glue, *result, arg1);
                         BRANCH(TaggedIsException(*result), &writeRes, &notException2);
@@ -2168,7 +2168,7 @@ void BuiltinsStringStubBuilder::Concat(GateRef glue, GateRef thisValue, GateRef 
                         BRANCH(Int64Equal(IntPtr(2), numArgs), &writeRes, &notArgc2); // 2: number of parameters.
                         Bind(&notArgc2);
                         GateRef arg2 = TaggedArgument(static_cast<size_t>(BuiltinsArgs::ARG2));
-                        BRANCH(TaggedIsString(arg2), &arg2IsValid, slowPath);
+                        BRANCH(TaggedIsString(glue, arg2), &arg2IsValid, slowPath);
                         Bind(&arg2IsValid);
                         BRANCH(Int64Equal(IntPtr(3), numArgs), &argc3, slowPath); // 3: number of parameters.
                         Bind(&argc3);
@@ -2197,7 +2197,7 @@ void BuiltinsStringStubBuilder::ToLowerCase(GateRef glue, GateRef thisValue, [[m
 
         BRANCH(TaggedIsHeapObject(thisValue), &thisIsHeapObj, slowPath);
         Bind(&thisIsHeapObj);
-        BRANCH(IsString(thisValue), &isString, slowPath);
+        BRANCH(IsString(glue, thisValue), &isString, slowPath);
         Bind(&isString);
         {
             Label isUtf8(env);
@@ -2218,7 +2218,7 @@ void BuiltinsStringStubBuilder::ToLowerCase(GateRef glue, GateRef thisValue, [[m
                     thisFlat.FlattenString(glue, thisValue, &flattenFastPath);
                     Bind(&flattenFastPath);
                     StringInfoGateRef stringInfoGate(&thisFlat);
-                    GateRef dataUtf8 = GetNormalStringData(stringInfoGate);
+                    GateRef dataUtf8 = GetNormalStringData(glue, stringInfoGate);
                     GateRef dst = ChangeStringTaggedPointerToInt64(PtrAdd(res->ReadVariable(),
                         IntPtr(LineEcmaString::DATA_OFFSET)));
                     DEFVARIABLE(dstTmp, VariableType::NATIVE_POINTER(), dst);
@@ -2235,7 +2235,7 @@ void BuiltinsStringStubBuilder::ToLowerCase(GateRef glue, GateRef thisValue, [[m
                         Bind(&next);
                         {
                             len = Int32Sub(*len, Int32(1));
-                            GateRef i = Load(VariableType::INT8(), *sourceTmp);
+                            GateRef i = LoadPrimitive(VariableType::INT8(), *sourceTmp);
                             // 65: means 'A', 90: means 'Z'
                             GateRef needLower = BitAnd(Int8GreaterThanOrEqual(i, Int8(65)),
                                 Int8GreaterThanOrEqual(Int8(90), i));
@@ -2315,7 +2315,7 @@ GateRef BuiltinsStringStubBuilder::StringAdd(GateRef glue, GateRef leftString, G
                 GateRef isValidFirstOpt = IsFirstConcatInStringAdd(Equal(leftIsUtf8, rightIsUtf8), status);
                 GateRef isValidOpt = ConcatIsInStringAdd(Equal(leftIsUtf8, rightIsUtf8), status);
 
-                BRANCH_CIR(IsSpecialSlicedString(left), &isNotFirstConcat, &isFirstConcat);
+                BRANCH_CIR(IsSpecialSlicedString(glue, left), &isNotFirstConcat, &isFirstConcat);
                 builder_.Bind(&isFirstConcat);
                 {
                     Label fastPath(&builder_);
@@ -2327,7 +2327,7 @@ GateRef BuiltinsStringStubBuilder::StringAdd(GateRef glue, GateRef leftString, G
                         backStoreLength), &slowPath, &fastPath);
                     builder_.Bind(&fastPath);
                     {
-                        BRANCH_CIR(builder_.CanBeConcat(left, right, isValidFirstOpt),
+                        BRANCH_CIR(builder_.CanBeConcat(glue, left, right, isValidFirstOpt),
                             &canBeConcat, &slowPath);
                         builder_.Bind(&canBeConcat);
                         {
@@ -2335,8 +2335,8 @@ GateRef BuiltinsStringStubBuilder::StringAdd(GateRef glue, GateRef leftString, G
                             BRANCH_CIR(canBeCompressed, &canBeCompress, &canNotBeCompress);
                             builder_.Bind(&canBeCompress);
                             {
-                                GateRef leftSource = builder_.GetStringDataFromLineOrConstantString(left);
-                                GateRef rightSource = builder_.GetStringDataFromLineOrConstantString(right);
+                                GateRef leftSource = builder_.GetStringDataFromLineOrConstantString(glue, left);
+                                GateRef rightSource = builder_.GetStringDataFromLineOrConstantString(glue, right);
                                 GateRef leftDst = builder_.TaggedPointerToInt64(
                                     builder_.PtrAdd(*lineString, builder_.IntPtr(LineEcmaString::DATA_OFFSET)));
                                 GateRef rightDst = builder_.TaggedPointerToInt64(builder_.PtrAdd(leftDst,
@@ -2353,8 +2353,8 @@ GateRef BuiltinsStringStubBuilder::StringAdd(GateRef glue, GateRef leftString, G
                                 Label leftIsUtf16L(&builder_);
                                 Label rightIsUtf8L(&builder_);
                                 Label rightIsUtf16L(&builder_);
-                                GateRef leftSource = builder_.GetStringDataFromLineOrConstantString(left);
-                                GateRef rightSource = builder_.GetStringDataFromLineOrConstantString(right);
+                                GateRef leftSource = builder_.GetStringDataFromLineOrConstantString(glue, left);
+                                GateRef rightSource = builder_.GetStringDataFromLineOrConstantString(glue, right);
                                 GateRef leftDst = builder_.TaggedPointerToInt64(
                                     builder_.PtrAdd(*lineString, builder_.IntPtr(LineEcmaString::DATA_OFFSET)));
                                 GateRef rightDst = builder_.TaggedPointerToInt64(builder_.PtrAdd(leftDst,
@@ -2393,12 +2393,12 @@ GateRef BuiltinsStringStubBuilder::StringAdd(GateRef glue, GateRef leftString, G
                 builder_.Bind(&isNotFirstConcat);
                 {
                     Label fastPath(&builder_);
-                    BRANCH_CIR(builder_.CanBackStore(right, isValidOpt), &fastPath, &slowPath);
+                    BRANCH_CIR(builder_.CanBackStore(glue, right, isValidOpt), &fastPath, &slowPath);
                     builder_.Bind(&fastPath);
                     {
                         // left string length means current length,
                         // max length means the field which was already initialized.
-                        lineString = builder_.Load(VariableType::JS_POINTER(), left,
+                        lineString = builder_.Load(VariableType::JS_POINTER(), glue, left,
                                                    builder_.IntPtr(SlicedString::PARENT_OFFSET));
 
                         GateRef maxLength = builder_.GetLengthFromString(*lineString);
@@ -2425,8 +2425,8 @@ GateRef BuiltinsStringStubBuilder::StringAdd(GateRef glue, GateRef leftString, G
                                         builder_.Int32(EcmaString::STRING_LENGTH_SHIFT_COUNT));
                                     GateRef mixLength = builder_.Int32Or(len,
                                         builder_.Int32(EcmaString::STRING_COMPRESSED));
-                                    GateRef leftSource = builder_.GetStringDataFromLineOrConstantString(*lineString);
-                                    GateRef rightSource = builder_.GetStringDataFromLineOrConstantString(right);
+                                    GateRef leftSource = builder_.GetStringDataFromLineOrConstantString(glue, *lineString);
+                                    GateRef rightSource = builder_.GetStringDataFromLineOrConstantString(glue, right);
                                     GateRef leftDst = builder_.TaggedPointerToInt64(
                                         builder_.PtrAdd(newBackingStore,
                                         builder_.IntPtr(LineEcmaString::DATA_OFFSET)));
@@ -2452,8 +2452,8 @@ GateRef BuiltinsStringStubBuilder::StringAdd(GateRef glue, GateRef leftString, G
                                         builder_.Int32(EcmaString::STRING_LENGTH_SHIFT_COUNT));
                                     GateRef mixLength = builder_.Int32Or(len,
                                         builder_.Int32(EcmaString::STRING_UNCOMPRESSED));
-                                    GateRef leftSource = builder_.GetStringDataFromLineOrConstantString(*lineString);
-                                    GateRef rightSource = builder_.GetStringDataFromLineOrConstantString(right);
+                                    GateRef leftSource = builder_.GetStringDataFromLineOrConstantString(glue, *lineString);
+                                    GateRef rightSource = builder_.GetStringDataFromLineOrConstantString(glue, right);
                                     GateRef leftDst = builder_.TaggedPointerToInt64(
                                         builder_.PtrAdd(newBackingStore,
                                         builder_.IntPtr(LineEcmaString::DATA_OFFSET)));
@@ -2485,7 +2485,7 @@ GateRef BuiltinsStringStubBuilder::StringAdd(GateRef glue, GateRef leftString, G
                                     builder_.Int32(EcmaString::STRING_LENGTH_SHIFT_COUNT));
                                 GateRef mixLength = builder_.Int32Or(len,
                                     builder_.Int32(EcmaString::STRING_COMPRESSED));
-                                GateRef rightSource = builder_.GetStringDataFromLineOrConstantString(right);
+                                GateRef rightSource = builder_.GetStringDataFromLineOrConstantString(glue, right);
                                 GateRef leftDst = builder_.TaggedPointerToInt64(
                                     builder_.PtrAdd(*lineString, builder_.IntPtr(LineEcmaString::DATA_OFFSET)));
                                 GateRef rightDst = builder_.TaggedPointerToInt64(builder_.PtrAdd(leftDst,
@@ -2506,7 +2506,7 @@ GateRef BuiltinsStringStubBuilder::StringAdd(GateRef glue, GateRef leftString, G
                                     builder_.Int32(EcmaString::STRING_LENGTH_SHIFT_COUNT));
                                 GateRef mixLength = builder_.Int32Or(len,
                                     builder_.Int32(EcmaString::STRING_UNCOMPRESSED));
-                                GateRef rightSource = builder_.GetStringDataFromLineOrConstantString(right);
+                                GateRef rightSource = builder_.GetStringDataFromLineOrConstantString(glue, right);
                                 GateRef leftDst = builder_.TaggedPointerToInt64(
                                     builder_.PtrAdd(*lineString, builder_.IntPtr(LineEcmaString::DATA_OFFSET)));
                                 GateRef rightDst = builder_.TaggedPointerToInt64(builder_.PtrAdd(leftDst,
@@ -2637,11 +2637,11 @@ GateRef BuiltinsStringStubBuilder::AllocateSlicedString(GateRef glue, GateRef fl
     return ret;
 }
 
-GateRef BuiltinsStringStubBuilder::IsSpecialSlicedString(GateRef obj)
+GateRef BuiltinsStringStubBuilder::IsSpecialSlicedString(GateRef glue, GateRef obj)
 {
     auto env = GetEnvironment();
     auto &builder_ = *env->GetBuilder();
-    GateRef objectType = GetObjectType(LoadHClass(obj));
+    GateRef objectType = GetObjectType(LoadHClass(glue, obj));
     GateRef isSlicedString = Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::SLICED_STRING)));
     Label entry(env);
     builder_.SubCfgEntry(&entry);
@@ -2651,7 +2651,7 @@ GateRef BuiltinsStringStubBuilder::IsSpecialSlicedString(GateRef obj)
     BRANCH_CIR(isSlicedString, &isSlicedStr, &exit);
     builder_.Bind(&isSlicedStr);
     {
-        GateRef hasBackingStore = builder_.Load(VariableType::INT32(), obj,
+        GateRef hasBackingStore = builder_.LoadWithoutBarrier(VariableType::INT32(), obj,
                                                 builder_.IntPtr(SlicedString::BACKING_STORE_FLAG));
         result = builder_.Int32Equal(hasBackingStore, builder_.Int32(EcmaString::HAS_BACKING_STORE));
         builder_.Jump(&exit);
@@ -2763,8 +2763,8 @@ GateRef BuiltinsStringStubBuilder::StringConcat(GateRef glue, GateRef leftString
                 }
                 Bind(&isUtf8Next);
                 {
-                    GateRef leftSource = GetStringDataFromLineOrConstantString(leftString);
-                    GateRef rightSource = GetStringDataFromLineOrConstantString(rightString);
+                    GateRef leftSource = GetStringDataFromLineOrConstantString(glue, leftString);
+                    GateRef rightSource = GetStringDataFromLineOrConstantString(glue, rightString);
                     GateRef leftDst = ChangeStringTaggedPointerToInt64(
                         PtrAdd(*result, IntPtr(LineEcmaString::DATA_OFFSET)));
                     GateRef rightDst = ChangeStringTaggedPointerToInt64(PtrAdd(leftDst, ZExtInt32ToPtr(leftLength)));
@@ -2778,8 +2778,8 @@ GateRef BuiltinsStringStubBuilder::StringConcat(GateRef glue, GateRef leftString
                     Label leftIsUtf16L(env);
                     Label rightIsUtf8L(env);
                     Label rightIsUtf16L(env);
-                    GateRef leftSource = GetStringDataFromLineOrConstantString(leftString);
-                    GateRef rightSource = GetStringDataFromLineOrConstantString(rightString);
+                    GateRef leftSource = GetStringDataFromLineOrConstantString(glue, leftString);
+                    GateRef rightSource = GetStringDataFromLineOrConstantString(glue, rightString);
                     GateRef leftDst = ChangeStringTaggedPointerToInt64(
                         PtrAdd(*result, IntPtr(LineEcmaString::DATA_OFFSET)));
                     GateRef rightDst = ChangeStringTaggedPointerToInt64(
@@ -2830,7 +2830,7 @@ GateRef BuiltinsStringStubBuilder::StringConcat(GateRef glue, GateRef leftString
     return ret;
 }
 
-void BuiltinsStringStubBuilder::LocaleCompare([[maybe_unused]] GateRef glue, GateRef thisValue, GateRef numArgs,
+void BuiltinsStringStubBuilder::LocaleCompare(GateRef glue, GateRef thisValue, GateRef numArgs,
                                               [[maybe_unused]] Variable *res, [[maybe_unused]] Label *exit,
                                               Label *slowPath)
 {
@@ -2843,19 +2843,19 @@ void BuiltinsStringStubBuilder::LocaleCompare([[maybe_unused]] GateRef glue, Gat
         Label thisValueIsString(env);
         Label fristArgIsString(env);
         Label arg0IsHeapObj(env);
-        BRANCH(IsString(thisValue), &thisValueIsString, slowPath);
+        BRANCH(IsString(glue, thisValue), &thisValueIsString, slowPath);
         Bind(&thisValueIsString);
         GateRef arg0 = GetCallArg0(numArgs);
         BRANCH(TaggedIsHeapObject(arg0), &arg0IsHeapObj, slowPath);
         Bind(&arg0IsHeapObj);
-        BRANCH(IsString(arg0), &fristArgIsString, slowPath);
+        BRANCH(IsString(glue, arg0), &fristArgIsString, slowPath);
         Bind(&fristArgIsString);
 #ifdef ARK_SUPPORT_INTL
         GateRef locales = GetCallArg1(numArgs);
 
         GateRef options = GetCallArg2(numArgs);
         GateRef localesIsUndefOrString =
-            LogicOrBuilder(env).Or(TaggedIsUndefined(locales)).Or(TaggedIsString(locales)).Done();
+            LogicOrBuilder(env).Or(TaggedIsUndefined(locales)).Or(TaggedIsString(glue, locales)).Done();
         GateRef cacheable = LogicAndBuilder(env).And(localesIsUndefOrString).And(TaggedIsUndefined(options)).Done();
         Label optionsIsString(env);
         Label cacheAble(env);
@@ -2893,11 +2893,11 @@ void BuiltinsStringStubBuilder::GetStringIterator(GateRef glue, GateRef thisValu
     Bind(&thisIsHeapObj);
     {
         Label thisValueIsString(env);
-        BRANCH(IsString(thisValue), &thisValueIsString, slowPath);
+        BRANCH(IsString(glue, thisValue), &thisValueIsString, slowPath);
         Bind(&thisValueIsString);
         GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
-        GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
-        GateRef strIterClass = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv,
+        GateRef glueGlobalEnv = LoadPrimitive(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
+        GateRef strIterClass = GetGlobalEnvValue(VariableType::JS_ANY(), glue, glueGlobalEnv,
                                                  GlobalEnv::STRING_ITERATOR_CLASS_INDEX);
         Label afterNew(env);
         NewObjectStubBuilder newBuilder(this);
@@ -2926,20 +2926,20 @@ void BuiltinsStringStubBuilder::StringIteratorNext(GateRef glue, GateRef thisVal
     Label iterDone(env);
     BRANCH(TaggedIsHeapObject(thisValue), &thisIsHeapObj, slowPath);
     Bind(&thisIsHeapObj);
-    BRANCH(TaggedIsStringIterator(thisValue), &thisIsStringIterator, slowPath);
+    BRANCH(TaggedIsStringIterator(glue, thisValue), &thisIsStringIterator, slowPath);
     Bind(&thisIsStringIterator);
-    GateRef str = Load(VariableType::JS_POINTER(), thisValue, IntPtr(JSStringIterator::ITERATED_STRING_OFFSET));
+    GateRef str = Load(VariableType::JS_POINTER(), glue, thisValue, IntPtr(JSStringIterator::ITERATED_STRING_OFFSET));
     BRANCH(TaggedIsUndefined(str), &iterDone, &strNotUndefined);
     Bind(&strNotUndefined);
     BRANCH(TaggedIsHeapObject(str), &strIsHeapObj, slowPath);
     Bind(&strIsHeapObj);
-    BRANCH(TaggedIsString(str), &strIsString, slowPath);
+    BRANCH(TaggedIsString(glue, str), &strIsString, slowPath);
     Bind(&strIsString);
     {
         Label getFirst(env);
         Label afterFlat(env);
         Label getStringFromSingleCharTable(env);
-        GateRef position = Load(VariableType::INT32(), thisValue,
+        GateRef position = LoadPrimitive(VariableType::INT32(), thisValue,
                                 IntPtr(JSStringIterator::STRING_ITERATOR_NEXT_INDEX_OFFSET));
         GateRef len = GetLengthFromString(str);
         BRANCH(Int32GreaterThanOrEqual(position, len), &iterDone, &getFirst);
@@ -2948,12 +2948,12 @@ void BuiltinsStringStubBuilder::StringIteratorNext(GateRef glue, GateRef thisVal
         strFlat.FlattenString(glue, str, &afterFlat);
         Bind(&afterFlat);
         StringInfoGateRef strInfo(&strFlat);
-        GateRef first = StringAt(strInfo, position);
+        GateRef first = StringAt(glue, strInfo, position);
         GateRef canStoreAsUtf8 = IsASCIICharacter(first);
         BRANCH(canStoreAsUtf8, &getStringFromSingleCharTable, slowPath);
         Bind(&getStringFromSingleCharTable);
         GateRef singleCharTable = GetSingleCharTable(glue);
-        GateRef firstStr = GetValueFromTaggedArray(singleCharTable, ZExtInt16ToInt32(first));
+        GateRef firstStr = GetValueFromTaggedArray(glue, singleCharTable, ZExtInt16ToInt32(first));
         Store(VariableType::INT32(), glue, thisValue, IntPtr(JSStringIterator::STRING_ITERATOR_NEXT_INDEX_OFFSET),
               Int32Add(position, Int32(1)));
         // CreateIterResultObject(firstStr, false)
@@ -3110,7 +3110,7 @@ GateRef BuiltinsStringStubBuilder::IsSubStringAt(GateRef lhsData, bool lhsIsUtf8
     return ret;
 }
 
-GateRef BuiltinsStringStubBuilder::IsSubStringAt(const StringInfoGateRef &lStringInfoGate,
+GateRef BuiltinsStringStubBuilder::IsSubStringAt(GateRef glue, const StringInfoGateRef &lStringInfoGate,
                                                  const StringInfoGateRef &rStringInfoGate, GateRef pos)
 {
     auto env = GetEnvironment();
@@ -3122,8 +3122,8 @@ GateRef BuiltinsStringStubBuilder::IsSubStringAt(const StringInfoGateRef &lStrin
 
     DEFVARIABLE(result, VariableType::JS_ANY(), TaggedFalse());
     GateRef rhsCount = rStringInfoGate.GetLength();
-    GateRef rhsData = GetNormalStringData(rStringInfoGate);
-    GateRef lhsData = GetNormalStringData(lStringInfoGate);
+    GateRef rhsData = GetNormalStringData(glue, rStringInfoGate);
+    GateRef lhsData = GetNormalStringData(glue, lStringInfoGate);
     BRANCH(IsUtf8String(rStringInfoGate.GetString()), &rhsIsUtf8, &rhsIsUtf16);
     Bind(&rhsIsUtf8);
     {
@@ -3194,13 +3194,13 @@ void BuiltinsStringStubBuilder::StartsWith(GateRef glue, GateRef thisValue, Gate
     {
         BRANCH(TaggedIsHeapObject(thisValue), &thisIsHeapobject, slowPath);
         Bind(&thisIsHeapobject);
-        BRANCH(IsString(thisValue), &isString, slowPath);
+        BRANCH(IsString(glue, thisValue), &isString, slowPath);
         Bind(&isString);
         {
             GateRef searchTag = GetCallArg0(numArgs);
             BRANCH(TaggedIsHeapObject(searchTag), &searchTagIsHeapObject, slowPath);
             Bind(&searchTagIsHeapObject);
-            BRANCH(IsString(searchTag), &isSearchString, slowPath);
+            BRANCH(IsString(glue, searchTag), &isSearchString, slowPath);
             Bind(&isSearchString);
             {
                 GateRef thisLen = GetLengthFromString(thisValue);
@@ -3267,7 +3267,7 @@ void BuiltinsStringStubBuilder::StartsWith(GateRef glue, GateRef thisValue, Gate
                         {
                             StringInfoGateRef thisStringInfoGate(&thisFlat);
                             StringInfoGateRef searchStringInfoGate(&searchFlat);
-                            GateRef result = IsSubStringAt(thisStringInfoGate, searchStringInfoGate, *pos);
+                            GateRef result = IsSubStringAt(glue, thisStringInfoGate, searchStringInfoGate, *pos);
                             res->WriteVariable(result);
                             Jump(exit);
                         }
@@ -3311,7 +3311,7 @@ void BuiltinsStringStubBuilder::EndsWith(GateRef glue, GateRef thisValue, GateRe
     {
         BRANCH(TaggedIsHeapObject(thisValue), &thisIsHeapObject, slowPath);
         Bind(&thisIsHeapObject);
-        BRANCH(IsString(thisValue), &thisIsString, slowPath);
+        BRANCH(IsString(glue, thisValue), &thisIsString, slowPath);
         Bind(&thisIsString);
         BRANCH(Int64GreaterThanOrEqual(IntPtr(0), numArgs), slowPath, &searchTagExists);
         Bind(&searchTagExists);
@@ -3319,7 +3319,7 @@ void BuiltinsStringStubBuilder::EndsWith(GateRef glue, GateRef thisValue, GateRe
             GateRef searchTag = GetCallArg0(numArgs);
             BRANCH(TaggedIsHeapObject(searchTag), &searchTagIsHeapObject, slowPath);
             Bind(&searchTagIsHeapObject);
-            BRANCH(IsString(searchTag), &searchTagIsString, slowPath);
+            BRANCH(IsString(glue, searchTag), &searchTagIsString, slowPath);
             Bind(&searchTagIsString);
             {
                 GateRef thisLen = GetLengthFromString(thisValue);
@@ -3376,7 +3376,7 @@ void BuiltinsStringStubBuilder::EndsWith(GateRef glue, GateRef thisValue, GateRe
                                 {
                                     StringInfoGateRef thisStringInfoGate(&thisFlat);
                                     StringInfoGateRef searchStringInfoGate(&searchFlat);
-                                    GateRef result = IsSubStringAt(thisStringInfoGate, searchStringInfoGate, *startPos);
+                                    GateRef result = IsSubStringAt(glue, thisStringInfoGate, searchStringInfoGate, *startPos);
                                     res->WriteVariable(result);
                                     Jump(exit);
                                 }
@@ -3406,7 +3406,7 @@ void BuiltinsStringStubBuilder::TrimStart(GateRef glue, GateRef thisValue, [[may
         Label thisIsString(env);
         BRANCH(TaggedIsHeapObject(thisValue), &thisIsHeapObj, slowPath);
         Bind(&thisIsHeapObj);
-        BRANCH(IsString(thisValue), &thisIsString, slowPath);
+        BRANCH(IsString(glue, thisValue), &thisIsString, slowPath);
         Bind(&thisIsString);
         GateRef result = EcmaStringTrim(glue, thisValue, Int32(1)); // 1: mode = TrimMode::start
         res->WriteVariable(result);
@@ -3426,7 +3426,7 @@ void BuiltinsStringStubBuilder::TrimEnd(GateRef glue, GateRef thisValue, [[maybe
         Label thisIsString(env);
         BRANCH(TaggedIsHeapObject(thisValue), &thisIsHeapObj, slowPath);
         Bind(&thisIsHeapObj);
-        BRANCH(IsString(thisValue), &thisIsString, slowPath);
+        BRANCH(IsString(glue, thisValue), &thisIsString, slowPath);
         Bind(&thisIsString);
         GateRef result = EcmaStringTrim(glue, thisValue, Int32(-1)); // -1: mode = TrimMode::end
         res->WriteVariable(result);
@@ -3446,7 +3446,7 @@ void BuiltinsStringStubBuilder::TrimLeft(GateRef glue, GateRef thisValue, [[mayb
         Label thisIsString(env);
         BRANCH(TaggedIsHeapObject(thisValue), &thisIsHeapObj, slowPath);
         Bind(&thisIsHeapObj);
-        BRANCH(IsString(thisValue), &thisIsString, slowPath);
+        BRANCH(IsString(glue, thisValue), &thisIsString, slowPath);
         Bind(&thisIsString);
         GateRef result = EcmaStringTrim(glue, thisValue, Int32(1)); // 1: mode = TrimMode::start
         res->WriteVariable(result);
@@ -3466,7 +3466,7 @@ void BuiltinsStringStubBuilder::TrimRight(GateRef glue, GateRef thisValue, [[may
         Label thisIsString(env);
         BRANCH(TaggedIsHeapObject(thisValue), &thisIsHeapObj, slowPath);
         Bind(&thisIsHeapObj);
-        BRANCH(IsString(thisValue), &thisIsString, slowPath);
+        BRANCH(IsString(glue, thisValue), &thisIsString, slowPath);
         Bind(&thisIsString);
         GateRef result = EcmaStringTrim(glue, thisValue, Int32(-1)); // -1: mode = TrimMode::end
         res->WriteVariable(result);
@@ -3507,7 +3507,7 @@ void BuiltinsStringStubBuilder::PadStart(GateRef glue, GateRef thisValue, GateRe
     {
         BRANCH(TaggedIsHeapObject(thisValue), &thisIsHeapobject, slowPath);
         Bind(&thisIsHeapobject);
-        BRANCH(IsString(thisValue), &isString, slowPath);
+        BRANCH(IsString(glue, thisValue), &isString, slowPath);
         Bind(&isString);
         {
             GateRef newLength = GetCallArg0(numArgs);
@@ -3548,7 +3548,7 @@ void BuiltinsStringStubBuilder::PadStart(GateRef glue, GateRef thisValue, GateRe
                     GateRef panTag = GetCallArg1(numArgs);
                     BRANCH(TaggedIsHeapObject(panTag), &padTagIsHeapObject, slowPath);
                     Bind(&padTagIsHeapObject);
-                    BRANCH(IsString(panTag), &isPanString, slowPath);
+                    BRANCH(IsString(glue, panTag), &isPanString, slowPath);
                     Bind(&isPanString);
                     GateRef padStringLen = GetLengthFromString(panTag);
                     BRANCH(Int32LessThanOrEqual(padStringLen, Int32(0)), slowPath, &padStringNotEmpty);
@@ -3632,7 +3632,7 @@ void BuiltinsStringStubBuilder::PadEnd(GateRef glue, GateRef thisValue, GateRef 
     {
         BRANCH(TaggedIsHeapObject(thisValue), &thisIsHeapobject, slowPath);
         Bind(&thisIsHeapobject);
-        BRANCH(IsString(thisValue), &isString, slowPath);
+        BRANCH(IsString(glue, thisValue), &isString, slowPath);
         Bind(&isString);
         {
             GateRef newLength = GetCallArg0(numArgs);
@@ -3674,7 +3674,7 @@ void BuiltinsStringStubBuilder::PadEnd(GateRef glue, GateRef thisValue, GateRef 
                     GateRef panTag = GetCallArg1(numArgs);
                     BRANCH(TaggedIsHeapObject(panTag), &padTagIsHeapObject, slowPath);
                     Bind(&padTagIsHeapObject);
-                    BRANCH(IsString(panTag), &isPanString, slowPath);
+                    BRANCH(IsString(glue, panTag), &isPanString, slowPath);
                     Bind(&isPanString);
                     {
                         GateRef padStringLen = GetLengthFromString(panTag);

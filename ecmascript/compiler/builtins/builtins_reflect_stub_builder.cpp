@@ -23,7 +23,7 @@ void BuiltinsReflectStubBuilder::Get(Variable *result, Label *exit, Label *slowP
     auto env = GetEnvironment();
     GateRef obj = GetCallArg0(numArgs_);
     Label isEcmaObject(env);
-    BRANCH(IsEcmaObject(obj), &isEcmaObject, slowPath);
+    BRANCH(IsEcmaObject(glue_, obj), &isEcmaObject, slowPath);
     Bind(&isEcmaObject);
     {
         GateRef key = GetCallArg1(numArgs_);

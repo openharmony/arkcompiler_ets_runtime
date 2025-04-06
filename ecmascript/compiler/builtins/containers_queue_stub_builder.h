@@ -33,7 +33,7 @@ public:
 BUILTINS_WITH_CONTAINERS_QUEUE_STUB_BUILDER(DECLARE_CONTAINERS_QUEUE_STUB_BUILDER)
 #undef DECLARE_CONTAINERS_QUEUE_STUB_BUILDER
 
-    GateRef GetArrayLength(GateRef obj)
+    GateRef GetArrayLength(GateRef glue, GateRef obj)
     {
         auto env = GetEnvironment();
         Label entry(env);
@@ -42,8 +42,8 @@ BUILTINS_WITH_CONTAINERS_QUEUE_STUB_BUILDER(DECLARE_CONTAINERS_QUEUE_STUB_BUILDE
         Label endGreatBeging(env);
         Label endNotGreatBeging(env);
         DEFVARIABLE(length, VariableType::INT32(), Int32(0));
-        GateRef begin = Load(VariableType::INT32(), obj, IntPtr(JSAPIQueue::FRONT_OFFSET));
-        GateRef end = Load(VariableType::INT32(), obj, IntPtr(JSAPIQueue::TAIL_OFFSET));
+        GateRef begin = LoadPrimitive(VariableType::INT32(), obj, IntPtr(JSAPIQueue::FRONT_OFFSET));
+        GateRef end = LoadPrimitive(VariableType::INT32(), obj, IntPtr(JSAPIQueue::TAIL_OFFSET));
         BRANCH(Int32GreaterThanOrEqual(end, begin), &endGreatBeging, &endNotGreatBeging);
         Bind(&endGreatBeging);
         {
@@ -53,8 +53,8 @@ BUILTINS_WITH_CONTAINERS_QUEUE_STUB_BUILDER(DECLARE_CONTAINERS_QUEUE_STUB_BUILDE
         Bind(&endNotGreatBeging);
         {
             GateRef elementsOffset = IntPtr(JSObject::ELEMENTS_OFFSET);
-            GateRef elements = Load(VariableType::JS_POINTER(), obj, elementsOffset);
-            GateRef elementsSize = Load(VariableType::INT32(), elements, IntPtr(TaggedArray::LENGTH_OFFSET));
+            GateRef elements = Load(VariableType::JS_POINTER(), glue, obj, elementsOffset);
+            GateRef elementsSize = LoadPrimitive(VariableType::INT32(), elements, IntPtr(TaggedArray::LENGTH_OFFSET));
             length = Int32Add(Int32Sub(end, begin), elementsSize);
             Jump(&exit);
         }
@@ -64,27 +64,27 @@ BUILTINS_WITH_CONTAINERS_QUEUE_STUB_BUILDER(DECLARE_CONTAINERS_QUEUE_STUB_BUILDE
         return ret;
     }
 
-    GateRef Get(GateRef obj, GateRef index)
+    GateRef Get(GateRef glue, GateRef obj, GateRef index)
     {
         GateRef elementsOffset = IntPtr(JSObject::ELEMENTS_OFFSET);
-        GateRef elements = Load(VariableType::JS_POINTER(), obj, elementsOffset);
-        GateRef capacity = Load(VariableType::INT32(), elements, IntPtr(TaggedArray::LENGTH_OFFSET));
-        GateRef front = Load(VariableType::INT32(), obj, IntPtr(JSAPIQueue::FRONT_OFFSET));
+        GateRef elements = Load(VariableType::JS_POINTER(), glue, obj, elementsOffset);
+        GateRef capacity = LoadPrimitive(VariableType::INT32(), elements, IntPtr(TaggedArray::LENGTH_OFFSET));
+        GateRef front = LoadPrimitive(VariableType::INT32(), obj, IntPtr(JSAPIQueue::FRONT_OFFSET));
         GateRef curIndex = Int32Mod(Int32Add(front, index), capacity);
-        return GetValueFromTaggedArray(elements, curIndex);
+        return GetValueFromTaggedArray(glue, elements, curIndex);
     }
 
-    GateRef GetNextPosition(GateRef obj, GateRef index)
+    GateRef GetNextPosition(GateRef glue, GateRef obj, GateRef index)
     {
         GateRef elementsOffset = IntPtr(JSObject::ELEMENTS_OFFSET);
-        GateRef elements = Load(VariableType::JS_POINTER(), obj, elementsOffset);
-        GateRef elementsSize = Load(VariableType::INT32(), elements, IntPtr(TaggedArray::LENGTH_OFFSET));
+        GateRef elements = Load(VariableType::JS_POINTER(), glue, obj, elementsOffset);
+        GateRef elementsSize = LoadPrimitive(VariableType::INT32(), elements, IntPtr(TaggedArray::LENGTH_OFFSET));
         return Int32Mod(Int32Add(index, Int32(1)), elementsSize);
     }
 
     GateRef GetCurrentFront(GateRef obj)
     {
-        return Load(VariableType::INT32(), obj, IntPtr(JSAPIQueue::FRONT_OFFSET));
+        return LoadPrimitive(VariableType::INT32(), obj, IntPtr(JSAPIQueue::FRONT_OFFSET));
     }
 };
 }  // namespace panda::ecmascript::kungfu

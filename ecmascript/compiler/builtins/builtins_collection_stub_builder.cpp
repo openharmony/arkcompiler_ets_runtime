@@ -28,7 +28,7 @@ void BuiltinsCollectionStubBuilder<CollectionType>::CheckCollectionObj(Label *th
 {
     // check target obj
     auto jsType = std::is_same_v<CollectionType, JSSet> ? JSType::JS_SET : JSType::JS_MAP;
-    GateRef isJsCollectionObj = IsJSObjectType(thisValue_, jsType);
+    GateRef isJsCollectionObj = IsJSObjectType(glue_, thisValue_, jsType);
     BRANCH(isJsCollectionObj, thisCollectionObj, slowPath);
 }
 
@@ -129,7 +129,7 @@ void BuiltinsCollectionStubBuilder<CollectionType>::ForEach(Variable *result, La
     Label heapObj(env);
     BRANCH(TaggedIsHeapObject(callbackFnHandle), &heapObj, slowPath);
     Bind(&heapObj);
-    BRANCH(IsCallable(callbackFnHandle), &callable, slowPath);
+    BRANCH(IsCallable(glue_, callbackFnHandle), &callable, slowPath);
     Bind(&callable);
 
     GateRef linkedTable = GetLinked();

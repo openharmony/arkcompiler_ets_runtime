@@ -33,18 +33,18 @@ public:
 BUILTINS_WITH_CONTAINERS_HASHMAP_STUB_BUILDER(DECLARE_CONTAINERS_HASHMAP_STUB_BUILDER)
 #undef DECLARE_CONTAINERS_HASHMAP_STUB_BUILDER
 
-    GateRef GetTableLength(GateRef obj)
+    GateRef GetTableLength(GateRef glue, GateRef obj)
     {
         GateRef tableOffset = IntPtr(JSAPIHashMap::HASHMAP_TABLE_INDEX);
-        GateRef table = Load(VariableType::JS_POINTER(), obj, tableOffset);
+        GateRef table = Load(VariableType::JS_POINTER(), glue, obj, tableOffset);
         return GetLengthOfTaggedArray(table);
     }
 
-    GateRef GetNode(GateRef obj, GateRef index)
+    GateRef GetNode(GateRef glue, GateRef obj, GateRef index)
     {
         GateRef tableOffset = IntPtr(JSAPIHashMap::HASHMAP_TABLE_INDEX);
-        GateRef table = Load(VariableType::JS_POINTER(), obj, tableOffset);
-        return GetValueFromTaggedArray(table, index);
+        GateRef table = Load(VariableType::JS_POINTER(), glue, obj, tableOffset);
+        return GetValueFromTaggedArray(glue, table, index);
     }
 };
 }  // namespace panda::ecmascript::kungfu

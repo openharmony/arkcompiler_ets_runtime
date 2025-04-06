@@ -204,7 +204,8 @@ namespace panda::ecmascript {
     V(ObjectCopy)                              \
     V(FillObject)                              \
     V(ReverseArray)                            \
-    V(LrInt)
+    V(LrInt)                                   \
+    V(ReadBarrier)
 
 #define RUNTIME_STUB_WITH_GC_LIST(V)            \
     V(HeapAlloc)                                \

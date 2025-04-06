@@ -33,19 +33,19 @@ public:
 BUILTINS_WITH_CONTAINERS_LIST_STUB_BUILDER(DECLARE_CONTAINERS_LIST_STUB_BUILDER)
 #undef DECLARE_CONTAINERS_LIST_STUB_BUILDER
 
-    GateRef GetTableLength(GateRef obj)
+    GateRef GetTableLength(GateRef glue, GateRef obj)
     {
         GateRef tableOffset = IntPtr(JSAPILinkedList::DOUBLE_LIST_OFFSET);
-        GateRef table = Load(VariableType::JS_POINTER(), obj, tableOffset);
-        GateRef value = GetValueFromTaggedArray(table, Int32(TaggedDoubleList::NUMBER_OF_NODE_INDEX));
+        GateRef table = Load(VariableType::JS_POINTER(), glue, obj, tableOffset);
+        GateRef value = GetValueFromTaggedArray(glue, table, Int32(TaggedDoubleList::NUMBER_OF_NODE_INDEX));
         return TaggedGetInt(value);
     }
 
-    GateRef GetNode(GateRef obj, GateRef index)
+    GateRef GetNode(GateRef glue, GateRef obj, GateRef index)
     {
         GateRef tableOffset = IntPtr(JSAPILinkedList::DOUBLE_LIST_OFFSET);
-        GateRef table = Load(VariableType::JS_POINTER(), obj, tableOffset);
-        return GetValueFromTaggedArray(table, index);
+        GateRef table = Load(VariableType::JS_POINTER(), glue, obj, tableOffset);
+        return GetValueFromTaggedArray(glue, table, index);
     }
 };
 }  // namespace panda::ecmascript::kungfu

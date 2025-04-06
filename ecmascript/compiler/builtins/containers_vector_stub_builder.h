@@ -35,19 +35,19 @@ BUILTINS_WITH_CONTAINERS_VECTOR_STUB_BUILDER(DECLARE_CONTAINERS_VECTOR_STUB_BUIL
 
     GateRef GetSize(GateRef obj)
     {
-        return Load(VariableType::INT32(), obj, IntPtr(JSAPIVector::ELEMENT_COUNT_OFFSET));
+        return LoadPrimitive(VariableType::INT32(), obj, IntPtr(JSAPIVector::ELEMENT_COUNT_OFFSET));
     }
 
-    GateRef Get(GateRef obj, GateRef index)
+    GateRef Get(GateRef glue, GateRef obj, GateRef index)
     {
         GateRef elementsOffset = IntPtr(JSObject::ELEMENTS_OFFSET);
-        GateRef elements = Load(VariableType::JS_POINTER(), obj, elementsOffset);
-        return GetValueFromTaggedArray(elements, index);
+        GateRef elements = Load(VariableType::JS_POINTER(), glue, obj, elementsOffset);
+        return GetValueFromTaggedArray(glue, elements, index);
     }
     void Set(GateRef glue, GateRef obj, GateRef index, GateRef value)
     {
         GateRef elementsOffset = IntPtr(JSObject::ELEMENTS_OFFSET);
-        GateRef elements = Load(VariableType::JS_POINTER(), obj, elementsOffset);
+        GateRef elements = Load(VariableType::JS_POINTER(), glue, obj, elementsOffset);
         SetValueToTaggedArray(VariableType::JS_ANY(), glue, elements, index, value);
     }
 };

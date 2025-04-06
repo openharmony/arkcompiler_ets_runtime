@@ -94,7 +94,7 @@ void ObjectOperatorStubBuilder::HandleKey(GateRef glue, GateRef key, Variable *p
     }
 
     Bind(&notInt);
-    BRANCH(TaggedIsString(key), &isString, &notString);
+    BRANCH(TaggedIsString(glue, key), &isString, &notString);
 
     Bind(&isString);
     {
@@ -169,7 +169,7 @@ void ObjectOperatorStubBuilder::HandleKey(GateRef glue, GateRef key, Variable *p
     }
 
     Bind(&notDouble);
-    BRANCH(IsSymbol(key), &isSymbol, &notSymbol);
+    BRANCH(IsSymbol(glue, key), &isSymbol, &notSymbol);
 
     Bind(&isSymbol);
     {
@@ -185,7 +185,7 @@ void ObjectOperatorStubBuilder::HandleKey(GateRef glue, GateRef key, Variable *p
         Bind(&noException);
         {
             Label toString(env);
-            BRANCH(IsSymbol(**propKey), isProperty, &toString);
+            BRANCH(IsSymbol(glue, **propKey), isProperty, &toString);
             Bind(&toString);
             {
                 *propKey = JSTaggedValueToString(glue, **propKey, hir);
@@ -207,7 +207,7 @@ void ObjectOperatorStubBuilder::CheckValidIndexOrKeyIsLength(GateRef glue, GateR
         BRANCH(Int32LessThan(key, GetLengthFromString(obj)), checkSucc, checkFail);
     } else {
         Label keyIsString(env);
-        BRANCH(TaggedIsString(key), &keyIsString, checkFail);
+        BRANCH(TaggedIsString(glue, key), &keyIsString, checkFail);
         Bind(&keyIsString);
         {
             GateRef lengthString =
@@ -224,11 +224,11 @@ void ObjectOperatorStubBuilder::UpdateHolder(GateRef glue, Variable *holder, Gat
     Label notEcmaObject(env);
     Label isString(env);
     Label toProtoType(env);
-    Branch(IsEcmaObject(**holder), holderUpdated, &notEcmaObject);
+    Branch(IsEcmaObject(glue, **holder), holderUpdated, &notEcmaObject);
 
     Bind(&notEcmaObject);
     {
-        Branch(TaggedIsString(**holder), &isString, &toProtoType);
+        Branch(TaggedIsString(glue, **holder), &isString, &toProtoType);
     }
     Bind(&isString);
     {
@@ -266,20 +266,20 @@ GateRef ObjectOperatorStubBuilder::LookupPropertyInlinedProps(GateRef glue, Gate
     Label hasEntry(env);
     DEFVARIABLE(result, VariableType::JS_ANY(), TaggedFalse());
 
-    BRANCH(IsJSObject(obj), &isJsObject, &exit);
+    BRANCH(IsJSObject(glue, obj), &isJsObject, &exit);
     Bind(&isJsObject);
     {
-        BRANCH(IsJSGlobalObject(obj), &isDicMode, &notJsGlobalObject);
+        BRANCH(IsJSGlobalObject(glue, obj), &isDicMode, &notJsGlobalObject);
     }
 
     Bind(&notJsGlobalObject);
     {
         Label notDicMod(env);
-        GateRef hclass = LoadHClass(obj);
+        GateRef hclass = LoadHClass(glue, obj);
         BRANCH(IsDictionaryModeByHClass(hclass), &isDicMode, &notDicMod);
         Bind(&notDicMod);
         {
-            GateRef layOutInfo = GetLayoutFromHClass(hclass);
+            GateRef layOutInfo = GetLayoutFromHClass(glue, hclass);
             GateRef propsNum = GetNumberOfPropsFromHClass(hclass);
             // int entry = layoutInfo->FindElementWithCache(thread, hclass, key, propsNumber)
             GateRef entryA = FindElementWithCache(glue, layOutInfo, hclass, key, propsNum, hir);
@@ -290,7 +290,7 @@ GateRef ObjectOperatorStubBuilder::LookupPropertyInlinedProps(GateRef glue, Gate
     Bind(&isDicMode);
     {
         Label findInDic(env);
-        GateRef array = GetPropertiesArray(obj);
+        GateRef array = GetPropertiesArray(glue, obj);
         GateRef len = GetLengthOfTaggedArray(array);
         BRANCH(Int32Equal(len, Int32(0)), &exit, &findInDic);
 
@@ -328,11 +328,11 @@ GateRef ObjectOperatorStubBuilder::LookupElementInlinedProps(GateRef glue, GateR
     Label elementFound(env);
     DEFVARIABLE(result, VariableType::JS_ANY(), TaggedFalse());
     // fastpath for string obj
-    BRANCH(IsJSPrimitiveRef(obj), &isPrimitiveRef, &notStringObject);
+    BRANCH(IsJSPrimitiveRef(glue, obj), &isPrimitiveRef, &notStringObject);
     Bind(&isPrimitiveRef);
     {
-        GateRef value = Load(VariableType::JS_ANY(), obj, IntPtr(JSPrimitiveRef::VALUE_OFFSET));
-        BRANCH(TaggedIsString(value), &isStringObject, &notStringObject);
+        GateRef value = Load(VariableType::JS_ANY(), glue, obj, IntPtr(JSPrimitiveRef::VALUE_OFFSET));
+        BRANCH(TaggedIsString(glue, value), &isStringObject, &notStringObject);
         Bind(&isStringObject);
         {
             GateRef strLength = GetLengthFromString(value);
@@ -341,20 +341,20 @@ GateRef ObjectOperatorStubBuilder::LookupElementInlinedProps(GateRef glue, GateR
     }
 
     Bind(&notStringObject);
-    BRANCH(IsTypedArray(obj), &isTypedArray, &ordinaryObject);
+    BRANCH(IsTypedArray(glue, obj), &isTypedArray, &ordinaryObject);
 
     Bind(&isTypedArray);
     {
         BuiltinsTypedArrayStubBuilder typedArrayStubBuilder(this);
         GateRef element =
-            typedArrayStubBuilder.FastGetPropertyByIndex(glue, obj, elementIdx, GetObjectType(LoadHClass(obj)));
+            typedArrayStubBuilder.FastGetPropertyByIndex(glue, obj, elementIdx, GetObjectType(LoadHClass(glue, obj)));
         BRANCH(TaggedIsHole(element), &exit, &elementFound);
     }
 
     Bind(&ordinaryObject);
     {
         Label findByIndex(env);
-        GateRef elements = GetElementsArray(obj);
+        GateRef elements = GetElementsArray(glue, obj);
         GateRef len = GetLengthOfTaggedArray(elements);
         BRANCH(Int32Equal(len, Int32(0)), &exit, &findByIndex);
 
@@ -362,7 +362,7 @@ GateRef ObjectOperatorStubBuilder::LookupElementInlinedProps(GateRef glue, GateR
         {
             Label isDicMode(env);
             Label notDicMode(env);
-            BRANCH(IsDictionaryMode(elements), &isDicMode, &notDicMode);
+            BRANCH(IsDictionaryMode(glue, elements), &isDicMode, &notDicMode);
             Bind(&notDicMode);
             {
                 Label lessThanLength(env);
@@ -402,7 +402,7 @@ void ObjectOperatorStubBuilder::LookupProperty(GateRef glue, Variable *holder, G
     auto env = GetEnvironment();
     Label continuelyLookup(env);
     Label lookupInProtoChain(env);
-    BRANCH(IsJsProxy(**holder), isJSProxy, &continuelyLookup);
+    BRANCH(IsJsProxy(glue, **holder), isJSProxy, &continuelyLookup);
 
     Bind(&continuelyLookup);
     {
@@ -458,7 +458,7 @@ void ObjectOperatorStubBuilder::TryLookupInProtoChain(GateRef glue, Variable *ho
                 Bind(&updateHolder);
                 {
                     *holder = proto;
-                    BRANCH(IsJsProxy(**holder), isJSProxy, &notJSProxy);
+                    BRANCH(IsJsProxy(glue, **holder), isJSProxy, &notJSProxy);
                 }
             }
 

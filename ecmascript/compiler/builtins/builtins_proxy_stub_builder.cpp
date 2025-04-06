@@ -33,12 +33,12 @@ void BuiltinsProxyStubBuilder::GenProxyConstructor(GateRef nativeCode, GateRef f
     BRANCH(TaggedIsUndefined(newTarget), &slowPath, &newTargetNotUndefined);
     Bind(&newTargetNotUndefined);
 
-    GateRef target = GetArgFromArgv(IntPtr(0), numArgs_, true);
-    GateRef handler = GetArgFromArgv(IntPtr(1), numArgs_, true);
+    GateRef target = GetArgFromArgv(glue_, IntPtr(0), numArgs_, true);
+    GateRef handler = GetArgFromArgv(glue_, IntPtr(1), numArgs_, true);
 
-    BRANCH(IsEcmaObject(target), &targetIsEcma, &slowPath);
+    BRANCH(IsEcmaObject(glue_, target), &targetIsEcma, &slowPath);
     Bind(&targetIsEcma);
-    BRANCH(IsEcmaObject(handler), &handleIsEcma, &slowPath);
+    BRANCH(IsEcmaObject(glue_, handler), &handleIsEcma, &slowPath);
     Bind(&handleIsEcma);
     {
         NewObjectStubBuilder newBuilder(this);

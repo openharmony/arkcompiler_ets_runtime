@@ -145,7 +145,7 @@ private:
     void SetPreDumpPeriodIndex(GateRef glue, GateRef profileTypeInfo);
     GateRef TaggedToTrackType(GateRef value);
     GateRef GetIterationFunctionId(GateRef glue, GateRef iterator);
-    GateRef TryGetBuiltinFunctionId(GateRef target);
+    GateRef TryGetBuiltinFunctionId(GateRef glue, GateRef target);
     GateRef GetJitHotnessCnt(GateRef profileTypeInfo);
     GateRef GetJitHotnessThresholdOffset(GateRef profileTypeInfo);
     GateRef GetJitHotnessCntOffset(GateRef profileTypeInfo);

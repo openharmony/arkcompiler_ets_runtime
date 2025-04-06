@@ -29,7 +29,7 @@ void BuiltinsCollectionIteratorStubBuilder<IteratorType>::CheckCollectionIterato
 {
     // check target obj
     auto jsType = std::is_same_v<IteratorType, JSSetIterator> ? JSType::JS_SET_ITERATOR : JSType::JS_MAP_ITERATOR;
-    GateRef isJsCollectionIteratorObj = IsJSObjectType(thisValue_, jsType);
+    GateRef isJsCollectionIteratorObj = IsJSObjectType(glue_, thisValue_, jsType);
     BRANCH(isJsCollectionIteratorObj, updateIter, throwException);
 }
 

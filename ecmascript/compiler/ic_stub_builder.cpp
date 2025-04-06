@@ -30,13 +30,13 @@ void ICStubBuilder::NamedICAccessorWithMega(Variable *cachedHandler, Label *tryI
         // must be a hole, thus no checks are performed
         Label exit(env);
         Label find(env);
-        GateRef hclass = LoadHClass(receiver_);
+        GateRef hclass = LoadHClass(glue_, receiver_);
         GateRef hash = HashFromHclassAndStringKey(glue_, hclass, propKey_);
         GateRef prop = PtrAdd(megaStubCache_,
                               PtrMul(ZExtInt32ToPtr(hash), IntPtr(MegaICCache::PropertyKey::GetPropertyKeySize())));
         GateRef propHclass =
-            Load(VariableType::JS_POINTER(), prop, IntPtr(MegaICCache::PropertyKey::GetHclassOffset()));
-        GateRef propKey = Load(VariableType::JS_ANY(), prop, IntPtr(MegaICCache::PropertyKey::GetKeyOffset()));
+            Load(VariableType::JS_POINTER(), glue_, prop, IntPtr(MegaICCache::PropertyKey::GetHclassOffset()));
+        GateRef propKey = Load(VariableType::JS_ANY(), glue_, prop, IntPtr(MegaICCache::PropertyKey::GetKeyOffset()));
         GateRef hclassIsEqual = IntPtrEqual(hclass, propHclass);
         GateRef keyIsEqual = IntPtrEqual(propKey_, propKey);
         // profiling code
@@ -45,7 +45,7 @@ void ICStubBuilder::NamedICAccessorWithMega(Variable *cachedHandler, Label *tryI
         Bind(&find);
         {
             cachedHandler->WriteVariable(
-                Load(VariableType::JS_ANY(), prop, IntPtr(MegaICCache::PropertyKey::GetResultsOffset())));
+                Load(VariableType::JS_ANY(), glue_, prop, IntPtr(MegaICCache::PropertyKey::GetResultsOffset())));
             // profiling code
             IncMegaHitCount(glue_);
             Jump(tryICHandler);
@@ -73,20 +73,20 @@ void ICStubBuilder::NamedICAccessor(Variable* cachedHandler, Label *tryICHandler
             Label isHeapObject(env);
             Label notHeapObject(env);
             GateRef firstValue = GetValueFromTaggedArray(
-                profileTypeInfo_, slotId_);
+                glue_, profileTypeInfo_, slotId_);
             BRANCH(TaggedIsHeapObject(firstValue), &isHeapObject, &notHeapObject);
             Bind(&isHeapObject);
             {
-                GateRef secondValue = GetValueFromTaggedArray(profileTypeInfo_, Int32Add(slotId_, Int32(1)));
+                GateRef secondValue = GetValueFromTaggedArray(glue_, profileTypeInfo_, Int32Add(slotId_, Int32(1)));
                 cachedHandler->WriteVariable(secondValue);
                 Label tryPoly(env);
-                GateRef hclass = LoadHClass(receiver_);
+                GateRef hclass = LoadHClass(glue_, receiver_);
                 BRANCH(Equal(LoadObjectFromWeakRef(firstValue), hclass),
                        tryICHandler,
                        &tryPoly);
                 Bind(&tryPoly);
                 {
-                    cachedHandler->WriteVariable(CheckPolyHClass(firstValue, hclass));
+                    cachedHandler->WriteVariable(CheckPolyHClass(glue_, firstValue, hclass));
                     BRANCH(TaggedIsHole(cachedHandler->ReadVariable()), slowPath_, tryICHandler);
                 }
             }
@@ -109,19 +109,19 @@ void ICStubBuilder::NamedICAccessor(Variable* cachedHandler, Label *tryICHandler
             BRANCH(TaggedIsUndefined(profileTypeInfo_), slowPath_, &profileNotUndefined);
             Bind(&profileNotUndefined);
             {
-                GateRef firstValue = GetValueFromTaggedArray(profileTypeInfo_, slotId_);
-                GateRef secondValue = GetValueFromTaggedArray(profileTypeInfo_, Int32Add(slotId_, Int32(1)));
+                GateRef firstValue = GetValueFromTaggedArray(glue_, profileTypeInfo_, slotId_);
+                GateRef secondValue = GetValueFromTaggedArray(glue_, profileTypeInfo_, Int32Add(slotId_, Int32(1)));
                 cachedHandler->WriteVariable(secondValue);
                 Label isHeapObject(env);
                 BRANCH(TaggedIsHeapObject(firstValue), &isHeapObject, slowPath_)
                 Bind(&isHeapObject);
                 {
                     GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
-                    GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue_, glueGlobalEnvOffset);
-                    auto numberFunction = GetGlobalEnvValue(VariableType::JS_ANY(),
+                    GateRef glueGlobalEnv = LoadPrimitive(VariableType::NATIVE_POINTER(), glue_, glueGlobalEnvOffset);
+                    auto numberFunction = GetGlobalEnvValue(VariableType::JS_ANY(), glue_,
                                                             glueGlobalEnv, GlobalEnv::NUMBER_FUNCTION_INDEX);
                     GateRef ctorProtoOrHC =
-                            Load(VariableType::JS_POINTER(), numberFunction,
+                            Load(VariableType::JS_POINTER(), glue_, numberFunction,
                                  IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
                     BRANCH(Equal(LoadObjectFromWeakRef(firstValue), ctorProtoOrHC), tryICHandler, slowPath_);
                 }
@@ -145,13 +145,16 @@ void ICStubBuilder::ValuedICAccessor(Variable* cachedHandler, Label *tryICHandle
             Label isHeapObject(env);
             Label notHeapObject(env);
             GateRef firstValue = GetValueFromTaggedArray(
-                profileTypeInfo_, slotId_);
+                glue_, profileTypeInfo_, slotId_);
+            GateRef secondValue = GetValueFromTaggedArray(
+                glue_, profileTypeInfo_, Int32Add(slotId_, Int32(1)));
+            cachedHandler->WriteVariable(secondValue);
             BRANCH(TaggedIsHeapObject(firstValue), &isHeapObject, &notHeapObject);
             Bind(&isHeapObject);
             {
                 Label tryPoly(env);
                 Label tryWithElementPoly(env);
-                GateRef hclass = LoadHClass(receiver_);
+                GateRef hclass = LoadHClass(glue_, receiver_);
                 BRANCH(Equal(LoadObjectFromWeakRef(firstValue), hclass),
                        tryElementIC,
                        &tryPoly);
@@ -161,7 +164,7 @@ void ICStubBuilder::ValuedICAccessor(Variable* cachedHandler, Label *tryICHandle
                     BRANCH(Int64Equal(firstValue, propKey_), &firstIsKey, &tryWithElementPoly);
                     Bind(&firstIsKey);
                     {
-                        GateRef handler = CheckPolyHClass(cachedHandler->ReadVariable(), hclass);
+                        GateRef handler = CheckPolyHClass(glue_, cachedHandler->ReadVariable(), hclass);
                         cachedHandler->WriteVariable(handler);
                         BRANCH(TaggedIsHole(cachedHandler->ReadVariable()), slowPath_, tryICHandler);
                     }
@@ -176,7 +179,7 @@ void ICStubBuilder::ValuedICAccessor(Variable* cachedHandler, Label *tryICHandle
                         }
                         Bind(&checkPoly);
                         {
-                            cachedHandler->WriteVariable(CheckPolyHClass(firstValue, hclass));
+                            cachedHandler->WriteVariable(CheckPolyHClass(glue_, firstValue, hclass));
                             BRANCH(TaggedIsHole(cachedHandler->ReadVariable()), slowPath_, tryElementIC);
                         }
                     }
@@ -230,9 +233,7 @@ void ICStubBuilder::StoreICByName(Variable* result, Label* tryFastPath, Label *s
     Label storeWithHandler(env);
 
     SetLabels(tryFastPath, slowPath, success);
-    GateRef secondValue = GetValueFromTaggedArray(
-        profileTypeInfo_, Int32Add(slotId_, Int32(1)));
-    DEFVARIABLE(cachedHandler, VariableType::JS_ANY(), secondValue);
+    DEFVARIABLE(cachedHandler, VariableType::JS_ANY(), Undefined());
     NamedICAccessor<ICStubType::STORE>(&cachedHandler, &storeWithHandler);
     Bind(&storeWithHandler);
     {
@@ -273,10 +274,8 @@ void ICStubBuilder::LoadICByValue(
     Label exit(env);
 
     SetLabels(tryFastPath, slowPath, success);
-    GateRef secondValue = GetValueFromTaggedArray(
-        profileTypeInfo_, Int32Add(slotId_, Int32(1)));
-    DEFVARIABLE(cachedHandler, VariableType::JS_ANY(), secondValue);
-    DEFVARIABLE(ret, VariableType::JS_ANY(), secondValue);
+    DEFVARIABLE(cachedHandler, VariableType::JS_ANY(), Undefined());
+    DEFVARIABLE(ret, VariableType::JS_ANY(), Undefined());
 
     ValuedICAccessor(&cachedHandler, &loadWithHandler, &loadElement);
     Bind(&loadElement);
@@ -301,7 +300,7 @@ void ICStubBuilder::LoadICByValue(
                 BRANCH(IsTypedArrayElement(handlerInfo), &handlerInfoIsTypedArrayElement, &exit);
                 Bind(&handlerInfoIsTypedArrayElement);
                 {
-                    GateRef hclass = LoadHClass(receiver_);
+                    GateRef hclass = LoadHClass(glue_, receiver_);
                     GateRef jsType = GetObjectType(hclass);
                     BuiltinsTypedArrayStubBuilder typedArrayBuilder(reinterpret_cast<StubBuilder*>(this));
                     ret = typedArrayBuilder.LoadTypedArrayElement(glue_, receiver_, propKey_, jsType);
@@ -326,9 +325,7 @@ void ICStubBuilder::StoreICByValue(Variable* result, Label* tryFastPath, Label *
     Label storeWithHandler(env);
     Label storeElement(env);
     SetLabels(tryFastPath, slowPath, success);
-    GateRef secondValue = GetValueFromTaggedArray(
-        profileTypeInfo_, Int32Add(slotId_, Int32(1)));
-    DEFVARIABLE(cachedHandler, VariableType::JS_ANY(), secondValue);
+    DEFVARIABLE(cachedHandler, VariableType::JS_ANY(), Undefined());
     ValuedICAccessor(&cachedHandler, &storeWithHandler, &storeElement);
     Bind(&storeElement);
     {
@@ -354,12 +351,12 @@ void ICStubBuilder::TryLoadGlobalICByName(Variable* result, Label* tryFastPath, 
     BRANCH(TaggedIsUndefined(profileTypeInfo_), tryFastPath_, &tryIC);
     Bind(&tryIC);
     {
-        GateRef handler = GetValueFromTaggedArray(profileTypeInfo_, slotId_);
+        GateRef handler = GetValueFromTaggedArray(glue_, profileTypeInfo_, slotId_);
         Label isHeapObject(env);
         BRANCH(TaggedIsHeapObject(handler), &isHeapObject, slowPath_);
         Bind(&isHeapObject);
         {
-            GateRef ret = LoadGlobal(handler);
+            GateRef ret = LoadGlobal(glue_, handler);
             result->WriteVariable(ret);
             BRANCH(TaggedIsHole(ret), slowPath_, success_);
         }
@@ -375,7 +372,7 @@ void ICStubBuilder::TryStoreGlobalICByName(Variable* result, Label* tryFastPath,
     BRANCH(TaggedIsUndefined(profileTypeInfo_), tryFastPath_, &tryIC);
     Bind(&tryIC);
     {
-        GateRef handler = GetValueFromTaggedArray(profileTypeInfo_, slotId_);
+        GateRef handler = GetValueFromTaggedArray(glue_, profileTypeInfo_, slotId_);
         Label isHeapObject(env);
         BRANCH(TaggedIsHeapObject(handler), &isHeapObject, slowPath_);
         Bind(&isHeapObject);

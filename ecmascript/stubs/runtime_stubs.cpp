@@ -3389,6 +3389,17 @@ void RuntimeStubs::SharedGCMarkingBarrier(uintptr_t argGlue, uintptr_t object, s
     Barriers::UpdateShared(thread, slotAddr, objectRegion, value, valueRegion);
 }
 
+JSTaggedType RuntimeStubs::ReadBarrier(uintptr_t argGlue, uintptr_t addr)
+{
+    ObjectSlot slot(addr);
+    (void)argGlue;
+    /*
+        auto thread = JSThread::GlueToJSThread(argGlue);
+        Add ReadBarrier here
+    */
+    return slot.GetTaggedType();
+}
+
 bool RuntimeStubs::BigIntEquals(JSTaggedType left, JSTaggedType right)
 {
     DISALLOW_GARBAGE_COLLECTION;

@@ -39,7 +39,7 @@ GateRef NTypeHCRLowering::VisitGate(GateRef gate)
             LowerStoreModuleVar(gate, glue);
             break;
         case OpCode::LD_LOCAL_MODULE_VAR:
-            LowerLdLocalModuleVar(gate);
+            LowerLdLocalModuleVar(gate, glue);
             break;
         default:
             break;
@@ -89,13 +89,13 @@ void NTypeHCRLowering::LowerCreateArrayWithBuffer(GateRef gate, GateRef glue)
     ArgumentAccessor argAcc(circuit_);
     GateRef frameState = GetFrameState(gate);
     GateRef jsFunc = argAcc.GetFrameArgsIn(frameState, FrameArgIdx::FUNC);
-    GateRef module = builder_.GetModuleFromFunction(jsFunc);
+    GateRef module = builder_.GetModuleFromFunction(glue, jsFunc);
     GateRef unsharedConstpool = argAcc.GetFrameArgsIn(frameState, FrameArgIdx::UNSHARED_CONST_POOL);
     GateRef sharedConstpool = argAcc.GetFrameArgsIn(frameState, FrameArgIdx::SHARED_CONST_POOL);
     GateRef cachedArray = builder_.GetObjectFromConstPool(glue, gate, sharedConstpool, unsharedConstpool,
                                                           module, builder_.TruncInt64ToInt32(index),
                                                           ConstPoolType::ARRAY_LITERAL);
-    GateRef literialElements = builder_.GetElementsArray(cachedArray);
+    GateRef literialElements = builder_.GetElementsArray(glue, cachedArray);
     uint32_t cpIdVal = static_cast<uint32_t>(acc_.GetConstantValue(cpId));
     JSTaggedValue arr = GetArrayLiteralValue(cpIdVal, constPoolIndex);
     ASSERT(!arr.IsUndefined());
@@ -179,11 +179,11 @@ void NTypeHCRLowering::LowerCreateArguments(GateRef gate, GateRef glue)
     }
 }
 
-GateRef NTypeHCRLowering::LoadFromConstPool(GateRef unsharedConstpool, size_t index, size_t valVecType)
+GateRef NTypeHCRLowering::LoadFromConstPool(GateRef glue, GateRef unsharedConstpool, size_t index, size_t valVecType)
 {
     GateRef constPoolSize = builder_.GetLengthOfTaggedArray(unsharedConstpool);
     GateRef valVecIndex = builder_.Int32Sub(constPoolSize, builder_.Int32(valVecType));
-    GateRef valVec = builder_.GetValueFromTaggedArray(unsharedConstpool, valVecIndex);
+    GateRef valVec = builder_.GetValueFromTaggedArray(glue, unsharedConstpool, valVecIndex);
     return builder_.LoadFromTaggedArray(valVec, index);
 }
 
@@ -290,11 +290,11 @@ void NTypeHCRLowering::LowerStoreModuleVar(GateRef gate, GateRef glue)
     GateRef index = acc_.GetValueIn(gate, 1);
     GateRef value = acc_.GetValueIn(gate, 2);
     GateRef moduleOffset = builder_.IntPtr(JSFunction::ECMA_MODULE_OFFSET);
-    GateRef module = builder_.Load(VariableType::JS_ANY(), jsFunc, moduleOffset);
+    GateRef module = builder_.Load(VariableType::JS_ANY(), glue, jsFunc, moduleOffset);
     GateRef localExportEntriesOffset = builder_.IntPtr(SourceTextModule::LOCAL_EXPORT_ENTTRIES_OFFSET);
-    GateRef localExportEntries = builder_.Load(VariableType::JS_ANY(), module, localExportEntriesOffset);
+    GateRef localExportEntries = builder_.Load(VariableType::JS_ANY(), glue, module, localExportEntriesOffset);
     GateRef nameDictionaryOffset = builder_.IntPtr(SourceTextModule::NAME_DICTIONARY_OFFSET);
-    GateRef data = builder_.Load(VariableType::JS_ANY(), module, nameDictionaryOffset);
+    GateRef data = builder_.Load(VariableType::JS_ANY(), glue, module, nameDictionaryOffset);
     DEFVALUE(array, (&builder_), VariableType::JS_ANY(), data);
 
     Label dataIsUndefined(&builder_);
@@ -315,15 +315,15 @@ void NTypeHCRLowering::LowerStoreModuleVar(GateRef gate, GateRef glue)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
-void NTypeHCRLowering::LowerLdLocalModuleVar(GateRef gate)
+void NTypeHCRLowering::LowerLdLocalModuleVar(GateRef gate, GateRef glue)
 {
     Environment env(gate, circuit_, &builder_);
     GateRef jsFunc = acc_.GetValueIn(gate, 0);
     GateRef index = acc_.GetValueIn(gate, 1);
     GateRef moduleOffset = builder_.IntPtr(JSFunction::ECMA_MODULE_OFFSET);
-    GateRef module = builder_.Load(VariableType::JS_ANY(), jsFunc, moduleOffset);
+    GateRef module = builder_.Load(VariableType::JS_ANY(), glue, jsFunc, moduleOffset);
     GateRef nameDictionaryOffset = builder_.IntPtr(SourceTextModule::NAME_DICTIONARY_OFFSET);
-    GateRef dictionary = builder_.Load(VariableType::JS_ANY(), module, nameDictionaryOffset);
+    GateRef dictionary = builder_.Load(VariableType::JS_ANY(), glue, module, nameDictionaryOffset);
     DEFVALUE(result, (&builder_), VariableType::JS_ANY(), builder_.Hole());
     Label dataIsNotUndefined(&builder_);
     Label exit(&builder_);
@@ -333,7 +333,7 @@ void NTypeHCRLowering::LowerLdLocalModuleVar(GateRef gate)
         GateRef dataOffset = builder_.Int32(TaggedArray::DATA_OFFSET);
         GateRef indexOffset = builder_.Int32Mul(index, builder_.Int32(JSTaggedValue::TaggedTypeSize()));
         GateRef offset = builder_.Int32Add(indexOffset, dataOffset);
-        result = builder_.Load(VariableType::JS_ANY(), dictionary, offset);
+        result = builder_.Load(VariableType::JS_ANY(), glue, dictionary, offset);
         builder_.Jump(&exit);
     }
     builder_.Bind(&exit);

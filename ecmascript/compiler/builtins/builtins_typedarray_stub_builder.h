@@ -48,8 +48,8 @@ public:
     GateRef LoadTypedArrayElement(GateRef glue, GateRef array, GateRef key, GateRef jsType);
     GateRef StoreTypedArrayElement(GateRef glue, GateRef array, GateRef index, GateRef value, GateRef jsType);
     GateRef CheckTypedArrayIndexInRange(GateRef array, GateRef index);
-    GateRef GetValueFromBuffer(GateRef buffer, GateRef index, GateRef offset, GateRef jsType);
-    GateRef GetDataPointFromBuffer(GateRef arrBuf);
+    GateRef GetValueFromBuffer(GateRef glue, GateRef buffer, GateRef index, GateRef offset, GateRef jsType);
+    GateRef GetDataPointFromBuffer(GateRef glue, GateRef arrBuf);
     GateRef CalculatePositionWithLength(GateRef position, GateRef length);
     void DoSort(GateRef glue, GateRef receiver, Variable *result, Label *exit, Label *slowPath);
     void FastSetPropertyByIndex(GateRef glue, GateRef value, GateRef array, GateRef index, GateRef jsType);
@@ -94,34 +94,34 @@ BUILTINS_WITH_TYPEDARRAY_STUB_BUILDER(DECLARE_BUILTINS_TYPEDARRAY_STUB_BUILDER)
                        Label *slowPath);
     void Of(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *result, Label *exit, Label *slowPath);
 
-    GateRef GetViewedArrayBuffer(GateRef array)
+    GateRef GetViewedArrayBuffer(GateRef glue, GateRef array)
     {
         GateRef offset = IntPtr(JSTypedArray::VIEWED_ARRAY_BUFFER_OFFSET);
-        return Load(VariableType::JS_ANY(), array, offset);
+        return Load(VariableType::JS_ANY(), glue, array, offset);
     }
 
     GateRef GetArrayLength(GateRef array)
     {
         GateRef offset = IntPtr(JSTypedArray::ARRAY_LENGTH_OFFSET);
-        return Load(VariableType::INT32(), array, offset);
+        return LoadPrimitive(VariableType::INT32(), array, offset);
     }
 
     GateRef GetByteOffset(GateRef array)
     {
         GateRef offset = IntPtr(JSTypedArray::BYTE_OFFSET_OFFSET);
-        return Load(VariableType::INT32(), array, offset);
+        return LoadPrimitive(VariableType::INT32(), array, offset);
     }
 
     GateRef GetArrayBufferByteLength(GateRef buffer)
     {
         GateRef offset = IntPtr(JSArrayBuffer::BYTE_LENGTH_OFFSET);
-        return Load(VariableType::INT32(), buffer, offset);
+        return LoadPrimitive(VariableType::INT32(), buffer, offset);
     }
 
     GateRef GetExternalPointer(GateRef buffer)
     {
         GateRef offset = IntPtr(JSNativePointer::POINTER_OFFSET);
-        return Load(VariableType::NATIVE_POINTER(), buffer, offset);
+        return LoadPrimitive(VariableType::NATIVE_POINTER(), buffer, offset);
     }
 private:
     GateRef ChangeByteArrayTaggedPointerToInt64(GateRef x)

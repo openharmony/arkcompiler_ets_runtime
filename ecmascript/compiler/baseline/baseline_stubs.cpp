@@ -35,7 +35,7 @@ static constexpr uint32_t TWO_BYTE_ALL_ONE = 0xFFFF;
 
 #define METHOD_ENTRY_ENV_DEFINED(func)                                                            \
     GateRef isDebugModeOffset = IntPtr(JSThread::GlueData::GetIsDebugModeOffset(env->Is32Bit())); \
-    GateRef isDebugMode = Load(VariableType::BOOL(), glue, isDebugModeOffset);                    \
+    GateRef isDebugMode = LoadPrimitive(VariableType::BOOL(), glue, isDebugModeOffset);           \
     Label isDebugModeTrue(env);                                                                   \
     Label isDebugModeFalse(env);                                                                  \
     BRANCH(isDebugMode, &isDebugModeTrue, &isDebugModeFalse);                                     \
@@ -52,7 +52,7 @@ static constexpr uint32_t TWO_BYTE_ALL_ONE = 0xFFFF;
     Bind(&slowPath);                                                                                           \
     {                                                                                                          \
         GateRef iVecOffset = IntPtr(JSThread::GlueData::GetInterruptVectorOffset(env->IsArch32Bit()));         \
-        GateRef interruptsFlag = Load(VariableType::INT8(), glue, iVecOffset);                                 \
+        GateRef interruptsFlag = LoadPrimitive(VariableType::INT8(), glue, iVecOffset);                        \
         varHotnessCounter = Int32(EcmaInterpreter::METHOD_HOTNESS_THRESHOLD);                                  \
         Label initialized(env);                                                                                \
         Label callRuntime(env);                                                                                \
@@ -122,8 +122,8 @@ CallSignature BaselineStubCSigns::callSigns_[BaselineStubCSigns::NUM_OF_STUBS];
     Label NeedCallRuntimeTrue(env);                                                               \
     Label NeedCallRuntimeFalse(env);                                                              \
     Branch(LogicOrBuilder(env)                                                                    \
-        .Or(Load(VariableType::BOOL(), glue, IntPtr(debugModeOffset)))                            \
-        .Or(Load(VariableType::BOOL(), glue, IntPtr(tracingOffset)))                              \
+        .Or(LoadPrimitive(VariableType::BOOL(), glue, IntPtr(debugModeOffset)))                   \
+        .Or(LoadPrimitive(VariableType::BOOL(), glue, IntPtr(tracingOffset)))                     \
         .Done(), &NeedCallRuntimeTrue, &NeedCallRuntimeFalse);                                    \
     Bind(&NeedCallRuntimeTrue);                                                                   \
     {                                                                                             \
@@ -147,9 +147,9 @@ CallSignature BaselineStubCSigns::callSigns_[BaselineStubCSigns::NUM_OF_STUBS];
     GateRef slotId = Int32Argument(PARAM_INDEX(BaselineBianryOP, SLOT_ID));                       \
                                                                                                   \
     GateRef frame = GetFrame(sp);                                                                 \
-    GateRef acc = GetAccFromFrame(frame);                                                         \
-    GateRef func = GetFunctionFromFrame(frame);                                                   \
-    GateRef profileTypeInfo = GetProfileTypeInfoFromFunction(func);                               \
+    GateRef acc = GetAccFromFrame(glue, frame);                                                   \
+    GateRef func = GetFunctionFromFrame(glue, frame);                                             \
+    GateRef profileTypeInfo = GetProfileTypeInfoFromFunction(glue, func);                         \
                                                                                                   \
     ProfileOperation callback(                                                                    \
         [this, glue, func, slotId, profileTypeInfo](const std::initializer_list<GateRef> &values, \
@@ -164,9 +164,9 @@ CallSignature BaselineStubCSigns::callSigns_[BaselineStubCSigns::NUM_OF_STUBS];
     GateRef slotId = Int32Argument(PARAM_INDEX(BaselineBianryOP, SLOT_ID));                       \
                                                                                                   \
     GateRef frame = GetFrame(sp);                                                                 \
-    GateRef acc = GetAccFromFrame(frame);                                                         \
-    GateRef func = GetFunctionFromFrame(frame);                                                   \
-    GateRef profileTypeInfo = GetProfileTypeInfoFromFunction(func);                               \
+    GateRef acc = GetAccFromFrame(glue, frame);                                                   \
+    GateRef func = GetFunctionFromFrame(glue, frame);                                             \
+    GateRef profileTypeInfo = GetProfileTypeInfoFromFunction(glue, func);                         \
                                                                                                   \
     ProfileOperation callback(                                                                    \
         [this, glue, func, slotId, profileTypeInfo](const std::initializer_list<GateRef> &values, \
@@ -178,8 +178,8 @@ CallSignature BaselineStubCSigns::callSigns_[BaselineStubCSigns::NUM_OF_STUBS];
 
 #define DEFINE_PROFILE_CALLBACK(glue, sp, slotId)                                                    \
     GateRef frame = GetFrame(sp);                                                                    \
-    GateRef curFunc = GetFunctionFromFrame(frame);                                                   \
-    GateRef profileTypeInfo = GetProfileTypeInfoFromFunction(curFunc);                               \
+    GateRef curFunc = GetFunctionFromFrame(glue, frame);                                             \
+    GateRef profileTypeInfo = GetProfileTypeInfoFromFunction(glue, curFunc);                               \
     ProfileOperation callback(                                                                       \
         [this, glue, curFunc, slotId, profileTypeInfo](const std::initializer_list<GateRef> &values, \
                                                        OperationType type) {                         \
@@ -198,15 +198,15 @@ CallSignature BaselineStubCSigns::callSigns_[BaselineStubCSigns::NUM_OF_STUBS];
     Label tryGetHclass(env);                                                                                         \
     Label firstValueHeapObject(env);                                                                                 \
     Label hclassNotHit(env);                                                                                         \
-    BRANCH(IsEcmaObject(receiver), &isEcmaObj, &slowPath);                                                           \
+    BRANCH(IsEcmaObject(glue, receiver), &isEcmaObj, &slowPath);                                                     \
     Bind(&isEcmaObj);                                                                                                \
     BRANCH(TaggedIsUndefined(profileTypeInfo), &hclassNotHit, &tryGetHclass);                                        \
     Bind(&tryGetHclass);                                                                                             \
     {                                                                                                                \
-        GateRef firstValue = GetValueFromTaggedArray(profileTypeInfo, slotId);                                       \
+        GateRef firstValue = GetValueFromTaggedArray(glue, profileTypeInfo, slotId);                                 \
         BRANCH(TaggedIsHeapObject(firstValue), &firstValueHeapObject, &hclassNotHit);                                \
         Bind(&firstValueHeapObject);                                                                                 \
-        GateRef hclass = LoadHClass(*holder);                                                                        \
+        GateRef hclass = LoadHClass(glue, *holder);                                                                        \
         BRANCH(Equal(LoadObjectFromWeakRef(firstValue), hclass), &whichPath, &hclassNotHit);                         \
     }                                                                                                                \
     Bind(&hclassNotHit);                                                                                             \
@@ -217,7 +217,7 @@ CallSignature BaselineStubCSigns::callSigns_[BaselineStubCSigns::NUM_OF_STUBS];
     Jump(&loopHead);                                                                                                 \
     LoopBegin(&loopHead);                                                                                            \
     {                                                                                                                \
-        GateRef hclass = LoadHClass(*holder);                                                                        \
+        GateRef hclass = LoadHClass(glue, *holder);                                                                        \
         GateRef jsType = GetObjectType(hclass);                                                                      \
         Label findProperty(env);                                                                                     \
         BRANCH(IsSpecialIndexedObj(jsType), &slowPath, &findProperty);                                               \
@@ -227,20 +227,20 @@ CallSignature BaselineStubCSigns::callSigns_[BaselineStubCSigns::NUM_OF_STUBS];
         BRANCH(IsDictionaryModeByHClass(hclass), &isDicMode, &notDicMode);                                           \
         Bind(&isDicMode);                                                                                            \
         {                                                                                                            \
-            GateRef array = GetPropertiesArray(*holder);                                                             \
+            GateRef array = GetPropertiesArray(glue, *holder);                                                             \
             GateRef entry = FindEntryFromNameDictionary(glue, array, propKey);                                       \
             BRANCH(Int32NotEqual(entry, Int32(-1)), &slowPath, &loopExit);                                           \
         }                                                                                                            \
         Bind(&notDicMode);                                                                                           \
         {                                                                                                            \
-            GateRef layOutInfo = GetLayoutFromHClass(hclass);                                                        \
+            GateRef layOutInfo = GetLayoutFromHClass(glue, hclass);                                                        \
             GateRef propsNum = GetNumberOfPropsFromHClass(hclass);                                                   \
             GateRef entry = FindElementWithCache(glue, layOutInfo, hclass, propKey, propsNum);                       \
             BRANCH(Int32NotEqual(entry, Int32(-1)), &slowPath, &loopExit);                                           \
         }                                                                                                            \
         Bind(&loopExit);                                                                                             \
         {                                                                                                            \
-            holder = GetPrototypeFromHClass(LoadHClass(*holder));                                                    \
+            holder = GetPrototypeFromHClass(glue, LoadHClass(glue, *holder));                                        \
             BRANCH(TaggedIsHeapObject(*holder), &loopEnd, &whichPath);                                               \
         }                                                                                                            \
         Bind(&loopEnd);                                                                                              \
@@ -296,10 +296,10 @@ void BaselineTryLdGLobalByNameImm8ID16StubBuilder::GenerateCircuit()
     GateRef slotId = Int32Argument(PARAM_INDEX(BaselineTryLdGLobalByNameImm8ID16, SLOT_ID));
     DEFINE_PROFILE_CALLBACK(glue, sp, slotId);
 
-    GateRef acc = GetAccFromFrame(frame);
+    GateRef acc = GetAccFromFrame(glue, frame);
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
-    GateRef method = GetMethodFromFunction(curFunc);
-    GateRef constpool = GetConstpoolFromMethod(method);
+    GateRef method = GetMethodFromFunction(glue, curFunc);
+    GateRef constpool = GetConstpoolFromMethod(glue, method);
     AccessObjectStubBuilder builder(this);
     StringIdInfo info(constpool, stringId);
     GateRef result = builder.TryLoadGlobalByName(glue, 0, info, profileTypeInfo, slotId, callback);
@@ -314,12 +314,12 @@ void BaselineCallArg1Imm8V8StubBuilder::GenerateCircuit()
     GateRef slotId = Int32Argument(PARAM_INDEX(BaselineCallArg1Imm8V8, SLOT_ID));
 
     DEFINE_PROFILE_CALLBACK(glue, sp, slotId);
-    GateRef curMethod = GetMethodFromFunction(curFunc);
+    GateRef curMethod = GetMethodFromFunction(glue, curFunc);
     GateRef hotnessCounter = GetHotnessCounterFromMethod(curMethod);
     DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
-    GateRef a0Value = GetVregValue(sp, ZExtInt32ToPtr(arg0No));
+    GateRef a0Value = GetVregValue(glue, sp, ZExtInt32ToPtr(arg0No));
     GateRef actualNumArgs = Int32(ActualNumArgsOfCall::CALLARG1);
-    GateRef acc = GetAccFromFrame(frame);
+    GateRef acc = GetAccFromFrame(glue, frame);
     METHOD_ENTRY(acc);
     Label noNeedCheckException(env);
     Label exit(env);
@@ -342,9 +342,9 @@ void BaselineStToGlobalRecordImm16ID16StubBuilder::GenerateCircuit()
     GateRef stringId = Int32Argument(PARAM_INDEX(BaselineStToGlobalRecordImm16ID16, STRING_ID));
 
     GateRef frame = GetFrame(sp);
-    GateRef func = GetFunctionFromFrame(frame);
-    GateRef method = GetMethodFromFunction(func);
-    GateRef constpool = GetConstpoolFromMethod(method);
+    GateRef func = GetFunctionFromFrame(glue, frame);
+    GateRef method = GetMethodFromFunction(glue, func);
+    GateRef constpool = GetConstpoolFromMethod(glue, method);
     GateRef propKey = GetStringFromConstPool(glue, constpool, stringId);
     GateRef result = CallRuntime(glue, RTSTUB_ID(StGlobalRecord),
                                  { propKey, acc, TaggedFalse() });
@@ -357,9 +357,9 @@ void BaselineLdaStrID16StubBuilder::GenerateCircuit()
     GateRef sp = PtrArgument(PARAM_INDEX(BaselineLdaStrID16, SP));
     GateRef stringId = Int32Argument(PARAM_INDEX(BaselineLdaStrID16, STRING_ID));
 
-    GateRef func = GetFunctionFromFrame(GetFrame(sp));
-    GateRef method = GetMethodFromFunction(func);
-    GateRef constpool = GetConstpoolFromMethod(method);
+    GateRef func = GetFunctionFromFrame(glue, GetFrame(sp));
+    GateRef method = GetMethodFromFunction(glue, func);
+    GateRef constpool = GetConstpoolFromMethod(glue, method);
     GateRef result = GetStringFromConstPool(glue, constpool, stringId);
     Return(result);
 }
@@ -388,8 +388,8 @@ void BaselinePoplexenvStubBuilder::GenerateCircuit()
     GateRef sp = PtrArgument(PARAM_INDEX(BaselinePoplexenv, SP));
 
     GateRef state = GetFrame(sp);
-    GateRef currentLexEnv = GetEnvFromFrame(state);
-    GateRef parentLexEnv = GetParentEnv(currentLexEnv);
+    GateRef currentLexEnv = GetEnvFromFrame(glue, state);
+    GateRef parentLexEnv = GetParentEnv(glue, currentLexEnv);
     SetEnvToFrame(glue, state, parentLexEnv);
     Return();
 }
@@ -403,7 +403,7 @@ void BaselineGetunmappedargsStubBuilder::GenerateCircuit()
     DEFVARIABLE(argumentsList, VariableType::JS_ANY(), Hole());
     DEFVARIABLE(argumentsObj, VariableType::JS_ANY(), Hole());
     auto env = GetEnvironment();
-    GateRef startIdxAndNumArgs = GetStartIdxAndNumArgs(sp, Int32(0));
+    GateRef startIdxAndNumArgs = GetStartIdxAndNumArgs(glue, sp, Int32(0));
     // 32: high 32 bits = startIdx, low 32 bits = numArgs
     GateRef startIdx = TruncInt64ToInt32(Int64LSR(startIdxAndNumArgs, Int64(32)));
     GateRef numArgs = TruncInt64ToInt32(startIdxAndNumArgs);
@@ -460,7 +460,7 @@ void BaselineCreateasyncgeneratorobjV8StubBuilder::GenerateCircuit()
     Branch(TaggedIsException(result), &isException, &notException);
     Bind(&isException);
     {
-        GateRef acc = GetAccFromFrame(GetFrame(sp));
+        GateRef acc = GetAccFromFrame(glue, GetFrame(sp));
         DISPATCH_LAST();
         Return(result);
     }
@@ -494,7 +494,7 @@ void BaselineGetiteratorImm8StubBuilder::GenerateCircuit()
     GateRef slotId = Int32Argument(PARAM_INDEX(BaselineGetiteratorImm8, SLOT_ID));
     DEFINE_PROFILE_CALLBACK(glue, sp, slotId);
 
-    GateRef acc = GetAccFromFrame(frame);
+    GateRef acc = GetAccFromFrame(glue, frame);
     GateRef res = GetIterator(glue, acc, callback);
 
     CHECK_PENDING_EXCEPTION(res);
@@ -507,7 +507,7 @@ void BaselineGetiteratorImm16StubBuilder::GenerateCircuit()
     GateRef slotId = Int32Argument(PARAM_INDEX(BaselineGetiteratorImm16, SLOT_ID));
     DEFINE_PROFILE_CALLBACK(glue, sp, slotId);
 
-    GateRef acc = GetAccFromFrame(frame);
+    GateRef acc = GetAccFromFrame(glue, frame);
     GateRef res = GetIterator(glue, acc, callback);
 
     CHECK_PENDING_EXCEPTION(res);
@@ -520,7 +520,7 @@ void BaselineCloseiteratorImm8V8StubBuilder::GenerateCircuit()
     GateRef iter = TaggedArgument(PARAM_INDEX(BaselineCloseiteratorImm8V8, ITER));
 
     GateRef frame = GetFrame(sp);
-    GateRef acc = GetAccFromFrame(frame);
+    GateRef acc = GetAccFromFrame(glue, frame);
     GateRef result = CallRuntime(glue, RTSTUB_ID(CloseIterator), { iter });
     CHECK_EXCEPTION_WITH_ACC(result);
 }
@@ -532,7 +532,7 @@ void BaselineCloseiteratorImm16V8StubBuilder::GenerateCircuit()
     GateRef iter = TaggedArgument(PARAM_INDEX(BaselineCloseiteratorImm16V8, ITER));
 
     GateRef frame = GetFrame(sp);
-    GateRef acc = GetAccFromFrame(frame);
+    GateRef acc = GetAccFromFrame(glue, frame);
     GateRef result = CallRuntime(glue, RTSTUB_ID(CloseIterator), { iter });
     CHECK_EXCEPTION_WITH_ACC(result);
 }
@@ -547,16 +547,16 @@ void BaselineAsyncgeneratorresolveV8V8V8StubBuilder::GenerateCircuit()
     GateRef v2 = Int32Argument(PARAM_INDEX(BaselineAsyncgeneratorresolveV8V8V8, V2));
 
     GateRef frame = GetFrame(sp);
-    GateRef curMethod = GetMethodFromFunction(GetFunctionFromFrame(frame));
+    GateRef curMethod = GetMethodFromFunction(glue, GetFunctionFromFrame(glue, frame));
     GateRef hotnessCounter = GetHotnessCounterFromMethod(curMethod);
-    GateRef constpool = GetConstpoolFromMethod(curMethod);
-    GateRef profileTypeInfo = GetProfileTypeInfoFromFunction(GetFunctionFromFrame(frame));
-    GateRef acc = GetAccFromFrame(frame);
+    GateRef constpool = GetConstpoolFromMethod(glue, curMethod);
+    GateRef profileTypeInfo = GetProfileTypeInfoFromFunction(glue, GetFunctionFromFrame(glue, frame));
+    GateRef acc = GetAccFromFrame(glue, frame);
     ProfileOperation callback;
 
-    GateRef asyncGenerator = GetVregValue(sp, ZExtInt8ToPtr(v0));
-    GateRef value = GetVregValue(sp, ZExtInt8ToPtr(v1));
-    GateRef flag = GetVregValue(sp, ZExtInt8ToPtr(v2));
+    GateRef asyncGenerator = GetVregValue(glue, sp, ZExtInt8ToPtr(v0));
+    GateRef value = GetVregValue(glue, sp, ZExtInt8ToPtr(v1));
+    GateRef flag = GetVregValue(glue, sp, ZExtInt8ToPtr(v2));
 
     auto env = GetEnvironment();
     METHOD_EXIT();
@@ -598,8 +598,8 @@ void BaselineAsyncgeneratorresolveV8V8V8StubBuilder::GenerateCircuit()
     }
     Bind(&updateHotness);
     {
-        GateRef function = GetFunctionFromFrame(frame);
-        GateRef thisMethod = Load(VariableType::JS_ANY(), function, IntPtr(JSFunctionBase::METHOD_OFFSET));
+        GateRef function = GetFunctionFromFrame(glue, frame);
+        GateRef thisMethod = Load(VariableType::JS_ANY(), glue, function, IntPtr(JSFunctionBase::METHOD_OFFSET));
         UPDATE_HOTNESS(*varSp, callback);
         SetHotnessCounter(glue, thisMethod, *varHotnessCounter);
         Jump(&tryContinue);
@@ -607,20 +607,20 @@ void BaselineAsyncgeneratorresolveV8V8V8StubBuilder::GenerateCircuit()
 
     Bind(&tryContinue);
 #if ECMASCRIPT_ENABLE_FUNCTION_CALL_TIMER
-    GateRef curFunc = GetFunctionFromFrame(frame);
+    GateRef curFunc = GetFunctionFromFrame(glue, frame);
     CallNGCRuntime(glue, RTSTUB_ID(EndCallTimer), { glue, curFunc });
 #endif
     GateRef currentSp = *varSp;
-    varSp = Load(VariableType::NATIVE_POINTER(), frame,
+    varSp = LoadPrimitive(VariableType::NATIVE_POINTER(), frame,
         IntPtr(AsmInterpretedFrame::GetBaseOffset(env->IsArch32Bit())));
 
     GateRef typePos = PtrSub(*varSp, IntPtr(JSTaggedValue::TaggedTypeSize()));
-    GateRef maybeFrameType = Load(VariableType::INT64(), typePos);
+    GateRef maybeFrameType = LoadPrimitive(VariableType::INT64(), typePos);
     BRANCH(Int64Equal(maybeFrameType, Int64(static_cast<int64_t>(FrameType::BASELINE_BUILTIN_FRAME))),
            &isBaselineBuiltinFrame, &notBaselineBuiltinFrame);
     Bind(&isBaselineBuiltinFrame);
     {
-        varSp = Load(VariableType::NATIVE_POINTER(), *varSp);
+        varSp = LoadPrimitive(VariableType::NATIVE_POINTER(), *varSp);
         Jump(&notBaselineBuiltinFrame);
     }
     Bind(&notBaselineBuiltinFrame);
@@ -642,10 +642,10 @@ void BaselineAsyncgeneratorresolveV8V8V8StubBuilder::GenerateCircuit()
     }
     Bind(&pcNotEqualBaseline);
     {
-        GateRef function = GetFunctionFromFrame(*prevState);
-        GateRef thisMethod = Load(VariableType::JS_ANY(), function, IntPtr(JSFunctionBase::METHOD_OFFSET));
-        varConstpool = GetConstpoolFromMethod(thisMethod);
-        varProfileTypeInfo = GetProfileTypeInfoFromFunction(function);
+        GateRef function = GetFunctionFromFrame(glue, *prevState);
+        GateRef thisMethod = Load(VariableType::JS_ANY(), glue, function, IntPtr(JSFunctionBase::METHOD_OFFSET));
+        varConstpool = GetConstpoolFromMethod(glue, thisMethod);
+        varProfileTypeInfo = GetProfileTypeInfoFromFunction(glue, function);
         varHotnessCounter = GetHotnessCounterFromMethod(thisMethod);
         GateRef jumpSize = GetCallSizeFromFrame(*prevState);
         GateRef result = CallNGCRuntime(glue, RTSTUB_ID(ResumeRspAndDispatch),
@@ -704,7 +704,7 @@ void BaselineCreategeneratorobjV8StubBuilder::GenerateCircuit()
     GateRef genFunc = TaggedArgument(PARAM_INDEX(BaselineCreategeneratorobjV8, GEN_FUNC));
 
     GateRef frame = GetFrame(sp);
-    GateRef acc = GetAccFromFrame(frame);
+    GateRef acc = GetAccFromFrame(glue, frame);
     GateRef result = CallRuntime(glue, RTSTUB_ID(CreateGeneratorObj), { genFunc });
     CHECK_EXCEPTION_WITH_ACC(result);
 }
@@ -717,7 +717,7 @@ void BaselineCreateiterresultobjV8V8StubBuilder::GenerateCircuit()
     GateRef flag = TaggedArgument(PARAM_INDEX(BaselineCreateiterresultobjV8V8, FLAG));
 
     GateRef frame = GetFrame(sp);
-    GateRef acc = GetAccFromFrame(frame);
+    GateRef acc = GetAccFromFrame(glue, frame);
     GateRef result = CallRuntime(glue, RTSTUB_ID(CreateIterResultObj), { value, flag });
     CHECK_EXCEPTION_WITH_ACC(result);
 }
@@ -731,7 +731,7 @@ void BaselineCreateobjectwithexcludedkeysImm8V8V8StubBuilder::GenerateCircuit()
     GateRef firstArgRegIdx =
         Int32Argument(PARAM_INDEX(BaselineCreateobjectwithexcludedkeysImm8V8V8, FIRST_ARG_REG_IDX));
 
-    GateRef acc = GetAccFromFrame(GetFrame(sp));
+    GateRef acc = GetAccFromFrame(glue, GetFrame(sp));
     GateRef res = CallRuntime(glue, RTSTUB_ID(CreateObjectWithExcludedKeys),
         { Int16ToTaggedInt(numKeys), obj, Int16ToTaggedInt(firstArgRegIdx) });
     CHECK_EXCEPTION_WITH_ACC(res);
@@ -744,9 +744,9 @@ void BaselineCallthis0Imm8V8StubBuilder::GenerateCircuit()
     GateRef thisValueNo = Int32Argument(PARAM_INDEX(BaselineCallthis0Imm8V8, THIS_VALUE_NO));
     GateRef slotId = Int32Argument(PARAM_INDEX(BaselineCallthis0Imm8V8, SLOT_ID));
     DEFINE_PROFILE_CALLBACK(glue, sp, slotId);
-    GateRef thisValue = GetVregValue(sp, ZExtInt32ToPtr(thisValueNo));
-    GateRef acc = GetAccFromFrame(frame);
-    GateRef curMethod = GetMethodFromFunction(curFunc);
+    GateRef thisValue = GetVregValue(glue, sp, ZExtInt32ToPtr(thisValueNo));
+    GateRef acc = GetAccFromFrame(glue, frame);
+    GateRef curMethod = GetMethodFromFunction(glue, curFunc);
     GateRef hotnessCounter = GetHotnessCounterFromMethod(curMethod);
 
     DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
@@ -774,7 +774,7 @@ void BaselineCreatearraywithbufferImm8Id16StubBuilder::GenerateCircuit()
     GateRef slotId = Int32Argument(PARAM_INDEX(BaselineCreatearraywithbufferImm8Id16, SLOTID));
 
     DEFINE_PROFILE_CALLBACK(glue, sp, slotId);
-    GateRef acc = GetAccFromFrame(frame);
+    GateRef acc = GetAccFromFrame(glue, frame);
     NewObjectStubBuilder newBuilder(this);
     GateRef res = newBuilder.CreateArrayWithBuffer(
         glue, imm, curFunc, { 0, traceId, false }, profileTypeInfo, slotId, callback);
@@ -790,7 +790,7 @@ void BaselineCreatearraywithbufferImm16Id16StubBuilder::GenerateCircuit()
     GateRef slotId = Int32Argument(PARAM_INDEX(BaselineCreatearraywithbufferImm16Id16, SLOTID));
     DEFINE_PROFILE_CALLBACK(glue, sp, slotId);
 
-    GateRef acc = GetAccFromFrame(frame);
+    GateRef acc = GetAccFromFrame(glue, frame);
     NewObjectStubBuilder newBuilder(this);
     GateRef res = newBuilder.CreateArrayWithBuffer(
         glue, imm, curFunc, { 0, traceId, false }, profileTypeInfo, slotId, callback);
@@ -805,13 +805,13 @@ void BaselineCallthis1Imm8V8V8StubBuilder::GenerateCircuit()
     GateRef a0ValueId = Int32Argument(PARAM_INDEX(BaselineCallthis1Imm8V8V8, A0_VALUE_ID));
     GateRef slotId = Int32Argument(PARAM_INDEX(BaselineCallthis1Imm8V8V8, SLOT_ID));
     DEFINE_PROFILE_CALLBACK(glue, sp, slotId);
-    GateRef thisValue = GetVregValue(sp, ZExtInt32ToPtr(thisValueId));
-    GateRef a0Value = GetVregValue(sp, ZExtInt32ToPtr(a0ValueId));
-    GateRef curMethod = GetMethodFromFunction(curFunc);
+    GateRef thisValue = GetVregValue(glue, sp, ZExtInt32ToPtr(thisValueId));
+    GateRef a0Value = GetVregValue(glue, sp, ZExtInt32ToPtr(a0ValueId));
+    GateRef curMethod = GetMethodFromFunction(glue, curFunc);
     GateRef hotnessCounter = GetHotnessCounterFromMethod(curMethod);
 
     DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
-    GateRef acc = GetAccFromFrame(frame);
+    GateRef acc = GetAccFromFrame(glue, frame);
     METHOD_ENTRY(acc);
     Label noNeedCheckException(env);
     Label exit(env);
@@ -837,14 +837,14 @@ void BaselineCallthis2Imm8V8V8V8StubBuilder::GenerateCircuit()
     GateRef slotId = Int32Argument(PARAM_INDEX(BaselineCallthis2Imm8V8V8V8, SLOT_ID));
     DEFINE_PROFILE_CALLBACK(glue, sp, slotId);
 
-    GateRef a0Value = GetVregValue(sp, ZExtInt32ToPtr(a0ValueId));
-    GateRef a1Value = GetVregValue(sp, ZExtInt32ToPtr(a1ValueId));
-    GateRef thisValue = GetVregValue(sp, ZExtInt32ToPtr(thisValueId));
-    GateRef curMethod = GetMethodFromFunction(curFunc);
+    GateRef a0Value = GetVregValue(glue, sp, ZExtInt32ToPtr(a0ValueId));
+    GateRef a1Value = GetVregValue(glue, sp, ZExtInt32ToPtr(a1ValueId));
+    GateRef thisValue = GetVregValue(glue, sp, ZExtInt32ToPtr(thisValueId));
+    GateRef curMethod = GetMethodFromFunction(glue, curFunc);
     GateRef hotnessCounter = GetHotnessCounterFromMethod(curMethod);
 
     DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
-    GateRef acc = GetAccFromFrame(frame);
+    GateRef acc = GetAccFromFrame(glue, frame);
     METHOD_ENTRY(acc);
     Label noNeedCheckException(env);
     Label exit(env);
@@ -867,11 +867,11 @@ void BaselineCreateobjectwithbufferImm8Id16StubBuilder::GenerateCircuit()
     GateRef imm = Int32Argument(PARAM_INDEX(BaselineCreateobjectwithbufferImm8Id16, IMM));
     GateRef slotId = Int32Argument(PARAM_INDEX(BaselineCreateobjectwithbufferImm8Id16, SLOT_ID));
     DEFINE_PROFILE_CALLBACK(glue, sp, slotId);
-    GateRef acc = GetAccFromFrame(frame);
-    GateRef method = GetMethodFromFunction(curFunc);
-    GateRef constpool = GetConstpoolFromMethod(method);
-    GateRef currentEnv = GetEnvFromFrame(frame);
-    GateRef module = GetModuleFromFunction(curFunc);
+    GateRef acc = GetAccFromFrame(glue, frame);
+    GateRef method = GetMethodFromFunction(glue, curFunc);
+    GateRef constpool = GetConstpoolFromMethod(glue, method);
+    GateRef currentEnv = GetEnvFromFrame(glue, frame);
+    GateRef module = GetModuleFromFunction(glue, curFunc);
     GateRef result = GetObjectLiteralFromConstPool(glue, constpool, imm, module);
     NewObjectStubBuilder newBuilder(this);
     GateRef res = newBuilder.CreateObjectHavingMethod(glue, result, currentEnv);
@@ -887,11 +887,11 @@ void BaselineCreateobjectwithbufferImm16Id16StubBuilder::GenerateCircuit()
     GateRef slotId = Int32Argument(PARAM_INDEX(BaselineCreateobjectwithbufferImm16Id16, SLOT_ID));
     DEFINE_PROFILE_CALLBACK(glue, sp, slotId);
 
-    GateRef acc = GetAccFromFrame(frame);
-    GateRef method = GetMethodFromFunction(curFunc);
-    GateRef constpool = GetConstpoolFromMethod(method);
-    GateRef currentEnv = GetEnvFromFrame(GetFrame(sp));
-    GateRef module = GetModuleFromFunction(curFunc);
+    GateRef acc = GetAccFromFrame(glue, frame);
+    GateRef method = GetMethodFromFunction(glue, curFunc);
+    GateRef constpool = GetConstpoolFromMethod(glue, method);
+    GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
+    GateRef module = GetModuleFromFunction(glue, curFunc);
     GateRef result = GetObjectLiteralFromConstPool(glue, constpool, imm, module);
     NewObjectStubBuilder newBuilder(this);
     GateRef res = newBuilder.CreateObjectHavingMethod(glue, result, currentEnv);
@@ -907,10 +907,10 @@ void BaselineCreateregexpwithliteralImm8Id16Imm8StubBuilder::GenerateCircuit()
     GateRef flags = Int32Argument(PARAM_INDEX(BaselineCreateregexpwithliteralImm8Id16Imm8, FLAGS));
 
     GateRef frame = GetFrame(sp);
-    GateRef acc = GetAccFromFrame(frame);
-    GateRef func = GetFunctionFromFrame(frame);
-    GateRef method = GetMethodFromFunction(func);
-    GateRef constpool = GetConstpoolFromMethod(method);
+    GateRef acc = GetAccFromFrame(glue, frame);
+    GateRef func = GetFunctionFromFrame(glue, frame);
+    GateRef method = GetMethodFromFunction(glue, func);
+    GateRef constpool = GetConstpoolFromMethod(glue, method);
     GateRef pattern = GetStringFromConstPool(glue, constpool, stringId);
     GateRef res = CallRuntime(glue, RTSTUB_ID(CreateRegExpWithLiteral),
                               { pattern, Int8ToTaggedInt(flags) });
@@ -925,10 +925,10 @@ void BaselineCreateregexpwithliteralImm16Id16Imm8StubBuilder::GenerateCircuit()
     GateRef flags = Int32Argument(PARAM_INDEX(BaselineCreateregexpwithliteralImm16Id16Imm8, FLAGS));
 
     GateRef frame = GetFrame(sp);
-    GateRef acc = GetAccFromFrame(frame);
-    GateRef func = GetFunctionFromFrame(frame);
-    GateRef method = GetMethodFromFunction(func);
-    GateRef constpool = GetConstpoolFromMethod(method);
+    GateRef acc = GetAccFromFrame(glue, frame);
+    GateRef func = GetFunctionFromFrame(glue, frame);
+    GateRef method = GetMethodFromFunction(glue, func);
+    GateRef constpool = GetConstpoolFromMethod(glue, method);
     GateRef pattern = GetStringFromConstPool(glue, constpool, stringId);
     GateRef res = CallRuntime(glue, RTSTUB_ID(CreateRegExpWithLiteral),
                               { pattern, Int8ToTaggedInt(flags) });
@@ -963,7 +963,7 @@ void BaselineNewlexenvImm8StubBuilder::GenerateCircuit()
     GateRef acc = TaggedArgument(PARAM_INDEX(BaselineNewlexenvImm8, ACC));
     GateRef numVars = Int32Argument(PARAM_INDEX(BaselineNewlexenvImm8, NUM_VARS));
     GateRef sp = PtrArgument(PARAM_INDEX(BaselineNewlexenvImm8, SP));
-    auto parent = GetEnvFromFrame(GetFrame(sp));
+    auto parent = GetEnvFromFrame(glue, GetFrame(sp));
 
     DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
     auto env = GetEnvironment();
@@ -1140,7 +1140,7 @@ void BaselineExpImm8V8StubBuilder::GenerateCircuit()
     GateRef glue = PtrArgument(PARAM_INDEX(BaselineExpImm8V8, GLUE));
     GateRef sp = PtrArgument(PARAM_INDEX(BaselineExpImm8V8, SP));
     GateRef base = TaggedArgument(PARAM_INDEX(BaselineExpImm8V8, BASE));
-    GateRef acc = GetAccFromFrame(GetFrame(sp));
+    GateRef acc = GetAccFromFrame(glue, GetFrame(sp));
 
     GateRef result = CallRuntime(glue, RTSTUB_ID(Exp), { base, acc });
     CHECK_EXCEPTION_WITH_ACC(result);
@@ -1194,7 +1194,7 @@ void BaselineTonumericImm8StubBuilder::GenerateCircuit()
     auto env = GetEnvironment();
     Label valueIsNumeric(env);
     Label valueNotNumeric(env);
-    Branch(TaggedIsNumeric(acc), &valueIsNumeric, &valueNotNumeric);
+    Branch(TaggedIsNumeric(glue, acc), &valueIsNumeric, &valueNotNumeric);
     Bind(&valueIsNumeric);
     {
         Return(acc);
@@ -1262,8 +1262,8 @@ void BaselineInstanceofImm8V8StubBuilder::GenerateCircuit()
     GateRef slotId = Int32Argument(PARAM_INDEX(BaselineInstanceofImm8V8, SLOTID));
     DEFINE_PROFILE_CALLBACK(glue, sp, slotId);
 
-    GateRef obj = GetVregValue(sp, ZExtInt32ToPtr(objId));
-    GateRef acc = GetAccFromFrame(frame);
+    GateRef obj = GetVregValue(glue, sp, ZExtInt32ToPtr(objId));
+    GateRef acc = GetAccFromFrame(glue, frame);
     AccessObjectStubBuilder builder(this);
     GateRef result = InstanceOf(glue, obj, acc, profileTypeInfo, slotId, callback);
     CHECK_PENDING_EXCEPTION(result);
@@ -1287,9 +1287,10 @@ void BaselineStricteqImm8V8StubBuilder::GenerateCircuit()
 
 void BaselineIstrueStubBuilder::GenerateCircuit()
 {
+    GateRef glue = PtrArgument(PARAM_INDEX(BaselineIstrue, GLUE));
     GateRef acc = TaggedArgument(PARAM_INDEX(BaselineIstrue, ACC));
 
-    GateRef result = FastToBooleanBaseline(acc, true);
+    GateRef result = FastToBooleanBaseline(glue, acc, true);
     Return(result);
 }
 
@@ -1301,15 +1302,16 @@ void BaselineCallRuntimeIstruePrefImm8StubBuilder::GenerateCircuit()
     GateRef slotId = Int32Argument(PARAM_INDEX(BaselineCallRuntimeIstruePrefImm8, SLOT_ID));
     DEFINE_PROFILE_CALLBACK(glue, sp, slotId);
 
-    GateRef result = FastToBooleanWithProfileBaseline(acc, callback, true);
+    GateRef result = FastToBooleanWithProfileBaseline(glue, acc, callback, true);
     Return(result);
 }
 
 void BaselineIsfalseStubBuilder::GenerateCircuit()
 {
+    GateRef glue = PtrArgument(PARAM_INDEX(BaselineIsfalse, GLUE));
     GateRef acc = TaggedArgument(PARAM_INDEX(BaselineIsfalse, ACC));
 
-    GateRef result = FastToBooleanBaseline(acc, false);
+    GateRef result = FastToBooleanBaseline(glue, acc, false);
     Return(result);
 }
 
@@ -1321,7 +1323,7 @@ void BaselineCallRuntimeIsfalsePrefImm8StubBuilder::GenerateCircuit()
     GateRef slotId = Int32Argument(PARAM_INDEX(BaselineCallRuntimeIsfalsePrefImm8, SLOT_ID));
     DEFINE_PROFILE_CALLBACK(glue, sp, slotId);
 
-    GateRef result = FastToBooleanWithProfileBaseline(acc, callback, false);
+    GateRef result = FastToBooleanWithProfileBaseline(glue, acc, callback, false);
     Return(result);
 }
 
@@ -1344,14 +1346,14 @@ void BaselineCallthis3Imm8V8V8V8V8StubBuilder::GenerateCircuit()
 
     DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
 
-    GateRef acc = GetAccFromFrame(frame);
-    GateRef curMethod = GetMethodFromFunction(curFunc);
+    GateRef acc = GetAccFromFrame(glue, frame);
+    GateRef curMethod = GetMethodFromFunction(glue, curFunc);
     GateRef hotnessCounter = GetHotnessCounterFromMethod(curMethod);
     METHOD_ENTRY(acc);
-    GateRef a0Value = GetVregValue(sp, ZExtInt32ToPtr(arg0Id));
-    GateRef a1Value = GetVregValue(sp, ZExtInt32ToPtr(arg1Id));
-    GateRef a2Value = GetVregValue(sp, ZExtInt32ToPtr(arg2Id));
-    GateRef thisValue = GetVregValue(sp, ZExtInt32ToPtr(thisValueId));
+    GateRef a0Value = GetVregValue(glue, sp, ZExtInt32ToPtr(arg0Id));
+    GateRef a1Value = GetVregValue(glue, sp, ZExtInt32ToPtr(arg1Id));
+    GateRef a2Value = GetVregValue(glue, sp, ZExtInt32ToPtr(arg2Id));
+    GateRef thisValue = GetVregValue(glue, sp, ZExtInt32ToPtr(thisValueId));
     Label noNeedCheckException(env);
     Label exit(env);
     GateRef jumpSize = INT_PTR(CALLTHIS3_IMM8_V8_V8_V8_V8);
@@ -1373,16 +1375,16 @@ void BaselineCallthisrangeImm8Imm8V8StubBuilder::GenerateCircuit()
     GateRef thisReg = Int32Argument(PARAM_INDEX(BaselineCallthisrangeImm8Imm8V8, THIS_REG));
     GateRef slotId = Int32Argument(PARAM_INDEX(BaselineCallthisrangeImm8Imm8V8, SLOT_ID));
     DEFINE_PROFILE_CALLBACK(glue, sp, slotId);
-    GateRef curMethod = GetMethodFromFunction(curFunc);
+    GateRef curMethod = GetMethodFromFunction(glue, curFunc);
     GateRef hotnessCounter = GetHotnessCounterFromMethod(curMethod);
     GateRef numArgs = ZExtInt32ToPtr(actualNumArgs);
 
     DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
-    GateRef acc = GetAccFromFrame(frame);
+    GateRef acc = GetAccFromFrame(glue, frame);
     METHOD_ENTRY(acc);
     Label noNeedCheckException(env);
     Label exit(env);
-    GateRef thisValue = GetVregValue(sp, ZExtInt8ToPtr(thisReg));
+    GateRef thisValue = GetVregValue(glue, sp, ZExtInt8ToPtr(thisReg));
     GateRef argv = PtrAdd(sp, PtrMul(PtrAdd(ZExtInt8ToPtr(thisReg), IntPtr(1)), IntPtr(8)));
     GateRef jumpSize = INT_PTR(CALLTHISRANGE_IMM8_IMM8_V8);
     JSCallArgs callArgs(JSCallMode::CALL_THIS_WITH_ARGV);
@@ -1409,8 +1411,8 @@ void BaselineSupercallthisrangeImm8Imm8V8StubBuilder::GenerateCircuit()
     auto env = GetEnvironment();
     GateRef actualNumArgs = ZExtInt16ToInt32(range);
     GateRef frame = GetFrame(sp);
-    GateRef thisFunc = GetFunctionFromFrame(frame);
-    GateRef newTarget = GetNewTarget(sp);
+    GateRef thisFunc = GetFunctionFromFrame(glue, frame);
+    GateRef newTarget = GetNewTarget(glue, sp);
     GateRef superCtor = GetPrototype(glue, thisFunc);
 
     Label ctorIsHeapObject(env);
@@ -1429,14 +1431,14 @@ void BaselineSupercallthisrangeImm8Imm8V8StubBuilder::GenerateCircuit()
 
     Branch(TaggedIsHeapObject(superCtor), &ctorIsHeapObject, &slowPath);
     Bind(&ctorIsHeapObject);
-    Branch(IsJSFunction(superCtor), &ctorIsJSFunction, &slowPath);
+    Branch(IsJSFunction(glue, superCtor), &ctorIsJSFunction, &slowPath);
     Bind(&ctorIsJSFunction);
-    Branch(IsConstructor(superCtor), &ctorIsConstructor, &slowPath);
+    Branch(IsConstructor(glue, superCtor), &ctorIsConstructor, &slowPath);
     Bind(&ctorIsConstructor);
     Branch(TaggedIsUndefined(newTarget), &slowPath, &fastPath);
     Bind(&fastPath);
     {
-        Branch(IsBase(superCtor), &ctorIsBase, &ctorNotBase);
+        Branch(IsBase(glue, superCtor), &ctorIsBase, &ctorNotBase);
         Bind(&ctorIsBase);
         {
             NewObjectStubBuilder newBuilder(this);
@@ -1476,7 +1478,7 @@ void BaselineSupercallthisrangeImm8Imm8V8StubBuilder::GenerateCircuit()
     }
     Bind(&isException);
     {
-        GateRef acc = GetAccFromFrame(frame);
+        GateRef acc = GetAccFromFrame(glue, frame);
         DISPATCH_LAST();
         Return(acc);
     }
@@ -1508,22 +1510,22 @@ void BaselineDefinefuncImm8Id16Imm8StubBuilder::GenerateCircuit()
     GateRef slotId = Int32Argument(PARAM_INDEX(BaselineDefinefuncImm8Id16Imm8, SLOT_ID));
 
     DEFINE_PROFILE_CALLBACK(glue, sp, slotId);
-    GateRef method = GetMethodFromFunction(curFunc);
-    GateRef constpool = GetConstpoolFromMethod(method);
+    GateRef method = GetMethodFromFunction(glue, curFunc);
+    GateRef constpool = GetConstpoolFromMethod(glue, method);
 
     auto env = GetEnvironment();
-    GateRef acc = GetAccFromFrame(frame);
+    GateRef acc = GetAccFromFrame(glue, frame);
     GateRef result = DefineFunc(glue, constpool, methodId);
     Label notException(env);
     CHECK_EXCEPTION_WITH_JUMP_RETURN(result, &notException);
     Bind(&notException);
     {
         SetLengthToFunction(glue, result, length);
-        GateRef envHandle = GetEnvFromFrame(frame);
+        GateRef envHandle = GetEnvFromFrame(glue, frame);
         SetLexicalEnvToFunction(glue, result, envHandle);
-        GateRef currentFunc = GetFunctionFromFrame(frame);
-        SetModuleToFunction(glue, result, GetModuleFromFunction(currentFunc));
-        SetHomeObjectToFunction(glue, result, GetHomeObjectFromFunction(currentFunc));
+        GateRef currentFunc = GetFunctionFromFrame(glue, frame);
+        SetModuleToFunction(glue, result, GetModuleFromFunction(glue, currentFunc));
+        SetHomeObjectToFunction(glue, result, GetHomeObjectFromFunction(glue, currentFunc));
 #if ECMASCRIPT_ENABLE_IC
         UpdateProfileTypeInfoCellToFunction(glue, result, profileTypeInfo, slotId);
         callback.ProfileDefineClass(result);
@@ -1541,10 +1543,10 @@ void BaselineDefinefuncImm16Id16Imm8StubBuilder::GenerateCircuit()
     GateRef slotId = Int32Argument(PARAM_INDEX(BaselineDefinefuncImm16Id16Imm8, SLOT_ID));
     DEFINE_PROFILE_CALLBACK(glue, sp, slotId);
 
-    GateRef method = GetMethodFromFunction(curFunc);
-    GateRef constpool = GetConstpoolFromMethod(method);
+    GateRef method = GetMethodFromFunction(glue, curFunc);
+    GateRef constpool = GetConstpoolFromMethod(glue, method);
     auto env = GetEnvironment();
-    GateRef acc = GetAccFromFrame(frame);
+    GateRef acc = GetAccFromFrame(glue, frame);
 
     GateRef result = DefineFunc(glue, constpool, methodId);
     Label notException(env);
@@ -1552,11 +1554,11 @@ void BaselineDefinefuncImm16Id16Imm8StubBuilder::GenerateCircuit()
     Bind(&notException);
     {
         SetLengthToFunction(glue, result, length);
-        GateRef envHandle = GetEnvFromFrame(frame);
+        GateRef envHandle = GetEnvFromFrame(glue, frame);
         SetLexicalEnvToFunction(glue, result, envHandle);
-        GateRef currentFunc = GetFunctionFromFrame(frame);
-        SetModuleToFunction(glue, result, GetModuleFromFunction(currentFunc));
-        SetHomeObjectToFunction(glue, result, GetHomeObjectFromFunction(currentFunc));
+        GateRef currentFunc = GetFunctionFromFrame(glue, frame);
+        SetModuleToFunction(glue, result, GetModuleFromFunction(glue, currentFunc));
+        SetHomeObjectToFunction(glue, result, GetHomeObjectFromFunction(glue, currentFunc));
 #if ECMASCRIPT_ENABLE_IC
         UpdateProfileTypeInfoCellToFunction(glue, result, profileTypeInfo, slotId);
         callback.ProfileDefineClass(result);
@@ -1574,16 +1576,16 @@ void BaselineDefinemethodImm8Id16Imm8StubBuilder::GenerateCircuit()
     GateRef sp = PtrArgument(PARAM_INDEX(BaselineDefinemethodImm8Id16Imm8, SP));
     ProfileOperation callback;
 
-    GateRef func = GetFunctionFromFrame(GetFrame(sp));
-    GateRef method = GetMethodFromFunction(func);
-    GateRef constpool = GetConstpoolFromMethod(method);
+    GateRef func = GetFunctionFromFrame(glue, GetFrame(sp));
+    GateRef method = GetMethodFromFunction(glue, func);
+    GateRef constpool = GetConstpoolFromMethod(glue, method);
     auto env = GetEnvironment();
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
-    GateRef lexEnv = GetEnvFromFrame(GetFrame(sp));
+    GateRef lexEnv = GetEnvFromFrame(glue, GetFrame(sp));
     DEFVARIABLE(result, VariableType::JS_POINTER(),
         GetMethodFromConstPool(glue, constpool, methodId));
     result = CallRuntime(glue, RTSTUB_ID(DefineMethod), { *result, acc, Int8ToTaggedInt(length),
-                                                          lexEnv, GetModule(sp) });
+                                                          lexEnv, GetModule(glue, sp) });
     Label notException(env);
     CHECK_EXCEPTION_WITH_JUMP_RETURN(*result, &notException);
     Bind(&notException);
@@ -1599,16 +1601,16 @@ void BaselineDefinemethodImm16Id16Imm8StubBuilder::GenerateCircuit()
     GateRef sp = PtrArgument(PARAM_INDEX(BaselineDefinemethodImm16Id16Imm8, SP));
     ProfileOperation callback;
 
-    GateRef func = GetFunctionFromFrame(GetFrame(sp));
-    GateRef method = GetMethodFromFunction(func);
-    GateRef constpool = GetConstpoolFromMethod(method);
+    GateRef func = GetFunctionFromFrame(glue, GetFrame(sp));
+    GateRef method = GetMethodFromFunction(glue, func);
+    GateRef constpool = GetConstpoolFromMethod(glue, method);
     auto env = GetEnvironment();
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
-    GateRef lexEnv = GetEnvFromFrame(GetFrame(sp));
+    GateRef lexEnv = GetEnvFromFrame(glue, GetFrame(sp));
     DEFVARIABLE(result, VariableType::JS_POINTER(),
         GetMethodFromConstPool(glue, constpool, methodId));
     result = CallRuntime(glue, RTSTUB_ID(DefineMethod), { *result, acc, Int8ToTaggedInt(length),
-                                                          lexEnv, GetModule(sp) });
+                                                          lexEnv, GetModule(glue, sp) });
     Label notException(env);
     CHECK_EXCEPTION_WITH_JUMP_RETURN(*result, &notException);
     Bind(&notException);
@@ -1623,13 +1625,13 @@ void BaselineCallarg0Imm8StubBuilder::GenerateCircuit()
     DEFINE_PROFILE_CALLBACK(glue, sp, slotId);
 
     DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
-    GateRef acc = GetAccFromFrame(frame);
+    GateRef acc = GetAccFromFrame(glue, frame);
     METHOD_ENTRY(acc);
     Label noNeedCheckException(env);
     Label exit(env);
     GateRef actualNumArgs = Int32(EcmaInterpreter::ActualNumArgsOfCall::CALLARG0);
     GateRef jumpSize = INT_PTR(CALLARG0_IMM8);
-    GateRef curMethod = GetMethodFromFunction(curFunc);
+    GateRef curMethod = GetMethodFromFunction(glue, curFunc);
     GateRef hotnessCounter = GetHotnessCounterFromMethod(curMethod);
     JSCallArgs callArgs(JSCallMode::CALL_ARG0);
     callArgs.callArgs = { 0, 0, 0 };
@@ -1646,10 +1648,10 @@ void BaselineCallRuntimeSupercallforwardallargsPrefV8StubBuilder::GenerateCircui
     GateRef glue = PtrArgument(PARAM_INDEX(BaselineCallRuntimeSupercallforwardallargsPrefV8, GLUE));
     GateRef sp = PtrArgument(PARAM_INDEX(BaselineCallRuntimeSupercallforwardallargsPrefV8, SP));
     GateRef v0 = Int32Argument(PARAM_INDEX(BaselineCallRuntimeSupercallforwardallargsPrefV8, V0));
-    GateRef thisFunc = GetVregValue(sp, ZExtInt32ToPtr(v0));
+    GateRef thisFunc = GetVregValue(glue, sp, ZExtInt32ToPtr(v0));
 
     GateRef frame = GetFrame(sp);
-    GateRef acc = GetAccFromFrame(frame);
+    GateRef acc = GetAccFromFrame(glue, frame);
     GateRef res = CallRuntime(glue, RTSTUB_ID(SuperCallForwardAllArgs), { thisFunc });
     CHECK_PENDING_EXCEPTION(res);  // CheckPendingException(glue, sp, res, acc)
 }
@@ -1666,7 +1668,7 @@ void BaselineSupercallspreadImm8V8StubBuilder::GenerateCircuit()
     DEFVARIABLE(res, VariableType::JS_ANY(), Undefined());
     DEFVARIABLE(thisObj, VariableType::JS_ANY(), Undefined());
     auto env = GetEnvironment();
-    GateRef newTarget = GetNewTarget(sp);
+    GateRef newTarget = GetNewTarget(glue, sp);
     GateRef superCtor = GetPrototype(glue, acc);
 
     Label dispatch(env);
@@ -1684,14 +1686,14 @@ void BaselineSupercallspreadImm8V8StubBuilder::GenerateCircuit()
 
     Branch(TaggedIsHeapObject(superCtor), &ctorIsHeapObject, &slowPath);
     Bind(&ctorIsHeapObject);
-    Branch(IsJSFunction(superCtor), &ctorIsJSFunction, &slowPath);
+    Branch(IsJSFunction(glue, superCtor), &ctorIsJSFunction, &slowPath);
     Bind(&ctorIsJSFunction);
-    Branch(IsConstructor(superCtor), &ctorIsConstructor, &slowPath);
+    Branch(IsConstructor(glue, superCtor), &ctorIsConstructor, &slowPath);
     Bind(&ctorIsConstructor);
     Branch(TaggedIsUndefined(newTarget), &slowPath, &normalPath);
     Bind(&normalPath);
     {
-        Branch(IsBase(superCtor), &ctorIsBase, &ctorNotBase);
+        Branch(IsBase(glue, superCtor), &ctorIsBase, &ctorNotBase);
         Bind(&ctorIsBase);
         {
             NewObjectStubBuilder objBuilder(this);
@@ -1700,7 +1702,7 @@ void BaselineSupercallspreadImm8V8StubBuilder::GenerateCircuit()
         }
         Bind(&ctorNotBase);
         {
-            GateRef argvLen = Load(VariableType::INT32(), array, IntPtr(JSArray::LENGTH_OFFSET));
+            GateRef argvLen = LoadPrimitive(VariableType::INT32(), array, IntPtr(JSArray::LENGTH_OFFSET));
             GateRef srcElements = GetCallSpreadArgs(glue, array, callback);
             GateRef jumpSize = IntPtr(-BytecodeInstruction::Size(BytecodeInstruction::Format::IMM8_V8));
             METHOD_ENTRY_ENV_DEFINED(superCtor);
@@ -1755,12 +1757,12 @@ void BaselineCallargs2Imm8V8V8StubBuilder::GenerateCircuit()
     GateRef arg0No = Int32Argument(PARAM_INDEX(BaselineCallargs2Imm8V8V8, ARG0_NO));
     GateRef arg1No = Int32Argument(PARAM_INDEX(BaselineCallargs2Imm8V8V8, ARG1_NO));
     GateRef slotId = Int32Argument(PARAM_INDEX(BaselineCallargs2Imm8V8V8, SLOT_ID));
-    GateRef a0Value = GetVregValue(sp, ZExtInt32ToPtr(arg0No));
-    GateRef a1Value = GetVregValue(sp, ZExtInt32ToPtr(arg1No));
+    GateRef a0Value = GetVregValue(glue, sp, ZExtInt32ToPtr(arg0No));
+    GateRef a1Value = GetVregValue(glue, sp, ZExtInt32ToPtr(arg1No));
     DEFINE_PROFILE_CALLBACK(glue, sp, slotId);
 
-    GateRef acc = GetAccFromFrame(frame);
-    GateRef curMethod = GetMethodFromFunction(curFunc);
+    GateRef acc = GetAccFromFrame(glue, frame);
+    GateRef curMethod = GetMethodFromFunction(glue, curFunc);
     GateRef hotnessCounter = GetHotnessCounterFromMethod(curMethod);
 
     DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
@@ -1789,13 +1791,13 @@ void BaselineCallargs3Imm8V8V8V8StubBuilder::GenerateCircuit()
     GateRef slotId = Int32Argument(PARAM_INDEX(BaselineCallargs3Imm8V8V8V8, SLOT_ID));
 
     DEFINE_PROFILE_CALLBACK(glue, sp, slotId);
-    GateRef curMethod = GetMethodFromFunction(curFunc);
+    GateRef curMethod = GetMethodFromFunction(glue, curFunc);
     GateRef hotnessCounter = GetHotnessCounterFromMethod(curMethod);
-    GateRef arg0Value = GetVregValue(sp, ZExtInt32ToPtr(arg0No));
-    GateRef arg1Value = GetVregValue(sp, ZExtInt32ToPtr(arg1No));
-    GateRef arg2Value = GetVregValue(sp, ZExtInt32ToPtr(arg2No));
+    GateRef arg0Value = GetVregValue(glue, sp, ZExtInt32ToPtr(arg0No));
+    GateRef arg1Value = GetVregValue(glue, sp, ZExtInt32ToPtr(arg1No));
+    GateRef arg2Value = GetVregValue(glue, sp, ZExtInt32ToPtr(arg2No));
     DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
-    GateRef acc = GetAccFromFrame(frame);
+    GateRef acc = GetAccFromFrame(glue, frame);
     METHOD_ENTRY(acc);
     Label noNeedCheckException(env);
     Label exit(env);
@@ -1821,8 +1823,8 @@ void BaselineCallrangeImm8Imm8V8StubBuilder::GenerateCircuit()
     DEFINE_PROFILE_CALLBACK(glue, sp, slotId);
 
     DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
-    GateRef acc = GetAccFromFrame(frame);
-    GateRef curMethod = GetMethodFromJSFunctionOrProxy(curFunc);
+    GateRef acc = GetAccFromFrame(glue, frame);
+    GateRef curMethod = GetMethodFromJSFunctionOrProxy(glue, curFunc);
     GateRef hotnessCounter = GetHotnessCounterFromMethod(curMethod);
     METHOD_ENTRY(acc);
     Label noNeedCheckException(env);
@@ -1857,9 +1859,9 @@ void BaselineLdthisbynameImm8Id16StubBuilder::GenerateCircuit()
     GateRef slotId = Int32Argument(PARAM_INDEX(BaselineLdthisbynameImm8Id16, SLOT_ID));
     DEFINE_PROFILE_CALLBACK(glue, sp, slotId);
 
-    GateRef method = GetMethodFromFunction(curFunc);
-    GateRef constpool = GetConstpoolFromMethod(method);
-    GateRef receiver = GetThisFromFrame(frame);
+    GateRef method = GetMethodFromFunction(glue, curFunc);
+    GateRef constpool = GetConstpoolFromMethod(glue, method);
+    GateRef receiver = GetThisFromFrame(glue, frame);
 
     AccessObjectStubBuilder builder(this);
     StringIdInfo stringIdInfo(constpool, stringId);
@@ -1879,15 +1881,15 @@ void BaselineDefinegettersetterbyvalueV8V8V8V8StubBuilder::GenerateCircuit()
     GateRef getterVregId = Int32And(Int32LSR(vregIds, Int32(TWO_BYTE_SIZE)), Int32(ONE_BYTE_ALL_ONE));
     GateRef setterVregId = Int32And(Int32LSR(vregIds, Int32(THREE_BYTE_SIZE)), Int32(ONE_BYTE_ALL_ONE));
 
-    GateRef obj = GetVregValue(sp, ZExtInt32ToPtr(objectVregId));
-    GateRef prop = GetVregValue(sp, ZExtInt32ToPtr(propkeyVregId));
-    GateRef getter = GetVregValue(sp, ZExtInt32ToPtr(getterVregId));
-    GateRef setter = GetVregValue(sp, ZExtInt32ToPtr(setterVregId));
+    GateRef obj = GetVregValue(glue, sp, ZExtInt32ToPtr(objectVregId));
+    GateRef prop = GetVregValue(glue, sp, ZExtInt32ToPtr(propkeyVregId));
+    GateRef getter = GetVregValue(glue, sp, ZExtInt32ToPtr(getterVregId));
+    GateRef setter = GetVregValue(glue, sp, ZExtInt32ToPtr(setterVregId));
 
     GateRef frame = GetFrame(sp);
-    GateRef acc = GetAccFromFrame(frame);
+    GateRef acc = GetAccFromFrame(glue, frame);
 
-    GateRef func = GetFunctionFromFrame(frame);
+    GateRef func = GetFunctionFromFrame(glue, frame);
     GateRef offsetPtr = TaggedPtrToTaggedIntPtr(IntPtr(offset));
     GateRef res = CallRuntime(glue, RTSTUB_ID(DefineGetterSetterByValue),
                               { obj, prop, getter, setter, acc, func, offsetPtr }); // acc is flag
@@ -1902,9 +1904,9 @@ void BaselineLdthisbynameImm16Id16StubBuilder::GenerateCircuit()
     GateRef slotId = Int32Argument(PARAM_INDEX(BaselineLdthisbynameImm16Id16, SLOT_ID));
     DEFINE_PROFILE_CALLBACK(glue, sp, slotId);
 
-    GateRef method = GetMethodFromFunction(curFunc);
-    GateRef constpool = GetConstpoolFromMethod(method);
-    GateRef receiver = GetThisFromFrame(frame);
+    GateRef method = GetMethodFromFunction(glue, curFunc);
+    GateRef constpool = GetConstpoolFromMethod(glue, method);
+    GateRef receiver = GetThisFromFrame(glue, frame);
 
     AccessObjectStubBuilder builder(this);
     StringIdInfo stringIdInfo(constpool, stringId);
@@ -1920,11 +1922,11 @@ void BaselineStthisbynameImm8Id16StubBuilder::GenerateCircuit()
     GateRef slotId = Int32Argument(PARAM_INDEX(BaselineStthisbynameImm8Id16, SLOT_ID));
 
     DEFINE_PROFILE_CALLBACK(glue, sp, slotId);
-    GateRef method = GetMethodFromFunction(curFunc);
-    GateRef constpool = GetConstpoolFromMethod(method);
-    GateRef acc = GetAccFromFrame(frame);
+    GateRef method = GetMethodFromFunction(glue, curFunc);
+    GateRef constpool = GetConstpoolFromMethod(glue, method);
+    GateRef acc = GetAccFromFrame(glue, frame);
     AccessObjectStubBuilder builder(this);
-    GateRef receiver = GetThisFromFrame(frame);
+    GateRef receiver = GetThisFromFrame(glue, frame);
     StringIdInfo stringIdInfo(constpool, stringId);
     GateRef result =
         builder.StoreObjByName(glue, receiver, 0, stringIdInfo, acc, profileTypeInfo, slotId, callback);
@@ -1939,11 +1941,11 @@ void BaselineStthisbynameImm16Id16StubBuilder::GenerateCircuit()
     GateRef slotId = Int32Argument(PARAM_INDEX(BaselineStthisbynameImm16Id16, SLOT_ID));
     DEFINE_PROFILE_CALLBACK(glue, sp, slotId);
 
-    GateRef method = GetMethodFromFunction(curFunc);
-    GateRef constpool = GetConstpoolFromMethod(method);
-    GateRef acc = GetAccFromFrame(frame);
+    GateRef method = GetMethodFromFunction(glue, curFunc);
+    GateRef constpool = GetConstpoolFromMethod(glue, method);
+    GateRef acc = GetAccFromFrame(glue, frame);
     AccessObjectStubBuilder builder(this);
-    GateRef receiver = GetThisFromFrame(frame);
+    GateRef receiver = GetThisFromFrame(glue, frame);
     StringIdInfo stringIdInfo(constpool, stringId);
     GateRef result = builder.StoreObjByName(glue, receiver, 0, stringIdInfo, acc, profileTypeInfo, slotId, callback);
     CHECK_EXCEPTION(result);
@@ -1956,10 +1958,10 @@ void BaselineLdthisbyvalueImm8StubBuilder::GenerateCircuit()
     GateRef slotId = Int32Argument(PARAM_INDEX(BaselineLdthisbyvalueImm8, SLOT_ID));
     DEFINE_PROFILE_CALLBACK(glue, sp, slotId);
 
-    GateRef acc = GetAccFromFrame(frame);
+    GateRef acc = GetAccFromFrame(glue, frame);
 
     AccessObjectStubBuilder builder(this);
-    GateRef receiver = GetThisFromFrame(frame);
+    GateRef receiver = GetThisFromFrame(glue, frame);
     GateRef result = builder.LoadObjByValue(glue, receiver, acc, profileTypeInfo, slotId, callback);
     CHECK_EXCEPTION_RETURN(result);
 }
@@ -1971,10 +1973,10 @@ void BaselineLdthisbyvalueImm16StubBuilder::GenerateCircuit()
     GateRef slotId = Int32Argument(PARAM_INDEX(BaselineLdthisbyvalueImm16, SLOT_ID));
     DEFINE_PROFILE_CALLBACK(glue, sp, slotId);
 
-    GateRef acc = GetAccFromFrame(frame);
+    GateRef acc = GetAccFromFrame(glue, frame);
 
     AccessObjectStubBuilder builder(this);
-    GateRef receiver = GetThisFromFrame(frame);
+    GateRef receiver = GetThisFromFrame(glue, frame);
     GateRef result = builder.LoadObjByValue(glue, receiver, acc, profileTypeInfo, slotId, callback);
     CHECK_EXCEPTION_RETURN(result);
 }
@@ -1987,9 +1989,9 @@ void BaselineStthisbyvalueImm8V8StubBuilder::GenerateCircuit()
     GateRef propKey = TaggedArgument(PARAM_INDEX(BaselineStthisbyvalueImm8V8, PROP_KEY));
     DEFINE_PROFILE_CALLBACK(glue, sp, slotId);
 
-    GateRef acc = GetAccFromFrame(frame);
+    GateRef acc = GetAccFromFrame(glue, frame);
     AccessObjectStubBuilder builder(this);
-    GateRef receiver = GetThisFromFrame(frame);
+    GateRef receiver = GetThisFromFrame(glue, frame);
     GateRef result = builder.StoreObjByValue(glue, receiver, propKey, acc, profileTypeInfo, slotId, callback);
     CHECK_EXCEPTION(result);
 }
@@ -2002,9 +2004,9 @@ void BaselineStthisbyvalueImm16V8StubBuilder::GenerateCircuit()
     GateRef propKey = TaggedArgument(PARAM_INDEX(BaselineStthisbyvalueImm16V8, PROP_KEY));
     DEFINE_PROFILE_CALLBACK(glue, sp, slotId);
 
-    GateRef acc = GetAccFromFrame(frame);
+    GateRef acc = GetAccFromFrame(glue, frame);
     AccessObjectStubBuilder builder(this);
-    GateRef receiver = GetThisFromFrame(frame);
+    GateRef receiver = GetThisFromFrame(glue, frame);
     GateRef result = builder.StoreObjByValue(glue, receiver, propKey, acc, profileTypeInfo, slotId, callback);
     CHECK_EXCEPTION(result);
 }
@@ -2015,8 +2017,8 @@ void BaselineDynamicimportStubBuilder::GenerateCircuit()
     GateRef sp = PtrArgument(PARAM_INDEX(BaselineDynamicimport, SP));
 
     GateRef frame = GetFrame(sp);
-    GateRef acc = GetAccFromFrame(frame);
-    GateRef currentFunc = GetFunctionFromFrame(frame);
+    GateRef acc = GetAccFromFrame(glue, frame);
+    GateRef currentFunc = GetFunctionFromFrame(glue, frame);
     GateRef res = CallRuntime(glue, RTSTUB_ID(DynamicImport), { acc, currentFunc });
     CHECK_EXCEPTION_WITH_ACC(res);
 }
@@ -2033,14 +2035,14 @@ void BaselineDefineclasswithbufferImm8Id16Id16Imm16V8StubBuilder::GenerateCircui
     GateRef methodId = Int32And(methodLiteralId, Int32(TWO_BYTE_ALL_ONE));
     GateRef literalId = Int32And(Int32LSR(methodLiteralId, Int32(TWO_BYTE_SIZE)), Int32(TWO_BYTE_ALL_ONE));
     DEFINE_PROFILE_CALLBACK(glue, sp, slotId);
-    GateRef proto = GetVregValue(sp, ZExtInt8ToPtr(v0));
+    GateRef proto = GetVregValue(glue, sp, ZExtInt8ToPtr(v0));
 
-    GateRef method = GetMethodFromFunction(curFunc);
-    GateRef constpool = GetConstpoolFromMethod(method);
+    GateRef method = GetMethodFromFunction(glue, curFunc);
+    GateRef constpool = GetConstpoolFromMethod(glue, method);
 
     auto env = GetEnvironment();
-    GateRef lexicalEnv = GetEnvFromFrame(frame);
-    GateRef module = GetModuleFromFunction(curFunc);
+    GateRef lexicalEnv = GetEnvFromFrame(glue, frame);
+    GateRef module = GetModuleFromFunction(glue, curFunc);
     GateRef res = CallRuntime(glue, RTSTUB_ID(CreateClassWithBuffer),
                               { proto, lexicalEnv, constpool,
                                 Int16ToTaggedInt(methodId),
@@ -2052,7 +2054,7 @@ void BaselineDefineclasswithbufferImm8Id16Id16Imm16V8StubBuilder::GenerateCircui
     Branch(TaggedIsException(res), &isException, &isNotException);
     Bind(&isException);
     {
-        GateRef acc = GetAccFromFrame(frame);
+        GateRef acc = GetAccFromFrame(glue, frame);
         DISPATCH_LAST_WITH_ACC();
         Return(acc);
     }
@@ -2079,13 +2081,13 @@ void BaselineDefineclasswithbufferImm16Id16Id16Imm16V8StubBuilder::GenerateCircu
     GateRef literalId = Int32And(Int32LSR(methodLiteralId, Int32(TWO_BYTE_SIZE)), Int32(TWO_BYTE_ALL_ONE));
     GateRef length = Int32And(lengthAndProtoId, Int32(TWO_BYTE_SIZE));
     GateRef protoVregId = Int32And(Int32LSR(lengthAndProtoId, Int32(TWO_BYTE_SIZE)), Int32(TWO_BYTE_ALL_ONE));
-    GateRef proto = GetVregValue(sp, ZExtInt32ToPtr(protoVregId));
+    GateRef proto = GetVregValue(glue, sp, ZExtInt32ToPtr(protoVregId));
 
-    GateRef method = GetMethodFromFunction(curFunc);
-    GateRef constpool = GetConstpoolFromMethod(method);
+    GateRef method = GetMethodFromFunction(glue, curFunc);
+    GateRef constpool = GetConstpoolFromMethod(glue, method);
     auto env = GetEnvironment();
-    GateRef lexicalEnv = GetEnvFromFrame(frame);
-    GateRef module = GetModuleFromFunction(curFunc);
+    GateRef lexicalEnv = GetEnvFromFrame(glue, frame);
+    GateRef module = GetModuleFromFunction(glue, curFunc);
     GateRef res = CallRuntime(glue, RTSTUB_ID(CreateClassWithBuffer),
                               { proto, lexicalEnv, constpool,
                                 IntToTaggedInt(methodId),
@@ -2096,7 +2098,7 @@ void BaselineDefineclasswithbufferImm16Id16Id16Imm16V8StubBuilder::GenerateCircu
     Branch(TaggedIsException(res), &isException, &isNotException);
     Bind(&isException);
     {
-        GateRef acc = GetAccFromFrame(frame);
+        GateRef acc = GetAccFromFrame(glue, frame);
         DISPATCH_LAST_WITH_ACC();
         Return(res);
     }
@@ -2121,23 +2123,23 @@ void BaselineResumegeneratorStubBuilder::GenerateCircuit()
 
 #if ECMASCRIPT_ENABLE_FUNCTION_CALL_TIMER
     GateRef frame = GetFrame(sp);
-    GateRef curFunc = GetFunctionFromFrame(frame);
+    GateRef curFunc = GetFunctionFromFrame(glue, frame);
     CallNGCRuntime(glue, RTSTUB_ID(StartCallTimer), { glue, curFunc, False() });
 #endif
     Label isAsyncGeneratorObj(env);
     Label notAsyncGeneratorObj(env);
     Label dispatch(env);
-    Branch(TaggedIsAsyncGeneratorObject(acc), &isAsyncGeneratorObj, &notAsyncGeneratorObj);
+    Branch(TaggedIsAsyncGeneratorObject(glue, acc), &isAsyncGeneratorObj, &notAsyncGeneratorObj);
     Bind(&isAsyncGeneratorObj);
     {
         GateRef resumeResultOffset = IntPtr(JSAsyncGeneratorObject::GENERATOR_RESUME_RESULT_OFFSET);
-        varAcc = Load(VariableType::JS_ANY(), acc, resumeResultOffset);
+        varAcc = Load(VariableType::JS_ANY(), glue, acc, resumeResultOffset);
         Jump(&dispatch);
     }
     Bind(&notAsyncGeneratorObj);
     {
         GateRef resumeResultOffset = IntPtr(JSGeneratorObject::GENERATOR_RESUME_RESULT_OFFSET);
-        varAcc = Load(VariableType::JS_ANY(), acc, resumeResultOffset);
+        varAcc = Load(VariableType::JS_ANY(), glue, acc, resumeResultOffset);
         Jump(&dispatch);
     }
     Bind(&dispatch);
@@ -2146,6 +2148,7 @@ void BaselineResumegeneratorStubBuilder::GenerateCircuit()
 
 void BaselineGetresumemodStubBuilder::GenerateCircuit()
 {
+    GateRef glue = PtrArgument(PARAM_INDEX(BaselineGetresumemod, GLUE));
     GateRef acc = TaggedArgument(PARAM_INDEX(BaselineGetresumemod, ACC));
     auto env = GetEnvironment();
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
@@ -2153,7 +2156,7 @@ void BaselineGetresumemodStubBuilder::GenerateCircuit()
     Label isAsyncGeneratorObj(env);
     Label notAsyncGeneratorObj(env);
     Label dispatch(env);
-    Branch(TaggedIsAsyncGeneratorObject(acc), &isAsyncGeneratorObj, &notAsyncGeneratorObj);
+    Branch(TaggedIsAsyncGeneratorObject(glue, acc), &isAsyncGeneratorObj, &notAsyncGeneratorObj);
     Bind(&isAsyncGeneratorObj);
     {
         varAcc = IntToTaggedPtr(GetResumeModeFromAsyncGeneratorObject(acc));
@@ -2196,7 +2199,7 @@ void BaselineGetnextpropnameV8StubBuilder::GenerateCircuit()
     GateRef iter = TaggedArgument(PARAM_INDEX(BaselineGetnextpropnameV8, ITER));
 
     GateRef frame = GetFrame(sp);
-    GateRef acc = GetAccFromFrame(frame);
+    GateRef acc = GetAccFromFrame(glue, frame);
     GateRef result = NextInternal(glue, iter);
     CHECK_EXCEPTION_WITH_ACC(result);
 }
@@ -2286,7 +2289,7 @@ void BaselineLdobjbyvalueImm8V8StubBuilder::GenerateCircuit()
     GateRef slotId = Int32Argument(PARAM_INDEX(BaselineLdobjbyvalueImm8V8, SLOTID));
     DEFINE_PROFILE_CALLBACK(glue, sp, slotId);
 
-    GateRef acc = GetAccFromFrame(frame);
+    GateRef acc = GetAccFromFrame(glue, frame);
     AccessObjectStubBuilder builder(this);
     GateRef result = builder.LoadObjByValue(glue, receiver, acc, profileTypeInfo, slotId, callback);
     CHECK_EXCEPTION_RETURN(result);
@@ -2300,7 +2303,7 @@ void BaselineLdobjbyvalueImm16V8StubBuilder::GenerateCircuit()
     GateRef slotId = Int32Argument(PARAM_INDEX(BaselineLdobjbyvalueImm16V8, SLOTID));
     DEFINE_PROFILE_CALLBACK(glue, sp, slotId);
 
-    GateRef acc = GetAccFromFrame(frame);
+    GateRef acc = GetAccFromFrame(glue, frame);
     AccessObjectStubBuilder builder(this);
     GateRef result = builder.LoadObjByValue(glue, receiver, acc, profileTypeInfo, slotId, callback);
     CHECK_EXCEPTION_RETURN(result);
@@ -2315,7 +2318,7 @@ void BaselineStobjbyvalueImm8V8V8StubBuilder::GenerateCircuit()
     GateRef propKey = TaggedArgument(PARAM_INDEX(BaselineStobjbyvalueImm8V8V8, PROP_KEY));
     DEFINE_PROFILE_CALLBACK(glue, sp, slotId);
 
-    GateRef acc = GetAccFromFrame(frame);
+    GateRef acc = GetAccFromFrame(glue, frame);
     AccessObjectStubBuilder builder(this);
     GateRef result = builder.StoreObjByValue(glue, receiver, propKey, acc, profileTypeInfo, slotId, callback);
     CHECK_EXCEPTION(result);
@@ -2330,7 +2333,7 @@ void BaselineStobjbyvalueImm16V8V8StubBuilder::GenerateCircuit()
     GateRef propKey = TaggedArgument(PARAM_INDEX(BaselineStobjbyvalueImm16V8V8, PROP_KEY));
     DEFINE_PROFILE_CALLBACK(glue, sp, slotId);
 
-    GateRef acc = GetAccFromFrame(frame);
+    GateRef acc = GetAccFromFrame(glue, frame);
     AccessObjectStubBuilder builder(this);
     GateRef result = builder.StoreObjByValue(glue, receiver, propKey, acc, profileTypeInfo, slotId, callback);
     CHECK_EXCEPTION(result);
@@ -2345,9 +2348,9 @@ void BaselineStownbyvalueImm8V8V8StubBuilder::GenerateCircuit()
     GateRef slotId = Int32Argument(PARAM_INDEX(BaselineStownbyvalueImm8V8V8, SLOT_ID));
     DEFINE_PROFILE_CALLBACK(glue, sp, slotId);
 
-    GateRef receiver = GetVregValue(sp, ZExtInt32ToPtr(receiverId));
-    GateRef propKey = GetVregValue(sp, ZExtInt32ToPtr(propKeyId));
-    GateRef acc = GetAccFromFrame(frame);
+    GateRef receiver = GetVregValue(glue, sp, ZExtInt32ToPtr(receiverId));
+    GateRef propKey = GetVregValue(glue, sp, ZExtInt32ToPtr(propKeyId));
+    GateRef acc = GetAccFromFrame(glue, frame);
 
     auto env = GetEnvironment();
     Label isHeapObject(env);
@@ -2355,10 +2358,10 @@ void BaselineStownbyvalueImm8V8V8StubBuilder::GenerateCircuit()
     Branch(TaggedIsHeapObject(receiver), &isHeapObject, &slowPath);
     Bind(&isHeapObject);
     Label notClassConstructor(env);
-    Branch(IsClassConstructor(receiver), &slowPath, &notClassConstructor);
+    Branch(IsClassConstructor(glue, receiver), &slowPath, &notClassConstructor);
     Bind(&notClassConstructor);
     Label notClassPrototype(env);
-    Branch(IsClassPrototype(receiver), &slowPath, &notClassPrototype);
+    Branch(IsClassPrototype(glue, receiver), &slowPath, &notClassPrototype);
     Bind(&notClassPrototype);
     {
         // fast path
@@ -2384,17 +2387,17 @@ void BaselineStownbyvalueImm16V8V8StubBuilder::GenerateCircuit()
     GateRef slotId = TaggedArgument(PARAM_INDEX(BaselineStownbyvalueImm16V8V8, SLOT_ID));
     DEFINE_PROFILE_CALLBACK(glue, sp, slotId);
 
-    GateRef acc = GetAccFromFrame(frame);
+    GateRef acc = GetAccFromFrame(glue, frame);
     auto env = GetEnvironment();
     Label isHeapObject(env);
     Label slowPath(env);
     Branch(TaggedIsHeapObject(receiver), &isHeapObject, &slowPath);
     Bind(&isHeapObject);
     Label notClassConstructor(env);
-    Branch(IsClassConstructor(receiver), &slowPath, &notClassConstructor);
+    Branch(IsClassConstructor(glue, receiver), &slowPath, &notClassConstructor);
     Bind(&notClassConstructor);
     Label notClassPrototype(env);
-    Branch(IsClassPrototype(receiver), &slowPath, &notClassPrototype);
+    Branch(IsClassPrototype(glue, receiver), &slowPath, &notClassPrototype);
     Bind(&notClassPrototype);
     {
         // fast path
@@ -2439,7 +2442,7 @@ void BaselineStsuperbyvalueImm8V8V8StubBuilder::GenerateCircuit()
     GateRef sp = PtrArgument(PARAM_INDEX(BaselineStsuperbyvalueImm8V8V8, SP));
     GateRef receiver = TaggedArgument(PARAM_INDEX(BaselineStsuperbyvalueImm8V8V8, RECEIVER));
     GateRef propKey = TaggedArgument(PARAM_INDEX(BaselineStsuperbyvalueImm8V8V8, PROP_KEY));
-    GateRef acc = GetAccFromFrame(GetFrame(sp));
+    GateRef acc = GetAccFromFrame(glue, GetFrame(sp));
     ProfileOperation callback;
 
     // acc is value, sp for thisFunc
@@ -2453,7 +2456,7 @@ void BaselineStsuperbyvalueImm16V8V8StubBuilder::GenerateCircuit()
     GateRef sp = PtrArgument(PARAM_INDEX(BaselineStsuperbyvalueImm16V8V8, SP));
     GateRef receiver = TaggedArgument(PARAM_INDEX(BaselineStsuperbyvalueImm16V8V8, RECEIVER));
     GateRef propKey = TaggedArgument(PARAM_INDEX(BaselineStsuperbyvalueImm16V8V8, PROP_KEY));
-    GateRef acc = GetAccFromFrame(GetFrame(sp));
+    GateRef acc = GetAccFromFrame(glue, GetFrame(sp));
     ProfileOperation callback;
 
     // acc is value, sp for thisFunc
@@ -2470,7 +2473,7 @@ void BaselineLdobjbyindexImm8Imm16StubBuilder::GenerateCircuit()
     DEFINE_PROFILE_CALLBACK(glue, sp, slotId);
 
     auto env = GetEnvironment();
-    GateRef acc = GetAccFromFrame(frame);
+    GateRef acc = GetAccFromFrame(glue, frame);
     Label fastPath(env);
     Label slowPath(env);
     Branch(TaggedIsHeapObject(acc), &fastPath, &slowPath);
@@ -2499,7 +2502,7 @@ void BaselineLdobjbyindexImm16Imm16StubBuilder::GenerateCircuit()
     DEFINE_PROFILE_CALLBACK(glue, sp, slotId);
 
     auto env = GetEnvironment();
-    GateRef acc = GetAccFromFrame(frame);
+    GateRef acc = GetAccFromFrame(glue, frame);
     Label fastPath(env);
     Label slowPath(env);
     Branch(TaggedIsHeapObject(acc), &fastPath, &slowPath);
@@ -2525,7 +2528,7 @@ void BaselineStobjbyindexImm8V8Imm16StubBuilder::GenerateCircuit()
     GateRef sp = PtrArgument(PARAM_INDEX(BaselineStobjbyindexImm8V8Imm16, SP));
     GateRef receiver = Int32Argument(PARAM_INDEX(BaselineStobjbyindexImm8V8Imm16, RECEIVER));
     GateRef index = Int32Argument(PARAM_INDEX(BaselineStobjbyindexImm8V8Imm16, INDEX));
-    GateRef acc = GetAccFromFrame(GetFrame(sp));
+    GateRef acc = GetAccFromFrame(glue, GetFrame(sp));
 
     auto env = GetEnvironment();
     Label fastPath(env);
@@ -2555,7 +2558,7 @@ void BaselineStobjbyindexImm16V8Imm16StubBuilder::GenerateCircuit()
     GateRef index = Int32Argument(PARAM_INDEX(BaselineStobjbyindexImm16V8Imm16, INDEX));
     GateRef slotId = Int32Argument(PARAM_INDEX(BaselineStobjbyindexImm16V8Imm16, SLOT_ID));
     DEFINE_PROFILE_CALLBACK(glue, sp, slotId);
-    GateRef acc = GetAccFromFrame(frame);
+    GateRef acc = GetAccFromFrame(glue, frame);
     auto env = GetEnvironment();
     Label fastPath(env);
     Label slowPath(env);
@@ -2584,7 +2587,7 @@ void BaselineStownbyindexImm8V8Imm16StubBuilder::GenerateCircuit()
     GateRef index = Int32Argument(PARAM_INDEX(BaselineStownbyindexImm8V8Imm16, INDEX));
     GateRef slotId = Int32Argument(PARAM_INDEX(BaselineStownbyindexImm8V8Imm16, SLOTID));
     DEFINE_PROFILE_CALLBACK(glue, sp, slotId);
-    GateRef acc = GetAccFromFrame(frame);
+    GateRef acc = GetAccFromFrame(glue, frame);
 
     AccessObjectStubBuilder builder(this);
     GateRef result = builder.StoreOwnByIndex(
@@ -2601,7 +2604,7 @@ void BaselineStownbyindexImm16V8Imm16StubBuilder::GenerateCircuit()
     GateRef slotId = Int32Argument(PARAM_INDEX(BaselineStownbyindexImm16V8Imm16, SLOTID));
     DEFINE_PROFILE_CALLBACK(glue, sp, slotId);
 
-    GateRef acc = GetAccFromFrame(frame);
+    GateRef acc = GetAccFromFrame(glue, frame);
     AccessObjectStubBuilder builder(this);
     GateRef result = builder.StoreOwnByIndex(glue, receiver, index, acc, profileTypeInfo, slotId, callback);
     CHECK_EXCEPTION(result);
@@ -2641,15 +2644,15 @@ void BaselineCopyrestargsImm8StubBuilder::GenerateCircuit()
     DEFVARIABLE(res, VariableType::JS_ANY(), Undefined());
     DEFVARIABLE(i, VariableType::INT32(), Int32(0));
     auto env = GetEnvironment();
-    GateRef startIdxAndNumArgs = GetStartIdxAndNumArgs(sp, restIdx);
+    GateRef startIdxAndNumArgs = GetStartIdxAndNumArgs(glue, sp, restIdx);
     GateRef startIdx = TruncInt64ToInt32(Int64LSR(startIdxAndNumArgs, Int64(32)));
     GateRef numArgs = TruncInt64ToInt32(startIdxAndNumArgs);
     Label dispatch(env);
     Label slowPath(env);
     GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
-    GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
-    auto arrayFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, GlobalEnv::ARRAY_FUNCTION_INDEX);
-    GateRef intialHClass = Load(VariableType::JS_ANY(), arrayFunc, IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
+    GateRef glueGlobalEnv = LoadPrimitive(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
+    auto arrayFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glue, glueGlobalEnv, GlobalEnv::ARRAY_FUNCTION_INDEX);
+    GateRef intialHClass = Load(VariableType::JS_ANY(), glue, arrayFunc, IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
     NewObjectStubBuilder newBuilder(this);
     newBuilder.SetParameters(glue, 0);
     res = newBuilder.NewJSArrayWithSize(intialHClass, numArgs);
@@ -2661,12 +2664,12 @@ void BaselineCopyrestargsImm8StubBuilder::GenerateCircuit()
     Label setArgumentsBegin(env);
     Label setArgumentsAgain(env);
     Label setArgumentsEnd(env);
-    GateRef elements = GetElementsArray(*res);
+    GateRef elements = GetElementsArray(glue, *res);
     Branch(Int32UnsignedLessThan(*i, numArgs), &setArgumentsBegin, &setArgumentsEnd);
     LoopBegin(&setArgumentsBegin);
     {
         GateRef idx = ZExtInt32ToPtr(Int32Add(startIdx, *i));
-        GateRef receiver = Load(VariableType::JS_ANY(), sp, PtrMul(IntPtr(sizeof(JSTaggedType)), idx));
+        GateRef receiver = Load(VariableType::JS_ANY(), glue, sp, PtrMul(IntPtr(sizeof(JSTaggedType)), idx));
         SetValueToTaggedArray(VariableType::JS_ANY(), glue, elements, *i, receiver);
         i = Int32Add(*i, Int32(1));
         Branch(Int32UnsignedLessThan(*i, numArgs), &setArgumentsAgain, &setArgumentsEnd);
@@ -2689,12 +2692,13 @@ void BaselineCopyrestargsImm8StubBuilder::GenerateCircuit()
 
 void BaselineLdlexvarImm4Imm4StubBuilder::GenerateCircuit()
 {
+    GateRef glue = PtrArgument(PARAM_INDEX(BaselineLdlexvarImm4Imm4, GLUE));
     GateRef sp = PtrArgument(PARAM_INDEX(BaselineLdlexvarImm4Imm4, SP));
     GateRef level = Int32Argument(PARAM_INDEX(BaselineLdlexvarImm4Imm4, LEVEL));
     GateRef slot = Int32Argument(PARAM_INDEX(BaselineLdlexvarImm4Imm4, SLOT));
 
     auto env = GetEnvironment();
-    DEFVARIABLE(currentEnv, VariableType::JS_ANY(), GetEnvFromFrame(GetFrame(sp)));
+    DEFVARIABLE(currentEnv, VariableType::JS_ANY(), GetEnvFromFrame(glue, GetFrame(sp)));
     DEFVARIABLE(i, VariableType::INT32(), Int32(0));
 
     Label loopHead(env);
@@ -2702,13 +2706,13 @@ void BaselineLdlexvarImm4Imm4StubBuilder::GenerateCircuit()
     Label afterLoop(env);
     Branch(Int32LessThan(*i, level), &loopHead, &afterLoop);
     LoopBegin(&loopHead);
-    currentEnv = GetParentEnv(*currentEnv);
+    currentEnv = GetParentEnv(glue, *currentEnv);
     i = Int32Add(*i, Int32(1));
     Branch(Int32LessThan(*i, level), &loopEnd, &afterLoop);
     Bind(&loopEnd);
     LoopEnd(&loopHead);
     Bind(&afterLoop);
-    GateRef variable = GetPropertiesFromLexicalEnv(*currentEnv, slot);
+    GateRef variable = GetPropertiesFromLexicalEnv(glue, *currentEnv, slot);
     Return(variable);
 }
 
@@ -2721,7 +2725,7 @@ void BaselineStlexvarImm4Imm4StubBuilder::GenerateCircuit()
     GateRef slot = Int32Argument(PARAM_INDEX(BaselineStlexvarImm4Imm4, SLOT));
 
     auto env = GetEnvironment();
-    DEFVARIABLE(currentEnv, VariableType::JS_ANY(), GetEnvFromFrame(GetFrame(sp)));
+    DEFVARIABLE(currentEnv, VariableType::JS_ANY(), GetEnvFromFrame(glue, GetFrame(sp)));
     DEFVARIABLE(i, VariableType::INT32(), Int32(0));
 
     Label loopHead(env);
@@ -2729,7 +2733,7 @@ void BaselineStlexvarImm4Imm4StubBuilder::GenerateCircuit()
     Label afterLoop(env);
     Branch(Int32LessThan(*i, level), &loopHead, &afterLoop);
     LoopBegin(&loopHead);
-    currentEnv = GetParentEnv(*currentEnv);
+    currentEnv = GetParentEnv(glue, *currentEnv);
     i = Int32Add(*i, Int32(1));
     Branch(Int32LessThan(*i, level), &loopEnd, &afterLoop);
     Bind(&loopEnd);
@@ -2766,10 +2770,10 @@ void BaselineTryldglobalbynameImm16Id16StubBuilder::GenerateCircuit()
     GateRef stringId = Int32Argument(PARAM_INDEX(BaselineTryldglobalbynameImm16Id16, STRING_ID));
     DEFINE_PROFILE_CALLBACK(glue, sp, slotId);
 
-    GateRef acc = GetAccFromFrame(frame);
+    GateRef acc = GetAccFromFrame(glue, frame);
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
-    GateRef method = GetMethodFromFunction(curFunc);
-    GateRef constpool = GetConstpoolFromMethod(method);
+    GateRef method = GetMethodFromFunction(glue, curFunc);
+    GateRef constpool = GetConstpoolFromMethod(glue, method);
     AccessObjectStubBuilder builder(this);
     StringIdInfo info(constpool, stringId);
     GateRef result = builder.TryLoadGlobalByName(glue, 0, info, profileTypeInfo, slotId, callback);
@@ -2784,9 +2788,9 @@ void BaselineTrystglobalbynameImm8Id16StubBuilder::GenerateCircuit()
     GateRef slotId = Int32Argument(PARAM_INDEX(BaselineTrystglobalbynameImm8Id16, SLOTID));
     DEFINE_PROFILE_CALLBACK(glue, sp, slotId);
 
-    GateRef method = GetMethodFromFunction(curFunc);
-    GateRef constpool = GetConstpoolFromMethod(method);
-    GateRef acc = GetAccFromFrame(frame);
+    GateRef method = GetMethodFromFunction(glue, curFunc);
+    GateRef constpool = GetConstpoolFromMethod(glue, method);
+    GateRef acc = GetAccFromFrame(glue, frame);
     AccessObjectStubBuilder builder(this);
     StringIdInfo info(constpool, stringId);
     GateRef result =
@@ -2802,9 +2806,9 @@ void BaselineTrystglobalbynameImm16Id16StubBuilder::GenerateCircuit()
     GateRef stringId = Int32Argument(PARAM_INDEX(BaselineTrystglobalbynameImm16Id16, STRING_ID));
     DEFINE_PROFILE_CALLBACK(glue, sp, slotId);
 
-    GateRef method = GetMethodFromFunction(curFunc);
-    GateRef constpool = GetConstpoolFromMethod(method);
-    GateRef acc = GetAccFromFrame(frame);
+    GateRef method = GetMethodFromFunction(glue, curFunc);
+    GateRef constpool = GetConstpoolFromMethod(glue, method);
+    GateRef acc = GetAccFromFrame(glue, frame);
     AccessObjectStubBuilder builder(this);
     StringIdInfo info(constpool, stringId);
     GateRef result =
@@ -2820,10 +2824,10 @@ void BaselineLdglobalvarImm16Id16StubBuilder::GenerateCircuit()
     GateRef stringId = Int32Argument(PARAM_INDEX(BaselineLdglobalvarImm16Id16, STRING_ID));
     DEFINE_PROFILE_CALLBACK(glue, sp, slotId);
 
-    GateRef acc = GetAccFromFrame(frame);
+    GateRef acc = GetAccFromFrame(glue, frame);
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
-    GateRef method = GetMethodFromFunction(curFunc);
-    GateRef constpool = GetConstpoolFromMethod(method);
+    GateRef method = GetMethodFromFunction(glue, curFunc);
+    GateRef constpool = GetConstpoolFromMethod(glue, method);
     AccessObjectStubBuilder builder(this);
     StringIdInfo info(constpool, stringId);
     GateRef result = builder.LoadGlobalVar(glue, 0, info, profileTypeInfo, slotId, callback);
@@ -2837,13 +2841,13 @@ void BaselineStglobalvarImm16Id16StubBuilder::GenerateCircuit()
     GateRef acc = TaggedArgument(PARAM_INDEX(BaselineStglobalvarImm16Id16, ACC));
     GateRef slotId = Int32Argument(PARAM_INDEX(BaselineStglobalvarImm16Id16, SLOTID));
     GateRef stringId = Int32Argument(PARAM_INDEX(BaselineStglobalvarImm16Id16, STRING_ID));
-    GateRef profileTypeInfo = GetProfileTypeInfoFromFunction(GetFunctionFromFrame(GetFrame(sp)));
+    GateRef profileTypeInfo = GetProfileTypeInfoFromFunction(glue, GetFunctionFromFrame(glue, GetFrame(sp)));
     ProfileOperation callback;
 
     GateRef frame = GetFrame(sp);
-    GateRef func = GetFunctionFromFrame(frame);
-    GateRef method = GetMethodFromFunction(func);
-    GateRef constpool = GetConstpoolFromMethod(method);
+    GateRef func = GetFunctionFromFrame(glue, frame);
+    GateRef method = GetMethodFromFunction(glue, func);
+    GateRef constpool = GetConstpoolFromMethod(glue, method);
     AccessObjectStubBuilder builder(this);
     StringIdInfo info(constpool, stringId);
     GateRef result = builder.StoreGlobalVar(glue, 0, info, acc, profileTypeInfo, slotId);
@@ -2858,9 +2862,9 @@ void BaselineLdobjbynameImm8Id16StubBuilder::GenerateCircuit()
     GateRef stringId = Int32Argument(PARAM_INDEX(BaselineLdobjbynameImm8Id16, STRING_ID));
     DEFINE_PROFILE_CALLBACK(glue, sp, slotId);
 
-    GateRef method = GetMethodFromFunction(curFunc);
-    GateRef constpool = GetConstpoolFromMethod(method);
-    GateRef receiver = GetAccFromFrame(frame);
+    GateRef method = GetMethodFromFunction(glue, curFunc);
+    GateRef constpool = GetConstpoolFromMethod(glue, method);
+    GateRef receiver = GetAccFromFrame(glue, frame);
     AccessObjectStubBuilder builder(this);
     StringIdInfo stringIdInfo(constpool, stringId);
     GateRef result = builder.LoadObjByName(glue, receiver, 0, stringIdInfo, profileTypeInfo, slotId, callback);
@@ -2875,9 +2879,9 @@ void BaselineLdobjbynameImm16Id16StubBuilder::GenerateCircuit()
     GateRef stringId = Int32Argument(PARAM_INDEX(BaselineLdobjbynameImm16Id16, STRING_ID));
     DEFINE_PROFILE_CALLBACK(glue, sp, slotId);
 
-    GateRef method = GetMethodFromFunction(curFunc);
-    GateRef constpool = GetConstpoolFromMethod(method);
-    GateRef acc = GetAccFromFrame(frame);
+    GateRef method = GetMethodFromFunction(glue, curFunc);
+    GateRef constpool = GetConstpoolFromMethod(glue, method);
+    GateRef acc = GetAccFromFrame(glue, frame);
     AccessObjectStubBuilder builder(this);
     StringIdInfo stringIdInfo(constpool, stringId);
     GateRef result = builder.LoadObjByName(glue, acc, 0, stringIdInfo, profileTypeInfo,
@@ -2895,11 +2899,11 @@ void BaselineStobjbynameImm8Id16V8StubBuilder::GenerateCircuit()
     ProfileOperation callback;
 
     GateRef frame = GetFrame(sp);
-    GateRef func = GetFunctionFromFrame(frame);
-    GateRef method = GetMethodFromFunction(func);
-    GateRef constpool = GetConstpoolFromMethod(method);
-    GateRef acc = GetAccFromFrame(frame);
-    GateRef profileTypeInfo = GetProfileTypeInfoFromFunction(func);
+    GateRef func = GetFunctionFromFrame(glue, frame);
+    GateRef method = GetMethodFromFunction(glue, func);
+    GateRef constpool = GetConstpoolFromMethod(glue, method);
+    GateRef acc = GetAccFromFrame(glue, frame);
+    GateRef profileTypeInfo = GetProfileTypeInfoFromFunction(glue, func);
 
     AccessObjectStubBuilder builder(this);
     StringIdInfo stringIdInfo(constpool, stringId);
@@ -2917,9 +2921,9 @@ void BaselineStobjbynameImm16Id16V8StubBuilder::GenerateCircuit()
     GateRef receiver = TaggedArgument(PARAM_INDEX(BaselineStobjbynameImm16Id16V8, RECEIVER));
     DEFINE_PROFILE_CALLBACK(glue, sp, slotId);
 
-    GateRef method = GetMethodFromFunction(curFunc);
-    GateRef constpool = GetConstpoolFromMethod(method);
-    GateRef acc = GetAccFromFrame(frame);
+    GateRef method = GetMethodFromFunction(glue, curFunc);
+    GateRef constpool = GetConstpoolFromMethod(glue, method);
+    GateRef acc = GetAccFromFrame(glue, frame);
     AccessObjectStubBuilder builder(this);
     StringIdInfo stringIdInfo(constpool, stringId);
     GateRef result = builder.StoreObjByName(glue, receiver, 0, stringIdInfo, acc, profileTypeInfo,
@@ -2936,10 +2940,10 @@ void BaselineStownbynameImm8Id16V8StubBuilder::GenerateCircuit()
     GateRef slotId = Int32Argument(PARAM_INDEX(BaselineStownbynameImm8Id16V8, SLOT_ID));
     DEFINE_PROFILE_CALLBACK(glue, sp, slotId);
 
-    GateRef method = GetMethodFromFunction(curFunc);
-    GateRef constpool = GetConstpoolFromMethod(method);
-    GateRef receiver = GetVregValue(sp, ZExtInt32ToPtr(receiverId));
-    GateRef acc = GetAccFromFrame(frame);
+    GateRef method = GetMethodFromFunction(glue, curFunc);
+    GateRef constpool = GetConstpoolFromMethod(glue, method);
+    GateRef receiver = GetVregValue(glue, sp, ZExtInt32ToPtr(receiverId));
+    GateRef acc = GetAccFromFrame(glue, frame);
     auto env = GetEnvironment();
     GateRef propKey = GetStringFromConstPool(glue, constpool, stringId);
     DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
@@ -2947,15 +2951,15 @@ void BaselineStownbynameImm8Id16V8StubBuilder::GenerateCircuit()
 
     Label isJSObject(env);
     Label slowPath(env);
-    Branch(IsJSObject(receiver), &isJSObject, &slowPath);
+    Branch(IsJSObject(glue, receiver), &isJSObject, &slowPath);
     Bind(&isJSObject);
     {
         Label notClassConstructor(env);
-        Branch(IsClassConstructor(receiver), &slowPath, &notClassConstructor);
+        Branch(IsClassConstructor(glue, receiver), &slowPath, &notClassConstructor);
         Bind(&notClassConstructor);
         {
             Label fastPath(env);
-            Branch(IsClassPrototype(receiver), &slowPath, &fastPath);
+            Branch(IsClassPrototype(glue, receiver), &slowPath, &fastPath);
             Bind(&fastPath);
             {
                 result = SetPropertyByName(glue, receiver, propKey, acc, true, True(), callback);
@@ -2983,9 +2987,9 @@ void BaselineStownbynameImm16Id16V8StubBuilder::GenerateCircuit()
     GateRef slotId = Int32Argument(PARAM_INDEX(BaselineStownbynameImm16Id16V8, SLOT_ID));
     DEFINE_PROFILE_CALLBACK(glue, sp, slotId);
 
-    GateRef acc = GetAccFromFrame(frame);
-    GateRef method = GetMethodFromFunction(curFunc);
-    GateRef constpool = GetConstpoolFromMethod(method);
+    GateRef acc = GetAccFromFrame(glue, frame);
+    GateRef method = GetMethodFromFunction(glue, curFunc);
+    GateRef constpool = GetConstpoolFromMethod(glue, method);
     auto env = GetEnvironment();
     GateRef propKey = GetStringFromConstPool(glue, constpool, stringId);
     DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
@@ -2993,15 +2997,15 @@ void BaselineStownbynameImm16Id16V8StubBuilder::GenerateCircuit()
 
     Label isJSObject(env);
     Label slowPath(env);
-    Branch(IsJSObject(receiver), &isJSObject, &slowPath);
+    Branch(IsJSObject(glue, receiver), &isJSObject, &slowPath);
     Bind(&isJSObject);
     {
         Label notClassConstructor(env);
-        Branch(IsClassConstructor(receiver), &slowPath, &notClassConstructor);
+        Branch(IsClassConstructor(glue, receiver), &slowPath, &notClassConstructor);
         Bind(&notClassConstructor);
         {
             Label fastPath(env);
-            Branch(IsClassPrototype(receiver), &slowPath, &fastPath);
+            Branch(IsClassPrototype(glue, receiver), &slowPath, &fastPath);
             Bind(&fastPath);
             {
                 result = SetPropertyByName(glue, receiver, propKey, acc, true, True(), callback);
@@ -3027,10 +3031,10 @@ void BaselineLdsuperbynameImm8Id16StubBuilder::GenerateCircuit()
     GateRef stringId = Int32Argument(PARAM_INDEX(BaselineLdsuperbynameImm8Id16, STRING_ID));
 
     GateRef frame = GetFrame(sp);
-    GateRef acc = GetAccFromFrame(frame);
-    GateRef func = GetFunctionFromFrame(frame);
-    GateRef method = GetMethodFromFunction(func);
-    GateRef constpool = GetConstpoolFromMethod(method);
+    GateRef acc = GetAccFromFrame(glue, frame);
+    GateRef func = GetFunctionFromFrame(glue, frame);
+    GateRef method = GetMethodFromFunction(glue, func);
+    GateRef constpool = GetConstpoolFromMethod(glue, method);
     GateRef propKey = GetStringFromConstPool(glue, constpool, stringId);
     GateRef result = CallRuntime(glue, RTSTUB_ID(LdSuperByValue), { acc, propKey });
     CHECK_EXCEPTION_RETURN(result);
@@ -3043,10 +3047,10 @@ void BaselineLdsuperbynameImm16Id16StubBuilder::GenerateCircuit()
     GateRef stringId = Int32Argument(PARAM_INDEX(BaselineLdsuperbynameImm16Id16, STRING_ID));
 
     GateRef frame = GetFrame(sp);
-    GateRef acc = GetAccFromFrame(frame);
-    GateRef func = GetFunctionFromFrame(frame);
-    GateRef method = GetMethodFromFunction(func);
-    GateRef constpool = GetConstpoolFromMethod(method);
+    GateRef acc = GetAccFromFrame(glue, frame);
+    GateRef func = GetFunctionFromFrame(glue, frame);
+    GateRef method = GetMethodFromFunction(glue, func);
+    GateRef constpool = GetConstpoolFromMethod(glue, method);
     GateRef propKey = GetStringFromConstPool(glue, constpool, stringId);
     GateRef result = CallRuntime(glue, RTSTUB_ID(LdSuperByValue), { acc, propKey });
     CHECK_EXCEPTION_RETURN(result);
@@ -3061,9 +3065,9 @@ void BaselineStsuperbynameImm8Id16V8StubBuilder::GenerateCircuit()
     GateRef stringId = Int32Argument(PARAM_INDEX(BaselineStsuperbynameImm8Id16V8, STRING_ID));
     ProfileOperation callback;
 
-    GateRef func = GetFunctionFromFrame(GetFrame(sp));
-    GateRef method = GetMethodFromFunction(func);
-    GateRef constpool = GetConstpoolFromMethod(method);
+    GateRef func = GetFunctionFromFrame(glue, GetFrame(sp));
+    GateRef method = GetMethodFromFunction(glue, func);
+    GateRef constpool = GetConstpoolFromMethod(glue, method);
     GateRef propKey = GetStringFromConstPool(glue, constpool, stringId);
     GateRef result = CallRuntime(glue, RTSTUB_ID(StSuperByValue), { receiver, propKey, acc });
     CHECK_EXCEPTION(result);
@@ -3078,9 +3082,9 @@ void BaselineStsuperbynameImm16Id16V8StubBuilder::GenerateCircuit()
     GateRef stringId = Int32Argument(PARAM_INDEX(BaselineStsuperbynameImm16Id16V8, STRING_ID));
     ProfileOperation callback;
 
-    GateRef func = GetFunctionFromFrame(GetFrame(sp));
-    GateRef method = GetMethodFromFunction(func);
-    GateRef constpool = GetConstpoolFromMethod(method);
+    GateRef func = GetFunctionFromFrame(glue, GetFrame(sp));
+    GateRef method = GetMethodFromFunction(glue, func);
+    GateRef constpool = GetConstpoolFromMethod(glue, method);
     GateRef propKey = GetStringFromConstPool(glue, constpool, stringId);
     GateRef result = CallRuntime(glue, RTSTUB_ID(StSuperByValue), { receiver, propKey, acc });
     CHECK_EXCEPTION(result);
@@ -3091,9 +3095,9 @@ void BaselineLdlocalmodulevarImm8StubBuilder::GenerateCircuit()
     GateRef glue = PtrArgument(PARAM_INDEX(BaselineLdlocalmodulevarImm8, GLUE));
     GateRef sp = PtrArgument(PARAM_INDEX(BaselineLdlocalmodulevarImm8, SP));
     GateRef index = Int32Argument(PARAM_INDEX(BaselineLdlocalmodulevarImm8, INDEX));
-    GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
+    GateRef currentFunc = GetFunctionFromFrame(glue, GetFrame(sp));
 
-    GateRef module = GetModuleFromFunction(currentFunc);
+    GateRef module = GetModuleFromFunction(glue, currentFunc);
     GateRef moduleRef = Loadlocalmodulevar(glue, index, module);
     Return(moduleRef);
 }
@@ -3105,9 +3109,9 @@ void BaselineStconsttoglobalrecordImm16Id16StubBuilder::GenerateCircuit()
     GateRef acc = TaggedArgument(PARAM_INDEX(BaselineStconsttoglobalrecordImm16Id16, ACC));
     GateRef stringId = Int32Argument(PARAM_INDEX(BaselineStconsttoglobalrecordImm16Id16, STRING_ID));
 
-    GateRef func = GetFunctionFromFrame(GetFrame(sp));
-    GateRef method = GetMethodFromFunction(func);
-    GateRef constpool = GetConstpoolFromMethod(method);
+    GateRef func = GetFunctionFromFrame(glue, GetFrame(sp));
+    GateRef method = GetMethodFromFunction(glue, func);
+    GateRef constpool = GetConstpoolFromMethod(glue, method);
     GateRef propKey = GetStringFromConstPool(glue, constpool, stringId);
     GateRef result = CallRuntime(glue, RTSTUB_ID(StGlobalRecord),
                                  { propKey, acc, TaggedTrue() });
@@ -3122,9 +3126,9 @@ void BaselineStownbyvaluewithnamesetImm8V8V8StubBuilder::GenerateCircuit()
     GateRef propKeyId = Int32Argument(PARAM_INDEX(BaselineStownbyvaluewithnamesetImm8V8V8, PROP_KEY_ID));
     GateRef slotId = Int32Argument(PARAM_INDEX(BaselineStownbyvaluewithnamesetImm8V8V8, SLOT_ID));
     DEFINE_PROFILE_CALLBACK(glue, sp, slotId);
-    GateRef receiver = GetVregValue(sp, ZExtInt32ToPtr(receiverId));
-    GateRef propKey = GetVregValue(sp, ZExtInt32ToPtr(propKeyId));
-    GateRef acc = GetAccFromFrame(frame);
+    GateRef receiver = GetVregValue(glue, sp, ZExtInt32ToPtr(receiverId));
+    GateRef propKey = GetVregValue(glue, sp, ZExtInt32ToPtr(propKeyId));
+    GateRef acc = GetAccFromFrame(glue, frame);
 
     auto env = GetEnvironment();
     Label isHeapObject(env);
@@ -3137,10 +3141,10 @@ void BaselineStownbyvaluewithnamesetImm8V8V8StubBuilder::GenerateCircuit()
     Branch(TaggedIsHeapObject(receiver), &isHeapObject, &slowPath);
     Bind(&isHeapObject);
     {
-        Branch(IsClassConstructor(receiver), &slowPath, &notClassConstructor);
+        Branch(IsClassConstructor(glue, receiver), &slowPath, &notClassConstructor);
         Bind(&notClassConstructor);
         {
-            Branch(IsClassPrototype(receiver), &slowPath, &notClassPrototype);
+            Branch(IsClassPrototype(glue, receiver), &slowPath, &notClassPrototype);
             Bind(&notClassPrototype);
             {
                 GateRef res = SetPropertyByValue(glue, receiver, propKey, acc, true, callback);
@@ -3173,7 +3177,7 @@ void BaselineStownbyvaluewithnamesetImm16V8V8StubBuilder::GenerateCircuit()
     GateRef slotId = Int32Argument(PARAM_INDEX(BaselineStownbyvaluewithnamesetImm16V8V8, SLOT_ID));
     DEFINE_PROFILE_CALLBACK(glue, sp, slotId);
 
-    GateRef acc = GetAccFromFrame(frame);
+    GateRef acc = GetAccFromFrame(glue, frame);
     auto env = GetEnvironment();
     Label isHeapObject(env);
     Label slowPath(env);
@@ -3185,10 +3189,10 @@ void BaselineStownbyvaluewithnamesetImm16V8V8StubBuilder::GenerateCircuit()
     Branch(TaggedIsHeapObject(receiver), &isHeapObject, &slowPath);
     Bind(&isHeapObject);
     {
-        Branch(IsClassConstructor(receiver), &slowPath, &notClassConstructor);
+        Branch(IsClassConstructor(glue, receiver), &slowPath, &notClassConstructor);
         Bind(&notClassConstructor);
         {
-            Branch(IsClassPrototype(receiver), &slowPath, &notClassPrototype);
+            Branch(IsClassPrototype(glue, receiver), &slowPath, &notClassPrototype);
             Bind(&notClassPrototype);
             {
                 GateRef res = SetPropertyByValue(glue, receiver, propKey, acc, true, callback);
@@ -3221,10 +3225,10 @@ void BaselineStownbynamewithnamesetImm8Id16V8StubBuilder::GenerateCircuit()
     GateRef slotId = Int32Argument(PARAM_INDEX(BaselineStownbynamewithnamesetImm8Id16V8, SLOT_ID));
     DEFINE_PROFILE_CALLBACK(glue, sp, slotId);
 
-    GateRef method = GetMethodFromFunction(curFunc);
-    GateRef constpool = GetConstpoolFromMethod(method);
-    GateRef receiver = GetVregValue(sp, ZExtInt32ToPtr(receiverId));
-    GateRef acc = GetAccFromFrame(frame);
+    GateRef method = GetMethodFromFunction(glue, curFunc);
+    GateRef constpool = GetConstpoolFromMethod(glue, method);
+    GateRef receiver = GetVregValue(glue, sp, ZExtInt32ToPtr(receiverId));
+    GateRef acc = GetAccFromFrame(glue, frame);
     auto env = GetEnvironment();
     GateRef propKey = GetStringFromConstPool(glue, constpool, stringId);
     Label isJSObject(env);
@@ -3234,13 +3238,13 @@ void BaselineStownbynamewithnamesetImm8Id16V8StubBuilder::GenerateCircuit()
     Label notHole(env);
     Label notException(env);
     Label notException1(env);
-    Branch(IsJSObject(receiver), &isJSObject, &notJSObject);
+    Branch(IsJSObject(glue, receiver), &isJSObject, &notJSObject);
     Bind(&isJSObject);
     {
-        Branch(IsClassConstructor(receiver), &notJSObject, &notClassConstructor);
+        Branch(IsClassConstructor(glue, receiver), &notJSObject, &notClassConstructor);
         Bind(&notClassConstructor);
         {
-            Branch(IsClassPrototype(receiver), &notJSObject, &notClassPrototype);
+            Branch(IsClassPrototype(glue, receiver), &notJSObject, &notClassPrototype);
             Bind(&notClassPrototype);
             {
                 GateRef res = SetPropertyByName(glue, receiver, propKey, acc, true, True(), callback);
@@ -3273,9 +3277,9 @@ void BaselineStownbynamewithnamesetImm16Id16V8StubBuilder::GenerateCircuit()
     GateRef slotId = Int32Argument(PARAM_INDEX(BaselineStownbynamewithnamesetImm16Id16V8, SLOT_ID));
     DEFINE_PROFILE_CALLBACK(glue, sp, slotId);
 
-    GateRef acc = GetAccFromFrame(frame);
-    GateRef method = GetMethodFromFunction(curFunc);
-    GateRef constpool = GetConstpoolFromMethod(method);
+    GateRef acc = GetAccFromFrame(glue, frame);
+    GateRef method = GetMethodFromFunction(glue, curFunc);
+    GateRef constpool = GetConstpoolFromMethod(glue, method);
     auto env = GetEnvironment();
     GateRef propKey = GetStringFromConstPool(glue, constpool, stringId);
     Label isJSObject(env);
@@ -3285,13 +3289,13 @@ void BaselineStownbynamewithnamesetImm16Id16V8StubBuilder::GenerateCircuit()
     Label notHole(env);
     Label notException(env);
     Label notException1(env);
-    Branch(IsJSObject(receiver), &isJSObject, &notJSObject);
+    Branch(IsJSObject(glue, receiver), &isJSObject, &notJSObject);
     Bind(&isJSObject);
     {
-        Branch(IsClassConstructor(receiver), &notJSObject, &notClassConstructor);
+        Branch(IsClassConstructor(glue, receiver), &notJSObject, &notClassConstructor);
         Bind(&notClassConstructor);
         {
-            Branch(IsClassPrototype(receiver), &notJSObject, &notClassPrototype);
+            Branch(IsClassPrototype(glue, receiver), &notJSObject, &notClassPrototype);
             Bind(&notClassPrototype);
             {
                 GateRef res = SetPropertyByName(glue, receiver, propKey, acc, true, True(), callback);
@@ -3322,10 +3326,10 @@ void BaselineLdbigintId16StubBuilder::GenerateCircuit()
     GateRef stringId = Int32Argument(PARAM_INDEX(BaselineLdbigintId16, STRING_ID));
 
     GateRef frame = GetFrame(sp);
-    GateRef acc = GetAccFromFrame(frame);
-    GateRef func = GetFunctionFromFrame(frame);
-    GateRef method = GetMethodFromFunction(func);
-    GateRef constpool = GetConstpoolFromMethod(method);
+    GateRef acc = GetAccFromFrame(glue, frame);
+    GateRef func = GetFunctionFromFrame(glue, frame);
+    GateRef method = GetMethodFromFunction(glue, func);
+    GateRef constpool = GetConstpoolFromMethod(glue, method);
     GateRef numberBigInt = GetStringFromConstPool(glue, constpool, stringId);
     GateRef res = CallRuntime(glue, RTSTUB_ID(LdBigInt), { numberBigInt });
     CHECK_EXCEPTION_WITH_ACC(res);
@@ -3347,21 +3351,21 @@ void BaselineReturnStubBuilder::GenerateCircuit()
 
     DEFVARIABLE(varSp, VariableType::NATIVE_POINTER(), sp);
     GateRef frame = GetFrame(*varSp);
-    GateRef acc = GetAccFromFrame(frame);
+    GateRef acc = GetAccFromFrame(glue, frame);
 
     auto env = GetEnvironment();
     GateRef pc = GetPcFromFrame(frame);
-    GateRef curFunction = GetFunctionFromFrame(frame);
+    GateRef curFunction = GetFunctionFromFrame(glue, frame);
     GateRef curMethod =
-        Load(VariableType::JS_ANY(), curFunction, IntPtr(JSFunctionBase::METHOD_OFFSET));
+        Load(VariableType::JS_ANY(), glue, curFunction, IntPtr(JSFunctionBase::METHOD_OFFSET));
     GateRef constpool =
-        Load(VariableType::JS_POINTER(), curMethod, IntPtr(Method::CONSTANT_POOL_OFFSET));
+        Load(VariableType::JS_POINTER(), glue, curMethod, IntPtr(Method::CONSTANT_POOL_OFFSET));
     GateRef raw =
-        Load(VariableType::JS_POINTER(), curFunction, IntPtr(JSFunction::RAW_PROFILE_TYPE_INFO_OFFSET));
+        Load(VariableType::JS_POINTER(), glue, curFunction, IntPtr(JSFunction::RAW_PROFILE_TYPE_INFO_OFFSET));
     GateRef profileTypeInfo =
-        Load(VariableType::JS_POINTER(), raw, IntPtr(ProfileTypeInfoCell::VALUE_OFFSET));
+        Load(VariableType::JS_POINTER(), glue, raw, IntPtr(ProfileTypeInfoCell::VALUE_OFFSET));
     GateRef hotnessCounter =
-        Load(VariableType::INT32(), curMethod, IntPtr(Method::LITERAL_INFO_OFFSET));
+        LoadPrimitive(VariableType::INT32(), curMethod, IntPtr(Method::LITERAL_INFO_OFFSET));
     ProfileOperation callback;
 
     DEFVARIABLE(varPc, VariableType::NATIVE_POINTER(), pc);
@@ -3388,7 +3392,7 @@ void BaselineReturnStubBuilder::GenerateCircuit()
         GateRef varProfileTypeInfoVal = *varProfileTypeInfo;
         GateRef isProfileDumpedAndJitCompiled = LogicAndBuilder(env)
             .And(ProfilerStubBuilder(env).IsCompiledOrTryCompile(
-                glue, GetFunctionFromFrame(frame), varProfileTypeInfoVal, callback, pc))
+                glue, GetFunctionFromFrame(glue, frame), varProfileTypeInfoVal, callback, pc))
             .And(ProfilerStubBuilder(env).IsProfileTypeInfoDumped(varProfileTypeInfoVal, callback))
             .Done();
         BRANCH(isProfileDumpedAndJitCompiled, &tryContinue, &updateHotness);
@@ -3404,16 +3408,16 @@ void BaselineReturnStubBuilder::GenerateCircuit()
     Bind(&tryContinue);
 
     GateRef currentSp = *varSp;
-    varSp = Load(VariableType::NATIVE_POINTER(), frame,
+    varSp = LoadPrimitive(VariableType::NATIVE_POINTER(), frame,
                  IntPtr(AsmInterpretedFrame::GetBaseOffset(env->IsArch32Bit())));
 
     GateRef typePos = PtrSub(*varSp, IntPtr(JSTaggedValue::TaggedTypeSize()));
-    GateRef maybeFrameType = Load(VariableType::INT64(), typePos);
+    GateRef maybeFrameType = LoadPrimitive(VariableType::INT64(), typePos);
     BRANCH(Int64Equal(maybeFrameType, Int64(static_cast<int64_t>(FrameType::BASELINE_BUILTIN_FRAME))),
            &isBaselineBuiltinFrame, &notBaselineBuiltinFrame);
     Bind(&isBaselineBuiltinFrame);
     {
-        varSp = Load(VariableType::NATIVE_POINTER(), *varSp);
+        varSp = LoadPrimitive(VariableType::NATIVE_POINTER(), *varSp);
         Jump(&notBaselineBuiltinFrame);
     }
     Bind(&notBaselineBuiltinFrame);
@@ -3435,10 +3439,10 @@ void BaselineReturnStubBuilder::GenerateCircuit()
     }
     Bind(&pcNotEqualBaseline);
     {
-        GateRef function = GetFunctionFromFrame(*prevState);
-        GateRef method = Load(VariableType::JS_ANY(), function, IntPtr(JSFunctionBase::METHOD_OFFSET));
-        varConstpool = GetConstpoolFromMethod(method);
-        varProfileTypeInfo = GetProfileTypeInfoFromFunction(function);
+        GateRef function = GetFunctionFromFrame(glue, *prevState);
+        GateRef method = Load(VariableType::JS_ANY(), glue, function, IntPtr(JSFunctionBase::METHOD_OFFSET));
+        varConstpool = GetConstpoolFromMethod(glue, method);
+        varProfileTypeInfo = GetProfileTypeInfoFromFunction(glue, function);
         varHotnessCounter = GetHotnessCounterFromMethod(method);
         GateRef jumpSize = GetCallSizeFromFrame(*prevState);
         CallNGCRuntime(glue, RTSTUB_ID(ResumeRspAndDispatch),
@@ -3450,12 +3454,13 @@ void BaselineReturnStubBuilder::GenerateCircuit()
 
 void BaselineLdlexvarImm8Imm8StubBuilder::GenerateCircuit()
 {
+    GateRef glue = PtrArgument(PARAM_INDEX(BaselineLdlexvarImm8Imm8, GLUE));
     GateRef level = Int32Argument(PARAM_INDEX(BaselineLdlexvarImm8Imm8, LEVEL));
     GateRef slot = Int32Argument(PARAM_INDEX(BaselineLdlexvarImm8Imm8, SLOT));
     GateRef sp = PtrArgument(PARAM_INDEX(BaselineLdlexvarImm8Imm8, SP));
 
     auto env = GetEnvironment();
-    DEFVARIABLE(currentEnv, VariableType::JS_ANY(), GetEnvFromFrame(GetFrame(sp)));
+    DEFVARIABLE(currentEnv, VariableType::JS_ANY(), GetEnvFromFrame(glue, GetFrame(sp)));
     DEFVARIABLE(i, VariableType::INT32(), Int32(0));
 
     Label loopHead(env);
@@ -3463,13 +3468,13 @@ void BaselineLdlexvarImm8Imm8StubBuilder::GenerateCircuit()
     Label afterLoop(env);
     Branch(Int32LessThan(*i, level), &loopHead, &afterLoop);
     LoopBegin(&loopHead);
-    currentEnv = GetParentEnv(*currentEnv);
+    currentEnv = GetParentEnv(glue, *currentEnv);
     i = Int32Add(*i, Int32(1));
     Branch(Int32LessThan(*i, level), &loopEnd, &afterLoop);
     Bind(&loopEnd);
     LoopEnd(&loopHead);
     Bind(&afterLoop);
-    GateRef variable = GetPropertiesFromLexicalEnv(*currentEnv, slot);
+    GateRef variable = GetPropertiesFromLexicalEnv(glue, *currentEnv, slot);
     Return(variable);
 }
 
@@ -3482,7 +3487,7 @@ void BaselineStlexvarImm8Imm8StubBuilder::GenerateCircuit()
     GateRef sp = PtrArgument(PARAM_INDEX(BaselineStlexvarImm8Imm8, SP));
 
     auto env = GetEnvironment();
-    DEFVARIABLE(currentEnv, VariableType::JS_ANY(), GetEnvFromFrame(GetFrame(sp)));
+    DEFVARIABLE(currentEnv, VariableType::JS_ANY(), GetEnvFromFrame(glue, GetFrame(sp)));
     DEFVARIABLE(i, VariableType::INT32(), Int32(0));
 
     Label loopHead(env);
@@ -3490,7 +3495,7 @@ void BaselineStlexvarImm8Imm8StubBuilder::GenerateCircuit()
     Label afterLoop(env);
     Branch(Int32LessThan(*i, level), &loopHead, &afterLoop);
     LoopBegin(&loopHead);
-    currentEnv = GetParentEnv(*currentEnv);
+    currentEnv = GetParentEnv(glue, *currentEnv);
     i = Int32Add(*i, Int32(1));
     Branch(Int32LessThan(*i, level), &loopEnd, &afterLoop);
     Bind(&loopEnd);
@@ -3512,7 +3517,7 @@ void BaselineAsyncgeneratorrejectV8StubBuilder::GenerateCircuit()
     GateRef sp = PtrArgument(PARAM_INDEX(BaselineAsyncgeneratorrejectV8, SP));
     GateRef acc = TaggedArgument(PARAM_INDEX(BaselineAsyncgeneratorrejectV8, ACC));
     GateRef v0 = Int32Argument(PARAM_INDEX(BaselineAsyncgeneratorrejectV8, V0));
-    GateRef asyncGenerator = GetVregValue(sp, ZExtInt8ToPtr(v0));
+    GateRef asyncGenerator = GetVregValue(glue, sp, ZExtInt8ToPtr(v0));
 
     GateRef result = CallRuntime(glue, RTSTUB_ID(AsyncGeneratorReject),
                                  { asyncGenerator, acc });
@@ -3560,11 +3565,11 @@ void BaselineStPrivatePropertyImm8Imm16Imm16V8StubBuilder::GenerateCircuit()
     GateRef levelIndex = Int32Argument(PARAM_INDEX(BaselineStPrivatePropertyImm8Imm16Imm16V8, INDEX0));
     GateRef slotIndex = Int32Argument(PARAM_INDEX(BaselineStPrivatePropertyImm8Imm16Imm16V8, INDEX1));
     GateRef index3 = Int32Argument(PARAM_INDEX(BaselineStPrivatePropertyImm8Imm16Imm16V8, INDEX2));
-    GateRef obj = GetVregValue(sp, ZExtInt8ToPtr(index3));
+    GateRef obj = GetVregValue(glue, sp, ZExtInt8ToPtr(index3));
 
     GateRef frame = GetFrame(sp);
-    GateRef acc = GetAccFromFrame(frame);
-    GateRef lexicalEnv = GetEnvFromFrame(frame);
+    GateRef acc = GetAccFromFrame(glue, frame);
+    GateRef lexicalEnv = GetEnvFromFrame(glue, frame);
 
     GateRef res = CallRuntime(glue, RTSTUB_ID(StPrivateProperty), {lexicalEnv,
         IntToTaggedInt(levelIndex), IntToTaggedInt(slotIndex), obj, acc});  // acc as value
@@ -3587,10 +3592,11 @@ void BaselineTestInImm8Imm16Imm16StubBuilder::GenerateCircuit()
 
 void BaselineDeprecatedLdlexenvPrefNoneStubBuilder::GenerateCircuit()
 {
+    GateRef glue = PtrArgument(PARAM_INDEX(BaselineDeprecatedLdlexenvPrefNone, GLUE));
     GateRef sp = PtrArgument(PARAM_INDEX(BaselineDeprecatedLdlexenvPrefNone, SP));
     GateRef state = GetFrame(sp);
 
-    GateRef env = GetEnvFromFrame(state);
+    GateRef env = GetEnvFromFrame(glue, state);
     Return(env);
 }
 
@@ -3602,8 +3608,8 @@ void BaselineWideCreateobjectwithexcludedkeysPrefImm16V8V8StubBuilder::GenerateC
     GateRef objId = Int32Argument(PARAM_INDEX(BaselineWideCreateobjectwithexcludedkeysPrefImm16V8V8, V1));
     GateRef firstArgRegIdx = Int32Argument(PARAM_INDEX(BaselineWideCreateobjectwithexcludedkeysPrefImm16V8V8, V2));
 
-    GateRef acc = GetAccFromFrame(GetFrame(sp));
-    GateRef obj = GetVregValue(sp, ZExtInt8ToPtr(objId));
+    GateRef acc = GetAccFromFrame(glue, GetFrame(sp));
+    GateRef obj = GetVregValue(glue, sp, ZExtInt8ToPtr(objId));
     GateRef res = CallRuntime(glue, RTSTUB_ID(CreateObjectWithExcludedKeys),
         { Int16ToTaggedInt(numKeys), obj, Int16ToTaggedInt(firstArgRegIdx) });
     CHECK_EXCEPTION_WITH_ACC(res);
@@ -3626,8 +3632,8 @@ void BaselineDeprecatedPoplexenvPrefNoneStubBuilder::GenerateCircuit()
     GateRef sp = PtrArgument(PARAM_INDEX(BaselineDeprecatedPoplexenvPrefNone, SP));
 
     GateRef state = GetFrame(sp);
-    GateRef currentLexEnv = GetEnvFromFrame(state);
-    GateRef parentLexEnv = GetParentEnv(currentLexEnv);
+    GateRef currentLexEnv = GetEnvFromFrame(glue, state);
+    GateRef parentLexEnv = GetParentEnv(glue, currentLexEnv);
     SetEnvToFrame(glue, state, parentLexEnv);
     Return();
 }
@@ -3641,9 +3647,9 @@ void BaselineWideNewobjrangePrefImm16V8StubBuilder::GenerateCircuit()
     GateRef hotnessCounter = Int32Argument(PARAM_INDEX(BaselineWideNewobjrangePrefImm16V8, HOTNESS_COUNTER));
     GateRef slotId = Int32Argument(PARAM_INDEX(BaselineWideNewobjrangePrefImm16V8, SLOT_ID));
     DEFINE_PROFILE_CALLBACK(glue, sp, slotId);
-    GateRef acc = GetAccFromFrame(frame);
+    GateRef acc = GetAccFromFrame(glue, frame);
     GateRef firstArgOffset = Int16(1);
-    GateRef ctor = GetVregValue(sp, ZExtInt16ToPtr(firstArgRegIdx));
+    GateRef ctor = GetVregValue(glue, sp, ZExtInt16ToPtr(firstArgRegIdx));
 
     DEFVARIABLE(res, VariableType::JS_ANY(), Undefined());
     DEFVARIABLE(thisObj, VariableType::JS_ANY(), Undefined());
@@ -3665,12 +3671,12 @@ void BaselineWideNewobjrangePrefImm16V8StubBuilder::GenerateCircuit()
 
     Branch(TaggedIsHeapObject(ctor), &ctorIsHeapObject, &slowPath);
     Bind(&ctorIsHeapObject);
-    Branch(IsJSFunction(ctor), &ctorIsJSFunction, &slowPath);
+    Branch(IsJSFunction(glue, ctor), &ctorIsJSFunction, &slowPath);
     Bind(&ctorIsJSFunction);
-    Branch(IsConstructor(ctor), &fastPath, &slowPath);
+    Branch(IsConstructor(glue, ctor), &fastPath, &slowPath);
     Bind(&fastPath);
     {
-        Branch(IsBase(ctor), &ctorIsBase, &ctorNotBase);
+        Branch(IsBase(glue, ctor), &ctorIsBase, &ctorNotBase);
         Bind(&ctorIsBase);
         {
             NewObjectStubBuilder newBuilder(this);
@@ -3724,7 +3730,7 @@ void BaselineThrowNotexistsPrefNoneStubBuilder::GenerateCircuit()
     GateRef sp = PtrArgument(PARAM_INDEX(BaselineThrowNotexistsPrefNone, SP));
 
     GateRef frame = GetFrame(sp);
-    GateRef acc = GetAccFromFrame(frame);
+    GateRef acc = GetAccFromFrame(glue, frame);
     CallRuntime(glue, RTSTUB_ID(ThrowThrowNotExists), {});
     DISPATCH_LAST();
     Return();
@@ -3736,11 +3742,11 @@ void BaselineDeprecatedGetiteratornextPrefV8V8StubBuilder::GenerateCircuit()
     GateRef sp = PtrArgument(PARAM_INDEX(BaselineDeprecatedGetiteratornextPrefV8V8, SP));
     GateRef v0 = Int32Argument(PARAM_INDEX(BaselineDeprecatedGetiteratornextPrefV8V8, V0));
     GateRef v1 = Int32Argument(PARAM_INDEX(BaselineDeprecatedGetiteratornextPrefV8V8, V1));
-    GateRef obj = GetVregValue(sp, ZExtInt8ToPtr(v0));
-    GateRef method = GetVregValue(sp, ZExtInt8ToPtr(v1));
+    GateRef obj = GetVregValue(glue, sp, ZExtInt8ToPtr(v0));
+    GateRef method = GetVregValue(glue, sp, ZExtInt8ToPtr(v1));
 
     GateRef frame = GetFrame(sp);
-    GateRef acc = GetAccFromFrame(frame);
+    GateRef acc = GetAccFromFrame(glue, frame);
     GateRef result = CallRuntime(glue, RTSTUB_ID(GetIteratorNext), { obj, method });
     CHECK_EXCEPTION_WITH_ACC(result);
 }
@@ -3755,7 +3761,7 @@ void BaselineWideNewlexenvPrefImm16StubBuilder::GenerateCircuit()
 
     DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
     auto env = GetEnvironment();
-    auto parent = GetEnvFromFrame(state);
+    auto parent = GetEnvFromFrame(glue, state);
     NewObjectStubBuilder newBuilder(this);
     newBuilder.SetParameters(glue, 0);
     Label afterNew(env);
@@ -3774,7 +3780,7 @@ void BaselineThrowPatternnoncoerciblePrefNoneStubBuilder::GenerateCircuit()
     GateRef sp = PtrArgument(PARAM_INDEX(BaselineThrowPatternnoncoerciblePrefNone, SP));
 
     GateRef frame = GetFrame(sp);
-    GateRef acc = GetAccFromFrame(frame);
+    GateRef acc = GetAccFromFrame(glue, frame);
     CallRuntime(glue, RTSTUB_ID(ThrowPatternNonCoercible), {});
     DISPATCH_LAST();
     Return();
@@ -3792,8 +3798,8 @@ void BaselineDeprecatedCreatearraywithbufferPrefImm16StubBuilder::GenerateCircui
     GateRef imm = ZExtInt16ToInt32(immI16);
 
     GateRef frame = GetFrame(sp);
-    GateRef acc = GetAccFromFrame(frame);
-    GateRef currentFunc = GetFunctionFromFrame(frame);
+    GateRef acc = GetAccFromFrame(glue, frame);
+    GateRef currentFunc = GetFunctionFromFrame(glue, frame);
     ProfileOperation callback;
     NewObjectStubBuilder newBuilder(this);
     GateRef res = newBuilder.CreateArrayWithBuffer(
@@ -3826,7 +3832,7 @@ void BaselineThrowDeletesuperpropertyPrefNoneStubBuilder::GenerateCircuit()
     GateRef sp = PtrArgument(PARAM_INDEX(BaselineThrowDeletesuperpropertyPrefNone, SP));
 
     GateRef frame = GetFrame(sp);
-    GateRef acc = GetAccFromFrame(frame);
+    GateRef acc = GetAccFromFrame(glue, frame);
     CallRuntime(glue, RTSTUB_ID(ThrowDeleteSuperProperty), {});
     DISPATCH_LAST();
     Return();
@@ -3840,11 +3846,11 @@ void BaselineDeprecatedCreateobjectwithbufferPrefImm16StubBuilder::GenerateCircu
     GateRef imm = ZExtInt16ToInt32(immI16);
 
     GateRef frame = GetFrame(sp);
-    GateRef acc = GetAccFromFrame(frame);
-    GateRef func = GetFunctionFromFrame(frame);
-    GateRef method = GetMethodFromFunction(func);
-    GateRef constpool = GetConstpoolFromMethod(method);
-    GateRef module = GetModuleFromFunction(func);
+    GateRef acc = GetAccFromFrame(glue, frame);
+    GateRef func = GetFunctionFromFrame(glue, frame);
+    GateRef method = GetMethodFromFunction(glue, func);
+    GateRef constpool = GetConstpoolFromMethod(glue, method);
+    GateRef module = GetModuleFromFunction(glue, func);
     GateRef result = GetObjectLiteralFromConstPool(glue, constpool, imm, module);
     GateRef res = CallRuntime(glue, RTSTUB_ID(CreateObjectWithBuffer), { result });
     CHECK_EXCEPTION_WITH_ACC(res);
@@ -3859,15 +3865,15 @@ void BaselineNewobjrangeImm8Imm8V8StubBuilder::GenerateCircuit()
     GateRef firstArgRegIdx = Int32Argument(PARAM_INDEX(BaselineNewobjrangeImm8Imm8V8, FIRST_ARG_REG_IDX));
     GateRef slotId = Int32Argument(PARAM_INDEX(BaselineNewobjrangeImm8Imm8V8, SLOT_ID));
     DEFINE_PROFILE_CALLBACK(glue, sp, slotId);
-    GateRef acc = GetAccFromFrame(frame);
-    GateRef method = GetMethodFromFunction(curFunc);
+    GateRef acc = GetAccFromFrame(glue, frame);
+    GateRef method = GetMethodFromFunction(glue, curFunc);
     GateRef hotnessCounter = GetHotnessCounterFromMethod(method);
 
     DEFVARIABLE(res, VariableType::JS_ANY(), Undefined());
     DEFVARIABLE(thisObj, VariableType::JS_ANY(), Undefined());
     auto env = GetEnvironment();
     GateRef firstArgOffset = Int32(1);
-    GateRef ctor = GetVregValue(sp, ZExtInt32ToPtr(firstArgRegIdx));
+    GateRef ctor = GetVregValue(glue, sp, ZExtInt32ToPtr(firstArgRegIdx));
     GateRef actualNumArgs = Int32Sub(numArgs, firstArgOffset);
 
     Label ctorIsHeapObject(env);
@@ -3885,12 +3891,12 @@ void BaselineNewobjrangeImm8Imm8V8StubBuilder::GenerateCircuit()
 
     Branch(TaggedIsHeapObject(ctor), &ctorIsHeapObject, &slowPath);
     Bind(&ctorIsHeapObject);
-    Branch(IsJSFunction(ctor), &ctorIsJSFunction, &slowPath);
+    Branch(IsJSFunction(glue, ctor), &ctorIsJSFunction, &slowPath);
     Bind(&ctorIsJSFunction);
-    Branch(IsConstructor(ctor), &fastPath, &slowPath);
+    Branch(IsConstructor(glue, ctor), &fastPath, &slowPath);
     Bind(&fastPath);
     {
-        Branch(IsBase(ctor), &ctorIsBase, &ctorNotBase);
+        Branch(IsBase(glue, ctor), &ctorIsBase, &ctorNotBase);
         Bind(&ctorIsBase);
         {
             NewObjectStubBuilder newBuilder(this);
@@ -3949,15 +3955,15 @@ void BaselineNewobjrangeImm16Imm8V8StubBuilder::GenerateCircuit()
     GateRef slotId = Int32Argument(PARAM_INDEX(BaselineNewobjrangeImm16Imm8V8, SLOT_ID));
     DEFINE_PROFILE_CALLBACK(glue, sp, slotId);
 
-    GateRef acc = GetAccFromFrame(frame);
-    GateRef method = GetMethodFromFunction(curFunc);
+    GateRef acc = GetAccFromFrame(glue, frame);
+    GateRef method = GetMethodFromFunction(glue, curFunc);
     GateRef hotnessCounter = GetHotnessCounterFromMethod(method);
 
     DEFVARIABLE(res, VariableType::JS_ANY(), Undefined());
     DEFVARIABLE(thisObj, VariableType::JS_ANY(), Undefined());
     auto env = GetEnvironment();
     GateRef firstArgOffset = Int16(1);
-    GateRef ctor = GetVregValue(sp, ZExtInt16ToPtr(firstArgRegIdx));
+    GateRef ctor = GetVregValue(glue, sp, ZExtInt16ToPtr(firstArgRegIdx));
     GateRef actualNumArgs = ZExtInt16ToInt32(Int16Sub(numArgs, firstArgOffset));
 
     Label ctorIsHeapObject(env);
@@ -3975,12 +3981,12 @@ void BaselineNewobjrangeImm16Imm8V8StubBuilder::GenerateCircuit()
 
     Branch(TaggedIsHeapObject(ctor), &ctorIsHeapObject, &slowPath);
     Bind(&ctorIsHeapObject);
-    Branch(IsJSFunction(ctor), &ctorIsJSFunction, &slowPath);
+    Branch(IsJSFunction(glue, ctor), &ctorIsJSFunction, &slowPath);
     Bind(&ctorIsJSFunction);
-    Branch(IsConstructor(ctor), &fastPath, &slowPath);
+    Branch(IsConstructor(glue, ctor), &fastPath, &slowPath);
     Bind(&fastPath);
     {
-        Branch(IsBase(ctor), &ctorIsBase, &ctorNotBase);
+        Branch(IsBase(glue, ctor), &ctorIsBase, &ctorNotBase);
         Bind(&ctorIsBase);
         {
             NewObjectStubBuilder newBuilder(this);
@@ -4064,7 +4070,7 @@ void BaselineThrowConstassignmentPrefV8StubBuilder::GenerateCircuit()
     GateRef v0 = TaggedArgument(PARAM_INDEX(BaselineThrowConstassignmentPrefV8, V0));
 
     GateRef frame = GetFrame(sp);
-    GateRef acc = GetAccFromFrame(frame);
+    GateRef acc = GetAccFromFrame(glue, frame);
     CallRuntime(glue, RTSTUB_ID(ThrowConstAssignment), { v0 });
     DISPATCH_LAST();
     Return();
@@ -4075,7 +4081,7 @@ void BaselineDeprecatedTonumberPrefV8StubBuilder::GenerateCircuit()
     GateRef glue = PtrArgument(PARAM_INDEX(BaselineDeprecatedTonumberPrefV8, GLUE));
     GateRef sp = PtrArgument(PARAM_INDEX(BaselineDeprecatedTonumberPrefV8, SP));
     GateRef v0 = Int32Argument(PARAM_INDEX(BaselineDeprecatedTonumberPrefV8, V0));
-    GateRef value = GetVregValue(sp, ZExtInt8ToPtr(v0));
+    GateRef value = GetVregValue(glue, sp, ZExtInt8ToPtr(v0));
 
     auto env = GetEnvironment();
     Label valueIsNumber(env);
@@ -4102,7 +4108,7 @@ void BaselineWideCallthisrangePrefImm16V8StubBuilder::GenerateCircuit()
     GateRef hotnessCounter = Int32Argument(PARAM_INDEX(BaselineWideCallthisrangePrefImm16V8, HOTNESS_COUNTER));
 
     GateRef thisReg = ZExtInt8ToPtr(vregId);
-    GateRef thisValue = GetVregValue(sp, thisReg);
+    GateRef thisValue = GetVregValue(glue, sp, thisReg);
     GateRef argv = PtrAdd(sp, PtrMul(
         PtrAdd(thisReg, IntPtr(1)), IntPtr(8))); // 1: skip this
     ProfileOperation callback;
@@ -4131,13 +4137,13 @@ void BaselineThrowIfnotobjectPrefV8StubBuilder::GenerateCircuit()
 
     auto env = GetEnvironment();
     GateRef frame = GetFrame(sp);
-    GateRef acc = GetAccFromFrame(frame);
+    GateRef acc = GetAccFromFrame(glue, frame);
     Label isEcmaObject(env);
     Label notEcmaObject(env);
     Label isHeapObject(env);
     Branch(TaggedIsHeapObject(v0), &isHeapObject, &notEcmaObject);
     Bind(&isHeapObject);
-    Branch(TaggedObjectIsEcmaObject(v0), &isEcmaObject, &notEcmaObject);
+    Branch(TaggedObjectIsEcmaObject(glue, v0), &isEcmaObject, &notEcmaObject);
     Bind(&isEcmaObject);
     {
         Return();
@@ -4153,12 +4159,12 @@ void BaselineDeprecatedTonumericPrefV8StubBuilder::GenerateCircuit()
     GateRef glue = PtrArgument(PARAM_INDEX(BaselineDeprecatedTonumericPrefV8, GLUE));
     GateRef sp = PtrArgument(PARAM_INDEX(BaselineDeprecatedTonumericPrefV8, SP));
     GateRef v0 = Int32Argument(PARAM_INDEX(BaselineDeprecatedTonumericPrefV8, V0));
-    GateRef value = GetVregValue(sp, ZExtInt8ToPtr(v0));
+    GateRef value = GetVregValue(glue, sp, ZExtInt8ToPtr(v0));
 
     auto env = GetEnvironment();
     Label valueIsNumeric(env);
     Label valueNotNumeric(env);
-    Branch(TaggedIsNumeric(value), &valueIsNumeric, &valueNotNumeric);
+    Branch(TaggedIsNumeric(glue, value), &valueIsNumeric, &valueNotNumeric);
     Bind(&valueIsNumeric);
     {
         Return(value);
@@ -4178,8 +4184,8 @@ void BaselineWideSupercallthisrangePrefImm16V8StubBuilder::GenerateCircuit()
     GateRef v0 = Int32Argument(PARAM_INDEX(BaselineWideSupercallthisrangePrefImm16V8, V0));
 
     GateRef frame = GetFrame(sp);
-    GateRef acc = GetAccFromFrame(frame);
-    GateRef currentFunc = GetFunctionFromFrame(frame);
+    GateRef acc = GetAccFromFrame(glue, frame);
+    GateRef currentFunc = GetFunctionFromFrame(glue, frame);
     GateRef res = CallRuntime(glue, RTSTUB_ID(SuperCall),
         { currentFunc, Int16ToTaggedInt(v0), Int16ToTaggedInt(range) });
     CHECK_EXCEPTION_WITH_ACC(res);
@@ -4192,10 +4198,10 @@ void BaselineThrowUndefinedifholePrefV8V8StubBuilder::GenerateCircuit()
     GateRef v0 = Int32Argument(PARAM_INDEX(BaselineThrowUndefinedifholePrefV8V8, V0));
     GateRef v1 = Int32Argument(PARAM_INDEX(BaselineThrowUndefinedifholePrefV8V8, V1));
 
-    GateRef hole = GetVregValue(sp, ZExtInt8ToPtr(v0));
+    GateRef hole = GetVregValue(glue, sp, ZExtInt8ToPtr(v0));
     auto env = GetEnvironment();
     GateRef frame = GetFrame(sp);
-    GateRef acc = GetAccFromFrame(frame);
+    GateRef acc = GetAccFromFrame(glue, frame);
     Label isHole(env);
     Label notHole(env);
     Branch(TaggedIsHole(hole), &isHole, &notHole);
@@ -4204,7 +4210,7 @@ void BaselineThrowUndefinedifholePrefV8V8StubBuilder::GenerateCircuit()
         Return();
     }
     Bind(&isHole);
-    GateRef obj = GetVregValue(sp, ZExtInt8ToPtr(v1));
+    GateRef obj = GetVregValue(glue, sp, ZExtInt8ToPtr(v1));
     CallRuntime(glue, RTSTUB_ID(ThrowUndefinedIfHole), { obj });
     DISPATCH_LAST();
     Return();
@@ -4217,10 +4223,10 @@ void BaselineThrowUndefinedifholewithnamePrefId16StubBuilder::GenerateCircuit()
     GateRef stringId = Int32Argument(PARAM_INDEX(BaselineThrowUndefinedifholewithnamePrefId16, STRING_ID));
 
     GateRef frame = GetFrame(sp);
-    GateRef acc = GetAccFromFrame(frame);
-    GateRef func = GetFunctionFromFrame(frame);
-    GateRef method = GetMethodFromFunction(func);
-    GateRef constpool = GetConstpoolFromMethod(method);
+    GateRef acc = GetAccFromFrame(glue, frame);
+    GateRef func = GetFunctionFromFrame(glue, frame);
+    GateRef method = GetMethodFromFunction(glue, func);
+    GateRef constpool = GetConstpoolFromMethod(glue, method);
     auto env = GetEnvironment();
     Label isHole(env);
     Label notHole(env);
@@ -4241,10 +4247,10 @@ void BaselineDeprecatedNegPrefV8StubBuilder::GenerateCircuit()
     GateRef glue = PtrArgument(PARAM_INDEX(BaselineDeprecatedNegPrefV8, GLUE));
     GateRef sp = PtrArgument(PARAM_INDEX(BaselineDeprecatedNegPrefV8, SP));
     GateRef v0 = Int32Argument(PARAM_INDEX(BaselineDeprecatedNegPrefV8, V0));
-    GateRef value = GetVregValue(sp, ZExtInt8ToPtr(v0));
+    GateRef value = GetVregValue(glue, sp, ZExtInt8ToPtr(v0));
 
     GateRef frame = GetFrame(sp);
-    GateRef acc = GetAccFromFrame(frame);
+    GateRef acc = GetAccFromFrame(glue, frame);
     OperationsStubBuilder builder(this);
     GateRef result = builder.Neg(glue, value);
     CHECK_EXCEPTION_WITH_ACC(result);
@@ -4280,10 +4286,10 @@ void BaselineDeprecatedNotPrefV8StubBuilder::GenerateCircuit()
     GateRef glue = PtrArgument(PARAM_INDEX(BaselineDeprecatedNotPrefV8, GLUE));
     GateRef sp = PtrArgument(PARAM_INDEX(BaselineDeprecatedNotPrefV8, SP));
     GateRef index = Int32Argument(PARAM_INDEX(BaselineDeprecatedNotPrefV8, INDEX));
-    GateRef value = GetVregValue(sp, ZExtInt8ToPtr(index));
+    GateRef value = GetVregValue(glue, sp, ZExtInt8ToPtr(index));
 
     GateRef frame = GetFrame(sp);
-    GateRef acc = GetAccFromFrame(frame);
+    GateRef acc = GetAccFromFrame(glue, frame);
     OperationsStubBuilder builder(this);
     GateRef result = builder.Not(glue, value);
     CHECK_EXCEPTION_WITH_ACC(result);
@@ -4298,7 +4304,7 @@ void BaselineWideLdobjbyindexPrefImm32StubBuilder::GenerateCircuit()
     DEFINE_PROFILE_CALLBACK(glue, sp, slotId);
 
     auto env = GetEnvironment();
-    GateRef acc = GetAccFromFrame(frame);
+    GateRef acc = GetAccFromFrame(glue, frame);
     Label fastPath(env);
     Label slowPath(env);
     Branch(TaggedIsHeapObject(acc), &fastPath, &slowPath);
@@ -4335,10 +4341,10 @@ void BaselineDeprecatedIncPrefV8StubBuilder::GenerateCircuit()
     GateRef glue = PtrArgument(PARAM_INDEX(BaselineDeprecatedIncPrefV8, GLUE));
     GateRef sp = PtrArgument(PARAM_INDEX(BaselineDeprecatedIncPrefV8, SP));
     GateRef v0 = Int32Argument(PARAM_INDEX(BaselineDeprecatedIncPrefV8, V0));
-    GateRef value = GetVregValue(sp, ZExtInt8ToPtr(v0));
+    GateRef value = GetVregValue(glue, sp, ZExtInt8ToPtr(v0));
 
     GateRef frame = GetFrame(sp);
-    GateRef acc = GetAccFromFrame(frame);
+    GateRef acc = GetAccFromFrame(glue, frame);
     OperationsStubBuilder builder(this);
     GateRef result = builder.Inc(glue, value);
     CHECK_EXCEPTION_WITH_ACC(result);
@@ -4353,8 +4359,8 @@ void BaselineWideStobjbyindexPrefV8Imm32StubBuilder::GenerateCircuit()
     GateRef slotId = Int32Argument(PARAM_INDEX(BaselineWideStobjbyindexPrefV8Imm32, SLOT_ID));
     DEFINE_PROFILE_CALLBACK(glue, sp, slotId);
 
-    GateRef receiver = GetVregValue(sp, ZExtInt32ToPtr(v0));
-    GateRef acc = GetAccFromFrame(frame);
+    GateRef receiver = GetVregValue(glue, sp, ZExtInt32ToPtr(v0));
+    GateRef acc = GetAccFromFrame(glue, frame);
     auto env = GetEnvironment();
     Label fastPath(env);
     Label slowPath(env);
@@ -4380,10 +4386,10 @@ void BaselineDeprecatedDecPrefV8StubBuilder::GenerateCircuit()
     GateRef glue = PtrArgument(PARAM_INDEX(BaselineDeprecatedDecPrefV8, GLUE));
     GateRef sp = PtrArgument(PARAM_INDEX(BaselineDeprecatedDecPrefV8, SP));
     GateRef index = Int32Argument(PARAM_INDEX(BaselineDeprecatedDecPrefV8, INDEX));
-    GateRef value = GetVregValue(sp, ZExtInt8ToPtr(index));
+    GateRef value = GetVregValue(glue, sp, ZExtInt8ToPtr(index));
 
     GateRef frame = GetFrame(sp);
-    GateRef acc = GetAccFromFrame(frame);
+    GateRef acc = GetAccFromFrame(glue, frame);
     OperationsStubBuilder builder(this);
     GateRef result = builder.Dec(glue, value);
     CHECK_EXCEPTION_WITH_ACC(result);
@@ -4397,8 +4403,8 @@ void BaselineWideStownbyindexPrefV8Imm32StubBuilder::GenerateCircuit()
     GateRef index = Int32Argument(PARAM_INDEX(BaselineWideStownbyindexPrefV8Imm32, INDEX));
     GateRef slotId = Int32Argument(PARAM_INDEX(BaselineWideStownbyindexPrefV8Imm32, SLOT_ID));
     DEFINE_PROFILE_CALLBACK(glue, sp, slotId);
-    GateRef acc = GetAccFromFrame(frame);
-    GateRef receiver = GetVregValue(sp, ZExtInt32ToPtr(v0));
+    GateRef acc = GetAccFromFrame(glue, frame);
+    GateRef receiver = GetVregValue(glue, sp, ZExtInt32ToPtr(v0));
 
     auto env = GetEnvironment();
     Label isHeapObject(env);
@@ -4406,10 +4412,10 @@ void BaselineWideStownbyindexPrefV8Imm32StubBuilder::GenerateCircuit()
     Branch(TaggedIsHeapObject(receiver), &isHeapObject, &slowPath);
     Bind(&isHeapObject);
     Label notClassConstructor(env);
-    Branch(IsClassConstructor(receiver), &slowPath, &notClassConstructor);
+    Branch(IsClassConstructor(glue, receiver), &slowPath, &notClassConstructor);
     Bind(&notClassConstructor);
     Label notClassPrototype(env);
-    Branch(IsClassPrototype(receiver), &slowPath, &notClassPrototype);
+    Branch(IsClassPrototype(glue, receiver), &slowPath, &notClassPrototype);
     Bind(&notClassPrototype);
     {
         // fast path
@@ -4434,8 +4440,8 @@ void BaselineDeprecatedCallarg0PrefV8StubBuilder::GenerateCircuit()
     GateRef funcReg = Int32Argument(PARAM_INDEX(BaselineDeprecatedCallarg0PrefV8, FUNC_REG));
     GateRef hotnessCounter = Int32Argument(PARAM_INDEX(BaselineDeprecatedCallarg0PrefV8, HOTNESS_COUNTER));
     ProfileOperation callback;
-    GateRef func = GetVregValue(sp, ZExtInt8ToPtr(funcReg));
-    GateRef acc = GetAccFromFrame(GetFrame(sp));
+    GateRef func = GetVregValue(glue, sp, ZExtInt8ToPtr(funcReg));
+    GateRef acc = GetAccFromFrame(glue, GetFrame(sp));
 
     DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
     auto env = GetEnvironment();
@@ -4459,7 +4465,7 @@ void BaselineWideCopyrestargsPrefImm16StubBuilder::GenerateCircuit()
     GateRef sp = PtrArgument(PARAM_INDEX(BaselineWideCopyrestargsPrefImm16, SP));
     GateRef restIdx = Int32Argument(PARAM_INDEX(BaselineWideCopyrestargsPrefImm16, INDEX));
 
-    GateRef acc = GetAccFromFrame(GetFrame(sp));
+    GateRef acc = GetAccFromFrame(glue, GetFrame(sp));
     GateRef res = CallRuntime(glue, RTSTUB_ID(CopyRestArgs), { IntToTaggedInt(restIdx) });
     CHECK_EXCEPTION_WITH_ACC(res);
 }
@@ -4472,9 +4478,9 @@ void BaselineDeprecatedCallarg1PrefV8V8StubBuilder::GenerateCircuit()
     GateRef a0 = Int32Argument(PARAM_INDEX(BaselineDeprecatedCallarg1PrefV8V8, A0));
     GateRef hotnessCounter = Int32Argument(PARAM_INDEX(BaselineDeprecatedCallarg1PrefV8V8, HOTNESS_COUNTER));
     ProfileOperation callback;
-    GateRef a0Value = GetVregValue(sp, ZExtInt8ToPtr(a0));
-    GateRef func = GetVregValue(sp, ZExtInt8ToPtr(funcReg));
-    GateRef acc = GetAccFromFrame(GetFrame(sp));
+    GateRef a0Value = GetVregValue(glue, sp, ZExtInt8ToPtr(a0));
+    GateRef func = GetVregValue(glue, sp, ZExtInt8ToPtr(funcReg));
+    GateRef acc = GetAccFromFrame(glue, GetFrame(sp));
 
     DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
     auto env = GetEnvironment();
@@ -4494,13 +4500,14 @@ void BaselineDeprecatedCallarg1PrefV8V8StubBuilder::GenerateCircuit()
 
 void BaselineWideLdlexvarPrefImm16Imm16StubBuilder::GenerateCircuit()
 {
+    GateRef glue = PtrArgument(PARAM_INDEX(BaselineWideLdlexvarPrefImm16Imm16, GLUE));
     GateRef sp = PtrArgument(PARAM_INDEX(BaselineWideLdlexvarPrefImm16Imm16, SP));
     GateRef level = Int32Argument(PARAM_INDEX(BaselineWideLdlexvarPrefImm16Imm16, LEVEL));
     GateRef slot = Int32Argument(PARAM_INDEX(BaselineWideLdlexvarPrefImm16Imm16, SLOT));
 
     GateRef state = GetFrame(sp);
     auto env = GetEnvironment();
-    DEFVARIABLE(currentEnv, VariableType::JS_ANY(), GetEnvFromFrame(state));
+    DEFVARIABLE(currentEnv, VariableType::JS_ANY(), GetEnvFromFrame(glue, state));
     DEFVARIABLE(i, VariableType::INT32(), Int32(0));
 
     Label loopHead(env);
@@ -4508,13 +4515,13 @@ void BaselineWideLdlexvarPrefImm16Imm16StubBuilder::GenerateCircuit()
     Label afterLoop(env);
     Branch(Int32LessThan(*i, level), &loopHead, &afterLoop);
     LoopBegin(&loopHead);
-    currentEnv = GetParentEnv(*currentEnv);
+    currentEnv = GetParentEnv(glue, *currentEnv);
     i = Int32Add(*i, Int32(1));
     Branch(Int32LessThan(*i, level), &loopEnd, &afterLoop);
     Bind(&loopEnd);
     LoopEnd(&loopHead);
     Bind(&afterLoop);
-    GateRef variable = GetPropertiesFromLexicalEnv(*currentEnv, slot);
+    GateRef variable = GetPropertiesFromLexicalEnv(glue, *currentEnv, slot);
     Return(variable);
 }
 
@@ -4527,10 +4534,10 @@ void BaselineDeprecatedCallargs2PrefV8V8V8StubBuilder::GenerateCircuit()
     GateRef a1 = Int32Argument(PARAM_INDEX(BaselineDeprecatedCallargs2PrefV8V8V8, A1));
     GateRef hotnessCounter = Int32Argument(PARAM_INDEX(BaselineDeprecatedCallargs2PrefV8V8V8, HOTNESS_COUNTER));
     ProfileOperation callback;
-    GateRef func = GetVregValue(sp, ZExtInt8ToPtr(funcReg));
-    GateRef a0Value = GetVregValue(sp, ZExtInt8ToPtr(a0));
-    GateRef a1Value = GetVregValue(sp, ZExtInt8ToPtr(a1));
-    GateRef acc = GetAccFromFrame(GetFrame(sp));
+    GateRef func = GetVregValue(glue, sp, ZExtInt8ToPtr(funcReg));
+    GateRef a0Value = GetVregValue(glue, sp, ZExtInt8ToPtr(a0));
+    GateRef a1Value = GetVregValue(glue, sp, ZExtInt8ToPtr(a1));
+    GateRef acc = GetAccFromFrame(glue, GetFrame(sp));
 
     DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
     auto env = GetEnvironment();
@@ -4558,7 +4565,7 @@ void BaselineWideStlexvarPrefImm16Imm16StubBuilder::GenerateCircuit()
 
     GateRef state = GetFrame(sp);
     auto env = GetEnvironment();
-    DEFVARIABLE(currentEnv, VariableType::JS_ANY(), GetEnvFromFrame(state));
+    DEFVARIABLE(currentEnv, VariableType::JS_ANY(), GetEnvFromFrame(glue, state));
     DEFVARIABLE(i, VariableType::INT32(), Int32(0));
 
     Label loopHead(env);
@@ -4566,7 +4573,7 @@ void BaselineWideStlexvarPrefImm16Imm16StubBuilder::GenerateCircuit()
     Label afterLoop(env);
     Branch(Int32LessThan(*i, level), &loopHead, &afterLoop);
     LoopBegin(&loopHead);
-    currentEnv = GetParentEnv(*currentEnv);
+    currentEnv = GetParentEnv(glue, *currentEnv);
     i = Int32Add(*i, Int32(1));
     Branch(Int32LessThan(*i, level), &loopEnd, &afterLoop);
     Bind(&loopEnd);
@@ -4585,14 +4592,14 @@ void BaselineDeprecatedCallargs3PrefV8V8V8V8StubBuilder::GenerateCircuit()
     GateRef a1 = Int32Argument(PARAM_INDEX(BaselineDeprecatedCallargs3PrefV8V8V8V8, A1));
     GateRef a2 = Int32Argument(PARAM_INDEX(BaselineDeprecatedCallargs3PrefV8V8V8V8, A2));
     ProfileOperation callback;
-    GateRef func = GetVregValue(sp, ZExtInt8ToPtr(funcReg));
-    GateRef a0Value = GetVregValue(sp, ZExtInt8ToPtr(a0));
-    GateRef a1Value = GetVregValue(sp, ZExtInt8ToPtr(a1));
-    GateRef a2Value = GetVregValue(sp, ZExtInt8ToPtr(a2));
+    GateRef func = GetVregValue(glue, sp, ZExtInt8ToPtr(funcReg));
+    GateRef a0Value = GetVregValue(glue, sp, ZExtInt8ToPtr(a0));
+    GateRef a1Value = GetVregValue(glue, sp, ZExtInt8ToPtr(a1));
+    GateRef a2Value = GetVregValue(glue, sp, ZExtInt8ToPtr(a2));
 
-    GateRef method = GetMethodFromFunction(GetFunctionFromFrame(GetFrame(sp)));
+    GateRef method = GetMethodFromFunction(glue, GetFunctionFromFrame(glue, GetFrame(sp)));
     GateRef hotnessCounter = GetHotnessCounterFromMethod(method);
-    GateRef acc = GetAccFromFrame(GetFrame(sp));
+    GateRef acc = GetAccFromFrame(glue, GetFrame(sp));
 
     DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
     auto env = GetEnvironment();
@@ -4627,10 +4634,10 @@ void BaselineDeprecatedCallrangePrefImm16V8StubBuilder::GenerateCircuit()
     GateRef funcReg = Int32Argument(PARAM_INDEX(BaselineDeprecatedCallrangePrefImm16V8, FUNC_REG));
     GateRef hotnessCounter = Int32Argument(PARAM_INDEX(BaselineDeprecatedCallrangePrefImm16V8, HOTNESS_COUNTER));
     ProfileOperation callback;
-    GateRef func = GetVregValue(sp, ZExtInt8ToPtr(funcReg));
+    GateRef func = GetVregValue(glue, sp, ZExtInt8ToPtr(funcReg));
     GateRef argv = PtrAdd(sp, PtrMul(
         PtrAdd(ZExtInt8ToPtr(funcReg), IntPtr(1)), IntPtr(8))); // 1: skip function
-    GateRef acc = GetAccFromFrame(GetFrame(sp));
+    GateRef acc = GetAccFromFrame(glue, GetFrame(sp));
 
     DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
     auto env = GetEnvironment();
@@ -4666,11 +4673,11 @@ void BaselineDeprecatedCallspreadPrefV8V8V8StubBuilder::GenerateCircuit()
     GateRef v1 = Int32Argument(PARAM_INDEX(BaselineDeprecatedCallspreadPrefV8V8V8, V1));
     GateRef v2 = Int32Argument(PARAM_INDEX(BaselineDeprecatedCallspreadPrefV8V8V8, V2));
 
-    GateRef func = GetVregValue(sp, ZExtInt8ToPtr(v0));
-    GateRef obj = GetVregValue(sp, ZExtInt8ToPtr(v1));
-    GateRef array = GetVregValue(sp, ZExtInt8ToPtr(v2));
+    GateRef func = GetVregValue(glue, sp, ZExtInt8ToPtr(v0));
+    GateRef obj = GetVregValue(glue, sp, ZExtInt8ToPtr(v1));
+    GateRef array = GetVregValue(glue, sp, ZExtInt8ToPtr(v2));
 
-    GateRef acc = GetAccFromFrame(GetFrame(sp));
+    GateRef acc = GetAccFromFrame(glue, GetFrame(sp));
     GateRef res = CallRuntime(glue, RTSTUB_ID(CallSpread), { func, obj, array });
     CHECK_PENDING_EXCEPTION(res);
 }
@@ -4694,11 +4701,11 @@ void BaselineDeprecatedCallthisrangePrefImm16V8StubBuilder::GenerateCircuit()
     GateRef hotnessCounter = Int32Argument(PARAM_INDEX(BaselineDeprecatedCallthisrangePrefImm16V8, HOTNESS_COUNTER));
     ProfileOperation callback;
     funcReg = ZExtInt8ToPtr(funcReg);
-    GateRef func = GetVregValue(sp, funcReg);
-    GateRef thisValue = GetVregValue(sp, PtrAdd(funcReg, IntPtr(1)));
+    GateRef func = GetVregValue(glue, sp, funcReg);
+    GateRef thisValue = GetVregValue(glue, sp, PtrAdd(funcReg, IntPtr(1)));
     GateRef argv = PtrAdd(sp, PtrMul(
         PtrAdd(funcReg, IntPtr(2)), IntPtr(8))); // 2: skip function&this
-    GateRef acc = GetAccFromFrame(GetFrame(sp));
+    GateRef acc = GetAccFromFrame(glue, GetFrame(sp));
 
     DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
     auto env = GetEnvironment();
@@ -4744,15 +4751,15 @@ void BaselineDeprecatedDefineclasswithbufferPrefId16Imm16Imm16V8V8StubBuilder::G
     GateRef vregId1 = Int32And(Int32LSR(vregIds, Int32(ONE_BYTE_SIZE)), Int32(ONE_BYTE_ALL_ONE));
 
     GateRef frame = GetFrame(sp);
-    GateRef currentFunc = GetFunctionFromFrame(frame);
-    GateRef method = GetMethodFromFunction(currentFunc);
-    GateRef constpool = GetConstpoolFromMethod(method);
-    GateRef lexicalEnv = GetVregValue(sp, ZExtInt32ToPtr(vRegId0));
-    GateRef proto = GetVregValue(sp, ZExtInt32ToPtr(vregId1));
+    GateRef currentFunc = GetFunctionFromFrame(glue, frame);
+    GateRef method = GetMethodFromFunction(glue, currentFunc);
+    GateRef constpool = GetConstpoolFromMethod(glue, method);
+    GateRef lexicalEnv = GetVregValue(glue, sp, ZExtInt32ToPtr(vRegId0));
+    GateRef proto = GetVregValue(glue, sp, ZExtInt32ToPtr(vregId1));
 
-    GateRef acc = GetAccFromFrame(frame);
+    GateRef acc = GetAccFromFrame(glue, frame);
     auto env = GetEnvironment();
-    GateRef module = GetModuleFromFunction(currentFunc);
+    GateRef module = GetModuleFromFunction(glue, currentFunc);
     GateRef res = CallRuntime(glue, RTSTUB_ID(CreateClassWithBuffer),
                               { proto, lexicalEnv, constpool,
                                 IntToTaggedInt(methodId),
@@ -4788,29 +4795,29 @@ void BaselineDeprecatedResumegeneratorPrefV8StubBuilder::GenerateCircuit()
     GateRef acc = TaggedArgument(PARAM_INDEX(BaselineDeprecatedResumegeneratorPrefV8, ACC));
     GateRef v0 = Int32Argument(PARAM_INDEX(BaselineDeprecatedResumegeneratorPrefV8, V0));
     (void)glue;
-    GateRef obj = GetVregValue(sp, ZExtInt8ToPtr(v0));
+    GateRef obj = GetVregValue(glue, sp, ZExtInt8ToPtr(v0));
 
     auto env = GetEnvironment();
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
 #if ECMASCRIPT_ENABLE_FUNCTION_CALL_TIMER
-    GateRef curFunc = GetFunctionFromFrame(GetFrame(sp));
+    GateRef curFunc = GetFunctionFromFrame(glue, GetFrame(sp));
     CallNGCRuntime(glue, RTSTUB_ID(StartCallTimer), { glue, curFunc, False() });
 #endif
 
     Label isAsyncGeneratorObj(env);
     Label notAsyncGeneratorObj(env);
     Label dispatch(env);
-    Branch(TaggedIsAsyncGeneratorObject(obj), &isAsyncGeneratorObj, &notAsyncGeneratorObj);
+    Branch(TaggedIsAsyncGeneratorObject(glue, obj), &isAsyncGeneratorObj, &notAsyncGeneratorObj);
     Bind(&isAsyncGeneratorObj);
     {
         GateRef resumeResultOffset = IntPtr(JSAsyncGeneratorObject::GENERATOR_RESUME_RESULT_OFFSET);
-        varAcc = Load(VariableType::JS_ANY(), obj, resumeResultOffset);
+        varAcc = Load(VariableType::JS_ANY(), glue, obj, resumeResultOffset);
         Jump(&dispatch);
     }
     Bind(&notAsyncGeneratorObj);
     {
         GateRef resumeResultOffset = IntPtr(JSGeneratorObject::GENERATOR_RESUME_RESULT_OFFSET);
-        varAcc = Load(VariableType::JS_ANY(), obj, resumeResultOffset);
+        varAcc = Load(VariableType::JS_ANY(), glue, obj, resumeResultOffset);
         Jump(&dispatch);
     }
     Bind(&dispatch);
@@ -4830,10 +4837,11 @@ void BaselineWideStpatchvarPrefImm16StubBuilder::GenerateCircuit()
 
 void BaselineDeprecatedGetresumemodePrefV8StubBuilder::GenerateCircuit()
 {
+    GateRef glue = PtrArgument(PARAM_INDEX(BaselineDeprecatedGetresumemodePrefV8, GLUE));
     GateRef sp = PtrArgument(PARAM_INDEX(BaselineDeprecatedGetresumemodePrefV8, SP));
     GateRef acc = TaggedArgument(PARAM_INDEX(BaselineDeprecatedGetresumemodePrefV8, ACC));
     GateRef v0 = Int32Argument(PARAM_INDEX(BaselineDeprecatedGetresumemodePrefV8, V0));
-    GateRef obj = GetVregValue(sp, ZExtInt8ToPtr(v0));
+    GateRef obj = GetVregValue(glue, sp, ZExtInt8ToPtr(v0));
 
     auto env = GetEnvironment();
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
@@ -4841,7 +4849,7 @@ void BaselineDeprecatedGetresumemodePrefV8StubBuilder::GenerateCircuit()
     Label isAsyncGeneratorObj(env);
     Label notAsyncGeneratorObj(env);
     Label dispatch(env);
-    Branch(TaggedIsAsyncGeneratorObject(obj), &isAsyncGeneratorObj, &notAsyncGeneratorObj);
+    Branch(TaggedIsAsyncGeneratorObject(glue, obj), &isAsyncGeneratorObj, &notAsyncGeneratorObj);
     Bind(&isAsyncGeneratorObj);
     {
         varAcc = IntToTaggedPtr(GetResumeModeFromAsyncGeneratorObject(obj));
@@ -4861,10 +4869,10 @@ void BaselineDeprecatedGettemplateobjectPrefV8StubBuilder::GenerateCircuit()
     GateRef glue = PtrArgument(PARAM_INDEX(BaselineDeprecatedGettemplateobjectPrefV8, GLUE));
     GateRef sp = PtrArgument(PARAM_INDEX(BaselineDeprecatedGettemplateobjectPrefV8, SP));
     GateRef v0 = Int32Argument(PARAM_INDEX(BaselineDeprecatedGettemplateobjectPrefV8, V0));
-    GateRef literal = GetVregValue(sp, ZExtInt8ToPtr(v0));
+    GateRef literal = GetVregValue(glue, sp, ZExtInt8ToPtr(v0));
 
     GateRef frame = GetFrame(sp);
-    GateRef acc = GetAccFromFrame(frame);
+    GateRef acc = GetAccFromFrame(glue, frame);
     GateRef result = CallRuntime(glue, RTSTUB_ID(GetTemplateObject), { literal });
     CHECK_EXCEPTION_WITH_ACC(result);
 }
@@ -4877,9 +4885,9 @@ void BaselineDeprecatedDelobjpropPrefV8V8StubBuilder::GenerateCircuit()
     GateRef v1 = Int32Argument(PARAM_INDEX(BaselineDeprecatedDelobjpropPrefV8V8, V1));
 
     GateRef frame = GetFrame(sp);
-    GateRef acc = GetAccFromFrame(frame);
-    GateRef obj = GetVregValue(sp, ZExtInt8ToPtr(v0));
-    GateRef prop = GetVregValue(sp, ZExtInt8ToPtr(v1));
+    GateRef acc = GetAccFromFrame(glue, frame);
+    GateRef obj = GetVregValue(glue, sp, ZExtInt8ToPtr(v0));
+    GateRef prop = GetVregValue(glue, sp, ZExtInt8ToPtr(v1));
 
     GateRef result = CallRuntime(glue, RTSTUB_ID(DelObjProp), { obj, prop });
     CHECK_EXCEPTION_WITH_ACC(result);
@@ -4896,12 +4904,12 @@ void BaselineDeprecatedSuspendgeneratorPrefV8V8StubBuilder::GenerateCircuit()
     ProfileOperation callback;
 
     GateRef frame = GetFrame(sp);
-    GateRef func = GetFunctionFromFrame(frame);
-    GateRef method = GetMethodFromFunction(func);
-    GateRef constpool = GetConstpoolFromMethod(method);
-    GateRef acc = GetAccFromFrame(frame);
+    GateRef func = GetFunctionFromFrame(glue, frame);
+    GateRef method = GetMethodFromFunction(glue, func);
+    GateRef constpool = GetConstpoolFromMethod(glue, method);
+    GateRef acc = GetAccFromFrame(glue, frame);
     GateRef hotnessCounter = GetHotnessCounterFromMethod(method);
-    GateRef profileTypeInfo = GetProfileTypeInfoFromFunction(func);
+    GateRef profileTypeInfo = GetProfileTypeInfoFromFunction(glue, func);
 
     auto env = GetEnvironment();
     DEFVARIABLE(varSp, VariableType::NATIVE_POINTER(), sp);
@@ -4910,8 +4918,8 @@ void BaselineDeprecatedSuspendgeneratorPrefV8V8StubBuilder::GenerateCircuit()
     DEFVARIABLE(varProfileTypeInfo, VariableType::JS_POINTER(), profileTypeInfo);
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
     DEFVARIABLE(varHotnessCounter, VariableType::INT32(), hotnessCounter);
-    GateRef genObj = GetVregValue(sp, ZExtInt8ToPtr(v0));
-    GateRef value = GetVregValue(sp, ZExtInt8ToPtr(v1));
+    GateRef genObj = GetVregValue(glue, sp, ZExtInt8ToPtr(v0));
+    GateRef value = GetVregValue(glue, sp, ZExtInt8ToPtr(v1));
 
     Label isBaselineBuiltinFrame(env);
     Label notBaselineBuiltinFrame(env);
@@ -4952,19 +4960,19 @@ void BaselineDeprecatedSuspendgeneratorPrefV8V8StubBuilder::GenerateCircuit()
 
     Bind(&tryContinue);
 #if ECMASCRIPT_ENABLE_FUNCTION_CALL_TIMER
-    GateRef curFunc = GetFunctionFromFrame(frame);
+    GateRef curFunc = GetFunctionFromFrame(glue, frame);
     CallNGCRuntime(glue, RTSTUB_ID(EndCallTimer), { glue, curFunc });
 #endif
     GateRef currentSp = *varSp;
-    varSp = Load(VariableType::NATIVE_POINTER(), frame,
+    varSp = LoadPrimitive(VariableType::NATIVE_POINTER(), frame,
         IntPtr(AsmInterpretedFrame::GetBaseOffset(env->IsArch32Bit())));
     GateRef typePos = PtrSub(*varSp, IntPtr(JSTaggedValue::TaggedTypeSize()));
-    GateRef maybeFrameType = Load(VariableType::INT64(), typePos);
+    GateRef maybeFrameType = LoadPrimitive(VariableType::INT64(), typePos);
     BRANCH(Int64Equal(maybeFrameType, Int64(static_cast<int64_t>(FrameType::BASELINE_BUILTIN_FRAME))),
            &isBaselineBuiltinFrame, &notBaselineBuiltinFrame);
     Bind(&isBaselineBuiltinFrame);
     {
-        varSp = Load(VariableType::NATIVE_POINTER(), *varSp);
+        varSp = LoadPrimitive(VariableType::NATIVE_POINTER(), *varSp);
         Jump(&notBaselineBuiltinFrame);
     }
     Bind(&notBaselineBuiltinFrame);
@@ -4985,10 +4993,10 @@ void BaselineDeprecatedSuspendgeneratorPrefV8V8StubBuilder::GenerateCircuit()
     }
     Bind(&pcNotEqualBaseline);
     {
-        GateRef function = GetFunctionFromFrame(*prevState);
-        GateRef prevMethod = Load(VariableType::JS_ANY(), function, IntPtr(JSFunctionBase::METHOD_OFFSET));
-        varConstpool = GetConstpoolFromMethod(prevMethod);
-        varProfileTypeInfo = GetProfileTypeInfoFromFunction(function);
+        GateRef function = GetFunctionFromFrame(glue, *prevState);
+        GateRef prevMethod = Load(VariableType::JS_ANY(), glue, function, IntPtr(JSFunctionBase::METHOD_OFFSET));
+        varConstpool = GetConstpoolFromMethod(glue, prevMethod);
+        varProfileTypeInfo = GetProfileTypeInfoFromFunction(glue, function);
         varHotnessCounter = GetHotnessCounterFromMethod(prevMethod);
         GateRef jumpSize = GetCallSizeFromFrame(*prevState);
         CallNGCRuntime(glue, RTSTUB_ID(ResumeRspAndDispatch),
@@ -5004,11 +5012,11 @@ void BaselineDeprecatedAsyncfunctionawaituncaughtPrefV8V8StubBuilder::GenerateCi
     GateRef sp = PtrArgument(PARAM_INDEX(BaselineDeprecatedAsyncfunctionawaituncaughtPrefV8V8, SP));
     GateRef v0 =  Int32Argument(PARAM_INDEX(BaselineDeprecatedAsyncfunctionawaituncaughtPrefV8V8, V0));
     GateRef v1 =  Int32Argument(PARAM_INDEX(BaselineDeprecatedAsyncfunctionawaituncaughtPrefV8V8, V1));
-    GateRef asyncFuncObj = GetVregValue(sp, ZExtInt8ToPtr(v0));
-    GateRef value = GetVregValue(sp, ZExtInt8ToPtr(v1));
+    GateRef asyncFuncObj = GetVregValue(glue, sp, ZExtInt8ToPtr(v0));
+    GateRef value = GetVregValue(glue, sp, ZExtInt8ToPtr(v1));
 
     GateRef frame = GetFrame(sp);
-    GateRef acc = GetAccFromFrame(frame);
+    GateRef acc = GetAccFromFrame(glue, frame);
     GateRef result = CallRuntime(glue, RTSTUB_ID(AsyncFunctionAwaitUncaught), { asyncFuncObj, value });
     CHECK_EXCEPTION_WITH_ACC(result);
 }
@@ -5019,11 +5027,11 @@ void BaselineDeprecatedCopydatapropertiesPrefV8V8StubBuilder::GenerateCircuit()
     GateRef sp = PtrArgument(PARAM_INDEX(BaselineDeprecatedCopydatapropertiesPrefV8V8, SP));
     GateRef v0 =  Int32Argument(PARAM_INDEX(BaselineDeprecatedCopydatapropertiesPrefV8V8, V0));
     GateRef v1 =  Int32Argument(PARAM_INDEX(BaselineDeprecatedCopydatapropertiesPrefV8V8, V1));
-    GateRef dst = GetVregValue(sp, ZExtInt8ToPtr(v0));
-    GateRef src = GetVregValue(sp, ZExtInt8ToPtr(v1));
+    GateRef dst = GetVregValue(glue, sp, ZExtInt8ToPtr(v0));
+    GateRef src = GetVregValue(glue, sp, ZExtInt8ToPtr(v1));
 
     GateRef frame = GetFrame(sp);
-    GateRef acc = GetAccFromFrame(frame);
+    GateRef acc = GetAccFromFrame(glue, frame);
     GateRef result = CallRuntime(glue, RTSTUB_ID(CopyDataProperties), { dst, src });
     CHECK_EXCEPTION_WITH_ACC(result);
 }
@@ -5036,8 +5044,8 @@ void BaselineDeprecatedSetobjectwithprotoPrefV8V8StubBuilder::GenerateCircuit()
     GateRef v0 =  Int32Argument(PARAM_INDEX(BaselineDeprecatedSetobjectwithprotoPrefV8V8, V0));
     GateRef v1 =  Int32Argument(PARAM_INDEX(BaselineDeprecatedSetobjectwithprotoPrefV8V8, V1));
 
-    GateRef proto = GetVregValue(sp, ZExtInt8ToPtr(v0));
-    GateRef obj = GetVregValue(sp, ZExtInt8ToPtr(v1));
+    GateRef proto = GetVregValue(glue, sp, ZExtInt8ToPtr(v0));
+    GateRef obj = GetVregValue(glue, sp, ZExtInt8ToPtr(v1));
 
     auto env = GetEnvironment();
     GateRef result = CallRuntime(glue, RTSTUB_ID(SetObjectWithProto), { proto, obj });
@@ -5053,8 +5061,8 @@ void BaselineDeprecatedLdobjbyvaluePrefV8V8StubBuilder::GenerateCircuit()
     GateRef sp = PtrArgument(PARAM_INDEX(BaselineDeprecatedLdobjbyvaluePrefV8V8, SP));
     GateRef v0 =  Int32Argument(PARAM_INDEX(BaselineDeprecatedLdobjbyvaluePrefV8V8, V0));
     GateRef v1 =  Int32Argument(PARAM_INDEX(BaselineDeprecatedLdobjbyvaluePrefV8V8, V1));
-    GateRef receiver = GetVregValue(sp, ZExtInt8ToPtr(v0));
-    GateRef propKey = GetVregValue(sp, ZExtInt8ToPtr(v1));
+    GateRef receiver = GetVregValue(glue, sp, ZExtInt8ToPtr(v0));
+    GateRef propKey = GetVregValue(glue, sp, ZExtInt8ToPtr(v1));
 
     AccessObjectStubBuilder builder(this);
     GateRef result = builder.DeprecatedLoadObjByValue(glue, receiver, propKey);
@@ -5069,9 +5077,9 @@ void BaselineDeprecatedLdsuperbyvaluePrefV8V8StubBuilder::GenerateCircuit()
     GateRef v1 =  Int32Argument(PARAM_INDEX(BaselineDeprecatedLdsuperbyvaluePrefV8V8, V1));
 
     GateRef frame = GetFrame(sp);
-    GateRef acc = GetAccFromFrame(frame);
-    GateRef receiver = GetVregValue(sp, ZExtInt8ToPtr(v0));
-    GateRef propKey = GetVregValue(sp, ZExtInt8ToPtr(v1));
+    GateRef acc = GetAccFromFrame(glue, frame);
+    GateRef receiver = GetVregValue(glue, sp, ZExtInt8ToPtr(v0));
+    GateRef propKey = GetVregValue(glue, sp, ZExtInt8ToPtr(v1));
 
     GateRef result = CallRuntime(glue, RTSTUB_ID(LdSuperByValue), {  receiver, propKey }); // sp for thisFunc
     CHECK_EXCEPTION_WITH_ACC(result);
@@ -5083,10 +5091,10 @@ void BaselineDeprecatedLdobjbyindexPrefV8Imm32StubBuilder::GenerateCircuit()
     GateRef sp = PtrArgument(PARAM_INDEX(BaselineDeprecatedLdobjbyindexPrefV8Imm32, SP));
     GateRef v0 =  Int32Argument(PARAM_INDEX(BaselineDeprecatedLdobjbyindexPrefV8Imm32, V0));
     GateRef index = Int32Argument(PARAM_INDEX(BaselineDeprecatedLdobjbyindexPrefV8Imm32, INDEX));
-    GateRef receiver = GetVregValue(sp, ZExtInt8ToPtr(v0));
+    GateRef receiver = GetVregValue(glue, sp, ZExtInt8ToPtr(v0));
 
     GateRef frame = GetFrame(sp);
-    GateRef acc = GetAccFromFrame(frame);
+    GateRef acc = GetAccFromFrame(glue, frame);
     auto env = GetEnvironment();
     Label fastPath(env);
     Label slowPath(env);
@@ -5115,11 +5123,11 @@ void BaselineDeprecatedAsyncfunctionresolvePrefV8V8V8StubBuilder::GenerateCircui
     GateRef v0 = Int32Argument(PARAM_INDEX(BaselineDeprecatedAsyncfunctionresolvePrefV8V8V8, V0));
     GateRef v1 = Int32Argument(PARAM_INDEX(BaselineDeprecatedAsyncfunctionresolvePrefV8V8V8, V1));
 
-    GateRef asyncFuncObj = GetVregValue(sp, ZExtInt8ToPtr(v0));
-    GateRef value = GetVregValue(sp, ZExtInt8ToPtr(v1));
+    GateRef asyncFuncObj = GetVregValue(glue, sp, ZExtInt8ToPtr(v0));
+    GateRef value = GetVregValue(glue, sp, ZExtInt8ToPtr(v1));
 
     GateRef frame = GetFrame(sp);
-    GateRef acc = GetAccFromFrame(frame);
+    GateRef acc = GetAccFromFrame(glue, frame);
     GateRef res = CallRuntime(glue, RTSTUB_ID(AsyncFunctionResolveOrReject),
                               { asyncFuncObj, value, TaggedTrue() });
     CHECK_EXCEPTION_WITH_ACC(res);
@@ -5133,9 +5141,9 @@ void BaselineDeprecatedAsyncfunctionrejectPrefV8V8V8StubBuilder::GenerateCircuit
     GateRef v1 = Int32Argument(PARAM_INDEX(BaselineDeprecatedAsyncfunctionrejectPrefV8V8V8, V1));
 
     GateRef frame = GetFrame(sp);
-    GateRef acc = GetAccFromFrame(frame);
-    GateRef asyncFuncObj = GetVregValue(sp, ZExtInt8ToPtr(v0));
-    GateRef value = GetVregValue(sp, ZExtInt8ToPtr(v1));
+    GateRef acc = GetAccFromFrame(glue, frame);
+    GateRef asyncFuncObj = GetVregValue(glue, sp, ZExtInt8ToPtr(v0));
+    GateRef value = GetVregValue(glue, sp, ZExtInt8ToPtr(v1));
     GateRef res = CallRuntime(glue, RTSTUB_ID(AsyncFunctionResolveOrReject),
                               { asyncFuncObj, value, TaggedFalse() });
     CHECK_EXCEPTION_WITH_ACC(res);
@@ -5149,11 +5157,11 @@ void BaselineDeprecatedStlexvarPrefImm4Imm4V8StubBuilder::GenerateCircuit()
     GateRef slot = Int32Argument(PARAM_INDEX(BaselineDeprecatedStlexvarPrefImm4Imm4V8, SLOT));
     GateRef v0 = Int32Argument(PARAM_INDEX(BaselineDeprecatedStlexvarPrefImm4Imm4V8, V0));
 
-    GateRef value = GetVregValue(sp, ZExtInt8ToPtr(v0));
+    GateRef value = GetVregValue(glue, sp, ZExtInt8ToPtr(v0));
     GateRef state = GetFrame(sp);
 
     auto env = GetEnvironment();
-    DEFVARIABLE(currentEnv, VariableType::JS_ANY(), GetEnvFromFrame(state));
+    DEFVARIABLE(currentEnv, VariableType::JS_ANY(), GetEnvFromFrame(glue, state));
     DEFVARIABLE(i, VariableType::INT32(), Int32(0));
 
     Label loopHead(env);
@@ -5161,7 +5169,7 @@ void BaselineDeprecatedStlexvarPrefImm4Imm4V8StubBuilder::GenerateCircuit()
     Label afterLoop(env);
     Branch(Int32LessThan(*i, level), &loopHead, &afterLoop);
     LoopBegin(&loopHead);
-    currentEnv = GetParentEnv(*currentEnv);
+    currentEnv = GetParentEnv(glue, *currentEnv);
     i = Int32Add(*i, Int32(1));
     Branch(Int32LessThan(*i, level), &loopEnd, &afterLoop);
     Bind(&loopEnd);
@@ -5179,11 +5187,11 @@ void BaselineDeprecatedStlexvarPrefImm8Imm8V8StubBuilder::GenerateCircuit()
     GateRef slot = Int32Argument(PARAM_INDEX(BaselineDeprecatedStlexvarPrefImm8Imm8V8, SLOT));
     GateRef v0 = Int32Argument(PARAM_INDEX(BaselineDeprecatedStlexvarPrefImm8Imm8V8, V0));
 
-    GateRef value = GetVregValue(sp, ZExtInt8ToPtr(v0));
+    GateRef value = GetVregValue(glue, sp, ZExtInt8ToPtr(v0));
     GateRef state = GetFrame(sp);
 
     auto env = GetEnvironment();
-    DEFVARIABLE(currentEnv, VariableType::JS_ANY(), GetEnvFromFrame(state));
+    DEFVARIABLE(currentEnv, VariableType::JS_ANY(), GetEnvFromFrame(glue, state));
     DEFVARIABLE(i, VariableType::INT32(), Int32(0));
 
     Label loopHead(env);
@@ -5191,7 +5199,7 @@ void BaselineDeprecatedStlexvarPrefImm8Imm8V8StubBuilder::GenerateCircuit()
     Label afterLoop(env);
     Branch(Int32LessThan(*i, level), &loopHead, &afterLoop);
     LoopBegin(&loopHead);
-    currentEnv = GetParentEnv(*currentEnv);
+    currentEnv = GetParentEnv(glue, *currentEnv);
     i = Int32Add(*i, Int32(1));
     Branch(Int32LessThan(*i, level), &loopEnd, &afterLoop);
     Bind(&loopEnd);
@@ -5209,10 +5217,10 @@ void BaselineDeprecatedStlexvarPrefImm16Imm16V8StubBuilder::GenerateCircuit()
     GateRef slot = Int32Argument(PARAM_INDEX(BaselineDeprecatedStlexvarPrefImm16Imm16V8, SLOT));
     GateRef v0 = Int32Argument(PARAM_INDEX(BaselineDeprecatedStlexvarPrefImm16Imm16V8, V0));
 
-    GateRef value = GetVregValue(sp, ZExtInt8ToPtr(v0));
+    GateRef value = GetVregValue(glue, sp, ZExtInt8ToPtr(v0));
     GateRef state = GetFrame(sp);
     auto env = GetEnvironment();
-    DEFVARIABLE(currentEnv, VariableType::JS_ANY(), GetEnvFromFrame(state));
+    DEFVARIABLE(currentEnv, VariableType::JS_ANY(), GetEnvFromFrame(glue, state));
     DEFVARIABLE(i, VariableType::INT32(), Int32(0));
 
     Label loopHead(env);
@@ -5220,7 +5228,7 @@ void BaselineDeprecatedStlexvarPrefImm16Imm16V8StubBuilder::GenerateCircuit()
     Label afterLoop(env);
     Branch(Int32LessThan(*i, level), &loopHead, &afterLoop);
     LoopBegin(&loopHead);
-    currentEnv = GetParentEnv(*currentEnv);
+    currentEnv = GetParentEnv(glue, *currentEnv);
     i = Int32Add(*i, Int32(1));
     Branch(Int32LessThan(*i, level), &loopEnd, &afterLoop);
     Bind(&loopEnd);
@@ -5236,9 +5244,9 @@ void BaselineDeprecatedGetmodulenamespacePrefId32StubBuilder::GenerateCircuit()
     GateRef stringId = Int32Argument(PARAM_INDEX(BaselineDeprecatedGetmodulenamespacePrefId32, STRING_ID));
     GateRef sp = PtrArgument(PARAM_INDEX(BaselineDeprecatedGetmodulenamespacePrefId32, SP));
 
-    GateRef func = GetFunctionFromFrame(GetFrame(sp));
-    GateRef method = GetMethodFromFunction(func);
-    GateRef constpool = GetConstpoolFromMethod(method);
+    GateRef func = GetFunctionFromFrame(glue, GetFrame(sp));
+    GateRef method = GetMethodFromFunction(glue, func);
+    GateRef constpool = GetConstpoolFromMethod(glue, method);
     GateRef prop = GetStringFromConstPool(glue, constpool, stringId);
     GateRef moduleRef = CallRuntime(glue, RTSTUB_ID(GetModuleNamespace), { prop });
     Return(moduleRef);
@@ -5251,9 +5259,9 @@ void BaselineDeprecatedStmodulevarPrefId32StubBuilder::GenerateCircuit()
     GateRef stringId = Int32Argument(PARAM_INDEX(BaselineDeprecatedStmodulevarPrefId32, STRING_ID));
     GateRef sp = PtrArgument(PARAM_INDEX(BaselineDeprecatedStmodulevarPrefId32, SP));
 
-    GateRef func = GetFunctionFromFrame(GetFrame(sp));
-    GateRef method = GetMethodFromFunction(func);
-    GateRef constpool = GetConstpoolFromMethod(method);
+    GateRef func = GetFunctionFromFrame(glue, GetFrame(sp));
+    GateRef method = GetMethodFromFunction(glue, func);
+    GateRef constpool = GetConstpoolFromMethod(glue, method);
     GateRef prop = GetStringFromConstPool(glue, constpool, stringId);
 
     CallRuntime(glue, RTSTUB_ID(StModuleVar), { prop, acc });
@@ -5268,10 +5276,10 @@ void BaselineDeprecatedLdobjbynamePrefId32V8StubBuilder::GenerateCircuit()
     GateRef stringId = Int32Argument(PARAM_INDEX(BaselineDeprecatedLdobjbynamePrefId32V8, STRING_ID));
 
     GateRef frame = GetFrame(sp);
-    GateRef func = GetFunctionFromFrame(frame);
-    GateRef method = GetMethodFromFunction(func);
-    GateRef constpool = GetConstpoolFromMethod(method);
-    GateRef receiver = GetVregValue(sp, ZExtInt8ToPtr(v0));
+    GateRef func = GetFunctionFromFrame(glue, frame);
+    GateRef method = GetMethodFromFunction(glue, func);
+    GateRef constpool = GetConstpoolFromMethod(glue, method);
+    GateRef receiver = GetVregValue(glue, sp, ZExtInt8ToPtr(v0));
     GateRef propKey = GetStringFromConstPool(glue, constpool, stringId);
     AccessObjectStubBuilder builder(this);
     GateRef result = builder.DeprecatedLoadObjByName(glue, receiver, propKey);
@@ -5286,10 +5294,10 @@ void BaselineDeprecatedLdsuperbynamePrefId32V8StubBuilder::GenerateCircuit()
     GateRef v0 = Int32Argument(PARAM_INDEX(BaselineDeprecatedLdsuperbynamePrefId32V8, V0));
 
     GateRef frame = GetFrame(sp);
-    GateRef func = GetFunctionFromFrame(frame);
-    GateRef method = GetMethodFromFunction(func);
-    GateRef constpool = GetConstpoolFromMethod(method);
-    GateRef receiver = GetVregValue(sp, ZExtInt8ToPtr(v0));
+    GateRef func = GetFunctionFromFrame(glue, frame);
+    GateRef method = GetMethodFromFunction(glue, func);
+    GateRef constpool = GetConstpoolFromMethod(glue, method);
+    GateRef receiver = GetVregValue(glue, sp, ZExtInt8ToPtr(v0));
     GateRef propKey = GetStringFromConstPool(glue, constpool, stringId);
     GateRef result = CallRuntime(glue, RTSTUB_ID(LdSuperByValue), { receiver, propKey });
     CHECK_EXCEPTION_RETURN(result);
@@ -5303,9 +5311,9 @@ void BaselineDeprecatedLdmodulevarPrefId32Imm8StubBuilder::GenerateCircuit()
     GateRef sp = PtrArgument(PARAM_INDEX(BaselineDeprecatedLdmodulevarPrefId32Imm8, SP));
     GateRef flag = ZExtInt8ToInt32(flagI8);
 
-    GateRef func = GetFunctionFromFrame(GetFrame(sp));
-    GateRef method = GetMethodFromFunction(func);
-    GateRef constpool = GetConstpoolFromMethod(method);
+    GateRef func = GetFunctionFromFrame(glue, GetFrame(sp));
+    GateRef method = GetMethodFromFunction(glue, func);
+    GateRef constpool = GetConstpoolFromMethod(glue, method);
     GateRef key = GetStringFromConstPool(glue, constpool, stringId);
     GateRef moduleRef = CallRuntime(glue, RTSTUB_ID(LdModuleVar), { key, IntToTaggedInt(flag) });
     Return(moduleRef);
@@ -5319,9 +5327,9 @@ void BaselineDeprecatedStconsttoglobalrecordPrefId32StubBuilder::GenerateCircuit
     GateRef sp = PtrArgument(PARAM_INDEX(BaselineDeprecatedStconsttoglobalrecordPrefId32, SP));
 
     GateRef frame = GetFrame(sp);
-    GateRef func = GetFunctionFromFrame(frame);
-    GateRef method = GetMethodFromFunction(func);
-    GateRef constpool = GetConstpoolFromMethod(method);
+    GateRef func = GetFunctionFromFrame(glue, frame);
+    GateRef method = GetMethodFromFunction(glue, func);
+    GateRef constpool = GetConstpoolFromMethod(glue, method);
     GateRef propKey = GetStringFromConstPool(glue, constpool, stringId);
     GateRef result = CallRuntime(glue, RTSTUB_ID(StGlobalRecord),
                                  { propKey, acc, TaggedTrue() });
@@ -5336,9 +5344,9 @@ void BaselineDeprecatedStlettoglobalrecordPrefId32StubBuilder::GenerateCircuit()
     GateRef sp = PtrArgument(PARAM_INDEX(BaselineDeprecatedStlettoglobalrecordPrefId32, SP));
 
     GateRef frame = GetFrame(sp);
-    GateRef func = GetFunctionFromFrame(frame);
-    GateRef method = GetMethodFromFunction(func);
-    GateRef constpool = GetConstpoolFromMethod(method);
+    GateRef func = GetFunctionFromFrame(glue, frame);
+    GateRef method = GetMethodFromFunction(glue, func);
+    GateRef constpool = GetConstpoolFromMethod(glue, method);
     GateRef propKey = GetStringFromConstPool(glue, constpool, stringId);
     GateRef result = CallRuntime(glue, RTSTUB_ID(StGlobalRecord),
                                  { propKey, acc, TaggedFalse() });
@@ -5353,9 +5361,9 @@ void BaselineDeprecatedStclasstoglobalrecordPrefId32StubBuilder::GenerateCircuit
     GateRef sp = PtrArgument(PARAM_INDEX(BaselineDeprecatedStclasstoglobalrecordPrefId32, SP));
 
     GateRef frame = GetFrame(sp);
-    GateRef func = GetFunctionFromFrame(frame);
-    GateRef method = GetMethodFromFunction(func);
-    GateRef constpool = GetConstpoolFromMethod(method);
+    GateRef func = GetFunctionFromFrame(glue, frame);
+    GateRef method = GetMethodFromFunction(glue, func);
+    GateRef constpool = GetConstpoolFromMethod(glue, method);
     GateRef propKey = GetStringFromConstPool(glue, constpool, stringId);
     GateRef result = CallRuntime(glue, RTSTUB_ID(StGlobalRecord),
                                  { propKey, acc, TaggedFalse() });
@@ -5365,10 +5373,11 @@ void BaselineDeprecatedStclasstoglobalrecordPrefId32StubBuilder::GenerateCircuit
 // SP
 void BaselineDeprecatedLdhomeobjectPrefNoneStubBuilder::GenerateCircuit()
 {
+    GateRef glue = PtrArgument(PARAM_INDEX(BaselineDeprecatedLdhomeobjectPrefNone, GLUE));
     GateRef sp = PtrArgument(PARAM_INDEX(BaselineDeprecatedLdhomeobjectPrefNone, SP));
 
-    GateRef state = GetFunctionFromFrame(GetFrame(sp));
-    GateRef result = GetHomeObjectFromJSFunction(state);
+    GateRef state = GetFunctionFromFrame(glue, GetFrame(sp));
+    GateRef result = GetHomeObjectFromJSFunction(glue, state);
     Return(result);
 }
 
@@ -5380,10 +5389,10 @@ void BaselineDeprecatedCreateobjecthavingmethodPrefImm16StubBuilder::GenerateCir
     GateRef immI16 = Int32Argument(PARAM_INDEX(BaselineDeprecatedCreateobjecthavingmethodPrefImm16, IMM_I16));
     GateRef imm = ZExtInt16ToInt32(immI16);
 
-    GateRef func = GetFunctionFromFrame(GetFrame(sp));
-    GateRef method = GetMethodFromFunction(func);
-    GateRef constpool = GetConstpoolFromMethod(method);
-    GateRef module = GetModuleFromFunction(func);
+    GateRef func = GetFunctionFromFrame(glue, GetFrame(sp));
+    GateRef method = GetMethodFromFunction(glue, func);
+    GateRef constpool = GetConstpoolFromMethod(glue, method);
+    GateRef module = GetModuleFromFunction(glue, func);
     GateRef result = GetObjectLiteralFromConstPool(glue, constpool, imm, module);
     GateRef res = CallRuntime(glue, RTSTUB_ID(CreateObjectHavingMethod), { result, acc });
     CHECK_EXCEPTION_WITH_ACC(res);
@@ -5396,7 +5405,7 @@ void BaselineDeprecatedDynamicimportPrefV8StubBuilder::GenerateCircuit()
     GateRef acc = TaggedArgument(PARAM_INDEX(BaselineDeprecatedDynamicimportPrefV8, ACC));
     GateRef specifier = TaggedArgument(PARAM_INDEX(BaselineDeprecatedDynamicimportPrefV8, VREG));
 
-    GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
+    GateRef currentFunc = GetFunctionFromFrame(glue, GetFrame(sp));
     GateRef res = CallRuntime(glue, RTSTUB_ID(DynamicImport), { specifier, currentFunc });
     CHECK_EXCEPTION_WITH_ACC(res);
 }
@@ -5407,7 +5416,7 @@ void BaselineCallRuntimeNotifyConcurrentResultPrefNoneStubBuilder::GenerateCircu
     GateRef sp = PtrArgument(PARAM_INDEX(BaselineCallRuntimeNotifyConcurrentResultPrefNone, SP));
     GateRef acc = TaggedArgument(PARAM_INDEX(BaselineCallRuntimeNotifyConcurrentResultPrefNone, ACC));
 
-    GateRef funcObj = GetFunctionFromFrame(GetFrame(sp));
+    GateRef funcObj = GetFunctionFromFrame(glue, GetFrame(sp));
     CallRuntime(glue, RTSTUB_ID(NotifyConcurrentResult), {acc, funcObj});
     Return();
 }
@@ -5422,10 +5431,10 @@ void BaselineDefineFieldByNameImm8Id16V8StubBuilder::GenerateCircuit()
     GateRef v0 = Int32Argument(PARAM_INDEX(BaselineDefineFieldByNameImm8Id16V8, V0));
 
     DEFINE_PROFILE_CALLBACK(glue, sp, slotId);
-    GateRef acc = GetAccFromFrame(frame);
-    GateRef method = GetMethodFromFunction(curFunc);
-    GateRef constpool = GetConstpoolFromMethod(method);
-    GateRef receiver = GetVregValue(sp, ZExtInt32ToPtr(v0));
+    GateRef acc = GetAccFromFrame(glue, frame);
+    GateRef method = GetMethodFromFunction(glue, curFunc);
+    GateRef constpool = GetConstpoolFromMethod(glue, method);
+    GateRef receiver = GetVregValue(glue, sp, ZExtInt32ToPtr(v0));
 
     auto env = GetEnvironment();
     GateRef propKey = GetStringFromConstPool(glue, constpool, stringId);
@@ -5445,10 +5454,10 @@ void BaselineDefinePropertyByNameImm8Id16V8StubBuilder::GenerateCircuit()
     GateRef v0 = Int32Argument(PARAM_INDEX(BaselineDefinePropertyByNameImm8Id16V8, V0));
 
     DEFINE_PROFILE_CALLBACK(glue, sp, slotId);
-    GateRef acc = GetAccFromFrame(frame);
-    GateRef method = GetMethodFromFunction(curFunc);
-    GateRef constpool = GetConstpoolFromMethod(method);
-    GateRef receiver = GetVregValue(sp, ZExtInt32ToPtr(v0));
+    GateRef acc = GetAccFromFrame(glue, frame);
+    GateRef method = GetMethodFromFunction(glue, curFunc);
+    GateRef constpool = GetConstpoolFromMethod(glue, method);
+    GateRef receiver = GetVregValue(glue, sp, ZExtInt32ToPtr(v0));
 
     auto env = GetEnvironment();
     GateRef propKey = GetStringFromConstPool(glue, constpool, ZExtInt16ToInt32(stringId));
@@ -5464,8 +5473,8 @@ void BaselineCallRuntimeDefineFieldByValuePrefImm8V8V8StubBuilder::GenerateCircu
     GateRef acc = TaggedArgument(PARAM_INDEX(BaselineCallRuntimeDefineFieldByValuePrefImm8V8V8, ACC));
     GateRef v0 = Int32Argument(PARAM_INDEX(BaselineCallRuntimeDefineFieldByValuePrefImm8V8V8, V0));
     GateRef v1 = Int32Argument(PARAM_INDEX(BaselineCallRuntimeDefineFieldByValuePrefImm8V8V8, V1));
-    GateRef obj = GetVregValue(sp, ZExtInt8ToPtr(v1));
-    GateRef propKey = GetVregValue(sp, ZExtInt8ToPtr(v0));
+    GateRef obj = GetVregValue(glue, sp, ZExtInt8ToPtr(v1));
+    GateRef propKey = GetVregValue(glue, sp, ZExtInt8ToPtr(v0));
 
     GateRef res = DefineField(glue, obj, propKey, acc);
     CHECK_EXCEPTION_WITH_ACC(res);
@@ -5480,7 +5489,7 @@ void BaselineCallRuntimeDefineFieldByIndexPrefImm8Imm32V8StubBuilder::GenerateCi
     GateRef v0 = Int32Argument(PARAM_INDEX(BaselineCallRuntimeDefineFieldByIndexPrefImm8Imm32V8, V0));
 
     GateRef propKey = IntToTaggedPtr(index);
-    GateRef obj = GetVregValue(sp, ZExtInt8ToPtr(v0));
+    GateRef obj = GetVregValue(glue, sp, ZExtInt8ToPtr(v0));
     GateRef res = DefineField(glue, obj, propKey, acc);
     CHECK_EXCEPTION_WITH_ACC(res);
 }
@@ -5504,12 +5513,12 @@ void BaselineCallRuntimeCreatePrivatePropertyPrefImm16Id16StubBuilder::GenerateC
     GateRef literalId = Int32Argument(PARAM_INDEX(BaselineCallRuntimeCreatePrivatePropertyPrefImm16Id16, LITERAL_ID));
 
     GateRef frame = GetFrame(sp);
-    GateRef acc = GetAccFromFrame(frame);
-    GateRef func = GetFunctionFromFrame(frame);
-    GateRef method = GetMethodFromFunction(func);
-    GateRef constpool = GetConstpoolFromMethod(method);
-    GateRef lexicalEnv = GetEnvFromFrame(frame);
-    GateRef module = GetModuleFromFunction(func);
+    GateRef acc = GetAccFromFrame(glue, frame);
+    GateRef func = GetFunctionFromFrame(glue, frame);
+    GateRef method = GetMethodFromFunction(glue, func);
+    GateRef constpool = GetConstpoolFromMethod(glue, method);
+    GateRef lexicalEnv = GetEnvFromFrame(glue, frame);
+    GateRef module = GetModuleFromFunction(glue, func);
     GateRef res = CallRuntime(glue, RTSTUB_ID(CreatePrivateProperty), {lexicalEnv,
         IntToTaggedInt(count), constpool, IntToTaggedInt(literalId), module});
     CHECK_EXCEPTION_WITH_ACC(res);
@@ -5527,8 +5536,8 @@ void BaselineCallRuntimeDefinePrivatePropertyPrefImm8Imm16Imm16V8StubBuilder::Ge
         Int32Argument(PARAM_INDEX(BaselineCallRuntimeDefinePrivatePropertyPrefImm8Imm16Imm16V8, SLOT_INDEX));
     GateRef v0 = Int32Argument(PARAM_INDEX(BaselineCallRuntimeDefinePrivatePropertyPrefImm8Imm16Imm16V8, V0));
 
-    GateRef lexicalEnv = GetEnvFromFrame(GetFrame(sp));
-    GateRef obj = GetVregValue(sp, ZExtInt8ToPtr(v0));
+    GateRef lexicalEnv = GetEnvFromFrame(glue, GetFrame(sp));
+    GateRef obj = GetVregValue(glue, sp, ZExtInt8ToPtr(v0));
 
     GateRef res = CallRuntime(glue, RTSTUB_ID(DefinePrivateProperty), {lexicalEnv,
         IntToTaggedInt(levelIndex), IntToTaggedInt(slotIndex), obj, acc});  // acc as value
@@ -5543,7 +5552,7 @@ void BaselineCallRuntimeCallInitPrefImm8V8StubBuilder::GenerateCircuit()
     GateRef v0 = Int32Argument(PARAM_INDEX(BaselineCallRuntimeCallInitPrefImm8V8, V0));
     GateRef hotnessCounter = Int32Argument(PARAM_INDEX(BaselineCallRuntimeCallInitPrefImm8V8, HOTNESS_COUNTER));
     GateRef slotId = Int32Argument(PARAM_INDEX(BaselineCallRuntimeCallInitPrefImm8V8, SLOT_ID));
-    GateRef thisValue = GetVregValue(sp, ZExtInt8ToPtr(v0));
+    GateRef thisValue = GetVregValue(glue, sp, ZExtInt8ToPtr(v0));
 
     DEFINE_PROFILE_CALLBACK(glue, sp, slotId);
     DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
@@ -5576,12 +5585,12 @@ void BaselineCallRuntimeDefineSendableClassPrefImm16Id16Id16Imm16V8StubBuilder::
         PARAM_INDEX(BaselineCallRuntimeDefineSendableClassPrefImm16Id16Id16Imm16V8, LENGTH));
     GateRef v0 = Int32Argument(PARAM_INDEX(BaselineCallRuntimeDefineSendableClassPrefImm16Id16Id16Imm16V8, V0));
 
-    GateRef proto = GetVregValue(sp, ZExtInt8ToPtr(v0));
+    GateRef proto = GetVregValue(glue, sp, ZExtInt8ToPtr(v0));
     GateRef frame = GetFrame(sp);
-    GateRef currentFunc = GetFunctionFromFrame(frame);
+    GateRef currentFunc = GetFunctionFromFrame(glue, frame);
 
     auto env = GetEnvironment();
-    GateRef module = GetModuleFromFunction(currentFunc);
+    GateRef module = GetModuleFromFunction(glue, currentFunc);
     // remove constpool in args
     GateRef res = CallRuntime(glue, RTSTUB_ID(CreateSharedClass),
                               { proto,
@@ -5594,7 +5603,7 @@ void BaselineCallRuntimeDefineSendableClassPrefImm16Id16Id16Imm16V8StubBuilder::
     BRANCH(TaggedIsException(res), &isException, &isNotException);
     Bind(&isException);
     {
-        GateRef acc = GetAccFromFrame(frame);
+        GateRef acc = GetAccFromFrame(glue, frame);
         DISPATCH_LAST_WITH_ACC();
         Return(res);
     }
@@ -5607,7 +5616,7 @@ void BaselineCallRuntimeLdSendableClassPrefImm16StubBuilder::GenerateCircuit()
     GateRef glue = PtrArgument(PARAM_INDEX(BaselineCallRuntimeLdSendableClassPrefImm16, GLUE));
     GateRef sp = PtrArgument(PARAM_INDEX(BaselineCallRuntimeLdSendableClassPrefImm16, SP));
     GateRef level = Int32Argument(PARAM_INDEX(BaselineCallRuntimeLdSendableClassPrefImm16, LEVEL));
-    GateRef lexEnv = GetEnvFromFrame(GetFrame(sp));
+    GateRef lexEnv = GetEnvFromFrame(glue, GetFrame(sp));
 
     GateRef result = CallRuntime(glue, RTSTUB_ID(LdSendableClass), { lexEnv, Int16ToTaggedInt(level) });
     Return(result);
@@ -5621,21 +5630,21 @@ void BaselineReturnundefinedStubBuilder::GenerateCircuit()
 
     DEFVARIABLE(varSp, VariableType::NATIVE_POINTER(), sp);
     GateRef frame = GetFrame(sp);
-    GateRef acc = GetAccFromFrame(frame);
+    GateRef acc = GetAccFromFrame(glue, frame);
 
     auto env = GetEnvironment();
     GateRef pc = GetPcFromFrame(frame);
-    GateRef curFunction = GetFunctionFromFrame(frame);
+    GateRef curFunction = GetFunctionFromFrame(glue, frame);
     GateRef curMethod =
-        Load(VariableType::JS_ANY(), curFunction, IntPtr(JSFunctionBase::METHOD_OFFSET));
+        Load(VariableType::JS_ANY(), glue, curFunction, IntPtr(JSFunctionBase::METHOD_OFFSET));
     GateRef constpool =
-        Load(VariableType::JS_POINTER(), curMethod, IntPtr(Method::CONSTANT_POOL_OFFSET));
+        Load(VariableType::JS_POINTER(), glue, curMethod, IntPtr(Method::CONSTANT_POOL_OFFSET));
     GateRef raw =
-        Load(VariableType::JS_POINTER(), curFunction, IntPtr(JSFunction::RAW_PROFILE_TYPE_INFO_OFFSET));
+        Load(VariableType::JS_POINTER(), glue, curFunction, IntPtr(JSFunction::RAW_PROFILE_TYPE_INFO_OFFSET));
     GateRef profileTypeInfo =
-        Load(VariableType::JS_POINTER(), raw, IntPtr(ProfileTypeInfoCell::VALUE_OFFSET));
+        Load(VariableType::JS_POINTER(), glue, raw, IntPtr(ProfileTypeInfoCell::VALUE_OFFSET));
     GateRef hotnessCounter =
-        Load(VariableType::INT16(), curMethod, IntPtr(Method::LITERAL_INFO_OFFSET));
+        LoadPrimitive(VariableType::INT16(), curMethod, IntPtr(Method::LITERAL_INFO_OFFSET));
     ProfileOperation callback;
 
     DEFVARIABLE(varPc, VariableType::NATIVE_POINTER(), pc);
@@ -5663,7 +5672,7 @@ void BaselineReturnundefinedStubBuilder::GenerateCircuit()
         GateRef varProfileTypeInfoVal = *varProfileTypeInfo;
         GateRef isProfileDumpedAndJitCompiled = LogicAndBuilder(env)
             .And(ProfilerStubBuilder(env).IsCompiledOrTryCompile(
-                glue, GetFunctionFromFrame(frame), varProfileTypeInfoVal, callback, pc))
+                glue, GetFunctionFromFrame(glue, frame), varProfileTypeInfoVal, callback, pc))
             .And(ProfilerStubBuilder(env).IsProfileTypeInfoDumped(varProfileTypeInfoVal, callback))
             .Done();
         BRANCH(isProfileDumpedAndJitCompiled, &tryContinue, &updateHotness);
@@ -5677,16 +5686,16 @@ void BaselineReturnundefinedStubBuilder::GenerateCircuit()
     }
     Bind(&tryContinue);
     GateRef currentSp = *varSp;
-    varSp = Load(VariableType::NATIVE_POINTER(), frame,
+    varSp = LoadPrimitive(VariableType::NATIVE_POINTER(), frame,
                  IntPtr(AsmInterpretedFrame::GetBaseOffset(env->IsArch32Bit())));
 
     GateRef typePos = PtrSub(*varSp, IntPtr(JSTaggedValue::TaggedTypeSize()));
-    GateRef maybeFrameType = Load(VariableType::INT64(), typePos);
+    GateRef maybeFrameType = LoadPrimitive(VariableType::INT64(), typePos);
     BRANCH(Int64Equal(maybeFrameType, Int64(static_cast<int64_t>(FrameType::BASELINE_BUILTIN_FRAME))),
            &isBaselineBuiltinFrame, &notBaselineBuiltinFrame);
     Bind(&isBaselineBuiltinFrame);
     {
-        varSp = Load(VariableType::NATIVE_POINTER(), *varSp);
+        varSp = LoadPrimitive(VariableType::NATIVE_POINTER(), *varSp);
         Jump(&notBaselineBuiltinFrame);
     }
     Bind(&notBaselineBuiltinFrame);
@@ -5709,10 +5718,10 @@ void BaselineReturnundefinedStubBuilder::GenerateCircuit()
     }
     Bind(&pcNotEqualBaseline);
     {
-        GateRef function = GetFunctionFromFrame(*prevState);
-        GateRef method = Load(VariableType::JS_ANY(), function, IntPtr(JSFunctionBase::METHOD_OFFSET));
-        varConstpool = GetConstpoolFromMethod(method);
-        varProfileTypeInfo = GetProfileTypeInfoFromFunction(function);
+        GateRef function = GetFunctionFromFrame(glue, *prevState);
+        GateRef method = Load(VariableType::JS_ANY(), glue, function, IntPtr(JSFunctionBase::METHOD_OFFSET));
+        varConstpool = GetConstpoolFromMethod(glue, method);
+        varProfileTypeInfo = GetProfileTypeInfoFromFunction(glue, function);
         varHotnessCounter = GetHotnessCounterFromMethod(method);
         GateRef jumpSize = GetCallSizeFromFrame(*prevState);
         CallNGCRuntime(glue, RTSTUB_ID(ResumeRspAndDispatch),
@@ -5731,12 +5740,12 @@ void BaselineSuspendgeneratorV8StubBuilder::GenerateCircuit()
     ProfileOperation callback;
 
     GateRef frame = GetFrame(sp);
-    GateRef func = GetFunctionFromFrame(frame);
-    GateRef method = GetMethodFromFunction(func);
-    GateRef constpool = GetConstpoolFromMethod(method);
-    GateRef acc = GetAccFromFrame(frame);
+    GateRef func = GetFunctionFromFrame(glue, frame);
+    GateRef method = GetMethodFromFunction(glue, func);
+    GateRef constpool = GetConstpoolFromMethod(glue, method);
+    GateRef acc = GetAccFromFrame(glue, frame);
     GateRef hotnessCounter = GetHotnessCounterFromMethod(method);
-    GateRef profileTypeInfo = GetProfileTypeInfoFromFunction(func);
+    GateRef profileTypeInfo = GetProfileTypeInfoFromFunction(glue, func);
 
     auto env = GetEnvironment();
     METHOD_EXIT();
@@ -5759,7 +5768,7 @@ void BaselineSuspendgeneratorV8StubBuilder::GenerateCircuit()
     Label dispatch(env);
     Label slowPath(env);
 
-    GateRef genObj = GetVregValue(sp, ZExtInt32ToPtr(v0));
+    GateRef genObj = GetVregValue(glue, sp, ZExtInt32ToPtr(v0));
     GateRef value = *varAcc;
     GateRef res = CallRuntime(glue, RTSTUB_ID(SuspendGenerator), { genObj, value });
     Label isException(env);
@@ -5788,20 +5797,20 @@ void BaselineSuspendgeneratorV8StubBuilder::GenerateCircuit()
 
     Bind(&tryContinue);
 #if ECMASCRIPT_ENABLE_FUNCTION_CALL_TIMER
-    GateRef curFunc = GetFunctionFromFrame(frame);
+    GateRef curFunc = GetFunctionFromFrame(glue, frame);
     CallNGCRuntime(glue, RTSTUB_ID(EndCallTimer), { glue, curFunc });
 #endif
     GateRef currentSp = *varSp;
-    varSp = Load(VariableType::NATIVE_POINTER(), frame,
+    varSp = LoadPrimitive(VariableType::NATIVE_POINTER(), frame,
         IntPtr(AsmInterpretedFrame::GetBaseOffset(env->IsArch32Bit())));
 
     GateRef typePos = PtrSub(*varSp, IntPtr(JSTaggedValue::TaggedTypeSize()));
-    GateRef maybeFrameType = Load(VariableType::INT64(), typePos);
+    GateRef maybeFrameType = LoadPrimitive(VariableType::INT64(), typePos);
     BRANCH(Int64Equal(maybeFrameType, Int64(static_cast<int64_t>(FrameType::BASELINE_BUILTIN_FRAME))),
            &isBaselineBuiltinFrame, &notBaselineBuiltinFrame);
     Bind(&isBaselineBuiltinFrame);
     {
-        varSp = Load(VariableType::NATIVE_POINTER(), *varSp);
+        varSp = LoadPrimitive(VariableType::NATIVE_POINTER(), *varSp);
         Jump(&notBaselineBuiltinFrame);
     }
     Bind(&notBaselineBuiltinFrame);
@@ -5823,10 +5832,10 @@ void BaselineSuspendgeneratorV8StubBuilder::GenerateCircuit()
     }
     Bind(&pcNotEqualBaseline);
     {
-        GateRef function = GetFunctionFromFrame(*prevState);
-        GateRef prevMethod = Load(VariableType::JS_ANY(), function, IntPtr(JSFunctionBase::METHOD_OFFSET));
-        varConstpool = GetConstpoolFromMethod(prevMethod);
-        varProfileTypeInfo = GetProfileTypeInfoFromFunction(function);
+        GateRef function = GetFunctionFromFrame(glue, *prevState);
+        GateRef prevMethod = Load(VariableType::JS_ANY(), glue, function, IntPtr(JSFunctionBase::METHOD_OFFSET));
+        varConstpool = GetConstpoolFromMethod(glue, prevMethod);
+        varProfileTypeInfo = GetProfileTypeInfoFromFunction(glue, function);
         varHotnessCounter = GetHotnessCounterFromMethod(prevMethod);
         GateRef jumpSize = GetCallSizeFromFrame(*prevState);
         CallNGCRuntime(glue, RTSTUB_ID(ResumeRspAndDispatch),
@@ -5844,11 +5853,11 @@ void BaselineExceptionHandlerStubBuilder::GenerateCircuit()
     GateRef acc = PtrArgument(PARAM_INDEX(BaselineExceptionHandler, ACC));
 
     GateRef frame = GetFrame(sp);
-    GateRef func = GetFunctionFromFrame(frame);
-    GateRef profileTypeInfo = GetProfileTypeInfoFromFunction(func);
-    GateRef method = GetMethodFromFunction(func);
+    GateRef func = GetFunctionFromFrame(glue, frame);
+    GateRef profileTypeInfo = GetProfileTypeInfoFromFunction(glue, func);
+    GateRef method = GetMethodFromFunction(glue, func);
     GateRef hotnessCounter = GetHotnessCounterFromMethod(method);
-    GateRef constpool = GetConstpoolFromMethod(method);
+    GateRef constpool = GetConstpoolFromMethod(glue, method);
 
     auto env = GetEnvironment();
     DEFVARIABLE(varPc, VariableType::NATIVE_POINTER(), IntPtr(0));
@@ -5861,7 +5870,7 @@ void BaselineExceptionHandlerStubBuilder::GenerateCircuit()
     Label pcIsInvalid(env);
     Label pcNotInvalid(env);
     GateRef exceptionOffset = IntPtr(JSThread::GlueData::GetExceptionOffset(env->IsArch32Bit()));
-    GateRef exception = Load(VariableType::JS_ANY(), glue, exceptionOffset);
+    GateRef exception = Load(VariableType::JS_ANY(), glue, glue, exceptionOffset);
     varPc = TaggedCastToIntPtr(CallRuntime(glue, RTSTUB_ID(UpFrame), {}));
     varSp = GetCurrentFrame(glue);
     Branch(IntPtrEqual(*varPc, IntPtr(0)), &pcIsInvalid, &pcNotInvalid);
@@ -5875,10 +5884,10 @@ void BaselineExceptionHandlerStubBuilder::GenerateCircuit()
         varAcc = exception;
         // clear exception
         Store(VariableType::INT64(), glue, glue, exceptionOffset, Hole());
-        GateRef function = GetFunctionFromFrame(GetFrame(*varSp));
-        GateRef thisMethod = Load(VariableType::JS_ANY(), function, IntPtr(JSFunctionBase::METHOD_OFFSET));
-        varConstpool = GetConstpoolFromMethod(thisMethod);
-        varProfileTypeInfo = GetProfileTypeInfoFromFunction(function);
+        GateRef function = GetFunctionFromFrame(glue, GetFrame(*varSp));
+        GateRef thisMethod = Load(VariableType::JS_ANY(), glue, function, IntPtr(JSFunctionBase::METHOD_OFFSET));
+        varConstpool = GetConstpoolFromMethod(glue, thisMethod);
+        varProfileTypeInfo = GetProfileTypeInfoFromFunction(glue, function);
         varHotnessCounter = GetHotnessCounterFromMethod(thisMethod);
         CallNGCRuntime(glue, RTSTUB_ID(ResumeCaughtFrameAndDispatch), {
             glue, *varSp, *varPc, *varConstpool,
@@ -5894,11 +5903,11 @@ void BaselineUpdateHotnessStubBuilder::GenerateCircuit()
     GateRef offset = Int32Argument(PARAM_INDEX(BaselineUpdateHotness, OFFSET));
 
     GateRef frame = GetFrame(sp);
-    GateRef func = GetFunctionFromFrame(frame);
-    GateRef method = GetMethodFromFunction(func);
+    GateRef func = GetFunctionFromFrame(glue, frame);
+    GateRef method = GetMethodFromFunction(glue, func);
     GateRef hotnessCounter = GetHotnessCounterFromMethod(method);
-    GateRef profileTypeInfo = GetProfileTypeInfoFromFunction(func);
-    GateRef acc = GetAccFromFrame(frame);
+    GateRef profileTypeInfo = GetProfileTypeInfoFromFunction(glue, func);
+    GateRef acc = GetAccFromFrame(glue, frame);
 
     auto env = GetEnvironment();
     DEFVARIABLE(varProfileTypeInfo, VariableType::JS_ANY(), profileTypeInfo);
@@ -5911,7 +5920,7 @@ void BaselineUpdateHotnessStubBuilder::GenerateCircuit()
     Bind(&slowPath);
     {
         GateRef iVecOffset = IntPtr(JSThread::GlueData::GetInterruptVectorOffset(env->IsArch32Bit()));
-        GateRef interruptsFlag = Load(VariableType::INT8(), glue, iVecOffset);
+        GateRef interruptsFlag = LoadPrimitive(VariableType::INT8(), glue, iVecOffset);
         varHotnessCounter = Int32(EcmaInterpreter::METHOD_HOTNESS_THRESHOLD);
         Label initialized(env);
         Label callRuntime(env);

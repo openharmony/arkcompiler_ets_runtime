@@ -35,20 +35,20 @@ BUILTINS_WITH_CONTAINERS_STACK_STUB_BUILDER(DECLARE_CONTAINERS_STACK_STUB_BUILDE
 
     GateRef GetSize(GateRef obj)
     {
-        GateRef top = Load(VariableType::INT32(), obj, IntPtr(JSAPIStack::TOP_OFFSET));
+        GateRef top = LoadPrimitive(VariableType::INT32(), obj, IntPtr(JSAPIStack::TOP_OFFSET));
         return Int32Add(top, Int32(1));
     }
 
-    GateRef Get(GateRef obj, GateRef index)
+    GateRef Get(GateRef glue, GateRef obj, GateRef index)
     {
         GateRef elementsOffset = IntPtr(JSObject::ELEMENTS_OFFSET);
-        GateRef elements = Load(VariableType::JS_POINTER(), obj, elementsOffset);
-        return GetValueFromTaggedArray(elements, index);
+        GateRef elements = Load(VariableType::JS_POINTER(), glue, obj, elementsOffset);
+        return GetValueFromTaggedArray(glue, elements, index);
     }
     void Set(GateRef glue, GateRef obj, GateRef index, GateRef value)
     {
         GateRef elementsOffset = IntPtr(JSObject::ELEMENTS_OFFSET);
-        GateRef elements = Load(VariableType::JS_POINTER(), obj, elementsOffset);
+        GateRef elements = Load(VariableType::JS_POINTER(), glue, obj, elementsOffset);
         SetValueToTaggedArray(VariableType::JS_ANY(), glue, elements, index, value);
     }
 };

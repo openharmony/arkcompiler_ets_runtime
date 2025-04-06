@@ -2664,6 +2664,35 @@ DEF_CALL_SIGNATURE(SharedGCMarkingBarrier)
     callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
 }
 
+DEF_CALL_SIGNATURE(GetValueWithBarrier)
+{
+    CallSignature getValueWithBarrier("GetValueWithBarrier", 0, 2, ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    *callSign = getValueWithBarrier;
+
+    std::array<VariableType, 2> params = {
+        VariableType::NATIVE_POINTER(),
+        VariableType::JS_POINTER()
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetGCLeafFunction(true);
+    callSign->SetCallConv(CallSignature::CallConv::CCallConv);
+}
+
+DEF_CALL_SIGNATURE(ReadBarrier)
+{
+    // 2 : 2 input parameters
+    CallSignature index("ReadBarrier", 0, 2, ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    *callSign = index;
+    // 2 : 2 input parameters
+    std::array<VariableType, 2> params = {
+        VariableType::NATIVE_POINTER(),
+        VariableType::JS_POINTER()
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetGCLeafFunction(true);
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
+}
+
 DEF_CALL_SIGNATURE(CallArg0Stub)
 {
     // 2 : 2 input parameters

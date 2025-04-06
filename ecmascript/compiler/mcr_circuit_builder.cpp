@@ -354,7 +354,7 @@ GateRef CircuitBuilder::TypedTypeOf(ParamType paramType)
 
 GateRef CircuitBuilder::IsMarkerCellValid(GateRef cell)
 {
-    GateRef bitfield = Load(VariableType::INT32(), cell, IntPtr(MarkerCell::BIT_FIELD_OFFSET));
+    GateRef bitfield = LoadWithoutBarrier(VariableType::INT32(), cell, IntPtr(MarkerCell::BIT_FIELD_OFFSET));
     return Int32Equal(
         Int32And(Int32LSR(bitfield, Int32(MarkerCell::IsDetectorInvalidBits::START_BIT)),
                  Int32((1LU << MarkerCell::IsDetectorInvalidBits::SIZE) - 1)),
@@ -1226,7 +1226,7 @@ GateRef CircuitBuilder::InsertLoadArrayLength(GateRef array, GateRef length, boo
 GateRef CircuitBuilder::IsIntegerString(GateRef string)
 {
     // compressedStringsEnabled fixed to true constant
-    GateRef hash = Load(VariableType::INT32(), string, IntPtr(EcmaString::MIX_HASHCODE_OFFSET));
+    GateRef hash = LoadWithoutBarrier(VariableType::INT32(), string, IntPtr(EcmaString::MIX_HASHCODE_OFFSET));
     return Int32Equal(
         Int32And(hash, Int32(EcmaString::IS_INTEGER_MASK)),
         Int32(EcmaString::IS_INTEGER_MASK));
@@ -1234,7 +1234,7 @@ GateRef CircuitBuilder::IsIntegerString(GateRef string)
 
 GateRef CircuitBuilder::GetRawHashFromString(GateRef value)
 {
-    GateRef hash = Load(VariableType::INT32(), value, IntPtr(EcmaString::MIX_HASHCODE_OFFSET));
+    GateRef hash = LoadWithoutBarrier(VariableType::INT32(), value, IntPtr(EcmaString::MIX_HASHCODE_OFFSET));
     return Int32And(hash, Int32(~EcmaString::IS_INTEGER_MASK));
 }
 
@@ -1266,7 +1266,7 @@ void CircuitBuilder::SetRawHashcode(GateRef glue, GateRef str, GateRef rawHashco
 
 GateRef CircuitBuilder::GetLengthFromString(GateRef value)
 {
-    GateRef len = Load(VariableType::INT32(), value, IntPtr(EcmaString::MIX_LENGTH_OFFSET));
+    GateRef len = LoadWithoutBarrier(VariableType::INT32(), value, IntPtr(EcmaString::MIX_LENGTH_OFFSET));
     return Int32LSR(len, Int32(EcmaString::STRING_LENGTH_SHIFT_COUNT));
 }
 
@@ -1314,7 +1314,7 @@ GateRef CircuitBuilder::GetHashcodeFromString(GateRef glue, GateRef value, GateR
     Label noRawHashcode(env_);
     Label exit(env_);
     DEFVALUE(hashcode, env_, VariableType::INT32(), Int32(0));
-    hashcode = Load(VariableType::INT32(), value, IntPtr(EcmaString::MIX_HASHCODE_OFFSET));
+    hashcode = LoadWithoutBarrier(VariableType::INT32(), value, IntPtr(EcmaString::MIX_HASHCODE_OFFSET));
     BRANCH(Int32Equal(*hashcode, Int32(0)), &noRawHashcode, &exit);
     Bind(&noRawHashcode);
     {
@@ -1337,7 +1337,7 @@ GateRef CircuitBuilder::TryGetHashcodeFromString(GateRef string)
     Label storeHash(env_);
     Label exit(env_);
     DEFVALUE(result, env_, VariableType::INT64(), Int64(-1));
-    GateRef hashCode = ZExtInt32ToInt64(Load(VariableType::INT32(), string, IntPtr(EcmaString::MIX_HASHCODE_OFFSET)));
+    GateRef hashCode = ZExtInt32ToInt64(LoadWithoutBarrier(VariableType::INT32(), string, IntPtr(EcmaString::MIX_HASHCODE_OFFSET)));
     BRANCH(Int64Equal(hashCode, Int64(0)), &noRawHashcode, &storeHash);
     Bind(&noRawHashcode);
     {
@@ -1354,7 +1354,7 @@ GateRef CircuitBuilder::TryGetHashcodeFromString(GateRef string)
     return ret;
 }
 
-GateRef CircuitBuilder::GetStringDataFromLineOrConstantString(GateRef str)
+GateRef CircuitBuilder::GetStringDataFromLineOrConstantString(GateRef glue, GateRef str)
 {
     Label subentry(env_);
     SubCfgEntry(&subentry);
@@ -1362,11 +1362,11 @@ GateRef CircuitBuilder::GetStringDataFromLineOrConstantString(GateRef str)
     Label isConstantString(env_);
     Label isLineString(env_);
     DEFVALUE(result, env_, VariableType::NATIVE_POINTER(), IntPtr(0));
-    BRANCH(IsConstantString(str), &isConstantString, &isLineString);
+    BRANCH(IsConstantString(glue, str), &isConstantString, &isLineString);
     Bind(&isConstantString);
     {
         GateRef address = ChangeTaggedPointerToInt64(PtrAdd(str, IntPtr(ConstantString::CONSTANT_DATA_OFFSET)));
-        result = Load(VariableType::NATIVE_POINTER(), address, IntPtr(0));
+        result = LoadWithoutBarrier(VariableType::NATIVE_POINTER(), address, IntPtr(0));
         Jump(&exit);
     }
     Bind(&isLineString);
@@ -1400,7 +1400,7 @@ void CircuitBuilder::CopyChars(GateRef glue, GateRef dst, GateRef source,
         Bind(&next);
         {
             len = Int32Sub(*len, Int32(1));
-            GateRef i = Load(type, *sourceTmp, IntPtr(0));
+            GateRef i = LoadWithoutBarrier(type, *sourceTmp, IntPtr(0));
             Store(type, glue, *dstTmp, IntPtr(0), i);
             Jump(&loopEnd);
         }
@@ -1436,7 +1436,7 @@ void CircuitBuilder::CopyUtf8AsUtf16(GateRef glue, GateRef dst, GateRef src,
         Bind(&next);
         {
             len = Int32Sub(*len, Int32(1));
-            GateRef i = Load(VariableType::INT8(), *sourceTmp, IntPtr(0));
+            GateRef i = LoadWithoutBarrier(VariableType::INT8(), *sourceTmp, IntPtr(0));
             Store(VariableType::INT16(), glue, *dstTmp, IntPtr(0), ZExtInt8ToInt16(i));
             Jump(&loopEnd);
         }
@@ -1485,7 +1485,7 @@ GateRef CircuitBuilder::GetEnumCacheKind(GateRef glue, GateRef enumCache)
     }
     Bind(&notEmptyArray);
     {
-        GateRef taggedKind = GetValueFromTaggedArray(enumCache, Int32(EnumCache::ENUM_CACHE_KIND_OFFSET));
+        GateRef taggedKind = GetValueFromTaggedArray(glue, enumCache, Int32(EnumCache::ENUM_CACHE_KIND_OFFSET));
         result = TaggedGetInt(taggedKind);
         Jump(&exit);
     }
@@ -1496,7 +1496,7 @@ GateRef CircuitBuilder::GetEnumCacheKind(GateRef glue, GateRef enumCache)
     return ret;
 }
 
-GateRef CircuitBuilder::IsEnumCacheValid(GateRef receiver, GateRef cachedHclass, GateRef kind)
+GateRef CircuitBuilder::IsEnumCacheValid(GateRef glue, GateRef receiver, GateRef cachedHclass, GateRef kind)
 {
     Label entry(env_);
     SubCfgEntry(&entry);
@@ -1510,7 +1510,7 @@ GateRef CircuitBuilder::IsEnumCacheValid(GateRef receiver, GateRef cachedHclass,
     Label isProtoChangeMarker(env_);
     Label protoNotChanged(env_);
 
-    GateRef hclass = LoadHClass(receiver);
+    GateRef hclass = LoadHClass(glue, receiver);
     BRANCH(Int64Equal(hclass, cachedHclass), &isSameHclass, &exit);
     Bind(&isSameHclass);
     BRANCH(Int32Equal(kind, Int32(static_cast<int32_t>(EnumCacheKind::SIMPLE))),
@@ -1521,11 +1521,11 @@ GateRef CircuitBuilder::IsEnumCacheValid(GateRef receiver, GateRef cachedHclass,
         Jump(&exit);
     }
     Bind(&notSimpleEnumCache);
-    GateRef prototype = GetPrototypeFromHClass(hclass);
-    BRANCH(IsEcmaObject(prototype), &prototypeIsEcmaObj, &exit);
+    GateRef prototype = GetPrototypeFromHClass(glue, hclass);
+    BRANCH(IsEcmaObject(glue, prototype), &prototypeIsEcmaObj, &exit);
     Bind(&prototypeIsEcmaObj);
-    GateRef protoChangeMarker = GetProtoChangeMarkerFromHClass(hclass);
-    BRANCH(TaggedIsProtoChangeMarker(protoChangeMarker), &isProtoChangeMarker, &exit);
+    GateRef protoChangeMarker = GetProtoChangeMarkerFromHClass(glue, hclass);
+    BRANCH(TaggedIsProtoChangeMarker(glue, protoChangeMarker), &isProtoChangeMarker, &exit);
     Bind(&isProtoChangeMarker);
     BRANCH(GetHasChanged(protoChangeMarker), &exit, &protoNotChanged);
     Bind(&protoNotChanged);
@@ -1539,7 +1539,7 @@ GateRef CircuitBuilder::IsEnumCacheValid(GateRef receiver, GateRef cachedHclass,
     return ret;
 }
 
-GateRef CircuitBuilder::NeedCheckProperty(GateRef receiver)
+GateRef CircuitBuilder::NeedCheckProperty(GateRef glue, GateRef receiver)
 {
     Label entry(env_);
     SubCfgEntry(&entry);
@@ -1557,12 +1557,12 @@ GateRef CircuitBuilder::NeedCheckProperty(GateRef receiver)
     BRANCH(TaggedIsHeapObject(*current), &loopHead, &afterLoop);
     LoopBegin(&loopHead);
     {
-        BRANCH(IsJSObject(*current), &isJSObject, &exit);
+        BRANCH(IsJSObject(glue, *current), &isJSObject, &exit);
         Bind(&isJSObject);
-        GateRef hclass = LoadHClass(*current);
+        GateRef hclass = LoadHClass(glue, *current);
         BRANCH(HasDeleteProperty(hclass), &exit, &hasNoDeleteProperty);
         Bind(&hasNoDeleteProperty);
-        current = GetPrototypeFromHClass(hclass);
+        current = GetPrototypeFromHClass(glue, hclass);
         BRANCH(TaggedIsHeapObject(*current), &loopEnd, &afterLoop);
     }
     Bind(&loopEnd);

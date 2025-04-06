@@ -63,7 +63,7 @@ private:
     GateRef GetLinked()
     {
         GateRef linkedTableOffset = GetLinkedOffset();
-        return Load(VariableType::JS_ANY(), thisValue_, linkedTableOffset);
+        return Load(VariableType::JS_ANY(), glue_, thisValue_, linkedTableOffset);
     }
 
     void SetLinked(GateRef newTable)

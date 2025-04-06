@@ -45,7 +45,7 @@ BUILTINS_WITH_STRING_STUB_BUILDER(DECLARE_BUILTINS_SRRING_STUB_BUILDER)
                             Variable *res, Label *exit, Label *slowPath);
 
     GateRef ConvertAndClampRelativeIndex(GateRef index, GateRef length);
-    GateRef StringAt(const StringInfoGateRef &stringInfoGate, GateRef index);
+    GateRef StringAt(GateRef glue, const StringInfoGateRef &stringInfoGate, GateRef index);
     GateRef FastSubString(GateRef glue, GateRef thisValue, GateRef from, GateRef len,
         const StringInfoGateRef &stringInfoGate);
     GateRef FastSubUtf8String(GateRef glue, GateRef from, GateRef len, const StringInfoGateRef &stringInfoGate);
@@ -58,9 +58,9 @@ BUILTINS_WITH_STRING_STUB_BUILDER(DECLARE_BUILTINS_SRRING_STUB_BUILDER)
     void CopyUtf8AsUtf16(GateRef glue, GateRef dst, GateRef src, GateRef sourceLength);
     GateRef StringIndexOf(GateRef lhsData, bool lhsIsUtf8, GateRef rhsData, bool rhsIsUtf8,
                           GateRef pos, GateRef max, GateRef rhsCount);
-    GateRef StringIndexOf(const StringInfoGateRef &lStringInfoGate,
+    GateRef StringIndexOf(GateRef glue, const StringInfoGateRef &lStringInfoGate,
         const StringInfoGateRef &rStringInfoGate, GateRef pos);
-    GateRef GetSingleCharCodeByIndex(GateRef str, GateRef index);
+    GateRef GetSingleCharCodeByIndex(GateRef glue, GateRef str, GateRef index);
     GateRef CreateStringBySingleCharCode(GateRef glue, GateRef charCode);
     GateRef CreateFromEcmaString(GateRef glue, GateRef index, const StringInfoGateRef &stringInfoGate);
     GateRef IsFirstConcatInStringAdd(GateRef init, GateRef status);
@@ -68,7 +68,7 @@ BUILTINS_WITH_STRING_STUB_BUILDER(DECLARE_BUILTINS_SRRING_STUB_BUILDER)
     GateRef StringAdd(GateRef glue, GateRef leftString, GateRef rightString, GateRef status);
     GateRef AllocateLineString(GateRef glue, GateRef length, GateRef canBeCompressed);
     GateRef AllocateSlicedString(GateRef glue, GateRef flatString, GateRef length, GateRef canBeCompressed);
-    GateRef IsSpecialSlicedString(GateRef obj);
+    GateRef IsSpecialSlicedString(GateRef glue, GateRef obj);
     GateRef StringConcat(GateRef glue, GateRef leftString, GateRef rightString);
     GateRef EcmaStringTrim(GateRef glue, GateRef srcString, GateRef trimMode);
     GateRef EcmaStringTrimBody(GateRef glue, GateRef thisValue, StringInfoGateRef srcStringInfoGate,
@@ -78,7 +78,7 @@ BUILTINS_WITH_STRING_STUB_BUILDER(DECLARE_BUILTINS_SRRING_STUB_BUILDER)
     void StoreHasBackingStore(GateRef glue, GateRef object, GateRef hasBackingStore);
     GateRef IsSubStringAt(GateRef lhsData, bool lhsIsUtf8, GateRef rhsData, bool rhsIsUtf8,
         GateRef pos, GateRef rhsCount);
-    GateRef IsSubStringAt(const StringInfoGateRef &lStringInfoGate,
+    GateRef IsSubStringAt(GateRef glue, const StringInfoGateRef &lStringInfoGate,
         const StringInfoGateRef &rStringInfoGate, GateRef pos);
     GateRef GetSubString(GateRef glue, GateRef thisValue, GateRef from, GateRef len);
     GateRef GetFastSubString(GateRef glue, GateRef thisValue, GateRef start, GateRef len);
@@ -87,14 +87,14 @@ private:
     {
         return GetEnvironment()->GetBuilder()->ChangeTaggedPointerToInt64(x);
     }
-    GateRef GetStringDataFromLineOrConstantString(GateRef str);
+    GateRef GetStringDataFromLineOrConstantString(GateRef glue, GateRef str);
     GateRef CanBeCompressed(GateRef utf16Data, GateRef utf16Len, bool isUtf16);
     GateRef GetUtf16Data(GateRef stringData, GateRef index);
     GateRef IsASCIICharacter(GateRef data);
     GateRef GetUtf8Data(GateRef stringData, GateRef index);
     GateRef GetSingleCharCodeFromConstantString(GateRef str, GateRef index);
     GateRef GetSingleCharCodeFromLineString(GateRef str, GateRef index);
-    GateRef GetSingleCharCodeFromSlicedString(GateRef str, GateRef index);
+    GateRef GetSingleCharCodeFromSlicedString(GateRef glue, GateRef str, GateRef index);
     void CheckParamsAndGetPosition(GateRef glue, GateRef thisValue, GateRef numArgs,
         Variable* pos, Label *exit, Label *slowPath, Label *posIsValid);
 };
@@ -110,20 +110,20 @@ public:
 
     void FlattenString(GateRef glue, GateRef str, Label *fastPath);
     void FlattenStringWithIndex(GateRef glue, GateRef str, Variable *index, Label *fastPath);
-    GateRef GetParentFromSlicedString(GateRef string)
+    GateRef GetParentFromSlicedString(GateRef glue, GateRef string)
     {
         GateRef offset = IntPtr(SlicedString::PARENT_OFFSET);
-        return Load(VariableType::JS_POINTER(), string, offset);
+        return Load(VariableType::JS_POINTER(), glue, string, offset);
     }
     GateRef GetStartIndexFromSlicedString(GateRef string)
     {
         GateRef offset = IntPtr(SlicedString::STARTINDEX_OFFSET);
-        return Load(VariableType::INT32(), string, offset);
+        return LoadPrimitive(VariableType::INT32(), string, offset);
     }
     GateRef GetHasBackingStoreFromSlicedString(GateRef string)
     {
         GateRef offset = IntPtr(SlicedString::BACKING_STORE_FLAG);
-        return Load(VariableType::INT32(), string, offset);
+        return LoadPrimitive(VariableType::INT32(), string, offset);
     }
 
     GateRef GetFlatString()
