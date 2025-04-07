@@ -183,7 +183,12 @@ JSTaggedValue ModuleManagerHelper::GetLazyModuleValueFromRecordBinding(
     if (moduleManager->IsLocalModuleLoaded(recordNameStr)) {
         resolvedModule = moduleManager->HostGetImportedModule(recordNameStr);
         if (!moduleManager->IsEvaluatedModule(recordNameStr)) {
-            SourceTextModule::Evaluate(thread, resolvedModule, nullptr);
+            const ModuleTypes moduleType = resolvedModule->GetTypes();
+            if (SourceTextModule::IsNativeModule(moduleType)) {
+                SourceTextModule::EvaluateNativeModule(thread, resolvedModule, moduleType);
+            } else {
+                SourceTextModule::Evaluate(thread, resolvedModule, nullptr);
+            }
             RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception());
         }
     } else {
