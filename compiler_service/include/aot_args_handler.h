@@ -83,7 +83,7 @@ public:
 #endif
 };
 
-class StaticAOTArgsParser final : public AOTArgsParserBase {
+class StaticAOTArgsParser : public AOTArgsParserBase {
 public:
     int32_t Parse(const std::unordered_map<std::string, std::string> &argsMap, HapArgs &hapArgs,
                   int32_t thermalLevel) override;
@@ -91,6 +91,16 @@ public:
     bool ParseBootPandaFiles(std::string &bootfiles);
 
     std::string ParseLocation(std::string &anfilePath);
+};
+
+class StaticFrameworkAOTArgsParser final : public StaticAOTArgsParser {
+public:
+    int32_t Parse(const std::unordered_map<std::string, std::string> &argsMap, HapArgs &hapArgs,
+                    int32_t thermalLevel) override;
+
+    std::string ParseFrameworkBootPandaFiles(const std::string &bootfiles, const std::string &paocPandaFiles);
+
+    bool IsFileExists(const std::string &fileName);
 };
 
 class AOTArgsParserFactory {
