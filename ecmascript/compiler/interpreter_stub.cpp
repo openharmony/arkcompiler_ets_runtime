@@ -3886,7 +3886,13 @@ DECLARE_ASM_HANDLER(HandleGetmodulenamespaceImm8)
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
 
     GateRef index = ReadInst8_0(pc);
+#if ENABLE_NEXT_OPTIMIZATION
+    GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
+    GateRef module = GetModuleFromFunction(currentFunc);
+    GateRef moduleRef = LoadModuleNamespaceByIndex(glue, ZExtInt8ToInt32(index), module);
+#else
     GateRef moduleRef = CallRuntime(glue, RTSTUB_ID(GetModuleNamespaceByIndex), { IntToTaggedInt(index) });
+#endif
     varAcc = moduleRef;
     DISPATCH_WITH_ACC(GETMODULENAMESPACE_IMM8);
 }
@@ -3896,7 +3902,13 @@ DECLARE_ASM_HANDLER(HandleWideGetmodulenamespacePrefImm16)
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
 
     GateRef index = ReadInst16_1(pc);
+#if ENABLE_NEXT_OPTIMIZATION
+    GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
+    GateRef module = GetModuleFromFunction(currentFunc);
+    GateRef moduleRef = LoadModuleNamespaceByIndex(glue, ZExtInt16ToInt32(index), module);
+#else
     GateRef moduleRef = CallRuntime(glue, RTSTUB_ID(GetModuleNamespaceByIndex), { Int16ToTaggedInt(index) });
+#endif
     varAcc = moduleRef;
     DISPATCH_WITH_ACC(WIDE_GETMODULENAMESPACE_PREF_IMM16);
 }

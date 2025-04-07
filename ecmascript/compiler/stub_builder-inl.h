@@ -4259,6 +4259,19 @@ inline GateRef StubBuilder::GetBitFieldFromSourceTextModule(GateRef curModule)
     return Load(VariableType::INT32(), curModule, bitFieldOffset);
 }
 
+inline GateRef StubBuilder::GetRequestedModules(GateRef module)
+{
+    GateRef requestedModulesOffset = IntPtr(SourceTextModule::REQUESTED_MODULES_OFFSET);
+    return Load(VariableType::JS_ANY(), module, requestedModulesOffset);
+}
+
+inline GateRef StubBuilder::GetNamespaceFromSourceTextModule(GateRef module)
+{
+    GateRef namespaceOffset = IntPtr(SourceTextModule::NAMESPACE_OFFSET);
+    GateRef moduleNamespace = Load(VariableType::JS_ANY(), module, namespaceOffset);
+    return RemoveTaggedWeakTag(moduleNamespace);
+}
+
 inline GateRef StubBuilder::GetResolveModuleFromResolvedIndexBinding(GateRef resolvedBinding)
 {
     GateRef moduleOffset = IntPtr(ResolvedIndexBinding::MODULE_OFFSET);
