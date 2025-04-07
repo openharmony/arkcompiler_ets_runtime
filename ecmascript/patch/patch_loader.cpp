@@ -57,7 +57,7 @@ PatchErrorCode PatchLoader::LoadPatchInternal(JSThread *thread, const JSPandaFil
     FindAndReplaceSameMethod(thread, baseFile, patchFile, patchInfo, baseClassInfo);
 
     // cached patch modules can only be clear before load patch.
-    thread->GetCurrentEcmaContext()->ClearPatchModules();
+    vm->ClearPatchModules();
     // execute patch func_main_0 for hot reload, and patch_main_0 for hot patch.
     ExecuteFuncOrPatchMain(thread, patchFile, patchInfo);
     UpdateJSFunction(thread, patchInfo);
@@ -159,7 +159,7 @@ PatchErrorCode PatchLoader::UnloadPatchInternal(JSThread *thread, const CString 
                        << ":" << patchMethod->GetMethodName();
     }
 
-    thread->GetCurrentEcmaContext()->ClearPatchModules();
+    vm->ClearPatchModules();
     // execute base func_main_0 for recover global object.
     ExecuteFuncOrPatchMain(thread, baseFile.get(), patchInfo, false);
     UpdateJSFunction(thread, patchInfo);
@@ -257,7 +257,7 @@ void PatchLoader::UpdateJSFunction(JSThread *thread, PatchInfo &patchInfo)
             ReplacedMethod replacedMethod {methodId, fileName};
             if (replacedPatchMethods.count(replacedMethod) > 0) {
                 JSHandle<JSTaggedValue> moduleRecord =
-                    thread->GetCurrentEcmaContext()->FindPatchModule(replacedPatchMethods[replacedMethod]);
+                    thread->GetEcmaVM()->FindPatchModule(replacedPatchMethods[replacedMethod]);
                 function->SetModule(thread, moduleRecord.GetTaggedValue());
                 function->SetRawProfileTypeInfo(thread, thread->GlobalConstants()->GetEmptyProfileTypeInfoCell(),
                                                 SKIP_BARRIER);
@@ -273,7 +273,7 @@ void PatchLoader::UpdateJSFunction(JSThread *thread, PatchInfo &patchInfo)
             ReplacedMethod replacedMethod {methodId, fileName};
             if (replacedPatchMethods.count(replacedMethod) > 0) {
                 JSHandle<JSTaggedValue> moduleRecord =
-                    thread->GetCurrentEcmaContext()->FindPatchModule(replacedPatchMethods[replacedMethod]);
+                    thread->GetEcmaVM()->FindPatchModule(replacedPatchMethods[replacedMethod]);
                 funcTemp->SetModule(thread, moduleRecord.GetTaggedValue());
                 funcTemp->SetRawProfileTypeInfo(thread, thread->GlobalConstants()->GetEmptyProfileTypeInfoCell(),
                                                 SKIP_BARRIER);
@@ -293,7 +293,7 @@ void PatchLoader::UpdateModuleForColdPatch(JSThread *thread, EntityId methodId, 
             EntityId methodIdLoop = Method::Cast(function->GetMethod())->GetMethodId();
             if (methodId == methodIdLoop) {
                 JSHandle<JSTaggedValue> moduleRecord =
-                thread->GetCurrentEcmaContext()->FindPatchModule(recordName);
+                thread->GetEcmaVM()->FindPatchModule(recordName);
                 if (hasModule) {
                     function->SetModule(thread, moduleRecord.GetTaggedValue());
                 } else {
@@ -305,7 +305,7 @@ void PatchLoader::UpdateModuleForColdPatch(JSThread *thread, EntityId methodId, 
             EntityId methodIdLoop = Method::Cast(funcTemp->GetMethod())->GetMethodId();
             if (methodId == methodIdLoop) {
                 JSHandle<JSTaggedValue> moduleRecord =
-                thread->GetCurrentEcmaContext()->FindPatchModule(recordName);
+                thread->GetEcmaVM()->FindPatchModule(recordName);
                 if (hasModule) {
                     funcTemp->SetModule(thread, moduleRecord.GetTaggedValue());
                 } else {

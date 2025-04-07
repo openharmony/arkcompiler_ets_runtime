@@ -22,15 +22,13 @@
 #include "ecmascript/common.h"
 #include "ecmascript/dfx/vmstat/opt_code_profiler.h"
 #include "ecmascript/frames.h"
-#include "ecmascript/ic/mega_ic_cache.h"
+#include "ecmascript/ic/properties_cache.h"
 #include "ecmascript/js_handle.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/mem/c_containers.h"
 #include "ecmascript/mem/visitor.h"
 #include "ecmascript/module/js_module_execute_type.h"
-#include "ecmascript/patch/patch_loader.h"
 #include "ecmascript/stackmap/ark_stackmap.h"
-#include "global_handle_collection.h"
 #include "libpandafile/file.h"
 
 namespace panda {
@@ -161,41 +159,9 @@ public:
         return &globalConst_;
     }
 
-    void AddPatchModule(const CString &recordName, const JSHandle<JSTaggedValue> moduleRecord)
-    {
-        cachedPatchModules_.emplace(recordName, moduleRecord);
-    }
-    JSHandle<JSTaggedValue> FindPatchModule(const CString &recordName) const
-    {
-        auto iter = cachedPatchModules_.find(recordName);
-        if (iter != cachedPatchModules_.end()) {
-            return iter->second;
-        }
-        return JSHandle<JSTaggedValue>(thread_, JSTaggedValue::Hole());
-    }
-    void ClearPatchModules()
-    {
-        GlobalHandleCollection gloalHandleCollection(thread_);
-        for (auto &item : cachedPatchModules_) {
-            gloalHandleCollection.Dispose(item.second);
-        }
-        cachedPatchModules_.clear();
-    }
-
-    StageOfColdReload GetStageOfColdReload() const
-    {
-        return stageOfColdReload_;
-    }
-    void SetStageOfColdReload(StageOfColdReload stageOfColdReload)
-    {
-        stageOfColdReload_ = stageOfColdReload;
-    }
-
     std::tuple<uint64_t, uint8_t *, int, kungfu::CalleeRegAndOffsetVec> CalCallSiteInfo(uintptr_t retAddr,
                                                                                         bool isDeopt) const;
 
-    void AddSustainingJSHandle(SustainingJSHandle*);
-    void RemoveSustainingJSHandle(SustainingJSHandle*);
     void ClearKeptObjects();
     void AddToKeptObjects(JSHandle<JSTaggedValue> value);
 
@@ -228,10 +194,6 @@ private:
 
     // VM execution states.
     JSTaggedValue globalEnv_ {JSTaggedValue::Hole()};
-
-    // for HotReload of module.
-    CMap<CString, JSHandle<JSTaggedValue>> cachedPatchModules_ {};
-    StageOfColdReload stageOfColdReload_ = StageOfColdReload::NOT_COLD_RELOAD;
 
     // VM resources.
     kungfu::PGOTypeManager *ptManager_ {nullptr};

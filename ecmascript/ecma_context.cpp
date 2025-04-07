@@ -288,7 +288,7 @@ Expected<JSTaggedValue, bool> EcmaContext::InvokeEcmaEntrypointForHotReload(
     JSHandle<JSTaggedValue> moduleRecordHandle =
         gloalHandleCollection.NewHandle<JSTaggedValue>(finalModuleRecord->GetRawData());
     CString recordName = entryPoint.data();
-    AddPatchModule(recordName, moduleRecordHandle);
+    vm_->AddPatchModule(recordName, moduleRecordHandle);
 
     // print exception information
     if (thread_->HasPendingException() &&
