@@ -100,16 +100,27 @@ MemMap FileMap(const char *fileName, int flag, int prot, int64_t offset)
         LOG_ECMA(ERROR) << fileName << " file open failed";
         return MemMap();
     }
+#if defined(PANDA_TARGET_OHOS)
+    fdsan_exchange_owner_tag(fd, 0, LOG_DOMAIN);
+#endif
 
     off_t size = lseek(fd, 0, SEEK_END);
     if (size <= 0) {
+#if defined(PANDA_TARGET_OHOS)
+        fdsan_close_with_tag(fd, LOG_DOMAIN);
+#else
         close(fd);
+#endif
         LOG_ECMA(ERROR) << fileName << " file is empty";
         return MemMap();
     }
 
     void *addr = mmap(nullptr, size, prot, MAP_PRIVATE, fd, offset);
+#if defined(PANDA_TARGET_OHOS)
+    fdsan_close_with_tag(fd, LOG_DOMAIN);
+#else
     close(fd);
+#endif
     return MemMap(addr, size);
 }
 
