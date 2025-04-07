@@ -17,6 +17,7 @@
 #define OHOS_ARKCOMPILER_AOTCOMPILER_CONSTANTS_H
 
 #include <string>
+#include <sys/types.h>
 #include <unordered_map>
 
 #include "aot_compiler_error_utils.h"
@@ -33,9 +34,16 @@ const std::string COMPILER_PKG_INFO = "compiler-pkg-info";
 const std::string COMPILER_ENABLE_AOT_CODE_COMMENT = "compiler-enable-aot-code-comment";
 const std::string COMPILER_LOG_OPT = "compiler-log";
 const std::string COMPILER_AN_FILE_MAX_SIZE = "compiler-an-file-max-size";
+const std::string IS_SYSTEM_COMPONENT = "isSysComp";
+
 
 const std::string CODE_LANGUAGE = "codeLanguage";
 } // namespace ArgsIdx
+
+// UID and GID of system users
+constexpr uid_t OID_SYSTEM = 1000;
+
+constexpr const char* BOOLEAN_FALSE = "0";
 
 namespace Symbols {
 constexpr const char* PREFIX = "--";
