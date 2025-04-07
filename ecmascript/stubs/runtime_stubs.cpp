@@ -44,8 +44,7 @@
 #include "ecmascript/stubs/runtime_stubs.h"
 #include "ecmascript/linked_hash_table.h"
 #include "ecmascript/builtins/builtins_object.h"
-#include "ecmascript/module/module_tools.h"
-#include "ecmascript/module/module_manager_helper.h"
+#include "ecmascript/module/module_value_accessor.h"
 #include "ecmascript/module/module_path_helper.h"
 #ifdef ARK_SUPPORT_INTL
 #include "ecmascript/js_collator.h"
@@ -1979,15 +1978,13 @@ DEF_RUNTIME_STUBS(LdModuleVar)
     return RuntimeLdModuleVar(thread, key, innerFlag).GetRawData();
 }
 
-DEF_RUNTIME_STUBS(ProcessModuleLoadInfo)
+DEF_RUNTIME_STUBS(GetModuleValueOuterInternal)
 {
-    RUNTIME_STUBS_HEADER(ProcessModuleLoadInfo);
-    JSHandle<SourceTextModule> curModuleHdl =
-        GetHArg<SourceTextModule>(argv, argc, 0); // 0: means the zeroth parameter
-    JSTaggedValue resolvedBinding = GetArg(argv, argc, 1); // 1: means the first parameter
+    RUNTIME_STUBS_HEADER(GetModuleValueOuterInternal);
+    JSTaggedValue curModule = GetArg(argv, argc, 0); // 0: means the zeroth parameter
     int32_t index =
-        JSTaggedValue::ToInt32(thread, GetHArg<JSTaggedValue>(argv, argc, 2));  // 2: means the second parameter
-    return ModuleTools::ProcessModuleLoadInfo(thread, curModuleHdl, resolvedBinding, index).GetRawData();
+        JSTaggedValue::ToInt32(thread, GetHArg<JSTaggedValue>(argv, argc, 1));  // 2: means the second parameter
+    return ModuleValueAccessor::GetModuleValueOuterInternal(thread, index, curModule, false).GetRawData();
 }
 
 DEF_RUNTIME_STUBS(GetModuleName)

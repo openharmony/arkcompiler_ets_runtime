@@ -15,7 +15,6 @@
 #include "ecmascript/module/js_shared_module_manager.h"
 
 #include "ecmascript/jspandafile/js_pandafile_executor.h"
-#include "ecmascript/module/module_manager_helper.h"
 #include "ecmascript/module/module_path_helper.h"
 #include "ecmascript/runtime_lock.h"
 
@@ -37,103 +36,6 @@ void SharedModuleManager::Iterate(RootVisitor &v)
         v.VisitRoot(Root::ROOT_VM, slot);
         ASSERT(slot.GetTaggedValue() == it.second);
     }
-}
-
-JSTaggedValue SharedModuleManager::GetSendableModuleValueInner(JSThread* thread, int32_t index, JSTaggedValue jsFunc)
-{
-    ModuleManager* moduleManager = thread->GetModuleManager();
-    JSTaggedValue currentModule = JSFunction::Cast(jsFunc.GetTaggedObject())->GetModule();
-    if (currentModule.IsUndefined()) { // LCOV_EXCL_BR_LINE
-        LOG_FULL(FATAL) << "GetSendableModuleValueInner currentModule is undefined";
-    }
-    if (!SourceTextModule::IsSendableFunctionModule(currentModule)) {
-        return SourceTextModule::Cast(currentModule)->GetModuleValue(thread, index, false);
-    }
-    CString referenceName = SourceTextModule::GetModuleName(currentModule);
-    if (moduleManager->IsModuleLoaded(referenceName)) {
-        JSHandle<SourceTextModule> currentModuleHdl = moduleManager->GetImportedModule(referenceName);
-        if (currentModuleHdl->GetStatus() > ModuleStatus::INSTANTIATED) {
-            return currentModuleHdl->GetModuleValue(thread, index, false);
-        }
-    }
-    JSHandle<SourceTextModule> currentModuleHdl(thread, currentModule);
-    auto isMergedAbc = !currentModuleHdl->GetEcmaModuleRecordNameString().empty();
-    CString fileName = currentModuleHdl->GetEcmaModuleFilenameString();
-    if (!JSPandaFileExecutor::LazyExecuteModule(thread, referenceName, fileName, isMergedAbc)) { // LCOV_EXCL_BR_LINE
-        LOG_ECMA(FATAL) << "GetSendableModuleValueInner LazyExecuteModule failed";
-    }
-    ASSERT(moduleManager->IsModuleLoaded(referenceName));
-    return moduleManager->GetImportedModule(referenceName)->GetModuleValue(thread, index, false);
-}
-
-JSTaggedValue SharedModuleManager::GetSendableModuleValue(JSThread *thread, int32_t index, JSTaggedValue jsFunc)
-{
-    JSTaggedValue currentModule = JSFunction::Cast(jsFunc.GetTaggedObject())->GetModule();
-    return GetSendableModuleValueImpl(thread, index, currentModule);
-}
-
-JSTaggedValue SharedModuleManager::GetSendableModuleValueImpl(
-    JSThread *thread, int32_t index, JSTaggedValue currentModule) const
-{
-    if (currentModule.IsUndefined()) { // LCOV_EXCL_BR_LINE
-        LOG_FULL(FATAL) << "GetModuleValueOutter currentModule failed";
-        UNREACHABLE();
-    }
-
-    JSHandle<SourceTextModule> module(thread, currentModule.GetTaggedObject());
-    JSTaggedValue moduleEnvironment = module->GetEnvironment();
-    if (moduleEnvironment.IsUndefined()) {
-        return thread->GlobalConstants()->GetUndefined();
-    }
-    ASSERT(moduleEnvironment.IsTaggedArray());
-    JSTaggedValue resolvedBinding = TaggedArray::Cast(moduleEnvironment.GetTaggedObject())->Get(index);
-    if (resolvedBinding.IsResolvedRecordIndexBinding()) {
-        return ModuleManagerHelper::GetModuleValueFromIndexBinding(thread, module, resolvedBinding);
-    } else if (resolvedBinding.IsResolvedIndexBinding()) {
-        ResolvedIndexBinding *binding = ResolvedIndexBinding::Cast(resolvedBinding.GetTaggedObject());
-        JSHandle<SourceTextModule> resolvedModule(thread, binding->GetModule().GetTaggedObject());
-        return ModuleManagerHelper::GetModuleValue(thread, resolvedModule, binding->GetIndex());
-    } else if (resolvedBinding.IsResolvedRecordBinding()) {
-        return ModuleManagerHelper::GetModuleValueFromRecordBinding(thread, module, resolvedBinding);
-    }
-    LOG_ECMA(FATAL) << "Unexpect binding";
-    UNREACHABLE();
-}
-
-JSTaggedValue SharedModuleManager::GetLazySendableModuleValue(JSThread *thread, int32_t index, JSTaggedValue jsFunc)
-{
-    JSTaggedValue currentModule = JSFunction::Cast(jsFunc.GetTaggedObject())->GetModule();
-    return GetLazySendableModuleValueImpl(thread, index, currentModule);
-}
-
-JSTaggedValue SharedModuleManager::GetLazySendableModuleValueImpl(
-    JSThread *thread, int32_t index, JSTaggedValue currentModule) const
-{
-    if (currentModule.IsUndefined()) { // LCOV_EXCL_BR_LINE
-        LOG_FULL(FATAL) << "GetModuleValueOutter currentModule failed";
-        UNREACHABLE();
-    }
-
-    JSHandle<SourceTextModule> module(thread, currentModule.GetTaggedObject());
-    JSTaggedValue moduleEnvironment = module->GetEnvironment();
-    if (moduleEnvironment.IsUndefined()) {
-        return thread->GlobalConstants()->GetUndefined();
-    }
-    ASSERT(moduleEnvironment.IsTaggedArray());
-    JSTaggedValue resolvedBinding = TaggedArray::Cast(moduleEnvironment.GetTaggedObject())->Get(index);
-    if (resolvedBinding.IsResolvedRecordIndexBinding()) {
-        return ModuleManagerHelper::GetLazyModuleValueFromIndexBinding(thread, module, resolvedBinding);
-    } else if (resolvedBinding.IsResolvedIndexBinding()) {
-        ResolvedIndexBinding *binding = ResolvedIndexBinding::Cast(resolvedBinding.GetTaggedObject());
-        JSHandle<SourceTextModule> resolvedModule(thread, binding->GetModule().GetTaggedObject());
-        SourceTextModule::Evaluate(thread, resolvedModule, nullptr);
-        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception());
-        return ModuleManagerHelper::GetModuleValue(thread, resolvedModule, binding->GetIndex());
-    } else if (resolvedBinding.IsResolvedRecordBinding()) {
-        return ModuleManagerHelper::GetLazyModuleValueFromRecordBinding(thread, module, resolvedBinding);
-    }
-    LOG_ECMA(FATAL) << "Unexpect binding";
-    UNREACHABLE();
 }
 
 bool SharedModuleManager::SearchInSModuleManagerUnsafe(const CString &recordName)
