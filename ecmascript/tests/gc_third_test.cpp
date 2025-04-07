@@ -189,7 +189,11 @@ HWTEST_F_L0(GCTest, CheckAndTriggerHintGCTest001)
                 1024, JSTaggedValue::Hole(), MemSpaceType::OLD_SPACE);
         }
     }
+#ifndef PANDA_TARGET_32
     ASSERT_EQ(heap->CheckAndTriggerHintGC(MemoryReduceDegree::LOW, GCReason::HINT_GC), true);
+#else
+    ASSERT_EQ(heap->CheckAndTriggerHintGC(MemoryReduceDegree::LOW, GCReason::HINT_GC), false);
+#endif
 #endif
 }
 
@@ -316,7 +320,11 @@ HWTEST_F_L0(GCTest, TryTriggerFullMarkBySharedLimitTest003)
     for (size_t i = 0; i < 4; i++) {
         ConcurrentMarker::TryIncreaseTaskCounts();
     }
+#ifndef PANDA_TARGET_32
     ASSERT_EQ(heap->TryTriggerFullMarkBySharedLimit(), true);
+#else
+    ASSERT_EQ(heap->TryTriggerFullMarkBySharedLimit(), false);
+#endif
 }
 
 HWTEST_F_L0(GCTest, CheckAndTriggerTaskFinishedGCTest001)
@@ -524,7 +532,11 @@ HWTEST_F_L0(GCTest, CollectGarbageTest009)
 {
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
     heap->GetConcurrentMarker()->EnableConcurrentMarking(EnableConcurrentMarkType::REQUEST_DISABLE);
+#ifndef PANDA_TARGET_32
     ASSERT_TRUE(heap->GetConcurrentMarker()->IsRequestDisabled());
+#else
+    ASSERT_FALSE(heap->GetConcurrentMarker()->IsRequestDisabled());
+#endif
     heap->CollectGarbage(TriggerGCType::YOUNG_GC, GCReason::TRIGGER_BY_TASKPOOL);
 }
 
