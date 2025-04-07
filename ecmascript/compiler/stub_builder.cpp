@@ -11428,7 +11428,7 @@ GateRef StubBuilder::LoadExternalmodulevar(GateRef glue, GateRef index, GateRef 
             Label notHole(env);
             GateRef resolvedModule = GetResolveModuleFromResolvedIndexBinding(resolvedBinding);
             ResolvedModuleMustBeSourceTextModule(resolvedModule);
-            GateRef indexOfResolvedBinding = GetIndexFromResolvedBinding(resolvedBinding);
+            GateRef idxOfResolvedBinding = GetIdxOfResolvedIndexBinding(resolvedBinding);
             BRANCH(IsLdEndExecPatchMain(glue), &isLdEndExecPatchMain, &notLdEndExecPatchMain);
 
             Bind(&isLdEndExecPatchMain);
@@ -11437,11 +11437,11 @@ GateRef StubBuilder::LoadExternalmodulevar(GateRef glue, GateRef index, GateRef 
             BRANCH(TaggedIsHole(resolvedModuleOfHotReload), &notLdEndExecPatchMain, &notHole);
 
             Bind(&notLdEndExecPatchMain);
-            result = GetModuleValueByIndex(glue, resolvedModule, indexOfResolvedBinding);
+            result = GetModuleValueByIndex(glue, resolvedModule, idxOfResolvedBinding);
             Jump(&exit);
 
             Bind(&notHole);
-            result = GetModuleValueByIndex(glue, resolvedModuleOfHotReload, indexOfResolvedBinding);
+            result = GetModuleValueByIndex(glue, resolvedModuleOfHotReload, idxOfResolvedBinding);
             Jump(&exit);
         }
     }
@@ -11476,7 +11476,8 @@ GateRef StubBuilder::LoadExternalmodulevar(GateRef glue, GateRef index, GateRef 
         Bind(&isResolvedRecordIndexBinding);
         {
             GateRef resolvedModule = GetResolvedRecordIndexBindingModule(glue, curModule, resolvedBinding);
-            result = GetModuleValueByIndex(glue, resolvedModule, index);
+            GateRef idxOfResolvedRecordIndexBinding = GetIdxOfResolvedRecordIndexBinding(resolvedBinding);
+            result = GetModuleValueByIndex(glue, resolvedModule, idxOfResolvedRecordIndexBinding);
             Jump(&exit);
         }
     }

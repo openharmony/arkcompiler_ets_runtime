@@ -1091,7 +1091,8 @@ public:
     inline GateRef GetBitFieldFromSourceTextModule(GateRef curModule);
     inline GateRef GetResolveModuleFromResolvedIndexBinding(GateRef resolvedBinding);
     inline GateRef GetResolveModuleFromResolvedBinding(GateRef resolvedBinding);
-    inline GateRef GetIndexFromResolvedBinding(GateRef resolvedBinding);
+    inline GateRef GetIdxOfResolvedIndexBinding(GateRef resolvedBinding);
+    inline GateRef GetIdxOfResolvedRecordIndexBinding(GateRef resolvedBinding);
     inline GateRef GetModuleRecord(GateRef resolvedBinding);
     inline GateRef GetBindingName(GateRef resolvedBinding);
     inline GateRef IsResolvedIndexBinding(GateRef resolvedBinding);
