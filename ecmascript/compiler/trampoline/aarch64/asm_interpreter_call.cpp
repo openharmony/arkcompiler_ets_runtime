@@ -2013,8 +2013,10 @@ void AsmInterpreterCall::CallFastBuiltin(ExtendedAssembler *assembler, Label *ca
 void AsmInterpreterCall::ThrowStackOverflowExceptionAndReturn(ExtendedAssembler *assembler, Register glue,
     Register fp, Register op)
 {
-    if (fp != Register(SP)) {
-        __ Mov(Register(SP), fp);
+    Register sp(SP);
+
+    if (fp != sp) {
+        __ Mov(sp, fp);
     }
     __ Mov(op, Immediate(kungfu::RuntimeStubCSigns::ID_ThrowStackOverflowException));
     // 3 : 3 means *8
@@ -2023,8 +2025,61 @@ void AsmInterpreterCall::ThrowStackOverflowExceptionAndReturn(ExtendedAssembler 
     if (glue.GetId() != X0) {
         __ Mov(Register(X0), glue);
     }
+    
     __ Blr(op);
     __ RestoreFpAndLr();
+    __ Ret();
+}
+
+void AsmInterpreterCall::ThrowStackOverflowExceptionAndReturnToAsmInterpBridgeFrame(ExtendedAssembler *assembler,
+    Register glue, Register fp, Register op)
+{
+    Register sp(SP);
+
+    if (fp != sp) {
+        __ Mov(sp, fp);
+    }
+
+    if (glue.GetId() != X0) {
+        __ Mov(Register(X0), glue);
+    }
+    
+    __ PushFpAndLr();
+    __ Mov(op, Immediate(static_cast<int64_t>(FrameType::ASM_BRIDGE_FRAME)));
+    __ Stp(Register(X10), op, MemoryOperand(sp, -DOUBLE_SLOT_SIZE, PREINDEX)); // frame type and caller save
+    __ Add(Register(FP), sp, Immediate(DOUBLE_SLOT_SIZE));
+    
+    __ Mov(op, Immediate(kungfu::RuntimeStubCSigns::ID_ThrowStackOverflowException));
+    __ Stp(op, Register(Zero), MemoryOperand(sp, -DOUBLE_SLOT_SIZE, PREINDEX)); // argc and runtime id
+    __ Mov(Register(X10), Immediate(kungfu::RuntimeStubCSigns::ID_CallRuntime));
+    // 3 : 3 means *8
+    __ Add(Register(X10), glue, Operand(Register(X10), LSL, 3));
+    __ Ldr(Register(X10), MemoryOperand(Register(X10), JSThread::GlueData::GetRTStubEntriesOffset(false)));
+    __ Blr(Register(X10));
+    // 2: skip argc and runtime_id
+    __ Add(sp, sp, Immediate(2 * FRAME_SLOT_SIZE));
+    __ Ldr(Register(X10), MemoryOperand(sp, FRAME_SLOT_SIZE, POSTINDEX));
+
+    __ Mov(sp, Register(FP));
+    __ RestoreFpAndLr();
+
+    // +----------------------------------------------------+
+    // |                     return addr                    |
+    // |----------------------------------------------------| <---- FP
+    // |                     frame type                     |           ^                       ^
+    // |----------------------------------------------------|           |                       |
+    // |                     prevSp                         |           |                       |
+    // |----------------------------------------------------|           |                       |
+    // |                     pc                             |           |                       |
+    // |----------------------------------------------------|  PushAsmInterpBridgeFrame     total skip
+    // |      18 callee save regs(x19 - x28, v8 - v15)      |           |                       |
+    // |----------------------------------------------------|           v                       v
+    // |                     lr                 		    |
+    // +----------------------------------------------------+
+    // Base on PushAsmInterpBridgeFrame, need to skip AsmInterpBridgeFrame size and callee Save Registers(18)
+    // but no lr(-1), x64 should skip lr because Ret in x64 will set stack pointer += 8
+    int32_t skipNum = static_cast<int32_t>(AsmInterpretedBridgeFrame::GetSize(false)) / FRAME_SLOT_SIZE + 18 - 1;
+    __ Add(Register(SP), Register(FP), Immediate(-skipNum * FRAME_SLOT_SIZE));
     __ Ret();
 }
 #undef __

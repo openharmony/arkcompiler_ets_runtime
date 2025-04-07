@@ -1450,7 +1450,7 @@ void OptimizedCall::DeoptEnterAsmInterpOrBaseline(ExtendedAssembler *assembler)
     __ Bind(&stackOverflow);
     {
         Register temp(X1);
-        AsmInterpreterCall::ThrowStackOverflowExceptionAndReturn(
+        AsmInterpreterCall::ThrowStackOverflowExceptionAndReturnToAsmInterpBridgeFrame(
             assembler, glueRegister, sp, temp);
     }
 }
