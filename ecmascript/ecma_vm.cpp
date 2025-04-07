@@ -48,6 +48,7 @@
 #include "ecmascript/snapshot/mem/snapshot.h"
 #include "ecmascript/stubs/runtime_stubs.h"
 #include "ecmascript/sustaining_js_handle.h"
+#include "ecmascript/jspandafile/abc_buffer_cache.h"
 
 #if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE)
 #include "parameters.h"
@@ -284,6 +285,7 @@ bool EcmaVM::Initialize()
     debuggerManager_ = new tooling::JsDebuggerManager(this);
     asyncStackTrace_ = new AsyncStackTrace(this);
     aotFileManager_ = new AOTFileManager(this);
+    abcBufferCache_ = new AbcBufferCache();
     auto context = new EcmaContext(thread_);
     thread_->PushContext(context);
     [[maybe_unused]] EcmaHandleScope scope(thread_);
@@ -499,6 +501,10 @@ EcmaVM::~EcmaVM()
     if (regExpParserCache_ != nullptr) {
         delete regExpParserCache_;
         regExpParserCache_ = nullptr;
+    }
+    if (abcBufferCache_ != nullptr) {
+        delete abcBufferCache_;
+        abcBufferCache_ = nullptr;
     }
 }
 

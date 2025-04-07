@@ -104,11 +104,6 @@ public:
         return initialized_;
     }
 
-    AbcBufferCache *GetAbcBufferCache() const
-    {
-        return abcBufferCache_;
-    }
-
     kungfu::PGOTypeManager *GetPTManager() const
     {
         return ptManager_;
@@ -241,7 +236,6 @@ private:
     // VM resources.
     kungfu::PGOTypeManager *ptManager_ {nullptr};
     AOTFileManager *aotFileManager_ {nullptr};
-    AbcBufferCache *abcBufferCache_ {nullptr};
 
     // for recording the transition of function prototype
     FunctionProtoTransitionTable *functionProtoTransitionTable_ {nullptr};

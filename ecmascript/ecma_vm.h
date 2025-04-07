@@ -102,6 +102,7 @@ class Jit;
 class JitThread;
 class SustainingJSHandle;
 class SustainingJSHandleList;
+class AbcBufferCache;
 enum class CompareStringsOption : uint8_t;
 
 using NativePtrGetter = void* (*)(void* info);
@@ -1150,6 +1151,12 @@ public:
     {
         return &waiterListNode_;
     }
+
+    AbcBufferCache *GetAbcBufferCache() const
+    {
+        return abcBufferCache_;
+    }
+
     void AddSustainingJSHandle(SustainingJSHandle *sustainingHandle);
     void RemoveSustainingJSHandle(SustainingJSHandle *sustainingHandle);
 
@@ -1376,6 +1383,7 @@ private:
     RegExpParserCache *regExpParserCache_ {nullptr};
     // WaiterListNode(atomics)
     WaiterListNode waiterListNode_;
+    AbcBufferCache *abcBufferCache_ {nullptr};
 };
 }  // namespace ecmascript
 }  // namespace panda
