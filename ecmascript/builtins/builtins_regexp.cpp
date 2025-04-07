@@ -186,6 +186,8 @@ JSTaggedValue BuiltinsRegExp::Test(EcmaRuntimeCallInfo *argv)
     JSHandle<EcmaString> stringHandle = JSTaggedValue::ToString(thread, inputStr);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSTaggedValue> string = JSHandle<JSTaggedValue>::Cast(stringHandle);
+    JSHandle<RegExpExecResultCache> cacheTable(thread->GetGlobalEnv()->GetRegExpCache());
+    cacheTable->SetUseLastMatch(thread, false);
     // test fast path
     if (IsFastRegExp(thread, thisObj.GetTaggedValue())) {
         return RegExpTestFast(thread, thisObj, string, true);
@@ -610,6 +612,7 @@ JSTaggedValue BuiltinsRegExp::RegExpMatch(JSThread *thread, const JSHandle<JSTag
     bool useCache = true;
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     JSHandle<RegExpExecResultCache> cacheTable(thread->GetGlobalEnv()->GetRegExpCache());
+    cacheTable->SetUseLastMatch(thread, false);
     if (!isFastPath || cacheTable->GetLargeStrCount() == 0 || cacheTable->GetConflictCount() == 0) {
         useCache = false;
     }
@@ -1047,6 +1050,7 @@ JSTaggedValue BuiltinsRegExp::ReplaceInternal(JSThread *thread,
     bool useIntermediateCache = false;
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     JSHandle<RegExpExecResultCache> cacheTable(thread->GetGlobalEnv()->GetRegExpCache());
+    cacheTable->SetUseLastMatch(thread, false);
     if (isFastPath) {
         if (isGlobal && !functionalReplace && EcmaStringAccessor(replaceValueHandle).GetLength() == 0) {
             return RegExpReplaceFast(thread, thisObj, srcString, length);
@@ -1356,6 +1360,8 @@ JSTaggedValue BuiltinsRegExp::RegExpSearch(JSThread *thread,
                                            const JSHandle<JSTaggedValue> regexp,
                                            const JSHandle<JSTaggedValue> string)
 {
+    JSHandle<RegExpExecResultCache> cacheTable(thread->GetGlobalEnv()->GetRegExpCache());
+    cacheTable->SetUseLastMatch(thread, false);
     bool isFastPath = IsFastRegExp(thread, regexp.GetTaggedValue());
     if (isFastPath) {
         return RegExpSearchFast(thread, regexp, string);
@@ -1646,6 +1652,8 @@ JSTaggedValue BuiltinsRegExp::Split(EcmaRuntimeCallInfo *argv)
         // 2. If Type(rx) is not Object, throw a TypeError exception.
         THROW_TYPE_ERROR_AND_RETURN(thread, "this is not Object", JSTaggedValue::Exception());
     }
+    JSHandle<RegExpExecResultCache> cacheTable(thread->GetGlobalEnv()->GetRegExpCache());
+    cacheTable->SetUseLastMatch(thread, false);
     bool isFastPath = IsFastRegExp(thread, thisObj.GetTaggedValue());
     return RegExpSplit(thread, thisObj, jsString, limit, isFastPath);
 }
@@ -2002,6 +2010,7 @@ JSTaggedValue BuiltinsRegExp::RegExpBuiltinExec(JSThread *thread, const JSHandle
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     JSHandle<RegExpExecResultCache> cacheTable(thread->GetGlobalEnv()->GetRegExpCache());
+    cacheTable->SetUseLastMatch(thread, false);
     if (useCache) {
         JSTaggedValue cacheResult = cacheTable->FindCachedResult(thread, inputStr,
                                                                  RegExpExecResultCache::EXEC_TYPE, regexp,
@@ -2502,6 +2511,9 @@ JSTaggedValue RegExpExecResultCache::CreateCacheTable(JSThread *thread)
     table->SetHitCount(thread, 0);
     table->SetCacheCount(thread, 0);
     table->SetCacheLength(thread, INITIAL_CACHE_NUMBER);
+    table->SetLastMatchGlobalTableIndex(thread, DEFAULT_LAST_MATCH_INDEX);
+    table->SetUseLastMatch(thread, false);
+    table->SetNeedUpdateGlobal(thread, false);
     return JSTaggedValue(table);
 }
 
@@ -2565,10 +2577,9 @@ JSTaggedValue RegExpExecResultCache::FindCachedResult(JSThread *thread,
             UNREACHABLE();
             break;
     }
-    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    JSHandle<RegExpGlobalResult> globalTable(env->GetRegExpGlobalResult());
-    JSTaggedValue cachedTable = Get(index + CAPTURE_SIZE);
-    env->SetRegExpGlobalResult(thread, cachedTable);
+    SetLastMatchGlobalTableIndex(thread, index);
+    SetUseLastMatch(thread, true);
+    SetNeedUpdateGlobal(thread, true);
     SetHitCount(thread, GetHitCount() + 1);
     if (type != SEARCH_TYPE && type != SPLIT_TYPE) {
         BuiltinsRegExp::SetLastIndex(thread, regexp, Get(index + LAST_INDEX_INDEX), true);
@@ -2624,6 +2635,8 @@ void RegExpExecResultCache::AddResultInCache(JSThread *thread, JSHandle<RegExpEx
     uint32_t index = CACHE_TABLE_HEADER_SIZE + entry * ENTRY_SIZE;
     if (cache->Get(index).IsUndefined()) {
         cache->SetCacheCount(thread, cache->GetCacheCount() + 1);
+        cache->SetLastMatchGlobalTableIndex(thread, index); // update last match index
+        cache->SetUseLastMatch(thread, true);          // fast path
         cache->SetEntry(thread, entry, patternValue, flagsValue, inputValue,
                         lastIndexInputValue, lastIndexValue, extendValue, resTableArrayValue);
         cache->UpdateResultArray(thread, entry, resultArrayCopy.GetTaggedValue(), type);
@@ -2649,6 +2662,8 @@ void RegExpExecResultCache::AddResultInCache(JSThread *thread, JSHandle<RegExpEx
         resTableArrayValue = resTableArray.GetTaggedValue();
         if (cache->Get(index2).IsUndefined()) {
             cache->SetCacheCount(thread, cache->GetCacheCount() + 1);
+            cache->SetLastMatchGlobalTableIndex(thread, index2); // update last match index
+            cache->SetUseLastMatch(thread, true);           // fast path
             cache->SetEntry(thread, entry2, patternValue, flagsValue, inputValue,
                             lastIndexInputValue, lastIndexValue, extendValue, resTableArrayValue);
             cache->UpdateResultArray(thread, entry2, resultArrayCopy.GetTaggedValue(), type);
@@ -2658,6 +2673,8 @@ void RegExpExecResultCache::AddResultInCache(JSThread *thread, JSHandle<RegExpEx
             cache->SetConflictCount(thread, cache->GetConflictCount() > 1 ? (cache->GetConflictCount() - 1) : 0);
             cache->SetCacheCount(thread, cache->GetCacheCount() - 1);
             cache->ClearEntry(thread, entry2);
+            cache->SetLastMatchGlobalTableIndex(thread, index2); // update last match index
+            cache->SetUseLastMatch(thread, true);           // fast path
             cache->SetEntry(thread, entry2, patternValue, flagsValue, inputValue,
                             lastIndexInputValue, lastIndexValue, extendValue, resTableArrayValue);
             cache->UpdateResultArray(thread, entry2, resultArrayCopy.GetTaggedValue(), type);
@@ -2786,6 +2803,26 @@ bool RegExpExecResultCache::Match(int entry, JSTaggedValue &pattern, JSTaggedVal
     return extendEqual &&
            EcmaStringAccessor::StringsAreEqual(patternStr, keyPatternStr) &&
            EcmaStringAccessor::StringsAreEqual(inputStr, keyInputStr);
+}
+
+JSTaggedValue RegExpExecResultCache::GetGlobalTable(JSThread *thread)
+{
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+    JSHandle<RegExpExecResultCache> cacheTable(env->GetRegExpCache());
+
+    const int lastMatchIndex = cacheTable->GetLastMatchGlobalTableIndex();
+    // -1: not found last match
+    if (lastMatchIndex == -1) {
+        return env->GetTaggedRegExpGlobalResult();
+    }
+
+    JSTaggedValue lastMatchTable = cacheTable->Get(lastMatchIndex + CAPTURE_SIZE);
+    if (cacheTable->GetNeedUpdateGlobal()) {
+        env->SetRegExpGlobalResult(thread, lastMatchTable);
+        cacheTable->SetNeedUpdateGlobal(thread, false);
+    }
+
+    return cacheTable->GetUseLastMatch() ? lastMatchTable : env->GetTaggedRegExpGlobalResult();
 }
 
 JSTaggedValue RegExpGlobalResult::CreateGlobalResultTable(JSThread *thread)

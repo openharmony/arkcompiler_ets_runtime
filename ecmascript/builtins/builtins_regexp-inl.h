@@ -25,7 +25,8 @@ namespace panda::ecmascript::builtins {
 template <int N>
 JSTaggedValue RegExpGlobalResult::GetCapture(JSThread *thread)
 {
-    JSHandle<builtins::RegExpGlobalResult> globalTable(thread->GetGlobalEnv()->GetRegExpGlobalResult());
+    JSHandle<JSTaggedValue> table = JSHandle<JSTaggedValue>(thread, RegExpExecResultCache::GetGlobalTable(thread));
+    JSHandle<RegExpGlobalResult> globalTable = JSHandle<RegExpGlobalResult>::Cast(table);
     JSTaggedValue res = globalTable->Get(CAPTURE_START_INDEX + N - 1);
     int captureNum = globalTable->GetTotalCaptureCounts().GetInt();
     if (res.IsHole() && (N < captureNum)) {

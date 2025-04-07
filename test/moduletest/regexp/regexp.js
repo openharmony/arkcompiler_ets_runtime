@@ -683,6 +683,20 @@ assert_equal(s,"success");
 }
 
 {
+  RegExp.prototype.test = function () {
+    return false;
+  };
+  let str = /^\s*([^;\s]*)/;
+  str.test("text/html");
+  assert_equal(RegExp.$1,'text/html');
+  str.test("text/plain");
+  assert_equal(RegExp.$1,'text/html');
+  str.test("text/html");
+  assert_equal(RegExp.$1,'text/html');
+  RegExp.prototype.test = protoTest
+}
+
+{
   let reg52 = /abc/;
   let count = 0;
   assert_equal(reg52.ignoreCase,false);
