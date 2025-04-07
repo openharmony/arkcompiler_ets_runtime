@@ -14,6 +14,7 @@
  */
 
 #include <cstdint>
+#include <fstream>
 #include <gtest/gtest.h>
 #include <string>
 #include <vector>
@@ -202,5 +203,48 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_009, TestSize.Level0)
     parser->AddExpandArgs(aotVector, 0);
     std::string arg = aotVector[0];
     EXPECT_STREQ(arg.c_str(), "--compiler-thermal-level=0");
+}
+
+const std::unordered_map<std::string, std::string> framewordArgsMapForTest {
+    {"outputPath", "/data/service/el1/public/for-all-app/framework_ark_cache/etsstdlib_bootabc.an"},
+    {"anFileName", "/data/service/el1/public/for-all-app/framework_ark_cache/etsstdlib_bootabc.an"},
+    {"isSysComp", "1"},
+    {"sysCompPath", "/system/framework/etsstdlib_bootabc.abc"},
+    {"ABC-Path", "/system/framework/etsstdlib_bootabc.abc"}
+};
+
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_010, TestSize.Level0)
+{
+    const char *systemDir = "/system";
+    const char *systemFrameworkDir = "/system/framework";
+    const char *bootPathJson = "/system/framework/bootpath.json";
+    mkdir(systemDir, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+    mkdir(systemFrameworkDir, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+    std::string bootpathJsonStr =
+        "{\"bootpath\":\"/system/framework/etsstdlib_bootabc.abc:/system/framework/arkoala.abc\"}";
+    std::ofstream file(bootPathJson);
+    file << bootpathJsonStr << std::endl;
+    file.close();
+
+    std::unique_ptr<AOTArgsHandler> argsHandler = std::make_unique<AOTArgsHandler>(framewordArgsMapForTest);
+    int32_t ret = argsHandler->Handle(0);
+    EXPECT_EQ(ret, ERR_OK);
+    std::string fileName = argsHandler->GetFileName();
+    EXPECT_TRUE(!fileName.empty());
+    int32_t bundleUid;
+    int32_t bundleGid;
+    argsHandler->GetBundleId(bundleUid, bundleGid);
+    EXPECT_EQ(bundleUid, OID_SYSTEM);
+    EXPECT_EQ(bundleGid, OID_SYSTEM);
+    std::vector<const char*> argv = argsHandler->GetAotArgs();
+    EXPECT_STREQ(argv[0], "/system/bin/ark_aot");
+    for (const auto& arg : argv) {
+        if (std::strcmp(arg, "boot-panda-files") == 0) {
+            EXPECT_STREQ(arg, "--boot-panda-files=/system/framework/etsstdlib_bootabc.abc");
+        }
+    }
+    unlink(bootPathJson);
+    rmdir(systemFrameworkDir);
+    rmdir(systemDir);
 }
 } // namespace OHOS::ArkCompiler

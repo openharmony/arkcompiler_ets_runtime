@@ -133,6 +133,15 @@ void AotCompilerImpl::ExecuteInParentProcess(const pid_t childPid, int32_t &ret)
     }
 }
 
+bool AotCompilerImpl::IsSystemComponent(const std::unordered_map<std::string, std::string> &argsMap)
+{
+    auto isSystemComponent = argsMap.find(ArgsIdx::IS_SYSTEM_COMPONENT);
+    if (isSystemComponent != argsMap.end() && isSystemComponent->second != BOOLEAN_FALSE) {
+        return true;
+    }
+    return false;
+}
+
 bool AotCompilerImpl::VerifyCompilerModeAndPkgInfo(const std::unordered_map<std::string, std::string> &argsMap)
 {
     auto targetCompilerMode = argsMap.find(ArgsIdx::TARGET_COMPILER_MODE);
@@ -154,7 +163,7 @@ int32_t AotCompilerImpl::EcmascriptAotCompiler(const std::unordered_map<std::str
         LOG_SA(ERROR) << "aot compiler is not allowed now";
         return ERR_AOT_COMPILER_CALL_CANCELLED;
     }
-    if (!VerifyCompilerModeAndPkgInfo(argsMap)) {
+    if (!VerifyCompilerModeAndPkgInfo(argsMap) && !IsSystemComponent(argsMap)) {
         LOG_SA(ERROR) << "aot compiler mode or pkginfo arguments error";
         return ERR_AOT_COMPILER_PARAM_FAILED;
     }
