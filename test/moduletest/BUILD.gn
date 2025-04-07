@@ -11,6 +11,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import("//arkcompiler/ets_runtime/js_runtime_config.gni")
+
 module_test_list = [
   "addelementinternal",
   "allocatearraybuffer",
@@ -209,6 +211,7 @@ group("ark_js_assert_moduletest") {
     "jsonstringifier",
     "ldmodulensbyic",
     "lexicalenv",
+    "arrch64stackoverflow",
     "linkedhashtable",
     "loadicbyname",
     "loadicbyvalue",
@@ -268,6 +271,9 @@ group("ark_js_assert_moduletest") {
   deps = []
   foreach(test, assert_test_list) {
     deps += [ "${test}:${test}AssertAction" ]
+    if (ark_standalone_build && host_os == "linux" && target_os == "ohos") {
+      deps += [ "${test}:${test}ActionWithQemu" ]
+    }
     if (!is_debug) {
       deps += [ "${test}:${test}ContextAssertAction" ]
     }
