@@ -1146,7 +1146,7 @@ public:
     GateRef GetNativeOrCjsModuleValue(GateRef glue, GateRef module, GateRef index);
     GateRef GetModuleValueByIndex(GateRef glue, GateRef module, GateRef index, GateRef isThrow);
     GateRef GetModuleValue(GateRef glue, GateRef module, GateRef index);
-    GateRef GetModuleValueByName(GateRef glue, GateRef module, GateRef bindingName);
+    GateRef GetNativeOrCjsModuleValueByName(GateRef glue, GateRef module, GateRef bindingName);
     GateRef ResolveElementOfObject(GateRef glue, GateRef hClass, GateRef exportName,
                                    GateRef module, GateRef layOutInfo);
     GateRef ResolveExportObject(GateRef glue, GateRef module, GateRef exports, GateRef exportName);

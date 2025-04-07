@@ -46,6 +46,7 @@
 #include "ecmascript/message_string.h"
 #include "ecmascript/module/js_module_manager.h"
 #include "ecmascript/module/js_module_source_text.h"
+#include "ecmascript/module/module_value_accessor.h"
 #include "ecmascript/object_factory-inl.h"
 #include "ecmascript/patch/quick_fix_helper.h"
 #include "ecmascript/platform/file.h"
@@ -1345,51 +1346,51 @@ void RuntimeStubs::RuntimeSetGeneratorState(JSThread *thread, const JSHandle<JST
 
 JSTaggedValue RuntimeStubs::RuntimeGetModuleNamespace(JSThread *thread, int32_t index)
 {
-    return thread->GetModuleManager()->GetModuleNamespace(index);
+    return ModuleValueAccessor::GetModuleNamespace(thread, index);
 }
 
 JSTaggedValue RuntimeStubs::RuntimeGetModuleNamespace(JSThread *thread, int32_t index,
                                                       JSTaggedValue jsFunc)
 {
-    return thread->GetModuleManager()->GetModuleNamespace(index, jsFunc);
+    return ModuleValueAccessor::GetModuleNamespace(thread, index, jsFunc);
 }
 
 JSTaggedValue RuntimeStubs::RuntimeGetModuleNamespace(JSThread *thread, JSTaggedValue localName)
 {
-    return thread->GetModuleManager()->GetModuleNamespace(localName);
+    return DeprecatedModuleValueAccessor::GetModuleNamespace(thread, localName);
 }
 
 JSTaggedValue RuntimeStubs::RuntimeGetModuleNamespace(JSThread *thread, JSTaggedValue localName,
                                                       JSTaggedValue jsFunc)
 {
-    return thread->GetModuleManager()->GetModuleNamespace(localName, jsFunc);
+    return DeprecatedModuleValueAccessor::GetModuleNamespace(thread, localName, jsFunc);
 }
 
 void RuntimeStubs::RuntimeStModuleVar(JSThread *thread, int32_t index, JSTaggedValue value)
 {
-    thread->GetModuleManager()->StoreModuleValue(index, value);
+    ModuleValueAccessor::StoreModuleValue(thread, index, value);
 }
 
 void RuntimeStubs::RuntimeStModuleVar(JSThread *thread, int32_t index, JSTaggedValue value,
                                       JSTaggedValue jsFunc)
 {
-    thread->GetModuleManager()->StoreModuleValue(index, value, jsFunc);
+    ModuleValueAccessor::StoreModuleValue(thread, index, value, jsFunc);
 }
 
 void RuntimeStubs::RuntimeStModuleVar(JSThread *thread, JSTaggedValue key, JSTaggedValue value)
 {
-    thread->GetModuleManager()->StoreModuleValue(key, value);
+    DeprecatedModuleValueAccessor::StoreModuleValue(thread, key, value);
 }
 
 void RuntimeStubs::RuntimeStModuleVar(JSThread *thread, JSTaggedValue key, JSTaggedValue value,
                                       JSTaggedValue jsFunc)
 {
-    thread->GetModuleManager()->StoreModuleValue(key, value, jsFunc);
+    DeprecatedModuleValueAccessor::StoreModuleValue(thread, key, value, jsFunc);
 }
 
 JSTaggedValue RuntimeStubs::RuntimeLdLocalModuleVar(JSThread *thread, int32_t index)
 {
-    return thread->GetModuleManager()->GetModuleValueInner(index);
+    return ModuleValueAccessor::GetModuleValueInner(thread, index);
 }
 
 inline JSTaggedValue RuntimeStubs::RuntimeLdLocalModuleVarWithModule(JSThread* thread, int32_t index,
@@ -1406,12 +1407,12 @@ inline JSTaggedValue RuntimeStubs::RuntimeLdLocalModuleVarWithModule(JSThread* t
 
 JSTaggedValue RuntimeStubs::RuntimeLdLocalModuleVar(JSThread *thread, int32_t index, JSTaggedValue jsFunc)
 {
-    return thread->GetModuleManager()->GetModuleValueInner(index, jsFunc);
+    return ModuleValueAccessor::GetModuleValueInner(thread, index, jsFunc);
 }
 
 JSTaggedValue RuntimeStubs::RuntimeLdExternalModuleVar(JSThread *thread, int32_t index)
 {
-    return thread->GetModuleManager()->GetModuleValueOutter(index);
+    return ModuleValueAccessor::GetModuleValueOuter(thread, index);
 }
 
 inline JSTaggedValue RuntimeStubs::RuntimeLdExternalModuleVarWithModule(JSThread* thread, int32_t index,
@@ -1424,55 +1425,54 @@ inline JSTaggedValue RuntimeStubs::RuntimeLdExternalModuleVarWithModule(JSThread
         module = mmgr->HostGetImportedModule(recordNameStr).GetTaggedValue();
         moduleHdl = JSHandle<JSTaggedValue>(thread, module);
     }
-    return mmgr->GetModuleValueOutter(index, moduleHdl);
+    return ModuleValueAccessor::GetModuleValueOuter(thread, index, moduleHdl);
 }
 
 JSTaggedValue RuntimeStubs::RuntimeLdSendableExternalModuleVar(JSThread *thread, int32_t index, JSTaggedValue jsFunc)
 {
-    return SharedModuleManager::GetInstance()->GetSendableModuleValue(thread, index, jsFunc);
+    return ModuleValueAccessor::GetSendableModuleValueOuter(thread, index, jsFunc);
 }
 
 JSTaggedValue RuntimeStubs::RuntimeLdSendableLocalModuleVar(JSThread* thread, int32_t index, JSTaggedValue jsFunc)
 {
-    return SharedModuleManager::GetInstance()->GetSendableModuleValueInner(thread, index, jsFunc);
+    return ModuleValueAccessor::GetSendableModuleValueInner(thread, index, jsFunc);
 }
 
 JSTaggedValue RuntimeStubs::RuntimeLdExternalModuleVar(JSThread *thread, int32_t index, JSTaggedValue jsFunc)
 {
-    return thread->GetModuleManager()->GetModuleValueOutter(index, jsFunc);
+    return ModuleValueAccessor::GetModuleValueOuter(thread, index, jsFunc);
 }
 
 JSTaggedValue RuntimeStubs::RuntimeLdLazyExternalModuleVar(JSThread *thread, int32_t index, JSTaggedValue jsFunc)
 {
-    return thread->GetModuleManager()->GetLazyModuleValueOutter(index, jsFunc);
+    return ModuleValueAccessor::GetLazyModuleValueOuter(thread, index, jsFunc);
 }
 
 JSTaggedValue RuntimeStubs::RuntimeLdLazySendableExternalModuleVar(
     JSThread *thread, int32_t index, JSTaggedValue jsFunc)
 {
-    return SharedModuleManager::GetInstance()->GetLazySendableModuleValue(thread, index, jsFunc);
+    return ModuleValueAccessor::GetLazySendableModuleValueOuter(thread, index, jsFunc);
 }
 
 JSTaggedValue RuntimeStubs::RuntimeLdModuleVar(JSThread *thread, JSTaggedValue key, bool inner)
 {
     if (inner) {
-        JSTaggedValue moduleValue = thread->GetModuleManager()->GetModuleValueInner(key);
+        JSTaggedValue moduleValue = DeprecatedModuleValueAccessor::GetModuleValueInner(thread, key);
         return moduleValue;
     }
 
-    return thread->GetModuleManager()->GetModuleValueOutter(key);
+    return DeprecatedModuleValueAccessor::GetModuleValueOuter(thread, key);
 }
 
 JSTaggedValue RuntimeStubs::RuntimeLdModuleVar(JSThread *thread, JSTaggedValue key, bool inner,
                                                JSTaggedValue jsFunc)
 {
     if (inner) {
-        JSTaggedValue moduleValue =
-            thread->GetModuleManager()->GetModuleValueInner(key, jsFunc);
+        JSTaggedValue moduleValue = DeprecatedModuleValueAccessor::GetModuleValueInner(thread, key, jsFunc);
         return moduleValue;
     }
 
-    return thread->GetModuleManager()->GetModuleValueOutter(key, jsFunc);
+    return DeprecatedModuleValueAccessor::GetModuleValueOuter(thread, key, jsFunc);
 }
 
 JSTaggedValue RuntimeStubs::RuntimeGetPropIterator(JSThread *thread, const JSHandle<JSTaggedValue> &value)

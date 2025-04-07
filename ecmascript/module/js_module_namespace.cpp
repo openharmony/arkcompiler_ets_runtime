@@ -17,7 +17,7 @@
 
 #include "ecmascript/global_env.h"
 #include "ecmascript/object_factory-inl.h"
-#include "ecmascript/module/module_manager_helper.h"
+#include "ecmascript/module/module_value_accessor.h"
 #include "ecmascript/module/module_path_helper.h"
 #include "ecmascript/module/js_module_deregister.h"
 #include "ecmascript/module/js_shared_module_manager.h"
@@ -129,7 +129,7 @@ OperationResult ModuleNamespace::GetProperty(JSThread *thread, const JSHandle<JS
             }
             ModuleTypes moduleType = module->GetTypes();
             if (UNLIKELY(SourceTextModule::IsNativeModule(moduleType))) {
-                result = ModuleManagerHelper::GetModuleValue(thread, module, resolvedBind->GetBindingName());
+                result = ModuleValueAccessor::GetNativeOrCjsModuleValue(thread, module, resolvedBind->GetBindingName());
                 RETURN_VALUE_IF_ABRUPT_COMPLETION(
                     thread, OperationResult(thread, JSTaggedValue::Exception(), PropertyMetaData(false)));
             } else {
@@ -149,8 +149,7 @@ OperationResult ModuleNamespace::GetProperty(JSThread *thread, const JSHandle<JS
             }
             ModuleTypes moduleType = module->GetTypes();
             if (UNLIKELY(SourceTextModule::IsNativeModule(moduleType))) {
-                result = ModuleManagerHelper::GetNativeOrCjsModuleValue(
-                    thread, targetModule, resolvedBind->GetIndex());
+                result = ModuleValueAccessor::GetNativeOrCjsModuleValue(thread, module, resolvedBind->GetIndex());
                 RETURN_VALUE_IF_ABRUPT_COMPLETION(
                     thread, OperationResult(thread, JSTaggedValue::Exception(), PropertyMetaData(false)));
             } else {

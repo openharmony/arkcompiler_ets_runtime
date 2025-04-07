@@ -11571,7 +11571,7 @@ GateRef StubBuilder::GetModuleValue(GateRef glue, GateRef module, GateRef index)
     return ret;
 }
 
-GateRef StubBuilder::GetModuleValueByName(GateRef glue, GateRef module, GateRef bindingName)
+GateRef StubBuilder::GetNativeOrCjsModuleValueByName(GateRef glue, GateRef module, GateRef bindingName)
 {
     auto env = GetEnvironment();
     Label subentry(env);
@@ -11879,7 +11879,7 @@ GateRef StubBuilder::LoadExternalmodulevar(GateRef glue, GateRef index, GateRef 
             ResolvedModuleMustBeSourceTextModule(resolvedModule);
             Label isNativeOrCjsModule(env);
             GateRef checkNativeOrCjsModule = BitOr(IsNativeModule(resolvedModule), IsCjsModule(resolvedModule));
-            BRANCH(checkNativeOrCjsModule, &isNativeOrCjsModule, &judgeResolvedRecordIndexBinding);
+            BRANCH(checkNativeOrCjsModule, &isNativeOrCjsModule, &misstakenResolvedBinding);
 
             Bind(&isNativeOrCjsModule);
             {
@@ -11912,7 +11912,7 @@ GateRef StubBuilder::LoadExternalmodulevar(GateRef glue, GateRef index, GateRef 
         Bind(&isResolvedRecordBinding);
         {
             GateRef resolvedModule = GetResolvedRecordBindingModule(glue, curModule, resolvedBinding);
-            result = GetModuleValueByName(glue, resolvedModule, GetBindingName(resolvedBinding));
+            result = GetNativeOrCjsModuleValueByName(glue, resolvedModule, GetBindingName(resolvedBinding));
             Jump(&exit);
         }
     }
@@ -11938,8 +11938,8 @@ GateRef StubBuilder::LoadExternalmodulevar(GateRef glue, GateRef index, GateRef 
 
     Bind(&notNullPtr);
     {
-        result = CallRuntime(glue, RTSTUB_ID(ProcessModuleLoadInfo),
-                             {curModule, resolvedBinding, IntToTaggedInt(index)});
+        result = CallRuntime(glue, RTSTUB_ID(GetModuleValueOuterInternal),
+                             {curModule, IntToTaggedInt(index)});
         Jump(&exit);
     }
 

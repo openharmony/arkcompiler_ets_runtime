@@ -421,7 +421,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteSpecialModule(JSThread
 // RecordName is the ohmurl-path of js files.
 // The first js file executed could be json, cjs, native so or esm.
 Expected<JSTaggedValue, bool> JSPandaFileExecutor::LazyExecuteModule(
-    JSThread *thread, CString &recordName, const CString &filename, [[maybe_unused]]bool isMergedAbc)
+    JSThread *thread, const CString &recordName, const CString &filename, [[maybe_unused]]bool isMergedAbc)
 {
     LOG_FULL(INFO) << "recordName : " << recordName << ", in abc : " << filename;
     CString traceInfo = "JSPandaFileExecutor::LazyExecuteModule " + filename;
