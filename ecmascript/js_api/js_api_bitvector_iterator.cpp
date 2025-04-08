@@ -15,6 +15,7 @@
 
 #include "ecmascript/js_api/js_api_bitvector_iterator.h"
 
+#include "ecmascript/global_env.h"
 #include "ecmascript/js_api/js_api_bitvector.h"
 #include "ecmascript/shared_objects/concurrent_api_scope.h"
 
@@ -36,7 +37,8 @@ JSTaggedValue JSAPIBitVectorIterator::Next(EcmaRuntimeCallInfo* argv)
     JSHandle<JSTaggedValue> bitVector(thread, iter->GetIteratedBitVector());
     // If a is undefined, return an undefinedIteratorResult.
     if (bitVector->IsUndefined()) {
-        return thread->GlobalConstants()->GetUndefinedIterResult();
+        JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+        return env->GetUndefinedIteratorResult().GetTaggedValue();
     }
     // Let index be O.[[BitVectorLikeNextIndex]].
     uint32_t index = iter->GetNextIndex();
@@ -51,7 +53,8 @@ JSTaggedValue JSAPIBitVectorIterator::Next(EcmaRuntimeCallInfo* argv)
         // Return undefinedIteratorResult.
         JSHandle<JSTaggedValue> undefinedHandle = thread->GlobalConstants()->GetHandledUndefined();
         iter->SetIteratedBitVector(thread, undefinedHandle);
-        return thread->GlobalConstants()->GetUndefinedIterResult();
+        JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+        return env->GetUndefinedIteratorResult().GetTaggedValue();
     }
     // Set O.[[VectorLikeNextIndex]] to index + 1.
     iter->SetNextIndex(index + 1);

@@ -16,6 +16,7 @@
 #include "ecmascript/js_api/js_api_vector_iterator.h"
 
 #include "ecmascript/base/typed_array_helper.h"
+#include "ecmascript/global_env.h"
 #include "ecmascript/js_api/js_api_vector.h"
 
 namespace panda::ecmascript {
@@ -36,7 +37,8 @@ JSTaggedValue JSAPIVectorIterator::Next(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> vector(thread, iter->GetIteratedVector());
     // If a is undefined, return an undefinedIteratorResult.
     if (vector->IsUndefined()) {
-        return thread->GlobalConstants()->GetUndefinedIterResult();
+        JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+        return env->GetUndefinedIteratorResult().GetTaggedValue();
     }
     // Let index be O.[[VectorLikeNextIndex]].
     uint32_t index = iter->GetNextIndex();
@@ -50,7 +52,8 @@ JSTaggedValue JSAPIVectorIterator::Next(EcmaRuntimeCallInfo *argv)
         // Return undefinedIteratorResult.
         JSHandle<JSTaggedValue> undefinedHandle = thread->GlobalConstants()->GetHandledUndefined();
         iter->SetIteratedVector(thread, undefinedHandle);
-        return thread->GlobalConstants()->GetUndefinedIterResult();
+        JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+        return env->GetUndefinedIteratorResult().GetTaggedValue();
     }
     // Set O.[[VectorLikeNextIndex]] to index + 1.
     iter->SetNextIndex(index + 1);

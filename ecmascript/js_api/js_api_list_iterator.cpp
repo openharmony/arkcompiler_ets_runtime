@@ -16,6 +16,7 @@
 #include "ecmascript/js_api/js_api_list_iterator.h"
 
 #include "ecmascript/containers/containers_errors.h"
+#include "ecmascript/global_env.h"
 #include "ecmascript/js_api/js_api_list.h"
 
 namespace panda::ecmascript {
@@ -35,17 +36,18 @@ JSTaggedValue JSAPIListIterator::Next(EcmaRuntimeCallInfo *argv)
     }
     JSHandle<JSAPIListIterator> iter(input);
     JSHandle<JSTaggedValue> list(thread, iter->GetIteratedList());
-    const GlobalEnvConstants *globalConst = thread->GlobalConstants();
     JSHandle<TaggedSingleList> singleList(list);
     if (list->IsUndefined()) {
-        return globalConst->GetUndefinedIterResult();
+        JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+        return env->GetUndefinedIteratorResult().GetTaggedValue();
     }
     int index = static_cast<int>(iter->GetNextIndex());
     int length = singleList->Length();
     if (index >= length) {
-        JSHandle<JSTaggedValue> undefinedHandle = globalConst->GetHandledUndefined();
+        JSHandle<JSTaggedValue> undefinedHandle = thread->GlobalConstants()->GetHandledUndefined();
         iter->SetIteratedList(thread, undefinedHandle);
-        return globalConst->GetUndefinedIterResult();
+        JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+        return env->GetUndefinedIteratorResult().GetTaggedValue();
     }
     iter->SetNextIndex(index + 1);
     int dataIndex = static_cast<int>(iter->GetDataIndex());

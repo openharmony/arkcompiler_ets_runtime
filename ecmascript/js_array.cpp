@@ -186,7 +186,7 @@ JSTaggedValue JSArray::ArraySpeciesCreate(JSThread *thread, const JSHandle<JSObj
         // the species must in the inline properties.
         if LIKELY(chc == thread->GetBuiltinHClass(BuiltinTypeId::ARRAY)) {
             JSTaggedValue species = GetConstructorOrSpeciesInlinedProp(taggedCtor, ARRAY_FUNCTION_SPECIES_INDEX);
-            if (species == globalConst->GetArraySpeciesAccessor()) {
+            if (species == env->GetArraySpeciesAccessor().GetTaggedValue()) {
                 // fast path: means using default constructor, do ArrayCreate directly.
                 return ArrayCreate(thread, length).GetTaggedValue();
             }

@@ -1647,10 +1647,11 @@ bool PGOProfiler::AddBuiltinsInfoByNameInInstance(ApEntityId abcId, const CStrin
         // When JSType cannot uniquely identify builtins object, it is necessary to
         // query the receiver on the global constants.
         if (builtinsId == BuiltinTypeId::OBJECT) {
-            exceptRecvHClass = JSHClass::Cast(thread->GlobalConstants()->GetIteratorResultClass().GetTaggedObject());
+            JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+            exceptRecvHClass = JSHClass::Cast(env->GetIteratorResultClass().GetTaggedValue().GetTaggedObject());
             if (exceptRecvHClass == receiver) {
                 GlobalIndex globalsId;
-                globalsId.UpdateGlobalConstId(static_cast<size_t>(ConstantIndex::ITERATOR_RESULT_CLASS));
+                globalsId.UpdateGlobalEnvId(static_cast<size_t>(GlobalEnvField::ITERATOR_RESULT_CLASS_INDEX));
                 AddBuiltinsGlobalInfo(abcId, recordName, methodId, bcOffset, globalsId);
                 return true;
             }

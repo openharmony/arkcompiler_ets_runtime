@@ -73,8 +73,7 @@ private:
     static JSTaggedValue InitializeContainer(JSThread *thread, const JSHandle<JSObject> &obj, InitializeFunction func,
                                              const char *name);
     static JSHandle<JSTaggedValue> InitializeArrayList(JSThread *thread);
-    static void InitializeArrayListIterator(JSThread *thread, const JSHandle<GlobalEnv> &env,
-                                            GlobalEnvConstants *globalConst);
+    static void InitializeArrayListIterator(JSThread *thread, const JSHandle<GlobalEnv> &env);
     static JSHandle<JSTaggedValue> InitializeHashMap(JSThread *thread);
     static void InitializeHashMapIterator(JSThread *thread);
     static JSHandle<JSTaggedValue> InitializeHashSet(JSThread *thread);
@@ -90,19 +89,15 @@ private:
     static JSHandle<JSTaggedValue> InitializePlainArray(JSThread *thread);
     static void InitializePlainArrayIterator(JSThread *thread);
     static JSHandle<JSTaggedValue> InitializeVector(JSThread *thread);
-    static void InitializeVectorIterator(JSThread *thread, const JSHandle<GlobalEnv> &env,
-                                         GlobalEnvConstants *globalConst);
+    static void InitializeVectorIterator(JSThread *thread, const JSHandle<GlobalEnv> &env);
     static JSHandle<JSTaggedValue> InitializeBitVector(JSThread *thread);
-    static void InitializeBitVectorIterator(JSThread *thread, const JSHandle<GlobalEnv> &env,
-                                         GlobalEnvConstants *globalConst);
+    static void InitializeBitVectorIterator(JSThread *thread, const JSHandle<GlobalEnv> &env);
     static JSHandle<JSTaggedValue> InitializeQueue(JSThread *thread);
-    static void InitializeQueueIterator(JSThread *thread, const JSHandle<GlobalEnv> &env,
-                                        GlobalEnvConstants *globalConst);
+    static void InitializeQueueIterator(JSThread *thread, const JSHandle<GlobalEnv> &env);
     static JSHandle<JSTaggedValue> InitializeDeque(JSThread *thread);
-    static void InitializeDequeIterator(JSThread *thread,  const JSHandle<GlobalEnv> &env,
-                                        GlobalEnvConstants *globalConst);
+    static void InitializeDequeIterator(JSThread *thread,  const JSHandle<GlobalEnv> &env);
     static JSHandle<JSTaggedValue> InitializeStack(JSThread *thread);
-    static void InitializeStackIterator(JSThread *thread, GlobalEnvConstants *globalConst);
+    static void InitializeStackIterator(JSThread *thread);
     static JSHandle<JSTaggedValue> InitializeList(JSThread *thread);
     static JSHandle<JSTaggedValue> InitializeLinkedList(JSThread *thread);
     static void InitializeLinkedListIterator(JSThread *thread, const JSHandle<GlobalEnv> &env);

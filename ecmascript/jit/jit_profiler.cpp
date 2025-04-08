@@ -1008,11 +1008,11 @@ bool JITProfiler::AddBuiltinsInfoByNameInInstance(ApEntityId abcId, int32_t bcOf
         // When JSType cannot uniquely identify builtins object, it is necessary to
         // query the receiver on the global constants.
         if (builtinsId == BuiltinTypeId::OBJECT) {
-            exceptRecvHClass = JSHClass::Cast(
-                mainThread_->GlobalConstants()->GetIteratorResultClass().GetTaggedObject());
+            JSHandle<GlobalEnv> env = mainThread_->GetEcmaVM()->GetGlobalEnv();
+            exceptRecvHClass = JSHClass::Cast(env->GetIteratorResultClass().GetTaggedValue().GetTaggedObject());
             if (exceptRecvHClass == receiver) {
                 GlobalIndex globalsId;
-                globalsId.UpdateGlobalConstId(static_cast<size_t>(ConstantIndex::ITERATOR_RESULT_CLASS));
+                globalsId.UpdateGlobalEnvId(static_cast<size_t>(GlobalEnvField::ITERATOR_RESULT_CLASS_INDEX));
                 AddBuiltinsGlobalInfo(abcId, bcOffset, globalsId);
                 return true;
             }
