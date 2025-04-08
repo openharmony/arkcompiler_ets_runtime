@@ -11424,7 +11424,6 @@ GateRef StubBuilder::LoadExternalmodulevar(GateRef glue, GateRef index, GateRef 
 
     Bind(&moduleEnvIsdefined);
     ModuleEnvMustBeValid(curModuleEnv);
-    GateRef curContext = GetCurrentEcmaContext(glue);
     GateRef resolvedBinding = GetValueFromTaggedArray(curModuleEnv, index);
     BRANCH_LIKELY(IntPtrEuqal(GetModuleLogger(glue), IntPtr(0)), &isNullPtr, &notNullPtr);
 
@@ -11448,7 +11447,7 @@ GateRef StubBuilder::LoadExternalmodulevar(GateRef glue, GateRef index, GateRef 
 
             Bind(&isLdEndExecPatchMain);
             GateRef resolvedModuleOfHotReload = CallNGCRuntime(glue, RTSTUB_ID(FindPatchModule),
-                                                               {glue, curContext, resolvedModule});
+                                                               {glue, resolvedModule});
             BRANCH(TaggedIsHole(resolvedModuleOfHotReload), &notLdEndExecPatchMain, &notHole);
 
             Bind(&notLdEndExecPatchMain);

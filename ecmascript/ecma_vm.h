@@ -20,6 +20,7 @@
 
 #include "ecmascript/base/config.h"
 #include "ecmascript/builtins/builtins_method_index.h"
+#include "ecmascript/global_handle_collection.h"
 #include "ecmascript/js_handle.h"
 #include "ecmascript/js_runtime_options.h"
 #include "ecmascript/mem/c_containers.h"
@@ -29,6 +30,7 @@
 #include "ecmascript/mem/heap_region_allocator.h"
 #include "ecmascript/napi/include/dfx_jsnapi.h"
 #include "ecmascript/napi/include/jsnapi.h"
+#include "ecmascript/patch/patch_loader.h"
 #include "ecmascript/taskpool/taskpool.h"
 #include "ecmascript/waiter_list.h"
 #include "libpandafile/bytecode_instruction-inl.h"
@@ -1160,6 +1162,39 @@ public:
     void AddSustainingJSHandle(SustainingJSHandle *sustainingHandle);
     void RemoveSustainingJSHandle(SustainingJSHandle *sustainingHandle);
 
+    void AddPatchModule(const CString &recordName, const JSHandle<JSTaggedValue> moduleRecord)
+    {
+        cachedPatchModules_.emplace(recordName, moduleRecord);
+    }
+
+    JSHandle<JSTaggedValue> FindPatchModule(const CString &recordName) const
+    {
+        auto iter = cachedPatchModules_.find(recordName);
+        if (iter != cachedPatchModules_.end()) {
+            return iter->second;
+        }
+        return JSHandle<JSTaggedValue>(thread_, JSTaggedValue::Hole());
+    }
+
+    void ClearPatchModules()
+    {
+        GlobalHandleCollection globalHandleCollection(thread_);
+        for (auto &item : cachedPatchModules_) {
+            globalHandleCollection.Dispose(item.second);
+        }
+        cachedPatchModules_.clear();
+    }
+
+    StageOfColdReload GetStageOfColdReload() const
+    {
+        return stageOfColdReload_;
+    }
+
+    void SetStageOfColdReload(StageOfColdReload stageOfColdReload)
+    {
+        stageOfColdReload_ = stageOfColdReload;
+    }
+
 private:
     void ClearBufferData();
     void ClearConstpoolBufferData();
@@ -1384,6 +1419,10 @@ private:
     // WaiterListNode(atomics)
     WaiterListNode waiterListNode_;
     AbcBufferCache *abcBufferCache_ {nullptr};
+
+    // for HotReload of module.
+    CMap<CString, JSHandle<JSTaggedValue>> cachedPatchModules_;
+    StageOfColdReload stageOfColdReload_ = StageOfColdReload::NOT_COLD_RELOAD;
 };
 }  // namespace ecmascript
 }  // namespace panda

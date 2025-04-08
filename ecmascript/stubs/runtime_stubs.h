@@ -161,7 +161,7 @@ public:
     static void FillObject(JSTaggedType *dst, JSTaggedType value, uint32_t count);
     static void ReverseArray(JSTaggedType *dst, uint32_t length);
 
-    static JSTaggedValue FindPatchModule(uintptr_t argGlue, EcmaContext *context, JSTaggedValue resolvedModule);
+    static JSTaggedValue FindPatchModule(uintptr_t argGlue, JSTaggedValue resolvedModule);
     static void FatalPrintMisstakenResolvedBinding(int32_t index, JSTaggedValue curModule);
 private:
     static void DumpToStreamWithHint(std::ostream &out, std::string_view prompt, JSTaggedValue value);

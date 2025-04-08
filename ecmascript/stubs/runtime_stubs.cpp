@@ -4623,12 +4623,12 @@ void RuntimeStubs::ReverseArray(JSTaggedType *dst, uint32_t length)
     std::reverse(dst, dst + length);
 }
 
-JSTaggedValue RuntimeStubs::FindPatchModule(uintptr_t argGlue, EcmaContext *context, JSTaggedValue resolvedModule)
+JSTaggedValue RuntimeStubs::FindPatchModule(uintptr_t argGlue, JSTaggedValue resolvedModule)
 {
     DISALLOW_GARBAGE_COLLECTION;
     auto thread = JSThread::GlueToJSThread(argGlue);
     JSHandle<SourceTextModule> module(thread, resolvedModule);
-    return (context->FindPatchModule(module->GetEcmaModuleRecordNameString())).GetTaggedValue();
+    return (thread->GetEcmaVM()->FindPatchModule(module->GetEcmaModuleRecordNameString())).GetTaggedValue();
 }
 
 void RuntimeStubs::FatalPrintMisstakenResolvedBinding(int32_t index, JSTaggedValue curModule)

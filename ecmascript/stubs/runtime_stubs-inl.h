@@ -2503,7 +2503,7 @@ void RuntimeStubs::RuntimeSetPatchModule(JSThread *thread, const JSHandle<JSFunc
 {
     JSHandle<Method> methodHandle(thread, Method::Cast(func->GetMethod()));
     const JSHandle<JSTaggedValue> coldReloadRecordName =
-            thread->GetCurrentEcmaContext()->FindPatchModule(MethodLiteral::GetRecordName(
+            thread->GetEcmaVM()->FindPatchModule(MethodLiteral::GetRecordName(
                 methodHandle->GetJSPandaFile(), methodHandle->GetMethodId()));
     if (!coldReloadRecordName->IsHole()) {
         func->SetModule(thread, coldReloadRecordName.GetTaggedValue());

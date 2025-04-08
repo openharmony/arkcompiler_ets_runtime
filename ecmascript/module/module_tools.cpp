@@ -67,10 +67,9 @@ JSTaggedValue ModuleTools::ProcessModuleLoadInfo(JSThread *thread, JSHandle<Sour
 
         // Support for only modifying var value of HotReload.
         // Cause patchFile exclude the record of importing modifying var. Can't reresolve moduleRecord.
-        EcmaContext *context = thread->GetCurrentEcmaContext();
         if (thread->GetStageOfHotReload() == StageOfHotReload::LOAD_END_EXECUTE_PATCHMAIN) {
             const JSHandle<JSTaggedValue> resolvedModuleOfHotReload =
-                context->FindPatchModule(module->GetEcmaModuleRecordNameString());
+                thread->GetEcmaVM()->FindPatchModule(module->GetEcmaModuleRecordNameString());
             if (!resolvedModuleOfHotReload->IsHole()) {
                 resolvedModule = resolvedModuleOfHotReload.GetTaggedValue();
                 JSHandle<SourceTextModule> moduleOfHotReload(thread, resolvedModule);
@@ -206,10 +205,9 @@ JSTaggedValue ModuleTools::ProcessLazyModuleLoadInfo(JSThread *thread, JSHandle<
         ASSERT(resolvedModule.IsSourceTextModule());
         // Support for only modifying var value of HotReload.
         // Cause patchFile exclude the record of importing modifying var. Can't reresolve moduleRecord.
-        EcmaContext *context = thread->GetCurrentEcmaContext();
         if (thread->GetStageOfHotReload() == StageOfHotReload::LOAD_END_EXECUTE_PATCHMAIN) {
             const JSHandle<JSTaggedValue> resolvedModuleOfHotReload =
-                context->FindPatchModule(module->GetEcmaModuleRecordNameString());
+                thread->GetEcmaVM()->FindPatchModule(module->GetEcmaModuleRecordNameString());
             if (!resolvedModuleOfHotReload->IsHole()) {
                 resolvedModule = resolvedModuleOfHotReload.GetTaggedValue();
                 module.Update(resolvedModule);
