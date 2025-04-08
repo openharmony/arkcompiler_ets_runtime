@@ -335,7 +335,7 @@ void AotCompilerPreprocessor::ResolveModule(const JSPandaFile *jsPandaFile, cons
 
 void AotCompilerPreprocessor::GeneratePGOTypes()
 {
-    PGOTypeManager *ptManager = vm_->GetJSThread()->GetCurrentEcmaContext()->GetPTManager();
+    PGOTypeManager* ptManager = vm_->GetPTManager();
     for (uint32_t i = 0; i < fileInfos_.size(); ++i) {
         auto& collector = *bcInfoCollectors_[i];
         PGOTypeParser parser(profilerDecoder_, ptManager);
@@ -348,7 +348,7 @@ void AotCompilerPreprocessor::GeneratePGOTypes()
 
 void AotCompilerPreprocessor::SnapshotInitialize()
 {
-    PGOTypeManager *ptManager = vm_->GetJSThread()->GetCurrentEcmaContext()->GetPTManager();
+    PGOTypeManager* ptManager = vm_->GetPTManager();
     ptManager->InitAOTSnapshot(fileInfos_.size());
 }
 

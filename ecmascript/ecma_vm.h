@@ -25,12 +25,13 @@
 #include "ecmascript/js_runtime_options.h"
 #include "ecmascript/mem/c_containers.h"
 #include "ecmascript/mem/c_string.h"
-#include "ecmascript/mem/gc_stats.h"
 #include "ecmascript/mem/gc_key_stats.h"
+#include "ecmascript/mem/gc_stats.h"
 #include "ecmascript/mem/heap_region_allocator.h"
 #include "ecmascript/napi/include/dfx_jsnapi.h"
 #include "ecmascript/napi/include/jsnapi.h"
 #include "ecmascript/patch/patch_loader.h"
+#include "ecmascript/stackmap/ark_stackmap.h"
 #include "ecmascript/taskpool/taskpool.h"
 #include "ecmascript/waiter_list.h"
 #include "libpandafile/bytecode_instruction-inl.h"
@@ -72,6 +73,15 @@ class JSThread;
 namespace pgo {
     class PGOProfiler;
 } // namespace pgo
+
+class OptCodeProfiler;
+class TypedOpProfiler;
+class FunctionProtoTransitionTable;
+struct CJSInfo;
+
+namespace kungfu {
+class PGOTypeManager;
+} // namespace kungfu
 
 using PGOProfiler = pgo::PGOProfiler;
 #if !WIN_OR_MAC_OR_IOS_PLATFORM
@@ -1163,6 +1173,36 @@ public:
     void AddSustainingJSHandle(SustainingJSHandle *sustainingHandle);
     void RemoveSustainingJSHandle(SustainingJSHandle *sustainingHandle);
 
+    kungfu::PGOTypeManager* GetPTManager() const
+    {
+        return ptManager_;
+    }
+
+    OptCodeProfiler* GetOptCodeProfiler() const
+    {
+        return optCodeProfiler_;
+    }
+
+    TypedOpProfiler* GetTypedOpProfiler() const
+    {
+        return typedOpProfiler_;
+    }
+
+    FunctionProtoTransitionTable* GetFunctionProtoTransitionTable() const
+    {
+        return functionProtoTransitionTable_;
+    }
+
+    void PrintOptStat();
+    void DumpAOTInfo() const DUMP_API_ATTR;
+    std::tuple<uint64_t, uint8_t*, int, kungfu::CalleeRegAndOffsetVec> CalCallSiteInfo(uintptr_t retAddr,
+                                                                                       bool isDeopt) const;
+    void LoadStubFile();
+    bool LoadAOTFilesInternal(const std::string& aotFileName);
+    bool LoadAOTFiles(const std::string& aotFileName);
+    void PUBLIC_API LoadProtoTransitionTable(JSTaggedValue constpool);
+    void PUBLIC_API ResetProtoTransitionTableOnConstpool(JSTaggedValue constpool);
+
     void AddPatchModule(const CString &recordName, const JSHandle<JSTaggedValue> moduleRecord)
     {
         cachedPatchModules_.emplace(recordName, moduleRecord);
@@ -1362,6 +1402,7 @@ private:
 
     //AOT File Manager
     AOTFileManager *aotFileManager_ {nullptr};
+    kungfu::PGOTypeManager* ptManager_ {nullptr};
 
     // c++ call js
     size_t callDepth_ {0};
@@ -1430,6 +1471,12 @@ private:
     JSTaggedType *primitiveScopeStorageEnd_ {nullptr};
     std::vector<std::array<JSTaggedType, NODE_BLOCK_SIZE> *> primitiveStorageNodes_ {};
     int32_t currentPrimitiveStorageIndex_ {-1};
+    // for recording the transition of function prototype
+    FunctionProtoTransitionTable* functionProtoTransitionTable_ {nullptr};
+    // opt code Profiler
+    OptCodeProfiler* optCodeProfiler_ {nullptr};
+    // opt code loop hoist
+    TypedOpProfiler* typedOpProfiler_ {nullptr};
     // RegExpParserCache
     RegExpParserCache *regExpParserCache_ {nullptr};
     // WaiterListNode(atomics)

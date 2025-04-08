@@ -5232,7 +5232,7 @@ void JSNApi::LoadAotFile(EcmaVM *vm, const std::string &moduleName)
         vm->DisablePGOProfilerWithAOTFile(aotFileName);
     }
     LOG_ECMA(INFO) << "start to load aot file: " << aotFileName;
-    thread->GetCurrentEcmaContext()->LoadAOTFiles(aotFileName);
+    vm->LoadAOTFiles(aotFileName);
 }
 
 #if defined(CROSS_PLATFORM) && defined(ANDROID_PLATFORM)

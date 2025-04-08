@@ -416,7 +416,7 @@ JSHClass *JSHClass::FindTransitionProtoForAOT(const JSThread *thread, const JSHa
     if (!jshclass->IsAOT() || !baseIhc->IsAOT()) {
         return nullptr;
     }
-    auto transitionTable = thread->GetCurrentEcmaContext()->GetFunctionProtoTransitionTable();
+    auto transitionTable = thread->GetEcmaVM()->GetFunctionProtoTransitionTable();
     auto transHc = transitionTable->FindTransitionByHClass(thread,
                                                            JSHandle<JSTaggedValue>(jshclass),
                                                            JSHandle<JSTaggedValue>(baseIhc));

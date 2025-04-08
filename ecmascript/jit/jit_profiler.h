@@ -73,7 +73,7 @@ public:
     void InitJITProfiler()
     {
         mainThread_ = vm_->GetJSThread();
-        ptManager_ = mainThread_->GetCurrentEcmaContext()->GetPTManager();
+        ptManager_ = vm_->GetPTManager();
     }
     void SetCompilationEnv(CompilationEnv *env)
     {

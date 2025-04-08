@@ -191,7 +191,7 @@ void PGOTypeManager::GenHClassInfo()
 
 void PGOTypeManager::GenProtoTransitionInfo()
 {
-    auto transitionTable = thread_->GetCurrentEcmaContext()->GetFunctionProtoTransitionTable();
+    auto transitionTable = thread_->GetEcmaVM()->GetFunctionProtoTransitionTable();
     for (auto &protoTransType : protoTransTypes_) {
         JSTaggedValue ihc = QueryHClass(protoTransType.ihcType, protoTransType.ihcType);
         JSTaggedValue baseIhc = QueryHClass(protoTransType.baseRootType, protoTransType.baseType);
