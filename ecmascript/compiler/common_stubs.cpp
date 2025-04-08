@@ -629,7 +629,7 @@ void DeprecatedGetPropertyByValueStubBuilder::GenerateCircuit()
     GateRef glue = PtrArgument(0);
     GateRef receiver = TaggedArgument(1);
     GateRef key = TaggedArgument(2); // 2 : 3rd para
-    Return(GetPropertyByValue(glue, receiver, key, ProfileOperation()));
+    Return(GetPropertyByValue(glue, receiver, key));
 }
 
 void SetPropertyByValueStubBuilder::GenerateCircuit()
@@ -1339,7 +1339,19 @@ void JSProxySetPropertyStubBuilder::GenerateCircuit()
     GateRef value = TaggedArgument(3U);
     GateRef receiver = TaggedArgument(4U);
     BuiltinsProxyStubBuilder proxyStubBuilder(this, glue);
-    GateRef result = proxyStubBuilder.SetProperty(holder, key, value, receiver);
+    GateRef result = proxyStubBuilder.SetProperty(holder, key, value, receiver, true);
+    Return(result);
+}
+
+void JSProxySetPropertyNoThrowStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef holder = TaggedArgument(1);
+    GateRef key = TaggedArgument(2U);
+    GateRef value = TaggedArgument(3U);
+    GateRef receiver = TaggedArgument(4U);
+    BuiltinsProxyStubBuilder proxyStubBuilder(this, glue);
+    GateRef result = proxyStubBuilder.SetProperty(holder, key, value, receiver, false);
     Return(result);
 }
 

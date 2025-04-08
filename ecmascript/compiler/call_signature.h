@@ -586,6 +586,7 @@ private:
     V(JSSetAdd)                                 \
     V(JSProxyGetProperty)                       \
     V(JSProxySetProperty)                       \
+    V(JSProxySetPropertyNoThrow)                \
     V(GrowElementsCapacity)                     \
     V(CreateJSTypedArrayEntries)                \
     V(CreateJSTypedArrayKeys)                   \

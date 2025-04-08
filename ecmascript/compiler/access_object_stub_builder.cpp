@@ -39,7 +39,7 @@ GateRef AccessObjectStubBuilder::LoadObjByName(GateRef glue, GateRef receiver, G
     Bind(&tryFastPath);
     {
         GateRef propKey = ResolvePropKey(glue, prop, info);
-        result = GetPropertyByName(glue, receiver, propKey, callback, True());
+        result = GetPropertyByName(glue, receiver, propKey, Circuit::NullGate(), callback);
         BRANCH(TaggedIsHole(*result), &slowPath, &exit);
     }
     Bind(&tryPreDump);
@@ -140,7 +140,7 @@ GateRef AccessObjectStubBuilder::LoadPrivatePropertyByName(
     builder.LoadICByName(&result, &tryFastPath, &tryPreDump, &exit, callback);
     Bind(&tryFastPath);
     {
-        result = GetPropertyByName(glue, receiver, key, callback, True());
+        result = GetPropertyByName(glue, receiver, key, Circuit::NullGate(), callback);
         BRANCH(TaggedIsHole(*result), &slowPath, &exit);
     }
     Bind(&tryPreDump);
@@ -173,7 +173,7 @@ GateRef AccessObjectStubBuilder::DeprecatedLoadObjByName(GateRef glue, GateRef r
     BRANCH(TaggedIsHeapObject(receiver), &fastPath, &slowPath);
     Bind(&fastPath);
     {
-        result = GetPropertyByName(glue, receiver, propKey, ProfileOperation(), True());
+        result = GetPropertyByName(glue, receiver, propKey);
         BRANCH(TaggedIsHole(*result), &slowPath, &exit);
     }
     Bind(&slowPath);
@@ -305,7 +305,7 @@ GateRef AccessObjectStubBuilder::LoadObjByValue(GateRef glue, GateRef receiver, 
     builder.LoadICByValue(&result, &tryFastPath, &tryPreDump, &exit, callback);
     Bind(&tryFastPath);
     {
-        result = GetPropertyByValue(glue, receiver, key, callback);
+        result = GetPropertyByValue(glue, receiver, key, Circuit::NullGate(), callback);
         BRANCH(TaggedIsHole(*result), &slowPath, &exit);
     }
     Bind(&tryPreDump);
@@ -338,7 +338,7 @@ GateRef AccessObjectStubBuilder::DeprecatedLoadObjByValue(GateRef glue, GateRef 
     BRANCH(TaggedIsHeapObject(receiver), &fastPath, &slowPath);
     Bind(&fastPath);
     {
-        result = GetPropertyByValue(glue, receiver, key, ProfileOperation());
+        result = GetPropertyByValue(glue, receiver, key);
         BRANCH(TaggedIsHole(*result), &slowPath, &exit);
     }
     Bind(&slowPath);

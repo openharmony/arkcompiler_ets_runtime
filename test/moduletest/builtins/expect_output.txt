@@ -331,5 +331,73 @@ v56.length 102630708
 tom
 RangeError
 RangeError
+Reflect.set Ir test
+Reflect.set undefined test pass
+Reflect.set null test pass
+key is array
+key is over int32 max
+key is minusOne
+key is lessThanInt32Min
+key is strKeyNumber
+key is strKeyNumberMinusOne
+key is strKeyNumberOverInt32
+key is strKeyNumberLessInt32Min
+toString error
+normal proxy
+return false proxy
+nothrow proxy
+throw proxy
+throw error in proxy
+sym to number fail
+shoud not throw arr not Extensions
+don't throw error if length not writeable
+don't throw error if value not configurable
+no exception or dictionary arr
+setterNothrow call setter
+setterNothrow good
+setterthrow call setter
+error in setter
+setterReturnFalse call setter
+testSetProperty:  true
+testSetNonExistentProperty:  true
+testSetInProxy: true
+testSetWithSymbol: true
+testSetReceiver: false
+testSetPropertyAndCheckExists: true
+testSetInProxyThrowsException: true
+testSetThrowsError: undefined assignment allowed
+testSetNestedObjectProperty: true
+testSetNestedPropertyInProxy: false
+testSetNonConfigurableProperty: No error for non-configurable
+testSetPrototypeProperty: true
+testSetAccessorPropertyInProxy: true
+Reflect.get Ir test
+testGetterUsesReceiverThis: true
+testReceiverIsNull: true
+testReceiverIsPrimitive: true
+testReceiverMissingFields: true
+testReceiverWithOwnFields: true
+testReceiverInheritance: true
+testReceiverIsSameAsTarget: true
+testReceiverArrayLength: true
+testReceiverIsProxy: true
+testReceiverIsClassInstance: true
+testReceiverIsInPrototypeChain: true
+testReceiverIsNull: true
+testReceiverIsUndefined: true
+testReceiverModifiedBySet: true
+Reflect.has Ir test
+testHasPropertyExists: true
+testHasPropertyDoesNotExist: true
+testHasPropertyInPrototypeChain: true
+testHasWithNull: true
+testHasWithUndefined: true
+testHasInProxy: foo exists: true
+testHasInProxy: bar exists: true
+testHasAndGetCombination: true
+testHasInProxyWithNonExistentProperty: true
+testHasVsInOperator: true
+testHasWithSymbol: true
+testHasWithNonExistentSymbol: true
 builtins reflect end
 start concurrent mark

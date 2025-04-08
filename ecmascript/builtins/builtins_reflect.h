@@ -20,6 +20,12 @@
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_array.h"
 
+#if ENABLE_NEXT_OPTIMIZATION
+#define CONDITION_BUILTIN_REFLECT_HAS_FUNCTION(V) V("set", ReflectSet, 3, ReflectSet)
+#else
+#define CONDITION_BUILTIN_REFLECT_HAS_FUNCTION(V) V("set", ReflectSet, 3, INVALID)
+#endif
+
 // List of functions in Reflect, excluding the '@@' properties.
 // V(name, func, length, stubIndex)
 // where BuiltinsRefject::func refers to the native implementation of Reflect[name].
@@ -48,7 +54,7 @@
     /* Reflect.preventExtensions ( target ) */                                          \
     V("preventExtensions",        ReflectPreventExtensions,        1, INVALID)          \
     /* Reflect.set ( target, propertyKey, V [ , receiver ] ) */                         \
-    V("set",                      ReflectSet,                      3, INVALID)          \
+    CONDITION_BUILTIN_REFLECT_HAS_FUNCTION(V)                                           \
     /* Reflect.setPrototypeOf ( target, proto ) */                                      \
     V("setPrototypeOf",           ReflectSetPrototypeOf,           2, INVALID)
 

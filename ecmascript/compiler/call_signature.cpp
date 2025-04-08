@@ -3509,6 +3509,24 @@ DEF_CALL_SIGNATURE(JSProxySetProperty)
     callSign->SetCallConv(CallSignature::CallConv::CCallConv);;
 }
 
+DEF_CALL_SIGNATURE(JSProxySetPropertyNoThrow)
+{
+    constexpr size_t paramCount = 5;
+    CallSignature signature("JSProxySetPropertyNoThrow", 0, paramCount, ArgumentsOrder::DEFAULT_ORDER,
+                            VariableType::JS_ANY());
+    *callSign = signature;
+    std::array<VariableType, paramCount> params = {
+        VariableType::NATIVE_POINTER(),  // glue
+        VariableType::JS_ANY(),          // holder
+        VariableType::JS_ANY(),          // key
+        VariableType::JS_ANY(),          // value
+        VariableType::JS_ANY(),          // receiver
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetCallConv(CallSignature::CallConv::CCallConv);
+    ;
+}
+
 DEF_CALL_SIGNATURE(FindPatchModule)
 {
     // 3 : 3 input parameters
