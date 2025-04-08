@@ -4261,9 +4261,15 @@ inline GateRef StubBuilder::GetResolveModuleFromResolvedBinding(GateRef resolved
     return Load(VariableType::JS_ANY(), resolvedBinding, moduleOffset);
 }
 
-inline GateRef StubBuilder::GetIndexFromResolvedBinding(GateRef resolvedBinding)
+inline GateRef StubBuilder::GetIdxOfResolvedIndexBinding(GateRef resolvedBinding)
 {
     GateRef indexOffset = IntPtr(ResolvedIndexBinding::INDEX_OFFSET);
+    return Load(VariableType::INT32(), resolvedBinding, indexOffset);
+}
+
+inline GateRef StubBuilder::GetIdxOfResolvedRecordIndexBinding(GateRef resolvedBinding)
+{
+    GateRef indexOffset = IntPtr(ResolvedRecordIndexBinding::INDEX_OFFSET);
     return Load(VariableType::INT32(), resolvedBinding, indexOffset);
 }
 
