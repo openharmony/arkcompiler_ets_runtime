@@ -601,6 +601,8 @@ public:
     GateRef IndexCheck(GateRef gate, GateRef index);
     GateRef ObjectTypeCheck(bool isHeapObject, GateRef gate, GateRef hclassIndex,
                             GateRef frameState = Gate::InvalidGateRef);
+    GateRef ObjectTypeCheck(bool isHeapObject, GateRef gate, const std::vector<int>& hclassIndexList,
+                            GateRef frameState = Gate::InvalidGateRef);
     GateRef TryPrimitiveTypeCheck(GateType type, GateRef gate);
     GateRef CallTargetCheck(GateRef gate, GateRef function, GateRef id, const char* comment = nullptr);
     GateRef CallTargetCheck(GateRef gate, GateRef function, GateRef id, std::vector<GateRef> params,

@@ -168,6 +168,7 @@ int Main(const int argc, const char **argv)
                 .EnableEscapeAnalysis(cOptions.isEnableEscapeAnalysis_)
                 .EnableInductionVariableAnalysis(cOptions.isEnableInductionVariableAnalysis_)
                 .EnableVerifierPass(cOptions.isEnableVerifierPass_)
+                .EnableMergePoly(cOptions.isEnableMergePoly_)
                 .Build();
 
         PassManager passManager(&aotCompilationEnv,

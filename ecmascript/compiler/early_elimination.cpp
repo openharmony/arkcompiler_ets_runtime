@@ -329,6 +329,10 @@ bool EarlyElimination::CheckReplacement(GateRef lhs, GateRef rhs)
             return false;
         }
     }
+    
+    if (acc_.GetNumValueIn(lhs) != acc_.GetNumValueIn(rhs)) {
+        return false;
+    }
 
     size_t valueCount = acc_.GetNumValueIn(lhs);
     for (size_t i = 0; i < valueCount; i++) {

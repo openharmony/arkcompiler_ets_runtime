@@ -901,24 +901,30 @@ class ObjectAccessTypeInfoAccessor : public TypeInfoAccessor {
 public:
     class ObjectAccessInfo final {
     public:
-        explicit ObjectAccessInfo(int hclassIndex = -1, PropertyLookupResult plr = PropertyLookupResult())
-            : hclassIndex_(hclassIndex), plr_(plr), hclass_(nullptr) {}
+        explicit ObjectAccessInfo() : plr_(PropertyLookupResult()) {}
 
         void Set(int hclassIndex, PropertyLookupResult plr)
         {
-            hclassIndex_ = hclassIndex;
+            hclassIndexes_.emplace_back(hclassIndex);
             plr_ = plr;
         }
 
-        void Set(JSHClass* hclass, PropertyLookupResult plr)
+        void AppendHClassIndex(int hclassIndex)
         {
-            hclass_ = hclass;
-            plr_ = plr;
+            hclassIndexes_.emplace_back(hclassIndex);
         }
 
-        int HClassIndex() const
+        int HClassIndex(size_t index = 0) const
         {
-            return hclassIndex_;
+            if (hclassIndexes_.size() <= index) {
+                return -1;
+            }
+            return hclassIndexes_.at(index);
+        }
+
+        uint32_t GetData() const
+        {
+            return plr_.GetData();
         }
 
         PropertyLookupResult Plr() const
@@ -926,10 +932,14 @@ public:
             return plr_;
         }
 
+        const std::vector<int>& GetHClassIndexList() const
+        {
+            return hclassIndexes_;
+        }
+
     private:
-        int hclassIndex_;
         PropertyLookupResult plr_;
-        JSHClass* hclass_;
+        std::vector<int> hclassIndexes_ {};
     };
 
     enum AccessMode : uint8_t {
@@ -1008,6 +1018,12 @@ public:
         return checkerInfos_[index].HClassIndex();
     }
 
+    const std::vector<int>& GetExpectedHClassIndexList(size_t index) const
+    {
+        ASSERT(index < checkerInfos_.size());
+        return checkerInfos_[index].GetHClassIndexList();
+    }
+
     ObjectAccessInfo GetAccessInfo(size_t index) const
     {
         ASSERT(index < accessInfos_.size());
@@ -1047,7 +1063,7 @@ public:
 
         bool IsMono() const override
         {
-            return parent_.types_.size() == 1;
+            return parent_.accessInfos_.size() == 1;
         }
 
         void FetchPGORWTypesDual() override;
@@ -1294,7 +1310,7 @@ public:
 
         size_t GetTypeCount() const override
         {
-            return parent_.types_.size();
+            return parent_.accessInfos_.size();
         }
 
         bool TypesIsEmpty() const override
@@ -1304,7 +1320,7 @@ public:
 
         bool IsMono() const override
         {
-            return parent_.types_.size() == 1;
+            return parent_.accessInfos_.size() == 1;
         }
 
         bool IsReceiverEqHolder(size_t index) const override
@@ -1328,17 +1344,17 @@ public:
 
         size_t GetTypeCount() const override
         {
-            return parent_.jitTypes_.size();
+            return parent_.accessInfos_.size();
         }
 
         bool TypesIsEmpty() const override
         {
-            return parent_.jitTypes_.empty();
+            return parent_.accessInfos_.empty();
         }
 
         bool IsMono() const override
         {
-            return parent_.jitTypes_.size() == 1;
+            return parent_.accessInfos_.size() == 1;
         }
 
         bool IsReceiverEqHolder(size_t index) const override
@@ -1373,7 +1389,55 @@ public:
 
     bool IsReceiverEqHolder(size_t index)
     {
-        return strategy_->IsReceiverEqHolder(index);
+        return accessInfos_.at(index).HClassIndex() == checkerInfos_.at(index).HClassIndex();
+    }
+
+    bool CanBeMerged(ObjectAccessInfo& leftAccessInfo, ObjectAccessInfo& leftCheckerInfo,
+                     ObjectAccessInfo& rightAccessInfo, ObjectAccessInfo& rightCheckerInfo)
+    {
+        if (leftCheckerInfo.HClassIndex() == leftAccessInfo.HClassIndex()) {
+            if (rightAccessInfo.HClassIndex() == rightCheckerInfo.HClassIndex() &&
+                rightAccessInfo.GetData() == leftAccessInfo.GetData()) {
+                return true;
+            }
+            return false;
+        } else {
+            if (leftAccessInfo.HClassIndex() == rightAccessInfo.HClassIndex() &&
+                rightAccessInfo.GetData() == leftAccessInfo.GetData()) {
+                return true;
+            }
+            return false;
+        }
+    }
+
+    void TryMergeExpectedHClass()
+    {
+        std::vector<bool> infoIsMerged(accessInfos_.size(), false);
+        for (size_t i = 0; i < accessInfos_.size(); i++) {
+            ObjectAccessInfo& accessInfo = accessInfos_[i];
+            ObjectAccessInfo& checkerInfo = checkerInfos_[i];
+            bool isMerged = false;
+
+            for (auto j = 0; j < i; j++) {
+                if (infoIsMerged[j]) {
+                    continue;
+                }
+                if (CanBeMerged(accessInfo, checkerInfo, accessInfos_[j], checkerInfos_[j])) {
+                    isMerged = true;
+                    accessInfos_[j].AppendHClassIndex(accessInfo.HClassIndex());
+                    checkerInfos_[j].AppendHClassIndex(checkerInfo.HClassIndex());
+                    infoIsMerged[i] = true;
+                    break;
+                }
+            }
+            infoIsMerged.at(i) = isMerged;
+        }
+        for (int i = accessInfos_.size() - 1; i >= 0; i--) {
+            if (infoIsMerged[i]) {
+                accessInfos_.erase(accessInfos_.begin() + i);
+                checkerInfos_.erase(checkerInfos_.begin() + i);
+            }
+        }
     }
 
 private:

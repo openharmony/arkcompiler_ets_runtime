@@ -203,6 +203,7 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "                                      Default : 'false'\n"
     "--compiler-an-file-max-size:          Max size of compiler .an file in MB. '0' means Default\n"
     "                                      Default: No limit for Host, '100' for TargetCompilerMode\n"
+    "--compiler-enable-merge-poly:         Enable poly-merge optimization for ldobjbyname. Default: 'true'\n"
     // Please add new options above this line for keep a blank line after help message.
     "\n";
 
@@ -354,6 +355,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"compile-enable-jit-verify-pass", required_argument, nullptr, OPTION_ENABLE_JIT_VERIFY_PASS},
         {"compiler-an-file-max-size", required_argument, nullptr, OPTION_COMPILER_AN_FILE_MAX_SIZE},
         {"compiler-trace-builtins", required_argument, nullptr, OPTION_COMPILER_TRACE_BUILTINS},
+        {"compiler-enable-merge-poly", required_argument, nullptr, OPTION_COMPILER_ENABLE_MERGE_POLY},
         {nullptr, 0, nullptr, 0},
         
     };
@@ -1408,6 +1410,14 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 ret = ParseUint64Param("compiler-an-file-max-size", &argUInt64);
                 if (ret) {
                     SetCompilerAnFileMaxByteSize(argUInt64 * 1_MB);
+                } else {
+                    return false;
+                }
+                break;
+            case OPTION_COMPILER_ENABLE_MERGE_POLY:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetEnableMergePoly(argBool);
                 } else {
                     return false;
                 }

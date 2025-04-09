@@ -286,6 +286,7 @@ group("ark_aot_ts_test") {
     "pgo_space_flag",
     "pgo_store_deopt",
     "pgo_track_type",
+    "poly_merge",
     "poplexenv",
     "proxy",
     "privateproperty",

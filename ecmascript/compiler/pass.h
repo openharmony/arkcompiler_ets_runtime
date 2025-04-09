@@ -330,6 +330,7 @@ public:
                                       enableTypeLog,
                                       data->GetMethodName(),
                                       passOptions->EnableLoweringBuiltin(),
+                                      passOptions->EnableMergePoly(),
                                       data->GetRecordName(),
                                       data->GetCallMethodFlagMap(),
                                       data->GetPGOProfilerDecoder(),
