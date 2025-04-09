@@ -1422,14 +1422,14 @@ void BuiltinsTypedArrayStubBuilder::Filter(GateRef glue, GateRef thisValue, Gate
     Label accessorNotChanged(env);
     BRANCH(TaggedIsUndefinedOrNull(thisValue), slowPath, &thisExists);
     Bind(&thisExists);
-    GateRef buffer = GetViewedArrayBuffer(thisValue);
-    BRANCH(IsDetachedBuffer(buffer), slowPath, &notDetached);
-    Bind(&notDetached);
     BRANCH(IsEcmaObject(thisValue), &isEcmaObject, slowPath);
     Bind(&isEcmaObject);
     GateRef arrayType = GetObjectType(LoadHClass(thisValue));
     BRANCH(IsFastTypeArray(arrayType), &isFastTypedArray, slowPath);
     Bind(&isFastTypedArray);
+    GateRef buffer = GetViewedArrayBuffer(thisValue);
+    BRANCH(IsDetachedBuffer(buffer), slowPath, &notDetached);
+    Bind(&notDetached);
     BRANCH(HasConstructor(thisValue), slowPath, &defaultConstr);
     Bind(&defaultConstr);
     GateRef prototype = GetPrototypeFromHClass(LoadHClass(thisValue));
