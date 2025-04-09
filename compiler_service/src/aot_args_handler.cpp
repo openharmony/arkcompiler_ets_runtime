@@ -15,6 +15,7 @@
 
 #include "aot_args_handler.h"
 
+#include <charconv>
 #include <fstream>
 #include <nlohmann/json.hpp>
 
@@ -102,9 +103,10 @@ int32_t AOTArgsParserBase::FindArgsIdxToInteger(const std::unordered_map<std::st
         return ERR_AOT_COMPILER_PARAM_FAILED;
     }
 
-    size_t sz;
-    bundleID = static_cast<int32_t>(std::stoi(argsMap.at(keyName), &sz));
-    if (sz < static_cast<size_t>(argsMap.at(keyName).size())) {
+    const char* beginPtr = argsMap.at(keyName).data();
+    const char* endPtr = argsMap.at(keyName).data() + argsMap.at(keyName).size();
+    auto res = std::from_chars(beginPtr, endPtr, bundleID);
+    if ((res.ec != std::errc()) || (res.ptr != endPtr)) {
         LOG_SA(ERROR) << "trigger exception as converting string to integer";
         return ERR_AOT_COMPILER_PARAM_FAILED;
     }
