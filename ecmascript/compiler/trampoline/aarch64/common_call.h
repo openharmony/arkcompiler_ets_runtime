@@ -245,6 +245,8 @@ private:
 
     static void ThrowStackOverflowExceptionAndReturn(ExtendedAssembler *assembler, Register glue, Register fp,
         Register op);
+    static void ThrowStackOverflowExceptionAndReturnToAsmInterpBridgeFrame(ExtendedAssembler *assembler, Register glue,
+        Register fp, Register op);
 
     static void PushFrameState(ExtendedAssembler *assembler, Register prevSp, Register fp, Register currentSlot,
         Register callTarget, Register thisObj, Register method, Register pc, Register op);
