@@ -189,7 +189,8 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
         moduleName = entryPoint;
     }
     std::shared_ptr<JSPandaFile> jsPandaFile =
-        JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, fileName, entryPoint, false, false, ExecuteTypes::STATIC);
+        JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread,
+            fileName, entryPoint, false, false, ExecuteTypes::STATIC);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, CatchException(thread, reject));
     if (jsPandaFile == nullptr) {
         LOG_FULL(FATAL) << "Load current file's panda file failed. Current file is " << fileName;
