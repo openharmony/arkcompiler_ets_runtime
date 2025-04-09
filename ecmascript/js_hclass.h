@@ -2042,7 +2042,9 @@ public:
     static PUBLIC_API PropertyLookupResult LookupPropertyInBuiltinHClass(const JSThread *thread, JSHClass *hclass,
                                                                          JSTaggedValue key);
 
-    static constexpr size_t PROTOTYPE_OFFSET = TaggedObjectSize();
+    static constexpr size_t BIT_FIELD_OFFSET = TaggedObjectSize();
+    ACCESSORS_PRIMITIVE_FIELD(BitField, uint32_t, BIT_FIELD_OFFSET, BIT_FIELD1_OFFSET);
+    ACCESSORS_PRIMITIVE_FIELD(BitField1, uint32_t, BIT_FIELD1_OFFSET, PROTOTYPE_OFFSET);
     ACCESSORS(Proto, PROTOTYPE_OFFSET, LAYOUT_OFFSET);
     ACCESSORS_SYNCHRONIZED(Layout, LAYOUT_OFFSET, TRANSTIONS_OFFSET);
     ACCESSORS(Transitions, TRANSTIONS_OFFSET, PARENT_OFFSET);
@@ -2050,9 +2052,7 @@ public:
     ACCESSORS(ProtoChangeMarker, PROTO_CHANGE_MARKER_OFFSET, PROTO_CHANGE_DETAILS_OFFSET);
     ACCESSORS(ProtoChangeDetails, PROTO_CHANGE_DETAILS_OFFSET, ENUM_CACHE_OFFSET);
     ACCESSORS(EnumCache, ENUM_CACHE_OFFSET, PROFILE_TYPE);
-    ACCESSORS_PRIMITIVE_FIELD(ProfileType, uint64_t, PROFILE_TYPE, BIT_FIELD_OFFSET);
-    ACCESSORS_PRIMITIVE_FIELD(BitField, uint32_t, BIT_FIELD_OFFSET, BIT_FIELD1_OFFSET);
-    ACCESSORS_PRIMITIVE_FIELD(BitField1, uint32_t, BIT_FIELD1_OFFSET, LAST_OFFSET);
+    ACCESSORS_PRIMITIVE_FIELD(ProfileType, uint64_t, PROFILE_TYPE, LAST_OFFSET);
     DEFINE_ALIGN_SIZE(LAST_OFFSET);
 
     static JSHandle<JSHClass> SetPrototypeWithNotification(const JSThread *thread,
