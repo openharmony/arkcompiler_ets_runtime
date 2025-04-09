@@ -356,22 +356,6 @@ void EcmaContext::ResetProtoTransitionTableOnConstpool(JSTaggedValue constpool)
     ConstantPool::Cast(constpool.GetTaggedObject())->SetProtoTransTableInfo(thread_, JSTaggedValue::Undefined());
 }
 
-JSHandle<JSTaggedValue> EcmaContext::GetAndClearEcmaUncaughtException() const
-{
-    JSHandle<JSTaggedValue> exceptionHandle = GetEcmaUncaughtException();
-    thread_->ClearException();  // clear for ohos app
-    return exceptionHandle;
-}
-
-JSHandle<JSTaggedValue> EcmaContext::GetEcmaUncaughtException() const
-{
-    if (!thread_->HasPendingException()) {
-        return JSHandle<JSTaggedValue>();
-    }
-    JSHandle<JSTaggedValue> exceptionHandle(thread_, thread_->GetException());
-    return exceptionHandle;
-}
-
 void EcmaContext::SetGlobalEnv(GlobalEnv *global)
 {
     // In jsthread iteration, SwitchCurrentContext is called to iterate each context.
