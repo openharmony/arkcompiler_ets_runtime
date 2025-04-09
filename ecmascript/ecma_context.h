@@ -62,7 +62,6 @@ class JSFunction;
 class JSPromise;
 class JSTaggedValue;
 class EcmaVM;
-class ModuleManager;
 class AOTFileManager;
 class QuickFixManager;
 class OptCodeProfiler;
@@ -70,7 +69,6 @@ class TypedOpProfiler;
 class AbcBufferCache;
 struct CJSInfo;
 class FunctionProtoTransitionTable;
-class ModuleLogger;
 
 namespace job {
 class MicroJobQueue;
@@ -193,11 +191,6 @@ public:
     bool IsInitialized() const
     {
         return initialized_;
-    }
-
-    ModuleManager *GetModuleManager() const
-    {
-        return moduleManager_;
     }
 
     AbcBufferCache *GetAbcBufferCache() const
@@ -369,16 +362,6 @@ public:
         return typedOpProfiler_;
     }
 
-    ModuleLogger *GetModuleLogger() const
-    {
-        return moduleLogger_;
-    }
-
-    void SetModuleLogger(ModuleLogger *moduleLogger)
-    {
-        moduleLogger_ = moduleLogger;
-    }
-
     FunctionProtoTransitionTable *GetFunctionProtoTransitionTable() const
     {
         return functionProtoTransitionTable_;
@@ -481,15 +464,6 @@ public:
         cachedPatchModules_.clear();
     }
 
-    StageOfHotReload GetStageOfHotReload() const
-    {
-        return stageOfHotReload_;
-    }
-    void SetStageOfHotReload(StageOfHotReload stageOfHotReload)
-    {
-        stageOfHotReload_ = stageOfHotReload;
-    }
-
     StageOfColdReload GetStageOfColdReload() const
     {
         return stageOfColdReload_;
@@ -587,11 +561,9 @@ private:
 
     // for HotReload of module.
     CMap<CString, JSHandle<JSTaggedValue>> cachedPatchModules_ {};
-    StageOfHotReload stageOfHotReload_ = StageOfHotReload::INITIALIZE_STAGE_OF_HOTRELOAD;
     StageOfColdReload stageOfColdReload_ = StageOfColdReload::NOT_COLD_RELOAD;
 
     // VM resources.
-    ModuleManager *moduleManager_ {nullptr};
     kungfu::PGOTypeManager *ptManager_ {nullptr};
     AOTFileManager *aotFileManager_ {nullptr};
     AbcBufferCache *abcBufferCache_ {nullptr};
@@ -612,8 +584,6 @@ private:
 
     // opt code loop hoist
     TypedOpProfiler *typedOpProfiler_ {nullptr};
-
-    ModuleLogger *moduleLogger_ {nullptr};
 
     GlobalEnvConstants globalConst_;
     // Join Stack

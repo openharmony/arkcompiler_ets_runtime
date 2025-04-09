@@ -3941,9 +3941,12 @@ DECLARE_ASM_HANDLER(HandleLdexternalmodulevarImm8)
     GateRef index = ReadInst8_0(pc);
     GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
     GateRef module = GetModuleFromFunction(currentFunc);
-    GateRef moduleRef = CallRuntime(glue, RTSTUB_ID(LdExternalModuleVarByIndexWithModule),
-                                    {Int8ToTaggedInt(index), module});
-    varAcc = moduleRef;
+#if ENABLE_NEXT_OPTIMIZATION
+    GateRef indexInt32 = ZExtInt8ToInt32(index);
+    varAcc = LoadExternalmodulevar(glue, indexInt32, module);
+#else
+    varAcc = CallRuntime(glue, RTSTUB_ID(LdExternalModuleVarByIndexWithModule), {Int8ToTaggedInt(index), module});
+#endif
     DISPATCH_WITH_ACC(LDEXTERNALMODULEVAR_IMM8);
 }
 
@@ -3954,9 +3957,12 @@ DECLARE_ASM_HANDLER(HandleWideLdexternalmodulevarPrefImm16)
     GateRef index = ReadInst16_1(pc);
     GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
     GateRef module = GetModuleFromFunction(currentFunc);
-    GateRef moduleRef = CallRuntime(glue, RTSTUB_ID(LdExternalModuleVarByIndexWithModule),
-                                    {Int16ToTaggedInt(index), module});
-    varAcc = moduleRef;
+#if ENABLE_NEXT_OPTIMIZATION
+    GateRef indexInt32 = ZExtInt16ToInt32(index);
+    varAcc = LoadExternalmodulevar(glue, indexInt32, module);
+#else
+    varAcc = CallRuntime(glue, RTSTUB_ID(LdExternalModuleVarByIndexWithModule), {Int16ToTaggedInt(index), module});
+#endif
     DISPATCH_WITH_ACC(WIDE_LDEXTERNALMODULEVAR_PREF_IMM16);
 }
 

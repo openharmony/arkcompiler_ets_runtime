@@ -35,7 +35,7 @@ JSTaggedValue ModuleTools::GetModuleValueFromIndexBindingForLog(
     JSHandle<SourceTextModule> resolvedModule =
         ModuleManagerHelper::GetResolvedRecordIndexBindingModule(thread, module, binding);
     ModuleLogger *moduleLogger =
-        thread->GetCurrentEcmaContext()->GetModuleLogger();
+        thread->GetModuleLogger();
     moduleLogger->InsertModuleLoadInfo(module, resolvedModule, index);
     return ModuleManagerHelper::GetModuleValue(thread, resolvedModule, binding->GetIndex());
 }
@@ -48,7 +48,7 @@ JSTaggedValue ModuleTools::GetModuleValueFromRecordBindingForLog(
     JSHandle<SourceTextModule> resolvedModule =
         ModuleManagerHelper::GetResolvedRecordBindingModule(thread, module, binding);
     ModuleLogger *moduleLogger =
-        thread->GetCurrentEcmaContext()->GetModuleLogger();
+        thread->GetModuleLogger();
     moduleLogger->InsertModuleLoadInfo(module, resolvedModule, index);
     return ModuleManagerHelper::GetModuleValue(thread, resolvedModule, binding->GetBindingName());
 }
@@ -57,7 +57,7 @@ JSTaggedValue ModuleTools::GetModuleValueFromRecordBindingForLog(
 JSTaggedValue ModuleTools::ProcessModuleLoadInfo(JSThread *thread, JSHandle<SourceTextModule> currentModule,
     JSTaggedValue resolvedBinding, int32_t index)
 {
-    ModuleLogger *moduleLogger = thread->GetCurrentEcmaContext()->GetModuleLogger();
+    ModuleLogger *moduleLogger = thread->GetModuleLogger();
     JSMutableHandle<JSTaggedValue> res(thread, thread->GlobalConstants()->GetUndefined());
     if (resolvedBinding.IsResolvedIndexBinding()) {
         ResolvedIndexBinding *binding = ResolvedIndexBinding::Cast(resolvedBinding.GetTaggedObject());
@@ -68,7 +68,7 @@ JSTaggedValue ModuleTools::ProcessModuleLoadInfo(JSThread *thread, JSHandle<Sour
         // Support for only modifying var value of HotReload.
         // Cause patchFile exclude the record of importing modifying var. Can't reresolve moduleRecord.
         EcmaContext *context = thread->GetCurrentEcmaContext();
-        if (context->GetStageOfHotReload() == StageOfHotReload::LOAD_END_EXECUTE_PATCHMAIN) {
+        if (thread->GetStageOfHotReload() == StageOfHotReload::LOAD_END_EXECUTE_PATCHMAIN) {
             const JSHandle<JSTaggedValue> resolvedModuleOfHotReload =
                 context->FindPatchModule(module->GetEcmaModuleRecordNameString());
             if (!resolvedModuleOfHotReload->IsHole()) {
@@ -110,7 +110,7 @@ JSTaggedValue ModuleTools::ProcessModuleNameSpaceLoadInfo(
     JSThread *thread, JSHandle<SourceTextModule> currentModule, JSHandle<SourceTextModule> requiredModule)
 {
     ModuleTypes moduleType = requiredModule->GetTypes();
-    ModuleLogger *moduleLogger = thread->GetCurrentEcmaContext()->GetModuleLogger();
+    ModuleLogger *moduleLogger = thread->GetModuleLogger();
     // if requiredModule is Native module
     if (SourceTextModule::IsNativeModule(moduleType)) {
         moduleLogger->InsertModuleLoadInfo(currentModule, requiredModule, -1);
@@ -137,7 +137,7 @@ JSTaggedValue ModuleTools::GetLazyModuleValueFromIndexBindingForLog(
     JSHandle<JSTaggedValue> recordName(thread, binding->GetModuleRecord());
     ASSERT(recordName->IsString());
     // moduleRecord is string, find at current vm
-    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+    ModuleManager *moduleManager = thread->GetModuleManager();
     CString recordNameStr = ModulePathHelper::Utf8ConvertToString(recordName.GetTaggedValue());
     JSHandle<SourceTextModule> resolvedModule;
     if (moduleManager->IsLocalModuleLoaded(recordNameStr)) {
@@ -156,7 +156,7 @@ JSTaggedValue ModuleTools::GetLazyModuleValueFromIndexBindingForLog(
         resolvedModule = moduleManager->HostGetImportedModule(recordNameStr);
     }
     ModuleLogger *moduleLogger =
-        thread->GetCurrentEcmaContext()->GetModuleLogger();
+        thread->GetModuleLogger();
     moduleLogger->InsertModuleLoadInfo(module, resolvedModule, index);
     return ModuleManagerHelper::GetModuleValue(thread, resolvedModule, binding->GetIndex());
 }
@@ -169,7 +169,7 @@ JSTaggedValue ModuleTools::GetLazyModuleValueFromRecordBindingForLog(
     JSHandle<JSTaggedValue> recordName(thread, binding->GetModuleRecord());
     ASSERT(recordName->IsString());
     // moduleRecord is string, find at current vm
-    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+    ModuleManager *moduleManager = thread->GetModuleManager();
     CString recordNameStr = ModulePathHelper::Utf8ConvertToString(recordName.GetTaggedValue());
     JSHandle<SourceTextModule> resolvedModule;
     if (moduleManager->IsLocalModuleLoaded(recordNameStr)) {
@@ -188,7 +188,7 @@ JSTaggedValue ModuleTools::GetLazyModuleValueFromRecordBindingForLog(
         resolvedModule = moduleManager->HostGetImportedModule(recordNameStr);
     }
     ModuleLogger *moduleLogger =
-        thread->GetCurrentEcmaContext()->GetModuleLogger();
+        thread->GetModuleLogger();
     moduleLogger->InsertModuleLoadInfo(module, resolvedModule, index);
     return ModuleManagerHelper::GetModuleValue(thread, resolvedModule, binding->GetBindingName());
 }
@@ -197,7 +197,7 @@ JSTaggedValue ModuleTools::GetLazyModuleValueFromRecordBindingForLog(
 JSTaggedValue ModuleTools::ProcessLazyModuleLoadInfo(JSThread *thread, JSHandle<SourceTextModule> currentModule,
     JSTaggedValue resolvedBinding, int32_t index)
 {
-    ModuleLogger *moduleLogger = thread->GetCurrentEcmaContext()->GetModuleLogger();
+    ModuleLogger *moduleLogger = thread->GetModuleLogger();
     JSMutableHandle<JSTaggedValue> res(thread, thread->GlobalConstants()->GetUndefined());
     if (resolvedBinding.IsResolvedIndexBinding()) {
         JSHandle<ResolvedIndexBinding> binding(thread, resolvedBinding);
@@ -207,7 +207,7 @@ JSTaggedValue ModuleTools::ProcessLazyModuleLoadInfo(JSThread *thread, JSHandle<
         // Support for only modifying var value of HotReload.
         // Cause patchFile exclude the record of importing modifying var. Can't reresolve moduleRecord.
         EcmaContext *context = thread->GetCurrentEcmaContext();
-        if (context->GetStageOfHotReload() == StageOfHotReload::LOAD_END_EXECUTE_PATCHMAIN) {
+        if (thread->GetStageOfHotReload() == StageOfHotReload::LOAD_END_EXECUTE_PATCHMAIN) {
             const JSHandle<JSTaggedValue> resolvedModuleOfHotReload =
                 context->FindPatchModule(module->GetEcmaModuleRecordNameString());
             if (!resolvedModuleOfHotReload->IsHole()) {

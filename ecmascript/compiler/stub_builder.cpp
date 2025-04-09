@@ -11148,19 +11148,298 @@ GateRef StubBuilder::Loadlocalmodulevar(GateRef glue, GateRef index, GateRef mod
     }
     Bind(&notSendableFunctionModule);
     {
-        GateRef nameDictionaryOffset = IntPtr(SourceTextModule::NAME_DICTIONARY_OFFSET);
-        GateRef dictionary = Load(VariableType::JS_ANY(), module, nameDictionaryOffset);
+        GateRef dictionary = GetNameDictionary(module);
         Label dataIsNotUndefined(env);
         BRANCH_UNLIKELY(TaggedIsUndefined(dictionary), &exit, &dataIsNotUndefined);
         Bind(&dataIsNotUndefined);
         {
-            GateRef dataOffset = Int32(TaggedArray::DATA_OFFSET);
-            GateRef indexOffset = Int32Mul(ZExtInt8ToInt32(index), Int32(JSTaggedValue::TaggedTypeSize()));
-            GateRef offset = Int32Add(indexOffset, dataOffset);
-            result = Load(VariableType::JS_ANY(), dictionary, offset);
+            result = GetValueFromTaggedArray(dictionary, ZExtInt8ToInt32(index));
             Jump(&exit);
         }
     }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+void StubBuilder::ModuleEnvMustBeValid(GateRef curEnv)
+{
+    GateRef objectType = GetObjectType(LoadHClass(curEnv));
+    [[maybe_unused]] GateRef isTaggedArray = LogicOrBuilder(env_)
+        .Or(Int32Equal(objectType, Int32(static_cast<int>(JSType::TAGGED_ARRAY))))
+        .Or(Int32Equal(objectType, Int32(static_cast<int>(JSType::TAGGED_DICTIONARY))))
+        .Or(Int32Equal(objectType, Int32(static_cast<int>(JSType::LEXICAL_ENV))))
+        .Or(Int32Equal(objectType, Int32(static_cast<int>(JSType::SENDABLE_ENV))))
+        .Or(Int32Equal(objectType, Int32(static_cast<int>(JSType::CONSTANT_POOL))))
+        .Or(Int32Equal(objectType, Int32(static_cast<int>(JSType::PROFILE_TYPE_INFO))))
+        .Or(Int32Equal(objectType, Int32(static_cast<int>(JSType::AOT_LITERAL_INFO))))
+        .Or(Int32Equal(objectType, Int32(static_cast<int>(JSType::VTABLE))))
+        .Or(Int32Equal(objectType, Int32(static_cast<int>(JSType::COW_TAGGED_ARRAY))))
+        .Or(Int32Equal(objectType, Int32(static_cast<int>(JSType::MUTANT_TAGGED_ARRAY))))
+        .Or(Int32Equal(objectType, Int32(static_cast<int>(JSType::COW_MUTANT_TAGGED_ARRAY))))
+        .Done();
+    ASSERT(isTaggedArray);
+}
+
+GateRef StubBuilder::GetModuleValueByIndex(GateRef glue, GateRef module, GateRef index)
+{
+    auto env = GetEnvironment();
+    Label subentry(env);
+    env->SubCfgEntry(&subentry);
+
+    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
+    Label isNativeOrCjsModule(env);
+    Label notNativeOrCjsModule(env);
+    Label exit(env);
+    BRANCH(IsNativeOrCjsModule(module), &isNativeOrCjsModule, &notNativeOrCjsModule);
+
+    Bind(&isNativeOrCjsModule);
+    {
+        result = CallRuntime(glue, RTSTUB_ID(GetNativeOrCjsModuleValue), {module, IntToTaggedInt(index)});
+        Jump(&exit);
+    }
+
+    Bind(&notNativeOrCjsModule);
+    {
+        Label isUndefined(env);
+        Label notUndefined(env);
+        GateRef dictionary = GetNameDictionary(module);
+        BRANCH_UNLIKELY(TaggedIsUndefined(dictionary), &isUndefined, &notUndefined);
+
+        Bind(&notUndefined);
+        {
+            result = GetValueFromTaggedArray(dictionary, index);
+            Jump(&exit);
+        }
+
+        Bind(&isUndefined);
+        {
+            result = CallRuntime(glue, RTSTUB_ID(CheckAndThrowModuleError), {module, TaggedFalse()});
+            Jump(&exit);
+        }
+    }
+
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef StubBuilder::GetModuleValueByName(GateRef glue, GateRef module, GateRef bindingName)
+{
+    auto env = GetEnvironment();
+    Label subentry(env);
+    env->SubCfgEntry(&subentry);
+
+    GateRef exports = CallRuntime(glue, RTSTUB_ID(GetNativeOrCjsExports), {module});
+    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
+    Label hasPendingException(env);
+    Label noPendingException(env);
+    Label exit(env);
+    BRANCH(HasPendingException(glue), &hasPendingException, &noPendingException);
+
+    Bind(&hasPendingException);
+    {
+        result = Exception();
+        Jump(&exit);
+    }
+
+    Bind(&noPendingException);
+    {
+        GateRef defaultString = GetGlobalConstantValue(VariableType::JS_POINTER(), glue, ConstantIndex::DEFAULT_INDEX);
+        Label isSameVal(env);
+        Label notSameVal(env);
+        BRANCH_UNLIKELY(SameValue(glue, bindingName, defaultString), &isSameVal, &notSameVal);
+
+        Bind(&isSameVal);
+        {
+            result = exports;
+            Jump(&exit);
+        }
+
+        Bind(&notSameVal);
+        {
+            result = FastGetPropertyByName(glue, exports, bindingName, ProfileOperation());
+            Jump(&exit);
+        }
+    }
+
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef StubBuilder::GetResolvedRecordIndexBindingModule(GateRef glue, GateRef module, GateRef resolvedBinding)
+{
+    GateRef recordName = GetModuleRecord(resolvedBinding);
+    RecordNameMustBeString(recordName);
+    GateRef moduleManager = GetModuleManager(glue);
+    GateRef result = CallRuntime(glue, RTSTUB_ID(GetResolvedRecordIndexBindingModule),
+                                 {module, resolvedBinding, moduleManager, recordName});
+    return result;
+}
+
+GateRef StubBuilder::GetResolvedRecordBindingModule(GateRef glue, GateRef module, GateRef resolvedBinding)
+{
+    GateRef recordName = GetModuleRecord(resolvedBinding);
+    RecordNameMustBeString(recordName);
+    GateRef moduleManager = GetModuleManager(glue);
+    GateRef result = CallRuntime(glue, RTSTUB_ID(GetResolvedRecordBindingModule),
+                                 {module, moduleManager, recordName});
+    return result;
+}
+
+GateRef StubBuilder::LoadExternalmodulevar(GateRef glue, GateRef index, GateRef curModule)
+{
+    auto env = GetEnvironment();
+    Label subentry(env);
+    env->SubCfgEntry(&subentry);
+
+    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
+    Label notSendableFunctionModule(env);
+    Label moduleUndefined(env);
+    Label moduleIsdefined(env);
+    Label moduleEnvUndefined(env);
+    Label moduleEnvIsdefined(env);
+    Label isSendableFunctionModule(env);
+    Label isNullPtr(env);
+    Label notNullPtr(env);
+    Label resolvedBindingIsHeapObj(env);
+    Label misstakenResolvedBinding(env);
+    Label judgeResolvedBinding(env);
+    Label judgeResolvedRecordIndexBinding(env);
+    Label judgeResolvedRecordBinding(env);
+    Label exit(env);
+    BRANCH(IsSendableFunctionModule(curModule), &isSendableFunctionModule, &notSendableFunctionModule);
+
+    Bind(&notSendableFunctionModule);
+    BRANCH_UNLIKELY(TaggedIsUndefined(curModule), &moduleUndefined, &moduleIsdefined);
+
+    Bind(&moduleIsdefined);
+    GateRef curModuleEnv = GetCurrentModuleEnv(curModule);
+    BRANCH(TaggedIsUndefined(curModuleEnv), &moduleEnvUndefined, &moduleEnvIsdefined);
+
+    Bind(&moduleEnvIsdefined);
+    ModuleEnvMustBeValid(curModuleEnv);
+    GateRef curContext = GetCurrentEcmaContext(glue);
+    GateRef resolvedBinding = GetValueFromTaggedArray(curModuleEnv, index);
+    BRANCH_LIKELY(IntPtrEuqal(GetModuleLogger(glue), IntPtr(0)), &isNullPtr, &notNullPtr);
+
+    Bind(&isNullPtr);
+    BRANCH(TaggedIsHeapObject(resolvedBinding), &resolvedBindingIsHeapObj, &misstakenResolvedBinding);
+
+    Bind(&resolvedBindingIsHeapObj);
+    {
+        Label isResolvedIndexBinding(env);
+        BRANCH(IsResolvedIndexBinding(resolvedBinding), &isResolvedIndexBinding, &judgeResolvedBinding);
+
+        Bind(&isResolvedIndexBinding);
+        {
+            Label isLdEndExecPatchMain(env);
+            Label notLdEndExecPatchMain(env);
+            Label notHole(env);
+            GateRef resolvedModule = GetResolveModuleFromResolvedIndexBinding(resolvedBinding);
+            ResolvedModuleMustBeSourceTextModule(resolvedModule);
+            GateRef idxOfResolvedBinding = GetIdxOfResolvedIndexBinding(resolvedBinding);
+            BRANCH(IsLdEndExecPatchMain(glue), &isLdEndExecPatchMain, &notLdEndExecPatchMain);
+
+            Bind(&isLdEndExecPatchMain);
+            GateRef resolvedModuleOfHotReload = CallNGCRuntime(glue, RTSTUB_ID(FindPatchModule),
+                                                               {glue, curContext, resolvedModule});
+            BRANCH(TaggedIsHole(resolvedModuleOfHotReload), &notLdEndExecPatchMain, &notHole);
+
+            Bind(&notLdEndExecPatchMain);
+            result = GetModuleValueByIndex(glue, resolvedModule, idxOfResolvedBinding);
+            Jump(&exit);
+
+            Bind(&notHole);
+            result = GetModuleValueByIndex(glue, resolvedModuleOfHotReload, idxOfResolvedBinding);
+            Jump(&exit);
+        }
+    }
+
+    Bind(&judgeResolvedBinding);
+    {
+        Label isResolvedBinding(env);
+        BRANCH(IsResolvedBinding(resolvedBinding), &isResolvedBinding, &judgeResolvedRecordIndexBinding);
+
+        Bind(&isResolvedBinding);
+        {
+            GateRef resolvedModule = GetResolveModuleFromResolvedBinding(resolvedBinding);
+            ResolvedModuleMustBeSourceTextModule(resolvedModule);
+            Label isNativeOrCjsModule(env);
+            BRANCH(IsNativeOrCjsModule(resolvedModule), &isNativeOrCjsModule, &judgeResolvedRecordIndexBinding);
+
+            Bind(&isNativeOrCjsModule);
+            {
+                result = CallRuntime(glue, RTSTUB_ID(UpdateBindingAndGetModuleValue),
+                                     {curModule, resolvedModule, IntToTaggedInt(index), resolvedBinding});
+                Jump(&exit);
+            }
+        }
+    }
+
+    Bind(&judgeResolvedRecordIndexBinding);
+    {
+        Label isResolvedRecordIndexBinding(env);
+        BRANCH(IsResolvedRecordIndexBinding(resolvedBinding), &isResolvedRecordIndexBinding,
+               &judgeResolvedRecordBinding);
+
+        Bind(&isResolvedRecordIndexBinding);
+        {
+            GateRef resolvedModule = GetResolvedRecordIndexBindingModule(glue, curModule, resolvedBinding);
+            GateRef idxOfResolvedRecordIndexBinding = GetIdxOfResolvedRecordIndexBinding(resolvedBinding);
+            result = GetModuleValueByIndex(glue, resolvedModule, idxOfResolvedRecordIndexBinding);
+            Jump(&exit);
+        }
+    }
+
+    Bind(&judgeResolvedRecordBinding);
+    {
+        Label isResolvedRecordBinding(env);
+        BRANCH(IsResolvedRecordBinding(resolvedBinding), &isResolvedRecordBinding, &misstakenResolvedBinding);
+        Bind(&isResolvedRecordBinding);
+        {
+            GateRef resolvedModule = GetResolvedRecordBindingModule(glue, curModule, resolvedBinding);
+            result = GetModuleValueByName(glue, resolvedModule, GetBindingName(resolvedBinding));
+            Jump(&exit);
+        }
+    }
+
+    Bind(&isSendableFunctionModule);
+    {
+        result = CallRuntime(glue, RTSTUB_ID(LdExternalModuleVarByIndexWithModule),
+                             {IntToTaggedInt(index), curModule});
+        Jump(&exit);
+    }
+
+    Bind(&moduleUndefined);
+    {
+        FatalPrint(glue, {Int32(GET_MESSAGE_STRING_ID(CurrentModuleUndefined))});
+        Jump(&exit);
+    }
+
+    Bind(&moduleEnvUndefined);
+    {
+        result = Undefined();
+        Jump(&exit);
+    }
+
+    Bind(&notNullPtr);
+    {
+        result = CallRuntime(glue, RTSTUB_ID(ProcessModuleLoadInfo),
+                             {curModule, resolvedBinding, IntToTaggedInt(index)});
+        Jump(&exit);
+    }
+
+    Bind(&misstakenResolvedBinding);
+    {
+        CallNGCRuntime(glue, RTSTUB_ID(FatalPrintMisstakenResolvedBinding), {index, curModule});
+        Jump(&exit);
+    }
+
     Bind(&exit);
     auto ret = *result;
     env->SubCfgExit();

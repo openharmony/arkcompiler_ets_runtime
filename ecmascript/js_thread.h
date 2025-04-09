@@ -35,6 +35,7 @@
 #include "ecmascript/log_wrapper.h"
 #include "ecmascript/mem/visitor.h"
 #include "ecmascript/mutator_lock.h"
+#include "ecmascript/patch/patch_loader.h"
 
 #if defined(ENABLE_FFRT_INTERFACES)
 #include "ffrt.h"
@@ -49,6 +50,8 @@ class GlobalIndex;
 class HeapRegionAllocator;
 class PropertiesCache;
 class MegaICCache;
+class ModuleLogger;
+class ModuleManager;
 template<typename T>
 class EcmaGlobalStorage;
 class Node;
@@ -1019,7 +1022,10 @@ public:
                                                  base::AlignedUint32,
                                                  base::AlignedBool,
                                                  base::AlignedBool,
-                                                 ElementsHClassEntries> {
+                                                 ElementsHClassEntries,
+                                                 base::AlignedPointer,
+                                                 base::AlignedUint32,
+                                                 base::AlignedPointer> {
         enum class Index : size_t {
             BcStubEntriesIndex = 0,
             ExceptionIndex,
@@ -1065,6 +1071,9 @@ public:
             IsEnableMutantArrayIndex,
             IsEnableElementsKindIndex,
             ArrayHClassIndexesIndex,
+            moduleLoggerIndex,
+            stageOfHotReloadIndex,
+            moduleManagerIndex,
             NumOfMembers
         };
         static_assert(static_cast<size_t>(Index::NumOfMembers) == NumOfTypes);
@@ -1309,6 +1318,21 @@ public:
         {
             return GetOffset<static_cast<size_t>(Index::ArrayHClassIndexesIndex)>(isArch32);
         }
+        static size_t GetModuleLoggerOffset(bool isArch32)
+        {
+            return GetOffset<static_cast<size_t>(Index::moduleLoggerIndex)>(
+                isArch32);
+        }
+        static size_t GetStageOfHotReloadOffset(bool isArch32)
+        {
+            return GetOffset<static_cast<size_t>(Index::stageOfHotReloadIndex)>(
+                isArch32);
+        }
+        static size_t GetModuleManagerOffset(bool isArch32)
+        {
+            return GetOffset<static_cast<size_t>(Index::moduleManagerIndex)>(
+                isArch32);
+        }
 
         alignas(EAS) BCStubEntries bcStubEntries_ {};
         alignas(EAS) JSTaggedValue exception_ {JSTaggedValue::Hole()};
@@ -1354,6 +1378,9 @@ public:
         alignas(EAS) bool isEnableMutantArray_ {false};
         alignas(EAS) bool IsEnableElementsKind_ {false};
         alignas(EAS) ElementsHClassEntries arrayHClassIndexes_ {};
+        alignas(EAS) ModuleLogger *moduleLogger_ {nullptr};
+        alignas(EAS) StageOfHotReload stageOfHotReload_ {StageOfHotReload::INITIALIZE_STAGE_OF_HOTRELOAD};
+        alignas(EAS) ModuleManager *moduleManager_ {nullptr};
     };
     STATIC_ASSERT_EQ_ARCH(sizeof(GlueData), GlueData::SizeArch32, GlueData::SizeArch64);
 
@@ -1369,6 +1396,31 @@ public:
     {
         ASSERT(glueData_.globalConst_->GetSingleCharTable() != JSTaggedValue::Hole());
         return glueData_.globalConst_->GetSingleCharTable();
+    }
+
+    ModuleLogger *GetModuleLogger() const
+    {
+        return glueData_.moduleLogger_;
+    }
+
+    void SetModuleLogger(ModuleLogger *moduleLogger)
+    {
+        glueData_.moduleLogger_ = moduleLogger;
+    }
+
+    StageOfHotReload GetStageOfHotReload() const
+    {
+        return glueData_.stageOfHotReload_;
+    }
+
+    void SetStageOfHotReload(StageOfHotReload stageOfHotReload)
+    {
+        glueData_.stageOfHotReload_ = stageOfHotReload;
+    }
+
+    ModuleManager *GetModuleManager() const
+    {
+        return glueData_.moduleManager_;
     }
 
     void SwitchCurrentContext(EcmaContext *currentContext, bool isInIterate = false);
