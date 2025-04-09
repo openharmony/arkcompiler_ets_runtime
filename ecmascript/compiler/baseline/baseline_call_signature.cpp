@@ -848,11 +848,11 @@ DEF_CALL_SIGNATURE(BaselineStricteqImm8V8)
 
 DEF_CALL_SIGNATURE(BaselineIstrue)
 {
-    // 1 : 1 input parameters
+    // 2 : 2 input parameters
     CallSignature signature("BaselineIstrue", 0, 2,
         ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
     *callSign = signature;
-    // 1 : 1 input parameters
+    // 2 : 2 input parameters
     std::array<VariableType, 2> params = {
         VariableType::NATIVE_POINTER(),
         VariableType::JS_ANY(),
@@ -862,11 +862,11 @@ DEF_CALL_SIGNATURE(BaselineIstrue)
 
 DEF_CALL_SIGNATURE(BaselineIsfalse)
 {
-    // 1 : 1 input parameters
+    // 2 : 2 input parameters
     CallSignature signature("BaselineIsfalse", 0, 2,
         ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
     *callSign = signature;
-    // 1 : 1 input parameters
+    // 2 : 2 input parameters
     std::array<VariableType, 2> params = {
         VariableType::NATIVE_POINTER(),
         VariableType::JS_ANY(),

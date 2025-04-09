@@ -202,7 +202,8 @@ private:
                           Label *exit, Label *slowPath, IndexOfOptions options);
     void CopyWithinOptimised(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *result, Label *exit,
                              Label *slowPath);
-    GateRef CalEleKindForNewArrayNoHole(GateRef glue, GateRef thisValue, GateRef thisLen, GateRef actualIndex, GateRef insertVal);
+    GateRef CalEleKindForNewArrayNoHole(GateRef glue, GateRef thisValue, GateRef thisLen, GateRef actualIndex,
+                                        GateRef insertVal);
     void FastArrayWith(GateRef glue, GateRef thisValue, GateRef newArray, GateRef actualIndex, GateRef insertValue,
                        GateRef newArrEleKind);
     void WithOptimised(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *result, Label *exit,

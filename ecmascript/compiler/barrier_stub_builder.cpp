@@ -113,10 +113,10 @@ void BarrierStubBuilder::HandleMark()
 
     bool isArch32 = GetEnvironment()->Is32Bit();
     GateRef gcStateBitField = LoadPrimitive(VariableType::INT64(), glue_,
-                                   Int64(JSThread::GlueData::GetGCStateBitFieldOffset(isArch32)));
+        Int64(JSThread::GlueData::GetGCStateBitFieldOffset(isArch32)));
     GateRef gcState = Int64And(gcStateBitField, Int64(JSThread::CONCURRENT_MARKING_BITFIELD_MASK));
     GateRef sharedGCStateBitField = LoadPrimitive(VariableType::INT64(), glue_,
-                                         Int64(JSThread::GlueData::GetSharedGCStateBitFieldOffset(isArch32)));
+        Int64(JSThread::GlueData::GetSharedGCStateBitFieldOffset(isArch32)));
     GateRef sharedGCState = Int64And(sharedGCStateBitField, Int64(JSThread::SHARED_CONCURRENT_MARKING_BITFIELD_MASK));
     Label needMarking(env);
     GateRef marking = Int64NotEqual(gcState, Int64(static_cast<int64_t>(MarkStatus::READY_TO_MARK)));
@@ -588,7 +588,8 @@ void BarrierStubBuilder::BitSetRangeMoveForward(GateRef srcBitSet, GateRef dstBi
         GateRef bitsInCurrentQuad = ThreeInt64Min(Int64Sub(Int64(BIT_PER_QUAD), *srcBitOffset),
                                                   Int64Sub(Int64(BIT_PER_QUAD), *dstBitOffset),
                                                   *remainLength);
-        GateRef srcQuadData = LoadPrimitive(VariableType::INT64(), srcBitSet, Int64LSL(*srcQuad, Int64(BYTE_PER_QUAD_LOG2)));
+        GateRef srcQuadData = LoadPrimitive(VariableType::INT64(), srcBitSet,
+                                            Int64LSL(*srcQuad, Int64(BYTE_PER_QUAD_LOG2)));
         Label setValue(env);
         BRANCH_NO_WEIGHT(Int64Equal(srcQuadData, Int64(0)), &beforeEndLoop, &setValue);
         Bind(&setValue);
@@ -600,7 +601,8 @@ void BarrierStubBuilder::BitSetRangeMoveForward(GateRef srcBitSet, GateRef dstBi
             // zeroMask <- ~(srcMask << dstBitOffset);
             GateRef zeroMask = Int64Not(Int64LSL(srcMask, *dstBitOffset));
             // dstData <- load from dstBitSet offset dstQuad * 8;
-            GateRef dstData = LoadPrimitive(VariableType::INT64(), dstBitSet, Int64LSL(*dstQuad, Int64(BYTE_PER_QUAD_LOG2)));
+            GateRef dstData = LoadPrimitive(VariableType::INT64(), dstBitSet,
+                                            Int64LSL(*dstQuad, Int64(BYTE_PER_QUAD_LOG2)));
             // newDataMask <- (srcData << dstBitOffset);
             GateRef newDataMask = Int64LSL(srcData, *dstBitOffset);
             // newData <- dstData & zeroMask | newDataMask;
@@ -680,7 +682,8 @@ void BarrierStubBuilder::BitSetRangeMoveBackward(GateRef srcBitSet, GateRef dstB
                                                   *remainLength);
         // srcQuadIndex <- srcEnd / 64;
         GateRef srcQuadIndex = Int64LSR(*srcEnd, Int64(BIT_PER_QUAD_LOG2));
-        GateRef srcQuadData = LoadPrimitive(VariableType::INT64(), srcBitSet, Int64LSL(srcQuadIndex, Int64(BYTE_PER_QUAD_LOG2)));
+        GateRef srcQuadData = LoadPrimitive(VariableType::INT64(), srcBitSet,
+                                            Int64LSL(srcQuadIndex, Int64(BYTE_PER_QUAD_LOG2)));
         Label setValue(env);
         BRANCH_NO_WEIGHT(Int64Equal(srcQuadData, Int64(0)), &beforeEndLoop, &setValue);
         Bind(&setValue);
@@ -695,7 +698,8 @@ void BarrierStubBuilder::BitSetRangeMoveBackward(GateRef srcBitSet, GateRef dstB
             // dstWordIndex <- dstEnd / 64;
             GateRef dstQuadIndex = Int64LSR(*dstEnd, Int64(BIT_PER_QUAD_LOG2));
             // dstData <- load from dstBitSet offset dstQuadIndex * 8
-            GateRef dstData = LoadPrimitive(VariableType::INT64(), dstBitSet, Int64LSL(dstQuadIndex, Int64(BYTE_PER_QUAD_LOG2)));
+            GateRef dstData = LoadPrimitive(VariableType::INT64(), dstBitSet,
+                                            Int64LSL(dstQuadIndex, Int64(BYTE_PER_QUAD_LOG2)));
             // newDataMask <- (srcData << (dstBitOffset - bitsInCurrentQuad + 1))
             GateRef newDataMask = Int64LSL(srcData, Int64Add(Int64Sub(dstBitOffset, bitsInCurrentQuad), Int64(1)));
             // newData <- dstData & zeroMask | newDataMask;

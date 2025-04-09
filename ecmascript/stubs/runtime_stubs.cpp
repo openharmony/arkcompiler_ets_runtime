@@ -3394,7 +3394,7 @@ JSTaggedType RuntimeStubs::ReadBarrier(uintptr_t argGlue, uintptr_t addr)
     ObjectSlot slot(addr);
     (void)argGlue;
     /*
-        auto thread = JSThread::GlueToJSThread(argGlue);
+        Convert argGlue to JSThread: auto thread = JSThread::GlueToJSThread(argGlue);
         Add ReadBarrier here
     */
     return slot.GetTaggedType();

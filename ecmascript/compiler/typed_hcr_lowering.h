@@ -172,12 +172,12 @@ private:
     void LowerStringLoadElement(GateRef gate);
     GateRef BuildOnHeapTypedArrayLoadElement(GateRef glue, GateRef receiver, GateRef offset, VariableType type);
     GateRef BuildNotOnHeapTypedArrayLoadElement(GateRef glue, GateRef receiver, GateRef offset, VariableType type);
-    GateRef BuildTypedArrayLoadElement(GateRef glue, GateRef receiver, GateRef offset, VariableType type, Label *isByteArray,
-                                       Label *isArrayBuffer, Label *exit);
+    GateRef BuildTypedArrayLoadElement(GateRef glue, GateRef receiver, GateRef offset, VariableType type,
+                                       Label *isByteArray, Label *isArrayBuffer, Label *exit);
     void LowerArrayStoreElement(GateRef gate, GateRef glue, TypedStoreOp kind);
     void LowerTypedArrayStoreElement(GateRef gate, BuiltinTypeId id);
-    void OptStoreElementByOnHeapMode(GateRef gate, GateRef glue, GateRef receiver, GateRef offset, GateRef value, Label *isByteArray,
-                                     Label *isArrayBuffer, Label *exit);
+    void OptStoreElementByOnHeapMode(GateRef gate, GateRef glue, GateRef receiver, GateRef offset, GateRef value,
+                                     Label *isByteArray, Label *isArrayBuffer, Label *exit);
     void BuildOnHeapTypedArrayStoreElement(GateRef receiver, GateRef offset, GateRef value);
     void BuildNotOnHeapTypedArrayStoreElement(GateRef glue, GateRef receiver, GateRef offset, GateRef value);
     void BuildTypedArrayStoreElement(GateRef glue, GateRef receiver, GateRef offset, GateRef value, Label *isByteArray,

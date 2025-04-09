@@ -47,19 +47,21 @@ void name##StubBuilder::GenerateCircuitImpl(GateRef glue, GateRef sp, GateRef pc
                                      GateRef acc, GateRef hotnessCounter,            \
                                      [[maybe_unused]] ProfileOperation callback)
 
-#define REGISTER_PROFILE_CALL_BACK(format)                                                                             \
-    ProfileOperation callback(                                                                                         \
-        [this, glue, sp, pc, profileTypeInfo](const std::initializer_list<GateRef> &values, OperationType type) {      \
-            ProfilerStubBuilder profiler(this);                                                                        \
-            profiler.PGOProfiler(glue, pc, GetFunctionFromFrame(glue, GetFrame(sp)), profileTypeInfo, values, format, type); \
+#define REGISTER_PROFILE_CALL_BACK(format)                                                                        \
+    ProfileOperation callback(                                                                                    \
+        [this, glue, sp, pc, profileTypeInfo](const std::initializer_list<GateRef> &values, OperationType type) { \
+            ProfilerStubBuilder profiler(this);                                                                   \
+            profiler.PGOProfiler(glue, pc, GetFunctionFromFrame(glue, GetFrame(sp)),                              \
+                                 profileTypeInfo, values, format, type);                                          \
         }, nullptr);
 
-#define REGISTER_JIT_PROFILE_CALL_BACK(format)                                                                         \
-    ProfileOperation callback(                                                                                         \
-        nullptr,                                                                                                       \
-        [this, glue, sp, pc, profileTypeInfo](const std::initializer_list<GateRef> &values, OperationType type) {      \
-            ProfilerStubBuilder profiler(this);                                                                        \
-            profiler.PGOProfiler(glue, pc, GetFunctionFromFrame(glue, GetFrame(sp)), profileTypeInfo, values, format, type); \
+#define REGISTER_JIT_PROFILE_CALL_BACK(format)                                                                    \
+    ProfileOperation callback(                                                                                    \
+        nullptr,                                                                                                  \
+        [this, glue, sp, pc, profileTypeInfo](const std::initializer_list<GateRef> &values, OperationType type) { \
+            ProfilerStubBuilder profiler(this);                                                                   \
+            profiler.PGOProfiler(glue, pc, GetFunctionFromFrame(glue, GetFrame(sp)),                              \
+                                 profileTypeInfo, values, format, type);                                          \
         });
 
 #define REGISTER_NULL_CALL_BACK(format) ProfileOperation callback;
@@ -118,7 +120,7 @@ void name##StubBuilder::GenerateCircuitImpl(GateRef glue, GateRef sp, GateRef pc
     BRANCH(Int32LessThan(*varHotnessCounter, Int32(0)), &slowPath, &dispatch);                                 \
     Bind(&slowPath);                                                                                           \
     {                                                                                                          \
-        GateRef func = GetFunctionFromFrame(glue, GetFrame(_sp));                                                    \
+        GateRef func = GetFunctionFromFrame(glue, GetFrame(_sp));                                              \
         GateRef iVecOffset = IntPtr(JSThread::GlueData::GetInterruptVectorOffset(env->IsArch32Bit()));         \
         GateRef interruptsFlag = LoadPrimitive(VariableType::INT8(), glue, iVecOffset);                        \
         varHotnessCounter = Int32(EcmaInterpreter::METHOD_HOTNESS_THRESHOLD);                                  \
@@ -196,8 +198,10 @@ void name##StubBuilder::GenerateCircuitImpl(GateRef glue, GateRef sp, GateRef pc
     Label NeedCallRuntimeTrue(env);                                                                             \
     Label NeedCallRuntimeFalse(env);                                                                            \
     GateRef isDebugModeOrTracing = LogicOrBuilder(env)                                                          \
-        .Or(LoadPrimitive(VariableType::BOOL(), glue, IntPtr(JSThread::GlueData::GetIsDebugModeOffset(env->Is32Bit())))) \
-        .Or(LoadPrimitive(VariableType::BOOL(), glue, IntPtr(JSThread::GlueData::GetIsTracingOffset(env->Is32Bit()))))   \
+        .Or(LoadPrimitive(VariableType::BOOL(), glue,                                                           \
+                          IntPtr(JSThread::GlueData::GetIsDebugModeOffset(env->Is32Bit()))))                    \
+        .Or(LoadPrimitive(VariableType::BOOL(), glue,                                                           \
+                          IntPtr(JSThread::GlueData::GetIsTracingOffset(env->Is32Bit()))))                      \
         .Done();                                                                                                \
     BRANCH(isDebugModeOrTracing, &NeedCallRuntimeTrue, &NeedCallRuntimeFalse);                                  \
     Bind(&NeedCallRuntimeTrue);                                                                                 \
@@ -219,7 +223,7 @@ void name##StubBuilder::GenerateCircuitImpl(GateRef glue, GateRef sp, GateRef pc
     Label executeBCByAOT(env);                                                                                       \
     Label executeBCByInterpreter(env);                                                                               \
     GateRef curFrame = GetFrame(sp);                                                                                 \
-    GateRef curFunction = GetFunctionFromFrame(glue, curFrame);                                                            \
+    GateRef curFunction = GetFunctionFromFrame(glue, curFrame);                                                      \
     GateRef curMethod = Load(VariableType::JS_ANY(), glue, curFunction, IntPtr(JSFunctionBase::METHOD_OFFSET));      \
     Branch(TaggedIsUndefined(profileTypeInfo), &executeBCByInterpreter, &getOsrCache);                               \
     Bind(&getOsrCache);                                                                                              \
@@ -267,12 +271,14 @@ void name##StubBuilder::GenerateCircuitImpl(GateRef glue, GateRef sp, GateRef pc
     }                                                                                                                \
     Bind(&checkExecCount);                                                                                           \
     {                                                                                                                \
-        GateRef execCnt = LoadPrimitive(VariableType::INT16(), *varMachineCode, IntPtr(MachineCode::OSR_EXECUTE_CNT_OFFSET)); \
+        GateRef execCnt = LoadPrimitive(VariableType::INT16(), *varMachineCode,                                      \
+                                        IntPtr(MachineCode::OSR_EXECUTE_CNT_OFFSET));                                \
         Branch(Int32LessThan(ZExtInt16ToInt32(execCnt), Int32(5)), &checkDeOptFlag, &dispatch);                      \
     }                                                                                                                \
     Bind(&checkDeOptFlag);                                                                                           \
     {                                                                                                                \
-        GateRef deOptField = LoadPrimitive(VariableType::INT16(), *varMachineCode, IntPtr(MachineCode::OSRMASK_OFFSET));      \
+        GateRef deOptField = LoadPrimitive(VariableType::INT16(), *varMachineCode,                                   \
+                                           IntPtr(MachineCode::OSRMASK_OFFSET));                                     \
         Branch(Equal(deOptField, Int16(MachineCode::OSR_DEOPT_FLAG)), &clearMachineCode, &executeBCByAOT);           \
     }                                                                                                                \
     Bind(&clearMachineCode);                                                                                         \
@@ -290,11 +296,12 @@ void name##StubBuilder::GenerateCircuitImpl(GateRef glue, GateRef sp, GateRef pc
         Label resumeRspAndDispatch(env);                                                                             \
         Store(VariableType::NATIVE_POINTER(), glue, curFunction, IntPtr(JSFunction::MACHINECODE_OFFSET),             \
               *varMachineCode);                                                                                      \
-        GateRef execCnt = LoadPrimitive(VariableType::INT16(), *varMachineCode, IntPtr(MachineCode::OSR_EXECUTE_CNT_OFFSET)); \
+        GateRef execCnt = LoadPrimitive(VariableType::INT16(), *varMachineCode,                                      \
+                                        IntPtr(MachineCode::OSR_EXECUTE_CNT_OFFSET));                                \
         GateRef newExecCnt = Int16Add(execCnt, Int16(1));                                                            \
         Store(VariableType::INT16(), glue, *varMachineCode, IntPtr(MachineCode::OSR_EXECUTE_CNT_OFFSET),             \
               newExecCnt);                                                                                           \
-        GateRef codeAddr = LoadPrimitive(VariableType::NATIVE_POINTER(), *varMachineCode,                                     \
+        GateRef codeAddr = LoadPrimitive(VariableType::NATIVE_POINTER(), *varMachineCode,                            \
                                 IntPtr(MachineCode::FUNCADDR_OFFSET));                                               \
         varRetVal = FastCallOptimized(glue, codeAddr, { glue, sp });                                                 \
         Jump(&handleReturn);                                                                                         \
@@ -312,11 +319,11 @@ void name##StubBuilder::GenerateCircuitImpl(GateRef glue, GateRef sp, GateRef pc
             }                                                                                                        \
             Bind(&resumeRspAndDispatch);                                                                             \
             {                                                                                                        \
-                GateRef prevFunction = GetFunctionFromFrame(glue, prevFrame);                                              \
+                GateRef prevFunction = GetFunctionFromFrame(glue, prevFrame);                                        \
                 GateRef prevMethod = Load(VariableType::JS_ANY(), glue, prevFunction,                                \
                                           IntPtr(JSFunctionBase::METHOD_OFFSET));                                    \
-                GateRef prevConstpool = GetConstpoolFromMethod(glue, prevMethod);                                          \
-                GateRef prevProfileTypeInfo = GetProfileTypeInfoFromFunction(glue, prevFunction);                          \
+                GateRef prevConstpool = GetConstpoolFromMethod(glue, prevMethod);                                    \
+                GateRef prevProfileTypeInfo = GetProfileTypeInfoFromFunction(glue, prevFunction);                    \
                 GateRef prevHotnessCounter = GetHotnessCounterFromMethod(prevMethod);                                \
                 GateRef jumpSize = GetCallSizeFromFrame(prevFrame);                                                  \
                 CallNGCRuntime(glue, RTSTUB_ID(ResumeRspAndDispatch),                                                \
@@ -332,7 +339,7 @@ void name##StubBuilder::GenerateCircuitImpl(GateRef glue, GateRef sp, GateRef pc
     GateRef slotId = ZExtInt8ToInt32(ReadInst8_0(pc));                                                               \
     GateRef stringId = ReadInst16_1(pc);                                                                             \
     GateRef propKey = GetStringFromConstPool(glue, constpool, ZExtInt16ToInt32(stringId));                           \
-    GateRef receiver = GetVregValue(glue, sp, ZExtInt8ToPtr(ReadInst8_3(pc)));                                             \
+    GateRef receiver = GetVregValue(glue, sp, ZExtInt8ToPtr(ReadInst8_3(pc)));                                       \
     DEFVARIABLE(holder, VariableType::JS_ANY(), receiver);                                                           \
     Label icPath(env);                                                                                               \
     Label whichPath(env);                                                                                            \
@@ -348,10 +355,10 @@ void name##StubBuilder::GenerateCircuitImpl(GateRef glue, GateRef sp, GateRef pc
     BRANCH(TaggedIsUndefined(profileTypeInfo), &hclassNotHit, &tryGetHclass);                                        \
     Bind(&tryGetHclass);                                                                                             \
     {                                                                                                                \
-        GateRef firstValue = GetValueFromTaggedArray(glue, profileTypeInfo, slotId);                                  \
+        GateRef firstValue = GetValueFromTaggedArray(glue, profileTypeInfo, slotId);                                 \
         BRANCH(TaggedIsHeapObject(firstValue), &firstValueHeapObject, &hclassNotHit);                                \
         Bind(&firstValueHeapObject);                                                                                 \
-        GateRef hclass = LoadHClass(glue, *holder);                                                                        \
+        GateRef hclass = LoadHClass(glue, *holder);                                                                  \
         BRANCH(Equal(LoadObjectFromWeakRef(firstValue), hclass), &whichPath, &hclassNotHit);                         \
     }                                                                                                                \
     Bind(&hclassNotHit);                                                                                             \
@@ -362,7 +369,7 @@ void name##StubBuilder::GenerateCircuitImpl(GateRef glue, GateRef sp, GateRef pc
     Jump(&loopHead);                                                                                                 \
     LoopBegin(&loopHead);                                                                                            \
     {                                                                                                                \
-        GateRef hclass = LoadHClass(glue, *holder);                                                                        \
+        GateRef hclass = LoadHClass(glue, *holder);                                                                  \
         GateRef jsType = GetObjectType(hclass);                                                                      \
         Label findProperty(env);                                                                                     \
         BRANCH(IsSpecialIndexedObj(jsType), &slowPath, &findProperty);                                               \
@@ -372,13 +379,13 @@ void name##StubBuilder::GenerateCircuitImpl(GateRef glue, GateRef sp, GateRef pc
         BRANCH(IsDictionaryModeByHClass(hclass), &isDicMode, &notDicMode);                                           \
         Bind(&isDicMode);                                                                                            \
         {                                                                                                            \
-            GateRef array = GetPropertiesArray(glue, *holder);                                                             \
+            GateRef array = GetPropertiesArray(glue, *holder);                                                       \
             GateRef entry = FindEntryFromNameDictionary(glue, array, propKey);                                       \
             BRANCH(Int32NotEqual(entry, Int32(-1)), &slowPath, &loopExit);                                           \
         }                                                                                                            \
         Bind(&notDicMode);                                                                                           \
         {                                                                                                            \
-            GateRef layOutInfo = GetLayoutFromHClass(glue, hclass);                                                        \
+            GateRef layOutInfo = GetLayoutFromHClass(glue, hclass);                                                  \
             GateRef propsNum = GetNumberOfPropsFromHClass(hclass);                                                   \
             GateRef entry = FindElementWithCache(glue, layOutInfo, hclass, propKey, propsNum);                       \
             BRANCH(Int32NotEqual(entry, Int32(-1)), &slowPath, &loopExit);                                           \
@@ -2747,7 +2754,7 @@ DECLARE_ASM_HANDLER(HandleReturn)
 #endif
     GateRef currentSp = *varSp;
     varSp = LoadPrimitive(VariableType::NATIVE_POINTER(), frame,
-                 IntPtr(AsmInterpretedFrame::GetBaseOffset(env->IsArch32Bit())));
+        IntPtr(AsmInterpretedFrame::GetBaseOffset(env->IsArch32Bit())));
 
     GateRef typePos = PtrSub(*varSp, IntPtr(JSTaggedValue::TaggedTypeSize()));
     GateRef maybeFrameType = LoadPrimitive(VariableType::INT64(), typePos);

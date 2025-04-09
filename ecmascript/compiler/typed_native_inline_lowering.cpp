@@ -1257,10 +1257,12 @@ void TypedNativeInlineLowering::LowerBigIntAsIntN(GateRef gate)
 
     // Return bigint, if bigint == 0
     GateRef isZeroBigInt = LogicAndBuilder(&env)
-        .And(builder_.Int32Equal(builder_.LoadWithoutBarrier(VariableType::INT32(), bigint, builder_.IntPtr(BigInt::LENGTH_OFFSET)),
-                                 builder_.Int32(1)))
-        .And(builder_.Int32Equal(builder_.LoadWithoutBarrier(VariableType::INT32(), bigint, builder_.IntPtr(BigInt::DATA_OFFSET)),
-                                 builder_.Int32(0)))
+        .And(builder_.Int32Equal(
+            builder_.LoadWithoutBarrier(VariableType::INT32(), bigint, builder_.IntPtr(BigInt::LENGTH_OFFSET)),
+            builder_.Int32(1)))
+        .And(builder_.Int32Equal(
+            builder_.LoadWithoutBarrier(VariableType::INT32(), bigint, builder_.IntPtr(BigInt::DATA_OFFSET)),
+            builder_.Int32(0)))
         .Done();
     BRANCH_CIR(isZeroBigInt, &returnBigInt, &notZeroBigInt);
 
@@ -1350,16 +1352,19 @@ void TypedNativeInlineLowering::LowerDataViewProtoFunc(GateRef gate, DataViewPro
     GateRef byteOffset = builder_.IntPtr(JSDataView::BYTE_OFFSET_OFFSET);
     GateRef offset = builder_.LoadWithoutBarrier(VariableType::INT32(), thisobj, byteOffset);
     GateRef bufferIndex = builder_.Int32Add(requestIndex, offset);
-    BRANCH_CIR(builder_.CheckJSType(glue, buffer, JSType::BYTE_ARRAY), &getPointFromByteArray, &getPointFromNotByteArray);
+    BRANCH_CIR(builder_.CheckJSType(glue, buffer, JSType::BYTE_ARRAY),
+        &getPointFromByteArray, &getPointFromNotByteArray);
     builder_.Bind(&getPointFromByteArray);
     {
-        dataPointer = builder_.LoadWithoutBarrier(VariableType::NATIVE_POINTER(), buffer, builder_.IntPtr(ByteArray::DATA_OFFSET));
+        dataPointer = builder_.LoadWithoutBarrier(VariableType::NATIVE_POINTER(), buffer,
+                                                  builder_.IntPtr(ByteArray::DATA_OFFSET));
         builder_.Jump(&getValueFromBuffer);
     }
     builder_.Bind(&getPointFromNotByteArray);
     {
         GateRef arrayBufferByteLengthOffset = builder_.IntPtr(JSArrayBuffer::BYTE_LENGTH_OFFSET);
-        GateRef arrayBufferByteLength = builder_.LoadWithoutBarrier(VariableType::INT32(), buffer, arrayBufferByteLengthOffset);
+        GateRef arrayBufferByteLength = builder_.LoadWithoutBarrier(VariableType::INT32(), buffer,
+                                                                    arrayBufferByteLengthOffset);
         BRANCH_CIR(builder_.Int32Equal(arrayBufferByteLength, builder_.Int32(0)),
                    &bufferByteLengthIsZero,
                    &bufferByteLengthIsNotZero);
@@ -1373,7 +1378,8 @@ void TypedNativeInlineLowering::LowerDataViewProtoFunc(GateRef gate, DataViewPro
             GateRef bufferDataOffset = builder_.IntPtr(JSArrayBuffer::DATA_OFFSET);
             GateRef data = builder_.Load(VariableType::JS_ANY(), glue, buffer, bufferDataOffset);
             GateRef externalPointerOffset = builder_.IntPtr(JSNativePointer::POINTER_OFFSET);
-            GateRef externalPointer = builder_.LoadWithoutBarrier(VariableType::NATIVE_POINTER(), data, externalPointerOffset);
+            GateRef externalPointer = builder_.LoadWithoutBarrier(VariableType::NATIVE_POINTER(), data,
+                                                                  externalPointerOffset);
             dataPointer = externalPointer;
             builder_.Jump(&getValueFromBuffer);
         }
@@ -1436,20 +1442,23 @@ GateRef TypedNativeInlineLowering::GetValueFromBuffer(GateRef bufferIndex,
     BuiltinsStubCSigns::ID builtinsID = static_cast<BuiltinsStubCSigns::ID>(acc_.GetConstantValue(ID));
     switch (builtinsID) {
         case BuiltinsStubCSigns::ID::DataViewGetUint8: {
-            GateRef uint8Res = builder_.LoadWithoutBarrier(VariableType::INT8(), dataPointer, builder_.ZExtInt32ToPtr(bufferIndex));
+            GateRef uint8Res = builder_.LoadWithoutBarrier(VariableType::INT8(), dataPointer,
+                                                           builder_.ZExtInt32ToPtr(bufferIndex));
             finalResult = builder_.ZExtInt8ToInt32(uint8Res);
             builder_.Jump(&exit);
             break;
         }
         case BuiltinsStubCSigns::ID::DataViewGetInt8: {
-            GateRef int8res = builder_.LoadWithoutBarrier(VariableType::INT8(), dataPointer, builder_.ZExtInt32ToPtr(bufferIndex));
+            GateRef int8res = builder_.LoadWithoutBarrier(VariableType::INT8(), dataPointer,
+                                                          builder_.ZExtInt32ToPtr(bufferIndex));
             finalResult = builder_.SExtInt8ToInt32(int8res);
             builder_.Jump(&exit);
             break;
         }
         case BuiltinsStubCSigns::ID::DataViewGetUint16: {
             DEFVALUE(tempRes, (&builder_), VariableType::INT32(), builder_.Int32(0));
-            GateRef uint16Res = builder_.LoadWithoutBarrier(VariableType::INT16(), dataPointer, builder_.ZExtInt32ToPtr(bufferIndex));
+            GateRef uint16Res = builder_.LoadWithoutBarrier(VariableType::INT16(), dataPointer,
+                                                            builder_.ZExtInt32ToPtr(bufferIndex));
             BRANCH_CIR(builder_.BoolNot(isLittleEndian), &bigEndian, &littleEndian);
             builder_.Bind(&littleEndian);
             {
@@ -1471,7 +1480,8 @@ GateRef TypedNativeInlineLowering::GetValueFromBuffer(GateRef bufferIndex,
         }
         case BuiltinsStubCSigns::ID::DataViewGetInt16: {
             DEFVALUE(tempRes, (&builder_), VariableType::INT32(), builder_.Int32(0));
-            GateRef int16Res = builder_.LoadWithoutBarrier(VariableType::INT16(), dataPointer, builder_.ZExtInt32ToPtr(bufferIndex));
+            GateRef int16Res = builder_.LoadWithoutBarrier(VariableType::INT16(), dataPointer,
+                                                           builder_.ZExtInt32ToPtr(bufferIndex));
             BRANCH_CIR(builder_.BoolNot(isLittleEndian), &bigEndian, &littleEndian);
             builder_.Bind(&littleEndian);
             {
@@ -1492,7 +1502,8 @@ GateRef TypedNativeInlineLowering::GetValueFromBuffer(GateRef bufferIndex,
         }
         case BuiltinsStubCSigns::ID::DataViewGetUint32: {
             DEFVALUE(tempRes, (&builder_), VariableType::INT32(), builder_.Int32(0));
-            GateRef uint32Res = builder_.LoadWithoutBarrier(VariableType::INT32(), dataPointer, builder_.ZExtInt32ToPtr(bufferIndex));
+            GateRef uint32Res = builder_.LoadWithoutBarrier(VariableType::INT32(), dataPointer,
+                                                            builder_.ZExtInt32ToPtr(bufferIndex));
             BRANCH_CIR(builder_.BoolNot(isLittleEndian), &bigEndian, &littleEndian);
             builder_.Bind(&littleEndian);
             {
@@ -1513,7 +1524,8 @@ GateRef TypedNativeInlineLowering::GetValueFromBuffer(GateRef bufferIndex,
         }
         case BuiltinsStubCSigns::ID::DataViewGetInt32: {
             DEFVALUE(tempRes, (&builder_), VariableType::INT32(), builder_.Int32(0));
-            GateRef int32Res = builder_.LoadWithoutBarrier(VariableType::INT32(), dataPointer, builder_.ZExtInt32ToPtr(bufferIndex));
+            GateRef int32Res = builder_.LoadWithoutBarrier(VariableType::INT32(), dataPointer,
+                                                           builder_.ZExtInt32ToPtr(bufferIndex));
             BRANCH_CIR(builder_.BoolNot(isLittleEndian), &bigEndian, &littleEndian);
             builder_.Bind(&littleEndian);
             {
@@ -1535,7 +1547,8 @@ GateRef TypedNativeInlineLowering::GetValueFromBuffer(GateRef bufferIndex,
         case BuiltinsStubCSigns::ID::DataViewGetFloat32: {
             DEFVALUE(tempRes, (&builder_), VariableType::FLOAT64(), builder_.Double(base::NAN_VALUE));
             Label notNaN(&builder_);
-            GateRef int32Res = builder_.LoadWithoutBarrier(VariableType::INT32(), dataPointer, builder_.ZExtInt32ToPtr(bufferIndex));
+            GateRef int32Res = builder_.LoadWithoutBarrier(VariableType::INT32(), dataPointer,
+                                                           builder_.ZExtInt32ToPtr(bufferIndex));
             BRANCH_CIR(builder_.BoolNot(isLittleEndian), &bigEndian, &littleEndian);
             builder_.Bind(&littleEndian);
             {
@@ -3328,8 +3341,8 @@ void TypedNativeInlineLowering::LowerArrayPop(GateRef gate)
     Label isHole(&builder_);
     GateRef thisValue = acc_.GetValueIn(gate, 0);
     GateRef glue = acc_.GetGlueFromArgList();
-    builder_.DeoptCheck(
-        builder_.IsStableArrayLengthWriteable(glue, thisValue), acc_.GetValueIn(gate, 1), DeoptType::ARRAYLENGTHNOTWRITABLE);
+    builder_.DeoptCheck(builder_.IsStableArrayLengthWriteable(glue, thisValue), acc_.GetValueIn(gate, 1),
+                        DeoptType::ARRAYLENGTHNOTWRITABLE);
     GateRef arrayLength = builder_.GetLengthOfJSArray(thisValue);
     DEFVALUE(ret, (&builder_), VariableType::JS_ANY(), builder_.UndefineConstant());
     BRANCH_CIR(builder_.Int32Equal(arrayLength, builder_.Int32(0)), &exit, &arraylengthNotZero);

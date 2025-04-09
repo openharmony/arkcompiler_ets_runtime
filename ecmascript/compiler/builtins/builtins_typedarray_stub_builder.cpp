@@ -235,7 +235,8 @@ GateRef BuiltinsTypedArrayStubBuilder::FastCopyElementToArray(GateRef glue, Gate
     return ret;
 }
 
-GateRef BuiltinsTypedArrayStubBuilder::GetValueFromBuffer(GateRef glue, GateRef buffer, GateRef index, GateRef offset, GateRef jsType)
+GateRef BuiltinsTypedArrayStubBuilder::GetValueFromBuffer(GateRef glue, GateRef buffer, GateRef index, GateRef offset,
+                                                          GateRef jsType)
 {
     auto env = GetEnvironment();
     Label entryPass(env);
@@ -359,8 +360,8 @@ GateRef BuiltinsTypedArrayStubBuilder::GetValueFromBuffer(GateRef glue, GateRef 
             {
                 GateRef byteIndex = Int32Add(Int32Mul(index, Int32(base::ElementSize::FOUR)), offset);
                 GateRef block = GetDataPointFromBuffer(glue, buffer);
-                GateRef tmpResult = ExtFloat32ToDouble(CastInt32ToFloat32(LoadPrimitive(VariableType::INT32(),
-                                                                               block, byteIndex)));
+                GateRef tmpResult = ExtFloat32ToDouble(CastInt32ToFloat32(
+                    LoadPrimitive(VariableType::INT32(), block, byteIndex)));
                 Label ResultIsNumber(env);
                 Label ResultIsNan(env);
                 BRANCH(env->GetBuilder()->DoubleIsImpureNaN(tmpResult), &ResultIsNan, &ResultIsNumber);
@@ -1057,7 +1058,8 @@ void BuiltinsTypedArrayStubBuilder::ReduceRight(GateRef glue, GateRef thisValue,
                 BRANCH(Int32GreaterThanOrEqual(*k, Int32(0)), &next, &loopExit);
                 Bind(&next);
                 {
-                    GateRef kValue = FastGetPropertyByIndex(glue, thisValue, *k, GetObjectType(LoadHClass(glue, thisValue)));
+                    GateRef kValue = FastGetPropertyByIndex(glue, thisValue, *k,
+                                                            GetObjectType(LoadHClass(glue, thisValue)));
                     // 0 : the first position
                     SetValueToTaggedArray(VariableType::JS_ANY(), glue, argList, Int32(0), *accumulator);
                     // 1 : the second position
@@ -1166,7 +1168,8 @@ void BuiltinsTypedArrayStubBuilder::Reduce(GateRef glue, GateRef thisValue, Gate
                 BRANCH(Int32LessThan(*k, thisLen), &next, &loopExit);
                 Bind(&next);
                 {
-                    GateRef kValue = FastGetPropertyByIndex(glue, thisValue, *k, GetObjectType(LoadHClass(glue, thisValue)));
+                    GateRef kValue = FastGetPropertyByIndex(glue, thisValue, *k,
+                                                            GetObjectType(LoadHClass(glue, thisValue)));
                     // 0 : the first position
                     SetValueToTaggedArray(VariableType::JS_ANY(), glue, argList, Int32(0), *accumulator);
                     // 1 : the second position
@@ -3585,8 +3588,8 @@ void BuiltinsTypedArrayStubBuilder::FastSetValueInBuffer(GateRef glue, GateRef b
     }
 }
 
-void BuiltinsTypedArrayStubBuilder::SetValueInBufferForByte(GateRef glue, GateRef val,
-    GateRef pointer, GateRef byteIndex)
+void BuiltinsTypedArrayStubBuilder::SetValueInBufferForByte(GateRef glue, GateRef val, GateRef pointer,
+                                                            GateRef byteIndex)
 {
     auto env = GetEnvironment();
     Label entry(env);

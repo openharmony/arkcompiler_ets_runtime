@@ -217,13 +217,13 @@ GateRef BaselineStubBuilder::GetFrame(GateRef CurrentSp)
 GateRef BaselineStubBuilder::GetPcFromFrame(GateRef frame)
 {
     return LoadPrimitive(VariableType::NATIVE_POINTER(), frame,
-                IntPtr(AsmInterpretedFrame::GetPcOffset(GetEnvironment()->IsArch32Bit())));
+                         IntPtr(AsmInterpretedFrame::GetPcOffset(GetEnvironment()->IsArch32Bit())));
 }
 
 GateRef BaselineStubBuilder::GetCallSizeFromFrame(GateRef frame)
 {
     return LoadPrimitive(VariableType::NATIVE_POINTER(), frame,
-                IntPtr(AsmInterpretedFrame::GetCallSizeOffset(GetEnvironment()->IsArch32Bit())));
+                         IntPtr(AsmInterpretedFrame::GetCallSizeOffset(GetEnvironment()->IsArch32Bit())));
 }
 
 GateRef BaselineStubBuilder::GetThisFromFrame(GateRef glue, GateRef frame)
@@ -275,7 +275,7 @@ GateRef BaselineStubBuilder::GetStartIdxAndNumArgs(GateRef glue, GateRef sp, Gat
     numArgs = TruncInt64ToInt32(Int64And(Int64LSR(callField, Int64(MethodLiteral::NumArgsBits::START_BIT)),
                                          Int64((1LLU << MethodLiteral::NumArgsBits::SIZE) - 1)));
     GateRef fp = LoadPrimitive(VariableType::NATIVE_POINTER(), state,
-                      IntPtr(AsmInterpretedFrame::GetFpOffset(env->IsArch32Bit())));
+                               IntPtr(AsmInterpretedFrame::GetFpOffset(env->IsArch32Bit())));
     Label actualEqualDeclared(env);
     Label actualNotEqualDeclared(env);
     Branch(Int32UnsignedGreaterThan(ChangeIntPtrToInt32(PtrSub(fp, sp)),
@@ -284,7 +284,8 @@ GateRef BaselineStubBuilder::GetStartIdxAndNumArgs(GateRef glue, GateRef sp, Gat
            &actualNotEqualDeclared, &actualEqualDeclared);
     Bind(&actualNotEqualDeclared);
     {
-        numArgs = GetInt32OfTInt(Load(VariableType::JS_ANY(), glue, fp, IntPtr(static_cast<int64_t>(-sizeof(JSTaggedType)))));
+        numArgs = GetInt32OfTInt(Load(VariableType::JS_ANY(), glue, fp,
+                                      IntPtr(static_cast<int64_t>(-sizeof(JSTaggedType)))));
         Jump(&actualEqualDeclared);
     }
     Bind(&actualEqualDeclared);

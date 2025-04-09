@@ -1183,7 +1183,8 @@ void TypedHCRLowering::LowerTypedArrayLoadElement(GateRef gate, BuiltinTypeId id
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
 }
 
-GateRef TypedHCRLowering::BuildOnHeapTypedArrayLoadElement(GateRef glue, GateRef receiver, GateRef offset, VariableType type)
+GateRef TypedHCRLowering::BuildOnHeapTypedArrayLoadElement(GateRef glue, GateRef receiver, GateRef offset,
+                                                           VariableType type)
 {
     GateRef byteArray =
         builder_.LoadConstOffset(VariableType::JS_POINTER(), receiver, JSTypedArray::VIEWED_ARRAY_BUFFER_OFFSET);
@@ -1192,15 +1193,18 @@ GateRef TypedHCRLowering::BuildOnHeapTypedArrayLoadElement(GateRef glue, GateRef
     return result;
 }
 
-GateRef TypedHCRLowering::BuildNotOnHeapTypedArrayLoadElement(GateRef glue, GateRef receiver, GateRef offset, VariableType type)
+GateRef TypedHCRLowering::BuildNotOnHeapTypedArrayLoadElement(GateRef glue, GateRef receiver, GateRef offset,
+                                                              VariableType type)
 {
     GateRef arrayBuffer =
         builder_.LoadConstOffset(VariableType::JS_POINTER(), receiver, JSTypedArray::VIEWED_ARRAY_BUFFER_OFFSET);
 
-    GateRef data = builder_.Load(VariableType::JS_POINTER(), glue, arrayBuffer, builder_.IntPtr(JSArrayBuffer::DATA_OFFSET));
-    GateRef block = builder_.Load(VariableType::JS_ANY(), glue, data, builder_.IntPtr(JSNativePointer::POINTER_OFFSET));
-    GateRef byteOffset =
-        builder_.LoadWithoutBarrier(VariableType::INT32(), receiver, builder_.IntPtr(JSTypedArray::BYTE_OFFSET_OFFSET));
+    GateRef data = builder_.Load(VariableType::JS_POINTER(), glue, arrayBuffer,
+                                 builder_.IntPtr(JSArrayBuffer::DATA_OFFSET));
+    GateRef block = builder_.Load(VariableType::JS_ANY(), glue, data,
+                                  builder_.IntPtr(JSNativePointer::POINTER_OFFSET));
+    GateRef byteOffset = builder_.LoadWithoutBarrier(VariableType::INT32(), receiver,
+                                                     builder_.IntPtr(JSTypedArray::BYTE_OFFSET_OFFSET));
     GateRef result = builder_.Load(type, glue, block, builder_.PtrAdd(offset, byteOffset));
     return result;
 }
@@ -1225,9 +1229,10 @@ GateRef TypedHCRLowering::BuildTypedArrayLoadElement(GateRef glue, GateRef recei
     {
         data = builder_.Load(VariableType::JS_POINTER(), glue, byteArrayOrArrayBuffer,
                              builder_.IntPtr(JSArrayBuffer::DATA_OFFSET));
-        GateRef block = builder_.Load(VariableType::JS_ANY(), glue, *data, builder_.IntPtr(JSNativePointer::POINTER_OFFSET));
-        GateRef byteOffset =
-            builder_.LoadWithoutBarrier(VariableType::INT32(), receiver, builder_.IntPtr(JSTypedArray::BYTE_OFFSET_OFFSET));
+        GateRef block = builder_.Load(VariableType::JS_ANY(), glue, *data,
+                                      builder_.IntPtr(JSNativePointer::POINTER_OFFSET));
+        GateRef byteOffset = builder_.LoadWithoutBarrier(VariableType::INT32(), receiver,
+                                                         builder_.IntPtr(JSTypedArray::BYTE_OFFSET_OFFSET));
         result = builder_.Load(type, glue, block, builder_.PtrAdd(offset, byteOffset));
         builder_.Jump(exit);
     }
@@ -1350,8 +1355,9 @@ void TypedHCRLowering::LowerTypedArrayStoreElement(GateRef gate, BuiltinTypeId i
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
-void TypedHCRLowering::OptStoreElementByOnHeapMode(GateRef gate, GateRef glue, GateRef receiver, GateRef offset, GateRef value,
-                                                   Label *isByteArray, Label *isArrayBuffer, Label *exit)
+void TypedHCRLowering::OptStoreElementByOnHeapMode(GateRef gate, GateRef glue, GateRef receiver,
+                                                   GateRef offset, GateRef value, Label *isByteArray,
+                                                   Label *isArrayBuffer, Label *exit)
 {
     StoreElementAccessor accessor = acc_.GetStoreElementAccessor(gate);
     OnHeapMode onHeapMode = accessor.GetOnHeapMode();
@@ -1380,14 +1386,17 @@ void TypedHCRLowering::BuildOnHeapTypedArrayStoreElement(GateRef receiver, GateR
     builder_.StoreMemory(MemoryType::ELEMENT_TYPE, VariableType::VOID(), data, offset, value);
 }
 
-void TypedHCRLowering::BuildNotOnHeapTypedArrayStoreElement(GateRef glue, GateRef receiver, GateRef offset, GateRef value)
+void TypedHCRLowering::BuildNotOnHeapTypedArrayStoreElement(GateRef glue, GateRef receiver, GateRef offset,
+                                                            GateRef value)
 {
     GateRef arrayBuffer = builder_.LoadConstOffset(VariableType::JS_POINTER(), receiver,
                                                    JSTypedArray::VIEWED_ARRAY_BUFFER_OFFSET);
-    GateRef data = builder_.Load(VariableType::JS_POINTER(), glue, arrayBuffer, builder_.IntPtr(JSArrayBuffer::DATA_OFFSET));
-    GateRef block = builder_.Load(VariableType::JS_ANY(), glue, data, builder_.IntPtr(JSNativePointer::POINTER_OFFSET));
-    GateRef byteOffset =
-        builder_.LoadWithoutBarrier(VariableType::INT32(), receiver, builder_.IntPtr(JSTypedArray::BYTE_OFFSET_OFFSET));
+    GateRef data = builder_.Load(VariableType::JS_POINTER(), glue, arrayBuffer,
+                                 builder_.IntPtr(JSArrayBuffer::DATA_OFFSET));
+    GateRef block = builder_.Load(VariableType::JS_ANY(), glue, data,
+                                  builder_.IntPtr(JSNativePointer::POINTER_OFFSET));
+    GateRef byteOffset = builder_.LoadWithoutBarrier(VariableType::INT32(), receiver,
+                                                     builder_.IntPtr(JSTypedArray::BYTE_OFFSET_OFFSET));
     builder_.StoreMemory(MemoryType::ELEMENT_TYPE, VariableType::VOID(), block,
                          builder_.PtrAdd(offset, byteOffset), value);
 }
@@ -1410,9 +1419,10 @@ void TypedHCRLowering::BuildTypedArrayStoreElement(GateRef glue, GateRef receive
     {
         data = builder_.Load(VariableType::JS_POINTER(), glue, byteArrayOrArrayBuffer,
                              builder_.IntPtr(JSArrayBuffer::DATA_OFFSET));
-        GateRef block = builder_.Load(VariableType::JS_ANY(), glue, *data, builder_.IntPtr(JSNativePointer::POINTER_OFFSET));
-        GateRef byteOffset =
-            builder_.LoadWithoutBarrier(VariableType::INT32(), receiver, builder_.IntPtr(JSTypedArray::BYTE_OFFSET_OFFSET));
+        GateRef block = builder_.Load(VariableType::JS_ANY(), glue, *data,
+                                      builder_.IntPtr(JSNativePointer::POINTER_OFFSET));
+        GateRef byteOffset = builder_.LoadWithoutBarrier(VariableType::INT32(), receiver,
+                                                         builder_.IntPtr(JSTypedArray::BYTE_OFFSET_OFFSET));
         builder_.StoreMemory(MemoryType::ELEMENT_TYPE, VariableType::VOID(), block,
                              builder_.PtrAdd(offset, byteOffset), value);
         builder_.Jump(exit);
@@ -1937,7 +1947,8 @@ void TypedHCRLowering::LowerTypeOf(GateRef gate, GateRef glue)
         UNREACHABLE();
     }
 
-    GateRef result = builder_.Load(VariableType::JS_POINTER(), glue, gConstAddr, builder_.GetGlobalConstantOffset(index));
+    GateRef result = builder_.Load(VariableType::JS_POINTER(), glue, gConstAddr,
+                                   builder_.GetGlobalConstantOffset(index));
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
 }
 
@@ -1961,9 +1972,11 @@ void TypedHCRLowering::LowerArrayConstructorCheck(GateRef gate, GateRef glue)
             Label getHclass(&builder_);
             GateRef glueGlobalEnvOffset = builder_.IntPtr(
                 JSThread::GlueData::GetGlueGlobalEnvOffset(builder_.GetCurrentEnvironment()->Is32Bit()));
-            GateRef glueGlobalEnv = builder_.LoadWithoutBarrier(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
+            GateRef glueGlobalEnv = builder_.LoadWithoutBarrier(VariableType::NATIVE_POINTER(), glue,
+                                                                glueGlobalEnvOffset);
             GateRef arrayFunc =
-                builder_.GetGlobalEnvValue(VariableType::JS_ANY(), glue, glueGlobalEnv, GlobalEnv::ARRAY_FUNCTION_INDEX);
+                builder_.GetGlobalEnvValue(VariableType::JS_ANY(), glue, glueGlobalEnv,
+                                           GlobalEnv::ARRAY_FUNCTION_INDEX);
             check = builder_.Equal(arrayFunc, newTarget);
             BRANCH_CIR(*check, &getHclass, &exit);
             builder_.Bind(&getHclass);
@@ -2076,7 +2089,8 @@ void TypedHCRLowering::LowerFloat32ArrayConstructorCheck(GateRef gate, GateRef g
         JSThread::GlueData::GetGlueGlobalEnvOffset(builder_.GetCurrentEnvironment()->Is32Bit()));
     GateRef glueGlobalEnv = builder_.LoadWithoutBarrier(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
     GateRef arrayFunc =
-        builder_.GetGlobalEnvValue(VariableType::JS_ANY(), glue, glueGlobalEnv, GlobalEnv::FLOAT32_ARRAY_FUNCTION_INDEX);
+        builder_.GetGlobalEnvValue(VariableType::JS_ANY(), glue, glueGlobalEnv,
+                                   GlobalEnv::FLOAT32_ARRAY_FUNCTION_INDEX);
     GateRef check = builder_.Equal(arrayFunc, newTarget);
     builder_.DeoptCheck(check, frameState, DeoptType::NEWBUILTINCTORFLOAT32ARRAY);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
@@ -2211,9 +2225,11 @@ void TypedHCRLowering::LowerObjectConstructorCheck(GateRef gate, GateRef glue)
             Label getHclass(&builder_);
             GateRef glueGlobalEnvOffset = builder_.IntPtr(
                 JSThread::GlueData::GetGlueGlobalEnvOffset(builder_.GetCurrentEnvironment()->Is32Bit()));
-            GateRef glueGlobalEnv = builder_.LoadWithoutBarrier(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
+            GateRef glueGlobalEnv = builder_.LoadWithoutBarrier(VariableType::NATIVE_POINTER(), glue,
+                                                                glueGlobalEnvOffset);
             GateRef targetFunc =
-                builder_.GetGlobalEnvValue(VariableType::JS_ANY(), glue, glueGlobalEnv, GlobalEnv::OBJECT_FUNCTION_INDEX);
+                builder_.GetGlobalEnvValue(VariableType::JS_ANY(), glue, glueGlobalEnv,
+                                           GlobalEnv::OBJECT_FUNCTION_INDEX);
             check = builder_.Equal(targetFunc, newTarget);
             BRANCH_CIR(*check, &getHclass, &exit);
             builder_.Bind(&getHclass);
@@ -2305,7 +2321,8 @@ void TypedHCRLowering::LowerObjectConstructor(GateRef gate, GateRef glue)
                 {
                     GateRef glueGlobalEnvOffset = builder_.IntPtr(
                         JSThread::GlueData::GetGlueGlobalEnvOffset(builder_.GetCurrentEnvironment()->Is32Bit()));
-                    GateRef glueGlobalEnv = builder_.LoadWithoutBarrier(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
+                    GateRef glueGlobalEnv = builder_.LoadWithoutBarrier(VariableType::NATIVE_POINTER(), glue,
+                                                                        glueGlobalEnvOffset);
                     GateRef objectFunctionPrototype = builder_.GetGlobalEnvValue(VariableType::JS_ANY(), glue,
                         glueGlobalEnv, GlobalEnv::OBJECT_FUNCTION_PROTOTYPE_INDEX);
                     res = builder_.OrdinaryNewJSObjectCreate(glue, objectFunctionPrototype);
@@ -2348,9 +2365,11 @@ void TypedHCRLowering::LowerBooleanConstructorCheck(GateRef gate, GateRef glue)
             Label getHclass(&builder_);
             GateRef glueGlobalEnvOffset = builder_.IntPtr(
                 JSThread::GlueData::GetGlueGlobalEnvOffset(builder_.GetCurrentEnvironment()->Is32Bit()));
-            GateRef glueGlobalEnv = builder_.LoadWithoutBarrier(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
+            GateRef glueGlobalEnv = builder_.LoadWithoutBarrier(VariableType::NATIVE_POINTER(), glue,
+                                                                glueGlobalEnvOffset);
             GateRef booleanFunc =
-                builder_.GetGlobalEnvValue(VariableType::JS_ANY(), glue, glueGlobalEnv, GlobalEnv::BOOLEAN_FUNCTION_INDEX);
+                builder_.GetGlobalEnvValue(VariableType::JS_ANY(), glue, glueGlobalEnv,
+                                           GlobalEnv::BOOLEAN_FUNCTION_INDEX);
             check = builder_.Equal(booleanFunc, newTarget);
             BRANCH_CIR(*check, &getHclass, &exit);
             builder_.Bind(&getHclass);
@@ -2407,19 +2426,23 @@ GateRef TypedHCRLowering::NewJSPrimitiveRef(PrimitiveType type, GateRef glue, Ga
     GateRef ctor = Circuit::NullGate();
     switch (type) {
         case PrimitiveType::PRIMITIVE_NUMBER: {
-            ctor = builder_.GetGlobalEnvValue(VariableType::JS_ANY(), glue, globalEnv, GlobalEnv::NUMBER_FUNCTION_INDEX);
+            ctor = builder_.GetGlobalEnvValue(VariableType::JS_ANY(), glue, globalEnv,
+                                              GlobalEnv::NUMBER_FUNCTION_INDEX);
             break;
         }
         case PrimitiveType::PRIMITIVE_SYMBOL: {
-            ctor = builder_.GetGlobalEnvValue(VariableType::JS_ANY(), glue, globalEnv, GlobalEnv::SYMBOL_FUNCTION_INDEX);
+            ctor = builder_.GetGlobalEnvValue(VariableType::JS_ANY(), glue, globalEnv,
+                                              GlobalEnv::SYMBOL_FUNCTION_INDEX);
             break;
         }
         case PrimitiveType::PRIMITIVE_BOOLEAN: {
-            ctor = builder_.GetGlobalEnvValue(VariableType::JS_ANY(), glue, globalEnv, GlobalEnv::BOOLEAN_FUNCTION_INDEX);
+            ctor = builder_.GetGlobalEnvValue(VariableType::JS_ANY(), glue, globalEnv,
+                                              GlobalEnv::BOOLEAN_FUNCTION_INDEX);
             break;
         }
         case PrimitiveType::PRIMITIVE_BIGINT: {
-            ctor = builder_.GetGlobalEnvValue(VariableType::JS_ANY(), glue, globalEnv, GlobalEnv::BIGINT_FUNCTION_INDEX);
+            ctor = builder_.GetGlobalEnvValue(VariableType::JS_ANY(), glue, globalEnv,
+                                              GlobalEnv::BIGINT_FUNCTION_INDEX);
             break;
         }
         default: {

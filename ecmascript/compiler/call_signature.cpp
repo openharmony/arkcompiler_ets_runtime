@@ -2666,9 +2666,12 @@ DEF_CALL_SIGNATURE(SharedGCMarkingBarrier)
 
 DEF_CALL_SIGNATURE(GetValueWithBarrier)
 {
-    CallSignature getValueWithBarrier("GetValueWithBarrier", 0, 2, ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    // 2 : 2 input parameters
+    CallSignature getValueWithBarrier("GetValueWithBarrier", 0, 2, ArgumentsOrder::DEFAULT_ORDER,
+                                      VariableType::JS_ANY());
     *callSign = getValueWithBarrier;
 
+    // 2 : 2 input parameters
     std::array<VariableType, 2> params = {
         VariableType::NATIVE_POINTER(),
         VariableType::JS_POINTER()

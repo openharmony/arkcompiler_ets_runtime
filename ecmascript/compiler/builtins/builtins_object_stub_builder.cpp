@@ -718,7 +718,8 @@ void BuiltinsObjectStubBuilder::LayoutInfoGetAllEnumKeys(GateRef end, GateRef of
         {
             GateRef key = GetKey(glue_, layoutInfo, *i);
             GateRef iVal = *i;
-            BRANCH(LogicAndBuilder(env).And(TaggedIsString(glue_, key)).And(IsEnumerable(GetAttr(glue_, layoutInfo, iVal))).Done(),
+            BRANCH(LogicAndBuilder(env).And(TaggedIsString(glue_, key))
+                .And(IsEnumerable(GetAttr(glue_, layoutInfo, iVal))).Done(),
                 &isEnumerable, &loopEnd);
             Bind(&isEnumerable);
             SetValueToTaggedArray(VariableType::JS_ANY(), glue_, array, Int32Add(*enumKeys, offset), key);
@@ -1142,7 +1143,8 @@ void BuiltinsObjectStubBuilder::SetPrototypeOf(Variable *result, Label *exit, La
         Label objNotSpecial(env);
         GateRef protoVal = *proto;
         GateRef isSpecialobj = LogicOrBuilder(env).Or(IsJsProxy(glue_, obj)).Or(TaggedIsSharedObj(glue_, obj))
-            .Or(TaggedIsSharedObj(glue_, protoVal)).Or(IsSpecialContainer(glue_, obj)).Or(IsModuleNamespace(glue_, obj)).Done();
+            .Or(TaggedIsSharedObj(glue_, protoVal)).Or(IsSpecialContainer(glue_, obj))
+            .Or(IsModuleNamespace(glue_, obj)).Done();
         BRANCH(isSpecialobj, slowPath, &objNotSpecial);
         Bind(&objNotSpecial);
         Label isFunction(env);

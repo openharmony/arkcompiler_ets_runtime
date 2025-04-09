@@ -350,7 +350,8 @@ GateRef NewObjectStubBuilder::CloneObjectLiteral(GateRef glue, GateRef literal, 
         }
         Bind(&isAccessorJudgment);
         {
-            BRANCH(Int32Equal(GetObjectType(LoadHClass(glue, *value)), Int32(static_cast<int32_t>(JSType::ACCESSOR_DATA))),
+            BRANCH(Int32Equal(GetObjectType(LoadHClass(glue, *value)),
+                Int32(static_cast<int32_t>(JSType::ACCESSOR_DATA))),
                 &isAccessorData, &isTaggedRep);
         }
         Bind(&isJSFunction);
@@ -936,7 +937,8 @@ GateRef NewObjectStubBuilder::NewJSForinIterator(GateRef glue, GateRef receiver,
     auto env = GetEnvironment();
     GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
     GateRef glueGlobalEnv = LoadPrimitive(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
-    GateRef hclass = GetGlobalEnvValue(VariableType::JS_ANY(), glue, glueGlobalEnv, GlobalEnv::FOR_IN_ITERATOR_CLASS_INDEX);
+    GateRef hclass = GetGlobalEnvValue(VariableType::JS_ANY(), glue, glueGlobalEnv,
+                                       GlobalEnv::FOR_IN_ITERATOR_CLASS_INDEX);
     GateRef iter = NewJSObject(glue, hclass);
     // init JSForinIterator
     SetObjectOfForInIterator(glue, iter, receiver);
@@ -979,12 +981,14 @@ GateRef NewObjectStubBuilder::LoadHClassFromMethod(GateRef glue, GateRef method)
         Switch(kind, &defaultLabel, valueBuffer, labelBuffer, 2);
         Bind(&labelBuffer[0]);
         {
-            hclass = GetGlobalEnvValue(VariableType::JS_ANY(), glue, glueGlobalEnv, GlobalEnv::FUNCTION_CLASS_WITH_PROTO);
+            hclass = GetGlobalEnvValue(VariableType::JS_ANY(), glue, glueGlobalEnv,
+                                       GlobalEnv::FUNCTION_CLASS_WITH_PROTO);
             Jump(&exit);
         }
         Bind(&labelBuffer[1]);
         {
-            hclass = GetGlobalEnvValue(VariableType::JS_ANY(), glue, glueGlobalEnv, GlobalEnv::FUNCTION_CLASS_WITHOUT_PROTO);
+            hclass = GetGlobalEnvValue(VariableType::JS_ANY(), glue, glueGlobalEnv,
+                                       GlobalEnv::FUNCTION_CLASS_WITHOUT_PROTO);
             Jump(&exit);
         }
     }
@@ -1003,12 +1007,14 @@ GateRef NewObjectStubBuilder::LoadHClassFromMethod(GateRef glue, GateRef method)
             Switch(kind, &defaultLabel, valueBuffer1, labelBuffer1, 3);
             Bind(&labelBuffer1[0]);
             {
-                hclass = GetGlobalEnvValue(VariableType::JS_ANY(), glue, glueGlobalEnv, GlobalEnv::FUNCTION_CLASS_WITH_PROTO);
+                hclass = GetGlobalEnvValue(VariableType::JS_ANY(), glue, glueGlobalEnv,
+                                           GlobalEnv::FUNCTION_CLASS_WITH_PROTO);
                 Jump(&exit);
             }
             Bind(&labelBuffer1[1]);
             {
-                hclass = GetGlobalEnvValue(VariableType::JS_ANY(), glue, glueGlobalEnv, GlobalEnv::GENERATOR_FUNCTION_CLASS);
+                hclass = GetGlobalEnvValue(VariableType::JS_ANY(), glue, glueGlobalEnv,
+                                           GlobalEnv::GENERATOR_FUNCTION_CLASS);
                 Jump(&exit);
             }
             // 2 : index of kind
@@ -1108,7 +1114,8 @@ void NewObjectStubBuilder::NewJSFunction(GateRef glue, GateRef jsFunc, GateRef i
     {
         GateRef module = GetModuleFromFunction(glue, jsFunc);
         SetLengthToFunction(glue, result->ReadVariable(), length);
-        BRANCH(IsSendableFunction(GetMethodFromFunction(glue, result->ReadVariable())), &isSendableFunc, &isNotSendableFunc);
+        BRANCH(IsSendableFunction(GetMethodFromFunction(glue, result->ReadVariable())),
+            &isSendableFunc, &isNotSendableFunc);
         Bind(&isSendableFunc);
         {
             GateRef smodule = CallRuntime(glue, RTSTUB_ID(GetSharedModule), { module });
@@ -1393,7 +1400,8 @@ void NewObjectStubBuilder::AssignRestArg(Variable *result, Label *exit,
     LoopBegin(&setArgumentsBegin);
     {
         GateRef idx = ZExtInt32ToPtr(Int32Add(startIdx, *i));
-        GateRef receiver = Load(VariableType::JS_ANY(), glue_, sp, PtrMul(IntPtr(JSTaggedValue::TaggedTypeSize()), idx));
+        GateRef receiver = Load(VariableType::JS_ANY(), glue_, sp,
+                                PtrMul(IntPtr(JSTaggedValue::TaggedTypeSize()), idx));
         SetValueToTaggedArray(VariableType::JS_ANY(), glue_, elements, *i, receiver);
         i = Int32Add(*i, Int32(1));
         BRANCH(Int32UnsignedLessThan(*i, numArgs), &setArgumentsAgain, &setArgumentsEnd);
@@ -1719,7 +1727,8 @@ void NewObjectStubBuilder::AllocSlicedStringObject(Variable *result, Label *exit
 
     Bind(&afterAllocate);
     StoreHClass(glue_, result->ReadVariable(), stringClass);
-    GateRef mixLength = LoadPrimitive(VariableType::INT32(), flatString->GetFlatString(), IntPtr(EcmaString::MIX_LENGTH_OFFSET));
+    GateRef mixLength = LoadPrimitive(VariableType::INT32(), flatString->GetFlatString(),
+                                      IntPtr(EcmaString::MIX_LENGTH_OFFSET));
     GateRef isCompressed = Int32And(Int32(EcmaString::STRING_COMPRESSED_BIT), mixLength);
     SetLength(glue_, result->ReadVariable(), length, isCompressed);
     SetRawHashcode(glue_, result->ReadVariable(), Int32(0), False());
@@ -1995,7 +2004,8 @@ GateRef NewObjectStubBuilder::CreateEmptyObject(GateRef glue)
     auto env = GetEnvironment();
     GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
     GateRef glueGlobalEnv = LoadPrimitive(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
-    GateRef objectFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glue, glueGlobalEnv, GlobalEnv::OBJECT_FUNCTION_INDEX);
+    GateRef objectFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glue, glueGlobalEnv,
+                                           GlobalEnv::OBJECT_FUNCTION_INDEX);
     GateRef hclass = Load(VariableType::JS_POINTER(), glue, objectFunc, IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
     return NewJSObject(glue, hclass);
 }
@@ -2210,8 +2220,10 @@ GateRef NewObjectStubBuilder::NewTaggedSubArray(GateRef glue, GateRef srcTypedAr
     env->SubCfgEntry(&entry);
     GateRef constructorName = Load(VariableType::JS_POINTER(), glue, srcTypedArray,
         IntPtr(JSTypedArray::TYPED_ARRAY_NAME_OFFSET));
-    GateRef srcByteOffset = LoadPrimitive(VariableType::INT32(), srcTypedArray, IntPtr(JSTypedArray::BYTE_OFFSET_OFFSET));
-    GateRef contentType = LoadPrimitive(VariableType::INT32(), srcTypedArray, IntPtr(JSTypedArray::CONTENT_TYPE_OFFSET));
+    GateRef srcByteOffset = LoadPrimitive(VariableType::INT32(), srcTypedArray,
+                                          IntPtr(JSTypedArray::BYTE_OFFSET_OFFSET));
+    GateRef contentType = LoadPrimitive(VariableType::INT32(), srcTypedArray,
+                                        IntPtr(JSTypedArray::CONTENT_TYPE_OFFSET));
     GateRef beginByteOffset = Int32Add(srcByteOffset, Int32Mul(beginIndex, elementSize));
 
     Label isOnHeap(env);
@@ -2306,7 +2318,8 @@ GateRef NewObjectStubBuilder::NewTypedArray(GateRef glue, GateRef srcTypedArray,
             IntPtr(JSTypedArray::TYPED_ARRAY_NAME_OFFSET));
         GateRef elementSize = GetElementSizeFromType(glue, srcType);
         GateRef newByteLength = Int32Mul(elementSize, length);
-        GateRef contentType = LoadPrimitive(VariableType::INT32(), srcTypedArray, IntPtr(JSTypedArray::CONTENT_TYPE_OFFSET));
+        GateRef contentType = LoadPrimitive(VariableType::INT32(), srcTypedArray,
+                                            IntPtr(JSTypedArray::CONTENT_TYPE_OFFSET));
         BRANCH(Int32LessThanOrEqual(newByteLength, Int32(RangeInfo::TYPED_ARRAY_ONHEAP_MAX)), &next, &slowPath);
         Bind(&next);
         {
@@ -2362,7 +2375,8 @@ GateRef NewObjectStubBuilder::NewTypedArraySameType(GateRef glue, GateRef srcTyp
         IntPtr(JSTypedArray::TYPED_ARRAY_NAME_OFFSET));
     GateRef elementSize = GetElementSizeFromType(glue, srcType);
     GateRef newByteLength = Int32Mul(elementSize, length);
-    GateRef contentType = LoadPrimitive(VariableType::INT32(), srcTypedArray, IntPtr(JSTypedArray::CONTENT_TYPE_OFFSET));
+    GateRef contentType = LoadPrimitive(VariableType::INT32(), srcTypedArray,
+                                        IntPtr(JSTypedArray::CONTENT_TYPE_OFFSET));
     BRANCH(Int32LessThanOrEqual(newByteLength, Int32(RangeInfo::TYPED_ARRAY_ONHEAP_MAX)), &next, &slowPath);
     Bind(&next);
     {

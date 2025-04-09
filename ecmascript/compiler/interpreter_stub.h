@@ -154,7 +154,7 @@ public:
     inline GateRef GetEnvFromFrame(GateRef glue, GateRef frame);
     inline GateRef GetEnvFromFunction(GateRef glue, GateRef frame);
     inline GateRef GetConstpoolFromMethod(GateRef glue, GateRef function);
-    inline GateRef GetModule(GateRef glue,GateRef sp);
+    inline GateRef GetModule(GateRef glue, GateRef sp);
     inline GateRef GetProfileTypeInfoFromFunction(GateRef glue, GateRef function);
     inline GateRef GetModuleFromFunction(GateRef glue, GateRef function);
     inline GateRef GetSendableEnvFromModule(GateRef glue, GateRef module);

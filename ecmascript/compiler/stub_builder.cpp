@@ -409,7 +409,8 @@ GateRef StubBuilder::GetHandlerFromMegaICCache(GateRef glue, GateRef cache, Gate
     GateRef hash = HashFromHclassAndStringKey(glue, cls, key);
 
     GateRef prop = PtrAdd(cache, PtrMul(ZExtInt32ToPtr(hash), IntPtr(MegaICCache::PropertyKey::GetPropertyKeySize())));
-    GateRef propHclass = Load(VariableType::JS_POINTER(), glue, prop, IntPtr(MegaICCache::PropertyKey::GetHclassOffset()));
+    GateRef propHclass = Load(VariableType::JS_POINTER(), glue, prop,
+                              IntPtr(MegaICCache::PropertyKey::GetHclassOffset()));
     GateRef propKey = Load(VariableType::JS_ANY(), glue, prop, IntPtr(MegaICCache::PropertyKey::GetKeyOffset()));
 
     GateRef hclassIsEqual = IntPtrEqual(cls, propHclass);
@@ -984,7 +985,8 @@ GateRef StubBuilder::FindEntryFromTransitionDictionary(GateRef glue, GateRef ele
                         Label notMatch(env);
                         BRANCH(IsMatchInTransitionDictionary(element, key, metaData,
                             // metaData is int32 type
-                            TruncInt64ToInt32(GetAttributesFromDictionary<TransitionsDictionary>(glue, elements, *entry))),
+                            TruncInt64ToInt32(GetAttributesFromDictionary<TransitionsDictionary>(
+                                glue, elements, *entry))),
                             &isMatch, &notMatch);
                         {
                             Bind(&isMatch);
@@ -2643,7 +2645,8 @@ GateRef StubBuilder::LoadICWithHandler(
             }
         }
         Bind(&handlerNotInt);
-        BRANCH_LIKELY(TaggedIsPrototypeHandler(glue, *handler), &handlerIsPrototypeHandler, &handlerNotPrototypeHandler);
+        BRANCH_LIKELY(TaggedIsPrototypeHandler(glue, *handler),
+            &handlerIsPrototypeHandler, &handlerNotPrototypeHandler);
         Bind(&handlerIsPrototypeHandler);
         {
             GateRef cellValue = GetPrototypeHandlerProtoCell(glue, *handler);
@@ -3055,7 +3058,8 @@ GateRef StubBuilder::StoreICWithHandler(GateRef glue, GateRef receiver, GateRef 
         }
         Bind(&handlerNotInt);
         {
-            BRANCH(TaggedIsTransitionHandler(glue, *handler), &handlerIsTransitionHandler, &handlerNotTransitionHandler);
+            BRANCH(TaggedIsTransitionHandler(glue, *handler),
+                &handlerIsTransitionHandler, &handlerNotTransitionHandler);
             Bind(&handlerIsTransitionHandler);
             {
                 result = StoreWithTransition(glue, receiver, *actualValue, *handler, callback);
@@ -3077,7 +3081,8 @@ GateRef StubBuilder::StoreICWithHandler(GateRef glue, GateRef receiver, GateRef 
                 }
                 Bind(&handlerNotTransWithProtoHandler);
                 {
-                    BRANCH(TaggedIsPrototypeHandler(glue, *handler), &handlerIsPrototypeHandler, &handlerNotPrototypeHandler);
+                    BRANCH(TaggedIsPrototypeHandler(glue, *handler),
+                        &handlerIsPrototypeHandler, &handlerNotPrototypeHandler);
                     Bind(&handlerNotPrototypeHandler);
                     {
                         BRANCH(TaggedIsPropertyBox(glue, *handler), &handlerIsPropertyBox, &handlerNotPropertyBox);
@@ -5796,7 +5801,8 @@ void StubBuilder::TryFastHasInstance(GateRef glue, GateRef instof, GateRef targe
 
     GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
     GateRef glueGlobalEnv = LoadPrimitive(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
-    GateRef function = GetGlobalEnvValue(VariableType::JS_ANY(), glue, glueGlobalEnv, GlobalEnv::HASINSTANCE_FUNCTION_INDEX);
+    GateRef function = GetGlobalEnvValue(VariableType::JS_ANY(), glue, glueGlobalEnv,
+                                         GlobalEnv::HASINSTANCE_FUNCTION_INDEX);
 
     Label slowPath(env);
     Label tryFastPath(env);
@@ -6051,7 +6057,8 @@ GateRef StubBuilder::GetCtorPrototype(GateRef glue, GateRef ctor)
     BRANCH(IsJSHClass(glue, ctorProtoOrHC), &isHClass, &isPrototype);
     Bind(&isHClass);
     {
-        constructorPrototype = Load(VariableType::JS_POINTER(), glue, ctorProtoOrHC, IntPtr(JSHClass::PROTOTYPE_OFFSET));
+        constructorPrototype = Load(VariableType::JS_POINTER(), glue, ctorProtoOrHC,
+                                    IntPtr(JSHClass::PROTOTYPE_OFFSET));
         Jump(&exit);
     }
     Bind(&isPrototype);
@@ -6116,7 +6123,8 @@ GateRef StubBuilder::OrdinaryHasInstance(GateRef glue, GateRef target, GateRef o
         BRANCH(IsBoundFunction(glue, target), &targetIsBoundFunction, &targetNotBoundFunction);
         Bind(&targetIsBoundFunction);
         {
-            GateRef boundTarget = Load(VariableType::JS_ANY(), glue, target, IntPtr(JSBoundFunction::BOUND_TARGET_OFFSET));
+            GateRef boundTarget = Load(VariableType::JS_ANY(), glue, target,
+                                       IntPtr(JSBoundFunction::BOUND_TARGET_OFFSET));
             result = CallRuntime(glue, RTSTUB_ID(InstanceOf), { obj, boundTarget });
             Jump(&exit);
         }
@@ -7037,7 +7045,8 @@ GateRef StubBuilder::FastEqual(GateRef glue, GateRef left, GateRef right, Profil
                         Label eitherNotBigInt(env);
                         BRANCH(BothAreString(glue, left, right), &bothString, &eitherNotString1);
                         Bind(&eitherNotString1);
-                        BRANCH(BitAnd(TaggedIsBigInt(glue, left),TaggedIsBigInt(glue, right)), &bothBigInt, &eitherNotBigInt);
+                        BRANCH(BitAnd(TaggedIsBigInt(glue, left),TaggedIsBigInt(glue, right)),
+                            &bothBigInt, &eitherNotBigInt);
                         Bind(&bothBigInt);
                         {
                             callback.ProfileOpType(TaggedInt(PGOSampleType::BigIntType()));
@@ -8614,7 +8623,8 @@ GateRef StubBuilder::IsIn(GateRef glue, GateRef prop, GateRef obj)
 
 GateRef StubBuilder::IsSpecialKeysObject(GateRef glue, GateRef obj)
 {
-    return LogicOrBuilder(env_).Or(IsTypedArray(glue, obj)).Or(IsModuleNamespace(glue, obj)).Or(IsSpecialContainer(glue, obj)).Done();
+    return LogicOrBuilder(env_).Or(IsTypedArray(glue, obj)).Or(IsModuleNamespace(glue, obj))
+        .Or(IsSpecialContainer(glue, obj)).Done();
 }
 
 GateRef StubBuilder::IsSlowKeysObject(GateRef glue, GateRef obj)
@@ -8629,7 +8639,8 @@ GateRef StubBuilder::IsSlowKeysObject(GateRef glue, GateRef obj)
     BRANCH(TaggedIsHeapObject(obj), &isHeapObject, &exit);
     Bind(&isHeapObject);
     {
-        result = LogicOrBuilder(env).Or(IsJSGlobalObject(glue, obj)).Or(IsJsProxy(glue, obj)).Or(IsSpecialKeysObject(glue, obj)).Done();
+        result = LogicOrBuilder(env).Or(IsJSGlobalObject(glue, obj)).Or(IsJsProxy(glue, obj))
+            .Or(IsSpecialKeysObject(glue, obj)).Done();
         Jump(&exit);
     }
     Bind(&exit);
@@ -9128,7 +9139,8 @@ GateRef StubBuilder::CalIteratorKey(GateRef glue)
     auto env = GetEnvironment();
     GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
     GateRef glueGlobalEnv = LoadPrimitive(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
-    GateRef iteratorKey = GetGlobalEnvValue(VariableType::JS_ANY(), glue, glueGlobalEnv, GlobalEnv::ITERATOR_SYMBOL_INDEX);
+    GateRef iteratorKey = GetGlobalEnvValue(VariableType::JS_ANY(), glue, glueGlobalEnv,
+                                            GlobalEnv::ITERATOR_SYMBOL_INDEX);
     return iteratorKey;
 }
 

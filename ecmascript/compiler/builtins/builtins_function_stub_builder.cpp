@@ -278,7 +278,8 @@ GateRef BuiltinsFunctionStubBuilder::BuildArgumentsListFastElements(GateRef glue
         GateRef hClass = LoadHClass(glue, arrayObj);
         GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
         GateRef glueGlobalEnv = LoadPrimitive(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
-        GateRef argmentsClass = GetGlobalEnvValue(VariableType::JS_ANY(), glue, glueGlobalEnv, GlobalEnv::ARGUMENTS_CLASS);
+        GateRef argmentsClass = GetGlobalEnvValue(VariableType::JS_ANY(), glue, glueGlobalEnv,
+                                                  GlobalEnv::ARGUMENTS_CLASS);
         BRANCH(Int64Equal(hClass, argmentsClass), &hClassEqual, &exit);
         Bind(&hClassEqual);
         {

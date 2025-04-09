@@ -479,11 +479,12 @@ void BuiltinsArrayStubBuilder::Concat(GateRef glue, GateRef thisValue, GateRef n
                             Label setProperties(env);
                             GateRef glueGlobalEnvOffset =
                                 IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
-                            GateRef glueGlobalEnv = LoadPrimitive(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
+                            GateRef glueGlobalEnv = LoadPrimitive(VariableType::NATIVE_POINTER(), glue,
+                                                                  glueGlobalEnvOffset);
                             auto arrayFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glue, glueGlobalEnv,
                                 GlobalEnv::ARRAY_FUNCTION_INDEX);
                             GateRef intialHClass = Load(VariableType::JS_ANY(), glue, arrayFunc,
-                                    IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
+                                IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
                             NewObjectStubBuilder newBuilder(this);
                             newBuilder.SetParameters(glue, 0);
                             GateRef newArray = newBuilder.NewJSArrayWithSize(intialHClass, sumArrayLen);
@@ -538,10 +539,10 @@ void BuiltinsArrayStubBuilder::Concat(GateRef glue, GateRef thisValue, GateRef n
                                     GateRef ele = GetTaggedValueWithElementsKind(glue, arg0, *k);
                                     #if ECMASCRIPT_ENABLE_ELEMENTSKIND_ALWAY_GENERIC
                                     SetValueWithElementsKind(glue, newArray, ele, *j, Boolean(true),
-                                                            Int32(Elements::ToUint(ElementsKind::GENERIC)));
+                                        Int32(Elements::ToUint(ElementsKind::GENERIC)));
                                     #else
                                     SetValueWithElementsKind(glue, newArray, ele, *j, Boolean(true),
-                                                            Int32(Elements::ToUint(ElementsKind::NONE)));
+                                        Int32(Elements::ToUint(ElementsKind::NONE)));
                                     #endif
                                     Jump(&loopEnd1);
                                 }
@@ -575,7 +576,8 @@ void BuiltinsArrayStubBuilder::Filter(GateRef glue, GateRef thisValue, GateRef n
     BRANCH(IsJsArray(glue, thisValue), &isJsArray, slowPath);
     Bind(&isJsArray);
     GateRef prototype = StubBuilder::GetPrototype(glue, thisValue);
-    GateRef protoIsJSArray = LogicAndBuilder(env).And(TaggedIsHeapObject(prototype)).And(IsJsArray(glue, prototype)).Done();
+    GateRef protoIsJSArray = LogicAndBuilder(env).And(TaggedIsHeapObject(prototype))
+        .And(IsJsArray(glue, prototype)).Done();
     BRANCH(protoIsJSArray, &isprototypeJsArray, slowPath);
     Bind(&isprototypeJsArray);
     // need check constructor, "Filter" should use ArraySpeciesCreate
@@ -788,7 +790,8 @@ void BuiltinsArrayStubBuilder::Map(GateRef glue, GateRef thisValue, GateRef numA
     BRANCH(IsJsArray(glue, thisValue), &isJsArray, slowPath);
     Bind(&isJsArray);
     GateRef prototype = StubBuilder::GetPrototype(glue, thisValue);
-    GateRef protoIsJSArray = LogicAndBuilder(env).And(TaggedIsHeapObject(prototype)).And(IsJsArray(glue, prototype)).Done();
+    GateRef protoIsJSArray = LogicAndBuilder(env).And(TaggedIsHeapObject(prototype))
+        .And(IsJsArray(glue, prototype)).Done();
     BRANCH(protoIsJSArray, &isprototypeJsArray, slowPath);
     Bind(&isprototypeJsArray);
     // need check constructor, "Map" should use ArraySpeciesCreate
@@ -3016,8 +3019,10 @@ void BuiltinsArrayStubBuilder::From(GateRef glue, [[maybe_unused]] GateRef thisV
             Int32Add(index, Int32(builtins::StringToListResultCache::ARRAY_INDEX)));
         GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
         GateRef glueGlobalEnv = LoadPrimitive(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
-        auto arrayFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glue, glueGlobalEnv, GlobalEnv::ARRAY_FUNCTION_INDEX);
-        GateRef intialHClass = Load(VariableType::JS_ANY(), glue, arrayFunc, IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
+        auto arrayFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glue, glueGlobalEnv,
+                                           GlobalEnv::ARRAY_FUNCTION_INDEX);
+        GateRef intialHClass = Load(VariableType::JS_ANY(), glue, arrayFunc,
+                                    IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
         NewObjectStubBuilder newBuilder(this);
         newBuilder.SetParameters(glue, 0);
         GateRef newArray = newBuilder.NewJSObject(glue, intialHClass);
@@ -3525,8 +3530,8 @@ void BuiltinsArrayStubBuilder::Splice(GateRef glue, GateRef thisValue, GateRef n
                 {
                     BRANCH(Int32GreaterThan(*j, *start), &next, &loopExit);
                     Bind(&next);
-                    ele = GetTaggedValueWithElementsKind(glue, thisValue, Int32Sub(Int32Add(*j, *actualDeleteCount),
-                                                                             Int32(1)));
+                    ele = GetTaggedValueWithElementsKind(
+                        glue, thisValue, Int32Sub(Int32Add(*j, *actualDeleteCount), Int32(1)));
                     SetValueWithElementsKind(glue, thisValue, *ele, Int32Sub(Int32Add(*j, *insertCount), Int32(1)),
                                              Boolean(true), Int32(Elements::ToUint(ElementsKind::NONE)));
                     Jump(&loopEnd);
@@ -5051,10 +5056,12 @@ void BuiltinsArrayStubBuilder::GenArrayConstructor(GateRef glue, GateRef nativeC
         Label intialHClassIsHClass(env);
         GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
         GateRef glueGlobalEnv = LoadPrimitive(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
-        auto arrayFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glue, glueGlobalEnv, GlobalEnv::ARRAY_FUNCTION_INDEX);
+        auto arrayFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glue, glueGlobalEnv,
+                                           GlobalEnv::ARRAY_FUNCTION_INDEX);
         BRANCH(Equal(arrayFunc, newTarget), &fastGetHclass, &slowPath1);
         Bind(&fastGetHclass);
-        GateRef intialHClass = Load(VariableType::JS_ANY(), glue, newTarget, IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
+        GateRef intialHClass = Load(VariableType::JS_ANY(), glue, newTarget,
+                                    IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
         DEFVARIABLE(arrayLength, VariableType::INT64(), Int64(0));
         BRANCH(IsJSHClass(glue, intialHClass), &intialHClassIsHClass, &slowPath1);
         Bind(&intialHClassIsHClass);
