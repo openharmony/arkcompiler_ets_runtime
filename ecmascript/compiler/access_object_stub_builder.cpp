@@ -202,10 +202,13 @@ GateRef AccessObjectStubBuilder::StoreObjByName(GateRef glue, GateRef receiver, 
 
     DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
     ICStubBuilder builder(this);
+    StartTraceStoreDetail(glue, receiver, profileTypeInfo, IntToTaggedInt(slotId));
     builder.SetParameters(glue, receiver, profileTypeInfo, value, slotId, callback);
     builder.StoreICByName(&result, &tryFastPath, &tryPreDump, &exit);
     Bind(&tryFastPath);
     {
+        EndTraceStore(glue);
+        StartTraceStoreFastPath(glue);
         GateRef propKey = ResolvePropKey(glue, prop, info);
         result = SetPropertyByName(glue, receiver, propKey, value, false, True(), callback);
         BRANCH(TaggedIsHole(*result), &slowPath, &exit);
@@ -217,6 +220,8 @@ GateRef AccessObjectStubBuilder::StoreObjByName(GateRef glue, GateRef receiver, 
     }
     Bind(&slowPath);
     {
+        EndTraceStore(glue);
+        StartTraceStoreSlowPath(glue);
         GateRef propKey = ResolvePropKey(glue, prop, info);
         result = CallRuntime(
             glue, RTSTUB_ID(StoreICByName), {profileTypeInfo, receiver, propKey, value, IntToTaggedInt(slotId)});
@@ -224,6 +229,7 @@ GateRef AccessObjectStubBuilder::StoreObjByName(GateRef glue, GateRef receiver, 
     }
 
     Bind(&exit);
+    EndTraceStore(glue);
     auto ret = *result;
     env->SubCfgExit();
     return ret;

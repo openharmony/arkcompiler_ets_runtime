@@ -1118,6 +1118,10 @@ public:
     void StartTraceLoadGetter(GateRef glue);
     void StartTraceLoadSlowPath(GateRef glue);
     void EndTraceLoad(GateRef glue);
+    void StartTraceStoreDetail(GateRef glue, GateRef receiver, GateRef profileTypeInfo, GateRef slotId);
+    void StartTraceStoreFastPath(GateRef glue);
+    void StartTraceStoreSlowPath(GateRef glue);
+    void EndTraceStore(GateRef glue);
     GateRef GetIsFastCall(GateRef machineCode);
     // compute new elementKind from sub elements
     GateRef ComputeTaggedArrayElementKind(GateRef array, GateRef offset, GateRef end);
