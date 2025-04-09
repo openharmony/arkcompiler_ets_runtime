@@ -112,9 +112,6 @@ public:
         return thread_;
     }
 
-    JSHandle<ecmascript::JSTaggedValue> GetAndClearEcmaUncaughtException() const;
-    JSHandle<ecmascript::JSTaggedValue> GetEcmaUncaughtException() const;
-
     void PUBLIC_API LoadProtoTransitionTable(JSTaggedValue constpool);
     void PUBLIC_API ResetProtoTransitionTableOnConstpool(JSTaggedValue constpool);
 
