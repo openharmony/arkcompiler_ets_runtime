@@ -83,8 +83,6 @@ public:
 #endif
 };
 
-
-
 class StaticAOTArgsParser final : public AOTArgsParserBase {
 public:
     int32_t Parse(const std::unordered_map<std::string, std::string> &argsMap, HapArgs &hapArgs,
