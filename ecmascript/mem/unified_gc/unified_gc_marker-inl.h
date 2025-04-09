@@ -24,7 +24,7 @@
 namespace panda::ecmascript {
 
 UnifiedGCMarkRootVisitor::UnifiedGCMarkRootVisitor(WorkNodeHolder *workNodeHolder, UnifiedGCMarker *marker)
-        : workNodeHolder_(workNodeHolder), marker_(marker) {}
+    : workNodeHolder_(workNodeHolder), marker_(marker) {}
 
 void UnifiedGCMarkRootVisitor::VisitRoot([[maybe_unused]] Root type, ObjectSlot slot)
 {
@@ -68,7 +68,7 @@ void UnifiedGCMarkRootVisitor::HandleSlot(ObjectSlot slot)
 }
 
 UnifiedGCMarkObjectVisitor::UnifiedGCMarkObjectVisitor(WorkNodeHolder *workNodeHolder, UnifiedGCMarker *marker)
-        : workNodeHolder_(workNodeHolder), marker_(marker) {}
+    : workNodeHolder_(workNodeHolder), marker_(marker) {}
 
 void UnifiedGCMarkObjectVisitor::VisitObjectRangeImpl(TaggedObject *root, ObjectSlot start, ObjectSlot end,
                                                       VisitObjectArea area)
