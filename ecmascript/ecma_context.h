@@ -150,8 +150,6 @@ public:
 
     void DumpAOTInfo() const DUMP_API_ATTR;
 
-    JSTaggedValue ExecuteAot(size_t actualNumArgs, JSTaggedType *args, const JSTaggedType *prevFp,
-                             bool needPushArgv);
     void LoadStubFile();
 
     const GlobalEnvConstants *GlobalConstants() const
@@ -166,17 +164,6 @@ public:
     void AddToKeptObjects(JSHandle<JSTaggedValue> value);
 
 private:
-    void CJSExecution(JSHandle<JSFunction> &func, JSHandle<JSTaggedValue> &thisArg,
-                      const JSPandaFile *jsPandaFile, std::string_view entryPoint);
-    JSTaggedValue InvokeEcmaAotEntrypoint(JSHandle<JSFunction> mainFunc, JSHandle<JSTaggedValue> &thisArg,
-                                          const JSPandaFile *jsPandaFile, std::string_view entryPoint,
-                                          CJSInfo *cjsInfo = nullptr);
-    Expected<JSTaggedValue, bool> InvokeEcmaEntrypoint(const JSPandaFile *jsPandaFile, std::string_view entryPoint,
-                                                       const ExecuteTypes &executeType = ExecuteTypes::STATIC);
-    Expected<JSTaggedValue, bool> InvokeEcmaEntrypointForHotReload(
-        const JSPandaFile *jsPandaFile, std::string_view entryPoint, const ExecuteTypes &executeType);
-    Expected<JSTaggedValue, bool> CommonInvokeEcmaEntrypoint(const JSPandaFile *jsPandaFile,
-        std::string_view entryPoint, JSHandle<JSFunction> &func, const ExecuteTypes &executeType);
     bool LoadAOTFilesInternal(const std::string& aotFileName);
     bool LoadAOTFiles(const std::string &aotFileName);
 #if defined(CROSS_PLATFORM) && defined(ANDROID_PLATFORM)
