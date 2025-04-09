@@ -202,7 +202,7 @@ bool RawHeapTranslate::ReadStringTable(std::ifstream &file, uint32_t offset, uin
     return true;
 }
 
-bool RawHeapTranslate::ReadRootTable(std::ifstream &file, uint32_t offset, uint32_t size)
+bool RawHeapTranslate::ReadRootTable(std::ifstream &file, uint32_t offset, [[maybe_unused]]uint32_t size)
 {
     auto result = CheckAndGetHead(file, offset, sizeof(uint64_t));
     if (!result.has_value()) {

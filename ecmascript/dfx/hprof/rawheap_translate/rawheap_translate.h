@@ -21,6 +21,10 @@
 #include "ecmascript/dfx/hprof/rawheap_translate/metadata_parse.h"
 #include "ecmascript/dfx/hprof/rawheap_translate/string_hashmap.h"
 
+namespace panda::test {
+class HeapDumpTestHelper;
+};
+
 namespace rawheap_translate {
 struct AddrTableItem {
     uint64_t addr;
@@ -158,6 +162,8 @@ private:
     std::vector<std::shared_ptr<Node>> nodes_ {};
     std::vector<std::shared_ptr<Edge>> edges_ {};
     std::unordered_map<uint64_t, std::shared_ptr<Node>> nodesMap_ {};
+
+    friend class panda::test::HeapDumpTestHelper;
 };
 
 }  // namespace rawheap_translate
