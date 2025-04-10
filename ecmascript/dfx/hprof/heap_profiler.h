@@ -24,6 +24,7 @@
 #include "ecmascript/dfx/hprof/heap_sampling.h"
 #include "ecmascript/dfx/hprof/progress.h"
 #include "ecmascript/dfx/hprof/string_hashmap.h"
+#include "ecmascript/dfx/hprof/heap_marker.h"
 #include "ecmascript/mem/c_containers.h"
 #if defined(ENABLE_LOCAL_HANDLE_LEAK_DETECT)
 #include "ecmascript/mem/clock_scope.h"
@@ -48,6 +49,7 @@ public:
     bool EraseId(JSTaggedType addr);
     bool Move(JSTaggedType oldAddr, JSTaggedType forwardAddr);
     void UpdateEntryIdMap(HeapSnapshot *snapshot);
+    void RemoveUnmarkedObjects(HeapMarker &marker);
     NodeId GetNextId()
     {
         nextId_ += SEQ_STEP;
@@ -230,7 +232,7 @@ private:
     CVector<HeapSnapshot *> hprofs_;
     StringHashMap stringTable_;
     bool isProfiling_ {false};
-    EntryIdMap* entryIdMap_;
+    EntryIdMap *entryIdMap_;
     std::unique_ptr<HeapTracker> heapTracker_;
     Chunk chunk_;
     std::unique_ptr<HeapSampling> heapSampling_ {nullptr};
