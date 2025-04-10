@@ -55,23 +55,13 @@ NodeId EntryIdMap::FindOrInsertNodeId(JSTaggedType addr)
 
 bool EntryIdMap::InsertId(JSTaggedType addr, NodeId id)
 {
-    auto it = idMap_.find(addr);
-    if (it == idMap_.end()) {
-        idMap_.emplace(addr, id);
-        return true;
-    }
-    idMap_[addr] = id;
-    return false;
+    auto [iter, inserted] = idMap_.insert_or_assign(addr, id);
+    return inserted;
 }
 
 bool EntryIdMap::EraseId(JSTaggedType addr)
 {
-    auto it = idMap_.find(addr);
-    if (it == idMap_.end()) {
-        return false;
-    }
-    idMap_.erase(it);
-    return true;
+    return idMap_.erase(addr);
 }
 
 bool EntryIdMap::Move(JSTaggedType oldAddr, JSTaggedType forwardAddr)
@@ -83,7 +73,7 @@ bool EntryIdMap::Move(JSTaggedType oldAddr, JSTaggedType forwardAddr)
     if (it != idMap_.end()) {
         NodeId id = it->second;
         idMap_.erase(it);
-        idMap_[forwardAddr] = id;
+        idMap_.insert_or_assign(forwardAddr, id);
         return true;
     }
     return false;
@@ -96,17 +86,28 @@ void EntryIdMap::UpdateEntryIdMap(HeapSnapshot *snapshot)
         LOG_ECMA(FATAL) << "EntryIdMap::UpdateEntryIdMap:snapshot is nullptr";
         UNREACHABLE();
     }
+
+    HeapMarker marker {};
     auto nodes = snapshot->GetNodes();
-    CUnorderedMap<JSTaggedType, NodeId> newIdMap;
     for (auto node : *nodes) {
         auto addr = node->GetAddress();
-        auto it = idMap_.find(addr);
-        if (it != idMap_.end()) {
-            newIdMap.emplace(addr, it->second);
+        if (JSTaggedValue{addr}.IsHeapObject()) {
+            marker.Mark(addr);
         }
     }
-    idMap_.clear();
-    idMap_ = newIdMap;
+    RemoveUnmarkedObjects(marker);
+}
+
+void EntryIdMap::RemoveUnmarkedObjects(HeapMarker &marker)
+{
+    for (auto it = idMap_.begin(); it != idMap_.end();) {
+        JSTaggedType addr = it->first;
+        if (JSTaggedValue{addr}.IsHeapObject() && !marker.IsMarked(addr)) {
+            it = idMap_.erase(it);
+        } else {
+            ++it;
+        }
+    }
 }
 
 HeapProfiler::HeapProfiler(const EcmaVM *vm) : vm_(vm), stringTable_(vm), chunk_(vm->GetNativeAreaAllocator())
@@ -219,7 +220,11 @@ bool HeapProfiler::DoDump(Stream *stream, Progress *progress, const DumpSnapShot
         snapshot = MakeHeapSnapshot(SampleType::ONE_SHOT, dumpOption);
         ASSERT(snapshot != nullptr);
     }
-    entryIdMap_->UpdateEntryIdMap(snapshot);
+    // In async mode, EntryIdMap is filled and updated in parent-process,
+    // so EntryIdMap needs to be updated only in sync mode.
+    if (dumpOption.isSync) {
+        entryIdMap_->UpdateEntryIdMap(snapshot);
+    }
     isProfiling_ = true;
     if (progress != nullptr) {
         progress->ReportProgress(heapCount, heapCount);
@@ -962,38 +967,37 @@ bool HeapProfiler::BinaryDump(Stream *stream, const DumpSnapShotOption &dumpOpti
 
 void HeapProfiler::FillIdMap()
 {
-    EntryIdMap* newEntryIdMap = GetChunk()->New<EntryIdMap>();
+    HeapMarker marker {};
+
     // Iterate SharedHeap Object
     SharedHeap* sHeap = SharedHeap::GetInstance();
     if (sHeap != nullptr) {
-        sHeap->IterateOverObjects([newEntryIdMap, this](TaggedObject *obj) {
+        sHeap->IterateOverObjects([this, &marker](TaggedObject *obj) {
             JSTaggedType addr = ((JSTaggedValue)obj).GetRawData();
             auto [idExist, sequenceId] = entryIdMap_->FindId(addr);
-            newEntryIdMap->InsertId(addr, sequenceId);
+            entryIdMap_->InsertId(addr, sequenceId);
+            marker.Mark(addr);
         });
-        sHeap->GetReadOnlySpace()->IterateOverObjects([newEntryIdMap, this](TaggedObject *obj) {
+        sHeap->GetReadOnlySpace()->IterateOverObjects([this, &marker](TaggedObject *obj) {
             JSTaggedType addr = ((JSTaggedValue)obj).GetRawData();
             auto [idExist, sequenceId] = entryIdMap_->FindId(addr);
-            newEntryIdMap->InsertId(addr, sequenceId);
+            entryIdMap_->InsertId(addr, sequenceId);
+            marker.Mark(addr);
         });
     }
 
     // Iterate LocalHeap Object
     auto heap = vm_->GetHeap();
     if (heap != nullptr) {
-        heap->IterateOverObjects([newEntryIdMap, this](TaggedObject *obj) {
+        heap->IterateOverObjects([this, &marker](TaggedObject *obj) {
             JSTaggedType addr = ((JSTaggedValue)obj).GetRawData();
             auto [idExist, sequenceId] = entryIdMap_->FindId(addr);
-            newEntryIdMap->InsertId(addr, sequenceId);
+            entryIdMap_->InsertId(addr, sequenceId);
+            marker.Mark(addr);
         });
     }
 
-    // copy entryIdMap
-    CUnorderedMap<JSTaggedType, NodeId>* idMap = entryIdMap_->GetIdMap();
-    CUnorderedMap<JSTaggedType, NodeId>* newIdMap = newEntryIdMap->GetIdMap();
-    *idMap = *newIdMap;
-
-    GetChunk()->Delete(newEntryIdMap);
+    entryIdMap_->RemoveUnmarkedObjects(marker);
 }
 
 bool HeapProfiler::DumpHeapSnapshot(Stream *stream, const DumpSnapShotOption &dumpOption, Progress *progress,

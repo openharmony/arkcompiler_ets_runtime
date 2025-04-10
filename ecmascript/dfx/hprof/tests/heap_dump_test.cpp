@@ -19,6 +19,7 @@
 #include "ecmascript/dfx/hprof/heap_profiler.h"
 #include "ecmascript/dfx/hprof/heap_root_visitor.h"
 #include "ecmascript/dfx/hprof/rawheap_translate/rawheap_translate.h"
+#include "ecmascript/dfx/hprof/heap_marker.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/js_api/js_api_arraylist.h"
@@ -1264,5 +1265,78 @@ HWTEST_F_L0(HeapDumpTest, TestSharedFullGCInHeapDump)
     ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_4.heapsnapshot", "\"WeakMap\""));
     ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_4.heapsnapshot", "\"JSArray\""));
     ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_4.heapsnapshot", "\"Typed Array\""));
+}
+
+HWTEST_F_L0(HeapDumpTest, TestMarkObjects)
+{
+    HeapDumpTestHelper tester(ecmaVm_);
+    JSHandle<JSMap> jsMap = tester.NewJSMap();
+    JSHandle<JSSet> jsSet = tester.NewJSSet();
+    JSHandle<JSAPIArrayList> jsAPIArrayList = tester.NewJSAPIArrayList();
+    [[maybe_unused]] JSHandle<JSAPIDeque> jsAPIDeque = tester.NewJSAPIDeque();
+    [[maybe_unused]] JSHandle<JSSharedMap> jsSharedMap = tester.NewJSSharedMap();
+    [[maybe_unused]] JSHandle<JSWeakMap> jsWeakMap = tester.NewJSWeakMap();
+
+    HeapMarker marker {};
+    marker.Mark(jsMap.GetTaggedType());
+    marker.Mark(jsSet.GetTaggedType());
+    marker.Mark(jsAPIArrayList.GetTaggedType());
+
+    ASSERT_TRUE(marker.IsMarked(jsMap.GetTaggedType()));
+    ASSERT_FALSE(marker.IsMarked(jsSharedMap.GetTaggedType()));
+}
+
+HWTEST_F_L0(HeapDumpTest, TestIterateMarkedObjects)
+{
+    HeapDumpTestHelper tester(ecmaVm_);
+    JSHandle<JSMap> jsMap = tester.NewJSMap();
+    JSHandle<JSSet> jsSet = tester.NewJSSet();
+    JSHandle<JSAPIArrayList> jsAPIArrayList = tester.NewJSAPIArrayList();
+    [[maybe_unused]] JSHandle<JSAPIDeque> jsAPIDeque = tester.NewJSAPIDeque();
+    [[maybe_unused]] JSHandle<JSSharedMap> jsSharedMap = tester.NewJSSharedMap();
+    [[maybe_unused]] JSHandle<JSWeakMap> jsWeakMap = tester.NewJSWeakMap();
+
+    HeapMarker marker {};
+    marker.Mark(jsMap.GetTaggedType());
+    marker.Mark(jsSet.GetTaggedType());
+    marker.Mark(jsAPIArrayList.GetTaggedType());
+
+    std::unordered_set<uintptr_t> markedObjects;
+    markedObjects.emplace(jsMap.GetTaggedType());
+    markedObjects.emplace(jsSet.GetTaggedType());
+    markedObjects.emplace(jsAPIArrayList.GetTaggedType());
+    std::function<void(JSTaggedType addr)> callback = [markedObjects](JSTaggedType addr) {
+        ASSERT_TRUE(markedObjects.find(addr) != markedObjects.end());
+    };
+    marker.IterateMarked(callback);
+}
+
+HWTEST_F_L0(HeapDumpTest, TestRemoveUnmarkedObjects)
+{
+    HeapDumpTestHelper tester(ecmaVm_);
+    JSHandle<JSMap> jsMap = tester.NewJSMap();
+    JSHandle<JSSet> jsSet = tester.NewJSSet();
+    JSHandle<JSAPIArrayList> jsAPIArrayList = tester.NewJSAPIArrayList();
+    JSHandle<JSAPIDeque> jsAPIDeque = tester.NewJSAPIDeque();
+    JSHandle<JSSharedMap> jsSharedMap = tester.NewJSSharedMap();
+    JSHandle<JSWeakMap> jsWeakMap = tester.NewJSWeakMap();
+
+    EntryIdMap entryIdMap {};
+    entryIdMap.InsertId(jsMap.GetTaggedType(), entryIdMap.GetNextId());
+    entryIdMap.InsertId(jsSet.GetTaggedType(), entryIdMap.GetNextId());
+    entryIdMap.InsertId(jsAPIArrayList.GetTaggedType(), entryIdMap.GetNextId());
+    entryIdMap.InsertId(jsAPIDeque.GetTaggedType(), entryIdMap.GetNextId());
+    entryIdMap.InsertId(jsSharedMap.GetTaggedType(), entryIdMap.GetNextId());
+    entryIdMap.InsertId(jsWeakMap.GetTaggedType(), entryIdMap.GetNextId());
+    ASSERT_EQ(entryIdMap.GetIdMap()->size(), 6);
+
+    HeapMarker marker {};
+    marker.Mark(jsMap.GetTaggedType());
+    marker.Mark(jsSet.GetTaggedType());
+    marker.Mark(jsAPIArrayList.GetTaggedType());
+    marker.Mark(jsAPIDeque.GetTaggedType());
+
+    entryIdMap.RemoveUnmarkedObjects(marker);
+    ASSERT_EQ(entryIdMap.GetIdMap()->size(), 4);
 }
 }
