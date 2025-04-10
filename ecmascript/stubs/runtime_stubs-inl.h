@@ -2973,7 +2973,7 @@ JSTaggedValue RuntimeStubs::GetResultValue(JSThread *thread, bool isAotMethod, J
             }
             resultValue = thread->GetEcmaVM()->FastCallAot(size, values.data(), prevFp);
         } else {
-            resultValue = thread->GetCurrentEcmaContext()->ExecuteAot(size, values.data(), prevFp, needPushArgv);
+            resultValue = thread->GetEcmaVM()->ExecuteAot(size, values.data(), prevFp, needPushArgv);
         }
     } else {
         EcmaRuntimeCallInfo *info =

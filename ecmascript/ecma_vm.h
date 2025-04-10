@@ -105,6 +105,7 @@ class JitThread;
 class SustainingJSHandle;
 class SustainingJSHandleList;
 class AbcBufferCache;
+struct CJSInfo;
 enum class CompareStringsOption : uint8_t;
 
 using NativePtrGetter = void* (*)(void* info);
@@ -1195,6 +1196,9 @@ public:
         stageOfColdReload_ = stageOfColdReload;
     }
 
+    JSTaggedValue ExecuteAot(size_t actualNumArgs, JSTaggedType *args, const JSTaggedType *prevFp,
+                             bool needPushArgv);
+
 private:
     void ClearBufferData();
     void ClearConstpoolBufferData();
@@ -1230,6 +1234,18 @@ private:
     {
         unsharedConstpoolsArrayLen_ = len;
     }
+
+    void CJSExecution(JSHandle<JSFunction> &func, JSHandle<JSTaggedValue> &thisArg,
+                      const JSPandaFile *jsPandaFile, std::string_view entryPoint);
+    JSTaggedValue InvokeEcmaAotEntrypoint(JSHandle<JSFunction> mainFunc, JSHandle<JSTaggedValue> &thisArg,
+                                          const JSPandaFile *jsPandaFile, std::string_view entryPoint,
+                                          CJSInfo *cjsInfo = nullptr);
+    Expected<JSTaggedValue, bool> InvokeEcmaEntrypoint(const JSPandaFile *jsPandaFile, std::string_view entryPoint,
+                                                       const ExecuteTypes &executeType = ExecuteTypes::STATIC);
+    Expected<JSTaggedValue, bool> InvokeEcmaEntrypointForHotReload(
+        const JSPandaFile *jsPandaFile, std::string_view entryPoint, const ExecuteTypes &executeType);
+    Expected<JSTaggedValue, bool> CommonInvokeEcmaEntrypoint(const JSPandaFile *jsPandaFile,
+        std::string_view entryPoint, JSHandle<JSFunction> &func, const ExecuteTypes &executeType);
 
     NO_MOVE_SEMANTIC(EcmaVM);
     NO_COPY_SEMANTIC(EcmaVM);
