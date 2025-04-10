@@ -176,6 +176,26 @@ public:
     {
         return heapConstantInfo_.callMethodId2HeapConstantIndex;
     }
+
+    void RecordLdGlobalByNameBcOffset2HeapConstantIndex(uint32_t methodOffset,
+        uint32_t bcOffset, uint32_t heapConstantIndex)
+    {
+        heapConstantInfo_.ldGlobalByNameBcOffset2HeapConstantIndex[methodOffset][bcOffset] = heapConstantIndex;
+    }
+
+    uint32_t GetLdGlobalByNameBcOffset2HeapConstantIndex(uint32_t methodOffset, uint32_t bcOffset) const
+    {
+        auto itMethodOffset = heapConstantInfo_.ldGlobalByNameBcOffset2HeapConstantIndex.find(methodOffset);
+        if (itMethodOffset != heapConstantInfo_.ldGlobalByNameBcOffset2HeapConstantIndex.end()) {
+            auto &bcOffsetMap = itMethodOffset->second;
+            auto itBcOffset = bcOffsetMap.find(bcOffset);
+            if (itBcOffset != bcOffsetMap.end()) {
+                return itBcOffset->second;
+            }
+        }
+        return INVALID_HEAP_CONSTANT_INDEX;
+    }
+
 private:
     JSThread *hostThread_ {nullptr};
     JSHandle<JSFunction> jsFunction_;
@@ -191,6 +211,7 @@ private:
         std::map<ConstantPoolHeapConstant, uint32_t> constPoolHeapConstant2Index;
         std::map<int32_t, uint32_t> gate2HeapConstantIndex;
         std::unordered_map<uint32_t, uint32_t> callMethodId2HeapConstantIndex;
+        std::unordered_map<uint32_t, std::unordered_map<uint32_t, uint32_t>> ldGlobalByNameBcOffset2HeapConstantIndex;
     } heapConstantInfo_;
 };
 } // namespace panda::ecmascript
