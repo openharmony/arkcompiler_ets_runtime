@@ -666,7 +666,8 @@ private:
     V(FindEntryFromNameDictionary)                   \
     V(ReverseBarrier)                                \
     V(FindPatchModule)                               \
-    V(FatalPrintMisstakenResolvedBinding)
+    V(FatalPrintMisstakenResolvedBinding)            \
+    V(GetExternalModuleVar)
 
 #define DECL_CALL_SIGNATURE(name)                                  \
 class name##CallSignature final {                                  \

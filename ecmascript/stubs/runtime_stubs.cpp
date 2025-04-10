@@ -4625,6 +4625,12 @@ void RuntimeStubs::FatalPrintMisstakenResolvedBinding(int32_t index, JSTaggedVal
     UNREACHABLE();
 }
 
+JSTaggedValue RuntimeStubs::GetExternalModuleVar(uintptr_t argGlue, JSFunction *jsFunc, int32_t index)
+{
+    auto thread = JSThread::GlueToJSThread(argGlue);
+    return ModuleManager::GetExternalModuleVarFastPathForJIT(thread, index, jsFunc);
+}
+
 void RuntimeStubs::Initialize(JSThread *thread)
 {
 #define DEF_RUNTIME_STUB(name) kungfu::RuntimeStubCSigns::ID_##name

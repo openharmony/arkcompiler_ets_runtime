@@ -54,6 +54,7 @@ group("ark_jit_ts_test") {
     "retype_convert_test",
     "stack_overflow",
     "mega_ic_test",
+    "module",
   ]
 
   deps = [ "pgo_roottype_test:pgo_roottype_test" ]
