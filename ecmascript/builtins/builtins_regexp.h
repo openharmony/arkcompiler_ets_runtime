@@ -247,9 +247,10 @@ public:
     void UpdateResultArray(JSThread *thread, int entry, JSTaggedValue resultArray, CacheType type);
     bool Match(int entry, JSTaggedValue &pattenStr, JSTaggedValue &flagsStr, JSTaggedValue &inputStr,
                JSTaggedValue &lastIndexInputValue, JSTaggedValue &extend, CacheType type);
+    static JSTaggedValue GetGlobalTable(JSThread *thread);
     inline void SetHitCount(JSThread *thread, int hitCount)
     {
-        Set(thread, CACHE_HIT_COUNT_INDEX, JSTaggedValue(hitCount));
+        Set<false>(thread, CACHE_HIT_COUNT_INDEX, JSTaggedValue(hitCount));
     }
 
     inline int GetHitCount()
@@ -259,7 +260,7 @@ public:
 
     inline void SetCacheCount(JSThread *thread, int hitCount)
     {
-        Set(thread, CACHE_COUNT_INDEX, JSTaggedValue(hitCount));
+        Set<false>(thread, CACHE_COUNT_INDEX, JSTaggedValue(hitCount));
     }
 
     inline int GetCacheCount()
@@ -275,17 +276,17 @@ public:
 
     inline void SetLargeStrCount(JSThread *thread, uint32_t newCount)
     {
-        Set(thread, LARGE_STRING_COUNT_INDEX, JSTaggedValue(newCount));
+        Set<false>(thread, LARGE_STRING_COUNT_INDEX, JSTaggedValue(newCount));
     }
 
     inline void SetConflictCount(JSThread *thread, uint32_t newCount)
     {
-        Set(thread, CONFLICT_COUNT_INDEX, JSTaggedValue(newCount));
+        Set<false>(thread, CONFLICT_COUNT_INDEX, JSTaggedValue(newCount));
     }
 
     inline void SetStrLenThreshold(JSThread *thread, uint32_t newThreshold)
     {
-        Set(thread, STRING_LENGTH_THRESHOLD_INDEX, JSTaggedValue(newThreshold));
+        Set<false>(thread, STRING_LENGTH_THRESHOLD_INDEX, JSTaggedValue(newThreshold));
     }
 
     inline uint32_t GetLargeStrCount()
@@ -305,7 +306,7 @@ public:
 
     inline void SetCacheLength(JSThread *thread, int length)
     {
-        Set(thread, CACHE_LENGTH_INDEX, JSTaggedValue(length));
+        Set<false>(thread, CACHE_LENGTH_INDEX, JSTaggedValue(length));
     }
 
     inline int GetCacheLength()
@@ -313,18 +314,52 @@ public:
         return Get(CACHE_LENGTH_INDEX).GetInt();
     }
 
+    inline void SetLastMatchGlobalTableIndex(JSThread *thread, int index)
+    {
+        Set<false>(thread, LAST_MATCH_GLOBAL_TABLE_INDEX, JSTaggedValue(index));
+    }
+
+    inline int GetLastMatchGlobalTableIndex()
+    {
+        return Get(LAST_MATCH_GLOBAL_TABLE_INDEX).GetInt();
+    }
+
+    inline void SetUseLastMatch(JSThread *thread, bool useLastMatchIndex)
+    {
+        Set<false>(thread, USE_LAST_MATCH_INDEX, JSTaggedValue(useLastMatchIndex));
+    }
+
+    inline bool GetUseLastMatch()
+    {
+        return Get(USE_LAST_MATCH_INDEX).IsTrue();
+    }
+
+    inline void SetNeedUpdateGlobal(JSThread *thread, bool needUpdateGlobal)
+    {
+        Set<false>(thread, NEED_UPDATE_GLOBAL_INDEX, JSTaggedValue(needUpdateGlobal));
+    }
+
+    inline bool GetNeedUpdateGlobal()
+    {
+        return Get(NEED_UPDATE_GLOBAL_INDEX).IsTrue();
+    }
+
 private:
     static constexpr int DEFAULT_LARGE_STRING_COUNT = 10;
     static constexpr int DEFAULT_CONFLICT_COUNT = 100;
     static constexpr int INITIAL_CACHE_NUMBER = 0x10;
     static constexpr int DEFAULT_CACHE_NUMBER = 0x1000;
+    static constexpr int DEFAULT_LAST_MATCH_INDEX = -1;
     static constexpr int CACHE_COUNT_INDEX = 0;
     static constexpr int CACHE_HIT_COUNT_INDEX = 1;
     static constexpr int LARGE_STRING_COUNT_INDEX = 2;
     static constexpr int CONFLICT_COUNT_INDEX = 3;
     static constexpr int STRING_LENGTH_THRESHOLD_INDEX = 4;
     static constexpr int CACHE_LENGTH_INDEX = 5;
-    static constexpr int CACHE_TABLE_HEADER_SIZE = 6;
+    static constexpr int LAST_MATCH_GLOBAL_TABLE_INDEX = 6; // only for capture use
+    static constexpr int USE_LAST_MATCH_INDEX = 7;          // only for capture use
+    static constexpr int NEED_UPDATE_GLOBAL_INDEX = 8;      // only for capture use
+    static constexpr int CACHE_TABLE_HEADER_SIZE = 9;
     static constexpr int PATTERN_INDEX = 0;
     static constexpr int FLAG_INDEX = 1;
     static constexpr int INPUT_STRING_INDEX = 2;
