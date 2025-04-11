@@ -596,7 +596,7 @@ void BuiltinsObjectStubBuilder::HasOwnProperty(Variable *result, Label *exit, La
                     {
                         GateRef array = GetPropertiesArray(thisValue);
                         // int entry = dict->FindEntry(key)
-                        GateRef entryB = FindEntryFromNameDictionary(glue_, array, *stringTable, hir);
+                        GateRef entryB = FindEntryFromHashTable<NameDictionary>(glue_, array, *stringTable, hir);
                         Label notNegtiveOne(env);
                         // if branch condition : entry != -1
                         BRANCH(Int32NotEqual(entryB, Int32(-1)), &notNegtiveOne, exit);

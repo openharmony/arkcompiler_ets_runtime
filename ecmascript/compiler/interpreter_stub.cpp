@@ -373,7 +373,7 @@ void name##StubBuilder::GenerateCircuitImpl(GateRef glue, GateRef sp, GateRef pc
         Bind(&isDicMode);                                                                                            \
         {                                                                                                            \
             GateRef array = GetPropertiesArray(*holder);                                                             \
-            GateRef entry = FindEntryFromNameDictionary(glue, array, propKey);                                       \
+            GateRef entry = FindEntryFromHashTable<NameDictionary>(glue, array, propKey);                            \
             BRANCH(Int32NotEqual(entry, Int32(-1)), &slowPath, &loopExit);                                           \
         }                                                                                                            \
         Bind(&notDicMode);                                                                                           \

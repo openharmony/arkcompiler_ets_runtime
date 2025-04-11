@@ -29,6 +29,7 @@
 #include "ecmascript/js_primitive_ref.h"
 #include "ecmascript/lexical_env.h"
 #include "ecmascript/marker_cell.h"
+#include "ecmascript/require/js_cjs_module_cache.h"
 #include "ecmascript/transitions_dictionary.h"
 
 namespace panda::ecmascript::kungfu {
@@ -800,7 +801,8 @@ GateRef StubBuilder::FindElementFromNumberDictionary(GateRef glue, GateRef eleme
 }
 
 // int TaggedHashTable<Derived>::FindEntry(const JSTaggedValue &key) in tagged_hash_table.h
-GateRef StubBuilder::FindEntryFromNameDictionary(GateRef glue, GateRef elements, GateRef key, GateRef hir)
+template<typename HashTableT>
+GateRef StubBuilder::FindEntryFromHashTable(GateRef glue, GateRef elements, GateRef key, GateRef hir)
 {
     auto env = GetEnvironment();
     Label funcEntry(env);
@@ -850,7 +852,7 @@ GateRef StubBuilder::FindEntryFromNameDictionary(GateRef glue, GateRef elements,
     Jump(&loopHead);
     LoopBegin(&loopHead);
     {
-        GateRef element = GetKeyFromDictionary<NameDictionary>(elements, *entry);
+        GateRef element = GetKeyFromDictionary<HashTableT>(elements, *entry);
         Label isHole(env);
         Label notHole(env);
         BRANCH(TaggedIsHole(element), &isHole, &notHole);
@@ -2376,7 +2378,7 @@ GateRef StubBuilder::LdGlobalRecord(GateRef glue, GateRef key)
     GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
     GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
     GateRef globalRecord = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, GlobalEnv::GLOBAL_RECORD);
-    GateRef recordEntry = FindEntryFromNameDictionary(glue, globalRecord, key);
+    GateRef recordEntry = FindEntryFromHashTable<NameDictionary>(glue, globalRecord, key);
     Label foundInGlobalRecord(env);
     BRANCH(Int32NotEqual(recordEntry, Int32(-1)), &foundInGlobalRecord, &exit);
     Bind(&foundInGlobalRecord);
@@ -3770,7 +3772,7 @@ GateRef StubBuilder::GetPropertyByName(GateRef glue, GateRef receiver, GateRef k
             {
                 GateRef array = GetPropertiesArray(*holder);
                 // int entry = dict->FindEntry(key)
-                GateRef entryB = FindEntryFromNameDictionary(glue, array, key, hir);
+                GateRef entryB = FindEntryFromHashTable<NameDictionary>(glue, array, key, hir);
                 Label notNegtiveOne(env);
                 Label negtiveOne(env);
                 // if branch condition : entry != -1
@@ -4951,7 +4953,7 @@ GateRef StubBuilder::SetPropertyByName(GateRef glue, GateRef receiver, GateRef k
         Bind(&isDicMode);
         {
             GateRef array = GetPropertiesArray(*holder);
-            GateRef entry1 = FindEntryFromNameDictionary(glue, array, key);
+            GateRef entry1 = FindEntryFromHashTable<NameDictionary>(glue, array, key);
             Label notNegtiveOne(env);
             if (useOwn || defineSemantics) {
                 BRANCH(Int32NotEqual(entry1, Int32(-1)), &notNegtiveOne, &ifEnd);
@@ -5256,7 +5258,7 @@ GateRef StubBuilder::DefinePropertyByName(GateRef glue, GateRef receiver, GateRe
         Bind(&isDicMode);
         {
             GateRef array = GetPropertiesArray(*holder);
-            GateRef entry1 = FindEntryFromNameDictionary(glue, array, key);
+            GateRef entry1 = FindEntryFromHashTable<NameDictionary>(glue, array, key);
             Label notNegtiveOne(env);
             BRANCH(Int32NotEqual(entry1, Int32(-1)), &notNegtiveOne, &ifEnd);
             Bind(&notNegtiveOne);
@@ -8175,7 +8177,7 @@ GateRef StubBuilder::GetGlobalOwnProperty(GateRef glue, GateRef receiver, GateRe
     env->SubCfgEntry(&entryLabel);
     DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
     GateRef properties = GetPropertiesFromJSObject(receiver);
-    GateRef entry = FindEntryFromNameDictionary(glue, properties, key);
+    GateRef entry = FindEntryFromHashTable<NameDictionary>(glue, properties, key);
     Label notNegtiveOne(env);
     Label exit(env);
     BRANCH(Int32NotEqual(entry, Int32(-1)), &notNegtiveOne, &exit);
@@ -11182,7 +11184,207 @@ void StubBuilder::ModuleEnvMustBeValid(GateRef curEnv)
     ASSERT(isTaggedArray);
 }
 
-GateRef StubBuilder::GetModuleValueByIndex(GateRef glue, GateRef module, GateRef index)
+GateRef StubBuilder::SearchFromModuleCache(GateRef glue, GateRef moduleName)
+{
+    auto env = GetEnvironment();
+    Label subentry(env);
+    env->SubCfgEntry(&subentry);
+
+    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
+    Label isContainModule(env);
+    Label exit(env);
+    GateRef moduleObj = GetCjsModuleFunction(glue);
+    GateRef cacheName = GetGlobalConstantValue(VariableType::JS_ANY(), glue, ConstantIndex::CJS_CACHE_INDEX);
+    GateRef moduleCache = FastGetPropertyByName(glue, moduleObj, cacheName, ProfileOperation());
+    GateRef containsModuleIndex = FindEntryFromHashTable<CjsModuleCache>(glue, moduleCache, moduleName);
+    BRANCH(Int32NotEqual(containsModuleIndex, Int32(-1)), &isContainModule, &exit);
+
+    Bind(&isContainModule);
+    {
+        GateRef cachedModule = GetValueFromDictionary<CjsModuleCache>(moduleCache, containsModuleIndex);
+        GateRef exportsName = GetGlobalConstantValue(VariableType::JS_ANY(), glue, ConstantIndex::CJS_EXPORTS_INDEX);
+        result = FastGetPropertyByName(glue, cachedModule, exportsName, ProfileOperation());
+        Jump(&exit);
+    }
+
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef StubBuilder::GetNativeOrCjsExports(GateRef glue, GateRef resolvedModule)
+{
+    auto env = GetEnvironment();
+    Label subentry(env);
+    env->SubCfgEntry(&subentry);
+
+    DEFVARIABLE(exports, VariableType::JS_ANY(), Undefined());
+    Label isNativeModule(env);
+    Label judgeCjsModule(env);
+    Label exit(env);
+    BRANCH(IsNativeModule(resolvedModule), &isNativeModule, &judgeCjsModule);
+
+    Bind(&isNativeModule);
+    {
+        Label notJSObject(env);
+        exports = GetModuleValueByIndex(glue, resolvedModule, Int32(0), TaggedFalse());
+        BRANCH(IsJSObject(*exports), &exit, &notJSObject);
+
+        Bind(&notJSObject);
+        {
+            CallNGCRuntime(glue, RTSTUB_ID(LoadNativeModuleFailed), {resolvedModule});
+            Jump(&exit);
+        }
+    }
+
+    Bind(&judgeCjsModule);
+    {
+        Label isCjsModule(env);
+        BRANCH(IsCjsModule(resolvedModule), &isCjsModule, &exit);
+
+        Bind(&isCjsModule);
+        Label exportsIsHole(env);
+        GateRef moduleName = CallRuntime(glue, RTSTUB_ID(GetModuleName), {resolvedModule});
+        exports = SearchFromModuleCache(glue, moduleName);
+        BRANCH(TaggedIsHole(*exports), &exportsIsHole, &exit);
+
+        Bind(&exportsIsHole);
+        {
+            exports = CallRuntime(glue, RTSTUB_ID(ThrowExportsIsHole), {resolvedModule});
+            Jump(&exit);
+        }
+    }
+
+    Bind(&exit);
+    auto ret = *exports;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef StubBuilder::GetValueFromExportObject(GateRef glue, GateRef exports, GateRef index)
+{
+    auto env = GetEnvironment();
+    Label subentry(env);
+    env->SubCfgEntry(&subentry);
+
+    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
+    Label isUndefinedIdx(env);
+    Label validIdx(env);
+    Label checkResultIsAccessor(env);
+    Label exit(env);
+    BRANCH(Int32Equal(index, Int32(SourceTextModule::UNDEFINED_INDEX)), &isUndefinedIdx, &validIdx);
+
+    Bind(&isUndefinedIdx);
+    {
+        result = exports;
+        Jump(&exit);
+    }
+
+    Bind(&validIdx);
+    {
+        Label isDictionaryMode(env);
+        Label notDictionaryMode(env);
+        GateRef properties = GetPropertiesFromJSObject(exports);
+        BRANCH(IsDictionaryMode(properties), &isDictionaryMode, &notDictionaryMode);
+
+        Bind(&isDictionaryMode);
+        {
+            result = GetValueFromDictionary<NameDictionary>(properties, index);
+            Jump(&checkResultIsAccessor);
+        }
+
+        Bind(&notDictionaryMode);
+        {
+            GateRef hClass = LoadHClass(exports);
+            GateRef layoutInfo = GetLayoutFromHClass(hClass);
+            GateRef attr = GetAttr(layoutInfo, index);
+            result = JSObjectGetProperty(exports, hClass, attr);
+            Jump(&checkResultIsAccessor);
+        }
+    }
+
+    Bind(&checkResultIsAccessor);
+    {
+        Label isAccessor(env);
+        BRANCH_UNLIKELY(TaggedIsAccessor(*result), &isAccessor, &exit);
+
+        Bind(&isAccessor);
+        {
+            result = CallGetterHelper(glue, exports, exports, *result, ProfileOperation());
+            Jump(&exit);
+        }
+    }
+
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef StubBuilder::GetNativeOrCjsModuleValue(GateRef glue, GateRef module, GateRef index)
+{
+    auto env = GetEnvironment();
+    Label subentry(env);
+    env->SubCfgEntry(&subentry);
+
+    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
+    Label hasException(env);
+    Label noException(env);
+    Label exit(env);
+    GateRef exports = GetNativeOrCjsExports(glue, module);
+    BRANCH(HasPendingException(glue), &hasException, &noException);
+
+    Bind(&hasException);
+    {
+        result = Exception();
+        Jump(&exit);
+    }
+
+    Bind(&noException);
+    {
+        result = GetValueFromExportObject(glue, exports, index);
+        Jump(&exit);
+    }
+
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef StubBuilder::GetModuleValueByIndex(GateRef glue, GateRef module, GateRef index, GateRef isThrow)
+{
+    auto env = GetEnvironment();
+    Label subentry(env);
+    env->SubCfgEntry(&subentry);
+
+    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
+    Label isUndefined(env);
+    Label notUndefined(env);
+    Label exit(env);
+    GateRef dictionary = GetNameDictionary(module);
+    BRANCH_UNLIKELY(TaggedIsUndefined(dictionary), &isUndefined, &notUndefined);
+
+    Bind(&notUndefined);
+    {
+        result = GetValueFromTaggedArray(dictionary, index);
+        Jump(&exit);
+    }
+
+    Bind(&isUndefined);
+    {
+        result = CallRuntime(glue, RTSTUB_ID(CheckAndThrowModuleError), {module, isThrow});
+        Jump(&exit);
+    }
+
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef StubBuilder::GetModuleValue(GateRef glue, GateRef module, GateRef index)
 {
     auto env = GetEnvironment();
     Label subentry(env);
@@ -11192,32 +11394,19 @@ GateRef StubBuilder::GetModuleValueByIndex(GateRef glue, GateRef module, GateRef
     Label isNativeOrCjsModule(env);
     Label notNativeOrCjsModule(env);
     Label exit(env);
-    BRANCH(IsNativeOrCjsModule(module), &isNativeOrCjsModule, &notNativeOrCjsModule);
+    GateRef checkNativeOrCjsModule = BitOr(IsNativeModule(module), IsCjsModule(module));
+    BRANCH(checkNativeOrCjsModule, &isNativeOrCjsModule, &notNativeOrCjsModule);
 
     Bind(&isNativeOrCjsModule);
     {
-        result = CallRuntime(glue, RTSTUB_ID(GetNativeOrCjsModuleValue), {module, IntToTaggedInt(index)});
+        result = GetNativeOrCjsModuleValue(glue, module, index);
         Jump(&exit);
     }
 
     Bind(&notNativeOrCjsModule);
     {
-        Label isUndefined(env);
-        Label notUndefined(env);
-        GateRef dictionary = GetNameDictionary(module);
-        BRANCH_UNLIKELY(TaggedIsUndefined(dictionary), &isUndefined, &notUndefined);
-
-        Bind(&notUndefined);
-        {
-            result = GetValueFromTaggedArray(dictionary, index);
-            Jump(&exit);
-        }
-
-        Bind(&isUndefined);
-        {
-            result = CallRuntime(glue, RTSTUB_ID(CheckAndThrowModuleError), {module, TaggedFalse()});
-            Jump(&exit);
-        }
+        result = GetModuleValueByIndex(glue, module, index, TaggedFalse());
+        Jump(&exit);
     }
 
     Bind(&exit);
@@ -11232,7 +11421,7 @@ GateRef StubBuilder::GetModuleValueByName(GateRef glue, GateRef module, GateRef 
     Label subentry(env);
     env->SubCfgEntry(&subentry);
 
-    GateRef exports = CallRuntime(glue, RTSTUB_ID(GetNativeOrCjsExports), {module});
+    GateRef exports = GetNativeOrCjsExports(glue, module);
     DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
     Label hasPendingException(env);
     Label noPendingException(env);
@@ -11263,6 +11452,170 @@ GateRef StubBuilder::GetModuleValueByName(GateRef glue, GateRef module, GateRef 
             result = FastGetPropertyByName(glue, exports, bindingName, ProfileOperation());
             Jump(&exit);
         }
+    }
+
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef StubBuilder::ResolveElementOfObject(GateRef glue, GateRef hClass, GateRef exportName,
+                                            GateRef module, GateRef layOutInfo)
+{
+    auto env = GetEnvironment();
+    Label subentry(env);
+    env->SubCfgEntry(&subentry);
+
+    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
+    Label validIdx(env);
+    Label invalidIdx(env);
+    Label exit(env);
+    GateRef propsNum = GetNumberOfPropsFromHClass(hClass);
+    GateRef idx = FindElementWithCache(glue, layOutInfo, hClass, exportName, propsNum);
+    BRANCH(Int32NotEqual(idx, Int32(-1)), &validIdx, &invalidIdx);
+
+    Bind(&validIdx);
+    {
+        result = CallRuntime(glue, RTSTUB_ID(NewResolvedIndexBindingRecord), {module, IntToTaggedInt(idx)});
+        Jump(&exit);
+    }
+
+    Bind(&invalidIdx);
+    {
+        result = GetGlobalConstantValue(VariableType::JS_ANY(), glue, ConstantIndex::UNDEFINED_INDEX);
+        Jump(&exit);
+    }
+
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef StubBuilder::ResolveExportObject(GateRef glue, GateRef module, GateRef exports, GateRef exportName)
+{
+    auto env = GetEnvironment();
+    Label subentry(env);
+    env->SubCfgEntry(&subentry);
+
+    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
+    Label defaultCallNewBindingRecord(env);
+    Label notSameVal(env);
+    Label exportsIsHeapObj(env);
+    Label notNativeModuleFailureInfo(env);
+    Label exit(env);
+    GateRef defaultString = GetGlobalConstantValue(VariableType::JS_POINTER(), glue, ConstantIndex::DEFAULT_INDEX);
+    BRANCH(SameValue(glue, exportName, defaultString), &defaultCallNewBindingRecord, &notSameVal);
+
+    Bind(&notSameVal);
+    BRANCH(TaggedIsHeapObject(exports), &exportsIsHeapObj, &notNativeModuleFailureInfo);
+
+    Bind(&exportsIsHeapObj);
+    BRANCH(IsNativeModuleFailureInfo(exports), &defaultCallNewBindingRecord, &notNativeModuleFailureInfo);
+
+    Bind(&notNativeModuleFailureInfo);
+    Label exportsIsJSObject(env);
+    Label exportsNotJSObject(env);
+    BRANCH(IsJSObject(exports), &exportsIsJSObject, &exportsNotJSObject);
+
+    Bind(&exportsIsJSObject);
+    {
+        Label isDictionaryMode(env);
+        Label notDictionaryMode(env);
+        Label checkResultIsUndefined(env);
+        GateRef properties = GetPropertiesFromJSObject(exports);
+        BRANCH(IsDictionaryMode(properties), &isDictionaryMode, &notDictionaryMode);
+
+        Bind(&isDictionaryMode);
+        {
+            Label validEntry(env);
+            GateRef entry = FindEntryFromHashTable<NameDictionary>(glue, properties, exportName);
+            BRANCH(Int32NotEqual(entry, Int32(-1)), &validEntry, &checkResultIsUndefined);
+
+            Bind(&validEntry);
+            result = CallRuntime(glue, RTSTUB_ID(NewResolvedIndexBindingRecord), {module, IntToTaggedInt(entry)});
+            Jump(&checkResultIsUndefined);
+        }
+
+        Bind(&notDictionaryMode);
+        {
+            Label notEqualZero(env);
+            GateRef hClass = LoadHClass(exports);
+            GateRef layoutInfo = GetLayoutFromHClass(hClass);
+            GateRef eleNum = GetNumberOfPropsFromHClass(hClass);
+            BRANCH(Int32NotEqual(eleNum, Int32(0)), &notEqualZero, &checkResultIsUndefined);
+
+            Bind(&notEqualZero);
+            result = ResolveElementOfObject(glue, hClass, exportName, module, layoutInfo);
+            Jump(&checkResultIsUndefined);
+        }
+
+        Bind(&checkResultIsUndefined);
+        BRANCH(TaggedIsUndefined(*result), &exportsNotJSObject, &exit);
+    }
+
+    Bind(&defaultCallNewBindingRecord);
+    {
+        result = CallRuntime(glue, RTSTUB_ID(NewResolvedIndexBindingRecord), {module, IntToTaggedInt(Int32(-1))});
+        Jump(&exit);
+    }
+
+    Bind(&exportsNotJSObject);
+    {
+        result = GetGlobalConstantValue(VariableType::JS_ANY(), glue, ConstantIndex::NULL_INDEX);
+        Jump(&exit);
+    }
+
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef StubBuilder::UpdateBindingAndGetModuleValue(GateRef glue, GateRef module, GateRef requiredModule,
+                                                    GateRef index, GateRef bindingName)
+{
+    auto env = GetEnvironment();
+    Label subentry(env);
+    env->SubCfgEntry(&subentry);
+
+    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
+    Label hasException(env);
+    Label noException(env);
+    Label exit(env);
+    GateRef curModuleEnv = GetCurrentModuleEnv(module);
+    ModuleEnvMustBeDefined(curModuleEnv);
+    GateRef exports = GetNativeOrCjsExports(glue, requiredModule);
+    BRANCH(HasPendingException(glue), &hasException, &noException);
+
+    Bind(&noException);
+    {
+        Label isNullOrString(env);
+        Label notNullOrString(env);
+        GateRef resolution = ResolveExportObject(glue, requiredModule, exports, bindingName);
+        BRANCH(BitOr(TaggedIsNull(resolution), TaggedIsString(resolution)), &isNullOrString, &notNullOrString);
+
+        Bind(&isNullOrString);
+        {
+            result = CallRuntime(glue, RTSTUB_ID(HandleResolutionIsNullOrString),
+                                 {module, requiredModule, bindingName, resolution});
+            Jump(&exit);
+        }
+
+        Bind(&notNullOrString);
+        {
+            SetValueToTaggedArray(VariableType::JS_ANY(), glue, curModuleEnv, index, resolution);
+            CheckIsResolvedIndexBinding(resolution);
+            result = GetValueFromExportObject(glue, exports, GetIdxOfResolvedIndexBinding(resolution));
+            Jump(&exit);
+        }
+    }
+
+    Bind(&hasException);
+    {
+        result = Exception();
+        Jump(&exit);
     }
 
     Bind(&exit);
@@ -11351,11 +11704,11 @@ GateRef StubBuilder::LoadExternalmodulevar(GateRef glue, GateRef index, GateRef 
             BRANCH(TaggedIsHole(resolvedModuleOfHotReload), &notLdEndExecPatchMain, &notHole);
 
             Bind(&notLdEndExecPatchMain);
-            result = GetModuleValueByIndex(glue, resolvedModule, idxOfResolvedBinding);
+            result = GetModuleValue(glue, resolvedModule, idxOfResolvedBinding);
             Jump(&exit);
 
             Bind(&notHole);
-            result = GetModuleValueByIndex(glue, resolvedModuleOfHotReload, idxOfResolvedBinding);
+            result = GetModuleValue(glue, resolvedModuleOfHotReload, idxOfResolvedBinding);
             Jump(&exit);
         }
     }
@@ -11370,12 +11723,13 @@ GateRef StubBuilder::LoadExternalmodulevar(GateRef glue, GateRef index, GateRef 
             GateRef resolvedModule = GetResolveModuleFromResolvedBinding(resolvedBinding);
             ResolvedModuleMustBeSourceTextModule(resolvedModule);
             Label isNativeOrCjsModule(env);
-            BRANCH(IsNativeOrCjsModule(resolvedModule), &isNativeOrCjsModule, &judgeResolvedRecordIndexBinding);
+            GateRef checkNativeOrCjsModule = BitOr(IsNativeModule(resolvedModule), IsCjsModule(resolvedModule));
+            BRANCH(checkNativeOrCjsModule, &isNativeOrCjsModule, &judgeResolvedRecordIndexBinding);
 
             Bind(&isNativeOrCjsModule);
             {
-                result = CallRuntime(glue, RTSTUB_ID(UpdateBindingAndGetModuleValue),
-                                     {curModule, resolvedModule, IntToTaggedInt(index), resolvedBinding});
+                result = UpdateBindingAndGetModuleValue(glue, curModule, resolvedModule, index,
+                                                        GetBindingName(resolvedBinding));
                 Jump(&exit);
             }
         }
@@ -11391,7 +11745,7 @@ GateRef StubBuilder::LoadExternalmodulevar(GateRef glue, GateRef index, GateRef 
         {
             GateRef resolvedModule = GetResolvedRecordIndexBindingModule(glue, curModule, resolvedBinding);
             GateRef idxOfResolvedRecordIndexBinding = GetIdxOfResolvedRecordIndexBinding(resolvedBinding);
-            result = GetModuleValueByIndex(glue, resolvedModule, idxOfResolvedRecordIndexBinding);
+            result = GetModuleValue(glue, resolvedModule, idxOfResolvedRecordIndexBinding);
             Jump(&exit);
         }
     }
