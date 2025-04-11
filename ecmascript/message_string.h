@@ -102,7 +102,8 @@ namespace panda::ecmascript {
     V(IsJSHClass)                                                                            \
     V(IsNotDictionaryMode)                                                                   \
     V(InitializeWithSpeicalValue)                                                            \
-    V(IsSendableFunctionModule)
+    V(IsSendableFunctionModule)                                                              \
+    V(HasPendingException)
 
 class MessageString {
 public:

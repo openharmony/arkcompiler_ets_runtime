@@ -3670,7 +3670,9 @@ inline GateRef StubBuilder::IsGeneratorKind(GateRef kind)
 
 inline GateRef StubBuilder::IsBaseKind(GateRef kind)
 {
-    GateRef val = Int32Equal(kind, Int32(static_cast<int32_t>(FunctionKind::BASE_CONSTRUCTOR)));
+    GateRef left = Int32Equal(kind, Int32(static_cast<int32_t>(FunctionKind::BASE_CONSTRUCTOR)));
+    GateRef right = Int32Equal(kind, Int32(static_cast<int32_t>(FunctionKind::NONE_FUNCTION)));
+    GateRef val = BitOr(left, right);
     return BitOr(val, IsGeneratorKind(kind));
 }
 
