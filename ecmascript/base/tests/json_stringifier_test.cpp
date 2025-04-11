@@ -705,4 +705,94 @@ HWTEST_F_L0(JsonStringifierTest, Stringify_017)
     JSHandle<EcmaString> handleEcmaStr1(resultString1);
     EXPECT_STREQ("[\"val\",\"abc\"]", EcmaStringAccessor(handleEcmaStr1).ToCString().c_str());
 }
+
+HWTEST_F_L0(JsonStringifierTest, Stringify_018)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+
+    JsonStringifier stringifier(thread, TransformType::SENDABLE);
+    JSHandle<JSSharedMap> sharedMap1 = CreateSharedMap(thread);
+    JSHandle<JSTaggedValue> key1(factory->NewFromASCII("key1"));
+    JSHandle<JSTaggedValue> value1(factory->NewFromASCII("abc"));
+    JSSharedMap::Set(thread, sharedMap1, key1, value1);
+
+    JSHandle<JSTaggedValue> key2(factory->NewFromASCII("key2"));
+    JSHandle<JSTaggedValue> value2(factory->NewFromASCII("val"));
+    JSHandle<JSTaggedValue> undefined(thread, JSTaggedValue::Undefined());
+    JSSharedMap::Set(thread, sharedMap1, key2, undefined);
+    JSSharedMap::Set(thread, sharedMap1, undefined, value2);
+    
+    JSHandle<JSTaggedValue> handleMap1 = JSHandle<JSTaggedValue>(sharedMap1);
+    JSHandle<JSTaggedValue> handleReplacer1(thread, JSTaggedValue::Undefined());
+    JSHandle<JSTaggedValue> handleGap1(thread, JSTaggedValue::Undefined());
+    EXPECT_TRUE(*handleMap1 != nullptr);
+    JSHandle<JSTaggedValue> resultString1 = stringifier.Stringify(handleMap1, handleReplacer1, handleGap1);
+    EXPECT_TRUE(resultString1->IsString());
+    JSHandle<EcmaString> handleEcmaStr1(resultString1);
+    EXPECT_STREQ("{\"key1\":\"abc\",\"undefined\":\"val\"}", EcmaStringAccessor(handleEcmaStr1).ToCString().c_str());
+}
+
+HWTEST_F_L0(JsonStringifierTest, Stringify_019)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JsonStringifier stringifier(thread, TransformType::SENDABLE);
+    JSHandle<JSSharedSet> sharedSet1 = CreateJSSharedSet(thread);
+    JSHandle<JSTaggedValue> value1(factory->NewFromASCII("abc"));
+    JSSharedSet::Add(thread, sharedSet1, value1);
+
+    JSHandle<JSTaggedValue> value2(factory->NewFromASCII("val"));
+    JSSharedSet::Add(thread, sharedSet1, value2);
+
+    JSHandle<JSTaggedValue> undefined(thread, JSTaggedValue::Undefined());
+    JSSharedSet::Add(thread, sharedSet1, undefined);
+
+    JSHandle<JSTaggedValue> handleSet1 = JSHandle<JSTaggedValue>(sharedSet1);
+    JSHandle<JSTaggedValue> handleReplacer1(thread, JSTaggedValue::Undefined());
+    JSHandle<JSTaggedValue> handleGap1(thread, JSTaggedValue::Undefined());
+    EXPECT_TRUE(*handleSet1 != nullptr);
+    JSHandle<JSTaggedValue> resultString1 = stringifier.Stringify(handleSet1, handleReplacer1, handleGap1);
+    EXPECT_TRUE(resultString1->IsString());
+    JSHandle<EcmaString> handleEcmaStr1(resultString1);
+    EXPECT_STREQ("[\"abc\",\"val\",null]", EcmaStringAccessor(handleEcmaStr1).ToCString().c_str());
+}
+
+HWTEST_F_L0(JsonStringifierTest, Stringify_020)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JsonStringifier stringifier1(thread, TransformType::SENDABLE);
+    JSHandle<JSAPIHashMap> hashMap1(thread, CreateHashMap(thread));
+    JSHandle<JSTaggedValue> key1(factory->NewFromASCII("key1"));
+    JSHandle<JSTaggedValue> value1(factory->NewFromASCII("abc"));
+    JSAPIHashMap::Set(thread, hashMap1, key1, value1);
+
+    JSHandle<JSTaggedValue> key2(factory->NewFromASCII("key2"));
+    JSHandle<JSTaggedValue> value2(thread, JSTaggedValue::Undefined());
+    JSAPIHashMap::Set(thread, hashMap1, key2, value2);
+    
+    JSHandle<JSTaggedValue> handleMap1 = JSHandle<JSTaggedValue>(hashMap1);
+    JSHandle<JSTaggedValue> handleReplacer1(thread, JSTaggedValue::Undefined());
+    JSHandle<JSTaggedValue> handleGap1(thread, JSTaggedValue::Undefined());
+    EXPECT_TRUE(*handleMap1 != nullptr);
+    JSHandle<JSTaggedValue> resultString1 = stringifier1.Stringify(handleMap1, handleReplacer1, handleGap1);
+    EXPECT_TRUE(resultString1->IsString());
+    JSHandle<EcmaString> handleEcmaStr1(resultString1);
+    EXPECT_STREQ("{\"key1\":\"abc\"}", EcmaStringAccessor(handleEcmaStr1).ToCString().c_str());
+}
+
+HWTEST_F_L0(JsonStringifierTest, Stringify_021)
+{
+    JsonStringifier stringifier1(thread, TransformType::SENDABLE);
+    JSHandle<JSAPIHashSet> hashSet1(thread, CreateHashSet(thread));
+    JSHandle<JSTaggedValue> value1(thread, JSTaggedValue::Undefined());
+    JSAPIHashSet::Add(thread, hashSet1, value1);
+    
+    JSHandle<JSTaggedValue> handleSet1 = JSHandle<JSTaggedValue>(hashSet1);
+    JSHandle<JSTaggedValue> handleReplacer1(thread, JSTaggedValue::Undefined());
+    JSHandle<JSTaggedValue> handleGap1(thread, JSTaggedValue::Undefined());
+    EXPECT_TRUE(*handleSet1 != nullptr);
+    JSHandle<JSTaggedValue> resultString1 = stringifier1.Stringify(handleSet1, handleReplacer1, handleGap1);
+    EXPECT_TRUE(resultString1->IsString());
+    JSHandle<EcmaString> handleEcmaStr1(resultString1);
+    EXPECT_STREQ("[null]", EcmaStringAccessor(handleEcmaStr1).ToCString().c_str());
+}
 }  // namespace panda::test
