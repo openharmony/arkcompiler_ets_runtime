@@ -33,7 +33,7 @@ public:
     void GenerateCircuit() override {}
     void GenProxyConstructor(GateRef nativeCode, GateRef func, GateRef newTarget);
     GateRef GetProperty(GateRef proxy, GateRef key, GateRef receiver);
-    GateRef SetProperty(GateRef proxy, GateRef key, GateRef value, GateRef receiver);
+    GateRef SetProperty(GateRef proxy, GateRef key, GateRef value, GateRef receiver, bool mayThrow = true);
 
     void SetMethod(GateRef glue, GateRef proxy, GateRef method)
     {

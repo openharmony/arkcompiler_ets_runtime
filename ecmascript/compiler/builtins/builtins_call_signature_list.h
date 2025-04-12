@@ -154,8 +154,14 @@
     V(IsSafeInteger,   Number,    Undefined(),  NUMBER_IS_SAFEINTEGER)                           \
     V(ToStringFunc,    Number,    Undefined(),  NUMBER_TO_STRING_FUNC)
 
-#define BUILTINS_WITH_REFLECT_STUB_BUILDER(V)                                                    \
-    V(Get,             Reflect,   Undefined(),  REFLECT_GET)
+#if ENABLE_NEXT_OPTIMIZATION
+#define BUILTINS_WITH_REFLECT_STUB_BUILDER(V)                                                                      \
+    V(Get, Reflect, Undefined(), REFLECT_GET)                                                                      \
+    V(Has, Reflect, Undefined(), REFLECT_HAS)                                                                      \
+    V(Set, Reflect, Undefined(), REFLECT_SET)
+#else
+#define BUILTINS_WITH_REFLECT_STUB_BUILDER(V) V(Get, Reflect, Undefined(), REFLECT_GET)
+#endif
 
 #define BUILTINS_WITH_COLLATOR_STUB_BUILDER(V)                                                   \
     V(ResolvedOptions, Collator,   Undefined(),  COLLATOR_RESOLVED_OPTIONS)
@@ -300,6 +306,12 @@
     V(IteratorProtoReturn)                              \
     NEXT_AOT_BUILTINS_STUB_LIST(V)
 
+#if ENABLE_NEXT_OPTIMIZATION
+#define CONDITION_REFLECT_HAS(V)
+#else
+#define CONDITION_REFLECT_HAS(V) V(ReflectHas)
+#endif
+
 // List of builtins which will try to be inlined in TypedNativeInlineLoweringPass
 #define AOT_BUILTINS_INLINE_LIST(V)                 \
     V(MathAcos)                                     \
@@ -360,7 +372,7 @@
     V(ObjectGetProto)                               \
     V(ObjectIsPrototypeOf)                          \
     V(ReflectGetPrototypeOf)                        \
-    V(ReflectHas)                                   \
+    CONDITION_REFLECT_HAS(V)                        \
     V(ReflectConstruct)                             \
     V(ReflectApply)                                 \
     V(FunctionPrototypeHasInstance)                 \
