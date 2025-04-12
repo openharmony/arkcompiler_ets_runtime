@@ -270,27 +270,25 @@ CString ModulePathHelper::TransformToNormalizedOhmUrl(EcmaVM *vm, const CString 
         currentModuleName = moduleName;
     }
     CVector<CString> data = GetPkgContextInfoListElements(vm, currentModuleName, pkgname);
-    CString version;
-    CString entryPath;
-    if (!data.empty()) {
-        version = data[PKGINFO_VERSION_INDEX];
-        entryPath = data[PKGINFO_ENTRY_PATH_INDEX];
-    } else {
+    if (data.empty()) {
         return oldEntryPoint;
     }
+    const CString &entryPath = data[PKGINFO_ENTRY_PATH_INDEX];
+    const CString &version = data[PKGINFO_VERSION_INDEX];
+    const CString &bundleName = data[PKGINFO_BUDNLE_NAME_INDEX];
     // If the subPath starts with '.test', it is a preview test, no need to splice the entry path.
     CString subPath = oldEntryPoint.substr(pathPos + 1);
     if (StringHelper::StringStartWith(subPath, PREVIER_TEST_DIR)) {
-        return ConcatPreviewTestUnifiedOhmUrl("", pkgname, path, version);
+        return ConcatPreviewTestUnifiedOhmUrl(bundleName, pkgname, path, version);
     }
     // When the entry path ends with a slash (/), use the entry path to concatenate ohmurl.
     if (!entryPath.empty() && StringHelper::StringEndWith(entryPath, PathHelper::SLASH_TAG)) {
         size_t endPos = entryPath.rfind(PathHelper::SLASH_TAG);
-        entryPath = entryPath.substr(0, endPos);
-        return ConcatUnifiedOhmUrl("", pkgname, entryPath, path, version);
+        CString subEntryPath = entryPath.substr(0, endPos);
+        return ConcatUnifiedOhmUrl(bundleName, pkgname, subEntryPath, path, version);
     }
-    // bundleName and entryPath is empty.
-    return ConcatUnifiedOhmUrl("", pkgname, "", path, version);
+    // entryPath is empty.
+    return ConcatUnifiedOhmUrl(bundleName, pkgname, "", path, version);
 }
 
 /*

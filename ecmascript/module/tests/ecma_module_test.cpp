@@ -1334,11 +1334,29 @@ HWTEST_F_L0(EcmaModuleTest, ConcatNotSoNormalizedOhmurl)
 
 HWTEST_F_L0(EcmaModuleTest, TransformToNormalizedOhmUrl2)
 {
+    CMap<CString, CMap<CString, CVector<CString>>> pkgList;
+    CMap<CString, CVector<CString>> entryList;
+    entryList["hsp"] = {
+        "packageName", "hsp",
+        "bundleName", "com.hsp.application",
+        "moduleName", "",
+        "version", "",
+        "entryPath", "",
+        "isSO", "false"
+    };
+    pkgList["entry"] = entryList;
+    instance->SetpkgContextInfoList(pkgList);
+
     CString inputFileName = "/data/storage/el1/bundle/hsp/ets/modules.abc";
     CString outBaseFileName = "/data/storage/el1/bundle/com.example.application/hsp/hsp/ets/modules.abc";
     CString entryPoint = "com.example.myapplication/hsp/ets/pages/Index";
     CString res = ModulePathHelper::TransformToNormalizedOhmUrl(instance, inputFileName, outBaseFileName, entryPoint);
     EXPECT_EQ(res, "com.example.myapplication/hsp/ets/pages/Index");
+
+    outBaseFileName = "/data/storage/el1/bundle/entry/ets/modules.abc";
+    entryPoint = "com.hsp.application/hsp/ets/pages/Index";
+    res = ModulePathHelper::TransformToNormalizedOhmUrl(instance, inputFileName, outBaseFileName, entryPoint);
+    EXPECT_EQ(res, "com.hsp.application&hsp/src/main/ets/pages/Index&");
 }
 
 HWTEST_F_L0(EcmaModuleTest, TransformToNormalizedOhmUrl3)
