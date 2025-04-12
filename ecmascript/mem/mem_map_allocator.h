@@ -21,11 +21,11 @@
 #include <random>
 #include <set>
 
-#include "ecmascript/platform/map.h"
+#include "ecmascript/ecma_macros.h"
+#include "ecmascript/log_wrapper.h"
 #include "ecmascript/mem/mem.h"
 #include "ecmascript/mem/mem_common.h"
-#include "ecmascript/log_wrapper.h"
-
+#include "ecmascript/platform/map.h"
 #include "ecmascript/platform/mutex.h"
 
 namespace panda::ecmascript {
@@ -267,6 +267,18 @@ public:
     size_t GetCapacity()
     {
         return capacity_;
+    }
+
+    void IncreaseMemMapTotalSize(size_t bytes)
+    {
+        memMapTotalSize_.fetch_add(bytes);
+        ECMA_BYTRACE_COUNT_TRACE(HITRACE_TAG_ARK, "Heap size (KB)", memMapTotalSize_ / 1_KB);
+    }
+
+    void DecreaseMemMapTotalSize(size_t bytes)
+    {
+        memMapTotalSize_.fetch_sub(bytes);
+        ECMA_BYTRACE_COUNT_TRACE(HITRACE_TAG_ARK, "Heap size (KB)", memMapTotalSize_ / 1_KB);
     }
 
     static MemMapAllocator *GetInstance();
