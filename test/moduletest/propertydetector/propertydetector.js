@@ -61,3 +61,10 @@ print(ArkTools.isRegExpReplaceDetectorValid())
 print(ArkTools.isNumberStringNotRegexpLikeDetectorValid());
 String.prototype[Symbol.matchAll] = function () {return "aaa"}
 print(ArkTools.isNumberStringNotRegexpLikeDetectorValid());
+
+for (let i = 0; i < 15; i++) {
+  let __proto__ = ['a', 'b'];
+  0x3fffffff.__proto__.__proto__ = [1, 2, 3];
+  __proto__.var06 = 1;
+}
+print("RegisterOnProtoChain success");
