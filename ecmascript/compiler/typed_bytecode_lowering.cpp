@@ -580,6 +580,9 @@ void TypedBytecodeLowering::LowerTypedLdObjByName(GateRef gate)
     }
 
     DEFVALUE(result, (&builder_), VariableType::JS_ANY(), builder_.Hole());
+    if (enableMergePoly_) {
+        tacc.TryMergeExpectedHClass();
+    }
     size_t typeCount = tacc.GetTypeCount();
     std::vector<Label> loaders;
     std::vector<Label> fails;
@@ -593,20 +596,20 @@ void TypedBytecodeLowering::LowerTypedLdObjByName(GateRef gate)
     GateRef frameState = acc_.GetFrameState(gate);
     if (tacc.IsMono()) {
         GateRef receiver = tacc.GetReceiver();
-        builder_.ObjectTypeCheck(false, receiver,
-                                 builder_.Int32(tacc.GetExpectedHClassIndex(0)), frameState);
+        builder_.ObjectTypeCheck(false, receiver, tacc.GetExpectedHClassIndexList(0),
+                                 frameState);
         if (tacc.IsReceiverEqHolder(0)) {
             result = BuildNamedPropertyAccess(gate, receiver, receiver, tacc.GetAccessInfo(0).Plr());
         } else {
             builder_.ProtoChangeMarkerCheck(receiver, frameState);
             PropertyLookupResult plr = tacc.GetAccessInfo(0).Plr();
             GateRef plrGate = builder_.Int32(plr.GetData());
-            GateRef unsharedConstPoool = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::UNSHARED_CONST_POOL);
+            GateRef unsharedConstPool = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::UNSHARED_CONST_POOL);
             size_t holderHClassIndex = static_cast<size_t>(tacc.GetAccessInfo(0).HClassIndex());
             if (LIKELY(!plr.IsAccessor())) {
-                result = builder_.MonoLoadPropertyOnProto(receiver, plrGate, unsharedConstPoool, holderHClassIndex);
+                result = builder_.MonoLoadPropertyOnProto(receiver, plrGate, unsharedConstPool, holderHClassIndex);
             } else {
-                result = builder_.MonoCallGetterOnProto(gate, receiver, plrGate, unsharedConstPoool, holderHClassIndex);
+                result = builder_.MonoCallGetterOnProto(gate, receiver, plrGate, unsharedConstPool, holderHClassIndex);
             }
         }
         acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), *result);
@@ -617,13 +620,43 @@ void TypedBytecodeLowering::LowerTypedLdObjByName(GateRef gate)
     auto receiverHC = builder_.LoadConstOffset(VariableType::JS_POINTER(), tacc.GetReceiver(),
                                                TaggedObject::HCLASS_OFFSET);
     for (size_t i = 0; i < typeCount; ++i) {
-        auto expected = builder_.GetHClassGateFromIndex(gate, tacc.GetExpectedHClassIndex(i));
+        std::vector<Label> ifFalse;
+        Label resultIsTrue(&builder_);
+        Label resultIsFalse(&builder_);
+        Label hclassCheckExit(&builder_);
+        const auto& hclassList = tacc.GetExpectedHClassIndexList(i);
+        size_t hclassCount = hclassList.size();
+        DEFVALUE(checkResult, (&builder_), VariableType::BOOL(), builder_.Boolean(false));
+        for (size_t j = 0; j < hclassCount - 1; j++) {
+            ifFalse.emplace_back(Label(&builder_));
+        }
+        for (size_t j = 0; j < hclassCount; j++) {
+            auto expected = builder_.GetHClassGateFromIndex(gate, hclassList[j]);
+            if (j != hclassCount - 1) {
+                BRANCH_CIR(builder_.Equal(receiverHC, expected), &resultIsTrue, &ifFalse[j]);
+                builder_.Bind(&ifFalse[j]);
+            } else {
+                BRANCH_CIR(builder_.Equal(receiverHC, expected), &resultIsTrue, &resultIsFalse);
+            }
+        }
+        builder_.Bind(&resultIsFalse);
+        {
+            checkResult = builder_.Boolean(false);
+            builder_.Jump(&hclassCheckExit);
+        }
+        builder_.Bind(&resultIsTrue);
+        {
+            checkResult = builder_.Boolean(true);
+            builder_.Jump(&hclassCheckExit);
+        }
+        builder_.Bind(&hclassCheckExit);
+        
         if (i != typeCount - 1) {
-            BRANCH_CIR(builder_.Equal(receiverHC, expected), &loaders[i], &fails[i]);
+            BRANCH_CIR(*checkResult, &loaders[i], &fails[i]);
             builder_.Bind(&loaders[i]);
         } else {
             // Deopt if fails at last hclass compare
-            builder_.DeoptCheck(builder_.Equal(receiverHC, expected), frameState, DeoptType::INCONSISTENTHCLASS1);
+            builder_.DeoptCheck(*checkResult, frameState, DeoptType::INCONSISTENTHCLASS1);
         }
 
         if (tacc.IsReceiverEqHolder(i)) {

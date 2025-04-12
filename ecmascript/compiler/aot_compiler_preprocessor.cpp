@@ -64,6 +64,7 @@ CompilationOptions::CompilationOptions(JSRuntimeOptions &runtimeOptions)
     isEnableInductionVariableAnalysis_ = runtimeOptions.IsEnableInductionVariableAnalysis();
     isEnableVerifierPass_ = !runtimeOptions.IsTargetCompilerMode();
     isEnableBaselinePgo_ = runtimeOptions.IsEnableBaselinePgo();
+    isEnableMergePoly_ = runtimeOptions.IsEnableMergePoly();
     std::string optionSelectMethods = runtimeOptions.GetCompilerSelectMethods();
     std::string optionSkipMethods = runtimeOptions.GetCompilerSkipMethods();
     if (!optionSelectMethods.empty() && !optionSkipMethods.empty()) {

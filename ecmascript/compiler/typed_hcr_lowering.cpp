@@ -549,26 +549,51 @@ void TypedHCRLowering::LowerObjectTypeCheck(GateRef gate)
 void TypedHCRLowering::LowerSimpleHClassCheck(GateRef gate)
 {
     GateRef frameState = GetFrameState(gate);
-    GateRef compare = BuildCompareHClass(gate, frameState);
-    builder_.DeoptCheck(compare, frameState, DeoptType::INCONSISTENTHCLASS6);
-    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
-}
-
-GateRef TypedHCRLowering::BuildCompareHClass(GateRef gate, GateRef frameState)
-{
     GateRef receiver = acc_.GetValueIn(gate, 0);
     bool isHeapObject = acc_.GetObjectTypeAccessor(gate).IsHeapObject();
     if (!isHeapObject) {
         builder_.HeapObjectCheck(receiver, frameState);
     }
-    GateRef aotHCIndex = acc_.GetValueIn(gate, 1);
-    auto hclassIndex = acc_.GetConstantValue(aotHCIndex);
+    DEFVALUE(result, (&builder_), VariableType::BOOL(), builder_.Boolean(false));
     ArgumentAccessor argAcc(circuit_);
     GateRef unsharedConstPool = argAcc.GetFrameArgsIn(frameState, FrameArgIdx::UNSHARED_CONST_POOL);
-    GateRef aotHCGate = builder_.LoadHClassFromConstpool(unsharedConstPool, hclassIndex);
     GateRef receiverHClass = builder_.LoadConstOffset(
         VariableType::JS_POINTER(), receiver, TaggedObject::HCLASS_OFFSET);
-    return builder_.Equal(aotHCGate, receiverHClass, "checkHClass");
+    std::vector<Label> ifFalse;
+    Label resultIsTrue(&builder_);
+    Label resultIsFalse(&builder_);
+    Label exit(&builder_);
+    size_t typeCount = acc_.GetNumValueIn(gate) - 1;
+    ASSERT(typeCount > 0);
+    for (size_t i = 0; i < typeCount - 1; i++) {
+        ifFalse.emplace_back(Label(&builder_));
+    }
+    for (auto i = 0; i < typeCount; i++) {
+        GateRef aotHCIndex = acc_.GetValueIn(gate, i + 1);
+        auto hclassIndex = acc_.GetConstantValue(aotHCIndex);
+        GateRef aotHCGate = builder_.LoadHClassFromConstpool(unsharedConstPool, hclassIndex);
+        
+        if (i != typeCount - 1) {
+            BRANCH_CIR(builder_.Equal(receiverHClass, aotHCGate), &resultIsTrue, &ifFalse[i]);
+            builder_.Bind(&ifFalse[i]);
+        } else {
+            BRANCH_CIR(builder_.Equal(receiverHClass, aotHCGate), &resultIsTrue, &resultIsFalse);
+        }
+    }
+    builder_.Bind(&resultIsFalse);
+    {
+        result = builder_.Boolean(false);
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&resultIsTrue);
+    {
+        result = builder_.Boolean(true);
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&exit);
+    auto finalResult = *result;
+    builder_.DeoptCheck(finalResult, frameState, DeoptType::INCONSISTENTHCLASS6);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
 void TypedHCRLowering::LowerRangeCheckPredicate(GateRef gate)
