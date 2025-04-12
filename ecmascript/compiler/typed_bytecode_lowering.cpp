@@ -2166,7 +2166,9 @@ void TypedBytecodeLowering::LowerTypedThisCall(const TypeAccessor &tacc)
     if (methodLiteral == nullptr || !methodLiteral->IsTypedCall()) {
         return;
     }
-    if (!tacc.IsHotnessFunc()) {
+    auto heapConstantIndex = tacc.TryGetHeapConstantFunctionIndex(methodId);
+    if (!tacc.IsHotnessFunc() &&
+        heapConstantIndex == JitCompilationEnv::INVALID_HEAP_CONSTANT_INDEX) {
         return;
     }
     uint32_t argc = tacc.GetArgc();
