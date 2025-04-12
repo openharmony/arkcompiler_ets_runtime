@@ -83,7 +83,7 @@ GateRef BuiltinLowering::TypedLocaleCompare(GateRef glue, GateRef gate, GateRef 
     Label exit(&builder_);
     DEFVALUE(result, (&builder_), VariableType::JS_ANY(), builder_.Undefined());
 
-    GateRef isString = builder_.BothAreString(thisObj, thatObj);
+    GateRef isString = builder_.BothAreString(glue, thisObj, thatObj);
     builder_.Branch(isString, &fastPath, &slowPath);
     builder_.Bind(&fastPath);
     {
@@ -499,7 +499,8 @@ void BuiltinLowering::LowerNumberConstructor(GateRef gate)
     {
         Label isString(env);
         Label notString(env);
-        BRANCH_CIR(builder_.TaggedIsString(param), &isString, &notString);
+        GateRef glue = acc_.GetGlueFromArgList();
+        BRANCH_CIR(builder_.TaggedIsString(glue, param), &isString, &notString);
         builder_.Bind(&isString);
         {
             Label nonZeroLength(env);
@@ -516,7 +517,6 @@ void BuiltinLowering::LowerNumberConstructor(GateRef gate)
         }
         builder_.Bind(&notString);
         {
-            GateRef glue = acc_.GetGlueFromArgList();
             result = LowerCallRuntime(glue, gate, RTSTUB_ID(ToNumericConvertBigInt), { param }, true);
             builder_.Jump(&exit);
         }
@@ -539,8 +539,8 @@ void BuiltinLowering::LowerCallBuiltinStub(GateRef gate, BuiltinsStubCSigns::ID 
     size_t numIn = acc_.GetNumValueIn(gate);
     GateRef glue = acc_.GetGlueFromArgList();
     GateRef function = builder_.GetGlobalConstantValue(GET_TYPED_CONSTANT_INDEX(id));
-    GateRef nativeCode = builder_.Load(VariableType::NATIVE_POINTER(), function,
-                                       builder_.IntPtr(JSFunction::CODE_ENTRY_OFFSET));
+    GateRef nativeCode = builder_.LoadWithoutBarrier(VariableType::NATIVE_POINTER(), function,
+                                                     builder_.IntPtr(JSFunction::CODE_ENTRY_OFFSET));
     std::vector<GateRef> args(static_cast<size_t>(BuiltinsArgs::NUM_OF_INPUTS), builder_.Undefined());
     args[static_cast<size_t>(BuiltinsArgs::GLUE)] = glue;
     args[static_cast<size_t>(BuiltinsArgs::NATIVECODE)] = nativeCode;

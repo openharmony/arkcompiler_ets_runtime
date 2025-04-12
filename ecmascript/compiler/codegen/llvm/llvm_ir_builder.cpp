@@ -184,7 +184,7 @@ void LLVMIRBuilder::InitializeHandlers()
         {OpCode::ASR, &LLVMIRBuilder::HandleIntAsr},
         {OpCode::ICMP, &LLVMIRBuilder::HandleCmp},
         {OpCode::FCMP, &LLVMIRBuilder::HandleCmp},
-        {OpCode::LOAD, &LLVMIRBuilder::HandleLoad},
+        {OpCode::LOAD_WITHOUT_BARRIER, &LLVMIRBuilder::HandleLoad},
         {OpCode::STORE_WITHOUT_BARRIER, &LLVMIRBuilder::HandleStore},
         {OpCode::SIGNED_INT_TO_FLOAT, &LLVMIRBuilder::HandleChangeInt32ToDouble},
         {OpCode::UNSIGNED_INT_TO_FLOAT, &LLVMIRBuilder::HandleChangeUInt32ToDouble},

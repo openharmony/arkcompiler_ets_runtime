@@ -215,7 +215,7 @@ Variable BuiltinsArrayStubBuilder::MakeResultVariableDefaultNotFound(IndexOfOpti
 
 template <class Predicate>
 GateRef BuiltinsArrayStubBuilder::IndexOfElements(
-    GateRef elements, Predicate predicate, GateRef fromIndex, GateRef len, IndexOfOptions options)
+    GateRef glue, GateRef elements, Predicate predicate, GateRef fromIndex, GateRef len, IndexOfOptions options)
 {
     static_assert(std::is_invocable_r_v<GateRef, Predicate, GateRef>, "Invalid call signature.");
     auto env = GetEnvironment();
@@ -259,7 +259,7 @@ GateRef BuiltinsArrayStubBuilder::IndexOfElements(
         BRANCH_LIKELY(continues, &loopBodyBegin, &exit);
 
         Bind(&loopBodyBegin);
-        GateRef curValue = Load(VariableType::JS_ANY(), elements, *curOffset);
+        GateRef curValue = Load(VariableType::JS_ANY(), glue, elements, *curOffset);
         GateRef curValueMatches = std::invoke(predicate, curValue);
         BRANCH_UNLIKELY(curValueMatches, &loopExitFound, &loopBodyEnd);
 
@@ -319,7 +319,7 @@ GateRef BuiltinsArrayStubBuilder::StringEqual(
     DEFVARIABLE(result, VariableType::BOOL(), False());
 
     if (rightCondition == StringElementsCondition::MAY_BE_ANY) {
-        BRANCH(TaggedIsString(right), &rightIsString, &exit);
+        BRANCH(TaggedIsString(glue, right), &rightIsString, &exit);
         Bind(&rightIsString);
     } else if (rightCondition == StringElementsCondition::MAY_BE_HOLE) {
         BRANCH(TaggedIsNotHole(right), &rightIsString, &exit);
@@ -357,7 +357,7 @@ GateRef BuiltinsArrayStubBuilder::BigIntEqual(GateRef glue, GateRef left, GateRe
     predResult.WriteVariable(True());
     Jump(&exit);
     Bind(&addrNotEquals);
-    BRANCH(TaggedIsBigInt(right), &rightIsBigInt, &exit);
+    BRANCH(TaggedIsBigInt(glue, right), &rightIsBigInt, &exit);
     Bind(&rightIsBigInt);
     predResult.WriteVariable(CallNGCRuntime(glue, RTSTUB_ID(BigIntSameValueZero), { left, right }));
     Jump(&exit);
@@ -369,23 +369,23 @@ GateRef BuiltinsArrayStubBuilder::BigIntEqual(GateRef glue, GateRef left, GateRe
 }
 
 GateRef BuiltinsArrayStubBuilder::IndexOfTaggedUndefined(
-    GateRef elements, GateRef fromIndex, GateRef len, IndexOfOptions options)
+    GateRef glue, GateRef elements, GateRef fromIndex, GateRef len, IndexOfOptions options)
 {
     if (options.holeAsUndefined) {
-        return IndexOfElements(elements, [this](GateRef curValue) {
+        return IndexOfElements(glue, elements, [this](GateRef curValue) {
             return BitOr(TaggedIsUndefined(curValue), TaggedIsHole(curValue));
         }, fromIndex, len, options);
     }
-    return IndexOfElements(elements, [this](GateRef curValue) {
+    return IndexOfElements(glue, elements, [this](GateRef curValue) {
         return TaggedIsUndefined(curValue);
     }, fromIndex, len, options);
 }
 
 GateRef BuiltinsArrayStubBuilder::IndexOfTaggedZero(
-    GateRef elements, GateRef fromIndex, GateRef len, IndexOfOptions options)
+    GateRef glue, GateRef elements, GateRef fromIndex, GateRef len, IndexOfOptions options)
 {
     auto env = GetEnvironment();
-    return IndexOfElements(elements, [this, env](GateRef curValue) {
+    return IndexOfElements(glue, elements, [this, env](GateRef curValue) {
         GateRef underlying = ChangeTaggedPointerToInt64(curValue);
         return LogicOrBuilder(env)
             .Or(Equal(Int64(JSTaggedValue::VALUE_ZERO), underlying))
@@ -396,7 +396,7 @@ GateRef BuiltinsArrayStubBuilder::IndexOfTaggedZero(
 }
 
 GateRef BuiltinsArrayStubBuilder::IndexOfTaggedIntElements(
-    GateRef elements, GateRef target, GateRef fromIndex, GateRef len, IndexOfOptions options)
+    GateRef glue, GateRef elements, GateRef target, GateRef fromIndex, GateRef len, IndexOfOptions options)
 {
     // assume: ElementsKind is INT or HOLE_INT
     ASM_ASSERT(GET_MESSAGE_STRING_ID(ArrayIndexOf), BoolNot(TaggedIsUndefined(target)));
@@ -414,7 +414,7 @@ GateRef BuiltinsArrayStubBuilder::IndexOfTaggedIntElements(
 
     BRANCH_LIKELY(TaggedIsInt(target), &targetIsInt, &targetIsNotInt);
     Bind(&targetIsInt);
-    result = IndexOfElements(elements, [this, ti32 = target](GateRef curValue) {
+    result = IndexOfElements(glue, elements, [this, ti32 = target](GateRef curValue) {
         return Equal(curValue, ti32);
     }, fromIndex, len, options);
     Jump(&exit);
@@ -427,7 +427,7 @@ GateRef BuiltinsArrayStubBuilder::IndexOfTaggedIntElements(
 
     Bind(&targetIsWithinInt32);
     GateRef taggedInt32 = IntToTaggedPtr(ChangeFloat64ToInt32(doubleValue));
-    result = IndexOfElements(elements, [this, ti32 = taggedInt32](GateRef curValue) {
+    result = IndexOfElements(glue, elements, [this, ti32 = taggedInt32](GateRef curValue) {
         return Equal(curValue, ti32);
     }, fromIndex, len, options);
     Jump(&exit);
@@ -439,7 +439,7 @@ GateRef BuiltinsArrayStubBuilder::IndexOfTaggedIntElements(
 }
 
 GateRef BuiltinsArrayStubBuilder::IndexOfTaggedIntTarget(
-    GateRef elements, GateRef target, GateRef fromIndex, GateRef len, IndexOfOptions options)
+    GateRef glue, GateRef elements, GateRef target, GateRef fromIndex, GateRef len, IndexOfOptions options)
 {
     ASM_ASSERT(GET_MESSAGE_STRING_ID(ArrayIndexOf), TaggedIsInt(target));
 
@@ -455,11 +455,11 @@ GateRef BuiltinsArrayStubBuilder::IndexOfTaggedIntTarget(
     GateRef int32Value = TaggedGetInt(target);
     BRANCH(Int32Equal(Int32(0), int32Value), &isZero, &isNotZero);
     Bind(&isZero);
-    result = IndexOfTaggedZero(elements, fromIndex, len, options);
+    result = IndexOfTaggedZero(glue, elements, fromIndex, len, options);
     Jump(&exit);
     Bind(&isNotZero);
     GateRef taggedDouble = DoubleToTaggedDoublePtr(ChangeInt32ToFloat64(int32Value));
-    result = IndexOfElements(elements, [this, ti32 = target, tf64 = taggedDouble](GateRef curValue) {
+    result = IndexOfElements(glue, elements, [this, ti32 = target, tf64 = taggedDouble](GateRef curValue) {
         return BitOr(Equal(curValue, ti32), Equal(curValue, tf64));
     }, fromIndex, len, options);
     Jump(&exit);
@@ -471,7 +471,7 @@ GateRef BuiltinsArrayStubBuilder::IndexOfTaggedIntTarget(
 }
 
 GateRef BuiltinsArrayStubBuilder::IndexOfTaggedNumber(
-    GateRef elements, GateRef target, GateRef fromIndex, GateRef len,
+    GateRef glue, GateRef elements, GateRef target, GateRef fromIndex, GateRef len,
     IndexOfOptions options, bool targetIsAlwaysDouble)
 {
     if (targetIsAlwaysDouble) {
@@ -526,7 +526,7 @@ GateRef BuiltinsArrayStubBuilder::IndexOfTaggedNumber(
 
     Bind(&targetIsNaN);
     if (options.compType == ComparisonType::SAME_VALUE_ZERO) {
-        result = IndexOfElements(elements, [this](GateRef curValue) {
+        result = IndexOfElements(glue, elements, [this](GateRef curValue) {
             return DoubleIsNAN(GetDoubleOfTDouble(curValue));
         }, fromIndex, len, options);
     }
@@ -540,7 +540,7 @@ GateRef BuiltinsArrayStubBuilder::IndexOfTaggedNumber(
 
     BRANCH(DoubleEqual(Double(0.0), *doubleValue), &isZero, &isNotZero);
     Bind(&isZero);
-    result = IndexOfTaggedZero(elements, fromIndex, len, options);
+    result = IndexOfTaggedZero(glue, elements, fromIndex, len, options);
     Jump(&exit);
     Bind(&isNotZero);
     // If target is not within int32, then taggedInt32 is left Undefined().
@@ -550,11 +550,11 @@ GateRef BuiltinsArrayStubBuilder::IndexOfTaggedNumber(
         auto predicate = [this, ti32 = *taggedInt32, tf64 = *taggedFloat](GateRef curValue) {
             return BitOr(Equal(curValue, ti32), Equal(curValue, tf64));
         };
-        result = IndexOfElements(elements, predicate, fromIndex, len, options);
+        result = IndexOfElements(glue, elements, predicate, fromIndex, len, options);
         Jump(&exit);
     }
     Bind(&notWithinInt32Branch);
-    result = IndexOfElements(elements, [this, tf64 = *taggedFloat](GateRef curValue) {
+    result = IndexOfElements(glue, elements, [this, tf64 = *taggedFloat](GateRef curValue) {
         return Equal(curValue, tf64);
     }, fromIndex, len, options);
     Jump(&exit);
@@ -579,9 +579,9 @@ GateRef BuiltinsArrayStubBuilder::IndexOfStringElements(
     Label exit(env);
     Variable result = MakeResultVariableDefaultNotFound(options);
 
-    BRANCH_LIKELY(TaggedIsString(target), &targetIsString, &exit);
+    BRANCH_LIKELY(TaggedIsString(glue, target), &targetIsString, &exit);
     Bind(&targetIsString);
-    result = IndexOfElements(elements, [this, glue, condition, target](GateRef curValue) {
+    result = IndexOfElements(glue, elements, [this, glue, condition, target](GateRef curValue) {
         return StringEqual(glue, target, curValue, condition);
     }, fromIndex, len, options);
     Jump(&exit);
@@ -595,8 +595,8 @@ GateRef BuiltinsArrayStubBuilder::IndexOfStringElements(
 GateRef BuiltinsArrayStubBuilder::IndexOfStringTarget(
     GateRef glue, GateRef elements, GateRef target, GateRef fromIndex, GateRef len, IndexOfOptions options)
 {
-    ASM_ASSERT(GET_MESSAGE_STRING_ID(ArrayIndexOf), TaggedIsString(target));
-    return IndexOfElements(elements, [this, glue, target](GateRef curValue) {
+    ASM_ASSERT(GET_MESSAGE_STRING_ID(ArrayIndexOf), TaggedIsString(glue, target));
+    return IndexOfElements(glue, elements, [this, glue, target](GateRef curValue) {
         return StringEqual(glue, target, curValue, StringElementsCondition::MAY_BE_ANY);
     }, fromIndex, len, options);
 }
@@ -604,16 +604,16 @@ GateRef BuiltinsArrayStubBuilder::IndexOfStringTarget(
 GateRef BuiltinsArrayStubBuilder::IndexOfBigInt(
     GateRef glue, GateRef elements, GateRef target, GateRef fromIndex, GateRef len, IndexOfOptions options)
 {
-    ASM_ASSERT(GET_MESSAGE_STRING_ID(ArrayIndexOf), TaggedIsBigInt(target));
-    return IndexOfElements(elements, [this, glue, target](GateRef curValue) {
+    ASM_ASSERT(GET_MESSAGE_STRING_ID(ArrayIndexOf), TaggedIsBigInt(glue, target));
+    return IndexOfElements(glue, elements, [this, glue, target](GateRef curValue) {
         return BigIntEqual(glue, target, curValue);
     }, fromIndex, len, options);
 }
 
 GateRef BuiltinsArrayStubBuilder::IndexOfObject(
-    GateRef elements, GateRef target, GateRef fromIndex, GateRef len, IndexOfOptions options)
+    GateRef glue, GateRef elements, GateRef target, GateRef fromIndex, GateRef len, IndexOfOptions options)
 {
-    return IndexOfElements(elements, [this, target](GateRef curValue) {
+    return IndexOfElements(glue, elements, [this, target](GateRef curValue) {
         return Equal(target, curValue);
     }, fromIndex, len, options);
 }
@@ -633,7 +633,7 @@ GateRef BuiltinsArrayStubBuilder::IndexOfBigIntOrObjectElements(
     Label exit(env);
     Variable result = MakeResultVariableDefaultNotFound(options);
 
-    BRANCH(TaggedIsBigInt(target), &targetIsBigInt, &targetIsNotBigInt);
+    BRANCH(TaggedIsBigInt(glue, target), &targetIsBigInt, &targetIsNotBigInt);
     Bind(&targetIsBigInt);
     result = IndexOfBigInt(glue, elements, target, fromIndex, len, options);
     Jump(&exit);
@@ -641,7 +641,7 @@ GateRef BuiltinsArrayStubBuilder::IndexOfBigIntOrObjectElements(
     BRANCH(TaggedIsObject(target), &targetIsObject, &exit);
     // Including true, false, null
     Bind(&targetIsObject);
-    result = IndexOfObject(elements, target, fromIndex, len, options);
+    result = IndexOfObject(glue, elements, target, fromIndex, len, options);
     Jump(&exit);
 
     Bind(&exit);
@@ -661,13 +661,13 @@ GateRef BuiltinsArrayStubBuilder::IndexOfBigIntOrObjectTarget(
     Label exit(env);
     Variable result = MakeResultVariableDefaultNotFound(options);
 
-    BRANCH(TaggedIsBigInt(target), &targetIsBigInt, &targetIsObject);
+    BRANCH(TaggedIsBigInt(glue, target), &targetIsBigInt, &targetIsObject);
     Bind(&targetIsBigInt);
     result = IndexOfBigInt(glue, elements, target, fromIndex, len, options);
     Jump(&exit);
     // Including true, false, null
     Bind(&targetIsObject);
-    result = IndexOfObject(elements, target, fromIndex, len, options);
+    result = IndexOfObject(glue, elements, target, fromIndex, len, options);
     Jump(&exit);
 
     Bind(&exit);
@@ -691,7 +691,7 @@ GateRef BuiltinsArrayStubBuilder::IndexOfGeneric(
     Label targetNotInt(env);
     BRANCH(TaggedIsInt(target), &intBranch, &targetNotInt);
     Bind(&intBranch);
-    result = IndexOfTaggedIntTarget(elements, target, fromIndex, len, options);
+    result = IndexOfTaggedIntTarget(glue, elements, target, fromIndex, len, options);
     Jump(&exit);
 
     Bind(&targetNotInt);
@@ -699,13 +699,13 @@ GateRef BuiltinsArrayStubBuilder::IndexOfGeneric(
     Label targetNotNumber(env);
     BRANCH(TaggedIsDouble(target), &doubleBranch, &targetNotNumber);
     Bind(&doubleBranch);
-    result = IndexOfTaggedNumber(elements, target, fromIndex, len, options, true);
+    result = IndexOfTaggedNumber(glue, elements, target, fromIndex, len, options, true);
     Jump(&exit);
 
     Bind(&targetNotNumber);
     Label stringBranch(env);
     Label bigIntOrObjectBranch(env);
-    BRANCH(TaggedIsString(target), &stringBranch, &bigIntOrObjectBranch);
+    BRANCH(TaggedIsString(glue, target), &stringBranch, &bigIntOrObjectBranch);
     Bind(&stringBranch);
     result = IndexOfStringTarget(glue, elements, target, fromIndex, len, options);
     Jump(&exit);

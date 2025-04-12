@@ -361,7 +361,7 @@ GateRef CircuitBuilder::CallOptimized(GateRef glue, GateRef code, GateRef depend
 GateRef CircuitBuilder::GetCallBuiltinId(GateRef method)
 {
     GateRef extraLiteralInfoOffset = IntPtr(Method::EXTRA_LITERAL_INFO_OFFSET);
-    GateRef extraLiteralInfo = Load(VariableType::INT64(), method, extraLiteralInfoOffset);
+    GateRef extraLiteralInfo = LoadWithoutBarrier(VariableType::INT64(), method, extraLiteralInfoOffset);
     return Int64And(
         Int64LSR(extraLiteralInfo, Int64(MethodLiteral::BuiltinIdBits::START_BIT)),
         Int64((1LU << MethodLiteral::BuiltinIdBits::SIZE) - 1));
@@ -584,7 +584,7 @@ GateRef CircuitBuilder::CreateArguments(ElementsKind kind, CreateArgumentsAccess
 void CircuitBuilder::SetPropertyInlinedProps(GateRef glue, GateRef obj, GateRef hClass,
     GateRef value, GateRef attrOffset, VariableType type)
 {
-    GateRef bitfield = Load(VariableType::INT32(), hClass, IntPtr(JSHClass::BIT_FIELD1_OFFSET));
+    GateRef bitfield = LoadWithoutBarrier(VariableType::INT32(), hClass, IntPtr(JSHClass::BIT_FIELD1_OFFSET));
     GateRef inlinedPropsStart = Int32And(Int32LSR(bitfield,
         Int32(JSHClass::InlinedPropsStartBits::START_BIT)),
         Int32((1LU << JSHClass::InlinedPropsStartBits::SIZE) - 1));
@@ -684,8 +684,8 @@ GateRef CircuitBuilder::BuiltinConstructor(BuiltinsStubCSigns::ID id, GateRef ga
 
 void CircuitBuilder::SetExtensibleToBitfield(GateRef glue, GateRef obj, bool isExtensible)
 {
-    GateRef jsHclass = LoadHClass(obj);
-    GateRef bitfield = Load(VariableType::INT32(), jsHclass, IntPtr(JSHClass::BIT_FIELD_OFFSET));
+    GateRef jsHclass = LoadHClass(glue, obj);
+    GateRef bitfield = LoadWithoutBarrier(VariableType::INT32(), jsHclass, IntPtr(JSHClass::BIT_FIELD_OFFSET));
     GateRef boolVal = Boolean(isExtensible);
     GateRef boolToInt32 = ZExtInt1ToInt32(boolVal);
     GateRef encodeValue = Int32LSL(boolToInt32, Int32(JSHClass::ExtensibleBit::START_BIT));
@@ -725,24 +725,24 @@ GateRef CircuitBuilder::MigrateArrayWithKind(GateRef receiver, GateRef oldElemen
     return newGate;
 }
 
-GateRef CircuitBuilder::IsLiteralString(GateRef string)
+GateRef CircuitBuilder::IsLiteralString(GateRef glue, GateRef string)
 {
-    GateRef objectType = GetObjectType(LoadHClass(string));
+    GateRef objectType = GetObjectType(LoadHClass(glue, string));
     return BitOr(Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::LINE_STRING))),
                  Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::CONSTANT_STRING))));
 }
 
 // left and right both utf-8 or utf-16 and both linestring or constantstring can be concat.
-GateRef CircuitBuilder::CanBeConcat(GateRef leftString, GateRef rightString, GateRef isValidOpt)
+GateRef CircuitBuilder::CanBeConcat(GateRef glue, GateRef leftString, GateRef rightString, GateRef isValidOpt)
 {
-    return LogicAndBuilder(env_).And(isValidOpt).And(IsLiteralString(leftString))
-        .And(IsLiteralString(rightString)).Done();
+    return LogicAndBuilder(env_).And(isValidOpt).And(IsLiteralString(glue, leftString))
+        .And(IsLiteralString(glue, rightString)).Done();
 }
 
 // left and right both utf-8 or utf-16 and right is linestring or constantstring can back store.
-GateRef CircuitBuilder::CanBackStore(GateRef rightString, GateRef isValidOpt)
+GateRef CircuitBuilder::CanBackStore(GateRef glue, GateRef rightString, GateRef isValidOpt)
 {
-    return LogicAndBuilder(env_).And(isValidOpt).And(IsLiteralString(rightString)).Done();
+    return LogicAndBuilder(env_).And(isValidOpt).And(IsLiteralString(glue, rightString)).Done();
 }
 
 GateRef CircuitBuilder::NumberToString(GateRef number)

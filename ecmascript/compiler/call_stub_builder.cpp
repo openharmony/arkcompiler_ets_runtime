@@ -142,14 +142,14 @@ void CallCoStubBuilder::LowerFastCall(GateRef gate, GateRef glue, CircuitBuilder
     BRANCH_CIR(builder.TaggedIsHeapObject(func), &isHeapObject, &slowPath);
     builder.Bind(&isHeapObject);
     {
-        BRANCH_CIR(builder.IsJSFunction(func), &isJsFcuntion, &slowPath);
+        BRANCH_CIR(builder.IsJSFunction(glue, func), &isJsFcuntion, &slowPath);
         builder.Bind(&isJsFcuntion);
         {
             if (!isNew) {
-                BRANCH_CIR(builder.IsClassConstructor(func), &slowPath, &notCallConstructor);
+                BRANCH_CIR(builder.IsClassConstructor(glue, func), &slowPath, &notCallConstructor);
                 builder.Bind(&notCallConstructor);
             }
-            GateRef method = builder.GetMethodFromFunction(func);
+            GateRef method = builder.GetMethodFromFunction(glue, func);
             BRANCH_CIR(builder.JudgeAotAndFastCall(func,
                 CircuitBuilder::JudgeMethodType::HAS_AOT_FASTCALL), &fastCall, &notFastCall);
             builder.Bind(&fastCall);
@@ -303,8 +303,8 @@ void CallStubBuilder::JSCallInit(Label *exit, Label *funcIsHeapObject, Label *fu
     if (checkIsCallable_) {
         BRANCH_LIKELY(TaggedIsHeapObject(func_), funcIsHeapObject, funcNotCallable);
         Bind(funcIsHeapObject);
-        GateRef hclass = LoadHClass(func_);
-        bitfield_ = Load(VariableType::INT32(), hclass, IntPtr(JSHClass::BIT_FIELD_OFFSET));
+        GateRef hclass = LoadHClass(glue_, func_);
+        bitfield_ = LoadPrimitive(VariableType::INT32(), hclass, IntPtr(JSHClass::BIT_FIELD_OFFSET));
         BRANCH_LIKELY(IsCallableFromBitField(bitfield_), funcIsCallable, funcNotCallable);
         Bind(funcNotCallable);
         {
@@ -313,10 +313,10 @@ void CallStubBuilder::JSCallInit(Label *exit, Label *funcIsHeapObject, Label *fu
         }
         Bind(funcIsCallable);
     } else {
-        GateRef hclass = LoadHClass(func_);
-        bitfield_ = Load(VariableType::INT32(), hclass, IntPtr(JSHClass::BIT_FIELD_OFFSET));
+        GateRef hclass = LoadHClass(glue_, func_);
+        bitfield_ = LoadPrimitive(VariableType::INT32(), hclass, IntPtr(JSHClass::BIT_FIELD_OFFSET));
     }
-    method_ = GetMethodFromJSFunctionOrProxy(func_);
+    method_ = GetMethodFromJSFunctionOrProxy(glue_, func_);
     callField_ = GetCallFieldFromMethod(method_);
     isNativeMask_ = Int64(static_cast<uint64_t>(1) << MethodLiteral::IsNativeBit::START_BIT);
 }
@@ -330,7 +330,7 @@ void CallStubBuilder::JSCallNative(Label *exit)
     auto env = GetEnvironment();
     Label jsProxy(env);
     Label notJsProxy(env);
-    BRANCH(IsJsProxy(func_), &jsProxy, &notJsProxy);
+    BRANCH(IsJsProxy(glue_, func_), &jsProxy, &notJsProxy);
     Bind(&jsProxy);
     {
         JSCallNativeInner(exit, true);
@@ -344,10 +344,10 @@ void CallStubBuilder::JSCallNative(Label *exit)
 void CallStubBuilder::JSCallNativeInner(Label *exit, bool isJsProxy)
 {
     if (isJsProxy) {
-        nativeCode_ = Load(VariableType::NATIVE_POINTER(), method_,
+        nativeCode_ = LoadPrimitive(VariableType::NATIVE_POINTER(), method_,
             IntPtr(Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET));
     } else {
-        nativeCode_ = Load(VariableType::NATIVE_POINTER(), func_, IntPtr(JSFunctionBase::CODE_ENTRY_OFFSET));
+        nativeCode_ = LoadPrimitive(VariableType::NATIVE_POINTER(), func_, IntPtr(JSFunctionBase::CODE_ENTRY_OFFSET));
     }
     GateRef ret;
     int idxForNative = PrepareIdxForNative();
@@ -434,7 +434,7 @@ void CallStubBuilder::JSCallJSFunction(Label *exit, Label *noNeedCheckException)
         newTarget_ = Undefined();
         thisValue_ = Undefined();
         realNumArgs_ = Int64Add(ZExtInt32ToInt64(actualNumArgs_), Int64(NUM_MANDATORY_JSFUNC_ARGS));
-        BRANCH(IsJsProxy(func_), &methodNotAot, &checkAot);
+        BRANCH(IsJsProxy(glue_, func_), &methodNotAot, &checkAot);
         Bind(&checkAot);
         BRANCH(JudgeAotAndFastCall(func_, CircuitBuilder::JudgeMethodType::HAS_AOT_FASTCALL), &methodIsFastCall,
             &methodNotFastCall);
@@ -453,7 +453,7 @@ void CallStubBuilder::JSCallJSFunction(Label *exit, Label *noNeedCheckException)
 
         Bind(&funcCheckBaselineCode);
         GateRef baselineCodeOffset = IntPtr(JSFunction::BASELINECODE_OFFSET);
-        GateRef baselineCode = Load(VariableType::JS_POINTER(), func_, baselineCodeOffset);
+        GateRef baselineCode = Load(VariableType::JS_POINTER(), glue_, func_, baselineCodeOffset);
 
         Branch(NotEqual(baselineCode, Undefined()), &checkIsBaselineCompiling, &methodNotAot);
         Bind(&checkIsBaselineCompiling);

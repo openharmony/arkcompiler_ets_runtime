@@ -33,41 +33,41 @@ public:
 BUILTINS_WITH_CONTAINERS_DEQUE_STUB_BUILDER(DECLARE_CONTAINERS_DEQUE_STUB_BUILDER)
 #undef DECLARE_CONTAINERS_DEQUE_STUB_BUILDER
 
-    GateRef GetSize(GateRef obj)
+    GateRef GetSize(GateRef glue, GateRef obj)
     {
         GateRef elementsOffset = IntPtr(JSObject::ELEMENTS_OFFSET);
-        GateRef elements = Load(VariableType::JS_POINTER(), obj, elementsOffset);
-        GateRef capacity = Load(VariableType::INT32(), elements, IntPtr(TaggedArray::LENGTH_OFFSET));
+        GateRef elements = Load(VariableType::JS_POINTER(), glue, obj, elementsOffset);
+        GateRef capacity = LoadPrimitive(VariableType::INT32(), elements, IntPtr(TaggedArray::LENGTH_OFFSET));
         GateRef first = GetFirst(obj);
         GateRef last = GetLast(obj);
         return Int32Mod(Int32Add(Int32Sub(last, first), capacity), capacity);
     }
 
-    GateRef Get(GateRef obj, GateRef index)
+    GateRef Get(GateRef glue, GateRef obj, GateRef index)
     {
         GateRef elementsOffset = IntPtr(JSObject::ELEMENTS_OFFSET);
-        GateRef elements = Load(VariableType::JS_POINTER(), obj, elementsOffset);
-        GateRef capacity = Load(VariableType::INT32(), elements, IntPtr(TaggedArray::LENGTH_OFFSET));
+        GateRef elements = Load(VariableType::JS_POINTER(), glue, obj, elementsOffset);
+        GateRef capacity = LoadPrimitive(VariableType::INT32(), elements, IntPtr(TaggedArray::LENGTH_OFFSET));
         GateRef first = GetFirst(obj);
         GateRef curIndex = Int32Mod(Int32Add(first, index), capacity);
-        return GetValueFromTaggedArray(elements, curIndex);
+        return GetValueFromTaggedArray(glue, elements, curIndex);
     }
 
     GateRef GetFirst(GateRef obj)
     {
-        return Load(VariableType::INT32(), obj, IntPtr(JSAPIDeque::FIRST_OFFSET));
+        return LoadPrimitive(VariableType::INT32(), obj, IntPtr(JSAPIDeque::FIRST_OFFSET));
     }
 
     GateRef GetLast(GateRef obj)
     {
-        return Load(VariableType::INT32(), obj, IntPtr(JSAPIDeque::LAST_OFFSET));
+        return LoadPrimitive(VariableType::INT32(), obj, IntPtr(JSAPIDeque::LAST_OFFSET));
     }
 
-    GateRef GetElementsLength(GateRef obj)
+    GateRef GetElementsLength(GateRef glue, GateRef obj)
     {
         GateRef elementsOffset = IntPtr(JSObject::ELEMENTS_OFFSET);
-        GateRef elements = Load(VariableType::JS_POINTER(), obj, elementsOffset);
-        return Load(VariableType::INT32(), elements, IntPtr(TaggedArray::LENGTH_OFFSET));
+        GateRef elements = Load(VariableType::JS_POINTER(), glue, obj, elementsOffset);
+        return LoadPrimitive(VariableType::INT32(), elements, IntPtr(TaggedArray::LENGTH_OFFSET));
     }
 };
 }  // namespace panda::ecmascript::kungfu

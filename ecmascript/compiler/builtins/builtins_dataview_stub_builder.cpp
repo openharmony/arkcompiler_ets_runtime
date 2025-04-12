@@ -29,7 +29,7 @@ void BuiltinsDataViewStubBuilder::SetTypedValue(GateRef glue, GateRef thisValue,
     Label indexIsInt(env);
     BRANCH(TaggedIsHeapObject(thisValue), &thisIsHeapObject, slowPath);
     Bind(&thisIsHeapObject);
-    BRANCH(IsDataView(thisValue), &thisIsDataView, slowPath);
+    BRANCH(IsDataView(glue, thisValue), &thisIsDataView, slowPath);
     Bind(&thisIsDataView);
     GateRef indexTagged = GetCallArg0(numArgs);
     GateRef value = GetCallArg1(numArgs);
@@ -58,13 +58,13 @@ void BuiltinsDataViewStubBuilder::SetTypedValue(GateRef glue, GateRef thisValue,
             BRANCH(TaggedIsUndefined(littleEndianHandle), &getArrayBuffer, &toBool);
             Bind(&toBool);
             {
-                isLittleEndian = FastToBoolean(littleEndianHandle, 1);
+                isLittleEndian = FastToBoolean(glue, littleEndianHandle, 1);
                 Jump(&getArrayBuffer);
             }
             Bind(&getArrayBuffer);
             {
-                GateRef buffer = GetViewedArrayBuffer(thisValue);
-                BRANCH(IsDetachedBuffer(buffer), slowPath, &checkOffset);
+                GateRef buffer = GetViewedArrayBuffer(glue, thisValue);
+                BRANCH(IsDetachedBuffer(glue, buffer), slowPath, &checkOffset);
                 Bind(&checkOffset);
                 {
                     GateRef size = ZExtInt32ToInt64(GetByteLength(thisValue));
@@ -76,7 +76,7 @@ void BuiltinsDataViewStubBuilder::SetTypedValue(GateRef glue, GateRef thisValue,
                         GateRef offset = ZExtInt32ToInt64(GetByteOffset(thisValue));
                         GateRef bufferIndex = TruncInt64ToInt32(Int64Add(indexInt64, offset));
                         BuiltinsTypedArrayStubBuilder builder(this);
-                        GateRef pointer = builder.GetDataPointFromBuffer(buffer);
+                        GateRef pointer = builder.GetDataPointFromBuffer(glue, buffer);
                         GateRef doubleValue = TaggedGetNumber(value);
                         if constexpr (type == DataViewType::INT32 || type == DataViewType::UINT32) {
                             SetValueInBufferForInt32(glue, pointer, bufferIndex,

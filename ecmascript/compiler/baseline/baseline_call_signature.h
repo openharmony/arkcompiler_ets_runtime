@@ -189,9 +189,9 @@ DEFINE_PARAMETER_INDEX(BaselineStrictnoteqImm8V8,
 DEFINE_PARAMETER_INDEX(BaselineStricteqImm8V8,
     GLUE, SP, LEFT, SLOT_ID)
 DEFINE_PARAMETER_INDEX(BaselineIstrue,
-    ACC)
+    GLUE, ACC)
 DEFINE_PARAMETER_INDEX(BaselineIsfalse,
-    ACC)
+    GLUE, ACC)
 DEFINE_PARAMETER_INDEX(BaselineCallthis3Imm8V8V8V8V8,
     GLUE, SP, THIS_VALUE_ID, ARG_IDS, SLOT_ID)
 DEFINE_PARAMETER_INDEX(BaselineCallthisrangeImm8Imm8V8,
@@ -251,7 +251,7 @@ DEFINE_PARAMETER_INDEX(BaselineDefineclasswithbufferImm16Id16Id16Imm16V8,
 DEFINE_PARAMETER_INDEX(BaselineResumegenerator,
     GLUE, SP, ACC)
 DEFINE_PARAMETER_INDEX(BaselineGetresumemod,
-    ACC)
+    GLUE, ACC)
 DEFINE_PARAMETER_INDEX(BaselineGettemplateobjectImm8,
     GLUE, SP, ACC)
 DEFINE_PARAMETER_INDEX(BaselineGettemplateobjectImm16,
@@ -309,7 +309,7 @@ DEFINE_PARAMETER_INDEX(BaselineAsyncfunctionrejectV8,
 DEFINE_PARAMETER_INDEX(BaselineCopyrestargsImm8,
     GLUE, SP, ACC, REST_IDX)
 DEFINE_PARAMETER_INDEX(BaselineLdlexvarImm4Imm4,
-    SP, LEVEL, SLOT)
+    GLUE, SP, LEVEL, SLOT)
 DEFINE_PARAMETER_INDEX(BaselineStlexvarImm4Imm4,
     GLUE, SP, ACC, LEVEL, SLOT)
 DEFINE_PARAMETER_INDEX(BaselineGetmodulenamespaceImm8,
@@ -364,7 +364,7 @@ DEFINE_PARAMETER_INDEX(BaselineFldaiImm64,
     IMM)
 DEFINE_PARAMETER_INDEX(BaselineReturn, GLUE, SP, OFFSET)
 DEFINE_PARAMETER_INDEX(BaselineLdlexvarImm8Imm8,
-    LEVEL, SLOT, SP)
+    GLUE, LEVEL, SLOT, SP)
 DEFINE_PARAMETER_INDEX(BaselineStlexvarImm8Imm8,
     GLUE, ACC, LEVEL, SLOT, SP)
 DEFINE_PARAMETER_INDEX(BaselineJnstricteqV8Imm16,
@@ -382,7 +382,7 @@ DEFINE_PARAMETER_INDEX(BaselineStPrivatePropertyImm8Imm16Imm16V8,
 DEFINE_PARAMETER_INDEX(BaselineTestInImm8Imm16Imm16,
     GLUE, SP, ACC, INDEX0, INDEX1, ENV)
 DEFINE_PARAMETER_INDEX(BaselineDeprecatedLdlexenvPrefNone,
-    SP)
+    GLUE, SP)
 DEFINE_PARAMETER_INDEX(BaselineWideCreateobjectwithexcludedkeysPrefImm16V8V8,
     GLUE, SP, V0, V1, V2)
 DEFINE_PARAMETER_INDEX(BaselineThrowPrefNone,
@@ -456,7 +456,7 @@ DEFINE_PARAMETER_INDEX(BaselineWideCopyrestargsPrefImm16,
 DEFINE_PARAMETER_INDEX(BaselineDeprecatedCallarg1PrefV8V8,
     GLUE, SP, FUNC_REG, A0, HOTNESS_COUNTER)
 DEFINE_PARAMETER_INDEX(BaselineWideLdlexvarPrefImm16Imm16,
-    SP, LEVEL, SLOT)
+    GLUE, SP, LEVEL, SLOT)
 DEFINE_PARAMETER_INDEX(BaselineDeprecatedCallargs2PrefV8V8V8,
     GLUE, SP, FUNC_REG, A0, A1, HOTNESS_COUNTER)
 DEFINE_PARAMETER_INDEX(BaselineWideStlexvarPrefImm16Imm16,
@@ -486,7 +486,7 @@ DEFINE_PARAMETER_INDEX(BaselineDeprecatedResumegeneratorPrefV8,
 DEFINE_PARAMETER_INDEX(BaselineWideStpatchvarPrefImm16,
     GLUE, SP, ACC, INDEX)
 DEFINE_PARAMETER_INDEX(BaselineDeprecatedGetresumemodePrefV8,
-    SP, ACC, V0)
+    GLUE, SP, ACC, V0)
 DEFINE_PARAMETER_INDEX(BaselineDeprecatedGettemplateobjectPrefV8,
     GLUE, SP, V0)
 DEFINE_PARAMETER_INDEX(BaselineDeprecatedDelobjpropPrefV8V8,
@@ -534,7 +534,7 @@ DEFINE_PARAMETER_INDEX(BaselineDeprecatedStlettoglobalrecordPrefId32,
 DEFINE_PARAMETER_INDEX(BaselineDeprecatedStclasstoglobalrecordPrefId32,
     GLUE, ACC, STRING_ID, SP)
 DEFINE_PARAMETER_INDEX(BaselineDeprecatedLdhomeobjectPrefNone,
-    SP)
+    GLUE, SP)
 DEFINE_PARAMETER_INDEX(BaselineDeprecatedCreateobjecthavingmethodPrefImm16,
     GLUE, ACC, SP, IMM_I16)
 DEFINE_PARAMETER_INDEX(BaselineDeprecatedDynamicimportPrefV8,
