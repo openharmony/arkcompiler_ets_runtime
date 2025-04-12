@@ -17,6 +17,7 @@
 
 #include "ecmascript/builtins/builtins_ark_tools.h"
 #include "ecmascript/compiler/aot_constantpool_patcher.h"
+#include "ecmascript/compiler/pgo_type/pgo_type_manager.h"
 #ifdef ARK_SUPPORT_INTL
 #include "ecmascript/builtins/builtins_collator.h"
 #include "ecmascript/builtins/builtins_date_time_format.h"
@@ -38,11 +39,12 @@
 #include "ecmascript/dfx/tracing/tracing.h"
 #include "ecmascript/dfx/vmstat/function_call_timer.h"
 #include "ecmascript/jit/jit_task.h"
+#include "ecmascript/jspandafile/abc_buffer_cache.h"
 #include "ecmascript/mem/heap-inl.h"
 #include "ecmascript/mem/shared_heap/shared_concurrent_marker.h"
 #include "ecmascript/module/module_logger.h"
-#include "ecmascript/ohos/jit_tools.h"
 #include "ecmascript/ohos/aot_tools.h"
+#include "ecmascript/ohos/jit_tools.h"
 #include "ecmascript/pgo_profiler/pgo_trace.h"
 #include "ecmascript/platform/ecma_context.h"
 #include "ecmascript/require/js_require_manager.h"
@@ -50,7 +52,6 @@
 #include "ecmascript/snapshot/mem/snapshot.h"
 #include "ecmascript/stubs/runtime_stubs.h"
 #include "ecmascript/sustaining_js_handle.h"
-#include "ecmascript/jspandafile/abc_buffer_cache.h"
 
 #if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE)
 #include "parameters.h"
@@ -288,6 +289,7 @@ bool EcmaVM::Initialize()
     asyncStackTrace_ = new AsyncStackTrace(this);
     aotFileManager_ = new AOTFileManager(this);
     abcBufferCache_ = new AbcBufferCache();
+
     auto context = new EcmaContext(thread_);
     thread_->PushContext(context);
     [[maybe_unused]] EcmaHandleScope scope(thread_);
@@ -295,6 +297,12 @@ bool EcmaVM::Initialize()
     thread_->SetSharedMarkStatus(DaemonThread::GetInstance()->GetSharedMarkStatus());
     snapshotEnv_ = new SnapshotEnv(this);
     context->Initialize();
+    ptManager_ = new kungfu::PGOTypeManager(this);
+    optCodeProfiler_ = new OptCodeProfiler();
+    if (options_.GetTypedOpProfiler()) {
+        typedOpProfiler_ = new TypedOpProfiler();
+    }
+    functionProtoTransitionTable_ = new FunctionProtoTransitionTable(thread_);
 
     unsharedConstpools_ = new(std::nothrow) JSTaggedValue[GetUnsharedConstpoolsArrayLen()];
     if (unsharedConstpools_ == nullptr) {
@@ -312,7 +320,7 @@ bool EcmaVM::Initialize()
     GenerateInternalNativeMethods();
     quickFixManager_ = new QuickFixManager();
     if (options_.GetEnableAsmInterpreter()) {
-        thread_->GetCurrentEcmaContext()->LoadStubFile();
+        LoadStubFile();
     }
 
     callTimer_ = new FunctionCallTimer();
@@ -437,7 +445,7 @@ EcmaVM::~EcmaVM()
 
     DeleteHandleStorage();
     DeletePrimitiveStorage();
-    
+
     if (runtimeStat_ != nullptr) {
         chunk_.Delete(runtimeStat_);
         runtimeStat_ = nullptr;
@@ -504,9 +512,34 @@ EcmaVM::~EcmaVM()
         delete regExpParserCache_;
         regExpParserCache_ = nullptr;
     }
+
     if (abcBufferCache_ != nullptr) {
         delete abcBufferCache_;
         abcBufferCache_ = nullptr;
+    }
+
+    if (optCodeProfiler_ != nullptr) {
+        delete optCodeProfiler_;
+        optCodeProfiler_ = nullptr;
+    }
+
+    if (typedOpProfiler_ != nullptr) {
+        delete typedOpProfiler_;
+        typedOpProfiler_ = nullptr;
+    }
+
+    if (ptManager_ != nullptr) {
+        delete ptManager_;
+        ptManager_ = nullptr;
+    }
+
+    if (aotFileManager_ != nullptr) {
+        aotFileManager_ = nullptr;
+    }
+
+    if (functionProtoTransitionTable_ != nullptr) {
+        delete functionProtoTransitionTable_;
+        functionProtoTransitionTable_ = nullptr;
     }
 }
 
@@ -808,6 +841,14 @@ void EcmaVM::Iterate(RootVisitor &v, VMRootVisitType type)
     if (sustainingJSHandleList_) {
         sustainingJSHandleList_->Iterate(v);
     }
+
+    if (functionProtoTransitionTable_) {
+        functionProtoTransitionTable_->Iterate(v);
+    }
+
+    if (ptManager_) {
+        ptManager_->Iterate(v);
+    }
 }
 
 size_t EcmaVM::IterateHandle(RootVisitor &visitor)
@@ -888,6 +929,74 @@ void EcmaVM::ShrinkHandleStorage(int prevIndex)
             handleStorageNodes_.pop_back();
         }
     }
+}
+
+void EcmaVM::PrintOptStat()
+{
+    if (optCodeProfiler_ != nullptr) {
+        optCodeProfiler_->PrintAndReset();
+    }
+}
+
+void EcmaVM::DumpAOTInfo() const
+{
+    aotFileManager_->DumpAOTInfo();
+}
+
+std::tuple<uint64_t, uint8_t*, int, kungfu::CalleeRegAndOffsetVec> EcmaVM::CalCallSiteInfo(uintptr_t retAddr,
+                                                                                           bool isDeopt) const
+{
+    return aotFileManager_->CalCallSiteInfo(retAddr, isDeopt);
+}
+
+void EcmaVM::LoadStubFile()
+{
+    std::string stubFile = "";
+    if (options_.WasStubFileSet()) {
+        stubFile = options_.GetStubFile();
+    }
+    aotFileManager_->LoadStubFile(stubFile);
+}
+
+bool EcmaVM::LoadAOTFilesInternal(const std::string& aotFileName)
+{
+#ifdef AOT_ESCAPE_ENABLE
+    std::string bundleName = pgo::PGOProfilerManager::GetInstance()->GetBundleName();
+    if (AotCrashInfo::GetInstance().IsAotEscapedOrNotInEnableList(this, bundleName)) {
+        return false;
+    }
+#endif
+    std::string anFile = aotFileName + AOTFileManager::FILE_EXTENSION_AN;
+    if (!aotFileManager_->LoadAnFile(anFile)) {
+        LOG_ECMA(WARN) << "Load " << anFile << " failed. Destroy aot data and rollback to interpreter";
+        ecmascript::AnFileDataManager::GetInstance()->SafeDestroyAnData(anFile);
+        return false;
+    }
+
+    std::string aiFile = aotFileName + AOTFileManager::FILE_EXTENSION_AI;
+    if (!aotFileManager_->LoadAiFile(aiFile)) {
+        LOG_ECMA(WARN) << "Load " << aiFile << " failed. Destroy aot data and rollback to interpreter";
+        ecmascript::AnFileDataManager::GetInstance()->SafeDestroyAnData(anFile);
+        return false;
+    }
+    return true;
+}
+
+bool EcmaVM::LoadAOTFiles(const std::string& aotFileName)
+{
+    return LoadAOTFilesInternal(aotFileName);
+}
+
+void EcmaVM::LoadProtoTransitionTable(JSTaggedValue constpool)
+{
+    JSTaggedValue protoTransitionTable = ConstantPool::Cast(constpool.GetTaggedObject())->GetProtoTransTableInfo();
+    functionProtoTransitionTable_->UpdateProtoTransitionTable(
+        thread_, JSHandle<PointerToIndexDictionary>(thread_, protoTransitionTable));
+}
+
+void EcmaVM::ResetProtoTransitionTableOnConstpool(JSTaggedValue constpool)
+{
+    ConstantPool::Cast(constpool.GetTaggedObject())->SetProtoTransTableInfo(thread_, JSTaggedValue::Undefined());
 }
 
 uintptr_t *EcmaVM::ExpandPrimitiveStorage()

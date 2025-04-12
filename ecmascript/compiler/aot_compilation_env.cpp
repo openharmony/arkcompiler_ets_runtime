@@ -19,7 +19,7 @@
 namespace panda::ecmascript {
 AOTCompilationEnv::AOTCompilationEnv(EcmaVM *vm) : CompilationEnv(vm)
 {
-    ptManager_ = thread_->GetCurrentEcmaContext()->GetPTManager();
+    ptManager_ = vm->GetPTManager();
 }
 
 JSRuntimeOptions &AOTCompilationEnv::GetJSOptions()

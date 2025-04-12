@@ -49,14 +49,14 @@ JSHandle<JSTaggedValue> BaseSnapshotInfo::TryGetIHClass(ProfileType rootType, Pr
 
 JSHandle<JSTaggedValue> BaseSnapshotInfo::TryGetHClass(ProfileType rootType, ProfileType childType) const
 {
-    PGOTypeManager *ptManager = thread_->GetCurrentEcmaContext()->GetPTManager();
+    PGOTypeManager* ptManager = thread_->GetEcmaVM()->GetPTManager();
     JSTaggedValue hclass = ptManager->QueryHClass(rootType, childType);
     return JSHandle<JSTaggedValue>(thread_, hclass);
 }
 
 JSHandle<JSTaggedValue> BaseSnapshotInfo::TryGetHClassByPGOTypeLocation(PGOTypeLocation loc) const
 {
-    PGOTypeManager *ptManager = thread_->GetCurrentEcmaContext()->GetPTManager();
+    PGOTypeManager* ptManager = thread_->GetEcmaVM()->GetPTManager();
     ProfileType  pt = ptManager->GetRootIdByLocation(loc);
     return TryGetHClass(pt, pt);
 }

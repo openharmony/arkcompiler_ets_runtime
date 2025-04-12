@@ -577,7 +577,7 @@ JSTaggedValue BuiltinsArkTools::PrintTypedOpProfiler(EcmaRuntimeCallInfo *info)
 
     JSHandle<JSTaggedValue> opStrVal = GetCallArg(info, 0);
     std::string opStr = EcmaStringAccessor(opStrVal.GetTaggedValue()).ToStdString();
-    TypedOpProfiler *profiler = thread->GetCurrentEcmaContext()->GetTypdOpProfiler();
+    TypedOpProfiler* profiler = thread->GetEcmaVM()->GetTypedOpProfiler();
     if (profiler != nullptr) {
         profiler->Print(opStr);
     }
@@ -591,7 +591,7 @@ JSTaggedValue BuiltinsArkTools::ClearTypedOpProfiler(EcmaRuntimeCallInfo *info)
     RETURN_IF_DISALLOW_ARKTOOLS(thread);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
-    TypedOpProfiler *profiler = thread->GetCurrentEcmaContext()->GetTypdOpProfiler();
+    TypedOpProfiler* profiler = thread->GetEcmaVM()->GetTypedOpProfiler();
     if (profiler != nullptr) {
         profiler->Clear();
     }

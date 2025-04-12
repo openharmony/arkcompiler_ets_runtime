@@ -129,7 +129,7 @@ AOTFileInfo::CallSiteInfo FrameIterator::TryCalCallSiteInfoFromMachineCode(uintp
 
 std::pair<AOTFileInfo::CallSiteInfo, bool> FrameIterator::CalCallSiteInfo(uintptr_t retAddr, bool isDeopt) const
 {
-    auto callSiteInfo = const_cast<JSThread *>(thread_)->GetCurrentEcmaContext()->CalCallSiteInfo(retAddr, isDeopt);
+    auto callSiteInfo = const_cast<JSThread*>(thread_)->GetEcmaVM()->CalCallSiteInfo(retAddr, isDeopt);
     if (std::get<1>(callSiteInfo) != nullptr) { // 1 : stackMapAddr
         return std::make_pair(callSiteInfo, false);
     }

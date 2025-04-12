@@ -23,8 +23,8 @@ JitCompilationEnv::JitCompilationEnv(EcmaVM *jitVm, EcmaVM *jsVm, JSHandle<JSFun
     : CompilationEnv(jitVm), hostThread_(jsVm->GetJSThreadNoCheck()), jsFunction_(jsFunction)
 {
     if (hostThread_ != nullptr && hostThread_->GetCurrentEcmaContext() != nullptr &&
-        hostThread_->GetCurrentEcmaContext()->GetPTManager() != nullptr) {
-        ptManager_ = hostThread_->GetCurrentEcmaContext()->GetPTManager();
+        jsVm->GetPTManager() != nullptr) {
+        ptManager_ = jsVm->GetPTManager();
     }
     Method *method = Method::Cast(jsFunction->GetMethod().GetTaggedObject());
     jsPandaFile_ = const_cast<JSPandaFile*>(method->GetJSPandaFile());
@@ -58,7 +58,7 @@ JSHClass *JitCompilationEnv::GetBuiltinPrototypeHClass(BuiltinTypeId type) const
 
 void JitCompilationEnv::SetTsManagerCompilationEnv()
 {
-    auto pt = hostThread_->GetCurrentEcmaContext()->GetPTManager();
+    auto pt = hostThread_->GetEcmaVM()->GetPTManager();
     ptManager_ = pt;
 }
 

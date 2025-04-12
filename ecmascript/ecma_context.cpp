@@ -39,11 +39,7 @@
 namespace panda::ecmascript {
 using PathHelper = base::PathHelper;
 
-EcmaContext::EcmaContext(JSThread *thread)
-    : thread_(thread),
-      vm_(thread->GetEcmaVM()),
-      factory_(vm_->GetFactory()),
-      aotFileManager_(vm_->GetAOTFileManager())
+EcmaContext::EcmaContext(JSThread* thread): thread_(thread), vm_(thread->GetEcmaVM()), factory_(vm_->GetFactory())
 {
 }
 
@@ -86,13 +82,6 @@ bool EcmaContext::Initialize()
     bool builtinsLazyEnabled = vm_->GetJSOptions().IsWorker() && vm_->GetJSOptions().GetEnableBuiltinsLazy();
     thread_->SetEnableLazyBuiltins(builtinsLazyEnabled);
     builtins.Initialize(globalEnv, thread_, builtinsLazyEnabled);
-
-    ptManager_ = new kungfu::PGOTypeManager(vm_);
-    optCodeProfiler_ = new OptCodeProfiler();
-    if (vm_->GetJSOptions().GetTypedOpProfiler()) {
-        typedOpProfiler_ = new TypedOpProfiler();
-    }
-    functionProtoTransitionTable_ = new FunctionProtoTransitionTable(thread_);
     initialized_ = true;
     return true;
 }
@@ -112,39 +101,6 @@ EcmaContext::~EcmaContext()
             jsPandaFile->DeleteParsedConstpoolVM(vm_);
         }
     }
-
-    if (optCodeProfiler_ != nullptr) {
-        delete optCodeProfiler_;
-        optCodeProfiler_ = nullptr;
-    }
-    if (typedOpProfiler_ != nullptr) {
-        delete typedOpProfiler_;
-        typedOpProfiler_ = nullptr;
-    }
-    if (ptManager_ != nullptr) {
-        delete ptManager_;
-        ptManager_ = nullptr;
-    }
-    if (aotFileManager_ != nullptr) {
-        aotFileManager_ = nullptr;
-    }
-
-    if (functionProtoTransitionTable_ != nullptr) {
-        delete functionProtoTransitionTable_;
-        functionProtoTransitionTable_ = nullptr;
-    }
-}
-
-void EcmaContext::LoadProtoTransitionTable(JSTaggedValue constpool)
-{
-    JSTaggedValue protoTransitionTable = ConstantPool::Cast(constpool.GetTaggedObject())->GetProtoTransTableInfo();
-    functionProtoTransitionTable_->UpdateProtoTransitionTable(
-        thread_, JSHandle<PointerToIndexDictionary>(thread_, protoTransitionTable));
-}
-
-void EcmaContext::ResetProtoTransitionTableOnConstpool(JSTaggedValue constpool)
-{
-    ConstantPool::Cast(constpool.GetTaggedObject())->SetProtoTransTableInfo(thread_, JSTaggedValue::Undefined());
 }
 
 void EcmaContext::SetGlobalEnv(GlobalEnv *global)
@@ -197,51 +153,6 @@ void EcmaContext::Iterate(RootVisitor &v)
     globalConst_.Iterate(v);
 
     v.VisitRoot(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&globalEnv_)));
-
-    if (functionProtoTransitionTable_) {
-        functionProtoTransitionTable_->Iterate(v);
-    }
-    if (ptManager_) {
-        ptManager_->Iterate(v);
-    }
-}
-
-void EcmaContext::LoadStubFile()
-{
-    std::string stubFile = "";
-    if (vm_->GetJSOptions().WasStubFileSet()) {
-        stubFile = vm_->GetJSOptions().GetStubFile();
-    }
-    aotFileManager_->LoadStubFile(stubFile);
-}
-
-bool EcmaContext::LoadAOTFilesInternal(const std::string& aotFileName)
-{
-#ifdef AOT_ESCAPE_ENABLE
-    std::string bundleName = pgo::PGOProfilerManager::GetInstance()->GetBundleName();
-    if (AotCrashInfo::GetInstance().IsAotEscapedOrNotInEnableList(vm_, bundleName)) {
-        return false;
-    }
-#endif
-    std::string anFile = aotFileName + AOTFileManager::FILE_EXTENSION_AN;
-    if (!aotFileManager_->LoadAnFile(anFile)) {
-        LOG_ECMA(WARN) << "Load " << anFile << " failed. Destroy aot data and rollback to interpreter";
-        ecmascript::AnFileDataManager::GetInstance()->SafeDestroyAnData(anFile);
-        return false;
-    }
-
-    std::string aiFile = aotFileName + AOTFileManager::FILE_EXTENSION_AI;
-    if (!aotFileManager_->LoadAiFile(aiFile)) {
-        LOG_ECMA(WARN) << "Load " << aiFile << " failed. Destroy aot data and rollback to interpreter";
-        ecmascript::AnFileDataManager::GetInstance()->SafeDestroyAnData(anFile);
-        return false;
-    }
-    return true;
-}
-
-bool EcmaContext::LoadAOTFiles(const std::string& aotFileName)
-{
-    return LoadAOTFilesInternal(aotFileName);
 }
 
 #if defined(CROSS_PLATFORM) && defined(ANDROID_PLATFORM)
@@ -252,25 +163,6 @@ bool EcmaContext::LoadAOTFiles(const std::string& aotFileName,
     return LoadAOTFilesInternal(aotFileName);
 }
 #endif
-
-void EcmaContext::PrintOptStat()
-{
-    if (optCodeProfiler_ != nullptr) {
-        optCodeProfiler_->PrintAndReset();
-    }
-}
-
-void EcmaContext::DumpAOTInfo() const
-{
-    aotFileManager_->DumpAOTInfo();
-}
-
-std::tuple<uint64_t, uint8_t *, int, kungfu::CalleeRegAndOffsetVec> EcmaContext::CalCallSiteInfo(
-    uintptr_t retAddr, bool isDeopt) const
-{
-    auto loader = aotFileManager_;
-    return loader->CalCallSiteInfo(retAddr, isDeopt);
-}
 
 void EcmaContext::ClearKeptObjects()
 {

@@ -2984,7 +2984,7 @@ DEF_RUNTIME_STUBS(ProfileOptimizedCode)
     int bcIndex = GetArg(argv, argc, 1).GetInt();
     EcmaOpcode ecmaOpcode = static_cast<EcmaOpcode>(GetArg(argv, argc, 2).GetInt());
     OptCodeProfiler::Mode mode = static_cast<OptCodeProfiler::Mode>(GetArg(argv, argc, 3).GetInt());
-    OptCodeProfiler *profiler = thread->GetCurrentEcmaContext()->GetOptCodeProfiler();
+    OptCodeProfiler* profiler = thread->GetEcmaVM()->GetOptCodeProfiler();
     profiler->Update(func, bcIndex, ecmaOpcode, mode);
     return JSTaggedValue::Undefined().GetRawData();
 }
@@ -2993,7 +2993,7 @@ DEF_RUNTIME_STUBS(ProfileTypedOp)
 {
     RUNTIME_STUBS_HEADER(ProfileOptimizedCode);
     kungfu::OpCode opcode = static_cast<kungfu::OpCode>(GetArg(argv, argc, 0).GetInt());
-    TypedOpProfiler *profiler = thread->GetCurrentEcmaContext()->GetTypdOpProfiler();
+    TypedOpProfiler* profiler = thread->GetEcmaVM()->GetTypedOpProfiler();
     if (profiler != nullptr) {
         profiler->Update(opcode);
     }
