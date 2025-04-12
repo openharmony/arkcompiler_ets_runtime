@@ -3468,10 +3468,10 @@ inline void StubBuilder::SetTaskConcurrentFuncFlagToFunction(GateRef glue, GateR
     Store(VariableType::INT32(), glue, function, bitFieldOffset, newVal);
 }
 
-inline void StubBuilder::SetBitFieldToFunction(GateRef glue, GateRef function, GateRef value)
+inline void StubBuilder::SetBitFieldToFunction(GateRef glue, GateRef function, GateRef value, MemoryAttribute mAttr)
 {
     GateRef bitFieldOffset = IntPtr(JSFunctionBase::BIT_FIELD_OFFSET);
-    Store(VariableType::INT32(), glue, function, bitFieldOffset, value);
+    Store(VariableType::INT32(), glue, function, bitFieldOffset, value, mAttr);
 }
 
 inline void StubBuilder::SetMachineCodeToFunction(GateRef glue, GateRef function, GateRef value, MemoryAttribute mAttr)
