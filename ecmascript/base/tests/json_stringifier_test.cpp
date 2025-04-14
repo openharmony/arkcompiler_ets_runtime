@@ -795,4 +795,71 @@ HWTEST_F_L0(JsonStringifierTest, Stringify_021)
     JSHandle<EcmaString> handleEcmaStr1(resultString1);
     EXPECT_STREQ("[null]", EcmaStringAccessor(handleEcmaStr1).ToCString().c_str());
 }
+
+HWTEST_F_L0(JsonStringifierTest, AppendSpecialDouble_01)
+{
+    struct TestCase {
+        double value;
+        const char* expected;
+    };
+    TestCase testCases[] = {
+        { 0.0, "0" },
+        { NAN, "NaN" },
+        { INFINITY, "Infinity" },
+        { -INFINITY, "-Infinity" },
+    };
+    CString str;
+    for (const auto& testCase : testCases) {
+        bool appended = AppendSpecialDouble(str, testCase.value);
+        ASSERT_TRUE(appended);
+        EXPECT_STREQ(testCase.expected, str.c_str());
+        str.clear();
+    }
+}
+
+HWTEST_F_L0(JsonStringifierTest, AppendDoubleToString_01)
+{
+    struct TestCase {
+        double value;
+        const char* expected;
+    };
+    TestCase testCases[] = {
+        { 123000.0, "123000" },
+        { -456000.0, "-456000" },
+        { 1234.5678, "1234.5678" },
+        { -8765.4321, "-8765.4321" },
+        { 0.00123, "0.00123" },
+        { -0.0456, "-0.0456" },
+        { 1.2345e24, "1.2345e+24" },
+        { -6.789e22, "-6.789e+22" },
+        { 0.00000000123, "1.23e-9" },
+        { -0.0000000456, "-4.56e-8" }
+    };
+    CString str;
+    for (const auto& testCase : testCases) {
+        AppendDoubleToString(str, testCase.value);
+        EXPECT_STREQ(testCase.expected, str.c_str());
+        str.clear();
+    }
+}
+
+HWTEST_F_L0(JsonStringifierTest, ConvertToCStringAndAppend_01)
+{
+    struct TestCase {
+        JSTaggedValue value;
+        const char* expected;
+    };
+    TestCase testCases[] = {
+        { JSTaggedValue(NAN), "NaN" },
+        { JSTaggedValue(INFINITY), "Infinity" },
+        { JSTaggedValue(42), "42" },
+        { JSTaggedValue(-3.14), "-3.14" }
+    };
+    CString str;
+    for (const auto& testCase : testCases) {
+        ConvertToCStringAndAppend(str, testCase.value);
+        EXPECT_STREQ(testCase.expected, str.c_str());
+        str.clear();
+    }
+}
 }  // namespace panda::test

@@ -15,7 +15,8 @@
 
 #include "ecmascript/mem/c_string.h"
 
-
+#include "ecmascript/base/dtoa_helper.h"
+#include "ecmascript/base/number_helper.h"
 #include "ecmascript/ecma_string-inl.h"
 #include "ecmascript/js_symbol.h"
 
@@ -100,12 +101,96 @@ CString ConvertToString(const EcmaString *s, StringConvertedUsage usage, bool ce
     return EcmaStringAccessor(const_cast<EcmaString *>(s)).ToCString(usage, cesu8);
 }
 
-void ConvertAndAppendToString(CString &str, const EcmaString *s, StringConvertedUsage usage, bool cesu8)
+bool AppendSpecialDouble(CString &str, double d)
 {
-    if (s == nullptr) {
+    if (d == 0.0) {
+        str.append(base::NumberHelper::ZERO_STR);
+        return true;
+    }
+    if (std::isnan(d)) {
+        str.append(base::NumberHelper::NAN_STR);
+        return true;
+    }
+    if (std::isinf(d)) {
+        str.append(d < 0 ? base::NumberHelper::MINUS_INFINITY_STR : base::NumberHelper::INFINITY_STR);
+        return true;
+    }
+    return false;
+}
+
+void AppendDoubleToString(CString &str, double d)
+{
+    if (AppendSpecialDouble(str, d)) {
         return;
     }
-    EcmaStringAccessor(const_cast<EcmaString *>(s)).AppendToCString(str, usage, cesu8);
+    bool isNeg = d < 0;
+    if (isNeg) {
+        d = -d;
+    }
+    ASSERT(d > 0);
+    constexpr int startIdx = 8; // when (isNeg and n = -5), result moves left for 8times
+    char buff[base::JS_DTOA_BUF_SIZE] = {0};
+    char *result = buff + startIdx;
+    ASSERT(startIdx < base::JS_DTOA_BUF_SIZE);
+    int n = 0;
+    int k = 0;
+    int len = 0;
+    base::DtoaHelper::Dtoa(d, result, &n, &k);
+    if (n > 0 && n <= base::MAX_DIGITS) {
+        if (k <= n) {
+            std::fill(result + k, result + n, '0');
+            len = n;
+        } else {
+            --result;
+            std::copy(result + 1, result + 1 + n, result);
+            result[n] = '.';
+            len = k + 1;
+        }
+    } else if (base::MIN_DIGITS < n && n <= 0) {
+        constexpr int prefixLen = 2;
+        result -= (-n + prefixLen);
+        ASSERT(result >= buff);
+        ASSERT(result + prefixLen - n <= buff + base::JS_DTOA_BUF_SIZE);
+        result[0] = '0';
+        result[1] = '.';
+        std::fill(result + prefixLen, result + prefixLen - n, '0');
+        len = -n + prefixLen + k;
+    } else {
+        int pos = k;
+        if (k != 1) {
+            --result;
+            result[0] = result[1];
+            result[1] = '.';
+            ++pos;
+        }
+        result[pos++] = 'e';
+        if (n >= 1) {
+            result[pos++] = '+';
+        }
+        auto expo = std::to_string(n - 1);
+        for (size_t i = 0; i < expo.length(); ++i) {
+            result[pos++] = expo[i];
+        }
+        len = pos;
+    }
+    if (isNeg) {
+        --result;
+        result[0] = '-';
+        len += 1;
+    }
+    str.append(result, len);
+}
+
+void ConvertToCStringAndAppend(CString &str, JSTaggedValue num)
+{
+    ASSERT(num.IsNumber());
+    if (num.IsInt()) {
+        int intVal = num.GetInt();
+        AppendToCString<int>(str, intVal);
+    } else {
+        double d = num.GetDouble();
+        AppendDoubleToString(str, d);
+    }
 }
 
 void ConvertQuotedAndAppendToString(CString &str, const EcmaString *s, StringConvertedUsage usage, bool cesu8)
