@@ -801,7 +801,7 @@ GateRef BytecodeCircuitBuilder::NewDeopt(BytecodeRegion &bb)
     GateRef dependRelay = circuit_->NewGate(circuit_->DependRelay(), {deopt, depend});
     GateRef undef =
         circuit_->GetConstantGate(MachineType::I64, JSTaggedValue::VALUE_UNDEFINED, GateType::TaggedValue());
-    circuit_->NewGate(circuit_->Return(), {state, dependRelay, undef, circuit_->GetReturnRoot()});
+    circuit_->NewGate(circuit_->Return(), {deopt, dependRelay, undef, circuit_->GetReturnRoot()});
     byteCodeToJSGates_[iterator.Index()].emplace_back(deopt);
     jsGatesToByteCode_[deopt] = iterator.Index();
     return deopt;
