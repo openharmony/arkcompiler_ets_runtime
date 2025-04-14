@@ -17,7 +17,7 @@
 
 #include <sys/stat.h>
 
-#include "ecmascript/log.h"
+#include "ecmascript/platform/file.h"
 #include "zip_file_reader_io.h"
 #include "zip_file_reader_mem.h"
 
@@ -49,11 +49,7 @@ std::shared_ptr<ZipFileReader> ZipFileReader::CreateZipFileReader(const std::str
 ZipFileReader::~ZipFileReader()
 {
     if (fd_ >= 0 && closable_) {
-#if defined(PANDA_TARGET_OHOS)
-        fdsan_close_with_tag(fd_, LOG_DOMAIN);
-#else
-        close(fd_);
-#endif
+        Close(reinterpret_cast<fd_t>(fd_));
         fd_ = -1;
     }
 }
@@ -81,9 +77,7 @@ bool ZipFileReader::init()
     if (fd_ < 0) {
         return false;
     }
-#if defined(PANDA_TARGET_OHOS)
-    fdsan_exchange_owner_tag(fd_, 0, LOG_DOMAIN);
-#endif
+    FdsanExchangeOwnerTag(reinterpret_cast<fd_t>(fd_));
     return true;
 }
 }

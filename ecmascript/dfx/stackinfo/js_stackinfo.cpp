@@ -16,6 +16,7 @@
 
 #include "ecmascript/dfx/stackinfo/js_stackinfo.h"
 #include "ecmascript/platform/aot_crash_info.h"
+#include "ecmascript/platform/file.h"
 #include "ecmascript/platform/os.h"
 #include "ecmascript/stubs/runtime_stubs-inl.h"
 #include "ecmascript/jit/jit.h"
@@ -164,14 +165,9 @@ void JsStackInfo::DumpJitCode(JSThread *thread)
     }
     std::string outFile = realOutPath + "/" + fileName;
     int fd = open(outFile.c_str(), O_RDWR | O_CREAT | O_TRUNC, 0644);
-#ifdef PANDA_TARGET_OHOS
-    fdsan_exchange_owner_tag(fd, 0, LOG_DOMAIN);
+    FdsanExchangeOwnerTag(reinterpret_cast<fd_t>(fd));
     jitDumpElf.WriteJitElfFile(fd);
-    fdsan_close_with_tag(fd, LOG_DOMAIN);
-#else
-    jitDumpElf.WriteJitElfFile(fd);
-    close(fd);
-#endif
+    Close(reinterpret_cast<fd_t>(fd));
 }
 
 void AssembleJitCodeMap(JSThread *thread, const JSHandle<JSObject> &jsErrorObj, JSFunction *func, Method *method,

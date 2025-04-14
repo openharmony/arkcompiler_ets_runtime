@@ -351,34 +351,26 @@ protected:
     virtual void SetRuntimeInfo(const char *realOutPath, char lines[][BUFFER_SIZE], int length) const
     {
         int fd = open(realOutPath,  O_WRONLY | O_CREAT | O_TRUNC, 0666);
-#ifdef PANDA_TARGET_OHOS
-        fdsan_exchange_owner_tag(fd, 0, LOG_DOMAIN);
-#endif
         if (fd == -1) {
             return;
         }
+        FdsanExchangeOwnerTag(reinterpret_cast<fd_t>(fd));
         for (int i = 0; i < length && lines[i] != NULL; i++) {
             if (lines[i][0] != '\0') {
                 write(fd, lines[i], strlen(lines[i]));
                 write(fd, "\n", 1);
             }
         }
-#ifdef PANDA_TARGET_OHOS
-        fdsan_close_with_tag(fd, LOG_DOMAIN);
-#else
-        close(fd);
-#endif
+        Close(reinterpret_cast<fd_t>(fd));
     }
 
     void GetRuntimeInfoByPath(char lines[][BUFFER_SIZE], const char *realOutPath, const char *soBuildId) const
     {
         int fd = open(realOutPath, O_RDONLY);
-#ifdef PANDA_TARGET_OHOS
-        fdsan_exchange_owner_tag(fd, 0, LOG_DOMAIN);
-#endif
         if (fd == -1) {
             return;
         }
+        FdsanExchangeOwnerTag(reinterpret_cast<fd_t>(fd));
         char buffer[BUFFER_SIZE] = { '\0' };
         char *saveptr;
         char *token;
@@ -395,11 +387,7 @@ protected:
                 token = strtok_r(NULL, "\n", &saveptr);
             }
         }
-#ifdef PANDA_TARGET_OHOS
-        fdsan_close_with_tag(fd, LOG_DOMAIN);
-#else
-        close(fd);
-#endif
+        Close(reinterpret_cast<fd_t>(fd));
     }
 
     void ParseELFSectionsForBuildId(ecmascript::MemMap &fileMap, char *buildId, int length) const

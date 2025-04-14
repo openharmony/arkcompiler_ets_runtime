@@ -19,6 +19,7 @@
 #include <unistd.h>
 
 #include "ecmascript/log_wrapper.h"
+#include "ecmascript/platform/file.h"
 
 namespace panda::ecmascript {
 FileStream::FileStream(const std::string &fileName)
@@ -87,9 +88,7 @@ bool FileStream::WriteChunk(char *data, int32_t size)
 
 FileDescriptorStream::FileDescriptorStream(int32_t fd) : fd_(fd)
 {
-#if defined(PANDA_TARGET_OHOS)
-    fdsan_exchange_owner_tag(fd, 0, LOG_DOMAIN);
-#endif
+    FdsanExchangeOwnerTag(reinterpret_cast<fd_t>(fd));
 }
 
 FileDescriptorStream::~FileDescriptorStream()
@@ -100,11 +99,7 @@ FileDescriptorStream::~FileDescriptorStream()
 void FileDescriptorStream::EndOfStream()
 {
     if (Good()) {
-#if defined(PANDA_TARGET_OHOS)
-        fdsan_close_with_tag(fd_, LOG_DOMAIN);
-#else
-        close(fd_);
-#endif
+        Close(reinterpret_cast<fd_t>(fd_));
         fd_ = -1;
     }
 }

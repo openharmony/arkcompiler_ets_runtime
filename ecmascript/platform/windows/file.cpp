@@ -85,6 +85,11 @@ void FSync(fd_t fd)
     LOG_ECMA(DEBUG) << "Unsupport fsync fd(" << fd << ") in windows";
 }
 
+void FdsanExchangeOwnerTag(fd_t fd)
+{
+    LOG_ECMA(DEBUG) << "Unsupport FdsanExchangeOwnerTag fd(" << fd << ") in windows";
+}
+
 void Close(fd_t fd)
 {
     CloseHandle(fd);

@@ -17,6 +17,7 @@
 
 
 #include "ecmascript/base/path_helper.h"
+#include "ecmascript/log.h"
 #include "ecmascript/module/js_module_source_text.h"
 
 namespace panda::ecmascript {
@@ -88,9 +89,22 @@ void FSync(fd_t fd)
     }
 }
 
+void FdsanExchangeOwnerTag(fd_t fd)
+{
+#if defined(PANDA_TARGET_OHOS)
+    fdsan_exchange_owner_tag(fd, 0, LOG_DOMAIN);
+#else
+    LOG_ECMA(DEBUG) << "Unsupport FdsanExchangeOwnerTag fd(" << fd << ")";
+#endif
+}
+
 void Close(fd_t fd)
 {
+#if defined(PANDA_TARGET_OHOS)
+    fdsan_close_with_tag(fd, LOG_DOMAIN);
+#else
     close(fd);
+#endif
 }
 
 MemMap FileMap(const char *fileName, int flag, int prot, int64_t offset)
@@ -100,27 +114,17 @@ MemMap FileMap(const char *fileName, int flag, int prot, int64_t offset)
         LOG_ECMA(ERROR) << fileName << " file open failed";
         return MemMap();
     }
-#if defined(PANDA_TARGET_OHOS)
-    fdsan_exchange_owner_tag(fd, 0, LOG_DOMAIN);
-#endif
+    FdsanExchangeOwnerTag(fd);
 
     off_t size = lseek(fd, 0, SEEK_END);
     if (size <= 0) {
-#if defined(PANDA_TARGET_OHOS)
-        fdsan_close_with_tag(fd, LOG_DOMAIN);
-#else
-        close(fd);
-#endif
+        Close(fd);
         LOG_ECMA(ERROR) << fileName << " file is empty";
         return MemMap();
     }
 
     void *addr = mmap(nullptr, size, prot, MAP_PRIVATE, fd, offset);
-#if defined(PANDA_TARGET_OHOS)
-    fdsan_close_with_tag(fd, LOG_DOMAIN);
-#else
-    close(fd);
-#endif
+    Close(fd);
     return MemMap(addr, size);
 }
 
