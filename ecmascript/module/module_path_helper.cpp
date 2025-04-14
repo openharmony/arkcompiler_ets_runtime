@@ -935,6 +935,10 @@ void ModulePathHelper::ConcatOtherNormalizedOhmurl(EcmaVM *vm, const JSPandaFile
     [[maybe_unused]] const CString &baseFileName, CString &requestPath)
 {
     CString currentModuleName = GetModuleNameWithBaseFile(baseFileName);
+    if (currentModuleName.empty()) {
+        //baseFileName: X:\xxx\entry\.preview\default\intermediates\assets\default\ets\modules.abc
+        currentModuleName = vm->GetModuleName();
+    }
     CString pkgName = vm->GetPkgNameWithAlias(requestPath);
     CVector<CString> data = GetPkgContextInfoListElements(vm, currentModuleName, pkgName);
     if (!data.empty()) {
