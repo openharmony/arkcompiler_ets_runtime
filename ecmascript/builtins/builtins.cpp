@@ -391,7 +391,7 @@ void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread, bool
         FunctionKind::ASYNC_FUNCTION, JSAsyncFunction::SIZE, JSType::JS_ASYNC_FUNCTION,
         env->GetAsyncFunctionPrototype());
     env->SetAsyncFunctionClass(thread_, asyncFuncClass);
-    thread_->ResetGuardians();
+    env->ResetGuardians();
 
     thread->CheckSafepointIfSuspended();
     if (vm_->GetJSOptions().IsEnableLoweringBuiltin() && !isRealm) {

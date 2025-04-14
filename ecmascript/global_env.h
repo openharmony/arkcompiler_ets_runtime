@@ -140,6 +140,18 @@ public:
         return *reinterpret_cast<uintptr_t *>(addr);
     }
 
+    bool IsArrayPrototypeChangedGuardiansInvalid() const
+    {
+        return !GetArrayPrototypeChangedGuardians();
+    }
+
+    void ResetGuardians()
+    {
+        SetArrayPrototypeChangedGuardians(true);
+    }
+
+    void NotifyArrayPrototypeChangedGuardians(JSHandle<JSObject> receiver);
+
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define GLOBAL_ENV_FIELD_ACCESSORS(type, name, index)                                                   \
     inline JSHandle<type> Get##name() const                                                             \
@@ -202,10 +214,15 @@ public:
 
     static constexpr size_t HEADER_SIZE = TaggedObjectSize();
     static constexpr size_t DATA_SIZE = HEADER_SIZE + FINAL_INDEX * JSTaggedValue::TaggedTypeSize();
-    static constexpr size_t SIZE = DATA_SIZE + RESERVED_LENGTH * JSTaggedValue::TaggedTypeSize();
+    static constexpr size_t BIT_FIELD_OFFSET = DATA_SIZE + RESERVED_LENGTH * JSTaggedValue::TaggedTypeSize();
 
+    ACCESSORS_BIT_FIELD(BitField, BIT_FIELD_OFFSET, LAST_OFFSET)
+    DEFINE_ALIGN_SIZE(LAST_OFFSET);
     DECL_VISIT_OBJECT(HEADER_SIZE, DATA_SIZE);
 
+    // define BitField
+    static constexpr size_t ARRAYPROTOTYPE_CHANGED_GUARDIANS = 1;
+    FIRST_BIT_FIELD(BitField, ArrayPrototypeChangedGuardians, bool, ARRAYPROTOTYPE_CHANGED_GUARDIANS)
     DECL_DUMP()
 };
 }  // namespace panda::ecmascript

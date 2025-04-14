@@ -17,6 +17,7 @@
 #include "ecmascript/ecma_context.h"
 #include "ecmascript/global_env_constants-inl.h"
 #include "ecmascript/js_tagged_value.h"
+#include "ecmascript/global_env.h"
 #include "ecmascript/pgo_profiler/pgo_profiler.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_layout.h"
 #include "ecmascript/ic/proto_change_details.h"
@@ -515,7 +516,7 @@ void JSHClass::SetPrototypeTransition(JSThread *thread, const JSHandle<JSObject>
     RestoreElementsKindToGeneric(*newClass);
     object->SynchronizedSetClass(thread, *newClass);
     if (object->IsJSArray()) {
-        thread->NotifyArrayPrototypeChangedGuardians(object);
+        thread->GetEcmaVM()->GetGlobalEnv()->NotifyArrayPrototypeChangedGuardians(object);
         newClass->SetIsJSArrayPrototypeModified(true);
     }
     ObjectOperator::UpdateDetectorOnSetPrototype(thread, object.GetTaggedValue());

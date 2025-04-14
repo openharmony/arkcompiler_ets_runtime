@@ -18,6 +18,7 @@
 
 #include "ecmascript/compiler/circuit_builder.h"
 #include "ecmascript/compiler/circuit_builder_helper.h"
+#include "ecmascript/global_env.h"
 #include "ecmascript/mem/region.h"
 #include "ecmascript/method.h"
 #include "ecmascript/js_function.h"
@@ -238,9 +239,9 @@ GateRef CircuitBuilder::TaggedIsStableArray(GateRef glue, GateRef obj)
         BRANCH(IsStableArray(jsHclass), &targetIsStableArray, &exit);
         Bind(&targetIsStableArray);
         {
-            GateRef guardiansOffset =
-                IntPtr(JSThread::GlueData::GetArrayElementsGuardiansOffset(false));
-            result = Load(VariableType::BOOL(), glue, guardiansOffset);
+            GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env_->Is32Bit()));
+            GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
+            result = GetArrayElementsGuardians(glueGlobalEnv);
             Jump(&exit);
         }
     }
@@ -790,6 +791,14 @@ void CircuitBuilder::SetValueToTaggedArray(VariableType valType, GateRef glue,
     GateRef dataOffset = PtrAdd(offset, IntPtr(TaggedArray::DATA_OFFSET));
     Store(valType, glue, array, dataOffset, val);
 }
-}
 
+GateRef CircuitBuilder::GetArrayElementsGuardians(GateRef env)
+{
+    GateRef offset = IntPtr(GlobalEnv::BIT_FIELD_OFFSET);
+    GateRef bitfield = Load(VariableType::INT32(), env, offset);
+    return TruncInt32ToInt1(Int32And(Int32LSR(bitfield,
+        Int32(GlobalEnv::ArrayPrototypeChangedGuardiansBits::START_BIT)),
+        Int32((1LU << GlobalEnv::ArrayPrototypeChangedGuardiansBits::SIZE) - 1)));
+}
+}
 #endif  // ECMASCRIPT_COMPILER_MCR_CIRCUIT_BUILDER_H

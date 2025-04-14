@@ -20,6 +20,7 @@
 #include "ecmascript/builtins/builtins_string.h"
 #include "ecmascript/ecma_string_table.h"
 #include "ecmascript/global_dictionary.h"
+#include "ecmascript/js_object-inl.h"
 #include "ecmascript/symbol_table.h"
 #include "ecmascript/template_map.h"
 
@@ -65,4 +66,20 @@ JSHandle<JSTaggedValue> GlobalEnv::GetStringFunctionByName(JSThread *thread, con
     JSHandle<JSTaggedValue> nameKey(factory->NewFromUtf8(name));
     return JSObject::GetProperty(thread, stringFuncObj, nameKey).GetValue();
 }
+
+void GlobalEnv::NotifyArrayPrototypeChangedGuardians(JSHandle<JSObject> receiver)
+{
+    if (!GetArrayPrototypeChangedGuardians()) {
+        return;
+    }
+    if (!receiver->GetJSHClass()->IsPrototype() && !receiver->IsJSArray()) {
+        return;
+    }
+    if (receiver.GetTaggedValue() == GetObjectFunctionPrototype().GetTaggedValue() ||
+        receiver.GetTaggedValue() == GetArrayPrototype().GetTaggedValue()) {
+        SetArrayPrototypeChangedGuardians(false);
+        return;
+    }
+}
+
 }  // namespace panda::ecmascript
