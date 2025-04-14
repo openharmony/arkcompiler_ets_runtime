@@ -56,6 +56,119 @@ void BuiltinsProxyStubBuilder::GenProxyConstructor(GateRef nativeCode, GateRef f
     Return(*res);
 }
 
+void BuiltinsProxyStubBuilder::CheckGetTrapResult(GateRef target, GateRef key, Variable *result, Label *exit)
+{
+    auto env = GetEnvironment();
+    Label callRuntime(env);
+    Label isFoundData(env);
+    Label isFoundAccessor(env);
+    DEFVARIABLE(value, VariableType::JS_ANY(), Hole());
+    DEFVARIABLE(attr, VariableType::INT64(), Int64(0));
+    TryGetOwnProperty(glue_, target, key, Circuit::NullGate(), &value, &attr,
+                      &isFoundData, &isFoundAccessor, exit, &callRuntime);
+    Bind(&isFoundData);
+    {
+        Label trapResultTypeError(env);
+        GateRef rAttr = attr.ReadVariable();
+        GateRef rValue = value.ReadVariable();
+        GateRef rResult = result->ReadVariable();
+        GateRef trapResultCheck = LogicOrBuilder(env).Or(IsConfigable(rAttr))
+                                                     .Or(IsWritable(rAttr))
+                                                     .Or(SameValue(glue_, rResult, rValue))
+                                                     .Done();
+        BRANCH(BoolNot(trapResultCheck), &trapResultTypeError, exit);
+        Bind(&trapResultTypeError);
+        {
+            GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(ProxyGetPropertyResultTypeError));
+            CallRuntime(glue_, RTSTUB_ID(ThrowTypeError), { IntToTaggedInt(taggedId) });
+            result->WriteVariable(Exception());
+            Jump(exit);
+        }
+    }
+    Bind(&isFoundAccessor);
+    {
+        Label trapResultIsUndefined(env);
+        Label trapResultIsNotUndefined(env);
+        GateRef rAttr = attr.ReadVariable();
+        GateRef rValue = value.ReadVariable();
+        GateRef rResult = result->ReadVariable();
+        GateRef getter = Load(VariableType::JS_ANY(), rValue, IntPtr(AccessorData::GETTER_OFFSET));
+        GateRef trapResultCheck = LogicAndBuilder(env).And(BoolNot(IsConfigable(rAttr)))
+                                                      .And(TaggedIsUndefined(getter))
+                                                      .And(BoolNot(TaggedIsUndefined(rResult)))
+                                                      .Done();
+        BRANCH(trapResultCheck, &trapResultIsNotUndefined, exit);
+        Bind(&trapResultIsNotUndefined);
+        {
+            GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(ProxyGetPropertyResultNotUndefined));
+            CallRuntime(glue_, RTSTUB_ID(ThrowTypeError), { IntToTaggedInt(taggedId) });
+            result->WriteVariable(Exception());
+            Jump(exit);
+        }
+    }
+    Bind(&callRuntime);
+    {
+        result->WriteVariable(
+            CallRuntime(glue_, RTSTUB_ID(CheckGetTrapResult), { target, key, result->ReadVariable() }));
+        Jump(exit);
+    }
+}
+
+void BuiltinsProxyStubBuilder::CheckSetTrapResult(GateRef target, GateRef key, GateRef value,
+                                                  Variable *result, Label *exit)
+{
+    auto env = GetEnvironment();
+    Label callRuntime(env);
+    Label isFoundData(env);
+    Label isFoundAccessor(env);
+    DEFVARIABLE(tValue, VariableType::JS_ANY(), Hole());
+    DEFVARIABLE(attr, VariableType::INT64(), Int64(0));
+    TryGetOwnProperty(glue_, target, key, Circuit::NullGate(), &tValue, &attr,
+                      &isFoundData, &isFoundAccessor, exit, &callRuntime);
+    Bind(&isFoundData);
+    {
+        Label trapResultTypeError(env);
+        GateRef rAttr = attr.ReadVariable();
+        GateRef rValue = tValue.ReadVariable();
+        GateRef trapResultCheck = LogicOrBuilder(env).Or(IsConfigable(rAttr))
+                                                     .Or(IsWritable(rAttr))
+                                                     .Or(SameValue(glue_, value, rValue))
+                                                     .Done();
+        BRANCH(BoolNot(trapResultCheck), &trapResultTypeError, exit);
+        Bind(&trapResultTypeError);
+        {
+            GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(ProxySetPropertyResultTypeError));
+            CallRuntime(glue_, RTSTUB_ID(ThrowTypeError), { IntToTaggedInt(taggedId) });
+            result->WriteVariable(TaggedFalse());
+            Jump(exit);
+        }
+    }
+    Bind(&isFoundAccessor);
+    {
+        Label trapResultIsUndefined(env);
+        Label trapResultIsNotUndefined(env);
+        GateRef rAttr = attr.ReadVariable();
+        GateRef rValue = tValue.ReadVariable();
+        GateRef setter = Load(VariableType::JS_ANY(), rValue, IntPtr(AccessorData::SETTER_OFFSET));
+        GateRef trapResultCheck = LogicAndBuilder(env).And(BoolNot(IsConfigable(rAttr)))
+                                                      .And(TaggedIsUndefined(setter))
+                                                      .Done();
+        BRANCH(trapResultCheck, &trapResultIsNotUndefined, exit);
+        Bind(&trapResultIsNotUndefined);
+        {
+            GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(ProxySetPropertyResultNotAccessor));
+            CallRuntime(glue_, RTSTUB_ID(ThrowTypeError), { IntToTaggedInt(taggedId) });
+            result->WriteVariable(TaggedFalse());
+            Jump(exit);
+        }
+    }
+    Bind(&callRuntime);
+    {
+        result->WriteVariable(CallRuntime(glue_, RTSTUB_ID(CheckSetTrapResult), { target, key, value }));
+        Jump(exit);
+    }
+}
+
 GateRef BuiltinsProxyStubBuilder::GetProperty(GateRef proxy, GateRef key, GateRef receiver)
 {
     auto env = GetEnvironment();
@@ -99,8 +212,7 @@ GateRef BuiltinsProxyStubBuilder::GetProperty(GateRef proxy, GateRef key, GateRe
         }
         Bind(&checkGetTrapResult);
         {
-            result = CallRuntime(glue_, RTSTUB_ID(CheckGetTrapResult), { target, key, *result });
-            Jump(&exit);
+            CheckGetTrapResult(target, key, &result, &exit);
         }
         Bind(&slowPath);
         {
@@ -179,8 +291,7 @@ GateRef BuiltinsProxyStubBuilder::SetProperty(GateRef proxy, GateRef key, GateRe
         }
         Bind(&checkSetTrapResult);
         {
-            result = CallRuntime(glue_, RTSTUB_ID(CheckSetTrapResult), { target, key, value });
-            Jump(&exit);
+            CheckSetTrapResult(target, key, value, &result, &exit);
         }
         Bind(&slowPath);
         {

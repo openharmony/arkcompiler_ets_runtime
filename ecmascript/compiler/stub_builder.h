@@ -772,6 +772,11 @@ public:
                               GateRef isInternal = Circuit::NullGate(),
                               bool canUseIsInternal = false,
                               GateRef hir = Circuit::NullGate());
+    void CallGetterIfAccessor(GateRef glue, GateRef holder, Variable *value, Variable *attr,
+                              Label *isFoundData, Label *isFoundAccessor);
+    void TryGetOwnProperty(GateRef glue, GateRef holder, GateRef key, GateRef hir,
+                           Variable *rValue, Variable *rAttr, Label *isFoundData, Label *isFoundAccessor,
+                           Label *notFound, Label *callRuntime);
     GateRef FastGetPropertyByName(GateRef glue, GateRef obj, GateRef key,
                                     ProfileOperation callback, GateRef hir = Circuit::NullGate());
     GateRef FastGetPropertyByIndex(GateRef glue, GateRef obj, GateRef index,

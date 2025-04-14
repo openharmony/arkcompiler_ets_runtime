@@ -72,4 +72,135 @@ function test4()
 }
 test4();
 
+// test5: CheckSetTrapResult, check data.
+function test5()
+{
+  const target = {};
+  Object.defineProperty(target, 'id', {
+    value: 1,
+    writable: false,
+    configurable: false 
+  });
+  const proxy = new Proxy(target, {
+    set(target, prop, value) {
+      return true;
+    }
+  });
+  try {
+    proxy.id = 2;
+  } catch (error) {
+    assert_equal(error instanceof TypeError, true); // true
+  }
+}
+test5();
+
+// test6: CheckSetTrapResult, check accessor.
+function test6()
+{
+  const target = {};
+  Object.defineProperty(target, 'id', {
+    get() {
+    },
+    configurable: false 
+  });
+  const proxy = new Proxy(target, {
+    set(target, prop, value) {
+      return true;
+    }
+  });
+  try {
+    proxy.id = 2;
+  } catch (error) {
+    assert_equal(error instanceof TypeError, true); // true
+  }
+}
+test6();
+
+// test7: CheckSetTrapResult, check accessor, configurable is true.
+function test7()
+{
+  const target = {};
+  Object.defineProperty(target, 'id', {
+    get() {
+    },
+    configurable: true,
+  });
+  const proxy = new Proxy(target, {
+    set(target, prop, value) {
+      return true;
+    }
+  });
+  try {
+    proxy.id = 2;
+  } catch (error) {
+    assert_equal(error instanceof TypeError, false); // false
+  }
+}
+test7();
+
+// test8: CheckSetTrapResult, check internal accessor.
+function test8()
+{
+  const target = function f0(){};
+  Object.defineProperty(target, 'length', {
+    value: 0,
+    configurable: false,
+    writable: false,
+  });
+  const proxy = new Proxy(target, {
+    set(target, prop, value) {
+      return true;
+    }
+  });
+  try {
+    proxy.length = 1;
+  } catch (error) {
+    assert_equal(error instanceof TypeError, true); // true
+  }
+}
+test8();
+
+// test9: CheckSetTrapResult, check internal accessor, value is same.
+function test9()
+{
+  const target = function f0(){};
+  Object.defineProperty(target, 'length', {
+    value: true,
+    configurable: false,
+    writable: false,
+  });
+  const proxy = new Proxy(target, {
+    set(target, prop, value) {
+      return true;
+    }
+  });
+  try {
+    proxy.length = true;
+  } catch (error) {
+    print(error instanceof TypeError, false); // false
+  }
+}
+test9();
+
+// test10: CheckSetTrapResult, check internal accessor, configurable is true.
+function test10()
+{
+  const target = function f0(){};
+  Object.defineProperty(target, 'length', {
+    value: true,
+    configurable: true,
+  });
+  const proxy = new Proxy(target, {
+    set(target, prop, value) {
+      return true;
+    }
+  });
+  try {
+    proxy.length = 1;
+  } catch (error) {
+    assert_equal(error instanceof TypeError, false); // false
+  }
+}
+test10();
+
 test_end();

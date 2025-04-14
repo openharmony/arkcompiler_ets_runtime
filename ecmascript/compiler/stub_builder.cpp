@@ -3850,6 +3850,92 @@ GateRef StubBuilder::GetPropertyByName(GateRef glue,
     return ret;
 }
 
+void StubBuilder::CallGetterIfAccessor(GateRef glue, GateRef holder, Variable *value, Variable *attr,
+                                       Label *isFoundData, Label *isFoundAccessor)
+{
+    auto env = GetEnvironment();
+    Label isAccessor(env);
+    GateRef attrVal = attr->ReadVariable();
+    GateRef valueVal = value->ReadVariable();
+    BRANCH(IsAccessor(attrVal), &isAccessor, isFoundData);
+    Bind(&isAccessor);
+    {
+        Label isAccessorInternal(env);
+        BRANCH_UNLIKELY(IsAccessorInternal(valueVal), &isAccessorInternal, isFoundAccessor);
+        Bind(&isAccessorInternal);
+        {
+            value->WriteVariable(CallGetterHelper(glue, holder, holder, valueVal, ProfileOperation()));
+            Jump(isFoundData);
+        }
+    }
+}
+
+void StubBuilder::TryGetOwnProperty(GateRef glue, GateRef holder, GateRef key, GateRef hir,
+                                    Variable *rValue, Variable *rAttr,
+                                    Label *isFoundData, Label *isFoundAccessor, Label *notFound, Label *callRuntime)
+{
+    auto env = GetEnvironment();
+    Label exit(env);
+    Label findProperty(env);
+    Label found(env);
+    GateRef hclass = LoadHClass(holder);
+    GateRef jsType = GetObjectType(hclass);
+    Label isSIndexObj(env);
+    Label notSIndexObj(env);
+    BRANCH(IsSpecialIndexedObj(jsType), callRuntime, &notSIndexObj);
+    Bind(&notSIndexObj);
+    {
+        Label isDicMode(env);
+        Label notDicMode(env);
+        BRANCH(IsDictionaryModeByHClass(hclass), &isDicMode, &notDicMode);
+        Bind(&notDicMode);
+        {
+            GateRef layOutInfo = GetLayoutFromHClass(hclass);
+            GateRef propsNum = GetNumberOfPropsFromHClass(hclass);
+            // int entry = layoutInfo->FindElementWithCache(thread, hclass, key, propsNumber)
+            GateRef entryA = FindElementWithCache(glue, layOutInfo, hclass, key, propsNum, hir);
+            Label hasEntry(env);
+            // if branch condition : entry != -1
+            BRANCH(Int32NotEqual(entryA, Int32(-1)), &hasEntry, notFound);
+            Bind(&hasEntry);
+            {
+                // PropertyAttributes attr(layoutInfo->GetAttr(entry))
+                GateRef attr = GetPropAttrFromLayoutInfo(layOutInfo, entryA);
+                GateRef value = JSObjectGetProperty(holder, hclass, attr);
+                Label notHole(env);
+                BRANCH(TaggedIsHole(value), notFound, &notHole);
+                Bind(&notHole);
+                {
+                    rValue->WriteVariable(value);
+                    rAttr->WriteVariable(attr);
+                    Jump(&found);
+                }
+            }
+        }
+        Bind(&isDicMode);
+        {
+            GateRef array = GetPropertiesArray(holder);
+            // int entry = dict->FindEntry(key)
+            GateRef entryB = FindEntryFromHashTable<NameDictionary>(glue, array, key, hir);
+            Label notNegtiveOne(env);
+            // if branch condition : entry != -1
+            BRANCH(Int32NotEqual(entryB, Int32(-1)), &notNegtiveOne, notFound);
+            Bind(&notNegtiveOne);
+            {
+                // auto value = dict->GetValue(entry)
+                rAttr->WriteVariable(GetAttributesFromDictionary<NameDictionary>(array, entryB));
+                // auto attr = dict->GetAttributes(entry)
+                rValue->WriteVariable(GetValueFromDictionary<NameDictionary>(array, entryB));
+                Jump(&found);
+            }
+        }
+        Bind(&found);
+        {
+            CallGetterIfAccessor(glue, holder, rValue, rAttr, isFoundData, isFoundAccessor);
+        }
+    }
+}
+
 void StubBuilder::CopyAllHClass(GateRef glue, GateRef dstHClass, GateRef srcHClass)
 {
     auto env = GetEnvironment();
