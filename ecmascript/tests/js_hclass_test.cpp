@@ -58,10 +58,8 @@ HWTEST_F_L0(JSHClassTest, SizeFromJSHClass)
     JSHandle<JSHClass> objectClass = factory->NewEcmaHClass(TaggedArray::SIZE, JSType::TAGGED_ARRAY, nullHandle);
     EXPECT_TRUE(*objectClass != nullptr);
     size_t objectSize;
-#ifndef PANDA_TARGET_32
-    objectSize = objectClass->SizeFromJSHClass(*objectClass);
-    EXPECT_EQ(objectSize, 40U);
-#endif
+    objectSize = objectClass->GetClass()->SizeFromJSHClass(*objectClass);
+    EXPECT_EQ(objectSize, 80U);
     EcmaString *string = EcmaStringAccessor::CreateEmptyString(vm);
     objectSize = string->GetClass()->SizeFromJSHClass(string);
     EXPECT_EQ(objectSize, 16U);
