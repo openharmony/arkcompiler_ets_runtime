@@ -296,7 +296,7 @@ GateRef ObjectOperatorStubBuilder::LookupPropertyInlinedProps(GateRef glue, Gate
 
         Bind(&findInDic);
         // int entry = dict->FindEntry(key)
-        GateRef entryB = FindEntryFromNameDictionary(glue, array, key, hir);
+        GateRef entryB = FindEntryFromHashTable<NameDictionary>(glue, array, key, hir);
         // if branch condition : entry != -1
         BRANCH(Int32NotEqual(entryB, Int32(-1)), &hasEntry, &exit);
     }

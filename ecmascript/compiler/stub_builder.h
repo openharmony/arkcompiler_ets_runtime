@@ -629,7 +629,8 @@ public:
     GateRef FindElementWithCache(GateRef glue, GateRef layoutInfo, GateRef hClass,
         GateRef key, GateRef propsNum, GateRef hir = Circuit::NullGate());
     GateRef FindElementFromNumberDictionary(GateRef glue, GateRef elements, GateRef index);
-    GateRef FindEntryFromNameDictionary(GateRef glue, GateRef elements, GateRef key, GateRef hir = Circuit::NullGate());
+    template<typename HashTableT>
+    GateRef FindEntryFromHashTable(GateRef glue, GateRef elements, GateRef key, GateRef hir = Circuit::NullGate());
     GateRef IsMatchInTransitionDictionary(GateRef element, GateRef key, GateRef metaData, GateRef attr);
     GateRef FindEntryFromTransitionDictionary(GateRef glue, GateRef elements, GateRef key, GateRef metaData);
     GateRef JSObjectHasProperty(GateRef glue, GateRef obj, GateRef key, GateRef hir = Circuit::NullGate());
@@ -1086,6 +1087,8 @@ public:
     // start: Fast path of Loading Module variable.
     GateRef Loadlocalmodulevar(GateRef glue, GateRef index, GateRef module);
     inline void ResolvedModuleMustBeSourceTextModule(GateRef resolvedModule);
+    inline void ModuleEnvMustBeDefined(GateRef curEnv);
+    inline void CheckIsResolvedIndexBinding(GateRef resolution);
     inline void RecordNameMustBeString(GateRef recordName);
     inline GateRef GetNameDictionary(GateRef module);
     inline GateRef GetCurrentModuleEnv(GateRef curModule);
@@ -1102,10 +1105,22 @@ public:
     inline GateRef IsResolvedRecordBinding(GateRef resolvedBinding);
     inline GateRef IsLdEndExecPatchMain(GateRef glue);
     inline GateRef GetModuleType(GateRef module);
-    inline GateRef IsNativeOrCjsModule(GateRef module);
+    inline GateRef IsNativeModule(GateRef module);
+    inline GateRef IsCjsModule(GateRef module);
+    inline GateRef GetCjsModuleFunction(GateRef glue);
     void ModuleEnvMustBeValid(GateRef curEnv);
-    GateRef GetModuleValueByIndex(GateRef glue, GateRef module, GateRef index);
+    GateRef SearchFromModuleCache(GateRef glue, GateRef moduleName);
+    GateRef GetNativeOrCjsExports(GateRef glue, GateRef resolvedModule);
+    GateRef GetValueFromExportObject(GateRef glue, GateRef exports, GateRef index);
+    GateRef GetNativeOrCjsModuleValue(GateRef glue, GateRef module, GateRef index);
+    GateRef GetModuleValueByIndex(GateRef glue, GateRef module, GateRef index, GateRef isThrow);
+    GateRef GetModuleValue(GateRef glue, GateRef module, GateRef index);
     GateRef GetModuleValueByName(GateRef glue, GateRef module, GateRef bindingName);
+    GateRef ResolveElementOfObject(GateRef glue, GateRef hClass, GateRef exportName,
+                                   GateRef module, GateRef layOutInfo);
+    GateRef ResolveExportObject(GateRef glue, GateRef module, GateRef exports, GateRef exportName);
+    GateRef UpdateBindingAndGetModuleValue(GateRef glue, GateRef module, GateRef requiredModule,
+                                           GateRef index, GateRef bindingName);
     GateRef GetResolvedRecordIndexBindingModule(GateRef glue, GateRef module, GateRef resolvedBinding);
     GateRef GetResolvedRecordBindingModule(GateRef glue, GateRef module, GateRef resolvedBinding);
     GateRef LoadExternalmodulevar(GateRef glue, GateRef index, GateRef curModule);

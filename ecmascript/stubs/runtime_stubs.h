@@ -163,6 +163,7 @@ public:
 
     static JSTaggedValue FindPatchModule(uintptr_t argGlue, JSTaggedValue resolvedModule);
     static void FatalPrintMisstakenResolvedBinding(int32_t index, JSTaggedValue curModule);
+    static void LoadNativeModuleFailed(JSTaggedValue curModule);
 private:
     static void DumpToStreamWithHint(std::ostream &out, std::string_view prompt, JSTaggedValue value);
 
