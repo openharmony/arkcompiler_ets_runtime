@@ -485,7 +485,7 @@ bool JSArray::IsLengthString(JSThread *thread, const JSHandle<JSTaggedValue> &ke
 bool JSArray::IsProtoNotModifiedDictionaryJSArray(JSThread *thread, const JSHandle<JSObject> &obj)
 {
     return obj->GetJSHClass()->IsDictionaryElement() &&
-           !thread->IsArrayPrototypeChangedGuardiansInvalid() &&
+           !thread->GetEcmaVM()->GetGlobalEnv()->IsArrayPrototypeChangedGuardiansInvalid() &&
            !obj->GetClass()->IsJSArrayPrototypeModifiedFromBitField() &&
            JSObject::AttributesUnchanged(thread, obj);
 }

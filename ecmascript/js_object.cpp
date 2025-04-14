@@ -428,7 +428,7 @@ bool JSObject::AddElementInternal(JSThread *thread, const JSHandle<JSObject> &re
         return false;
     }
 
-    thread->NotifyArrayPrototypeChangedGuardians(receiver);
+    thread->GetEcmaVM()->GetGlobalEnv()->NotifyArrayPrototypeChangedGuardians(receiver);
 
     // check whether to convert to dictionary
     if (receiver->GetJSHClass()->IsDictionaryElement() && receiver->IsJSArray()) {

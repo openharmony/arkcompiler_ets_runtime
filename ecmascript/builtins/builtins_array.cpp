@@ -879,7 +879,7 @@ JSTaggedValue BuiltinsArray::Fill(EcmaRuntimeCallInfo *argv)
     }
 
     if (start < end) {
-        thread->NotifyArrayPrototypeChangedGuardians(thisObjHandle);
+        thread->GetEcmaVM()->GetGlobalEnv()->NotifyArrayPrototypeChangedGuardians(thisObjHandle);
     }
     
     // 11. Repeat, while k < final
@@ -1661,7 +1661,7 @@ JSTaggedValue BuiltinsArray::Push(EcmaRuntimeCallInfo *argv)
     // 2. Let argCount be the number of elements in items.
     uint32_t argc = argv->GetArgsNumber();
     if (argc > 0) {
-        thread->NotifyArrayPrototypeChangedGuardians(thisObjHandle);
+        thread->GetEcmaVM()->GetGlobalEnv()->NotifyArrayPrototypeChangedGuardians(thisObjHandle);
     }
     if (thisHandle->IsStableJSArray(thread) && JSObject::IsArrayLengthWritable(thread, thisObjHandle)) {
         return JSStableArray::Push(JSHandle<JSArray>::Cast(thisHandle), argv);
@@ -2426,7 +2426,7 @@ JSTaggedValue BuiltinsArray::Splice(EcmaRuntimeCallInfo *argv)
     //   c. ReturnIfAbrupt(dc).
     //   d. Let actualDeleteCount be min(max(dc,0), len – actualStart).
     if (argc > 1) {
-        thread->NotifyArrayPrototypeChangedGuardians(thisObjHandle);
+        thread->GetEcmaVM()->GetGlobalEnv()->NotifyArrayPrototypeChangedGuardians(thisObjHandle);
         insertCount = argc - 2;  // 2:2 means there are two arguments before the insert items.
         JSHandle<JSTaggedValue> msg1 = GetCallArg(argv, 1);
         JSTaggedNumber argDeleteCount = JSTaggedValue::ToInteger(thread, msg1);
@@ -2747,7 +2747,7 @@ JSTaggedValue BuiltinsArray::Unshift(EcmaRuntimeCallInfo *argv)
         if (len + argc > base::MAX_SAFE_INTEGER) {
             THROW_TYPE_ERROR_AND_RETURN(thread, "out of range.", JSTaggedValue::Exception());
         }
-        thread->NotifyArrayPrototypeChangedGuardians(thisObjHandle);
+        thread->GetEcmaVM()->GetGlobalEnv()->NotifyArrayPrototypeChangedGuardians(thisObjHandle);
         JSMutableHandle<JSTaggedValue> fromKey(thread, JSTaggedValue::Undefined());
         JSMutableHandle<JSTaggedValue> toKey(thread, JSTaggedValue::Undefined());
         int64_t k = len;

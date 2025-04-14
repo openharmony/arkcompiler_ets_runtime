@@ -629,27 +629,6 @@ bool JSThread::DoStackLimitCheck()
     return false;
 }
 
-void JSThread::NotifyArrayPrototypeChangedGuardians(JSHandle<JSObject> receiver)
-{
-    if (!glueData_.arrayPrototypeChangedGuardians_) {
-        return;
-    }
-    if (!receiver->GetJSHClass()->IsPrototype() && !receiver->IsJSArray()) {
-        return;
-    }
-    auto env = vm_->GetGlobalEnv();
-    if (receiver.GetTaggedValue() == env->GetObjectFunctionPrototype().GetTaggedValue() ||
-        receiver.GetTaggedValue() == env->GetArrayPrototype().GetTaggedValue()) {
-        glueData_.arrayPrototypeChangedGuardians_ = false;
-        return;
-    }
-}
-
-void JSThread::ResetGuardians()
-{
-    glueData_.arrayPrototypeChangedGuardians_ = true;
-}
-
 void JSThread::SetInitialBuiltinHClass(
     BuiltinTypeId type, JSHClass *builtinHClass, JSHClass *instanceHClass,
     JSHClass *prototypeHClass, JSHClass *prototypeOfPrototypeHClass, JSHClass *extraHClass)

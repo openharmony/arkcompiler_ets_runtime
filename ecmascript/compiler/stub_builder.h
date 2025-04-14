@@ -527,6 +527,8 @@ public:
     GateRef GetProtoChangeMarkerFromHClass(GateRef hClass);
     GateRef GetLayoutFromHClass(GateRef hClass);
     GateRef GetBitFieldFromHClass(GateRef hClass);
+    GateRef GetArrayElementsGuardians(GateRef env);
+    void SetArrayElementsGuardians(GateRef glue, GateRef env, GateRef value);
     GateRef GetLengthFromString(GateRef value);
     GateRef CalcHashcodeForInt(GateRef value);
     void CalcHashcodeForDouble(GateRef value, Variable *res, Label *exit);

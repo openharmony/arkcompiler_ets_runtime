@@ -4355,5 +4355,27 @@ inline GateRef StubBuilder::GetCjsModuleFunction(GateRef glue)
     GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
     return GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, GlobalEnv::CJS_MODULE_FUNCTION_INDEX);
 }
+
+inline GateRef StubBuilder::GetArrayElementsGuardians(GateRef env)
+{
+    GateRef offset = IntPtr(GlobalEnv::BIT_FIELD_OFFSET);
+    GateRef bitfield = Load(VariableType::INT32(), env, offset);
+    return TruncInt32ToInt1(Int32And(Int32LSR(bitfield,
+        Int32(GlobalEnv::ArrayPrototypeChangedGuardiansBits::START_BIT)),
+        Int32((1LU << GlobalEnv::ArrayPrototypeChangedGuardiansBits::SIZE) - 1)));
+}
+
+inline void StubBuilder::SetArrayElementsGuardians(GateRef glue, GateRef env, GateRef value)
+{
+    GateRef oldValue = ZExtInt1ToInt32(value);
+    GateRef offset = IntPtr(GlobalEnv::BIT_FIELD_OFFSET);
+    GateRef bitfield = Load(VariableType::INT32(), env, offset);
+    GateRef mask = Int32LSL(
+        Int32((1LU <<GlobalEnv::ArrayPrototypeChangedGuardiansBits::SIZE) - 1),
+        Int32(GlobalEnv::ArrayPrototypeChangedGuardiansBits::START_BIT));
+    GateRef newVal = Int32Or(Int32And(bitfield, Int32Not(mask)),
+        Int32LSL(oldValue, Int32(GlobalEnv::ArrayPrototypeChangedGuardiansBits::START_BIT)));
+    Store(VariableType::INT32(), glue, env, offset, newVal);
+}
 } //  namespace panda::ecmascript::kungfu
 #endif // ECMASCRIPT_COMPILER_STUB_INL_H
