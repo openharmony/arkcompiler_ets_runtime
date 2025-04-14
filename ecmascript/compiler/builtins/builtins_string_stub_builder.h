@@ -74,8 +74,9 @@ BUILTINS_WITH_STRING_STUB_BUILDER(DECLARE_BUILTINS_SRRING_STUB_BUILDER)
     GateRef EcmaStringTrimBody(GateRef glue, GateRef thisValue, StringInfoGateRef srcStringInfoGate,
         GateRef trimMode, GateRef isUtf8);
     void StoreParent(GateRef glue, GateRef object, GateRef parent);
-    void StoreStartIndex(GateRef glue, GateRef object, GateRef startIndex);
-    void StoreHasBackingStore(GateRef glue, GateRef object, GateRef hasBackingStore);
+    void StoreStartIndexAndBackingStore(GateRef glue, GateRef object, GateRef startIndex, GateRef hasBackingStore);
+    GateRef LoadStartIndex(GateRef object);
+    GateRef LoadHasBackingStore(GateRef object);
     GateRef IsSubStringAt(GateRef lhsData, bool lhsIsUtf8, GateRef rhsData, bool rhsIsUtf8,
         GateRef pos, GateRef rhsCount);
     GateRef IsSubStringAt(const StringInfoGateRef &lStringInfoGate,
@@ -102,7 +103,7 @@ private:
 class FlatStringStubBuilder : public StubBuilder {
 public:
     explicit FlatStringStubBuilder(StubBuilder *parent)
-        : StubBuilder(parent) {}
+        : StubBuilder(parent), builtinsStringStubBuilder_(parent) {}
     ~FlatStringStubBuilder() override = default;
     NO_MOVE_SEMANTIC(FlatStringStubBuilder);
     NO_COPY_SEMANTIC(FlatStringStubBuilder);
@@ -117,13 +118,11 @@ public:
     }
     GateRef GetStartIndexFromSlicedString(GateRef string)
     {
-        GateRef offset = IntPtr(SlicedString::STARTINDEX_OFFSET);
-        return Load(VariableType::INT32(), string, offset);
+        return builtinsStringStubBuilder_.LoadStartIndex(string);
     }
     GateRef GetHasBackingStoreFromSlicedString(GateRef string)
     {
-        GateRef offset = IntPtr(SlicedString::BACKING_STORE_FLAG);
-        return Load(VariableType::INT32(), string, offset);
+        return builtinsStringStubBuilder_.LoadHasBackingStore(string);
     }
 
     GateRef GetFlatString()
@@ -145,6 +144,7 @@ private:
     Variable flatString_ { GetEnvironment(), VariableType::JS_POINTER(), NextVariableId(), Undefined() };
     Variable startIndex_ { GetEnvironment(), VariableType::INT32(), NextVariableId(), Int32(0) };
     GateRef length_ { Circuit::NullGate() };
+    BuiltinsStringStubBuilder builtinsStringStubBuilder_;
 };
 
 struct StringInfoGateRef {
