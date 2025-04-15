@@ -544,6 +544,7 @@ private:
     static inline RememberedSet* CreateLocalToShare(Region *region);
     static inline RememberedSet* CreateOldToNew(Region *region);
     static inline uint8_t GetValueFromTwoHex(uint8_t front, uint8_t behind);
+    static inline bool IsTargetBundleName(uintptr_t argGlue);
     friend class SlowRuntimeStub;
 };
 }  // namespace panda::ecmascript

@@ -12140,6 +12140,35 @@ void StubBuilder::EndTraceLoad([[maybe_unused]]GateRef glue)
 #endif
 }
 
+void StubBuilder::StartTraceStoreDetail([[maybe_unused]] GateRef glue, [[maybe_unused]] GateRef receiver,
+                                       [[maybe_unused]] GateRef profileTypeInfo, [[maybe_unused]] GateRef slotId)
+{
+#if ECMASCRIPT_ENABLE_TRACE_STORE
+    CallRuntime(glue, RTSTUB_ID(TraceStoreDetail), {receiver, profileTypeInfo, slotId});
+#endif
+}
+
+void StubBuilder::StartTraceStoreFastPath([[maybe_unused]] GateRef glue)
+{
+#if ECMASCRIPT_ENABLE_TRACE_STORE
+    CallRuntime(glue, RTSTUB_ID(TraceStoreFastPath), {});
+#endif
+}
+
+void StubBuilder::StartTraceStoreSlowPath([[maybe_unused]] GateRef glue)
+{
+#if ECMASCRIPT_ENABLE_TRACE_STORE
+    CallRuntime(glue, RTSTUB_ID(TraceStoreSlowPath), {});
+#endif
+}
+
+void StubBuilder::EndTraceStore([[maybe_unused]] GateRef glue)
+{
+#if ECMASCRIPT_ENABLE_TRACE_STORE
+    CallRuntime(glue, RTSTUB_ID(TraceStoreEnd), {});
+#endif
+}
+
 GateRef StubBuilder::JSTaggedValueToString(GateRef glue, GateRef val, GateRef hir)
 {
     auto env = GetEnvironment();

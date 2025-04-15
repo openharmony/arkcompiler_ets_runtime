@@ -470,10 +470,10 @@ public:
         }
     }
 
-    void SetTraceLoadBundleName(std::string bundleName)
+    void SetTraceLoadStoreBundleName(std::string bundleName)
     {
         if (bundleName != "") {
-            traceLoadBundleName_ = bundleName;
+            traceLoadStoreBundleName_ = bundleName;
         }
     }
 
@@ -519,9 +519,9 @@ public:
         return arkBundleName_;
     }
 
-    std::string GetTraceLoadBundleName() const
+    std::string GetTraceLoadStoreBundleName() const
     {
-        return traceLoadBundleName_;
+        return traceLoadStoreBundleName_;
     }
 
     bool EnableOptionalLog() const
@@ -2181,7 +2181,7 @@ private:
     int32_t deviceThermalLevel_ {0};
     int arkProperties_ = GetDefaultProperties();
     std::string arkBundleName_ = {""};
-    std::string traceLoadBundleName_ = {""};
+    std::string traceLoadStoreBundleName_ = {""};
     size_t heapSize_ = {0};
     uint32_t gcThreadNum_ {7}; // 7: default thread num
     uint32_t longPauseTime_ {40}; // 40: default pause time
