@@ -144,6 +144,8 @@ JSThread::JSThread(EcmaVM *vm) : id_(os::thread::GetCurrentThreadId()), vm_(vm)
     if (vm_->GetJSOptions().EnableModuleLog()) {
         glueData_.moduleLogger_ = new ModuleLogger(vm_);
     }
+
+    glueData_.globalConst_ = new GlobalEnvConstants();
 }
 
 JSThread::JSThread(EcmaVM *vm, ThreadType threadType) : id_(os::thread::GetCurrentThreadId()),
@@ -220,6 +222,10 @@ JSThread::~JSThread()
     if (glueData_.moduleLogger_ != nullptr) {
         delete glueData_.moduleLogger_;
         glueData_.moduleLogger_ = nullptr;
+    }
+    if (glueData_.globalConst_ != nullptr) {
+        delete glueData_.globalConst_;
+        glueData_.globalConst_ = nullptr;
     }
 }
 
@@ -469,6 +475,10 @@ void JSThread::Iterate(RootVisitor &visitor)
     ModuleManager *moduleManager = GetModuleManager();
     if (moduleManager) {
         moduleManager->Iterate(visitor);
+    }
+
+    if (glueData_.globalConst_ != nullptr) {
+        glueData_.globalConst_->Iterate(visitor);
     }
 }
 void JSThread::IterateJitCodeMap(const JitCodeMapVisitor &jitCodeMapVisitor)
@@ -1022,7 +1032,7 @@ void JSThread::PopContext()
     glueData_.currentContext_ = contexts_.back();
 }
 
-void JSThread::SwitchCurrentContext(EcmaContext *currentContext, bool isInIterate)
+void JSThread::SwitchCurrentContext(EcmaContext *currentContext, [[maybe_unused]] bool isInIterate)
 {
     ASSERT(std::count(contexts_.begin(), contexts_.end(), currentContext));
     glueData_.currentContext_->SetGlobalEnv(GetGlueGlobalEnv());
@@ -1062,10 +1072,6 @@ void JSThread::SwitchCurrentContext(EcmaContext *currentContext, bool isInIterat
         if (!currentContext->GetGlobalEnv()->GetGlobalObject().IsUndefined()) {
             SetGlobalObject(currentContext->GetGlobalEnv()->GetGlobalObject());
         }
-    }
-    if (!isInIterate) {
-        // If isInIterate is true, it means it is in GC iterate and global variables are no need to change.
-        glueData_.globalConst_ = const_cast<GlobalEnvConstants *>(currentContext->GlobalConstants());
     }
 
     glueData_.currentContext_ = currentContext;
@@ -1107,11 +1113,6 @@ MegaICCache *JSThread::GetLoadMegaICCache() const
 MegaICCache *JSThread::GetStoreMegaICCache() const
 {
     return glueData_.storeMegaICCache_;
-}
-
-const GlobalEnvConstants *JSThread::GetFirstGlobalConst() const
-{
-    return contexts_[0]->GlobalConstants();
 }
 
 bool JSThread::IsAllContextsInitialized() const

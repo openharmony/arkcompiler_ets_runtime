@@ -68,9 +68,8 @@ bool EcmaContext::Initialize()
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "EcmaContext::Initialize");
     [[maybe_unused]] EcmaHandleScope scope(thread_);
 
-    thread_->SetGlobalConst(&globalConst_);
-    globalConst_.Init(thread_);
-    JSHandle<JSHClass> hClassHandle = JSHandle<JSHClass>(thread_, globalConst_.GetHClassClass());
+    const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
+    JSHandle<JSHClass> hClassHandle = JSHandle<JSHClass>(thread_, globalConst->GetHClassClass());
     JSHandle<JSHClass> globalEnvClass = factory_->NewEcmaHClass(
         *hClassHandle,
         GlobalEnv::SIZE,
@@ -149,9 +148,6 @@ void EcmaContext::CheckAndDestroy(JSThread *thread, EcmaContext *context)
 
 void EcmaContext::Iterate(RootVisitor &v)
 {
-    // visit global Constant
-    globalConst_.Iterate(v);
-
     v.VisitRoot(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&globalEnv_)));
 }
 
