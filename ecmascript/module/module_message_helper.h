@@ -17,8 +17,6 @@
 #define ECMASCRIPT_MODULE_MESSAGE_HELPER_H
 
 #include "ecmascript/base/string_helper.h"
-#include "ecmascript/dfx/native_module_failure_info.h"
-#include "ecmascript/module/module_path_helper.h"
 
 namespace panda::ecmascript {
 
@@ -52,18 +50,8 @@ public:
         }
         JSHandle<EcmaString> str = JSTaggedValue::ToString(thread, exceptionInfo);
         RETURN_IF_ABRUPT_COMPLETION(thread);
-        CString message = ModulePathHelper::Utf8ConvertToString(str.GetTaggedValue());
+        CString message = ConvertToString(*str);
         LOG_ECMA(ERROR) << "Error occurs:" << message;
-    }
-
-    static CString GetNativeModuleErrorMessage(JSHandle<SourceTextModule> module)
-    {
-        JSTaggedValue errMsg = module->GetException();
-        if (errMsg.IsNativeModuleFailureInfo()) {
-            JSTaggedValue failureInfo = NativeModuleFailureInfo::Cast(errMsg)->GetArkNativeModuleFailureInfo();
-            return ModulePathHelper::Utf8ConvertToString(failureInfo);
-        }
-        return {};
     }
 };
 }  // namespace panda::ecmascript
