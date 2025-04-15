@@ -464,6 +464,34 @@ host_unittest_action("JSHelper_UtfHelper_Test") {
   deps += hiviewdfx_deps
 }
 
+host_unittest_action("JSHelper_JsonHelper_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "json_helper_test.cpp",
+  ]
+
+  configs = [
+    "../../../:ecma_test_config",
+    "../../../:icu_path_test_config",
+  ]
+
+  deps = [ "../../../:libark_jsruntime_test" ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+    "zlib:libz",
+
+    #sdk_libc_secshared_dep,
+  ]
+  deps += hiviewdfx_deps
+}
+
 group("unittest") {
   testonly = true
 
@@ -477,6 +505,7 @@ group("unittest") {
     ":JSHelper_DtoaHelper_Test",
     ":JSHelper_ErrorHelper_Test",
     ":JSHelper_FilePathHelper_Test",
+    ":JSHelper_JsonHelper_Test",
     ":JSHelper_MathHelper_Test",
     ":JSHelper_NumberHelper_Test",
     ":JSHelper_StringHelper_Test",
@@ -501,6 +530,7 @@ group("host_unittest") {
     ":JSHelper_DtoaHelper_TestAction",
     ":JSHelper_ErrorHelper_TestAction",
     ":JSHelper_FilePathHelper_TestAction",
+    ":JSHelper_JsonHelper_TestAction",
     ":JSHelper_MathHelper_TestAction",
     ":JSHelper_NumberHelper_TestAction",
     ":JSHelper_StringHelper_TestAction",
@@ -520,6 +550,7 @@ group("host_unittest") {
       ":JSHelper_DtoaHelper_TestAction",
       ":JSHelper_ErrorHelper_TestAction",
       ":JSHelper_FilePathHelper_TestAction",
+      ":JSHelper_JsonHelper_TestAction",
       ":JSHelper_MathHelper_TestAction",
       ":JSHelper_NumberHelper_TestAction",
       ":JSHelper_StringHelper_TestAction",
