@@ -1903,7 +1903,7 @@ HWTEST_F_L0(EcmaModuleTest, ResolveExportObject)
     JSHandle<NativeModuleFailureInfo> nativeModuleFailureInfo = objectFactory->NewNativeModuleFailureInfo();
     JSHandle<JSTaggedValue> res1 = SourceTextModule::ResolveExportObject(
         thread, module1, JSHandle<JSTaggedValue>::Cast(nativeModuleFailureInfo), exportName);
-    EXPECT_TRUE(res1->IsNull());
+    EXPECT_TRUE(res1->IsResolvedIndexBinding());
 
     JSHandle<JSFunction> ctor(thread->GetEcmaVM()->GetGlobalEnv()->GetObjectFunction());
     JSHandle<JSObject> obj(objectFactory->NewJSObjectByConstructor(ctor));

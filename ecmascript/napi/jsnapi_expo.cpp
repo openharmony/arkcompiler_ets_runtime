@@ -2616,9 +2616,12 @@ Local<ObjectRef> ObjectRef::CreateNativeModuleFailureInfo(const EcmaVM *vm, cons
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     ecmascript::ThreadManagedScope managedScope(thread);
-    JSHandle<NativeModuleFailureInfo> nativeModuleErrorFailureInfo =
-        NativeModuleFailureInfo::CreateNativeModuleFailureInfo(vm, failureInfo);
-    return JSNApiHelper::ToLocal<ObjectRef>(JSHandle<JSTaggedValue>::Cast(nativeModuleErrorFailureInfo));
+    if (EcmaVM::GetErrorInfoEnhance()) {
+        JSHandle<NativeModuleFailureInfo> nativeModuleErrorFailureInfo =
+            NativeModuleFailureInfo::CreateNativeModuleFailureInfo(vm, failureInfo);
+        return JSNApiHelper::ToLocal<ObjectRef>(JSHandle<JSTaggedValue>::Cast(nativeModuleErrorFailureInfo));
+    }
+    return JSValueRef::Undefined(vm);
 }
 
 Local<ObjectRef> ObjectRef::CreateAccessorData(const EcmaVM *vm,

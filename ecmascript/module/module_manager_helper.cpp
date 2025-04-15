@@ -17,7 +17,6 @@
 #include "ecmascript/interpreter/slow_runtime_stub.h"
 #include "ecmascript/jspandafile/js_pandafile_executor.h"
 #include "ecmascript/require/js_cjs_module.h"
-#include "ecmascript/module/module_message_helper.h"
 #include "ecmascript/module/module_path_helper.h"
 
 namespace panda::ecmascript {
@@ -48,9 +47,7 @@ JSHandle<JSTaggedValue> ModuleManagerHelper::GetNativeOrCjsExports(JSThread *thr
     if (SourceTextModule::IsNativeModule(moduleType)) {
         exports.Update(module->GetModuleValue(thread, 0, false));
         if (!exports->IsJSObject()) {
-            CString failureMsg = ModuleMessageHelper::GetNativeModuleErrorMessage(module);
-            LOG_FULL(WARN) << "Load native module failed, so is " << SourceTextModule::GetModuleName(resolvedModule) <<
-                ", fail reason: " << failureMsg;
+            LOG_FULL(WARN) << "Load native module failed, so is " << SourceTextModule::GetModuleName(resolvedModule);
         }
         return exports;
     }
@@ -76,7 +73,7 @@ JSTaggedValue ModuleManagerHelper::GetModuleValue(JSThread *thread, JSHandle<Sou
     JSHandle<JSTaggedValue> exports = GetNativeOrCjsExports(thread, module.GetTaggedValue());
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception());
     if (UNLIKELY(JSTaggedValue::SameValue(
-        bindingName, thread->GlobalConstants()->GetDefaultString()))) {
+        bindingName, thread->GlobalConstants()->GetHandledDefaultString().GetTaggedValue()))) {
         return exports.GetTaggedValue();
     }
     // need fix
@@ -225,13 +222,9 @@ JSTaggedValue ModuleManagerHelper::UpdateBindingAndGetModuleValue(JSThread *thre
             requiredModule.GetTaggedValue()));
         CString recordStr = ModulePathHelper::ReformatPath(SourceTextModule::GetModuleName(
             module.GetTaggedValue()));
-        CString msg = base::ConcatToCString("the requested module '", requestMod,
-            SourceTextModule::GetResolveErrorReason(resolution), ModulePathHelper::Utf8ConvertToString(bindingName),
-            "' which imported by '", recordStr, "'");
-        if (SourceTextModule::IsNativeModule(requiredModule->GetTypes())) {
-            CString failureMsg = ModuleMessageHelper::GetNativeModuleErrorMessage(requiredModule);
-            base::AppendToBaseString(msg, ", fail reason: ", failureMsg);
-        }
+        CString msg = "the requested module '" + requestMod + SourceTextModule::GetResolveErrorReason(resolution) +
+            ModulePathHelper::Utf8ConvertToString(bindingName) +
+            "' which imported by '" + recordStr + "'";
         THROW_NEW_ERROR_WITH_MSG_AND_RETURN_VALUE(
             thread, ErrorType::SYNTAX_ERROR, msg.c_str(), JSTaggedValue::Exception());
     }
