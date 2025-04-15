@@ -1178,8 +1178,9 @@ void JSHClass::RefreshUsers(const JSThread *thread, const JSHandle<JSHClass> &ol
     if (!newHclass->GetProtoChangeDetails().IsProtoChangeDetails()) {
         newHclass->SetProtoChangeDetails(thread, oldHclass->GetProtoChangeDetails());
     }
-    oldHclass->SetProtoChangeDetails(thread, JSTaggedValue::Undefined());
     if (onceRegistered) {
+        ProtoChangeDetails::Cast(oldHclass->GetProtoChangeDetails().GetTaggedObject())
+            ->SetRegisterIndex(ProtoChangeDetails::UNREGISTERED);
         if (newHclass->GetProtoChangeDetails().IsProtoChangeDetails()) {
             ProtoChangeDetails::Cast(newHclass->GetProtoChangeDetails().GetTaggedObject())
                 ->SetRegisterIndex(ProtoChangeDetails::UNREGISTERED);
