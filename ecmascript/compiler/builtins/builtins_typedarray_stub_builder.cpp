@@ -363,7 +363,7 @@ GateRef BuiltinsTypedArrayStubBuilder::GetValueFromBuffer(GateRef buffer, GateRe
                                                                                block, byteIndex)));
                 Label ResultIsNumber(env);
                 Label ResultIsNan(env);
-                BRANCH(env->GetBuilder()->DoubleIsImpureNaN(tmpResult), &ResultIsNan, &ResultIsNumber);
+                BRANCH_UNLIKELY(env->GetBuilder()->DoubleIsImpureNaN(tmpResult), &ResultIsNan, &ResultIsNumber);
                 Bind(&ResultIsNan);
                 {
                     result = DoubleToTaggedDoublePtr(Double(base::NAN_VALUE));
@@ -384,7 +384,7 @@ GateRef BuiltinsTypedArrayStubBuilder::GetValueFromBuffer(GateRef buffer, GateRe
 
                 Label tmpResultIsNumber(env);
                 Label tmpResultIsNan(env);
-                BRANCH(env->GetBuilder()->DoubleIsImpureNaN(tmpResult), &tmpResultIsNan, &tmpResultIsNumber);
+                BRANCH_UNLIKELY(env->GetBuilder()->DoubleIsImpureNaN(tmpResult), &tmpResultIsNan, &tmpResultIsNumber);
                 Bind(&tmpResultIsNan);
                 result = DoubleToTaggedDoublePtr(Double(base::NAN_VALUE));
                 Jump(&exit);
