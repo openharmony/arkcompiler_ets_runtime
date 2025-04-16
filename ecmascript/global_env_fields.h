@@ -139,8 +139,6 @@
     V(JSTaggedValue, BuiltinsWeakRefFunction, BUILTINS_WEAK_REF_FUNCTION_INDEX)                     \
     V(JSTaggedValue, BuiltinsFinalizationRegistryFunction,                                          \
         BUILTINS_FINALIZATION_REGISTRY_FUNCTION_INDEX)                                              \
-    V(JSTaggedValue, BitVectorPrototype, BITVECTOR_PROTOTYPE_INDEX)                                 \
-    V(JSTaggedValue, BitVectorFunction, BITVECTOR_FUNCTION_INDEX)                                   \
     V(JSTaggedValue, MapPrototype, MAP_PROTOTYPE_INDEX)                                             \
     V(JSTaggedValue, MathFunction, MATH_FUNCTION_INDEX)                                             \
     V(JSTaggedValue, MathFunctionClass, MATH_FUNCTION_CLASS_INDEX)                                  \
@@ -325,7 +323,9 @@
     V(JSTaggedValue, SharedFloat64ArrayRootHclassOnHeap, SHARED_FLOAT64_ARRAY_ROOT_HCLASS_ON_HEAP_INDEX)         \
     V(JSTaggedValue, SharedBigInt64ArrayRootHclassOnHeap, SHARED_BIGINT64_ARRAY_ROOT_HCLASS_ON_HEAP_INDEX)       \
     V(JSTaggedValue, SharedBigUint64ArrayRootHclassOnHeap, SHARED_BIGUINT64_ARRAY_ROOT_HCLASS_ON_HEAP_INDEX)     \
-    V(JSTaggedValue, SharedModuleNamespaceClass, SHARED_MODULENAMESPACE_CLASS)
+    V(JSTaggedValue, SharedModuleNamespaceClass, SHARED_MODULENAMESPACE_CLASS)                                   \
+    V(JSTaggedValue, BitVectorPrototype, BITVECTOR_PROTOTYPE_INDEX)                                              \
+    V(JSTaggedValue, BitVectorFunction, BITVECTOR_FUNCTION_INDEX)
 
 
 #define GLOBAL_ENV_FIELDS(V)                                \
