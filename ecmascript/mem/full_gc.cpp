@@ -36,7 +36,8 @@ void FullGC::RunPhases()
         + ";Old" + std::to_string(heap_->GetOldSpace()->GetCommittedSize())
         + ";huge" + std::to_string(heap_->GetHugeObjectSpace()->GetCommittedSize())
         + ";NonMov" + std::to_string(heap_->GetNonMovableSpace()->GetCommittedSize())
-        + ";TotCommit" + std::to_string(heap_->GetCommittedSize()));
+        + ";TotCommit" + std::to_string(heap_->GetCommittedSize())
+        + ";ObjSizeBeforeSensitive" + std::to_string(heap_->GetRecordHeapObjectSizeBeforeSensitive()));
     TRACE_GC(GCStats::Scope::ScopeId::TotalGC, gcStats);
     MEM_ALLOCATE_AND_GC_TRACE(heap_->GetEcmaVM(), FullGC_RunPhases);
 
