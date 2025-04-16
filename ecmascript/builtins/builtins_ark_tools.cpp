@@ -1565,12 +1565,7 @@ JSTaggedValue BuiltinsArkTools::IterateFrame(EcmaRuntimeCallInfo *info)
     for (FrameIterator it(currentFrame, thread); !it.Done(); it.Advance<GCVisitedFlag::VISITED>()) {
         bool ret = it.IteratorStackMap(visitor);
         FrameType type = it.GetFrameType();
-        int delta = it.ComputeDelta();
-        kungfu::CalleeRegAndOffsetVec calleeRegInfo;
-        it.GetCalleeRegAndOffsetVec(calleeRegInfo);
         LOG_BUILTINS(INFO) << "IterateFrameType: " << (int)type;
-        LOG_BUILTINS(INFO) << "IterateFrameDelta: " << delta;
-        LOG_BUILTINS(INFO) << "IterateFrameCalleeRegInfo: " << calleeRegInfo.size();
         if (!ret) {
             break;
         }
@@ -1578,12 +1573,7 @@ JSTaggedValue BuiltinsArkTools::IterateFrame(EcmaRuntimeCallInfo *info)
 
     for (FrameIterator it(currentFrame, thread); !it.Done(); it.Advance<GCVisitedFlag::DEOPT>()) {
         FrameType type = it.GetFrameType();
-        int delta = it.ComputeDelta();
-        kungfu::CalleeRegAndOffsetVec calleeRegInfo;
-        it.GetCalleeRegAndOffsetVec(calleeRegInfo);
         LOG_BUILTINS(INFO) << "DeoptIterateFrameType: " << (int)type;
-        LOG_BUILTINS(INFO) << "DeoptIterateFrameDelta: " << delta;
-        LOG_BUILTINS(INFO) << "DeoptIterateFrameCalleeRegInfo: " << calleeRegInfo.size();
     }
 
     return JSTaggedValue::Undefined();
