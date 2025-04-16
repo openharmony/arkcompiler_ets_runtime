@@ -67,6 +67,10 @@ declare_args() {
   ets_runtime_enable_cmc_gc = false
 }
 
+if (!defined(ark_hybrid)) {
+  ark_hybrid = false
+}
+
 if (defined(enable_cmc_gc) && !ets_runtime_enable_cmc_gc) {
   ets_runtime_enable_cmc_gc = enable_cmc_gc
 }
