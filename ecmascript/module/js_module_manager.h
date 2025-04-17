@@ -36,31 +36,6 @@ public:
         resolvedModules_.clear();
     }
 
-    JSTaggedValue GetModuleValueInner(int32_t index);
-    JSTaggedValue GetModuleValueInner(int32_t index, JSTaggedValue jsFunc);
-    JSTaggedValue GetModuleValueInner(int32_t index, JSHandle<JSTaggedValue> currentModule);
-    JSTaggedValue GetModuleValueOutter(int32_t index);
-    JSTaggedValue GetModuleValueOutter(int32_t index, JSTaggedValue jsFunc);
-    JSTaggedValue GetModuleValueOutter(int32_t index, JSHandle<JSTaggedValue> currentModule);
-    JSTaggedValue GetLazyModuleValueOutter(int32_t index, JSTaggedValue jsFunc);
-    void StoreModuleValue(int32_t index, JSTaggedValue value);
-    void StoreModuleValue(int32_t index, JSTaggedValue value, JSTaggedValue jsFunc);
-    JSTaggedValue GetModuleNamespace(int32_t index);
-    JSTaggedValue GetModuleNamespace(int32_t index, JSTaggedValue currentFunc);
-    JSTaggedValue GetModuleNamespaceInternal(int32_t index, JSTaggedValue currentModule);
-
-    // deprecated begin
-    JSTaggedValue GetModuleValueInner(JSTaggedValue key);
-    JSTaggedValue GetModuleValueInner(JSTaggedValue key, JSTaggedValue jsFunc);
-    JSTaggedValue GetModuleValueOutter(JSTaggedValue key);
-    JSTaggedValue GetModuleValueOutter(JSTaggedValue key, JSTaggedValue jsFunc);
-    void StoreModuleValue(JSTaggedValue key, JSTaggedValue value);
-    void StoreModuleValue(JSTaggedValue key, JSTaggedValue value, JSTaggedValue jsFunc);
-    JSTaggedValue GetModuleNamespace(JSTaggedValue localName);
-    JSTaggedValue GetModuleNamespace(JSTaggedValue localName, JSTaggedValue currentFunc);
-    JSTaggedValue GetModuleNamespaceInternal(JSTaggedValue localName, JSTaggedValue currentModule);
-    // deprecated end
-
     JSHandle<SourceTextModule> GetImportedModule(const CString &referencing);
     JSHandle<SourceTextModule> PUBLIC_API HostGetImportedModule(const CString &referencing);
     JSTaggedValue HostGetImportedModule(void *src);
@@ -84,7 +59,6 @@ public:
     JSHandle<JSTaggedValue> ExecuteCjsModule(JSThread *thread, const CString &recordName,
                                              const JSPandaFile *jsPandaFile);
 
-    JSTaggedValue GetCurrentModule();
     JSHandle<JSTaggedValue> GenerateSendableFuncModule(const JSHandle<JSTaggedValue> &module);
 
     JSHandle<JSTaggedValue> TryGetImportedModule(const CString& referencing);
@@ -136,18 +110,6 @@ public:
 private:
     NO_COPY_SEMANTIC(ModuleManager);
     NO_MOVE_SEMANTIC(ModuleManager);
-
-    JSTaggedValue GetModuleValueOutterInternal(int32_t index, JSTaggedValue currentModule);
-    void StoreModuleValueInternal(JSHandle<SourceTextModule> &currentModule,
-                                  int32_t index, JSTaggedValue value);
-
-    JSTaggedValue GetLazyModuleValueOutterInternal(int32_t index, JSTaggedValue currentModule);
-
-    // deprecated begin
-    JSTaggedValue GetModuleValueOutterInternal(JSTaggedValue key, JSTaggedValue currentModule);
-    void StoreModuleValueInternal(JSHandle<SourceTextModule> &currentModule,
-                                  JSTaggedValue key, JSTaggedValue value);
-    // deprecated end
 
     CVector<CString> GetInstantiatingSModuleList();
 

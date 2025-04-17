@@ -28,6 +28,7 @@
 #include "ecmascript/js_api/js_api_lightweightset.h"
 #include "ecmascript/jobs/micro_job_queue.h"
 #include "ecmascript/module/module_resolver.h"
+#include "ecmascript/module/module_value_accessor.h"
 
 namespace panda::ecmascript::tooling {
 using panda::ecmascript::base::ALLOW_BINARY;
@@ -792,7 +793,7 @@ void DebuggerApi::GetImportVariables(const EcmaVM *ecmaVm, Local<ObjectRef> &mod
             continue;
         }
         JSTaggedValue moduleValue =
-            thread->GetModuleManager()->GetModuleValueOutter(idx, currentModule);
+            ModuleValueAccessor::GetModuleValueOuter(thread, idx, currentModule);
         Local<JSValueRef> value = JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread, moduleValue));
         Local<JSValueRef> variableName = JSNApiHelper::ToLocal<JSValueRef>(name);
         PropertyAttribute descriptor(value, true, true, true);

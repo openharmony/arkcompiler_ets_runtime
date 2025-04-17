@@ -348,7 +348,7 @@ namespace panda::ecmascript {
     V(LdLocalModuleVarByIndexOnJSFunc)          \
     V(LdExternalModuleVarByIndexOnJSFunc)       \
     V(LdModuleVar)                              \
-    V(ProcessModuleLoadInfo)                    \
+    V(GetModuleValueOuterInternal)              \
     V(GetModuleName)                            \
     V(ThrowExportsIsHole)                       \
     V(NewResolvedIndexBindingRecord)            \

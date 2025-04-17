@@ -59,7 +59,7 @@ public:
     static Expected<JSTaggedValue, bool> ExecuteSpecialModule(JSThread *thread, const CString &recordName,
                                                               const CString &filename, const JSPandaFile *jsPandaFile,
                                                               const JSRecordInfo* recordInfo);
-    static Expected<JSTaggedValue, bool> LazyExecuteModule(JSThread *thread, CString &recordName,
+    static Expected<JSTaggedValue, bool> LazyExecuteModule(JSThread *thread, const CString &recordName,
                                                            const CString &filename, [[maybe_unused]]bool isMergedAbc);
     // Execute from secure mem
     static Expected<JSTaggedValue, bool> ExecuteFromBufferSecure(JSThread *thread, uint8_t *buffer, size_t size,
