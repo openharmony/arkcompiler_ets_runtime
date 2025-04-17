@@ -159,8 +159,8 @@ void EcmaContext::Iterate(RootVisitor &v)
 bool EcmaContext::LoadAOTFiles(const std::string& aotFileName,
                                std::function<bool(std::string fileName, uint8_t **buff, size_t *buffSize)> cb)
 {
-    aotFileManager_->SetJsAotReader(cb);
-    return LoadAOTFilesInternal(aotFileName);
+    vm_->GetAOTFileManager()->SetJsAotReader(cb);
+    return vm_->LoadAOTFilesInternal(aotFileName);
 }
 #endif
 
