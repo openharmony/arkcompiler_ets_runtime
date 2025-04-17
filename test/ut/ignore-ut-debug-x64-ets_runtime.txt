@@ -8,3 +8,6 @@ obj/arkcompiler/ets_runtime/ecmascript/pgo_profiler/tests/PGOProfilerTestOne
 
 #24219
 obj/arkcompiler/ets_runtime/ecmascript/tests/JS_Barrier_Test
+
+#25085
+obj/arkcompiler/ets_runtime/ecmascript/dfx/hprof/tests/HeapDumpTest
