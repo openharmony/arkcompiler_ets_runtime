@@ -24,6 +24,42 @@ namespace panda::ecmascript {
 class EcmaStringHashInternal {
 friend class EcmaStringHashHelper;
 private:
+#if ENABLE_NEXT_OPTIMIZATION
+    template <typename T>
+    static uint32_t ComputeHashForDataOfLongString(const T *data, size_t size,
+                                                   uint32_t hashSeed)
+    {
+        constexpr uint32_t blockSize = EcmaStringHash::BLOCK_SIZE;
+        constexpr uint32_t scale = EcmaStringHash::BLOCK_MULTIPLY;
+        uint32_t hash[blockSize] = {};
+        uint32_t index = 0;
+        uint32_t remainder = size & (blockSize - 1);
+        switch (remainder) {
+#define CASE(N) case (N): \
+    hash[blockSize - (N)] = data[index++] * EcmaStringHash::MULTIPLIER[blockSize - (N)]; [[fallthrough]]
+            CASE(EcmaStringHash::SIZE_3);
+            CASE(EcmaStringHash::SIZE_2);
+            CASE(EcmaStringHash::SIZE_1);
+#undef CASE
+            default:
+                break;
+        }
+        hash[0] += hashSeed * EcmaStringHash::MULTIPLIER[blockSize - 1 - remainder];
+
+        uint32_t dataMul[blockSize] = {};
+        for (; index < size; index += blockSize) {
+            for (size_t i = 0; i < blockSize; i++) {
+                dataMul[i] = data[index + i] * EcmaStringHash::MULTIPLIER[i];
+                hash[i] = hash[i] * scale + dataMul[i];
+            }
+        }
+        uint32_t hashTotal = 0;
+        for (size_t i = 0; i < blockSize; i++) {
+            hashTotal += hash[i];
+        }
+        return hashTotal;
+    }
+#else
     template <typename T>
     static uint32_t ComputeHashForDataOfLongString(const T *data, size_t size,
                                                    uint32_t hashSeed)
@@ -47,6 +83,7 @@ private:
         }
         return totalHash;
     }
+#endif
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_PLATFORM_ECMA_STRING_HASH_COMMON_H

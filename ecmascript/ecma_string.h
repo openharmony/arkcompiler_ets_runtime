@@ -20,6 +20,7 @@
 #include <cstdint>
 #include <cstring>
 
+#include "ecmascript/base/hash_helper.h"
 #include "ecmascript/base/utf_helper.h"
 #include "ecmascript/common.h"
 #include "ecmascript/ecma_macros.h"
@@ -37,6 +38,7 @@
 namespace panda {
 namespace test {
     class EcmaStringEqualsTest;
+    class EcmaStringHashTest;
 }
 namespace ecmascript {
 template<typename T>
@@ -110,6 +112,7 @@ private:
     friend class FlatStringInfo;
     friend class NameDictionary;
     friend class panda::test::EcmaStringEqualsTest;
+    friend class panda::test::EcmaStringHashTest;
 
     static EcmaString *CreateEmptyString(const EcmaVM *vm);
     static EcmaString *CreateFromUtf8(const EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf8Len,
@@ -649,6 +652,26 @@ private:
 
     // To change the hash algorithm of EcmaString, please modify EcmaString::CalculateConcatHashCode
     // and EcmaStringHashHelper::ComputeHashForDataPlatform simultaneously!!
+#if ENABLE_NEXT_OPTIMIZATION
+    template <typename T>
+    static uint32_t ComputeHashForData(const T *data, size_t size,
+                                       uint32_t hashSeed)
+    {
+        constexpr size_t switchUnrollingSize = EcmaStringHash::SWITCH_UNROLLING_SIZE;
+        if (size <= switchUnrollingSize) {
+            return ComputeHashForShortData(data, size, hashSeed);
+        }
+        if (size <= EcmaStringHash::MIN_SIZE_FOR_UNROLLING) {
+            size_t offset = size & (switchUnrollingSize - 1);
+            uint32_t hash = ComputeHashForShortData(data, offset, hashSeed);
+            for (; offset < size; offset += switchUnrollingSize) {
+                hash = ComputeHashForShortData(data + offset, switchUnrollingSize, hash);
+            }
+            return hash;
+        }
+        return EcmaStringHashHelper::ComputeHashForDataPlatform(data, size, hashSeed);
+    }
+#else
     template <typename T>
     static uint32_t ComputeHashForData(const T *data, size_t size,
                                        uint32_t hashSeed)
@@ -661,6 +684,56 @@ private:
             return hash;
         }
         return EcmaStringHashHelper::ComputeHashForDataPlatform(data, size, hashSeed);
+    }
+#endif
+
+    // compute hashcode for data when data.size() <=32,
+    // using switch-case unrolling to efficiently calculate hashcode
+    template <typename T>
+    static uint32_t ComputeHashForShortData(const T *data, size_t size, uint32_t hashSeed)
+    {
+        ASSERT(size <= EcmaStringHash::SWITCH_UNROLLING_SIZE);
+        uint32_t hash = 0;
+        switch (size) {
+#define CASE(N) case (N): hash += data[size - (N)] * base::POWER_OF_31_TABLE[(N) - 1]; [[fallthrough]]
+            CASE(EcmaStringHash::SIZE_32);
+            CASE(EcmaStringHash::SIZE_31);
+            CASE(EcmaStringHash::SIZE_30);
+            CASE(EcmaStringHash::SIZE_29);
+            CASE(EcmaStringHash::SIZE_28);
+            CASE(EcmaStringHash::SIZE_27);
+            CASE(EcmaStringHash::SIZE_26);
+            CASE(EcmaStringHash::SIZE_25);
+            CASE(EcmaStringHash::SIZE_24);
+            CASE(EcmaStringHash::SIZE_23);
+            CASE(EcmaStringHash::SIZE_22);
+            CASE(EcmaStringHash::SIZE_21);
+            CASE(EcmaStringHash::SIZE_20);
+            CASE(EcmaStringHash::SIZE_19);
+            CASE(EcmaStringHash::SIZE_18);
+            CASE(EcmaStringHash::SIZE_17);
+            CASE(EcmaStringHash::SIZE_16);
+            CASE(EcmaStringHash::SIZE_15);
+            CASE(EcmaStringHash::SIZE_14);
+            CASE(EcmaStringHash::SIZE_13);
+            CASE(EcmaStringHash::SIZE_12);
+            CASE(EcmaStringHash::SIZE_11);
+            CASE(EcmaStringHash::SIZE_10);
+            CASE(EcmaStringHash::SIZE_9);
+            CASE(EcmaStringHash::SIZE_8);
+            CASE(EcmaStringHash::SIZE_7);
+            CASE(EcmaStringHash::SIZE_6);
+            CASE(EcmaStringHash::SIZE_5);
+            CASE(EcmaStringHash::SIZE_4);
+            CASE(EcmaStringHash::SIZE_3);
+            CASE(EcmaStringHash::SIZE_2);
+            CASE(EcmaStringHash::SIZE_1);
+#undef CASE
+            default:
+                break;
+        }
+        hash += hashSeed * base::POWER_OF_31_TABLE[size];
+        return hash;
     }
 
     static bool IsASCIICharacter(uint16_t data)
