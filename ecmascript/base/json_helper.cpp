@@ -33,18 +33,18 @@ constexpr int K_JSON_ESCAPE_TABLE_ENTRY_SIZE = 8;
 // Table for escaping Latin1 characters.
 // Table entries start at a multiple of 8 with the first byte indicating length.
 constexpr const char* const JSON_ESCAPE_TABLE =
-    "6\\u0000 6\\u0001 6\\u0002 6\\u0003 6\\u0004 6\\u0005 6\\u0006 6\\u0007 "
-    "2\\b     2\\t     2\\n     6\\u000b 2\\f     2\\r     6\\u000e 6\\u000f "
-    "6\\u0010 6\\u0011 6\\u0012 6\\u0013 6\\u0014 6\\u0015 6\\u0016 6\\u0017 "
-    "6\\u0018 6\\u0019 6\\u001a 6\\u001b 6\\u001c 6\\u001d 6\\u001e 6\\u001f "
-    "1       1!      2\\\"     1#      1$      1%      1&      1'      "
-    "1(      1)      1*      1+      1,      1-      1.      1/      "
-    "10      11      12      13      14      15      16      17      "
-    "18      19      1:      1;      1<      1=      1>      1?      "
-    "1@      1A      1B      1C      1D      1E      1F      1G      "
-    "1H      1I      1J      1K      1L      1M      1N      1O      "
-    "1P      1Q      1R      1S      1T      1U      1V      1W      "
-    "1X      1Y      1Z      1[      2\\\\     1]      1^      1_      ";
+    "\6\\u0000 \6\\u0001 \6\\u0002 \6\\u0003 \6\\u0004 \6\\u0005 \6\\u0006 \6\\u0007 "
+    "\2\\b     \2\\t     \2\\n     \6\\u000b \2\\f     \2\\r     \6\\u000e \6\\u000f "
+    "\6\\u0010 \6\\u0011 \6\\u0012 \6\\u0013 \6\\u0014 \6\\u0015 \6\\u0016 \6\\u0017 "
+    "\6\\u0018 \6\\u0019 \6\\u001a \6\\u001b \6\\u001c \6\\u001d \6\\u001e \6\\u001f "
+    "\1       \1!      \2\\\"     \1#      \1$      \1%      \1&      \1'      "
+    "\1(      \1)      \1*      \1+      \1,      \1-      \1.      \1/      "
+    "\1""0      \1""1      \1""2      \1""3      \1""4      \1""5      \1""6      \1""7      "
+    "\18      \19      \1:      \1;      \1<      \1=      \1>      \1?      "
+    "\1@      \1A      \1B      \1C      \1D      \1E      \1F      \1G      "
+    "\1H      \1I      \1J      \1K      \1L      \1M      \1N      \1O      "
+    "\1P      \1Q      \1R      \1S      \1T      \1U      \1V      \1W      "
+    "\1X      \1Y      \1Z      \1[      \2\\\\     \1]      \1^      \1_      ";
 
 // excluding 0xc0, 0xed
 constexpr bool JSON_DO_NOT_ESCAPE_FLAG_TABLE[] = {
@@ -73,7 +73,7 @@ constexpr bool DoNotEscape(uint8_t c)
 
 inline void AppendCString(CString& output, const char* s)
 {
-    output.append(s + 1, *s - '0');
+    output.append(s + 1, *s);
 }
 
 }  // namespace
