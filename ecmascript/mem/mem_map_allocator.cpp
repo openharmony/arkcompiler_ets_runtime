@@ -128,7 +128,7 @@ MemMap MemMapAllocator::Allocate(const uint32_t threadId, size_t size, size_t al
         }
         mem = memMapPool_.GetMemFromCache(size);
         if (mem.GetMem() != nullptr) {
-            memMapTotalSize_ += size;
+            IncreaseMemMapTotalSize(size);
             bool res = PageProtectMem(isMachineCode, mem.GetMem(), mem.GetSize(), isEnableJitFort);
             if (!res) {
                 return MemMap();
@@ -156,7 +156,7 @@ MemMap MemMapAllocator::Allocate(const uint32_t threadId, size_t size, size_t al
         if (shouldPageTag) {
             PageTag(mem.GetMem(), mem.GetSize(), type, spaceName, threadId);
         }
-        memMapTotalSize_ += mem.GetSize();
+        IncreaseMemMapTotalSize(mem.GetSize());
     }
     return mem;
 }
@@ -189,7 +189,7 @@ void MemMapAllocator::CacheOrFree(void *mem, size_t size, bool isRegular, size_t
 
 void MemMapAllocator::Free(void *mem, size_t size, bool isRegular)
 {
-    memMapTotalSize_ -= size;
+    DecreaseMemMapTotalSize(size);
     if (!PageProtect(mem, size, PAGE_PROT_NONE)) { // LCOV_EXCL_BR_LINE
         return;
     }

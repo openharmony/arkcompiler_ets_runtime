@@ -33,10 +33,12 @@
     #define ECMA_BYTRACE_NAME(tag, name)
     #define ECMA_BYTRACE_START_TRACE(tag, msg)
     #define ECMA_BYTRACE_FINISH_TRACE(tag)
+    #define ECMA_BYTRACE_COUNT_TRACE(tag, name, value)
 #else
     #define ECMA_BYTRACE_NAME(tag, name) HITRACE_METER_NAME(tag, name)
     #define ECMA_BYTRACE_START_TRACE(tag, msg) StartTrace(tag, msg)
     #define ECMA_BYTRACE_FINISH_TRACE(tag) FinishTrace(tag)
+    #define ECMA_BYTRACE_COUNT_TRACE(tag, name, value) CountTrace(tag, name, value)
 #endif
 
 #if defined(ENABLE_HITRACE)
