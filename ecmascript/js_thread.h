@@ -1480,7 +1480,6 @@ public:
     bool EraseContext(EcmaContext *context);
     void ClearVMCachedConstantPool();
 
-    const GlobalEnvConstants *GetFirstGlobalConst() const;
     bool IsAllContextsInitialized() const;
     bool IsReadyToUpdateDetector() const;
     Area *GetOrCreateRegExpCacheArea();

@@ -110,11 +110,6 @@ public:
     static void UnmountContext(JSThread *thread);
     void SetGlobalEnv(GlobalEnv* global);
 
-    const GlobalEnvConstants *GlobalConstants() const
-    {
-        return &globalConst_;
-    }
-
     void ClearKeptObjects();
     void AddToKeptObjects(JSHandle<JSTaggedValue> value);
 
@@ -134,8 +129,6 @@ private:
 
     // VM execution states.
     JSTaggedValue globalEnv_ {JSTaggedValue::Hole()};
-
-    GlobalEnvConstants globalConst_;
 
     friend class JSPandaFileExecutor;
     friend class ObjectFactory;

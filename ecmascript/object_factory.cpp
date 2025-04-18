@@ -1751,7 +1751,7 @@ FreeObject *ObjectFactory::FillFreeObject(uintptr_t address, size_t size, Remove
                                           uintptr_t hugeObjectHead)
 {
     FreeObject *object = nullptr;
-    const GlobalEnvConstants *globalConst = thread_->GetFirstGlobalConst();
+    const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
     if (size >= FreeObject::SIZE_OFFSET && size < FreeObject::SIZE) {
         object = reinterpret_cast<FreeObject *>(address);
         object->SetClassWithoutBarrier(JSHClass::Cast(globalConst->GetFreeObjectWithOneFieldClass().GetTaggedObject()));
@@ -1813,7 +1813,7 @@ void ObjectFactory::InitializeExtraProperties(const JSHandle<JSHClass> &hclass,
     JSTaggedType initVal;
     bool inProgress = hclass->IsObjSizeTrackingInProgress();
     if (inProgress) {
-        const GlobalEnvConstants *globalConst = thread_->GetFirstGlobalConst();
+        const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
         initVal = globalConst->GetFreeObjectWithNoneFieldClass().GetRawData();
     } else {
         initVal = hclass->IsAOT() ? JSTaggedValue::VALUE_HOLE : JSTaggedValue::VALUE_UNDEFINED;

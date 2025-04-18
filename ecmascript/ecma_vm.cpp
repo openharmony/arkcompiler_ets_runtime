@@ -289,7 +289,8 @@ bool EcmaVM::Initialize()
     asyncStackTrace_ = new AsyncStackTrace(this);
     aotFileManager_ = new AOTFileManager(this);
     abcBufferCache_ = new AbcBufferCache();
-
+    auto globalConst = const_cast<GlobalEnvConstants *>(thread_->GlobalConstants());
+    globalConst->Init(thread_);
     auto context = new EcmaContext(thread_);
     thread_->PushContext(context);
     [[maybe_unused]] EcmaHandleScope scope(thread_);
@@ -1153,8 +1154,7 @@ void EcmaVM::GenerateInternalNativeMethods()
 void EcmaVM::CacheToGlobalConstants(JSTaggedValue value, ConstantIndex idx)
 {
     auto thread = GetJSThread();
-    auto context = thread->GetCurrentEcmaContext();
-    auto constants = const_cast<GlobalEnvConstants *>(context->GlobalConstants());
+    auto constants = const_cast<GlobalEnvConstants *>(thread->GlobalConstants());
     constants->SetConstant(idx, value);
 }
 
