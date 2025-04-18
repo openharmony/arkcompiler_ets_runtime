@@ -385,9 +385,7 @@ void JSThread::WriteToStackTraceFd(std::ostringstream &buffer) const
 
 void JSThread::SetStackTraceFd(int32_t fd)
 {
-#if defined(PANDA_TARGET_OHOS)
-    fdsan_exchange_owner_tag(fd, 0, LOG_DOMAIN);
-#endif
+    FdsanExchangeOwnerTag(reinterpret_cast<fd_t>(fd));
     stackTraceFd_ = fd;
 }
 
@@ -395,11 +393,7 @@ void JSThread::CloseStackTraceFd()
 {
     if (stackTraceFd_ != -1) {
         FSync(reinterpret_cast<fd_t>(stackTraceFd_));
-#if defined(PANDA_TARGET_OHOS)
-        fdsan_close_with_tag(reinterpret_cast<fd_t>(stackTraceFd_), LOG_DOMAIN);
-#else
         Close(reinterpret_cast<fd_t>(stackTraceFd_));
-#endif
         stackTraceFd_ = -1;
     }
 }

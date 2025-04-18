@@ -16,6 +16,7 @@
 #include "ecmascript/mem/heap-inl.h"
 #include "ecmascript/mem/jit_fort.h"
 #include "ecmascript/jit/jit.h"
+#include "ecmascript/platform/file.h"
 #include "ecmascript/platform/os.h"
 #if defined(JIT_ENABLE_CODE_SIGN) && !defined(JIT_FORT_DISABLE)
 #include <sys/ioctl.h>
@@ -328,20 +329,20 @@ void JitFort::InitJitFortResource()
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "JIT::InitJitFortResource");
     if (!Jit::GetInstance()->IsAppJit()) {
         int fd = open("/dev/xpm", O_RDWR);
-        fdsan_exchange_owner_tag(fd, 0, LOG_DOMAIN);
         if (fd < 0) {
             isResourceAvailable_ = false;
             LOG_JIT(ERROR) << "Failed to init jitfort resource, open xpm failed: " << strerror(errno);
             return;
         }
+        FdsanExchangeOwnerTag(reinterpret_cast<fd_t>(fd));
         int rc = ioctl(fd, XPM_SET_JITFORT_ENABLE, 0);
         if (rc < 0) {
             isResourceAvailable_ = false;
             LOG_JIT(ERROR) << "Failed to init jitfort resource, enable xpm failed: " << strerror(errno);
-            fdsan_close_with_tag(fd, LOG_DOMAIN);
+            Close(reinterpret_cast<fd_t>(fd));
             return;
         }
-        fdsan_close_with_tag(fd, LOG_DOMAIN);
+        Close(reinterpret_cast<fd_t>(fd));
     }
     constexpr int prSetJitFort = 0x6a6974;
     constexpr int jitFortInit = 5;

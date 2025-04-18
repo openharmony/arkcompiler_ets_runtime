@@ -145,6 +145,7 @@
       panda::ecmascript::BindAllCpuCore*;
       panda::ecmascript::SetSecurityLabel*;
       panda::ecmascript::ClassHelper::MatchFieldType*;
+      panda::ecmascript::Close*;
       panda::ecmascript::ConstantPool::GetMethodFromCache*;
       panda::ecmascript::ConstantPool::GetStringFromCacheForJit*;
       panda::ecmascript::ConvertToStdString*;
@@ -190,6 +191,7 @@
       panda::ecmascript::Elements::IsTagged*;
       panda::ecmascript::Elements::MergeElementsKind*;
       panda::ecmascript::Elements::MigrateArrayWithKind*;
+      panda::ecmascript::FdsanExchangeOwnerTag*;
       panda::ecmascript::FileExist*;
       panda::ecmascript::FileMapForAlignAddress*;
       panda::ecmascript::FileMap*;

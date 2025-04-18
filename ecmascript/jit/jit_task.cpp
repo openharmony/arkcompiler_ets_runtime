@@ -16,6 +16,7 @@
 #include "ecmascript/jit/jit_task.h"
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/ohos/jit_tools.h"
+#include "ecmascript/platform/file.h"
 #include "ecmascript/compiler/jit_compilation_env.h"
 
 namespace panda::ecmascript {
@@ -244,14 +245,9 @@ void DumpJitCode(JSHandle<MachineCode> &machineCode, JSHandle<Method> &method)
         return;
     }
     int fd = open(outFile.c_str(), O_RDWR | O_CREAT | O_TRUNC, 0644);
-#ifdef PANDA_TARGET_OHOS
-    fdsan_exchange_owner_tag(fd, 0, LOG_DOMAIN);
+    FdsanExchangeOwnerTag(reinterpret_cast<fd_t>(fd));
     jitDumpElf.WriteJitElfFile(fd);
-    fdsan_close_with_tag(fd, LOG_DOMAIN);
-#else
-    jitDumpElf.WriteJitElfFile(fd);
-    close(fd);
-#endif
+    Close(reinterpret_cast<fd_t>(fd));
 }
 
 static void FillHeapConstantTable(JSHandle<MachineCode> &machineCodeObj, const MachineCodeDesc &codeDesc)
