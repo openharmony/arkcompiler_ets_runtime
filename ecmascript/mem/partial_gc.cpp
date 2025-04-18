@@ -41,7 +41,8 @@ void PartialGC::RunPhases()
         + ";Old" + std::to_string(heap_->GetOldSpace()->GetCommittedSize())
         + ";TotalCommit" + std::to_string(heap_->GetCommittedSize())
         + ";NativeBindingSize" + std::to_string(heap_->GetNativeBindingSize())
-        + ";NativeLimitSize" + std::to_string(heap_->GetGlobalSpaceNativeLimit()));
+        + ";NativeLimitSize" + std::to_string(heap_->GetGlobalSpaceNativeLimit())
+        + ";ObjSizeBeforeSensitive" + std::to_string(heap_->GetRecordHeapObjectSizeBeforeSensitive()));
     TRACE_GC(GCStats::Scope::ScopeId::TotalGC, gcStats);
     MEM_ALLOCATE_AND_GC_TRACE(heap_->GetEcmaVM(), PartialGC_RunPhases);
     bool mainThreadInForeground = heap_->GetJSThread()->IsMainThreadFast() && !heap_->IsInBackground();
