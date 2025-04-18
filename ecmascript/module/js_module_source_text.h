@@ -154,16 +154,10 @@ public:
                                    const JSHandle<StarExportEntry> &exportEntry, size_t idx, uint32_t len);
     static bool IsNativeModule(const CString &moduleRequestName);
     static ModuleTypes GetNativeModuleType(const CString &moduleRequestName);
-    static Local<JSValueRef> GetRequireNativeModuleFunc(EcmaVM *vm, ModuleTypes moduleType);
-    static void MakeNormalizedAppArgs(const EcmaVM *vm, std::vector<Local<JSValueRef>> &arguments,
-        const CString &soPath, const CString &moduleName);
-    static void MakeAppArgs(const EcmaVM *vm, std::vector<Local<JSValueRef>> &arguments,
-        const CString &soPath, const CString &moduleName, const CString &requestName);
-    static void MakeInternalArgs(const EcmaVM *vm, std::vector<Local<JSValueRef>> &arguments,
-                                 const CString &moduleRequestName);
-    static Local<JSValueRef> LoadNativeModuleImpl(EcmaVM *vm, JSThread *thread,
+    static JSTaggedValue GetRequireNativeModuleFunc(EcmaVM *vm, ModuleTypes moduleType);
+    static JSHandle<JSTaggedValue> LoadNativeModuleImpl(EcmaVM *vm, JSThread *thread,
         const JSHandle<SourceTextModule> &requiredModule, ModuleTypes moduleType);
-    static Local<JSValueRef> LoadNativeModuleMayThrowError(JSThread *thread,
+    static JSHandle<JSTaggedValue> LoadNativeModuleMayThrowError(JSThread *thread,
         const JSHandle<SourceTextModule> &requiredModule, ModuleTypes moduleType);
     static bool LoadNativeModule(JSThread *thread, const JSHandle<SourceTextModule> &requiredModule,
                                  ModuleTypes moduleType);
