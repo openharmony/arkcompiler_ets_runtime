@@ -15,39 +15,39 @@
 
 #include "assembler/assembly-emitter.h"
 #include "assembler/assembly-parser.h"
-#include "libpandafile/class_data_accessor-inl.h"
-
 #include "ecmascript/base/path_helper.h"
+#include "ecmascript/checkpoint/thread_state_transition.h"
+#include "ecmascript/containers/containers_errors.h"
+#include "ecmascript/dfx/native_module_failure_info.h"
+#include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/js_object-inl.h"
+#include "ecmascript/linked_hash_table.h"
+#include "ecmascript/module/accessor/module_data_accessor.h"
+#include "ecmascript/module/js_module_deregister.h"
 #include "ecmascript/module/js_module_manager.h"
 #include "ecmascript/module/js_module_source_text.h"
+#include "ecmascript/module/js_shared_module.h"
+#include "ecmascript/module/js_shared_module_manager.h"
 #include "ecmascript/module/module_data_extractor.h"
 #include "ecmascript/module/module_logger.h"
 #include "ecmascript/module/module_path_helper.h"
-#include "ecmascript/tests/test_helper.h"
-#include "ecmascript/linked_hash_table.h"
-#include "ecmascript/checkpoint/thread_state_transition.h"
-#include "ecmascript/module/accessor/module_data_accessor.h"
-#include "ecmascript/module/js_module_deregister.h"
-#include "ecmascript/module/js_shared_module.h"
-#include "ecmascript/module/js_shared_module_manager.h"
+#include "ecmascript/module/module_resolver.h"
 #include "ecmascript/module/module_tools.h"
 #include "ecmascript/require/js_cjs_module.h"
+#include "ecmascript/tests/test_helper.h"
+#include "libpandafile/class_data_accessor-inl.h"
 #include "ecmascript/module/module_value_accessor.h"
-#include "ecmascript/module/module_resolver.h"
 #include "ecmascript/module/napi_module_loader.h"
-#include "ecmascript/ecma_vm.h"
 
 using namespace panda::ecmascript;
 using namespace panda::panda_file;
 using namespace panda::pandasm;
-
 namespace panda::test {
-using FunctionCallbackInfo = Local<JSValueRef>(*)(JsiRuntimeCallInfo *);
+using FunctionCallbackInfo = JSHandle<JSTaggedValue>(*)(JsiRuntimeCallInfo *);
 class EcmaModuleTest : public testing::Test {
 public:
     static void SetUpTestCase()
@@ -70,44 +70,64 @@ public:
         TestHelper::DestroyEcmaVMWithScope(instance, scope);
     }
 
-    static Local<JSValueRef> MockRequireNapiUndefined(JsiRuntimeCallInfo *runtimeCallInfo);
-    static Local<JSValueRef> MockRequireNapiFailure(JsiRuntimeCallInfo *runtimeCallInfo);
-    static Local<JSValueRef> MockRequireNapiValue(JsiRuntimeCallInfo *runtimeCallInfo);
-    static Local<JSValueRef> MockRequireNapiException(JsiRuntimeCallInfo *runtimeCallInfo);
+    static JSHandle<JSTaggedValue> MockRequireNapiFailure(JsiRuntimeCallInfo *runtimeCallInfo);
+    static JSHandle<JSTaggedValue> MockRequireNapiValue(JsiRuntimeCallInfo *runtimeCallInfo);
+    static JSTaggedValue MockRequireNapiException(JsiRuntimeCallInfo *runtimeCallInfo);
 
     EcmaVM *instance {nullptr};
     ecmascript::EcmaHandleScope *scope {nullptr};
     JSThread *thread {nullptr};
 };
 
-Local<JSValueRef> EcmaModuleTest::MockRequireNapiUndefined(JsiRuntimeCallInfo *runtimeCallInfo)
-{
-    EcmaVM *vm = runtimeCallInfo->GetVM();
-    return JSValueRef::Undefined(vm);
-}
-
-Local<JSValueRef> EcmaModuleTest::MockRequireNapiFailure(JsiRuntimeCallInfo *runtimeCallInfo)
+JSHandle<JSTaggedValue> EcmaModuleTest::MockRequireNapiFailure(JsiRuntimeCallInfo *runtimeCallInfo)
 {
     EcmaVM *vm = runtimeCallInfo->GetVM();
     vm->SetErrorInfoEnhance(true);
-    Local<JSValueRef> exports = ObjectRef::CreateNativeModuleFailureInfo(vm, "NativeModuleFailureInfo");
-    return exports;
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, thread->GlobalConstants()->GetHandledUndefined());
+    ecmascript::ThreadManagedScope managedScope(thread);
+    if (EcmaVM::GetErrorInfoEnhance()) {
+        JSHandle<NativeModuleFailureInfo> nativeModuleErrorFailureInfo =
+            NativeModuleFailureInfo::CreateNativeModuleFailureInfo(vm, "NativeModuleFailureInfo");
+        return JSHandle<JSTaggedValue>::Cast(nativeModuleErrorFailureInfo);
+    }
+    return JSHandle<JSTaggedValue>(thread->GlobalConstants()->GetHandledUndefined());
 }
 
-Local<JSValueRef> EcmaModuleTest::MockRequireNapiValue(JsiRuntimeCallInfo *runtimeCallInfo)
+JSHandle<JSTaggedValue> EcmaModuleTest::MockRequireNapiValue(JsiRuntimeCallInfo *runtimeCallInfo)
 {
     EcmaVM *vm = runtimeCallInfo->GetVM();
-    Local<StringRef> localNameHandle = StringRef::NewFromUtf8(vm, "exportVal");
-    return localNameHandle;
+    CROSS_THREAD_CHECK(vm);
+    ecmascript::ThreadManagedScope managedScope(thread);
+    ObjectFactory *factory = vm->GetFactory();
+    JSHandle<JSTaggedValue> current(factory->NewFromUtf8("exportVal"));
+    return current;
 }
 
-Local<JSValueRef> EcmaModuleTest::MockRequireNapiException(JsiRuntimeCallInfo *runtimeCallInfo)
+JSTaggedValue EcmaModuleTest::MockRequireNapiException(JsiRuntimeCallInfo *runtimeCallInfo)
 {
     EcmaVM *vm = runtimeCallInfo->GetVM();
-    Local<StringRef> message = StringRef::NewFromUtf8(vm, "load native module failed.");
-    Local<JSValueRef> error = Exception::ReferenceError(vm, message);
-    JSNApi::ThrowException(vm, error);
-    return message;
+    CROSS_THREAD_CHECK(vm);
+    ecmascript::ThreadManagedScope managedScope(thread);
+    ObjectFactory *factory = vm->GetFactory();
+    JSHandle<JSTaggedValue> message(factory->NewFromUtf8("load native module failed."));
+    JSHandle<JSObject> error = factory->GetJSError(ErrorType::ERROR, "load native module failed.", StackCheck::NO);
+    JSHandle<JSTaggedValue> code(thread, JSTaggedValue(ecmascript::containers::ErrorFlag::REFERENCE_ERROR));
+    JSHandle<EcmaString> key = factory->NewFromUtf8("code");
+    JSHandle<EcmaString> name = factory->NewFromUtf8("name");
+    JSHandle<EcmaString> value = factory->NewFromUtf8("BusinessError");
+    JSObject::CreateDataPropertyOrThrow(thread, error, JSHandle<JSTaggedValue>::Cast(key), code);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    JSObject::CreateDataPropertyOrThrow(thread, error, JSHandle<JSTaggedValue>::Cast(name),
+                                        JSHandle<JSTaggedValue>::Cast(value));
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    JSTaggedValue err = error.GetTaggedValue();
+    if (thread->HasPendingException()) {
+        LOG_ECMA(DEBUG) << "An exception has already occurred before, keep old exception here.";
+    } else {
+        thread->SetException(err);
+    }
+
+    return message.GetTaggedValue();
 }
 
 class MockModuleValueAccessor : public ModuleValueAccessor {
@@ -838,7 +858,7 @@ HWTEST_F_L0(EcmaModuleTest, ConcatFileNameWithMerge_Normalized)
     CString moduleRequestName1 = "@normalized:N&&&entryPath&version";
     CString result1 = "&entryPath&version";
     CString entryPoint1 = ModulePathHelper::ConcatFileNameWithMerge(thread, pf.get(), baseFilename1, moduleRecordName1,
-                                                                   moduleRequestName1);
+                                                                    moduleRequestName1);
     EXPECT_EQ(result1, entryPoint1);
     EXPECT_EQ(baseFilename1, baseFilename);
 
@@ -943,7 +963,7 @@ HWTEST_F_L0(EcmaModuleTest, ConcatFileNameWithMerge3)
     result = "secord";
     requestFileName = "test/test/secord.abc";
     entryPoint = ModulePathHelper::ConcatFileNameWithMerge(thread, pf2.get(), baseFilename, moduleRecordName,
-                                                     moduleRequestName);
+                                                           moduleRequestName);
     EXPECT_EQ(baseFilename, requestFileName);
     EXPECT_EQ(result, entryPoint);
 }
@@ -2005,16 +2025,6 @@ HWTEST_F_L0(EcmaModuleTest, ResolveNativeStarExport)
     EXPECT_TRUE(res2->IsNull());
 }
 
-HWTEST_F_L0(EcmaModuleTest, MakeInternalArgs)
-{
-    std::vector<Local<JSValueRef>> arguments;
-    auto vm = thread->GetEcmaVM();
-    CString soName = "@ohos:hilig";
-    arguments.emplace_back(StringRef::NewFromUtf8(vm, soName.c_str()));
-    SourceTextModule::MakeInternalArgs(vm, arguments, soName);
-    EXPECT_TRUE(!thread->HasPendingException());
-}
-
 HWTEST_F_L0(EcmaModuleTest, LoadNativeModuleImpl)
 {
     auto vm = thread->GetEcmaVM();
@@ -2036,9 +2046,10 @@ HWTEST_F_L0(EcmaModuleTest, LoadNativeModuleImpl)
     EXPECT_TRUE(!thread->HasPendingException());
 
     // internal module
-    Local<ObjectRef> globalObject = JSNApi::GetGlobalObject(vm);
-    globalObject->Set(vm, StringRef::NewFromUtf8(vm, "requireNapi"),
-        FunctionRef::New(const_cast<panda::EcmaVM*>(vm), MockRequireNapiUndefined));
+    JSHandle<GlobalEnv> globalEnv = vm->GetGlobalEnv();
+    JSHandle<JSTaggedValue> global(thread, globalEnv->GetGlobalObject());
+    JSHandle<JSTaggedValue> keyValue = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("requireNapi"));
+    JSTaggedValue::SetProperty(thread, global, keyValue, thread->GlobalConstants()->GetHandledUndefined());
     module->SetEcmaModuleRecordNameString("@hms:xxxxx");
     SourceTextModule::LoadNativeModuleImpl(vm, thread, module, ModuleTypes::INTERNAL_MODULE);
     EXPECT_TRUE(!thread->HasPendingException());
@@ -2063,9 +2074,14 @@ HWTEST_F_L0(EcmaModuleTest, LoadNativeModuleMayThrowError1)
     module->SetLocalExportEntries(thread, localExportEntries);
     SourceTextModule::StoreModuleValue(thread, module, 0, val);
     module->SetTypes(ModuleTypes::NATIVE_MODULE);
-    Local<JSValueRef> requireNapi = StringRef::NewFromUtf8(vm, "requireNapi");
-    Local<ObjectRef> globalObject = JSNApi::GetGlobalObject(vm);
-    globalObject->Set(vm, requireNapi, FunctionRef::New(const_cast<panda::EcmaVM*>(vm), MockRequireNapiFailure));
+    JSHandle<GlobalEnv> globalEnv = vm->GetGlobalEnv();
+    JSHandle<JSTaggedValue> global(thread, globalEnv->GetGlobalObject());
+    JSHandle<JSTaggedValue> keyValue = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("requireNapi"));
+    JSHandle<JSFunction> current(objectFactory->NewJSFunction(globalEnv,
+                                                              reinterpret_cast<void *>(Callback::RegisterCallback)));
+    JSFunction::SetFunctionExtraInfo(thread, current, reinterpret_cast<void *>(MockRequireNapiFailure),
+                                     nullptr, nullptr, 0);
+    JSTaggedValue::SetProperty(thread, global, keyValue, JSHandle<JSTaggedValue>(current));
     SourceTextModule::LoadNativeModuleMayThrowError(thread, module, ModuleTypes::APP_MODULE);
     EXPECT_TRUE(thread->HasPendingException());
 }
@@ -2084,9 +2100,10 @@ HWTEST_F_L0(EcmaModuleTest, LoadNativeModuleMayThrowError2)
     module->SetLocalExportEntries(thread, localExportEntries);
     SourceTextModule::StoreModuleValue(thread, module, 0, val);
     module->SetTypes(ModuleTypes::NATIVE_MODULE);
-    Local<JSValueRef> requireNapi = StringRef::NewFromUtf8(vm, "requireNapi");
-    Local<ObjectRef> globalObject = JSNApi::GetGlobalObject(vm);
-    globalObject->Set(vm, requireNapi, FunctionRef::New(const_cast<panda::EcmaVM*>(vm), MockRequireNapiUndefined));
+    JSHandle<GlobalEnv> globalEnv = vm->GetGlobalEnv();
+    JSHandle<JSTaggedValue> global(thread, globalEnv->GetGlobalObject());
+    JSHandle<JSTaggedValue> keyValue = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("requireNapi"));
+    JSTaggedValue::SetProperty(thread, global, keyValue, thread->GlobalConstants()->GetHandledUndefined());
     SourceTextModule::LoadNativeModuleMayThrowError(thread, module, ModuleTypes::APP_MODULE);
     EXPECT_TRUE(thread->HasPendingException());
 }
@@ -2105,9 +2122,14 @@ HWTEST_F_L0(EcmaModuleTest, LoadNativeModuleMayThrowError3)
     module->SetLocalExportEntries(thread, localExportEntries);
     SourceTextModule::StoreModuleValue(thread, module, 0, val);
     module->SetTypes(ModuleTypes::NATIVE_MODULE);
-    Local<JSValueRef> requireNapi = StringRef::NewFromUtf8(vm, "requireNapi");
-    Local<ObjectRef> globalObject = JSNApi::GetGlobalObject(vm);
-    globalObject->Set(vm, requireNapi, FunctionRef::New(const_cast<panda::EcmaVM*>(vm), MockRequireNapiException));
+    JSHandle<GlobalEnv> globalEnv = vm->GetGlobalEnv();
+    JSHandle<JSTaggedValue> global(thread, globalEnv->GetGlobalObject());
+    JSHandle<JSTaggedValue> keyValue = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("requireNapi"));
+    JSHandle<JSFunction> current(objectFactory->NewJSFunction(globalEnv,
+                                                              reinterpret_cast<void *>(Callback::RegisterCallback)));
+    JSFunction::SetFunctionExtraInfo(thread, current, reinterpret_cast<void *>(MockRequireNapiException),
+                                     nullptr, nullptr, 0);
+    JSTaggedValue::SetProperty(thread, global, keyValue, JSHandle<JSTaggedValue>(current));
     SourceTextModule::LoadNativeModuleMayThrowError(thread, module, ModuleTypes::APP_MODULE);
     EXPECT_TRUE(thread->HasPendingException());
 }
@@ -2126,9 +2148,14 @@ HWTEST_F_L0(EcmaModuleTest, LoadNativeModuleMayThrowError4)
     module->SetLocalExportEntries(thread, localExportEntries);
     SourceTextModule::StoreModuleValue(thread, module, 0, val);
     module->SetTypes(ModuleTypes::NATIVE_MODULE);
-    Local<JSValueRef> requireNapi = StringRef::NewFromUtf8(vm, "requireNapi");
-    Local<ObjectRef> globalObject = JSNApi::GetGlobalObject(vm);
-    globalObject->Set(vm, requireNapi, FunctionRef::New(const_cast<panda::EcmaVM*>(vm), MockRequireNapiValue));
+    JSHandle<GlobalEnv> globalEnv = vm->GetGlobalEnv();
+    JSHandle<JSTaggedValue> global(thread, globalEnv->GetGlobalObject());
+    JSHandle<JSTaggedValue> keyValue = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("requireNapi"));
+    JSHandle<JSFunction> current(objectFactory->NewJSFunction(globalEnv,
+                                                              reinterpret_cast<void *>(Callback::RegisterCallback)));
+    JSFunction::SetFunctionExtraInfo(thread, current, reinterpret_cast<void *>(MockRequireNapiValue),
+                                     nullptr, nullptr, 0);
+    JSTaggedValue::SetProperty(thread, global, keyValue, JSHandle<JSTaggedValue>(current));
     SourceTextModule::LoadNativeModuleMayThrowError(thread, module, ModuleTypes::APP_MODULE);
     EXPECT_TRUE(!thread->HasPendingException());
 }
@@ -2147,9 +2174,14 @@ HWTEST_F_L0(EcmaModuleTest, LoadNativeModule1)
     module->SetLocalExportEntries(thread, localExportEntries);
     SourceTextModule::StoreModuleValue(thread, module, 0, val);
     module->SetTypes(ModuleTypes::NATIVE_MODULE);
-    Local<JSValueRef> requireNapi = StringRef::NewFromUtf8(vm, "requireNapi");
-    Local<ObjectRef> globalObject = JSNApi::GetGlobalObject(vm);
-    globalObject->Set(vm, requireNapi, FunctionRef::New(const_cast<panda::EcmaVM*>(vm), MockRequireNapiValue));
+    JSHandle<GlobalEnv> globalEnv = vm->GetGlobalEnv();
+    JSHandle<JSTaggedValue> global(thread, globalEnv->GetGlobalObject());
+    JSHandle<JSTaggedValue> keyValue = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("requireNapi"));
+    JSHandle<JSFunction> current(objectFactory->NewJSFunction(globalEnv,
+                                                              reinterpret_cast<void *>(Callback::RegisterCallback)));
+    JSFunction::SetFunctionExtraInfo(thread, current, reinterpret_cast<void *>(MockRequireNapiValue),
+                                     nullptr, nullptr, 0);
+    JSTaggedValue::SetProperty(thread, global, keyValue, JSHandle<JSTaggedValue>(current));
     SourceTextModule::LoadNativeModule(thread, module, ModuleTypes::APP_MODULE);
     EXPECT_TRUE(!thread->HasPendingException());
 }
@@ -2168,9 +2200,14 @@ HWTEST_F_L0(EcmaModuleTest, LoadNativeModule2)
     module->SetLocalExportEntries(thread, localExportEntries);
     SourceTextModule::StoreModuleValue(thread, module, 0, val);
     module->SetTypes(ModuleTypes::NATIVE_MODULE);
-    Local<JSValueRef> requireNapi = StringRef::NewFromUtf8(vm, "requireNapi");
-    Local<ObjectRef> globalObject = JSNApi::GetGlobalObject(vm);
-    globalObject->Set(vm, requireNapi, FunctionRef::New(const_cast<panda::EcmaVM*>(vm), MockRequireNapiFailure));
+    JSHandle<GlobalEnv> globalEnv = vm->GetGlobalEnv();
+    JSHandle<JSTaggedValue> global(thread, globalEnv->GetGlobalObject());
+    JSHandle<JSTaggedValue> keyValue = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("requireNapi"));
+    JSHandle<JSFunction> current(objectFactory->NewJSFunction(globalEnv,
+                                                              reinterpret_cast<void *>(Callback::RegisterCallback)));
+    JSFunction::SetFunctionExtraInfo(thread, current, reinterpret_cast<void *>(MockRequireNapiFailure),
+                                     nullptr, nullptr, 0);
+    JSTaggedValue::SetProperty(thread, global, keyValue, JSHandle<JSTaggedValue>(current));
     SourceTextModule::LoadNativeModule(thread, module, ModuleTypes::APP_MODULE);
     EXPECT_TRUE(!thread->HasPendingException());
 }
@@ -2201,9 +2238,14 @@ HWTEST_F_L0(EcmaModuleTest, EvaluateNativeModule2)
     SourceTextModule::StoreModuleValue(thread, module, 0, val);
     module->SetTypes(ModuleTypes::NATIVE_MODULE);
     module->SetStatus(ModuleStatus::INSTANTIATED);
-    Local<JSValueRef> requireNapi = StringRef::NewFromUtf8(vm, "requireNapi");
-    Local<ObjectRef> globalObject = JSNApi::GetGlobalObject(vm);
-    globalObject->Set(vm, requireNapi, FunctionRef::New(const_cast<panda::EcmaVM*>(vm), MockRequireNapiFailure));
+    JSHandle<GlobalEnv> globalEnv = vm->GetGlobalEnv();
+    JSHandle<JSTaggedValue> global(thread, globalEnv->GetGlobalObject());
+    JSHandle<JSTaggedValue> keyValue = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("requireNapi"));
+    JSHandle<JSFunction> current(objectFactory->NewJSFunction(globalEnv,
+                                                              reinterpret_cast<void *>(Callback::RegisterCallback)));
+    JSFunction::SetFunctionExtraInfo(thread, current, reinterpret_cast<void *>(MockRequireNapiFailure),
+                                     nullptr, nullptr, 0);
+    JSTaggedValue::SetProperty(thread, global, keyValue, JSHandle<JSTaggedValue>(current));
     SourceTextModule::EvaluateNativeModule(thread, module, ModuleTypes::APP_MODULE);
     EXPECT_TRUE(!thread->HasPendingException());
 }
@@ -2223,9 +2265,14 @@ HWTEST_F_L0(EcmaModuleTest, EvaluateNativeModule3)
     SourceTextModule::StoreModuleValue(thread, module, 0, val);
     module->SetTypes(ModuleTypes::NATIVE_MODULE);
     module->SetStatus(ModuleStatus::INSTANTIATED);
-    Local<JSValueRef> requireNapi = StringRef::NewFromUtf8(vm, "requireNapi");
-    Local<ObjectRef> globalObject = JSNApi::GetGlobalObject(vm);
-    globalObject->Set(vm, requireNapi, FunctionRef::New(const_cast<panda::EcmaVM*>(vm), MockRequireNapiValue));
+    JSHandle<GlobalEnv> globalEnv = vm->GetGlobalEnv();
+    JSHandle<JSTaggedValue> global(thread, globalEnv->GetGlobalObject());
+    JSHandle<JSTaggedValue> keyValue = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("requireNapi"));
+    JSHandle<JSFunction> current(objectFactory->NewJSFunction(globalEnv,
+                                                              reinterpret_cast<void *>(Callback::RegisterCallback)));
+    JSFunction::SetFunctionExtraInfo(thread, current, reinterpret_cast<void *>(MockRequireNapiValue),
+                                     nullptr, nullptr, 0);
+    JSTaggedValue::SetProperty(thread, global, keyValue, JSHandle<JSTaggedValue>(current));
     SourceTextModule::EvaluateNativeModule(thread, module, ModuleTypes::APP_MODULE);
     EXPECT_TRUE(!thread->HasPendingException());
 }
@@ -2471,9 +2518,12 @@ HWTEST_F_L0(EcmaModuleTest, ModuleLogger) {
     moduleLogger->InsertModuleLoadInfo(module2, module3, -1);
     moduleLogger->InsertModuleLoadInfo(module2, module3, 0);
     moduleLogger->PrintModuleLoadInfo();
-    Local<JSValueRef> nativeFunc = SourceTextModule::GetRequireNativeModuleFunc(thread->GetEcmaVM(),
-                                                                                module3->GetTypes());
-    bool isFunc = nativeFunc->IsFunction(thread->GetEcmaVM());
+    auto globalConstants = thread->GetEcmaVM()->GetJSThread()->GlobalConstants();
+    auto funcName = (module3->GetTypes() == ModuleTypes::NATIVE_MODULE) ?
+        globalConstants->GetHandledRequireNativeModuleString() :
+        globalConstants->GetHandledRequireNapiString();
+    JSTaggedValue nativeFunc = funcName.GetTaggedValue();
+    bool isFunc = nativeFunc.IsJSFunction();
     EXPECT_EQ(isFunc, false);
 }
 
@@ -2483,9 +2533,12 @@ HWTEST_F_L0(EcmaModuleTest, GetRequireNativeModuleFunc) {
     uint16_t registerNum = module->GetRegisterCounts();
     module->SetStatus(ecmascript::ModuleStatus::INSTANTIATED);
     module->SetRegisterCounts(registerNum);
-    Local<JSValueRef> nativeFunc = SourceTextModule::GetRequireNativeModuleFunc(thread->GetEcmaVM(),
-                                                                                module->GetTypes());
-    bool isFunc = nativeFunc->IsFunction(thread->GetEcmaVM());
+    auto globalConstants = thread->GetEcmaVM()->GetJSThread()->GlobalConstants();
+    auto funcName = (module->GetTypes() == ModuleTypes::NATIVE_MODULE) ?
+        globalConstants->GetHandledRequireNativeModuleString() :
+        globalConstants->GetHandledRequireNapiString();
+    JSTaggedValue nativeFunc = funcName.GetTaggedValue();
+    bool isFunc = nativeFunc.IsJSFunction();
     EXPECT_EQ(isFunc, false);
 }
 
@@ -2524,36 +2577,6 @@ HWTEST_F_L0(EcmaModuleTest, StoreModuleValue2)
     JSTaggedValue loadValue1 = module->GetModuleValue(thread, index, false);
     EXPECT_EQ(valueHandle.GetTaggedValue(), loadValue);
     EXPECT_EQ(valueHandle1.GetTaggedValue(), loadValue1);
-}
-
-HWTEST_F_L0(EcmaModuleTest, MakeAppArgs1) {
-    std::vector<Local<JSValueRef>> arguments;
-    CString soPath = "@normalized:Y&&&libentry.so&";
-    CString moduleName = "entry";
-    CString requestName = "@normalized:";
-    arguments.emplace_back(StringRef::NewFromUtf8(thread->GetEcmaVM(), soPath.c_str()));
-    SourceTextModule::MakeAppArgs(thread->GetEcmaVM(), arguments, soPath, moduleName, requestName);
-    std::string res1 = arguments[0]->ToString(thread->GetEcmaVM())->ToString(thread->GetEcmaVM());
-    std::string res2 = arguments[1]->ToString(thread->GetEcmaVM())->ToString(thread->GetEcmaVM());
-    std::string res3 = arguments[2]->ToString(thread->GetEcmaVM())->ToString(thread->GetEcmaVM());
-    EXPECT_TRUE(res1 == "entry");
-    EXPECT_TRUE(res2 == "true");
-    EXPECT_TRUE(res3 == "/entry");
-}
-
-HWTEST_F_L0(EcmaModuleTest, MakeAppArgs2) {
-    std::vector<Local<JSValueRef>> arguments;
-    CString soPath = "@app:com.example.myapplication/entry";
-    CString moduleName = "entry";
-    CString requestName = "@app:";
-    arguments.emplace_back(StringRef::NewFromUtf8(thread->GetEcmaVM(), soPath.c_str()));
-    SourceTextModule::MakeAppArgs(thread->GetEcmaVM(), arguments, soPath, moduleName, requestName);
-    std::string res1 = arguments[0]->ToString(thread->GetEcmaVM())->ToString(thread->GetEcmaVM());
-    std::string res2 = arguments[1]->ToString(thread->GetEcmaVM())->ToString(thread->GetEcmaVM());
-    std::string res3 = arguments[2]->ToString(thread->GetEcmaVM())->ToString(thread->GetEcmaVM());
-    EXPECT_TRUE(res1 == "entry");
-    EXPECT_TRUE(res2 == "true");
-    EXPECT_TRUE(res3 == "@app:com.example.myapplication");
 }
 
 HWTEST_F_L0(EcmaModuleTest, ConcatHspFileNameCrossBundle)
@@ -3088,7 +3111,7 @@ HWTEST_F_L0(EcmaModuleTest, StoreModuleValue3)
     JSHandle<JSTaggedValue> exportNameHandle1 = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8(exportName1));
     JSHandle<LocalExportEntry> localExportEntry1 =
         objectFactory->NewLocalExportEntry(exportNameHandle1, localNameHandle1, LocalExportEntry::LOCAL_DEFAULT_INDEX,
-                                        SharedTypes::UNSENDABLE_MODULE);
+                                           SharedTypes::UNSENDABLE_MODULE);
     SourceTextModule::AddLocalExportEntry(thread, module, localExportEntry1, 0, 1);
     JSHandle<JSTaggedValue> key = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8(exportName1));
     JSHandle<JSTaggedValue> val = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("val"));
@@ -3875,9 +3898,10 @@ HWTEST_F_L0(EcmaModuleTest, LoadNativeModuleImpl2)
     thread->SetModuleLogger(moduleLogger);
 
     // internal module
-    Local<ObjectRef> globalObject = JSNApi::GetGlobalObject(vm);
-    globalObject->Set(vm, StringRef::NewFromUtf8(vm, "requireNapi"),
-        FunctionRef::New(const_cast<panda::EcmaVM*>(vm), MockRequireNapiUndefined));
+    JSHandle<GlobalEnv> globalEnv = vm->GetGlobalEnv();
+    JSHandle<JSTaggedValue> global(thread, globalEnv->GetGlobalObject());
+    JSHandle<JSTaggedValue> keyValue = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("requireNapi"));
+    JSTaggedValue::SetProperty(thread, global, keyValue, thread->GlobalConstants()->GetHandledUndefined());
     module->SetEcmaModuleRecordNameString("@hms:xxxxx");
     int arkProperties = thread->GetEcmaVM()->GetJSOptions().GetArkProperties();
     thread->GetEcmaVM()->GetJSOptions().SetArkProperties(arkProperties | ArkProperties::ENABLE_ESM_TRACE);
@@ -3901,9 +3925,14 @@ HWTEST_F_L0(EcmaModuleTest, LoadNativeModule3)
     module->SetLocalExportEntries(thread, localExportEntries);
     SourceTextModule::StoreModuleValue(thread, module, 0, val);
     module->SetTypes(ModuleTypes::NATIVE_MODULE);
-    Local<JSValueRef> requireNapi = StringRef::NewFromUtf8(vm, "requireNapi");
-    Local<ObjectRef> globalObject = JSNApi::GetGlobalObject(vm);
-    globalObject->Set(vm, requireNapi, FunctionRef::New(const_cast<panda::EcmaVM*>(vm), MockRequireNapiValue));
+    JSHandle<GlobalEnv> globalEnv = vm->GetGlobalEnv();
+    JSHandle<JSTaggedValue> global(thread, globalEnv->GetGlobalObject());
+    JSHandle<JSTaggedValue> keyValue = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("requireNapi"));
+    JSHandle<JSFunction> current(objectFactory->NewJSFunction(globalEnv,
+                                                              reinterpret_cast<void *>(Callback::RegisterCallback)));
+    JSFunction::SetFunctionExtraInfo(thread, current, reinterpret_cast<void *>(MockRequireNapiValue),
+                                     nullptr, nullptr, 0);
+    JSTaggedValue::SetProperty(thread, global, keyValue, JSHandle<JSTaggedValue>(current));
     int arkProperties = thread->GetEcmaVM()->GetJSOptions().GetArkProperties();
     thread->GetEcmaVM()->GetJSOptions().SetArkProperties(arkProperties | ArkProperties::ENABLE_ESM_TRACE);
     SourceTextModule::LoadNativeModule(thread, module, ModuleTypes::APP_MODULE);
