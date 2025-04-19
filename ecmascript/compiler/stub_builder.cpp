@@ -2194,18 +2194,18 @@ GateRef StubBuilder::TaggedIsInternalAccessor(GateRef x)
 GateRef StubBuilder::IsUtf16String(GateRef string)
 {
     // compressedStringsEnabled fixed to true constant
-    GateRef len = Load(VariableType::INT32(), string, IntPtr(EcmaString::MIX_LENGTH_OFFSET));
+    GateRef len = Load(VariableType::INT32(), string, IntPtr(EcmaString::LENGTH_AND_FLAGS_OFFSET));
     return Int32Equal(
-        Int32And(len, Int32(EcmaString::STRING_COMPRESSED_BIT)),
+        Int32And(len, Int32((1 << EcmaString::CompressedStatusBit::SIZE) - 1)),
         Int32(EcmaString::STRING_UNCOMPRESSED));
 }
 
 GateRef StubBuilder::IsUtf8String(GateRef string)
 {
     // compressedStringsEnabled fixed to true constant
-    GateRef len = Load(VariableType::INT32(), string, IntPtr(EcmaString::MIX_LENGTH_OFFSET));
+    GateRef len = Load(VariableType::INT32(), string, IntPtr(EcmaString::LENGTH_AND_FLAGS_OFFSET));
     return Int32Equal(
-        Int32And(len, Int32(EcmaString::STRING_COMPRESSED_BIT)),
+        Int32And(len, Int32((1 << EcmaString::CompressedStatusBit::SIZE) - 1)),
         Int32(EcmaString::STRING_COMPRESSED));
 }
 

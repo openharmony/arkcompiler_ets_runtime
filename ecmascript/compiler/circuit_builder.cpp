@@ -539,25 +539,25 @@ GateRef CircuitBuilder::HasPendingException(GateRef glue)
 GateRef CircuitBuilder::IsUtf8String(GateRef string)
 {
     // compressedStringsEnabled fixed to true constant
-    GateRef len = Load(VariableType::INT32(), string, IntPtr(EcmaString::MIX_LENGTH_OFFSET));
+    GateRef len = Load(VariableType::INT32(), string, IntPtr(EcmaString::LENGTH_AND_FLAGS_OFFSET));
     return Int32Equal(
-        Int32And(len, Int32(EcmaString::STRING_COMPRESSED_BIT)),
+        Int32And(len, Int32((1 << EcmaString::CompressedStatusBit::SIZE) - 1)),
         Int32(EcmaString::STRING_COMPRESSED));
 }
 
 GateRef CircuitBuilder::IsUtf16String(GateRef string)
 {
     // compressedStringsEnabled fixed to true constant
-    GateRef len = Load(VariableType::INT32(), string, IntPtr(EcmaString::MIX_LENGTH_OFFSET));
+    GateRef len = Load(VariableType::INT32(), string, IntPtr(EcmaString::LENGTH_AND_FLAGS_OFFSET));
     return Int32Equal(
-        Int32And(len, Int32(EcmaString::STRING_COMPRESSED_BIT)),
+        Int32And(len, Int32((1 << EcmaString::CompressedStatusBit::SIZE) - 1)),
         Int32(EcmaString::STRING_UNCOMPRESSED));
 }
 
 GateRef CircuitBuilder::IsInternString(GateRef string)
 {
-    GateRef len = Load(VariableType::INT32(), string, IntPtr(EcmaString::MIX_LENGTH_OFFSET));
-    return Int32NotEqual(Int32And(len, Int32(EcmaString::STRING_INTERN_BIT)), Int32(0));
+    GateRef len = Load(VariableType::INT32(), string, IntPtr(EcmaString::LENGTH_AND_FLAGS_OFFSET));
+    return Int32NotEqual(Int32And(len, Int32(1 << EcmaString::IsInternBit::START_BIT)), Int32(0));
 }
 
 GateRef CircuitBuilder::GetGlobalObject(GateRef glue)

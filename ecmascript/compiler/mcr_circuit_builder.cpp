@@ -1291,8 +1291,8 @@ void CircuitBuilder::SetRawHashcode(GateRef glue, GateRef str, GateRef rawHashco
 
 GateRef CircuitBuilder::GetLengthFromString(GateRef value)
 {
-    GateRef len = Load(VariableType::INT32(), value, IntPtr(EcmaString::MIX_LENGTH_OFFSET));
-    return Int32LSR(len, Int32(EcmaString::STRING_LENGTH_SHIFT_COUNT));
+    GateRef len = Load(VariableType::INT32(), value, IntPtr(EcmaString::LENGTH_AND_FLAGS_OFFSET));
+    return Int32LSR(len, Int32(EcmaString::LengthBits::START_BIT));
 }
 
 GateRef CircuitBuilder::Rotl(GateRef word, uint32_t shift)
