@@ -14,24 +14,10 @@
 true
 0
 [builtins] IterateFrameType: 9
-[builtins] IterateFrameDelta: 0
-[builtins] IterateFrameCalleeRegInfo: 0
 [builtins] IterateFrameType: 0
-[builtins] IterateFrameDelta: 16
-[builtins] IterateFrameCalleeRegInfo: 0
 [builtins] DeoptIterateFrameType: 9
-[builtins] DeoptIterateFrameDelta: 0
-[builtins] DeoptIterateFrameCalleeRegInfo: 0
 [builtins] DeoptIterateFrameType: 0
-[builtins] DeoptIterateFrameDelta: 16
-[builtins] DeoptIterateFrameCalleeRegInfo: 0
 [builtins] DeoptIterateFrameType: 3
-[builtins] DeoptIterateFrameDelta: 16
-[builtins] DeoptIterateFrameCalleeRegInfo: 5
 [builtins] DeoptIterateFrameType: 22
-[builtins] DeoptIterateFrameDelta: 0
-[builtins] DeoptIterateFrameCalleeRegInfo: 0
 [builtins] DeoptIterateFrameType: 1
-[builtins] DeoptIterateFrameDelta: 0
-[builtins] DeoptIterateFrameCalleeRegInfo: 0
 0
