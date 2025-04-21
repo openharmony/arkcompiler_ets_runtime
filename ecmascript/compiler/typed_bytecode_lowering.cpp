@@ -1240,6 +1240,13 @@ bool TypedBytecodeLowering::TryLowerTypedLdObjByNameForBuiltin(const LoadBulitin
     return false;
 }
 
+static void SetPlrLdFromIterResult(GlobalEnvField index, PropertyLookupResult &plr)
+{
+    if (index == GlobalEnvField::ITERATOR_RESULT_CLASS_INDEX) {
+        plr.SetIsLoadFromIterResult(true);
+    }
+}
+
 bool TypedBytecodeLowering::TryLowerTypedLdObjByNameForGlobalsId(const LoadBulitinObjTypeInfoAccessor &tacc,
                                                                  GlobalIndex globalsId)
 {
@@ -1279,6 +1286,7 @@ bool TypedBytecodeLowering::TryLowerTypedLdObjByNameForGlobalsId(const LoadBulit
         if (!plr.IsFound() || plr.IsAccessor()) {
             return false;
         }
+        SetPlrLdFromIterResult(index, plr);
         AddProfiling(gate);
         // 1. check hclass
         builder_.HeapObjectCheck(receiver, frameState);

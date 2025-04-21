@@ -2170,6 +2170,7 @@ public:
     using WritableField = OffsetBits::NextFlag;
     using RepresentationBits = WritableField::NextField<Representation, PropertyAttributes::REPRESENTATION_NUM>;
     using IsInlinedPropsBits = RepresentationBits::NextFlag;
+    using IsLoadFromIterResultBit = IsInlinedPropsBits::NextFlag;
 
     explicit PropertyLookupResult(uint32_t data = 0) : data_(data) {}
     ~PropertyLookupResult() = default;
@@ -2270,6 +2271,16 @@ public:
     inline bool IsInlinedProps()
     {
         return IsInlinedPropsBits::Get(data_);
+    }
+
+    inline void SetIsLoadFromIterResult(bool flag)
+    {
+        IsLoadFromIterResultBit::Set(flag, &data_);
+    }
+
+    inline bool IsLoadFromIterResult() const
+    {
+        return IsLoadFromIterResultBit::Get(data_);
     }
 
     inline uint32_t GetData() const
