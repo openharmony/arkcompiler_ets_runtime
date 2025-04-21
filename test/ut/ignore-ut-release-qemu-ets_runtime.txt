@@ -192,3 +192,6 @@ obj/arkcompiler/ets_runtime/ecmascript/builtins/tests/Builtins_DateTimeFormat_Fi
 obj/arkcompiler/ets_runtime/ecmascript/builtins/tests/Builtins_BigInt_TestWithQemu
 obj/arkcompiler/ets_runtime/ecmascript/builtins/tests/JS_ListFormat_TestWithQemu
 obj/arkcompiler/ets_runtime/ecmascript/tests/JS_ListFormat_TestWithQemu
+
+#25244
+obj/arkcompiler/ets_runtime/test/moduletest/hugearray/hugearryAsmAssert
