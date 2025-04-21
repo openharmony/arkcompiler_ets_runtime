@@ -107,3 +107,12 @@ try {
 } catch (err) {
     print(err.name)
 }
+{
+	let err = {};
+	try {
+		JSON.parse(`{"object哈哈": 42, "test":{}`)
+	} catch (error) {
+		err = error;
+	}
+	print(err.name);
+}
