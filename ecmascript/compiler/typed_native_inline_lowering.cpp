@@ -3425,8 +3425,7 @@ void TypedNativeInlineLowering::LowerArrayPush(GateRef gate)
     }
     builder_.Bind(&setValue);
     {
-        arrayBuilder.FastSetValueWithElementsKind(glue, thisValue, *elements, value, oldLength, ElementsKind::NONE,
-                                                  true);
+        arrayBuilder.FastSetValueWithElementsKind(glue, thisValue, *elements, value, oldLength, ElementsKind::NONE);
         builder_.Jump(&setLength);
     }
     builder_.Bind(&setLength);
