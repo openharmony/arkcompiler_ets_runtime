@@ -31,7 +31,6 @@ public:
     GateRef LowerCallTargetCheck(Environment *env, GateRef gate);
     GateRef CheckPara(GateRef gate, GateRef funcCheck);
     void LowerTypedLocaleCompare(GateRef gate);
-    void LowerTypedArraySort(GateRef gate);
 
 private:
     void LowerTypedFloor(GateRef gate);
