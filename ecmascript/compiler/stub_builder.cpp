@@ -12124,6 +12124,11 @@ GateRef StubBuilder::LoadExternalModuleVar(GateRef glue, GateRef index, GateRef 
     return ret;
 }
 
+GateRef StubBuilder::LoadLazyModuleVar(GateRef glue, GateRef index, GateRef module)
+{
+    return GetModuleValueOuterInternal(glue, index, module, true);
+}
+
 // Used for jit machine code reusing of inner functions have the same method to improve performance.
 void StubBuilder::TryToJitReuseCompiledFunc(GateRef glue, GateRef jsFunc, GateRef profileTypeInfoCell)
 {
