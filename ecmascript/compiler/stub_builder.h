@@ -1095,6 +1095,8 @@ public:
     inline GateRef GetNameDictionary(GateRef module);
     inline GateRef GetCurrentModuleEnv(GateRef curModule);
     inline GateRef GetBitFieldFromSourceTextModule(GateRef curModule);
+    inline GateRef GetRequestedModules(GateRef module);
+    inline GateRef GetNamespaceFromSourceTextModule(GateRef module);
     inline GateRef GetResolveModuleFromResolvedIndexBinding(GateRef resolvedBinding);
     inline GateRef GetResolveModuleFromResolvedBinding(GateRef resolvedBinding);
     inline GateRef GetIdxOfResolvedIndexBinding(GateRef resolvedBinding);
@@ -1128,6 +1130,7 @@ public:
     GateRef LoadExternalmodulevar(GateRef glue, GateRef index, GateRef curModule);
     // end: Fast path of Loading Module variable.
 
+    GateRef LoadModuleNamespaceByIndex(GateRef glue, GateRef index, GateRef module);
     GateRef GetArgumentsElements(GateRef glue, GateRef argvTaggedArray, GateRef argv);
     void TryToJitReuseCompiledFunc(GateRef glue, GateRef jsFunc, GateRef profileTypeInfoCell);
     void TryToBaselineJitReuseCompiledFunc(GateRef glue, GateRef jsFunc, GateRef profileTypeInfoCell);

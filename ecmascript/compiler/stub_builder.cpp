@@ -11899,6 +11899,84 @@ GateRef StubBuilder::LoadExternalmodulevar(GateRef glue, GateRef index, GateRef 
     return ret;
 }
 
+GateRef StubBuilder::LoadModuleNamespaceByIndex(GateRef glue, GateRef index, GateRef module)
+{
+    auto env = GetEnvironment();
+    Label subentry(env);
+    env->SubCfgEntry(&subentry);
+    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
+    Label moduleUndefined(env);
+    Label moduleNotUndefined(env);
+    Label notSendableFunctionModule(env);
+    Label requestedModulesNotUndefined(env);
+    Label requiredModuleIsHeapObj(env);
+    Label requiredModuleIsSourceTextModule(env);
+    Label isNullPtr(env);
+    Label isNativeModule(env);
+    Label dictionaryNotUndefined(env);
+    Label notNativeModule(env);
+    Label isCjsModule(env);
+    Label notCjsModule(env);
+    Label namespaceNotUndefined(env);
+    Label slowPath(env);
+    Label exit(env);
+    BRANCH_UNLIKELY(TaggedIsUndefined(module), &moduleUndefined, &moduleNotUndefined);
+    Bind(&moduleUndefined);
+    {
+        FatalPrint(glue, {Int32(GET_MESSAGE_STRING_ID(CurrentModuleUndefined))});
+        Jump(&exit);
+    }
+    Bind(&moduleNotUndefined);
+    BRANCH_UNLIKELY(IsSendableFunctionModule(module), &slowPath, &notSendableFunctionModule);
+    Bind(&notSendableFunctionModule);
+    {
+        GateRef requestedModules = GetRequestedModules(module);
+        BRANCH_UNLIKELY(TaggedIsUndefined(requestedModules), &slowPath, &requestedModulesNotUndefined);
+        Bind(&requestedModulesNotUndefined);
+        GateRef requiredModule = GetValueFromTaggedArray(requestedModules, index);
+        BRANCH_LIKELY(TaggedIsHeapObject(requiredModule), &requiredModuleIsHeapObj, &slowPath);
+        Bind(&requiredModuleIsHeapObj);
+        BRANCH_LIKELY(IsSourceTextModule(requiredModule), &requiredModuleIsSourceTextModule, &slowPath);
+        Bind(&requiredModuleIsSourceTextModule);
+        BRANCH_LIKELY(IntPtrEuqal(GetModuleLogger(glue), IntPtr(0)), &isNullPtr, &slowPath);
+        Bind(&isNullPtr);
+        BRANCH(IsNativeModule(requiredModule), &isNativeModule, &notNativeModule);
+        Bind(&isNativeModule);
+        {
+            GateRef dictionary = GetNameDictionary(requiredModule);
+            BRANCH_UNLIKELY(TaggedIsUndefined(dictionary), &slowPath, &dictionaryNotUndefined);
+            Bind(&dictionaryNotUndefined);
+            result = GetValueFromTaggedArray(dictionary, Int32(0));
+            Jump(&exit);
+        }
+        Bind(&notNativeModule);
+        BRANCH(IsCjsModule(requiredModule), &isCjsModule, &notCjsModule);
+        Bind(&isCjsModule);
+        {
+            // CommonJS module involves CString, jump to slowPath here
+            Jump(&slowPath);
+        }
+        Bind(&notCjsModule);
+        {
+            // requiredModule is ESM
+            GateRef moduleNamespace = GetNamespaceFromSourceTextModule(requiredModule);
+            BRANCH_UNLIKELY(TaggedIsUndefined(moduleNamespace), &slowPath, &namespaceNotUndefined);
+            Bind(&namespaceNotUndefined);
+            result = moduleNamespace;
+            Jump(&exit);
+        }
+    }
+    Bind(&slowPath);
+    {
+        result = CallRuntime(glue, RTSTUB_ID(GetModuleNamespaceByIndex), { IntToTaggedInt(index) });
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
 // Used for jit machine code reusing of inner functions have the same method to improve performance.
 void StubBuilder::TryToJitReuseCompiledFunc(GateRef glue, GateRef jsFunc, GateRef profileTypeInfoCell)
 {
