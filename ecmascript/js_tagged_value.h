@@ -491,7 +491,6 @@ public:
     bool IsBigInt() const;
     bool IsString() const;
     bool IsLineString() const;
-    bool IsConstantString() const;
     bool IsTreeString() const;
     bool IsSlicedString() const;
     bool IsStringOrSymbol() const;

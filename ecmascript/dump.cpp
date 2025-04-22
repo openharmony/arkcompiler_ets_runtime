@@ -64,7 +64,6 @@ CString JSHClass::DumpJSType(JSType type)
         case JSType::COW_MUTANT_TAGGED_ARRAY:
             return "COWMutantTaggedArray";
         case JSType::LINE_STRING:
-        case JSType::CONSTANT_STRING:
         case JSType::TREE_STRING:
         case JSType::SLICED_STRING:
             return "BaseString";
@@ -677,7 +676,6 @@ static void DumpObject(TaggedObject *obj, std::ostream &os, bool isPrivacy)
             ExtraProfileTypeInfo::Cast(obj)->Dump(os);
             break;
         case JSType::LINE_STRING:
-        case JSType::CONSTANT_STRING:
         case JSType::TREE_STRING:
         case JSType::SLICED_STRING:
             DumpStringClass(EcmaString::Cast(obj), os);
@@ -3968,7 +3966,6 @@ static void DumpObject(TaggedObject *obj, std::vector<Reference> &vec, bool isVm
             ProfileTypeInfo::Cast(obj)->DumpForSnapshot(vec);
             break;
         case JSType::LINE_STRING:
-        case JSType::CONSTANT_STRING:
         case JSType::TREE_STRING:
         case JSType::SLICED_STRING:
             DumpStringClass(EcmaString::Cast(obj), vec);

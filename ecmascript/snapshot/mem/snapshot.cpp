@@ -277,10 +277,7 @@ void Snapshot::WriteToFile(std::fstream &writer, const JSPandaFile *jsPandaFile,
         auto str = reinterpret_cast<EcmaString *>(stringVector[i]);
         size_t strSize = AlignUp(EcmaStringAccessor(str).ObjectSize(),
             static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
-        int index = 0; // 0 represents the line string. Natural number 1 represents the constant string.
-        if (EcmaStringAccessor(str).IsConstantString()) {
-            index = 1;
-        }
+        int index = 0; // 0 represents the line string.
         // Write the index in the head of string.
         uint8_t headerSize = JSTaggedValue::TaggedTypeSize();
         JSTaggedType indexHeader = JSTaggedValue(index).GetRawData();

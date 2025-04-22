@@ -1379,32 +1379,6 @@ GateRef CircuitBuilder::TryGetHashcodeFromString(GateRef string)
     return ret;
 }
 
-GateRef CircuitBuilder::GetStringDataFromLineOrConstantString(GateRef str)
-{
-    Label subentry(env_);
-    SubCfgEntry(&subentry);
-    Label exit(env_);
-    Label isConstantString(env_);
-    Label isLineString(env_);
-    DEFVALUE(result, env_, VariableType::NATIVE_POINTER(), IntPtr(0));
-    BRANCH(IsConstantString(str), &isConstantString, &isLineString);
-    Bind(&isConstantString);
-    {
-        GateRef address = ChangeTaggedPointerToInt64(PtrAdd(str, IntPtr(ConstantString::CONSTANT_DATA_OFFSET)));
-        result = Load(VariableType::NATIVE_POINTER(), address, IntPtr(0));
-        Jump(&exit);
-    }
-    Bind(&isLineString);
-    {
-        result = ChangeTaggedPointerToInt64(PtrAdd(str, IntPtr(LineEcmaString::DATA_OFFSET)));
-        Jump(&exit);
-    }
-    Bind(&exit);
-    auto ret = *result;
-    SubCfgExit();
-    return ret;
-}
-
 void CircuitBuilder::CopyChars(GateRef glue, GateRef dst, GateRef source,
     GateRef sourceLength, GateRef charSize, VariableType type)
 {
