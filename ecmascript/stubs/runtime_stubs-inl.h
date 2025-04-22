@@ -1419,9 +1419,9 @@ inline JSTaggedValue RuntimeStubs::RuntimeLdExternalModuleVarWithModule(JSThread
     JSHandle<JSTaggedValue> moduleHdl)
 {
     JSTaggedValue module = moduleHdl.GetTaggedValue();
-    ModuleManager* mmgr = thread->GetModuleManager();
     if (SourceTextModule::IsSendableFunctionModule(module)) {
         const CString recordNameStr = SourceTextModule::GetModuleName(module);
+        ModuleManager* mmgr = thread->GetModuleManager();
         module = mmgr->HostGetImportedModule(recordNameStr).GetTaggedValue();
         moduleHdl = JSHandle<JSTaggedValue>(thread, module);
     }

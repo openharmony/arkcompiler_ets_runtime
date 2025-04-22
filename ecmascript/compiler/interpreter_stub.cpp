@@ -3943,7 +3943,7 @@ DECLARE_ASM_HANDLER(HandleLdexternalmodulevarImm8)
     GateRef module = GetModuleFromFunction(currentFunc);
 #if ENABLE_NEXT_OPTIMIZATION
     GateRef indexInt32 = ZExtInt8ToInt32(index);
-    varAcc = LoadExternalmodulevar(glue, indexInt32, module);
+    varAcc = LoadExternalModuleVar(glue, indexInt32, module);
 #else
     varAcc = CallRuntime(glue, RTSTUB_ID(LdExternalModuleVarByIndexWithModule), {Int8ToTaggedInt(index), module});
 #endif
@@ -3959,7 +3959,7 @@ DECLARE_ASM_HANDLER(HandleWideLdexternalmodulevarPrefImm16)
     GateRef module = GetModuleFromFunction(currentFunc);
 #if ENABLE_NEXT_OPTIMIZATION
     GateRef indexInt32 = ZExtInt16ToInt32(index);
-    varAcc = LoadExternalmodulevar(glue, indexInt32, module);
+    varAcc = LoadExternalModuleVar(glue, indexInt32, module);
 #else
     varAcc = CallRuntime(glue, RTSTUB_ID(LdExternalModuleVarByIndexWithModule), {Int16ToTaggedInt(index), module});
 #endif

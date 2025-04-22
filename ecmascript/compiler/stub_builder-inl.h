@@ -4204,11 +4204,6 @@ inline GateRef StubBuilder::GetLengthOfJSArray(GateRef array)
     return env_->GetBuilder()->GetLengthOfJSArray(array);
 }
 
-inline void StubBuilder::ResolvedModuleMustBeSourceTextModule([[maybe_unused]] GateRef resolvedModule)
-{
-    ASM_ASSERT(GET_MESSAGE_STRING_ID(CurrentModuleNotSourceTextModule), IsSourceTextModule(resolvedModule));
-}
-
 inline void StubBuilder::ModuleEnvMustBeDefined([[maybe_unused]] GateRef curEnv)
 {
     ASM_ASSERT(GET_MESSAGE_STRING_ID(ModuleEnvMustBeDefined), BoolNot(TaggedIsUndefined(curEnv)));
@@ -4217,11 +4212,6 @@ inline void StubBuilder::ModuleEnvMustBeDefined([[maybe_unused]] GateRef curEnv)
 inline void StubBuilder::CheckIsResolvedIndexBinding([[maybe_unused]] GateRef resolution)
 {
     ASM_ASSERT(GET_MESSAGE_STRING_ID(CheckIsResolvedIndexBinding), IsResolvedIndexBinding(resolution));
-}
-
-inline void StubBuilder::RecordNameMustBeString([[maybe_unused]] GateRef recordName)
-{
-    ASM_ASSERT(GET_MESSAGE_STRING_ID(RecordNameMustBeString), TaggedIsString(recordName));
 }
 
 inline GateRef StubBuilder::GetNameDictionary(GateRef module)
@@ -4254,25 +4244,25 @@ inline GateRef StubBuilder::GetResolveModuleFromResolvedBinding(GateRef resolved
     return Load(VariableType::JS_ANY(), resolvedBinding, moduleOffset);
 }
 
-inline GateRef StubBuilder::GetIdxOfResolvedIndexBinding(GateRef resolvedBinding)
+inline GateRef StubBuilder::GetIdxOfIndexBinding(GateRef resolvedBinding)
 {
     GateRef indexOffset = IntPtr(ResolvedIndexBinding::INDEX_OFFSET);
     return Load(VariableType::INT32(), resolvedBinding, indexOffset);
 }
 
-inline GateRef StubBuilder::GetIdxOfResolvedRecordIndexBinding(GateRef resolvedBinding)
+inline GateRef StubBuilder::GetIdxOfRecordIndexBinding(GateRef resolvedBinding)
 {
     GateRef indexOffset = IntPtr(ResolvedRecordIndexBinding::INDEX_OFFSET);
     return Load(VariableType::INT32(), resolvedBinding, indexOffset);
 }
 
-inline GateRef StubBuilder::GetModuleRecord(GateRef resolvedBinding)
+inline GateRef StubBuilder::GetBindingNameFromResolvedBinding(GateRef resolvedBinding)
 {
-    GateRef moduleRecordIdxOffset = IntPtr(ResolvedRecordIndexBinding::MODULE_RECORD_INDEX_OFFSET);
-    return Load(VariableType::JS_ANY(), resolvedBinding, moduleRecordIdxOffset);
+    GateRef bindingNameOffset = IntPtr(ResolvedBinding::BINDING_NAME_OFFSET);
+    return Load(VariableType::JS_ANY(), resolvedBinding, bindingNameOffset);
 }
 
-inline GateRef StubBuilder::GetBindingName(GateRef resolvedBinding)
+inline GateRef StubBuilder::GetBindingNameFromRecordBinding(GateRef resolvedBinding)
 {
     GateRef bindingNameOffset = IntPtr(ResolvedRecordBinding::BINDING_NAME_OFFSET);
     return Load(VariableType::JS_ANY(), resolvedBinding, bindingNameOffset);
@@ -4315,9 +4305,14 @@ inline GateRef StubBuilder::GetModuleType(GateRef module)
                     Int32((1LU << SourceTextModule::MODULE_TYPE_BITS) - 1));
 }
 
-inline GateRef StubBuilder::IsNativeModule(GateRef module)
+inline GateRef StubBuilder::GetModuleStatus(GateRef module)
 {
-    GateRef moduleType = GetModuleType(module);
+    GateRef bitfield = GetBitFieldFromSourceTextModule(module);
+    return Int32And(bitfield, Int32((1LU << SourceTextModule::STATUS_BITS) - 1));
+}
+
+inline GateRef StubBuilder::IsNativeModule(GateRef moduleType)
+{
     return LogicOrBuilder(env_)
         .Or(Int32Equal(moduleType, Int32(static_cast<int>(ModuleTypes::OHOS_MODULE))))
         .Or(Int32Equal(moduleType, Int32(static_cast<int>(ModuleTypes::APP_MODULE))))
@@ -4326,9 +4321,8 @@ inline GateRef StubBuilder::IsNativeModule(GateRef module)
         .Done();
 }
 
-inline GateRef StubBuilder::IsCjsModule(GateRef module)
+inline GateRef StubBuilder::IsCjsModule(GateRef moduleType)
 {
-    GateRef moduleType = GetModuleType(module);
     return Int32Equal(moduleType, Int32(static_cast<int>(ModuleTypes::CJS_MODULE)));
 }
 

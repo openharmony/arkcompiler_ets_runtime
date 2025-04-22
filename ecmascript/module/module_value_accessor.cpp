@@ -311,7 +311,7 @@ JSTaggedValue ModuleValueAccessor::GetModuleValueFromBinding(const GetModuleValu
     }
     EvaluateModuleIfNeeded(info.thread, resolvedModule, info.isLazy);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(info.thread, JSTaggedValue::Exception());
-    LogModuleLoadInfo(info.thread, info.module, resolvedModule, info.index, false);
+    LogModuleLoadInfo(info.thread, info.module, resolvedModule, info.index, info.isSendable);
     return UpdateBindingAndGetModuleValue(info.thread, info.module, resolvedModule, info.index,
         binding->GetBindingName());
 }
@@ -386,7 +386,7 @@ JSHandle<SourceTextModule> ModuleValueAccessor::GetResolvedModuleFromRecordBindi
 
 void ModuleValueAccessor::EvaluateModuleIfNeeded(JSThread* thread, JSHandle<SourceTextModule> module, bool isLazy)
 {
-    if  (!isLazy) {
+    if (!isLazy) {
         return;
     }
     if (module->GetStatus() >= ModuleStatus::EVALUATED) {

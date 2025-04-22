@@ -44,6 +44,7 @@
 #include "ecmascript/stubs/runtime_stubs.h"
 #include "ecmascript/linked_hash_table.h"
 #include "ecmascript/builtins/builtins_object.h"
+#include "ecmascript/module/module_logger.h"
 #include "ecmascript/module/module_value_accessor.h"
 #include "ecmascript/module/module_path_helper.h"
 #ifdef ARK_SUPPORT_INTL
@@ -1970,13 +1971,71 @@ DEF_RUNTIME_STUBS(LdModuleVar)
     return RuntimeLdModuleVar(thread, key, innerFlag).GetRawData();
 }
 
-DEF_RUNTIME_STUBS(GetModuleValueOuterInternal)
+DEF_RUNTIME_STUBS(HostGetImportedModule)
 {
-    RUNTIME_STUBS_HEADER(GetModuleValueOuterInternal);
-    JSTaggedValue curModule = GetArg(argv, argc, 0); // 0: means the zeroth parameter
-    int32_t index =
-        JSTaggedValue::ToInt32(thread, GetHArg<JSTaggedValue>(argv, argc, 1));  // 2: means the second parameter
-    return ModuleValueAccessor::GetModuleValueOuterInternal(thread, index, curModule, false).GetRawData();
+    RUNTIME_STUBS_HEADER(HostGetImportedModule);
+    JSTaggedValue module = GetArg(argv, argc, 0); // 0: means the zeroth parameter
+    const CString recordNameStr = SourceTextModule::GetModuleName(module);
+    ModuleManager* mmgr = thread->GetModuleManager();
+    return mmgr->HostGetImportedModule(recordNameStr).GetTaggedValue().GetRawData();
+}
+
+DEF_RUNTIME_STUBS(EvaluateModule)
+{
+    RUNTIME_STUBS_HEADER(EvaluateModule);
+    JSHandle<SourceTextModule> module = GetHArg<SourceTextModule>(argv, argc, 0); // 0: means the zeroth parameter
+    JSTaggedValue capability = SourceTextModule::Evaluate(thread, module, nullptr, 0, ExecuteTypes::LAZY);
+    return capability.GetRawData();
+}
+
+DEF_RUNTIME_STUBS(LoadNativeModule)
+{
+    RUNTIME_STUBS_HEADER(LoadNativeModule);
+    JSHandle<SourceTextModule> nativeModule = GetHArg<SourceTextModule>(argv, argc, 0); // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> moduleType = GetHArg<JSTaggedValue>(argv, argc, 1);         // 1: means the first parameter
+    ModuleTypes moduleTypeCast = static_cast<ModuleTypes>(JSTaggedValue::ToInt8(thread, moduleType));
+    if (!SourceTextModule::LoadNativeModule(thread, nativeModule, moduleTypeCast)) {
+        LOG_FULL(INFO) << "LoadNativeModule " << nativeModule->GetEcmaModuleRecordNameString() << " failed";
+        return JSTaggedValue::False().GetRawData();
+    }
+    nativeModule->SetStatus(ModuleStatus::EVALUATED);
+    return JSTaggedValue::True().GetRawData();
+}
+
+DEF_RUNTIME_STUBS(InsertModuleLoadInfo)
+{
+    RUNTIME_STUBS_HEADER(InsertModuleLoadInfo);
+    JSHandle<SourceTextModule> currentModule =
+        GetHArg<SourceTextModule>(argv, argc, 0); // 0: means the zeroth parameter
+    JSHandle<SourceTextModule> exportModule = GetHArg<SourceTextModule>(argv, argc, 1); // 1: means the first parameter
+    JSHandle<JSTaggedValue> index = GetHArg<JSTaggedValue>(argv, argc, 2); // 2: means the second parameter
+    ModuleLogger *moduleLogger = thread->GetModuleLogger();
+    moduleLogger->InsertModuleLoadInfo(currentModule, exportModule, JSTaggedValue::ToInt32(thread, index));
+    return JSTaggedValue::Hole().GetRawData();
+}
+
+DEF_RUNTIME_STUBS(GetResolvedModuleFromRecordIndexBinding)
+{
+    RUNTIME_STUBS_HEADER(GetResolvedModuleFromRecordIndexBinding);
+    JSHandle<SourceTextModule> module = GetHArg<SourceTextModule>(argv, argc, 0); // 0: means the zeroth parameter
+    JSHandle<ResolvedRecordIndexBinding> binding =
+        GetHArg<ResolvedRecordIndexBinding>(argv, argc, 1); // 1: means the first parameter
+    bool isLazy = GetArg(argv, argc, 2).ToBoolean(); // 2: means the second parameter
+    JSHandle<SourceTextModule> resolvedModule =
+        ModuleValueAccessor::GetResolvedModuleFromRecordIndexBinding(thread, module, binding, isLazy);
+    return resolvedModule.GetTaggedValue().GetRawData();
+}
+
+DEF_RUNTIME_STUBS(GetResolvedModuleFromRecordBinding)
+{
+    RUNTIME_STUBS_HEADER(GetResolvedModuleFromRecordBinding);
+    JSHandle<SourceTextModule> module = GetHArg<SourceTextModule>(argv, argc, 0); // 0: means the zeroth parameter
+    JSHandle<ResolvedRecordBinding> binding =
+        GetHArg<ResolvedRecordBinding>(argv, argc, 1); // 1: means the first parameter
+    bool isLazy = GetArg(argv, argc, 2).ToBoolean(); // 2: means the second parameter
+    JSHandle<SourceTextModule> resolvedModule =
+        ModuleValueAccessor::GetResolvedModuleFromRecordBinding(thread, module, binding, isLazy);
+    return resolvedModule.GetTaggedValue().GetRawData();
 }
 
 DEF_RUNTIME_STUBS(GetModuleName)
@@ -2040,46 +2099,6 @@ DEF_RUNTIME_STUBS(CheckAndThrowModuleError)
         THROW_REFERENCE_ERROR_AND_RETURN(thread, errorMsg.c_str(), JSTaggedValue::Exception().GetRawData());
     }
     return JSTaggedValue::Hole().GetRawData();
-}
-
-DEF_RUNTIME_STUBS(GetResolvedRecordIndexBindingModule)
-{
-    RUNTIME_STUBS_HEADER(GetResolvedRecordIndexBindingModule);
-    JSHandle<SourceTextModule> module = GetHArg<SourceTextModule>(argv, argc, 0); // 0: means the zeroth parameter
-    JSHandle<ResolvedRecordIndexBinding> binding =
-        GetHArg<ResolvedRecordIndexBinding>(argv, argc, 1); // 1: means the first parameter
-    JSTaggedType argModuleManager = GetTArg(argv, argc, 2);  // 2: means the second parameter
-    ModuleManager *moduleManager = reinterpret_cast<ModuleManager *>(argModuleManager);
-    JSTaggedValue recordName = GetArg(argv, argc, 3); // 3: means the third parameter
-    CString recordNameStr = ModulePathHelper::Utf8ConvertToString(recordName);
-    if (!moduleManager->IsEvaluatedModule(recordNameStr)) {
-        auto isMergedAbc = !module->GetEcmaModuleRecordNameString().empty();
-        CString fileName = ModulePathHelper::Utf8ConvertToString((binding->GetAbcFileName()));
-        if (!JSPandaFileExecutor::LazyExecuteModule(thread,
-            recordNameStr, fileName, isMergedAbc)) { // LCOV_EXCL_BR_LINE
-            LOG_ECMA(FATAL) << "LazyExecuteModule failed";
-        }
-    }
-    return moduleManager->HostGetImportedModule(recordNameStr).GetTaggedValue().GetRawData();
-}
-
-DEF_RUNTIME_STUBS(GetResolvedRecordBindingModule)
-{
-    RUNTIME_STUBS_HEADER(GetResolvedRecordBindingModule);
-    JSHandle<SourceTextModule> module = GetHArg<SourceTextModule>(argv, argc, 0); // 0: means the zeroth parameter
-    JSTaggedType argModuleManager = GetTArg(argv, argc, 1);  // 1: means the first parameter
-    ModuleManager *moduleManager = reinterpret_cast<ModuleManager *>(argModuleManager);
-    JSTaggedValue recordName = GetArg(argv, argc, 2); // 2: means the second parameter
-    CString recordNameStr = ModulePathHelper::Utf8ConvertToString(recordName);
-    if (!moduleManager->IsEvaluatedModule(recordNameStr)) {
-        auto isMergedAbc = !module->GetEcmaModuleRecordNameString().empty();
-        CString fileName = module->GetEcmaModuleFilenameString();
-        if (!JSPandaFileExecutor::LazyExecuteModule(thread,
-            recordNameStr, fileName, isMergedAbc)) { // LCOV_EXCL_BR_LINE
-            LOG_ECMA(FATAL) << "LazyExecuteModule failed";
-        }
-    }
-    return moduleManager->HostGetImportedModule(recordNameStr).GetTaggedValue().GetRawData();
 }
 
 DEF_RUNTIME_STUBS(GetPropIterator)

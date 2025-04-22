@@ -84,10 +84,8 @@ namespace panda::ecmascript {
     V(InOperatorOnNonObject, "Cannot use 'in' operator in Non-Object")                              \
     V(CurrentModuleUndefined, "GetModuleValueOutter currentModule failed")                          \
     V(MisstakenResolvedBinding, "Get module value failed, mistaken ResolvedBinding")                \
-    V(CurrentModuleNotSourceTextModule, "Current module is not SourceTextModule")                   \
     V(ModuleEnvMustBeDefined, "Environment of current module must not be undefined")                \
-    V(CheckIsResolvedIndexBinding, "Current resolution must be ResolvedIndexBinding")               \
-    V(RecordNameMustBeString, "RecordName must be string")
+    V(CheckIsResolvedIndexBinding, "Current resolution must be ResolvedIndexBinding")
 
 #define DEBUG_CHECK_MESSAGE_STRING_LIST(V)                                                   \
     V(IsCallable)                                                                            \

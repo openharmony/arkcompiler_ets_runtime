@@ -1117,27 +1117,26 @@ public:
 
     // start: Fast path of Loading Module variable.
     GateRef Loadlocalmodulevar(GateRef glue, GateRef index, GateRef module);
-    inline void ResolvedModuleMustBeSourceTextModule(GateRef resolvedModule);
     inline void ModuleEnvMustBeDefined(GateRef curEnv);
     inline void CheckIsResolvedIndexBinding(GateRef resolution);
-    inline void RecordNameMustBeString(GateRef recordName);
     inline GateRef GetNameDictionary(GateRef module);
     inline GateRef GetCurrentModuleEnv(GateRef curModule);
     inline GateRef GetBitFieldFromSourceTextModule(GateRef curModule);
     inline GateRef GetResolveModuleFromResolvedIndexBinding(GateRef resolvedBinding);
     inline GateRef GetResolveModuleFromResolvedBinding(GateRef resolvedBinding);
-    inline GateRef GetIdxOfResolvedIndexBinding(GateRef resolvedBinding);
-    inline GateRef GetIdxOfResolvedRecordIndexBinding(GateRef resolvedBinding);
-    inline GateRef GetModuleRecord(GateRef resolvedBinding);
-    inline GateRef GetBindingName(GateRef resolvedBinding);
+    inline GateRef GetIdxOfIndexBinding(GateRef resolvedBinding);
+    inline GateRef GetIdxOfRecordIndexBinding(GateRef resolvedBinding);
+    inline GateRef GetBindingNameFromResolvedBinding(GateRef resolvedBinding);
+    inline GateRef GetBindingNameFromRecordBinding(GateRef resolvedBinding);
     inline GateRef IsResolvedIndexBinding(GateRef resolvedBinding);
     inline GateRef IsResolvedBinding(GateRef resolvedBinding);
     inline GateRef IsResolvedRecordIndexBinding(GateRef resolvedBinding);
     inline GateRef IsResolvedRecordBinding(GateRef resolvedBinding);
     inline GateRef IsLdEndExecPatchMain(GateRef glue);
     inline GateRef GetModuleType(GateRef module);
-    inline GateRef IsNativeModule(GateRef module);
-    inline GateRef IsCjsModule(GateRef module);
+    inline GateRef GetModuleStatus(GateRef module);
+    inline GateRef IsNativeModule(GateRef moduleType);
+    inline GateRef IsCjsModule(GateRef moduleType);
     inline GateRef GetCjsModuleFunction(GateRef glue);
     void ModuleEnvMustBeValid(GateRef curEnv);
     GateRef SearchFromModuleCache(GateRef glue, GateRef moduleName);
@@ -1152,9 +1151,20 @@ public:
     GateRef ResolveExportObject(GateRef glue, GateRef module, GateRef exports, GateRef exportName);
     GateRef UpdateBindingAndGetModuleValue(GateRef glue, GateRef module, GateRef requiredModule,
                                            GateRef index, GateRef bindingName);
-    GateRef GetResolvedRecordIndexBindingModule(GateRef glue, GateRef module, GateRef resolvedBinding);
-    GateRef GetResolvedRecordBindingModule(GateRef glue, GateRef module, GateRef resolvedBinding);
-    GateRef LoadExternalmodulevar(GateRef glue, GateRef index, GateRef curModule);
+    GateRef EvaluateNativeModule(GateRef glue, GateRef module, GateRef moduleType);
+    void EvaluateModuleIfNeeded(GateRef glue, GateRef module, bool isLazy);
+    void LogModuleLoadInfo(GateRef glue, GateRef module, GateRef requiredModule, GateRef index, bool isSendable);
+    GateRef GetModuleValueFromIndexBinding(GateRef glue, GateRef curModule, GateRef resolvedBinding, GateRef index,
+                                           bool isSendable, bool isLazy);
+    GateRef GetModuleValueFromBinding(GateRef glue, GateRef curModule, GateRef resolvedBinding, GateRef index,
+                                      bool isSendable, bool isLazy);
+    GateRef GetModuleValueFromRecordIndexBinding(GateRef glue, GateRef curModule, GateRef resolvedBinding,
+                                                 GateRef index, bool isSendable, bool isLazy);
+    GateRef GetModuleValueFromRecordBinding(GateRef glue, GateRef curModule, GateRef resolvedBinding, GateRef index,
+                                            bool isSendable, bool isLazy);
+    GateRef GetModuleValueOuterInternal(GateRef glue, GateRef index, GateRef curModule, bool isLazy);
+    GateRef LoadExternalModuleVar(GateRef glue, GateRef index, GateRef module);
+    GateRef LoadLazyModuleVar(GateRef glue, GateRef index, GateRef module);
     // end: Fast path of Loading Module variable.
 
     GateRef GetArgumentsElements(GateRef glue, GateRef argvTaggedArray, GateRef argv);

@@ -11362,7 +11362,6 @@ GateRef StubBuilder::SearchFromModuleCache(GateRef glue, GateRef moduleName)
         result = FastGetPropertyByName(glue, cachedModule, exportsName, ProfileOperation());
         Jump(&exit);
     }
-
     Bind(&exit);
     auto ret = *result;
     env->SubCfgExit();
@@ -11379,7 +11378,8 @@ GateRef StubBuilder::GetNativeOrCjsExports(GateRef glue, GateRef resolvedModule)
     Label isNativeModule(env);
     Label judgeCjsModule(env);
     Label exit(env);
-    BRANCH(IsNativeModule(resolvedModule), &isNativeModule, &judgeCjsModule);
+    GateRef moduleType = GetModuleType(resolvedModule);
+    BRANCH(IsNativeModule(moduleType), &isNativeModule, &judgeCjsModule);
 
     Bind(&isNativeModule);
     {
@@ -11393,11 +11393,10 @@ GateRef StubBuilder::GetNativeOrCjsExports(GateRef glue, GateRef resolvedModule)
             Jump(&exit);
         }
     }
-
     Bind(&judgeCjsModule);
     {
         Label isCjsModule(env);
-        BRANCH(IsCjsModule(resolvedModule), &isCjsModule, &exit);
+        BRANCH(IsCjsModule(moduleType), &isCjsModule, &exit);
 
         Bind(&isCjsModule);
         Label exportsIsHole(env);
@@ -11411,7 +11410,6 @@ GateRef StubBuilder::GetNativeOrCjsExports(GateRef glue, GateRef resolvedModule)
             Jump(&exit);
         }
     }
-
     Bind(&exit);
     auto ret = *exports;
     env->SubCfgExit();
@@ -11436,7 +11434,6 @@ GateRef StubBuilder::GetValueFromExportObject(GateRef glue, GateRef exports, Gat
         result = exports;
         Jump(&exit);
     }
-
     Bind(&validIdx);
     {
         Label isDictionaryMode(env);
@@ -11449,7 +11446,6 @@ GateRef StubBuilder::GetValueFromExportObject(GateRef glue, GateRef exports, Gat
             result = GetValueFromDictionary<NameDictionary>(properties, index);
             Jump(&checkResultIsAccessor);
         }
-
         Bind(&notDictionaryMode);
         {
             GateRef hClass = LoadHClass(exports);
@@ -11459,7 +11455,6 @@ GateRef StubBuilder::GetValueFromExportObject(GateRef glue, GateRef exports, Gat
             Jump(&checkResultIsAccessor);
         }
     }
-
     Bind(&checkResultIsAccessor);
     {
         Label isAccessor(env);
@@ -11471,7 +11466,6 @@ GateRef StubBuilder::GetValueFromExportObject(GateRef glue, GateRef exports, Gat
             Jump(&exit);
         }
     }
-
     Bind(&exit);
     auto ret = *result;
     env->SubCfgExit();
@@ -11496,13 +11490,11 @@ GateRef StubBuilder::GetNativeOrCjsModuleValue(GateRef glue, GateRef module, Gat
         result = Exception();
         Jump(&exit);
     }
-
     Bind(&noException);
     {
         result = GetValueFromExportObject(glue, exports, index);
         Jump(&exit);
     }
-
     Bind(&exit);
     auto ret = *result;
     env->SubCfgExit();
@@ -11527,13 +11519,11 @@ GateRef StubBuilder::GetModuleValueByIndex(GateRef glue, GateRef module, GateRef
         result = GetValueFromTaggedArray(dictionary, index);
         Jump(&exit);
     }
-
     Bind(&isUndefined);
     {
         result = CallRuntime(glue, RTSTUB_ID(CheckAndThrowModuleError), {module, isThrow});
         Jump(&exit);
     }
-
     Bind(&exit);
     auto ret = *result;
     env->SubCfgExit();
@@ -11550,7 +11540,8 @@ GateRef StubBuilder::GetModuleValue(GateRef glue, GateRef module, GateRef index)
     Label isNativeOrCjsModule(env);
     Label notNativeOrCjsModule(env);
     Label exit(env);
-    GateRef checkNativeOrCjsModule = BitOr(IsNativeModule(module), IsCjsModule(module));
+    GateRef moduleType = GetModuleType(module);
+    GateRef checkNativeOrCjsModule = BitOr(IsNativeModule(moduleType), IsCjsModule(moduleType));
     BRANCH(checkNativeOrCjsModule, &isNativeOrCjsModule, &notNativeOrCjsModule);
 
     Bind(&isNativeOrCjsModule);
@@ -11558,13 +11549,11 @@ GateRef StubBuilder::GetModuleValue(GateRef glue, GateRef module, GateRef index)
         result = GetNativeOrCjsModuleValue(glue, module, index);
         Jump(&exit);
     }
-
     Bind(&notNativeOrCjsModule);
     {
         result = GetModuleValueByIndex(glue, module, index, TaggedFalse());
         Jump(&exit);
     }
-
     Bind(&exit);
     auto ret = *result;
     env->SubCfgExit();
@@ -11589,7 +11578,6 @@ GateRef StubBuilder::GetNativeOrCjsModuleValueByName(GateRef glue, GateRef modul
         result = Exception();
         Jump(&exit);
     }
-
     Bind(&noPendingException);
     {
         GateRef defaultString = GetGlobalConstantValue(VariableType::JS_POINTER(), glue, ConstantIndex::DEFAULT_INDEX);
@@ -11602,14 +11590,12 @@ GateRef StubBuilder::GetNativeOrCjsModuleValueByName(GateRef glue, GateRef modul
             result = exports;
             Jump(&exit);
         }
-
         Bind(&notSameVal);
         {
             result = FastGetPropertyByName(glue, exports, bindingName, ProfileOperation());
             Jump(&exit);
         }
     }
-
     Bind(&exit);
     auto ret = *result;
     env->SubCfgExit();
@@ -11636,13 +11622,11 @@ GateRef StubBuilder::ResolveElementOfObject(GateRef glue, GateRef hClass, GateRe
         result = CallRuntime(glue, RTSTUB_ID(NewResolvedIndexBindingRecord), {module, IntToTaggedInt(idx)});
         Jump(&exit);
     }
-
     Bind(&invalidIdx);
     {
         result = GetGlobalConstantValue(VariableType::JS_ANY(), glue, ConstantIndex::UNDEFINED_INDEX);
         Jump(&exit);
     }
-
     Bind(&exit);
     auto ret = *result;
     env->SubCfgExit();
@@ -11693,7 +11677,6 @@ GateRef StubBuilder::ResolveExportObject(GateRef glue, GateRef module, GateRef e
             result = CallRuntime(glue, RTSTUB_ID(NewResolvedIndexBindingRecord), {module, IntToTaggedInt(entry)});
             Jump(&checkResultIsUndefined);
         }
-
         Bind(&notDictionaryMode);
         {
             Label notEqualZero(env);
@@ -11706,23 +11689,19 @@ GateRef StubBuilder::ResolveExportObject(GateRef glue, GateRef module, GateRef e
             result = ResolveElementOfObject(glue, hClass, exportName, module, layoutInfo);
             Jump(&checkResultIsUndefined);
         }
-
         Bind(&checkResultIsUndefined);
         BRANCH(TaggedIsUndefined(*result), &exportsNotJSObject, &exit);
     }
-
     Bind(&defaultCallNewBindingRecord);
     {
         result = CallRuntime(glue, RTSTUB_ID(NewResolvedIndexBindingRecord), {module, IntToTaggedInt(Int32(-1))});
         Jump(&exit);
     }
-
     Bind(&exportsNotJSObject);
     {
         result = GetGlobalConstantValue(VariableType::JS_ANY(), glue, ConstantIndex::NULL_INDEX);
         Jump(&exit);
     }
-
     Bind(&exit);
     auto ret = *result;
     env->SubCfgExit();
@@ -11758,72 +11737,295 @@ GateRef StubBuilder::UpdateBindingAndGetModuleValue(GateRef glue, GateRef module
                                  {module, requiredModule, bindingName, resolution});
             Jump(&exit);
         }
-
         Bind(&notNullOrString);
         {
             SetValueToTaggedArray(VariableType::JS_ANY(), glue, curModuleEnv, index, resolution);
             CheckIsResolvedIndexBinding(resolution);
-            result = GetValueFromExportObject(glue, exports, GetIdxOfResolvedIndexBinding(resolution));
+            result = GetValueFromExportObject(glue, exports, GetIdxOfIndexBinding(resolution));
             Jump(&exit);
         }
     }
-
     Bind(&hasException);
     {
         result = Exception();
         Jump(&exit);
     }
-
     Bind(&exit);
     auto ret = *result;
     env->SubCfgExit();
     return ret;
 }
 
-GateRef StubBuilder::GetResolvedRecordIndexBindingModule(GateRef glue, GateRef module, GateRef resolvedBinding)
+GateRef StubBuilder::EvaluateNativeModule(GateRef glue, GateRef module, GateRef moduleType)
 {
-    GateRef recordName = GetModuleRecord(resolvedBinding);
-    RecordNameMustBeString(recordName);
-    GateRef moduleManager = GetModuleManager(glue);
-    GateRef result = CallRuntime(glue, RTSTUB_ID(GetResolvedRecordIndexBindingModule),
-                                 {module, resolvedBinding, moduleManager, recordName});
-    return result;
+    auto env = GetEnvironment();
+    Label subentry(env);
+    env->SubCfgEntry(&subentry);
+
+    DEFVARIABLE(result, VariableType::JS_ANY(), TaggedTrue());
+    Label notEvaluated(env);
+    Label exit(env);
+    GateRef moduleStatus = GetModuleStatus(module);
+    GateRef evaluatedStatus = Int32(static_cast<int32_t>(ModuleStatus::EVALUATED));
+    BRANCH(Int32Equal(moduleStatus, evaluatedStatus), &exit, &notEvaluated);
+
+    Bind(&notEvaluated);
+    {
+        result = CallRuntime(glue, RTSTUB_ID(LoadNativeModule), {module, IntToTaggedInt(moduleType)});
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
 }
 
-GateRef StubBuilder::GetResolvedRecordBindingModule(GateRef glue, GateRef module, GateRef resolvedBinding)
+void StubBuilder::EvaluateModuleIfNeeded(GateRef glue, GateRef module, bool isLazy)
 {
-    GateRef recordName = GetModuleRecord(resolvedBinding);
-    RecordNameMustBeString(recordName);
-    GateRef moduleManager = GetModuleManager(glue);
-    GateRef result = CallRuntime(glue, RTSTUB_ID(GetResolvedRecordBindingModule),
-                                 {module, moduleManager, recordName});
-    return result;
+    auto env = GetEnvironment();
+    Label subentry(env);
+    env->SubCfgEntry(&subentry);
+
+    Label exit(env);
+    if (isLazy) {
+        Label notEvaluatedOrErrored(env);
+        GateRef moduleStatus = GetModuleStatus(module);
+        GateRef evaluatedStatus = Int32(static_cast<int32_t>(ModuleStatus::EVALUATED));
+        BRANCH(Int32GreaterThanOrEqual(moduleStatus, evaluatedStatus), &exit, &notEvaluatedOrErrored);
+
+        Bind(&notEvaluatedOrErrored);
+        Label isNativeModule(env);
+        Label notNativeModule(env);
+        GateRef moduleType = GetModuleType(module);
+        BRANCH(IsNativeModule(moduleType), &isNativeModule, &notNativeModule);
+
+        Bind(&isNativeModule);
+        EvaluateNativeModule(glue, module, moduleType);
+        Jump(&exit);
+
+        Bind(&notNativeModule);
+        CallRuntime(glue, RTSTUB_ID(EvaluateModule), {module});
+        Jump(&exit);
+    } else {
+        Jump(&exit);
+    }
+    Bind(&exit);
+    env->SubCfgExit();
 }
 
-GateRef StubBuilder::LoadExternalmodulevar(GateRef glue, GateRef index, GateRef curModule)
+void StubBuilder::LogModuleLoadInfo(GateRef glue, GateRef module, GateRef requiredModule, GateRef index,
+                                    bool isSendable)
+{
+    auto env = GetEnvironment();
+    Label subentry(env);
+    env->SubCfgEntry(&subentry);
+
+    Label exit(env);
+    if (!isSendable) {
+        Label notNullPtr(env);
+        BRANCH_LIKELY(IntPtrEuqal(GetModuleLogger(glue), IntPtr(0)), &exit, &notNullPtr);
+
+        Bind(&notNullPtr);
+        CallRuntime(glue, RTSTUB_ID(InsertModuleLoadInfo), {module, requiredModule, IntToTaggedInt(index)});
+        Jump(&exit);
+    } else {
+        Jump(&exit);
+    }
+    Bind(&exit);
+    env->SubCfgExit();
+}
+
+GateRef StubBuilder::GetModuleValueFromIndexBinding(GateRef glue, GateRef curModule, GateRef resolvedBinding,
+                                                    GateRef index, bool isSendable, bool isLazy)
 {
     auto env = GetEnvironment();
     Label subentry(env);
     env->SubCfgEntry(&subentry);
 
     DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
-    Label notSendableFunctionModule(env);
+    DEFVARIABLE(resolvedModule, VariableType::JS_ANY(), Undefined());
+    Label exit(env);
+    Label next(env);
+    Label getModuleVal(env);
+    resolvedModule = GetResolveModuleFromResolvedIndexBinding(resolvedBinding);
+
+    if (!isSendable) {
+        Label isLdEndExecPatchMain(env);
+        BRANCH(IsLdEndExecPatchMain(glue), &isLdEndExecPatchMain, &next);
+
+        Bind(&isLdEndExecPatchMain);
+        Label notHole(env);
+        GateRef resolvedModuleOfHotReload = CallNGCRuntime(glue, RTSTUB_ID(FindPatchModule),
+                                                           {glue, *resolvedModule});
+        BRANCH(TaggedIsHole(resolvedModuleOfHotReload), &next, &notHole);
+
+        Bind(&notHole);
+        resolvedModule = resolvedModuleOfHotReload;
+        Jump(&next);
+    } else {
+        Jump(&next);
+    }
+    Bind(&next);
+    {
+        if (isSendable && isLazy) {
+            CallRuntime(glue, RTSTUB_ID(EvaluateModule), {*resolvedModule});
+            Jump(&getModuleVal);
+        } else {
+            EvaluateModuleIfNeeded(glue, *resolvedModule, isLazy);
+            Jump(&getModuleVal);
+        }  
+    }
+    Bind(&getModuleVal);
+    {
+        Label hasException(env);
+        Label noException(env);
+        BRANCH(HasPendingException(glue), &hasException, &noException);
+
+        Bind(&hasException);
+        result = Exception();
+        Jump(&exit);
+
+        Bind(&noException);
+        LogModuleLoadInfo(glue, curModule, *resolvedModule, index, isSendable);
+        GateRef idxOfResolvedBinding = GetIdxOfIndexBinding(resolvedBinding);
+        result = GetModuleValue(glue, *resolvedModule, idxOfResolvedBinding);
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef StubBuilder::GetModuleValueFromBinding(GateRef glue, GateRef curModule, GateRef resolvedBinding, GateRef index,
+                                               bool isSendable, bool isLazy)
+{
+    auto env = GetEnvironment();
+    Label subentry(env);
+    env->SubCfgEntry(&subentry);
+
+    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
+    Label isNativeOrCjsModule(env);
+    Label notNativeOrCjsModule(env);
+    Label exit(env);
+    GateRef resolvedModule = GetResolveModuleFromResolvedBinding(resolvedBinding);
+    GateRef moduletype = GetModuleType(resolvedModule);
+    BRANCH_LIKELY(BitOr(IsNativeModule(moduletype), IsCjsModule(moduletype)), &isNativeOrCjsModule,
+                  &notNativeOrCjsModule);
+
+    Bind(&isNativeOrCjsModule);
+    {
+        Label hasException(env);
+        Label noException(env);
+        EvaluateModuleIfNeeded(glue, resolvedModule, isLazy);
+        BRANCH(HasPendingException(glue), &hasException, &noException);
+
+        Bind(&hasException);
+        result = Exception();
+        Jump(&exit);
+
+        Bind(&noException);
+        LogModuleLoadInfo(glue, curModule, resolvedModule, index, isSendable);
+        result = UpdateBindingAndGetModuleValue(glue, curModule, resolvedModule, index,
+                                                GetBindingNameFromResolvedBinding(resolvedBinding));
+        Jump(&exit);
+    }
+    Bind(&notNativeOrCjsModule);
+    {
+        CallNGCRuntime(glue, RTSTUB_ID(FatalPrintMisstakenResolvedBinding), {index, curModule});
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef StubBuilder::GetModuleValueFromRecordIndexBinding(GateRef glue, GateRef curModule, GateRef resolvedBinding,
+                                                          GateRef index, bool isSendable, bool isLazy)
+{
+    auto env = GetEnvironment();
+    Label subentry(env);
+    env->SubCfgEntry(&subentry);
+
+    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
+    Label hasException(env);
+    Label noException(env);
+    Label exit(env);
+    GateRef isLazyTagged = isLazy ? TaggedTrue() : TaggedFalse();
+    GateRef resolvedModule = CallRuntime(glue, RTSTUB_ID(GetResolvedModuleFromRecordIndexBinding),
+                                         {curModule, resolvedBinding, isLazyTagged});
+    BRANCH(HasPendingException(glue), &hasException, &noException);
+
+    Bind(&hasException);
+    {
+        result = Exception();
+        Jump(&exit);
+    }
+    Bind(&noException);
+    {
+        LogModuleLoadInfo(glue, curModule, resolvedModule, index, isSendable);
+        GateRef idxOfRecordIndexBinding = GetIdxOfRecordIndexBinding(resolvedBinding);
+        result = GetModuleValue(glue, resolvedModule, idxOfRecordIndexBinding);
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef StubBuilder::GetModuleValueFromRecordBinding(GateRef glue, GateRef curModule, GateRef resolvedBinding,
+                                                     GateRef index, bool isSendable, bool isLazy)
+{
+    auto env = GetEnvironment();
+    Label subentry(env);
+    env->SubCfgEntry(&subentry);
+
+    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
+    Label hasException(env);
+    Label noException(env);
+    Label exit(env);
+    GateRef isLazyTagged = isLazy ? TaggedTrue() : TaggedFalse();
+    GateRef resolvedModule = CallRuntime(glue, RTSTUB_ID(GetResolvedModuleFromRecordBinding),
+                                         {curModule, resolvedBinding, isLazyTagged});
+    BRANCH(HasPendingException(glue), &hasException, &noException);
+
+    Bind(&hasException);
+    {
+        result = Exception();
+        Jump(&exit);
+    }
+    Bind(&noException);
+    {
+        LogModuleLoadInfo(glue, curModule, resolvedModule, index, isSendable);
+        result = GetNativeOrCjsModuleValueByName(glue, resolvedModule,
+                                                 GetBindingNameFromRecordBinding(resolvedBinding));
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef StubBuilder::GetModuleValueOuterInternal(GateRef glue, GateRef index, GateRef curModule, bool isLazy)
+{
+    auto env = GetEnvironment();
+    Label subentry(env);
+    env->SubCfgEntry(&subentry);
+
+    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
     Label moduleUndefined(env);
     Label moduleIsdefined(env);
     Label moduleEnvUndefined(env);
     Label moduleEnvIsdefined(env);
-    Label isSendableFunctionModule(env);
-    Label isNullPtr(env);
-    Label notNullPtr(env);
     Label resolvedBindingIsHeapObj(env);
     Label misstakenResolvedBinding(env);
     Label judgeResolvedBinding(env);
     Label judgeResolvedRecordIndexBinding(env);
     Label judgeResolvedRecordBinding(env);
     Label exit(env);
-    BRANCH(IsSendableFunctionModule(curModule), &isSendableFunctionModule, &notSendableFunctionModule);
-
-    Bind(&notSendableFunctionModule);
     BRANCH_UNLIKELY(TaggedIsUndefined(curModule), &moduleUndefined, &moduleIsdefined);
 
     Bind(&moduleIsdefined);
@@ -11833,9 +12035,6 @@ GateRef StubBuilder::LoadExternalmodulevar(GateRef glue, GateRef index, GateRef 
     Bind(&moduleEnvIsdefined);
     ModuleEnvMustBeValid(curModuleEnv);
     GateRef resolvedBinding = GetValueFromTaggedArray(curModuleEnv, index);
-    BRANCH_LIKELY(IntPtrEuqal(GetModuleLogger(glue), IntPtr(0)), &isNullPtr, &notNullPtr);
-
-    Bind(&isNullPtr);
     BRANCH(TaggedIsHeapObject(resolvedBinding), &resolvedBindingIsHeapObj, &misstakenResolvedBinding);
 
     Bind(&resolvedBindingIsHeapObj);
@@ -11844,52 +12043,18 @@ GateRef StubBuilder::LoadExternalmodulevar(GateRef glue, GateRef index, GateRef 
         BRANCH(IsResolvedIndexBinding(resolvedBinding), &isResolvedIndexBinding, &judgeResolvedBinding);
 
         Bind(&isResolvedIndexBinding);
-        {
-            Label isLdEndExecPatchMain(env);
-            Label notLdEndExecPatchMain(env);
-            Label notHole(env);
-            GateRef resolvedModule = GetResolveModuleFromResolvedIndexBinding(resolvedBinding);
-            ResolvedModuleMustBeSourceTextModule(resolvedModule);
-            GateRef idxOfResolvedBinding = GetIdxOfResolvedIndexBinding(resolvedBinding);
-            BRANCH(IsLdEndExecPatchMain(glue), &isLdEndExecPatchMain, &notLdEndExecPatchMain);
-
-            Bind(&isLdEndExecPatchMain);
-            GateRef resolvedModuleOfHotReload = CallNGCRuntime(glue, RTSTUB_ID(FindPatchModule),
-                                                               {glue, resolvedModule});
-            BRANCH(TaggedIsHole(resolvedModuleOfHotReload), &notLdEndExecPatchMain, &notHole);
-
-            Bind(&notLdEndExecPatchMain);
-            result = GetModuleValue(glue, resolvedModule, idxOfResolvedBinding);
-            Jump(&exit);
-
-            Bind(&notHole);
-            result = GetModuleValue(glue, resolvedModuleOfHotReload, idxOfResolvedBinding);
-            Jump(&exit);
-        }
+        result = GetModuleValueFromIndexBinding(glue, curModule, resolvedBinding, index, false, isLazy);
+        Jump(&exit);
     }
-
     Bind(&judgeResolvedBinding);
     {
         Label isResolvedBinding(env);
         BRANCH(IsResolvedBinding(resolvedBinding), &isResolvedBinding, &judgeResolvedRecordIndexBinding);
 
         Bind(&isResolvedBinding);
-        {
-            GateRef resolvedModule = GetResolveModuleFromResolvedBinding(resolvedBinding);
-            ResolvedModuleMustBeSourceTextModule(resolvedModule);
-            Label isNativeOrCjsModule(env);
-            GateRef checkNativeOrCjsModule = BitOr(IsNativeModule(resolvedModule), IsCjsModule(resolvedModule));
-            BRANCH(checkNativeOrCjsModule, &isNativeOrCjsModule, &misstakenResolvedBinding);
-
-            Bind(&isNativeOrCjsModule);
-            {
-                result = UpdateBindingAndGetModuleValue(glue, curModule, resolvedModule, index,
-                                                        GetBindingName(resolvedBinding));
-                Jump(&exit);
-            }
-        }
+        result = GetModuleValueFromBinding(glue, curModule, resolvedBinding, index, false, isLazy);
+        Jump(&exit);
     }
-
     Bind(&judgeResolvedRecordIndexBinding);
     {
         Label isResolvedRecordIndexBinding(env);
@@ -11897,58 +12062,62 @@ GateRef StubBuilder::LoadExternalmodulevar(GateRef glue, GateRef index, GateRef 
                &judgeResolvedRecordBinding);
 
         Bind(&isResolvedRecordIndexBinding);
-        {
-            GateRef resolvedModule = GetResolvedRecordIndexBindingModule(glue, curModule, resolvedBinding);
-            GateRef idxOfResolvedRecordIndexBinding = GetIdxOfResolvedRecordIndexBinding(resolvedBinding);
-            result = GetModuleValue(glue, resolvedModule, idxOfResolvedRecordIndexBinding);
-            Jump(&exit);
-        }
+        result = GetModuleValueFromRecordIndexBinding(glue, curModule, resolvedBinding, index, false, isLazy);
+        Jump(&exit);
     }
-
     Bind(&judgeResolvedRecordBinding);
     {
         Label isResolvedRecordBinding(env);
         BRANCH(IsResolvedRecordBinding(resolvedBinding), &isResolvedRecordBinding, &misstakenResolvedBinding);
-        Bind(&isResolvedRecordBinding);
-        {
-            GateRef resolvedModule = GetResolvedRecordBindingModule(glue, curModule, resolvedBinding);
-            result = GetNativeOrCjsModuleValueByName(glue, resolvedModule, GetBindingName(resolvedBinding));
-            Jump(&exit);
-        }
-    }
 
-    Bind(&isSendableFunctionModule);
-    {
-        result = CallRuntime(glue, RTSTUB_ID(LdExternalModuleVarByIndexWithModule),
-                             {IntToTaggedInt(index), curModule});
+        Bind(&isResolvedRecordBinding);
+        result = GetModuleValueFromRecordBinding(glue, curModule, resolvedBinding, index, false, isLazy);
         Jump(&exit);
     }
-
     Bind(&moduleUndefined);
     {
         FatalPrint(glue, {Int32(GET_MESSAGE_STRING_ID(CurrentModuleUndefined))});
         Jump(&exit);
     }
-
     Bind(&moduleEnvUndefined);
     {
         result = Undefined();
         Jump(&exit);
     }
-
-    Bind(&notNullPtr);
-    {
-        result = CallRuntime(glue, RTSTUB_ID(GetModuleValueOuterInternal),
-                             {curModule, IntToTaggedInt(index)});
-        Jump(&exit);
-    }
-
     Bind(&misstakenResolvedBinding);
     {
         CallNGCRuntime(glue, RTSTUB_ID(FatalPrintMisstakenResolvedBinding), {index, curModule});
         Jump(&exit);
     }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
 
+GateRef StubBuilder::LoadExternalModuleVar(GateRef glue, GateRef index, GateRef module)
+{
+    auto env = GetEnvironment();
+    Label subentry(env);
+    env->SubCfgEntry(&subentry);
+
+    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
+    DEFVARIABLE(curModule, VariableType::JS_ANY(), module);
+    Label isSendableFunctionModule(env);
+    Label getModuleVal(env);
+    Label exit(env);
+    BRANCH(IsSendableFunctionModule(module), &isSendableFunctionModule, &getModuleVal);
+
+    Bind(&isSendableFunctionModule);
+    {
+        curModule = CallRuntime(glue, RTSTUB_ID(HostGetImportedModule), {module});
+        Jump(&getModuleVal);
+    }
+    Bind(&getModuleVal);
+    {
+        result = GetModuleValueOuterInternal(glue, index, *curModule, false);
+        Jump(&exit);
+    }
     Bind(&exit);
     auto ret = *result;
     env->SubCfgExit();
