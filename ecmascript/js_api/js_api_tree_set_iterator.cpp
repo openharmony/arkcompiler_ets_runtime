@@ -16,6 +16,7 @@
 #include "ecmascript/js_api/js_api_tree_set_iterator.h"
 
 #include "ecmascript/containers/containers_errors.h"
+#include "ecmascript/global_env.h"
 #include "ecmascript/js_api/js_api_tree_set.h"
 #include "ecmascript/js_array.h"
 #include "ecmascript/tagged_tree.h"
@@ -42,9 +43,9 @@ JSTaggedValue JSAPITreeSetIterator::Next(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> iteratedSet(thread, iter->GetIteratedSet());
 
     // If it is undefined, return undefinedIteratorResult.
-    const GlobalEnvConstants *globalConst = thread->GlobalConstants();
     if (iteratedSet->IsUndefined()) {
-        return globalConst->GetUndefinedIterResult();
+        JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+        return env->GetUndefinedIteratorResult().GetTaggedValue();
     }
     JSHandle<TaggedTreeSet> set(thread, JSHandle<JSAPITreeSet>::Cast(iteratedSet)->GetTreeSet());
     uint32_t elements = static_cast<uint32_t>(set->NumberOfElements());
@@ -78,7 +79,8 @@ JSTaggedValue JSAPITreeSetIterator::Next(EcmaRuntimeCallInfo *argv)
 
     // Set [[IteratedSet]] to undefined.
     iter->SetIteratedSet(thread, JSTaggedValue::Undefined());
-    return globalConst->GetUndefinedIterResult();
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+    return env->GetUndefinedIteratorResult().GetTaggedValue();
 }
 
 JSHandle<JSTaggedValue> JSAPITreeSetIterator::CreateTreeSetIterator(JSThread *thread,

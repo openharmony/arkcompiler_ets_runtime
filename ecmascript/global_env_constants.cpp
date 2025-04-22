@@ -403,9 +403,6 @@ void GlobalEnvConstants::InitMiscellanious(JSThread *thread, ObjectFactory *fact
     SetConstant(ConstantIndex::DEFAULT_SUPERS_INDEX,
                 WeakVector::Create(thread, VTable::DEFAULT_SUPERS_CAPACITY, MemSpaceType::NON_MOVABLE));
 
-    // non ECMA standard jsapi containers iterators, init to Undefined first
-    InitJSAPIContainers();
-
     InitGlobalCaches();
 }
 
@@ -422,18 +419,10 @@ void GlobalEnvConstants::SetCachedLocales(JSTaggedValue value)
     }
 }
 
-void GlobalEnvConstants::InitJSAPIContainers()
-{
-    for (size_t i = GetJSAPIContainersBegin(); i <= GetJSAPIContainersEnd(); i++) {
-        SetConstant(static_cast<ConstantIndex>(i), JSTaggedValue::Undefined());
-    }
-}
-
 void GlobalEnvConstants::InitSpecialForSnapshot()
 {
     SetConstant(ConstantIndex::UNDEFINED_INDEX, JSTaggedValue::Undefined());
     SetConstant(ConstantIndex::NULL_INDEX, JSTaggedValue::Null());
-    InitJSAPIContainers();
 }
 
 void GlobalEnvConstants::InitElementKindHClass(const JSThread *thread, JSHandle<JSHClass> originHClass)

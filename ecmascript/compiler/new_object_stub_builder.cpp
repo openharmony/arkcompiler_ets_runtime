@@ -3116,8 +3116,10 @@ GateRef NewObjectStubBuilder::CreateListFromArrayLike(GateRef glue, GateRef arra
 void NewObjectStubBuilder::CreateJSIteratorResult(GateRef glue, Variable *res, GateRef value, GateRef done, Label *exit)
 {
     auto env = GetEnvironment();
-    GateRef iterResultClass = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
-                                                     ConstantIndex::ITERATOR_RESULT_CLASS);
+    GateRef globalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
+    GateRef globalEnv = Load(VariableType::NATIVE_POINTER(), glue, globalEnvOffset);
+    GateRef iterResultClass = GetGlobalEnvValue(VariableType::JS_ANY(), globalEnv,
+                                                GlobalEnv::ITERATOR_RESULT_CLASS_INDEX);
     Label afterNew(env);
     SetParameters(glue, 0);
     NewJSObject(res, &afterNew, iterResultClass);

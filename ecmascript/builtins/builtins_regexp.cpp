@@ -206,9 +206,8 @@ bool BuiltinsRegExp::IsFastRegExp(JSThread *thread, JSTaggedValue regexp,
 {
     DISALLOW_GARBAGE_COLLECTION;
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    const GlobalEnvConstants *globalConst = thread->GlobalConstants();
     JSHClass *hclass = JSObject::Cast(regexp)->GetJSHClass();
-    JSHClass *originHClass = JSHClass::Cast(globalConst->GetJSRegExpClass().GetTaggedObject());
+    JSHClass *originHClass = JSHClass::Cast(env->GetRegExpFuncInstanceClass().GetTaggedValue().GetTaggedObject());
     // regexp instance hclass
     if (hclass != originHClass) {
         return false;

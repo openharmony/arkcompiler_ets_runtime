@@ -16,6 +16,7 @@
 #include "ecmascript/js_api/js_api_arraylist_iterator.h"
 
 #include "ecmascript/containers/containers_errors.h"
+#include "ecmascript/global_env.h"
 #include "ecmascript/js_api/js_api_arraylist.h"
 
 namespace panda::ecmascript {
@@ -37,10 +38,10 @@ JSTaggedValue JSAPIArrayListIterator::Next(EcmaRuntimeCallInfo *argv)
     }
     JSHandle<JSAPIArrayListIterator> iter(input);
     JSHandle<JSTaggedValue> arrayList(thread, iter->GetIteratedArrayList());
-    const GlobalEnvConstants *globalConst = thread->GlobalConstants();
 
     if (arrayList->IsUndefined()) {
-        return globalConst->GetUndefinedIterResult();
+        JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+        return env->GetUndefinedIteratorResult().GetTaggedValue();
     }
 
     uint32_t index = iter->GetNextIndex();
@@ -51,9 +52,10 @@ JSTaggedValue JSAPIArrayListIterator::Next(EcmaRuntimeCallInfo *argv)
     }
 
     if (index >= length) {
-        JSHandle<JSTaggedValue> undefinedHandle = globalConst->GetHandledUndefined();
+        JSHandle<JSTaggedValue> undefinedHandle = thread->GlobalConstants()->GetHandledUndefined();
         iter->SetIteratedArrayList(thread, undefinedHandle);
-        return globalConst->GetUndefinedIterResult();
+        JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+        return env->GetUndefinedIteratorResult().GetTaggedValue();
     }
 
     iter->SetNextIndex(index + 1);

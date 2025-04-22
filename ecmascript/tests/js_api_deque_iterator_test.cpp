@@ -110,7 +110,7 @@ HWTEST_F_L0(JSAPIDequeIteratorTest, SpecialReturnOfNext)
         [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
         JSTaggedValue result = JSAPIDequeIterator::Next(ecmaRuntimeCallInfo);
         TestHelper::TearDownFrame(thread, prev);
-        EXPECT_EQ(result, thread->GlobalConstants()->GetUndefinedIterResult());
+        EXPECT_EQ(result, thread->GetEcmaVM()->GetGlobalEnv()->GetUndefinedIteratorResult().GetTaggedValue());
     }
 }
 
