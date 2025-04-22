@@ -2289,9 +2289,8 @@ GateRef NewObjectStubBuilder::NewTypedArray(GateRef glue, GateRef srcTypedArray,
     Bind(&defaultConstr);
     GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
     GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
-    GateRef markerCell = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv,
-        GlobalEnv::TYPED_ARRAY_SPECIES_PROTECT_DETECTOR_INDEX);
-    BRANCH(IsMarkerCellValid(markerCell), &markerCellValid, &slowPath);
+    GateRef detector = GetTypedArraySpeciesProtectDetector(glueGlobalEnv);
+    BRANCH(BoolNot(detector), &markerCellValid, &slowPath);
     Bind(&markerCellValid);
     GateRef marker = GetProtoChangeMarkerFromHClass(LoadHClass(srcTypedArray));
     BRANCH(TaggedIsProtoChangeMarker(marker), &isProtoChangeMarker, &accessorNotChanged);

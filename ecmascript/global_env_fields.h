@@ -17,7 +17,6 @@
 #define ECMASCRIPT_GLOBAL_ENV_FIELDS_H
 
 #include <cstdint>
-#include "ecmascript/property_detector.h"
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define GLOBAL_ENV_COMMON_FIELDS(V)                                                                 \
@@ -358,8 +357,7 @@
 #define GLOBAL_ENV_FIELDS(V)                                \
     GLOBAL_ENV_SHARED_FIELDS(V)                             \
     GLOBAL_ENV_COMMON_FIELDS(V)                             \
-    GLOBAL_ENV_CONTAINER_ITERATORS(V)                       \
-    GLOBAL_ENV_DETECTOR_FIELDS(V)
+    GLOBAL_ENV_CONTAINER_ITERATORS(V)
 
 namespace panda::ecmascript {
 #define GLOBAL_ENV_FIELD_ENUM_ITEM(Type, Name, INDEX) INDEX,
@@ -368,5 +366,12 @@ namespace panda::ecmascript {
         FINAL_INDEX
     };
 #undef GLOBAL_ENV_FIELD_ENUM_ITEM
+
+#define DETECTOR_SYMBOL_LIST(V)                      \
+    V(ReplaceSymbol,  "Symbol.replace",   replace )  \
+    V(SplitSymbol,    "Symbol.split",     split   )  \
+    V(MatchAllSymbol, "Symbol.matchAll",  matchAll)  \
+    V(IteratorSymbol, "Symbol.iterator",  iterator)  \
+    V(SpeciesSymbol,  "Symbol.species",   species)
 } // namespace panda::ecmascript
 #endif // ECMASCRIPT_GLOBAL_ENV_FIELDS_H

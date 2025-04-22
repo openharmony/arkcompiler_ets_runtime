@@ -18,7 +18,6 @@
 #include "ecmascript/dfx/stackinfo/js_stackinfo.h"
 #include "ecmascript/dfx/vmstat/opt_code_profiler.h"
 #include "ecmascript/mem/verification.h"
-#include "ecmascript/property_detector-inl.h"
 #include "ecmascript/interpreter/fast_runtime_stub-inl.h"
 #include "ecmascript/linked_hash_table.h"
 #include "builtins_typedarray.h"
@@ -641,7 +640,7 @@ JSTaggedValue BuiltinsArkTools::IsRegExpReplaceDetectorValid(EcmaRuntimeCallInfo
     JSThread *thread = info->GetThread();
     RETURN_IF_DISALLOW_ARKTOOLS(thread);
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    return JSTaggedValue(PropertyDetector::IsRegExpReplaceDetectorValid(env));
+    return JSTaggedValue(!env->GetRegExpReplaceDetector());
 }
 
 JSTaggedValue BuiltinsArkTools::IsRegExpFlagsDetectorValid(EcmaRuntimeCallInfo *info)
@@ -650,7 +649,7 @@ JSTaggedValue BuiltinsArkTools::IsRegExpFlagsDetectorValid(EcmaRuntimeCallInfo *
     JSThread *thread = info->GetThread();
     RETURN_IF_DISALLOW_ARKTOOLS(thread);
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    return JSTaggedValue(PropertyDetector::IsRegExpFlagsDetectorValid(env));
+    return JSTaggedValue(!env->GetRegExpFlagsDetector());
 }
 
 JSTaggedValue BuiltinsArkTools::IsNumberStringNotRegexpLikeDetectorValid(EcmaRuntimeCallInfo *info)
@@ -659,7 +658,7 @@ JSTaggedValue BuiltinsArkTools::IsNumberStringNotRegexpLikeDetectorValid(EcmaRun
     JSThread *thread = info->GetThread();
     RETURN_IF_DISALLOW_ARKTOOLS(thread);
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    return JSTaggedValue(PropertyDetector::IsNumberStringNotRegexpLikeDetectorValid(env));
+    return JSTaggedValue(!env->GetNumberStringNotRegexpLikeDetector());
 }
 
 JSTaggedValue BuiltinsArkTools::IsSymbolIteratorDetectorValid(EcmaRuntimeCallInfo *info)
@@ -677,23 +676,23 @@ JSTaggedValue BuiltinsArkTools::IsSymbolIteratorDetectorValid(EcmaRuntimeCallInf
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<EcmaString> mapString = factory->NewFromUtf8ReadOnly("Map");
     if (JSTaggedValue::Equal(thread, kind, JSHandle<JSTaggedValue>(mapString))) {
-        return JSTaggedValue(PropertyDetector::IsMapIteratorDetectorValid(env));
+        return JSTaggedValue(!env->GetMapIteratorDetector());
     }
     JSHandle<EcmaString> setString = factory->NewFromUtf8ReadOnly("Set");
     if (JSTaggedValue::Equal(thread, kind, JSHandle<JSTaggedValue>(setString))) {
-        return JSTaggedValue(PropertyDetector::IsSetIteratorDetectorValid(env));
+        return JSTaggedValue(!env->GetSetIteratorDetector());
     }
     JSHandle<EcmaString> stringString = factory->NewFromUtf8ReadOnly("String");
     if (JSTaggedValue::Equal(thread, kind, JSHandle<JSTaggedValue>(stringString))) {
-        return JSTaggedValue(PropertyDetector::IsStringIteratorDetectorValid(env));
+        return JSTaggedValue(!env->GetStringIteratorDetector());
     }
     JSHandle<EcmaString> arrayString = factory->NewFromUtf8ReadOnly("Array");
     if (JSTaggedValue::Equal(thread, kind, JSHandle<JSTaggedValue>(arrayString))) {
-        return JSTaggedValue(PropertyDetector::IsArrayIteratorDetectorValid(env));
+        return JSTaggedValue(!env->GetArrayIteratorDetector());
     }
     JSHandle<EcmaString> typedarrayString = factory->NewFromUtf8ReadOnly("TypedArray");
     if (JSTaggedValue::Equal(thread, kind, JSHandle<JSTaggedValue>(typedarrayString))) {
-        return JSTaggedValue(PropertyDetector::IsTypedArrayIteratorDetectorValid(env));
+        return JSTaggedValue(!env->GetTypedArrayIteratorDetector());
     }
     return JSTaggedValue::Undefined();
 }

@@ -706,6 +706,12 @@ public:
     inline GateRef GetValueFromTaggedArray(VariableType valType, GateRef array, GateRef index);
     inline GateRef GetValueFromJSArrayWithElementsKind(VariableType type, GateRef array, GateRef index);
     inline GateRef GetArrayElementsGuardians(GateRef env);
+    inline GateRef GetMapIteratorDetector(GateRef env);
+    inline GateRef GetSetIteratorDetector(GateRef env);
+    inline GateRef GetStringIteratorDetector(GateRef env);
+    inline GateRef GetArrayIteratorDetector(GateRef env);
+    inline GateRef GetTypedArrayIteratorDetector(GateRef env);
+    inline GateRef GetTypedArraySpeciesProtectDetector(GateRef env);
     template<TypedLoadOp Op>
     GateRef LoadElement(GateRef receiver, GateRef index, OnHeapMode onHeap = OnHeapMode::NONE);
     GateRef LoadProperty(GateRef receiver, GateRef propertyLookupResult, bool isFunction);

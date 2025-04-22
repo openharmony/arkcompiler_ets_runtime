@@ -2515,7 +2515,9 @@ JSHandle<GlobalEnv> ObjectFactory::NewGlobalEnv(JSHClass *globalEnvClass)
     //       the offsets of the properties as the address of Handles.
     TaggedObject *header = heap_->AllocateNonMovableOrHugeObject(globalEnvClass);
     InitObjectFields(header);
-    return JSHandle<GlobalEnv>(thread_, GlobalEnv::Cast(header));
+    JSHandle<GlobalEnv> globalEnv(thread_, GlobalEnv::Cast(header));
+    globalEnv->ClearBitField();
+    return globalEnv;
 }
 
 JSHandle<LexicalEnv> ObjectFactory::NewLexicalEnv(int numSlots)
