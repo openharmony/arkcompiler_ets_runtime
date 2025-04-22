@@ -56,25 +56,16 @@ using ecmascript::DumpSnapShotOption;
 sem_t g_heapdumpCnt;
 
 void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unused]] const std::string &path,
-                                 [[maybe_unused]] const DumpSnapShotOption &dumpOption)
+                                 [[maybe_unused]] const DumpSnapShotOption &dumpOption,
+                                 const std::function<void(uint8_t)> &callback)
 {
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
     FileStream stream(path);
-    DumpHeapSnapshot(vm, &stream, dumpOption);
-#else
-    LOG_ECMA(ERROR) << "Not support arkcompiler heap snapshot";
-#endif
-}
-
-void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unused]] int& fd,
-                                 [[maybe_unused]] const DumpSnapShotOption &dumpOption,
-                                 [[maybe_unused]] const std::function<void(uint8_t)> &callback)
-{
-#if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
-    FileDescriptorStream stream(fd);
-    fd = -1;
     DumpHeapSnapshot(vm, &stream, dumpOption, nullptr, callback);
 #else
+    if (callback) {
+        callback(static_cast<uint8_t>(ecmascript::DumpHeapSnapshotStatus::FORK_FAILED));
+    }
     LOG_ECMA(ERROR) << "Not support arkcompiler heap snapshot";
 #endif
 }
