@@ -110,6 +110,7 @@ class NumberHelper {
 public:
     // double to string buffer offset
     static constexpr int BUFFER_OFFSET = 8;
+    static constexpr size_t MAX_INTEGER_STRING_LENGTH = 10;
     static const CString NAN_STR;
     static const CString ZERO_STR;
     static const CString MINUS_INFINITY_STR;
@@ -165,6 +166,34 @@ public:
         return (number == d) && std::abs(d) <= MAX_SAFE_INTEGER;
     }
 
+    // The result should be less or equal than maxValue, if not, will return false.
+    // Type T only support uint32_t and int32_t, and don't support negative int.
+    template <typename T, typename ElemType>
+    static bool StringToUint(const std::basic_string_view<ElemType> str, T& result, uint64_t maxValue)
+    {
+        static_assert(std::is_same_v<T, uint32_t> || std::is_same_v<T, int32_t>);
+        static_assert(sizeof(ElemType) == sizeof(uint8_t));
+        constexpr T base = 10;
+        if (str.empty() || str.size() > MAX_INTEGER_STRING_LENGTH) {
+            return false;
+        }
+        if (str.size() > 1 && str[0] == '0') {
+            return false;
+        }
+        uint64_t value = 0;
+        for (const uint8_t c : str) {
+            if (c > '9' || c < '0') {
+                return false;
+            }
+            value = value * base + (c - '0');
+        }
+        if UNLIKELY(value > maxValue) {
+            return false;
+        }
+        result = static_cast<T>(value);
+        return true;
+    }
+
     static JSTaggedValue DoubleToString(JSThread *thread, double number, int radix);
     static bool IsEmptyString(const uint8_t *start, const uint8_t *end);
     static JSHandle<EcmaString> IntToEcmaString(const JSThread *thread, int number);
@@ -178,7 +207,7 @@ public:
     static bool IsDigitalString(const uint8_t *start, const uint8_t *end);
     static int StringToInt(const uint8_t *start, const uint8_t *end);
     static std::pair<bool, JSTaggedNumber> FastStringToNumber(const uint8_t *start,
-        const uint8_t *end, JSTaggedValue string);
+                                                              const uint8_t *end);
     static double StringToDouble(const uint8_t *start, const uint8_t *end, uint8_t radix, uint32_t flags = NO_FLAGS);
     static int32_t DoubleToInt(double d, size_t bits);
     static int32_t PUBLIC_API DoubleInRangeInt32(double d);

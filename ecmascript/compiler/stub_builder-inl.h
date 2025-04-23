@@ -377,7 +377,7 @@ inline GateRef StubBuilder::Load(VariableType type, GateRef glue, GateRef base, 
     return LoadPrimitive(type, base, offset);
 }
 
-inline GateRef StubBuilder::Load(VariableType type, GateRef glue, GateRef base, MemoryAttribute mAttr)
+inline GateRef StubBuilder::LoadZeroOffset(VariableType type, GateRef glue, GateRef base, MemoryAttribute mAttr)
 {
     return Load(type, glue, base, IntPtr(0), mAttr);
 }
@@ -2516,7 +2516,7 @@ inline GateRef StubBuilder::GetUnsharedConstpool(GateRef glue, GateRef arrayAddr
 {
     GateRef dataOffset =
         PtrAdd(arrayAddr, PtrMul(IntPtr(JSTaggedValue::TaggedTypeSize()), ZExtInt32ToPtr(TaggedGetInt(index))));
-    return Load(VariableType::JS_ANY(), glue, dataOffset);
+    return LoadZeroOffset(VariableType::JS_ANY(), glue, dataOffset);
 }
 
 inline GateRef StubBuilder::GetValueFromMutantTaggedArray(GateRef elements, GateRef index)
@@ -3796,29 +3796,14 @@ inline void StubBuilder::InitStringLengthAndFlags(GateRef glue, GateRef str, Gat
     Store(VariableType::INT32(), glue, str, IntPtr(EcmaString::LENGTH_AND_FLAGS_OFFSET), mixLength);
 }
 
-inline GateRef StubBuilder::IsIntegerString(GateRef string)
+inline void StubBuilder::SetRawHashcode(GateRef glue, GateRef str, GateRef rawHashcode)
 {
-    return env_->GetBuilder()->IsIntegerString(string);
-}
-
-inline GateRef StubBuilder::GetRawHashFromString(GateRef value)
-{
-    return env_->GetBuilder()->GetRawHashFromString(value);
-}
-
-inline void StubBuilder::SetRawHashcode(GateRef glue, GateRef str, GateRef rawHashcode, GateRef isInteger)
-{
-    env_->GetBuilder()->SetRawHashcode(glue, str, rawHashcode, isInteger);
+    env_->GetBuilder()->SetRawHashcode(glue, str, rawHashcode);
 }
 
 inline GateRef StubBuilder::TryGetHashcodeFromString(GateRef string)
 {
     return env_->GetBuilder()->TryGetHashcodeFromString(string);
-}
-
-inline GateRef StubBuilder::GetMixHashcode(GateRef string)
-{
-    return LoadPrimitive(VariableType::INT32(), string, IntPtr(EcmaString::MIX_HASHCODE_OFFSET));
 }
 
 inline void StubBuilder::SetElementsKindToJSHClass(GateRef glue, GateRef jsHclass, GateRef elementsKind)
@@ -4156,7 +4141,7 @@ inline GateRef StubBuilder::HashFromHclassAndStringKey([[maybe_unused]] GateRef 
 {
     GateRef clsHash =
         Int32LSR(ChangeIntPtrToInt32(TaggedCastToIntPtr(cls)), Int32(MegaICCache::HCLASS_SHIFT)); // skip 8bytes
-    GateRef keyHash = LoadPrimitive(VariableType::INT32(), key, IntPtr(EcmaString::MIX_HASHCODE_OFFSET));
+    GateRef keyHash = LoadPrimitive(VariableType::INT32(), key, IntPtr(EcmaString::RAW_HASHCODE_OFFSET));
     GateRef temp = Int32Xor(Int32Xor(Int32Mul(clsHash, Int32(31)), Int32Mul(keyHash, Int32(0x9e3779b9))),
                             Int32LSR(keyHash, Int32(16)));
     return Int32And(temp, Int32(MegaICCache::CACHE_LENGTH_MASK));

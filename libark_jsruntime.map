@@ -157,7 +157,7 @@
       panda::ecmascript::EcmaContext::FindOrCreateUnsharedConstpool*;
       panda::ecmascript::EcmaRuntimeStat::StartCount*;
       panda::ecmascript::EcmaRuntimeStat::StopCount*;
-      panda::ecmascript::EcmaString::ComputeHashcode*;
+      panda::ecmascript::EcmaString::ComputeRawHashcode*;
       panda::ecmascript::EcmaString::Flatten*;
       panda::ecmascript::EcmaString::GetUtf16DataFlat*;
       panda::ecmascript::EcmaString::GetUtf8DataFlat*;

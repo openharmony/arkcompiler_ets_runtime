@@ -1555,7 +1555,7 @@ void BuiltinsStringStubBuilder::CopyChars(GateRef glue, GateRef dst, GateRef sou
                 Bind(&body);
                 {
                     len = Int32Sub(*len, Int32(1));
-                    GateRef i = Load(type, glue, *sourceTmp);
+                    GateRef i = LoadZeroOffset(type, glue, *sourceTmp);
                     Store(type, glue, *dstTmp, IntPtr(0), i);
                     Jump(&tailLoopEnd);
                 }
@@ -2484,7 +2484,7 @@ GateRef BuiltinsStringStubBuilder::AllocateLineString(GateRef glue, GateRef leng
                    builder_.IntPtr(0), stringClass, MemoryAttribute::NeedBarrierAndAtomic());
     InitStringLengthAndFlags(glue, lineString, length, canBeCompressed);
     builder_.Store(VariableType::INT32(), glue, lineString,
-                   builder_.IntPtr(EcmaString::MIX_HASHCODE_OFFSET), builder_.Int32(0));
+                   builder_.IntPtr(EcmaString::RAW_HASHCODE_OFFSET), builder_.Int32(0));
     auto ret = builder_.FinishAllocate(lineString);
     builder_.SubCfgExit();
     return ret;
@@ -2510,7 +2510,7 @@ GateRef BuiltinsStringStubBuilder::AllocateSlicedString(GateRef glue, GateRef fl
                    builder_.IntPtr(0), stringClass, MemoryAttribute::NeedBarrierAndAtomic());
     InitStringLengthAndFlags(glue, slicedString, length, canBeCompressed);
     builder_.Store(VariableType::INT32(), glue, slicedString,
-                   builder_.IntPtr(EcmaString::MIX_HASHCODE_OFFSET), builder_.Int32(0));
+                   builder_.IntPtr(EcmaString::RAW_HASHCODE_OFFSET), builder_.Int32(0));
     builder_.Store(VariableType::JS_POINTER(), glue, slicedString,
                    builder_.IntPtr(SlicedString::PARENT_OFFSET), flatString);
     StoreStartIndexAndBackingStore(glue, slicedString, builder_.Int32(0), builder_.Boolean(true));
@@ -3596,5 +3596,107 @@ void BuiltinsStringStubBuilder::PadEnd(GateRef glue, GateRef thisValue, GateRef 
             }
         }
     }
+}
+
+GateRef BuiltinsStringStubBuilder::StringToUint(GateRef glue, GateRef string, uint64_t maxValue)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+    DEFVARIABLE(result, VariableType::INT64(), Int64(-1));
+    Label greatThanZero(env);
+    Label inRange(env);
+    Label flattenFastPath(env);
+    auto len = GetLengthFromString(string);
+    BRANCH_UNLIKELY(Int32Equal(len, Int32(0)), &exit, &greatThanZero);
+    Bind(&greatThanZero);
+    BRANCH_NO_WEIGHT(Int32GreaterThan(len, Int32(MAX_ELEMENT_INDEX_LEN)), &exit, &inRange);
+    Bind(&inRange);
+    {
+        Label isUtf8(env);
+        GateRef isUtf16String = IsUtf16String(string);
+        BRANCH_NO_WEIGHT(isUtf16String, &exit, &isUtf8);
+        Bind(&isUtf8);
+        {
+            FlatStringStubBuilder thisFlat(this);
+            thisFlat.FlattenString(glue, string, &flattenFastPath);
+            Bind(&flattenFastPath);
+            StringInfoGateRef stringInfoGate(&thisFlat);
+            GateRef dataUtf8 = GetNormalStringData(stringInfoGate);
+            result = StringDataToUint(dataUtf8, len, maxValue);
+            Jump(&exit);
+        }
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+// length should be at least 1
+GateRef BuiltinsStringStubBuilder::StringDataToUint(GateRef dataUtf8, GateRef len, uint64_t maxValue)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+    DEFVARIABLE(result, VariableType::INT64(), Int64(-1));
+    DEFVARIABLE(c, VariableType::INT32(), Int32(0));
+    c = ZExtInt8ToInt32(LoadPrimitive(VariableType::INT8(), dataUtf8));
+    Label isDigitZero(env);
+    Label notDigitZero(env);
+    BRANCH_NO_WEIGHT(Int32Equal(*c, Int32('0')), &isDigitZero, &notDigitZero);
+    Bind(&isDigitZero);
+    {
+        Label lengthIsOne(env);
+        BRANCH_NO_WEIGHT(Int32Equal(len, Int32(1)), &lengthIsOne, &exit);
+        Bind(&lengthIsOne);
+        {
+            result = Int64(0);
+            Jump(&exit);
+        }
+    }
+    Bind(&notDigitZero);
+    {
+        Label loopHead(env);
+        Label loopEnd(env);
+        Label afterLoop(env);
+        DEFVARIABLE(i, VariableType::INT32(), Int32(1));
+        DEFVARIABLE(n, VariableType::INT64(), Int64Sub(ZExtInt32ToInt64(*c), Int64('0')));
+        BRANCH_NO_WEIGHT(IsDigit(*c), &loopHead, &exit);
+        LoopBegin(&loopHead);
+        {
+            Label doCheck(env);
+            BRANCH_LIKELY(Int32UnsignedLessThan(*i, len), &doCheck, &afterLoop);
+            Bind(&doCheck);
+            c = ZExtInt8ToInt32(LoadPrimitive(VariableType::INT8(), dataUtf8, ZExtInt32ToPtr(*i)));
+            Label isDigit2(env);
+            BRANCH_NO_WEIGHT(IsDigit(*c), &isDigit2, &exit);
+            Bind(&isDigit2);
+            {
+                // 10 means the base of digit is 10.
+                n = Int64Add(Int64Mul(*n, Int64(10)), Int64Sub(ZExtInt32ToInt64(*c), Int64('0')));
+                Jump(&loopEnd);
+            }
+        }
+        Bind(&loopEnd);
+        i = Int32Add(*i, Int32(1));
+        LoopEnd(&loopHead);
+        Bind(&afterLoop);
+        {
+            Label notGreatThanMaxIndex(env);
+            BRANCH_UNLIKELY(Int64GreaterThan(*n, Int64(maxValue)), &exit, &notGreatThanMaxIndex);
+            Bind(&notGreatThanMaxIndex);
+            {
+                result = *n;
+                Jump(&exit);
+            }
+        }
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
 }
 }  // namespace panda::ecmascript::kungfu

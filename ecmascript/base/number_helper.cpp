@@ -859,33 +859,29 @@ int NumberHelper::StringToInt(const uint8_t *start, const uint8_t *end)
 
 // only for string is ordinary string and using UTF8 encoding
 // Fast path for short integer and some special value
-std::pair<bool, JSTaggedNumber> NumberHelper::FastStringToNumber(const uint8_t *start,
-    const uint8_t *end, JSTaggedValue string)
+std::pair<bool, JSTaggedNumber> NumberHelper::FastStringToNumber(const uint8_t *start, const uint8_t *end)
 {
     ASSERT(start < end);
-    EcmaStringAccessor strAccessor(string);
     bool minus = (start[0] == '-');
     int pos = (minus ? 1 : 0);
 
     if (pos == (end - start)) {
         return {true, JSTaggedNumber(NAN_VALUE)};
-    } else if (*(start + pos) > '9') {
+    }
+    if (*(start + pos) > '9') {
         // valid number's codes not longer than '9', except 'I' and non-breaking space.
         if (*(start + pos) != 'I' && *(start + pos) != 0xA0) {
             return {true, JSTaggedNumber(NAN_VALUE)};
         }
     } else if ((end - (start + pos)) <= MAX_ELEMENT_INDEX_LEN && IsDigitalString((start + pos), end)) {
         int num = StringToInt((start + pos), end);
-        if (minus) {
-            if (num == 0) {
-                return {true, JSTaggedNumber(SignedZero(Sign::NEG))};
-            }
-            num = -num;
-        } else {
-            if ((num != 0) || (end - start == 1)) {
-                strAccessor.TryToSetIntegerHash(num);
-            }
+        if LIKELY(!minus) {
+            return {true, JSTaggedNumber(num)};
         }
+        if (num == 0) {
+            return {true, JSTaggedNumber(SignedZero(Sign::NEG))};
+        }
+        num = -num;
         return {true, JSTaggedNumber(num)};
     }
 

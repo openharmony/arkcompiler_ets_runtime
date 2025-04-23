@@ -1710,7 +1710,7 @@ void NewObjectStubBuilder::AllocLineStringObject(Variable *result, Label *exit, 
     Bind(&afterAllocate);
     StoreHClass(glue_, result->ReadVariable(), stringClass);
     InitStringLengthAndFlags(glue_, result->ReadVariable(), length, compressed);
-    SetRawHashcode(glue_, result->ReadVariable(), Int32(0), False());
+    SetRawHashcode(glue_, result->ReadVariable(), Int32(0));
     Jump(exit);
 }
 
@@ -1733,7 +1733,7 @@ void NewObjectStubBuilder::AllocSlicedStringObject(Variable *result, Label *exit
                                                          mixLength));
     InitStringLengthAndFlags(glue_, result->ReadVariable(), length, BoolNot(compressedStatus));
     // decode compressedStatus to bool
-    SetRawHashcode(glue_, result->ReadVariable(), Int32(0), False());
+    SetRawHashcode(glue_, result->ReadVariable(), Int32(0));
     BuiltinsStringStubBuilder builtinsStringStubBuilder(this);
     builtinsStringStubBuilder.StoreParent(glue_, result->ReadVariable(), flatString->GetFlatString());
     builtinsStringStubBuilder.StoreStartIndexAndBackingStore(glue_, result->ReadVariable(),
@@ -1756,7 +1756,7 @@ void NewObjectStubBuilder::AllocTreeStringObject(Variable *result, Label *exit, 
     Bind(&afterAllocate);
     StoreHClass(glue_, result->ReadVariable(), stringClass);
     InitStringLengthAndFlags(glue_, result->ReadVariable(), length, compressed);
-    SetRawHashcode(glue_, result->ReadVariable(), Int32(0), False());
+    SetRawHashcode(glue_, result->ReadVariable(), Int32(0));
     Store(VariableType::JS_POINTER(), glue_, result->ReadVariable(), IntPtr(TreeEcmaString::FIRST_OFFSET), first);
     Store(VariableType::JS_POINTER(), glue_, result->ReadVariable(), IntPtr(TreeEcmaString::SECOND_OFFSET), second);
     Jump(exit);
