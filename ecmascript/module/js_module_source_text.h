@@ -24,6 +24,7 @@
 #include "ecmascript/sendable_env.h"
 
 namespace panda::ecmascript {
+using ResolvedMultiMap = CUnorderedMultiMap<CString *, JSHandle<JSTaggedValue>>;
 struct StateVisit;
 enum class ModuleStatus : uint8_t {
     // don't change order
@@ -88,10 +89,9 @@ public:
     static CVector<std::string> GetExportedNames(JSThread *thread, const JSHandle<SourceTextModule> &module,
                                                  const JSHandle<TaggedArray> &exportStarSet);
 
-    // 15.2.1.16.3 ResolveExport(exportName, resolveVector)
+    // 15.2.1.16.3 ResolveExport(exportName, resolvedMap)
     static JSHandle<JSTaggedValue> ResolveExport(JSThread *thread, const JSHandle<SourceTextModule> &module,
-        const JSHandle<JSTaggedValue> &exportName,
-        CVector<std::pair<JSHandle<SourceTextModule>, JSHandle<JSTaggedValue>>> &resolveVector);
+        const JSHandle<JSTaggedValue> &exportName, ResolvedMultiMap &resolvedMap);
     static JSHandle<JSTaggedValue> ResolveExportObject(JSThread *thread, const JSHandle<SourceTextModule> &module,
                                                        const JSHandle<JSTaggedValue> &exportObject,
                                                        const JSHandle<JSTaggedValue> &exportName);
@@ -255,6 +255,15 @@ public:
         return *recordName;
     }
 
+    static inline CString* GetModuleName(const JSHandle<SourceTextModule> &module)
+    {
+        CString* moduleName = reinterpret_cast<CString *>(module->GetEcmaModuleRecordName());
+        if (UNLIKELY(moduleName == nullptr)) {
+            return reinterpret_cast<CString *>(module->GetEcmaModuleFilename());
+        }
+        return moduleName;
+    }
+
     inline void SetEcmaModuleFilenameString(const CString &fileName)
     {
         CString *ptr = new CString(fileName);
@@ -356,11 +365,11 @@ public:
     static JSTaggedValue GetValueFromExportObject(JSThread *thread, JSHandle<JSTaggedValue> &exportObject,
         int32_t index);
 
-    static JSHandle<JSTaggedValue> ResolveIndirectExport(JSThread *thread, const JSHandle<JSTaggedValue> &exportEntry,
+    static JSHandle<JSTaggedValue> ResolveIndirectExport(JSThread *thread,
+                                                         const JSHandle<JSTaggedValue> &exportEntry,
                                                          const JSHandle<JSTaggedValue> &exportName,
                                                          const JSHandle<SourceTextModule> &module,
-                                                         CVector<std::pair<JSHandle<SourceTextModule>,
-                                                         JSHandle<JSTaggedValue>>> &resolveVector);
+                                                         ResolvedMultiMap &resolvedMap);
     static CString GetModuleName(JSTaggedValue currentModule);
 
     static bool IsDynamicModule(LoadingTypes types);
@@ -396,11 +405,11 @@ public:
                                          int index);
 
 private:
-    static JSHandle<JSTaggedValue> GetStarResolution(JSThread *thread, const JSHandle<JSTaggedValue> &exportName,
+    static JSHandle<JSTaggedValue> GetStarResolution(JSThread *thread,
+                                                     const JSHandle<JSTaggedValue> &exportName,
                                                      const JSHandle<SourceTextModule> importedModule,
                                                      JSMutableHandle<JSTaggedValue> &starResolution,
-                                                     CVector<std::pair<JSHandle<SourceTextModule>,
-                                                     JSHandle<JSTaggedValue>>> &resolveVector);
+                                                     ResolvedMultiMap &resolvedMap);
     template <typename T>
     static void AddExportName(JSThread *thread, const JSTaggedValue &exportEntry, CVector<std::string> &exportedNames);
     static JSHandle<JSTaggedValue> ResolveLocalExport(JSThread *thread, const JSHandle<JSTaggedValue> &exportEntry,
@@ -412,8 +421,7 @@ private:
                                                          const JSHandle<SourceTextModule> &module);
     static bool CheckCircularImport(const JSHandle<SourceTextModule> &module,
                                     const JSHandle<JSTaggedValue> &exportName,
-                                    CVector<std::pair<JSHandle<SourceTextModule>,
-                                    JSHandle<JSTaggedValue>>> &resolveVector);
+                                    ResolvedMultiMap &resolvedMap);
     static JSTaggedValue FindByExport(const JSTaggedValue &exportEntriesTv, const JSTaggedValue &key,
                                       const JSTaggedValue &dictionary);
     static void DFSModuleInstantiation(JSHandle<SourceTextModule> &module,

@@ -81,14 +81,19 @@ CVector<std::string> SourceTextModule::GetExportedNames(JSThread *thread, const 
 }
 
 bool SourceTextModule::CheckCircularImport(const JSHandle<SourceTextModule> &module,
-    const JSHandle<JSTaggedValue> &exportName,
-    CVector<std::pair<JSHandle<SourceTextModule>, JSHandle<JSTaggedValue>>> &resolveVector)
+                                           const JSHandle<JSTaggedValue> &exportName,
+                                           ResolvedMultiMap &resolvedMap)
 {
-    for (auto rr : resolveVector) {
+    if (resolvedMap.empty()) {
+        return false;
+    }
+    auto range = resolvedMap.equal_range(reinterpret_cast<CString *>(GetModuleName(module)));
+    for (auto iter = range.first; iter != range.second; ++iter) {
+        auto name = iter->second;
         // a. If module and r.[[Module]] are the same Module Record and
         // SameValue(exportName, r.[[ExportName]]) is true, then
-        if (JSTaggedValue::SameValue(rr.first.GetTaggedValue(), module.GetTaggedValue()) &&
-            JSTaggedValue::SameValue(rr.second, exportName)) {
+        if (JSTaggedValue::StringCompare(EcmaString::Cast(name.GetTaggedValue().GetTaggedObject()),
+                                         EcmaString::Cast(exportName.GetTaggedValue().GetTaggedObject()))) {
             // i. Assert: This is a circular import request.
             // ii. Return true.
             return true;
@@ -167,19 +172,20 @@ JSHandle<JSTaggedValue> SourceTextModule::ResolveCjsStarExport(JSThread *thread,
     return SourceTextModule::ResolveExportObject(thread, cjsModule, cjsExports, exportName);
 }
 
-JSHandle<JSTaggedValue> SourceTextModule::ResolveExport(JSThread *thread, const JSHandle<SourceTextModule> &module,
-    const JSHandle<JSTaggedValue> &exportName,
-    CVector<std::pair<JSHandle<SourceTextModule>, JSHandle<JSTaggedValue>>> &resolveVector)
+JSHandle<JSTaggedValue> SourceTextModule::ResolveExport(JSThread *thread,
+                                                        const JSHandle<SourceTextModule> &module,
+                                                        const JSHandle<JSTaggedValue> &exportName,
+                                                        ResolvedMultiMap &resolvedMap)
 {
     // 1. Let module be this Source Text Module Record.
     auto globalConstants = thread->GlobalConstants();
     // Check if circular import request.
-    // 2.For each Record { [[Module]], [[ExportName]] } r in resolveVector, do
-    if (CheckCircularImport(module, exportName, resolveVector)) {
+    // 2.For each Record { [[Module]], [[ExportName]] } r in resolvedMap, do
+    if (CheckCircularImport(module, exportName, resolvedMap)) {
         return globalConstants->GetHandledNull();
     }
-    // 3. Append the Record { [[Module]]: module, [[ExportName]]: exportName } to resolveVector.
-    resolveVector.emplace_back(std::make_pair(module, exportName));
+    // 3. Append the Record { [[Module]]: module, [[ExportName]]: exportName } to resolvedMap.
+    resolvedMap.emplace(reinterpret_cast<CString *>(GetModuleName(module)), exportName);
     // 4. For each ExportEntry Record e in module.[[LocalExportEntries]], do
     JSHandle<JSTaggedValue> localExportEntriesTv(thread, module->GetLocalExportEntries());
     if (!localExportEntriesTv->IsUndefined()) {
@@ -192,7 +198,7 @@ JSHandle<JSTaggedValue> SourceTextModule::ResolveExport(JSThread *thread, const 
     JSHandle<JSTaggedValue> indirectExportEntriesTv(thread, module->GetIndirectExportEntries());
     if (!indirectExportEntriesTv->IsUndefined()) {
         JSHandle<JSTaggedValue> resolution = ResolveIndirectExport(thread, indirectExportEntriesTv,
-                                                                   exportName, module, resolveVector);
+                                                                   exportName, module, resolvedMap);
         RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
         if (!resolution->IsUndefined()) {
             return resolution;
@@ -224,7 +230,7 @@ JSHandle<JSTaggedValue> SourceTextModule::ResolveExport(JSThread *thread, const 
             GetRequestedModule(thread, requestedModules, ee->GetModuleRequestIndex());
         RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
         JSHandle<JSTaggedValue> result = GetStarResolution(thread, exportName, requestedModule,
-                                                           starResolution, resolveVector);
+                                                           starResolution, resolvedMap);
         RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
         if (result->IsString() || result->IsException()) {
             return result;
@@ -711,9 +717,9 @@ void SourceTextModule::ModuleDeclarationEnvironmentSetup(JSThread *thread,
             envRec.Update(newMap);
         } else {
             // i. Let resolution be ? importedModule.ResolveExport(in.[[ImportName]], « »).
-            CVector<std::pair<JSHandle<SourceTextModule>, JSHandle<JSTaggedValue>>> resolveVector;
+            ResolvedMultiMap resolvedMap;
             JSHandle<JSTaggedValue> resolution =
-                SourceTextModule::ResolveExport(thread, importedModule, importName, resolveVector);
+                SourceTextModule::ResolveExport(thread, importedModule, importName, resolvedMap);
             RETURN_IF_ABRUPT_COMPLETION(thread);
             // ii. If resolution is null or "ambiguous", throw a SyntaxError exception.
             if (resolution->IsNull() || resolution->IsString()) {
@@ -784,9 +790,9 @@ void SourceTextModule::ModuleDeclarationArrayEnvironmentSetup(JSThread *thread,
             return;
         }
         // i. Let resolution be ? importedModule.ResolveExport(in.[[ImportName]], « »).
-        CVector<std::pair<JSHandle<SourceTextModule>, JSHandle<JSTaggedValue>>> resolveVector;
+        ResolvedMultiMap resolvedMap;
         JSHandle<JSTaggedValue> resolution =
-            SourceTextModule::ResolveExport(thread, importedModule, importName, resolveVector);
+            SourceTextModule::ResolveExport(thread, importedModule, importName, resolvedMap);
         RETURN_IF_ABRUPT_COMPLETION(thread);
         // ii. If resolution is null or "ambiguous", throw a SyntaxError exception.
         if (resolution->IsNull() || resolution->IsString()) {
@@ -830,10 +836,10 @@ JSHandle<JSTaggedValue> SourceTextModule::GetModuleNamespace(JSThread *thread,
         size_t idx = 0;
         for (std::string &name : exportedNames) {
             // i. Let resolution be ? module.ResolveExport(name, « »).
-            CVector<std::pair<JSHandle<SourceTextModule>, JSHandle<JSTaggedValue>>> resolveVector;
+            ResolvedMultiMap resolvedMap;
             JSHandle<JSTaggedValue> nameHandle = JSHandle<JSTaggedValue>::Cast(factory->NewFromStdString(name));
             JSHandle<JSTaggedValue> resolution =
-                SourceTextModule::ResolveExport(thread, module, nameHandle, resolveVector);
+                SourceTextModule::ResolveExport(thread, module, nameHandle, resolvedMap);
             RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
             // ii. If resolution is a ResolvedBinding Record, append name to unambiguousNames.
             if (resolution->IsModuleBinding()) {
@@ -1465,10 +1471,9 @@ JSHandle<JSTaggedValue> SourceTextModule::GetStarResolution(JSThread *thread,
                                                             const JSHandle<JSTaggedValue> &exportName,
                                                             const JSHandle<SourceTextModule> importedModule,
                                                             JSMutableHandle<JSTaggedValue> &starResolution,
-                                                            CVector<std::pair<JSHandle<SourceTextModule>,
-                                                            JSHandle<JSTaggedValue>>> &resolveVector)
+                                                            ResolvedMultiMap &resolvedMap)
 {
-    // b. Let resolution be ? importedModule.ResolveExport(exportName, resolveVector).
+    // b. Let resolution be ? importedModule.ResolveExport(exportName, resolvedMap).
     auto moduleType = importedModule->GetTypes();
     bool isNativeModule = IsNativeModule(moduleType);
     JSHandle<JSTaggedValue> resolution;
@@ -1477,7 +1482,7 @@ JSHandle<JSTaggedValue> SourceTextModule::GetStarResolution(JSThread *thread,
             ? SourceTextModule::ResolveNativeStarExport(thread, importedModule, exportName)
             : SourceTextModule::ResolveCjsStarExport(thread, importedModule, exportName);
     } else {
-        resolution = SourceTextModule::ResolveExport(thread, importedModule, exportName, resolveVector);
+        resolution = SourceTextModule::ResolveExport(thread, importedModule, exportName, resolvedMap);
     }
 
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
@@ -1591,8 +1596,7 @@ JSHandle<JSTaggedValue> SourceTextModule::ResolveIndirectExport(JSThread *thread
                                                                 const JSHandle<JSTaggedValue> &exportEntry,
                                                                 const JSHandle<JSTaggedValue> &exportName,
                                                                 const JSHandle<SourceTextModule> &module,
-                                                                CVector<std::pair<JSHandle<SourceTextModule>,
-                                                                JSHandle<JSTaggedValue>>> &resolveVector)
+                                                                ResolvedMultiMap &resolvedMap)
 {
     auto globalConstants = thread->GlobalConstants();
     JSTaggedValue undefined = globalConstants->GetUndefined();
@@ -1610,9 +1614,9 @@ JSHandle<JSTaggedValue> SourceTextModule::ResolveIndirectExport(JSThread *thread
             JSHandle<SourceTextModule> requestedModule =
                 GetRequestedModule(thread, requestedModules, ee->GetModuleRequestIndex());
             RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
-            // iii. Return importedModule.ResolveExport(e.[[ImportName]], resolveVector).
+            // iii. Return importedModule.ResolveExport(e.[[ImportName]], resolvedMap).
             importName.Update(ee->GetImportName());
-            return SourceTextModule::ResolveExport(thread, requestedModule, importName, resolveVector);
+            return SourceTextModule::ResolveExport(thread, requestedModule, importName, resolvedMap);
         }
     }
     return thread->GlobalConstants()->GetHandledUndefined();
@@ -1635,9 +1639,9 @@ void SourceTextModule::CheckResolvedBinding(JSThread *thread, const JSHandle<Sou
         ee.Update(indirectExportEntries->Get(idx));
         // a. Let resolution be ? module.ResolveExport(e.[[ExportName]], « »).
         exportName.Update(ee->GetExportName());
-        CVector<std::pair<JSHandle<SourceTextModule>, JSHandle<JSTaggedValue>>> resolveVector;
+        ResolvedMultiMap resolvedMap;
         JSHandle<JSTaggedValue> resolution =
-            SourceTextModule::ResolveExport(thread, module, exportName, resolveVector);
+            SourceTextModule::ResolveExport(thread, module, exportName, resolvedMap);
         RETURN_IF_ABRUPT_COMPLETION(thread);
         // b. If resolution is null or "ambiguous", throw a SyntaxError exception.
         if (resolution->IsNull() || resolution->IsString()) {
@@ -1676,9 +1680,9 @@ void SourceTextModule::CheckResolvedIndexBinding(JSThread *thread, const JSHandl
         ee.Update(indirectExportEntries->Get(idx));
         // a. Let resolution be ? module.ResolveExport(e.[[ExportName]], « »).
         exportName.Update(ee->GetExportName());
-        CVector<std::pair<JSHandle<SourceTextModule>, JSHandle<JSTaggedValue>>> resolveVector;
+        ResolvedMultiMap resolvedMap;
         JSHandle<JSTaggedValue> resolution =
-            SourceTextModule::ResolveExport(thread, module, exportName, resolveVector);
+            SourceTextModule::ResolveExport(thread, module, exportName, resolvedMap);
         RETURN_IF_ABRUPT_COMPLETION(thread);
         // b. If resolution is null or "ambiguous", throw a SyntaxError exception.
         if (resolution->IsNull() || resolution->IsString()) {
