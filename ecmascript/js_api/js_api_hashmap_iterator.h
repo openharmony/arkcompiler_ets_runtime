@@ -31,14 +31,6 @@ public:
     static JSTaggedValue Next(EcmaRuntimeCallInfo *argv);
     static JSHandle<JSTaggedValue> CreateHashMapIterator(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
                                                          IterationKind kind);
-    static JSHandle<JSTaggedValue> GetCurrentNode(JSThread *thread, JSHandle<JSAPIHashMapIterator> &iter,
-                                                  JSMutableHandle<TaggedQueue> &queue,
-                                                  JSHandle<TaggedHashArray> &tableArr);
-    static JSHandle<JSTaggedValue> FastGetCurrentNode(JSThread *thread,
-                                                      JSHandle<JSAPIHashMapIterator> &iter,
-                                                      JSMutableHandle<TaggedQueue> &queue,
-                                                      JSHandle<TaggedHashArray> &tableArr);
-
     static constexpr size_t ITERATED_HASHMAP_OFFSET = JSObject::SIZE;
     ACCESSORS(IteratedHashMap, ITERATED_HASHMAP_OFFSET, TAGGED_QUEUE_OFFSET);
     ACCESSORS(TaggedQueue, TAGGED_QUEUE_OFFSET, CURRENT_NODE_RESULT);

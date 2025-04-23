@@ -1275,7 +1275,7 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 break;
             }
             case JSType::JS_API_HASHSET_ITERATOR: {
-                CHECK_DUMP_FIELDS(JSObject::SIZE, JSAPIHashSetIterator::SIZE, 5U);
+                CHECK_DUMP_FIELDS(JSObject::SIZE, JSAPIHashSetIterator::SIZE, 4U);
                 JSHandle<JSAPIHashSet> jsHashSet = NewJSAPIHashSet(thread, factory);
                 JSHandle<JSAPIHashSetIterator> jsHashSetIter =
                     factory->NewJSAPIHashSetIterator(jsHashSet, IterationKind::KEY);
