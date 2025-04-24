@@ -78,6 +78,7 @@ namespace panda::ecmascript::kungfu {
     V(DivideZero2,                     DIVZERO2)                       \
     V(InlineFail1,                     INLINEFAIL1)                    \
     V(InlineFail2,                     INLINEFAIL2)                    \
+    V(InlineSuperFail,                 INLINESUPERFAIL)                \
     V(NotJSFastCallTarget1,            NOTJSFASTCALLTGT1)              \
     V(NotJSFastCallTarget2,            NOTJSFASTCALLTGT2)              \
     V(NotJSFastCallTarget3,            NOTJSFASTCALLTGT3)              \

@@ -233,6 +233,8 @@ private:
     void LowerMigrateArrayWithKind(GateRef gate);
     void LowerEcmaObjectCheck(GateRef gate);
     void LowerElementskindCheck(GateRef gate);
+    void LowerInlineSuperCtorCheck(GateRef gate);
+    void LowerCheckConstructor(GateRef gate, GateRef glue);
 
     GateRef LowerCallRuntime(GateRef glue, GateRef hirGate, int index, const std::vector<GateRef> &args,
                              bool useLabel = false);

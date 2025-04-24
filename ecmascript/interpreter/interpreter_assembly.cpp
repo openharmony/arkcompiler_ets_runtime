@@ -289,6 +289,21 @@ void InterpreterAssembly::MethodEntry(JSThread *thread, Method *method, JSTagged
     }
 }
 
+int64_t InterpreterAssembly::GetCallSize(EcmaOpcode opcode)
+{
+    int64_t callSize = BytecodeInstruction::Size(opcode);
+    switch (opcode) {
+        case EcmaOpcode::SUPERCALLSPREAD_IMM8_V8:
+        case EcmaOpcode::SUPERCALLTHISRANGE_IMM8_IMM8_V8:
+        case EcmaOpcode::NEWOBJRANGE_IMM8_IMM8_V8:
+        case EcmaOpcode::WIDE_NEWOBJRANGE_PREF_IMM16_V8:
+            return -callSize;
+        default:
+            return callSize;
+    }
+    return callSize;
+}
+
 JSTaggedValue InterpreterAssembly::GeneratorReEnterInterpreter(JSThread *thread, JSHandle<GeneratorContext> context)
 {
     // check is or not debugger

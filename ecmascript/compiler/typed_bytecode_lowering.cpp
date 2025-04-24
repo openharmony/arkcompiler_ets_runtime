@@ -1719,13 +1719,10 @@ void TypedBytecodeLowering::LowerTypedSuperCall(GateRef gate)
     AddProfiling(gate);
 
     GateRef ctor = tacc.GetCtor();
-    // stateSplit maybe not a STATE_SPLIT
-    GateRef stateSplit = acc_.GetDep(gate);
 
-    GateRef frameState = acc_.FindNearestFrameState(stateSplit);
     GateRef superCtor = builder_.GetSuperConstructor(ctor);
     GateRef newTarget = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::NEW_TARGET);
-    GateRef thisObj = builder_.TypedSuperAllocateThis(superCtor, newTarget, frameState);
+    GateRef thisObj = builder_.TypedSuperAllocateThis(superCtor, newTarget);
 
     // call constructor
     size_t range = acc_.GetNumValueIn(gate);

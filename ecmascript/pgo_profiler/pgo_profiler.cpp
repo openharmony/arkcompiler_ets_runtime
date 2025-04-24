@@ -770,7 +770,8 @@ void PGOProfiler::ProfileBytecode(ApEntityId abcId, const CString& recordName, J
             case EcmaOpcode::CALLTHIS1_IMM8_V8_V8:
             case EcmaOpcode::CALLTHIS2_IMM8_V8_V8_V8:
             case EcmaOpcode::CALLTHIS3_IMM8_V8_V8_V8_V8:
-            case EcmaOpcode::CALLTHISRANGE_IMM8_IMM8_V8: {
+            case EcmaOpcode::CALLTHISRANGE_IMM8_IMM8_V8:
+            case EcmaOpcode::SUPERCALLTHISRANGE_IMM8_IMM8_V8: {
                 uint8_t slotId = READ_INST_8_0();
                 CHECK_SLOTID_BREAK(slotId);
                 DumpCall(abcId, recordName, methodId, bcOffset, slotId, profileTypeInfo);

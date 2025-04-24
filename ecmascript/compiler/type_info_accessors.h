@@ -61,6 +61,26 @@ public:
         return JitCompilationEnv::INVALID_HEAP_CONSTANT_INDEX;
     }
 
+    uint32_t TryGetInlineHeapConstantFunctionIndex(uint32_t callMethodId) const
+    {
+        if (compilationEnv_ == nullptr || !compilationEnv_->SupportHeapConstant()) {
+            return JitCompilationEnv::INVALID_HEAP_CONSTANT_INDEX;
+        }
+        ASSERT(compilationEnv_->IsJitCompiler());
+        auto *jitCompilationEnv = static_cast<const JitCompilationEnv*>(compilationEnv_);
+        const auto &callMethodId2HeapConstantIndex = jitCompilationEnv->GetCallMethodId2HeapConstantIndex();
+        auto itr = callMethodId2HeapConstantIndex.find(callMethodId);
+        if (itr != callMethodId2HeapConstantIndex.end()) {
+            return itr->second;
+        }
+        const auto &onlyInlineMethodId2HeapConstantIndex = jitCompilationEnv->GetOnlyInlineMethodId2HeapConstantIndex();
+        auto iter = onlyInlineMethodId2HeapConstantIndex.find(callMethodId);
+        if (iter != onlyInlineMethodId2HeapConstantIndex.end()) {
+            return iter->second;
+        }
+        return JitCompilationEnv::INVALID_HEAP_CONSTANT_INDEX;
+    }
+
     static bool IsTrustedBooleanType(GateAccessor acc, GateRef gate);
 
     static bool IsTrustedNumberType(GateAccessor acc, GateRef gate);
@@ -794,6 +814,7 @@ enum CallKind : uint8_t {
     CALL_INIT,
     CALL_SETTER,
     CALL_GETTER,
+    SUPER_CALL,
     INVALID
 };
 
@@ -820,6 +841,16 @@ public:
             }
         }
         return false;
+    }
+
+    bool IsEnableSuperCallInline() const
+    {
+        return IsValidCallMethodId() && !IsBuiltinFunctionId();
+    }
+
+    bool IsBuiltinFunctionId() const
+    {
+        return pgoType_.GetPGOSampleType()->GetProfileType().IsBuiltinFunctionId();
     }
 
     bool IsValidCallMethodId() const
@@ -877,6 +908,11 @@ public:
         return kind_ == CallKind::CALL_SETTER;
     }
 
+    bool IsSuperCall() const
+    {
+        return kind_ == CallKind::SUPER_CALL;
+    }
+
     uint32_t GetType() const
     {
         return GetFuncMethodOffsetFromPGO();
@@ -887,12 +923,33 @@ public:
         return plr_;
     }
 
+    GateRef GetReceiver() const
+    {
+        return receiver_;
+    }
+
+    void UpdateReceiver(GateRef gate)
+    {
+        receiver_ = gate;
+    }
+
+    GateRef GetThisObj() const
+    {
+        return thisObj_;
+    }
+
+    void UpdateThisObj(GateRef gate)
+    {
+        thisObj_ = gate;
+    }
+
 private:
     PropertyLookupResult GetAccessorPlr() const;
     PropertyLookupResult GetAccessorPlrInJIT() const;
     bool InitPropAndCheck(JSTaggedValue &prop) const;
 
     GateRef receiver_;
+    GateRef thisObj_;
     CallKind kind_ {CallKind::INVALID};
     PropertyLookupResult plr_ { PropertyLookupResult() };
 };

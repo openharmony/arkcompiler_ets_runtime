@@ -675,6 +675,21 @@ GateRef CircuitBuilder::CallTargetCheck(GateRef gate, GateRef function, GateRef 
     return ret;
 }
 
+GateRef CircuitBuilder::InlineSuperCtorCheck(GateRef gate, GateRef function, GateRef newTarget, GateRef methodOffset,
+                                             const char* comment)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    GateRef frameState = acc_.GetFrameState(gate);
+    GateRef ret = circuit_->NewGate(circuit_->InlineSuperCtorCheck(), MachineType::I1,
+        {currentControl, currentDepend, function, methodOffset, newTarget, frameState},
+        GateType::NJSValue(), comment);
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
 GateRef CircuitBuilder::TypedCallOperator(GateRef hirGate, MachineType type, const std::vector<GateRef> &inList,
                                           bool isSideEffect)
 {
@@ -703,13 +718,13 @@ GateRef CircuitBuilder::TypedNewAllocateThis(GateRef ctor, GateRef hclass, GateR
     return ret;
 }
 
-GateRef CircuitBuilder::TypedSuperAllocateThis(GateRef superCtor, GateRef newTarget, GateRef frameState)
+GateRef CircuitBuilder::TypedSuperAllocateThis(GateRef superCtor, GateRef newTarget)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
-    GateRef ret = GetCircuit()->NewGate(circuit_->TypedSuperAllocateThis(), MachineType::ANYVALUE,
-        {currentControl, currentDepend, superCtor, newTarget, frameState}, GateType::TaggedValue());
+    GateRef ret = GetCircuit()->NewGate(circuit_->TypedSuperAllocateThis(), MachineType::I64,
+        {currentControl, currentDepend, superCtor, newTarget}, GateType::TaggedValue());
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);
     return ret;

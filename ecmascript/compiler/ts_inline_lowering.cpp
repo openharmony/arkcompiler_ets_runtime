@@ -90,6 +90,9 @@ void TSInlineLowering::CandidateInlineCall(GateRef gate, ChunkQueue<InlineTypeIn
         case EcmaOpcode::WIDE_CALLRANGE_PREF_IMM16_V8:
             CandidateNormalCall(gate, workList, CallKind::CALL);
             break;
+        case EcmaOpcode::SUPERCALLTHISRANGE_IMM8_IMM8_V8:
+            CandidateSuperCall(gate, workList, CallKind::SUPER_CALL);
+            break;
         default:
             break;
     }
@@ -144,7 +147,7 @@ void TSInlineLowering::TryInline(InlineTypeInfoAccessor &info, ChunkQueue<Inline
             UpdateCallMethodFlagMap(methodOffset, inlinedMethod);
             InlineCall(methodInfo, methodPcInfo, inlinedMethod, info);
             UpdateInlineCounts(frameArgs, inlineCallCounts);
-            if (info.IsNormalCall()) {
+            if (!info.IsCallAccessor()) {
                 UpdateWorkList(workList);
             } else {
                 lastCallId_ = circuit_->GetGateCount() - 1;
@@ -194,6 +197,7 @@ bool TSInlineLowering::FilterInlinedMethod(MethodLiteral* method, std::vector<co
             case EcmaOpcode::COPYRESTARGS_IMM8:
             case EcmaOpcode::WIDE_COPYRESTARGS_PREF_IMM16:
             case EcmaOpcode::CREATEASYNCGENERATOROBJ_V8:
+            case EcmaOpcode::CALLRUNTIME_SUPERCALLFORWARDALLARGS_PREF_V8:
                 return false;
             case EcmaOpcode::RETURN:
             case EcmaOpcode::RETURNUNDEFINED:
@@ -262,6 +266,12 @@ bool TSInlineLowering::CheckParameter(GateRef gate, InlineTypeInfoAccessor &info
     if (info.IsCallAccessor()) {
         return true;
     }
+    if (info.IsSuperCall()) {
+        size_t numIns = acc_.GetNumValueIn(gate);
+        size_t declaredNumArgs = method->GetNumArgsWithCallField();
+        return numIns == declaredNumArgs;
+    }
+    ASSERT(info.IsNormalCall());
     size_t numIns = acc_.GetNumValueIn(gate);
     size_t fixedInputsNum = info.IsCallThis() ? 2 : 1; // 2: calltarget and this
 
@@ -379,9 +389,12 @@ void TSInlineLowering::ReplaceInput(InlineTypeInfoAccessor &info, GateRef glue, 
 {
     if (info.IsNormalCall()) {
         ReplaceCallInput(info, glue, method);
-    } else {
-        ASSERT(info.IsCallAccessor());
+    } else if (info.IsCallAccessor()) {
         ReplaceAccessorInput(info, glue, method);
+    } else if (info.IsSuperCall()) {
+        ReplaceSuperCallInput(info, glue, method);
+    } else {
+        UNREACHABLE();
     }
 }
 
@@ -445,8 +458,9 @@ GateRef TSInlineLowering::TraceInlineFunction(GateRef glue, GateRef depend, std:
     return result;
 }
 
-void TSInlineLowering::ReplaceReturnGate(GateRef callGate)
+void TSInlineLowering::ReplaceReturnGate(InlineTypeInfoAccessor &info)
 {
+    GateRef callGate = info.GetCallGate();
     std::vector<GateRef> returnVector;
     acc_.GetReturnOuts(returnVector);
 
@@ -463,6 +477,14 @@ void TSInlineLowering::ReplaceReturnGate(GateRef callGate)
         acc_.DeleteGate(returnGate);
     } else {
         value = MergeAllReturn(returnVector, state, depend);
+    }
+
+    if (info.IsSuperCall()) {
+        GateRef res = circuit_->NewGate(circuit_->CheckConstructor(), MachineType::I64,
+            {state, depend, info.GetReceiver(), value, info.GetThisObj()}, GateType::TaggedValue());
+        state = res;
+        depend = res;
+        value = res;
     }
     SupplementType(callGate, value);
     ReplaceHirAndDeleteState(callGate, state, depend, value);
@@ -513,7 +535,7 @@ void TSInlineLowering::LowerToInlineCall(
     GateRef callerFunc = acc_.GetValueIn(frameArgs, 0);
     ReplaceEntryGate(callGate, callerFunc, inlineFunc, glue);
     // replace use gate
-    ReplaceReturnGate(callGate);
+    ReplaceReturnGate(info);
     // remove Useless root gates
     RemoveRoot();
 }
@@ -531,7 +553,7 @@ void TSInlineLowering::InlineFuncCheck(const InlineTypeInfoAccessor &info)
     GateRef ret = 0;
     // Do not load from inlineFunc because type in inlineFunc could be modified by others
     uint32_t methodOffset = info.GetCallMethodId();
-    auto heapConstantIndex = info.TryGetHeapConstantFunctionIndex(methodOffset);
+    auto heapConstantIndex = info.TryGetInlineHeapConstantFunctionIndex(methodOffset);
     if (heapConstantIndex != JitCompilationEnv::INVALID_HEAP_CONSTANT_INDEX) {
         GateRef heapConstant = builder_.HeapConstant(heapConstantIndex);
         ret = circuit_->NewGate(circuit_->JSInlineTargetHeapConstantCheck(info.GetType()),
@@ -575,8 +597,12 @@ void TSInlineLowering::InlineCheck(InlineTypeInfoAccessor &info)
 {
     if (info.IsNormalCall()) {
         InlineFuncCheck(info);
-    } else {
+    } else if (info.IsCallAccessor()) {
         InlineAccessorCheck(info);
+    } else if (info.IsSuperCall()) {
+        InlineSuperCallCheck(info);
+    } else {
+        UNREACHABLE();
     }
 }
 
@@ -689,6 +715,17 @@ void TSInlineLowering::CandidateNormalCall(GateRef gate, ChunkQueue<InlineTypeIn
     }
 }
 
+void TSInlineLowering::CandidateSuperCall(GateRef gate, ChunkQueue<InlineTypeInfoAccessor> &workList, CallKind kind)
+{
+    ArgumentAccessor argAcc(circuit_);
+    GateRef thisFunc = argAcc.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
+    InlineTypeInfoAccessor tacc(compilationEnv_, circuit_, gate, thisFunc, kind);
+    if (tacc.IsEnableSuperCallInline()) {
+        workList.emplace(tacc);
+        lastCallId_ = acc_.GetId(gate);
+    }
+}
+
 GateRef TSInlineLowering::GetAccessorReceiver(GateRef gate)
 {
     EcmaOpcode ecmaOpcode = acc_.GetByteCodeOpcode(gate);
@@ -712,7 +749,7 @@ GateRef TSInlineLowering::GetCallSetterValue(GateRef gate)
 GateRef TSInlineLowering::GetFrameState(InlineTypeInfoAccessor &info)
 {
     GateRef gate = info.GetCallGate();
-    ASSERT(info.IsCallAccessor() || info.IsNormalCall());
+    ASSERT(info.IsCallAccessor() || info.IsNormalCall() || info.IsSuperCall());
     return acc_.GetFrameState(gate);
 }
 
@@ -776,4 +813,54 @@ void TSInlineLowering::UpdateCallMethodFlagMap(uint32_t methodOffset, const Meth
     callMethodFlagMap_->SetIsFastCall(fileDesc, methodOffset, method->IsFastCall());
 }
 
+void TSInlineLowering::InlineSuperCallCheck(InlineTypeInfoAccessor &info)
+{
+    GateRef gate = info.GetCallGate();
+    Environment env(gate, circuit_, &builder_);
+    GateRef thisFunc = info.GetReceiver();
+    GateRef hclass = builder_.LoadHClassByConstOffset(thisFunc);
+    GateRef superCtor = builder_.LoadPrototype(hclass);
+    info.UpdateReceiver(superCtor);
+    uint32_t methodOffset = info.GetCallMethodId();
+    GateRef newTarget = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::NEW_TARGET);
+    auto heapConstantIndex = info.TryGetInlineHeapConstantFunctionIndex(methodOffset);
+    if (heapConstantIndex != JitCompilationEnv::INVALID_HEAP_CONSTANT_INDEX) {
+        GateRef heapConstant = builder_.HeapConstant(heapConstantIndex);
+        builder_.InlineSuperCtorCheck(gate, superCtor, newTarget, heapConstant);
+    } else {
+        builder_.InlineSuperCtorCheck(gate, superCtor, newTarget, builder_.IntPtr(methodOffset));
+    }
+    acc_.ReplaceStateIn(gate, builder_.GetState());
+    acc_.ReplaceDependIn(gate, builder_.GetDepend());
+}
+
+void TSInlineLowering::ReplaceSuperCallInput(InlineTypeInfoAccessor &info, GateRef glue, MethodLiteral *method)
+{
+    GateRef gate = info.GetCallGate();
+    std::vector<GateRef> vec;
+    Environment env(gate, circuit_, &builder_);
+    GateRef callTarget = info.GetReceiver();
+    GateRef thisObj =
+        builder_.TypedSuperAllocateThis(callTarget, argAcc_.GetFrameArgsIn(gate, FrameArgIdx::NEW_TARGET));
+    acc_.ReplaceStateIn(gate, builder_.GetState());
+    acc_.ReplaceDependIn(gate, builder_.GetDepend());
+
+    info.UpdateThisObj(thisObj);
+    size_t numIns = acc_.GetNumValueIn(gate);
+    size_t actualArgc = numIns + NUM_MANDATORY_JSFUNC_ARGS;
+    vec.emplace_back(glue); // glue
+    if (!method->IsFastCall()) {
+        vec.emplace_back(builder_.Int64(actualArgc)); // argc
+        vec.emplace_back(builder_.IntPtr(0)); // argv
+    }
+    vec.emplace_back(callTarget);
+    if (!method->IsFastCall()) {
+        vec.emplace_back(argAcc_.GetFrameArgsIn(gate, FrameArgIdx::NEW_TARGET)); // newTarget
+    }
+    vec.emplace_back(thisObj);
+    for (size_t i = 0; i < numIns; i++) {
+        vec.emplace_back(acc_.GetValueIn(gate, i));
+    }
+    LowerToInlineCall(info, vec, method);
+}
 }  // namespace panda::ecmascript
