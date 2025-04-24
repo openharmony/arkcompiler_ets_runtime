@@ -165,6 +165,13 @@ private:
         PACKED = 0,
         HOLEY,
     };
+
+    struct ProtoTypeHolderInfo {
+        GateRef receiver;
+        GateRef holderHClassIndex;
+        GateRef unsharedConstPool;
+        GateRef frameState;
+    };
     void LowerArrayLoadElement(GateRef gate, ArrayState arrayState, TypedLoadOp op);
     void LowerCowArrayCheck(GateRef gate, GateRef glue);
     void LowerTypedArrayLoadElement(GateRef gate, BuiltinTypeId id);
@@ -225,6 +232,9 @@ private:
     void ReplaceGateWithPendingException(GateRef glue, GateRef gate, GateRef state, GateRef depend, GateRef value);
     void LowerOrdinaryHasInstance(GateRef gate, GateRef glue);
     void LowerProtoChangeMarkerCheck(GateRef gate);
+    void LowerPrimitiveTypeProtoChangeMarkerCheck(GateRef gate);
+    void GetPropertyHolderFromProtoChain(ProtoTypeHolderInfo holderInfo, Label *loadHolder,
+                                         Variable *current, DeoptType deoptType);
     void LowerMonoCallGetterOnProto(GateRef gate, GateRef glue);
     void LowerMonoLoadPropertyOnProto(GateRef gate);
     void LowerMonoStorePropertyLookUpProto(GateRef gate, GateRef glue);

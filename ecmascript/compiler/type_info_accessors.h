@@ -914,6 +914,16 @@ public:
             hclassIndexes_.emplace_back(hclassIndex);
         }
 
+        void SetPrimitiveType(PrimitiveType primitiveType)
+        {
+            primitiveType_ = primitiveType;
+        }
+
+        PrimitiveType GetPrimitiveType() const
+        {
+            return primitiveType_;
+        }
+
         int HClassIndex(size_t index = 0) const
         {
             if (hclassIndexes_.size() <= index) {
@@ -939,6 +949,7 @@ public:
 
     private:
         PropertyLookupResult plr_;
+        PrimitiveType primitiveType_ = PrimitiveType::PRIMITIVE_TYPE_INVALID;
         std::vector<int> hclassIndexes_ {};
     };
 
@@ -1372,7 +1383,7 @@ public:
     NO_COPY_SEMANTIC(LoadObjByNameTypeInfoAccessor);
     NO_MOVE_SEMANTIC(LoadObjByNameTypeInfoAccessor);
 
-    size_t GetTypeCount()
+    size_t GetTypeCount() const
     {
         return strategy_->GetTypeCount();
     }
@@ -1387,7 +1398,12 @@ public:
         return strategy_->IsMono();
     }
 
-    bool IsReceiverEqHolder(size_t index)
+    PrimitiveType GetPrimitiveType(size_t index) const
+    {
+        return accessInfos_.at(index).GetPrimitiveType();
+    }
+
+    bool IsReceiverEqHolder(size_t index) const
     {
         return accessInfos_.at(index).HClassIndex() == checkerInfos_.at(index).HClassIndex();
     }
@@ -1395,6 +1411,12 @@ public:
     bool CanBeMerged(ObjectAccessInfo& leftAccessInfo, ObjectAccessInfo& leftCheckerInfo,
                      ObjectAccessInfo& rightAccessInfo, ObjectAccessInfo& rightCheckerInfo)
     {
+        if (leftAccessInfo.GetPrimitiveType() != PrimitiveType::PRIMITIVE_TYPE_INVALID ||
+            rightAccessInfo.GetPrimitiveType() != PrimitiveType::PRIMITIVE_TYPE_INVALID ||
+            leftCheckerInfo.GetPrimitiveType() != PrimitiveType::PRIMITIVE_TYPE_INVALID ||
+            rightCheckerInfo.GetPrimitiveType() != PrimitiveType::PRIMITIVE_TYPE_INVALID) {
+            return false;
+        }
         if (leftCheckerInfo.HClassIndex() == leftAccessInfo.HClassIndex()) {
             if (rightAccessInfo.HClassIndex() == rightCheckerInfo.HClassIndex() &&
                 rightAccessInfo.GetData() == leftAccessInfo.GetData()) {
@@ -1439,6 +1461,30 @@ public:
             }
         }
     }
+
+std::map<size_t, uint32_t> CollectPrimitiveTypeInfo(const CompilationEnv *compilationEnv) const
+{
+    std::map <size_t, uint32_t> typeIndex2HeapConstantIndex;
+    if (compilationEnv == nullptr || !compilationEnv->SupportHeapConstant()) {
+        return typeIndex2HeapConstantIndex;
+    }
+    size_t typeCount = GetTypeCount();
+    auto *jitCompilationEnv = static_cast<const JitCompilationEnv*>(compilationEnv);
+    const auto &holderHClassIndex2HeapConstantIndex = jitCompilationEnv->GetHolderHClassIndex2HeapConstantIndex();
+    for (size_t i = 0; i < typeCount; ++i) {
+        auto primitiveType = GetPrimitiveType(i);
+        if (primitiveType != PrimitiveType::PRIMITIVE_NUMBER && primitiveType != PrimitiveType::PRIMITIVE_BOOLEAN) {
+            continue;
+        }
+        ObjectAccessTypeInfoAccessor::ObjectAccessInfo info = GetAccessInfo(i);
+        auto holderHClassIndex = info.HClassIndex();
+        auto itr = holderHClassIndex2HeapConstantIndex.find(holderHClassIndex);
+        if (itr != holderHClassIndex2HeapConstantIndex.end()) {
+            typeIndex2HeapConstantIndex.insert(std::pair<size_t, uint32_t>(i, itr->second));
+        }
+    }
+    return typeIndex2HeapConstantIndex;
+}
 
 private:
     ChunkVector<std::pair<ProfileTyper, ProfileTyper>> types_;

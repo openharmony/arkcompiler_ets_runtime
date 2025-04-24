@@ -4252,7 +4252,20 @@ DEF_RUNTIME_STUBS(TraceLoadDetail)
             msg += "undedfine slot, ";
         } else if (first.IsWeak()) {
             if (second.IsPrototypeHandler()) {
-                msg += "mono prototype, ";
+                auto prototypeHandler = PrototypeHandler::Cast(second.GetTaggedObject());
+                JSTaggedValue handlerInfoVal = prototypeHandler->GetHandlerInfo();
+                if (!handlerInfoVal.IsInt()) {
+                    msg += "mono prototype, ";
+                } else {
+                    auto handlerInfo = static_cast<uint32_t>(handlerInfoVal.GetInt());
+                    if (HandlerBase::IsNumber(handlerInfo)) {
+                        msg += "mono primitive type number prototype, ";
+                    } else if (HandlerBase::IsBoolean(handlerInfo)) {
+                        msg += "mono primitive type boolean prototype, ";
+                    } else {
+                        msg += "mono prototype, ";
+                    }
+                }
             } else {
                 msg += "mono, ";
             }
@@ -4291,7 +4304,19 @@ DEF_RUNTIME_STUBS(TraceLoadDetail)
 #endif
     }
     if (!receiver->IsHeapObject()) {
-        msg += "prim_obj";
+        if (receiver->IsNumber()) {
+            msg += "prim_number";
+        } else if (receiver->IsBoolean()) {
+            msg += "prim_boolean";
+        } else if (receiver->IsSymbol()) {
+            msg += "prim_symbol";
+        } else if (receiver->IsBigInt()) {
+            msg += "prim_bigint";
+        } else if (receiver->IsString()) {
+            msg += "prim_string";
+        } else {
+            msg += "prim_obj";
+        }
     } else {
         msg += "heap_obj";
     }

@@ -273,6 +273,31 @@ JSTaggedNumber JSTaggedValue::ToLength(JSThread *thread, const JSHandle<JSTagged
     return len;
 }
 
+bool JSTaggedValue::IsPrimitive(uint8_t primitiveType) const
+{
+    if (((primitiveType & static_cast<uint8_t>(PrimitiveType::PRIMITIVE_BOOLEAN)) != 0) &&
+        IsBoolean()) {
+        return true;
+    }
+    if (((primitiveType & static_cast<uint8_t>(PrimitiveType::PRIMITIVE_NUMBER)) != 0) &&
+        IsNumber()) {
+        return true;
+    }
+    if (((primitiveType & static_cast<uint8_t>(PrimitiveType::PRIMITIVE_STRING)) != 0) &&
+        IsString()) {
+        return true;
+    }
+    if (((primitiveType & static_cast<uint8_t>(PrimitiveType::PRIMITIVE_SYMBOL)) != 0) &&
+        IsSymbol()) {
+        return true;
+    }
+    if (((primitiveType & static_cast<uint8_t>(PrimitiveType::PRIMITIVE_BIGINT)) != 0) &&
+        IsBigInt()) {
+        return true;
+    }
+    return false;
+}
+
 // ecma6 7.2 Testing and Comparison Operations
 JSHandle<JSTaggedValue> JSTaggedValue::RequireObjectCoercible(JSThread *thread,
                                                               const JSHandle<JSTaggedValue> &tagged,

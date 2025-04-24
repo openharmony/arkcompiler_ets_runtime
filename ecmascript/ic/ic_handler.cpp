@@ -18,6 +18,28 @@
 
 namespace panda::ecmascript {
 
+void UpdateHandlerKind(const JSThread *thread, const ObjectOperator &op, uint64_t &handler)
+{
+    JSHandle<JSTaggedValue> receiver = op.GetReceiver();
+    if (receiver->IsString()) {
+        JSTaggedValue lenKey = thread->GlobalConstants()->GetLengthString();
+        JSHandle<JSTaggedValue> key = op.GetKey();
+        EcmaString *proKey = key->IsString() ? EcmaString::Cast(key->GetTaggedObject()) : nullptr;
+        if (proKey != nullptr &&
+            EcmaStringAccessor::StringsAreEqual(proKey, EcmaString::Cast(lenKey.GetTaggedObject()))) {
+            HandlerBase::KindBit::Set<uint64_t>(HandlerBase::HandlerKind::STRING_LENGTH, &handler);
+        } else {
+            HandlerBase::KindBit::Set<uint64_t>(HandlerBase::HandlerKind::STRING, &handler);
+        }
+    } else if (receiver->IsNumber()) {
+        HandlerBase::KindBit::Set<uint64_t>(HandlerBase::HandlerKind::NUMBER, &handler);
+    } else if (receiver->IsBoolean()) {
+        HandlerBase::KindBit::Set<uint64_t>(HandlerBase::HandlerKind::BOOLEAN, &handler);
+    } else {
+        HandlerBase::KindBit::Set<uint64_t>(HandlerBase::HandlerKind::FIELD, &handler);
+    }
+}
+
 JSHandle<JSTaggedValue> LoadHandler::LoadProperty(const JSThread *thread, const ObjectOperator &op)
 {
     uint64_t handler = 0;
@@ -36,22 +58,7 @@ JSHandle<JSTaggedValue> LoadHandler::LoadProperty(const JSThread *thread, const 
     AccessorBit::Set<uint64_t>(hasAccessor, &handler);
 
     if (!hasAccessor) {
-        JSHandle<JSTaggedValue> receiver = op.GetReceiver();
-        if (receiver->IsString()) {
-            JSTaggedValue lenKey = thread->GlobalConstants()->GetLengthString();
-            JSHandle<JSTaggedValue> key = op.GetKey();
-            EcmaString *proKey = key->IsString() ? EcmaString::Cast(key->GetTaggedObject()) : nullptr;
-            if (proKey != nullptr &&
-                EcmaStringAccessor::StringsAreEqual(proKey, EcmaString::Cast(lenKey.GetTaggedObject()))) {
-                KindBit::Set<uint64_t>(HandlerKind::STRING_LENGTH, &handler);
-            } else {
-                KindBit::Set<uint64_t>(HandlerKind::STRING, &handler);
-            }
-        } else if (receiver->IsNumber()) {
-            KindBit::Set<uint64_t>(HandlerKind::NUMBER, &handler);
-        } else {
-            KindBit::Set<uint64_t>(HandlerKind::FIELD, &handler);
-        }
+        UpdateHandlerKind(thread, op, handler);
     }
 
     if (op.IsInlinedProps()) {
