@@ -7,7 +7,7 @@
             "size": 8
         }
     ],
-    "end_offset": 16,
+    "end_offset": 12,
     "parents": [
         "ECMA_STRING"
     ]

@@ -2106,7 +2106,7 @@ GateRef StubBuilder::GetValueWithBarrier(GateRef glue, GateRef addr)
     GateRef value = LoadPrimitive(VariableType::JS_ANY(), addr);
 
     DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
-    
+
     BRANCH(BoolNot(TaggedIsHeapObject(value)), &notHeapObject, &isHeapObject);
     Bind(&notHeapObject);
     {
@@ -2118,7 +2118,7 @@ GateRef StubBuilder::GetValueWithBarrier(GateRef glue, GateRef addr)
         result = CallNGCRuntime(glue, RTSTUB_ID(ReadBarrier), { glue, addr });;
         Jump(&exit);
     }
-    
+
     Bind(&exit);
     auto ret = *result;
     env->SubCfgExit();
@@ -2213,18 +2213,18 @@ GateRef StubBuilder::TaggedIsInternalAccessor(GateRef glue, GateRef x)
 GateRef StubBuilder::IsUtf16String(GateRef string)
 {
     // compressedStringsEnabled fixed to true constant
-    GateRef len = LoadPrimitive(VariableType::INT32(), string, IntPtr(EcmaString::MIX_LENGTH_OFFSET));
+    GateRef len = LoadPrimitive(VariableType::INT32(), string, IntPtr(EcmaString::LENGTH_AND_FLAGS_OFFSET));
     return Int32Equal(
-        Int32And(len, Int32(EcmaString::STRING_COMPRESSED_BIT)),
+        Int32And(len, Int32((1 << EcmaString::CompressedStatusBit::SIZE) - 1)),
         Int32(EcmaString::STRING_UNCOMPRESSED));
 }
 
 GateRef StubBuilder::IsUtf8String(GateRef string)
 {
     // compressedStringsEnabled fixed to true constant
-    GateRef len = LoadPrimitive(VariableType::INT32(), string, IntPtr(EcmaString::MIX_LENGTH_OFFSET));
+    GateRef len = LoadPrimitive(VariableType::INT32(), string, IntPtr(EcmaString::LENGTH_AND_FLAGS_OFFSET));
     return Int32Equal(
-        Int32And(len, Int32(EcmaString::STRING_COMPRESSED_BIT)),
+        Int32And(len, Int32((1 << EcmaString::CompressedStatusBit::SIZE) - 1)),
         Int32(EcmaString::STRING_COMPRESSED));
 }
 

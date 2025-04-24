@@ -2208,8 +2208,7 @@ inline GateRef StubBuilder::GetBitFieldFromHClass(GateRef hClass)
 
 inline GateRef StubBuilder::GetLengthFromString(GateRef value)
 {
-    GateRef len = LoadPrimitive(VariableType::INT32(), value, IntPtr(EcmaString::MIX_LENGTH_OFFSET));
-    return Int32LSR(len, Int32(EcmaString::STRING_LENGTH_SHIFT_COUNT));
+    return env_->GetBuilder()->GetLengthFromString(value);
 }
 
 inline GateRef StubBuilder::GetFirstFromTreeString(GateRef glue, GateRef string)
@@ -3789,23 +3788,23 @@ inline GateRef StubBuilder::AlignDown(GateRef x, GateRef alignment)
     return IntPtrAnd(x, IntPtrNot(PtrSub(alignment, IntPtr(1))));
 }
 
-inline void StubBuilder::SetLength(GateRef glue, GateRef str, GateRef length, bool compressed)
+inline void StubBuilder::InitStringLengthAndFlags(GateRef glue, GateRef str, GateRef length, bool compressed)
 {
-    GateRef len = Int32LSL(length, Int32(EcmaString::STRING_LENGTH_SHIFT_COUNT));
+    GateRef len = Int32LSL(length, Int32(EcmaString::LengthBits::START_BIT));
     GateRef mixLength;
     if (compressed) {
         mixLength = Int32Or(len, Int32(EcmaString::STRING_COMPRESSED));
     } else {
         mixLength = Int32Or(len, Int32(EcmaString::STRING_UNCOMPRESSED));
     }
-    Store(VariableType::INT32(), glue, str, IntPtr(EcmaString::MIX_LENGTH_OFFSET), mixLength);
+    Store(VariableType::INT32(), glue, str, IntPtr(EcmaString::LENGTH_AND_FLAGS_OFFSET), mixLength);
 }
 
-inline void StubBuilder::SetLength(GateRef glue, GateRef str, GateRef length, GateRef isCompressed)
+inline void StubBuilder::InitStringLengthAndFlags(GateRef glue, GateRef str, GateRef length, GateRef isCompressed)
 {
-    GateRef len = Int32LSL(length, Int32(EcmaString::STRING_LENGTH_SHIFT_COUNT));
-    GateRef mixLength = Int32Or(len, isCompressed);
-    Store(VariableType::INT32(), glue, str, IntPtr(EcmaString::MIX_LENGTH_OFFSET), mixLength);
+    GateRef len = Int32LSL(length, Int32(EcmaString::LengthBits::START_BIT));
+    GateRef mixLength = Int32Or(len, ZExtInt1ToInt32(BoolNot(isCompressed))); // encode bool to CompressedStatus
+    Store(VariableType::INT32(), glue, str, IntPtr(EcmaString::LENGTH_AND_FLAGS_OFFSET), mixLength);
 }
 
 inline GateRef StubBuilder::IsIntegerString(GateRef string)

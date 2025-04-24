@@ -1209,7 +1209,7 @@ GateRef BuiltinsStringStubBuilder::GetSingleCharCodeFromSlicedString(GateRef glu
     Label exit(env);
 
     GateRef parent = Load(VariableType::JS_POINTER(), glue, str, IntPtr(SlicedString::PARENT_OFFSET));
-    GateRef startIndex = LoadPrimitive(VariableType::INT32(), str, IntPtr(SlicedString::STARTINDEX_OFFSET));
+    GateRef startIndex = LoadStartIndex(str);
     BRANCH(IsLineString(glue, parent), &isLineString, &notLineString);
     Bind(&isLineString);
     {
@@ -1891,14 +1891,28 @@ void BuiltinsStringStubBuilder::StoreParent(GateRef glue, GateRef object, GateRe
     Store(VariableType::JS_POINTER(), glue, object, IntPtr(SlicedString::PARENT_OFFSET), parent);
 }
 
-void BuiltinsStringStubBuilder::StoreStartIndex(GateRef glue, GateRef object, GateRef startIndex)
+void BuiltinsStringStubBuilder::StoreStartIndexAndBackingStore(GateRef glue, GateRef object, GateRef startIndex,
+                                                               GateRef hasBackingStore)
 {
-    Store(VariableType::INT32(), glue, object, IntPtr(SlicedString::STARTINDEX_OFFSET), startIndex);
+    ASM_ASSERT(GET_MESSAGE_STRING_ID(InvalidStringLength),
+               Int32LessThanOrEqual(startIndex, Int32(SlicedString::MAX_STRING_LENGTH)));
+    GateRef encodedLen = Int32LSL(startIndex, Int32(SlicedString::StartIndexBits::START_BIT));
+    GateRef newValue = Int32Or(encodedLen, ZExtInt1ToInt32(hasBackingStore));
+    Store(VariableType::INT32(), glue, object, IntPtr(SlicedString::STARTINDEX_AND_FLAGS_OFFSET), newValue);
 }
 
-void BuiltinsStringStubBuilder::StoreHasBackingStore(GateRef glue, GateRef object, GateRef hasBackingStore)
+GateRef BuiltinsStringStubBuilder::LoadStartIndex(GateRef object)
 {
-    Store(VariableType::INT32(), glue, object, IntPtr(SlicedString::BACKING_STORE_FLAG), hasBackingStore);
+    GateRef offset = IntPtr(SlicedString::STARTINDEX_AND_FLAGS_OFFSET);
+    GateRef mixStartIndex = LoadPrimitive(VariableType::INT32(), object, offset);
+    return Int32LSR(mixStartIndex, Int32(SlicedString::StartIndexBits::START_BIT));
+}
+
+GateRef BuiltinsStringStubBuilder::LoadHasBackingStore(GateRef object)
+{
+    GateRef offset = IntPtr(SlicedString::STARTINDEX_AND_FLAGS_OFFSET);
+    GateRef mixStartIndex = LoadPrimitive(VariableType::INT32(), object, offset);
+    return TruncInt32ToInt1(Int32And(mixStartIndex, Int32((1 << SlicedString::HasBackingStoreBit::SIZE) - 1)));
 }
 
 GateRef BuiltinsStringStubBuilder::StringIndexOf(GateRef glue, const StringInfoGateRef &lStringInfoGate,
@@ -2422,12 +2436,8 @@ GateRef BuiltinsStringStubBuilder::StringAdd(GateRef glue, GateRef leftString, G
                                 {
                                     GateRef newBackingStore = AllocateLineString(glue, newBackStoreLength,
                                                                                  canBeCompressed);
-                                    GateRef len = builder_.Int32LSL(newLength,
-                                        builder_.Int32(EcmaString::STRING_LENGTH_SHIFT_COUNT));
-                                    GateRef mixLength = builder_.Int32Or(len,
-                                        builder_.Int32(EcmaString::STRING_COMPRESSED));
-                                    GateRef leftSource =
-                                        builder_.GetStringDataFromLineOrConstantString(glue, *lineString);
+                                    GateRef leftSource = builder_.GetStringDataFromLineOrConstantString(
+                                        glue, *lineString);
                                     GateRef rightSource = builder_.GetStringDataFromLineOrConstantString(glue, right);
                                     GateRef leftDst = builder_.TaggedPointerToInt64(
                                         builder_.PtrAdd(newBackingStore,
@@ -2441,8 +2451,7 @@ GateRef BuiltinsStringStubBuilder::StringAdd(GateRef glue, GateRef leftString, G
                                     newLeft = left;
                                     builder_.Store(VariableType::JS_POINTER(), glue, *newLeft,
                                         builder_.IntPtr(SlicedString::PARENT_OFFSET), newBackingStore);
-                                    builder_.Store(VariableType::INT32(), glue, *newLeft,
-                                        builder_.IntPtr(EcmaString::MIX_LENGTH_OFFSET), mixLength);
+                                    InitStringLengthAndFlags(glue, *newLeft, newLength, true);
                                     result = *newLeft;
                                     builder_.Jump(&exit);
                                 }
@@ -2450,12 +2459,8 @@ GateRef BuiltinsStringStubBuilder::StringAdd(GateRef glue, GateRef leftString, G
                                 {
                                     GateRef newBackingStore = AllocateLineString(glue, newBackStoreLength,
                                                                                  canBeCompressed);
-                                    GateRef len = builder_.Int32LSL(newLength,
-                                        builder_.Int32(EcmaString::STRING_LENGTH_SHIFT_COUNT));
-                                    GateRef mixLength = builder_.Int32Or(len,
-                                        builder_.Int32(EcmaString::STRING_UNCOMPRESSED));
-                                    GateRef leftSource =
-                                        builder_.GetStringDataFromLineOrConstantString(glue, *lineString);
+                                    GateRef leftSource = builder_.GetStringDataFromLineOrConstantString(
+                                        glue, *lineString);
                                     GateRef rightSource = builder_.GetStringDataFromLineOrConstantString(glue, right);
                                     GateRef leftDst = builder_.TaggedPointerToInt64(
                                         builder_.PtrAdd(newBackingStore,
@@ -2470,8 +2475,7 @@ GateRef BuiltinsStringStubBuilder::StringAdd(GateRef glue, GateRef leftString, G
                                     newLeft = left;
                                     builder_.Store(VariableType::JS_POINTER(), glue, *newLeft,
                                         builder_.IntPtr(SlicedString::PARENT_OFFSET), newBackingStore);
-                                    builder_.Store(VariableType::INT32(), glue, *newLeft,
-                                        builder_.IntPtr(EcmaString::MIX_LENGTH_OFFSET), mixLength);
+                                    InitStringLengthAndFlags(glue, *newLeft, newLength, false);
                                     result = *newLeft;
                                     builder_.Jump(&exit);
                                 }
@@ -2484,10 +2488,6 @@ GateRef BuiltinsStringStubBuilder::StringAdd(GateRef glue, GateRef leftString, G
                             BRANCH_CIR(canBeCompressed, &canBeCompress, &canNotBeCompress);
                             builder_.Bind(&canBeCompress);
                             {
-                                GateRef len = builder_.Int32LSL(newLength,
-                                    builder_.Int32(EcmaString::STRING_LENGTH_SHIFT_COUNT));
-                                GateRef mixLength = builder_.Int32Or(len,
-                                    builder_.Int32(EcmaString::STRING_COMPRESSED));
                                 GateRef rightSource = builder_.GetStringDataFromLineOrConstantString(glue, right);
                                 GateRef leftDst = builder_.TaggedPointerToInt64(
                                     builder_.PtrAdd(*lineString, builder_.IntPtr(LineEcmaString::DATA_OFFSET)));
@@ -2498,17 +2498,12 @@ GateRef BuiltinsStringStubBuilder::StringAdd(GateRef glue, GateRef leftString, G
                                 newLeft = left;
                                 builder_.Store(VariableType::JS_POINTER(), glue, *newLeft,
                                     builder_.IntPtr(SlicedString::PARENT_OFFSET), *lineString);
-                                builder_.Store(VariableType::INT32(), glue, *newLeft,
-                                    builder_.IntPtr(EcmaString::MIX_LENGTH_OFFSET), mixLength);
+                                InitStringLengthAndFlags(glue, *newLeft, newLength, true);
                                 result = *newLeft;
                                 builder_.Jump(&exit);
                             }
                             builder_.Bind(&canNotBeCompress);
                             {
-                                GateRef len = builder_.Int32LSL(newLength,
-                                    builder_.Int32(EcmaString::STRING_LENGTH_SHIFT_COUNT));
-                                GateRef mixLength = builder_.Int32Or(len,
-                                    builder_.Int32(EcmaString::STRING_UNCOMPRESSED));
                                 GateRef rightSource = builder_.GetStringDataFromLineOrConstantString(glue, right);
                                 GateRef leftDst = builder_.TaggedPointerToInt64(
                                     builder_.PtrAdd(*lineString, builder_.IntPtr(LineEcmaString::DATA_OFFSET)));
@@ -2520,8 +2515,7 @@ GateRef BuiltinsStringStubBuilder::StringAdd(GateRef glue, GateRef leftString, G
                                 newLeft = left;
                                 builder_.Store(VariableType::JS_POINTER(), glue, *newLeft,
                                     builder_.IntPtr(SlicedString::PARENT_OFFSET), *lineString);
-                                builder_.Store(VariableType::INT32(), glue, *newLeft,
-                                    builder_.IntPtr(EcmaString::MIX_LENGTH_OFFSET), mixLength);
+                                InitStringLengthAndFlags(glue, *newLeft, newLength, false);
                                 result = *newLeft;
                                 builder_.Jump(&exit);
                             }
@@ -2551,24 +2545,18 @@ GateRef BuiltinsStringStubBuilder::AllocateLineString(GateRef glue, GateRef leng
     Label isUtf8(&builder_);
     Label isUtf16(&builder_);
     Label exit(&builder_);
-    DEFVALUE(mixLength, (&builder_), VariableType::INT32(), builder_.Int32(0));
     DEFVALUE(size, (&builder_), VariableType::INT64(), builder_.Int64(0));
-
-    GateRef len = builder_.Int32LSL(length, builder_.Int32(EcmaString::STRING_LENGTH_SHIFT_COUNT));
-
     BRANCH_CIR(canBeCompressed, &isUtf8, &isUtf16);
     builder_.Bind(&isUtf8);
     {
         size = builder_.AlignUp(builder_.ComputeSizeUtf8(builder_.ZExtInt32ToPtr(length)),
             builder_.IntPtr(static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT)));
-        mixLength = builder_.Int32Or(len, builder_.Int32(EcmaString::STRING_COMPRESSED));
         builder_.Jump(&exit);
     }
     builder_.Bind(&isUtf16);
     {
         size = builder_.AlignUp(builder_.ComputeSizeUtf16(builder_.ZExtInt32ToPtr(length)),
             builder_.IntPtr(static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT)));
-        mixLength = builder_.Int32Or(len, builder_.Int32(EcmaString::STRING_UNCOMPRESSED));
         builder_.Jump(&exit);
     }
     builder_.Bind(&exit);
@@ -2579,8 +2567,7 @@ GateRef BuiltinsStringStubBuilder::AllocateLineString(GateRef glue, GateRef leng
         builder_.HeapAlloc(glue, *size, GateType::TaggedValue(), RegionSpaceFlag::IN_SHARED_OLD_SPACE);
     builder_.Store(VariableType::JS_POINTER(), glue, lineString,
                    builder_.IntPtr(0), stringClass, MemoryAttribute::NeedBarrierAndAtomic());
-    builder_.Store(VariableType::INT32(), glue, lineString,
-                   builder_.IntPtr(EcmaString::MIX_LENGTH_OFFSET), *mixLength);
+    InitStringLengthAndFlags(glue, lineString, length, canBeCompressed);
     builder_.Store(VariableType::INT32(), glue, lineString,
                    builder_.IntPtr(EcmaString::MIX_HASHCODE_OFFSET), builder_.Int32(0));
     auto ret = builder_.FinishAllocate(lineString);
@@ -2595,25 +2582,6 @@ GateRef BuiltinsStringStubBuilder::AllocateSlicedString(GateRef glue, GateRef fl
     auto &builder_ = *env->GetBuilder();
     Label subentry(&builder_);
     builder_.SubCfgEntry(&subentry);
-    Label isUtf8(&builder_);
-    Label isUtf16(&builder_);
-    Label exit(&builder_);
-    DEFVALUE(mixLength, (&builder_), VariableType::INT32(), builder_.Int32(0));
-
-    GateRef len = builder_.Int32LSL(length, builder_.Int32(EcmaString::STRING_LENGTH_SHIFT_COUNT));
-
-    BRANCH_CIR(canBeCompressed, &isUtf8, &isUtf16);
-    builder_.Bind(&isUtf8);
-    {
-        mixLength = builder_.Int32Or(len, builder_.Int32(EcmaString::STRING_COMPRESSED));
-        builder_.Jump(&exit);
-    }
-    builder_.Bind(&isUtf16);
-    {
-        mixLength = builder_.Int32Or(len, builder_.Int32(EcmaString::STRING_UNCOMPRESSED));
-        builder_.Jump(&exit);
-    }
-    builder_.Bind(&exit);
 
     GateRef stringClass = GetGlobalConstantValue(VariableType::JS_POINTER(),
                                                  glue, ConstantIndex::SLICED_STRING_CLASS_INDEX);
@@ -2625,16 +2593,12 @@ GateRef BuiltinsStringStubBuilder::AllocateSlicedString(GateRef glue, GateRef fl
         RegionSpaceFlag::IN_SHARED_OLD_SPACE);
     builder_.Store(VariableType::JS_POINTER(), glue, slicedString,
                    builder_.IntPtr(0), stringClass, MemoryAttribute::NeedBarrierAndAtomic());
-    builder_.Store(VariableType::INT32(), glue, slicedString,
-                   builder_.IntPtr(EcmaString::MIX_LENGTH_OFFSET), *mixLength);
+    InitStringLengthAndFlags(glue, slicedString, length, canBeCompressed);
     builder_.Store(VariableType::INT32(), glue, slicedString,
                    builder_.IntPtr(EcmaString::MIX_HASHCODE_OFFSET), builder_.Int32(0));
     builder_.Store(VariableType::JS_POINTER(), glue, slicedString,
                    builder_.IntPtr(SlicedString::PARENT_OFFSET), flatString);
-    builder_.Store(VariableType::INT32(), glue, slicedString,
-                   builder_.IntPtr(SlicedString::STARTINDEX_OFFSET), builder_.Int32(0));
-    builder_.Store(VariableType::INT32(), glue, slicedString,
-                   builder_.IntPtr(SlicedString::BACKING_STORE_FLAG), builder_.Int32(EcmaString::HAS_BACKING_STORE));
+    StoreStartIndexAndBackingStore(glue, slicedString, builder_.Int32(0), builder_.Boolean(true));
     auto ret = builder_.FinishAllocate(slicedString);
     builder_.SubCfgExit();
     return ret;
@@ -2654,9 +2618,7 @@ GateRef BuiltinsStringStubBuilder::IsSpecialSlicedString(GateRef glue, GateRef o
     BRANCH_CIR(isSlicedString, &isSlicedStr, &exit);
     builder_.Bind(&isSlicedStr);
     {
-        GateRef hasBackingStore = builder_.LoadWithoutBarrier(VariableType::INT32(), obj,
-                                                              builder_.IntPtr(SlicedString::BACKING_STORE_FLAG));
-        result = builder_.Int32Equal(hasBackingStore, builder_.Int32(EcmaString::HAS_BACKING_STORE));
+        result = LoadHasBackingStore(obj);
         builder_.Jump(&exit);
     }
     builder_.Bind(&exit);
