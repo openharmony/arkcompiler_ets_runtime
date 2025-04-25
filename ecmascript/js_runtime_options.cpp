@@ -1437,7 +1437,7 @@ bool JSRuntimeOptions::ParseBoolParam(bool* argBool)
 
 bool JSRuntimeOptions::ParseDoubleParam(const std::string &option, double *argDouble)
 {
-    *argDouble = std::stod(optarg, nullptr);
+    *argDouble = std::strtod(optarg, nullptr);
     if (errno == ERANGE) {
         LOG_ECMA(ERROR) << "getopt: \"" << option << "\" argument has invalid parameter value \"" << optarg <<"\"\n";
         return false;
@@ -1447,17 +1447,20 @@ bool JSRuntimeOptions::ParseDoubleParam(const std::string &option, double *argDo
 
 bool JSRuntimeOptions::ParseIntParam(const std::string &option, int *argInt)
 {
+    int64_t val;
     if (StartsWith(optarg, "0x")) {
         const int HEX = 16;
-        *argInt = std::stoi(optarg, nullptr, HEX);
+        val = std::strtoll(optarg, nullptr, HEX);
     } else {
-        *argInt = std::stoi(optarg);
+        const int DEC = 10;
+        val = std::strtoll(optarg, nullptr, DEC);
     }
 
-    if (errno == ERANGE) {
+    if (errno == ERANGE || val < INT_MIN || val > INT_MAX) {
         LOG_ECMA(ERROR) << "getopt: \"" << option << "\" argument has invalid parameter value \"" << optarg <<"\"\n";
         return false;
     }
+    *argInt = static_cast<int>(val);
     return true;
 }
 
