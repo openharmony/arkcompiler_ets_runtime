@@ -299,7 +299,11 @@ HWTEST_F_L0(JSAPIHashMapTest, JSAPIHashMapIteratorRBTreeTest)
     JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
     JSMutableHandle<JSTaggedValue> value(thread, JSTaggedValue::Undefined());
     JSHandle<JSTaggedValue> valueStr = thread->GlobalConstants()->GetHandledValueString();
-    std::vector<int> hashCollisionVector = {1224, 1285, 1463, 4307, 5135, 5903, 6603, 6780, 8416, 9401, 9740};
+    std::vector<int> hashCollisionVector = {1013, 1015, 1021, 1023, 1045, 1047, 1053, 1055, 1077, 1079, 1085};
+
+    JSHandle<TaggedHashArray> hashArray(thread, hashMap->GetTable());
+    hashArray = TaggedHashArray::Resize(thread, hashArray, NODE_NUMBERS);
+    hashMap->SetTable(thread, hashArray);
 
     for (size_t i = 0; i < hashCollisionVector.size(); i++) {
         key.Update(JSTaggedValue(hashCollisionVector[i]));
@@ -322,6 +326,107 @@ HWTEST_F_L0(JSAPIHashMapTest, JSAPIHashMapIteratorRBTreeTest)
             EXPECT_TRUE(JSObject::GetProperty(thread, resultObj, valueStr).GetValue()->IsInt());
         }
     }
+}
+
+HWTEST_F_L0(JSAPIHashMapTest, JSAPIHashMapIteratorDiffNodeTest)
+{
+    constexpr uint32_t NODE_NUMBERS = 1 << 4;
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<JSAPIHashMap> hashMap(thread, CreateHashMap());
+    JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
+    JSMutableHandle<JSTaggedValue> value(thread, JSTaggedValue::Undefined());
+    JSHandle<TaggedHashArray> hashArray(thread, hashMap->GetTable());
+    hashArray = TaggedHashArray::Resize(thread, hashArray, NODE_NUMBERS);
+    hashMap->SetTable(thread, hashArray);
+    std::vector<int> treeNumsVector = {1224, 1285, 1463, 4307, 5135, 5903, 6603, 6780, 8416, 9401, 9740};
+
+    int32_t totalNums = 0;
+    // create RBTree Node
+    for (size_t i = 0; i < treeNumsVector.size(); i++) {
+        key.Update(JSTaggedValue(treeNumsVector[i]));
+        value.Update(JSTaggedValue(treeNumsVector[i]));
+        if (!TaggedHashArray::SetVal(thread, hashArray, 0, key, value).IsUndefined()) {
+            totalNums++;
+        }
+    }
+
+    // create LinkList Node
+    std::vector<int> linkListVector = {1224, 1285, 1463, 4307};
+    for (uint32_t hash = 1; hash < NODE_NUMBERS; hash++) {
+        for (size_t i = 0; i < linkListVector.size(); i++) {
+            key.Update(JSTaggedValue(linkListVector[i]));
+            value.Update(JSTaggedValue(linkListVector[i]));
+            if (!TaggedHashArray::SetVal(thread, hashArray, hash, key, value).IsUndefined()) {
+                totalNums++;
+            }
+        }
+    }
+
+    JSHandle<JSAPIHashMapIterator> hashmapIterator = factory->NewJSAPIHashMapIterator(hashMap, IterationKind::VALUE);
+    int32_t count = 0;
+    while (!hashmapIterator->GetIteratedHashMap().IsUndefined()) {
+        auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
+        ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+        ecmaRuntimeCallInfo->SetThis(hashmapIterator.GetTaggedValue());
+
+        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+        JSAPIHashMapIterator::Next(ecmaRuntimeCallInfo);
+        TestHelper::TearDownFrame(thread, prev);
+        count++;
+    }
+    EXPECT_EQ(count - 1, totalNums);
+}
+
+HWTEST_F_L0(JSAPIHashMapTest, JSAPIHashMapIteratorDiffNodeRandomlyTest)
+{
+    constexpr uint32_t NODE_NUMBERS = 1 << 4;
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<JSAPIHashMap> hashMap(thread, CreateHashMap());
+    JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
+    JSMutableHandle<JSTaggedValue> value(thread, JSTaggedValue::Undefined());
+    JSHandle<TaggedHashArray> hashArray(thread, hashMap->GetTable());
+    hashArray = TaggedHashArray::Resize(thread, hashArray, NODE_NUMBERS);
+    hashMap->SetTable(thread, hashArray);
+    std::vector<int> treeNumsVector = {1224, 1285, 1463, 4307, 5135, 5903, 6603, 6780, 8416, 9401, 9740};
+    std::random_device rd;
+    std::mt19937 g(rd());
+    std::vector<int>p;
+    for (uint32_t i = 1; i <= NODE_NUMBERS; i++) {
+        p.push_back(i);
+    }
+    std::shuffle(p.begin(), p.end(), g);
+    int32_t totalNums = 0;
+    for (uint32_t index = 0; index < p.size(); index++) {
+        if (!(g() % 3)) {
+            // create RBTree Node
+            for (size_t i = 0; i < treeNumsVector.size(); i++) {
+                key.Update(JSTaggedValue(treeNumsVector[i]));
+                value.Update(JSTaggedValue(treeNumsVector[i]));
+                totalNums += (TaggedHashArray::SetVal(thread, hashArray, p[index], key, value).IsUndefined() ? 0 : 1);
+            }
+            continue;
+        }
+        // create LinkList Node
+        std::vector<int> linkListVector = {1224, 1285, 1463, 4307};
+        for (size_t i = 0; i < linkListVector.size(); i++) {
+            key.Update(JSTaggedValue(linkListVector[i]));
+            value.Update(JSTaggedValue(linkListVector[i]));
+            totalNums += (TaggedHashArray::SetVal(thread, hashArray, p[index], key, value).IsUndefined() ? 0 : 1);
+        }
+    }
+    JSHandle<JSAPIHashMapIterator> hashmapIterator = factory->NewJSAPIHashMapIterator(hashMap, IterationKind::VALUE);
+    int32_t count = 0;
+    while (!hashmapIterator->GetIteratedHashMap().IsUndefined()) {
+        auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
+        ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+        ecmaRuntimeCallInfo->SetThis(hashmapIterator.GetTaggedValue());
+
+        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+        JSAPIHashMapIterator::Next(ecmaRuntimeCallInfo);
+        TestHelper::TearDownFrame(thread, prev);
+        count++;
+    }
+    EXPECT_EQ(count - 1, totalNums);
 }
 
 HWTEST_F_L0(JSAPIHashMapTest, JSAPIHashMapRBTreeHasValueReplaceGet)

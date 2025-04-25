@@ -3702,14 +3702,14 @@ JSHandle<JSAPIHashMapIterator> ObjectFactory::NewJSAPIHashMapIterator(const JSHa
 {
     NewObjectHook();
     const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
-    JSHandle<JSTaggedValue> undefinedHandle = globalConst->GetHandledUndefined();
+    JSHandle<JSTaggedValue> holeHandle = globalConst->GetHandledHole();
     JSHandle<GlobalEnv> env = thread_->GetEcmaVM()->GetGlobalEnv();
     JSHandle<JSTaggedValue> proto(env->GetHashMapIteratorPrototype());
     JSHandle<JSHClass> hclassHandle(globalConst->GetHandledJSAPIHashMapIteratorClass());
     hclassHandle->SetPrototype(thread_, proto);
     JSHandle<JSAPIHashMapIterator> iter(NewJSObject(hclassHandle));
     iter->GetJSHClass()->SetExtensible(true);
-    iter->SetCurrentNodeResult(thread_, undefinedHandle);
+    iter->SetCurrentNodeResult(thread_, holeHandle);
     iter->SetIteratedHashMap(thread_, hashMap);
     iter->SetNextIndex(0);
     iter->SetTaggedQueue(thread_, JSTaggedValue::Undefined());
@@ -3724,17 +3724,16 @@ JSHandle<JSAPIHashSetIterator> ObjectFactory::NewJSAPIHashSetIterator(const JSHa
 {
     NewObjectHook();
     const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
-    JSHandle<JSTaggedValue> undefinedHandle = globalConst->GetHandledUndefined();
+    JSHandle<JSTaggedValue> holeHandle = globalConst->GetHandledHole();
     JSHandle<GlobalEnv> env = thread_->GetEcmaVM()->GetGlobalEnv();
     JSHandle<JSTaggedValue> proto = env->GetHashSetIteratorPrototype();
     JSHandle<JSHClass> hclassHandle(globalConst->GetHandledJSAPIHashSetIteratorClass());
     hclassHandle->SetPrototype(thread_, proto);
     JSHandle<JSAPIHashSetIterator> iter(NewJSObject(hclassHandle));
     iter->GetJSHClass()->SetExtensible(true);
-    iter->SetCurrentNodeResult(thread_, undefinedHandle);
+    iter->SetCurrentNodeResult(thread_, holeHandle);
     iter->SetIteratedHashSet(thread_, hashSet);
     iter->SetNextIndex(0);
-    iter->SetTableIndex(0);
     iter->SetTaggedQueue(thread_, JSTaggedValue::Undefined());
     JSHandle<TaggedQueue> queue = NewTaggedQueue(0);
     iter->SetTaggedQueue(thread_, queue);
