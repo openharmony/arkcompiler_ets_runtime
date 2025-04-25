@@ -221,8 +221,20 @@ public:
     DECL_VISIT_OBJECT(HEADER_SIZE, DATA_SIZE);
 
     // define BitField
+    static constexpr uint32_t DEFAULT_LAZY_BITFIELD_VALUE = 0x7fe; // 0000'...'0000'0111'1111'1110
     static constexpr size_t ARRAYPROTOTYPE_CHANGED_GUARDIANS = 1;
+    static constexpr size_t DETECTOR_BITS = 1;
     FIRST_BIT_FIELD(BitField, ArrayPrototypeChangedGuardians, bool, ARRAYPROTOTYPE_CHANGED_GUARDIANS)
+    NEXT_BIT_FIELD(BitField, RegExpReplaceDetector, bool, DETECTOR_BITS, ArrayPrototypeChangedGuardians)
+    NEXT_BIT_FIELD(BitField, MapIteratorDetector, bool, DETECTOR_BITS, RegExpReplaceDetector)
+    NEXT_BIT_FIELD(BitField, SetIteratorDetector, bool, DETECTOR_BITS, MapIteratorDetector)
+    NEXT_BIT_FIELD(BitField, StringIteratorDetector, bool, DETECTOR_BITS, SetIteratorDetector)
+    NEXT_BIT_FIELD(BitField, ArrayIteratorDetector, bool, DETECTOR_BITS, StringIteratorDetector)
+    NEXT_BIT_FIELD(BitField, TypedArrayIteratorDetector, bool, DETECTOR_BITS, ArrayIteratorDetector)
+    NEXT_BIT_FIELD(BitField, TypedArraySpeciesProtectDetector, bool, DETECTOR_BITS, TypedArrayIteratorDetector)
+    NEXT_BIT_FIELD(BitField, NumberStringNotRegexpLikeDetector, bool, DETECTOR_BITS, TypedArraySpeciesProtectDetector)
+    NEXT_BIT_FIELD(BitField, RegExpFlagsDetector, bool, DETECTOR_BITS, NumberStringNotRegexpLikeDetector)
+    NEXT_BIT_FIELD(BitField, RegExpSpeciesDetector, bool, DETECTOR_BITS, RegExpFlagsDetector)
     DECL_DUMP()
 };
 }  // namespace panda::ecmascript

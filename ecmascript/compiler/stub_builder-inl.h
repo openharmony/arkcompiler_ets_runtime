@@ -4390,5 +4390,25 @@ inline void StubBuilder::SetArrayElementsGuardians(GateRef glue, GateRef env, Ga
         Int32LSL(oldValue, Int32(GlobalEnv::ArrayPrototypeChangedGuardiansBits::START_BIT)));
     Store(VariableType::INT32(), glue, env, offset, newVal);
 }
+
+inline GateRef StubBuilder::GetTypedArraySpeciesProtectDetector(GateRef env)
+{
+    return env_->GetBuilder()->GetTypedArraySpeciesProtectDetector(env);
+}
+
+inline GateRef StubBuilder::GetArrayIteratorDetector(GateRef env)
+{
+    return env_->GetBuilder()->GetArrayIteratorDetector(env);
+}
+
+inline GateRef StubBuilder::GetMapIteratorDetector(GateRef env)
+{
+    return env_->GetBuilder()->GetMapIteratorDetector(env);
+}
+
+inline GateRef StubBuilder::GetSetIteratorDetector(GateRef env)
+{
+    return env_->GetBuilder()->GetSetIteratorDetector(env);
+}
 } //  namespace panda::ecmascript::kungfu
 #endif // ECMASCRIPT_COMPILER_STUB_INL_H

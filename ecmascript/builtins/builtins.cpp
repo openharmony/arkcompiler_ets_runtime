@@ -403,14 +403,9 @@ void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread, bool
 
 void Builtins::InitializePropertyDetector(const JSHandle<GlobalEnv> &env, bool lazyInit) const
 {
-#define INITIALIZE_PROPERTY_DETECTOR(type, name, index)              \
-    JSHandle<MarkerCell> name##detector = factory_->NewMarkerCell(); \
-    if (lazyInit) {                                                  \
-        name##detector->InvalidatePropertyDetector();                \
-    }                                                                \
-    env->Set##name(thread_, name##detector);
-    GLOBAL_ENV_DETECTOR_FIELDS(INITIALIZE_PROPERTY_DETECTOR)
-#undef INITIALIZE_PROPERTY_DETECTOR
+    if (lazyInit) {
+        env->SetBitField(GlobalEnv::DEFAULT_LAZY_BITFIELD_VALUE);
+    }
 }
 
 void Builtins::InitializeNapiHClass(const JSHandle<GlobalEnv> &env,

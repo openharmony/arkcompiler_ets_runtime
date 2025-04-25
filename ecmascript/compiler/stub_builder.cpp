@@ -9296,13 +9296,19 @@ GateRef StubBuilder::IsDetectorInvalid(GateRef glue, size_t indexDetector)
 
 void StubBuilder::HClassCompareAndCheckDetector(GateRef glue, GateRef hclass,
                                                 Label *match, Label *slowPath,
-                                                size_t indexHClass, size_t indexDetector)
+                                                size_t indexHClass, bool isMap)
 {
     auto env = GetEnvironment();
     Label matchHClass(env);
     FuncOrHClassCompare(glue, hclass, &matchHClass, slowPath, indexHClass);
     Bind(&matchHClass);
-    BRANCH(IsDetectorInvalid(glue, indexDetector), slowPath, match);
+    GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
+    GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
+    if (isMap) {
+        BRANCH(GetMapIteratorDetector(glueGlobalEnv), slowPath, match);
+    } else {
+        BRANCH(GetSetIteratorDetector(glueGlobalEnv), slowPath, match);
+    }
 }
 
 void StubBuilder::GetIteratorResult(GateRef glue, Variable *result, GateRef obj,
@@ -9326,7 +9332,9 @@ void StubBuilder::TryFastGetArrayIterator(GateRef glue, GateRef hclass, GateRef 
     BRANCH(Int32Equal(jsType, Int32(static_cast<int32_t>(JSType::JS_ARRAY))), &tryArray, slowPath2);
     Bind(&tryArray);
     {
-        BRANCH(IsDetectorInvalid(glue, GlobalEnv::ARRAY_ITERATOR_DETECTOR_INDEX), slowPath2, &arrayDetectorValid);
+        GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
+        GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
+        BRANCH(GetArrayIteratorDetector(glueGlobalEnv), slowPath2, &arrayDetectorValid);
         Bind(&arrayDetectorValid);
         {
             BuiltinsArrayStubBuilder arrayStubBuilder(this);
@@ -9357,9 +9365,9 @@ void StubBuilder::TryFastGetIterator(GateRef glue, GateRef obj, GateRef hclass,
     // When the symbol.iterator method remains unmodified
     // it is used to quickly process instances of Map, Set whose hclass == Map/Set's ihc.
     // In this situation we don't need to perform FastGetPropertyByName and CallRuntime.
-    HClassCompareAndCheckDetector(glue, hclass, &matchMap, &notmatchMap, GlobalEnv::MAP_CLASS_INDEX, GlobalEnv::MAP_ITERATOR_DETECTOR_INDEX);
+    HClassCompareAndCheckDetector(glue, hclass, &matchMap, &notmatchMap, GlobalEnv::MAP_CLASS_INDEX, true);
     Bind(&notmatchMap);
-    HClassCompareAndCheckDetector(glue, hclass, &matchSet, &notmatchSet, GlobalEnv::SET_CLASS_INDEX, GlobalEnv::SET_ITERATOR_DETECTOR_INDEX);
+    HClassCompareAndCheckDetector(glue, hclass, &matchSet, &notmatchSet, GlobalEnv::SET_CLASS_INDEX, false);
     Bind(&notmatchSet);
 
     GateRef jsType = GetObjectType(hclass);

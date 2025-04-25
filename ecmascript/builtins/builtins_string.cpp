@@ -24,7 +24,6 @@
 #include "ecmascript/js_primitive_ref.h"
 #include "ecmascript/js_regexp.h"
 #include "ecmascript/js_string_iterator.h"
-#include "ecmascript/property_detector-inl.h"
 #ifdef ARK_SUPPORT_INTL
 #include "ecmascript/js_collator.h"
 #include "ecmascript/js_locale.h"
@@ -682,7 +681,7 @@ JSTaggedValue BuiltinsString::MatchAll(EcmaRuntimeCallInfo *argv)
 
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         if (thisTag->IsString() && regexp->IsECMAObject()) {
-            if (PropertyDetector::IsRegExpSpeciesDetectorValid(env) &&
+            if (!env->GetRegExpSpeciesDetector() &&
                 BuiltinsRegExp::IsFastRegExp(thread, regexp.GetTaggedValue(), BuiltinsRegExp::RegExpSymbol::MATCHALL)) {
                 JSHandle<EcmaString> string = JSHandle<EcmaString>::Cast(thisTag);
                 return BuiltinsRegExp::RegExpMatchAll(thread, regexp, string, true);
@@ -690,7 +689,7 @@ JSTaggedValue BuiltinsString::MatchAll(EcmaRuntimeCallInfo *argv)
         }
         // c. Let matcher be ? GetMethod(regexp, @@matchAll).
         // d. If matcher is not undefined, then
-        bool canSkip = (PropertyDetector::IsNumberStringNotRegexpLikeDetectorValid(env) &&
+        bool canSkip = (!env->GetNumberStringNotRegexpLikeDetector() &&
                        (regexp->IsString() || regexp->IsNumber()));
         if (!canSkip) {
             JSHandle<JSTaggedValue> matcher = JSObject::GetMethod(thread, regexp, matchAllTag);
@@ -1036,7 +1035,7 @@ JSTaggedValue BuiltinsString::Replace(EcmaRuntimeCallInfo *argv)
         }
     }
 
-    if (searchTag->IsJSRegExp() && PropertyDetector::IsRegExpReplaceDetectorValid(env)) {
+    if (searchTag->IsJSRegExp() && !env->GetRegExpReplaceDetector()) {
         JSTaggedValue proto = JSObject::GetPrototype(JSHandle<JSObject>(searchTag));
         if (proto == env->GetTaggedRegExpPrototype()) {
             return BuiltinsRegExp::ReplaceInternal(thread, searchTag, thisTag, replaceTag);

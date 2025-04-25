@@ -18,7 +18,6 @@
 #include "ecmascript/global_dictionary-inl.h"
 #include "ecmascript/js_primitive_ref.h"
 #include "ecmascript/object_fast_operator-inl.h"
-#include "ecmascript/property_detector-inl.h"
 
 namespace panda::ecmascript {
 bool ObjectOperator::TryFastHandleStringKey(const JSHandle<JSTaggedValue> &key)
@@ -243,36 +242,36 @@ void ObjectOperator::UpdateDetectorOnSetPrototype(const JSThread *thread, JSTagg
     JSType type = hclass->GetObjectType();
     switch (type) {
         case JSType::JS_REG_EXP: {
-            if (PropertyDetector::IsRegExpReplaceDetectorValid(env)) {
-                PropertyDetector::InvalidateRegExpReplaceDetector(env);
+            if (!env->GetRegExpReplaceDetector()) {
+                env->SetRegExpReplaceDetector(true);
             }
-            if (PropertyDetector::IsRegExpFlagsDetectorValid(env)) {
-                PropertyDetector::InvalidateRegExpFlagsDetector(env);
+            if (!env->GetRegExpFlagsDetector()) {
+                env->SetRegExpFlagsDetector(true);
             }
             return;
         }
         case JSType::JS_MAP: {
-            if (PropertyDetector::IsMapIteratorDetectorValid(env)) {
-                PropertyDetector::InvalidateMapIteratorDetector(env);
+            if (!env->GetMapIteratorDetector()) {
+                env->SetMapIteratorDetector(true);
             }
             return;
         }
         case JSType::JS_SET: {
-            if (PropertyDetector::IsSetIteratorDetectorValid(env)) {
-                PropertyDetector::InvalidateSetIteratorDetector(env);
+            if (!env->GetSetIteratorDetector()) {
+                env->SetSetIteratorDetector(true);
             }
             return;
         }
         case JSType::JS_PRIMITIVE_REF: {
             if (JSPrimitiveRef::Cast(receiver.GetTaggedObject())->IsString() &&
-                PropertyDetector::IsStringIteratorDetectorValid(env)) {
-                PropertyDetector::InvalidateStringIteratorDetector(env);
+                !env->GetStringIteratorDetector()) {
+                env->SetStringIteratorDetector(true);
             }
             return;
         }
         case JSType::JS_ARRAY: {
-            if (PropertyDetector::IsArrayIteratorDetectorValid(env)) {
-                PropertyDetector::InvalidateArrayIteratorDetector(env);
+            if (!env->GetArrayIteratorDetector()) {
+                env->SetArrayIteratorDetector(true);
             }
             return;
         }
@@ -287,11 +286,11 @@ void ObjectOperator::UpdateDetectorOnSetPrototype(const JSThread *thread, JSTagg
         case JSType::JS_FLOAT64_ARRAY:
         case JSType::JS_BIGINT64_ARRAY:
         case JSType::JS_BIGUINT64_ARRAY: {
-            if (PropertyDetector::IsTypedArrayIteratorDetectorValid(env)) {
-                PropertyDetector::InvalidateTypedArrayIteratorDetector(env);
+            if (!env->GetTypedArrayIteratorDetector()) {
+                env->SetTypedArrayIteratorDetector(true);
             }
-            if (PropertyDetector::IsTypedArraySpeciesProtectDetectorValid(env)) {
-                PropertyDetector::InvalidateTypedArraySpeciesProtectDetector(env);
+            if (!env->GetTypedArraySpeciesProtectDetector()) {
+                env->SetTypedArraySpeciesProtectDetector(true);
             }
             return;
         }
@@ -311,13 +310,13 @@ void ObjectOperator::UpdateDetectorOnSetPrototype(const JSThread *thread, JSTagg
          receiver == env->GetTaggedFloat64ArrayFunctionPrototype() ||
          receiver == env->GetTaggedBigInt64ArrayFunctionPrototype() ||
          receiver == env->GetTaggedBigUint64ArrayFunctionPrototype()) &&
-         PropertyDetector::IsTypedArrayIteratorDetectorValid(env)) {
-        PropertyDetector::InvalidateTypedArrayIteratorDetector(env);
+         !env->GetTypedArrayIteratorDetector()) {
+        env->SetTypedArrayIteratorDetector(true);
         return;
     }
-    if ((PropertyDetector::IsNumberStringNotRegexpLikeDetectorValid(env) &&
+    if ((!env->GetNumberStringNotRegexpLikeDetector() &&
         JSObject::Cast(receiver)->GetJSHClass()->IsPrototype() && receiver.IsJSPrimitive())) {
-        PropertyDetector::InvalidateNumberStringNotRegexpLikeDetector(env);
+        env->SetNumberStringNotRegexpLikeDetector(true);
         return;
     }
 }
@@ -345,32 +344,32 @@ void ObjectOperator::UpdateDetector(const JSThread *thread, JSTaggedValue receiv
     auto globalConst = thread->GlobalConstants();
     if (key == env->GetTaggedReplaceSymbol() &&
         (receiver.IsJSRegExp() || receiver == env->GetTaggedRegExpPrototype())) {
-        if (!PropertyDetector::IsRegExpReplaceDetectorValid(env)) {
+        if (env->GetRegExpReplaceDetector()) {
             return;
         }
-        PropertyDetector::InvalidateRegExpReplaceDetector(env);
+        env->SetRegExpReplaceDetector(true);
     } else if (key == env->GetTaggedIteratorSymbol()) {
         if (receiver.IsJSMap() || receiver == env->GetTaggedMapPrototype()) {
-            if (!PropertyDetector::IsMapIteratorDetectorValid(env)) {
+            if (env->GetMapIteratorDetector()) {
                 return;
             }
-            PropertyDetector::InvalidateMapIteratorDetector(env);
+            env->SetMapIteratorDetector(true);
         } else if (receiver.IsJSSet() || receiver == env->GetTaggedSetPrototype()) {
-            if (!PropertyDetector::IsSetIteratorDetectorValid(env)) {
+            if (env->GetSetIteratorDetector()) {
                 return;
             }
-            PropertyDetector::InvalidateSetIteratorDetector(env);
+            env->SetSetIteratorDetector(true);
         } else if ((receiver.IsJSPrimitiveRef() && JSPrimitiveRef::Cast(receiver.GetTaggedObject())->IsString()) ||
                    receiver == env->GetTaggedStringPrototype()) {
-            if (!PropertyDetector::IsStringIteratorDetectorValid(env)) {
+            if (env->GetStringIteratorDetector()) {
                 return;
             }
-            PropertyDetector::InvalidateStringIteratorDetector(env);
+            env->SetStringIteratorDetector(true);
         } else if (receiver.IsJSArray() || receiver == env->GetTaggedArrayPrototype()) {
-            if (!PropertyDetector::IsArrayIteratorDetectorValid(env)) {
+            if (env->GetArrayIteratorDetector()) {
                 return;
             }
-            PropertyDetector::InvalidateArrayIteratorDetector(env);
+            env->SetArrayIteratorDetector(true);
         } else if (receiver.IsTypedArray() ||
                    receiver == env->GetTaggedArrayPrototype() ||
                    receiver == env->GetTaggedInt8ArrayFunctionPrototype() ||
@@ -384,41 +383,41 @@ void ObjectOperator::UpdateDetector(const JSThread *thread, JSTaggedValue receiv
                    receiver == env->GetTaggedFloat64ArrayFunctionPrototype() ||
                    receiver == env->GetTaggedBigInt64ArrayFunctionPrototype() ||
                    receiver == env->GetTaggedBigUint64ArrayFunctionPrototype()) {
-            if (!PropertyDetector::IsTypedArrayIteratorDetectorValid(env)) {
+            if (env->GetTypedArrayIteratorDetector()) {
                 return;
             }
-            PropertyDetector::InvalidateTypedArrayIteratorDetector(env);
+            env->SetTypedArrayIteratorDetector(true);
         }
     } else if (key == env->GetTaggedSpeciesSymbol()) {
         if (receiver == env->GetTypedArrayFunction().GetTaggedValue()) {
-            if (!PropertyDetector::IsTypedArraySpeciesProtectDetectorValid(env)) {
+            if (env->GetTypedArraySpeciesProtectDetector()) {
                 return;
             }
-            PropertyDetector::InvalidateTypedArraySpeciesProtectDetector(env);
+            env->SetTypedArraySpeciesProtectDetector(true);
         }
         if (receiver == env->GetRegExpFunction().GetTaggedValue()) {
-            if (!PropertyDetector::IsRegExpSpeciesDetectorValid(env)) {
+            if (env->GetRegExpSpeciesDetector()) {
                 return;
             }
-            PropertyDetector::InvalidateRegExpSpeciesDetector(env);
+            env->SetRegExpSpeciesDetector(true);
         }
     } else if ((key == env->GetTaggedReplaceSymbol()) ||
         (key == env->GetTaggedSplitSymbol()) ||
         (key == env->GetTaggedMatchAllSymbol())) {
-        if (!PropertyDetector::IsNumberStringNotRegexpLikeDetectorValid(env)) {
+        if (env->GetNumberStringNotRegexpLikeDetector()) {
             return;
         }
         // check String.prototype or Number.prototype or Object.prototype
         if ((JSObject::Cast(receiver)->GetJSHClass()->IsPrototype() &&
             (receiver.IsJSPrimitive() || receiver == env->GetTaggedObjectFunctionPrototype()))) {
-            PropertyDetector::InvalidateNumberStringNotRegexpLikeDetector(env);
+            env->SetNumberStringNotRegexpLikeDetector(true);
         }
     } else if (key == globalConst->GetHandledFlagsString().GetTaggedValue() &&
         (receiver.IsJSRegExp() || receiver == env->GetTaggedRegExpPrototype())) {
-        if (!PropertyDetector::IsRegExpFlagsDetectorValid(env)) {
+        if (env->GetRegExpFlagsDetector()) {
             return;
         }
-        PropertyDetector::InvalidateRegExpFlagsDetector(env);
+        env->SetRegExpFlagsDetector(true);
     }
 }
 
