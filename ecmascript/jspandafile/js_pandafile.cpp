@@ -20,7 +20,6 @@ namespace panda::ecmascript {
 namespace {
 const CString OHOS_PKG_ABC_PATH_ROOT = "/ets/";  // abc file always under /ets/ dir in HAP/HSP
 }  // namespace
-bool JSPandaFile::loadedFirstPandaFile = false;
 JSPandaFile::JSPandaFile(const panda_file::File *pf, const CString &descriptor, CreateMode mode)
     : pf_(pf), desc_(descriptor), mode_(mode)
 {
@@ -33,12 +32,6 @@ JSPandaFile::JSPandaFile(const panda_file::File *pf, const CString &descriptor, 
     }
     checksum_ = pf->GetHeader()->checksum;
     isNewVersion_ = pf_->GetHeader()->version > OLD_VERSION;
-    if (!loadedFirstPandaFile && !isBundlePack_) {
-        // Tag the first merged abc to use constant string. The lifetime of this first panda file is the same
-        // as the vm. And make sure the first pandafile is the same at the compile time and runtime.
-        isFirstPandafile_ = false;
-        loadedFirstPandaFile = true;
-    }
 }
 
 void JSPandaFile::CheckIsBundlePack()
@@ -225,14 +218,6 @@ void JSPandaFile::InitializeMergedPF()
     methodLiterals_ = static_cast<MethodLiteral *>(
         JSPandaFileManager::AllocateBuffer(sizeof(MethodLiteral) * numMethods_, isBundlePack_, mode_));
     methodLiteralMap_.reserve(numMethods_);
-}
-
-bool JSPandaFile::IsFirstMergedAbc() const
-{
-    if (isFirstPandafile_ && !IsBundlePack()) {
-        return true;
-    }
-    return false;
 }
 
 CString JSPandaFile::GetEntryPoint(const CString &recordName) const

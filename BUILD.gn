@@ -1531,7 +1531,6 @@ js_type_metadata_sources = [
   "ecmascript/js_type_metadata/class_literal.json",
   "ecmascript/js_type_metadata/completion_record.json",
   "ecmascript/js_type_metadata/constant_pool.json",
-  "ecmascript/js_type_metadata/constant_string.json",
   "ecmascript/js_type_metadata/cow_mutant_tagged_array.json",
   "ecmascript/js_type_metadata/cow_tagged_array.json",
   "ecmascript/js_type_metadata/dictionary_layout.json",

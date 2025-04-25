@@ -621,7 +621,6 @@ public:
     inline EcmaString *AllocReadOnlyLineStringObject(size_t size);
     inline EcmaString *AllocNonMovableLineStringObject(size_t size);
     inline EcmaString *AllocSlicedStringObject(MemSpaceType type);
-    inline EcmaString *AllocConstantStringObject(MemSpaceType type);
     inline EcmaString *AllocTreeStringObject();
 
     JSHandle<EcmaString> ConcatFromString(const JSHandle<EcmaString> &firstString,
@@ -974,12 +973,9 @@ private:
                                                           bool canBeCompress = true) const;
     // For MUtf-8 string data
     EcmaString *PUBLIC_API GetRawStringFromStringTable(StringData sd,
-                                                       MemSpaceType type = MemSpaceType::SHARED_OLD_SPACE,
-                                                       bool isConstantString = false, uint32_t idOffset = 0) const;
+                                                       MemSpaceType type = MemSpaceType::SHARED_OLD_SPACE) const;
     EcmaString *GetRawStringFromStringTableWithoutJSHandle(StringData sd,
-                                                           MemSpaceType type = MemSpaceType::SHARED_OLD_SPACE,
-                                                           bool isConstantString = false,
-                                                           uint32_t idOffset = 0) const;
+                                                           MemSpaceType type = MemSpaceType::SHARED_OLD_SPACE) const;
 
     JSHandle<EcmaString> GetStringFromStringTable(const uint16_t *utf16Data, uint32_t utf16Len,
                                                   bool canBeCompress) const;

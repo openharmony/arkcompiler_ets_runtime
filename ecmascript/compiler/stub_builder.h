@@ -414,8 +414,6 @@ public:
     GateRef IsString(GateRef glue, GateRef obj);
     GateRef IsLineString(GateRef glue, GateRef obj);
     GateRef IsSlicedString(GateRef glue, GateRef obj);
-    GateRef IsConstantString(GateRef glue, GateRef obj);
-    GateRef IsLiteralString(GateRef glue, GateRef obj);
     GateRef IsTreeString(GateRef glue, GateRef obj);
     GateRef TreeStringIsFlat(GateRef glue, GateRef string);
     GateRef TaggedIsBigInt(GateRef glue, GateRef obj);
@@ -1019,7 +1017,7 @@ public:
     inline void InitStringLengthAndFlags(GateRef glue, GateRef str, GateRef length, GateRef isCompressed);
     void Assert(int messageId, int line, GateRef glue, GateRef condition, Label *nextLabel);
 
-    GateRef GetNormalStringData(GateRef glue, const StringInfoGateRef &stringInfoGate);
+    GateRef GetNormalStringData(const StringInfoGateRef &stringInfoGate);
 
     void Comment(GateRef glue, const std::string &str);
     GateRef ToNumber(GateRef glue, GateRef tagged);

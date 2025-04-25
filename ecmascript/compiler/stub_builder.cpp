@@ -2284,7 +2284,7 @@ GateRef StubBuilder::StringToElementIndex(GateRef glue, GateRef string)
             thisFlat.FlattenString(glue, string, &flattenFastPath);
             Bind(&flattenFastPath);
             StringInfoGateRef stringInfoGate(&thisFlat);
-            GateRef dataUtf8 = GetNormalStringData(glue, stringInfoGate);
+            GateRef dataUtf8 = GetNormalStringData(stringInfoGate);
             c = ZExtInt8ToInt32(LoadPrimitive(VariableType::INT8(), dataUtf8));
             Label isDigitZero(env);
             Label notDigitZero(env);
@@ -6557,8 +6557,8 @@ GateRef StubBuilder::FastStringEqual(GateRef glue, GateRef left, GateRef right)
                 BuiltinsStringStubBuilder stringBuilder(this);
                 StringInfoGateRef leftStrInfoGate(&leftFlat);
                 StringInfoGateRef rightStrInfoGate(&rightFlat);
-                GateRef leftStrToInt = stringBuilder.StringAt(glue, leftStrInfoGate, Int32(0));
-                GateRef rightStrToInt = stringBuilder.StringAt(glue, rightStrInfoGate, Int32(0));
+                GateRef leftStrToInt = stringBuilder.StringAt(leftStrInfoGate, Int32(0));
+                GateRef rightStrToInt = stringBuilder.StringAt(rightStrInfoGate, Int32(0));
                 result = Equal(leftStrToInt, rightStrToInt);
                 Jump(&exit);
             }
@@ -6626,8 +6626,8 @@ GateRef StubBuilder::StringCompareContents(GateRef glue, GateRef left, GateRef r
         Bind(&loopBody);
         {
             BuiltinsStringStubBuilder stringBuilder(this);
-            GateRef leftStrToInt = stringBuilder.StringAt(glue, leftStrInfoGate, *i);
-            GateRef rightStrToInt = stringBuilder.StringAt(glue, rightStrInfoGate, *i);
+            GateRef leftStrToInt = stringBuilder.StringAt(leftStrInfoGate, *i);
+            GateRef rightStrToInt = stringBuilder.StringAt(rightStrInfoGate, *i);
             Label notEqual(env);
             BRANCH_NO_WEIGHT(Int32Equal(leftStrToInt, rightStrToInt), &loopEnd, &notEqual);
             Bind(&notEqual);
@@ -9438,7 +9438,7 @@ GateRef StubBuilder::TryStringOrSymbolToElementIndex(GateRef glue, GateRef key)
         thisFlat.FlattenString(glue, key, &flattenFastPath);
         Bind(&flattenFastPath);
         StringInfoGateRef stringInfoGate(&thisFlat);
-        GateRef data = GetNormalStringData(glue, stringInfoGate);
+        GateRef data = GetNormalStringData(stringInfoGate);
         c = ZExtInt8ToInt32(LoadPrimitive(VariableType::INT8(), data));
         Label isDigitZero(env);
         Label notDigitZero(env);
@@ -9653,41 +9653,28 @@ void StubBuilder::Assert(int messageId, int line, GateRef glue, GateRef conditio
     }
 }
 
-GateRef StubBuilder::GetNormalStringData(GateRef glue, const StringInfoGateRef &stringInfoGate)
+GateRef StubBuilder::GetNormalStringData(const StringInfoGateRef &stringInfoGate)
 {
     auto env = GetEnvironment();
     Label entry(env);
     env->SubCfgEntry(&entry);
     Label exit(env);
-    Label isConstantString(env);
-    Label isLineString(env);
     Label isUtf8(env);
     Label isUtf16(env);
     DEFVARIABLE(result, VariableType::NATIVE_POINTER(), Undefined());
-    BRANCH(IsConstantString(glue, stringInfoGate.GetString()), &isConstantString, &isLineString);
-    Bind(&isConstantString);
+    GateRef data = ChangeTaggedPointerToInt64(
+        PtrAdd(stringInfoGate.GetString(), IntPtr(LineEcmaString::DATA_OFFSET)));
+    BRANCH(IsUtf8String(stringInfoGate.GetString()), &isUtf8, &isUtf16);
+    Bind(&isUtf8);
     {
-        GateRef address = PtrAdd(stringInfoGate.GetString(), IntPtr(ConstantString::CONSTANT_DATA_OFFSET));
-        result = PtrAdd(LoadPrimitive(VariableType::NATIVE_POINTER(), address, IntPtr(0)),
-            ZExtInt32ToPtr(stringInfoGate.GetStartIndex()));
+        result = PtrAdd(data, ZExtInt32ToPtr(stringInfoGate.GetStartIndex()));
         Jump(&exit);
     }
-    Bind(&isLineString);
+    Bind(&isUtf16);
     {
-        GateRef data = ChangeTaggedPointerToInt64(
-            PtrAdd(stringInfoGate.GetString(), IntPtr(LineEcmaString::DATA_OFFSET)));
-        BRANCH(IsUtf8String(stringInfoGate.GetString()), &isUtf8, &isUtf16);
-        Bind(&isUtf8);
-        {
-            result = PtrAdd(data, ZExtInt32ToPtr(stringInfoGate.GetStartIndex()));
-            Jump(&exit);
-        }
-        Bind(&isUtf16);
-        {
-            GateRef offset = PtrMul(ZExtInt32ToPtr(stringInfoGate.GetStartIndex()), IntPtr(sizeof(uint16_t)));
-            result = PtrAdd(data, offset);
-            Jump(&exit);
-        }
+        GateRef offset = PtrMul(ZExtInt32ToPtr(stringInfoGate.GetStartIndex()), IntPtr(sizeof(uint16_t)));
+        result = PtrAdd(data, offset);
+        Jump(&exit);
     }
     Bind(&exit);
     auto ret = *result;
