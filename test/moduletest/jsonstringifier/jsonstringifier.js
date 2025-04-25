@@ -320,4 +320,139 @@ assert_equal(JSON.stringify(testspaceobj, null, Infinity),testspaceobjAssert);
   assert_equal(JSON.stringify(obj), exceptStr2);
 }
 
+{
+  // undefined, function, symbol
+  let obj = {
+    a: undefined,
+    b: function() {},
+    c: Symbol("test"),
+    d: 123,
+    e: "string"
+  };
+  assert_equal(JSON.stringify(obj), '{"d":123,"e":"string"}');
+  assert_equal(JSON.stringify([undefined, function(){}, Symbol("test")]), '[null,null,null]');
+}
+
+{
+  // special numbers
+  let obj = {
+    nan: NaN,
+    inf: Infinity,
+    ninf: -Infinity
+  };
+  assert_equal(JSON.stringify(obj), '{"nan":null,"inf":null,"ninf":null}');
+}
+
+{
+  // control characters
+  let obj = {
+    str: "Line1\nLine2\tTabbed\"Quote\"\\Backslash"
+  };
+  assert_equal(JSON.stringify(obj), '{"str":"Line1\\nLine2\\tTabbed\\"Quote\\"\\\\Backslash"}');
+}
+
+{
+  // deep string
+  let obj = {a: {b: {c: {d: {e: {f: "deep"}}}}}};
+  assert_equal(JSON.stringify(obj), '{"a":{"b":{"c":{"d":{"e":{"f":"deep"}}}}}}');
+}
+
+{
+  // replace
+  let obj = {
+    a: 1,
+    b: 2,
+    c: 3
+  };
+  assert_equal(JSON.stringify(obj, ["a", "c"]), '{"a":1,"c":3}');
+}
+
+
+{
+  // repalce
+  let obj = { a: 1, b: 2, c: 3 };
+  function replacer(key, value) {
+    if (value === 2) return undefined;
+    return value;
+  }
+  assert_equal(JSON.stringify(obj, replacer), '{"a":1,"c":3}');
+}
+
+{
+  // space
+  let obj = { a: 1, b: { c: 2 } };
+  let expected = `{
+  "a": 1,
+  "b": {
+    "c": 2
+  }
+}`;
+  assert_equal(JSON.stringify(obj, null, 2), expected);
+}
+
+{
+  // sparse array
+  let arr = [1,,3];
+  assert_equal(JSON.stringify(arr), '[1,null,3]');
+}
+
+{
+  // BigInt
+  try {
+    let obj = { big: 10n };
+    JSON.stringify(obj);
+    assert_unreachable();
+  } catch (err) {
+    assert_equal(err instanceof TypeError, true);
+  }
+}
+
+{
+  // Chinese characters
+  let str = "你好，世界";
+  assert_equal(JSON.stringify(str), '"你好，世界"');
+}
+
+{
+  // Emoji characters
+  let smile = "😎";
+  assert_equal(JSON.stringify(smile), '"😎"');
+}
+
+{
+  // Emoji characters
+  let emoji_str = "😎🙂👍";
+  assert_equal(JSON.stringify(emoji_str), '"😎🙂👍"');
+}
+
+{
+  // Chinese and Emoji
+  let mixed = "测试一下😎ok";
+  assert_equal(JSON.stringify(mixed), '"测试一下😎ok"');
+}
+
+{
+  // alone high surrogate
+  let lone_high = "\uD83D";
+  assert_equal(JSON.stringify(lone_high), '"\\ud83d"');
+}
+
+{
+  // alone low surrogate
+  let lone_low = "\uDE0E";
+  assert_equal(JSON.stringify(lone_low), '"\\ude0e"');
+}
+
+{
+  // wrong order of high and low surrogate
+  let invalid_surrogate = "\uDE0E\uD83D";
+  assert_equal(JSON.stringify(invalid_surrogate), '"\\ude0e\\ud83d"');
+}
+
+{
+  // right pair of high and low surrogate
+  let valid_surrogate = "\uD83D\uDE0E";
+  assert_equal(JSON.stringify(valid_surrogate), '"😎"');
+}
+
 test_end();

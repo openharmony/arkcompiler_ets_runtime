@@ -100,6 +100,21 @@ struct Utf8Char {
 
 static const unsigned char firstByteMark[7] = {0x00, 0x00, 0xC0, 0xE0, 0xF0, 0xF8, 0xFC};
 
+inline bool IsUTF16Surrogate(uint16_t ch)
+{
+    return DECODE_LEAD_LOW <= ch && ch <= DECODE_TRAIL_HIGH;
+}
+
+inline bool IsUTF16HighSurrogate(uint16_t ch)
+{
+    return DECODE_LEAD_LOW <= ch && ch <= DECODE_LEAD_HIGH;
+}
+
+inline bool IsUTF16LowSurrogate(uint16_t ch)
+{
+    return DECODE_TRAIL_LOW <= ch && ch <= DECODE_TRAIL_HIGH;
+}
+
 uint32_t DecodeUTF16(uint16_t const *utf16, size_t len, size_t *index, bool cesu8 = false);
 
 size_t EncodeUTF8(uint32_t codepoint, uint8_t* utf8, size_t index, size_t size);

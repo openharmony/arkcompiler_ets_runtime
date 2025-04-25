@@ -17,6 +17,7 @@
 
 #include "ecmascript/base/dtoa_helper.h"
 #include "ecmascript/base/number_helper.h"
+#include "ecmascript/base/json_helper.h"
 #include "ecmascript/ecma_string-inl.h"
 #include "ecmascript/js_symbol.h"
 
@@ -82,6 +83,21 @@ CString ConvertToString(T sp)
     return res;
 }
 
+CString ConvertToString(JSTaggedValue key)
+{
+    ASSERT(key.IsStringOrSymbol());
+    if (key.IsString()) {
+        return ConvertToString(EcmaString::ConstCast(key.GetTaggedObject()));
+    }
+
+    ecmascript::JSTaggedValue desc = JSSymbol::Cast(key.GetTaggedObject())->GetDescription();
+    if (desc.IsUndefined()) {
+        return CString("Symbol()");
+    }
+
+    return ConvertToString(EcmaString::ConstCast(desc.GetTaggedObject()));
+}
+
 // NB! the following function need additional mem allocation, don't use when unnecessary!
 CString ConvertToString(const std::string &str)
 {
@@ -101,24 +117,63 @@ CString ConvertToString(const EcmaString *s, StringConvertedUsage usage, bool ce
     return EcmaStringAccessor(const_cast<EcmaString *>(s)).ToCString(usage, cesu8);
 }
 
-bool AppendSpecialDouble(CString &str, double d)
+std::string ConvertToStdString(const CString &str)
+{
+    std::string res;
+    res.reserve(str.size());
+    for (auto c : str) {
+        res.push_back(c);
+    }
+    return res;
+}
+
+#if ENABLE_NEXT_OPTIMIZATION
+template <typename DstType>
+void AppendIntToCString(DstType &str, int number)
+{
+    using CharT = typename DstType::value_type;
+    int64_t n = static_cast<int64_t>(number);
+    uint32_t preSize = str.size();
+    bool isNeg = true;
+    if (n >= 0) {
+        n = -n;
+        isNeg = false;
+    }
+    do {
+        str.push_back(static_cast<CharT>('0' - (n % DEC_BASE)));
+        n /= DEC_BASE;
+    } while (n);
+    if (isNeg) {
+        str.push_back(static_cast<CharT>('-'));
+    }
+    std::reverse(str.begin() + preSize, str.end());
+}
+
+template void AppendIntToCString<CString>(CString &str, int number);
+template void AppendIntToCString<C16String>(C16String &str, int number);
+
+template <typename DstType>
+bool AppendSpecialDouble(DstType &str, double d)
 {
     if (d == 0.0) {
-        str.append(base::NumberHelper::ZERO_STR);
+        AppendCString(str, base::NumberHelper::ZERO_STR);
         return true;
     }
     if (std::isnan(d)) {
-        str.append(base::NumberHelper::NAN_STR);
+        AppendCString(str, base::NumberHelper::NAN_STR);
         return true;
     }
     if (std::isinf(d)) {
-        str.append(d < 0 ? base::NumberHelper::MINUS_INFINITY_STR : base::NumberHelper::INFINITY_STR);
+        AppendCString(str, d < 0 ? base::NumberHelper::MINUS_INFINITY_STR : base::NumberHelper::INFINITY_STR);
         return true;
     }
     return false;
 }
+template bool AppendSpecialDouble<CString>(CString &str, double d);
+template bool AppendSpecialDouble<C16String>(C16String &str, double d);
 
-void AppendDoubleToString(CString &str, double d)
+template <typename DstType>
+void AppendDoubleToString(DstType &str, double d)
 {
     if (AppendSpecialDouble(str, d)) {
         return;
@@ -178,52 +233,54 @@ void AppendDoubleToString(CString &str, double d)
         result[0] = '-';
         len += 1;
     }
-    str.append(result, len);
+    AppendString(str, result, len);
 }
+template void AppendDoubleToString<CString>(CString &str, double d);
+template void AppendDoubleToString<C16String>(C16String &str, double d);
 
-void ConvertToCStringAndAppend(CString &str, JSTaggedValue num)
+template <typename DstType>
+void ConvertNumberToCStringAndAppend(DstType &str, JSTaggedValue num)
 {
     ASSERT(num.IsNumber());
     if (num.IsInt()) {
         int intVal = num.GetInt();
-        AppendToCString<int>(str, intVal);
+        AppendIntToCString(str, intVal);
     } else {
         double d = num.GetDouble();
         AppendDoubleToString(str, d);
     }
 }
+template void ConvertNumberToCStringAndAppend<CString>(CString &str, JSTaggedValue num);
+template void ConvertNumberToCStringAndAppend<C16String>(C16String &str, JSTaggedValue num);
 
-void ConvertQuotedAndAppendToString(CString &str, const EcmaString *s, StringConvertedUsage usage, bool cesu8)
+void ConvertQuotedAndAppendToCString(CString &str, const EcmaString *s)
 {
-    if (s == nullptr) {
-        str += "\"\"";
-        return;
-    }
-    EcmaStringAccessor(const_cast<EcmaString *>(s)).AppendQuotedStringToCString(str, usage, cesu8);
+    ASSERT(s != nullptr);
+
+    uint32_t strLen = EcmaStringAccessor(const_cast<EcmaString *>(s)).GetLength();
+    CVector<uint8_t> buf;
+    const uint8_t *data = EcmaStringAccessor::GetUtf8DataFlat(s, buf);
+    const Span<const uint8_t> dataSpan(data, strLen);
+    base::JsonHelper::AppendValueToQuotedString(dataSpan, str);
 }
 
-CString ConvertToString(JSTaggedValue key)
+void ConvertQuotedAndAppendToC16String(C16String &str, const EcmaString *s)
 {
-    ASSERT(key.IsStringOrSymbol());
-    if (key.IsString()) {
-        return ConvertToString(EcmaString::ConstCast(key.GetTaggedObject()));
-    }
+    ASSERT(s != nullptr);
 
-    ecmascript::JSTaggedValue desc = JSSymbol::Cast(key.GetTaggedObject())->GetDescription();
-    if (desc.IsUndefined()) {
-        return CString("Symbol()");
+    uint32_t strLen = EcmaStringAccessor(const_cast<EcmaString *>(s)).GetLength();
+    if (EcmaStringAccessor(const_cast<EcmaString *>(s)).IsUtf8()) {
+        CVector<uint8_t> buf;
+        const uint8_t *data = EcmaStringAccessor::GetUtf8DataFlat(s, buf);
+        const Span<const uint8_t> dataSpan(data, strLen);
+        base::JsonHelper::AppendValueToQuotedString(dataSpan, str);
+    } else {
+        CVector<uint16_t> buf;
+        const uint16_t *data = EcmaStringAccessor::GetUtf16DataFlat(s, buf);
+        const Span<const uint16_t> dataSpan(data, strLen);
+        base::JsonHelper::AppendValueToQuotedString(dataSpan, str);
     }
-
-    return ConvertToString(EcmaString::ConstCast(desc.GetTaggedObject()));
 }
+#endif
 
-std::string ConvertToStdString(const CString &str)
-{
-    std::string res;
-    res.reserve(str.size());
-    for (auto c : str) {
-        res.push_back(c);
-    }
-    return res;
-}
 }  // namespace panda::ecmascript

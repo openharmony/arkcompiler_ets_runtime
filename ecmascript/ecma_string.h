@@ -277,6 +277,27 @@ private:
 
     Span<const uint8_t> DebuggerToUtf8Span(CVector<uint8_t> &buf, bool modify = true);
 
+    Span<const uint16_t> ToUtf16Span(CVector<uint16_t> &buf)
+    {
+        Span<const uint16_t> str;
+        uint32_t strLen = GetLength();
+        if (UNLIKELY(IsUtf16())) {
+            const uint16_t *data = EcmaString::GetUtf16DataFlat(this, buf);
+            str = Span<const uint16_t>(data, strLen);
+        } else {
+            CVector<uint8_t> tmpBuf;
+            const uint8_t *data = EcmaString::GetUtf8DataFlat(this, tmpBuf);
+            buf.reserve(strLen);
+            auto utf16Len = base::utf_helper::ConvertRegionUtf8ToUtf16(data, buf.data(), strLen, strLen);
+#if !defined(NDEBUG)
+            auto calculatedLen = base::utf_helper::Utf8ToUtf16Size(data, strLen);
+            ASSERT_PRINT(utf16Len == calculatedLen, "Bad utf8 to utf16 conversion!");
+#endif
+            str = Span<const uint16_t>(buf.data(), utf16Len);
+        }
+        return str;
+    }
+
     void WriteData(EcmaString *src, uint32_t start, uint32_t destSize, uint32_t length);
 
     static bool CanBeCompressed(const uint8_t *utf8Data, uint32_t utf8Len);
@@ -864,11 +885,10 @@ public:
     // if string is not flat, this func has low efficiency.
     CString ToCString(StringConvertedUsage usage = StringConvertedUsage::LOGICOPERATION, bool cesu8 = false);
 
-    void AppendToCString(CString &str, StringConvertedUsage usage = StringConvertedUsage::LOGICOPERATION,
-                         bool cesu8 = false);
-
-    void AppendQuotedStringToCString(CString &str, StringConvertedUsage usage = StringConvertedUsage::LOGICOPERATION,
-                                     bool cesu8 = false);
+#if ENABLE_NEXT_OPTIMIZATION
+    void AppendToCString(CString &str);
+    void AppendToC16String(C16String &str);
+#endif
 
     // not change string data structure.
     // if string is not flat, this func has low efficiency.

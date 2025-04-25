@@ -1126,28 +1126,38 @@ CString EcmaStringAccessor::ToCString(StringConvertedUsage usage, bool cesu8)
 #endif
 }
 
-void EcmaStringAccessor::AppendToCString(CString &str, StringConvertedUsage usage, bool cesu8)
+#if ENABLE_NEXT_OPTIMIZATION
+void EcmaStringAccessor::AppendToCString(CString &str)
 {
     if (string_ == nullptr) {
         return;
     }
-    bool modify = (usage != StringConvertedUsage::PRINT);
+
+    size_t strLen = GetLength();
     CVector<uint8_t> buf;
-    Span<const uint8_t> sp = string_->ToUtf8Span(buf, modify, cesu8);
-    str.append(reinterpret_cast<const char*>(sp.data()), sp.size());
+    const uint8_t *data = EcmaString::GetUtf8DataFlat(string_, buf);
+    str.append(reinterpret_cast<const char *>(data), strLen);
 }
 
-void EcmaStringAccessor::AppendQuotedStringToCString(CString &str, StringConvertedUsage usage, bool cesu8)
+void EcmaStringAccessor::AppendToC16String(C16String &str)
 {
     if (string_ == nullptr) {
         return;
     }
-    bool modify = (usage != StringConvertedUsage::PRINT);
-    CVector<uint8_t> buf;
-    Span<const uint8_t> sp = string_->ToUtf8Span(buf, modify, cesu8);
-    base::JsonHelper::AppendValueToQuotedString(sp, str);
+    // used to append utf8 space to utf16 gap by stringify
+    // In real world, space is usually utf8.
+    if LIKELY(string_->IsUtf8()) {
+        CVector<uint8_t> buf;
+        const uint8_t *data = EcmaString::GetUtf8DataFlat(string_, buf);
+        // only ascii codes, no need to convert to UTF-16, just append.
+        AppendString(str, reinterpret_cast<const char*>(data), GetLength());
+    } else {
+        CVector<uint16_t> buf;
+        const uint16_t *data = EcmaString::GetUtf16DataFlat(string_, buf);
+        str.append(reinterpret_cast<const char16_t *>(data), GetLength());
+    }
 }
-
+#endif
 // static
 EcmaString *EcmaStringAccessor::CreateLineString(const EcmaVM *vm, size_t length, bool compressed)
 {
