@@ -63,9 +63,8 @@ class PUBLIC_API DFXJSNApi {
 public:
     // progress pointer is used to report the object number for IDE.
     // isVmMode means the internal class in vm is visible. isPrivate means the number and string is not visible.
-    static void DumpHeapSnapshot(const EcmaVM *vm, const std::string &path, const DumpSnapShotOption &dumpOption);
-    static void DumpHeapSnapshot(const EcmaVM *vm, int& fd, const DumpSnapShotOption &dumpOption,
-                                 const std::function<void(uint8_t)> &callback);
+    static void DumpHeapSnapshot(const EcmaVM *vm, const std::string &path, const DumpSnapShotOption &dumpOption,
+                                 const std::function<void(uint8_t)> &callback = nullptr);
     static void DumpHeapSnapshot(const EcmaVM *vm, Stream *stream, const DumpSnapShotOption &dumpOption,
                                  Progress *progress = nullptr,
                                  std::function<void(uint8_t)> callback = [] (uint8_t) {});

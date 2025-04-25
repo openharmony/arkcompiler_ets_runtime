@@ -1048,6 +1048,7 @@ bool HeapProfiler::DumpHeapSnapshot(Stream *stream, const DumpSnapShotOption &du
             prctl(PR_SET_NAME, reinterpret_cast<unsigned long>("dump_process"), 0, 0, 0);
             if (dumpOption.dumpFormat == DumpFormat::BINARY) {
                 res = BinaryDump(stream, dumpOption);
+                stream->EndOfStream();
             } else {
                 res = DoDump(stream, progress, dumpOption);
             }
@@ -1057,7 +1058,6 @@ bool HeapProfiler::DumpHeapSnapshot(Stream *stream, const DumpSnapShotOption &du
     if (pid != 0) {
         std::thread thread(&WaitProcess, pid, callback);
         thread.detach();
-        stream->EndOfStream();
     }
     isProfiling_ = true;
     return res;
