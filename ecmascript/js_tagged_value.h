@@ -421,6 +421,8 @@ public:
                                                           const char *message = "RequireObjectCoercible throw Error");
     static bool SameValue(const JSTaggedValue &x, const JSTaggedValue &y);
     static bool SameValue(const JSHandle<JSTaggedValue> &xHandle, const JSHandle<JSTaggedValue> &yHandle);
+    static bool SameValueString(const JSTaggedValue &x, const JSTaggedValue &y);
+    static bool SameValueString(const JSHandle<JSTaggedValue> &xHandle, const JSHandle<JSTaggedValue> &yHandle);
     static bool SameValueZero(const JSTaggedValue &x, const JSTaggedValue &y);
     static bool Less(JSThread *thread, const JSHandle<JSTaggedValue> &x, const JSHandle<JSTaggedValue> &y);
     static bool Equal(JSThread *thread, const JSHandle<JSTaggedValue> &x, const JSHandle<JSTaggedValue> &y);

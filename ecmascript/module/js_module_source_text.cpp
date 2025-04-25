@@ -112,7 +112,7 @@ JSHandle<JSTaggedValue> SourceTextModule::ResolveExportObject(JSThread *thread,
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     // For CJS, if exports is not JSObject, means the CJS module use default output
     JSHandle<JSTaggedValue> defaultString = globalConstants->GetHandledDefaultString();
-    if (JSTaggedValue::SameValue(exportName, defaultString)) {
+    if (JSTaggedValue::SameValueString(exportName, defaultString)) {
         // bind with a number
         return JSHandle<JSTaggedValue>::Cast(factory->NewResolvedIndexBindingRecord(module, -1));
     }
@@ -206,7 +206,7 @@ JSHandle<JSTaggedValue> SourceTextModule::ResolveExport(JSThread *thread,
     }
     // 6. If SameValue(exportName, "default") is true, then
     JSHandle<JSTaggedValue> defaultString = globalConstants->GetHandledDefaultString();
-    if (JSTaggedValue::SameValue(exportName, defaultString)) {
+    if (JSTaggedValue::SameValueString(exportName, defaultString)) {
         // a. Assert: A default export was not explicitly defined by this module.
         // b. Return null.
         // c. NOTE: A default export cannot be provided by an export *.
@@ -706,7 +706,7 @@ void SourceTextModule::ModuleDeclarationEnvironmentSetup(JSThread *thread,
         RETURN_IF_ABRUPT_COMPLETION(thread);
         // c. If in.[[ImportName]] is "*", then
         JSHandle<JSTaggedValue> starString = globalConstants->GetHandledStarString();
-        if (JSTaggedValue::SameValue(importName, starString)) {
+        if (JSTaggedValue::SameValueString(importName, starString)) {
             // i. Let namespace be ? GetModuleNamespace(importedModule).
             JSHandle<JSTaggedValue> moduleNamespace = SourceTextModule::GetModuleNamespace(thread, importedModule);
             // ii. Perform ! envRec.CreateImmutableBinding(in.[[LocalName]], true).
@@ -783,7 +783,7 @@ void SourceTextModule::ModuleDeclarationArrayEnvironmentSetup(JSThread *thread,
         RETURN_IF_ABRUPT_COMPLETION(thread);
         // c. If in.[[ImportName]] is "*", then
         JSHandle<JSTaggedValue> starString = globalConstants->GetHandledStarString();
-        if (JSTaggedValue::SameValue(importName, starString)) {
+        if (JSTaggedValue::SameValueString(importName, starString)) {
             // need refactor
             envRec = JSSharedModule::CloneEnvForSModule(thread, module, envRec);
             module->SetEnvironment(thread, envRec);
@@ -1577,7 +1577,7 @@ JSHandle<JSTaggedValue> SourceTextModule::ResolveLocalExport(JSThread *thread,
             return JSHandle<JSTaggedValue>::Cast(factory->NewResolvedBindingRecord(module, exportName));
         }
 
-        if ((JSTaggedValue::SameValue(ee->GetExportName(), exportName.GetTaggedValue()))) {
+        if ((JSTaggedValue::SameValueString(ee->GetExportName(), exportName.GetTaggedValue()))) {
             // Adapter new module
             if (module->GetIsNewBcVersion()) {
                 return JSHandle<JSTaggedValue>::Cast(factory->NewResolvedIndexBindingRecord(module,
@@ -1608,7 +1608,7 @@ JSHandle<JSTaggedValue> SourceTextModule::ResolveIndirectExport(JSThread *thread
     for (size_t idx = 0; idx < indirectExportEntriesLen; idx++) {
         ee.Update(indirectExportEntries->Get(idx));
         //  a. If SameValue(exportName, e.[[ExportName]]) is true, then
-        if (JSTaggedValue::SameValue(exportName.GetTaggedValue(), ee->GetExportName())) {
+        if (JSTaggedValue::SameValueString(exportName.GetTaggedValue(), ee->GetExportName())) {
             // i. Assert: module imports a specific binding for this export.
             // ii. Let importedModule be ? HostResolveImportedModule(module, e.[[ModuleRequest]]).
             JSHandle<SourceTextModule> requestedModule =
