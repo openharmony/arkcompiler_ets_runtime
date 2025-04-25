@@ -4943,8 +4943,14 @@ DECLARE_ASM_HANDLER(HandleDefinemethodImm8Id16Imm8)
     GateRef lexEnv = GetEnvFromFrame(GetFrame(sp));
     DEFVARIABLE(result, VariableType::JS_POINTER(),
         GetMethodFromConstPool(glue, constpool, ZExtInt16ToInt32(methodId)));
+#if ENABLE_NEXT_OPTIMIZATION
+    NewObjectStubBuilder newBuilder(this);
+    result = newBuilder.DefineMethod(glue, *result, acc, ZExtInt8ToInt32(length), lexEnv, GetModule(sp));
+#else
     result = CallRuntime(glue, RTSTUB_ID(DefineMethod), { *result, acc, Int8ToTaggedInt(length),
         lexEnv, GetModule(sp) });
+#endif
+
 #if ECMASCRIPT_ENABLE_IC
     GateRef slotId = ZExtInt8ToInt32(ReadInst8_0(pc));
     UpdateProfileTypeInfoCellToFunction(glue, *result, profileTypeInfo, slotId);
@@ -4967,8 +4973,14 @@ DECLARE_ASM_HANDLER(HandleDefinemethodImm16Id16Imm8)
     GateRef lexEnv = GetEnvFromFrame(GetFrame(sp));
     DEFVARIABLE(result, VariableType::JS_POINTER(),
         GetMethodFromConstPool(glue, constpool, ZExtInt16ToInt32(methodId)));
+#if ENABLE_NEXT_OPTIMIZATION
+    NewObjectStubBuilder newBuilder(this);
+    result = newBuilder.DefineMethod(glue, *result, acc, ZExtInt8ToInt32(length), lexEnv, GetModule(sp));
+#else
     result = CallRuntime(glue, RTSTUB_ID(DefineMethod), { *result, acc, Int8ToTaggedInt(length),
         lexEnv, GetModule(sp) });
+#endif
+
 #if ECMASCRIPT_ENABLE_IC
     GateRef slotId = ZExtInt16ToInt32(ReadInst16_0(pc));
     UpdateProfileTypeInfoCellToFunction(glue, *result, profileTypeInfo, slotId);

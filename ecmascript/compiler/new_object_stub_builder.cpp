@@ -1231,6 +1231,31 @@ void NewObjectStubBuilder::NewJSFunctionForJit(GateRef glue, GateRef jsFunc, Gat
     }
 }
 
+GateRef NewObjectStubBuilder::NewJSFunction(GateRef glue, GateRef method, GateRef homeObject)
+{
+    ASM_ASSERT(GET_MESSAGE_STRING_ID(IsEcmaObject), TaggedObjectIsEcmaObject(homeObject));
+
+    GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(GetEnvironment()->Is32Bit()));
+    GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
+    GateRef hclass = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, GlobalEnv::FUNCTION_CLASS_WITHOUT_PROTO);
+
+    GateRef jsFunc = NewJSFunctionByHClass(glue, method, hclass);
+    SetHomeObjectToFunction(glue, jsFunc, homeObject);
+    ASM_ASSERT(GET_MESSAGE_STRING_ID(HasPendingException), BoolNot(HasPendingException(glue)));
+    return jsFunc;
+}
+
+GateRef NewObjectStubBuilder::DefineMethod(GateRef glue, GateRef method, GateRef homeObject, GateRef length,
+                                           GateRef lexEnv, GateRef module)
+{
+    GateRef func = NewJSFunction(glue, method, homeObject);
+    
+    SetLengthToFunction(glue, func, length);
+    SetLexicalEnvToFunction(glue, func, lexEnv);
+    SetModuleToFunction(glue, func, module);
+    return func;
+}
+
 void NewObjectStubBuilder::SetProfileTypeInfoCellToFunction(GateRef jsFunc, GateRef definedFunc, GateRef slotId)
 {
     auto env = GetEnvironment();

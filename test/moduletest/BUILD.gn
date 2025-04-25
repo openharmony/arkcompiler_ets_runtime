@@ -76,6 +76,7 @@ module_test_list = [
   "decodeuricomponent",
   "definefield",
   "definefunc",
+  "definemethod",
   "deleteobjproperty",
   "div",
   "dynamicimport",
