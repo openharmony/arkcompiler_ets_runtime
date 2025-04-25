@@ -119,6 +119,7 @@ void JSFinalizationRegistry::CheckAndCall(JSThread *thread)
     if (thread->GetCheckAndCallEnterState()) {
         return;
     }
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
     CheckAndCallScope scope(thread);
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     JSHandle<JSTaggedValue> prev = env->GetFinRegLists();
