@@ -11,6 +11,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import("//arkcompiler/ets_runtime/js_runtime_config.gni")
+
 module_test_list = [
   "addelementinternal",
   "allocatearraybuffer",
@@ -264,6 +266,10 @@ group("ark_js_assert_moduletest") {
     "getvaluefrombuffer",
   ]
 
+  if (enable_next_optimization) {
+    assert_test_list += ["jsonstringifier_optimized"]
+  }
+
   deps = []
   foreach(test, assert_test_list) {
     deps += [ "${test}:${test}AssertAction" ]
@@ -373,6 +379,11 @@ group("ark_asm_assert_test") {
     "getpropertybyic",
     "getvaluefrombuffer",
   ]
+
+  if (enable_next_optimization) {
+    assert_test_list += ["jsonstringifier_optimized"]
+  }
+
   deps = []
 
   foreach(test, assert_test_list) {
@@ -580,6 +591,10 @@ group("ark_asm_single_step_assert_test") {
     "regressarraybuffer",
     "getvaluefrombuffer",
   ]
+
+  if (enable_next_optimization) {
+    assert_test_list += ["jsonstringifier_optimized"]
+  }
 
   deps = []
   foreach(test, assert_test_list) {

@@ -796,6 +796,7 @@ HWTEST_F_L0(JsonStringifierTest, Stringify_021)
     EXPECT_STREQ("[null]", EcmaStringAccessor(handleEcmaStr1).ToCString().c_str());
 }
 
+#if ENABLE_NEXT_OPTIMIZATION
 HWTEST_F_L0(JsonStringifierTest, AppendSpecialDouble_01)
 {
     struct TestCase {
@@ -857,9 +858,10 @@ HWTEST_F_L0(JsonStringifierTest, ConvertToCStringAndAppend_01)
     };
     CString str;
     for (const auto& testCase : testCases) {
-        ConvertToCStringAndAppend(str, testCase.value);
+        ConvertNumberToCStringAndAppend(str, testCase.value);
         EXPECT_STREQ(testCase.expected, str.c_str());
         str.clear();
     }
 }
+#endif
 }  // namespace panda::test
