@@ -89,4 +89,18 @@ for (let i = 0; i < 10; i++) {
 let resSplit = str.split('d');
 print(resSplit,["","ci","mc","ififf"]);
 
+// Test split string cache
+let str2 = "Apple,Banana-Cherry|Date;Fig Grape.Honeydew|Kiwi,Lemon Mango-Orange|Pear.Quince,Raspberry-Strawberry.";
+let resSplit2 = str2.split(",");
+let resSplit2Cache = str2.split(",");
+assert_equal(resSplit2, resSplit2Cache);
+
+let resSplit3 = str2.split("|");
+let resSplit3Cache = str2.split("|");
+assert_equal(resSplit3, resSplit3Cache);
+
+let resSplit4 = str2.split("");
+let resSplit4Cache = str2.split("");
+assert_equal(resSplit4, resSplit4Cache);
+
 test_end();

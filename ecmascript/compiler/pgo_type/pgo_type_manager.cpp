@@ -42,7 +42,7 @@ uint32_t PGOTypeManager::GetConstantPoolIDByMethodOffset(const uint32_t methodOf
 JSTaggedValue PGOTypeManager::GetConstantPoolByMethodOffset(const uint32_t methodOffset) const
 {
     uint32_t cpId = GetConstantPoolIDByMethodOffset(methodOffset);
-    return thread_->GetCurrentEcmaContext()->FindConstpool(curJSPandaFile_, cpId);
+    return thread_->GetEcmaVM()->FindConstpool(curJSPandaFile_, cpId);
 }
 
 JSTaggedValue PGOTypeManager::GetStringFromConstantPool(const uint32_t methodOffset, const uint16_t cpIdx) const
@@ -191,7 +191,7 @@ void PGOTypeManager::GenHClassInfo()
 
 void PGOTypeManager::GenProtoTransitionInfo()
 {
-    auto transitionTable = thread_->GetCurrentEcmaContext()->GetFunctionProtoTransitionTable();
+    auto transitionTable = thread_->GetEcmaVM()->GetFunctionProtoTransitionTable();
     for (auto &protoTransType : protoTransTypes_) {
         JSTaggedValue ihc = QueryHClass(protoTransType.ihcType, protoTransType.ihcType);
         JSTaggedValue baseIhc = QueryHClass(protoTransType.baseRootType, protoTransType.baseType);

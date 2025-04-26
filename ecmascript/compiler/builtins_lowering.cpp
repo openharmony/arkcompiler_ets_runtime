@@ -278,31 +278,31 @@ GateRef BuiltinLowering::LowerCallTargetCheckWithGlobalEnv(GateRef gate, Builtin
 GateRef BuiltinLowering::LowerCallTargetCheckWithDetector(GateRef gate, BuiltinsStubCSigns::ID id)
 {
     JSType expectType = JSType::INVALID;
-    uint16_t detectorIndex = 0;
+    GateRef detectorValue = Gate::InvalidGateRef;
     switch (id) {
         case BuiltinsStubCSigns::ID::MapProtoIterator: {
             expectType = JSType::JS_MAP;
-            detectorIndex = GlobalEnv::MAP_ITERATOR_DETECTOR_INDEX;
+            detectorValue = builder_.BoolNot(builder_.GetMapIteratorDetector(builder_.GetGlobalEnv()));
             break;
         }
         case BuiltinsStubCSigns::ID::SetProtoIterator: {
             expectType = JSType::JS_SET;
-            detectorIndex = GlobalEnv::SET_ITERATOR_DETECTOR_INDEX;
+            detectorValue = builder_.BoolNot(builder_.GetSetIteratorDetector(builder_.GetGlobalEnv()));
             break;
         }
         case BuiltinsStubCSigns::ID::StringProtoIterator: {
             expectType = JSType::STRING_FIRST;
-            detectorIndex = GlobalEnv::STRING_ITERATOR_DETECTOR_INDEX;
+            detectorValue = builder_.BoolNot(builder_.GetStringIteratorDetector(builder_.GetGlobalEnv()));
             break;
         }
         case BuiltinsStubCSigns::ID::ArrayProtoIterator: {
             expectType = JSType::JS_ARRAY;
-            detectorIndex = GlobalEnv::ARRAY_ITERATOR_DETECTOR_INDEX;
+            detectorValue = builder_.BoolNot(builder_.GetArrayIteratorDetector(builder_.GetGlobalEnv()));
             break;
         }
         case BuiltinsStubCSigns::ID::TypedArrayProtoIterator: {
             expectType = JSType::JS_TYPED_ARRAY_FIRST;
-            detectorIndex = GlobalEnv::TYPED_ARRAY_ITERATOR_DETECTOR_INDEX;
+            detectorValue = builder_.BoolNot(builder_.GetTypedArrayIteratorDetector(builder_.GetGlobalEnv()));
             break;
         }
         default: {
@@ -314,7 +314,7 @@ GateRef BuiltinLowering::LowerCallTargetCheckWithDetector(GateRef gate, Builtins
     return LogicAndBuilder(builder_.GetCurrentEnvironment())
         .And(builder_.TaggedIsHeapObjectOp(obj))
         .And(builder_.IsSpecificObjectType(obj, expectType))
-        .And(builder_.IsMarkerCellValid(builder_.GetGlobalEnvObj(builder_.GetGlobalEnv(), detectorIndex)))
+        .And(detectorValue)
         .Done();
 }
 

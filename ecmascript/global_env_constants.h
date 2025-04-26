@@ -105,7 +105,6 @@ class ObjectFactory;
     V(JSTaggedValue, JSProxyCallableClass, JS_PROXY_CALLABLE_CLASS_INDEX, ecma_roots_class)                           \
     V(JSTaggedValue, JSProxyConstructClass, JS_PROXY_CONSTRUCT_CLASS_INDEX, ecma_roots_class)                         \
     V(JSTaggedValue, JSRealmClass, JS_REALM_CLASS_INDEX, ecma_roots_class)                                            \
-    V(JSTaggedValue, JSRegExpClass, JS_REGEXP_CLASS_INDEX, ecma_roots_class)                                          \
     V(JSTaggedValue, JSProxyOrdinaryClass, JS_PROXY_ORDINARY_CLASS_INDEX, ecma_roots_class)                           \
     V(JSTaggedValue, JSSetIteratorClass, JS_SET_ITERATOR_CLASS_INDEX, ecma_roots_class)                               \
     V(JSTaggedValue, JSSharedSetIteratorClass, JS_SHARED_SET_ITERATOR_CLASS_INDEX, ecma_roots_class)                  \
@@ -129,10 +128,7 @@ class ObjectFactory;
     V(JSTaggedValue, JSAPIHashSetIteratorClass, JS_API_HASH_SET_ITERATOR_CLASS_INDEX, ecma_roots_class)               \
     V(JSTaggedValue, JSAPITreeMapIteratorClass, JS_API_TREE_MAP_ITERATOR_CLASS_INDEX, ecma_roots_class)               \
     V(JSTaggedValue, JSAPITreeSetIteratorClass, JS_API_TREE_SET_ITERATOR_CLASS_INDEX, ecma_roots_class)               \
-    V(JSTaggedValue, JSAPIIteratorFuncHClass, JS_API_ITERATOR_FUNC_CLASS_INDEX, ecma_roots_class)                     \
-    V(JSTaggedValue, JSAPIAsyncIteratorFuncHClass, JS_API_ASYNCITERATOR_FUNC_CLASS_INDEX, ecma_roots_class)           \
     V(JSTaggedValue, ObjectClass, OBJECT_HCLASS_INDEX, initial_object_hclass)                                         \
-    V(JSTaggedValue, IteratorResultClass, ITERATOR_RESULT_CLASS, ecma_roots_class)                                    \
     V(JSTaggedValue, ClassPrototypeClass, CLASS_PROTOTYPE_HCLASS_INDEX, ecma_roots_class)                             \
     V(JSTaggedValue, ClassConstructorClass, CLASS_CONSTRUCTOR_HCLASS_INDEX, ecma_roots_class)                         \
     V(JSTaggedValue, ElementNoneProtoClass, ELEMENT_NONE_PROTO_HCLASS_INDEX, ecma_roots_class)                        \
@@ -164,9 +160,7 @@ class ObjectFactory;
 #define GLOBAL_ENV_CONSTANT_SPECIAL(V)                                                                 \
     V(JSTaggedValue, EmptyLayoutInfo, EMPTY_LAYOUT_INFO_OBJECT_INDEX, ecma_roots_special)              \
     V(JSTaggedValue, DefaultSupers, DEFAULT_SUPERS_INDEX, ecma_roots_special)                          \
-    V(JSTaggedValue, EmptyTaggedQueue, EMPTY_TAGGED_QUEUE_OBJECT_INDEX, ecma_roots_special)            \
-    V(JSTaggedValue, UndefinedCompletionRecord, UNDEFINED_COMPLRTION_RECORD_INDEX, ecma_roots_special) \
-    V(JSTaggedValue, ArraySpeciesAccessor, ARRAY_SPECIES_ACCESSOR, ecma_roots_special)
+    V(JSTaggedValue, EmptyTaggedQueue, EMPTY_TAGGED_QUEUE_OBJECT_INDEX, ecma_roots_special)
 
 #if ENABLE_NEXT_OPTIMIZATION
 #define CONDITION_GLOBAL_REFLECT_HAS(V)
@@ -591,33 +585,6 @@ class ObjectFactory;
     V(AppSpawnSharedFullGcCause,      APP_SPAWN_SHARED_FULL_GC_CAUSE,        "app_spawn_shared_full")       \
     V(SymbolLeftParentheses,          SYMBOL_LEFT_PARENTHESES,               "Symbol(")
 
-/* GlobalConstant */
-// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define GLOBAL_ENV_CONSTANT_CONSTANT(V)                                                                     \
-    /* non ECMA standard jsapi containers iterators */                                                      \
-    V(JSTaggedValue, ArrayListFunction, ARRAYLIST_FUNCTION_INDEX, ArrayListFunction)                        \
-    V(JSTaggedValue, ArrayListIteratorPrototype, ARRAYLIST_ITERATOR_PROTOTYPE_INDEX, ArrayListIterator)     \
-    V(JSTaggedValue, HashMapIteratorPrototype, HASHMAP_ITERATOR_PROTOTYPE_INDEX, HashMapIterator)           \
-    V(JSTaggedValue, HashSetIteratorPrototype, HASHSET_ITERATOR_PROTOTYPE_INDEX, HashSetIterator)           \
-    V(JSTaggedValue, LightWeightMapIteratorPrototype,                                                       \
-        LIGHTWEIGHTMAP_ITERATOR_PROTOTYPE_INDEX, LightWeightMapIterator)                                    \
-    V(JSTaggedValue, LightWeightSetIteratorPrototype,                                                       \
-        LIGHTWEIGHTSET_ITERATOR_PROTOTYPE_INDEX, LightWeightSetIterator)                                    \
-    V(JSTaggedValue, TreeMapIteratorPrototype, TREEMAP_ITERATOR_PROTOTYPE_INDEX, TreeMapIterator)           \
-    V(JSTaggedValue, TreeSetIteratorPrototype, TREESET_ITERATOR_PROTOTYPE_INDEX, TreeSetIterator)           \
-    V(JSTaggedValue, VectorFunction, VECTOR_FUNCTION_INDEX, VectorFunction)                                 \
-    V(JSTaggedValue, VectorIteratorPrototype, VECTOR_ITERATOR_PROTOTYPE_INDEX, VectorIterator)              \
-    V(JSTaggedValue, QueueIteratorPrototype, QUEUE_ITERATOR_PROTOTYPE_INDEX, QueueIterator)                 \
-    V(JSTaggedValue, PlainArrayIteratorPrototype, PLAIN_ARRAY_ITERATOR_PROTOTYPE_INDEX, PlainArrayIterator) \
-    V(JSTaggedValue, PlainArrayFunction, PLAIN_ARRAY_FUNCTION_INDEX, PlainArrayFunction)                    \
-    V(JSTaggedValue, DequeIteratorPrototype, DEQUE_ITERATOR_PROTOTYPE_INDEX, DequeIterator)                 \
-    V(JSTaggedValue, StackIteratorPrototype, STACK_ITERATOR_PROTOTYPE_INDEX, StackIterator)                 \
-    V(JSTaggedValue, ListFunction, LIST_FUNCTION_INDEX, ListFunction)                                       \
-    V(JSTaggedValue, LinkedListFunction, LINKED_LIST_FUNCTION_INDEX, LinkedListFunction)                    \
-    V(JSTaggedValue, ListIteratorPrototype, LIST_ITERATOR_PROTOTYPE_INDEX, ListIterator)                    \
-    V(JSTaggedValue, UndefinedIterResult, UNDEFINED_INTERATOR_RESULT_INDEX, UndefinedIterResult)            \
-    V(JSTaggedValue, LinkedListIteratorPrototype, LINKED_LIST_ITERATOR_PROTOTYPE_INDEX, LinkedListIterator)
-
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define SHARED_GLOBAL_ENV_CONSTANT_ACCESSOR(V)                                                    \
     V(JSTaggedValue, FunctionPrototypeAccessor, FUNCTION_PROTOTYPE_ACCESSOR, ecma_roots_accessor) \
@@ -682,7 +649,6 @@ enum class ConstantIndex : size_t {
     BUILTINS_METHOD_STUB_LIST(INDEX_FILTER_BUILTIN4, INDEX_FILTER_BUILTIN4,                       \
                               INDEX_FILTER_BUILTIN4, INDEX_FILTER_BUILTIN6)
     GLOBAL_ENV_INLINED_BUILTINS(INDEX_FILTER_WITH_TYPE)
-    GLOBAL_ENV_CONSTANT_CONSTANT(INDEX_FILTER_WITH_TYPE)
     GLOBAL_ENV_CACHES(INDEX_FILTER_WITH_TYPE)
 #undef INDEX_FILTER_STRING
 #undef INDEX_FILTER_WITH_TYPE
@@ -704,8 +670,6 @@ enum class ConstantIndex : size_t {
     NON_SHARED_HCLASS_END = ELEMENT_HOLE_TAGGED_HCLASS_INDEX,
     READ_ONLY_CONSTANT_BEGIN = CONSTANT_BEGIN,
     READ_ONLY_CONSTANT_END = CONSTANT_END,
-    JSAPI_CONTAINERS_BEGIN = ARRAYLIST_FUNCTION_INDEX,
-    JSAPI_CONTAINERS_END = LINKED_LIST_ITERATOR_PROTOTYPE_INDEX,
 
     INVALID = -1,
     // ...
@@ -757,7 +721,6 @@ public:
     GLOBAL_ENV_CONSTANT_SPECIAL(DECL_GET_WITH_TYPE)
     BUILTINS_METHOD_STUB_LIST(DECL_GET_BUILTIN, DECL_GET_BUILTIN, DECL_GET_BUILTIN, DECL_GET_BUILTIN)
     GLOBAL_ENV_INLINED_BUILTINS(DECL_GET_WITH_TYPE)
-    GLOBAL_ENV_CONSTANT_CONSTANT(DECL_GET_WITH_TYPE)
     GLOBAL_ENV_CACHES(DECL_GET_WITH_TYPE)
 #undef DECL_GET_STRING
 #undef DECL_GET_WITH_TYPE
@@ -790,16 +753,6 @@ public:
         return static_cast<size_t>(ConstantIndex::EMPTY_MUTANT_ARRAY_OBJECT_INDEX);
     }
 
-    size_t GetJSAPIContainersBegin() const
-    {
-        return static_cast<size_t>(ConstantIndex::JSAPI_CONTAINERS_BEGIN);
-    }
-
-    size_t GetJSAPIContainersEnd() const
-    {
-        return static_cast<size_t>(ConstantIndex::JSAPI_CONTAINERS_END);
-    }
-
     size_t GetLineStringClassIndex() const
     {
         return static_cast<size_t>(ConstantIndex::LINE_STRING_CLASS_INDEX);
@@ -809,9 +762,7 @@ public:
     {
         size_t specialBegin = static_cast<size_t>(ConstantIndex::UNDEFINED_INDEX);
         size_t specialEnd = static_cast<size_t>(ConstantIndex::NULL_INDEX);
-        size_t undefinedBegin = GetJSAPIContainersBegin();
-        size_t undefinedEnd = GetJSAPIContainersEnd();
-        return (index >= specialBegin && index <= specialEnd) || (index >= undefinedBegin && index <= undefinedEnd);
+        return (index >= specialBegin && index <= specialEnd);
     }
 
     static constexpr size_t SizeArch32 =
@@ -828,7 +779,6 @@ private:
     void InitRootsClassesPartTwo(JSHClass *hClass, ObjectFactory *factory);
     void InitMiscellanious(JSThread *thread, ObjectFactory *factory);
     void InitGlobalCaches();
-    void InitJSAPIContainers();
 
     JSTaggedValue constants_[static_cast<int>(ConstantIndex::CONSTANT_COUNT)];  // NOLINT(modernize-avoid-c-arrays)
 };

@@ -74,7 +74,7 @@ void QuickFixManager::LoadPatchIfNeeded(JSThread *thread, const JSPandaFile *bas
         LOG_ECMA(ERROR) << "Load patch fail of: " << baseFileName;
         return;
     }
-    thread->GetCurrentEcmaContext()->SetStageOfColdReload(StageOfColdReload::IS_COLD_RELOAD);
+    thread->GetEcmaVM()->SetStageOfColdReload(StageOfColdReload::IS_COLD_RELOAD);
     methodInfos_.emplace(baseFileName, patchInfo);
 }
 
@@ -216,16 +216,15 @@ JSTaggedValue QuickFixManager::CheckAndGetPatch(JSThread *thread, const JSPandaF
     EcmaVM *vm = thread->GetEcmaVM();
     JSHandle<Method> method;
     method = vm->GetFactory()->NewSMethod(patchMethodLiteral);
-    JSHandle<ConstantPool> newConstpool = thread->GetCurrentEcmaContext()->FindOrCreateConstPool(
+    JSHandle<ConstantPool> newConstpool = vm->FindOrCreateConstPool(
         patchFile.get(), patchMethodLiteral->GetMethodId());
     method->SetConstantPool(thread, newConstpool);
 
     CString recordName = MethodLiteral::GetRecordName(baseFile, baseMethodId);
-    EcmaContext *context = thread->GetCurrentEcmaContext();
-    JSHandle<JSTaggedValue> moduleRecord = context->FindPatchModule(recordName);
+    JSHandle<JSTaggedValue> moduleRecord = vm->FindPatchModule(recordName);
     if (moduleRecord->IsHole()) {
         PatchLoader::ExecuteFuncOrPatchMain(thread, patchFile.get(), patchInfo);
-        moduleRecord = context->FindPatchModule(recordName);
+        moduleRecord = vm->FindPatchModule(recordName);
         if (moduleRecord->IsHole()) {
             LOG_ECMA(FATAL) << "cold patch: moduleRecord is still hole after regeneration";
             UNREACHABLE();

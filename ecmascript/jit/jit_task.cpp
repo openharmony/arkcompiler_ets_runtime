@@ -60,7 +60,7 @@ void JitTask::PrepareCompile()
     Method *method = Method::Cast(jsFunction_->GetMethod().GetTaggedObject());
     JSTaggedValue constpool = method->GetConstantPool();
     if (!ConstantPool::CheckUnsharedConstpool(constpool)) {
-        hostThread_->GetCurrentEcmaContext()->FindOrCreateUnsharedConstpool(constpool);
+        hostThread_->GetEcmaVM()->FindOrCreateUnsharedConstpool(constpool);
     }
 
     SetRunState(RunState::INIT);

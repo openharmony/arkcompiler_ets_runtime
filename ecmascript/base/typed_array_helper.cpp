@@ -21,7 +21,6 @@
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_object-inl.h"
 #include "ecmascript/js_stable_array.h"
-#include "ecmascript/property_detector-inl.h"
 #include "ecmascript/shared_objects/js_sendable_arraybuffer.h"
 
 namespace panda::ecmascript::base {
@@ -981,7 +980,7 @@ JSHandle<JSObject> TypedArrayHelper::TypedArraySpeciesCreate(JSThread *thread, c
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     JSHandle<JSObject> result;
     JSHandle<JSTaggedValue> proto(thread, obj->GetJSHClass()->GetPrototype());
-    bool isCtrUnchanged = PropertyDetector::IsTypedArraySpeciesProtectDetectorValid(env) &&
+    bool isCtrUnchanged = !env->GetTypedArraySpeciesProtectDetector() &&
         !TypedArrayHelper::IsAccessorHasChanged(proto) &&
         !obj->GetJSHClass()->HasConstructor();
     bool isCtrBylen = buffHandle->IsInt();

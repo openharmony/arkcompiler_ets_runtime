@@ -4076,23 +4076,19 @@ inline GateRef StubBuilder::GetCurrentEcmaContext(GateRef glue)
 
 inline GateRef StubBuilder::GetPropertiesCache(GateRef glue)
 {
-    GateRef currentContextOffset = IntPtr(JSThread::GlueData::GetCurrentContextOffset(env_->Is32Bit()));
-    GateRef currentContext = Load(VariableType::NATIVE_POINTER(), glue, currentContextOffset);
-    GateRef propertiesCacheOffset = IntPtr(EcmaContext::EcmaData::GetPropertiesCacheOffset(env_->Is32Bit()));
-    return Load(VariableType::NATIVE_POINTER(), currentContext, propertiesCacheOffset);
+    GateRef propertiesCacheOffset = IntPtr(JSThread::GlueData::GetPropertiesCacheOffset(env_->Is32Bit()));
+    return Load(VariableType::NATIVE_POINTER(), glue, propertiesCacheOffset);
 }
 
 inline GateRef StubBuilder::GetMegaICCache(GateRef glue, MegaICCache::MegaICKind kind)
 {
-    GateRef currentContextOffset = IntPtr(JSThread::GlueData::GetCurrentContextOffset(env_->Is32Bit()));
-    GateRef currentContext = Load(VariableType::NATIVE_POINTER(), glue, currentContextOffset);
     GateRef megaICCache_Offset;
     if (kind == MegaICCache::Load) {
-        megaICCache_Offset = IntPtr(EcmaContext::EcmaData::GetLoadMegaICCacheOffset(env_->Is32Bit()));
+        megaICCache_Offset = IntPtr(JSThread::GlueData::GetLoadMegaICCacheOffset(env_->Is32Bit()));
     } else {
-        megaICCache_Offset = IntPtr(EcmaContext::EcmaData::GetStoreMegaICCacheOffset(env_->Is32Bit()));
+        megaICCache_Offset = IntPtr(JSThread::GlueData::GetStoreMegaICCacheOffset(env_->Is32Bit()));
     }
-    return Load(VariableType::NATIVE_POINTER(), currentContext, megaICCache_Offset);
+    return Load(VariableType::NATIVE_POINTER(), glue, megaICCache_Offset);
 }
 
 inline GateRef StubBuilder::GetModuleLogger(GateRef glue)
@@ -4116,21 +4112,17 @@ inline GateRef StubBuilder::GetModuleManager(GateRef glue)
 inline void StubBuilder::IncMegaProbeCount([[maybe_unused]]GateRef glue)
 {
 #if ECMASCRIPT_ENABLE_MEGA_PROFILER
-    GateRef currentContextOffset = IntPtr(JSThread::GlueData::GetCurrentContextOffset(env_->Is32Bit()));
-    GateRef currentContext = Load(VariableType::NATIVE_POINTER(), glue, currentContextOffset);
-    GateRef megaProbeCountOffset = IntPtr(EcmaContext::EcmaData::GetMegaProbesCountOffset(env_->Is32Bit()));
-    GateRef before = Load(VariableType::INT64(), currentContext, megaProbeCountOffset);
-    Store(VariableType::INT64(), glue, currentContext, megaProbeCountOffset, Int64Add(before, Int64(1)));
+    GateRef megaProbeCountOffset = IntPtr(JSThread::GlueData::GetMegaProbesCountOffset(env_->Is32Bit()));
+    GateRef before = Load(VariableType::INT64(), glue, megaProbeCountOffset);
+    Store(VariableType::INT64(), glue, glue, megaProbeCountOffset, Int64Add(before, Int64(1)));
 #endif
 }
 inline void StubBuilder::IncMegaHitCount([[maybe_unused]]GateRef glue)
 {
 #if ECMASCRIPT_ENABLE_MEGA_PROFILER
-    GateRef currentContextOffset = IntPtr(JSThread::GlueData::GetCurrentContextOffset(env_->Is32Bit()));
-    GateRef currentContext = Load(VariableType::NATIVE_POINTER(), glue, currentContextOffset);
-    GateRef megaHitCountOffset = IntPtr(EcmaContext::EcmaData::GetMegaHitCountOffset(env_->Is32Bit()));
-    GateRef before = Load(VariableType::INT64(), currentContext, megaHitCountOffset);
-    Store(VariableType::INT64(), glue, currentContext, megaHitCountOffset, Int64Add(before, Int64(1)));
+    GateRef megaHitCountOffset = IntPtr(JSThread::GlueData::GetMegaHitCountOffset(env_->Is32Bit()));
+    GateRef before = Load(VariableType::INT64(), glue, megaHitCountOffset);
+    Store(VariableType::INT64(), glue, glue, megaHitCountOffset, Int64Add(before, Int64(1)));
 #endif
 }
 
@@ -4345,6 +4337,48 @@ inline GateRef StubBuilder::GetCjsModuleFunction(GateRef glue)
     GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env_->Is32Bit()));
     GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
     return GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, GlobalEnv::CJS_MODULE_FUNCTION_INDEX);
+}
+
+inline GateRef StubBuilder::GetArrayElementsGuardians(GateRef env)
+{
+    GateRef offset = IntPtr(GlobalEnv::BIT_FIELD_OFFSET);
+    GateRef bitfield = Load(VariableType::INT32(), env, offset);
+    return TruncInt32ToInt1(Int32And(Int32LSR(bitfield,
+        Int32(GlobalEnv::ArrayPrototypeChangedGuardiansBits::START_BIT)),
+        Int32((1LU << GlobalEnv::ArrayPrototypeChangedGuardiansBits::SIZE) - 1)));
+}
+
+inline void StubBuilder::SetArrayElementsGuardians(GateRef glue, GateRef env, GateRef value)
+{
+    GateRef oldValue = ZExtInt1ToInt32(value);
+    GateRef offset = IntPtr(GlobalEnv::BIT_FIELD_OFFSET);
+    GateRef bitfield = Load(VariableType::INT32(), env, offset);
+    GateRef mask = Int32LSL(
+        Int32((1LU <<GlobalEnv::ArrayPrototypeChangedGuardiansBits::SIZE) - 1),
+        Int32(GlobalEnv::ArrayPrototypeChangedGuardiansBits::START_BIT));
+    GateRef newVal = Int32Or(Int32And(bitfield, Int32Not(mask)),
+        Int32LSL(oldValue, Int32(GlobalEnv::ArrayPrototypeChangedGuardiansBits::START_BIT)));
+    Store(VariableType::INT32(), glue, env, offset, newVal);
+}
+
+inline GateRef StubBuilder::GetTypedArraySpeciesProtectDetector(GateRef env)
+{
+    return env_->GetBuilder()->GetTypedArraySpeciesProtectDetector(env);
+}
+
+inline GateRef StubBuilder::GetArrayIteratorDetector(GateRef env)
+{
+    return env_->GetBuilder()->GetArrayIteratorDetector(env);
+}
+
+inline GateRef StubBuilder::GetMapIteratorDetector(GateRef env)
+{
+    return env_->GetBuilder()->GetMapIteratorDetector(env);
+}
+
+inline GateRef StubBuilder::GetSetIteratorDetector(GateRef env)
+{
+    return env_->GetBuilder()->GetSetIteratorDetector(env);
 }
 } //  namespace panda::ecmascript::kungfu
 #endif // ECMASCRIPT_COMPILER_STUB_INL_H

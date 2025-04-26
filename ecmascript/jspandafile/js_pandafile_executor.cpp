@@ -217,17 +217,17 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::Execute(JSThread *thread, con
     ThreadManagedScope managedScope(thread);
     ModuleTraceScope moduleTraceScope(thread, "JSPandaFileExecutor::Execute:" + CString(entryPoint));
     // For Ark application startup
-    EcmaContext *context = thread->GetCurrentEcmaContext();
+    EcmaVM *vm = thread->GetEcmaVM();
 
     Expected<JSTaggedValue, bool> result;
 
     if (thread->GetStageOfHotReload() == StageOfHotReload::BEGIN_EXECUTE_PATCHMAIN) {
-        result = context->InvokeEcmaEntrypointForHotReload(jsPandaFile, entryPoint, executeType);
+        result = vm->InvokeEcmaEntrypointForHotReload(jsPandaFile, entryPoint, executeType);
     } else {
         QuickFixManager *quickFixManager = thread->GetEcmaVM()->GetQuickFixManager();
         quickFixManager->LoadPatchIfNeeded(thread, jsPandaFile);
 
-        result = context->InvokeEcmaEntrypoint(jsPandaFile, entryPoint, executeType);
+        result = vm->InvokeEcmaEntrypoint(jsPandaFile, entryPoint, executeType);
     }
     return result;
 }

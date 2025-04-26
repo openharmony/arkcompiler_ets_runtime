@@ -134,7 +134,7 @@ private:
     }
     PropertyKey keys_[CACHE_LENGTH];
 
-    friend class EcmaContext;
+    friend class JSThread;
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_IC_MEGA_IC_CACHE_H

@@ -16,6 +16,7 @@
 #include "ecmascript/js_api/js_api_linked_list_iterator.h"
 
 #include "ecmascript/containers/containers_errors.h"
+#include "ecmascript/global_env.h"
 #include "ecmascript/js_array.h"
 #include "ecmascript/tagged_list.h"
 
@@ -36,17 +37,18 @@ JSTaggedValue JSAPILinkedListIterator::Next(EcmaRuntimeCallInfo *argv)
     }
     JSHandle<JSAPILinkedListIterator> iter(input);
     JSHandle<JSTaggedValue> linkedList(thread, iter->GetIteratedLinkedList());
-    const GlobalEnvConstants *globalConst = thread->GlobalConstants();
     JSHandle<TaggedDoubleList> list(linkedList);
     if (linkedList->IsUndefined()) {
-        return globalConst->GetUndefinedIterResult();
+        JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+        return env->GetUndefinedIteratorResult().GetTaggedValue();
     }
     int index = static_cast<int>(iter->GetNextIndex());
     int length = list->Length();
     if (index >= length) {
-        JSHandle<JSTaggedValue> undefinedHandle = globalConst->GetHandledUndefined();
+        JSHandle<JSTaggedValue> undefinedHandle = thread->GlobalConstants()->GetHandledUndefined();
         iter->SetIteratedLinkedList(thread, undefinedHandle);
-        return globalConst->GetUndefinedIterResult();
+        JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+        return env->GetUndefinedIteratorResult().GetTaggedValue();
     }
     iter->SetNextIndex(index + 1);
     int dataIndex = static_cast<int>(iter->GetDataIndex());

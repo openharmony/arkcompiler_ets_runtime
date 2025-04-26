@@ -435,7 +435,7 @@ JSTaggedValue BuiltinsNumber::ToString(EcmaRuntimeCallInfo *argv)
     }
     // 8. If radixNumber = 10, return ToString(x).
     if (radix == base::DECIMAL) {
-        JSHandle<NumberToStringResultCache> cacheTable(thread->GetCurrentEcmaContext()->GetNumberToStringResultCache());
+        JSHandle<NumberToStringResultCache> cacheTable(thread->GetGlobalEnv()->GetNumberToStringResultCache());
         int entry = cacheTable->GetNumberHash(value);
         JSTaggedValue cacheResult =  cacheTable->FindCachedResult(entry, value);
         if (cacheResult != JSTaggedValue::Undefined()) {

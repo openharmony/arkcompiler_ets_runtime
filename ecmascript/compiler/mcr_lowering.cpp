@@ -276,8 +276,7 @@ void MCRLowering::LowerArrayGuardianCheck(GateRef gate)
     Environment env(gate, circuit_, &builder_);
 
     GateRef frameState = acc_.GetFrameState(gate);
-    GateRef guardiansOffset = builder_.IntPtr(JSThread::GlueData::GetArrayElementsGuardiansOffset(false));
-    GateRef check = builder_.Load(VariableType::BOOL(), glue_, guardiansOffset);
+    GateRef check = builder_.GetArrayElementsGuardians(builder_.GetGlobalEnv());
     builder_.DeoptCheck(check, frameState, DeoptType::NOTSARRAY1);
 
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());

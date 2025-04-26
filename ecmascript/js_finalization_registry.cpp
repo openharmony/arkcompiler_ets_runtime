@@ -173,7 +173,7 @@ bool JSFinalizationRegistry::CleanupFinalizationRegistry(JSThread *thread, JSHan
     // 4. Return unused.
     ASSERT(obj->IsECMAObject());
     auto ecmaVm = thread->GetEcmaVM();
-    JSHandle<job::MicroJobQueue> job = thread->GetCurrentEcmaContext()->GetMicroJobQueue();
+    JSHandle<job::MicroJobQueue> job = ecmaVm->GetMicroJobQueue();
     ObjectFactory *factory = ecmaVm->GetFactory();
     JSHandle<JSFunction> func(thread, obj->GetCleanupCallback());
     JSHandle<CellRecordVector> noUnregister(thread, obj->GetNoUnregister());

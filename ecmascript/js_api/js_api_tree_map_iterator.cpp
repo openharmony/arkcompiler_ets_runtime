@@ -16,6 +16,7 @@
 #include "ecmascript/js_api/js_api_tree_map_iterator.h"
 
 #include "ecmascript/containers/containers_errors.h"
+#include "ecmascript/global_env.h"
 #include "ecmascript/js_api/js_api_tree_map.h"
 #include "ecmascript/js_array.h"
 #include "ecmascript/tagged_tree.h"
@@ -42,9 +43,9 @@ JSTaggedValue JSAPITreeMapIterator::Next(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> iteratedMap(thread, iter->GetIteratedMap());
 
     // If it is undefined, return undefinedIteratorResult.
-    const GlobalEnvConstants *globalConst = thread->GlobalConstants();
     if (iteratedMap->IsUndefined()) {
-        return globalConst->GetUndefinedIterResult();
+        JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+        return env->GetUndefinedIteratorResult().GetTaggedValue();
     }
     JSHandle<TaggedTreeMap> map(thread, JSHandle<JSAPITreeMap>::Cast(iteratedMap)->GetTreeMap());
     uint32_t elements = static_cast<uint32_t>(map->NumberOfElements());
@@ -83,7 +84,8 @@ JSTaggedValue JSAPITreeMapIterator::Next(EcmaRuntimeCallInfo *argv)
 
     // Set [[IteratedMap]] to undefined.
     iter->SetIteratedMap(thread, JSTaggedValue::Undefined());
-    return globalConst->GetUndefinedIterResult();
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+    return env->GetUndefinedIteratorResult().GetTaggedValue();
 }
 
 JSHandle<JSTaggedValue> JSAPITreeMapIterator::CreateTreeMapIterator(JSThread *thread,

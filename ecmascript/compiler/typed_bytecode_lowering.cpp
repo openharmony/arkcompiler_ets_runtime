@@ -1282,7 +1282,7 @@ bool TypedBytecodeLowering::TryLowerTypedLdObjByNameForGlobalsId(const LoadBulit
     } else if (globalsId.IsGlobalEnvId()) { // ctor Hclass
         GlobalEnvField index = static_cast<GlobalEnvField>(globalsId.GetGlobalEnvId());
         JSHClass *hclass = JSHClass::Cast(compilationEnv_->GetGlobalEnv()->GetGlobalEnvObjectByIndex(
-            static_cast<size_t>(index))->GetTaggedObject()->GetClass());
+            static_cast<size_t>(index))->GetTaggedObject());
         PropertyLookupResult plr = JSHClass::LookupPropertyInBuiltinHClass(compilationEnv_->GetJSThread(), hclass, key);
         if (!plr.IsFound() || plr.IsAccessor()) {
             return false;
@@ -1290,8 +1290,9 @@ bool TypedBytecodeLowering::TryLowerTypedLdObjByNameForGlobalsId(const LoadBulit
         AddProfiling(gate);
         // 1. check hclass
         builder_.HeapObjectCheck(receiver, frameState);
+        GateRef receiverHClass = builder_.LoadHClassByConstOffset(receiver);
         GateRef globalEnvObj = builder_.GetGlobalEnvObj(builder_.GetGlobalEnv(), static_cast<size_t>(index));
-        builder_.DeoptCheck(builder_.Equal(receiver, globalEnvObj), frameState,
+        builder_.DeoptCheck(builder_.Equal(receiverHClass, globalEnvObj), frameState,
                             DeoptType::INCONSISTENTHCLASS12);
         // 2. load property
         GateRef plrGate = builder_.Int32(plr.GetData());

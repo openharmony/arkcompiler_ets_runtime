@@ -182,7 +182,7 @@ static void RegisterUnRegisterTestCommon(JSThread *thread, bool testUnRegister =
     }
     vm->CollectGarbage(TriggerGCType::FULL_GC);
     if (!thread->HasPendingException()) {
-        job::MicroJobQueue::ExecutePendingJob(thread, thread->GetCurrentEcmaContext()->GetMicroJobQueue());
+        job::MicroJobQueue::ExecutePendingJob(thread, thread->GetEcmaVM()->GetMicroJobQueue());
     }
     vm->SetEnableForceGC(true);
 }
@@ -218,7 +218,7 @@ static void RegisterUnRegisterTestCommonTwoTarget(JSThread *thread, bool testUnR
     }
     vm->CollectGarbage(TriggerGCType::FULL_GC);
     if (!thread->HasPendingException()) {
-        job::MicroJobQueue::ExecutePendingJob(thread, thread->GetCurrentEcmaContext()->GetMicroJobQueue());
+        job::MicroJobQueue::ExecutePendingJob(thread, thread->GetEcmaVM()->GetMicroJobQueue());
     }
     vm->SetEnableForceGC(true);
 }
@@ -287,7 +287,7 @@ HWTEST_F_L0(JSFinalizationRegistryTest, CheckAndCall)
     EXPECT_EQ(finRegLists.GetTaggedValue(), JSHandle<JSTaggedValue>::Cast(finaRegObj).GetTaggedValue());
     vm->CollectGarbage(TriggerGCType::FULL_GC);
     if (!thread->HasPendingException()) {
-        job::MicroJobQueue::ExecutePendingJob(thread, thread->GetCurrentEcmaContext()->GetMicroJobQueue());
+        job::MicroJobQueue::ExecutePendingJob(thread, thread->GetEcmaVM()->GetMicroJobQueue());
     }
     vm->SetEnableForceGC(true);
     EXPECT_EQ(testValue, 1);
@@ -333,7 +333,7 @@ HWTEST_F_L0(JSFinalizationRegistryTest, CleanupFinalizationRegistry)
     }
     vm->CollectGarbage(TriggerGCType::FULL_GC);
     if (!thread->HasPendingException()) {
-        job::MicroJobQueue::ExecutePendingJob(thread, thread->GetCurrentEcmaContext()->GetMicroJobQueue());
+        job::MicroJobQueue::ExecutePendingJob(thread, thread->GetEcmaVM()->GetMicroJobQueue());
     }
     vm->SetEnableForceGC(true);
     EXPECT_EQ(testValue, 1);

@@ -889,9 +889,18 @@ void BarrierStubBuilder::BitSetRangeReverse(GateRef bitSet, GateRef startIdx, Ga
 
     // startMask <- (1 << startOf) - 1
     GateRef startMask = Int64Sub(Int64LSL(Int64(1), startOf), Int64(1));
-    // endMask <- ~((1 << endOf) - 1)
-    GateRef endMask = Int64Not(Int64Sub(Int64LSL(Int64(1), endOf), Int64(1)));
+    Label notZero(env);
+    Label next(env);
+    DEFVARIABLE(endMask, VariableType::INT64(), Int64(0));
+    BRANCH_UNLIKELY(Int64Equal(endOf, Int64(0)), &next, &notZero);
+    Bind(&notZero);
+    {
+        // endMask <- ~((1 << endOf) - 1)
+        endMask = Int64Not(Int64Sub(Int64LSL(Int64(1), endOf), Int64(1)));
+        Jump(&next);
+    }
 
+    Bind(&next);
     DEFVARIABLE(vstartByteIndex, VariableType::INT64(), startByteIndex);
     DEFVARIABLE(vendByteIndex, VariableType::INT64(), endByteIndex);
 
@@ -931,16 +940,16 @@ void BarrierStubBuilder::BitSetRangeReverse(GateRef bitSet, GateRef startIdx, Ga
     BitSetRangeMove(bitSet, bitSet, srcOffset, dstOffset, length);
 
     GateRef neStartMask = Int64Not(startMask);
-    GateRef neEndMask = Int64Not(endMask);
+    GateRef neEndMask = Int64Not(*endMask);
 
     // bitSet[startByteIndex] <- (startItem & startMask) | (startItem1 & neStartMask);
     GateRef startItem1 = Load(VariableType::INT64(), bitSet, startByteIndex);
     GateRef resStartItem = Int64Or(Int64And(startItem, startMask), Int64And(startItem1, neStartMask));
     Store(VariableType::INT64(), glue_, bitSet, startByteIndex, resStartItem, MemoryAttribute::NoBarrier());
 
-    // bitSet[endByteIndex] <- (resEndItem & endMask) | (endItem1 & neStartMask);
+    // bitSet[endByteIndex] <- (resEndItem & endMask) | (endItem1 & neEndMask);
     GateRef endItem1 = Load(VariableType::INT64(), bitSet, endByteIndex);
-    GateRef resEndItem = Int64Or(Int64And(endItem, endMask), Int64And(endItem1, neEndMask));
+    GateRef resEndItem = Int64Or(Int64And(endItem, *endMask), Int64And(endItem1, neEndMask));
     Store(VariableType::INT64(), glue_, bitSet, endByteIndex, resEndItem, MemoryAttribute::NoBarrier());
     Jump(&exit);
     Bind(&exit);

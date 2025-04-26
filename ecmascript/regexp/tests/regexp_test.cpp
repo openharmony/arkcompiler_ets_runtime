@@ -703,7 +703,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec1)
     ASSERT_TRUE(ret);
 
     executor.GetResult(thread);
-    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetCurrentEcmaContext()->GetRegExpGlobalResult());
+    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetGlobalEnv()->GetRegExpGlobalResult());
     JSHandle<EcmaString> inputStr = factory->NewFromASCII("abc");
     JSHandle<EcmaString> resultStr = GetSubString(regExpGlobalResult, inputStr, 0);
     ASSERT_EQ(regExpGlobalResult->GetTotalCaptureCounts().GetInt(), 1U);
@@ -728,7 +728,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec2)
     ASSERT_TRUE(ret);
 
     executor.GetResult(thread);
-    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetCurrentEcmaContext()->GetRegExpGlobalResult());
+    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetGlobalEnv()->GetRegExpGlobalResult());
     ASSERT_EQ(regExpGlobalResult->GetTotalCaptureCounts().GetInt(), 10U);
     JSHandle<EcmaString> inputStr = factory->NewFromASCII("cabd");
     JSHandle<EcmaString> resultStr0 = GetSubString(regExpGlobalResult, inputStr, 0);
@@ -765,7 +765,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec3)
     ASSERT_TRUE(ret);
 
     executor.GetResult(thread);
-    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetCurrentEcmaContext()->GetRegExpGlobalResult());
+    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetGlobalEnv()->GetRegExpGlobalResult());
     ASSERT_EQ(regExpGlobalResult->GetTotalCaptureCounts().GetInt(), 2U);
     JSHandle<EcmaString> inputStr = factory->NewFromASCII("aabaac");
     JSHandle<EcmaString> resultStr0 = GetSubString(regExpGlobalResult, inputStr, 0);
@@ -793,7 +793,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec4)
     ASSERT_TRUE(ret);
 
     executor.GetResult(thread);
-    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetCurrentEcmaContext()->GetRegExpGlobalResult());
+    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetGlobalEnv()->GetRegExpGlobalResult());
     ASSERT_EQ(regExpGlobalResult->GetTotalCaptureCounts().GetInt(), 1U);
     JSHandle<EcmaString> inputStr = factory->NewFromASCII("aabaac");
     JSHandle<EcmaString> resultStr = GetSubString(regExpGlobalResult, inputStr, 0);
@@ -818,7 +818,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec5)
     ASSERT_TRUE(ret);
 
     executor.GetResult(thread);
-    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetCurrentEcmaContext()->GetRegExpGlobalResult());
+    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetGlobalEnv()->GetRegExpGlobalResult());
     ASSERT_EQ(regExpGlobalResult->GetTotalCaptureCounts().GetInt(), 1U);
     JSHandle<EcmaString> inputStr = factory->NewFromASCII("b");
     JSHandle<EcmaString> resultStr = GetSubString(regExpGlobalResult, inputStr, 0);
@@ -843,7 +843,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec6)
     ASSERT_TRUE(ret);
 
     executor.GetResult(thread);
-    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetCurrentEcmaContext()->GetRegExpGlobalResult());
+    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetGlobalEnv()->GetRegExpGlobalResult());
     ASSERT_EQ(regExpGlobalResult->GetTotalCaptureCounts().GetInt(), 6U);
     JSHandle<EcmaString> inputStr = factory->NewFromASCII("zaacbbbcac");
     JSHandle<EcmaString> resultStr0 = GetSubString(regExpGlobalResult, inputStr, 0);
@@ -881,7 +881,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec7)
     ASSERT_TRUE(ret);
 
     executor.GetResult(thread);
-    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetCurrentEcmaContext()->GetRegExpGlobalResult());
+    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetGlobalEnv()->GetRegExpGlobalResult());
     ASSERT_EQ(regExpGlobalResult->GetTotalCaptureCounts().GetInt(), 1U);
     JSHandle<EcmaString> inputStr = factory->NewFromASCII("ab\nabc");
     JSHandle<EcmaString> resultStr = GetSubString(regExpGlobalResult, inputStr, 0);
@@ -906,7 +906,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec8)
     ASSERT_TRUE(ret);
 
     executor.GetResult(thread);
-    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetCurrentEcmaContext()->GetRegExpGlobalResult());
+    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetGlobalEnv()->GetRegExpGlobalResult());
     ASSERT_EQ(regExpGlobalResult->GetTotalCaptureCounts().GetInt(), 1U);
     JSHandle<EcmaString> inputStr = factory->NewFromASCII("ab\nabc");
     JSHandle<EcmaString> resultStr = GetSubString(regExpGlobalResult, inputStr, 0);
@@ -931,7 +931,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec9)
     ASSERT_TRUE(ret);
 
     executor.GetResult(thread);
-    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetCurrentEcmaContext()->GetRegExpGlobalResult());
+    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetGlobalEnv()->GetRegExpGlobalResult());
     ASSERT_EQ(regExpGlobalResult->GetTotalCaptureCounts().GetInt(), 1U);
     JSHandle<EcmaString> inputStr = factory->NewFromASCII("erv");
     JSHandle<EcmaString> resultStr = GetSubString(regExpGlobalResult, inputStr, 0);
@@ -956,7 +956,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec10)
     ASSERT_TRUE(ret);
 
     executor.GetResult(thread);
-    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetCurrentEcmaContext()->GetRegExpGlobalResult());
+    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetGlobalEnv()->GetRegExpGlobalResult());
     ASSERT_EQ(regExpGlobalResult->GetTotalCaptureCounts().GetInt(), 1U);
     JSHandle<EcmaString> inputStr = factory->NewFromASCII("bad good");
     JSHandle<EcmaString> resultStr = GetSubString(regExpGlobalResult, inputStr, 0);
@@ -981,7 +981,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec11)
     ASSERT_TRUE(ret);
 
     executor.GetResult(thread);
-    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetCurrentEcmaContext()->GetRegExpGlobalResult());
+    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetGlobalEnv()->GetRegExpGlobalResult());
     ASSERT_EQ(regExpGlobalResult->GetTotalCaptureCounts().GetInt(), 1U);
     JSHandle<EcmaString> inputStr = factory->NewFromASCII("\na");
     JSHandle<EcmaString> resultStr = GetSubString(regExpGlobalResult, inputStr, 0);
@@ -1006,7 +1006,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec12)
     ASSERT_TRUE(ret);
 
     executor.GetResult(thread);
-    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetCurrentEcmaContext()->GetRegExpGlobalResult());
+    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetGlobalEnv()->GetRegExpGlobalResult());
     ASSERT_EQ(regExpGlobalResult->GetTotalCaptureCounts().GetInt(), 1U);
     JSHandle<EcmaString> inputStr = factory->NewFromASCII("\n");
     JSHandle<EcmaString> resultStr = GetSubString(regExpGlobalResult, inputStr, 0);
@@ -1031,7 +1031,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec13)
     ASSERT_TRUE(ret);
 
     executor.GetResult(thread);
-    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetCurrentEcmaContext()->GetRegExpGlobalResult());
+    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetGlobalEnv()->GetRegExpGlobalResult());
     ASSERT_EQ(regExpGlobalResult->GetTotalCaptureCounts().GetInt(), 1U);
     JSHandle<EcmaString> inputStr = factory->NewFromASCII("\naabc");
     JSHandle<EcmaString> resultStr = GetSubString(regExpGlobalResult, inputStr, 0);
@@ -1056,7 +1056,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec14)
     ASSERT_TRUE(ret);
 
     executor.GetResult(thread);
-    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetCurrentEcmaContext()->GetRegExpGlobalResult());
+    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetGlobalEnv()->GetRegExpGlobalResult());
     ASSERT_EQ(regExpGlobalResult->GetTotalCaptureCounts().GetInt(), 1U);
     JSHandle<EcmaString> inputStr = factory->NewFromASCII("\nbbabc");
     JSHandle<EcmaString> resultStr = GetSubString(regExpGlobalResult, inputStr, 0);
@@ -1081,7 +1081,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec15)
     ASSERT_TRUE(ret);
 
     executor.GetResult(thread);
-    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetCurrentEcmaContext()->GetRegExpGlobalResult());
+    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetGlobalEnv()->GetRegExpGlobalResult());
     ASSERT_EQ(regExpGlobalResult->GetTotalCaptureCounts().GetInt(), 1U);
     JSHandle<EcmaString> inputStr = factory->NewFromASCII("aabc");
     JSHandle<EcmaString> resultStr = GetSubString(regExpGlobalResult, inputStr, 0);
@@ -1106,7 +1106,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec16)
     ASSERT_TRUE(ret);
 
     executor.GetResult(thread);
-    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetCurrentEcmaContext()->GetRegExpGlobalResult());
+    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetGlobalEnv()->GetRegExpGlobalResult());
     ASSERT_EQ(regExpGlobalResult->GetTotalCaptureCounts().GetInt(), 1U);
     JSHandle<EcmaString> inputStr = factory->NewFromASCII("ABC");
     JSHandle<EcmaString> resultStr = GetSubString(regExpGlobalResult, inputStr, 0);
@@ -1131,7 +1131,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec17)
     ASSERT_TRUE(ret);
 
     executor.GetResult(thread);
-    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetCurrentEcmaContext()->GetRegExpGlobalResult());
+    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetGlobalEnv()->GetRegExpGlobalResult());
     ASSERT_EQ(regExpGlobalResult->GetTotalCaptureCounts().GetInt(), 1U);
     JSHandle<EcmaString> inputStr = factory->NewFromASCII("a\n");
     JSHandle<EcmaString> resultStr = GetSubString(regExpGlobalResult, inputStr, 0);
@@ -1172,7 +1172,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec19)
     ASSERT_TRUE(ret);
 
     executor.GetResult(thread);
-    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetCurrentEcmaContext()->GetRegExpGlobalResult());
+    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetGlobalEnv()->GetRegExpGlobalResult());
     ASSERT_EQ(regExpGlobalResult->GetTotalCaptureCounts().GetInt(), 1U);
     JSHandle<EcmaString> inputStr = factory->NewFromASCII("ababc");
     JSHandle<EcmaString> resultStr = GetSubString(regExpGlobalResult, inputStr, 0);
@@ -1197,7 +1197,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec20)
     ASSERT_TRUE(ret);
 
     executor.GetResult(thread);
-    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetCurrentEcmaContext()->GetRegExpGlobalResult());
+    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetGlobalEnv()->GetRegExpGlobalResult());
     ASSERT_EQ(regExpGlobalResult->GetTotalCaptureCounts().GetInt(), 2U);
     JSHandle<EcmaString> inputStr = factory->NewFromASCII("baaabac");
     JSHandle<EcmaString> resultStr0 = GetSubString(regExpGlobalResult, inputStr, 0);
@@ -1225,7 +1225,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec21)
     ASSERT_TRUE(ret);
 
     executor.GetResult(thread);
-    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetCurrentEcmaContext()->GetRegExpGlobalResult());
+    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetGlobalEnv()->GetRegExpGlobalResult());
     ASSERT_EQ(regExpGlobalResult->GetTotalCaptureCounts().GetInt(), 1U);
     JSHandle<EcmaString> inputStr = factory->NewFromASCII("caab");
     JSHandle<EcmaString> resultStr = GetSubString(regExpGlobalResult, inputStr, 0);
@@ -1250,7 +1250,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec22)
     ASSERT_TRUE(ret);
 
     executor.GetResult(thread);
-    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetCurrentEcmaContext()->GetRegExpGlobalResult());
+    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetGlobalEnv()->GetRegExpGlobalResult());
     ASSERT_EQ(regExpGlobalResult->GetTotalCaptureCounts().GetInt(), 1U);
     JSHandle<EcmaString> inputStr = factory->NewFromASCII("aaaa:aa");
     JSHandle<EcmaString> resultStr = GetSubString(regExpGlobalResult, inputStr, 0);
@@ -1275,7 +1275,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec23)
     ASSERT_TRUE(ret);
 
     executor.GetResult(thread);
-    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetCurrentEcmaContext()->GetRegExpGlobalResult());
+    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetGlobalEnv()->GetRegExpGlobalResult());
     ASSERT_EQ(regExpGlobalResult->GetTotalCaptureCounts().GetInt(), 1U);
     JSHandle<EcmaString> inputStr = factory->NewFromASCII("caab");
     JSHandle<EcmaString> resultStr = GetSubString(regExpGlobalResult, inputStr, 0);
@@ -1316,7 +1316,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec25)
     ASSERT_TRUE(ret);
 
     executor.GetResult(thread);
-    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetCurrentEcmaContext()->GetRegExpGlobalResult());
+    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetGlobalEnv()->GetRegExpGlobalResult());
     ASSERT_EQ(regExpGlobalResult->GetTotalCaptureCounts().GetInt(), 2U);
     JSHandle<EcmaString> inputStr = factory->NewFromASCII("cabab");
     JSHandle<EcmaString> resultStr0 = GetSubString(regExpGlobalResult, inputStr, 0);
@@ -1344,7 +1344,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec26)
     ASSERT_TRUE(ret);
 
     executor.GetResult(thread);
-    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetCurrentEcmaContext()->GetRegExpGlobalResult());
+    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetGlobalEnv()->GetRegExpGlobalResult());
     ASSERT_EQ(regExpGlobalResult->GetTotalCaptureCounts().GetInt(), 1U);
     JSHandle<EcmaString> inputStr = factory->NewFromASCII("A");
     JSHandle<EcmaString> resultStr = GetSubString(regExpGlobalResult, inputStr, 0);
@@ -1369,7 +1369,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec27)
     ASSERT_TRUE(ret);
 
     executor.GetResult(thread);
-    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetCurrentEcmaContext()->GetRegExpGlobalResult());
+    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetGlobalEnv()->GetRegExpGlobalResult());
     ASSERT_EQ(regExpGlobalResult->GetTotalCaptureCounts().GetInt(), 1U);
     JSHandle<EcmaString> inputStr = factory->NewFromASCII("Z");
     JSHandle<EcmaString> resultStr = GetSubString(regExpGlobalResult, inputStr, 0);
@@ -1394,7 +1394,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec28)
     ASSERT_TRUE(ret);
 
     executor.GetResult(thread);
-    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetCurrentEcmaContext()->GetRegExpGlobalResult());
+    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetGlobalEnv()->GetRegExpGlobalResult());
     ASSERT_EQ(regExpGlobalResult->GetTotalCaptureCounts().GetInt(), 1U);
     JSHandle<EcmaString> inputStr = factory->NewFromASCII("\n");
     JSHandle<EcmaString> resultStr = GetSubString(regExpGlobalResult, inputStr, 0);
@@ -1419,7 +1419,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec29)
     ASSERT_TRUE(ret);
 
     executor.GetResult(thread);
-    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetCurrentEcmaContext()->GetRegExpGlobalResult());
+    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetGlobalEnv()->GetRegExpGlobalResult());
     ASSERT_EQ(regExpGlobalResult->GetTotalCaptureCounts().GetInt(), 2U);
     JSHandle<EcmaString> inputStr = factory->NewFromASCII("");
     JSHandle<EcmaString> resultStr0 = GetSubString(regExpGlobalResult, inputStr, 0);
@@ -1446,7 +1446,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec30)
     ASSERT_TRUE(ret);
 
     executor.GetResult(thread);
-    JSHandle<builtins::RegExpGlobalResult> regExpGlobalResult(thread->GetCurrentEcmaContext()->GetRegExpGlobalResult());
+    JSHandle<builtins::RegExpGlobalResult> regExpGlobalResult(thread->GetGlobalEnv()->GetRegExpGlobalResult());
     ASSERT_EQ(regExpGlobalResult->GetTotalCaptureCounts().GetInt(), 2U);
     JSHandle<EcmaString> inputStr = factory->NewFromASCII("");
     JSHandle<EcmaString> resultStr0 = GetSubString(regExpGlobalResult, inputStr, 0);
@@ -1470,7 +1470,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec31)
         executor.Execute(reinterpret_cast<const uint8_t *>(input.c_str()), 0, input.length(), parser.GetOriginBuffer());
     ASSERT_TRUE(ret);
     executor.GetResult(thread);
-    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetCurrentEcmaContext()->GetRegExpGlobalResult());
+    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetGlobalEnv()->GetRegExpGlobalResult());
     ASSERT_EQ(regExpGlobalResult->GetTotalCaptureCounts().GetInt(), 2U);
     JSHandle<EcmaString> inputStr = factory->NewFromASCII("aabb");
     JSHandle<EcmaString> resultStr0 = GetSubString(regExpGlobalResult, inputStr, 0);
@@ -1496,7 +1496,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec32)
         executor.Execute(reinterpret_cast<const uint8_t *>(input.c_str()), 0, input.length(), parser.GetOriginBuffer());
     ASSERT_TRUE(ret);
     executor.GetResult(thread);
-    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetCurrentEcmaContext()->GetRegExpGlobalResult());
+    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetGlobalEnv()->GetRegExpGlobalResult());
     ASSERT_EQ(regExpGlobalResult->GetTotalCaptureCounts().GetInt(), 3U);
     JSHandle<EcmaString> inputStr = factory->NewFromASCII("aabb");
     JSHandle<EcmaString> resultStr0 = GetSubString(regExpGlobalResult, inputStr, 0);
@@ -1526,7 +1526,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec33)
     ASSERT_TRUE(ret);
 
     executor.GetResult(thread);
-    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetCurrentEcmaContext()->GetRegExpGlobalResult());
+    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetGlobalEnv()->GetRegExpGlobalResult());
     ASSERT_EQ(regExpGlobalResult->GetTotalCaptureCounts().GetInt(), 1U);
     JSHandle<EcmaString> inputStr = factory->NewFromASCII("qyqya");
     JSHandle<EcmaString> resultStr = GetSubString(regExpGlobalResult, inputStr, 0);
@@ -1549,7 +1549,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec34)
         executor.Execute(reinterpret_cast<const uint8_t *>(input.c_str()), 0, input.length(), parser.GetOriginBuffer());
     ASSERT_TRUE(ret);
     executor.GetResult(thread);
-    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetCurrentEcmaContext()->GetRegExpGlobalResult());
+    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetGlobalEnv()->GetRegExpGlobalResult());
     ASSERT_EQ(regExpGlobalResult->GetTotalCaptureCounts().GetInt(), 1U);
     JSHandle<EcmaString> inputStr = factory->NewFromASCII("qyqy ");
     JSHandle<EcmaString> resultStr = GetSubString(regExpGlobalResult, inputStr, 0);
@@ -1572,7 +1572,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec35)
         executor.Execute(reinterpret_cast<const uint8_t *>(input.c_str()), 0, input.length(), parser.GetOriginBuffer());
     ASSERT_TRUE(ret);
     executor.GetResult(thread);
-    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetCurrentEcmaContext()->GetRegExpGlobalResult());
+    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetGlobalEnv()->GetRegExpGlobalResult());
     ASSERT_EQ(regExpGlobalResult->GetTotalCaptureCounts().GetInt(), 4U);
     JSHandle<EcmaString> inputStr = factory->NewFromASCII("xx2021-01-09");
     JSHandle<EcmaString> resultStr0 = GetSubString(regExpGlobalResult, inputStr, 0);
@@ -1604,7 +1604,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec36)
         executor.Execute(reinterpret_cast<const uint8_t *>(input.c_str()), 0, input.length(), parser.GetOriginBuffer());
     ASSERT_TRUE(ret);
     executor.GetResult(thread);
-    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetCurrentEcmaContext()->GetRegExpGlobalResult());
+    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetGlobalEnv()->GetRegExpGlobalResult());
     ASSERT_EQ(regExpGlobalResult->GetTotalCaptureCounts().GetInt(), 3U);
     JSHandle<EcmaString> inputStr = factory->NewFromASCII("The Quick Brown Fox Jumps Over The Lazy Dog");
     JSHandle<EcmaString> resultStr0 = GetSubString(regExpGlobalResult, inputStr, 0);
@@ -1633,7 +1633,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec37)
         executor.Execute(reinterpret_cast<const uint8_t *>(input.c_str()), 0, input.length(), parser.GetOriginBuffer());
     ASSERT_TRUE(ret);
     executor.GetResult(thread);
-    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetCurrentEcmaContext()->GetRegExpGlobalResult());
+    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetGlobalEnv()->GetRegExpGlobalResult());
     ASSERT_EQ(regExpGlobalResult->GetTotalCaptureCounts().GetInt(), 2U);
     JSHandle<EcmaString> inputStr = factory->NewFromASCII("abABc");
     JSHandle<EcmaString> resultStr0 = GetSubString(regExpGlobalResult, inputStr, 0);
@@ -1659,7 +1659,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec38)
         executor.Execute(reinterpret_cast<const uint8_t *>(input.c_str()), 0, input.length(), parser.GetOriginBuffer());
     ASSERT_TRUE(ret);
     executor.GetResult(thread);
-    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetCurrentEcmaContext()->GetRegExpGlobalResult());
+    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetGlobalEnv()->GetRegExpGlobalResult());
     ASSERT_EQ(regExpGlobalResult->GetTotalCaptureCounts().GetInt(), 3U);
     JSHandle<EcmaString> inputStr = factory->NewFromASCII("www.netscape.com");
     JSHandle<EcmaString> resultStr0 = GetSubString(regExpGlobalResult, inputStr, 0);
@@ -1688,7 +1688,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec39)
         executor.Execute(reinterpret_cast<const uint8_t *>(input.c_str()), 0, input.length(), parser.GetOriginBuffer());
     ASSERT_TRUE(ret);
     executor.GetResult(thread);
-    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetCurrentEcmaContext()->GetRegExpGlobalResult());
+    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetGlobalEnv()->GetRegExpGlobalResult());
     ASSERT_EQ(regExpGlobalResult->GetTotalCaptureCounts().GetInt(), 2U);
     JSHandle<EcmaString> inputStr = factory->NewFromASCII("baaaac");
     JSHandle<EcmaString> resultStr0 = GetSubString(regExpGlobalResult, inputStr, 0);
@@ -1714,7 +1714,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec40)
         executor.Execute(reinterpret_cast<const uint8_t *>(input.c_str()), 0, input.length(), parser.GetOriginBuffer());
     ASSERT_TRUE(ret);
     executor.GetResult(thread);
-    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetCurrentEcmaContext()->GetRegExpGlobalResult());
+    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetGlobalEnv()->GetRegExpGlobalResult());
     ASSERT_EQ(regExpGlobalResult->GetTotalCaptureCounts().GetInt(), 1U);
     JSHandle<EcmaString> inputStr = factory->NewFromASCII("ab");
     JSHandle<EcmaString> resultStr = GetSubString(regExpGlobalResult, inputStr, 0);
@@ -1737,7 +1737,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec41)
         executor.Execute(reinterpret_cast<const uint8_t *>(input.c_str()), 0, input.length(), parser.GetOriginBuffer());
     ASSERT_TRUE(ret);
     executor.GetResult(thread);
-    JSHandle<builtins::RegExpGlobalResult> regExpGlobalResult(thread->GetCurrentEcmaContext()->GetRegExpGlobalResult());
+    JSHandle<builtins::RegExpGlobalResult> regExpGlobalResult(thread->GetGlobalEnv()->GetRegExpGlobalResult());
     ASSERT_EQ(regExpGlobalResult->GetTotalCaptureCounts().GetInt(), 4U);
     JSHandle<EcmaString> inputStr = factory->NewFromASCII("baaabaac");
     JSHandle<EcmaString> resultStr0 = GetSubString(regExpGlobalResult, inputStr, 0);
@@ -1767,7 +1767,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec42)
         executor.Execute(reinterpret_cast<const uint8_t *>(input.c_str()), 0, input.length(), parser.GetOriginBuffer());
     ASSERT_TRUE(ret);
     executor.GetResult(thread);
-    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetCurrentEcmaContext()->GetRegExpGlobalResult());
+    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetGlobalEnv()->GetRegExpGlobalResult());
     ASSERT_EQ(regExpGlobalResult->GetTotalCaptureCounts().GetInt(), 1U);
     JSHandle<EcmaString> inputStr = factory->NewFromASCII("\n\n\\abc324234");
     JSHandle<EcmaString> resultStr = GetSubString(regExpGlobalResult, inputStr, 0);
@@ -1790,7 +1790,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec43)
         executor.Execute(reinterpret_cast<const uint8_t *>(input.c_str()), 0, input.length(), parser.GetOriginBuffer());
     ASSERT_TRUE(ret);
     executor.GetResult(thread);
-    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetCurrentEcmaContext()->GetRegExpGlobalResult());
+    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetGlobalEnv()->GetRegExpGlobalResult());
     ASSERT_EQ(regExpGlobalResult->GetTotalCaptureCounts().GetInt(), 1U);
     JSHandle<EcmaString> inputStr = factory->NewFromASCII("line1\nline2");
     JSHandle<EcmaString> resultStr = GetSubString(regExpGlobalResult, inputStr, 0);
@@ -1813,7 +1813,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec44)
         executor.Execute(reinterpret_cast<const uint8_t *>(input.c_str()), 0, input.length(), parser.GetOriginBuffer());
     ASSERT_TRUE(ret);
     executor.GetResult(thread);
-    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetCurrentEcmaContext()->GetRegExpGlobalResult());
+    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetGlobalEnv()->GetRegExpGlobalResult());
     ASSERT_EQ(regExpGlobalResult->GetTotalCaptureCounts().GetInt(), 1U);
     JSHandle<EcmaString> inputStr = factory->NewFromASCII("abc\bdef");
     JSHandle<EcmaString> resultStr = GetSubString(regExpGlobalResult, inputStr, 0);
@@ -1836,7 +1836,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec45)
         executor.Execute(reinterpret_cast<const uint8_t *>(input.c_str()), 0, input.length(), parser.GetOriginBuffer());
     ASSERT_TRUE(ret);
     executor.GetResult(thread);
-    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetCurrentEcmaContext()->GetRegExpGlobalResult());
+    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetGlobalEnv()->GetRegExpGlobalResult());
     ASSERT_EQ(regExpGlobalResult->GetTotalCaptureCounts().GetInt(), 1U);
     JSHandle<EcmaString> inputStr = factory->NewFromASCII("easy\bto\u0008ride");
     JSHandle<EcmaString> resultStr = GetSubString(regExpGlobalResult, inputStr, 0);
@@ -1859,7 +1859,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec46)
         executor.Execute(reinterpret_cast<const uint8_t *>(input.c_str()), 0, input.length(), parser.GetOriginBuffer());
     ASSERT_TRUE(ret);
     executor.GetResult(thread);
-    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetCurrentEcmaContext()->GetRegExpGlobalResult());
+    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetGlobalEnv()->GetRegExpGlobalResult());
     ASSERT_EQ(regExpGlobalResult->GetTotalCaptureCounts().GetInt(), 3U);
     JSHandle<EcmaString> inputStr = factory->NewFromASCII("Course_Creator = Test");
     JSHandle<EcmaString> resultStr0 = GetSubString(regExpGlobalResult, inputStr, 0);
@@ -1885,7 +1885,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec47)
         executor.Execute(reinterpret_cast<const uint8_t *>(input.c_str()), 0, input.length(), parser.GetOriginBuffer());
     ASSERT_TRUE(ret);
     executor.GetResult(thread);
-    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetCurrentEcmaContext()->GetRegExpGlobalResult());
+    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetGlobalEnv()->GetRegExpGlobalResult());
     ASSERT_EQ(regExpGlobalResult->GetTotalCaptureCounts().GetInt(), 1U);
     JSHandle<EcmaString> inputStr = factory->NewFromASCII("pilOt\nsoviet robot\topenoffice");
     JSHandle<EcmaString> resultStr = GetSubString(regExpGlobalResult, inputStr, 0);
@@ -1908,7 +1908,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec49)
         executor.Execute(reinterpret_cast<const uint8_t *>(input.c_str()), 0, input.length(), parser.GetOriginBuffer());
     ASSERT_TRUE(ret);
     executor.GetResult(thread);
-    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetCurrentEcmaContext()->GetRegExpGlobalResult());
+    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetGlobalEnv()->GetRegExpGlobalResult());
     ASSERT_EQ(regExpGlobalResult->GetTotalCaptureCounts().GetInt(), 5U);
     JSHandle<EcmaString> inputStr = factory->NewFromASCII("ab55");
     JSHandle<EcmaString> resultStr0 = GetSubString(regExpGlobalResult, inputStr, 0);
@@ -1943,7 +1943,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec50)
         executor.Execute(reinterpret_cast<const uint8_t *>(input.c_str()), 0, input.length(), parser.GetOriginBuffer());
     ASSERT_TRUE(ret);
     executor.GetResult(thread);
-    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetCurrentEcmaContext()->GetRegExpGlobalResult());
+    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetGlobalEnv()->GetRegExpGlobalResult());
     ASSERT_EQ(regExpGlobalResult->GetTotalCaptureCounts().GetInt(), 4U);
     JSHandle<EcmaString> inputStr = factory->NewFromASCII("2020-12-31");
     JSHandle<EcmaString> resultStr0 = GetSubString(regExpGlobalResult, inputStr, 0);
@@ -1974,7 +1974,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec51)
                                 parser.GetOriginBuffer(), true);
     ASSERT_TRUE(ret);
     executor.GetResult(thread);
-    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetCurrentEcmaContext()->GetRegExpGlobalResult());
+    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetGlobalEnv()->GetRegExpGlobalResult());
     ASSERT_EQ(regExpGlobalResult->GetTotalCaptureCounts().GetInt(), 1U);
 }
 
@@ -1993,7 +1993,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec52)
         executor.Execute(reinterpret_cast<const uint8_t *>(input.c_str()), 0, input.length(), parser.GetOriginBuffer());
     ASSERT_TRUE(ret);
     executor.GetResult(thread);
-    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetCurrentEcmaContext()->GetRegExpGlobalResult());
+    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetGlobalEnv()->GetRegExpGlobalResult());
     ASSERT_EQ(regExpGlobalResult->GetTotalCaptureCounts().GetInt(), 2U);
     JSHandle<EcmaString> inputStr = factory->NewFromASCII("aabcdaabcd");
     JSHandle<EcmaString> resultStr0 = GetSubString(regExpGlobalResult, inputStr, 0);
@@ -2019,7 +2019,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec53)
                                 parser.GetOriginBuffer(), true);
     ASSERT_TRUE(ret);
     executor.GetResult(thread);
-    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetCurrentEcmaContext()->GetRegExpGlobalResult());
+    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetGlobalEnv()->GetRegExpGlobalResult());
     ASSERT_EQ(regExpGlobalResult->GetTotalCaptureCounts().GetInt(), 1U);
     JSHandle<EcmaString> inputStr = factory->NewFromUtf16(u"\u0001");
     JSHandle<EcmaString> resultStr = GetSubString(regExpGlobalResult, inputStr, 0);
@@ -2057,7 +2057,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec55)
                                 parser.GetOriginBuffer(), false);
     ASSERT_TRUE(ret);
     executor.GetResult(thread);
-    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetCurrentEcmaContext()->GetRegExpGlobalResult());
+    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetGlobalEnv()->GetRegExpGlobalResult());
     ASSERT_EQ(regExpGlobalResult->GetTotalCaptureCounts().GetInt(), 1U);
     JSHandle<EcmaString> inputStr = factory->NewFromASCII("c\u0065");
     JSHandle<EcmaString> resultStr = GetSubString(regExpGlobalResult, inputStr, 0);
@@ -2080,7 +2080,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec56)
                                 parser.GetOriginBuffer(), true);
     ASSERT_TRUE(ret);
     executor.GetResult(thread);
-    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetCurrentEcmaContext()->GetRegExpGlobalResult());
+    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetGlobalEnv()->GetRegExpGlobalResult());
     ASSERT_EQ(regExpGlobalResult->GetTotalCaptureCounts().GetInt(), 1U);
     JSHandle<EcmaString> inputStr = factory->NewFromUtf16(u"a啊");
     JSHandle<EcmaString> resultStr = GetSubString(regExpGlobalResult, inputStr, 0);
@@ -2116,7 +2116,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec58)
     bool ret = executor.Execute(reinterpret_cast<const uint8_t *>(data), 0, 2, parser.GetOriginBuffer(), true);
     ASSERT_TRUE(ret);
     executor.GetResult(thread);
-    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetCurrentEcmaContext()->GetRegExpGlobalResult());
+    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetGlobalEnv()->GetRegExpGlobalResult());
     ASSERT_EQ(regExpGlobalResult->GetTotalCaptureCounts().GetInt(), 1U);
     JSHandle<EcmaString> inputStr = factory->NewFromUtf16(reinterpret_cast<const uint16_t *>(data), 2);
     JSHandle<EcmaString> resultStr = GetSubString(regExpGlobalResult, inputStr, 0);
@@ -2142,7 +2142,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec59)
     ASSERT_TRUE(ret);
 
     executor.GetResult(thread);
-    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetCurrentEcmaContext()->GetRegExpGlobalResult());
+    JSHandle<RegExpGlobalResult> regExpGlobalResult(thread->GetGlobalEnv()->GetRegExpGlobalResult());
     ASSERT_EQ(regExpGlobalResult->GetTotalCaptureCounts().GetInt(), 1U);
     JSHandle<EcmaString> inputStr = factory->NewFromASCII("\u000B");
     JSHandle<EcmaString> resultStr = GetSubString(regExpGlobalResult, inputStr, 0);

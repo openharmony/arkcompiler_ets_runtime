@@ -76,7 +76,7 @@ HWTEST_F_L0(JSAPILightWeightSetIteratorTest, SpecailReturnOfNextCreateLightWeigh
         [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
         JSTaggedValue result = JSAPILightWeightSetIterator::Next(ecmaRuntimeCallInfo);
         TestHelper::TearDownFrame(thread, prev);
-        EXPECT_EQ(result, thread->GlobalConstants()->GetUndefinedIterResult());
+        EXPECT_EQ(result, thread->GetEcmaVM()->GetGlobalEnv()->GetUndefinedIteratorResult().GetTaggedValue());
     }
 }
 }  // namespace panda::test

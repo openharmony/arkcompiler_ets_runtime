@@ -16,6 +16,7 @@
 #include "ecmascript/js_api/js_api_queue_iterator.h"
 
 #include "ecmascript/containers/containers_errors.h"
+#include "ecmascript/global_env.h"
 #include "ecmascript/js_api/js_api_queue.h"
 
 namespace panda::ecmascript {
@@ -37,17 +38,18 @@ JSTaggedValue JSAPIQueueIterator::Next(EcmaRuntimeCallInfo *argv)
     }
     JSHandle<JSAPIQueueIterator> iter(input);
     JSHandle<JSTaggedValue> queue(thread, iter->GetIteratedQueue());
-    const GlobalEnvConstants *globalConst = thread->GlobalConstants();
     if (queue->IsUndefined()) {
-        return globalConst->GetUndefinedIterResult();
+        JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+        return env->GetUndefinedIteratorResult().GetTaggedValue();
     }
 
     uint32_t index = iter->GetNextIndex();
     uint32_t length = JSAPIQueue::GetArrayLength(thread, JSHandle<JSAPIQueue>(queue));
     if (index >= length) {
-        JSHandle<JSTaggedValue> undefinedHandle = globalConst->GetHandledUndefined();
+        JSHandle<JSTaggedValue> undefinedHandle = thread->GlobalConstants()->GetHandledUndefined();
         iter->SetIteratedQueue(thread, undefinedHandle);
-        return globalConst->GetUndefinedIterResult();
+        JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+        return env->GetUndefinedIteratorResult().GetTaggedValue();
     }
     iter->SetNextIndex(index + 1);
 

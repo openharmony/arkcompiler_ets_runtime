@@ -18,7 +18,6 @@
 #include "ecmascript/dfx/stackinfo/js_stackinfo.h"
 #include "ecmascript/dfx/vmstat/opt_code_profiler.h"
 #include "ecmascript/mem/verification.h"
-#include "ecmascript/property_detector-inl.h"
 #include "ecmascript/interpreter/fast_runtime_stub-inl.h"
 #include "ecmascript/linked_hash_table.h"
 #include "builtins_typedarray.h"
@@ -235,7 +234,7 @@ JSTaggedValue BuiltinsArkTools::ExcutePendingJob(EcmaRuntimeCallInfo *info)
     RETURN_IF_DISALLOW_ARKTOOLS(thread);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
-    thread->GetCurrentEcmaContext()->ExecutePromisePendingJob();
+    thread->GetEcmaVM()->ExecutePromisePendingJob();
     return JSTaggedValue::True();
 }
 
@@ -577,7 +576,7 @@ JSTaggedValue BuiltinsArkTools::PrintTypedOpProfiler(EcmaRuntimeCallInfo *info)
 
     JSHandle<JSTaggedValue> opStrVal = GetCallArg(info, 0);
     std::string opStr = EcmaStringAccessor(opStrVal.GetTaggedValue()).ToStdString();
-    TypedOpProfiler *profiler = thread->GetCurrentEcmaContext()->GetTypdOpProfiler();
+    TypedOpProfiler* profiler = thread->GetEcmaVM()->GetTypedOpProfiler();
     if (profiler != nullptr) {
         profiler->Print(opStr);
     }
@@ -591,7 +590,7 @@ JSTaggedValue BuiltinsArkTools::ClearTypedOpProfiler(EcmaRuntimeCallInfo *info)
     RETURN_IF_DISALLOW_ARKTOOLS(thread);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
-    TypedOpProfiler *profiler = thread->GetCurrentEcmaContext()->GetTypdOpProfiler();
+    TypedOpProfiler* profiler = thread->GetEcmaVM()->GetTypedOpProfiler();
     if (profiler != nullptr) {
         profiler->Clear();
     }
@@ -641,7 +640,7 @@ JSTaggedValue BuiltinsArkTools::IsRegExpReplaceDetectorValid(EcmaRuntimeCallInfo
     JSThread *thread = info->GetThread();
     RETURN_IF_DISALLOW_ARKTOOLS(thread);
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    return JSTaggedValue(PropertyDetector::IsRegExpReplaceDetectorValid(env));
+    return JSTaggedValue(!env->GetRegExpReplaceDetector());
 }
 
 JSTaggedValue BuiltinsArkTools::IsRegExpFlagsDetectorValid(EcmaRuntimeCallInfo *info)
@@ -650,7 +649,7 @@ JSTaggedValue BuiltinsArkTools::IsRegExpFlagsDetectorValid(EcmaRuntimeCallInfo *
     JSThread *thread = info->GetThread();
     RETURN_IF_DISALLOW_ARKTOOLS(thread);
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    return JSTaggedValue(PropertyDetector::IsRegExpFlagsDetectorValid(env));
+    return JSTaggedValue(!env->GetRegExpFlagsDetector());
 }
 
 JSTaggedValue BuiltinsArkTools::IsNumberStringNotRegexpLikeDetectorValid(EcmaRuntimeCallInfo *info)
@@ -659,7 +658,7 @@ JSTaggedValue BuiltinsArkTools::IsNumberStringNotRegexpLikeDetectorValid(EcmaRun
     JSThread *thread = info->GetThread();
     RETURN_IF_DISALLOW_ARKTOOLS(thread);
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    return JSTaggedValue(PropertyDetector::IsNumberStringNotRegexpLikeDetectorValid(env));
+    return JSTaggedValue(!env->GetNumberStringNotRegexpLikeDetector());
 }
 
 JSTaggedValue BuiltinsArkTools::IsSymbolIteratorDetectorValid(EcmaRuntimeCallInfo *info)
@@ -677,23 +676,23 @@ JSTaggedValue BuiltinsArkTools::IsSymbolIteratorDetectorValid(EcmaRuntimeCallInf
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<EcmaString> mapString = factory->NewFromUtf8ReadOnly("Map");
     if (JSTaggedValue::Equal(thread, kind, JSHandle<JSTaggedValue>(mapString))) {
-        return JSTaggedValue(PropertyDetector::IsMapIteratorDetectorValid(env));
+        return JSTaggedValue(!env->GetMapIteratorDetector());
     }
     JSHandle<EcmaString> setString = factory->NewFromUtf8ReadOnly("Set");
     if (JSTaggedValue::Equal(thread, kind, JSHandle<JSTaggedValue>(setString))) {
-        return JSTaggedValue(PropertyDetector::IsSetIteratorDetectorValid(env));
+        return JSTaggedValue(!env->GetSetIteratorDetector());
     }
     JSHandle<EcmaString> stringString = factory->NewFromUtf8ReadOnly("String");
     if (JSTaggedValue::Equal(thread, kind, JSHandle<JSTaggedValue>(stringString))) {
-        return JSTaggedValue(PropertyDetector::IsStringIteratorDetectorValid(env));
+        return JSTaggedValue(!env->GetStringIteratorDetector());
     }
     JSHandle<EcmaString> arrayString = factory->NewFromUtf8ReadOnly("Array");
     if (JSTaggedValue::Equal(thread, kind, JSHandle<JSTaggedValue>(arrayString))) {
-        return JSTaggedValue(PropertyDetector::IsArrayIteratorDetectorValid(env));
+        return JSTaggedValue(!env->GetArrayIteratorDetector());
     }
     JSHandle<EcmaString> typedarrayString = factory->NewFromUtf8ReadOnly("TypedArray");
     if (JSTaggedValue::Equal(thread, kind, JSHandle<JSTaggedValue>(typedarrayString))) {
-        return JSTaggedValue(PropertyDetector::IsTypedArrayIteratorDetectorValid(env));
+        return JSTaggedValue(!env->GetTypedArrayIteratorDetector());
     }
     return JSTaggedValue::Undefined();
 }
@@ -1246,7 +1245,7 @@ JSTaggedValue BuiltinsArkTools::EnqueueMicrotask([[maybe_unused]] EcmaRuntimeCal
     CHECK(info->GetCallArg(0)->IsJSFunction());
     JSHandle<JSFunction> func(info->GetCallArg(0));
 
-    JSHandle<job::MicroJobQueue> queue = thread->GetCurrentEcmaContext()->GetMicroJobQueue();
+    JSHandle<job::MicroJobQueue> queue = thread->GetEcmaVM()->GetMicroJobQueue();
     JSHandle<TaggedArray> argv(thread->GlobalConstants()->GetHandledEmptyArray());
 
     job::MicroJobQueue::EnqueueJob(thread, queue, job::QueueType::QUEUE_PROMISE, func, argv);
@@ -1311,7 +1310,7 @@ JSTaggedValue BuiltinsArkTools::PerformMicrotaskCheckpoint([[maybe_unused]] Ecma
     JSThread *thread = info->GetThread();
     RETURN_IF_DISALLOW_ARKTOOLS(thread);
     ASSERT(info && info->GetArgsNumber() == 0);
-    thread->GetCurrentEcmaContext()->ExecutePromisePendingJob();
+    thread->GetEcmaVM()->ExecutePromisePendingJob();
     return JSTaggedValue::Undefined();
 }
 

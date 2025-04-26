@@ -2414,9 +2414,8 @@ GateRef NewObjectStubBuilder::NewTypedArray(GateRef glue, GateRef srcTypedArray,
     Bind(&defaultConstr);
     GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
     GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
-    GateRef markerCell = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv,
-        GlobalEnv::TYPED_ARRAY_SPECIES_PROTECT_DETECTOR_INDEX);
-    BRANCH(IsMarkerCellValid(markerCell), &markerCellValid, &slowPath);
+    GateRef detector = GetTypedArraySpeciesProtectDetector(glueGlobalEnv);
+    BRANCH(BoolNot(detector), &markerCellValid, &slowPath);
     Bind(&markerCellValid);
     GateRef marker = GetProtoChangeMarkerFromHClass(LoadHClass(srcTypedArray));
     BRANCH(TaggedIsProtoChangeMarker(marker), &isProtoChangeMarker, &accessorNotChanged);
@@ -3210,8 +3209,10 @@ GateRef NewObjectStubBuilder::CreateListFromArrayLike(GateRef glue, GateRef arra
 void NewObjectStubBuilder::CreateJSIteratorResult(GateRef glue, Variable *res, GateRef value, GateRef done, Label *exit)
 {
     auto env = GetEnvironment();
-    GateRef iterResultClass = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
-                                                     ConstantIndex::ITERATOR_RESULT_CLASS);
+    GateRef globalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
+    GateRef globalEnv = Load(VariableType::NATIVE_POINTER(), glue, globalEnvOffset);
+    GateRef iterResultClass = GetGlobalEnvValue(VariableType::JS_ANY(), globalEnv,
+                                                GlobalEnv::ITERATOR_RESULT_CLASS_INDEX);
     Label afterNew(env);
     SetParameters(glue, 0);
     NewJSObject(res, &afterNew, iterResultClass);

@@ -1277,13 +1277,6 @@ JSTaggedValue BuiltinsSharedArray::Join(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] ConcurrentApiScope<JSSharedArray> scope(thread, thisHandle);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
-    auto factory = thread->GetEcmaVM()->GetFactory();
-    auto context = thread->GetCurrentEcmaContext();
-    bool noCircular = context->JoinStackPushFastPath(thisHandle);
-    if (!noCircular) {
-        return factory->GetEmptyString().GetTaggedValue();
-    }
-
     return JSStableArray::Join(thisHandle, argv);
 }
 
@@ -1964,36 +1957,26 @@ JSTaggedValue BuiltinsSharedArray::ToLocaleString(EcmaRuntimeCallInfo *argv)
     JSThread *thread = argv->GetThread();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
-    auto ecmaVm = thread->GetEcmaVM();
-    ObjectFactory *factory = ecmaVm->GetFactory();
-
     ARRAY_CHECK_SHARED_ARRAY("The ToLocaleString method cannot be bound.")
     // 1. Let O be ToObject(this value).
     [[maybe_unused]] ConcurrentApiScope<JSSharedArray> scope(thread, thisHandle);
-    // add this to join stack to avoid circular call
-    auto context = thread->GetCurrentEcmaContext();
-    bool noCircular = context->JoinStackPushFastPath(thisHandle);
-    if (!noCircular) {
-        return factory->GetEmptyString().GetTaggedValue();
-    }
     // 2. ReturnIfAbrupt(O).
-    RETURN_EXCEPTION_AND_POP_JOINSTACK(thread, thisHandle);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     // 3. Let len be ToLength(Get(O, "length")).
     int64_t len = ArrayHelper::GetLength(thread, thisHandle);
     // 4. ReturnIfAbrupt(len).
-    RETURN_EXCEPTION_AND_POP_JOINSTACK(thread, thisHandle);
-    // 6. If len is zero, return the empty String.
-    if (len == 0) {
-        // pop this from join stack
-        context->JoinStackPopFastPath(thisHandle);
-        return GetTaggedString(thread, "");
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    // 6. If len is zero or exist circular call, return the empty String.
+    if (len == 0 || !ArrayJoinStack::Push(thread, thisHandle)) {
+        const auto* globalConst = thread->GlobalConstants();
+        return globalConst->GetEmptyString();
     }
 
-    return ToLocaleStringInternalHandle(argv, thread, context, factory, thisHandle, len);
+    return ToLocaleStringInternalHandle(argv, thread, thisHandle, len);
 }
 
 JSTaggedValue BuiltinsSharedArray::ToLocaleStringInternalHandle(EcmaRuntimeCallInfo *argv, JSThread *thread,
-    EcmaContext *context, ObjectFactory *factory, const JSHandle<JSTaggedValue> &thisHandle, int64_t len)
+                                                                const JSHandle<JSTaggedValue> &thisHandle, int64_t len)
 {
     JSHandle<JSObject> thisObjHandle(thread, JSObject::Cast(thisHandle.GetTaggedValue()));
     // Inject locales and options argument into a taggedArray
@@ -2053,9 +2036,9 @@ JSTaggedValue BuiltinsSharedArray::ToLocaleStringInternalHandle(EcmaRuntimeCallI
         concatStr += nextString;
     }
 
-    // pop this from join stack
-    context->JoinStackPopFastPath(thisHandle);
+    ArrayJoinStack::Pop(thread, thisHandle);
     // 13. Return R.
+    auto* factory = thread->GetEcmaVM()->GetFactory();
     return factory->NewFromUtf8(concatStr).GetTaggedValue();
 }
 

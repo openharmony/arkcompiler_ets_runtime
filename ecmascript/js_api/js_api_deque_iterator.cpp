@@ -16,6 +16,7 @@
 #include "ecmascript/js_api/js_api_deque_iterator.h"
 
 #include "ecmascript/containers/containers_errors.h"
+#include "ecmascript/global_env.h"
 #include "ecmascript/js_api/js_api_deque.h"
 #include "ecmascript/js_iterator.h"
 #include "ecmascript/js_tagged_value-inl.h"
@@ -39,9 +40,9 @@ JSTaggedValue JSAPIDequeIterator::Next(EcmaRuntimeCallInfo *argv)
     }
     JSHandle<JSAPIDequeIterator> iter(input);
     JSHandle<JSTaggedValue> iteratorDeque(thread, iter->GetIteratedDeque());
-    const GlobalEnvConstants *globalConst = thread->GlobalConstants();
     if (iteratorDeque->IsUndefined()) {
-        return globalConst->GetUndefinedIterResult();
+        JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+        return env->GetUndefinedIteratorResult().GetTaggedValue();
     }
     JSHandle<JSAPIDeque> deque = JSHandle<JSAPIDeque>::Cast(iteratorDeque);
     uint32_t index = iter->GetNextIndex();
@@ -51,9 +52,10 @@ JSTaggedValue JSAPIDequeIterator::Next(EcmaRuntimeCallInfo *argv)
     uint32_t first = deque->GetFirst();
     uint32_t last = deque->GetLast();
     if (index == last) {
-        JSHandle<JSTaggedValue> undefinedHandle = globalConst->GetHandledUndefined();
+        JSHandle<JSTaggedValue> undefinedHandle = thread->GlobalConstants()->GetHandledUndefined();
         iter->SetIteratedDeque(thread, undefinedHandle);
-        return globalConst->GetUndefinedIterResult();
+        JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+        return env->GetUndefinedIteratorResult().GetTaggedValue();
     }
     ASSERT(capacity != 0);
     iter->SetNextIndex((index + 1) % capacity);

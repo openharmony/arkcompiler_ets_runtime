@@ -371,7 +371,7 @@ HWTEST_F_L0(BuiltinsPromiseTest, Race2)
     /**
      * @tc.steps: step6. execute promise queue
      */
-    auto microJobQueue = instance->GetJSThread()->GetCurrentEcmaContext()->GetMicroJobQueue();
+    auto microJobQueue = instance->GetMicroJobQueue();
     if (!thread->HasPendingException()) {
         job::MicroJobQueue::ExecutePendingJob(thread, microJobQueue);
     }
@@ -441,7 +441,7 @@ HWTEST_F_L0(BuiltinsPromiseTest, All)
     /**
      * @tc.steps: step6. execute promise queue
      */
-    auto microJobQueue = instance->GetJSThread()->GetCurrentEcmaContext()->GetMicroJobQueue();
+    auto microJobQueue = instance->GetMicroJobQueue();
     if (!thread->HasPendingException()) {
         job::MicroJobQueue::ExecutePendingJob(thread, microJobQueue);
     }
@@ -488,7 +488,7 @@ HWTEST_F_L0(BuiltinsPromiseTest, Catch)
     /**
      * @tc.steps: step3. execute promise queue
      */
-    auto microJobQueue = instance->GetJSThread()->GetCurrentEcmaContext()->GetMicroJobQueue();
+    auto microJobQueue = instance->GetMicroJobQueue();
     if (!thread->HasPendingException()) {
         job::MicroJobQueue::ExecutePendingJob(thread, microJobQueue);
     }
@@ -530,7 +530,7 @@ HWTEST_F_L0(BuiltinsPromiseTest, ThenResolve)
     /**
      * @tc.steps: step3.  execute promise queue
      */
-    auto microJobQueue = instance->GetJSThread()->GetCurrentEcmaContext()->GetMicroJobQueue();
+    auto microJobQueue = instance->GetMicroJobQueue();
     if (!thread->HasPendingException()) {
         job::MicroJobQueue::ExecutePendingJob(thread, microJobQueue);
     }
@@ -570,7 +570,7 @@ HWTEST_F_L0(BuiltinsPromiseTest, ThenReject)
     /**
      * @tc.steps: step3.  execute promise queue
      */
-    auto microJobQueue = instance->GetJSThread()->GetCurrentEcmaContext()->GetMicroJobQueue();
+    auto microJobQueue = instance->GetMicroJobQueue();
     if (!thread->HasPendingException()) {
         job::MicroJobQueue::ExecutePendingJob(thread, microJobQueue);
     }

@@ -134,10 +134,18 @@ JSThread::JSThread(EcmaVM *vm) : id_(os::thread::GetCurrentThreadId()), vm_(vm)
     SetBCStubStatus(BCStubStatus::NORMAL_BC_STUB);
     dateUtils_ = new DateUtils();
 
+    glueData_.propertiesCache_ = new PropertiesCache();
+    if (vm_->GetJSOptions().IsEnableMegaIC()) {
+        glueData_.loadMegaICCache_ = new MegaICCache();
+        glueData_.storeMegaICCache_ = new MegaICCache();
+    }
+
     glueData_.moduleManager_ = new ModuleManager(vm_);
     if (vm_->GetJSOptions().EnableModuleLog()) {
         glueData_.moduleLogger_ = new ModuleLogger(vm_);
     }
+
+    glueData_.globalConst_ = new GlobalEnvConstants();
 }
 
 JSThread::JSThread(EcmaVM *vm, ThreadType threadType) : id_(os::thread::GetCurrentThreadId()),
@@ -168,6 +176,19 @@ JSThread::~JSThread()
         globalDebugStorage_ = nullptr;
     }
 
+    if (glueData_.loadMegaICCache_ != nullptr) {
+        delete glueData_.loadMegaICCache_;
+        glueData_.loadMegaICCache_ = nullptr;
+    }
+    if (glueData_.storeMegaICCache_ != nullptr) {
+        delete glueData_.storeMegaICCache_;
+        glueData_.storeMegaICCache_ = nullptr;
+    }
+    if (glueData_.propertiesCache_ != nullptr) {
+        delete glueData_.propertiesCache_;
+        glueData_.propertiesCache_ = nullptr;
+    }
+
     for (auto item : contexts_) {
         delete item;
     }
@@ -176,12 +197,12 @@ JSThread::~JSThread()
         GetNativeAreaAllocator()->Free(glueData_.frameBase_, sizeof(JSTaggedType) *
                                        vm_->GetEcmaParamConfiguration().GetMaxStackSize());
     }
-    GetNativeAreaAllocator()->FreeArea(regExpCache_);
+    GetNativeAreaAllocator()->FreeArea(regExpCacheArea_);
 
     glueData_.frameBase_ = nullptr;
     nativeAreaAllocator_ = nullptr;
     heapRegionAllocator_ = nullptr;
-    regExpCache_ = nullptr;
+    regExpCacheArea_ = nullptr;
     if (vmThreadControl_ != nullptr) {
         delete vmThreadControl_;
         vmThreadControl_ = nullptr;
@@ -201,6 +222,10 @@ JSThread::~JSThread()
     if (glueData_.moduleLogger_ != nullptr) {
         delete glueData_.moduleLogger_;
         glueData_.moduleLogger_ = nullptr;
+    }
+    if (glueData_.globalConst_ != nullptr) {
+        delete glueData_.globalConst_;
+        glueData_.globalConst_ = nullptr;
     }
 }
 
@@ -390,6 +415,16 @@ void JSThread::SetJitCodeMap(JSTaggedType exception,  MachineCode* machineCode, 
     }
 }
 
+void JSThread::IterateMegaIC(RootVisitor &v)
+{
+    if (glueData_.loadMegaICCache_ != nullptr) {
+        glueData_.loadMegaICCache_->Iterate(v);
+    }
+    if (glueData_.storeMegaICCache_ != nullptr) {
+        glueData_.storeMegaICCache_->Iterate(v);
+    }
+}
+
 void JSThread::Iterate(RootVisitor &visitor)
 {
     if (!glueData_.exception_.IsHole()) {
@@ -424,9 +459,19 @@ void JSThread::Iterate(RootVisitor &visitor)
         }
     }
 
+    IterateMegaIC(visitor);
+
+    if (glueData_.propertiesCache_ != nullptr) {
+        glueData_.propertiesCache_->Clear();
+    }
+
     ModuleManager *moduleManager = GetModuleManager();
     if (moduleManager) {
         moduleManager->Iterate(visitor);
+    }
+
+    if (glueData_.globalConst_ != nullptr) {
+        glueData_.globalConst_->Iterate(visitor);
     }
 }
 void JSThread::IterateJitCodeMap(const JitCodeMapVisitor &jitCodeMapVisitor)
@@ -585,27 +630,6 @@ bool JSThread::DoStackLimitCheck()
         return true;
     }
     return false;
-}
-
-void JSThread::NotifyArrayPrototypeChangedGuardians(JSHandle<JSObject> receiver)
-{
-    if (!glueData_.arrayPrototypeChangedGuardians_) {
-        return;
-    }
-    if (!receiver->GetJSHClass()->IsPrototype() && !receiver->IsJSArray()) {
-        return;
-    }
-    auto env = vm_->GetGlobalEnv();
-    if (receiver.GetTaggedValue() == env->GetObjectFunctionPrototype().GetTaggedValue() ||
-        receiver.GetTaggedValue() == env->GetArrayPrototype().GetTaggedValue()) {
-        glueData_.arrayPrototypeChangedGuardians_ = false;
-        return;
-    }
-}
-
-void JSThread::ResetGuardians()
-{
-    glueData_.arrayPrototypeChangedGuardians_ = true;
 }
 
 void JSThread::SetInitialBuiltinHClass(
@@ -1001,7 +1025,7 @@ void JSThread::PopContext()
     glueData_.currentContext_ = contexts_.back();
 }
 
-void JSThread::SwitchCurrentContext(EcmaContext *currentContext, bool isInIterate)
+void JSThread::SwitchCurrentContext(EcmaContext *currentContext, [[maybe_unused]] bool isInIterate)
 {
     ASSERT(std::count(contexts_.begin(), contexts_.end(), currentContext));
     glueData_.currentContext_->SetGlobalEnv(GetGlueGlobalEnv());
@@ -1042,10 +1066,6 @@ void JSThread::SwitchCurrentContext(EcmaContext *currentContext, bool isInIterat
             SetGlobalObject(currentContext->GetGlobalEnv()->GetGlobalObject());
         }
     }
-    if (!isInIterate) {
-        // If isInIterate is true, it means it is in GC iterate and global variables are no need to change.
-        glueData_.globalConst_ = const_cast<GlobalEnvConstants *>(currentContext->GlobalConstants());
-    }
 
     glueData_.currentContext_ = currentContext;
 }
@@ -1068,31 +1088,24 @@ bool JSThread::EraseContext(EcmaContext *context)
     return false;
 }
 
-void JSThread::ClearContextCachedConstantPool()
+void JSThread::ClearVMCachedConstantPool()
 {
-    for (EcmaContext *context : contexts_) {
-        context->ClearCachedConstantPool();
-    }
+    vm_->ClearCachedConstantPool();
 }
 
 PropertiesCache *JSThread::GetPropertiesCache() const
 {
-    return glueData_.currentContext_->GetPropertiesCache();
+    return glueData_.propertiesCache_;
 }
 
 MegaICCache *JSThread::GetLoadMegaICCache() const
 {
-    return glueData_.currentContext_->GetLoadMegaICCache();
+    return glueData_.loadMegaICCache_;
 }
 
 MegaICCache *JSThread::GetStoreMegaICCache() const
 {
-    return glueData_.currentContext_->GetStoreMegaICCache();
-}
-
-const GlobalEnvConstants *JSThread::GetFirstGlobalConst() const
-{
-    return contexts_[0]->GlobalConstants();
+    return glueData_.storeMegaICCache_;
 }
 
 bool JSThread::IsAllContextsInitialized() const
@@ -1105,12 +1118,12 @@ bool JSThread::IsReadyToUpdateDetector() const
     return !GetEnableLazyBuiltins() && IsAllContextsInitialized();
 }
 
-Area *JSThread::GetOrCreateRegExpCache()
+Area *JSThread::GetOrCreateRegExpCacheArea()
 {
-    if (regExpCache_ == nullptr) {
-        regExpCache_ = nativeAreaAllocator_->AllocateArea(MAX_REGEXP_CACHE_SIZE);
+    if (regExpCacheArea_ == nullptr) {
+        regExpCacheArea_ = nativeAreaAllocator_->AllocateArea(MAX_REGEXP_CACHE_SIZE);
     }
-    return regExpCache_;
+    return regExpCacheArea_;
 }
 
 void JSThread::InitializeBuiltinObject(const std::string& key)
@@ -1150,10 +1163,8 @@ void JSThread::InitializeBuiltinObject()
 
 bool JSThread::IsPropertyCacheCleared() const
 {
-    for (EcmaContext *context : contexts_) {
-        if (!context->GetPropertiesCache()->IsCleared()) {
-            return false;
-        }
+    if (!GetPropertiesCache()->IsCleared()) {
+        return false;
     }
     return true;
 }

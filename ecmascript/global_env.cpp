@@ -15,9 +15,13 @@
 
 #include "ecmascript/global_env.h"
 
-#include "ecmascript/global_dictionary.h"
-#include "ecmascript/symbol_table.h"
+#include "ecmascript/builtins/builtins_number.h"
+#include "ecmascript/builtins/builtins_regexp.h"
+#include "ecmascript/builtins/builtins_string.h"
 #include "ecmascript/ecma_string_table.h"
+#include "ecmascript/global_dictionary.h"
+#include "ecmascript/js_object-inl.h"
+#include "ecmascript/symbol_table.h"
 #include "ecmascript/template_map.h"
 
 namespace panda::ecmascript {
@@ -25,13 +29,24 @@ void GlobalEnv::Init(JSThread *thread)
 {
     SetRegisterSymbols(thread, SymbolTable::Create(thread));
     SetGlobalRecord(thread, GlobalDictionary::Create(thread));
+    auto* vm = thread->GetEcmaVM();
     JSTaggedValue emptyStr = thread->GlobalConstants()->GetEmptyString();
-    EcmaStringTable *stringTable = thread->GetEcmaVM()->GetEcmaStringTable();
-    stringTable->GetOrInternFlattenString(thread->GetEcmaVM(), EcmaString::Cast(emptyStr.GetTaggedObject()));
+    EcmaStringTable *stringTable = vm->GetEcmaStringTable();
+    stringTable->GetOrInternFlattenString(vm, EcmaString::Cast(emptyStr.GetTaggedObject()));
     SetTemplateMap(thread, TemplateMap::Create(thread));
     SetObjectLiteralHClassCache(thread, JSTaggedValue::Hole());
+    SetArrayJoinStack(thread, vm->GetFactory()->NewTaggedArray(ArrayJoinStack::MIN_JOIN_STACK_SIZE));
+    SetNumberToStringResultCache(thread, builtins::NumberToStringResultCache::CreateCacheTable(thread));
+    SetStringSplitResultCache(thread, builtins::StringSplitResultCache::CreateCacheTable(thread));
+    SetStringToListResultCache(thread, builtins::StringToListResultCache::CreateCacheTable(thread));
+    SetRegExpCache(thread, builtins::RegExpExecResultCache::CreateCacheTable(thread));
+    SetRegExpGlobalResult(thread, builtins::RegExpGlobalResult::CreateGlobalResultTable(thread));
+#define INIT_JSAPI_CONTAINER(Type, Name, INDEX) Set##Name(thread, JSTaggedValue::Undefined());
+    GLOBAL_ENV_CONTAINER_ITERATORS(INIT_JSAPI_CONTAINER)
+#undef INIT_JSAPI_CONTAINER
     SetJSThread(thread);
 }
+
 JSHandle<JSTaggedValue> GlobalEnv::GetSymbol(JSThread *thread, const JSHandle<JSTaggedValue> &string)
 {
     JSHandle<JSTaggedValue> symbolFunction(GetSymbolFunction());
@@ -54,4 +69,20 @@ JSHandle<JSTaggedValue> GlobalEnv::GetStringFunctionByName(JSThread *thread, con
     JSHandle<JSTaggedValue> nameKey(factory->NewFromUtf8(name));
     return JSObject::GetProperty(thread, stringFuncObj, nameKey).GetValue();
 }
+
+void GlobalEnv::NotifyArrayPrototypeChangedGuardians(JSHandle<JSObject> receiver)
+{
+    if (!GetArrayPrototypeChangedGuardians()) {
+        return;
+    }
+    if (!receiver->GetJSHClass()->IsPrototype() && !receiver->IsJSArray()) {
+        return;
+    }
+    if (receiver.GetTaggedValue() == GetObjectFunctionPrototype().GetTaggedValue() ||
+        receiver.GetTaggedValue() == GetArrayPrototype().GetTaggedValue()) {
+        SetArrayPrototypeChangedGuardians(false);
+        return;
+    }
+}
+
 }  // namespace panda::ecmascript

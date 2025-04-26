@@ -379,3 +379,11 @@ print(Array.from(v1.keys()))
     let res = Array.from(float64Array, mapFunc);
     print(JSON.stringify(res));
 }
+
+// Test StringToListResultCache
+{
+    let str = "foo,bar,baz";
+    let res = Array.from(str);
+    let resCache = Array.from(str);
+    print(JSON.stringify(resCache));
+}

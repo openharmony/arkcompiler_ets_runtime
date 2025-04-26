@@ -280,14 +280,14 @@ HWTEST_F_L0(SnapshotTest, SerializeBuiltins)
                 size_t sharedHclassEndIndex = static_cast<size_t>(ConstantIndex::SHARED_HCLASS_END);
                 size_t hclassBeginIndex = static_cast<size_t>(ConstantIndex::NON_SHARED_HCLASS_BEGIN);
                 size_t hclassEndIndex = static_cast<size_t>(ConstantIndex::NON_SHARED_HCLASS_END);
-                size_t index = sharedBeginHclassIndex;
+                size_t index = 0U;
                 while (start < end) {
                     JSTaggedValue object(start.GetTaggedType());
-                    start++;
                     if ((index >= sharedBeginHclassIndex && index <= sharedHclassEndIndex) ||
                         (index >= hclassBeginIndex && index <= hclassEndIndex)) {
                         EXPECT_TRUE(object.IsJSHClass());
                     }
+                    start++;
                     index++;
                 }
             }
