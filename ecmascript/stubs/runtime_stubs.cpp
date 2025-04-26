@@ -1393,7 +1393,7 @@ DEF_RUNTIME_STUBS(GetObjectLiteralFromCache)
     JSHandle<JSTaggedValue> constpool = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
     JSTaggedValue index = GetArg(argv, argc, 1);  // 1: means the first parameter
     JSHandle<JSTaggedValue> module = GetHArg<JSTaggedValue>(argv, argc, 2);  // 2: means the second parameter
-    JSTaggedValue cp = thread->GetCurrentEcmaContext()->FindOrCreateUnsharedConstpool(constpool.GetTaggedValue());
+    JSTaggedValue cp = thread->GetEcmaVM()->FindOrCreateUnsharedConstpool(constpool.GetTaggedValue());
     return ConstantPool::GetLiteralFromCache<ConstPoolType::OBJECT_LITERAL>(
         thread, cp, index.GetInt(), module.GetTaggedValue()).GetRawData();
 }
@@ -1404,7 +1404,7 @@ DEF_RUNTIME_STUBS(GetArrayLiteralFromCache)
     JSHandle<JSTaggedValue> constpool = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
     JSTaggedValue index = GetArg(argv, argc, 1);  // 1: means the first parameter
     JSHandle<JSTaggedValue> module = GetHArg<JSTaggedValue>(argv, argc, 2);  // 2: means the second parameter
-    JSTaggedValue cp = thread->GetCurrentEcmaContext()->FindOrCreateUnsharedConstpool(constpool.GetTaggedValue());
+    JSTaggedValue cp = thread->GetEcmaVM()->FindOrCreateUnsharedConstpool(constpool.GetTaggedValue());
     return ConstantPool::GetLiteralFromCache<ConstPoolType::ARRAY_LITERAL>(
         thread, cp, index.GetInt(), module.GetTaggedValue()).GetRawData();
 }
@@ -2991,7 +2991,7 @@ DEF_RUNTIME_STUBS(ProfileOptimizedCode)
     int bcIndex = GetArg(argv, argc, 1).GetInt();
     EcmaOpcode ecmaOpcode = static_cast<EcmaOpcode>(GetArg(argv, argc, 2).GetInt());
     OptCodeProfiler::Mode mode = static_cast<OptCodeProfiler::Mode>(GetArg(argv, argc, 3).GetInt());
-    OptCodeProfiler *profiler = thread->GetCurrentEcmaContext()->GetOptCodeProfiler();
+    OptCodeProfiler* profiler = thread->GetEcmaVM()->GetOptCodeProfiler();
     profiler->Update(func, bcIndex, ecmaOpcode, mode);
     return JSTaggedValue::Undefined().GetRawData();
 }
@@ -3000,7 +3000,7 @@ DEF_RUNTIME_STUBS(ProfileTypedOp)
 {
     RUNTIME_STUBS_HEADER(ProfileOptimizedCode);
     kungfu::OpCode opcode = static_cast<kungfu::OpCode>(GetArg(argv, argc, 0).GetInt());
-    TypedOpProfiler *profiler = thread->GetCurrentEcmaContext()->GetTypdOpProfiler();
+    TypedOpProfiler* profiler = thread->GetEcmaVM()->GetTypedOpProfiler();
     if (profiler != nullptr) {
         profiler->Update(opcode);
     }
@@ -3559,7 +3559,7 @@ JSTaggedValue RuntimeStubs::GetStringToListCacheArray(uintptr_t argGlue)
 {
     DISALLOW_GARBAGE_COLLECTION;
     auto thread = JSThread::GlueToJSThread(argGlue);
-    return thread->GetCurrentEcmaContext()->GetStringToListResultCache().GetTaggedValue();
+    return thread->GetGlobalEnv()->GetStringToListResultCache().GetTaggedValue();
 }
 
 double RuntimeStubs::TimeClip(double time)
@@ -4656,12 +4656,12 @@ void RuntimeStubs::ReverseArray(JSTaggedType *dst, uint32_t length)
     std::reverse(dst, dst + length);
 }
 
-JSTaggedValue RuntimeStubs::FindPatchModule(uintptr_t argGlue, EcmaContext *context, JSTaggedValue resolvedModule)
+JSTaggedValue RuntimeStubs::FindPatchModule(uintptr_t argGlue, JSTaggedValue resolvedModule)
 {
     DISALLOW_GARBAGE_COLLECTION;
     auto thread = JSThread::GlueToJSThread(argGlue);
     JSHandle<SourceTextModule> module(thread, resolvedModule);
-    return (context->FindPatchModule(module->GetEcmaModuleRecordNameString())).GetTaggedValue();
+    return (thread->GetEcmaVM()->FindPatchModule(module->GetEcmaModuleRecordNameString())).GetTaggedValue();
 }
 
 void RuntimeStubs::FatalPrintMisstakenResolvedBinding(int32_t index, JSTaggedValue curModule)

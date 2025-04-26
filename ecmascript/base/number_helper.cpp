@@ -21,6 +21,7 @@
 #include "ecmascript/base/string_helper.h"
 #include "ecmascript/builtins/builtins_number.h"
 #include "ecmascript/ecma_string_table.h"
+#include "ecmascript/global_env.h"
 #include "ecmascript/js_tagged_value-inl.h"
 
 namespace panda::ecmascript::base {
@@ -775,8 +776,7 @@ CString NumberHelper::DoubleToCString(double d)
 JSHandle<EcmaString> NumberHelper::NumberToString(const JSThread *thread, JSTaggedValue number)
 {
     ASSERT(number.IsNumber());
-    JSHandle<NumberToStringResultCache> cacheTable(
-        thread->GetCurrentEcmaContext()->GetNumberToStringResultCache());
+    JSHandle<NumberToStringResultCache> cacheTable(thread->GetGlobalEnv()->GetNumberToStringResultCache());
     int entry = cacheTable->GetNumberHash(number);
     JSTaggedValue cacheResult = cacheTable->FindCachedResult(entry, number);
     if (cacheResult != JSTaggedValue::Undefined()) {

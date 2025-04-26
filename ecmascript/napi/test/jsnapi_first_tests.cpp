@@ -656,7 +656,7 @@ HWTEST_F_L0(JSNApiTests, PromiseCatch)
     Local<StringRef> reason = StringRef::NewFromUtf8(vm_, "Reject");
     ASSERT_TRUE(capability->Reject(vm_, reason));
 
-    vm_->GetJSThread()->GetCurrentEcmaContext()->ExecutePromisePendingJob();
+    vm_->ExecutePromisePendingJob();
 }
 
 HWTEST_F_L0(JSNApiTests, PromiseCatchUintPtr)
@@ -673,7 +673,7 @@ HWTEST_F_L0(JSNApiTests, PromiseCatchUintPtr)
     Local<StringRef> reason = StringRef::NewFromUtf8(vm_, "Reject");
     ASSERT_TRUE(capability->Reject(vm_, reinterpret_cast<uintptr_t>(*reason)));
 
-    vm_->GetJSThread()->GetCurrentEcmaContext()->ExecutePromisePendingJob();
+    vm_->ExecutePromisePendingJob();
 }
 
 /*
@@ -715,7 +715,7 @@ HWTEST_F_L0(JSNApiTests, PromiseThen)
 
     Local<StringRef> value = NumberRef::New(vm_, 300.3); // 300.3 : test case of input
     ASSERT_TRUE(capability->Resolve(vm_, value));
-    vm_->GetJSThread()->GetCurrentEcmaContext()->ExecutePromisePendingJob();
+    vm_->ExecutePromisePendingJob();
 }
 
 HWTEST_F_L0(JSNApiTests, PromiseThenUintPtr)
@@ -732,7 +732,7 @@ HWTEST_F_L0(JSNApiTests, PromiseThenUintPtr)
 
     Local<StringRef> value = NumberRef::New(vm_, 300.3); // 300.3 : test case of input
     ASSERT_TRUE(capability->Resolve(vm_, reinterpret_cast<uintptr_t>(*value)));
-    vm_->GetJSThread()->GetCurrentEcmaContext()->ExecutePromisePendingJob();
+    vm_->ExecutePromisePendingJob();
 }
 
 /**
@@ -1692,7 +1692,7 @@ HWTEST_F_L0(JSNApiTests, JSNApi_SetHostPromiseRejectionTracker)
     // 设置 JavaScript 虚拟机的宿主 Promise 拒绝回调函数为 data 所指向的函数。
     JSNApi::SetHostPromiseRejectionTracker(vm_, data, data);
     // 首先获取GetJS虚拟机中的当前线程->GetCurrentEcmaContext获取当前上下文->从上下文中获取Promise拒绝回调函数
-    PromiseRejectCallback res = vm_->GetJSThread()->GetCurrentEcmaContext()->GetPromiseRejectCallback();
+    PromiseRejectCallback res = vm_->GetPromiseRejectCallback();
     // 检查回调函数的地址是否等于我们之前设置的 data 的地址
     ASSERT_EQ(res, reinterpret_cast<ecmascript::PromiseRejectCallback>(data));
 }

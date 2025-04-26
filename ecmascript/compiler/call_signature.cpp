@@ -3554,11 +3554,10 @@ DEF_CALL_SIGNATURE(JSProxySetPropertyNoThrow)
 
 DEF_CALL_SIGNATURE(FindPatchModule)
 {
-    // 3 : 3 input parameters
-    CallSignature findPatchModule("FindPatchModule", 0, 3, ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    // 2 : 2 input parameters
+    CallSignature findPatchModule("FindPatchModule", 0, 2, ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
     *callSign = findPatchModule;
-    std::array<VariableType, 3> params = { // 3 : 3 input parameters
-        VariableType::NATIVE_POINTER(),
+    std::array<VariableType, 2> params = { // 2 : 2 input parameters
         VariableType::NATIVE_POINTER(),
         VariableType::JS_ANY(),
     };

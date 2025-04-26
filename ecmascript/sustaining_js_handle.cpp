@@ -21,13 +21,12 @@
 namespace panda::ecmascript {
 SustainingJSHandle::SustainingJSHandle(EcmaVM *vm) : vm_(vm)
 {
-    context_ = vm_->GetJSThread()->GetCurrentEcmaContext();
-    context_->AddSustainingJSHandle(this);
+    vm_->AddSustainingJSHandle(this);
 }
 
 SustainingJSHandle::~SustainingJSHandle()
 {
-    context_->RemoveSustainingJSHandle(this);
+    vm_->RemoveSustainingJSHandle(this);
     for (auto block : handleBlocks_) {
         delete block;
     }

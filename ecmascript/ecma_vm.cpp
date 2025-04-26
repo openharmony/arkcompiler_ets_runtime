@@ -16,6 +16,8 @@
 #include "ecmascript/ecma_vm.h"
 
 #include "ecmascript/builtins/builtins_ark_tools.h"
+#include "ecmascript/compiler/aot_constantpool_patcher.h"
+#include "ecmascript/compiler/pgo_type/pgo_type_manager.h"
 #ifdef ARK_SUPPORT_INTL
 #include "ecmascript/builtins/builtins_collator.h"
 #include "ecmascript/builtins/builtins_date_time_format.h"
@@ -25,7 +27,7 @@
 #include "ecmascript/builtins/builtins_object.h"
 #include "ecmascript/builtins/builtins_promise_handler.h"
 #include "ecmascript/builtins/builtins_proxy.h"
-#include "ecmascript/jit/jit_task.h"
+#include "ecmascript/checkpoint/thread_state_transition.h"
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
 #include "ecmascript/dfx/cpu_profiler/cpu_profiler.h"
 #endif
@@ -33,18 +35,23 @@
 #include "ecmascript/dfx/hprof/heap_profiler.h"
 #include "ecmascript/dfx/hprof/heap_profiler_interface.h"
 #endif
+#include "ecmascript/dfx/stackinfo/async_stack_trace.h"
 #include "ecmascript/dfx/tracing/tracing.h"
 #include "ecmascript/dfx/vmstat/function_call_timer.h"
+#include "ecmascript/jit/jit_task.h"
+#include "ecmascript/jspandafile/abc_buffer_cache.h"
+#include "ecmascript/mem/heap-inl.h"
 #include "ecmascript/mem/shared_heap/shared_concurrent_marker.h"
 #include "ecmascript/module/module_logger.h"
+#include "ecmascript/ohos/aot_tools.h"
+#include "ecmascript/ohos/jit_tools.h"
 #include "ecmascript/pgo_profiler/pgo_trace.h"
+#include "ecmascript/platform/ecma_context.h"
+#include "ecmascript/require/js_require_manager.h"
+#include "ecmascript/regexp/regexp_parser_cache.h"
 #include "ecmascript/snapshot/mem/snapshot.h"
 #include "ecmascript/stubs/runtime_stubs.h"
-#include "ecmascript/ohos/jit_tools.h"
-#include "ecmascript/ohos/aot_tools.h"
-#include "ecmascript/checkpoint/thread_state_transition.h"
-#include "ecmascript/mem/heap-inl.h"
-#include "ecmascript/dfx/stackinfo/async_stack_trace.h"
+#include "ecmascript/sustaining_js_handle.h"
 
 #if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE)
 #include "parameters.h"
@@ -281,6 +288,9 @@ bool EcmaVM::Initialize()
     debuggerManager_ = new tooling::JsDebuggerManager(this);
     asyncStackTrace_ = new AsyncStackTrace(this);
     aotFileManager_ = new AOTFileManager(this);
+    abcBufferCache_ = new AbcBufferCache();
+    auto globalConst = const_cast<GlobalEnvConstants *>(thread_->GlobalConstants());
+    globalConst->Init(thread_);
     auto context = new EcmaContext(thread_);
     thread_->PushContext(context);
     [[maybe_unused]] EcmaHandleScope scope(thread_);
@@ -288,6 +298,22 @@ bool EcmaVM::Initialize()
     thread_->SetSharedMarkStatus(DaemonThread::GetInstance()->GetSharedMarkStatus());
     snapshotEnv_ = new SnapshotEnv(this);
     context->Initialize();
+    ptManager_ = new kungfu::PGOTypeManager(this);
+    optCodeProfiler_ = new OptCodeProfiler();
+    if (options_.GetTypedOpProfiler()) {
+        typedOpProfiler_ = new TypedOpProfiler();
+    }
+    functionProtoTransitionTable_ = new FunctionProtoTransitionTable(thread_);
+
+    unsharedConstpools_ = new(std::nothrow) JSTaggedValue[GetUnsharedConstpoolsArrayLen()];
+    if (unsharedConstpools_ == nullptr) {
+        LOG_ECMA(FATAL) << "allocate unshared constpool array fail during initing";
+        UNREACHABLE();
+    }
+    std::fill(unsharedConstpools_, unsharedConstpools_ + GetUnsharedConstpoolsArrayLen(), JSTaggedValue::Hole());
+    thread_->SetUnsharedConstpools(reinterpret_cast<uintptr_t>(unsharedConstpools_));
+    thread_->SetUnsharedConstpoolsArrayLen(unsharedConstpoolsArrayLen_);
+
     snapshotEnv_->AddGlobalConstToMap();
     thread_->SetGlueGlobalEnv(reinterpret_cast<GlobalEnv *>(context->GetGlobalEnv().GetTaggedType()));
     thread_->SetGlobalObject(GetGlobalEnv()->GetGlobalObject());
@@ -295,15 +321,18 @@ bool EcmaVM::Initialize()
     GenerateInternalNativeMethods();
     quickFixManager_ = new QuickFixManager();
     if (options_.GetEnableAsmInterpreter()) {
-        thread_->GetCurrentEcmaContext()->LoadStubFile();
+        LoadStubFile();
     }
 
     callTimer_ = new FunctionCallTimer();
     strategy_ = new ThroughputJSObjectResizingStrategy();
+    microJobQueue_ = factory_->NewMicroJobQueue().GetTaggedValue();
     if (IsEnableFastJit() || IsEnableBaselineJit()) {
         Jit::GetInstance()->ConfigJit(this);
     }
+    sustainingJSHandleList_ = new SustainingJSHandleList();
     initialized_ = true;
+    regExpParserCache_ = new RegExpParserCache();
     return true;
 }
 
@@ -396,6 +425,11 @@ EcmaVM::~EcmaVM()
         heap_ = nullptr;
     }
 
+    if (sustainingJSHandleList_ != nullptr) {
+        delete sustainingJSHandleList_;
+        sustainingJSHandleList_ = nullptr;
+    }
+
     SharedHeap *sHeap = SharedHeap::GetInstance();
     const Heap *heap = Runtime::GetInstance()->GetMainThread()->GetEcmaVM()->GetHeap();
     if (IsWorkerThread() && Runtime::SharedGCRequest()) {
@@ -412,7 +446,7 @@ EcmaVM::~EcmaVM()
 
     DeleteHandleStorage();
     DeletePrimitiveStorage();
-    
+
     if (runtimeStat_ != nullptr) {
         chunk_.Delete(runtimeStat_);
         runtimeStat_ = nullptr;
@@ -447,6 +481,13 @@ EcmaVM::~EcmaVM()
         quickFixManager_ = nullptr;
     }
 
+    if (unsharedConstpools_ != nullptr) {
+        delete[] unsharedConstpools_;
+        unsharedConstpools_ = nullptr;
+        thread_->SetUnsharedConstpools(reinterpret_cast<uintptr_t>(nullptr));
+        thread_->SetUnsharedConstpoolsArrayLen(0);
+    }
+
     if (snapshotEnv_ != nullptr) {
         snapshotEnv_->ClearEnvMap();
         delete snapshotEnv_;
@@ -466,6 +507,40 @@ EcmaVM::~EcmaVM()
     if (thread_ != nullptr) {
         delete thread_;
         thread_ = nullptr;
+    }
+
+    if (regExpParserCache_ != nullptr) {
+        delete regExpParserCache_;
+        regExpParserCache_ = nullptr;
+    }
+
+    if (abcBufferCache_ != nullptr) {
+        delete abcBufferCache_;
+        abcBufferCache_ = nullptr;
+    }
+
+    if (optCodeProfiler_ != nullptr) {
+        delete optCodeProfiler_;
+        optCodeProfiler_ = nullptr;
+    }
+
+    if (typedOpProfiler_ != nullptr) {
+        delete typedOpProfiler_;
+        typedOpProfiler_ = nullptr;
+    }
+
+    if (ptManager_ != nullptr) {
+        delete ptManager_;
+        ptManager_ = nullptr;
+    }
+
+    if (aotFileManager_ != nullptr) {
+        aotFileManager_ = nullptr;
+    }
+
+    if (functionProtoTransitionTable_ != nullptr) {
+        delete functionProtoTransitionTable_;
+        functionProtoTransitionTable_ = nullptr;
     }
 }
 
@@ -716,7 +791,7 @@ bool EcmaVM::ContainInDeregisterModuleList(CString module)
 void EcmaVM::ClearBufferData()
 {
     heap_->ClearNativePointerList();
-    thread_->GetCurrentEcmaContext()->ClearBufferData();
+    ClearConstpoolBufferData();
     internalNativeMethods_.clear();
     workerList_.clear();
     deregisterModuleList_.clear();
@@ -740,7 +815,9 @@ void EcmaVM::Iterate(RootVisitor &v, VMRootVisitType type)
     if (aotFileManager_) {
         aotFileManager_->Iterate(v);
     }
-
+    if (!microJobQueue_.IsHole()) {
+        v.VisitRoot(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&microJobQueue_)));
+    }
     if (!options_.EnableGlobalLeakCheck() && currentHandleStorageIndex_ != -1) {
         // IterateHandle when disableGlobalLeakCheck.
         int32_t nid = currentHandleStorageIndex_;
@@ -750,6 +827,27 @@ void EcmaVM::Iterate(RootVisitor &v, VMRootVisitType type)
             auto end = (i != nid) ? &(node->data()[NODE_BLOCK_SIZE]) : handleScopeStorageNext_;
             v.VisitRangeRoot(Root::ROOT_HANDLE, ObjectSlot(ToUintPtr(start)), ObjectSlot(ToUintPtr(end)));
         }
+    }
+
+    if (regExpParserCache_ != nullptr) {
+        regExpParserCache_->Clear();
+    }
+    // GC maybe happen before vm initialized.
+    if (unsharedConstpools_ != nullptr) {
+        v.VisitRangeRoot(Root::ROOT_VM, ObjectSlot(ToUintPtr(unsharedConstpools_)),
+            ObjectSlot(ToUintPtr(&unsharedConstpools_[GetUnsharedConstpoolsArrayLen() - 1]) +
+            JSTaggedValue::TaggedTypeSize()));
+    }
+    if (sustainingJSHandleList_) {
+        sustainingJSHandleList_->Iterate(v);
+    }
+
+    if (functionProtoTransitionTable_) {
+        functionProtoTransitionTable_->Iterate(v);
+    }
+
+    if (ptManager_) {
+        ptManager_->Iterate(v);
     }
 }
 
@@ -830,6 +928,74 @@ void EcmaVM::ShrinkHandleStorage(int prevIndex)
             handleStorageNodes_.pop_back();
         }
     }
+}
+
+void EcmaVM::PrintOptStat()
+{
+    if (optCodeProfiler_ != nullptr) {
+        optCodeProfiler_->PrintAndReset();
+    }
+}
+
+void EcmaVM::DumpAOTInfo() const
+{
+    aotFileManager_->DumpAOTInfo();
+}
+
+std::tuple<uint64_t, uint8_t*, int, kungfu::CalleeRegAndOffsetVec> EcmaVM::CalCallSiteInfo(uintptr_t retAddr,
+                                                                                           bool isDeopt) const
+{
+    return aotFileManager_->CalCallSiteInfo(retAddr, isDeopt);
+}
+
+void EcmaVM::LoadStubFile()
+{
+    std::string stubFile = "";
+    if (options_.WasStubFileSet()) {
+        stubFile = options_.GetStubFile();
+    }
+    aotFileManager_->LoadStubFile(stubFile);
+}
+
+bool EcmaVM::LoadAOTFilesInternal(const std::string& aotFileName)
+{
+#ifdef AOT_ESCAPE_ENABLE
+    std::string bundleName = pgo::PGOProfilerManager::GetInstance()->GetBundleName();
+    if (AotCrashInfo::GetInstance().IsAotEscapedOrNotInEnableList(this, bundleName)) {
+        return false;
+    }
+#endif
+    std::string anFile = aotFileName + AOTFileManager::FILE_EXTENSION_AN;
+    if (!aotFileManager_->LoadAnFile(anFile)) {
+        LOG_ECMA(WARN) << "Load " << anFile << " failed. Destroy aot data and rollback to interpreter";
+        ecmascript::AnFileDataManager::GetInstance()->SafeDestroyAnData(anFile);
+        return false;
+    }
+
+    std::string aiFile = aotFileName + AOTFileManager::FILE_EXTENSION_AI;
+    if (!aotFileManager_->LoadAiFile(aiFile)) {
+        LOG_ECMA(WARN) << "Load " << aiFile << " failed. Destroy aot data and rollback to interpreter";
+        ecmascript::AnFileDataManager::GetInstance()->SafeDestroyAnData(anFile);
+        return false;
+    }
+    return true;
+}
+
+bool EcmaVM::LoadAOTFiles(const std::string& aotFileName)
+{
+    return LoadAOTFilesInternal(aotFileName);
+}
+
+void EcmaVM::LoadProtoTransitionTable(JSTaggedValue constpool)
+{
+    JSTaggedValue protoTransitionTable = ConstantPool::Cast(constpool.GetTaggedObject())->GetProtoTransTableInfo();
+    functionProtoTransitionTable_->UpdateProtoTransitionTable(
+        thread_, JSHandle<PointerToIndexDictionary>(thread_, protoTransitionTable));
+}
+
+void EcmaVM::ResetProtoTransitionTableOnConstpool(JSTaggedValue constpool)
+{
+    ConstantPool::Cast(constpool.GetTaggedObject())->SetProtoTransTableInfo(thread_, JSTaggedValue::Undefined());
 }
 
 uintptr_t *EcmaVM::ExpandPrimitiveStorage()
@@ -986,8 +1152,7 @@ void EcmaVM::GenerateInternalNativeMethods()
 void EcmaVM::CacheToGlobalConstants(JSTaggedValue value, ConstantIndex idx)
 {
     auto thread = GetJSThread();
-    auto context = thread->GetCurrentEcmaContext();
-    auto constants = const_cast<GlobalEnvConstants *>(context->GlobalConstants());
+    auto constants = const_cast<GlobalEnvConstants *>(thread->GlobalConstants());
     constants->SetConstant(idx, value);
 }
 
@@ -1258,4 +1423,520 @@ bool EcmaVM::RemoveAsyncStackTrace(const JSHandle<JSPromise> &promise)
 {
     return asyncStackTrace_->RemoveAsyncStackTrace(promise);
 }
+
+JSHandle<job::MicroJobQueue> EcmaVM::GetMicroJobQueue() const
+{
+    return JSHandle<job::MicroJobQueue>(reinterpret_cast<uintptr_t>(&microJobQueue_));
+}
+
+void EcmaVM::SetMicroJobQueue(job::MicroJobQueue *queue)
+{
+    ASSERT(queue != nullptr);
+    microJobQueue_ = JSTaggedValue(queue);
+}
+
+bool EcmaVM::HasPendingJob() const
+{
+    // This interface only determines whether PromiseJobQueue is empty, rather than ScriptJobQueue.
+    if (UNLIKELY(thread_->HasTerminated())) {
+        return false;
+    }
+    TaggedQueue* promiseQueue = TaggedQueue::Cast(GetMicroJobQueue()->GetPromiseJobQueue().GetTaggedObject());
+    return !promiseQueue->Empty();
+}
+
+bool EcmaVM::ExecutePromisePendingJob()
+{
+    if (isProcessingPendingJob_) {
+        LOG_ECMA(DEBUG) << "EcmaVM::ExecutePromisePendingJob can not reentrant";
+        return false;
+    }
+    if (!thread_->HasPendingException()) {
+        isProcessingPendingJob_ = true;
+        job::MicroJobQueue::ExecutePendingJob(thread_, GetMicroJobQueue());
+        if (thread_->HasPendingException()) {
+            JsStackInfo::BuildCrashInfo(thread_);
+        }
+        isProcessingPendingJob_ = false;
+        return true;
+    }
+    return false;
+}
+// just find unshared constpool, not create
+JSTaggedValue EcmaVM::FindUnsharedConstpool(JSTaggedValue sharedConstpool)
+{
+    ConstantPool *shareCp = ConstantPool::Cast(sharedConstpool.GetTaggedObject());
+    int32_t constpoolIndex = shareCp->GetUnsharedConstpoolIndex();
+    // unshared constpool index is default INT32_MAX.
+    ASSERT(0 <= constpoolIndex && constpoolIndex != ConstantPool::CONSTPOOL_TYPE_FLAG);
+    if (constpoolIndex >= GetUnsharedConstpoolsArrayLen()) {
+        return JSTaggedValue::Hole();
+    }
+    return unsharedConstpools_[constpoolIndex];
+}
+
+JSTaggedValue EcmaVM::FindOrCreateUnsharedConstpool(JSTaggedValue sharedConstpool)
+{
+    JSTaggedValue unsharedConstpool = FindUnsharedConstpool(sharedConstpool);
+    if (unsharedConstpool.IsHole()) {
+        ConstantPool *shareCp = ConstantPool::Cast(sharedConstpool.GetTaggedObject());
+        int32_t constpoolIndex = shareCp->GetUnsharedConstpoolIndex();
+        // unshared constpool index is default INT32_MAX.
+        ASSERT(0 <= constpoolIndex && constpoolIndex != INT32_MAX);
+        JSHandle<ConstantPool> unshareCp = ConstantPool::CreateUnSharedConstPoolBySharedConstpool(
+            thread_->GetEcmaVM(), shareCp->GetJSPandaFile(), shareCp);
+        unsharedConstpool = unshareCp.GetTaggedValue();
+        SetUnsharedConstpool(constpoolIndex, unsharedConstpool);
+    }
+    return unsharedConstpool;
+}
+
+void EcmaVM::EraseUnusedConstpool(const JSPandaFile *jsPandaFile, int32_t index, int32_t constpoolIndex)
+{
+    // unshared constpool index is default INT32_MAX.
+    ASSERT(0 <= constpoolIndex && constpoolIndex < GetUnsharedConstpoolsArrayLen());
+
+    SetUnsharedConstpool(constpoolIndex, JSTaggedValue::Hole());
+    auto iter = cachedSharedConstpools_.find(jsPandaFile);
+    if (iter == cachedSharedConstpools_.end()) {
+        return;
+    }
+    auto constpoolIter = iter->second.find(index);
+    if (constpoolIter == iter->second.end()) {
+        return;
+    }
+
+    iter->second.erase(constpoolIter);
+    if (iter->second.size() == 0) {
+        cachedSharedConstpools_.erase(iter);
+    }
+}
+
+JSTaggedValue EcmaVM::FindConstpoolFromContextCache(const JSPandaFile *jsPandaFile, int32_t index)
+{
+    auto iter = cachedSharedConstpools_.find(jsPandaFile);
+    if (iter != cachedSharedConstpools_.end()) {
+        auto constpoolIter = iter->second.find(index);
+        if (constpoolIter != iter->second.end()) {
+            return constpoolIter->second;
+        }
+    }
+    return JSTaggedValue::Hole();
+}
+
+JSTaggedValue EcmaVM::FindConstpool(const JSPandaFile *jsPandaFile, int32_t index)
+{
+    JSTaggedValue contextCache = FindConstpoolFromContextCache(jsPandaFile, index);
+    if (!contextCache.IsHole()) {
+        return contextCache;
+    }
+    return Runtime::GetInstance()->FindConstpool(jsPandaFile, index);
+}
+
+// For new version instruction.
+JSTaggedValue EcmaVM::FindConstpool(const JSPandaFile *jsPandaFile, panda_file::File::EntityId id)
+{
+    panda_file::IndexAccessor indexAccessor(*jsPandaFile->GetPandaFile(), id);
+    int32_t index = static_cast<int32_t>(indexAccessor.GetHeaderIndex());
+    return FindConstpool(jsPandaFile, index);
+}
+
+bool EcmaVM::HasCachedConstpool(const JSPandaFile *jsPandaFile) const
+{
+    if (cachedSharedConstpools_.find(jsPandaFile) != cachedSharedConstpools_.end()) {
+        return true;
+    }
+
+    return Runtime::GetInstance()->HasCachedConstpool(jsPandaFile);
+}
+
+JSHandle<ConstantPool> EcmaVM::AddOrUpdateConstpool(const JSPandaFile *jsPandaFile,
+                                                    JSHandle<ConstantPool> constpool,
+                                                    int32_t index)
+{
+    constpool = Runtime::GetInstance()->AddOrUpdateConstpool(jsPandaFile, constpool, index);
+    AddContextConstpoolCache(jsPandaFile, constpool, index);
+    return constpool;
+}
+
+void EcmaVM::AddContextConstpoolCache(const JSPandaFile *jsPandaFile,
+                                      JSHandle<ConstantPool> constpool,
+                                      int32_t index)
+{
+    if (cachedSharedConstpools_.find(jsPandaFile) == cachedSharedConstpools_.end()) {
+        cachedSharedConstpools_[jsPandaFile] = CMap<int32_t, JSTaggedValue>();
+    }
+    auto &constpoolMap = cachedSharedConstpools_[jsPandaFile];
+    ASSERT(constpoolMap.find(index) == constpoolMap.end());
+    constpoolMap.insert({index, constpool.GetTaggedValue()});
+}
+
+void EcmaVM::SetUnsharedConstpool(JSHandle<ConstantPool> sharedConstpool, JSTaggedValue unsharedConstpool)
+{
+    int32_t constpoolIndex = sharedConstpool->GetUnsharedConstpoolIndex();
+    SetUnsharedConstpool(constpoolIndex, unsharedConstpool);
+}
+
+void EcmaVM::SetUnsharedConstpool(int32_t constpoolIndex, JSTaggedValue unsharedConstpool)
+{
+    GrowUnsharedConstpoolArray(constpoolIndex);
+    ASSERT(0 <= constpoolIndex && constpoolIndex < ConstantPool::CONSTPOOL_TYPE_FLAG);
+    unsharedConstpools_[constpoolIndex] = unsharedConstpool;
+}
+
+void EcmaVM::GrowUnsharedConstpoolArray(int32_t index)
+{
+    if (index == ConstantPool::CONSTPOOL_TYPE_FLAG) {
+        LOG_ECMA(FATAL) << "index has exceed unshared constpool array limit";
+        UNREACHABLE();
+    }
+    int32_t oldCapacity = GetUnsharedConstpoolsArrayLen();
+    if (index >= oldCapacity) {
+        int32_t minCapacity = index + 1;
+        ResizeUnsharedConstpoolArray(oldCapacity, minCapacity);
+    }
+}
+
+void EcmaVM::ResizeUnsharedConstpoolArray(int32_t oldCapacity, int32_t minCapacity)
+{
+    int32_t newCapacity = oldCapacity * 2; // 2: Double the value
+    if (newCapacity - minCapacity < 0) {
+        newCapacity = minCapacity;
+    }
+
+    if (newCapacity >= (INT32_MAX >> 1)) {
+        newCapacity = INT32_MAX;
+    }
+
+    JSTaggedValue *newUnsharedConstpools = new(std::nothrow) JSTaggedValue[newCapacity];
+    if (newUnsharedConstpools == nullptr) {
+        LOG_ECMA(FATAL) << "allocate unshared constpool array fail during resizing";
+        UNREACHABLE();
+    }
+    std::fill(newUnsharedConstpools, newUnsharedConstpools + newCapacity, JSTaggedValue::Hole());
+    std::copy(unsharedConstpools_, unsharedConstpools_ + GetUnsharedConstpoolsArrayLen(), newUnsharedConstpools);
+    ClearUnsharedConstpoolArray();
+    unsharedConstpools_ = newUnsharedConstpools;
+    thread_->SetUnsharedConstpools(reinterpret_cast<uintptr_t>(unsharedConstpools_));
+    thread_->SetUnsharedConstpoolsArrayLen(newCapacity);
+    SetUnsharedConstpoolsArrayLen(newCapacity);
+}
+
+void EcmaVM::UpdateConstpoolWhenDeserialAI(const std::string& fileName,
+                                           JSHandle<ConstantPool> aiCP, int32_t index)
+{
+    auto pf = JSPandaFileManager::GetInstance()->FindJSPandaFile(fileName.c_str());
+    if (pf == nullptr) {
+        return;
+    }
+    JSTaggedValue sharedConstpool = FindConstpool(pf.get(), index);
+    JSHandle<ConstantPool> sharedCPHandle = JSHandle<ConstantPool>(thread_, sharedConstpool);
+    if (sharedConstpool.IsHole()) {
+        return;
+    }
+    JSTaggedValue unsharedConstpool = FindOrCreateUnsharedConstpool(sharedCPHandle.GetTaggedValue());
+    JSHandle<ConstantPool> unsharedCP = JSHandle<ConstantPool>(thread_, unsharedConstpool);
+    JSHandle<ConstantPool> sharedCP = JSHandle<ConstantPool>(thread_, sharedCPHandle.GetTaggedValue());
+    ConstantPool::UpdateConstpoolWhenDeserialAI(thread_->GetEcmaVM(), aiCP, sharedCP, unsharedCP);
+}
+
+JSTaggedValue EcmaVM::FindCachedConstpoolAndLoadAiIfNeeded(const JSPandaFile *jsPandaFile, int32_t index)
+{
+    JSTaggedValue constpool = FindConstpoolFromContextCache(jsPandaFile, index);
+    if (!constpool.IsHole()) {
+        return constpool;
+    }
+    constpool = Runtime::GetInstance()->FindConstpool(jsPandaFile, index);
+    if (!constpool.IsHole()) {
+        AddContextConstpoolCache(jsPandaFile, JSHandle<ConstantPool>(thread_, constpool), index);
+    }
+    // Getting the cached constpool in runtime means the ai data has not been loaded in current thread.
+    // And we need to reload it
+    aotFileManager_->LoadAiFile(jsPandaFile, thread_->GetEcmaVM());
+    return constpool;
+}
+
+JSHandle<ConstantPool> EcmaVM::FindOrCreateConstPool(const JSPandaFile *jsPandaFile, panda_file::File::EntityId id)
+{
+    EcmaVM *vm = thread_->GetEcmaVM();
+    panda_file::IndexAccessor indexAccessor(*jsPandaFile->GetPandaFile(), id);
+    int32_t index = static_cast<int32_t>(indexAccessor.GetHeaderIndex());
+    JSTaggedValue constpool = FindCachedConstpoolAndLoadAiIfNeeded(jsPandaFile, index);
+    if (constpool.IsHole()) {
+        JSHandle<ConstantPool> newConstpool = ConstantPool::CreateUnSharedConstPool(vm, jsPandaFile, id);
+        JSHandle<ConstantPool> newSConstpool;
+        if (jsPandaFile->IsLoadedAOT()) {
+            AotConstantpoolPatcher::SetObjectFunctionFromConstPool(thread_, newConstpool);
+            newSConstpool = ConstantPool::CreateSharedConstPoolForAOT(vm, newConstpool, index);
+        } else {
+            newSConstpool = ConstantPool::CreateSharedConstPool(vm, jsPandaFile, id, index);
+        }
+        newSConstpool = AddOrUpdateConstpool(jsPandaFile, newSConstpool, index);
+        SetUnsharedConstpool(newSConstpool, newConstpool.GetTaggedValue());
+        return newSConstpool;
+    } else if (jsPandaFile->IsLoadedAOT()) {
+        // For aot, after getting the cached shared constpool,
+        // worker thread need to create and bind the correspoding unshared constpool.
+        JSHandle<ConstantPool> newConstpool = JSHandle<ConstantPool>(thread_, FindOrCreateUnsharedConstpool(constpool));
+        AotConstantpoolPatcher::SetObjectFunctionFromConstPool(thread_, newConstpool);
+    }
+    return JSHandle<ConstantPool>(thread_, constpool);
+}
+
+void EcmaVM::CreateAllConstpool(const JSPandaFile *jsPandaFile)
+{
+    auto headers = jsPandaFile->GetPandaFile()->GetIndexHeaders();
+    uint32_t index = 0;
+    for (const auto &header : headers) {
+        auto constpoolSize = header.method_idx_size;
+        JSHandle<ConstantPool> sconstpool = factory_->NewSConstantPool(constpoolSize);
+        sconstpool->SetJSPandaFile(jsPandaFile);
+        sconstpool->SetIndexHeader(&header);
+        sconstpool->SetSharedConstpoolId(JSTaggedValue(index));
+        sconstpool = AddOrUpdateConstpool(jsPandaFile, sconstpool, index);
+        index++;
+
+        JSHandle<ConstantPool> constpool = factory_->NewConstantPool(constpoolSize);
+        constpool->SetJSPandaFile(jsPandaFile);
+        constpool->SetIndexHeader(&header);
+        SetUnsharedConstpool(sconstpool, constpool.GetTaggedValue());
+    }
+}
+
+void EcmaVM::ClearConstpoolBufferData()
+{
+    cachedSharedConstpools_.clear();
+    thread_->SetUnsharedConstpools(reinterpret_cast<uintptr_t>(nullptr));
+    thread_->SetUnsharedConstpoolsArrayLen(0);
+}
+
+std::optional<std::reference_wrapper<CMap<int32_t, JSTaggedValue>>> EcmaVM::FindConstpools(
+    const JSPandaFile *jsPandaFile)
+{
+    return Runtime::GetInstance()->FindConstpools(jsPandaFile);
+}
+
+void EcmaVM::AddSustainingJSHandle(SustainingJSHandle *sustainingHandle)
+{
+    if (sustainingJSHandleList_) {
+        sustainingJSHandleList_->AddSustainingJSHandle(sustainingHandle);
+    }
+}
+
+void EcmaVM::RemoveSustainingJSHandle(SustainingJSHandle *sustainingHandle)
+{
+    if (sustainingJSHandleList_) {
+        sustainingJSHandleList_->RemoveSustainingJSHandle(sustainingHandle);
+    }
+}
+
+JSTaggedValue EcmaVM::InvokeEcmaAotEntrypoint(JSHandle<JSFunction> mainFunc, JSHandle<JSTaggedValue> &thisArg,
+                                              const JSPandaFile *jsPandaFile, std::string_view entryPoint,
+                                              CJSInfo* cjsInfo)
+{
+    aotFileManager_->SetAOTMainFuncEntry(mainFunc, jsPandaFile, entryPoint);
+    return JSFunction::InvokeOptimizedEntrypoint(thread_, mainFunc, thisArg, cjsInfo);
+}
+
+JSTaggedValue EcmaVM::ExecuteAot(size_t actualNumArgs, JSTaggedType *args,
+                                 const JSTaggedType *prevFp, bool needPushArgv)
+{
+    INTERPRETER_TRACE(thread_, ExecuteAot);
+    ASSERT(thread_->IsInManagedState());
+    auto entry = thread_->GetRTInterface(kungfu::RuntimeStubCSigns::ID_JSFunctionEntry);
+    // entry of aot
+    auto res = reinterpret_cast<JSFunctionEntryType>(entry)(thread_->GetGlueAddr(),
+                                                            actualNumArgs,
+                                                            args,
+                                                            reinterpret_cast<uintptr_t>(prevFp),
+                                                            needPushArgv);
+    return res;
+}
+
+Expected<JSTaggedValue, bool> EcmaVM::CommonInvokeEcmaEntrypoint(const JSPandaFile *jsPandaFile,
+    std::string_view entryPoint, JSHandle<JSFunction> &func, const ExecuteTypes &executeType)
+{
+    ASSERT(thread_->IsInManagedState());
+    JSHandle<JSTaggedValue> global = GetGlobalEnv()->GetJSGlobalObject();
+    JSHandle<JSTaggedValue> undefined = thread_->GlobalConstants()->GetHandledUndefined();
+    if (IsEnablePGOProfiler()) {
+        JSHandle<JSFunction> objectFunction(GetGlobalEnv()->GetObjectFunction());
+        JSHandle<JSHClass> protoOrHClass(GetGlobalEnv()->GetObjectFunctionNapiClass());
+        GetPGOProfiler()->ProfileNapiRootHClass(
+            objectFunction.GetTaggedType(), protoOrHClass.GetTaggedType(), pgo::ProfileType::Kind::NapiId);
+    }
+    CString entry = entryPoint.data();
+    JSRecordInfo *recordInfo = jsPandaFile->CheckAndGetRecordInfo(entry);
+    if (recordInfo == nullptr) {
+        CString msg = "Cannot find module '" + entry + "' , which is application Entry Point";
+        THROW_REFERENCE_ERROR_AND_RETURN(thread_, msg.c_str(), Unexpected(false));
+    }
+
+    ModuleLogger *moduleLogger = thread_->GetModuleLogger();
+    if (moduleLogger != nullptr) {
+        moduleLogger->SetStartTime(entry);
+    }
+    if (jsPandaFile->IsModule(recordInfo)) {
+        global = undefined;
+        CString moduleName = jsPandaFile->GetJSPandaFileDesc();
+        if (!jsPandaFile->IsBundlePack()) {
+            moduleName = entry;
+        }
+        JSHandle<SourceTextModule> module;
+        if (jsPandaFile->IsSharedModule(recordInfo)) {
+            module = SharedModuleManager::GetInstance()->GetSModule(thread_, entry);
+        } else {
+            module = thread_->GetModuleManager()->HostGetImportedModule(moduleName);
+        }
+        // esm -> SourceTextModule; cjs or script -> string of recordName
+        module->SetSendableEnv(thread_, JSTaggedValue::Undefined());
+        func->SetModule(thread_, module);
+    } else {
+        // if it is Cjs at present, the module slot of the function is not used. We borrow it to store the recordName,
+        // which can avoid the problem of larger memory caused by the new slot
+        JSHandle<EcmaString> recordName = factory_->NewFromUtf8(entry);
+        func->SetModule(thread_, recordName);
+    }
+    CheckStartCpuProfiler();
+
+    JSTaggedValue result;
+    if (jsPandaFile->IsCjs(recordInfo)) {
+        CJSExecution(func, global, jsPandaFile, entryPoint);
+        if (moduleLogger != nullptr) {
+            moduleLogger->SetEndTime(entry);
+        }
+    } else {
+        if (aotFileManager_->IsLoadMain(jsPandaFile, entry)) {
+            EcmaRuntimeStatScope runtimeStatScope(this);
+            result = InvokeEcmaAotEntrypoint(func, global, jsPandaFile, entryPoint);
+        } else if (GetJSOptions().IsEnableForceJitCompileMain()) {
+            Jit::Compile(this, func, CompilerTier::Tier::FAST);
+            EcmaRuntimeStatScope runtimeStatScope(this);
+            result = JSFunction::InvokeOptimizedEntrypoint(thread_, func, global, nullptr);
+        } else if (GetJSOptions().IsEnableForceBaselineCompileMain()) {
+            Jit::Compile(this, func, CompilerTier::Tier::BASELINE);
+            EcmaRuntimeCallInfo *info =
+                EcmaInterpreter::NewRuntimeCallInfo(thread_, JSHandle<JSTaggedValue>(func), global, undefined, 0);
+            EcmaRuntimeStatScope runtimeStatScope(this);
+            result = EcmaInterpreter::Execute(info);
+        } else {
+            EcmaRuntimeCallInfo *info =
+                EcmaInterpreter::NewRuntimeCallInfo(thread_, JSHandle<JSTaggedValue>(func), global, undefined, 0);
+            EcmaRuntimeStatScope runtimeStatScope(this);
+            result = EcmaInterpreter::Execute(info);
+        }
+        if (moduleLogger != nullptr) {
+            moduleLogger->SetEndTime(entry);
+        }
+
+        if (!thread_->HasPendingException() && IsStaticImport(executeType)) {
+            JSHandle<JSTaggedValue> handleResult(thread_, result);
+            job::MicroJobQueue::ExecutePendingJob(thread_, GetMicroJobQueue());
+            result = handleResult.GetTaggedValue();
+        }
+    }
+    
+    if (thread_->HasPendingException()) {
+        return GetPendingExceptionResult(result);
+    }
+    return result;
+}
+
+Expected<JSTaggedValue, bool> EcmaVM::InvokeEcmaEntrypoint(const JSPandaFile *jsPandaFile,
+                                                           std::string_view entryPoint,
+                                                           const ExecuteTypes &executeType)
+{
+    [[maybe_unused]] EcmaHandleScope scope(thread_);
+    auto &options = const_cast<EcmaVM *>(thread_->GetEcmaVM())->GetJSOptions();
+    if (options.EnableModuleLog()) {
+        LOG_FULL(INFO) << "current executing file's name " << entryPoint.data();
+    }
+    
+    JSHandle<Program> program = JSPandaFileManager::GetInstance()->GenerateProgram(this, jsPandaFile, entryPoint);
+    if (program.IsEmpty()) {
+        LOG_ECMA(ERROR) << "program is empty, invoke entrypoint failed";
+        return Unexpected(false);
+    }
+    // for debugger
+    GetJsDebuggerManager()->GetNotificationManager()->LoadModuleEvent(
+        jsPandaFile->GetJSPandaFileDesc(), entryPoint);
+
+    JSHandle<JSFunction> func(thread_, program->GetMainFunction());
+    Expected<JSTaggedValue, bool> result = CommonInvokeEcmaEntrypoint(jsPandaFile, entryPoint, func, executeType);
+
+    CheckHasPendingException(thread_);
+    return result;
+}
+
+Expected<JSTaggedValue, bool> EcmaVM::InvokeEcmaEntrypointForHotReload(
+    const JSPandaFile *jsPandaFile, std::string_view entryPoint, const ExecuteTypes &executeType)
+{
+    [[maybe_unused]] EcmaHandleScope scope(thread_);
+    JSHandle<Program> program = JSPandaFileManager::GetInstance()->GenerateProgram(this, jsPandaFile, entryPoint);
+
+    JSHandle<JSFunction> func(thread_, program->GetMainFunction());
+    Expected<JSTaggedValue, bool> result = CommonInvokeEcmaEntrypoint(jsPandaFile, entryPoint, func, executeType);
+
+    JSHandle<JSTaggedValue> finalModuleRecord(thread_, func->GetModule());
+    // avoid GC problems.
+    GlobalHandleCollection gloalHandleCollection(thread_);
+    JSHandle<JSTaggedValue> moduleRecordHandle =
+        gloalHandleCollection.NewHandle<JSTaggedValue>(finalModuleRecord->GetRawData());
+    CString recordName = entryPoint.data();
+    AddPatchModule(recordName, moduleRecordHandle);
+
+    // print exception information
+    if (thread_->HasPendingException() &&
+        Method::Cast(func->GetMethod())->GetMethodName() != JSPandaFile::PATCH_FUNCTION_NAME_0) {
+        return Unexpected(false);
+    }
+    return result;
+}
+
+void EcmaVM::CJSExecution(JSHandle<JSFunction> &func, JSHandle<JSTaggedValue> &thisArg,
+                          const JSPandaFile *jsPandaFile, std::string_view entryPoint)
+{
+    // create "module", "exports", "require", "filename", "dirname"
+    JSHandle<CjsModule> module = factory_->NewCjsModule();
+    JSHandle<JSTaggedValue> require = GetGlobalEnv()->GetCjsRequireFunction();
+    JSHandle<CjsExports> exports = factory_->NewCjsExports();
+    CString fileNameStr;
+    CString dirNameStr;
+    if (jsPandaFile->IsBundlePack()) {
+        ModulePathHelper::ResolveCurrentPath(dirNameStr, fileNameStr, jsPandaFile);
+    } else {
+        JSTaggedValue funcFileName = func->GetModule();
+        ASSERT(funcFileName.IsString());
+        fileNameStr = ModulePathHelper::Utf8ConvertToString(funcFileName);
+        dirNameStr = PathHelper::ResolveDirPath(fileNameStr);
+    }
+    JSHandle<JSTaggedValue> fileName = JSHandle<JSTaggedValue>::Cast(factory_->NewFromUtf8(fileNameStr));
+    JSHandle<JSTaggedValue> dirName = JSHandle<JSTaggedValue>::Cast(factory_->NewFromUtf8(dirNameStr));
+    CJSInfo cjsInfo(module, require, exports, fileName, dirName);
+    RequireManager::InitializeCommonJS(thread_, cjsInfo);
+    if (aotFileManager_->IsLoadMain(jsPandaFile, entryPoint.data())) {
+        EcmaRuntimeStatScope runtimeStateScope(this);
+        InvokeEcmaAotEntrypoint(func, thisArg, jsPandaFile, entryPoint, &cjsInfo);
+    } else {
+        // Execute main function
+        JSHandle<JSTaggedValue> undefined = thread_->GlobalConstants()->GetHandledUndefined();
+        EcmaRuntimeCallInfo *info =
+            EcmaInterpreter::NewRuntimeCallInfo(thread_,
+                                                JSHandle<JSTaggedValue>(func),
+                                                thisArg, undefined, 5); // 5 : argument numbers
+        RETURN_IF_ABRUPT_COMPLETION(thread_);
+        info->SetCallArg(cjsInfo.exportsHdl.GetTaggedValue(),
+            cjsInfo.requireHdl.GetTaggedValue(),
+            cjsInfo.moduleHdl.GetTaggedValue(),
+            cjsInfo.filenameHdl.GetTaggedValue(),
+            cjsInfo.dirnameHdl.GetTaggedValue());
+        EcmaRuntimeStatScope runtimeStatScope(this);
+        EcmaInterpreter::Execute(info);
+    }
+    if (!thread_->HasPendingException()) {
+        // Collecting module.exports : exports ---> module.exports --->Module._cache
+        RequireManager::CollectExecutedExp(thread_, cjsInfo);
+    }
+}
+
 }  // namespace panda::ecmascript

@@ -99,7 +99,7 @@ JSTaggedValue ConstantPool::GetStringFromCache(JSThread *thread, JSTaggedValue c
     auto val = taggedPool->Get(index);
     if (val.IsHole()) {
         if (!taggedPool->GetJSPandaFile()->IsNewVersion()) {
-            JSTaggedValue unsharedCp = thread->GetCurrentEcmaContext()->FindOrCreateUnsharedConstpool(constpool);
+            JSTaggedValue unsharedCp = thread->GetEcmaVM()->FindOrCreateUnsharedConstpool(constpool);
             taggedPool = ConstantPool::Cast(unsharedCp.GetTaggedObject());
             return taggedPool->Get(index);
         }

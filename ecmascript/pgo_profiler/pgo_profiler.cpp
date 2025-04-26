@@ -132,7 +132,7 @@ void PGOProfiler::ProfileProtoTransitionClass(JSHandle<JSFunction> func,
     auto thread = vm_->GetJSThread();
     JSHClass *phc = proto->GetTaggedObject()->GetClass();
     JSHClass *phcRoot = JSHClass::FindRootHClass(phc);
-    auto *transitionTable = thread->GetCurrentEcmaContext()->GetFunctionProtoTransitionTable();
+    auto* transitionTable = vm_->GetFunctionProtoTransitionTable();
     JSTaggedType baseIhc = transitionTable->GetFakeParent(JSTaggedType(phcRoot));
     if (baseIhc == 0) {
         LOG_PGO(DEBUG) << "fake parent not found!";
@@ -207,7 +207,7 @@ void PGOProfiler::ProfileProtoTransitionPrototype(JSHandle<JSFunction> func,
     if (GetProfileType(baseRoot).IsNone()) {
         return;
     }
-    auto *transitionTable = thread->GetCurrentEcmaContext()->GetFunctionProtoTransitionTable();
+    auto* transitionTable = vm_->GetFunctionProtoTransitionTable();
     bool success = transitionTable->TryInsertFakeParentItem(transPhc.GetTaggedType(), baseIhc.GetTaggedType());
     if (!success) {
         return;
@@ -1203,8 +1203,7 @@ void PGOProfiler::TryDumpProtoTransitionType(JSHClass *hclass)
         return;
     }
 
-    auto thread = vm_->GetJSThread();
-    auto *transitionTable = thread->GetCurrentEcmaContext()->GetFunctionProtoTransitionTable();
+    auto* transitionTable = vm_->GetFunctionProtoTransitionTable();
     JSTaggedType ihc0 = transitionTable->GetFakeParent(JSTaggedType(ihc1));
     JSTaggedType baseIhc = transitionTable->GetFakeParent(phc1Root.GetRawData());
     if ((ihc0 == 0) || (baseIhc == 0)) {
@@ -1648,10 +1647,11 @@ bool PGOProfiler::AddBuiltinsInfoByNameInInstance(ApEntityId abcId, const CStrin
         // When JSType cannot uniquely identify builtins object, it is necessary to
         // query the receiver on the global constants.
         if (builtinsId == BuiltinTypeId::OBJECT) {
-            exceptRecvHClass = JSHClass::Cast(thread->GlobalConstants()->GetIteratorResultClass().GetTaggedObject());
+            JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+            exceptRecvHClass = JSHClass::Cast(env->GetIteratorResultClass().GetTaggedValue().GetTaggedObject());
             if (exceptRecvHClass == receiver) {
                 GlobalIndex globalsId;
-                globalsId.UpdateGlobalConstId(static_cast<size_t>(ConstantIndex::ITERATOR_RESULT_CLASS));
+                globalsId.UpdateGlobalEnvId(static_cast<size_t>(GlobalEnvField::ITERATOR_RESULT_CLASS_INDEX));
                 AddBuiltinsGlobalInfo(abcId, recordName, methodId, bcOffset, globalsId);
                 return true;
             }

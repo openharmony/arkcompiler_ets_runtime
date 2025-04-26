@@ -17,7 +17,6 @@
 #define ECMASCRIPT_GLOBAL_ENV_FIELDS_H
 
 #include <cstdint>
-#include "ecmascript/property_detector.h"
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define GLOBAL_ENV_COMMON_FIELDS(V)                                                                 \
@@ -92,6 +91,7 @@
     V(JSTaggedValue, ArrayBufferFunction, ARRAY_BUFFER_FUNCTION_INDEX)                              \
     V(JSTaggedValue, SharedArrayBufferFunction, SHAREDARRAY_BUFFER_FUNCTION_INDEX)                  \
     V(JSTaggedValue, ArrayProtoValuesFunction, ARRAY_PROTO_VALUES_FUNCTION_INDEX)                   \
+    V(JSTaggedValue, ArraySpeciesAccessor, ARRAY_SPECIES_ACCESSOR)                                  \
     V(JSTaggedValue, SetProtoValuesFunction, SET_PROTO_VALUES_FUNCTION_INDEX)                       \
     V(JSTaggedValue, MapProtoEntriesFunction, MAP_PROTO_ENTRIES_FUNCTION_INDEX)                     \
     V(JSTaggedValue, StringProtoIterFunction, STRING_PROTO_ITER_FUNCTION_INDEX)                     \
@@ -123,6 +123,7 @@
     V(JSTaggedValue, SegmentIteratorPrototype, SEGMENT_ITERATOR_PROTOTYPE_INDEX)                    \
     V(JSTaggedValue, ListFormatFunction, LIST_FORMAT_FUNCTION_INDEX)                                \
     V(JSTaggedValue, RegExpFunction, REGEXP_FUNCTION_INDEX)                                         \
+    V(JSTaggedValue, RegExpFuncInstanceClass, REGEXP_FUNC_INSTANCE_CLASS_INDEX)                     \
     V(JSTaggedValue, RegExpExecFunction, REGEXP_EXEC_FUNCTION_INDEX)                                \
     V(JSTaggedValue, RegExpSplitFunction, REGEXP_SPLIT_FUNCTION_INDEX)                              \
     V(JSTaggedValue, RegExpSearchFunction, REGEXP_SEARCH_FUNCTION_INDEX)                            \
@@ -139,8 +140,6 @@
     V(JSTaggedValue, BuiltinsWeakRefFunction, BUILTINS_WEAK_REF_FUNCTION_INDEX)                     \
     V(JSTaggedValue, BuiltinsFinalizationRegistryFunction,                                          \
         BUILTINS_FINALIZATION_REGISTRY_FUNCTION_INDEX)                                              \
-    V(JSTaggedValue, BitVectorPrototype, BITVECTOR_PROTOTYPE_INDEX)                                 \
-    V(JSTaggedValue, BitVectorFunction, BITVECTOR_FUNCTION_INDEX)                                   \
     V(JSTaggedValue, MapPrototype, MAP_PROTOTYPE_INDEX)                                             \
     V(JSTaggedValue, MathFunction, MATH_FUNCTION_INDEX)                                             \
     V(JSTaggedValue, MathFunctionClass, MATH_FUNCTION_CLASS_INDEX)                                  \
@@ -165,7 +164,10 @@
     V(JSTaggedValue, HoleySymbol, HOLEY_SYMBOL_OFFSET)                                              \
     V(JSTaggedValue, ElementICSymbol, ELEMENT_IC_SYMBOL_OFFSET)                                     \
     V(JSTaggedValue, IteratorPrototype, ITERATOR_PROTOTYPE_INDEX)                                   \
+    V(JSTaggedValue, IteratorFuncClass, ITERATOR_FUNC_CLASS_INDEX)                                  \
     V(JSTaggedValue, IteratorResult, ITERATOR_RESULT_INDEX)                                         \
+    V(JSTaggedValue, IteratorResultClass, ITERATOR_RESULT_CLASS_INDEX)                              \
+    V(JSTaggedValue, UndefinedIteratorResult, UNDEFINED_ITERATOR_RESULT_INDEX)                      \
     V(JSTaggedValue, AsyncIteratorPrototype, ASYNC_ITERATOR_PROTOTYPE_INDEX)                        \
     V(JSTaggedValue, ForinIteratorPrototype, FORIN_ITERATOR_PROTOTYPE_INDEX)                        \
     V(JSTaggedValue, ForinIteratorClass, FOR_IN_ITERATOR_CLASS_INDEX)                               \
@@ -233,7 +235,35 @@
     V(JSTaggedValue, CjsRequireFunction, CJS_REQUIRE_FUNCTION_INDEX)                                \
     V(JSTaggedValue, GlobalPatch, GLOBAL_PATCH)                                                     \
     V(JSTaggedValue, ExportOfScript, DEFAULT_EXPORT_OF_SCRIPT)                                      \
-    V(JSTaggedValue, NativeModuleFailureInfoClass, NATIVE_MODULE_FAILURE_INFO_CLASS)
+    V(JSTaggedValue, NativeModuleFailureInfoClass, NATIVE_MODULE_FAILURE_INFO_CLASS)                \
+    V(JSTaggedValue, ArrayJoinStack, ARRAY_JOIN_STACK)                                              \
+    V(JSTaggedValue, NumberToStringResultCache, NUMBER_TO_STRING_RESULT_CACHE_INDEX)                \
+    V(JSTaggedValue, StringSplitResultCache, STRING_SPLIT_RESULT_CACHE_INDEX)                       \
+    V(JSTaggedValue, StringToListResultCache, STRING_TO_LIST_RESULT_CACHE_INDEX)                    \
+    V(JSTaggedValue, RegExpCache, REGEXP_CACHE_INDEX)                                               \
+    V(JSTaggedValue, RegExpGlobalResult, REGEXP_GLOBAL_RESULT_INDEX)
+
+#define GLOBAL_ENV_CONTAINER_ITERATORS(V)                                                           \
+    /* non ECMA standard jsapi containers iterators */                                              \
+    V(JSTaggedValue, ArrayListFunction, ARRAYLIST_FUNCTION_INDEX)                                   \
+    V(JSTaggedValue, ArrayListIteratorPrototype, ARRAYLIST_ITERATOR_PROTOTYPE_INDEX)                \
+    V(JSTaggedValue, HashMapIteratorPrototype, HASHMAP_ITERATOR_PROTOTYPE_INDEX)                    \
+    V(JSTaggedValue, HashSetIteratorPrototype, HASHSET_ITERATOR_PROTOTYPE_INDEX)                    \
+    V(JSTaggedValue, LightWeightMapIteratorPrototype, LIGHTWEIGHTMAP_ITERATOR_PROTOTYPE_INDEX)      \
+    V(JSTaggedValue, LightWeightSetIteratorPrototype, LIGHTWEIGHTSET_ITERATOR_PROTOTYPE_INDEX)      \
+    V(JSTaggedValue, TreeMapIteratorPrototype, TREEMAP_ITERATOR_PROTOTYPE_INDEX)                    \
+    V(JSTaggedValue, TreeSetIteratorPrototype, TREESET_ITERATOR_PROTOTYPE_INDEX)                    \
+    V(JSTaggedValue, VectorFunction, VECTOR_FUNCTION_INDEX)                                         \
+    V(JSTaggedValue, VectorIteratorPrototype, VECTOR_ITERATOR_PROTOTYPE_INDEX)                      \
+    V(JSTaggedValue, QueueIteratorPrototype, QUEUE_ITERATOR_PROTOTYPE_INDEX)                        \
+    V(JSTaggedValue, PlainArrayIteratorPrototype, PLAIN_ARRAY_ITERATOR_PROTOTYPE_INDEX)             \
+    V(JSTaggedValue, PlainArrayFunction, PLAIN_ARRAY_FUNCTION_INDEX)                                \
+    V(JSTaggedValue, DequeIteratorPrototype, DEQUE_ITERATOR_PROTOTYPE_INDEX)                        \
+    V(JSTaggedValue, StackIteratorPrototype, STACK_ITERATOR_PROTOTYPE_INDEX)                        \
+    V(JSTaggedValue, ListFunction, LIST_FUNCTION_INDEX)                                             \
+    V(JSTaggedValue, LinkedListFunction, LINKED_LIST_FUNCTION_INDEX)                                \
+    V(JSTaggedValue, ListIteratorPrototype, LIST_ITERATOR_PROTOTYPE_INDEX)                          \
+    V(JSTaggedValue, LinkedListIteratorPrototype, LINKED_LIST_ITERATOR_PROTOTYPE_INDEX)
 
 #define GLOBAL_ENV_SHARED_FIELDS(V)                                                                              \
     V(JSTaggedValue, SObjectFunction, SHARED_OBJECT_FUNCTION_INDEX)                                              \
@@ -319,13 +349,15 @@
     V(JSTaggedValue, SharedFloat64ArrayRootHclassOnHeap, SHARED_FLOAT64_ARRAY_ROOT_HCLASS_ON_HEAP_INDEX)         \
     V(JSTaggedValue, SharedBigInt64ArrayRootHclassOnHeap, SHARED_BIGINT64_ARRAY_ROOT_HCLASS_ON_HEAP_INDEX)       \
     V(JSTaggedValue, SharedBigUint64ArrayRootHclassOnHeap, SHARED_BIGUINT64_ARRAY_ROOT_HCLASS_ON_HEAP_INDEX)     \
-    V(JSTaggedValue, SharedModuleNamespaceClass, SHARED_MODULENAMESPACE_CLASS)
+    V(JSTaggedValue, SharedModuleNamespaceClass, SHARED_MODULENAMESPACE_CLASS)                                   \
+    V(JSTaggedValue, BitVectorPrototype, BITVECTOR_PROTOTYPE_INDEX)                                              \
+    V(JSTaggedValue, BitVectorFunction, BITVECTOR_FUNCTION_INDEX)
 
 
 #define GLOBAL_ENV_FIELDS(V)                                \
     GLOBAL_ENV_SHARED_FIELDS(V)                             \
     GLOBAL_ENV_COMMON_FIELDS(V)                             \
-    GLOBAL_ENV_DETECTOR_FIELDS(V)
+    GLOBAL_ENV_CONTAINER_ITERATORS(V)
 
 namespace panda::ecmascript {
 #define GLOBAL_ENV_FIELD_ENUM_ITEM(Type, Name, INDEX) INDEX,
@@ -334,5 +366,12 @@ namespace panda::ecmascript {
         FINAL_INDEX
     };
 #undef GLOBAL_ENV_FIELD_ENUM_ITEM
+
+#define DETECTOR_SYMBOL_LIST(V)                      \
+    V(ReplaceSymbol,  "Symbol.replace",   replace )  \
+    V(SplitSymbol,    "Symbol.split",     split   )  \
+    V(MatchAllSymbol, "Symbol.matchAll",  matchAll)  \
+    V(IteratorSymbol, "Symbol.iterator",  iterator)  \
+    V(SpeciesSymbol,  "Symbol.species",   species)
 } // namespace panda::ecmascript
 #endif // ECMASCRIPT_GLOBAL_ENV_FIELDS_H

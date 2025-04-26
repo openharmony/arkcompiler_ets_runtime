@@ -297,9 +297,9 @@ JSHandle<JSTaggedValue> JSIterator::IteratorClose(JSThread *thread, const JSHand
 JSHandle<JSObject> JSIterator::CreateIterResultObject(JSThread *thread, const JSHandle<JSTaggedValue> &value, bool done)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    auto globalConst = thread->GlobalConstants();
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     // 2. Let obj be OrdinaryObjectCreate(%Object.prototype%).
-    JSHandle<JSHClass> klass = JSHandle<JSHClass>::Cast(globalConst->GetHandledIteratorResultClass());
+    JSHandle<JSHClass> klass = JSHandle<JSHClass>::Cast(env->GetIteratorResultClass());
     JSHandle<JSObject> obj = factory->NewJSObject(klass);
 
     // 3. Perform ! CreateDataPropertyOrThrow(obj, "value", value).

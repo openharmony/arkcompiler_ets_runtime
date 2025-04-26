@@ -565,7 +565,7 @@ JSTaggedValue JSFunction::InvokeOptimizedEntrypoint(JSThread *thread, JSHandle<J
     } else {
         args = JSFunction::GetArgsData(false, thisArg, mainFunc, cjsInfo);
         // entry of aot
-        res = thread->GetCurrentEcmaContext()->ExecuteAot(actualNumArgs, args.data(), prevFp, false);
+        res = thread->GetEcmaVM()->ExecuteAot(actualNumArgs, args.data(), prevFp, false);
     }
 #if ECMASCRIPT_ENABLE_FUNCTION_CALL_TIMER
     RuntimeStubs::EndCallTimer(thread->GetGlueAddr(), mainFunc.GetTaggedType());
@@ -628,7 +628,7 @@ JSTaggedValue JSFunction::InvokeOptimizedEntrypoint(JSThread *thread, JSHandle<J
         stackArgs[1] = stackArgs[0];
         resultValue = thread->GetEcmaVM()->FastCallAot(info->GetArgsNumber(), stackArgs + 1, prevFp);
     } else {
-        resultValue = thread->GetCurrentEcmaContext()->ExecuteAot(info->GetArgsNumber(),
+        resultValue = thread->GetEcmaVM()->ExecuteAot(info->GetArgsNumber(),
             info->GetArgs(), prevFp, needPushArgv);
     }
 #if ECMASCRIPT_ENABLE_FUNCTION_CALL_TIMER

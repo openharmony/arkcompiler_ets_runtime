@@ -16,6 +16,7 @@
 #include "ecmascript/js_api/js_api_hashmap_iterator.h"
 
 #include "ecmascript/containers/containers_errors.h"
+#include "ecmascript/global_env.h"
 
 namespace panda::ecmascript {
 using BuiltinsBase = base::BuiltinsBase;
@@ -35,10 +36,10 @@ JSTaggedValue JSAPIHashMapIterator::Next(EcmaRuntimeCallInfo *argv)
     }
     JSHandle<JSAPIHashMapIterator> iter = JSHandle<JSAPIHashMapIterator>::Cast(input);
     JSHandle<JSTaggedValue> iteratedHashMap(thread, iter->GetIteratedHashMap());
-    const GlobalEnvConstants *globalConst = thread->GlobalConstants();
     // If m is undefined, return undefinedIteratorResult.
     if (iteratedHashMap->IsUndefined()) {
-        return globalConst->GetUndefinedIterResult();
+        JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+        return env->GetUndefinedIteratorResult().GetTaggedValue();
     }
     JSHandle<TaggedHashArray> tableArr(thread, JSHandle<JSAPIHashMap>::Cast(iteratedHashMap)->GetTable());
     uint32_t tableLength = tableArr->GetLength();
@@ -76,7 +77,8 @@ JSTaggedValue JSAPIHashMapIterator::Next(EcmaRuntimeCallInfo *argv)
     }
     // Set [[IteratedMap]] to undefined.
     iter->SetIteratedHashMap(thread, JSTaggedValue::Undefined());
-    return globalConst->GetUndefinedIterResult();
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+    return env->GetUndefinedIteratorResult().GetTaggedValue();
 }
 
 JSHandle<JSTaggedValue> JSAPIHashMapIterator::FastGetCurrentNode(JSThread *thread,

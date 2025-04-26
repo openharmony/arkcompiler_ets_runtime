@@ -17,6 +17,7 @@
 
 #include "ecmascript/base/typed_array_helper-inl.h"
 #include "ecmascript/containers/containers_errors.h"
+#include "ecmascript/global_env.h"
 #include "ecmascript/js_api/js_api_lightweightset.h"
 #include "ecmascript/js_array.h"
 
@@ -36,21 +37,22 @@ JSTaggedValue JSAPILightWeightSetIterator::Next(EcmaRuntimeCallInfo *argv)
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     JSHandle<JSAPILightWeightSetIterator> iter(input);
-    const GlobalEnvConstants *globalConst = thread->GlobalConstants();
     JSHandle<JSTaggedValue> lightWeightSet(thread, iter->GetIteratedLightWeightSet());
     uint32_t index = iter->GetNextIndex();
     IterationKind itemKind = IterationKind(iter->GetIterationKind());
     if (lightWeightSet->IsUndefined()) {
-        return globalConst->GetUndefinedIterResult();
+        JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+        return env->GetUndefinedIteratorResult().GetTaggedValue();
     }
     uint32_t length = 0;
     if (lightWeightSet->IsJSAPILightWeightSet()) {
         length = JSHandle<JSAPILightWeightSet>(lightWeightSet)->GetLength();
     }
     if (index >= length) {
-        JSHandle<JSTaggedValue> undefinedHandle = globalConst->GetHandledUndefined();
+        JSHandle<JSTaggedValue> undefinedHandle = thread->GlobalConstants()->GetHandledUndefined();
         iter->SetIteratedLightWeightSet(thread, undefinedHandle);
-        return globalConst->GetUndefinedIterResult();
+        JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+        return env->GetUndefinedIteratorResult().GetTaggedValue();
     }
     iter->SetNextIndex(index + 1);
     JSHandle<JSAPILightWeightSet> lightWeightSetHandle(lightWeightSet);

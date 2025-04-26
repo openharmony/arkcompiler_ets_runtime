@@ -295,6 +295,8 @@ public:
 
     void IterateJitCodeMap(const JitCodeMapVisitor &updater);
 
+    void IterateMegaIC(RootVisitor &v);
+
     void IterateHandleWithCheck(RootVisitor &visitor);
 
     void PUBLIC_API CheckJSTaggedType(JSTaggedType value) const;
@@ -346,15 +348,6 @@ public:
     {
         return ctorHclassEntries_;
     }
-
-    void NotifyArrayPrototypeChangedGuardians(JSHandle<JSObject> receiver);
-
-    bool IsArrayPrototypeChangedGuardiansInvalid() const
-    {
-        return !glueData_.arrayPrototypeChangedGuardians_;
-    }
-
-    void ResetGuardians();
 
     void SetInitialBuiltinHClass(
         BuiltinTypeId type, JSHClass *builtinHClass, JSHClass *instanceHClass,
@@ -982,7 +975,6 @@ public:
                                                  BCStubEntries,
                                                  JSTaggedValue,
                                                  JSTaggedValue,
-                                                 base::AlignedBool,
                                                  base::AlignedPointer,
                                                  base::AlignedPointer,
                                                  base::AlignedPointer,
@@ -1022,6 +1014,14 @@ public:
                                                  base::AlignedUint32,
                                                  base::AlignedBool,
                                                  base::AlignedBool,
+                                                 base::AlignedPointer,
+                                                 base::AlignedPointer,
+                                                 base::AlignedPointer,
+#if ECMASCRIPT_ENABLE_MEGA_PROFILER
+                                                 base::AlignedUint64,
+                                                 base::AlignedUint64,
+                                                 base::AlignedUint64,
+#endif
                                                  ElementsHClassEntries,
                                                  base::AlignedPointer,
                                                  base::AlignedUint32,
@@ -1030,7 +1030,6 @@ public:
             BcStubEntriesIndex = 0,
             ExceptionIndex,
             GlobalObjIndex,
-            ArrayElementsGuardiansIndex,
             CurrentFrameIndex,
             LeaveFrameIndex,
             LastFpIndex,
@@ -1070,6 +1069,14 @@ public:
             TaskInfoIndex,
             IsEnableMutantArrayIndex,
             IsEnableElementsKindIndex,
+            LoadMegaICCacheIndex,
+            StoreMegaICCacheIndex,
+            PropertiesCacheIndex,
+#if ECMASCRIPT_ENABLE_MEGA_PROFILER
+            megaUpdateCountIndex,
+            megaProbesCountIndex,
+            megaHitCountIndex,
+#endif
             ArrayHClassIndexesIndex,
             moduleLoggerIndex,
             stageOfHotReloadIndex,
@@ -1086,11 +1093,6 @@ public:
         static size_t GetGlobalObjOffset(bool isArch32)
         {
             return GetOffset<static_cast<size_t>(Index::GlobalObjIndex)>(isArch32);
-        }
-
-        static size_t GetArrayElementsGuardiansOffset(bool isArch32)
-        {
-            return GetOffset<static_cast<size_t>(Index::ArrayElementsGuardiansIndex)>(isArch32);
         }
 
         static size_t GetGlobalConstOffset(bool isArch32)
@@ -1313,7 +1315,31 @@ public:
         {
             return GetOffset<static_cast<size_t>(Index::IsEnableElementsKindIndex)>(isArch32);
         }
+        static size_t GetLoadMegaICCacheOffset(bool isArch32)
+        {
+            return GetOffset<static_cast<size_t>(Index::LoadMegaICCacheIndex)>(isArch32);
+        }
 
+        static size_t GetStoreMegaICCacheOffset(bool isArch32)
+        {
+            return GetOffset<static_cast<size_t>(Index::StoreMegaICCacheIndex)>(isArch32);
+        }
+
+        static size_t GetPropertiesCacheOffset(bool isArch32)
+        {
+            return GetOffset<static_cast<size_t>(Index::PropertiesCacheIndex)>(isArch32);
+        }
+#if ECMASCRIPT_ENABLE_MEGA_PROFILER
+        static size_t GetMegaProbesCountOffset(bool isArch32)
+        {
+            return GetOffset<static_cast<size_t>(Index::megaProbesCountIndex)>(isArch32);
+        }
+
+        static size_t GetMegaHitCountOffset(bool isArch32)
+        {
+            return GetOffset<static_cast<size_t>(Index::megaHitCountIndex)>(isArch32);
+        }
+#endif
         static size_t GetArrayHClassIndexesIndexOffset(bool isArch32)
         {
             return GetOffset<static_cast<size_t>(Index::ArrayHClassIndexesIndex)>(isArch32);
@@ -1337,7 +1363,6 @@ public:
         alignas(EAS) BCStubEntries bcStubEntries_ {};
         alignas(EAS) JSTaggedValue exception_ {JSTaggedValue::Hole()};
         alignas(EAS) JSTaggedValue globalObject_ {JSTaggedValue::Hole()};
-        alignas(EAS) bool arrayPrototypeChangedGuardians_ {true};
         alignas(EAS) JSTaggedType *currentFrame_ {nullptr};
         alignas(EAS) JSTaggedType *leaveFrame_ {nullptr};
         alignas(EAS) JSTaggedType *lastFp_ {nullptr};
@@ -1377,6 +1402,14 @@ public:
         alignas(EAS) uintptr_t taskInfo_ {0};
         alignas(EAS) bool isEnableMutantArray_ {false};
         alignas(EAS) bool IsEnableElementsKind_ {false};
+        alignas(EAS) MegaICCache *loadMegaICCache_ {nullptr};
+        alignas(EAS) MegaICCache *storeMegaICCache_ {nullptr};
+        alignas(EAS) PropertiesCache *propertiesCache_ {nullptr};
+#if ECMASCRIPT_ENABLE_MEGA_PROFILER
+        alignas(EAS) uint64_t megaUpdateCount_ {0};
+        alignas(EAS) uint64_t megaProbesCount_ {0};
+        alignas(EAS) uint64_t megaHitCount {0};
+#endif
         alignas(EAS) ElementsHClassEntries arrayHClassIndexes_ {};
         alignas(EAS) ModuleLogger *moduleLogger_ {nullptr};
         alignas(EAS) StageOfHotReload stageOfHotReload_ {StageOfHotReload::INITIALIZE_STAGE_OF_HOTRELOAD};
@@ -1443,12 +1476,11 @@ public:
     bool IsPropertyCacheCleared() const;
 
     bool EraseContext(EcmaContext *context);
-    void ClearContextCachedConstantPool();
+    void ClearVMCachedConstantPool();
 
-    const GlobalEnvConstants *GetFirstGlobalConst() const;
     bool IsAllContextsInitialized() const;
     bool IsReadyToUpdateDetector() const;
-    Area *GetOrCreateRegExpCache();
+    Area *GetOrCreateRegExpCacheArea();
 
     void InitializeBuiltinObject(const std::string& key);
     void InitializeBuiltinObject();
@@ -1646,6 +1678,57 @@ public:
     }
 #endif
 
+#if ECMASCRIPT_ENABLE_MEGA_PROFILER
+    uint64_t GetMegaProbeCount() const
+    {
+        return glueData_.megaProbesCount_;
+    }
+
+    uint64_t GetMegaHitCount() const
+    {
+        return glueData_.megaHitCount;
+    }
+
+    uint64_t GetMegaUpdateCount() const
+    {
+        return glueData_.megaUpdateCount_;
+    }
+
+    void IncMegaUpdateCount()
+    {
+        glueData_.megaUpdateCount_++;
+    }
+
+    void ClearMegaStat()
+    {
+        glueData_.megaHitCount = 0;
+        glueData_.megaProbesCount_ = 0;
+        glueData_.megaUpdateCount_ = 0;
+    }
+    void PrintMegaICStat()
+    {
+        const int precision = 2;
+        const double percent = 100.0;
+        LOG_ECMA(INFO)
+            << "------------------------------------------------------------"
+            << "---------------------------------------------------------";
+        LOG_ECMA(INFO) << "MegaUpdateCount: " << GetMegaUpdateCount();
+        LOG_ECMA(INFO) << "MegaHitCount: " << GetMegaHitCount();
+        LOG_ECMA(INFO) << "MegaProbeCount: " << GetMegaProbeCount();
+        LOG_ECMA(INFO) << "MegaHitRate: " << std::fixed
+                       << std::setprecision(precision)
+                       << (GetMegaProbeCount() > 0
+                               ? static_cast<double>(GetMegaHitCount()) /
+                                     GetMegaProbeCount() * percent
+                               : 0.0)
+                       << "%";
+        LOG_ECMA(INFO)
+            << "------------------------------------------------------------"
+            << "---------------------------------------------------------";
+        ClearMegaStat();
+    }
+#endif
+
 protected:
     void SetThreadId()
     {
@@ -1707,7 +1790,7 @@ private:
     std::atomic<ThreadId> id_ {0};
     EcmaVM *vm_ {nullptr};
     void *env_ {nullptr};
-    Area *regExpCache_ {nullptr};
+    Area *regExpCacheArea_ {nullptr};
 
     // MM: handles, global-handles, and aot-stubs.
     int nestedLevel_ = 0;

@@ -20,15 +20,20 @@
 
 #include "ecmascript/base/config.h"
 #include "ecmascript/builtins/builtins_method_index.h"
+#include "ecmascript/global_handle_collection.h"
+#include "ecmascript/js_handle.h"
 #include "ecmascript/js_runtime_options.h"
 #include "ecmascript/mem/c_containers.h"
 #include "ecmascript/mem/c_string.h"
-#include "ecmascript/mem/gc_stats.h"
 #include "ecmascript/mem/gc_key_stats.h"
+#include "ecmascript/mem/gc_stats.h"
 #include "ecmascript/mem/heap_region_allocator.h"
 #include "ecmascript/napi/include/dfx_jsnapi.h"
 #include "ecmascript/napi/include/jsnapi.h"
+#include "ecmascript/patch/patch_loader.h"
+#include "ecmascript/stackmap/ark_stackmap.h"
 #include "ecmascript/taskpool/taskpool.h"
+#include "ecmascript/waiter_list.h"
 #include "libpandafile/bytecode_instruction-inl.h"
 
 namespace panda {
@@ -53,6 +58,7 @@ class CpuProfiler;
 class Tracing;
 class AsyncStackTrace;
 class RegExpExecResultCache;
+class RegExpParserCache;
 class JSPromise;
 enum class PromiseRejectionEvent : uint8_t;
 enum class Concurrent { YES, NO };
@@ -67,6 +73,15 @@ class JSThread;
 namespace pgo {
     class PGOProfiler;
 } // namespace pgo
+
+class OptCodeProfiler;
+class TypedOpProfiler;
+class FunctionProtoTransitionTable;
+struct CJSInfo;
+
+namespace kungfu {
+class PGOTypeManager;
+} // namespace kungfu
 
 using PGOProfiler = pgo::PGOProfiler;
 #if !WIN_OR_MAC_OR_IOS_PLATFORM
@@ -97,6 +112,10 @@ class EcmaStringTable;
 class JSObjectResizingStrategy;
 class Jit;
 class JitThread;
+class SustainingJSHandle;
+class SustainingJSHandleList;
+class AbcBufferCache;
+struct CJSInfo;
 enum class CompareStringsOption : uint8_t;
 
 using NativePtrGetter = void* (*)(void* info);
@@ -115,6 +134,12 @@ using SearchHapPathCallBack = std::function<bool(const std::string moduleName, s
 using DeviceDisconnectCallback = std::function<bool()>;
 using UncatchableErrorHandler = std::function<void(panda::TryCatch&)>;
 using StopPreLoadSoCallback = std::function<void()>;
+using HostPromiseRejectionTracker = void (*)(const EcmaVM* vm,
+                                             const JSHandle<JSPromise> promise,
+                                             const JSHandle<JSTaggedValue> reason,
+                                             PromiseRejectionEvent operation,
+                                             void* data);
+using PromiseRejectCallback = void (*)(void* info);
 
 enum class IcuFormatterType: uint8_t {
     SIMPLE_DATE_FORMAT_DEFAULT,
@@ -1048,6 +1073,73 @@ public:
         return apiVersion_;
     }
 
+    JSHandle<job::MicroJobQueue> GetMicroJobQueue() const;
+
+    bool HasPendingJob() const;
+
+    bool ExecutePromisePendingJob();
+
+    void SetPromiseRejectCallback(PromiseRejectCallback cb)
+    {
+        promiseRejectCallback_ = cb;
+    }
+
+    PromiseRejectCallback GetPromiseRejectCallback() const
+    {
+        return promiseRejectCallback_;
+    }
+
+    void SetHostPromiseRejectionTracker(HostPromiseRejectionTracker cb)
+    {
+        hostPromiseRejectionTracker_ = cb;
+    }
+
+    void PromiseRejectionTracker(const JSHandle<JSPromise> &promise,
+                                 const JSHandle<JSTaggedValue> &reason, PromiseRejectionEvent operation)
+    {
+        if (hostPromiseRejectionTracker_ != nullptr) {
+            hostPromiseRejectionTracker_(this, promise, reason, operation, data_);
+        }
+    }
+
+    void SetPromiseRejectInfoData(void* data)
+    {
+        data_ = data;
+    }
+
+    bool IsExecutingPendingJob() const
+    {
+        return isProcessingPendingJob_.load();
+    }
+    JSTaggedValue PUBLIC_API FindUnsharedConstpool(JSTaggedValue sharedConstpool);
+    JSTaggedValue PUBLIC_API FindOrCreateUnsharedConstpool(JSTaggedValue sharedConstpool);
+    void EraseUnusedConstpool(const JSPandaFile *jsPandaFile, int32_t index, int32_t constpoolIndex);
+    JSTaggedValue PUBLIC_API FindConstpool(const JSPandaFile *jsPandaFile, int32_t index);
+    // For new version instruction.
+    JSTaggedValue PUBLIC_API FindConstpool(const JSPandaFile *jsPandaFile, panda_file::File::EntityId id);
+    bool HasCachedConstpool(const JSPandaFile *jsPandaFile) const;
+    JSHandle<ConstantPool> AddOrUpdateConstpool(const JSPandaFile *jsPandaFile,
+                                                JSHandle<ConstantPool> constpool,
+                                                int32_t index = 0);
+    void SetUnsharedConstpool(JSHandle<ConstantPool> sharedConstpool, JSTaggedValue unsharedConstpool);
+    void SetUnsharedConstpool(int32_t constpoolIndex, JSTaggedValue unsharedConstpool);
+    void CreateAllConstpool(const JSPandaFile *jsPandaFile);
+    std::optional<std::reference_wrapper<CMap<int32_t, JSTaggedValue>>> FindConstpools(const JSPandaFile *jsPandaFile);
+    void UpdateConstpoolWhenDeserialAI(const std::string& fileName,
+                                       JSHandle<ConstantPool> aiCP,
+                                       int32_t index = 0);
+    JSHandle<ConstantPool> PUBLIC_API FindOrCreateConstPool(const JSPandaFile *jsPandaFile,
+                                                            panda_file::File::EntityId id);
+    void ClearCachedConstantPool()
+    {
+        cachedSharedConstpools_.clear();
+    }
+
+    JSTaggedValue *GetUnsharedConstpoolsPointer() const
+    {
+        return unsharedConstpools_;
+    }
+
 #if ECMASCRIPT_ENABLE_COLLECTING_OPCODES
     void SetBytecodeStatsStack(std::unordered_map<BytecodeInstruction::Opcode, int> &bytecodeStatsMap)
     {
@@ -1062,13 +1154,138 @@ public:
     void PrintCollectedByteCode();
 #endif
 
+    RegExpParserCache *GetRegExpParserCache() const
+    {
+        ASSERT(regExpParserCache_ != nullptr);
+        return regExpParserCache_;
+    }
+
+    WaiterListNode *GetWaiterListNode()
+    {
+        return &waiterListNode_;
+    }
+
+    AbcBufferCache *GetAbcBufferCache() const
+    {
+        return abcBufferCache_;
+    }
+
+    void AddSustainingJSHandle(SustainingJSHandle *sustainingHandle);
+    void RemoveSustainingJSHandle(SustainingJSHandle *sustainingHandle);
+
+    kungfu::PGOTypeManager* GetPTManager() const
+    {
+        return ptManager_;
+    }
+
+    OptCodeProfiler* GetOptCodeProfiler() const
+    {
+        return optCodeProfiler_;
+    }
+
+    TypedOpProfiler* GetTypedOpProfiler() const
+    {
+        return typedOpProfiler_;
+    }
+
+    FunctionProtoTransitionTable* GetFunctionProtoTransitionTable() const
+    {
+        return functionProtoTransitionTable_;
+    }
+
+    void PrintOptStat();
+    void DumpAOTInfo() const DUMP_API_ATTR;
+    std::tuple<uint64_t, uint8_t*, int, kungfu::CalleeRegAndOffsetVec> CalCallSiteInfo(uintptr_t retAddr,
+                                                                                       bool isDeopt) const;
+    void LoadStubFile();
+    bool LoadAOTFilesInternal(const std::string& aotFileName);
+    bool LoadAOTFiles(const std::string& aotFileName);
+    void PUBLIC_API LoadProtoTransitionTable(JSTaggedValue constpool);
+    void PUBLIC_API ResetProtoTransitionTableOnConstpool(JSTaggedValue constpool);
+
+    void AddPatchModule(const CString &recordName, const JSHandle<JSTaggedValue> moduleRecord)
+    {
+        cachedPatchModules_.emplace(recordName, moduleRecord);
+    }
+
+    JSHandle<JSTaggedValue> FindPatchModule(const CString &recordName) const
+    {
+        auto iter = cachedPatchModules_.find(recordName);
+        if (iter != cachedPatchModules_.end()) {
+            return iter->second;
+        }
+        return JSHandle<JSTaggedValue>(thread_, JSTaggedValue::Hole());
+    }
+
+    void ClearPatchModules()
+    {
+        GlobalHandleCollection globalHandleCollection(thread_);
+        for (auto &item : cachedPatchModules_) {
+            globalHandleCollection.Dispose(item.second);
+        }
+        cachedPatchModules_.clear();
+    }
+
+    StageOfColdReload GetStageOfColdReload() const
+    {
+        return stageOfColdReload_;
+    }
+
+    void SetStageOfColdReload(StageOfColdReload stageOfColdReload)
+    {
+        stageOfColdReload_ = stageOfColdReload;
+    }
+
+    JSTaggedValue ExecuteAot(size_t actualNumArgs, JSTaggedType *args, const JSTaggedType *prevFp,
+                             bool needPushArgv);
+
 private:
     void ClearBufferData();
+    void ClearConstpoolBufferData();
     void CheckStartCpuProfiler();
-
+    void SetMicroJobQueue(job::MicroJobQueue *queue);
     // For Internal Native MethodLiteral.
     void GenerateInternalNativeMethods();
     void CacheToGlobalConstants(JSTaggedValue value, ConstantIndex constant);
+
+    JSTaggedValue FindConstpoolFromContextCache(const JSPandaFile *jsPandaFile, int32_t index);
+    void AddContextConstpoolCache(const JSPandaFile *jsPandaFile,
+                                  JSHandle<ConstantPool> constpool,
+                                  int32_t index);
+    JSTaggedValue FindCachedConstpoolAndLoadAiIfNeeded(const JSPandaFile *jsPandaFile, int32_t index);
+    void GrowUnsharedConstpoolArray(int32_t index);
+    void ResizeUnsharedConstpoolArray(int32_t oldCapacity, int32_t minCapacity);
+    void ClearUnsharedConstpoolArray()
+    {
+        if (unsharedConstpools_ != nullptr) {
+            delete[] unsharedConstpools_;
+            unsharedConstpools_ = nullptr;
+            thread_->SetUnsharedConstpools(reinterpret_cast<uintptr_t>(nullptr));
+            thread_->SetUnsharedConstpoolsArrayLen(0);
+        }
+    }
+
+    int32_t GetUnsharedConstpoolsArrayLen() const
+    {
+        return unsharedConstpoolsArrayLen_;
+    }
+
+    void SetUnsharedConstpoolsArrayLen(int32_t len)
+    {
+        unsharedConstpoolsArrayLen_ = len;
+    }
+
+    void CJSExecution(JSHandle<JSFunction> &func, JSHandle<JSTaggedValue> &thisArg,
+                      const JSPandaFile *jsPandaFile, std::string_view entryPoint);
+    JSTaggedValue InvokeEcmaAotEntrypoint(JSHandle<JSFunction> mainFunc, JSHandle<JSTaggedValue> &thisArg,
+                                          const JSPandaFile *jsPandaFile, std::string_view entryPoint,
+                                          CJSInfo *cjsInfo = nullptr);
+    Expected<JSTaggedValue, bool> InvokeEcmaEntrypoint(const JSPandaFile *jsPandaFile, std::string_view entryPoint,
+                                                       const ExecuteTypes &executeType = ExecuteTypes::STATIC);
+    Expected<JSTaggedValue, bool> InvokeEcmaEntrypointForHotReload(
+        const JSPandaFile *jsPandaFile, std::string_view entryPoint, const ExecuteTypes &executeType);
+    Expected<JSTaggedValue, bool> CommonInvokeEcmaEntrypoint(const JSPandaFile *jsPandaFile,
+        std::string_view entryPoint, JSHandle<JSFunction> &func, const ExecuteTypes &executeType);
 
     NO_MOVE_SEMANTIC(EcmaVM);
     NO_COPY_SEMANTIC(EcmaVM);
@@ -1084,6 +1301,13 @@ private:
     EcmaStringTable *stringTable_ {nullptr};
     PUBLIC_API static bool multiThreadCheck_;
     static bool errorInfoEnhanced_;
+
+    // for constpool.The shared constpool includes string, method, sendable classLiteral, etc.
+    // The unshared constpool includes objectLiteral, arrayLiteral, unsendable classLiteral, etc.
+    CMap<const JSPandaFile *, CMap<int32_t, JSTaggedValue>> cachedSharedConstpools_ {};
+    JSTaggedValue* unsharedConstpools_ = nullptr;
+    int32_t unsharedConstpoolsArrayLen_ = UNSHARED_CONSTANTPOOL_COUNT;
+    static constexpr int32_t SHARED_CONSTPOOL_KEY_NOT_FOUND = INT32_MAX; // INT32_MAX :invalid value.
 
     //apiVersion states
     uint32_t apiVersion_ = 8;
@@ -1178,6 +1402,7 @@ private:
 
     //AOT File Manager
     AOTFileManager *aotFileManager_ {nullptr};
+    kungfu::PGOTypeManager* ptManager_ {nullptr};
 
     // c++ call js
     size_t callDepth_ {0};
@@ -1202,11 +1427,21 @@ private:
     Mutex mutex_;
     bool isEnableOsr_ {false};
     bool isJitCompileVM_ {false};
+    // SustainingJSHandleList for jit compile hold ref
+    SustainingJSHandleList *sustainingJSHandleList_ {nullptr};
 
     // process StartRealTime
     int processStartRealtime_ = 0;
 
     bool enableJitLogSkip_ = true;
+
+    // Registered Callbacks
+    PromiseRejectCallback promiseRejectCallback_ {nullptr};
+    HostPromiseRejectionTracker hostPromiseRejectionTracker_ {nullptr};
+    void* data_{nullptr};
+
+    JSTaggedValue microJobQueue_ {JSTaggedValue::Hole()};
+    std::atomic<bool> isProcessingPendingJob_ {false};
 
 #if ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT
     // Stats for Thread-State-Transition and String-Table Locks
@@ -1236,6 +1471,21 @@ private:
     JSTaggedType *primitiveScopeStorageEnd_ {nullptr};
     std::vector<std::array<JSTaggedType, NODE_BLOCK_SIZE> *> primitiveStorageNodes_ {};
     int32_t currentPrimitiveStorageIndex_ {-1};
+    // for recording the transition of function prototype
+    FunctionProtoTransitionTable* functionProtoTransitionTable_ {nullptr};
+    // opt code Profiler
+    OptCodeProfiler* optCodeProfiler_ {nullptr};
+    // opt code loop hoist
+    TypedOpProfiler* typedOpProfiler_ {nullptr};
+    // RegExpParserCache
+    RegExpParserCache *regExpParserCache_ {nullptr};
+    // WaiterListNode(atomics)
+    WaiterListNode waiterListNode_;
+    AbcBufferCache *abcBufferCache_ {nullptr};
+
+    // for HotReload of module.
+    CMap<CString, JSHandle<JSTaggedValue>> cachedPatchModules_;
+    StageOfColdReload stageOfColdReload_ = StageOfColdReload::NOT_COLD_RELOAD;
 };
 }  // namespace ecmascript
 }  // namespace panda

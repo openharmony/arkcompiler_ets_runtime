@@ -21,7 +21,7 @@
 namespace panda::ecmascript {
 void Snapshot::Serialize(const CString &fileName)
 {
-    kungfu::AOTSnapshot &aotSnapshot = vm_->GetJSThread()->GetCurrentEcmaContext()->GetPTManager()->GetAOTSnapshot();
+    kungfu::AOTSnapshot& aotSnapshot = vm_->GetPTManager()->GetAOTSnapshot();
     JSTaggedValue root = aotSnapshot.GetSnapshotData();
     if (root == JSTaggedValue::Hole()) {
         // root equals hole means no data stored.

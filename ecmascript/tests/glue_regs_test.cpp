@@ -59,20 +59,6 @@ HWTEST_F_L0(GlueRegsTest, ConstantSpecialTest)
     EXPECT_TRUE(globalConst->GetHandledEmptyString()->IsString());
 }
 
-HWTEST_F_L0(GlueRegsTest, ConstantConstantTest)
-{
-    const GlobalEnvConstants *globalConst = thread->GlobalConstants();
-    ASSERT_NE(globalConst, nullptr);
-
-#define CONSTANT_CONSTANT_ITERATOR(Type, Name, Index, Desc)              \
-    Type Name##value = globalConst->Get##Name();                         \
-    EXPECT_TRUE(!Name##value.IsNull());                                  \
-    JSHandle<Type> Name##handledValue = globalConst->GetHandled##Name(); \
-    EXPECT_TRUE(!Name##handledValue->IsNull());
-    GLOBAL_ENV_CONSTANT_CONSTANT(CONSTANT_CONSTANT_ITERATOR)
-#undef CONSTANT_CONSTANT_ITERATOR
-}
-
 HWTEST_F_L0(GlueRegsTest, ConstantStringTest)
 {
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();

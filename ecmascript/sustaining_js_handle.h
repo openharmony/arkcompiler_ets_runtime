@@ -57,7 +57,6 @@ private:
     JSTaggedType *blockLimit_ { nullptr };
     SustainingJSHandle *pre_ { nullptr };
     SustainingJSHandle *next_ { nullptr };
-    EcmaContext *context_ { nullptr };
 
     static constexpr uint32_t BLOCK_SIZE = 256L;
     std::vector<std::array<JSTaggedType, BLOCK_SIZE>*> handleBlocks_;

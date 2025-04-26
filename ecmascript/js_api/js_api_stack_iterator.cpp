@@ -17,6 +17,7 @@
 
 #include "ecmascript/base/typed_array_helper-inl.h"
 #include "ecmascript/containers/containers_errors.h"
+#include "ecmascript/global_env.h"
 
 namespace panda::ecmascript {
 using BuiltinsBase = base::BuiltinsBase;
@@ -37,9 +38,9 @@ JSTaggedValue JSAPIStackIterator::Next(EcmaRuntimeCallInfo *argv)
     }
     JSHandle<JSAPIStackIterator> iter(input);
     JSHandle<JSTaggedValue> stack(thread, iter->GetIteratedStack());
-    const GlobalEnvConstants *globalConst = thread->GlobalConstants();
     if (stack->IsUndefined()) {
-        return globalConst->GetUndefinedIterResult();
+        JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+        return env->GetUndefinedIteratorResult().GetTaggedValue();
     }
     uint32_t index = iter->GetNextIndex();
 
@@ -48,9 +49,10 @@ JSTaggedValue JSAPIStackIterator::Next(EcmaRuntimeCallInfo *argv)
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     if (index + 1 > length) {
-        JSHandle<JSTaggedValue> undefinedHandle = globalConst->GetHandledUndefined();
+        JSHandle<JSTaggedValue> undefinedHandle = thread->GlobalConstants()->GetHandledUndefined();
         iter->SetIteratedStack(thread, undefinedHandle);
-        return globalConst->GetUndefinedIterResult();
+        JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+        return env->GetUndefinedIteratorResult().GetTaggedValue();
     }
     iter->SetNextIndex(index + 1);
     JSHandle<JSTaggedValue> key(thread, JSTaggedValue(index));

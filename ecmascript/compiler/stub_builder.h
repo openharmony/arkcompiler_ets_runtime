@@ -385,7 +385,7 @@ public:
                            Label *isPendingException, Label *noPendingException);
     void HClassCompareAndCheckDetector(GateRef glue, GateRef hclass,
                                        Label *match, Label *slowPath,
-                                       size_t indexHClass, size_t indexDetector);
+                                       size_t indexHClass, bool isMap);
     void TryFastGetArrayIterator(GateRef glue, GateRef hclass, GateRef jsType,
                                  Label *slowPath2, Label *matchArray);
     void TryFastGetIterator(GateRef glue, GateRef obj, GateRef hclass,
@@ -526,6 +526,12 @@ public:
     GateRef GetProtoChangeMarkerFromHClass(GateRef hClass);
     GateRef GetLayoutFromHClass(GateRef hClass);
     GateRef GetBitFieldFromHClass(GateRef hClass);
+    GateRef GetArrayElementsGuardians(GateRef env);
+    GateRef GetTypedArraySpeciesProtectDetector(GateRef env);
+    GateRef GetArrayIteratorDetector(GateRef env);
+    GateRef GetMapIteratorDetector(GateRef env);
+    GateRef GetSetIteratorDetector(GateRef env);
+    void SetArrayElementsGuardians(GateRef glue, GateRef env, GateRef value);
     GateRef GetLengthFromString(GateRef value);
     GateRef CalcHashcodeForInt(GateRef value);
     void CalcHashcodeForDouble(GateRef value, Variable *res, Label *exit);

@@ -17,7 +17,7 @@
 #define ECMASCRIPT_JSPANDAFILE_ABC_BUFFER_CACHE_H
 
 #include <string>
-#include "ecmascript/ecma_context.h"
+#include "ecmascript/ecma_vm.h"
 #include "ecmascript/js_thread.h"
 
 namespace panda::ecmascript {
@@ -79,7 +79,7 @@ public:
     AbcBufferCacheScope(JSThread *thread, const CString &filename, const void *buffer,
         size_t size, AbcBufferType bufferType): filename_(filename)
     {
-        abcBufferCache_ = thread->GetCurrentEcmaContext()->GetAbcBufferCache();
+        abcBufferCache_ = thread->GetEcmaVM()->GetAbcBufferCache();
         ASSERT(abcBufferCache_ != nullptr);
         abcBufferCache_->AddAbcBufferToCache(filename_, buffer, size, bufferType);
     }

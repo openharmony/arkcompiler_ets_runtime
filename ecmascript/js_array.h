@@ -173,6 +173,14 @@ public:
     void UpdateTrackInfo(const JSThread *thread);
 };
 
+class ArrayJoinStack {
+public:
+    static bool Push(const JSThread *thread, const JSHandle<JSTaggedValue> receiver);
+    static void Pop(const JSThread *thread, const JSHandle<JSTaggedValue> receiver);
+
+    static constexpr uint32_t MIN_JOIN_STACK_SIZE = 2;
+};
+
 class TrackInfo : public TaggedObject {
 public:
     static TrackInfo *Cast(TaggedObject *object)

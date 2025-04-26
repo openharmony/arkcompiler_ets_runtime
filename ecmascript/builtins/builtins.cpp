@@ -391,7 +391,7 @@ void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread, bool
         FunctionKind::ASYNC_FUNCTION, JSAsyncFunction::SIZE, JSType::JS_ASYNC_FUNCTION,
         env->GetAsyncFunctionPrototype());
     env->SetAsyncFunctionClass(thread_, asyncFuncClass);
-    thread_->ResetGuardians();
+    env->ResetGuardians();
 
     thread->CheckSafepointIfSuspended();
     if (vm_->GetJSOptions().IsEnableLoweringBuiltin() && !isRealm) {
@@ -403,14 +403,9 @@ void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread, bool
 
 void Builtins::InitializePropertyDetector(const JSHandle<GlobalEnv> &env, bool lazyInit) const
 {
-#define INITIALIZE_PROPERTY_DETECTOR(type, name, index)              \
-    JSHandle<MarkerCell> name##detector = factory_->NewMarkerCell(); \
-    if (lazyInit) {                                                  \
-        name##detector->InvalidatePropertyDetector();                \
-    }                                                                \
-    env->Set##name(thread_, name##detector);
-    GLOBAL_ENV_DETECTOR_FIELDS(INITIALIZE_PROPERTY_DETECTOR)
-#undef INITIALIZE_PROPERTY_DETECTOR
+    if (lazyInit) {
+        env->SetBitField(GlobalEnv::DEFAULT_LAZY_BITFIELD_VALUE);
+    }
 }
 
 void Builtins::InitializeNapiHClass(const JSHandle<GlobalEnv> &env,
@@ -731,7 +726,7 @@ void Builtins::InitializeObject(const JSHandle<GlobalEnv> &env, const JSHandle<J
     globalConst->SetConstant(ConstantIndex::OBJECT_GET_PROTO_INDEX, protoGetter);
 
     GlobalIndex globalIndex;
-    globalIndex.UpdateGlobalEnvId(static_cast<size_t>(GlobalEnvField::OBJECT_FUNCTION_INDEX));
+    globalIndex.UpdateGlobalEnvId(static_cast<size_t>(GlobalEnvField::OBJECT_FUNCTION_CLASS_INDEX));
     thread_->SetInitialBuiltinGlobalHClass(objFunc->GetJSHClass(), globalIndex);
 }
 
@@ -1861,18 +1856,11 @@ void Builtins::InitializeIterator(const JSHandle<GlobalEnv> &env, const JSHandle
     // Iterator.hclass
     JSHandle<JSHClass> iteratorFuncClass =
         factory_->NewEcmaHClass(JSObject::SIZE, JSType::JS_ITERATOR, JSHandle<JSTaggedValue>(iteratorPrototype));
-
-    auto globalConst = const_cast<GlobalEnvConstants *>(thread_->GlobalConstants());
-    globalConst->SetConstant(ConstantIndex::JS_API_ITERATOR_FUNC_CLASS_INDEX, iteratorFuncClass);
+    env->SetIteratorFuncClass(thread_, iteratorFuncClass);
 
     // Iterator result hclass
     JSHandle<JSHClass> iterResultHClass = factory_->CreateIteratorResultInstanceClass(env);
-    globalConst->SetConstant(ConstantIndex::ITERATOR_RESULT_CLASS, iterResultHClass);
-
-    // use for CloseIterator
-    JSHandle<CompletionRecord> record =
-        factory_->NewCompletionRecord(CompletionRecordType::NORMAL, globalConst->GetHandledUndefined());
-    globalConst->SetConstant(ConstantIndex::UNDEFINED_COMPLRTION_RECORD_INDEX, record);
+    env->SetIteratorResultClass(thread_, iterResultHClass);
 
     thread_->SetInitialBuiltinHClass(BuiltinTypeId::ITERATOR, nullptr,
         *iteratorFuncClass, iteratorPrototype->GetJSHClass());
@@ -1909,14 +1897,6 @@ void Builtins::InitializeAsyncIterator(const JSHandle<GlobalEnv> &env, const JSH
     SetFunctionAtSymbol(env, asyncIteratorPrototype, env->GetAsyncIteratorSymbol(), "[Symbol.asyncIterator]",
                         BuiltinsAsyncIterator::GetAsyncIteratorObj, FunctionLength::ZERO);
     env->SetAsyncIteratorPrototype(thread_, asyncIteratorPrototype);
-
-    // AsyncIterator.dynclass
-    JSHandle<JSHClass> asyncIteratorFuncDynclass =
-        factory_->NewEcmaHClass(JSObject::SIZE,
-                                JSType::JS_ASYNCITERATOR, JSHandle<JSTaggedValue>(asyncIteratorPrototype));
-
-    auto globalConst = const_cast<GlobalEnvConstants *>(thread_->GlobalConstants());
-    globalConst->SetConstant(ConstantIndex::JS_API_ASYNCITERATOR_FUNC_CLASS_INDEX, asyncIteratorFuncDynclass);
 }
 
 void Builtins::InitializeForinIterator(const JSHandle<GlobalEnv> &env,
@@ -2154,8 +2134,7 @@ void Builtins::InitializeRegExp(const JSHandle<GlobalEnv> &env)
     JSHandle<JSHClass> regPrototypeClass(thread_, regPrototype->GetJSHClass());
     env->SetRegExpPrototypeClass(thread_, regPrototypeClass.GetTaggedValue());
 
-    auto globalConst = const_cast<GlobalEnvConstants *>(thread_->GlobalConstants());
-    globalConst->SetConstant(ConstantIndex::JS_REGEXP_CLASS_INDEX, regexpFuncInstanceHClass.GetTaggedValue());
+    env->SetRegExpFuncInstanceClass(thread_, regexpFuncInstanceHClass);
 }
 
 void Builtins::InitializeArray(const JSHandle<GlobalEnv> &env, const JSHandle<JSTaggedValue> &objFuncPrototypeVal,
@@ -2238,7 +2217,7 @@ void Builtins::InitializeArray(const JSHandle<GlobalEnv> &env, const JSHandle<JS
     speciesAccessor->SetGetter(thread_, speciesGetter);
     arrayFunction->SetPropertyInlinedProps(thread_, JSArray::ARRAY_FUNCTION_SPECIES_INDEX,
                                            speciesAccessor.GetTaggedValue());
-    globalConstant->SetConstant(ConstantIndex::ARRAY_SPECIES_ACCESSOR, speciesAccessor.GetTaggedValue());
+    env->SetArraySpeciesAccessor(thread_, speciesAccessor);
     constexpr int arrProtoLen = 0;
     JSHandle<JSTaggedValue> keyString = thread_->GlobalConstants()->GetHandledLengthString();
     PropertyDescriptor descriptor(thread_, JSHandle<JSTaggedValue>(thread_, JSTaggedValue(arrProtoLen)), true, false,

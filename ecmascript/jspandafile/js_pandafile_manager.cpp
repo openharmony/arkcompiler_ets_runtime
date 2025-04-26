@@ -577,7 +577,7 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::GenerateJSPandafileFromBufferCa
     JSThread *thread, const CString &filename, std::string_view entryPoint)
 {
     AbcBufferInfo bufferInfo =
-        thread->GetCurrentEcmaContext()->GetAbcBufferCache()->FindJSPandaFileInAbcBufferCache(filename);
+        thread->GetEcmaVM()->GetAbcBufferCache()->FindJSPandaFileInAbcBufferCache(filename);
     if (bufferInfo.buffer_ == nullptr) {
         return nullptr;
     }

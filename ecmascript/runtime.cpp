@@ -359,8 +359,11 @@ void Runtime::EraseUnusedConstpool(const JSPandaFile *jsPandaFile, int32_t index
 {
     GCIterateThreadList([jsPandaFile, index, constpoolIndex](JSThread* thread) {
         ASSERT(!thread->IsInRunningState());
-        auto context = thread->GetCurrentEcmaContext();
-        context->EraseUnusedConstpool(jsPandaFile, index, constpoolIndex);
+        auto vm = thread->GetEcmaVM();
+        // GC maybe happen before vm initialized.
+        if (vm->GetUnsharedConstpoolsPointer() != nullptr) {
+            vm->EraseUnusedConstpool(jsPandaFile, index, constpoolIndex);
+        }
     });
 }
 

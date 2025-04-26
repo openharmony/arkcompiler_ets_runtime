@@ -260,7 +260,7 @@ void RegExpExecutor::DumpResult(std::ostream &out) const
 
 void RegExpExecutor::GetResult(JSThread *thread)
 {
-    JSHandle<RegExpGlobalResult> matchResult(thread->GetCurrentEcmaContext()->GetRegExpGlobalResult());
+    JSHandle<RegExpGlobalResult> matchResult(thread->GetGlobalEnv()->GetRegExpGlobalResult());
     matchResult->SetTotalCaptureCounts(thread, JSTaggedValue(nCapture_));
     uint32_t firstIndex = RegExpGlobalResult::FIRST_CAPTURE_INDEX;
     uint32_t availableCaptureSlot = matchResult->GetLength() - firstIndex;

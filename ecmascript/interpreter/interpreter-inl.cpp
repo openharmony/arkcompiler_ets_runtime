@@ -865,7 +865,7 @@ JSTaggedValue EcmaInterpreter::GeneratorReEnterAot(JSThread *thread, JSHandle<Ge
 #if ECMASCRIPT_ENABLE_FUNCTION_CALL_TIMER
     RuntimeStubs::StartCallTimer(thread->GetGlueAddr(), func.GetTaggedType(), true);
 #endif
-    auto res = thread->GetCurrentEcmaContext()->ExecuteAot(method->GetNumArgs(), args.data(), prevFp, false);
+    auto res = thread->GetEcmaVM()->ExecuteAot(method->GetNumArgs(), args.data(), prevFp, false);
 #if ECMASCRIPT_ENABLE_FUNCTION_CALL_TIMER
     RuntimeStubs::EndCallTimer(thread->GetGlueAddr(), func.GetTaggedType());
 #endif
@@ -7918,7 +7918,7 @@ JSTaggedValue EcmaInterpreter::GetConstantPool(JSTaggedType *sp)
 JSTaggedValue EcmaInterpreter::GetUnsharedConstpool(JSThread* thread, JSTaggedType *sp)
 {
     InterpretedFrame *state = reinterpret_cast<InterpretedFrame *>(sp) - 1;
-    return thread->GetCurrentEcmaContext()->FindOrCreateUnsharedConstpool(state->constpool);
+    return thread->GetEcmaVM()->FindOrCreateUnsharedConstpool(state->constpool);
 }
 
 bool EcmaInterpreter::UpdateHotnessCounter(JSThread* thread, JSTaggedType *sp, JSTaggedValue acc, int32_t offset)
