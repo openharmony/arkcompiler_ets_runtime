@@ -56,7 +56,7 @@ public:
     {
         return hostThread_->GetEcmaVM()->GetJSOptions().IsCompilerEnableLiteCG();
     }
-    JSRuntimeOptions &GetJSOptions() override;
+    JSRuntimeOptions &GetJSOptions() const override;
     // thread
     ConstantIndex GetArrayHClassIndex(ElementsKind kind, bool isProtoType) const override;
     const BuiltinHClassEntries &GetBuiltinHClassEntries() const override;

@@ -218,6 +218,7 @@ enum CommandValues {
     OPTION_COMPILER_PGO_FORCE_DUMP,
     OPTION_COMPILER_ENABLE_CONCURRENT,
     OPTION_COMPILER_ENABLE_STORE_BARRIER_OPT,
+    OPTION_COMPILER_ENABLE_LDOBJVALUE_OPT,
     OPTION_COMPILER_OPT_STRING,
     OPTION_OPEN_ARK_TOOLS,
     OPTION_COMPILER_OPT_FRAME_STATE_ELIMINATION,
@@ -2054,6 +2055,16 @@ public:
         return storeBarrierOpt_;
     }
 
+    void SetLdObjValueOpt(bool value)
+    {
+        enableLdObjValueOpt_ = value;
+    }
+
+    bool IsLdObjValueOpt() const
+    {
+        return enableLdObjValueOpt_;
+    }
+
     void SetAOTHasException(bool value)
     {
         aotHasException_ = value;
@@ -2324,6 +2335,7 @@ private:
     bool aotHasException_ {false};
     bool enableInlinePropertyOptimization_ {NEXT_OPTIMIZATION_BOOL};
     bool storeBarrierOpt_ {true};
+    bool enableLdObjValueOpt_ {true};
     uint64_t CompilerAnFileMaxByteSize_ {0_MB};
     bool enableJitVerifyPass_ {true};
     bool enableMergePoly_ {true};

@@ -315,6 +315,8 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
         case OpCode::ORDINARY_HAS_INSTANCE:
         case OpCode::ECMA_STRING_CHECK:
         case OpCode::INTERN_STRING_CHECK:
+        case OpCode::INTERN_STRING_KEY_CHECK:
+        case OpCode::STRING_KEY_CHECK:
         case OpCode::CREATE_ARGUMENTS:
         case OpCode::TAGGED_TO_INT64:
         case OpCode::TYPED_CALL_BUILTIN:

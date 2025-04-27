@@ -1346,7 +1346,7 @@ private:
     friend class JitAccessorStrategy;
 };
 
-class LoadObjByNameTypeInfoAccessor final : public ObjAccByNameTypeInfoAccessor {
+class LoadObjPropertyTypeInfoAccessor final : public ObjAccByNameTypeInfoAccessor {
 public:
     class AccessorStrategy {
     public:
@@ -1361,7 +1361,7 @@ public:
 
     class AotAccessorStrategy : public AccessorStrategy {
     public:
-        explicit AotAccessorStrategy(LoadObjByNameTypeInfoAccessor &parent) : parent_(parent)
+        explicit AotAccessorStrategy(LoadObjPropertyTypeInfoAccessor &parent) : parent_(parent)
         {
         }
 
@@ -1390,12 +1390,12 @@ public:
         bool GenerateObjectAccessInfo() override;
 
     private:
-        LoadObjByNameTypeInfoAccessor &parent_;
+        LoadObjPropertyTypeInfoAccessor &parent_;
     };
 
     class JitAccessorStrategy : public AccessorStrategy {
     public:
-        explicit JitAccessorStrategy(LoadObjByNameTypeInfoAccessor &parent) : parent_(parent)
+        explicit JitAccessorStrategy(LoadObjPropertyTypeInfoAccessor &parent) : parent_(parent)
         {
         }
 
@@ -1423,11 +1423,12 @@ public:
         bool GenerateObjectAccessInfo() override;
 
     private:
-        LoadObjByNameTypeInfoAccessor &parent_;
+        LoadObjPropertyTypeInfoAccessor &parent_;
     };
-    LoadObjByNameTypeInfoAccessor(const CompilationEnv *env, Circuit *circuit, GateRef gate, Chunk *chunk);
-    NO_COPY_SEMANTIC(LoadObjByNameTypeInfoAccessor);
-    NO_MOVE_SEMANTIC(LoadObjByNameTypeInfoAccessor);
+    LoadObjPropertyTypeInfoAccessor(const CompilationEnv *env, Circuit *circuit,
+                                    GateRef gate, Chunk *chunk, bool isByValue = false);
+    NO_COPY_SEMANTIC(LoadObjPropertyTypeInfoAccessor);
+    NO_MOVE_SEMANTIC(LoadObjPropertyTypeInfoAccessor);
 
     size_t GetTypeCount()
     {
@@ -1497,9 +1498,22 @@ public:
         }
     }
 
+    JSHandle<JSTaggedValue> GetName()
+    {
+        return name_;
+    }
+
+    uint32_t GetNameIdx()
+    {
+        return nameIdx_;
+    }
+
 private:
     ChunkVector<std::pair<ProfileTyper, ProfileTyper>> types_;
     ChunkVector<pgo::PGOObjectInfo> jitTypes_;
+    JSHandle<JSTaggedValue> name_;
+    uint32_t nameIdx_;
+    bool isByValue_;
 
     AccessorStrategy* strategy_;
     friend class AotAccessorStrategy;

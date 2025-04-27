@@ -36,7 +36,7 @@ JitCompilationEnv::JitCompilationEnv(EcmaVM *jitVm, EcmaVM *jsVm, JSHandle<JSFun
     }
 }
 
-JSRuntimeOptions &JitCompilationEnv::GetJSOptions()
+JSRuntimeOptions &JitCompilationEnv::GetJSOptions() const
 {
     return hostThread_->GetEcmaVM()->GetJSOptions();
 }

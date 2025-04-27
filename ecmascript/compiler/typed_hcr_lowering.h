@@ -137,6 +137,8 @@ private:
     void LowerStableArrayCheck(GateRef gate);
     void LowerTypedArrayCheck(GateRef gate);
     void LowerEcmaStringCheck(GateRef gate);
+    void LowerStringKeyCheck(GateRef gate);
+    void LowerInternStringKeyCheck(GateRef gate);
     void LowerInternStringCheck(GateRef gate);
     void LowerEcmaMapCheck(GateRef gate);
     void LowerFlattenTreeStringCheck(GateRef gate, GateRef glue);

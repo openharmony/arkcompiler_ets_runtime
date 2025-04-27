@@ -835,12 +835,19 @@ bool LoadPrivatePropertyTypeInfoAccessor::JitAccessorStrategy::GenerateObjectAcc
     return true;
 }
 
-LoadObjByNameTypeInfoAccessor::LoadObjByNameTypeInfoAccessor(const CompilationEnv *env, Circuit *circuit, GateRef gate,
-                                                             Chunk *chunk)
-    : ObjAccByNameTypeInfoAccessor(env, circuit, gate, chunk, AccessMode::LOAD), types_(chunk_), jitTypes_(chunk_)
+LoadObjPropertyTypeInfoAccessor::LoadObjPropertyTypeInfoAccessor(const CompilationEnv *env, Circuit *circuit,
+                                                                 GateRef gate, Chunk *chunk, bool isByValue)
+    : ObjAccByNameTypeInfoAccessor(env, circuit, gate, chunk, AccessMode::LOAD), types_(chunk_), jitTypes_(chunk_),
+      isByValue_(isByValue)
 {
-    key_ = acc_.GetValueIn(gate, 1);      // 1: key
-    receiver_ = acc_.GetValueIn(gate, 2); // 2: receiver
+    if (isByValue_) {
+        receiver_ = acc_.GetValueIn(gate, 1); // 1: receiver
+        key_ = acc_.GetValueIn(gate, 2);      // 2: key
+        ASSERT(!IsAot());
+    } else {
+        key_ = acc_.GetValueIn(gate, 1);      // 1: key
+        receiver_ = acc_.GetValueIn(gate, 2); // 2: receiver
+    }
     if (IsAot()) {
         strategy_ = chunk_->New<AotAccessorStrategy>(*this);
     } else {
@@ -850,7 +857,7 @@ LoadObjByNameTypeInfoAccessor::LoadObjByNameTypeInfoAccessor(const CompilationEn
     hasIllegalType_ = !strategy_->GenerateObjectAccessInfo();
 }
 
-void LoadObjByNameTypeInfoAccessor::AotAccessorStrategy::FetchPGORWTypesDual()
+void LoadObjPropertyTypeInfoAccessor::AotAccessorStrategy::FetchPGORWTypesDual()
 {
     const PGORWOpType *pgoTypes = parent_.acc_.TryGetPGOType(parent_.gate_).GetPGORWOpType();
     if (IsMegaType(pgoTypes)) {
@@ -866,11 +873,15 @@ void LoadObjByNameTypeInfoAccessor::AotAccessorStrategy::FetchPGORWTypesDual()
     }
 }
 
-void LoadObjByNameTypeInfoAccessor::JitAccessorStrategy::FetchPGORWTypesDual()
+void LoadObjPropertyTypeInfoAccessor::JitAccessorStrategy::FetchPGORWTypesDual()
 {
     const PGORWOpType *pgoTypes = parent_.acc_.TryGetPGOType(parent_.gate_).GetPGORWOpType();
     if (IsMegaType(pgoTypes)) {
         return;
+    }
+    if (parent_.isByValue_) {
+        parent_.name_ = pgoTypes->GetName();
+        parent_.nameIdx_ = pgoTypes->GetNameIdx();
     }
     for (uint32_t i = 0; i < pgoTypes->GetCount(); ++i) {
         auto temp = pgoTypes->GetObjectInfo(i);
@@ -880,9 +891,14 @@ void LoadObjByNameTypeInfoAccessor::JitAccessorStrategy::FetchPGORWTypesDual()
     }
 }
 
-bool LoadObjByNameTypeInfoAccessor::AotAccessorStrategy::GenerateObjectAccessInfo()
+bool LoadObjPropertyTypeInfoAccessor::AotAccessorStrategy::GenerateObjectAccessInfo()
 {
-    JSTaggedValue key = parent_.GetKeyTaggedValue();
+    JSTaggedValue key = JSTaggedValue::Undefined();
+    if (parent_.isByValue_) {
+        key = parent_.name_.GetTaggedValue();
+    } else {
+        key = parent_.GetKeyTaggedValue();
+    }
     if (key.IsUndefined()) {
         return false;
     }
@@ -916,9 +932,14 @@ bool LoadObjByNameTypeInfoAccessor::AotAccessorStrategy::GenerateObjectAccessInf
     return true;
 }
 
-bool LoadObjByNameTypeInfoAccessor::JitAccessorStrategy::GenerateObjectAccessInfo()
+bool LoadObjPropertyTypeInfoAccessor::JitAccessorStrategy::GenerateObjectAccessInfo()
 {
-    JSTaggedValue key = parent_.GetKeyTaggedValue();
+    JSTaggedValue key = JSTaggedValue::Undefined();
+    if (parent_.isByValue_) {
+        key = parent_.name_.GetTaggedValue();
+    } else {
+        key = parent_.GetKeyTaggedValue();
+    }
     if (key.IsUndefined()) {
         return false;
     }
