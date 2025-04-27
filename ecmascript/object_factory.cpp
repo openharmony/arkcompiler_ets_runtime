@@ -1062,11 +1062,13 @@ JSHandle<JSObject> ObjectFactory::CreateNapiObject()
     JSHandle<GlobalEnv> globalEnv = vm_->GetGlobalEnv();
     JSHandle<JSFunction> constructor(globalEnv->GetObjectFunction());
     JSHandle<JSHClass> ihc(globalEnv->GetObjectFunctionNapiClass());
-    if (globalEnv->GetTaggedObjectFunctionTsNapiClass().IsJSHClass()) {
-        ihc = JSHandle<JSHClass>(globalEnv->GetObjectFunctionTsNapiClass());
+    JSHandle<JSHClass> tsIhc(globalEnv->GetObjectFunctionTsNapiClass());
+    JSHandle<JSObject> jsObject;
+    if (ihc != tsIhc) {
+        jsObject = NewJSObjectWithInit(tsIhc);
+    } else {
+        jsObject = NewJSObjectWithInit(ihc);
     }
-    JSHandle<JSObject> jsObject(NewJSObjectWithInit(ihc));
-    JSHandle<JSTaggedValue> object(jsObject);
     return jsObject;
 }
 
