@@ -2296,7 +2296,7 @@ GateRef StubBuilder::StringToElementIndex(GateRef glue, GateRef string)
                     Jump(&exit);
                 }
                 Bind(&loopEnd);
-                LoopEnd(&loopHead, env, glue);
+                LoopEnd(&loopHead);
                 Bind(&afterLoop);
                 {
                     Label lessThanMaxIndex(env);
@@ -9628,7 +9628,7 @@ GateRef StubBuilder::TryStringOrSymbolToElementIndex(GateRef glue, GateRef key)
                 }
             }
             Bind(&loopEnd);
-            LoopEnd(&loopHead, env, glue);
+            LoopEnd(&loopHead);
             Bind(&afterLoop);
             {
                 Label lessThanMaxIndex(env);
