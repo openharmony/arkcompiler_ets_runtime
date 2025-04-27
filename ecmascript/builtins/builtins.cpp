@@ -413,6 +413,7 @@ void Builtins::InitializeNapiHClass(const JSHandle<GlobalEnv> &env,
 {
     JSHandle<JSHClass> newJsHClass = JSHClass::Clone(thread_, objFuncClass);
     env->SetObjectFunctionNapiClass(thread_, newJsHClass);
+    env->SetObjectFunctionTsNapiClass(thread_, newJsHClass);
 }
 
 void Builtins::SetLazyAccessor(const JSHandle<JSObject> &object, const JSHandle<JSTaggedValue> &key,

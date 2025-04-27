@@ -62,8 +62,9 @@ void AotConstantpoolPatcher::SetObjectFunctionFromConstPool(JSThread *thread, JS
         UNREACHABLE();
         return;
     }
+    // not be set before
     auto env = thread->GetCurrentEcmaContext()->GetGlobalEnv();
-    if (env->GetObjectFunctionTsNapiClass()->IsUndefined()) {
+    if (env->GetObjectFunctionTsNapiClass() == env->GetObjectFunctionNapiClass()) {
         JSHandle<JSHClass> objectFunctionNapiClass(env->GetObjectFunctionNapiClass());
         objectFunctionIHC->SetPrototype(thread, objectFunctionNapiClass->GetProto());
         JSHClass::EnableProtoChangeMarker(thread, objectFunctionIHC);
