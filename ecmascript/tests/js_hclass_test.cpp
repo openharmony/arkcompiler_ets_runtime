@@ -58,35 +58,47 @@ HWTEST_F_L0(JSHClassTest, SizeFromJSHClass)
     JSHandle<JSHClass> objectClass = factory->NewEcmaHClass(TaggedArray::SIZE, JSType::TAGGED_ARRAY, nullHandle);
     EXPECT_TRUE(*objectClass != nullptr);
     size_t objectSize;
-#ifndef PANDA_TARGET_32
-    objectSize = objectClass->SizeFromJSHClass(*objectClass);
-    EXPECT_EQ(objectSize, 40U);
-#endif
+    size_t length = 10;
+    auto heap = const_cast<Heap*>(thread->GetEcmaVM()->GetHeap());
+    size_t size = TaggedArray::ComputeSize(JSTaggedValue::TaggedTypeSize(), 10);
+    TaggedObject *header = heap->AllocateYoungOrHugeObject(*objectClass, size);
+    JSHandle<TaggedArray> array(thread, header);
+    array->SetLength(length);
+    objectSize = array->GetClass()->SizeFromJSHClass(header);
+    EXPECT_EQ(objectSize, 96U);
     EcmaString *string = EcmaStringAccessor::CreateEmptyString(vm);
     objectSize = string->GetClass()->SizeFromJSHClass(string);
     EXPECT_EQ(objectSize, 16U);
     string = factory->AllocTreeStringObject();
     objectSize = string->GetClass()->SizeFromJSHClass(string);
     EXPECT_EQ(objectSize, 32U);
-
-    objectClass = factory->NewEcmaHClass(MachineCode::SIZE, JSType::MACHINE_CODE_OBJECT, nullHandle);
-    objectSize = objectClass->SizeFromJSHClass(*objectClass);
+    MachineCodeDesc desc;
+    desc.codeType = MachineCodeType::BASELINE_CODE;
+    desc.instructionsSize = 100;
+    desc.instructionsAddr = 1000;
+    desc.stackMapSizeAlign = 100;
+    TaggedObject *machineCode = factory->NewMachineCodeObject(100, desc);
+    objectSize = machineCode->GetClass()->SizeFromJSHClass(machineCode);
 #if defined(PANDA_TARGET_AMD64) || defined(PANDA_TARGET_ARM64)
-    EXPECT_EQ(objectSize, 344U);
+    EXPECT_EQ(objectSize, 336U);
 #else
-    EXPECT_EQ(objectSize, 216U);
+    EXPECT_EQ(objectSize, 200U);
 #endif
+
     // size is an integral multiple of eight
     objectClass = factory->NewEcmaHClass(JSObject::SIZE - 1, JSType::JS_OBJECT, nullHandle);
-    objectSize = objectClass->SizeFromJSHClass(*objectClass);
+    TaggedObject *header3 = heap->AllocateYoungOrHugeObject(*objectClass, length);
+    objectSize = objectClass->SizeFromJSHClass(header3);
     EXPECT_EQ(objectSize, 56U);
 
     objectClass = factory->NewEcmaHClass(JSObject::SIZE + 1, JSType::JS_OBJECT, nullHandle);
-    objectSize = objectClass->SizeFromJSHClass(*objectClass);
+    TaggedObject *header4 = heap->AllocateYoungOrHugeObject(*objectClass, length);
+    objectSize = objectClass->SizeFromJSHClass(header4);
     EXPECT_EQ(objectSize, 64U);
 
     objectClass = factory->NewEcmaHClass(JSObject::SIZE, JSType::JS_OBJECT, nullHandle);
-    objectSize = objectClass->SizeFromJSHClass(*objectClass);
+    TaggedObject *header5 = heap->AllocateYoungOrHugeObject(*objectClass, length);
+    objectSize = objectClass->SizeFromJSHClass(header5);
     EXPECT_EQ(objectSize, 64U);
 }
 
