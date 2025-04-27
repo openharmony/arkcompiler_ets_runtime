@@ -3484,10 +3484,14 @@ inline void StubBuilder::SetBaselineJitCodeToFunction(GateRef glue, GateRef func
     Store(VariableType::JS_ANY(), glue, function, offset, value, mAttr);
 }
 
+inline GateRef StubBuilder::GetGlobalEnv(GateRef glue)
+{
+    return env_->GetBuilder()->GetGlobalEnv(glue);
+}
+
 inline GateRef StubBuilder::GetGlobalObject(GateRef glue)
 {
-    GateRef offset = IntPtr(JSThread::GlueData::GetGlobalObjOffset(env_->Is32Bit()));
-    return Load(VariableType::JS_ANY(), glue, offset);
+    return env_->GetBuilder()->GetGlobalObject(glue);
 }
 
 inline GateRef StubBuilder::GetMethodFromFunction(GateRef function)
@@ -3904,13 +3908,12 @@ inline GateRef StubBuilder::GetProfileTypeInfo(GateRef jsFunc)
 
 inline void StubBuilder::CheckDetectorName(GateRef glue, GateRef key, Label *fallthrough, Label *slow)
 {
-    GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env_->Is32Bit()));
-    GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
+    GateRef globalEnv = GetGlobalEnv(glue);
     GateRef keyAddr = ChangeTaggedPointerToInt64(key);
     GateRef firstDetectorName = GetGlobalEnvValue(
-        VariableType::INT64(), glueGlobalEnv, GlobalEnv::FIRST_DETECTOR_SYMBOL_INDEX);
+        VariableType::INT64(), globalEnv, GlobalEnv::FIRST_DETECTOR_SYMBOL_INDEX);
     GateRef lastDetectorName = GetGlobalEnvValue(
-        VariableType::INT64(), glueGlobalEnv, GlobalEnv::LAST_DETECTOR_SYMBOL_INDEX);
+        VariableType::INT64(), globalEnv, GlobalEnv::LAST_DETECTOR_SYMBOL_INDEX);
     GateRef isDetectorName = BitAnd(Int64UnsignedLessThanOrEqual(firstDetectorName, keyAddr),
                                     Int64UnsignedLessThanOrEqual(keyAddr, lastDetectorName));
     Label checkCommonDetector(env_);
@@ -4334,9 +4337,8 @@ inline GateRef StubBuilder::IsCjsModule(GateRef module)
 
 inline GateRef StubBuilder::GetCjsModuleFunction(GateRef glue)
 {
-    GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env_->Is32Bit()));
-    GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
-    return GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, GlobalEnv::CJS_MODULE_FUNCTION_INDEX);
+    GateRef globalEnv = GetGlobalEnv(glue);
+    return GetGlobalEnvValue(VariableType::JS_ANY(), globalEnv, GlobalEnv::CJS_MODULE_FUNCTION_INDEX);
 }
 
 inline GateRef StubBuilder::GetArrayElementsGuardians(GateRef env)

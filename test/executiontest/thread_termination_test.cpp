@@ -125,20 +125,23 @@ Local<JSValueRef> ThreadTerminationTest::Signal(JsiRuntimeCallInfo *runtimeCallI
 HWTEST_F_L0(ThreadTerminationTest, TerminateFromThreadItself)
 {
     JSThread *thread = vm_->GetAssociatedJSThread();
-    EcmaContext::MountContext(thread);
+    auto* factory = vm_->GetFactory();
+    JSHandle<GlobalEnv> globalEnv = factory->NewGlobalEnv();
+    SaveAndSwitchEnv(thread, globalEnv);
     JSNApi::EnableUserUncaughtErrorHandler(vm_);
     RegisterGlobalTemplate(vm_, TerminateThread, Fail, Signal);
     TryCatch tryCatch(vm_);
     std::string baseFileName = MODULE_ABC_PATH "termination_1.abc";
     JSNApi::Execute(vm_, baseFileName, "termination_1");
     EXPECT_TRUE(tryCatch.HasCaught());
-    EcmaContext::UnmountContext(thread);
 }
 
 HWTEST_F_L0(ThreadTerminationTest, TerminateFromOtherThread)
 {
     JSThread *thread = vm_->GetAssociatedJSThread();
-    EcmaContext::MountContext(thread);
+    auto* factory = vm_->GetFactory();
+    JSHandle<GlobalEnv> globalEnv = factory->NewGlobalEnv();
+    SaveAndSwitchEnv(thread, globalEnv);
     TerminatorThread terminatorThread(vm_);
     terminatorThread.Run();
     JSNApi::EnableUserUncaughtErrorHandler(vm_);
@@ -148,13 +151,14 @@ HWTEST_F_L0(ThreadTerminationTest, TerminateFromOtherThread)
     JSNApi::Execute(vm_, baseFileName, "termination_2");
     EXPECT_TRUE(tryCatch.HasCaught());
     terminatorThread.Join();
-    EcmaContext::UnmountContext(thread);
 }
 
 HWTEST_F_L0(ThreadTerminationTest, TerminateFromOtherThreadWithoutCall)
 {
     JSThread *thread = vm_->GetAssociatedJSThread();
-    EcmaContext::MountContext(thread);
+    auto* factory = vm_->GetFactory();
+    JSHandle<GlobalEnv> globalEnv = factory->NewGlobalEnv();
+    SaveAndSwitchEnv(thread, globalEnv);
     TerminatorThread terminatorThread(vm_);
     terminatorThread.RunWithSleep();
     JSNApi::EnableUserUncaughtErrorHandler(vm_);
@@ -164,44 +168,46 @@ HWTEST_F_L0(ThreadTerminationTest, TerminateFromOtherThreadWithoutCall)
     JSNApi::Execute(vm_, baseFileName, "termination_3");
     EXPECT_TRUE(tryCatch.HasCaught());
     terminatorThread.Join();
-    EcmaContext::UnmountContext(thread);
 }
 
 HWTEST_F_L0(ThreadTerminationTest, TerminateClearArrayJoinStack)
 {
     JSThread *thread = vm_->GetAssociatedJSThread();
-    EcmaContext::MountContext(thread);
+    auto* factory = vm_->GetFactory();
+    JSHandle<GlobalEnv> globalEnv = factory->NewGlobalEnv();
+    SaveAndSwitchEnv(thread, globalEnv);
     JSNApi::EnableUserUncaughtErrorHandler(vm_);
     RegisterGlobalTemplate(vm_, TerminateThread, Fail, Signal);
     TryCatch tryCatch(vm_);
     std::string baseFileName = MODULE_ABC_PATH "termination_4.abc";
     JSNApi::Execute(vm_, baseFileName, "termination_4");
     EXPECT_TRUE(tryCatch.HasCaught());
-    EcmaContext::UnmountContext(thread);
 }
 
 HWTEST_F_L0(ThreadTerminationTest, TerminateInMicroTask)
 {
     JSThread *thread = vm_->GetAssociatedJSThread();
-    EcmaContext::MountContext(thread);
+    auto* factory = vm_->GetFactory();
+    JSHandle<GlobalEnv> globalEnv = factory->NewGlobalEnv();
+    SaveAndSwitchEnv(thread, globalEnv);
     JSNApi::EnableUserUncaughtErrorHandler(vm_);
     RegisterGlobalTemplate(vm_, TerminateThread, Fail, Signal);
     TryCatch tryCatch(vm_);
     std::string baseFileName = MODULE_ABC_PATH "termination_5.abc";
     JSNApi::Execute(vm_, baseFileName, "termination_5");
-    EcmaContext::UnmountContext(thread);
 }
 
 HWTEST_F_L0(ThreadTerminationTest, TerminateWithoutExecutingMicroTask)
 {
     JSThread *thread = vm_->GetAssociatedJSThread();
-    EcmaContext::MountContext(thread);
+    auto* factory = vm_->GetFactory();
+    JSHandle<GlobalEnv> globalEnv = factory->NewGlobalEnv();
+    SaveAndSwitchEnv(thread, globalEnv);
     JSNApi::EnableUserUncaughtErrorHandler(vm_);
     RegisterGlobalTemplate(vm_, TerminateThread, Fail, Signal);
     TryCatch tryCatch(vm_);
     std::string baseFileName = MODULE_ABC_PATH "termination_6.abc";
     JSNApi::Execute(vm_, baseFileName, "termination_6");
     EXPECT_TRUE(tryCatch.HasCaught());
-    EcmaContext::UnmountContext(thread);
 }
 } // namespace panda::test

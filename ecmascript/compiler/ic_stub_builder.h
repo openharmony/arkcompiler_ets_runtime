@@ -67,7 +67,7 @@ public:
     void TryStoreGlobalICByName(Variable* result, Label* tryFastPath, Label *slowPath, Label *success);
 private:
     struct PrimitiveLoadICInfo {
-        GateRef glueGlobalEnv;
+        GateRef globalEnv;
         GateRef profileFirstValue;
         Label *tryICHandler;
         Variable *cachedHandler;

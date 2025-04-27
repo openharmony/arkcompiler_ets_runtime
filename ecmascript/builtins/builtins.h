@@ -46,7 +46,6 @@ public:
     NO_MOVE_SEMANTIC(Builtins);
 
     void Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread, bool lazyInit = false, bool isRealm = false);
-    void InitializeForSnapshot(JSThread *thread);
 
     void InitializeSharedBitVector(const JSHandle<GlobalEnv> &env,
                                    const JSHandle<JSObject> &sObjPrototype,
@@ -85,6 +84,8 @@ private:
     void InitializeGlobalObject(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &globalObject);
 
     void InitializeFunction(const JSHandle<GlobalEnv> &env, JSHandle<JSTaggedValue> &objFuncPrototypeVal) const;
+
+    void InitializeBoundFunctionClass(const JSHandle<GlobalEnv> &env) const;
 
     void InitializeFunctionPrototype(const JSHandle<GlobalEnv> &env, JSHandle<JSFunction> &funcFuncPrototype,
         JSHandle<JSFunction> &funcFunc) const;
@@ -446,21 +447,34 @@ private:
     JSHandle<JSHClass> CreateSObjectFunctionHClass(const JSHandle<JSFunction> &sFuncPrototype) const;
     JSHandle<JSHClass> CreateSObjectPrototypeHClass() const;
     JSHandle<JSHClass> CreateSFunctionHClass(const JSHandle<JSFunction> &sFuncPrototype) const;
-    JSHandle<JSHClass> CreateSFunctionPrototypeHClass(const JSHandle<JSTaggedValue> &sObjPrototypeVal) const;
-    JSHandle<JSHClass> CreateSSetPrototypeHClass(const JSHandle<JSObject> &sObjPrototype) const;
-    JSHandle<JSHClass> CreateSSetFunctionHClass(const JSHandle<JSFunction> &sFuncPrototype) const;
-    JSHandle<JSHClass> CreateSMapPrototypeHClass(const JSHandle<JSObject> &sObjPrototype) const;
-    JSHandle<JSHClass> CreateBitVectorPrototypeHClass(const JSHandle<JSObject> &sObjPrototype) const;
-    JSHandle<JSHClass> CreateSMapFunctionHClass(const JSHandle<JSFunction> &sFuncPrototype) const;
-    JSHandle<JSHClass> CreateBitVectorFunctionHClass(const JSHandle<JSFunction> &sFuncPrototype) const;
-    JSHandle<JSHClass> CreateSArrayPrototypeHClass(const JSHandle<JSObject> &sObjPrototype) const;
-    JSHandle<JSHClass> CreateSArrayFunctionHClass(const JSHandle<JSFunction> &sFuncPrototype) const;
-    JSHandle<JSHClass> CreateSTypedArrayPrototypeHClass(const JSHandle<JSObject> &sObjPrototype) const;
-    JSHandle<JSHClass> CreateSTypedArrayFunctionHClass(const JSHandle<JSFunction> &sFuncPrototype) const;
+    JSHandle<JSHClass> CreateSFunctionPrototypeHClass(const JSHandle<GlobalEnv> &env,
+                                                      const JSHandle<JSTaggedValue> &sObjPrototypeVal) const;
+    JSHandle<JSHClass> CreateSSetPrototypeHClass(const JSHandle<GlobalEnv> &env,
+                                                 const JSHandle<JSObject> &sObjPrototype) const;
+    JSHandle<JSHClass> CreateSSetFunctionHClass(const JSHandle<GlobalEnv> &env,
+                                                const JSHandle<JSFunction> &sFuncPrototype) const;
+    JSHandle<JSHClass> CreateSMapPrototypeHClass(const JSHandle<GlobalEnv> &env,
+                                                 const JSHandle<JSObject> &sObjPrototype) const;
+    JSHandle<JSHClass> CreateBitVectorPrototypeHClass(const JSHandle<GlobalEnv> &env,
+                                                      const JSHandle<JSObject> &sObjPrototype) const;
+    JSHandle<JSHClass> CreateSMapFunctionHClass(const JSHandle<GlobalEnv> &env,
+                                                const JSHandle<JSFunction> &sFuncPrototype) const;
+    JSHandle<JSHClass> CreateBitVectorFunctionHClass(const JSHandle<GlobalEnv> &env,
+                                                     const JSHandle<JSFunction> &sFuncPrototype) const;
+    JSHandle<JSHClass> CreateSArrayPrototypeHClass(const JSHandle<GlobalEnv> &env,
+                                                   const JSHandle<JSObject> &sObjPrototype) const;
+    JSHandle<JSHClass> CreateSArrayFunctionHClass(const JSHandle<GlobalEnv> &env,
+                                                  const JSHandle<JSFunction> &sFuncPrototype) const;
+    JSHandle<JSHClass> CreateSTypedArrayPrototypeHClass(const JSHandle<GlobalEnv> &env,
+                                                        const JSHandle<JSObject> &sObjPrototype) const;
+    JSHandle<JSHClass> CreateSTypedArrayFunctionHClass(const JSHandle<GlobalEnv> &env,
+                                                       const JSHandle<JSFunction> &sFuncPrototype) const;
     JSHandle<JSHClass> CreateSSpecificTypedArrayFuncHClass(const JSHandle<JSFunction> &sFuncPrototype) const;
     JSHandle<JSHClass> CreateSSpecificTypedArrayInstanceHClass(const JSHandle<JSObject> &sObjPrototype) const;
-    JSHandle<JSHClass> CreateSArrayBufferPrototypeHClass(const JSHandle<JSObject> &sObjPrototype) const;
-    JSHandle<JSHClass> CreateSArrayBufferFunctionHClass(const JSHandle<JSFunction> &sFuncPrototype) const;
+    JSHandle<JSHClass> CreateSArrayBufferPrototypeHClass(const JSHandle<GlobalEnv> &env,
+                                                         const JSHandle<JSObject> &sObjPrototype) const;
+    JSHandle<JSHClass> CreateSArrayBufferFunctionHClass(const JSHandle<GlobalEnv> &env,
+                                                        const JSHandle<JSFunction> &sFuncPrototype) const;
 
     void InitializeSCtor(const JSHandle<JSHClass> &protoHClass, const JSHandle<JSFunction> &ctor,
                          std::string_view name, int length) const;

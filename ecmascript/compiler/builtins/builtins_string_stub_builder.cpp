@@ -2778,9 +2778,8 @@ void BuiltinsStringStubBuilder::GetStringIterator(GateRef glue, GateRef thisValu
         Label thisValueIsString(env);
         BRANCH(IsString(thisValue), &thisValueIsString, slowPath);
         Bind(&thisValueIsString);
-        GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
-        GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
-        GateRef strIterClass = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv,
+        GateRef globalEnv = GetGlobalEnv(glue);
+        GateRef strIterClass = GetGlobalEnvValue(VariableType::JS_ANY(), globalEnv,
                                                  GlobalEnv::STRING_ITERATOR_CLASS_INDEX);
         Label afterNew(env);
         NewObjectStubBuilder newBuilder(this);

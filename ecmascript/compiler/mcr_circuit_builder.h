@@ -239,9 +239,8 @@ GateRef CircuitBuilder::TaggedIsStableArray(GateRef glue, GateRef obj)
         BRANCH(IsStableArray(jsHclass), &targetIsStableArray, &exit);
         Bind(&targetIsStableArray);
         {
-            GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env_->Is32Bit()));
-            GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
-            result = GetArrayElementsGuardians(glueGlobalEnv);
+            GateRef globalEnv = GetGlobalEnv(glue);
+            result = GetArrayElementsGuardians(globalEnv);
             Jump(&exit);
         }
     }

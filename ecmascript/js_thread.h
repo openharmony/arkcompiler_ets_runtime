@@ -26,6 +26,7 @@
 #include "ecmascript/builtin_entries.h"
 #include "ecmascript/daemon/daemon_task.h"
 #include "ecmascript/global_index.h"
+#include "ecmascript/js_handle.h"
 #include "ecmascript/ic/mega_ic_cache.h"
 #include "ecmascript/js_object_resizing_strategy.h"
 #include "ecmascript/js_tagged_value.h"
@@ -317,16 +318,6 @@ public:
     void ClearException()
     {
         glueData_.exception_ = JSTaggedValue::Hole();
-    }
-
-    void SetGlobalObject(JSTaggedValue globalObject)
-    {
-        glueData_.globalObject_ = globalObject;
-    }
-
-    const GlobalEnv *GetGlobalEnv() const
-    {
-        return glueData_.glueGlobalEnv_;
     }
 
     const GlobalEnvConstants *GlobalConstants() const
@@ -654,6 +645,16 @@ public:
         return enableLazyBuiltins_;
     }
 
+    void SetInGlobalEnvInitialize(bool value)
+    {
+        inGlobalEnvInitialize_ = value;
+    }
+
+    bool InGlobalEnvInitialize() const
+    {
+        return inGlobalEnvInitialize_;
+    }
+
     void SetReadyForGCIterating(bool flag)
     {
         readyForGCIterating_ = flag;
@@ -799,15 +800,18 @@ public:
         return glueData_.stackLimit_;
     }
 
-    GlobalEnv *GetGlueGlobalEnv()
+    JSHandle<GlobalEnv> PUBLIC_API GetGlobalEnv() const;
+
+    JSTaggedValue GetCurrentEnv() const
     {
-        return glueData_.glueGlobalEnv_;
+        // change to current
+        return glueData_.currentEnv_;
     }
 
-    void SetGlueGlobalEnv(GlobalEnv *global)
+    void SetCurrentEnv(JSTaggedValue env)
     {
-        ASSERT(global != nullptr);
-        glueData_.glueGlobalEnv_ = global;
+        ASSERT(env != JSTaggedValue::Hole());
+        glueData_.currentEnv_ = env;
     }
 
     inline uintptr_t NewGlobalHandle(JSTaggedType value)
@@ -974,7 +978,6 @@ public:
     struct GlueData : public base::AlignedStruct<JSTaggedValue::TaggedTypeSize(),
                                                  BCStubEntries,
                                                  JSTaggedValue,
-                                                 JSTaggedValue,
                                                  base::AlignedPointer,
                                                  base::AlignedPointer,
                                                  base::AlignedPointer,
@@ -995,7 +998,7 @@ public:
                                                  base::AlignedPointer,
                                                  base::AlignedUint64,
                                                  base::AlignedUint64,
-                                                 base::AlignedPointer,
+                                                 JSTaggedValue,
                                                  base::AlignedPointer,
                                                  base::AlignedUint64,
                                                  base::AlignedUint64,
@@ -1029,7 +1032,6 @@ public:
         enum class Index : size_t {
             BcStubEntriesIndex = 0,
             ExceptionIndex,
-            GlobalObjIndex,
             CurrentFrameIndex,
             LeaveFrameIndex,
             LastFpIndex,
@@ -1050,7 +1052,7 @@ public:
             FrameBaseIndex,
             StackStartIndex,
             StackLimitIndex,
-            GlueGlobalEnvIndex,
+            CurrentEnvIndex,
             GlobalConstIndex,
             AllowCrossThreadExecutionIndex,
             InterruptVectorIndex,
@@ -1088,11 +1090,6 @@ public:
         static size_t GetExceptionOffset(bool isArch32)
         {
             return GetOffset<static_cast<size_t>(Index::ExceptionIndex)>(isArch32);
-        }
-
-        static size_t GetGlobalObjOffset(bool isArch32)
-        {
-            return GetOffset<static_cast<size_t>(Index::GlobalObjIndex)>(isArch32);
         }
 
         static size_t GetGlobalConstOffset(bool isArch32)
@@ -1226,9 +1223,9 @@ public:
             return GetOffset<static_cast<size_t>(Index::StackLimitIndex)>(isArch32);
         }
 
-        static size_t GetGlueGlobalEnvOffset(bool isArch32)
+        static size_t GetCurrentEnvOffset(bool isArch32)
         {
-            return GetOffset<static_cast<size_t>(Index::GlueGlobalEnvIndex)>(isArch32);
+            return GetOffset<static_cast<size_t>(Index::CurrentEnvIndex)>(isArch32);
         }
 
         static size_t GetAllowCrossThreadExecutionOffset(bool isArch32)
@@ -1362,7 +1359,6 @@ public:
 
         alignas(EAS) BCStubEntries bcStubEntries_ {};
         alignas(EAS) JSTaggedValue exception_ {JSTaggedValue::Hole()};
-        alignas(EAS) JSTaggedValue globalObject_ {JSTaggedValue::Hole()};
         alignas(EAS) JSTaggedType *currentFrame_ {nullptr};
         alignas(EAS) JSTaggedType *leaveFrame_ {nullptr};
         alignas(EAS) JSTaggedType *lastFp_ {nullptr};
@@ -1383,7 +1379,7 @@ public:
         alignas(EAS) JSTaggedType *frameBase_ {nullptr};
         alignas(EAS) uint64_t stackStart_ {0};
         alignas(EAS) uint64_t stackLimit_ {0};
-        alignas(EAS) GlobalEnv *glueGlobalEnv_ {nullptr};
+        alignas(EAS) JSTaggedValue currentEnv_ {JSTaggedValue::Hole()};
         alignas(EAS) GlobalEnvConstants *globalConst_ {nullptr};
         alignas(EAS) bool allowCrossThreadExecution_ {false};
         alignas(EAS) volatile uint64_t interruptVector_ {0};
@@ -1478,12 +1474,11 @@ public:
     bool EraseContext(EcmaContext *context);
     void ClearVMCachedConstantPool();
 
-    bool IsAllContextsInitialized() const;
     bool IsReadyToUpdateDetector() const;
     Area *GetOrCreateRegExpCacheArea();
 
-    void InitializeBuiltinObject(const std::string& key);
-    void InitializeBuiltinObject();
+    void InitializeBuiltinObject(const JSHandle<GlobalEnv>& env, const std::string& key);
+    void InitializeBuiltinObject(const JSHandle<GlobalEnv>& env);
 
     bool FullMarkRequest() const
     {
@@ -1820,6 +1815,7 @@ private:
     VmThreadControl *vmThreadControl_ {nullptr};
     bool enableStackSourceFile_ {true};
     bool enableLazyBuiltins_ {false};
+    bool inGlobalEnvInitialize_ {false};
     bool readyForGCIterating_ {false};
     bool isUncaughtExceptionRegistered_ {false};
     // CpuProfiler
@@ -1876,6 +1872,30 @@ private:
     friend class EcmaVM;
     friend class EcmaContext;
     friend class JitVM;
+};
+class SaveEnv {
+public:
+    explicit SaveEnv(JSThread* thread): thread_(thread)
+    {
+        env_ = JSHandle<JSTaggedValue>(thread_, thread->GetCurrentEnv());
+    }
+
+    ~SaveEnv()
+    {
+        thread_->SetCurrentEnv(env_.GetTaggedValue());
+    }
+
+private:
+    JSThread* const thread_;
+    JSHandle<JSTaggedValue> env_;
+};
+
+class SaveAndSwitchEnv : public SaveEnv {
+public:
+    SaveAndSwitchEnv(JSThread* thread, JSTaggedValue newEnv): SaveEnv(thread)
+    {
+        thread->SetCurrentEnv(newEnv);
+    }
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_JS_THREAD_H

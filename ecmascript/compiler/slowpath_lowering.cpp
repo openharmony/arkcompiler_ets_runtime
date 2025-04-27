@@ -1301,11 +1301,8 @@ void SlowPathLowering::LowerLdSymbol(GateRef gate)
 
 void SlowPathLowering::LowerLdGlobal(GateRef gate)
 {
-    GateRef offset = builder_.Int64(JSThread::GlueData::GetGlobalObjOffset(false));
-    GateRef val = builder_.Int64Add(glue_, offset);
-    auto bit = LoadStoreAccessor::ToValue(MemoryAttribute::Default());
-    GateRef newGate = circuit_->NewGate(circuit_->Load(bit), VariableType::JS_ANY().GetMachineType(),
-        { builder_.GetDepend(), val }, VariableType::JS_ANY().GetGateType());
+    GateRef globalEnv = builder_.GetGlobalEnv(glue_);
+    GateRef newGate = builder_.GetGlobalEnvValue(VariableType::JS_ANY(), globalEnv, GlobalEnv::JS_GLOBAL_OBJECT_INDEX);
     ReplaceHirWithValue(gate, newGate);
 }
 

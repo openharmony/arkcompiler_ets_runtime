@@ -214,6 +214,9 @@ public:
     JSHandle<JSObject> PUBLIC_API GetJSError(const ErrorType &errorType, const char *data = nullptr,
         StackCheck needCheckStack = StackCheck::YES);
 
+    JSHandle<JSObject> NewJSError(const JSHandle<GlobalEnv> &env, const ErrorType &errorType,
+                                  const JSHandle<EcmaString> &message, StackCheck needCheckStack);
+
     JSHandle<JSObject> NewJSError(const ErrorType &errorType, const JSHandle<EcmaString> &message,
         StackCheck needCheckStack = StackCheck::YES);
 
@@ -228,6 +231,9 @@ public:
     JSHandle<StoreAOTHandler> NewStoreAOTHandler();
 
     JSHandle<JSObject> NewEmptyJSObject(uint32_t inlinedProps = JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS);
+
+    JSHandle<JSObject> NewEmptyJSObject(const JSHandle<GlobalEnv> &env,
+                                        uint32_t inlinedProps = JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS);
 
     JSHandle<JSHClass> GetHClassByFunctionKind(const JSHandle<GlobalEnv> &env, FunctionKind kind);
 
@@ -284,8 +290,7 @@ public:
                                                const JSHandle<JSTaggedValue> &object);
     JSHandle<JSPrimitiveRef> NewJSPrimitiveRef(PrimitiveType type, const JSHandle<JSTaggedValue> &object);
 
-    // get JSHClass for Ecma ClassLinker
-    JSHandle<GlobalEnv> NewGlobalEnv(JSHClass *globalEnvClass);
+    JSHandle<GlobalEnv> NewGlobalEnv(bool lazyInit = false, bool isRealm = false);
 
     // get JSHClass for Ecma ClassLinker
     JSHandle<LexicalEnv> NewLexicalEnv(int numSlots);
@@ -954,10 +959,10 @@ private:
     // used for creating Function
     JSHandle<JSFunction> NewJSFunction(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &hclass);
     JSHandle<JSHClass> CreateObjectClass(const JSHandle<TaggedArray> &keys, const JSHandle<TaggedArray> &values);
-    JSHandle<JSHClass> CreateObjectClass(const JSHandle<TaggedArray> &properties, size_t length);
+    JSHandle<JSHClass> CreateObjectClass(const JSHandle<GlobalEnv> &env,
+                                         const JSHandle<TaggedArray> &properties, size_t length);
     JSHandle<JSHClass> CreateFunctionClass(FunctionKind kind, uint32_t size, JSType type,
                                            const JSHandle<JSTaggedValue> &prototype);
-    JSHandle<JSHClass> CreateBoundFunctionClass();
     JSHandle<JSHClass> CreateDefaultClassPrototypeHClass(JSHClass *hclass);
     JSHandle<JSHClass> CreateDefaultClassConstructorHClass(JSHClass *hclass);
 

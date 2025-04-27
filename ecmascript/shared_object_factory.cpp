@@ -29,7 +29,7 @@ void ObjectFactory::NewSObjectHook() const
     static uint32_t frequency = vm_->GetJSOptions().GetForceSharedGCFrequency();
     static constexpr uint32_t CONCURRENT_MARK_FREQUENCY_FACTOR = 2;
     if (frequency == 0 || !vm_->GetJSOptions().EnableForceGC() || !vm_->IsInitialized() ||
-        !thread_->IsAllContextsInitialized()) {
+        thread_->InGlobalEnvInitialize()) {
         return;
     }
     if (count++ % frequency == 0) {

@@ -665,9 +665,8 @@ GateRef ProfilerStubBuilder::GetIterationFunctionId(GateRef glue, GateRef iterat
     Label notStringProtoIter(env);
     Label isTypedArrayProtoValues(env);
 
-    GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
-    GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
-    maybeFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, GlobalEnv::ARRAY_PROTO_VALUES_FUNCTION_INDEX);
+    GateRef globalEnv = GetGlobalEnv(glue);
+    maybeFunc = GetGlobalEnvValue(VariableType::JS_ANY(), globalEnv, GlobalEnv::ARRAY_PROTO_VALUES_FUNCTION_INDEX);
     BRANCH(Int64Equal(iterator, *maybeFunc), &isArrayProtoValues, &notArrayProtoValues);
     Bind(&isArrayProtoValues);
     {
@@ -675,7 +674,7 @@ GateRef ProfilerStubBuilder::GetIterationFunctionId(GateRef glue, GateRef iterat
         Jump(&exit);
     }
     Bind(&notArrayProtoValues);
-    maybeFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, GlobalEnv::SET_PROTO_VALUES_FUNCTION_INDEX);
+    maybeFunc = GetGlobalEnvValue(VariableType::JS_ANY(), globalEnv, GlobalEnv::SET_PROTO_VALUES_FUNCTION_INDEX);
     BRANCH(Int64Equal(iterator, *maybeFunc), &isSetProtoValues, &notSetProtoValues);
     Bind(&isSetProtoValues);
     {
@@ -683,7 +682,7 @@ GateRef ProfilerStubBuilder::GetIterationFunctionId(GateRef glue, GateRef iterat
         Jump(&exit);
     }
     Bind(&notSetProtoValues);
-    maybeFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, GlobalEnv::MAP_PROTO_ENTRIES_FUNCTION_INDEX);
+    maybeFunc = GetGlobalEnvValue(VariableType::JS_ANY(), globalEnv, GlobalEnv::MAP_PROTO_ENTRIES_FUNCTION_INDEX);
     BRANCH(Int64Equal(iterator, *maybeFunc), &isMapProtoEntries, &notMapProtoEntries);
     Bind(&isMapProtoEntries);
     {
@@ -691,7 +690,7 @@ GateRef ProfilerStubBuilder::GetIterationFunctionId(GateRef glue, GateRef iterat
         Jump(&exit);
     }
     Bind(&notMapProtoEntries);
-    maybeFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, GlobalEnv::STRING_PROTO_ITER_FUNCTION_INDEX);
+    maybeFunc = GetGlobalEnvValue(VariableType::JS_ANY(), globalEnv, GlobalEnv::STRING_PROTO_ITER_FUNCTION_INDEX);
     BRANCH(Int64Equal(iterator, *maybeFunc), &isStringProtoIter, &notStringProtoIter);
     Bind(&isStringProtoIter);
     {
@@ -699,7 +698,7 @@ GateRef ProfilerStubBuilder::GetIterationFunctionId(GateRef glue, GateRef iterat
         Jump(&exit);
     }
     Bind(&notStringProtoIter);
-    maybeFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv,
+    maybeFunc = GetGlobalEnvValue(VariableType::JS_ANY(), globalEnv,
                                   GlobalEnv::TYPED_ARRAY_PROTO_VALUES_FUNCTION_INDEX);
     BRANCH(Int64Equal(iterator, *maybeFunc), &isTypedArrayProtoValues, &exit);
     Bind(&isTypedArrayProtoValues);

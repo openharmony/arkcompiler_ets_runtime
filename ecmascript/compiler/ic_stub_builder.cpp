@@ -74,7 +74,7 @@ void ICStubBuilder::TryDesignatePrimitiveLoadIC(Label &tryDesignatePrimitive, La
 
     Bind(&tryDesignatePrimitive);
     {
-        auto primitiveFunction = GetGlobalEnvValue(VariableType::JS_ANY(), info.glueGlobalEnv, globalEnvIndex);
+        auto primitiveFunction = GetGlobalEnvValue(VariableType::JS_ANY(), info.globalEnv, globalEnvIndex);
         GateRef ctorProtoOrHC =
             Load(VariableType::JS_POINTER(), primitiveFunction, IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
         auto env = GetEnvironment();
@@ -102,17 +102,15 @@ void ICStubBuilder::TryPrimitiveLoadIC(Variable* cachedHandler, Label *tryICHand
         BRANCH(TaggedIsHeapObject(firstValue), &isHeapObject, slowPath_)
         Bind(&isHeapObject);
         {
-            GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
-            GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue_, glueGlobalEnvOffset);
-
+            GateRef globalEnv = GetGlobalEnv(glue_);
             Label isNumber(env);
             Label notNumber(env);
             TryDesignatePrimitiveLoadIC(isNumber, notNumber, PrimitiveType::PRIMITIVE_NUMBER,
-                { glueGlobalEnv, firstValue, tryICHandler, cachedHandler });
+                { globalEnv, firstValue, tryICHandler, cachedHandler });
             Bind(&notNumber);
             Label isBoolean(env);
             TryDesignatePrimitiveLoadIC(isBoolean, *slowPath_, PrimitiveType::PRIMITIVE_BOOLEAN,
-                { glueGlobalEnv, firstValue, tryICHandler, cachedHandler });
+                { globalEnv, firstValue, tryICHandler, cachedHandler });
         }
     }
 }

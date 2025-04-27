@@ -347,6 +347,7 @@ public:
     GateRef GetGlobalEnvObjHClass(GateRef env, size_t index);
     GateRef GetGlobalConstantValue(ConstantIndex index);
     GateRef GetGlobalEnvValue(VariableType type, GateRef env, size_t index);
+    GateRef GetGlobalEnv(GateRef glue);
     GateRef GetGlobalObject(GateRef glue);
     GateRef GetMethodFromFunction(GateRef function);
     GateRef GetModuleFromFunction(GateRef function);

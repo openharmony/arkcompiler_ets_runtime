@@ -44,6 +44,7 @@ void GlobalEnv::Init(JSThread *thread)
 #define INIT_JSAPI_CONTAINER(Type, Name, INDEX) Set##Name(thread, JSTaggedValue::Undefined());
     GLOBAL_ENV_CONTAINER_ITERATORS(INIT_JSAPI_CONTAINER)
 #undef INIT_JSAPI_CONTAINER
+    ClearBitField();
     SetJSThread(thread);
 }
 

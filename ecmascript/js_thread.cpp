@@ -430,15 +430,15 @@ void JSThread::Iterate(RootVisitor &visitor)
     if (!glueData_.exception_.IsHole()) {
         visitor.VisitRoot(Root::ROOT_VM, ObjectSlot(ToUintPtr(&glueData_.exception_)));
     }
+    if (!glueData_.exception_.IsHole()) {
+        visitor.VisitRoot(Root::ROOT_VM, ObjectSlot(ToUintPtr(&glueData_.currentEnv_)));
+    }
     visitor.VisitRangeRoot(Root::ROOT_VM,
         ObjectSlot(glueData_.builtinEntries_.Begin()), ObjectSlot(glueData_.builtinEntries_.End()));
 
     // visit stack roots
     FrameHandler frameHandler(this);
     frameHandler.Iterate(visitor);
-    for (EcmaContext *context : contexts_) {
-        context->Iterate(visitor);
-    }
     // visit tagged handle storage roots
     if (vm_->GetJSOptions().EnableGlobalLeakCheck()) {
         IterateHandleWithCheck(visitor);
@@ -1028,45 +1028,6 @@ void JSThread::PopContext()
 void JSThread::SwitchCurrentContext(EcmaContext *currentContext, [[maybe_unused]] bool isInIterate)
 {
     ASSERT(std::count(contexts_.begin(), contexts_.end(), currentContext));
-    glueData_.currentContext_->SetGlobalEnv(GetGlueGlobalEnv());
-    // When the glueData_.currentContext_ is not fully initialized，glueData_.globalObject_ will be hole.
-    // Assigning hole to JSGlobalObject could cause a mistake at builtins initalization.
-    if (!glueData_.globalObject_.IsHole()) {
-        glueData_.currentContext_->GetGlobalEnv()->SetJSGlobalObject(this, glueData_.globalObject_);
-    }
-    if (!currentContext->GlobalEnvIsHole()) {
-        SetGlueGlobalEnv(*(currentContext->GetGlobalEnv()));
-        /**
-         * GlobalObject has two copies, one in GlueData and one in Context.GlobalEnv, when switch context, will save
-         * GlobalObject in GlueData to CurrentContext.GlobalEnv(is this nessary?), and then switch to new context,
-         * save the GlobalObject in NewContext.GlobalEnv to GlueData.
-         * The initial value of GlobalObject in Context.GlobalEnv is Undefined, but in GlueData is Hole,
-         * so if two SharedGC happened during the builtins initalization like this, maybe will cause incorrect scene:
-         *
-         * Default:
-         * Slot for GlobalObject:              Context.GlobalEnv            GlueData
-         * value:                                 Undefined                   Hole
-         *
-         * First SharedGC(JSThread::SwitchCurrentContext), Set GlobalObject from Context.GlobalEnv to GlueData:
-         * Slot for GlobalObject:              Context.GlobalEnv            GlueData
-         * value:                                 Undefined                 Undefined
-         *
-         * Builtins Initialize, Create GlobalObject and Set to Context.GlobalEnv:
-         * Slot for GlobalObject:              Context.GlobalEnv            GlueData
-         * value:                                    Obj                    Undefined
-         *
-         * Second SharedGC(JSThread::SwitchCurrentContext), Set GlobalObject from GlueData to Context.GlobalEnv:
-         * Slot for GlobalObject:              Context.GlobalEnv            GlueData
-         * value:                                 Undefined                 Undefined
-         *
-         * So when copy values between Context.GlobalEnv and GlueData, need to check if the value is Hole in GlueData,
-         * and if is Undefined in Context.GlobalEnv, because the initial value is different.
-        */
-        if (!currentContext->GetGlobalEnv()->GetGlobalObject().IsUndefined()) {
-            SetGlobalObject(currentContext->GetGlobalEnv()->GetGlobalObject());
-        }
-    }
-
     glueData_.currentContext_ = currentContext;
 }
 
@@ -1093,6 +1054,12 @@ void JSThread::ClearVMCachedConstantPool()
     vm_->ClearCachedConstantPool();
 }
 
+JSHandle<GlobalEnv> JSThread::GetGlobalEnv() const
+{
+    // currentEnv is GlobalEnv now
+    return JSHandle<GlobalEnv>(ToUintPtr(&glueData_.currentEnv_));
+}
+
 PropertiesCache *JSThread::GetPropertiesCache() const
 {
     return glueData_.propertiesCache_;
@@ -1108,14 +1075,9 @@ MegaICCache *JSThread::GetStoreMegaICCache() const
     return glueData_.storeMegaICCache_;
 }
 
-bool JSThread::IsAllContextsInitialized() const
-{
-    return contexts_.back()->IsInitialized();
-}
-
 bool JSThread::IsReadyToUpdateDetector() const
 {
-    return !GetEnableLazyBuiltins() && IsAllContextsInitialized();
+    return !GetEnableLazyBuiltins() && !InGlobalEnvInitialize();
 }
 
 Area *JSThread::GetOrCreateRegExpCacheArea()
@@ -1126,7 +1088,7 @@ Area *JSThread::GetOrCreateRegExpCacheArea()
     return regExpCacheArea_;
 }
 
-void JSThread::InitializeBuiltinObject(const std::string& key)
+void JSThread::InitializeBuiltinObject(const JSHandle<GlobalEnv>& env, const std::string& key)
 {
     BuiltinIndex& builtins = BuiltinIndex::GetInstance();
     auto index = builtins.GetBuiltinIndex(key);
@@ -1140,7 +1102,7 @@ void JSThread::InitializeBuiltinObject(const std::string& key)
         print(obj instanceof Object); // instead of true, will print false
         ```
     */
-    auto globalObject = contexts_.back()->GetGlobalEnv()->GetGlobalObject();
+    auto globalObject = env->GetGlobalObject();
     auto jsObject = JSHandle<JSObject>(this, globalObject);
     auto box = jsObject->GetGlobalPropertyBox(this, key);
     if (box == nullptr) {
@@ -1153,11 +1115,11 @@ void JSThread::InitializeBuiltinObject(const std::string& key)
     entry.hClass_ = JSTaggedValue::Cast(hclass);
 }
 
-void JSThread::InitializeBuiltinObject()
+void JSThread::InitializeBuiltinObject(const JSHandle<GlobalEnv>& env)
 {
     BuiltinIndex& builtins = BuiltinIndex::GetInstance();
     for (auto key: builtins.GetBuiltinKeys()) {
-        InitializeBuiltinObject(key);
+        InitializeBuiltinObject(env, key);
     }
 }
 

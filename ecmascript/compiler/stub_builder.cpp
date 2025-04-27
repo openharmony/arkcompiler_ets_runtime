@@ -2387,9 +2387,8 @@ GateRef StubBuilder::LdGlobalRecord(GateRef glue, GateRef key)
     Label exit(env);
 
     DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
-    GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
-    GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
-    GateRef globalRecord = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, GlobalEnv::GLOBAL_RECORD);
+    GateRef globalEnv = GetGlobalEnv(glue);
+    GateRef globalRecord = GetGlobalEnvValue(VariableType::JS_ANY(), globalEnv, GlobalEnv::GLOBAL_RECORD);
     GateRef recordEntry = FindEntryFromHashTable<NameDictionary>(glue, globalRecord, key);
     Label foundInGlobalRecord(env);
     BRANCH(Int32NotEqual(recordEntry, Int32(-1)), &foundInGlobalRecord, &exit);
@@ -3697,9 +3696,8 @@ GateRef StubBuilder::GetPropertyByName(GateRef glue,
                 }
                 Bind(&getStringPrototype);
                 {
-                    GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
-                    GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
-                    GateRef stringPrototype = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv,
+                    GateRef globalEnv = GetGlobalEnv(glue);
+                    GateRef stringPrototype = GetGlobalEnvValue(VariableType::JS_ANY(), globalEnv,
                                                                 GlobalEnv::STRING_PROTOTYPE_INDEX);
                     holder = stringPrototype;
                     BRANCH(TaggedIsHeapObject(*holder), &loopEnd, &afterLoop);
@@ -4241,9 +4239,8 @@ void StubBuilder::NotifyArrayPrototypeChangedGuardians(GateRef glue, GateRef rec
     Label subEntry(env);
     env->SubCfgEntry(&subEntry);
     Label exit(env);
-    GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
-    GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
-    GateRef guardians = GetArrayElementsGuardians(glueGlobalEnv);
+    GateRef globalEnv = GetGlobalEnv(glue);
+    GateRef guardians = GetArrayElementsGuardians(globalEnv);
 
     Label isGuardians(env);
     BRANCH(Equal(guardians, True()), &isGuardians, &exit);
@@ -4256,14 +4253,14 @@ void StubBuilder::NotifyArrayPrototypeChangedGuardians(GateRef glue, GateRef rec
         {
             Label isEnvPrototype(env);
             GateRef isEnvPrototypeCheck = LogicOrBuilder(env)
-                .Or(Equal(GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv,
+                .Or(Equal(GetGlobalEnvValue(VariableType::JS_ANY(), globalEnv,
                                             GlobalEnv::OBJECT_FUNCTION_PROTOTYPE_INDEX), receiver))
-                .Or(Equal(GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv,
+                .Or(Equal(GetGlobalEnvValue(VariableType::JS_ANY(), globalEnv,
                                             GlobalEnv::ARRAY_PROTOTYPE_INDEX), receiver))
                 .Done();
             BRANCH(isEnvPrototypeCheck, &isEnvPrototype, &exit);
             Bind(&isEnvPrototype);
-            SetArrayElementsGuardians(glue, glueGlobalEnv, False());
+            SetArrayElementsGuardians(glue, globalEnv, False());
             Jump(&exit);
         }
     }
@@ -5925,9 +5922,8 @@ GateRef StubBuilder::InstanceOf(
     Bind(&targetIsEcmaObject);
     {
         // 2.Let instOfHandler be GetMethod(target, @@hasInstance).
-        GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
-        GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
-        GateRef hasInstanceSymbol = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv,
+        GateRef globalEnv = GetGlobalEnv(glue);
+        GateRef hasInstanceSymbol = GetGlobalEnvValue(VariableType::JS_ANY(), globalEnv,
                                                       GlobalEnv::HASINSTANCE_SYMBOL_INDEX);
         GateRef instof = GetMethod(glue, target, hasInstanceSymbol, profileTypeInfo, slotId);
 
@@ -5982,9 +5978,8 @@ void StubBuilder::TryFastHasInstance(GateRef glue, GateRef instof, GateRef targe
 {
     auto env = GetEnvironment();
 
-    GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
-    GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
-    GateRef function = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, GlobalEnv::HASINSTANCE_FUNCTION_INDEX);
+    GateRef globalEnv = GetGlobalEnv(glue);
+    GateRef function = GetGlobalEnvValue(VariableType::JS_ANY(), globalEnv, GlobalEnv::HASINSTANCE_FUNCTION_INDEX);
 
     Label slowPath(env);
     Label tryFastPath(env);
@@ -8497,9 +8492,8 @@ GateRef StubBuilder::GetFunctionPrototype(GateRef glue, size_t index)
     Label isHeapObject(env);
     Label isJSHclass(env);
 
-    GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env_->Is32Bit()));
-    GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
-    GateRef func = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, index);
+    GateRef globalEnv = GetGlobalEnv(glue);
+    GateRef func = GetGlobalEnvValue(VariableType::JS_ANY(), globalEnv, index);
     GateRef protoOrHclass = Load(VariableType::JS_ANY(), func, IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
     result = protoOrHclass;
     BRANCH(TaggedIsHeapObject(protoOrHclass), &isHeapObject, &exit);
@@ -9313,29 +9307,23 @@ GateRef StubBuilder::ConstructorCheck(GateRef glue, GateRef ctor, GateRef outPut
 
 GateRef StubBuilder::CalIteratorKey(GateRef glue)
 {
-    auto env = GetEnvironment();
-    GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
-    GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
-    GateRef iteratorKey = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, GlobalEnv::ITERATOR_SYMBOL_INDEX);
+    GateRef globalEnv = GetGlobalEnv(glue);
+    GateRef iteratorKey = GetGlobalEnvValue(VariableType::JS_ANY(), globalEnv, GlobalEnv::ITERATOR_SYMBOL_INDEX);
     return iteratorKey;
 }
 
 void StubBuilder::FuncOrHClassCompare(GateRef glue, GateRef funcOrHClass,
                                       Label *match, Label *slowPath, size_t index)
 {
-    auto env = GetEnvironment();
-    GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
-    GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
-    GateRef globalRecord = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, index);
+    GateRef globalEnv = GetGlobalEnv(glue);
+    GateRef globalRecord = GetGlobalEnvValue(VariableType::JS_ANY(), globalEnv, index);
     BRANCH(Equal(globalRecord, funcOrHClass), match, slowPath);
 }
 
 GateRef StubBuilder::IsDetectorInvalid(GateRef glue, size_t indexDetector)
 {
-    auto env = GetEnvironment();
-    GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
-    GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
-    GateRef value = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, indexDetector);
+    GateRef globalEnv = GetGlobalEnv(glue);
+    GateRef value = GetGlobalEnvValue(VariableType::JS_ANY(), globalEnv, indexDetector);
     GateRef bitFieldOffset = IntPtr(MarkerCell::BIT_FIELD_OFFSET);
     GateRef bitField = Load(VariableType::INT32(), value, bitFieldOffset);
     GateRef mask = Int32(1LLU << (MarkerCell::IS_DETECTOR_INVALID_BITS - 1));
@@ -9350,12 +9338,11 @@ void StubBuilder::HClassCompareAndCheckDetector(GateRef glue, GateRef hclass,
     Label matchHClass(env);
     FuncOrHClassCompare(glue, hclass, &matchHClass, slowPath, indexHClass);
     Bind(&matchHClass);
-    GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
-    GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
+    GateRef globalEnv = GetGlobalEnv(glue);
     if (isMap) {
-        BRANCH(GetMapIteratorDetector(glueGlobalEnv), slowPath, match);
+        BRANCH(GetMapIteratorDetector(globalEnv), slowPath, match);
     } else {
-        BRANCH(GetSetIteratorDetector(glueGlobalEnv), slowPath, match);
+        BRANCH(GetSetIteratorDetector(globalEnv), slowPath, match);
     }
 }
 
@@ -9380,9 +9367,8 @@ void StubBuilder::TryFastGetArrayIterator(GateRef glue, GateRef hclass, GateRef 
     BRANCH(Int32Equal(jsType, Int32(static_cast<int32_t>(JSType::JS_ARRAY))), &tryArray, slowPath2);
     Bind(&tryArray);
     {
-        GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
-        GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
-        BRANCH(GetArrayIteratorDetector(glueGlobalEnv), slowPath2, &arrayDetectorValid);
+        GateRef globalEnv = GetGlobalEnv(glue);
+        BRANCH(GetArrayIteratorDetector(globalEnv), slowPath2, &arrayDetectorValid);
         Bind(&arrayDetectorValid);
         {
             BuiltinsArrayStubBuilder arrayStubBuilder(this);
@@ -10095,9 +10081,8 @@ GateRef StubBuilder::IsStableJSArguments(GateRef glue, GateRef obj)
         BRANCH(IsStableArguments(jsHclass), &targetIsStableArguments, &exit);
         Bind(&targetIsStableArguments);
         {
-            GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
-            GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
-            result = GetArrayElementsGuardians(glueGlobalEnv);
+            GateRef globalEnv = GetGlobalEnv(glue);
+            result = GetArrayElementsGuardians(globalEnv);
             Jump(&exit);
         }
     }
@@ -10127,9 +10112,8 @@ GateRef StubBuilder::IsStableJSArray(GateRef glue, GateRef obj)
             BRANCH_UNLIKELY(IsJSArrayPrototypeModified(jsHClass), &exit, &isPrototypeNotModified);
             Bind(&isPrototypeNotModified);
             {
-                GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
-                GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
-                GateRef guardians = GetArrayElementsGuardians(glueGlobalEnv);
+                GateRef globalEnv = GetGlobalEnv(glue);
+                GateRef guardians = GetArrayElementsGuardians(globalEnv);
                 result.WriteVariable(guardians);
                 Jump(&exit);
             }
@@ -12317,9 +12301,8 @@ GateRef StubBuilder::ToPrimitive(GateRef glue, GateRef value, PreferredPrimitive
     {
         Label isUndefined(env);
         Label notUndefined(env);
-        GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
-        GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
-        GateRef primitiveKey = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv,
+        GateRef globalEnv = GetGlobalEnv(glue);
+        GateRef primitiveKey = GetGlobalEnvValue(VariableType::JS_ANY(), globalEnv,
                                                  GlobalEnv::TOPRIMITIVE_SYMBOL_INDEX);
         GateRef name = FastGetPropertyByName(glue, value, primitiveKey, ProfileOperation(), hir);
         BRANCH(HasPendingException(glue), &hasException, &notHasException);
