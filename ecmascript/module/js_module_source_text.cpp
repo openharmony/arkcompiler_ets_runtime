@@ -382,7 +382,8 @@ JSHandle<JSTaggedValue> SourceTextModule::LoadNativeModuleMayThrowError(JSThread
     if (exportObject->IsNativeModuleFailureInfo() || exportObject->IsUndefined()) {
         CString errorMsg = "load native module failed.";
         LOG_FULL(ERROR) << errorMsg.c_str();
-        THROW_REFERENCE_ERROR_AND_RETURN(thread, errorMsg.c_str(), thread->GlobalConstants()->GetHandledUndefined());
+        auto error = GlobalError::ReferenceError(thread, errorMsg.c_str());
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, thread->GlobalConstants()->GetHandledUndefined());
     }
     return exportObject;
 }
