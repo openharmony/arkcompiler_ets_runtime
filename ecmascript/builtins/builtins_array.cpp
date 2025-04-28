@@ -1767,7 +1767,7 @@ JSTaggedValue BuiltinsArray::Reduce(EcmaRuntimeCallInfo *argv)
 
     // 6. If len is 0 and initialValue is not present, throw a TypeError exception.
     if (len == 0 && argc < 2) {  // 2:2 means the number of parameters
-        THROW_TYPE_ERROR_AND_RETURN(thread, "out of range.", JSTaggedValue::Exception());
+        THROW_TYPE_ERROR_AND_RETURN(thread, "Reduce of empyt array with no initial value", JSTaggedValue::Exception());
     }
 
     // 7. Let k be 0.

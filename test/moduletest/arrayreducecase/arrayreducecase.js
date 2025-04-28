@@ -87,3 +87,11 @@ function p4(a) {
 
 const promiseArr = [p1, p2, f3, p4];
 runPromiseInSequence(promiseArr, 10).then(console.log); // 1200
+
+let array_empty = [];
+try {
+  let reducedValue = array_empty.reduce((acc, curr) => acc + curr);
+  print("reducedValue");
+} catch (error) {
+  print(error);
+}
