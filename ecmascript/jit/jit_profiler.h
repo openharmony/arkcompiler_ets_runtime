@@ -157,6 +157,7 @@ private:
     void AddBuiltinsInfo(ApEntityId abcId, int32_t bcOffset, JSHClass *receiver,
                          JSHClass *transitionHClass, OnHeapMode onHeap = OnHeapMode::NONE,
                          bool everOutOfBounds = false);
+    bool IsTypedArrayRootHClass(JSType jsType, OnHeapMode mode, JSHClass *receiver);
     void AddBuiltinsGlobalInfo(ApEntityId abcId, int32_t bcOffset, GlobalIndex globalId);
     bool AddBuiltinsInfoByNameInInstance(ApEntityId abcId, int32_t bcOffset, JSHClass *receiver);
     bool AddBuiltinsInfoByNameInProt(ApEntityId abcId, int32_t bcOffset, JSHClass *receiver, JSHClass *hold);
@@ -190,6 +191,16 @@ private:
     inline void UpdateBcOffsetBoolWithNearSlotId(uint32_t offset, uint32_t slotId);
 
     void Clear();
+
+    inline void SetCurrentGlobalEnv(JSHandle<GlobalEnv> env)
+    {
+        env_ = env;
+    }
+
+    inline const JSHandle<GlobalEnv> GetCurrentGlobalEnv()
+    {
+        return env_;
+    }
 
     EcmaVM *vm_ { nullptr };
     JSThread *mainThread_ {nullptr};

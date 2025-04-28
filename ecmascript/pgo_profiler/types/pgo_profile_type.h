@@ -249,6 +249,11 @@ public:
         return ProfileType(abcId, id, Kind::BuiltinsId, false, everOutOfBounds);
     }
 
+    static ProfileType CreateInvalid(ApEntityId abcId)
+    {
+        return ProfileType(abcId, 0, Kind::InvalidId);
+    }
+
     static ProfileType CreateBuiltins(ApEntityId abcId, JSType type)
     {
         auto id = BuiltinsId().SetBuiltinsId(type).GetId();
