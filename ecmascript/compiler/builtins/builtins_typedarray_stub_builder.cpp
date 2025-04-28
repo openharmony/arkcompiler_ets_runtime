@@ -3669,8 +3669,7 @@ GateRef BuiltinsTypedArrayStubBuilder::GetOnHeapHclassFromType(GateRef glue, Gat
     env->SubCfgEntry(&entry);
 
     DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
-    GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
-    GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
+    GateRef globalEnv = GetGlobalEnv(glue);
     Label slowPath(env);
     Label exit(env);
 
@@ -3679,11 +3678,11 @@ GateRef BuiltinsTypedArrayStubBuilder::GetOnHeapHclassFromType(GateRef glue, Gat
         case DataViewType::TYPE:                                                        \
         {                                                                               \
             Label isEqual(env);                                                         \
-            GateRef hclass = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv,   \
+            GateRef hclass = GetGlobalEnvValue(VariableType::JS_ANY(), globalEnv,   \
                 GlobalEnv::TYPE##_ARRAY_ROOT_HCLASS_INDEX);                             \
             BRANCH(IntPtrEqual(objHclass, hclass), &isEqual, &slowPath);                \
             Bind(&isEqual);                                                             \
-            result = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv,           \
+            result = GetGlobalEnvValue(VariableType::JS_ANY(), globalEnv,           \
                 GlobalEnv::TYPE##_ARRAY_ROOT_HCLASS_ON_HEAP_INDEX);                     \
             Jump(&exit);                                                                \
             break;                                                                      \

@@ -38,7 +38,6 @@ class File;
 }  // namespace panda_file
 
 namespace ecmascript {
-class GlobalEnv;
 class ObjectFactory;
 class EcmaRuntimeStat;
 class JSPandaFileManager;
@@ -82,34 +81,15 @@ public:
         return vm_;
     }
 
-    bool Initialize();
-
     static EcmaContext *ConstCast(const EcmaContext *context)
     {
         return const_cast<EcmaContext *>(context);
-    }
-
-    bool IsInitialized() const
-    {
-        return initialized_;
     }
 
     ARK_INLINE JSThread *GetJSThread() const
     {
         return thread_;
     }
-
-    JSHandle<GlobalEnv> GetGlobalEnv() const;
-    bool GlobalEnvIsHole()
-    {
-        return globalEnv_.IsHole();
-    }
-
-    void Iterate(RootVisitor &v);
-    static void MountContext(JSThread *thread);
-    static void UnmountContext(JSThread *thread);
-
-    void SetGlobalEnv(GlobalEnv* global);
 
     void ClearKeptObjects();
     void AddToKeptObjects(JSHandle<JSTaggedValue> value);
@@ -125,15 +105,7 @@ private:
     JSThread *thread_{nullptr};
     EcmaVM *vm_{nullptr};
 
-    bool initialized_ {false};
     ObjectFactory *factory_ {nullptr};
-
-    // VM execution states.
-    JSTaggedValue globalEnv_ {JSTaggedValue::Hole()};
-
-    // Join Stack
-    static constexpr uint32_t MIN_JOIN_STACK_SIZE = 2;
-    CVector<JSTaggedValue> joinStack_ {JSTaggedValue::Hole(), JSTaggedValue::Hole()};
 
     friend class JSPandaFileExecutor;
     friend class ObjectFactory;

@@ -797,9 +797,8 @@ GateRef MCRLowering::ConvertTaggedDoubleToFloat64(GateRef gate)
 void MCRLowering::LowerGetGlobalEnv(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
-    GateRef glueGlobalEnvOffset = builder_.IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(false));
-    GateRef glueGlobalEnv = builder_.Load(VariableType::JS_POINTER(), glue_, glueGlobalEnvOffset);
-    acc_.ReplaceGate(gate, Circuit::NullGate(), builder_.GetDepend(), glueGlobalEnv);
+    GateRef globalEnv = builder_.GetGlobalEnv(glue_);
+    acc_.ReplaceGate(gate, Circuit::NullGate(), builder_.GetDepend(), globalEnv);
 }
 
 void MCRLowering::LowerGetGlobalEnvObj(GateRef gate)

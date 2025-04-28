@@ -665,14 +665,13 @@ void LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::Gen
     Bind(&newTargetFunction);
     Label fastGetHClass(env);
     Label intialHClassIsHClass(env);
-    GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
-    GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue_, glueGlobalEnvOffset);
+    GateRef globalEnv = GetGlobalEnv(glue_);
     GateRef mapOrSetFunc;
     if constexpr (std::is_same_v<LinkedHashTableType, LinkedHashMap>) {
-        mapOrSetFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv,
+        mapOrSetFunc = GetGlobalEnvValue(VariableType::JS_ANY(), globalEnv,
                                          GlobalEnv::BUILTINS_MAP_FUNCTION_INDEX);
     } else if constexpr (std::is_same_v<LinkedHashTableType, LinkedHashSet>) {
-        mapOrSetFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv,
+        mapOrSetFunc = GetGlobalEnvValue(VariableType::JS_ANY(), globalEnv,
                                          GlobalEnv::BUILTINS_SET_FUNCTION_INDEX);
     }
     GateRef newTargetHClass = Load(VariableType::JS_ANY(), newTarget, IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));

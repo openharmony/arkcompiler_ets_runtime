@@ -583,9 +583,7 @@ static void GeneratePrimitiveTypeCheck(CircuitBuilder &builder, GateRef receiver
 
 GateRef TypedBytecodeLowering::GetPrimitiveTypeProto(PrimitiveType primitiveType)
 {
-    GateRef glueGlobalEnvOffset =
-        builder_.IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(builder_.GetCurrentEnvironment()->Is32Bit()));
-    GateRef glueGlobalEnv = builder_.Load(VariableType::NATIVE_POINTER(), glue_, glueGlobalEnvOffset);
+    GateRef globalEnv = builder_.GetGlobalEnv(glue_);
     size_t index = -1;
     if (primitiveType == PrimitiveType::PRIMITIVE_BOOLEAN) {
         index = GlobalEnv::BOOLEAN_PROTOTYPE_INDEX;
@@ -596,7 +594,7 @@ GateRef TypedBytecodeLowering::GetPrimitiveTypeProto(PrimitiveType primitiveType
         UNREACHABLE();
     }
     ASSERT(index != static_cast<size_t>(-1));
-    return builder_.GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, index);
+    return builder_.GetGlobalEnvValue(VariableType::JS_ANY(), globalEnv, index);
 }
 
 void TypedBytecodeLowering::PolyPrimitiveTypeCheckAndLoad(LoadObjByNameDataInfo &info,

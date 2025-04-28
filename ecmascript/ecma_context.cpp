@@ -62,29 +62,6 @@ bool EcmaContext::Destroy(EcmaContext *context)
     return false;
 }
 
-bool EcmaContext::Initialize()
-{
-    LOG_ECMA(DEBUG) << "EcmaContext::Initialize";
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "EcmaContext::Initialize");
-    [[maybe_unused]] EcmaHandleScope scope(thread_);
-
-    const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
-    JSHandle<JSHClass> hClassHandle = JSHandle<JSHClass>(thread_, globalConst->GetHClassClass());
-    JSHandle<JSHClass> globalEnvClass = factory_->NewEcmaHClass(
-        *hClassHandle,
-        GlobalEnv::SIZE,
-        JSType::GLOBAL_ENV);
-    JSHandle<GlobalEnv> globalEnv = factory_->NewGlobalEnv(*globalEnvClass);
-    globalEnv->Init(thread_);
-    globalEnv_ = globalEnv.GetTaggedValue();
-    Builtins builtins;
-    bool builtinsLazyEnabled = vm_->GetJSOptions().IsWorker() && vm_->GetJSOptions().GetEnableBuiltinsLazy();
-    thread_->SetEnableLazyBuiltins(builtinsLazyEnabled);
-    builtins.Initialize(globalEnv, thread_, builtinsLazyEnabled);
-    initialized_ = true;
-    return true;
-}
-
 EcmaContext::~EcmaContext()
 {
     if (vm_->IsEnableBaselineJit() || vm_->IsEnableFastJit()) {
@@ -102,38 +79,10 @@ EcmaContext::~EcmaContext()
     }
 }
 
-void EcmaContext::SetGlobalEnv(GlobalEnv *global)
-{
-    // In jsthread iteration, SwitchCurrentContext is called to iterate each context.
-    // If the target context is not fully initialized, the variable "global" will be nullptr.
-    if (global != nullptr) {
-        globalEnv_ = JSTaggedValue(global);
-    }
-}
-
-JSHandle<GlobalEnv> EcmaContext::GetGlobalEnv() const
-{
-    return JSHandle<GlobalEnv>(reinterpret_cast<uintptr_t>(&globalEnv_));
-}
-
-void EcmaContext::MountContext(JSThread *thread)
-{
-    EcmaContext *context = EcmaContext::CreateAndInitialize(thread);
-    thread->SwitchCurrentContext(context);
-}
-
-void EcmaContext::UnmountContext(JSThread *thread)
-{
-    EcmaContext *context = thread->GetCurrentEcmaContext();
-    thread->PopContext();
-    Destroy(context);
-}
-
 EcmaContext *EcmaContext::CreateAndInitialize(JSThread *thread)
 {
     EcmaContext *context = EcmaContext::Create(thread);
     thread->PushContext(context);
-    context->Initialize();
     return context;
 }
 
@@ -144,11 +93,6 @@ void EcmaContext::CheckAndDestroy(JSThread *thread, EcmaContext *context)
         return;
     }
     LOG_ECMA(FATAL) << "CheckAndDestroy a nonexistent context.";
-}
-
-void EcmaContext::Iterate(RootVisitor &v)
-{
-    v.VisitRoot(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&globalEnv_)));
 }
 
 #if defined(CROSS_PLATFORM) && defined(ANDROID_PLATFORM)
@@ -162,10 +106,10 @@ bool EcmaContext::LoadAOTFiles(const std::string& aotFileName,
 
 void EcmaContext::ClearKeptObjects()
 {
-    if (LIKELY(GetGlobalEnv()->GetTaggedWeakRefKeepObjects().IsUndefined())) {
+    if (LIKELY(thread_->GetGlobalEnv()->GetTaggedWeakRefKeepObjects().IsUndefined())) {
         return;
     }
-    GetGlobalEnv()->SetWeakRefKeepObjects(thread_, JSTaggedValue::Undefined());
+    thread_->GetGlobalEnv()->SetWeakRefKeepObjects(thread_, JSTaggedValue::Undefined());
 }
 
 void EcmaContext::AddToKeptObjects(JSHandle<JSTaggedValue> value)
@@ -174,7 +118,7 @@ void EcmaContext::AddToKeptObjects(JSHandle<JSTaggedValue> value)
         return;
     }
 
-    JSHandle<GlobalEnv> globalEnv = GetGlobalEnv();
+    JSHandle<GlobalEnv> globalEnv = thread_->GetGlobalEnv();
     JSHandle<LinkedHashSet> linkedSet;
     if (globalEnv->GetWeakRefKeepObjects()->IsUndefined()) {
         linkedSet = LinkedHashSet::Create(thread_);

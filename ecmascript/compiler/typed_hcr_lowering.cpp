@@ -410,23 +410,23 @@ void TypedHCRLowering::LowerTypedArrayCheck(GateRef gate)
     SetDeoptTypeInfo(builtinType, deoptType, typedArrayRootHclassIndex, typedArrayRootHclassOnHeapIndex);
 
     GateRef frameState = GetFrameState(gate);
-    GateRef glueGlobalEnv = builder_.GetGlobalEnv();
+    GateRef globalEnv = builder_.GetGlobalEnv();
     GateRef receiver = acc_.GetValueIn(gate, 0);
     builder_.HeapObjectCheck(receiver, frameState);
     GateRef receiverHClass = builder_.LoadHClassByConstOffset(receiver);
 
     OnHeapMode onHeapMode = accessor.GetOnHeapMode();
     if (OnHeap::IsOnHeap(onHeapMode)) {
-        GateRef rootOnHeapHclass = builder_.GetGlobalEnvObj(glueGlobalEnv, typedArrayRootHclassOnHeapIndex);
+        GateRef rootOnHeapHclass = builder_.GetGlobalEnvObj(globalEnv, typedArrayRootHclassOnHeapIndex);
         GateRef check = builder_.Equal(receiverHClass, rootOnHeapHclass);
         builder_.DeoptCheck(check, frameState, deoptType);
     } else if (OnHeap::IsNotOnHeap(onHeapMode)) {
-        GateRef rootHclass = builder_.GetGlobalEnvObj(glueGlobalEnv, typedArrayRootHclassIndex);
+        GateRef rootHclass = builder_.GetGlobalEnvObj(globalEnv, typedArrayRootHclassIndex);
         GateRef check = builder_.Equal(receiverHClass, rootHclass);
         builder_.DeoptCheck(check, frameState, deoptType);
     } else {
-        GateRef rootHclass = builder_.GetGlobalEnvObj(glueGlobalEnv, typedArrayRootHclassIndex);
-        GateRef rootOnHeapHclass = builder_.GetGlobalEnvObj(glueGlobalEnv, typedArrayRootHclassOnHeapIndex);
+        GateRef rootHclass = builder_.GetGlobalEnvObj(globalEnv, typedArrayRootHclassIndex);
+        GateRef rootOnHeapHclass = builder_.GetGlobalEnvObj(globalEnv, typedArrayRootHclassOnHeapIndex);
         GateRef check1 = builder_.Equal(receiverHClass, rootHclass);
         GateRef check2 = builder_.Equal(receiverHClass, rootOnHeapHclass);
         builder_.DeoptCheck(builder_.BitOr(check1, check2), frameState, deoptType);
@@ -469,8 +469,8 @@ void TypedHCRLowering::LowerEcmaMapCheck(GateRef gate)
     GateRef hclass = builder_.LoadHClassByConstOffset(receiver);
 
     size_t mapHclassIndex = GlobalEnv::MAP_CLASS_INDEX;
-    GateRef glueGlobalEnv = builder_.GetGlobalEnv();
-    GateRef mapHclass = builder_.GetGlobalEnvObj(glueGlobalEnv, mapHclassIndex);
+    GateRef globalEnv = builder_.GetGlobalEnv();
+    GateRef mapHclass = builder_.GetGlobalEnvObj(globalEnv, mapHclassIndex);
     GateRef isMap = builder_.Equal(hclass, mapHclass, "Check HClass");
 
     builder_.DeoptCheck(isMap, frameState, DeoptType::ISNOTMAP);
@@ -1992,11 +1992,9 @@ void TypedHCRLowering::LowerArrayConstructorCheck(GateRef gate, GateRef glue)
         builder_.Bind(&isJSFunction);
         {
             Label getHclass(&builder_);
-            GateRef glueGlobalEnvOffset = builder_.IntPtr(
-                JSThread::GlueData::GetGlueGlobalEnvOffset(builder_.GetCurrentEnvironment()->Is32Bit()));
-            GateRef glueGlobalEnv = builder_.Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
+            GateRef globalEnv = builder_.GetGlobalEnv(glue);
             GateRef arrayFunc =
-                builder_.GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, GlobalEnv::ARRAY_FUNCTION_INDEX);
+                builder_.GetGlobalEnvValue(VariableType::JS_ANY(), globalEnv, GlobalEnv::ARRAY_FUNCTION_INDEX);
             check = builder_.Equal(arrayFunc, newTarget);
             BRANCH_CIR(*check, &getHclass, &exit);
             builder_.Bind(&getHclass);
@@ -2105,11 +2103,9 @@ void TypedHCRLowering::LowerFloat32ArrayConstructorCheck(GateRef gate, GateRef g
     Environment env(gate, circuit_, &builder_);
     GateRef frameState = GetFrameState(gate);
     GateRef newTarget = acc_.GetValueIn(gate, 0);
-    GateRef glueGlobalEnvOffset = builder_.IntPtr(
-        JSThread::GlueData::GetGlueGlobalEnvOffset(builder_.GetCurrentEnvironment()->Is32Bit()));
-    GateRef glueGlobalEnv = builder_.Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
+    GateRef globalEnv = builder_.GetGlobalEnv(glue);
     GateRef arrayFunc =
-        builder_.GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, GlobalEnv::FLOAT32_ARRAY_FUNCTION_INDEX);
+        builder_.GetGlobalEnvValue(VariableType::JS_ANY(), globalEnv, GlobalEnv::FLOAT32_ARRAY_FUNCTION_INDEX);
     GateRef check = builder_.Equal(arrayFunc, newTarget);
     builder_.DeoptCheck(check, frameState, DeoptType::NEWBUILTINCTORFLOAT32ARRAY);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
@@ -2192,10 +2188,8 @@ void TypedHCRLowering::LowerFloat32ArrayConstructor(GateRef gate, GateRef glue)
     }
     builder_.Bind(&arrayCreate);
     {
-        GateRef glueGlobalEnvOffset = builder_.IntPtr(
-            JSThread::GlueData::GetGlueGlobalEnvOffset(builder_.GetCurrentEnvironment()->Is32Bit()));
-        GateRef glueGlobalEnv = builder_.Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
-        GateRef thisObj = newBuilder.NewFloat32ArrayObj(glue, glueGlobalEnv);
+        GateRef globalEnv = builder_.GetGlobalEnv(glue);
+        GateRef thisObj = newBuilder.NewFloat32ArrayObj(glue, globalEnv);
         GateRef argc = builder_.Int64(4); // 4: means func newtarget thisObj arg0
         GateRef argv = builder_.IntPtr(0);
         std::vector<GateRef> args { glue, argc, argv, ctor, ctor, thisObj, arg0 };
@@ -2242,11 +2236,9 @@ void TypedHCRLowering::LowerObjectConstructorCheck(GateRef gate, GateRef glue)
         builder_.Bind(&isJSFunction);
         {
             Label getHclass(&builder_);
-            GateRef glueGlobalEnvOffset = builder_.IntPtr(
-                JSThread::GlueData::GetGlueGlobalEnvOffset(builder_.GetCurrentEnvironment()->Is32Bit()));
-            GateRef glueGlobalEnv = builder_.Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
+            GateRef globalEnv = builder_.GetGlobalEnv(glue);
             GateRef targetFunc =
-                builder_.GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, GlobalEnv::OBJECT_FUNCTION_INDEX);
+                builder_.GetGlobalEnvValue(VariableType::JS_ANY(), globalEnv, GlobalEnv::OBJECT_FUNCTION_INDEX);
             check = builder_.Equal(targetFunc, newTarget);
             BRANCH_CIR(*check, &getHclass, &exit);
             builder_.Bind(&getHclass);
@@ -2336,11 +2328,9 @@ void TypedHCRLowering::LowerObjectConstructor(GateRef gate, GateRef glue)
                 BRANCH_CIR(builder_.TaggedIsUndefinedOrNull(value), &isNullOrUndefined, &slowPath);
                 builder_.Bind(&isNullOrUndefined);
                 {
-                    GateRef glueGlobalEnvOffset = builder_.IntPtr(
-                        JSThread::GlueData::GetGlueGlobalEnvOffset(builder_.GetCurrentEnvironment()->Is32Bit()));
-                    GateRef glueGlobalEnv = builder_.Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
+                    GateRef globalEnv = builder_.GetGlobalEnv(glue);
                     GateRef objectFunctionPrototype = builder_.GetGlobalEnvValue(VariableType::JS_ANY(),
-                        glueGlobalEnv, GlobalEnv::OBJECT_FUNCTION_PROTOTYPE_INDEX);
+                        globalEnv, GlobalEnv::OBJECT_FUNCTION_PROTOTYPE_INDEX);
                     res = builder_.OrdinaryNewJSObjectCreate(glue, objectFunctionPrototype);
                     builder_.Jump(&exit);
                 }
@@ -2379,11 +2369,9 @@ void TypedHCRLowering::LowerBooleanConstructorCheck(GateRef gate, GateRef glue)
         builder_.Bind(&isJSFunction);
         {
             Label getHclass(&builder_);
-            GateRef glueGlobalEnvOffset = builder_.IntPtr(
-                JSThread::GlueData::GetGlueGlobalEnvOffset(builder_.GetCurrentEnvironment()->Is32Bit()));
-            GateRef glueGlobalEnv = builder_.Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
+            GateRef globalEnv = builder_.GetGlobalEnv(glue);
             GateRef booleanFunc =
-                builder_.GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, GlobalEnv::BOOLEAN_FUNCTION_INDEX);
+                builder_.GetGlobalEnvValue(VariableType::JS_ANY(), globalEnv, GlobalEnv::BOOLEAN_FUNCTION_INDEX);
             check = builder_.Equal(booleanFunc, newTarget);
             BRANCH_CIR(*check, &getHclass, &exit);
             builder_.Bind(&getHclass);
@@ -2434,9 +2422,7 @@ void TypedHCRLowering::LowerBooleanConstructor(GateRef gate, GateRef glue)
 
 GateRef TypedHCRLowering::NewJSPrimitiveRef(PrimitiveType type, GateRef glue, GateRef value)
 {
-    GateRef glueGlobalEnvOffset = builder_.IntPtr(
-        JSThread::GlueData::GetGlueGlobalEnvOffset(builder_.GetCurrentEnvironment()->Is32Bit()));
-    GateRef globalEnv = builder_.Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
+    GateRef globalEnv = builder_.GetGlobalEnv(glue);
     GateRef ctor = Circuit::NullGate();
     switch (type) {
         case PrimitiveType::PRIMITIVE_NUMBER: {

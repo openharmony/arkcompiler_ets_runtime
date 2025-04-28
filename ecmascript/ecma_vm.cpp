@@ -297,7 +297,10 @@ bool EcmaVM::Initialize()
     thread_->SetReadyForGCIterating(true);
     thread_->SetSharedMarkStatus(DaemonThread::GetInstance()->GetSharedMarkStatus());
     snapshotEnv_ = new SnapshotEnv(this);
-    context->Initialize();
+    bool builtinsLazyEnabled = GetJSOptions().IsWorker() && GetJSOptions().GetEnableBuiltinsLazy();
+    thread_->SetEnableLazyBuiltins(builtinsLazyEnabled);
+    JSHandle<GlobalEnv> globalEnv = factory_->NewGlobalEnv(builtinsLazyEnabled);
+    thread_->SetCurrentEnv(globalEnv.GetTaggedValue());
     ptManager_ = new kungfu::PGOTypeManager(this);
     optCodeProfiler_ = new OptCodeProfiler();
     if (options_.GetTypedOpProfiler()) {
@@ -315,8 +318,6 @@ bool EcmaVM::Initialize()
     thread_->SetUnsharedConstpoolsArrayLen(unsharedConstpoolsArrayLen_);
 
     snapshotEnv_->AddGlobalConstToMap();
-    thread_->SetGlueGlobalEnv(reinterpret_cast<GlobalEnv *>(context->GetGlobalEnv().GetTaggedType()));
-    thread_->SetGlobalObject(GetGlobalEnv()->GetGlobalObject());
     thread_->SetCurrentEcmaContext(context);
     GenerateInternalNativeMethods();
     quickFixManager_ = new QuickFixManager();
@@ -594,11 +595,6 @@ void EcmaVM::SetRuntimeStatEnable(bool flag)
     if (runtimeStat_ != nullptr) {
         runtimeStat_->SetRuntimeStatEnabled(flag);
     }
-}
-
-JSHandle<GlobalEnv> EcmaVM::GetGlobalEnv() const
-{
-    return thread_->GetCurrentEcmaContext()->GetGlobalEnv();
 }
 
 void EcmaVM::CheckThread() const

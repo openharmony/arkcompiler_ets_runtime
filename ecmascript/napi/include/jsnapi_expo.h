@@ -1627,9 +1627,6 @@ public:
     static void SwitchCurrentContext(EcmaVM *vm, EcmaContext *context);
     static void DestroyJSContext(EcmaVM *vm, EcmaContext *context);
 
-    // context execute
-    static bool ExecuteInContext(EcmaVM *vm, const std::string &fileName, const std::string &entry,
-                                 bool needUpdate = false);
     // JS code
     static bool ExecuteForAbsolutePath(const EcmaVM *vm, const std::string &fileName,
                                        const std::string &entry, bool needUpdate = false,

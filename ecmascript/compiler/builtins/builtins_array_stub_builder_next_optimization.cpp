@@ -2416,10 +2416,8 @@ void BuiltinsArrayStubBuilder::DoConcat(GateRef glue, GateRef thisValue, GateRef
 {
     auto env = GetEnvironment();
     Label setProperties(env);
-    GateRef glueGlobalEnvOffset =
-        IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
-    GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
-    auto arrayFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv,
+    GateRef globalEnv = GetGlobalEnv(glue);
+    auto arrayFunc = GetGlobalEnvValue(VariableType::JS_ANY(), globalEnv,
         GlobalEnv::ARRAY_FUNCTION_INDEX);
     GateRef intialHClass = Load(VariableType::JS_ANY(), arrayFunc,
         IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));

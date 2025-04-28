@@ -34,9 +34,8 @@ void BuiltinsCollatorStubBuilder::ResolvedOptions(GateRef glue, GateRef thisValu
     BRANCH_LIKELY(IsJSCollator(thisValue), &isJsCollator, slowPath);
 
     Bind(&isJsCollator);
-    GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
-    GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
-    GateRef funCtor = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, GlobalEnv::OBJECT_FUNCTION_INDEX);
+    GateRef globalEnv = GetGlobalEnv(glue);
+    GateRef funCtor = GetGlobalEnvValue(VariableType::JS_ANY(), globalEnv, GlobalEnv::OBJECT_FUNCTION_INDEX);
 
     NewObjectStubBuilder newObjectStubBuilder(this);
     GateRef initialOptions = newObjectStubBuilder.NewJSObjectByConstructor(glue, funCtor, funCtor);

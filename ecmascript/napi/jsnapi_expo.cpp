@@ -5255,25 +5255,6 @@ void JSNApi::LoadAotFile(EcmaVM *vm, [[maybe_unused]] const std::string &bundleN
 }
 #endif
 
-bool JSNApi::ExecuteInContext(EcmaVM *vm, const std::string &fileName, const std::string &entry, bool needUpdate)
-{
-    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
-    LOG_ECMA(DEBUG) << "start to execute ark file in context: " << fileName;
-    ecmascript::ThreadManagedScope scope(thread);
-    EcmaContext::MountContext(thread);
-    if (!ecmascript::JSPandaFileExecutor::ExecuteFromAbcFile(thread, fileName.c_str(), entry, needUpdate)) {
-        if (thread->HasPendingException()) {
-            ecmascript::JsStackInfo::BuildCrashInfo(thread);
-            thread->HandleUncaughtException();
-        }
-        LOG_ECMA(ERROR) << "Cannot execute ark file '" << fileName
-                        << "' with entry '" << entry << "'" << std::endl;
-        return false;
-    }
-    EcmaContext::UnmountContext(thread);
-    return true;
-}
-
 // function for bundle abc
 bool JSNApi::ExecuteForAbsolutePath(const EcmaVM *vm, const std::string &fileName, const std::string &entry,
                                     bool needUpdate, const ecmascript::ExecuteTypes &executeType)

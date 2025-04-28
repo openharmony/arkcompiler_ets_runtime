@@ -310,7 +310,10 @@ public:
         return ecmaParamConfiguration_;
     }
 
-    JSHandle<GlobalEnv> PUBLIC_API GetGlobalEnv() const;
+    JSHandle<GlobalEnv> PUBLIC_API GetGlobalEnv() const
+    {
+        return thread_->GetGlobalEnv();
+    }
 
     static EcmaVM *ConstCast(const EcmaVM *vm)
     {

@@ -275,8 +275,7 @@ void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread, bool
     env->SetFunctionClassWithoutName(thread_, functionClass);
 
     thread->CheckSafepointIfSuspended();
-    functionClass = factory_->CreateBoundFunctionClass();
-    env->SetBoundFunctionClass(thread_, functionClass);
+    InitializeBoundFunctionClass(env);
     if (!isRealm) {
         InitializeAllTypeError(env, objFuncClass);
         InitializeSymbol(env, primRefObjHClass);
@@ -396,9 +395,48 @@ void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread, bool
     thread->CheckSafepointIfSuspended();
     if (vm_->GetJSOptions().IsEnableLoweringBuiltin() && !isRealm) {
         if (!lazyInit) {
-            thread_->InitializeBuiltinObject();
+            thread_->InitializeBuiltinObject(env);
         }
     }
+}
+
+void Builtins::InitializeBoundFunctionClass(const JSHandle<GlobalEnv> &env) const
+{
+    JSHandle<JSTaggedValue> proto = env->GetFunctionPrototype();
+    JSHandle<JSHClass> hclass = factory_->NewEcmaHClass(JSBoundFunction::SIZE, JSType::JS_BOUND_FUNCTION, proto);
+    hclass->SetCallable(true);
+
+    // set hclass layout
+    uint32_t fieldOrder = 0;
+    const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
+    ASSERT(JSFunction::LENGTH_INLINE_PROPERTY_INDEX == fieldOrder);
+    JSHandle<LayoutInfo> layoutInfoHandle = factory_->CreateLayoutInfo(JSFunction::LENGTH_OF_INLINE_PROPERTIES);
+    {
+        PropertyAttributes attributes = PropertyAttributes::DefaultAccessor(false, false, true);
+        attributes.SetIsInlinedProps(true);
+        attributes.SetRepresentation(Representation::TAGGED);
+        attributes.SetOffset(fieldOrder);
+        layoutInfoHandle->AddKey(thread_, fieldOrder, globalConst->GetLengthString(), attributes);
+        fieldOrder++;
+    }
+
+    ASSERT(JSFunction::NAME_INLINE_PROPERTY_INDEX == fieldOrder);
+    // not set name in-object property on class which may have a name() method
+    {
+        PropertyAttributes attributes = PropertyAttributes::DefaultAccessor(false, false, true);
+        attributes.SetIsInlinedProps(true);
+        attributes.SetRepresentation(Representation::TAGGED);
+        attributes.SetOffset(fieldOrder);
+        layoutInfoHandle->AddKey(thread_, fieldOrder,
+                                 globalConst->GetHandledNameString().GetTaggedValue(), attributes);
+        fieldOrder++;
+    }
+
+    {
+        hclass->SetLayout(thread_, layoutInfoHandle);
+        hclass->SetNumberOfProps(fieldOrder);
+    }
+    env->SetBoundFunctionClass(thread_, hclass);
 }
 
 void Builtins::InitializePropertyDetector(const JSHandle<GlobalEnv> &env, bool lazyInit) const
@@ -420,21 +458,6 @@ void Builtins::SetLazyAccessor(const JSHandle<JSObject> &object, const JSHandle<
 {
     PropertyDescriptor descriptor(thread_, JSHandle<JSTaggedValue>::Cast(accessor), true, false, true);
     JSObject::DefineOwnProperty(thread_, object, key, descriptor);
-}
-
-void Builtins::InitializeForSnapshot(JSThread *thread)
-{
-    thread_ = thread;
-    vm_ = thread->GetEcmaVM();
-    factory_ = vm_->GetFactory();
-
-    // Initialize ArkTools
-    if (vm_->GetJSOptions().EnableArkTools()) {
-        auto env = vm_->GetGlobalEnv();
-        auto globalObject = JSHandle<JSObject>::Cast(env->GetJSGlobalObject());
-        JSHandle<JSTaggedValue> arkTools(InitializeArkTools(env));
-        SetConstantObject(globalObject, "ArkTools", arkTools);
-    }
 }
 
 void Builtins::InitializeGlobalObject(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &globalObject)
@@ -1125,7 +1148,7 @@ void Builtins::InitializeAllTypeError(const JSHandle<GlobalEnv> &env, const JSHa
     InitializeError(env, errorNativeFuncInstanceHClass, JSType::JS_TERMINATION_ERROR);
 
     JSHandle<EcmaString> handleMsg = factory_->NewFromUtf8ReadOnly("Default oom error");
-    JSHandle<JSObject> oomError = factory_->NewJSError(ErrorType::OOM_ERROR, handleMsg, StackCheck::YES);
+    JSHandle<JSObject> oomError = factory_->NewJSError(env, ErrorType::OOM_ERROR, handleMsg, StackCheck::YES);
     env->SetOOMErrorObject(thread_, oomError);
 }
 
@@ -3685,7 +3708,7 @@ void Builtins::InitializeSegmentIterator(const JSHandle<GlobalEnv> &env,
 
 JSHandle<JSObject> Builtins::InitializeArkTools(const JSHandle<GlobalEnv> &env) const
 {
-    JSHandle<JSObject> tools = factory_->NewEmptyJSObject();
+    JSHandle<JSObject> tools = factory_->NewEmptyJSObject(env);
     for (const base::BuiltinFunctionEntry &entry: builtins::BuiltinsArkTools::GetArkToolsFunctions()) {
         SetFunction(env, tools, entry.GetName(), entry.GetEntrypoint(),
                     entry.GetLength(), entry.GetBuiltinStubId());
@@ -3697,7 +3720,7 @@ JSHandle<JSObject> Builtins::InitializeArkTools(const JSHandle<GlobalEnv> &env) 
 
 JSHandle<JSObject> Builtins::InitializeGcBuiltins(const JSHandle<GlobalEnv> &env) const
 {
-    JSHandle<JSObject> builtins = factory_->NewEmptyJSObject();
+    JSHandle<JSObject> builtins = factory_->NewEmptyJSObject(env);
     for (const base::BuiltinFunctionEntry &entry: builtins::BuiltinsGc::GetGcFunctions()) {
         SetFunction(env, builtins, entry.GetName(), entry.GetEntrypoint(),
                     entry.GetLength(), entry.GetBuiltinStubId());
@@ -3765,7 +3788,7 @@ void Builtins::InitializeGlobalRegExp(JSHandle<JSObject> &obj) const
 
 JSHandle<JSObject> Builtins::InitializeArkPrivate(const JSHandle<GlobalEnv> &env) const
 {
-    JSHandle<JSObject> arkPrivate = factory_->NewEmptyJSObject();
+    JSHandle<JSObject> arkPrivate = factory_->NewEmptyJSObject(env);
     SetFrozenFunction(env, arkPrivate, "Load", ContainersPrivate::Load, FunctionLength::ZERO);
 
     // It is used to provide non ECMA standard jsapi containers.
@@ -3856,11 +3879,11 @@ void Builtins::InitializeCjsModule(const JSHandle<GlobalEnv> &env) const
 
     JSHandle<JSTaggedValue> id(thread_->GlobalConstants()->GetHandledEmptyString());
     JSHandle<JSTaggedValue> path(thread_->GlobalConstants()->GetHandledEmptyString());
-    JSHandle<JSTaggedValue> exports(factory_->NewEmptyJSObject());
-    JSHandle<JSTaggedValue> parent(factory_->NewEmptyJSObject());
+    JSHandle<JSTaggedValue> exports(factory_->NewEmptyJSObject(env));
+    JSHandle<JSTaggedValue> parent(factory_->NewEmptyJSObject(env));
     JSHandle<JSTaggedValue> filename(thread_->GlobalConstants()->GetHandledEmptyString());
-    JSHandle<JSTaggedValue> loaded(factory_->NewEmptyJSObject());
-    JSHandle<JSTaggedValue> children(factory_->NewEmptyJSObject());
+    JSHandle<JSTaggedValue> loaded(factory_->NewEmptyJSObject(env));
+    JSHandle<JSTaggedValue> children(factory_->NewEmptyJSObject(env));
     JSHandle<JSTaggedValue> cache = JSHandle<JSTaggedValue>::Cast(CjsModuleCache::Create(thread_,
         CjsModuleCache::DEAULT_DICTIONART_CAPACITY));
 
@@ -3939,7 +3962,7 @@ void Builtins::InitializeDefaultExportOfScript(const JSHandle<GlobalEnv> &env) c
     JSHandle<TaggedArray> props(factory_->NewTaggedArray(2)); // 2 : two propertise
     props->Set(thread_, 0, defaultKey);
     props->Set(thread_, 1, emptyObj);
-    JSHandle<JSHClass> hclass = factory_->CreateObjectClass(props, 1);
+    JSHandle<JSHClass> hclass = factory_->CreateObjectClass(env, props, 1);
     JSHandle<JSObject> obj = factory_->NewJSObject(hclass);
     obj->SetPropertyInlinedProps(thread_, 0, props->Get(1));
     env->SetExportOfScript(thread_, obj);

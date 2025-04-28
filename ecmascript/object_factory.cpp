@@ -978,8 +978,8 @@ JSHandle<JSObject> ObjectFactory::GetJSError(const ErrorType &errorType, const c
     return NewJSError(errorType, emptyString, needCheckStack);
 }
 
-JSHandle<JSObject> ObjectFactory::NewJSError(const ErrorType &errorType, const JSHandle<EcmaString> &message,
-    StackCheck needCheckStack)
+JSHandle<JSObject> ObjectFactory::NewJSError(const JSHandle<GlobalEnv> &env, const ErrorType &errorType,
+                                             const JSHandle<EcmaString> &message, StackCheck needCheckStack)
 {
     // if there have exception in thread, then return current exception, no need to new js error.
     if (thread_->HasPendingException()) {
@@ -996,7 +996,6 @@ JSHandle<JSObject> ObjectFactory::NewJSError(const ErrorType &errorType, const J
         }
     }
 
-    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
     JSHandle<JSTaggedValue> nativeConstructor;
     switch (errorType) {
         case ErrorType::RANGE_ERROR:
@@ -1042,6 +1041,13 @@ JSHandle<JSObject> ObjectFactory::NewJSError(const ErrorType &errorType, const J
     auto prevEntry = InterpretedEntryFrame::GetFrameFromSp(sp)->GetPrevFrameFp();
     thread_->SetCurrentSPFrame(prevEntry);
     return handleNativeInstanceObj;
+}
+
+JSHandle<JSObject> ObjectFactory::NewJSError(const ErrorType &errorType, const JSHandle<EcmaString> &message,
+    StackCheck needCheckStack)
+{
+    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
+    return NewJSError(env, errorType, message, needCheckStack);
 }
 
 JSHandle<JSObject> ObjectFactory::NewJSAggregateError()
@@ -1943,46 +1949,6 @@ JSHandle<JSHClass> ObjectFactory::CreateFunctionClass(FunctionKind kind, uint32_
     return functionClass;
 }
 
-JSHandle<JSHClass> ObjectFactory::CreateBoundFunctionClass()
-{
-    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
-    JSHandle<JSTaggedValue> proto = env->GetFunctionPrototype();
-    JSHandle<JSHClass> hclass = NewEcmaHClass(JSBoundFunction::SIZE, JSType::JS_BOUND_FUNCTION, proto);
-    hclass->SetCallable(true);
-
-    // set hclass layout
-    uint32_t fieldOrder = 0;
-    const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
-    ASSERT(JSFunction::LENGTH_INLINE_PROPERTY_INDEX == fieldOrder);
-    JSHandle<LayoutInfo> layoutInfoHandle = CreateLayoutInfo(JSFunction::LENGTH_OF_INLINE_PROPERTIES);
-    {
-        PropertyAttributes attributes = PropertyAttributes::DefaultAccessor(false, false, true);
-        attributes.SetIsInlinedProps(true);
-        attributes.SetRepresentation(Representation::TAGGED);
-        attributes.SetOffset(fieldOrder);
-        layoutInfoHandle->AddKey(thread_, fieldOrder, globalConst->GetLengthString(), attributes);
-        fieldOrder++;
-    }
-
-    ASSERT(JSFunction::NAME_INLINE_PROPERTY_INDEX == fieldOrder);
-    // not set name in-object property on class which may have a name() method
-    {
-        PropertyAttributes attributes = PropertyAttributes::DefaultAccessor(false, false, true);
-        attributes.SetIsInlinedProps(true);
-        attributes.SetRepresentation(Representation::TAGGED);
-        attributes.SetOffset(fieldOrder);
-        layoutInfoHandle->AddKey(thread_, fieldOrder,
-                                 globalConst->GetHandledNameString().GetTaggedValue(), attributes);
-        fieldOrder++;
-    }
-
-    {
-        hclass->SetLayout(thread_, layoutInfoHandle);
-        hclass->SetNumberOfProps(fieldOrder);
-    }
-    return hclass;
-}
-
 JSHandle<JSHClass> ObjectFactory::CreateDefaultClassPrototypeHClass(JSHClass *hclass)
 {
     uint32_t size = ClassInfoExtractor::NON_STATIC_RESERVED_LENGTH;
@@ -2502,15 +2468,23 @@ JSHandle<JSPrimitiveRef> ObjectFactory::NewJSString(const JSHandle<JSTaggedValue
     return obj;
 }
 
-JSHandle<GlobalEnv> ObjectFactory::NewGlobalEnv(JSHClass *globalEnvClass)
+JSHandle<GlobalEnv> ObjectFactory::NewGlobalEnv(bool lazyInit, bool isRealm)
 {
     NewObjectHook();
     // Note: Global env must be allocated in non-movable heap, since its getters will directly return
     //       the offsets of the properties as the address of Handles.
-    TaggedObject *header = heap_->AllocateNonMovableOrHugeObject(globalEnvClass);
+    const GlobalEnvConstants* globalConst = thread_->GlobalConstants();
+    JSHandle<JSHClass> hClassHandle = JSHandle<JSHClass>(thread_, globalConst->GetHClassClass());
+    JSHandle<JSHClass> globalEnvClass = NewEcmaHClass(*hClassHandle, GlobalEnv::SIZE,
+                                                      JSType::GLOBAL_ENV);
+    TaggedObject *header = heap_->AllocateNonMovableOrHugeObject(*globalEnvClass);
     InitObjectFields(header);
-    JSHandle<GlobalEnv> globalEnv(thread_, GlobalEnv::Cast(header));
-    globalEnv->ClearBitField();
+    auto globalEnv = JSHandle<GlobalEnv>(thread_, GlobalEnv::Cast(header));
+    thread_->SetInGlobalEnvInitialize(true);
+    globalEnv->Init(thread_);
+    Builtins builtins;
+    builtins.Initialize(globalEnv, thread_, lazyInit, isRealm);
+    thread_->SetInGlobalEnvInitialize(false);
     return globalEnv;
 }
 
@@ -2762,24 +2736,14 @@ JSHandle<JSProxy> ObjectFactory::NewJSProxy(const JSHandle<JSTaggedValue> &targe
 
 JSHandle<JSRealm> ObjectFactory::NewJSRealm()
 {
-    JSHandle<JSHClass> hClassHandle = NewEcmaHClassClass(nullptr, JSHClass::SIZE, JSType::HCLASS);
-    JSHClass *hclass = reinterpret_cast<JSHClass *>(hClassHandle.GetTaggedValue().GetTaggedObject());
-    hclass->SetClass(thread_, hclass);
-    JSHandle<JSHClass> realmEnvClass = NewEcmaHClass(*hClassHandle, GlobalEnv::SIZE, JSType::GLOBAL_ENV);
-    JSHandle<GlobalEnv> realmEnvHandle = NewGlobalEnv(*realmEnvClass);
-
-    auto result = TemplateMap::Create(thread_);
-    realmEnvHandle->SetTemplateMap(thread_, result);
-    realmEnvHandle->SetJSThread(thread_);
-    Builtins builtins;
-    builtins.Initialize(realmEnvHandle, thread_, false, true);
+    JSHandle<GlobalEnv> globalEnv = NewGlobalEnv(false, true);
     JSHandle<JSTaggedValue> protoValue = thread_->GlobalConstants()->GetHandledJSRealmClass();
     JSHandle<JSHClass> hclassHandle = NewEcmaHClass(JSRealm::SIZE, JSType::JS_REALM, protoValue);
     JSHandle<JSRealm> realm(NewJSObject(hclassHandle));
-    realm->SetGlobalEnv(thread_, realmEnvHandle.GetTaggedValue());
+    realm->SetGlobalEnv(thread_, globalEnv.GetTaggedValue());
     realm->SetValue(thread_, JSTaggedValue::Undefined());
 
-    JSHandle<JSTaggedValue> realmObj = realmEnvHandle->GetJSGlobalObject();
+    JSHandle<JSTaggedValue> realmObj = globalEnv->GetJSGlobalObject();
     JSHandle<JSTaggedValue> realmkey(thread_->GlobalConstants()->GetHandledGlobalString());
     PropertyDescriptor realmDesc(thread_, JSHandle<JSTaggedValue>::Cast(realmObj), true, false, true);
     [[maybe_unused]] bool status =
@@ -3570,7 +3534,7 @@ void ObjectFactory::NewObjectHook() const
 {
     CHECK_NO_HEAP_ALLOC;
 #ifndef NDEBUG
-    if (vm_->GetJSOptions().EnableForceGC() && vm_->IsInitialized() && thread_->IsAllContextsInitialized() &&
+    if (vm_->GetJSOptions().EnableForceGC() && vm_->IsInitialized() && !thread_->InGlobalEnvInitialize() &&
         !heap_->InSensitiveStatus() && heap_->TriggerCollectionOnNewObjectEnabled()) {
         if (vm_->GetJSOptions().ForceFullGC()) {
             vm_->CollectGarbage(TriggerGCType::YOUNG_GC);
@@ -4100,9 +4064,9 @@ JSHandle<ResolvingFunctionsRecord> ObjectFactory::NewResolvingFunctionsRecord()
     return obj;
 }
 
-JSHandle<JSHClass> ObjectFactory::CreateObjectClass(const JSHandle<TaggedArray> &properties, size_t length)
+JSHandle<JSHClass> ObjectFactory::CreateObjectClass(const JSHandle<GlobalEnv> &env,
+                                                    const JSHandle<TaggedArray> &properties, size_t length)
 {
-    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
     JSHandle<JSTaggedValue> proto = env->GetObjectFunctionPrototype();
 
     uint32_t fieldOrder = 0;
@@ -4202,7 +4166,8 @@ JSHandle<JSHClass> ObjectFactory::GetObjectLiteralHClass(const JSHandle<TaggedAr
     ASSERT(length <= PropertyAttributes::MAX_FAST_PROPS_CAPACITY);
     // 64 : If object literal gets too many properties, create hclass directly.
     if (!CanObjectLiteralHClassCache(length)) {
-        return CreateObjectClass(properties, length);
+        JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
+        return CreateObjectClass(env, properties, length);
     }
     JSHandle<JSHClass> rootHClass = GetObjectLiteralRootHClass(length, length);
     return SetLayoutInObjHClass(properties, length, rootHClass);
@@ -4220,6 +4185,12 @@ JSHandle<JSObject> ObjectFactory::NewEmptyJSObject(uint32_t inlinedProps)
     JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
     JSHandle<JSFunction> builtinObj(env->GetObjectFunction());
     return NewJSObjectByConstructor(builtinObj, inlinedProps);
+}
+
+JSHandle<JSObject> ObjectFactory::NewEmptyJSObject(const JSHandle<GlobalEnv> &env, uint32_t inlinedProps)
+{
+    JSHandle<JSFunction> builtinObj(env->GetObjectFunction());
+    return NewJSObjectByConstructor(env, builtinObj, inlinedProps);
 }
 
 JSHandle<JSObject> ObjectFactory::CreateNullJSObject()

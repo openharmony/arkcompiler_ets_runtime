@@ -880,6 +880,7 @@ public:
     void SetByteLength(GateRef glue, GateRef typedArray, GateRef byteLength);
     void SetByteOffset(GateRef glue, GateRef typedArray, GateRef offset);
     void SetTypedArrayLength(GateRef glue, GateRef typedArray, GateRef arrayLength);
+    GateRef GetGlobalEnv(GateRef glue);
     GateRef GetGlobalObject(GateRef glue);
     GateRef GetMethodFromFunction(GateRef function);
     GateRef GetModuleFromFunction(GateRef function);
