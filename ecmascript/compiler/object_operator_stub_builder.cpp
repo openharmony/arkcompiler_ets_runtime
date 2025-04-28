@@ -15,6 +15,7 @@
 
 #include "ecmascript/compiler/object_operator_stub_builder.h"
 
+#include "builtins/builtins_string_stub_builder.h"
 #include "ecmascript/compiler/builtins/builtins_typedarray_stub_builder.h"
 #include "ecmascript/compiler/circuit_builder_helper.h"
 #include "ecmascript/compiler/rt_call_signature.h"
@@ -23,40 +24,6 @@
 #include "ecmascript/js_primitive_ref.h"
 
 namespace panda::ecmascript::kungfu {
-
-void ObjectOperatorStubBuilder::TryFastHandleStringKey(GateRef key, Variable *propKey, Variable *elemKey,
-                                                       Label *isProperty, Label *isElement, Label *tryFailed)
-{
-    auto env = GetEnvironment();
-    Label isInternString(env);
-
-    BRANCH(IsInternalString(key), &isInternString, tryFailed);
-
-    Bind(&isInternString);
-    {
-        Label isIntegerString(env);
-        Label notIntegerString(env);
-
-        BRANCH(IsIntegerString(key), &isIntegerString, &notIntegerString);
-
-        Bind(&isIntegerString);
-        {
-            *elemKey = GetRawHashFromString(key);
-            Jump(isElement);
-        }
-
-        Bind(&notIntegerString);
-        {
-            Label keyIsProperty(env);
-            GateRef len = GetLengthFromString(key);
-            BRANCH(Int32LessThanOrEqual(len, Int32(EcmaString::MAX_CACHED_INTEGER_SIZE)), &keyIsProperty, tryFailed);
-
-            Bind(&keyIsProperty);
-            *propKey = key;
-            Jump(isProperty);
-        }
-    }
-}
 
 // ObjectOperator::HandleKey
 void ObjectOperatorStubBuilder::HandleKey(GateRef glue, GateRef key, Variable *propKey, Variable *elemKey,
@@ -101,12 +68,9 @@ void ObjectOperatorStubBuilder::HandleKey(GateRef glue, GateRef key, Variable *p
         Label toInternString(env);
         Label index64To32(env);
         Label notInternString(env);
-        Label tryFailed(env);
         DEFVARIABLE(index64, VariableType::INT64(), Int64(-1));
-        TryFastHandleStringKey(key, propKey, elemKey, isProperty, isElement, &tryFailed);
-
-        Bind(&tryFailed);
-        index64 = StringToElementIndex(glue, key);
+        BuiltinsStringStubBuilder stringStub(this);
+        index64 = stringStub.StringToUint(glue, key, JSObject::MAX_ELEMENT_INDEX - 1);
         BRANCH(Int64Equal(*index64, Int64(-1)), &toInternString, &index64To32);
         Bind(&toInternString);
         {

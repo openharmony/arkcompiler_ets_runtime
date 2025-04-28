@@ -664,7 +664,8 @@ private:
     V(FindEntryFromNameDictionary)                   \
     V(ReverseBarrier)                                \
     V(GetValueWithBarrier)                           \
-    V(ReadBarrier)
+    V(ReadBarrier)                                   \
+    V(ComputeStringHashcode)
 
 #define DECL_CALL_SIGNATURE(name)                                  \
 class name##CallSignature final {                                  \

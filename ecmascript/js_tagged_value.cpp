@@ -1684,16 +1684,12 @@ JSTaggedNumber JSTaggedValue::StringToNumber(JSTaggedValue tagged)
         return JSTaggedNumber(0);
     }
     if (strLen < MAX_ELEMENT_INDEX_LEN && strAccessor.IsUtf8()) {
-        uint32_t index;
-        // fast path: get integer from string's hash value
-        if (strAccessor.TryToGetInteger(&index)) {
-            return JSTaggedNumber(index);
-        }
-        Span<const uint8_t> str = strAccessor.FastToUtf8Span();
+        CVector<uint8_t> buf;
+        Span<const uint8_t> str = strAccessor.ToUtf8Span(buf);
         if (strAccessor.GetLength() == 0) {
             return JSTaggedNumber(0);
         }
-        auto [isSuccess, result] = base::NumberHelper::FastStringToNumber(str.begin(), str.end(), tagged);
+        auto [isSuccess, result] = base::NumberHelper::FastStringToNumber(str.begin(), str.end());
         if (isSuccess) {
             return result;
         }

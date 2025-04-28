@@ -83,6 +83,9 @@ BUILTINS_WITH_STRING_STUB_BUILDER(DECLARE_BUILTINS_SRRING_STUB_BUILDER)
                           const StringInfoGateRef &rStringInfoGate, GateRef pos);
     GateRef GetSubString(GateRef glue, GateRef thisValue, GateRef from, GateRef len);
     GateRef GetFastSubString(GateRef glue, GateRef thisValue, GateRef start, GateRef len);
+    GateRef StringToUint(GateRef glue, GateRef string, uint64_t maxValue);
+    GateRef StringDataToUint(GateRef dataUtf8, GateRef len, uint64_t maxValue);
+
 private:
     GateRef ChangeStringTaggedPointerToInt64(GateRef x)
     {
@@ -149,9 +152,9 @@ struct StringInfoGateRef {
     GateRef string_ { Circuit::NullGate() };
     GateRef startIndex_ { Circuit::NullGate() };
     GateRef length_ { Circuit::NullGate() };
-    StringInfoGateRef(FlatStringStubBuilder *flatString) : string_(flatString->GetFlatString()),
-                                                           startIndex_(flatString->GetStartIndex()),
-                                                           length_(flatString->GetLength()) {}
+    explicit StringInfoGateRef(FlatStringStubBuilder* flatString) : string_(flatString->GetFlatString()),
+                                                                    startIndex_(flatString->GetStartIndex()),
+                                                                    length_(flatString->GetLength()) {}
     GateRef GetString() const
     {
         return string_;

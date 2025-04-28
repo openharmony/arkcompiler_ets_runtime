@@ -784,6 +784,7 @@ public:
     inline GateRef TaggedIsNativePointer(GateRef glue, GateRef x);
     inline GateRef TaggedIsBigInt(GateRef glue, GateRef obj);
     inline GateRef TaggedIsString(GateRef glue, GateRef obj);
+    inline GateRef TaggedIsLineUtf8String(GateRef glue, GateRef obj);
     inline GateRef TaggedIsStringIterator(GateRef glue, GateRef obj);
     inline GateRef TaggedIsSharedObj(GateRef glue, GateRef obj);
     inline GateRef TaggedIsStableArray(GateRef glue, GateRef obj);
@@ -827,14 +828,13 @@ public:
     GateRef CalcHashcodeForInt(GateRef value);
     GateRef GetHashcodeFromString(GateRef glue, GateRef value, GateRef hir = Circuit::NullGate());
     GateRef TryGetHashcodeFromString(GateRef string);
-    GateRef IsIntegerString(GateRef string);
     GateRef CanBeConcat(GateRef glue, GateRef leftString, GateRef rightString, GateRef isValidOpt);
     GateRef CanBackStore(GateRef glue, GateRef rightString, GateRef isValidOpt);
     GateRef GetRawHashFromString(GateRef value);
     void CopyUtf8AsUtf16(GateRef glue, GateRef dst, GateRef src, GateRef sourceLength);
     void CopyChars(GateRef glue, GateRef dst, GateRef source, GateRef sourceLength,
         GateRef charSize, VariableType type);
-    void SetRawHashcode(GateRef glue, GateRef str, GateRef rawHashcode, GateRef isInteger);
+    void SetRawHashcode(GateRef glue, GateRef str, GateRef rawHashcode);
     GateRef StringFromSingleCharCode(GateRef gate);
     GateRef StringCharCodeAt(GateRef thisValue, GateRef posTag);
     GateRef StringSubstring(std::vector<GateRef>& args);
@@ -925,7 +925,6 @@ public:
         MemoryAttribute mAttr = MemoryAttribute::NeedBarrier());
     GateRef Load(VariableType type, GateRef glue, GateRef base, GateRef offset, GateRef depend,
         MemoryAttribute mAttr = MemoryAttribute::NeedBarrier());
-    GateRef Load(VariableType type, GateRef glue, GateRef addr, MemoryAttribute mAttr = MemoryAttribute::Default());
 
     // LoadWithoutBarrier
     GateRef LoadWithoutBarrier(VariableType type, GateRef base, GateRef offset,
