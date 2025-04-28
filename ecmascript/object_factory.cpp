@@ -467,13 +467,19 @@ JSHandle<JSHClass> ObjectFactory::NewEcmaHClass(uint32_t size, JSType type, cons
 JSHandle<JSHClass> ObjectFactory::NewEcmaHClass(uint32_t size, uint32_t inlinedProps, JSType type,
                                                 const JSHandle<JSTaggedValue> &prototype)
 {
+    return NewEcmaHClass(thread_->GetGlobalEnv(), size, inlinedProps, type, prototype);
+}
+
+JSHandle<JSHClass> ObjectFactory::NewEcmaHClass(const JSHandle<GlobalEnv> &env,
+    uint32_t size, uint32_t inlinedProps, JSType type, const JSHandle<JSTaggedValue> &prototype)
+{
     NewObjectHook();
     uint32_t classSize = JSHClass::SIZE;
     auto *newClass = static_cast<JSHClass *>(heap_->AllocateNonMovableOrHugeObject(
         JSHClass::Cast(thread_->GlobalConstants()->GetHClassClass().GetTaggedObject()), classSize));
     newClass->Initialize(thread_, size, type, inlinedProps);
     JSHandle<JSHClass> hclass(thread_, newClass);
-    hclass->SetPrototype(thread_, prototype.GetTaggedValue());
+    hclass->SetPrototype(thread_, env, prototype.GetTaggedValue());
     return hclass;
 }
 
@@ -869,10 +875,11 @@ JSHandle<JSHClass> ObjectFactory::CreateJSRegExpInstanceClass(JSHandle<JSTaggedV
     return regexpClass;
 }
 
-JSHandle<JSHClass> ObjectFactory::CreateJSArrayInstanceClass(JSHandle<JSTaggedValue> proto, uint32_t inlinedProps)
+JSHandle<JSHClass> ObjectFactory::CreateJSArrayInstanceClass(const JSHandle<GlobalEnv> &env,
+    JSHandle<JSTaggedValue> proto, uint32_t inlinedProps)
 {
     const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
-    JSHandle<JSHClass> arrayClass = NewEcmaHClass(JSArray::SIZE, inlinedProps, JSType::JS_ARRAY, proto);
+    JSHandle<JSHClass> arrayClass = NewEcmaHClass(env, JSArray::SIZE, inlinedProps, JSType::JS_ARRAY, proto);
 
     uint32_t fieldOrder = 0;
     ASSERT(JSArray::LENGTH_INLINE_PROPERTY_INDEX == fieldOrder);

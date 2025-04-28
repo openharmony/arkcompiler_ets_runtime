@@ -1366,4 +1366,13 @@ void JSThread::SetMutatorLockState(MutatorLock::MutatorLockState newState)
     mutatorLockState_ = newState;
 }
 #endif
+
+JSHClass *JSThread::GetArrayInstanceHClass(ElementsKind kind, bool isPrototype) const
+{
+    GlobalEnvField index = glueData_.arrayHClassIndexes_.GetArrayInstanceHClassIndex(kind, isPrototype);
+    auto exceptArrayHClass = GetGlobalEnv()->GetGlobalEnvObjectByIndex(static_cast<size_t>(index)).GetTaggedValue();
+    auto exceptRecvHClass = JSHClass::Cast(exceptArrayHClass.GetTaggedObject());
+    ASSERT(exceptRecvHClass->IsJSArray());
+    return exceptRecvHClass;
+}
 }  // namespace panda::ecmascript

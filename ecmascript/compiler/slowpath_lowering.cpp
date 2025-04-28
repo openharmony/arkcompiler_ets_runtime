@@ -1616,11 +1616,9 @@ GateRef SlowPathLowering::LowerUpdateArrayHClassAtDefine(GateRef gate, GateRef a
 {
     ElementsKind kind = acc_.TryGetElementsKind(gate);
     if (!Elements::IsGeneric(kind)) {
-        size_t hclassIndex = static_cast<size_t>(compilationEnv_->GetArrayHClassIndex(kind, false));
-        GateRef gConstAddr = builder_.Load(VariableType::JS_POINTER(), glue_,
-            builder_.IntPtr(JSThread::GlueData::GetGlobalConstOffset(false)));
-        GateRef constantIndex = builder_.IntPtr(JSTaggedValue::TaggedTypeSize() * hclassIndex);
-        GateRef hclass = builder_.Load(VariableType::JS_POINTER(), gConstAddr, constantIndex);
+        GateRef globalEnv = builder_.GetGlobalEnv(glue_);
+        size_t elementIndex = static_cast<size_t>(compilationEnv_->GetArrayHClassIndex(kind, false));
+        GateRef hclass = builder_.GetGlobalEnvValue(VariableType::JS_ANY(), globalEnv, elementIndex);
         builder_.Store(VariableType::JS_POINTER(), glue_, array, builder_.IntPtr(0), hclass);
     }
     return array;

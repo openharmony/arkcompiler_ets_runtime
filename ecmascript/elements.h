@@ -16,7 +16,7 @@
 #ifndef ECMASCRIPT_ELEMENTS_H
 #define ECMASCRIPT_ELEMENTS_H
 
-#include "ecmascript/global_env_constants.h"
+#include "ecmascript/global_env_fields.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/mem/c_containers.h"
 
@@ -103,7 +103,6 @@ public:
         return kind == ElementsKind::STRING || kind == ElementsKind::HOLE_STRING;
     }
 
-    static ConstantIndex GetGlobalContantIndexByKind(ElementsKind kind);
     static ElementsKind MergeElementsKind(ElementsKind curKind, ElementsKind newKind);
     static ElementsKind FixElementsKind(ElementsKind oldKind);
     static inline ElementsKind ToElementsKind(JSTaggedValue value)

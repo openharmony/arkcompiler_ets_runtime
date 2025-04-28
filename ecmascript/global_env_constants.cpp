@@ -421,27 +421,4 @@ void GlobalEnvConstants::InitSpecialForSnapshot()
     SetConstant(ConstantIndex::UNDEFINED_INDEX, JSTaggedValue::Undefined());
     SetConstant(ConstantIndex::NULL_INDEX, JSTaggedValue::Null());
 }
-
-void GlobalEnvConstants::InitElementKindHClass(const JSThread *thread, JSHandle<JSHClass> originHClass)
-{
-    {
-        JSHandle<JSHClass> hclass;
-#define INIT_ARRAY_HCLASS_INDEX_ARRAYS(name)                                                        \
-        hclass = JSHClass::CloneWithElementsKind(thread, originHClass, ElementsKind::name, false);  \
-        SetConstant(ConstantIndex::ELEMENT_##name##_HCLASS_INDEX, hclass);
-
-        ELEMENTS_KIND_INIT_HCLASS_LIST(INIT_ARRAY_HCLASS_INDEX_ARRAYS)
-#undef INIT_ARRAY_HCLASS_INDEX_ARRAYS
-    }
-    SetConstant(ConstantIndex::ELEMENT_HOLE_TAGGED_HCLASS_INDEX, originHClass);
-    {
-        JSHandle<JSHClass> hclass;
-#define INIT_ARRAY_HCLASS_INDEX_ARRAYS(name)                                                       \
-        hclass = JSHClass::CloneWithElementsKind(thread, originHClass, ElementsKind::name, true);  \
-        SetConstant(ConstantIndex::ELEMENT_##name##_PROTO_HCLASS_INDEX, hclass);
-
-        ELEMENTS_KIND_INIT_HCLASS_LIST(INIT_ARRAY_HCLASS_INDEX_ARRAYS)
-#undef INIT_ARRAY_HCLASS_INDEX_ARRAYS
-    }
-}
 }  // namespace panda::ecmascript

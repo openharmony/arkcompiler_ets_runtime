@@ -130,31 +130,7 @@ class ObjectFactory;
     V(JSTaggedValue, JSAPITreeSetIteratorClass, JS_API_TREE_SET_ITERATOR_CLASS_INDEX, ecma_roots_class)               \
     V(JSTaggedValue, ObjectClass, OBJECT_HCLASS_INDEX, initial_object_hclass)                                         \
     V(JSTaggedValue, ClassPrototypeClass, CLASS_PROTOTYPE_HCLASS_INDEX, ecma_roots_class)                             \
-    V(JSTaggedValue, ClassConstructorClass, CLASS_CONSTRUCTOR_HCLASS_INDEX, ecma_roots_class)                         \
-    V(JSTaggedValue, ElementNoneProtoClass, ELEMENT_NONE_PROTO_HCLASS_INDEX, ecma_roots_class)                        \
-    V(JSTaggedValue, ElementHoleProtoClass, ELEMENT_HOLE_PROTO_HCLASS_INDEX, ecma_roots_class)                        \
-    V(JSTaggedValue, ElementIntProtoClass, ELEMENT_INT_PROTO_HCLASS_INDEX, ecma_roots_class)                          \
-    V(JSTaggedValue, ElementNumberProtoClass, ELEMENT_NUMBER_PROTO_HCLASS_INDEX, ecma_roots_class)                    \
-    V(JSTaggedValue, ElementStringProtoClass, ELEMENT_STRING_PROTO_HCLASS_INDEX, ecma_roots_class)                    \
-    V(JSTaggedValue, ElementObjectProtoClass, ELEMENT_OBJECT_PROTO_HCLASS_INDEX, ecma_roots_class)                    \
-    V(JSTaggedValue, ElementTaggedProtoClass, ELEMENT_TAGGED_PROTO_HCLASS_INDEX, ecma_roots_class)                    \
-    V(JSTaggedValue, ElementHoleIntProtoClass, ELEMENT_HOLE_INT_PROTO_HCLASS_INDEX, ecma_roots_class)                 \
-    V(JSTaggedValue, ElementHoleNumberProtoClass, ELEMENT_HOLE_NUMBER_PROTO_HCLASS_INDEX, ecma_roots_class)           \
-    V(JSTaggedValue, ElementHoleStringProtoClass, ELEMENT_HOLE_STRING_PROTO_HCLASS_INDEX, ecma_roots_class)           \
-    V(JSTaggedValue, ElementHoleObjectProtoClass, ELEMENT_HOLE_OBJECT_PROTO_HCLASS_INDEX, ecma_roots_class)           \
-    V(JSTaggedValue, ElementHoleTaggedProtoClass, ELEMENT_HOLE_TAGGED_PROTO_HCLASS_INDEX, ecma_roots_class)           \
-    V(JSTaggedValue, ElementNoneClass, ELEMENT_NONE_HCLASS_INDEX, ecma_roots_class)                                   \
-    V(JSTaggedValue, ElementHoleClass, ELEMENT_HOLE_HCLASS_INDEX, ecma_roots_class)                                   \
-    V(JSTaggedValue, ElementIntClass, ELEMENT_INT_HCLASS_INDEX, ecma_roots_class)                                     \
-    V(JSTaggedValue, ElementNumberClass, ELEMENT_NUMBER_HCLASS_INDEX, ecma_roots_class)                               \
-    V(JSTaggedValue, ElementStringClass, ELEMENT_STRING_HCLASS_INDEX, ecma_roots_class)                               \
-    V(JSTaggedValue, ElementObjectClass, ELEMENT_OBJECT_HCLASS_INDEX, ecma_roots_class)                               \
-    V(JSTaggedValue, ElementTaggedClass, ELEMENT_TAGGED_HCLASS_INDEX, ecma_roots_class)                               \
-    V(JSTaggedValue, ElementHoleIntClass, ELEMENT_HOLE_INT_HCLASS_INDEX, ecma_roots_class)                            \
-    V(JSTaggedValue, ElementHoleNumberClass, ELEMENT_HOLE_NUMBER_HCLASS_INDEX, ecma_roots_class)                      \
-    V(JSTaggedValue, ElementHoleStringClass, ELEMENT_HOLE_STRING_HCLASS_INDEX, ecma_roots_class)                      \
-    V(JSTaggedValue, ElementHoleObjectClass, ELEMENT_HOLE_OBJECT_HCLASS_INDEX, ecma_roots_class)                      \
-    V(JSTaggedValue, ElementHoleTaggedClass, ELEMENT_HOLE_TAGGED_HCLASS_INDEX, ecma_roots_class)
+    V(JSTaggedValue, ClassConstructorClass, CLASS_CONSTRUCTOR_HCLASS_INDEX, ecma_roots_class)
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define GLOBAL_ENV_CONSTANT_SPECIAL(V)                                                                 \
@@ -667,7 +643,7 @@ enum class ConstantIndex : size_t {
     SHARED_HCLASS_BEGIN = HCLASS_CLASS_INDEX,
     SHARED_HCLASS_END = VTABLE_CLASS_INDEX,
     NON_SHARED_HCLASS_BEGIN = JS_PROXY_CALLABLE_CLASS_INDEX,
-    NON_SHARED_HCLASS_END = ELEMENT_HOLE_TAGGED_HCLASS_INDEX,
+    NON_SHARED_HCLASS_END = CLASS_CONSTRUCTOR_HCLASS_INDEX,
     READ_ONLY_CONSTANT_BEGIN = CONSTANT_BEGIN,
     READ_ONLY_CONSTANT_END = CONSTANT_END,
 
@@ -693,8 +669,6 @@ public:
     void CopySharedConstantsFrom(const GlobalEnvConstants *src);
 
     void InitSpecialForSnapshot();
-
-    void InitElementKindHClass(const JSThread *thread, JSHandle<JSHClass> originHClass);
 
     void SetCachedLocales(JSTaggedValue value);
 

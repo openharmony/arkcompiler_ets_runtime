@@ -12123,11 +12123,15 @@ GateRef StubBuilder::ComputeTaggedArrayElementKind(GateRef array, GateRef offset
 
 GateRef StubBuilder::GetElementsKindHClass(GateRef glue, GateRef elementKind)
 {
+    auto env = GetEnvironment();
     GateRef offset = PtrMul(ZExtInt32ToPtr(elementKind), IntPtr(sizeof(ElementsHClassEntries::Entry)));
-    GateRef arrayHClassIndexesOff = IntPtr(JSThread::GlueData::GetArrayHClassIndexesIndexOffset(env_->Is32Bit()));
+    GateRef arrayHClassIndexesOff = IntPtr(JSThread::GlueData::GetArrayHClassIndexesIndexOffset(env->Is32Bit()));
     GateRef arrayIndexes = PtrAdd(glue, arrayHClassIndexesOff);
-    GateRef constantIdx = Load(VariableType::INT64(), arrayIndexes, offset);
-    return GetGlobalConstantValue(VariableType::JS_ANY(), glue, constantIdx);
+    GateRef elementIdx = Load(VariableType::INT16(), arrayIndexes, offset);
+    GateRef currentEnv = GetGlobalEnv(glue);
+    GateRef elementOffset = PtrAdd(IntPtr(GlobalEnv::HEADER_SIZE),
+                                   PtrMul(IntPtr(JSTaggedValue::TaggedTypeSize()), ZExtInt16ToPtr(elementIdx)));
+    return Load(VariableType::JS_ANY(), currentEnv, elementOffset);
 }
 
 GateRef StubBuilder::NeedBarrier(GateRef kind){

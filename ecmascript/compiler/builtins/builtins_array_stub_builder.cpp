@@ -35,8 +35,9 @@ void BuiltinsArrayStubBuilder::ElementsKindHclassCompare(GateRef glue, GateRef a
     BRANCH(notGeneric, matchCls, &isGeneric);
     Bind(&isGeneric);
     {
-        GateRef intialHClass = GetGlobalConstantValue(VariableType::JS_ANY(), glue,
-                                                      ConstantIndex::ELEMENT_HOLE_TAGGED_HCLASS_INDEX);
+        GateRef globalEnv = GetGlobalEnv(glue);
+        GateRef intialHClass = GetGlobalEnvValue(VariableType::JS_ANY(), globalEnv,
+                                                 static_cast<size_t>(GlobalEnvField::ELEMENT_HOLE_TAGGED_HCLASS_INDEX));
         BRANCH(Equal(intialHClass, arrayCls), matchCls, slowPath);
     }
 }
@@ -4997,7 +4998,9 @@ void BuiltinsArrayStubBuilder::FastCreateArrayWithArgv(GateRef glue, Variable *r
     Bind(&loopEnd);
     LoopEnd(&loopHead);
     Bind(&loopExit);
-    GateRef noneHClass = GetGlobalConstantValue(VariableType::JS_ANY(), glue, ConstantIndex::ELEMENT_NONE_HCLASS_INDEX);
+    GateRef globalEnv = GetGlobalEnv(glue);
+    GateRef noneHClass = GetGlobalEnvValue(VariableType::JS_ANY(), globalEnv,
+        static_cast<size_t>(GlobalEnvField::ELEMENT_NONE_HCLASS_INDEX));
     Label useElementsKindHClass(env);
     Label createArray(env);
     GateRef newHClassVal = *newHClass;

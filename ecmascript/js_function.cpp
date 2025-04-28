@@ -238,7 +238,7 @@ bool JSFunction::PrototypeSetter(JSThread *thread, const JSHandle<JSObject> &sel
         }
         JSHandle<JSTaggedValue> baseIhc(thread, value->GetTaggedObject()->GetClass());
         func->SetProtoOrHClass(thread, value.GetTaggedValue());
-        JSHClass::OptimizePrototypeForIC(thread, value, true);
+        JSHClass::OptimizePrototypeForIC(thread, thread->GetGlobalEnv(), value, true);
         if (thread->GetEcmaVM()->IsEnablePGOProfiler()) {
             thread->GetEcmaVM()->GetPGOProfiler()->ProfileProtoTransitionPrototype(func, value, oldPrototype, baseIhc);
         }
@@ -256,7 +256,7 @@ void JSFunction::SetFunctionPrototypeOrInstanceHClass(const JSThread *thread, co
                                               JSHClass::Cast(protoHandle->GetTaggedObject())->GetPrototype());
     }
     if (protoHandle->IsECMAObject()) {
-        JSHClass::OptimizePrototypeForIC(thread, protoHandle);
+        JSHClass::OptimizePrototypeForIC(thread, thread->GetGlobalEnv(), protoHandle);
     }
 }
 

@@ -3955,8 +3955,8 @@ inline GateRef StubBuilder::LoadHCIndexFromConstPool(
     env->SubCfgEntry(&subEntry);
 
     DEFVARIABLE(bcOffset, VariableType::INT32(), Int32(0));
-    DEFVARIABLE(constantIndex, VariableType::INT32(),
-        Int32(static_cast<int32_t>(ConstantIndex::ELEMENT_HOLE_TAGGED_HCLASS_INDEX)));
+    DEFVARIABLE(elementIndex, VariableType::INT32(),
+        Int32(static_cast<int32_t>(GlobalEnvField::ELEMENT_HOLE_TAGGED_HCLASS_INDEX)));
     DEFVARIABLE(i, VariableType::INT32(), Int32(0));
 
     Label loopHead(env);
@@ -3969,15 +3969,15 @@ inline GateRef StubBuilder::LoadHCIndexFromConstPool(
     bcOffset = GetInt32OfTInt(GetValueFromTaggedArray(cachedArray, *i));
     BRANCH(Int32Equal(*bcOffset, traceId), &matchSuccess, &afterUpdate);
     Bind(&matchSuccess);
-    constantIndex = GetInt32OfTInt(GetValueFromTaggedArray(cachedArray, Int32Add(*i, Int32(1))));
+    elementIndex = GetInt32OfTInt(GetValueFromTaggedArray(cachedArray, Int32Add(*i, Int32(1))));
     Jump(&afterLoop);
     Bind(&afterUpdate);
-    i = Int32Add(*i, Int32(2)); // 2 : skip traceId and constantIndex
+    i = Int32Add(*i, Int32(2)); // 2 : skip traceId and elementIndex
     BRANCH(Int32LessThan(*i, cachedLength), &loopEnd, miss);
     Bind(&loopEnd);
     LoopEnd(&loopHead);
     Bind(&afterLoop);
-    auto ret = *constantIndex;
+    auto ret = *elementIndex;
 
     env->SubCfgExit();
     return ret;

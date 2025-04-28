@@ -970,7 +970,7 @@ bool JSArray::IsProtoNotChangeJSArray(JSThread *thread, const JSHandle<JSObject>
             return true;
         }
         JSTaggedValue arrayProtoValue = JSObject::GetPrototype(obj);
-        JSTaggedValue genericArrayHClass = thread->GlobalConstants()->GetElementHoleTaggedClass();
+        JSTaggedValue genericArrayHClass = thread->GetGlobalEnv()->GetTaggedElementHOLE_TAGGEDClass();
         JSTaggedValue genericArrayProtoValue = \
             JSHClass::Cast(genericArrayHClass.GetTaggedObject())->GetProto();
         return genericArrayProtoValue == arrayProtoValue;

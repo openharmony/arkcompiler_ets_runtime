@@ -122,6 +122,29 @@ public:
         return true;
     }
 
+    void InitElementKindHClass(const JSThread *thread, JSHandle<JSHClass> originHClass)
+    {
+        {
+            JSHandle<JSHClass> hclass;
+#define INIT_ARRAY_HCLASS_INDEX_ARRAYS(name)                                                            \
+            hclass = JSHClass::CloneWithElementsKind(thread, originHClass, ElementsKind::name, false);  \
+            this->SetElement##name##Class(thread, hclass);
+
+            ELEMENTS_KIND_INIT_HCLASS_LIST(INIT_ARRAY_HCLASS_INDEX_ARRAYS)
+#undef INIT_ARRAY_HCLASS_INDEX_ARRAYS
+        }
+        this->SetElementHOLE_TAGGEDClass(thread, originHClass);
+        {
+            JSHandle<JSHClass> hclass;
+#define INIT_ARRAY_HCLASS_INDEX_ARRAYS(name)                                                            \
+            hclass = JSHClass::CloneWithElementsKind(thread, originHClass, ElementsKind::name, true);   \
+            this->SetElement##name##ProtoClass(thread, hclass);
+
+            ELEMENTS_KIND_INIT_HCLASS_LIST(INIT_ARRAY_HCLASS_INDEX_ARRAYS)
+#undef INIT_ARRAY_HCLASS_INDEX_ARRAYS
+        }
+    }
+
     JSHandle<JSTaggedValue> GetSymbol(JSThread *thread, const JSHandle<JSTaggedValue> &string);
     JSHandle<JSTaggedValue> GetStringFunctionByName(JSThread *thread, const char *name);
     JSHandle<JSTaggedValue> GetStringPrototypeFunctionByName(JSThread *thread, const char *name);
