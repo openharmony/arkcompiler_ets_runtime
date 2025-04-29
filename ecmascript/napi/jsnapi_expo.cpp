@@ -28,6 +28,7 @@
 #include "ecmascript/interpreter/interpreter_assembly.h"
 #include "ecmascript/jsnapi_sendable.h"
 #include "ecmascript/jspandafile/js_pandafile_executor.h"
+#include "ecmascript/js_hclass.h"
 #include "ecmascript/linked_hash_table.h"
 #include "ecmascript/module/module_logger.h"
 #include "ecmascript/module/napi_module_loader.h"
@@ -95,6 +96,7 @@ using ecmascript::JSTaggedNumber;
 using ecmascript::JSTaggedType;
 using ecmascript::JSTaggedValue;
 using ecmascript::JSThread;
+using ecmascript::JSType;
 using ecmascript::JSTypedArray;
 using ecmascript::LinkedHashMap;
 using ecmascript::LinkedHashSet;
@@ -1248,6 +1250,12 @@ void JSValueRef::TryGetArrayLength(const EcmaVM *vm, bool *isPendingException,
     } else {
         *isArrayOrSharedArray = false;
     }
+}
+
+bool JSValueRef::IsJsGlobalEnv(const EcmaVM *vm)
+{
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
+    return JSNApiHelper::ToJSTaggedValue(this).IsJSGlobalEnv();
 }
 
 // ---------------------------------- DataView -----------------------------------
@@ -5617,6 +5625,33 @@ void JSNApi::SetVMAPIVersion(EcmaVM *vm, const int32_t apiVersion)
 void JSNApi::UpdateStackInfo(EcmaVM *vm, void *currentStackInfo, uint32_t opKind)
 {
     vm->GetJSThread()->UpdateStackInfo(currentStackInfo, static_cast<ecmascript::JSThread::StackInfoOpKind>(opKind));
+}
+
+Local<JSValueRef> JSNApi::CreateContext(const EcmaVM *vm)
+{
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
+    ecmascript::ThreadManagedScope managedScope(thread);
+    ObjectFactory *factory = vm->GetFactory();
+    JSHandle<GlobalEnv> globalEnv = factory->NewGlobalEnv(thread->GetEnableLazyBuiltins());
+    return JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(globalEnv));
+}
+
+Local<JSValueRef> JSNApi::GetCurrentContext(const EcmaVM *vm)
+{
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
+    ecmascript::ThreadManagedScope managedScope(thread);
+    JSHandle<GlobalEnv> currentGlobalEnv = thread->GetGlobalEnv();
+    JSHandle<JSTaggedValue> envContext = JSHandle<JSTaggedValue>(currentGlobalEnv);
+    return JSNApiHelper::ToLocal<JSValueRef>(envContext);
+}
+
+void JSNApi::SwitchContext(const EcmaVM *vm, const Local<JSValueRef> &context)
+{
+    CROSS_THREAD_AND_EXCEPTION_CHECK(vm);
+    ecmascript::ThreadManagedScope managedScope(thread);
+    JSHandle<JSTaggedValue> contextValue = JSNApiHelper::ToJSHandle(context);
+    // context needs to be set on runtime thread, which will be implemented later.
+    [[maybe_unused]]JSHandle<GlobalEnv> globalEnv = JSHandle<GlobalEnv>(contextValue);
 }
 
 uintptr_t JSNApi::SetWeak(const EcmaVM *vm, uintptr_t localAddress)

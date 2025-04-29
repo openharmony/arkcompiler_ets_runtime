@@ -1679,4 +1679,28 @@ HWTEST_F_L0(JSNApiTests, UpdateStackInfo)
     JSNApi::UpdateStackInfo(vm_, nullptr, 0);
     ASSERT_EQ(vm_->GetJSThread()->GetStackLimit(), currentStackLimit);
 }
+
+HWTEST_F_L0(JSNApiTests, JSNApi_CreateContext001)
+{
+    LocalScope scope(vm_);
+    Local<JSValueRef> contextValue = JSNApi::CreateContext(vm_);
+    EXPECT_TRUE(contextValue->IsHeapObject());
+    EXPECT_TRUE(contextValue->IsJsGlobalEnv(vm_));
+}
+
+HWTEST_F_L0(JSNApiTests, JSNApi_GetCurrentContext001)
+{
+    LocalScope scope(vm_);
+    Local<JSValueRef> contextValue = JSNApi::GetCurrentContext(vm_);
+    EXPECT_TRUE(contextValue->IsHeapObject());
+    EXPECT_TRUE(contextValue->IsJsGlobalEnv(vm_));
+}
+
+HWTEST_F_L0(JSNApiTests, JSNApi_Local_Operator_equal001)
+{
+    LocalScope scope(vm_);
+    Local<JSValueRef> contextValue = JSNApi::CreateContext(vm_);
+    Local<JSValueRef> newContext = Local<JSValueRef>(contextValue);
+    EXPECT_TRUE(contextValue == newContext);
+}
 } // namespace panda::test

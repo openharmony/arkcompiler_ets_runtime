@@ -290,6 +290,12 @@ public:
 
     explicit inline Local(uintptr_t addr) : address_(addr) {}
 
+    inline bool operator==(const Local<T> &other) const
+    {
+        return *reinterpret_cast<JSTaggedType *>(GetAddress()) ==
+            *reinterpret_cast<JSTaggedType *>(other.GetAddress());
+    }
+
 private:
     inline T *GetAddress() const
     {
@@ -663,6 +669,7 @@ public:
                          size_t *byteOffset);
     void TryGetArrayLength(const EcmaVM *vm, bool *isPendingException,
         bool *isArrayOrSharedArray, uint32_t *arrayLength);
+    bool IsJsGlobalEnv(const EcmaVM *vm);
 
 private:
     JSTaggedType value_;
@@ -1833,6 +1840,13 @@ public:
 
     // Napi Update SubStackInfo
     static void UpdateStackInfo(EcmaVM *vm, void *currentStackInfo, uint32_t opKind);
+
+    static Local<JSValueRef> CreateContext(const EcmaVM *vm);
+
+    static Local<JSValueRef> GetCurrentContext(const EcmaVM *vm);
+
+    static void SwitchContext(const EcmaVM *vm, const Local<JSValueRef> &context);
+
 private:
     static bool isForked_;
     static bool CreateRuntime(const RuntimeOption &option);
