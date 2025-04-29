@@ -243,6 +243,10 @@ public:
                                        FunctionKind kind = FunctionKind::NORMAL_FUNCTION,
                                        kungfu::BuiltinsStubCSigns::ID builtinId = BUILTINS_STUB_ID(INVALID),
                                        MemSpaceType methodSpaceType = SHARED_OLD_SPACE);
+    JSHandle<JSFunction> NewJSBuiltinFunction(const JSHandle<GlobalEnv> env, const void *nativeFunc = nullptr,
+                                              FunctionKind kind = FunctionKind::NORMAL_FUNCTION,
+                                              kungfu::BuiltinsStubCSigns::ID builtinId = BUILTINS_STUB_ID(INVALID),
+                                              MemSpaceType methodSpaceType = SHARED_OLD_SPACE);
     JSHandle<JSFunction> NewSFunction(const JSHandle<GlobalEnv> &env,
                                       const void *nativeFunc = nullptr,
                                       FunctionKind kind = FunctionKind::NORMAL_FUNCTION,
@@ -251,6 +255,7 @@ public:
     void InitializeMethod(const MethodLiteral *methodLiteral, JSHandle<Method> &method);
     // use for method
     JSHandle<JSFunction> NewJSFunction(const JSHandle<GlobalEnv> &env, const JSHandle<Method> &method);
+    JSHandle<JSFunction> NewJSBuiltinFunction(const JSHandle<GlobalEnv> &env, const JSHandle<Method> &method);
 
     JSHandle<JSFunction> NewJSFunction(const JSHandle<Method> &methodHandle);
 
@@ -555,15 +560,26 @@ public:
     // only use for creating Function.prototype and Function
     JSHandle<JSFunction> NewJSFunctionByHClass(const JSHandle<Method> &method, const JSHandle<JSHClass> &clazz,
                                                MemSpaceType type = MemSpaceType::SEMI_SPACE);
+    JSHandle<JSFunction> NewJSBuiltinFunctionByHClass(const JSHandle<GlobalEnv> env,
+                                                      const JSHandle<Method> &method,
+                                                      const JSHandle<JSHClass> &clazz,
+                                                      MemSpaceType type = MemSpaceType::SEMI_SPACE);
     // for native function
     JSTaggedValue GetReadOnlyMethodForNativeFunction(FunctionKind kind);
     JSHandle<JSFunction> NewNativeFunctionByHClass(const JSHandle<JSHClass> &clazz,
                                                    const void *nativeFunc,
                                                    FunctionKind kind,
                                                    MemSpaceType type = MemSpaceType::SEMI_SPACE);
+    JSHandle<JSFunction> NewNativeBuiltinFunctionByHClass(const JSHandle<GlobalEnv> env,
+                                                          const JSHandle<JSHClass> &clazz,
+                                                          const void *nativeFunc,
+                                                          FunctionKind kind,
+                                                          MemSpaceType type = MemSpaceType::SEMI_SPACE);
+    JSHandle<JSFunction> CreateJSFunctionByType(const JSHandle<JSHClass> &clazz, MemSpaceType type);
+    void SetupJSFunctionByHClass(const JSHandle<JSFunction> &function, const JSHandle<Method> &method);
     JSHandle<JSFunction> NewJSFunctionByHClass(const void *func, const JSHandle<JSHClass> &clazz,
                                                FunctionKind kind = FunctionKind::NORMAL_FUNCTION);
-    JSHandle<JSFunction> NewJSFunctionByHClassWithoutAccessor(const void *func,
+    JSHandle<JSFunction> NewJSFunctionByHClassWithoutAccessor(const JSHandle<GlobalEnv> &env, const void *func,
         const JSHandle<JSHClass> &clazz, FunctionKind kind = FunctionKind::NORMAL_FUNCTION);
 
     JSHandle<Method> NewMethod(const MethodLiteral *methodLiteral, MemSpaceType spaceType = OLD_SPACE);
