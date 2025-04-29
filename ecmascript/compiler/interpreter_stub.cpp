@@ -3943,7 +3943,7 @@ DECLARE_ASM_HANDLER(HandleLdexternalmodulevarImm8)
     GateRef module = GetModuleFromFunction(currentFunc);
 #if ENABLE_NEXT_OPTIMIZATION
     GateRef indexInt32 = ZExtInt8ToInt32(index);
-    varAcc = LoadExternalmodulevar(glue, indexInt32, module);
+    varAcc = LoadExternalModuleVar(glue, indexInt32, module);
 #else
     varAcc = CallRuntime(glue, RTSTUB_ID(LdExternalModuleVarByIndexWithModule), {Int8ToTaggedInt(index), module});
 #endif
@@ -3959,7 +3959,7 @@ DECLARE_ASM_HANDLER(HandleWideLdexternalmodulevarPrefImm16)
     GateRef module = GetModuleFromFunction(currentFunc);
 #if ENABLE_NEXT_OPTIMIZATION
     GateRef indexInt32 = ZExtInt16ToInt32(index);
-    varAcc = LoadExternalmodulevar(glue, indexInt32, module);
+    varAcc = LoadExternalModuleVar(glue, indexInt32, module);
 #else
     varAcc = CallRuntime(glue, RTSTUB_ID(LdExternalModuleVarByIndexWithModule), {Int16ToTaggedInt(index), module});
 #endif
@@ -5957,15 +5957,20 @@ DECLARE_ASM_HANDLER(HandleCallRuntimeLdSendableVarImm16Imm16)
 
     DISPATCH_WITH_ACC(CALLRUNTIME_WIDELDSENDABLEVAR_PREF_IMM16_IMM16);
 }
+
 DECLARE_ASM_HANDLER(HandleCallRuntimeLdLazyModuleVarPrefImm8)
 {
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
     DEFVARIABLE(moduleRef, VariableType::JS_ANY(), Undefined());
     GateRef index = ReadInst8_1(pc);
-
     GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
+#if ENABLE_NEXT_OPTIMIZATION
+    GateRef indexInt32 = ZExtInt8ToInt32(index);
+    GateRef module = GetModuleFromFunction(currentFunc);
+    moduleRef = LoadLazyModuleVar(glue, indexInt32, module);
+#else
     moduleRef = CallRuntime(glue, RTSTUB_ID(LdLazyExternalModuleVarByIndex), { Int8ToTaggedInt(index), currentFunc });
-
+#endif
     auto env = GetEnvironment();
     Label notException(env);
     CHECK_EXCEPTION_WITH_JUMP(*moduleRef, &notException);
@@ -5980,12 +5985,15 @@ DECLARE_ASM_HANDLER(HandleCallRuntimeWideLdLazyModuleVarPrefImm16)
 {
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
     DEFVARIABLE(moduleRef, VariableType::JS_ANY(), Undefined());
-
     GateRef index = ReadInst16_1(pc);
-
     GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
+#if ENABLE_NEXT_OPTIMIZATION
+    GateRef indexInt32 = ZExtInt16ToInt32(index);
+    GateRef module = GetModuleFromFunction(currentFunc);
+    moduleRef = LoadLazyModuleVar(glue, indexInt32, module);
+#else
     moduleRef = CallRuntime(glue, RTSTUB_ID(LdLazyExternalModuleVarByIndex), { Int16ToTaggedInt(index), currentFunc });
-
+#endif
     auto env = GetEnvironment();
     Label notException(env);
     CHECK_EXCEPTION_WITH_JUMP(*moduleRef, &notException);

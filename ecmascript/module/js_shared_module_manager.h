@@ -42,16 +42,6 @@ public:
         resolvedSharedModules_.clear();
     }
 
-    JSTaggedValue GetSendableModuleValueInner(JSThread *thread, int32_t index, JSTaggedValue jsFunc);
-
-    JSTaggedValue GetSendableModuleValue(JSThread *thread, int32_t index, JSTaggedValue jsFunc);
-
-    JSTaggedValue GetSendableModuleValueImpl(JSThread *thread, int32_t index, JSTaggedValue currentModule) const;
-
-    JSTaggedValue GetLazySendableModuleValue(JSThread *thread, int32_t index, JSTaggedValue jsFunc);
-
-    JSTaggedValue GetLazySendableModuleValueImpl(JSThread *thread, int32_t index, JSTaggedValue currentModule) const;
-
     void Iterate(RootVisitor &v);
 
     StateVisit &findModuleMutexWithLock(JSThread *thread, const JSHandle<SourceTextModule> &module);
