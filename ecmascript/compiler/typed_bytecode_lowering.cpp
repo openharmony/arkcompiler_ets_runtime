@@ -2115,8 +2115,6 @@ void TypedBytecodeLowering::ConvertCallTargetCheckToHeapConstantCheckAndLowerCal
         builder_.Bind(&exit);
 #endif
         builder_.DeoptCheck(builder_.Equal(func, res), frameState, DeoptType::NOTCALLTARGETHEAPOBJECT);
-        GateRef isCompiled = builder_.JudgeAotAndFastCall(func, CircuitBuilder::JudgeMethodType::HAS_AOT);
-        builder_.DeoptCheck(isCompiled, frameState, DeoptType::CALLTARGETNOTCOMPILED);
     }
     auto *jitCompilationEnv = static_cast<const JitCompilationEnv*>(compilationEnv_);
     JSHandle<JSTaggedValue> heapObject = jitCompilationEnv->GetHeapConstantHandle(heapConstantIndex);
@@ -2370,9 +2368,7 @@ void TypedBytecodeLowering::LowerTypedThisCall(const TypeAccessor &tacc)
     if (methodLiteral == nullptr || !methodLiteral->IsTypedCall()) {
         return;
     }
-    auto heapConstantIndex = tacc.TryGetHeapConstantFunctionIndex(methodId);
-    if (!tacc.IsHotnessFunc() &&
-        heapConstantIndex == JitCompilationEnv::INVALID_HEAP_CONSTANT_INDEX) {
+    if (!tacc.IsHotnessFunc()) {
         return;
     }
     uint32_t argc = tacc.GetArgc();
