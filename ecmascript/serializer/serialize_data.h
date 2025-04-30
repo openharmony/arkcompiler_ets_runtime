@@ -28,6 +28,7 @@ namespace panda::ecmascript {
 constexpr size_t INITIAL_CAPACITY = 64;
 constexpr int CAPACITY_INCREASE_RATE = 2;
 constexpr uint32_t RESERVED_INDEX = 0;
+static constexpr int SERIALIZE_SPACE_NUM = 7;
 
 typedef void* (*DetachFunc)(void *enginePointer, void *objPointer, void *hint, void *detachData);
 typedef Local<JSValueRef> (*AttachFunc)(void *enginePointer, void *buffer, void *hint, void *attachData);
@@ -91,7 +92,6 @@ public:
     explicit SerializeData(JSThread *thread) : thread_(thread) {}
     ~SerializeData()
     {
-        regionRemainSizeVector_.clear();
         // decrease sharedArrayBuffer reference
         if (sharedArrayBufferSet_.size() > 0) {
             DecreaseSharedArrayBufferReference();
@@ -319,9 +319,9 @@ public:
         return incompleteData_;
     }
 
-    const std::vector<size_t>& GetRegionRemainSizeVector() const
+    const std::array<std::vector<size_t>, SERIALIZE_SPACE_NUM>& GetRegionRemainSizeVectors() const
     {
-        return regionRemainSizeVector_;
+        return regionRemainSizeVectors_;
     }
 
     size_t GetOldSpaceSize() const
@@ -353,30 +353,31 @@ public:
     {
         switch (space) {
             case SerializedObjectSpace::OLD_SPACE:
-                AlignSpaceObjectSize(oldSpaceSize_, objectSize);
+                AlignSpaceObjectSize(oldSpaceSize_, objectSize, SerializedObjectSpace::OLD_SPACE);
                 break;
             case SerializedObjectSpace::NON_MOVABLE_SPACE:
-                AlignSpaceObjectSize(nonMovableSpaceSize_, objectSize);
+                AlignSpaceObjectSize(nonMovableSpaceSize_, objectSize, SerializedObjectSpace::NON_MOVABLE_SPACE);
                 break;
             case SerializedObjectSpace::MACHINE_CODE_SPACE:
-                AlignSpaceObjectSize(machineCodeSpaceSize_, objectSize);
+                AlignSpaceObjectSize(machineCodeSpaceSize_, objectSize, SerializedObjectSpace::MACHINE_CODE_SPACE);
                 break;
             case SerializedObjectSpace::SHARED_OLD_SPACE:
-                AlignSpaceObjectSize(sharedOldSpaceSize_, objectSize);
+                AlignSpaceObjectSize(sharedOldSpaceSize_, objectSize, SerializedObjectSpace::SHARED_OLD_SPACE);
                 break;
             case SerializedObjectSpace::SHARED_NON_MOVABLE_SPACE:
-                AlignSpaceObjectSize(sharedNonMovableSpaceSize_, objectSize);
+                AlignSpaceObjectSize(sharedNonMovableSpaceSize_, objectSize,
+                                     SerializedObjectSpace::SHARED_NON_MOVABLE_SPACE);
                 break;
             default:
                 break;
         }
     }
 
-    void AlignSpaceObjectSize(size_t &spaceSize, size_t objectSize)
+    void AlignSpaceObjectSize(size_t &spaceSize, size_t objectSize, SerializedObjectSpace spaceType)
     {
         size_t alignRegionSize = AlignUpRegionAvailableSize(spaceSize);
         if (UNLIKELY(spaceSize + objectSize > alignRegionSize)) {
-            regionRemainSizeVector_.push_back(alignRegionSize - spaceSize);
+            regionRemainSizeVectors_.at(static_cast<uint8_t>(spaceType)).push_back(alignRegionSize - spaceSize);
             spaceSize = alignRegionSize;
         }
         spaceSize += objectSize;
@@ -430,7 +431,7 @@ private:
     size_t sharedOldSpaceSize_ {0};
     size_t sharedNonMovableSpaceSize_ {0};
     bool incompleteData_ {false};
-    std::vector<size_t> regionRemainSizeVector_ {};
+    std::array<std::vector<size_t>, SERIALIZE_SPACE_NUM> regionRemainSizeVectors_ {};
     std::set<uintptr_t> sharedArrayBufferSet_ {};
     std::set<NativeBindingDetachInfo *> nativeBindingDetachInfos_ {};
 };
