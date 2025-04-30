@@ -3535,7 +3535,7 @@ void BuiltinsTypedArrayStubBuilder::CopyElementsToArrayBuffer(GateRef glue, Gate
         }
     }
     Bind(&loopEnd);
-    LoopEnd(&loopHead, env, glue);
+    LoopEndWithCheckSafePoint(&loopHead, env, glue);
 
     Bind(&exit);
     env->SubCfgExit();

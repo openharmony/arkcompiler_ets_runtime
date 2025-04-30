@@ -140,7 +140,7 @@ void ContainersCommonStubBuilder::ContainersCommonFuncCall(GateRef glue, GateRef
         }
         Bind(&loopEnd);
         k = Int32Add(*k, Int32(1));
-        LoopEnd(&loopHead, env, glue);
+        LoopEndWithCheckSafePoint(&loopHead, env, glue);
     }
     Bind(&afterLoop);
     Jump(exit);
@@ -254,7 +254,7 @@ void ContainersCommonStubBuilder::ContainersLightWeightCall(GateRef glue, GateRe
         }
         Bind(&loopEnd);
         index = Int32Add(*index, Int32(1));
-        LoopEnd(&loopHead, env, glue);
+        LoopEndWithCheckSafePoint(&loopHead, env, glue);
     }
     Bind(&afterLoop);
     Jump(exit);
@@ -394,7 +394,7 @@ void ContainersCommonStubBuilder::ContainersHashCall(GateRef glue, GateRef thisV
         }
         Bind(&loopEnd);
         index = Int32Add(*index, Int32(1));
-        LoopEnd(&loopHead, env, glue);
+        LoopEndWithCheckSafePoint(&loopHead, env, glue);
     }
     Bind(&afterLoop);
     Jump(exit);
@@ -510,7 +510,7 @@ void ContainersCommonStubBuilder::ContainersLinkedListCall(GateRef glue, GateRef
         }
         Bind(&loopEnd);
         index = Int32Add(*index, Int32(1));
-        LoopEnd(&loopHead, env, glue);
+        LoopEndWithCheckSafePoint(&loopHead, env, glue);
     }
     Bind(&afterLoop);
     Jump(exit);

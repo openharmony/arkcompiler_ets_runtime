@@ -244,7 +244,7 @@ CallSignature BaselineStubCSigns::callSigns_[BaselineStubCSigns::NUM_OF_STUBS];
             BRANCH(TaggedIsHeapObject(*holder), &loopEnd, &whichPath);                                               \
         }                                                                                                            \
         Bind(&loopEnd);                                                                                              \
-        LoopEnd(&loopHead, env, glue);                                                                               \
+        LoopEndWithCheckSafePoint(&loopHead, env, glue);                                                             \
     }                                                                                                                \
     Bind(&whichPath);                                                                                                \
     {                                                                                                                \

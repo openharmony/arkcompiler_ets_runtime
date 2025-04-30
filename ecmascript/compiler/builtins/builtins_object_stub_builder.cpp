@@ -139,7 +139,7 @@ void BuiltinsObjectStubBuilder::AssignEnumElementProperty(Variable *result, Labe
         }
         Bind(&loopEnd);
         idx = Int32Add(*idx, Int32(1));
-        LoopEnd(&loopHead, env, glue_);
+        LoopEndWithCheckSafePoint(&loopHead, env, glue_);
         Bind(&loopExit);
         Jump(&exit);
     }
@@ -190,7 +190,7 @@ void BuiltinsObjectStubBuilder::AssignEnumElementProperty(Variable *result, Labe
         }
         Bind(&loopEnd);
         idx = Int32Add(*idx, Int32(1));
-        LoopEnd(&loopHead, env, glue_);
+        LoopEndWithCheckSafePoint(&loopHead, env, glue_);
         Bind(&loopExit);
         Jump(&exit);
     }
@@ -283,7 +283,7 @@ void BuiltinsObjectStubBuilder::LayoutInfoAssignAllEnumProperty(Variable *result
     }
     Bind(&loopEnd);
     idx = Int32Add(*idx, Int32(1));
-    LoopEnd(&loopHead, env, glue_);
+    LoopEndWithCheckSafePoint(&loopHead, env, glue_);
     Bind(&loopExit);
     Jump(&exit);
 
@@ -361,7 +361,7 @@ void BuiltinsObjectStubBuilder::NameDictionaryAssignAllEnumProperty(Variable *re
     }
     Bind(&loopEnd);
     idx = Int32Add(*idx, Int32(1));
-    LoopEnd(&loopHead, env, glue_);
+    LoopEndWithCheckSafePoint(&loopHead, env, glue_);
     Bind(&loopExit);
     Jump(&exit);
 
@@ -642,7 +642,7 @@ GateRef BuiltinsObjectStubBuilder::GetNumKeysFromLayoutInfo(GateRef end, GateRef
         }
         Bind(&loopEnd);
         i = Int32Add(*i, Int32(1));
-        LoopEnd(&loopHead, env, glue_);
+        LoopEndWithCheckSafePoint(&loopHead, env, glue_);
     }
     Bind(&exit);
     auto ret = *result;
@@ -686,7 +686,7 @@ GateRef BuiltinsObjectStubBuilder::GetNumKeysFromDictionary(GateRef array)
         }
         Bind(&loopEnd);
         i = Int32Add(*i, Int32(1));
-        LoopEnd(&loopHead, env, glue_);
+        LoopEndWithCheckSafePoint(&loopHead, env, glue_);
     }
     Bind(&afterLoop);
     Jump(&exit);
@@ -727,7 +727,7 @@ void BuiltinsObjectStubBuilder::LayoutInfoGetAllEnumKeys(GateRef end, GateRef of
         }
         Bind(&loopEnd);
         i = Int32Add(*i, Int32(1));
-        LoopEnd(&loopHead, env, glue_);
+        LoopEndWithCheckSafePoint(&loopHead, env, glue_);
     }
     Bind(&afterLoop);
     Jump(&exit);
@@ -767,7 +767,7 @@ GateRef BuiltinsObjectStubBuilder::CopyFromKeyArray(GateRef glue, GateRef elemen
         }
     }
     Bind(&loopEnd);
-    LoopEnd(&loopHead, env, glue);
+    LoopEndWithCheckSafePoint(&loopHead, env, glue);
     Bind(&afterLoop);
     {
         result = array;
@@ -920,7 +920,7 @@ GateRef BuiltinsObjectStubBuilder::GetEnumElementKeys(GateRef glue, GateRef obj)
                 }
                 Bind(&loopEnd);
                 i = Int32Add(*i, Int32(1));
-                LoopEnd(&loopHead, env, glue);
+                LoopEndWithCheckSafePoint(&loopHead, env, glue);
             }
         }
         Bind(&notPrimitiveString);
@@ -951,7 +951,7 @@ GateRef BuiltinsObjectStubBuilder::GetEnumElementKeys(GateRef glue, GateRef obj)
                 }
                 Bind(&loopEnd);
                 j = Int32Add(*j, Int32(1));
-                LoopEnd(&loopHead, env, glue);
+                LoopEndWithCheckSafePoint(&loopHead, env, glue);
                 Bind(&afterLoop);
                 {
                     result = elementArray;
@@ -1238,7 +1238,7 @@ GateRef BuiltinsObjectStubBuilder::ObjectSetPrototype(GateRef glue, GateRef obj,
                     }
                 }
                 Bind(&loopEnd);
-                LoopEnd(&loopHead, env, glue_);
+                LoopEndWithCheckSafePoint(&loopHead, env, glue_);
             }
             Bind(&loopExit);
             CallRuntime(glue, RTSTUB_ID(SetPrototypeTransition), { obj, proto});
@@ -1345,7 +1345,7 @@ void BuiltinsObjectStubBuilder::GetOwnPropertyNames(Variable *result, Label *exi
                             }
                             Bind(&loopEnd);
                             i = Int32Add(*i, Int32(1));
-                            LoopEnd(&loopHead, env, glue_);
+                            LoopEndWithCheckSafePoint(&loopHead, env, glue_);
                         }
                         Bind(&loopExit);
                         BRANCH(Int32UnsignedLessThan(*pos, keyLen), &needTrim, &setResult);
@@ -1455,7 +1455,7 @@ void BuiltinsObjectStubBuilder::GetOwnPropertySymbols(Variable *result, Label *e
                             }
                             Bind(&loopEnd);
                             i = Int32Add(*i, Int32(1));
-                            LoopEnd(&loopHead, env, glue_);
+                            LoopEndWithCheckSafePoint(&loopHead, env, glue_);
                         }
                         Bind(&loopExit);
                         BRANCH(Int32UnsignedLessThan(*pos, keyLen), &needTrim, &setResult);
@@ -1513,7 +1513,7 @@ GateRef BuiltinsObjectStubBuilder::GetAllElementKeys(GateRef glue, GateRef obj, 
                 }
                 Bind(&loopEnd);
                 i = Int32Add(*i, Int32(1));
-                LoopEnd(&loopHead, env, glue);
+                LoopEndWithCheckSafePoint(&loopHead, env, glue);
             }
         }
     }
@@ -1555,7 +1555,7 @@ GateRef BuiltinsObjectStubBuilder::GetAllElementKeys(GateRef glue, GateRef obj, 
                 }
                 Bind(&loopEnd);
                 j = Int32Add(*j, Int32(1));
-                LoopEnd(&loopHead, env, glue);
+                LoopEndWithCheckSafePoint(&loopHead, env, glue);
                 Bind(&loopExit);
                 result = array;
                 Jump(&exit);
@@ -1619,7 +1619,7 @@ GateRef BuiltinsObjectStubBuilder::GetAllPropertyKeys(GateRef glue, GateRef obj,
             }
             Bind(&loopEnd);
             i = Int32Add(*i, Int32(1));
-            LoopEnd(&loopHead, env, glue_);
+            LoopEndWithCheckSafePoint(&loopHead, env, glue_);
         }
         Bind(&loopExit);
         Jump(&exit);
@@ -1760,7 +1760,7 @@ GateRef BuiltinsObjectStubBuilder::GetEnumElementEntries(GateRef glue, GateRef o
 
         Bind(&loopEnd);
         idx = Int32Add(*idx, Int32(1));
-        LoopEnd(&loopHead, env, glue);
+        LoopEndWithCheckSafePoint(&loopHead, env, glue);
         Bind(&loopExit);
         auto ret = numElementArray;
         env->SubCfgExit();
@@ -1822,7 +1822,7 @@ GateRef BuiltinsObjectStubBuilder::GetEnumPropertyEntries(GateRef glue, GateRef 
     }
     Bind(&loopEnd);
     idx = Int32Add(*idx, Int32(1));
-    LoopEnd(&loopHead, env, glue);
+    LoopEndWithCheckSafePoint(&loopHead, env, glue);
     Bind(&loopExit);
     Label needTrim(env);
     BRANCH(Int32LessThan(*length, len), &needTrim, &exit);
@@ -1992,7 +1992,7 @@ GateRef BuiltinsObjectStubBuilder::TestIntegrityLevel(GateRef glue,
             }
             Bind(&loopEnd);
             index = Int32Add(*index, Int32(1));
-            LoopEnd(&loopHead, env, glue);
+            LoopEndWithCheckSafePoint(&loopHead, env, glue);
             Bind(&afterLoop);
             {
                 result = True();
@@ -2166,7 +2166,7 @@ void BuiltinsObjectStubBuilder::GetOwnPropertyDescriptors(Variable *result, Labe
     }
     Bind(&loopEnd);
     i = Int32Add(*i, Int32(1));
-    LoopEnd(&loopHead, env, glue_);
+    LoopEndWithCheckSafePoint(&loopHead, env, glue_);
     Bind(&loopExit);
     *result = descriptors;
     Jump(exit);

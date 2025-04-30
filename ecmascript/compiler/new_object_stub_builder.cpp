@@ -3097,7 +3097,7 @@ GateRef NewObjectStubBuilder::CreateListFromArrayLike(GateRef glue, GateRef arra
                     }
                 }
                 Bind(&loopEnd);
-                LoopEnd(&loopHead, env, glue);
+                LoopEndWithCheckSafePoint(&loopHead, env, glue);
                 Bind(&afterLoop);
                 {
                     res = array;

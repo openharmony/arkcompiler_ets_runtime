@@ -126,7 +126,7 @@ void ContainersQueueStubBuilder::ForEach(GateRef glue, GateRef thisValue, GateRe
         }
         Bind(&loopEnd);
         k = Int32Add(*k, Int32(1));
-        LoopEnd(&loopHead, env, glue);
+        LoopEndWithCheckSafePoint(&loopHead, env, glue);
     }
     Bind(&afterLoop);
     Jump(exit);

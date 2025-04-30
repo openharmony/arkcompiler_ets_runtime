@@ -524,7 +524,7 @@ void BuiltinsArrayStubBuilder::Concat(GateRef glue, GateRef thisValue, GateRef n
                                 Bind(&loopEnd);
                                 i = Int64Add(*i, Int64(1));
                                 j = Int64Add(*j, Int64(1));
-                                LoopEnd(&loopHead, env, glue);
+                                LoopEndWithCheckSafePoint(&loopHead, env, glue);
                                 Bind(&loopExit);
                                 Label loopHead1(env);
                                 Label loopEnd1(env);
@@ -1534,7 +1534,7 @@ void BuiltinsArrayStubBuilder::Slice(GateRef glue, GateRef thisValue, GateRef nu
                             }
                             Bind(&loopEnd);
                             idx = Int64Add(*idx, Int64(1));
-                            LoopEnd(&loopHead, env, glue);
+                            LoopEndWithCheckSafePoint(&loopHead, env, glue);
                             Bind(&loopExit);
                             result->WriteVariable(newArray);
                             Jump(exit);
@@ -1575,7 +1575,7 @@ void BuiltinsArrayStubBuilder::Slice(GateRef glue, GateRef thisValue, GateRef nu
                             }
                             Bind(&loopEnd);
                             idx = Int64Add(*idx, Int64(1));
-                            LoopEnd(&loopHead, env, glue);
+                            LoopEndWithCheckSafePoint(&loopHead, env, glue);
                             Bind(&loopExit);
                             result->WriteVariable(newArray);
                             Jump(exit);
@@ -1993,7 +1993,7 @@ void BuiltinsArrayStubBuilder::Reduce(GateRef glue, GateRef thisValue, GateRef n
                         Jump(&loopExit);
                     }
                     Bind(&isStableJSArray1);
-                    LoopEnd(&loopHead, env, glue);
+                    LoopEndWithCheckSafePoint(&loopHead, env, glue);
                 }
                 Bind(&loopExit);
                 Jump(&notStableJSArray);
@@ -2124,7 +2124,7 @@ void BuiltinsArrayStubBuilder::FastReverse(GateRef glue, GateRef thisValue, Gate
     Bind(&loopEnd);
     i = Int64Add(*i, Int64(1));
     j = Int64Sub(*j, Int64(1));
-    LoopEnd(&loopHead, env, glue);
+    LoopEndWithCheckSafePoint(&loopHead, env, glue);
     Bind(&loopExit);
     result->WriteVariable(thisValue);
     Jump(exit);
@@ -2436,7 +2436,7 @@ void BuiltinsArrayStubBuilder::Find(GateRef glue, GateRef thisValue, GateRef num
     Bind(&loopEnd);
     thisArrLen = ZExtInt32ToInt64(GetArrayLength(thisValue));
     i = Int64Add(*i, Int64(1));
-    LoopEnd(&loopHead, env, glue);
+    LoopEndWithCheckSafePoint(&loopHead, env, glue);
     Bind(&loopExit);
     Jump(exit);
 #endif
@@ -2551,7 +2551,7 @@ void BuiltinsArrayStubBuilder::FindIndex(GateRef glue, GateRef thisValue, GateRe
         }
         Bind(&loopEnd);
         thisArrLen = ZExtInt32ToInt64(GetArrayLength(thisValue));
-        LoopEnd(&loopHead, env, glue);
+        LoopEndWithCheckSafePoint(&loopHead, env, glue);
         Bind(&loopExit);
         Jump(exit);
     }
@@ -2610,7 +2610,7 @@ void BuiltinsArrayStubBuilder::FindIndex(GateRef glue, GateRef thisValue, GateRe
         Bind(&loopEnd);
         thisArrLen = ZExtInt32ToInt64(GetArrayLength(thisValue));
         j = Int64Add(*j, Int64(1));
-        LoopEnd(&loopHead, env, glue);
+        LoopEndWithCheckSafePoint(&loopHead, env, glue);
         Bind(&loopExit);
         Jump(exit);
     }
@@ -2958,7 +2958,7 @@ void BuiltinsArrayStubBuilder::Includes(GateRef glue, GateRef thisValue, GateRef
                         }
                         Bind(&loopEnd);
                         from = Int32Add(*from, Int32(1));
-                        LoopEnd(&loopHead, env, glue);
+                        LoopEndWithCheckSafePoint(&loopHead, env, glue);
                         Bind(&loopExit);
                         Jump(&notFound);
                     }
@@ -3077,7 +3077,7 @@ GateRef BuiltinsArrayStubBuilder::CreateSpliceDeletedArray(GateRef glue, GateRef
     }
     Bind(&loopEnd);
     i = Int32Add(*i, Int32(1));
-    LoopEnd(&loopHead, env, glue);
+    LoopEndWithCheckSafePoint(&loopHead, env, glue);
     Bind(&loopExit);
     Jump(&exit);
 
@@ -3466,7 +3466,7 @@ void BuiltinsArrayStubBuilder::Splice(GateRef glue, GateRef thisValue, GateRef n
                 }
                 Bind(&loopEnd);
                 i = Int32Add(*i, Int32(1));
-                LoopEnd(&loopHead, env, glue);
+                LoopEndWithCheckSafePoint(&loopHead, env, glue);
                 Bind(&loopExit);
                 Jump(&trimCheck);
             }
@@ -3533,7 +3533,7 @@ void BuiltinsArrayStubBuilder::Splice(GateRef glue, GateRef thisValue, GateRef n
                 }
                 Bind(&loopEnd);
                 j = Int32Sub(*j, Int32(1));
-                LoopEnd(&loopHead, env, glue);
+                LoopEndWithCheckSafePoint(&loopHead, env, glue);
                 Bind(&loopExit);
                 Jump(&insertCountVal);
             }

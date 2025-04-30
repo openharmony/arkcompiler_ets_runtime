@@ -128,7 +128,7 @@ void ContainersDequeStubBuilder::ForEach(GateRef glue, GateRef thisValue, GateRe
         Bind(&loopEnd);
         first = Int32Mod(Int32Add(*first, Int32(1)), capacity);
         index = Int32Add(*index, Int32(1));
-        LoopEnd(&loopHead, env, glue);
+        LoopEndWithCheckSafePoint(&loopHead, env, glue);
     }
     Bind(&afterLoop);
     Jump(exit);

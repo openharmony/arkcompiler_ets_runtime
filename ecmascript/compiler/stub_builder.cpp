@@ -117,7 +117,7 @@ GateRef StubBuilder::CheckSuspend(GateRef glue)
     return Int32And(ZExtInt16ToInt32(stateAndFlags), Int32(SUSPEND_REQUEST));
 }
 
-void StubBuilder::LoopEnd(Label *loopHead, Environment *env, GateRef glue)
+void StubBuilder::LoopEndWithCheckSafePoint(Label *loopHead, Environment *env, GateRef glue)
 {
     Label loopEnd(env);
     Label needSuspend(env);
@@ -793,7 +793,7 @@ GateRef StubBuilder::FindElementFromNumberDictionary(GateRef glue, GateRef eleme
     Bind(&loopEnd);
     entry = GetNextPositionForHash(*entry, *count, capacity);
     count = Int32Add(*count, Int32(1));
-    LoopEnd(&loopHead, env, glue);
+    LoopEndWithCheckSafePoint(&loopHead, env, glue);
     Bind(&exit);
     auto ret = *result;
     env->SubCfgExit();
@@ -896,7 +896,7 @@ GateRef StubBuilder::FindEntryFromHashTable(GateRef glue, GateRef elements, Gate
         {
             entry = GetNextPositionForHash(*entry, *count, capacity);
             count = Int32Add(*count, Int32(1));
-            LoopEnd(&loopHead, env, glue);
+            LoopEndWithCheckSafePoint(&loopHead, env, glue);
         }
     }
     Bind(&exit);
@@ -1008,7 +1008,7 @@ GateRef StubBuilder::FindEntryFromTransitionDictionary(GateRef glue, GateRef ele
         {
             entry = GetNextPositionForHash(*entry, *count, capacity);
             count = Int32Add(*count, Int32(1));
-            LoopEnd(&loopHead, env, glue);
+            LoopEndWithCheckSafePoint(&loopHead, env, glue);
         }
     }
     Bind(&exit);
@@ -2632,7 +2632,7 @@ GateRef StubBuilder::LoadICWithHandler(
             Bind(&handleInfoIsFound);
             {
                 handler = GetPrototypeHandlerHandlerInfo(*handler);
-                LoopEnd(&loopHead, env, glue);
+                LoopEndWithCheckSafePoint(&loopHead, env, glue);
             }
 
             // For "Not Found" case (holder equals Undefined()),
@@ -2940,7 +2940,7 @@ GateRef StubBuilder::ICStoreElement(GateRef glue, GateRef receiver, GateRef key,
             {
                 isOnPrototype = True();
                 varHandler = GetPrototypeHandlerHandlerInfo(*varHandler);
-                LoopEnd(&loopHead, env, glue);
+                LoopEndWithCheckSafePoint(&loopHead, env, glue);
             }
         }
     }
@@ -3127,7 +3127,7 @@ GateRef StubBuilder::StoreICWithHandler(GateRef glue, GateRef receiver, GateRef 
         }
         Bind(&JumpLoopHead);
         {
-            LoopEnd(&loopHead, env, glue);
+            LoopEndWithCheckSafePoint(&loopHead, env, glue);
         }
     }
     Bind(&exit);
@@ -3523,7 +3523,7 @@ GateRef StubBuilder::GetPropertyByIndex(GateRef glue, GateRef receiver,
             }
         }
         Bind(&loopEnd);
-        LoopEnd(&loopHead, env, glue);
+        LoopEndWithCheckSafePoint(&loopHead, env, glue);
         Bind(&afterLoop);
         {
             result = Undefined();
@@ -3825,7 +3825,7 @@ GateRef StubBuilder::GetPropertyByName(GateRef glue, GateRef receiver, GateRef k
             }
         }
         Bind(&loopEnd);
-        LoopEnd(&loopHead, env, glue);
+        LoopEndWithCheckSafePoint(&loopHead, env, glue);
         Bind(&afterLoop);
         {
             result = Undefined();
@@ -4531,7 +4531,7 @@ GateRef StubBuilder::SetPropertyByIndex(GateRef glue, GateRef receiver, GateRef 
             BRANCH(TaggedIsHeapObject(*holder), &loopEnd, &afterLoop);
         }
         Bind(&loopEnd);
-        LoopEnd(&loopHead, env, glue);
+        LoopEndWithCheckSafePoint(&loopHead, env, glue);
         Bind(&afterLoop);
     }
     Label isExtensible(env);
@@ -5054,7 +5054,7 @@ GateRef StubBuilder::SetPropertyByName(GateRef glue, GateRef receiver, GateRef k
             BRANCH(TaggedIsHeapObject(*holder), &loopEnd, &afterLoop);
         }
         Bind(&loopEnd);
-        LoopEnd(&loopHead, env, glue);
+        LoopEndWithCheckSafePoint(&loopHead, env, glue);
         Bind(&afterLoop);
     }
     Label holeEntryNotNegtiveOne(env);
@@ -6274,7 +6274,7 @@ GateRef StubBuilder::OrdinaryHasInstance(GateRef glue, GateRef target, GateRef o
                         BRANCH(TaggedIsNull(*object), &afterLoop, &loopEnd);
                     }
                     Bind(&loopEnd);
-                    LoopEnd(&loopHead, env, glue);
+                    LoopEndWithCheckSafePoint(&loopHead, env, glue);
                     Bind(&afterLoop);
                     {
                         result = TaggedFalse();
@@ -10244,7 +10244,7 @@ GateRef StubBuilder::AppendSkipHole(GateRef glue, GateRef first, GateRef second,
         }
     }
     Bind(&loopEnd);
-    LoopEnd(&loopHead, env, glue);
+    LoopEndWithCheckSafePoint(&loopHead, env, glue);
     Bind(&afterLoop);
     {
         Label loopHead1(env);
