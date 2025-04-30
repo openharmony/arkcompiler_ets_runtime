@@ -43,6 +43,7 @@ void ParseJsFrameInfo(JSPandaFile *jsPandaFile, DebugInfoExtractor *debugExtract
 static constexpr uint16_t URL_MAX = 1024;
 static constexpr uint16_t FUNCTIONNAME_MAX = 1024;
 static constexpr uint16_t PACKAGENAME_MAX = 1024;
+static constexpr uint32_t JS_STACK_TRACE_DEPTH_MAX = 64;
 
 struct ArkStepParam {
     uintptr_t *fp;
@@ -184,14 +185,15 @@ private:
     };
 public:
     static std::string BuildInlinedMethodTrace(const JSPandaFile *pf, std::map<uint32_t, uint32_t> &methodOffsets);
-    static inline std::string BuildJsStackTrace(JSThread *thread, bool needNative, bool needNativeStack = true)
+    static inline std::string BuildJsStackTrace(JSThread *thread, bool needNative,
+                                                bool needNativeStack = true, uint32_t depth = UINT32_MAX)
     {
         // If jsErrorObj not be pass in, MachineCode object of its stack frame while not be keep alive
         JSHandle<JSObject> jsErrorObj;
-        return BuildJsStackTrace(thread, needNative, jsErrorObj, needNativeStack);
+        return BuildJsStackTrace(thread, needNative, jsErrorObj, needNativeStack, depth);
     }
-    static std::string BuildJsStackTrace(JSThread *thread, bool needNative,
-                                         const JSHandle<JSObject> &jsErrorObj, bool needNativeStack);
+    static std::string BuildJsStackTrace(JSThread *thread, bool needNative, const JSHandle<JSObject> &jsErrorObj,
+                                         bool needNativeStack, uint32_t depth = UINT32_MAX);
     static std::vector<JsFrameInfo> BuildJsStackInfo(JSThread *thread, bool currentStack = false);
     static std::string BuildMethodTrace(Method *method, uint32_t pcOffset, LastBuilderCache &lastCache,
                                         bool enableStackSourceFile = true);

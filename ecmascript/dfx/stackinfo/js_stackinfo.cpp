@@ -187,8 +187,8 @@ void AssembleJitCodeMap(JSThread *thread, const JSHandle<JSObject> &jsErrorObj, 
     thread->SetJitCodeMap(jsErrorObj.GetTaggedValue().GetRawData(), machineCode, methodName, offset);
 }
 
-std::string JsStackInfo::BuildJsStackTrace(JSThread *thread, bool needNative,
-                                           const JSHandle<JSObject> &jsErrorObj, bool needNativeStack)
+std::string JsStackInfo::BuildJsStackTrace(JSThread *thread, bool needNative, const JSHandle<JSObject> &jsErrorObj,
+                                           bool needNativeStack, uint32_t depth)
 {
     std::string data;
     data.reserve(InitialDeeps * InitialLength);
@@ -197,7 +197,7 @@ std::string JsStackInfo::BuildJsStackTrace(JSThread *thread, bool needNative,
     uintptr_t baselineNativePc = 0;
 
     LastBuilderCache lastCache;
-    for (; !it.Done(); it.Advance<GCVisitedFlag::HYBRID_STACK>()) {
+    for (; !it.Done() && depth > 0; it.Advance<GCVisitedFlag::HYBRID_STACK>()) {
         if (it.GetFrameType() == FrameType::BASELINE_BUILTIN_FRAME) {
             auto *frame = it.GetFrame<BaselineBuiltinFrame>();
             baselineNativePc = frame->GetReturnAddr();
@@ -221,11 +221,13 @@ std::string JsStackInfo::BuildJsStackTrace(JSThread *thread, bool needNative,
                 pcOffset = it.GetBytecodeOffset();
             }
             data += BuildJsStackTraceInfo(thread, method, it, pcOffset, jsErrorObj, lastCache);
+            --depth;
         } else if (needNative) {
             auto addr = JSFunction::Cast(it.GetFunction().GetTaggedObject())->GetNativePointer();
             std::stringstream strm;
             strm << addr;
             data.append("    at native method (").append(strm.str()).append(")\n");
+            --depth;
         }
     }
     if (data.empty() && needNativeStack) {
