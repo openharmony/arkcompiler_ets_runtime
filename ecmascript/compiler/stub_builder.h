@@ -147,8 +147,7 @@ public:
                 const int64_t *keysValue, Label * const *keysLabel, int numberOfKeys);
     void LoopBegin(Label *loopHead);
     void LoopEnd(Label *loopHead);
-    // LoopEnd with safepoint
-    void LoopEnd(Label *loopHead, Environment *env, GateRef glue);
+    void LoopEndWithCheckSafePoint(Label *loopHead, Environment *env, GateRef glue);
     GateRef CheckSuspend(GateRef glue);
     // call operation
     GateRef CallRuntime(GateRef glue, int index, const std::vector<GateRef>& args);

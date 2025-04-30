@@ -103,7 +103,7 @@ void LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::Reh
     }
     Bind(&loopEnd);
     i = Int32Add(*i, Int32(1));
-    LoopEnd(&loopHead, env, glue_);
+    LoopEndWithCheckSafePoint(&loopHead, env, glue_);
     Bind(&loopExit);
 
     SetNumberOfElements(newTable, GetNumberOfElements(linkedTable));
@@ -178,7 +178,7 @@ void LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::Rem
     }
     Bind(&loopEnd);
     i = Int32Add(*i, Int32(1));
-    LoopEnd(&loopHead, env, glue_);
+    LoopEndWithCheckSafePoint(&loopHead, env, glue_);
     Bind(&loopExit);
 
     GateRef newNofe = Int32Sub(GetNumberOfElements(linkedTable), Int32(1));
@@ -284,7 +284,7 @@ GateRef LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::
         }
         Bind(&loopEnd);
         entry = GetNextEntry(linkedTable, TaggedGetInt(*entry));
-        LoopEnd(&loopHead, env, glue_);
+        LoopEndWithCheckSafePoint(&loopHead, env, glue_);
         Bind(&loopExit);
         Jump(&exit);
     }
@@ -333,7 +333,7 @@ GateRef LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::
     }
     Bind(&loopEnd);
     currentEntry = Int32Sub(*currentEntry, Int32(1));
-    LoopEnd(&loopHead, env, glue_);
+    LoopEndWithCheckSafePoint(&loopHead, env, glue_);
     Bind(&loopExit);
     Jump(&exit);
     Bind(&exit);

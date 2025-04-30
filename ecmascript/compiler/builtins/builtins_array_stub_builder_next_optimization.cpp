@@ -2003,7 +2003,7 @@ void BuiltinsArrayStubBuilder::SliceOptimised(GateRef glue, GateRef thisValue, G
                             }
                             Bind(&loopEnd);
                             idx = Int64Add(*idx, Int64(1));
-                            LoopEnd(&loopHead, env, glue);
+                            LoopEndWithCheckSafePoint(&loopHead, env, glue);
                             Bind(&loopExit);
                             result->WriteVariable(newArray);
                             Jump(exit);
@@ -2462,7 +2462,7 @@ void BuiltinsArrayStubBuilder::DoConcat(GateRef glue, GateRef thisValue, GateRef
         Bind(&loopEnd);
         i = Int64Add(*i, Int64(1));
         j = Int64Add(*j, Int64(1));
-        LoopEnd(&loopHead, env, glue);
+        LoopEndWithCheckSafePoint(&loopHead, env, glue);
         Bind(&loopExit);
         Label loopHead1(env);
         Label loopEnd1(env);

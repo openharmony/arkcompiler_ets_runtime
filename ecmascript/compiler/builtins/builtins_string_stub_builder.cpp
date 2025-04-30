@@ -3499,7 +3499,7 @@ void BuiltinsStringStubBuilder::PadStart(GateRef glue, GateRef thisValue, GateRe
                             }
                             Bind(&loopEnd);
                             tempStringLength = Int32Add(*tempStringLength, padStringLen);
-                            LoopEnd(&loopHead, env, glue);
+                            LoopEndWithCheckSafePoint(&loopHead, env, glue);
                             Bind(&loopExit);
                             GateRef lastLen = Int32Sub(padStringLen, Int32Sub(*tempStringLength, fillStringLen));
                             GateRef lastPadString = GetSubString(glue, panTag, Int32(0), lastLen);
@@ -3616,7 +3616,7 @@ void BuiltinsStringStubBuilder::PadEnd(GateRef glue, GateRef thisValue, GateRef 
                             }
                             Bind(&loopEnd);
                             tempStringLength = Int32Add(*tempStringLength, padStringLen);
-                            LoopEnd(&loopHead, env, glue);
+                            LoopEndWithCheckSafePoint(&loopHead, env, glue);
                             Bind(&loopExit);
                             GateRef lastLen = Int32Sub(padStringLen, Int32Sub(*tempStringLength, *newStringLength));
                             GateRef lastPadString = GetSubString(glue, panTag, Int32(0), lastLen);
