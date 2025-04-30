@@ -141,9 +141,6 @@ JSThread::JSThread(EcmaVM *vm) : id_(os::thread::GetCurrentThreadId()), vm_(vm)
     }
 
     glueData_.moduleManager_ = new ModuleManager(vm_);
-    if (vm_->GetJSOptions().EnableModuleLog()) {
-        glueData_.moduleLogger_ = new ModuleLogger(vm_);
-    }
 
     glueData_.globalConst_ = new GlobalEnvConstants();
 }

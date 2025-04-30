@@ -294,7 +294,12 @@ void ModuleLogger::PrintModuleLoadInfoTask(void *data)
 
 void ModuleLogger::SetModuleLoggerTask(EcmaVM *vm)
 {
-    ModuleLogger *moduleLogger = vm->GetJSThread()->GetModuleLogger();
+    ModuleLogger *moduleLogger = nullptr;
+    if (vm->GetJSOptions().EnableModuleLog()) {
+        moduleLogger = new ModuleLogger(vm);
+        vm->GetJSThread()->SetModuleLogger(moduleLogger);
+    }
+
     if (moduleLogger == nullptr) {
         return;
     }
