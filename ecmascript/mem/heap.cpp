@@ -2182,11 +2182,6 @@ void Heap::ChangeGCParams(bool inBackground)
             doubleOne * GetHeapObjectSize() / GetCommittedSize() <= MIN_OBJECT_SURVIVAL_RATE) {
             CollectGarbage(TriggerGCType::FULL_GC, GCReason::SWITCH_BACKGROUND);
         }
-        if (sHeap_->GetHeapObjectSize() - sHeap_->GetHeapAliveSizeAfterGC() > BACKGROUND_GROW_LIMIT &&
-            sHeap_->GetCommittedSize() >= MIN_BACKGROUNG_GC_LIMIT &&
-            doubleOne * sHeap_->GetHeapObjectSize() / sHeap_->GetCommittedSize() <= MIN_OBJECT_SURVIVAL_RATE) {
-            sHeap_->CompressCollectGarbageNotWaiting<GCReason::SWITCH_BACKGROUND>(thread_);
-        }
         if (GetMemGrowingType() != MemGrowingType::PRESSURE) {
             SetMemGrowingType(MemGrowingType::CONSERVATIVE);
             LOG_GC(DEBUG) << "Heap Growing Type CONSERVATIVE";
