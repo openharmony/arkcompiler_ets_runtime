@@ -74,7 +74,6 @@ class BufferRef;
 namespace ecmascript {
 class EcmaVM;
 class JSTaggedValue;
-class EcmaContext;
 class JSRuntimeOptions;
 class JSThread;
 struct EcmaRuntimeCallInfo;
@@ -106,7 +105,6 @@ using TriggerGCData = std::pair<void*, uint8_t>;
 using TriggerGCTaskCallback = std::function<void(TriggerGCData& data)>;
 using StartIdleMonitorCallback = std::function<void()>;
 using EcmaVM = ecmascript::EcmaVM;
-using EcmaContext = ecmascript::EcmaContext;
 using JSThread = ecmascript::JSThread;
 using JSTaggedType = uint64_t;
 using ConcurrentCallback = void (*)(Local<JSValueRef> result, bool success, void *taskInfo, void *data);
@@ -1629,11 +1627,6 @@ public:
                             const std::string &moduleName,
                             std::function<bool(std::string fileName, uint8_t **buff, size_t *buffSize)> cb);
 #endif
-    // context
-    static EcmaContext *CreateJSContext(EcmaVM *vm);
-    static void SwitchCurrentContext(EcmaVM *vm, EcmaContext *context);
-    static void DestroyJSContext(EcmaVM *vm, EcmaContext *context);
-
     // JS code
     static bool ExecuteForAbsolutePath(const EcmaVM *vm, const std::string &fileName,
                                        const std::string &entry, bool needUpdate = false,

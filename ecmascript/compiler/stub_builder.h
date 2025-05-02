@@ -1087,7 +1087,6 @@ public:
     inline GateRef GetAccessorHasChanged(GateRef obj);
     inline GateRef ComputeTaggedTypedArraySize(GateRef elementSize, GateRef length);
     GateRef ChangeTaggedPointerToInt64(GateRef x);
-    inline GateRef GetCurrentEcmaContext(GateRef glue);
     inline GateRef GetPropertiesCache(GateRef glue);
     inline GateRef GetMegaICCache(GateRef glue, MegaICCache::MegaICKind kind);
     inline GateRef GetModuleLogger(GateRef glue);

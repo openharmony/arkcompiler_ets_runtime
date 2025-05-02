@@ -18,7 +18,6 @@
 
 #include <atomic>
 #include "ecmascript/compiler/aot_file/aot_file_manager.h"
-#include "ecmascript/ecma_context.h"
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_array.h"

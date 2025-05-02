@@ -819,7 +819,7 @@ JSTaggedValue BuiltinsGlobal::PrintOptStat(EcmaRuntimeCallInfo *msg)
     BUILTINS_API_TRACE(thread, Global, PrintOptStat);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     // start vm runtime stat statistic
-    thread->GetCurrentEcmaContext()->PrintOptStat();
+    thread->GetEcmaVM()->PrintOptStat();
     return JSTaggedValue::Undefined();
 }
 #endif
@@ -831,7 +831,7 @@ JSTaggedValue BuiltinsGlobal::PrintMegaICStat(EcmaRuntimeCallInfo *msg)
     BUILTINS_API_TRACE(thread, Global, PrintMegaICStat);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     // start vm runtime stat statistic
-    thread->GetCurrentEcmaContext()->PrintMegaICStat();
+    thread->PrintMegaICStat();
     return JSTaggedValue::Undefined();
 }
 #endif

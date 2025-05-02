@@ -14,7 +14,6 @@
  */
 
 
-#include "ecmascript/ecma_context.h"
 #include "ecmascript/global_env_constants-inl.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/pgo_profiler/pgo_profiler.h"

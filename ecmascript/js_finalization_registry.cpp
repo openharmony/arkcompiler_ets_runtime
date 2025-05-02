@@ -15,7 +15,6 @@
 
 #include "ecmascript/js_finalization_registry.h"
 
-#include "ecmascript/ecma_context.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/jobs/micro_job_queue.h"
 #include "ecmascript/js_object-inl.h"

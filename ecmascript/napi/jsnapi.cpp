@@ -127,7 +127,6 @@ using ecmascript::DebugInfoExtractor;
 using ecmascript::PatchErrorCode;
 using ecmascript::base::NumberHelper;
 using ecmascript::Log;
-using ecmascript::EcmaContext;
 using ecmascript::JSWeakMap;
 using ecmascript::JSWeakSet;
 using ecmascript::JSSendableArrayBuffer;

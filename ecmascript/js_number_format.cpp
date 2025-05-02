@@ -14,7 +14,6 @@
  */
 
 #include "ecmascript/js_number_format.h"
-#include "ecmascript/ecma_context.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/object_factory-inl.h"
 

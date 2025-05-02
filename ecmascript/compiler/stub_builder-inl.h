@@ -24,7 +24,6 @@
 #include "ecmascript/compiler/assembler_module.h"
 #include "ecmascript/compiler/bc_call_signature.h"
 #include "ecmascript/compiler/baseline/baseline_call_signature.h"
-#include "ecmascript/ecma_context.h"
 #include "ecmascript/global_dictionary.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/global_env_constants.h"
@@ -4069,12 +4068,6 @@ inline void StubBuilder::SetArrayBufferByteLength(GateRef glue, GateRef buffer, 
 {
     GateRef offset = IntPtr(JSArrayBuffer::BYTE_LENGTH_OFFSET);
     Store(VariableType::INT32(), glue, buffer, offset, length);
-}
-
-inline GateRef StubBuilder::GetCurrentEcmaContext(GateRef glue)
-{
-    GateRef currentContextOffset = IntPtr(JSThread::GlueData::GetCurrentContextOffset(env_->Is32Bit()));
-    return Load(VariableType::NATIVE_POINTER(), glue, currentContextOffset);
 }
 
 inline GateRef StubBuilder::GetPropertiesCache(GateRef glue)

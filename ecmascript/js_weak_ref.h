@@ -16,7 +16,6 @@
 #ifndef ECMASCRIPT_JS_WEAK_REF_H
 #define ECMASCRIPT_JS_WEAK_REF_H
 
-#include "ecmascript/ecma_context.h"
 #include "ecmascript/js_object.h"
 #include "ecmascript/js_tagged_value-inl.h"
 
@@ -39,7 +38,7 @@ public:
         // 3. Return undefined.
         JSHandle<JSTaggedValue> target(thread, weakRef->GetFromWeak());
         if (!target->IsUndefined()) {
-            thread->GetCurrentEcmaContext()->AddToKeptObjects(target);
+            EcmaVM::AddToKeptObjects(thread, target);
         }
         return target.GetTaggedValue();
     }

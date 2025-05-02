@@ -15,7 +15,6 @@
  
 #include "ecmascript/ic/mega_ic_cache.h"
 #include "ecmascript/js_thread.h"
-#include "ecmascript/ecma_context.h"
 
 namespace panda::ecmascript {
 void MegaICCache::Set(JSHClass *jsHclass, JSTaggedValue key, JSTaggedValue handler,
@@ -27,7 +26,7 @@ void MegaICCache::Set(JSHClass *jsHclass, JSTaggedValue key, JSTaggedValue handl
     prop.key_ = key;
     keys_[hash].results_ = handler;
 #if ECMASCRIPT_ENABLE_MEGA_PROFILER
-        thread->GetCurrentEcmaContext()->IncMegaUpdateCount();
+        thread->IncMegaUpdateCount();
 #endif
 }
 }

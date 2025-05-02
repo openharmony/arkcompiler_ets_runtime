@@ -140,11 +140,6 @@ bool ExecutePandaFile(EcmaVM *vm, JSRuntimeOptions &runtimeOptions, std::string 
 #else
     arg_list_t fileNames = base::StringHelper::SplitString(files, ":");
 #endif
-    EcmaContext *context1 = nullptr;
-    if (runtimeOptions.IsEnableContext()) {
-        context1 = JSNApi::CreateJSContext(vm);
-        JSNApi::SwitchCurrentContext(vm, context1);
-    }
     if (runtimeOptions.GetTestAssert()) {
         Local<ObjectRef> globalObj = JSNApi::GetGlobalObject(vm);
         Local<FunctionRef> assertEqual = FunctionRef::New(vm, AssertEqual);
@@ -172,9 +167,6 @@ bool ExecutePandaFile(EcmaVM *vm, JSRuntimeOptions &runtimeOptions, std::string 
         LOG_ECMA(FATAL) << "this test didn't run to the end normally.";
     }
     auto totalTime = execute.TotalSpentTime();
-    if (runtimeOptions.IsEnableContext()) {
-        JSNApi::DestroyJSContext(vm, context1);
-    }
 
     if (runtimeOptions.IsEnablePrintExecuteTime()) {
         std::cout << "execute pandafile spent time " << totalTime << "ms" << std::endl;

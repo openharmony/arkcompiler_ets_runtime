@@ -345,7 +345,7 @@ JSTaggedValue BuiltinsArkTools::PrintMegaICStat(EcmaRuntimeCallInfo *info)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     // start vm runtime stat statistic
 #if ECMASCRIPT_ENABLE_MEGA_PROFILER
-    thread->GetCurrentEcmaContext()->PrintMegaICStat();
+    thread->PrintMegaICStat();
 #endif
     return JSTaggedValue::Undefined();
 }
