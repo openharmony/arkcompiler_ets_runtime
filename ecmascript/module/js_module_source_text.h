@@ -393,9 +393,9 @@ public:
     static void SetExportName(JSThread *thread, const JSHandle<SourceTextModule> requestedModule,
                               CVector<std::string> &exportedNames, JSHandle<TaggedArray> &newExportStarSet);
     static void RecordEvaluatedOrError(JSThread *thread, JSHandle<SourceTextModule> module);
-    static JSHandle<SourceTextModule> GetRequestedModule(JSThread *thread,
-                                                         const JSHandle<TaggedArray> requestedModules,
-                                                         uint32_t idx);
+    static JSHandle<SourceTextModule> GetRequestedModuleFromCache(JSThread *thread,
+                                                                  const JSHandle<TaggedArray> requestedModules,
+                                                                  uint32_t idx);
     static bool PreModuleInstantiation(JSThread *thread,
                                        JSHandle<SourceTextModule> module,
                                        const ExecuteTypes &executeType);
@@ -443,6 +443,8 @@ private:
     static void HandleErrorStack(JSThread *thread, const CVector<JSHandle<SourceTextModule>> &errorStack);
     static void SetExceptionToModule(JSThread *thread, JSHandle<SourceTextModule> module,
                                      JSTaggedValue exception);
+    static JSHandle<SourceTextModule> GetModuleFromCacheOrResolveNewOne(JSThread *thread,
+        const JSHandle<SourceTextModule> module, const JSHandle<TaggedArray> requestedModules, uint32_t idx);
     friend class EcmaModuleTest;
     friend class SharedModuleManager;
 };
