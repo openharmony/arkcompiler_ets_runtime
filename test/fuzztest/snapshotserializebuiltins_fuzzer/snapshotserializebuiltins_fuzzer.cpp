@@ -29,7 +29,7 @@ namespace OHOS {
         std::remove(fileName.c_str());
         // generate builtins.snapshot file
         RuntimeOption option1;
-        option1.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
+        option1.SetLogLevel(LOG_LEVEL::ERROR);
         option1.SetArkProperties(ArkProperties::ENABLE_SNAPSHOT_SERIALIZE);
         // create vm and generate builtins.snapshot file
         EcmaVM *vm1 = JSNApi::CreateJSVM(option1);
@@ -39,7 +39,7 @@ namespace OHOS {
         JSNApi::DestroyJSVM(vm1);
 
         RuntimeOption option2;
-        option2.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
+        option2.SetLogLevel(LOG_LEVEL::ERROR);
         option2.SetArkProperties(ArkProperties::ENABLE_SNAPSHOT_DESERIALIZE);
         // create vm by deserialize builtins.snapshot file
         EcmaVM *vm2 = JSNApi::CreateJSVM(option2);

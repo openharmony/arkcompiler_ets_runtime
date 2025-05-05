@@ -19,7 +19,7 @@
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/tagged_array-inl.h"
-#include "macros.h"
+#include "libpandabase/macros.h"
 
 namespace panda::ecmascript {
 void ProfileTypeAccessor::AddElementHandler(JSHandle<JSTaggedValue> hclass, JSHandle<JSTaggedValue> handler) const

@@ -74,29 +74,4 @@ void MutatorLock::SetState(MutatorLock::MutatorLockState newState)
     JSThread::GetCurrent()->SetMutatorLockState(newState);
 }
 #endif
-
-void SuspendBarrier::Wait()
-{
-    while (true) {
-        int32_t curCount = passBarrierCount_.load(std::memory_order_relaxed);
-        if (LIKELY(curCount > 0)) {
-#if defined(PANDA_USE_FUTEX)
-            int32_t *addr = reinterpret_cast<int32_t*>(&passBarrierCount_);
-            if (futex(addr, FUTEX_WAIT_PRIVATE, curCount, nullptr, nullptr, 0) != 0) {
-                if (errno != EAGAIN && errno != EINTR) {
-                    LOG_GC(FATAL) << "SuspendBarrier::Wait failed, errno = " << errno;
-                    UNREACHABLE();
-                }
-            }
-#else
-            sched_yield();
-#endif
-        } else {
-            // Use seq_cst to synchronize memory.
-            curCount = passBarrierCount_.load(std::memory_order_seq_cst);
-            ASSERT(curCount == 0);
-            break;
-        }
-    }
-}
 }  // namespace panda::ecmascript

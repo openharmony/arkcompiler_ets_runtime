@@ -234,7 +234,7 @@ static JSHandle<JSSharedMap> NewJSSharedMap(JSThread *thread, ObjectFactory *fac
     auto emptySLayout = thread->GlobalConstants()->GetHandledEmptySLayoutInfo();
     JSHandle<JSHClass> mapClass = factory->NewSEcmaHClass(JSSharedMap::SIZE, 0,
         JSType::JS_SHARED_MAP, proto, emptySLayout);
-    JSHandle<JSSharedMap> jsMap = JSHandle<JSSharedMap>::Cast(factory->NewJSObjectWithInit(mapClass));
+    JSHandle<JSSharedMap> jsMap = JSHandle<JSSharedMap>::Cast(factory->NewSharedOldSpaceJSObjectWithInit(mapClass));
     JSHandle<LinkedHashMap> linkedMap(
         LinkedHashMap::Create(thread, LinkedHashMap::MIN_CAPACITY, MemSpaceKind::SHARED));
     jsMap->SetLinkedMap(thread, linkedMap);
@@ -258,7 +258,7 @@ static JSHandle<JSSharedSet> NewJSSharedSet(JSThread *thread, ObjectFactory *fac
     auto emptySLayout = thread->GlobalConstants()->GetHandledEmptySLayoutInfo();
     JSHandle<JSHClass> setClass = factory->NewSEcmaHClass(JSSharedSet::SIZE, 0,
         JSType::JS_SHARED_SET, proto, emptySLayout);
-    JSHandle<JSSharedSet> jsSet = JSHandle<JSSharedSet>::Cast(factory->NewJSObjectWithInit(setClass));
+    JSHandle<JSSharedSet> jsSet = JSHandle<JSSharedSet>::Cast(factory->NewSharedOldSpaceJSObjectWithInit(setClass));
     JSHandle<LinkedHashSet> linkedSet(
         LinkedHashSet::Create(thread, LinkedHashSet::MIN_CAPACITY, MemSpaceKind::SHARED));
     jsSet->SetLinkedSet(thread, linkedSet);

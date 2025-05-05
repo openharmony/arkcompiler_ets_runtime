@@ -24,12 +24,14 @@ template<TriggerGCType gcType>
 SlotUpdateRangeVisitor<gcType>::SlotUpdateRangeVisitor(ParallelEvacuator *evacuator) : evacuator_(evacuator) {}
 
 template<TriggerGCType gcType>
-void SlotUpdateRangeVisitor<gcType>::VisitObjectRangeImpl(TaggedObject *root, ObjectSlot start, ObjectSlot end,
+void SlotUpdateRangeVisitor<gcType>::VisitObjectRangeImpl(BaseObject *root, uintptr_t startAddr, uintptr_t endAddr,
                                                           VisitObjectArea area)
 {
     Region *rootRegion = Region::ObjectAddressToRange(root);
+    ObjectSlot start(startAddr);
+    ObjectSlot end(endAddr);
     if (UNLIKELY(area == VisitObjectArea::IN_OBJECT)) {
-        JSHClass *hclass = root->SynchronizedGetClass();
+        JSHClass *hclass = TaggedObject::Cast(root)->SynchronizedGetClass();
         ASSERT(!hclass->IsAllTaggedProp());
         int index = 0;
         LayoutInfo *layout = LayoutInfo::UncheckCast(hclass->GetLayout().GetTaggedObject());

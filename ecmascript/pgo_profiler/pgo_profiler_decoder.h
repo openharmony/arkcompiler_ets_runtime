@@ -17,7 +17,7 @@
 #define ECMASCRIPT_PGO_PROFILE_DECODER_H
 
 #include "ecmascript/jspandafile/method_literal.h"
-#include "ecmascript/log.h"
+#include "ecmascript/log_wrapper.h"
 #include "ecmascript/log_wrapper.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_info.h"
 #include "ecmascript/pgo_profiler/pgo_utils.h"

@@ -2041,14 +2041,17 @@ void BuiltinsArrayStubBuilder::Reverse(GateRef glue, GateRef thisValue, [[maybe_
     Bind(&notCOWArray);
     GateRef thisLen = GetArrayLength(thisValue);
     GateRef thisArrLen = ZExtInt32ToInt64(thisLen);
+// TODO: CMC-GC may need to fix it later
+#ifndef USE_CMC_GC
 #if ENABLE_NEXT_OPTIMIZATION
-    Label useReversBarrier(env);
-    Label noReverseBarrier(env);
-    // 10 : length < 10 reverse item by item
-    BRANCH(Int32LessThan(thisLen, Int32(10)), &noReverseBarrier, &useReversBarrier);
-    Bind(&useReversBarrier);
-    ReverseOptimised(glue, thisValue, thisLen, result, exit);
-    Bind(&noReverseBarrier);
+     Label useReversBarrier(env);
+     Label noReverseBarrier(env);
+     // 10 : length < 10 reverse item by item
+     BRANCH(Int32LessThan(thisLen, Int32(10)), &noReverseBarrier, &useReversBarrier);
+     Bind(&useReversBarrier);
+     ReverseOptimised(glue, thisValue, thisLen, result, exit);
+     Bind(&noReverseBarrier);
+#endif
 #endif
     DEFVARIABLE(i, VariableType::INT64(), Int64(0));
     DEFVARIABLE(j, VariableType::INT64(),  Int64Sub(thisArrLen, Int64(1)));

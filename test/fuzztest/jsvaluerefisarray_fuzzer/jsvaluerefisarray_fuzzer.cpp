@@ -24,7 +24,7 @@ namespace OHOS {
 void IsInt8ArrayFuzztest(const uint8_t *data, size_t size)
 {
     RuntimeOption option;
-    option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
+    option.SetLogLevel(LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     if (data == nullptr || size <= 0) {
         LOG_ECMA(ERROR) << "illegal input!";
@@ -40,7 +40,7 @@ void IsInt8ArrayFuzztest(const uint8_t *data, size_t size)
 void IsUint8ArrayFuzztest(const uint8_t *data, size_t size)
 {
     RuntimeOption option;
-    option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
+    option.SetLogLevel(LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     if (data == nullptr || size <= 0) {
         LOG_ECMA(ERROR) << "illegal input!";
@@ -56,7 +56,7 @@ void IsUint8ArrayFuzztest(const uint8_t *data, size_t size)
 void IsUint8ClampedArrayFuzztest(const uint8_t *data, size_t size)
 {
     RuntimeOption option;
-    option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
+    option.SetLogLevel(LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     if (data == nullptr || size <= 0) {
         LOG_ECMA(ERROR) << "illegal input!";
@@ -72,7 +72,7 @@ void IsUint8ClampedArrayFuzztest(const uint8_t *data, size_t size)
 void IsInt16ArrayFuzztest(const uint8_t *data, size_t size)
 {
     RuntimeOption option;
-    option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
+    option.SetLogLevel(LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     if (data == nullptr || size <= 0) {
         LOG_ECMA(ERROR) << "illegal input!";
@@ -89,7 +89,7 @@ void IsInt16ArrayFuzztest(const uint8_t *data, size_t size)
 void IsUint16ArrayFuzztest(const uint8_t *data, size_t size)
 {
     RuntimeOption option;
-    option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
+    option.SetLogLevel(LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     if (data == nullptr || size <= 0) {
         LOG_ECMA(ERROR) << "illegal input!";

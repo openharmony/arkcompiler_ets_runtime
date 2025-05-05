@@ -26,9 +26,9 @@
 #include <map>
 #include <sys/time.h>
 
+#include "ecmascript/log_wrapper.h"
 #include "ecmascript/base/aligned_struct.h"
 #include "ecmascript/base/config.h"
-#include "ecmascript/mem/mem_common.h"
 #include "ecmascript/napi/include/jsnapi_expo.h"
 #ifndef NDEBUG
 #include "libpandabase/utils/debug.h"
@@ -68,10 +68,9 @@ namespace ecmascript {
 class EcmaVM;
 class JSTaggedValue;
 class EcmaContext;
-class JSRuntimeOptions;
 class JSThread;
 struct EcmaRuntimeCallInfo;
-static constexpr uint32_t DEFAULT_GC_POOL_SIZE = 256_MB;
+static constexpr uint32_t DEFAULT_GC_POOL_SIZE = 256 * 1024 * 1024;
 namespace base {
 template<size_t ElementAlign, typename... Ts>
 struct AlignedStruct;
@@ -92,7 +91,7 @@ using DeviceDisconnectCallback = std::function<bool()>;
 static constexpr size_t DEFAULT_GC_THREAD_NUM = 7;
 static constexpr size_t DEFAULT_LONG_PAUSE_TIME = 40;
 
-class ECMA_PUBLIC_API RegExpRef : public ObjectRef {
+class PUBLIC_API RegExpRef : public ObjectRef {
 public:
     Local<StringRef> GetOriginalSource(const EcmaVM *vm);
     std::string GetOriginalFlags(const EcmaVM *vm);
@@ -104,34 +103,34 @@ public:
     Local<JSValueRef> IsStick(const EcmaVM *vm);
 };
 
-class ECMA_PUBLIC_API GeneratorFunctionRef : public ObjectRef {
+class PUBLIC_API GeneratorFunctionRef : public ObjectRef {
 public:
     bool IsGenerator(const EcmaVM *vm);
 };
 
-class ECMA_PUBLIC_API GeneratorObjectRef : public ObjectRef {
+class PUBLIC_API GeneratorObjectRef : public ObjectRef {
 public:
     Local<JSValueRef> GetGeneratorState(const EcmaVM *vm);
     Local<JSValueRef> GetGeneratorFunction(const EcmaVM *vm);
     Local<JSValueRef> GetGeneratorReceiver(const EcmaVM *vm);
 };
 
-class ECMA_PUBLIC_API CollatorRef : public ObjectRef {
+class PUBLIC_API CollatorRef : public ObjectRef {
 public:
     Local<JSValueRef> GetCompareFunction(const EcmaVM *vm);
 };
 
-class ECMA_PUBLIC_API DataTimeFormatRef : public ObjectRef {
+class PUBLIC_API DataTimeFormatRef : public ObjectRef {
 public:
     Local<JSValueRef> GetFormatFunction(const EcmaVM *vm);
 };
 
-class ECMA_PUBLIC_API NumberFormatRef : public ObjectRef {
+class PUBLIC_API NumberFormatRef : public ObjectRef {
 public:
     Local<JSValueRef> GetFormatFunction(const EcmaVM *vm);
 };
 
-class ECMA_PUBLIC_API JSON {
+class PUBLIC_API JSON {
 public:
     static Local<JSValueRef> Parse(const EcmaVM *vm, Local<StringRef> string);
     static Local<JSValueRef> Stringify(const EcmaVM *vm, Local<JSValueRef> json);
@@ -139,17 +138,9 @@ public:
 
 using LOG_PRINT = int (*)(int id, int level, const char *tag, const char *fmt, const char *message);
 
-class ECMA_PUBLIC_API RuntimeOption {
+class PUBLIC_API RuntimeOption {
 public:
-    enum class ECMA_PUBLIC_API GC_TYPE : uint8_t { EPSILON, GEN_GC, STW };
-    enum class ECMA_PUBLIC_API LOG_LEVEL : uint8_t {
-        DEBUG = 3,
-        INFO = 4,
-        WARN = 5,
-        ERROR = 6,
-        FATAL = 7,
-        FOLLOW = 100, // if hilog enabled follow hilog, otherwise use INFO level
-    };
+    enum class PUBLIC_API GC_TYPE : uint8_t { EPSILON, GEN_GC, STW };
 
     // This enum should follow the same value as defined in the BMS subsystem.
     // Refer to the specification in aot-guide_zh.md.
@@ -460,218 +451,6 @@ private:
     std::map<std::string, int32_t> aotCompileStatusMap_;
     friend JSNApi;
 };
-
-template<typename T>
-template<typename S>
-Global<T>::Global(const EcmaVM *vm, const Local<S> &current) : vm_(vm)
-{
-    if (!current.IsEmpty()) {
-        address_ = JSNApi::GetGlobalHandleAddr(vm_, reinterpret_cast<uintptr_t>(*current));
-    }
-}
-
-template<typename T>
-template<typename S>
-Global<T>::Global(const EcmaVM *vm, const Global<S> &current) : vm_(vm)
-{
-    if (!current.IsEmpty()) {
-        address_ = JSNApi::GetGlobalHandleAddr(vm_, reinterpret_cast<uintptr_t>(*current));
-    }
-}
-
-
-template<typename T>
-template<typename S>
-void Global<T>::CreateXRefGloablReference(const EcmaVM *vm, const Local<S> &current)
-{
-    vm_ = vm;
-    if (!current.IsEmpty()) {
-        address_ = JSNApi::GetXRefGlobalHandleAddr(vm_, reinterpret_cast<uintptr_t>(*current));
-    }
-}
-
-template<typename T>
-CopyableGlobal<T>::CopyableGlobal(const EcmaVM *vm, const Local<T> &current) : vm_(vm)
-{
-    if (!current.IsEmpty()) {
-        address_ = JSNApi::GetGlobalHandleAddr(vm_, reinterpret_cast<uintptr_t>(*current));
-    }
-}
-
-template<typename T>
-template<typename S>
-CopyableGlobal<T>::CopyableGlobal(const EcmaVM *vm, const Local<S> &current) : vm_(vm)
-{
-    if (!current.IsEmpty()) {
-        address_ = JSNApi::GetGlobalHandleAddr(vm_, reinterpret_cast<uintptr_t>(*current));
-    }
-}
-
-template<typename T>
-void CopyableGlobal<T>::Copy(const CopyableGlobal &that)
-{
-    Free();
-    vm_ = that.vm_;
-    if (!that.IsEmpty()) {
-        ECMA_ASSERT(vm_ != nullptr);
-        address_ = JSNApi::GetGlobalHandleAddr(vm_, reinterpret_cast<uintptr_t>(*that));
-    }
-}
-
-template<typename T>
-template<typename S>
-void CopyableGlobal<T>::Copy(const CopyableGlobal<S> &that)
-{
-    Free();
-    vm_ = that.GetEcmaVM();
-    if (!that.IsEmpty()) {
-        ECMA_ASSERT(vm_ != nullptr);
-        address_ = JSNApi::GetGlobalHandleAddr(vm_, reinterpret_cast<uintptr_t>(*that));
-    }
-}
-
-template<typename T>
-void CopyableGlobal<T>::Move(CopyableGlobal &that)
-{
-    Free();
-    vm_ = that.vm_;
-    address_ = that.address_;
-    that.vm_ = nullptr;
-    that.address_ = 0U;
-}
-
-template<typename T>
-inline void CopyableGlobal<T>::Free()
-{
-    if (!IsEmpty()) {
-        JSNApi::DisposeGlobalHandleAddr(vm_, address_);
-        address_ = 0U;
-    }
-}
-
-template <typename T>
-void CopyableGlobal<T>::SetWeakCallback(void *ref, WeakRefClearCallBack freeGlobalCallBack,
-                                        WeakRefClearCallBack nativeFinalizeCallback)
-{
-    address_ = JSNApi::SetWeakCallback(vm_, address_, ref, freeGlobalCallBack, nativeFinalizeCallback);
-}
-
-template<typename T>
-void CopyableGlobal<T>::SetWeak()
-{
-    address_ = JSNApi::SetWeak(vm_, address_);
-}
-
-template<typename T>
-void CopyableGlobal<T>::ClearWeak()
-{
-    address_ = JSNApi::ClearWeak(vm_, address_);
-}
-
-template<typename T>
-bool CopyableGlobal<T>::IsWeak() const
-{
-    return JSNApi::IsWeak(vm_, address_);
-}
-
-template<typename T>
-void Global<T>::Update(const Global &that)
-{
-    if (address_ != 0) {
-        JSNApi::DisposeGlobalHandleAddr(vm_, address_);
-    }
-    address_ = that.address_;
-    vm_ = that.vm_;
-}
-
-template<typename T>
-void Global<T>::FreeGlobalHandleAddr()
-{
-    if (address_ == 0) {
-        return;
-    }
-    JSNApi::DisposeGlobalHandleAddr(vm_, address_);
-    address_ = 0;
-}
-
-template<typename T>
-void Global<T>::FreeXRefGlobalHandleAddr()
-{
-    if (address_ == 0) {
-        return;
-    }
-    JSNApi::DisposeXRefGlobalHandleAddr(vm_, address_);
-    address_ = 0;
-}
-
-#ifdef PANDA_JS_ETS_HYBRID_MODE
-    template<typename T>
-    void Global<T>::MarkFromObject()
-    {
-        if (address_ == 0) {
-            return;
-        }
-        JSNApi::MarkFromObject(vm_, address_);
-    }
-
-    template<typename T>
-    bool Global<T>::IsObjectAlive() const
-    {
-        if (address_ == 0) {
-            return false ;
-        }
-        return JSNApi::IsObjectAlive(vm_, address_);
-    }
-
-    template<typename T>
-    bool Global<T>::IsValidHeapObject() const
-    {
-        if (address_ == 0) {
-            return false;
-        }
-        return JSNApi::IsValidHeapObject(vm_, address_);
-    }
-#endif // PANDA_JS_ETS_HYBRID_MODE
-
-template<typename T>
-void Global<T>::SetWeak()
-{
-    address_ = JSNApi::SetWeak(vm_, address_);
-}
-
-template <typename T>
-void Global<T>::SetWeakCallback(void *ref, WeakRefClearCallBack freeGlobalCallBack,
-                                WeakRefClearCallBack nativeFinalizeCallback)
-{
-    address_ = JSNApi::SetWeakCallback(vm_, address_, ref, freeGlobalCallBack, nativeFinalizeCallback);
-}
-
-template<typename T>
-void Global<T>::ClearWeak()
-{
-    address_ = JSNApi::ClearWeak(vm_, address_);
-}
-
-template<typename T>
-bool Global<T>::IsWeak() const
-{
-    return JSNApi::IsWeak(vm_, address_);
-}
-
-// ---------------------------------- Local --------------------------------------------
-template<typename T>
-Local<T>::Local(const EcmaVM *vm, const CopyableGlobal<T> &current)
-{
-    address_ = JSNApi::GetHandleAddr(vm, reinterpret_cast<uintptr_t>(*current));
-}
-
-template<typename T>
-Local<T>::Local(const EcmaVM *vm, const Global<T> &current)
-{
-    address_ = JSNApi::GetHandleAddr(vm, reinterpret_cast<uintptr_t>(*current));
-}
 }  // namespace panda
 
-#undef ECMA_ASSERT
-#undef ECMA_PUBLIC_API
 #endif  // ECMASCRIPT_NAPI_INCLUDE_JSNAPI_H

@@ -28,7 +28,7 @@ namespace OHOS {
     void DumpHeapSnapshot2FuzzTest(const uint8_t* data, size_t size)
     {
         RuntimeOption option;
-        option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
+        option.SetLogLevel(LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
         DumpFormat dumpFormat = DumpFormat::JSON;
         if (size <= 0) {

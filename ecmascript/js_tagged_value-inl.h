@@ -1425,7 +1425,7 @@ inline bool JSTaggedValue::IsPureString(JSTaggedValue key)
 inline JSHandle<JSTaggedValue> JSTaggedValue::PublishSharedValue(JSThread *thread, JSHandle<JSTaggedValue> value)
 {
     ASSERT(value->IsSharedType());
-    ASSERT(!value->IsHeapObject() || value->IsInSharedHeap());
+    ASSERT(!value->IsHeapObject() || value->IsJSShared());
     if (value->IsTreeString()) {
         return PublishSharedValueSlow(thread, value);
     }

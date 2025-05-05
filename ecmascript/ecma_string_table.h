@@ -131,6 +131,9 @@ public:
 
     bool CheckStringTableValidity(JSThread *thread);
     void RelocateConstantData(EcmaVM *vm, const JSPandaFile *jsPandaFile);
+#ifdef USE_CMC_GC
+    void IterWeakRoot(WeakVisitor &visitor);
+#endif
 
     EcmaStringTableCleaner* GetCleaner()
     {

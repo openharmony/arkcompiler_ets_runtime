@@ -167,7 +167,7 @@ void NonMovableMarker::ProcessIncrementalMarkStack(uint32_t threadId, uint32_t m
     while (workNodeHolder->Pop(&obj)) {
         JSHClass *jsHclass = obj->GetClass();
         Region *region = Region::ObjectAddressToRange(obj);
-        auto size = jsHclass->SizeFromJSHClass(obj);
+        auto size = obj->GetSize();
         region->IncreaseAliveObject(size);
         incrementalOldGCMarkObjectVisitor.VisitHClass(jsHclass);
         ObjectXRay::VisitObjectBody<VisitType::OLD_GC_VISIT>(obj, jsHclass, incrementalOldGCMarkObjectVisitor);

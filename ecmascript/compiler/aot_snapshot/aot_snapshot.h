@@ -15,10 +15,11 @@
 #ifndef ECMASCRIPT_COMPILER_AOT_SNAPSHOT_AOT_SNAPSHOT_H
 #define ECMASCRIPT_COMPILER_AOT_SNAPSHOT_AOT_SNAPSHOT_H
 
-#include "ecmascript/ecma_vm.h"
-#include "ecmascript/object_factory.h"
 #include "ecmascript/compiler/aot_snapshot/snapshot_global_data.h"
 #include "ecmascript/compiler/bytecode_info_collector.h"
+#include "ecmascript/ecma_vm.h"
+#include "ecmascript/object_factory.h"
+#include "ecmascript/js_runtime_options.h"
 
 namespace panda::ecmascript::kungfu {
 class AOTSnapshot {

@@ -28,7 +28,7 @@
 #include "ecmascript/pgo_profiler/pgo_utils.h"
 #include "ecmascript/pgo_profiler/types/pgo_profile_type.h"
 #include "libpandabase/utils/bit_field.h"
-#include "macros.h"
+#include "libpandabase/macros.h"
 
 namespace panda::ecmascript::pgo {
 class PGOContext;

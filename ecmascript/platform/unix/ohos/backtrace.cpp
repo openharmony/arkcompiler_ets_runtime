@@ -17,6 +17,8 @@
 
 #include <cinttypes>
 #include <dlfcn.h>
+#include <map>
+
 #include "ecmascript/platform/mutex.h"
 #include "securec.h"
 

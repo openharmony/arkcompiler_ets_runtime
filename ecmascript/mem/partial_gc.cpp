@@ -29,6 +29,9 @@ PartialGC::PartialGC(Heap *heap) : heap_(heap), workManager_(heap->GetWorkManage
 
 void PartialGC::RunPhases()
 {
+#ifdef USE_CMC_GC
+    ASSERT("PartialGC should be disabled" && false);
+#endif
     GCStats *gcStats = heap_->GetEcmaVM()->GetEcmaGCStats();
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "PartialGC::RunPhases" + std::to_string(heap_->IsConcurrentFullMark())
         + ";GCReason" + std::to_string(static_cast<int>(gcStats->GetGCReason()))

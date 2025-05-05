@@ -1363,19 +1363,19 @@ inline GateRef StubBuilder::LoadHClass(GateRef glue, GateRef object)
     return res;
 }
 
-inline void StubBuilder::StoreHClass(GateRef glue, GateRef object, GateRef hClass)
+inline void StubBuilder::StoreHClass(GateRef glue, GateRef object, GateRef hClass, MemoryAttribute mAttr)
 {
-    return env_->GetBuilder()->StoreHClass(glue, object, hClass);
+    return env_->GetBuilder()->StoreHClass(glue, object, hClass, mAttr);
 }
 
-inline void StubBuilder::StoreHClassWithoutBarrier(GateRef glue, GateRef object, GateRef hClass)
+inline void StubBuilder::TransitionHClass(GateRef glue, GateRef object, GateRef hClass, MemoryAttribute mAttr)
 {
-    return env_->GetBuilder()->StoreHClassWithoutBarrier(glue, object, hClass);
+    return env_->GetBuilder()->TransitionHClass(glue, object, hClass, mAttr);
 }
 
 inline void StubBuilder::StoreBuiltinHClass(GateRef glue, GateRef object, GateRef hClass)
 {
-    return env_->GetBuilder()->StoreHClassWithoutBarrier(glue, object, hClass);
+    return env_->GetBuilder()->StoreHClass(glue, object, hClass, MemoryAttribute::NoBarrier());
 }
 
 inline void StubBuilder::StorePrototype(GateRef glue, GateRef hclass, GateRef prototype)
@@ -3407,7 +3407,7 @@ inline void StubBuilder::UpdateProfileTypeInfoCellType(GateRef glue, GateRef pro
     {
         auto profileTypeInfoCell1Class = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
                                                                 ConstantIndex::PROFILE_TYPE_INFO_CELL_1_CLASS_INDEX);
-        StoreHClassWithoutBarrier(glue, profileTypeInfoCell, profileTypeInfoCell1Class);
+        TransitionHClass(glue, profileTypeInfoCell, profileTypeInfoCell1Class, MemoryAttribute::NoBarrier());
         Jump(&endProfileTypeInfoCellType);
     }
     Bind(&notProfileTypeInfoCell0);
@@ -3417,7 +3417,7 @@ inline void StubBuilder::UpdateProfileTypeInfoCellType(GateRef glue, GateRef pro
     {
         auto profileTypeInfoCellNClass = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
                                                                 ConstantIndex::PROFILE_TYPE_INFO_CELL_N_CLASS_INDEX);
-        StoreHClassWithoutBarrier(glue, profileTypeInfoCell, profileTypeInfoCellNClass);
+        TransitionHClass(glue, profileTypeInfoCell, profileTypeInfoCellNClass, MemoryAttribute::NoBarrier());
         Jump(&endProfileTypeInfoCellType);
     }
     Bind(&endProfileTypeInfoCellType);
