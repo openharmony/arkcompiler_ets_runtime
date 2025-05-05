@@ -26,9 +26,9 @@
 namespace panda::ecmascript::kungfu {
 class NumberSpeculativeLowering {
 public:
-    NumberSpeculativeLowering(Circuit* circuit, Chunk* chunk, ChunkVector<TypeInfo>& typeInfos,
-        ChunkVector<RangeInfo>& rangeInfos)
-        : circuit_(circuit), acc_(circuit), builder_(circuit), typeInfos_(typeInfos),
+    NumberSpeculativeLowering(Circuit* circuit, CompilationConfig* cmpCfg, Chunk* chunk,
+        ChunkVector<TypeInfo>& typeInfos, ChunkVector<RangeInfo>& rangeInfos)
+        : circuit_(circuit), acc_(circuit), builder_(circuit, cmpCfg), typeInfos_(typeInfos),
           rangeInfos_(rangeInfos), rangeGuardGates_(chunk) {}
     void Run();
 

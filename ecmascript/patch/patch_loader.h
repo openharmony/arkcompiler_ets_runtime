@@ -20,10 +20,9 @@
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/method.h"
 #include "ecmascript/mem/c_containers.h"
-#include "ecmascript/napi/include/jsnapi.h"
+#include "ecmascript/napi/include/jsnapi_internals.h"
 
 namespace panda::ecmascript {
-using PatchErrorCode = panda::JSNApi::PatchErrorCode;
 using JSRecordInfo = JSPandaFile::JSRecordInfo;
 using LiteralDataAccessor = panda_file::LiteralDataAccessor;
 using LiteralValue = panda_file::LiteralDataAccessor::LiteralValue;

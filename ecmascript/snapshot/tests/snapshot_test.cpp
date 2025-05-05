@@ -139,8 +139,8 @@ HWTEST_F_L0(SnapshotTest, SerializeConstPool)
 
     auto beginRegion = const_cast<Heap *>(ecmaVm->GetHeap())->GetOldSpace()->GetCurrentRegion();
     auto constpool1 = reinterpret_cast<ConstantPool *>(beginRegion->GetBegin());
-    EXPECT_EQ(constpool->GetClass()->SizeFromJSHClass(*constpool),
-              constpool1->GetClass()->SizeFromJSHClass(constpool1));
+    EXPECT_EQ((*constpool)->GetSize(),
+              constpool1->GetSize());
     EXPECT_TRUE(constpool1->GetObjectFromCache(0).IsJSFunction());
     EXPECT_TRUE(constpool1->GetObjectFromCache(1).IsJSFunction());
     EXPECT_TRUE(constpool1->GetObjectFromCache(3).IsJSFunction());
@@ -188,8 +188,8 @@ HWTEST_F_L0(SnapshotTest, SerializeDifferentSpace)
 
     auto beginRegion = const_cast<Heap *>(ecmaVm->GetHeap())->GetOldSpace()->GetCurrentRegion();
     auto constpool1 = reinterpret_cast<ConstantPool *>(beginRegion->GetBegin());
-    EXPECT_EQ(constpool->GetClass()->SizeFromJSHClass(*constpool),
-              constpool1->GetClass()->SizeFromJSHClass(constpool1));
+    EXPECT_EQ((*constpool)->GetSize(),
+              constpool1->GetSize());
     EXPECT_TRUE(constpool1->GetObjectFromCache(0).IsTaggedArray());
     EXPECT_TRUE(constpool1->GetObjectFromCache(100).IsTaggedArray());
     EXPECT_TRUE(constpool1->GetObjectFromCache(300).IsTaggedArray());

@@ -98,7 +98,7 @@ public:
 
     inline JSTaggedValue GetIhc() const
     {
-        return JSTaggedValue(Barriers::GetValue<JSTaggedType>(GetData(), GetIhcOffset()));
+        return JSTaggedValue(Barriers::GetTaggedValue(GetData(), GetIhcOffset()));
     }
 
     inline void SetChc(JSTaggedValue value)
@@ -108,7 +108,7 @@ public:
 
     inline JSTaggedValue GetChc() const
     {
-        return JSTaggedValue(Barriers::GetValue<JSTaggedType>(GetData(), GetChcOffset()));
+        return JSTaggedValue(Barriers::GetTaggedValue(GetData(), GetChcOffset()));
     }
 
     inline void SetLiteralType(JSTaggedValue value)
@@ -118,7 +118,7 @@ public:
 
     inline int GetLiteralType() const
     {
-        return JSTaggedValue(Barriers::GetValue<JSTaggedType>(GetData(), GetLiteralTypeOffset())).GetInt();
+        return JSTaggedValue(Barriers::GetTaggedValue(GetData(), GetLiteralTypeOffset())).GetInt();
     }
 
     void SetObjectToCache(JSThread *thread, uint32_t index, JSTaggedValue value);

@@ -21,7 +21,7 @@
 #include <vector>
 
 #include "ecmascript/platform/file.h"
-#include "macros.h"
+#include "libpandabase/macros.h"
 
 namespace panda::ecmascript {
 class FrameworkHelper {

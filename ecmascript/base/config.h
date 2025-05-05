@@ -129,6 +129,11 @@ namespace panda::ecmascript {
 #endif
 
 #define UNSHARED_CONSTANTPOOL_COUNT 1024
+
+#define TARGET_X64 "x86_64-unknown-linux-gnu"
+#define TARGET_AARCH64 "aarch64-unknown-linux-gnu"
+#define TARGET_ARM32 "arm-unknown-linux-gnu"
+
 }  // namespace panda::ecmascript
 
 #endif  // ECMASCRIPT_BASE_CONFIG_H

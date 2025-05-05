@@ -19,7 +19,7 @@
 #include "ecmascript/compiler/compiler_log.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_decoder.h"
 #include "ecmascript/ecma_vm.h"
-#include "macros.h"
+#include "libpandabase/macros.h"
 #include "ecmascript/compiler/aot_compilation_env.h"
 #include "ecmascript/compiler/aot_file/aot_file_manager.h"
 #include "ecmascript/ohos/ohos_preload_app_info.h"

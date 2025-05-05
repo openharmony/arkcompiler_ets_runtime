@@ -256,6 +256,10 @@ JSTaggedValue BuiltinsArkTools::GetLexicalEnv(EcmaRuntimeCallInfo *info)
 
 JSTaggedValue BuiltinsArkTools::ForceFullGC(EcmaRuntimeCallInfo *info)
 {
+#ifdef USE_CMC_GC
+    BaseRuntime::GetInstance()->GetHeap().RequestGC(GcType::FULL);
+    return JSTaggedValue::True();
+#endif
     ASSERT(info);
     JSThread *thread = info->GetThread();
     std::string data = JsStackInfo::BuildJsStackTrace(thread, true);

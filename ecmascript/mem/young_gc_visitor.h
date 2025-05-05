@@ -38,12 +38,12 @@ private:
     WorkNodeHolder *workNodeHolder_ {nullptr};
 };
 
-class YoungGCMarkObjectVisitor final : public EcmaObjectRangeVisitor<YoungGCMarkObjectVisitor> {
+class YoungGCMarkObjectVisitor final : public BaseObjectVisitor<YoungGCMarkObjectVisitor> {
 public:
     inline explicit YoungGCMarkObjectVisitor(WorkNodeHolder *workNodeHolder);
     ~YoungGCMarkObjectVisitor() override = default;
 
-    inline void VisitObjectRangeImpl(TaggedObject *root, ObjectSlot start, ObjectSlot end,
+    inline void VisitObjectRangeImpl(BaseObject *root, uintptr_t start, uintptr_t end,
                                      VisitObjectArea area) override;
 private:
     inline void HandleSlot(ObjectSlot slot);

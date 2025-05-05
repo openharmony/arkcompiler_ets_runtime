@@ -29,12 +29,16 @@
 #include "ecmascript/mem/gc_stats.h"
 #include "ecmascript/mem/heap_region_allocator.h"
 #include "ecmascript/napi/include/dfx_jsnapi.h"
-#include "ecmascript/napi/include/jsnapi.h"
 #include "ecmascript/patch/patch_loader.h"
 #include "ecmascript/stackmap/ark_stackmap.h"
+#include "ecmascript/napi/include/jsnapi_expo.h"
 #include "ecmascript/taskpool/taskpool.h"
 #include "ecmascript/waiter_list.h"
 #include "libpandafile/bytecode_instruction-inl.h"
+
+#ifdef USE_CMC_GC
+#include "ecmascript/crt.h"
+#endif
 
 namespace panda {
 class JSNApi;
@@ -140,6 +144,10 @@ using HostPromiseRejectionTracker = void (*)(const EcmaVM* vm,
                                              PromiseRejectionEvent operation,
                                              void* data);
 using PromiseRejectCallback = void (*)(void* info);
+
+#ifdef USE_CMC_GC
+using namespace panda;
+#endif
 
 enum class IcuFormatterType: uint8_t {
     SIMPLE_DATE_FORMAT_DEFAULT,

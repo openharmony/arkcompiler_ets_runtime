@@ -20,7 +20,7 @@
 #include <map>
 #include <atomic>
 
-#include "ecmascript/log.h"
+#include "ecmascript/log_wrapper.h"
 #include "ecmascript/mem/c_string.h"
 #include "ecmascript/jit/compile_decision.h"
 

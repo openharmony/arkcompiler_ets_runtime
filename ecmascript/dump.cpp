@@ -1531,7 +1531,7 @@ void JSObject::Dump(std::ostream &os, bool isPrivacy) const
     jshclass->GetPrototype().DumpTaggedValue(os);
     os << "\n";
 
-    JSTaggedType hashField = Barriers::GetValue<JSTaggedType>(this, HASH_OFFSET);
+    JSTaggedType hashField = Barriers::GetTaggedValue(this, HASH_OFFSET);
     JSTaggedValue value(hashField);
     os << " - hash: " << std::hex << hashField;
     value.Dump(os);
@@ -4727,7 +4727,7 @@ void JSObject::DumpForSnapshot(std::vector<Reference> &vec) const
         vec.emplace_back(CString("__proto__"), jshclass->GetPrototype());
     }
     vec.emplace_back(CString("ArkInternalHash"), JSTaggedValue(GetHash()));
-    JSTaggedType hashField = Barriers::GetValue<JSTaggedType>(this, HASH_OFFSET);
+    JSTaggedType hashField = Barriers::GetTaggedValue(this, HASH_OFFSET);
     if (JSTaggedValue(hashField).IsHeapObject()) {
         vec.emplace_back(CString("HashField"), JSTaggedValue(hashField));
     }

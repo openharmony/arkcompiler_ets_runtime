@@ -38,6 +38,10 @@ public:
         Update(static_cast<JSTaggedType>(ToUintPtr(header)));
     }
 
+    uintptr_t* GetRefFieldAddr() {
+        return reinterpret_cast<uintptr_t*>(slotAddress_);
+    }
+
     void Update(JSTaggedType value)
     {
         // NOLINTNEXTLINE(clang-analyzer-core.NullDereference)

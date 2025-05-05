@@ -15,6 +15,7 @@
 #include "ecmascript/compiler/aot_file/aot_file_manager.h"
 
 
+#include "ecmascript/message_string.h"
 #include "ecmascript/compiler/aot_snapshot/aot_snapshot_constants.h"
 #include "ecmascript/js_file_path.h"
 #include "ecmascript/message_string.h"

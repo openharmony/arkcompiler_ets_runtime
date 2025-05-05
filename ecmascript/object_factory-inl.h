@@ -116,9 +116,11 @@ JSHandle<JSNativePointer> ObjectFactory::NewJSNativePointer(void *externalPointe
     heap_->IncreaseNativeBindingSize(fixedNativeBindingsize);
     if (callBack != nullptr) {
         vm_->PushToNativePointerList(static_cast<JSNativePointer *>(header), isConcurrent);
+#ifndef USE_CMC_GC
         // In some cases, the size of JS/TS object is too small and the native binding size is too large.
         // Check and try trigger concurrent mark here.
         heap_->TryTriggerFullMarkOrGCByNativeSize();
+#endif
     }
     return obj;
 }

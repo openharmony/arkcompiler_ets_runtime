@@ -65,7 +65,7 @@ namespace OHOS {
 void MapIteratorRefGetIndexFuzzTest([[maybe_unused]] const uint8_t *data, [[maybe_unused]] size_t size)
 {
     RuntimeOption option;
-    option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
+    option.SetLogLevel(LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     {
         JsiFastNativeScope scope(vm);
@@ -90,7 +90,7 @@ void MapIteratorRefGetIndexFuzzTest([[maybe_unused]] const uint8_t *data, [[mayb
 void MapIteratorRefGetKindFuzzTest([[maybe_unused]] const uint8_t *data, [[maybe_unused]] size_t size)
 {
     RuntimeOption option;
-    option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
+    option.SetLogLevel(LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     {
         JsiFastNativeScope scope(vm);

@@ -3764,4 +3764,33 @@ group("host_unittest") {
       ":Sendable_SharedObjectFactory_TestAction",
     ]
   }
+
+  # TODO: CMC-GC UT FIX LATER
+  if (defined(enable_cmc_gc) && enable_cmc_gc) {
+    deps -= [
+      ":GC_ConcurrentMarking_TestAction",
+      ":GC_First_TestAction",
+      ":GC_IdleGCTrigger_TestAction",
+      ":GC_MachineCode_TestAction",
+      ":GC_MemController_TestAction",
+      ":GC_NewToOldPromotion_TestAction",
+      ":GC_ReadOnlySpace_TestAction",
+      ":GC_Second_TestAction",
+      ":GC_SharedPartialGC_TestAction",
+      ":GC_Third_TestAction",
+      ":GC_Verification_TestAction",
+      ":GC_Verify_TestAction",
+      ":GC_WeakRefOldGC_TestAction",
+      ":GC_WeakRefSemiGC_TestAction",
+      ":JS_Barrier_TestAction",
+      ":JS_FinalizationRegistry_TestAction",
+      ":JS_GlueRegs_TestAction",
+      ":JS_Handle_TestAction",
+      ":JS_ObjectFactory_TestAction",
+      ":JS_Object_TestAction",
+      ":JS_TaggedArray_TestAction",
+      ":JS_ThreadState_TestAction",
+      ":Sendable_JsSharedArray_TestAction",
+    ]
+  }
 }

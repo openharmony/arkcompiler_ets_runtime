@@ -408,6 +408,14 @@ ohos_executable("ark_stub_compiler") {
     "$js_root:libark_js_intl_set",
     "$js_root:libark_jsruntime_set",
   ]
+
+  if (defined(enable_cmc_gc) && enable_cmc_gc) {
+    deps += [ "$js_root:libcommon_components_set" ]
+    if (ark_hybrid) {
+      deps += [ "$ark_root/static_core/runtime:libarkruntime_set_static" ]
+    }
+  }
+
   external_deps = [ "zlib:libz" ]
   if (!is_arkui_x) {
     external_deps += [ "runtime_core:libarkfile_static" ]
@@ -468,6 +476,13 @@ ohos_executable("ark_aot_compiler") {
       "$js_root:libark_jsruntime_set",
       "${MAPLEALL_ROOT}/maple_be:libcg",
     ]
+  }
+
+  if (defined(enable_cmc_gc) && enable_cmc_gc) {
+    deps += [ "$js_root:libcommon_components_set" ]
+    if (ark_hybrid) {
+      deps += [ "$ark_root/static_core/runtime:libarkruntime_set_static" ]
+    }
   }
 
   external_deps = [ "zlib:libz" ]
@@ -533,6 +548,7 @@ action("gen_stub_file") {
         " --compiler-target-triple=aarch64-unknown-linux-gnu" +
         " --compiler-log=allasm" + " --log-level=info"
   }
+  stub_option += " --enable-force-gc=false"
 
   if (host_cpu == "arm64") {
     llvm_lib_dir = "//prebuilts/clang/ohos/linux-aarch64/llvm/lib/"

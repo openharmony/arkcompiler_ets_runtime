@@ -216,7 +216,7 @@ void TaggedArray::Trim(const JSThread *thread, uint32_t newLength)
     ASSERT(oldLength > newLength);
     size_t trimBytes = (oldLength - newLength) * JSTaggedValue::TaggedTypeSize();
     size_t size = TaggedArray::ComputeSize(JSTaggedValue::TaggedTypeSize(), newLength);
-    factory->FillFreeObject(ToUintPtr(this) + size, trimBytes, RemoveSlots::YES, ToUintPtr(this));
+    factory->FillFreeObject<true>(ToUintPtr(this) + size, trimBytes, RemoveSlots::YES, ToUintPtr(this));
     SetLength(newLength);
 }
 

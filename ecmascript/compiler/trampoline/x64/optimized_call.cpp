@@ -830,7 +830,9 @@ void OptimizedCall::JSCallCheck(ExtendedAssembler *assembler, Register jsFuncReg
     __ Jne(lNonCallable);
 
     __ Movq(jsFuncReg, rsi); // save jsFunc
-    __ Movq(Operand(jsFuncReg, JSFunction::HCLASS_OFFSET), rax); // get jsHclass
+    __ Movl(Operand(jsFuncReg, JSFunction::HCLASS_OFFSET), rax);
+    __ Movq(Operand(rdi, JSThread::GlueData::GetBaseAddressOffset(false)), rdx);
+    __ Addq(rdx, rax);       // get jsHclass
     Register jsHclassReg = rax;
     __ Movl(Operand(jsHclassReg, JSHClass::BIT_FIELD_OFFSET), rax);
     __ Btl(JSHClass::CallableBit::START_BIT, rax); // IsCallable

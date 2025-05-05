@@ -16,6 +16,7 @@
 #ifndef ECMASCRIPT_COECMASCRIPT_COMPILER_ASSEMBLER_RELOC_REWRITER_AARCH64_RELOC_REWRITER_H
 #define ECMASCRIPT_COECMASCRIPT_COMPILER_ASSEMBLER_RELOC_REWRITER_AARCH64_RELOC_REWRITER_H
 
+#include "ecmascript/compiler/assembler/assembler.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/mem/native_area_allocator.h"
 #include "ecmascript/jit/rewriter/reloc_rewriter.h"

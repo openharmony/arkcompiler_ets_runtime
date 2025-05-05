@@ -26,7 +26,7 @@ namespace OHOS {
 void JSNApiCreateEcmaVMFuzzTest([[maybe_unused]]const uint8_t *data, size_t size)
 {
     RuntimeOption option;
-    option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
+    option.SetLogLevel(LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     if (size <= 0) {
         return;
@@ -40,7 +40,7 @@ void JSNApiCreateEcmaVMFuzzTest([[maybe_unused]]const uint8_t *data, size_t size
 void JSNApiEnableUserUncaughtErrorHandlerFuzzTest([[maybe_unused]]const uint8_t *data, size_t size)
 {
     RuntimeOption option;
-    option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
+    option.SetLogLevel(LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     if (size <= 0) {
         return;
@@ -52,7 +52,7 @@ void JSNApiEnableUserUncaughtErrorHandlerFuzzTest([[maybe_unused]]const uint8_t 
 void JSNApiFunctionFuzzTest([[maybe_unused]]const uint8_t *data, size_t size)
 {
     RuntimeOption option;
-    option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
+    option.SetLogLevel(LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     if (size <= 0) {
         return;
@@ -70,7 +70,7 @@ void JSNApiFunctionFuzzTest([[maybe_unused]]const uint8_t *data, size_t size)
 void JSNApiIsMixedDebugEnabledFuzzTest([[maybe_unused]]const uint8_t *data, size_t size)
 {
     RuntimeOption option;
-    option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
+    option.SetLogLevel(LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     if (size <= 0) {
         return;
@@ -82,7 +82,7 @@ void JSNApiIsMixedDebugEnabledFuzzTest([[maybe_unused]]const uint8_t *data, size
 void JSNApiNotifyNativeCallingFuzzTest(const uint8_t *data, size_t size)
 {
     RuntimeOption option;
-    option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
+    option.SetLogLevel(LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
     if (data == nullptr || size <= 0) {
         LOG_ECMA(ERROR) << "illegal input!";

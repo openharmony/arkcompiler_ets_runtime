@@ -16,11 +16,9 @@
 #include <signal.h>  // NOLINTNEXTLINE(modernize-deprecated-headers)
 
 #include "ecmascript/base/string_helper.h"
-#include "ecmascript/js_runtime_options.h"
+#include "ecmascript/ecma_vm.h"
 
 namespace panda::ecmascript {
-using PatchErrorCode = panda::JSNApi::PatchErrorCode;
-
 const std::string TEST_ENTRY_POINT = "test";
 const std::string RETEST_ENTRY_POINT = "retest";
 

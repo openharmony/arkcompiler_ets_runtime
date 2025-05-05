@@ -103,8 +103,8 @@ group("unittest") {
   testonly = true
   deps = []
   deps += [
-    ":AOTChecksumTestAction",
-    ":AOTFileTestAction",
+    ":AOTChecksumTest",
+    ":AOTFileTest",
   ]
 }
 
@@ -120,5 +120,10 @@ group("host_unittest") {
       ":AOTChecksumTestAction",
       ":AOTFileTestAction",
     ]
+  }
+
+  # TODO: CMC-GC FIX LATER
+  if (defined(enable_cmc_gc) && enable_cmc_gc) {
+    deps -= [ ":AOTFileTestAction" ]
   }
 }

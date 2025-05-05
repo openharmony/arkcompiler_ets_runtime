@@ -559,7 +559,7 @@ GateRef NewObjectStubBuilder::NewJSProxy(GateRef glue, GateRef target, GateRef h
         Store(VariableType::INT64(), glue, *result, hashOffset, Int64(JSTaggedValue(0).GetRawData()));
         GateRef proxyMethod = GetGlobalConstantValue(
             VariableType::JS_POINTER(), glue, ConstantIndex::PROXY_METHOD_INDEX);
-        StoreHClassWithoutBarrier(glue_, *result, *hclass);
+        StoreHClass(glue_, *result, *hclass, MemoryAttribute::NoBarrier());
         BuiltinsProxyStubBuilder builtinsProxyStubBuilder(this);
         builtinsProxyStubBuilder.SetMethod(glue, *result, proxyMethod);
         builtinsProxyStubBuilder.SetTarget(glue, *result, target);
@@ -581,7 +581,7 @@ void NewObjectStubBuilder::NewJSObject(Variable *result, Label *exit, GateRef hc
     Label initialize(env);
     HeapAlloc(result, &initialize, RegionSpaceFlag::IN_YOUNG_SPACE, hclass);
     Bind(&initialize);
-    StoreHClassWithoutBarrier(glue_, result->ReadVariable(), hclass);
+    StoreHClass(glue_, result->ReadVariable(), hclass, MemoryAttribute::NoBarrier());
     DEFVARIABLE(initValue, VariableType::JS_ANY(), Undefined());
     Label afterInitialize(env);
     InitializeWithSpeicalValue(&afterInitialize,
@@ -1507,10 +1507,13 @@ void NewObjectStubBuilder::AllocateInSOldPrologue([[maybe_unused]] Variable *res
 
 void NewObjectStubBuilder::AllocateInSOld(Variable *result, Label *exit, GateRef hclass)
 {
+#ifndef USE_CMC_GC
+    // disable fastpath for now
     auto env = GetEnvironment();
     Label callRuntime(env);
     AllocateInSOldPrologue(result, &callRuntime, exit);
     Bind(&callRuntime);
+#endif
     {
         DEFVARIABLE(ret, VariableType::JS_ANY(), Undefined());
         ret = CallRuntime(glue_, RTSTUB_ID(AllocateInSOld), {IntToTaggedInt(size_), hclass});
@@ -1526,7 +1529,7 @@ void NewObjectStubBuilder::AllocateInYoungPrologue([[maybe_unused]] Variable *re
     Label success(env);
     Label next(env);
 
-#ifdef ARK_ASAN_ON
+#if defined(ARK_ASAN_ON) || defined(USE_CMC_GC)
     Jump(callRuntime);
 #else
 #ifdef ECMASCRIPT_SUPPORT_HEAPSAMPLING
@@ -2593,7 +2596,7 @@ GateRef NewObjectStubBuilder::NewProfileTypeInfoCell(GateRef glue, GateRef value
     SetParameters(glue, size);
     HeapAlloc(&result, &initialize, RegionSpaceFlag::IN_YOUNG_SPACE, hclass);
     Bind(&initialize);
-    StoreHClassWithoutBarrier(glue, *result, hclass);
+    StoreHClass(glue, *result, hclass, MemoryAttribute::NoBarrier());
     SetValueToProfileTypeInfoCell(glue, *result, value);
     GateRef machineCodeOffset = IntPtr(ProfileTypeInfoCell::MACHINE_CODE_OFFSET);
     Store(VariableType::JS_POINTER(), glue, *result, machineCodeOffset, Hole());

@@ -65,7 +65,6 @@ template("host_unittest_action") {
       "0",
       "--env-path",
       rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime:" +
-          rebase_path(_root_out_dir_) + "/test/test:" +
           rebase_path(_root_out_dir_) + "/${_icu_path_}:" +
           rebase_path(_root_out_dir_) + "/thirdparty/zlib:" +
           rebase_path(_root_out_dir_) + "/resourceschedule/frame_aware_sched:" +
@@ -1171,6 +1170,196 @@ template("host_moduletest_assert_action") {
     outputs = [ "$target_out_dir/${_target_name_}AsmSingleStepContextAssert/" ]
   }
 }
+
+template("host_perf_test_action") {
+  _target_name_ = "${target_name}"
+  _deps_ = invoker.deps
+  _is_module_ = false
+  if (defined(invoker.is_module) && invoker.is_module) {
+    _is_module_ = true
+  }
+  _is_commonjs_ = false
+  if (defined(invoker.is_commonjs) && invoker.is_commonjs) {
+    _is_commonjs_ = true
+  }
+  _is_merge_abc_ = false
+  if (defined(invoker.is_merge_abc) && invoker.is_merge_abc) {
+    _is_merge_abc_ = true
+  }
+
+  _src_dir_ = "."
+  if (defined(invoker.src_dir) && invoker.src_dir != "") {
+    _src_dir_ = invoker.src_dir
+  }
+
+  _src_postfix_ = "js"
+  if (defined(invoker.src_postfix) && invoker.src_postfix != "") {
+    _src_postfix_ = invoker.src_postfix
+  }
+
+  _test_abc_path_ = "$target_out_dir/${_target_name_}.abc"
+
+  _test_js_path_ = "${_src_dir_}/${_target_name_}.${_src_postfix_}"
+
+  if (_is_merge_abc_) {
+    merge_file_raw = "./${_target_name_}/fileInfo.txt"
+    merge_file = "$target_out_dir/${_target_name_}.txt"
+    merge_file_prefix = "./"
+
+    action("gen_${_target_name_}_merge_file") {
+      script = "../../test/quickfix/generate_merge_file.py"
+      args = [
+        "--input",
+        rebase_path(merge_file_raw),
+        "--output",
+        rebase_path(merge_file),
+        "--prefix",
+        rebase_path(merge_file_prefix),
+      ]
+
+      inputs = [ merge_file_raw ]
+      outputs = [ merge_file ]
+    }
+  }
+
+  es2abc_gen_newest_abc("gen_${_target_name_}_abc") {
+    extra_visibility = [ ":*" ]  # Only targets in this file can depend on this.
+    extra_dependencies = _deps_
+    src_js = rebase_path(_test_js_path_)
+    dst_file = rebase_path(_test_abc_path_)
+    extra_args = []
+    if (_is_module_) {
+      extra_args += [ "--module" ]
+    }
+    if (_is_commonjs_) {
+      extra_args += [ "--commonjs" ]
+    }
+    if (_is_merge_abc_) {
+      extra_args += [ "--merge-abc" ]
+      extra_dependencies = [ ":gen_${_target_name_}_merge_file" ]
+      src_js = "@" + rebase_path(merge_file)
+      in_puts = [ merge_file ]
+    } else {
+      in_puts = [ _test_js_path_ ]
+    }
+    out_puts = [ _test_abc_path_ ]
+  }
+
+  if (defined(invoker.entry_point)) {
+    _script_args_ = invoker.entry_point
+    _script_args_ += " " + rebase_path(_test_abc_path_)
+  } else {
+    _script_args_ = rebase_path(_test_abc_path_)
+  }
+
+  action("${_target_name_}Action") {
+    testonly = true
+
+    _host_jsvm_target_ = "//arkcompiler/ets_runtime/ecmascript/js_vm:ark_js_vm(${host_toolchain})"
+    _root_out_dir_ = get_label_info(_host_jsvm_target_, "root_out_dir")
+    deps = [
+      ":gen_${_target_name_}_abc",
+      _host_jsvm_target_,
+    ]
+    deps += _deps_
+
+    script = "//arkcompiler/ets_runtime/script/run_ark_executable.py"
+
+    js_vm_options = " --asm-interpreter=false"
+    if (defined(invoker.is_set_maxNonmovableSpaceCapacity) &&
+        invoker.is_set_maxNonmovableSpaceCapacity) {
+      js_vm_options += " --max-unmovable-space=524288"  # 0.5M
+    }
+
+    if (defined(invoker.disable_force_gc) && invoker.disable_force_gc) {
+      js_vm_options += " --enable-force-gc=false"
+    }
+    js_vm_options += common_options
+    js_vm_options += " --entry-point=${_target_name_}"
+    args = [
+      "--script-file",
+      rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime/ark_js_vm",
+      "--script-options",
+      js_vm_options,
+      "--script-args",
+      _script_args_,
+      "--timeout-limit",
+      "300",
+      "--expect-output",
+      "0",
+      "--env-path",
+      rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime:" +
+          rebase_path(_root_out_dir_) + "/${_icu_path_}:" +
+          rebase_path(_root_out_dir_) + "/thirdparty/zlib:" +
+          rebase_path(_root_out_dir_) + "/resourceschedule/frame_aware_sched:" +
+          rebase_path(_root_out_dir_) + "/hiviewdfx/hilog:" +
+          rebase_path(_root_out_dir_) +
+          "/thirdparty/bounds_checking_function:" +
+          rebase_path("//prebuilts/clang/ohos/linux-x86_64/llvm/lib/"),
+    ]
+
+    inputs = [ _test_abc_path_ ]
+
+    outputs = [ "$target_out_dir/${_target_name_}/" ]
+  }
+
+  action("${_target_name_}AsmAction") {
+    testonly = true
+
+    _host_jsvm_target_ = "//arkcompiler/ets_runtime/ecmascript/js_vm:ark_js_vm(${host_toolchain})"
+    _root_out_dir_ = get_label_info(_host_jsvm_target_, "root_out_dir")
+    deps = [
+      ":gen_${_target_name_}_abc",
+      _host_jsvm_target_,
+    ]
+    deps += _deps_
+
+    script = "//arkcompiler/ets_runtime/script/run_ark_executable.py"
+
+    _asm_run_options_ = " --asm-interpreter=true"
+    if (defined(invoker.is_set_maxNonmovableSpaceCapacity) &&
+        invoker.is_set_maxNonmovableSpaceCapacity) {
+      _asm_run_options_ += " --max-unmovable-space=524288"  # 0.5M
+    }
+
+    if (defined(invoker.is_set_elements_kind) && invoker.is_set_elements_kind) {
+      _asm_run_options_ += " --enable-elements-kind=true"
+    }
+
+    if (defined(invoker.disable_force_gc) && invoker.disable_force_gc) {
+      _asm_run_options_ += " --enable-force-gc=false"
+    }
+    _asm_run_options_ += " --enable-context=true"
+    _asm_run_options_ += common_options
+    _asm_run_options_ += " --entry-point=${_target_name_}"
+    args = [
+      "--script-file",
+      rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime/ark_js_vm",
+      "--script-options",
+      _asm_run_options_,
+      "--script-args",
+      _script_args_,
+      "--timeout-limit",
+      "300",
+      "--expect-output",
+      "0",
+      "--env-path",
+      rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime:" +
+          rebase_path(_root_out_dir_) + "/${_icu_path_}:" +
+          rebase_path(_root_out_dir_) + "/thirdparty/zlib:" +
+          rebase_path(_root_out_dir_) + "/resourceschedule/frame_aware_sched:" +
+          rebase_path(_root_out_dir_) + "/hiviewdfx/hilog:" +
+          rebase_path(_root_out_dir_) +
+          "/thirdparty/bounds_checking_function:" +
+          rebase_path("//prebuilts/clang/ohos/linux-x86_64/llvm/lib/"),
+    ]
+
+    inputs = [ _test_abc_path_ ]
+
+    outputs = [ "$target_out_dir/Asm_${_target_name_}/" ]
+  }
+}
+
 
 template("host_aot_js_test_action") {
   _target_name_ = "${target_name}"

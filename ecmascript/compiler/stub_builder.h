@@ -378,8 +378,10 @@ public:
     GateRef CreateDataProperty(GateRef glue, GateRef obj, GateRef proKey, GateRef value);
     GateRef CreateDataPropertyOrThrow(GateRef glue, GateRef onj, GateRef proKey, GateRef value);
     GateRef DefineField(GateRef glue, GateRef obj, GateRef proKey, GateRef value);
-    void StoreHClass(GateRef glue, GateRef object, GateRef hClass);
-    void StoreHClassWithoutBarrier(GateRef glue, GateRef object, GateRef hClass);
+    void StoreHClass(GateRef glue, GateRef object, GateRef hClass,
+                     MemoryAttribute mAttr = MemoryAttribute::NeedBarrier());
+    void TransitionHClass(GateRef glue, GateRef object, GateRef hClass,
+                      MemoryAttribute mAttr = MemoryAttribute::NeedBarrier());
     void StoreBuiltinHClass(GateRef glue, GateRef object, GateRef hClass);
     void StorePrototype(GateRef glue, GateRef hclass, GateRef prototype);
     void CopyAllHClass(GateRef glue, GateRef dstHClass, GateRef scrHClass);

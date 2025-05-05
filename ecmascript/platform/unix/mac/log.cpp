@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "ecmascript/log.h"
+#include "ecmascript/log_wrapper.h"
 
 namespace panda::ecmascript {
 std::string previewerTag = "[ArkRuntime Log] ";

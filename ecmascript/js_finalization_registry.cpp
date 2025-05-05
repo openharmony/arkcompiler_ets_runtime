@@ -122,6 +122,10 @@ void JSFinalizationRegistry::CheckAndCall(JSThread *thread)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     CheckAndCallScope scope(thread);
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+    JSHandle<JSTaggedValue> maybeEnv(env);
+    if (maybeEnv->IsHole()) {
+        return;
+    }
     JSHandle<JSTaggedValue> prev = env->GetFinRegLists();
 
     if (prev->IsUndefined()) {

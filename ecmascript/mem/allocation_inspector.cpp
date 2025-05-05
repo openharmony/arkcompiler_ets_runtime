@@ -15,6 +15,7 @@
 
 #include "allocation_inspector.h"
 
+#include "ecmascript/base/number_helper.h"
 #include "ecmascript/dfx/hprof/heap_sampling.h"
 
 namespace panda::ecmascript {

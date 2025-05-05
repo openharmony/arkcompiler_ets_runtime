@@ -50,10 +50,10 @@ public:
         // ProfileTypeInfoCell0 -> Cell1 -> CellN
         JSType jsType = GetClass()->GetObjectType();
         if (jsType == JSType::PROFILE_TYPE_INFO_CELL_0) {
-            SetClassWithoutBarrier(
+            TransitionClassWithoutBarrier(
                 JSHClass::Cast(thread->GlobalConstants()->GetProfileTypeInfoCell1Class().GetTaggedObject()));
         } else if (jsType == JSType::PROFILE_TYPE_INFO_CELL_1) {
-            SetClassWithoutBarrier(
+            TransitionClassWithoutBarrier(
                 JSHClass::Cast(thread->GlobalConstants()->GetProfileTypeInfoCellNClass().GetTaggedObject()));
         } else {
             ASSERT(jsType == JSType::PROFILE_TYPE_INFO_CELL_N);

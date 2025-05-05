@@ -1001,13 +1001,13 @@ const JSTaggedType* JSStableArray::IndexOfElements(Span<const JSTaggedType> elem
     static_assert(std::is_invocable_r_v<bool, Predicate, JSTaggedType>, "Invalid call signature.");
     if (options.reversedOrder) {
         for (auto cur = elements.end() - 1; cur >= elements.begin(); --cur) {
-            if (UNLIKELY(std::invoke(predicate, *cur))) {
+            if (UNLIKELY(std::invoke(predicate, Barriers::GetTaggedValue(ToUintPtr(cur))))) {
                 return cur;
             }
         }
     } else {
         for (auto cur = elements.begin(); cur < elements.end(); ++cur) {
-            if (UNLIKELY(std::invoke(predicate, *cur))) {
+            if (UNLIKELY(std::invoke(predicate, Barriers::GetTaggedValue(ToUintPtr(cur))))) {
                 return cur;
             }
         }
