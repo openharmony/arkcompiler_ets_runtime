@@ -373,8 +373,7 @@ config("ark_jsruntime_common_config") {
     "-std=c++17",
   ]
 
-  if (defined(enable_cmc_gc) && enable_cmc_gc) {
-    cflags_cc += [
+  cflags_cc += [
     "-Wno-unused-command-line-argument",
     "-Wno-variadic-macros",
     "-Wno-gnu-anonymous-struct",
@@ -388,7 +387,7 @@ config("ark_jsruntime_common_config") {
     "-Wno-unused-lambda-capture",
     "-Wno-unused-function",
     "-Wno-unused-variable",
-  }
+  ]
   cflags_c = []
 
   if (is_ohos && is_clang && (target_cpu == "arm" || target_cpu == "arm64")) {
